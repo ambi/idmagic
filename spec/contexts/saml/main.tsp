@@ -16,6 +16,28 @@ model SamlSingleSignOn1Success_303 {
   @statusCode statusCode: 303;
 }
 
+model SamlSingleSignOn1Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model SamlSingleSignOn1Error403 {
+  @statusCode statusCode: 403;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleSignOn1Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleSignOn1Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleSignOn1Error404Body;
+}
+
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
@@ -26,7 +48,7 @@ op SamlSingleSignOn1(
   @query entity_id?: string,
   @query relay_state?: string,
   @query profile_id: string = "default"
-): SamlSingleSignOn1Success_200 | SamlSingleSignOn1Success_303;
+): SamlSingleSignOn1Success_200 | SamlSingleSignOn1Success_303 | SamlSingleSignOn1Error400 | SamlSingleSignOn1Error403 | SamlSingleSignOn1Error404;
 
 model SamlSingleSignOn2Success_200 {
   @statusCode statusCode: 200;
@@ -34,6 +56,28 @@ model SamlSingleSignOn2Success_200 {
 
 model SamlSingleSignOn2Success_303 {
   @statusCode statusCode: 303;
+}
+
+model SamlSingleSignOn2Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model SamlSingleSignOn2Error403 {
+  @statusCode statusCode: 403;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleSignOn2Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleSignOn2Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleSignOn2Error404Body;
 }
 
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
@@ -46,7 +90,7 @@ op SamlSingleSignOn2(
   @query entity_id?: string,
   @query relay_state?: string,
   @path profile_id: string
-): SamlSingleSignOn2Success_200 | SamlSingleSignOn2Success_303;
+): SamlSingleSignOn2Success_200 | SamlSingleSignOn2Success_303 | SamlSingleSignOn2Error400 | SamlSingleSignOn2Error403 | SamlSingleSignOn2Error404;
 
 model SamlSingleSignOn3HttpRequest {
   @doc("The SP-initiated AuthnRequest, deflate+base64 or base64 depending on the binding. Empty for an IdP-initiated request.")
@@ -65,6 +109,28 @@ model SamlSingleSignOn3Success_303 {
   @statusCode statusCode: 303;
 }
 
+model SamlSingleSignOn3Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model SamlSingleSignOn3Error403 {
+  @statusCode statusCode: 403;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleSignOn3Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleSignOn3Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleSignOn3Error404Body;
+}
+
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
@@ -73,7 +139,7 @@ model SamlSingleSignOn3Success_303 {
 op SamlSingleSignOn3(
   @path profile_id: string,
   @body body: SamlSingleSignOn3HttpRequest
-): SamlSingleSignOn3Success_200 | SamlSingleSignOn3Success_303;
+): SamlSingleSignOn3Success_200 | SamlSingleSignOn3Success_303 | SamlSingleSignOn3Error400 | SamlSingleSignOn3Error403 | SamlSingleSignOn3Error404;
 
 model SamlSingleSignOn4HttpRequest {
   @doc("The SP-initiated AuthnRequest, deflate+base64 or base64 depending on the binding. Empty for an IdP-initiated request.")
@@ -94,6 +160,28 @@ model SamlSingleSignOn4Success_303 {
   @statusCode statusCode: 303;
 }
 
+model SamlSingleSignOn4Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model SamlSingleSignOn4Error403 {
+  @statusCode statusCode: 403;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleSignOn4Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleSignOn4Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleSignOn4Error404Body;
+}
+
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
@@ -101,7 +189,7 @@ model SamlSingleSignOn4Success_303 {
 @post
 op SamlSingleSignOn4(
   @body body: SamlSingleSignOn4HttpRequest
-): SamlSingleSignOn4Success_200 | SamlSingleSignOn4Success_303;
+): SamlSingleSignOn4Success_200 | SamlSingleSignOn4Success_303 | SamlSingleSignOn4Error400 | SamlSingleSignOn4Error403 | SamlSingleSignOn4Error404;
 
 model SamlSingleLogout1Success_200 {
   @statusCode statusCode: 200;
@@ -109,6 +197,22 @@ model SamlSingleLogout1Success_200 {
 
 model SamlSingleLogout1Success_303 {
   @statusCode statusCode: 303;
+}
+
+model SamlSingleLogout1Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleLogout1Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleLogout1Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleLogout1Error404Body;
 }
 
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
@@ -120,7 +224,7 @@ op SamlSingleLogout1(
   @query entity_id?: string,
   @query relay_state?: string,
   @query profile_id: string = "default"
-): SamlSingleLogout1Success_200 | SamlSingleLogout1Success_303;
+): SamlSingleLogout1Success_200 | SamlSingleLogout1Success_303 | SamlSingleLogout1Error400 | SamlSingleLogout1Error404;
 
 model SamlSingleLogout2HttpRequest {
   @doc("The entityID of the SP that asked for the logout.")
@@ -138,6 +242,22 @@ model SamlSingleLogout2Success_303 {
   @statusCode statusCode: 303;
 }
 
+model SamlSingleLogout2Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleLogout2Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleLogout2Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleLogout2Error404Body;
+}
+
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleLogout")
@@ -145,7 +265,7 @@ model SamlSingleLogout2Success_303 {
 @post
 op SamlSingleLogout2(
   @body body: SamlSingleLogout2HttpRequest
-): SamlSingleLogout2Success_200 | SamlSingleLogout2Success_303;
+): SamlSingleLogout2Success_200 | SamlSingleLogout2Success_303 | SamlSingleLogout2Error400 | SamlSingleLogout2Error404;
 
 model SamlSingleLogout3Success_200 {
   @statusCode statusCode: 200;
@@ -153,6 +273,22 @@ model SamlSingleLogout3Success_200 {
 
 model SamlSingleLogout3Success_303 {
   @statusCode statusCode: 303;
+}
+
+model SamlSingleLogout3Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleLogout3Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleLogout3Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleLogout3Error404Body;
 }
 
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
@@ -164,7 +300,7 @@ op SamlSingleLogout3(
   @query entity_id?: string,
   @query relay_state?: string,
   @path profile_id: string
-): SamlSingleLogout3Success_200 | SamlSingleLogout3Success_303;
+): SamlSingleLogout3Success_200 | SamlSingleLogout3Success_303 | SamlSingleLogout3Error400 | SamlSingleLogout3Error404;
 
 model SamlSingleLogout4HttpRequest {
   @doc("The entityID of the SP that asked for the logout.")
@@ -180,6 +316,22 @@ model SamlSingleLogout4Success_303 {
   @statusCode statusCode: 303;
 }
 
+model SamlSingleLogout4Error400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+union SamlSingleLogout4Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model SamlSingleLogout4Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SamlSingleLogout4Error404Body;
+}
+
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleLogout")
@@ -188,10 +340,20 @@ model SamlSingleLogout4Success_303 {
 op SamlSingleLogout4(
   @path profile_id: string,
   @body body: SamlSingleLogout4HttpRequest
-): SamlSingleLogout4Success_200 | SamlSingleLogout4Success_303;
+): SamlSingleLogout4Success_200 | SamlSingleLogout4Success_303 | SamlSingleLogout4Error400 | SamlSingleLogout4Error404;
 
 model PublishSamlMetadata1Success_200 {
   @statusCode statusCode: 200;
+}
+
+union PublishSamlMetadata1Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model PublishSamlMetadata1Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: PublishSamlMetadata1Error404Body;
 }
 
 @doc("Publishes the SAML 2.0 IdP metadata. The default route publishes the realm's default profile and a profile route the named one: its entityID, its SSO and SLO endpoints, the NameID formats it supports, and the XmlFederationSigning certificate of the profile scope, as an <EntityDescriptor><IDPSSODescriptor>. Alongside the active certificate it lists any verifying certificate still inside its rotation grace.")
@@ -201,10 +363,20 @@ model PublishSamlMetadata1Success_200 {
 @get
 op PublishSamlMetadata1(
 
-): PublishSamlMetadata1Success_200;
+): PublishSamlMetadata1Success_200 | PublishSamlMetadata1Error404;
 
 model PublishSamlMetadata2Success_200 {
   @statusCode statusCode: 200;
+}
+
+union PublishSamlMetadata2Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model PublishSamlMetadata2Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: PublishSamlMetadata2Error404Body;
 }
 
 @doc("Publishes the SAML 2.0 IdP metadata. The default route publishes the realm's default profile and a profile route the named one: its entityID, its SSO and SLO endpoints, the NameID formats it supports, and the XmlFederationSigning certificate of the profile scope, as an <EntityDescriptor><IDPSSODescriptor>. Alongside the active certificate it lists any verifying certificate still inside its rotation grace.")
@@ -214,10 +386,20 @@ model PublishSamlMetadata2Success_200 {
 @get
 op PublishSamlMetadata2(
   @path profile_id: string
-): PublishSamlMetadata2Success_200;
+): PublishSamlMetadata2Success_200 | PublishSamlMetadata2Error404;
 
 model DownloadSamlSigningCertificate1Success_200 {
   @statusCode statusCode: 200;
+}
+
+union DownloadSamlSigningCertificate1Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model DownloadSamlSigningCertificate1Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DownloadSamlSigningCertificate1Error404Body;
 }
 
 @doc("Publishes the request tenant's active XmlFederationSigning X.509 certificate as PEM, for configuring trust in a SAML SP by hand. PublishSamlMetadata remains the authoritative trust document, verifying certificates inside a rotation overlap included; this endpoint returns only the active certificate, for setting trust up in the first place. No private key is returned.")
@@ -227,10 +409,20 @@ model DownloadSamlSigningCertificate1Success_200 {
 @get
 op DownloadSamlSigningCertificate1(
 
-): DownloadSamlSigningCertificate1Success_200;
+): DownloadSamlSigningCertificate1Success_200 | DownloadSamlSigningCertificate1Error404;
 
 model DownloadSamlSigningCertificate2Success_200 {
   @statusCode statusCode: 200;
+}
+
+union DownloadSamlSigningCertificate2Error404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model DownloadSamlSigningCertificate2Error404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DownloadSamlSigningCertificate2Error404Body;
 }
 
 @doc("Publishes the request tenant's active XmlFederationSigning X.509 certificate as PEM, for configuring trust in a SAML SP by hand. PublishSamlMetadata remains the authoritative trust document, verifying certificates inside a rotation overlap included; this endpoint returns only the active certificate, for setting trust up in the first place. No private key is returned.")
@@ -240,7 +432,7 @@ model DownloadSamlSigningCertificate2Success_200 {
 @get
 op DownloadSamlSigningCertificate2(
   @path profile_id: string
-): DownloadSamlSigningCertificate2Success_200;
+): DownloadSamlSigningCertificate2Success_200 | DownloadSamlSigningCertificate2Error404;
 
 model CreateSamlIdentityProviderProfileSuccess_201 {
   @statusCode statusCode: 201;
@@ -274,7 +466,7 @@ model CreateSamlIdentityProviderProfileError403 {
 @post
 op CreateSamlIdentityProviderProfile(
   @body body: IdMagic.Contract.SamlIdentityProviderProfileRequest
-): CreateSamlIdentityProviderProfileSuccess_201 | CreateSamlIdentityProviderProfileError400 | CreateSamlIdentityProviderProfileError403;
+): CreateSamlIdentityProviderProfileSuccess_201 | CreateSamlIdentityProviderProfileError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateSamlIdentityProviderProfileError403;
 
 model ListSamlIdentityProviderProfilesHttpResponse {
   profiles: IdMagic.Contract.SamlIdentityProviderProfileAdminResponse[];
@@ -302,7 +494,7 @@ model ListSamlIdentityProviderProfilesError403 {
 @get
 op ListSamlIdentityProviderProfiles(
 
-): ListSamlIdentityProviderProfilesSuccess_200 | ListSamlIdentityProviderProfilesError403;
+): ListSamlIdentityProviderProfilesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListSamlIdentityProviderProfilesError403;
 
 model UpdateSamlIdentityProviderProfileSuccess_200 {
   @statusCode statusCode: 200;
@@ -339,6 +531,16 @@ model UpdateSamlIdentityProviderProfileError409 {
   @body body: UpdateSamlIdentityProviderProfileError409Body;
 }
 
+union UpdateSamlIdentityProviderProfileError404Body {
+  IdMagic.Contract.SamlIdentityProviderProfileNotFoundError,
+}
+
+model UpdateSamlIdentityProviderProfileError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateSamlIdentityProviderProfileError404Body;
+}
+
 @doc("A tenant administrator changes the name or the mode of an additional IdP profile. The default profile cannot be changed, and a change to dedicated is refused while more than one SP refers to the profile.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("UpdateSamlIdentityProviderProfile")
@@ -347,7 +549,7 @@ model UpdateSamlIdentityProviderProfileError409 {
 op UpdateSamlIdentityProviderProfile(
   @path profile_id: string,
   @body body: IdMagic.Contract.SamlIdentityProviderProfileRequest
-): UpdateSamlIdentityProviderProfileSuccess_200 | UpdateSamlIdentityProviderProfileError400 | UpdateSamlIdentityProviderProfileError403 | UpdateSamlIdentityProviderProfileError409;
+): UpdateSamlIdentityProviderProfileSuccess_200 | UpdateSamlIdentityProviderProfileError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateSamlIdentityProviderProfileError403 | UpdateSamlIdentityProviderProfileError404 | UpdateSamlIdentityProviderProfileError409;
 
 model DeleteSamlIdentityProviderProfileSuccess_204 {
   @statusCode statusCode: 204;
@@ -391,7 +593,7 @@ model DeleteSamlIdentityProviderProfileError409 {
 @delete
 op DeleteSamlIdentityProviderProfile(
   @path profile_id: string
-): DeleteSamlIdentityProviderProfileSuccess_204 | DeleteSamlIdentityProviderProfileError400 | DeleteSamlIdentityProviderProfileError403 | DeleteSamlIdentityProviderProfileError409;
+): DeleteSamlIdentityProviderProfileSuccess_204 | DeleteSamlIdentityProviderProfileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteSamlIdentityProviderProfileError403 | DeleteSamlIdentityProviderProfileError409;
 
 model RegisterSamlServiceProviderSuccess_200 {
   @statusCode statusCode: 200;
@@ -430,7 +632,7 @@ model RegisterSamlServiceProviderError403 {
 @post
 op RegisterSamlServiceProvider(
   @body body: IdMagic.Contract.SamlServiceProviderRequest
-): RegisterSamlServiceProviderSuccess_200 | RegisterSamlServiceProviderSuccess_201 | RegisterSamlServiceProviderError400 | RegisterSamlServiceProviderError403;
+): RegisterSamlServiceProviderSuccess_200 | RegisterSamlServiceProviderSuccess_201 | RegisterSamlServiceProviderError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterSamlServiceProviderError403;
 
 model ListSamlServiceProvidersHttpResponse {
   service_providers: IdMagic.Contract.SamlServiceProvider[];
@@ -458,7 +660,7 @@ model ListSamlServiceProvidersError403 {
 @get
 op ListSamlServiceProviders(
 
-): ListSamlServiceProvidersSuccess_200 | ListSamlServiceProvidersError403;
+): ListSamlServiceProvidersSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListSamlServiceProvidersError403;
 
 model DeleteSamlServiceProviderSuccess_204 {
   @statusCode statusCode: 204;
@@ -501,7 +703,7 @@ model DeleteSamlServiceProviderError409 {
 @delete
 op DeleteSamlServiceProvider(
   @query entity_id: string
-): DeleteSamlServiceProviderSuccess_204 | DeleteSamlServiceProviderError400 | DeleteSamlServiceProviderError403 | DeleteSamlServiceProviderError409;
+): DeleteSamlServiceProviderSuccess_204 | DeleteSamlServiceProviderError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteSamlServiceProviderError403 | DeleteSamlServiceProviderError409;
 }
 
 }

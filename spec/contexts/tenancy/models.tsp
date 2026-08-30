@@ -650,4 +650,20 @@ model InvalidUserAttributeSchemaError is ProblemDetails;
 @doc("The `group_attribute_schema` definition is invalid: a bad type, a duplicate key, and so on. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_attribute_schema`, the same code the user schema rejection uses; the endpoint tells the two apart.")
 model InvalidGroupAttributeSchemaError is ProblemDetails;
 
+
+@doc("The tenant named by the request does not exist. RFC 9457 Problem Details with `type` = `urn:idmagic:error:tenant_not_found`. This is the administrative read of a tenant by id; the tenant resolver's own refusal for an unknown host is described in the Declared status codes section of the root specification and belongs to no operation.")
+model TenantNotFoundError is ProblemDetails;
+
+
+@doc("The branding image named by the request does not exist. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
+model TenantBrandingAssetNotFoundError is ProblemDetails;
+
+
+@doc("The federation signing credentials are not configured, so the SAML and WS-Federation endpoints cannot be described. RFC 9457 Problem Details with `type` = `urn:idmagic:error:federation_credentials_unavailable`.")
+model FederationCredentialsUnavailableError is ProblemDetails;
+
+
+@doc("An attribute a dynamic group rule refers to cannot be deleted, nor can its type change. RFC 9457 Problem Details with `type` = `urn:idmagic:error:attribute_referenced_by_dynamic_group`.")
+model AttributeReferencedByDynamicGroupError is ProblemDetails;
+
 }

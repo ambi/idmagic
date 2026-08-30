@@ -45,7 +45,7 @@ model GetAuthorizationModelError404 {
 @get
 op GetAuthorizationModel(
   @query version?: int32
-): GetAuthorizationModelSuccess_200 | GetAuthorizationModelError403 | GetAuthorizationModelError404;
+): GetAuthorizationModelSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAuthorizationModelError403 | GetAuthorizationModelError404;
 
 model PutAuthorizationModelHttpRequest {
   resource_types: IdMagic.Contract.ResourceTypeDefinition[];
@@ -98,7 +98,7 @@ model PutAuthorizationModelError422 {
 @post
 op PutAuthorizationModel(
   @body body: PutAuthorizationModelHttpRequest
-): PutAuthorizationModelSuccess_201 | PutAuthorizationModelError400 | PutAuthorizationModelError403 | PutAuthorizationModelError422;
+): PutAuthorizationModelSuccess_201 | PutAuthorizationModelError400 | IdMagic.Contract.AuthenticationRequiredResponse | PutAuthorizationModelError403 | PutAuthorizationModelError422;
 
 model ListRelationTuplesHttpResponse {
   tuples: IdMagic.Contract.RelationTuple[];
@@ -132,7 +132,7 @@ op ListRelationTuples(
   @query subject_type?: string,
   @query subject_id?: string,
   @query limit?: int32
-): ListRelationTuplesSuccess_200 | ListRelationTuplesError403;
+): ListRelationTuplesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListRelationTuplesError403;
 
 model WriteRelationTuplesHttpResponse {
   written_count: int32;
@@ -183,7 +183,7 @@ model WriteRelationTuplesError422 {
 @post
 op WriteRelationTuples(
   @body body: IdMagic.Contract.RelationTupleWriteRequest
-): WriteRelationTuplesSuccess_200 | WriteRelationTuplesError400 | WriteRelationTuplesError403 | WriteRelationTuplesError422;
+): WriteRelationTuplesSuccess_200 | WriteRelationTuplesError400 | IdMagic.Contract.AuthenticationRequiredResponse | WriteRelationTuplesError403 | WriteRelationTuplesError422;
 
 model CheckAccessHttpResponse {
   result: IdMagic.Contract.FgaCheckResult;
@@ -232,7 +232,7 @@ model CheckAccessError422 {
 @post
 op CheckAccess(
   @body body: IdMagic.Contract.FgaCheckRequest
-): CheckAccessSuccess_200 | CheckAccessError400 | CheckAccessError403 | CheckAccessError422;
+): CheckAccessSuccess_200 | CheckAccessError400 | IdMagic.Contract.AuthenticationRequiredResponse | CheckAccessError403 | CheckAccessError422;
 
 model ListAccessibleResourcesHttpRequest {
   @minLength(1)
@@ -298,7 +298,7 @@ model ListAccessibleResourcesError422 {
 @post
 op ListAccessibleResources(
   @body body: ListAccessibleResourcesHttpRequest
-): ListAccessibleResourcesSuccess_200 | ListAccessibleResourcesError400 | ListAccessibleResourcesError403 | ListAccessibleResourcesError422;
+): ListAccessibleResourcesSuccess_200 | ListAccessibleResourcesError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAccessibleResourcesError403 | ListAccessibleResourcesError422;
 }
 
 }

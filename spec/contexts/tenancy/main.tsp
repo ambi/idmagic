@@ -30,21 +30,11 @@ model ListTenantsError403 {
 @get
 op ListTenants(
 
-): ListTenantsSuccess_200 | ListTenantsError403;
+): ListTenantsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantsError403;
 
 model GetTenantSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantSummaryResponse;
-}
-
-union GetTenantError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model GetTenantError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: GetTenantError400Body;
 }
 
 union GetTenantError403Body {
@@ -57,6 +47,16 @@ model GetTenantError403 {
   @body body: GetTenantError403Body;
 }
 
+union GetTenantError404Body {
+  IdMagic.Contract.TenantNotFoundError,
+}
+
+model GetTenantError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetTenantError404Body;
+}
+
 @doc("A system_admin reads one tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:read"])
 @TypeSpec.OpenAPI.operationId("GetTenant")
@@ -64,7 +64,7 @@ model GetTenantError403 {
 @get
 op GetTenant(
   @path tenant_id: string
-): GetTenantSuccess_200 | GetTenantError400 | GetTenantError403;
+): GetTenantSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetTenantError403 | GetTenantError404;
 
 model CreateTenantSuccess_201 {
   @statusCode statusCode: 201;
@@ -98,7 +98,7 @@ model CreateTenantError403 {
 @post
 op CreateTenant(
   @body body: IdMagic.Contract.TenantCreateRequest
-): CreateTenantSuccess_201 | CreateTenantError400 | CreateTenantError403;
+): CreateTenantSuccess_201 | CreateTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateTenantError403;
 
 model UpdateTenantSuccess_200 {
   @statusCode statusCode: 200;
@@ -143,7 +143,7 @@ model UpdateTenantError422 {
 op UpdateTenant(
   @path tenant_id: string,
   @body body: IdMagic.Contract.TenantUpdateRequest
-): UpdateTenantSuccess_200 | UpdateTenantError400 | UpdateTenantError403 | UpdateTenantError422;
+): UpdateTenantSuccess_200 | UpdateTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantError403 | UpdateTenantError422;
 
 model DisableTenantSuccess_204 {
   @statusCode statusCode: 204;
@@ -175,7 +175,7 @@ model DisableTenantError403 {
 @route("/api/admin/v1/tenants/{tenant_id}/disable")
 @post
 op DisableTenant(
-  @path tenant_id: string,): DisableTenantSuccess_204 | DisableTenantError400 | DisableTenantError403;
+  @path tenant_id: string,): DisableTenantSuccess_204 | DisableTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableTenantError403;
 
 model EnableTenantSuccess_204 {
   @statusCode statusCode: 204;
@@ -207,7 +207,7 @@ model EnableTenantError403 {
 @route("/api/admin/v1/tenants/{tenant_id}/enable")
 @post
 op EnableTenant(
-  @path tenant_id: string,): EnableTenantSuccess_204 | EnableTenantError400 | EnableTenantError403;
+  @path tenant_id: string,): EnableTenantSuccess_204 | EnableTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableTenantError403;
 
 model SetTenantEndpointStyleHttpRequest {
   endpoint_style: IdMagic.Contract.TenantEndpointStyle;
@@ -245,7 +245,7 @@ model SetTenantEndpointStyleError403 {
 op SetTenantEndpointStyle(
   @path tenant_id: string,
   @body body: SetTenantEndpointStyleHttpRequest
-): SetTenantEndpointStyleSuccess_204 | SetTenantEndpointStyleError400 | SetTenantEndpointStyleError403;
+): SetTenantEndpointStyleSuccess_204 | SetTenantEndpointStyleError400 | IdMagic.Contract.AuthenticationRequiredResponse | SetTenantEndpointStyleError403;
 
 model UpdateTenantQuotaSuccess_200 {
   @statusCode statusCode: 200;
@@ -297,6 +297,16 @@ model GetAdminSettingsError403 {
   @body body: GetAdminSettingsError403Body;
 }
 
+union GetAdminSettingsError404Body {
+  IdMagic.Contract.TenantNotFoundError,
+}
+
+model GetAdminSettingsError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminSettingsError404Body;
+}
+
 @doc("A tenant administrator reads their own tenant's settings: the display name, the default locale, and the password policy override.\nThe target is fixed to `context.tenant_id`, the resolved tenant, so a cross-tenant read cannot arise structurally.\nIt is a separate route from `/api/admin/tenants`, which only a system_admin may use, and it is open to an admin as well.\nThe response carries the current values of the Authentication context's PasswordPolicy (`password_policy_defaults`) and\nthe locales the catalogue ships translations for (`supported_locales`), so the UI can show concretely what applies when\nnothing is overridden and which default locales can be chosen.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminSettings")
@@ -304,7 +314,7 @@ model GetAdminSettingsError403 {
 @get
 op GetAdminSettings(
 
-): GetAdminSettingsSuccess_200 | GetAdminSettingsError403;
+): GetAdminSettingsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminSettingsError403 | GetAdminSettingsError404;
 
 model GetAdminIntegrationEndpointsSuccess_200 {
   @statusCode statusCode: 200;
@@ -321,6 +331,16 @@ model GetAdminIntegrationEndpointsError403 {
   @body body: GetAdminIntegrationEndpointsError403Body;
 }
 
+union GetAdminIntegrationEndpointsError503Body {
+  IdMagic.Contract.FederationCredentialsUnavailableError,
+}
+
+model GetAdminIntegrationEndpointsError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminIntegrationEndpointsError503Body;
+}
+
 @doc("A tenant administrator reads, in one call, the canonical IdMagic integration details to feed into an external OIDC RP, SAML SP, WS-Federation RP, SCIM client, or management client. The server derives every URL from the canonical issuer of the resolved request tenant, so the frontend concatenates neither realm nor origin. It carries no secret and is returned with `Cache-Control: no-store`.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminIntegrationEndpoints")
@@ -328,7 +348,7 @@ model GetAdminIntegrationEndpointsError403 {
 @get
 op GetAdminIntegrationEndpoints(
 
-): GetAdminIntegrationEndpointsSuccess_200 | GetAdminIntegrationEndpointsError403;
+): GetAdminIntegrationEndpointsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminIntegrationEndpointsError403 | GetAdminIntegrationEndpointsError503;
 
 model UpdateAdminSettingsSuccess_200 {
   @statusCode statusCode: 200;
@@ -362,7 +382,7 @@ model UpdateAdminSettingsError403 {
 @patch
 op UpdateAdminSettings(
   @body body: IdMagic.Contract.AdminSettingsUpdateRequest
-): UpdateAdminSettingsSuccess_200 | UpdateAdminSettingsError400 | UpdateAdminSettingsError403;
+): UpdateAdminSettingsSuccess_200 | UpdateAdminSettingsError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminSettingsError403;
 
 model GetTenantUserAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
@@ -386,7 +406,7 @@ model GetTenantUserAttributeSchemaError403 {
 @get
 op GetTenantUserAttributeSchema(
 
-): GetTenantUserAttributeSchemaSuccess_200 | GetTenantUserAttributeSchemaError403;
+): GetTenantUserAttributeSchemaSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetTenantUserAttributeSchemaError403;
 
 model UpdateTenantUserAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
@@ -423,6 +443,16 @@ model UpdateTenantUserAttributeSchemaError422 {
   @body body: UpdateTenantUserAttributeSchemaError422Body;
 }
 
+union UpdateTenantUserAttributeSchemaError409Body {
+  IdMagic.Contract.AttributeReferencedByDynamicGroupError,
+}
+
+model UpdateTenantUserAttributeSchemaError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: UpdateTenantUserAttributeSchemaError409Body;
+}
+
 @doc("A tenant administrator replaces the custom attribute definitions outright. With the target fixed to `context.tenant_id`,\neach UserAttributeDef is validated and a key that collides with a built-in attribute, or a duplicate key, is refused. A\nkey a DynamicGroupRule still refers to can be neither removed nor retyped. Only the definitions are handled; no value is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantUserAttributeSchema")
@@ -430,7 +460,7 @@ model UpdateTenantUserAttributeSchemaError422 {
 @put
 op UpdateTenantUserAttributeSchema(
   @body body: IdMagic.Contract.TenantUserAttributeSchemaUpdateRequest
-): UpdateTenantUserAttributeSchemaSuccess_200 | UpdateTenantUserAttributeSchemaError400 | UpdateTenantUserAttributeSchemaError403 | UpdateTenantUserAttributeSchemaError422;
+): UpdateTenantUserAttributeSchemaSuccess_200 | UpdateTenantUserAttributeSchemaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantUserAttributeSchemaError403 | UpdateTenantUserAttributeSchemaError409 | UpdateTenantUserAttributeSchemaError422;
 
 model GetTenantGroupAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
@@ -454,7 +484,7 @@ model GetTenantGroupAttributeSchemaError403 {
 @get
 op GetTenantGroupAttributeSchema(
 
-): GetTenantGroupAttributeSchemaSuccess_200 | GetTenantGroupAttributeSchemaError403;
+): GetTenantGroupAttributeSchemaSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetTenantGroupAttributeSchemaError403;
 
 model UpdateTenantGroupAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
@@ -498,11 +528,15 @@ model UpdateTenantGroupAttributeSchemaError422 {
 @put
 op UpdateTenantGroupAttributeSchema(
   @body body: IdMagic.Contract.TenantGroupAttributeSchemaUpdateRequest
-): UpdateTenantGroupAttributeSchemaSuccess_200 | UpdateTenantGroupAttributeSchemaError400 | UpdateTenantGroupAttributeSchemaError403 | UpdateTenantGroupAttributeSchemaError422;
+): UpdateTenantGroupAttributeSchemaSuccess_200 | UpdateTenantGroupAttributeSchemaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantGroupAttributeSchemaError403 | UpdateTenantGroupAttributeSchemaError422;
 
 model GetTenantBrandingSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantBrandingResponse;
+}
+
+model GetTenantBrandingSuccess_304 {
+  @statusCode statusCode: 304;
 }
 
 @doc("Public interface returning the hosted UI branding of the resolved tenant. It requires no authentication, because the sign-in,\nconsent, and device screens read it before anyone has authenticated. Branding that is unset, invalid, or missing its asset each\nfall back to the system default, so the call always succeeds. It takes no input, because realm resolution (ResolveTenant) has\nalready settled the target tenant.")
@@ -512,7 +546,7 @@ model GetTenantBrandingSuccess_200 {
 @get
 op GetTenantBranding(
 
-): GetTenantBrandingSuccess_200;
+): GetTenantBrandingSuccess_200 | GetTenantBrandingSuccess_304;
 
 model UpdateTenantBrandingSuccess_200 {
   @statusCode statusCode: 200;
@@ -546,7 +580,7 @@ model UpdateTenantBrandingError403 {
 @put
 op UpdateTenantBranding(
   @body body: IdMagic.Contract.TenantBrandingUpdateRequest
-): UpdateTenantBrandingSuccess_200 | UpdateTenantBrandingError400 | UpdateTenantBrandingError403;
+): UpdateTenantBrandingSuccess_200 | UpdateTenantBrandingError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantBrandingError403;
 
 model UploadTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
@@ -585,7 +619,7 @@ op UploadTenantBrandingAsset(
     @doc("The image to store, under the form field name `file`.")
     file: HttpPart<File>,
   }
-): UploadTenantBrandingAssetSuccess_200 | UploadTenantBrandingAssetError400 | UploadTenantBrandingAssetError403;
+): UploadTenantBrandingAssetSuccess_200 | UploadTenantBrandingAssetError400 | IdMagic.Contract.AuthenticationRequiredResponse | UploadTenantBrandingAssetError403;
 
 model DeleteTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
@@ -619,7 +653,7 @@ model DeleteTenantBrandingAssetError403 {
 @delete
 op DeleteTenantBrandingAsset(
   @path kind: IdMagic.Contract.TenantBrandingAssetKind
-): DeleteTenantBrandingAssetSuccess_200 | DeleteTenantBrandingAssetError400 | DeleteTenantBrandingAssetError403;
+): DeleteTenantBrandingAssetSuccess_200 | DeleteTenantBrandingAssetError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteTenantBrandingAssetError403;
 
 model ListNotificationTemplatesSuccess_200 {
   @statusCode statusCode: 200;
@@ -643,7 +677,7 @@ model ListNotificationTemplatesError403 {
 @get
 op ListNotificationTemplates(
 
-): ListNotificationTemplatesSuccess_200 | ListNotificationTemplatesError403;
+): ListNotificationTemplatesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListNotificationTemplatesError403;
 
 model GetNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
@@ -678,7 +712,7 @@ model GetNotificationTemplateError403 {
 op GetNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string
-): GetNotificationTemplateSuccess_200 | GetNotificationTemplateError400 | GetNotificationTemplateError403;
+): GetNotificationTemplateSuccess_200 | GetNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetNotificationTemplateError403;
 
 model UpdateNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
@@ -714,7 +748,7 @@ op UpdateNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string,
   @body body: IdMagic.Contract.NotificationTemplateUpdateRequest
-): UpdateNotificationTemplateSuccess_200 | UpdateNotificationTemplateError400 | UpdateNotificationTemplateError403;
+): UpdateNotificationTemplateSuccess_200 | UpdateNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateNotificationTemplateError403;
 
 model ResetNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
@@ -749,7 +783,7 @@ model ResetNotificationTemplateError403 {
 op ResetNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string
-): ResetNotificationTemplateSuccess_200 | ResetNotificationTemplateError400 | ResetNotificationTemplateError403;
+): ResetNotificationTemplateSuccess_200 | ResetNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | ResetNotificationTemplateError403;
 
 model PreviewNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
@@ -785,7 +819,7 @@ op PreviewNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string,
   @body body: IdMagic.Contract.NotificationTemplatePreviewRequest
-): PreviewNotificationTemplateSuccess_200 | PreviewNotificationTemplateError400 | PreviewNotificationTemplateError403;
+): PreviewNotificationTemplateSuccess_200 | PreviewNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | PreviewNotificationTemplateError403;
 
 model SendTestNotificationSuccess_200 {
   @statusCode statusCode: 200;
@@ -819,7 +853,7 @@ model SendTestNotificationError403 {
 @post
 op SendTestNotification(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
-  @path locale: string,): SendTestNotificationSuccess_200 | SendTestNotificationError400 | SendTestNotificationError403;
+  @path locale: string,): SendTestNotificationSuccess_200 | SendTestNotificationError400 | IdMagic.Contract.AuthenticationRequiredResponse | SendTestNotificationError403;
 
 model GetTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
@@ -829,14 +863,14 @@ model GetTenantBrandingAssetSuccess_200 {
   @body body: bytes;
 }
 
-union GetTenantBrandingAssetError400Body {
-  IdMagic.Contract.InvalidRequestError,
+union GetTenantBrandingAssetError404Body {
+  IdMagic.Contract.TenantBrandingAssetNotFoundError,
 }
 
-model GetTenantBrandingAssetError400 {
-  @statusCode statusCode: 400;
+model GetTenantBrandingAssetError404 {
+  @statusCode statusCode: 404;
   @header contentType: "application/problem+json";
-  @body body: GetTenantBrandingAssetError400Body;
+  @body body: GetTenantBrandingAssetError404Body;
 }
 
 @doc("Public interface serving a stored branding asset, the logo or the favicon. The URL returned after an upload reaches this interface\nover the same origin, including the resolved realm prefix, so the administration console preview and the hosted UI can both fetch\nand render it as an image. The Content-Type is fixed to the validated format and `X-Content-Type-Options: nosniff` is set. An object\nof another tenant, and a deleted one, are both treated as nonexistent.")
@@ -847,7 +881,7 @@ model GetTenantBrandingAssetError400 {
 op GetTenantBrandingAsset(
   @path kind: IdMagic.Contract.TenantBrandingAssetKind,
   @path id: string
-): GetTenantBrandingAssetSuccess_200 | GetTenantBrandingAssetError400;
+): GetTenantBrandingAssetSuccess_200 | GetTenantBrandingAssetError404;
 }
 
 }

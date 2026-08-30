@@ -16,6 +16,18 @@ model WsFederationSignInSuccess_303 {
   @statusCode statusCode: 303;
 }
 
+model WsFederationSignInError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model WsFederationSignInError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
 @doc("The single HTTP endpoint of the WS-Federation passive requestor profile. `wa` dispatches between sign-in and sign-out. Sign-in resolves the relying party from `wtrealm` and confines `wreply` to the allowed set, so it cannot become an open redirect. An unauthenticated caller is sent to sign in; an authenticated one gets the claims built by the relying party's claim policy, carried in a signed SAML assertion (SAML 1.1 by default, which Entra expects; SAML 2.0 when the RP is configured for it), wrapped in an RSTR and auto-posted. When the authentication is older than the maximum age `wfresh` states, the caller is sent to reauthenticate, and the authentication method `wauth` asks for is honoured. The meaning of sign-out belongs to WsFederationSignOut.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("WsFederationSignIn")
@@ -29,7 +41,7 @@ op WsFederationSignIn(
   @query wfresh?: string,
   @query wauth?: string,
   @query whr?: string
-): WsFederationSignInSuccess_200 | WsFederationSignInSuccess_303;
+): WsFederationSignInSuccess_200 | WsFederationSignInSuccess_303 | WsFederationSignInError400 | WsFederationSignInError403;
 
 model WsTrustIssueSuccess_200 {
   @statusCode statusCode: 200;
@@ -56,13 +68,19 @@ model WsTrustIssueError403 {
   @body body: WsTrustIssueError403Body;
 }
 
+model WsTrustIssueError401 {
+  @statusCode statusCode: 401;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
 @doc("The WS-Trust 1.3 active STS Issue endpoint. It verifies the UsernameToken, confines `To` to the active STS endpoint of the current realm, `Action` and `RequestType` to Issue, and `KeyType` to Bearer, and resolves `AppliesTo` to a registered WsFedRelyingParty. The claims built by the RP's claim policy are carried in a signed SAML assertion and returned as an RSTR. An unregistered `AppliesTo`, an expired Timestamp, and a malformed `To`, `Action`, `RequestType`, `KeyType`, or `TokenType` are all rejected fail-closed.")
 @TypeSpec.OpenAPI.operationId("WsTrustIssue")
 @route("/trust/usernamemixed")
 @post
 op WsTrustIssue(
   @body body: IdMagic.Contract.WsTrustRequestSecurityToken
-): WsTrustIssueSuccess_200 | WsTrustIssueError400 | WsTrustIssueError403;
+): WsTrustIssueSuccess_200 | WsTrustIssueError400 | IdMagic.Contract.AuthenticationRequiredResponse | WsTrustIssueError401 | WsTrustIssueError403;
 
 model WsTrustMetadataExchangeSuccess_200 {
   @statusCode statusCode: 200;
@@ -148,7 +166,7 @@ model ConfigureEntraFederationError403 {
 @post
 op ConfigureEntraFederation(
   @body body: ConfigureEntraFederationHttpRequest
-): ConfigureEntraFederationSuccess_200 | ConfigureEntraFederationError400 | ConfigureEntraFederationError403;
+): ConfigureEntraFederationSuccess_200 | ConfigureEntraFederationError400 | IdMagic.Contract.AuthenticationRequiredResponse | ConfigureEntraFederationError403;
 
 model RegisterWsFedRelyingPartySuccess_201 {
   @statusCode statusCode: 201;
@@ -187,7 +205,7 @@ model RegisterWsFedRelyingPartyError403 {
 @post
 op RegisterWsFedRelyingParty(
   @body body: IdMagic.Contract.WsFedRelyingPartyRequest
-): RegisterWsFedRelyingPartySuccess_201 | RegisterWsFedRelyingPartySuccess_200 | RegisterWsFedRelyingPartyError400 | RegisterWsFedRelyingPartyError403;
+): RegisterWsFedRelyingPartySuccess_201 | RegisterWsFedRelyingPartySuccess_200 | RegisterWsFedRelyingPartyError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterWsFedRelyingPartyError403;
 
 model ListWsFedRelyingPartiesHttpResponse {
   relying_parties: IdMagic.Contract.WsFedRelyingParty[];
@@ -215,7 +233,7 @@ model ListWsFedRelyingPartiesError403 {
 @get
 op ListWsFedRelyingParties(
 
-): ListWsFedRelyingPartiesSuccess_200 | ListWsFedRelyingPartiesError403;
+): ListWsFedRelyingPartiesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListWsFedRelyingPartiesError403;
 
 model DeleteWsFedRelyingPartySuccess_204 {
   @statusCode statusCode: 204;
@@ -258,7 +276,7 @@ model DeleteWsFedRelyingPartyError409 {
 @delete
 op DeleteWsFedRelyingParty(
   @query wtrealm: string
-): DeleteWsFedRelyingPartySuccess_204 | DeleteWsFedRelyingPartyError400 | DeleteWsFedRelyingPartyError403 | DeleteWsFedRelyingPartyError409;
+): DeleteWsFedRelyingPartySuccess_204 | DeleteWsFedRelyingPartyError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteWsFedRelyingPartyError403 | DeleteWsFedRelyingPartyError409;
 }
 
 }

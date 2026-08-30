@@ -1,3 +1,7 @@
+import "@typespec/http";
+
+using TypeSpec.Http;
+
 namespace IdMagic.Contract {
 
 @doc("RFC 9457 Problem Details, the default error body for generic APIs. `support_http.WriteProblem` emits it with `Content-Type: application/problem+json`. Contact points whose shape a standard fixes — OAuth 2.0 and OpenID Connect, Dynamic Client Registration (RFC 7591), SCIM (RFC 7644), and the SharedSignals receive endpoint (RFC 8935) — return that standard's error body instead; see the HTTP error responses section of the root specification. Every `*Error` model declared as `is ProblemDetails` shares this body and is told apart by its `type` URN suffix.")
@@ -12,6 +16,14 @@ model ProblemDetails {
   detail?: string;
   @doc("Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id.")
   instance?: string;
+}
+
+
+@doc("The 401 an operation answers when the guard in front of it finds no authenticated session. It is one shared response rather than one model per operation because the body never varies: 401 and 403 are the two branches of a single guard, and only the 403 differs from operation to operation (`AccessDeniedError`, `InsufficientScopeError`, `MfaEnrollmentNotAllowedError`). See the Declared status codes section of the root specification.")
+model AuthenticationRequiredResponse {
+  @statusCode statusCode: 401;
+  @header contentType: "application/problem+json";
+  @body body: AuthenticationRequiredError;
 }
 
 

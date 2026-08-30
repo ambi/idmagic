@@ -49,11 +49,6 @@ model IssueApiTokenHttpResponse {
   meta: IdMagic.Contract.ApiTokenMetadata;
 }
 
-model IssueApiTokenSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IssueApiTokenHttpResponse;
-}
-
 union IssueApiTokenError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -74,6 +69,11 @@ model IssueApiTokenError403 {
   @body body: IssueApiTokenError403Body;
 }
 
+model IssueApiTokenSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IssueApiTokenHttpResponse;
+}
+
 @doc("Issues a new API access token for the tenant, with the scope set and the lifetime in days the caller asks for. The response carries the RFC 9068 JWT access token, and it is the only time the token is returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("IssueApiToken")
@@ -81,11 +81,7 @@ model IssueApiTokenError403 {
 @post
 op IssueApiToken(
   @body body: IssueApiTokenHttpRequest
-): IssueApiTokenSuccess_200 | IssueApiTokenError400 | IssueApiTokenError403;
-
-model RevokeApiTokenSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApiTokenError403;
 
 union RevokeApiTokenError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -107,6 +103,10 @@ model RevokeApiTokenError403 {
   @body body: RevokeApiTokenError403Body;
 }
 
+model RevokeApiTokenSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("Revokes an API access token of the tenant. Calling it for an id that does not exist succeeds as well, so the operation is idempotent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RevokeApiToken")
@@ -115,7 +115,7 @@ model RevokeApiTokenError403 {
 op RevokeApiToken(
   @query tenant_id: string,
   @path id: string
-): RevokeApiTokenSuccess_200 | RevokeApiTokenError400 | RevokeApiTokenError403;
+): RevokeApiTokenSuccess_204 | RevokeApiTokenError400 | RevokeApiTokenError403;
 }
 
 }

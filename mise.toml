@@ -427,7 +427,7 @@ run = "bun run test:e2e"
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
-depends = ["check-spec", "check-work-items", "check-ids", "check-links", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-contract-drift", "check-event-contract", "check-security-controls", "check-slo-references", "check-vulnerability-suppressions"]
+depends = ["check-spec", "check-work-items", "check-ids", "check-links", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-contract-drift", "check-status-drift", "check-event-contract", "check-security-controls", "check-slo-references", "check-vulnerability-suppressions"]
 
 [tasks.check-links]
 description = "Check repository-local Markdown links and anchors"
@@ -460,6 +460,12 @@ description = "Check TypeSpec request and response bodies against what the Go ha
 depends = ["compile-spec"]
 dir = "tools"
 run = "bun run check/src/check-contract-drift.ts"
+
+[tasks.check-status-drift]
+description = "Check the status codes TypeSpec declares against the ones the Go handlers write"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/check-status-drift.ts"
 
 [tasks.check-event-contract]
 description = "Check the published domain event payload vocabulary against the code that reads it"

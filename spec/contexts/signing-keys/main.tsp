@@ -58,21 +58,11 @@ model ListAdminKeysError403 {
 @get
 op ListAdminKeys(
 
-): ListAdminKeysSuccess_200 | ListAdminKeysError403;
+): ListAdminKeysSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminKeysError403;
 
 model GetAdminKeySuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminKeyResponse;
-}
-
-union GetAdminKeyError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model GetAdminKeyError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminKeyError400Body;
 }
 
 union GetAdminKeyError403Body {
@@ -85,6 +75,16 @@ model GetAdminKeyError403 {
   @body body: GetAdminKeyError403Body;
 }
 
+union GetAdminKeyError404Body {
+  IdMagic.Contract.SigningKeyNotFoundError,
+}
+
+model GetAdminKeyError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminKeyError404Body;
+}
+
 @doc("A tenant administrator reads one signing key of their tenant by kid. A kid of another tenant, and a kid that does not exist, both give InvalidRequestError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminKey")
@@ -92,7 +92,7 @@ model GetAdminKeyError403 {
 @get
 op GetAdminKey(
   @path kid: string
-): GetAdminKeySuccess_200 | GetAdminKeyError400 | GetAdminKeyError403;
+): GetAdminKeySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminKeyError403 | GetAdminKeyError404;
 
 model RotateTenantSigningKeySuccess_200 {
   @statusCode statusCode: 200;
@@ -109,6 +109,16 @@ model RotateTenantSigningKeyError403 {
   @body body: RotateTenantSigningKeyError403Body;
 }
 
+union RotateTenantSigningKeyError503Body {
+  IdMagic.Contract.KeyStoreUnavailableError,
+}
+
+model RotateTenantSigningKeyError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: RotateTenantSigningKeyError503Body;
+}
+
 @doc("A tenant administrator generates a new signing key for their tenant and switches the active key to it. The previous\nactive key stays on the JWKS as verifying and is retired after SigningKeyMinJwksOverlap has passed; retiring is a\nseparate operational job. Rotation is per tenant, so its blast radius is confined to that tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("RotateTenantSigningKey")
@@ -116,7 +126,7 @@ model RotateTenantSigningKeyError403 {
 @post
 op RotateTenantSigningKey(
 
-): RotateTenantSigningKeySuccess_200 | RotateTenantSigningKeyError403;
+): RotateTenantSigningKeySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RotateTenantSigningKeyError403 | RotateTenantSigningKeyError503;
 
 model DisableTenantKeySuccess_200 {
   @statusCode statusCode: 200;
@@ -143,13 +153,33 @@ model DisableTenantKeyError403 {
   @body body: DisableTenantKeyError403Body;
 }
 
+union DisableTenantKeyError404Body {
+  IdMagic.Contract.SigningKeyNotFoundError,
+}
+
+model DisableTenantKeyError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DisableTenantKeyError404Body;
+}
+
+union DisableTenantKeyError503Body {
+  IdMagic.Contract.KeyStoreUnavailableError,
+}
+
+model DisableTenantKeyError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: DisableTenantKeyError503Body;
+}
+
 @doc("A tenant administrator retires one non-active signing key by kid, immediately, while it is still inside the\npost-rotation overlap. The key leaves the JWKS, and tokens already signed with it can no longer be verified.\nThe current signing key cannot be retired this way.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("DisableTenantKey")
 @route("/api/admin/v1/keys/{kid}/disable")
 @post
 op DisableTenantKey(
-  @path kid: string,): DisableTenantKeySuccess_200 | DisableTenantKeyError400 | DisableTenantKeyError403;
+  @path kid: string,): DisableTenantKeySuccess_200 | DisableTenantKeyError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableTenantKeyError403 | DisableTenantKeyError404 | DisableTenantKeyError503;
 
 model ListTenantKeyHealthHttpResponse {
   tenants: IdMagic.Contract.TenantSigningKey[];
@@ -177,7 +207,7 @@ model ListTenantKeyHealthError403 {
 @get
 op ListTenantKeyHealth(
 
-): ListTenantKeyHealthSuccess_200 | ListTenantKeyHealthError403;
+): ListTenantKeyHealthSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantKeyHealthError403;
 }
 
 }

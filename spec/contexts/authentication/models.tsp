@@ -114,12 +114,6 @@ model ExternalIdentityProviderSummary {
 }
 
 
-@doc("The validated redirect that starts upstream authentication.")
-model FederatedLoginStartResponse {
-  redirect_to: string;
-}
-
-
 @doc("The result of correlating a verified external identity with a local User and a LoginSession.")
 model FederatedLoginCompletion {
   local_user_id: string;
@@ -1242,5 +1236,29 @@ model IdentityProviderConnectionRequest {
   @doc("The email domains permitted to route to this connection. Empty means no restriction.")
   allowed_email_domains?: string[];
 }
+
+
+@doc("The upstream identity provider connection named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
+model IdentityProviderConnectionNotFoundError is ProblemDetails;
+
+
+@doc("Passkey authentication is not configured, so a WebAuthn ceremony can neither be started nor completed. RFC 9457 Problem Details with `type` = `urn:idmagic:error:webauthn_unavailable`.")
+model WebAuthnUnavailableError is ProblemDetails;
+
+
+@doc("The user has no passkey enrolled, so there is no credential to challenge. RFC 9457 Problem Details with `type` = `urn:idmagic:error:webauthn_not_enrolled`.")
+model WebAuthnNotEnrolledError is ProblemDetails;
+
+
+@doc("The recovery code store is not configured, so recovery codes can neither be generated nor revoked. RFC 9457 Problem Details with `type` = `urn:idmagic:error:recovery_unavailable`.")
+model RecoveryUnavailableError is ProblemDetails;
+
+
+@doc("The MFA factor store is not configured, so a second factor cannot be verified. RFC 9457 Problem Details with `type` = `urn:idmagic:error:mfa_unavailable`.")
+model MfaUnavailableError is ProblemDetails;
+
+
+@doc("The password reset link is invalid, already used, or expired. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_reset_token`. It is 410 rather than 400 because a link that was once valid is gone rather than malformed.")
+model InvalidResetTokenError is ProblemDetails;
 
 }

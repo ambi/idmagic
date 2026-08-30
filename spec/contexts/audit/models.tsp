@@ -100,4 +100,8 @@ model AuditEventSearchOptionsResponse {
   delegation_modes: string[];
 }
 
+
+@doc("The audit event named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:event_not_found`.")
+model AuditEventNotFoundError is ProblemDetails;
+
 }

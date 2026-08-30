@@ -470,9 +470,6 @@
         "description": "An authenticated user raises a change of their own primary email (self-service). It only sends a one-time link to the\nnew address; `User.email` is left alone. The target is fixed to `subject.id`, and an address already in use inside the\ntenant is refused.\nThe wording of the confirmation message is resolved from the Tenancy notification template catalogue\n(`template_key=EmailChangeConfirmation`), and the locale is decided in the order: the recipient User's locale attribute,\nthe tenant's `default_locale`, the system default locale. A tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the confirmation link is built from the issuer URL of the request.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -636,16 +633,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.FederatedLoginStartResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -762,9 +749,6 @@
         "description": "An authenticated user explicitly invalidates their backup recovery codes (self-service; step-up required).\nThe target is fixed to `subject.id`, and every valid code is deleted.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -797,9 +781,6 @@
         "description": "Verifies proof of possession of a code against the secret and persists the TOTP factor (self-service).\nThe target is fixed to `subject.id`, and settling it sets `User.mfa_enrolled` to true.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -884,9 +865,6 @@
         "description": "Verifies a valid TOTP code as proof of possession and then removes the TOTP factor (self-service).\nThe target is fixed to `subject.id`, and removing it returns `User.mfa_enrolled` to false.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -929,9 +907,6 @@
         "description": "Verifies the attestation and persists the WebAuthn credential (self-service). The target is fixed to\n`subject.id`, and the first credential sets `User.mfa_enrolled` to true. The RP ID, the origin, and the challenge are all verified.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -1016,9 +991,6 @@
         "description": "Removes a named WebAuthn credential (self-service; step-up required). The target is fixed to `subject.id`, and\nwhen no second factor is left `User.mfa_enrolled` returns to false.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -1441,9 +1413,6 @@
         "description": "Verifies the factor presented -- a password or a TOTP code -- and, when it holds, stamps `step_up_at` on the\nsession. Inside the recency window of five minutes, operations marked `step_up: required` are then permitted. A failed\nverification gives AccessDeniedError.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -2288,16 +2257,6 @@
         "description": "Issues a new API access token for the tenant, with the scope set and the lifetime in days the caller asks for. The response carries the RFC 9068 JWT access token, and it is the only time the token is returned.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiTokens.Operations.IssueApiTokenHttpResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -2361,9 +2320,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -3572,16 +3528,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ProvisioningConnection"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -3768,9 +3714,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -4094,16 +4037,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ProvisioningDelivery"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -4661,16 +4594,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Audit.Operations.GetAdminAuditEventError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -4878,16 +4801,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2.Operations.GetAuthorizationDetailTypeError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -5004,16 +4917,6 @@
         "responses": {
           "204": {
             "description": "There is no content to send for this request, but the headers may be useful. "
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2.Operations.DeleteAuthorizationDetailTypeError400Body"
-                }
-              }
-            }
           },
           "403": {
             "description": "Access is forbidden.",
@@ -7920,16 +7823,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SigningKeys.Operations.GetAdminKeyError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -8739,16 +8632,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2.Operations.GetAdminMcpResourceServerError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -8845,16 +8728,6 @@
         "responses": {
           "204": {
             "description": "There is no content to send for this request, but the headers may be useful. "
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2.Operations.DeleteAdminMcpResourceServerError400Body"
-                }
-              }
-            }
           },
           "403": {
             "description": "Access is forbidden.",
@@ -10742,16 +10615,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Tenancy.Operations.GetTenantError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -11691,16 +11554,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IdManagement.Operations.GetAdminUserError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -12114,16 +11967,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.MfaEnrollmentBypassResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -12575,16 +12418,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Contract.UserSignInActivityResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Authentication.Operations.ListUserSignInActivityError400Body"
                 }
               }
             }
@@ -13539,9 +13372,6 @@
         "description": "An authenticated user changes their own password. `current_password` is verified, and `new_password` has to satisfy the length constraint of 12 to 128 characters and differ from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse).",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -13752,19 +13582,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "headers": {
-              "Location": {
-                "required": true,
-                "description": "Where the browser continues: the caller's `return_to`, the account security page after a link, or the resume path of a pending authorization.",
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -13845,19 +13662,6 @@
         "description": "Correlates the callback with the single-use login attempt and verifies the trust, issuer, audience, nonce or InResponseTo, time, and replay of the OIDC token or the SAML response. The local User is resolved in the order: an existing link, a verified-email link under an explicit policy, then explicit JIT provisioning, and handed on to issue a LoginSession.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "headers": {
-              "Location": {
-                "required": true,
-                "description": "Where the browser continues: the caller's `return_to`, the account security page after a link, or the resume path of a pending authorization.",
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -13954,16 +13758,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.FederatedLoginStartResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -13999,9 +13793,6 @@
         "description": "An unauthenticated user asks for a password reset link.\nTo prevent enumeration it always returns 204, whether or not the email exists, and a token is issued and sent only\nwhen a user with a verified email is found.\nThe wording is resolved from the Tenancy notification template catalogue (`template_key=PasswordReset`).\nThe locale is decided in the order: the recipient User's locale attribute, the tenant's `default_locale`, the system\ndefault locale; a tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the reset link is built from the issuer URL of the\nrequest, so the template never has to join URLs itself.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "429": {
             "description": "Client error",
             "headers": {
@@ -14532,16 +14323,6 @@
               }
             }
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Authentication.Operations.StartBrowserWebAuthnError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -14630,16 +14411,6 @@
               "image/gif": {
                 "schema": {
                   "contentMediaType": "image/gif"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Application.Operations.GetApplicationIconError400Body"
                 }
               }
             }
@@ -14841,7 +14612,7 @@
     "/device_authorization": {
       "post": {
         "operationId": "DeviceAuthorization",
-        "description": "Device Authorization Request (RFC 8628 §3.1)",
+        "description": "Device Authorization Request (RFC 8628 \u00a73.1)",
         "parameters": [],
         "responses": {
           "200": {
@@ -15163,16 +14934,6 @@
         "description": "Pushed Authorization Request (RFC 9126). `client_id` is accepted either as a registered Client or as the URL of a Client ID Metadata Document, resolved on each request.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ParResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -15304,16 +15065,6 @@
         "description": "Dynamic Client Registration (RFC 7591)",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ClientRegistrationResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -15832,16 +15583,6 @@
         "description": "POST to SCIM 2.0 /Groups. `displayName` is required, and its absence gives an `invalidValue` ScimProtocolError. `id`\nis always generated by the server and ignored even when the body carries one (readOnly). Each element of `members`\nmust have a `type` that is absent or User (case-insensitive) and must be the SCIM id of a User that resolves inside\nthe same tenant; a member of type Group, and a member that does not resolve, both give `invalidValue` and no group is\ncreated. Every member of the created resource carries type=User, and the resource carries `id`,\n`meta.resourceType`, `meta.created`, `meta.lastModified`, and `meta.location`. A `displayName` that collides with an\nexisting Group in the same tenant gives 409 `uniqueness`.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/scim+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ScimResource"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -16107,9 +15848,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -16264,16 +16002,6 @@
         "description": "POST to SCIM 2.0 /Users, creating an internal User. `userName` is required, and its absence gives an `invalidValue`\nScimProtocolError. Every element of `emails` is validated, then projected onto a single email in the order\nprimary=true, type=work (case-insensitive), wire order. A malformed `emails`, `phoneNumbers`, or `addresses` gives\n`invalidValue`. `employeeNumber`, `department`, and `manager` (either the `value` of an object or a plain string)\nunder urn:ietf:params:scim:schemas:extension:enterprise:2.0:User are supported too; an `employeeNumber` or\n`department` that is not a string, and a `manager` naming a SCIM User that does not exist in the same tenant, both\ngive `invalidValue`. `id` is always generated by the server and ignored even when the body carries one (readOnly),\nand `active` defaults to true. The created resource carries a single type=work, primary=true entry only when there\nis a canonical email, carries the enterprise extension URN in `schemas` together with the matching attribute object\nonly when at least one extension attribute is set, and always returns `id`, `meta.resourceType`, `meta.created`,\n`meta.lastModified`, and `meta.location`. A `userName` that collides with an existing User in the same tenant gives\n409 `uniqueness`.",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/scim+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ScimResource"
-                }
-              }
-            }
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -16539,9 +16267,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The request has succeeded."
-          },
           "400": {
             "description": "The server could not understand the request due to invalid syntax.",
             "content": {
@@ -16716,16 +16441,6 @@
                 }
               }
             }
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Tenancy.Operations.GetTenantBrandingAssetError400Body"
-                }
-              }
-            }
           }
         },
         "tags": [
@@ -16739,7 +16454,7 @@
     "/token": {
       "post": {
         "operationId": "Token",
-        "description": "Token endpoint (RFC 6749 §3.2 + 9068 + 9449)",
+        "description": "Token endpoint (RFC 6749 \u00a73.2 + 9068 + 9449)",
         "parameters": [],
         "responses": {
           "200": {
@@ -20231,7 +19946,7 @@
             "description": "When the emergency stop took effect. Absent unless `status` is `killed`; once set, it never clears."
           }
         },
-        "description": "The non-human identity principal, scoped to a tenant. An Agent holds no credential of its own: it obtains tokens through the OAuth2Client an AgentCredentialBinding binds it to. `owner_user_id` names the User accountable for it, and issuance resolves that owner on every request rather than freezing the result into `status` (REQ-OAUTH2-046). `status` gates issuance operationally and `kind` gates it by supervision: anything but `active` issues no new token, and anything but `autonomous` issues one only through a path that records a human approval (REQ-OAUTH2-050). Both gates are fail-closed and independent — an `active` `supervised` Agent still needs the approval."
+        "description": "The non-human identity principal, scoped to a tenant. An Agent holds no credential of its own: it obtains tokens through the OAuth2Client an AgentCredentialBinding binds it to. `owner_user_id` names the User accountable for it, and issuance resolves that owner on every request rather than freezing the result into `status` (REQ-OAUTH2-046). `status` gates issuance operationally and `kind` gates it by supervision: anything but `active` issues no new token, and anything but `autonomous` issues one only through a path that records a human approval (REQ-OAUTH2-050). Both gates are fail-closed and independent \u2014 an `active` `supervised` Agent still needs the approval."
       },
       "Contract.AgentAccessRevoked": {
         "type": "object",
@@ -20730,7 +20445,7 @@
             }
           }
         },
-        "description": "The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner. `kind` is required and has no default: it decides whether the Agent needs a human approval to obtain a token, and either default value would be wrong — `supervised` would register Agents that silently cannot obtain a token, `autonomous` would let an omission grant unsupervised issuance."
+        "description": "The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner. `kind` is required and has no default: it decides whether the Agent needs a human approval to obtain a token, and either default value would be wrong \u2014 `supervised` would register Agents that silently cannot obtain a token, `autonomous` would let an omission grant unsupervised issuance."
       },
       "Contract.AgentRegistered": {
         "type": "object",
@@ -32775,7 +32490,7 @@
             "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
           }
         },
-        "description": "RFC 9457 Problem Details, the default error body for generic APIs. `support_http.WriteProblem` emits it with `Content-Type: application/problem+json`. Contact points whose shape a standard fixes — OAuth 2.0 and OpenID Connect, Dynamic Client Registration (RFC 7591), SCIM (RFC 7644), and the SharedSignals receive endpoint (RFC 8935) — return that standard's error body instead; see the HTTP error responses section of the root specification. Every `*Error` model declared as `is ProblemDetails` shares this body and is told apart by its `type` URN suffix."
+        "description": "RFC 9457 Problem Details, the default error body for generic APIs. `support_http.WriteProblem` emits it with `Content-Type: application/problem+json`. Contact points whose shape a standard fixes \u2014 OAuth 2.0 and OpenID Connect, Dynamic Client Registration (RFC 7591), SCIM (RFC 7644), and the SharedSignals receive endpoint (RFC 8935) \u2014 return that standard's error body instead; see the HTTP error responses section of the root specification. Every `*Error` model declared as `is ProblemDetails` shares this body and is told apart by its `type` URN suffix."
       },
       "Contract.ProtectedResourceMetadata": {
         "type": "object",

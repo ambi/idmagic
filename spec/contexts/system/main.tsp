@@ -36,6 +36,11 @@ model ReadinessProbeSuccess_200 {
   @body body: ReadinessProbeHttpResponse;
 }
 
+model ReadinessProbeError503 {
+  @statusCode statusCode: 503;
+  @body body: ReadinessProbeHttpResponse;
+}
+
 @doc("Readiness probe: reports whether startup has finished, whether the process is draining, and whether the configured persistence dependencies are reachable. The per-dependency detail is returned only when `verbose` is set.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ReadinessProbe")
@@ -43,7 +48,7 @@ model ReadinessProbeSuccess_200 {
 @get
 op ReadinessProbe(
   @query verbose?: string
-): ReadinessProbeSuccess_200;
+): ReadinessProbeSuccess_200 | ReadinessProbeError503;
 
 model StartupProbeHttpResponse {
   status: string;
@@ -54,6 +59,11 @@ model StartupProbeSuccess_200 {
   @body body: StartupProbeHttpResponse;
 }
 
+model StartupProbeError503 {
+  @statusCode statusCode: 503;
+  @body body: StartupProbeHttpResponse;
+}
+
 @doc("Startup probe: 503 `starting` until initialization has finished, 200 `healthy` afterwards.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartupProbe")
@@ -61,13 +71,23 @@ model StartupProbeSuccess_200 {
 @get
 op StartupProbe(
 
-): StartupProbeSuccess_200;
+): StartupProbeSuccess_200 | StartupProbeError503;
+
+@doc("What the metrics endpoint answers when no metrics handler was wired at the composition root. The route is registered either way, so an unconfigured deployment fails the scrape loudly instead of returning 404.")
+model MetricsUnavailableHttpResponse {
+  status: string;
+}
 
 model MetricsExpositionSuccess_200 {
   @statusCode statusCode: 200;
   @header contentType: "text/plain; version=0.0.4; charset=utf-8";
   @doc("The metric families in Prometheus / OpenMetrics text exposition format.")
   @body body: string;
+}
+
+model MetricsExpositionError503 {
+  @statusCode statusCode: 503;
+  @body body: MetricsUnavailableHttpResponse;
 }
 
 @doc("Management endpoint exposing aggregated metrics for a Prometheus / OpenMetrics scrape.\nidmagic-api exposes HTTP RED (request count, error rate, latency) together with the golden signals of the\nauthentication domain (login outcome, token issuance, throttle hits); idmagic-worker exposes the golden signals\nof Jobs per execution lane (queue depth, claim latency, success and failure, retry, where the lane is drawn from\nthe finite ExecutionLane set). They are independent endpoint instances and never share a process. High-cardinality\nvalues -- tenant_id, user_id, client_id, job_id, the concrete path -- are kept out of the labels; only finite sets\nsuch as the route template, the outcome class, and the lane become labels. The endpoint sits outside the tenant\nmiddleware of the application API, and deploy policy narrows who can reach it, either by binding it to a loopback\nor management network or by requiring authentication.")
@@ -77,7 +97,7 @@ model MetricsExpositionSuccess_200 {
 @get
 op MetricsExposition(
 
-): MetricsExpositionSuccess_200;
+): MetricsExpositionSuccess_200 | MetricsExpositionError503;
 }
 
 }

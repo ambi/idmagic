@@ -34,7 +34,7 @@ model ListTenantDataKeyHealthError403 {
 @get
 op ListTenantDataKeyHealth(
 
-): ListTenantDataKeyHealthSuccess_200 | ListTenantDataKeyHealthError403;
+): ListTenantDataKeyHealthSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantDataKeyHealthError403;
 }
 
 }

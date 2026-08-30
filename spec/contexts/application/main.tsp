@@ -41,7 +41,7 @@ model ListAdminApplicationsError400 {
 op ListAdminApplications(
   @query cursor?: string,
   @query limit?: int64
-): ListAdminApplicationsSuccess_200 | ListAdminApplicationsError403 | ListAdminApplicationsError400;
+): ListAdminApplicationsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminApplicationsError403 | ListAdminApplicationsError400;
 
 model GetAdminApplicationSuccess_200 {
   @statusCode statusCode: 200;
@@ -75,7 +75,7 @@ model GetAdminApplicationError403 {
 @get
 op GetAdminApplication(
   @path id: string
-): GetAdminApplicationSuccess_200 | GetAdminApplicationError400 | GetAdminApplicationError403;
+): GetAdminApplicationSuccess_200 | GetAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminApplicationError403;
 
 model CreateAdminApplicationSuccess_201 {
   @statusCode statusCode: 201;
@@ -119,7 +119,7 @@ model CreateAdminApplicationError422 {
 @post
 op CreateAdminApplication(
   @body body: IdMagic.Contract.AdminApplicationCreateRequest
-): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | CreateAdminApplicationError403 | CreateAdminApplicationError422;
+): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminApplicationError403 | CreateAdminApplicationError422;
 
 model UpdateAdminApplicationSuccess_200 {
   @statusCode statusCode: 200;
@@ -154,7 +154,7 @@ model UpdateAdminApplicationError403 {
 op UpdateAdminApplication(
   @path id: string,
   @body body: IdMagic.Contract.AdminApplicationUpdateRequest
-): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | UpdateAdminApplicationError403;
+): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminApplicationError403;
 
 model UploadApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -193,7 +193,7 @@ op UploadApplicationIcon(
     @doc("The image to store, under the form field name `file`.")
     file: HttpPart<File>,
   }
-): UploadApplicationIconSuccess_200 | UploadApplicationIconError400 | UploadApplicationIconError403;
+): UploadApplicationIconSuccess_200 | UploadApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | UploadApplicationIconError403;
 
 model DeleteApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -227,7 +227,7 @@ model DeleteApplicationIconError403 {
 @delete
 op DeleteApplicationIcon(
   @path id: string
-): DeleteApplicationIconSuccess_200 | DeleteApplicationIconError400 | DeleteApplicationIconError403;
+): DeleteApplicationIconSuccess_200 | DeleteApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteApplicationIconError403;
 
 model GetApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -237,14 +237,14 @@ model GetApplicationIconSuccess_200 {
   @body body: bytes;
 }
 
-union GetApplicationIconError400Body {
-  IdMagic.Contract.InvalidRequestError,
+union GetApplicationIconError404Body {
+  IdMagic.Contract.ApplicationIconNotFoundError,
 }
 
-model GetApplicationIconError400 {
-  @statusCode statusCode: 400;
+model GetApplicationIconError404 {
+  @statusCode statusCode: 404;
   @header contentType: "application/problem+json";
-  @body body: GetApplicationIconError400Body;
+  @body body: GetApplicationIconError404Body;
 }
 
 @doc("Public interface serving a stored Application icon. The Content-Type is fixed to the validated format and `X-Content-Type-Options: nosniff` is set. An object of another tenant, and a deleted one, are both treated as nonexistent.")
@@ -255,7 +255,7 @@ model GetApplicationIconError400 {
 op GetApplicationIcon(
   @path application_id: string,
   @path id: string
-): GetApplicationIconSuccess_200 | GetApplicationIconError400;
+): GetApplicationIconSuccess_200 | GetApplicationIconError404;
 
 model DeleteAdminApplicationSuccess_204 {
   @statusCode statusCode: 204;
@@ -288,7 +288,7 @@ model DeleteAdminApplicationError403 {
 @delete
 op DeleteAdminApplication(
   @path id: string
-): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | DeleteAdminApplicationError403;
+): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403;
 
 model UpdateApplicationOidcConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -314,6 +314,16 @@ model UpdateApplicationOidcConfigError403 {
   @body body: UpdateApplicationOidcConfigError403Body;
 }
 
+union UpdateApplicationOidcConfigError404Body {
+  IdMagic.Contract.ApplicationProtocolTargetNotFoundError,
+}
+
+model UpdateApplicationOidcConfigError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateApplicationOidcConfigError404Body;
+}
+
 @doc("An administrator updates the settings of the OAuth2 client the OIDC protocol of an Application points at. `rules` and\n`sub_source_attribute` override claim release, so a rule referring to an attribute whose visibility is `private`, or to a\nreserved claim type, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationOidcConfig")
@@ -322,7 +332,7 @@ model UpdateApplicationOidcConfigError403 {
 op UpdateApplicationOidcConfig(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationOidcConfigUpdateRequest
-): UpdateApplicationOidcConfigSuccess_204 | UpdateApplicationOidcConfigError400 | UpdateApplicationOidcConfigError403;
+): UpdateApplicationOidcConfigSuccess_204 | UpdateApplicationOidcConfigError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationOidcConfigError403 | UpdateApplicationOidcConfigError404;
 
 model RotateApplicationClientSecretSuccess_200 {
   @statusCode statusCode: 200;
@@ -357,7 +367,7 @@ model RotateApplicationClientSecretError403 {
 op RotateApplicationClientSecret(
   @path id: string,
   @body body: IdMagic.Contract.RotateApplicationClientSecretRequest
-): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | RotateApplicationClientSecretError403;
+): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RotateApplicationClientSecretError403;
 
 model IssueApplicationClientSecretSuccess_201 {
   @statusCode statusCode: 201;
@@ -402,7 +412,7 @@ model IssueApplicationClientSecretError422 {
 op IssueApplicationClientSecret(
   @path id: string,
   @body body: IdMagic.Contract.IssueApplicationClientSecretRequest
-): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422;
+): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422;
 
 model RevokeApplicationClientSecretSuccess_200 {
   @statusCode statusCode: 200;
@@ -437,7 +447,7 @@ model RevokeApplicationClientSecretError403 {
 op RevokeApplicationClientSecret(
   @path id: string,
   @path credential_id: string
-): RevokeApplicationClientSecretSuccess_200 | RevokeApplicationClientSecretError400 | RevokeApplicationClientSecretError403;
+): RevokeApplicationClientSecretSuccess_200 | RevokeApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeApplicationClientSecretError403;
 
 model UpdateApplicationWsFedConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -463,6 +473,16 @@ model UpdateApplicationWsFedConfigError403 {
   @body body: UpdateApplicationWsFedConfigError403Body;
 }
 
+union UpdateApplicationWsFedConfigError404Body {
+  IdMagic.Contract.ApplicationProtocolTargetNotFoundError,
+}
+
+model UpdateApplicationWsFedConfigError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateApplicationWsFedConfigError404Body;
+}
+
 @doc("An administrator updates the settings of the relying party the WS-Fed protocol of an Application points at. `rules` and\n`name_id_source` override claim release, so a rule referring to an attribute whose visibility is `private`, or to a\nreserved claim type, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationWsFedConfig")
@@ -471,7 +491,7 @@ model UpdateApplicationWsFedConfigError403 {
 op UpdateApplicationWsFedConfig(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationWsFedConfigUpdateRequest
-): UpdateApplicationWsFedConfigSuccess_204 | UpdateApplicationWsFedConfigError400 | UpdateApplicationWsFedConfigError403;
+): UpdateApplicationWsFedConfigSuccess_204 | UpdateApplicationWsFedConfigError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationWsFedConfigError403 | UpdateApplicationWsFedConfigError404;
 
 model UpdateApplicationSamlConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -497,6 +517,16 @@ model UpdateApplicationSamlConfigError403 {
   @body body: UpdateApplicationSamlConfigError403Body;
 }
 
+union UpdateApplicationSamlConfigError404Body {
+  IdMagic.Contract.ApplicationProtocolTargetNotFoundError,
+}
+
+model UpdateApplicationSamlConfigError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateApplicationSamlConfigError404Body;
+}
+
 @doc("An administrator partially updates the service provider settings and the IdP profile binding the SAML protocol of an Application\npoints at. Turning on the signature requirement makes a verifiable certificate mandatory. `rules` and `name_id_source` override\nclaim release, so a rule referring to an attribute whose visibility is `private`, or to a reserved claim type, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationSamlConfig")
@@ -505,7 +535,7 @@ model UpdateApplicationSamlConfigError403 {
 op UpdateApplicationSamlConfig(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationSamlConfigUpdateRequest
-): UpdateApplicationSamlConfigSuccess_204 | UpdateApplicationSamlConfigError400 | UpdateApplicationSamlConfigError403;
+): UpdateApplicationSamlConfigSuccess_204 | UpdateApplicationSamlConfigError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationSamlConfigError403 | UpdateApplicationSamlConfigError404;
 
 model ListApplicationAssignmentsSuccess_200 {
   @statusCode statusCode: 200;
@@ -541,7 +571,7 @@ op ListApplicationAssignments(
   @path id: string,
   @query cursor?: string,
   @query limit?: int64
-): ListApplicationAssignmentsSuccess_200 | ListApplicationAssignmentsError400 | ListApplicationAssignmentsError403;
+): ListApplicationAssignmentsSuccess_200 | ListApplicationAssignmentsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListApplicationAssignmentsError403;
 
 model AssignApplicationSuccess_201 {
   @statusCode statusCode: 201;
@@ -576,7 +606,7 @@ model AssignApplicationError403 {
 op AssignApplication(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationAssignmentRequest
-): AssignApplicationSuccess_201 | AssignApplicationError400 | AssignApplicationError403;
+): AssignApplicationSuccess_201 | AssignApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AssignApplicationError403;
 
 model UnassignApplicationSuccess_204 {
   @statusCode statusCode: 204;
@@ -611,7 +641,7 @@ op UnassignApplication(
   @path id: string,
   @path subject_type: string,
   @path subject_id: string
-): UnassignApplicationSuccess_204 | UnassignApplicationError400 | UnassignApplicationError403;
+): UnassignApplicationSuccess_204 | UnassignApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UnassignApplicationError403;
 
 model GetAppSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
@@ -645,7 +675,7 @@ model GetAppSignInPolicyError403 {
 @get
 op GetAppSignInPolicy(
   @path id: string
-): GetAppSignInPolicySuccess_200 | GetAppSignInPolicyError400 | GetAppSignInPolicyError403;
+): GetAppSignInPolicySuccess_200 | GetAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAppSignInPolicyError403;
 
 model UpdateAppSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
@@ -680,7 +710,7 @@ model UpdateAppSignInPolicyError403 {
 op UpdateAppSignInPolicy(
   @path id: string,
   @body body: IdMagic.Contract.AppSignInPolicyRequest
-): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | UpdateAppSignInPolicyError403;
+): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAppSignInPolicyError403;
 
 model GetTenantDefaultSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
@@ -704,7 +734,7 @@ model GetTenantDefaultSignInPolicyError403 {
 @get
 op GetTenantDefaultSignInPolicy(
 
-): GetTenantDefaultSignInPolicySuccess_200 | GetTenantDefaultSignInPolicyError403;
+): GetTenantDefaultSignInPolicySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetTenantDefaultSignInPolicyError403;
 
 model UpdateTenantDefaultSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
@@ -738,7 +768,7 @@ model UpdateTenantDefaultSignInPolicyError403 {
 @put
 op UpdateTenantDefaultSignInPolicy(
   @body body: IdMagic.Contract.TenantDefaultSignInPolicyRequest
-): UpdateTenantDefaultSignInPolicySuccess_200 | UpdateTenantDefaultSignInPolicyError400 | UpdateTenantDefaultSignInPolicyError403;
+): UpdateTenantDefaultSignInPolicySuccess_200 | UpdateTenantDefaultSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantDefaultSignInPolicyError403;
 
 model ListApplicationCategoriesSuccess_200 {
   @statusCode statusCode: 200;
@@ -762,7 +792,7 @@ model ListApplicationCategoriesError403 {
 @get
 op ListApplicationCategories(
 
-): ListApplicationCategoriesSuccess_200 | ListApplicationCategoriesError403;
+): ListApplicationCategoriesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListApplicationCategoriesError403;
 
 model CreateApplicationCategoryHttpResponse {
   category: IdMagic.Contract.AdminApplicationCategoryResponse;
@@ -810,7 +840,7 @@ model CreateApplicationCategoryError403 {
 @post
 op CreateApplicationCategory(
   @body body: IdMagic.Contract.AdminApplicationCategoryRequest
-): CreateApplicationCategorySuccess_201 | CreateApplicationCategoryError400 | CreateApplicationCategoryError422 | CreateApplicationCategoryError403;
+): CreateApplicationCategorySuccess_201 | CreateApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateApplicationCategoryError422 | CreateApplicationCategoryError403;
 
 model UpdateApplicationCategoryHttpResponse {
   category: IdMagic.Contract.AdminApplicationCategoryResponse;
@@ -859,7 +889,7 @@ model UpdateApplicationCategoryError403 {
 op UpdateApplicationCategory(
   @path id: string,
   @body body: IdMagic.Contract.AdminApplicationCategoryRequest
-): UpdateApplicationCategorySuccess_200 | UpdateApplicationCategoryError400 | UpdateApplicationCategoryError422 | UpdateApplicationCategoryError403;
+): UpdateApplicationCategorySuccess_200 | UpdateApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationCategoryError422 | UpdateApplicationCategoryError403;
 
 model DeleteApplicationCategorySuccess_204 {
   @statusCode statusCode: 204;
@@ -892,7 +922,7 @@ model DeleteApplicationCategoryError403 {
 @delete
 op DeleteApplicationCategory(
   @path id: string
-): DeleteApplicationCategorySuccess_204 | DeleteApplicationCategoryError400 | DeleteApplicationCategoryError403;
+): DeleteApplicationCategorySuccess_204 | DeleteApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteApplicationCategoryError403;
 
 model SetApplicationCategoriesSuccess_200 {
   @statusCode statusCode: 200;
@@ -937,7 +967,7 @@ model SetApplicationCategoriesError403 {
 op SetApplicationCategories(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationCategoriesRequest
-): SetApplicationCategoriesSuccess_200 | SetApplicationCategoriesError400 | SetApplicationCategoriesError422 | SetApplicationCategoriesError403;
+): SetApplicationCategoriesSuccess_200 | SetApplicationCategoriesError400 | IdMagic.Contract.AuthenticationRequiredResponse | SetApplicationCategoriesError422 | SetApplicationCategoriesError403;
 
 model ListMyApplicationsSuccess_200 {
   @statusCode statusCode: 200;

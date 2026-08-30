@@ -8,11 +8,6 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.OAuth2 {
 
 namespace Operations {
-model RegisterClientSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.ClientRegistrationResponse;
-}
-
 union RegisterClientError400Body {
   IdMagic.Contract.OAuthInvalidRequestError,
 }
@@ -33,6 +28,11 @@ model RegisterClientError422 {
   @body body: RegisterClientError422Body;
 }
 
+model RegisterClientSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.ClientRegistrationResponse;
+}
+
 @doc("Dynamic Client Registration (RFC 7591)")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("RegisterClient")
@@ -40,7 +40,7 @@ model RegisterClientError422 {
 @post
 op RegisterClient(
   @body body: IdMagic.Contract.ClientRegistrationRequest
-): RegisterClientSuccess_200 | RegisterClientError400 | RegisterClientError422;
+): RegisterClientSuccess_201 | RegisterClientError400 | RegisterClientError422;
 
 model AuthorizeSuccess_302 {
   @statusCode statusCode: 302;
@@ -90,6 +90,10 @@ model AuthorizeError429 {
   @body body: AuthorizeError429Body;
 }
 
+model AuthorizeSuccess_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("The authorization endpoint (RFC 6749 section 4.1.1). `client_id` is accepted either as a registered Client or as the URL of a Client ID Metadata Document, resolved on each request.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("Authorize")
@@ -97,7 +101,7 @@ model AuthorizeError429 {
 @get
 op Authorize(
   @query params: IdMagic.Contract.AuthorizeParameters
-): AuthorizeSuccess_302 | AuthorizeError400 | AuthorizeError401 | AuthorizeError403 | AuthorizeError429;
+): AuthorizeSuccess_302 | AuthorizeSuccess_303 | AuthorizeError400 | AuthorizeError401 | AuthorizeError403 | AuthorizeError429;
 
 model ResumeFederatedAuthorizationSuccess_302 {
   @statusCode statusCode: 302;
@@ -123,13 +127,17 @@ model ResumeFederatedAuthorizationError403 {
   @body body: ResumeFederatedAuthorizationError403Body;
 }
 
+model ResumeFederatedAuthorizationSuccess_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("Once the inbound federation callback of the Authentication context has established an authenticated session, the stored authorization transaction resumes and the ordinary application policy, consent, and required-action gates apply.")
 @TypeSpec.OpenAPI.operationId("ResumeFederatedAuthorization")
 @route("/authorize/resume")
 @get
 op ResumeFederatedAuthorization(
 
-): ResumeFederatedAuthorizationSuccess_302 | ResumeFederatedAuthorizationError400 | ResumeFederatedAuthorizationError403;
+): ResumeFederatedAuthorizationSuccess_302 | ResumeFederatedAuthorizationSuccess_303 | ResumeFederatedAuthorizationError400 | IdMagic.Contract.AuthenticationRequiredResponse | ResumeFederatedAuthorizationError403;
 
 model GetBrowserTransactionSuccess_200 {
   @statusCode statusCode: 200;
@@ -153,7 +161,7 @@ model GetBrowserTransactionError400 {
 @get
 op GetBrowserTransaction(
 
-): GetBrowserTransactionSuccess_200 | GetBrowserTransactionError400;
+): GetBrowserTransactionSuccess_200 | GetBrowserTransactionError400 | IdMagic.Contract.AuthenticationRequiredResponse;
 
 model SubmitBrowserConsentSuccess_200 {
   @statusCode statusCode: 200;
@@ -196,7 +204,7 @@ model SubmitBrowserConsentError422 {
 @post
 op SubmitBrowserConsent(
   @body body: IdMagic.Contract.BrowserConsentRequest
-): SubmitBrowserConsentSuccess_200 | SubmitBrowserConsentError400 | SubmitBrowserConsentError403 | SubmitBrowserConsentError422;
+): SubmitBrowserConsentSuccess_200 | SubmitBrowserConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | SubmitBrowserConsentError403 | SubmitBrowserConsentError422;
 
 model SubmitBrowserDeviceSuccess_200 {
   @statusCode statusCode: 200;
@@ -229,7 +237,7 @@ model SubmitBrowserDeviceError403 {
 @post
 op SubmitBrowserDevice(
   @body body: IdMagic.Contract.BrowserDeviceRequest
-): SubmitBrowserDeviceSuccess_200 | SubmitBrowserDeviceError400 | SubmitBrowserDeviceError403;
+): SubmitBrowserDeviceSuccess_200 | SubmitBrowserDeviceError400 | IdMagic.Contract.AuthenticationRequiredResponse | SubmitBrowserDeviceError403;
 
 model GetBrowserDeviceContextSuccess_200 {
   @statusCode statusCode: 200;
@@ -263,6 +271,10 @@ model EndSession1Error400 {
   @body body: EndSession1Error400Body;
 }
 
+model EndSession1Success_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("The RP-Initiated Logout endpoint (OpenID Connect RP-Initiated Logout 1.0). Redirect validation is done by the\nOAuth 2.0 / OpenID Connect bounded context, and session revocation is delegated to the SessionManager of the\nAuthentication bounded context. When an `id_token_hint` is given, its signature, `iss`, `aud`, `sub`, and `sid` are\nverified and both the target session and the client are resolved from the hint; a hint that contradicts `client_id` is\nrefused. Without an `id_token_hint`, the existing resolution by `client_id` plus the browser cookie is kept as a\nfallback. Once the local revocation is settled, the FrontChannelLogout targets are collected from the ClientSessions\nbound to that `sid` and returned in the response, and BackChannelLogout delivery is started asynchronously.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("EndSession")
@@ -270,7 +282,7 @@ model EndSession1Error400 {
 @get
 op EndSession1(
   @query params: IdMagic.Contract.EndSessionParameters
-): EndSession1Success_200 | EndSession1Success_302 | EndSession1Error400;
+): EndSession1Success_200 | EndSession1Success_302 | EndSession1Success_303 | EndSession1Error400;
 
 model EndSession2Success_200 {
   @statusCode statusCode: 200;
@@ -290,6 +302,10 @@ model EndSession2Error400 {
   @body body: EndSession2Error400Body;
 }
 
+model EndSession2Success_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("The RP-Initiated Logout endpoint (OpenID Connect RP-Initiated Logout 1.0). Redirect validation is done by the\nOAuth 2.0 / OpenID Connect bounded context, and session revocation is delegated to the SessionManager of the\nAuthentication bounded context. When an `id_token_hint` is given, its signature, `iss`, `aud`, `sub`, and `sid` are\nverified and both the target session and the client are resolved from the hint; a hint that contradicts `client_id` is\nrefused. Without an `id_token_hint`, the existing resolution by `client_id` plus the browser cookie is kept as a\nfallback. Once the local revocation is settled, the FrontChannelLogout targets are collected from the ClientSessions\nbound to that `sid` and returned in the response, and BackChannelLogout delivery is started asynchronously.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("EndSession")
@@ -298,7 +314,7 @@ model EndSession2Error400 {
 op EndSession2(
   @header contentType: "application/x-www-form-urlencoded",
   @body body: IdMagic.Contract.EndSessionParameters
-): EndSession2Success_200 | EndSession2Success_302 | EndSession2Error400;
+): EndSession2Success_200 | EndSession2Success_302 | EndSession2Success_303 | EndSession2Error400;
 
 model CheckSessionIframeSuccess_200 {
   @statusCode statusCode: 200;
@@ -312,11 +328,6 @@ model CheckSessionIframeSuccess_200 {
 op CheckSessionIframe(
 
 ): CheckSessionIframeSuccess_200;
-
-model PushAuthorizationRequestSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.ParResponse;
-}
 
 union PushAuthorizationRequestError400Body {
   IdMagic.Contract.OAuthInvalidRequestError,
@@ -351,13 +362,18 @@ model PushAuthorizationRequestError429 {
   @body body: PushAuthorizationRequestError429Body;
 }
 
+model PushAuthorizationRequestSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.ParResponse;
+}
+
 @doc("Pushed Authorization Request (RFC 9126). `client_id` is accepted either as a registered Client or as the URL of a Client ID Metadata Document, resolved on each request.")
 @TypeSpec.OpenAPI.operationId("PushAuthorizationRequest")
 @route("/par")
 @post
 op PushAuthorizationRequest(
   @body body: IdMagic.Contract.ParRequest
-): PushAuthorizationRequestSuccess_200 | PushAuthorizationRequestError400 | PushAuthorizationRequestError401 | PushAuthorizationRequestError429;
+): PushAuthorizationRequestSuccess_201 | PushAuthorizationRequestError400 | PushAuthorizationRequestError401 | PushAuthorizationRequestError429;
 
 model TokenSuccess_200 {
   @statusCode statusCode: 200;
@@ -440,13 +456,23 @@ model IntrospectError401 {
   @body body: IntrospectError401Body;
 }
 
+union IntrospectError400Body {
+  IdMagic.Contract.OAuthInvalidRequestError,
+}
+
+model IntrospectError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/json";
+  @body body: IntrospectError400Body;
+}
+
 @doc("Token Introspection (RFC 7662) for both ordinary OAuth tokens and administratively issued JWT access tokens. For a token whose principal is an Agent, `issued_at` is compared against the revocation epoch of SharedSignals -- the kill switch, an owner offboarding, or a revocation arriving over CAEP/SSF -- and a token issued before the epoch is reported `active=false`, fail-closed.")
 @TypeSpec.OpenAPI.operationId("Introspect")
 @route("/introspect")
 @post
 op Introspect(
   @body body: IdMagic.Contract.IntrospectionRequest
-): IntrospectSuccess_200 | IntrospectError401;
+): IntrospectSuccess_200 | IntrospectError400 | IntrospectError401;
 
 model RevokeSuccess_200 {
   @statusCode statusCode: 200;
@@ -462,13 +488,23 @@ model RevokeError401 {
   @body body: RevokeError401Body;
 }
 
+union RevokeError400Body {
+  IdMagic.Contract.OAuthInvalidRequestError,
+}
+
+model RevokeError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/json";
+  @body body: RevokeError400Body;
+}
+
 @doc("Token Revocation (RFC 7009) for both ordinary OAuth tokens and administratively issued JWT access tokens.")
 @TypeSpec.OpenAPI.operationId("Revoke")
 @route("/revoke")
 @post
 op Revoke(
   @body body: IdMagic.Contract.RevokeRequest
-): RevokeSuccess_200 | RevokeError401;
+): RevokeSuccess_200 | RevokeError400 | RevokeError401;
 
 model UserInfoSuccess_200 {
   @statusCode statusCode: 200;
@@ -750,21 +786,11 @@ model ListAuthorizationDetailTypesError403 {
 @get
 op ListAuthorizationDetailTypes(
 
-): ListAuthorizationDetailTypesSuccess_200 | ListAuthorizationDetailTypesError403;
+): ListAuthorizationDetailTypesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAuthorizationDetailTypesError403;
 
 model GetAuthorizationDetailTypeSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AuthorizationDetailTypeResponse;
-}
-
-union GetAuthorizationDetailTypeError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model GetAuthorizationDetailTypeError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: GetAuthorizationDetailTypeError400Body;
 }
 
 union GetAuthorizationDetailTypeError403Body {
@@ -787,6 +813,16 @@ model GetAuthorizationDetailTypeError422 {
   @body body: GetAuthorizationDetailTypeError422Body;
 }
 
+union GetAuthorizationDetailTypeError404Body {
+  IdMagic.Contract.AuthorizationDetailTypeNotFoundError,
+}
+
+model GetAuthorizationDetailTypeError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAuthorizationDetailTypeError404Body;
+}
+
 @doc("An administrator reads one type. A type of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:read"])
 @TypeSpec.OpenAPI.operationId("GetAuthorizationDetailType")
@@ -794,7 +830,7 @@ model GetAuthorizationDetailTypeError422 {
 @get
 op GetAuthorizationDetailType(
   @path type: string
-): GetAuthorizationDetailTypeSuccess_200 | GetAuthorizationDetailTypeError400 | GetAuthorizationDetailTypeError403 | GetAuthorizationDetailTypeError422;
+): GetAuthorizationDetailTypeSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAuthorizationDetailTypeError403 | GetAuthorizationDetailTypeError404 | GetAuthorizationDetailTypeError422;
 
 model CreateAuthorizationDetailTypeSuccess_201 {
   @statusCode statusCode: 201;
@@ -831,6 +867,16 @@ model CreateAuthorizationDetailTypeError422 {
   @body body: CreateAuthorizationDetailTypeError422Body;
 }
 
+union CreateAuthorizationDetailTypeError409Body {
+  IdMagic.Contract.AuthorizationDetailTypeExistsError,
+}
+
+model CreateAuthorizationDetailTypeError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CreateAuthorizationDetailTypeError409Body;
+}
+
 @doc("An administrator registers an `authorization_details` type in their tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("CreateAuthorizationDetailType")
@@ -838,7 +884,7 @@ model CreateAuthorizationDetailTypeError422 {
 @post
 op CreateAuthorizationDetailType(
   @body body: IdMagic.Contract.AuthorizationDetailTypeRequest
-): CreateAuthorizationDetailTypeSuccess_201 | CreateAuthorizationDetailTypeError400 | CreateAuthorizationDetailTypeError403 | CreateAuthorizationDetailTypeError422;
+): CreateAuthorizationDetailTypeSuccess_201 | CreateAuthorizationDetailTypeError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAuthorizationDetailTypeError403 | CreateAuthorizationDetailTypeError409 | CreateAuthorizationDetailTypeError422;
 
 model UpdateAuthorizationDetailTypeSuccess_200 {
   @statusCode statusCode: 200;
@@ -875,6 +921,16 @@ model UpdateAuthorizationDetailTypeError422 {
   @body body: UpdateAuthorizationDetailTypeError422Body;
 }
 
+union UpdateAuthorizationDetailTypeError404Body {
+  IdMagic.Contract.AuthorizationDetailTypeNotFoundError,
+}
+
+model UpdateAuthorizationDetailTypeError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAuthorizationDetailTypeError404Body;
+}
+
 @doc("An administrator updates the schema, display template, description, or state of a type.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAuthorizationDetailType")
@@ -883,20 +939,10 @@ model UpdateAuthorizationDetailTypeError422 {
 op UpdateAuthorizationDetailType(
   @path type: string,
   @body body: IdMagic.Contract.UpdateAuthorizationDetailTypeRequest
-): UpdateAuthorizationDetailTypeSuccess_200 | UpdateAuthorizationDetailTypeError400 | UpdateAuthorizationDetailTypeError403 | UpdateAuthorizationDetailTypeError422;
+): UpdateAuthorizationDetailTypeSuccess_200 | UpdateAuthorizationDetailTypeError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAuthorizationDetailTypeError403 | UpdateAuthorizationDetailTypeError404 | UpdateAuthorizationDetailTypeError422;
 
 model DeleteAuthorizationDetailTypeSuccess_204 {
   @statusCode statusCode: 204;
-}
-
-union DeleteAuthorizationDetailTypeError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model DeleteAuthorizationDetailTypeError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: DeleteAuthorizationDetailTypeError400Body;
 }
 
 union DeleteAuthorizationDetailTypeError403Body {
@@ -916,7 +962,7 @@ model DeleteAuthorizationDetailTypeError403 {
 @delete
 op DeleteAuthorizationDetailType(
   @path type: string
-): DeleteAuthorizationDetailTypeSuccess_204 | DeleteAuthorizationDetailTypeError400 | DeleteAuthorizationDetailTypeError403;
+): DeleteAuthorizationDetailTypeSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAuthorizationDetailTypeError403;
 
 model ListAdminOAuth2ClientsSuccess_200 {
   @statusCode statusCode: 200;
@@ -951,7 +997,7 @@ model ListAdminOAuth2ClientsError400 {
 op ListAdminOAuth2Clients(
   @query cursor?: string,
   @query limit?: int64
-): ListAdminOAuth2ClientsSuccess_200 | ListAdminOAuth2ClientsError403 | ListAdminOAuth2ClientsError400;
+): ListAdminOAuth2ClientsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminOAuth2ClientsError403 | ListAdminOAuth2ClientsError400;
 
 model GetAdminOAuth2ClientSuccess_200 {
   @statusCode statusCode: 200;
@@ -985,7 +1031,7 @@ model GetAdminOAuth2ClientError403 {
 @get
 op GetAdminOAuth2Client(
   @path client_id: string
-): GetAdminOAuth2ClientSuccess_200 | GetAdminOAuth2ClientError400 | GetAdminOAuth2ClientError403;
+): GetAdminOAuth2ClientSuccess_200 | GetAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminOAuth2ClientError403;
 
 model CreateAdminOAuth2ClientSuccess_201 {
   @statusCode statusCode: 201;
@@ -1029,7 +1075,7 @@ model CreateAdminOAuth2ClientError422 {
 @post
 op CreateAdminOAuth2Client(
   @body body: IdMagic.Contract.AdminOAuth2ClientCreateRequest
-): CreateAdminOAuth2ClientSuccess_201 | CreateAdminOAuth2ClientError400 | CreateAdminOAuth2ClientError403 | CreateAdminOAuth2ClientError422;
+): CreateAdminOAuth2ClientSuccess_201 | CreateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminOAuth2ClientError403 | CreateAdminOAuth2ClientError422;
 
 model UpdateAdminOAuth2ClientSuccess_200 {
   @statusCode statusCode: 200;
@@ -1064,7 +1110,7 @@ model UpdateAdminOAuth2ClientError403 {
 op UpdateAdminOAuth2Client(
   @path client_id: string,
   @body body: IdMagic.Contract.AdminOAuth2ClientUpdateRequest
-): UpdateAdminOAuth2ClientSuccess_200 | UpdateAdminOAuth2ClientError400 | UpdateAdminOAuth2ClientError403;
+): UpdateAdminOAuth2ClientSuccess_200 | UpdateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminOAuth2ClientError403;
 
 model DeleteAdminOAuth2ClientSuccess_204 {
   @statusCode statusCode: 204;
@@ -1107,7 +1153,7 @@ model DeleteAdminOAuth2ClientError409 {
 @delete
 op DeleteAdminOAuth2Client(
   @path client_id: string
-): DeleteAdminOAuth2ClientSuccess_204 | DeleteAdminOAuth2ClientError400 | DeleteAdminOAuth2ClientError403 | DeleteAdminOAuth2ClientError409;
+): DeleteAdminOAuth2ClientSuccess_204 | DeleteAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminOAuth2ClientError403 | DeleteAdminOAuth2ClientError409;
 
 model ListAdminMcpResourceServersSuccess_200 {
   @statusCode statusCode: 200;
@@ -1131,21 +1177,11 @@ model ListAdminMcpResourceServersError403 {
 @get
 op ListAdminMcpResourceServers(
 
-): ListAdminMcpResourceServersSuccess_200 | ListAdminMcpResourceServersError403;
+): ListAdminMcpResourceServersSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminMcpResourceServersError403;
 
 model GetAdminMcpResourceServerSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.McpResourceServerResponse;
-}
-
-union GetAdminMcpResourceServerError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model GetAdminMcpResourceServerError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminMcpResourceServerError400Body;
 }
 
 union GetAdminMcpResourceServerError403Body {
@@ -1158,6 +1194,16 @@ model GetAdminMcpResourceServerError403 {
   @body body: GetAdminMcpResourceServerError403Body;
 }
 
+union GetAdminMcpResourceServerError404Body {
+  IdMagic.Contract.McpResourceServerNotFoundError,
+}
+
+model GetAdminMcpResourceServerError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminMcpResourceServerError404Body;
+}
+
 @doc("An administrator reads an McpResourceServer of their tenant. A registration of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminMcpResourceServer")
@@ -1165,7 +1211,7 @@ model GetAdminMcpResourceServerError403 {
 @get
 op GetAdminMcpResourceServer(
   @path id: string
-): GetAdminMcpResourceServerSuccess_200 | GetAdminMcpResourceServerError400 | GetAdminMcpResourceServerError403;
+): GetAdminMcpResourceServerSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminMcpResourceServerError403 | GetAdminMcpResourceServerError404;
 
 model CreateAdminMcpResourceServerSuccess_201 {
   @statusCode statusCode: 201;
@@ -1192,6 +1238,16 @@ model CreateAdminMcpResourceServerError403 {
   @body body: CreateAdminMcpResourceServerError403Body;
 }
 
+union CreateAdminMcpResourceServerError409Body {
+  IdMagic.Contract.McpResourceServerExistsError,
+}
+
+model CreateAdminMcpResourceServerError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CreateAdminMcpResourceServerError409Body;
+}
+
 @doc("An administrator registers an McpResourceServer in their tenant. The `resource` must be unique within the tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminMcpResourceServer")
@@ -1199,7 +1255,7 @@ model CreateAdminMcpResourceServerError403 {
 @post
 op CreateAdminMcpResourceServer(
   @body body: IdMagic.Contract.McpResourceServerRequest
-): CreateAdminMcpResourceServerSuccess_201 | CreateAdminMcpResourceServerError400 | CreateAdminMcpResourceServerError403;
+): CreateAdminMcpResourceServerSuccess_201 | CreateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminMcpResourceServerError403 | CreateAdminMcpResourceServerError409;
 
 model UpdateAdminMcpResourceServerSuccess_200 {
   @statusCode statusCode: 200;
@@ -1226,6 +1282,16 @@ model UpdateAdminMcpResourceServerError403 {
   @body body: UpdateAdminMcpResourceServerError403Body;
 }
 
+union UpdateAdminMcpResourceServerError404Body {
+  IdMagic.Contract.McpResourceServerNotFoundError,
+}
+
+model UpdateAdminMcpResourceServerError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAdminMcpResourceServerError404Body;
+}
+
 @doc("An administrator updates the name, scopes, or state of an McpResourceServer. The `resource`, its canonical URI, is immutable.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminMcpResourceServer")
@@ -1234,20 +1300,10 @@ model UpdateAdminMcpResourceServerError403 {
 op UpdateAdminMcpResourceServer(
   @path id: string,
   @body body: IdMagic.Contract.McpResourceServerRequest
-): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | UpdateAdminMcpResourceServerError403;
+): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404;
 
 model DeleteAdminMcpResourceServerSuccess_204 {
   @statusCode statusCode: 204;
-}
-
-union DeleteAdminMcpResourceServerError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model DeleteAdminMcpResourceServerError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: DeleteAdminMcpResourceServerError400Body;
 }
 
 union DeleteAdminMcpResourceServerError403Body {
@@ -1267,7 +1323,7 @@ model DeleteAdminMcpResourceServerError403 {
 @delete
 op DeleteAdminMcpResourceServer(
   @path id: string
-): DeleteAdminMcpResourceServerSuccess_204 | DeleteAdminMcpResourceServerError400 | DeleteAdminMcpResourceServerError403;
+): DeleteAdminMcpResourceServerSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminMcpResourceServerError403;
 
 model ListAdminConsentsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1302,7 +1358,7 @@ model ListAdminConsentsError400 {
 op ListAdminConsents(
   @query cursor?: string,
   @query limit?: int64
-): ListAdminConsentsSuccess_200 | ListAdminConsentsError403 | ListAdminConsentsError400;
+): ListAdminConsentsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminConsentsError403 | ListAdminConsentsError400;
 
 model GetAdminConsentSuccess_200 {
   @statusCode statusCode: 200;
@@ -1337,7 +1393,7 @@ model GetAdminConsentError403 {
 op GetAdminConsent(
   @path user_id: string,
   @path client_id: string
-): GetAdminConsentSuccess_200 | GetAdminConsentError400 | GetAdminConsentError403;
+): GetAdminConsentSuccess_200 | GetAdminConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminConsentError403;
 
 model RevokeAdminConsentSuccess_204 {
   @statusCode statusCode: 204;
@@ -1371,7 +1427,7 @@ model RevokeAdminConsentError403 {
 op RevokeAdminConsent(
   @path user_id: string,
   @path client_id: string
-): RevokeAdminConsentSuccess_204 | RevokeAdminConsentError400 | RevokeAdminConsentError403;
+): RevokeAdminConsentSuccess_204 | RevokeAdminConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeAdminConsentError403;
 
 model ListAdminRolePoliciesHttpResponse {
   roles: IdMagic.Contract.AdminRolePolicy[];
@@ -1399,7 +1455,7 @@ model ListAdminRolePoliciesError403 {
 @get
 op ListAdminRolePolicies(
 
-): ListAdminRolePoliciesSuccess_200 | ListAdminRolePoliciesError403;
+): ListAdminRolePoliciesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminRolePoliciesError403;
 
 model ListMyConsentsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1476,7 +1532,7 @@ model ListMyApprovalRequestsError403 {
 @get
 op ListMyApprovalRequests(
 
-): ListMyApprovalRequestsSuccess_200 | ListMyApprovalRequestsError403;
+): ListMyApprovalRequestsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMyApprovalRequestsError403;
 
 model DecideMyApprovalRequestSuccess_204 {
   @statusCode statusCode: 204;
@@ -1509,7 +1565,7 @@ model DecideMyApprovalRequestError403 {
 op DecideMyApprovalRequest(
   @path id: string,
   @body body: IdMagic.Contract.AccountApprovalDecisionRequest
-): DecideMyApprovalRequestSuccess_204 | DecideMyApprovalRequestError400 | DecideMyApprovalRequestError403;
+): DecideMyApprovalRequestSuccess_204 | DecideMyApprovalRequestError400 | IdMagic.Contract.AuthenticationRequiredResponse | DecideMyApprovalRequestError403;
 }
 
 }

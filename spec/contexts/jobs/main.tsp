@@ -45,7 +45,7 @@ op ListJobs(
   @query limit?: int64,
   @query cursor?: string,
   @query all_tenants?: boolean
-): ListJobsSuccess_200 | ListJobsError400 | ListJobsError403;
+): ListJobsSuccess_200 | ListJobsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListJobsError403;
 
 model GetJobSuccess_200 {
   @statusCode statusCode: 200;
@@ -79,7 +79,7 @@ model GetJobError404 {
 @get
 op GetJob(
   @path job_id: string
-): GetJobSuccess_200 | GetJobError403 | GetJobError404;
+): GetJobSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetJobError403 | GetJobError404;
 
 model CancelJobSuccess_200 {
   @statusCode statusCode: 200;
@@ -123,7 +123,7 @@ model CancelJobError409 {
 @post
 op CancelJob(
   @path job_id: string
-): CancelJobSuccess_200 | CancelJobError403 | CancelJobError404 | CancelJobError409;
+): CancelJobSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | CancelJobError403 | CancelJobError404 | CancelJobError409;
 }
 
 }

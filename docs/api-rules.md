@@ -14,6 +14,22 @@ OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handl
 
 エラー本文の文字列は、`DisplayLanguage` にかかわらず常に英語で固定する。`message`、`error_description`、`detail`、プレーンテキストの本文がこれにあたる。翻訳して返すと、同じ失敗が呼び出し側の設定次第で別の文字列になり、ログの照合も相互運用も壊れるためである。翻訳は、安定したエラーコードを鍵として UI 側が行う。Problem Details では `type` の `urn:idmagic:error:` に続く部分がその鍵であり、UI は辞書に無いコードに出会ったとき、`detail` または `title` を英語のまま表示する。
 
+## Declared status codes
+
+operation は、自身のハンドラーと、その手前に立つ guard が書くステータスコードをすべて宣言する。[Wire bodies in the contract](#wire-bodies-in-the-contract) が本文について定める規則 —— 契約に書くのはサーバーが実際に返すものである —— を、ステータス行にも同じように及ぼす。宣言に無いコードが返れば呼び出し側は分岐を持てず、宣言にあって返らないコードは呼び出し側に到達しない分岐を書かせる。
+
+例外は 2 つある。どちらも「その operation の応答ではない」という同じ理由による。
+
+1 つは、共通のエラーハンドラーが、どのハンドラーも写像しなかったエラーに対して最後に書く 500 である。これはすべての operation で同じに出るうえ、呼び出し側が operation ごとに変えられる対応も無い。333 の operation に同じ 1 行を書いても、呼び出し側の分岐は 1 つも増えない。逆に、ハンドラーが固有のエラーコードを添えて自分で書く 5xx —— パスキーの依存先が使えないときの 503 `webauthn_unavailable` のような —— はその operation 固有の結果なので宣言する。
+
+もう 1 つは、テナント解決ミドルウェアが返す 404 `{"error": "tenant_not_found"}` である。これは routing の手前で返るので、どの operation の応答でもない。operation ごとに宣言すれば、その operation 自身が持つ 404 (資源が無い) と同じ行に 2 つの意味が乗り、呼び出し側はどちらなのかを本文から読み直すことになる。ミドルウェアが返すこの 1 つだけは、契約ではなくここに書く。宿主名から解決できないテナントへの要求は、経路にかかわらず 404 と `tenant_not_found` で返る。
+
+401 と 403 は、同じ guard の 2 つの分岐である。認証済みのセッションが無ければ 401 `authentication_required`、あっても権限が足りなければ 403 `access_denied` になる。したがって 403 を宣言する operation は 401 も宣言する。片方だけを宣言することは、呼び出し側に「サインインしていない」を「権限が無い」として扱わせることであり、再認証すれば通る要求を通らないものとして扱わせる。
+
+401 の本文は operation ごとに変わらないので、共有の応答モデルを 1 つ置いて参照する。[HTTP error responses](#http-error-responses) が定める 3 系統のエラー本文に対応して、汎用 API は `IdMagic.Contract.AuthenticationRequiredResponse` (Problem Details)、OAuth 2.0 / OIDC は `IdMagic.Contract.OAuthUnauthorizedResponse`、SCIM は `IdMagic.Contract.ScimUnauthorizedResponse` を参照する。403 が operation ごとのモデルを持つのは、その本文が operation ごとに違う (`AccessDeniedError` / `InsufficientScopeError` / `MfaEnrollmentNotAllowedError`) からであって、様式の統一のためではない。
+
+この節が定める一致は `mise run check-status-drift` が検査する。検査は operation ごとに、契約が宣言する集合と、ハンドラーおよび guard が書くコードを突き合わせる。エラー値から応答を決めるヘルパー (`WriteAccountError` のような写像) は辿らない。どの分岐に入るかはユースケースが返すエラーで決まり、ハンドラーの字面には現れないためである。辿れなかった operation は「合格」ではなく「読み残しあり」として数え、その件数を毎回の出力に書く。
+
 ## Interface stability and versioning
 
 管理 API とセルフサービスのアカウント API は外部契約である。外部インターフェースは TypeSpec の契約で 3 つに分類する。

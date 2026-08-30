@@ -13,11 +13,6 @@ model RegisterProvisioningConnectionHttpRequest {
   credential: IdMagic.Contract.ProvisioningCredentialInput;
 }
 
-model RegisterProvisioningConnectionSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.ProvisioningConnection;
-}
-
 union RegisterProvisioningConnectionError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -48,6 +43,11 @@ model RegisterProvisioningConnectionError403 {
   @body body: RegisterProvisioningConnectionError403Body;
 }
 
+model RegisterProvisioningConnectionSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.ProvisioningConnection;
+}
+
 @doc("An administrator registers a new ProvisioningConnection on an Application. The attribute mappings are seeded automatically with the SCIM core User defaults.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("RegisterProvisioningConnection")
@@ -56,7 +56,7 @@ model RegisterProvisioningConnectionError403 {
 op RegisterProvisioningConnection(
   @path id: string,
   @body body: RegisterProvisioningConnectionHttpRequest
-): RegisterProvisioningConnectionSuccess_200 | RegisterProvisioningConnectionError400 | RegisterProvisioningConnectionError409 | RegisterProvisioningConnectionError403;
+): RegisterProvisioningConnectionSuccess_201 | RegisterProvisioningConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterProvisioningConnectionError409 | RegisterProvisioningConnectionError403;
 
 model GetProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
@@ -90,7 +90,7 @@ model GetProvisioningConnectionError403 {
 @get
 op GetProvisioningConnection(
   @path id: string
-): GetProvisioningConnectionSuccess_200 | GetProvisioningConnectionError404 | GetProvisioningConnectionError403;
+): GetProvisioningConnectionSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetProvisioningConnectionError404 | GetProvisioningConnectionError403;
 
 model UpdateProvisioningConnectionHttpRequest {
   base_url?: url;
@@ -151,11 +151,7 @@ model UpdateProvisioningConnectionError403 {
 op UpdateProvisioningConnection(
   @path id: string,
   @body body: UpdateProvisioningConnectionHttpRequest
-): UpdateProvisioningConnectionSuccess_200 | UpdateProvisioningConnectionError400 | UpdateProvisioningConnectionError404 | UpdateProvisioningConnectionError403;
-
-model DeleteProvisioningConnectionSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): UpdateProvisioningConnectionSuccess_200 | UpdateProvisioningConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateProvisioningConnectionError404 | UpdateProvisioningConnectionError403;
 
 union DeleteProvisioningConnectionError404Body {
   IdMagic.Contract.ProvisioningConnectionNotFoundError,
@@ -177,6 +173,10 @@ model DeleteProvisioningConnectionError403 {
   @body body: DeleteProvisioningConnectionError403Body;
 }
 
+model DeleteProvisioningConnectionSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("An administrator deletes a ProvisioningConnection outright. The RemoteResourceLinks and ProvisioningDeliveries already recorded are kept as history.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("DeleteProvisioningConnection")
@@ -184,7 +184,7 @@ model DeleteProvisioningConnectionError403 {
 @delete
 op DeleteProvisioningConnection(
   @path id: string
-): DeleteProvisioningConnectionSuccess_200 | DeleteProvisioningConnectionError404 | DeleteProvisioningConnectionError403;
+): DeleteProvisioningConnectionSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteProvisioningConnectionError404 | DeleteProvisioningConnectionError403;
 
 model TestProvisioningConnectionHttpResponse {
   reachable: boolean;
@@ -223,16 +223,11 @@ model TestProvisioningConnectionError403 {
 @route("/api/admin/v1/applications/{id}/provisioning/test")
 @post
 op TestProvisioningConnection(
-  @path id: string,): TestProvisioningConnectionSuccess_200 | TestProvisioningConnectionError404 | TestProvisioningConnectionError403;
+  @path id: string,): TestProvisioningConnectionSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | TestProvisioningConnectionError404 | TestProvisioningConnectionError403;
 
 model ProvisionOnDemandHttpRequest {
   subject_type: IdMagic.Contract.ProvisioningSourceType;
   subject_id: string;
-}
-
-model ProvisionOnDemandSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.ProvisioningDelivery;
 }
 
 union ProvisionOnDemandError404Body {
@@ -265,6 +260,21 @@ model ProvisionOnDemandError403 {
   @body body: ProvisionOnDemandError403Body;
 }
 
+model ProvisionOnDemandSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.ProvisioningDelivery;
+}
+
+union ProvisionOnDemandError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ProvisionOnDemandError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ProvisionOnDemandError400Body;
+}
+
 @doc("An administrator creates a ProvisioningDelivery that delivers one named subject immediately, as a trial.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ProvisionOnDemand")
@@ -273,7 +283,7 @@ model ProvisionOnDemandError403 {
 op ProvisionOnDemand(
   @path id: string,
   @body body: ProvisionOnDemandHttpRequest
-): ProvisionOnDemandSuccess_200 | ProvisionOnDemandError404 | ProvisionOnDemandError422 | ProvisionOnDemandError403;
+): ProvisionOnDemandSuccess_201 | ProvisionOnDemandError400 | IdMagic.Contract.AuthenticationRequiredResponse | ProvisionOnDemandError404 | ProvisionOnDemandError422 | ProvisionOnDemandError403;
 
 model StartFullResyncHttpResponse {
   enqueued_count: int64;
@@ -310,7 +320,7 @@ model StartFullResyncError403 {
 @route("/api/admin/v1/applications/{id}/provisioning/full-resync")
 @post
 op StartFullResync(
-  @path id: string,): StartFullResyncSuccess_200 | StartFullResyncError404 | StartFullResyncError403;
+  @path id: string,): StartFullResyncSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | StartFullResyncError404 | StartFullResyncError403;
 
 model ListProvisioningDeliveriesHttpResponse {
   deliveries: IdMagic.Contract.ProvisioningDelivery[];
@@ -387,7 +397,7 @@ model GetProvisioningDeliveryError403 {
 op GetProvisioningDelivery(
   @path id: string,
   @path delivery_id: string
-): GetProvisioningDeliverySuccess_200 | GetProvisioningDeliveryError404 | GetProvisioningDeliveryError403;
+): GetProvisioningDeliverySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetProvisioningDeliveryError404 | GetProvisioningDeliveryError403;
 
 model RetryProvisioningDeliverySuccess_200 {
   @statusCode statusCode: 200;
@@ -431,7 +441,7 @@ model RetryProvisioningDeliveryError403 {
 @post
 op RetryProvisioningDelivery(
   @path id: string,
-  @path delivery_id: string,): RetryProvisioningDeliverySuccess_200 | RetryProvisioningDeliveryError404 | RetryProvisioningDeliveryError409 | RetryProvisioningDeliveryError403;
+  @path delivery_id: string,): RetryProvisioningDeliverySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RetryProvisioningDeliveryError404 | RetryProvisioningDeliveryError409 | RetryProvisioningDeliveryError403;
 
 model ResumeProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
@@ -464,7 +474,7 @@ model ResumeProvisioningConnectionError403 {
 @route("/api/admin/v1/applications/{id}/provisioning/resume")
 @post
 op ResumeProvisioningConnection(
-  @path id: string,): ResumeProvisioningConnectionSuccess_200 | ResumeProvisioningConnectionError404 | ResumeProvisioningConnectionError403;
+  @path id: string,): ResumeProvisioningConnectionSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ResumeProvisioningConnectionError404 | ResumeProvisioningConnectionError403;
 
 model ListTenantProvisioningConnectionsHttpResponse {
   connections: IdMagic.Contract.ProvisioningConnection[];
@@ -492,7 +502,7 @@ model ListTenantProvisioningConnectionsError403 {
 @get
 op ListTenantProvisioningConnections(
 
-): ListTenantProvisioningConnectionsSuccess_200 | ListTenantProvisioningConnectionsError403;
+): ListTenantProvisioningConnectionsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantProvisioningConnectionsError403;
 }
 
 }

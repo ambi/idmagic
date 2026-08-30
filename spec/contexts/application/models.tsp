@@ -723,4 +723,12 @@ model CategoryNameRequiredError is ProblemDetails;
 @doc("A `category_id` assigned to an Application does not exist among the ApplicationCategory records of its tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:unknown_category`.")
 model UnknownCategoryError is ProblemDetails;
 
+
+@doc("The icon image named by the request does not exist. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
+model ApplicationIconNotFoundError is ProblemDetails;
+
+
+@doc("The protocol record the Application's binding points at -- the OAuth 2.0 client, the SAML service provider, or the WS-Federation relying party -- does not exist. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
+model ApplicationProtocolTargetNotFoundError is ProblemDetails;
+
 }

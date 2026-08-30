@@ -1865,4 +1865,20 @@ model ClientRegistrationResponse {
   tls_client_auth_subject_dn?: string;
 }
 
+
+@doc("The `authorization_details` type named by the request is not registered in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:type_not_found`.")
+model AuthorizationDetailTypeNotFoundError is ProblemDetails;
+
+
+@doc("An `authorization_details` type of the same name is already registered in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:type_exists`.")
+model AuthorizationDetailTypeExistsError is ProblemDetails;
+
+
+@doc("The MCP resource server named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:resource_server_not_found`.")
+model McpResourceServerNotFoundError is ProblemDetails;
+
+
+@doc("The same `resource` is already registered as an MCP resource server in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:resource_exists`.")
+model McpResourceServerExistsError is ProblemDetails;
+
 }

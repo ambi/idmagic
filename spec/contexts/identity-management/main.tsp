@@ -136,10 +136,6 @@ op UpdateUserProfile(
   @body body: IdMagic.Contract.AccountProfileUpdateRequest
 ): UpdateUserProfileSuccess_200 | UpdateUserProfileError400 | UpdateUserProfileError401 | UpdateUserProfileError403 | UpdateUserProfileError404 | UpdateUserProfileError422;
 
-model RequestEmailChangeSuccess_200 {
-  @statusCode statusCode: 200;
-}
-
 union RequestEmailChangeError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -171,13 +167,17 @@ model RequestEmailChangeError422 {
   @body body: RequestEmailChangeError422Body;
 }
 
+model RequestEmailChangeSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("An authenticated user raises a change of their own primary email (self-service). It only sends a one-time link to the\nnew address; `User.email` is left alone. The target is fixed to `subject.id`, and an address already in use inside the\ntenant is refused.\nThe wording of the confirmation message is resolved from the Tenancy notification template catalogue\n(`template_key=EmailChangeConfirmation`), and the locale is decided in the order: the recipient User's locale attribute,\nthe tenant's `default_locale`, the system default locale. A tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the confirmation link is built from the issuer URL of the request.")
 @TypeSpec.OpenAPI.operationId("RequestEmailChange")
 @route("/api/account/v1/email/change_request")
 @post
 op RequestEmailChange(
   @body body: IdMagic.Contract.AccountEmailChangeRequest
-): RequestEmailChangeSuccess_200 | RequestEmailChangeError400 | RequestEmailChangeError403 | RequestEmailChangeError422;
+): RequestEmailChangeSuccess_204 | RequestEmailChangeError400 | RequestEmailChangeError403 | RequestEmailChangeError422;
 
 model ConfirmEmailChangeHttpResponse {
   @doc("Always `ok`.")
@@ -199,6 +199,16 @@ model ConfirmEmailChangeError400 {
   @body body: ConfirmEmailChangeError400Body;
 }
 
+union ConfirmEmailChangeError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ConfirmEmailChangeError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ConfirmEmailChangeError403Body;
+}
+
 @doc("Consumes the one-time link sent to the new address and settles the primary email.\nThe token is itself the proof that the new address is owned, so no authenticated session is required. Possession of the\ntoken is the ground of authorization -- this is token-possession-authenticated rather than a self-service session -- so\nthe AuthenticatedSelf and session-based access classification does not apply. On settling, `email_verified` becomes true\nand a `verify_email` required action, if there is one, is cleared automatically.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ConfirmEmailChange")
@@ -206,7 +216,7 @@ model ConfirmEmailChangeError400 {
 @post
 op ConfirmEmailChange(
   @body body: IdMagic.Contract.AccountEmailChangeConfirm
-): ConfirmEmailChangeSuccess_200 | ConfirmEmailChangeError400;
+): ConfirmEmailChangeSuccess_200 | ConfirmEmailChangeError400 | ConfirmEmailChangeError403;
 
 model ExportAccountDataSuccess_200 {
   @statusCode statusCode: 200;
@@ -266,21 +276,11 @@ op ListAdminUsers(
   @query status?: IdMagic.Contract.UserStatus,
   @query cursor?: string,
   @query limit?: int64
-): ListAdminUsersSuccess_200 | ListAdminUsersError403 | ListAdminUsersError400;
+): ListAdminUsersSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminUsersError403 | ListAdminUsersError400;
 
 model GetAdminUserSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminUserResponse;
-}
-
-union GetAdminUserError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model GetAdminUserError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminUserError400Body;
 }
 
 union GetAdminUserError403Body {
@@ -293,6 +293,16 @@ model GetAdminUserError403 {
   @body body: GetAdminUserError403Body;
 }
 
+union GetAdminUserError404Body {
+  IdMagic.Contract.UserNotFoundError,
+}
+
+model GetAdminUserError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminUserError404Body;
+}
+
 @doc("An administrator reads a user by id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminUser")
@@ -300,7 +310,7 @@ model GetAdminUserError403 {
 @get
 op GetAdminUser(
   @path user_id: string
-): GetAdminUserSuccess_200 | GetAdminUserError400 | GetAdminUserError403;
+): GetAdminUserSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminUserError403 | GetAdminUserError404;
 
 model CreateAdminUserSuccess_201 {
   @statusCode statusCode: 201;
@@ -345,7 +355,7 @@ model CreateAdminUserError422 {
 @post
 op CreateAdminUser(
   @body body: IdMagic.Contract.AdminUserCreateRequest
-): CreateAdminUserSuccess_201 | CreateAdminUserError400 | CreateAdminUserError403 | CreateAdminUserError422;
+): CreateAdminUserSuccess_201 | CreateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminUserError403 | CreateAdminUserError422;
 
 model ImportAdminUsersSuccess_202 {
   @statusCode statusCode: 202;
@@ -372,6 +382,16 @@ model ImportAdminUsersError403 {
   @body body: ImportAdminUsersError403Body;
 }
 
+union ImportAdminUsersError503Body {
+  IdMagic.Contract.UserImportUnavailableError,
+}
+
+model ImportAdminUsersError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminUsersError503Body;
+}
+
 @doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with User export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminUsers")
@@ -381,7 +401,7 @@ op ImportAdminUsers(
   @header contentType: "text/csv",
   @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
   @body csv: string
-): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | ImportAdminUsersError403;
+): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminUsersError403 | ImportAdminUsersError503;
 
 model ApplyAdminUserImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -408,6 +428,16 @@ model ApplyAdminUserImportError403 {
   @body body: ApplyAdminUserImportError403Body;
 }
 
+union ApplyAdminUserImportError503Body {
+  IdMagic.Contract.UserImportUnavailableError,
+}
+
+model ApplyAdminUserImportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminUserImportError503Body;
+}
+
 @doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the profile, roles, required actions, and custom attributes of each row settle atomically as a single aggregate mutation.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminUserImport")
@@ -415,7 +445,7 @@ model ApplyAdminUserImportError403 {
 @post
 op ApplyAdminUserImport(
   @path preview_job_id: string
-): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | ApplyAdminUserImportError403;
+): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminUserImportError403 | ApplyAdminUserImportError503;
 
 model GetAdminUserImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -442,6 +472,26 @@ model GetAdminUserImportError403 {
   @body body: GetAdminUserImportError403Body;
 }
 
+union GetAdminUserImportError404Body {
+  IdMagic.Contract.UserImportNotFoundError,
+}
+
+model GetAdminUserImportError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminUserImportError404Body;
+}
+
+union GetAdminUserImportError503Body {
+  IdMagic.Contract.UserImportUnavailableError,
+}
+
+model GetAdminUserImportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminUserImportError503Body;
+}
+
 @doc("An administrator reads a CSV import job of the same tenant together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the result artifact metadata, and `error_total`.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("GetAdminUserImport")
@@ -451,7 +501,7 @@ op GetAdminUserImport(
   @path job_id: string,
   @query cursor?: string,
   @query limit?: int64
-): GetAdminUserImportSuccess_200 | GetAdminUserImportError400 | GetAdminUserImportError403;
+): GetAdminUserImportSuccess_200 | GetAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminUserImportError403 | GetAdminUserImportError404 | GetAdminUserImportError503;
 
 model StartUserCsvExportSuccess_202 {
   @statusCode statusCode: 202;
@@ -500,6 +550,16 @@ model StartUserCsvExportError429 {
   @body body: StartUserCsvExportError429Body;
 }
 
+union StartUserCsvExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model StartUserCsvExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: StartUserCsvExportError503Body;
+}
+
 @doc("An administrator starts a CSV export of the user list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels. The columns are confined to a subset of the built-in User allow list (13 core columns plus 27 built-in extension attributes as `attr:<key>`) and the `custom:<key>` tenant-defined attributes of the effective TenantUserAttributeSchema, and a status filter can be carried over. The generated payload uses the same UserCsvTransferPolicy and immutable artifact store as import, so a successful User export can be previewed without editing. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("StartUserCsvExport")
@@ -507,7 +567,7 @@ model StartUserCsvExportError429 {
 @post
 op StartUserCsvExport(
   @body body: IdMagic.Contract.DataExportRequest
-): StartUserCsvExportSuccess_202 | StartUserCsvExportError400 | StartUserCsvExportError403 | StartUserCsvExportError422 | StartUserCsvExportError429;
+): StartUserCsvExportSuccess_202 | StartUserCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartUserCsvExportError403 | StartUserCsvExportError422 | StartUserCsvExportError429 | StartUserCsvExportError503;
 
 model ListUserExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -528,6 +588,16 @@ model ListUserExportsError403 {
   @body body: ListUserExportsError403Body;
 }
 
+union ListUserExportsError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model ListUserExportsError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ListUserExportsError503Body;
+}
+
 @doc("An administrator lists the User exports with their state, counts, expiry, and whether they can be downloaded. Neither the CSV itself nor any PII value is included.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserExports")
@@ -535,7 +605,7 @@ model ListUserExportsError403 {
 @get
 op ListUserExports(
 
-): ListUserExportsSuccess_200 | ListUserExportsError403;
+): ListUserExportsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListUserExportsError403 | ListUserExportsError503;
 
 model GetUserExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -562,6 +632,16 @@ model GetUserExportError403 {
   @body body: GetUserExportError403Body;
 }
 
+union GetUserExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model GetUserExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetUserExportError503Body;
+}
+
 @doc("An administrator reads the state, progress, failure reason, and expiry of one User export.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetUserExport")
@@ -569,7 +649,7 @@ model GetUserExportError403 {
 @get
 op GetUserExport(
   @path export_id: string
-): GetUserExportSuccess_200 | GetUserExportError400 | GetUserExportError403;
+): GetUserExportSuccess_200 | GetUserExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetUserExportError403 | GetUserExportError503;
 
 model DownloadUserExportFileSuccess_200 {
   @statusCode statusCode: 200;
@@ -601,6 +681,16 @@ model DownloadUserExportFileError403 {
   @body body: DownloadUserExportFileError403Body;
 }
 
+union DownloadUserExportFileError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model DownloadUserExportFileError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: DownloadUserExportFileError503Body;
+}
+
 @doc("An administrator downloads a finished User export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("DownloadUserExportFile")
@@ -608,7 +698,7 @@ model DownloadUserExportFileError403 {
 @get
 op DownloadUserExportFile(
   @path export_id: string
-): DownloadUserExportFileSuccess_200 | DownloadUserExportFileError400 | DownloadUserExportFileError403;
+): DownloadUserExportFileSuccess_200 | DownloadUserExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadUserExportFileError403 | DownloadUserExportFileError503;
 
 model CancelUserExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -635,13 +725,23 @@ model CancelUserExportError403 {
   @body body: CancelUserExportError403Body;
 }
 
+union CancelUserExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model CancelUserExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: CancelUserExportError503Body;
+}
+
 @doc("An administrator cancels a User export before it terminates. One that has already terminated is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("CancelUserExport")
 @route("/api/admin/v1/users/exports/{export_id}/cancel")
 @post
 op CancelUserExport(
-  @path export_id: string,): CancelUserExportSuccess_200 | CancelUserExportError400 | CancelUserExportError403;
+  @path export_id: string,): CancelUserExportSuccess_200 | CancelUserExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelUserExportError403 | CancelUserExportError503;
 
 model StartGroupCsvExportSuccess_202 {
   @statusCode statusCode: 202;
@@ -690,6 +790,16 @@ model StartGroupCsvExportError429 {
   @body body: StartGroupCsvExportError429Body;
 }
 
+union StartGroupCsvExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model StartGroupCsvExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: StartGroupCsvExportError503Body;
+}
+
 @doc("An administrator starts a CSV export of the group list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels, and the columns are confined to a subset of the Group allow list: the built-in import-compatible columns plus the `custom:<key>` tenant-defined attributes of the TenantGroupAttributeSchema. The generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful Group export can be previewed without editing; `lifecycle_action` is written empty on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupCsvExport")
@@ -697,7 +807,7 @@ model StartGroupCsvExportError429 {
 @post
 op StartGroupCsvExport(
   @body body: IdMagic.Contract.DataExportRequest
-): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | StartGroupCsvExportError403 | StartGroupCsvExportError422 | StartGroupCsvExportError429;
+): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartGroupCsvExportError403 | StartGroupCsvExportError422 | StartGroupCsvExportError429 | StartGroupCsvExportError503;
 
 model ImportAdminGroupsSuccess_202 {
   @statusCode statusCode: 202;
@@ -724,6 +834,16 @@ model ImportAdminGroupsError403 {
   @body body: ImportAdminGroupsError403Body;
 }
 
+union ImportAdminGroupsError503Body {
+  IdMagic.Contract.GroupImportUnavailableError,
+}
+
+model ImportAdminGroupsError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminGroupsError503Body;
+}
+
 @doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with Group export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file. A row resolves its target by `id` first and by `name` second; `membership_type` may be chosen at creation but never changed afterwards, the two dynamic rule columns are validated as the final state they combine into, a `custom:<key>` cell is parsed in the canonical lexical form its declared type fixes, and a Group an external source owns is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminGroups")
@@ -733,7 +853,7 @@ op ImportAdminGroups(
   @header contentType: "text/csv",
   @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
   @body csv: string
-): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | ImportAdminGroupsError403;
+): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupsError403 | ImportAdminGroupsError503;
 
 model ApplyAdminGroupImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -760,6 +880,16 @@ model ApplyAdminGroupImportError403 {
   @body body: ApplyAdminGroupImportError403Body;
 }
 
+union ApplyAdminGroupImportError503Body {
+  IdMagic.Contract.GroupImportUnavailableError,
+}
+
+model ApplyAdminGroupImportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupImportError503Body;
+}
+
 @doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the name, description, contact address, roles, custom attributes, and dynamic rule of each row settle atomically as a single aggregate mutation. A row that carries `lifecycle_action=delete` deletes the Group, releases every membership in it by cascade, and writes its audit record in that same transaction; the deletion is irreversible, so a Group the CSV does not name is never deleted.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupImport")
@@ -767,7 +897,7 @@ model ApplyAdminGroupImportError403 {
 @post
 op ApplyAdminGroupImport(
   @path preview_job_id: string
-): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | ApplyAdminGroupImportError403;
+): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupImportError403 | ApplyAdminGroupImportError503;
 
 model GetAdminGroupImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -794,6 +924,26 @@ model GetAdminGroupImportError403 {
   @body body: GetAdminGroupImportError403Body;
 }
 
+union GetAdminGroupImportError404Body {
+  IdMagic.Contract.GroupImportNotFoundError,
+}
+
+model GetAdminGroupImportError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupImportError404Body;
+}
+
+union GetAdminGroupImportError503Body {
+  IdMagic.Contract.GroupImportUnavailableError,
+}
+
+model GetAdminGroupImportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupImportError503Body;
+}
+
 @doc("An administrator reads a CSV group import job of the same tenant together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the deletion counts kept apart from them, the result artifact metadata, and `error_total`.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminGroupImport")
@@ -803,7 +953,7 @@ op GetAdminGroupImport(
   @path job_id: string,
   @query cursor?: string,
   @query limit?: int64
-): GetAdminGroupImportSuccess_200 | GetAdminGroupImportError400 | GetAdminGroupImportError403;
+): GetAdminGroupImportSuccess_200 | GetAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupImportError403 | GetAdminGroupImportError404 | GetAdminGroupImportError503;
 
 model ListGroupExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -824,6 +974,16 @@ model ListGroupExportsError403 {
   @body body: ListGroupExportsError403Body;
 }
 
+union ListGroupExportsError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model ListGroupExportsError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ListGroupExportsError503Body;
+}
+
 @doc("An administrator lists the Group exports with their state, counts, expiry, and whether they can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupExports")
@@ -831,7 +991,7 @@ model ListGroupExportsError403 {
 @get
 op ListGroupExports(
 
-): ListGroupExportsSuccess_200 | ListGroupExportsError403;
+): ListGroupExportsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListGroupExportsError403 | ListGroupExportsError503;
 
 model GetGroupExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -858,6 +1018,16 @@ model GetGroupExportError403 {
   @body body: GetGroupExportError403Body;
 }
 
+union GetGroupExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model GetGroupExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetGroupExportError503Body;
+}
+
 @doc("An administrator reads the state, progress, failure reason, and expiry of one Group export.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupExport")
@@ -865,7 +1035,7 @@ model GetGroupExportError403 {
 @get
 op GetGroupExport(
   @path export_id: string
-): GetGroupExportSuccess_200 | GetGroupExportError400 | GetGroupExportError403;
+): GetGroupExportSuccess_200 | GetGroupExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupExportError403 | GetGroupExportError503;
 
 model DownloadGroupExportFileSuccess_200 {
   @statusCode statusCode: 200;
@@ -897,6 +1067,16 @@ model DownloadGroupExportFileError403 {
   @body body: DownloadGroupExportFileError403Body;
 }
 
+union DownloadGroupExportFileError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model DownloadGroupExportFileError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: DownloadGroupExportFileError503Body;
+}
+
 @doc("An administrator downloads a finished Group export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupExportFile")
@@ -904,7 +1084,7 @@ model DownloadGroupExportFileError403 {
 @get
 op DownloadGroupExportFile(
   @path export_id: string
-): DownloadGroupExportFileSuccess_200 | DownloadGroupExportFileError400 | DownloadGroupExportFileError403;
+): DownloadGroupExportFileSuccess_200 | DownloadGroupExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadGroupExportFileError403 | DownloadGroupExportFileError503;
 
 model CancelGroupExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -931,13 +1111,23 @@ model CancelGroupExportError403 {
   @body body: CancelGroupExportError403Body;
 }
 
+union CancelGroupExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model CancelGroupExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: CancelGroupExportError503Body;
+}
+
 @doc("An administrator cancels a Group export before it terminates. One that has already terminated is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}/cancel")
 @post
 op CancelGroupExport(
-  @path export_id: string,): CancelGroupExportSuccess_200 | CancelGroupExportError400 | CancelGroupExportError403;
+  @path export_id: string,): CancelGroupExportSuccess_200 | CancelGroupExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupExportError403 | CancelGroupExportError503;
 
 model StartGroupMemberCsvExportSuccess_202 {
   @statusCode statusCode: 202;
@@ -986,6 +1176,16 @@ model StartGroupMemberCsvExportError429 {
   @body body: StartGroupMemberCsvExportError429Body;
 }
 
+union StartGroupMemberCsvExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model StartGroupMemberCsvExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: StartGroupMemberCsvExportError503Body;
+}
+
 @doc("An administrator starts a CSV export of the members of one Group. The `group_id` comes from the path and only that group's members are exported, the same per-group shape Entra, Okta, and Google use. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupMemberCsvExport")
@@ -994,7 +1194,7 @@ model StartGroupMemberCsvExportError429 {
 op StartGroupMemberCsvExport(
   @path group_id: string,
   @body body: IdMagic.Contract.DataExportRequest
-): StartGroupMemberCsvExportSuccess_202 | StartGroupMemberCsvExportError400 | StartGroupMemberCsvExportError403 | StartGroupMemberCsvExportError422 | StartGroupMemberCsvExportError429;
+): StartGroupMemberCsvExportSuccess_202 | StartGroupMemberCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartGroupMemberCsvExportError403 | StartGroupMemberCsvExportError422 | StartGroupMemberCsvExportError429 | StartGroupMemberCsvExportError503;
 
 model ListGroupMemberExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -1015,6 +1215,16 @@ model ListGroupMemberExportsError403 {
   @body body: ListGroupMemberExportsError403Body;
 }
 
+union ListGroupMemberExportsError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model ListGroupMemberExportsError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ListGroupMemberExportsError503Body;
+}
+
 @doc("An administrator lists the member exports of one Group.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupMemberExports")
@@ -1022,7 +1232,7 @@ model ListGroupMemberExportsError403 {
 @get
 op ListGroupMemberExports(
   @path group_id: string
-): ListGroupMemberExportsSuccess_200 | ListGroupMemberExportsError403;
+): ListGroupMemberExportsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListGroupMemberExportsError403 | ListGroupMemberExportsError503;
 
 model GetGroupMemberExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -1049,6 +1259,16 @@ model GetGroupMemberExportError403 {
   @body body: GetGroupMemberExportError403Body;
 }
 
+union GetGroupMemberExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model GetGroupMemberExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetGroupMemberExportError503Body;
+}
+
 @doc("An administrator reads the state of one member export of a Group. An export id belonging to another group does not resolve.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupMemberExport")
@@ -1057,7 +1277,7 @@ model GetGroupMemberExportError403 {
 op GetGroupMemberExport(
   @path group_id: string,
   @path export_id: string
-): GetGroupMemberExportSuccess_200 | GetGroupMemberExportError400 | GetGroupMemberExportError403;
+): GetGroupMemberExportSuccess_200 | GetGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupMemberExportError403 | GetGroupMemberExportError503;
 
 model DownloadGroupMemberExportFileSuccess_200 {
   @statusCode statusCode: 200;
@@ -1089,6 +1309,16 @@ model DownloadGroupMemberExportFileError403 {
   @body body: DownloadGroupMemberExportFileError403Body;
 }
 
+union DownloadGroupMemberExportFileError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model DownloadGroupMemberExportFileError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: DownloadGroupMemberExportFileError503Body;
+}
+
 @doc("An administrator downloads a finished member export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupMemberExportFile")
@@ -1097,7 +1327,7 @@ model DownloadGroupMemberExportFileError403 {
 op DownloadGroupMemberExportFile(
   @path group_id: string,
   @path export_id: string
-): DownloadGroupMemberExportFileSuccess_200 | DownloadGroupMemberExportFileError400 | DownloadGroupMemberExportFileError403;
+): DownloadGroupMemberExportFileSuccess_200 | DownloadGroupMemberExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadGroupMemberExportFileError403 | DownloadGroupMemberExportFileError503;
 
 model CancelGroupMemberExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -1124,6 +1354,16 @@ model CancelGroupMemberExportError403 {
   @body body: CancelGroupMemberExportError403Body;
 }
 
+union CancelGroupMemberExportError503Body {
+  IdMagic.Contract.JobsUnavailableError,
+}
+
+model CancelGroupMemberExportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: CancelGroupMemberExportError503Body;
+}
+
 @doc("An administrator cancels a member export before it terminates. One that has already terminated is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupMemberExport")
@@ -1131,7 +1371,7 @@ model CancelGroupMemberExportError403 {
 @post
 op CancelGroupMemberExport(
   @path group_id: string,
-  @path export_id: string,): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | CancelGroupMemberExportError403;
+  @path export_id: string,): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupMemberExportError403 | CancelGroupMemberExportError503;
 
 model UpdateAdminUserSuccess_200 {
   @statusCode statusCode: 200;
@@ -1177,7 +1417,7 @@ model UpdateAdminUserError422 {
 op UpdateAdminUser(
   @path user_id: string,
   @body body: IdMagic.Contract.AdminUserUpdateRequest
-): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | UpdateAdminUserError403 | UpdateAdminUserError422;
+): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminUserError403 | UpdateAdminUserError422;
 
 model DisableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -1219,7 +1459,7 @@ model DisableAdminUserError422 {
 @route("/api/admin/v1/users/{user_id}/disable")
 @post
 op DisableAdminUser(
-  @path user_id: string,): DisableAdminUserSuccess_204 | DisableAdminUserError400 | DisableAdminUserError403 | DisableAdminUserError422;
+  @path user_id: string,): DisableAdminUserSuccess_204 | DisableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableAdminUserError403 | DisableAdminUserError422;
 
 model EnableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -1251,7 +1491,7 @@ model EnableAdminUserError403 {
 @route("/api/admin/v1/users/{user_id}/enable")
 @post
 op EnableAdminUser(
-  @path user_id: string,): EnableAdminUserSuccess_204 | EnableAdminUserError400 | EnableAdminUserError403;
+  @path user_id: string,): EnableAdminUserSuccess_204 | EnableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableAdminUserError403;
 
 model DeleteAdminUserHttpRequest {
   @doc("Same meaning as `?purge=true`: skip the soft delete and anonymize immediately. Omitted means a soft delete.")
@@ -1304,7 +1544,7 @@ op DeleteAdminUser(
   @doc("`true` skips the soft delete and anonymizes immediately, the same as `force` in the body. The body itself is optional.")
   @query purge?: boolean,
   @body body: DeleteAdminUserHttpRequest
-): DeleteAdminUserSuccess_204 | DeleteAdminUserError400 | DeleteAdminUserError403 | DeleteAdminUserError422;
+): DeleteAdminUserSuccess_204 | DeleteAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminUserError403 | DeleteAdminUserError422;
 
 model RestoreAdminUserSuccess_200 {
   @statusCode statusCode: 200;
@@ -1348,7 +1588,7 @@ model RestoreAdminUserError409 {
 @route("/api/admin/v1/users/{user_id}/restore")
 @post
 op RestoreAdminUser(
-  @path user_id: string,): RestoreAdminUserSuccess_200 | RestoreAdminUserError400 | RestoreAdminUserError403 | RestoreAdminUserError409;
+  @path user_id: string,): RestoreAdminUserSuccess_200 | RestoreAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | RestoreAdminUserError403 | RestoreAdminUserError409;
 
 model SetUserRequiredActionSuccess_200 {
   @statusCode statusCode: 200;
@@ -1393,7 +1633,7 @@ model SetUserRequiredActionError422 {
 op SetUserRequiredAction(
   @path user_id: string,
   @body body: IdMagic.Contract.AdminRequiredActionRequest
-): SetUserRequiredActionSuccess_200 | SetUserRequiredActionError400 | SetUserRequiredActionError403 | SetUserRequiredActionError422;
+): SetUserRequiredActionSuccess_200 | SetUserRequiredActionError400 | IdMagic.Contract.AuthenticationRequiredResponse | SetUserRequiredActionError403 | SetUserRequiredActionError422;
 
 model ClearUserRequiredActionSuccess_200 {
   @statusCode statusCode: 200;
@@ -1428,7 +1668,7 @@ model ClearUserRequiredActionError403 {
 op ClearUserRequiredAction(
   @path user_id: string,
   @path action: string
-): ClearUserRequiredActionSuccess_200 | ClearUserRequiredActionError400 | ClearUserRequiredActionError403;
+): ClearUserRequiredActionSuccess_200 | ClearUserRequiredActionError400 | IdMagic.Contract.AuthenticationRequiredResponse | ClearUserRequiredActionError403;
 
 model ListGroupsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1463,7 +1703,7 @@ model ListGroupsError400 {
 op ListGroups(
   @query cursor?: string,
   @query limit?: int64
-): ListGroupsSuccess_200 | ListGroupsError403 | ListGroupsError400;
+): ListGroupsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListGroupsError403 | ListGroupsError400;
 
 model GetGroupHttpResponse {
   group: IdMagic.Contract.GroupSummaryResponse;
@@ -1502,7 +1742,7 @@ model GetGroupError403 {
 @get
 op GetGroup(
   @path group_id: string
-): GetGroupSuccess_200 | GetGroupError400 | GetGroupError403;
+): GetGroupSuccess_200 | GetGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupError403;
 
 model CreateGroupSuccess_201 {
   @statusCode statusCode: 201;
@@ -1551,7 +1791,7 @@ model CreateGroupError422 {
 @post
 op CreateGroup(
   @body body: IdMagic.Contract.GroupCreateRequest
-): CreateGroupSuccess_201 | CreateGroupError400 | CreateGroupError403 | CreateGroupError422;
+): CreateGroupSuccess_201 | CreateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateGroupError403 | CreateGroupError422;
 
 model UpdateGroupSuccess_200 {
   @statusCode statusCode: 200;
@@ -1599,7 +1839,7 @@ model UpdateGroupError422 {
 op UpdateGroup(
   @path group_id: string,
   @body body: IdMagic.Contract.GroupUpdateRequest
-): UpdateGroupSuccess_200 | UpdateGroupError400 | UpdateGroupError403 | UpdateGroupError422;
+): UpdateGroupSuccess_200 | UpdateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateGroupError403 | UpdateGroupError422;
 
 model DeleteGroupSuccess_204 {
   @statusCode statusCode: 204;
@@ -1632,7 +1872,7 @@ model DeleteGroupError403 {
 @delete
 op DeleteGroup(
   @path group_id: string
-): DeleteGroupSuccess_204 | DeleteGroupError400 | DeleteGroupError403;
+): DeleteGroupSuccess_204 | DeleteGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteGroupError403;
 
 model AddGroupMemberSuccess_204 {
   @statusCode statusCode: 204;
@@ -1666,7 +1906,7 @@ model AddGroupMemberError403 {
 op AddGroupMember(
   @path group_id: string,
   @path user_id: string
-): AddGroupMemberSuccess_204 | AddGroupMemberError400 | AddGroupMemberError403;
+): AddGroupMemberSuccess_204 | AddGroupMemberError400 | IdMagic.Contract.AuthenticationRequiredResponse | AddGroupMemberError403;
 
 model RemoveGroupMemberSuccess_204 {
   @statusCode statusCode: 204;
@@ -1700,7 +1940,7 @@ model RemoveGroupMemberError403 {
 op RemoveGroupMember(
   @path group_id: string,
   @path user_id: string
-): RemoveGroupMemberSuccess_204 | RemoveGroupMemberError400 | RemoveGroupMemberError403;
+): RemoveGroupMemberSuccess_204 | RemoveGroupMemberError400 | IdMagic.Contract.AuthenticationRequiredResponse | RemoveGroupMemberError403;
 
 model UpdateDynamicGroupRuleSuccess_200 {
   @statusCode statusCode: 200;
@@ -1745,7 +1985,7 @@ model UpdateDynamicGroupRuleError422 {
 op UpdateDynamicGroupRule(
   @path group_id: string,
   @body body: IdMagic.Contract.DynamicGroupRuleRequest
-): UpdateDynamicGroupRuleSuccess_200 | UpdateDynamicGroupRuleError400 | UpdateDynamicGroupRuleError403 | UpdateDynamicGroupRuleError422;
+): UpdateDynamicGroupRuleSuccess_200 | UpdateDynamicGroupRuleError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateDynamicGroupRuleError403 | UpdateDynamicGroupRuleError422;
 
 model PreviewDynamicGroupRuleHttpResponse {
   results: IdMagic.Contract.DynamicGroupPreviewResult[];
@@ -1794,7 +2034,7 @@ model PreviewDynamicGroupRuleError422 {
 op PreviewDynamicGroupRule(
   @path group_id: string,
   @body body: IdMagic.Contract.DynamicGroupPreviewRequest
-): PreviewDynamicGroupRuleSuccess_200 | PreviewDynamicGroupRuleError400 | PreviewDynamicGroupRuleError403 | PreviewDynamicGroupRuleError422;
+): PreviewDynamicGroupRuleSuccess_200 | PreviewDynamicGroupRuleError400 | IdMagic.Contract.AuthenticationRequiredResponse | PreviewDynamicGroupRuleError403 | PreviewDynamicGroupRuleError422;
 
 model EnableDynamicGroupRuleSuccess_200 {
   @statusCode statusCode: 200;
@@ -1827,7 +2067,7 @@ model EnableDynamicGroupRuleError403 {
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/enable")
 @post
 op EnableDynamicGroupRule(
-  @path group_id: string,): EnableDynamicGroupRuleSuccess_200 | EnableDynamicGroupRuleError400 | EnableDynamicGroupRuleError403;
+  @path group_id: string,): EnableDynamicGroupRuleSuccess_200 | EnableDynamicGroupRuleError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableDynamicGroupRuleError403;
 
 model DisableDynamicGroupRuleSuccess_200 {
   @statusCode statusCode: 200;
@@ -1860,7 +2100,7 @@ model DisableDynamicGroupRuleError403 {
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/disable")
 @post
 op DisableDynamicGroupRule(
-  @path group_id: string,): DisableDynamicGroupRuleSuccess_200 | DisableDynamicGroupRuleError400 | DisableDynamicGroupRuleError403;
+  @path group_id: string,): DisableDynamicGroupRuleSuccess_200 | DisableDynamicGroupRuleError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableDynamicGroupRuleError403;
 
 model ListUserGroupsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1894,7 +2134,7 @@ model ListUserGroupsError403 {
 @get
 op ListUserGroups(
   @path user_id: string
-): ListUserGroupsSuccess_200 | ListUserGroupsError400 | ListUserGroupsError403;
+): ListUserGroupsSuccess_200 | ListUserGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListUserGroupsError403;
 
 model ListAgentsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1929,7 +2169,7 @@ model ListAgentsError400 {
 op ListAgents(
   @query cursor?: string,
   @query limit?: int64
-): ListAgentsSuccess_200 | ListAgentsError403 | ListAgentsError400;
+): ListAgentsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentsError403 | ListAgentsError400;
 
 model GetAgentSuccess_200 {
   @statusCode statusCode: 200;
@@ -1963,7 +2203,7 @@ model GetAgentError403 {
 @get
 op GetAgent(
   @path agent_id: string
-): GetAgentSuccess_200 | GetAgentError400 | GetAgentError403;
+): GetAgentSuccess_200 | GetAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAgentError403;
 
 model RegisterAgentSuccess_201 {
   @statusCode statusCode: 201;
@@ -2013,7 +2253,7 @@ model RegisterAgentError422 {
 @post
 op RegisterAgent(
   @body body: IdMagic.Contract.AgentRegisterRequest
-): RegisterAgentSuccess_201 | RegisterAgentError400 | RegisterAgentError403 | RegisterAgentError422;
+): RegisterAgentSuccess_201 | RegisterAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterAgentError403 | RegisterAgentError422;
 
 model UpdateAgentSuccess_200 {
   @statusCode statusCode: 200;
@@ -2062,7 +2302,7 @@ model UpdateAgentError422 {
 op UpdateAgent(
   @path agent_id: string,
   @body body: IdMagic.Contract.AgentUpdateRequest
-): UpdateAgentSuccess_200 | UpdateAgentError400 | UpdateAgentError403 | UpdateAgentError422;
+): UpdateAgentSuccess_200 | UpdateAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAgentError403 | UpdateAgentError422;
 
 model DisableAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2225,7 +2465,7 @@ model BindAgentCredentialError403 {
 op BindAgentCredential(
   @path agent_id: string,
   @body body: IdMagic.Contract.AgentCredentialBindRequest
-): BindAgentCredentialSuccess_204 | BindAgentCredentialError400 | BindAgentCredentialError403;
+): BindAgentCredentialSuccess_204 | BindAgentCredentialError400 | IdMagic.Contract.AuthenticationRequiredResponse | BindAgentCredentialError403;
 
 model UnbindAgentCredentialSuccess_204 {
   @statusCode statusCode: 204;
@@ -2259,7 +2499,7 @@ model UnbindAgentCredentialError403 {
 op UnbindAgentCredential(
   @path agent_id: string,
   @path client_id: string
-): UnbindAgentCredentialSuccess_204 | UnbindAgentCredentialError400 | UnbindAgentCredentialError403;
+): UnbindAgentCredentialSuccess_204 | UnbindAgentCredentialError400 | IdMagic.Contract.AuthenticationRequiredResponse | UnbindAgentCredentialError403;
 }
 
 }

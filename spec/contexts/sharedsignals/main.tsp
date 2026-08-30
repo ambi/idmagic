@@ -34,7 +34,7 @@ model ListSsfStreamsError403 {
 @get
 op ListSsfStreams(
 
-): ListSsfStreamsSuccess_200 | ListSsfStreamsError403;
+): ListSsfStreamsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListSsfStreamsError403;
 
 model GetSsfStreamSuccess_200 {
   @statusCode statusCode: 200;
@@ -68,7 +68,7 @@ model GetSsfStreamError403 {
 @get
 op GetSsfStream(
   @path stream_id: string
-): GetSsfStreamSuccess_200 | GetSsfStreamError400 | GetSsfStreamError403;
+): GetSsfStreamSuccess_200 | GetSsfStreamError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetSsfStreamError403;
 
 model RegisterSsfTransmitterStreamSuccess_201 {
   @statusCode statusCode: 201;
@@ -116,7 +116,7 @@ model RegisterSsfTransmitterStreamError422 {
 @post
 op RegisterSsfTransmitterStream(
   @body body: IdMagic.Contract.SsfTransmitterStreamRegisterRequest
-): RegisterSsfTransmitterStreamSuccess_201 | RegisterSsfTransmitterStreamError400 | RegisterSsfTransmitterStreamError403 | RegisterSsfTransmitterStreamError422;
+): RegisterSsfTransmitterStreamSuccess_201 | RegisterSsfTransmitterStreamError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterSsfTransmitterStreamError403 | RegisterSsfTransmitterStreamError422;
 
 model RegisterSsfReceiverStreamSuccess_201 {
   @statusCode statusCode: 201;
@@ -165,7 +165,7 @@ model RegisterSsfReceiverStreamError422 {
 @post
 op RegisterSsfReceiverStream(
   @body body: IdMagic.Contract.SsfReceiverStreamRegisterRequest
-): RegisterSsfReceiverStreamSuccess_201 | RegisterSsfReceiverStreamError400 | RegisterSsfReceiverStreamError403 | RegisterSsfReceiverStreamError422;
+): RegisterSsfReceiverStreamSuccess_201 | RegisterSsfReceiverStreamError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterSsfReceiverStreamError403 | RegisterSsfReceiverStreamError422;
 
 model UpdateSsfStreamSuccess_200 {
   @statusCode statusCode: 200;
@@ -211,7 +211,7 @@ model UpdateSsfStreamError422 {
 op UpdateSsfStream(
   @path stream_id: string,
   @body body: IdMagic.Contract.SsfStreamUpdateRequest
-): UpdateSsfStreamSuccess_200 | UpdateSsfStreamError400 | UpdateSsfStreamError403 | UpdateSsfStreamError422;
+): UpdateSsfStreamSuccess_200 | UpdateSsfStreamError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateSsfStreamError403 | UpdateSsfStreamError422;
 
 model DisableSsfStreamSuccess_204 {
   @statusCode statusCode: 204;

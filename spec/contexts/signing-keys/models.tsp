@@ -154,4 +154,12 @@ model SigningKeyArchived {
   disposedAt: utcDateTime;
 }
 
+
+@doc("The signing key named by `kid` does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:key_not_found`.")
+model SigningKeyNotFoundError is ProblemDetails;
+
+
+@doc("The signing key store is not configured, so keys can neither be read nor rotated. RFC 9457 Problem Details with `type` = `urn:idmagic:error:key_store_unavailable`.")
+model KeyStoreUnavailableError is ProblemDetails;
+
 }

@@ -30,7 +30,7 @@ model ListLifecycleWorkflowsError403 {
 @get
 op ListLifecycleWorkflows(
 
-): ListLifecycleWorkflowsSuccess_200 | ListLifecycleWorkflowsError403;
+): ListLifecycleWorkflowsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListLifecycleWorkflowsError403;
 
 model CreateLifecycleWorkflowSuccess_201 {
   @statusCode statusCode: 201;
@@ -64,7 +64,7 @@ model CreateLifecycleWorkflowError403 {
 @post
 op CreateLifecycleWorkflow(
   @body body: IdMagic.Contract.LifecycleWorkflowCreateRequest
-): CreateLifecycleWorkflowSuccess_201 | CreateLifecycleWorkflowError400 | CreateLifecycleWorkflowError403;
+): CreateLifecycleWorkflowSuccess_201 | CreateLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateLifecycleWorkflowError403;
 
 model GetLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
@@ -98,7 +98,7 @@ model GetLifecycleWorkflowError403 {
 @get
 op GetLifecycleWorkflow(
   @path workflow_id: string
-): GetLifecycleWorkflowSuccess_200 | GetLifecycleWorkflowError400 | GetLifecycleWorkflowError403;
+): GetLifecycleWorkflowSuccess_200 | GetLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetLifecycleWorkflowError403;
 
 model UpdateLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
@@ -143,7 +143,7 @@ model UpdateLifecycleWorkflowError409 {
 op UpdateLifecycleWorkflow(
   @path workflow_id: string,
   @body body: IdMagic.Contract.LifecycleWorkflowUpdateRequest
-): UpdateLifecycleWorkflowSuccess_200 | UpdateLifecycleWorkflowError400 | UpdateLifecycleWorkflowError403 | UpdateLifecycleWorkflowError409;
+): UpdateLifecycleWorkflowSuccess_200 | UpdateLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateLifecycleWorkflowError403 | UpdateLifecycleWorkflowError409;
 
 model EnableLifecycleWorkflowHttpRequest {
   expected_revision: int64;
@@ -255,7 +255,7 @@ model DeleteLifecycleWorkflowError403 {
 op DeleteLifecycleWorkflow(
   @path workflow_id: string,
   @query expected_revision: int64
-): DeleteLifecycleWorkflowSuccess_204 | DeleteLifecycleWorkflowError400 | DeleteLifecycleWorkflowError403;
+): DeleteLifecycleWorkflowSuccess_204 | DeleteLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteLifecycleWorkflowError403;
 
 model DryRunLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
@@ -290,7 +290,7 @@ model DryRunLifecycleWorkflowError403 {
 op DryRunLifecycleWorkflow(
   @path workflow_id: string,
   @body body: IdMagic.Contract.LifecycleWorkflowDryRunRequest
-): DryRunLifecycleWorkflowSuccess_200 | DryRunLifecycleWorkflowError400 | DryRunLifecycleWorkflowError403;
+): DryRunLifecycleWorkflowSuccess_200 | DryRunLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | DryRunLifecycleWorkflowError403;
 
 model ListLifecycleWorkflowRunsSuccess_200 {
   @statusCode statusCode: 200;
@@ -324,7 +324,7 @@ model ListLifecycleWorkflowRunsError403 {
 @get
 op ListLifecycleWorkflowRuns(
   @path workflow_id: string
-): ListLifecycleWorkflowRunsSuccess_200 | ListLifecycleWorkflowRunsError400 | ListLifecycleWorkflowRunsError403;
+): ListLifecycleWorkflowRunsSuccess_200 | ListLifecycleWorkflowRunsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListLifecycleWorkflowRunsError403;
 
 model GetLifecycleWorkflowRunSuccess_200 {
   @statusCode statusCode: 200;
@@ -358,7 +358,7 @@ model GetLifecycleWorkflowRunError403 {
 @get
 op GetLifecycleWorkflowRun(
   @path run_id: string
-): GetLifecycleWorkflowRunSuccess_200 | GetLifecycleWorkflowRunError400 | GetLifecycleWorkflowRunError403;
+): GetLifecycleWorkflowRunSuccess_200 | GetLifecycleWorkflowRunError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetLifecycleWorkflowRunError403;
 
 model RetryLifecycleWorkflowRunSuccess_200 {
   @statusCode statusCode: 200;
@@ -391,7 +391,7 @@ model RetryLifecycleWorkflowRunError403 {
 @route("/api/admin/v1/lifecycle_workflow_runs/{run_id}/retry")
 @post
 op RetryLifecycleWorkflowRun(
-  @path run_id: string,): RetryLifecycleWorkflowRunSuccess_200 | RetryLifecycleWorkflowRunError400 | RetryLifecycleWorkflowRunError403;
+  @path run_id: string,): RetryLifecycleWorkflowRunSuccess_200 | RetryLifecycleWorkflowRunError400 | IdMagic.Contract.AuthenticationRequiredResponse | RetryLifecycleWorkflowRunError403;
 }
 
 }

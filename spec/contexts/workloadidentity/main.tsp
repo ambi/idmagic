@@ -30,7 +30,7 @@ model ListWorkloadTrustBundlesError403 {
 @get
 op ListWorkloadTrustBundles(
 
-): ListWorkloadTrustBundlesSuccess_200 | ListWorkloadTrustBundlesError403;
+): ListWorkloadTrustBundlesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListWorkloadTrustBundlesError403;
 
 model GetWorkloadTrustBundleSuccess_200 {
   @statusCode statusCode: 200;
@@ -64,7 +64,7 @@ model GetWorkloadTrustBundleError403 {
 @get
 op GetWorkloadTrustBundle(
   @path trust_bundle_id: string
-): GetWorkloadTrustBundleSuccess_200 | GetWorkloadTrustBundleError400 | GetWorkloadTrustBundleError403;
+): GetWorkloadTrustBundleSuccess_200 | GetWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetWorkloadTrustBundleError403;
 
 model RegisterWorkloadTrustBundleSuccess_201 {
   @statusCode statusCode: 201;
@@ -112,7 +112,7 @@ model RegisterWorkloadTrustBundleError422 {
 @post
 op RegisterWorkloadTrustBundle(
   @body body: IdMagic.Contract.WorkloadTrustBundleRegisterRequest
-): RegisterWorkloadTrustBundleSuccess_201 | RegisterWorkloadTrustBundleError400 | RegisterWorkloadTrustBundleError403 | RegisterWorkloadTrustBundleError422;
+): RegisterWorkloadTrustBundleSuccess_201 | RegisterWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterWorkloadTrustBundleError403 | RegisterWorkloadTrustBundleError422;
 
 model UpdateWorkloadTrustBundleSuccess_200 {
   @statusCode statusCode: 200;
@@ -159,7 +159,7 @@ model UpdateWorkloadTrustBundleError422 {
 op UpdateWorkloadTrustBundle(
   @path trust_bundle_id: string,
   @body body: IdMagic.Contract.WorkloadTrustBundleUpdateRequest
-): UpdateWorkloadTrustBundleSuccess_200 | UpdateWorkloadTrustBundleError400 | UpdateWorkloadTrustBundleError403 | UpdateWorkloadTrustBundleError422;
+): UpdateWorkloadTrustBundleSuccess_200 | UpdateWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateWorkloadTrustBundleError403 | UpdateWorkloadTrustBundleError422;
 
 model DisableWorkloadTrustBundleSuccess_204 {
   @statusCode statusCode: 204;
@@ -289,7 +289,7 @@ model RefreshWorkloadTrustBundleJWKSError403 {
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh")
 @post
 op RefreshWorkloadTrustBundleJWKS(
-  @path trust_bundle_id: string,): RefreshWorkloadTrustBundleJWKSSuccess_200 | RefreshWorkloadTrustBundleJWKSError400 | RefreshWorkloadTrustBundleJWKSError403;
+  @path trust_bundle_id: string,): RefreshWorkloadTrustBundleJWKSSuccess_200 | RefreshWorkloadTrustBundleJWKSError400 | IdMagic.Contract.AuthenticationRequiredResponse | RefreshWorkloadTrustBundleJWKSError403;
 
 model ListAgentWorkloadBindingsSuccess_200 {
   @statusCode statusCode: 200;
@@ -323,7 +323,7 @@ model ListAgentWorkloadBindingsError403 {
 @get
 op ListAgentWorkloadBindings(
   @path trust_bundle_id: string
-): ListAgentWorkloadBindingsSuccess_200 | ListAgentWorkloadBindingsError400 | ListAgentWorkloadBindingsError403;
+): ListAgentWorkloadBindingsSuccess_200 | ListAgentWorkloadBindingsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentWorkloadBindingsError403;
 
 model CreateAgentWorkloadBindingSuccess_201 {
   @statusCode statusCode: 201;
@@ -369,7 +369,7 @@ model CreateAgentWorkloadBindingError422 {
 op CreateAgentWorkloadBinding(
   @path trust_bundle_id: string,
   @body body: IdMagic.Contract.AgentWorkloadBindingCreateRequest
-): CreateAgentWorkloadBindingSuccess_201 | CreateAgentWorkloadBindingError400 | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError422;
+): CreateAgentWorkloadBindingSuccess_201 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError422;
 
 model DisableAgentWorkloadBindingSuccess_204 {
   @statusCode statusCode: 204;

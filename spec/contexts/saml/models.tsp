@@ -241,4 +241,8 @@ model SamlIdentityProviderProfileRequest {
   mode: SamlIdentityProviderProfileMode;
 }
 
+
+@doc("The SAML identity provider profile named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
+model SamlIdentityProviderProfileNotFoundError is ProblemDetails;
+
 }

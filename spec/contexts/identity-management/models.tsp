@@ -1216,4 +1216,20 @@ model UserNotFoundError is ProblemDetails;
 @doc("The tenant already has as many export jobs running as it may have at once, so another one cannot start. Retrying after the running jobs finish succeeds, which is why the response is 429 rather than the 422 of QuotaExceededError. RFC 9457 Problem Details with `type` = `urn:idmagic:error:active_job_quota_exceeded`, its own code: the concurrency ceiling and the tenant resource quota are separate concepts, and a client that saw only `quota_exceeded` could not tell whether retrying would ever succeed.")
 model ActiveJobQuotaExceededError is ProblemDetails;
 
+
+@doc("The user import job named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:user_import_not_found`.")
+model UserImportNotFoundError is ProblemDetails;
+
+
+@doc("The user import service is not configured, so an import can neither be started nor read. RFC 9457 Problem Details with `type` = `urn:idmagic:error:user_import_unavailable`.")
+model UserImportUnavailableError is ProblemDetails;
+
+
+@doc("The group import job named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_import_not_found`.")
+model GroupImportNotFoundError is ProblemDetails;
+
+
+@doc("The group import service is not configured, so an import can neither be started nor read. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_import_unavailable`.")
+model GroupImportUnavailableError is ProblemDetails;
+
 }

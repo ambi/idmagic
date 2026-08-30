@@ -29,7 +29,7 @@ model GetAccountContextError403 {
 @get
 op GetAccountContext(
 
-): GetAccountContextSuccess_200 | GetAccountContextError403;
+): GetAccountContextSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAccountContextError403;
 
 model GetPasswordResetContextSuccess_200 {
   @statusCode statusCode: 200;
@@ -70,13 +70,23 @@ model StartStepUpWebAuthnChallengeError403 {
   @body body: StartStepUpWebAuthnChallengeError403Body;
 }
 
+union StartStepUpWebAuthnChallengeError503Body {
+  IdMagic.Contract.WebAuthnUnavailableError,
+}
+
+model StartStepUpWebAuthnChallengeError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: StartStepUpWebAuthnChallengeError503Body;
+}
+
 @doc("Issues a WebAuthn assertion challenge for step-up, bound to the authenticated session. It verifies CSRF, and fails closed when WebAuthn is disabled.")
 @TypeSpec.OpenAPI.operationId("StartStepUpWebAuthnChallenge")
 @route("/api/account/v1/step_up/webauthn/challenge")
 @post
 op StartStepUpWebAuthnChallenge(
 
-): StartStepUpWebAuthnChallengeSuccess_200 | StartStepUpWebAuthnChallengeError400 | StartStepUpWebAuthnChallengeError403;
+): StartStepUpWebAuthnChallengeSuccess_200 | StartStepUpWebAuthnChallengeError400 | StartStepUpWebAuthnChallengeError403 | StartStepUpWebAuthnChallengeError503;
 
 model SubmitBrowserLoginHttpRequest {
   username: string;
@@ -139,7 +149,7 @@ model SubmitBrowserLoginError429 {
 @post
 op SubmitBrowserLogin(
   @body body: SubmitBrowserLoginHttpRequest
-): SubmitBrowserLoginSuccess_200 | SubmitBrowserLoginError400 | SubmitBrowserLoginError403 | SubmitBrowserLoginError422 | SubmitBrowserLoginError429;
+): SubmitBrowserLoginSuccess_200 | SubmitBrowserLoginError400 | IdMagic.Contract.AuthenticationRequiredResponse | SubmitBrowserLoginError403 | SubmitBrowserLoginError422 | SubmitBrowserLoginError429;
 
 model StartBrowserMfaEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
@@ -229,7 +239,7 @@ model ConfirmBrowserMfaEnrollmentError409 {
 @post
 op ConfirmBrowserMfaEnrollment(
   @body body: IdMagic.Contract.BrowserMfaEnrollmentConfirmRequest
-): ConfirmBrowserMfaEnrollmentSuccess_200 | ConfirmBrowserMfaEnrollmentError400 | ConfirmBrowserMfaEnrollmentError403 | ConfirmBrowserMfaEnrollmentError409;
+): ConfirmBrowserMfaEnrollmentSuccess_200 | ConfirmBrowserMfaEnrollmentError400 | IdMagic.Contract.AuthenticationRequiredResponse | ConfirmBrowserMfaEnrollmentError403 | ConfirmBrowserMfaEnrollmentError409;
 
 model SubmitBrowserTotpSuccess_200 {
   @statusCode statusCode: 200;
@@ -256,6 +266,16 @@ model SubmitBrowserTotpError403 {
   @body body: SubmitBrowserTotpError403Body;
 }
 
+union SubmitBrowserTotpError503Body {
+  IdMagic.Contract.MfaUnavailableError,
+}
+
+model SubmitBrowserTotpError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: SubmitBrowserTotpError503Body;
+}
+
 @doc("Verifies a TOTP code through the SPA JSON API. On success the LoginSession is promoted to fully authenticated and the flow continues into consent and authorization code issuance. Other factors have their own endpoints. No authentication is required, because the unauthenticated pending login session cookie is what resolves the target user.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserTotp")
@@ -263,11 +283,7 @@ model SubmitBrowserTotpError403 {
 @post
 op SubmitBrowserTotp(
   @body body: IdMagic.Contract.BrowserTotpRequest
-): SubmitBrowserTotpSuccess_200 | SubmitBrowserTotpError400 | SubmitBrowserTotpError403;
-
-model ChangePasswordSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): SubmitBrowserTotpSuccess_200 | SubmitBrowserTotpError400 | IdMagic.Contract.AuthenticationRequiredResponse | SubmitBrowserTotpError403 | SubmitBrowserTotpError503;
 
 union ChangePasswordError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -299,13 +315,17 @@ model ChangePasswordError422 {
   @body body: ChangePasswordError422Body;
 }
 
+model ChangePasswordSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("An authenticated user changes their own password. `current_password` is verified, and `new_password` has to satisfy the length constraint of 12 to 128 characters and differ from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse).")
 @TypeSpec.OpenAPI.operationId("ChangePassword")
 @route("/api/auth/change_password")
 @post
 op ChangePassword(
   @body body: IdMagic.Contract.BrowserChangePasswordRequest
-): ChangePasswordSuccess_200 | ChangePasswordError400 | ChangePasswordError403 | ChangePasswordError422;
+): ChangePasswordSuccess_204 | ChangePasswordError400 | IdMagic.Contract.AuthenticationRequiredResponse | ChangePasswordError403 | ChangePasswordError422;
 
 model GetAccountSecuritySuccess_200 {
   @statusCode statusCode: 200;
@@ -419,10 +439,6 @@ op StartTotpEnrollment(
 
 ): StartTotpEnrollmentSuccess_200 | StartTotpEnrollmentError400 | StartTotpEnrollmentError403;
 
-model ConfirmTotpEnrollmentSuccess_200 {
-  @statusCode statusCode: 200;
-}
-
 union ConfirmTotpEnrollmentError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -443,17 +459,17 @@ model ConfirmTotpEnrollmentError403 {
   @body body: ConfirmTotpEnrollmentError403Body;
 }
 
+model ConfirmTotpEnrollmentSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("Verifies proof of possession of a code against the secret and persists the TOTP factor (self-service).\nThe target is fixed to `subject.id`, and settling it sets `User.mfa_enrolled` to true.")
 @TypeSpec.OpenAPI.operationId("ConfirmTotpEnrollment")
 @route("/api/account/v1/mfa/totp/enroll/confirm")
 @post
 op ConfirmTotpEnrollment(
   @body body: IdMagic.Contract.TOTPEnrollmentConfirmRequest
-): ConfirmTotpEnrollmentSuccess_200 | ConfirmTotpEnrollmentError400 | ConfirmTotpEnrollmentError403;
-
-model RemoveTotpFactorSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): ConfirmTotpEnrollmentSuccess_204 | ConfirmTotpEnrollmentError400 | ConfirmTotpEnrollmentError403;
 
 union RemoveTotpFactorError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -475,13 +491,17 @@ model RemoveTotpFactorError403 {
   @body body: RemoveTotpFactorError403Body;
 }
 
+model RemoveTotpFactorSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("Verifies a valid TOTP code as proof of possession and then removes the TOTP factor (self-service).\nThe target is fixed to `subject.id`, and removing it returns `User.mfa_enrolled` to false.")
 @TypeSpec.OpenAPI.operationId("RemoveTotpFactor")
 @route("/api/account/v1/mfa/totp/remove")
 @post
 op RemoveTotpFactor(
   @body body: IdMagic.Contract.MfaFactorRemoveRequest
-): RemoveTotpFactorSuccess_200 | RemoveTotpFactorError400 | RemoveTotpFactorError403;
+): RemoveTotpFactorSuccess_204 | RemoveTotpFactorError400 | RemoveTotpFactorError403;
 
 model StartWebAuthnRegistrationSuccess_200 {
   @statusCode statusCode: 200;
@@ -516,10 +536,6 @@ op StartWebAuthnRegistration(
 
 ): StartWebAuthnRegistrationSuccess_200 | StartWebAuthnRegistrationError400 | StartWebAuthnRegistrationError403;
 
-model FinishWebAuthnRegistrationSuccess_200 {
-  @statusCode statusCode: 200;
-}
-
 union FinishWebAuthnRegistrationError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -540,17 +556,17 @@ model FinishWebAuthnRegistrationError403 {
   @body body: FinishWebAuthnRegistrationError403Body;
 }
 
+model FinishWebAuthnRegistrationSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("Verifies the attestation and persists the WebAuthn credential (self-service). The target is fixed to\n`subject.id`, and the first credential sets `User.mfa_enrolled` to true. The RP ID, the origin, and the challenge are all verified.")
 @TypeSpec.OpenAPI.operationId("FinishWebAuthnRegistration")
 @route("/api/account/v1/mfa/webauthn/register/finish")
 @post
 op FinishWebAuthnRegistration(
   @body body: IdMagic.Contract.WebAuthnRegistrationRequest
-): FinishWebAuthnRegistrationSuccess_200 | FinishWebAuthnRegistrationError400 | FinishWebAuthnRegistrationError403;
-
-model RemoveWebAuthnCredentialSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): FinishWebAuthnRegistrationSuccess_204 | FinishWebAuthnRegistrationError400 | FinishWebAuthnRegistrationError403;
 
 union RemoveWebAuthnCredentialError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -572,27 +588,31 @@ model RemoveWebAuthnCredentialError403 {
   @body body: RemoveWebAuthnCredentialError403Body;
 }
 
+model RemoveWebAuthnCredentialSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union RemoveWebAuthnCredentialError503Body {
+  IdMagic.Contract.WebAuthnUnavailableError,
+}
+
+model RemoveWebAuthnCredentialError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: RemoveWebAuthnCredentialError503Body;
+}
+
 @doc("Removes a named WebAuthn credential (self-service; step-up required). The target is fixed to `subject.id`, and\nwhen no second factor is left `User.mfa_enrolled` returns to false.")
 @TypeSpec.OpenAPI.operationId("RemoveWebAuthnCredential")
 @route("/api/account/v1/mfa/webauthn/remove")
 @post
 op RemoveWebAuthnCredential(
   @body body: IdMagic.Contract.WebAuthnCredentialRemoveRequest
-): RemoveWebAuthnCredentialSuccess_200 | RemoveWebAuthnCredentialError400 | RemoveWebAuthnCredentialError403;
+): RemoveWebAuthnCredentialSuccess_204 | RemoveWebAuthnCredentialError400 | RemoveWebAuthnCredentialError403 | RemoveWebAuthnCredentialError503;
 
 model StartBrowserWebAuthnSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.WebAuthnAssertionOptions;
-}
-
-union StartBrowserWebAuthnError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model StartBrowserWebAuthnError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: StartBrowserWebAuthnError400Body;
 }
 
 union StartBrowserWebAuthnError403Body {
@@ -605,6 +625,26 @@ model StartBrowserWebAuthnError403 {
   @body body: StartBrowserWebAuthnError403Body;
 }
 
+union StartBrowserWebAuthnError404Body {
+  IdMagic.Contract.WebAuthnNotEnrolledError,
+}
+
+model StartBrowserWebAuthnError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: StartBrowserWebAuthnError404Body;
+}
+
+union StartBrowserWebAuthnError503Body {
+  IdMagic.Contract.WebAuthnUnavailableError,
+}
+
+model StartBrowserWebAuthnError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: StartBrowserWebAuthnError503Body;
+}
+
 @doc("Issues a WebAuthn assertion challenge through the SPA JSON API. The pending login session resolves the\n`sub`, and the PublicKeyCredentialRequestOptions are returned. The challenge is bound to that session.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartBrowserWebAuthn")
@@ -612,7 +652,7 @@ model StartBrowserWebAuthnError403 {
 @post
 op StartBrowserWebAuthn(
 
-): StartBrowserWebAuthnSuccess_200 | StartBrowserWebAuthnError400 | StartBrowserWebAuthnError403;
+): StartBrowserWebAuthnSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | StartBrowserWebAuthnError403 | StartBrowserWebAuthnError404 | StartBrowserWebAuthnError503;
 
 model SubmitBrowserWebAuthnSuccess_200 {
   @statusCode statusCode: 200;
@@ -639,6 +679,16 @@ model SubmitBrowserWebAuthnError403 {
   @body body: SubmitBrowserWebAuthnError403Body;
 }
 
+union SubmitBrowserWebAuthnError503Body {
+  IdMagic.Contract.WebAuthnUnavailableError,
+}
+
+model SubmitBrowserWebAuthnError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: SubmitBrowserWebAuthnError503Body;
+}
+
 @doc("Verifies a WebAuthn assertion through the SPA JSON API. On success the LoginSession is promoted to fully\nauthenticated and the flow continues into consent and authorization code issuance. A `sign_count` that goes backwards is\nrefused as a clone (`sign_count_regression=reject`).")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserWebAuthn")
@@ -646,7 +696,7 @@ model SubmitBrowserWebAuthnError403 {
 @post
 op SubmitBrowserWebAuthn(
   @body body: IdMagic.Contract.BrowserWebAuthnRequest
-): SubmitBrowserWebAuthnSuccess_200 | SubmitBrowserWebAuthnError400 | SubmitBrowserWebAuthnError403;
+): SubmitBrowserWebAuthnSuccess_200 | SubmitBrowserWebAuthnError400 | IdMagic.Contract.AuthenticationRequiredResponse | SubmitBrowserWebAuthnError403 | SubmitBrowserWebAuthnError503;
 
 model SubmitBrowserRecoveryCodeSuccess_200 {
   @statusCode statusCode: 200;
@@ -673,6 +723,16 @@ model SubmitBrowserRecoveryCodeError403 {
   @body body: SubmitBrowserRecoveryCodeError403Body;
 }
 
+union SubmitBrowserRecoveryCodeError503Body {
+  IdMagic.Contract.RecoveryUnavailableError,
+}
+
+model SubmitBrowserRecoveryCodeError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: SubmitBrowserRecoveryCodeError503Body;
+}
+
 @doc("Verifies a backup recovery code as a second factor through the SPA JSON API. On success the\nLoginSession is promoted to fully authenticated and the consumed code cannot be used again.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserRecoveryCode")
@@ -680,7 +740,7 @@ model SubmitBrowserRecoveryCodeError403 {
 @post
 op SubmitBrowserRecoveryCode(
   @body body: IdMagic.Contract.BrowserRecoveryCodeRequest
-): SubmitBrowserRecoveryCodeSuccess_200 | SubmitBrowserRecoveryCodeError400 | SubmitBrowserRecoveryCodeError403;
+): SubmitBrowserRecoveryCodeSuccess_200 | SubmitBrowserRecoveryCodeError400 | IdMagic.Contract.AuthenticationRequiredResponse | SubmitBrowserRecoveryCodeError403 | SubmitBrowserRecoveryCodeError503;
 
 model GenerateRecoveryCodesSuccess_200 {
   @statusCode statusCode: 200;
@@ -707,17 +767,23 @@ model GenerateRecoveryCodesError403 {
   @body body: GenerateRecoveryCodesError403Body;
 }
 
+union GenerateRecoveryCodesError503Body {
+  IdMagic.Contract.RecoveryUnavailableError,
+}
+
+model GenerateRecoveryCodesError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GenerateRecoveryCodesError503Body;
+}
+
 @doc("An authenticated user generates or regenerates backup recovery codes (self-service; step-up required).\nThe plaintext is returned once and only the hashes are stored. An existing set is replaced outright (10 codes).")
 @TypeSpec.OpenAPI.operationId("GenerateRecoveryCodes")
 @route("/api/account/v1/mfa/recovery-codes/generate")
 @post
 op GenerateRecoveryCodes(
 
-): GenerateRecoveryCodesSuccess_200 | GenerateRecoveryCodesError400 | GenerateRecoveryCodesError403;
-
-model RevokeRecoveryCodesSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): GenerateRecoveryCodesSuccess_200 | GenerateRecoveryCodesError400 | GenerateRecoveryCodesError403 | GenerateRecoveryCodesError503;
 
 union RevokeRecoveryCodesError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -739,13 +805,27 @@ model RevokeRecoveryCodesError403 {
   @body body: RevokeRecoveryCodesError403Body;
 }
 
+model RevokeRecoveryCodesSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union RevokeRecoveryCodesError503Body {
+  IdMagic.Contract.RecoveryUnavailableError,
+}
+
+model RevokeRecoveryCodesError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: RevokeRecoveryCodesError503Body;
+}
+
 @doc("An authenticated user explicitly invalidates their backup recovery codes (self-service; step-up required).\nThe target is fixed to `subject.id`, and every valid code is deleted.")
 @TypeSpec.OpenAPI.operationId("RevokeRecoveryCodes")
 @route("/api/account/v1/mfa/recovery-codes/revoke")
 @post
 op RevokeRecoveryCodes(
 
-): RevokeRecoveryCodesSuccess_200 | RevokeRecoveryCodesError400 | RevokeRecoveryCodesError403;
+): RevokeRecoveryCodesSuccess_204 | RevokeRecoveryCodesError400 | RevokeRecoveryCodesError403 | RevokeRecoveryCodesError503;
 
 model ListMySignInActivitySuccess_200 {
   @statusCode statusCode: 200;
@@ -795,16 +875,6 @@ model ListUserSignInActivityError403 {
   @body body: ListUserSignInActivityError403Body;
 }
 
-union ListUserSignInActivityError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model ListUserSignInActivityError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: ListUserSignInActivityError400Body;
-}
-
 @doc("An administrator reads the sign-in history of a target user. It stays inside the tenant boundary and returns\nat most `limit` UserAuthenticated events for the user named in the path, newest first.\n`limit` defaults to 10 and tops out at 50.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:read"])
 @TypeSpec.OpenAPI.operationId("ListUserSignInActivity")
@@ -813,7 +883,7 @@ model ListUserSignInActivityError400 {
 op ListUserSignInActivity(
   @path user_id: string,
   @query limit?: int64
-): ListUserSignInActivitySuccess_200 | ListUserSignInActivityError403 | ListUserSignInActivityError400;
+): ListUserSignInActivitySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListUserSignInActivityError403;
 
 model ListAuthenticationEventBucketsSuccess_200 {
   @statusCode statusCode: 200;
@@ -848,7 +918,7 @@ model ListAuthenticationEventBucketsError400 {
 op ListAuthenticationEventBuckets(
   @query cursor?: string,
   @query limit?: int64
-): ListAuthenticationEventBucketsSuccess_200 | ListAuthenticationEventBucketsError403 | ListAuthenticationEventBucketsError400;
+): ListAuthenticationEventBucketsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAuthenticationEventBucketsError403 | ListAuthenticationEventBucketsError400;
 
 model ListMySessionsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1026,7 +1096,7 @@ model ListSessionsError403 {
 @get
 op ListSessions(
   @path user_id: string
-): ListSessionsSuccess_200 | ListSessionsError403;
+): ListSessionsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListSessionsError403;
 
 model RevokeSessionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1059,7 +1129,7 @@ model RevokeSessionError403 {
 @post
 op RevokeSession(
   @path user_id: string,
-  @path id: string,): RevokeSessionSuccess_204 | RevokeSessionError400 | RevokeSessionError403;
+  @path id: string,): RevokeSessionSuccess_204 | RevokeSessionError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeSessionError403;
 
 model RevokeUserSessionsSuccess_204 {
   @statusCode statusCode: 204;
@@ -1081,7 +1151,7 @@ model RevokeUserSessionsError403 {
 @route("/api/admin/v1/users/{user_id}/sessions/revoke_all")
 @post
 op RevokeUserSessions(
-  @path user_id: string,): RevokeUserSessionsSuccess_204 | RevokeUserSessionsError403;
+  @path user_id: string,): RevokeUserSessionsSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeUserSessionsError403;
 
 model StartStepUpAuthenticationSuccess_200 {
   @statusCode statusCode: 200;
@@ -1106,10 +1176,6 @@ op StartStepUpAuthentication(
 
 ): StartStepUpAuthenticationSuccess_200 | StartStepUpAuthenticationError403;
 
-model CompleteStepUpAuthenticationSuccess_200 {
-  @statusCode statusCode: 200;
-}
-
 union CompleteStepUpAuthenticationError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -1130,18 +1196,17 @@ model CompleteStepUpAuthenticationError403 {
   @body body: CompleteStepUpAuthenticationError403Body;
 }
 
+model CompleteStepUpAuthenticationSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
 @doc("Verifies the factor presented -- a password or a TOTP code -- and, when it holds, stamps `step_up_at` on the\nsession. Inside the recency window of five minutes, operations marked `step_up: required` are then permitted. A failed\nverification gives AccessDeniedError.")
 @TypeSpec.OpenAPI.operationId("CompleteStepUpAuthentication")
 @route("/api/account/v1/step_up/complete")
 @post
 op CompleteStepUpAuthentication(
   @body body: IdMagic.Contract.StepUpCompleteRequest
-): CompleteStepUpAuthenticationSuccess_200 | CompleteStepUpAuthenticationError400 | CompleteStepUpAuthenticationError403;
-
-model IssueMfaEnrollmentBypassSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.MfaEnrollmentBypassResponse;
-}
+): CompleteStepUpAuthenticationSuccess_204 | CompleteStepUpAuthenticationError400 | CompleteStepUpAuthenticationError403;
 
 union IssueMfaEnrollmentBypassError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -1173,6 +1238,11 @@ model IssueMfaEnrollmentBypassError422 {
   @body body: IssueMfaEnrollmentBypassError422Body;
 }
 
+model IssueMfaEnrollmentBypassSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.MfaEnrollmentBypassResponse;
+}
+
 @doc("A tenant administrator issues a short-lived, single-use enrollment bypass to an active user of the same tenant who has no MFA enrolled. An existing unconsumed bypass for the same user is revoked and replaced. It is not an exemption from signing in; it is approval for a pending flow that exists only to enroll.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("IssueMfaEnrollmentBypass")
@@ -1181,7 +1251,7 @@ model IssueMfaEnrollmentBypassError422 {
 op IssueMfaEnrollmentBypass(
   @path user_id: string,
   @body body: IdMagic.Contract.MfaEnrollmentBypassIssueRequest
-): IssueMfaEnrollmentBypassSuccess_200 | IssueMfaEnrollmentBypassError400 | IssueMfaEnrollmentBypassError403 | IssueMfaEnrollmentBypassError422;
+): IssueMfaEnrollmentBypassSuccess_201 | IssueMfaEnrollmentBypassError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueMfaEnrollmentBypassError403 | IssueMfaEnrollmentBypassError422;
 
 model RevokeMfaEnrollmentBypassSuccess_204 {
   @statusCode statusCode: 204;
@@ -1204,7 +1274,7 @@ model RevokeMfaEnrollmentBypassError403 {
 @delete
 op RevokeMfaEnrollmentBypass(
   @path user_id: string
-): RevokeMfaEnrollmentBypassSuccess_204 | RevokeMfaEnrollmentBypassError403;
+): RevokeMfaEnrollmentBypassSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeMfaEnrollmentBypassError403;
 
 model ResetUserAuthenticatorsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1249,11 +1319,7 @@ model ResetUserAuthenticatorsError422 {
 op ResetUserAuthenticators(
   @path user_id: string,
   @body body: IdMagic.Contract.AuthenticatorResetRequest
-): ResetUserAuthenticatorsSuccess_200 | ResetUserAuthenticatorsError400 | ResetUserAuthenticatorsError403 | ResetUserAuthenticatorsError422;
-
-model RequestPasswordResetSuccess_200 {
-  @statusCode statusCode: 200;
-}
+): ResetUserAuthenticatorsSuccess_200 | ResetUserAuthenticatorsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ResetUserAuthenticatorsError403 | ResetUserAuthenticatorsError422;
 
 union RequestPasswordResetError429Body {
   IdMagic.Contract.RateLimitedError,
@@ -1267,6 +1333,30 @@ model RequestPasswordResetError429 {
   @body body: RequestPasswordResetError429Body;
 }
 
+model RequestPasswordResetSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union RequestPasswordResetError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model RequestPasswordResetError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: RequestPasswordResetError400Body;
+}
+
+union RequestPasswordResetError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model RequestPasswordResetError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: RequestPasswordResetError403Body;
+}
+
 @doc("An unauthenticated user asks for a password reset link.\nTo prevent enumeration it always returns 204, whether or not the email exists, and a token is issued and sent only\nwhen a user with a verified email is found.\nThe wording is resolved from the Tenancy notification template catalogue (`template_key=PasswordReset`).\nThe locale is decided in the order: the recipient User's locale attribute, the tenant's `default_locale`, the system\ndefault locale; a tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the reset link is built from the issuer URL of the\nrequest, so the template never has to join URLs itself.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("RequestPasswordReset")
@@ -1274,7 +1364,7 @@ model RequestPasswordResetError429 {
 @post
 op RequestPasswordReset(
   @body body: IdMagic.Contract.BrowserForgotPasswordRequest
-): RequestPasswordResetSuccess_200 | RequestPasswordResetError429;
+): RequestPasswordResetSuccess_204 | RequestPasswordResetError400 | RequestPasswordResetError403 | RequestPasswordResetError429;
 
 model ResetPasswordWithTokenHttpResponse {
   @doc("Always `ok`.")
@@ -1316,6 +1406,16 @@ model ResetPasswordWithTokenError422 {
   @body body: ResetPasswordWithTokenError422Body;
 }
 
+union ResetPasswordWithTokenError410Body {
+  IdMagic.Contract.InvalidResetTokenError,
+}
+
+model ResetPasswordWithTokenError410 {
+  @statusCode statusCode: 410;
+  @header contentType: "application/problem+json";
+  @body body: ResetPasswordWithTokenError410Body;
+}
+
 @doc("A user returning from the reset link sets a new password.\nThe token is consumed once -- it lives 1800 seconds and cannot be reused once `consumed_at` is set -- and\n`User.password_hash` is updated with a `new_password` that passed the length constraint of 12 to 128 characters and\ndiffers from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse). On success PasswordChanged is emitted.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ResetPasswordWithToken")
@@ -1323,7 +1423,7 @@ model ResetPasswordWithTokenError422 {
 @post
 op ResetPasswordWithToken(
   @body body: IdMagic.Contract.BrowserResetPasswordRequest
-): ResetPasswordWithTokenSuccess_200 | ResetPasswordWithTokenError400 | ResetPasswordWithTokenError403 | ResetPasswordWithTokenError422;
+): ResetPasswordWithTokenSuccess_200 | ResetPasswordWithTokenError400 | ResetPasswordWithTokenError403 | ResetPasswordWithTokenError410 | ResetPasswordWithTokenError422;
 
 model DiscoverIdentityProvidersHttpResponse {
   providers: IdMagic.Contract.ExternalIdentityProviderSummary[];
@@ -1342,11 +1442,6 @@ model DiscoverIdentityProvidersSuccess_200 {
 op DiscoverIdentityProviders(
   @query hint?: string
 ): DiscoverIdentityProvidersSuccess_200;
-
-model StartFederatedLoginSuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.FederatedLoginStartResponse;
-}
 
 union StartFederatedLoginError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -1368,6 +1463,10 @@ model StartFederatedLoginError403 {
   @body body: StartFederatedLoginError403Body;
 }
 
+model StartFederatedLoginSuccess_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("Resolves an Active connection inside the tenant, stores the OIDC state, nonce, and PKCE, or the SAML RelayState and AuthnRequest ID, in a single-use FederatedLoginAttempt, and returns a redirect to the upstream endpoint validated at configuration time. It never accepts an arbitrary URL.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartFederatedLogin")
@@ -1377,13 +1476,7 @@ op StartFederatedLogin(
   @query provider_id: string,
   @query return_to?: string,
   @query link?: boolean
-): StartFederatedLoginSuccess_200 | StartFederatedLoginError400 | StartFederatedLoginError403;
-
-model CompleteFederatedLogin1Success_200 {
-  @statusCode statusCode: 200;
-  @doc("Where the browser continues: the caller's `return_to`, the account security page after a link, or the resume path of a pending authorization.")
-  @header("Location") location: url;
-}
+): StartFederatedLoginSuccess_303 | StartFederatedLoginError400 | StartFederatedLoginError403;
 
 union CompleteFederatedLogin1Error400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -1415,6 +1508,10 @@ model CompleteFederatedLogin1Error422 {
   @body body: CompleteFederatedLogin1Error422Body;
 }
 
+model CompleteFederatedLogin1Success_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("Correlates the callback with the single-use login attempt and verifies the trust, issuer, audience, nonce or InResponseTo, time, and replay of the OIDC token or the SAML response. The local User is resolved in the order: an existing link, a verified-email link under an explicit policy, then explicit JIT provisioning, and handed on to issue a LoginSession.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("CompleteFederatedLogin")
@@ -1425,13 +1522,7 @@ op CompleteFederatedLogin1(
   @query state: string,
   @doc("The upstream authorization code (RFC 6749 section 4.1.2).")
   @query code: string
-): CompleteFederatedLogin1Success_200 | CompleteFederatedLogin1Error400 | CompleteFederatedLogin1Error403 | CompleteFederatedLogin1Error422;
-
-model CompleteFederatedLogin2Success_200 {
-  @statusCode statusCode: 200;
-  @doc("Where the browser continues: the caller's `return_to`, the account security page after a link, or the resume path of a pending authorization.")
-  @header("Location") location: url;
-}
+): CompleteFederatedLogin1Success_303 | CompleteFederatedLogin1Error400 | IdMagic.Contract.AuthenticationRequiredResponse | CompleteFederatedLogin1Error403 | CompleteFederatedLogin1Error422;
 
 union CompleteFederatedLogin2Error400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -1463,6 +1554,10 @@ model CompleteFederatedLogin2Error422 {
   @body body: CompleteFederatedLogin2Error422Body;
 }
 
+model CompleteFederatedLogin2Success_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("Correlates the callback with the single-use login attempt and verifies the trust, issuer, audience, nonce or InResponseTo, time, and replay of the OIDC token or the SAML response. The local User is resolved in the order: an existing link, a verified-email link under an explicit policy, then explicit JIT provisioning, and handed on to issue a LoginSession.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("CompleteFederatedLogin")
@@ -1476,7 +1571,7 @@ op CompleteFederatedLogin2(
     @doc("The RelayState the AuthnRequest carried, correlating this callback with its single-use FederatedLoginAttempt.")
     RelayState?: string;
   }
-): CompleteFederatedLogin2Success_200 | CompleteFederatedLogin2Error400 | CompleteFederatedLogin2Error403 | CompleteFederatedLogin2Error422;
+): CompleteFederatedLogin2Success_303 | CompleteFederatedLogin2Error400 | IdMagic.Contract.AuthenticationRequiredResponse | CompleteFederatedLogin2Error403 | CompleteFederatedLogin2Error422;
 
 model ListLinkedExternalIdentitiesHttpResponse {
   identities: IdMagic.Contract.FederatedIdentity[];
@@ -1505,11 +1600,6 @@ op ListLinkedExternalIdentities(
 
 ): ListLinkedExternalIdentitiesSuccess_200 | ListLinkedExternalIdentitiesError403;
 
-model LinkExternalIdentitySuccess_200 {
-  @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.FederatedLoginStartResponse;
-}
-
 union LinkExternalIdentityError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -1530,12 +1620,16 @@ model LinkExternalIdentityError403 {
   @body body: LinkExternalIdentityError403Body;
 }
 
+model LinkExternalIdentitySuccess_303 {
+  @statusCode statusCode: 303;
+}
+
 @doc("A ResourceOwner who stepped up within the last five minutes starts external authentication at a provider and explicitly links the subject the callback returns to themselves. A subject already linked to another user is not moved.")
 @TypeSpec.OpenAPI.operationId("LinkExternalIdentity")
 @route("/api/account/v1/linked-identities/{provider_id}")
 @post
 op LinkExternalIdentity(
-  @path provider_id: string,): LinkExternalIdentitySuccess_200 | LinkExternalIdentityError400 | LinkExternalIdentityError403;
+  @path provider_id: string,): LinkExternalIdentitySuccess_303 | LinkExternalIdentityError400 | LinkExternalIdentityError403;
 
 model UnlinkExternalIdentitySuccess_204 {
   @statusCode statusCode: 204;
@@ -1656,6 +1750,16 @@ model UpdateIdentityProviderConnectionError403 {
   @body body: UpdateIdentityProviderConnectionError403Body;
 }
 
+union UpdateIdentityProviderConnectionError404Body {
+  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
+}
+
+model UpdateIdentityProviderConnectionError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateIdentityProviderConnectionError404Body;
+}
+
 @doc("A tenant administrator updates the display, mapping, policy, secret reference, or trust source of a connection. Only a change to a trust source -- the issuer, an endpoint, a certificate, the protocol -- drops Active to Disabled; a change to a non-trust field such as `display_name` or `claim_mapping` keeps the state. When revalidation fails during a trust source change, the last-known-good material is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("UpdateIdentityProviderConnection")
@@ -1664,7 +1768,7 @@ model UpdateIdentityProviderConnectionError403 {
 op UpdateIdentityProviderConnection(
   @path provider_id: string,
   @body body: IdMagic.Contract.IdentityProviderConnectionRequest
-): UpdateIdentityProviderConnectionSuccess_200 | UpdateIdentityProviderConnectionError400 | UpdateIdentityProviderConnectionError403;
+): UpdateIdentityProviderConnectionSuccess_200 | UpdateIdentityProviderConnectionError400 | UpdateIdentityProviderConnectionError403 | UpdateIdentityProviderConnectionError404;
 
 model DeleteIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1723,13 +1827,23 @@ model ActivateIdentityProviderConnectionError403 {
   @body body: ActivateIdentityProviderConnectionError403Body;
 }
 
+union ActivateIdentityProviderConnectionError404Body {
+  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
+}
+
+model ActivateIdentityProviderConnectionError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: ActivateIdentityProviderConnectionError404Body;
+}
+
 @doc("Moves a Disabled connection to Active once trust validation and a connection test have both succeeded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ActivateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/activate")
 @post
 op ActivateIdentityProviderConnection(
-  @path provider_id: string,): ActivateIdentityProviderConnectionSuccess_204 | ActivateIdentityProviderConnectionError400 | ActivateIdentityProviderConnectionError403;
+  @path provider_id: string,): ActivateIdentityProviderConnectionSuccess_204 | ActivateIdentityProviderConnectionError400 | ActivateIdentityProviderConnectionError403 | ActivateIdentityProviderConnectionError404;
 
 model DisableIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1745,13 +1859,33 @@ model DisableIdentityProviderConnectionError403 {
   @body body: DisableIdentityProviderConnectionError403Body;
 }
 
+union DisableIdentityProviderConnectionError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model DisableIdentityProviderConnectionError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: DisableIdentityProviderConnectionError400Body;
+}
+
+union DisableIdentityProviderConnectionError404Body {
+  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
+}
+
+model DisableIdentityProviderConnectionError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DisableIdentityProviderConnectionError404Body;
+}
+
 @doc("Moves an Active connection to Disabled, refusing new routing and callback completion immediately.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DisableIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/disable")
 @post
 op DisableIdentityProviderConnection(
-  @path provider_id: string,): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError403;
+  @path provider_id: string,): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError400 | DisableIdentityProviderConnectionError403 | DisableIdentityProviderConnectionError404;
 
 model RefreshIdentityProviderMetadataSuccess_200 {
   @statusCode statusCode: 200;
@@ -1778,13 +1912,23 @@ model RefreshIdentityProviderMetadataError403 {
   @body body: RefreshIdentityProviderMetadataError403Body;
 }
 
+union RefreshIdentityProviderMetadataError404Body {
+  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
+}
+
+model RefreshIdentityProviderMetadataError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RefreshIdentityProviderMetadataError404Body;
+}
+
 @doc("A tenant administrator re-fetches the discovery document and JWKS, or the SAML metadata, from the pinned issuer or metadata source, and updates the last-known-good material only when the SSRF guard and trust validation both pass.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RefreshIdentityProviderMetadata")
 @route("/api/admin/v1/identity-providers/{provider_id}/refresh")
 @post
 op RefreshIdentityProviderMetadata(
-  @path provider_id: string,): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | RefreshIdentityProviderMetadataError403;
+  @path provider_id: string,): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | RefreshIdentityProviderMetadataError403 | RefreshIdentityProviderMetadataError404;
 
 model TestIdentityProviderConnectionHttpResponse {
   result: IdMagic.Contract.IdentityProviderConnectionTestResult;
@@ -1815,13 +1959,23 @@ model TestIdentityProviderConnectionError403 {
   @body body: TestIdentityProviderConnectionError403Body;
 }
 
+union TestIdentityProviderConnectionError404Body {
+  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
+}
+
+model TestIdentityProviderConnectionError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: TestIdentityProviderConnectionError404Body;
+}
+
 @doc("Actually tests whether the stored last-known-good trust source is reachable and resolvable. For OIDC it checks reachability of the authorization_endpoint, token_endpoint, and jwks_uri and whether the `secret_reference` resolves; for SAML it checks that the stored certificate parses as X.509 and is still valid. Neither the secret value, nor a token, nor the certificate body is returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("TestIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/test")
 @post
 op TestIdentityProviderConnection(
-  @path provider_id: string,): TestIdentityProviderConnectionSuccess_200 | TestIdentityProviderConnectionError400 | TestIdentityProviderConnectionError403;
+  @path provider_id: string,): TestIdentityProviderConnectionSuccess_200 | TestIdentityProviderConnectionError400 | TestIdentityProviderConnectionError403 | TestIdentityProviderConnectionError404;
 
 model PreviewIdentityProviderMappingHttpRequest {
   claims: Record<unknown>;
@@ -1856,6 +2010,16 @@ model PreviewIdentityProviderMappingError403 {
   @body body: PreviewIdentityProviderMappingError403Body;
 }
 
+union PreviewIdentityProviderMappingError404Body {
+  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
+}
+
+model PreviewIdentityProviderMappingError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: PreviewIdentityProviderMappingError404Body;
+}
+
 @doc("A tenant administrator maps the verified claims of a stored test response and reads a normalized preview that carries neither the token nor the assertion.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("PreviewIdentityProviderMapping")
@@ -1864,7 +2028,7 @@ model PreviewIdentityProviderMappingError403 {
 op PreviewIdentityProviderMapping(
   @path provider_id: string,
   @body body: PreviewIdentityProviderMappingHttpRequest
-): PreviewIdentityProviderMappingSuccess_200 | PreviewIdentityProviderMappingError400 | PreviewIdentityProviderMappingError403;
+): PreviewIdentityProviderMappingSuccess_200 | PreviewIdentityProviderMappingError400 | PreviewIdentityProviderMappingError403 | PreviewIdentityProviderMappingError404;
 }
 
 }

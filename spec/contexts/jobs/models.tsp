@@ -206,4 +206,8 @@ model JobCanceled {
   tenantId: string;
 }
 
+
+@doc("The job service backing exports and imports is not configured or is unreachable, so the request could not be queued or read. RFC 9457 Problem Details with `type` = `urn:idmagic:error:jobs_unavailable`. It is a 503 rather than a 500 because the condition is a deployment one and the same request succeeds once the service is reachable.")
+model JobsUnavailableError is ProblemDetails;
+
 }

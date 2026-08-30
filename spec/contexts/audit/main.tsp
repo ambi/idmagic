@@ -40,7 +40,7 @@ model ListAdminAuditEventsError403 {
 @get
 op ListAdminAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
-): ListAdminAuditEventsSuccess_200 | ListAdminAuditEventsError400 | ListAdminAuditEventsError403;
+): ListAdminAuditEventsSuccess_200 | ListAdminAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminAuditEventsError403;
 
 model ExportAdminAuditEventsSuccess_200 {
   @statusCode statusCode: 200;
@@ -74,7 +74,7 @@ model ExportAdminAuditEventsError403 {
 @get
 op ExportAdminAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
-): ExportAdminAuditEventsSuccess_200 | ExportAdminAuditEventsError400 | ExportAdminAuditEventsError403;
+): ExportAdminAuditEventsSuccess_200 | ExportAdminAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
 
 model GetAdminAuditEventSearchOptionsSuccess_200 {
   @statusCode statusCode: 200;
@@ -98,21 +98,11 @@ model GetAdminAuditEventSearchOptionsError403 {
 @get
 op GetAdminAuditEventSearchOptions(
 
-): GetAdminAuditEventSearchOptionsSuccess_200 | GetAdminAuditEventSearchOptionsError403;
+): GetAdminAuditEventSearchOptionsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminAuditEventSearchOptionsError403;
 
 model GetAdminAuditEventSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminAuditEventResponse;
-}
-
-union GetAdminAuditEventError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model GetAdminAuditEventError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminAuditEventError400Body;
 }
 
 union GetAdminAuditEventError403Body {
@@ -125,6 +115,16 @@ model GetAdminAuditEventError403 {
   @body body: GetAdminAuditEventError403Body;
 }
 
+union GetAdminAuditEventError404Body {
+  IdMagic.Contract.AuditEventNotFoundError,
+}
+
+model GetAdminAuditEventError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminAuditEventError404Body;
+}
+
 @doc("An administrator reads one audit event by id. An event of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminAuditEvent")
@@ -132,7 +132,7 @@ model GetAdminAuditEventError403 {
 @get
 op GetAdminAuditEvent(
   @path id: string
-): GetAdminAuditEventSuccess_200 | GetAdminAuditEventError400 | GetAdminAuditEventError403;
+): GetAdminAuditEventSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminAuditEventError403 | GetAdminAuditEventError404;
 }
 
 }
