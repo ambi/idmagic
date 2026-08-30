@@ -1199,7 +1199,7 @@ model UserInfoResponse {
 model OAuthInvalidRequestError is OAuthError;
 
 
-@doc("The resource owner or the authorization server denied the request (RFC 6749 section 5.2, access_denied). The OAuth 2.0 and OpenID Connect endpoints report this condition with the OAuthError body; the generic APIs report the same condition as AccessDeniedError, an RFC 9457 Problem Details body.")
+@doc("The resource owner or the authorization server denied the request (RFC 6749 section 5.2, access_denied). RFC 6749 section 5.2 fixes the token endpoint's error status at 400 and allows 401 only for invalid_client, so the denial a user expresses through CIBA or the device flow arrives at `/token` as a 400, never a 403. The generic APIs report the same condition as AccessDeniedError, an RFC 9457 Problem Details body, and so does the one refusal `/authorize` writes to the browser instead of redirecting.")
 model OAuthAccessDeniedError is OAuthError;
 
 

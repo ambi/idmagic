@@ -217,6 +217,37 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		if body["next"] != "/status?state=denied" {
 			t.Errorf("expected next redirect, got %v", body["next"])
 		}
+
+		// 拒否された device_code を /token で交換すると access_denied が返る。
+		// RFC 6749 §5.2 はトークンエンドポイントのエラー応答を 400 と定め、
+		// invalid_client だけに 401 を許す。RFC 8628 §3.5 の access_denied も
+		// これに従うので、403 で返る経路は存在しない。契約の Token が 403 を
+		// 宣言していないことは、この実測に対応している。
+		deniedDeviceCode := bodyGen["device_code"].(string)
+		tokenForm := url.Values{
+			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
+			"device_code": {deniedDeviceCode},
+			"client_id":   {"device-client"},
+		}
+		tokenReq := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(tokenForm.Encode()))
+		tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		tokenRec := httptest.NewRecorder()
+		fix.e.ServeHTTP(tokenRec, tokenReq)
+
+		if tokenRec.Code != http.StatusBadRequest {
+			t.Fatalf("denied device_code exchange status=%d body=%s, want 400", tokenRec.Code, tokenRec.Body.String())
+		}
+		var tokenBody map[string]any
+		if err := json.Unmarshal(tokenRec.Body.Bytes(), &tokenBody); err != nil {
+			t.Fatalf("decode token error body: %v (body=%s)", err, tokenRec.Body.String())
+		}
+		if tokenBody["error"] != "access_denied" {
+			t.Fatalf("token error=%v, want access_denied (body=%s)", tokenBody["error"], tokenRec.Body.String())
+		}
+		// 拒否が何も通していないこと。アクセストークンは 1 つも返っていない。
+		if _, issued := tokenBody["access_token"]; issued {
+			t.Fatalf("denied device_code exchange returned a token: %s", tokenRec.Body.String())
+		}
 	})
 
 	t.Run("DeviceAPI_CSRFFail", func(t *testing.T) {

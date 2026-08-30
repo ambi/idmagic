@@ -68,12 +68,13 @@ model AuthorizeError401 {
 }
 
 union AuthorizeError403Body {
-  IdMagic.Contract.OAuthAccessDeniedError,
+  IdMagic.Contract.AccessDeniedError,
 }
 
+@doc("The sign-in policy refuses the request before an authorization code exists. This is the one refusal the authorization endpoint reports to the browser directly rather than redirecting to `redirect_uri`, so it carries Problem Details like the browser-facing endpoints rather than the OAuth error body.")
 model AuthorizeError403 {
   @statusCode statusCode: 403;
-  @header contentType: "application/json";
+  @header contentType: "application/problem+json";
   @body body: AuthorizeError403Body;
 }
 
@@ -373,6 +374,7 @@ union TokenError400Body {
   IdMagic.Contract.SlowDownError,
   IdMagic.Contract.ExpiredTokenError,
   IdMagic.Contract.InvalidTargetError,
+  IdMagic.Contract.OAuthAccessDeniedError,
 }
 
 model TokenError400 {
@@ -390,16 +392,6 @@ model TokenError401 {
   @statusCode statusCode: 401;
   @header contentType: "application/json";
   @body body: TokenError401Body;
-}
-
-union TokenError403Body {
-  IdMagic.Contract.OAuthAccessDeniedError,
-}
-
-model TokenError403 {
-  @statusCode statusCode: 403;
-  @header contentType: "application/json";
-  @body body: TokenError403Body;
 }
 
 union TokenError422Body {
@@ -430,7 +422,7 @@ model TokenError429 {
 @post
 op Token(
   @body body: IdMagic.Contract.TokenRequest
-): TokenSuccess_200 | TokenError400 | TokenError401 | TokenError403 | TokenError422 | TokenError429;
+): TokenSuccess_200 | TokenError400 | TokenError401 | TokenError422 | TokenError429;
 
 model IntrospectSuccess_200 {
   @statusCode statusCode: 200;

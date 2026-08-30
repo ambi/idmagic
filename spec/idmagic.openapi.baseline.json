@@ -14693,9 +14693,9 @@
             }
           },
           "403": {
-            "description": "Access is forbidden.",
+            "description": "The sign-in policy refuses the request before an authorization code exists. This is the one refusal the authorization endpoint reports to the browser directly rather than redirecting to `redirect_uri`, so it carries Problem Details like the browser-facing endpoints rather than the OAuth error body.",
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/OAuth2.Operations.AuthorizeError403Body"
                 }
@@ -16772,16 +16772,6 @@
               }
             }
           },
-          "403": {
-            "description": "Access is forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2.Operations.TokenError403Body"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Client error",
             "content": {
@@ -18092,7 +18082,7 @@
             "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
           }
         },
-        "description": "The principal does not satisfy the policy for the operation. Published-language stub for the shared error the Authentication context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:access_denied`. The OAuth 2.0 endpoints report the same condition as OAuthAccessDeniedError instead."
+        "description": "The principal does not satisfy the policy for the operation. Published-language stub for the shared error the Authentication context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:access_denied`. The OAuth 2.0 endpoints report the same condition as OAuthAccessDeniedError wherever they answer in the OAuth error body; `/authorize` uses this shape for the sign-in policy refusal it writes to the browser directly."
       },
       "Contract.AccessTokenClaims": {
         "type": "object",
@@ -32317,7 +32307,7 @@
             "description": "Human-readable explanation of the occurrence. Always English and never localized; the value is empty when the server has nothing safe to disclose, and the member is present either way."
           }
         },
-        "description": "The resource owner or the authorization server denied the request (RFC 6749 section 5.2, access_denied). The OAuth 2.0 and OpenID Connect endpoints report this condition with the OAuthError body; the generic APIs report the same condition as AccessDeniedError, an RFC 9457 Problem Details body."
+        "description": "The resource owner or the authorization server denied the request (RFC 6749 section 5.2, access_denied). RFC 6749 section 5.2 fixes the token endpoint's error status at 400 and allows 401 only for invalid_client, so the denial a user expresses through CIBA or the device flow arrives at `/token` as a 400, never a 403. The generic APIs report the same condition as AccessDeniedError, an RFC 9457 Problem Details body, and so does the one refusal `/authorize` writes to the browser instead of redirecting."
       },
       "Contract.OAuthError": {
         "type": "object",
@@ -42375,7 +42365,7 @@
         "$ref": "#/components/schemas/Contract.InvalidClientError"
       },
       "OAuth2.Operations.AuthorizeError403Body": {
-        "$ref": "#/components/schemas/Contract.OAuthAccessDeniedError"
+        "$ref": "#/components/schemas/Contract.AccessDeniedError"
       },
       "OAuth2.Operations.AuthorizeError429Body": {
         "$ref": "#/components/schemas/Contract.RateLimitedError"
@@ -42684,6 +42674,9 @@
           },
           {
             "$ref": "#/components/schemas/Contract.InvalidTargetError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.OAuthAccessDeniedError"
           }
         ]
       },
@@ -42696,9 +42689,6 @@
             "$ref": "#/components/schemas/Contract.InvalidDpopProofError"
           }
         ]
-      },
-      "OAuth2.Operations.TokenError403Body": {
-        "$ref": "#/components/schemas/Contract.OAuthAccessDeniedError"
       },
       "OAuth2.Operations.TokenError422Body": {
         "$ref": "#/components/schemas/Contract.ClaimReleaseDeniedError"

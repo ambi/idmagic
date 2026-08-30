@@ -4,7 +4,7 @@ namespace IdMagic.Contract {
 model InvalidRequestError is ProblemDetails;
 
 
-@doc("The principal does not satisfy the policy for the operation. Published-language stub for the shared error the Authentication context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:access_denied`. The OAuth 2.0 endpoints report the same condition as OAuthAccessDeniedError instead.")
+@doc("The principal does not satisfy the policy for the operation. Published-language stub for the shared error the Authentication context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:access_denied`. The OAuth 2.0 endpoints report the same condition as OAuthAccessDeniedError wherever they answer in the OAuth error body; `/authorize` uses this shape for the sign-in policy refusal it writes to the browser directly.")
 model AccessDeniedError is ProblemDetails;
 
 
