@@ -88,8 +88,12 @@ describe('AdminKeysPage', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
-    expect(within(screen.getByRole('table')).queryByText(inactiveKey.kid)).not.toBeInTheDocument()
-    expect(screen.getByText(t.disabledNotice.replace('{kid}', inactiveKey.kid))).toBeInTheDocument()
+    await waitFor(() => {
+      expect(within(screen.getByRole('table')).queryByText(inactiveKey.kid)).not.toBeInTheDocument()
+      expect(
+        screen.getByText(t.disabledNotice.replace('{kid}', inactiveKey.kid)),
+      ).toBeInTheDocument()
+    })
   })
 })
 
