@@ -63,6 +63,8 @@ describe('diffSpecifications', () => {
       changedStandards: [],
       addedDeclarations: [],
       removedDeclarations: [],
+      addedDeprecations: [],
+      removedDeprecations: [],
     })
     expect(formatSpecificationDiff(diff, 'main')).toBe(
       'no normative specification change against main',
@@ -140,6 +142,8 @@ describe('diffSpecifications', () => {
       changedStandards: [],
       addedDeclarations: [],
       removedDeclarations: [],
+      addedDeprecations: [],
+      removedDeprecations: [],
     })
   })
 
@@ -152,6 +156,21 @@ describe('diffSpecifications', () => {
     const diff = diffSpecifications(base, head)
     expect(diff.addedDeclarations).toEqual(['spec/contexts/demo/main.tsp:StartTask'])
     expect(diff.removedDeclarations).toEqual(['spec/contexts/demo/main.tsp:Task'])
+  })
+
+  it('tracks TypeSpec deprecations independently from declaration existence', () => {
+    const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')), 'model LegacyDemo {}')
+    const head = snapshot(
+      document(scenario('REQ-DEMO-001', 'it succeeds')),
+      '@deprecated("Use CurrentDemo")\nmodel LegacyDemo {}',
+    )
+    const diff = diffSpecifications(base, head)
+    expect(diff.addedDeclarations).toEqual([])
+    expect(diff.addedDeprecations).toEqual(['spec/contexts/demo/main.tsp:LegacyDemo'])
+    expect(diff.removedDeprecations).toEqual([])
+    expect(formatSpecificationDiff(diff, 'main')).toContain(
+      'added TypeSpec deprecations:\n  spec/contexts/demo/main.tsp:LegacyDemo',
+    )
   })
 
   it('separates added, removed, and changed standards rows by owning path and id', () => {

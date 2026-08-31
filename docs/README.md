@@ -119,4 +119,4 @@ flowchart LR
 
 ## Procedure Planes
 
-手順は上の正本文書と混ぜない。開発の進め方、環境、生成、CI、テスト、リリースは [development/](development/) にあり、障害時と手動運用の手順は [runbooks/](runbooks/) にある。Pull Request の規則はルートの [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。
+手順は上の正本文書と混ぜない。開発の進め方、環境、生成、CI、テスト、リリースは [development/](development/) にあり、障害時と手動運用の手順は [runbooks/](runbooks/) にある。リリース固有の告知と移行情報は `releases/changes/` と `releases/upgrades/` に置き、現在状態を説明する正本文書へリンクする。Pull Request の規則はルートの [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。

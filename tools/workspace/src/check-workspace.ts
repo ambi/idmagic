@@ -3,7 +3,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
+import { compareOpenApi, type JsonSchema } from '../../check-api-compat/src/compat.ts'
 import { verifyCanonicalDocumentSet } from '../../check/src/canonical-document-set.ts'
+import {
+  diffFeatureMaturities,
+  type DocumentationImpactEnvironment,
+  verifyDocumentationImpact,
+} from '../../check/src/documentation-impact.ts'
 import { verifySubdomainClassification } from '../../check/src/subdomain-classification.ts'
 import {
   type WorkItemDependencyRecord,
@@ -18,7 +24,15 @@ import {
   type PrimaryUseCaseEnvironment,
   verifyPrimaryUseCaseEvidence,
 } from '../../check/src/primary-use-case-evidence.ts'
-import { listCanonicalDirectories, loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
+import { diffSpecifications, diffWorkspaceSpecifications } from '../../check/src/spec-diff.ts'
+import {
+  discoverGeneratedOpenApi,
+  discoverOpenApiBaseline,
+  listCanonicalDirectories,
+  loadWorkspaceConfig,
+  rootPath,
+  runTool,
+} from './workspace.ts'
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
@@ -109,6 +123,50 @@ async function requiredVerificationTasks(): Promise<ReadonlySet<string>> {
   return required
 }
 
+function revisionFile(ref: string, path: string): string {
+  const result = Bun.spawnSync(['git', 'show', `${ref}:${path}`], { cwd: rootPath('.') })
+  return result.exitCode === 0 ? result.stdout.toString() : ''
+}
+
+async function breakingApiChanges(): Promise<string[]> {
+  try {
+    const [baselinePath, currentPath] = await Promise.all([
+      discoverOpenApiBaseline(rootPath('.')),
+      discoverGeneratedOpenApi(rootPath('.')),
+    ])
+    const [baseline, current] = await Promise.all([
+      readFile(baselinePath, 'utf8'),
+      readFile(currentPath, 'utf8'),
+    ])
+    return compareOpenApi(
+      JSON.parse(baseline) as JsonSchema,
+      JSON.parse(current) as JsonSchema,
+    ).map((finding) => `${finding.operation}: ${finding.message}`)
+  } catch {
+    // Minimal fixtures and a fresh checkout may not have generated OpenAPI yet.
+    return []
+  }
+}
+
+async function documentationImpactEnvironment(): Promise<DocumentationImpactEnvironment> {
+  const featureRegistryPath = 'backend/cmd/internal/bootstrap/features.go'
+  let specificationDiff = diffSpecifications(new Map(), new Map())
+  try {
+    specificationDiff = await diffWorkspaceSpecifications(rootPath('.'))
+  } catch {
+    // Minimal fixtures are not Git repositories and have no baseline revision.
+  }
+  return {
+    read: repository.read,
+    specificationDiff,
+    maturityChanges: diffFeatureMaturities(
+      revisionFile('main', featureRegistryPath),
+      repository.read(featureRegistryPath) ?? '',
+    ),
+    breakingApiChanges: await breakingApiChanges(),
+  }
+}
+
 if ((all || args.has('--work-items')) && config.workItems) {
   const files = await workItemFiles(rootPath(config.workItems))
   await runTool(['check/src/main.ts', '--schema=work-item', ...files])
@@ -117,6 +175,7 @@ if ((all || args.has('--work-items')) && config.workItems) {
     read: repository.read,
     requiredTasks: await requiredVerificationTasks(),
   }
+  const documentationEnvironment = await documentationImpactEnvironment()
   for (const path of files) {
     const source = await readFile(path, 'utf8')
     const data = parseFrontmatterAndMarkdown(path, source) as {
@@ -138,6 +197,10 @@ if ((all || args.has('--work-items')) && config.workItems) {
       process.exit(1)
     }
     for (const finding of verifyPrimaryUseCaseEvidence(data, primaryUseCaseEnvironment)) {
+      console.error(`${path}: ${finding}`)
+      process.exit(1)
+    }
+    for (const finding of verifyDocumentationImpact(data, documentationEnvironment)) {
       console.error(`${path}: ${finding}`)
       process.exit(1)
     }

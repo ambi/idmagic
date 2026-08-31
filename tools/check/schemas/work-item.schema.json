@@ -30,7 +30,7 @@
         "properties": { "status": { "const": "in_progress" } },
         "required": ["status"]
       },
-      "then": { "required": ["evidence_policy", "initial_context"] }
+      "then": { "required": ["evidence_policy", "initial_context", "documentation_impact"] }
     },
     {
       "if": {
@@ -80,6 +80,18 @@
         "required": ["id", "status"]
       },
       "then": { "required": ["evidence_policy"] }
+    },
+    {
+      "if": {
+        "properties": {
+          "id": {
+            "pattern": "^wi-(?:45[2-9]|4[6-9][0-9]|[5-9][0-9]{2}|[1-9][0-9]{3,})-"
+          },
+          "status": { "const": "completed" }
+        },
+        "required": ["id", "status"]
+      },
+      "then": { "required": ["documentation_impact"] }
     },
     {
       "if": {
@@ -279,6 +291,30 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/primaryUseCasePlan" }
     },
+    "documentation_impact": {
+      "description": "着手時から完了時まで保持する利用者向けリリース文書の影響。",
+      "type": "object",
+      "required": ["level", "reason", "references"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["none", "release_note", "upgrade_note", "deprecation_notice", "removal_notice"]
+        },
+        "reason": { "type": "string", "minLength": 10 },
+        "references": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/documentationReference" }
+        }
+      }
+    },
+    "maturity_evidence": {
+      "description": "FeatureRegistry の成熟度昇格ごとに完了時に残す確認結果。",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/maturityEvidence" }
+    },
     "spec_impact": {
       "description": "仕様非影響変更の例外宣言。",
       "type": "object",
@@ -424,6 +460,36 @@
     }
   },
   "$defs": {
+    "documentationReference": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["release_note", "upgrade_note"] },
+        "path": {
+          "type": "string",
+          "pattern": "^docs/releases/(?:changes|upgrades)/wi-[0-9]+(?:-[a-z0-9]+)*\\.md$"
+        }
+      }
+    },
+    "maturityEvidence": {
+      "type": "object",
+      "required": ["feature", "from", "to", "security", "documentation"],
+      "additionalProperties": false,
+      "anyOf": [{ "required": ["compatibility"] }, { "required": ["migration"] }],
+      "properties": {
+        "feature": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "from": { "type": "string", "enum": ["experimental", "preview"] },
+        "to": { "type": "string", "enum": ["preview", "supported"] },
+        "security": { "type": "string", "minLength": 1 },
+        "compatibility": { "type": "string", "minLength": 1 },
+        "migration": { "type": "string", "minLength": 1 },
+        "documentation": {
+          "type": "string",
+          "pattern": "^docs/releases/(?:changes|upgrades)/wi-[0-9]+(?:-[a-z0-9]+)*\\.md$"
+        }
+      }
+    },
     "testReference": {
       "type": "object",
       "required": ["path", "name", "task"],

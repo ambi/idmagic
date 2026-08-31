@@ -127,6 +127,74 @@ describe('check-workspace --documents', () => {
 })
 
 describe('check-workspace --work-items', () => {
+  it('rejects a completed item whose required release note is missing', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'work-items'), { recursive: true })
+    await writeFile(
+      join(root, 'work-items', 'wi-452-missing-release-note.md'),
+      `---
+status: completed
+authors: [tn]
+risk: low
+created_at: 2026-08-31
+change_kind: tooling
+evidence_policy: risk-based-v3
+spec_impact: { kind: none, reason: "The fixture changes repository tooling only." }
+documentation_impact:
+  level: release_note
+  reason: The declared release note must exist when the item is complete.
+  references:
+    - { kind: release_note, path: docs/releases/changes/wi-452-missing-release-note.md }
+---
+
+# Missing required release note
+
+## Motivation
+
+Exercise the documentation gate.
+
+## Scope
+
+- Work item validation
+
+## Out of Scope
+
+- Product behavior
+
+## Verification
+
+- mise run verify
+
+## Risk Notes
+
+The gate must reject an absent document.
+
+## Completion
+
+- **Completed At**: 2026-08-31
+- **Summary**: The fixture declares a release note that is absent.
+- **Acceptance RED Evidence**:
+  - **Test**: check-workspace rejects a missing release note
+  - **Requirement**: N/A: repository tooling has no normative product requirement
+  - **Observed Failure**: the incomplete fixture was accepted
+  - **Detection Reason**: the CLI must resolve the planned path at completion
+- **Unit RED Evidence**:
+  - **Test**: verifyDocumentationImpact rejects a missing release note
+  - **Requirement**: N/A: repository tooling has no normative product requirement
+  - **Observed Failure**: the pure verifier was absent
+  - **Detection Reason**: the verifier distinguishes a declared path from an existing document
+- **Verification Results**:
+  - mise run verify - passed
+`,
+    )
+
+    const result = await checkWorkItems(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain(
+      'documentation reference does not exist: docs/releases/changes/wi-452-missing-release-note.md',
+    )
+  })
+
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
@@ -144,6 +212,11 @@ created_at: 2026-08-30
 depends_on: []
 change_kind: feature
 evidence_policy: risk-based-v3
+documentation_impact:
+  level: release_note
+  reason: The planned feature is noteworthy to release readers.
+  references:
+    - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
   source: [docs/contexts/demo/scenarios.md]
 affected_spec:

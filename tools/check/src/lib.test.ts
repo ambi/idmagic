@@ -148,6 +148,11 @@ describe('validateAgainstSchema — work-item', () => {
   const validInitialContext = {
     specification: ['docs/scenarios.md#REQ-DEMO-001'],
   }
+  const validDocumentationImpact = {
+    level: 'none',
+    reason: 'Repository-only validation has no user-visible release difference.',
+    references: [],
+  }
   const validRedEvidence = {
     test: 'TestDemo rejects an invalid transition',
     requirement: 'REQ-DEMO-001',
@@ -304,10 +309,48 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema(
         'work-item',
-        { ...started, evidence_policy: 'risk-based-v3', initial_context: validInitialContext },
+        {
+          ...started,
+          evidence_policy: 'risk-based-v3',
+          initial_context: validInitialContext,
+          documentation_impact: validDocumentationImpact,
+        },
         '',
       ),
     ).toEqual([])
+  })
+
+  it('requires a documentation impact once the item is in progress', () => {
+    const started = {
+      ...validWorkItem,
+      status: 'in_progress',
+      evidence_policy: 'risk-based-v3',
+      initial_context: validInitialContext,
+    }
+    const findings = validateAgainstSchema('work-item', started, '')
+    expect(findings.some((finding) => finding.message.includes('documentation_impact'))).toBe(true)
+  })
+
+  it('accepts both compatibility and migration results in maturity evidence', () => {
+    const started = {
+      ...validWorkItem,
+      status: 'in_progress',
+      evidence_policy: 'risk-based-v3',
+      initial_context: validInitialContext,
+      documentation_impact: validDocumentationImpact,
+      maturity_evidence: [
+        {
+          feature: 'demo-v1',
+          from: 'preview',
+          to: 'supported',
+          security: 'The security review found no unresolved gap.',
+          compatibility: 'Existing configuration remains valid.',
+          migration: 'No migration is required.',
+          documentation: 'docs/releases/changes/wi-999-demo.md',
+        },
+      ],
+    }
+    expect(validateAgainstSchema('work-item', started, '')).toEqual([])
   })
 
   it('requires the current evidence policy once the item is in progress', () => {
@@ -315,6 +358,7 @@ describe('validateAgainstSchema — work-item', () => {
       ...validWorkItem,
       status: 'in_progress',
       initial_context: validInitialContext,
+      documentation_impact: validDocumentationImpact,
     }
     const f = validateAgainstSchema('work-item', started, '')
     expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
@@ -327,6 +371,7 @@ describe('validateAgainstSchema — work-item', () => {
       risk: 'medium',
       evidence_policy: 'risk-based-v3',
       initial_context: validInitialContext,
+      documentation_impact: validDocumentationImpact,
     }
     expect(validateAgainstSchema('work-item', started, '')).toEqual([])
   })
@@ -366,6 +411,7 @@ describe('validateAgainstSchema — work-item', () => {
       status: 'in_progress',
       risk: 'medium',
       initial_context: validInitialContext,
+      documentation_impact: validDocumentationImpact,
     }
     expect(
       validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v2' }, ''),

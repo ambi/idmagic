@@ -19,6 +19,11 @@ priority: p1
 depends_on: []
 change_kind: feature
 evidence_policy: risk-based-v3 # required after the item starts
+documentation_impact: # required after the item starts
+  level: release_note
+  reason: The new supported capability should be visible to release readers.
+  references:
+    - { kind: release_note, path: docs/releases/changes/wi-999-start-task.md }
 initial_context: # written when the item starts, not when it is filed
   specification: [docs/contexts/system/scenarios.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
@@ -36,6 +41,13 @@ primary_use_cases: # required for feature, bugfix, and standards.md work after i
     e2e_test: { path: backend/system/e2e_test.go, name: TestE2E_StartTask_REQ_SYSTEM_001, task: test-go-race }
     unit_fault_model: The use case does not emit the start command.
     e2e_fault_model: The configured route does not connect the handler to the use case.
+maturity_evidence: # required at completion for a detected maturity promotion
+  - feature: start-task-v1
+    from: preview
+    to: supported
+    security: The security review found no unresolved control gap for the supported use case.
+    compatibility: Existing preview configuration remains accepted without migration.
+    documentation: docs/releases/changes/wi-999-start-task.md
 ---
 
 # One-sentence semantic change
@@ -120,6 +132,24 @@ domain data types and operation signatures, and identify time, randomness, ident
 configuration, persistence, notification, and other effects at the boundary where they enter or leave the
 calculation. Domain, Use Cases, and Adapters tasks must retain the corresponding tests and normative scenario
 ID as self-evidence.
+
+Every item that enters `in_progress` declares one `documentation_impact` and keeps the same structured field
+through completion. `level` is one of `none`, `release_note`, `upgrade_note`, `deprecation_notice`, or
+`removal_notice`. `none` requires a concrete reason and no release-document references. Every other level
+declares the planned release-document paths before implementation; completion requires those paths to exist,
+name the work item, and link to an `affected_spec` requirement or TypeSpec symbol. A release note lives at
+`docs/releases/changes/wi-<id>.md`; an upgrade note lives at
+`docs/releases/upgrades/wi-<id>.md`. `upgrade_note`, `deprecation_notice`, and `removal_notice` require both
+kinds because a reader needs the noteworthy delta and the action or compatibility information. The checker
+derives a minimum from the change kind, normative specification diff, TypeSpec deprecations, and feature-
+registry maturity diff. An author may select a stronger level, never a weaker one.
+
+When the feature-registry diff promotes `experimental` to `preview` or `preview` to `supported`, completion
+also records one `maturity_evidence` entry for each promoted feature. The entry names the exact transition,
+the security-check result, either compatibility or migration information, and the release-document path that
+shows the new maturity. The applicable item still declares `primary_use_cases`; maturity evidence does not
+replace its Unit RED, E2E RED, or fault-injection results. Completed records written before this contract are
+history and are not reinterpreted.
 
 For `feature`, `bugfix`, and any item whose `affected_spec` references a requirement in a `standards.md`, add
 `primary_use_cases` before implementation. Each entry declares one central successful route with a stable

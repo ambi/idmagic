@@ -31,6 +31,8 @@ export type SpecificationFacts = {
   standards: Map<string, string>
   /** `<path>:<declaration>` for every TypeSpec declaration. */
   declarations: Set<string>
+  /** `<path>:<declaration>` for every declaration carrying `@deprecated`. */
+  deprecatedDeclarations: Set<string>
 }
 
 export type SpecificationDiff = {
@@ -43,6 +45,8 @@ export type SpecificationDiff = {
   changedStandards: string[]
   addedDeclarations: string[]
   removedDeclarations: string[]
+  addedDeprecations: string[]
+  removedDeprecations: string[]
 }
 
 // Anchored to the start of a line because `@doc` text is English prose: an
@@ -55,6 +59,31 @@ const DECLARATION = /^[ \t]*(?:alias|enum|model|op|scalar|union)\s+([A-Za-z_][A-
  */
 const TRANSPORT_WRAPPER = /(?:Error\d{3}(?:Body)?|Http(?:Request|Response)|Success_\d{3})$/
 const markdown = new MarkdownIt({ html: false, linkify: false, typographer: false })
+
+function deprecatedDeclarations(path: string, source: string): Set<string> {
+  const declarations = new Set<string>()
+  let pending = false
+  for (const line of source.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('@deprecated')) {
+      pending = true
+      continue
+    }
+    if (trimmed.length === 0 || trimmed.startsWith('@') || trimmed.startsWith('//')) continue
+    const declaration = line.match(
+      /^[ \t]*(?:alias|enum|model|op|scalar|union)\s+([A-Za-z_][A-Za-z0-9_]*)/,
+    )
+    if (declaration?.[1]) {
+      if (pending && !TRANSPORT_WRAPPER.test(declaration[1])) {
+        declarations.add(`${path}:${declaration[1]}`)
+      }
+      pending = false
+      continue
+    }
+    pending = false
+  }
+  return declarations
+}
 
 function standardRows(path: string, source: string): Map<string, string> {
   const rows = new Map<string, string>()
@@ -95,6 +124,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     transitions: new Map(),
     standards: new Map(),
     declarations: new Set(),
+    deprecatedDeclarations: new Set(),
   }
 
   for (const [path, source] of snapshot) {
@@ -102,6 +132,9 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
       for (const match of source.matchAll(DECLARATION)) {
         const name = match[1] ?? ''
         if (!TRANSPORT_WRAPPER.test(name)) facts.declarations.add(`${path}:${name}`)
+      }
+      for (const declaration of deprecatedDeclarations(path, source)) {
+        facts.deprecatedDeclarations.add(declaration)
       }
       continue
     }
@@ -201,6 +234,12 @@ export function diffSpecifications(base: Snapshot, head: Snapshot): Specificatio
     removedDeclarations: [...before.declarations]
       .filter((one) => !after.declarations.has(one))
       .sort(),
+    addedDeprecations: [...after.deprecatedDeclarations]
+      .filter((one) => !before.deprecatedDeclarations.has(one))
+      .sort(),
+    removedDeprecations: [...before.deprecatedDeclarations]
+      .filter((one) => !after.deprecatedDeclarations.has(one))
+      .sort(),
   }
 }
 
@@ -215,6 +254,8 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
     ['changed standards requirements', diff.changedStandards],
     ['added TypeSpec declarations', diff.addedDeclarations],
     ['removed TypeSpec declarations', diff.removedDeclarations],
+    ['added TypeSpec deprecations', diff.addedDeprecations],
+    ['removed TypeSpec deprecations', diff.removedDeprecations],
   ]
   const lines = groups
     .filter(([, entries]) => entries.length > 0)
@@ -276,6 +317,13 @@ async function readWorkingTree(root: string): Promise<Snapshot> {
   return snapshot
 }
 
+export async function diffWorkspaceSpecifications(
+  root: string,
+  ref = 'main',
+): Promise<SpecificationDiff> {
+  return diffSpecifications(readRevision(root, ref), await readWorkingTree(root))
+}
+
 function git(root: string, args: string[]): string {
   const result = Bun.spawnSync(['git', ...args], { cwd: root })
   if (result.exitCode !== 0) {
@@ -325,7 +373,7 @@ async function affectedSpecFromChangedWorkItems(
 if (import.meta.main) {
   const root = resolve(import.meta.dir, '../../..')
   const ref = process.argv[2] ?? 'main'
-  const diff = diffSpecifications(readRevision(root, ref), await readWorkingTree(root))
+  const diff = await diffWorkspaceSpecifications(root, ref)
   console.log(formatSpecificationDiff(diff, ref))
   const missing = unreferencedStandardChanges(
     diff,
