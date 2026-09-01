@@ -139,6 +139,16 @@ description = "Lint embedded repository tooling"
 dir = "tools"
 run = "bun run lint"
 
+[tasks.list-outdated-tools-dependencies]
+description = "List embedded tooling dependencies that have a newer release"
+dir = "tools"
+run = "bun outdated"
+
+[tasks.update-tools-dependencies]
+description = "Update embedded tooling dependency declarations to the latest releases"
+dir = "tools"
+run = "bun update --latest"
+
 [tasks.lint-repo]
 description = "Lint shell scripts, audit workflows, and scan for secrets"
 # 3 つとも合わせて 500ms 程度なので分けない。分けた数だけ `mise tasks` が読みにくくなる。
@@ -287,13 +297,20 @@ go run ./backend/cmd/idmagic-batch "$@"
 description = "Synchronize Go module requirements and checksums"
 run = "go mod tidy"
 
+[tasks.update-go-dependencies]
+description = "Update Go module requirements to the latest minor and patch releases"
+run = ["go get -u -t ./...", "go mod tidy"]
+
 [tasks.test-go-race]
 description = "Run race-enabled Go tests"
 run = "go test -race ./..."
 
 [tasks.test-go-cover]
 description = "Run Go tests with coverage"
-run = ["go test -coverprofile=coverage.out -covermode=atomic ./...", "go tool cover -func=coverage.out"]
+run = [
+  "go test -coverprofile=coverage.out -covermode=atomic ./...",
+  "go tool cover -func=coverage.out",
+]
 
 [tasks.test-go-fuzz]
 description = "Run one Go fuzz target"
@@ -370,6 +387,16 @@ depends = [
 description = "Check UI dependency declarations against actual usage"
 dir = "frontend"
 run = "bun run check:deps"
+
+[tasks.list-outdated-ui-dependencies]
+description = "List UI dependencies that have a newer release"
+dir = "frontend"
+run = "bun outdated"
+
+[tasks.update-ui-dependencies]
+description = "Update UI dependency declarations to the latest releases"
+dir = "frontend"
+run = "bun update --latest"
 
 [tasks.add-ui-component]
 description = "Add shadcn components with the version pinned in devDependencies"
@@ -452,7 +479,23 @@ fi
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
-depends = ["check-spec", "check-work-items", "check-ids", "check-links", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-contract-drift", "check-status-drift", "check-event-contract", "check-security-controls", "check-slo-references", "check-vulnerability-suppressions"]
+depends = [
+  "check-spec",
+  "check-work-items",
+  "check-ids",
+  "check-links",
+  "check-boundaries",
+  "check-command-map",
+  "check-agent-guidance",
+  "check-config-reference",
+  "check-admin-scopes",
+  "check-contract-drift",
+  "check-status-drift",
+  "check-event-contract",
+  "check-security-controls",
+  "check-slo-references",
+  "check-vulnerability-suppressions",
+]
 
 [tasks.check-links]
 description = "Check repository-local Markdown links and anchors"
@@ -552,7 +595,10 @@ run = "bun run check-api-compat/src/main.ts"
 
 [tasks.update-api-baseline]
 description = "Freeze generated OpenAPI as the release baseline"
-run = ["mise run spec-render", "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json"]
+run = [
+  "mise run spec-render",
+  "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json",
+]
 
 [tasks.spec-where]
 description = "Locate a term across specification, code, and work items"
@@ -584,7 +630,11 @@ run = "bun run render-spec-docs/src/main.ts"
 
 [tasks.spec-render]
 description = "Regenerate TypeSpec-derived artifacts"
-run = ["mise run compile-spec", "mise run generate-contract", "mise run render-spec-docs"]
+run = [
+  "mise run compile-spec",
+  "mise run generate-contract",
+  "mise run render-spec-docs",
+]
 
 [tasks.dev]
 description = "Start the local API and UI stack"
