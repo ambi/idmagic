@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-IDMANAGEMENT-009。
+
 import (
 	"bytes"
 	"context"
@@ -8,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -17,6 +20,7 @@ import (
 
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -28,6 +32,8 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 
@@ -37,7 +43,16 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 )
+
+type activeAgentTokenIntrospector struct {
+	result *oauthports.IntrospectionResult
+}
+
+func (i activeAgentTokenIntrospector) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
+	return i.result, nil
+}
 
 func sha256Hex(value string) string {
 	sum := sha256.Sum256([]byte(value))
@@ -94,6 +109,22 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	return identityTestHandler{
 		echo: e, users: repo, tokens: tokenStore, groups: groupRepo, clients: clientRepo, consents: consentRepo,
 	}
+}
+
+// agentClientIDs は管理 API 経由で Agent に保存されている資格情報の関連付けを読み出す。
+func agentClientIDs(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie, agentID string) []string {
+	t.Helper()
+	rec := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/agents/"+agentID, csrf, cookie, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get agent status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		ClientIDs []string `json:"client_ids"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode agent: %v", err)
+	}
+	return body.ClientIDs
 }
 
 func TestAdminAgentLifecycle(t *testing.T) {
@@ -163,11 +194,18 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	if bind.Code != http.StatusNoContent {
 		t.Fatalf("bind credential status=%d body=%s", bind.Code, bind.Body.String())
 	}
+	// 最終効果は関連付けが保存されること。204 だけでは配線の欠落を見分けられない。
+	if got := agentClientIDs(t, e, csrf, cookie, agentID1); !slices.Contains(got, "client-1") {
+		t.Fatalf("client_ids after bind = %v, want it to contain client-1", got)
+	}
 
 	// Unbind Agent Credential
 	unbind := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/agents/"+agentID1+"/credentials/client-1", csrf, cookie, nil)
 	if unbind.Code != http.StatusNoContent {
 		t.Fatalf("unbind credential status=%d body=%s", unbind.Code, unbind.Body.String())
+	}
+	if got := agentClientIDs(t, e, csrf, cookie, agentID1); slices.Contains(got, "client-1") {
+		t.Fatalf("client_ids after unbind = %v, want client-1 to be gone", got)
 	}
 
 	// Delete Agent
@@ -196,7 +234,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	}
 }
 
-// TestAdminAgentKill_AdvancesRevocationEpoch — RED: composition-root wiring
+// REQ-SHAREDSIGNALS-001: TestAdminAgentKill_AdvancesRevocationEpoch は composition-root wiring
 // end to end (KillAgent HTTP → deps_http.Deps.ReactiveEmit →
 // sharedsignalsusecases.AgentRevocationReactor.React →
 // AdvanceRevocationEpoch), not just the reactor unit in isolation. Confirms
@@ -245,6 +283,24 @@ func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 	}
 	if epoch == nil {
 		t.Fatal("expected KillAgent to advance the agent's revocation epoch via the composed reactor, got none")
+	}
+	if _, err := agentRepo.AddBinding(context.Background(), &agentdomain.AgentCredentialBinding{
+		AgentID: created.ID, ClientID: "agent-client", CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	introspection, err := tokenusecases.IntrospectToken(ctx, tokenusecases.IntrospectDeps{
+		Introspector: activeAgentTokenIntrospector{result: &oauthports.IntrospectionResult{
+			Active: true, ClientID: "agent-client", JTI: "issued-before-kill", Iat: epoch.Epoch.Add(-time.Second).Unix(), Exp: now.Add(time.Hour).Unix(),
+		}},
+		AgentRepo: agentRepo, RevocationEpochRepo: epochRepo,
+	}, tokenusecases.IntrospectInput{Token: "issued-before-kill", TokenTypeHint: "access_token"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if introspection.Active {
+		t.Fatalf("introspection=%+v, want active=false after kill", introspection)
 	}
 }
 

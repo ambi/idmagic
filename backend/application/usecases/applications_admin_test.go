@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-APPLICATION-007。
+
 // 管理者向け Application 操作 (Update / Delete / Icon / Binding / Assignment) の
 // 未カバー分岐 (エラーパス・冪等・検証失敗) を補う (wi-129)。
 
@@ -122,6 +124,19 @@ func TestUpdateApplicationChangesAndNoop(t *testing.T) {
 	}
 	if got.Status != domain.ApplicationDisabled {
 		t.Fatalf("status not updated: %v", got.Status)
+	}
+
+	// 戻り値だけでは保存されたかどうかが分からない。保存済みの Application を
+	// 読み直し、変更と選択済み protocol の両方が残っていることを確かめる。
+	stored, err := deps.Repo.FindByID(ctx, "acme", app.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("FindByID after update: app=%v err=%v", stored, err)
+	}
+	if stored.Name != "Payroll v2" || stored.Status != domain.ApplicationDisabled {
+		t.Fatalf("stored application = %+v", stored)
+	}
+	if stored.Protocol == nil || stored.Protocol.Type != domain.ApplicationProtocolOIDC || stored.Protocol.ClientID != "test-client" {
+		t.Fatalf("stored protocol = %+v", stored.Protocol)
 	}
 }
 

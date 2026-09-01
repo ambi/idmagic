@@ -58,6 +58,17 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     }
   })
 
+  it('applies the contract when a tooling migration declares primary use cases', () => {
+    const migration = {
+      ...applicable,
+      change_kind: 'tooling',
+      primary_use_cases: [{ ...plan, e2e_test: plan.unit_test }],
+    }
+    expect(verifyPrimaryUseCaseEvidence(migration, environment)).toContain(
+      'primary_use_cases demo-success uses the same test for Unit and E2E evidence',
+    )
+  })
+
   it('does not impose the plan on pending work or completed legacy evidence', () => {
     expect(verifyPrimaryUseCaseEvidence({ ...applicable, status: 'pending' }, environment)).toEqual(
       [],

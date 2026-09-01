@@ -1,5 +1,7 @@
 package responses_wsfederation
 
+// 主要ユースケース追跡: REQ-WSFEDERATION-004。
+
 import (
 	"strings"
 	"testing"

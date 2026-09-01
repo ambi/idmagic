@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-APPLICATION-007。
+
 import (
 	"bytes"
 	"encoding/json"

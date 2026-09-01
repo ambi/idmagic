@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-APPLICATION-012。
+
 import (
 	"context"
 	"testing"

@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-IDGOVERNANCE-001。
+
 import (
 	"context"
 	"errors"

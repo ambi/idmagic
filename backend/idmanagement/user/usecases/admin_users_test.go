@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-PLATFORM-001、REQ-PLATFORM-002、REQ-IDMANAGEMENT-011。
+
 import (
 	"context"
 	"errors"

@@ -1,5 +1,7 @@
 package domain
 
+// 主要ユースケース追跡: REQ-SAML-004、REQ-SAML-006。
+
 import (
 	"errors"
 	"testing"

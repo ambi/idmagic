@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-IDMANAGEMENT-015。
+
 import (
 	"encoding/json"
 	"net/http"

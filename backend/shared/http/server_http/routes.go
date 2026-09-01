@@ -352,15 +352,18 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	fetchWorkloadJWKS := func(ctx context.Context, bundle *workloadidentitydomain.WorkloadTrustBundle) ([]map[string]any, error) {
 		return d.JWKResolver.ResolveJWKSSource(ctx, bundle.JWKSURI, bundle.JWKS)
 	}
-	workloadVerifier := workloadidentityusecases.WorkloadTokenVerifierAdapter{
-		Deps: workloadidentityusecases.VerifyWorkloadAttestationDeps{
-			TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo,
-			BindingRepo:     d.WorkloadIdentity.BindingRepo,
-			AgentRepo:       d.IdManagement.AgentRepo,
-			SVIDVerifier:    workloadidentityverification.NewVerifier(),
-			FetchJWKS:       fetchWorkloadJWKS,
-			Emit:            d.Emit,
-		},
+	workloadVerifier := d.OAuth2.WorkloadVerifier
+	if workloadVerifier == nil {
+		workloadVerifier = workloadidentityusecases.WorkloadTokenVerifierAdapter{
+			Deps: workloadidentityusecases.VerifyWorkloadAttestationDeps{
+				TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo,
+				BindingRepo:     d.WorkloadIdentity.BindingRepo,
+				AgentRepo:       d.IdManagement.AgentRepo,
+				SVIDVerifier:    workloadidentityverification.NewVerifier(),
+				FetchJWKS:       fetchWorkloadJWKS,
+				Emit:            d.Emit,
+			},
+		}
 	}
 
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{

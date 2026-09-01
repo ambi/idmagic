@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-AUDIT-001。
+
 // SCL scenario "管理者は所属テナントの監査イベントを参照できるが別テナントは公開しない" を
 // /api/admin/v1/audit_events 経由で検証する。requireAdmin と異なり requireAuditReader は
 // admin / system_admin 両方を許可し、system_admin の default-tenant 経路では

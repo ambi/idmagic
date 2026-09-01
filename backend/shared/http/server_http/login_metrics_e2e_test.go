@@ -1,5 +1,7 @@
 package server_http_test
 
+// 主要ユースケース追跡: REQ-OAUTH2-026。
+
 // wi-112: end-to-end coverage that the login/throttle/token-issuance golden
 // signal counters fire from real HTTP handler decision points, not just from
 // the low-level Metrics adapter in isolation (observability package).

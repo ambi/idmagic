@@ -12,7 +12,7 @@
     "lint:fix": "biome lint --write .",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "check:deps": "knip",
-    "test:e2e": "bun test tests/e2e/ui-scenario-actions.spec.ts && bun test tests/e2e/ui-scenario-smoke.spec.ts && bun test tests/e2e/admin-session-recovery.spec.ts && bun test tests/e2e/authorize-golden-path.spec.ts",
+    "test:e2e": "bun test tests/e2e/ui-scenario-actions.spec.ts && bun test tests/e2e/ui-scenario-smoke.spec.ts && bun test tests/e2e/admin-session-recovery.spec.ts && bun test tests/e2e/authorize-golden-path.spec.ts && bun test tests/e2e/localized-ui.spec.ts",
     "test:unit": "bun test src/",
     "test:unit:coverage": "bun test --coverage src/",
     "generate:routes": "bun run scripts/generate-routes.ts",

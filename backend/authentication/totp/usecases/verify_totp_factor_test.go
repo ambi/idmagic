@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-AUTHENTICATION-011。
+
 import (
 	"context"
 	"testing"

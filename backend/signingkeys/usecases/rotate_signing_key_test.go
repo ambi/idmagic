@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-SIGNINGKEYS-001。
+
 // SCL シナリオ "鍵回転後も旧 kid の JWKS エントリは保持される" を担保する。
 // SigningKeyMinJwksOverlap (7d) により、回転後しばらく旧鍵で署名された JWT を
 // 検証できる必要がある。

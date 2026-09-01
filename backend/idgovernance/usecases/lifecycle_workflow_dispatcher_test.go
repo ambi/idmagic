@@ -10,6 +10,8 @@ import (
 
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	"github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -18,17 +20,97 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type failOnceJobRepository struct {
 	jobsports.JobRepository
 	fail bool
+}
+
+// REQ-IDGOVERNANCE-003: 利用者の正式な変更経路で捕捉したワークフローをジョブとして実行し、宣言した効果まで到達させる。
+func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
+	ctx := workflowContext()
+	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	workflows := igmemory.NewLifecycleWorkflowRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	users := usermemory.NewUserRepository()
+	groups := groupmemory.NewGroupRepository()
+	applications := appmemory.NewApplicationRepository()
+	assignments := appmemory.NewApplicationAssignmentRepository()
+	jobs := jobsmemory.NewJobRepository()
+
+	group := &groupdomain.Group{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
+	if err := groups.Save(ctx, group); err != nil {
+		t.Fatal(err)
+	}
+	application := &appdomain.Application{TenantID: "tenant-a", ID: "employee-portal", Name: "Employee portal", Kind: appdomain.ApplicationWeblink, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now}
+	if err := applications.Save(ctx, application); err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows}, usecases.CreateLifecycleWorkflowInput{
+		Name:    "Joiner",
+		Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated},
+		Actions: []igdomain.WorkflowAction{
+			{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: group.ID},
+			{Kind: igdomain.WorkflowActionAssignApplication, ApplicationID: application.ID},
+		},
+		Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows}, workflow.ID, workflow.CurrentRevision, "admin", now); err != nil {
+		t.Fatal(err)
+	}
+
+	created, err := userusecases.CreateUser(ctx, userusecases.AdminUserDeps{
+		UserRepo: users,
+		UserMutationCommitter: usecases.UserMutationCommitter{
+			WorkflowRepo: workflows,
+			RunRepo:      runs,
+			UserRepo:     users,
+			Capture:      &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
+		},
+		PasswordHasher:      passwords_argon2id.NewArgon2idPasswordHasher(),
+		PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
+	}, userusecases.CreateUserInput{ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182", Now: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, JobRepo: jobs}, 10, now.Add(2*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := jobs.ClaimBatch(ctx, "worker-1", jobsdomain.LaneDefault, 1, time.Minute, now.Add(3*time.Minute))
+	if err != nil || len(claimed) != 1 {
+		t.Fatalf("ClaimBatch = %#v, %v", claimed, err)
+	}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+		RunRepo: runs, UserRepo: users, GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
+	})
+	result, err := handler(ctx, claimed[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := jobs.Complete(ctx, claimed[0].ID, "worker-1", result, now.Add(4*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+
+	memberships, err := groups.ListGroupsByUser(ctx, "tenant-a", created.ID)
+	if err != nil || len(memberships) != 1 || memberships[0].ID != group.ID {
+		t.Fatalf("memberships = %#v, %v", memberships, err)
+	}
+	applicationAssignments, err := assignments.ListBySubjects(ctx, "tenant-a", []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: created.ID}})
+	if err != nil || len(applicationAssignments) != 1 || applicationAssignments[0].ApplicationID != application.ID {
+		t.Fatalf("assignments = %#v, %v", applicationAssignments, err)
+	}
 }
 
 func (r *failOnceJobRepository) Enqueue(ctx context.Context, in jobsports.EnqueueInput) (*jobsdomain.Job, bool, error) {
@@ -129,6 +211,15 @@ func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T)
 		if events[i].EventType() != eventType {
 			t.Fatalf("events[%d] = %s, want %s", i, events[i].EventType(), eventType)
 		}
+	}
+	// イベントだけでは再開可能性が担保されない。成功した step の結果が
+	// checkpoint として保存されていることを確かめる。
+	persisted, err := runs.ListSteps(ctx, run.TenantID, run.ID)
+	if err != nil || len(persisted) != 1 {
+		t.Fatalf("ListSteps = %+v, err = %v", persisted, err)
+	}
+	if persisted[0].Outcome == igdomain.WorkflowStepPending {
+		t.Fatalf("checkpointed step outcome = %v, want a terminal outcome", persisted[0].Outcome)
 	}
 }
 

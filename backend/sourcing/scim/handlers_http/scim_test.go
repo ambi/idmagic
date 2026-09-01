@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-SOURCING-002。
+
 import (
 	"bytes"
 	"context"

@@ -1,5 +1,8 @@
 package server_http_test
 
+// 主要ユースケース追跡: REQ-PLATFORM-001、REQ-AUTHENTICATION-007、REQ-AUTHENTICATION-011、REQ-SYSTEM-002、
+// REQ-OAUTH2-005、REQ-OAUTH2-006。
+
 import (
 	"bytes"
 	"context"
@@ -405,6 +408,103 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 	}
 }
 
+// TestTokenLifecycleRotatesRefreshTokenAndInvalidatesTheUsedOne は、正式な入口だけを
+// 使って認可コードをトークンへ交換し、refresh のローテーション後に新しい token だけが
+// 有効であることを確かめる (REQ-OAUTH2-005、REQ-OAUTH2-006)。
+func TestTokenLifecycleRotatesRefreshTokenAndInvalidatesTheUsedOne(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+	client := browserClient(t)
+	const verifier = "verifier-for-refresh-rotation-test-1234567890123"
+
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", verifier, "state")
+	resp.Body.Close()
+	transaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
+		"username": demoUsername, "password": demoPassword,
+	})
+	consent := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	consentResult := postJSON[map[string]string](
+		t, client, srv.URL+"/realms/default/api/auth/consent", consent.CSRFToken,
+		map[string]string{"action": "allow"},
+	)
+	redirectTo, err := url.Parse(consentResult["redirect_to"])
+	if err != nil {
+		t.Fatalf("parse redirect: %v", err)
+	}
+	code := redirectTo.Query().Get("code")
+	if code == "" {
+		t.Fatalf("no authorization code in %q", consentResult["redirect_to"])
+	}
+
+	first := postTokenForm(t, client, srv.URL, url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"code_verifier": {verifier},
+		"redirect_uri":  {demoRedirectURI},
+	})
+	if first.status != http.StatusOK || first.body["access_token"] == nil {
+		t.Fatalf("code exchange status=%d body=%v", first.status, first.body)
+	}
+	issued, _ := first.body["refresh_token"].(string)
+	if issued == "" {
+		t.Fatalf("offline_access did not yield a refresh token: %v", first.body)
+	}
+
+	rotated := postTokenForm(t, client, srv.URL, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {issued},
+	})
+	next, _ := rotated.body["refresh_token"].(string)
+	if rotated.status != http.StatusOK || next == "" || next == issued {
+		t.Fatalf("refresh status=%d body=%v", rotated.status, rotated.body)
+	}
+
+	// ローテーション後に有効なのは新しい token だけである。
+	again := postTokenForm(t, client, srv.URL, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {next},
+	})
+	if again.status != http.StatusOK || again.body["refresh_token"] == nil {
+		t.Fatalf("refresh with the rotated token status=%d body=%v", again.status, again.body)
+	}
+	replayed := postTokenForm(t, client, srv.URL, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {next},
+	})
+	if replayed.status == http.StatusOK {
+		t.Fatalf("replaying a used refresh token must be rejected: %v", replayed.body)
+	}
+}
+
+type tokenResponse struct {
+	status int
+	body   map[string]any
+}
+
+// postTokenForm は demo client の資格情報で /token を叩き、状態行と本文を返す。
+func postTokenForm(t *testing.T, client *http.Client, baseURL string, form url.Values) tokenResponse {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/realms/default/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build token request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(demoClientID, demoClientSecret)
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("POST /token: %v", err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	body := map[string]any{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &body)
+	}
+	return tokenResponse{status: resp.StatusCode, body: body}
+}
+
 func TestBrowserAuthorizationFlowSkipsTOTPWhenPolicyAllowsPassword(t *testing.T) {
 	secret := totpTestSecret
 	srv := newServerWithTOTP(t, secret)
@@ -470,6 +570,38 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	})
 	if totpResult["next"] != "/realms/default/consent" {
 		t.Fatalf("totp next=%q, want /realms/default/consent", totpResult["next"])
+	}
+
+	// 第二要素の成立は login session と authorize の再開の両方へ届かなければならない。
+	// 次画面の名前だけでは、どちらの配線が外れても同じ応答になってしまう。
+	sessions := getJSON[struct {
+		Sessions []struct {
+			Current bool     `json:"current"`
+			AMR     []string `json:"amr"`
+		} `json:"sessions"`
+	}](t, client, srv.URL+"/realms/default/api/account/v1/sessions")
+	if len(sessions.Sessions) != 1 || !sessions.Sessions[0].Current ||
+		!slices.Contains(sessions.Sessions[0].AMR, "pwd") ||
+		!slices.Contains(sessions.Sessions[0].AMR, "otp") {
+		t.Fatalf("sessions=%+v, want one current pwd+otp session", sessions.Sessions)
+	}
+	consent := getJSON[struct {
+		Kind      string `json:"kind"`
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	if consent.Kind != "consent" || consent.CSRFToken == "" {
+		t.Fatalf("unexpected consent transaction: %+v", consent)
+	}
+	consentResult := postJSON[map[string]string](
+		t, client, srv.URL+"/realms/default/api/auth/consent", consent.CSRFToken,
+		map[string]string{"action": "allow"},
+	)
+	redirectTo, err := url.Parse(consentResult["redirect_to"])
+	if err != nil {
+		t.Fatalf("parse redirect: %v", err)
+	}
+	if redirectTo.Query().Get("code") == "" {
+		t.Fatalf("authorization did not resume into a code: %s", consentResult["redirect_to"])
 	}
 }
 

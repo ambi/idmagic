@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-APITOKENS-003。
+
 import (
 	"bytes"
 	"context"
@@ -107,6 +109,34 @@ func TestAdminApiTokenLifecycle(t *testing.T) {
 	revoked := request(t, e, http.MethodDelete, "/api/admin/v1/api-tokens/"+issueBody.Meta.ID, nil, true)
 	if revoked.Code != http.StatusNoContent {
 		t.Fatalf("revoke status=%d body=%s", revoked.Code, revoked.Body.String())
+	}
+	// 204 だけでは、失効が bearer authenticator の参照する記録へ届いたか分からない。
+	// 失効後の記録に revoked_at が立っていることを同じ管理 API から確かめる。
+	afterRevoke := request(t, e, http.MethodGet, "/api/admin/v1/api-tokens", nil, true)
+	if afterRevoke.Code != http.StatusOK {
+		t.Fatalf("list after revoke status=%d body=%s", afterRevoke.Code, afterRevoke.Body.String())
+	}
+	var afterBody struct {
+		Tokens []struct {
+			ID        string  `json:"id"`
+			RevokedAt *string `json:"revoked_at"`
+		} `json:"tokens"`
+	}
+	if err := json.Unmarshal(afterRevoke.Body.Bytes(), &afterBody); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, token := range afterBody.Tokens {
+		if token.ID != issueBody.Meta.ID {
+			continue
+		}
+		found = true
+		if token.RevokedAt == nil {
+			t.Fatalf("revoked token still has no revoked_at: %s", afterRevoke.Body.String())
+		}
+	}
+	if !found {
+		t.Fatalf("revoked token is missing from the listing: %s", afterRevoke.Body.String())
 	}
 }
 

@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-WORKLOADIDENTITY-008。
+
 import (
 	"context"
 	"errors"
@@ -92,12 +94,31 @@ func TestGetWorkloadTrustBundle_CrossTenantIsNotFound(t *testing.T) {
 }
 
 func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
-	deps := newAdminDeps()
-	ctx := withTenant("tenant-a")
-	now := time.Now().UTC()
+	// 観測すべき最終効果は「状態変更が後続の交換可否に反映される」ことなので、
+	// 検証側と同じ repository を共有し、状態を変えるたびに交換を試す。
+	f := newFixture(t)
+	deps := usecases.AdminWorkloadIdentityDeps{
+		TrustBundleRepo: f.deps.TrustBundleRepo,
+		BindingRepo:     f.deps.BindingRepo,
+	}
+	ctx := withTenant(testTenant)
+	now := f.now
 	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
+	}
+	f.registerAgent(t, "agent_1", true)
+	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
+	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
+	exchange := func() error {
+		_, err := usecases.VerifyWorkloadAttestation(
+			context.Background(), f.deps, testTenant,
+			usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now,
+		)
+		return err
+	}
+	if err := exchange(); err != nil {
+		t.Fatalf("exchange while enabled: %v", err)
 	}
 
 	disabled, err := usecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now)
@@ -107,6 +128,9 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 	if disabled.IsEnabled() {
 		t.Fatal("expected bundle to be disabled")
 	}
+	if err := exchange(); err == nil {
+		t.Fatal("a disabled trust bundle must stop the credential exchange")
+	}
 
 	enabled, err := usecases.EnableWorkloadTrustBundle(ctx, deps, bundle.ID, now)
 	if err != nil {
@@ -114,6 +138,9 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 	}
 	if !enabled.IsEnabled() {
 		t.Fatal("expected bundle to be enabled again")
+	}
+	if err := exchange(); err != nil {
+		t.Fatalf("exchange after re-enabling: %v", err)
 	}
 }
 

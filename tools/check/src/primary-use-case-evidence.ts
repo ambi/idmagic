@@ -23,6 +23,7 @@ function text(value: unknown): string | undefined {
 
 function applicable(record: RecordValue): boolean {
   if (record.change_kind === 'feature' || record.change_kind === 'bugfix') return true
+  if (objects(record.primary_use_cases).length > 0) return true
   return objects(record.affected_spec).some((reference) =>
     text(reference.path)?.endsWith('/standards.md'),
   )

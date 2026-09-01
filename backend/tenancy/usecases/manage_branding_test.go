@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-TENANCY-004。
+
 import (
 	"context"
 	"errors"

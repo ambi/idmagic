@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-OAUTH2-006。
+
 // SCL シナリオ "absolute_expires_at を超えた refresh token はローテーション不可" と
 // sender constraint 不一致 (DPoP / mTLS) で invalid_grant になることを担保する。
 
@@ -129,8 +131,9 @@ func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	// tenant context が無いと FindByID は default を期待するが、Seed では明示せず
 	// oauth2memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。
+	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", "")
 	res, err := RefreshTokens(
-		tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", ""),
+		ctx,
 		f.deps,
 		RefreshInput{ClientID: "client", RefreshToken: f.token, ProofJKT: "matching-jkt"},
 		now,
@@ -140,5 +143,15 @@ func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	}
 	if res.AccessToken == "" || res.RefreshToken == "" {
 		t.Fatalf("expected rotated tokens, got %+v", res)
+	}
+	// ローテーション後は旧 refresh token が使えない。使えたままなら、盗まれた
+	// token をいつまでも使い回せる。
+	if _, err := RefreshTokens(
+		ctx,
+		f.deps,
+		RefreshInput{ClientID: "client", RefreshToken: f.token, ProofJKT: "matching-jkt"},
+		now,
+	); err == nil {
+		t.Fatal("replaying the rotated refresh token must be rejected")
 	}
 }

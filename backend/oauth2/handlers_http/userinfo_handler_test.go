@@ -24,9 +24,11 @@ import (
 	"testing"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -41,6 +43,54 @@ import (
 
 type fakeIntrospector struct {
 	result *oauthports.IntrospectionResult
+}
+
+// REQ-CLAIMMAPPING-001: UserInfo の HTTP 経路は RP の対応付けだけを公開し、未対応付け属性を漏らさない。
+func TestUserInfoAppliesClientClaimMappingPolicy(t *testing.T) {
+	now := time.Now().UTC()
+	nickname, secret := "ally", "do-not-release"
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{
+		ID: "user-alice", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+		Attributes: map[string]userdomain.AttributeValue{
+			"nickname": {Type: idmdomain.AttributeTypeString, String: &nickname},
+			"secret":   {Type: idmdomain.AttributeTypeString, String: &secret},
+		},
+		CreatedAt: now, UpdatedAt: now,
+	})
+	clients := memory.NewClientRepository()
+	clients.Seed(&domain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "claim-client",
+		ClaimPolicy: &claimdomain.ClaimMappingPolicy{
+			NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "user_id"},
+			Rules:  []claimdomain.ClaimMappingRule{{ClaimType: "alias", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "nickname", Required: true}},
+		},
+		CreatedAt: now,
+	})
+	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{Active: true, Sub: "user-alice", Scope: "openid", ClientID: "claim-client"}}
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer: "http://test", UserRepo: users, TokenIntrospector: intro,
+		OAuth2: oauth2.Module{ClientRepo: clients},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("userinfo status=%d body=%s", response.Code, response.Body.String())
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &claims); err != nil {
+		t.Fatal(err)
+	}
+	if claims["alias"] != nickname {
+		t.Fatalf("mapped claim missing: %#v", claims)
+	}
+	if _, leaked := claims["secret"]; leaked {
+		t.Fatalf("unmapped claim leaked: %#v", claims)
+	}
 }
 
 func (f *fakeIntrospector) IntrospectAccessToken(_ context.Context, _ string) (*oauthports.IntrospectionResult, error) {

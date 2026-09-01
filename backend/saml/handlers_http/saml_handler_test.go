@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-SAML-004、REQ-SAML-006。
+
 import (
 	"context"
 	"crypto/rand"
@@ -9,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"html"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +36,9 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
+	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
+	dsig "github.com/russellhaering/goxmldsig"
 )
 
 type stubResolver struct {
@@ -202,6 +207,71 @@ func TestSamlSSO_SPInitiatedAuthenticatedIssuesPostForm(t *testing.T) {
 	if !hasEvent(*events, "SamlSignInIssued") {
 		t.Fatal("SamlSignInIssued not emitted")
 	}
+
+	// 最終効果は「SP が検証可能な Response を受け取る」ことなので、SP と同じ手順で
+	// 復号・解析し、公開証明書に対して assertion 署名を検証する。
+	responseXML := samlResponseFromPostForm(t, body)
+	document := etree.NewDocument()
+	if err := document.ReadFromBytes(responseXML); err != nil {
+		t.Fatalf("parse SAMLResponse: %v", err)
+	}
+	if got := document.Root().SelectAttrValue("Destination", ""); got != "https://sp.example.com/acs" {
+		t.Fatalf("Destination=%q, want the registered ACS URL", got)
+	}
+	assertion := document.FindElement("//Assertion")
+	if assertion == nil {
+		t.Fatalf("Assertion missing: %s", responseXML)
+	}
+	if audience := assertion.FindElement("//AudienceRestriction/Audience"); audience == nil || audience.Text() != "https://sp.example.com" {
+		t.Fatalf("Audience=%v, want the registered SP entity ID", audience)
+	}
+	if assertion.FindElement("./Signature") == nil {
+		t.Fatalf("assertion is not signed: %s", responseXML)
+	}
+	store := &dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{idpSigningCertificate(t, e)}}
+	validation := dsig.NewDefaultValidationContext(store)
+	validation.IdAttribute = "ID"
+	if _, err := validation.Validate(assertion); err != nil {
+		t.Fatalf("assertion signature did not validate against the published certificate: %v", err)
+	}
+}
+
+// samlResponseFromPostForm は自動 POST フォーム HTML から SAMLResponse を取り出して復号する。
+func samlResponseFromPostForm(t *testing.T, body string) []byte {
+	t.Helper()
+	const marker = `name="SAMLResponse" value="`
+	_, after, ok := strings.Cut(body, marker)
+	if !ok {
+		t.Fatalf("SAMLResponse hidden input missing: %s", body)
+	}
+	rest := after
+	end := strings.Index(rest, `"`)
+	if end < 0 {
+		t.Fatalf("SAMLResponse value is not terminated: %s", body)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(html.UnescapeString(rest[:end]))
+	if err != nil {
+		t.Fatalf("decode SAMLResponse: %v", err)
+	}
+	return decoded
+}
+
+// idpSigningCertificate は公開されている IdP 署名証明書を取得する。SP はこれで assertion を検証する。
+func idpSigningCertificate(t *testing.T, e *echo.Echo) *x509.Certificate {
+	t.Helper()
+	rec := get(e, "/saml/signing-certificate.pem")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("signing certificate status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	block, _ := pem.Decode(rec.Body.Bytes())
+	if block == nil {
+		t.Fatalf("signing certificate is not PEM: %s", rec.Body.String())
+	}
+	certificate, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("parse signing certificate: %v", err)
+	}
+	return certificate
 }
 
 func TestSamlSSO_IdPInitiatedIssuesPostForm(t *testing.T) {

@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-AUDIT-001。
+
 import (
 	"testing"
 

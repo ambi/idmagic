@@ -1,5 +1,7 @@
 package server_http
 
+// 主要ユースケース追跡: REQ-TENANCY-006。
+
 import (
 	"context"
 	"encoding/json"

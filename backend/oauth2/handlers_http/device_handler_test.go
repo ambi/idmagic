@@ -18,9 +18,14 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
@@ -41,7 +46,8 @@ func tenantContext(id string) context.Context {
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }
 
-func newDeviceServer() deviceFixture {
+func newDeviceServer(t *testing.T) deviceFixture {
+	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	// テスト用クライアントをシード
 	clientRepo.Seed(&domain.OAuth2Client{
@@ -58,16 +64,31 @@ func newDeviceServer() deviceFixture {
 	})
 
 	deviceStore := oauth2memory.NewDeviceCodeStore()
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{
+		ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+	})
 	authn := &fakeAuthnResolver{
 		ctx: &authdomain.AuthenticationContext{UserID: "user-1"},
 	}
 
 	e := echo.New()
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
 	deps := httpadapter.Deps{
-		Issuer:        "http://test",
-		TenantRepo:    tenancymemory.NewTenantRepository(),
-		OAuth2:        oauth2.Module{ClientRepo: clientRepo, DeviceCodeStore: deviceStore},
+		Issuer:     "http://test",
+		TenantRepo: tenancymemory.NewTenantRepository(),
+		OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, DeviceCodeStore: deviceStore, RefreshStore: oauth2memory.NewRefreshTokenStore(),
+		},
 		AuthnResolver: authn,
+		KeyStore:      keyStore,
+		TokenIssuer:   tokenIssuer,
+		UserRepo:      userRepo,
 	}
 	// default tenant をシード
 	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
@@ -87,7 +108,7 @@ func newDeviceServer() deviceFixture {
 }
 
 func TestDeviceAuthorizationAPI(t *testing.T) {
-	fix := newDeviceServer()
+	fix := newDeviceServer(t)
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 
 	// 1. handleDeviceAuthorization (POST /device_authorization)
@@ -181,6 +202,27 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		stored, _ := fix.deviceStore.FindByUserCode(ctx, domain.NormalizeUserCode(fix.userCode))
 		if stored.State != spec.DeviceFlowApproved {
 			t.Errorf("expected state DeviceFlowApproved, got %v", stored.State)
+		}
+
+		// REQ-OAUTH2-027: 承認後の device_code を正式な token endpoint で交換し、最終成果の資格情報を得る。
+		tokenForm := url.Values{
+			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
+			"device_code": {fix.deviceCode},
+			"client_id":   {"device-client"},
+		}
+		tokenReq := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(tokenForm.Encode()))
+		tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		tokenRec := httptest.NewRecorder()
+		fix.e.ServeHTTP(tokenRec, tokenReq)
+		if tokenRec.Code != http.StatusOK {
+			t.Fatalf("approved device_code exchange status=%d body=%s", tokenRec.Code, tokenRec.Body.String())
+		}
+		var tokenBody map[string]any
+		if err := json.Unmarshal(tokenRec.Body.Bytes(), &tokenBody); err != nil {
+			t.Fatal(err)
+		}
+		if tokenBody["access_token"] == "" {
+			t.Fatalf("approved device_code exchange returned no access token: %s", tokenRec.Body.String())
 		}
 	})
 

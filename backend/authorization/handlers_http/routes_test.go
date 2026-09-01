@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-AUTHORIZATION-003。
+
 // REQ-AUTHORIZATION-001 / REQ-AUTHORIZATION-002 / REQ-AUTHORIZATION-004 /
 // REQ-AUTHORIZATION-006 を /api/admin/v1/authorization/* 経由で検証する。
 

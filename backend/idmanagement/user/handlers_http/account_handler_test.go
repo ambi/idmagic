@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-IDMANAGEMENT-016。
+
 // SCL scenario "認証済みユーザーは自身のプロフィールを読み・編集できる" を
 // /api/account/v1/profile 経由で検証する (wi-19)。
 

@@ -1,6 +1,8 @@
 // wi-75: 到達性スモークから一段進め、主要なブラウザ操作が API と接続されて
 // ユーザー可視の成功状態へ到達することを検証する。
 import { createHmac } from 'node:crypto'
+
+// 主要ユースケース追跡: REQ-AUTHENTICATION-013。
 import { afterAll, beforeAll, expect, test } from 'bun:test'
 import {
   authorizePath,
@@ -361,7 +363,19 @@ test('account session list can revoke a different browser session', async () => 
         await first.evaluate(`(() => [...document.querySelectorAll('button')]
           .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
       )
-      if (afterCount < beforeCount) return
+      if (afterCount < beforeCount) {
+        // 行が消えるのは画面上の状態にすぎない。読み直してサーバーの一覧からも
+        // 消えていることを確かめ、失効が実際に保存されたことまで観測する。
+        await first.navigate(`${uiOrigin}/account/activity`)
+        await waitForPage(first, 'account-activity')
+        await waitForText(first, 'End other sessions')
+        const reloadedCount = Number(
+          await first.evaluate(`(() => [...document.querySelectorAll('button')]
+            .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
+        )
+        expect(reloadedCount).toBeLessThan(beforeCount)
+        return
+      }
       await Bun.sleep(150)
     }
     throw new Error('timeout waiting for revoked session row count to decrease')

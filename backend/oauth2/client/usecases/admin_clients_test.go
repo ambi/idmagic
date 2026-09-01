@@ -1,10 +1,13 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-OAUTH2-035。
+
 import (
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -167,6 +170,16 @@ func TestAdminOAuth2Client(t *testing.T) {
 		}
 		if ev.ActorUserID != "admin-2" || ev.ClientID != clientID {
 			t.Errorf("unexpected event content: %+v", ev)
+		}
+
+		// 別テナントからは同じ client を更新できない。所有権の確認が抜けると、
+		// テナント境界を越えた設定変更がそのまま通ってしまう。
+		otherTenant := tenancy.WithTenant(ctx, &tenancydomain.Tenant{
+			ID: "another-tenant", DisplayName: "another-tenant",
+			Status: tenancydomain.TenantStatusActive, CreatedAt: now,
+		}, "https://idp.example/realms/another-tenant", "/realms/another-tenant")
+		if _, err := UpdateAdminOAuth2Client(otherTenant, deps, upIn); !errors.Is(err, ErrClientNotFound) {
+			t.Fatalf("cross-tenant update err=%v, want ErrClientNotFound", err)
 		}
 
 		// 値が同じ場合（no-op）

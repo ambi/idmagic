@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-TENANCY-011。
+
 // SCL scenario "テナント内 admin は所属テナントの設定を読み・更新できる"
 // を /api/admin/v1/settings 経由で検証する。AdminSettingsRead は admin /
 // system_admin の両方で許可、AdminSettingsUpdate は actor.tenant_id に

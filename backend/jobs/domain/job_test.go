@@ -1,5 +1,7 @@
 package domain
 
+// 主要ユースケース追跡: REQ-JOBS-002。
+
 import (
 	"testing"
 	"time"

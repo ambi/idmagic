@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-DATAKEYS-002。
+
 import (
 	"context"
 	"errors"
@@ -89,8 +91,21 @@ func TestRotateTenantDataKeyThenDecryptStillWorksForOldVersion(t *testing.T) {
 		t.Fatalf("expected 1 DataEncryptionKeyRotated event, got %+v", emitted)
 	}
 
-	// version 1 is now retiring but its ciphertext must still decrypt.
-	decrypted, err := deps.Crypto.Decrypt(ctx, plaintextDEKv1, aad, ciphertext)
+	// version 1 は retiring として保存に残り、そこから取り出した DEK で既存の
+	// 暗号文が復号できなければならない。手元に持っている平文 DEK で復号しても、
+	// 保存側が旧版を残したかどうかは分からない。
+	retiring, err := deps.Repository.FindByVersion(ctx, "tenant-a", first.Version)
+	if err != nil {
+		t.Fatalf("FindByVersion(v1) failed: %v", err)
+	}
+	if retiring.Status != domain.DataKeyStatusRetiring {
+		t.Fatalf("v1 status = %v, want retiring", retiring.Status)
+	}
+	storedDEKv1, err := deps.Crypto.Unwrap(ctx, "tenant-a", retiring.WrappedDEK, retiring.MasterKeyID)
+	if err != nil {
+		t.Fatalf("Unwrap stored v1 failed: %v", err)
+	}
+	decrypted, err := deps.Crypto.Decrypt(ctx, storedDEKv1, aad, ciphertext)
 	if err != nil {
 		t.Fatalf("Decrypt with retiring v1 DEK failed: %v", err)
 	}

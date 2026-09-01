@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-OAUTH2-005、REQ-OAUTH2-006。
+
 import (
 	"context"
 	"encoding/json"

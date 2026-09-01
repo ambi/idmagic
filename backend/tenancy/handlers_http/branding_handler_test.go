@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-TENANCY-004。
+
 // SCL scenario "管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に
 // 反映される" / "不正な branding 入力は拒否されシステム既定にフォールバックする" を
 // /api/branding, /api/admin/v1/tenant/branding, /api/admin/v1/tenant/branding/assets/{kind}

@@ -91,6 +91,7 @@ depends = [
   "lint-ui",
   "typecheck-ui",
   "test-ui-unit",
+  "test-ui-e2e",
   "build-ui",
 ]
 
@@ -110,6 +111,7 @@ run = [
   "mise run lint-ui",
   "mise run typecheck-ui",
   "mise run test-ui-unit",
+  "mise run test-ui-e2e",
   "mise run build-ui",
 ]
 
@@ -235,6 +237,15 @@ run = '''
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run test-go-package -- <package>" >&2; exit 2; }
 go test "$1"
+'''
+
+[tasks.test-go-test]
+description = "Run one Go test by name in one package"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 2 || { echo "usage: mise run test-go-test -- <package> <test>" >&2; exit 2; }
+go test "$1" -run "^$2\$" -count 1
 '''
 
 [tasks.benchmark-go-package]
@@ -424,6 +435,20 @@ run = "bun run build"
 description = "Run UI end-to-end tests"
 dir = "frontend"
 run = "bun run test:e2e"
+
+[tasks.test-ui-e2e-file]
+description = "Run one UI end-to-end spec file"
+dir = "frontend"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run test-ui-e2e-file -- <spec> [test name]" >&2; exit 2; }
+if [ "$#" -ge 2 ]; then
+  bun test "$1" -t "$2"
+else
+  bun test "$1"
+fi
+'''
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"

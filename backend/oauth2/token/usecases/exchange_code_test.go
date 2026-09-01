@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-OAUTH2-005。
+
 import (
 	"context"
 	"crypto/sha256"
@@ -248,5 +250,14 @@ func TestExchangeCodeIssuesTokensByScope(t *testing.T) {
 	}
 	if out.RefreshToken != "" {
 		t.Fatal("refresh_token must require offline_access scope")
+	}
+	// 認可コードは一度だけ交換できる。再利用が通ると、盗まれたコードから
+	// 何度でもトークンを取れてしまう。
+	if _, err := ExchangeCodeForToken(
+		context.Background(),
+		f.deps,
+		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+	); err == nil {
+		t.Fatal("replaying the authorization code must be rejected")
 	}
 }

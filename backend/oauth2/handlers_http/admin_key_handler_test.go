@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-SIGNINGKEYS-001。
+
 // SCL scenario "管理者は自テナントの署名鍵を参照し、admin / system_admin が
 // 自テナントの鍵をローテートできる (per-tenant)" を /api/admin/v1/keys 経由で検証する。
 // - AdminKeysRead: admin / system_admin どちらでも自テナントの List/Get 可能

@@ -53,6 +53,30 @@ func TestFieldCipherEncryptDecryptRoundTrip(t *testing.T) {
 	}
 }
 
+// REQ-DATAKEYS-002: 実際の FieldCipher 配線でも、回転前の暗号文は retiring 鍵で復号できる。
+func TestFieldCipherDecryptsExistingCiphertextAfterRotation(t *testing.T) {
+	fieldCipher, deps := newTestFieldCipher(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatal(err)
+	}
+	version, ciphertext, err := fieldCipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	plaintext, err := fieldCipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plaintext != "JBSWY3DPEHPK3PXP" {
+		t.Fatalf("plaintext=%q", plaintext)
+	}
+}
+
 // TestFieldCipherEncryptBootstrapsFirstDataKey mirrors SigningKeys' lazy
 // per-tenant key creation (docs/contexts/data-keys/internals.md): a tenant's first
 // encrypt call must not require a separate provisioning step to have

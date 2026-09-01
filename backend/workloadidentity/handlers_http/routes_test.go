@@ -158,3 +158,61 @@ func TestRegisterTrustBundleRejectsNonAdmin(t *testing.T) {
 		t.Fatalf("trust bundles = %#v, want the refused registration to have left none behind", view.TrustBundles)
 	}
 }
+
+// REQ-WORKLOADIDENTITY-008: 管理 API で保存した信頼設定の状態変更を、同じ公開読取経路で観測する。
+func TestAdminWorkloadTrustBundleLifecycle(t *testing.T) {
+	e := newWorkloadIdentityHandler(t)
+	csrf, cookie := workloadAdminCSRF(t, e)
+	adminRequest := func(method, path string, body []byte) *httptest.ResponseRecorder {
+		t.Helper()
+		request := httptest.NewRequest(method, path, bytes.NewReader(body))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Origin", "http://idp.test")
+		request.Header.Set("X-Csrf-Token", csrf)
+		request.Header.Set("X-Demo-Sub", "admin")
+		request.AddCookie(cookie)
+		response := httptest.NewRecorder()
+		e.ServeHTTP(response, request)
+		return response
+	}
+
+	payload, err := json.Marshal(map[string]any{
+		"name": "prod-cluster", "trust_domain": "issuer.example", "issuer": "https://issuer.example",
+		"accepted_audiences": []string{"https://idmagic.example"}, "jwks_uri": "https://issuer.example/jwks",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := adminRequest(http.MethodPost, "/realms/default/api/admin/v1/workload-identity/trust-bundles", payload)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+	}
+	var bundle struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &bundle); err != nil {
+		t.Fatal(err)
+	}
+	if bundle.ID == "" || bundle.Status != "enabled" {
+		t.Fatalf("created bundle=%+v", bundle)
+	}
+
+	disabled := adminRequest(http.MethodPost, "/realms/default/api/admin/v1/workload-identity/trust-bundles/"+bundle.ID+"/disable", nil)
+	if disabled.Code != http.StatusNoContent {
+		t.Fatalf("disable status=%d body=%s", disabled.Code, disabled.Body.String())
+	}
+	get := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/workload-identity/trust-bundles/"+bundle.ID, http.NoBody)
+	get.Header.Set("X-Demo-Sub", "admin")
+	got := httptest.NewRecorder()
+	e.ServeHTTP(got, get)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get status=%d body=%s", got.Code, got.Body.String())
+	}
+	if err := json.Unmarshal(got.Body.Bytes(), &bundle); err != nil {
+		t.Fatal(err)
+	}
+	if bundle.Status != "disabled" {
+		t.Fatalf("status=%q, want disabled", bundle.Status)
+	}
+}

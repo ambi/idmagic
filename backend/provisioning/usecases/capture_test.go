@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-PLATFORM-003、REQ-PROVISIONING-003。
+
 import (
 	"context"
 	"testing"

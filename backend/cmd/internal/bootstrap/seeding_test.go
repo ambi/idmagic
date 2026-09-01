@@ -1,5 +1,7 @@
 package bootstrap
 
+// 主要ユースケース追跡: REQ-SEEDING-010。
+
 import (
 	"context"
 	"reflect"

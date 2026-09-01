@@ -1,5 +1,7 @@
 package domain
 
+// 主要ユースケース追跡: REQ-OAUTH2-026。
+
 import (
 	"strings"
 	"testing"

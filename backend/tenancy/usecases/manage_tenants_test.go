@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-TENANCY-006、REQ-TENANCY-011。
+
 import (
 	"context"
 	"errors"
@@ -62,6 +64,12 @@ func TestTenantLifecycle(t *testing.T) {
 	}
 	if tenant.Status != domain.TenantStatusActive || tenant.DisabledAt != nil {
 		t.Fatalf("enabled tenant = %#v", tenant)
+	}
+
+	// realm は Tenant の正規ロケーションを決めるので、既存 realm との衝突は
+	// 作成時に拒否されなければならない。
+	if _, err := Create(context.Background(), repo, "acme", "Acme Duplicate", time.Now().UTC()); !errors.Is(err, ErrTenantConflict) {
+		t.Fatalf("duplicate realm err = %v, want ErrTenantConflict", err)
 	}
 }
 

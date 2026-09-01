@@ -1,5 +1,7 @@
 package usecases
 
+// 主要ユースケース追跡: REQ-AUTHENTICATION-007。
+
 import (
 	"errors"
 	"testing"
@@ -59,6 +61,20 @@ func TestCompleteLogin(t *testing.T) {
 		updated, _ := requestStore.Find(ctx, reqID)
 		if updated.State != spec.AuthFlowCodeIssued {
 			t.Errorf("expected state AuthFlowCodeIssued, got %v", updated.State)
+		}
+		// 認可要求そのものが認証済み主体に結び付いていなければ、以後の再開も
+		// トークン発行も別人の文脈で進んでしまう。
+		if updated.UserID == nil || *updated.UserID != "user-1" {
+			t.Errorf("authenticated subject was not attached to the request: %v", updated.UserID)
+		}
+		if updated.AuthTime == nil || *updated.AuthTime != now.UTC().Unix() {
+			t.Errorf("auth_time was not attached to the request: %v", updated.AuthTime)
+		}
+		if len(updated.AMR) != 1 || updated.AMR[0] != "pwd" {
+			t.Errorf("amr was not attached to the request: %v", updated.AMR)
+		}
+		if updated.ACR == nil || *updated.ACR != "urn:pwd" {
+			t.Errorf("acr was not attached to the request: %v", updated.ACR)
 		}
 	})
 

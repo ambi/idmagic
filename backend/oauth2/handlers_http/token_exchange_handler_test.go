@@ -3,6 +3,7 @@ package handlers_http_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -34,7 +36,7 @@ const (
 
 // newTokenExchangeServer は client_credentials と token-exchange を許可した
 // confidential client を持つ最小サーバを返す。subject_token は client_credentials で発行する。
-func newTokenExchangeServer(t *testing.T) string {
+func newTokenExchangeServer(t *testing.T, options ...func(*httpadapter.Deps)) string {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	secretHash := domain.HashClientSecret(exchClientSecret)
@@ -66,7 +68,7 @@ func newTokenExchangeServer(t *testing.T) string {
 		t.Fatalf("tenant repo: %v", err)
 	}
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{
+	deps := httpadapter.Deps{
 		Issuer: "http://test", TenantRepo: tenantRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
@@ -74,12 +76,66 @@ func newTokenExchangeServer(t *testing.T) string {
 		},
 		UserRepo: usermemory.NewUserRepository(),
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
-	})
+	}
+	for _, option := range options {
+		option(&deps)
+	}
+	httpadapter.Register(e, deps)
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
 	// bare path はテナントの正規ロケーションではないので、
 	// default テナントの prefix まで含めた base を返す。
 	return srv.URL + "/realms/default"
+}
+
+type recordingWorkloadVerifier struct {
+	called bool
+}
+
+func (v *recordingWorkloadVerifier) VerifyWorkloadToken(_ context.Context, tenantID, subjectToken string, _ time.Time) (*workloaddomain.WorkloadIdentityGrant, error) {
+	v.called = true
+	if tenantID != tenancydomain.DefaultTenantID || subjectToken != "external-jwt-svid" {
+		return nil, fmt.Errorf("unexpected workload verification input: tenant=%q token=%q", tenantID, subjectToken)
+	}
+	return &workloaddomain.WorkloadIdentityGrant{AgentID: "checkout-bot", ClientID: exchClientID, TrustBundleID: "prod-cluster", BindingID: "checkout-binding"}, nil
+}
+
+// REQ-WORKLOADIDENTITY-001: Token Exchange の HTTP 入口が workload verifier の結果を Agent 資格情報へ変換する。
+func TestTokenExchangeIssuesWorkloadCredential(t *testing.T) {
+	verifier := &recordingWorkloadVerifier{}
+	base := newTokenExchangeServer(t, func(deps *httpadapter.Deps) {
+		deps.OAuth2.WorkloadVerifier = verifier
+	})
+	resource := "https://api.example/orders"
+	status, body := postToken(t, base, url.Values{
+		"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"subject_token":      {"external-jwt-svid"},
+		"subject_token_type": {"urn:ietf:params:oauth:token-type:jwt"},
+		"resource":           {resource},
+	})
+	if status != http.StatusOK || !verifier.called {
+		t.Fatalf("workload exchange status=%d called=%v body=%v", status, verifier.called, body)
+	}
+	issued, _ := body["access_token"].(string)
+	if issued == "" {
+		t.Fatalf("workload exchange returned no access token: %v", body)
+	}
+
+	request, _ := http.NewRequest(http.MethodPost, base+"/introspect", strings.NewReader(url.Values{"token": {issued}}.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.SetBasicAuth(exchClientID, exchClientSecret)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	var introspection map[string]any
+	if err := json.NewDecoder(response.Body).Decode(&introspection); err != nil {
+		t.Fatal(err)
+	}
+	if introspection["active"] != true || introspection["sub"] != exchClientID {
+		t.Fatalf("workload credential introspection = %#v", introspection)
+	}
 }
 
 func postToken(t *testing.T, base string, form url.Values) (int, map[string]any) {

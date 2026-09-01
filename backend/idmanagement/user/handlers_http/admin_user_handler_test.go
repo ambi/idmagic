@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-PLATFORM-002、REQ-IDMANAGEMENT-011。
+
 import (
 	"bytes"
 	"context"

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test'
+
+// 主要ユースケース追跡: REQ-SYSTEM-010。
 import { commonDictionary } from './common.i18n'
 import { configuredDefaultLocale } from './locale'
 import { resolveLocale } from './resolveLocale'

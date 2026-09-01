@@ -1,11 +1,14 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-WSFEDERATION-002、REQ-WSFEDERATION-004。
+
 import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"html"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +36,9 @@ import (
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
+	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
+	dsig "github.com/russellhaering/goxmldsig"
 )
 
 // stubResolver は固定の認証コンテキストを返す AuthnResolver。
@@ -75,6 +80,13 @@ func devSigner(t *testing.T) *samltoken.Signer {
 
 func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
+	e, captured, _ := newServerWithSigner(t, authn)
+	return e, captured
+}
+
+// newServerWithSigner は組み立て済みサーバーと、RP が応答を検証するための IdP 署名者を返す。
+func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Echo, *[]spec.DomainEvent, *samltoken.Signer) {
+	t.Helper()
 
 	captured := &[]spec.DomainEvent{}
 
@@ -105,6 +117,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	}
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
+	signer := devSigner(t)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
@@ -115,10 +128,10 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 		PasswordHasher:       hasher,
 		SentinelPasswordHash: sentinel,
 		OAuth2:               oauth2.Module{ClientAssertionReplayStore: memory.NewClientAssertionReplayStore()},
-		FederationSigner:     devSigner(t),
+		FederationSigner:     signer,
 		AuthnResolver:        stubResolver{ctx: authn},
 	})
-	return e, captured
+	return e, captured, signer
 }
 
 // hasEvent は指定 EventType の event が捕捉されたかを返す。
@@ -139,7 +152,7 @@ func get(e *echo.Echo, target string) *httptest.ResponseRecorder {
 }
 
 func TestWsFedSignIn_AuthenticatedIssuesPassiveForm(t *testing.T) {
-	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
+	e, events, signer := newServerWithSigner(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
 
 	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wctx=ctx-42")
 	if rec.Code != http.StatusOK {
@@ -161,6 +174,50 @@ func TestWsFedSignIn_AuthenticatedIssuesPassiveForm(t *testing.T) {
 	if !hasEvent(*events, "WsFedSignInIssued") {
 		t.Fatal("WsFedSignInIssued not emitted")
 	}
+
+	// 最終効果は「RP が検証可能なサインイン応答を受け取る」ことなので、RP と同じ手順で
+	// wresult を取り出し、IdP 証明書に対して assertion 署名を検証する。
+	document := etree.NewDocument()
+	if err := document.ReadFromString(wresultFromPassiveForm(t, body)); err != nil {
+		t.Fatalf("parse wresult: %v", err)
+	}
+	assertion := document.FindElement("//Assertion")
+	if assertion == nil {
+		t.Fatalf("assertion missing in wresult: %s", body)
+	}
+	if assertion.FindElement("./Signature") == nil {
+		t.Fatalf("assertion is not signed: %s", body)
+	}
+	store := &dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{signer.Certificate()}}
+	validation := dsig.NewDefaultValidationContext(store)
+	validation.IdAttribute = idAttributeForAssertion(assertion)
+	if _, err := validation.Validate(assertion); err != nil {
+		t.Fatalf("assertion signature did not validate against the IdP certificate: %v", err)
+	}
+}
+
+// wresultFromPassiveForm は自動 POST フォーム HTML から wresult の XML を取り出す。
+func wresultFromPassiveForm(t *testing.T, body string) string {
+	t.Helper()
+	const marker = `name="wresult" value="`
+	_, after, ok := strings.Cut(body, marker)
+	if !ok {
+		t.Fatalf("wresult hidden input missing: %s", body)
+	}
+	rest := after
+	end := strings.Index(rest, `"`)
+	if end < 0 {
+		t.Fatalf("wresult value is not terminated: %s", body)
+	}
+	return html.UnescapeString(rest[:end])
+}
+
+// idAttributeForAssertion は SAML 1.1 と 2.0 で異なる ID 属性名を返す。
+func idAttributeForAssertion(assertion *etree.Element) string {
+	if assertion.SelectAttrValue("AssertionID", "") != "" {
+		return "AssertionID"
+	}
+	return "ID"
 }
 
 func TestWsFedSignIn_DefaultsToSAML11Token(t *testing.T) {

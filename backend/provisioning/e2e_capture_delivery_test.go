@@ -11,6 +11,8 @@
 // real scim.Client/UserAttributeSource pair against real HTTP.
 package provisioning_test
 
+// 主要ユースケース追跡: REQ-PLATFORM-003、REQ-PROVISIONING-003。
+
 import (
 	"context"
 	"encoding/json"
@@ -92,6 +94,11 @@ func (f *fakeSCIMDownstream) handler() http.HandlerFunc {
 func (f *fakeSCIMDownstream) last() recordedRequest {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if len(f.requests) == 0 {
+		// 下流へ一度も届かなかった場合は panic ではなく空の記録を返し、
+		// 呼び出し側の「何が届くべきか」の表明で失敗させる。
+		return recordedRequest{}
+	}
 	return f.requests[len(f.requests)-1]
 }
 
