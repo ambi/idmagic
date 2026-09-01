@@ -24,7 +24,7 @@
     "@types/bun": "1.4.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "happy-dom": "20.11.13",
+    "happy-dom": "20.12.0",
     "markdown-it": "^15.0.1",
     "mermaid": "11.17.2",
     "swagger-ui-dist": "5.32.14",
