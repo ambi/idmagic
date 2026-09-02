@@ -114,7 +114,11 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	}
 	runJob := func(handler func(context.Context, *jobsdomain.Job) (json.RawMessage, error)) {
 		t.Helper()
-		claimed, err := jobRepo.ClaimBatch(context.Background(), "worker", jobsdomain.LaneBulk, 1, time.Minute, now)
+		// Job を投入するのは HTTP ハンドラーで、その RunAt は実時計から取る。取得側も
+		// 同じ時計で、かつ投入より後の時刻を使う必要がある。ClaimBatch は RunAt が
+		// 取得時刻より後の Job を候補から外すためである。
+		claimAt := time.Now().UTC()
+		claimed, err := jobRepo.ClaimBatch(context.Background(), "worker", jobsdomain.LaneBulk, 1, time.Minute, claimAt)
 		if err != nil || len(claimed) != 1 {
 			t.Fatalf("claim=%+v err=%v", claimed, err)
 		}
@@ -122,7 +126,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := jobRepo.Complete(context.Background(), claimed[0].ID, "worker", result, now.Add(time.Second)); err != nil {
+		if _, err := jobRepo.Complete(context.Background(), claimed[0].ID, "worker", result, claimAt.Add(time.Second)); err != nil {
 			t.Fatal(err)
 		}
 	}
