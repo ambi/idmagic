@@ -441,27 +441,37 @@ export async function setInputValue(
   view: Bun.WebView,
   selector: string,
   value: string,
+  timeoutMs = 10_000,
 ): Promise<void> {
-  const changed = await view.evaluate(`(() => {
-    const input = document.querySelector(${JSON.stringify(selector)})
-    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return false
-    input.focus()
-    const prototype = input instanceof HTMLInputElement
-      ? HTMLInputElement.prototype
-      : HTMLTextAreaElement.prototype
-    const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
-    descriptor?.set?.call(input, ${JSON.stringify(value)})
-    input.dispatchEvent(new InputEvent('input', {
-      bubbles: true,
-      inputType: 'insertReplacementText',
-      data: ${JSON.stringify(value)},
-    }))
-    input.dispatchEvent(new Event('change', { bubbles: true }))
-    return true
-  })()`)
-  if (changed !== true) {
-    throw new Error(`input not found: ${selector}`)
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const changed = await view.evaluate(`(() => {
+        const input = document.querySelector(${JSON.stringify(selector)})
+        if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return false
+        input.focus()
+        const prototype = input instanceof HTMLInputElement
+          ? HTMLInputElement.prototype
+          : HTMLTextAreaElement.prototype
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+        descriptor?.set?.call(input, ${JSON.stringify(value)})
+        input.dispatchEvent(new InputEvent('input', {
+          bubbles: true,
+          inputType: 'insertReplacementText',
+          data: ${JSON.stringify(value)},
+        }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+        return true
+      })()`)
+      if (changed === true) return
+    } catch {
+      // クライアント側の画面遷移中は evaluate が破棄済みの文書に当たりうるため、描画完了まで再試行する。
+    }
+    await Bun.sleep(150)
   }
+
+  const body = await view.evaluate(`document.body.textContent?.slice(0, 500) ?? ''`).catch(() => '')
+  throw new Error(`timeout waiting for input ${selector}, body=${body}, last url=${view.url}`)
 }
 
 export async function setSelectValue(
