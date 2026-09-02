@@ -4,7 +4,7 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-08-23
-priority: p2
+priority: p1
 change_kind: operations
 affected_spec:
   - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
@@ -31,6 +31,8 @@ IdP としての idmagic は、止まると依存する全システムのログ�
 
 つまり API プロセスは、飽和したときに**先着順で**倒れる。管理者が 10 万件のエクスポートを叩いた瞬間に、ログインがその後ろに並ぶ。
 
+**ただしその例そのものは、本 work item が扱う問題ではない。** [[wi-459-api-process-plane-separation-decision]] の棚卸しで、API プロセスに残る上限のない同期処理は `GET /api/admin/v1/audit_events/export` の 1 経路だけだと分かった。これは入場制御が扱う「総容量が足りないときに何を捨てるか」ではなく、1 リクエストが際限なく資源を取るという別の欠陥で、[[wi-464-bound-the-synchronous-audit-event-export]] が固定の上限として塞ぐ。**到達率で見れば管理系は認証系の数%にすぎないので、この形の枯渇は本 work item の入場制御からは「飽和」に見えない。** 入場制御が要るのは、個々の要求に上限を置いてもなお総需要が容量を超える状況である。
+
 容量そのものも自動では増えない。**`infra/` に HorizontalPodAutoscaler が 1 つも無く**、本番は `infra/k8s/overlays/prod/api.yaml` の `replicas: 3` 固定である。
 
 この 2 つは別の問題である。前者は「足りないときに誰が勝つか」、後者は「足りなくならないようにするか」であり、後者だけを解いても前者は残る。
@@ -51,6 +53,8 @@ IdP としての idmagic は、止まると依存する全システムのログ�
 - マルチ AZ、自動フェイルオーバー、障害種別ごとの遷移。[[wi-165-high-availability-and-failover-resilience-topology]] が持つ。
 - データ層の分割、読み取りレプリカ、接続プール製品の選定。[[wi-164-data-tier-scalability-partitioning-read-replica-pooling]] が持つ。
 - エンドポイント別のレート制限（`backend/shared/ratelimit`）の変更。目的が異なる。Design を参照。
+- **個々の要求に対する負荷非連動の固定上限。** 監査イベントのエクスポートの同時実行数と応答量の上限は [[wi-464-bound-the-synchronous-audit-event-export]] が持つ。入場制御は総容量が足りないときに働く機構で、平常時に 1 リクエストが取る資源は縛らない。両者は補完である。
+- **種別（認証・プロトコル系、ポータル系、管理系、SCIM、Shared Signals）ごとの到達率と処理時間の観測。** [[wi-466-observe-request-families-against-capacity-assumptions]] が持つ。本 work item は縮退が発動したことを観測できるようにするが、種別ごとの容量の内訳は扱わない。ただし両者は経路の分類を必要とする点で重なるので、Design の「分類の置き場所」を参照。
 - ステージングでの負荷試験基盤。[[wi-282-staging-load-testing-and-capacity-validation]] が持つ。本 work item はその基盤を使う側である。
 
 ## Design
@@ -86,6 +90,12 @@ Discovery と JWKS はキャッシュ済み応答を返せるので分類の対�
 
 `interactive_auth` に入れるべきものを `management_bulk` に入れると、**負荷が高いときだけログインの一部が 503 になる**。平常時のテストでは出ない。したがって分類は設定ではなくコードに置き、ルート登録と同じ場所で宣言し、**分類の無いルートが存在しないことを検査するテスト**を分類の導入と同時に入れる。これが本 work item の実装コストの中心である。
 
+### 分類の置き場所と、種別との関係
+
+[[wi-466-observe-request-families-against-capacity-assumptions]] も経路の分類を要する。ただし分類の軸が違う。**優先度クラスは「飽和時に何を先に捨てるか」、種別は「用途は何か」である。** 管理系の中でも参照は残して集計を捨てるという分け方はありうるので、2 つの分類が 1 対 1 に対応するとは限らない。
+
+一方で、両者が独立に経路の全量を列挙し、独立に網羅性を検査するのは重複である。**先に着手したほうが列挙と網羅性検査の仕組みを持ち、後から来るほうがそれを使う。** 本 work item が先なら、分類はルート登録の側に置き、種別はその上に別の軸として載せられる形にする。逆なら、[[wi-466-observe-request-families-against-capacity-assumptions]] の網羅性検査に優先度クラスの列を足す。どちらであっても、経路の全量を数える場所は 1 つに保つ。
+
 ### プレーン分割を採らなかった理由
 
 当初は API を認証プレーンと管理プレーンに分け、同一イメージのまま Deployment を 2 つにする案を検討した。ワーカーが `JOB_WORKER_LANES` で実行レーンごとに分かれている前例もある。本 work item では採らない。判断そのものは [[wi-459-api-process-plane-separation-decision]] が持ち、結論は `docs/contexts/system/decisions.md` の `No API plane separation` にある。採らない理由は次のとおりである。
@@ -103,11 +113,11 @@ Discovery と JWKS はキャッシュ済み応答を返せるので分類の対�
 
 - **HPA だけを入れる。** 反応時間の窓が残り、DB が束縛条件のときは逆効果になりうる。
 - **エンドポイント別のレート制限の閾値を下げる。** 濫用には効くが正当な一括操作には効かない。抑えたいのは正当な管理操作の影響であって、拒否したいわけではない。
-- **管理 API を別のバイナリにする。** ログイン経路は IdM 側の読み取りに依存しており、リンクされるコードはほとんど同じである。`docs/structure.md` が定める単一の `Config` も 2 系統になり、REQ-SYSTEM-016 が避けている「あるプロセスだけ検証されていない値を持つ」状態を作る。
+- **管理 API を別のバイナリにする。** ログイン経路は IdM 側の読み取りに依存しており、リンクされるコードはほとんど同じである。`docs/structure.md` が定める単一の `Config` も 2 系統になり、REQ-SYSTEM-016 が避けている「あるプロセスだけ検証されていない値を持つ」状態を作る。この案は [[wi-459-api-process-plane-separation-decision]] が D4 として改めて評価し、独立したデータ所有権、担当チーム、SLO が現れるまで採らないと結論している。
 
 ## Plan
 
-- **測定を先に置く。** 管理系バースト下でログインのレイテンシーがどれだけ劣化するかを [[wi-282-staging-load-testing-and-capacity-validation]] の基盤で実測する。劣化が観測できなければ、この work item は根拠を持たない。その場合は HPA だけ入れて残りを取り下げる。
+- **測定を先に置く。** 管理系バースト下でログインのレイテンシーがどれだけ劣化するかを [[wi-282-staging-load-testing-and-capacity-validation]] の基盤で実測する。劣化が観測できなければ、この work item は根拠を持たない。その場合は HPA だけ入れて残りを取り下げる。**バーストの大きさは想像で決めない。** `docs/capacity.md` の Non-protocol request profile が管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の通常時・最繁時・集中実行時を持つようになったので、負荷構成はそこから組む。同書が言うとおりこれらはすべて Planning assumption で幅が 2 桁あるため、中央値だけでなく上限側でも走らせる。
 - HPA は入場制御より先に入れる。安く、単独で効果があり、入場制御の測定条件を現実に近づける。
 - 入場制御は、分類とその網羅性テストを同時に入れる。分類だけ先に入れると、抜けたルートが平常時のテストで見つからない。
 - 規範的シナリオは実装より先に書く。「飽和時に `management_bulk` が 503 を返し、`interactive_auth` は受け付けられる」は観測可能な振る舞いである。
