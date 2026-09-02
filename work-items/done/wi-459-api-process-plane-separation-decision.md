@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,7 +7,34 @@ created_at: 2026-09-03
 priority: p2
 depends_on: []
 change_kind: docs
+evidence_policy: risk-based-v3
 spec_impact: { kind: none, reason: "管理系、ポータル系、SCIM、Shared Signals の容量シナリオを補い、実行単位の構成に関する判断と再検討条件を canonical document へ記録するだけで、公開 API、認証機構、実行時の振る舞い、配備成果物のいずれも変更しない。" }
+documentation_impact:
+  level: none
+  reason: 利用者から見える振る舞い、設定、互換性のいずれも変わらない。追加するのは容量計画の入力と設計判断の記録だけで、リリース読者が読み取る差分を持たない。
+  references: []
+initial_context:
+  specification:
+    - docs/capacity.md
+    - docs/deployment.md
+    - docs/structure.md
+    - docs/contexts/system/decisions.md
+    - SPECIFICATION_FORMAT.md
+  source:
+    - backend/shared/http/server_http/routes.go
+    - backend/shared/spec/operations_gen.go
+    - backend/audit/handlers_http/admin_audit_event_handler.go
+    - backend/sharedsignals/handlers_http/routes.go
+    - backend/idmanagement/usecases/data_export.go
+    - backend/jobs/domain/job.go
+    - frontend/Caddyfile
+    - infra/k8s/base/pdb.yaml
+    - infra/k8s/overlays/prod/api.yaml
+  tests: []
+  stop_before_reading:
+    - backend/oauth2
+    - backend/authentication
+    - frontend/src
 ---
 
 # API プロセスを当面分けない判断と再検討条件を、容量シナリオと隔離要件に基づいて記録する
@@ -28,7 +55,7 @@ spec_impact: { kind: none, reason: "管理系、ポータル系、SCIM、Shared 
 
 差は文書にはあるが、実行単位の境界には現れていない。管理系と認証系は同じ Pod、同じ Go ランタイム、同じ接続プールを共有している。
 
-**そして、分けるべきかどうかを判断する材料が揃っていない。** `docs/capacity.md` の Peak request profile には、管理 API、ポータル API、SCIM、Shared Signals の行がない。認証・プロトコル系には合計しておよそ 41,000 rps の見積もりがある一方、これらの種別は容量算出へ入っていない。行がないことは負荷がゼロまたは無視できることを示さない。
+**そして、分けるべきかどうかを判断する材料が揃っていない。** `docs/capacity.md` の Peak request profile には、管理 API、SCIM、Shared Signals の行がなく、ポータル API はセッション一覧の 1 行しかない。認証・プロトコル系には合計 41,250 rps の見積もりがある一方、これらの種別はほとんど容量算出へ入っていない。行がないことは負荷がゼロまたは無視できることを示さない。
 
 見積もりがないまま是非を論じても、結論は好みに落ちる。ただし根拠のない比率を判断規則として先に固定しても、恣意性は消えない。本 work item は、既存の容量算式で通常時、最繁時、集中同期時の必要レプリカ数と資源量を比較し、その結果を可用性、保守、到達範囲の要件と合わせて判断する。
 
@@ -71,22 +98,26 @@ spec_impact: { kind: none, reason: "管理系、ポータル系、SCIM、Shared 
 
 ### 確定している事実
 
-見積もりの前に、調べれば分かることを先に置く。
+見積もりの前に、調べれば分かることを先に置く。着手時に再取得した結果を反映している (T001)。
 
 | 事実 | 内容 |
 | --- | --- |
-| 一括処理の一部は API プロセスの外にある | 利用者とグループの CSV エクスポート (`data_export`)、CSV インポート (`user_import_*`, `group_import_*`)、動的グループ再計算 (`dynamic_group_reconcile`) は `JobKind` として登録され、`bulk` レーンの `idmagic-worker` が実行する。 |
+| 一括処理の一部は API プロセスの外にある | 利用者とグループの CSV エクスポート (`data_export`)、CSV インポート (`user_import_*`, `group_import_*`)、動的グループ再計算 (`dynamic_group_reconcile`)、データキーの再暗号化 (`data_key_reencryption`) は `JobKind` として登録され、`bulk` レーンの `idmagic-worker` が実行する。`lifecycle_workflow_run` と `provisioning_delivery` は `default` レーンにある。 |
 | エクスポートのダウンロードはストリーミングである | `DownloadDataExport` は成果物のリーダーを返し、ハンドラーは `c.Stream` で流す。ファイル全体をメモリに載せない。 |
-| 同期実行される管理処理も残る | 監査イベントのエクスポートは API プロセス内で最大 10,000 件を読み、応答用のスライスと JSON を組み立てる。ワーカー化された処理だけを根拠に、管理系の資源競合を否定できない。 |
-| 管理 API には複数の呼び出し元がある | `/api/admin/v1` は管理コンソールだけでなく、API トークンを使う外部の管理 API クライアントからも呼ばれる。画面操作と自動化を別の負荷源として見積もる必要がある。 |
-| SCIM は機械が駆動する | `/scim/v2/*` の呼び出し元は顧客側の IdP である。変更分だけを送る場合と全同期する場合で量が変わるため、導入率、同期頻度、時間帯への集中をシナリオの前提にする。 |
-| 認証・プロトコル系の見積もりは存在する | `docs/capacity.md` の Peak request profile に合計およそ 41,000 rps。 |
-| 管理系、ポータル系、SCIM、Shared Signals の見積もりは存在しない | 同じ表に行がない。 |
-| 入場制御も自動スケールも未実装である | [[wi-396-prioritize-login-under-saturation]] は `pending`。`infra/` に自動スケールの定義はなく、本番は `replicas: 3` 固定。 |
-| ゲートウェイは接頭辞で振り分けているが、経路表と一致していない | `frontend/Caddyfile` は `/api`、`/authorize`、`/token`、`/scim` などを列挙している一方、実行時経路にある `/ssf/*`、`/session/check`、`/application-icons/*` を含まない。後段を複数の上流へ分ける前に、許可リストと経路表の対応を確定する必要がある。 |
+| 同期実行される高コスト処理は 1 つに絞られる | `GET /api/admin/v1/audit_events/export` だけが API プロセス内で最大 10,000 件を読み、`[]*AuditEventRecord` と `[]AdminAuditEventResponse` の 2 つの中間表現を作ってから JSON へ直列化する。ほかの管理系一覧はすべて 200 件 (監査の一覧のみ 999 件) で頭打ちになる。ユーザーとグループのエクスポートはジョブ経由である。 |
+| その 1 つには上限も待ち行列もない | `backend/shared/ratelimit` のポリシーは `token`、`authorize`、`par`、`device_authorization`、`backchannel_authentication`、`password_reset` の 6 つで、`/api/admin/v1` を保護しない。同時実行数を制限する仕組みは backend 全体に存在しない。 |
+| 管理 API には複数の呼び出し元がある | 生成された経路表 323 件のうち 216 件が `/api/admin/v1` で、その 216 件すべてが `ApiTokenScopes` を持つ。管理コンソールの画面操作と API トークンによる自動化は、同じ経路に対する別の負荷源である。 |
+| 経路の件数は種別間で大きく偏る | `/api/admin/v1` 216、`/api/account/v1` 38、`/api/auth` 19、`/scim/v2` 15、`/ssf` 1、`/api/branding` 1、残りがプロトコル経路と運用経路である。 |
+| SCIM は機械が駆動する | `/scim/v2/*` の呼び出し元は顧客側の IdP である。変更分だけを送る場合と全同期する場合で量が変わるため、導入率、同期頻度、時間帯への集中をシナリオの前提にする。SCIM Bulk は未実装で、`/scim/v2` に `Bulk` の経路はない。 |
+| Shared Signals は受信 1 経路だけである | `/ssf/streams/:stream_id/events` が唯一の `/ssf` 経路で、ストリーム管理の 9 経路は `/api/admin/v1/shared-signals/*` にある。したがって Shared Signals を種別として分けても、分かれるのは受信だけである。 |
+| 認証・プロトコル系の見積もりは存在する | `docs/capacity.md` の Peak request profile の API 到達率を合計すると 41,250 rps。 |
+| ポータル系には 1 行だけ存在する | 同じ表の Session list 200 rps は `/api/account/v1/sessions` である。新しいポータル系の行はこれを内数として含めなければ二重計上になる。ポータル系の他の操作、管理系、SCIM、Shared Signals には行がない。 |
+| 入場制御も自動スケールも未実装である | [[wi-396-prioritize-login-under-saturation]] は `pending`。`infra/` に `HorizontalPodAutoscaler` は 1 つもなく、`infra/k8s/overlays/prod/api.yaml` は `replicas: 3`、`requests` が CPU 1・メモリ 1Gi、`limits` が CPU 2・メモリ 2Gi である。`infra/k8s/base/pdb.yaml` の API 向け PodDisruptionBudget は `minAvailable: 1` である。 |
+| ゲートウェイは接頭辞で振り分けているが、経路表と一致していない | `frontend/Caddyfile` の `@backend` は `/api/*`、`/scim/*`、`/authorize`、`/token` などを列挙している一方、実行時経路にある `/ssf/*`、`/session/check`、`/application-icons/*`、`/livez`、`/readyz`、`/startupz`、`/metrics` を含まない。`@realmBackend` の正規表現も同じ欠落を持つ。後段を複数の上流へ分ける前に、許可リストと経路表の対応を確定する必要がある。 |
+| 経路登録は種別ではなく Context で分かれている | `server_http.Register` は制御面の 1 つと `registerTenantRoutes` の中の 19 個、合わせて 20 個の登録関数を呼ぶ。その単位は Bounded Context である。`handlers_http/routes.go` を持つ 19 個の Context のうち 7 個 (`application`、`authentication`、`authentication/federation`、`idmanagement`、`oauth2`、`sharedsignals`、`tenancy`) が 2 種別以上を 1 つの関数で登録する。種別と 1 対 1 で対応する登録関数は `sourcing/scim` の 1 つだけである。 |
 | API レプリカはプロセス内に正となる状態を持たない | `docs/deployment.md` が多レプリカ運用のために既に要求している。セッションも認可コードもスロットルもすべて PostgreSQL にある。 |
 
-ワーカー化によって利用者とグループの一括処理は API プロセスから外れているが、管理系の高コスト処理がすべて外れたわけではない。可用性の評価では、ワーカーへ出ていない同期処理を列挙し、通常時の処理時間だけでなくピークメモリ、同時実行数、データベース接続待ちも調べる。
+ワーカー化によって利用者とグループの一括処理は API プロセスから外れており、残る同期の高コスト処理は監査イベントのエクスポート 1 つに絞られた (T007)。ただしその 1 つには流量制限も同時実行の上限もなく、1 レコード 1 KiB の Planning assumption では 10,000 件で約 10 MiB の中間表現が 2 つ同時に載る。管理者が並行してエクスポートを実行した場合の上限は、`limits` のメモリ 2 GiB とゴルーチン数だけである。混合負荷試験の対象はこの経路に定める。
 
 ### 「分ける」は 4 つの独立した変更である
 
@@ -115,15 +146,15 @@ D2 は経路登録のインターフェースを種別単位に作り直す変�
 
 | 軸 | 分割にしか得られない利得 | 代替手段 | 必要な変更 | 現時点の評価 |
 | --- | --- | --- | --- | --- |
-| 可用性 | 一方のプロセスが落ちても他方が生き残り、CPU、メモリ、goroutine、接続プールの競合をプロセス間で隔離できる | 入場制御（未実装）、レプリカ 3、`RecoverMiddleware` によるリクエスト単位のパニック捕捉 | D1 | 同期実行される監査エクスポートなどの候補はあるが、認証系への影響は未測定 |
-| スケーラビリティ | 種別ごとに違うレプリカ数と資源量を持てる | なし。自動スケールを入れても、1 つの Deployment では種別ごとに分けられない | D1 | 容量シナリオと混合負荷試験がないため、独立スケールの必要性は未確認 |
+| 可用性 | 一方のプロセスが落ちても他方が生き残り、CPU、メモリ、goroutine、接続プールの競合をプロセス間で隔離できる | 入場制御（未実装）、レプリカ 3、`RecoverMiddleware` によるリクエスト単位のパニック捕捉 | D1 | 上限のない同期処理は監査エクスポート 1 つに絞られた。認証系への影響は未測定で、上限か非同期化のほうが直接的な対処 |
+| スケーラビリティ | 種別ごとに違うレプリカ数と資源量を持てる | なし。自動スケールを入れても、1 つの Deployment では種別ごとに分けられない | D1 | 容量シナリオは補ったが混合負荷の Measurement がなく、独立スケールの必要性は未確認 |
 | 重要性の差 | 管理系のバーストが認証系の実行枠を奪わない | 入場制御と優先度別の接続予算（いずれも未実装） | D1 | 両方とも未実装なので、実装済みの機構との比較ではなく、2 つの候補の比較になる |
 | 独立した保守性 | 片方だけを更新・再起動できる | なし | D1 | 可能だが版差の許容期間が延びる。要求が実在するかは未確認 |
 | 到達範囲の分離 | 公開側プロセスから管理系の経路登録を除く。または管理系の公開入口を一般利用者向けの入口から分ける | なし | 前者は D2、後者は D3 | どちらを求める脅威モデル上の要件もない |
 
 各軸の補足。
 
-**可用性。** 管理系の障害が認証系を巻き込む筋道は、プロセス資源の競合、プロセスの停止、共有ミドルウェアの欠陥の 3 つである。3 つ目は同じコードを両プレーンが使う以上、分けても消えない。2 つ目は複数レプリカで影響を減らせるが、設定、更新、入力に起因する同時障害までは吸収しない。利用者とグループの一括処理はワーカーへ出ている一方、監査イベントのエクスポートは API プロセスで最大 10,000 件を保持する。ほかにもページングの効かない一覧、監査イベントの大量検索、将来の SCIM Bulk（[[wi-249-scim-bulk-operations]]）が候補になるため、T007 で同期処理を棚卸しして混合負荷試験の対象を決める。
+**可用性。** 管理系の障害が認証系を巻き込む筋道は、プロセス資源の競合、プロセスの停止、共有ミドルウェアの欠陥の 3 つである。3 つ目は同じコードを両プレーンが使う以上、分けても消えない。2 つ目は複数レプリカで影響を減らせるが、設定、更新、入力に起因する同時障害までは吸収しない。1 つ目については、T007 の棚卸しで同期の高コスト処理が `GET /api/admin/v1/audit_events/export` の 1 つに絞られた。ページングの効かない一覧は存在せず、管理系の一覧はすべて 200 件、監査の一覧は 999 件で頭打ちになる。**残る 1 つが危ないのは件数ではなく、上限がないことである。** この経路には流量制限のポリシーがなく、同時実行数を制限する仕組みも backend 全体に存在しないので、1 リクエスト当たり約 10 MiB の中間表現が並行実行の数だけ積み上がる。混合負荷試験の対象はこの経路とし、分割の是非より先に上限か非同期化を評価する。将来の SCIM Bulk（[[wi-249-scim-bulk-operations]]）が入れば同じ性質の経路が増える。
 
 **スケーラビリティ。** 分ける候補になるのは、種別ごとに違うレプリカ数、資源量、自動スケールの指標が必要な場合である。処理時間構成比はデータベース待ちと外部通信待ちを含むため、そこから必要 Pod 数を直接求められない。管理コンソールの画面操作、管理 API の自動化、ポータル、SCIM、Shared Signals の通常時、最繁時、集中実行時を分け、既存の容量算式で単一 Deployment と分離後の必要レプリカ数、CPU、メモリ、接続予算を比較する。
 
@@ -132,6 +163,28 @@ D2 は経路登録のインターフェースを種別単位に作り直す変�
 **独立した保守性。** 片方だけの更新は D1 で可能である。問題は可能かどうかではなく、その要求が実在するかと、版差の許容期間が延びることを受け入れるかである。現在、管理系だけに閉じたリリースを妨げられて困った記録はない。
 
 **到達範囲の分離。** 管理 API はテナント全体を操作でき、SCIM は外部から機械的に呼ばれる。D2 は公開側プロセスへ管理系ハンドラーを登録しないことでコード上の到達範囲を狭める。D3 は一般利用者向けの公開入口から管理系を到達不能にする。後段 Service をゲートウェイからだけ到達可能にする NetworkPolicy は同一オリジンと両立するが、ブラウザーが使う公開入口を分ける D3 は管理コンソールの配信元、Cookie、`Origin` 検証の再設計を伴う。この軸は負荷とは独立に脅威モデルで決める。
+
+### 容量比較の結果
+
+見積もり (T003–T006) は `docs/capacity.md` の Non-protocol request profile に入れた。最繁 15 分の合計は中央値で 1,550 rps、各種別の最大値を単純に足した上界で 2,710 rps である。認証・プロトコル系 41,250 rps に対して到達率で 4–7% にあたる。ただし幅は 2 桁に及ぶ。
+
+比較の途中で、**Sizing rules の式は 2 つの構成を直接比べられない**ことが分かった (T002)。式はエンドポイントごとの必要数の最大値を取り、1 レプリカ当たり持続処理能力を「混合負荷の下で測った Measurement」と定義している。つまりこの能力値は混合の関数であり、混合が変われば値も変わる。現在の参照値 30 レプリカは `/token`、`/authorize`、`/introspect` の 3 つの仮定だけから導かれていて、4 種別を混合に含めていない。単一 Deployment 側の必要レプリカ数を出すにはこの 4 種別を含む混合での Measurement が要り、分離側を出すにはプレーンごとに別の Measurement が要る。どちらも存在しないので、C2 を今の入力で判定することはできない。
+
+計算できるのは差分の構造である。**総需要はどちらの構成でも同じなので、分離に固有の常時増分は総需要から生じない。** 生じるのは次の 3 つからである。
+
+| 増分の源 | 内容 | 大きさ |
+| --- | --- | --- |
+| 可用性下限の重複 | 追加するプレーンが独立に最小レプリカ数と PodDisruptionBudget を持つ | プレーン 1 つにつき最小レプリカ数の分。現在の本番は `replicas: 3`、PDB は `minAvailable: 1` |
+| 切り上げの重複 | `ceil` が構成ごとに 1 回働く | プレーン数 `n` に対して最大 `n − 1` レプリカ |
+| 余裕を融通できないこと | ある種別の谷が別の種別の山を吸収しなくなる | 種別ごとの山の時刻がずれるほど大きい。管理系の集中実行は夜間、ポータルと管理コンソールは業務時間で、実際にずれる |
+
+認証・プロトコル系以外をまとめて 1 つ追加するだけの最小の分離でも、下限は +3 レプリカである。参照構成の資源では CPU の `requests` が +3、メモリの `requests` が +3 GiB、`limits` は CPU +6・メモリ +6 GiB になる。論理接続予算は API 1 レプリカ 16 接続で +48 接続、70% 規則により利用可能接続の必要量が +69 になる。**これは需要がゼロでも発生する下限であり、需要に比例して増える分はこれとは別に載る。**
+
+種別ごとの必要レプリカ数 (単独運用時、安全係数 1.5 込み) は管理系 18、ポータル系 7、SCIM 4、Shared Signals 5 である。いずれも可用性下限 3 を上回るので、最小構成での分離では「下限の重複」は切り上げの重複に吸収され、Pod 数の差そのものは小さい。**したがって分離を高くしているのは Pod の絶対数ではなく、2 系統になる容量モデル、監視、同時停止数の上限、障害対応の手順である。** [[wi-396-prioritize-login-under-saturation]] の Design にあった「3 Pod が最低 6 Pod になる」という理由付けは、Pod 数を費用の主体として扱っていた点で正確ではなかったので、そちらも書き換えた。
+
+この結果は C1–C6 のいずれも成立させない。C1 は混合負荷試験が存在しないので判定できず、C2 は上記のとおり判定に必要な Measurement がない。C3–C6 は要件そのものが現れていない。したがって結論は変わらない (T008)。
+
+C2 は表現を改めた。分離が総資源を減らすことは、上の 3 つの増分の向きから原理的に起こらない。起こりうるのは、混合をやめることで 1 レプリカ当たり持続処理能力が上がり、その改善が下限と切り上げの重複を上回る場合だけである。旧い表現の「合計要求資源が同等以下になる」は、その機構を名指ししていなかった。
 
 ### 容量の比較方法と再検討条件
 
@@ -144,13 +197,13 @@ D2 は経路登録のインターフェースを種別単位に作り直す変�
 | ID | 再検討条件 | 比較する変更 |
 | --- | --- | --- |
 | C1 | 管理系、ポータル系、SCIM、Shared Signals のいずれかを含む混合負荷で認証系のサービス目標を満たせず、その種別へ上限を設ける、処理をワーカーへ移す、入場制御を入れる対処だけでは要求を満たせない | D1 |
-| C2 | 容量算式により、ある種別が可用性を満たす独立したレプリカ数を必要とし、分離後の合計要求資源と接続予算が単一 Deployment と同等以下になる | D1 |
+| C2 | 分離によって 1 レプリカ当たり持続処理能力が混合時より上がることが Measurement で示され、その改善が可用性下限と切り上げの重複を上回る | D1 |
 | C3 | 管理系など片方だけの更新または再起動を必要とした記録が生じ、長期間の版差を許容する運用要件が決まる | D1 |
 | C4 | 公開側プロセスから特定種別のハンドラーを除く要件が脅威モデルに記載される | D2 |
 | C5 | 特定種別を一般利用者向けの公開入口から到達不能にする要件が脅威モデルに記載され、管理コンソールなど正当なクライアントの到達方法が決まる | D3 |
 | C6 | 独立したデータ所有権、担当チーム、SLO、リリース成果物のいずれもが必要になる | D4 |
 
-C1 では、分割が原因の除去ではなく波及範囲の限定であることを保つ。同期処理そのものに上限がない場合は先に上限またはワーカー化を評価し、それでも別の失敗領域が必要なときに D1 を比較する。C2 は「要求の何%を占めるか」ではなく、現在のフリート規模と最小レプリカ数を入れた実数で判定する。
+C1 では、分割が原因の除去ではなく波及範囲の限定であることを保つ。監査イベントのエクスポートには現在も上限も同時実行制限もないので、先にそれらまたはワーカー化を評価し、それでも別の失敗領域が必要なときに D1 を比較する。C2 は「要求の何%を占めるか」ではなく、両方の混合について測った 1 レプリカ当たり持続処理能力と、現在のフリート規模と最小レプリカ数を入れた実数で判定する。
 
 ### 「将来分ける確率が高いなら、いま分けたほうが安いのでは」への答え
 
@@ -188,7 +241,7 @@ D3 と D4 が時間とともに高くなることも、いまそれらを実施�
 | ポータル系 | `/api/account/v1/*` |
 | 管理系 | `/api/admin/v1/*` |
 | SCIM | `/scim/v2/*` |
-| Shared Signals | `/ssf/*` |
+| Shared Signals | `/ssf/*`（受信のみ。ストリーム管理の 9 経路は `/api/admin/v1/shared-signals/*` にあり管理系に属する） |
 | 運用経路 | `/livez`、`/readyz`、`/startupz`、`/health`、`/metrics` |
 
 管理系、SCIM、Shared Signals を最初から一つの「機械連携プレーン」にまとめない。管理系には画面操作と自動化が混在し、SCIM はプロビジョニングの同期、Shared Signals はセキュリティイベントの受信であり、量、優先度、失敗時の影響が異なるからである。
@@ -232,19 +285,19 @@ C1–C6 のいずれかが成立して結論を変える場合、本 work item �
 
 ## Tasks
 
-- [ ] T001 [Research] 確定している事実を再取得し、API プロセスに残る同期処理、管理 API の呼び出し元、Echo とゲートウェイの経路差を照合する。
-- [ ] T002 [Design] 既存の Sizing rules に従う共有時と分離時の容量比較表を定める。
-- [ ] T003 [Research] 管理コンソールと管理 API 自動化の通常時、最繁時、集中実行時を幅のある前提で見積もる。
-- [ ] T004 [Research] ポータルの通常時と最繁時を幅のある前提で見積もる。
-- [ ] T005 [Research] SCIM の通常時、最繁時、集中同期時を導入率、同期頻度、時間帯への集中を含む前提で見積もる。
-- [ ] T006 [Research] Shared Signals の通常時、最繁時、集中配信時をストリーム数、イベント発生率、再送を含む前提で見積もる。
-- [ ] T007 [Research] ワーカーへ出ていない同期処理のピークメモリ、同時実行数、接続待ちを調べ、混合負荷試験の対象を確定する。
-- [ ] T008 [Decision] 容量比較と C1–C6 に照らして結論を再確認し、変える場合は採る変更と分離対象を確定する。
-- [ ] T009 [Docs] `docs/contexts/system/decisions.md` に節を追加する。
-- [ ] T010 [Docs] `docs/capacity.md` に管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の容量シナリオを追加する。
-- [ ] T011 [Docs] `docs/deployment.md` から参照を張り、`docs/structure.md` の要否を判断する。
-- [ ] T012 [Docs] wi-396 の Design を更新する。
-- [ ] T013 [Verify] 検査を通す。
+- [x] T001 [Research] 確定している事実を再取得し、API プロセスに残る同期処理、管理 API の呼び出し元、Echo とゲートウェイの経路差を照合する。→ 確定している事実の表。ポータル系に既存の行があること、Shared Signals の管理経路が管理系にあること、登録関数が Context 単位であることを修正・追記した。
+- [x] T002 [Design] 既存の Sizing rules に従う共有時と分離時の容量比較表を定める。→ 容量比較の結果。式が 2 構成を直接比べられないことと、分離固有の増分が 3 つの源から生じることを示した。
+- [x] T003 [Research] 管理コンソールと管理 API 自動化の通常時、最繁時、集中実行時を幅のある前提で見積もる。→ `docs/capacity.md` の Non-protocol request profile。
+- [x] T004 [Research] ポータルの通常時と最繁時を幅のある前提で見積もる。→ 同上。既存の Session list 200 rps を内数として扱う。
+- [x] T005 [Research] SCIM の通常時、最繁時、集中同期時を導入率、同期頻度、時間帯への集中を含む前提で見積もる。→ 同上。
+- [x] T006 [Research] Shared Signals の通常時、最繁時、集中配信時をストリーム数、イベント発生率、再送を含む前提で見積もる。→ 同上。対象は受信 1 経路に絞られる。
+- [x] T007 [Research] ワーカーへ出ていない同期処理のピークメモリ、同時実行数、接続待ちを調べ、混合負荷試験の対象を確定する。→ `GET /api/admin/v1/audit_events/export` 1 つ。流量制限も同時実行制限もない。
+- [x] T008 [Decision] 容量比較と C1–C6 に照らして結論を再確認し、変える場合は採る変更と分離対象を確定する。→ C1–C6 のいずれも成立せず、結論は変わらない。C2 の表現だけ改めた。
+- [x] T009 [Docs] `docs/contexts/system/decisions.md` に節を追加する。→ `No API plane separation`。
+- [x] T010 [Docs] `docs/capacity.md` に管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の容量シナリオを追加する。→ `Non-protocol request profile` と Sizing rules への追記。
+- [x] T011 [Docs] `docs/deployment.md` から参照を張り、`docs/structure.md` の要否を判断する。→ 両方に参照を追加した。`structure.md` は Context の分割を扱っており、種別ごとの Deployment 分割とは軸が違うので、内容を複製せず参照だけを張った。
+- [x] T012 [Docs] wi-396 の Design を更新する。→ 「入場制御と重なる」と「3 Pod が最低 6 Pod になる」を書き換え、判断の所在を本 work item と `decisions.md` へ移した。
+- [x] T013 [Verify] 検査を通す。
 
 ## Verification
 
@@ -259,10 +312,37 @@ C1–C6 のいずれかが成立して結論を変える場合、本 work item �
 
 **最大のリスクは見積もりの誤りである。** 管理 API の自動化、ポータル、SCIM、Shared Signals の量は実測がなく、計画前提として置くしかない。とくに SCIM は導入率と顧客側 IdP の同期方式に支配されるため、幅が大きい。単一値で精度を装わず、上下限で結論が変わる入力を Measurement の対象として残す。
 
-**誤りの非対称性。** 誤って「分けない」と決めた場合の損害は、飽和時や障害時に一方が他方を巻き込む形で現れ、発現までの時間が長い。誤って「分ける」と決めた場合の損害は、常時の費用増と「分離側の過小サイズ」という新しい障害の形で、こちらは早く現れる。前者を見つけるため、C1 は認証系のサービス目標への影響を混合負荷で測り、C2 は処理時間の比ではなく必要レプリカ数と資源量を比較する。
+**誤りの非対称性。** 誤って「分けない」と決めた場合の損害は、飽和時や障害時に一方が他方を巻き込む形で現れ、発現までの時間が長い。誤って「分ける」と決めた場合の損害は、常時の費用増と「分離側の過小サイズ」という新しい障害の形で、こちらは早く現れる。前者を見つけるため、C1 は認証系のサービス目標への影響を混合負荷で測り、C2 は処理時間の比ではなく、両方の混合について測った 1 レプリカ当たり持続処理能力で判定する。
+
+**見積もりの数値には機械的な検査がない。** `mise run check-links` は参照先とアンカーの存在しか見ず、`docs/capacity.md` の入力表と到達率表の整合も、Sizing rules に書いた必要レプリカ数の算術も検査しない。今回はこれを手で確かめた。入力を更新する際は、到達率、合計、必要レプリカ数、接続予算の 4 つが同時にずれることを前提に読み直す。
 
 **残るリスクは経路分類の劣化である。** 経路接頭辞と種別の対応には機械的な検査がなく、現在もゲートウェイの許可リストは `/ssf/*`、`/session/check`、`/application-icons/*` を含まない。管理系の操作が `/api/auth/*` の下に生えたり、一つのハンドラーが二つの種別を兼ねたりすれば、D1 と D2 の移行費用はさらに増える。ゲートウェイ許可リストと実行時経路の照合検査（Out of Scope）が入るまで、分離を安く保てているとはみなさない。
 
 **前提の失効に注意する。** 本判断は、一括処理の一部がワーカーにあること、入場制御と自動スケールが未実装であること、`docs/capacity.md` の参照運用プロファイルが現在の規模であること、同一オリジン前提が維持されていることに依存する。[[wi-249-scim-bulk-operations]] が入ると SCIM の量の性質が変わるため、そのときは見積もりから読み直す。
 
 `reversibility` は reversible。判断はいつでも取り消せる。D1 で分けたあとに戻すのも、ゲートウェイの振り分けとレプリカ構成の変更であってデータ移行を伴わない。D3 と D4 は外部に見える設計を変えるため、この限りではない。
+
+## Completion
+
+- **Completed At**: 2026-09-03
+- **Summary**:
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範的シナリオ、標準要件、TypeSpec 宣言のいずれも追加、変更、削除していない。意味上の差分は正準文書の側にあり、次の 3 つである。第一に `docs/capacity.md` に `Non-protocol request profile` を追加し、管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の受信について、18 個の入力とそこから導いた通常時、最繁時、集中実行時の到達率を Planning assumption として置いた。最繁 15 分の合計は中央値 1,550 rps、上界 2,710 rps で、認証・プロトコル系 41,250 rps に対して 4–7% にあたる。第二に同書の Sizing rules へ、種別ごとの 1 レプリカ当たり持続処理能力と、種別ごとに実行単位を分ける構成を同じ式で評価する方法を加えた。分離に固有の常時増分は総需要ではなく可用性下限の重複、`ceil` の重複、余裕を融通できないことの 3 つから生じ、最小の分離でも +3 レプリカ、+48 論理接続、利用可能接続の必要量 +69 が下限になる。第三に `docs/contexts/system/decisions.md` へ `No API plane separation` を追加し、単一の API Deployment を維持する判断、却下した 3 つの案、再検討する条件を記録した。`docs/deployment.md` と `docs/structure.md` からはこの節を参照するだけにして内容を複製していない。
+- **Acceptance RED Evidence**:
+  - **Test**: `mise run check-links`
+  - **Requirement**: N/A: 判断と容量計画の記録であり、製品の規範要件を持たない。
+  - **Observed Failure**: `docs/deployment.md:13` と `docs/structure.md:137` の 2 件が `Markdown anchor does not exist in docs/contexts/system/decisions.md: #no-api-plane-separation` で失敗する。これは判断の節が存在しない実装前の状態と同じ入力である。
+  - **Detection Reason**: 観測可能な境界は「他の正準文書からこの判断へ到達できること」である。この検査は参照元と参照先を別々に読むので、判断を書いたつもりで見出しが無い、見出しはあるが別の文書に置いた、参照だけ張って中身が無いという 3 つの誤りをいずれも落とす。節の中身を読まずに参照の有無だけを見る検査では、この区別ができない。
+- **Unit RED Evidence**:
+  - **Test**: `mise run check-links`（`docs/capacity.md` 内)
+  - **Requirement**: N/A: 同上。判断と容量計画の記録であり、製品の規範要件を持たない。
+  - **Observed Failure**: `docs/capacity.md:218: Markdown anchor does not exist in docs/capacity.md: #non-protocol-request-profile`。Sizing rules が容量シナリオの節を参照しているのに、その節が無い状態で失敗する。
+  - **Detection Reason**: Sizing rules の追記は、追加した容量シナリオを入力として初めて意味を持つ。片方だけを書いた状態を落とす。加えて `mise run check-work-items` は着手時に `/documentation_impact must have required property 'references'` で実際に失敗し、記録側の契約が満たされていないことを検出した。
+- **Change-Resistance Results**:
+  2 つの誤りを注入し、いずれも検出された。(1) `docs/contexts/system/decisions.md` の見出しを `## No API plane separation` から `## API plane separation policy` へ変えると、`mise run check-links` が `docs/deployment.md:13` と `docs/structure.md:137` の 2 件で失敗した。(2) `docs/capacity.md` の見出しを `### Non-protocol request profile` から `### Extra request profile` へ変えると、同じ検査が `docs/capacity.md:218` で失敗した。
+  **方法の限界を記録する。** 同じ見出しを `### Non protocol request profile` へ変える注入は検出されなかった。アンカーの導出でハイフンと空白が同じ文字へ落ちるため、等価な変異である。より重要な限界として、`mise run check-links` は参照先とアンカーの存在しか検査しない。入力表と到達率表の整合、必要レプリカ数と接続予算の算術、判断の内容そのものを検査する仕組みは無く、これらは手で確かめた。この work item は実装を伴わないので、変異を殺す試験は文書構造の層にしか存在しない。
+- **Verification Results**:
+  - `mise run check-work-items` - passed
+  - `mise run check-ids` - passed
+  - `mise run check-links` - passed
+  - `mise run check-spec` - passed
+  - `mise run verify` - `test-go-race` の `TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004` で失敗する。**本 work item とは無関係の既存の失敗である。** 変更は Markdown のみで、`docs` と `work-items` の変更を退避しても、`HEAD~3` でも同じ失敗が再現する（`ClaimBatch` が `bulk` レーンのジョブを 1 件も取得しない）。ほかの 14 個の依存タスク（`check`、`check-api-compat`、`test-tools`、`typecheck-tools`、`lint-tools`、`lint-repo`、`lint-go`、`check-ui-dependencies`、`format-check-ui`、`lint-ui`、`typecheck-ui`、`test-ui-unit`、`test-ui-e2e`、`build-ui`）はすべて通る。

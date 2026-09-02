@@ -10,6 +10,8 @@
 
 すべての実行単位は、同じ Go モジュールと Bounded Context の実装を再利用する。実行単位の一覧は別の台帳に重複して持たず、エントリーポイントと対応する `mise` のビルドタスクから導く。
 
+API プロセスは認証・プロトコル系、ポータル系、管理系、SCIM、Shared Signals の受信をすべて 1 つの待受に載せる。種別ごとに実行単位を分けない理由と再検討する条件は [contexts/system/decisions.md](contexts/system/decisions.md#no-api-plane-separation) が持つ。
+
 React の UI はこれらとは別のビルド成果物であり、別のサービスとして配信する。ブラウザーから見える境界を同一オリジンに揃えるのはゲートウェイの役目である。
 
 ```text
