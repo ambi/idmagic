@@ -17,6 +17,7 @@ import (
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -277,6 +278,40 @@ func (a *Authenticator) RequireAdmin(c *echo.Context) (*userdomain.User, error) 
 		return nil, ErrAdminAccessDenied
 	}
 	return user, nil
+}
+
+// IsControlPlaneActor は、解決済みの User が制御面のテナント横断操作を行えるかを返す。
+// 呼び出し元は Group 由来を合成した有効ロールを actor.Roles に入れてから渡す。
+func IsControlPlaneActor(actor *userdomain.User, requestTenantID string) bool {
+	return actor != nil && actor.IsActive() &&
+		actor.TenantID == tenancydomain.DefaultTenantID &&
+		requestTenantID == tenancydomain.DefaultTenantID &&
+		slices.Contains(actor.Roles, "system_admin")
+}
+
+// RequireControlPlaneUser は、認証を完了した制御面主体を有効ロール付きで返す。
+// 所属先と要求先の両方を制御面テナントに限定し、別テナントに保存された
+// system_admin がロール名だけでテナント境界を越えないようにする。
+func (a *Authenticator) RequireControlPlaneUser(c *echo.Context) (*userdomain.User, error) {
+	authn, err := a.ResolveAuthentication(c)
+	if err != nil {
+		return nil, err
+	}
+	if authn == nil || authn.AuthenticationPending {
+		return nil, ErrAdminAuthenticationRequired
+	}
+	user, err := a.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrAdminAccessDenied
+	}
+	actor := a.WithEffectiveRoles(c.Request().Context(), user)
+	if !IsControlPlaneActor(actor, RequestTenantID(c)) {
+		return nil, ErrAdminAccessDenied
+	}
+	return actor, nil
 }
 
 // WriteAdminAccessError は管理 API の認証・認可の失敗を応答へ写し、応答を書き終えた

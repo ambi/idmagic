@@ -5,7 +5,6 @@ package handlers_http
 
 import (
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/ambi/idmagic/backend/datakeys/usecases"
@@ -25,7 +24,7 @@ type TenantDataKeyHealthResponse struct {
 }
 
 func (d Deps) handleListTenantDataKeyHealth(c *echo.Context) error {
-	if err := d.requireSystemKeyHealthReader(c); err != nil {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.Repository == nil || d.Crypto == nil || d.TenantRepo == nil {
@@ -51,17 +50,4 @@ func (d Deps) handleListTenantDataKeyHealth(c *echo.Context) error {
 		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tenants": out})
-}
-
-// requireSystemKeyHealthReader は system_admin のみに限定する
-// (backend/signingkeys/handlers_http.Deps.requireSystemKeyHealthReader と同型)。
-func (d Deps) requireSystemKeyHealthReader(c *echo.Context) error {
-	actor, err := d.ResolveAdminActor(c)
-	if err != nil {
-		return err
-	}
-	if !slices.Contains(actor.Roles, "system_admin") {
-		return support.ErrAdminAccessDenied
-	}
-	return nil
 }

@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"time"
 
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/labstack/echo/v5"
 )
 
@@ -69,14 +69,14 @@ type adminJobListResponse struct {
 }
 
 func (d Deps) handleListJobs(c *echo.Context) error {
-	actor, err := d.RequireAdmin(c)
+	actor, err := d.requireJobAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.Repo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, adminJobListResponse{Jobs: []adminJobResponse{}})
 	}
-	in, err := parseListJobsQuery(c, actor.TenantID, actorMayReadAllTenants(actor.Roles, actor.TenantID))
+	in, err := parseListJobsQuery(c, actor.TenantID, support.IsControlPlaneActor(actor, support.RequestTenantID(c)))
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -96,7 +96,7 @@ func (d Deps) handleListJobs(c *echo.Context) error {
 }
 
 func (d Deps) handleGetJob(c *echo.Context) error {
-	actor, err := d.RequireAdmin(c)
+	actor, err := d.requireJobAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -104,7 +104,7 @@ func (d Deps) handleGetJob(c *echo.Context) error {
 		return writeJobNotFound(c)
 	}
 	job, err := jobusecases.GetJobForAdmin(c.Request().Context(), d.adminDeps(),
-		c.Param("job_id"), scopeFor(actor.TenantID, actor.Roles))
+		c.Param("job_id"), scopeFor(actor, support.RequestTenantID(c)))
 	if err != nil {
 		if errors.Is(err, jobports.ErrJobNotFound) {
 			return writeJobNotFound(c)
@@ -119,7 +119,7 @@ func (d Deps) handleCancelJob(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireAdmin(c)
+	actor, err := d.requireJobAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -127,7 +127,7 @@ func (d Deps) handleCancelJob(c *echo.Context) error {
 		return writeJobNotFound(c)
 	}
 	job, err := jobusecases.CancelJobForAdmin(c.Request().Context(), d.adminDeps(),
-		c.Param("job_id"), scopeFor(actor.TenantID, actor.Roles), time.Now().UTC())
+		c.Param("job_id"), scopeFor(actor, support.RequestTenantID(c)), time.Now().UTC())
 	switch {
 	case errors.Is(err, jobports.ErrJobNotFound):
 		return writeJobNotFound(c)
@@ -146,19 +146,27 @@ func (d Deps) adminDeps() jobusecases.AdminJobDeps {
 	return jobusecases.AdminJobDeps{Repo: d.Repo, Emit: d.Emit}
 }
 
-// scopeFor は呼び出し元の認可からテナントの範囲を決める。一覧と違い、1 件の参照と
-// 取り消しには横断を明示するパラメーターが無いので、権限を持つ者は自然に横断できる。
-func scopeFor(tenantID string, roles []string) jobusecases.TenantScope {
-	if actorMayReadAllTenants(roles, tenantID) {
-		return jobusecases.TenantScope{AllTenants: true}
+func (d Deps) requireJobAdministrator(c *echo.Context) (*userdomain.User, error) {
+	actor, err := d.ResolveAdminActor(c)
+	if err != nil {
+		return nil, err
 	}
-	return jobusecases.TenantScope{TenantID: tenantID}
+	if support.IsControlPlaneActor(actor, support.RequestTenantID(c)) {
+		return actor, nil
+	}
+	if actor.TenantID != support.RequestTenantID(c) || !slices.Contains(actor.Roles, "admin") {
+		return nil, support.ErrAdminAccessDenied
+	}
+	return actor, nil
 }
 
-// actorMayReadAllTenants は全テナント横断が許されるかを返す。system_admin ロールと
-// 制御面テナントへの所属の両方を要求する (docs/authorization.md のテナント境界)。
-func actorMayReadAllTenants(roles []string, tenantID string) bool {
-	return slices.Contains(roles, "system_admin") && tenantID == tenancydomain.DefaultTenantID
+// scopeFor は呼び出し元の認可からテナントの範囲を決める。一覧と違い、1 件の参照と
+// 取り消しには横断を明示するパラメーターが無いので、権限を持つ者は自然に横断できる。
+func scopeFor(actor *userdomain.User, requestTenantID string) jobusecases.TenantScope {
+	if support.IsControlPlaneActor(actor, requestTenantID) {
+		return jobusecases.TenantScope{AllTenants: true}
+	}
+	return jobusecases.TenantScope{TenantID: actor.TenantID}
 }
 
 // writeJobNotFound は「他テナントの Job」と「存在しない Job」を同じ応答にする。

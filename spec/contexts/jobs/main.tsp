@@ -33,7 +33,7 @@ model ListJobsError403 {
   @body body: ListJobsError403Body;
 }
 
-@doc("An administrator lists the Jobs of their tenant, newest-created first, narrowed by status, kind, and lane. Another tenant's Jobs are absent from the page and from any count derived from it. `all_tenants` widens the listing to every tenant, and is honoured only for a `system_admin` calling through the control-plane tenant. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-012, REQ-JOBS-014).")
+@doc("An administrator lists the Jobs of their tenant, newest-created first, narrowed by status, kind, and lane. Another tenant's Jobs are absent from the page and from any count derived from it. `all_tenants` widens the listing to every tenant, and is honoured only for an active user who belongs to the control-plane tenant, carries `system_admin` among its effective roles, and calls through the control-plane tenant; such a caller needs no `admin` role of its own. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-012, REQ-JOBS-014).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:read"])
 @TypeSpec.OpenAPI.operationId("ListJobs")
 @route("/api/admin/v1/jobs")
@@ -72,7 +72,7 @@ model GetJobError404 {
   @body body: GetJobError404Body;
 }
 
-@doc("An administrator reads one Job. A Job of another tenant is treated as nonexistent, so an id alone reveals nothing about a tenant the caller cannot see. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-014).")
+@doc("An administrator reads one Job. A Job of another tenant is treated as nonexistent, so an id alone reveals nothing about a tenant the caller cannot see. A control-plane caller - an active user of the control-plane tenant whose effective roles include `system_admin`, calling through the control-plane tenant - reads every tenant's Job without an `admin` role of its own. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-014).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:read"])
 @TypeSpec.OpenAPI.operationId("GetJob")
 @route("/api/admin/v1/jobs/{job_id}")
@@ -116,7 +116,7 @@ model CancelJobError409 {
   @body body: CancelJobError409Body;
 }
 
-@doc("An administrator cancels a Job that has not reached a terminal state, moving it straight to Canceled. A Running Job's handler is not interrupted where it stands: cancelling drops its lease, so its next heartbeat or completion report fails and the handler aborts itself. Side effects already committed are not undone, and the Job is never retried afterwards. A Job already in a terminal state is refused with JobNotCancelableError rather than answered as a no-op success (REQ-JOBS-013).")
+@doc("An administrator cancels a Job that has not reached a terminal state, moving it straight to Canceled. A Running Job's handler is not interrupted where it stands: cancelling drops its lease, so its next heartbeat or completion report fails and the handler aborts itself. Side effects already committed are not undone, and the Job is never retried afterwards. A Job already in a terminal state is refused with JobNotCancelableError rather than answered as a no-op success. A control-plane caller - an active user of the control-plane tenant whose effective roles include `system_admin`, calling through the control-plane tenant - cancels every tenant's Job without an `admin` role of its own (REQ-JOBS-013).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:cancel"])
 @TypeSpec.OpenAPI.operationId("CancelJob")
 @route("/api/admin/v1/jobs/{job_id}/cancel")

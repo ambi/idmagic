@@ -4,13 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
@@ -35,7 +33,7 @@ type tenantEndpointStyleRequest struct {
 }
 
 func (d Deps) handleListTenants(c *echo.Context) error {
-	if _, err := d.requireSystemAdmin(c); err != nil {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	tenants, err := d.TenantRepo.FindAll(c.Request().Context())
@@ -56,7 +54,7 @@ func (d Deps) handleListTenants(c *echo.Context) error {
 }
 
 func (d Deps) handleGetTenant(c *echo.Context) error {
-	if _, err := d.requireSystemAdmin(c); err != nil {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), c.Param("target_tenant_id"))
@@ -94,7 +92,7 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.requireSystemAdmin(c)
+	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -119,7 +117,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.requireSystemAdmin(c)
+	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -161,7 +159,7 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.requireSystemAdmin(c); err != nil {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	var input tenantEndpointStyleRequest
@@ -217,7 +215,7 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.requireSystemAdmin(c)
+	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -240,25 +238,6 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 		}
 	}
 	return c.NoContent(http.StatusNoContent)
-}
-
-func (d Deps) requireSystemAdmin(c *echo.Context) (*userdomain.User, error) {
-	authn, err := d.ResolveAuthentication(c)
-	if err != nil {
-		return nil, err
-	}
-	if authn == nil || authn.AuthenticationPending {
-		return nil, support.ErrAdminAuthenticationRequired
-	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil || user.TenantID != domain.DefaultTenantID || !user.IsActive() ||
-		!slices.Contains(d.EffectiveRoles(c.Request().Context(), user), "system_admin") {
-		return nil, support.ErrAdminAccessDenied
-	}
-	return user, nil
 }
 
 func (d Deps) writeTenantError(c *echo.Context, err error) error {
@@ -316,7 +295,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		return support.WriteProblem(c, 400, "invalid_request", "tenant_id is required")
 	}
 
-	_, err := d.requireSystemAdmin(c)
+	_, err := d.RequireControlPlaneUser(c)
 	if err != nil {
 		return err
 	}

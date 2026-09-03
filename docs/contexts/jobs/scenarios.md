@@ -89,15 +89,17 @@
 - ACTOR TenantAdministrator
 - GIVEN テナント "tenant-a" と "tenant-b" にそれぞれ Job が存在する
 - WHEN "tenant-a" の管理者がジョブ一覧を要求する
-  - ALT 実行者が admin ロールを持たない → AccessDeniedError で拒否される
+  - ALT 実行者が admin ロールも制御面主体の資格も持たない → AccessDeniedError で拒否される
   - ALT 状態、種別、レーンで絞り込む → 絞り込みに一致する自テナントの Job だけが返る
 - THEN "tenant-a" の Job だけが新しい順に返り、"tenant-b" の Job は件数にも含まれない
 - THEN 応答は `params`、`result`、`dedup_key` を含まない
 - WHEN 管理者が "tenant-b" の Job の id を指定して 1 件を要求する
 - THEN 存在しないものとして扱われる
-- WHEN `system_admin` ロールを持つ管理者が制御面テナントの経路で全テナント横断を明示して一覧を要求する
-  - ALT `system_admin` を持たない、または制御面テナント以外の経路である → 横断は認められず自テナントに閉じる
-- THEN すべてのテナントの Job が返る
+- WHEN 制御面テナントに所属する `system_admin` が制御面テナントの経路で全テナント横断を明示して一覧を要求する
+  - ALT `system_admin` を持たない、制御面テナントの所属ではない、または制御面テナント以外の経路である → 横断は認められず自テナントに閉じる
+- THEN すべてのテナントの Job が返り、`admin` ロールを併せ持つかどうかは結果を変えない
+- WHEN 同じ実行者が他テナントの Job の id を指定して 1 件を要求する
+- THEN その Job が返る
 
 ### REQ-JOBS-013: 管理者は終端に達していないジョブを取り消せる
 - ACTOR TenantAdministrator
@@ -106,6 +108,7 @@
   - ALT "job-1" が `running` である → 取り消しは受理され、リースを失ったハンドラーは次の報告で中断する
   - ALT "job-1" が既に `succeeded` / `failed` / `canceled` である → JobNotCancelableError で拒否され、状態は変わらない
   - ALT "job-1" が他テナントの Job である → 存在しないものとして扱われる
+  - ALT 制御面テナントに所属する `system_admin` が制御面テナントの経路で他テナントの "job-1" を取り消す → `admin` ロールを併せ持たなくても受理される
 - THEN "job-1" の状態が `canceled` になり "JobCanceled" が発行される
 - THEN 取り消しは再試行を伴わず、"job-1" は二度と `running` にならない
 

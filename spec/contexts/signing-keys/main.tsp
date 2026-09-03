@@ -200,7 +200,7 @@ model ListTenantKeyHealthError403 {
   @body body: ListTenantKeyHealthError403Body;
 }
 
-@doc("A system_admin lists signing key health across tenants: provider, active kid, key count, and provider reachability.\nNo private key is returned. Used to judge fail-closed conditions and to catch tenants a rotation missed.")
+@doc("A control-plane caller lists signing key health across tenants: provider, active kid, key count, and provider\nreachability. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among\nits effective roles, and calls through the control-plane tenant; a `system_admin` of any other tenant is refused with\nAccessDeniedError and observes no identifier or state of another tenant. No private key is returned. Used to judge\nfail-closed conditions and to catch tenants a rotation missed (REQ-SIGNINGKEYS-008, REQ-SIGNINGKEYS-009).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("ListTenantKeyHealth")
 @route("/api/admin/v1/keys/health")

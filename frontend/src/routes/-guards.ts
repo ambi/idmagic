@@ -20,6 +20,10 @@ export function hasAdminRole(roles: string[] | undefined): boolean {
   return (roles ?? []).some((role) => role === 'admin' || role === 'system_admin')
 }
 
+export function isControlPlaneAccount(account: AccountContextResponse): boolean {
+  return account.realm === 'default' && (account.roles ?? []).includes('system_admin')
+}
+
 export async function requirePortalAccount(
   audience: PortalAudience,
   pathname: string,
@@ -46,16 +50,15 @@ export async function requirePortalAccount(
   }
 }
 
-// requireSystemAccount はシステムコンソール (/system) 用ガード。admin ポータルで
-// 認証したうえで system_admin ロールを必須とし、持たなければテナント管理コンソール
-// へ送り返す。path ではなく role でゲートするため、誤って全テナント画面が露出する
-// ことを防ぐ (サーバ側 API も system_admin を要求しており多層防御)。
+// requireSystemAccount はシステムコンソール (/system) 用ガード。制御面 realm で
+// 認証し、有効ロールに system_admin を持つアカウントだけを通す。どちらかを満たさない
+// 場合はテナント管理コンソールへ送り返す (サーバー側 API も同じ条件を要求する)。
 export async function requireSystemAccount(
   pathname: string,
   search: string,
 ): Promise<AccountContextResponse> {
   const account = await requirePortalAccount('admin', pathname, search)
-  if (!(account.roles ?? []).includes('system_admin')) {
+  if (!isControlPlaneAccount(account)) {
     throw redirect({ to: '/admin' })
   }
   return account

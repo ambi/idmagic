@@ -260,6 +260,27 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 	}
 }
 
+func TestAdminAuditEventsAllTenantsRejectsSystemAdminOutsideControlPlaneTenant(t *testing.T) {
+	sysAdmin := auditUser("tenant_system_admin", "acme", []string{"system_admin"})
+	now := time.Now().UTC()
+	events := []*auditports.AuditEventRecord{
+		auditEvent("acme", "X", "a", now),
+		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
+	}
+	e := newAuditAdminServer(t, sysAdmin, events)
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?all_tenants=true")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if len(body.Events) != 1 || body.Events[0].TenantID != "acme" {
+		t.Fatalf("別テナントの system_admin が横断した: %+v", body.Events)
+	}
+}
+
 func TestAdminAuditEventsAllTenantsHonoredForSystemAdminAtDefault(t *testing.T) {
 	sysAdmin := auditUser("user_system_admin", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	now := time.Now().UTC()

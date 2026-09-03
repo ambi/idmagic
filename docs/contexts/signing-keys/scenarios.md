@@ -56,15 +56,21 @@
 ### REQ-SIGNINGKEYS-008: KeyProvider の障害時は健全性を観測でき、JWKS は取得可能な範囲で返る
 - ACTOR SystemAdministrator
 - GIVEN テナント "tenant-a" の KeyProvider が到達不能である
-- WHEN `system_admin` が署名鍵の健全性一覧を取得する
+- GIVEN "sys-operator" は制御面テナントに所属し、有効ロールに `system_admin` を含む有効な User である
+- WHEN "sys-operator" が制御面テナントの経路で署名鍵の健全性一覧を取得する
 - THEN テナント "tenant-a" の `provider_healthy` は `false` として返る
 - THEN テナント "tenant-a" の JWKS は取得可能な範囲でキャッシュされた鍵を返す
 
-### REQ-SIGNINGKEYS-009: 通常のテナント管理者はシステムコンソールの署名鍵ヘルスにアクセスできない
+### REQ-SIGNINGKEYS-009: 制御面主体ではない管理者はシステムコンソールの署名鍵ヘルスにアクセスできない
 - ACTOR TenantAdministrator
-- GIVEN "operator" は `admin` ロールだけを持ち、`system_admin` ロールを持たない
+- GIVEN "operator" は制御面テナントに所属するが、`admin` ロールだけを持ち `system_admin` ロールを持たない
+- GIVEN "tenant-operator" は制御面テナント以外のテナントに所属し、直接または Group 経由で `system_admin` ロールを持つ
 - WHEN "operator" が署名鍵ヘルス一覧を呼び出す
 - THEN AccessDeniedError で拒否される
+- WHEN "tenant-operator" が自テナントの経路で署名鍵ヘルス一覧を呼び出す
+- THEN AccessDeniedError で拒否される
+- THEN 応答は他テナントの識別子、提供元、`active_kid`、鍵数、到達性のいずれも含まない
+- THEN テナント横断の健全性収集は実行されない
 
 ### REQ-SIGNINGKEYS-010: 管理者は回転後の検証用鍵だけを即時無効化できる
 - ACTOR TenantAdministrator

@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -248,7 +246,7 @@ func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
 	if rec == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
-	if !auditEventVisibleTo(rec, actor) {
+	if !auditEventVisibleTo(rec, actor, support.RequestTenantID(c)) {
 		// 別テナントのイベントは存在を隠す。
 		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
@@ -342,9 +340,7 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User) (aud
 		AllTenants: false,
 	}
 	// system_admin が default tenant 経路で全テナント横断する場合のみ all_tenants を許可する。
-	if slices.Contains(actor.Roles, "system_admin") &&
-		actor.TenantID == tenancydomain.DefaultTenantID &&
-		c.QueryParam("all_tenants") == "true" {
+	if support.IsControlPlaneActor(actor, support.RequestTenantID(c)) && c.QueryParam("all_tenants") == "true" {
 		q.AllTenants = true
 		q.TenantID = ""
 	}
@@ -439,9 +435,9 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpres
 }
 
 // auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。
-// system_admin で default テナント在籍なら全件 OK、それ以外は所属テナントのみ。
-func auditEventVisibleTo(rec *auditports.AuditEventRecord, actor *userdomain.User) bool {
-	if slices.Contains(actor.Roles, "system_admin") && actor.TenantID == tenancydomain.DefaultTenantID {
+// 制御面主体なら全件を、それ以外は所属テナントのイベントだけを見せる。
+func auditEventVisibleTo(rec *auditports.AuditEventRecord, actor *userdomain.User, requestTenantID string) bool {
+	if support.IsControlPlaneActor(actor, requestTenantID) {
 		return true
 	}
 	return rec.TenantID == actor.TenantID

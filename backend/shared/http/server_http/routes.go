@@ -173,7 +173,7 @@ func Register(e *echo.Echo, d Deps) {
 
 	// control-plane (テナント横断操作) は他の全ボンデッドコンテキストと同じ
 	// tenantGroup にそのまま登録する。default テナントへの限定は
-	// requireSystemAdmin (user.TenantID == DefaultTenantID) が担う —
+	// RequireControlPlaneUser が担う。
 	// ルーティング層で別 prefix に隔離する必要はない。
 	tenancyhttp.RegisterControlPlaneRoutes(tenantGroup, tenancyhttp.Deps{
 		Deps:           d.Deps,

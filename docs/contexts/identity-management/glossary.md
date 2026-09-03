@@ -3,7 +3,7 @@
 | Term | Definition | Aliases |
 |---|---|---|
 | Administrator | `User.roles` に `admin` を持ち、所属テナント内の管理 API の利用を許可された認証済みユーザー。テナント境界を越える操作は SystemAdministrator に限定する。 | admin, 管理者, TenantAdmin |
-| SystemAdministrator | `User.roles` に `system_admin` を持つ認証済みユーザー。テナント管理（CRUD・無効化・有効化）とテナント横断操作を許可され、`system_admin` 専用のシステムコンソール (`/system`) から `/api/admin/tenants/*` や `/api/admin/keys/health` を呼び出せる。テナント境界を越えるため、パスではなくロールで制御する。 | system_admin, システム管理者 |
+| SystemAdministrator | 制御面テナントに所属する認証済みで有効なユーザーのうち、User への直接付与と Group 由来を合わせた有効ロールに `system_admin` を持つもの。制御面テナントの経路から要求したときにだけ、テナント管理（CRUD・無効化・有効化）とテナント横断操作を許可され、システムコンソール (`/system`) から `/api/admin/tenants/*` や `/api/admin/keys/health` を呼び出せる。所属テナントと要求先テナントを条件に含めるのは、ロール名だけで判定すると他テナントの管理経路がテナント境界を越える入口になるためである。 | system_admin, システム管理者, 制御面主体 |
 | EndUser | 認証済みまたは認証を試みる一般利用者。管理ロールを持たない、アカウントポータルでのセルフサービス操作の主体。 | 利用者, エンドユーザー |
 | UserDisablement | `User.status` を `Disabled` に遷移させ、認証とセッション利用を停止する復元可能な管理操作。削除や個人識別情報の消去とは異なる。 | disable ユーザー |
 | UserImport | 管理者が UTF-8 CSV でユーザーの作成と部分更新を行う操作。まずプレビューで事前検証し、成功したプレビューを指定して非同期に適用する。CSV のヘッダーは安定した機械可読なキーで、順序と部分集合は任意だが、`password` と `password_hash` は含められない。 | CSV ユーザーインポート, ユーザー一括インポート |

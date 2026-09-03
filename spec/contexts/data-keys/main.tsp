@@ -27,7 +27,7 @@ model ListTenantDataKeyHealthError403 {
   @body body: ListTenantDataKeyHealthError403Body;
 }
 
-@doc("A system_admin lists DEK health across tenants: active version, status, and provider reachability. No key material is returned. Used to judge fail-closed conditions and to catch tenants a rotation missed.")
+@doc("A control-plane caller lists DEK health across tenants: active version, status, and provider reachability. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among its effective roles, and calls through the control-plane tenant; a `system_admin` of any other tenant is refused with AccessDeniedError and observes no identifier or state of another tenant. No key material is returned. Used to judge fail-closed conditions and to catch tenants a rotation missed (REQ-DATAKEYS-006).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListTenantDataKeyHealth")
 @route("/api/admin/v1/data-keys/health")

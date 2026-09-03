@@ -36,9 +36,11 @@
 - THEN バージョン 1 が `destroyed` に遷移し、`wrapped_dek` が破棄される
 - THEN バージョン 1 による復号は恒久的にできなくなる
 
-### REQ-DATAKEYS-006: システム管理者はテナント横断で DEK の健全性を一覧できる
-- ACTOR System
+### REQ-DATAKEYS-006: 制御面主体はテナント横断で DEK の健全性を一覧できる
+- ACTOR SystemAdministrator
 - GIVEN 複数テナントにそれぞれ DataEncryptionKey が存在する
-- WHEN `system_admin` が ListTenantDataKeyHealth を呼ぶ
-  - ALT 呼び出し元が `system_admin` ではない → ListTenantDataKeyHealth が AccessDeniedError で拒否される
+- GIVEN "sys-operator" は制御面テナントに所属し、有効ロールに `system_admin` を含む有効な User である
+- WHEN "sys-operator" が制御面テナントの経路で ListTenantDataKeyHealth を呼ぶ
+  - ALT 呼び出し元が `system_admin` を持たない → AccessDeniedError で拒否される
+  - ALT 呼び出し元が `system_admin` を持つが制御面テナントの所属ではない → AccessDeniedError で拒否され、応答は他テナントの識別子も DEK の状態も含まず、テナント横断の健全性収集も実行されない
 - THEN 各テナントの `active_version`、`status`、プロバイダーへの到達性が、鍵素材を含まずに返る

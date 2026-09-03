@@ -132,7 +132,7 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 }
 
 func (d Deps) handleListTenantKeyHealth(c *echo.Context) error {
-	if err := d.requireSystemKeyHealthReader(c); err != nil {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.KeyStore == nil || d.TenantRepo == nil {
@@ -184,19 +184,6 @@ func (d Deps) requireTenantKeyManager(c *echo.Context) error {
 		return support.ErrAdminAccessDenied
 	}
 	if actor.TenantID != support.RequestTenantID(c) {
-		return support.ErrAdminAccessDenied
-	}
-	return nil
-}
-
-// requireSystemKeyHealthReader は SystemKeyHealthRead を満たす actor か検証する。
-// テナント横断で全鍵の状態を見るため system_admin のみに限定する。
-func (d Deps) requireSystemKeyHealthReader(c *echo.Context) error {
-	actor, err := d.ResolveAdminActor(c)
-	if err != nil {
-		return err
-	}
-	if !slices.Contains(actor.Roles, "system_admin") {
 		return support.ErrAdminAccessDenied
 	}
 	return nil

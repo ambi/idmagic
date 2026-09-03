@@ -63,7 +63,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 // を登録する。パスは他の admin API と揃えて `/api/admin/v1/tenants` とする (dev proxy /
 // リバースプロキシは `/api` 配下を IdP へ転送する)。共有のテナント汎用グループ
 // (/realms/:tenant_id) にそのまま登録し、default テナントへの限定は
-// requireSystemAdmin (user.TenantID == DefaultTenantID) が担う。
+// RequireControlPlaneUser が担う。
 // パス上の `:target_tenant_id` は CRUD 対象のテナント ID であり、グループ側の
 // `:tenant_id` (リクエスト自身の realm) とは別物 — 同名にすると echo の
 // Context.Param が外側の値を返してしまうため名前を分けている。
