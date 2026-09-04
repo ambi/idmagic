@@ -148,6 +148,37 @@ async function breakingApiChanges(): Promise<string[]> {
   }
 }
 
+/**
+ * The work items this working tree changes, by filename stem.
+ *
+ * The specification diff below is one workspace-wide difference and carries no
+ * record of its own, so the documentation-impact inference needs to be told
+ * which records it may be attributed to. Returns undefined outside a Git
+ * repository, which leaves the inference applying to every record as before.
+ */
+function changedWorkItemRecords(): ReadonlySet<string> | undefined {
+  const result = Bun.spawnSync(['git', 'diff', '--name-only', 'main...', '--', 'work-items'], {
+    cwd: rootPath('.'),
+  })
+  const status = Bun.spawnSync(['git', 'status', '--porcelain', '--', 'work-items'], {
+    cwd: rootPath('.'),
+  })
+  if (result.exitCode !== 0 && status.exitCode !== 0) return undefined
+  const changed = new Set<string>()
+  const add = (path: string) => {
+    const name = path.trim().match(/([^/\\]+)\.md$/)?.[1]
+    if (name) changed.add(name)
+  }
+  for (const line of result.stdout.toString().split('\n')) add(line)
+  // `git status` reports a rename as "R  old -> new"; both stems name the same
+  // record, and adding either is enough because a record keeps its filename
+  // when it moves into work-items/done/.
+  for (const line of status.stdout.toString().split('\n')) {
+    for (const part of line.slice(3).split(' -> ')) add(part)
+  }
+  return changed
+}
+
 async function documentationImpactEnvironment(): Promise<DocumentationImpactEnvironment> {
   const featureRegistryPath = 'backend/cmd/internal/bootstrap/features.go'
   let specificationDiff = diffSpecifications(new Map(), new Map())
@@ -159,6 +190,7 @@ async function documentationImpactEnvironment(): Promise<DocumentationImpactEnvi
   return {
     read: repository.read,
     specificationDiff,
+    changedRecords: changedWorkItemRecords(),
     maturityChanges: diffFeatureMaturities(
       revisionFile('main', featureRegistryPath),
       repository.read(featureRegistryPath) ?? '',

@@ -31,6 +31,46 @@ const record = {
 }
 
 describe('verifyDocumentationImpact', () => {
+  it('attributes the workspace specification diff only to the records that change', () => {
+    // The specification diff is one workspace-wide difference and carries no
+    // record of its own. Without this scoping, adding a scenario made every
+    // completed `none` record fail at once (wi-396).
+    const addedScenario = {
+      ...noSpecificationChange,
+      addedScenarios: ['REQ-SYSTEM-018'],
+    }
+    const completed = {
+      ...record,
+      id: 'wi-452-feature-maturity-documentation-gates',
+      status: 'completed',
+    }
+
+    expect(
+      verifyDocumentationImpact(
+        completed,
+        environment({ specificationDiff: addedScenario, changedRecords: new Set() }),
+      ),
+    ).toEqual([])
+
+    // The record the working tree is changing still owns the diff, whether it
+    // is still in progress or has just flipped to completed for the final gate.
+    expect(
+      verifyDocumentationImpact(
+        record,
+        environment({ specificationDiff: addedScenario, changedRecords: new Set() }),
+      ),
+    ).toContain('documentation_impact none is weaker than inferred release_note')
+    expect(
+      verifyDocumentationImpact(
+        completed,
+        environment({
+          specificationDiff: addedScenario,
+          changedRecords: new Set([completed.id]),
+        }),
+      ),
+    ).toContain('documentation_impact none is weaker than inferred release_note')
+  })
+
   it('derives feature maturity changes from registry definitions', () => {
     const base = `return FeatureRegistry{
       {ID: "demo-v1", Maturity: FeatureExperimental},

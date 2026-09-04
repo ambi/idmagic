@@ -20,6 +20,18 @@ export type DocumentationImpactEnvironment = {
   specificationDiff: SpecificationDiff
   maturityChanges: MaturityChange[]
   breakingApiChanges?: string[]
+  /**
+   * Ids of the work items this working tree is changing, by filename stem.
+   *
+   * The specification diff is one workspace-wide difference against the
+   * baseline revision, so it says nothing about which record produced it.
+   * Without this set, every record under the documentation contract inherits
+   * today's diff, and a completed `none` record from months ago starts failing
+   * the moment somebody else adds a scenario. Undefined keeps the previous
+   * behaviour for callers that cannot resolve it (minimal fixtures, tests that
+   * exercise the inference directly).
+   */
+  changedRecords?: ReadonlySet<string>
 }
 
 type WorkItemRecord = {
@@ -103,11 +115,32 @@ function isPromotion(change: MaturityChange): boolean {
   return MATURITY_ORDER[change.to] > MATURITY_ORDER[change.from]
 }
 
+/**
+ * Whether the workspace-wide specification and API diff belongs to this record.
+ *
+ * An `in_progress` record is always making the change being checked. A record
+ * that is already `completed` only owns the diff while its own file is part of
+ * the same working tree — which covers the completion step itself, where the
+ * status flips to `completed` and the file moves into `work-items/done/`
+ * before the final gate runs. A completed record identical to the baseline
+ * owns nothing here.
+ */
+function ownsWorkspaceDiff(
+  record: WorkItemRecord,
+  environment: DocumentationImpactEnvironment,
+): boolean {
+  if (record.status === 'in_progress') return true
+  const changed = environment.changedRecords
+  if (changed === undefined) return true
+  return typeof record.id === 'string' && changed.has(record.id)
+}
+
 export function minimumDocumentationImpact(
   record: WorkItemRecord,
   environment: DocumentationImpactEnvironment,
 ): DocumentationImpact {
   let impact: DocumentationImpact = record.change_kind === 'feature' ? 'release_note' : 'none'
+  if (!ownsWorkspaceDiff(record, environment)) return impact
   const diff = environment.specificationDiff
 
   if (
