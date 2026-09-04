@@ -103,6 +103,11 @@ var configFieldDescriptions = map[string]string{
 	"DRAIN_GRACE_PERIOD_SECONDS": "Seconds to keep serving after SIGTERM before shutting the listener down (idmagic), or to let in-flight jobs finish (idmagic-worker).",
 	"PAGINATION_CURSOR_SECRET":   "HMAC secret signing keyset pagination cursors. Set it explicitly in any multi-replica deployment: otherwise each replica generates its own at startup and rejects cursors issued by another.",
 
+	"ADMISSION_CONTROL_ENABLED":                         "Shed load by request priority class once the process is saturated. Turning it off removes the only mechanism that keeps interactive authentication ahead of management traffic; it exists so an operator can disable a misconfigured threshold without deploying a change.",
+	"ADMISSION_MAX_CONCURRENT_REQUESTS":                 "Requests this process may execute concurrently before it refuses interactive authentication too (degradation stage 5). One request holds at most one PostgreSQL connection at a time, so this also bounds the pool's wait queue.",
+	"ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS":      "Concurrency ceiling for the admin API, the account portal, SCIM, Shared Signals receive, and dynamic client registration (degradation stage 4). Must not exceed ADMISSION_MAX_CONCURRENT_REQUESTS.",
+	"ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS": "Concurrency ceiling for aggregation, export, import, and full-resync routes, the first thing shed (degradation stage 3). Must not exceed ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS.",
+
 	"HTTP_READ_HEADER_TIMEOUT": "Deadline for reading request headers.",
 	"HTTP_READ_TIMEOUT":        "Deadline for reading a whole request.",
 	"HTTP_WRITE_TIMEOUT":       "Deadline for writing a response.",

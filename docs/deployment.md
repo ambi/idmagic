@@ -48,9 +48,34 @@ PostgreSQL shared state <---- Worker replicas by execution lane
 
 ワーカーは `latency_sensitive`、`default`、`bulk` の実行レーンごとに専用の実行枠を持ち、API とも他のレーンとも独立して水平スケールする。外部スケジューラーは `idmagic-batch` を一回限りの処理として起動し、常駐ワーカーの実行枠を使用しない。API、ワーカー、バッチは永続状態と一時状態の唯一の共有ストアとして PostgreSQL を使う。
 
+API レプリカ数は HorizontalPodAutoscaler が調整する（`infra/k8s/base/hpa.yaml`）。下限、上限、判定指標は [capacity.md](capacity.md#sizing-rules) の Sizing rules が定める。Deployment 側に `replicas` を書かないのは、書けば適用のたびに固定値へ戻り、自動調整と綱引きになるためである。
+
+自動調整だけでは飽和に間に合わない。判定間隔と Pod の起動で数十秒かかり、その窓の間、ログインは管理系のトラフィックと同じ待ち行列に並ぶ。束縛条件が PostgreSQL 側にあるときは、レプリカを増やすと接続プールの総数も増えて競合が激しくなり、逆効果にすらなる。足りないときに何を先に捨てるかは、次節の入場制御がプロセス自身で決める。
+
 プロセス内キャッシュ、ゲートウェイ、CDN は Discovery と JWKS のように正となる状態から再生成できる公開応答だけを保持できる。認可コード、セッション、再送防止、流量制限の正をキャッシュへ移してはならず、キャッシュを失っても正しさが変わらない構成にする。鍵またはテナント設定の変更時は版または明示的な無効化で古い応答を排除し、TTL は配送失敗に備える上限として使う。
 
 PostgreSQL は論理的に単一の正である。パーティショニング、読み取りレプリカ、接続プール、テナント分散配置はデータ層の容量設計が定め、物理的な冗長化、フェイルオーバー、障害種別ごとの縮退は高可用性設計が定めるため、本書は特定のクラウド製品または物理トポロジを要求しない。
+
+## Load shedding under saturation
+
+API プロセスは、実行中の要求数が上限に達したとき、優先度の低い要求から拒否する。[capacity.md](capacity.md#degradation-order) の縮退順序のステージ 3 からステージ 5 にあたる。判断の理由は [contexts/system/decisions.md](contexts/system/decisions.md#load-shedding-by-priority-class)、機構は [contexts/system/internals.md](contexts/system/internals.md#admission-control) が持つ。
+
+拒否は `Retry-After` ヘッダーと Problem Details（`urn:idmagic:error:service_overloaded`）を伴う 503 で返り、ハンドラーには一切到達しない。
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ADMISSION_CONTROL_ENABLED` | `true` | 入場制御そのものの有効化。閾値が誤っていたときに、変更を配備せずに機構を切るための逃げ道 |
+| `ADMISSION_MAX_CONCURRENT_REQUESTS` | `256` | `interactive_auth` の上限であり、プロセス全体の同時実行上限でもある。ステージ 5 |
+| `ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS` | `192` | `management` の上限。ステージ 4 |
+| `ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS` | `128` | `management_bulk` の上限。ステージ 3 |
+
+**どの経路がどのクラスに属するかは [ROUTE_PRIORITY.md](../ROUTE_PRIORITY.md) が持つ。** 分類はコードに 1 箇所あり、この生成物はそこから導く。`mise run check-route-reference` が乖離を落とすので、本書に一覧を写さない。
+
+`ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS` ≤ `ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS` ≤ `ADMISSION_MAX_CONCURRENT_REQUESTS` を満たさない組み合わせは、起動時設定の検証が集約エラーで拒否する。順序が逆の設定は縮退の順序が逆になるという最も重い誤りなので、既定値へ黙って戻さない。
+
+**既定値は Planning assumption であって、実測に基づく値ではない。** [capacity.md](capacity.md#evidence-classes) の区分でいう Measurement は、参照運用プロファイルのデータを投入した環境での容量検証がまだ与えていない。既定値は、`DB_MAX_CONNS` の既定 20 に対して接続待ちの行列がすでに深いと言える水準として置いてある。容量検証を行ったら、平常時に 1 件も拒否が出ないことと、飽和時に `interactive_auth` のサービス目標が保たれることの両方から置き直す。
+
+**入場制御は高可用性ではない。** PostgreSQL は依然として論理的に単一の正であり、共通の障害域は解消しない。優先度を付けたことで可用性が確保されたと読んではならない。冗長化、フェイルオーバー、障害種別ごとの遷移は高可用性設計が扱う。
 
 ## Health probes and graceful drain
 

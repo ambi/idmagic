@@ -5,7 +5,7 @@
 | What | Language |
 |---|---|
 | Repository-root `README.md`, headings included | Japanese |
-| `CONFIGURATION.md`, `docs/development/specification-first-workflow.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
+| `CONFIGURATION.md`, `ROUTE_PRIORITY.md`, `docs/development/specification-first-workflow.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
 | `DOCUMENTATION_GUIDE.md`, headings included | Japanese |
 | `spec/**/*.tsp`, doc comments included | English |
 | Prose in the canonical documents under `docs/`, `docs/README.md` and `docs/contexts/*/README.md` included | Japanese |

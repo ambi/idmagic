@@ -1,0 +1,53 @@
+# API replicas follow docs/capacity.md "Sizing rules": the floor is the
+# availability minimum, the ceiling is the reference profile's 30 replicas, and
+# CPU stands in for the sustainable-rate-per-replica the sizing formula wants
+# until a capacity validation measures it.
+#
+# The ceiling is not free to raise. Replicas multiply the logical connection
+# budget (API replicas x API pool limit), which must stay at or under 70% of
+# available connections, so raising maxReplicas is a data-tier decision too.
+#
+# The Deployment deliberately declares no `replicas`: an overlay that set one
+# would push the count back to a fixed value on every apply and fight this
+# object.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: idmagic-api
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: idmagic
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: idmagic-api
+  minReplicas: 3
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      # A management burst must not wait a stabilization window: admission
+      # control is what holds the line meanwhile, and it holds it by refusing
+      # requests, so shortening this window shortens the refusals.
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+    scaleDown:
+      # Scaling down eagerly re-creates the saturation that was just relieved,
+      # and each removed replica takes its share of the connection pool with
+      # it. Five minutes of stability is the cost of not oscillating.
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60

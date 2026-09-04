@@ -9,3 +9,4 @@ resources:
   - worker.yaml
   - networkpolicy.yaml
   - pdb.yaml
+  - hpa.yaml

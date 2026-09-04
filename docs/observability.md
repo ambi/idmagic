@@ -18,6 +18,8 @@
 | `endpoint_rate_limit_total` | `policy`, `outcome` | エンドポイントの流量制限の発動率 |
 | `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | grant 別の `/token` の発行率と遅延 |
 | `http_request_aborts_total`, `operation_detached_completion_failures_total` | `kind` | 中断の扱い |
+| `http_admission_decisions_total` | `class`, `outcome` | 飽和時の[入場制御](deployment.md#load-shedding-under-saturation)がどの優先度クラスをどれだけ拒否したか |
+| `http_admission_in_flight_requests` | なし | 入場制御が数えているプロセス全体の実行中要求数。閾値との距離 |
 
 サービス目標の母集団、時間窓、除外条件、目標値は [capacity.md](capacity.md) が `SLO-*` と `CAP-*` の ID を付けて定める。アラートと負荷試験はその ID を名指しし、数値を再掲しない。Prometheus は HTTP RED メトリクスとスクレイプ状態をその定義に従って集約し、レイテンシー、非 5xx 比率、可用性を評価する。
 

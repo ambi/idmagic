@@ -26,6 +26,8 @@ func (m *httpMetricsSpy) RecordLoginThrottle(string, string)                    
 func (m *httpMetricsSpy) RecordEndpointRateLimit(string, string)                                {}
 func (m *httpMetricsSpy) RecordTokenIssuance(grantType, outcome string, duration time.Duration) {}
 func (m *httpMetricsSpy) RecordQuotaExceeded(resource string)                                   {}
+func (m *httpMetricsSpy) RecordAdmissionDecision(class, outcome string)                         {}
+func (m *httpMetricsSpy) RecordAdmissionInFlight(count int64)                                   {}
 
 func TestMetricsMiddlewareUsesRouteTemplateNotResolvedPath(t *testing.T) {
 	spy := &httpMetricsSpy{}

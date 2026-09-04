@@ -24,6 +24,8 @@ data:
         {"title":"Jobs failure ratio by lane","type":"timeseries","targets":[{"expr":"idmagic:jobs_failure_ratio:ratio_rate5m"}]},
         {"title":"Jobs retry rate by lane","type":"timeseries","targets":[{"expr":"sum by (lane) (rate(jobs_retry_total[5m]))"}]},
         {"title":"Jobs handler duration p99 by lane","type":"timeseries","targets":[{"expr":"idmagic:jobs_duration_seconds:p99_5m"}]},
-        {"title":"Jobs dead-letter rate by lane","type":"timeseries","targets":[{"expr":"sum by (lane) (rate(jobs_outcome_total{outcome=\"failed\"}[5m]))"}]}
+        {"title":"Jobs dead-letter rate by lane","type":"timeseries","targets":[{"expr":"sum by (lane) (rate(jobs_outcome_total{outcome=\"failed\"}[5m]))"}]},
+        {"title":"Admission control: shed rate by priority class (wi-396)","type":"timeseries","targets":[{"expr":"sum by (class) (rate(http_admission_decisions_total{outcome=\"shed\"}[5m]))"}]},
+        {"title":"Admission control: in-flight requests vs thresholds","type":"timeseries","targets":[{"expr":"http_admission_in_flight_requests"}]}
       ]
     }

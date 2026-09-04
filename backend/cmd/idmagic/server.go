@@ -183,6 +183,7 @@ func Run() error {
 	}
 	httpadapter.Register(e, httpadapter.Deps{
 		MetricsHandler:            appMetrics.Handler(),
+		Admission:                 api.Admission,
 		Issuer:                    issuer,
 		Contract:                  runtimeContract,
 		TenantBaseDomain:          api.TenantBaseDomain,

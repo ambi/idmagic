@@ -137,6 +137,30 @@
           "legendFormat": "{{lane}}"
         }
       ]
+    },
+    {
+      "id": 12,
+      "title": "Admission control: shed rate by priority class",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "targets": [
+        {
+          "expr": "sum by (class) (rate(http_admission_decisions_total{outcome=\"shed\"}[5m]))",
+          "legendFormat": "{{class}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Admission control: in-flight requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "targets": [
+        {
+          "expr": "http_admission_in_flight_requests",
+          "legendFormat": "in flight"
+        }
+      ]
     }
   ]
 }

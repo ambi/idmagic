@@ -31,6 +31,8 @@ func (s *rateLimitMetricsSpy) RecordLoginOutcome(string, string, string)        
 func (s *rateLimitMetricsSpy) RecordLoginThrottle(string, string)                {}
 func (s *rateLimitMetricsSpy) RecordTokenIssuance(string, string, time.Duration) {}
 func (s *rateLimitMetricsSpy) RecordQuotaExceeded(string)                        {}
+func (s *rateLimitMetricsSpy) RecordAdmissionDecision(string, string)            {}
+func (s *rateLimitMetricsSpy) RecordAdmissionInFlight(int64)                     {}
 func (s *rateLimitMetricsSpy) RecordEndpointRateLimit(policy, outcome string) {
 	s.calls = append(s.calls, struct{ policy, outcome string }{policy, outcome})
 }

@@ -67,7 +67,9 @@ func (s *metricsSpy) RecordTokenIssuance(grantType, outcome string, _ time.Durat
 	s.tokenIssuances = append(s.tokenIssuances, tokenIssuanceCall{grantType, outcome})
 }
 
-func (s *metricsSpy) RecordQuotaExceeded(string) {}
+func (s *metricsSpy) RecordQuotaExceeded(string)             {}
+func (s *metricsSpy) RecordAdmissionDecision(string, string) {}
+func (s *metricsSpy) RecordAdmissionInFlight(int64)          {}
 
 func (s *metricsSpy) RecordEndpointRateLimit(string, string) {}
 

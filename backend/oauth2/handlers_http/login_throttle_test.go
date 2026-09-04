@@ -24,6 +24,8 @@ func (s *spyMetrics) RecordLoginThrottle(policy, outcome string) {
 	s.throttlePolicy, s.throttleOutcome = policy, outcome
 }
 func (s *spyMetrics) RecordQuotaExceeded(string)             {}
+func (s *spyMetrics) RecordAdmissionDecision(string, string) {}
+func (s *spyMetrics) RecordAdmissionInFlight(int64)          {}
 func (s *spyMetrics) RecordEndpointRateLimit(string, string) {}
 
 type stubLoginThrottle struct {

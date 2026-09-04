@@ -29,6 +29,10 @@ spec:
           expr: sum by (lane) (rate(jobs_retry_total[5m])) / (sum by (lane) (rate(jobs_outcome_total[5m])) + sum by (lane) (rate(jobs_retry_total[5m])))
         - record: idmagic:jobs_duration_seconds:p99_5m
           expr: histogram_quantile(0.99, sum by (lane, le) (rate(jobs_duration_seconds_bucket[5m])))
+    - name: idmagic-admission-control
+      rules:
+        - record: idmagic:http_admission_shed_ratio:ratio_rate5m
+          expr: sum by (class) (rate(http_admission_decisions_total{outcome="shed"}[5m])) / sum by (class) (rate(http_admission_decisions_total[5m]))
     - name: idmagic-slo-alerts
       rules:
         - alert: TokenErrorRateBudgetBurn
@@ -87,3 +91,24 @@ spec:
           annotations:
             summary: "latency_sensitive lane queued depth sustained above 100; its dedicated worker may be undersized or down"
             runbook_url: "docs/runbooks/async-jobs.md"
+        - alert: ApiAdmissionSheddingInteractiveAuth
+          expr: sum(rate(http_admission_decisions_total{class="interactive_auth", outcome="shed"}[5m])) > 0
+          for: 5m
+          labels: { severity: page }
+          annotations:
+            summary: "admission control is refusing interactive authentication; the last degradation stage before SLO-PRIMARY-ERRORS and SLO-OAUTH2-AVAILABILITY are lost"
+            runbook_url: "docs/runbooks/admission-control.md"
+        - alert: ApiAdmissionShedding
+          expr: idmagic:http_admission_shed_ratio:ratio_rate5m{class=~"management|management_bulk"} > 0
+          for: 10m
+          labels: { severity: warn }
+          annotations:
+            summary: "admission control has been shedding a management class for 10m; either the process is undersized or the thresholds are too low"
+            runbook_url: "docs/runbooks/admission-control.md"
+        - alert: ApiAdmissionUnclassifiedRoute
+          expr: sum(rate(http_admission_decisions_total{class="unclassified"}[5m])) > 0
+          for: 5m
+          labels: { severity: warn }
+          annotations:
+            summary: "a route with no declared priority class is being served; load shedding cannot order it"
+            runbook_url: "docs/runbooks/admission-control.md"

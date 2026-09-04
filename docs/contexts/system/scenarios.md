@@ -156,3 +156,29 @@
 - THEN Operator は `Config` の実装を読まずに設定可能なすべてのキーを参照できる
 - WHEN プロセスの `/health` を読む
 - THEN レスポンスはメタデータ形式の版と、有効な各機能の識別子、版、成熟度、更新方針を含み、シークレットまたは無効な機能を含まない
+
+### REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する
+- ACTOR APIConsumer
+- GIVEN 登録済みのすべての経路が `interactive_auth`、`management`、`management_bulk`、`infrastructure` のいずれか 1 つの優先度クラスに分類されている
+- GIVEN 起動時設定が優先度クラスごとの同時実行の入場上限を持ち、`management_bulk` の上限は `management` の上限以下、`management` の上限はプロセス全体の上限以下である
+- WHEN 実行中の要求数が `management_bulk` の上限に達している状態で、APIConsumer が `management_bulk` の経路へ要求を送る
+  - ALT 実行中の要求数が `management_bulk` の上限に達していない → 要求はハンドラーへ渡り、通常どおり処理される
+- THEN System は `Retry-After` と `urn:idmagic:error:service_overloaded` の Problem Details を伴う 503 を返す
+- THEN 要求はハンドラーへ到達せず、永続状態もドメインイベントも変化しない
+- WHEN 同じ状態で APIConsumer が `interactive_auth` の経路へ要求を送る
+  - ALT 実行中の要求数がプロセス全体の上限にも達している → System は同じ 503 で拒否し、要求はハンドラーへ到達しないので状態を部分的に更新しない
+- THEN 要求はハンドラーへ渡り、通常どおり処理される
+- WHEN APIConsumer が `infrastructure` に分類された経路へ要求を送る
+- THEN System は実行中の要求数にかかわらず拒否せず、要求はハンドラーへ渡る
+- WHEN 実行中の要求数がどの入場上限にも達していない
+- THEN System はどの優先度クラスの要求も拒否しない
+
+### REQ-SYSTEM-019: RoutePriorityReference は分類の定義から生成され乖離を検出できる
+- ACTOR Operator
+- GIVEN 登録済みの各経路の優先度クラスが、経路の登録と同じ場所に一箇所で定義されている
+- WHEN RoutePriorityReference を生成する
+- THEN 生成物は組み立て済みの経路それぞれについて、経路パターン、メソッド、属する優先度クラスを示す
+- THEN 生成物は優先度クラスごとに、対応する縮退のステージと、その上限を与える起動時設定のキーを示す
+- WHEN 生成物と分類の定義を突き合わせる
+  - ALT 生成物が定義と一致しない → 突き合わせは失敗し、再生成すべきことを報告する
+- THEN Operator は分類の実装を読まずに、どの経路がどの優先度クラスに属するかを参照できる

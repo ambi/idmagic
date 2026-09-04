@@ -54,6 +54,12 @@ type Metrics struct {
 	jobsQueueDepth   metric.Int64Gauge
 
 	quotaExceeded metric.Int64Counter
+
+	// admission* back support.AdmissionMetrics (wi-396). class is always a
+	// bounded support.PriorityClass and outcome is always "admitted" or
+	// "shed" — never a resolved path or tenant value.
+	admissionDecisions metric.Int64Counter
+	admissionInFlight  metric.Int64Gauge
 }
 
 // NewMetrics builds a dedicated Prometheus registry and OTel MeterProvider for
@@ -145,6 +151,14 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 	if m.quotaExceeded, err = meter.Int64Counter("quota_exceeded_total", metric.WithDescription("Number of operations rejected due to quota limit")); err != nil {
 		return nil, err
 	}
+	if m.admissionDecisions, err = meter.Int64Counter("http_admission_decisions_total",
+		metric.WithDescription("Admission-control decisions by request priority class")); err != nil {
+		return nil, err
+	}
+	if m.admissionInFlight, err = meter.Int64Gauge("http_admission_in_flight_requests",
+		metric.WithDescription("Requests the admission controller currently counts as executing in this process")); err != nil {
+		return nil, err
+	}
 	return m, nil
 }
 
@@ -210,6 +224,21 @@ func (m *Metrics) RecordQuotaExceeded(resName string) {
 	m.quotaExceeded.Add(context.Background(), 1, metric.WithAttributes(
 		attribute.String("resource", resName),
 	))
+}
+
+// RecordAdmissionDecision implements support.AdmissionMetrics (wi-396).
+func (m *Metrics) RecordAdmissionDecision(class, outcome string) {
+	m.admissionDecisions.Add(context.Background(), 1, metric.WithAttributes(
+		attribute.String("class", class), attribute.String("outcome", outcome),
+	))
+}
+
+// RecordAdmissionInFlight implements support.AdmissionMetrics (wi-396). The
+// gauge is what the per-class thresholds are compared against, so a dashboard
+// can show the distance to each one rather than only the shedding that has
+// already started.
+func (m *Metrics) RecordAdmissionInFlight(count int64) {
+	m.admissionInFlight.Record(context.Background(), count)
 }
 
 func (m *Metrics) IncHTTPAbort(kind support.HTTPAbortKind) {

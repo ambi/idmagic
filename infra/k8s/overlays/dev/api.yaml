@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: idmagic-api }
 spec:
-  replicas: 1
   template:
     spec:
       containers:
@@ -13,3 +12,13 @@ spec:
           resources:
             requests: { cpu: 250m, memory: 256Mi }
             limits: { cpu: "1", memory: 512Mi }
+---
+# The dev overlay is a single-node sandbox, not a capacity target: it keeps the
+# autoscaler wired (so the object is exercised the same way prod's is) but with
+# a floor of one replica.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: idmagic-api }
+spec:
+  minReplicas: 1
+  maxReplicas: 2

@@ -37,4 +37,6 @@ type Metrics interface {
 	// RecordQuotaExceeded records an event where an operation was rejected
 	// because the tenant reached its quota for the given resource.
 	RecordQuotaExceeded(resource string)
+
+	AdmissionMetrics
 }

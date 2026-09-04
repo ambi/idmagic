@@ -89,6 +89,10 @@ HTTP listener, hardening, security headers, and endpoint rate limits.
 | `RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS` | integer (> 0) | `900` | no | Window length for the password reset limit. |
 | `RATE_LIMIT_LOGIN_MAX_REQUESTS` | integer (> 0) | `20` | no | `/api/auth/login` fixed-window limit, keyed by IP. Separate from, and in addition to, the per-account login throttle. |
 | `RATE_LIMIT_LOGIN_WINDOW_SECONDS` | integer (> 0) | `60` | no | Window length for the login limit. |
+| `ADMISSION_CONTROL_ENABLED` | boolean: `true`, `false` | `true` | no | Shed load by request priority class once the process is saturated. Turning it off removes the only mechanism that keeps interactive authentication ahead of management traffic; it exists so an operator can disable a misconfigured threshold without deploying a change. |
+| `ADMISSION_MAX_CONCURRENT_REQUESTS` | integer (> 0) | `256` | no | Requests this process may execute concurrently before it refuses interactive authentication too (degradation stage 5). One request holds at most one PostgreSQL connection at a time, so this also bounds the pool's wait queue. |
+| `ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS` | integer (> 0) | `192` | no | Concurrency ceiling for the admin API, the account portal, SCIM, Shared Signals receive, and dynamic client registration (degradation stage 4). Must not exceed ADMISSION_MAX_CONCURRENT_REQUESTS. |
+| `ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS` | integer (> 0) | `128` | no | Concurrency ceiling for aggregation, export, import, and full-resync routes, the first thing shed (degradation stage 3). Must not exceed ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS. |
 | `HTTP_READ_HEADER_TIMEOUT` | duration (> 0) | `10s` | no | Deadline for reading request headers. |
 | `HTTP_READ_TIMEOUT` | duration (> 0) | `30s` | no | Deadline for reading a whole request. |
 | `HTTP_WRITE_TIMEOUT` | duration (> 0) | `1m0s` | no | Deadline for writing a response. |

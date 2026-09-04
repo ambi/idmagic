@@ -86,6 +86,10 @@ type Deps struct {
 	// gated exposure.
 	MetricsHandler http.Handler
 
+	// Admission は飽和時の入場制御の上限 (REQ-SYSTEM-018)。Enabled が false の
+	// ゼロ値では何も拒否しないので、入場制御を組み立てないテストはそのまま動く。
+	Admission support.AdmissionBudget
+
 	Tenancy tenancy.Module
 	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
 	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
@@ -144,6 +148,11 @@ func Register(e *echo.Echo, d Deps) {
 	// 通ってしまい、500 に落ちる分類漏れがテストからは見えない。ログとメトリクスを
 	// 持つ版は、起動時に cmd がこの後で差し替える。
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
+	// 入場制御は routing の後、どのハンドラーよりも前に立つ (REQ-SYSTEM-018)。
+	// 経路を分類するのにルートパターンが要るので routing より後で、拒否した要求が
+	// 状態を一切変えないためにハンドラーより前でなければならない。組み立ての側に
+	// 置くのは、E2E がこの配線ごと通るようにするためである。
+	e.Use(support.AdmissionMiddleware(d.Admission, ClassifyRoute, d.Metrics))
 	e.Use(support.DeprecationHeadersMiddleware(d.Contract))
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)

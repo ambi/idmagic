@@ -25,6 +25,7 @@ type APIConfig struct {
 
 	RateLimits rlports.RateLimitConfigs
 
+	Admission       httpsupport.AdmissionBudget
 	Hardening       httpServerHardening
 	SecurityHeaders httpsupport.SecurityHeadersConfig
 }
@@ -78,8 +79,35 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 		},
 	}
 
+	cfg.Admission = loadAdmissionBudget(l)
 	cfg.Hardening = LoadHTTPServerHardening(l)
 	cfg.SecurityHeaders = LoadSecurityHeaders(l)
 
 	return cfg
+}
+
+// loadAdmissionBudget reads the per-priority-class concurrency limits the
+// admission controller sheds load with (REQ-SYSTEM-018). The defaults are a
+// Planning assumption, not a measurement: 256 concurrent requests against the
+// default 20-connection pool already means a deep wait for a connection, and
+// the management classes are cut at 75% and 50% of that.
+//
+// The order of the three limits is itself validated. A configuration where
+// management_bulk may run more concurrently than interactive_auth inverts the
+// degradation order — the single worst way for this mechanism to be wrong — so
+// it stops startup rather than falling back to the defaults (REQ-SYSTEM-016).
+func loadAdmissionBudget(l *ConfigLoader) httpsupport.AdmissionBudget {
+	budget := httpsupport.AdmissionBudget{
+		Enabled:             l.Bool("ADMISSION_CONTROL_ENABLED", true),
+		MaxConcurrent:       l.PositiveInt("ADMISSION_MAX_CONCURRENT_REQUESTS", 256),
+		ManagementLimit:     l.PositiveInt("ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS", 192),
+		ManagementBulkLimit: l.PositiveInt("ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS", 128),
+	}
+	l.Require("ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS",
+		budget.ManagementLimit <= budget.MaxConcurrent,
+		"must not exceed ADMISSION_MAX_CONCURRENT_REQUESTS")
+	l.Require("ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS",
+		budget.ManagementBulkLimit <= budget.ManagementLimit,
+		"must not exceed ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS")
+	return budget
 }

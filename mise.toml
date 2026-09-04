@@ -488,6 +488,7 @@ depends = [
   "check-command-map",
   "check-agent-guidance",
   "check-config-reference",
+  "check-route-reference",
   "check-admin-scopes",
   "check-contract-drift",
   "check-status-drift",
@@ -586,6 +587,14 @@ run = "go run ./backend/cmd/idmagic-config-reference --output CONFIGURATION.md"
 [tasks.check-config-reference]
 description = "Check the operator configuration reference"
 run = "go run ./backend/cmd/idmagic-config-reference --check --output CONFIGURATION.md"
+
+[tasks.generate-route-reference]
+description = "Generate the route priority reference"
+run = "go run ./backend/cmd/idmagic-route-reference --output ROUTE_PRIORITY.md"
+
+[tasks.check-route-reference]
+description = "Check the route priority reference"
+run = "go run ./backend/cmd/idmagic-route-reference --check --output ROUTE_PRIORITY.md"
 
 [tasks.check-api-compat]
 description = "Detect OpenAPI breaking changes against the release baseline"
