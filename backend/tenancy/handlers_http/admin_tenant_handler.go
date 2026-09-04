@@ -288,7 +288,14 @@ type tenantQuotaUpdateRequest struct {
 	ExportArtifactsBytes *int `json:"export_artifacts_bytes,omitempty"`
 }
 
+// handleUpdateTenantQuota はクォータ上限を書き換える制御面の状態変更なので、
+// 兄弟の経路と同じく Origin と CSRF トークンの検証を先頭に置く。検証を対象の解決、
+// 本文のデコード、保存より前に置くのは、周囲資格情報を持たない呼び出し元に
+// 対象の存在や本文の妥当性を観測させないためである。
 func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
 	ctx := c.Request().Context()
 	tenantID := c.Param("target_tenant_id")
 	if tenantID == "" {
