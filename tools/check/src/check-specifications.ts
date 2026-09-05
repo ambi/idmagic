@@ -1,12 +1,21 @@
 #!/usr/bin/env bun
 
-import { readFile } from 'node:fs/promises'
-import { relative } from 'node:path'
+import type { Dirent } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
+import { relative, resolve } from 'node:path'
 import { WORKSPACE_ROOT } from '../../workspace/src/workspace.ts'
+import {
+  checkNormativeCoverage,
+  citedNormativeIds,
+  type DebtEntry,
+  type DeclaredId,
+} from './normative-coverage.ts'
 import { validateDocument } from './specification-doc.ts'
 
 const seen = new Map<string, string>()
 const supersessions: Array<{ where: string; target: string }> = []
+const scenarios: DeclaredId[] = []
+const standards: DeclaredId[] = []
 let failed = false
 
 for (const path of process.argv.slice(2)) {
@@ -32,7 +41,14 @@ for (const path of process.argv.slice(2)) {
     }
     if (scenario.supersededBy) {
       supersessions.push({ where: `${rel}:${scenario.line}`, target: scenario.supersededBy })
+      // A retired behavior has no steps left to exercise, so asking for a test
+      // that names it would ask for a test of nothing.
+      continue
     }
+    scenarios.push({ id: scenario.id, path: `${canonical}:${scenario.line}` })
+  }
+  for (const standard of result.standardIds) {
+    standards.push({ id: standard.id, path: `${canonical}:${standard.line}` })
   }
   console.log(`ok  ${rel} (${result.scenarioIds.length} normative scenario id(s))`)
 }
@@ -42,6 +58,103 @@ for (const supersession of supersessions) {
     console.error(`${supersession.where}: superseding ${supersession.target} does not exist`)
     failed = true
   }
+}
+
+/**
+ * The trees a normative id may be named from. Only tests count: a mention in
+ * implementation code would let a comment carrying the id satisfy the check.
+ * Only the product's trees count either, because a tooling fixture is free to
+ * write a real id as sample data and would then read as coverage.
+ */
+const PRODUCT_TREES = ['backend', 'frontend']
+const TEST_FILE = /(?:_test\.go|\.(?:test|spec)\.tsx?)$/
+const EXCLUDED_DIRECTORIES = new Set(['node_modules', 'vendor', 'dist', 'build', 'generated'])
+
+async function testSources(directory: string, found: string[] = []): Promise<string[]> {
+  let entries: Dirent[] = []
+  try {
+    entries = await readdir(directory, { withFileTypes: true })
+  } catch {
+    return found
+  }
+  for (const entry of entries) {
+    const path = resolve(directory, entry.name)
+    if (entry.isDirectory()) {
+      if (EXCLUDED_DIRECTORIES.has(entry.name) || entry.name.startsWith('.')) continue
+      await testSources(path, found)
+    } else if (entry.isFile() && TEST_FILE.test(entry.name)) {
+      found.push(await readFile(path, 'utf8'))
+    }
+  }
+  return found
+}
+
+type DebtFile = { comment?: string[]; untested: DebtEntry[] }
+
+/**
+ * A debt list, or none. An absent file is the empty list rather than an error:
+ * a workspace that has never needed one should not have to carry an empty file
+ * to be checkable, and reading absence as "no debt is allowed" is the strict
+ * direction. Losing the list by accident is loud, not silent -- every id it
+ * held is reported the moment it is gone.
+ */
+async function readDebt(path: string): Promise<DebtEntry[]> {
+  const source = await readFile(resolve(WORKSPACE_ROOT, path), 'utf8').catch(() => undefined)
+  if (source === undefined) return []
+  const parsed = JSON.parse(source) as DebtFile
+  if (!Array.isArray(parsed.untested)) throw new Error(`${path}: untested must be an array`)
+  return parsed.untested.map((entry) => {
+    if (typeof entry?.id !== 'string' || typeof entry?.reason !== 'string') {
+      throw new Error(`${path}: every untested entry needs an id and a reason`)
+    }
+    return entry
+  })
+}
+
+/** The refusal debt is a list of bare ids, and it is read here only to stay off it. */
+async function readRefusalDebt(path: string): Promise<Set<string>> {
+  const source = await readFile(resolve(WORKSPACE_ROOT, path), 'utf8').catch(() => undefined)
+  if (source === undefined) return new Set()
+  return new Set((JSON.parse(source) as { untested: string[] }).untested)
+}
+
+const SCENARIO_DEBT = 'tools/check/scenario-coverage-debt.json'
+const STANDARDS_DEBT = 'tools/check/standards-coverage-debt.json'
+const REFUSAL_DEBT = 'tools/check/security-refusal-debt.json'
+
+const sources: string[] = []
+for (const tree of PRODUCT_TREES)
+  sources.push(...(await testSources(resolve(WORKSPACE_ROOT, tree))))
+const cited = citedNormativeIds(
+  sources,
+  [...standards, ...scenarios].map((declaration) => declaration.id),
+)
+
+const coverage = [
+  ...checkNormativeCoverage({
+    declared: standards,
+    cited,
+    debt: await readDebt(STANDARDS_DEBT),
+    debtPath: STANDARDS_DEBT,
+  }),
+  ...checkNormativeCoverage({
+    declared: scenarios,
+    cited,
+    debt: await readDebt(SCENARIO_DEBT),
+    debtPath: SCENARIO_DEBT,
+    accounted: await readRefusalDebt(REFUSAL_DEBT),
+    accountedPath: REFUSAL_DEBT,
+  }),
+]
+for (const finding of coverage) {
+  console.error(`${finding.path}: ${finding.message}`)
+  failed = true
+}
+if (coverage.length === 0) {
+  console.log(
+    `ok  normative coverage (${standards.length} standard(s), ${scenarios.length} scenario(s), ` +
+      `${cited.size} id(s) named by a test)`,
+  )
 }
 
 if (failed) process.exit(1)

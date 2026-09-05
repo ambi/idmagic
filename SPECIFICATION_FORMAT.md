@@ -227,6 +227,14 @@ text — a row written from the standard's point of view reads as an obligation 
 when `Adoption` says the opposite. IDs are stable and unique within the document *(checked)*; the value sets
 for both columns are *(checked)*.
 
+A row that nothing exercises is a claim, not a standard the product holds, so every id is named by a test
+*(checked)*. The mention may sit anywhere in a test file rather than in the test's own name: an id pushed
+into the name buys no more than an id written beside the assertion, and it costs the name the sentence that
+says what the test does. Only tests count — an id mentioned in implementation code would let a comment carry
+the whole obligation. Rows that predate the check are carried in a coverage debt list, one entry per id with
+a reason for it, and that list only shrinks: an id it holds that has grown a test has to come off, and an id
+added from here on is not admitted to it *(checked)*.
+
 ## 6. Scenarios and normative IDs
 
 In `scenarios.md`, an H3 heading identifies one observable, non-negotiable behavior. Scenario headings
@@ -248,6 +256,11 @@ Retire a behavior instead of deleting it. Mark the heading, drop the steps, and 
 ### REQ-ACCOUNT-002: a valid session opens the account (superseded by REQ-ACCOUNT-042)
 Replaced by session-scoped account access.
 ```
+
+Every live scenario id is named by a test, under the rule and the debt list §5 states for standards rows
+*(checked)*. A behavior written down and never exercised is where a specification and a product start
+drifting apart, and asking only the scenarios that declare a refusal leaves that in place for the rest. A
+retired scenario is exempt: it has no steps left for a test to reach.
 
 The successor must exist *(checked)*. A retired ID is never reused. Deleting the heading outright leaves
 nothing saying the behavior existed, and the work item alone cannot be searched by ID. Before retiring,

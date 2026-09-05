@@ -1,0 +1,546 @@
+{
+  "comment": [
+    "Standards rows that no test names, as of 2026-09-05 (wi-418).",
+    "This list only shrinks. An entry that grows a test has to be removed, and the check says so.",
+    "A row added from now on is not admitted here: write the test and name the id.",
+    "Every entry states why it has no test yet, so the ones added later stay tellable from these."
+  ],
+  "untested": [
+    {
+      "id": "AUTHZEN-FGA-ACTOR-CHAIN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "AUTHZEN-FGA-EVALUATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "AUTHZEN-FGA-FAIL-CLOSED",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "AUTHZEN-FGA-SEARCH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIBA-CORE-BACKCHANNEL-REQUEST",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIBA-CORE-BINDING-MESSAGE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIBA-CORE-PING-PUSH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIBA-CORE-POLL-MODE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIBA-CORE-SIGNED-REQUEST",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIBA-CORE-USER-CODE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-CACHE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-CLIENT-ID-MATCH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-FETCH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-PRIVATE-KEY-JWT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-REDIRECT-VALIDATE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-STRUCTURE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "CIMD00-URL-SHAPE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "FAPI2-CLIENT-AUTH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "FAPI2-PAR-PKCE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "FAPI2-PROFILE-SELECTION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "FAPI2-SENDER-CONSTRAINT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "GDPR-CONSENT-WITHDRAWAL",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "GDPR-ERASURE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "GDPR-PROCESSING-RECORDS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "NIST63B4-NO-COMPOSITION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "NIST63B4-PASSWORD-MINIMUM",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "NIST63B4-PASSWORD-STORAGE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-BACKCHANNEL-DELIVERY-RETRY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-BACKCHANNEL-LOGOUT-TOKEN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-BACKCHANNEL-REPLAY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-CORE-CSRF",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-CORE-HYBRID-IMPLICIT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-CORE-ID-TOKEN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-CORE-USERINFO",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-DISCOVERY-CONFIGURATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-DISCOVERY-ISSUER",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-FRONTCHANNEL-BEST-EFFORT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-FRONTCHANNEL-IFRAME",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-LOGOUT-ENDPOINT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-LOGOUT-ID-TOKEN-HINT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-LOGOUT-REDIRECT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "OIDC-SESSION-MGMT-CHECK-IFRAME",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6238-TOTP",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6749-AUTHORIZATION-CODE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6749-CLIENT-CREDENTIALS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6749-IMPLICIT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6749-PASSWORD-GRANT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6750-API-TOKEN-HEADER",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6750-API-TOKEN-QUERY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6750-AUTHORIZATION-HEADER",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC6750-QUERY-TOKEN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7009-API-TOKEN-REVOKE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7009-API-TOKEN-UNKNOWN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7009-REVOCATION-ENDPOINT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7009-UNKNOWN-TOKEN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7517-JWKS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7518-SIGNATURE-ALGORITHMS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7519-REGISTERED-CLAIMS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7523-CLIENT-ASSERTION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7591-REDIRECT-URI",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7591-REGISTER",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7636-PLAIN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7636-S256",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7636-VERIFY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7643-ENTERPRISE-EXTENSION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7643-OUT-GROUP-RESOURCES",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7643-SERVICE-PROVIDER-CONFIG",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7644-BEARER-AUTHORIZATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7644-ERROR-RESPONSE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7644-RESOURCE-OPERATIONS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7662-API-TOKEN-INACTIVE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7662-API-TOKEN-INTROSPECT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7662-INACTIVE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7662-INTROSPECT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC7800-CONFIRMATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8176-AMR",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8176-AMR-VOCABULARY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8414-METADATA",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8417-SET-SIGNED",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8417-SET-VERIFY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8628-DEVICE-AUTHORIZATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8628-POLLING",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8693-DELEGATION-DEFAULT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8693-DELEGATION-DEPTH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8693-FGA-ACTOR-AND",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8693-IMPERSONATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8693-SUBJECT-TOKEN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8705-CERT-BOUND",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8705-CLIENT-AUTH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8707-AUDIENCE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC8707-MCP-RESOURCE-BINDING",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9068-API-TOKEN-CLAIMS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9068-API-TOKEN-SIGNATURE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9068-ASYMMETRIC-SIGNATURE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9068-CLAIMS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9126-PAR",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9126-SINGLE-USE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9207-ISS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9396-MONOTONIC-NARROWING",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9396-REGISTERED-TYPES",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9396-SCOPE-PRECEDENCE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9449-API-TOKEN-DPOP",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9449-ATH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9449-PROOF",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9493-SUBID-FORMAT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9493-SUBID-ISS-SUB",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9700-API-TOKEN-AUDIENCE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9700-API-TOKEN-SENDER-CONSTRAINT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9700-AUTHORIZATION-CODE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9700-REDIRECT-MATCH",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9700-REFRESH-REPLAY",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9700-SENDER-CONSTRAINT",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9728-CHALLENGE",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9728-IDMAGIC-API",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9728-METADATA",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "RFC9728-WELL-KNOWN",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "SAML2Bindings-RedirectPost",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "SAML2Core-EncryptedAssertion",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "SAML2Metadata-IDPSSODescriptor",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "SAML2Metadata-WantAuthnRequestsSigned",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "SAML2Profile-ECP",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "SAML2Profile-WebBrowserSSO",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WCAG22-FOCUS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WCAG22-KEYBOARD",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WCAG22-LABELS-ERRORS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WCAG22-STATUS",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WEBAUTHN3-AUTHENTICATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WEBAUTHN3-REGISTRATION",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WSAddressing-MessageIDToAction",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WSFed-PassiveSignIn",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WSFed-SilentSignIn",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WSS-UsernameTokenPassword",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WSTrust13-IssueBearer",
+      "reason": "present when the check was introduced"
+    },
+    {
+      "id": "WSTrust13-WindowsTransport",
+      "reason": "present when the check was introduced"
+    }
+  ]
+}

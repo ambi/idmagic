@@ -294,4 +294,21 @@ https://example.invalid/other
       'duplicate standard id DEMO-CORE (first seen on line 9)',
     )
   })
+
+  it('collects the id of every row so the coverage check can ask for a test', () => {
+    const source = withStandards(
+      [
+        '| DEMO-CORE | required | MUST | The product answers a demo request. |',
+        '| DEMO-LEGACY | excluded | MAY | The legacy transport is not offered. |',
+      ].join('\n'),
+    )
+    expect(validateDocument(STANDARDS, source).standardIds).toEqual([
+      { id: 'DEMO-CORE', line: 9 },
+      { id: 'DEMO-LEGACY', line: 10 },
+    ])
+  })
+
+  it('collects no standard id from a document of another kind', () => {
+    expect(validateDocument(SCENARIOS, scenarios).standardIds).toEqual([])
+  })
 })

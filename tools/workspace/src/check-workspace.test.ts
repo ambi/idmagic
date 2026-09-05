@@ -124,6 +124,52 @@ describe('check-workspace --documents', () => {
 
     expect((await checkDocuments(root)).code).toBe(0)
   })
+
+  // 被覆のゲートは、負債台帳を持たない作業ツリーでこそ厳しい側へ倒れなければ
+  // ならない。台帳が無いことを「負債を許さない」と読まずに素通りさせると、
+  // 台帳を消すだけでゲートが外れる。
+  it('rejects a scenario no test names when no debt list admits it', async () => {
+    const root = await workspace()
+    await writeFile(
+      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
+      [
+        '# Demo Scenarios',
+        '',
+        '### REQ-DEMO-001: A valid request succeeds',
+        '- ACTOR User',
+        '- WHEN the request is submitted',
+        '- THEN the request succeeds',
+        '',
+      ].join('\n'),
+    )
+
+    const result = await checkDocuments(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-001 is declared, but no test names it')
+  })
+
+  it('leaves a retired scenario out of the coverage gate', async () => {
+    const root = await workspace()
+    await writeFile(
+      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
+      [
+        '# Demo Scenarios',
+        '',
+        '### REQ-DEMO-001: A valid request succeeds (superseded by REQ-DEMO-002)',
+        'Replaced by the request-scoped route.',
+        '',
+        '### REQ-DEMO-002: A valid request succeeds',
+        '- ACTOR User',
+        '- WHEN the request is submitted',
+        '- THEN the request succeeds',
+        '',
+      ].join('\n'),
+    )
+    await mkdir(join(root, 'backend'), { recursive: true })
+    await writeFile(join(root, 'backend', 'demo_test.go'), 'package demo\n\n// REQ-DEMO-002\n')
+
+    expect((await checkDocuments(root)).code).toBe(0)
+  })
 })
 
 describe('check-workspace --work-items', () => {

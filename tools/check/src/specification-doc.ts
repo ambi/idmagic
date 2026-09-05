@@ -6,6 +6,7 @@ export type SpecificationFinding = {
 export type SpecificationValidation = {
   findings: SpecificationFinding[]
   scenarioIds: Array<{ id: string; line: number; supersededBy?: string }>
+  standardIds: Array<{ id: string; line: number }>
 }
 
 /** A retired scenario keeps its heading and names its successor instead of carrying steps. */
@@ -337,9 +338,10 @@ function validateStandards(
   source: string,
   heading: RegExp,
   findings: SpecificationFinding[],
-): void {
+): SpecificationValidation['standardIds'] {
   const standards = [...body.matchAll(heading)]
   const seenIds = new Map<string, number>()
+  const ids: SpecificationValidation['standardIds'] = []
   for (const [index, standard] of standards.entries()) {
     const start = (standard.index ?? 0) + standard[0].length
     const end = standards[index + 1]?.index ?? body.length
@@ -357,6 +359,7 @@ function validateStandards(
       const at = lineAt(source, offset + start + (match.index ?? 0))
       const [id, adoption, strength] = tableRowCells(line)
       if (!id || !adoption || !strength) continue
+      ids.push({ id, line: at })
       const previous = seenIds.get(id)
       if (previous !== undefined) {
         findings.push({
@@ -386,6 +389,7 @@ function validateStandards(
       }
     }
   }
+  return ids
 }
 
 /** Every canonical document names itself once, whatever kind it is. */
@@ -419,13 +423,15 @@ export function validateDocument(path: string, source: string): SpecificationVal
     return {
       findings: [{ line: 1, message: 'not a canonical specification document' }],
       scenarioIds: [],
+      standardIds: [],
     }
   }
 
   const findings: SpecificationFinding[] = []
   validateShared(source, findings)
 
-  if (kind === 'standards') validateStandards(source, 0, source, /^## .+$/gm, findings)
+  const standardIds =
+    kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
   if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, findings)
 
   const scenarioIds = kind === 'scenarios' ? collectScenarioIds(source) : []
@@ -452,5 +458,5 @@ export function validateDocument(path: string, source: string): SpecificationVal
     }
   }
 
-  return { findings, scenarioIds }
+  return { findings, scenarioIds, standardIds }
 }
