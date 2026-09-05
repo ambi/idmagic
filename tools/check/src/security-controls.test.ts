@@ -303,51 +303,46 @@ describe('checkSecurityGuards', () => {
 })
 
 describe('errorTypesNamedByScenarios', () => {
-  it('collects the error type an alternative names', () => {
-    const scenarios = [
-      '### REQ-JOBS-012: an administrator lists their tenant',
-      '- WHEN the administrator lists jobs',
-      '  - ALT the caller holds no admin role \u2192 AccessDeniedError \u3067\u62d2\u5426\u3055\u308c\u308b',
-      '- THEN the page is returned',
+  const scenarios = (outcomes: string[]) =>
+    [
+      '# Feature: Jobs',
+      '',
+      '## Rule: REQ-JOBS-012 an administrator lists their tenant',
+      '',
+      '### Example: EX-JOBS-012-01 refusal',
+      '',
+      '- When the administrator lists jobs',
+      ...outcomes.map((outcome, index) => '- ' + (index === 0 ? 'Then' : 'And') + ' ' + outcome),
+      '',
     ].join('\n')
-    expect([...errorTypesNamedByScenarios(scenarios)]).toEqual(['AccessDeniedError'])
+
+  it('collects an error type from an outcome step', () => {
+    expect([...errorTypesNamedByScenarios(scenarios(['AccessDeniedError is returned']))]).toEqual([
+      'AccessDeniedError',
+    ])
   })
 
   // The type is what R4 joins on, and it is written on both sides: in TypeSpec
   // as the 403 body, in the scenario as the name of what answers. Whether the
   // step also reads as a refusal in prose is not part of that join.
   it('collects a type from a step that carries no refusal vocabulary', () => {
-    const scenarios = [
-      '### REQ-JOBS-030: an expired claim ends the run',
-      '- WHEN the worker claims an expired job',
-      '- THEN JobClaimExpiredError is returned to the caller',
-    ].join('\n')
-    expect([...errorTypesNamedByScenarios(scenarios)]).toEqual(['JobClaimExpiredError'])
+    expect([
+      ...errorTypesNamedByScenarios(scenarios(['JobClaimExpiredError is returned to the caller'])),
+    ]).toEqual(['JobClaimExpiredError'])
   })
 
-  it('reads both alternatives and outcomes', () => {
-    const scenarios = [
-      '### REQ-SIGNINGKEYS-009: a tenant administrator cannot reach signing key health',
-      '- WHEN "operator" calls the signing key health listing',
-      '- THEN AccessDeniedError \u3067\u62d2\u5426\u3055\u308c\u308b',
-      '',
-      '### REQ-SIGNINGKEYS-010: a malformed rotation is refused',
-      '- WHEN "operator" rotates with no key material',
-      '  - ALT the body is empty \u2192 InvalidRequestError',
-    ].join('\n')
-    expect([...errorTypesNamedByScenarios(scenarios)].sort()).toEqual([
-      'AccessDeniedError',
-      'InvalidRequestError',
-    ])
+  it('reads every outcome in an example', () => {
+    expect(
+      [
+        ...errorTypesNamedByScenarios(scenarios(['AccessDeniedError', 'InvalidRequestError'])),
+      ].sort(),
+    ).toEqual(['AccessDeniedError', 'InvalidRequestError'])
   })
 
   it('ignores a step that names no error type', () => {
-    const scenarios = [
-      '### REQ-JOBS-002: a submitted job succeeds',
-      '- WHEN a job is enqueued',
-      '- THEN the worker claims it and it succeeds',
-    ].join('\n')
-    expect([...errorTypesNamedByScenarios(scenarios)]).toEqual([])
+    expect([
+      ...errorTypesNamedByScenarios(scenarios(['the worker claims it and it succeeds'])),
+    ]).toEqual([])
   })
 })
 
@@ -390,13 +385,22 @@ describe('contractRefusalsOfStateChanges', () => {
 
 describe('checkContractRefusalsAreDeclared', () => {
   const contract = contractRefusalsOfStateChanges(rotateKey)
+  const scenarioDocument = (given: string, outcome: string) =>
+    [
+      '# Feature: Signing keys',
+      '',
+      '## Rule: REQ-SIGNINGKEYS-001 rotation keeps the previous kid on the JWKS',
+      '',
+      '### Example: EX-SIGNINGKEYS-001-01 rotation',
+      '',
+      `- Given ${given}`,
+      '- When the administrator rotates the signing key',
+      `- Then ${outcome}`,
+      '',
+    ].join('\n')
 
   it('rejects a promised refusal no scenario declares', () => {
-    const scenarios = [
-      '### REQ-SIGNINGKEYS-001: rotation keeps the previous kid on the JWKS',
-      '- WHEN the administrator rotates the signing key',
-      '- THEN both kids are on the JWKS',
-    ].join('\n')
+    const scenarios = scenarioDocument('a current key exists', 'both kids are on the JWKS')
     const findings = checkContractRefusalsAreDeclared(
       'signing-keys',
       contract,
@@ -405,15 +409,14 @@ describe('checkContractRefusalsAreDeclared', () => {
     expect(findings).toHaveLength(1)
     expect(findings[0]?.rule).toBe('R4')
     expect(findings[0]?.message).toContain('RotateTenantSigningKey')
-    expect(findings[0]?.path).toBe('docs/contexts/signing-keys/scenarios.md')
+    expect(findings[0]?.path).toBe('docs/contexts/signing-keys/scenarios.feature.md')
   })
 
   it('accepts the refusal once a scenario declares it', () => {
-    const scenarios = [
-      '### REQ-SIGNINGKEYS-011: only an administrator rotates a signing key',
-      '- WHEN "operator" rotates the signing key',
-      '- THEN AccessDeniedError で拒否され、有効な鍵は変わらない',
-    ].join('\n')
+    const scenarios = scenarioDocument(
+      'an operator is not an administrator',
+      'AccessDeniedError で拒否され、有効な鍵は変わらない',
+    )
     expect(
       checkContractRefusalsAreDeclared(
         'signing-keys',
@@ -426,11 +429,10 @@ describe('checkContractRefusalsAreDeclared', () => {
   // The error type has to be named where the refusal is, not anywhere in the
   // document: a success step mentioning the type says nothing about when it fires.
   it('does not accept the type named outside a refusal', () => {
-    const scenarios = [
-      '### REQ-SIGNINGKEYS-001: rotation keeps the previous kid on the JWKS',
-      '- GIVEN the AccessDeniedError body is documented',
-      '- THEN both kids are on the JWKS',
-    ].join('\n')
+    const scenarios = scenarioDocument(
+      'the AccessDeniedError body is documented',
+      'both kids are on the JWKS',
+    )
     expect(
       checkContractRefusalsAreDeclared(
         'signing-keys',

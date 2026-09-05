@@ -8,9 +8,9 @@ change_kind: bugfix
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-011 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-012 }
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-001 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-012 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuotaUpdated }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }

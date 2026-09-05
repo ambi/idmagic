@@ -64,7 +64,8 @@ const openapi = JSON.parse(await readFile(openapiPath, 'utf8'))
  * the working tree rather than an authored index, so the traceability view can
  * never drift from what the repository actually says.
  */
-const SCENARIO_IDENTIFIER = /REQ-[A-Z0-9]+-[0-9]+/g
+const SCENARIO_IDENTIFIER = /(?:REQ-[A-Z0-9]+-[0-9]+|EX-[A-Z0-9]+-[0-9]+-[0-9]+)/g
+const TEST_FILE = /(?:_test\.go|\.(?:test|spec)\.tsx?)$/
 const SKIPPED_DIRECTORIES = new Set([
   '.git',
   'node_modules',
@@ -79,6 +80,10 @@ const TEXT_EXTENSIONS = /\.(?:go|ts|tsx|js|jsx|sql|sh|py|rb|java|kt|rs|md|yaml|y
 async function collectTraces(): Promise<ScenarioTrace[]> {
   const sources = new Map<string, Set<string>>()
   const workItems = new Map<string, Set<string>>()
+  const debtSource = JSON.parse(
+    await readFile(resolve(root, 'tools/check/example-coverage-debt.json'), 'utf8'),
+  ) as { untested: Array<{ id: string; reason: string }> }
+  const debt = new Map(debtSource.untested.map((entry) => [entry.id, entry.reason]))
   const walk = async (directory: string): Promise<void> => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (entry.name.startsWith('.') || SKIPPED_DIRECTORIES.has(entry.name)) continue
@@ -91,8 +96,10 @@ async function collectTraces(): Promise<ScenarioTrace[]> {
       // The specification declares the scenarios; only what points at them counts.
       if (path.startsWith('docs/') || path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path))
         continue
+      if (path === 'tools/check/example-coverage-debt.json') continue
       const target = path.startsWith('work-items/') ? workItems : sources
       for (const match of (await readFile(absolute, 'utf8')).matchAll(SCENARIO_IDENTIFIER)) {
+        if (match[0].startsWith('EX-') && target === sources && !TEST_FILE.test(path)) continue
         const paths = target.get(match[0]) ?? new Set<string>()
         paths.add(path)
         target.set(match[0], paths)
@@ -100,11 +107,12 @@ async function collectTraces(): Promise<ScenarioTrace[]> {
     }
   }
   await walk(root)
-  const ids = new Set([...sources.keys(), ...workItems.keys()])
+  const ids = new Set([...sources.keys(), ...workItems.keys(), ...debt.keys()])
   return [...ids].map((id) => ({
     id,
     sources: [...(sources.get(id) ?? [])].sort(),
     workItems: [...(workItems.get(id) ?? [])].sort(),
+    debt: debt.get(id),
   }))
 }
 

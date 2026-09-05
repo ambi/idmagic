@@ -40,6 +40,7 @@
 
 import { readdir, readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
+import { parseScenarioDocument } from './gherkin-scenarios.ts'
 import { contractRefusalsOfStateChanges } from './security-controls.ts'
 
 const root = resolve(import.meta.dir, '../../..')
@@ -70,24 +71,32 @@ async function scenarios(): Promise<Map<string, Scenario>> {
   const found = new Map<string, Scenario>()
   const contextsDir = resolve(root, 'docs/contexts')
   for (const context of await readdir(contextsDir)) {
-    const source = await readFile(resolve(contextsDir, context, 'scenarios.md'), 'utf8').catch(
-      () => undefined,
-    )
+    const source = await readFile(
+      resolve(contextsDir, context, 'scenarios.feature.md'),
+      'utf8',
+    ).catch(() => undefined)
     if (!source) continue
-    let current: Scenario | undefined
-    for (const line of source.split('\n')) {
-      const heading = line.match(/^### (REQ-[A-Z0-9]+-\d+): (.*)$/)
-      if (heading) {
-        current = { id: heading[1] ?? '', title: heading[2] ?? '', context, step: '', types: [] }
-        found.set(current.id, current)
-        continue
+    const parsed = parseScenarioDocument(source)
+    for (const rule of parsed.rules) {
+      for (const example of rule.examples) {
+        const outcome = example.steps.filter((step) => step.kind === 'outcome')
+        const types = [
+          ...new Set(
+            outcome.flatMap((step) =>
+              [...step.text.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)].map(
+                (match) => match[1] ?? '',
+              ),
+            ),
+          ),
+        ]
+        found.set(example.id, {
+          id: example.id,
+          title: example.name,
+          context,
+          step: outcome[0]?.text ?? '',
+          types,
+        })
       }
-      if (!current) continue
-      if (!/^\s+- ALT /.test(line) && !/^- THEN /.test(line)) continue
-      const types = [...line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)].map((m) => m[1] ?? '')
-      if (types.length === 0) continue
-      if (current.step === '') current.step = line.trim()
-      for (const type of types) if (!current.types.includes(type)) current.types.push(type)
     }
   }
   return found
@@ -118,7 +127,7 @@ async function promisedTypes(): Promise<Map<string, Set<string>>> {
  * than pointed at an arbitrary package.
  */
 function packageFor(id: string, backendDirs: string[]): string | undefined {
-  const prefix = (id.match(/^REQ-([A-Z0-9]+)-/)?.[1] ?? '').toLowerCase()
+  const prefix = (id.match(/^(?:REQ|EX)-([A-Z0-9]+)-/)?.[1] ?? '').toLowerCase()
   return (
     backendDirs.find((dir) => dir === prefix) ?? backendDirs.find((dir) => prefix.startsWith(dir))
   )
@@ -142,7 +151,7 @@ function testFunctions(source: string): Array<{ name: string; body: string }> {
 type DebtEntry = { id: string; reason: string }
 
 const debt = (
-  JSON.parse(await readFile(resolve(root, 'tools/check/scenario-coverage-debt.json'), 'utf8')) as {
+  JSON.parse(await readFile(resolve(root, 'tools/check/example-coverage-debt.json'), 'utf8')) as {
     untested: DebtEntry[]
   }
 ).untested
@@ -226,7 +235,7 @@ const classOf = (row: Row) =>
   row.named.length > 0 ? 'named' : row.nearby.length > 0 ? 'nearby' : 'none'
 
 const controls = rows.filter((row) => row.control)
-console.log(`normative ids awaiting a test      : ${rows.length}`)
+console.log(`scenario examples awaiting a test  : ${rows.length}`)
 console.log(
   `... carrying a contract-promised 403: ${controls.length}  (narrow: a 403 on a non-GET operation, so a fail-closed branch outside HTTP weighs zero)`,
 )

@@ -25,7 +25,7 @@ from now on is not admitted.
 
 | File | Holds | Checked by |
 |---|---|---|
-| `scenario-coverage-debt.json` | Live scenarios | `check-spec` |
+| `example-coverage-debt.json` | Executable scenario examples | `check-spec` |
 | `standards-coverage-debt.json` | Rows of any `standards.md` | `check-spec` |
 
 The split is by where the id is declared, and that is the only split. Every

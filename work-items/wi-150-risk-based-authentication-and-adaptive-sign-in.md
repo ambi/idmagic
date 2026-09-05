@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-009 }
 ---
 
 # リスクベース認証と adaptive sign-in 判定を導入する

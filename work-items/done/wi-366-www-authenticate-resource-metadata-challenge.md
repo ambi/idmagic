@@ -30,7 +30,7 @@ initial_context:
 affected_spec:
   - { path: docs/contexts/oauth2/standards.md, requirement: RFC9728-CHALLENGE }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.GetProtectedResourceMetadata }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-044 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-044 }
 ---
 
 # 401 応答の WWW-Authenticate に resource_metadata を付し、保護リソースメタデータへ誘導する

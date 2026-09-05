@@ -21,7 +21,7 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 
 - 仕様が振る舞いを決めていない。したがって、どの実装も仕様に反しない。
 - 仕様が二通りに読める。実装は片方を選び、テストは同じ読み方から書かれ、両者は一致する。
-- 規範文書どうしが矛盾する。`states.md` の遷移表が禁じる遷移を `scenarios.md` の `ALT` が許す、といった形で、どちらも単独では検査を通る。
+- 規範文書どうしが矛盾する。`states.md` の遷移表が禁じる遷移を `scenarios.feature.md` の `ALT` が許す、といった形で、どちらも単独では検査を通る。
 
 これは仮説ではない。`REQ-OAUTH2-009` は PAR の `request_uri` について `THEN その PAR レコードの状態は "Used"` までを書いているが、**同じ `request_uri` を二度目に提示したときに何が起きるか**を書いていない。一度限りの使用は `docs/contexts/oauth2/states.md` の状態表と `docs/contexts/oauth2/internals.md` に書かれており、実装も RFC 9126 に従っている。しかし `SPECIFICATION_FORMAT.md` §6 は「セキュリティ制御が責任を負う拒否は観測可能な振る舞いであり、シナリオに書く」と定めている。二度目の提示を受理してもなお `REQ-OAUTH2-009` に反しない実装が書けるのだから、この規範要素は一度限りの使用を規定していない。`wi-418` の被覆ゲートを入れても、名指しするテストが 1 件あれば通ってしまう。
 
@@ -37,7 +37,7 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 - work item の frontmatter に `specification_adequacy` を追加する。`affected_spec` が名指しする規範要素ごとに、反例、判定、判定の根拠となる解決先を 1 件以上記録する。
 - 判定を `strengthened` / `undetermined` / `refuted` の閉じた集合とし、それぞれの解決先が何を指すかを固定する。未知の値、空の解決先、解決しない参照は fail-closed で拒否する。
 - 意図して決めない選択の置き場所を、当該 Context の `decisions.md` とする。新しい正本の種類も新しいファイル名も作らない。理由と、再検討の条件を伴う既存の決定の形をそのまま使う。
-- 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.md`、構築と事後条件は `docs/design-rules.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `SPECIFICATION_FORMAT.md` §3 の規則は維持する。
+- 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築と事後条件は `docs/design-rules.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `SPECIFICATION_FORMAT.md` §3 の規則は維持する。
 - `evidence_policy` を `risk-based-v4` へ上げる。完了済みの v1 / v2 / v3 の記録は履歴として再解釈しない。採用時点で `in_progress` の該当項目は新しい計画を追加してから完了できる。
 - `tools/check/src/specification-adequacy.ts` と単体検査を追加し、`tools/check/schemas/work-item.schema.json` と `tools/workspace/src/check-workspace.ts` へ接続して `mise run check-work-items` のゲートにする。
 - 完了済みの実際の変更 3 件へ遡って本段階を試行し、反例が出たか、出た反例が既存の規範要素で棄却できたか、記録に要した時間を実測する。試行結果は Design へ追記する。
@@ -68,7 +68,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
   - element: REQ-OAUTH2-009
     counterexample: 使用済みの request_uri を二度目に受理して認可コードを再発行する実装も、この scenario に反しない。
     disposition: strengthened
-    resolution: docs/contexts/oauth2/scenarios.md#REQ-OAUTH2-009
+    resolution: docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-009
   - element: Product.OAuth2.Operations.PushedAuthorizationRequest
     counterexample: expires_in を 600 ちょうどで返し続ける実装も、TypeSpec の制約に反しない。
     disposition: refuted

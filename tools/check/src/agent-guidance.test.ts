@@ -4,7 +4,8 @@ import { verifyAgentGuidance } from './agent-guidance.ts'
 const currentGuidance = [
   {
     file: '.agents/skills/spec-change/SKILL.md',
-    source: 'spec/contexts/<context>/{models,main}.tsp\ndocs/contexts/<context>/scenarios.md',
+    source:
+      'spec/contexts/<context>/{models,main}.tsp\ndocs/contexts/<context>/scenarios.feature.md',
   },
   {
     file: '.agents/skills/update-design/SKILL.md',

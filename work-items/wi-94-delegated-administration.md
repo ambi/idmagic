@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-025 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
 # 委任管理 (スコープ付き admin ロール) を導入する

@@ -20,7 +20,7 @@ spec_impact: { kind: none, reason: "運用文書のディレクトリ名と、�
 
 [[wi-406-operations-holds-only-runbooks]] は `docs/operations/runbooks/` を `docs/operations/` へ畳んだ。**畳む判断は正しかったが、残す名前を間違えた。**
 
-この文書体系は「**ファイル名が内容の種類を表す**」で貫かれている（DOCUMENTATION_GUIDE §4 冒頭）。`scenarios.md`、`decisions.md`、`states.md`、`standards.md`——すべて種類である。
+この文書体系は「**ファイル名が内容の種類を表す**」で貫かれている（DOCUMENTATION_GUIDE §4 冒頭）。`scenarios.feature.md`、`decisions.md`、`states.md`、`standards.md`——すべて種類である。
 
 `runbook` も種類である。決まった形（発火条件、最初に確認すること、緩和、確認、エスカレーション）と、固有の入口（**原因が分からないまま呼び出される**）を持つ。
 

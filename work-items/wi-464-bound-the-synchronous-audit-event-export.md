@@ -8,8 +8,8 @@ priority: p1
 depends_on: [wi-462-control-plane-console-single-entry]
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-001 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-009 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-009 }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
   - { path: spec/contexts/jobs/models.tsp, symbol: IdMagic.Contract.JobKind }
 ---

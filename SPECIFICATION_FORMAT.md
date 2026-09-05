@@ -28,7 +28,7 @@ docs/
   database.md          # database design policy
   authorization.md     # principals, scopes, authorization boundaries
   threat-model.md      # trust boundaries, assets, identified threats and the controls that answer them
-  scenarios.md         # behavior no single context can satisfy alone
+  scenarios.feature.md         # behavior no single context can satisfy alone
   contexts/<context>/
     README.md          # boundary declaration and index
     glossary.md
@@ -36,7 +36,7 @@ docs/
     states.md
     decisions.md
     internals.md       # only when a mechanism cannot be read out of the code
-    scenarios.md
+    scenarios.feature.md
   development/         # development workflow and procedures: environment, generation, CI, testing, release
   runbooks/<event>.md  # what on-call reads mid-incident
 
@@ -54,7 +54,7 @@ specification kinds; its `README.md` indexes the current files and each other fi
 
 `README.md` is the file a reader lands on when they open the directory, so it holds the boundary
 declaration and the index of its siblings. Create no file that has no content to hold: a small context
-needs only `README.md` and `scenarios.md`. The file names are *(checked)* for `docs/` and
+needs only `README.md` and `scenarios.feature.md`. The file names are *(checked)* for `docs/` and
 `docs/contexts/<context>/`: a Markdown file at either of those two levels whose name the layout does not
 define is rejected. When that name is a near miss of one the layout does define, the failure names that
 document; otherwise it lists the names the level allows. The file that needs catching is the one whose
@@ -116,7 +116,7 @@ the reason differs per context and does not fit a cell. A workspace with no cont
 such table.
 
 A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
-contexts cooperate belongs to `docs/scenarios.md`, and the scenario names the participating contexts.
+contexts cooperate belongs to `docs/scenarios.feature.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
 ### design-rules.md — how design choices are evaluated
@@ -136,7 +136,7 @@ Include what was decided against, with the condition that would reopen it.
 Make the heading the decision, never the aspect. `Invariants`, `Concurrency`, and `Failure handling` are
 aspect names: a writer reads them as boxes to fill, and either invents prose for an aspect that does not
 apply or splits one decision across several. Do not enumerate invariants at all — uniqueness and
-referential integrity belong to the schema, observable properties to `scenarios.md`, and construction and
+referential integrity belong to the schema, observable properties to `scenarios.feature.md`, and construction and
 postconditions to the type or operation as directed by `docs/design-rules.md`; the rest is unbounded. An
 invariant worth writing down is usually a decision with a reason, and written as one it keeps the reason.
 
@@ -165,7 +165,7 @@ past the second.
 Neither file carries directory listings, package inventories, change history, comparisons of alternatives,
 plans, summaries of external standards, states and transitions, acceptance examples, request and response
 shapes, columns and indexes, permission assignments, or rules every context follows. Each of those has an
-owner: the code, the work item, `standards.md`, `states.md`, `scenarios.md`, TypeSpec, the schema file,
+owner: the code, the work item, `standards.md`, `states.md`, `scenarios.feature.md`, TypeSpec, the schema file,
 `docs/authorization.md`, or the matching file directly under `docs/`.
 
 ## 4. State transitions
@@ -237,12 +237,11 @@ added from here on is not admitted to it *(checked)*.
 
 ## 6. Scenarios and normative IDs
 
-In `scenarios.md`, an H3 heading identifies one observable, non-negotiable behavior. Scenario headings
-stay at H3 even though nothing sits above them: `### REQ-...` is the form every reference, every checker,
-and every generated anchor already uses, and the identifier is what carries normative force, not the
-heading level. The `REQ-*` marker already carries
-normative force. Do not add a separate `Requirements` section or a second boilerplate sentence using
-`SHALL` or `MUST`. Write one behavior per scenario so a tester can determine whether it holds.
+`scenarios.feature.md` is the sole source of truth for observable, non-negotiable behavior. It uses
+[Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md): one
+`Feature` per file, one normative behavior per `Rule`, and one branch-free path per `Example`. The official
+JavaScript Gherkin parser accepts every file *(checked)*. The `REQ-*` marker carries normative force; do not
+add a second boilerplate sentence using `SHALL` or `MUST`.
 
 IDs are immutable once referenced. Models and external interfaces belong in TypeSpec; adopted protocol
 rules belong in `standards.md`; lifecycle invariants belong in `states.md`; decisions belong in
@@ -250,54 +249,71 @@ rules belong in `standards.md`; lifecycle invariants belong in `states.md`; deci
 `SHOULD` or `MAY` only in explanatory or standards policy text when an exception or option is genuinely
 intended.
 
-Retire a behavior instead of deleting it. Mark the heading, drop the steps, and state the successor:
+Retire a behavior instead of deleting it. Mark the rule, drop its examples, and state the successor:
 
 ```markdown
-### REQ-ACCOUNT-002: a valid session opens the account (superseded by REQ-ACCOUNT-042)
+## Rule: REQ-ACCOUNT-002 a valid session opens the account (superseded by REQ-ACCOUNT-042)
+
 Replaced by session-scoped account access.
 ```
 
-Every live scenario id is named by a test, under the rule and the debt list §5 states for standards rows
-*(checked)*. A behavior written down and never exercised is where a specification and a product start
-drifting apart, and asking only the scenarios that declare a refusal leaves that in place for the rest. A
-retired scenario is exempt: it has no steps left for a test to reach.
+Every live rule has at least one example *(checked)*. A normal `Example` starts its name with
+`EX-<CONTEXT>-<REQ-NNN>-<sequence>`. A `Scenario Outline` puts that identifier in the `example_id` column of
+each `Examples` row. Example IDs are immutable, globally unique, and belong to the `REQ-*` named by their
+parent rule *(checked)*. A rule is covered only when every child example is named by a test or appears in the
+reasoned example-coverage debt list *(checked)*. A test that names only the parent `REQ-*` does not cover any
+child example. A retired rule is exempt because it has no executable example.
 
 The successor must exist *(checked)*. A retired ID is never reused. Deleting the heading outright leaves
 nothing saying the behavior existed, and the work item alone cannot be searched by ID. Before retiring,
-map every precondition, postcondition, failure case, and invariant to its new owner — TypeSpec, Scenarios,
+map every precondition, postcondition, failure case, and invariant to its new owner — TypeSpec, scenarios,
 `standards.md`, `states.md`, or `decisions.md`. A title matching a TypeSpec operation is not by itself
 evidence that a scenario became redundant.
 
-Use uppercase keywords without colons *(checked)*. Nest an alternative immediately below the `WHEN` or
-`THEN` step that it replaces or interrupts. The Markdown structure carries the relationship; do not add
-local step numbers:
+Use the English Markdown with Gherkin keywords and Japanese prose. Put the actor in the `When` subject;
+`ACTOR` is not a step. Use `Given` for state, `When` for the trigger, and `Then` for observable results.
+`And` and `But` continue the preceding step kind. Each example has at least one `When` and one `Then`
+*(checked)*:
 
 ```markdown
-### REQ-ACCOUNT-002: a valid session opens the account
-- ACTOR EndUser
-- GIVEN a valid session
-- WHEN the account summary is requested
-- THEN the account summary is returned
-  - ALT the account is unavailable → an error is returned without an account summary
-- THEN the activity timestamp is updated
+# Feature: Account
+
+## Rule: REQ-ACCOUNT-002 a valid session opens the account
+
+### Example: EX-ACCOUNT-002-01 an available account is returned
+
+- Given the end user has a valid session
+- When the end user requests the account summary
+- Then the account summary is returned
+- And the activity timestamp is updated
+
+### Example: EX-ACCOUNT-002-02 an unavailable account is not returned
+
+- Given the end user has a valid session
+- And the account is unavailable
+- When the end user requests the account summary
+- Then an error is returned
+- And no account summary is returned
 ```
 
-`GIVEN` describes only state or preconditions that already hold before the behavior starts. `WHEN`
-describes an operation, input, or external event that triggers the behavior. `THEN` describes an
-observable result after that trigger. Split a sentence if it mixes a trigger and its result. Every
-scenario has one or more `WHEN` and one or more `THEN`; multi-operation flows may repeat them.
+Do not encode a branch inside an example. An alternate success or refusal is another `Example`; multiple
+observations are separate `Then` or `And` steps. Multi-operation flows may repeat `When` and `Then`.
 
-An `ALT` is a two-space-indented child list item of exactly one `WHEN` or `THEN`. It separates its
-condition and result with `→`. An alternative to setup belongs in a separate scenario or under the
-operation whose behavior changes, not under `GIVEN`.
+Use `Scenario Outline` when paths have the same step structure and differ only by values. Every executable
+row has a nonempty, unique `example_id`. A set of independent conditions that determines an outcome may be
+named `Examples: Decision table (Unique)`. `Unique` is the only supported hit policy: each executable input
+matches exactly one row. `any` in a condition cell means that condition does not affect the row's outcome.
+Do not use `-` for this purpose: the official Markdown matcher treats any row containing a hyphen-only cell
+as a GFM table separator and omits it from the AST. A decision row has at least one nonempty outcome cell
+*(checked)*. Ordinary representative or boundary data remains a plain `Examples` table. Do not collapse
+ordering, history, retry, or elapsed-time behavior into a decision table.
 
 A refusal a security control is responsible for — an unauthorized caller, another tenant's resource, a
 request that cannot prove it came from the product's own UI, a token without the scope, a decision that
 cannot be made — is observable behavior, and belongs in the scenario on the same footing as the path that
-succeeds. Write it as an `ALT` under the operation it refuses, or as its own scenario when the refusal is
-the behavior being specified. A control whose refusal is written down nowhere has nothing to be checked
+succeeds. Write it as its own `Example` under the owning `Rule`. A control whose refusal is written down nowhere has nothing to be checked
 against: an implementation that stops refusing then contradicts no statement, and the specification cannot
-say the product regressed.
+say the product regressed. Give each refusal its own example.
 
 State what the caller observes and what the refusal leaves untouched. "Rejected with an error" is only
 half of it; the half that matters to a reader deciding whether the control works is that the operation had

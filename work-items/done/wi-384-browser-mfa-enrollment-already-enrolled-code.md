@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/contexts/authentication/scenarios.md]
+  specification: [docs/contexts/authentication/scenarios.feature.md]
   typespec:
     - IdMagic.Authentication.Operations.StartBrowserMfaEnrollment
     - IdMagic.Authentication.Operations.ConfirmBrowserMfaEnrollment

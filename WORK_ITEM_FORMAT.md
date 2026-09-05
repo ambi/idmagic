@@ -25,13 +25,13 @@ documentation_impact: # required after the item starts
   references:
     - { kind: release_note, path: docs/releases/changes/wi-999-start-task.md }
 initial_context: # written when the item starts, not when it is filed
-  specification: [docs/contexts/system/scenarios.md#REQ-SYSTEM-001]
+  specification: [docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
   tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 primary_use_cases: # required for feature, bugfix, and standards.md work after it starts
   - id: start-task
@@ -121,7 +121,7 @@ reading list that points at moved or deleted files is worse than none. A pending
 Motivation, Scope, and Out of Scope to be useful.
 
 Once the item is `in_progress`, `mise run check-work-items` resolves that list: every path must exist, and a
-`docs/contexts/<context>/scenarios.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
+`docs/contexts/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
 
 `affected_spec` is resolved for every record, completed ones included, because it indexes the normative
 element the change touched rather than what someone read at the time. When a normative element moves to a

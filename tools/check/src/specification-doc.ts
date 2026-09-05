@@ -1,3 +1,5 @@
+import { parseScenarioDocument } from './gherkin-scenarios.ts'
+
 export type SpecificationFinding = {
   line: number
   message: string
@@ -6,11 +8,9 @@ export type SpecificationFinding = {
 export type SpecificationValidation = {
   findings: SpecificationFinding[]
   scenarioIds: Array<{ id: string; line: number; supersededBy?: string }>
+  exampleIds: Array<{ id: string; line: number; parentId: string }>
   standardIds: Array<{ id: string; line: number }>
 }
-
-/** A retired scenario keeps its heading and names its successor instead of carrying steps. */
-const SUPERSEDED_HEADING = /^### REQ-[A-Z0-9-]+: .+ \(superseded by (REQ-[A-Z0-9-]+)\)$/
 
 /**
  * The split layout names each file after the kind of content it holds, so the
@@ -25,7 +25,7 @@ export const CONTEXT_DOCUMENTS = [
   'states.md',
   'decisions.md',
   'internals.md',
-  'scenarios.md',
+  'scenarios.feature.md',
 ] as const
 
 export const ROOT_DOCUMENTS = [
@@ -42,7 +42,7 @@ export const ROOT_DOCUMENTS = [
   'database.md',
   'authorization.md',
   'threat-model.md',
-  'scenarios.md',
+  'scenarios.feature.md',
 ] as const
 
 /** What a file's name says about the grammar its body must follow. */
@@ -51,7 +51,7 @@ export type DocumentKind = 'standards' | 'states' | 'scenarios' | 'prose'
 const KIND_BY_NAME = new Map<string, DocumentKind>([
   ['standards.md', 'standards'],
   ['states.md', 'states'],
-  ['scenarios.md', 'scenarios'],
+  ['scenarios.feature.md', 'scenarios'],
 ])
 
 /**
@@ -105,122 +105,6 @@ function isSeparatorRow(line: string): boolean {
 
 function lineAt(source: string, offset: number): number {
   return source.slice(0, offset).split('\n').length
-}
-
-function validateScenario(
-  block: string,
-  offset: number,
-  source: string,
-  findings: SpecificationFinding[],
-): void {
-  const heading = block.match(/^### (REQ-[A-Z0-9-]+): .+$/m)
-  if (!heading) {
-    findings.push({
-      line: lineAt(source, offset),
-      message: 'scenario must start with a REQ heading',
-    })
-    return
-  }
-
-  for (const match of block.matchAll(/^- (Actor|Given|When|Then|Alternative|Alt)(?::| \()/gm)) {
-    findings.push({
-      line: lineAt(source, offset + (match.index ?? 0)),
-      message: `scenario keyword ${match[1]} must be uppercase and must not use a colon`,
-    })
-  }
-
-  const actors = [...block.matchAll(/^- ACTOR .+$/gm)]
-  if (actors.length !== 1) {
-    findings.push({
-      line: lineAt(source, offset),
-      message: 'scenario must contain exactly one ACTOR line',
-    })
-  }
-
-  const whenMatches = [...block.matchAll(/^- WHEN .+$/gm)]
-  if (whenMatches.length === 0) {
-    findings.push({
-      line: lineAt(source, offset),
-      message: 'scenario must contain at least one WHEN line',
-    })
-  }
-
-  const thenMatches = [...block.matchAll(/^- THEN .+$/gm)]
-  if (thenMatches.length === 0) {
-    findings.push({
-      line: lineAt(source, offset),
-      message: 'scenario must contain at least one THEN line',
-    })
-  }
-  const stepMatches = [...block.matchAll(/^- (WHEN|THEN) .+$/gm)]
-  if (stepMatches[0]?.[1] !== 'WHEN') {
-    findings.push({
-      line: lineAt(source, offset),
-      message: 'the first behavior step must be WHEN',
-    })
-  }
-
-  const topLevelClauses = [...block.matchAll(/^- (ACTOR|GIVEN|WHEN|THEN) .+$/gm)]
-  let behaviorStarted = false
-  for (const [index, clause] of topLevelClauses.entries()) {
-    const keyword = clause[1]
-    if (keyword === 'ACTOR' && index !== 0) {
-      findings.push({
-        line: lineAt(source, offset + (clause.index ?? 0)),
-        message: 'ACTOR must be the first scenario clause',
-      })
-    }
-    if (keyword === 'GIVEN' && behaviorStarted) {
-      findings.push({
-        line: lineAt(source, offset + (clause.index ?? 0)),
-        message: 'GIVEN must appear before WHEN and THEN clauses',
-      })
-    }
-    if (keyword === 'WHEN' || keyword === 'THEN') behaviorStarted = true
-  }
-
-  for (const match of block.matchAll(/^ {2}- ALT (.+)$/gm)) {
-    if (!match[1]?.includes(' → ')) {
-      findings.push({
-        line: lineAt(source, offset + (match.index ?? 0)),
-        message: 'ALT must separate its condition and result with →',
-      })
-    }
-    const before = block
-      .slice(0, match.index ?? 0)
-      .trimEnd()
-      .split('\n')
-    const parent = [...before].reverse().find((line) => !line.startsWith('  - ALT '))
-    if (!parent || !/^- (?:WHEN|THEN) .+$/.test(parent)) {
-      findings.push({
-        line: lineAt(source, offset + (match.index ?? 0)),
-        message: 'ALT must be nested immediately below a WHEN or THEN step',
-      })
-    }
-  }
-
-  for (const match of block.matchAll(/^(\s*)- ALT .+$/gm)) {
-    if (match[1]?.length !== 2) {
-      findings.push({
-        line: lineAt(source, offset + (match.index ?? 0)),
-        message: 'ALT must be a two-space-indented child of a WHEN or THEN step',
-      })
-    }
-  }
-
-  for (const match of block.matchAll(/^- (?:WHEN|THEN) \(\d+\) .+$/gm)) {
-    findings.push({
-      line: lineAt(source, offset + (match.index ?? 0)),
-      message: 'WHEN and THEN must not use local step numbers',
-    })
-  }
-
-  for (const match of block.matchAll(/^ {2}- ALT \(\d+\) .+$/gm)) {
-    findings.push({
-      line: lineAt(source, offset + (match.index ?? 0)),
-      message: 'ALT must not use local step numbers',
-    })
-  }
 }
 
 /**
@@ -405,14 +289,6 @@ function validateShared(source: string, findings: SpecificationFinding[]): void 
   }
 }
 
-function collectScenarioIds(source: string): SpecificationValidation['scenarioIds'] {
-  return [...source.matchAll(/^### (REQ-[A-Z0-9-]+): .+$/gm)].map((match) => ({
-    id: match[1] ?? '',
-    line: lineAt(source, match.index ?? 0),
-    supersededBy: match[0].match(SUPERSEDED_HEADING)?.[1],
-  }))
-}
-
 /**
  * Validate one canonical document. The file name says which grammar applies,
  * so each file is checked against that grammar alone.
@@ -423,6 +299,7 @@ export function validateDocument(path: string, source: string): SpecificationVal
     return {
       findings: [{ line: 1, message: 'not a canonical specification document' }],
       scenarioIds: [],
+      exampleIds: [],
       standardIds: [],
     }
   }
@@ -434,14 +311,23 @@ export function validateDocument(path: string, source: string): SpecificationVal
     kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
   if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, findings)
 
-  const scenarioIds = kind === 'scenarios' ? collectScenarioIds(source) : []
+  let scenarioIds: SpecificationValidation['scenarioIds'] = []
+  let exampleIds: SpecificationValidation['exampleIds'] = []
   if (kind === 'scenarios') {
-    const starts = [...source.matchAll(/^### /gm)].map((match) => match.index ?? 0)
-    for (const [index, start] of starts.entries()) {
-      const block = source.slice(start, starts[index + 1] ?? source.length)
-      if (SUPERSEDED_HEADING.test(block.split('\n')[0] ?? '')) continue
-      validateScenario(block, start, source, findings)
-    }
+    const parsed = parseScenarioDocument(source)
+    findings.push(...parsed.findings)
+    scenarioIds = parsed.rules.map((rule) => ({
+      id: rule.id,
+      line: rule.line,
+      supersededBy: rule.supersededBy,
+    }))
+    exampleIds = parsed.rules.flatMap((rule) =>
+      rule.examples.map((example) => ({
+        id: example.id,
+        line: example.line,
+        parentId: rule.id,
+      })),
+    )
     const local = new Set<string>()
     for (const scenario of scenarioIds) {
       if (local.has(scenario.id)) {
@@ -450,13 +336,13 @@ export function validateDocument(path: string, source: string): SpecificationVal
       local.add(scenario.id)
     }
   } else {
-    for (const scenario of collectScenarioIds(source)) {
+    for (const match of source.matchAll(/^## Rule: (REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
       findings.push({
-        line: scenario.line,
-        message: `${scenario.id} must be declared in scenarios.md`,
+        line: lineAt(source, match.index ?? 0),
+        message: `${match[1]} must be declared in scenarios.feature.md`,
       })
     }
   }
 
-  return { findings, scenarioIds, standardIds }
+  return { findings, scenarioIds, exampleIds, standardIds }
 }

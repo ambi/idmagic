@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # 種別ごとの到達率と処理時間を観測し、容量の Planning assumption を Measurement へ置き換えられるようにする

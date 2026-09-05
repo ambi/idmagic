@@ -20,7 +20,7 @@ initial_context:
     - tools/check/src/normative-coverage.ts
     - tools/check/src/check-specifications.ts
     - tools/check/src/report-coverage-debt.ts
-    - tools/check/scenario-coverage-debt.json
+    - tools/check/example-coverage-debt.json
     - tools/check/standards-coverage-debt.json
     - tools/check/README.md
     - docs/development/specification-first-workflow.md
@@ -113,7 +113,7 @@ R3 と R4 は追跡可能性の仕組みで、インシデントの枠組みを�
 ## Scope
 
 - 規範 id の網羅を 1 つの規則に統一する。「宣言された規範 id は、少なくとも 1 つのテストがその id を引用する」。
-- `security-refusal-debt.json` の 102 件を `scenario-coverage-debt.json` へ統合し、各エントリーに理由を付ける。台帳はラチェットのまま、縮むことしか許さない。
+- `security-refusal-debt.json` の 102 件を `example-coverage-debt.json` へ統合し、各エントリーに理由を付ける。台帳はラチェットのまま、縮むことしか許さない。
 - `checkRefusalCoverage` を廃し、`checkNormativeCoverage` に一本化する。`accounted` と `accountedPath` による互いに素の維持を削除する。
 - `refusalScenarioIds` と `REFUSAL_WORDS` を削除する。
 - `declaredRefusalTypes` を「シナリオの段に現れるエラー型名すべて」に変え、拒否の述語を外す。R4 の判定結果は変わらない。
@@ -291,7 +291,7 @@ R4 の判定そのものには RED が存在しない。
 ## Plan
 
 1. 変更前の基準を取る。R1、R2、R4 の findings と、`report-refusal-debt` の分類を記録する。
-2. `security-refusal-debt.json` の 102 件へ理由を付けて `scenario-coverage-debt.json` へ統合し、統合後の件数が 191 であることを確認する。
+2. `security-refusal-debt.json` の 102 件へ理由を付けて `example-coverage-debt.json` へ統合し、統合後の件数が 191 であることを確認する。
 3. `checkRefusalCoverage` の呼び出しを `checkNormativeCoverage` へ寄せ、`accounted` の受け渡しを削除する。
 4. `refusalScenarioIds` と `REFUSAL_WORDS` を削除し、`declaredRefusalTypes` から拒否の述語を外す。
 5. R4 の findings が基準と一致することを確認する。一致しなければ統合を止めて原因を記録する。

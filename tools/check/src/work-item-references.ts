@@ -9,6 +9,8 @@
  * that moment.
  */
 
+import { parseScenarioDocument } from './gherkin-scenarios.ts'
+
 export type WorkItemRecord = {
   status?: unknown
   affected_spec?: unknown
@@ -26,7 +28,8 @@ export type ReferenceEnvironment = {
 const PATH_KEYS = ['source', 'tests', 'stop_before_reading'] as const
 
 function declaresScenario(source: string, id: string): boolean {
-  return new RegExp(`^### ${id}: `, 'm').test(source)
+  if (new RegExp(`^### ${id}: `, 'm').test(source)) return true
+  return parseScenarioDocument(source).rules.some((rule) => rule.id === id)
 }
 
 function resolvesRequirement(source: string, requirement: string): boolean {

@@ -8,9 +8,9 @@ change_kind: feature
 priority: p1
 depends_on: [wi-460-cross-tenant-health-control-plane-membership]
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-001 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-012 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-013 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListAdminAuditEvents }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.GetAdminAuditEvent }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
@@ -39,7 +39,7 @@ affected_spec:
 
 仕様にも欠落がある。
 
-Audit の決定と TypeSpec は制御面テナントの `system_admin` による横断検索を説明するが、`docs/contexts/audit/scenarios.md` に成功シナリオがない。
+Audit の決定と TypeSpec は制御面テナントの `system_admin` による横断検索を説明するが、`docs/contexts/audit/scenarios.feature.md` に成功シナリオがない。
 
 Jobs は `ListJobs` の横断一覧を TypeSpec とテストで説明する一方、`GetJob` と `CancelJob` が制御面主体に限って別テナントへ届く現在の挙動を TypeSpec とシナリオに記述していない。
 

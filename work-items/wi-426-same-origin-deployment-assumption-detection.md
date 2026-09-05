@@ -7,7 +7,7 @@ created_at: 2026-08-27
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
 ---
 
 # 同一オリジンの前提が崩れた配備を、製品自身が検出して拒否する
@@ -28,7 +28,7 @@ affected_spec:
 - 判定できない構成と、明らかに前提が崩れている構成を区別する。前者は起動を止めず記録する。
 - 前提が崩れている構成での起動を拒否するか、明示的な許可設定を要求するかを決める。
 - 判定の結果を `/readyz` の詳細と起動時のログへ出す。
-- 対応する規範シナリオを `docs/contexts/system/scenarios.md` へ足す。
+- 対応する規範シナリオを `docs/contexts/system/scenarios.feature.md` へ足す。
 
 ## Out of Scope
 
@@ -53,7 +53,7 @@ affected_spec:
 
 - [ ] T001 [Spec] 同一オリジンの前提に依存する制御と、成立条件を書き出す。
 - [ ] T002 [Acceptance] 前提が崩れた設定で起動しても何も起きないことを観測する。
-- [ ] T003 [Spec] `docs/contexts/system/scenarios.md` へ規範シナリオを足す。
+- [ ] T003 [Spec] `docs/contexts/system/scenarios.feature.md` へ規範シナリオを足す。
 - [ ] T004 [App] 起動時の判定を実装する。
 - [ ] T005 [App] `/readyz` の詳細と起動ログへ結果を出す。
 - [ ] T006 [Verify] 前提が崩れた設定と満たされた設定の双方で、期待どおりに分かれることを確認する。

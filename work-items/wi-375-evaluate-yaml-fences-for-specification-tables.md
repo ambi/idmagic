@@ -29,7 +29,7 @@ SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うの�
 
 ## Out of Scope
 
-- **`scenarios.md` の YAML 化**。1 行 1 挙動の行文法で、`- WHEN …` が縦に並ぶことが読みやすさの本体である。ソース最長行も `oauth2` で 324 文字と表より短い。YAML にすると得るものより失うものが大きい。
+- **`scenarios.feature.md` の YAML 化**。1 行 1 挙動の行文法で、`- WHEN …` が縦に並ぶことが読みやすさの本体である。ソース最長行も `oauth2` で 324 文字と表より短い。YAML にすると得るものより失うものが大きい。
 - **`README.md`、`decisions.md`、`internals.md`**。散文であり、YAML フィールドに Markdown の塊を入れるのは Markdown より悪い。
 - **文書の分割**。種類ごとのファイル分割は済んでおり、この評価では触らない。別ファイルの YAML にはせず、その種類を所有する Markdown 内のフェンスに置く。
 - **全 Context への適用**。採用が決まってから別 work item で行う。

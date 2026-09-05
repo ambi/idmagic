@@ -8,15 +8,15 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/claim-mapping/scenarios.md, requirement: REQ-CLAIMMAPPING-002 }
-  - { path: docs/contexts/claim-mapping/scenarios.md, requirement: REQ-CLAIMMAPPING-003 }
+  - { path: docs/contexts/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-002 }
+  - { path: docs/contexts/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-003 }
 ---
 
 # ClaimMapping が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -45,7 +45,7 @@ affected_spec:
 - 台帳の ClaimMapping の 2 件それぞれについて、宣言された拒否に production と同じ入口 (トークンとアサーションの発行経路) から到達するテストを用意する。
 - 各テストで 2 つを assert する。発行が拒否されたこと、および部分的なクレーム集合が発行されていないこと。
 - 各テストのソースに対応する `REQ-CLAIMMAPPING-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -128,7 +128,7 @@ affected_spec:
 - [ ] T002 [Acceptance] 公開できない属性の拒否 (002) を発行物まで確かめるテストを書く。
 - [ ] T003 [Acceptance] 必須規則の欠落の拒否 (003) を、任意規則が発行されないことまで確かめるテストを書く。
 - [ ] T004 [App] 拒否の実装が欠けていた経路を修正する。
-- [ ] T005 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T005 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T006 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

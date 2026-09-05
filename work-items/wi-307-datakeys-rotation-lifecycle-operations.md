@@ -6,9 +6,9 @@ created_at: 2026-07-29
 priority: p1
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-002 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-003 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-005 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-002 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-003 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-005 }
 depends_on: [wi-97-envelope-encryption-at-rest]
 ---
 

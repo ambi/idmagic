@@ -8,15 +8,15 @@ change_kind: maintenance
 priority: p3
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-015 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-015 }
 ---
 
 # System の台帳 2 件を、フェイルクローズの検証と誤検出の是正に分けて解消する
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -54,7 +54,7 @@ affected_spec:
 
 - `REQ-SYSTEM-001` のフェイルクローズを、プローブの経路から効果まで確かめるテストで裏づける。
 - `REQ-SYSTEM-015` が拒否として検出される原因を取り除く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 検出側を直す場合は、変更の前後で台帳に出入りする id を全 Context で測り、記録する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -147,7 +147,7 @@ affected_spec:
 - [ ] T002 [Acceptance] 同じ状態で `LivenessProbe` が `healthy` を維持することを確かめるテストを書く。
 - [ ] T003 [Tooling] `refusalSteps` の照合を結果節に限る変更を試作し、全 Context の分類差分を測る。
 - [ ] T004 [Tooling] 測定結果に基づいて採否を決め、採る場合は検査とその場のテストを更新する。
-- [ ] T005 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T005 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T006 [Verify] 防護を意図的に外すとプローブのテストが落ちることを確かめ、検査を通す。
 
 ## Verification

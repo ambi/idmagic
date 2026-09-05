@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-013 }
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-008 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-013 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-008 }
 ---
 
 # 外部アプリの orphan account 検出と照合を導入する

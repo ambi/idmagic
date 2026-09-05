@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'bun:test'
 import { documentKind, validateDocument } from './specification-doc.ts'
 
-const SCENARIOS = 'docs/contexts/demo/scenarios.md'
+const SCENARIOS = 'docs/contexts/demo/scenarios.feature.md'
 const STATES = 'docs/contexts/demo/states.md'
 const STANDARDS = 'docs/contexts/demo/standards.md'
 
-const scenarios = `# Demo Scenarios
+const scenarios = `# Feature: Demo
 
-### REQ-DEMO-001: A valid request succeeds
-- ACTOR User
-- GIVEN a valid request
-- WHEN the request is submitted
-- THEN the request succeeds
-  - ALT the request is invalid → the request is rejected
+## Rule: REQ-DEMO-001 A valid request succeeds
+
+### Example: EX-DEMO-001-01 A valid request
+
+- Given a valid request exists
+- When the user submits the request
+- Then the request succeeds
 `
 
 const messages = (path: string, source: string) =>
@@ -21,7 +22,7 @@ const messages = (path: string, source: string) =>
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {
     expect(documentKind('docs/contexts/demo/states.md')).toBe('states')
-    expect(documentKind('docs/contexts/demo/scenarios.md')).toBe('scenarios')
+    expect(documentKind('docs/contexts/demo/scenarios.feature.md')).toBe('scenarios')
     expect(documentKind('docs/contexts/demo/decisions.md')).toBe('prose')
     expect(documentKind('docs/standards.md')).toBe('standards')
     expect(documentKind('docs/authorization.md')).toBe('prose')
@@ -32,7 +33,7 @@ describe('documentKind', () => {
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
     expect(documentKind('docs/contexts/demo/notes.md')).toBeUndefined()
     expect(documentKind('docs/states.md')).toBeUndefined()
-    expect(documentKind('docs/contexts/demo/user/scenarios.md')).toBeUndefined()
+    expect(documentKind('docs/contexts/demo/user/scenarios.feature.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
   })
 
@@ -48,16 +49,18 @@ describe('documentKind', () => {
   })
 })
 
-describe('scenarios.md', () => {
-  it('accepts a scenario with a nested alternative and reports its id', () => {
+describe('scenarios.feature.md', () => {
+  it('accepts a Gherkin example and reports its rule and example ids', () => {
     const result = validateDocument(SCENARIOS, scenarios)
     expect(result.findings).toEqual([])
     expect(result.scenarioIds.map((scenario) => scenario.id)).toEqual(['REQ-DEMO-001'])
+    expect(result.exampleIds).toEqual([{ id: 'EX-DEMO-001-01', line: 5, parentId: 'REQ-DEMO-001' }])
   })
 
-  it('accepts a retired scenario without steps and reports its successor', () => {
+  it('accepts a retired rule without examples and reports its successor', () => {
     const source = `${scenarios}
-### REQ-DEMO-002: An old behavior (superseded by REQ-DEMO-001)
+## Rule: REQ-DEMO-002 An old behavior (superseded by REQ-DEMO-001)
+
 Replaced by the valid request scenario.
 `
     const result = validateDocument(SCENARIOS, source)
@@ -68,70 +71,35 @@ Replaced by the valid request scenario.
     })
   })
 
-  it('still requires steps in a scenario that is not retired', () => {
+  it('still requires examples in a rule that is not retired', () => {
     const source = `${scenarios}
-### REQ-DEMO-002: An old behavior
+## Rule: REQ-DEMO-002 An old behavior
+
 Replaced by the valid request scenario.
 `
-    expect(messages(SCENARIOS, source)).toContain('scenario must contain at least one WHEN line')
+    expect(messages(SCENARIOS, source)).toContain('REQ-DEMO-002 must contain at least one example')
   })
 
-  it('rejects a top-level alternative and old scenario syntax', () => {
-    const source = scenarios.replace('- ACTOR User', '- Actor: User').replace('  - ALT', '- ALT')
-    expect(messages(SCENARIOS, source)).toContain(
-      'scenario keyword Actor must be uppercase and must not use a colon',
-    )
-    expect(messages(SCENARIOS, source)).toContain(
-      'ALT must be a two-space-indented child of a WHEN or THEN step',
-    )
-  })
-
-  it('rejects a scenario without a trigger', () => {
+  it('rejects an example without a trigger', () => {
     const source = scenarios.replace(
-      '- WHEN the request is submitted',
-      '- GIVEN the request is submitted',
+      '- When the user submits the request',
+      '- Given the user submits the request',
     )
-    expect(messages(SCENARIOS, source)).toContain('scenario must contain at least one WHEN line')
-  })
-
-  it('rejects an alternative nested below GIVEN', () => {
-    const source = scenarios.replace(
-      '- GIVEN a valid request',
-      '- GIVEN a valid request\n  - ALT it is invalid → reject it',
-    )
-    expect(messages(SCENARIOS, source)).toContain(
-      'ALT must be nested immediately below a WHEN or THEN step',
-    )
-  })
-
-  it('rejects numbered behavior steps', () => {
-    const source = scenarios.replace(
-      '- WHEN the request is submitted',
-      '- WHEN (1) the request is submitted',
-    )
-    expect(messages(SCENARIOS, source)).toContain('WHEN and THEN must not use local step numbers')
+    expect(messages(SCENARIOS, source)).toContain('example must contain at least one When step')
   })
 
   it('accepts multiple triggers in a multi-operation flow', () => {
     const source = scenarios.replace(
-      '- THEN the request succeeds',
-      '- THEN the request succeeds\n- WHEN the result is retrieved\n- THEN the result is returned',
+      '- Then the request succeeds',
+      '- Then the request succeeds\n- When the user retrieves the result\n- Then the result is returned',
     )
     expect(validateDocument(SCENARIOS, source).findings).toEqual([])
   })
 
-  it('rejects GIVEN after behavior starts', () => {
-    const source = scenarios.replace(
-      '- THEN the request succeeds',
-      '- THEN the request succeeds\n- GIVEN a late precondition',
-    )
-    expect(messages(SCENARIOS, source)).toContain('GIVEN must appear before WHEN and THEN clauses')
-  })
-
   it('rejects links from a canonical document to decisions/', () => {
     const source = scenarios.replace(
-      '# Demo Scenarios',
-      '# Demo Scenarios\n\nSee [old choice](../decisions/old-choice.md).',
+      '# Feature: Demo',
+      '# Feature: Demo\n\nSee [old choice](../decisions/old-choice.md).',
     )
     expect(messages(SCENARIOS, source)).toContain(
       'current specification must be self-contained and must not link to decisions/',
@@ -139,22 +107,19 @@ Replaced by the valid request scenario.
   })
 
   it('requires exactly one H1', () => {
-    expect(messages(SCENARIOS, scenarios.replace('# Demo Scenarios\n', ''))).toContain(
+    expect(messages(SCENARIOS, scenarios.replace('# Feature: Demo\n', ''))).toContain(
       'document must contain exactly one H1',
     )
   })
 
-  it('keeps normative scenarios out of the other documents', () => {
+  it('keeps normative rules out of the other documents', () => {
     const source = `# Demo Decisions
 
-### REQ-DEMO-002: A behavior
-- ACTOR User
-- WHEN it happens
-- THEN it holds
+## Rule: REQ-DEMO-002 A behavior
 `
     const result = validateDocument('docs/contexts/demo/decisions.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
-      'REQ-DEMO-002 must be declared in scenarios.md',
+      'REQ-DEMO-002 must be declared in scenarios.feature.md',
     ])
     expect(result.scenarioIds).toEqual([])
   })

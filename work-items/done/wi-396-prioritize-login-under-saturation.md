@@ -16,10 +16,10 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-396.md }
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-001
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-016
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-018
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-019
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-016
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-018
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-019
     - docs/capacity.md
     - docs/api-rules.md
     - docs/deployment.md
@@ -51,10 +51,10 @@ initial_context:
     - backend/authentication
     - spec/generated
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-018 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-019 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-018 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-019 }
 ---
 
 # 容量が足りないときにログインが管理系トラフィックより先に生き残るようにする
@@ -90,7 +90,7 @@ IdP としての idmagic は、止まると依存する全システムのログ�
 - 優先度クラスごとの PostgreSQL 接続予算。
 - 縮退が発動したことを観測できるメトリクスと、`docs/capacity.md` のサービス目標に対する影響の測定。
 - 縮退の閾値を運用者が調整できる起動時設定（REQ-SYSTEM-016 に従って検証する）。
-- 縮退の振る舞いを規範的シナリオとして `docs/contexts/system/scenarios.md` に追加する。
+- 縮退の振る舞いを規範的シナリオとして `docs/contexts/system/scenarios.feature.md` に追加する。
 
 ## Out of Scope
 
@@ -240,7 +240,7 @@ func (c PriorityClass) RetryAfterSeconds() int
 - [x] T001 [Measure] 管理系バースト下でログインのレイテンシーがサービス目標をどれだけ侵すかを実測する。侵さないなら T003 以降を取り下げる。→ ステージング基盤が無いため製品の実測は不可。Plan の「測定について実際にできたこと」に、代わりに何を観測し、取り下げの判断をどう置いたかを記録した。待ち行列の観測は `TestAdmissionControlPreservesInteractiveAuthUnderBulkSaturation`（`backend/shared/http/server_http/admission_saturation_test.go`）。
 - [x] T002 [Ops] API に HPA を入れる。`replicas` 固定をやめ、最小値、最大値、判定指標を `docs/capacity.md` の Sizing rules と整合させる。
 - [x] T003 [Design] 飽和の判定基準、優先度クラスの境界、拒否の状態コード、接続予算の分け方を確定し `## Design` に記録する。
-- [x] T004 [Spec] 縮退の振る舞いを `docs/contexts/system/scenarios.md` に規範的シナリオとして追加する。→ REQ-SYSTEM-018。`docs/api-rules.md` の Declared status codes に、ミドルウェアが返す 3 つ目の例外として 503 を記録した。
+- [x] T004 [Spec] 縮退の振る舞いを `docs/contexts/system/scenarios.feature.md` に規範的シナリオとして追加する。→ REQ-SYSTEM-018。`docs/api-rules.md` の Declared status codes に、ミドルウェアが返す 3 つ目の例外として 503 を記録した。
 - [x] T005 [App] 優先度クラスの分類をルート登録と同じ場所で宣言し、**分類の無いルートが存在しないことを検査するテスト**を同時に入れる。ルートを 1 つ分類から外すと落ちることを確認する。→ `backend/shared/http/server_http/priority_class.go`、`TestEveryAssembledRouteDeclaresAPriorityClass`（REQ-SYSTEM-018）。
 - [x] T012 [Ops] 分類を運用者が参照できる生成物にする。組み立て済みの router と `ClassifyRoute` から `ROUTE_PRIORITY.md` を生成し、`mise run check-route-reference` を `mise run check` に入れる（REQ-SYSTEM-019）。`decisions.md` と `deployment.md` からクラスの所属を述べる散文を消す。
 - [x] T006 [App] 負荷連動の入場制御を実装する。Degradation order のステージ 3、4、5 に対応させる。→ `backend/shared/http/support_http/admission.go`、`TestAdmissionBudgetAdmit`、`TestAdmissionMiddlewareShedsLowerPriorityFirst`（REQ-SYSTEM-018）。

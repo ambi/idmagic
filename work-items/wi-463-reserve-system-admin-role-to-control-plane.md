@@ -8,10 +8,10 @@ change_kind: bugfix
 priority: p1
 depends_on: [wi-460-cross-tenant-health-control-plane-membership]
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-004 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-026 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-026 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.CreateAdminUser }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.UpdateAdminUser }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.CreateGroup }

@@ -8,8 +8,8 @@ created_at: 2026-08-30
 priority: p0
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
 ---
 
 # パスワード再設定とメール変更に型付きアクショントークンの共通核を導入する

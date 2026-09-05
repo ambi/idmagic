@@ -7,8 +7,8 @@ created_at: 2026-08-27
 priority: p1
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-004 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-004 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # 上流の権威が書き込む属性が、実効ロールへ波及する経路を制限する

@@ -36,10 +36,10 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-046 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-009 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-046 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-047 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-009 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-010 }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantUsage }
 ---

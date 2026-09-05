@@ -20,7 +20,7 @@ spec_impact: { kind: none, reason: "正規文書 1 つの名前と、それを�
 
 ## Motivation
 
-この文書体系は「**ファイル名が内容の種類を表す**」で貫かれている。`scenarios.md`、`decisions.md`、`states.md`、`standards.md` は、いずれも中身が何であるかを言っている。
+この文書体系は「**ファイル名が内容の種類を表す**」で貫かれている。`scenarios.feature.md`、`decisions.md`、`states.md`、`standards.md` は、いずれも中身が何であるかを言っている。
 
 `persistence.md` だけが**層の名前**である。永続化は、データベースを扱うコードが属するレイヤーの呼び名であって、この文書が扱う主題ではない。中身は列の型、制約の置き場所、`tenant_id` の保持区分、スキーマファイルの運用——つまり**データベースの設計方針**である。
 

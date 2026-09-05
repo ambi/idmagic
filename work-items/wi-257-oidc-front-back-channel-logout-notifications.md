@@ -28,8 +28,8 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.LogoutNotification }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.FrontChannelLogoutTarget }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DiscoveryDocument }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-023 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-025 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-023 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-025 }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.CheckSessionIframe }
   - { path: docs/contexts/oauth2/standards.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
   - { path: docs/contexts/oauth2/standards.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }

@@ -7,8 +7,8 @@ created_at: 2026-06-21
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-005 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-014 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-005 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-014 }
 ---
 
 # 検証可能クレデンシャル (OID4VCI 発行 / OID4VP 検証) に対応する

@@ -7,8 +7,8 @@ created_at: 2026-07-15
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-011 }
 ---
 
 # セルフサービスの access 要求ワークフローを導入する

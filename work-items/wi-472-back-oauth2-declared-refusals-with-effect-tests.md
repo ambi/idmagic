@@ -8,36 +8,36 @@ change_kind: maintenance
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-001 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-002 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-004 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-007 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-009 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-010 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-013 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-015 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-016 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-017 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-018 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-020 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-021 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-023 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-024 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-028 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-029 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-034 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-036 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-037 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-038 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-039 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-040 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-001 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-002 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-004 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-007 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-009 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-010 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-013 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-015 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-016 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-017 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-018 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-020 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-021 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-023 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-024 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-028 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-029 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-034 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-036 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-037 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-038 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-039 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-040 }
 ---
 
 # OAuth2 が宣言する未検証の拒否 23 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -66,7 +66,7 @@ wi-390 が見つけた欠陥は、テストがあり、カバレッジもあり�
 - 台帳の OAuth2 の 23 件それぞれについて、宣言された拒否に production と同じ入口から到達するテストを用意する。
 - 各テストで 2 つを assert する。呼び出し元が観測する応答 (ステータスとエラー種別) と、その拒否が変えなかった状態。
 - 各テストのソースに対応する `REQ-OAUTH2-NNN` を書き、シナリオとテストを突き合わせて読めるようにする。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 防護の追加に新しい設計判断が要る場合は、その id だけを台帳に残し、引き取る work item を切って `depends_on` でつなぐ。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
@@ -176,7 +176,7 @@ wi-390 が見つけた欠陥は、テストがあり、カバレッジもあり�
 - [ ] T007 [Acceptance] ログアウトの拒否 (023、024) を効果まで確かめるテストを書く。
 - [ ] T008 [Acceptance] フェイルクローズの拒否 (004、009、017、039、040) を効果まで確かめるテストを書く。
 - [ ] T009 [App] 拒否の実装が欠けていた経路を修正する、または引き取る work item を切って `depends_on` でつなぐ。
-- [ ] T010 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T010 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T011 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

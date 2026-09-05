@@ -7,8 +7,8 @@ created_at: 2026-07-04
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-001 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-001 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-007 }
 ---
 
 # テナント（Realm）設定の宣言的 export/import を提供し GitOps・環境昇格・DR を可能にする

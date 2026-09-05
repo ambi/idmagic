@@ -10,9 +10,9 @@ depends_on: [wi-284-improve-csv-import-export]
 change_kind: feature
 initial_context:
   specification:
-    - docs/contexts/identity-management/scenarios.md#REQ-IDMANAGEMENT-004
-    - docs/contexts/identity-management/scenarios.md#REQ-IDMANAGEMENT-007
-    - docs/contexts/identity-management/scenarios.md#REQ-IDMANAGEMENT-025
+    - docs/contexts/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-004
+    - docs/contexts/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-007
+    - docs/contexts/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-025
     - docs/contexts/identity-management/internals.md
     - docs/contexts/identity-management/decisions.md
   typespec:
@@ -48,9 +48,9 @@ initial_context:
     - backend/idmanagement/group/handlers_http/admin_group_handler.go
     - spec/generated
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-026 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-027 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-028 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-026 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-027 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-028 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.DataExportColumn }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupImportJob }

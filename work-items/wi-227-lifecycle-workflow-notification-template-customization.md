@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-008 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-016 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-008 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-016 }
 depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-email-sender-adapter]
 ---
 

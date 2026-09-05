@@ -11,4 +11,4 @@
 | [glossary.md](glossary.md) | この Context での語義 |
 | [decisions.md](decisions.md) | 設計判断 |
 | [internals.md](internals.md) | 機構の説明 |
-| [scenarios.md](scenarios.md) | 受け入れシナリオ |
+| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |

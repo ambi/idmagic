@@ -7,7 +7,7 @@ created_at: 2026-07-04
 priority: p1
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-035 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-035 }
 evidence_policy: risk-based-v2
 approval:
   by: tn
@@ -16,7 +16,7 @@ approval:
   baseline: f71866967d6616995f492a348d698ca85aad9390
 initial_context:
   specification:
-    - docs/contexts/authentication/scenarios.md#REQ-AUTHENTICATION-035
+    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-035
   source:
     - backend/authentication/session/usecases/session_manager.go
     - backend/shared/http/support_http/tenant_middleware.go

@@ -10,15 +10,15 @@ change_kind: docs
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/contexts/signing-keys/scenarios.md#REQ-SIGNINGKEYS-012
-    - docs/contexts/signing-keys/scenarios.md#REQ-SIGNINGKEYS-007
-    - docs/contexts/seeding/scenarios.md#REQ-SEEDING-005
+    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-012
+    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-007
+    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-005
   typespec: [IdMagic.Contract.KeyProvider]
   source: [backend/cmd/internal/bootstrap, backend/signingkeys/db_postgres, infra/deploy, infra/k8s, infra/docker, infra/backup]
   tests: [backend/cmd/internal/bootstrap]
   stop_before_reading: [frontend, backend/datakeys]
 affected_spec:
-  - { path: docs/contexts/signing-keys/scenarios.md, requirement: REQ-SIGNINGKEYS-012 }
+  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-012 }
   - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.KeyProvider }
 ---
 

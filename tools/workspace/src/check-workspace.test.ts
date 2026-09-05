@@ -15,6 +15,17 @@ afterAll(async () => {
  * ことは、そのファイルが検証の対象にすら入っていないということである。
  */
 const INVALID_BODY = '# One\n\n# Two\n'
+const DEMO_SCENARIO = [
+  '# Feature: Demo Scenarios',
+  '',
+  '## Rule: REQ-DEMO-001 Demo succeeds',
+  '',
+  '### Example: EX-DEMO-001-01 valid request',
+  '',
+  '- When the user submits a request',
+  '- Then the request succeeds',
+  '',
+].join('\n')
 
 /** 仮の作業ツリー。正本文書の集合が閉じているかどうかだけを見る最小の形。 */
 async function workspace(): Promise<string> {
@@ -34,7 +45,10 @@ async function workspace(): Promise<string> {
     ].join('\n'),
   )
   await writeFile(join(root, 'docs', 'contexts', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.md'), '# Demo Scenarios\n')
+  await writeFile(
+    join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
+    '# Feature: Demo Scenarios\n',
+  )
   return root
 }
 
@@ -79,7 +93,7 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
 describe('check-workspace --documents', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
-    expect(result.output).toContain('docs/contexts/demo/scenarios.md')
+    expect(result.output).toContain('docs/contexts/demo/scenarios.feature.md')
     expect(result.code).toBe(0)
   })
 
@@ -98,7 +112,7 @@ describe('check-workspace --documents', () => {
 
     const result = await checkDocuments(root)
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('did you mean scenarios.md')
+    expect(result.output).toContain('scenarios.feature.md')
   })
 
   // 名前を全部打ち間違えた作業ツリー。集めた文書が 0 件になるという形で現れるので、
@@ -131,42 +145,46 @@ describe('check-workspace --documents', () => {
   it('rejects a scenario no test names when no debt list admits it', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
+      join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
       [
-        '# Demo Scenarios',
+        '# Feature: Demo Scenarios',
         '',
-        '### REQ-DEMO-001: A valid request succeeds',
-        '- ACTOR User',
-        '- WHEN the request is submitted',
-        '- THEN the request succeeds',
+        '## Rule: REQ-DEMO-001 A valid request succeeds',
+        '',
+        '### Example: EX-DEMO-001-01 valid request',
+        '',
+        '- When the user submits a request',
+        '- Then the request succeeds',
         '',
       ].join('\n'),
     )
 
     const result = await checkDocuments(root)
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('REQ-DEMO-001 is declared, but no test names it')
+    expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
   })
 
   it('leaves a retired scenario out of the coverage gate', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
+      join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
       [
-        '# Demo Scenarios',
+        '# Feature: Demo Scenarios',
         '',
-        '### REQ-DEMO-001: A valid request succeeds (superseded by REQ-DEMO-002)',
+        '## Rule: REQ-DEMO-001 A valid request succeeds (superseded by REQ-DEMO-002)',
         'Replaced by the request-scoped route.',
         '',
-        '### REQ-DEMO-002: A valid request succeeds',
-        '- ACTOR User',
-        '- WHEN the request is submitted',
-        '- THEN the request succeeds',
+        '## Rule: REQ-DEMO-002 A valid request succeeds',
+        '',
+        '### Example: EX-DEMO-002-01 valid request',
+        '',
+        '- When the user submits a request',
+        '- Then the request succeeds',
         '',
       ].join('\n'),
     )
     await mkdir(join(root, 'backend'), { recursive: true })
-    await writeFile(join(root, 'backend', 'demo_test.go'), 'package demo\n\n// REQ-DEMO-002\n')
+    await writeFile(join(root, 'backend', 'demo_test.go'), 'package demo\n\n// EX-DEMO-002-01\n')
 
     expect((await checkDocuments(root)).code).toBe(0)
   })
@@ -244,10 +262,7 @@ The gate must reject an absent document.
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
-    await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
-      '# Demo Scenarios\n\n### REQ-DEMO-001: Demo succeeds\n',
-    )
+    await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
     await writeFile(
       join(root, 'work-items', 'wi-439-missing-primary-use-case.md'),
       `---
@@ -264,9 +279,9 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
-  source: [docs/contexts/demo/scenarios.md]
+  source: [docs/contexts/demo/scenarios.feature.md]
 affected_spec:
-  - { path: docs/contexts/demo/scenarios.md, requirement: REQ-DEMO-001 }
+  - { path: docs/contexts/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
 ---
 
 # Feature without a primary use case
@@ -302,10 +317,7 @@ The feature could remain disconnected.
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
-    await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
-      '# Demo Scenarios\n\n### REQ-DEMO-001: Demo succeeds\n',
-    )
+    await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
     await writeFile(
       join(root, 'mise.toml'),
       '[tasks.verify]\ndepends = ["test-go-race"]\n\n[tasks.test-go-race]\nrun = "go test -race ./..."\n',
@@ -326,7 +338,7 @@ created_at: 2026-08-30
 change_kind: feature
 evidence_policy: risk-based-v3
 affected_spec:
-  - { path: docs/contexts/demo/scenarios.md, requirement: REQ-DEMO-001 }
+  - { path: docs/contexts/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
   - id: demo-success
     requirement: REQ-DEMO-001

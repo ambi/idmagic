@@ -48,7 +48,10 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
   await writeFile(join(root, 'docs', 'authorization.md'), '# Authorization\n')
   await writeFile(join(root, 'docs', 'contexts', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.md'), '# Demo Scenarios\n')
+  await writeFile(
+    join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
+    '# Demo Scenarios\n',
+  )
   return root
 }
 
@@ -61,7 +64,7 @@ describe('discoverWorkspaceConfig', () => {
       'docs/README.md',
       'docs/authorization.md',
       'docs/contexts/demo/README.md',
-      'docs/contexts/demo/scenarios.md',
+      'docs/contexts/demo/scenarios.feature.md',
     ])
     expect(config.workItems).toBe('work-items')
   })

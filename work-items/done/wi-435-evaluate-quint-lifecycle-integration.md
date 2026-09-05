@@ -11,7 +11,7 @@ change_kind: tooling
 initial_context:
   specification:
     - docs/contexts/jobs/states.md#JobLifecycle
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-004
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-004
     - docs/development/specification-first-workflow.md
     - docs/development/testing.md
     - WORK_ITEM_FORMAT.md
@@ -64,7 +64,7 @@ Jobs のリースは評価対象に適している。正準文書には `JobLife
 
 ## Design
 
-Quint は既存の正本を置き換えず、正準文書から導かれる検証模型の候補として評価する。`states.md` が状態と遷移を所有し、`scenarios.md` と `internals.md` が安全性の意味と機構を所有する。試作では `states.md` の状態表と遷移表を読み取って Quint の基礎モジュールを生成し、リース所有者、期限、論理時刻、各操作を手書きの拡張模型へ置く。生成が Quint の構文または型検査と両立しない場合は、全遷移行を双方向に機械比較する方式を次に試し、目視対応だけには後退しない。
+Quint は既存の正本を置き換えず、正準文書から導かれる検証模型の候補として評価する。`states.md` が状態と遷移を所有し、`scenarios.feature.md` と `internals.md` が安全性の意味と機構を所有する。試作では `states.md` の状態表と遷移表を読み取って Quint の基礎モジュールを生成し、リース所有者、期限、論理時刻、各操作を手書きの拡張模型へ置く。生成が Quint の構文または型検査と両立しない場合は、全遷移行を双方向に機械比較する方式を次に試し、目視対応だけには後退しない。
 
 各工程で期待する役割と証拠を先に固定する。
 

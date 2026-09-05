@@ -6,7 +6,7 @@ created_at: 2026-07-25  # YYYY-MM-DD
 priority: p1
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 depends_on: []
 ---
 

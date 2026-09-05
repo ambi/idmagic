@@ -7,7 +7,7 @@ created_at: 2026-07-10
 change_kind: operations
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-001
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001
     - docs/README.md
     - docs/deployment.md
     - docs/observability.md
@@ -40,7 +40,7 @@ initial_context:
     - frontend
     - infra
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # 1000万ユーザー、10万テナント規模の容量目標と水平スケール参照構成を定義する

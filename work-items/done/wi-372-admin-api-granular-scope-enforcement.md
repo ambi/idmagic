@@ -29,14 +29,14 @@ initial_context:
   stop_before_reading: [frontend, infra]
 affected_spec:
   - { path: spec/contexts/api-tokens/models.tsp, symbol: IdMagic.Contract.ApiTokenScope }
-  - { path: docs/contexts/api-tokens/scenarios.md, requirement: REQ-APITOKENS-004 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-025 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-025 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-003 }
-  - { path: docs/contexts/saml/scenarios.md, requirement: REQ-SAML-005 }
-  - { path: docs/contexts/ws-federation/scenarios.md, requirement: REQ-WSFEDERATION-001 }
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-001 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-004 }
+  - { path: docs/contexts/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-004 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-025 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-025 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-003 }
+  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-005 }
+  - { path: docs/contexts/ws-federation/scenarios.feature.md, requirement: REQ-WSFEDERATION-001 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-001 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-004 }
 ---
 
 # 管理 API を API アクセストークンの粒度スコープで認可する

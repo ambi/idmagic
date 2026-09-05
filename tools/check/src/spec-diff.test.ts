@@ -40,6 +40,18 @@ const scenario = (id: string, result: string): string =>
     `- THEN ${result}`,
   ].join('\n')
 
+const gherkinScenario = (id: string, result: string): string =>
+  [
+    '# Feature: Demo Scenarios',
+    '',
+    `## Rule: ${id} A request`,
+    '',
+    `### Example: ${id.replace('REQ-', 'EX-')}-01 request succeeds`,
+    '',
+    '- When the request is submitted',
+    `- Then ${result}`,
+  ].join('\n')
+
 const snapshot = (documentSource: string, tsp = 'op StartTask(): void;'): Snapshot =>
   new Map([
     ['docs/contexts/demo/SPECIFICATION.md', documentSource],
@@ -111,8 +123,8 @@ describe('diffSpecifications', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
     const head: Snapshot = new Map([
       [
-        'docs/contexts/demo/scenarios.md',
-        `# Demo Scenarios\n\n${scenario('REQ-DEMO-001', 'it succeeds')}\n`,
+        'docs/contexts/demo/scenarios.feature.md',
+        `${gherkinScenario('REQ-DEMO-001', 'it succeeds')}\n`,
       ],
       [
         'docs/contexts/demo/states.md',

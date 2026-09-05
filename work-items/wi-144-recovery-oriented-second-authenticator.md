@@ -7,8 +7,8 @@ created_at: 2026-07-09
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-011 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-022 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-022 }
 ---
 
 # 復旧目的の 2 個目認証器登録を推奨し手段冗長化でロックアウトを予防する
@@ -27,7 +27,7 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Scope
 
-- `docs/contexts/authentication/` (`scenarios.md`、`decisions.md`、`models.tsp`):
+- `docs/contexts/authentication/` (`scenarios.feature.md`、`decisions.md`、`models.tsp`):
   - 「復旧手段が単一（single point of failure）」を表す派生状態（例: 認証器 1 個のみ / 同期不可
     passkey のみ / recovery code のみ）と、その account security への提示。
   - 2 個目認証器登録の推奨状態と、任意強制ポリシー（推奨 / 必須）の表現。

@@ -7,8 +7,8 @@ created_at: 2026-06-21
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-017 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
 # セカンダリ / リカバリ用メール・電話の self-service 管理

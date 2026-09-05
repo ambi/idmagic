@@ -15,7 +15,7 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-467.md }
 initial_context:
   specification:
-    - docs/contexts/tenancy/scenarios.md#REQ-TENANCY-012
+    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-012
     - docs/contexts/tenancy/decisions.md
   typespec:
     - IdMagic.Tenancy.Operations.UpdateTenantQuota
@@ -31,7 +31,7 @@ initial_context:
     - backend/shared/http/server_http/control_plane_boundary_test.go
   stop_before_reading: [infra, load, docs/runbooks, frontend/src/features]
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-012 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-012 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
 primary_use_cases:
   - id: tenant-quota-csrf

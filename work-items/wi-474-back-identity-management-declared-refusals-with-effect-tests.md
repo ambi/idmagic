@@ -8,22 +8,22 @@ change_kind: maintenance
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-002 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-003 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-006 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-008 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-013 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-022 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-025 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-002 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-003 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-006 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-008 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-013 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-022 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
 # IdentityManagement が宣言する未検証の拒否 9 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -52,7 +52,7 @@ wi-390 が見つけた欠陥は、テストがあり、カバレッジもあり�
 - 台帳の IdentityManagement の 9 件それぞれについて、宣言された拒否に production と同じ入口から到達するテストを用意する。
 - 各テストで 2 つを assert する。呼び出し元が観測する応答 (ステータスとエラー種別) と、その拒否が変えなかった状態。
 - 各テストのソースに対応する `REQ-IDMANAGEMENT-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 防護の追加に新しい設計判断が要る場合は、その id だけを台帳に残し、引き取る work item を切って `depends_on` でつなぐ。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
@@ -142,7 +142,7 @@ wi-390 が見つけた欠陥は、テストがあり、カバレッジもあり�
 - [ ] T004 [Acceptance] CSRF と自己削除の拒否 (003、013) を効果まで確かめるテストを書く。
 - [ ] T005 [Acceptance] 動的グループの手動操作の拒否 (022) を効果まで確かめるテストを書く。
 - [ ] T006 [App] 拒否の実装が欠けていた経路を修正する、または引き取る work item を切って `depends_on` でつなぐ。
-- [ ] T007 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T007 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T008 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

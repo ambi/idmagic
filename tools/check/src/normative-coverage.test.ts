@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test'
 import { checkNormativeCoverage, citedNormativeIds } from './normative-coverage.ts'
 
-const DEBT = 'tools/check/scenario-coverage-debt.json'
+const DEBT = 'tools/check/example-coverage-debt.json'
 
 const declared = [
-  { id: 'REQ-DEMO-001', path: 'docs/contexts/demo/scenarios.md' },
-  { id: 'REQ-DEMO-002', path: 'docs/contexts/demo/scenarios.md' },
+  { id: 'REQ-DEMO-001', path: 'docs/contexts/demo/scenarios.feature.md' },
+  { id: 'REQ-DEMO-002', path: 'docs/contexts/demo/scenarios.feature.md' },
 ]
 
 const messages = (findings: Array<{ message: string }>) =>
@@ -45,8 +45,42 @@ describe('citedNormativeIds', () => {
     expect([...cited]).toEqual(['REQ-DEMO-0011'])
   })
 
+  // 例の住所は末尾に連番を足して作るため、隣の id を部分文字列として含む。
+  // 前後どちらの端でも、別の id の一部を引用と数えてはならない。
+  it('does not let a longer id count as a mention of the id it ends with', () => {
+    const cited = citedNormativeIds(
+      ['// EX-DEMO-001-01 の前段として PRE-EX-DEMO-001-02 を用意する'],
+      ['EX-DEMO-001-01', 'EX-DEMO-001-02'],
+    )
+    expect([...cited]).toEqual(['EX-DEMO-001-01'])
+  })
+
   it('reads nothing when the specification declares nothing', () => {
     expect([...citedNormativeIds(['// REQ-DEMO-001'], [])]).toEqual([])
+  })
+
+  // 旧形式の粗い追跡を名前だけ変えて残さないための境界。親を引用しただけの
+  // テストが、その規則に属する具体例まで確認したことにはならない。
+  it('does not let a rule citation cover the examples under it', () => {
+    const cited = citedNormativeIds(
+      ['func TestExchange(t *testing.T) { // REQ-OAUTH2-005 }'],
+      ['REQ-OAUTH2-005', 'EX-OAUTH2-005-01', 'EX-OAUTH2-005-02'],
+    )
+    expect([...cited]).toEqual(['REQ-OAUTH2-005'])
+  })
+
+  it('credits every example a single table-driven test names', () => {
+    const cited = citedNormativeIds(
+      [
+        'func TestPromptNone(t *testing.T) {\n' +
+          '\tcases := []struct{ id string }{\n' +
+          '\t\t{id: "EX-OAUTH2-005-03"},\n' +
+          '\t\t{id: "EX-OAUTH2-005-05"},\n' +
+          '\t}\n}',
+      ],
+      ['EX-OAUTH2-005-03', 'EX-OAUTH2-005-04', 'EX-OAUTH2-005-05'],
+    )
+    expect([...cited].sort()).toEqual(['EX-OAUTH2-005-03', 'EX-OAUTH2-005-05'])
   })
 })
 
@@ -69,7 +103,7 @@ describe('checkNormativeCoverage', () => {
       debtPath: DEBT,
     })
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.path).toBe('docs/contexts/demo/scenarios.md')
+    expect(findings[0]?.path).toBe('docs/contexts/demo/scenarios.feature.md')
     expect(findings[0]?.message).toContain('REQ-DEMO-002')
     expect(findings[0]?.message).toContain('no test names it')
   })
@@ -106,6 +140,19 @@ describe('checkNormativeCoverage', () => {
     })
     expect(messages(findings)).toEqual([
       'REQ-DEMO-002 now has a test that names it. Remove it from the list; the list only shrinks.',
+    ])
+  })
+
+  it('rejects admitting a new id to a ratcheted debt ledger', () => {
+    const findings = checkNormativeCoverage({
+      declared,
+      cited: new Set(['REQ-DEMO-001']),
+      debt: [{ id: 'REQ-DEMO-002', reason: 'newly added without a test' }],
+      debtPath: DEBT,
+      debtBaseline: new Set(['REQ-DEMO-001']),
+    })
+    expect(messages(findings)).toEqual([
+      'REQ-DEMO-002 was not in the migration baseline. Add a test instead of growing the debt list.',
     ])
   })
 

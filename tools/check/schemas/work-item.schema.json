@@ -230,7 +230,7 @@
       "additionalProperties": false,
       "properties": {
         "specification": {
-          "description": "normative scenario への direct reference。docs/contexts/<context>/scenarios.md#REQ-<CONTEXT>-NNN 形式。",
+          "description": "normative scenario への direct reference。docs/contexts/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN 形式。",
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },

@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-003 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-007 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-003 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-007 }
 depends_on: [wi-153-identity-lifecycle-workflows, wi-217-lifecycle-workflow-durable-run-handoff, wi-218-lifecycle-workflow-action-execution-and-audit]
 ---
 

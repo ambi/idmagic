@@ -61,9 +61,9 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DelegationMode }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.IntrospectionResponse }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.TokenExchanged }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-049 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-021 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-048 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-049 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-021 }
 ---
 
 # 委譲深さの上限をテナントポリシーにし、トークンが自律実行か代理実行かを判別可能にする

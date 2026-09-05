@@ -21,15 +21,15 @@ initial_context:
     - docs/capacity.md
     - docs/database.md
     - docs/observability.md
-    - docs/scenarios.md#REQ-PLATFORM-001
-    - docs/contexts/authentication/scenarios.md#REQ-AUTHENTICATION-009
-    - docs/contexts/authorization/scenarios.md#REQ-AUTHORIZATION-005
-    - docs/contexts/tenancy/scenarios.md#REQ-TENANCY-009
-    - docs/contexts/oauth2/scenarios.md#REQ-OAUTH2-015
-    - docs/contexts/data-keys/scenarios.md#REQ-DATAKEYS-005
-    - docs/contexts/workloadidentity/scenarios.md#REQ-WORKLOADIDENTITY-002
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-006
-    - docs/contexts/seeding/scenarios.md#REQ-SEEDING-005
+    - docs/scenarios.feature.md#REQ-PLATFORM-001
+    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-009
+    - docs/contexts/authorization/scenarios.feature.md#REQ-AUTHORIZATION-005
+    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-009
+    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-015
+    - docs/contexts/data-keys/scenarios.feature.md#REQ-DATAKEYS-005
+    - docs/contexts/workloadidentity/scenarios.feature.md#REQ-WORKLOADIDENTITY-002
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-006
+    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-005
   typespec: []
   source:
     - tools/check/src/specification-doc.ts
@@ -115,7 +115,7 @@ initial_context:
 - **THREAT-061 が `REQ-SYSTEM-016` を引き忘れていた。** 脅威はログ側にも及ぶが、引かれていたのは設定リファレンス側だけだった。
 - **THREAT-032 が `optional` / `MAY` の規範を根拠に含めていた。** 提供しない構成では制御が存在しないことが表から読めないので削り、実質の制御である `REQ-AUTHORIZATION-007` だけを残した。
 - **THREAT-034 の受容理由が不正確だった。** フェイルオープンは HIBP を使う追加の照合に限られ、同梱辞書の照合は確実に働く。限定を書き足した。
-- **退役の手順が実行不可能だった。** 「見出しに後継を書く」は `scenarios.md` の規約をそのまま持ち込んだもので、行として書かれる脅威には見出しが無い。`Status` に `retired` を足し、`Threat` 列に後継を書く形へ改めた。
+- **退役の手順が実行不可能だった。** 「見出しに後継を書く」は `scenarios.feature.md` の規約をそのまま持ち込んだもので、行として書かれる脅威には見出しが無い。`Status` に `retired` を足し、`Threat` 列に後継を書く形へ改めた。
 - **`Controls` の文法が実際の用法を覆っていなかった。** 節を伴わない文書参照と `wi-NNN` が未定義だった。前者を文法に加え、応える規範が無い行の `—` を定め、runbook を指す行は必ず `planned` になるという規則を明示した。後者は再承認で却下されたため、表から除いた。
 - **表ヘッダー 3 つが日本語だった。** `CLAUDE.md` の言語表は table headers を英語と定める。英語へ直した。
 - **`Category` 列の語彙が不揃いだった。** 原語と短縮形が混在していたので STRIDE の 6 語へ統一し、日本語の意味との対応表を置いた。

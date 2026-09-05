@@ -8,15 +8,15 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-006 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-010 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-006 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-010 }
 ---
 
 # Jobs が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -48,7 +48,7 @@ affected_spec:
 - `REQ-JOBS-006` は、拒否の後に対象テナントのデータが変わっていないことを確かめる。
 - `REQ-JOBS-010` は、起動が失敗すること、およびその状態でジョブが 1 件も処理されないことを確かめる。
 - 各テストのソースに対応する `REQ-JOBS-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -130,7 +130,7 @@ wi-390 の欠陥と同じ形である。
 - [ ] T002 [Acceptance] テナント境界の拒否 (006) をデータと記録の両方で確かめるテストを書く。
 - [ ] T003 [Acceptance] レーン未登録と重複登録の起動失敗 (010) を、受付が始まらないことまで確かめるテストを書く。
 - [ ] T004 [App] 拒否の実装または記録が欠けていた経路を修正する。
-- [ ] T005 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T005 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T006 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

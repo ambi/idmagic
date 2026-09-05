@@ -23,7 +23,7 @@ affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantEndpointStyle }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-009 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-009 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Contract.SetTenantEndpointStyle }
 ---
 
@@ -105,7 +105,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 - **apex ドメインを拒否する** (`login.example.com` は可、`example.com` は不可)。
   Okta / OneLogin と同じ制約。apex CNAME の DNS 制約を避け、顧客の Web サイトごと
   IdP に向ける事故を防ぐ。
-- **トライアル抑止は既存 quota 機構に乗せる**。`docs/contexts/tenancy/scenarios.md` の `TenantQuota` の resource に `custom_domains` を
+- **トライアル抑止は既存 quota 機構に乗せる**。`docs/contexts/tenancy/scenarios.feature.md` の `TenantQuota` の resource に `custom_domains` を
   追加し既定 1 とする。トライアルは override で 0 にすれば登録自体が塞がる
   (Auth0 の「有料プランのみ」に相当)。新しい plan / tier 概念を持ち込まない。
 - **DNS 検証はアプリから外向き HTTP を出さない**。DNS resolver 経由の TXT 参照のみを行い、

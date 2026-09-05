@@ -9,7 +9,7 @@ change_kind: bugfix
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/contexts/provisioning/scenarios.md
+    - docs/contexts/provisioning/scenarios.feature.md
     - docs/contexts/provisioning/standards.md
   typespec: [IdMagic.Contract.ProvisioningFeatureFlags]
   source:
@@ -23,7 +23,7 @@ initial_context:
     - backend/provisioning/usecases
   stop_before_reading: [frontend, backend/oauth2, backend/authentication]
 affected_spec:
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-013 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-013 }
   - { path: spec/contexts/provisioning/models.tsp, symbol: IdMagic.Contract.ProvisioningFeatureFlags }
 ---
 

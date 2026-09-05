@@ -8,8 +8,8 @@ created_at: 2026-08-30
 priority: p1
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-002 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-002 }
 ---
 
 # 配備前に旧版と新版の更新互換性を判定する

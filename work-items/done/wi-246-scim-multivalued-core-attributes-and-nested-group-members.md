@@ -31,7 +31,7 @@ initial_context:
 affected_spec:
   - { path: docs/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
   - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
-  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-006 }
+  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-006 }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimSchemas }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }

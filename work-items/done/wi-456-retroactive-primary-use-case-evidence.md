@@ -20,7 +20,7 @@ initial_context:
     - docs/README.md
     - docs/development/testing.md
     - docs/development/specification-first-workflow.md
-    - docs/scenarios.md
+    - docs/scenarios.feature.md
     - docs/contexts
     - spec/contexts
     - backend
@@ -38,57 +38,57 @@ initial_context:
     - tools/workspace/src/check-workspace.test.ts
   stop_before_reading: [infra, load]
 affected_spec:
-  - { path: docs/scenarios.md, requirement: REQ-PLATFORM-001 }
-  - { path: docs/scenarios.md, requirement: REQ-PLATFORM-002 }
-  - { path: docs/scenarios.md, requirement: REQ-PLATFORM-003 }
-  - { path: docs/contexts/saml/scenarios.md, requirement: REQ-SAML-004 }
-  - { path: docs/contexts/saml/scenarios.md, requirement: REQ-SAML-006 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-004 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-011 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-016 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-001 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-011 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-013 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-026 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-030 }
-  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-002 }
-  - { path: docs/contexts/signing-keys/scenarios.md, requirement: REQ-SIGNINGKEYS-001 }
-  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-001 }
-  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-003 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-002 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-012 }
-  - { path: docs/contexts/seeding/scenarios.md, requirement: REQ-SEEDING-010 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-005 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-006 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-026 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-027 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-035 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-002 }
-  - { path: docs/contexts/workloadidentity/scenarios.md, requirement: REQ-WORKLOADIDENTITY-001 }
-  - { path: docs/contexts/workloadidentity/scenarios.md, requirement: REQ-WORKLOADIDENTITY-008 }
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-002 }
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-003 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-004 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-006 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-011 }
-  - { path: docs/contexts/claim-mapping/scenarios.md, requirement: REQ-CLAIMMAPPING-001 }
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-001 }
-  - { path: docs/contexts/api-tokens/scenarios.md, requirement: REQ-APITOKENS-003 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-002 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-010 }
-  - { path: docs/contexts/ws-federation/scenarios.md, requirement: REQ-WSFEDERATION-002 }
-  - { path: docs/contexts/ws-federation/scenarios.md, requirement: REQ-WSFEDERATION-004 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-001 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-006 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-012 }
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-003 }
+  - { path: docs/scenarios.feature.md, requirement: REQ-PLATFORM-001 }
+  - { path: docs/scenarios.feature.md, requirement: REQ-PLATFORM-002 }
+  - { path: docs/scenarios.feature.md, requirement: REQ-PLATFORM-003 }
+  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-004 }
+  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-006 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-011 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-016 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-013 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-026 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-030 }
+  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-002 }
+  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-001 }
+  - { path: docs/contexts/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-001 }
+  - { path: docs/contexts/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-003 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-002 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
+  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-010 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-005 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-006 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-026 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-027 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-035 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-041 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-002 }
+  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-001 }
+  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-008 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-002 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-003 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-006 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/contexts/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-001 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
+  - { path: docs/contexts/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-003 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-002 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-010 }
+  - { path: docs/contexts/ws-federation/scenarios.feature.md, requirement: REQ-WSFEDERATION-002 }
+  - { path: docs/contexts/ws-federation/scenarios.feature.md, requirement: REQ-WSFEDERATION-004 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-001 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-006 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-007 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-012 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-003 }
 primary_use_cases:
   - id: platform-principal-lifecycle
     requirement: REQ-PLATFORM-001

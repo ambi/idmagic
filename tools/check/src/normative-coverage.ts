@@ -3,7 +3,7 @@
  * that names it.
  *
  * `standards.md` says of its own rows that each one has a corresponding test,
- * and `scenarios.md` gives every behavior an id so a test can point at it. Both
+ * and `scenarios.feature.md` gives every behavior an id so a test can point at it. Both
  * claims were unchecked: `WCAG22-KEYBOARD`, `GDPR-ERASURE`, and
  * `GDPR-CONSENT-WITHDRAWAL` appeared nowhere in `backend/` or `frontend/`, and
  * 191 of 306 live scenarios were named by no test at all.
@@ -33,6 +33,8 @@ export type CoverageInput = {
   cited: ReadonlySet<string>
   debt: readonly DebtEntry[]
   debtPath: string
+  /** IDs admitted when this debt ledger was introduced. Omit for a non-ratcheted ledger. */
+  debtBaseline?: ReadonlySet<string>
 }
 
 function escapeForPattern(value: string): string {
@@ -71,7 +73,7 @@ export function citedNormativeIds(
 }
 
 export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] {
-  const { declared, cited, debt, debtPath } = input
+  const { declared, cited, debt, debtPath, debtBaseline } = input
   const findings: CoverageFinding[] = []
   const listed = new Set(debt.map((entry) => entry.id))
 
@@ -98,6 +100,12 @@ export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] 
       continue
     }
     seen.add(entry.id)
+    if (debtBaseline && !debtBaseline.has(entry.id)) {
+      findings.push({
+        path: debtPath,
+        message: `${entry.id} was not in the migration baseline. Add a test instead of growing the debt list.`,
+      })
+    }
     if (previous !== undefined && entry.id < previous) {
       findings.push({
         path: debtPath,

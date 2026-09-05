@@ -10,4 +10,4 @@ WS-Fed / WS-Trust とは、クレームの発行処理と XML 署名だけを共
 | [standards.md](standards.md) | 準拠する外部規範 |
 | [decisions.md](decisions.md) | 設計判断 |
 | [internals.md](internals.md) | 機構の説明 |
-| [scenarios.md](scenarios.md) | 受け入れシナリオ |
+| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |

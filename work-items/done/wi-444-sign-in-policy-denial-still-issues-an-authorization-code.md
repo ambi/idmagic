@@ -10,8 +10,8 @@ change_kind: bugfix
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.md
-    - docs/contexts/application/scenarios.md
+    - docs/contexts/oauth2/scenarios.feature.md
+    - docs/contexts/application/scenarios.feature.md
   typespec: [IdMagic.OAuth2.Operations.Authorize]
   source:
     - backend/oauth2/handlers_http/authorize_login.go
@@ -22,8 +22,8 @@ initial_context:
     - backend/oauth2/handlers_http/authorize_handler_test.go
   stop_before_reading: [frontend, spec, backend/sourcing]
 affected_spec:
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-010 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-009 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-010 }
 ---
 
 # サインインポリシーが拒否した認可要求に、認可コードが発行されている

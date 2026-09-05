@@ -17,7 +17,7 @@ spec_impact:
 
 HTML 出力された仕様サイトを読むと、案内が実際の文書構造を映していない箇所がいくつかある。
 
-- context を開くと `glossary.md`、`scenarios.md` のようなファイル名が並ぶ。読み手が選ぶ手掛かりは「どの種類の内容か」であって、ファイル名ではない。しかも並びがアルファベット順で、`decisions.md` が `glossary.md` より前に来る。正規レイアウトが定めている「用語 → 規格 → 状態 → 決定 → 内部 → シナリオ」という読む順とずれている。
+- context を開くと `glossary.md`、`scenarios.feature.md` のようなファイル名が並ぶ。読み手が選ぶ手掛かりは「どの種類の内容か」であって、ファイル名ではない。しかも並びがアルファベット順で、`decisions.md` が `glossary.md` より前に来る。正規レイアウトが定めている「用語 → 規格 → 状態 → 決定 → 内部 → シナリオ」という読む順とずれている。
 - Whole System も同じくアルファベット順で、語の定義である Glossary が Deployment や Persistence より後ろに沈む。
 - Glossary の表で Term 列が 1 文字ずつ折り返され、`InterfaceStability` のような語が縦に割れて読めない。
 - サイドバーに Method 3 件、Whole System 11 件、Contexts 21 件が常時並び、それ自体がスクロールを持つ。現在地を探す前にサイドバーを読む羽目になる。

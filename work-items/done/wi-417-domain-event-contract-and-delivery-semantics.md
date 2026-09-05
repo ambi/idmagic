@@ -18,8 +18,8 @@ initial_context:
     - docs/contexts/system/decisions.md
     - docs/contexts/jobs/decisions.md
     - docs/contexts/audit/internals.md
-    - docs/contexts/audit/scenarios.md#REQ-AUDIT-002
-    - docs/contexts/provisioning/scenarios.md#REQ-PROVISIONING-003
+    - docs/contexts/audit/scenarios.feature.md#REQ-AUDIT-002
+    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-003
   typespec:
     - IdMagic.Contract.AdminAuditEventResponse
     - IdMagic.Contract.AuditEventQuery
@@ -38,8 +38,8 @@ initial_context:
     - tools/check/src
   stop_before_reading: [frontend, infra, load]
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-002 }
-  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-003 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-002 }
+  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-003 }
 ---
 
 # ドメインイベントの契約と配信意味論を仕様として持つ

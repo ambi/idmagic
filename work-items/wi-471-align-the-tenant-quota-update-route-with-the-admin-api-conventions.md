@@ -8,8 +8,8 @@ change_kind: bugfix
 priority: p1
 depends_on: [wi-467-enforce-csrf-on-tenant-quota-update]
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-012 }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-012 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-014 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuotaUpdateRequest }
 ---

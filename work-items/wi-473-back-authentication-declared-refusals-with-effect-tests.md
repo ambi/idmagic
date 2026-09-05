@@ -8,25 +8,25 @@ change_kind: maintenance
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-002 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-003 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-004 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-005 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-006 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-008 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-009 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-017 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-020 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-021 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-022 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-025 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-002 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-003 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-004 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-005 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-006 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-008 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-009 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-017 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-020 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-021 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-022 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-025 }
 ---
 
 # Authentication が宣言する未検証の拒否 12 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -55,7 +55,7 @@ wi-390 が見つけた欠陥は、テストがあり、カバレッジもあり�
 - 台帳の Authentication の 12 件それぞれについて、宣言された拒否に production と同じ入口から到達するテストを用意する。
 - 各テストで 2 つを assert する。呼び出し元が観測する応答 (ステータスとエラー種別) と、その拒否が変えなかった状態。
 - 各テストのソースに対応する `REQ-AUTHENTICATION-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 防護の追加に新しい設計判断が要る場合は、その id だけを台帳に残し、引き取る work item を切って `depends_on` でつなぐ。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
@@ -148,7 +148,7 @@ wi-390 の欠陥そのものであり、この項目が存在する理由と正�
 - [ ] T005 [Acceptance] CSRF と流量制限の拒否 (006、008) を効果まで確かめるテストを書く。
 - [ ] T006 [Acceptance] 管理操作のテナント境界の拒否 (021、022) を効果まで確かめるテストを書く。
 - [ ] T007 [App] 拒否の実装が欠けていた経路を修正する、または引き取る work item を切って `depends_on` でつなぐ。
-- [ ] T008 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T008 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T009 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

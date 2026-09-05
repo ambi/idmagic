@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p3
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-012 }
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-012 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
 ---
 
 # データ層を 10万テナント・1000万ユーザで飽和しないよう分割・リードレプリカ・接続プールで支える

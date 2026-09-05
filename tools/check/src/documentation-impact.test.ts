@@ -188,7 +188,9 @@ describe('verifyDocumentationImpact', () => {
     const completed = {
       ...record,
       status: 'completed',
-      affected_spec: [{ path: 'docs/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-001' }],
+      affected_spec: [
+        { path: 'docs/contexts/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+      ],
       documentation_impact: {
         level: 'release_note',
         reason: 'The completed feature is noteworthy to release readers.',

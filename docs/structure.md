@@ -7,7 +7,7 @@
 ├── backend/           # Go Bounded Contexts, shared, cmd/
 ├── frontend/          # React UI and gateway
 ├── docs/              # human-authored product, specification, development, and runbook documents
-│   ├── contexts/<context>/
+│   ├── contexts/<context>/ # kind-specific canonical documents, including scenarios.feature.md
 │   ├── development/
 │   ├── releases/
 │   │   ├── changes/
@@ -28,7 +28,7 @@
 
 | 関心事 | 置き場所 | 詳細 |
 | --- | --- | --- |
-| 仕様と設計 | `spec/**/*.tsp`, `docs/*.md`, `docs/contexts/**/*.md` | 規範的な振る舞い、契約、現在の根拠。変更はここから始まる。 |
+| 仕様と設計 | `spec/**/*.tsp`, `docs/*.md`, `docs/**/scenarios.feature.md` | 規範的な振る舞い、契約、現在の根拠。シナリオ正本は公式Markdown with Gherkinとして解析され、変更はここから始まる。 |
 | 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース。 |
 | リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は正準文書が所有する。 |
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |

@@ -8,14 +8,14 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/api-tokens/scenarios.md, requirement: REQ-APITOKENS-002 }
+  - { path: docs/contexts/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-002 }
 ---
 
 # ApiTokens が宣言する未検証の拒否 1 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -45,7 +45,7 @@ JWT の形式、署名、発行者、audience、`exp` のいずれかが不正�
 - 各テストで 2 つを assert する。呼び出し元が観測する応答 (ステータスとエラー種別) と、その拒否が変えなかった状態。
 - 拒否の理由ごとに、少なくとも形式、署名、発行者、audience、`exp`、未知、失効済み、空スコープを網羅する。
 - テストのソースに `REQ-APITOKENS-002` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -142,7 +142,7 @@ audience と発行者の拒否は、値だけが違う正しい形式のトー�
 - [ ] T003 [Acceptance] 未知および空スコープのトークンの拒否を、書き換えが起きないことまで確かめるテストを書く。
 - [ ] T004 [Acceptance] 失効済みトークンの拒否を、失効前の成功と対で確かめるテストを書く。
 - [ ] T005 [App] 拒否の実装が欠けていた経路を修正する。
-- [ ] T006 [Ledger] `REQ-APITOKENS-002` を `scenario-coverage-debt.json` から削除する。
+- [ ] T006 [Ledger] `REQ-APITOKENS-002` を `example-coverage-debt.json` から削除する。
 - [ ] T007 [Verify] 認証を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

@@ -40,7 +40,7 @@ authorization remains executable application behavior unless a later work item a
 Before changing behavior, update the smallest owning specification: models, APIs, HTTP contracts, and
 authentication schemes in TypeSpec; scenarios, terms, standards, state transitions, decisions, and
 mechanism in the file that holds that kind of content. The file name says which one — a new behavior goes
-in `scenarios.md`, a new reason in `decisions.md` — so the smallest owning file is usually one file, not
+in `scenarios.feature.md`, a new reason in `decisions.md` — so the smallest owning file is usually one file, not
 a section inside a large one. Give each normative behavior an immutable `REQ-<CONTEXT>-NNN` ID, and
 express state machines as a state table and a transition table. A normative change discovered during
 implementation returns to the specification stage; do not relax a scenario merely to make an implementation
@@ -319,14 +319,15 @@ Current design must be understandable from the canonical documents and the work 
 
 Start from the work item's `initial_context`, which is written when the item starts and names the
 specification, code, and tests to read — and what to leave unread. Naming a file is enough to say what to
-read, because the file names carry the kinds: `scenarios.md` for what a context must do,
+read, because the file names carry the kinds: `scenarios.feature.md` for what a context must do,
 `decisions.md` for why it does it that way, `internals.md` for how a mechanism works. Reach anything else
 with `mise run spec-where <requirement-id-or-term>`, which returns locations rather than whole files. Do not
 preload generated artifacts, unrelated contexts, or repository-wide method documents for an ordinary
 feature change.
 
-Naming a requirement ID in a test or in the code that implements it is what makes that link findable
-later, both from `mise run spec-where` and from the generated Traceability page.
+Naming a requirement ID in implementation code keeps the high-level rule findable. Naming an `EX-*` ID in
+a product test is what covers a concrete example; a parent `REQ-*` mention does not cover its children. Both
+links appear on the generated Traceability page.
 
 ## 9. Influences and references
 
@@ -381,7 +382,9 @@ sources of truth or complete conformance. IdMagic's evidence contract is a repos
   enumerating the examples the author already had in mind.
 - **Behavior-Driven Development:** Dan North's
   [Introducing BDD](https://dannorth.net/introducing-bdd/)
-  informs behavior-oriented normative scenarios without introducing a second Gherkin source of truth.
+  informs behavior-oriented normative scenarios. The sole scenario source uses the official Markdown with
+  Gherkin dialect for `Feature`, `Rule`, `Example`, and `Scenario Outline`; it does not introduce Cucumber as
+  a test runner or generate product tests from steps.
 - **Acceptance Test-Driven Development:** Robert C. Martin and Grigori Melnik's
   [Tests and Requirements, Requirements and Tests: A Möbius Strip](https://doi.org/10.1109/MS.2008.24)
   informs defining acceptance evidence before implementation.

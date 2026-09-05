@@ -8,16 +8,16 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-001 }
-  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-003 }
-  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-004 }
+  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-001 }
+  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-003 }
+  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-004 }
 ---
 
 # Sourcing が宣言する未検証の拒否 3 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -45,7 +45,7 @@ SCIM の PATCH は部分更新であり、拒否が遅れれば「一部だけ�
 - 各テストで 2 つを assert する。SCIM プロトコルエラーの `scimType` と、その拒否がリソースを変えていないこと。
 - 複数の操作を含む PATCH は、拒否されたときに 1 つも適用されていないことを確かめる。
 - 各テストのソースに対応する `REQ-SOURCING-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -127,7 +127,7 @@ SCIM はプロビジョニングトークンを付けた HTTP の境界から入
 - [ ] T003 [Acceptance] PUT の必須属性欠落の拒否 (003) を置換前の値の保持まで確かめるテストを書く。
 - [ ] T004 [Acceptance] PATCH の拒否 (004) を部分適用の不在まで確かめるテストを書く。
 - [ ] T005 [App] 拒否の実装が欠けていた経路を修正する。
-- [ ] T006 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T006 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T007 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

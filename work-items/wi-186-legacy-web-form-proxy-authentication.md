@@ -7,8 +7,8 @@ created_at: 2026-07-11
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-007 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-011 }
 ---
 
 # レガシーWebフォームへの代理認証を安全な限定互換機能として導入する
@@ -32,7 +32,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
 - **specification**:
   - `docs/README.md` の Context Map に `LegacyAccess` を追加する。
-  - `docs/contexts/legacy-access/` に `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.md`、
+  - `docs/contexts/legacy-access/` に `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.feature.md`、
     `models.tsp`、`main.tsp` を追加する。権限境界は `docs/authorization.md` に合流させる。
   - `docs/contexts/application/` に `legacy_form` protocol binding と、代理認証を使う
     Application のポータル起動情報を追加する。

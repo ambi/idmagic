@@ -10,8 +10,8 @@ change_kind: feature
 evidence_policy: risk-based-v3
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-016
-    - docs/contexts/system/scenarios.md#REQ-SYSTEM-017
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-016
+    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-017
   typespec:
     - IdMagic.Contract.FeatureRuntimeMetadata
     - IdMagic.OAuth2.Operations.HealthHttpResponse
@@ -32,8 +32,8 @@ initial_context:
     - backend/shared/http/server_http/routes_e2e_test.go
   stop_before_reading: [backend/application, frontend, infra]
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-017 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-017 }
   - { path: spec/contexts/system/models.tsp, symbol: IdMagic.Contract.FeatureRuntimeMetadata }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.HealthHttpResponse }
 primary_use_cases:

@@ -3,7 +3,7 @@ depends_on: []
 status: completed
 authors: [tn]
 initial_context:
-  specification: [docs/scenarios.md, docs/contexts/authentication/scenarios.md, docs/contexts/identity-management/scenarios.md, docs/contexts/sharedsignals/scenarios.md, docs/contexts/provisioning/scenarios.md]
+  specification: [docs/scenarios.feature.md, docs/contexts/authentication/scenarios.feature.md, docs/contexts/identity-management/scenarios.feature.md, docs/contexts/sharedsignals/scenarios.feature.md, docs/contexts/provisioning/scenarios.feature.md]
   source: [tools/check/src/spec-diff.ts, tools/check/src/check-security-controls.ts]
   tests: [tools/check/src]
   stop_before_reading: [backend, frontend, spec]
@@ -12,20 +12,20 @@ created_at: 2026-08-23
 priority: p1
 change_kind: docs
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-009 }
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-012 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-002 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-009 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-012 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-002 }
 ---
 
-# `docs/scenarios.md` を作り、Context を跨ぐ保証に置き場所を与える
+# `docs/scenarios.feature.md` を作り、Context を跨ぐ保証に置き場所を与える
 
 ## Motivation
 
-[SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md) §1 の正規文書一覧と `tools/check/src/specification-doc.ts:41` の `ROOT_DOCUMENTS` は `docs/scenarios.md` を認めている。**このファイルは存在しない。** `docs/README.md` の `Documents` 表にも行が無いので、読み手は置き場所があること自体を知らない。
+[SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md) §1 の正規文書一覧と `tools/check/src/specification-doc.ts:41` の `ROOT_DOCUMENTS` は `docs/scenarios.feature.md` を認めている。**このファイルは存在しない。** `docs/README.md` の `Documents` 表にも行が無いので、読み手は置き場所があること自体を知らない。
 
 §3 はその置き場所が何のためにあるかをこう書いている。
 
-> A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several contexts cooperate belongs to `docs/scenarios.md` ... Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
+> A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several contexts cooperate belongs to `docs/scenarios.feature.md` ... Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
 **すでにその状態になっている。** 「主体を止めたら到達経路が閉じる」という 1 つの保証が、3 つの Context に断片として散っている。
 
@@ -45,7 +45,7 @@ affected_spec:
 
 ## Scope
 
-- `docs/scenarios.md` を作り、複数の Context が協調して初めて成り立つ振る舞いを置く。各シナリオは参加する Context を名指す。
+- `docs/scenarios.feature.md` を作り、複数の Context が協調して初めて成り立つ振る舞いを置く。各シナリオは参加する Context を名指す。
 - 対象を洗い出す。少なくとも次の 3 系統を候補とする。
   - 主体の停止・削除予約・完全削除が、ログイン・既存セッション・エージェントトークン・下流プロビジョニングへ伝わる連鎖。
   - `Sourcing` の取り込みが `IdManagement` を経て `Provisioning` の配信を起こす、上流から下流への伝播。
@@ -62,7 +62,7 @@ affected_spec:
 
 ## Design
 
-3 点とも着手時に確定した。**判定の基準は「その Context だけでは `WHEN` を起こせないこと」に置いた。** 全 21 Context の `scenarios.md` から 451 件の `WHEN` を機械的に抜き出し、他 Context の操作を引き金にしているものを絞り込んだ。
+3 点とも着手時に確定した。**判定の基準は「その Context だけでは `WHEN` を起こせないこと」に置いた。** 全 21 Context の `scenarios.feature.md` から 451 件の `WHEN` を機械的に抜き出し、他 Context の操作を引き金にしているものを絞り込んだ。
 
 1. **断片ごとに扱いを分けた。** 起票時の (a)(b)(c) はいずれも全件に同じ扱いをする案だったが、断片の性質が一様でなかった。
 
@@ -87,16 +87,16 @@ affected_spec:
 
 ## Plan
 
-- 全 Context の `scenarios.md` を通し、`WHEN` が他 Context の操作であるシナリオを列挙する。ここが作業量の実測になる。
+- 全 Context の `scenarios.feature.md` を通し、`WHEN` が他 Context の操作であるシナリオを列挙する。ここが作業量の実測になる。
 - 列挙結果を見てから 1 の案を決める。移す件数が少なければ (b)、多ければ (a) に寄る。
-- `docs/scenarios.md` を作り、まず 1 系統（主体の停止の連鎖）だけを書く。書式検査と生成サイトの導線がそれで通ることを確かめてから残りへ広げる。
+- `docs/scenarios.feature.md` を作り、まず 1 系統（主体の停止の連鎖）だけを書く。書式検査と生成サイトの導線がそれで通ることを確かめてから残りへ広げる。
 - 「書けない」が出たら切り出して先へ進む。止まらない。
 
 ## Tasks
 
-- [x] T001 [Spec] 全 Context の `scenarios.md` から 451 件の `WHEN` を抜き出し、他 Context の操作を引き金にするものを絞り込んだ。
+- [x] T001 [Spec] 全 Context の `scenarios.feature.md` から 451 件の `WHEN` を抜き出し、他 Context の操作を引き金にするものを絞り込んだ。
 - [x] T002 [Design] 既存 id の扱い、機械化の可否、接頭辞を確定し `## Design` に記録した。
-- [x] T003 [Spec] `docs/scenarios.md` を作り、主体の停止の連鎖を `REQ-PLATFORM-001` / `REQ-PLATFORM-002` として書いた。
+- [x] T003 [Spec] `docs/scenarios.feature.md` を作り、主体の停止の連鎖を `REQ-PLATFORM-001` / `REQ-PLATFORM-002` として書いた。
 - [x] T004 [Spec] `docs/README.md` の `Documents` 表に行を足した。
 - [x] T005 [Spec] 下流への伝播を `REQ-PLATFORM-003` として書いた。上流からの取り込みと Seeding は該当しないと判定した（Design 参照）。
 - [x] T006 [Spec] 断片 6 件を、書き直し 4 件・退役 2 件として処理した。
@@ -106,7 +106,7 @@ affected_spec:
 ## Verification
 
 - `mise run check-spec`
-  - reason: `docs/scenarios.md` は `ROOT_DOCUMENTS` にあるが、実在した状態で検査が通ったことはまだない。
+  - reason: `docs/scenarios.feature.md` は `ROOT_DOCUMENTS` にあるが、実在した状態で検査が通ったことはまだない。
 - `mise run check-ids`
   - reason: id の一意性と、退役させた場合の後継の実在を確かめる。
 - `mise run spec-render`
@@ -127,11 +127,11 @@ affected_spec:
 
 - **Completed At**: 2026-08-23
 - **Summary**:
-  `docs/scenarios.md` を作り、Context を跨がないと成り立たない保証を 3 件置いた。`REQ-PLATFORM-001` は主体の無効化がログイン・既存セッション・エージェントのトークンという 3 経路を**同時に**閉じることを 1 つの保証として述べ、外部への伝播はこの保証に含まれないこと（内部で閉じ切るのが先）も明示した。`REQ-PLATFORM-002` は削除の予約と復元が到達経路の開閉と対応することを、`REQ-PLATFORM-003` は記録の正の変更と配信行が同じトランザクションでコミットまたはロールバックすることを述べる。断片 6 件は、自 Context が引き金を持てる形へ書き直したもの 4 件と、内容が丸ごと横断で退役させたもの 2 件に分けた。判定は全 21 Context の 451 件の `WHEN` から絞り込んで行い、Sourcing と Seeding は該当しないと判定した。
+  `docs/scenarios.feature.md` を作り、Context を跨がないと成り立たない保証を 3 件置いた。`REQ-PLATFORM-001` は主体の無効化がログイン・既存セッション・エージェントのトークンという 3 経路を**同時に**閉じることを 1 つの保証として述べ、外部への伝播はこの保証に含まれないこと（内部で閉じ切るのが先）も明示した。`REQ-PLATFORM-002` は削除の予約と復元が到達経路の開閉と対応することを、`REQ-PLATFORM-003` は記録の正の変更と配信行が同じトランザクションでコミットまたはロールバックすることを述べる。断片 6 件は、自 Context が引き金を持てる形へ書き直したもの 4 件と、内容が丸ごと横断で退役させたもの 2 件に分けた。判定は全 21 Context の 451 件の `WHEN` から絞り込んで行い、Sourcing と Seeding は該当しないと判定した。
 - **Verification Results**:
   - `mise run verify` - passed（exit 0）
   - `mise run spec-diff` - `added: REQ-PLATFORM-001/002/003`、`changed: REQ-AUTHENTICATION-009, REQ-IDMANAGEMENT-012, REQ-PROVISIONING-003/004/005, REQ-SHAREDSIGNALS-002`
-  - `mise run check-spec` - ok 138 document(s)（`docs/scenarios.md` を含む）
+  - `mise run check-spec` - ok 138 document(s)（`docs/scenarios.feature.md` を含む）
   - `mise run check-ids` - 407 件 OK（退役の後継 `REQ-PLATFORM-001` / `REQ-PLATFORM-002` の実在を含む）
   - `mise run check-security-controls` - ok 179 declared / 18 promised / 130 awaiting
 
@@ -148,6 +148,6 @@ affected_spec:
 
 ## Left Undone
 
-- **`docs/scenarios.md` の拒否は `check-security-controls` の対象外である。** R3 と R4 は `docs/contexts/*/scenarios.md` だけを走査する。`REQ-PLATFORM-*` が宣言する拒否（無効なユーザーのログイン拒否など）にテストを要求する仕組みが無い。**横断の保証こそテストが要るのに、いまは要求されていない。** 走査対象を広げるかどうかは、`REQ-PLATFORM-*` のテストがどの層に属するかを決めてからになる。
+- **`docs/scenarios.feature.md` の拒否は `check-security-controls` の対象外である。** R3 と R4 は `docs/contexts/*/scenarios.feature.md` だけを走査する。`REQ-PLATFORM-*` が宣言する拒否（無効なユーザーのログイン拒否など）にテストを要求する仕組みが無い。**横断の保証こそテストが要るのに、いまは要求されていない。** 走査対象を広げるかどうかは、`REQ-PLATFORM-*` のテストがどの層に属するかを決めてからになる。
 - **`REQ-PLATFORM-*` に対応するテストを書いていない。** 起票時の Out of Scope のとおりで、シナリオが書けた今、どの層が持つべきかを決められる状態になった。
 - **同じ形の欠陥がまだ他にもありうる。** 「静かにゼロを返す検査」はこのセッションで 3 件見つかっている（リンク検査、`spec-diff`、R4）。**件数を出力する検査は、件数そのものを見る習慣がないと壊れても気付けない。** 検査が 0 件を扱ったときに落ちる仕組みを持つかどうかは、[[wi-408-link-check-is-not-a-gate]] と同じ性質の課題として残る。

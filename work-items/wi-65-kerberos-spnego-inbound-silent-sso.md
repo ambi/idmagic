@@ -7,8 +7,8 @@ created_at: 2026-06-24
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/ws-federation/scenarios.md, requirement: REQ-WSFEDERATION-002 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/ws-federation/scenarios.feature.md, requirement: REQ-WSFEDERATION-002 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
 ---
 
 # Kerberos/SPNEGO inbound 認証による無音サインイン (passive WIA / エージェントレス Desktop SSO)

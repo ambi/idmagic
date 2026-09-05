@@ -16,6 +16,7 @@
 import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
+import { parseScenarioDocument } from './gherkin-scenarios.ts'
 import { parseFrontmatterAndMarkdown } from './main.ts'
 import { documentKind } from './specification-doc.ts'
 
@@ -110,12 +111,34 @@ function section(source: string, name: string): string {
   return end?.index === undefined ? rest : rest.slice(0, end.index)
 }
 
-function normalize(block: string): string {
-  return block
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join('\n')
+function legacyScenarioFacts(source: string): Map<string, string> {
+  const facts = new Map<string, string>()
+  const starts = [...source.matchAll(/^### (REQ-[A-Z0-9-]+): (.+)$/gm)]
+  for (const [index, start] of starts.entries()) {
+    const from = start.index ?? 0
+    const to = starts[index + 1]?.index ?? source.length
+    const fragments = new Set<string>()
+    for (const line of source.slice(from, to).split('\n')) {
+      const step = line.match(/^- (?:GIVEN|WHEN|THEN) (.+)$/)?.[1]
+      if (step) fragments.add(step)
+      const alternative = line.match(/^  - ALT (.+)$/)?.[1]
+      if (alternative) for (const fragment of alternative.split(' → ')) fragments.add(fragment)
+    }
+    facts.set(start[1] ?? '', ['legacy', start[2] ?? '', ...[...fragments].sort()].join('\n'))
+  }
+  return facts
+}
+
+function gherkinScenarioFacts(source: string): Map<string, string> {
+  const facts = new Map<string, string>()
+  for (const rule of parseScenarioDocument(source).rules) {
+    const fragments = new Set(
+      rule.examples.flatMap((example) => example.steps.map((step) => step.text)),
+    )
+    const title = rule.name.replace(new RegExp(`^${rule.id}(?::)?\\s*`), '')
+    facts.set(rule.id, ['gherkin', title, ...[...fragments].sort()].join('\n'))
+  }
+  return facts
 }
 
 export function extractFacts(snapshot: Snapshot): SpecificationFacts {
@@ -145,12 +168,14 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     if (name === 'standards.md') {
       for (const [id, row] of standardRows(path, source)) facts.standards.set(id, row)
     }
-    const scenarios = name === 'scenarios.md' ? source : section(source, 'Scenarios')
-    const starts = [...scenarios.matchAll(/^### (REQ-[A-Z0-9-]+):/gm)]
-    for (const [index, start] of starts.entries()) {
-      const from = start.index ?? 0
-      const to = starts[index + 1]?.index ?? scenarios.length
-      facts.scenarios.set(start[1] ?? '', normalize(scenarios.slice(from, to)))
+    const scenarioFacts =
+      name === 'scenarios.feature.md'
+        ? gherkinScenarioFacts(source)
+        : name === 'scenarios.md'
+          ? legacyScenarioFacts(source)
+          : legacyScenarioFacts(section(source, 'Scenarios'))
+    for (const [id, body] of scenarioFacts) {
+      facts.scenarios.set(id, body)
     }
 
     // A machine belongs to the context that owns it, not to the file that
@@ -198,7 +223,17 @@ export function diffSpecifications(base: Snapshot, head: Snapshot): Specificatio
   for (const [id, body] of after.scenarios) {
     const previous = before.scenarios.get(id)
     if (previous === undefined) addedScenarios.push(id)
-    else if (previous !== body) changedScenarios.push(id)
+    else {
+      const [previousFormat, previousTitle] = previous.split('\n')
+      const [currentFormat, currentTitle] = body.split('\n')
+      const formatMigration = previousFormat !== currentFormat
+      if (
+        (formatMigration && previousTitle !== currentTitle) ||
+        (!formatMigration && previous !== body)
+      ) {
+        changedScenarios.push(id)
+      }
+    }
   }
   const removedScenarios = [...before.scenarios.keys()].filter((id) => !after.scenarios.has(id))
 
@@ -293,6 +328,7 @@ function isSpecificationSource(path: string): boolean {
   // This tool reads history, so it keeps understanding that shape even though
   // nothing writes it any more.
   if (path.endsWith('/SPECIFICATION.md')) return true
+  if (path.endsWith('/scenarios.md') || path === 'docs/scenarios.md') return true
   return path.endsWith('.tsp') || documentKind(path) !== undefined
 }
 

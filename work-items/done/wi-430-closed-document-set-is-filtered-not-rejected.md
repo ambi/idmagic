@@ -86,7 +86,7 @@ spec_impact: { kind: none, reason: "検査の追加と SPECIFICATION_FORMAT.md �
 - [x] T004 [Unit RED] 閉じた集合を判定する純関数のテストを書き、失敗を観測する。`tools/check/src/canonical-document-set.test.ts` は所見を返さない骨格に対して 8 件中 6 件が落ちた。
 - [x] T005 [Tooling] 許可リストに無い Markdown を拒否する検査を実装し、失敗メッセージに近い名前の候補を含める。`tools/check/src/canonical-document-set.ts` に純関数を置き、`check-workspace.ts --documents` から呼ぶ。
 - [x] T006 [Spec] `SPECIFICATION_FORMAT.md` の記述を実装と一致させる。
-- [x] T007 [Verify] 打ち間違えた名前で落ち、正しい名前で通ることを確認する。実際の作業ツリーで `docs/scenario.md` と `docs/contexts/system/decision.md` がそれぞれ `scenarios.md`、`decisions.md` を候補として示して落ち、取り除くと `mise run check-spec` は exit 0 に戻った。`glossary.MD` は macOS のファイルシステムが大文字小文字を区別しないため実ツリーでは再現できず、純関数の単体テストで確かめている。
+- [x] T007 [Verify] 打ち間違えた名前で落ち、正しい名前で通ることを確認する。実際の作業ツリーで `docs/scenario.md` と `docs/contexts/system/decision.md` がそれぞれ `scenarios.feature.md`、`decisions.md` を候補として示して落ち、取り除くと `mise run check-spec` は exit 0 に戻った。`glossary.MD` は macOS のファイルシステムが大文字小文字を区別しないため実ツリーでは再現できず、純関数の単体テストで確かめている。
 
 ## Verification
 

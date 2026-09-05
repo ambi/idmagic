@@ -276,7 +276,7 @@ export function contractRefusalsOfStateChanges(typespec: string): Map<string, st
 }
 
 /**
- * The error types the scenarios name in an `ALT` or `THEN` step.
+ * The error types the scenarios name in an outcome step.
  *
  * This used to read only the steps a refusal classifier accepted, and the
  * classifier was a list of fifteen words matched against the prose. Measured
@@ -294,15 +294,15 @@ export function contractRefusalsOfStateChanges(typespec: string): Map<string, st
  */
 export function errorTypesNamedByScenarios(scenarios: string): Set<string> {
   const types = new Set<string>()
-  let inScenario = false
-  for (const line of scenarios.split('\n')) {
-    if (/^### REQ-[A-Z0-9]+-\d+/.test(line)) {
-      inScenario = true
-      continue
+  const parsed = parseScenarioDocument(scenarios)
+  for (const step of parsed.rules.flatMap((rule) =>
+    rule.examples.flatMap((example) =>
+      example.steps.filter((candidate) => candidate.kind === 'outcome'),
+    ),
+  )) {
+    for (const match of step.text.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)) {
+      types.add(match[1] ?? '')
     }
-    if (!inScenario) continue
-    if (!/^\s+- ALT /.test(line) && !/^- THEN /.test(line)) continue
-    for (const match of line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)) types.add(match[1] ?? '')
   }
   return types
 }
@@ -330,7 +330,7 @@ export function checkContractRefusalsAreDeclared(
   for (const [type, operations] of contract) {
     if (declared.has(type)) continue
     findings.push({
-      path: `docs/contexts/${context}/scenarios.md`,
+      path: `docs/contexts/${context}/scenarios.feature.md`,
       rule: 'R4',
       message:
         `${operations.join(', ')} answer 403 with ${type}, but no scenario declares that refusal. ` +
@@ -353,3 +353,4 @@ export function checkSecurityGuards(files: GoFile[]): Finding[] {
     ...checkGuardResultsAreUsed(production, requestGuardNames(production, guards, writers)),
   ]
 }
+import { parseScenarioDocument } from './gherkin-scenarios.ts'

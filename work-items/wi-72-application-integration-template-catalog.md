@@ -7,7 +7,7 @@ created_at: 2026-06-27
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
+  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-007 }
 ---
 
 # アプリ統合テンプレートカタログ (gallery) からアプリケーションを作成する

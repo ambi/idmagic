@@ -49,7 +49,7 @@ let declared = 0
 let promised = 0
 for (const context of await readdir(contextsDir)) {
   const dir = resolve(contextsDir, context)
-  const source = await readFile(resolve(dir, 'scenarios.md'), 'utf8').catch(() => undefined)
+  const source = await readFile(resolve(dir, 'scenarios.feature.md'), 'utf8').catch(() => undefined)
   if (!source) continue
   const named = errorTypesNamedByScenarios(source)
   declared += named.size

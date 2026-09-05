@@ -8,9 +8,9 @@ priority: p1
 change_kind: feature
 initial_context:
   specification:
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-002
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-005
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-006
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-002
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-005
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-006
     - docs/authorization.md
   typespec:
     - IdMagic.Contract.Job
@@ -38,11 +38,11 @@ initial_context:
     - backend/oauth2
     - backend/saml
 affected_spec:
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-002 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-005 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-012 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-013 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-014 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-002 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-005 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-014 }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListJobs }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.GetJob }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.CancelJob }
@@ -127,7 +127,7 @@ Jobs には「キューを操作する HTTP のエンドポイントは持たな
 
 ## Tasks
 - [x] T001 [Spec] 管理 API、authorization/access、read model、UX を `Jobs` context に追加する。
-  - REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014 を `docs/contexts/jobs/scenarios.md` に追加。`ListJobs` / `GetJob` / `CancelJob` を `main.tsp` に、`AdminJobResponse` / `AdminJobQuery` / `AdminJobListResponse` / `JobNotFoundError` / `JobNotCancelableError` を `models.tsp` に追加。
+  - REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014 を `docs/contexts/jobs/scenarios.feature.md` に追加。`ListJobs` / `GetJob` / `CancelJob` を `main.tsp` に、`AdminJobResponse` / `AdminJobQuery` / `AdminJobListResponse` / `JobNotFoundError` / `JobNotCancelableError` を `models.tsp` に追加。
   - `ApiTokenScope` に `jobs:read` / `jobs:cancel` を追加し、`docs/authorization.md` の名前空間表へ Jobs の行を足した。権限の対応表そのものは TypeSpec の `x-api-token-scopes` が正本なので散文には書かない。
   - 「キューを操作する HTTP のエンドポイントは持たない」という既存の判断を、投入と取得に限る形へ改めた (`decisions.md` / `README.md`)。用語 `AdminJobView` / `TenantAdministrator` を `glossary.md` へ追加。
 - [x] T002 [Go/HTTP] `ListJobs` / `GetJob` / `CancelJob` を実装し、RBAC・tenant 境界・状態遷移をテストする。

@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p2
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-002 }
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-002 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # どの単一障害でも認証を止めないマルチAZ・自動フェイルオーバー・過負荷保護・ゼロダウンタイム移行のトポロジを整備する
@@ -49,7 +49,7 @@ AZ / PostgreSQL ノード / app レプリカの 3 つに縮んだ。
   - `docs/deployment.md` に過負荷保護の適用点を記録する: load shedding / concurrency limit / backpressure の適用点と閾値、retry / timeout / circuit breaker（[[wi-108-database-connection-resilience-circuit-breaker]] を横断適用）の統一方針。`docs/capacity.md` の Degradation order をどう強制するかを書く形にし、順序そのものは再定義しない。
   - `docs/deployment.md` に「スキーマ移行とデプロイは前後方互換（N/N+1 が同時稼働可能）」を規約として書く。
   - `docs/capacity.md` の Service level objectives に、許容する同時障害単位（1 AZ 喪失 / 1 PostgreSQL ノード喪失 / N app レプリカ喪失で無停止）と自動フェイルオーバー時の RTO/RPO を Specification target として追加する（[[wi-101-backup-restore-and-disaster-recovery]] の DR runbook の目標とは別物として区別する）。
-  - `docs/scenarios.md` に AZ 障害・primary DB 障害・スパイク過負荷・ローリングデプロイ中のリクエスト、の各シナリオを追加する。
+  - `docs/scenarios.feature.md` に AZ 障害・primary DB 障害・スパイク過負荷・ローリングデプロイ中のリクエスト、の各シナリオを追加する。
 - **go/usecase / http**:
   - 過負荷保護ミドルウェア（同時実行上限・キュー上限超過時の即時 503 + Retry-After、優先度の低い経路の load shedding）を追加する。認証コアと重い集計・エクスポートを分けて後者を先に落とす。
   - 依存縮退を判定する degradation state を readiness / metrics（[[wi-112-prometheus-metrics-and-authentication-golden-signals]] 相当）に反映する。
@@ -74,7 +74,7 @@ AZ / PostgreSQL ノード / app レプリカの 3 つに縮んだ。
 ## Tasks
 - [ ] T001 [Spec] `docs/deployment.md` に HA / フェイルオーバートポロジ（マルチAZ・自動昇格・LB 連携・リージョン分界）を記録する。
 - [ ] T002 [Spec] `docs/deployment.md` に load shedding / backpressure / 統一 retry-timeout-breaker の適用点と、`docs/capacity.md` の Degradation order をどう強制するかを記録する。
-- [ ] T003 [Spec] `docs/capacity.md` に可用性トポロジ目標、`docs/deployment.md` に前後方互換の規約、`docs/scenarios.md` に障害シナリオを追加し `mise run check-spec` を通す。
+- [ ] T003 [Spec] `docs/capacity.md` に可用性トポロジ目標、`docs/deployment.md` に前後方互換の規約、`docs/scenarios.feature.md` に障害シナリオを追加し `mise run check-spec` を通す。
 - [ ] T004 [Go/HTTP] 過負荷保護ミドルウェア（同時実行上限・503+Retry-After・経路優先度 load shedding）を追加する。
 - [ ] T005 [Go] 依存縮退 state を readiness / metrics に反映する。
 - [ ] T006 [Migration] スキーマ移行を expand/contract 2 段に分ける規約を適用する。

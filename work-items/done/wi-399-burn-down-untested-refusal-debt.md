@@ -139,7 +139,7 @@ wi-391 は `signing-keys` の 5 件だけを確認し、5 件とも「テスト�
   **tooling 側は済んでいる。** T007 は「131 件が 0 になった時点で `security-refusal-debt.json` と
   `checkRefusalCoverage` の `allowed` 引数を落とす」としていたが、
   [[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が債務を残したまま先に落とした。
-  102 件は `scenario-coverage-debt.json` へ理由付きで統合され、`checkRefusalCoverage`、
+  102 件は `example-coverage-debt.json` へ理由付きで統合され、`checkRefusalCoverage`、
   `refusalScenarioIds`、`REFUSAL_WORDS` は削除されている。順序が逆になったのは、測ってみると
   拒否専用の検査と台帳が支えていたのが id の振り分けだけで、債務の消化を待つ理由が無かったためである。
 

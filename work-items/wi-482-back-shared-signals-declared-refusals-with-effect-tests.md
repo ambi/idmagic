@@ -8,17 +8,17 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-003 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-004 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-005 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-008 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-003 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-004 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-005 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-008 }
 ---
 
 # SharedSignals が宣言する未検証の拒否 4 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -48,7 +48,7 @@ affected_spec:
 - 各テストで 2 つを assert する。呼び出し元が観測する応答と、その SET が反映されなかったこと。
 - `jti` の重複排除は、1 回目が反映され 2 回目が反映されないことを対で確かめる。
 - 各テストのソースに対応する `REQ-SHAREDSIGNALS-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -136,7 +136,7 @@ SET の受信は仕様上、反映の有無にかかわらず同じ応答を返�
 - [ ] T004 [Acceptance] テナント境界の拒否 (005) を効果まで確かめるテストを書く。
 - [ ] T005 [Acceptance] 無効化ストリームの受理と配送の不在 (008) を確かめるテストを書く。
 - [ ] T006 [App] 拒否の実装が欠けていた経路を修正する。
-- [ ] T007 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T007 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T008 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

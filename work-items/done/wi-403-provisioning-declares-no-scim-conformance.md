@@ -11,9 +11,9 @@ evidence_policy: risk-based-v2
 initial_context:
   specification:
     - docs/contexts/provisioning/README.md
-    - docs/contexts/provisioning/scenarios.md#REQ-PROVISIONING-002
-    - docs/contexts/provisioning/scenarios.md#REQ-PROVISIONING-007
-    - docs/contexts/provisioning/scenarios.md#REQ-PROVISIONING-009
+    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-002
+    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-007
+    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-009
     - docs/contexts/provisioning/internals.md
     - docs/contexts/provisioning/decisions.md
     - docs/contexts/sourcing/standards.md

@@ -31,10 +31,10 @@ initial_context:
     - backend/wsfederation
     - backend/provisioning
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-026 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-027 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-028 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-029 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-026 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-027 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-028 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-029 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.TrustedDevice }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Contract.Operations.ListMyTrustedDevices }
   - { path: spec/contexts/application/models.tsp, symbol: IdMagic.Contract.SignInRule }

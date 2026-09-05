@@ -38,7 +38,7 @@ const applicable = {
   status: 'in_progress',
   evidence_policy: 'risk-based-v3',
   change_kind: 'feature',
-  affected_spec: [{ path: 'docs/contexts/demo/scenarios.md', requirement }],
+  affected_spec: [{ path: 'docs/contexts/demo/scenarios.feature.md', requirement }],
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
@@ -214,7 +214,10 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         ...applicable,
         change_kind: 'bugfix',
         affected_spec: [
-          { path: 'docs/contexts/provisioning/scenarios.md', requirement: 'REQ-PROVISIONING-013' },
+          {
+            path: 'docs/contexts/provisioning/scenarios.feature.md',
+            requirement: 'REQ-PROVISIONING-013',
+          },
         ],
       },
     ]

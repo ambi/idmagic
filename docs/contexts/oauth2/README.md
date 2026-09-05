@@ -11,4 +11,4 @@ OAuth 2.0 / OIDC プロトコル群の全責務を担う。クライアントメ
 | [states.md](states.md) | 状態と遷移 |
 | [decisions.md](decisions.md) | 設計判断 |
 | [internals.md](internals.md) | 機構の説明 |
-| [scenarios.md](scenarios.md) | 受け入れシナリオ |
+| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |

@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-013 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-013 }
 depends_on: [wi-153-identity-lifecycle-workflows, wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations]
 ---
 

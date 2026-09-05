@@ -98,7 +98,7 @@ spec_impact: { kind: none, reason: "設計原則の正本文書を新設し SPEC
 - [x] T002 [Acceptance] `docs/design-rules.md` を置いた状態の `mise run check-spec` が `not a canonical document` で拒否し、`mise run test-tools -- check/src/specification-doc.test.ts` が `Expected: "prose" / Received: undefined` で失敗することを観測した（`REQ-*` は N/A：正準文書集合を広げる文書および検査器変更であり、製品の規範的振る舞いを変えないため）。
 - [x] T003 [Tooling] `SPECIFICATION_FORMAT.md` の配置図と `specification-doc.ts` の許可リストへ新しいファイル名を加え、`documentKind` の単体検査を GREEN にした。
 - [x] T004 [Spec] 設計原則を `docs/design-rules.md` に書き、`docs/README.md` の索引へ加えた。
-- [x] T005 [Spec] `SPECIFICATION_FORMAT.md` の不変条件の記述へ、型、操作、スキーマ、`scenarios.md` という代わりの居場所を示す一文を足した。
+- [x] T005 [Spec] `SPECIFICATION_FORMAT.md` の不変条件の記述へ、型、操作、スキーマ、`scenarios.feature.md` という代わりの居場所を示す一文を足した。
 - [x] T006 [Verify] `mise run check-spec` と `mise run verify` を通し、生成された `specification/design-rules.html` が全体索引とナビゲーションの両方から到達できることを確認した。
 
 ## Verification

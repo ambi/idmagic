@@ -6,7 +6,7 @@ describe('verifyCanonicalDocumentSet', () => {
     expect(
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['README.md', 'glossary.md'] },
-        { directory: 'docs/contexts/demo', files: ['README.md', 'scenarios.md'] },
+        { directory: 'docs/contexts/demo', files: ['README.md', 'scenarios.feature.md'] },
       ]),
     ).toEqual([])
   })

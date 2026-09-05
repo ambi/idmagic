@@ -6,9 +6,9 @@ created_at: 2026-08-08
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-001 }
-  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
-  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-001 }
+  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-010 }
+  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-047 }
 depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ---
 
@@ -40,7 +40,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 
 ## Scope
 
-- `docs/contexts/sharedsignals/` (`scenarios.md`、`internals.md`、`models.tsp`):
+- `docs/contexts/sharedsignals/` (`scenarios.feature.md`、`internals.md`、`models.tsp`):
   - `AgentRevocationEpoch` と対称な新規 model `UserRevocationEpoch` (`user_id` をキーに `users`
     テーブルへ FK する専用テーブル) を追加する。
   - `CheckUserRevocationEpoch` / `AdvanceUserRevocationEpoch` (`access: internal`) interface を
@@ -51,7 +51,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
     (`UserRevocationReason`) にするかは `## Design` で判断する。
   - `ReceiveSecurityEvent` の subject 解決を Agent だけでなく User にも対応させる (現状は
     `security_event_subject_resolves_to_tenant_local_principal` が Agent のみを解決する前提)。
-- `docs/contexts/oauth2/` (`scenarios.md`、`internals.md`):
+- `docs/contexts/oauth2/` (`scenarios.feature.md`、`internals.md`):
   - `Introspect` の `ensures` 節に、`access_token_subject_is_user(...)` の場合も同様に revocation
     epoch を判定する節を追加する (現状の Agent 向け節と対称)。
 - specification 変更なしで既存イベントをトリガーとして利用する対象 (`SharedSignals` が構造的に反応する、

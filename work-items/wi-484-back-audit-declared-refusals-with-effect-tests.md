@@ -8,15 +8,15 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-003 }
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-003 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
 ---
 
 # Audit が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -46,7 +46,7 @@ affected_spec:
 - 各テストで 2 つを assert する。呼び出し元が観測する応答 (ステータスとエラー種別) と、拒否された情報が応答に現れないこと。
 - カーソルの拒否は、別テナントで発行したカーソルと改ざんしたカーソルの両方で確かめる。
 - 各テストのソースに対応する `REQ-AUDIT-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -131,7 +131,7 @@ affected_spec:
 - [ ] T002 [Acceptance] 一覧とカーソルの拒否 (004) を効果まで確かめるテストを書く。
 - [ ] T003 [Acceptance] 検索結果に属性値とメール本文が現れないこと (003) を確かめるテストを書く。
 - [ ] T004 [App] 拒否の実装が欠けていた経路を修正する。
-- [ ] T005 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T005 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T006 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

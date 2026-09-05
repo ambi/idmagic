@@ -26,7 +26,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 
 `spec/` は Yes、`docs/` は No。原理としては明確である。
 
-**問題は名前がその基準を裏切っていることである。** `docs` は「文書すべて」と読める語だが、`spec/` の中身の大半——`decisions.md`、`internals.md`、`scenarios.md`、`glossary.md`——は、読み手の素朴な感覚ではどう見ても「文書」である。ディレクトリ名を見た人が `decisions.md` を `docs/` に置こうとするのは誤読ではなく、名前がそう誘導している。§5.9 の基準へ辿り着いて初めて、そうではないと分かる。**基準を読まないと使えない構成は、構成として弱い。**
+**問題は名前がその基準を裏切っていることである。** `docs` は「文書すべて」と読める語だが、`spec/` の中身の大半——`decisions.md`、`internals.md`、`scenarios.feature.md`、`glossary.md`——は、読み手の素朴な感覚ではどう見ても「文書」である。ディレクトリ名を見た人が `decisions.md` を `docs/` に置こうとするのは誤読ではなく、名前がそう誘導している。§5.9 の基準へ辿り着いて初めて、そうではないと分かる。**基準を読まないと使えない構成は、構成として弱い。**
 
 さらに悪いことに、**ガイド自身の参照実装であるこのリポジトリに `docs/` も `operations/` も無い。**
 
@@ -58,7 +58,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
   例外が 1 件ある。**`product-overview.md` を `ROOT_DOCUMENTS` に足した。** ガイド §4 と §9.2 が `docs/product-overview.md` を挙げるのに集合へ入っていないと、その名前で作った瞬間に検査が「正規文書ではない」と拒否する。ガイドと検査が食い違う状態は本 work item が診断した病そのものなので、ここだけは直した。
 - 方法論文書（`DEVELOPMENT.md`、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md`、`DOCUMENTATION_GUIDE.md`）自身の置き場所。別リポジトリへ抽出する想定があるため、ルートに残す。`docs/development/` へ入れるかどうかはその抽出と一緒に決まる。
 - `docs/development/` と `docs/operations/` の中身を書くこと。ガイドが場所を定めるだけで、`build.md` や `reliability.md` を新しく書き起こしはしない。該当する内容が無いファイルは作らない（§3）。
-- `docs/scenarios.md` の新設（[[wi-401-cross-context-scenarios-have-no-home]]）とサービス目標の正本化（[[wi-400-service-objectives-need-stable-ids]]）。どちらも文書の中身の話であり、配置とは独立である。
+- `docs/scenarios.feature.md` の新設（[[wi-401-cross-context-scenarios-have-no-home]]）とサービス目標の正本化（[[wi-400-service-objectives-need-stable-ids]]）。どちらも文書の中身の話であり、配置とは独立である。
 - 完了済み work item の散文に残る歴史的なパス（`spec/scl.yaml` など）。当時そこにあった記録であり、書き換えれば履歴の改竄になる。解決を要求される `affected_spec` だけを張り替えた。
 
 ## Design

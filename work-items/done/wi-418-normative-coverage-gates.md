@@ -78,7 +78,7 @@ initial_context:
 | 対象 | 宣言 | テストが名指し | 未対応 |
 |---|---|---|---|
 | 規範行（`standards.md` 10 ファイル） | 154 | 0 | 154 |
-| シナリオ（`scenarios.md` 22 ファイル、退役 2 件を除く） | 306 | 115 | 191 |
+| シナリオ（`scenarios.feature.md` 22 ファイル、退役 2 件を除く） | 306 | 115 | 191 |
 
 191 件の未対応シナリオのうち 102 件は `security-refusal-debt.json` に載る拒否の負債と完全に一致する。
 
@@ -106,13 +106,13 @@ initial_context:
 
 ### 語彙の対応を Scope から外した根拠
 
-着手前に検出可能性を測った。`docs/glossary.md` と 21 個の Context の `glossary.md` が定義する語と別名は 590 件、TypeSpec の symbol は 2997 件ある。全 `scenarios.md` に現れる PascalCase の語 314 件をこの 3587 件と突き合わせると、解決できない語は 60 件残る。その 60 件を読むと、過半は外部プロトコルの要素名（`AuthnRequest`、`NameIDPolicy`、`RelayState`、`IssueInstant`、`ForceAuthn`、`ProtocolBinding`、`UsernameToken`）、Web プラットフォームの語（`SameSite`、`HttpOnly`、`WebAuthn`、`PublicKeyCredentialRequestOptions`）、製品名（`PostgreSQL`、`WebP`）、Context 名（`IdManagement`、`SharedSignals`、`DataKeys`、`WorkloadIdentity`）であり、用語集に無いことは欠陥ではない。本当に定義の無い語は `AdminDashboard`、`HomePage`、`SeedData`、`KeyStore` のような少数である。
+着手前に検出可能性を測った。`docs/glossary.md` と 21 個の Context の `glossary.md` が定義する語と別名は 590 件、TypeSpec の symbol は 2997 件ある。全 `scenarios.feature.md` に現れる PascalCase の語 314 件をこの 3587 件と突き合わせると、解決できない語は 60 件残る。その 60 件を読むと、過半は外部プロトコルの要素名（`AuthnRequest`、`NameIDPolicy`、`RelayState`、`IssueInstant`、`ForceAuthn`、`ProtocolBinding`、`UsernameToken`）、Web プラットフォームの語（`SameSite`、`HttpOnly`、`WebAuthn`、`PublicKeyCredentialRequestOptions`）、製品名（`PostgreSQL`、`WebP`）、Context 名（`IdManagement`、`SharedSignals`、`DataKeys`、`WorkloadIdentity`）であり、用語集に無いことは欠陥ではない。本当に定義の無い語は `AdminDashboard`、`HomePage`、`SeedData`、`KeyStore` のような少数である。
 
 誤検出を消すには、外部プロトコルの要素名と Context 名を列挙した許可一覧を保守し続けることになる。それは「リポジトリのどこかに現れる PascalCase の語か」を問う検査に退化し、用語集との対応を見ていない。Design の予告どおり、絞れなかったので入れない。
 
 ## Plan
 
-1. 全 `standards.md` の規範 ID と全 `scenarios.md` の `REQ` を集め、テストからの名指しと突き合わせて現状の被覆率を出す。（完了、上表）
+1. 全 `standards.md` の規範 ID と全 `scenarios.feature.md` の `REQ` を集め、テストからの名指しと突き合わせて現状の被覆率を出す。（完了、上表）
 2. 被覆されていない ID がある状態で `mise run check-spec` が通ることを観測する。
 3. `normative-coverage.ts` に純粋な判定を実装し、`specification-doc.ts` に規範 ID の収集を足す。
 4. `check-specifications.ts` から負債ファイル、正本文書、テスト本文を渡して配線する。
@@ -122,7 +122,7 @@ initial_context:
 
 ## Tasks
 
-- [x] T001 [Baseline] 規範 ID と `REQ` の現在の被覆率を測り、負債ファイルの初期値を作った。規範 154 件中テストが名指しするのは 20 件、シナリオ 306 件中 115 件。`tools/check/standards-coverage-debt.json` に 134 件、`tools/check/scenario-coverage-debt.json` に 89 件を初期投入した。
+- [x] T001 [Baseline] 規範 ID と `REQ` の現在の被覆率を測り、負債ファイルの初期値を作った。規範 154 件中テストが名指しするのは 20 件、シナリオ 306 件中 115 件。`tools/check/standards-coverage-debt.json` に 134 件、`tools/check/example-coverage-debt.json` に 89 件を初期投入した。
 - [x] T002 [Acceptance] 被覆されていない規範 ID が 134 件ある作業ツリーで `mise run check-spec` が終了コード 0 で通ることを観測した。
 - [x] T003 [Tooling] `normative-coverage.ts` の `checkNormativeCoverage` と、`specification-doc.ts` が返す `standardIds` で規範 ID の被覆を検査する。`normative-coverage.test.ts` の `rejects a declaration no test names and no debt entry covers` が RED から GREEN。
 - [x] T004 [Tooling] シナリオの被覆を同じ検査で扱い、`supersededBy` を持つ見出しを `check-specifications.ts` が `declared` から外す。`check-workspace.test.ts` の `leaves a retired scenario out of the coverage gate` と `rejects a scenario no test names when no debt list admits it` が対応する。
@@ -152,7 +152,7 @@ initial_context:
 
 - **Completed At**: 2026-09-05
 - **Summary**:
-  `mise run spec-diff` は `no normative specification change against main` を返す。規範行もシナリオも増減せず、`docs/standards.md` の冒頭の文だけが実態に合う表現へ変わった。意味の差は仕様の内容ではなく、仕様と実装の対応が検査されるかどうかにある。`mise run check-spec` は今後、規範行 154 件とシナリオ 306 件のそれぞれについて、製品のテストがその ID を名指ししているか、負債台帳が理由付きで保持しているかのどちらかを要求する。着手時点で名指しがあるのは 134 件で、残りは `tools/check/standards-coverage-debt.json`（134 件）、`tools/check/scenario-coverage-debt.json`（89 件）、既存の `tools/check/security-refusal-debt.json`（102 件）が保持する。3 つの台帳は互いに素であり、縮む方向にしか動かない。
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範行もシナリオも増減せず、`docs/standards.md` の冒頭の文だけが実態に合う表現へ変わった。意味の差は仕様の内容ではなく、仕様と実装の対応が検査されるかどうかにある。`mise run check-spec` は今後、規範行 154 件とシナリオ 306 件のそれぞれについて、製品のテストがその ID を名指ししているか、負債台帳が理由付きで保持しているかのどちらかを要求する。着手時点で名指しがあるのは 134 件で、残りは `tools/check/standards-coverage-debt.json`（134 件）、`tools/check/example-coverage-debt.json`（89 件）、既存の `tools/check/security-refusal-debt.json`（102 件）が保持する。3 つの台帳は互いに素であり、縮む方向にしか動かない。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`
   - **Requirement**: N/A: 製品の規範要求ではなく、仕様文書に対する検査を足す変更である。

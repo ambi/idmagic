@@ -47,7 +47,7 @@ The demo context.
 | File | Content |
 |---|---|
 | [states.md](states.md) | 状態と遷移 |
-| [scenarios.md](scenarios.md) | 受け入れシナリオ |
+| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
 `,
 }
 
@@ -72,15 +72,23 @@ const statesDocument = {
 }
 
 const scenariosDocument = {
-  path: 'docs/contexts/demo/scenarios.md',
-  source: `# Demo Scenarios
+  path: 'docs/contexts/demo/scenarios.feature.md',
+  source: `# Feature: Demo
 
-### REQ-DEMO-001: a demo runs
-- ACTOR Developer
-- GIVEN a ready demo
-- WHEN the demo starts
-- THEN the demo is running
-  - ALT start is forbidden → the demo stays ready
+## Rule: REQ-DEMO-001 a demo runs
+
+### Example: EX-DEMO-001-01 a ready demo starts
+
+- Given a ready demo
+- When the developer starts the demo
+- Then the demo is running
+
+### Example: EX-DEMO-001-02 a forbidden start changes nothing
+
+- Given a ready demo
+- When the developer starts the demo
+- But start is forbidden
+- Then the demo stays ready
 `,
 }
 
@@ -164,6 +172,16 @@ const site = () =>
     },
     models,
     contextTags: { demo: ['Demo'] },
+    traces: [
+      { id: 'REQ-DEMO-001', sources: [], workItems: ['work-items/wi-demo.md'] },
+      { id: 'EX-DEMO-001-01', sources: ['backend/demo/demo_test.go'], workItems: [] },
+      {
+        id: 'EX-DEMO-001-02',
+        sources: [],
+        workItems: [],
+        debt: '対応する拒否テストを確認していないため',
+      },
+    ],
   })
 
 /** Every page carries the navigation twice, once for the sidebar and once for the mobile header. */
@@ -216,7 +234,12 @@ describe('renderSpecificationSite', () => {
     expect(result.files['contexts/demo/states.html']).toContain('state_3 --&gt; state_1: Reset')
     expect(result.files['contexts/demo/states.html']).not.toContain('Reset [')
     expect(result.files['contexts/demo/scenarios.html']).toContain('class="scenario-keyword when"')
-    expect(result.files['contexts/demo/scenarios.html']).toContain('class="scenario-keyword alt"')
+    expect(result.files['contexts/demo/scenarios.html']).toContain('class="scenario-keyword but"')
+    expect(result.files['traceability/index.html']).toContain('EX-DEMO-001-01')
+    expect(result.files['traceability/index.html']).toContain('backend/demo/demo_test.go')
+    expect(result.files['traceability/index.html']).toContain(
+      'debt: 対応する拒否テストを確認していないため',
+    )
     expect(result.files['specification/index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')

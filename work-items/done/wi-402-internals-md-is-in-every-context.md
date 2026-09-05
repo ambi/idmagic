@@ -50,7 +50,7 @@ spec_impact: { kind: none, reason: "internals.md と decisions.md の棚卸し�
 - 21 件の `internals.md` を 1 件ずつ §3 の基準で判定し、次のいずれかに解決する。
   - 機構の説明としてコードから復元できない → 残す。
   - 理由つきの判断である → `decisions.md` へ移す。
-  - コードを読めば分かる、または他の正規文書（`states.md`、`scenarios.md`、`standards.md`、TypeSpec、スキーマ）が既に持っている → 落とす。
+  - コードを読めば分かる、または他の正規文書（`states.md`、`scenarios.feature.md`、`standards.md`、TypeSpec、スキーマ）が既に持っている → 落とす。
   - ファイルが空になったら削除し、その Context の `README.md` の索引から行を外す。
 - 項目が 2 件以下の `decisions.md` 4 件について、判断が書き漏れているのか、本当にそれだけなのかを確かめる。
 - 判定の結果を本 work item に記録する。次に棚卸しする人が、前回どう判定したかを読めるようにする。

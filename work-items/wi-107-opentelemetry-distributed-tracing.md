@@ -7,7 +7,7 @@ created_at: 2026-07-04
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # OpenTelemetry 分散トレーシングを統合し、リクエスト追跡とボトルネック検出を可能にする

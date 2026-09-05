@@ -115,7 +115,7 @@ flowchart LR
 | [database.md](database.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
 | [threat-model.md](threat-model.md) | 信頼境界とそこで信用しないもの、資産、識別した脅威と応える制御 |
-| [scenarios.md](scenarios.md) | Context を跨がないと成り立たない振る舞い |
+| [scenarios.feature.md](scenarios.feature.md) | Context を跨がないと成り立たない振る舞い |
 
 ## Procedure Planes
 

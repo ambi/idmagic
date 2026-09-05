@@ -8,17 +8,17 @@ change_kind: maintenance
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-001 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-003 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-004 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-005 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-001 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-003 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-004 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-005 }
 ---
 
 # DataKeys が宣言する未検証の拒否 4 件に効果まで確かめるテストを与え、台帳から外す
 
 ## Motivation
 
-`tools/check/scenario-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
+`tools/check/example-coverage-debt.json` は、どのテストからも id を引用されていない規範 id を保持する、縮むだけの台帳である。
 
 このうち 102 件は [[wi-390-security-control-test-standard-and-gate]] が拒否専用の台帳へ据え置いた分で、[[wi-490-fold-refusal-coverage-into-one-normative-coverage-rule]] が網羅台帳へ統合した。
 
@@ -46,7 +46,7 @@ MasterKey プロバイダーへ到達できないときに DEK を作らない�
 - 各テストで 2 つを assert する。呼び出し元が観測するエラー種別と、その拒否が変えなかった鍵の状態。
 - 鍵の状態遷移の拒否は、拒否の後に鍵のバージョンと状態を読み直して確かめる。
 - 各テストのソースに対応する `REQ-DATAKEYS-NNN` を書く。
-- 対応が取れた id を `tools/check/scenario-coverage-debt.json` から削除する。
+- 対応が取れた id を `tools/check/example-coverage-debt.json` から削除する。
 - 拒否を実装が持っていないと判明した場合、その防護をこの項目で実装する。
 - 完了時点で、この項目が持つ id が台帳から 1 件残らず消えていることを確認する。
 
@@ -133,7 +133,7 @@ DataKeys の入口は use case であり、`BootstrapTenantDataKey`、`DisableTe
 - [ ] T003 [Acceptance] retiring の DEK の復号拒否 (003) を効果まで確かめるテストを書く。
 - [ ] T004 [Acceptance] プロバイダー到達不能時のフェイルクローズ (001) を、半端な状態が残らないことまで確かめるテストを書く。
 - [ ] T005 [App] 拒否の実装が欠けていた経路を修正する。
-- [ ] T006 [Ledger] 対応の取れた id を `scenario-coverage-debt.json` から削除する。
+- [ ] T006 [Ledger] 対応の取れた id を `example-coverage-debt.json` から削除する。
 - [ ] T007 [Verify] 防護を意図的に外すと各テストが落ちることを確かめ、検査を通す。
 
 ## Verification

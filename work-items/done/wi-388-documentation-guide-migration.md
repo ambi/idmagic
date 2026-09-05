@@ -52,7 +52,7 @@ initial_context:
 
 - `tools/check`：正本のファイル名と節構成の検査を、種類ごとのファイル構成へ対応させる
 - `tools/render-spec-docs`：分割後のファイル群から仕様サイトを生成する
-- `docs/contexts/*`：全 Context の `SPECIFICATION.md` を `README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.md` へ分割する
+- `docs/contexts/*`：全 Context の `SPECIFICATION.md` を `README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md` へ分割する
 - `docs/SPECIFICATION.md`：`README.md`、`structure.md`、`api-rules.md`、`observability.md`、`deployment.md`、`capacity.md`、`persistence.md`、`authorization.md` へ分割する
 - `states.md`：状態の表（`State` / 種別 / 意味）を追加し、`Initial:` / `Terminal:` の行を置き換える
 - `Design` の内容を、判断（`decisions.md`）と機構の説明（`internals.md`）へ振り分ける
@@ -101,7 +101,7 @@ initial_context:
 
 着手前の見込みは誤っていた。`tools/check/src/work-item-references.ts` が `pending` と `in_progress` に限るのは `initial_context` の検証だけで、`affected_spec` のパス解決はすべての記録に対して行う。したがって、完了済みの記録も現在の正本を指していなければ `just check-work-items` が落ちる。
 
-`affected_spec` と `initial_context` は性質が違うので、扱いも分ける。`affected_spec` はその変更が影響した規範的要素への索引であり、REQ ID も Standards の ID も変わっていない以上、それを載せるファイル名だけを現在のパスへ直す。`REQ-` で始まるものは `scenarios.md`、それ以外は `standards.md` である。
+`affected_spec` と `initial_context` は性質が違うので、扱いも分ける。`affected_spec` はその変更が影響した規範的要素への索引であり、REQ ID も Standards の ID も変わっていない以上、それを載せるファイル名だけを現在のパスへ直す。`REQ-` で始まるものは `scenarios.feature.md`、それ以外は `standards.md` である。
 
 `initial_context` は着手時にその担当者が読んだ資料の記録なので、書き換えない。後から現在のパスへ直すと、当時読んだものと違うものを読んだことにしてしまう。
 
@@ -161,7 +161,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
 - **Summary**:
   仕様の正本を、1 Context 1 ファイルから種類ごとのファイルへ移した。規範的な内容は動かしていない。`just spec-diff` は全工程を通して規範的差分を報告せず、シナリオ、Standards の行、遷移の行、TypeSpec の宣言はいずれも移行前と同一である。
 
-  6086 行の `SPECIFICATION.md` 22 個が、`README.md` / `glossary.md` / `standards.md` / `states.md` / `decisions.md` / `internals.md` / `scenarios.md`（Context）と `README.md` / `structure.md` / `api-rules.md` / `observability.md` / `deployment.md` / `persistence.md` / `authorization.md`（ルート）になった。`Design` は寿命で分けた。理由を持つ判断は `decisions.md` の一覧に、コードから復元できない機構の説明は `internals.md` の散文になり、`Internal Interfaces` や `Design Decisions` のような観点名の見出しは消えた。
+  6086 行の `SPECIFICATION.md` 22 個が、`README.md` / `glossary.md` / `standards.md` / `states.md` / `decisions.md` / `internals.md` / `scenarios.feature.md`（Context）と `README.md` / `structure.md` / `api-rules.md` / `observability.md` / `deployment.md` / `persistence.md` / `authorization.md`（ルート）になった。`Design` は寿命で分けた。理由を持つ判断は `decisions.md` の一覧に、コードから復元できない機構の説明は `internals.md` の散文になり、`Internal Interfaces` や `Design Decisions` のような観点名の見出しは消えた。
 
   仕様が得たものが 3 つある。1 つ目は状態の表である。全 22 の状態機械が `| State | Kind | Meaning |` を持ち、初期状態がちょうど 1 つであること、遷移表の `From` と `To` が表に現れることを機械検査する。従来の `Initial: X Terminal: Y` の 1 行では、状態の集合も各状態の意味も書けなかった。2 つ目は `docs/authorization.md` である。主体の種類、スコープの名前空間、対話セッション限定の規則とその 2 つの理由、テナント境界を 1 か所に集約した。従来は 21 Context の `Authorization boundary` に同じ規則が散っていた。3 つ目は通知テンプレートのカタログの移動である。`Database design policy` の下にあったが、これは通知機能の製品仕様であって永続化の方針ではないので、`NotificationTemplate` を所有する `Tenancy` の `internals.md` へ移した。
 
@@ -177,6 +177,6 @@ Context の移行順は、小さいものから始めて形式を固めてから
 
 - **Left Undone**:
   - `docs/capacity.md` は作らなかった。想定規模、縮退の順序、上限の置き方の方針にあたる記述がリポジトリに無く、唯一近い文字列長の区分は、それを使う契約の規則と一緒に読めないと判断できないため `api-rules.md` に残した
-  - `docs/glossary.md`、`docs/standards.md`、`docs/scenarios.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
+  - `docs/glossary.md`、`docs/standards.md`、`docs/scenarios.feature.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
   - T003 の「`State` 列と TypeSpec の列挙値の一致」は実装しなかった。状態機械が扱う集合は列挙型の部分集合であることが多く（`UserLifecycle` は `UserStatus` の 7 個のうち 4 個）、しかもその列挙型は別の Context にある。等値検査は偽になるため、対応関係を宣言する書式を先に決める必要がある。検査したのは `Kind` の語彙、初期状態が 1 つであること、遷移表の `From` と `To` が状態の表に現れることの 3 つである
   - `docs/contexts/system/internals.md` の UI 指針（デザイン指針、管理コンソールの方針、ライブラリ選定表、ナビゲーション方針、コンテナ／表示の分割）は、`DOCUMENTATION_GUIDE.md` §5.9 ではコードの近くに置くものだが、本項目では移動先を作らずそのまま移した

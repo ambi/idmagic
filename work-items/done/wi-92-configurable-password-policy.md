@@ -46,8 +46,8 @@ initial_context:
 affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyOverride }
   - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyDefaults }
-  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-019 }
-  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-024 }
+  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-019 }
+  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-024 }
 ---
 
 # テナントのパスワードポリシーを永続化し、任意の有効期限で次回ログイン時の変更を強制する

@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
 ---
 
 # 大規模テナントでも軽快に動く検索・集計・性能保証を整備する

@@ -15,6 +15,7 @@ import { validateDocument } from './specification-doc.ts'
 const seen = new Map<string, string>()
 const supersessions: Array<{ where: string; target: string }> = []
 const scenarios: DeclaredId[] = []
+const examples: DeclaredId[] = []
 const standards: DeclaredId[] = []
 let failed = false
 
@@ -46,6 +47,18 @@ for (const path of process.argv.slice(2)) {
       continue
     }
     scenarios.push({ id: scenario.id, path: `${canonical}:${scenario.line}` })
+  }
+  for (const example of result.exampleIds) {
+    const previous = seen.get(example.id)
+    if (previous) {
+      console.error(
+        `${rel}:${example.line}: duplicate ${example.id}; first declared in ${previous}`,
+      )
+      failed = true
+    } else {
+      seen.set(example.id, `${rel}:${example.line}`)
+    }
+    examples.push({ id: example.id, path: `${canonical}:${example.line}` })
   }
   for (const standard of result.standardIds) {
     standards.push({ id: standard.id, path: `${canonical}:${standard.line}` })
@@ -90,6 +103,7 @@ async function testSources(directory: string, found: string[] = []): Promise<str
 }
 
 type DebtFile = { comment?: string[]; untested: DebtEntry[] }
+type DebtBaselineFile = { comment?: string[]; ids: string[] }
 
 /**
  * A debt list, or none. An absent file is the empty list rather than an error:
@@ -111,7 +125,18 @@ async function readDebt(path: string): Promise<DebtEntry[]> {
   })
 }
 
-const SCENARIO_DEBT = 'tools/check/scenario-coverage-debt.json'
+async function readDebtBaseline(path: string): Promise<Set<string>> {
+  const source = await readFile(resolve(WORKSPACE_ROOT, path), 'utf8').catch(() => undefined)
+  if (source === undefined) return new Set()
+  const parsed = JSON.parse(source) as DebtBaselineFile
+  if (!Array.isArray(parsed.ids) || parsed.ids.some((id) => typeof id !== 'string')) {
+    throw new Error(`${path}: ids must be an array of strings`)
+  }
+  return new Set(parsed.ids)
+}
+
+const EXAMPLE_DEBT = 'tools/check/example-coverage-debt.json'
+const EXAMPLE_DEBT_BASELINE = 'tools/check/example-coverage-debt-baseline.json'
 const STANDARDS_DEBT = 'tools/check/standards-coverage-debt.json'
 
 const sources: string[] = []
@@ -119,7 +144,7 @@ for (const tree of PRODUCT_TREES)
   sources.push(...(await testSources(resolve(WORKSPACE_ROOT, tree))))
 const cited = citedNormativeIds(
   sources,
-  [...standards, ...scenarios].map((declaration) => declaration.id),
+  [...standards, ...examples].map((declaration) => declaration.id),
 )
 
 const coverage = [
@@ -130,10 +155,11 @@ const coverage = [
     debtPath: STANDARDS_DEBT,
   }),
   ...checkNormativeCoverage({
-    declared: scenarios,
+    declared: examples,
     cited,
-    debt: await readDebt(SCENARIO_DEBT),
-    debtPath: SCENARIO_DEBT,
+    debt: await readDebt(EXAMPLE_DEBT),
+    debtPath: EXAMPLE_DEBT,
+    debtBaseline: await readDebtBaseline(EXAMPLE_DEBT_BASELINE),
   }),
 ]
 for (const finding of coverage) {
@@ -142,7 +168,7 @@ for (const finding of coverage) {
 }
 if (coverage.length === 0) {
   console.log(
-    `ok  normative coverage (${standards.length} standard(s), ${scenarios.length} scenario(s), ` +
+    `ok  normative coverage (${standards.length} standard(s), ${scenarios.length} rule(s), ${examples.length} example(s), ` +
       `${cited.size} id(s) named by a test)`,
   )
 }

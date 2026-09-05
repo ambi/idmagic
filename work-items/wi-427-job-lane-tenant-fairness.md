@@ -7,7 +7,7 @@ created_at: 2026-08-27
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-009 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-009 }
 ---
 
 # 実行レーンの中で、単一テナントの投入が他テナントを飢えさせないようにする

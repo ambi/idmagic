@@ -18,7 +18,7 @@ whose name owns that kind of content.
    integration, or a new kind of secret, personal data, or record that must later be proven. Move a row to
    `covered` only when a normative id names the control; a row citing a work item is not yet covered.
 5. Keep change-specific alternatives, plans, and history in the work item. Keep API contracts in TypeSpec and
-   observable behavior in the owning `scenarios.md`.
+   observable behavior in the owning `scenarios.feature.md`.
 6. Pass `mise run check-spec` and `mise run check-boundaries`.
 
 Canonical documents carry current design and rationale, so no separate ADR or architecture ledger is needed.

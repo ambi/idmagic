@@ -16,11 +16,11 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-460.md }
 initial_context:
   specification:
-    - docs/contexts/signing-keys/scenarios.md#REQ-SIGNINGKEYS-008
-    - docs/contexts/signing-keys/scenarios.md#REQ-SIGNINGKEYS-009
-    - docs/contexts/data-keys/scenarios.md#REQ-DATAKEYS-006
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-012
-    - docs/contexts/jobs/scenarios.md#REQ-JOBS-013
+    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-008
+    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-009
+    - docs/contexts/data-keys/scenarios.feature.md#REQ-DATAKEYS-006
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-012
+    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-013
     - docs/authorization.md
     - docs/contexts/signing-keys/decisions.md
     - docs/contexts/data-keys/decisions.md
@@ -93,11 +93,11 @@ primary_use_cases:
     unit_fault_model: 解決済み actor に対する制御面判定が、`system_admin` 以外の管理ロールでも真を返す。
     e2e_fault_model: ジョブ管理経路が制御面主体にも `admin` ロールを要求し、横断へ到達できない。
 affected_spec:
-  - { path: docs/contexts/signing-keys/scenarios.md, requirement: REQ-SIGNINGKEYS-008 }
-  - { path: docs/contexts/signing-keys/scenarios.md, requirement: REQ-SIGNINGKEYS-009 }
-  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-006 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-012 }
-  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-013 }
+  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-008 }
+  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-009 }
+  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-006 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
+  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
   - { path: spec/contexts/signing-keys/main.tsp, symbol: IdMagic.SigningKeys.Operations.ListTenantKeyHealth }
   - { path: spec/contexts/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.ListTenantDataKeyHealth }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListJobs }
