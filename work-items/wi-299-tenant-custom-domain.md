@@ -6,19 +6,6 @@ created_at: 2026-07-26
 priority: p2
 depends_on: [wi-285-tenant-endpoint-style-and-host-based-resolution]
 change_kind: feature
-initial_context:
-  source:
-    - backend/tenancy/domain
-    - backend/tenancy/usecases
-    - backend/tenancy/handlers_http
-    - backend/shared/http/support_http
-  tests:
-    - backend/tenancy/domain
-    - backend/tenancy/usecases
-    - backend/shared/http/support_http
-  stop_before_reading:
-    - backend/oauth2/token
-    - backend/provisioning
 affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantEndpointStyle }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }

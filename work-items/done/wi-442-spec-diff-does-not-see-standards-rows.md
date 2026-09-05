@@ -1,6 +1,6 @@
 ---
 depends_on: []
-status: pending
+status: cancelled
 authors: [tn]
 risk: low
 created_at: 2026-08-29
@@ -59,3 +59,9 @@ spec_impact: { kind: none, reason: "規範の差分を読む道具の視野を�
 ## Risk Notes
 
 リスクは low。読解の補助を広げるだけで、何も落とさない。出力が長くなりすぎると読まれなくなるので、変化した列だけを出すかどうかは実測してから決める。
+
+## Completion
+
+- **Completed At**: 2026-09-06
+- **Summary**:
+  取り消す。`spec-diff` はすでに `standards.md` の標準行を解析し、追加、削除、変更を差分へ含め、回帰テストも備えている。本項目が求めた振る舞いは別の作業で実現済みであり、追加の実装は不要である。

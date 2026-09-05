@@ -1,8 +1,9 @@
 ---
 depends_on: []
 status: pending
-authors: ["tn"]
+authors: [tn]
 risk: low
+reversibility: reversible
 created_at: 2026-07-04
 priority: p2
 change_kind: feature
@@ -10,45 +11,73 @@ affected_spec:
   - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
-# OpenTelemetry 分散トレーシングを統合し、リクエスト追跡とボトルネック検出を可能にする
+# OpenTelemetry の伝播をデータベース、外部 HTTP、非同期ジョブまで延ばす
 
 ## Motivation
-現在 idmagic は Prometheus を用いたメトリクス監視（[[wi-112-prometheus-metrics-and-authentication-golden-signals]]）をカバーしているが、
-個別の認証リクエストや設定変更がどのようなコールスタックや外部呼び出しを経て
-レイテンシを発生させているかという「トランザクション追跡（分散トレーシング）」が欠落している。
-IdP は外部 SAML/OIDC フェデレーション、PostgreSQL、非同期ジョブによる監査イベントの書き込み
-など複数のコンポーネントと通信するため、本番環境での障害調査やボトルネック特定には、
-W3C Trace Context を用いたコンテキスト伝播と OpenTelemetry Tracing の統合が不可欠である。
+
+API サーバーとワーカーには、OpenTelemetry の Provider、OTLP exporter、W3C Trace Context の伝播、HTTP 受信スパン、ログとの相関、Collector の構成がすでにある。
+
+残っている問題は、受信したトレースが PostgreSQL、外部 HTTP、重要なユースケース、非同期ジョブの境界で途切れることである。
+
+認証要求からデータベース操作や後続ジョブまでを一つの因果関係として追えなければ、サービス目標の逸脱を検知できても、遅延や失敗が生じた境界を特定できない。
+
+本項目は既存の基盤を置き換えず、依存境界の子スパンと非同期の伝播を完成させる。
 
 ## Scope
-- **go**: OpenTelemetry Go SDK (otel/trace) を API サーバーおよび UI ゲートウェイに導入する。, HTTP ハンドラー middleware にトレースインスツルメンテーション (otelhttp) を統合する。, W3C Trace Context ヘッダ (traceparent) のパースとダウンストリームへの伝播を実装する。, PostgreSQL (pgx) へ otel インスツルメンテーションを導入し、DB クエリをスパンとして可視化する。, 認証の成否、トークン発行、例外エラー発生時に、トレース情報（スパン属性）にエラーフラグやメタデータを付与する。
-- **monitoring**: OpenTelemetry Collector 経由でトレースデータを Jaeger または外部 APM (Datadog 等) へエクスポートする設定を追加する。
+
+- 現在の HTTP、PostgreSQL、外部 HTTP、ユースケース、ジョブ境界を棚卸しし、欠けている伝播とスパンを確定する。
+- PostgreSQL と外部 HTTP の呼び出しに、値や資格情報を記録しない子スパンを追加する。
+- 認証、トークン発行など、複数の依存を調整する重要なユースケースだけに手動スパンを追加する。
+- ジョブの永続化境界で trace context を専用メタデータとして保存し、ワーカー側で producer span へ link した consumer span を開始する。
+- 再試行回数、結果、低カーディナリティのエラー分類を記録し、tenant、user、token、IP、SQL bind 値を属性へ含めない。
+- exporter の停止、キューの飽和、不正なリモート親が製品要求を失敗させず、観測可能な drop として扱われることを検証する。
+- `docs/observability.md` にスパン分類、伝播境界、属性の許可リスト、サンプリングと障害時の扱いを記録する。
 
 ## Out of Scope
-- 特定の商用 APM ベンダー向けライブラリの直接導入（OTel 標準のみを使用する）。
-- プロファイラ（pprof 等）の常時監視統合。
 
-## Plan
-- `docs/observability.md` と既存 `backend/shared/observability/telemetry_otlp/otel.go` を拡張し、global SDKを各contextが直接設定しない。server composition rootがTracerProvider/propagator/resourceを構築してshutdownを所有する。
-- ingressはotelhttp/Echo middlewareでW3C traceparent/tracestateを抽出し、route template、method、statusを低cardinality属性にする。request_idは別の相関値としてspan/log/event metadataへ付与するが、trace IDの代用にしない。
-- usecaseは重要なorchestrationだけmanual spanを持ち、domain entity/modelはOTel依存をimportしない。pgxと外部HTTP呼び出しは公式instrumentationまたはport wrapperでchild spanを作る。
-- 非同期の境界は PostgreSQL のジョブキューだけである（[[wi-305-remove-external-message-brokers]] で外部ブローカーと outbox リレーは撤廃済み）。`Job` の `params` に trace context を明示伝播し、worker 側で producer span へ link した consumer span を作る。business payloadへtrace headerを混ぜない。
-- attribute allowlistでtenant/user/client/token/IP/SQL bind値を禁止またはhashed分類にし、samplingはparent-based ratio + error tailのcollector側方針とする。exporter障害はrequestを失敗させずbounded queue/drop metricで観測する。
+- 既存の Provider、OTLP exporter、Collector、HTTP 受信スパンを別実装へ置き換えること。
+- 特定の商用 APM 向けライブラリの導入。
+- プロファイラの常時監視。
+- すべての関数へ手動スパンを追加すること。
+- トレース情報を業務ペイロードとして公開すること。
+
+## Design
+
+Provider、propagator、resource、shutdown の所有者は引き続き composition root とし、各 Context は OpenTelemetry の大域設定を変更しない。
+
+domain model は OpenTelemetry に依存しない。
+
+ユースケースと依存ポートは `context.Context` を渡し、HTTP client と PostgreSQL の adapter が子スパンを作る。
+
+ジョブでは業務パラメーターと trace context を分離する。
+
+再試行は同じ処理の再開ではなく新しい試行として consumer span を作り、元の producer span との link と `retry_attempt` を持たせる。
+
+属性は許可リスト方式とし、route template、method、status、operation、error class などに限定する。
 
 ## Tasks
-- [ ] T001 [Spec] 現行OTel初期化、HTTP/pgx/Jobs境界を棚卸しし、span taxonomy、async propagation、attribute/redaction/samplingを確定して `docs/observability.md` に記録する。
-- [ ] T002 [Bootstrap] shared observabilityにTracerProvider/OTLP exporter/resource/propagator/shutdownとdisabled no-op modeを実装する。
-- [ ] T003 [HTTP] Echo ingress/client instrumentation、route template/status/error、request_id log correlationを追加する。
-- [ ] T004 [Storage/Usecase] pgx instrumentationと選定usecase manual spansを追加し、SQL値/PIIをrecordしない。
-- [ ] T005 [Async] `Job` の `params` へ trace context を載せ、worker 側の producer/consumer span と link、retry attempt 属性を実装する。
-- [ ] T006 [Collector] composeのOTel Collectorへtrace pipeline/sampling/exportを追加し、Jaeger等local backendはprofileで起動する。
-- [ ] T007 [Verify] browser request→DB→job workerのsingle trace、remote parent、error/retry、exporter outage/backpressure、attribute PII scanを検証する。
+
+- [ ] T001 [Inventory] 現在の計装と HTTP、PostgreSQL、外部 HTTP、ユースケース、ジョブ境界を棚卸しする。
+- [ ] T002 [Docs] スパン分類、伝播、属性、サンプリング、障害時の扱いを `docs/observability.md` に記録する。
+- [ ] T003 [Acceptance RED] リモート親から PostgreSQL とジョブまで同じ因果関係で追えない現状をテストで固定する。
+- [ ] T004 [Storage/HTTP] PostgreSQL と外部 HTTP の adapter に子スパンと安全な属性を追加する。
+- [ ] T005 [Usecase] 選定した重要な調整処理へ手動スパンを追加する。
+- [ ] T006 [Async] ジョブの専用メタデータへ trace context を保存し、ワーカーの consumer span、link、再試行属性を実装する。
+- [ ] T007 [Verify] リモート親、正常処理、エラー、再試行、exporter 障害、属性漏えいを検証する。
 
 ## Verification
+
+- `mise run test-go-race`
 - `mise run verify-go`
-- 手動: ローカル Docker Compose 環境で OpenTelemetry Collector と Jaeger を起動し、ログインを実行した際に DB クエリがネストしたスパンとして Jaeger UI 上に正しく描画されることを確認する。
+- `mise run check-monitoring`
+- `mise run verify`
+- in-memory exporter を用いたテストで、HTTP 受信、依存呼び出し、ジョブ処理の親子関係または link を確認する。
+- トレース属性とログを走査し、禁止した識別子、資格情報、SQL bind 値が含まれないことを確認する。
 
 ## Risk Notes
-トレーシングの導入は本番環境の CPU / メモリオーバーヘッドを増やす懸念があるため、
-サンプリングレートを動的に構成可能にし、開発環境では 100%、本番環境では 5〜10% 程度に
-抑えられる仕組みを用意する。
+
+リスクは low であり、観測を追加するだけで製品の成功条件は変えない。
+
+最大の危険は、便利な識別子を属性へ載せて秘密情報や個人情報を外部の観測基盤へ流すことである。
+
+属性を許可リストに限定し、exporter の失敗は要求処理から切り離す。

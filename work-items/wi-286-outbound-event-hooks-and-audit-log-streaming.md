@@ -6,19 +6,6 @@ created_at: 2026-07-25
 priority: p2
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/audit/usecases
-    - backend/audit/handlers_http
-    - backend/shared/events
-    - backend/jobs/usecases
-    - backend/provisioning/usecases
-  tests:
-    - backend/audit/usecases
-    - backend/audit/handlers_http
-  stop_before_reading:
-    - backend/saml
-    - backend/wsfederation
 affected_spec:
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ListAdminAuditEvents }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }

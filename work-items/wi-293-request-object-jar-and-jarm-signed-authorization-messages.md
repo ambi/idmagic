@@ -6,19 +6,6 @@ created_at: 2026-07-25
 priority: p2
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/oauth2/handlers_http/authorize_handler.go
-    - backend/oauth2/handlers_http/par_handler.go
-    - backend/oauth2/handlers_http/validation.go
-    - backend/oauth2/client/domain
-    - backend/oauth2/authorization/usecases
-  tests:
-    - backend/oauth2/handlers_http/authorize_handler_test.go
-    - backend/oauth2/client/domain
-  stop_before_reading:
-    - frontend
-    - backend/saml
 affected_spec:
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Authorize }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.PushAuthorizationRequest }

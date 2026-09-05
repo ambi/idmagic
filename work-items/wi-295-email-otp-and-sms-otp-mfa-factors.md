@@ -6,18 +6,6 @@ created_at: 2026-07-25
 priority: p2
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/authentication/mfa/domain
-    - backend/authentication/mfa/usecases
-    - backend/authentication/totp
-    - backend/shared/notification
-  tests:
-    - backend/authentication/mfa/domain
-    - backend/authentication/mfa/usecases
-  stop_before_reading:
-    - backend/oauth2
-    - backend/saml
 affected_spec:
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.MfaFactorType }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Contract.StartBrowserMfaEnrollment }

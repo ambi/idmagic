@@ -1,7 +1,8 @@
 ---
 status: pending
-authors: ["tn"]
+authors: [tn]
 risk: medium
+reversibility: reversible
 created_at: 2026-07-16
 priority: p1
 change_kind: tooling
@@ -9,59 +10,65 @@ spec_impact: { kind: none, reason: "既存の lifecycle workflow 管理面に対
 depends_on: [wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations, wi-222-lifecycle-workflow-dry-run-real-evaluation]
 ---
 
-# lifecycle workflow admin API/UI のテスト網羅性を確立する
+# lifecycle workflow 管理面に残る境界条件と E2E のテスト不足を解消する
 
 ## Motivation
-`backend/idgovernance/handlers_http/admin_lifecycle_workflow_handler.go` (327 行、
-CRUD/enable/disable/archive/dry-run/run 一覧/詳細/retry の 11 以上のハンドラ) には HTTP レベルの
-テストが一切なく、authorization (`requireWorkflowAdmin` 相当)、tenant 境界、revision precondition、
-cross-tenant ID の not-found 正規化、エラーマッピングが未検証である。domain 層のテストも
-`domain/lifecycle_workflows_test.go` (4件) / `usecases/lifecycle_workflows_test.go` (4件) /
-`usecases/lifecycle_workflow_dispatcher_test.go` (2件) の計 10 件に留まり、`eq`/`not_eq`/`in`/`exists`
-の operator 別テストや、filter/action の 20 件上限の境界テストがない。
 
-frontend は `AdminLifecycleWorkflowPages.test.tsx` (3件) / `WorkflowDefinitionForm.test.tsx` (5件) の
-React Testing Library テストのみで、Playwright e2e テストが存在しない。wi-220 の完了報告は
-`mise run test-ui-e2e` を検証コマンドとして挙げているが、`frontend/tests/e2e/` に lifecycle workflow を
-対象にした spec ファイルはなく (唯一 lifecycle を名に含む `ui-scenario-actions.spec.ts` は無関係な
-"application lifecycle" を指す)、この検証は実質的に lifecycle workflow の挙動を確認していない。
+本項目の作成後に `backend/idgovernance/handlers_http/admin_lifecycle_workflow_handler_test.go` が追加され、管理 HTTP 経路の認可、テナント境界、revision、not-found などにはテストが入った。
 
-この網羅性不足が、[[wi-221-lifecycle-workflow-audit-event-emission]] の監査イベント欠落や
-[[wi-222-lifecycle-workflow-dry-run-real-evaluation]] の dry-run スタブ化のような重大な齟齬を
-検出できないまま "completed" として出荷させた直接の原因である。
+domain と usecase にも lifecycle workflow のテストがあり、「HTTP レベルのテストが一切ない」という当初の前提は現在には当てはまらない。
+
+一方、frontend の単体テストだけでは、画面、管理 API、永続化を結ぶ配線を検証できない。
+
+`frontend/tests/e2e/` には lifecycle workflow の作成、enable、dry-run、実行履歴、retry を通す Playwright シナリオがまだなく、operator ごとの評価と filter/action 件数上限についても、規範上の境界を網羅しているか棚卸しが必要である。
+
+本項目は既存テストを作り直さず、実際に残っている境界条件と E2E の不足だけを解消する。
 
 ## Scope
-- `backend/idgovernance/handlers_http/admin_lifecycle_workflow_handler_test.go` を新設し、
-  CRUD/enable/disable/archive/dry-run/run 一覧/詳細/retry の各ハンドラを authorization・tenant
-  境界・revision precondition・not-found 正規化の観点でテストする。
-- domain 層に filter operator (`eq`/`not_eq`/`in`/`exists`) ごとのテストと、filter/action 20 件
-  上限の境界テストを追加する。
-- `frontend/tests/e2e/` に、lifecycle workflow の作成 → enable → run 履歴確認 → retry の一連を
-  検証する Playwright e2e テストを追加する。
-- `docs/contexts/identity-governance/scenarios.feature.md` と Go 実装の
-  対応を確認する最小限の統合テストを追加する ([[wi-221-lifecycle-workflow-audit-event-emission]]
-  の成果と連携する)。
+
+- lifecycle workflow の規範例を、handler、domain、usecase、frontend unit、E2E の既存テストへ対応付ける。
+- `eq`、`not_eq`、`in`、`exists` の評価と、filter/action 件数上限の直前、上限、超過を確認し、欠けた domain または usecase テストだけを追加する。
+- 管理 HTTP 経路について、規範例に対応しない認可、テナント境界、revision、not-found、dry-run、retry の不足だけを追加する。
+- Playwright で、作成、enable、dry-run、実行履歴の確認、retry を製品と同じ UI と API から通す主要経路を追加する。
+- テストで製品欠陥を検出した場合は、本項目で修正せず、該当する `REQ-*` を持つ bugfix work item に分ける。
 
 ## Out of Scope
-- 新機能の追加。本 WI はテスト網羅性のみを対象とする。
-- 汎用的な specification-Go conformance framework の新設や他 context への横展開。
 
-## Plan
-- 既存の他 admin 機能 (admin-groups / admin-users 等) の handler test パターンに合わせて書く。
-- e2e テストは dry-run の実態評価 ([[wi-222-lifecycle-workflow-dry-run-real-evaluation]]) が
-  先に修正されている前提で書き、誤った挙動をテストとして固定しない。
+- 既存テストの全面的な書き換え。
+- lifecycle workflow の新機能または仕様変更。
+- 汎用的な仕様適合フレームワークの新設。
+- テストで見つかった製品欠陥の修正。
+
+## Design
+
+テスト件数ではなく、規範例が要求する観測点を基準に不足を判断する。
+
+domain の表現検証、usecase の状態遷移、HTTP の契約、UI からの配線は異なる欠陥を検出するため、一つの層のテストで他の層を代用しない。
+
+E2E は lifecycle workflow を名前に含むだけの別機能を証拠にせず、管理画面から作った定義が有効化され、dry-run の実評価と実行履歴を経て retry できることを観測する。
 
 ## Tasks
-- [ ] T001 [Go] `admin_lifecycle_workflow_handler_test.go` を追加する。
-- [ ] T002 [Go] domain validator の operator/上限境界テストを追加する。
-- [ ] T003 [UI] Playwright e2e シナリオを追加する。
-- [ ] T004 [Verify] `mise run verify-go` / `mise run test-ui-e2e` / `mise run verify` を通す。
+
+- [ ] T001 [Inventory] lifecycle workflow の `EX-*` と既存テストを対応付け、層ごとの不足を記録する。
+- [ ] T002 [Unit] operator と filter/action 件数境界に不足する domain または usecase テストを追加する。
+- [ ] T003 [HTTP] 認可、テナント境界、revision、not-found、dry-run、retry に残る handler test の不足を追加する。
+- [ ] T004 [E2E RED] 管理画面から主要経路を通せない現状を Playwright で固定する。
+- [ ] T005 [E2E] 作成、enable、dry-run、履歴確認、retry を通す Playwright シナリオを追加する。
+- [ ] T006 [Triage] 検出した製品欠陥を個別の bugfix work item に分ける。
+- [ ] T007 [Verify] 対象の検査と標準検証を通す。
 
 ## Verification
-- `mise run verify-go`
+
+- `mise run test-go-race`
+- `mise run test-ui-unit`
 - `mise run test-ui-e2e`
 - `mise run verify`
+- 主要 E2E の配線を一時的に外した場合に、追加した Playwright シナリオが失敗することを確認する。
 
 ## Risk Notes
-テスト追加のみで本番挙動は変えない想定だが、追加したテストが本 WI の対象外の未発見バグを検出した
-場合は、その場で直さずスコープを切り分けて別 WI として起票する。
+
+リスクは medium であり、本項目ではテストだけを変更する。
+
+広い E2E を一つ作るだけでは失敗原因が分かりにくくなるため、unit と HTTP で境界条件を固定し、E2E は層をまたぐ主要経路へ限定する。
+
+未発見の製品欠陥をテストに合わせて同時修正すると変更の意味が混ざるため、個別の bugfix work item へ分ける。

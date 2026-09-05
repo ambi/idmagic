@@ -6,18 +6,6 @@ created_at: 2026-07-25
 priority: p3
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/shared/security/passwords_argon2id
-    - backend/signingkeys/keys_jose
-    - backend/signingkeys/keys_vault
-    - backend/cmd/internal/bootstrap
-    - infra/docker
-  tests:
-    - backend/shared/security/passwords_argon2id
-    - backend/signingkeys
-  stop_before_reading:
-    - frontend
 affected_spec:
   - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.SignatureAlgorithm }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Token }

@@ -6,18 +6,6 @@ created_at: 2026-07-25
 priority: p2
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/idmanagement/group/domain/groups.go
-    - backend/idmanagement/group/usecases/admin_groups.go
-    - backend/idmanagement/group/db_postgres
-    - backend/application/usecases
-  tests:
-    - backend/idmanagement/group/domain/groups_test.go
-    - backend/idmanagement/group/usecases/admin_groups_test.go
-  stop_before_reading:
-    - backend/oauth2
-    - backend/saml
 affected_spec:
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.CreateGroup }

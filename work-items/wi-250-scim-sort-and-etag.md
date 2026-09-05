@@ -6,14 +6,6 @@ created_at: 2026-07-18
 priority: p3
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/sourcing/scim/usecases/list.go
-    - backend/sourcing/scim/handlers_http/handlers.go
-  tests:
-    - backend/sourcing/scim/handlers_http/scim_test.go
-  stop_before_reading:
-    - frontend
 affected_spec:
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }

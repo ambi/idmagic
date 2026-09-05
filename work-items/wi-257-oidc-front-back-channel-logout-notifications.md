@@ -6,22 +6,6 @@ created_at: 2026-07-19
 priority: p1
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/oauth2/client/domain/client.go
-    - backend/oauth2/client/usecases/admin_clients.go
-    - backend/oauth2/token/usecases/exchange_code.go
-    - backend/oauth2/handlers_http/end_session_handler.go
-    - backend/oauth2/handlers_http/discovery_handler.go
-    - backend/jobs/domain/job.go
-    - backend/jobs/usecases/handler_registry.go
-    - backend/cmd/idmagic-worker/worker.go
-  tests:
-    - backend/oauth2/usecases
-    - backend/oauth2/handlers_http/end_session_hint_test.go
-  stop_before_reading:
-    - backend/saml
-    - backend/wsfederation
 affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.OAuth2Client }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.ClientSession }

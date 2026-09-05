@@ -1,83 +1,95 @@
 ---
-depends_on: [wi-390-security-control-test-standard-and-gate]
+depends_on: [wi-490-fold-refusal-coverage-into-one-normative-coverage-rule, wi-491-adopt-markdown-with-gherkin-scenarios]
 status: pending
 authors: [tn]
 risk: low
+reversibility: reversible
 created_at: 2026-08-22
-priority: p2
+priority: p1
 change_kind: tooling
-spec_impact: { kind: none, reason: "既存テストへのアサーション追加であり、製品の振る舞いも配線契約も変えない。アサーションを足した結果として実装の欠陥が見つかった場合は、個別の work item として切り出す。" }
+spec_impact: { kind: none, reason: "既存の拒否例へテストと無作用のアサーションを対応付ける作業であり、製品の振る舞いと公開契約を変えない。検証中に実装の欠陥が見つかった場合は、規範参照を持つ個別の bugfix work item に分ける。" }
 ---
 
-# 拒否のテストに、起きなかった副作用の確認を足す
+# 拒否経路のテスト負債を、具体例の被覆と無作用の確認までまとめて解消する
 
 ## Motivation
 
-[[wi-390-security-control-test-standard-and-gate]] は `docs/development/specification-first-workflow.md` に規範を置いた。拒否は「返ったステータス」ではなく「起きなかった副作用」で確かめる。**規範を書いただけで、既存のテストは直していない。**
+拒否の検証には、拒否応答と、拒否によって防がれた効果の両方が要る。
 
-`mise run report-security-test-gaps` の実測 (2026-08-22) では、状態を変える操作の拒否を検証しているテスト 120 件のうち **84 件が、拒否のあとに状態を読み直していない**。
+`mise run report-security-test-gaps` の 2026-09-06 時点の実測では、状態変更を拒否するテスト 158 件のうち 112 件が、拒否後の状態を読み直していない。
 
-| 領域 | 件数 |
-|---|---|
-| backend/application/handlers_http | 10 |
-| backend/sourcing/scim | 10 |
-| backend/oauth2/handlers_http | 9 |
-| backend/shared/http | 9 |
-| backend/idmanagement/group | 8 |
-| backend/application/usecases | 5 |
-| backend/saml/handlers_http | 5 |
-| その他 | 28 |
+一方、[[wi-491-adopt-markdown-with-gherkin-scenarios]] は規範シナリオを Markdown with Gherkin へ移し、被覆の管理単位を規則の `REQ-*` から具体例の `EX-*` へ変更した。
 
-これが放置できないのは、**まさにこの形のテストが CSRF の素通りを通してしまった**からである。3 つの拒否ケースはいずれも 403 を assert していた。403 は返っていた。要求も通っていた。
+この移行により、Context ごとの旧 work item 12 件が持っていた「規則を名指しするテストを足す」という計画は、そのままでは台帳を縮められなくなった。
 
-wi-390 で 1 件だけ直した `TestEnsureDefaultAndRejectDefaultDisable` が典型である。`ErrDefaultTenant` を assert するだけで default テナントが有効なままかを見ておらず、**先に無効化してから拒否を返す実装でも通っていた**。
+既存テストの無作用確認と、まだテストのない拒否例への検証追加は、どちらも「拒否を応答の字面だけで検証済みにしない」という同じ完了条件へ帰着するため、本項目で一つの負債として扱う。
 
 ## Scope
 
-- 84 件の拒否テストに、拒否された操作が状態を変えていないことの確認を足す。作成されるはずだった行が無い、更新されるはずだった値が元のまま、発行されるはずだったイベントが出ていない、のいずれかを、テスト自身が読み直して確かめる。
-- 足した結果として落ちるテストがあれば、それは実装の欠陥である。**本 work item では直さず、欠陥として個別に切り出す。** テストの修正と実装の修正を同じ変更に混ぜると、どちらが何を意味するのか後から読めない。
-- `mise run report-security-test-gaps` の件数が減ることを完了の指標にする。
+- `mise run report-security-test-gaps` が報告する既存の拒否テストを確認し、拒否後に防護対象の状態、発行物、配送、監査記録のいずれかを読み直すアサーションを足す。
+- 旧 `wi-475`、`wi-476`、`wi-479` から `wi-486`、`wi-488`、`wi-489` が対象としていた 44 規則を、現在の `scenarios.feature.md` にある拒否の `EX-*` へ対応付ける。
+- 対応するテストがない拒否例には、製品と同じ入口から拒否判断へ到達し、応答と防いだ効果を検証するテストを追加する。
+- 検証済みになった `EX-*` を `tools/check/example-coverage-debt.json` から削除する。
+- 拒否を実装が持っていない、または拒否後に効果が残ることが判明した場合は、本項目で製品コードを直さず、当該 `REQ-*` を `affected_spec` に持つ bugfix work item を作る。
+- 作業開始時と完了時に二つの報告タスクを実行し、対象件数と残件を本項目へ記録する。
+
+対象の規則は Application 8 件、WorkloadIdentity 7 件、Provisioning 5 件、DataKeys 4 件、IdentityGovernance 4 件、SharedSignals 4 件、Sourcing 3 件、Audit 2 件、ClaimMapping 2 件、Jobs 2 件、System 2 件、ApiTokens 1 件である。
+
+この件数は移行前の規則数であり、実際の作業単位は各規則に属する拒否の `EX-*` とする。
 
 ## Out of Scope
 
-- 副作用の不在を機械的に強制する検査。wi-390 が見送った判断をそのまま引き継ぐ。「本体に読み直しが 1 つ以上ある」という構文の要求は、意味のない 1 行で満たせてしまう。
-- 拒否の宣言の床と 137 件の分類。[[wi-391-refusal-declaration-floor-and-reinventory]] が持つ。
-- 読み取りの拒否。素通りしても副作用が無いので対象にしない。
-- 見つかった実装の欠陥の修正。切り出した先で扱う。
+- 拒否ではない正常経路と代替経路の例被覆。
+- 行カバレッジ率の目標または閾値。
+- 「読み直し呼出しが一つある」といった構文だけによる無作用検査。
+- 検証で見つかった製品の欠陥の修正。
+- 新しい拒否規則またはエラー型の追加。
 
 ## Design
 
-未定。着手時に次の 2 点を確定して本節に記録する。
+完了条件はテスト名や注記の存在ではなく、誤った実装を区別できることである。
 
-1. **分割の単位。** 84 件を 1 度に扱うと着手できない。領域ごと (`application/handlers_http` の 10 件、`sourcing/scim` の 10 件…) に切るのが素直だが、テストの書き方は層 (handlers_http / usecases / db_*) で揃っているので層ごとのほうが手数が少ないかもしれない。最初の 1 領域を通してから決める。
-2. **「読み直し」の書き方の型。** handlers_http では HTTP で読み直すのか、リポジトリを直接読むのか。前者は経路ごと確かめられるが、読み取り側の認可にも依存する。後者は素直だが、テストがリポジトリを握っていない場合に書けない。型を決めて `docs/development/specification-first-workflow.md` の例に足すかを判断する。
+各拒否例について、テストは製品の正式な入口から対象の判断へ到達し、呼び出し元が観測する拒否応答と、防護が無ければ起きたはずの効果が残っていないことを表明する。
+
+状態を読み戻せる依存では拒否前後の値を比較し、読み戻せない外部境界では送出記録が増えていないことを確かめる。
+
+読み取り操作の拒否では、保護対象の表現が応答へ含まれないことを無作用に相当する観測として扱う。
+
+`report-security-test-gaps` は既存テストの構文から候補を挙げる報告であり、検証の意味を保証しない。
+
+`report-coverage-debt` も同じエラー名を持つ近傍テストを候補として示すだけなので、`named` と `nearby` を台帳削除の根拠にせず、対象の `EX-*` の Given、When、Then とテストの入力および観測を一件ずつ照合する。
 
 ## Plan
 
-- 報告タスクの件数がもっとも多い領域から着手し、1 領域を通して手順と 1 件あたりの重さを測る。
-- 落ちたテストは切り出して次へ進む。止まらない。
-- 件数の推移を work item に記録する。減っていることが見えなければ、この作業は続かない。
+1. 44 規則に属する拒否例の `EX-*` を抽出し、Context、入口、防いだ効果、既存テストの有無を一覧にする。
+2. `report-security-test-gaps` の 112 件と一覧を突き合わせ、同じテストを二度直さない作業順を決める。
+3. Context ごとに既存テストの無作用確認と未被覆例のテスト追加を行い、確認済みの台帳項目だけを削除する。
+4. 拒否処理を一時的に外すか、拒否前に効果を起こす故障を注入し、追加したテストが失敗することを確認する。
+5. 製品欠陥は個別の bugfix work item へ移し、本項目のテスト整理と混ぜない。
 
 ## Tasks
 
-- [ ] T001 [Design] 分割の単位と「読み直し」の書き方の型を確定し `## Design` に記録する。
-- [ ] T002 [Test] 最初の 1 領域に副作用の不在の確認を足し、手順と重さを測る。
-- [ ] T003 [Triage] 足した結果落ちたテストを実装の欠陥として切り出す。
-- [ ] T004 [Test] 残りの領域へ広げる。
-- [ ] T005 [Verify] `mise run report-security-test-gaps` の件数が減っていることを確認する。`mise run verify` を通す。
+- [ ] T001 [Inventory] 44 規則を現在の拒否例へ対応付け、入口、防いだ効果、既存テストを記録する。
+- [ ] T002 [Baseline] 二つの報告タスクを実行し、重複を除いた対象件数を記録する。
+- [ ] T003 [Test] 既存の拒否テストへ、拒否後の無作用を読み戻すアサーションを追加する。
+- [ ] T004 [Test] テストのない拒否例へ、正式な入口から応答と無作用を検証するテストを追加する。
+- [ ] T005 [Triage] 検出した製品欠陥を個別の bugfix work item へ分ける。
+- [ ] T006 [Ledger] 検証済みの `EX-*` を例被覆台帳から削除する。
+- [ ] T007 [Verify] 故障注入で検出能力を確かめ、報告と標準検証を通す。
 
 ## Verification
 
 - `mise run report-security-test-gaps`
-  - reason: 着手前後の件数を比べ、減っていることを完了の指標にする。
-- `mise run test-go`
+- `mise run report-coverage-debt`
+- `mise run check-security-controls`
+- `mise run check-spec`
+- `mise run test-go-race`
 - `mise run verify`
-- 手動: 直したテストのうち 1 件について、拒否の前に副作用を起こす実装へ一時的に変え、テストが落ちることを確認する。落ちなければ、その確認は書けていない。
 
 ## Risk Notes
 
-リスクは low。テストへのアサーション追加であり、製品には触れない。
+リスクは low であり、製品コードは変更しない。
 
-ただし**形だけ満たす危険がある**。「何かを読み直す 1 行」を足せば報告の件数は減るが、それでは CSRF のときと同じである。読み直した値が拒否前と同じであることまで assert しなければ意味がない。件数の減少を指標にすると、この形骸化を招きやすい。Verification の手動確認 (拒否の前に副作用を起こす実装でテストが落ちるか) を、件数より上の判断基準として扱う。
+最大の失敗は、対象と関係のないテストへ `EX-*` を追記し、台帳だけを縮めることである。
 
-落ちるテストが出た場合、それは製品の欠陥であって作業の失敗ではない。切り出して先へ進む。
+各テストへ拒否処理を外す故障または拒否前に効果を起こす故障を与え、テストが失敗しなければ被覆済みと扱わない。

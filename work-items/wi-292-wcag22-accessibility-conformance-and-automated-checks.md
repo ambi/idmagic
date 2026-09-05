@@ -6,16 +6,6 @@ created_at: 2026-07-25
 priority: p1
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - frontend/src/components
-    - frontend/src/features
-    - frontend/tests/e2e
-  tests:
-    - frontend/tests/e2e
-    - frontend/src/test
-  stop_before_reading:
-    - backend
 affected_spec:
   - { path: docs/standards.md, requirement: WCAG22-KEYBOARD }
   - { path: docs/standards.md, requirement: WCAG22-FOCUS }

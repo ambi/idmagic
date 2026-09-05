@@ -6,22 +6,6 @@ created_at: 2026-08-10
 priority: p3
 depends_on: [wi-284-improve-csv-import-export, wi-350-group-csv-round-trip]
 change_kind: feature
-initial_context:
-  source:
-    - backend/idmanagement/group/domain/groups.go
-    - backend/idmanagement/group/usecases/admin_groups.go
-    - backend/idmanagement/group/handlers_http/admin_group_handler.go
-    - backend/idmanagement/usecases/data_export.go
-    - backend/idmanagement/user/usecases/user_import.go
-    - frontend/src/features/admin-groups
-    - frontend/src/features/admin-exports/DataExportPage.tsx
-  tests:
-    - backend/idmanagement/group/usecases/admin_groups_test.go
-    - backend/idmanagement/handlers_http/admin_data_export_handler_test.go
-    - frontend/src/features/admin-exports/DataExportPage.test.tsx
-  stop_before_reading:
-    - backend/idmanagement/group/usecases/dynamic_groups.go
-    - backend/sourcing
 affected_spec:
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMember }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMembershipSource }

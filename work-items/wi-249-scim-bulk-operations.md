@@ -6,14 +6,6 @@ created_at: 2026-07-18
 priority: p3
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/sourcing/scim/handlers_http/handlers.go
-    - backend/sourcing/scim/usecases
-  tests:
-    - backend/sourcing/scim/handlers_http/resource_contract_test.go
-  stop_before_reading:
-    - frontend
 affected_spec:
   - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-RESOURCE-OPERATIONS }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }

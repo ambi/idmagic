@@ -6,18 +6,6 @@ created_at: 2026-07-25
 priority: p3
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/oauth2/token/usecases
-    - backend/oauth2/handlers_http
-    - backend/claimmapping
-    - backend/saml/usecases
-  tests:
-    - backend/oauth2/token/usecases
-    - backend/oauth2/handlers_http
-  stop_before_reading:
-    - frontend
-    - backend/provisioning
 affected_spec:
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.UserInfo }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.GetOpenidConfiguration }

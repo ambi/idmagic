@@ -6,14 +6,6 @@ created_at: 2026-07-18
 priority: p3
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/sourcing/scim/domain/mutation.go
-    - backend/sourcing/scim/usecases/users.go
-  tests:
-    - backend/sourcing/scim/domain/mutation_test.go
-  stop_before_reading:
-    - frontend
 affected_spec:
   - { path: docs/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }

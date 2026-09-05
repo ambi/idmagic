@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -164,3 +164,9 @@ affected_spec:
 台帳は id 順に 1 エントリー 1 id なので、Context ごとの work item が並行しても衝突はエントリー単位に収まる。
 
 各項目は自分が持つ id のエントリーだけを削除し、コメント配列と他の id には触れない。
+
+## Completion
+
+- **Completed At**: 2026-09-06
+- **Summary**:
+  取り消す。[[wi-491-adopt-markdown-with-gherkin-scenarios]] により被覆の管理単位が規則の `REQ-*` から具体例の `EX-*` へ変わり、本項目の規則単位の計画は古くなった。対象の棚卸し、拒否テスト、無作用の確認、台帳更新は [[wi-392-refusal-tests-assert-the-absent-effect]] に統合し、製品と仕様には変更を加えずに終了する。

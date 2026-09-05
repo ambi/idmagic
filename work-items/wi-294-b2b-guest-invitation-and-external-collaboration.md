@@ -6,18 +6,6 @@ created_at: 2026-07-25
 priority: p3
 depends_on: [wi-30-inbound-federation-and-identity-broker]
 change_kind: feature
-initial_context:
-  source:
-    - backend/idmanagement/user/domain
-    - backend/idmanagement/user/usecases
-    - backend/application/usecases
-    - backend/authentication/usecases
-  tests:
-    - backend/idmanagement/user/usecases
-    - backend/application/usecases
-  stop_before_reading:
-    - backend/saml
-    - backend/wsfederation
 affected_spec:
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.User }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.CreateAdminUser }

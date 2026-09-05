@@ -6,15 +6,6 @@ created_at: 2026-07-18
 priority: p2
 depends_on: [wi-246-scim-multivalued-core-attributes-and-nested-group-members]
 change_kind: feature
-initial_context:
-  source:
-    - backend/sourcing/scim/domain/filter.go
-    - backend/sourcing/scim/domain/mutation.go
-  tests:
-    - backend/sourcing/scim/domain/filter_test.go
-    - backend/sourcing/scim/domain/mutation_test.go
-  stop_before_reading:
-    - frontend
 affected_spec:
   - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }

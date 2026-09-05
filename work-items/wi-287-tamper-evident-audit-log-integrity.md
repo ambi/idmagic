@@ -6,17 +6,6 @@ created_at: 2026-07-25
 priority: p3
 depends_on: []
 change_kind: feature
-initial_context:
-  source:
-    - backend/audit/usecases
-    - backend/audit/ports
-    - backend/audit/db_postgres
-    - backend/signingkeys/usecases
-  tests:
-    - backend/audit/usecases
-    - backend/audit/db_postgres
-  stop_before_reading:
-    - frontend
 affected_spec:
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.GetAdminAuditEvent }
