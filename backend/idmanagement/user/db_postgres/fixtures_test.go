@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -55,4 +56,23 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant
+}
+
+// seedUser はテナントにユーザを作成して返す。FK 親が必要なテストの前提として使う。
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
+	t.Helper()
+	now := testClock()
+	user := &userdomain.User{
+		ID:                newUUID(t),
+		TenantID:          tenantID,
+		PreferredUsername: uniqueID("username"),
+		PasswordHash:      "hash",
+		Roles:             []string{},
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := (&UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	return user
 }

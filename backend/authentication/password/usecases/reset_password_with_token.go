@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -12,10 +13,14 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
+// ErrInvalidResetToken は、提示されたトークンで作用へ進めないことを表す。用途違い、
+// ダイジェスト不一致、期限切れ、消費済みのどれであっても外へはこの一つで返る。拒否理由は
+// 包まれたエラーの連鎖に残るので、内部の観測は理由を区別できる。
 var ErrInvalidResetToken = errors.New("reset token is invalid or expired")
 
 type ResetPasswordWithTokenDeps struct {
@@ -35,6 +40,12 @@ type ResetPasswordWithTokenInput struct {
 	Now         time.Time
 }
 
+// ResetPasswordWithToken はリセットリンクのトークンでパスワードを設定する。
+//
+// 順序が重要である。トークンは検証するだけで、この時点では消費しない。パスワード規則、
+// 既知漏洩、履歴の再利用でここから先へ進めなかった場合、トークンは未使用のまま残り、
+// 利用者は同じリンクをもう一度使える。使用済み化と保存は ConsumeAndApply が同じ
+// トランザクションで確定するので、同じトークンで作用が二回成功することはない。
 func ResetPasswordWithToken(
 	ctx context.Context,
 	deps ResetPasswordWithTokenDeps,
@@ -44,14 +55,23 @@ func ResetPasswordWithToken(
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	record, err := deps.TokenStore.Consume(ctx, sha256Hex(in.Token), now)
+	stored, err := deps.TokenStore.Find(ctx, actiontoken.Fingerprint(in.Token))
 	if err != nil {
 		return nil, err
 	}
-	if record == nil {
+	if stored == nil {
 		return nil, ErrInvalidResetToken
 	}
-	user, err := deps.UserRepo.FindBySub(ctx, record.Sub)
+	envelope, err := actiontoken.Verify(actiontoken.VerifyInput{
+		RawToken:        in.Token,
+		ExpectedPurpose: actiontoken.PurposePasswordReset,
+		Stored:          *stored,
+		Now:             now,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidResetToken, err)
+	}
+	user, err := deps.UserRepo.FindBySub(ctx, envelope.Subject)
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +126,15 @@ func ResetPasswordWithToken(
 			updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword,
 		)
 	}
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
+	if err := deps.TokenStore.ConsumeAndApply(ctx, passwordports.PasswordResetCommit{
+		Digest: envelope.Digest, Now: now, User: &updated, PasswordEncoded: encoded,
+	}); err != nil {
+		if errors.Is(err, actiontoken.ErrAlreadyConsumed) {
+			return nil, fmt.Errorf("%w: %w", ErrInvalidResetToken, err)
+		}
 		return nil, err
 	}
-	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, encoded, now); err != nil {
-		return nil, err
-	}
+	// 外部作用はトランザクションの外で起こす。
 	if deps.Emit != nil {
 		deps.Emit(&authdomain.PasswordChanged{At: now, TenantID: user.TenantID, UserID: user.ID})
 		if clearedUpdatePassword {

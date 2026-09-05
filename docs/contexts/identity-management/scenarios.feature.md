@@ -539,6 +539,44 @@ Primary actor: `AuthenticatedSelf`
 - When ユーザー "alice" が確認リンクのトークンで変更を確定する
 - Then プライマリメールアドレスが新しいアドレスへ更新される
 
+### Example: EX-IDMANAGEMENT-017-02 リンクを開くだけではトークンを消費しない
+
+- Given ユーザー "alice" 宛に有効なメールアドレス変更の確認トークンが発行されている
+- When ブラウザーまたはメールスキャナーが確認リンクを `GET` または `HEAD` で先読みする
+- Then トークンは未使用のまま残り、プライマリメールアドレスは変わらない
+- When ユーザー "alice" が同じトークンで変更を確定する
+- Then プライマリメールアドレスが新しいアドレスへ更新される
+
+### Example: EX-IDMANAGEMENT-017-03 確定済みのトークンは再利用できない
+
+- Given ユーザー "alice" が確認トークンでメールアドレス変更を確定済みである
+- When ユーザー "alice" が同じトークンでもう一度確定する
+- Then エラー "InvalidRequestError"
+- And プライマリメールアドレスは一度目の確定結果のまま変わらない
+
+### Example: EX-IDMANAGEMENT-017-04 別の用途で発行されたトークンは受け付けない
+
+- Given ユーザー "alice" 宛にメールアドレス変更ではない用途のアクショントークンが発行されている
+- When ユーザー "alice" がそのトークンで変更を確定する
+- Then エラー "InvalidRequestError"
+- And レスポンスは無効なトークンに対するものと区別できない
+- And プライマリメールアドレスは変わらず、そのトークンは未使用のまま残る
+
+### Example: EX-IDMANAGEMENT-017-05 期限切れのトークンは受け付けない
+
+- Given ユーザー "alice" 宛のメールアドレス変更の確認トークンが期限切れである
+- When ユーザー "alice" がそのトークンで変更を確定する
+- Then エラー "InvalidRequestError"
+- And プライマリメールアドレスは変わらない
+
+### Example: EX-IDMANAGEMENT-017-06 起票後に新アドレスが他のユーザーのものになっている
+
+- Given ユーザー "alice" 宛に有効なメールアドレス変更の確認トークンが発行されている
+- And 起票から確定までの間に別のユーザーが同じアドレスを自分のものとして確定している
+- When ユーザー "alice" がそのトークンで変更を確定する
+- Then エラー "ConflictError"
+- And プライマリメールアドレスは変わらず、トークンは未使用のまま残る
+
 ## Rule: REQ-IDMANAGEMENT-018 ユーザーは自分のアカウントデータをエクスポートできる
 
 Primary actor: `AuthenticatedSelf`

@@ -31,7 +31,6 @@ import (
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
 	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/db_memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
 	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -52,6 +51,7 @@ import (
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
+	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -103,9 +103,9 @@ type countingResetTokenStore struct {
 	saved int
 }
 
-func (s *countingResetTokenStore) Save(ctx context.Context, record passwordports.PasswordResetTokenRecord) error {
+func (s *countingResetTokenStore) Save(ctx context.Context, envelope actiontoken.Envelope) error {
 	s.saved++
-	return s.PasswordResetTokenStore.Save(ctx, record)
+	return s.PasswordResetTokenStore.Save(ctx, envelope)
 }
 
 // authRefusalRateLimiter は特定のポリシーだけを閾値超過として拒否する。
@@ -208,8 +208,12 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 		credentials: webauthnmemory.NewWebAuthnCredentialRepository(),
 		challenges:  &countingWebAuthnSessionStore{WebAuthnSessionStore: webauthnmemory.NewWebAuthnSessionStore()},
 		federation:  federationmemory.NewRepositories(),
-		resetTokens: &countingResetTokenStore{PasswordResetTokenStore: passwordmemory.NewPasswordResetTokenStore()},
-		emails:      &emailmemory.NoopEmailSender{},
+		resetTokens: &countingResetTokenStore{
+			PasswordResetTokenStore: passwordmemory.NewPasswordResetTokenStore(
+				users, passwordmemory.NewPasswordHistoryRepository(),
+			),
+		},
+		emails: &emailmemory.NoopEmailSender{},
 		apiTokens: apitoken.Module{
 			Repo: apiTokenRepo, TokenIssuer: signer, TokenIntrospector: signer,
 		}.Service(),

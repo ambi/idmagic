@@ -9,12 +9,12 @@ import (
 )
 
 type Querier interface {
-	ConsumeEmailChangeToken(ctx context.Context, tokenHash string) (*ConsumeEmailChangeTokenRow, error)
 	CountUsersByTenant(ctx context.Context, tenantID string) (int64, error)
 	CountUsersByTenantFiltered(ctx context.Context, arg CountUsersByTenantFilteredParams) (int64, error)
 	DeleteEmailChangeTokensForSub(ctx context.Context, userID string) error
 	DeleteTenantUserAttributeSchema(ctx context.Context, tenantID string) error
 	FindTenantUserAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantUserAttributeSchema, error)
+	FindUnusedEmailChangeToken(ctx context.Context, tokenHash string) (*FindUnusedEmailChangeTokenRow, error)
 	FindUserByEmail(ctx context.Context, arg FindUserByEmailParams) (*User, error)
 	FindUserBySub(ctx context.Context, id string) (*User, error)
 	FindUserBySubIncludingDeleted(ctx context.Context, id string) (*User, error)
@@ -34,6 +34,7 @@ type Querier interface {
 	ListUsersByTenantPageEnd(ctx context.Context, arg ListUsersByTenantPageEndParams) ([]*User, error)
 	ListUsersByTenantPageEndFiltered(ctx context.Context, arg ListUsersByTenantPageEndFilteredParams) ([]*User, error)
 	ListUsersByTenantPageFiltered(ctx context.Context, arg ListUsersByTenantPageFilteredParams) ([]*User, error)
+	MarkEmailChangeTokenUsed(ctx context.Context, arg MarkEmailChangeTokenUsedParams) (*MarkEmailChangeTokenUsedRow, error)
 	SaveTenantUserAttributeSchema(ctx context.Context, arg SaveTenantUserAttributeSchemaParams) error
 	SaveUser(ctx context.Context, arg SaveUserParams) error
 }

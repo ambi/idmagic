@@ -34,11 +34,13 @@ Seam は、その場所を編集せずに振る舞いを差し替えられる位
 
 一つのアダプターしかない場所に、将来の差し替えだけを理由とするインターフェースは足さない。二つ以上のアダプターまたは呼び出し方式が同じ振る舞いを必要とした時点で Seam を設けるため、現在の HTTP アダプターが具象ユースケースを直接呼ぶ構成も許される。
 
+メールのリンクで一度だけ実行される操作は、`backend/shared/security/actiontoken` の共通核を通す。共通核が持つのは、用途を閉じた集合として識別する型、生トークンを保持しない保存表現、そして発行と検証という二つの決定的な計算だけである。用途別のペイロードと業務作用は所有 Context に残り、共通核はそれらを知らない。実行時にハンドラーを登録する仕組みは持たず、用途はコードの列挙としてのみ増える。これは、目的の束縛、有効期限、ダイジェストだけの保存という同じ安全性条件を用途ごとに書き直させないための Seam であり、新しい用途がそのどれかを書き忘れても共通の検証を通れないようにするためである。
+
 ## Aggregate boundaries and repositories
 
 Aggregate は一貫性の境界である（語の定義は [glossary.md](glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[tenancy/decisions.md](contexts/tenancy/decisions.md)）は、この基準を適用した結果である。
 
-1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断はその Context の `decisions.md` または `internals.md` が理由とともに持つ。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[identity-management/internals.md](contexts/identity-management/internals.md)）のが、現在ある唯一の類型である。
+1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断はその Context の `decisions.md` または `internals.md` が理由とともに持つ。現在ある類型は 2 つである。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[identity-management/internals.md](contexts/identity-management/internals.md)）。もう 1 つは、アクショントークンの使用済み化と、そのトークンが認可した用途別作用である（[authentication/decisions.md](contexts/authentication/decisions.md)、[identity-management/decisions.md](contexts/identity-management/decisions.md)）。片方だけが残る状態は、同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失うかのどちらかになる。
 
 Repository は Aggregate root 単位に置く。1 つの Repository が複数の root を扱うと、どの操作がどの一貫性の境界に属するかがインターフェースから読めなくなり、呼び出し側は境界を知るために実装を読むことになる。反している状態は現在 1 つある。`backend/sourcing/scim/ports` の `ScimRepository` が `ScimUserRef` と `ScimGroupRef` の 2 つを扱っており、これは取り込み元との対応表という同じ役割の 2 つを 1 つのアダプターで実装したまま、ポートの側も分けなかったものである。
 

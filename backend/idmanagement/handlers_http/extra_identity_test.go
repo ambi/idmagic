@@ -5,8 +5,7 @@ package handlers_http_test
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/rand"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -41,6 +40,7 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -52,11 +52,6 @@ type activeAgentTokenIntrospector struct {
 
 func (i activeAgentTokenIntrospector) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
 	return i.result, nil
-}
-
-func sha256Hex(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
 }
 
 type identityTestHandler struct {
@@ -71,7 +66,7 @@ type identityTestHandler struct {
 func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	t.Helper()
 	repo := usermemory.NewUserRepository()
-	tokenStore := usermemory.NewEmailChangeTokenStore()
+	tokenStore := usermemory.NewEmailChangeTokenStore(repo)
 	groupRepo := groupmemory.NewGroupRepository()
 	clientRepo := oauth2memory.NewClientRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
@@ -521,14 +516,18 @@ func TestEmailChangeLifecycle(t *testing.T) {
 	}
 
 	// Seed a valid token for verify
-	rawToken := "my-raw-email-change-token-456"
-	tokenHash := sha256Hex(rawToken)
-	_ = tokenStore.Save(context.Background(), userports.EmailChangeTokenRecord{
-		TokenHash: tokenHash,
-		Sub:       "admin",
-		NewEmail:  "admin-new@example.com",
-		ExpiresAt: time.Now().Add(time.Hour).UTC(),
+	issued, err := actiontoken.Issue(actiontoken.IssueInput{
+		Purpose: actiontoken.PurposeEmailChange, Subject: "admin",
+		Payload: actiontoken.Payload{userports.PayloadKeyNewEmail: "admin-new@example.com"},
+		Now:     time.Now().UTC(), TTL: time.Hour, Random: rand.Reader,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawToken := issued.RawToken
+	if err := tokenStore.Save(context.Background(), issued.Envelope); err != nil {
+		t.Fatal(err)
+	}
 
 	// POST confirm email change
 	verifyReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/verify", csrf, cookie, map[string]any{

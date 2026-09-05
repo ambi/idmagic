@@ -10,33 +10,6 @@ import (
 	"time"
 )
 
-const consumeEmailChangeToken = `-- name: ConsumeEmailChangeToken :one
-DELETE FROM email_change_tokens
-WHERE token_hash = $1
-RETURNING user_id, token_hash, new_email, created_at, expires_at
-`
-
-type ConsumeEmailChangeTokenRow struct {
-	UserID    string
-	TokenHash string
-	NewEmail  string
-	CreatedAt time.Time
-	ExpiresAt time.Time
-}
-
-func (q *Queries) ConsumeEmailChangeToken(ctx context.Context, tokenHash string) (*ConsumeEmailChangeTokenRow, error) {
-	row := q.db.QueryRow(ctx, consumeEmailChangeToken, tokenHash)
-	var i ConsumeEmailChangeTokenRow
-	err := row.Scan(
-		&i.UserID,
-		&i.TokenHash,
-		&i.NewEmail,
-		&i.CreatedAt,
-		&i.ExpiresAt,
-	)
-	return &i, err
-}
-
 const deleteEmailChangeTokensForSub = `-- name: DeleteEmailChangeTokensForSub :exec
 DELETE FROM email_change_tokens WHERE user_id = $1
 `
@@ -46,14 +19,47 @@ func (q *Queries) DeleteEmailChangeTokensForSub(ctx context.Context, userID stri
 	return err
 }
 
+const findUnusedEmailChangeToken = `-- name: FindUnusedEmailChangeToken :one
+SELECT token_hash, id, user_id, purpose, new_email, created_at, expires_at
+FROM email_change_tokens
+WHERE token_hash = $1 AND used_at IS NULL
+`
+
+type FindUnusedEmailChangeTokenRow struct {
+	TokenHash string
+	ID        string
+	UserID    string
+	Purpose   string
+	NewEmail  string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (q *Queries) FindUnusedEmailChangeToken(ctx context.Context, tokenHash string) (*FindUnusedEmailChangeTokenRow, error) {
+	row := q.db.QueryRow(ctx, findUnusedEmailChangeToken, tokenHash)
+	var i FindUnusedEmailChangeTokenRow
+	err := row.Scan(
+		&i.TokenHash,
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.NewEmail,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return &i, err
+}
+
 const insertEmailChangeToken = `-- name: InsertEmailChangeToken :exec
-INSERT INTO email_change_tokens (token_hash, user_id, new_email, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO email_change_tokens (token_hash, id, user_id, purpose, new_email, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertEmailChangeTokenParams struct {
 	TokenHash string
+	ID        string
 	UserID    string
+	Purpose   string
 	NewEmail  string
 	CreatedAt time.Time
 	ExpiresAt time.Time
@@ -62,10 +68,49 @@ type InsertEmailChangeTokenParams struct {
 func (q *Queries) InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error {
 	_, err := q.db.Exec(ctx, insertEmailChangeToken,
 		arg.TokenHash,
+		arg.ID,
 		arg.UserID,
+		arg.Purpose,
 		arg.NewEmail,
 		arg.CreatedAt,
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const markEmailChangeTokenUsed = `-- name: MarkEmailChangeTokenUsed :one
+UPDATE email_change_tokens
+SET used_at = $1::timestamptz
+WHERE token_hash = $2 AND used_at IS NULL
+RETURNING token_hash, id, user_id, purpose, new_email, created_at, expires_at
+`
+
+type MarkEmailChangeTokenUsedParams struct {
+	UsedAt    time.Time
+	TokenHash string
+}
+
+type MarkEmailChangeTokenUsedRow struct {
+	TokenHash string
+	ID        string
+	UserID    string
+	Purpose   string
+	NewEmail  string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (q *Queries) MarkEmailChangeTokenUsed(ctx context.Context, arg MarkEmailChangeTokenUsedParams) (*MarkEmailChangeTokenUsedRow, error) {
+	row := q.db.QueryRow(ctx, markEmailChangeTokenUsed, arg.UsedAt, arg.TokenHash)
+	var i MarkEmailChangeTokenUsedRow
+	err := row.Scan(
+		&i.TokenHash,
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.NewEmail,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return &i, err
 }

@@ -9,11 +9,12 @@ import (
 )
 
 type Querier interface {
-	ConsumePasswordResetToken(ctx context.Context, tokenHash string) (*ConsumePasswordResetTokenRow, error)
 	DeletePasswordHistoryForSub(ctx context.Context, userID string) error
 	DeletePasswordResetTokensByUser(ctx context.Context, userID string) error
+	FindUnusedPasswordResetToken(ctx context.Context, tokenHash string) (*FindUnusedPasswordResetTokenRow, error)
 	InsertPasswordHistory(ctx context.Context, arg InsertPasswordHistoryParams) error
 	InsertPasswordResetToken(ctx context.Context, arg InsertPasswordResetTokenParams) error
+	MarkPasswordResetTokenUsed(ctx context.Context, arg MarkPasswordResetTokenUsedParams) (*MarkPasswordResetTokenUsedRow, error)
 	RecentPasswordHistory(ctx context.Context, arg RecentPasswordHistoryParams) ([]*RecentPasswordHistoryRow, error)
 }
 

@@ -383,11 +383,20 @@ CREATE TABLE password_history (
 CREATE INDEX password_history_user_id_created_at_idx
     ON password_history (user_id, created_at DESC, id DESC);
 
+-- パスワード再設定のアクショントークン。保存するのは生トークンではなく、その
+-- SHA-256 を 16 進で表したダイジェストだけである。purpose を行に持たせるのは、
+-- 用途の束縛をどの表を引いたかではなく保存された値で決めるためである。消費は
+-- 行の削除ではなく used_at の設定なので、作用が失敗して巻き戻したとき
+-- 「トークンは未使用のまま残る」を表現できる。
 CREATE TABLE password_reset_tokens (
     token_hash TEXT PRIMARY KEY,
+    id UUID NOT NULL,
     user_id UUID NOT NULL,
+    purpose TEXT NOT NULL CHECK (purpose IN ('password_reset')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    CONSTRAINT password_reset_tokens_id_unique UNIQUE (id),
     CONSTRAINT password_reset_tokens_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -580,12 +589,18 @@ CREATE TABLE tenant_group_attribute_schemas (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 
+-- メールアドレス変更の確認トークン。password_reset_tokens と同じ規範に従う。
+-- new_email は用途別ペイロードで、共通核は中身を解釈しない。
 CREATE TABLE email_change_tokens (
     token_hash TEXT PRIMARY KEY,
+    id UUID NOT NULL,
     user_id UUID NOT NULL,
+    purpose TEXT NOT NULL CHECK (purpose IN ('email_change')),
     new_email TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    CONSTRAINT email_change_tokens_id_unique UNIQUE (id),
     CONSTRAINT email_change_tokens_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

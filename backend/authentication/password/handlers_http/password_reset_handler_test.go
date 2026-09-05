@@ -26,6 +26,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+// EX-AUTHENTICATION-016-01 通常経路、EX-AUTHENTICATION-016-04 確定済みのトークンは再利用できない。
 func TestPasswordResetHTTPFlow(t *testing.T) {
 	e, userRepo, sender, hasher := newPasswordResetHandler(t)
 	csrf, cookie := passwordResetCSRF(t, e)
@@ -62,6 +63,65 @@ func TestPasswordResetHTTPFlow(t *testing.T) {
 	if replay.Code != http.StatusGone {
 		t.Fatalf("replay status=%d body=%s", replay.Code, replay.Body.String())
 	}
+	// 拒否したのだから、二度目のパスワードは設定されていない。応答だけを読む検査は、
+	// 拒否を書いた後で作用を行う実装にも同じように通ってしまう。
+	after, err := userRepo.FindBySub(context.Background(), "user-alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := hasher.Verify("another-password-9182", after.PasswordHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replayed {
+		t.Fatal("the refused replay changed the password")
+	}
+}
+
+// EX-AUTHENTICATION-016-03 リンクを開くだけではトークンを消費しない。
+//
+// ブラウザーとメールスキャナーが行うのはリンクの GET と HEAD である。作用を起こすのは
+// POST だけなので、先読みの後も同じトークンで更新できなければならない。
+func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
+	e, userRepo, sender, hasher := newPasswordResetHandler(t)
+	csrf, cookie := passwordResetCSRF(t, e)
+
+	forgot := serveJSON(t, e, "/api/auth/forgot_password", csrf, cookie, map[string]string{
+		"email": "alice@example.com",
+	})
+	if forgot.Code != http.StatusNoContent {
+		t.Fatalf("forgot status=%d body=%s", forgot.Code, forgot.Body.String())
+	}
+	token := resetTokenFromEmail(t, sender.Sent[0].Text)
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		request := httptest.NewRequest(
+			method, defaultRealmPath("/api/auth/reset_password")+"?token="+url.QueryEscape(token), http.NoBody,
+		)
+		request.AddCookie(cookie)
+		response := httptest.NewRecorder()
+		e.ServeHTTP(response, request)
+		if response.Code == http.StatusOK {
+			t.Fatalf("%s on the reset endpoint answered 200; it must not be a consuming route", method)
+		}
+	}
+
+	before, err := userRepo.FindBySub(context.Background(), "user-alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unchanged, err := hasher.Verify("current-password-1", before.PasswordHash)
+	if err != nil || !unchanged {
+		t.Fatalf("prefetching changed the password: matched=%v err=%v", unchanged, err)
+	}
+
+	// 先読みの後でも同じトークンで更新できる。トークンが読み取りで消えていないことの証拠。
+	reset := serveJSON(t, e, "/api/auth/reset_password", csrf, cookie, map[string]string{
+		"token": token, "new_password": "fresh-password-9182",
+	})
+	if reset.Code != http.StatusOK {
+		t.Fatalf("reset after prefetch status=%d body=%s", reset.Code, reset.Body.String())
+	}
 }
 
 func TestForgotPasswordHTTPDoesNotRevealUnknownEmail(t *testing.T) {
@@ -84,7 +144,7 @@ func newPasswordResetHandler(
 	t.Helper()
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := passwordmemory.NewPasswordHistoryRepository()
-	tokenStore := passwordmemory.NewPasswordResetTokenStore()
+	tokenStore := passwordmemory.NewPasswordResetTokenStore(userRepo, historyRepo)
 	sender := &email_memory.NoopEmailSender{}
 	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
 	hash, err := hasher.Hash("current-password-1")

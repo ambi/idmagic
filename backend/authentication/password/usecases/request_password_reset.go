@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,6 +16,7 @@ import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -31,6 +32,8 @@ type RequestPasswordResetDeps struct {
 	Emit     func(spec.DomainEvent)
 	Issuer   string
 	TokenTTL time.Duration
+	// Random はトークン素材と識別子の読み取り元である。nil なら crypto/rand.Reader を使う。
+	Random io.Reader
 }
 
 type RequestPasswordResetInput struct {
@@ -59,27 +62,32 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 		return nil
 	}
 
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return err
-	}
-	rawToken := base64.RawURLEncoding.EncodeToString(raw)
 	ttl := deps.TokenTTL
 	if ttl == 0 {
 		ttl = PasswordResetTokenTTLSeconds * time.Second
 	}
-	if err := deps.TokenStore.Save(ctx, passwordports.PasswordResetTokenRecord{
-		Sub:       user.ID,
-		TokenHash: sha256Hex(rawToken),
-		CreatedAt: now,
-		ExpiresAt: now.Add(ttl),
-	}); err != nil {
+	random := deps.Random
+	if random == nil {
+		random = rand.Reader
+	}
+	// 発行は共通核が行う。use case はトークンの組み立ても、ダイジェストの計算もしない。
+	issued, err := actiontoken.Issue(actiontoken.IssueInput{
+		Purpose: actiontoken.PurposePasswordReset,
+		Subject: user.ID,
+		Now:     now,
+		TTL:     ttl,
+		Random:  random,
+	})
+	if err != nil {
+		return err
+	}
+	if err := deps.TokenStore.Save(ctx, issued.Envelope); err != nil {
 		return err
 	}
 
 	// The link is assembled here, not inside the template, so a tenant editing the
 	// template can never take over URL construction.
-	resetURL := strings.TrimRight(deps.Issuer, "/") + "/reset_password?token=" + url.QueryEscape(rawToken)
+	resetURL := strings.TrimRight(deps.Issuer, "/") + "/reset_password?token=" + url.QueryEscape(issued.RawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	// Send to the verified address stored on the account, not the raw request
 	// input, so untrusted request data never reaches the email content (CWE-640).

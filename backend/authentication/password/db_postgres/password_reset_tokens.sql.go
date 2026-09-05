@@ -10,31 +10,6 @@ import (
 	"time"
 )
 
-const consumePasswordResetToken = `-- name: ConsumePasswordResetToken :one
-DELETE FROM password_reset_tokens
-WHERE token_hash=$1
-RETURNING user_id,token_hash,created_at,expires_at
-`
-
-type ConsumePasswordResetTokenRow struct {
-	UserID    string
-	TokenHash string
-	CreatedAt time.Time
-	ExpiresAt time.Time
-}
-
-func (q *Queries) ConsumePasswordResetToken(ctx context.Context, tokenHash string) (*ConsumePasswordResetTokenRow, error) {
-	row := q.db.QueryRow(ctx, consumePasswordResetToken, tokenHash)
-	var i ConsumePasswordResetTokenRow
-	err := row.Scan(
-		&i.UserID,
-		&i.TokenHash,
-		&i.CreatedAt,
-		&i.ExpiresAt,
-	)
-	return &i, err
-}
-
 const deletePasswordResetTokensByUser = `-- name: DeletePasswordResetTokensByUser :exec
 DELETE FROM password_reset_tokens WHERE user_id=$1
 `
@@ -44,13 +19,45 @@ func (q *Queries) DeletePasswordResetTokensByUser(ctx context.Context, userID st
 	return err
 }
 
+const findUnusedPasswordResetToken = `-- name: FindUnusedPasswordResetToken :one
+SELECT token_hash,id,user_id,purpose,created_at,expires_at
+FROM password_reset_tokens
+WHERE token_hash=$1 AND used_at IS NULL
+`
+
+type FindUnusedPasswordResetTokenRow struct {
+	TokenHash string
+	ID        string
+	UserID    string
+	Purpose   string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (q *Queries) FindUnusedPasswordResetToken(ctx context.Context, tokenHash string) (*FindUnusedPasswordResetTokenRow, error) {
+	row := q.db.QueryRow(ctx, findUnusedPasswordResetToken, tokenHash)
+	var i FindUnusedPasswordResetTokenRow
+	err := row.Scan(
+		&i.TokenHash,
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return &i, err
+}
+
 const insertPasswordResetToken = `-- name: InsertPasswordResetToken :exec
-INSERT INTO password_reset_tokens (token_hash,user_id,created_at,expires_at) VALUES ($1,$2,$3,$4)
+INSERT INTO password_reset_tokens (token_hash,id,user_id,purpose,created_at,expires_at)
+VALUES ($1,$2,$3,$4,$5,$6)
 `
 
 type InsertPasswordResetTokenParams struct {
 	TokenHash string
+	ID        string
 	UserID    string
+	Purpose   string
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
@@ -58,9 +65,46 @@ type InsertPasswordResetTokenParams struct {
 func (q *Queries) InsertPasswordResetToken(ctx context.Context, arg InsertPasswordResetTokenParams) error {
 	_, err := q.db.Exec(ctx, insertPasswordResetToken,
 		arg.TokenHash,
+		arg.ID,
 		arg.UserID,
+		arg.Purpose,
 		arg.CreatedAt,
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const markPasswordResetTokenUsed = `-- name: MarkPasswordResetTokenUsed :one
+UPDATE password_reset_tokens
+SET used_at=$1::timestamptz
+WHERE token_hash=$2 AND used_at IS NULL
+RETURNING token_hash,id,user_id,purpose,created_at,expires_at
+`
+
+type MarkPasswordResetTokenUsedParams struct {
+	UsedAt    time.Time
+	TokenHash string
+}
+
+type MarkPasswordResetTokenUsedRow struct {
+	TokenHash string
+	ID        string
+	UserID    string
+	Purpose   string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (q *Queries) MarkPasswordResetTokenUsed(ctx context.Context, arg MarkPasswordResetTokenUsedParams) (*MarkPasswordResetTokenUsedRow, error) {
+	row := q.db.QueryRow(ctx, markPasswordResetTokenUsed, arg.UsedAt, arg.TokenHash)
+	var i MarkPasswordResetTokenUsedRow
+	err := row.Scan(
+		&i.TokenHash,
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return &i, err
 }

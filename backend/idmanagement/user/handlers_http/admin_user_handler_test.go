@@ -309,7 +309,7 @@ func newAdminUserHandler(
 			ClientRepo:  oauth2memory.NewClientRepository(),
 			ConsentRepo: oauth2memory.NewConsentRepository(),
 		},
-		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
+		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(repo),
 		EmailSender:           mockEmailSender{},
 	})
 	return e, repo

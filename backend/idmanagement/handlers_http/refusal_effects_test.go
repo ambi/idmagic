@@ -194,7 +194,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		jobClock:    &backdatingJobRepository{JobRepository: jobRepo},
 		artifacts:   idmmemory.NewCSVArtifactStore(),
 		sessions:    sessionmemory.NewSessionStore(),
-		emailTokens: usermemory.NewEmailChangeTokenStore(),
+		emailTokens: usermemory.NewEmailChangeTokenStore(users),
 		emails:      &emailmemory.NoopEmailSender{},
 		apiTokens: apitoken.Module{
 			Repo: apiTokenRepo, TokenIssuer: signer, TokenIntrospector: signer,

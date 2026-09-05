@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net/mail"
 	"net/url"
 	"strconv"
@@ -17,6 +17,7 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -46,6 +47,8 @@ type RequestEmailChangeDeps struct {
 	Emit     func(spec.DomainEvent)
 	Issuer   string
 	TokenTTL time.Duration
+	// Random はトークン素材と識別子の読み取り元である。nil なら crypto/rand.Reader を使う。
+	Random io.Reader
 }
 
 type RequestEmailChangeInput struct {
@@ -84,25 +87,39 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 		return ErrEmailTaken
 	}
 
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return err
-	}
-	rawToken := base64.RawURLEncoding.EncodeToString(raw)
 	ttl := deps.TokenTTL
 	if ttl == 0 {
 		ttl = EmailChangeTokenTTLSeconds * time.Second
 	}
-	if err := deps.TokenStore.Save(ctx, userports.EmailChangeTokenRecord{
-		Sub: user.ID, TokenHash: sha256Hex(rawToken), NewEmail: newEmail,
-		CreatedAt: now, ExpiresAt: now.Add(ttl),
-	}); err != nil {
+	random := deps.Random
+	if random == nil {
+		random = rand.Reader
+	}
+	// 新アドレスは用途別ペイロードとして運ぶ。共通核はその中身を解釈しない。
+	payload, err := actiontoken.EncodePayload(
+		userports.EmailChangePayloadCodec{}, userports.EmailChangePayload{NewEmail: newEmail},
+	)
+	if err != nil {
+		return err
+	}
+	issued, err := actiontoken.Issue(actiontoken.IssueInput{
+		Purpose: actiontoken.PurposeEmailChange,
+		Subject: user.ID,
+		Payload: payload,
+		Now:     now,
+		TTL:     ttl,
+		Random:  random,
+	})
+	if err != nil {
+		return err
+	}
+	if err := deps.TokenStore.Save(ctx, issued.Envelope); err != nil {
 		return err
 	}
 
 	// リンクはここで組み立てる。テナントがテンプレートを編集しても URL の構築を
 	// 奪えないようにする。
-	verifyURL := strings.TrimRight(deps.Issuer, "/") + "/account/email/verify?token=" + url.QueryEscape(rawToken)
+	verifyURL := strings.TrimRight(deps.Issuer, "/") + "/account/email/verify?token=" + url.QueryEscape(issued.RawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
 		TenantID:        user.TenantID,

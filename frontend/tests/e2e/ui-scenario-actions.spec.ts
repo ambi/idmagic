@@ -496,6 +496,9 @@ test('admin user attribute schema can add and delete a custom attribute', async 
   }
 }, 60_000)
 
+// REQ-IDMANAGEMENT-017 / EX-IDMANAGEMENT-017-01, EX-IDMANAGEMENT-017-02, EX-IDMANAGEMENT-017-03.
+// 実際のブラウザーが行うリンクの GET が確定を起こさないこと、確定が一度きりであることを、
+// 配線されたルートと SMTP 受信先を通して確かめる。
 test('account email change confirms through the local SMTP sink', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })
   try {
@@ -529,16 +532,29 @@ test('account email change confirms through the local SMTP sink', async () => {
 
     await waitForText(view, nextEmail)
     const verifyURL = await waitForEmailURL(nextEmail, '/account/email/verify')
+    // リンクを二度開く。ブラウザーやメールスキャナーの先読みと同じ GET であり、
+    // これで確定してしまうならトークンは一度も使われずに消える。
+    await view.navigate(verifyURL)
+    await waitForPage(view, 'email-verify')
     await view.navigate(verifyURL)
     await waitForPage(view, 'email-verify')
     await clickButtonByText(view, 'Confirm email address')
     await waitForText(view, 'Your email address has been confirmed.')
     demo.email = nextEmail
+
+    // 同じリンクをもう一度開いて確定すると拒否される。
+    await view.navigate(verifyURL)
+    await waitForPage(view, 'email-verify')
+    await clickButtonByText(view, 'Confirm email address')
+    await waitForText(view, 'The confirmation link is invalid or expired.')
   } finally {
     view.close()
   }
 }, 60_000)
 
+// REQ-AUTHENTICATION-016 / EX-AUTHENTICATION-016-01, EX-AUTHENTICATION-016-03, EX-AUTHENTICATION-016-04。
+// 実際のブラウザーが行うリンクの GET が消費を起こさないこと、確定が一度きりであることを、
+// 配線されたルートと SMTP 受信先を通して確かめる。
 test('password reset succeeds through the local SMTP sink without external mail', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1800 })
   try {
@@ -567,11 +583,21 @@ test('password reset succeeds through the local SMTP sink without external mail'
     await waitForText(view, 'If an account exists, we sent a password reset email.')
 
     const resetURL = await waitForEmailURL(email, '/reset_password')
+    // リンクを二度開く。先読みで消費されるなら、この後の更新は通らない。
+    await view.navigate(resetURL)
+    await waitForPage(view, 'reset-password')
     await view.navigate(resetURL)
     await waitForPage(view, 'reset-password')
     await setInputValue(view, 'input[name="new_password"]', nextPassword)
     await clickButtonByText(view, 'Update password')
     await waitForText(view, 'Your password was updated. You can sign in now.')
+
+    // 同じリンクをもう一度開いて送信すると拒否される。
+    await view.navigate(resetURL)
+    await waitForPage(view, 'reset-password')
+    await setInputValue(view, 'input[name="new_password"]', `${nextPassword}-again`)
+    await clickButtonByText(view, 'Update password')
+    await waitForText(view, 'The reset link is invalid or expired.')
   } finally {
     view.close()
   }

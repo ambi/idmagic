@@ -249,10 +249,13 @@ type DynamicGroupRule struct {
 
 type EmailChangeToken struct {
 	TokenHash string
+	ID        string
 	UserID    string
+	Purpose   string
 	NewEmail  string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	UsedAt    pgtype.Timestamptz
 }
 
 type EndpointRateLimitCounter struct {
@@ -598,9 +601,12 @@ type PasswordHistory struct {
 
 type PasswordResetToken struct {
 	TokenHash string
+	ID        string
 	UserID    string
+	Purpose   string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	UsedAt    pgtype.Timestamptz
 }
 
 type ProvisioningConnection struct {

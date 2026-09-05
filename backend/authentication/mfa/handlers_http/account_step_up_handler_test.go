@@ -106,7 +106,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 		MfaFactorRepo:         mfaRepo,
 		PasswordHasher:        hasher,
 		PasswordHistoryRepo:   passwordmemory.NewPasswordHistoryRepository(),
-		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
+		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(userRepo),
 		SessionManager:        sm, AuthnResolver: sm,
 		Authentication: authentication.Module{
 			FederationConnectionRepo: federationRepos.Connections,
