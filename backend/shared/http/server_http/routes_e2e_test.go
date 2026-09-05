@@ -1168,8 +1168,12 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 	}
 }
 
-// SCL シナリオ "無効化されたユーザーはログインできない" / "既存セッションは利用できない"。
+// EX-AUTHENTICATION-009-01: 無効なユーザーは新規ログインも既存セッションも拒否される。
 // memory user repo に直接 disable を書き戻して、その後のフローを観測する。
+//
+// この拒否の効果は「セッションが使えないまま」なので、応答の種別だけでは足りない。
+// 拒否のあとに保護リソースへもう一度入り、それでも通らないことまで読む。新規ログインの
+// 側も同じで、401 を書いたうえでセッションを張る実装は応答だけでは見分けられない。
 func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	srv, repo := newServerWithUserAccess(t)
 	defer srv.Close()
@@ -1225,6 +1229,23 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized ||
 		!bytes.Contains(body, []byte(`"type":"urn:idmagic:error:invalid_credentials"`)) {
 		t.Fatalf("post-disable login: status=%d body=%s", resp.StatusCode, body)
+	}
+
+	// 拒否が変えなかったもの: 拒否されたログインはセッションを張っていない。
+	// 応答に Set-Cookie が無いことに加え、同じクライアントで保護リソースをもう一度
+	// 引いても通らないことまで読む。cookie jar は無効化前のセッションを持ったままなので、
+	// これは「既存セッションも使えないまま」の再確認でもある。
+	if session := findCookie(resp.Cookies(), sessionusecases.SessionCookie); session != nil {
+		t.Fatalf("拒否されたログインがセッション Cookie を発行した: %+v", session)
+	}
+	resp, err = client.Get(srv.URL + "/realms/default/api/auth/account")
+	if err != nil {
+		t.Fatalf("GET /api/auth/account after the refused login: %v", err)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		t.Fatalf("拒否されたログインのあとに保護リソースが返った: body=%s", body)
 	}
 }
 

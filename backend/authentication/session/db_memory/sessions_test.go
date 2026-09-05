@@ -7,10 +7,23 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
+// storeTenant は、この store が PostgreSQL 実装と同じく tenant_id で絞ることを
+// テスト側でも明示する。db_postgres の同名テストと同じく、lookup も更新も
+// リクエストのテナント文脈の下で行う。
+const storeTenant = "tenant-1"
+
+func tenantContext(tenantID string) context.Context {
+	return tenancy.WithTenant(
+		context.Background(), &tenancydomain.Tenant{ID: tenantID, Realm: tenantID}, "", "",
+	)
+}
+
 func TestSessionStore(t *testing.T) {
-	ctx := context.Background()
+	ctx := tenantContext(storeTenant)
 	store := NewSessionStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
@@ -146,18 +159,21 @@ func TestSessionStore(t *testing.T) {
 		// すでに user-1 / sess-1 がある
 		sessPending := &authdomain.LoginSession{
 			ID:                    "sess-pending",
+			TenantID:              storeTenant,
 			UserID:                "user-1",
 			AuthenticationPending: true, // Pending
 			ExpiresAt:             time.Now().Add(1 * time.Hour),
 		}
 		sessOtherSub := &authdomain.LoginSession{
 			ID:                    "sess-other",
+			TenantID:              storeTenant,
 			UserID:                "user-other",
 			AuthenticationPending: false,
 			ExpiresAt:             time.Now().Add(1 * time.Hour),
 		}
 		sessWillExpire := &authdomain.LoginSession{
 			ID:                    "sess-will-expire",
+			TenantID:              storeTenant,
 			UserID:                "user-1",
 			AuthenticationPending: false,
 			ExpiresAt:             time.Now().Add(5 * time.Minute),
@@ -207,9 +223,9 @@ func TestSessionStore(t *testing.T) {
 	t.Run("DeleteExpiredBatch", func(t *testing.T) {
 		store := NewSessionStore()
 		now := time.Now()
-		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-1", UserID: "u", ExpiresAt: now.Add(-time.Hour)})
-		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-2", UserID: "u", ExpiresAt: now.Add(-time.Minute)})
-		_ = store.Save(ctx, &authdomain.LoginSession{ID: "fresh", UserID: "u", ExpiresAt: now.Add(time.Hour)})
+		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-1", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(-time.Hour)})
+		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-2", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(-time.Minute)})
+		_ = store.Save(ctx, &authdomain.LoginSession{ID: "fresh", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(time.Hour)})
 
 		deleted, err := store.DeleteExpiredBatch(ctx, now, 1)
 		if err != nil {
@@ -231,6 +247,48 @@ func TestSessionStore(t *testing.T) {
 			t.Error("expected fresh (non-expired) session to survive cleanup")
 		}
 	})
+}
+
+// 別テナントの行は、id と所有者が分かっていても参照も更新もできない。
+// PostgreSQL 実装は同じ分離を tenant_id 述語で持つ。ここに同じ検査が無いと、
+// メモリ構成でだけテナント境界が消えていることを誰も検出できない。
+func TestSessionStoreIsolatesTenants(t *testing.T) {
+	store := NewSessionStore()
+	owner := tenantContext("tenant-owner")
+	intruder := tenantContext("tenant-intruder")
+	if err := store.Save(owner, &authdomain.LoginSession{
+		ID: "sess-owned", TenantID: "tenant-owner", UserID: "user-1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if found, _ := store.Find(intruder, "sess-owned"); found != nil {
+		t.Error("別テナントの Find が行を返した")
+	}
+	if owned, _ := store.FindOwned(intruder, "sess-owned", "user-1"); owned != nil {
+		t.Error("別テナントの FindOwned が行を返した")
+	}
+	if list, _ := store.ListBySub(intruder, "user-1"); len(list) != 0 {
+		t.Errorf("別テナントの ListBySub が %d 件返した", len(list))
+	}
+
+	if err := store.Revoke(intruder, "sess-owned", spec.SessionEndAdminRevoke, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DeleteAllForSub(intruder, "user-1"); err != nil {
+		t.Fatal(err)
+	}
+	owned, err := store.FindOwned(owner, "sess-owned", "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if owned == nil {
+		t.Fatal("別テナントの DeleteAllForSub が行を消した")
+	}
+	if owned.RevokedAt != nil {
+		t.Error("別テナントの Revoke が tombstone を書いた")
+	}
 }
 
 func sessionIDs(list []*authdomain.LoginSession) []string {
