@@ -44,7 +44,7 @@ dir = "tools"
 run = "bun run migrate-scenarios/src/initialize-example-debt.ts"
 
 [tasks.audit-scenario-migration]
-description = "Audit the one-time Markdown with Gherkin migration against HEAD"
+description = "Audit the one-time Markdown with Gherkin migration against the pre-migration revision"
 dir = "tools"
 run = "bun run migrate-scenarios/src/audit-migration.ts"
 

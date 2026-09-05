@@ -8,6 +8,12 @@ import { errorTypesNamedByScenarios } from '../../check/src/security-controls.ts
 import { WORKSPACE_ROOT } from '../../workspace/src/workspace.ts'
 import { legacyErrorTypes, missingFragments } from './fragment-audit.ts'
 
+/**
+ * 比較の基準は移行を取り込む直前のリビジョンに固定する。`HEAD` にすると移行を
+ * コミットした瞬間に旧正本が読めなくなり、監査を後から再現できない。
+ */
+const BASE = process.argv[2] ?? '4ae2353a74f439842ad2ebf1cf25f23b51c791f9'
+
 const oldRules = new Set<string>()
 const newRules = new Set<string>()
 const oldErrors = new Set<string>()
@@ -23,8 +29,8 @@ for (const featurePath of new Glob('docs/**/scenarios.feature.md').scanSync({
 })) {
   files += 1
   const legacyPath = featurePath.replace('scenarios.feature.md', 'scenarios.md')
-  const shown = Bun.spawnSync(['git', 'show', `HEAD:${legacyPath}`], { cwd: WORKSPACE_ROOT })
-  if (shown.exitCode !== 0) throw new Error(`cannot read ${legacyPath} from HEAD`)
+  const shown = Bun.spawnSync(['git', 'show', `${BASE}:${legacyPath}`], { cwd: WORKSPACE_ROOT })
+  if (shown.exitCode !== 0) throw new Error(`cannot read ${legacyPath} from ${BASE}`)
   const oldSource = shown.stdout.toString()
   const newSource = await readFile(resolve(WORKSPACE_ROOT, featurePath), 'utf8')
   for (const id of oldSource.matchAll(/^### (REQ-[A-Z0-9-]+):/gm)) oldRules.add(id[1] ?? '')
