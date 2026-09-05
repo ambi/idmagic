@@ -65,7 +65,7 @@ affected_spec:
 
 効果は起動時設定という入力の境界にとどまり、`SigningKeys` の domain と usecases には及ばない。変更する計算は `LoadSharedConfig` の検証だけであり、時刻、乱数、識別子生成には触れない。`selectKeyStore(cfg SharedConfig, fallback signingports.KeyStore) signingports.KeyStore` は変更しないが、この規範が守るのはまさにその関数の出力であり、`cfg.KeyProvider == ""` で平文の KeyStore が返る経路へ到達しないことが、拒否が防いだ効果になる。
 
-Acceptance と Unit の境界は次のように分ける。Unit は変わった計算そのもの、すなわち `LoadSharedConfig` が `KEY_PROVIDER` を名指しする設定エラーを記録することを見る。Acceptance は `Run()` と同じ順序（読み込み → `Err()` → アダプター選択）を辿り、拒否が何を残さなかったかを見る。すなわち `KEY_PROVIDER` を書かない限り、平文で永続化する KeyStore はどの環境変数の組み合わせからも組み立てられないことを見る。後者が [Testing a refusal](../../docs/development/specification-first-workflow.md#testing-a-refusal) の言う「拒否が触れずに残したもの」にあたる。
+Acceptance と Unit の境界は次のように分ける。Unit は変わった計算そのもの、すなわち `LoadSharedConfig` が `KEY_PROVIDER` を名指しする設定エラーを記録することを見る。Acceptance は `Run()` と同じ順序（読み込み → `Err()` → アダプター選択）を辿り、拒否が何を残さなかったかを見る。すなわち `KEY_PROVIDER` を書かない限り、平文で永続化する KeyStore はどの環境変数の組み合わせからも組み立てられないことを見る。後者が [Testing a refusal](../../docs/development/specification-first-workflow.md#when-the-response-does-not-entail-the-effect) の言う「拒否が触れずに残したもの」にあたる。
 
 ## Plan
 

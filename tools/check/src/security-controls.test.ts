@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import {
   checkContractRefusalsAreDeclared,
-  checkRefusalCoverage,
   checkSecurityGuards,
   contractRefusalsOfStateChanges,
-  declaredRefusalTypes,
-  refusalScenarioIds,
+  errorTypesNamedByScenarios,
 } from './security-controls.ts'
 
 // The writers every fixture needs, because the rule seeds on echo's own
@@ -304,84 +302,52 @@ describe('checkSecurityGuards', () => {
   })
 })
 
-describe('refusalScenarioIds', () => {
-  it('collects a refusal declared as an alternative', () => {
+describe('errorTypesNamedByScenarios', () => {
+  it('collects the error type an alternative names', () => {
     const scenarios = [
       '### REQ-JOBS-012: an administrator lists their tenant',
       '- WHEN the administrator lists jobs',
-      '  - ALT the caller holds no admin role → AccessDeniedError で拒否される',
+      '  - ALT the caller holds no admin role \u2192 AccessDeniedError \u3067\u62d2\u5426\u3055\u308c\u308b',
       '- THEN the page is returned',
-      '',
-      '### REQ-JOBS-020: the page is ordered newest first',
-      '- WHEN the administrator lists jobs',
-      '  - ALT two jobs share an instant → the id breaks the tie',
-      '- THEN the page is ordered',
     ].join('\n')
-    expect(refusalScenarioIds(scenarios)).toEqual(['REQ-JOBS-012'])
+    expect([...errorTypesNamedByScenarios(scenarios)]).toEqual(['AccessDeniedError'])
   })
 
-  // The refusal is the whole point of the scenario, so there is no alternative
-  // to hang it on. Reading only ALT missed REQ-SIGNINGKEYS-009 entirely.
-  it('collects a refusal declared as the outcome', () => {
+  // The type is what R4 joins on, and it is written on both sides: in TypeSpec
+  // as the 403 body, in the scenario as the name of what answers. Whether the
+  // step also reads as a refusal in prose is not part of that join.
+  it('collects a type from a step that carries no refusal vocabulary', () => {
+    const scenarios = [
+      '### REQ-JOBS-030: an expired claim ends the run',
+      '- WHEN the worker claims an expired job',
+      '- THEN JobClaimExpiredError is returned to the caller',
+    ].join('\n')
+    expect([...errorTypesNamedByScenarios(scenarios)]).toEqual(['JobClaimExpiredError'])
+  })
+
+  it('reads both alternatives and outcomes', () => {
     const scenarios = [
       '### REQ-SIGNINGKEYS-009: a tenant administrator cannot reach signing key health',
-      '- ACTOR TenantAdministrator',
       '- WHEN "operator" calls the signing key health listing',
-      '- THEN AccessDeniedError で拒否される',
+      '- THEN AccessDeniedError \u3067\u62d2\u5426\u3055\u308c\u308b',
+      '',
+      '### REQ-SIGNINGKEYS-010: a malformed rotation is refused',
+      '- WHEN "operator" rotates with no key material',
+      '  - ALT the body is empty \u2192 InvalidRequestError',
     ].join('\n')
-    expect(refusalScenarioIds(scenarios)).toEqual(['REQ-SIGNINGKEYS-009'])
+    expect([...errorTypesNamedByScenarios(scenarios)].sort()).toEqual([
+      'AccessDeniedError',
+      'InvalidRequestError',
+    ])
   })
 
-  // A tenant boundary is stated as what the caller sees, not as an error.
-  it('collects a refusal phrased as an outcome rather than an error', () => {
-    const scenarios = [
-      '### REQ-IDGOVERNANCE-012: another tenant cannot reach the workflow',
-      "- WHEN the administrator reads another tenant's workflow",
-      '- THEN ワークフローは存在しないものとして扱われる',
-    ].join('\n')
-    expect(refusalScenarioIds(scenarios)).toEqual(['REQ-IDGOVERNANCE-012'])
-  })
-
-  it('leaves a scenario that declares no refusal alone', () => {
+  it('ignores a step that names no error type', () => {
     const scenarios = [
       '### REQ-JOBS-002: a submitted job succeeds',
       '- WHEN a job is enqueued',
       '- THEN the worker claims it and it succeeds',
     ].join('\n')
-    expect(refusalScenarioIds(scenarios)).toEqual([])
-  })
-})
-
-describe('checkRefusalCoverage', () => {
-  it('accepts a declared refusal that a test names', () => {
-    expect(checkRefusalCoverage(['REQ-JOBS-012'], new Set(['REQ-JOBS-012']), [])).toEqual([])
-  })
-
-  it('rejects a declared refusal that no test names', () => {
-    const findings = checkRefusalCoverage(['REQ-JOBS-012'], new Set(), [])
-    expect(findings).toHaveLength(1)
-    expect(findings[0]?.rule).toBe('R3')
-    expect(findings[0]?.message).toContain('REQ-JOBS-012')
-  })
-
-  it('tolerates a refusal carried on the known-debt list', () => {
-    expect(checkRefusalCoverage(['REQ-JOBS-012'], new Set(), ['REQ-JOBS-012'])).toEqual([])
-  })
-
-  // The list is a ratchet: once a refusal has a test, keeping it listed would
-  // let the debt silently come back.
-  it('requires an entry to be removed once it has a test', () => {
-    const findings = checkRefusalCoverage(['REQ-JOBS-012'], new Set(['REQ-JOBS-012']), [
-      'REQ-JOBS-012',
-    ])
-    expect(findings).toHaveLength(1)
-    expect(findings[0]?.message).toContain('only shrinks')
-  })
-
-  it('requires an entry to be removed once it declares no refusal', () => {
-    const findings = checkRefusalCoverage([], new Set(), ['REQ-JOBS-012'])
-    expect(findings).toHaveLength(1)
-    expect(findings[0]?.message).toContain('no longer declares one')
+    expect([...errorTypesNamedByScenarios(scenarios)]).toEqual([])
   })
 })
 
@@ -434,7 +400,7 @@ describe('checkContractRefusalsAreDeclared', () => {
     const findings = checkContractRefusalsAreDeclared(
       'signing-keys',
       contract,
-      declaredRefusalTypes(scenarios),
+      errorTypesNamedByScenarios(scenarios),
     )
     expect(findings).toHaveLength(1)
     expect(findings[0]?.rule).toBe('R4')
@@ -449,7 +415,11 @@ describe('checkContractRefusalsAreDeclared', () => {
       '- THEN AccessDeniedError で拒否され、有効な鍵は変わらない',
     ].join('\n')
     expect(
-      checkContractRefusalsAreDeclared('signing-keys', contract, declaredRefusalTypes(scenarios)),
+      checkContractRefusalsAreDeclared(
+        'signing-keys',
+        contract,
+        errorTypesNamedByScenarios(scenarios),
+      ),
     ).toEqual([])
   })
 
@@ -462,7 +432,11 @@ describe('checkContractRefusalsAreDeclared', () => {
       '- THEN both kids are on the JWKS',
     ].join('\n')
     expect(
-      checkContractRefusalsAreDeclared('signing-keys', contract, declaredRefusalTypes(scenarios)),
+      checkContractRefusalsAreDeclared(
+        'signing-keys',
+        contract,
+        errorTypesNamedByScenarios(scenarios),
+      ),
     ).toHaveLength(1)
   })
 })

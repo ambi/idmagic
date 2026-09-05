@@ -1,27 +1,46 @@
 #!/usr/bin/env bun
 
 /**
- * Split the declared refusals that no test names into the two kinds they are
- * made of, so they can be worked through instead of stared at.
+ * Order the normative-coverage debt so it can be worked through instead of
+ * stared at.
  *
- * The list in security-refusal-debt.json says only "no test names this id". Two
- * very different situations produce that line: the refusal is exercised by a
- * test that never cites the id, and the refusal is exercised by nothing at all.
- * The first is a missing annotation; the second is a missing control test, and
- * it is the reason the annotation check is worth its friction (wi-390 found
- * REQ-WSFEDERATION-001 that way).
+ * The ledger says only "no test names this id". That one line covers two very
+ * different situations: the behavior is exercised by a test that never cites
+ * the id, and the behavior is exercised by nothing at all. The first is a
+ * missing annotation; the second is a missing test, and it is the reason the
+ * annotation check is worth its friction (wi-390 found REQ-WSFEDERATION-001
+ * that way). Deciding which one an entry is means reading the test, so this
+ * does not decide. It reports what can be established mechanically and orders
+ * the work.
  *
- * Deciding which one an entry is means reading the test, so this does not
- * decide. It reports what can be established mechanically — whether the context
- * that owns the refusal has any test that asserts the same refusal at all — and
- * orders the work: an entry with no candidate is cheap to confirm and likely a
- * real gap; an entry with candidates needs one test read.
+ * The weight is derived from the contract, not from the prose. TypeSpec says
+ * which operations answer a 403 and with which error body, and a 403 on a
+ * state-changing operation is the contract naming a control the product relies
+ * on. An id whose scenario names one of those types is carrying a control;
+ * everything else is carrying a behavior. Both are debt. One is louder.
  *
- * It reports; it never fails. The check that fails is R3.
+ * The weight is deliberately narrow, and it under-reports. A control that
+ * refuses with something other than a 403 on a non-GET operation does not reach
+ * it: the workload attestation rejections, the data-key fail-closed branches,
+ * and everything in seeding, which has no HTTP boundary at all, all weigh zero
+ * here while being exactly the kind of refusal wi-390 was written for. Widening
+ * it means widening what the contract states, not what this script guesses.
+ *
+ * Deriving it is the point. The weight used to be stored, as membership in a
+ * separate `security-refusal-debt.json`, and what routed an id into that file
+ * was fifteen words matched against Japanese prose. It matched condition
+ * clauses ("cannot recover" in REQ-SYSTEM-015, whose outcome refuses nothing)
+ * and field lists ("refusal reason" among REQ-AUTHORIZATION-009's audit
+ * fields), and it missed every refusal phrased without one of the fifteen. A
+ * derived weight can be wrong too, but it is wrong the same way the contract
+ * is, and correcting it does not mean editing a ledger. See wi-490.
+ *
+ * It reports; it never fails. The checks that fail are coverage and R4.
  */
 
 import { readdir, readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
+import { contractRefusalsOfStateChanges } from './security-controls.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const excluded = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', 'generated'])
@@ -46,7 +65,7 @@ function errorCode(type: string): string {
 
 type Scenario = { id: string; title: string; context: string; step: string; types: string[] }
 
-/** Read every scenario that declares a refusal, with the step that declares it. */
+/** Every scenario, with the error types its steps name. */
 async function scenarios(): Promise<Map<string, Scenario>> {
   const found = new Map<string, Scenario>()
   const contextsDir = resolve(root, 'docs/contexts')
@@ -72,6 +91,22 @@ async function scenarios(): Promise<Map<string, Scenario>> {
     }
   }
   return found
+}
+
+/** Per context, the error types a 403 on a state-changing operation promises. */
+async function promisedTypes(): Promise<Map<string, Set<string>>> {
+  const promised = new Map<string, Set<string>>()
+  const contractDir = resolve(root, 'spec/contexts')
+  for (const context of await readdir(contractDir).catch(() => [])) {
+    const types = new Set<string>()
+    for (const entry of await readdir(resolve(contractDir, context)).catch(() => [])) {
+      if (!entry.endsWith('.tsp')) continue
+      const typespec = await readFile(resolve(contractDir, context, entry), 'utf8')
+      for (const type of contractRefusalsOfStateChanges(typespec).keys()) types.add(type)
+    }
+    promised.set(context, types)
+  }
+  return promised
 }
 
 /**
@@ -104,10 +139,15 @@ function testFunctions(source: string): Array<{ name: string; body: string }> {
   return out
 }
 
-const debt = JSON.parse(
-  await readFile(resolve(root, 'tools/check/security-refusal-debt.json'), 'utf8'),
-) as { untested: string[] }
+type DebtEntry = { id: string; reason: string }
+
+const debt = (
+  JSON.parse(await readFile(resolve(root, 'tools/check/scenario-coverage-debt.json'), 'utf8')) as {
+    untested: DebtEntry[]
+  }
+).untested
 const declared = await scenarios()
+const promised = await promisedTypes()
 const backendDirs = (await readdir(resolve(root, 'backend'), { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
@@ -138,32 +178,45 @@ for (const path of (await walk(resolve(root, 'backend'))).filter((p) => p.endsWi
 const REFUSAL =
   /StatusForbidden|StatusUnauthorized|StatusConflict|StatusNotFound|StatusBadRequest|StatusUnprocessableEntity|Denied|Forbidden|Unauthorized|Rejects|Refuses/
 
-type Row = { id: string; scenario?: Scenario; pkg?: string; named: string[]; nearby: string[] }
+type Row = {
+  id: string
+  scenario?: Scenario
+  pkg?: string
+  control: boolean
+  named: string[]
+  nearby: string[]
+}
 const rows: Row[] = []
-for (const id of debt.untested) {
-  const scenario = declared.get(id)
-  const pkg = packageFor(id, backendDirs)
+for (const entry of debt) {
+  const scenario = declared.get(entry.id)
+  const pkg = packageFor(entry.id, backendDirs)
   const tests = pkg ? (byPackage.get(pkg) ?? []) : []
-  const codes = (scenario?.types ?? []).map(errorCode)
+  const types = scenario?.types ?? []
+  const codes = types.map(errorCode)
+  // The weight: does this scenario name a type the contract answers a 403 with
+  // on an operation that changes state?
+  const contract = promised.get(scenario?.context ?? '') ?? new Set<string>()
+  const control = types.some((type) => contract.has(type))
   const refusing = tests.filter((test) => REFUSAL.test(test.body))
   // Naming the same error the scenario names is the strong signal; any other
   // refusal asserted against the same package is a place to start reading.
   const named = refusing.filter(
     (test) =>
       codes.some((code) => test.body.includes(code)) ||
-      (scenario?.types ?? []).some((type) => test.body.includes(type)),
+      types.some((type) => test.body.includes(type)),
   )
   const namedKeys = new Set(named.map((test) => `${test.path}${test.name}`))
   // Tests inside the owning package come first: a test that reaches the context
-  // only through an import is more often a neighbouring flow than this refusal.
+  // only through an import is more often a neighbouring flow than this one.
   const label = (tests: Candidate[]) =>
     tests
       .sort((a, b) => Number(b.inPackage) - Number(a.inPackage))
       .map((test) => `${test.path}  ${test.name}${test.inPackage ? '' : '  (via import)'}`)
   rows.push({
-    id,
+    id: entry.id,
     scenario,
     pkg,
+    control,
     named: label(named),
     nearby: label(refusing.filter((test) => !namedKeys.has(`${test.path}${test.name}`))),
   })
@@ -172,7 +225,11 @@ for (const id of debt.untested) {
 const classOf = (row: Row) =>
   row.named.length > 0 ? 'named' : row.nearby.length > 0 ? 'nearby' : 'none'
 
-console.log(`declared refusals awaiting a test  : ${rows.length}`)
+const controls = rows.filter((row) => row.control)
+console.log(`normative ids awaiting a test      : ${rows.length}`)
+console.log(
+  `... carrying a contract-promised 403: ${controls.length}  (narrow: a 403 on a non-GET operation, so a fail-closed branch outside HTTP weighs zero)`,
+)
 console.log(
   `... a test names the same error     : ${rows.filter((r) => classOf(r) === 'named').length}  (most likely only the annotation is missing)`,
 )
@@ -184,26 +241,33 @@ console.log(
 )
 console.log('')
 
-const byContext = new Map<string, { named: number; nearby: number; none: number }>()
+const byContext = new Map<
+  string,
+  { control: number; named: number; nearby: number; none: number }
+>()
 for (const row of rows) {
   const context = row.scenario?.context ?? '(unknown)'
-  const counts = byContext.get(context) ?? { named: 0, nearby: 0, none: 0 }
+  const counts = byContext.get(context) ?? { control: 0, named: 0, nearby: 0, none: 0 }
   counts[classOf(row)] += 1
+  if (row.control) counts.control += 1
   byContext.set(context, counts)
 }
-console.log(' named nearby  none  context')
-for (const [context, counts] of [...byContext.entries()].sort((a, b) => b[1].none - a[1].none)) {
+console.log('control  named nearby  none  context')
+for (const [context, counts] of [...byContext.entries()].sort(
+  (a, b) => b[1].control - a[1].control || b[1].none - a[1].none,
+)) {
   console.log(
-    `${String(counts.named).padStart(6)}${String(counts.nearby).padStart(7)}${String(counts.none).padStart(6)}  ${context}`,
+    `${String(counts.control).padStart(7)}${String(counts.named).padStart(7)}${String(counts.nearby).padStart(7)}${String(counts.none).padStart(6)}  ${context}`,
   )
 }
 
 if (process.argv.includes('--list')) {
   console.log('')
   for (const row of rows) {
-    console.log(`${row.id} [${classOf(row)}]: ${row.scenario?.title ?? '(no scenario)'}`)
+    const weight = row.control ? 'control' : 'behavior'
+    console.log(`${row.id} [${weight}/${classOf(row)}]: ${row.scenario?.title ?? '(no scenario)'}`)
     console.log(`  package: backend/${row.pkg ?? '(unresolved)'}`)
-    if (row.scenario?.step) console.log(`  refusal: ${row.scenario.step}`)
+    if (row.scenario?.step) console.log(`  step: ${row.scenario.step}`)
     for (const candidate of row.named.slice(0, 3)) console.log(`  names the error: ${candidate}`)
     if (row.named.length === 0) {
       for (const candidate of row.nearby.slice(0, 3)) console.log(`  nearby: ${candidate}`)

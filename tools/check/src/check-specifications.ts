@@ -111,16 +111,8 @@ async function readDebt(path: string): Promise<DebtEntry[]> {
   })
 }
 
-/** The refusal debt is a list of bare ids, and it is read here only to stay off it. */
-async function readRefusalDebt(path: string): Promise<Set<string>> {
-  const source = await readFile(resolve(WORKSPACE_ROOT, path), 'utf8').catch(() => undefined)
-  if (source === undefined) return new Set()
-  return new Set((JSON.parse(source) as { untested: string[] }).untested)
-}
-
 const SCENARIO_DEBT = 'tools/check/scenario-coverage-debt.json'
 const STANDARDS_DEBT = 'tools/check/standards-coverage-debt.json'
-const REFUSAL_DEBT = 'tools/check/security-refusal-debt.json'
 
 const sources: string[] = []
 for (const tree of PRODUCT_TREES)
@@ -142,8 +134,6 @@ const coverage = [
     cited,
     debt: await readDebt(SCENARIO_DEBT),
     debtPath: SCENARIO_DEBT,
-    accounted: await readRefusalDebt(REFUSAL_DEBT),
-    accountedPath: REFUSAL_DEBT,
   }),
 ]
 for (const finding of coverage) {

@@ -8,11 +8,17 @@
  * `GDPR-CONSENT-WITHDRAWAL` appeared nowhere in `backend/` or `frontend/`, and
  * 191 of 306 live scenarios were named by no test at all.
  *
- * The shape is `checkRefusalCoverage`'s -- declared ids, ids a test names, and
- * an allowed debt list, compared three ways -- because a second style of the
- * same comparison is a second place to go wrong. What is added here is the
- * reason on each debt entry. A list this size stops being read the moment its
- * entries are indistinguishable from one another, and then it stops shrinking.
+ * Declared ids, the ids a test names, and an allowed debt list, compared three
+ * ways. Each debt entry carries a reason: a list this size stops being read the
+ * moment its entries are indistinguishable from one another, and then it stops
+ * shrinking.
+ *
+ * This is the only implementation of the comparison. A second one lived in
+ * security-controls.ts as R3, over the ids a prose classifier read as refusals,
+ * and the split cost two debt files plus an invariant keeping them disjoint. It
+ * bought nothing: the rule on both sides was this one. Whether an id declares a
+ * refusal is a fact worth reporting, so report-coverage-debt derives it from
+ * the contract; it is not a reason to check the id differently.
  */
 
 export type DeclaredId = { id: string; path: string }
@@ -27,15 +33,6 @@ export type CoverageInput = {
   cited: ReadonlySet<string>
   debt: readonly DebtEntry[]
   debtPath: string
-  /**
-   * Ids a different debt list already carries. The refusal debt keeps its own
-   * list because "a security control's refusal is untested" is a louder fact
-   * than "a behavior is untested", and mixing the two costs the louder list its
-   * reason to exist. Reading it here is what keeps the two disjoint instead of
-   * merely separate: 102 of the ids on it would otherwise be repeated verbatim.
-   */
-  accounted?: ReadonlySet<string>
-  accountedPath?: string
 }
 
 function escapeForPattern(value: string): string {
@@ -74,13 +71,13 @@ export function citedNormativeIds(
 }
 
 export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] {
-  const { declared, cited, debt, debtPath, accounted = new Set<string>() } = input
+  const { declared, cited, debt, debtPath } = input
   const findings: CoverageFinding[] = []
   const listed = new Set(debt.map((entry) => entry.id))
 
   for (const declaration of declared) {
     if (cited.has(declaration.id)) continue
-    if (listed.has(declaration.id) || accounted.has(declaration.id)) continue
+    if (listed.has(declaration.id)) continue
     findings.push({
       path: declaration.path,
       message:
@@ -115,13 +112,6 @@ export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] 
         path: debtPath,
         message: `${entry.id} is listed without a reason. State why it has no test yet.`,
       })
-    }
-    if (input.accountedPath !== undefined && accounted.has(entry.id)) {
-      findings.push({
-        path: debtPath,
-        message: `${entry.id} is already listed in ${input.accountedPath}. Keep the two lists disjoint.`,
-      })
-      continue
     }
     if (!declaredIds.has(entry.id)) {
       findings.push({

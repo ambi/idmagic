@@ -513,10 +513,10 @@ description = "List refused state changes no test proves were left untouched"
 dir = "tools"
 run = "bun run check/src/report-security-test-gaps.ts"
 
-[tasks.report-refusal-debt]
-description = "Split declared refusals that no test names into missing annotation and missing test"
+[tasks.report-coverage-debt]
+description = "Order the normative ids no test names, weighted by the refusals the contract promises"
 dir = "tools"
-run = "bun run check/src/report-refusal-debt.ts"
+run = "bun run check/src/report-coverage-debt.ts"
 
 [tasks.check-admin-scopes]
 description = "Check admin API scope declarations"

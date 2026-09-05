@@ -19,20 +19,26 @@ means the command usage was invalid.
 
 ## Coverage debt
 
-Three ratchets record normative ids that no test names yet. Each list only
+Two ratchets record normative ids that no test names yet. Each list only
 shrinks: an id on one that has grown a test has to come off, and an id declared
 from now on is not admitted.
 
 | File | Holds | Checked by |
 |---|---|---|
-| `security-refusal-debt.json` | Scenarios that declare a refusal | `check-security-controls` |
-| `scenario-coverage-debt.json` | Every other live scenario | `check-spec` |
+| `scenario-coverage-debt.json` | Live scenarios | `check-spec` |
 | `standards-coverage-debt.json` | Rows of any `standards.md` | `check-spec` |
 
-The refusal list stays its own list because "a security control's refusal is
-untested" is a louder fact than "a behavior is untested", and a list that mixes
-the two loses the reason anyone reads it. The scenario list therefore never
-repeats an id the refusal list already holds — the two are disjoint, not merely
-separate, and `check-spec` says so when they overlap. Entries on the two
-`check-spec` lists carry a reason, so the ones added later stay tellable from
-the ones that were there when the check arrived.
+The split is by where the id is declared, and that is the only split. Every
+entry carries a reason, so the ones added later stay tellable from the ones that
+were there when the check arrived.
+
+A third file, `security-refusal-debt.json`, used to hold the scenarios that
+declare a refusal, on the ground that "a security control's refusal is untested"
+is a louder fact than "a behavior is untested". It is louder, and it is still
+reported: `mise run report-coverage-debt` weights each entry by whether its
+scenario names an error type the contract answers a 403 with on a state-changing
+operation. What the separate file cost was a second implementation of this
+comparison, a disjointness invariant between the two lists, and a fifteen-word
+prose classifier deciding which file an id belonged in — a classifier that
+matched condition clauses and audit-field names, and whose result changed
+nothing else in the system. See wi-490.

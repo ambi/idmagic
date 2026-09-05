@@ -149,32 +149,21 @@ describe('checkNormativeCoverage', () => {
     ])
   })
 
-  // The refusal debt and this list are meant to be two disjoint lists, not two
-  // overlapping ones: an id in both has to be removed from both when a test
-  // finally names it, and the pair drifts the first time only one is edited.
-  it('accepts an untested declaration another list already accounts for', () => {
+  // One id, one list. The refusal-shaped half of this comparison used to live
+  // in security-controls.ts with its own debt file, and the two were kept
+  // disjoint by reading each other. wi-490 measured what the split bought and
+  // folded it back in: an id is listed here or it has a test, and nothing else
+  // accounts for it.
+  it('rejects the same id listed twice in one list', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001']),
-      debt: [],
+      debt: [
+        { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
+        { id: 'REQ-DEMO-002', reason: 'declared a refusal when the refusal check arrived' },
+      ],
       debtPath: DEBT,
-      accounted: new Set(['REQ-DEMO-002']),
-      accountedPath: 'tools/check/security-refusal-debt.json',
     })
-    expect(findings).toEqual([])
-  })
-
-  it('rejects a debt entry another list already accounts for', () => {
-    const findings = checkNormativeCoverage({
-      declared,
-      cited: new Set(['REQ-DEMO-001']),
-      debt: [{ id: 'REQ-DEMO-002', reason: 'present when the check was introduced' }],
-      debtPath: DEBT,
-      accounted: new Set(['REQ-DEMO-002']),
-      accountedPath: 'tools/check/security-refusal-debt.json',
-    })
-    expect(messages(findings)).toEqual([
-      'REQ-DEMO-002 is already listed in tools/check/security-refusal-debt.json. Keep the two lists disjoint.',
-    ])
+    expect(messages(findings)).toEqual(['REQ-DEMO-002 is listed twice. Keep one entry per id.'])
   })
 })

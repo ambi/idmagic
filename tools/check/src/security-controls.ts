@@ -1,6 +1,6 @@
 /**
- * Check that security controls can actually refuse, and that every refusal the
- * specification declares is reached by a test.
+ * Check that security controls can actually refuse, and that the refusals the
+ * contract promises are declared as behavior.
  *
  * The rules here exist because of a defect that survived review, a passing test
  * suite, and full coverage of the offending line: `VerifyBrowserRequest` wrote
@@ -9,10 +9,15 @@
  * stopped, and a refused request went on to commit its side effect while the
  * client read a 403.
  *
- * R1 and R2 make that shape unrepresentable. R3 makes the absence of a test for
- * a declared refusal visible instead of silent. R4 asks the question R3 cannot:
- * not whether a declared refusal is tested, but whether the refusal the contract
- * already promises was declared at all.
+ * R1 and R2 make that shape unrepresentable. R4 asks a different question: not
+ * whether a control is tested, but whether the refusal the contract already
+ * promises was declared as behavior at all.
+ *
+ * Coverage -- "a normative id has a test that names it" -- used to live here as
+ * R3, applied to the ids a prose classifier read as refusals. It is one rule
+ * over every normative id and it lives in normative-coverage.ts; see wi-490 for
+ * why the refusal-shaped half of it was a second implementation of the same
+ * comparison rather than a second rule.
  *
  * R1 and R2 first named `WriteProblem`, and naming one writer is what let the
  * shape back out: four admin guards returned `WriteAdminAccessError`, which
@@ -22,7 +27,7 @@
 
 export type GoFile = { path: string; source: string }
 
-export type Finding = { path: string; rule: 'R1' | 'R2' | 'R3' | 'R4'; message: string }
+export type Finding = { path: string; rule: 'R1' | 'R2' | 'R4'; message: string }
 
 /**
  * A function used as a guard: somewhere a caller writes
@@ -244,104 +249,6 @@ function checkGuardResultsAreUsed(files: GoFile[], guards: Set<string>): Finding
 }
 
 /**
- * Signals that a scenario step declares a refusal.
- *
- * Naming an error type is the sturdy one: the specification's errors are
- * declared in TypeSpec and written into the step, so it survives rephrasing.
- * The vocabulary is the fallback for a refusal stated as an outcome rather than
- * an error — "treated as nonexistent", "no token is issued".
- */
-const REFUSAL_ERROR = /\b[A-Z][A-Za-z0-9]*Error\b/
-const REFUSAL_WORDS =
-  /(拒否|却下|禁じ|認めな|できない|返らな|見えな|含まれな|発行しない|失敗させる|存在しないものとして|Denied|Unauthorized|Forbidden)/
-
-/**
- * The scenarios that declare a refusal.
- *
- * Both `ALT` and `THEN` are read. An earlier version looked only at `ALT` and
- * matched a list of keywords, and it missed two whole shapes: a refusal that is
- * the scenario's own outcome rather than an alternative
- * (REQ-SIGNINGKEYS-009, "THEN AccessDeniedError で拒否される"), and a tenant
- * boundary phrased as an outcome (REQ-IDGOVERNANCE-012, "THEN ワークフローは
- * 存在しないものとして扱われる").
- *
- * No attempt is made to sort a refusal an authorization control owns from one
- * an input validation owns. Drawing that line was what made the first version
- * fragile, and the property being checked — a declared refusal has a test that
- * names it — is worth having either way.
- */
-function refusalSteps(scenarios: string): Array<{ id: string; line: string }> {
-  const steps: Array<{ id: string; line: string }> = []
-  let current = ''
-  for (const line of scenarios.split('\n')) {
-    const heading = line.match(/^### (REQ-[A-Z0-9]+-\d+)/)
-    if (heading) {
-      current = heading[1] ?? ''
-      continue
-    }
-    if (!current) continue
-    const step = /^\s+- ALT /.test(line) || /^- THEN /.test(line)
-    if (!step) continue
-    if (!REFUSAL_ERROR.test(line) && !REFUSAL_WORDS.test(line)) continue
-    steps.push({ id: current, line })
-  }
-  return steps
-}
-
-export function refusalScenarioIds(scenarios: string): string[] {
-  const ids: string[] = []
-  for (const step of refusalSteps(scenarios)) {
-    if (!ids.includes(step.id)) ids.push(step.id)
-  }
-  return ids
-}
-
-/**
- * R3: a declared refusal must be reached by a test that names it.
- *
- * `allowed` carries the refusals that had no test when this check was
- * introduced. It is a ratchet, not an exemption: an id missing from it must
- * have a test, and an id on it that has grown one has to come off, so the list
- * can only shrink.
- */
-export function checkRefusalCoverage(
-  declared: string[],
-  citedByTests: Set<string>,
-  allowed: string[],
-): Finding[] {
-  const findings: Finding[] = []
-  const allowedSet = new Set(allowed)
-  for (const id of declared) {
-    if (citedByTests.has(id) || allowedSet.has(id)) continue
-    findings.push({
-      path: 'docs/contexts',
-      rule: 'R3',
-      message:
-        `${id} declares a refusal, but no test names it. ` +
-        'Cite the id from the test that exercises the refusal.',
-    })
-  }
-  for (const id of allowed) {
-    if (!declared.includes(id)) {
-      findings.push({
-        path: 'tools/check/security-refusal-debt.json',
-        rule: 'R3',
-        message: `${id} is listed as an untested refusal but no longer declares one. Remove it.`,
-      })
-      continue
-    }
-    if (citedByTests.has(id)) {
-      findings.push({
-        path: 'tools/check/security-refusal-debt.json',
-        rule: 'R3',
-        message: `${id} now has a test that names it. Remove it from the list; the list only shrinks.`,
-      })
-    }
-  }
-  return findings
-}
-
-/**
  * The refusals the contract promises for the operations that change state.
  *
  * TypeSpec already says, per operation, which error body a 403 carries, and a
@@ -368,12 +275,34 @@ export function contractRefusalsOfStateChanges(typespec: string): Map<string, st
   return refusals
 }
 
-/** The error types the scenarios name in a step that refuses. */
-export function declaredRefusalTypes(scenarios: string): Set<string> {
+/**
+ * The error types the scenarios name in an `ALT` or `THEN` step.
+ *
+ * This used to read only the steps a refusal classifier accepted, and the
+ * classifier was a list of fifteen words matched against the prose. Measured
+ * across all 21 contexts, the filter changed this result in neither direction:
+ * every type it admitted was already named in a step, and no step naming a type
+ * was excluded. That is not a coincidence. The type is what R4 joins on and it
+ * is written on both sides — in TypeSpec as the 403 body, in the scenario as
+ * the name of what answers — so naming it is the declaration, whatever the
+ * surrounding sentence says.
+ *
+ * Reading every step also removes the failure the classifier had: matching
+ * prose meant matching a condition clause or a field list. REQ-SYSTEM-015
+ * counted as a refusal because its condition said "cannot recover", and
+ * REQ-AUTHORIZATION-009 because a listed audit field is named "refusal reason".
+ */
+export function errorTypesNamedByScenarios(scenarios: string): Set<string> {
   const types = new Set<string>()
-  for (const step of refusalSteps(scenarios)) {
-    for (const match of step.line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g))
-      types.add(match[1] ?? '')
+  let inScenario = false
+  for (const line of scenarios.split('\n')) {
+    if (/^### REQ-[A-Z0-9]+-\d+/.test(line)) {
+      inScenario = true
+      continue
+    }
+    if (!inScenario) continue
+    if (!/^\s+- ALT /.test(line) && !/^- THEN /.test(line)) continue
+    for (const match of line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)) types.add(match[1] ?? '')
   }
   return types
 }
@@ -381,8 +310,8 @@ export function declaredRefusalTypes(scenarios: string): Set<string> {
 /**
  * R4: a refusal the contract promises must be declared as behavior.
  *
- * R3 checks the refusals that were written down. A context that writes none
- * passes it without being asked anything, and that is the hole: a 403 on a
+ * Coverage checks the refusals that were written down. A context that writes
+ * none passes it without being asked anything, and that is the hole: a 403 on a
  * state-changing operation is a control the product relies on, and if no
  * scenario says when it fires, an implementation that stops refusing
  * contradicts nothing.
