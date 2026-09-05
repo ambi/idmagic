@@ -88,11 +88,13 @@ func (s hintTestServer) seedSession(t *testing.T, sid string) {
 	}
 }
 
-func (s hintTestServer) seedRefreshToken(t *testing.T, clientID, sub, sid string) {
+// seedRefreshToken は sid を共有するリフレッシュトークンを 1 本置く。
+// 主体はこのファイルの唯一のユーザー "alice" に固定する。
+func (s hintTestServer) seedRefreshToken(t *testing.T, clientID, sid string) {
 	t.Helper()
 	rec := &oauthdomain.RefreshTokenRecord{
 		ID: clientID + "-rt", Hash: "hash-" + clientID, FamilyID: clientID + "-fam",
-		ClientID: clientID, UserID: sub, Scopes: []string{"openid", "offline_access"},
+		ClientID: clientID, UserID: "alice", Scopes: []string{"openid", "offline_access"},
 		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour), AbsoluteExpiresAt: time.Now().Add(24 * time.Hour),
 		Sid: &sid,
 	}
@@ -117,8 +119,8 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 	s := newHintTestServer(t)
 	sid := "session-hint-1"
 	s.seedSession(t, sid)
-	s.seedRefreshToken(t, hintClientID, "alice", sid)
-	s.seedRefreshToken(t, "other-app", "alice", sid)
+	s.seedRefreshToken(t, hintClientID, sid)
+	s.seedRefreshToken(t, "other-app", sid)
 	hint := s.signIDTokenHint(t, hintClientID, "alice", sid)
 
 	q := url.Values{"id_token_hint": {hint}}
@@ -142,10 +144,29 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 	}
 }
 
+// assertSessionAndTokensSurvived は、拒否されたログアウト要求がセッションも
+// リフレッシュトークンも失効させていないことを確かめる。
+//
+// /end_session は拒否の応答とセッション失効を別の分岐で書くため、応答だけを読む
+// テストは「拒否を返し、そのうえでログアウトも実行する」実装を通してしまう。
+func assertSessionAndTokensSurvived(t *testing.T, s hintTestServer, sid string) {
+	t.Helper()
+	if session, _ := s.sessionStore.Find(context.Background(), sid); session == nil {
+		t.Fatal("拒否されたヒントでセッションが失効した")
+	}
+	record, _ := s.refreshStore.FindByHash(context.Background(), "hash-"+hintClientID)
+	if record == nil || record.Revoked {
+		t.Fatalf("拒否されたヒントでリフレッシュトークンが失効した: %#v", record)
+	}
+}
+
+// EX-OAUTH2-024-02: aud が client_id と一致しない id_token_hint は拒否され、
+// 対象のセッションもそのリフレッシュトークンも生き残る。
 func TestEndSessionRejectsIDTokenHintAudienceMismatch(t *testing.T) {
 	s := newHintTestServer(t)
 	sid := "session-hint-2"
 	s.seedSession(t, sid)
+	s.seedRefreshToken(t, hintClientID, sid)
 	hint := s.signIDTokenHint(t, hintClientID, "alice", sid)
 
 	q := url.Values{"client_id": {"other-app"}, "id_token_hint": {hint}}
@@ -155,16 +176,16 @@ func TestEndSessionRejectsIDTokenHintAudienceMismatch(t *testing.T) {
 	if rec.Code == http.StatusSeeOther || rec.Code == http.StatusFound {
 		t.Fatalf("expected rejection, got status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	// ローカル revoke は行われていないこと。
-	if sess, _ := s.sessionStore.Find(context.Background(), sid); sess == nil {
-		t.Fatal("session must not be revoked on a rejected hint")
-	}
+	assertSessionAndTokensSurvived(t, s, sid)
 }
 
+// EX-OAUTH2-024-03: IdMagic の署名鍵で検証できない id_token_hint は拒否され、
+// 対象のセッションもそのリフレッシュトークンも生き残る。
 func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 	s := newHintTestServer(t)
 	sid := "session-hint-3"
 	s.seedSession(t, sid)
+	s.seedRefreshToken(t, hintClientID, sid)
 
 	otherKS, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
@@ -186,9 +207,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 	if rec.Code == http.StatusSeeOther || rec.Code == http.StatusFound {
 		t.Fatalf("expected rejection, got status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := s.sessionStore.Find(context.Background(), sid); sess == nil {
-		t.Fatal("session must not be revoked when the hint's issuer doesn't match")
-	}
+	assertSessionAndTokensSurvived(t, s, sid)
 }
 
 func TestEndSessionAcceptsExpiredIDTokenHint(t *testing.T) {

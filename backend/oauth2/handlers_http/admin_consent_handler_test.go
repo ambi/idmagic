@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,6 +113,8 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	}
 }
 
+// EX-OAUTH2-038-01: 同意管理 API は別テナントの同意を公開せず、
+// 拒否の応答に対象の同意が 1 件も含まれない。
 func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 	e, consents, _ := newAdminConsentHandler()
 	now := time.Now().UTC()
@@ -128,6 +131,11 @@ func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("cross-tenant status=%d body=%s", response.Code, response.Body.String())
+	}
+	for _, leak := range []string{"alice", "portal", "granted"} {
+		if strings.Contains(response.Body.String(), leak) {
+			t.Fatalf("拒否された応答が別テナントの同意 %q を含む: %s", leak, response.Body.String())
+		}
 	}
 
 	request = httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/consents", http.NoBody)

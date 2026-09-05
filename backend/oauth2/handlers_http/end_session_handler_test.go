@@ -78,11 +78,17 @@ func TestEndSessionRedirectsToRegisteredURIWithStatePropagation(t *testing.T) {
 	}
 }
 
+// EX-OAUTH2-023-02: 未登録の post_logout_redirect_uri は拒否され、
+// その URI へのリダイレクトは発生しない。
+//
+// 拒否の本文を書いたうえで Location も付ける実装は、エラー本文だけを読むテストを
+// 通してしまう。ブラウザーが従うのは Location なので、そこまで読み直す。
 func TestEndSessionRejectsUnregisteredPostLogoutURI(t *testing.T) {
 	e := newEndSessionServer(t)
+	const unregistered = "https://evil.example.com/cb"
 	q := url.Values{
 		"client_id":                {logoutClientID},
-		"post_logout_redirect_uri": {"https://evil.example.com/cb"},
+		"post_logout_redirect_uri": {unregistered},
 	}
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
@@ -90,5 +96,11 @@ func TestEndSessionRejectsUnregisteredPostLogoutURI(t *testing.T) {
 	if rec.Code == http.StatusFound ||
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_request"`)) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if location := rec.Header().Get("Location"); location != "" {
+		t.Fatalf("拒否された要求が Location=%q を返した", location)
+	}
+	if bytes.Contains(rec.Body.Bytes(), []byte(unregistered)) {
+		t.Fatalf("拒否の本文が未登録 URI を反射している: %s", rec.Body.String())
 	}
 }

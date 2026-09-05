@@ -94,7 +94,16 @@ func TestRegisterClientAPI(t *testing.T) {
 		}
 	})
 
+	// EX-OAUTH2-016-02: redirect_uri を持たない登録要求は拒否され、
+	// クライアントは作成されない。
+	//
+	// 400 を書いてから保存も続ける実装はステータスだけを読むテストを通すので、
+	// テナントのクライアント数が変わっていないことまで読み直す。
 	t.Run("Register_ValidationError_NoRedirectURIs", func(t *testing.T) {
+		before, err := fix.clientRepo.FindAll(context.Background(), tenancydomain.DefaultTenantID)
+		if err != nil {
+			t.Fatal(err)
+		}
 		// redirect_uris が無い場合
 		payload := `{
 			"client_name": "Dynamic Client No Redirect",
@@ -117,6 +126,16 @@ func TestRegisterClientAPI(t *testing.T) {
 		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 		if resp["error"] != "invalid_redirect_uri" {
 			t.Errorf("expected error invalid_redirect_uri, got %v", resp["error"])
+		}
+		if resp["client_id"] != nil {
+			t.Fatalf("拒否された登録が client_id を返した: %+v", resp)
+		}
+		after, err := fix.clientRepo.FindAll(context.Background(), tenancydomain.DefaultTenantID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(after) != len(before) {
+			t.Fatalf("拒否された登録がクライアントを作った: before=%d after=%d", len(before), len(after))
 		}
 	})
 

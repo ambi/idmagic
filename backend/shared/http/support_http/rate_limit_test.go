@@ -97,19 +97,28 @@ func TestCheckRateLimitBlockedWrites429WithRetryAfter(t *testing.T) {
 	})
 }
 
-func TestCheckRateLimitStoreErrorPropagates(t *testing.T) {
+// EX-OAUTH2-040-06: an unreachable shared counter fails closed as the declared
+// RateLimitedError, not as a server error.
+//
+// Propagating the store error produced a 500, which no protected operation
+// declares: /token answers 400, 401, 422 or 429 and nothing else. A 500 also
+// tells a client the server is broken when the correct answer is "back off and
+// retry", so the caller has no Retry-After to obey.
+func TestCheckRateLimitStoreErrorFailsClosedAsRateLimited(t *testing.T) {
 	withRateLimitEchoContext(t, func(c *echo.Context, rec *httptest.ResponseRecorder) {
-		wantErr := errors.New("store unreachable")
-		limiter := stubRateLimiter{err: wantErr}
+		limiter := stubRateLimiter{err: errors.New("store unreachable")}
 		blocked, err := support.CheckRateLimit(c, limiter, nil, "token", "key")
-		if !errors.Is(err, wantErr) {
-			t.Fatalf("err=%v, want %v (fail-closed: propagate rather than allow)", err, wantErr)
+		if err != nil {
+			t.Fatalf("a successful 429 write should not itself error: %v", err)
 		}
-		if blocked {
-			t.Fatalf("blocked should be false on a store error; the caller stops via err, not blocked")
+		if !blocked {
+			t.Fatalf("blocked=false, want true (the caller must stop)")
 		}
-		if rec.Body.Len() != 0 {
-			t.Fatalf("store error should not itself write a response body, got %q", rec.Body.String())
+		if rec.Code != http.StatusTooManyRequests {
+			t.Fatalf("status=%d, want 429", rec.Code)
+		}
+		if got := rec.Header().Get("Retry-After"); got == "" {
+			t.Fatalf("fail-closed 429 carries no Retry-After: headers=%v", rec.Header())
 		}
 	})
 }

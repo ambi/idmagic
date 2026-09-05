@@ -31,6 +31,11 @@ func ExtractClientIP(request *http.Request, trustedHops int) string {
 	return ips[index]
 }
 
+// storeUnavailableRetryAfterSeconds is the Retry-After a fail-closed refusal offers when the
+// counter cannot be read. No window state is known in that case, so the value is a fixed short
+// backoff rather than a remainder computed from a window nobody could read.
+const storeUnavailableRetryAfterSeconds = 30
+
 // CheckRateLimit applies the shared endpoint rate limiter for policyID/key, distinct
 // from the per-account/per-IP login throttle. When the limiter is nil (not wired — e.g. some
 // tests) it allows the request through, matching LoginAttemptThrottle's optional-by-construction
@@ -59,7 +64,10 @@ func CheckRateLimit(c *echo.Context, limiter rlports.RateLimiter, metrics Metric
 		if metrics != nil {
 			metrics.RecordEndpointRateLimit(policyID, "store_unavailable")
 		}
-		return false, err
+		// 到達できないカウンターは 429 として閉じる。エラーをそのまま返すと 500 になるが、
+		// 保護対象の操作はどれも 500 を宣言していないうえ、正しい答えが「間隔を空けて
+		// やり直せ」であるときに「サーバーが壊れている」と伝えてしまう。
+		return true, WriteRateLimited(c, storeUnavailableRetryAfterSeconds)
 	}
 	if !result.Allowed {
 		if metrics != nil {

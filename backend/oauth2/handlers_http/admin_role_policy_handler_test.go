@@ -44,11 +44,21 @@ func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
 	}
 }
 
+// EX-OAUTH2-004-02: admin でも system_admin でもない主体のロールポリシー一覧は
+// 拒否され、応答本文にロールポリシーが 1 件も含まれない。
+//
+// 403 を書いてから一覧も書く実装はステータスだけを読むテストを通すので、
+// 本文にロールポリシーが漏れていないことまで読み直す。
 func TestAdminRolePoliciesRequireAdminRole(t *testing.T) {
 	e, _, _ := newKeyAdminServer(t, keyAdminUser("plain", "acme", nil))
 	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	for _, leak := range []string{`"roles"`, `"permissions"`, "system_admin"} {
+		if strings.Contains(rec.Body.String(), leak) {
+			t.Fatalf("拒否された応答がロールポリシー %q を含む: %s", leak, rec.Body.String())
+		}
 	}
 }
 

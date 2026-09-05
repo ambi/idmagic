@@ -343,8 +343,27 @@ func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDeny
 	return e
 }
 
+// assertNoUserInfoClaims は、拒否された UserInfo 応答が主体の識別子とクレームを
+// 1 つも含まないことを確かめる。
+//
+// 拒否の応答は防護とは別の分岐で書き出されるため、ステータスとエラー種別だけを読む
+// テストは「拒否を書き、そのうえでクレームも返す」実装をそのまま通してしまう。
+func assertNoUserInfoClaims(t *testing.T, body []byte) {
+	t.Helper()
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("userinfo 応答が JSON ではない: %v body=%s", err, body)
+	}
+	for _, claim := range []string{"sub", "name", "preferred_username", "email", "nickname"} {
+		if _, ok := payload[claim]; ok {
+			t.Fatalf("拒否された応答がクレーム %q を含む: body=%s", claim, body)
+		}
+	}
+}
+
+// EX-OAUTH2-013-02: openid スコープを持たないトークンの UserInfo は拒否され、
+// 応答に sub もクレームも含まれない。
 func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
-	// SCL シナリオ "openid スコープのないトークンのユーザー情報取得は拒否される"。
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "profile", ClientID: "demo-client",
 	}}
@@ -357,10 +376,12 @@ func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"insufficient_scope"`)) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	assertNoUserInfoClaims(t, rec.Body.Bytes())
 }
 
+// EX-OAUTH2-020-01: 失効したアクセストークンの UserInfo は invalid_token で拒否され、
+// 応答に sub もクレームも含まれない。
 func TestUserInfoRejectsRevokedAccessToken(t *testing.T) {
-	// SCL シナリオ "失効した access_token でユーザー情報取得は invalid_token で拒否される"。
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
 		JTI: "revoked-jti",
@@ -375,11 +396,12 @@ func TestUserInfoRejectsRevokedAccessToken(t *testing.T) {
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_token"`)) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	assertNoUserInfoClaims(t, rec.Body.Bytes())
 }
 
+// EX-OAUTH2-029-02: mTLS バインドされたアクセストークンを別の証明書で提示すると
+// invalid_token で拒否され、保護リソースの本文は返らない。
 func TestUserInfoMTLSBoundRequiresMatchingThumbprint(t *testing.T) {
-	// SCL シナリオ "mTLS バインド AT は同じ証明書のリクエストでのみ受理される"。
-	// 期待 thumbprint と異なる証明書を提示すると invalid_token。
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
 		SenderConstraint: &domain.SenderConstraint{
@@ -396,6 +418,7 @@ func TestUserInfoMTLSBoundRequiresMatchingThumbprint(t *testing.T) {
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_token"`)) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	assertNoUserInfoClaims(t, rec.Body.Bytes())
 }
 
 // clientCertificateHeader はテスト用の自己署名証明書を PEM/URL エンコードして返す。
