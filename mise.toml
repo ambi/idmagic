@@ -33,21 +33,6 @@ description = "Resolve declared embedded tooling dependencies and update the loc
 dir = "tools"
 run = "bun install"
 
-[tasks.migrate-scenarios]
-description = "Migrate legacy scenario documents to Markdown with Gherkin"
-dir = "tools"
-run = "bun run migrate-scenarios/src/main.ts"
-
-[tasks.initialize-example-coverage-debt]
-description = "Initialize the one-time Markdown with Gherkin example coverage baseline"
-dir = "tools"
-run = "bun run migrate-scenarios/src/initialize-example-debt.ts"
-
-[tasks.audit-scenario-migration]
-description = "Audit the one-time Markdown with Gherkin migration against the pre-migration revision"
-dir = "tools"
-run = "bun run migrate-scenarios/src/audit-migration.ts"
-
 [tasks.tool-versions]
 description = "Show the development tool versions selected by mise"
 run = [
