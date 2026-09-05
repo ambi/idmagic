@@ -77,11 +77,13 @@ const scenariosDocument = {
 
 ## Rule: REQ-DEMO-001 a demo runs
 
+Primary actor: \`Developer\`
+
 ### Example: EX-DEMO-001-01 a ready demo starts
 
 - Given a ready demo
 - When the developer starts the demo
-- Then the demo is running
+- Then \`demo:run\` keeps the demo running
 
 ### Example: EX-DEMO-001-02 a forbidden start changes nothing
 
@@ -104,7 +106,13 @@ const glossaryDocument = {
 
 const guideDocument = {
   path: 'WORK_ITEM_FORMAT.md',
-  source: '# Work Item Format\n\nEnglish method guidance.\n',
+  source: `# Work Item Format
+
+When the work is complete, set the status.
+
+- When an item enters \`in_progress\`, add the evidence policy.
+- Then move the file to the done directory.
+`,
 }
 
 const developmentDocument = {
@@ -251,6 +259,21 @@ describe('renderSpecificationSite', () => {
     expect(result.assets['site.css']).toContain('--diagram-line:#b9c8ff')
     expect(result.files['models/example-demo-internalrecord.html']).toContain('Not API-exposed')
     expect(result.files['models/example-demo-internalrecord.html']).toContain('minLength: 3')
+  })
+
+  // 印は文書と位置で絞る。方法論文書の英語本文にも Gherkin と同じ語が現れる。
+  it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
+    const scenarios = site().files['contexts/demo/scenarios.html'] ?? ''
+
+    // 残りがコード片から始まるステップでも印が付く。
+    expect(scenarios).toContain(
+      '<span class="scenario-keyword then">Then</span> <code>demo:run</code>',
+    )
+    expect(scenarios).toContain('<span class="scenario-actor">Primary actor</span>')
+    expect([...scenarios.matchAll(/class="scenario-keyword /g)].length).toBe(7)
+
+    // WORK_ITEM_FORMAT.md の "When an item enters ..." は本文であってステップではない。
+    expect(site().files['method/work-item-format.html']).not.toContain('scenario-keyword')
   })
 
   it('names context children by content and lists them in canonical order', () => {
