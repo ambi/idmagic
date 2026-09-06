@@ -50,4 +50,4 @@ RFC 8176 — https://www.rfc-editor.org/rfc/rfc8176.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC8176-AMR-VOCABULARY | required | MUST | LoginSession.amr は RFC 8176 登録値 (pwd, otp, webauthn, hwk, swk) のサブセットに、本アプリ固有の非 IANA 拡張値 rc (recovery code) と tdev (信頼済みデバイス) を加えた語彙のみを許可する。 |
+| RFC8176-AMR-VOCABULARY | required | MUST | LoginSession.amr は RFC 8176 登録値 (`pwd`, `otp`, `webauthn`, `hwk`, `swk`) のサブセットに、本アプリ固有の非 IANA 拡張値 `rc` (復旧コード)、`tdev` (記憶済みの信頼済みデバイス)、`federated` (上流の IdP へ委ねた認証) を加えた語彙だけを許可し、語彙の外の値を持つ LoginSession は保存しない。 |

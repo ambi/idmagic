@@ -16,6 +16,8 @@
 
 `authentication_sessions` を `LoginSession` の単一の正とする。通常の [`tenant_id` retention classes](../../database.md#tenant_id-retention-classes) の例外として、ユーザーから導出できる `tenant_id` も保持する。不透明な Cookie 値であるセッション ID をすべてのリクエストで照合する際に、テナント境界をフェイルクローズで確認するためである。失効では行を削除せず、`revoked_at` と `revoke_reason` を設定する。これにより、失効の再実行は安全な no-op となり、物理削除は保持期間に従う独立した処理になる。インデックスは、ユーザーごとの有効なセッションを `auth_time DESC` でページングする処理と、`expires_at` による一括削除に使う。
 
+`amr` の語彙は `LoginSession` の検証が閉じた集合として持ち、セッションマネージャーは作成時と第二要素の成立時の両方で、保存の前にこれを通す。語彙を書き込みの側で閉じるのは、`amr` が ID トークンとアクセストークンの `amr` クレームとしてリライングパーティーまで届く値だからである。呼び出し元がそれぞれ正しい値を渡していることに頼ると、要素をひとつ足すたびに語彙の外の値が混ざる余地が残る。`acr` は同じ場所で `amr` から導出し、`otp`、`webauthn`、`hwk`、`swk`、`rc`、`tdev` のいずれかがあれば `urn:idmagic:acr:mfa` へ上がる。`federated` はここに含めない。上流の IdP が何を検証したかはブローカーには分からないので、`urn:idmagic:acr:mfa` を名乗ると強度を偽ることになるからである。
+
 セッションの有効期限は作成時に設定する固定 1 時間 (`SessionTTLSeconds`) であり、利用によって `expires_at` を延長しない。更新するのは `last_seen_at` だけで、書き込み増幅、VACUUM の負荷、ロック競合を抑えるため、最短でも 5 分間隔とする。90 日の保持期間は、期限切れの行を調査用に残す期間であり、セッションの有効期間ではない。
 
 `mfa_factors.secret` は以前からある平文の TOTP の種の列であり、既存の行が読めるようにするためだけに残している (二重読み)。新しい書き込みは `secret_key_version` と `secret_ciphertext` を埋め、`secret` は `NULL` のままにする。残りの平文の行は保留中の埋め戻しで移行し、その後 `secret` を削除する。

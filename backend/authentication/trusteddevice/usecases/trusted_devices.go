@@ -15,13 +15,13 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// AMRTrustedDevice は「要素を提示したのではなく端末が記憶されていた」ことを表す
-// AMR 値。RFC 8176 の登録値ではなく、rc と同じくこのアプリケーション固有の拡張値である。
-const AMRTrustedDevice = "tdev"
+// AMRTrustedDevice は「要素を提示したのではなく端末が記憶されていた」ことを表す AMR 値。
+// 宣言は authentication/domain が 1 か所で持つ (RFC8176-AMR-VOCABULARY)。
+const AMRTrustedDevice = authdomain.AMRTrustedDevice
 
 // RememberableFactors は記憶の起点として認める第二要素。復旧コード (rc) は要素を失った
 // ときの経路であり、その状況の端末を長期の信頼に足るものとして扱えないので含めない。
-var RememberableFactors = []string{"otp", "webauthn"}
+var RememberableFactors = []string{authdomain.AMROTP, authdomain.AMRWebAuthn}
 
 // ErrTrustedDeviceNotFound は対象のデバイスが存在しない、または本人のものでない。
 var ErrTrustedDeviceNotFound = errors.New("trusted device not found")

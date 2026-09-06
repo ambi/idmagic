@@ -1,9 +1,11 @@
 package domain_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -129,5 +131,37 @@ func TestLoginSessionTouch(t *testing.T) {
 	}
 	if !sess.LastSeenAt.Equal(later) {
 		t.Fatalf("LastSeenAt = %v, want %v", sess.LastSeenAt, later)
+	}
+}
+
+// RFC8176-AMR-VOCABULARY: LoginSession の検証が amr の語彙を閉じていることを固定する。
+// 宣言された 8 語はいずれも通り、語彙の外の値はひとつでもあれば通らない。error の本文が
+// 語彙の外の値を名指すことも観測する。何が拒否されたのかを言わない検査は、認証要素を
+// 足した人にとって「amr が不正」以上の手がかりを持たない。
+func TestLoginSessionClosesTheAMRVocabulary(t *testing.T) {
+	now := time.Now().UTC()
+	session := func(amr []string) domain.LoginSession {
+		return domain.LoginSession{ID: mustUUID(t), UserID: "user_1", AMR: amr, ACR: "1", ExpiresAt: now}
+	}
+
+	// 宣言された語彙は 1 語ずつ、そして全部まとめても通る。
+	for _, value := range authdomain.AMRVocabulary() {
+		if err := session([]string{value}).Validate(); err != nil {
+			t.Fatalf("declared amr %q rejected: %v", value, err)
+		}
+	}
+	if err := session(authdomain.AMRVocabulary()).Validate(); err != nil {
+		t.Fatalf("the whole vocabulary rejected: %v", err)
+	}
+
+	// 語彙の外の値は、RFC 8176 の登録値であっても通らない。
+	for _, unknown := range []string{"mfa", "pop", "sms", "user", "FEDERATED", "pwd "} {
+		err := session([]string{"pwd", unknown}).Validate()
+		if err == nil {
+			t.Fatalf("amr %q outside the vocabulary was accepted", unknown)
+		}
+		if !strings.Contains(err.Error(), unknown) {
+			t.Fatalf("error %q does not name the rejected value %q", err, unknown)
+		}
 	}
 }

@@ -240,9 +240,9 @@ model LoginSession {
   user_id: string;
   @doc("The Unix second at which authentication succeeded. It is immutable as the session's start time, and the list is sorted by it, newest first.")
   auth_time: int64;
-  @doc("The RFC 8176 methods by which authentication succeeded (RFC8176-AMR-VOCABULARY).")
+  @doc("The methods by which authentication succeeded, drawn from a closed vocabulary: the RFC 8176 registered values pwd, otp, webauthn, hwk and swk, plus this application's non-IANA extensions rc (a recovery code), tdev (a remembered trusted device) and federated (authentication delegated to an upstream IdP). A LoginSession carrying anything else is not stored (RFC8176-AMR-VOCABULARY).")
   amr: string[];
-  @doc("The authentication context class reference URN: either `urn:idmagic:acr:pwd`, when amr holds nothing beyond `pwd`, or `urn:idmagic:acr:mfa`, when amr holds one of otp, webauthn, hwk, swk, or rc (OpenID Connect Core section 2 and RFC 8176).")
+  @doc("The authentication context class reference URN: `urn:idmagic:acr:mfa` when amr holds one of otp, webauthn, hwk, swk, rc or tdev, and `urn:idmagic:acr:pwd` otherwise. A federated sign-in stays at pwd because the broker cannot tell what the upstream IdP actually verified (OpenID Connect Core section 2 and RFC 8176).")
   acr: string;
   @doc("Whether it is the intermediate state waiting on verification of another factor. False once complete.")
   authentication_pending: boolean = false;

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"testing"
 	"time"
 
@@ -98,5 +99,16 @@ func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 	authn, err := sessions.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: headers})
 	if err != nil || authn == nil || authn.UserID != "user-alice" {
 		t.Fatalf("authn=%+v err=%v", authn, err)
+	}
+	// RFC8176-AMR-VOCABULARY: 連合ログインが発行する `federated` が語彙の内側にあることを
+	// 固定する。語彙の検査は保存の直前に掛かるので、`federated` が語彙から落ちれば callback
+	// はここまで到達しない。宣言と実装が食い違っていた時期の帰結がこれであり、語彙を
+	// 締める変更が正規の経路を止めていないことの対照でもある (wi-508)。
+	if !slices.Equal(authn.AMR, []string{authdomain.AMRFederated}) {
+		t.Fatalf("amr=%v, want [%s]", authn.AMR, authdomain.AMRFederated)
+	}
+	// 上流の IdP が何を検証したかはブローカーに分からないので、acr は mfa へ上がらない。
+	if authn.ACR != "urn:idmagic:acr:pwd" {
+		t.Fatalf("acr=%q, want urn:idmagic:acr:pwd", authn.ACR)
 	}
 }

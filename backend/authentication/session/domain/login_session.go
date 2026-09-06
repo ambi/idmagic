@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	authndomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -89,6 +91,12 @@ var loginSessionSchema = z.Struct(z.Shape{
 }, z.Message("revoked_at and revoke_reason must be set together"))
 
 func (s LoginSession) Validate() error {
+	// 語彙の検査だけスキーマの外に置く。zog の Message は固定文字列なので、語彙の外の値を
+	// 名指す error を組み立てられない。拒否が何を拒否したのか言えることは、認証要素を
+	// 足す側にとって「amr が不正」より役に立つ (RFC8176-AMR-VOCABULARY)。
+	if unknown := authndomain.UnknownAMRValues(s.AMR); len(unknown) > 0 {
+		return fmt.Errorf("amr holds values outside the declared vocabulary: %s", strings.Join(unknown, ", "))
+	}
 	return spec.Validate(loginSessionSchema, &s)
 }
 

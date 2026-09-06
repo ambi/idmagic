@@ -287,10 +287,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC8176-AMR-VOCABULARY",
-      "reason": "the row and docs/contexts/authentication/scenarios.feature.md contradict each other on `federated`, so no test can satisfy it (wi-508)"
-    },
-    {
       "id": "RFC8414-METADATA",
       "reason": "present when the check was introduced"
     },

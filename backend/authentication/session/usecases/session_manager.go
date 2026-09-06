@@ -81,6 +81,12 @@ func (m *SessionManager) CreateWithPending(
 		PendingPurpose:        domain.LoginPendingNone,
 		ExpiresAt:             now.Add(SessionTTLSeconds * time.Second),
 	}
+	// 語彙の検査は保存の直前に置く。amr は ID トークンとアクセストークンの amr クレームと
+	// してリライングパーティーまで届くので、語彙を書き込みの側で閉じる
+	// (RFC8176-AMR-VOCABULARY)。
+	if err := sess.Validate(); err != nil {
+		return nil, err
+	}
 	if err := m.Store.Save(ctx, sess); err != nil {
 		return nil, err
 	}
@@ -113,24 +119,35 @@ func (m *SessionManager) CompleteFactor(
 			merged = append(merged, method)
 		}
 	}
-	sess.AMR = merged
-	sess.ACR = authusecases.DeriveACR(merged)
-	sess.AuthenticationPending = false
-	sess.PendingPurpose = domain.LoginPendingNone
-	sess.EnrollmentDeadline = nil
-	sess.EnrollmentBypassID = ""
-	if err := m.Store.Save(ctx, sess); err != nil {
+	// 読み込んだ session ではなく候補を組み立てて検証する。store が保持している値そのものを
+	// 返す adapter があるので、先に書き換えてから検証すると、拒否したはずの値が保存済みの
+	// session へ残る。候補を検証してから Save へ渡せば、拒否が何も動かさないことが adapter の
+	// 作りに依存しなくなる。
+	candidate := *sess
+	candidate.AMR = merged
+	candidate.ACR = authusecases.DeriveACR(merged)
+	candidate.AuthenticationPending = false
+	candidate.PendingPurpose = domain.LoginPendingNone
+	candidate.EnrollmentDeadline = nil
+	candidate.EnrollmentBypassID = ""
+	// 作成時と同じく、併合した amr が語彙の内側であることを保存の前に確かめる
+	// (RFC8176-AMR-VOCABULARY)。認証要素を足すときに配線し忘れる余地を残さないため、
+	// amr を書く 2 か所の両方に置く。
+	if err := candidate.Validate(); err != nil {
+		return nil, err
+	}
+	if err := m.Store.Save(ctx, &candidate); err != nil {
 		return nil, err
 	}
 	return &authdomain.AuthenticationContext{
-		UserID:                sess.UserID,
-		AuthTime:              sess.AuthTime,
-		AMR:                   slices.Clone(sess.AMR),
-		ACR:                   sess.ACR,
-		SessionID:             sess.ID,
-		AuthenticationPending: sess.AuthenticationPending,
-		PendingPurpose:        sess.PendingPurpose,
-		StepUpAt:              sess.StepUpAt,
+		UserID:                candidate.UserID,
+		AuthTime:              candidate.AuthTime,
+		AMR:                   slices.Clone(candidate.AMR),
+		ACR:                   candidate.ACR,
+		SessionID:             candidate.ID,
+		AuthenticationPending: candidate.AuthenticationPending,
+		PendingPurpose:        candidate.PendingPurpose,
+		StepUpAt:              candidate.StepUpAt,
 	}, nil
 }
 
