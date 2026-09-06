@@ -18,6 +18,7 @@ model ListTenantDataKeyHealthSuccess_200 {
 }
 
 union ListTenantDataKeyHealthError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

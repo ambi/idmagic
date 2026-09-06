@@ -53,7 +53,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/applications/:id/provisioning/on-demand", d.handleProvisionOnDemand)
 	g.POST("/api/admin/v1/applications/:id/provisioning/full-resync", d.handleStartFullResync)
 	g.POST("/api/admin/v1/applications/:id/provisioning/resume", d.handleResumeConnection)
-	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries", d.handleListDeliveries)
+	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries", d.handleListProvisioningDeliveries)
 	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries/:delivery_id", d.handleGetDelivery)
 	g.POST("/api/admin/v1/applications/:id/provisioning/deliveries/:delivery_id/retry", d.handleRetryDelivery)
 	g.GET("/api/admin/v1/provisioning/connections", d.handleListTenantConnections)

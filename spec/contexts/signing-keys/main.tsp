@@ -42,6 +42,7 @@ model ListAdminKeysSuccess_200 {
 }
 
 union ListAdminKeysError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -66,6 +67,7 @@ model GetAdminKeySuccess_200 {
 }
 
 union GetAdminKeyError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -100,6 +102,9 @@ model RotateTenantSigningKeySuccess_200 {
 }
 
 union RotateTenantSigningKeyError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -144,6 +149,9 @@ model DisableTenantKeyError400 {
 }
 
 union DisableTenantKeyError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -191,6 +199,7 @@ model ListTenantKeyHealthSuccess_200 {
 }
 
 union ListTenantKeyHealthError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

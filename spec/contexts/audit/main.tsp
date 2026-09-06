@@ -24,6 +24,7 @@ model ListAdminAuditEventsError400 {
 }
 
 union ListAdminAuditEventsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -58,6 +59,7 @@ model ExportAdminAuditEventsError400 {
 }
 
 union ExportAdminAuditEventsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -82,6 +84,7 @@ model GetAdminAuditEventSearchOptionsSuccess_200 {
 }
 
 union GetAdminAuditEventSearchOptionsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -106,6 +109,7 @@ model GetAdminAuditEventSuccess_200 {
 }
 
 union GetAdminAuditEventError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

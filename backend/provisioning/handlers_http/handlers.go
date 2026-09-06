@@ -219,7 +219,7 @@ func provisioningDeliveriesQueryHash(c *echo.Context) string {
 	return q.Encode()
 }
 
-func (d Deps) handleListDeliveries(c *echo.Context) error {
+func (d Deps) handleListProvisioningDeliveries(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}

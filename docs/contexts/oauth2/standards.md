@@ -18,6 +18,7 @@ RFC 6750 — https://www.rfc-editor.org/rfc/rfc6750.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC6750-AUTHORIZATION-HEADER | required | MUST | ベアラーアクセストークンは `Authorization` ヘッダーで受け付ける。 |
+| RFC6750-INVALID-TOKEN | required | MUST | ベアラー保護リソースが無効、期限切れ、改ざん済み、または失効済みのアクセストークンを `invalid_token` として拒否するときは、401 と `WWW-Authenticate: Bearer` challenge を返す。 |
 | RFC6750-QUERY-TOKEN | excluded | MAY | URI のクエリパラメーターによるアクセストークンの提示を受け付ける。 |
 
 ## OAuth 2.0 Token Revocation

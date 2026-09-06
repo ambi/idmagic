@@ -24,3 +24,11 @@ Regulation (EU) 2016/679 — https://eur-lex.europa.eu/eli/reg/2016/679/oj
 | GDPR-CONSENT-WITHDRAWAL | required | MUST | ResourceOwner が同意を撤回でき、撤回後の新規発行には利用しない。`Consent` と `ConsentLifecycle` は OAuth2 Context が担う。 |
 | GDPR-ERASURE | required | MUST | 削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う。 |
 | GDPR-PROCESSING-RECORDS | required | MUST | セキュリティおよび認可イベントの監査記録を定義済みの期間保持する。保持期間は Audit Context が定める。 |
+
+## OpenAPI Specification 3.1.1
+
+OpenAPI Initiative Specification — https://spec.openapis.org/oas/v3.1.1.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| OPENAPI31-OPERATION-ID | required | MUST | 生成する単一の OpenAPI 文書では、すべての operation に文書内で一意の `operationId` を与える。 |

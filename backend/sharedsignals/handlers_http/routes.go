@@ -67,7 +67,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/shared-signals/streams/:stream_id/disable", d.handleDisableStream)
 	g.POST("/api/admin/v1/shared-signals/streams/:stream_id/enable", d.handleEnableStream)
 	g.DELETE("/api/admin/v1/shared-signals/streams/:stream_id", d.handleDeleteStream)
-	g.GET("/api/admin/v1/shared-signals/streams/:stream_id/deliveries", d.handleListDeliveries)
+	g.GET("/api/admin/v1/shared-signals/streams/:stream_id/deliveries", d.handleListSecurityEventDeliveries)
 	g.POST("/ssf/streams/:stream_id/events", d.handleReceiveSecurityEvent)
 }
 
@@ -295,7 +295,7 @@ func toSecurityEventDeliveryResponse(d *ssdomain.SecurityEventDelivery) security
 	}
 }
 
-func (d Deps) handleListDeliveries(c *echo.Context) error {
+func (d Deps) handleListSecurityEventDeliveries(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}

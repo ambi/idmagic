@@ -14,6 +14,7 @@ model ListTenantsSuccess_200 {
 }
 
 union ListTenantsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -38,6 +39,7 @@ model GetTenantSuccess_200 {
 }
 
 union GetTenantError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -82,6 +84,9 @@ model CreateTenantError400 {
 }
 
 union CreateTenantError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -116,6 +121,9 @@ model UpdateTenantError400 {
 }
 
 union UpdateTenantError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -160,6 +168,9 @@ model DisableTenantError400 {
 }
 
 union DisableTenantError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -192,6 +203,9 @@ model EnableTenantError400 {
 }
 
 union EnableTenantError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -228,6 +242,9 @@ model SetTenantEndpointStyleError400 {
 }
 
 union SetTenantEndpointStyleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -263,6 +280,8 @@ model UpdateTenantQuotaError400 {
 }
 
 union UpdateTenantQuotaError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -288,6 +307,7 @@ model GetAdminSettingsSuccess_200 {
 }
 
 union GetAdminSettingsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -322,6 +342,7 @@ model GetAdminIntegrationEndpointsSuccess_200 {
 }
 
 union GetAdminIntegrationEndpointsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -366,6 +387,9 @@ model UpdateAdminSettingsError400 {
 }
 
 union UpdateAdminSettingsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -390,6 +414,7 @@ model GetTenantUserAttributeSchemaSuccess_200 {
 }
 
 union GetTenantUserAttributeSchemaError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -424,6 +449,9 @@ model UpdateTenantUserAttributeSchemaError400 {
 }
 
 union UpdateTenantUserAttributeSchemaError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -468,6 +496,7 @@ model GetTenantGroupAttributeSchemaSuccess_200 {
 }
 
 union GetTenantGroupAttributeSchemaError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -502,6 +531,9 @@ model UpdateTenantGroupAttributeSchemaError400 {
 }
 
 union UpdateTenantGroupAttributeSchemaError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -564,6 +596,9 @@ model UpdateTenantBrandingError400 {
 }
 
 union UpdateTenantBrandingError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -598,6 +633,9 @@ model UploadTenantBrandingAssetError400 {
 }
 
 union UploadTenantBrandingAssetError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -637,6 +675,9 @@ model DeleteTenantBrandingAssetError400 {
 }
 
 union DeleteTenantBrandingAssetError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -661,6 +702,7 @@ model ListNotificationTemplatesSuccess_200 {
 }
 
 union ListNotificationTemplatesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -695,6 +737,7 @@ model GetNotificationTemplateError400 {
 }
 
 union GetNotificationTemplateError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -730,6 +773,9 @@ model UpdateNotificationTemplateError400 {
 }
 
 union UpdateNotificationTemplateError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -766,6 +812,9 @@ model ResetNotificationTemplateError400 {
 }
 
 union ResetNotificationTemplateError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -801,6 +850,9 @@ model PreviewNotificationTemplateError400 {
 }
 
 union PreviewNotificationTemplateError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -837,6 +889,9 @@ model SendTestNotificationError400 {
 }
 
 union SendTestNotificationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

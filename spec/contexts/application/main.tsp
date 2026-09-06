@@ -14,6 +14,7 @@ model ListAdminApplicationsSuccess_200 {
 }
 
 union ListAdminApplicationsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -59,6 +60,7 @@ model GetAdminApplicationError400 {
 }
 
 union GetAdminApplicationError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -93,6 +95,9 @@ model CreateAdminApplicationError400 {
 }
 
 union CreateAdminApplicationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -137,6 +142,9 @@ model UpdateAdminApplicationError400 {
 }
 
 union UpdateAdminApplicationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -172,6 +180,9 @@ model UploadApplicationIconError400 {
 }
 
 union UploadApplicationIconError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -211,6 +222,9 @@ model DeleteApplicationIconError400 {
 }
 
 union DeleteApplicationIconError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -272,6 +286,9 @@ model DeleteAdminApplicationError400 {
 }
 
 union DeleteAdminApplicationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -305,6 +322,9 @@ model UpdateApplicationOidcConfigError400 {
 }
 
 union UpdateApplicationOidcConfigError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -350,6 +370,9 @@ model RotateApplicationClientSecretError400 {
 }
 
 union RotateApplicationClientSecretError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -385,6 +408,9 @@ model IssueApplicationClientSecretError400 {
 }
 
 union IssueApplicationClientSecretError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -430,6 +456,9 @@ model RevokeApplicationClientSecretError400 {
 }
 
 union RevokeApplicationClientSecretError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -464,6 +493,9 @@ model UpdateApplicationWsFedConfigError400 {
 }
 
 union UpdateApplicationWsFedConfigError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -508,6 +540,9 @@ model UpdateApplicationSamlConfigError400 {
 }
 
 union UpdateApplicationSamlConfigError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -553,6 +588,7 @@ model ListApplicationAssignmentsError400 {
 }
 
 union ListApplicationAssignmentsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -589,6 +625,9 @@ model AssignApplicationError400 {
 }
 
 union AssignApplicationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -623,6 +662,9 @@ model UnassignApplicationError400 {
 }
 
 union UnassignApplicationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -659,6 +701,7 @@ model GetAppSignInPolicyError400 {
 }
 
 union GetAppSignInPolicyError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -693,6 +736,9 @@ model UpdateAppSignInPolicyError400 {
 }
 
 union UpdateAppSignInPolicyError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -718,6 +764,7 @@ model GetTenantDefaultSignInPolicySuccess_200 {
 }
 
 union GetTenantDefaultSignInPolicyError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -752,6 +799,9 @@ model UpdateTenantDefaultSignInPolicyError400 {
 }
 
 union UpdateTenantDefaultSignInPolicyError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -776,6 +826,7 @@ model ListApplicationCategoriesSuccess_200 {
 }
 
 union ListApplicationCategoriesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -824,6 +875,9 @@ model CreateApplicationCategoryError422 {
 }
 
 union CreateApplicationCategoryError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -872,6 +926,9 @@ model UpdateApplicationCategoryError422 {
 }
 
 union UpdateApplicationCategoryError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -906,6 +963,9 @@ model DeleteApplicationCategoryError400 {
 }
 
 union DeleteApplicationCategoryError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -950,6 +1010,9 @@ model SetApplicationCategoriesError422 {
 }
 
 union SetApplicationCategoriesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1031,6 +1094,8 @@ model ReorderMyApplicationsError400 {
 }
 
 union ReorderMyApplicationsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

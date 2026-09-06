@@ -246,6 +246,39 @@ const document = (
   },
 })
 
+const problemDocument = (operationId: string, codes: string[]): OpenAPIDocument => ({
+  paths: {
+    '/api/admin/v1/things': {
+      post: {
+        operationId,
+        responses: {
+          '200': {},
+          '403': {
+            content: {
+              'application/problem+json': {
+                schema: { $ref: '#/components/schemas/ThingsError403Body' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      ThingsError403Body: {
+        anyOf: codes.map((code) => ({ $ref: `#/components/schemas/${code}` })),
+      },
+      ...Object.fromEntries(
+        codes.map((code) => [
+          code,
+          { description: `RFC 9457 Problem Details with type = urn:idmagic:error:${code}.` },
+        ]),
+      ),
+    },
+  },
+})
+
 const run = (
   doc: OpenAPIDocument,
   source: string,
@@ -334,6 +367,70 @@ func (d Deps) handleThings(c *echo.Context) error {
 }`,
     )
     expect(result.findings[0]?.message).toContain('503')
+  })
+})
+
+describe('B1: the declared 403 body covers guard refusal codes', () => {
+  const apiTokenGuard = `func RequireAdmin(c *echo.Context) error {
+	if tokenScopeMissing {
+		return WriteProblem(c, http.StatusForbidden, "insufficient_scope", "The required scope is missing.")
+	}
+	return WriteProblem(c, http.StatusForbidden, "access_denied", "Administrator privileges are required.")
+}
+
+func (d Deps) handleThings(c *echo.Context) error {
+	if err := RequireAdmin(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`
+
+  const browserGuard = `func VerifyBrowserRequest(c *echo.Context) error {
+	if badOrigin {
+		return WriteProblem(c, http.StatusForbidden, "invalid_origin", "The request origin does not match.")
+	}
+	return WriteProblem(c, http.StatusForbidden, "csrf_failed", "CSRF validation failed.")
+}
+
+func (d Deps) handleThings(c *echo.Context) error {
+	if err := VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`
+
+  it('reports a guard error code omitted from the declared 403 body', () => {
+    // REQ-APITOKENS-004: API トークンのスコープ不足は、403 本文に
+    // insufficient_scope として宣言されなければならない。
+    const result = run(
+      problemDocument('UpdateThings', ['access_denied']),
+      apiTokenGuard,
+      'g.POST("/api/admin/v1/things", d.handleThings)',
+    )
+    expect(result.findings.map((finding) => finding.key)).toEqual(['B1 UpdateThings'])
+    expect(result.findings[0]?.message).toContain('insufficient_scope')
+  })
+
+  it('follows browser guard error codes into the declared 403 body', () => {
+    // REQ-PLATFORM-004: browser guard の origin と CSRF の拒否コードを、
+    // 呼び出し元 operation の宣言まで伝播する。
+    const result = run(
+      problemDocument('UpdateThings', ['invalid_origin', 'csrf_failed']),
+      browserGuard,
+      'g.POST("/api/admin/v1/things", d.handleThings)',
+    )
+    expect(result.findings).toEqual([])
+  })
+
+  it('matches the repository 403 bodies to guard error codes', () => {
+    // REQ-APITOKENS-004: operation scope を持たないトークンは
+    // insufficient_scope、管理者でない対話セッションは access_denied になる。
+    const result = run(
+      problemDocument('UpdateThings', ['access_denied', 'insufficient_scope']),
+      apiTokenGuard,
+      'g.POST("/api/admin/v1/things", d.handleThings)',
+    )
+    expect(result.findings).toEqual([])
   })
 })
 

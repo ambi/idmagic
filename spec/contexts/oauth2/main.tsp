@@ -179,6 +179,8 @@ model SubmitBrowserConsentError400 {
 }
 
 union SubmitBrowserConsentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -222,6 +224,8 @@ model SubmitBrowserDeviceError400 {
 }
 
 union SubmitBrowserDeviceError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -308,7 +312,7 @@ model EndSession2Success_303 {
 
 @doc("The RP-Initiated Logout endpoint (OpenID Connect RP-Initiated Logout 1.0). Redirect validation is done by the\nOAuth 2.0 / OpenID Connect bounded context, and session revocation is delegated to the SessionManager of the\nAuthentication bounded context. When an `id_token_hint` is given, its signature, `iss`, `aud`, `sub`, and `sid` are\nverified and both the target session and the client are resolved from the hint; a hint that contradicts `client_id` is\nrefused. Without an `id_token_hint`, the existing resolution by `client_id` plus the browser cookie is kept as a\nfallback. Once the local revocation is settled, the FrontChannelLogout targets are collected from the ClientSessions\nbound to that `sid` and returned in the response, and BackChannelLogout delivery is started asynchronously.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("EndSession")
+@TypeSpec.OpenAPI.operationId("PostEndSession")
 @route("/end_session")
 @post
 op EndSession2(
@@ -518,11 +522,12 @@ union UserInfoError401Body {
 model UserInfoError401 {
   @statusCode statusCode: 401;
   @header contentType: "application/json";
+  @header("WWW-Authenticate") wwwAuthenticate: string;
   @body body: UserInfoError401Body;
 }
 
 union UserInfoError403Body {
-  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.OAuthInsufficientScopeError,
 }
 
 model UserInfoError403 {
@@ -561,11 +566,12 @@ union PostUserInfoError401Body {
 model PostUserInfoError401 {
   @statusCode statusCode: 401;
   @header contentType: "application/json";
+  @header("WWW-Authenticate") wwwAuthenticate: string;
   @body body: PostUserInfoError401Body;
 }
 
 union PostUserInfoError403Body {
-  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.OAuthInsufficientScopeError,
 }
 
 model PostUserInfoError403 {
@@ -772,6 +778,7 @@ model ListAuthorizationDetailTypesSuccess_200 {
 }
 
 union ListAuthorizationDetailTypesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -796,6 +803,7 @@ model GetAuthorizationDetailTypeSuccess_200 {
 }
 
 union GetAuthorizationDetailTypeError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -850,6 +858,9 @@ model CreateAuthorizationDetailTypeError400 {
 }
 
 union CreateAuthorizationDetailTypeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -904,6 +915,9 @@ model UpdateAuthorizationDetailTypeError400 {
 }
 
 union UpdateAuthorizationDetailTypeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -948,6 +962,9 @@ model DeleteAuthorizationDetailTypeSuccess_204 {
 }
 
 union DeleteAuthorizationDetailTypeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -972,6 +989,7 @@ model ListAdminOAuth2ClientsSuccess_200 {
 }
 
 union ListAdminOAuth2ClientsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1017,6 +1035,7 @@ model GetAdminOAuth2ClientError400 {
 }
 
 union GetAdminOAuth2ClientError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1051,6 +1070,9 @@ model CreateAdminOAuth2ClientError400 {
 }
 
 union CreateAdminOAuth2ClientError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1095,6 +1117,9 @@ model UpdateAdminOAuth2ClientError400 {
 }
 
 union UpdateAdminOAuth2ClientError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1129,6 +1154,9 @@ model DeleteAdminOAuth2ClientError400 {
 }
 
 union DeleteAdminOAuth2ClientError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1163,6 +1191,7 @@ model ListAdminMcpResourceServersSuccess_200 {
 }
 
 union ListAdminMcpResourceServersError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1187,6 +1216,7 @@ model GetAdminMcpResourceServerSuccess_200 {
 }
 
 union GetAdminMcpResourceServerError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1231,6 +1261,9 @@ model CreateAdminMcpResourceServerError400 {
 }
 
 union CreateAdminMcpResourceServerError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1275,6 +1308,9 @@ model UpdateAdminMcpResourceServerError400 {
 }
 
 union UpdateAdminMcpResourceServerError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1309,6 +1345,9 @@ model DeleteAdminMcpResourceServerSuccess_204 {
 }
 
 union DeleteAdminMcpResourceServerError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1333,6 +1372,7 @@ model ListAdminConsentsSuccess_200 {
 }
 
 union ListAdminConsentsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1378,6 +1418,7 @@ model GetAdminConsentError400 {
 }
 
 union GetAdminConsentError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1412,6 +1453,9 @@ model RevokeAdminConsentError400 {
 }
 
 union RevokeAdminConsentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1441,6 +1485,7 @@ model ListAdminRolePoliciesSuccess_200 {
 }
 
 union ListAdminRolePoliciesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1497,6 +1542,8 @@ model RevokeMyConsentError400 {
 }
 
 union RevokeMyConsentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1551,6 +1598,9 @@ model DecideMyApprovalRequestError400 {
 }
 
 union DecideMyApprovalRequestError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.AccessDeniedError,
 }
 

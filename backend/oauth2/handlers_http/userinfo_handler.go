@@ -32,7 +32,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 	bearer := strings.HasPrefix(auth, "Bearer ")
 	dpopAuth := strings.HasPrefix(auth, "DPoP ")
 	if !bearer && !dpopAuth {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "Bearer token is required"))
+		return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "Bearer token is required"))
 	}
 	var token string
 	if bearer {
@@ -42,18 +42,18 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 	}
 	intro, err := d.TokenIntrospector.IntrospectAccessToken(c.Request().Context(), token)
 	if err != nil {
-		return writeOAuthError(c, err)
+		return writeUserInfoError(c, err)
 	}
 	if !intro.Active {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "The token is invalid."))
+		return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "The token is invalid."))
 	}
 	if d.AccessTokenDenylist != nil && intro.JTI != "" {
 		revoked, err := d.AccessTokenDenylist.IsRevoked(c.Request().Context(), intro.JTI)
 		if err != nil {
-			return writeOAuthError(c, err)
+			return writeUserInfoError(c, err)
 		}
 		if revoked {
-			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "The token has expired."))
+			return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "The token has expired."))
 		}
 	}
 	if intro.SenderConstraint != nil {
@@ -64,11 +64,11 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 				[]byte(cert.ThumbprintS256),
 				[]byte(intro.SenderConstraint.X5TS256),
 			) != 1 {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "mTLS certificate binding mismatch"))
+				return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "mTLS certificate binding mismatch"))
 			}
 		case spec.SenderConstraintDPoP:
 			if dpopHeader == "" || d.DpopReplayStore == nil {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP proof is required"))
+				return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP proof is required"))
 			}
 			// ath is checked against the access token string the client presented,
 			// not against any post-introspection representation of it.
@@ -80,7 +80,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			if err != nil || r == nil || subtle.ConstantTimeCompare(
 				[]byte(r.JKT), []byte(intro.SenderConstraint.JKT),
 			) != 1 {
-				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP key binding mismatch"))
+				return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP key binding mismatch"))
 			}
 		}
 	}
@@ -88,7 +88,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 	if d.ClientRepo != nil {
 		client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), intro.ClientID)
 		if err != nil {
-			return writeOAuthError(c, err)
+			return writeUserInfoError(c, err)
 		}
 		if client != nil {
 			claimPolicy = client.ClaimPolicy
@@ -99,7 +99,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 		ResolveAttributeDefs: d.effectiveUserAttributeDefs, ClaimPolicy: claimPolicy,
 	})
 	if err != nil {
-		return writeOAuthError(c, err)
+		return writeUserInfoError(c, err)
 	}
 	return c.JSON(http.StatusOK, res)
 }

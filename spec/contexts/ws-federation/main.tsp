@@ -150,6 +150,7 @@ model ConfigureEntraFederationError400 {
 }
 
 union ConfigureEntraFederationError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -189,6 +190,7 @@ model RegisterWsFedRelyingPartyError400 {
 }
 
 union RegisterWsFedRelyingPartyError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -217,6 +219,7 @@ model ListWsFedRelyingPartiesSuccess_200 {
 }
 
 union ListWsFedRelyingPartiesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -250,6 +253,7 @@ model DeleteWsFedRelyingPartyError400 {
 }
 
 union DeleteWsFedRelyingPartyError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

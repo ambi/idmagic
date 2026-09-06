@@ -379,24 +379,33 @@ func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
 	assertNoUserInfoClaims(t, rec.Body.Bytes())
 }
 
-// EX-OAUTH2-020-01: 失効したアクセストークンの UserInfo は invalid_token で拒否され、
-// 応答に sub もクレームも含まれない。
-func TestUserInfoRejectsRevokedAccessToken(t *testing.T) {
-	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
-		Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
-		JTI: "revoked-jti",
-	}}
-	denylist := &fakeDenylist{revoked: map[string]bool{"revoked-jti": true}}
-	e := newUserInfoServer(t, intro, denylist)
-	req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
-	req.Header.Set("Authorization", "Bearer atoken")
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	if rec.Code == http.StatusOK ||
-		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_token"`)) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+// RFC6750-INVALID-TOKEN / EX-OAUTH2-020-01 / EX-OAUTH2-020-02: 失効した
+// アクセストークンの UserInfo は両 binding で 401 と Bearer challenge を返し、
+// 応答に sub もクレームも含めない。
+func TestUserInfoRejectsRevokedAccessTokenWithBearerChallenge(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		t.Run(method, func(t *testing.T) {
+			intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
+				Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
+				JTI: "revoked-jti",
+			}}
+			denylist := &fakeDenylist{revoked: map[string]bool{"revoked-jti": true}}
+			e := newUserInfoServer(t, intro, denylist)
+			req := httptest.NewRequest(method, "/realms/default/userinfo", http.NoBody)
+			req.Header.Set("Authorization", "Bearer atoken")
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			if rec.Code != http.StatusUnauthorized ||
+				!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_token"`)) {
+				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+			}
+			const wantChallenge = `Bearer error="invalid_token", resource_metadata="http://test/realms/default/.well-known/oauth-protected-resource"`
+			if got := rec.Header().Get("WWW-Authenticate"); got != wantChallenge {
+				t.Fatalf("WWW-Authenticate=%q, want %q", got, wantChallenge)
+			}
+			assertNoUserInfoClaims(t, rec.Body.Bytes())
+		})
 	}
-	assertNoUserInfoClaims(t, rec.Body.Bytes())
 }
 
 // EX-OAUTH2-029-02: mTLS バインドされたアクセストークンを別の証明書で提示すると

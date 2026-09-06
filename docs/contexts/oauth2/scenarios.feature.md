@@ -346,7 +346,7 @@ Primary actor: `RegisteredClient`
 - When トークン "AT1" でユーザー情報を取得する
 - But openid スコープを持たないトークンで取得する
 - Then scope "プロファイル" のみの access トークン "AT1" でユーザー情報を取得する
-- And エラー "InsufficientScopeError"
+- And エラー "OAuthInsufficientScopeError"
 
 ## Rule: REQ-OAUTH2-014 Discovery Metadata は宣言された全エンドポイントを広告する
 
@@ -449,7 +449,15 @@ Primary actor: `RegisteredClient`
 - When トークン "AT1" を失効させる
 - Then トークン "AT1" は失効状態になる
 - When クライアントがトークン "AT1" でユーザー情報を取得する
-- Then エラー "InvalidTokenError"
+- Then 401 のエラー "InvalidTokenError" と `WWW-Authenticate: Bearer` challenge が返る
+- And 応答に `sub` とユーザークレームは含まれない
+
+### Example: EX-OAUTH2-020-02 POST binding
+
+- Given 失効済みの access トークン "AT1" が存在する
+- When クライアントが POST binding でトークン "AT1" を使いユーザー情報を取得する
+- Then 401 のエラー "InvalidTokenError" と `WWW-Authenticate: Bearer` challenge が返る
+- And 応答に `sub` とユーザークレームは含まれない
 
 ## Rule: REQ-OAUTH2-021 リフレッシュトークンは `offline_access` スコープを付与したときだけ発行する
 
@@ -1127,7 +1135,7 @@ Primary actor: `ResourceOwner`
 - Then 一覧に "AR2" と期限切れの承認要求は含まれない
 - When "alice" が承認要求 "AR1" を承認する
 - But ステップアップ認証の有効期間を過ぎている
-- Then 操作を AccessDeniedError で拒否し、承認要求 "AR1" の状態は Pending のままとなる
+- Then 操作を StepUpRequiredError で拒否し、承認要求 "AR1" の状態は Pending のままとなる
 
 ### Example: EX-OAUTH2-043-03 CSRF トークンが一致しない
 

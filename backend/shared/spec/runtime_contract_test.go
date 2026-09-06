@@ -39,6 +39,26 @@ func TestRuntimeContractOperation(t *testing.T) {
 	}
 }
 
+func TestRuntimeContractPreservesUniqueOperationIDsAcrossBindings(t *testing.T) {
+	// OPENAPI31-OPERATION-ID: 既定プロファイル、名前付きプロファイル、HTTP binding は、
+	// 生成時にいずれかが黙って捨てられず、それぞれ一意な名前で実行時契約に残る。
+	want := map[string]Operation{
+		"SamlSingleSignOnDefault":     {Method: "GET", Path: "/saml/sso"},
+		"SamlSingleSignOn":            {Method: "GET", Path: "/saml/idp/{profile_id}/sso"},
+		"PostSamlSingleSignOnDefault": {Method: "POST", Path: "/saml/sso"},
+		"PostSamlSingleSignOn":        {Method: "POST", Path: "/saml/idp/{profile_id}/sso"},
+		"EndSession":                  {Method: "GET", Path: "/end_session"},
+		"PostEndSession":              {Method: "POST", Path: "/end_session"},
+	}
+	contract := CurrentRuntimeContract()
+	for name, expected := range want {
+		actual, ok := contract.Operation(name)
+		if !ok || actual.Method != expected.Method || actual.Path != expected.Path {
+			t.Errorf("Operation(%s) = %+v, %v; want method=%s path=%s", name, actual, ok, expected.Method, expected.Path)
+		}
+	}
+}
+
 func TestRuntimeContractOperationForRoute(t *testing.T) {
 	contract := CurrentRuntimeContract()
 

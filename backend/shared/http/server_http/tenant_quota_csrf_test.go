@@ -126,29 +126,41 @@ func withSystemConsoleCSRF(token string) func(*http.Request) {
 	}
 }
 
-// REQ-TENANCY-012: セッション Cookie だけでは、そのクォータ変更が管理 UI から出た
-// ことを証明できない。CSRF トークンを伴わない要求は 403 で拒否され、保存ポートは
-// 呼ばれず、保存済みのクォータも利用量も変わらない。
+// REQ-TENANCY-012 / REQ-PLATFORM-004 / EX-PLATFORM-004-01 / EX-PLATFORM-004-02: セッション Cookie
+// だけでは、そのクォータ変更が管理 UI から出たことを証明できない。Origin または
+// CSRF トークンの検証に失敗した要求は 403 で拒否され、保存ポートは呼ばれず、
+// 保存済みのクォータも利用量も変わらない。
 func TestUpdateTenantQuotaRejectsCookieSessionWithoutCSRF(t *testing.T) {
-	srv := newQuotaCsrfServer(t)
+	for _, tc := range []struct {
+		name, code string
+		mutate     func(*http.Request)
+	}{
+		{name: "invalid origin", code: "invalid_origin"},
+		{name: "missing csrf token", code: "csrf_failed", mutate: func(req *http.Request) {
+			req.Header.Set("Origin", quotaCsrfIssuer)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newQuotaCsrfServer(t)
+			rec := srv.updateQuota(tc.mutate)
 
-	rec := srv.updateQuota(nil)
-
-	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusForbidden, rec.Body.String())
-	}
-	if calls := srv.quotas.setQuotaCalls.Load(); calls != 0 {
-		t.Errorf("QuotaRepo.SetQuota calls = %d, want 0", calls)
-	}
-	if users := srv.storedUsers(t); users != quotaCsrfSeededUsers {
-		t.Errorf("stored quota.users = %d, want %d (the refusal changed stored state)", users, quotaCsrfSeededUsers)
-	}
-	usage, err := srv.quotas.GetUsage(t.Context(), quotaCsrfTargetID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if usage.Users != 0 {
-		t.Errorf("usage.users = %d, want 0 (the refusal changed recorded usage)", usage.Users)
+			if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), `"type":"urn:idmagic:error:`+tc.code+`"`) {
+				t.Errorf("status = %d, want %d with %s; body = %s", rec.Code, http.StatusForbidden, tc.code, rec.Body.String())
+			}
+			if calls := srv.quotas.setQuotaCalls.Load(); calls != 0 {
+				t.Errorf("QuotaRepo.SetQuota calls = %d, want 0", calls)
+			}
+			if users := srv.storedUsers(t); users != quotaCsrfSeededUsers {
+				t.Errorf("stored quota.users = %d, want %d (the refusal changed stored state)", users, quotaCsrfSeededUsers)
+			}
+			usage, err := srv.quotas.GetUsage(t.Context(), quotaCsrfTargetID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if usage.Users != 0 {
+				t.Errorf("usage.users = %d, want 0 (the refusal changed recorded usage)", usage.Users)
+			}
+		})
 	}
 }
 

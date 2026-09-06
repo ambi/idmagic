@@ -8,6 +8,26 @@ model InvalidRequestError is ProblemDetails;
 model AccessDeniedError is ProblemDetails;
 
 
+@doc("The scope of the presented API access token does not cover the requested generic API operation. RFC 9457 Problem Details with `type` = `urn:idmagic:error:insufficient_scope`. OAuth 2.0 and OpenID Connect endpoints report the same condition as OAuthInsufficientScopeError instead.")
+model InsufficientScopeError is ProblemDetails;
+
+
+@doc("The browser request Origin does not match the product origin. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_origin`.")
+model InvalidOriginError is ProblemDetails;
+
+
+@doc("The browser request does not carry a matching double-submit CSRF cookie and header. RFC 9457 Problem Details with `type` = `urn:idmagic:error:csrf_failed`.")
+model CsrfFailedError is ProblemDetails;
+
+
+@doc("The operation requires recent reauthentication. RFC 9457 Problem Details with `type` = `urn:idmagic:error:step_up_required`.")
+model StepUpRequiredError is ProblemDetails;
+
+
+@doc("The linked identity cannot be removed because doing so would leave the account without an allowed sign-in method. RFC 9457 Problem Details with `type` = `urn:idmagic:error:unlink_denied`.")
+model UnlinkDeniedError is ProblemDetails;
+
+
 @doc("The tenant has reached its resource creation ceiling (Quota). Published-language stub for the shared error the Tenancy context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:quota_exceeded`, written by the shared error handler on every path, the Dynamic Client Registration endpoint included.")
 model QuotaExceededError is ProblemDetails;
 

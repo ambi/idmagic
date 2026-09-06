@@ -61,3 +61,24 @@ Primary actor: `TenantAdministrator`
 - When 管理者が "ユーザー-1" を作成、無効化、削除、または "app-1" への割り当てを解除する
 - Then 変更のトランザクションがロールバックする
 - Then `ProvisioningDelivery` も作成されない
+
+## Rule: REQ-PLATFORM-004 周囲資格情報による状態変更は同一オリジンと CSRF トークンを必要とする
+
+参加する Context: Authentication、Application、Authorization、DataKeys、IdGovernance、IdManagement、Jobs、OAuth2、Provisioning、Saml、SharedSignals、SigningKeys、Tenancy、WorkloadIdentity、WsFederation
+
+Primary actor: `AuthenticatedBrowserUser`
+
+### Example: EX-PLATFORM-004-01 Origin が一致しない
+
+- Given ユーザーは有効なブラウザーセッションを持つ
+- When ユーザーが製品の Origin と一致しない Origin から状態変更を要求する
+- Then 403 の `InvalidOriginError` で拒否される
+- And 要求された状態変更は行われない
+
+### Example: EX-PLATFORM-004-02 CSRF トークンが一致しない
+
+- Given ユーザーは有効なブラウザーセッションを持つ
+- And 要求の Origin は製品の Origin と一致する
+- When ユーザーが Cookie とヘッダーで一致する CSRF トークンを持たずに状態変更を要求する
+- Then 403 の `CsrfFailedError` で拒否される
+- And 要求された状態変更は行われない

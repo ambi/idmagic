@@ -24,6 +24,7 @@ model ListJobsError400 {
 }
 
 union ListJobsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -53,6 +54,7 @@ model GetJobSuccess_200 {
 }
 
 union GetJobError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -87,6 +89,9 @@ model CancelJobSuccess_200 {
 }
 
 union CancelJobError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

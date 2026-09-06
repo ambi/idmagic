@@ -116,7 +116,8 @@ Primary actor: `ManagementApiClient`
 - And トークンの発行者は対象操作に必要なロールを今も持っている
 - When クライアントが管理 API の操作をリクエストする
 - But トークンのスコープ集合が、その操作に対応づけられたスコープをどれも含まない
-- Then `insufficient_scope` で拒否し、必要なスコープ名を提示する
+- Then InsufficientScopeError で拒否し、必要なスコープ名を提示する
+- And 管理対象の状態は変更されない
 
 ### Example: EX-APITOKENS-004-03 その操作にどのスコープも対応づけられていない
 

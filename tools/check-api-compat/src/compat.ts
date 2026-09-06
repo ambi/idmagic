@@ -77,6 +77,13 @@ function resolve(
   return target ? resolve(target, components, new Set(seen).add(name)) : {}
 }
 
+function unionMembers(schema: JsonSchema): JsonSchema[] {
+  return (['oneOf', 'anyOf'] as const).flatMap((keyword) => {
+    const members = schema[keyword]
+    return Array.isArray(members) ? (members.filter(isRecord) as JsonSchema[]) : []
+  })
+}
+
 function diffSchema(
   ctx: string,
   base: JsonSchema | undefined,
@@ -95,6 +102,34 @@ function diffSchema(
   if (Object.keys(b).length === 0) return
   const nextBaseSeen = baseRef !== undefined ? new Set(baseSeen).add(baseRef) : baseSeen
   const nextCurrSeen = currRef !== undefined ? new Set(currSeen).add(currRef) : currSeen
+
+  // Widening one accepted schema into a union is additive when one branch still
+  // accepts the complete baseline shape. Prefer the branch carrying a baseline
+  // contract type name so a structurally similar new error cannot hide a change
+  // to the original named error.
+  const currentMembers = unionMembers(c)
+  if (currentMembers.length > 0 && unionMembers(b).length === 0) {
+    const baselineNames = collectContractTypeNames(base, baseComponents)
+    const namedMatches = currentMembers.filter((member) => {
+      const name = contractTypeName(member)
+      return name !== undefined && baselineNames.has(name)
+    })
+    const candidates = namedMatches.length > 0 ? namedMatches : currentMembers
+    for (const member of candidates) {
+      const branchFindings: CompatFinding[] = []
+      diffSchema(
+        ctx,
+        base,
+        member,
+        baseComponents,
+        currComponents,
+        branchFindings,
+        baseSeen,
+        currSeen,
+      )
+      if (branchFindings.length === 0) return
+    }
+  }
 
   if (typeof b.type === 'string' && typeof c.type === 'string' && b.type !== c.type) {
     findings.push({ operation: ctx, message: `type changed from '${b.type}' to '${c.type}'` })

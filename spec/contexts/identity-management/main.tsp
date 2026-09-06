@@ -88,6 +88,8 @@ model UpdateUserProfileError400 {
 }
 
 union UpdateUserProfileError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -147,6 +149,8 @@ model RequestEmailChangeError400 {
 }
 
 union RequestEmailChangeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -200,6 +204,8 @@ model ConfirmEmailChangeError400 {
 }
 
 union ConfirmEmailChangeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -247,6 +253,7 @@ model ListAdminUsersSuccess_200 {
 }
 
 union ListAdminUsersError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -284,6 +291,7 @@ model GetAdminUserSuccess_200 {
 }
 
 union GetAdminUserError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -328,6 +336,9 @@ model CreateAdminUserError400 {
 }
 
 union CreateAdminUserError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -373,6 +384,9 @@ model ImportAdminUsersError400 {
 }
 
 union ImportAdminUsersError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -419,6 +433,9 @@ model ApplyAdminUserImportError400 {
 }
 
 union ApplyAdminUserImportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -463,6 +480,7 @@ model GetAdminUserImportError400 {
 }
 
 union GetAdminUserImportError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -519,6 +537,9 @@ model StartUserCsvExportError400 {
 }
 
 union StartUserCsvExportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -579,6 +600,7 @@ model ListUserExportsSuccess_200 {
 }
 
 union ListUserExportsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -623,6 +645,7 @@ model GetUserExportError400 {
 }
 
 union GetUserExportError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -672,6 +695,7 @@ model DownloadUserExportFileError400 {
 }
 
 union DownloadUserExportFileError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -716,6 +740,9 @@ model CancelUserExportError400 {
 }
 
 union CancelUserExportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -759,6 +786,9 @@ model StartGroupCsvExportError400 {
 }
 
 union StartGroupCsvExportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -825,6 +855,9 @@ model ImportAdminGroupsError400 {
 }
 
 union ImportAdminGroupsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -871,6 +904,9 @@ model ApplyAdminGroupImportError400 {
 }
 
 union ApplyAdminGroupImportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -915,6 +951,7 @@ model GetAdminGroupImportError400 {
 }
 
 union GetAdminGroupImportError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -965,6 +1002,7 @@ model ListGroupExportsSuccess_200 {
 }
 
 union ListGroupExportsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1009,6 +1047,7 @@ model GetGroupExportError400 {
 }
 
 union GetGroupExportError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1058,6 +1097,7 @@ model DownloadGroupExportFileError400 {
 }
 
 union DownloadGroupExportFileError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1102,6 +1142,9 @@ model CancelGroupExportError400 {
 }
 
 union CancelGroupExportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1145,6 +1188,9 @@ model StartGroupMemberCsvExportError400 {
 }
 
 union StartGroupMemberCsvExportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1206,6 +1252,7 @@ model ListGroupMemberExportsSuccess_200 {
 }
 
 union ListGroupMemberExportsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1250,6 +1297,7 @@ model GetGroupMemberExportError400 {
 }
 
 union GetGroupMemberExportError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1300,6 +1348,7 @@ model DownloadGroupMemberExportFileError400 {
 }
 
 union DownloadGroupMemberExportFileError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1345,6 +1394,9 @@ model CancelGroupMemberExportError400 {
 }
 
 union CancelGroupMemberExportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1389,6 +1441,9 @@ model ImportAdminGroupMembersError400 {
 }
 
 union ImportAdminGroupMembersError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1436,6 +1491,9 @@ model ApplyAdminGroupMemberImportError400 {
 }
 
 union ApplyAdminGroupMemberImportError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1491,6 +1549,7 @@ model GetAdminGroupMemberImportError400 {
 }
 
 union GetAdminGroupMemberImportError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1548,6 +1607,9 @@ model UpdateAdminUserError400 {
 }
 
 union UpdateAdminUserError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1593,6 +1655,9 @@ model DisableAdminUserError400 {
 }
 
 union DisableAdminUserError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1635,6 +1700,9 @@ model EnableAdminUserError400 {
 }
 
 union EnableAdminUserError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1674,6 +1742,9 @@ model DeleteAdminUserError400 {
 }
 
 union DeleteAdminUserError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1721,6 +1792,9 @@ model RestoreAdminUserError400 {
 }
 
 union RestoreAdminUserError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1765,6 +1839,9 @@ model SetUserRequiredActionError400 {
 }
 
 union SetUserRequiredActionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1810,6 +1887,9 @@ model ClearUserRequiredActionError400 {
 }
 
 union ClearUserRequiredActionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1835,6 +1915,7 @@ model ListGroupsSuccess_200 {
 }
 
 union ListGroupsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1885,6 +1966,7 @@ model GetGroupError400 {
 }
 
 union GetGroupError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1919,6 +2001,9 @@ model CreateGroupError400 {
 }
 
 union CreateGroupError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1968,6 +2053,9 @@ model UpdateGroupError400 {
 }
 
 union UpdateGroupError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2015,6 +2103,9 @@ model DeleteGroupError400 {
 }
 
 union DeleteGroupError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2048,6 +2139,9 @@ model AddGroupMemberError400 {
 }
 
 union AddGroupMemberError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2082,6 +2176,9 @@ model RemoveGroupMemberError400 {
 }
 
 union RemoveGroupMemberError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2117,6 +2214,9 @@ model UpdateDynamicGroupRuleError400 {
 }
 
 union UpdateDynamicGroupRuleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2166,6 +2266,9 @@ model PreviewDynamicGroupRuleError400 {
 }
 
 union PreviewDynamicGroupRuleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2211,6 +2314,9 @@ model EnableDynamicGroupRuleError400 {
 }
 
 union EnableDynamicGroupRuleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2244,6 +2350,9 @@ model DisableDynamicGroupRuleError400 {
 }
 
 union DisableDynamicGroupRuleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2277,6 +2386,7 @@ model ListUserGroupsError400 {
 }
 
 union ListUserGroupsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2301,6 +2411,7 @@ model ListAgentsSuccess_200 {
 }
 
 union ListAgentsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2346,6 +2457,7 @@ model GetAgentError400 {
 }
 
 union GetAgentError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2380,6 +2492,9 @@ model RegisterAgentError400 {
 }
 
 union RegisterAgentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2430,6 +2545,9 @@ model UpdateAgentError400 {
 }
 
 union UpdateAgentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2607,6 +2725,9 @@ model BindAgentCredentialError400 {
 }
 
 union BindAgentCredentialError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2641,6 +2762,9 @@ model UnbindAgentCredentialError400 {
 }
 
 union UnbindAgentCredentialError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

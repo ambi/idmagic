@@ -40,7 +40,7 @@ model SamlSingleSignOn1Error404 {
 
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
+@TypeSpec.OpenAPI.operationId("SamlSingleSignOnDefault")
 @route("/saml/sso")
 @get
 op SamlSingleSignOn1(
@@ -133,7 +133,7 @@ model SamlSingleSignOn3Error404 {
 
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
+@TypeSpec.OpenAPI.operationId("PostSamlSingleSignOn")
 @route("/saml/idp/{profile_id}/sso")
 @post
 op SamlSingleSignOn3(
@@ -184,7 +184,7 @@ model SamlSingleSignOn4Error404 {
 
 @doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
+@TypeSpec.OpenAPI.operationId("PostSamlSingleSignOnDefault")
 @route("/saml/sso")
 @post
 op SamlSingleSignOn4(
@@ -217,7 +217,7 @@ model SamlSingleLogout1Error404 {
 
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("SamlSingleLogout")
+@TypeSpec.OpenAPI.operationId("SamlSingleLogoutDefault")
 @route("/saml/slo")
 @get
 op SamlSingleLogout1(
@@ -260,7 +260,7 @@ model SamlSingleLogout2Error404 {
 
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("SamlSingleLogout")
+@TypeSpec.OpenAPI.operationId("PostSamlSingleLogoutDefault")
 @route("/saml/slo")
 @post
 op SamlSingleLogout2(
@@ -334,7 +334,7 @@ model SamlSingleLogout4Error404 {
 
 @doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("SamlSingleLogout")
+@TypeSpec.OpenAPI.operationId("PostSamlSingleLogout")
 @route("/saml/idp/{profile_id}/slo")
 @post
 op SamlSingleLogout4(
@@ -358,7 +358,7 @@ model PublishSamlMetadata1Error404 {
 
 @doc("Publishes the SAML 2.0 IdP metadata. The default route publishes the realm's default profile and a profile route the named one: its entityID, its SSO and SLO endpoints, the NameID formats it supports, and the XmlFederationSigning certificate of the profile scope, as an <EntityDescriptor><IDPSSODescriptor>. Alongside the active certificate it lists any verifying certificate still inside its rotation grace.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("PublishSamlMetadata")
+@TypeSpec.OpenAPI.operationId("PublishDefaultSamlMetadata")
 @route("/saml/metadata")
 @get
 op PublishSamlMetadata1(
@@ -404,7 +404,7 @@ model DownloadSamlSigningCertificate1Error404 {
 
 @doc("Publishes the request tenant's active XmlFederationSigning X.509 certificate as PEM, for configuring trust in a SAML SP by hand. PublishSamlMetadata remains the authoritative trust document, verifying certificates inside a rotation overlap included; this endpoint returns only the active certificate, for setting trust up in the first place. No private key is returned.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("DownloadSamlSigningCertificate")
+@TypeSpec.OpenAPI.operationId("DownloadDefaultSamlSigningCertificate")
 @route("/saml/signing-certificate.pem")
 @get
 op DownloadSamlSigningCertificate1(
@@ -450,6 +450,9 @@ model CreateSamlIdentityProviderProfileError400 {
 }
 
 union CreateSamlIdentityProviderProfileError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -478,6 +481,7 @@ model ListSamlIdentityProviderProfilesSuccess_200 {
 }
 
 union ListSamlIdentityProviderProfilesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -512,6 +516,9 @@ model UpdateSamlIdentityProviderProfileError400 {
 }
 
 union UpdateSamlIdentityProviderProfileError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -566,6 +573,9 @@ model DeleteSamlIdentityProviderProfileError400 {
 }
 
 union DeleteSamlIdentityProviderProfileError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -616,6 +626,7 @@ model RegisterSamlServiceProviderError400 {
 }
 
 union RegisterSamlServiceProviderError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -644,6 +655,7 @@ model ListSamlServiceProvidersSuccess_200 {
 }
 
 union ListSamlServiceProvidersError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -677,6 +689,7 @@ model DeleteSamlServiceProviderError400 {
 }
 
 union DeleteSamlServiceProviderError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

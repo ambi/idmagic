@@ -53,12 +53,14 @@ export type OpenAPIDocument = {
     string,
     Record<string, { operationId?: string; responses?: Record<string, unknown> }>
   >
+  components?: { schemas?: Record<string, unknown> }
 }
 
 /** A context-carrying function, with what it writes and what stopped the reader. */
 export type Responder = {
   path: string
   statuses: Set<number>
+  problemCodes: Map<number, Set<string>>
   unread: string[]
   /** How many definitions carry this name. More than one and none is read. */
   definitions: number
@@ -254,6 +256,18 @@ function statusesIn(args: string): number[] {
   return found
 }
 
+/** Literal Problem Details codes whose status is settled at a WriteProblem call. */
+function problemCodesIn(call: { name: string; args: string }): Array<[number, string]> {
+  if (call.name !== 'WriteProblem') return []
+  const found: Array<[number, string]> = []
+  for (const match of call.args.matchAll(/http\.(Status\w+)\s*,\s*"([a-z0-9_]+)"/g)) {
+    const status = STATUS[match[1] ?? '']
+    const code = match[2]
+    if (status && code) found.push([status, code])
+  }
+  return found
+}
+
 /**
  * A guard decides from the request; a mapper decides from an error handed to it.
  * Taking an `error` parameter is what that looks like, and so is dispatching on
@@ -311,9 +325,13 @@ export function collectResponders(files: GoFile[]): Map<string, Responder> {
   const callers = new Map<string, Set<string>>()
   for (const [name, calls] of sites) {
     const statuses = new Set<number>()
+    const problemCodes = new Map<number, Set<string>>()
     const unread = new Set<string>()
     const followed = new Set<string>()
     for (const call of calls) {
+      for (const [status, code] of problemCodesIn(call)) {
+        problemCodes.set(status, (problemCodes.get(status) ?? new Set()).add(code))
+      }
       // Handing the raw response to something else — `ServeHTTP(c.Response(),
       // ...)` on /metrics — writes a status this reader never sees. Reading the
       // header off the context is not that: there the response object is the
@@ -341,6 +359,7 @@ export function collectResponders(files: GoFile[]): Map<string, Responder> {
     responders.set(name, {
       path: (definitions.get(name) ?? [])[0]?.path ?? '',
       statuses,
+      problemCodes,
       unread: [...unread],
       definitions: (definitions.get(name) ?? []).length,
     })
@@ -356,16 +375,28 @@ export function collectResponders(files: GoFile[]): Map<string, Responder> {
   while (work.length > 0) {
     const name = work.pop() as string
     const responder = responders.get(name) as Responder
-    const before = responder.statuses.size + responder.unread.length
+    const before =
+      responder.statuses.size +
+      responder.unread.length +
+      [...responder.problemCodes.values()].reduce((sum, codes) => sum + codes.size, 0)
     for (const callee of delegates.get(name) ?? []) {
       const target = responders.get(callee)
       if (!target) continue
       for (const status of target.statuses) responder.statuses.add(status)
+      for (const [status, codes] of target.problemCodes) {
+        const own = responder.problemCodes.get(status) ?? new Set<string>()
+        for (const code of codes) own.add(code)
+        responder.problemCodes.set(status, own)
+      }
       for (const writer of target.unread) {
         if (!responder.unread.includes(writer)) responder.unread.push(writer)
       }
     }
-    if (responder.statuses.size + responder.unread.length !== before) {
+    const after =
+      responder.statuses.size +
+      responder.unread.length +
+      [...responder.problemCodes.values()].reduce((sum, codes) => sum + codes.size, 0)
+    if (after !== before) {
       for (const caller of callers.get(name) ?? []) work.push(caller)
     }
   }
@@ -378,6 +409,54 @@ function pathShape(key: string): string {
 }
 
 const sortNumbers = (values: Iterable<number>) => [...values].sort((a, b) => a - b)
+
+function collectDeclaredProblemCodes(
+  node: unknown,
+  document: OpenAPIDocument,
+  codes = new Set<string>(),
+  seenRefs = new Set<string>(),
+): Set<string> {
+  if (Array.isArray(node)) {
+    for (const value of node) collectDeclaredProblemCodes(value, document, codes, seenRefs)
+    return codes
+  }
+  if (!node || typeof node !== 'object') return codes
+
+  const record = node as Record<string, unknown>
+  const ref = record.$ref
+  if (typeof ref === 'string' && ref.startsWith('#/components/schemas/') && !seenRefs.has(ref)) {
+    seenRefs.add(ref)
+    const name = ref.slice('#/components/schemas/'.length)
+    collectDeclaredProblemCodes(document.components?.schemas?.[name], document, codes, seenRefs)
+  }
+  const description = record.description
+  if (typeof description === 'string') {
+    for (const match of description.matchAll(/urn:idmagic:error:([a-z0-9_]+)/g)) {
+      const code = match[1]
+      if (code) codes.add(code)
+    }
+  }
+  for (const [key, value] of Object.entries(record)) {
+    if (key !== '$ref' && key !== 'description') {
+      collectDeclaredProblemCodes(value, document, codes, seenRefs)
+    }
+  }
+  return codes
+}
+
+function declared403ProblemCodes(
+  response: unknown,
+  document: OpenAPIDocument,
+): Set<string> | undefined {
+  if (!response || typeof response !== 'object') return undefined
+  const content = (response as Record<string, unknown>).content
+  if (!content || typeof content !== 'object') return undefined
+  const problem = (content as Record<string, unknown>)['application/problem+json']
+  if (!problem || typeof problem !== 'object') return undefined
+  const schema = (problem as Record<string, unknown>).schema
+  if (!schema) return undefined
+  return collectDeclaredProblemCodes(schema, document)
+}
 
 /**
  * Compare every operation the contract declares against the statuses the Go that
@@ -440,6 +519,25 @@ export function diffStatusCodes(document: OpenAPIDocument, goFiles: GoFile[]): S
             `S1 ${operationId}: ${handlerName} writes ${missing.join(', ')}, ` +
             'which the contract does not declare',
         })
+      }
+
+      const response403 = operation.responses?.['403']
+      if (response403) {
+        const declaredCodes = declared403ProblemCodes(response403, document)
+        if (declaredCodes) {
+          const missingCodes = [...(responder.problemCodes.get(403) ?? [])]
+            .filter((code) => !declaredCodes.has(code))
+            .sort()
+          if (missingCodes.length > 0) {
+            findings.push({
+              key: `B1 ${operationId}`,
+              operationId,
+              message:
+                `B1 ${operationId}: ${handlerName} can write 403 Problem Details code ` +
+                `${missingCodes.join(', ')}, which the declared 403 body does not include`,
+            })
+          }
+        }
       }
 
       if (responder.unread.length > 0) {

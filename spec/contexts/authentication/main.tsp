@@ -14,6 +14,7 @@ model GetAccountContextSuccess_200 {
 }
 
 union GetAccountContextError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -61,6 +62,8 @@ model StartStepUpWebAuthnChallengeError400 {
 }
 
 union StartStepUpWebAuthnChallengeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -111,6 +114,8 @@ model SubmitBrowserLoginError400 {
 }
 
 union SubmitBrowserLoginError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -167,6 +172,8 @@ model StartBrowserMfaEnrollmentError400 {
 }
 
 union StartBrowserMfaEnrollmentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
   IdMagic.Contract.MfaEnrollmentNotAllowedError,
 }
@@ -212,6 +219,8 @@ model ConfirmBrowserMfaEnrollmentError400 {
 }
 
 union ConfirmBrowserMfaEnrollmentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
   IdMagic.Contract.MfaEnrollmentNotAllowedError,
 }
@@ -257,6 +266,8 @@ model SubmitBrowserTotpError400 {
 }
 
 union SubmitBrowserTotpError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -296,6 +307,9 @@ model ChangePasswordError400 {
 }
 
 union ChangePasswordError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -389,6 +403,8 @@ model UpdateMyNotificationPreferencesError400 {
 }
 
 union UpdateMyNotificationPreferencesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -422,6 +438,8 @@ model StartTotpEnrollmentError400 {
 }
 
 union StartTotpEnrollmentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -450,6 +468,8 @@ model ConfirmTotpEnrollmentError400 {
 }
 
 union ConfirmTotpEnrollmentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -482,6 +502,8 @@ model RemoveTotpFactorError400 {
 }
 
 union RemoveTotpFactorError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -519,6 +541,8 @@ model StartWebAuthnRegistrationError400 {
 }
 
 union StartWebAuthnRegistrationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -547,6 +571,8 @@ model FinishWebAuthnRegistrationError400 {
 }
 
 union FinishWebAuthnRegistrationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -579,6 +605,8 @@ model RemoveWebAuthnCredentialError400 {
 }
 
 union RemoveWebAuthnCredentialError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -616,6 +644,8 @@ model StartBrowserWebAuthnSuccess_200 {
 }
 
 union StartBrowserWebAuthnError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -670,6 +700,8 @@ model SubmitBrowserWebAuthnError400 {
 }
 
 union SubmitBrowserWebAuthnError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -714,6 +746,8 @@ model SubmitBrowserRecoveryCodeError400 {
 }
 
 union SubmitBrowserRecoveryCodeError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -758,6 +792,8 @@ model GenerateRecoveryCodesError400 {
 }
 
 union GenerateRecoveryCodesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -796,6 +832,8 @@ model RevokeRecoveryCodesError400 {
 }
 
 union RevokeRecoveryCodesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -866,6 +904,7 @@ model ListUserSignInActivitySuccess_200 {
 }
 
 union ListUserSignInActivityError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -891,6 +930,7 @@ model ListAuthenticationEventBucketsSuccess_200 {
 }
 
 union ListAuthenticationEventBucketsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -958,6 +998,8 @@ model RevokeMySessionError400 {
 }
 
 union RevokeMySessionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -980,6 +1022,8 @@ model RevokeMyOtherSessionsSuccess_204 {
 }
 
 union RevokeMyOtherSessionsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1035,6 +1079,8 @@ model RevokeMyTrustedDeviceError400 {
 }
 
 union RevokeMyTrustedDeviceError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1057,6 +1103,8 @@ model RevokeMyTrustedDevicesSuccess_204 {
 }
 
 union RevokeMyTrustedDevicesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1080,6 +1128,7 @@ model ListSessionsSuccess_200 {
 }
 
 union ListSessionsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1113,6 +1162,9 @@ model RevokeSessionError400 {
 }
 
 union RevokeSessionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1136,6 +1188,9 @@ model RevokeUserSessionsSuccess_204 {
 }
 
 union RevokeUserSessionsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1159,6 +1214,8 @@ model StartStepUpAuthenticationSuccess_200 {
 }
 
 union StartStepUpAuthenticationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1187,6 +1244,8 @@ model CompleteStepUpAuthenticationError400 {
 }
 
 union CompleteStepUpAuthenticationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1219,6 +1278,9 @@ model IssueMfaEnrollmentBypassError400 {
 }
 
 union IssueMfaEnrollmentBypassError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1258,6 +1320,9 @@ model RevokeMfaEnrollmentBypassSuccess_204 {
 }
 
 union RevokeMfaEnrollmentBypassError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1292,6 +1357,9 @@ model ResetUserAuthenticatorsError400 {
 }
 
 union ResetUserAuthenticatorsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1348,6 +1416,8 @@ model RequestPasswordResetError400 {
 }
 
 union RequestPasswordResetError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1387,6 +1457,8 @@ model ResetPasswordWithTokenError400 {
 }
 
 union ResetPasswordWithTokenError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1454,6 +1526,8 @@ model StartFederatedLoginError400 {
 }
 
 union StartFederatedLoginError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1560,7 +1634,7 @@ model CompleteFederatedLogin2Success_303 {
 
 @doc("Correlates the callback with the single-use login attempt and verifies the trust, issuer, audience, nonce or InResponseTo, time, and replay of the OIDC token or the SAML response. The local User is resolved in the order: an existing link, a verified-email link under an explicit policy, then explicit JIT provisioning, and handed on to issue a LoginSession.")
 @useAuth(NoAuth)
-@TypeSpec.OpenAPI.operationId("CompleteFederatedLogin")
+@TypeSpec.OpenAPI.operationId("CompleteSamlFederatedLogin")
 @route("/api/auth/federation/saml/callback")
 @post
 op CompleteFederatedLogin2(
@@ -1611,6 +1685,8 @@ model LinkExternalIdentityError400 {
 }
 
 union LinkExternalIdentityError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1646,6 +1722,9 @@ model UnlinkExternalIdentityError400 {
 }
 
 union UnlinkExternalIdentityError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.UnlinkDeniedError,
   IdMagic.Contract.AccessDeniedError,
 }
 

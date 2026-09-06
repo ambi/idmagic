@@ -86,7 +86,7 @@ Primary actor: `AuthenticatedSelf`
 - Then その外部 subject が未使用であれば、自身へリンクする
 - When 直近 5 分以内にステップアップ認証を済ませたセッションでリンクの解除を要求する
 - But パスワード資格情報も他の外部アイデンティティのリンクも残らなくなる
-- Then 締め出しを防ぐため解除を拒否する
+- Then 締め出しを防ぐため UnlinkDeniedError で解除を拒否し、外部アイデンティティのリンクは残る
 
 ## Rule: REQ-AUTHENTICATION-004 API トークンの発行者は機密操作のスコープで自身の認証情報だけを操作できる
 
@@ -794,7 +794,7 @@ Primary actor: `AuthenticatedSelf`
 - Given ユーザー "alice" は信頼済みデバイスによって `amr` に `tdev` を持つセッションで認証済みである
 - And そのセッションはステップアップ認証を行っていない
 - When ユーザー "alice" がパスワードの変更、TOTP 認証要素の解除、または他セッションの一括失効を要求する
-- Then ステップアップ認証による再認証が要求される
+- Then StepUpRequiredError で拒否され、パスワード、認証要素、セッションは変更されない
 - When ユーザー "alice" が自身の信頼済みデバイスを一覧する
 - Then selector と verifier を含まない一覧が最終利用時刻の降順で返り、現在の端末が current として示される
 - When ユーザー "alice" がステップアップ認証を成立させて信頼済みデバイスを失効させる

@@ -82,6 +82,32 @@ describe('compareOpenApi — additive changes are not breaking', () => {
     })
     expect(compareOpenApi(baseline, current)).toEqual([])
   })
+
+  it('does not flag a single response schema widened into an anyOf union', () => {
+    const baseline = {
+      ...withSchema({ $ref: '#/components/schemas/AccessDenied' }),
+      components: {
+        schemas: {
+          AccessDenied: { type: 'object', properties: { type: { type: 'string' } } },
+        },
+      },
+    }
+    const current = {
+      ...withSchema({
+        anyOf: [
+          { $ref: '#/components/schemas/AccessDenied' },
+          { $ref: '#/components/schemas/InsufficientScope' },
+        ],
+      }),
+      components: {
+        schemas: {
+          AccessDenied: { type: 'object', properties: { type: { type: 'string' } } },
+          InsufficientScope: { type: 'object', properties: { type: { type: 'string' } } },
+        },
+      },
+    }
+    expect(compareOpenApi(baseline, current)).toEqual([])
+  })
 })
 
 describe('compareOpenApi — breaking changes', () => {

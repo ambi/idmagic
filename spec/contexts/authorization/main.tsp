@@ -19,6 +19,7 @@ model GetAuthorizationModelSuccess_200 {
 }
 
 union GetAuthorizationModelError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -72,6 +73,9 @@ model PutAuthorizationModelError400 {
 }
 
 union PutAuthorizationModelError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -111,6 +115,7 @@ model ListRelationTuplesSuccess_200 {
 }
 
 union ListRelationTuplesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -156,6 +161,9 @@ model WriteRelationTuplesError400 {
 }
 
 union WriteRelationTuplesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -205,6 +213,9 @@ model CheckAccessError400 {
 }
 
 union CheckAccessError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -271,6 +282,9 @@ model ListAccessibleResourcesError400 {
 }
 
 union ListAccessibleResourcesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

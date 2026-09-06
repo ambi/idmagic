@@ -8,10 +8,12 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import {
+  browserRefusalTypesNamedByPlatformScenario,
   checkContractRefusalsAreDeclared,
   checkSecurityGuards,
   contractRefusalsOfStateChanges,
   errorTypesNamedByScenarios,
+  insufficientScopeTypeNamedByApiTokenScenario,
   type Finding,
   type GoFile,
 } from './security-controls.ts'
@@ -45,14 +47,23 @@ const findings: Finding[] = [...checkSecurityGuards(goFiles)]
 // still report success.
 const contextsDir = resolve(root, 'docs/contexts')
 const contractDir = resolve(root, 'spec/contexts')
-let declared = 0
+const platformScenarios = await readFile(resolve(root, 'docs/scenarios.feature.md'), 'utf8')
+const platformRefusals = browserRefusalTypesNamedByPlatformScenario(platformScenarios)
+const apiTokenScenarios = await readFile(
+  resolve(contextsDir, 'api-tokens/scenarios.feature.md'),
+  'utf8',
+)
+const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(apiTokenScenarios)
+const sharedRefusals = new Set([...platformRefusals, ...apiTokenRefusals])
+let declared = sharedRefusals.size
 let promised = 0
 for (const context of await readdir(contextsDir)) {
   const dir = resolve(contextsDir, context)
   const source = await readFile(resolve(dir, 'scenarios.feature.md'), 'utf8').catch(() => undefined)
   if (!source) continue
-  const named = errorTypesNamedByScenarios(source)
-  declared += named.size
+  const local = errorTypesNamedByScenarios(source)
+  const named = new Set([...local, ...sharedRefusals])
+  declared += local.size
 
   const contract = new Map<string, string[]>()
   const contractFiles = await readdir(resolve(contractDir, context)).catch(() => [])

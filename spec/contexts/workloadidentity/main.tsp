@@ -14,6 +14,7 @@ model ListWorkloadTrustBundlesSuccess_200 {
 }
 
 union ListWorkloadTrustBundlesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -48,6 +49,7 @@ model GetWorkloadTrustBundleError400 {
 }
 
 union GetWorkloadTrustBundleError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -82,6 +84,9 @@ model RegisterWorkloadTrustBundleError400 {
 }
 
 union RegisterWorkloadTrustBundleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -130,6 +135,9 @@ model UpdateWorkloadTrustBundleError400 {
 }
 
 union UpdateWorkloadTrustBundleError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -274,6 +282,9 @@ model RefreshWorkloadTrustBundleJWKSError400 {
 }
 
 union RefreshWorkloadTrustBundleJWKSError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -307,6 +318,7 @@ model ListAgentWorkloadBindingsError400 {
 }
 
 union ListAgentWorkloadBindingsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -341,6 +353,9 @@ model CreateAgentWorkloadBindingError400 {
 }
 
 union CreateAgentWorkloadBindingError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

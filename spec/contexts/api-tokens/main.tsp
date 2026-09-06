@@ -60,6 +60,7 @@ model IssueApiTokenError400 {
 }
 
 union IssueApiTokenError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

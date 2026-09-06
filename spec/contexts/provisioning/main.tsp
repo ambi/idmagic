@@ -34,6 +34,9 @@ model RegisterProvisioningConnectionError409 {
 }
 
 union RegisterProvisioningConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -74,6 +77,7 @@ model GetProvisioningConnectionError404 {
 }
 
 union GetProvisioningConnectionError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -134,6 +138,9 @@ model UpdateProvisioningConnectionError404 {
 }
 
 union UpdateProvisioningConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -164,6 +171,9 @@ model DeleteProvisioningConnectionError404 {
 }
 
 union DeleteProvisioningConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -208,6 +218,9 @@ model TestProvisioningConnectionError404 {
 }
 
 union TestProvisioningConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -251,6 +264,9 @@ model ProvisionOnDemandError422 {
 }
 
 union ProvisionOnDemandError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -305,6 +321,9 @@ model StartFullResyncError404 {
 }
 
 union StartFullResyncError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -332,6 +351,7 @@ model ListProvisioningDeliveriesSuccess_200 {
 }
 
 union ListProvisioningDeliveriesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -362,7 +382,7 @@ op ListProvisioningDeliveries(
   @query source_type?: IdMagic.Contract.ProvisioningSourceType,
   @query cursor?: string,
   @query limit?: int64
-): ListProvisioningDeliveriesSuccess_200 | ListProvisioningDeliveriesError403 | ListProvisioningDeliveriesError400;
+): ListProvisioningDeliveriesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListProvisioningDeliveriesError403 | ListProvisioningDeliveriesError400;
 
 model GetProvisioningDeliverySuccess_200 {
   @statusCode statusCode: 200;
@@ -380,6 +400,7 @@ model GetProvisioningDeliveryError404 {
 }
 
 union GetProvisioningDeliveryError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -425,6 +446,9 @@ model RetryProvisioningDeliveryError409 {
 }
 
 union RetryProvisioningDeliveryError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -459,6 +483,9 @@ model ResumeProvisioningConnectionError404 {
 }
 
 union ResumeProvisioningConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -486,6 +513,7 @@ model ListTenantProvisioningConnectionsSuccess_200 {
 }
 
 union ListTenantProvisioningConnectionsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 

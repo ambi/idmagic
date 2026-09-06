@@ -1256,8 +1256,8 @@ model InvalidTokenError is OAuthError;
 model InvalidDpopProofError is OAuthError;
 
 
-@doc("The scope of the presented token does not cover the requested operation (RFC 6750 section 3.1, insufficient_scope).")
-model InsufficientScopeError is OAuthError;
+@doc("The scope of the presented token does not cover the requested OAuth 2.0 or OpenID Connect operation (RFC 6750 section 3.1, insufficient_scope). Generic APIs report the same condition as InsufficientScopeError, an RFC 9457 Problem Details body.")
+model OAuthInsufficientScopeError is OAuthError;
 
 
 @doc("The schema definition of an AuthorizationDetailType is invalid: it failed validation, or it references an unknown Semantics value. Returned by the administration API, not by the token endpoint. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_type`.")

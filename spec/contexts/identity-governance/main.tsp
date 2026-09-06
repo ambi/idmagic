@@ -14,6 +14,9 @@ model ListLifecycleWorkflowsSuccess_200 {
 }
 
 union ListLifecycleWorkflowsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -48,6 +51,9 @@ model CreateLifecycleWorkflowError400 {
 }
 
 union CreateLifecycleWorkflowError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -82,6 +88,9 @@ model GetLifecycleWorkflowError400 {
 }
 
 union GetLifecycleWorkflowError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -116,6 +125,9 @@ model UpdateLifecycleWorkflowError400 {
 }
 
 union UpdateLifecycleWorkflowError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -238,6 +250,9 @@ model DeleteLifecycleWorkflowError400 {
 }
 
 union DeleteLifecycleWorkflowError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -273,6 +288,9 @@ model DryRunLifecycleWorkflowError400 {
 }
 
 union DryRunLifecycleWorkflowError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -308,6 +326,9 @@ model ListLifecycleWorkflowRunsError400 {
 }
 
 union ListLifecycleWorkflowRunsError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -342,6 +363,9 @@ model GetLifecycleWorkflowRunError400 {
 }
 
 union GetLifecycleWorkflowRunError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -376,6 +400,9 @@ model RetryLifecycleWorkflowRunError400 {
 }
 
 union RetryLifecycleWorkflowRunError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 

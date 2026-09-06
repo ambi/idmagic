@@ -2,6 +2,8 @@ import { describe, expect, it } from 'bun:test'
 import {
   checkContractRefusalsAreDeclared,
   checkSecurityGuards,
+  browserRefusalTypesNamedByPlatformScenario,
+  insufficientScopeTypeNamedByApiTokenScenario,
   contractRefusalsOfStateChanges,
   errorTypesNamedByScenarios,
 } from './security-controls.ts'
@@ -342,6 +344,65 @@ describe('errorTypesNamedByScenarios', () => {
   it('ignores a step that names no error type', () => {
     expect([
       ...errorTypesNamedByScenarios(scenarios(['the worker claims it and it succeeds'])),
+    ]).toEqual([])
+  })
+})
+
+describe('browserRefusalTypesNamedByPlatformScenario', () => {
+  const platformScenarios = (ruleId: string) =>
+    [
+      '# Feature: Platform',
+      '',
+      `## Rule: ${ruleId} browser requests fail closed`,
+      '',
+      '### Example: EX-PLATFORM-004-01 invalid origin',
+      '',
+      '- When a browser changes state from another origin',
+      '- Then InvalidOriginError is returned and state is unchanged',
+      '',
+      '### Example: EX-PLATFORM-004-02 invalid CSRF proof',
+      '',
+      '- When a browser changes state without a matching CSRF proof',
+      '- Then CsrfFailedError is returned and state is unchanged',
+      '',
+    ].join('\n')
+
+  it('names the shared refusals only from REQ-PLATFORM-004', () => {
+    expect([
+      ...browserRefusalTypesNamedByPlatformScenario(platformScenarios('REQ-PLATFORM-004')),
+    ]).toEqual(['InvalidOriginError', 'CsrfFailedError'])
+  })
+
+  it('does not accept the same prose under another requirement ID', () => {
+    expect([
+      ...browserRefusalTypesNamedByPlatformScenario(platformScenarios('REQ-PLATFORM-099')),
+    ]).toEqual([])
+  })
+})
+
+describe('insufficientScopeTypeNamedByApiTokenScenario', () => {
+  const apiTokenScenarios = (ruleId: string) =>
+    [
+      '# Feature: API tokens',
+      '',
+      `## Rule: ${ruleId} scopes fail closed`,
+      '',
+      '### Example: EX-APITOKENS-004-02 missing scope',
+      '',
+      '- When a client calls a management API without its required scope',
+      '- Then InsufficientScopeError is returned and management state is unchanged',
+      '',
+    ].join('\n')
+
+  it('names the shared refusal only from REQ-APITOKENS-004', () => {
+    expect([
+      ...insufficientScopeTypeNamedByApiTokenScenario(apiTokenScenarios('REQ-APITOKENS-004')),
+    ]).toEqual(['InsufficientScopeError'])
+  })
+
+  it('does not accept the same prose under another requirement ID', () => {
+    expect([
+      ...insufficientScopeTypeNamedByApiTokenScenario(apiTokenScenarios('REQ-APITOKENS-099')),
     ]).toEqual([])
   })
 })

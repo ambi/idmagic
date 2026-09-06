@@ -307,6 +307,44 @@ export function errorTypesNamedByScenarios(scenarios: string): Set<string> {
   return types
 }
 
+function refusalTypesNamedByRule(
+  scenarios: string,
+  ruleId: string,
+  expected: Set<string>,
+): Set<string> {
+  const rule = parseScenarioDocument(scenarios).rules.find((candidate) => candidate.id === ruleId)
+  if (!rule) return new Set()
+
+  const named = new Set<string>()
+  for (const step of rule.examples.flatMap((example) =>
+    example.steps.filter((candidate) => candidate.kind === 'outcome'),
+  )) {
+    for (const match of step.text.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)) {
+      const type = match[1]
+      if (type && expected.has(type)) named.add(type)
+    }
+  }
+  return named
+}
+
+/** Shared browser refusal types declared by the one platform-wide requirement that owns them. */
+export function browserRefusalTypesNamedByPlatformScenario(scenarios: string): Set<string> {
+  return refusalTypesNamedByRule(
+    scenarios,
+    'REQ-PLATFORM-004',
+    new Set(['InvalidOriginError', 'CsrfFailedError']),
+  )
+}
+
+/** Shared management API scope refusal declared by the API-token requirement that owns it. */
+export function insufficientScopeTypeNamedByApiTokenScenario(scenarios: string): Set<string> {
+  return refusalTypesNamedByRule(
+    scenarios,
+    'REQ-APITOKENS-004',
+    new Set(['InsufficientScopeError']),
+  )
+}
+
 /**
  * R4: a refusal the contract promises must be declared as behavior.
  *

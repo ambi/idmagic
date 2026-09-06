@@ -18,6 +18,7 @@ model ListSsfStreamsSuccess_200 {
 }
 
 union ListSsfStreamsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -52,6 +53,7 @@ model GetSsfStreamError400 {
 }
 
 union GetSsfStreamError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -86,6 +88,9 @@ model RegisterSsfTransmitterStreamError400 {
 }
 
 union RegisterSsfTransmitterStreamError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -134,6 +139,9 @@ model RegisterSsfReceiverStreamError400 {
 }
 
 union RegisterSsfReceiverStreamError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -183,6 +191,9 @@ model UpdateSsfStreamError400 {
 }
 
 union UpdateSsfStreamError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -330,6 +341,7 @@ model ListSecurityEventDeliveriesError400 {
 }
 
 union ListSecurityEventDeliveriesError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -346,7 +358,7 @@ model ListSecurityEventDeliveriesError403 {
 @get
 op ListSecurityEventDeliveries(
   @path stream_id: string
-): ListSecurityEventDeliveriesSuccess_200 | ListSecurityEventDeliveriesError400 | ListSecurityEventDeliveriesError403;
+): ListSecurityEventDeliveriesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListSecurityEventDeliveriesError400 | ListSecurityEventDeliveriesError403;
 
 model ReceiveSecurityEventSuccess_202 {
   @statusCode statusCode: 202;
