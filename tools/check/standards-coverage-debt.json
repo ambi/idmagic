@@ -103,18 +103,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "NIST63B4-NO-COMPOSITION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "NIST63B4-PASSWORD-MINIMUM",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "NIST63B4-PASSWORD-STORAGE",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-BACKCHANNEL-DELIVERY-RETRY",
       "reason": "present when the check was introduced"
     },
@@ -124,10 +112,6 @@
     },
     {
       "id": "OIDC-BACKCHANNEL-REPLAY",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "OIDC-CORE-CSRF",
       "reason": "present when the check was introduced"
     },
     {
@@ -144,10 +128,6 @@
     },
     {
       "id": "OIDC-DISCOVERY-CONFIGURATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "OIDC-DISCOVERY-ISSUER",
       "reason": "present when the check was introduced"
     },
     {
@@ -172,10 +152,6 @@
     },
     {
       "id": "OIDC-SESSION-MGMT-CHECK-IFRAME",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC6238-TOTP",
       "reason": "present when the check was introduced"
     },
     {
@@ -312,7 +288,7 @@
     },
     {
       "id": "RFC8176-AMR-VOCABULARY",
-      "reason": "present when the check was introduced"
+      "reason": "the row and docs/contexts/authentication/scenarios.feature.md contradict each other on `federated`, so no test can satisfy it (wi-508)"
     },
     {
       "id": "RFC8414-METADATA",
@@ -492,14 +468,6 @@
     },
     {
       "id": "WCAG22-STATUS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WEBAUTHN3-AUTHENTICATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WEBAUTHN3-REGISTRATION",
       "reason": "present when the check was introduced"
     },
     {

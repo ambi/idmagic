@@ -6,6 +6,7 @@ require (
 	github.com/Oudwins/zog v0.23.0
 	github.com/beevik/etree v1.7.1
 	github.com/fergusstrange/embedded-postgres v1.34.0
+	github.com/fxamacker/cbor/v2 v2.9.3
 	github.com/go-webauthn/webauthn v0.18.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -33,7 +34,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.3 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect

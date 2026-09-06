@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"math/big"
 	"net/http"
 	"strings"
@@ -190,4 +191,94 @@ func fakeHTTPClient(responses map[string]any) *http.Client {
 			Header: http.Header{"Content-Type": []string{"application/json"}},
 		}, nil
 	})}
+}
+
+// OIDC-DISCOVERY-ISSUER: Discovery Metadata の受け入れ条件を固定する。行は 2 つのことを
+// 言っているので観測も 2 つ要る。issuer が「設定した発行者と完全一致」であること —
+// 前後に何かが付いた値や末尾のスラッシュ違いは別の発行者である — と、endpoint と JWKS URI
+// が HTTPS の公開オーソリティに限られることである。どの拒否でも connection の
+// endpoint が書き換わっていないことを併せて観測する。error を返してから endpoint を
+// 更新する実装は、戻り値だけを見ると正しい実装と区別が付かない。
+//
+// 拒否の観測だけを並べると、別の理由 (fixture の JWKS が引けない、など) ですべて落ちて
+// いるだけの状態を「検証している」と読み違える。差し替える要素以外はすべて正当な
+// document を fixture にし、無傷の document が受理されて connection を書き換えることを
+// 対照として最後に観測する。
+func TestRefreshDiscoveryRequiresAnExactIssuerAndHTTPSAuthorities(t *testing.T) {
+	const configured = "https://idp.example"
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwks := map[string]any{"keys": []any{map[string]any{
+		"kty": "RSA", "kid": "key-1", "alg": "RS256",
+		"n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
+		"e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes()),
+	}}}
+	// 差し替えを受けていない document。どの endpoint も引けるので、拒否が起きたなら
+	// 理由は差し替えた要素しかない。
+	intact := func() map[string]any {
+		return map[string]any{
+			"issuer":                 configured,
+			"authorization_endpoint": "https://idp.example/auth2",
+			"token_endpoint":         "https://idp.example/token2",
+			"jwks_uri":               "https://idp.example/jwks2",
+		}
+	}
+	refresh := func(t *testing.T, document map[string]any) (domain.IdentityProviderConnection, error) {
+		t.Helper()
+		client := Client{HTTPClient: fakeHTTPClient(map[string]any{
+			configured + "/.well-known/openid-configuration": document,
+			"https://idp.example/jwks2":                      jwks,
+			"https://idp.example/jwks":                       jwks,
+			"http://idp.example/jwks2":                       jwks,
+			"https://127.0.0.1/jwks2":                        jwks,
+			"https://10.0.0.1/jwks":                          jwks,
+			"https://user:pass@idp.example/jwks":             jwks,
+		})}
+		connection := testConnection()
+		err := client.RefreshDiscovery(context.Background(), &connection, time.Now())
+		return connection, err
+	}
+
+	for name, forged := range map[string]map[string]any{
+		// 完全一致でない issuer。いずれも「前方一致」「後方一致」「末尾スラッシュを無視」
+		// のどれかを許す実装なら通ってしまう。
+		"issuer with a trailing slash": {"issuer": configured + "/"},
+		"issuer with a suffix":         {"issuer": configured + ".evil.test"},
+		"issuer with a prefix":         {"issuer": "https://evil.test/" + configured},
+		"issuer of another provider":   {"issuer": "https://attacker.example"},
+		// HTTPS の公開オーソリティに限らない endpoint。
+		"plaintext authorization endpoint": {"authorization_endpoint": "http://idp.example/auth"},
+		"plaintext JWKS URI":               {"jwks_uri": "http://idp.example/jwks2"},
+		"loopback token endpoint":          {"token_endpoint": "https://127.0.0.1/token"},
+		"private network JWKS URI":         {"jwks_uri": "https://10.0.0.1/jwks"},
+		"JWKS URI carrying userinfo":       {"jwks_uri": "https://user:pass@idp.example/jwks"},
+	} {
+		document := intact()
+		maps.Copy(document, forged)
+		connection, err := refresh(t, document)
+		if err == nil {
+			t.Fatalf("%s: accepted", name)
+		}
+		before := testConnection()
+		if connection.AuthorizationEndpoint != before.AuthorizationEndpoint ||
+			connection.TokenEndpoint != before.TokenEndpoint ||
+			connection.JWKSURI != before.JWKSURI ||
+			connection.MetadataRefreshedAt != nil {
+			t.Fatalf("%s: the rejected document still moved the connection to %+v", name, connection)
+		}
+	}
+
+	// 対照: 無傷の document は受理され、connection の endpoint を書き換える。
+	connection, err := refresh(t, intact())
+	if err != nil {
+		t.Fatalf("an intact discovery document was rejected: %v", err)
+	}
+	if connection.AuthorizationEndpoint != "https://idp.example/auth2" ||
+		connection.TokenEndpoint != "https://idp.example/token2" ||
+		connection.JWKSURI != "https://idp.example/jwks2" ||
+		connection.MetadataRefreshedAt == nil {
+		t.Fatalf("the accepted document did not move the connection: %+v", connection)
+	}
 }
