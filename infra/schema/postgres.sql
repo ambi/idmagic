@@ -86,8 +86,8 @@ CREATE TABLE tenant_brandings (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     CONSTRAINT tenant_brandings_primary_color_format CHECK (primary_color IS NULL OR primary_color ~ '^#[0-9a-fA-F]{6}$'),
     CONSTRAINT tenant_brandings_accent_color_format CHECK (accent_color IS NULL OR accent_color ~ '^#[0-9a-fA-F]{6}$'),
-    CONSTRAINT tenant_brandings_footer_link_1_complete CHECK ((footer_link_1_label IS NULL) = (footer_link_1_url IS NULL)),
-    CONSTRAINT tenant_brandings_footer_link_2_complete CHECK ((footer_link_2_label IS NULL) = (footer_link_2_url IS NULL)),
+    CONSTRAINT tenant_brandings_footer_link_1_complete CHECK ((footer_link_1_label IS NULL AND footer_link_1_url IS NULL) OR (footer_link_1_label IS NOT NULL AND footer_link_1_url IS NOT NULL)),
+    CONSTRAINT tenant_brandings_footer_link_2_complete CHECK ((footer_link_2_label IS NULL AND footer_link_2_url IS NULL) OR (footer_link_2_label IS NOT NULL AND footer_link_2_url IS NOT NULL)),
     CONSTRAINT tenant_brandings_footer_link_1_label_length CHECK (footer_link_1_label IS NULL OR char_length(footer_link_1_label) <= 80),
     CONSTRAINT tenant_brandings_footer_link_2_label_length CHECK (footer_link_2_label IS NULL OR char_length(footer_link_2_label) <= 80),
     CONSTRAINT tenant_brandings_footer_link_1_url_length CHECK (footer_link_1_url IS NULL OR char_length(footer_link_1_url) <= 2048),
@@ -280,7 +280,7 @@ CREATE TABLE trusted_devices (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT trusted_devices_expiry CHECK (expires_at > created_at),
     CONSTRAINT trusted_devices_revocation
-        CHECK ((revoked_at IS NULL) = (revoke_reason IS NULL))
+        CHECK ((revoked_at IS NULL AND revoke_reason IS NULL) OR (revoked_at IS NOT NULL AND revoke_reason IS NOT NULL))
 );
 
 CREATE INDEX trusted_devices_active_user_idx
@@ -427,7 +427,7 @@ CREATE TABLE authentication_sessions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT authentication_sessions_revoke_pair
-        CHECK ((revoked_at IS NULL) = (revoke_reason IS NULL)),
+        CHECK ((revoked_at IS NULL AND revoke_reason IS NULL) OR (revoked_at IS NOT NULL AND revoke_reason IS NOT NULL)),
     CONSTRAINT authentication_sessions_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     CONSTRAINT authentication_sessions_user_fkey
@@ -700,7 +700,7 @@ CREATE TABLE authorization_detail_types (
     tenant_id UUID NOT NULL,
     type TEXT NOT NULL,
     description TEXT,
-    schema JSONB NOT NULL DEFAULT jsonb_build_object('rules', jsonb_build_array()),
+    "schema" JSONB NOT NULL DEFAULT jsonb_build_object('rules', jsonb_build_array()),
     display_template TEXT NOT NULL,
     state TEXT NOT NULL DEFAULT 'Enabled'
         CHECK (state IN ('Enabled', 'Disabled')),
@@ -1003,7 +1003,7 @@ CREATE TABLE saml_identity_provider_profiles (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, profile_id),
-    CHECK ((profile_id = 'default') = is_default),
+    CHECK ((profile_id = 'default' AND is_default) OR (profile_id <> 'default' AND NOT is_default)),
     CHECK (NOT is_default OR mode = 'shared'),
     CONSTRAINT saml_identity_provider_profiles_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
@@ -1350,7 +1350,7 @@ CREATE TABLE provisioning_connections (
     CONSTRAINT provisioning_connections_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT provisioning_connections_quarantine_check
-        CHECK ((health = 'quarantined') = (quarantined_at IS NOT NULL)),
+        CHECK ((health = 'quarantined' AND quarantined_at IS NOT NULL) OR (health <> 'quarantined' AND quarantined_at IS NULL)),
     -- 連携先が返したエラー文。書き込み側が切り詰めるので、ここで落ちるのは
     -- 切り詰めを通らない経路ができたときだけである。
     CONSTRAINT provisioning_connections_quarantine_reason_length
