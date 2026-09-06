@@ -23,6 +23,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -108,7 +109,7 @@ func newResetFixture(t *testing.T) *resetFixture {
 	t.Helper()
 	users := usermemory.NewUserRepository()
 	history := authnmemory.NewPasswordHistoryRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	currentHash, err := hasher.Hash("current-password-1")
 	if err != nil {
 		t.Fatal(err)

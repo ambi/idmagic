@@ -162,10 +162,27 @@ Run the cheapest gate that can still fail on what you just changed, and widen on
 3. While implementing one layer: confirm Unit RED, reach GREEN, refactor while GREEN, and run the narrowest
    per-package or per-file test recipe that covers what you touched — `mise run test-go-package <package>` or
    `mise run test-ui-unit-file <file>` here, whatever `mise tasks` offers elsewhere.
-4. For `medium` risk and above: perform the selected change-resistance check.
-5. Before completing the work item: `mise run verify`.
+4. When the change has spread past one package: `mise run test-go-changed`, which runs the packages the
+   working tree changed together with everything that compiles them in.
+5. For `medium` risk and above: perform the selected change-resistance check.
+6. Before completing the work item: `mise run verify`, and `mise run test-ui-e2e` as well when the change can
+   reach the browser.
 
 Running the full suite after every edit is the most common way to lose time in this repository.
+
+The narrow steps are built the way the final gate is built. `mise run test-go-package` and
+`mise run test-go-changed` both enable the race detector, because Go keeps a separate test-cache entry per
+build configuration: a package run without `-race` leaves `mise run test-go-race` nothing to reuse, and the
+final gate runs it again from scratch. Running it the expensive way once is what makes the last step cheap.
+
+The aggregate gates — `check`, `verify-spec`, `verify` — report every member that failed rather than stopping
+at the first. One run therefore hands back the whole list, and the round trip of fixing one failure to
+discover the next does not happen. `verify` does not start the browser stack; `mise run verify-full` and a CI
+job of its own carry `test-ui-e2e`, whose cost is a Go build, an API server, a development server, and seed
+data that nothing else in the suite needs.
+
+`mise run time-verify` runs the members of a suite one at a time and prints what each cost, which is how a
+claim that a gate got slower or faster is settled.
 
 ### When the response does not entail the effect
 

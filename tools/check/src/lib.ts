@@ -23,6 +23,8 @@ export type CliOptions = {
   files: string[]
   listSchemas: boolean
   help: boolean
+  /** List every passing target, not only the closing count. */
+  verbose: boolean
 }
 
 export type ArgsError = { kind: 'error'; code: number; message: string }
@@ -33,6 +35,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
   let schema: string | null = null
   let listSchemas = false
   let help = false
+  let verbose = false
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] ?? ''
     if (a === '--list-schemas') {
@@ -46,6 +49,8 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
       i++
     } else if (a.startsWith('--schema=')) {
       schema = a.slice('--schema='.length)
+    } else if (a === '--verbose' || a === '-v') {
+      verbose = true
     } else if (a === '--help' || a === '-h') {
       help = true
     } else if (a.startsWith('-')) {
@@ -54,7 +59,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
       files.push(a)
     }
   }
-  return { kind: 'ok', opts: { schema, files, listSchemas, help } }
+  return { kind: 'ok', opts: { schema, files, listSchemas, help, verbose } }
 }
 
 export function lintRawText(text: string): Finding[] {

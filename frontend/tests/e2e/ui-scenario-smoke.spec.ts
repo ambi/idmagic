@@ -1,26 +1,16 @@
 // wi-75: SCL に追加済みの UI シナリオを、まず画面到達性と主要導線の
 // ブラウザ E2E として固定する。低レベル usecase の重複検査ではなく、
 // SPA route loader、OIDC RP ログイン、サイドバー遷移、フォーム送信の接続を検証する。
-import { afterAll, beforeAll, test } from 'bun:test'
+import { test } from 'bun:test'
 import {
   clickNavLinkByAnyText,
   demo,
-  startE2EEnvironment,
-  stopE2EEnvironment,
   uiOrigin,
   waitForLocationPath,
   waitForPage,
   waitForAnyText,
   navigateAndLogin,
 } from './fixtures'
-
-beforeAll(async () => {
-  await startE2EEnvironment()
-}, 180_000)
-
-afterAll(async () => {
-  await stopE2EEnvironment()
-}, 30_000)
 
 test('login assistance pages render and forgot password has enumeration-safe success copy', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1600 })

@@ -22,6 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/policy/breaches_noop"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
 	"github.com/labstack/echo/v5"
 )
@@ -146,7 +147,7 @@ func newPasswordResetHandler(
 	historyRepo := passwordmemory.NewPasswordHistoryRepository()
 	tokenStore := passwordmemory.NewPasswordResetTokenStore(userRepo, historyRepo)
 	sender := &email_memory.NoopEmailSender{}
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash("current-password-1")
 	if err != nil {
 		t.Fatal(err)

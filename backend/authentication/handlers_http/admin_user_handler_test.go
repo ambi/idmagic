@@ -18,7 +18,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -54,7 +54,7 @@ func rootTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 func TestDisabledUserCannotLogIn(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	requestStore := memory.NewAuthorizationRequestStore()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash("current-password-1")
 	if err != nil {
 		t.Fatal(err)

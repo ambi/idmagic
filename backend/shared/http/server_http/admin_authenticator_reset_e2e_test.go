@@ -38,7 +38,7 @@ import (
 	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -74,7 +74,7 @@ func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
 	requestStore := oauth2memory.NewAuthorizationRequestStore()
 	codeStore := oauth2memory.NewAuthorizationCodeStore()
 	defaultSignInPolicyRepo := appmemory.NewDefaultSignInPolicyRepository()
-	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 
 	secretHash := oauth2domain.HashClientSecret(demoClientSecret)
 	clientRepo.Seed(&oauth2domain.OAuth2Client{

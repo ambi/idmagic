@@ -28,7 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -78,7 +78,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 		UserRepo: userRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, OwnershipGuard: workerImportOwnershipGuard{},
 	}
 	result, err := userusecases.ApplyUserImport(tenancy.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
-		Plan: planDeps, Committer: userpostgres.UserImportRowCommitter{Pool: db}, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		Plan: planDeps, Committer: userpostgres.UserImportRowCommitter{Pool: db}, PasswordHasher: testing_passwords.NewHasher(),
 	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), idmdomain.DefaultCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {
 		t.Fatalf("run user import apply: %v", err)

@@ -1,22 +1,12 @@
-import { afterAll, beforeAll, test } from 'bun:test'
+import { test } from 'bun:test'
 
 import {
   clickButtonByText,
   loginFromCurrentPage,
-  startE2EEnvironment,
-  stopE2EEnvironment,
   uiOrigin,
   waitForAnyText,
   waitForPage,
 } from './fixtures'
-
-beforeAll(async () => {
-  await startE2EEnvironment()
-}, 180_000)
-
-afterAll(async () => {
-  await stopE2EEnvironment()
-}, 30_000)
 
 // REQ-SYSTEM-010: 一つの言語選択が認証、アカウント、管理の実画面へ継続して反映される。
 test('selected locale renders authentication account and admin surfaces', async () => {

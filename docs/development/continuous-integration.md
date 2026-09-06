@@ -12,6 +12,8 @@ CI で実行するジョブと検査の正本は [`.github/workflows/idmagic-ci.
 
 ## 手元での再現
 
-失敗したステップが呼ぶ `mise run <task>` を同じ固定ツール版で実行する。複数の検査をまとめたジョブが落ちた場合は、ログにある最初の失敗を再現し、その検査が緑になってからジョブ全体へ戻る。検査を恒常的に無効化せず、不安定な検査は所有者と期限を持つ work item で修復または削除する。
+失敗したステップが呼ぶ `mise run <task>` を同じ固定ツール版で実行する。集約ゲート (`check`、`verify-spec`、`verify`) は最初の失敗で打ち切らず、落ちたゲートを全部並べて終わるので、ログが挙げた分をまとめて手元で再現できる。検査を恒常的に無効化せず、不安定な検査は所有者と期限を持つ work item で修復または削除する。
+
+ブラウザー E2E (`test-ui-e2e`) は手元の `verify` には入っていない。Go のビルド、API サーバー、開発サーバー、初期データの投入という起動をこのテストだけが要求し、静的検査と単体テストのたびに毎回払う費用ではないからである。手元では `mise run verify-full` が、CI では独立した job がこれを持つ。
 
 Pull Request の要件は [CONTRIBUTING.md](../../CONTRIBUTING.md)、変更中に検査を広げる順序は [検証のはしご](specification-first-workflow.md#5-verification-ladder) が持つ。

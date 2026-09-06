@@ -24,7 +24,7 @@ import (
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -32,7 +32,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
@@ -121,7 +121,7 @@ func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		UserRepo: userRepo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
@@ -180,7 +180,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	_, err := userusecases.CreateUser(context.Background(), userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}, userusecases.CreateUserInput{
 		PreferredUsername: "bob", Password: "initial-password-9182",
@@ -202,7 +202,7 @@ func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	deps := userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		QuotaRepo:           quotaRepo,
 	}
@@ -239,7 +239,7 @@ func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	deps := userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		QuotaRepo:           quotaRepo,
 	}
@@ -271,7 +271,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	deviceStore := oauth2memory.NewDeviceCodeStore()
 	sessionStore := sessionmemory.NewSessionStore()
 	mfaRepo := totpmemory.NewMfaFactorRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, ConsentRepo: consentRepo, RefreshStore: refreshStore,

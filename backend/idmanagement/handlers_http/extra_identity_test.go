@@ -41,7 +41,7 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -72,7 +72,7 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	consentRepo := oauth2memory.NewConsentRepository()
 
 	history := passwordmemory.NewPasswordHistoryRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	now := time.Now().UTC()
 	for _, user := range []*userdomain.User{
 		{

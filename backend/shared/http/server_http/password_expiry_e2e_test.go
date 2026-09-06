@@ -19,7 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -53,7 +53,7 @@ func newPasswordExpiryTestServer(t *testing.T, maxAgeDays, passwordChangedDaysAg
 		t.Fatalf("seed tenant: %v", err)
 	}
 
-	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash(expiryTestPassword)
 	if err != nil {
 		t.Fatalf("seed password: %v", err)

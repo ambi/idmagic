@@ -37,7 +37,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	identitysource "github.com/ambi/idmagic/backend/provisioning/source_idmanagement"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -165,7 +165,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 
 	adminUserDeps := userusecases.AdminUserDeps{
 		UserRepo:             userRepo,
-		PasswordHasher:       passwords_argon2id.NewArgon2idPasswordHasher(),
+		PasswordHasher:       testing_passwords.NewHasher(),
 		PasswordHistoryRepo:  memoryauth.NewPasswordHistoryRepository(),
 		ProvisioningNotifier: notifier,
 	}

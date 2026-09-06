@@ -26,7 +26,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
 	"github.com/labstack/echo/v5"
 )
@@ -284,7 +284,7 @@ func newAdminUserHandler(
 	t.Helper()
 	repo := usermemory.NewUserRepository()
 	history := passwordmemory.NewPasswordHistoryRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	now := time.Now().UTC()
 	for _, user := range []*userdomain.User{
 		{

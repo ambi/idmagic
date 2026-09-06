@@ -1,0 +1,9 @@
+# ブラウザー E2E 専用の設定。単体テスト用の bunfig.toml とは preload が違う。
+#
+# 単体テストの preload は Happy DOM をグローバルへ登録する。E2E がそれを受けると、
+# `Response` がブラウザー実装に差し替わり、コールバック受け口の `Bun.serve` が
+# 受け取れない Response を返すことになる。テストは通るが、要求 1 件につき 1 万行の
+# ダンプが出る。E2E が触るのは実ブラウザーであって登録された DOM ではないので、
+# ここでは登録しない。
+[test]
+preload = ["./tests/e2e/setup.ts"]

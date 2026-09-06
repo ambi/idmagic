@@ -50,7 +50,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -82,7 +82,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *usermemory.UserRe
 	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
 	requestStore := oauth2memory.NewAuthorizationRequestStore()
 	codeStore := oauth2memory.NewAuthorizationCodeStore()
-	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
@@ -183,7 +183,7 @@ func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
 	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
 	signInPolicyRepo := appmemory.NewSignInPolicyRepository()
 	defaultSignInPolicyRepo := appmemory.NewDefaultSignInPolicyRepository()
-	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
 	clientRepo.Seed(&domain.OAuth2Client{
@@ -1380,7 +1380,7 @@ func TestHealthProbes(t *testing.T) {
 	keyStore, _ := signingcrypto.NewInMemoryKeyStore()
 	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
 	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
-	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 
 	startupComplete := &atomic.Bool{}
 	shuttingDown := &atomic.Bool{}

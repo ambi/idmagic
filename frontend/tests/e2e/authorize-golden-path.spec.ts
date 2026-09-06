@@ -8,28 +8,18 @@
 //   VITE_DEV_PORT=5174 VITE_API_TARGET=http://localhost:8082 bun run dev
 // ISSUER を UI origin (5174) に一致させるのはブラウザ origin と揃えて
 // CSRF/origin 検査 (verifyBrowserRequest) を通すため。
-import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import {
   authorizePath,
   clickButtonByAnyText,
   clickNavLinkByAnyText,
   demo,
   loginFromCurrentPage,
-  startE2EEnvironment,
-  stopE2EEnvironment,
   uiOrigin,
   waitForLocationPath,
   waitForPage,
   waitForUrl,
 } from './fixtures'
-
-beforeAll(async () => {
-  await startE2EEnvironment()
-}, 180_000)
-
-afterAll(async () => {
-  await stopE2EEnvironment()
-}, 30_000)
 
 test('authorize golden path: login -> consent -> callback keeps code and iss', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })

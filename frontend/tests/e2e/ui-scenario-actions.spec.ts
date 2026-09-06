@@ -3,7 +3,7 @@
 import { createHmac } from 'node:crypto'
 
 // 主要ユースケース追跡: REQ-AUTHENTICATION-013。
-import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import {
   authorizePath,
   clickButtonByAnyText,
@@ -14,14 +14,13 @@ import {
   clickMenuItemByText,
   clickSummaryByText,
   demo,
+  POLL_INTERVAL_MS,
   navigateAndLogin,
   selectDropdownOption,
   setCheckboxValue,
   setInputValue,
   setSelectValue,
   setSelectValueAt,
-  startE2EEnvironment,
-  stopE2EEnvironment,
   uiOrigin,
   waitForLocationHref,
   waitForPage,
@@ -75,18 +74,10 @@ async function waitForPaginationPage(
     )
     const match = position.match(/^(\d+) \/ (\d+)$/)
     if (match && Number(match[1]) === expected) return Number(match[2])
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for pagination page ${expected}`)
 }
-
-beforeAll(async () => {
-  await startE2EEnvironment()
-}, 180_000)
-
-afterAll(async () => {
-  await stopE2EEnvironment()
-}, 30_000)
 
 test('account profile can be updated from the browser', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })
@@ -129,7 +120,7 @@ test('account data export is triggered from the browser', async () => {
       if ((await view.evaluate('window.__raDownloadClicked === true')) === true) {
         return
       }
-      await Bun.sleep(150)
+      await Bun.sleep(POLL_INTERVAL_MS)
     }
     throw new Error('timeout waiting for data export download trigger')
   } finally {
@@ -273,7 +264,7 @@ test('account connected application consent can be revoked from the browser', as
         needsConsent = true
         break
       }
-      await Bun.sleep(150)
+      await Bun.sleep(POLL_INTERVAL_MS)
     }
     if (needsConsent) await clickButtonByAnyText(view, ['許可', 'Allow'])
     await waitForUrl(view, /localhost:3000\/callback/)
@@ -326,7 +317,7 @@ test('account TOTP enrollment and removal step-up work from the browser', async 
       ) {
         return
       }
-      await Bun.sleep(150)
+      await Bun.sleep(POLL_INTERVAL_MS)
     }
     throw new Error('timeout waiting for TOTP removal')
   } finally {
@@ -376,7 +367,7 @@ test('account session list can revoke a different browser session', async () => 
         expect(reloadedCount).toBeLessThan(beforeCount)
         return
       }
-      await Bun.sleep(150)
+      await Bun.sleep(POLL_INTERVAL_MS)
     }
     throw new Error('timeout waiting for revoked session row count to decrease')
   } finally {
@@ -527,7 +518,7 @@ test('account email change confirms through the local SMTP sink', async () => {
       ) {
         break
       }
-      await Bun.sleep(150)
+      await Bun.sleep(POLL_INTERVAL_MS)
     }
 
     await waitForText(view, nextEmail)
@@ -540,7 +531,6 @@ test('account email change confirms through the local SMTP sink', async () => {
     await waitForPage(view, 'email-verify')
     await clickButtonByText(view, 'Confirm email address')
     await waitForText(view, 'Your email address has been confirmed.')
-    demo.email = nextEmail
 
     // 同じリンクをもう一度開いて確定すると拒否される。
     await view.navigate(verifyURL)

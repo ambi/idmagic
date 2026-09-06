@@ -20,7 +20,7 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	passwordsargon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -46,7 +46,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	})
 	artifacts := idmmemory.NewCSVArtifactStore()
 	jobRepo := jobsmemory.NewJobRepository()
-	hasher := passwordsargon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	committer := usermemory.UserImportRowCommitter{Users: users}
 
 	e := echo.New()

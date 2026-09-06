@@ -38,7 +38,7 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -63,7 +63,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 	now := time.Now().UTC()
 
 	userRepo := usermemory.NewUserRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash(stepUpTestPassword)
 	if err != nil {
 		t.Fatal(err)

@@ -18,7 +18,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -334,7 +334,7 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 			WorkflowRepo: workflowRepo, RunRepo: runs, UserRepo: users,
 			Capture: &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
 		},
-		PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
+		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
 	}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{PreferredUsername: "alice", Password: "initial-password-9182", Now: now})

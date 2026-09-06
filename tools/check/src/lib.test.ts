@@ -6,7 +6,13 @@ describe('parseArgs', () => {
     const r = parseArgs(['a.yaml', 'b.yaml'])
     expect(r).toEqual({
       kind: 'ok',
-      opts: { schema: null, files: ['a.yaml', 'b.yaml'], listSchemas: false, help: false },
+      opts: {
+        schema: null,
+        files: ['a.yaml', 'b.yaml'],
+        listSchemas: false,
+        help: false,
+        verbose: false,
+      },
     })
   })
 
@@ -45,6 +51,18 @@ describe('parseArgs', () => {
   it('captures --help / -h', () => {
     expect(parseArgs(['--help'])).toMatchObject({ kind: 'ok', opts: { help: true } })
     expect(parseArgs(['-h'])).toMatchObject({ kind: 'ok', opts: { help: true } })
+  })
+
+  /**
+   * A passing target is listed only on request. The default output is what an
+   * agent has to carry in its context, and 496 lines saying `ok` say the same
+   * thing the closing count says.
+   */
+  it('captures --verbose', () => {
+    expect(parseArgs(['--verbose', 'a.yaml'])).toMatchObject({
+      kind: 'ok',
+      opts: { verbose: true, files: ['a.yaml'] },
+    })
   })
 })
 

@@ -53,9 +53,18 @@ async function workspace(): Promise<string> {
 }
 
 /** `--documents` を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
-async function checkDocuments(root: string): Promise<{ code: number; output: string }> {
+async function checkDocuments(
+  root: string,
+  ...options: string[]
+): Promise<{ code: number; output: string }> {
   const proc = Bun.spawn(
-    ['bun', 'run', resolve(TOOLS_DIR, 'workspace/src/check-workspace.ts'), '--documents'],
+    [
+      'bun',
+      'run',
+      resolve(TOOLS_DIR, 'workspace/src/check-workspace.ts'),
+      '--documents',
+      ...options,
+    ],
     {
       cwd: TOOLS_DIR,
       env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
@@ -93,8 +102,20 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
 describe('check-workspace --documents', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
-    expect(result.output).toContain('docs/contexts/demo/scenarios.feature.md')
+    expect(result.output).toContain('ok  3 canonical document(s)')
     expect(result.code).toBe(0)
+  })
+
+  /**
+   * 成功した対象を 1 件ずつ並べるのは既定ではやらない。エージェントはこの出力を読んで
+   * 文脈に載せるので、行数はそのまま所要時間と文脈の消費になる。全件は要求されたときだけ出す。
+   */
+  it('lists every passing document only when asked', async () => {
+    const root = await workspace()
+    expect((await checkDocuments(root)).output).not.toContain('scenarios.feature.md')
+    expect((await checkDocuments(root, '--verbose')).output).toContain(
+      'docs/contexts/demo/scenarios.feature.md',
+    )
   })
 
   it('rejects a Markdown file the closed set does not name', async () => {

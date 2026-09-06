@@ -30,7 +30,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -99,7 +99,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		CreatedAt:                time.Now().UTC(),
 	})
 
-	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash(metricsTestPassword)
 	if err != nil {
 		t.Fatalf("seed password: %v", err)

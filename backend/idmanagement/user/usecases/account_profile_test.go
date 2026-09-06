@@ -15,7 +15,7 @@ import (
 
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -25,7 +25,7 @@ func accountTestDeps(t *testing.T) (context.Context, userusecases.AccountProfile
 	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
 	adminDeps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, AttrSchemaRepo: schemaRepo,
-		PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
+		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit: func(spec.DomainEvent) error { return nil },
 	}
 	ctx := context.Background()

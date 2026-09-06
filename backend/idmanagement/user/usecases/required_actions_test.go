@@ -13,7 +13,7 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,7 +22,7 @@ func newRequiredActionFixture(t *testing.T) (context.Context, userusecases.Admin
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
-	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hasher := testing_passwords.NewHasher()
 	events := &[]spec.DomainEvent{}
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,

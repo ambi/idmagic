@@ -5,14 +5,18 @@ description: "Implement a chosen work item end to end: specification first, sepa
 
 # Implementing a work item
 
-1. Read only the work item, its direct normative-scenario and standard references, its TypeSpec symbols, the
-   canonical documents those references resolve to, and the smallest code and test slice involved.
+1. Begin from a working tree carrying no other work item's changes; one record is one commit, and a tree
+   holding two records cannot be split into two without reading the diff back. Then run
+   `mise run brief -- <work-item>` and read what it names: the work item, its direct normative-scenario and
+   standard references, its TypeSpec symbols, the canonical documents those references resolve to, and the
+   smallest code and test slice involved. Read nothing else until something you have read sends you there.
 2. Change the specification first with `spec-change`, and pass `mise run check-spec`.
 3. Resolve every open question that would change product behavior, the public contract, the selected design
    boundary, or the task breakdown. Move genuinely deferred choices to Out of Scope.
-4. Rewrite `initial_context` to what you actually read, set `evidence_policy: risk-based-v3`, and apply the
-   risk contract in `docs/development/specification-first-workflow.md`. For an applicable feature, bugfix, or
-   standards change, name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models;
+4. Rewrite `initial_context` to what you actually read — the brief's draft is a starting point, not the
+   answer, and `stop_before_reading` is always yours to decide — set `evidence_policy: risk-based-v3`, and
+   apply the risk contract in `docs/development/specification-first-workflow.md`. For an applicable feature,
+   bugfix, or standards change, name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models;
    otherwise name the intended Acceptance RED and Unit RED checks before you start.
 5. Set the status to `in_progress` and pass `mise run check-work-items` and `mise run check-ids`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
@@ -30,10 +34,16 @@ description: "Implement a chosen work item end to end: specification first, sepa
    `docs/development/specification-first-workflow.md`.
 8. When bounded contexts, structure, technology, runtime composition, or core design rules change, use
    `update-design`. Run the narrowest test recipe after each behavior and update its task as it completes.
+   Write that recipe into the task itself — `mise run test-go-package -- <package>`,
+   `mise run test-ui-unit-file -- <file>`, `mise run test-go-changed` — so that deciding what to re-run is
+   done once when the task is written rather than again on every red-green turn.
 9. Collect the risk-selected change-resistance evidence.
-10. Pass `mise run verify`. Complete every evidence field required by `WORK_ITEM_FORMAT.md`, reading the
-    completion summary out of `mise run spec-diff`. Set the status to `completed`, pass
+10. Pass `mise run verify`, and `mise run test-ui-e2e` as well when the change can reach the browser: the
+    standard suite no longer starts the stack, so a browser regression is otherwise left to CI. Complete
+    every evidence field required by `WORK_ITEM_FORMAT.md`, reading the completion summary out of
+    `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items` and `mise run check-ids`, and move the file to `work-items/done/`.
-11. Create a Conventional Commit with `commit`. Do not push until explicitly told to.
+11. Create a Conventional Commit with `commit`. Its body is the Completion Summary said in English, not a
+    description written back out of the diff. Do not push until explicitly told to.
 
 State the Out of Scope items and anything left undone in the final report.

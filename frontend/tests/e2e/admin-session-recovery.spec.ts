@@ -7,13 +7,12 @@
 //
 // サーバ再起動そのものは模さず、ブラウザ側に「もう検証できないトークン」を注入して
 // 401 を再現する (署名鍵が回転して過去トークンが無効化された状態と等価)。
-import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import {
   loginFromCurrentPage,
   metaPage,
+  POLL_INTERVAL_MS,
   navigateAndLogin,
-  startE2EEnvironment,
-  stopE2EEnvironment,
   uiOrigin,
   waitForLocationPath,
   waitForPage,
@@ -35,18 +34,10 @@ async function waitForAnyPage(
     } catch {
       // 遷移中は evaluate が失敗しうる。リトライする。
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for any of ${kinds.join(', ')}, last url=${view.url}`)
 }
-
-beforeAll(async () => {
-  await startE2EEnvironment()
-}, 180_000)
-
-afterAll(async () => {
-  await stopE2EEnvironment()
-}, 30_000)
 
 test('admin console recovers from a stale token and returns to the original page', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })

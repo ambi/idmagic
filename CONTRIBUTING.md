@@ -18,7 +18,7 @@
 
 ## 検証
 
-Pull Request を出す前に `mise run verify` を通してください。
+Pull Request を出す前に `mise run verify` を通してください。画面に届く変更なら `mise run test-ui-e2e` も実行してください (`mise run verify-full` は両方を走らせます)。
 
 **必須の検査の一覧をこの文書に複製しません。** 正本は [.github/workflows/idmagic-ci.yaml](.github/workflows/idmagic-ci.yaml) です。一覧を 2 か所に持つと、検査を足したときに必ず片方が古くなり、古いほうを読んだ人が「通したはずなのに落ちる」に出会います。
 

@@ -26,7 +26,7 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -79,7 +79,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 			UserRepo:     users,
 			Capture:      &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
 		},
-		PasswordHasher:      passwords_argon2id.NewArgon2idPasswordHasher(),
+		PasswordHasher:      testing_passwords.NewHasher(),
 		PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
 	}, userusecases.CreateUserInput{ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182", Now: now.Add(time.Minute)})
 	if err != nil {

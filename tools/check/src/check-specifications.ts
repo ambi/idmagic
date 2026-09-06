@@ -12,6 +12,12 @@ import {
 } from './normative-coverage.ts'
 import { validateDocument } from './specification-doc.ts'
 
+const args = process.argv.slice(2)
+// A passing document is listed only on request; the closing count says the
+// same thing in one line, and this check runs on every gate an agent reads.
+const verbose = args.includes('--verbose')
+const paths = args.filter((arg) => !arg.startsWith('--'))
+
 const seen = new Map<string, string>()
 const supersessions: Array<{ where: string; target: string }> = []
 const scenarios: DeclaredId[] = []
@@ -19,7 +25,7 @@ const examples: DeclaredId[] = []
 const standards: DeclaredId[] = []
 let failed = false
 
-for (const path of process.argv.slice(2)) {
+for (const path of paths) {
   const rel = relative(process.cwd(), path)
   // The file name carries the grammar, so validation needs the path as the
   // repository sees it rather than as it looks from the tools directory.
@@ -63,8 +69,9 @@ for (const path of process.argv.slice(2)) {
   for (const standard of result.standardIds) {
     standards.push({ id: standard.id, path: `${canonical}:${standard.line}` })
   }
-  console.log(`ok  ${rel} (${result.scenarioIds.length} normative scenario id(s))`)
+  if (verbose) console.log(`ok  ${rel} (${result.scenarioIds.length} normative scenario id(s))`)
 }
+if (!verbose) console.log(`ok  ${paths.length} canonical document(s)`)
 
 for (const supersession of supersessions) {
   if (!seen.has(supersession.target)) {

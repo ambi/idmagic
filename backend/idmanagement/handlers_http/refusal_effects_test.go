@@ -50,7 +50,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
@@ -218,7 +218,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		Tenancy: tenancy.Module{AttrSchemaRepo: usermemory.NewTenantUserAttributeSchemaRepository()},
 		Authentication: authentication.Module{
 			SessionStore: fixture.sessions, SessionManager: sessionManager, AuthnResolver: sessionManager,
-			PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+			PasswordHasher: testing_passwords.NewHasher(),
 		},
 		Notification:      sharednotification.Module{EmailSender: fixture.emails},
 		Jobs:              jobs.Module{Repo: fixture.jobClock},

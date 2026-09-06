@@ -18,7 +18,7 @@
 ├── infra/             # container, local runtime, and database schema assets
 ├── load/k6/           # tenant-local OAuth SLO smoke
 ├── mise.toml          # pinned development tools and repository task map
-├── tools/             # specification, boundary, compatibility, and rendering tools
+├── tools/             # specification, boundary, compatibility, rendering, and development-loop tools
 └── work-items/        # units of work, decision history, and completion records
 ```
 

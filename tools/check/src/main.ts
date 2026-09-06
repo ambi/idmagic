@@ -42,11 +42,12 @@ function resolvePath(p: string): string {
 function printUsage(): void {
   process.stdout.write(
     [
-      'Usage: check [--schema=<name>] <file-or-glob>...',
+      'Usage: check [--schema=<name>] [--verbose] <file-or-glob>...',
       '       check --list-schemas',
       '',
       'Without --schema, only YAML parse + raw-text lint runs.',
       'With --schema, the named JSON Schema is applied to every input file.',
+      'Passing files are counted, not listed; --verbose lists them.',
       `Available schemas: ${Object.keys(SCHEMAS).join(', ')}`,
       '',
     ].join('\n'),
@@ -345,7 +346,7 @@ if (import.meta.main) {
 
     const rel = relative(process.cwd(), path) || path
     if (findings.length === 0) {
-      console.log(`ok  ${rel}`)
+      if (opts.verbose) console.log(`ok  ${rel}`)
       if (warnings.length > 0) process.stdout.write(`${formatFindings(path, warnings)}\n`)
       continue
     }
@@ -358,5 +359,5 @@ if (import.meta.main) {
     console.error(`\n${failed} file(s) failed (out of ${targets.length}).`)
     process.exit(1)
   }
-  console.error(`\nAll ${targets.length} file(s) OK.`)
+  console.log(`ok  ${targets.length} file(s)`)
 }

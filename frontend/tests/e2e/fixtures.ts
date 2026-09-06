@@ -17,7 +17,9 @@ export const uiOrigin = `http://localhost:${uiPort}`
 export const apiHealth = `http://localhost:${apiPort}/health`
 export const callbackPort = 3000
 
-export const demo = {
+// 実行全体で 1 プロセスなので、この一式は全部の spec が共有する。書き換えると、
+// 書き換えた spec より後ろの spec だけが別の値を見ることになる。凍結して禁じる。
+export const demo = Object.freeze({
   // seedDemoClientID: external demo client は UUID 識別子を使う。
   clientId: '00000000-0000-4000-8000-000000000021',
   username: 'alice',
@@ -25,7 +27,7 @@ export const demo = {
   email: 'alice@example.com',
   redirectUri: 'http://localhost:3000/callback',
   scope: 'openid profile email offline_access',
-}
+})
 
 // /authorize は PKCE 必須 (routes_e2e_test.go と同条件)。本スモークは
 // 認可コードの token 交換まではせず callback URL の code / iss を見るだけなので、
@@ -60,6 +62,12 @@ type CapturedEmail = {
   text: string
 }
 
+// 待ち合わせの刻み。1 回の待ちにつき最大でこの時間だけ余計に待つので、待ちの回数だけ
+// 遅延として積み上がる。上限のタイムアウトは変えていない。
+export const POLL_INTERVAL_MS = 25
+// 起動待ちは HTTP 要求そのものが刻みになるため、画面のポーリングより粗くてよい。
+const BOOT_POLL_INTERVAL_MS = 100
+
 export async function isUp(url: string): Promise<boolean> {
   try {
     return (await fetch(url)).ok
@@ -74,12 +82,24 @@ export async function waitForUp(url: string, timeoutMs = 120_000): Promise<void>
     if (await isUp(url)) {
       return
     }
-    await Bun.sleep(500)
+    await Bun.sleep(BOOT_POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for ${url}`)
 }
 
 export async function startE2EEnvironment(): Promise<void> {
+  // 専用ポートが既に応答するなら、前の実行の後始末が済んでいない。API と Vite は無条件に
+  // spawn されるので、束縛に失敗しても waitForUp は古いサーバーに対して成功してしまう。
+  // 古いコードに対してテストが通る形になるより、ここで止まる方がよい。
+  for (const [name, url] of [
+    ['API', apiHealth],
+    ['Vite dev server', uiOrigin],
+  ] as const) {
+    if (await isUp(url)) {
+      throw new Error(`${url} already answers; stop the previous E2E ${name} before running again`)
+    }
+  }
+
   if (!(await isUp(`http://localhost:${callbackPort}/health`))) {
     try {
       callback = Bun.serve({ port: callbackPort, fetch: () => new Response('received') })
@@ -112,6 +132,15 @@ export async function startE2EEnvironment(): Promise<void> {
       WEBAUTHN_RP_DISPLAY_NAME: 'IdMagic E2E',
       SEED_PROFILE: 'test',
       SEED_ENVIRONMENT: 'test',
+      // 全 spec が 1 つのサーバーを共有するので、25 本のテストのサインインが 1 分間に
+      // 1 つのアドレスから集中する。既定の上限 (ログイン 20 回/分) はそこで働き、
+      // 画面は「Too many requests.」を出す。上限そのものの正しさは Go のテストが持ち、
+      // ブラウザー E2E が見ているのは配線であって速度制限ではない。
+      RATE_LIMIT_LOGIN_MAX_REQUESTS: '1000',
+      RATE_LIMIT_AUTHORIZE_MAX_REQUESTS: '1000',
+      RATE_LIMIT_TOKEN_MAX_REQUESTS: '1000',
+      RATE_LIMIT_PAR_MAX_REQUESTS: '1000',
+      RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS: '1000',
       // E2E UI は開発既定の5173ではなく5174を使うため、first-party portal の
       // canonical callback を明示する。
       SEED_FIRST_PARTY_REDIRECT_URIS: `${uiOrigin}/realms/default/callback`,
@@ -122,7 +151,9 @@ export async function startE2EEnvironment(): Promise<void> {
     stderr: 'ignore',
   })
 
-  viteServer = spawn(['bun', 'run', 'dev'], {
+  // `bun run dev` 越しではなく Vite を直に起動する。package script を挟むと停止時に殺すのが
+  // 中間プロセスだけになり、Vite が孫として残る。次の実行は残ったサーバーに当たる。
+  viteServer = spawn(['bun', './node_modules/vite/bin/vite.js'], {
     cwd: uiDir,
     env: {
       ...process.env,
@@ -143,6 +174,12 @@ export async function stopE2EEnvironment(): Promise<void> {
   )
   for (const server of servers) server.kill(9)
   await Promise.all(servers.map((server) => server.exited))
+  // ポートが空くまで待つ。終了した直後の一瞬はまだ束縛が残ることがあり、続けて起動する
+  // 実行がその束縛を「前の実行の残り」として拒否する。
+  const deadline = Date.now() + 5_000
+  while (Date.now() < deadline && ((await isUp(apiHealth)) || (await isUp(uiOrigin)))) {
+    await Bun.sleep(POLL_INTERVAL_MS)
+  }
   callback?.stop(true)
   mailSink?.close()
   goServer = undefined
@@ -257,7 +294,7 @@ export async function waitForEmailURL(
       const match = found.text.match(/https?:\/\/\S+/)
       if (match) return match[0]
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for email url: to=${to} path=${path}`)
 }
@@ -282,7 +319,7 @@ export async function waitForPage(
     } catch {
       // 遷移中は evaluate が失敗しうる。リトライする。
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   const body = await view.evaluate(`document.body.textContent?.slice(0, 500) ?? ''`).catch(() => '')
   throw new Error(`timeout waiting for page kind=${kind}, body=${body}, last url=${view.url}`)
@@ -298,7 +335,7 @@ export async function waitForUrl(
     if (pattern.test(view.url)) {
       return
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for url ${pattern}, last=${view.url}`)
 }
@@ -313,7 +350,7 @@ export async function waitForLocationPath(
     if ((await view.evaluate('window.location.pathname')) === expected) {
       return
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for location.pathname=${expected}`)
 }
@@ -331,7 +368,7 @@ export async function waitForLocationHref(
     if (pattern.test(href)) {
       return href
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for location.href matching ${pattern}`)
 }
@@ -367,7 +404,7 @@ export async function clickEnabledButtonByText(
       return true
     })()`)
     if (clicked === true) return
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`enabled button not found: ${text}`)
 }
@@ -417,7 +454,7 @@ export async function waitForText(
     if (await hasText(view, text)) {
       return
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for text: ${text}`)
 }
@@ -432,7 +469,7 @@ export async function waitForInputValue(
     const found = await view.evaluate(`(() => [...document.querySelectorAll('input, textarea')]
       .some((input) => input.value === ${JSON.stringify(value)}))()`)
     if (found === true) return
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for input value: ${value}`)
 }
@@ -467,7 +504,7 @@ export async function setInputValue(
     } catch {
       // クライアント側の画面遷移中は evaluate が破棄済みの文書に当たりうるため、描画完了まで再試行する。
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
 
   const body = await view.evaluate(`document.body.textContent?.slice(0, 500) ?? ''`).catch(() => '')
@@ -537,7 +574,7 @@ export async function selectDropdownOption(
       })()`),
     )
     if (opened) break
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   if (!opened) {
     throw new Error(`dropdown trigger not found: ${triggerText}`)
@@ -554,7 +591,7 @@ export async function selectDropdownOption(
       return true
     })()`)
     if (selected === true) return
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   const available =
     await view.evaluate(`(() => [...document.querySelectorAll('[role="option"], [role="menuitem"]')]
@@ -579,7 +616,7 @@ export async function clickMenuItemByText(view: Bun.WebView, text: string): Prom
       return true
     })()`)
     if (clicked === true) return
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`menu item not found: ${text}`)
 }
@@ -678,7 +715,7 @@ export async function waitForAnyText(
     for (const candidate of texts) {
       if (await hasText(view, candidate)) return
     }
-    await Bun.sleep(150)
+    await Bun.sleep(POLL_INTERVAL_MS)
   }
   throw new Error(`timeout waiting for text: ${texts.join(' / ')}`)
 }

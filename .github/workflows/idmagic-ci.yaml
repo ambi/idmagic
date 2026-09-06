@@ -50,6 +50,23 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
 
+  # ブラウザー E2E はローカルの標準ゲートから外してある (wi-497)。スタック起動を要求するのは
+  # このテストだけであり、静的検査と単体テストのたびに毎回払う費用ではない。後退検出はここが持つ。
+  ui-e2e:
+    name: Run the browser end-to-end tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          version: 2026.8.14
+      - name: Install dependencies
+        run: mise run setup
+      - name: Test UI (End-to-end)
+        run: mise run test-ui-e2e
+
   schema-convergence:
     name: Verify psqldef schema convergence
     runs-on: ubuntu-latest

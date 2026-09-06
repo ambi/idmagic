@@ -81,48 +81,121 @@ dir = "frontend"
 run = "bun install --frozen-lockfile"
 
 [tasks.verify]
-description = "Run the standard verification suite in parallel"
-depends = [
-  "check",
-  "check-api-compat",
-  "test-tools",
-  "typecheck-tools",
-  "lint-tools",
-  "lint-repo",
-  "lint-go",
-  "test-go-race",
-  "check-ui-dependencies",
-  "format-check-ui",
-  "lint-ui",
-  "typecheck-ui",
-  "test-ui-unit",
-  "test-ui-e2e",
-  "build-ui",
-]
+description = "Run the standard verification suite in parallel, reporting every gate that failed"
+# 集約ゲートは 1 回の実行で落ちたものを全部並べて終わる。最初の失敗で残りを打ち切ると、
+# 1 回の実行で受け取れる失敗が 1 種類だけになり、直しては数分かけて次を掘り出す往復になる。
+# `check` の構成要素をここに展開してあるのは、入れ子の `mise run` にすると依存グラフが
+# 分かれ、`compile-spec` が check の内側と check-api-compat の外側で二重に走って生成物を
+# 奪い合うからである。展開の重複は mise-config.test.ts が check との包含関係で縛る。
+run = '''
+mise run -c \
+  check-spec ::: \
+  check-work-items ::: \
+  check-ids ::: \
+  check-links ::: \
+  check-boundaries ::: \
+  check-command-map ::: \
+  check-agent-guidance ::: \
+  check-config-reference ::: \
+  check-route-reference ::: \
+  check-admin-scopes ::: \
+  check-contract-drift ::: \
+  check-status-drift ::: \
+  check-event-contract ::: \
+  check-security-controls ::: \
+  check-slo-references ::: \
+  check-vulnerability-suppressions ::: \
+  check-api-compat ::: \
+  test-tools ::: \
+  typecheck-tools ::: \
+  lint-tools ::: \
+  lint-repo ::: \
+  lint-go ::: \
+  test-go-race ::: \
+  check-ui-dependencies ::: \
+  format-check-ui ::: \
+  lint-ui ::: \
+  typecheck-ui ::: \
+  test-ui-unit ::: \
+  build-ui
+'''
+
+[tasks.verify-full]
+description = "Run the standard verification suite and the browser end-to-end tests"
+# ブラウザー統合だけが要求するスタック起動 (Go のビルド、API、Vite 開発サーバー、初期データ)
+# を、静的検査と単体テストのたびに毎回組み合わせる理由はない。通常のゲートからは外し、
+# ここと CI の独立した job が後退検出を持つ。
+run = "mise run -c verify ::: test-ui-e2e"
 
 [tasks.verify-serial]
-description = "Run the standard verification suite serially"
-run = [
-  "mise run check",
-  "mise run check-api-compat",
-  "mise run test-tools",
-  "mise run typecheck-tools",
-  "mise run lint-tools",
-  "mise run lint-repo",
-  "mise run lint-go",
-  "mise run test-go-race",
-  "mise run check-ui-dependencies",
-  "mise run format-check-ui",
-  "mise run lint-ui",
-  "mise run typecheck-ui",
-  "mise run test-ui-unit",
-  "mise run test-ui-e2e",
-  "mise run build-ui",
-]
+description = "Run the standard verification suite serially, reporting every gate that failed"
+# 逐次実行でも規律は同じで、落ちたものを全部並べて終わる。
+# 呼び出しは `mise run <task>` の形をそのまま書く。タスク名を変数に畳むと短くなるが、
+# 並列版と同じ一式を並べているかを機械的に読めなくなり、drift は人が気付くまで残る。
+run = '''
+#!/usr/bin/env sh
+set -u
+failed=""
+gate() {
+  # 走らせたタスク名は `gate mise run <task>` の 3 番目の引数である。
+  if ! "$@"; then
+    failed="$failed $3"
+  fi
+}
+gate mise run check
+gate mise run check-api-compat
+gate mise run test-tools
+gate mise run typecheck-tools
+gate mise run lint-tools
+gate mise run lint-repo
+gate mise run lint-go
+gate mise run test-go-race
+gate mise run check-ui-dependencies
+gate mise run format-check-ui
+gate mise run lint-ui
+gate mise run typecheck-ui
+gate mise run test-ui-unit
+gate mise run build-ui
+
+if [ -n "$failed" ]; then
+  echo "failed:$failed" >&2
+  exit 1
+fi
+'''
+
+[tasks.time-verify]
+description = "Time every gate of a verification suite serially"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run task-timing/src/main.ts "${1:-verify}"
+'''
 
 [tasks.verify-spec]
-description = "Validate specifications and embedded tooling"
-depends = ["check", "test-tools", "typecheck-tools", "lint-tools"]
+description = "Validate specifications and embedded tooling, reporting every gate that failed"
+run = '''
+mise run -c \
+  check-spec ::: \
+  check-work-items ::: \
+  check-ids ::: \
+  check-links ::: \
+  check-boundaries ::: \
+  check-command-map ::: \
+  check-agent-guidance ::: \
+  check-config-reference ::: \
+  check-route-reference ::: \
+  check-admin-scopes ::: \
+  check-contract-drift ::: \
+  check-status-drift ::: \
+  check-event-contract ::: \
+  check-security-controls ::: \
+  check-slo-references ::: \
+  check-vulnerability-suppressions ::: \
+  test-tools ::: \
+  typecheck-tools ::: \
+  lint-tools
+'''
 
 [tasks.test-tools]
 description = "Run embedded repository tooling tests"
@@ -233,6 +306,11 @@ run = "golangci-lint run ./..."
 description = "Run Go lint and apply the fixes it can make"
 run = "golangci-lint run --fix ./..."
 
+[tasks.clean-go-test-cache]
+description = "Clear the Go test result cache"
+# 前後比較のための計測は、キャッシュから返った項目を含めると意味を失う。
+run = "go clean -testcache"
+
 [tasks.clean-lint-cache]
 description = "Clear the golangci-lint cache"
 run = "golangci-lint cache clean"
@@ -246,12 +324,30 @@ description = "Run Go tests"
 run = "go test ./..."
 
 [tasks.test-go-package]
-description = "Run Go tests for one package"
+description = "Run race-enabled Go tests for one package"
+# 最後のゲート (test-go-race) と同じビルド構成にする。Go のテストキャッシュ項目は -race の
+# 有無で共有されないので、狭い段を -race なしで回すと、その結果は最後のゲートに 1 件も
+# 引き継がれない。1 パッケージなら -race でも数秒であり、そのぶん最後が短くなる。
 run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run test-go-package -- <package>" >&2; exit 2; }
-go test "$1"
+go test -race "$1"
+'''
+
+[tasks.test-go-changed]
+description = "Run race-enabled Go tests for the changed packages and their reverse dependencies"
+# どこが関係するかを見極めるより回してしまった方が楽、という判断は正しい。だから見極めを
+# 人ではなく go list の依存グラフにやらせる。省いた分は最後のゲートが拾う。
+run = '''
+#!/usr/bin/env sh
+set -eu
+packages=$(bun run tools/changed-packages/src/main.ts "$@")
+if [ -z "$packages" ]; then
+  echo "no changed Go packages" >&2
+  exit 0
+fi
+echo "$packages" | tr '\n' ' ' | xargs go test -race
 '''
 
 [tasks.test-go-test]
@@ -484,24 +580,25 @@ fi
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
-depends = [
-  "check-spec",
-  "check-work-items",
-  "check-ids",
-  "check-links",
-  "check-boundaries",
-  "check-command-map",
-  "check-agent-guidance",
-  "check-config-reference",
-  "check-route-reference",
-  "check-admin-scopes",
-  "check-contract-drift",
-  "check-status-drift",
-  "check-event-contract",
-  "check-security-controls",
-  "check-slo-references",
-  "check-vulnerability-suppressions",
-]
+run = '''
+mise run -c \
+  check-spec ::: \
+  check-work-items ::: \
+  check-ids ::: \
+  check-links ::: \
+  check-boundaries ::: \
+  check-command-map ::: \
+  check-agent-guidance ::: \
+  check-config-reference ::: \
+  check-route-reference ::: \
+  check-admin-scopes ::: \
+  check-contract-drift ::: \
+  check-status-drift ::: \
+  check-event-contract ::: \
+  check-security-controls ::: \
+  check-slo-references ::: \
+  check-vulnerability-suppressions
+'''
 
 [tasks.check-links]
 description = "Check repository-local Markdown links and anchors"
@@ -573,7 +670,12 @@ run = [
 [tasks.check-work-items]
 description = "Validate work-item records"
 dir = "tools"
-run = "bun run workspace/src/check-workspace.ts --work-items"
+# 成功した対象の列挙は既定では出さない。全件を見たいときは `-- --verbose` を渡す。
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run workspace/src/check-workspace.ts --work-items "$@"
+'''
 
 [tasks.check-ids]
 description = "Detect duplicate or mismatched change-record IDs"
@@ -613,6 +715,18 @@ run = [
   "mise run spec-render",
   "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json",
 ]
+
+[tasks.brief]
+description = "Show what one work item should be read from"
+# 規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する
+# work item まで一度にたどる。任意の語を探す spec-where とは入力も出力も別なので分けてある。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run brief -- <work-item>" >&2; exit 2; }
+bun run brief/src/main.ts "$1"
+'''
 
 [tasks.spec-where]
 description = "Locate a term across specification, code, and work items"

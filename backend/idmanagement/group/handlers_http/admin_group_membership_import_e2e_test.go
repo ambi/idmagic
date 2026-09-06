@@ -28,7 +28,7 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	passwordsargon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -114,7 +114,7 @@ func newMembershipImportHarness(t *testing.T, membershipType groupdomain.GroupMe
 		Issuer: "http://idp.test",
 		Authentication: authentication.Module{
 			AuthnResolver:  authusecases.DemoHeaderResolver{},
-			PasswordHasher: passwordsargon2id.NewArgon2idPasswordHasher(),
+			PasswordHasher: testing_passwords.NewHasher(),
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo: users, GroupRepo: groups, CSVArtifacts: artifacts,

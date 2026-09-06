@@ -84,4 +84,4 @@ if (findings.length > 0) {
   console.error(`\n${findings.length} id problem(s) found across ${refs.length} record(s).`)
   process.exit(1)
 }
-console.error(`All ${refs.length} record id(s) OK.`)
+console.log(`ok  ${refs.length} record id(s)`)

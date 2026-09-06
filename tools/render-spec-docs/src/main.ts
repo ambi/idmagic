@@ -3,10 +3,11 @@
 import { compile, formatDiagnostic, NodeHost } from '@typespec/compiler'
 import { Window } from 'happy-dom'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { basename, dirname, relative, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
-import { renderSpecificationSite, type ScenarioTrace, type SourceDocument } from './render.ts'
+import { renderSpecificationSite, type SourceDocument } from './render.ts'
+import { collectTraces } from './traces.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
 const root = resolve(import.meta.dir, '../../..')
@@ -59,64 +60,7 @@ for (const path of paths) {
 }
 const openapi = JSON.parse(await readFile(openapiPath, 'utf8'))
 
-/**
- * Collect what names a scenario outside the specification. The search runs over
- * the working tree rather than an authored index, so the traceability view can
- * never drift from what the repository actually says.
- */
-const SCENARIO_IDENTIFIER = /(?:REQ-[A-Z0-9]+-[0-9]+|EX-[A-Z0-9]+-[0-9]+-[0-9]+)/g
-const TEST_FILE = /(?:_test\.go|\.(?:test|spec)\.tsx?)$/
-const SKIPPED_DIRECTORIES = new Set([
-  '.git',
-  'node_modules',
-  'vendor',
-  'dist',
-  'build',
-  'generated',
-  'coverage',
-])
-const TEXT_EXTENSIONS = /\.(?:go|ts|tsx|js|jsx|sql|sh|py|rb|java|kt|rs|md|yaml|yml|json|tsp|toml)$/
-
-async function collectTraces(): Promise<ScenarioTrace[]> {
-  const sources = new Map<string, Set<string>>()
-  const workItems = new Map<string, Set<string>>()
-  const debtSource = JSON.parse(
-    await readFile(resolve(root, 'tools/check/example-coverage-debt.json'), 'utf8'),
-  ) as { untested: Array<{ id: string; reason: string }> }
-  const debt = new Map(debtSource.untested.map((entry) => [entry.id, entry.reason]))
-  const walk = async (directory: string): Promise<void> => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      if (entry.name.startsWith('.') || SKIPPED_DIRECTORIES.has(entry.name)) continue
-      const absolute = resolve(directory, entry.name)
-      const path = relative(root, absolute)
-      if (entry.isDirectory()) {
-        await walk(absolute)
-        continue
-      }
-      // The specification declares the scenarios; only what points at them counts.
-      if (path.startsWith('docs/') || path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path))
-        continue
-      if (path === 'tools/check/example-coverage-debt.json') continue
-      const target = path.startsWith('work-items/') ? workItems : sources
-      for (const match of (await readFile(absolute, 'utf8')).matchAll(SCENARIO_IDENTIFIER)) {
-        if (match[0].startsWith('EX-') && target === sources && !TEST_FILE.test(path)) continue
-        const paths = target.get(match[0]) ?? new Set<string>()
-        paths.add(path)
-        target.set(match[0], paths)
-      }
-    }
-  }
-  await walk(root)
-  const ids = new Set([...sources.keys(), ...workItems.keys(), ...debt.keys()])
-  return [...ids].map((id) => ({
-    id,
-    sources: [...(sources.get(id) ?? [])].sort(),
-    workItems: [...(workItems.get(id) ?? [])].sort(),
-    debt: debt.get(id),
-  }))
-}
-
-const traces = await collectTraces()
+const traces = await collectTraces(root)
 
 const program = await compile(NodeHost, typespecPath, { noEmit: true })
 if (program.hasError()) {

@@ -25,6 +25,7 @@ import {
   verifyPrimaryUseCaseEvidence,
 } from '../../check/src/primary-use-case-evidence.ts'
 import { diffSpecifications, diffWorkspaceSpecifications } from '../../check/src/spec-diff.ts'
+import { parseMiseTasks, taskClosure } from '../../check/src/verification-tasks.ts'
 import {
   discoverGeneratedOpenApi,
   discoverOpenApiBaseline,
@@ -36,13 +37,16 @@ import {
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
-  process.stdout.write('Usage: check-workspace [--work-items] [--ids] [--documents]\n')
+  process.stdout.write('Usage: check-workspace [--work-items] [--ids] [--documents] [--verbose]\n')
   process.exit(0)
 }
-const valid = new Set(['--work-items', '--ids', '--documents'])
+const valid = new Set(['--work-items', '--ids', '--documents', '--verbose'])
 for (const arg of args) {
   if (!valid.has(arg)) throw new Error(`unknown option ${arg}`)
 }
+// 成功した対象の列挙だけを削る。要約と失敗は既定でも出す。
+const verbose = args.delete('--verbose')
+const forwarded = verbose ? ['--verbose'] : []
 const all = args.size === 0
 const config = await loadWorkspaceConfig()
 
@@ -81,25 +85,12 @@ function collectStrings(value: unknown, strings: string[]): void {
   }
 }
 
-/** 標準 verify の依存グラフと CI が直接呼ぶ mise タスクを返す。 */
+/** 標準 verify から到達するタスクと、CI が直接呼ぶ mise タスクを返す。 */
 async function requiredVerificationTasks(): Promise<ReadonlySet<string>> {
   const required = new Set<string>()
   try {
     const source = await readFile(rootPath('mise.toml'), 'utf8')
-    const config = Bun.TOML.parse(source) as {
-      tasks?: Record<string, { depends?: unknown }>
-    }
-    const tasks = config.tasks ?? {}
-    const visit = (name: string): void => {
-      if (required.has(name)) return
-      required.add(name)
-      const dependencies = tasks[name]?.depends
-      if (!Array.isArray(dependencies)) return
-      for (const dependency of dependencies) {
-        if (typeof dependency === 'string') visit(dependency)
-      }
-    }
-    visit('verify')
+    for (const task of taskClosure(parseMiseTasks(source), 'verify')) required.add(task)
   } catch {
     // 最小 fixture に mise.toml が無い場合、標準タスクは空集合でよい。
   }
@@ -201,7 +192,7 @@ async function documentationImpactEnvironment(): Promise<DocumentationImpactEnvi
 
 if ((all || args.has('--work-items')) && config.workItems) {
   const files = await workItemFiles(rootPath(config.workItems))
-  await runTool(['check/src/main.ts', '--schema=work-item', ...files])
+  await runTool(['check/src/main.ts', '--schema=work-item', ...forwarded, ...files])
   const records: WorkItemDependencyRecord[] = []
   const primaryUseCaseEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,
@@ -269,7 +260,11 @@ if (all || args.has('--documents')) {
     process.exit(1)
   }
   if (config.documents.length > 0) {
-    await runTool(['check/src/check-specifications.ts', ...config.documents.map(rootPath)])
+    await runTool([
+      'check/src/check-specifications.ts',
+      ...forwarded,
+      ...config.documents.map(rootPath),
+    ])
   }
 }
 

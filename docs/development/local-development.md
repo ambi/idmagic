@@ -50,7 +50,26 @@ mise run verify
 
 Go の版情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発版の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
 
-変更中は全体検証を繰り返さず、[検証のはしご](specification-first-workflow.md#5-verification-ladder) に従って、変更したものについて失敗しうる最も狭い `mise` タスクから実行する。
+変更中は全体検証を繰り返さず、[検証のはしご](specification-first-workflow.md#5-verification-ladder) に従って、変更したものについて失敗しうる最も狭い `mise` タスクから実行する。変更が 1 パッケージを越えたら `mise run test-go-changed` が、作業ツリーで変わったパッケージとその逆依存だけを最後のゲートと同じ構成で実行する。
+
+`verify` はブラウザー E2E を含まない。起動に Go のビルド、API サーバー、開発サーバー、初期データの投入を要するのはこのテストだけで、その費用を静的検査と単体テストのたびに払う理由がないからである。画面に届く変更を仕上げるときは次を実行する。CI にも独立した job がある。
+
+```bash
+mise run test-ui-e2e
+mise run verify-full
+```
+
+`verify`、`verify-spec`、`check` は最初の失敗で打ち切らず、落ちたゲートを全部並べて終わる。1 回の実行で受け取った一覧をまとめて直せる。ゲートごとの所要時間は次で測る。前後で 2 回実行した表を並べれば、速くなったかどうかを体感ではなく実測で言える。
+
+```bash
+mise run time-verify
+```
+
+work item に着手するときは、読むべきものを次で出す。規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する work item までをたどり、`initial_context` の下書きを出力する。
+
+```bash
+mise run brief -- wi-123
+```
 
 ## 生成の関係
 

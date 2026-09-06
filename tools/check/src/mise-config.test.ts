@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { resolve } from 'node:path'
+import { directTasks, parseMiseTasks } from './verification-tasks.ts'
 
 type MiseConfig = {
   tools?: Record<string, unknown>
@@ -13,6 +14,9 @@ const { packageManager } = (await Bun.file(resolve(root, 'frontend/package.json'
   packageManager?: string
 }
 const dockerfile = await Bun.file(resolve(root, 'frontend/Dockerfile')).text()
+const miseToml = await Bun.file(resolve(root, 'mise.toml')).text()
+const tasks = parseMiseTasks(miseToml)
+const members = (name: string) => directTasks(tasks, name)
 
 describe('mise operational tool boundary', () => {
   it('does not provision PostgreSQL client tools', () => {
@@ -35,7 +39,7 @@ describe('mise generated OpenAPI dependencies', () => {
 describe('mise agent-guidance boundary', () => {
   it('runs repository-local guidance checks from the standard check suite', () => {
     expect(config.tasks?.['check-agent-guidance']?.run).toBeDefined()
-    expect(config.tasks?.check?.depends).toContain('check-agent-guidance')
+    expect(members('check')).toContain('check-agent-guidance')
   })
 })
 
@@ -78,7 +82,7 @@ describe('mise dependency audit boundary', () => {
 
   it('runs the suppression checker from the standard check suite', () => {
     expect(config.tasks?.['check-vulnerability-suppressions']?.run).toBeDefined()
-    expect(config.tasks?.check?.depends).toContain('check-vulnerability-suppressions')
+    expect(members('check')).toContain('check-vulnerability-suppressions')
   })
 
   /**
@@ -86,19 +90,17 @@ describe('mise dependency audit boundary', () => {
    * verify と verify-serial は同じ一式を別の書き方で持つので、両方を見る。
    */
   it('keeps the network-dependent scans out of both offline verification suites', () => {
-    const suite = [
-      ...(config.tasks?.verify?.depends ?? []),
-      ...[config.tasks?.['verify-serial']?.run ?? []].flat().map(String),
-    ].join('\n')
-    expect(suite).not.toContain('audit-dependencies')
-    expect(suite).not.toContain('audit-go-reachability')
+    for (const suite of ['verify', 'verify-serial']) {
+      expect(members(suite)).not.toContain('audit-dependencies')
+      expect(members(suite)).not.toContain('audit-go-reachability')
+    }
   })
 })
 
 describe('mise Markdown link boundary', () => {
   it('runs the Markdown link checker from the standard check suite', () => {
     expect(config.tasks?.['check-links']?.run).toBeDefined()
-    expect(config.tasks?.check?.depends).toContain('check-links')
+    expect(members('check')).toContain('check-links')
   })
 })
 
@@ -128,10 +130,7 @@ describe('mise UI verification boundary', () => {
    * `verify-ui` は UI だけを触るときの入口で、`verify` はリポジトリ全体の入口である。
    * 片方にしか無い検査は、その入口を使った人にだけ通ったように見える。
    */
-  const verifySuite = [
-    ...(config.tasks?.verify?.depends ?? []),
-    ...[config.tasks?.['verify-serial']?.run ?? []].flat().map(String),
-  ].join('\n')
+  const verifySuite = [...members('verify'), ...members('verify-serial')]
 
   it('checks dependency declarations and types from the UI entry point', () => {
     expect(config.tasks?.['check-ui-dependencies']?.run).toBeDefined()
@@ -145,7 +144,53 @@ describe('mise UI verification boundary', () => {
     }
   })
 
+  it('names a UI check the parallel suite has that the serial one lacks', () => {
+    expect(members('verify')).toContain('build-ui')
+    expect(members('verify-serial')).toContain('build-ui')
+  })
+
   it('adds shadcn components with the version pinned in devDependencies', () => {
     expect(String(config.tasks?.['add-ui-component']?.run ?? '')).toContain('bun run add:component')
+  })
+})
+
+describe('mise aggregate gate reporting', () => {
+  /**
+   * A gate that stops at the first failure hands back one failure per run, and
+   * the next one costs another full run to find. The aggregates therefore run
+   * their members with `mise run -c`, which reports every member that failed.
+   */
+  it('runs every aggregate gate with continue-on-error', () => {
+    for (const name of ['check', 'verify', 'verify-spec']) {
+      expect(String(config.tasks?.[name]?.run ?? '')).toContain('mise run -c')
+    }
+  })
+
+  /**
+   * `verify` and `verify-spec` expand the members of `check` instead of
+   * invoking it, so that one dependency graph resolves `compile-spec` once
+   * rather than letting two graphs rewrite the generated OpenAPI underneath
+   * each other. The expansion is duplication, and duplication drifts; the
+   * containment is what makes the drift fail here instead of going unnoticed.
+   */
+  it('expands every member of check into the wider suites', () => {
+    for (const suite of ['verify', 'verify-spec']) {
+      for (const task of members('check')) expect(members(suite)).toContain(task)
+    }
+  })
+
+  it('runs the same set of gates in the parallel and serial suites', () => {
+    const parallel = members('verify')
+    // The serial suite still invokes `check` as one gate; the parallel suite
+    // expands it, so the comparison expands it on this side too.
+    const serial = members('verify-serial').flatMap((task) =>
+      task === 'check' ? members(task) : [task],
+    )
+    expect([...new Set(parallel)].sort()).toEqual([...new Set(serial)].sort())
+  })
+
+  /** The timing table walks the same membership the suite runs. */
+  it('times a suite whose membership can be read from the command map', () => {
+    expect(members('verify').length).toBeGreaterThan(1)
   })
 })

@@ -14,7 +14,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -24,7 +24,7 @@ func attrTestDeps(t *testing.T) (context.Context, userusecases.AdminUserDeps, *u
 	deps := userusecases.AdminUserDeps{
 		UserRepo:            usermemory.NewUserRepository(),
 		AttrSchemaRepo:      schemaRepo,
-		PasswordHasher:      passwords_argon2id.NewArgon2idPasswordHasher(),
+		PasswordHasher:      testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit:                func(spec.DomainEvent) error { return nil },
 	}
