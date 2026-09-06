@@ -8,15 +8,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // TestBuildAndSignSecurityEventToken — RED: RFC 8417 の claims (iss/jti/iat/aud/
 // events) を組み立て、SigningKeys の既存鍵で PS256 署名した compact JWT を返す
 // (決定3/7、既存の JWT 署名鍵管理を再利用する)。
+//
+// RFC8417-SET-SIGNED: 発行した SET が jti/iat/iss/aud/events の 5 つを実際に載せて
+// おり、かつその署名がテナントの公開鍵で検証を通ることを固定する。claim の有無だけを
+// 見ると、署名の付いていない 3 分割文字列でも通ってしまう。
 func TestBuildAndSignSecurityEventToken(t *testing.T) {
 	ctx := context.Background()
 	keyStore, err := signingmemory.NewInMemoryKeyStore()
@@ -65,6 +72,10 @@ func TestBuildAndSignSecurityEventToken(t *testing.T) {
 	if payload["jti"] != set.JTI {
 		t.Fatalf("payload jti mismatch: %+v", payload)
 	}
+	iat, ok := payload["iat"].(float64)
+	if !ok || int64(iat) != set.IssuedAt.Unix() {
+		t.Fatalf("expected an iat claim equal to the SET's IssuedAt, got %+v", payload["iat"])
+	}
 	events, ok := payload["events"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected an events claim map, got %T: %+v", payload["events"], payload)
@@ -79,6 +90,19 @@ func TestBuildAndSignSecurityEventToken(t *testing.T) {
 	subject, ok := eventClaims["subject"].(map[string]any)
 	if !ok || subject["principal_id"] != "agent_1" {
 		t.Fatalf("expected subject.principal_id=agent_1, got %+v", eventClaims)
+	}
+
+	// 署名そのものを、受信側が使うのと同じ検証器に通す。テナントの公開鍵で検証を
+	// 通ることが「署名済み」の観測であり、3 分割の形だけでは代わりにならない。
+	key, err := keyStore.GetActiveKey(tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: "tenant-a"}, "", ""))
+	if err != nil {
+		t.Fatalf("GetActiveKey: %v", err)
+	}
+	if _, err := tokens_jose.VerifySecurityEventToken(
+		set.Compact, []map[string]any{key.PublicJWK},
+		"https://idp.example/tenant-a", []string{"https://receiver.example/stream"},
+	); err != nil {
+		t.Fatalf("the issued SET does not verify against the tenant's public key: %v", err)
 	}
 }
 

@@ -87,6 +87,20 @@ func seedReceiveStream(t *testing.T, d receiveTestDeps, status ssdomain.SsfStrea
 	}
 }
 
+// seedReceiveAgent は受信ストリームのテナントに Agent を 1 体置く。拒否のテストが
+// 「失効エポックが進んでいない」ことを観測するには、進みうる相手が居る必要がある。
+func seedReceiveAgent(t *testing.T, d receiveTestDeps, agentID string) {
+	t.Helper()
+	now := time.Now().UTC()
+	if err := d.agentRepo.Save(context.Background(), &agentmodel.Agent{
+		ID: agentID, TenantID: receiveTestTenantID, Name: agentID,
+		Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "owner_1", Status: idmdomain.AgentStatusActive,
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("seed agent: %v", err)
+	}
+}
+
 func receiveTestCtx() context.Context {
 	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: receiveTestTenantID}, "", "")
 }
@@ -112,22 +126,50 @@ func TestReceiveSecurityEvent_RejectsDisabledOrMissingStream(t *testing.T) {
 // TestReceiveSecurityEvent_RejectsOnVerificationFailure — RED: 署名/iss/aud 検証
 // 失敗は ErrSecurityEventRejected を返し、対応する VerificationResult で
 // ReceivedSecurityEvent を記録し SecurityEventRejected を emit する。
+//
+// RFC8417-SET-VERIFY: 検証を通らなかった SET が「反映されない」ことを固定する。
+// 拒否の戻り値と監査だけを見ると、失効エポックを進めてから拒否を返す実装も通って
+// しまうので、エポックが進んでいないことと accepted の受信記録が残っていないことを
+// 併せて観測する。検証器そのものの拒否条件は tokens_jose 側の
+// TestVerifySecurityEventToken が持つ。
 func TestReceiveSecurityEvent_RejectsOnVerificationFailure(t *testing.T) {
-	verifier := &fakeVerifier{err: ssports.ErrSecurityEventIssuerMismatch}
-	d := newReceiveTestDeps(t, verifier)
-	ctx := receiveTestCtx()
-	now := time.Now().UTC()
-	seedReceiveStream(t, d, ssdomain.SsfStreamStatusEnabled)
+	failures := []struct {
+		name  string
+		err   error
+		state ssdomain.SecurityEventVerificationResult
+	}{
+		{"issuer mismatch", ssports.ErrSecurityEventIssuerMismatch, ssdomain.SecurityEventVerificationRejectedUnknownIssuer},
+		{"signature invalid", ssports.ErrSecurityEventSignatureInvalid, ssdomain.SecurityEventVerificationRejectedSignature},
+		{"audience mismatch", ssports.ErrSecurityEventAudienceMismatch, ssdomain.SecurityEventVerificationRejectedAudience},
+	}
+	for _, failure := range failures {
+		t.Run(failure.name, func(t *testing.T) {
+			verifier := &fakeVerifier{err: failure.err}
+			d := newReceiveTestDeps(t, verifier)
+			ctx := receiveTestCtx()
+			now := time.Now().UTC()
+			seedReceiveStream(t, d, ssdomain.SsfStreamStatusEnabled)
+			seedReceiveAgent(t, d, "agent_1")
 
-	if err := ssusecases.ReceiveSecurityEvent(ctx, d.deps, receiveTestStreamID, "bad-token", now); !errors.Is(err, ssusecases.ErrSecurityEventRejected) {
-		t.Fatalf("expected ErrSecurityEventRejected, got %v", err)
-	}
-	if len(*d.events) != 1 {
-		t.Fatalf("expected exactly one emitted event, got %+v", *d.events)
-	}
-	rejected, ok := (*d.events)[0].(*ssdomain.SecurityEventRejected)
-	if !ok || rejected.VerificationResult != ssdomain.SecurityEventVerificationRejectedUnknownIssuer {
-		t.Fatalf("expected SecurityEventRejected(rejected_unknown_issuer), got %+v", (*d.events)[0])
+			if err := ssusecases.ReceiveSecurityEvent(ctx, d.deps, receiveTestStreamID, "bad-token", now); !errors.Is(err, ssusecases.ErrSecurityEventRejected) {
+				t.Fatalf("expected ErrSecurityEventRejected, got %v", err)
+			}
+			if len(*d.events) != 1 {
+				t.Fatalf("expected exactly one emitted event, got %+v", *d.events)
+			}
+			rejected, ok := (*d.events)[0].(*ssdomain.SecurityEventRejected)
+			if !ok || rejected.VerificationResult != failure.state {
+				t.Fatalf("expected SecurityEventRejected(%s), got %+v", failure.state, (*d.events)[0])
+			}
+
+			epoch, err := d.epochRepo.FindByAgent(context.Background(), receiveTestTenantID, "agent_1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if epoch != nil {
+				t.Fatalf("an unverified SET advanced the revocation epoch: %+v", epoch)
+			}
+		})
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
@@ -29,6 +28,14 @@ func subjectIdentifierEvent(jti string, subjectID map[string]any) *ssports.Verif
 // Subject Identifier (`iss_sub` / `opaque`) で送った SET でも主体を解決する。
 // テナントは受信ストリームが属するテナントで決まり、識別子は Agent の識別子か、
 // Agent に束縛済みの OAuth2Client の識別子として解決する。
+//
+// RFC9493-SUBID-FORMAT: 種別を決めるのが `format` の値だけであることを固定する。
+// 解釈する `iss_sub` と `opaque` が主体を解決すること、解釈しない `format` は
+// 解決できる識別子を同じ Subject Identifier の中に持っていても拒否されること、
+// そして拒否が失効エポックを進めないことを併せて観測する。
+// RFC9493-SUBID-ISS-SUB: `format=iss_sub` の `iss` が受信ストリームの
+// `trusted_issuer` と完全一致しない場合、SET 自体の検証を通っていても主体を解決
+// せず、失効エポックを進めないことを固定する。
 func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 	const agentID = "agent_1"
 	const boundClientID = "client_1"
@@ -38,13 +45,7 @@ func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 		d := newReceiveTestDeps(t, &fakeVerifier{result: verified})
 		seedReceiveStream(t, d, ssdomain.SsfStreamStatusEnabled)
 		now := time.Now().UTC()
-		if err := d.agentRepo.Save(context.Background(), &agentmodel.Agent{
-			ID: agentID, TenantID: receiveTestTenantID, Name: agentID,
-			Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "owner_1", Status: idmdomain.AgentStatusActive,
-			CreatedAt: now, UpdatedAt: now,
-		}); err != nil {
-			t.Fatalf("seed agent: %v", err)
-		}
+		seedReceiveAgent(t, d, agentID)
 		if _, err := d.agentRepo.AddBinding(context.Background(), &agentmodel.AgentCredentialBinding{
 			AgentID: agentID, ClientID: boundClientID, CreatedAt: now,
 		}); err != nil {
@@ -115,6 +116,12 @@ func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 		{
 			name:      "a format idmagic does not interpret",
 			subjectID: map[string]any{"format": "email", "email": "owner@example.com"},
+		},
+		{
+			// 解決可能な `id` を同居させても、`format` が解釈対象でなければ拒否する。
+			// メンバーの有無で種別を当てにいく実装なら、ここで主体が解決してしまう。
+			name:      "an uninterpreted format carrying a resolvable identifier anyway",
+			subjectID: map[string]any{"format": "email", "email": "owner@example.com", "id": agentID, "sub": agentID},
 		},
 		{
 			name:      "an identifier matching no agent and no bound client",

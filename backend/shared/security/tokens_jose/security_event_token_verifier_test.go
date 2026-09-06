@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -41,6 +42,10 @@ func signSecurityEventToken(t *testing.T, key *rsa.PrivateKey, alg, iss, aud, jt
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
+// RFC8417-SET-VERIFY: 検証を通過した SET だけが claims を返すこと、および署名の
+// 偽造、鍵の入れ替え、署名後の改ざんがいずれも fail-closed で拒否されることを固定
+// する。「反映しない」側の効果は usecases 側の
+// TestReceiveSecurityEvent_RejectsOnVerificationFailure が持つ。
 func TestVerifySecurityEventToken(t *testing.T) {
 	const (
 		issuer   = "https://transmitter.example"
@@ -85,6 +90,45 @@ func TestVerifySecurityEventToken(t *testing.T) {
 		}
 		token := signSecurityEventToken(t, attacker, "RS256", issuer, audience, "jti-3", now, events)
 		if _, err := VerifySecurityEventToken(token, jwks, issuer, []string{audience}); !errors.Is(err, ErrSecurityEventTokenInvalidSignature) {
+			t.Fatalf("err = %v, want ErrSecurityEventTokenInvalidSignature", err)
+		}
+	})
+
+	t.Run("rejects a kid the JWKS does not hold", func(t *testing.T) {
+		other, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		otherJWK := rsaPublicJWK(&other.PublicKey)
+		otherJWK["kid"] = "rotated-away"
+		token := signSecurityEventToken(t, key, "RS256", issuer, audience, "jti-unknown-key", now, events)
+		if _, err := VerifySecurityEventToken(token, []map[string]any{otherJWK}, issuer, []string{audience}); !errors.Is(err, ErrSecurityEventTokenInvalidSignature) {
+			t.Fatalf("err = %v, want ErrSecurityEventTokenInvalidSignature", err)
+		}
+	})
+
+	t.Run("rejects a payload tampered with after signing", func(t *testing.T) {
+		token := signSecurityEventToken(t, key, "RS256", issuer, audience, "jti-tampered", now, events)
+		parts := strings.Split(token, ".")
+		var payload map[string]any
+		raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			t.Fatal(err)
+		}
+		payload["events"] = map[string]any{
+			"https://schemas.openid.net/secevent/caep/event-type/session-revoked": map[string]any{
+				"subject": map[string]any{"subject_type": "Agent", "principal_id": "someone-else"},
+			},
+		}
+		swapped, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parts[1] = base64.RawURLEncoding.EncodeToString(swapped)
+		if _, err := VerifySecurityEventToken(strings.Join(parts, "."), jwks, issuer, []string{audience}); !errors.Is(err, ErrSecurityEventTokenInvalidSignature) {
 			t.Fatalf("err = %v, want ErrSecurityEventTokenInvalidSignature", err)
 		}
 	})

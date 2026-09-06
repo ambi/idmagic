@@ -319,14 +319,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC8417-SET-SIGNED",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8417-SET-VERIFY",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC8628-DEVICE-AUTHORIZATION",
       "reason": "present when the check was introduced"
     },
@@ -420,14 +412,6 @@
     },
     {
       "id": "RFC9449-PROOF",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9493-SUBID-FORMAT",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9493-SUBID-ISS-SUB",
       "reason": "present when the check was introduced"
     },
     {

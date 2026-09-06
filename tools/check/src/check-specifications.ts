@@ -145,6 +145,7 @@ async function readDebtBaseline(path: string): Promise<Set<string>> {
 const EXAMPLE_DEBT = 'tools/check/example-coverage-debt.json'
 const EXAMPLE_DEBT_BASELINE = 'tools/check/example-coverage-debt-baseline.json'
 const STANDARDS_DEBT = 'tools/check/standards-coverage-debt.json'
+const STANDARDS_DEBT_BASELINE = 'tools/check/standards-coverage-debt-baseline.json'
 
 const sources: string[] = []
 for (const tree of PRODUCT_TREES)
@@ -160,6 +161,7 @@ const coverage = [
     cited,
     debt: await readDebt(STANDARDS_DEBT),
     debtPath: STANDARDS_DEBT,
+    debtBaseline: await readDebtBaseline(STANDARDS_DEBT_BASELINE),
   }),
   ...checkNormativeCoverage({
     declared: examples,
