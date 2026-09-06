@@ -58,7 +58,7 @@ satisfied by an observation.
 |---|---|---|
 | `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended RED checks. A feature, bugfix, or change referencing a `standards.md` requirement declares every primary use case, observable result, Unit test, E2E test, and the distinct fault each test must detect. Other work names the intended Acceptance RED and Unit RED checks. | For each declared primary use case, record Unit RED, E2E RED, and the results of injecting the two declared faults. Other work records Acceptance RED and Unit RED; if either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
 | `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary and show that a representative incorrect implementation is detected. |
-| `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements. One representative wrong implementation is no longer enough: mutate every piece of changed pure logic systematically, or inject explicit faults across it, and record which mutations the tests killed. Record equivalent mutations and the limits of the method rather than hiding them. |
+| `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements. One representative wrong implementation is no longer enough: mutate every piece of changed pure logic systematically, or inject explicit faults across it, and record which mutations the tests killed. Record equivalent mutations and the limits of the method rather than hiding them. Mutation testing below says which half of that a tool produces. |
 
 Authentication, authorization, tenant boundaries, cryptography, protocol compatibility, and persistent-data
 migrations reach the stronger rows quickly. Raise the risk when the table's stronger contract describes the
@@ -274,6 +274,32 @@ implementation and watch the target catch it. Guards that stand separately in th
 evidence too. When one guard's cases are also caught by another, removing the first changes nothing and the
 table says nothing about it. That is not hypothetical: a table meant to exercise a cost check here was entirely
 shadowed by a length check standing in front of it, and the mutation run is what exposed the table as empty.
+
+### Mutation testing
+
+`mise run test-go-mutation -- <package directory>` mutates one Go package and reports the mutants its own
+tests fail to kill. It walks the syntactic space mechanically — negated conditions, moved boundaries,
+inverted signs, altered arithmetic — and that is exactly the part a hand-written fault model gets wrong.
+Whoever writes the mutations by hand thinks of them out of the same reading of the problem that wrote the
+branches, so the branch nobody thought of is also the branch nobody mutates.
+
+It does not reach the semantic space, and the gap is not a matter of degree. The operators rewrite tokens
+that are already there. They cannot add the loop that turns an incremental sync into an authoritative one,
+replace what a `switch` default returns and so open a closed vocabulary, rewrite a column table to make a
+read-only column writable, or change the value an export writes into a cell. Those are the mutations the
+specification cares about, and they stay hand-written. The tool covers the syntax; the hand-written fault
+model covers the meaning.
+
+Read the survivors; do not score them. The efficacy percentage moves the wrong way when tests are removed:
+skipping two tests over one package here raised efficacy from 69.64% to 86.67% while mutant coverage fell
+from 77.78% to 41.67%, because a deleted test turns killed mutants into uncovered ones and uncovered mutants
+leave the denominator. A threshold on that number buys tests written to kill equivalent mutants, which is a
+coverage quota with extra steps. Sort the survivors into equivalent mutants and gaps the same way a fault
+model is read, and write both into the work item.
+
+Like fuzz exploration, this stays out of the pull-request gate. The run costs minutes; its fixed cost is a
+copy of the whole repository per worker rather than anything about the package under test; and the mutant set
+moves under changes that have nothing to do with it.
 
 ## 6. Current-state documents
 

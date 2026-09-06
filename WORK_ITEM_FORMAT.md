@@ -189,7 +189,11 @@ to `work-items/done/`:
   For medium risk and above, record the representative incorrect implementation, diff mutation, or explicit
   fault injection and whether the tests detected it. For high and critical pure-logic changes, one
   representative is not enough: mutate the changed logic systematically or inject explicit faults across it,
-  and record the equivalent mutations and the limits of the method rather than hiding them.
+  and record the equivalent mutations and the limits of the method rather than hiding them. A mutation tool
+  produces the systematic half — it rewrites the tokens that are already there — and the mutations that add,
+  remove, or redirect behavior stay hand-written; the split, and how to read the survivors without scoring
+  them, is in
+  [docs/development/specification-first-workflow.md](docs/development/specification-first-workflow.md).
 - **Verification Results**:
   - `mise run verify` - passed
 ```

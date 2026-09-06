@@ -14,6 +14,9 @@ bun = "1.4.0"
 # 宣言する言語版でビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
 # られるためである。詳細は wi-291。
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.7.0"
+# 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでも版を固定するのは、
+# 生成される変異の集合が版で変わり、work item に残した一覧が再現できなくなるためである。
+"go:github.com/go-gremlins/gremlins/cmd/gremlins" = "0.6.0"
 
 [tasks.setup]
 description = "Install repository dependencies and link agent skills"
@@ -46,6 +49,9 @@ run = [
   "betterleaks version",
   "osv-scanner --version",
   "govulncheck -version",
+  # gremlins は版をリリース時の ldflags で埋めるため、`go install` したものは `--version` に
+  # `dev` としか答えない。mise が選んだ版は導入先の path にしか現れない。
+  "mise which gremlins",
 ]
 
 [tasks.setup-cli-tools]
@@ -468,6 +474,27 @@ if [ -s "$failures" ]; then
   cat "$failures" >&2
   exit 1
 fi
+'''
+
+[tasks.test-go-mutation]
+description = "Mutate one Go package and report the mutants its tests do not kill"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run test-go-mutation -- <package-directory> [workers] [timeout-coefficient]" >&2; exit 2; }
+directory="$1"
+test -d "$directory" || { echo "$directory is not a directory; name the package directory, not an import path" >&2; exit 2; }
+# Gremlins の対象範囲は引数の path ではなく、呼び出したディレクトリで決まる。リポジトリ root から
+# 呼ぶとカバレッジ取得が `go test ./...` に広がり、embedded-postgres を起動するパッケージまで
+# 巻き込んで戻ってこない。
+cd "$directory"
+# worker ごとにモジュール root 全体を一時ディレクトリへ複製するため、並列度を上げるほど遅くなる。
+# 実測では 8 (論理 CPU 数、既定) で 3 分 18 秒、2 で 1 分 6 秒、結果は同一だった。
+#
+# timeout 係数を明示するのは、既定の 3 が「カバレッジ取得にかかった時間 × 3」を変異ごとの制限に
+# するためである。カバレッジ取得が 1 秒未満で終わるパッケージでは変異後の再ビルドすら収まらず、
+# 全件 TIMED OUT を終了コード 0 で返す。詳細は wi-493。
+gremlins unleash --workers "${2:-2}" --timeout-coefficient "${3:-60}"
 '''
 
 [tasks.build-go]

@@ -194,3 +194,48 @@ describe('mise aggregate gate reporting', () => {
     expect(members('verify').length).toBeGreaterThan(1)
   })
 })
+
+describe('mise mutation testing boundary', () => {
+  const mutation = String(config.tasks?.['test-go-mutation']?.run ?? '')
+
+  it('mutates one Go package through the pinned tool', () => {
+    expect(mutation).toContain('gremlins unleash')
+  })
+
+  /** ツールの保守が止まったときに動く版が残らないと、証拠の作り方ごと失われる。 */
+  it('pins the mutation tool to an exact version', () => {
+    const pinned = Object.entries(config.tools ?? {}).find(([name]) => name.includes('gremlins'))
+    expect(pinned?.[1]).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+
+  /**
+   * 変異ごとのテストに許される時間は「カバレッジ取得にかかった時間 × 係数」で決まり、
+   * 既定の係数 3 はカバレッジ取得が 1 秒未満で終わるパッケージでは再ビルドすら収まらない。
+   * 全件 TIMED OUT でも終了コードは 0 なので、何も測れていない実行が、殺せなかった変異が
+   * 無い実行と見分けられなくなる。係数は task が明示的に渡す。
+   */
+  it('passes the mutant timeout coefficient explicitly', () => {
+    expect(mutation).toContain('--timeout-coefficient')
+  })
+
+  /**
+   * 対象範囲は引数の path ではなく呼び出したディレクトリで決まる。リポジトリ root から
+   * 呼ぶとカバレッジ取得がモジュール全体に広がり、embedded-postgres を起動する
+   * パッケージまで巻き込む。
+   */
+  it('runs from the package directory rather than the repository root', () => {
+    const movedInto = mutation.indexOf('cd ')
+    expect(movedInto).toBeGreaterThanOrEqual(0)
+    expect(mutation.indexOf('gremlins unleash')).toBeGreaterThan(movedInto)
+  })
+
+  /**
+   * 探索的な fuzz と同じ理由でゲートには入れない。対象と無関係な変更でも生成される変異の
+   * 集合が変わるうえ、実行時間が対象パッケージではなくリポジトリ全体の大きさに比例する。
+   */
+  it('keeps mutation testing out of the standard gates', () => {
+    for (const suite of ['check', 'verify', 'verify-serial', 'verify-full']) {
+      expect(members(suite)).not.toContain('test-go-mutation')
+    }
+  })
+})
