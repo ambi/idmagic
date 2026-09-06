@@ -86,6 +86,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	auditEventRepo := auditmemory.NewAuditEventStore(0)
 	groupRepo := groupmemory.NewGroupRepository()
 	groupImportCommitter := groupmemory.NewGroupImportRowCommitter(groupRepo)
+	groupMembershipImportCommitter := groupmemory.NewGroupMembershipImportRowCommitter(groupRepo)
 	userImportCommitter := usermemory.UserImportRowCommitter{
 		Users: userRepo, PasswordHistory: passwordHistoryRepo, Quota: quotaRepo, Audit: auditEventRepo,
 	}
@@ -116,16 +117,17 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			QuotaRepo:             quotaRepo,
 		},
 		IdManagement: idmanagement.Module{
-			UserRepo:                  userRepo,
-			GroupRepo:                 groupRepo,
-			AgentRepo:                 agentmemory.NewAgentRepository(),
-			EmailChangeTokenStore:     usermemory.NewEmailChangeTokenStore(userRepo),
-			CSVArtifacts:              csvArtifacts,
-			UserImportCommitter:       userImportCommitter,
-			GroupImportCommitter:      groupImportCommitter,
-			UserMutationCommitter:     userMutationCommitter,
-			ProvisioningNotifier:      provisioningModule.UserNotifier(assignmentRepo),
-			GroupProvisioningNotifier: provisioningModule.GroupNotifier(assignmentRepo),
+			UserRepo:                       userRepo,
+			GroupRepo:                      groupRepo,
+			AgentRepo:                      agentmemory.NewAgentRepository(),
+			EmailChangeTokenStore:          usermemory.NewEmailChangeTokenStore(userRepo),
+			CSVArtifacts:                   csvArtifacts,
+			UserImportCommitter:            userImportCommitter,
+			GroupImportCommitter:           groupImportCommitter,
+			GroupMembershipImportCommitter: groupMembershipImportCommitter,
+			UserMutationCommitter:          userMutationCommitter,
+			ProvisioningNotifier:           provisioningModule.UserNotifier(assignmentRepo),
+			GroupProvisioningNotifier:      provisioningModule.GroupNotifier(assignmentRepo),
 		},
 		IdGovernance: idgovernance.Module{
 			LifecycleWorkflowRepo:    workflowRepo,

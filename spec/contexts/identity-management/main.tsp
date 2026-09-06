@@ -1186,7 +1186,7 @@ model StartGroupMemberCsvExportError503 {
   @body body: StartGroupMemberCsvExportError503Body;
 }
 
-@doc("An administrator starts a CSV export of the members of one Group. The `group_id` comes from the path and only that group's members are exported, the same per-group shape Entra, Okta, and Google use. It returns 202 and the export id.")
+@doc("An administrator starts a CSV export of the members of one Group. The `group_id` comes from the path and only that group's members are exported, the same per-group shape Entra, Okta, and Google use. The CSV header matches the machine keys that were requested, not display labels, and the generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful export can be previewed without editing; `membership_state` is written `present` on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupMemberCsvExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
@@ -1372,6 +1372,165 @@ model CancelGroupMemberExportError503 {
 op CancelGroupMemberExport(
   @path group_id: string,
   @path export_id: string,): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupMemberExportError403 | CancelGroupMemberExportError503;
+
+model ImportAdminGroupMembersSuccess_202 {
+  @statusCode statusCode: 202;
+  @body body: IdMagic.Contract.GroupMembershipImportJobRef;
+}
+
+union ImportAdminGroupMembersError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ImportAdminGroupMembersError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminGroupMembersError400Body;
+}
+
+union ImportAdminGroupMembersError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ImportAdminGroupMembersError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminGroupMembersError403Body;
+}
+
+union ImportAdminGroupMembersError503Body {
+  IdMagic.Contract.GroupMembershipImportUnavailableError,
+}
+
+model ImportAdminGroupMembersError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminGroupMembersError503Body;
+}
+
+@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The `group_id` in the path is the one Group every row may touch; the `group_id` and `group_name` columns are read-only verification, and a row naming another Group is refused rather than written elsewhere. The transfer policy, the immutable artifact store, and the metadata-only job params are the ones every CSV shares. The header may carry the stable machine keys in any order and any subset except `membership_state`, which the file must declare because it is the only mutation intent it can express. A row resolves its User by `user_id` first and by `preferred_username` second, `source` and `created_at` are accepted and ignored, and a dynamic Group, a membership a dynamic rule owns, and a Group or User an external source owns are each refused fail-closed.")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
+@TypeSpec.OpenAPI.operationId("ImportAdminGroupMembers")
+@route("/api/admin/v1/groups/{group_id}/members/imports")
+@post
+op ImportAdminGroupMembers(
+  @path group_id: string,
+  @header contentType: "text/csv",
+  @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
+  @body csv: string
+): ImportAdminGroupMembersSuccess_202 | ImportAdminGroupMembersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupMembersError403 | ImportAdminGroupMembersError503;
+
+model ApplyAdminGroupMemberImportSuccess_202 {
+  @statusCode statusCode: 202;
+  @body body: IdMagic.Contract.GroupMembershipImportJobRef;
+}
+
+union ApplyAdminGroupMemberImportError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ApplyAdminGroupMemberImportError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupMemberImportError400Body;
+}
+
+union ApplyAdminGroupMemberImportError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ApplyAdminGroupMemberImportError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupMemberImportError403Body;
+}
+
+union ApplyAdminGroupMemberImportError404Body {
+  IdMagic.Contract.GroupMembershipImportNotFoundError,
+}
+
+model ApplyAdminGroupMemberImportError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupMemberImportError404Body;
+}
+
+union ApplyAdminGroupMemberImportError503Body {
+  IdMagic.Contract.GroupMembershipImportUnavailableError,
+}
+
+model ApplyAdminGroupMemberImportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupMemberImportError503Body;
+}
+
+@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant and the same Group. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current membership, so an add or a release another operation performed after the preview is re-decided rather than replayed. Each accepted row settles its membership and its audit record atomically, and a row that fails leaves the rows already applied in place. Only the rows the file names are touched.")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
+@TypeSpec.OpenAPI.operationId("ApplyAdminGroupMemberImport")
+@route("/api/admin/v1/groups/{group_id}/members/imports/{preview_job_id}/apply")
+@post
+op ApplyAdminGroupMemberImport(
+  @path group_id: string,
+  @path preview_job_id: string
+): ApplyAdminGroupMemberImportSuccess_202 | ApplyAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupMemberImportError403 | ApplyAdminGroupMemberImportError404 | ApplyAdminGroupMemberImportError503;
+
+model GetAdminGroupMemberImportSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.GroupMembershipImportJob;
+}
+
+union GetAdminGroupMemberImportError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model GetAdminGroupMemberImportError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupMemberImportError400Body;
+}
+
+union GetAdminGroupMemberImportError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model GetAdminGroupMemberImportError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupMemberImportError403Body;
+}
+
+union GetAdminGroupMemberImportError404Body {
+  IdMagic.Contract.GroupMembershipImportNotFoundError,
+}
+
+model GetAdminGroupMemberImportError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupMemberImportError404Body;
+}
+
+union GetAdminGroupMemberImportError503Body {
+  IdMagic.Contract.GroupMembershipImportUnavailableError,
+}
+
+model GetAdminGroupMemberImportError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupMemberImportError503Body;
+}
+
+@doc("An administrator reads a CSV group membership import job of the same tenant and the same Group together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the release count kept apart from them, the result artifact metadata, and `error_total`.")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
+@TypeSpec.OpenAPI.operationId("GetAdminGroupMemberImport")
+@route("/api/admin/v1/groups/{group_id}/members/imports/{job_id}")
+@get
+op GetAdminGroupMemberImport(
+  @path group_id: string,
+  @path job_id: string,
+  @query cursor?: string,
+  @query limit?: int64
+): GetAdminGroupMemberImportSuccess_200 | GetAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupMemberImportError403 | GetAdminGroupMemberImportError404 | GetAdminGroupMemberImportError503;
 
 model UpdateAdminUserSuccess_200 {
   @statusCode statusCode: 200;

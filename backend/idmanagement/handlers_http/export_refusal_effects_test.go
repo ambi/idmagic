@@ -17,6 +17,7 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -37,6 +38,12 @@ func (f *idmRefusalFixture) runExport(t *testing.T, exportID string) {
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps: userusecases.UserCSVExportDeps{
 				UserRepo: f.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: f.artifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
+			Deps: groupusecases.GroupMembershipCSVExportDeps{
+				GroupRepo: f.groups, UserRepo: f.users, Artifacts: f.artifacts,
 			},
 			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -30,9 +31,15 @@ func exportUsecaseDeps(d Deps) idmusecases.DataExportDeps {
 		},
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
+	membershipExporter := groupusecases.GroupMembershipCSVExporter{
+		Deps: groupusecases.GroupMembershipCSVExportDeps{
+			GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Artifacts: d.CSVArtifacts,
+		},
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
+	}
 	return idmusecases.DataExportDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, JobRepo: d.JobRepo,
-		UserCSVExporter: exporter, CSVArtifacts: d.CSVArtifacts,
+		UserCSVExporter: exporter, GroupMembershipCSVExporter: membershipExporter, CSVArtifacts: d.CSVArtifacts,
 		Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo,
 	}
 }

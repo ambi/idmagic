@@ -131,6 +131,24 @@ func RunWorker() error {
 	}
 	handlers.Register(domain.KindGroupImportPreview, groupusecases.GroupImportJobHandler(groupImportJobDeps, groupusecases.GroupImportModePreview))
 	handlers.Register(domain.KindGroupImportApply, groupusecases.GroupImportJobHandler(groupImportJobDeps, groupusecases.GroupImportModeApply))
+	membershipImportPlanDeps := groupusecases.GroupMembershipImportPlanDeps{
+		GroupRepo:           deps.IdManagement.GroupRepo,
+		UserRepo:            deps.IdManagement.UserRepo,
+		GroupOwnershipGuard: scimsource.GroupOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+		UserOwnershipGuard:  scimsource.UserOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+	}
+	membershipImportJobDeps := groupusecases.GroupMembershipImportJobDeps{
+		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
+		Plan: membershipImportPlanDeps,
+		Apply: groupusecases.GroupMembershipImportApplyDeps{
+			Plan: membershipImportPlanDeps, Committer: deps.IdManagement.GroupMembershipImportCommitter,
+		},
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
+	}
+	handlers.Register(domain.KindGroupMembershipImportPreview,
+		groupusecases.GroupMembershipImportJobHandler(membershipImportJobDeps, groupusecases.GroupMembershipImportModePreview))
+	handlers.Register(domain.KindGroupMembershipImportApply,
+		groupusecases.GroupMembershipImportJobHandler(membershipImportJobDeps, groupusecases.GroupMembershipImportModeApply))
 	handlers.Register(domain.KindDynamicGroupReconcile, groupusecases.DynamicGroupReconcileHandler(groupusecases.DynamicGroupDeps{
 		GroupRepo:  deps.IdManagement.GroupRepo,
 		UserRepo:   deps.IdManagement.UserRepo,
@@ -156,6 +174,14 @@ func RunWorker() error {
 				GroupRepo:    deps.IdManagement.GroupRepo,
 				SchemaReader: groupCSVSchemaReader,
 				Artifacts:    deps.IdManagement.CSVArtifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
+			Deps: groupusecases.GroupMembershipCSVExportDeps{
+				GroupRepo: deps.IdManagement.GroupRepo,
+				UserRepo:  deps.IdManagement.UserRepo,
+				Artifacts: deps.IdManagement.CSVArtifacts,
 			},
 			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},

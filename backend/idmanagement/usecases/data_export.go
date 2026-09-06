@@ -2,17 +2,14 @@ package usecases
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -37,12 +34,6 @@ func init() {
 }
 
 const (
-	// DataExportMaxRows caps how many rows one export may contain. It bounds
-	// the CSV materialized into the Job result (stores the file there),
-	// keeping worker memory and the jobs row size in check.
-	DataExportMaxRows = 100_000
-	// DataExportMaxBytes caps the generated CSV size for the same reason.
-	DataExportMaxBytes = 8 << 20 // 8 MiB
 	// DataExportTTL is how long a completed export stays downloadable. It
 	// aligns with the Jobs default record retention: once the jobs
 	// row is purged the export is gone, and between logical expiry and physical
@@ -71,16 +62,14 @@ type DataExportParams struct {
 	ActorUserID string            `json:"actor_user_id"`
 }
 
-// DataExportResult is metadata only for User exports. CSVBase64 remains a
-// compatibility field for Group exports until their follow-up work items move
-// them to the same immutable artifact contract.
+// DataExportResult is metadata only. Every target writes its CSV to the shared
+// immutable artifact store, so the job result never carries the file itself.
 type DataExportResult struct {
 	Filename    string `json:"filename"`
 	TotalRows   int    `json:"total_rows"`
 	ByteSize    int    `json:"byte_size"`
 	ArtifactRef string `json:"artifact_ref,omitempty"`
 	SHA256      string `json:"sha256,omitempty"`
-	CSVBase64   string `json:"csv_base64,omitempty"`
 }
 
 // DataExportView is the PII-free public projection of an export
@@ -113,13 +102,14 @@ type DataExportFile struct {
 
 // DataExportDeps are the dependencies for the data export usecases.
 type DataExportDeps struct {
-	UserRepo         userports.UserRepository
-	GroupRepo        groupports.GroupRepository
-	JobRepo          jobsports.JobRepository
-	UserCSVExporter  UserCSVExporter
-	GroupCSVExporter GroupCSVExporter
-	CSVArtifacts     idmports.CSVArtifactStore
-	Emit             func(spec.DomainEvent) error
+	UserRepo                   userports.UserRepository
+	GroupRepo                  groupports.GroupRepository
+	JobRepo                    jobsports.JobRepository
+	UserCSVExporter            UserCSVExporter
+	GroupCSVExporter           GroupCSVExporter
+	GroupMembershipCSVExporter GroupMembershipCSVExporter
+	CSVArtifacts               idmports.CSVArtifactStore
+	Emit                       func(spec.DomainEvent) error
 	// QuotaRepo enforces the tenant's active_jobs Hard Quota at enqueue
 	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
@@ -137,6 +127,14 @@ type UserCSVExporter interface {
 type GroupCSVExporter interface {
 	ValidateGroupCSVColumns(ctx context.Context, columns []string) error
 	ExportGroupCSV(ctx context.Context, columns []string) (idmports.CSVArtifact, int, error)
+}
+
+// GroupMembershipCSVExporter はメンバーシップ側の同じ契約。対象 Group はフィルター
+// ではなく引数で受け取る。メンバーシップのエクスポートは常に 1 つの Group に
+// 閉じており、絞り込みではなく対象そのものだからである。
+type GroupMembershipCSVExporter interface {
+	ValidateGroupMembershipCSVColumns(ctx context.Context, columns []string) error
+	ExportGroupMembershipCSV(ctx context.Context, groupID string, columns []string) (idmports.CSVArtifact, int, error)
 }
 
 func (d DataExportDeps) now() time.Time {
@@ -162,6 +160,13 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 		}
 	case kind == idmdomain.ExportTargetGroup && deps.GroupCSVExporter != nil:
 		if err := deps.GroupCSVExporter.ValidateGroupCSVColumns(ctx, columns); err != nil {
+			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); ok {
+				return nil, fmt.Errorf("%w: %s", idmdomain.ErrInvalidExportColumns, csvErr.Code)
+			}
+			return nil, err
+		}
+	case kind == idmdomain.ExportTargetGroupMembership && deps.GroupMembershipCSVExporter != nil:
+		if err := deps.GroupMembershipCSVExporter.ValidateGroupMembershipCSVColumns(ctx, columns); err != nil {
 			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); ok {
 				return nil, fmt.Errorf("%w: %s", idmdomain.ErrInvalidExportColumns, csvErr.Code)
 			}
@@ -216,7 +221,7 @@ func DataExportHandler(deps DataExportDeps) func(context.Context, *jobsdomain.Jo
 		now := deps.now()
 		_ = adminEmitExport(deps.Emit, &idmdomain.DataExportStarted{At: now, TenantID: job.TenantID, ExportID: job.ID, Target: p.Target})
 
-		result, err := generateExport(ctx, deps, job.TenantID, p)
+		result, err := generateExport(ctx, deps, p)
 		if err != nil {
 			code := exportErrorCode(err)
 			logging.Error(ctx, "data export failed", "error", err, "export_id", job.ID, "target", p.Target, "error_code", code)
@@ -297,34 +302,23 @@ func DownloadDataExport(ctx context.Context, deps DataExportDeps, scope ExportSc
 	if err := json.Unmarshal(job.Result, &result); err != nil {
 		return nil, err
 	}
-	var content []byte
-	var contentReader io.ReadCloser
-	if result.ArtifactRef != "" {
-		if deps.CSVArtifacts == nil {
-			return nil, ErrExportNotDownloadable
-		}
-		reader, artifact, err := deps.CSVArtifacts.OpenCSVArtifact(ctx, job.TenantID, result.ArtifactRef)
-		if err != nil {
-			return nil, ErrExportNotDownloadable
-		}
-		if artifact.SHA256 != result.SHA256 || artifact.ByteSize != int64(result.ByteSize) {
-			_ = reader.Close()
-			return nil, ErrExportNotDownloadable
-		}
-		contentReader = reader
-	} else {
-		var err error
-		content, err = base64.StdEncoding.DecodeString(result.CSVBase64)
-		if err != nil {
-			return nil, err
-		}
+	if deps.CSVArtifacts == nil {
+		return nil, ErrExportNotDownloadable
+	}
+	contentReader, artifact, err := deps.CSVArtifacts.OpenCSVArtifact(ctx, job.TenantID, result.ArtifactRef)
+	if err != nil {
+		return nil, ErrExportNotDownloadable
+	}
+	if artifact.SHA256 != result.SHA256 || artifact.ByteSize != int64(result.ByteSize) {
+		_ = contentReader.Close()
+		return nil, ErrExportNotDownloadable
 	}
 	var p DataExportParams
 	_ = json.Unmarshal(job.Params, &p)
 	if err := adminEmitExport(deps.Emit, &idmdomain.DataExportDownloaded{At: now, TenantID: job.TenantID, ActorUserID: actorUserID, ExportID: job.ID, Target: p.Target}); err != nil {
 		return nil, err
 	}
-	return &DataExportFile{Filename: result.Filename, ContentType: "text/csv; charset=utf-8", ByteSize: result.ByteSize, Content: content, Reader: contentReader}, nil
+	return &DataExportFile{Filename: result.Filename, ContentType: "text/csv; charset=utf-8", ByteSize: result.ByteSize, Reader: contentReader}, nil
 }
 
 // CancelDataExport cancels a non-terminal export and emits
@@ -394,7 +388,7 @@ func exportViewFromJob(job *jobsdomain.Job, now time.Time) *DataExportView {
 			view.ByteSize = &byteSize
 			completed := job.UpdatedAt
 			view.CompletedAt = &completed
-			view.Downloadable = status == idmdomain.ExportStatusSucceeded && (result.ArtifactRef != "" || result.CSVBase64 != "")
+			view.Downloadable = status == idmdomain.ExportStatusSucceeded && result.ArtifactRef != ""
 		}
 	}
 	return view
@@ -419,127 +413,42 @@ func mapExportStatus(s jobsdomain.JobStatus, expiresAt, now time.Time) idmdomain
 	return idmdomain.ExportStatusFailed
 }
 
-// generateExport builds the CSV for the requested target and filter.
-func generateExport(ctx context.Context, deps DataExportDeps, tenantID string, p DataExportParams) (*DataExportResult, error) {
-	kind := idmdomain.DataExportTargetKind(p.Target)
-	if kind == idmdomain.ExportTargetUser {
+// generateExport builds the CSV for the requested target and filter. Every
+// target writes through its own dialect's exporter into the shared immutable
+// artifact store, so an export is always something import can read back.
+func generateExport(ctx context.Context, deps DataExportDeps, p DataExportParams) (*DataExportResult, error) {
+	var (
+		artifact  idmports.CSVArtifact
+		totalRows int
+		err       error
+	)
+	switch idmdomain.DataExportTargetKind(p.Target) {
+	case idmdomain.ExportTargetUser:
 		if deps.UserCSVExporter == nil {
 			return nil, errors.New("user CSV exporter is unavailable")
 		}
-		artifact, totalRows, err := deps.UserCSVExporter.ExportUserCSV(ctx, p.Columns, p.Filter["status"])
-		if err != nil {
-			return nil, err
-		}
-		return &DataExportResult{
-			Filename:  fmt.Sprintf("%s-export-%s.csv", p.Target, deps.now().Format("20060102-150405")),
-			TotalRows: totalRows, ByteSize: int(artifact.ByteSize), ArtifactRef: artifact.Ref, SHA256: artifact.SHA256,
-		}, nil
-	}
-	// Group export は User と同じ不変成果物と転送ポリシーを使う。生成物が
-	// PlanGroupImport の受理する語彙と同じであることが、無編集の往復を成り立たせる。
-	if kind == idmdomain.ExportTargetGroup {
+		artifact, totalRows, err = deps.UserCSVExporter.ExportUserCSV(ctx, p.Columns, p.Filter["status"])
+	case idmdomain.ExportTargetGroup:
 		if deps.GroupCSVExporter == nil {
 			return nil, errors.New("group CSV exporter is unavailable")
 		}
-		artifact, totalRows, err := deps.GroupCSVExporter.ExportGroupCSV(ctx, p.Columns)
-		if err != nil {
-			return nil, err
-		}
-		return &DataExportResult{
-			Filename:  fmt.Sprintf("%s-export-%s.csv", p.Target, deps.now().Format("20060102-150405")),
-			TotalRows: totalRows, ByteSize: int(artifact.ByteSize), ArtifactRef: artifact.Ref, SHA256: artifact.SHA256,
-		}, nil
-	}
-	header := idmdomain.LabelsForColumns(kind, p.Columns)
-	var (
-		rows [][]string
-		err  error
-	)
-	switch kind {
+		artifact, totalRows, err = deps.GroupCSVExporter.ExportGroupCSV(ctx, p.Columns)
 	case idmdomain.ExportTargetGroupMembership:
-		rows, err = groupMembershipExportRows(ctx, deps, tenantID, p.Columns, p.Filter)
+		if deps.GroupMembershipCSVExporter == nil {
+			return nil, errors.New("group membership CSV exporter is unavailable")
+		}
+		artifact, totalRows, err = deps.GroupMembershipCSVExporter.ExportGroupMembershipCSV(
+			ctx, strings.TrimSpace(p.Filter["group_id"]), p.Columns)
 	default:
 		return nil, idmdomain.ErrInvalidExportTarget
 	}
 	if err != nil {
 		return nil, err
 	}
-	if len(rows) > DataExportMaxRows {
-		return nil, errExportTooLarge
-	}
-	csvBytes, err := idmdomain.EncodeCSVRecords(header, rows)
-	if err != nil {
-		return nil, err
-	}
-	if len(csvBytes) > DataExportMaxBytes {
-		return nil, errExportTooLarge
-	}
 	return &DataExportResult{
 		Filename:  fmt.Sprintf("%s-export-%s.csv", p.Target, deps.now().Format("20060102-150405")),
-		TotalRows: len(rows),
-		ByteSize:  len(csvBytes),
-		CSVBase64: base64.StdEncoding.EncodeToString(csvBytes),
+		TotalRows: totalRows, ByteSize: int(artifact.ByteSize), ArtifactRef: artifact.Ref, SHA256: artifact.SHA256,
 	}, nil
-}
-
-var errExportTooLarge = errors.New("export_too_large")
-
-func groupMembershipExportRows(ctx context.Context, deps DataExportDeps, tenantID string, columns []string, filter map[string]string) ([][]string, error) {
-	groups, err := deps.GroupRepo.ListAll(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	groupIDFilter := strings.TrimSpace(filter["group_id"])
-	usernameNeeded := false
-	for _, col := range columns {
-		if col == "preferred_username" {
-			usernameNeeded = true
-		}
-	}
-	sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
-	var rows [][]string
-	for _, g := range groups {
-		if groupIDFilter != "" && g.ID != groupIDFilter {
-			continue
-		}
-		members, err := deps.GroupRepo.ListMembersByGroup(ctx, tenantID, g.ID)
-		if err != nil {
-			return nil, err
-		}
-		sort.Slice(members, func(i, j int) bool { return members[i].UserID < members[j].UserID })
-		for _, m := range members {
-			username := ""
-			if usernameNeeded {
-				if u, err := deps.UserRepo.FindBySub(ctx, m.UserID); err == nil && u != nil {
-					username = u.PreferredUsername
-				}
-			}
-			row := make([]string, len(columns))
-			for i, col := range columns {
-				row[i] = membershipColumnValue(g, m, username, col)
-			}
-			rows = append(rows, row)
-		}
-	}
-	return rows, nil
-}
-
-func membershipColumnValue(g *groupdomain.Group, m *groupdomain.GroupMember, username, col string) string {
-	switch col {
-	case "group_id":
-		return m.GroupID
-	case "group_name":
-		return g.Name
-	case "user_id":
-		return m.UserID
-	case "preferred_username":
-		return username
-	case "source":
-		return string(m.Source)
-	case "created_at":
-		return m.CreatedAt.UTC().Format(time.RFC3339)
-	}
-	return ""
 }
 
 // validateExportFilter fails closed on any filter key not allowlisted for the
@@ -578,9 +487,13 @@ func validateExportFilter(kind idmdomain.DataExportTargetKind, filter map[string
 	return nil
 }
 
+// exportErrorCode は転送ポリシーの超過だけを固有のコードにする。上限は 1 個の
+// 成果物に対するものなので、管理者は列を絞るか対象を分けて作り直せる。それ以外の
+// 失敗は理由を外へ出さない。
 func exportErrorCode(err error) string {
-	if errors.Is(err, errExportTooLarge) {
-		return "export_too_large"
+	var csvErr *idmdomain.CSVError
+	if errors.As(err, &csvErr) && csvErr.Code == idmdomain.CSVErrorCSVTooLarge {
+		return "csv_transfer_limit_exceeded"
 	}
 	return "export_failed"
 }

@@ -102,6 +102,7 @@ import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.
 import { Route as AdminWorkloadIdentityTrustBundleIdIndexRouteImport } from './routes/admin/workload-identity_/$trustBundleId.index'
 import { Route as AdminWorkloadIdentityTrustBundleIdEditRouteImport } from './routes/admin/workload-identity_/$trustBundleId.edit'
 import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
+import { Route as AdminGroupsGroupIdMembersImportRouteImport } from './routes/admin/groups_/$groupId.members.import'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.index'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdEditRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.edit'
 
@@ -595,6 +596,12 @@ const AdminGroupsGroupIdMembersExportsRoute =
     path: '/members/exports',
     getParentRoute: () => AdminGroupsGroupIdRoute,
   } as any)
+const AdminGroupsGroupIdMembersImportRoute =
+  AdminGroupsGroupIdMembersImportRouteImport.update({
+    id: '/members/import',
+    path: '/members/import',
+    getParentRoute: () => AdminGroupsGroupIdRoute,
+  } as any)
 const AdminSettingsSamlIdpProfilesProfileIdIndexRoute =
   AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport.update({
     id: '/',
@@ -702,6 +709,7 @@ export interface FileRoutesByFullPath {
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
   '/admin/workload-identity/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
+  '/admin/groups/$groupId/members/import': typeof AdminGroupsGroupIdMembersImportRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   '/admin/settings/saml-idp-profiles/$profileId/': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
 }
@@ -788,6 +796,7 @@ export interface FileRoutesByTo {
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
   '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
+  '/admin/groups/$groupId/members/import': typeof AdminGroupsGroupIdMembersImportRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
 }
@@ -886,6 +895,7 @@ export interface FileRoutesById {
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
   '/admin/workload-identity_/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/groups_/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
+  '/admin/groups_/$groupId/members/import': typeof AdminGroupsGroupIdMembersImportRoute
   '/admin/settings_/saml-idp-profiles_/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   '/admin/settings_/saml-idp-profiles_/$profileId/': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
 }
@@ -985,6 +995,7 @@ export interface FileRouteTypes {
     | '/admin/users/$id/'
     | '/admin/workload-identity/$trustBundleId/'
     | '/admin/groups/$groupId/members/exports'
+    | '/admin/groups/$groupId/members/import'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
     | '/admin/settings/saml-idp-profiles/$profileId/'
   fileRoutesByTo: FileRoutesByTo
@@ -1071,6 +1082,7 @@ export interface FileRouteTypes {
     | '/admin/users/$id'
     | '/admin/workload-identity/$trustBundleId'
     | '/admin/groups/$groupId/members/exports'
+    | '/admin/groups/$groupId/members/import'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
     | '/admin/settings/saml-idp-profiles/$profileId'
   id:
@@ -1168,6 +1180,7 @@ export interface FileRouteTypes {
     | '/admin/users_/$id/'
     | '/admin/workload-identity_/$trustBundleId/'
     | '/admin/groups_/$groupId/members/exports'
+    | '/admin/groups_/$groupId/members/import'
     | '/admin/settings_/saml-idp-profiles_/$profileId/edit'
     | '/admin/settings_/saml-idp-profiles_/$profileId/'
   fileRoutesById: FileRoutesById
@@ -1841,6 +1854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminGroupsGroupIdMembersExportsRouteImport
       parentRoute: typeof AdminGroupsGroupIdRoute
     }
+    '/admin/groups_/$groupId/members/import': {
+      id: '/admin/groups_/$groupId/members/import'
+      path: '/members/import'
+      fullPath: '/admin/groups/$groupId/members/import'
+      preLoaderRoute: typeof AdminGroupsGroupIdMembersImportRouteImport
+      parentRoute: typeof AdminGroupsGroupIdRoute
+    }
     '/admin/settings_/saml-idp-profiles_/$profileId/': {
       id: '/admin/settings_/saml-idp-profiles_/$profileId/'
       path: '/'
@@ -1932,12 +1952,14 @@ interface AdminGroupsGroupIdRouteChildren {
   AdminGroupsGroupIdEditRoute: typeof AdminGroupsGroupIdEditRoute
   AdminGroupsGroupIdIndexRoute: typeof AdminGroupsGroupIdIndexRoute
   AdminGroupsGroupIdMembersExportsRoute: typeof AdminGroupsGroupIdMembersExportsRoute
+  AdminGroupsGroupIdMembersImportRoute: typeof AdminGroupsGroupIdMembersImportRoute
 }
 
 const AdminGroupsGroupIdRouteChildren: AdminGroupsGroupIdRouteChildren = {
   AdminGroupsGroupIdEditRoute: AdminGroupsGroupIdEditRoute,
   AdminGroupsGroupIdIndexRoute: AdminGroupsGroupIdIndexRoute,
   AdminGroupsGroupIdMembersExportsRoute: AdminGroupsGroupIdMembersExportsRoute,
+  AdminGroupsGroupIdMembersImportRoute: AdminGroupsGroupIdMembersImportRoute,
 }
 
 const AdminGroupsGroupIdRouteWithChildren =

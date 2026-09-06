@@ -142,7 +142,7 @@ func TestDataExportHandler_User_GeneratesInjectionSafeCSV(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.TotalRows != 2 || result.ByteSize == 0 || result.ArtifactRef == "" || result.SHA256 == "" || result.CSVBase64 != "" {
+	if result.TotalRows != 2 || result.ByteSize == 0 || result.ArtifactRef == "" || result.SHA256 == "" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 	reader, _, err := deps.CSVArtifacts.OpenCSVArtifact(context.Background(), "acme", result.ArtifactRef)
@@ -327,9 +327,6 @@ func TestDataExportHandler_GroupExportWritesAnImmutableArtifact(t *testing.T) {
 	var result idmusecases.DataExportResult
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
-	}
-	if result.CSVBase64 != "" {
-		t.Fatalf("the job result carries the CSV itself: %q", result.CSVBase64)
 	}
 	if result.ArtifactRef == "" || result.SHA256 == "" || result.TotalRows != 1 {
 		t.Fatalf("result = %+v, want an artifact reference, a digest, and the row count", result)

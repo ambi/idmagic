@@ -24,6 +24,9 @@ type Module struct {
 	CSVArtifacts          idmports.CSVArtifactStore
 	UserImportCommitter   userports.UserImportRowCommitter
 	GroupImportCommitter  groupports.GroupImportRowCommitter
+	// GroupMembershipImportCommitter は membership CSV の 1 行を確定する境界 port
+	// (wi-351)。Group 本体の import committer とは変更集合が別なので分けている。
+	GroupMembershipImportCommitter groupports.GroupMembershipImportRowCommitter
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装を注入する。nil のとき admin usecase は UserRepo.Save に fallback する。
 	UserMutationCommitter userports.UserMutationCommitter

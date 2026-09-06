@@ -43,11 +43,14 @@ export const EXPORT_COLUMNS: Record<ExportTarget, ExportColumn[]> = {
     { key: 'created_at', labelKey: 'colCreatedAt' },
     { key: 'updated_at', labelKey: 'colUpdatedAt' },
   ],
+  // membership_state は import 互換列であり、export では常に present が出力される。
+  // これがあるおかげで、無編集のエクスポートをそのままプレビューできる。
   group_members: [
     { key: 'group_id', labelKey: 'colGroupId' },
     { key: 'group_name', labelKey: 'colGroupName' },
     { key: 'user_id', labelKey: 'colUserId' },
     { key: 'preferred_username', labelKey: 'colUsername' },
+    { key: 'membership_state', labelKey: 'colMembershipState' },
     { key: 'source', labelKey: 'colSource' },
     { key: 'created_at', labelKey: 'colCreatedAt' },
   ],

@@ -45,6 +45,8 @@ import type {
   UserImportJobSummary,
   GroupImportJob,
   GroupImportJobSummary,
+  GroupMembershipImportJob,
+  GroupMembershipImportJobSummary,
   WsFedClaimMappingRule,
   WsFedRelyingParty,
   WsFedTokenType,
@@ -324,6 +326,39 @@ export async function getAdminGroupImport(jobId: string, cursor?: string) {
   if (cursor) query.set('cursor', cursor)
   return requestPage<GroupImportJob>(
     `/api/admin/v1/groups/imports/${encodeURIComponent(jobId)}?${query.toString()}`,
+  )
+}
+
+// メンバーシップ CSV は 1 つの Group に固定した経路である。対象を決めるのはパスの
+// group_id だけで、preview も apply も同じ group の下でしか結び付かない。
+export async function previewAdminGroupMembers(
+  csrfToken: string,
+  groupId: string,
+  file: File,
+): Promise<GroupMembershipImportJobSummary> {
+  return request(`/api/admin/v1/groups/${encodeURIComponent(groupId)}/members/imports`, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'text/csv', 'X-CSRF-Token': csrfToken },
+    body: file,
+  })
+}
+
+export async function applyAdminGroupMemberImport(
+  csrfToken: string,
+  groupId: string,
+  previewJobId: string,
+): Promise<GroupMembershipImportJobSummary> {
+  return request(
+    `/api/admin/v1/groups/${encodeURIComponent(groupId)}/members/imports/${encodeURIComponent(previewJobId)}/apply`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function getAdminGroupMemberImport(groupId: string, jobId: string, cursor?: string) {
+  const query = new URLSearchParams({ limit: '100' })
+  if (cursor) query.set('cursor', cursor)
+  return requestPage<GroupMembershipImportJob>(
+    `/api/admin/v1/groups/${encodeURIComponent(groupId)}/members/imports/${encodeURIComponent(jobId)}?${query.toString()}`,
   )
 }
 

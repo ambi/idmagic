@@ -17,7 +17,7 @@ enum GroupMembershipType {
 }
 
 
-@doc("The one path that created a GroupMember.")
+@doc("The one path that created a GroupMember. It is read-only in CSV: a membership row states the membership it wants through `membership_state` and never converts an existing one, so a `dynamic_rule` membership is refused rather than released or re-owned by a local file.")
 enum GroupMembershipSource {
   manual: "manual",
   dynamic_rule: "dynamic_rule",
@@ -448,6 +448,77 @@ enum GroupImportMode {
 }
 
 
+@doc("The membership a Group CSV row asks the group to hold for one User. It is the only mutation intent of the membership dialect, and the vocabulary is closed: `present` adds the User when the group does not already hold them, `absent` releases a manual membership the group does hold, and both are no-ops once the group already matches. An empty cell and an unknown value each refuse the row rather than being rounded to a known one, because rounding either way would pick a side of an add-or-remove decision the file never made. A membership export writes `present` on every row, so re-applying an unedited export plans every row as unchanged. A User the file never names is never touched: this is not an authoritative full sync, so splitting an export across files can never turn into a bulk removal.")
+enum GroupMembershipCsvState {
+  present: "present",
+  absent: "absent",
+}
+
+
+@doc("What the CSV group membership import endpoints return when a preview or an apply has been accepted. The job runs asynchronously; poll GetAdminGroupMemberImport with the `id` for progress and results. The job is bound to the one group named in the path, and both endpoints refuse a job that belongs to another group.")
+model GroupMembershipImportJobRef {
+  @doc("Job id, used to poll GetAdminGroupMemberImport and to start an apply from a preview.")
+  id: string;
+  @doc("Job status, from the Jobs context lifecycle.")
+  status: string;
+  mode: GroupMembershipImportMode;
+}
+
+
+@doc("The public view of a CSV group membership import job. A preview causes no side effects; an apply joins a succeeded preview of the same tenant and the same group on its `source_sha256`. Row errors name the column and a stable code, never the value.")
+model GroupMembershipImportJob {
+  @doc("Job id.")
+  id: string;
+  @doc("Job status, from the Jobs context lifecycle.")
+  status: string;
+  mode: GroupMembershipImportMode;
+  @doc("Counts and digests the job produced. Absent until the job has run.")
+  result?: GroupMembershipImportResult;
+  @doc("One page of row errors, paginated by the standard cursor headers. Empty while the job is still running.")
+  errors?: GroupMembershipImportRowError[];
+}
+
+
+@doc("Counts and digests a finished CSV group membership import job produced. `removed_rows` is reported apart from the other operations because releasing a membership takes the Group's roles out of that User's effective roles.")
+model GroupMembershipImportResult {
+  @doc("SHA-256 of the uploaded CSV. An apply must name a preview with the same digest.")
+  source_sha256: string;
+  @doc("For an apply, the preview job it was started from.")
+  preview_job_id?: string;
+  @doc("The Group every row of this job is confined to, taken from the request path.")
+  group_id: string;
+  total_rows: int64;
+  @doc("How many rows ask to add a membership the group does not hold, or added one.")
+  added_rows: int64;
+  @doc("How many rows ask to release a manual membership the group holds, or released one.")
+  removed_rows: int64;
+  @doc("How many rows already match the membership they ask for. An unedited export is entirely this.")
+  unchanged_rows: int64;
+  rejected_rows: int64;
+  @doc("Reference to the stored error artifact, when the job produced one.")
+  error_artifact_ref?: string;
+  @doc("SHA-256 of the stored error artifact.")
+  error_artifact_sha256?: string;
+  @doc("How many row errors the job produced in total, not how many this page carries.")
+  error_total: int64;
+}
+
+
+@doc("A safe validation or application error for one CSV group membership row. It returns no value, only the column name and a stable code. A refusal that applies to the whole file, such as a dynamic target Group, is reported as a single error with no row.")
+model GroupMembershipImportRowError {
+  row: int64;
+  column?: string;
+  code: string;
+}
+
+
+@doc("The stage of a CSV group membership import job. A preview is a read-only plan; an apply replans a succeeded preview payload against the current membership and applies it.")
+enum GroupMembershipImportMode {
+  preview: "preview",
+  apply: "apply",
+}
+
+
 @doc("The resource kind a CSV export targets. The column definitions are closed within a per-kind allow list, so an unreviewed attribute cannot leave on its own.")
 enum DataExportTargetKind {
   user: "user",
@@ -627,7 +698,7 @@ model AccountDataExport {
 }
 
 
-@doc("The membership relation between a User and a Group. It is unique on `group_id` and `user_id`.")
+@doc("The membership relation between a User and a Group. It is unique on `group_id` and `user_id`. A CSV membership row resolves its User by `user_id` first and falls back to `preferred_username`, so a row carrying both a known `user_id` and a username held by a different User is refused rather than resolved; `source` and `created_at` are read-only there.")
 model GroupMember {
   group_id: string;
   user_id: string;
@@ -1231,5 +1302,13 @@ model GroupImportNotFoundError is ProblemDetails;
 
 @doc("The group import service is not configured, so an import can neither be started nor read. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_import_unavailable`.")
 model GroupImportUnavailableError is ProblemDetails;
+
+
+@doc("The group membership import job named by the request does not exist in this tenant, or belongs to a different Group than the one in the path. The two collapse into one answer so that one group never leaks another group's job ids. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_membership_import_not_found`.")
+model GroupMembershipImportNotFoundError is ProblemDetails;
+
+
+@doc("The group membership import service is not configured, so an import can neither be started nor read. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_membership_import_unavailable`.")
+model GroupMembershipImportUnavailableError is ProblemDetails;
 
 }

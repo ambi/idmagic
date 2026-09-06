@@ -48,6 +48,11 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/groups/exports/:export_id", func(c *echo.Context) error { return HandleGetGroupExport(d, c) })
 	g.GET("/api/admin/v1/groups/exports/:export_id/file", func(c *echo.Context) error { return HandleDownloadGroupExportFile(d, c) })
 	g.POST("/api/admin/v1/groups/exports/:export_id/cancel", func(c *echo.Context) error { return HandleCancelGroupExport(d, c) })
+	g.POST("/api/admin/v1/groups/:group_id/members/imports", func(c *echo.Context) error { return grouphttp.HandleImportAdminGroupMembers(d, c) })
+	g.POST("/api/admin/v1/groups/:group_id/members/imports/:preview_job_id/apply", func(c *echo.Context) error {
+		return grouphttp.HandleApplyAdminGroupMemberImport(d, c)
+	})
+	g.GET("/api/admin/v1/groups/:group_id/members/imports/:job_id", func(c *echo.Context) error { return grouphttp.HandleGetAdminGroupMemberImport(d, c) })
 	g.POST("/api/admin/v1/groups/:group_id/members/exports", func(c *echo.Context) error { return HandleStartGroupMemberExport(d, c) })
 	g.GET("/api/admin/v1/groups/:group_id/members/exports", func(c *echo.Context) error { return HandleListGroupMemberExports(d, c) })
 	g.GET("/api/admin/v1/groups/:group_id/members/exports/:export_id", func(c *echo.Context) error { return HandleGetGroupMemberExport(d, c) })

@@ -127,6 +127,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	csvArtifacts := &idmpostgres.CSVArtifactStore{Pool: resilientDB}
 	userImportCommitter := userpostgres.UserImportRowCommitter{Pool: resilientDB}
 	groupImportCommitter := grouppostgres.GroupImportRowCommitter{Pool: resilientDB}
+	groupMembershipImportCommitter := grouppostgres.GroupMembershipImportRowCommitter{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
 	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
 	workflowCapture := &igpostgres.UserWorkflowCapture{Pool: resilientDB}
@@ -151,16 +152,17 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			QuotaRepo:             tenancypostgres.NewQuotaRepository(resilientDB),
 		},
 		IdManagement: idmanagement.Module{
-			UserRepo:                  userRepo,
-			GroupRepo:                 &grouppostgres.GroupRepository{Pool: resilientDB},
-			AgentRepo:                 &agentpostgres.AgentRepository{Pool: resilientDB},
-			EmailChangeTokenStore:     &userpostgres.EmailChangeTokenStore{Pool: resilientDB},
-			CSVArtifacts:              csvArtifacts,
-			UserImportCommitter:       userImportCommitter,
-			GroupImportCommitter:      groupImportCommitter,
-			UserMutationCommitter:     userMutationCommitter,
-			ProvisioningNotifier:      provisioningModule.UserNotifier(assignmentRepo),
-			GroupProvisioningNotifier: provisioningModule.GroupNotifier(assignmentRepo),
+			UserRepo:                       userRepo,
+			GroupRepo:                      &grouppostgres.GroupRepository{Pool: resilientDB},
+			AgentRepo:                      &agentpostgres.AgentRepository{Pool: resilientDB},
+			EmailChangeTokenStore:          &userpostgres.EmailChangeTokenStore{Pool: resilientDB},
+			CSVArtifacts:                   csvArtifacts,
+			UserImportCommitter:            userImportCommitter,
+			GroupImportCommitter:           groupImportCommitter,
+			GroupMembershipImportCommitter: groupMembershipImportCommitter,
+			UserMutationCommitter:          userMutationCommitter,
+			ProvisioningNotifier:           provisioningModule.UserNotifier(assignmentRepo),
+			GroupProvisioningNotifier:      provisioningModule.GroupNotifier(assignmentRepo),
 		},
 		IdGovernance: idgovernance.Module{
 			LifecycleWorkflowRepo:    workflowRepo,

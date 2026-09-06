@@ -5,6 +5,7 @@ import {
   IconUserPlus,
   IconUsersGroup,
   IconFileExport,
+  IconFileImport,
 } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import {
@@ -278,17 +279,38 @@ export function GroupMembersSection({
         <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
           {t.membersHeading.replace('{count}', String(members.length))}
         </h3>
-        <Button
-          variant="outline"
-          className="h-8 px-2 text-xs"
-          nativeButton={false}
-          render={
-            <a href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/members/exports`)} />
-          }
-        >
-          <IconFileExport size={14} className="mr-1" aria-hidden="true" />
-          {t.exportMembers}
-        </Button>
+        {/* エクスポートとインポートは同じ場所に置く。往復の経路は 1 つで、
+            出力を編集して戻すのが想定した使い方だからである。 */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="h-8 px-2 text-xs"
+            nativeButton={false}
+            render={
+              <a
+                href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/members/exports`)}
+              />
+            }
+          >
+            <IconFileExport size={14} className="mr-1" aria-hidden="true" />
+            {t.exportMembers}
+          </Button>
+          {allowEditing && group.membership_type !== 'dynamic' && !group.scim_source ? (
+            <Button
+              variant="outline"
+              className="h-8 px-2 text-xs"
+              nativeButton={false}
+              render={
+                <a
+                  href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/members/import`)}
+                />
+              }
+            >
+              <IconFileImport size={14} className="mr-1" aria-hidden="true" />
+              {t.importMembers}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {error ? (

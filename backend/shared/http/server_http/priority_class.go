@@ -74,6 +74,7 @@ var routeClassRules = []routeClassRule{
 	{path: "/api/admin/v1/groups/exports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/groups/imports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/groups/{}/members/exports", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/groups/{}/members/imports", class: support.ClassManagementBulk},
 	// 動的 Group の事前評価とライフサイクルの試験実行は、いずれもテナントの利用者
 	// 母集団を走査する。
 	{path: "/api/admin/v1/groups/{}/dynamic-rule/preview", class: support.ClassManagementBulk},

@@ -37,7 +37,7 @@ function statusLabel(t: typeof dataExportDictionary.ja, status: DataExportStatus
 
 function exportErrorLabel(t: typeof dataExportDictionary.ja, code: string | undefined): string {
   switch (code) {
-    case 'export_too_large':
+    case 'csv_transfer_limit_exceeded':
       return t.errorTooLarge
     case undefined:
       return ''

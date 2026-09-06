@@ -16,6 +16,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -82,6 +83,12 @@ func (h exportTestHandler) runExportJob(t *testing.T, exportID string) {
 		UserRepo: h.users, GroupRepo: h.groups, JobRepo: h.jobRepo, CSVArtifacts: h.artifacts,
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps:   userusecases.UserCSVExportDeps{UserRepo: h.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: h.artifacts},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
+			Deps: groupusecases.GroupMembershipCSVExportDeps{
+				GroupRepo: h.groups, UserRepo: h.users, Artifacts: h.artifacts,
+			},
 			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},
 	}

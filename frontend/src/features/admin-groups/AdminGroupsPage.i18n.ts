@@ -187,6 +187,57 @@ export const adminGroupsDictionary = defineDictionary(
     applyImportConfirmDeleteAcknowledge: '削除される内容を確認しました',
     applyImportConfirmButton: '適用を確定',
     close: '閉じる',
+    importMembers: 'メンバーを CSV でインポート',
+    importMembersTitle: 'メンバーの CSV インポート',
+    importMembersDescription:
+      'このグループのメンバーを CSV で事前検証してから、追加・解除します。対象はこのグループだけです。',
+    backToGroupDetail: 'グループ詳細へ戻る',
+    backToGroupDetailAria: 'グループ詳細へ戻る',
+    membershipImportInstructions:
+      'ヘッダー行には固定の列名 (user_id、preferred_username、membership_state など) を使います。列の順序は自由ですが、membership_state 列は必ず必要です。対象のユーザーは user_id で決め、無ければ preferred_username で決めます。',
+    membershipImportStateNotice:
+      'membership_state に書けるのは present と absent だけです。present はまだ所属していないユーザーを追加し、absent は手動の所属を解除します。すでに望みどおりの状態なら何も起きません。空欄やそれ以外の値はその行ごと拒否されます。',
+    membershipImportScopeNotice:
+      'CSV に書かれていないユーザーは変更されません。group_id と group_name の列は照合専用で、別のグループを指す行は拒否されます。動的グループ、動的規則が作った所属、外部ソース管理のグループとユーザーは変更できません。',
+    membershipImportTransferPolicyNotice:
+      '1 ファイルの既定上限: 100,000 行、64 MiB、1 フィールド 64 KiB。グループのメンバー数の上限ではありません。',
+    membershipImportSplitNotice:
+      '上限を超える場合はユーザーが重複しない複数ファイルに分割してください。ファイルに現れないユーザーは解除されないため、分割しても安全です。',
+    membershipImportAddedRows: '追加',
+    membershipImportRemovedRows: '解除',
+    membershipImportReleaseHeading: 'メンバーシップの解除',
+    membershipImportReleaseNotice:
+      '解除されたユーザーは、このグループのロールを実効ロールから失います。',
+    membershipImportApplySuccessNotice:
+      '{added} 件のメンバーシップを追加し、{removed} 件を解除しました。',
+    membershipImportConfirmTitle: 'メンバーの変更を適用しますか?',
+    membershipImportConfirmDescription:
+      '事前検証済みの同じファイルを現在の所属で再評価し、追加 {added} 件を適用します。',
+    membershipImportConfirmReleaseWarning:
+      '{removed} 件のメンバーシップを解除します。対象のユーザーはこのグループのロールを失います。',
+    membershipImportConfirmReleaseAcknowledge: '解除される内容を確認しました',
+    membershipImportErrorInvalidMembershipState:
+      'membership_state に指定できるのは present か absent だけです。',
+    membershipImportErrorDynamicGroup:
+      '動的グループのメンバーは規則が決めるため、CSV から変更できません。',
+    membershipImportErrorDynamicMembership:
+      '動的規則が作った所属は CSV から追加も解除もできません。',
+    membershipImportErrorGroupMismatch: 'この行は別のグループを指しています。',
+    membershipImportErrorMissingIdentifier:
+      'user_id と preferred_username のどちらも指定されていません。',
+    membershipImportErrorDuplicateTarget: '同じユーザーを複数の行が指しています。',
+    membershipImportErrorIdentifierMismatch:
+      'user_id と preferred_username が別のユーザーを示しています。',
+    membershipImportErrorTargetNotFound: '指定されたユーザーが見つかりません。',
+    membershipImportErrorSourceManaged:
+      '外部ソース管理のグループまたはユーザーは CSV から変更できません。',
+    membershipImportErrorMissingStateColumn:
+      'membership_state 列がありません。この列が無いファイルは何の意図も表せません。',
+    membershipColumnUserId: 'ユーザー ID',
+    membershipColumnUsername: 'ユーザー名',
+    membershipColumnState: '所属状態',
+    membershipColumnGroupId: 'グループ ID',
+    membershipColumnGroupName: 'グループ名',
   },
   {
     genericActionError: 'Could not complete the group action.',
@@ -375,5 +426,52 @@ export const adminGroupsDictionary = defineDictionary(
     applyImportConfirmDeleteAcknowledge: 'I have reviewed what will be deleted',
     applyImportConfirmButton: 'Confirm apply',
     close: 'Close',
+    importMembers: 'Import members from CSV',
+    importMembersTitle: 'Import group members from CSV',
+    importMembersDescription:
+      "Preview a CSV, then add and release this group's members. Only this group is touched.",
+    backToGroupDetail: 'Back to the group',
+    backToGroupDetailAria: 'Back to the group',
+    membershipImportInstructions:
+      'The header row uses the fixed machine keys (user_id, preferred_username, membership_state, and so on). The columns may come in any order, but membership_state has to be there. A row resolves its user by user_id first and by preferred_username second.',
+    membershipImportStateNotice:
+      'membership_state accepts only present and absent. present adds a user the group does not hold yet; absent releases a manual membership. Either one does nothing when the group already matches. An empty cell and any other value refuse the row.',
+    membershipImportScopeNotice:
+      'A user the CSV does not name is never touched. The group_id and group_name columns are verification only, and a row naming another group is refused. A dynamic group, a membership a dynamic rule owns, and a group or user an external source owns cannot be changed.',
+    membershipImportTransferPolicyNotice:
+      'Per-file defaults: 100,000 rows, 64 MiB, and 64 KiB per field. These are not a ceiling on how many members a group may have.',
+    membershipImportSplitNotice:
+      'Beyond those limits, split the file so no user appears twice. Splitting is safe: a user missing from a file is never released.',
+    membershipImportAddedRows: 'Added',
+    membershipImportRemovedRows: 'Released',
+    membershipImportReleaseHeading: 'Released memberships',
+    membershipImportReleaseNotice:
+      "A released user loses this group's roles from their effective roles.",
+    membershipImportApplySuccessNotice: 'Added {added} membership(s) and released {removed}.',
+    membershipImportConfirmTitle: 'Apply the membership changes?',
+    membershipImportConfirmDescription:
+      'The validated file is replanned against the current membership, then {added} row(s) are added.',
+    membershipImportConfirmReleaseWarning:
+      "This releases {removed} membership(s). Those users lose this group's roles.",
+    membershipImportConfirmReleaseAcknowledge: 'I have reviewed what will be released',
+    membershipImportErrorInvalidMembershipState: 'membership_state accepts only present or absent.',
+    membershipImportErrorDynamicGroup:
+      'A dynamic group gets its members from its rule, so a CSV cannot change them.',
+    membershipImportErrorDynamicMembership:
+      'A membership a dynamic rule created can be neither added nor released from a CSV.',
+    membershipImportErrorGroupMismatch: 'This row names a different group.',
+    membershipImportErrorMissingIdentifier: 'Neither user_id nor preferred_username is given.',
+    membershipImportErrorDuplicateTarget: 'More than one row names the same user.',
+    membershipImportErrorIdentifierMismatch: 'user_id and preferred_username name different users.',
+    membershipImportErrorTargetNotFound: 'The user named here does not exist.',
+    membershipImportErrorSourceManaged:
+      'A group or user an external source owns cannot be changed from a CSV.',
+    membershipImportErrorMissingStateColumn:
+      'The membership_state column is missing. A file without it cannot express any intent.',
+    membershipColumnUserId: 'User ID',
+    membershipColumnUsername: 'Username',
+    membershipColumnState: 'Membership state',
+    membershipColumnGroupId: 'Group ID',
+    membershipColumnGroupName: 'Group name',
   },
 )

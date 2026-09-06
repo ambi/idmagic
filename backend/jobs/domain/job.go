@@ -36,12 +36,16 @@ type JobKind string
 
 const (
 	// KindNoopEcho is the wi-126 core-runtime smoke-test job kind.
-	KindNoopEcho              JobKind = "noop_echo"
-	KindUserImportPreview     JobKind = "user_import_preview"
-	KindUserImportApply       JobKind = "user_import_apply"
-	KindGroupImportPreview    JobKind = "group_import_preview"
-	KindGroupImportApply      JobKind = "group_import_apply"
-	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
+	KindNoopEcho           JobKind = "noop_echo"
+	KindUserImportPreview  JobKind = "user_import_preview"
+	KindUserImportApply    JobKind = "user_import_apply"
+	KindGroupImportPreview JobKind = "group_import_preview"
+	KindGroupImportApply   JobKind = "group_import_apply"
+	// KindGroupMembershipImport* は per-group membership CSV の preview/apply
+	// (wi-351)。Group 本体の import とは対象も語彙も違うため別の kind とする。
+	KindGroupMembershipImportPreview JobKind = "group_membership_import_preview"
+	KindGroupMembershipImportApply   JobKind = "group_membership_import_apply"
+	KindDynamicGroupReconcile        JobKind = "dynamic_group_reconcile"
 	// KindDataKeyReencryption is wi-97's DataKeys re-encryption job
 	// (spec/contexts/data-keys.yaml): it drives a registered
 	// FieldMigrator through pending rows onto a tenant's active
@@ -82,6 +86,8 @@ func init() {
 	RegisterKind(KindUserImportApply, LaneBulk)
 	RegisterKind(KindGroupImportPreview, LaneBulk)
 	RegisterKind(KindGroupImportApply, LaneBulk)
+	RegisterKind(KindGroupMembershipImportPreview, LaneBulk)
+	RegisterKind(KindGroupMembershipImportApply, LaneBulk)
 	RegisterKind(KindDynamicGroupReconcile, LaneBulk)
 	RegisterKind(KindDataKeyReencryption, LaneBulk)
 }

@@ -40,7 +40,7 @@ export const dataExportDictionary = defineDictionary(
     statusFailed: '失敗',
     statusCanceled: '取消済み',
     statusExpired: '期限切れ',
-    errorTooLarge: 'エクスポートが大きすぎます。',
+    errorTooLarge: 'エクスポートが 1 ファイルの上限を超えました。列を絞るか対象を分けてください。',
     errorGeneric: 'エクスポートの生成に失敗しました。',
     colId: 'ID',
     colUsername: 'ユーザー名',
@@ -61,6 +61,7 @@ export const dataExportDictionary = defineDictionary(
     colGroupId: 'グループID',
     colUserId: 'ユーザーID',
     colSource: '追加元',
+    colMembershipState: '所属状態',
   },
   {
     pageTitleUsers: 'Export users to CSV',
@@ -101,7 +102,8 @@ export const dataExportDictionary = defineDictionary(
     statusFailed: 'Failed',
     statusCanceled: 'Canceled',
     statusExpired: 'Expired',
-    errorTooLarge: 'The export is too large.',
+    errorTooLarge:
+      'The export went past the per-file limit. Narrow the columns or split the target.',
     errorGeneric: 'Export generation failed.',
     colId: 'ID',
     colUsername: 'Username',
@@ -122,5 +124,6 @@ export const dataExportDictionary = defineDictionary(
     colGroupId: 'Group ID',
     colUserId: 'User ID',
     colSource: 'Source',
+    colMembershipState: 'Membership state',
   },
 )

@@ -941,3 +941,178 @@ Primary actor: `TenantAdministrator`
 - When 管理者がその CSV を事前検証へ投入する
 - But 対象 `Group` が外部の取り込み元に管理されている、または所有権を判定できない
 - Then 対象行は安定したエラーコード `source_managed` で `rejected` となり、`Group` は削除されない
+
+## Rule: REQ-IDMANAGEMENT-029 管理者は 1 つのグループのメンバーシップ CSV を検証し、行ごとに宣言した所属状態だけを適用できる
+
+Primary actor: `TenantAdministrator`
+
+### Example: EX-IDMANAGEMENT-029-01 通常経路
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- Then プレビュージョブは `added`、`removed`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、メンバーシップは変更されない
+- Then 解除される件数は他の操作と分けて返される
+- When 管理者が解除を含むことを確認したうえで、同じテナントかつ同じグループの成功済みプレビュージョブの ID を指定して適用する
+- Then CSV は再送されず、保存済みのプレビューペイロードとその SHA-256 が検証される
+- Then `membership_state=present` の "bob" の行はメンバーシップを追加し、"GroupMemberAdded" を発行する
+- Then `membership_state=absent` の "alice" の行は手動メンバーシップを解除し、"GroupMemberRemoved" を発行する
+- Then "alice" の実効ロールから "engineering" のロールが外れ、"bob" の実効ロールにそれが加わる
+
+### Example: EX-IDMANAGEMENT-029-02 CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- But CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える
+- Then インポートの投入は拒否される
+- And エラー "csv_too_large" / "too_many_rows" / "field_too_large"
+
+### Example: EX-IDMANAGEMENT-029-03 CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- But CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる
+- Then インポートの投入は拒否される
+- And エラー "invalid_header"
+
+### Example: EX-IDMANAGEMENT-029-04 CSV のヘッダーに `membership_state` が無い
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- But CSV のヘッダーに `membership_state` が無い
+- Then ファイル全体が安定したエラーコード "invalid_header" で拒否され、メンバーシップは 1 件も追加も解除もされない
+
+### Example: EX-IDMANAGEMENT-029-05 `membership_state` のセルが空である、または `present` と `absent` のどちらでもない
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- But `membership_state` のセルが空である、または `present` と `absent` のどちらでもない
+- Then 対象行は安定したエラーコード `invalid_membership_state` で `rejected` となり、既知の値へ丸めず、その User のメンバーシップは変更されない
+
+### Example: EX-IDMANAGEMENT-029-06 行に `user_id` も `preferred_username` も無い、両者が別の User を示す、対象 User がテナントに存在しない、同じ User を複数行が示す
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- But 行に `user_id` も `preferred_username` も無い、両者が別の User を示す、対象 User がテナントに存在しない、同じ User を複数行が示す
+- Then 対象行は安定したエラーコード `missing_identifier` / `identifier_mismatch` / `target_not_found` / `duplicate_target` で `rejected` となり、メンバーシップは変更されない
+
+### Example: EX-IDMANAGEMENT-029-07 行の `group_id` または `group_name` がパスのグループ以外を示す
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- But 行の `group_id` または `group_name` がパスのグループ以外を示す
+- Then 対象行は安定したエラーコード `group_mismatch` で `rejected` となり、示された別のグループのメンバーシップも変更されない
+
+### Example: EX-IDMANAGEMENT-029-08 プレビュージョブが存在しない、`queued` または `failed` である、別テナントまたは別グループに属する、保存済みのペイロードとダイジェストが一致しない
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- Then プレビュージョブは `added`、`removed`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、メンバーシップは変更されない
+- When 管理者が解除を含むことを確認したうえで、同じテナントかつ同じグループの成功済みプレビュージョブの ID を指定して適用する
+- But プレビュージョブが存在しない、`queued` または `failed` である、別テナントまたは別グループに属する、保存済みのペイロードとダイジェストが一致しない
+- Then 適用はメンバーシップを変更せず `InvalidRequestError`、`AccessDeniedError`、または `GroupMembershipImportNotFoundError` で拒否される
+
+### Example: EX-IDMANAGEMENT-029-09 プレビュー後にメンバーシップが別の操作で変更されている
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- Then プレビュージョブは `added`、`removed`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、メンバーシップは変更されない
+- When 管理者が解除を含むことを確認したうえで、同じテナントかつ同じグループの成功済みプレビュージョブの ID を指定して適用する
+- Then プレビュー後にメンバーシップが別の操作で変更されている
+- Then 適用は古いプレビュー計画を実行せず、現在のメンバーシップから `added`、`removed`、`unchanged`、`rejected` を再判定する
+
+### Example: EX-IDMANAGEMENT-029-10 1 行のメンバーシップ確定または監査記録が途中で失敗する
+
+- Given ロール=["admin"] のユーザー "operator" が手動グループ "engineering" の詳細画面を開いている
+- And "engineering" にはユーザー "alice" が所属し、"bob" は所属していない
+- When 管理者が機械可読なヘッダー [user_id, preferred_username, membership_state] を任意の順で含む CSV を、そのグループの事前検証へ投入する
+- Then プレビュージョブは `added`、`removed`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、メンバーシップは変更されない
+- When 管理者が解除を含むことを確認したうえで、同じテナントかつ同じグループの成功済みプレビュージョブの ID を指定して適用する
+- Then 1 行のメンバーシップ確定または監査記録が途中で失敗する
+- Then その行のメンバーシップも監査記録も一部すら残らず、他の有効な行は適用を続ける
+
+## Rule: REQ-IDMANAGEMENT-030 管理者はエクスポートしたメンバーシップ CSV を、分割しても大量解除にならない形で再適用できる
+
+Primary actor: `TenantAdministrator`
+
+### Example: EX-IDMANAGEMENT-030-01 通常経路
+
+- Given 手動グループ "engineering" が 10,000 件の手動メンバーシップを持ち、実効 `CsvTransferPolicy` の上限内に収まる
+- When 管理者がインポート可能な組み込み列を機械可読ヘッダーでエクスポートする
+- Then `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
+- Then `membership_state` 列は全行で `present` として出力される
+- When 管理者が同じ 10,000 行の成果物を編集せずプレビューする
+- Then 全行が `unchanged` となり、メンバーシップは 1 件も追加も解除もされない
+- When 管理者がその成果物を 2 つのファイルへ分け、片方だけをプレビューして適用する
+- Then もう一方のファイルにしか現れないメンバーシップは解除されない
+- Then CSV に現れない User は、そのグループの所属についても一切変更されない
+
+### Example: EX-IDMANAGEMENT-030-02 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む
+
+- Given 手動グループ "engineering" が 10,000 件の手動メンバーシップを持ち、実効 `CsvTransferPolicy` の上限内に収まる
+- When 管理者がインポート可能な組み込み列を機械可読ヘッダーでエクスポートする
+- But 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む
+- Then 可逆な数式安全変換と RFC 4180 の引用により `decode(encode(value))` は元の値と一致する
+
+### Example: EX-IDMANAGEMENT-030-03 生成結果が実効 `CsvTransferPolicy` のいずれかの上限を超える
+
+- Given 手動グループ "engineering" が 10,000 件の手動メンバーシップを持ち、実効 `CsvTransferPolicy` の上限内に収まる
+- When 管理者がインポート可能な組み込み列を機械可読ヘッダーでエクスポートする
+- But 生成結果が実効 `CsvTransferPolicy` のいずれかの上限を超える
+- Then メンバーシップのエクスポートは `csv_transfer_limit_exceeded` で失敗し、再インポートできない成功済み成果物を作らない
+
+### Example: EX-IDMANAGEMENT-030-04 `source`、`created_at`、`group_name` の値だけを編集する
+
+- Given 手動グループ "engineering" が 10,000 件の手動メンバーシップを持ち、実効 `CsvTransferPolicy` の上限内に収まる
+- When 管理者がインポート可能な組み込み列を機械可読ヘッダーでエクスポートする
+- Then `membership_state` 列は全行で `present` として出力される
+- When 管理者が同じ 10,000 行の成果物を編集せずプレビューする
+- But `source`、`created_at`、`group_name` の値だけを編集する
+- Then 読み取り専用列は受理したうえで無視し、`group_name` が別のグループを指す場合にだけ行を拒否する
+
+## Rule: REQ-IDMANAGEMENT-031 メンバーシップ CSV は動的規則と外部の取り込み元が所有する所属を上書きしない
+
+Primary actor: `TenantAdministrator`
+
+### Example: EX-IDMANAGEMENT-031-01 対象グループの `membership_type` が `dynamic` である
+
+- Given ロール=["admin"] のユーザー "operator" がメンバーシップ CSV を用意している
+- When 管理者がそのグループの事前検証へ CSV を投入する
+- But 対象グループの `membership_type` が `dynamic` である
+- Then ファイル全体が安定したエラーコード `dynamic_group` で拒否され、メンバーシップは 1 件も追加も解除もされない
+
+### Example: EX-IDMANAGEMENT-031-02 対象 User の現在のメンバーシップの `source` が `dynamic_rule` である
+
+- Given ロール=["admin"] のユーザー "operator" がメンバーシップ CSV を用意している
+- When 管理者がそのグループの事前検証へ CSV を投入する
+- But 対象 User の現在のメンバーシップの `source` が `dynamic_rule` である
+- Then 対象行は安定したエラーコード `dynamic_membership` で `rejected` となり、`present` でも `absent` でもそのメンバーシップは変更されない
+
+### Example: EX-IDMANAGEMENT-031-03 対象グループが外部の取り込み元に管理されている、または所有権を判定できない
+
+- Given ロール=["admin"] のユーザー "operator" がメンバーシップ CSV を用意している
+- When 管理者がそのグループの事前検証へ CSV を投入する
+- But 対象グループが外部の取り込み元に管理されている、または所有権を判定できない
+- Then ファイル全体が安定したエラーコード `source_managed` で拒否され、メンバーシップは 1 件も追加も解除もされない
+
+### Example: EX-IDMANAGEMENT-031-04 対象 User が外部の取り込み元に管理されている、または所有権を判定できない
+
+- Given ロール=["admin"] のユーザー "operator" がメンバーシップ CSV を用意している
+- When 管理者がそのグループの事前検証へ CSV を投入する
+- But 対象 User が外部の取り込み元に管理されている、または所有権を判定できない
+- Then 対象行は安定したエラーコード `source_managed` で `rejected` となり、その User のメンバーシップは変更されない
+
+### Example: EX-IDMANAGEMENT-031-05 対象グループがテナントに存在しない、または適用の直前に削除されている
+
+- Given ロール=["admin"] のユーザー "operator" がメンバーシップ CSV を用意している
+- When 管理者がそのグループの事前検証へ CSV を投入する
+- But 対象グループがテナントに存在しない、または適用の直前に削除されている
+- Then ファイル全体が安定したエラーコード `target_not_found` で拒否され、グループは作成されず、メンバーシップも作られない
