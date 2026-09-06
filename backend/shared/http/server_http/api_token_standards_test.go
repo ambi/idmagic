@@ -112,13 +112,23 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	signer := tokensjose.NewJWTSigner(apiTokenIssuer, keyStore)
 	repo := apitokenmemory.NewRepository()
 
+	// OAuth2.TokenIntrospector は生の署名検証器ではなく、管理発行トークンのライフサイクル
+	// 記録を重ねる apitoken の overlay である。組み立ての正は backend/cmd/idmagic/server.go
+	// であり、そこがこの形で渡している。
+	//
+	// **ここを生の署名検証器にすると、このファイルは製品と違うスタックを観測することになる。**
+	// 管理コンソールからの失効は記録にしか載らないので、overlay を外した配線では失効した
+	// トークンが `/introspect` で有効に見える。それは製品の欠陥ではなく、組み立ての違いである。
+	// 入口を通すことに意味があるのは、入口の組み立てが製品と同じときだけである。
+	managedIntrospector := apitokenusecases.New(repo, apitokenusecases.WithTokenIntrospector(signer))
+
 	e := echo.New()
 	Register(e, Deps{
 		Issuer: apiTokenIssuer, Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, UserRepo: users,
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
 		OAuth2: oauth2.Module{
-			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: signer,
+			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: managedIntrospector,
 			RefreshStore:        oauth2memory.NewRefreshTokenStore(),
 			AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
 			DpopReplayStore:     oauth2memory.NewDpopReplayStore(),
@@ -799,15 +809,16 @@ func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
 	}
 }
 
-// 内省が非活性を返す 4 通りの入力について、`active=false` だけを返すことを固定する。
-// `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
-// 4 通りの入力が同じ 1 つの本文になることが、存在を漏らさないということである。
+// RFC7662-API-TOKEN-INACTIVE: 未知、失効済み、期限切れ、レルム不一致のいずれでも
+// `active=false` だけを返すことを固定する。
 //
-// このテストは、api-tokens の standards.md が内省の非活性について宣言している行を名指さない。
-// 行は失効済みのトークン全般について非活性を要求しているが、管理コンソールから失効させた
-// トークンの内省はいま `active=true` と全 claim を返す。行を満たさないので、名指しは
-// [[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] の修正を待つ。ここで
-// 観測しているのは、RFC 7009 の `/revoke` を通した失効を含む 4 通りだけである。
+// `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
+// 5 通りの入力が同じ 1 つの本文になることが、存在を漏らさないということである。
+//
+// 行は失効の経路を限定していないので、失効の入力を 2 通り置く。`/revoke` を通した失効は
+// 失効リストに載り、管理コンソールを通した失効はライフサイクル記録にしか載らない。
+// 後者を落とすのは overlay の introspector だけなので、`/revoke` の側だけを観測すると、
+// overlay を持たない配線と製品を区別できない。
 func TestApiTokenIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 	stack := newApiTokenStack(t)
 
@@ -817,6 +828,15 @@ func TestApiTokenIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 	}
 	if recorder := stack.revoke(t, revoked); recorder.Code != http.StatusOK {
 		t.Fatalf("前提が壊れている: revoke status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	consoleRevoked, consoleMetadata := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
+	if body := stack.introspect(t, tenancydomain.DefaultRealm, consoleRevoked); body["active"] != true {
+		t.Fatalf("前提が壊れている: 失効前の内省が active=%v", body["active"])
+	}
+	if err := stack.tokens.Revoke(stack.realmContext(t, tenancydomain.DefaultRealm),
+		tenancydomain.DefaultTenantID, consoleMetadata.ID); err != nil {
+		t.Fatal(err)
 	}
 
 	expired, _ := stack.issueWithClock(t, tenancydomain.DefaultRealm, "",
@@ -830,7 +850,8 @@ func TestApiTokenIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 		token string
 	}{
 		{name: "unknown", realm: tenancydomain.DefaultRealm, token: "not.a.token"},
-		{name: "revoked", realm: tenancydomain.DefaultRealm, token: revoked},
+		{name: "revoked through /revoke", realm: tenancydomain.DefaultRealm, token: revoked},
+		{name: "revoked from the admin console", realm: tenancydomain.DefaultRealm, token: consoleRevoked},
 		{name: "expired", realm: tenancydomain.DefaultRealm, token: expired},
 		{name: "issued by another realm", realm: tenancydomain.DefaultRealm, token: otherRealm},
 	} {

@@ -87,7 +87,7 @@ initial_context:
 
 - 他の文書が宣言する標準行。文書ごとに別の work item が持つ。OAuth2 の同名に見える行（`RFC6750-AUTHORIZATION-HEADER` など）は別の入口を指す別の行であり、[[wi-499-back-oauth2-standards-rows-with-tests]] が持つ。
 - `standards.md` の行の追加、削除、`Adoption` および `Strength` の変更。
-- 見つかった実装の欠陥の修正。欠陥として切り出した先で扱う。**T005 と T006 で 2 件見つけたので、[[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] と [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] へ切り出した。**
+- 見つかった実装の欠陥の修正。欠陥として切り出した先で扱う。**T005 で 1 件見つけたので、[[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] へ切り出した。**
 - 受入集合の導入と、台帳ファイルそのものの削除。親の [[wi-495-burn-down-the-standards-coverage-debt]] が持つ。
 - 具体例の被覆負債。[[wi-496-burn-down-the-example-coverage-debt]] が持つ。
 - id を名指しする文字列があるだけを根拠にした台帳からの削除。
@@ -102,9 +102,11 @@ initial_context:
 
 ### 入口の選択: 組み立て済みのスタック 1 つ（T001 で決めた）
 
-11 行のうち 10 行は、`backend/shared/http/server_http` の `Register` が組み立てたスタックへ HTTP 要求を出す形で観測した。テストは `backend/shared/http/server_http/api_token_standards_test.go` の 1 ファイルに置いた。
+11 行すべてを、`backend/shared/http/server_http` の `Register` が組み立てたスタックへ HTTP 要求を出す形で観測した。テストは `backend/shared/http/server_http/api_token_standards_test.go` の 1 ファイルに置いた。
 
-**Context ごとにテストを置く案を採らなかったのは、行が言っている防護がどれも配線に宿るからである。** `apitoken/usecases.Service.AuthenticateClaims` は audience もスコープも正しく照合するが、それが管理 API の手前に立っているかどうかは `routes.go` の組み立てが決める。実際、この Context には**正しく書かれていて配線だけ落ちている関数**が現に 1 つある（Design の「見つけた欠陥 1」）。関数の単体テストは、まさにその欠陥を素通りさせる。
+**Context ごとにテストを置く案を採らなかったのは、行が言っている防護がどれも配線に宿るからである。** `apitoken/usecases.Service.AuthenticateClaims` は audience もスコープも正しく照合するが、それが管理 API の手前に立っているかどうかは `routes.go` の組み立てが決める。関数の単体テストは、配線が落ちている実装を素通りさせる。
+
+**同じ理由で、ハーネスの組み立ては本番と一致していなければならない。** 入口を通すことに意味があるのは、その入口が製品と同じ部品でできているときだけである。ここは一度間違えた。Design の「ハーネスが本番とずれていた」節。
 
 保護されたエンドポイントには `GET /realms/default/api/admin/v1/users`（`users:read`）と `POST /realms/default/api/admin/v1/users/{sub}/disable`（`users:write`）を使う。後者は `excluded` の行が要求する「拒否が防いだ効果」を保存先から読み直すために要る。参照だけでは、拒否しながら状態を変える実装を見分けられない。
 
@@ -126,19 +128,21 @@ initial_context:
 
 [[wi-501-back-authentication-standards-rows-with-tests]] が `NIST63B4-PASSWORD-MINIMUM` で採った型（「採用した実装なら拒否する入力が受理されること」）とは形が逆になる。あちらの行は標準が課す制約を採らないことを言い、こちらの行は標準が許す機能を提供しないことを言っているからである。**`excluded` に 1 つの型は無い。行の `Statement` が製品の制約を書いているのか標準側の機能を書いているのかで、観測は裏返る。**
 
-### 見つけた欠陥 1: 内省がライフサイクル記録を見ない（`RFC7662-API-TOKEN-INACTIVE` は消化できない）
+### ハーネスが本番とずれていた（一度出した結論の取り消し）
 
-この行だけは、行を満たすテストが書けない。
+**この項目は一度、`RFC7662-API-TOKEN-INACTIVE` を「製品が満たしていないので消化できない」と結論し、台帳へ残した。その結論は誤りだった。** 原因はハーネスの配線である。
 
-`DELETE /api/admin/v1/api-tokens/{id}` で失効させたトークンを `/introspect` へ提示すると、`active=true` と全 claim が返る。`routes.go:305` が作る `apiTokenService` は `ApiTokenAuthenticator` と `ManagedTokenRevoker` としては配線されているが、`TokenIntrospector` としては配線されていない。`/introspect` が使うのは生の `JWTSigner` で、その失効判定は `AccessTokenDenylist` と Agent の revocation epoch だけである。管理コンソールの失効は記録に `revoked_at` を立てるだけなので、どちらにも載らない。
+`backend/cmd/idmagic/server.go:108` は、`OAuth2.TokenIntrospector` に生の `JWTSigner` ではなく `apitoken/usecases.Service` を渡す。この Service の `IntrospectAccessToken` が、共通の JWT 検証結果へ管理発行トークンのライフサイクル記録を重ねる。管理コンソールからの失効は記録にしか載らないので、**この重ね合わせが失効を `/introspect` へ届ける唯一の仕組みである。**
 
-**`apitoken/usecases.Service.IntrospectAccessToken` は、この重ね合わせのために書かれていて、production のどこからも呼ばれていない。** 同じトークンについて、自前の入口（拒否する）と `/introspect`（有効と申告する）が別の答えを出している。
+最初のハーネスはそこへ生の `JWTSigner` を渡していた。その配線では、コンソールから失効させたトークンの内省が `active=true` と全 claim を返す。私はそれを製品の欠陥として測り、記録し、欠陥の work item まで起票した。**測っていたのは製品ではなく、自分で組み立てた別のスタックだった。**
 
-行は失効の経路を限定していないので、この状態では行を満たしたことにならない。台帳には残し、理由を「投入時からある」から見つけた内容と切り出し先へ書き換えた。[[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] が持つ。
+本番と同じ形（overlay を `OAuth2.TokenIntrospector` に置く）で測り直すと、`/introspect` は `{"active":false}` を返す。行は満たされている。ハーネスを本番へ合わせ、コンソール失効の事例を足して、行を消化した。
 
-内省が非活性を返す 4 通り（未知、`/revoke` を通した失効、期限切れ、レルム不一致）についてのテストは書いてあり、`active` 以外の鍵を 1 つも返さないことまで観測している。ただし行を名指してはいない。`checkNormativeCoverage` は台帳と名指しの両方に載る id を拒否するので、名指しは [[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] の修正と同時に足す。
+この取り違えは、この項目自身の Design が警告していたことの裏返しである。「関数が正しくても配線されていなければ素通りする」から入口を通すと決めたのに、その入口を製品と違う部品で組み立てた。**入口を通すという方針は、組み立てが本番と一致していることまで含めて初めて意味を持つ。** ハーネスにはその旨の注記を置いた。
 
-### 見つけた欠陥 2: 保護リソースの `htu` が target URI でない
+副次的な観察として、この重ね合わせは `cmd/idmagic/server.go` だけが担っていて、`server_http.Register` は強制していない。別の組み立てが生の introspector を渡せば、失効は `/introspect` へ届かなくなる。製品の欠陥ではないので本項目では触らないが、組み立て側で守るのではなく `Register` が overlay を被せる形にすれば、この取り違えは起こらなくなる。
+
+### 見つけた欠陥: 保護リソースの `htu` が target URI でない
 
 `RFC9449-API-TOKEN-DPOP` を観測している途中で見つけた。`support_http/auth.go:150` は保護リソースの DPoP 証明を `RequestHTU(c, "")` と照合する。base が空文字なので期待値はパスだけになる。同じ関数を `/token` と `/userinfo` は `RequestHTU(c, d.Issuer)` で呼び、絶対 URL を期待する。RFC 9449 §4.2 と `spec/contexts/oauth2/models.tsp:607` の `htu: url` に従う適合クライアントは絶対 URL を送るので、**送信者制約付きの API アクセストークンは適合クライアントからは 1 度も使えない**。
 
@@ -168,10 +172,12 @@ initial_context:
   同じ `kid` を名乗る別鍵の署名が届かないことの 3 つを読む。
   recipe: `mise run test-go-package -- ./backend/shared/http/server_http`
 - [x] T003 [Acceptance] `RFC7662-API-TOKEN-INTROSPECT` / `RFC7662-API-TOKEN-INACTIVE` / `RFC7009-API-TOKEN-REVOKE` / `RFC7009-API-TOKEN-UNKNOWN` を消化する。
-  3 行を消化した。`TestApiTokenIntrospectionReturnsTheIssuedTokenClaims`、
+  4 行とも消化した。`TestApiTokenIntrospectionReturnsTheIssuedTokenClaims`、
+  `TestApiTokenIntrospectionRevealsNothingAboutInactiveTokens`、
   `TestRevokingAManagedApiTokenTakesEffectImmediately`、
   `TestRevokingAnUnknownApiTokenIsAnIndistinguishableNoOp`。
-  **`RFC7662-API-TOKEN-INACTIVE` は消化できなかった。** Design の「見つけた欠陥 1」。
+  `RFC7662-API-TOKEN-INACTIVE` は一度「消化できない」と誤って結論した。経緯と訂正は
+  Design の「ハーネスが本番とずれていた」節。
   recipe: `mise run test-go-package -- ./backend/shared/http/server_http`
 - [x] T004 [Acceptance] `RFC6750-API-TOKEN-QUERY` を、ヘッダーでの成功と対にして消化する。
   `TestApiTokenIsNotAcceptedFromTheQueryString`。参照と変更の両方をクエリで試し、変更については
@@ -183,18 +189,16 @@ initial_context:
   途中で `htu` の欠陥を見つけ、[[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] へ切り出した。
   recipe: `mise run test-go-package -- ./backend/shared/http/server_http`
 - [x] T006 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
-  2 件切り出した。[[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] と
-  [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]]。
+  1 件切り出した。[[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]]。
+  内省についてもう 1 件起票したが、ハーネスの配線が本番と違っていたことによる誤りだったので取り下げた。
 - [x] T007 [Ledger] 解決した id を `standards-coverage-debt.json` から外す。
-  10 件を外し（121 → 111）、`RFC7662-API-TOKEN-INACTIVE` は理由を書き換えて残した。
+  11 件すべてを外した（121 → 110）。
   recipe: `mise run check-spec`
 - [x] T008 [Verify] `mise run verify`。
 
 ## Verification
 
-- 本項目が持つ 11 件のうち 10 件が `tools/check/standards-coverage-debt.json` から消えている。残る 1 件
-  （`RFC7662-API-TOKEN-INACTIVE`）は理由の欄が「投入時からある」から、欠陥の内容と切り出し先を名指す文へ
-  書き換わっている。
+- 本項目が持つ 11 件すべてが `tools/check/standards-coverage-debt.json` から消えている。
 - 注記を足した各テストについて、対応する production の判断を崩すとそのテストが落ちる。
 - `mise run check-spec`
 - `mise run verify`
@@ -212,30 +216,33 @@ initial_context:
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
   差分は `docs/contexts/api-tokens/standards.md` の 12 行のうち、名指しを持たなかった 11 行に対する被覆の
-  状態である。10 行がその行の `Statement` を区別できる入力と観測を持つテストを得て
-  `tools/check/standards-coverage-debt.json` から消え、台帳は 121 件から 111 件になった。
-  残る `RFC7662-API-TOKEN-INACTIVE` は、管理コンソールから失効させたトークンを `/introspect` が有効と
-  申告するため行を満たすテストが書けない。台帳には残したうえで、理由の欄を「投入時からある」から欠陥の
-  内容と切り出し先を名指す文へ書き換えた。テストは 1 ファイル（`api_token_standards_test.go`、11 テスト）で、
-  `Register` が組み立てたスタックへ HTTP 要求を出す。製品コードは 1 行も変わっていない。
-  見つけた欠陥 2 件を [[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] と
-  [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] へ切り出した。
+  状態である。**11 行すべて**がその行の `Statement` を区別できる入力と観測を持つテストを得て
+  `tools/check/standards-coverage-debt.json` から消え、台帳は 121 件から 110 件になった。
+  テストは 1 ファイル（`api_token_standards_test.go`、11 テスト）で、`Register` が組み立てたスタックへ
+  HTTP 要求を出す。製品コードは 1 行も変わっていない。
+  見つけた欠陥 1 件を [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] へ切り出した。
+
+  この記録は一度、`RFC7662-API-TOKEN-INACTIVE` を「製品が満たしていないので消化できない」と結論し、
+  欠陥の work item まで起票して完了した。**その結論はハーネスの配線の誤りによるもので、取り消した。**
+  経緯は Design の「ハーネスが本番とずれていた」節。ハーネスを `cmd/idmagic/server.go` と同じ形へ直し、
+  コンソール失効の事例を足して行を消化し、起票した work item は取り下げた。
 - **Acceptance RED Evidence**:
-  - **Test**: `mise run check-spec`（新しいテストファイルを退避し、10 件を台帳から外した状態で）
+  - **Test**: `mise run check-spec`（新しいテストファイルを退避し、台帳から外した状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
   - **Observed Failure**: exit 1。`docs/contexts/api-tokens/standards.md` の 10 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（9 行目 `RFC6750-API-TOKEN-HEADER` から
-    55 行目 `RFC9700-API-TOKEN-SENDER-CONSTRAINT` まで 10 件）
+    55 行目 `RFC9700-API-TOKEN-SENDER-CONSTRAINT` まで 10 件。`RFC7662-API-TOKEN-INACTIVE` は
+    この観測の時点ではまだ台帳に残っていたので、この 10 件には含まれない）
   - **Detection Reason**: この検査は、宣言された id・テストが名指す id・台帳の 3 つを突き合わせる。台帳から
     外した id は、名指すテストが実在しない限り必ず報告される。つまり「台帳を縮めた」という主張は、テストを
-    書かずには通せない。10 件を消化した後の同じコマンドは
-    `ok normative coverage (156 standard(s), 311 rule(s), 744 example(s), 174 id(s) named by a test)` を返す。
+    書かずには通せない。11 件を消化した後の同じコマンドは
+    `ok normative coverage (156 standard(s), 311 rule(s), 744 example(s), 175 id(s) named by a test)` を返す。
 - **Unit RED Evidence**:
   - **Test**: 各行に対応付けたテストへの故障注入（Change-Resistance Results を参照）
   - **Requirement**: N/A: 行ごとの観測は標準の `Statement` に対応し、`REQ` 番号には対応しない。
-  - **Observed Failure**: 注記を足した 10 行それぞれについて、対応する production の判断を崩すとその
-    テストが落ちることを観測した。内訳は Change-Resistance Results の表。17 件の変異をすべて検出した。
+  - **Observed Failure**: 注記を足した 11 行それぞれについて、対応する production の判断を崩すとその
+    テストが落ちることを観測した。内訳は Change-Resistance Results の表。19 件の変異をすべて検出した。
   - **Detection Reason**: `checkNormativeCoverage` は文字列の一致しか見ないので、id を書くだけで検査は
     通ってしまう。名指しが実在の検証に付いていることの担保は、production を崩したときにそのテストが
     落ちるという観測しかない。したがって本項目ではこれを Unit RED の代わりに置いた。
@@ -245,8 +252,8 @@ initial_context:
     列挙している claim のうち、認証が使わないものは入口の観測では固定できない。** 復号した payload を
     直接読む形へ変えたところ、この変異を検出するようになった。
 - **Change-Resistance Results**:
-  10 行すべてについて、行が言っていることを production 側で崩し、対応するテストが落ちることを観測した。
-  17 件の変異はすべて検出された（生き残りは無い）。
+  11 行すべてについて、行が言っていることを production 側で崩し、対応するテストが落ちることを観測した。
+  19 件の変異はすべて検出された（生き残りは無い）。
 
   | 行 | 注入した故障 | 落ちたテストと観測 |
   |---|---|---|
@@ -262,6 +269,8 @@ initial_context:
   | 〃 | `verifyDPoP` の `htu` 比較を無効化 | 同テスト `/htu_of_another_resource`: 別リソース向けの証明で到達 |
   | 〃 | リプレイ判定 `if !isNew` を無効化 | 同テスト: 同じ `jti` の証明が 2 回通る |
   | 〃 | `ath` の必須化と比較を無効化 | 同テスト `/ath_of_another_access_token`: 別トークンに結び付いた証明で到達 |
+  | `RFC7662-API-TOKEN-INACTIVE` | `Service.IntrospectAccessToken` が管理発行トークンの記録を重ねない | `TestApiTokenIntrospectionRevealsNothingAboutInactiveTokens/revoked_from_the_admin_console`: コンソール失効が `active=true` |
+  | 〃 | `AuthenticateClaims` が `revoked_at` を見ない | 同テスト同事例: 同上 |
   | `RFC7662-API-TOKEN-INTROSPECT` | 内省の応答から `scope` を落とす | `TestApiTokenIntrospectionReturnsTheIssuedTokenClaims`: `scope = <nil>` |
   | 〃 | `handleIntrospect` からクライアント認証を削除 | 同テスト: 認証なしの内省が 200 と全 claim を返す |
   | `RFC7009-API-TOKEN-REVOKE` | `revokeAccessToken` から `ManagedTokenRevoker` の呼び出しを削除 | `TestRevokingAManagedApiTokenTakesEffectImmediately`: 記録に `revoked_at` が立たない |

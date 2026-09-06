@@ -247,10 +247,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC7662-API-TOKEN-INACTIVE",
-      "reason": "a token revoked from the admin console is still reported active by /introspect, so no test can satisfy the row; wi-510 carries the fix"
-    },
-    {
       "id": "RFC7662-INACTIVE",
       "reason": "present when the check was introduced"
     },

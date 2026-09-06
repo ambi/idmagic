@@ -37,7 +37,6 @@ RFC 9449 §4.2 は `htu` を「the HTTP target URI, without query and fragment p
 
 ## Out of Scope
 
-- `/introspect` が管理発行トークンのライフサイクル記録を見ないこと。[[wi-510-introspection-ignores-the-managed-token-lifecycle-record]] が持つ。
 - `htm`、`iat`、`jti`、`ath`、サムプリントの検証。いずれも期待どおり働いている。
 - mTLS による送信者制約。
 
