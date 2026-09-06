@@ -184,14 +184,14 @@ linters:
           - gosec
 
 formatters:
+  # goimports は入れない。lint の cold 実行 103 秒のうち 88 秒を占めていながら、gofumpt に
+  # 足しているのは「不足 import の補完」だけだった (wi-498)。足りない import も余った import も
+  # go build が先に落とすので、ゲートとしての意味を持たない。std 群の分離と群内の整列は
+  # gofumpt が持ち、それは故障注入で確かめてある。
   enable:
     - gofumpt
-    - goimports
   settings:
     gofumpt:
-      module-path: idmagic
+      module-path: github.com/ambi/idmagic
       extra:
         group-params: true
-    goimports:
-      local-prefixes:
-        - idmagic

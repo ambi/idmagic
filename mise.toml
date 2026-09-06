@@ -311,6 +311,18 @@ description = "Clear the Go test result cache"
 # 前後比較のための計測は、キャッシュから返った項目を含めると意味を失う。
 run = "go clean -testcache"
 
+[tasks.time-lint-go]
+description = "Break the Go lint gate down by analyzer, on a cleared cache"
+# `time-verify` はどのゲートが重いかを言う。それが lint-go だったときに、260 個の
+# アナライザーのどれが重いかを言うのがこれである。golangci-lint はその内訳を
+# パッケージ × アナライザーの 11 万行のデバッグ出力としてしか出さない。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run task-timing/src/lint-main.ts "${1:-15}"
+'''
+
 [tasks.clean-lint-cache]
 description = "Clear the golangci-lint cache"
 run = "golangci-lint cache clean"
