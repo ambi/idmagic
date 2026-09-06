@@ -183,6 +183,10 @@ func authnRequestRedirectWith(t *testing.T, issuer, acsURL, destination string, 
 	return encoded
 }
 
+// SAML2Profile-WebBrowserSSO: SP 起点の Web Browser SSO は提供されている。
+// AuthnRequest を出した SP が、自分の ACS 宛の、自分を audience とする署名済み Assertion を
+// 受け取るところまでを読む。行の残りの句（フェイルクローズの拒否と NoPassive）は
+// saml_standards_test.go が持つ。
 func TestSamlSSO_SPInitiatedAuthenticatedIssuesPostForm(t *testing.T) {
 	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
@@ -274,6 +278,9 @@ func idpSigningCertificate(t *testing.T, e *echo.Echo) *x509.Certificate {
 	return certificate
 }
 
+// SAML2Profile-WebBrowserSSO: IdP 起点の Web Browser SSO も提供されている。
+// AuthnRequest を伴わない要求でも、SP の既定 ACS 宛に SAMLResponse が出る。SP 起点だけを
+// 観測しても、この経路を持たない実装と区別できない。
 func TestSamlSSO_IdPInitiatedIssuesPostForm(t *testing.T) {
 	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
 

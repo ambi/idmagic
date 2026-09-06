@@ -383,30 +383,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "SAML2Bindings-RedirectPost",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "SAML2Core-EncryptedAssertion",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "SAML2Metadata-IDPSSODescriptor",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "SAML2Metadata-WantAuthnRequestsSigned",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "SAML2Profile-ECP",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "SAML2Profile-WebBrowserSSO",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "WCAG22-FOCUS",
       "reason": "present when the check was introduced"
     },
