@@ -171,27 +171,11 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC6750-API-TOKEN-HEADER",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC6750-API-TOKEN-QUERY",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC6750-AUTHORIZATION-HEADER",
       "reason": "present when the check was introduced"
     },
     {
       "id": "RFC6750-QUERY-TOKEN",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7009-API-TOKEN-REVOKE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7009-API-TOKEN-UNKNOWN",
       "reason": "present when the check was introduced"
     },
     {
@@ -264,11 +248,7 @@
     },
     {
       "id": "RFC7662-API-TOKEN-INACTIVE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7662-API-TOKEN-INTROSPECT",
-      "reason": "present when the check was introduced"
+      "reason": "a token revoked from the admin console is still reported active by /introspect, so no test can satisfy the row; wi-510 carries the fix"
     },
     {
       "id": "RFC7662-INACTIVE",
@@ -335,14 +315,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC9068-API-TOKEN-CLAIMS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9068-API-TOKEN-SIGNATURE",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC9068-ASYMMETRIC-SIGNATURE",
       "reason": "present when the check was introduced"
     },
@@ -375,23 +347,11 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC9449-API-TOKEN-DPOP",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC9449-ATH",
       "reason": "present when the check was introduced"
     },
     {
       "id": "RFC9449-PROOF",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9700-API-TOKEN-AUDIENCE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9700-API-TOKEN-SENDER-CONSTRAINT",
       "reason": "present when the check was introduced"
     },
     {
