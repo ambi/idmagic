@@ -302,9 +302,9 @@ func (s *apiTokenStack) introspect(t *testing.T, realm, token string) map[string
 // RFC 6750 — Bearer Token Usage
 // =====================================================================
 
-// RFC6750-API-TOKEN-HEADER: API アクセストークンを受け付ける提示の形が Authorization ヘッダーの
-// Bearer と DPoP スキームだけであることを固定する。同じ 1 本のトークンを、スキームだけ変えて
-// 提示する。トークンの側は毎回有効なので、到達できたかどうかの差は提示の形だけで決まる。
+// RFC6750-API-TOKEN-HEADER: API アクセストークンを受け付ける提示の形は、Authorization ヘッダーの
+// Bearer と DPoP スキームだけである。同じ 1 本のトークンを、スキームだけ変えて提示する。
+// トークンの側は毎回有効なので、到達できたかどうかの差は提示の形だけで決まる。
 func TestApiTokenIsAcceptedOnlyFromTheAuthorizationHeaderScheme(t *testing.T) {
 	stack := newApiTokenStack(t)
 	literal, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
@@ -344,7 +344,7 @@ func TestApiTokenIsAcceptedOnlyFromTheAuthorizationHeaderScheme(t *testing.T) {
 	}
 }
 
-// RFC6750-API-TOKEN-QUERY: URI クエリパラメーターによる提示を提供していないことを固定する。
+// RFC6750-API-TOKEN-QUERY: URI クエリパラメーターによる提示は提供していない。
 // 提供していないことの観測なので、`excluded` の行は満たすことではなく満たさないことを読む。
 //
 // 受理されない一点だけでは、そのトークンが最初から無効だった実装と区別できない。そこで
@@ -412,7 +412,7 @@ func (s *apiTokenStack) disableTarget(t *testing.T, path, authorization string) 
 // RFC 9068 — JWT Profile for OAuth 2.0 Access Tokens
 // =====================================================================
 
-// RFC9068-API-TOKEN-CLAIMS: 管理発行トークンが 8 つの claim を持つことを固定する。
+// RFC9068-API-TOKEN-CLAIMS: 管理発行トークンは 8 つの claim を持つ。
 // 復号した payload をそのまま読む。管理 API へ到達できることだけでは、認証が使わない
 // claim (`iat`) を落とした実装を見分けられない。
 func TestManagedApiTokenCarriesTheRFC9068Claims(t *testing.T) {
@@ -452,8 +452,8 @@ func TestManagedApiTokenCarriesTheRFC9068Claims(t *testing.T) {
 	}
 }
 
-// RFC9068-API-TOKEN-SIGNATURE: 管理発行トークンが通常の OAuth アクセストークンと同じ
-// 非対称鍵で署名され、`typ` が `at+jwt` であることを固定する。
+// RFC9068-API-TOKEN-SIGNATURE: 管理発行トークンは通常の OAuth アクセストークンと同じ
+// 非対称鍵で署名され、`typ` は `at+jwt` である。
 //
 // header の値を読むだけでは、署名を検証していない実装を見分けられない。そこで、同じ kid を
 // 名乗りながら別の鍵で署名したトークンが管理 API へ届かないことを併せて観測する。
@@ -535,8 +535,8 @@ func verifyPS256WithKey(t *testing.T, token string, key *signingdomain.SigningKe
 // RFC 9700 / BCP 240 — audience と送信者制約
 // =====================================================================
 
-// RFC9700-API-TOKEN-AUDIENCE: API アクセストークンが発行元レルムの API audience に固定され、
-// 別のレルムまたはリソースでは拒否されることを固定する。
+// RFC9700-API-TOKEN-AUDIENCE: API アクセストークンは発行元レルムの API audience に束縛され、
+// 別のレルムまたはリソースでは拒否される。
 //
 // 壊れた文字列では形式の検証で落ちるので、audience の照合が無い実装でも同じ拒否になる。
 // そこで aud だけが違う、他はすべて有効なトークンをテナントの現行鍵で作って提示する。
@@ -571,7 +571,7 @@ func TestApiTokenIsBoundToTheIssuingRealmAudience(t *testing.T) {
 	}
 }
 
-// RFC9700-API-TOKEN-SENDER-CONSTRAINT: 送信者制約を発行時に選べることを固定する。
+// RFC9700-API-TOKEN-SENDER-CONSTRAINT: 送信者制約は発行時に選べる。
 // 選べることの観測なので、制約なしと制約ありの 2 本を同じ提示で比べる。制約ありの 1 本だけを
 // 見ても、常に DPoP を要求する実装と区別できない。
 func TestApiTokenSenderConstraintIsChosenAtIssuance(t *testing.T) {
@@ -672,8 +672,8 @@ func apiTokenDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, in
 	return input + "." + base64.RawURLEncoding.EncodeToString(signature)
 }
 
-// RFC9449-API-TOKEN-DPOP: `dpop_jkt` に束縛したトークンについて、DPoP 証明の署名、`htm`、
-// `htu`、`iat`、`jti` のリプレイ、およびサムプリントの一致が検証されることを固定する。
+// RFC9449-API-TOKEN-DPOP: `dpop_jkt` に束縛したトークンでは、DPoP 証明の署名、`htm`、`htu`、
+// `iat`、`jti` のリプレイ、およびサムプリントの一致が検証される。
 //
 // 行が挙げる要素ごとに、1 要素だけを崩した証明を作る。崩していない要素が有効であることは、
 // 無傷の証明が通ることで先に確かめる。まとめて壊した証明では、どの検証が働いたのか分からない。
@@ -690,7 +690,7 @@ func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 	}
 	// 無傷の証明が持つ htu は、絶対 URL ではなくパスである。保護リソースの検証がそちらを
 	// 期待しているからであり、その形が正しいという判断ではない。絶対 URL を送る適合クライアントが
-	// 通らないことは [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] が扱う。ここが固定しているのは、htu が照合されること自体である。
+	// 通らないことは [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] が扱う。ここで読んでいるのは、htu が照合されること自体である。
 	intact := func(jti string) dpopProofInput {
 		return dpopProofInput{htm: http.MethodGet, htu: apiTokenListPath, jti: jti, ath: ath, iat: now}
 	}
@@ -763,7 +763,7 @@ func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 // RFC 7662 — Token Introspection
 // =====================================================================
 
-// RFC7662-API-TOKEN-INTROSPECT: 認証済みリソースサーバーへ返す内省の内容を固定する。
+// RFC7662-API-TOKEN-INTROSPECT: 認証済みリソースサーバーへ返す内省の内容を読む。
 // 返した値が発行したトークンのものであることを 1 つずつ照合する。`active` だけを読むテストは、
 // 別のトークンの内容を返す実装も、`scope` を落とす実装も見分けられない。
 func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
@@ -809,8 +809,8 @@ func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
 	}
 }
 
-// RFC7662-API-TOKEN-INACTIVE: 未知、失効済み、期限切れ、レルム不一致のいずれでも
-// `active=false` だけを返すことを固定する。
+// RFC7662-API-TOKEN-INACTIVE: 未知、失効済み、期限切れ、レルム不一致のいずれでも、返るのは
+// `active=false` だけである。
 //
 // `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
 // 5 通りの入力が同じ 1 つの本文になることが、存在を漏らさないということである。
@@ -880,7 +880,7 @@ func (s *apiTokenStack) revoke(t *testing.T, token string) *httptest.ResponseRec
 }
 
 // RFC7009-API-TOKEN-REVOKE: `access_token` ヒントと組み込みの公開クライアント ID で提示した
-// 管理発行 JWT が即時に失効することを固定する。
+// 管理発行 JWT は、その場で失効する。
 //
 // 失効は失効前の成功と対で観測する。失効後の 401 だけでは、そのトークンが最初から
 // 通らなかった実装と区別できない。応答に加えて、ライフサイクル記録の `revoked_at` と、
@@ -925,8 +925,8 @@ func TestRevokingAManagedApiTokenTakesEffectImmediately(t *testing.T) {
 	}
 }
 
-// RFC7009-API-TOKEN-UNKNOWN: 未知または失効済みのトークンの失効要求も 200 の何もしない
-// 処理であり、存在を漏らさないことを固定する。
+// RFC7009-API-TOKEN-UNKNOWN: 未知または失効済みのトークンの失効要求も 200 の何もしない処理で
+// あり、存在を漏らさない。
 //
 // 3 通りの入力の応答が状態コードも本文も区別できないことを読む。片方だけを読むテストは、
 // 未知のトークンに 400 を返す実装を見分けられるが、本文で存在を漏らす実装は見逃す。
