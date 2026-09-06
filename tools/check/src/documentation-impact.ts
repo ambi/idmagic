@@ -32,6 +32,17 @@ export type DocumentationImpactEnvironment = {
    * exercise the inference directly).
    */
   changedRecords?: ReadonlySet<string>
+  /**
+   * Whether some record's `affected_spec` names an element the diff added.
+   *
+   * The specification half of the diff has an owner the records state
+   * themselves: the item that declares the added scenario, standard, or
+   * declaration in `affected_spec`. When one does, its open siblings are not
+   * also responsible for it. When none does, every record that owns the
+   * workspace diff still inherits it, so an addition nobody declared is caught
+   * rather than attributed to nobody.
+   */
+  specificationAdditionsClaimed?: boolean
 }
 
 type WorkItemRecord = {
@@ -135,6 +146,46 @@ function ownsWorkspaceDiff(
   return typeof record.id === 'string' && changed.has(record.id)
 }
 
+/** The requirement ids and TypeSpec symbols a record's `affected_spec` names. */
+function declaredSpecificationElements(record: WorkItemRecord): Set<string> {
+  const declared = new Set<string>()
+  if (!Array.isArray(record.affected_spec)) return declared
+  for (const entry of record.affected_spec) {
+    const reference = object(entry)
+    if (!reference) continue
+    for (const field of ['requirement', 'symbol']) {
+      if (nonEmpty(reference[field])) declared.add(reference[field].trim())
+    }
+  }
+  return declared
+}
+
+/**
+ * Whether the elements this diff adds belong to this record.
+ *
+ * "In progress" and "being written right now" stop coinciding as soon as a
+ * long-running parent waits on children: wi-495 stays `in_progress` until nine
+ * child items finish, so every child's added scenario also landed on the
+ * parent, which had declared `documentation_impact: none` for work that
+ * genuinely has none (wi-509). Ownership of an addition is not a fact about
+ * which records happen to be open — the record that declares the added element
+ * in `affected_spec` is the one that made it, and that is written down.
+ *
+ * When no record declares any of the additions, they stay with every record
+ * that owns the workspace diff, so an addition nobody claimed is reported
+ * rather than attributed to nobody.
+ */
+function ownsSpecificationAdditions(
+  record: WorkItemRecord,
+  environment: DocumentationImpactEnvironment,
+): boolean {
+  if (environment.specificationAdditionsClaimed !== true) return true
+  const declared = declaredSpecificationElements(record)
+  const diff = environment.specificationDiff
+  const added = [...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations]
+  return added.some((element) => declared.has(element))
+}
+
 export function minimumDocumentationImpact(
   record: WorkItemRecord,
   environment: DocumentationImpactEnvironment,
@@ -144,9 +195,10 @@ export function minimumDocumentationImpact(
   const diff = environment.specificationDiff
 
   if (
-    diff.addedScenarios.length > 0 ||
-    diff.addedStandards.length > 0 ||
-    diff.addedDeclarations.length > 0
+    ownsSpecificationAdditions(record, environment) &&
+    (diff.addedScenarios.length > 0 ||
+      diff.addedStandards.length > 0 ||
+      diff.addedDeclarations.length > 0)
   ) {
     impact = stronger(impact, 'release_note')
   }

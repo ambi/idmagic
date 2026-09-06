@@ -71,6 +71,35 @@ describe('verifyDocumentationImpact', () => {
     ).toContain('documentation_impact none is weaker than inferred release_note')
   })
 
+  it('gives an added element to the record that declares it, not to its open siblings', () => {
+    // "In progress" and "being written right now" stop coinciding once a parent
+    // waits on children: wi-495 stays in progress through nine child items, and
+    // every child's added scenario used to land on the parent too (wi-509).
+    const addedScenario = { ...noSpecificationChange, addedScenarios: ['REQ-SYSTEM-018'] }
+    const author = {
+      ...record,
+      id: 'wi-508-author',
+      status: 'in_progress',
+      affected_spec: [
+        { path: 'docs/contexts/system/scenarios.feature.md', requirement: 'REQ-SYSTEM-018' },
+      ],
+    }
+    const sibling = { ...record, id: 'wi-495-parent', status: 'in_progress' }
+    const claimed = { specificationDiff: addedScenario, specificationAdditionsClaimed: true }
+
+    expect(verifyDocumentationImpact(author, environment(claimed))).toContain(
+      'documentation_impact none is weaker than inferred release_note',
+    )
+    expect(verifyDocumentationImpact(sibling, environment(claimed))).toEqual([])
+
+    // An addition no record declares is reported rather than attributed to
+    // nobody: every record that owns the workspace diff still inherits it.
+    const unclaimed = { specificationDiff: addedScenario, specificationAdditionsClaimed: false }
+    expect(verifyDocumentationImpact(sibling, environment(unclaimed))).toContain(
+      'documentation_impact none is weaker than inferred release_note',
+    )
+  })
+
   it('derives feature maturity changes from registry definitions', () => {
     const base = `return FeatureRegistry{
       {ID: "demo-v1", Maturity: FeatureExperimental},

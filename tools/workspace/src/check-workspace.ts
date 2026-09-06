@@ -24,7 +24,11 @@ import {
   type PrimaryUseCaseEnvironment,
   verifyPrimaryUseCaseEvidence,
 } from '../../check/src/primary-use-case-evidence.ts'
-import { diffSpecifications, diffWorkspaceSpecifications } from '../../check/src/spec-diff.ts'
+import {
+  diffSpecifications,
+  diffWorkspaceSpecifications,
+  type SpecificationDiff,
+} from '../../check/src/spec-diff.ts'
 import { parseMiseTasks, taskClosure } from '../../check/src/verification-tasks.ts'
 import {
   discoverGeneratedOpenApi,
@@ -170,6 +174,37 @@ function changedWorkItemRecords(): ReadonlySet<string> | undefined {
   return changed
 }
 
+/**
+ * Whether some record's `affected_spec` names an element the diff adds.
+ *
+ * Only the records this working tree changes are read: a completed record from
+ * months ago declares the elements it added back then, and crediting it with
+ * today's addition of the same id would be an accident of reuse rather than a
+ * claim. See ownsSpecificationAdditions.
+ */
+async function specificationAdditionsClaimed(
+  diff: SpecificationDiff,
+  changed: ReadonlySet<string> | undefined,
+): Promise<boolean> {
+  const added = new Set([...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations])
+  if (added.size === 0 || changed === undefined || !config.workItems) return false
+  for (const path of await workItemFiles(rootPath(config.workItems))) {
+    if (!changed.has(basename(path, '.md'))) continue
+    const record = parseFrontmatterAndMarkdown(path, await readFile(path, 'utf8')) as {
+      affected_spec?: unknown
+    }
+    if (!Array.isArray(record.affected_spec)) continue
+    for (const entry of record.affected_spec) {
+      if (typeof entry !== 'object' || entry === null) continue
+      const reference = entry as { requirement?: unknown; symbol?: unknown }
+      for (const value of [reference.requirement, reference.symbol]) {
+        if (typeof value === 'string' && added.has(value.trim())) return true
+      }
+    }
+  }
+  return false
+}
+
 async function documentationImpactEnvironment(): Promise<DocumentationImpactEnvironment> {
   const featureRegistryPath = 'backend/cmd/internal/bootstrap/features.go'
   let specificationDiff = diffSpecifications(new Map(), new Map())
@@ -178,10 +213,12 @@ async function documentationImpactEnvironment(): Promise<DocumentationImpactEnvi
   } catch {
     // Minimal fixtures are not Git repositories and have no baseline revision.
   }
+  const changed = changedWorkItemRecords()
   return {
     read: repository.read,
     specificationDiff,
-    changedRecords: changedWorkItemRecords(),
+    changedRecords: changed,
+    specificationAdditionsClaimed: await specificationAdditionsClaimed(specificationDiff, changed),
     maturityChanges: diffFeatureMaturities(
       revisionFile('main', featureRegistryPath),
       repository.read(featureRegistryPath) ?? '',
