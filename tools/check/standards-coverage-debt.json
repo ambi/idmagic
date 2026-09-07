@@ -91,18 +91,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "GDPR-CONSENT-WITHDRAWAL",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "GDPR-ERASURE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "GDPR-PROCESSING-RECORDS",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-BACKCHANNEL-DELIVERY-RETRY",
       "reason": "present when the check was introduced"
     },
@@ -380,22 +368,6 @@
     },
     {
       "id": "RFC9728-WELL-KNOWN",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WCAG22-FOCUS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WCAG22-KEYBOARD",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WCAG22-LABELS-ERRORS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WCAG22-STATUS",
       "reason": "present when the check was introduced"
     },
     {

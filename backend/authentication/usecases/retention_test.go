@@ -17,6 +17,7 @@ import (
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/consent/domain"
 )
 
 func daysAgo(now time.Time, d int) time.Time {
@@ -239,5 +240,46 @@ func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
 	kept, err := store.Observe(ctx, securitynotificationports.KnownDevice{UserID: "user-1", DeviceHash: "recent", SeenAt: now})
 	if err != nil || kept {
 		t.Errorf("the device within the window = %v, err %v; want it to stay known", kept, err)
+	}
+}
+
+// GDPR-PROCESSING-RECORDS: セキュリティイベントと認可イベントの監査記録は、定義済みの
+// 保持期間の内側では残り、外側では消える。
+//
+// 片側だけを見るテストは行を区別できない。内側だけなら「何も消さない」実装が通り、
+// 外側だけなら「全部消す」実装が通る。種類も 2 つ要る。行が「セキュリティおよび認可」と
+// 2 つ挙げているのに、期間の型が違う (認可は Default の 365 日、失敗は ByType の 30 日) ため、
+// 片方の種類だけでは他方の期間が守られていることを言えない。
+func TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	store := auditmemory.NewAuditEventStore(0)
+	policy := usecases.DefaultRetentionPolicy()
+
+	securityType := (&authdomain.AuthenticationFailed{}).EventType()
+	authorizationType := (&consentdomain.ConsentRevokedEvent{}).EventType()
+
+	// 期間の内側と外側を種類ごとに 1 件ずつ置く。境界は種類で違うので、日数も種類から取る。
+	seedAudit(t, store, "security-inside", securityType, daysAgo(now, policy.FailDays-1))
+	seedAudit(t, store, "security-outside", securityType, daysAgo(now, policy.FailDays+1))
+	seedAudit(t, store, "authorization-inside", authorizationType, daysAgo(now, policy.SuccessDays-1))
+	seedAudit(t, store, "authorization-outside", authorizationType, daysAgo(now, policy.SuccessDays+1))
+
+	if _, err := usecases.RunRetentionSweep(
+		ctx, usecases.RetentionStores{Audit: store}, policy, now,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	remaining := remainingAuditIDs(t, store)
+	for _, id := range []string{"security-inside", "authorization-inside"} {
+		if !remaining[id] {
+			t.Errorf("%s は保持期間の内側なので残っていなければならない", id)
+		}
+	}
+	for _, id := range []string{"security-outside", "authorization-outside"} {
+		if remaining[id] {
+			t.Errorf("%s は保持期間の外側なので消えていなければならない", id)
+		}
 	}
 }
