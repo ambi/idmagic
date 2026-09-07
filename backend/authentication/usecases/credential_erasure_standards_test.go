@@ -16,12 +16,16 @@ import (
 	"time"
 
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
+	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_memory"
 	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -47,6 +51,8 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 	factors := totpmemory.NewMfaFactorRepository()
 	sessions := sessionmemory.NewSessionStore()
 	devices := trusteddevicememory.NewTrustedDeviceRepository()
+	credentials := webauthnmemory.NewWebAuthnCredentialRepository()
+	codes := recoverymemory.NewRecoveryCodeRepository()
 	// 本番と同じ Argon2id を使う。偽のハッシャーに差し替えると、照合できなくなったことの
 	// 観測が実装ではなくテストダブルの性質になる。
 	hasher := testing_passwords.NewHasher()
@@ -84,6 +90,21 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	credentialLabel := "YubiKey"
+	if err := credentials.Save(ctx, &webauthndomain.WebAuthnCredential{
+		CredentialID: "credential-erasure", UserID: credentialSubject,
+		PublicKey: "cG9zdC1xdWFudHVtLXB1YmxpYy1rZXk", Label: &credentialLabel, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// リカバリコードは製品の生成経路から作る。平文はここでしか手に入らないので、消去前に
+	// 実際に 1 本消費して「認証として成立する」ことまで確かめられる。
+	recoveryDeps := recoveryusecases.RecoveryCodesDeps{UserRepo: users, RecoveryCodeRepo: codes}
+	generated, err := recoveryusecases.GenerateRecoveryCodes(ctx, recoveryDeps, credentialSubject, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// 前提: 消去前は資格情報が揃っていて、元のパスワードが照合される。
 	if entries, err := history.Recent(ctx, credentialSubject, 10); err != nil || len(entries) == 0 {
 		t.Fatalf("消去前のパスワード履歴=%v err=%v, want 1 件以上", entries, err)
@@ -91,14 +112,24 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 	if verified, err := hasher.Verify(credentialPassword, encoded); err != nil || !verified {
 		t.Fatalf("消去前に元のパスワードが照合されない: verified=%v err=%v", verified, err)
 	}
+	if stored, err := credentials.ListBySub(ctx, credentialSubject); err != nil || len(stored) != 1 {
+		t.Fatalf("消去前の WebAuthn 資格情報=%v err=%v, want 1 件", stored, err)
+	}
+	if _, err := recoveryusecases.ConsumeRecoveryCode(
+		ctx, recoveryDeps, credentialSubject, generated.Codes[0], now,
+	); err != nil {
+		t.Fatalf("消去前にリカバリコードが消費できない: %v", err)
+	}
 
 	if err := userusecases.DeleteUser(ctx, userusecases.AdminUserDeps{
-		UserRepo:            users,
-		PasswordHistoryRepo: history,
-		MfaFactorRepo:       factors,
-		SessionStore:        sessions,
-		TrustedDeviceRepo:   devices,
-		Emit:                func(spec.DomainEvent) error { return nil },
+		UserRepo:               users,
+		PasswordHistoryRepo:    history,
+		MfaFactorRepo:          factors,
+		SessionStore:           sessions,
+		TrustedDeviceRepo:      devices,
+		WebAuthnCredentialRepo: credentials,
+		RecoveryCodeRepo:       codes,
+		Emit:                   func(spec.DomainEvent) error { return nil },
 	}, userusecases.DeleteUserInput{
 		ActorUserID: "admin", Sub: credentialSubject, Reason: "erasure request", Now: now,
 	}); err != nil {
@@ -116,6 +147,25 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 	}
 	if device, err := devices.FindBySelector(ctx, tenancydomain.DefaultTenantID, "selector-erasure"); err != nil || device != nil {
 		t.Fatalf("消去後に残った信頼済みデバイス=%+v err=%v", device, err)
+	}
+
+	// WebAuthn: 空の一覧は、BeginWebAuthnAssertion と FinishWebAuthnAssertion が
+	// ErrWebAuthnNoCredential を返す条件そのものである。credential id を知っていても引けない。
+	if stored, err := credentials.ListBySub(ctx, credentialSubject); err != nil || len(stored) != 0 {
+		t.Fatalf("消去後に残った WebAuthn 資格情報=%v err=%v", stored, err)
+	}
+	if found, err := credentials.FindByCredentialID(ctx, "credential-erasure"); err != nil || found != nil {
+		t.Fatalf("消去後も credential id から引ける: %+v err=%v", found, err)
+	}
+	// リカバリコード: 製品自身が残数を答える経路で 0 になる。消費できるコードが 1 本も無い。
+	// 消去後に ConsumeRecoveryCode を呼ぶ形は採らない。同関数は先に利用者を読むので、
+	// Tombstone 化した利用者がコードの不在を覆い隠す。
+	status, err := recoveryusecases.RecoveryCodeStatusFor(ctx, codes, credentialSubject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Total != 0 || status.Remaining != 0 {
+		t.Fatalf("消去後のリカバリコード total=%d remaining=%d, want どちらも 0", status.Total, status.Remaining)
 	}
 
 	// 残るのは行の有無だけではない。保管されたパスワードそのものが、元のパスワードを

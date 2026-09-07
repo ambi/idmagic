@@ -16,6 +16,7 @@ type RecoveryCodeRepository interface {
 	// MarkConsumed は未使用の code_hash を使用済み (consumed_at) にする。該当が無ければ
 	// (false, nil) を返す (未知 / 使用済み / 別 sub)。
 	MarkConsumed(ctx context.Context, sub, codeHash string, now time.Time) (bool, error)
-	// DeleteAllForSub は失効および anonymize cascade から呼ばれる。
+	// DeleteAllForSub は本人による失効、管理者による認証要素のリセット、および Purge の
+	// 匿名化 cascade から呼ばれる。
 	DeleteAllForSub(ctx context.Context, sub string) error
 }

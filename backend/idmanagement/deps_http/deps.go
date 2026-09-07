@@ -10,8 +10,10 @@ import (
 	"time"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
@@ -67,13 +69,18 @@ type Deps struct {
 	ApprovalRequestStore oauthports.ApprovalRequestStore
 	MfaFactorRepo        mfaports.MfaFactorRepository
 	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する (wi-91)。
-	TrustedDeviceRepo     trusteddeviceports.TrustedDeviceRepository
-	PasswordHasher        passwordports.PasswordHasher
-	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
-	EmailChangeTokenStore userports.EmailChangeTokenStore
-	CSVArtifacts          idmports.CSVArtifactStore
-	EmailSender           sharednotification.EmailSender
-	Notifier              sharednotification.Notifier
+	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade の到達先である (wi-513)。
+	// この 2 つは Authentication が持つ資格情報だが、消すのは IdManagement の Purge なので
+	// ここを通って AdminUserDeps へ届く。
+	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
+	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
+	PasswordHasher         passwordports.PasswordHasher
+	PasswordHistoryRepo    passwordports.PasswordHistoryRepository
+	EmailChangeTokenStore  userports.EmailChangeTokenStore
+	CSVArtifacts           idmports.CSVArtifactStore
+	EmailSender            sharednotification.EmailSender
+	Notifier               sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
 	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository

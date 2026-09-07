@@ -16,6 +16,6 @@ type WebAuthnCredentialRepository interface {
 	// UpdateSignCount は assertion 成功時に署名カウンタと最終利用時刻を更新する。
 	UpdateSignCount(ctx context.Context, credentialID string, signCount uint32, lastUsedAt time.Time) error
 	Delete(ctx context.Context, sub, credentialID string) error
-	// DeleteAllForSub は anonymize cascade から呼ばれる。
+	// DeleteAllForSub は Purge の匿名化 cascade と、管理者による認証要素のリセットから呼ばれる。
 	DeleteAllForSub(ctx context.Context, sub string) error
 }

@@ -573,6 +573,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ApprovalRequestStore:      d.OAuth2.ApprovalRequestStore,
 		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
 		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
+		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
+		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
 		EmailChangeTokenStore:     d.IdManagement.EmailChangeTokenStore,

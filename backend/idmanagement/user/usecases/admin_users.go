@@ -14,10 +14,12 @@ import (
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
@@ -67,7 +69,11 @@ type AdminUserDeps struct {
 	TrustedDeviceRepo   trusteddeviceports.TrustedDeviceRepository
 	PasswordHasher      passwordports.PasswordHasher
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
-	Emit                func(spec.DomainEvent) error
+	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade から Authentication の
+	// 資格情報を消す (wi-513)。どちらも nil なら未配線として何もしない。
+	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
+	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
+	Emit                   func(spec.DomainEvent) error
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
 	// 確定する (wi-237)。nil のとき UserRepo.Save に fallback する。
@@ -785,6 +791,16 @@ func cascadeDeleteForSub(ctx context.Context, deps AdminUserDeps, sub string) er
 	}
 	if deps.TrustedDeviceRepo != nil {
 		if err := deps.TrustedDeviceRepo.DeleteAllForSub(ctx, sub); err != nil {
+			return err
+		}
+	}
+	if deps.WebAuthnCredentialRepo != nil {
+		if err := deps.WebAuthnCredentialRepo.DeleteAllForSub(ctx, sub); err != nil {
+			return err
+		}
+	}
+	if deps.RecoveryCodeRepo != nil {
+		if err := deps.RecoveryCodeRepo.DeleteAllForSub(ctx, sub); err != nil {
 			return err
 		}
 	}

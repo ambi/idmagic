@@ -278,8 +278,12 @@ func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
 	}
 }
 
+// newAdminUserHandler は本番と同じ httpadapter.Register で管理 API を組み立てる。
+// options は組み立ての直前に Deps へ手を入れる。cascade の到達先のように、既定の
+// 組み立てが持たない port を足すテストが使う。
 func newAdminUserHandler(
 	t *testing.T,
+	options ...func(*httpadapter.Deps),
 ) (*echo.Echo, *usermemory.UserRepository) {
 	t.Helper()
 	repo := usermemory.NewUserRepository()
@@ -299,7 +303,7 @@ func newAdminUserHandler(
 		repo.Seed(user)
 	}
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{
+	deps := httpadapter.Deps{
 		Issuer:          "http://idp.test",
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")), UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
@@ -311,7 +315,11 @@ func newAdminUserHandler(
 		},
 		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(repo),
 		EmailSender:           mockEmailSender{},
-	})
+	}
+	for _, option := range options {
+		option(&deps)
+	}
+	httpadapter.Register(e, deps)
 	return e, repo
 }
 
