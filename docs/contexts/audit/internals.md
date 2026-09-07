@@ -1,4 +1,4 @@
-# Audit Internals
+# Audit の内部設計
 
 ## Search attribute registry
 

@@ -1,4 +1,4 @@
-# Application Decisions
+# Application の設計判断
 
 - Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理はいずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。いずれも操作対象が呼び出し元と同じテナントに属することを条件とする。テナントのデフォルトサインインポリシーだけは Application 単位ではなくテナント設定なので `settings:read` / `settings:write` に対応させる。
 - エンドユーザーが触れるのは自分自身の範囲だけである。`ListMyApplications` と `ReorderMyApplications` は認証済み本人の割り当てと表示設定に閉じ (`account:applications_read`)、他のユーザーの一覧や並び順へは到達できない。

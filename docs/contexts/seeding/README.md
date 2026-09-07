@@ -6,9 +6,9 @@
 
 HTTP の接点も持たない。seed を実行できるかどうかは権限ではなく、プロセスを起動できる実行環境そのものが境界である。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Seeding の用語集](glossary.md) | この Context での語義 |
+| [Seeding の設計判断](decisions.md) | 設計判断 |
+| [Seeding の内部設計](internals.md) | 機構の説明 |
+| [Seeding Scenarios](scenarios.feature.md) | 受け入れシナリオ |

@@ -32,7 +32,7 @@ affected_spec:
 
 対照的に、可逆なシークレットについては `docs/database.md` がエンベロープ暗号化を規範として定め、`REQ-DATAKEYS-*` が対応するシナリオを持つ。署名鍵だけが、保護の根拠を手順に置いたまま残っている。
 
-これは [docs/threat-model.md](../../docs/threat-model.md) の THREAT-062 が指す欠落である。
+これは[脅威モデル](../../docs/design/security/threat-model.md)の THREAT-062 が指す欠落である。
 
 着手時の調査で、規範が無いことの帰結が実物として 2 つ見つかった。`KEY_PROVIDER` は未指定を許す任意の設定であり、`PERSISTENCE=postgres` でも未指定のまま起動できる。つまり秘密鍵がバックアップに入る構成は、誰も選ばないまま既定として成立する。そして `infra/deploy/gcp/cloudrun-idmagic.yaml` は `KEY_PROVIDER: "db"` を設定しており、これは許可された値（`local` / `vault`）ではないので、この本番向けサンプルは起動時設定の検証で落ちる。
 

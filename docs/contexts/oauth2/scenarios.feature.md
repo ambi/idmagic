@@ -176,7 +176,7 @@ Primary actor: `RegisteredClient`
 - When "web-app" として scope "openid プロファイル" で認可リクエストを送る
 - When クライアントが発行された認可コードを正しい PKCE verifier で交換する
 - But 同じ認可コードを 2 回交換する
-- Then 1 回目の応答には access_token が含まれる
+- Then 1 回目のレスポンスには access_token が含まれる
 - And 2 回目はエラー "InvalidGrantError"
 - And 発行ファミリーのトークンがすべて失効する
 - And "RefreshTokenReuseDetected" が発行される
@@ -200,7 +200,7 @@ Primary actor: `RegisteredClient`
 
 - Given 有効な refresh トークン "RT1" が存在する
 - When リフレッシュトークン "RT1" を交換する
-- Then 応答に新しい access_token と refresh_token が含まれる
+- Then レスポンスに新しい access_token と refresh_token が含まれる
 - Then "RT1" の状態は "Rotated"
 - Then "RefreshTokenRotated" が発行される
 - Then "AccessTokenIssued" が発行される
@@ -261,7 +261,7 @@ Primary actor: `RegisteredClient`
 
 - Given クライアント "web-app" が存在する
 - When "web-app" として認可リクエストを事前送信する
-- Then PAR 応答に request_uri が含まれ expires_in は 600 以下
+- Then PAR レスポンスに request_uri が含まれ expires_in は 600 以下
 - When クライアントが request_uri "<返された値>" で認可リクエストを送る
 - Then その PAR レコードの状態は "Used"
 - Then "PARStored" が発行される
@@ -298,7 +298,7 @@ Primary actor: `RegisteredClient`
 - But 同一 DPoP jti を再使用する
 - Then jti "ABC" の DPoP 証明を付けて認可コードを交換する
 - And 同じ jti "ABC" の DPoP 証明を付けて認可コードを交換する
-- And 1 回目の応答には access_token が含まれる
+- And 1 回目のレスポンスには access_token が含まれる
 - And 2 回目はエラー "InvalidDpopProofError"
 
 ## Rule: REQ-OAUTH2-011 失効済みトークンのイントロスペクションは `active=false` だけを返す
@@ -309,7 +309,7 @@ Primary actor: `ResourceServer`
 
 - Given 失効済み access トークン "AT1" が存在する
 - When トークン "AT1" を検査する
-- Then 応答は active=false のみで他のフィールドを含まない
+- Then レスポンスは active=false のみで他のフィールドを含まない
 
 ## Rule: REQ-OAUTH2-012 キルスイッチ作動後の Agent トークンはイントロスペクションで active=false になる
 
@@ -320,7 +320,7 @@ Primary actor: `ResourceServer`
 - Given Agent "A1" に issued_at が古い access トークン "AT1" が発行済みである
 - And "A1" は kill-switch により revocation epoch が "AT1" の issued_at より後へ前進している
 - When トークン "AT1" を検査する
-- Then 応答は active=false のみで他のフィールドを含まない
+- Then レスポンスは active=false のみで他のフィールドを含まない
 
 ### Example: EX-OAUTH2-012-02 "AT1" が revocation epoch より後に発行された (kill 後に再発行された) トークンである
 
@@ -328,7 +328,7 @@ Primary actor: `ResourceServer`
 - And "A1" は kill-switch により revocation epoch が "AT1" の issued_at より後へ前進している
 - When トークン "AT1" を検査する
 - But "AT1" が revocation epoch より後に発行された (kill 後に再発行された) トークンである
-- Then 応答は通常どおり active=true と claim を返す
+- Then レスポンスは通常どおり active=true と claim を返す
 
 ## Rule: REQ-OAUTH2-013 UserInfo は openid スコープのトークンに sub を返す
 
@@ -378,7 +378,7 @@ Primary actor: `Client`
 ### Example: EX-OAUTH2-016-01 通常経路
 
 - When confidential クライアント "web-app" を redirect_uri "https://app.example.com/callback" で登録する
-- Then 応答に client_id と client_secret が含まれる
+- Then レスポンスに client_id と client_secret が含まれる
 - Then "ClientRegistered" が発行される
 
 ### Example: EX-OAUTH2-016-02 redirect_uri を持たない登録要求である
@@ -450,14 +450,14 @@ Primary actor: `RegisteredClient`
 - Then トークン "AT1" は失効状態になる
 - When クライアントがトークン "AT1" でユーザー情報を取得する
 - Then 401 のエラー "InvalidTokenError" と `WWW-Authenticate: Bearer` challenge が返る
-- And 応答に `sub` とユーザークレームは含まれない
+- And レスポンスに `sub` とユーザークレームは含まれない
 
 ### Example: EX-OAUTH2-020-02 POST binding
 
 - Given 失効済みの access トークン "AT1" が存在する
 - When クライアントが POST binding でトークン "AT1" を使いユーザー情報を取得する
 - Then 401 のエラー "InvalidTokenError" と `WWW-Authenticate: Bearer` challenge が返る
-- And 応答に `sub` とユーザークレームは含まれない
+- And レスポンスに `sub` とユーザークレームは含まれない
 
 ## Rule: REQ-OAUTH2-021 リフレッシュトークンは `offline_access` スコープを付与したときだけ発行する
 
@@ -468,7 +468,7 @@ Primary actor: `RegisteredClient`
 - Given confidential クライアント "web-app" が grant_types に "authorization_code"・"refresh_token" を含めて登録済みである
 - When "web-app" として scope "openid offline_access" で認可リクエストを送る
 - When クライアントが発行された認可コードを verifier "v" で交換する
-- Then 応答に refresh_token が含まれる
+- Then レスポンスに refresh_token が含まれる
 - Then "RefreshTokenIssued" が発行される
 
 ### Example: EX-OAUTH2-021-02 offline_access を要求しない
@@ -478,7 +478,7 @@ Primary actor: `RegisteredClient`
 - But offline_access を要求しない
 - Then "web-app" として scope "openid プロファイル" で認可リクエストを送る
 - And 発行された認可コードを verifier "v" で交換する
-- And 応答に refresh_token は含まれない
+- And レスポンスに refresh_token は含まれない
 
 ## Rule: REQ-OAUTH2-022 認可リクエストの nonce は ID トークンに伝播する
 
@@ -488,7 +488,7 @@ Primary actor: `RegisteredClient`
 
 - When "web-app" として scope "openid"、nonce "n-12345" で認可リクエストを送る
 - When クライアントが発行された認可コードを verifier "v" で交換する
-- Then 応答の id_token の nonce クレームは "n-12345"
+- Then レスポンスの id_token の nonce クレームは "n-12345"
 
 ## Rule: REQ-OAUTH2-023 RP-Initiated Logout は登録済み post_logout_redirect_uri にだけ戻す
 
@@ -581,7 +581,7 @@ Primary actor: `RegisteredClient`
 
 - Given confidential クライアント "backend" が grant_types に "client_credentials" を含めて登録済みである
 - When "backend" として client_credentials で scope "api:read" のトークンを取得する
-- Then 応答に access_token が含まれ refresh_token は含まれない
+- Then レスポンスに access_token が含まれ refresh_token は含まれない
 - Then 発行された access_token の sub は client_id と一致する
 - Then "AccessTokenIssued" が発行される
 - When public クライアント "spa-app" を grant_types に "client_credentials" を含めて登録する
@@ -595,11 +595,11 @@ Primary actor: `RegisteredClient`
 
 - Given confidential クライアント "tv-app" が grant_types に "urn:ietf:params:oauth:grant-type:device_code" を含めて登録済みである
 - When "tv-app" として scope "openid プロファイル" でデバイス認可を開始する
-- Then 応答に device_code・user_code・verification_uri・interval が含まれる
+- Then レスポンスに device_code・user_code・verification_uri・interval が含まれる
 - When ユーザー "alice" が verification_uri で user_code を入力し承認する
 - Then device authorization は承認済みになる
 - When クライアントが device_code "DC1" を交換する
-- Then 応答に access_token と id_token が含まれる
+- Then レスポンスに access_token と id_token が含まれる
 - Then "DeviceAuthorizationRequested" が発行される
 - Then "DeviceAuthorizationApproved" が発行される
 - Then "AccessTokenIssued" が発行される
@@ -608,7 +608,7 @@ Primary actor: `RegisteredClient`
 
 - Given confidential クライアント "tv-app" が grant_types に "urn:ietf:params:oauth:grant-type:device_code" を含めて登録済みである
 - When "tv-app" として scope "openid プロファイル" でデバイス認可を開始する
-- Then 応答に device_code・user_code・verification_uri・interval が含まれる
+- Then レスポンスに device_code・user_code・verification_uri・interval が含まれる
 - When ユーザー "alice" が verification_uri で user_code を入力し承認する
 - Then device authorization は承認済みになる
 - When クライアントが device_code "DC1" を交換する
@@ -620,7 +620,7 @@ Primary actor: `RegisteredClient`
 
 - Given confidential クライアント "tv-app" が grant_types に "urn:ietf:params:oauth:grant-type:device_code" を含めて登録済みである
 - When "tv-app" として scope "openid プロファイル" でデバイス認可を開始する
-- Then 応答に device_code・user_code・verification_uri・interval が含まれる
+- Then レスポンスに device_code・user_code・verification_uri・interval が含まれる
 - When ユーザー "alice" が verification_uri で user_code を入力し承認する
 - Then device authorization は承認済みになる
 - When クライアントが device_code "DC1" を交換する
@@ -633,7 +633,7 @@ Primary actor: `RegisteredClient`
 
 - Given confidential クライアント "tv-app" が grant_types に "urn:ietf:params:oauth:grant-type:device_code" を含めて登録済みである
 - When "tv-app" として scope "openid プロファイル" でデバイス認可を開始する
-- Then 応答に device_code・user_code・verification_uri・interval が含まれる
+- Then レスポンスに device_code・user_code・verification_uri・interval が含まれる
 - When ユーザー "alice" が verification_uri で user_code を入力し承認する
 - Then device authorization は承認済みになる
 - When クライアントが device_code "DC1" を交換する
@@ -949,16 +949,16 @@ Primary actor: `RegisteredClient`
 - Given `confidential` クライアント `agent-app` が `grant_types` に `urn:openid:params:grant-type:ciba` を含めて登録済みである
 - And active User "alice" が存在する
 - When `agent-app` として `login_hint=alice`、`scope=openid`、`binding_message=W-123` でバックチャネル認可を開始する
-- Then 応答に auth_req_id・expires_in・interval が含まれる
-- Then 承認要求の状態は Pending になる
+- Then レスポンスに auth_req_id・expires_in・interval が含まれる
+- Then 承認リクエストの状態は Pending になる
 - Then "BackchannelAuthRequested" が発行される
 - When `agent-app` が `auth_req_id=AR1` を交換する
-- When ユーザー "alice" が承認要求 "AR1" を承認する
-- Then 承認要求 "AR1" の状態は Approved になる
+- When ユーザー "alice" が承認リクエスト "AR1" を承認する
+- Then 承認リクエスト "AR1" の状態は Approved になる
 - Then "BackchannelAuthApproved" が発行される
 - When `agent-app` が `auth_req_id=AR1` を交換する
-- Then 応答に access_token と id_token が含まれ sub は "alice"、scope は要求した "openid" になる
-- Then 承認要求 "AR1" の状態は Consumed になる
+- Then レスポンスに access_token と id_token が含まれ sub は "alice"、scope は要求した "openid" になる
+- Then 承認リクエスト "AR1" の状態は Consumed になる
 - Then "AccessTokenIssued" が発行される
 
 ### Example: EX-OAUTH2-041-02 scope が未指定または openid を含まない
@@ -1023,8 +1023,8 @@ Primary actor: `RegisteredClient`
 - Given `confidential` クライアント `agent-app` が `grant_types` に `urn:openid:params:grant-type:ciba` を含めて登録済みである
 - And active User "alice" が存在する
 - When `agent-app` として `login_hint=alice`、`scope=openid`、`binding_message=W-123` でバックチャネル認可を開始する
-- Then 応答に auth_req_id・expires_in・interval が含まれる
-- Then 承認要求の状態は Pending になる
+- Then レスポンスに auth_req_id・expires_in・interval が含まれる
+- Then 承認リクエストの状態は Pending になる
 - Then "BackchannelAuthRequested" が発行される
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But ユーザー判断前にポーリングする
@@ -1036,141 +1036,141 @@ Primary actor: `RegisteredClient`
 - Given `confidential` クライアント `agent-app` が `grant_types` に `urn:openid:params:grant-type:ciba` を含めて登録済みである
 - And active User "alice" が存在する
 - When `agent-app` として `login_hint=alice`、`scope=openid`、`binding_message=W-123` でバックチャネル認可を開始する
-- Then 応答に auth_req_id・expires_in・interval が含まれる
-- Then 承認要求の状態は Pending になる
+- Then レスポンスに auth_req_id・expires_in・interval が含まれる
+- Then 承認リクエストの状態は Pending になる
 - Then "BackchannelAuthRequested" が発行される
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But interval より短い間隔で再試行する
 - Then interval 5 秒の auth_req_id "AR1" を交換し "2s" 経過後に再度交換する
 - And 2 回目はエラー "SlowDownError"
 
-## Rule: REQ-OAUTH2-042 承認が成立していない承認要求はトークンを発行しない
+## Rule: REQ-OAUTH2-042 承認が成立していない承認リクエストはトークンを発行しない
 
 Primary actor: `RegisteredClient`
 
 ### Example: EX-OAUTH2-042-01 通常経路
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
-- Then 承認要求が Approved のときだけ応答に access_token が含まれる
+- Then 承認リクエストが Approved のときだけレスポンスに access_token が含まれる
 
 ### Example: EX-OAUTH2-042-02 ユーザーが "AR1" を拒否済みである
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But ユーザーが "AR1" を拒否済みである
 - Then エラー "OAuthAccessDeniedError"
-- And トークンは発行されず、承認要求 "AR1" の状態は Denied のままになる
+- And トークンは発行されず、承認リクエスト "AR1" の状態は Denied のままになる
 
 ### Example: EX-OAUTH2-042-03 "AR1" が expires_at を過ぎている
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But "AR1" が expires_at を過ぎている
 - Then requested_at "2026-01-01T00:00:00Z"・expires_at "2026-01-01T00:05:00Z" の "AR1" を時刻 "2026-01-01T00:06:00Z" で交換する
 - And エラー "ExpiredTokenError"
-- And 承認要求 "AR1" の状態は Expired になる
+- And 承認リクエスト "AR1" の状態は Expired になる
 
 ### Example: EX-OAUTH2-042-04 承認済みの "AR1" を 2 回交換する
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But 承認済みの "AR1" を 2 回交換する
-- Then 1 回目の応答には access_token が含まれる
+- Then 1 回目のレスポンスには access_token が含まれる
 - And 2 回目はエラー "InvalidGrantError"
-- And 承認要求 "AR1" の状態は Consumed のままになる
+- And 承認リクエスト "AR1" の状態は Consumed のままになる
 
 ### Example: EX-OAUTH2-042-05 承認済みの "AR1" を並行に 2 回交換する
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But 承認済みの "AR1" を並行に 2 回交換する
 - Then ちょうど一方が成功し、もう一方はエラー "InvalidGrantError"
 
 ### Example: EX-OAUTH2-042-06 起票元でないクライアント "other-app" が "AR1" を交換する
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But 起票元でないクライアント "other-app" が "AR1" を交換する
 - Then エラー "InvalidGrantError"
 
 ### Example: EX-OAUTH2-042-07 別テナントのトークン endpoint で "AR1" を交換する
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But 別テナントのトークン endpoint で "AR1" を交換する
 - Then エラー "InvalidGrantError"
 
 ### Example: EX-OAUTH2-042-08 "AR1" の承認後に Agent が kill-switch で停止されている
 
-- Given `agent-app` が起票した承認要求 `AR1` が存在する
+- Given `agent-app` が起票した承認リクエスト `AR1` が存在する
 - When `agent-app` が `auth_req_id=AR1` を交換する
 - But "AR1" の承認後に Agent が kill-switch で停止されている
 - Then エラー "InvalidGrantError"
 - And トークンは発行されない
 
-## Rule: REQ-OAUTH2-043 承認要求を判断できるのは対象ユーザー本人のステップアップ認証済みセッションだけである
+## Rule: REQ-OAUTH2-043 承認リクエストを判断できるのは対象ユーザー本人のステップアップ認証済みセッションだけである
 
 Primary actor: `ResourceOwner`
 
 ### Example: EX-OAUTH2-043-01 通常経路
 
-- Given ユーザー "alice" 宛の承認要求 "AR1" が Pending で存在する
-- And ユーザー "bob" 宛の承認要求 "AR2" が Pending で存在する
+- Given ユーザー "alice" 宛の承認リクエスト "AR1" が Pending で存在する
+- And ユーザー "bob" 宛の承認リクエスト "AR2" が Pending で存在する
 - And "alice" が認証済みで、ステップアップ認証の有効期間内にいる
-- When "alice" が保留中の承認要求一覧を取得する
+- When "alice" が保留中の承認リクエスト一覧を取得する
 - Then 一覧には "AR1" と、リクエスト元クライアントの表示名、Agent 名、要求スコープ、`authorization_details`、`binding_message` が含まれる
-- Then 一覧に "AR2" と期限切れの承認要求は含まれない
-- When "alice" が承認要求 "AR1" を承認する
-- Then 承認要求 "AR1" の状態は Approved になる
+- Then 一覧に "AR2" と期限切れの承認リクエストは含まれない
+- When "alice" が承認リクエスト "AR1" を承認する
+- Then 承認リクエスト "AR1" の状態は Approved になる
 - Then "BackchannelAuthApproved" が発行される
 
 ### Example: EX-OAUTH2-043-02 ステップアップ認証の有効期間を過ぎている
 
-- Given ユーザー "alice" 宛の承認要求 "AR1" が Pending で存在する
-- And ユーザー "bob" 宛の承認要求 "AR2" が Pending で存在する
+- Given ユーザー "alice" 宛の承認リクエスト "AR1" が Pending で存在する
+- And ユーザー "bob" 宛の承認リクエスト "AR2" が Pending で存在する
 - And "alice" が認証済みで、ステップアップ認証の有効期間内にいる
-- When "alice" が保留中の承認要求一覧を取得する
+- When "alice" が保留中の承認リクエスト一覧を取得する
 - Then 一覧には "AR1" と、リクエスト元クライアントの表示名、Agent 名、要求スコープ、`authorization_details`、`binding_message` が含まれる
-- Then 一覧に "AR2" と期限切れの承認要求は含まれない
-- When "alice" が承認要求 "AR1" を承認する
+- Then 一覧に "AR2" と期限切れの承認リクエストは含まれない
+- When "alice" が承認リクエスト "AR1" を承認する
 - But ステップアップ認証の有効期間を過ぎている
-- Then 操作を StepUpRequiredError で拒否し、承認要求 "AR1" の状態は Pending のままとなる
+- Then 操作を StepUpRequiredError で拒否し、承認リクエスト "AR1" の状態は Pending のままとなる
 
 ### Example: EX-OAUTH2-043-03 CSRF トークンが一致しない
 
-- Given ユーザー "alice" 宛の承認要求 "AR1" が Pending で存在する
-- And ユーザー "bob" 宛の承認要求 "AR2" が Pending で存在する
+- Given ユーザー "alice" 宛の承認リクエスト "AR1" が Pending で存在する
+- And ユーザー "bob" 宛の承認リクエスト "AR2" が Pending で存在する
 - And "alice" が認証済みで、ステップアップ認証の有効期間内にいる
-- When "alice" が保留中の承認要求一覧を取得する
+- When "alice" が保留中の承認リクエスト一覧を取得する
 - Then 一覧には "AR1" と、リクエスト元クライアントの表示名、Agent 名、要求スコープ、`authorization_details`、`binding_message` が含まれる
-- Then 一覧に "AR2" と期限切れの承認要求は含まれない
-- When "alice" が承認要求 "AR1" を承認する
+- Then 一覧に "AR2" と期限切れの承認リクエストは含まれない
+- When "alice" が承認リクエスト "AR1" を承認する
 - But CSRF トークンが一致しない
-- Then 操作は拒否され承認要求 "AR1" の状態は Pending のままになる
+- Then 操作は拒否され承認リクエスト "AR1" の状態は Pending のままになる
 
-### Example: EX-OAUTH2-043-04 "alice" が他人宛の承認要求 "AR2" を判断する
+### Example: EX-OAUTH2-043-04 "alice" が他人宛の承認リクエスト "AR2" を判断する
 
-- Given ユーザー "alice" 宛の承認要求 "AR1" が Pending で存在する
-- And ユーザー "bob" 宛の承認要求 "AR2" が Pending で存在する
+- Given ユーザー "alice" 宛の承認リクエスト "AR1" が Pending で存在する
+- And ユーザー "bob" 宛の承認リクエスト "AR2" が Pending で存在する
 - And "alice" が認証済みで、ステップアップ認証の有効期間内にいる
-- When "alice" が保留中の承認要求一覧を取得する
+- When "alice" が保留中の承認リクエスト一覧を取得する
 - Then 一覧には "AR1" と、リクエスト元クライアントの表示名、Agent 名、要求スコープ、`authorization_details`、`binding_message` が含まれる
-- Then 一覧に "AR2" と期限切れの承認要求は含まれない
-- When "alice" が承認要求 "AR1" を承認する
-- But "alice" が他人宛の承認要求 "AR2" を判断する
+- Then 一覧に "AR2" と期限切れの承認リクエストは含まれない
+- When "alice" が承認リクエスト "AR1" を承認する
+- But "alice" が他人宛の承認リクエスト "AR2" を判断する
 - Then 操作は AccessDeniedError で拒否される
 
-### Example: EX-OAUTH2-043-05 既に終端状態の承認要求を判断する
+### Example: EX-OAUTH2-043-05 既に終端状態の承認リクエストを判断する
 
-- Given ユーザー "alice" 宛の承認要求 "AR1" が Pending で存在する
-- And ユーザー "bob" 宛の承認要求 "AR2" が Pending で存在する
+- Given ユーザー "alice" 宛の承認リクエスト "AR1" が Pending で存在する
+- And ユーザー "bob" 宛の承認リクエスト "AR2" が Pending で存在する
 - And "alice" が認証済みで、ステップアップ認証の有効期間内にいる
-- When "alice" が保留中の承認要求一覧を取得する
+- When "alice" が保留中の承認リクエスト一覧を取得する
 - Then 一覧には "AR1" と、リクエスト元クライアントの表示名、Agent 名、要求スコープ、`authorization_details`、`binding_message` が含まれる
-- Then 一覧に "AR2" と期限切れの承認要求は含まれない
-- When "alice" が承認要求 "AR1" を承認する
-- But 既に終端状態の承認要求を判断する
+- Then 一覧に "AR2" と期限切れの承認リクエストは含まれない
+- When "alice" が承認リクエスト "AR1" を承認する
+- But 既に終端状態の承認リクエストを判断する
 - Then 操作は InvalidRequestError で拒否され、記録済みの判断は上書きされない
 
 ## Rule: REQ-OAUTH2-044 Bearer 保護リソースの認証エラーはメタデータ URL を提示する
@@ -1332,7 +1332,7 @@ Primary actor: `ResourceServer`
 
 - Given Token Exchange で発行した委任トークンがある
 - When リソースサーバーがそのトークンをイントロスペクトする
-- Then 応答の委譲モードは、同じ交換が監査へ残したモードと一致する
+- Then レスポンスの委譲モードは、同じ交換が監査へ残したモードと一致する
 - Then リソースサーバーは `act` と principal 種別から導出し直す必要がない
 
 ### Example: EX-OAUTH2-049-02 `act` に subject と異なる行為者がいる

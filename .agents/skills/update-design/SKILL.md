@@ -8,13 +8,14 @@ description: Update the owning current-state canonical documents when bounded co
 `SPECIFICATION_FORMAT.md` defines the canonical document kinds. Record each current fact in the smallest file
 whose name owns that kind of content.
 
-1. Update the cross-context boundary map and index in `docs/README.md`, and directory structure, dependency
-   direction, layers, and architecture style in `docs/structure.md`.
-2. Update runtime units and trust boundaries in `docs/deployment.md`; use the other matching whole-system file
-   when it owns the changed concern.
+1. Update the cross-context boundary map in `docs/architecture/logical.md`, the top-down index in
+   `docs/README.md`, and directory structure, dependency direction, and layers in `docs/structure.md`.
+2. Update runtime units in `docs/architecture/runtime.md`, deployment topology in
+   `docs/architecture/deployment.md`, and trust boundaries in `docs/design/security/threat-model.md`; use the
+   other matching whole-system file when it owns the changed concern.
 3. Update a context boundary and sibling index in `docs/contexts/<context>/README.md`. Put durable rationale in
    its `decisions.md`, and mechanism that cannot be recovered from code in `internals.md`.
-4. Revisit `docs/threat-model.md` when the change adds a trust boundary, a principal kind, an external
+4. Revisit `docs/design/security/threat-model.md` when the change adds a trust boundary, a principal kind, an external
    integration, or a new kind of secret, personal data, or record that must later be proven. Move a row to
    `covered` only when a normative id names the control; a row citing a work item is not yet covered.
 5. Keep change-specific alternatives, plans, and history in the work item. Keep API contracts in TypeSpec and

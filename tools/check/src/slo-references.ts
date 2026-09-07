@@ -8,7 +8,7 @@
  * 検査を通すためだけに目標を動かす誘因が生まれる。
  */
 
-/** 目標の宣言。`docs/capacity.md` の表の 1 行に対応する。 */
+/** 目標の宣言。`docs/requirements/quality.md` の表の 1 行に対応する。 */
 export interface Objective {
   id: string
 }

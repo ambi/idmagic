@@ -1,4 +1,4 @@
-# Application Internals
+# Application の内部設計
 
 ## Assignment as a desired state, not a command
 

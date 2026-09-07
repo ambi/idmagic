@@ -1,4 +1,4 @@
-# WsFederation Internals
+# WsFederation の内部設計
 
 ## Sign-out on the passive endpoint
 

@@ -1,4 +1,4 @@
-# WorkloadIdentity Glossary
+# WorkloadIdentity の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

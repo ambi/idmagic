@@ -1,4 +1,4 @@
-# DataKeys State Transitions
+# DataKeys の状態遷移
 
 ## DataEncryptionKeyLifecycle
 

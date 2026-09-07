@@ -1,4 +1,4 @@
-# Provisioning Standards
+# Provisioning の採用規範
 
 ## System for Cross-domain Identity Management Core Schema
 

@@ -1,4 +1,4 @@
-# IdGovernance State Transitions
+# IdGovernance の状態遷移
 
 ## WorkflowDefinitionLifecycle
 

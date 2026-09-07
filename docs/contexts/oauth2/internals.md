@@ -1,4 +1,4 @@
-# OAuth2 Internals
+# OAuth2 の内部設計
 
 ## Authorization and device lifecycles as declarative state machines
 
@@ -20,7 +20,7 @@ Pushed Authorization Requests（`/par`）により、クライアントは認証
 
 RFC 7591 の Dynamic Client Registration に加え、パスを持つ `https` URL 形式の `client_id` は `OAuth2Client` Repository ではなく、クライアントがホストする Client ID Metadata Document からその場で解決する。解決結果は永続化しない。Repository に `client_id` がない場合は文書を取得して 5 分間キャッシュし、他の処理経路と同じ `OAuth2Client` の形へ変換する。これにより、`redirect_uri` の照合、同意画面の描画、PKCE、スコープの処理に CIMD 固有の分岐は不要になる。統合点は `OAuth2ClientRepository` を埋め込み、`FindByID` だけを上書きする Decorator、`client/cimd_http.ClientRepositoryWithCIMD` である。Repository で見つかれば取得前に終了し、他のメソッド（`Save`、`Delete`、`FindAll`、資格情報の一覧）は変更せず委譲する。Composition Root (`cmd/internal/bootstrap`) で一度だけ接続するため、`authorize.go`、`push_authorization_request.go`、`client_auth.go` は変更不要である。
 
-取得には、`tokens_jose.JWKResolver` が `jwks_uri` に使うものと同じ SSRF 対策済みダイヤラー `shared/security/safehttp` を使う。HTTPS のみ、DNS 解決後にパブリック IP だけを許可、検証済み IP への直接接続、環境プロキシの不使用、リダイレクト回数・タイムアウト・レスポンス本文サイズの上限を強制する。プロキシは検査済みの接続経路の外で最終送信先を解決して接続し、トランスポート層の SSRF 境界を迂回するため、直接接続が必要である。共通パッケージでは 2 つの取得処理を別々に実装せず、1 つの堅牢化した実装の背後に置く。MVP が受け入れるのは、`token_endpoint_auth_method` を省略するか `none` と宣言する文書だけであり、それ以外はフェイルクローズに拒否する。文書の `client_id` フィールドは取得元 URL と完全に一致しなければならない。解決したクライアントの `scope` は文書の自己宣言値（デフォルトは `openid`）とし、新しい管理者管理カタログではなく RFC 7591 DCR と同じ自己宣言型の信頼モデルを使う。CIMD で解決したクライアントは `Application` に関連付けない。自己登録した DCR クライアントと同じであり、`ApplicationGate` は Application レコードがない場合をフェイルクローズに拒否せず、許可として扱う。
+取得には、`tokens_jose.JWKResolver` が `jwks_uri` に使うものと同じ SSRF 対策済みダイヤラー `shared/security/safehttp` を使う。HTTPS のみ、DNS 解決後にパブリック IP だけを許可、検証済み IP への直接接続、環境プロキシの不使用、リダイレクト回数・タイムアウト・レスポンスボディサイズの上限を強制する。プロキシは検査済みの接続経路の外で最終送信先を解決して接続し、トランスポート層の SSRF 境界を迂回するため、直接接続が必要である。共通パッケージでは 2 つの取得処理を別々に実装せず、1 つの堅牢化した実装の背後に置く。MVP が受け入れるのは、`token_endpoint_auth_method` を省略するか `none` と宣言する文書だけであり、それ以外はフェイルクローズに拒否する。文書の `client_id` フィールドは取得元 URL と完全に一致しなければならない。解決したクライアントの `scope` は文書の自己宣言値（デフォルトは `openid`）とし、新しい管理者管理カタログではなく RFC 7591 DCR と同じ自己宣言型の信頼モデルを使う。CIMD で解決したクライアントは `Application` に関連付けない。自己登録した DCR クライアントと同じであり、`ApplicationGate` は Application レコードがない場合をフェイルクローズに拒否せず、許可として扱う。
 
 ## Token formats: JWT access tokens, opaque refresh tokens
 
@@ -56,7 +56,7 @@ OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業
 
 ## Lifetime, security, and retention configuration
 
-プロトコルの時間値とセキュリティパラメーター、すなわち認可コードの TTL（60 秒、一度だけ使用可能）、PAR の `request_uri` の TTL（600 秒、一度だけ使用可能）、アクセストークンの TTL（600 秒）、ID トークンの TTL（3,600 秒）、リフレッシュトークンの TTL（スライディング 14 日、絶対期限 30 日）、デバイスコードとユーザーコードの TTL（600 秒）、デフォルトのポーリング間隔（5 秒、`slow_down` ごとに 5 秒加算）、クライアント認証とコード交換の流量制限、DPoP の時刻ずれとリプレイ期間、同意レコードの保持期間（7 年）は、製品目標ではなく 1 か所にまとめて記録する。これらはエラーバジェットの意味を持つ可用性・レイテンシー SLO ではなく、プロトコル、セキュリティ、運用の設定だからである。単一のモデルまたは状態インターフェースで自然に強制できる値は制約、ガード、契約として表す。複数リクエストにまたがる流量制限や、ライフサイクルにまたがる保持期間など、単一要素に属さない値は共有設定レコードを正とする。
+プロトコルの時間値とセキュリティパラメーター、すなわち認可コードの TTL（60 秒、一度だけ使用可能）、PAR の `request_uri` の TTL（600 秒、一度だけ使用可能）、アクセストークンの TTL（600 秒）、ID トークンの TTL（3,600 秒）、リフレッシュトークンの TTL（スライディング 14 日、絶対期限 30 日）、デバイスコードとユーザーコードの TTL（600 秒）、デフォルトのポーリング間隔（5 秒、`slow_down` ごとに 5 秒加算）、クライアント認証とコード交換の流量制限、DPoP の時刻ずれとリプレイ期間、同意レコードの保持期間（7 年）は、プロダクト目標ではなく 1 か所にまとめて記録する。これらはエラーバジェットの意味を持つ可用性・レイテンシー SLO ではなく、プロトコル、セキュリティ、運用の設定だからである。単一のモデルまたは状態インターフェースで自然に強制できる値は制約、ガード、契約として表す。複数リクエストにまたがる流量制限や、ライフサイクルにまたがる保持期間など、単一要素に属さない値は共有設定レコードを正とする。
 
 ## Agent principals and token-exchange delegation
 
@@ -64,7 +64,7 @@ OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業
 
 ユーザーの代理行為は `/token` の OAuth 2.0 Token Exchange（RFC 8693）として実装する。デフォルトの結果はなりすましではなく委任である。交換後のトークンは元のユーザーを `sub` に保ち、現在の行為者であるエージェントを `act` クレームに記録する。RFC 8693 §4.1 に従って以前の行為者を内側へ入れ子にするため、下位エージェントへの委任チェーンを追跡できる。なりすまし（`act` を削除して `sub` を置換）は、クライアントまたはエージェントへ明示的に許可した場合だけ利用できる。判断できない場合は、監査証跡を保つ委任をデフォルトとする。`may_act` と AuthZEN ポリシーが、許可する行為者、対象者、深さの組を共同で制御する。交換時には、結果を単一の対象へ狭める `resource` を必須とする（RFC 8707）。委任の最大深度で `act` チェーンの長さを制限する。上限はテナントごとに下げられるが、システム既定を超えて上げることはできない。テナント設定から認可の境界を緩める経路を作らないための非対称性であり、パスワードポリシーの上書きと同じ扱いである。テナントの委譲ポリシーを解決できない場合は、既定へ退避せず交換を拒否する。
 
-交換後のトークンが自律実行と利用者の代理のどちらであるかは、新しい永続状態ではなく `act` チェーンとプリンシパル種別から導出する。導出は 1 つの関数に閉じ、イントロスペクションの応答と監査イベントの双方がそれを通る。リソースサーバーと監査の担当者が同じ規則を各自で書き直すと解釈がずれ、しかもその食い違いは調査のときに最も見つけにくい形で現れるからである。導出値であるため、モードがクレームと食い違う第二の真実は生まれない。交換後のトークンは短命であり、リフレッシュトークンを発行しない。継続には再交換が必要なため、失効が有効に働く。subject token の送信者制約は交換後のトークンへ引き継ぎ、鍵の所持証明を失わない。
+交換後のトークンが自律実行と利用者の代理のどちらであるかは、新しい永続状態ではなく `act` チェーンとプリンシパル種別から導出する。導出は 1 つの関数に閉じ、イントロスペクションのレスポンスと監査イベントの双方がそれを通る。リソースサーバーと監査の担当者が同じ規則を各自で書き直すと解釈がずれ、しかもその食い違いは調査のときに最も見つけにくい形で現れるからである。導出値であるため、モードがクレームと食い違う第二の真実は生まれない。交換後のトークンは短命であり、リフレッシュトークンを発行しない。継続には再交換が必要なため、失効が有効に働く。subject token の送信者制約は交換後のトークンへ引き継ぎ、鍵の所持証明を失わない。
 
 ## Rich Authorization Requests for agent-scoped permissions
 
@@ -72,11 +72,11 @@ OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業
 
 ## Backchannel human approval for agent actions (CIBA)
 
-送金、データ削除、外部公開など重大な行為を始める自律型エージェントには、その場にいない人間による事前承認を要求できる。`POST /bc-authorize`（OpenID CIBA Core）により、認証済みクライアントは帯域外で承認要求を起票できる。`/token` の `urn:openid:params:grant-type:ciba` グラントは、人間が判断するまで要求を保留する。どの Agent にこの承認を義務付けるかはガバナンス層が決定し、OAuth2 Context は `AgentKind.Supervised` だけを理由にすべてのグラントを一律に拒否しない。
+送金、データ削除、外部公開など重大な行為を始める自律型エージェントには、その場にいない人間による事前承認を要求できる。`POST /bc-authorize`（OpenID CIBA Core）により、認証済みクライアントは帯域外で承認リクエストを起票できる。`/token` の `urn:openid:params:grant-type:ciba` グラントは、人間が判断するまで要求を保留する。どの Agent にこの承認を義務付けるかはガバナンス層が決定し、OAuth2 Context は `AgentKind.Supervised` だけを理由にすべてのグラントを一律に拒否しない。
 
 CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能としてモデル化し、同意やステップアップ認証を置き換えない。同意は長命な `(subject, client_id)` のスコープグラントのままであり、承認リクエストは 1 つの行為に対する短命な判断である。ステップアップ認証はバックチャネルフローに置き換えられず、承認対象の行為を保護する。アカウントポータルは判断を記録する前に再認証を要求する。
 
-判断を保持するレコードは CIBA 固有の形にしない。OpenID AuthZEN の Access Request and Approval Profile が定義する、認可判断の前提条件を要求、追跡、充足、再評価するモデルに合わせ、Aggregate は UUID をキーとする `ApprovalRequest` とする。`auth_req_id` は SHA-256 の照合用ダイジェストだけを保存する 32 バイトのベアラーシークレットであり、`interval_seconds` と `last_polled_at` は転送方式に固有のフィールドである。判断と同時ポーリングを 1 つのストア境界で直列化するため、これらを同じ永続化レコードに置く。アカウントポータルは UUID で承認要求を指すため、人間向けインターフェースへベアラーシークレットは渡らない。
+判断を保持するレコードは CIBA 固有の形にしない。OpenID AuthZEN の Access Request and Approval Profile が定義する、認可判断の前提条件を要求、追跡、充足、再評価するモデルに合わせ、Aggregate は UUID をキーとする `ApprovalRequest` とする。`auth_req_id` は SHA-256 の照合用ダイジェストだけを保存する 32 バイトのベアラーシークレットであり、`interval_seconds` と `last_polled_at` は転送方式に固有のフィールドである。判断と同時ポーリングを 1 つのストア境界で直列化するため、これらを同じ永続化レコードに置く。アカウントポータルは UUID で承認リクエストを指すため、人間向けインターフェースへベアラーシークレットは渡らない。
 
 `Pending → Approved | Denied | Expired` と `Approved → Consumed` は一方向である。発行ではデバイスグラントの `Exchange` と同じ比較交換をストア上で行い、まだ `approved` の行だけを変更する。そのため、同時に行われた 2 回のポーリングが両方ともトークンを発行することはない。`/token` は未承認のすべての状態をフェイルクローズに扱う。`pending` のポーリングは `authorization_pending`、`interval` より速いポーリングは `slow_down`（`interval` に 5 秒を加算）、拒否は `access_denied`、期限切れは `expired_token`、消費済みリクエストの 2 回目の交換は `invalid_grant` を返す。
 
@@ -90,7 +90,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 
 `sid` クレームは `LoginSession.id` 自体であり、RP ごとの値ではなく、1 つのブラウザーセッションについてすべての relying party が共有する。OIDC の `sid` は OP セッションを表すため、RP ごとの `sid` では 1 回のセッション失効から影響する全 RP をたどれない。`sid` は `authenticate_user` の完了時に一度だけ `AuthorizationRequest` へ伝播し、その後 `AuthorizationCodeRecord` → `RefreshTokenRecord` → `IdTokenClaims` を通る。Authentication の `LoginSession` が唯一の正であり、その属性を OAuth2 へ複製しない。`ClientSession` はログアウト通知用の `(sid, client_id)` 配信インデックスであり、2 つ目のセッション状態ではない。`RefreshTokenRecord.sid` はローテーション後も残るため、ファミリーごとにたどらず、1 回の「このブラウザーセッション」の失効で、同じ `sid` にバインドされた全クライアント・全ファミリーのリフレッシュトークンを失効できる。
 
-`/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs Context に渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、`frontchannel_logout_session_required=true` を宣言した RP には `iss` と `sid` を付ける。RP 側の `iframe` の失敗は許容し、配信を保証しない。バックチャネルの配信では、署名済みのログアウトトークンを登録先へ POST し、2xx だけを成功とみなす。それ以外の応答、タイムアウト、接続失敗はいずれも Job の再試行に委ね、試行上限に達した通知は配信不能として確定する。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。
+`/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs Context に渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、`frontchannel_logout_session_required=true` を宣言した RP には `iss` と `sid` を付ける。RP 側の `iframe` の失敗は許容し、配信を保証しない。バックチャネルの配信では、署名済みのログアウトトークンを登録先へ POST し、2xx だけを成功とみなす。それ以外のレスポンス、タイムアウト、接続失敗はいずれも Job の再試行に委ね、試行上限に達した通知は配信不能として確定する。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。
 
 ## Fuzzed parse boundaries
 

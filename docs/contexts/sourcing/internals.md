@@ -1,4 +1,4 @@
-# Sourcing Internals
+# Sourcing の内部設計
 
 ## SCIM 2.0 inbound provisioning
 

@@ -177,7 +177,7 @@ func TestAccountProfilePatchRejectsAdminManagedAttribute(t *testing.T) {
 	}
 }
 
-// docs/api-rules.md は 400 を「リクエストを解析できない」、422 を「解析できた内容が
+// docs/design/application/api-rules.md は 400 を「リクエストを解析できない」、422 を「解析できた内容が
 // 業務規則に違反する」と定める。テナントの属性スキーマへの適合は後者なので、
 // 属性スキーマ違反は 422 で返る。同じ違反を UpdateAdminUser は既に 422 で返しており、
 // 契約 (UpdateUserProfileError422 / InvalidUserAttributeError) もそちらを書いている。

@@ -14,14 +14,14 @@ current document kinds and grammar.
 2. Put context boundaries in `docs/contexts/<context>/README.md`, observable behavior in
    `docs/contexts/<context>/scenarios.feature.md`, vocabulary in `glossary.md`, adopted protocol rules in
    `standards.md`, state machines in `states.md`, durable rationale in `decisions.md`, and durable mechanism
-   that cannot be recovered from code in `internals.md`. Use the matching file directly under `docs/` for a
-   whole-system fact.
+   that cannot be recovered from code in `internals.md`. Use the matching file under `docs/requirements/`,
+   `docs/architecture/`, `docs/design/`, `docs/verification/`, or `docs/operations/` for a whole-system fact.
 3. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`. Retire a referenced behavior
    with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id.
 4. Keep behavior that only several contexts can satisfy in `docs/scenarios.feature.md`, name the participating
    contexts, and keep context-local fragments out of their individual scenario files.
 5. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.
-   TypeSpec records authentication and enforced operation scopes; `docs/authorization.md` owns the shared
+   TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md` owns the shared
    principal, scope, tenant-boundary, and fail-closed rules.
 6. Sync the work item's `affected_spec` with the normative scenario or standard id, or the TypeSpec symbol.
 7. Pass `mise run check-spec` and `mise run check-api-compat`. Regenerate derived views with `spec-render`

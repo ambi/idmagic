@@ -1,4 +1,4 @@
-# Provisioning Internals
+# Provisioning の内部設計
 
 ## Same-transaction delivery capture
 

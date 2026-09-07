@@ -6,6 +6,8 @@ describe('verifyCanonicalDocumentSet', () => {
     expect(
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['README.md', 'glossary.md'] },
+        { directory: 'docs/requirements', files: ['README.md', 'quality.md'] },
+        { directory: 'docs/design/infrastructure', files: ['README.md', 'network.md'] },
         { directory: 'docs/contexts/demo', files: ['README.md', 'scenarios.feature.md'] },
       ]),
     ).toEqual([])
@@ -76,6 +78,9 @@ describe('verifyCanonicalDocumentSet', () => {
     expect(
       verifyCanonicalDocumentSet([{ directory: 'docs/contexts/demo', files: ['structure.md'] }]),
     ).toHaveLength(1)
+    expect(
+      verifyCanonicalDocumentSet([{ directory: 'docs/design/security', files: ['network.md'] }]),
+    ).toHaveLength(1)
   })
 
   it('falls back to the allowed names when nothing is close', () => {
@@ -84,7 +89,7 @@ describe('verifyCanonicalDocumentSet', () => {
     ])
     expect(findings).toHaveLength(1)
     expect(findings[0]?.message).not.toContain('did you mean')
-    expect(findings[0]?.message).toContain('threat-model.md')
+    expect(findings[0]?.message).toContain('structure.md')
   })
 
   it('ignores files that are not Markdown', () => {

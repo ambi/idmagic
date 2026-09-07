@@ -69,7 +69,7 @@ Agent の登録と更新も同じ正規化処理を使うため、どのテナ�
 
 Group は自身がシステム運用者になるのではなく、制御面 User の有効ロールへ `system_admin` を付与する束として許可する。
 
-Agent は `docs/authorization.md` でシステム運用者とは異なる主体として定義され、制御面の管理 API は User と ApiToken だけを受け入れるため、`system_admin` を割り当てない。
+Agent は `docs/design/security/authorization.md` でシステム運用者とは異なる主体として定義され、制御面の管理 API は User と ApiToken だけを受け入れるため、`system_admin` を割り当てない。
 
 通常テナントで `catalog:read` など任意のロール名を使う現在のモデルは維持し、予約する文字列は `system_admin` だけに限定する。
 

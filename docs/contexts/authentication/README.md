@@ -4,11 +4,11 @@
 
 `User` / `Group` / `Agent` のライフサイクルそのものは `IdManagement` が担う。この Context が扱うのは、そのプリンシパルが本人であることをどう確かめ、確かめた結果をどうセッションとして保つかである。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Authentication の用語集](glossary.md) | この Context での語義 |
+| [Authentication の採用規範](standards.md) | 準拠する外部規範 |
+| [Authentication の状態遷移](states.md) | 状態と遷移 |
+| [Authentication の設計判断](decisions.md) | 設計判断 |
+| [Authentication の内部設計](internals.md) | 機構の説明 |
+| [Authentication Scenarios](scenarios.feature.md) | 受け入れシナリオ |

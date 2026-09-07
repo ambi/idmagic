@@ -1,4 +1,4 @@
-# Tenancy Glossary
+# Tenancy の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

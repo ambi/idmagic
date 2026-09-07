@@ -70,7 +70,7 @@ func signInWithTOTP(
 	return second
 }
 
-// postForCookies は postJSON と同じ POST を行い、レスポンス本文に加えて Set-Cookie を返す。
+// postForCookies は postJSON と同じ POST を行い、レスポンスボディに加えて Set-Cookie を返す。
 // cookiejar は属性を保持しないため、cookie の属性はここでしか検証できない。
 func postForCookies(
 	t *testing.T,

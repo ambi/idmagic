@@ -4,10 +4,10 @@
 
 暗号処理そのものは担わない。`EnvelopeCrypto` ポートとその実装は技術的な共有アダプター (`backend/shared/security`) に置き、この Context が外部へ公開するのは `EncryptedSecret` と鍵のライフサイクルメタデータだけである。署名鍵（`private_jwk`）も管理せず、`SigningKeys` の責務とする。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [DataKeys の用語集](glossary.md) | この Context での語義 |
+| [DataKeys の状態遷移](states.md) | 状態と遷移 |
+| [DataKeys の設計判断](decisions.md) | 設計判断 |
+| [DataKeys の内部設計](internals.md) | 機構の説明 |
+| [DataKeys Scenarios](scenarios.feature.md) | 受け入れシナリオ |

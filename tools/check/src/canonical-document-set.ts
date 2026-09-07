@@ -11,7 +11,7 @@
  * 近い許可名を示して、書いた人が何を間違えたかに到達させる。
  */
 
-import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from './specification-doc.ts'
+import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from './specification-doc.ts'
 
 /** 一段のディレクトリと、その直下にあるファイル名。 */
 export interface DirectoryListing {
@@ -29,7 +29,7 @@ const SUGGESTION_DISTANCE = 2
 
 /** その段が許す名前。`docs/` 直下と Context 直下は別の集合を持つ。 */
 function allowedNames(directory: string): readonly string[] {
-  return directory === 'docs' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS
+  return canonicalDocumentNames(directory) ?? CONTEXT_DOCUMENTS
 }
 
 function isMarkdown(name: string): boolean {

@@ -96,4 +96,4 @@ flowchart LR
 
 ## 外部サービスのローカル代替
 
-メール配信の確認には Mailpit などのローカル SMTP サーバーを使い、本番の資格情報を開発環境へ持ち込まない。起動時設定の型、既定値、条件付き要件、機密区分は [CONFIGURATION.md](../../CONFIGURATION.md) を参照する。
+メール配信の確認には Mailpit などのローカル SMTP サーバーを使い、本番の資格情報を開発環境へ持ち込まない。起動時設定の型、既定値、条件付き要件、機密区分は [Configuration Reference](../../CONFIGURATION.md) を参照する。

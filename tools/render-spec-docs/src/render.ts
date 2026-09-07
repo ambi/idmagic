@@ -1,7 +1,7 @@
 import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { parseScenarioDocument } from '../../check/src/gherkin-scenarios.ts'
-import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
+import { CONTEXT_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../check/src/specification-doc.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 /**
@@ -68,6 +68,9 @@ export type RenderedSpecificationSite = {
   mermaidSources: string[]
 }
 
+/** 用語表の 1 列目の見出し。日本語の文書と、まだ英語の Context 文書の両方を含む。 */
+const TERM_HEADINGS = new Set(['用語', 'Term'])
+
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'patch', 'head', 'options', 'trace'])
 
 export function escapeHtml(value: string): string {
@@ -80,9 +83,8 @@ export function escapeHtml(value: string): string {
 }
 
 /**
- * A TypeSpec doc comment is Markdown, so the catalog renders it as Markdown
- * rather than printing the backticks a reader is meant to see as code. Raw HTML
- * stays disabled, so untrusted markup is still escaped.
+ * TypeSpec の文書コメントは Markdown として描画し、コードを表すバッククォートをそのまま表示しない。
+ * 生の HTML は無効なままとし、信頼できないマークアップをエスケープする。
  */
 const inlineMarkdown = new MarkdownIt({ html: false, linkify: false, typographer: false })
 
@@ -96,6 +98,18 @@ function slug(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9\p{L}]+/gu, '-')
     .replace(/^-|-$/g, '')
+}
+
+/**
+ * markdown-it は href を百分率符号化して属性に載せる。見出しの綴りは元の文字から
+ * 作るので、断片は綴りに直す前に復号する。復号できない綴りはそのまま扱う。
+ */
+function decodeFragment(fragment: string): string {
+  try {
+    return decodeURIComponent(fragment)
+  } catch {
+    return fragment
+  }
 }
 
 function stripFrontmatter(source: string): string {
@@ -112,15 +126,29 @@ function canonicalOrder(names: readonly string[], name: string, fallback: number
 }
 
 function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
-  const title = document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path
+  const declaredTitle = document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path
+  const title =
+    document.path === 'docs/scenarios.feature.md' ? 'システム横断シナリオ' : declaredTitle
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
-  const rootDocument = document.path.match(/^docs\/([^/]+)$/)?.[1]
-  if (rootDocument) {
-    const stem =
-      rootDocument === 'scenarios.feature.md' ? 'scenarios' : rootDocument.replace(/\.md$/, '')
-    return rootDocument === 'README.md'
+  const systemDocument = document.path.match(/^docs\/(.+)$/)?.[1]
+  if (
+    systemDocument &&
+    !systemDocument.startsWith('contexts/') &&
+    !systemDocument.startsWith('development/')
+  ) {
+    const segments = systemDocument.split('/')
+    const file = segments.at(-1) ?? systemDocument
+    const stem = file === 'scenarios.feature.md' ? 'scenarios' : file.replace(/\.md$/, '')
+    const directory = segments.slice(0, -1).map(slug).join('/')
+    const outputPath =
+      file === 'README.md'
+        ? directory
+          ? `specification/${directory}/index.html`
+          : 'specification/index.html'
+        : `specification/${directory ? `${directory}/` : ''}${slug(stem)}.html`
+    return systemDocument === 'README.md'
       ? {
           ...document,
           id: 'whole-system',
@@ -132,12 +160,12 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
         }
       : {
           ...document,
-          id: `whole-system-${slug(stem)}`,
+          id: `whole-system-${slug(systemDocument)}`,
           title,
           sections,
-          outputPath: `specification/${slug(stem)}.html`,
+          outputPath,
           category: 'whole-system-child',
-          order: canonicalOrder(ROOT_DOCUMENTS, rootDocument, index),
+          order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
         }
   }
   const developmentDocument = document.path.match(/^docs\/development\/([^/]+)$/)?.[1]
@@ -408,7 +436,8 @@ function markdownRenderer(
     // A glossary term is a single identifier. Letting the layout break it apart
     // to widen the definition column leaves the term column unreadable.
     const heading = tokens.slice(index, index + 6).find((token) => token.type === 'inline')
-    if (heading?.content.trim() === 'Term') tokens[index]?.attrJoin('class', 'term-table')
+    if (TERM_HEADINGS.has(heading?.content.trim() ?? ''))
+      tokens[index]?.attrJoin('class', 'term-table')
     return defaultTableOpen(tokens, index, options, env, self)
   }
 
@@ -425,7 +454,7 @@ function markdownRenderer(
         const current = env as { document: RenderedDocument }
         const hash = href.indexOf('#')
         const pathPart = hash >= 0 ? href.slice(0, hash) : href
-        const fragment = hash >= 0 ? href.slice(hash + 1) : ''
+        const fragment = hash >= 0 ? decodeFragment(href.slice(hash + 1)) : ''
         const currentSource = resolve(repositoryRoot, current.document.path)
         const absolute = pathPart ? resolve(dirname(currentSource), pathPart) : currentSource
         const target = bySource.get(absolute)
@@ -474,13 +503,25 @@ function inGroup(documents: RenderedDocument[], category: DocumentCategory): Ren
  * file holds, which is what tells the children apart.
  */
 function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): string {
-  if (entry.path.endsWith('scenarios.feature.md')) return 'Scenarios'
+  if (entry.path.endsWith('scenarios.feature.md')) return 'シナリオ'
+  // 全体文書は入れ子の段そのものが所属を示すので、名札は題名だけでよい。
+  if (entry.category === 'whole-system-child') return entry.title
   const owner = documents.find(
     (document) => document.category === 'context' && document.context === entry.context,
   )
   return owner && entry.title.startsWith(`${owner.title} `)
     ? entry.title.slice(owner.title.length + 1)
     : entry.title
+}
+
+/**
+ * `docs/` から見た段。ディレクトリの索引はその段自身に、ほかの文書は索引の一段下に
+ * 置く。上から下へ分解した体系は、この入れ子でしか読み手に伝わらない。
+ */
+function systemDepth(path: string): number {
+  const segments = path.slice('docs/'.length).split('/')
+  const file = segments.pop() ?? ''
+  return file === 'README.md' ? segments.length : segments.length + 1
 }
 
 function navigation(page: string, documents: RenderedDocument[]): string {
@@ -498,17 +539,20 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     current?.category === 'whole-system' || current?.category === 'whole-system-child'
   const insideDevelopment =
     current?.category === 'development' || current?.category === 'development-child'
-  const link = (entry: RenderedDocument, child: boolean) => {
+  const link = (entry: RenderedDocument, depth: number) => {
     const marker = entry.outputPath === page ? ' aria-current="page"' : ''
-    const cls = child ? ' class="nav-child"' : ''
-    const label = child ? childLabel(entry, documents) : entry.title
+    const cls = depth > 0 ? ` class="nav-child${depth > 1 ? `-${depth}` : ''}"` : ''
+    const label = depth > 0 ? childLabel(entry, documents) : entry.title
     return `<a data-site-link${cls}${marker} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(label)}</a>`
   }
   const branch = (entry: RenderedDocument, children: RenderedDocument[]) =>
-    link(entry, false) + children.map((child) => link(child, true)).join('')
-  // Every group folds the same way, so no group looks like a different kind of
-  // thing. Method guidance is read once rather than while navigating the
-  // specification, so it is the one that starts folded.
+    link(entry, 0) + children.map((child) => link(child, 1)).join('')
+  const flatBranch = (entry: RenderedDocument, children: RenderedDocument[]) =>
+    link(entry, 0) + children.map((child) => link(child, 0)).join('')
+  const systemBranch = (entry: RenderedDocument, children: RenderedDocument[]) =>
+    link(entry, 0) +
+    children.map((child) => link(child, Math.max(0, systemDepth(child.path) - 1))).join('')
+  // 現在位置を含むグループだけを初期展開し、常時参照する項目は展開しておく。
   const group = (title: string, body: string, open: boolean) =>
     `<details class="nav-group"${open ? ' open' : ''}><summary>${escapeHtml(title)}</summary>${body}</details>`
   const contextChildren = (entry: RenderedDocument) =>
@@ -516,30 +560,26 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       ? inGroup(documents, 'context-child').filter((document) => document.context === entry.context)
       : []
   return [
-    group(
-      'Method',
-      method.map((entry) => link(entry, false)).join(''),
-      current?.category === 'method',
-    ),
+    group('方法論', method.map((entry) => link(entry, 0)).join(''), current?.category === 'method'),
     development
-      ? group('Development', branch(development, developmentChildren), insideDevelopment)
+      ? group('開発', flatBranch(development, developmentChildren), insideDevelopment)
       : '',
-    root ? group('Whole System', branch(root, insideWholeSystem ? rootChildren : []), true) : '',
+    root ? group('システム', systemBranch(root, rootChildren), insideWholeSystem) : '',
     group(
-      'Contexts',
+      'コンテキスト別',
       contexts.map((entry) => branch(entry, contextChildren(entry))).join(''),
-      true,
+      Boolean(openContext),
     ),
     group(
-      'References',
-      `${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}${siteLink(page, 'traceability/index.html', 'Traceability')}`,
+      '参照',
+      `${siteLink(page, 'api/index.html', 'API リファレンス')}${siteLink(page, 'models/index.html', 'モデルカタログ')}${siteLink(page, 'traceability/index.html', 'トレーサビリティ')}`,
       true,
     ),
   ].join('')
 }
 
 function breadcrumbs(page: string, current: string): string {
-  return `<nav class="breadcrumbs" aria-label="Breadcrumb">${siteLink(page, 'index.html', 'Specification')}<span aria-hidden="true">/</span><span>${escapeHtml(current)}</span></nav>`
+  return `<nav class="breadcrumbs" aria-label="パンくず">${siteLink(page, 'index.html', '仕様')}<span aria-hidden="true">/</span><span>${escapeHtml(current)}</span></nav>`
 }
 
 function shell(args: {
@@ -553,19 +593,15 @@ function shell(args: {
 }): string {
   const nav = navigation(args.page, args.documents)
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(args.title)} · Specification</title><link rel="stylesheet" href="${escapeHtml(stylesheetHref(args.page))}">${args.head ?? ''}</head>
-<body><a class="skip-link" href="#content">Skip to content</a><header class="mobile-header">${siteLink(args.page, 'index.html', 'Specification')}<details><summary>Navigation</summary><nav aria-label="Mobile">${nav}</nav></details></header><aside class="sidebar"><div class="site-title">${siteLink(args.page, 'index.html', 'Specification')}</div><nav aria-label="Primary">${nav}</nav></aside><main id="content">${breadcrumbs(args.page, args.current)}${args.body}</main>${args.scripts ?? ''}</body></html>\n`
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(args.title)} · 仕様</title><link rel="stylesheet" href="${escapeHtml(stylesheetHref(args.page))}">${args.head ?? ''}</head>
+<body><a class="skip-link" href="#content">本文へ移動</a><header class="mobile-header">${siteLink(args.page, 'index.html', '仕様')}<details><summary>ナビゲーション</summary><nav aria-label="モバイル">${nav}</nav></details></header><aside class="sidebar"><div class="site-title">${siteLink(args.page, 'index.html', '仕様')}</div><nav aria-label="主要">${nav}</nav></aside><main id="content">${breadcrumbs(args.page, args.current)}${args.body}</main>${args.scripts ?? ''}</body></html>\n`
 }
 
 function modelGroupId(context: string): string {
   return `context-${slug(context)}`
 }
 
-/**
- * The API Reference and the Model Catalog stay whole, because one TypeSpec
- * program produces them. What a context needs is the way down into its own
- * share of them, which the declaring directory already determines.
- */
+/** API リファレンスとモデルカタログは一つに保ち、宣言元の Context から該当箇所へ案内する。 */
 function contextReference(args: {
   document: RenderedDocument
   tags: string[]
@@ -579,7 +615,7 @@ function contextReference(args: {
   const filtered = (tag: string) =>
     `<a data-site-link href="${escapeHtml(`${pageHref(page, 'api/index.html')}?tag=${encodeURIComponent(tag)}`)}">${escapeHtml(tag)}</a>`
   const operations = args.operations.length
-    ? `<h3 id="${id}-operations">Operations</h3><p class="muted">Tagged ${args.tags.map(filtered).join(', ')} in the API Reference.</p><div class="table-wrap"><table><thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">Summary</th></tr></thead><tbody>${args.operations
+    ? `<h3 id="${id}-operations">操作</h3><p class="muted">API リファレンスでは ${args.tags.map(filtered).join('、')} のタグで掲載する。</p><div class="table-wrap"><table><thead><tr><th scope="col">メソッド</th><th scope="col">パス</th><th scope="col">概要</th></tr></thead><tbody>${args.operations
         .map(
           (operation) =>
             `<tr><th scope="row"><code>${escapeHtml(operation.method)}</code></th><td><code>${escapeHtml(operation.path)}</code></td><td>${operation.summary ? renderDoc(operation.summary) : '<span class="muted">—</span>'}</td></tr>`,
@@ -587,11 +623,11 @@ function contextReference(args: {
         .join('')}</tbody></table></div>`
     : ''
   const models = args.models.length
-    ? `<h3 id="${id}-models">Models</h3><p class="muted">${args.models.length} TypeSpec symbol(s), also listed under ${siteLink(page, 'models/index.html', context, modelGroupId(context))} in the Model Catalog.</p><ul class="symbol-links">${args.models
+    ? `<h3 id="${id}-models">モデル</h3><p class="muted">${args.models.length} 個の TypeSpec シンボルを、モデルカタログの ${siteLink(page, 'models/index.html', context, modelGroupId(context))} にも掲載する。</p><ul class="symbol-links">${args.models
         .map((model) => `<li>${siteLink(page, modelPath(model), model.shortName)}</li>`)
         .join('')}</ul>`
     : ''
-  return `<section class="context-reference"><h2 id="${id}">API and Models</h2><p>Derived from the TypeSpec this context declares.</p>${operations}${models}</section>`
+  return `<section class="context-reference"><h2 id="${id}">API とモデル</h2><p>この Context が宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
 }
 
 function documentPage(
@@ -626,14 +662,14 @@ function landingPage(documents: RenderedDocument[], modelCount: number): string 
   const development = documents.find((document) => document.category === 'development')
   const method = inGroup(documents, 'method')
   const contexts = inGroup(documents, 'context')
-  const body = `<section class="hero"><p class="eyebrow">Generated from canonical Markdown and TypeSpec</p><h1>Specification</h1><p>Read the whole-system design, bounded-context specifications, API contract, and complete TypeSpec model catalog without treating this generated site as a source.</p></section>
-<section aria-labelledby="start"><h2 id="start">Start here</h2><div class="card-grid">${root ? card(page, root.outputPath, root.title, 'Cross-context ownership, current design, and the DDD context map.') : ''}${development ? card(page, development.outputPath, development.title, 'Development workflow, local procedures, testing, and release guidance.') : ''}${card(page, 'api/index.html', 'API Reference', 'The generated OpenAPI rendered by Swagger UI.')}${card(page, 'models/index.html', 'Model Catalog', `${modelCount} repository-owned TypeSpec symbols, including non-HTTP models.`)}</div></section>
-<section aria-labelledby="method"><h2 id="method">Method</h2><div class="card-grid">${method.map((entry) => card(page, entry.outputPath, entry.title, 'Specification-first development guidance.')).join('')}</div></section>
-<section aria-labelledby="contexts"><h2 id="contexts">Bounded contexts</h2><div class="card-grid">${contexts.map((entry) => card(page, entry.outputPath, entry.title, 'Overview, current design, state transitions, and scenarios.')).join('')}</div></section>`
+  const body = `<section class="hero"><p class="eyebrow">正準 Markdown と TypeSpec から生成</p><h1>仕様</h1><p>システム設計、Bounded Context ごとの仕様、API 契約、TypeSpec のモデルカタログを参照できる。この生成サイト自体は正本ではない。</p></section>
+<section aria-labelledby="start"><h2 id="start">はじめに</h2><div class="card-grid">${root ? card(page, root.outputPath, root.title, 'Context をまたぐ責務、現在の設計、DDD の Context Map。') : ''}${development ? card(page, development.outputPath, development.title, '開発ワークフロー、ローカル手順、テスト、リリースの案内。') : ''}${card(page, 'api/index.html', 'API リファレンス', '生成した OpenAPI を Swagger UI で表示する。')}${card(page, 'models/index.html', 'モデルカタログ', `HTTP に公開しないものを含む、リポジトリ所有の TypeSpec シンボル ${modelCount} 個。`)}</div></section>
+<section aria-labelledby="method"><h2 id="method">方法論</h2><div class="card-grid">${method.map((entry) => card(page, entry.outputPath, entry.title, '仕様先行の開発手順。')).join('')}</div></section>
+<section aria-labelledby="contexts"><h2 id="contexts">Bounded Context</h2><div class="card-grid">${contexts.map((entry) => card(page, entry.outputPath, entry.title, '概要、現在の設計、状態遷移、シナリオ。')).join('')}</div></section>`
   return shell({
     page,
-    title: 'Specification',
-    current: 'Home',
+    title: '仕様',
+    current: 'ホーム',
     body,
     documents,
   })
@@ -654,15 +690,39 @@ function apiPage(
   documents: RenderedDocument[],
 ): string {
   const page = 'api/index.html'
-  const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI-native reference</p><h1>API Reference</h1><p>Rendered directly from generated OpenAPI by Swagger UI. A <code>?tag=</code> query narrows the view to one context's operations. <a href="../../openapi/${encodeURIComponent(openapiFileName)}">Open raw OpenAPI JSON</a>.</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API operations"></div></div></article>`
+  const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI に基づくリファレンス</p><h1>API リファレンス</h1><p>生成した OpenAPI を Swagger UI で直接表示する。<code>?tag=</code> を指定すると、一つの Context の操作へ絞り込める。<a href="../../openapi/${encodeURIComponent(openapiFileName)}">OpenAPI JSON を開く</a>。</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API 操作"></div></div></article>`
   const head = `<link rel="stylesheet" href="${escapeHtml(assetHref(page, 'swagger-ui.css'))}">`
-  // Swagger UI builds its own anchors at runtime, so the context pages arrive
-  // with a query the generated-link check can still resolve to this page.
-  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');SwaggerUIBundle({spec:${safeJson(openapi)},dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true});});</script>`
+  // Blob URL を OpenAPI 自身の基準 URI にする。file:// で開いても内部 $ref が HTML を参照しない。
+  // Swagger UI が実行時に作る表示文言は、DOM の更新後に既知の固定語だけを日本語へ置き換える。
+  const swaggerTranslations = {
+    'Filter by tag': 'タグで絞り込む',
+    Authorize: '認証',
+    Schemas: 'スキーマ',
+    Parameters: 'パラメーター',
+    Responses: 'レスポンス',
+    'Response body': 'レスポンスボディ',
+    'Response headers': 'レスポンスヘッダー',
+    'Request body': 'リクエストボディ',
+    'Request URL': 'リクエスト URL',
+    'Server response': 'サーバーレスポンス',
+    'No parameters': 'パラメーターなし',
+    'Try it out': '試す',
+    Execute: '実行',
+    Clear: 'クリア',
+    Cancel: 'キャンセル',
+    Close: '閉じる',
+    Code: 'コード',
+    Details: '詳細',
+    Example: '例',
+    'Example Value': '値の例',
+    Model: 'モデル',
+    Schema: 'スキーマ',
+  }
+  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');var specification=${safeJson(openapi)};var specificationUrl=URL.createObjectURL(new Blob([JSON.stringify(specification)],{type:'application/json'}));var translations=${safeJson(swaggerTranslations)};var root=document.querySelector('#swagger-ui');var localize=function(){root.querySelectorAll('input').forEach(function(input){if(translations[input.placeholder])input.placeholder=translations[input.placeholder]});var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);var node;while(node=walker.nextNode()){var key=node.nodeValue.trim();if(translations[key])node.nodeValue=node.nodeValue.replace(key,translations[key])}};new MutationObserver(localize).observe(root,{childList:true,subtree:true});SwaggerUIBundle({url:specificationUrl,dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true,onComplete:localize});});</script>`
   return shell({
     page,
-    title: 'API Reference',
-    current: 'API Reference',
+    title: 'API リファレンス',
+    current: 'API リファレンス',
     body,
     documents,
     head,
@@ -701,7 +761,7 @@ function propertyRows(
   return properties
     .map(
       (property) =>
-        `<tr><th scope="row"><code>${escapeHtml(property.name)}</code>${property.optional ? '<span class="optional">optional</span>' : '<span class="required">required</span>'}</th><td><code>${escapeHtml(property.type)}</code>${property.default ? `<div class="meta">Default: <code>${escapeHtml(property.default)}</code></div>` : ''}</td><td>${property.doc ? renderDoc(property.doc) : '<span class="muted">No description.</span>'}${property.constraints.length ? `<ul class="compact">${property.constraints.map((constraint) => `<li><code>${escapeHtml(constraint)}</code></li>`).join('')}</ul>` : ''}${property.references.length ? `<div class="meta">References: ${referenceList(page, property.references, symbols)}</div>` : ''}</td></tr>`,
+        `<tr><th scope="row"><code>${escapeHtml(property.name)}</code>${property.optional ? '<span class="optional">任意</span>' : '<span class="required">必須</span>'}</th><td><code>${escapeHtml(property.type)}</code>${property.default ? `<div class="meta">既定値: <code>${escapeHtml(property.default)}</code></div>` : ''}</td><td>${property.doc ? renderDoc(property.doc) : '<span class="muted">説明なし。</span>'}${property.constraints.length ? `<ul class="compact">${property.constraints.map((constraint) => `<li><code>${escapeHtml(constraint)}</code></li>`).join('')}</ul>` : ''}${property.references.length ? `<div class="meta">参照: ${referenceList(page, property.references, symbols)}</div>` : ''}</td></tr>`,
     )
     .join('')
 }
@@ -750,7 +810,7 @@ function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]
   const covered = examples.filter((scenario) => (byId.get(scenario.id)?.sources.length ?? 0) > 0)
   const paths = (label: string, entries: string[]) =>
     entries.length === 0
-      ? `<span class="trace-empty">no ${escapeHtml(label)}</span>`
+      ? `<span class="trace-empty">${escapeHtml(label)}なし</span>`
       : `<ul class="trace-paths">${entries
           .map((entry) => `<li><code>${escapeHtml(entry)}</code></li>`)
           .join('')}</ul>`
@@ -759,19 +819,16 @@ function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]
       const trace = byId.get(scenario.id)
       const href = `${pageHref(page, scenario.document.outputPath)}#${scenario.anchor}`
       const debt = trace?.debt
-        ? `<span class="trace-debt">debt: ${escapeHtml(trace.debt)}</span>`
-        : '<span class="trace-empty">no debt</span>'
-      return `<tr class="trace-${scenario.kind}"><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span>${scenario.parentId ? `<span class="trace-parent">${escapeHtml(scenario.parentId)}</span>` : ''}</th><td>${paths('test source', trace?.sources ?? [])}${scenario.kind === 'example' ? debt : ''}</td><td>${paths('work item', trace?.workItems ?? [])}</td></tr>`
+        ? `<span class="trace-debt">負債: ${escapeHtml(trace.debt)}</span>`
+        : '<span class="trace-empty">負債なし</span>'
+      return `<tr class="trace-${scenario.kind}"><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span>${scenario.parentId ? `<span class="trace-parent">${escapeHtml(scenario.parentId)}</span>` : ''}</th><td>${paths('テスト参照', trace?.sources ?? [])}${scenario.kind === 'example' ? debt : ''}</td><td>${paths('作業項目', trace?.workItems ?? [])}</td></tr>`
     })
     .join('')
-  const body = `<header class="reference-header"><p class="eyebrow">Derived from the repository</p><h1>Traceability</h1><p>Every normative Rule and its executable Examples. Example coverage comes only from product tests that name the EX identifier; otherwise the migration debt reason is shown. ${covered.length} of ${examples.length} examples carry a test reference.</p></header><table class="trace-table"><thead><tr><th scope="col">Rule / Example</th><th scope="col">Test or debt</th><th scope="col">Work items</th></tr></thead><tbody>${rows}</tbody></table>`
-  return shell({ page, title: 'Traceability', current: 'Traceability', body, documents })
+  const body = `<header class="reference-header"><p class="eyebrow">リポジトリから生成</p><h1>トレーサビリティ</h1><p>すべての規範的な規則と実行可能な例を示す。例の被覆は EX 識別子を名指しするプロダクトテストだけから算出し、未被覆の場合は移行負債の理由を示す。${examples.length} 件中 ${covered.length} 件の例がテスト参照を持つ。</p></header><table class="trace-table"><thead><tr><th scope="col">規則／例</th><th scope="col">テストまたは負債</th><th scope="col">作業項目</th></tr></thead><tbody>${rows}</tbody></table>`
+  return shell({ page, title: 'トレーサビリティ', current: 'トレーサビリティ', body, documents })
 }
 
-/**
- * Every model in the program shares one contract namespace, so a namespace
- * heading would say nothing. The declaring directory is what separates them.
- */
+/** モデルは一つの契約名前空間を共有するため、宣言元ディレクトリで分類する。 */
 function modelGroups(
   models: CatalogSymbol[],
   documents: RenderedDocument[],
@@ -799,7 +856,7 @@ function modelGroups(
 
 function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): string {
   const page = 'models/index.html'
-  const body = `<header class="reference-header"><p class="eyebrow">TypeSpec program</p><h1>Model Catalog</h1><p>Repository-owned models, enums, unions, and scalars are included whether or not an HTTP operation exposes them, and are grouped by the bounded context that declares them. Transport wrappers in <code>Operations</code> namespaces remain in the OpenAPI-native API Reference.</p><label class="model-search">Filter models <input type="search" data-model-search placeholder="Name, context, or description" autocomplete="off"></label></header>${modelGroups(
+  const body = `<header class="reference-header"><p class="eyebrow">TypeSpec プログラム</p><h1>モデルカタログ</h1><p>リポジトリが所有するモデル、列挙、共用体、スカラーを、HTTP 操作への公開有無にかかわらず宣言元の Bounded Context ごとに掲載する。<code>Operations</code> 名前空間の転送用ラッパーは OpenAPI に基づく API リファレンスへ掲載する。</p><label class="model-search">モデルを絞り込む <input type="search" data-model-search placeholder="名前、Context、説明" autocomplete="off"></label></header>${modelGroups(
     models,
     documents,
   )
@@ -808,19 +865,18 @@ function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): str
         `<section class="model-group" data-model-group><h2 id="${escapeHtml(group.id)}">${escapeHtml(group.title)}</h2><div class="model-list">${group.entries
           .map(
             (entry) =>
-              `<article data-model-card data-search="${escapeHtml(`${entry.name} ${group.title} ${entry.doc ?? ''}`.toLowerCase())}"><div><span class="kind">${escapeHtml(entry.kind)}</span>${entry.apiExposed ? '<span class="api-exposed">API-exposed</span>' : ''}</div><h3>${siteLink(page, modelPath(entry), entry.shortName)}</h3><p>${renderDoc(entry.doc)}</p></article>`,
+              `<article data-model-card data-search="${escapeHtml(`${entry.name} ${group.title} ${entry.doc ?? ''}`.toLowerCase())}"><div><span class="kind">${escapeHtml(entry.kind)}</span>${entry.apiExposed ? '<span class="api-exposed">API 公開</span>' : ''}</div><h3>${siteLink(page, modelPath(entry), entry.shortName)}</h3><p>${renderDoc(entry.doc)}</p></article>`,
           )
           .join('')}</div></section>`,
     )
     .join('')}`
   return shell({
     page,
-    title: 'Model Catalog',
-    current: 'Model Catalog',
+    title: 'モデルカタログ',
+    current: 'モデルカタログ',
     body,
     documents,
-    // The filter box is inert without the site script, which only the pages
-    // that ask for it receive.
+    // 絞り込み欄を使うページだけにサイトスクリプトを読み込む。
     scripts: `<script src="${escapeHtml(assetHref(page, 'site.js'))}"></script>`,
   })
 }
@@ -832,20 +888,20 @@ function modelPage(
 ): string {
   const page = modelPath(model)
   const exposure = model.apiExposed
-    ? '<span class="api-exposed">API-exposed</span>'
-    : '<span class="not-exposed">Not API-exposed</span>'
+    ? '<span class="api-exposed">API 公開</span>'
+    : '<span class="not-exposed">API 非公開</span>'
   const properties = model.properties.length
-    ? `<section><h2>Properties</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Description and constraints</th></tr></thead><tbody>${propertyRows(page, model.properties, symbols)}</tbody></table></div></section>`
+    ? `<section><h2>プロパティ</h2><div class="table-wrap"><table><thead><tr><th>名前</th><th>型</th><th>説明と制約</th></tr></thead><tbody>${propertyRows(page, model.properties, symbols)}</tbody></table></div></section>`
     : ''
   const members = model.members.length
-    ? `<section><h2>${model.kind === 'union' ? 'Variants' : 'Members'}</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Value or type</th><th>Description</th></tr></thead><tbody>${model.members
+    ? `<section><h2>${model.kind === 'union' ? 'バリアント' : 'メンバー'}</h2><div class="table-wrap"><table><thead><tr><th>名前</th><th>値または型</th><th>説明</th></tr></thead><tbody>${model.members
         .map(
           (member) =>
             `<tr><th scope="row"><code>${escapeHtml(member.name)}</code></th><td><code>${escapeHtml(member.value ?? member.type ?? '—')}</code></td><td>${renderDoc(member.doc, '—')}</td></tr>`,
         )
         .join('')}</tbody></table></div></section>`
     : ''
-  const body = `<article class="model-detail"><header><p class="eyebrow">${escapeHtml(model.namespace)} · ${escapeHtml(model.kind)}</p><h1>${escapeHtml(model.shortName)}</h1><div class="badges">${exposure}</div><p>${renderDoc(model.doc)}</p><p class="qualified"><strong>TypeSpec symbol</strong> <code>${escapeHtml(model.name)}</code></p>${model.base ? `<p><strong>Base</strong> ${modelLink(page, model.base, symbols)}</p>` : ''}</header>${properties}${members}<section><h2>References</h2><p>${referenceList(page, model.references, symbols)}</p></section></article>`
+  const body = `<article class="model-detail"><header><p class="eyebrow">${escapeHtml(model.namespace)} · ${escapeHtml(model.kind)}</p><h1>${escapeHtml(model.shortName)}</h1><div class="badges">${exposure}</div><p>${renderDoc(model.doc)}</p><p class="qualified"><strong>TypeSpec シンボル</strong> <code>${escapeHtml(model.name)}</code></p>${model.base ? `<p><strong>基底</strong> ${modelLink(page, model.base, symbols)}</p>` : ''}</header>${properties}${members}<section><h2>参照</h2><p>${referenceList(page, model.references, symbols)}</p></section></article>`
   return shell({
     page,
     title: model.shortName,
@@ -926,9 +982,9 @@ function validateSiteLinks(files: Record<string, string>): void {
 const styles = `
 :root{color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--panel-2:#f8f9fd;--text:#182033;--muted:#667085;--line:#d9dfeb;--accent:#3457d5;--accent-soft:#e9eeff;--code:#edf1f8;--shadow:0 12px 32px rgba(25,35,60,.08);--given:#176b87;--when:#9a5b00;--then:#157347;--diagram-line:#294cba}
 @media(prefers-color-scheme:dark){:root{--bg:#0f131b;--panel:#171c27;--panel-2:#1d2431;--text:#eef2f8;--muted:#a7b0c1;--line:#30394b;--accent:#9db1ff;--accent-soft:#242f52;--code:#242b39;--shadow:none;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--diagram-line:#b9c8ff}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group>summary{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;list-style:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:"▸";display:inline-block;width:12px}.nav-group[open]>summary::before{content:"▾"}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:22px;font-size:13px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent,.trace-debt{font-size:12px}.trace-debt{display:block;margin-top:6px;color:var(--muted)}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group>summary{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;list-style:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:"▸";display:inline-block;width:12px}.nav-group[open]>summary::before{content:"▾"}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:22px;font-size:13px;color:var(--muted)}a.nav-child-2{padding-left:38px;font-size:13px;color:var(--muted)}a.nav-child-3{padding-left:54px;font-size:13px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}main:has(.swagger-shell){width:calc(100% - 340px);max-width:none}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent,.trace-debt{font-size:12px}.trace-debt{display:block;margin-top:6px;color:var(--muted)}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
 .model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}th{background:var(--panel-2)}.term-table td:first-child{white-space:nowrap}.context-reference{margin-top:38px;padding-top:8px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
-@media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
+@media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}main:has(.swagger-shell){width:auto}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
 @media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link{display:none}main{width:auto;margin:0;padding:0}.document,.reference-page,.model-detail,.hero{border:0;box-shadow:none;padding:0}a{color:inherit;text-decoration:none}}
 `
 

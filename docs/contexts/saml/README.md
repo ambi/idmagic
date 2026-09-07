@@ -4,10 +4,10 @@ SAML 2.0 IdP として、SP の信頼、IdP プロファイル、IdP メタデ�
 
 WS-Fed / WS-Trust とは、クレームの発行処理と XML 署名だけを共有する。プロトコルに依存しないクレームの対応付けは `ClaimMapping`、署名鍵のライフサイクルは `SigningKeys` が担う。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Saml の用語集](glossary.md) | この Context での語義 |
+| [Saml の採用規範](standards.md) | 準拠する外部規範 |
+| [Saml の設計判断](decisions.md) | 設計判断 |
+| [Saml の内部設計](internals.md) | 機構の説明 |
+| [Saml Scenarios](scenarios.feature.md) | 受け入れシナリオ |

@@ -1,4 +1,4 @@
-# Release
+# リリース
 
 ## Release unit
 
@@ -28,7 +28,7 @@ API、各実行レーンのワーカー、バッチ、UI は、同じ Git コミ
 
 ## Progressive rollout
 
-各段階では `/startupz`、`/readyz`、`/livez`、HTTP のエラー率とレイテンシー、ワーカーの失敗率とキュー深度を確認する。しきい値の正本は [Capacity](../capacity.md) と監視規則であり、この文書へ数値を複製しない。
+各段階では `/startupz`、`/readyz`、`/livez`、HTTP のエラー率とレイテンシー、ワーカーの失敗率とキュー深度を確認する。しきい値の正本は [品質要求](../requirements/quality.md) と [監視設計](../design/observability/monitoring.md) であり、この文書へ数値を複製しない。
 
 | 段階 | 対象 | 観測時間 | 次へ進む条件 |
 | --- | --- | --- | --- |

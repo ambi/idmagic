@@ -6,10 +6,10 @@
 
 現在の機能単位は `scim` だけである。SCIM 2.0 サーバーとして `/scim/v2/Users`、`/scim/v2/Groups` などを提供し、Okta、Google Cloud Identity、Entra ID などの外部 IdP からユーザーとグループの同期を受ける。Context のルートにはファサードと組み立てだけを置き、複数の取り込み元に実在する共通点が判明するまでは共通機構を作らない。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Sourcing の用語集](glossary.md) | この Context での語義 |
+| [Sourcing の採用規範](standards.md) | 準拠する外部規範 |
+| [Sourcing の設計判断](decisions.md) | 設計判断 |
+| [Sourcing の内部設計](internals.md) | 機構の説明 |
+| [Sourcing Scenarios](scenarios.feature.md) | 受け入れシナリオ |

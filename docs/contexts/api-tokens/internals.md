@@ -1,4 +1,4 @@
-# ApiTokens Internals
+# ApiTokens の内部設計
 
 ## The token body exists exactly once
 

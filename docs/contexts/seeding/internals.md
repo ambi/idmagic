@@ -1,4 +1,4 @@
-# Seeding Internals
+# Seeding の内部設計
 
 ## One planner for preview and apply
 

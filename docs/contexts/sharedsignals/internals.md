@@ -1,4 +1,4 @@
-# SharedSignals Internals
+# SharedSignals の内部設計
 
 ## The revocation epoch as the point of comparison
 

@@ -1,4 +1,4 @@
-# Tenancy Internals
+# Tenancy の内部設計
 
 ## Tenant resolution
 
@@ -12,7 +12,7 @@
 
 ミドルウェアは `^/realms/([a-z0-9][a-z0-9-]{0,62})(/|$)` で realm の区間を取り出し、解決した `Tenant` と発行者の文字列をリクエストコンテキストに付ける。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもこの正規ロケーションから組み立てる。`Path` では発行者が `{base}/realms/{realm}`、`Subdomain` では `{scheme}://{realm}.{tenant_base_domain}` になる。
 
-存在しないテナントには `404 tenant_not_found`、無効なテナントには OAuth / OIDC のプロトコルルートで `400 invalid_request` を返す。レスポンスの形が場合ごとに変わらないため、解決器の応答だけからテナントを列挙することはできない。
+存在しないテナントには `404 tenant_not_found`、無効なテナントには OAuth / OIDC のプロトコルルートで `400 invalid_request` を返す。レスポンスの形が場合ごとに変わらないため、解決器のレスポンスだけからテナントを列挙することはできない。
 
 プロトコルと管理のルートはすべて `/realms/{realm}/...` の下に置き、テナントをまたぐ制御面のテナント管理だけを `/realms/default/admin/tenants/...` に置く。こうすると、デフォルトテナントのセッション Cookie のパスだけで対象を覆えるので、Cookie のスコープをルートパスまで広げずに済む。
 
@@ -22,11 +22,11 @@
 
 `tenants` は、不変の代理キー `id UUID` と、変更可能で一意な識別子 `realm TEXT` を持つ。これにより、組織名やブランド名の変更、綴りの訂正で realm を改名しても、他のテーブルの `tenant_id` 外部キーは変更せずに済む。URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に公開する識別子には `realm` を使い、`tenant_id` 外部キー列、`spec.DefaultTenantID`、Context 内の `TenantID` など内部参照には UUID を使う。解決ミドルウェアが `FindByRealm(realm)` で両者を対応付け、管理 API は URL の `realm` をユースケースの呼び出し前に UUID へ解決する。
 
-デフォルトテナントを表す 2 つの定数も同じ分離に従う。`spec.DefaultTenantID` は固定の UUID であり、IdMagic が生成する ID の列が全体を通じて UUID 型であることと整合する。`spec.DefaultRealm` は文字列 `"default"` であり、テナントを URL に表す箇所だけで使う。`tenants(id)` を参照する外部キー列は UUID 型とし、`tenant_id` に SQL のデフォルト値は持たせない。すべての挿入で `tenant_id` を明示しなければならず、値が欠けた場合はデフォルトテナントへ黙って混入させず、明確に失敗させる。これはリポジトリ全体の [`tenant_id` retention classes](../../database.md#tenant_id-retention-classes) 方針をさらに厳しくした例である。`tenants` への外部キーを持たない追記専用テーブル、または不透明なキーを持つテーブル（`audit_events.tenant_id`、`authentication_event_buckets.tenant_id`）では、`tenant_id` を `UUID` ではなく `TEXT` のままにする。テナントに属さない監査イベントには、UUID 列で自然に表せない番兵値が必要なためである。
+デフォルトテナントを表す 2 つの定数も同じ分離に従う。`spec.DefaultTenantID` は固定の UUID であり、IdMagic が生成する ID の列が全体を通じて UUID 型であることと整合する。`spec.DefaultRealm` は文字列 `"default"` であり、テナントを URL に表す箇所だけで使う。`tenants(id)` を参照する外部キー列は UUID 型とし、`tenant_id` に SQL のデフォルト値は持たせない。すべての挿入で `tenant_id` を明示しなければならず、値が欠けた場合はデフォルトテナントへ黙って混入させず、明確に失敗させる。これはリポジトリ全体の [`tenant_id` retention classes](../../design/data/database.md#tenant_id-の保持区分) 方針をさらに厳しくした例である。`tenants` への外部キーを持たない追記専用テーブル、または不透明なキーを持つテーブル（`audit_events.tenant_id`、`authentication_event_buckets.tenant_id`）では、`tenant_id` を `UUID` ではなく `TEXT` のままにする。テナントに属さない監査イベントには、UUID 列で自然に表せない番兵値が必要なためである。
 
 ## Tenant security policy overrides
 
-`Tenant` が持つセキュリティポリシーの上書きは、デプロイ全体の製品既定を緩めず、厳しい方向にだけ働く。パスワードポリシーでは最小長と履歴件数を下げず最大長を上げない。Token Exchange の `max_delegation_depth` ではシステム既定の 3 を超えて上げず、未設定なら 3 を継承する。管理 API の `0` は委譲を全面禁止する値ではなく、上書きを解除して SQL の `NULL` へ戻す操作として扱う。設定取得では現在の任意上書きとシステム既定を別々に返し、管理 UI が継承状態と実効値を区別できるようにする。
+`Tenant` が持つセキュリティポリシーの上書きは、デプロイ全体のプロダクト既定を緩めず、厳しい方向にだけ働く。パスワードポリシーでは最小長と履歴件数を下げず最大長を上げない。Token Exchange の `max_delegation_depth` ではシステム既定の 3 を超えて上げず、未設定なら 3 を継承する。管理 API の `0` は委譲を全面禁止する値ではなく、上書きを解除して SQL の `NULL` へ戻す操作として扱う。設定取得では現在の任意上書きとシステム既定を別々に返し、管理 UI が継承状態と実効値を区別できるようにする。
 
 `trusted_device_max_age_seconds` だけは既定が「機能なし」の側にあるので、方向が逆になる。未設定と `0` はどちらも Authentication の信頼済みデバイスを丸ごと無効にする値であり、上書きを解除する操作ではない。正の値はテナントが第二要素の省略を明示的に有効にしたことを意味するので、システム上限 (7,776,000 秒 = 90 日) を超える値だけを拒否する。緩める方向の値を保存できるのは、この設定の既定が最も厳しい状態そのものだからである。
 
@@ -34,7 +34,7 @@ OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返
 
 ## Tenant branding
 
-`TenantBranding` は `Tenant` に埋め込まず、`tenant_id` をキーとする独立したエンティティとする。独立して更新される外観設定によって、認可と realm 解決が依存する中核の `Tenant` Aggregate を肥大化させないためである。設定項目は、製品名、ロゴ、ファビコン、2 つのブランドカラー、サポート導線、法務導線、フッター文言に限る。任意の CSS、HTML、スクリプト、背景画像は受け付けない。
+`TenantBranding` は `Tenant` に埋め込まず、`tenant_id` をキーとする独立したエンティティとする。独立して更新される外観設定によって、認可と realm 解決が依存する中核の `Tenant` Aggregate を肥大化させないためである。設定項目は、プロダクト名、ロゴ、ファビコン、2 つのブランドカラー、サポート導線、法務導線、フッター文言に限る。任意の CSS、HTML、スクリプト、背景画像は受け付けない。
 
 信頼できないテナントの入力をマークアップや自由形式のスタイルとしてホステッドログインシェルへ渡さない。ブランドカラーは `#rrggbb` として検証し、固定した 2 個の CSS カスタムプロパティ（`--tenant-brand-primary` / `--tenant-brand-accent`）にだけ注入する。テキストフィールドはデフォルトのエスケープ処理で描画し、`dangerouslySetInnerHTML` は決して使わない。`support_url` / `legal_url` は `https://` スキームだけを許可リストに含め、`javascript:`、`data:`、平文の `http://` を書き込み時に拒否する。コントラストは保存時の制約に含めず、管理 UI で確認できるようにして、可読性の結果はテナントが負う。
 

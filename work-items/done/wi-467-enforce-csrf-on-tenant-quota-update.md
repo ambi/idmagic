@@ -90,7 +90,7 @@ Tenancy の決定は、状態を変える管理リクエストについて、セ
 
 そのため `UpdateTenantQuota` の冒頭で同じ関数を呼んでも、`tenants:write` を持つ非ブラウザーの Bearer または DPoP クライアントは従来どおり呼び出せる。
 
-拒否検査は `tenant_id` の解決、要求本文のデコード、`QuotaRepo.SetQuota` より前に置く。
+拒否検査は `tenant_id` の解決、リクエストボディのデコード、`QuotaRepo.SetQuota` より前に置く。
 
 認可後に置くと、CSRF 要求が対象の存在や本文の妥当性を観測できるため採らない。
 

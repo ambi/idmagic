@@ -23,14 +23,14 @@ affected_spec:
 
 上流を信頼するという判断自体は正当でありうる。取り込み元は登録された権威だからである。しかし、その信頼の範囲が「アイデンティティの事実」までなのか「権限の決定」までなのかは、どこにも書かれていない。書かれていないため、テナント管理者が動的グループ規則を書くときに、その規則が上流由来の属性を参照しているかどうかを知る手立てがない。
 
-これは [docs/threat-model.md](../docs/threat-model.md) の THREAT-067 と THREAT-083 が指す欠落である。`risk` を high とするのは、成立した場合の結果が権限昇格であり、しかも各所の拒否が正しく働いていても成立するためである。
+これは[脅威モデル](../docs/design/security/threat-model.md)の THREAT-067 と THREAT-083 が指す欠落である。`risk` を high とするのは、成立した場合の結果が権限昇格であり、しかも各所の拒否が正しく働いていても成立するためである。
 
 ## Scope
 
 - 上流由来の属性と、IdMagic 内で決まる属性を区別できるようにするかを判断する。
 - 上流が同期したグループ所属が、動的規則を経ずに実効ロールを直接動かす経路を扱う。`REQ-SOURCING-005` は「`GroupMembership` が同期され User の有効ロールが更新される」と定めており、こちらは属性を介さない分だけ直接的である。
 - ロールを付与するグループの動的規則が、上流由来の属性を参照できるかどうかの方針を決める。
-- 方針を `docs/contexts/identity-management/decisions.md` または `docs/authorization.md` の判断として書く。どちらが owner かを決める。
+- 方針を `docs/contexts/identity-management/decisions.md` または `docs/design/security/authorization.md` の判断として書く。どちらが owner かを決める。
 - 管理者が動的規則を保存するときに、その規則が権限へ波及することを認識できるようにする。
 - 対応する規範シナリオを足す。
 

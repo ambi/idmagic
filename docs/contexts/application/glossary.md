@@ -1,4 +1,4 @@
-# Application Glossary
+# Application の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

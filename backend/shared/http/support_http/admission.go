@@ -9,7 +9,7 @@ import (
 )
 
 // PriorityClass は「容量が足りないとき何を先に捨てるか」で経路を分けた分類である
-// (docs/capacity.md の Degradation order、REQ-SYSTEM-018)。値は有限の集合で、
+// (docs/design/performance/capacity.md の Degradation order、REQ-SYSTEM-018)。値は有限の集合で、
 // そのままメトリクスのラベルになる。
 type PriorityClass string
 
@@ -159,7 +159,7 @@ func AdmissionMiddleware(budget AdmissionBudget, classify RouteClassifier, metri
 // WriteServiceOverloaded は入場制御による拒否を返す。汎用 API の既定形式である
 // Problem Details を使い、429 ではなく 503 とする。429 は backend/shared/ratelimit が
 // 濫用の抑止に使うコードで、目的の違う 2 つの機構が同じコードを返すと呼び出し側からも
-// メトリクスからも区別できなくなる (docs/api-rules.md の Declared status codes)。
+// メトリクスからも区別できなくなる (docs/design/application/api-rules.md の Declared status codes)。
 func WriteServiceOverloaded(c *echo.Context, class PriorityClass) error {
 	c.Response().Header().Set("Retry-After", strconv.Itoa(class.RetryAfterSeconds()))
 	return WriteProblem(c, http.StatusServiceUnavailable, "service_overloaded",

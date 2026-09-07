@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test'
 import { verifySubdomainClassification } from './subdomain-classification.ts'
 
-const header = '| Specification context | Subdomain | Go package | Responsibility |'
+const header = '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |'
 const rule = '| --- | --- | --- | --- |'
 
 function readme(...rows: string[]): string {
-  return ['# Whole-System Specification', '', header, rule, ...rows, ''].join('\n')
+  return ['# 論理アーキテクチャ', '', header, rule, ...rows, ''].join('\n')
 }
 
 describe('verifySubdomainClassification', () => {
@@ -13,8 +13,8 @@ describe('verifySubdomainClassification', () => {
     expect(
       verifySubdomainClassification(
         readme(
-          '| [Demo](contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
-          '| [Other](contexts/other/README.md) | Generic | `backend/other` | Other. |',
+          '| [Demo](../contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
+          '| [Other](../contexts/other/README.md) | Generic | `backend/other` | Other. |',
         ),
         ['demo', 'other'],
       ),
@@ -25,9 +25,9 @@ describe('verifySubdomainClassification', () => {
     expect(
       verifySubdomainClassification(
         readme(
-          '| [A](contexts/a/README.md) | Core | `backend/a` | A. |',
-          '| [B](contexts/b/README.md) | Supporting | `backend/b` | B. |',
-          '| [C](contexts/c/README.md) | Generic | `backend/c` | C. |',
+          '| [A](../contexts/a/README.md) | Core | `backend/a` | A. |',
+          '| [B](../contexts/b/README.md) | Supporting | `backend/b` | B. |',
+          '| [C](../contexts/c/README.md) | Generic | `backend/c` | C. |',
         ),
         ['a', 'b', 'c'],
       ),
@@ -42,11 +42,11 @@ describe('verifySubdomainClassification', () => {
   // 分解すると全 Context 分の同じ所見が並ぶだけなので、表の所見 1 件で返す。
   it('rejects an index table that declares no Subdomain column', () => {
     const source = [
-      '# Whole-System Specification',
+      '# 論理アーキテクチャ',
       '',
-      '| Specification context | Go package | Responsibility |',
+      '| 仕様上の Context | Go パッケージ | 責務 |',
       '| --- | --- | --- |',
-      '| [Demo](contexts/demo/README.md) | `backend/demo` | Demo. |',
+      '| [Demo](../contexts/demo/README.md) | `backend/demo` | Demo. |',
       '',
     ].join('\n')
     const findings = verifySubdomainClassification(source, ['demo'])
@@ -58,7 +58,7 @@ describe('verifySubdomainClassification', () => {
 
   it('rejects a value outside Core, Supporting, and Generic', () => {
     const findings = verifySubdomainClassification(
-      readme('| [Demo](contexts/demo/README.md) | Essential | `backend/demo` | Demo. |'),
+      readme('| [Demo](../contexts/demo/README.md) | Essential | `backend/demo` | Demo. |'),
       ['demo'],
     )
     expect(findings).toHaveLength(1)
@@ -68,7 +68,7 @@ describe('verifySubdomainClassification', () => {
 
   it('rejects an empty classification cell', () => {
     const findings = verifySubdomainClassification(
-      readme('| [Demo](contexts/demo/README.md) |  | `backend/demo` | Demo. |'),
+      readme('| [Demo](../contexts/demo/README.md) |  | `backend/demo` | Demo. |'),
       ['demo'],
     )
     expect(findings).toHaveLength(1)
@@ -79,7 +79,7 @@ describe('verifySubdomainClassification', () => {
   // 止めたい主な失敗である。分類の欠落と同じ重さで報告する。
   it('rejects a context directory the index table does not list', () => {
     const findings = verifySubdomainClassification(
-      readme('| [Demo](contexts/demo/README.md) | Core | `backend/demo` | Demo. |'),
+      readme('| [Demo](../contexts/demo/README.md) | Core | `backend/demo` | Demo. |'),
       ['demo', 'forgotten'],
     )
     expect(findings).toHaveLength(1)
@@ -89,8 +89,8 @@ describe('verifySubdomainClassification', () => {
   it('rejects a row naming a context directory that does not exist', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [Demo](contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
-        '| [Gone](contexts/gone/README.md) | Core | `backend/gone` | Gone. |',
+        '| [Demo](../contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
+        '| [Gone](../contexts/gone/README.md) | Core | `backend/gone` | Gone. |',
       ),
       ['demo'],
     )
@@ -101,8 +101,8 @@ describe('verifySubdomainClassification', () => {
   it('rejects the same context listed twice', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [Demo](contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
-        '| [Demo again](contexts/demo/README.md) | Generic | `backend/demo` | Demo. |',
+        '| [Demo](../contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
+        '| [Demo again](../contexts/demo/README.md) | Generic | `backend/demo` | Demo. |',
       ),
       ['demo'],
     )
@@ -116,8 +116,8 @@ describe('verifySubdomainClassification', () => {
   it('reports every unclassified row rather than stopping at the first', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [A](contexts/a/README.md) | Kernel | `backend/a` | A. |',
-        '| [B](contexts/b/README.md) | Kernel | `backend/b` | B. |',
+        '| [A](../contexts/a/README.md) | Kernel | `backend/a` | A. |',
+        '| [B](../contexts/b/README.md) | Kernel | `backend/b` | B. |',
       ),
       ['a', 'b'],
     )
@@ -133,8 +133,8 @@ describe('verifySubdomainClassification', () => {
   it('points at the line the offending row sits on', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [A](contexts/a/README.md) | Core | `backend/a` | A. |',
-        '| [B](contexts/b/README.md) | Kernel | `backend/b` | B. |',
+        '| [A](../contexts/a/README.md) | Core | `backend/a` | A. |',
+        '| [B](../contexts/b/README.md) | Kernel | `backend/b` | B. |',
       ),
       ['a', 'b'],
     )
@@ -145,7 +145,7 @@ describe('verifySubdomainClassification', () => {
   // 見出しで表を選ぶのではなくヘッダー行で選ぶことを、無関係な表を混ぜて固定する。
   it('ignores tables that are not the context index', () => {
     const source = [
-      '# Whole-System Specification',
+      '# 論理アーキテクチャ',
       '',
       '| File | Content |',
       '|---|---|',
@@ -153,7 +153,7 @@ describe('verifySubdomainClassification', () => {
       '',
       header,
       rule,
-      '| [Demo](contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
+      '| [Demo](../contexts/demo/README.md) | Core | `backend/demo` | Demo. |',
       '',
     ].join('\n')
     expect(verifySubdomainClassification(source, ['demo'])).toEqual([])

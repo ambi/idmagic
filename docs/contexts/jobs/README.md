@@ -6,10 +6,10 @@
 
 API プロセスはジョブを投入するが実行せず、`worker` プロセスはジョブを実行するが HTTP を提供しない。投入と取得の HTTP エンドポイントは持たないので、テナント管理者や API アクセストークンからキューへ仕事を積む経路は無い。API プロセスは参照と取り消しに限った管理 API を提供し、運用者が自テナントのジョブの状態、試行回数、失敗理由を確かめ、終端に達していないジョブを止められるようにする。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Jobs の用語集](glossary.md) | この Context での語義 |
+| [Jobs の状態遷移](states.md) | 状態と遷移 |
+| [Jobs の設計判断](decisions.md) | 設計判断 |
+| [Jobs の内部設計](internals.md) | 機構の説明 |
+| [Jobs Scenarios](scenarios.feature.md) | 受け入れシナリオ |

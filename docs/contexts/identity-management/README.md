@@ -6,10 +6,10 @@
 
 ライフサイクルワークフローによる自動化そのものは `IdGovernance` が持つ。この Context は、そこから呼ばれる冪等なコマンドの側であり、誰がいつ変更したかの記録はここに残る。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [IdManagement の用語集](glossary.md) | この Context での語義 |
+| [IdManagement の状態遷移](states.md) | 状態と遷移 |
+| [IdManagement の設計判断](decisions.md) | 設計判断 |
+| [IdManagement の内部設計](internals.md) | 機構の説明 |
+| [IdManagement Scenarios](scenarios.feature.md) | 受け入れシナリオ |

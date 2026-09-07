@@ -1,4 +1,4 @@
-# SharedSignals State Transitions
+# SharedSignals の状態遷移
 
 ## SsfStreamLifecycle
 

@@ -86,7 +86,7 @@ func TestLoadAPIConfigHSTSMaxAgeMalformedFailsFast(t *testing.T) {
 
 // TestLoadAPIConfigAdmissionDefaults pins the shipped thresholds: the
 // mechanism is on by default and the three limits are ordered so the
-// degradation order they implement is the one docs/capacity.md states.
+// degradation order they implement is the one docs/design/performance/capacity.md states.
 func TestLoadAPIConfigAdmissionDefaults(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(nil))

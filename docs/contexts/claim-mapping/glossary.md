@@ -1,4 +1,4 @@
-# ClaimMapping Glossary
+# ClaimMapping の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

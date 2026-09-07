@@ -1,4 +1,4 @@
-# Authorization Standards
+# Authorization の採用規範
 
 ## OpenID AuthZEN Authorization API
 

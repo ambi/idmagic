@@ -1,4 +1,4 @@
-# Specification Format
+# 仕様書式
 
 The exact, current grammar is whatever `mise run check-spec` accepts; its diagnostics are the precise rule.
 This document states intent, examples, and the decisions a checker cannot make for you. Rules marked
@@ -15,20 +15,22 @@ prose in `docs/contexts/oauth2/`, the contract in `spec/contexts/oauth2/`.
 
 ```text
 docs/
-  README.md            # boundary declaration, context map, index
-  product-overview.md  # problem, users, non-goals
-  structure.md         # directories, dependency direction, layers, architecture style
-  design-rules.md      # module interfaces, seams, types, effects, and errors
-  glossary.md          # published language
-  standards.md         # external norms the whole system follows
-  api-rules.md         # rules for externally visible contracts
-  observability.md     # correlation, logs, metrics
-  deployment.md        # runtime units, deployment topology, availability
-  capacity.md          # assumed scale, how limits are set, degradation
-  database.md          # database design policy
-  authorization.md     # principals, scopes, authorization boundaries
-  threat-model.md      # trust boundaries, assets, identified threats and the controls that answer them
-  scenarios.feature.md         # behavior no single context can satisfy alone
+  README.md                     # system-document entry point and reading order
+  product-overview.md           # purpose, users, situations, and system scope
+  glossary.md                   # published language
+  standards.md                  # external norms the whole system follows
+  structure.md                  # repository and implementation layout
+  scenarios.feature.md          # behavior no single context can satisfy alone
+  requirements/                 # functional requirements, quality requirements, and constraints
+  architecture/                 # system context, logical, runtime, and deployment views
+  design/
+    application/                # functional, API, UI, and software design
+    data/                       # data and data-lifecycle design
+    infrastructure/             # platform and network design
+    security/                   # threat, authorization, and secret design
+    reliability/                # availability, redundancy, and recovery design
+    performance/                # performance, capacity, and scaling design
+    observability/              # monitoring, logging, and tracing design
   contexts/<context>/
     README.md          # boundary declaration and index
     glossary.md
@@ -37,8 +39,11 @@ docs/
     decisions.md
     internals.md       # only when a mechanism cannot be read out of the code
     scenarios.feature.md
-  development/         # development workflow and procedures: environment, generation, CI, testing, release
-  runbooks/<event>.md  # what on-call reads mid-incident
+  verification/                 # system verification and acceptance design
+  development/                  # development workflow and procedures
+  operations/                   # service management and maintenance
+  runbooks/<event>.md           # what on-call reads mid-incident
+  releases/                     # user-facing change and migration notices
 
 spec/
   main.tsp
@@ -47,20 +52,22 @@ spec/
   contexts/<context>/{models.tsp,main.tsp}
 ```
 
-`docs/development/` owns all development workflow and procedure documents, including the specification-first
-loop, evidence contract, local environment, generation, CI, testing, and release. Repository entry documents
-link there instead of carrying a second copy. The file set is open because procedures are not canonical
-specification kinds; its `README.md` indexes the current files and each other file is named after its subject.
+The system tree is read from purpose through requirements, architecture, detailed design, verification, and
+operation. This is an ownership and navigation order, not a one-pass lifecycle: feasibility and verification
+findings return to their parent requirements and designs. A quality requirement is declared once under
+`requirements/`; architecture allocates it, and the applicable design documents explain its realization.
 
-`README.md` is the file a reader lands on when they open the directory, so it holds the boundary
-declaration and the index of its siblings. Create no file that has no content to hold: a small context
-needs only `README.md` and `scenarios.feature.md`. The file names are *(checked)* for `docs/` and
-`docs/contexts/<context>/`: a Markdown file at either of those two levels whose name the layout does not
-define is rejected. When that name is a near miss of one the layout does define, the failure names that
-document; otherwise it lists the names the level allows. The file that needs catching is the one whose
-author believes it is already a canonical document, so a rejection that only says "not allowed" leaves the
-mistake unfound. `docs/development/` and `docs/runbooks/` sit below that closed set and name their files
-freely, because procedures are not a fixed set of kinds.
+Every fixed design directory has a `README.md` that declares its scope, exclusions, children, and adjacent
+designs. Files below it are accepted only when the layout defines their responsibility. `docs/development/`,
+`docs/runbooks/`, and `docs/releases/` remain open sets because procedures and change notices are not canonical
+system-design kinds. `docs/operations/` and `docs/verification/` are fixed design sets even though they link to
+procedures and evidence elsewhere.
+
+`README.md` is the file a reader lands on when they open a directory, so it holds the boundary declaration
+and child index. Create no file that has no content to hold: record an inapplicable concern and its reason in
+the parent index. File names are *(checked)* for every fixed directory in the tree. A near miss reports the
+intended name; another disallowed name reports the set that directory accepts. A small bounded context may
+still need only `README.md` and `scenarios.feature.md`.
 
 `main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`
 owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`, which keeps
@@ -137,7 +144,7 @@ Make the heading the decision, never the aspect. `Invariants`, `Concurrency`, an
 aspect names: a writer reads them as boxes to fill, and either invents prose for an aspect that does not
 apply or splits one decision across several. Do not enumerate invariants at all — uniqueness and
 referential integrity belong to the schema, observable properties to `scenarios.feature.md`, and construction and
-postconditions to the type or operation as directed by `docs/design-rules.md`; the rest is unbounded. An
+postconditions to the type or operation as directed by `docs/design/application/design-rules.md`; the rest is unbounded. An
 invariant worth writing down is usually a decision with a reason, and written as one it keeps the reason.
 
 A decision large enough to need rejected alternatives, the conditions under which it holds, and the
@@ -166,7 +173,7 @@ Neither file carries directory listings, package inventories, change history, co
 plans, summaries of external standards, states and transitions, acceptance examples, request and response
 shapes, columns and indexes, permission assignments, or rules every context follows. Each of those has an
 owner: the code, the work item, `standards.md`, `states.md`, `scenarios.feature.md`, TypeSpec, the schema file,
-`docs/authorization.md`, or the matching file directly under `docs/`.
+`docs/design/security/authorization.md`, or the matching file in the fixed system-document tree.
 
 ## 4. State transitions
 
@@ -321,7 +328,7 @@ no effect.
 
 ## 7. Authorization
 
-Authorization is not a section of each context. It is `docs/authorization.md`, because someone checking
+Authorization is not a section of each context. It is `docs/design/security/authorization.md`, because someone checking
 authorization wants the product's authorization, not one context's share of it. That file holds the
 principal kinds, the scope namespaces, the tenant boundary, and the rules that apply when a decision
 cannot be made. What one context decides about its own operations stays in that context's
@@ -344,7 +351,7 @@ follow from its name.
 
 The other documents state what the product does, so an implemented control can be checked against them. A
 control that was never built contradicts nothing: no scenario declares it, no test names it, and the refusal
-coverage check has no declaration to look for. `docs/threat-model.md` is where that gap becomes visible. It
+coverage check has no declaration to look for. `docs/design/security/threat-model.md` is where that gap becomes visible. It
 holds the trust boundaries and what is not trusted at each, the assets, and one row per identified threat
 naming the control that answers it.
 

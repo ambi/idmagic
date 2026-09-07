@@ -4,10 +4,10 @@
 
 プロトコルに依存しないクレーム発行は `ClaimMapping`、XML Assertion の署名は `tokens_saml` アダプター、署名鍵のライフサイクルは `SigningKeys` が担う。SAML 2.0 SP との信頼関係は `Saml` Context の責務である。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [WsFederation の用語集](glossary.md) | この Context での語義 |
+| [WsFederation の採用規範](standards.md) | 準拠する外部規範 |
+| [WsFederation の設計判断](decisions.md) | 設計判断 |
+| [WsFederation の内部設計](internals.md) | 機構の説明 |
+| [WsFederation Scenarios](scenarios.feature.md) | 受け入れシナリオ |

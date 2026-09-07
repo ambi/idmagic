@@ -1,10 +1,10 @@
-# API Rules
+# API 規則
 
-## Cursor pagination
+## カーソルページング
 
 管理用の一覧 API は、署名済みで版の付いたキーセット方式のカーソルを RFC 8288 の `Link` レスポンスヘッダーで返す。カーソルは自身のテナント、問い合わせと並び順の同一性、方向、行の境界を束縛する。
 
-## HTTP error responses
+## HTTP エラーレスポンス
 
 汎用 API のエラーレスポンスには、既定形式として RFC 9457 Problem Details（`application/problem+json`、`type`、`title`、`status`、`detail`、`instance`）を使う。`instance` には上記のリクエスト相関用の `request_id` を載せる。HTTP ステータスコードは RFC 9110 に従い、400 はリクエストを解析できないこと（不正な JSON、必須構造の欠落）を、422 は解析できた内容が業務規則に違反すること（不正なロール、参照の不一致、ポリシー違反）を表す。
 
@@ -14,31 +14,45 @@ OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handl
 
 エラー本文の文字列は、`DisplayLanguage` にかかわらず常に英語で固定する。`message`、`error_description`、`detail`、プレーンテキストの本文がこれにあたる。翻訳して返すと、同じ失敗が呼び出し側の設定次第で別の文字列になり、ログの照合も相互運用も壊れるためである。翻訳は、安定したエラーコードを鍵として UI 側が行う。Problem Details では `type` の `urn:idmagic:error:` に続く部分がその鍵であり、UI は辞書に無いコードに出会ったとき、`detail` または `title` を英語のまま表示する。
 
-## Declared status codes
+## セキュリティレスポンスヘッダー
 
-operation は、自身のハンドラーと、その手前に立つ guard が書くステータスコードをすべて宣言する。[Wire bodies in the contract](#wire-bodies-in-the-contract) が本文について定める規則 —— 契約に書くのはサーバーが実際に返すものである —— を、ステータス行にも同じように及ぼす。宣言に無いコードが返れば呼び出し側は分岐を持てず、宣言にあって返らないコードは呼び出し側に到達しない分岐を書かせる。
+境界ミドルウェアは、すべてのバックエンドレスポンスに `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`X-Frame-Options: DENY`、厳格な `Content-Security-Policy`（`default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`）を付ける。
+`frame-ancestors 'none'` と `X-Frame-Options: DENY` により、ログイン、同意、ポータル画面の埋め込みとクリックジャッキングを防ぐ。
+CSP では `'unsafe-inline'` を使わない。IdMagic が出力する埋め込みスクリプトは、SAML ACS と WS-Federation の POST バインディングで使う固定の自動送信処理だけなので、レスポンスごとに `script-src 'sha256-…'` で許可し、`form-action` も送信先エンドポイントに限定する。
 
-例外は 3 つある。いずれも「その operation の応答ではない」という同じ理由による。
+CSP と `frame-ancestors` は経路ごとの判断が要るため、IdMagic 自身がヘッダーを設定する。
+最小構成のプロキシの背後でも、プロキシが無くても保護が成立する。単一ページアプリケーションはゲートウェイが配信し、静的 HTML に対して `script-src 'self'` を含む CSP を設定する。
+
+HSTS は TLS を終端する側が設定する。
+`Strict-Transport-Security` は既定で無効とし、平文の `http` を使う開発環境に影響させない。TLS がこの区間かその手前で終端される場合にだけ有効にする（`HSTS_ENABLED`、`HSTS_MAX_AGE_SECONDS`、`HSTS_INCLUDE_SUBDOMAINS`）。
+
+画面を壊さずに CSP を厳しくするには、`CSP_REPORT_ONLY=true` で `Content-Security-Policy-Report-Only` を出し、`CSP_REPORT_URI=<url>` で違反を収集し、観察してから強制へ戻す。
+
+## 宣言する状態コード
+
+operation は、自身のハンドラーと、その手前に立つ guard が書くステータスコードをすべて宣言する。[Wire bodies in the contract](#契約上のワイヤ本体) が本文について定める規則 —— 契約に書くのはサーバーが実際に返すものである —— を、ステータス行にも同じように及ぼす。宣言に無いコードが返れば呼び出し側は分岐を持てず、宣言にあって返らないコードは呼び出し側に到達しない分岐を書かせる。
+
+例外は 3 つある。いずれも「その operation のレスポンスではない」という同じ理由による。
 
 1 つは、共通のエラーハンドラーが、どのハンドラーも写像しなかったエラーに対して最後に書く 500 である。これはすべての operation で同じに出るうえ、呼び出し側が operation ごとに変えられる対応も無い。333 の operation に同じ 1 行を書いても、呼び出し側の分岐は 1 つも増えない。逆に、ハンドラーが固有のエラーコードを添えて自分で書く 5xx —— パスキーの依存先が使えないときの 503 `webauthn_unavailable` のような —— はその operation 固有の結果なので宣言する。
 
-2 つめは、テナント解決ミドルウェアが返す 404 `{"error": "tenant_not_found"}` である。これは routing の手前で返るので、どの operation の応答でもない。operation ごとに宣言すれば、その operation 自身が持つ 404 (資源が無い) と同じ行に 2 つの意味が乗り、呼び出し側はどちらなのかを本文から読み直すことになる。宿主名から解決できないテナントへの要求は、経路にかかわらず 404 と `tenant_not_found` で返る。
+2 つめは、テナント解決ミドルウェアが返す 404 `{"error": "tenant_not_found"}` である。これは routing の手前で返るので、どの operation のレスポンスでもない。operation ごとに宣言すれば、その operation 自身が持つ 404 (資源が無い) と同じ行に 2 つの意味が乗り、呼び出し側はどちらなのかを本文から読み直すことになる。宿主名から解決できないテナントへのリクエストは、経路にかかわらず 404 と `tenant_not_found` で返る。
 
-3 つめは、入場制御ミドルウェアが飽和時に返す 503 `urn:idmagic:error:service_overloaded` である。これは routing の後、ハンドラーの手前で返る。どの operation にも同じに出て、しかもどの operation でも意味は 1 つ「いま容量が足りないので受け付けなかった」であり、呼び出し側の対応も 1 つ `Retry-After` の秒数だけ待って再送する、しかない。宣言しても呼び出し側の分岐は増えない。逆に、ハンドラー自身が固有のエラーコードを添えて書く 503 (パスキーの依存先が使えないときの `webauthn_unavailable` のような) は、その operation 固有の結果なので従来どおり宣言する。どの経路がどの順で拒否されるかは [capacity.md](capacity.md#degradation-order) の縮退順序が定め、機構は [contexts/system/internals.md](contexts/system/internals.md#admission-control) が持つ。
+3 つめは、入場制御ミドルウェアが飽和時に返す 503 `urn:idmagic:error:service_overloaded` である。これは routing の後、ハンドラーの手前で返る。どの operation にも同じに出て、しかもどの operation でも意味は 1 つ「いま容量が足りないので受け付けなかった」であり、呼び出し側の対応も 1 つ `Retry-After` の秒数だけ待って再送する、しかない。宣言しても呼び出し側の分岐は増えない。逆に、ハンドラー自身が固有のエラーコードを添えて書く 503 (パスキーの依存先が使えないときの `webauthn_unavailable` のような) は、その operation 固有の結果なので従来どおり宣言する。どの経路がどの順で拒否されるかは [容量設計](../performance/capacity.md#縮退順序) の縮退順序が定め、機構は [System Context の内部設計](../../contexts/system/internals.md#admission-control) が持つ。
 
 ミドルウェアが返すこの 2 つだけは、契約ではなくここに書く。
 
-401 と 403 は、同じ guard の 2 つの分岐である。認証済みのセッションが無ければ 401 `authentication_required`、あっても権限が足りなければ 403 `access_denied` になる。したがって 403 を宣言する operation は 401 も宣言する。片方だけを宣言することは、呼び出し側に「サインインしていない」を「権限が無い」として扱わせることであり、再認証すれば通る要求を通らないものとして扱わせる。
+401 と 403 は、同じ guard の 2 つの分岐である。認証済みのセッションが無ければ 401 `authentication_required`、あっても権限が足りなければ 403 `access_denied` になる。したがって 403 を宣言する operation は 401 も宣言する。片方だけを宣言することは、呼び出し側に「サインインしていない」を「権限が無い」として扱わせることであり、再認証すれば通るリクエストを通らないものとして扱わせる。
 
-401 の本文は operation ごとに変わらないので、共有の応答モデルを 1 つ置いて参照する。[HTTP error responses](#http-error-responses) が定める 3 系統のエラー本文に対応して、汎用 API は `IdMagic.Contract.AuthenticationRequiredResponse` (Problem Details)、OAuth 2.0 / OIDC は `IdMagic.Contract.OAuthUnauthorizedResponse`、SCIM は `IdMagic.Contract.ScimUnauthorizedResponse` を参照する。403 が operation ごとのモデルを持つのは、その本文が operation ごとに違う (`AccessDeniedError` / `InsufficientScopeError` / `MfaEnrollmentNotAllowedError`) からであって、様式の統一のためではない。
+401 の本文は operation ごとに変わらないので、共有のレスポンスモデルを 1 つ置いて参照する。[HTTP error responses](#http-エラーレスポンス) が定める 3 系統のエラー本文に対応して、汎用 API は `IdMagic.Contract.AuthenticationRequiredResponse` (Problem Details)、OAuth 2.0 / OIDC は `IdMagic.Contract.OAuthUnauthorizedResponse`、SCIM は `IdMagic.Contract.ScimUnauthorizedResponse` を参照する。403 が operation ごとのモデルを持つのは、その本文が operation ごとに違う (`AccessDeniedError` / `InsufficientScopeError` / `MfaEnrollmentNotAllowedError`) からであって、様式の統一のためではない。
 
-この節が定める一致は `mise run check-status-drift` が検査する。検査は operation ごとに、契約が宣言する集合と、ハンドラーおよび guard が書くコードを突き合わせる。エラー値から応答を決めるヘルパー (`WriteAccountError` のような写像) は辿らない。どの分岐に入るかはユースケースが返すエラーで決まり、ハンドラーの字面には現れないためである。辿れなかった operation は「合格」ではなく「読み残しあり」として数え、その件数を毎回の出力に書く。
+この節が定める一致は `mise run check-status-drift` が検査する。検査は operation ごとに、契約が宣言する集合と、ハンドラーおよび guard が書くコードを突き合わせる。エラー値からレスポンスを決めるヘルパー (`WriteAccountError` のような写像) は辿らない。どの分岐に入るかはユースケースが返すエラーで決まり、ハンドラーの字面には現れないためである。辿れなかった operation は「合格」ではなく「読み残しあり」として数え、その件数を毎回の出力に書く。
 
-## Interface stability and versioning
+## インターフェースの安定性と版管理
 
 管理 API とセルフサービスのアカウント API は外部契約である。外部インターフェースは TypeSpec の契約で 3 つに分類する。
 
-| Stability | 意味 |
+| 安定性区分 | 意味 |
 | --- | --- |
 | `stable` | バージョン付きの外部契約。下記の互換性保証の対象。 |
 | `beta` | まだ互換性保証の対象でない外部契約。 |
@@ -50,19 +64,19 @@ operation は、自身のハンドラーと、その手前に立つ guard が書
 
 この方式の対象外は、OAuth 2.0 / OIDC、SAML、WS-Federation、SCIM、SharedSignals のプロトコルエンドポイントである。これらの互換性は各標準が規定し、Discovery Metadata (`/.well-known/...`)、`/scim/v2/ServiceProviderConfig`、SAML / WS-Fed メタデータが正である。IdMagic 側のパスの版を重ねると、標準が定めた探索経路と食い違う。
 
-## Deprecation
+## 廃止
 
 非推奨の予定は TypeSpec に記録し、散文の側に一覧を持たない。`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け、廃止時期が決まって `sunset_at` を設定した後は `Sunset` ヘッダーも付ける。`sunset_at` は `deprecated_since` の最低 12 か月後とする。
 
 破壊的変更の検出は、TypeSpec から生成した OpenAPI と、実際に配布した内容を固定したリリースベースラインとの比較で行う。ベースラインを更新してよいのはリリース作業の一部としてだけである。リリースせずに更新すれば実際の後退を検出できなくなり、リリースしても更新しなければベースラインが古くなって同じ結果になる。
 
-## Wire bodies in the contract
+## 契約上のワイヤ本体
 
-TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し返す JSON そのものである。サーバーが送らない封筒を契約側で 1 段挟まない。ハンドラーが `map[string]any{"groups": ...}` のような封筒を書くときにだけ、契約もその封筒を持つ。パスやクエリのパラメータは要求本体のプロパティにしない。本文が JSON でない接点 (CSV のアップロード、SET の受信、XML メタデータ、画像の配信、メトリクスの公開) は、その media type と本文の型をそのまま宣言する。
+TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し返す JSON そのものである。サーバーが送らない封筒を契約側で 1 段挟まない。ハンドラーが `map[string]any{"groups": ...}` のような封筒を書くときにだけ、契約もその封筒を持つ。パスやクエリのパラメータはリクエスト本体のプロパティにしない。本文が JSON でない接点 (CSV のアップロード、SET の受信、XML メタデータ、画像の配信、メトリクスの公開) は、その media type と本文の型をそのまま宣言する。
 
 同じ規則が値にも及ぶ。enum の値は member 名の複製ではなく線上の値そのものを書き、標準が定める値は標準から、独自の値は Go の定数から写す。`unknown` は「任意の JSON 値」と読まれるので、実在する型やモデルがあるならそれを書き、本当に任意でよい場合だけ、なぜ任意なのかを `@doc` に残す。
 
-## String length limits
+## 文字列長の上限
 
 文字列フィールドの長さ上限は、公開契約、Go の検証、PostgreSQL の制約、UI の入力欄という 4 つの境界に同じ数で現れる。数が同じでも数える単位が違えば別々の上限になるので、単位を先に固定する。
 
@@ -72,7 +86,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 
 上限を置く値は、次の既定の区分から選ぶ。外部の標準も固定の表示面も関与しない値のために、新しい数を持ち込まない。
 
-| Class | Limit | Applies to |
+| 区分 | 上限 | 適用対象 |
 | --- | --- | --- |
 | Handle | 64 | IdMagic が採番する Aggregate の ID、および関係名や型名のような語彙的な名前 |
 | Name | 100 | 一行の名前 |
@@ -86,7 +100,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 
 次の値は外部の標準か固定の表示面から上限が決まるので、区分の外に置く。
 
-| Field | Limit | Why |
+| フィールド | 上限 | 理由 |
 | --- | --- | --- |
 | メールアドレス | 254 | RFC 5321 が定める経路の上限 |
 | `Tenant.realm` | 63 | DNS ラベル |
@@ -100,7 +114,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 
 そこで、索引の鍵の成分になる列では、性質の違う 2 つの上限を重ねる。
 
-| Limit | Unit | Role |
+| 上限 | 単位 | 役割 |
 | --- | --- | --- |
 | 契約の上限 | コードポイント | 公開契約が示す数。TypeSpec の `@maxLength` と Go の `spec.Chars` が持つ |
 | 資源の上限 | バイト | 索引行に収まることの保証。Go の `spec.KeyString` と PostgreSQL の `octet_length` が持つ |
@@ -111,7 +125,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 
 上限には、標準が定める数をそのまま使わない。標準を超える値を出す実装は実在しうるので、標準の数は「上限が実運用で拘束的でないことの根拠」として記録し、上限そのものはその外側に置く。これらは安全のために置く資源の境界であって、業務上望ましい長さではない。
 
-| Column | Code points | Bytes | Why |
+| 列 | コードポイント | バイト | 理由 |
 | --- | --- | --- | --- |
 | `SamlServiceProvider.entity_id` | 2048 | 2048 | URI 区分。`saml-schema-metadata-2.0.xsd` の `entityIDType` は 1024 文字を定めるが、非準拠の SP を拒否しないためその外側に置く |
 | SAML AuthnRequest の `ID` | 256 | 256 | 資源の上限。`xs:ID` に長さの規定はない |
@@ -127,7 +141,7 @@ IdMagic が採番する鍵の成分にも上限を置くが、置く境界が違
 
 4 つの境界は同じ数を持つが、役割は同じではない。
 
-| Boundary | Role |
+| 境界 | 役割 |
 | --- | --- |
 | TypeSpec の `@maxLength` | 公開契約。OpenAPI と生成ドキュメントが示す数の出どころ。 |
 | Go の domain スキーマ | 唯一の強制点。ここを通らない書き込み経路を作らない。 |
@@ -138,8 +152,8 @@ UI だけは数える単位が違う。HTML の `maxLength` が数えるのは U
 
 `CHECK` に置いてよいのは、長さのように安定した構造上の境界に限る。スキームの allowlist のような、変わりうる入力規則を DDL へ入れない。規則が変わるたびに全配備でスキーマ移行が必要になるうえ、利用者の入力誤りで落ちる規則をこの層に置くと、上の表が定める「実装の不具合だけが落ちる場所」という役割が崩れるためである。たとえばテナントのフッターリンクに `https` しか許さない規則は Go の domain が持ち、`CHECK` は長さだけを見る。
 
-上限違反は、解析できた内容が業務規則に違反する場合に当たるので、[HTTP error responses](#http-error-responses) が定める 422 で返す。違反したフィールドと上限を `detail` に載せ、何を短くすればよいかを利用者が判断できるようにする。
+上限違反は、解析できた内容が業務規則に違反する場合に当たるので、[HTTP error responses](#http-エラーレスポンス) が定める 422 で返す。違反したフィールドと上限を `detail` に載せ、何を短くすればよいかを利用者が判断できるようにする。
 
-ただしこれは管理 API の話である。SAML、WS-Federation、OAuth 2.0、SCIM、WebAuthn のように相手側のプロトコルが応答の形を定めている接点では、長さの違反もそのプロトコルが定めるエラーとして返す。AuthnRequest を送ってきた相手に Problem Details を返しても読めない。上限の数は同じでも、それを伝える語彙は接点ごとに違う。
+ただしこれは管理 API の話である。SAML、WS-Federation、OAuth 2.0、SCIM、WebAuthn のように相手側のプロトコルがレスポンスの形を定めている接点では、長さの違反もそのプロトコルが定めるエラーとして返す。AuthnRequest を送ってきた相手に Problem Details を返しても読めない。上限の数は同じでも、それを伝える語彙は接点ごとに違う。
 
 資源の上限は書き込み経路にだけ課す。索引の鍵の成分を検索の条件として受け取る経路（`GET /Users/{id}` のような）は、長い値を渡されても索引行を作らないので、上限を超えた値でも 422 ではなく通常の「見つからない」として扱う。

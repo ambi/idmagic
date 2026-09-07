@@ -1,4 +1,4 @@
-# ApiTokens Glossary
+# ApiTokens の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

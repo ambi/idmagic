@@ -157,7 +157,7 @@ Primary actor: `TenantAdministrator`
 - Given テナント "tenant-a" と "tenant-b" にそれぞれ Job が存在する
 - When "tenant-a" の管理者がジョブ一覧を要求する
 - Then "tenant-a" の Job だけが新しい順に返り、"tenant-b" の Job は件数にも含まれない
-- Then 応答は `params`、`result`、`dedup_key` を含まない
+- Then レスポンスは `params`、`result`、`dedup_key` を含まない
 - When 管理者が "tenant-b" の Job の id を指定して 1 件を要求する
 - Then 存在しないものとして扱われる
 - When 制御面テナントに所属する `system_admin` が制御面テナントの経路で全テナント横断を明示して一覧を要求する
@@ -184,7 +184,7 @@ Primary actor: `TenantAdministrator`
 - Given テナント "tenant-a" と "tenant-b" にそれぞれ Job が存在する
 - When "tenant-a" の管理者がジョブ一覧を要求する
 - Then "tenant-a" の Job だけが新しい順に返り、"tenant-b" の Job は件数にも含まれない
-- Then 応答は `params`、`result`、`dedup_key` を含まない
+- Then レスポンスは `params`、`result`、`dedup_key` を含まない
 - When 管理者が "tenant-b" の Job の id を指定して 1 件を要求する
 - Then 存在しないものとして扱われる
 - When 制御面テナントに所属する `system_admin` が制御面テナントの経路で全テナント横断を明示して一覧を要求する

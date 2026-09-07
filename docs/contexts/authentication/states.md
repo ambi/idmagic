@@ -1,4 +1,4 @@
-# Authentication State Transitions
+# Authentication の状態遷移
 
 ## IdentityProviderConnectionLifecycle
 

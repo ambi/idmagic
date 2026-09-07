@@ -1,4 +1,4 @@
-# Authorization Glossary
+# Authorization の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

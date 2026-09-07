@@ -67,7 +67,7 @@ const (
 // SignInOutcome は passive sign-in 判断の結果。
 type SignInOutcome struct {
 	Kind    SignInOutcomeKind
-	Message string // Rejected / Forbidden の応答本文。
+	Message string // Rejected / Forbidden のレスポンスボディ。
 	Status  int    // Rejected の HTTP status (400 / 500)。
 
 	// SignInIssued のときの発行データ。

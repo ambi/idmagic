@@ -1,4 +1,4 @@
-# Provisioning Glossary
+# Provisioning の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

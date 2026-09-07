@@ -1,4 +1,4 @@
-# DataKeys Internals
+# DataKeys の内部設計
 
 ## Key version overlap
 

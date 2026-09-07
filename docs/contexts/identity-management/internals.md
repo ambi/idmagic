@@ -1,4 +1,4 @@
-# IdManagement Internals
+# IdManagement の内部設計
 
 ## Just-in-time provisioning from federation
 

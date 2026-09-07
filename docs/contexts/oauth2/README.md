@@ -4,11 +4,11 @@ OAuth 2.0 / OIDC プロトコル群の全責務を担う。クライアントメ
 
 トークンに載せるクレームの決定は `ClaimMapping`、署名鍵のライフサイクルは `SigningKeys`、利用者を認証してセッションを保つのは `Authentication`、その `client_id` にそもそも到達してよいかという関門は `Application` が担う。この Context が受け持つのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [OAuth2 の用語集](glossary.md) | この Context での語義 |
+| [OAuth2 の採用規範](standards.md) | 準拠する外部規範 |
+| [OAuth2 の状態遷移](states.md) | 状態と遷移 |
+| [OAuth2 の設計判断](decisions.md) | 設計判断 |
+| [OAuth2 の内部設計](internals.md) | 機構の説明 |
+| [OAuth2 Scenarios](scenarios.feature.md) | 受け入れシナリオ |

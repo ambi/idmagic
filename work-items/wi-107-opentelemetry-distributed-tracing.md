@@ -31,7 +31,7 @@ API サーバーとワーカーには、OpenTelemetry の Provider、OTLP export
 - ジョブの永続化境界で trace context を専用メタデータとして保存し、ワーカー側で producer span へ link した consumer span を開始する。
 - 再試行回数、結果、低カーディナリティのエラー分類を記録し、tenant、user、token、IP、SQL bind 値を属性へ含めない。
 - exporter の停止、キューの飽和、不正なリモート親が製品要求を失敗させず、観測可能な drop として扱われることを検証する。
-- `docs/observability.md` にスパン分類、伝播境界、属性の許可リスト、サンプリングと障害時の扱いを記録する。
+- `docs/design/observability/tracing.md` にスパン分類、伝播境界、属性の許可リスト、サンプリングと障害時の扱いを記録する。
 
 ## Out of Scope
 
@@ -58,7 +58,7 @@ domain model は OpenTelemetry に依存しない。
 ## Tasks
 
 - [ ] T001 [Inventory] 現在の計装と HTTP、PostgreSQL、外部 HTTP、ユースケース、ジョブ境界を棚卸しする。
-- [ ] T002 [Docs] スパン分類、伝播、属性、サンプリング、障害時の扱いを `docs/observability.md` に記録する。
+- [ ] T002 [Docs] スパン分類、伝播、属性、サンプリング、障害時の扱いを `docs/design/observability/tracing.md` に記録する。
 - [ ] T003 [Acceptance RED] リモート親から PostgreSQL とジョブまで同じ因果関係で追えない現状をテストで固定する。
 - [ ] T004 [Storage/HTTP] PostgreSQL と外部 HTTP の adapter に子スパンと安全な属性を追加する。
 - [ ] T005 [Usecase] 選定した重要な調整処理へ手動スパンを追加する。

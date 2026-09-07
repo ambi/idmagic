@@ -1,4 +1,4 @@
-# Authentication Glossary
+# Authentication の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

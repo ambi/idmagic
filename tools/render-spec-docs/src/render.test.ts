@@ -38,6 +38,16 @@ const rootStructureDocument = {
   source: '# Structure\n\nディレクトリの配置。\n',
 }
 
+const requirementsIndexDocument = {
+  path: 'docs/requirements/README.md',
+  source: '# 要求\n\n要求の分類。\n',
+}
+
+const qualityDocument = {
+  path: 'docs/requirements/quality.md',
+  source: '# 品質要求\n\nシステム品質の目標。\n',
+}
+
 const contextDocument = {
   path: 'docs/contexts/demo/README.md',
   source: `# Demo
@@ -161,6 +171,8 @@ const site = () =>
       rootDocument,
       rootGlossaryDocument,
       rootStructureDocument,
+      requirementsIndexDocument,
+      qualityDocument,
       contextDocument,
       statesDocument,
       glossaryDocument,
@@ -196,8 +208,18 @@ const site = () =>
 const sidebar = (html: string | undefined) =>
   (html ?? '').slice((html ?? '').indexOf('<aside class="sidebar">'))
 
-const childLabels = (html: string | undefined) =>
-  [...sidebar(html).matchAll(/class="nav-child"[^>]*>([^<]+)</g)].map((match) => match[1])
+const childLabels = (html: string | undefined) => {
+  const contexts = sidebar(html).match(
+    /<details class="nav-group"[^>]*><summary>コンテキスト別<\/summary>([\s\S]*?)<\/details>/,
+  )?.[1]
+  return [...(contexts ?? '').matchAll(/class="nav-child"[^>]*>([^<]+)</g)].map((match) => match[1])
+}
+
+/** 深さつきの子項目。`nav-child` が 1 段目、`nav-child-2` が 2 段目を表す。 */
+const nestedLabels = (html: string | undefined) =>
+  [...sidebar(html).matchAll(/class="nav-child(-\d)?"[^>]*>([^<]+)</g)].map(
+    (match) => `${match[1] ? match[1].slice(1) : '1'}:${match[2]}`,
+  )
 
 describe('renderSpecificationSite', () => {
   it('renders development documents as their own navigable plane', () => {
@@ -212,9 +234,8 @@ describe('renderSpecificationSite', () => {
 
     expect(result.files['development/index.html']).toContain('href="release.html"')
     expect(result.files['development/release.html']).toContain('リリース')
-    expect(sidebar(result.files['development/index.html'])).toContain(
-      '<summary>Development</summary>',
-    )
+    expect(sidebar(result.files['development/index.html'])).toContain('<summary>開発</summary>')
+    expect(nestedLabels(result.files['development/index.html'])).toEqual([])
   })
 
   it('renders a linked multi-page specification site', () => {
@@ -232,6 +253,8 @@ describe('renderSpecificationSite', () => {
       'models/index.html',
       'specification/glossary.html',
       'specification/index.html',
+      'specification/requirements/index.html',
+      'specification/requirements/quality.html',
       'specification/structure.html',
       'traceability/index.html',
     ])
@@ -245,19 +268,29 @@ describe('renderSpecificationSite', () => {
     expect(result.files['contexts/demo/scenarios.html']).toContain('class="scenario-keyword but"')
     expect(result.files['traceability/index.html']).toContain('EX-DEMO-001-01')
     expect(result.files['traceability/index.html']).toContain('backend/demo/demo_test.go')
+    expect(result.files['traceability/index.html']).toContain('規則／例')
+    expect(result.files['traceability/index.html']).toContain('作業項目')
+    expect(result.files['traceability/index.html']).not.toContain('Rule / Example')
+    expect(result.files['traceability/index.html']).not.toContain('work item')
     expect(result.files['traceability/index.html']).toContain(
-      'debt: 対応する拒否テストを確認していないため',
+      '負債: 対応する拒否テストを確認していないため',
     )
     expect(result.files['specification/index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')
     expect(result.files['api/index.html']).toContain('"/things"')
+    expect(result.files['api/index.html']).toContain('<h1>API リファレンス</h1>')
+    expect(result.files['api/index.html']).toContain('レスポンスボディ')
+    expect(result.files['api/index.html']).toContain('リクエストボディ')
+    expect(result.files['api/index.html']).toContain('URL.createObjectURL(new Blob(')
+    expect(result.files['api/index.html']).toContain('url:specificationUrl')
+    expect(result.files['api/index.html']).not.toContain('SwaggerUIBundle({spec:')
     expect(result.files['api/index.html']).toContain('../../openapi/example.openapi.json')
     expect(result.files['models/index.html']).toContain('InternalRecord')
     expect(result.files['models/index.html']).toContain('data-model-search')
     expect(result.files['models/index.html']).toContain('assets/site.js')
     expect(result.assets['site.css']).toContain('--diagram-line:#b9c8ff')
-    expect(result.files['models/example-demo-internalrecord.html']).toContain('Not API-exposed')
+    expect(result.files['models/example-demo-internalrecord.html']).toContain('API 非公開')
     expect(result.files['models/example-demo-internalrecord.html']).toContain('minLength: 3')
   })
 
@@ -279,14 +312,25 @@ describe('renderSpecificationSite', () => {
   it('names context children by content and lists them in canonical order', () => {
     const page = site().files['contexts/demo/index.html']
 
-    expect(childLabels(page)).toEqual(['Glossary', 'State Transitions', 'Scenarios'])
+    expect(childLabels(page)).toEqual(['Glossary', 'State Transitions', 'シナリオ'])
     expect(page).not.toContain('>glossary.md<')
   })
 
-  it('lists whole-system children in canonical order, only from inside', () => {
+  /**
+   * 上から下へ分解した体系は、一段の一覧では読めない。ディレクトリの索引を
+   * 親に、その配下の文書を子に置き、名札は各文書自身の題名にする。英語の
+   * ディレクトリ名を接頭辞として足すと、日本語の題名の前に別の語彙が並ぶ。
+   */
+  it('lists the root and directory indexes at one level without a single-child wrapper', () => {
     const result = site()
-    expect(childLabels(result.files['specification/index.html'])).toEqual(['Structure', 'Glossary'])
-    expect(result.files['contexts/demo/index.html']).not.toContain('specification/structure.html')
+    expect(nestedLabels(result.files['specification/index.html'])).toEqual(['1:品質要求'])
+    expect(sidebar(result.files['specification/index.html'])).toContain(
+      '>Whole-System Specification</a>',
+    )
+    expect(sidebar(result.files['specification/index.html'])).toContain('>要求</a>')
+    expect(sidebar(result.files['contexts/demo/index.html'])).toContain(
+      'href="../../specification/structure.html"',
+    )
   })
 
   it('folds every navigation group the same way, with method alone starting folded', () => {
@@ -299,12 +343,26 @@ describe('renderSpecificationSite', () => {
       ].map((match) => `${match[2]}${match[1] ? ' open' : ''}`)
 
     expect(groups('contexts/demo/index.html')).toEqual([
-      'Method',
-      'Whole System open',
-      'Contexts open',
-      'References open',
+      '方法論',
+      'システム',
+      'コンテキスト別 open',
+      '参照 open',
     ])
-    expect(groups('method/work-item-format.html')[0]).toBe('Method open')
+    expect(groups('specification/index.html')).toEqual([
+      '方法論',
+      'システム open',
+      'コンテキスト別',
+      '参照 open',
+    ])
+    expect(groups('method/work-item-format.html')[0]).toBe('方法論 open')
+  })
+
+  it('uses the full reference width without Swagger UI wrapper padding', () => {
+    const css = site().assets['site.css']
+
+    expect(css).toContain('main:has(.swagger-shell){width:calc(100% - 340px);max-width:none}')
+    expect(css).toContain('.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}')
+    expect(css).toContain('main:has(.swagger-shell){width:auto}')
   })
 
   it('keeps a glossary term on one line', () => {
@@ -316,12 +374,45 @@ describe('renderSpecificationSite', () => {
     const result = site()
     const page = result.files['contexts/demo/index.html'] ?? ''
 
-    expect(page).toContain('API and Models')
+    expect(page).toContain('API とモデル')
     expect(page).toContain('href="../../api/index.html?tag=Demo"')
     expect(page).toContain('List things')
     expect(page).toContain('href="../../models/index.html#context-demo"')
     expect(page).toContain('href="../../models/example-demo-internalrecord.html"')
     expect(result.files['models/index.html']).toContain('<h2 id="context-demo">Demo</h2>')
+  })
+
+  /**
+   * 見出しは日本語で書く。markdown-it はリンクの href を百分率符号化して渡すので、
+   * 断片をそのまま綴りに直すと、見出し側の綴りと一致しない別名を指すことになる。
+   */
+  it('resolves a cross-document link whose fragment is a Japanese heading', () => {
+    const result = renderSpecificationSite({
+      documents: [
+        rootDocument,
+        {
+          path: 'docs/glossary.md',
+          source:
+            '# 用語集\n\n目標は [品質要求](requirements/quality.md#可用性の目標) が定める。\n',
+        },
+        {
+          path: 'docs/requirements/quality.md',
+          source: '# 品質要求\n\n## 可用性の目標\n\n目標値。\n',
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+
+    expect(result.files['specification/requirements/quality.html']).toContain(
+      'id="whole-system-requirements-quality-md-可用性の目標"',
+    )
+    expect(result.files['specification/glossary.html']).toContain(
+      'href="requirements/quality.html#whole-system-requirements-quality-md-可用性の目標"',
+    )
   })
 
   it('renders doc comments as the Markdown they are written in', () => {

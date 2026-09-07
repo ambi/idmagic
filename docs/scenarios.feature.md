@@ -71,14 +71,14 @@ Primary actor: `AuthenticatedBrowserUser`
 ### Example: EX-PLATFORM-004-01 Origin が一致しない
 
 - Given ユーザーは有効なブラウザーセッションを持つ
-- When ユーザーが製品の Origin と一致しない Origin から状態変更を要求する
+- When ユーザーがプロダクトの Origin と一致しない Origin から状態変更を要求する
 - Then 403 の `InvalidOriginError` で拒否される
 - And 要求された状態変更は行われない
 
 ### Example: EX-PLATFORM-004-02 CSRF トークンが一致しない
 
 - Given ユーザーは有効なブラウザーセッションを持つ
-- And 要求の Origin は製品の Origin と一致する
+- And 要求の Origin はプロダクトの Origin と一致する
 - When ユーザーが Cookie とヘッダーで一致する CSRF トークンを持たずに状態変更を要求する
 - Then 403 の `CsrfFailedError` で拒否される
 - And 要求された状態変更は行われない

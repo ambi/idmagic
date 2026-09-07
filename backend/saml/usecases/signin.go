@@ -70,7 +70,7 @@ const (
 // SignInOutcome は SSO 判断の結果。Kind により有効フィールドが変わる。
 type SignInOutcome struct {
 	Kind    SignInOutcomeKind
-	Message string // Rejected(400) / Forbidden(403) の応答本文。
+	Message string // Rejected(400) / Forbidden(403) のレスポンスボディ。
 
 	// SignInIssued のときの発行データ。
 	SP             samldomain.SamlServiceProvider

@@ -342,7 +342,7 @@ func (d Deps) handleThings(c *echo.Context) error {
 
   it('does not ask for the 500 the shared error handler writes', () => {
     // Every operation can reach it and no caller branches on it differently, so
-    // docs/api-rules.md keeps it out of the per-operation declaration.
+    // docs/design/application/api-rules.md keeps it out of the per-operation declaration.
     const result = run(
       document('ListThings', [200]),
       `func (d Deps) handleThings(c *echo.Context) error {

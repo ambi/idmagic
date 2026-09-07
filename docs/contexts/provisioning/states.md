@@ -1,4 +1,4 @@
-# Provisioning State Transitions
+# Provisioning の状態遷移
 
 ## ProvisioningDeliveryLifecycle
 

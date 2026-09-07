@@ -1,4 +1,4 @@
-# WorkloadIdentity State Transitions
+# WorkloadIdentity の状態遷移
 
 ## WorkloadTrustBundleLifecycle
 

@@ -32,15 +32,17 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'docs', 'contexts', 'demo'), { recursive: true })
+  await mkdir(join(root, 'docs', 'architecture'), { recursive: true })
+  await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
   // Context を 1 つでも持つ作業ツリーは、索引表でその区分を宣言しなければならない。
   await writeFile(
-    join(root, 'docs', 'README.md'),
+    join(root, 'docs', 'architecture', 'logical.md'),
     [
-      '# Specification',
+      '# 論理アーキテクチャ',
       '',
-      '| Specification context | Subdomain | Go package | Responsibility |',
+      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
       '| --- | --- | --- | --- |',
-      '| [Demo](contexts/demo/README.md) | Core | `demo` | Demo. |',
+      '| [Demo](../contexts/demo/README.md) | Core | `demo` | Demo. |',
       '',
     ].join('\n'),
   )
@@ -102,7 +104,7 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
 describe('check-workspace --documents', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
-    expect(result.output).toContain('ok  3 canonical document(s)')
+    expect(result.output).toContain('ok  4 canonical document(s)')
     expect(result.code).toBe(0)
   })
 

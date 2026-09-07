@@ -1,4 +1,4 @@
-# OAuth2 State Transitions
+# OAuth2 の状態遷移
 
 ## ClientSecretCredentialLifecycle
 
@@ -26,7 +26,7 @@
 | Rejected | terminal | 検証、認証、同意のいずれかで拒否した |
 | Authenticated | — | 主体が決まった。同意の要否をこれから判定する |
 | Expired | terminal | 有効期間内に次の段へ進まなかった |
-| ConsentPending | — | 要求スコープが既存の同意で覆えず、同意画面の応答を待っている |
+| ConsentPending | — | 要求スコープが既存の同意で覆えず、同意画面のレスポンスを待っている |
 | CodeIssued | — | 認可コードを発行し、`/token` での引き換えを待っている |
 | Consented | — | 要求スコープを覆う同意が揃った |
 | Exchanged | terminal | 認可コードを引き換えた |

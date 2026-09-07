@@ -163,7 +163,7 @@ func (s *oauth2TokenSource) fetch(ctx context.Context) (grant, error) {
 		return grant{}, err
 	}
 	if response.StatusCode != http.StatusOK {
-		// 応答本文は載せない。トークンや秘密が含まれうる (RFC 6749 §5.2 の
+		// レスポンスボディは載せない。トークンや秘密が含まれうる (RFC 6749 §5.2 の
 		// エラー応答であっても、下流が何を書くかはこちらが決められない)。
 		return grant{}, fmt.Errorf("provisioning/scim: token endpoint returned %d", response.StatusCode)
 	}

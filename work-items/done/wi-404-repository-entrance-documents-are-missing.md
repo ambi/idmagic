@@ -33,7 +33,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 **`SECURITY.md` が最も重い。** IdP は認証を預かる製品であり、脆弱性の報告は必ず来る想定で置くべきものである。報告経路が無ければ、報告者は公開 issue を立てるか、報告をやめるかのどちらかを選ぶ。前者は未修正の脆弱性を公開することであり、報告者の善意が製品の利用者を害する形になる。
 
-**`CHANGELOG.md` は宙に浮いた約束を回収する。** [docs/api-rules.md](../../docs/api-rules.md) §Deprecation は「`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け」と定め、[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §9.3 は「CHANGELOG はその告知である」と書く。ヘッダーは付くが、**告知の本体を読む場所が無い。** `Deprecation: true` を受け取った利用者に、何がいつどう変わるのかを伝える手段が存在しない。
+**`CHANGELOG.md` は宙に浮いた約束を回収する。** [API 規則](../../docs/design/application/api-rules.md)の廃止に関する節は「`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け」と定め、[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §9.3 は「CHANGELOG はその告知である」と書く。ヘッダーは付くが、**告知の本体を読む場所が無い。** `Deprecation: true` を受け取った利用者に、何がいつどう変わるのかを伝える手段が存在しない。
 
 **対象外の宣言。** DOCUMENTATION_GUIDE §9.2 は、対象範囲を機能の箇条書きにしないこと、そして**対象外とその引き受け先**を書くことを求める。現状の `README.md` は「主な機能」8 件の箇条書きで範囲を語っており、対象外の記述は無い。IdP/IdM は特権アクセス管理、人事情報の正、アプリケーション内部の認可判定と境界を接する。**接する相手が具体的なほど、担わないことの宣言が要る。**
 

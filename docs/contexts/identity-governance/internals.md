@@ -1,4 +1,4 @@
-# IdGovernance Internals
+# IdGovernance の内部設計
 
 ## Trigger capture via Transactional Outbox
 

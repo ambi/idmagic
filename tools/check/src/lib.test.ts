@@ -199,6 +199,22 @@ describe('validateAgainstSchema — work-item', () => {
     ).toEqual([])
   })
 
+  it('accepts a nested whole-system specification target', () => {
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...validWorkItem,
+          change_kind: 'feature',
+          affected_spec: [
+            { path: 'docs/requirements/quality.md', requirement: 'SLO-DEMO-AVAILABILITY' },
+          ],
+        },
+        '',
+      ),
+    ).toEqual([])
+  })
+
   it('requires a concrete no-impact reason for maintenance without specification targets', () => {
     const maintenance = { ...validWorkItem, change_kind: 'maintenance' }
     expect(validateAgainstSchema('work-item', maintenance, '')).not.toEqual([])

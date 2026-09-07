@@ -52,13 +52,13 @@ Primary actor: `ScimBearerClient`
 - But Bearer トークンが失効済み、期限切れ、または別テナントのトークンである
 - Then SCIM プロトコルエラーを返し、User を作成しない
 
-### Example: EX-SOURCING-002-03 PATCH のリクエスト本文が RFC 7644 の操作要件を満たさない
+### Example: EX-SOURCING-002-03 PATCH のリクエストボディが RFC 7644 の操作要件を満たさない
 
 - Given 有効な SCIM アクセストークンが発行されている
 - When SCIM クライアントが CreateScimUser を呼び出す
 - Then 内部 User が作成され、ステータスが `Active` になる
 - When SCIM クライアントが PatchScimUser で `active=false` を指定する
-- But PATCH のリクエスト本文が RFC 7644 の操作要件を満たさない
+- But PATCH のリクエストボディが RFC 7644 の操作要件を満たさない
 - Then `invalidValue` の ScimProtocolError を返し、User を変更しない
 
 ### Example: EX-SOURCING-002-04 指定 ID が存在しない
@@ -80,24 +80,24 @@ Primary actor: `ScimBearerClient`
 
 - Given 有効な SCIM アクセストークンが発行されている
 - And 対象 User が存在し、`name.givenName` と `active=false` を持つ
-- When SCIM クライアントが、`userName` だけを含むリクエスト本文で UpdateScimUser を呼び出す
+- When SCIM クライアントが、`userName` だけを含むリクエストボディで UpdateScimUser を呼び出す
 - Then `name.givenName` は空文字に、`active` は `true` にリセットされる
 - Then レスポンスは `id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を含む
 
-### Example: EX-SOURCING-003-02 PUT のリクエスト本文に必須属性（User の `userName`、Group の `displayName`）がない
+### Example: EX-SOURCING-003-02 PUT のリクエストボディに必須属性（User の `userName`、Group の `displayName`）がない
 
 - Given 有効な SCIM アクセストークンが発行されている
 - And 対象 User が存在し、`name.givenName` と `active=false` を持つ
-- When SCIM クライアントが、`userName` だけを含むリクエスト本文で UpdateScimUser を呼び出す
-- But PUT のリクエスト本文に必須属性（User の `userName`、Group の `displayName`）がない
+- When SCIM クライアントが、`userName` だけを含むリクエストボディで UpdateScimUser を呼び出す
+- But PUT のリクエストボディに必須属性（User の `userName`、Group の `displayName`）がない
 - Then `invalidValue` の ScimProtocolError を返し、リソースを変更しない
 
-### Example: EX-SOURCING-003-03 PUT のリクエスト本文に既存値と異なる `id` がある
+### Example: EX-SOURCING-003-03 PUT のリクエストボディに既存値と異なる `id` がある
 
 - Given 有効な SCIM アクセストークンが発行されている
 - And 対象 User が存在し、`name.givenName` と `active=false` を持つ
-- When SCIM クライアントが、`userName` だけを含むリクエスト本文で UpdateScimUser を呼び出す
-- But PUT のリクエスト本文に既存値と異なる `id` がある
+- When SCIM クライアントが、`userName` だけを含むリクエストボディで UpdateScimUser を呼び出す
+- But PUT のリクエストボディに既存値と異なる `id` がある
 - Then 指定された `id` は無視し、サーバーが割り当てた既存の ID を維持する
 
 ## Rule: REQ-SOURCING-004 外部 IdP による未対応の PATCH パスや読み取り専用属性への書き込みを拒否する

@@ -1,4 +1,4 @@
-# Saml Glossary
+# Saml の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

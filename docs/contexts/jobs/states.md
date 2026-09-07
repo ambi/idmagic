@@ -1,4 +1,4 @@
-# Jobs State Transitions
+# Jobs の状態遷移
 
 ## JobLifecycle
 

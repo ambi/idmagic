@@ -4,7 +4,10 @@ import { compile, formatDiagnostic, NodeHost } from '@typespec/compiler'
 import { Window } from 'happy-dom'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
-import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
+import {
+  CONTEXT_DOCUMENTS,
+  SYSTEM_DOCUMENT_DIRECTORIES,
+} from '../../check/src/specification-doc.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { renderSpecificationSite, type SourceDocument } from './render.ts'
 import { collectTraces } from './traces.ts'
@@ -41,7 +44,9 @@ async function procedureDocuments(directory: string): Promise<string[]> {
 }
 
 const paths = ['SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
-paths.push(...(await canonicalDocuments('docs', ROOT_DOCUMENTS)))
+for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
+  paths.push(...(await canonicalDocuments(directory, names)))
+}
 paths.push(...(await procedureDocuments('docs/development')))
 const contextRoot = resolve(root, 'docs/contexts')
 const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))

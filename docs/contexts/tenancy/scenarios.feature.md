@@ -60,7 +60,7 @@ Primary actor: `TenantAdministrator`
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PNG ロゴをアップロードする
-- Then アップロード応答に logo_url が含まれる
+- Then アップロードレスポンスに logo_url が含まれる
 - When "operator" が logo_url を GET する
 - Then 同じ realm の検証済み PNG が返る
 - Then 管理画面のロゴプレビューにアップロードした PNG が表示される
@@ -75,7 +75,7 @@ Primary actor: `TenantAdministrator`
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PNG ロゴをアップロードする
-- Then アップロード応答に logo_url が含まれる
+- Then アップロードレスポンスに logo_url が含まれる
 - When "operator" が logo_url を GET する
 - But 別テナントの id で同じ kind のアセット取得を試みる
 - Then アセットは存在しないものとして扱われ InvalidRequestError で拒否される
@@ -84,7 +84,7 @@ Primary actor: `TenantAdministrator`
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PNG ロゴをアップロードする
-- Then アップロード応答に logo_url が含まれる
+- Then アップロードレスポンスに logo_url が含まれる
 - When "operator" が logo_url を GET する
 - Then 同じ realm の検証済み PNG が返る
 - Then 管理画面のロゴプレビューにアップロードした PNG が表示される
@@ -94,7 +94,7 @@ Primary actor: `TenantAdministrator`
 - Then UpdateTenantBranding には primary_color の空文字列が送られる
 - When 未認証の利用者が login 画面を開く
 - Then realm 配下の logo_url が gateway で backend に転送されない
-- Then 画像取得は成功せず、管理者は設定の成功応答だけでは表示可能と判断しない
+- Then 画像取得は成功せず、管理者は設定の成功レスポンスだけでは表示可能と判断しない
 
 ## Rule: REQ-TENANCY-005 不正な branding 入力は拒否されシステムデフォルトにフォールバックする
 
@@ -215,7 +215,7 @@ Primary actor: `OAuth2Client`
 - Then issuer は "{base}/realms/default" であり、取得元 URL の prefix と一致する
 - When "https://acme.{tenant_base_domain}/.well-known/openid-configuration" を取得する
 - Then issuer は "https://acme.{tenant_base_domain}" であり、取得元 URL の prefix と一致する
-- Then どちらの応答もエンドポイントURLを自分の正規ロケーション配下だけで組み立てる
+- Then どちらのレスポンスもエンドポイントURLを自分の正規ロケーション配下だけで組み立てる
 
 ## Rule: REQ-TENANCY-011 System管理者はテナントの正規ロケーションを切り替えられる
 
@@ -468,7 +468,7 @@ Primary actor: `TenantAdministrator`
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" が委譲深さの上限を保存する
-- Then 設定取得の応答は現在の上書き値と、上書きが無いときに適用されるシステム既定の双方を返す
+- Then 設定取得のレスポンスは現在の上書き値と、上書きが無いときに適用されるシステム既定の双方を返す
 
 ### Example: EX-TENANCY-021-02 システム既定より小さい値を保存する
 

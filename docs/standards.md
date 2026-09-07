@@ -1,8 +1,8 @@
-# Standards
+# 全体規範
 
-製品全体が従う外部規範を宣言する。ここに置くのは、二つ以上の Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるものだけである。1 つの Context が単独で満たす規範 — OAuth 2.0 と OIDC、SAML 2.0、SCIM 2.0、WS-Federation、SSF — は、その Context の `standards.md` が持つ。
+プロダクト全体が従う外部規範を宣言する。ここに置くのは、二つ以上の Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるものだけである。1 つの Context が単独で満たす規範 — OAuth 2.0 と OIDC、SAML 2.0、SCIM 2.0、WS-Federation、SSF — は、その Context の `standards.md` が持つ。
 
-`Statement` は製品が何をするかを書き、標準の側の義務を要約しない。各行は、規範 ID を名指しするテストを製品のテストの中に持つ。名指しの場所はテスト名に限らず、テストファイルの中であればよい。まだテストの無い行は `tools/check/standards-coverage-debt.json` に理由付きで残っており、この一覧は縮むだけである。テストにも一覧にも無い行は `mise run check-spec` が拒否する。この規則は各 Context の `standards.md` にも同じく効く。
+`Statement` はプロダクトが何をするかを書き、標準の側の義務を要約しない。各行は、規範 ID を名指しするテストをプロダクトのテストの中に持つ。名指しの場所はテスト名に限らず、テストファイルの中であればよい。まだテストの無い行は `tools/check/standards-coverage-debt.json` に理由付きで残っており、この一覧は縮むだけである。テストにも一覧にも無い行は `mise run check-spec` が拒否する。この規則は各 Context の `standards.md` にも同じく効く。
 
 ## Web Content Accessibility Guidelines 2.2
 

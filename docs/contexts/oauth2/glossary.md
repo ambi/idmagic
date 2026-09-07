@@ -1,4 +1,4 @@
-# OAuth2 Glossary
+# OAuth2 の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|
@@ -16,14 +16,14 @@
 | DeviceCode | 入力制約のあるデバイス向けのデバイス認可グラント (RFC 8628)。grant_type は URN。 | urn:ietf:params:oauth:grant-type:device_code, device_code, デバイスコード |
 | TokenExchange | 既存のトークンを別のトークンへ交換するグラント（RFC 8693）。本アプリは 2 種類の `subject_token` を扱う。（1）自己発行トークンの委任では、`subject_token` と `actor_token` を本 IdP が発行し、`IntrospectAccessToken` を通過したものに限定する。（2）ワークロードアイデンティティ連携では、`subject_token_type` が `JwtSvid` のときに外部のアテステーショントークンを WorkloadIdentity の `VerifyWorkloadAttestation` で検証し、テナントに登録された `AgentWorkloadBinding` に対応する Agent の資格情報として発行する。`grant_type` は URN。 | urn:ietf:params:oauth:grant-type:token-exchange, token-exchange, トークン交換 |
 | Ciba | Client-Initiated Backchannel Authentication（OpenID CIBA Core）。クライアントが帯域外の認証デバイスを介して ResourceOwner の判断を求める、分離型のフロー。本アプリはポーリングモードだけを実装し、`grant_type` には URN を使う。 | urn:openid:params:grant-type:ciba, ciba, CIBA, backchannel authentication |
-| ApprovalRequest | 人間が承認するまでクライアントの要求を保留する承認要求。承認対象の User、要求元のクライアントまたは Agent、要求するスコープと `AuthorizationDetails`、バインディングメッセージ、期限を持ち、`Pending` から一方向に遷移する。CIBA の転送方式に固有の語彙に依存しない一般形で保持する。 | approval_request, 承認要求 |
-| AuthReqId | `/bc-authorize` が発行する承認要求のベアラーシークレット（CIBA Core §7.3）。トークンエンドポイントの CIBA グラントで提示する。保存するのは SHA-256 ハッシュだけとし、画面にも監査ログにも出さない。 | auth_req_id |
+| ApprovalRequest | 人間が承認するまでクライアントの要求を保留する承認リクエスト。承認対象の User、要求元のクライアントまたは Agent、要求するスコープと `AuthorizationDetails`、バインディングメッセージ、期限を持ち、`Pending` から一方向に遷移する。CIBA の転送方式に固有の語彙に依存しない一般形で保持する。 | approval_request, 承認リクエスト |
+| AuthReqId | `/bc-authorize` が発行する承認リクエストのベアラーシークレット（CIBA Core §7.3）。トークンエンドポイントの CIBA グラントで提示する。保存するのは SHA-256 ハッシュだけとし、画面にも監査ログにも出さない。 | auth_req_id |
 | BindingMessage | 承認画面に表示する短い識別文 (CIBA Core §7.1)。別要求の取り違え承認を防ぐ補助であり、要求内容の提示を代替しない。 | binding_message |
 | TokenDeliveryMode | 承認成立をどうクライアントへ届けるかの区分 (CIBA Core §4)。本アプリは poll のみ実装し、ping / push は広告しない。 | backchannel_token_delivery_mode, poll, ping, push |
 | UnknownUserId | CIBA エラーコード `unknown_user_id`。`login_hint` または `id_token_hint` から承認対象の User を解決できないことを表す。存在の有無を開示しないため、非アクティブなユーザーや別テナントのユーザーも同じエラーとして扱う。 | unknown_user_id |
-| Pending | 承認要求が起票され、まだ判断されていない初期状態。 | pending |
-| Consumed | 承認済みの承認要求がちょうど一度トークン化された終端状態。 | consumed |
-| Consume | 承認済みの承認要求をトークンへ一度きり消費する。 | consume |
+| Pending | 承認リクエストが起票され、まだ判断されていない初期状態。 | pending |
+| Consumed | 承認済みの承認リクエストがちょうど一度トークン化された終端状態。 | consumed |
+| Consume | 承認済みの承認リクエストをトークンへ一度きり消費する。 | consume |
 | AuthorizationDetails | 構造化された細粒度の権限要求 (RFC 9396)。type で識別される JSON オブジェクトの配列として、対象・操作・上限・条件を表し、/authorize・/par・/tokenで要求・同意・トークン反映する。本アプリは受理する type をテナント登録スキーマに限定し fail-closed に検証する。 | authorization_details, RAR, Rich Authorization Requests, リッチ認可リクエスト |
 | AccessToken | ResourceServer にアクセスする際に提示するトークン。JWT (PS256 / ES256) として発行、TTL 600秒。 | access_token, アクセストークン |
 | IdToken | OIDC が定める、ResourceOwner の認証結果を表明する JWT。iss/sub/aud/exp/iat/auth_time/nonce/azp を含む。 | id_token, IDトークン |

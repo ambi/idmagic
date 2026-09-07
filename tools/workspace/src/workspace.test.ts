@@ -6,6 +6,7 @@ import {
   discoverGeneratedOpenApi,
   discoverOpenApiBaseline,
   discoverWorkspaceConfig,
+  listCanonicalDirectories,
 } from './workspace.ts'
 
 const cleanup: string[] = []
@@ -43,10 +44,15 @@ async function workspace(): Promise<string> {
   cleanup.push(root)
   await mkdir(join(root, 'spec', 'contexts', 'demo'), { recursive: true })
   await mkdir(join(root, 'docs', 'contexts', 'demo'), { recursive: true })
+  await mkdir(join(root, 'docs', 'requirements'), { recursive: true })
+  await mkdir(join(root, 'docs', 'design', 'security'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
   await writeFile(join(root, 'spec', 'main.tsp'), 'namespace Demo;\n')
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
-  await writeFile(join(root, 'docs', 'authorization.md'), '# Authorization\n')
+  await writeFile(join(root, 'docs', 'requirements', 'README.md'), '# Requirements\n')
+  await writeFile(join(root, 'docs', 'requirements', 'quality.md'), '# Quality Requirements\n')
+  await writeFile(join(root, 'docs', 'design', 'security', 'README.md'), '# Security Design\n')
+  await writeFile(join(root, 'docs', 'design', 'security', 'authorization.md'), '# Authorization\n')
   await writeFile(join(root, 'docs', 'contexts', 'demo', 'README.md'), '# Demo\n')
   await writeFile(
     join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
@@ -62,9 +68,12 @@ describe('discoverWorkspaceConfig', () => {
     expect(config.specification).toBe('spec/main.tsp')
     expect(config.documents).toEqual([
       'docs/README.md',
-      'docs/authorization.md',
       'docs/contexts/demo/README.md',
       'docs/contexts/demo/scenarios.feature.md',
+      'docs/design/security/README.md',
+      'docs/design/security/authorization.md',
+      'docs/requirements/README.md',
+      'docs/requirements/quality.md',
     ])
     expect(config.workItems).toBe('work-items')
   })
@@ -76,6 +85,38 @@ describe('discoverWorkspaceConfig', () => {
     const config = await discoverWorkspaceConfig(root)
     expect(config.documents).not.toContain('docs/contexts/demo/notes.md')
     expect(config.documents).not.toContain('docs/states.md')
+  })
+
+  /**
+   * 固定の一覧から段を落とすと、その段の規範文書は集める側からも拒否する側からも
+   * 消える。文書は残っているのに検証だけが止まるので、一覧に無い段こそ列挙して
+   * 閉じた集合の検査へ渡さなければならない。
+   */
+  it('lists a directory below docs the fixed layout does not name', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'docs', 'design', 'unplanned'), { recursive: true })
+    await writeFile(join(root, 'docs', 'design', 'unplanned', 'threat-model.md'), '# Threats\n')
+
+    const listings = await listCanonicalDirectories(root)
+    expect(
+      listings.find((listing) => listing.directory === 'docs/design/unplanned')?.files,
+    ).toEqual(['threat-model.md'])
+  })
+
+  it('leaves the freely named directories below docs out of the closed set', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'docs', 'runbooks'), { recursive: true })
+    await mkdir(join(root, 'docs', 'releases', 'upgrades'), { recursive: true })
+    await mkdir(join(root, 'docs', 'development'), { recursive: true })
+    await writeFile(join(root, 'docs', 'runbooks', 'anything.md'), '# Anything\n')
+    await writeFile(join(root, 'docs', 'releases', 'upgrades', 'wi-1.md'), '# Upgrade\n')
+    await writeFile(join(root, 'docs', 'development', 'release.md'), '# Release\n')
+
+    const directories = (await listCanonicalDirectories(root)).map((listing) => listing.directory)
+    expect(directories).not.toContain('docs/runbooks')
+    expect(directories).not.toContain('docs/releases')
+    expect(directories).not.toContain('docs/releases/upgrades')
+    expect(directories).not.toContain('docs/development')
   })
 
   it('rejects a leftover SPECIFICATION.md as a second source of truth', async () => {

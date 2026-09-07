@@ -27,13 +27,13 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 - **dependencies**:
   - [[wi-97-envelope-encryption-at-rest]] の tenant-scoped envelope encryption を、可逆な
     代理認証資格情報の保管・復号に必須とする。**これは完了済み**であり、`DataKeys` Context と
-    `EnvelopeCrypto` ポートをそのまま使う (`docs/database.md` の Envelope encryption for reversible secrets)。
+    `EnvelopeCrypto` ポートをそのまま使う (`docs/design/data/database.md` の Envelope encryption for reversible secrets)。
   - [[wi-151-managed-device-inventory-and-posture-access-conditions]] 完了後に、検証済み
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
 - **specification**:
   - `docs/README.md` の Context Map に `LegacyAccess` を追加する。
   - `docs/contexts/legacy-access/` に `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.feature.md`、
-    `models.tsp`、`main.tsp` を追加する。権限境界は `docs/authorization.md` に合流させる。
+    `models.tsp`、`main.tsp` を追加する。権限境界は `docs/design/security/authorization.md` に合流させる。
   - `docs/contexts/application/` に `legacy_form` protocol binding と、代理認証を使う
     Application のポータル起動情報を追加する。
 - **decision**:

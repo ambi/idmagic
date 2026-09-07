@@ -37,11 +37,11 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 - work item の frontmatter に `specification_adequacy` を追加する。`affected_spec` が名指しする規範要素ごとに、反例、判定、判定の根拠となる解決先を 1 件以上記録する。
 - 判定を `strengthened` / `undetermined` / `refuted` の閉じた集合とし、それぞれの解決先が何を指すかを固定する。未知の値、空の解決先、解決しない参照は fail-closed で拒否する。
 - 意図して決めない選択の置き場所を、当該 Context の `decisions.md` とする。新しい正本の種類も新しいファイル名も作らない。理由と、再検討の条件を伴う既存の決定の形をそのまま使う。
-- 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築と事後条件は `docs/design-rules.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `SPECIFICATION_FORMAT.md` §3 の規則は維持する。
+- 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築と事後条件は `docs/design/application/design-rules.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `SPECIFICATION_FORMAT.md` §3 の規則は維持する。
 - `evidence_policy` を `risk-based-v4` へ上げる。完了済みの v1 / v2 / v3 の記録は履歴として再解釈しない。採用時点で `in_progress` の該当項目は新しい計画を追加してから完了できる。
 - `tools/check/src/specification-adequacy.ts` と単体検査を追加し、`tools/check/schemas/work-item.schema.json` と `tools/workspace/src/check-workspace.ts` へ接続して `mise run check-work-items` のゲートにする。
 - 完了済みの実際の変更 3 件へ遡って本段階を試行し、反例が出たか、出た反例が既存の規範要素で棄却できたか、記録に要した時間を実測する。試行結果は Design へ追記する。
-- 被覆を報告するあらゆる出力について、それが**宣言済みモデルの被覆**であって実世界の網羅ではないことを、出力自身が述べる規則を書く。`docs/threat-model.md` が「一覧は網羅的ではない」と述べるのと同じ扱いを、シナリオと規範の被覆へ広げる。
+- 被覆を報告するあらゆる出力について、それが**宣言済みモデルの被覆**であって実世界の網羅ではないことを、出力自身が述べる規則を書く。`docs/design/security/threat-model.md` が「一覧は網羅的ではない」と述べるのと同じ扱いを、シナリオと規範の被覆へ広げる。
 
 ## Out of Scope
 
@@ -185,10 +185,10 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 
 リスクは medium。誤ると製品ではなく開発の側が壊れる。最も可能性の高い失敗は、契約が儀式になることである。要素ごとに 1 文を書けば通る検査は、無内容な 1 文を量産する誘因になる。これを完全には防げないので、手順 1 の試行で反例が実際に出ることを確かめてから導入し、出ないなら導入しない。導入後も、`refuted` の割合が上がり続けるなら契約が形骸化した指標として扱う。
 
-第二の失敗は、`undetermined` が debt の置き場になることである。`docs/threat-model.md` が「再検討の条件を持たない受容は、ラベルを貼っただけの放置である」と述べているのと同じ危険があるため、`undetermined` の解決先を `decisions.md` に限り、理由と再検討の条件を伴う既存の決定の形に載せる。それでも条件の質は機械では測れない。
+第二の失敗は、`undetermined` が debt の置き場になることである。`docs/design/security/threat-model.md` が「再検討の条件を持たない受容は、ラベルを貼っただけの放置である」と述べているのと同じ危険があるため、`undetermined` の解決先を `decisions.md` に限り、理由と再検討の条件を伴う既存の決定の形に載せる。それでも条件の質は機械では測れない。
 
 第三に、`evidence_policy` の版を上げると、採用時点で `in_progress` の項目すべてに移行作業が生じる。`wi-456` が `risk-based-v3` の遡及を進めている最中に版を上げると二重の移行になるため、`depends_on` で順序を固定する。
 
 `reversibility` は irreversible とする。検査は取り外せるが、`risk-based-v4` という版の名前と、完了記録に残る反例は取り消せない。
 
-最後に、本項目は仕様の完全性を保証しない。保証するのは、**宣言済みモデルに対して反例を一度探したという記録**だけである。モデルそのものに含まれていない振る舞い——誰も状態として書かなかった状態、誰も要素として書かなかった規範——は、この段階を通しても見つからない。`docs/threat-model.md` が脅威の一覧を網羅的でないと明示しているのと同じ限界であり、同じ形で文書へ書く。
+最後に、本項目は仕様の完全性を保証しない。保証するのは、**宣言済みモデルに対して反例を一度探したという記録**だけである。モデルそのものに含まれていない振る舞い——誰も状態として書かなかった状態、誰も要素として書かなかった規範——は、この段階を通しても見つからない。`docs/design/security/threat-model.md` が脅威の一覧を網羅的でないと明示しているのと同じ限界であり、同じ形で文書へ書く。

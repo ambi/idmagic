@@ -1,4 +1,4 @@
-# Jobs Internals
+# Jobs の内部設計
 
 ## Execution lanes
 

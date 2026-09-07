@@ -6,10 +6,10 @@
 
 管理 API を誰が呼べるかというロール認可は、引き続き OAuth2 の規則表が担う。本 Context が扱うのは、データ資源へのアクセス判定である。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Authorization の用語集](glossary.md) | この Context での語義 |
+| [Authorization の採用規範](standards.md) | 準拠する外部規範 |
+| [Authorization の設計判断](decisions.md) | 設計判断 |
+| [Authorization の内部設計](internals.md) | 機構の説明 |
+| [Authorization Scenarios](scenarios.feature.md) | 受け入れシナリオ |

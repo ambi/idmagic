@@ -1,4 +1,4 @@
-# SigningKeys Internals
+# SigningKeys の内部設計
 
 ## Usage and scope isolation
 

@@ -1,4 +1,4 @@
-# IdManagement State Transitions
+# IdManagement の状態遷移
 
 ## UserLifecycle
 

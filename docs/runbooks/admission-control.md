@@ -1,12 +1,12 @@
 # 入場制御が発動したとき
 
-`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [deployment.md](../deployment.md#load-shedding-under-saturation)、判断の理由は [contexts/system/decisions.md](../contexts/system/decisions.md#load-shedding-by-priority-class) が持つ。
+`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [System の内部設計](../contexts/system/internals.md#admission-control)、判断の理由は [System の設計判断](../contexts/system/decisions.md#load-shedding-by-priority-class) が持つ。
 
 ## 何が起きているか
 
-API プロセスは、実行中の要求数が優先度クラスごとの上限を超えると、そのクラスの要求を 503 で拒否する。拒否はハンドラーの手前で起きるので、拒否された要求は状態を一切変えていない。
+API プロセスは、実行中の要求数が優先度クラスごとの上限を超えると、そのクラスのリクエストを 503 で拒否する。拒否はハンドラーの手前で起きるので、拒否された要求は状態を一切変えていない。
 
-**どの経路がどのクラスに属するかは [ROUTE_PRIORITY.md](../../ROUTE_PRIORITY.md) を引く。** 「この操作はなぜ 503 になったのか」「この操作は次にどのステージで落ちるのか」はそこで直接引ける。分類はコードに 1 箇所あり、この生成物はそこから導かれるので、実装を読んで前方一致の優先順位を解く必要はない。
+**どの経路がどのクラスに属するかは [Route Priority Reference](../../ROUTE_PRIORITY.md) を引く。** 「この操作はなぜ 503 になったのか」「この操作は次にどのステージで落ちるのか」はそこで直接引ける。分類はコードに 1 箇所あり、この生成物はそこから導かれるので、実装を読んで前方一致の優先順位を解く必要はない。
 
 | アラート | 意味 |
 | --- | --- |
@@ -28,9 +28,9 @@ API プロセスは、実行中の要求数が優先度クラスごとの上限�
 **`management` まで捨てている場合。** 管理コンソールとポータルが使えなくなっている。障害対応そのものに管理 API が要る場合は、`ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS` を一時的に引き上げるより、レプリカを増やすほうが安全である。前者は認証の余白を削るが、後者は総容量を増やす。ただしレプリカを増やすと論理接続予算も増えるので、PostgreSQL 側の接続使用率を先に確認する。
 
 **`interactive_auth` まで捨てている場合。** 総容量が足りていない。優先度の付け替えでは解決しない。
-- HorizontalPodAutoscaler が上限に達しているなら、上限を上げられるかを [capacity.md](../capacity.md#sizing-rules) の接続予算と 70% 規則で確かめてから上げる。
+- HorizontalPodAutoscaler が上限に達しているなら、上限を上げられるかを [容量設計](../design/performance/capacity.md#構成算出規則) の接続予算と 70% 規則で確かめてから上げる。
 - PostgreSQL 側が束縛条件なら、レプリカを増やしても悪化する。接続の待ち時間と `DB_MAX_CONNS` を先に見る。
-- 収まった後、[capacity.md](../capacity.md#degradation-order) の縮退順序に照らして、この事象が [contexts/system/decisions.md](../contexts/system/decisions.md#no-api-plane-separation) の再検討条件 (a) に当たるかを判断する。当たるなら記録を残す。
+- 収まった後、[容量設計](../design/performance/capacity.md#縮退順序) の縮退順序に照らして、この事象が [System の設計判断](../contexts/system/decisions.md#no-api-plane-separation) の再検討条件 (a) に当たるかを判断する。当たるなら記録を残す。
 
 **分類の無い経路が現れた場合。** 経路を足したときに分類を足し忘れている。`TestEveryAssembledRouteDeclaresAPriorityClass` が本来これを配備前に落とす。落ちずにここまで来たなら、その検査が回っていないか、経路の登録が検査の見ている router を通っていない。どちらも配備の前に直す問題である。
 

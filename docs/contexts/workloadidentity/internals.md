@@ -1,4 +1,4 @@
-# WorkloadIdentity Internals
+# WorkloadIdentity の内部設計
 
 ## Attestation is verified, never trusted
 

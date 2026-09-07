@@ -1,4 +1,4 @@
-# Jobs Glossary
+# Jobs の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

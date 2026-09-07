@@ -9,7 +9,7 @@ Primary actor: `TenantAdministrator`
 - Given `AdminAuthorizationModelManage` を持つ管理者として認証済みである
 - When 管理者がリソース型と関係の定義を PutAuthorizationModel へ渡す
 - Then テナント内で単調増加する新しい版が作られ、以前の版は書き換わらない
-- Then 応答は整合トークンを含み、GetAuthorizationModel が新しい版を最新として返す
+- Then レスポンスは整合トークンを含み、GetAuthorizationModel が新しい版を最新として返す
 
 ### Example: EX-AUTHORIZATION-001-02 定義が宣言されていない型または関係を参照する
 
@@ -41,7 +41,7 @@ Primary actor: `TenantAdministrator`
 - Given テナントに認可モデルが登録済みである
 - When 管理者が追加と削除を含む差分を WriteRelationTuples へ渡す
 - Then 差分は 1 トランザクションで適用され、既に存在する組の再追加は冪等に扱われる
-- Then 応答は書き込み後の整合トークンを返し、以後の判定へ渡せる
+- Then レスポンスは書き込み後の整合トークンを返し、以後の判定へ渡せる
 
 ### Example: EX-AUTHORIZATION-002-02 モデルが宣言していない型・関係を含む
 

@@ -220,7 +220,7 @@ func TestClient_OAuth2ClientCredentials_DoesNotLoopWhenCredentialsAreWrong(t *te
 }
 
 func TestClient_OAuth2ClientCredentials_ErrorOmitsTheDownstreamBody(t *testing.T) {
-	// トークン取得の失敗を報告するとき、下流の応答本文を載せない。
+	// トークン取得の失敗を報告するとき、下流のレスポンスボディを載せない。
 	// 本文にはトークンや秘密が含まれうる。
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -239,7 +239,7 @@ func TestClient_OAuth2ClientCredentials_ErrorOmitsTheDownstreamBody(t *testing.T
 		t.Fatal("400 は失敗として扱うはず")
 	}
 	if strings.Contains(tokenErr.Error(), "leaked-secret-value") {
-		t.Fatalf("エラーが下流の応答本文を含んでいる: %v", tokenErr)
+		t.Fatalf("エラーが下流のレスポンスボディを含んでいる: %v", tokenErr)
 	}
 	if !strings.Contains(tokenErr.Error(), "400") {
 		t.Fatalf("エラーが状態コードを含んでいない: %v", tokenErr)

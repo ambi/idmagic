@@ -150,7 +150,7 @@ nil は起こらない状態であり、確かめたい判定の手前で分岐�
 
 ### `REQ-SAML-002` の「1 通も発行されていない」の読み方
 
-応答本文に SAMLResponse が含まれないことと、SP の Assertion Consumer Service へのリダイレクトが起きないことの両方で読む。
+レスポンスボディに SAMLResponse が含まれないことと、SP の Assertion Consumer Service へのリダイレクトが起きないことの両方で読む。
 
 拒否の応答を返しつつ、裏で発行だけ済ませている実装は、片方だけでは検出できない。
 
@@ -250,7 +250,7 @@ SAML の応答は XML であり、要素の有無を文字列の一致で確か�
     `profile-b` の SSO エンドポイントへ送った AuthnRequest が 200 を返し、本文の自動 POST
     フォームに `profile-b` の entityID を Issuer とする署名済み Assertion がそのまま現れた。
     SP に割り当てられていないプロファイルの鍵で署名したアサーションが外へ出る形である。
-  - **Detection Reason**: テストは 400 を読むだけでなく、応答本文に `SAMLResponse` が無いこと、
+  - **Detection Reason**: テストは 400 を読むだけでなく、レスポンスボディに `SAMLResponse` が無いこと、
     ACS へのリダイレクトが起きないこと、解析した XML に `Assertion` 要素が無いことを
     重ねて条件にしている。拒否の応答を返しつつ発行だけ済ませている実装も捕まえる。
 

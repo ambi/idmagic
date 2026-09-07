@@ -1,5 +1,5 @@
 /**
- * `docs/README.md` の Context 索引表が、全 Bounded Context をサブドメインの
+ * `docs/architecture/logical.md` の Context 索引表が、全 Bounded Context をサブドメインの
  * 区分つきで 1 行ずつ持つことを確かめる。
  *
  * 分類は、それに依存するものが無ければ飾りになる。索引表は新しい Context が
@@ -12,14 +12,14 @@
  * 判断が書かれていない行が無いことだけである。
  */
 
-/** 索引表が引ける区分。`docs/design-rules.md` が何を左右するかを定める。 */
+/** 索引表が引ける区分。`docs/design/application/design-rules.md` が何を左右するかを定める。 */
 const SUBDOMAINS = ['Core', 'Supporting', 'Generic'] as const
 
 /** Context 索引表を選ぶヘッダー行。見出しではなく列の並びで表を特定する。 */
-const INDEX_HEADER = '| Specification context | Subdomain | Go package | Responsibility |'
+const INDEX_HEADER = '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |'
 
 /** 区分の列を持たない、変更前のヘッダー行。 */
-const UNCLASSIFIED_HEADER = '| Specification context | Go package | Responsibility |'
+const UNCLASSIFIED_HEADER = '| 仕様上の Context | Go パッケージ | 責務 |'
 
 export interface SubdomainFinding {
   line: number
@@ -34,13 +34,13 @@ function cells(row: string): string[] {
   return parts
 }
 
-/** `[Name](contexts/<dir>/README.md)` が指す Context ディレクトリ名。 */
+/** `[Name](../contexts/<dir>/README.md)` が指す Context ディレクトリ名。 */
 function contextDirectory(cell: string): string | undefined {
-  return cell.match(/\(contexts\/([^/)]+)\/README\.md\)/)?.[1]
+  return cell.match(/\((?:\.\.\/)?contexts\/([^/)]+)\/README\.md\)/)?.[1]
 }
 
 /**
- * `source` は `docs/README.md` の本文、`contextDirectories` は
+ * `source` は `docs/architecture/logical.md` の本文、`contextDirectories` は
  * `docs/contexts/` の直下にあるディレクトリ名。どちらも引数で入るので、この
  * 関数はファイルシステムも作業ディレクトリも読まない。
  */

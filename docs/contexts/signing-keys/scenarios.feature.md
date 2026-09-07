@@ -105,7 +105,7 @@ Primary actor: `TenantAdministrator`
 - Then AccessDeniedError で拒否される
 - When "tenant-operator" が自テナントの経路で署名鍵ヘルス一覧を呼び出す
 - Then AccessDeniedError で拒否される
-- Then 応答は他テナントの識別子、提供元、`active_kid`、鍵数、到達性のいずれも含まない
+- Then レスポンスは他テナントの識別子、提供元、`active_kid`、鍵数、到達性のいずれも含まない
 - Then テナント横断の健全性収集は実行されない
 
 ## Rule: REQ-SIGNINGKEYS-010 管理者は回転後の検証用鍵だけを即時無効化できる

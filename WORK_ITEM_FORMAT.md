@@ -1,4 +1,4 @@
-# Work Item Format
+# 作業項目の書式
 
 A work item is one unit of work that can describe, design, implement, and verify one semantic change.
 Pending items live in `work-items/`; completed or cancelled items live in `work-items/done/`. File names use

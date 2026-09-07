@@ -287,12 +287,12 @@ if (all || args.has('--documents')) {
     .filter((listing) => listing.directory.startsWith('docs/contexts/'))
     .map((listing) => listing.directory.slice('docs/contexts/'.length))
   const classifications = verifySubdomainClassification(
-    repository.read('docs/README.md') ?? '',
+    repository.read('docs/architecture/logical.md') ?? '',
     contextDirectories,
   )
   if (classifications.length) {
     for (const finding of classifications) {
-      console.error(`fail  docs/README.md:${finding.line}: ${finding.message}`)
+      console.error(`fail  docs/architecture/logical.md:${finding.line}: ${finding.message}`)
     }
     process.exit(1)
   }

@@ -4,12 +4,12 @@ Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストか�
 
 テナントの中に置かれる記録そのものは扱わない。User と Group は `IdManagement`、Application は `Application`、資格情報とセッションは `Authentication` が持つ。この Context が決めるのは、それらがどの境界に属し、その境界にどんな上限と既定が効くかである。
 
-テナント分離の規則そのものは製品全体の関心事なので [docs/authorization.md](../../authorization.md) が正であり、ここはその境界を決める側の記録を持つ。
+テナント分離の規則そのものはプロダクト全体の関心事なので [認可設計](../../design/security/authorization.md) が正であり、ここはその境界を決める側の記録を持つ。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Tenancy の用語集](glossary.md) | この Context での語義 |
+| [Tenancy の状態遷移](states.md) | 状態と遷移 |
+| [Tenancy の設計判断](decisions.md) | 設計判断 |
+| [Tenancy の内部設計](internals.md) | 機構の説明 |
+| [Tenancy Scenarios](scenarios.feature.md) | 受け入れシナリオ |

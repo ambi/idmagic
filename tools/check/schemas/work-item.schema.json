@@ -267,7 +267,7 @@
               "path": {
                 "description": "docs/ 直下または docs/contexts/<context>/ 直下の正本。完了済み記録が指す SPECIFICATION.md も受け付ける。",
                 "type": "string",
-                "pattern": "^docs/(?:[^/]+|contexts/[^/]+/[^/]+)\\.md$"
+                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|contexts/[^/]+/[^/]+)\\.md$"
               },
               "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" }
             }

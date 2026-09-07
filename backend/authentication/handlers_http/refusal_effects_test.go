@@ -867,7 +867,7 @@ func TestEnrollmentPendingSessionReachesNoOrdinaryResource(t *testing.T) {
 
 	for _, resource := range []struct {
 		name, path string
-		// leak は応答本文に現れてはならない、そのリソース固有の文字列。
+		// leak はレスポンスボディに現れてはならない、そのリソース固有の文字列。
 		leak string
 	}{
 		{"アカウントコンテキスト", "/api/auth/account", authRefusalAlice},

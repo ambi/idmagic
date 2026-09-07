@@ -12,9 +12,11 @@ const MONITORING_ASSETS = [
   'infra/k8s/monitoring/prometheus-rule.yaml',
 ]
 
-const declared = declaredObjectives(await readFile(resolve(root, 'docs/capacity.md'), 'utf8'))
+const declared = declaredObjectives(
+  await readFile(resolve(root, 'docs/requirements/quality.md'), 'utf8'),
+)
 if (declared.size === 0) {
-  console.error('fail  docs/capacity.md declares no SLO-* or CAP-* objective')
+  console.error('fail  docs/requirements/quality.md declares no SLO-* or CAP-* objective')
   process.exit(1)
 }
 

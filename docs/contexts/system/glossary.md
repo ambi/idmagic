@@ -1,4 +1,4 @@
-# System Glossary
+# System の用語集
 
 この Context の中でだけ意味が定まる語を置く。Context を跨いで意味が固定される語は [docs/glossary.md](../../glossary.md) が持つ。
 

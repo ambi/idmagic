@@ -31,7 +31,7 @@ mise run k6-smoke # デフォルト値: http://host.docker.internal:8080/realms/
 mise run check-k6
 ```
 
-スモークテストのしきい値は [SLO-TOKEN-LATENCY と SLO-PRIMARY-ERRORS](../docs/capacity.md#service-level-objectives) から導く。数値はここに再掲せず、`load/k6/oauth-smoke.js` が持つ値がその目標に由来することだけを記録する。CI はフィクスチャーを用意した後、隔離したサービス URL に対して同じレシピを実行する。本番テナントに対して実行してはならない。
+スモークテストのしきい値は [SLO-TOKEN-LATENCY と SLO-PRIMARY-ERRORS](../docs/requirements/quality.md#サービス目標) から導く。数値はここに再掲せず、`load/k6/oauth-smoke.js` が持つ値がその目標に由来することだけを記録する。CI はフィクスチャーを用意した後、隔離したサービス URL に対して同じレシピを実行する。本番テナントに対して実行してはならない。
 
 宣言的な PostgreSQL スキーマだけを再適用する。
 
@@ -53,4 +53,4 @@ Ingress に `*.${TENANT_BASE_DOMAIN}` のワイルドカード DNS とワイル�
 
 エンドポイント形式を変えると、発行者、Cookie のスコープ、WebAuthn の RP ID が変わる。システムテナントのコンソールで切り替える前に、RP メタデータの変更とパスキーの再登録を調整する。
 
-これらの資材が実装する横断的な実行時設計は、ここではなくリポジトリの設計記録に記載する。高可用性と共有状態、HTTP サーバーの堅牢化、セキュリティレスポンスヘッダーは [`docs/deployment.md`](../docs/deployment.md)、リクエストの相関付けとメトリクスの契約は [`docs/observability.md`](../docs/observability.md) を参照する。このファイルには、スタックを動かすコマンドと設定手順を記載する。
+これらの資材が実装する横断的な実行時設計は、ここではなくリポジトリの設計記録に記載する。実行単位は [Runtime Architecture](../docs/architecture/runtime.md)、高可用性は [Availability Design](../docs/design/reliability/availability.md)、HTTP とネットワーク境界は [Network Design](../docs/design/infrastructure/network.md)、リクエストの相関付けと信号の契約は [Observability Design](../docs/design/observability/) を参照する。このファイルには、スタックを動かすコマンドと設定手順を記載する。

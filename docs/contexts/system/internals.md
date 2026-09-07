@@ -1,4 +1,4 @@
-# System Internals
+# System の内部設計
 
 ## Feature registry and resolution
 

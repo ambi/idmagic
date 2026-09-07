@@ -31,19 +31,80 @@ export const CONTEXT_DOCUMENTS = [
 export const ROOT_DOCUMENTS = [
   'README.md',
   'product-overview.md',
-  'structure.md',
-  'design-rules.md',
   'glossary.md',
   'standards.md',
-  'api-rules.md',
-  'observability.md',
-  'deployment.md',
-  'capacity.md',
-  'database.md',
-  'authorization.md',
-  'threat-model.md',
+  'structure.md',
   'scenarios.feature.md',
 ] as const
+
+/** Fixed whole-system document directories, in their top-down reading order. */
+export const SYSTEM_DOCUMENT_DIRECTORIES = [
+  { directory: 'docs', names: ROOT_DOCUMENTS },
+  {
+    directory: 'docs/requirements',
+    names: ['README.md', 'functional.md', 'quality.md', 'constraints.md'],
+  },
+  {
+    directory: 'docs/architecture',
+    names: [
+      'README.md',
+      'system-context.md',
+      'logical.md',
+      'runtime.md',
+      'deployment.md',
+      'decisions.md',
+    ],
+  },
+  { directory: 'docs/design', names: ['README.md'] },
+  {
+    directory: 'docs/design/application',
+    names: ['README.md', 'api-rules.md', 'design-rules.md', 'user-interface.md'],
+  },
+  {
+    directory: 'docs/design/data',
+    names: ['README.md', 'database.md', 'lifecycle.md'],
+  },
+  {
+    directory: 'docs/design/infrastructure',
+    names: ['README.md', 'platform.md', 'network.md'],
+  },
+  {
+    directory: 'docs/design/security',
+    names: ['README.md', 'threat-model.md', 'authorization.md', 'secrets.md'],
+  },
+  {
+    directory: 'docs/design/reliability',
+    names: ['README.md', 'availability.md', 'recovery.md'],
+  },
+  {
+    directory: 'docs/design/performance',
+    names: ['README.md', 'capacity.md', 'scaling.md'],
+  },
+  {
+    directory: 'docs/design/observability',
+    names: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
+  },
+  {
+    directory: 'docs/verification',
+    names: ['README.md', 'system-acceptance.md'],
+  },
+  {
+    directory: 'docs/operations',
+    names: ['README.md', 'service-management.md', 'maintenance.md'],
+  },
+] as const
+
+const SYSTEM_DOCUMENTS_BY_DIRECTORY = new Map<string, readonly string[]>(
+  SYSTEM_DOCUMENT_DIRECTORIES.map(({ directory, names }) => [directory, names]),
+)
+
+export const SYSTEM_DOCUMENT_PATHS = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ directory, names }) =>
+  names.map((name) => `${directory}/${name}`),
+)
+
+export function canonicalDocumentNames(directory: string): readonly string[] | undefined {
+  return SYSTEM_DOCUMENTS_BY_DIRECTORY.get(directory)
+}
 
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind = 'standards' | 'states' | 'scenarios' | 'prose'
@@ -62,9 +123,7 @@ export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
   const allowed = /^docs\/contexts\/[^/]+\/[^/]+$/.test(path)
     ? (CONTEXT_DOCUMENTS as readonly string[])
-    : /^docs\/[^/]+$/.test(path)
-      ? (ROOT_DOCUMENTS as readonly string[])
-      : undefined
+    : canonicalDocumentNames(path.slice(0, path.lastIndexOf('/')))
   if (!allowed?.includes(name)) return undefined
   return KIND_BY_NAME.get(name) ?? 'prose'
 }

@@ -1,4 +1,4 @@
-# WsFederation Standards
+# WsFederation の採用規範
 
 ## Web Services Federation Language (WS-Federation) Version 1.2
 

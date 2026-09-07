@@ -1,22 +1,22 @@
-# Design Rules
+# 設計規則
 
-このファイルは、製品全体の設計でサブドメインの区分、Aggregate の境界、モジュールのインターフェース、Seam、型、作用、エラーをどう評価するかを持つ。ディレクトリと依存方向は `structure.md`、個別の判断と理由は各 `decisions.md`、コードから復元できない機構は各 `internals.md` が持つため、このファイルには重ねて書かない。
+このファイルは、プロダクト全体の設計でサブドメインの区分、Aggregate の境界、モジュールのインターフェース、Seam、型、作用、エラーをどう評価するかを持つ。ディレクトリと依存方向は [構造](../../structure.md)、個別の判断と理由は各 `decisions.md`、コードから復元できない機構は各 `internals.md` が持つため、このファイルには重ねて書かない。
 
-## Subdomains and design investment
+## Subdomain と設計投資
 
-Bounded Context は、事業上の差別化とモデルの複雑さの二軸で `Core`、`Supporting`、`Generic` のいずれかに分ける。全 Context の区分は [README.md](README.md#context-map) の索引表が持ち、ある Context が今の区分にある理由はその Context の `decisions.md` が持つ。理由を索引表に置かないのは、理由が Context ごとに違って表のセルに収まらないためである。
+Bounded Context は、事業上の差別化とモデルの複雑さの二軸で `Core`、`Supporting`、`Generic` のいずれかに分ける。全 Context の区分は [論理アーキテクチャ](../../architecture/logical.md#context-の責務) の索引表が持ち、ある Context が今の区分にある理由はその Context の `decisions.md` が持つ。理由を索引表に置かないのは、理由が Context ごとに違って表のセルに収まらないためである。
 
 区分が左右するのは次の 3 つである。
 
-- **自作と委譲**。`Generic` に分類した領域では、確立した実装へ委ねられる部分を自作しない。「AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない」（[database.md](database.md#envelope-encryption-for-reversible-secrets)）が、この規則で説明できる既存の判断である。
+- **自作と委譲**。`Generic` に分類した領域では、確立した実装へ委ねられる部分を自作しない。「AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない」（[データベース設計](../data/database.md#可逆な秘密情報のエンベロープ暗号)）が、この規則で説明できる既存の判断である。
 - **モデリングと文書の厚み**。`Core` の Context は固有の語彙を持ち、判断を `decisions.md` に、コードから復元できない機構を `internals.md` に書く。`Generic` の Context は表の CRUD に近い形のまま置いてよく、書くべき機構が無いのに `internals.md` を作らない。
-- **統合したときにどちらが歩み寄るか**。`Core` と非 `Core` が接するとき、相手の語彙へ翻訳するアダプターを持つのは非 `Core` の側である。`Core` は上流や下流の都合でモデルを変えない。翻訳するアダプターの置き場所そのものは [structure.md](structure.md#context-internals) が定める。
+- **統合したときにどちらが歩み寄るか**。`Core` と非 `Core` が接するとき、相手の語彙へ翻訳するアダプターを持つのは非 `Core` の側である。`Core` は上流や下流の都合でモデルを変えない。翻訳するアダプターの置き場所そのものは [構造](../../structure.md#context-の内部構造) が定める。
 
-**区分は検証の強度を左右しない。** どこまで検証するかは work item の `risk` と [threat-model.md](threat-model.md) が決める。両者を結ぶと、`Supporting` に分類した Context の拒否は弱く検証してよい、という読みが成立してしまう。実際 `Tenancy` は `Supporting` だが、テナント境界の拒否はこの製品で最も強く検証しなければならないものである。区分が表すのは重要度の順位ではなく差別化の所在であり、この 2 つは一致しない。
+**区分は検証の強度を左右しない。** どこまで検証するかは work item の `risk` と [脅威モデル](../security/threat-model.md) が決める。両者を結ぶと、`Supporting` に分類した Context の拒否は弱く検証してよい、という読みが成立してしまう。実際 `Tenancy` は `Supporting` だが、テナント境界の拒否はこのプロダクトで最も強く検証しなければならないものである。区分が表すのは重要度の順位ではなく差別化の所在であり、この 2 つは一致しない。
 
 区分そのものが妥当かどうかは検査できない。索引表の行に区分が書かれていないことは検査でき、`mise run check-spec` がそれを拒否する。
 
-## Module depth and information hiding
+## モジュールの深さと情報隠蔽
 
 モジュールは、呼び出し側が正しく使うために知る必要があるインターフェースに対して、十分な振る舞いを隠す。ここでいうインターフェースは型シグネチャだけではなく、不変条件、呼び出し順序、エラー、必要な設定、性能特性を含む。
 
@@ -26,7 +26,7 @@ Bounded Context は、事業上の差別化とモデルの複雑さの二軸で 
 
 `internals.md` の存在だけではモジュールの浅さを示さない。しかし、呼び出し側がモジュールを正しく使うために `internals.md` を読まなければならないなら、実装の知識がインターフェースから漏れている。
 
-## Seams and ports
+## Seam とポート
 
 Seam は、その場所を編集せずに振る舞いを差し替えられる位置であり、モジュールのインターフェースを置く場所である。Seam は Bounded Context の境界とは別の概念なので、両者を同じ語で扱わない。
 
@@ -36,25 +36,25 @@ Seam は、その場所を編集せずに振る舞いを差し替えられる位
 
 メールのリンクで一度だけ実行される操作は、`backend/shared/security/actiontoken` の共通核を通す。共通核が持つのは、用途を閉じた集合として識別する型、生トークンを保持しない保存表現、そして発行と検証という二つの決定的な計算だけである。用途別のペイロードと業務作用は所有 Context に残り、共通核はそれらを知らない。実行時にハンドラーを登録する仕組みは持たず、用途はコードの列挙としてのみ増える。これは、目的の束縛、有効期限、ダイジェストだけの保存という同じ安全性条件を用途ごとに書き直させないための Seam であり、新しい用途がそのどれかを書き忘れても共通の検証を通れないようにするためである。
 
-## Aggregate boundaries and repositories
+## Aggregate 境界と Repository
 
-Aggregate は一貫性の境界である（語の定義は [glossary.md](glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[tenancy/decisions.md](contexts/tenancy/decisions.md)）は、この基準を適用した結果である。
+Aggregate は一貫性の境界である（語の定義は [用語集](../../glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[Tenancy Context の判断](../../contexts/tenancy/decisions.md)）は、この基準を適用した結果である。
 
-1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断はその Context の `decisions.md` または `internals.md` が理由とともに持つ。現在ある類型は 2 つである。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[identity-management/internals.md](contexts/identity-management/internals.md)）。もう 1 つは、アクショントークンの使用済み化と、そのトークンが認可した用途別作用である（[authentication/decisions.md](contexts/authentication/decisions.md)、[identity-management/decisions.md](contexts/identity-management/decisions.md)）。片方だけが残る状態は、同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失うかのどちらかになる。
+1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断はその Context の `decisions.md` または `internals.md` が理由とともに持つ。現在ある類型は 2 つである。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[IdManagement Context の内部設計](../../contexts/identity-management/internals.md)）。もう 1 つは、アクショントークンの使用済み化と、そのトークンが認可した用途別作用である（[Authentication Context の判断](../../contexts/authentication/decisions.md)、[IdManagement Context の判断](../../contexts/identity-management/decisions.md)）。片方だけが残る状態は、同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失うかのどちらかになる。
 
 Repository は Aggregate root 単位に置く。1 つの Repository が複数の root を扱うと、どの操作がどの一貫性の境界に属するかがインターフェースから読めなくなり、呼び出し側は境界を知るために実装を読むことになる。反している状態は現在 1 つある。`backend/sourcing/scim/ports` の `ScimRepository` が `ScimUserRef` と `ScimGroupRef` の 2 つを扱っており、これは取り込み元との対応表という同じ役割の 2 つを 1 つのアダプターで実装したまま、ポートの側も分けなかったものである。
 
 ポート名の `Repository` と `Store` は、扱うものの種類を区別しない。`Store` を名乗るもののうち `SessionStore`、`ApprovalRequestStore`、`RefreshTokenStore`、`KeyStore` が持つのは Aggregate であり、`PARStore`、`DeviceCodeStore`、各 `ReplayStore` が持つのは不透明な鍵で引く短命なプロトコル状態、`ApplicationIconStore` や `TenantBrandingAssetStore` が持つのは Aggregate に属さない資産である。したがって、ある永続化ポートが Aggregate を扱うかどうかを接尾辞から推測してはならない。決めるのはポートが `Save` に受け取る型であり、`Core` に分類した Context ではその型の名前が `glossary.md` に Aggregate root として定義されている。
 
-## Adapters and representations
+## アダプターと表現
 
 アダプターは外部表現とアプリケーション内部の表現を変換し、HTTP、SQL、外部プロトコルの規則をドメインとユースケースへ持ち込まない。入力の構文検査、外部のエラー形式、永続化形式の都合はアダプターが引き受け、ドメインは業務上の意味を検証する。
 
 外部契約とドメインモデルで同じ Go 型を再利用しても、その型が外部契約の正本になるわけではない。再利用によって JSON の形、SQL の NULL、外部プロトコルの省略規則がドメインのインターフェースに現れる場合は、アダプター固有の型を置いて変換する。
 
-反している状態は、外部形式の変更だけでドメイン型や呼び出し側を連鎖的に直す必要が生じる状態である。既存の HTTP アダプターにはドメイン型を応答型のフィールドへ直接使う箇所が残るため、配置だけから変換の分離を仮定できない。
+反している状態は、外部形式の変更だけでドメイン型や呼び出し側を連鎖的に直す必要が生じる状態である。既存の HTTP アダプターにはドメイン型をレスポンス型のフィールドへ直接使う箇所が残るため、配置だけから変換の分離を仮定できない。
 
-## Type ownership and invariants
+## 型の所有と不変条件
 
 TypeSpec は、HTTP を含む外部境界の型、制約、エラー和、認証方式の正本である。Go のドメイン型は、内部の状態と操作の正本であり、TypeSpec から生成せず、アダプターが両者を対応付ける。
 
@@ -64,13 +64,13 @@ TypeSpec は、HTTP を含む外部境界の型、制約、エラー和、認証
 
 反している状態は、同じ条件を TypeSpec、Go、SQL、散文へ重複して書き、変更時にどれが正本か決められない状態である。既存のドメイン構造体には構築後の `Validate` を必要とするものもあるため、「不正な状態を型だけでは構築できない」ことをリポジトリ全体の性質とはしない。
 
-## Effect boundaries
+## 作用の境界
 
 ユースケースは永続化、通知、時刻、乱数、識別子生成、設定などの作用を編成し、決定可能な計算へ値またはポートとして渡す。計算が作用を内部で作らなければ、同じ入力から同じ判断を再現でき、テストはインターフェースを通して振る舞いを検証できる。
 
 反している状態は、ドメインの計算が現在時刻や乱数を内部で取得し、呼び出し側が結果を制御できない状態である。現在はその例外が残るため、`domain/` という配置だけでは作用がないことを保証しない。
 
-## Errors and refusals
+## エラーと拒否
 
 入力から生じうる失敗は値として返し、部分関数とパニックを通常の分岐に使わない。ドメインは業務上成立しない状態、ユースケースは操作の拒否と作用の失敗、アダプターは外部入力の不正と外部向けエラー表現を持つ。
 

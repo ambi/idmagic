@@ -5,7 +5,7 @@
  * wi-382 closed five of these by hand and left the sweep undone; wi-386 found
  * that the disagreement is systemic rather than incidental — 401 was declared on
  * 10 operations and written by the admin guard on 250 of them. The rule the
- * contract now holds to lives in docs/api-rules.md, Declared status codes.
+ * contract now holds to lives in docs/design/application/api-rules.md, Declared status codes.
  *
  * The chain is wi-385's: operationId to route to handler. What is new here is
  * the reading rule, and it is the whole design. Only a holder of the echo
@@ -146,7 +146,7 @@ const FOLLOWED = new Set(['WriteAdminAccessError', 'WriteAccessTokenError', 'Wri
 /**
  * 500 is the shared error handler's answer to an error no handler mapped. It is
  * reachable from every operation and means the same thing on all of them, so
- * docs/api-rules.md keeps it out of the per-operation declaration: it is neither
+ * docs/design/application/api-rules.md keeps it out of the per-operation declaration: it is neither
  * demanded when written nor reported when declared.
  */
 const PIPELINE = new Set([500])

@@ -1,4 +1,4 @@
-# SharedSignals Standards
+# SharedSignals の採用規範
 
 ## Security Event Token (SET)
 

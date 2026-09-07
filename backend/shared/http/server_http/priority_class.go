@@ -110,7 +110,7 @@ var routeClassRules = []routeClassRule{
 	{path: "/api/account/v1/step_up", class: support.ClassInteractiveAuth},
 
 	// --- management (ステージ 4): 既存セッションの認証とトークン処理に不要なもの。
-	// 動的クライアント登録は docs/capacity.md がステージ 4 の例として名指ししている。
+	// 動的クライアント登録は docs/design/performance/capacity.md がステージ 4 の例として名指ししている。
 	{path: "/register", class: support.ClassManagement},
 	{path: "/api/admin/v1", class: support.ClassManagement},
 	{path: "/api/account/v1", class: support.ClassManagement},

@@ -79,8 +79,8 @@ func RenderPriorityClassReference() string {
 	b.WriteString("upward, with 503, `Retry-After`, and a `urn:idmagic:error:service_overloaded`\n")
 	b.WriteString("Problem Details. The refusal happens after routing and before any handler, so a\n")
 	b.WriteString("refused request changes no state. Thresholds, defaults, and the operational\n")
-	b.WriteString("reasoning live in `docs/deployment.md`; the degradation order they implement is\n")
-	b.WriteString("normative in `docs/capacity.md`.\n\n")
+	b.WriteString("reasoning live in `docs/contexts/system/decisions.md`; the degradation order they implement is\n")
+	b.WriteString("normative in `docs/design/performance/capacity.md`.\n\n")
 	b.WriteString("A route reachable both unprefixed and under `/realms/{tenant_id}/…` appears once:\n")
 	b.WriteString("both forms carry the same class.\n\n")
 

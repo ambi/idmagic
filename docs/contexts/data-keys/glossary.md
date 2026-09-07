@@ -1,4 +1,4 @@
-# DataKeys Glossary
+# DataKeys の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

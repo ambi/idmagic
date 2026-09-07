@@ -89,7 +89,7 @@ frontend の確認: `response.status === 400` を見ている分岐は無い。H
   - **Test**: `TestAccountProfilePatchRejectsSchemaViolationAsUnprocessable` (`backend/idmanagement/user/handlers_http/account_handler_test.go`) と `TestDataExportHTTP_ActiveJobCeilingHasItsOwnCode` (`backend/idmanagement/handlers_http/admin_data_export_handler_test.go`)
   - **Requirement**: N/A: どちらも `REQ-` シナリオではなく `docs/api-rules.md` の状態コードの規約と、`wi-382` が書いた TypeSpec の宣言が規範である。
   - **Observed Failure**: 前者が `status=400 body={"type":"urn:idmagic:error:invalid_attribute",...,"status":400}, want 422`。後者が `type="urn:idmagic:error:quota_exceeded", want urn:idmagic:error:active_job_quota_exceeded`。
-  - **Detection Reason**: どちらも HTTP の境界で、状態コードと `type` の両方を見る。属性の側は `type` が変わらず status だけが変わるので、status を主張しなければ何も落ちない。クォータの側は逆に status が変わらず code だけが変わるので、code を主張しなければ落ちない。加えて両方とも拒否の効果を状態から読み戻す —— 属性はプロフィールを読み直して `zone` が保存されていないこと、export は実行可能なジョブが 1 件も残っていないことを確かめる。応答だけを見る主張は、拒否を書いてから操作を続行する実装にも通ってしまう。クォータの側はさらに、応答本文に `urn:idmagic:error:quota_exceeded` が現れないことを主張するので、新しい code を足しつつ古い code も併記するような実装は落ちる。
+  - **Detection Reason**: どちらも HTTP の境界で、状態コードと `type` の両方を見る。属性の側は `type` が変わらず status だけが変わるので、status を主張しなければ何も落ちない。クォータの側は逆に status が変わらず code だけが変わるので、code を主張しなければ落ちない。加えて両方とも拒否の効果を状態から読み戻す —— 属性はプロフィールを読み直して `zone` が保存されていないこと、export は実行可能なジョブが 1 件も残っていないことを確かめる。応答だけを見る主張は、拒否を書いてから操作を続行する実装にも通ってしまう。クォータの側はさらに、レスポンスボディに `urn:idmagic:error:quota_exceeded` が現れないことを主張するので、新しい code を足しつつ古い code も併記するような実装は落ちる。
 - **Unit RED Evidence**:
   - **Test**: `TestAccountProfileHTTPExtra` (`backend/idmanagement/handlers_http/extra_identity_test.go`)
   - **Requirement**: N/A: 上と同じ理由で、対応する `REQ-` シナリオを持たない。

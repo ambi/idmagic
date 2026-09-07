@@ -4,9 +4,9 @@
 
 割り当てとサインインポリシーは、ポータルでの表示とフェデレーションの利用可否をフェイルクローズで制御する。通信時の動作は各プロトコルの Context が担い、Application はプロトコル設定を中身に依存しないキーで参照する。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Application の用語集](glossary.md) | この Context での語義 |
+| [Application の設計判断](decisions.md) | 設計判断 |
+| [Application の内部設計](internals.md) | 機構の説明 |
+| [Application Scenarios](scenarios.feature.md) | 受け入れシナリオ |

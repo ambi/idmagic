@@ -1,4 +1,4 @@
-# SigningKeys Glossary
+# SigningKeys の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

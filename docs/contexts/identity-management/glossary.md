@@ -1,4 +1,4 @@
-# IdManagement Glossary
+# IdManagement の用語集
 
 | Term | Definition | Aliases |
 |---|---|---|

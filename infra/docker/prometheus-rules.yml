@@ -57,7 +57,7 @@ groups:
           / sum by (class) (rate(http_admission_decisions_total[5m]))
 
   # Each alert below names the service level objective whose error budget it
-  # watches. The objectives are defined in docs/capacity.md and evaluated over
+  # watches. The objectives are defined in docs/requirements/quality.md and evaluated over
   # a rolling 30d window; these alerts evaluate a 5m burn-rate window, so the
   # numbers coinciding today is a design choice, not a constraint.
   - name: idmagic-slo-alerts

@@ -1,4 +1,4 @@
-# Tenancy State Transitions
+# Tenancy の状態遷移
 
 ## TenantLifecycle
 
@@ -6,7 +6,7 @@
 
 | State | Kind | Meaning |
 |---|---|---|
-| Active | initial | 通常稼働。全プロトコルルートが応答する |
+| Active | initial | 通常稼働。全プロトコルルートがレスポンスする |
 | Disabled | — | 全プロトコルルートを停止している。`Enable` で復帰できる |
 
 | From | Event | Guard | To | Effects |

@@ -4,11 +4,11 @@
 
 `Sourcing` が外部から取り込むのに対し、この Context は外部へ送り出す。処理の向き、記録の正の所在、語彙が異なるため、`Tenancy`、`Application`、`IdManagement`、`Jobs` の公開インターフェースを除いてコードを共有しない。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [Provisioning の用語集](glossary.md) | この Context での語義 |
+| [Provisioning の採用規範](standards.md) | 準拠する外部規範 |
+| [Provisioning の状態遷移](states.md) | 状態と遷移 |
+| [Provisioning の設計判断](decisions.md) | 設計判断 |
+| [Provisioning の内部設計](internals.md) | 機構の説明 |
+| [Provisioning Scenarios](scenarios.feature.md) | 受け入れシナリオ |

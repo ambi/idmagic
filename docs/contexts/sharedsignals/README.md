@@ -6,11 +6,11 @@ Shared Signals Framework (SSF) と Continuous Access Evaluation Profile (CAEP) �
 
 確定した失効は、SSF ストリームを通じて CAEP イベントとして外部の受信側へ伝える (`EcosystemPropagation`)。伝播はローカル失効の後に行うため、受信側の障害や遅延がローカル失効を妨げることはない。外部の送信側から受け取った検証済みイベントも、同じ失効エポックへ反映する。
 
-| File | Content |
+| 文書 | 内容 |
 |---|---|
-| [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
-| [states.md](states.md) | 状態と遷移 |
-| [decisions.md](decisions.md) | 設計判断 |
-| [internals.md](internals.md) | 機構の説明 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [SharedSignals の用語集](glossary.md) | この Context での語義 |
+| [SharedSignals の採用規範](standards.md) | 準拠する外部規範 |
+| [SharedSignals の状態遷移](states.md) | 状態と遷移 |
+| [SharedSignals の設計判断](decisions.md) | 設計判断 |
+| [SharedSignals の内部設計](internals.md) | 機構の説明 |
+| [SharedSignals Scenarios](scenarios.feature.md) | 受け入れシナリオ |

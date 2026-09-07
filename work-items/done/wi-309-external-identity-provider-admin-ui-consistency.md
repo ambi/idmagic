@@ -91,7 +91,7 @@ lifecycle 設計そのものに実装上の欠陥がある。指摘を1つずつ
      再実行して `{"result":"valid"}` を返すだけ。ネットワーク到達性、OIDC discovery/JWKS 取得、
      `secret_reference` の解決可能性、SAML証明書の実パース、いずれも検証していない。
      構文的に妥当な (しかし実在しない) URL やダミーの client_id を入れても常に成功する。
-   - フロントエンド側も `runIdentityProviderAction` が `Promise<void>` でレスポンス本文を握りつぶし
+   - フロントエンド側も `runIdentityProviderAction` が `Promise<void>` でレスポンスボディを握りつぶし
      (`frontend/src/api/admin.ts:626-635`)、成功時は常に同じ汎用トースト `t.actionCompleted`
      (「操作を完了しました。」) を表示するだけ (`IdentityProvidersTab.tsx:173-196`)。
      バックエンドが仮に意味のある結果文字列を返しても画面には出ない。

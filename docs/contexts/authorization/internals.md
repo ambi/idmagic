@@ -1,4 +1,4 @@
-# Authorization Internals
+# Authorization の内部設計
 
 ## Relation language
 

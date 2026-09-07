@@ -4,7 +4,7 @@
 
 変更のリードタイム、デプロイ頻度、変更失敗率、復旧時間は、現時点では計測値として採用しない。Git と CI の履歴だけでは、本番へ配備した時刻、配備した版、配備に起因する障害、サービスを復旧した時刻を一意に対応付けられず、再現可能な Measurement を作れないためである。
 
-数値を持たない現状は Planning assumption ではない。未実測の数値を構成計画へ使っていないためである。計測基盤を導入した後の実測だけを、[Capacity](../capacity.md#evidence-classes) と同じ Evidence classes に従う Measurement として記録する。
+数値を持たない現状は Planning assumption ではない。未実測の数値を構成計画へ使っていないためである。計測基盤を導入した後の実測だけを、[品質要求](../requirements/quality.md#証拠の区分) と同じ Evidence classes に従う Measurement として記録する。
 
 ## 計測の目的
 

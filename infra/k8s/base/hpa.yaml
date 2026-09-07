@@ -1,4 +1,4 @@
-# API replicas follow docs/capacity.md "Sizing rules": the floor is the
+# API replicas follow docs/design/performance/capacity.md "Sizing rules": the floor is the
 # availability minimum, the ceiling is the reference profile's 30 replicas, and
 # CPU stands in for the sustainable-rate-per-replica the sizing formula wants
 # until a capacity validation measures it.

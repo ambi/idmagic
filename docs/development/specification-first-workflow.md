@@ -1,4 +1,4 @@
-# Specification-first Development Workflow
+# 仕様先行の開発ワークフロー
 
 ## 1. Purpose
 
@@ -6,8 +6,8 @@ This workflow keeps product behavior, current design, implementation, and verifi
 small set of established formats. It favors direct ownership, generated views, and focused checks over
 custom specification languages, exhaustive registries, and separate decision archives.
 
-Three documents carry the formats: this one for the loop, [SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md)
-for specification documents, and [WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) for work items. Read the
+Three documents carry the formats: this one for the loop, [Specification Format](../../SPECIFICATION_FORMAT.md)
+for specification documents, and [Work Item Format](../../WORK_ITEM_FORMAT.md) for work items. Read the
 section you need; none of them is required reading.
 
 ## 2. Sources of truth
@@ -67,7 +67,7 @@ actual consequence, rather than leaving the initial classification in place.
 The risk column reads one axis only: how much damage a wrong change does. It says nothing about whether the
 decision can be taken back, and those two come apart constantly. A work item that declares
 `reversibility: irreversible` — the field and its examples are defined in
-[WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) — records that the decision cannot be withdrawn later, so a
+[Work Item Format](../../WORK_ITEM_FORMAT.md) — records that the decision cannot be withdrawn later, so a
 reader can see which choices are load-bearing. It adds no evidence of its own, and `reversible` never lowers
 what the risk row already asks for.
 

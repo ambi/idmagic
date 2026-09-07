@@ -25,16 +25,27 @@ describe('documentKind', () => {
     expect(documentKind('docs/contexts/demo/scenarios.feature.md')).toBe('scenarios')
     expect(documentKind('docs/contexts/demo/decisions.md')).toBe('prose')
     expect(documentKind('docs/standards.md')).toBe('standards')
-    expect(documentKind('docs/authorization.md')).toBe('prose')
-    expect(documentKind('docs/threat-model.md')).toBe('prose')
-    expect(documentKind('docs/design-rules.md')).toBe('prose')
+    expect(documentKind('docs/design/security/authorization.md')).toBe('prose')
+    expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
+    expect(documentKind('docs/design/application/design-rules.md')).toBe('prose')
+  })
+
+  it('names the grammar of the top-down system document tree', () => {
+    expect(documentKind('docs/requirements/quality.md')).toBe('prose')
+    expect(documentKind('docs/architecture/deployment.md')).toBe('prose')
+    expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
+    expect(documentKind('docs/design/observability/logging.md')).toBe('prose')
+    expect(documentKind('docs/verification/system-acceptance.md')).toBe('prose')
+    expect(documentKind('docs/operations/service-management.md')).toBe('prose')
   })
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
     expect(documentKind('docs/contexts/demo/notes.md')).toBeUndefined()
     expect(documentKind('docs/states.md')).toBeUndefined()
+    expect(documentKind('docs/authorization.md')).toBeUndefined()
     expect(documentKind('docs/contexts/demo/user/scenarios.feature.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
+    expect(documentKind('docs/design/security/network.md')).toBeUndefined()
   })
 
   it('no longer recognizes the single canonical document', () => {

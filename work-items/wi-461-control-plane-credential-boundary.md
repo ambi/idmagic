@@ -26,11 +26,11 @@ affected_spec:
 
 これらは正規のシステム運用者だけが実行できるが、API アクセストークンは漏えいまたは誤った自動化によって、人間が対象テナントと影響を確認しないまま同じ操作を繰り返せる。
 
-現在の `docs/authorization.md` は、既存スコープに対応しない操作と権限昇格を作る操作だけを対話セッション限定の理由として挙げているため、テナント全体の認証可用性または正規ロケーションを変更する操作を分類できない。
+現在の `docs/design/security/authorization.md` は、既存スコープに対応しない操作と権限昇格を作る操作だけを対話セッション限定の理由として挙げているため、テナント全体の認証可用性または正規ロケーションを変更する操作を分類できない。
 
 ## Scope
 
-- `docs/authorization.md` に、テナント全体の認証可用性または正規ロケーションを変更する制御面操作を対話セッション限定とする規則を追加する。
+- `docs/design/security/authorization.md` に、テナント全体の認証可用性または正規ロケーションを変更する制御面操作を対話セッション限定とする規則を追加する。
 - `SetTenantEndpointStyle`、`DisableTenant`、`EnableTenant` の `x-api-token-scopes` を `interactive_session` に変更する。
 - `REQ-TENANCY-011` に正規ロケーション切替の資格情報境界を追加する。
 - テナントの停止と再開について、通常テナントの状態遷移と資格情報境界を表す新しい規範シナリオを追加する。
@@ -98,7 +98,7 @@ affected_spec:
 
 ## Plan
 
-1. `docs/authorization.md` と `docs/contexts/tenancy/decisions.md` に分類規則と対象操作を記述する。
+1. `docs/design/security/authorization.md` と `docs/contexts/tenancy/decisions.md` に分類規則と対象操作を記述する。
 2. `REQ-TENANCY-011` を更新し、停止と再開の新しい規範シナリオを追加する。
 3. API アクセストークンが3操作に到達でき、対話セッションでも成功する現在の挙動を HTTP 境界で観測し、資格情報境界の受け入れ RED を確認する。
 4. 3操作の `x-api-token-scopes` を `interactive_session` に変更し、実行時契約を再生成する。
@@ -108,7 +108,7 @@ affected_spec:
 
 ## Tasks
 
-- [ ] T001 [Spec] 対話セッション限定の分類規則を `docs/authorization.md` と Tenancy の決定へ追加する。
+- [ ] T001 [Spec] 対話セッション限定の分類規則を `docs/design/security/authorization.md` と Tenancy の決定へ追加する。
 - [ ] T002 [Spec] `REQ-TENANCY-011` を更新し、停止と再開の新しい規範シナリオを追加する。
 - [ ] T003 [Acceptance] API アクセストークンと対話セッションの現在の挙動を同じ3操作で観測し、RED を確認する。
 - [ ] T004 [Spec] 3操作の `x-api-token-scopes` を `interactive_session` に変更し、TypeSpec 文書コメントを更新する。

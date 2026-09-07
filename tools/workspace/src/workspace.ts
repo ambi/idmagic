@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DirectoryListing } from '../../check/src/canonical-document-set.ts'
-import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
+import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from '../../check/src/specification-doc.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const TOOLS_DIR = resolve(HERE, '../..')
@@ -79,23 +79,50 @@ async function listFiles(root: string, directory: string): Promise<string[]> {
   return entries.filter((entry) => entry.isFile()).map((entry) => entry.name)
 }
 
+/** `docs/` 以下で名前を自由に決められる段。閉じた集合の検査は届かない。 */
+const FREELY_NAMED_DOCUMENT_DIRECTORIES = new Set([
+  'docs/contexts',
+  'docs/development',
+  'docs/runbooks',
+  'docs/releases',
+])
+
+/** その段の直下にあるディレクトリ名を、並びを決めて返す。 */
+async function listDirectories(root: string, directory: string): Promise<string[]> {
+  let entries: Dirent[]
+  try {
+    entries = await readdir(resolve(root, directory), { withFileTypes: true })
+  } catch {
+    return []
+  }
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b))
+}
+
 /**
- * 分割配置がファイル集合を閉じている 2 つの段、すなわち `docs/` 直下と各
- * `docs/contexts/<context>/` 直下。文書を集める側と、文書でないファイルを拒否する
- * 側が同じ一覧を読む。どの段を閉じた集合とみなすかで両者が食い違うことがない。
+ * 分割配置がファイル集合を閉じている段。`docs/` 以下を、名前を自由に決められる段を
+ * 除いて全部たどる。固定の一覧に無い段もここで挙げるので、`SYSTEM_DOCUMENT_DIRECTORIES`
+ * から段を落としても、そこにある文書が検査から静かに消えることはない。文書を集める側と、
+ * 文書でないファイルを拒否する側が同じ一覧を読むので、両者が食い違うこともない。
  */
 export async function listCanonicalDirectories(root = WORKSPACE_ROOT): Promise<DirectoryListing[]> {
-  const listings: DirectoryListing[] = [{ directory: 'docs', files: await listFiles(root, 'docs') }]
-  let contexts: Dirent[] = []
-  try {
-    contexts = await readdir(resolve(root, 'docs/contexts'), { withFileTypes: true })
-  } catch {
-    contexts = []
-  }
-  for (const entry of contexts.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (!entry.isDirectory()) continue
-    const directory = `docs/contexts/${entry.name}`
+  const listings: DirectoryListing[] = []
+  const pending = ['docs']
+  while (pending.length) {
+    const directory = pending.shift() as string
     listings.push({ directory, files: await listFiles(root, directory) })
+    for (const name of await listDirectories(root, directory)) {
+      const child = `${directory}/${name}`
+      if (!FREELY_NAMED_DOCUMENT_DIRECTORIES.has(child)) pending.push(child)
+    }
+  }
+  for (const name of await listDirectories(root, 'docs/contexts')) {
+    listings.push({
+      directory: `docs/contexts/${name}`,
+      files: await listFiles(root, `docs/contexts/${name}`),
+    })
   }
   return listings
 }
@@ -109,7 +136,7 @@ export async function listCanonicalDirectories(root = WORKSPACE_ROOT): Promise<D
 async function discoverSpecificationDocuments(root: string): Promise<string[]> {
   const documents: string[] = []
   for (const listing of await listCanonicalDirectories(root)) {
-    const names = new Set<string>(listing.directory === 'docs' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS)
+    const names = new Set<string>(canonicalDocumentNames(listing.directory) ?? CONTEXT_DOCUMENTS)
     for (const name of listing.files) {
       if (names.has(name)) documents.push(`${listing.directory}/${name}`)
     }

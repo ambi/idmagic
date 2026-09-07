@@ -1,4 +1,4 @@
-# ClaimMapping Internals
+# ClaimMapping の内部設計
 
 ## The single claim-resolution path
 

@@ -159,7 +159,7 @@ Rule 007、015、018、020、028、038、039 は Rule 自体が拒否の宣言�
 | REQ-OAUTH2-001 | EX-OAUTH2-001-03 | 許可スコープまたは同意に account が無い | 発行されたトークンの `scope` に account スコープが含まれない |
 | REQ-OAUTH2-002 | EX-OAUTH2-002-02 | `account:read` だけの同意 revoke を拒否 | 対象の同意が引き続き `Granted` である |
 | REQ-OAUTH2-002 | EX-OAUTH2-002-03 | トークンの user_id が操作対象と一致しない | 他人の同意が `Granted` のまま変わらない |
-| REQ-OAUTH2-004 | EX-OAUTH2-004-02 | `admin` でも `system_admin` でもない主体のロールポリシー一覧を拒否 | 応答本文にロールポリシーが 1 件も含まれない |
+| REQ-OAUTH2-004 | EX-OAUTH2-004-02 | `admin` でも `system_admin` でもない主体のロールポリシー一覧を拒否 | レスポンスボディにロールポリシーが 1 件も含まれない |
 | REQ-OAUTH2-007 | EX-OAUTH2-007-01 | 誤った `client_secret` を `InvalidClientError` で拒否 | 認可コードが消費されておらず、正しい資格情報での再交換が成功する |
 | REQ-OAUTH2-007 | EX-OAUTH2-007-02 | 未知の `client_id` を `InvalidClientError` で拒否 | 認可コードが消費されておらず、正しいクライアントでの交換が成功する |
 | REQ-OAUTH2-009 | EX-OAUTH2-009-02 | PAR 必須クライアントの直接送信を `InvalidRequestError` で拒否 | 認可コードが発行されておらず、リダイレクトも起きない |
