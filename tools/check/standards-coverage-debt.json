@@ -75,10 +75,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "OIDC-CORE-USERINFO",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-DISCOVERY-CONFIGURATION",
       "reason": "present when the check was introduced"
     },
@@ -104,22 +100,6 @@
     },
     {
       "id": "OIDC-SESSION-MGMT-CHECK-IFRAME",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC6750-AUTHORIZATION-HEADER",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC6750-QUERY-TOKEN",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7009-REVOCATION-ENDPOINT",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7009-UNKNOWN-TOKEN",
       "reason": "present when the check was introduced"
     },
     {
@@ -155,18 +135,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC7662-INACTIVE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7662-INTROSPECT",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7800-CONFIRMATION",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC8176-AMR",
       "reason": "present when the check was introduced"
     },
@@ -184,26 +152,6 @@
     },
     {
       "id": "RFC8693-FGA-ACTOR-AND",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8705-CERT-BOUND",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8705-CLIENT-AUTH",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9449-ATH",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9449-PROOF",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9700-SENDER-CONSTRAINT",
       "reason": "present when the check was introduced"
     },
     {
