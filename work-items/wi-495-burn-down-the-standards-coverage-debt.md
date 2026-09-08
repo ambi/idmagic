@@ -9,6 +9,13 @@ depends_on:
   - wi-505-back-sourcing-standards-rows-with-tests
   - wi-506-back-authorization-standards-rows-with-tests
   - wi-507-back-provisioning-standards-rows-with-tests
+  - wi-516-back-oauth2-authorization-request-standards-rows-with-tests
+  - wi-517-back-oauth2-token-issuance-standards-rows-with-tests
+  - wi-518-back-oauth2-token-presentation-standards-rows-with-tests
+  - wi-519-back-oauth2-logout-standards-rows-with-tests
+  - wi-520-back-oauth2-non-interactive-grant-standards-rows-with-tests
+  - wi-521-back-oauth2-metadata-standards-rows-with-tests
+  - wi-522-back-oauth2-client-profile-standards-rows-with-tests
 status: in_progress
 authors: [tn]
 risk: low
@@ -87,7 +94,7 @@ initial_context:
 
 ## Scope
 
-T003 の判断により、134 件のうち 130 件の消化は所有文書ごとの子 work item が持つ。本項目が直接持つのは、受入集合の導入、`sharedsignals` の 4 件による測定、分割の判断、そして 9 件がすべて完了した後の台帳削除である。以下の各項は、本項目と子 work item の双方に効く規則として残す。
+T003 の判断により、134 件のうち 130 件の消化は所有文書ごとの子 work item が持つ。本項目が直接持つのは、受入集合の導入、`sharedsignals` の 4 件による測定、分割の判断、そして子 work item がすべて完了した後の台帳削除である。以下の各項は、本項目と子 work item の双方に効く規則として残す。
 
 - 標準の台帳にも受入集合の固定を入れ、新規の追記を拒否する。具体例側の `tools/check/example-coverage-debt-baseline.json` と同じ形にする。
 - 134 件を 1 件ずつ確認し、次のいずれかに解決して台帳から外す。
@@ -159,14 +166,20 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 
 `oauth2` の 80 件をここでさらに割らないのは、割る根拠がまだ無いからである。この文書は 33 の標準節にまたがり、節ごとの負債は最大でも 7 件しかないので、節を単位に割ると 33 件の work item になる。機能領域を単位に割る案は、領域の境界を測定ではなく読みで引くことになる。したがって**分割の判断そのものを [[wi-499-back-oauth2-standards-rows-with-tests]] へ渡す**。同項目は最大の節（`OAuth Client ID Metadata Document` の 7 件）を通しで消化してから決める。本項目が `sharedsignals` で採ったのと同じ順序である。
 
-本項目はこれ以降、受入集合の導入（済み）と、9 件がすべて完了した後の台帳削除だけを持つ。`depends_on` がその順序を機械で拘束する。
+### `oauth2` の分割結果（[[wi-499-back-oauth2-standards-rows-with-tests]] が決めた）
+
+同項目は `OAuth Client ID Metadata Document` の 7 件を消化して測り、残る 73 件を**行が共有する製品の入口**を単位に 7 件へ割った。節でも機能領域でもない。測定が示したのは、費用を支配するのが行数ではなく「行が共有する入口にハーネスを 1 つ組むこと」だという点であり、入口はそこで読み取る境界ではなく行の `Statement` が指す経路そのものだからである。7 件の内訳と各件の担当行は同項目の Design にある。
+
+これにより本項目の `depends_on` は 9 件から 16 件になった。
+
+本項目はこれ以降、受入集合の導入（済み）と、16 件がすべて完了した後の台帳削除だけを持つ。`depends_on` がその順序を機械で拘束する。
 
 ## Plan
 
 1. ~~`standards-coverage-debt-baseline.json` を現在の 134 件で作り、`check-specifications.ts` から `debtBaseline` として渡す。受入集合に無い id を足した fixture が、規則を入れる前は通り、入れた後に落ちることを観測する。~~ 完了。観測は Verification の「T001 の観測」節。
 2. ~~`sharedsignals` の 4 件を通しで消化し、注記の型と、1 件あたりの所要を記録する。~~ 完了。記録は Design の「測定の結果」節。
 3. ~~記録をもとに、残る文書を本 work item で続けるか子 work item へ割るかを決め、本節へ書く。~~ 完了。所有文書ごとに 9 件へ割った。
-4. 9 件の子 work item の完了を待つ。`excluded` の行の観測の型は、各子がその文書の 1 件目で決める。文書をまたいで型を先に揃えることはしない。`sharedsignals` に `excluded` の行が無かったので、本項目はその型を決めていない。
+4. 16 件の子 work item の完了を待つ。`excluded` の行の観測の型は、各子がその文書の 1 件目で決める。文書をまたいで型を先に揃えることはしない。`sharedsignals` に `excluded` の行が無かったので、本項目はその型を決めていない。
 5. 134 件が 0 になったら、台帳と受入集合のファイル、および標準側の `debt` 引数を落とす。
 
 ## Tasks
@@ -178,7 +191,7 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 - [x] T003 [Plan] 残る 130 件の進め方（本 work item で続けるか分割するか）を決めて記録する。
   所有文書ごとに 9 件へ割った。判断と根拠は Design の「T003 の判断」節。
 - [ ] T004 [Ledger] 文書ごとに消化し、解決した id を台帳から外す。
-  9 件の子 work item が持つ。本項目は `depends_on` でその完了を待つ。
+  16 件の子 work item が持つ。本項目は `depends_on` でその完了を待つ。
 - [ ] T005 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
   各子 work item が自分の文書について持つ。`sharedsignals` の 4 件では 1 件も見つからなかった。
 - [ ] T006 [Tooling] 台帳が空になったら、台帳、受入集合、標準側の `debt` 引数を落とす。

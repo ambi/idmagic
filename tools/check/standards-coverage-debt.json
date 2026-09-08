@@ -47,34 +47,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "CIMD00-CACHE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIMD00-CLIENT-ID-MATCH",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIMD00-FETCH",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIMD00-PRIVATE-KEY-JWT",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIMD00-REDIRECT-VALIDATE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIMD00-STRUCTURE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIMD00-URL-SHAPE",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "FAPI2-CLIENT-AUTH",
       "reason": "present when the check was introduced"
     },
