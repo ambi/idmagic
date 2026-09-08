@@ -75,10 +75,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "OIDC-CORE-ID-TOKEN",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-CORE-USERINFO",
       "reason": "present when the check was introduced"
     },
@@ -111,14 +107,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC6749-CLIENT-CREDENTIALS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC6749-PASSWORD-GRANT",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC6750-AUTHORIZATION-HEADER",
       "reason": "present when the check was introduced"
     },
@@ -136,18 +124,6 @@
     },
     {
       "id": "RFC7517-JWKS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7518-SIGNATURE-ALGORITHMS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7519-REGISTERED-CLAIMS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7523-CLIENT-ASSERTION",
       "reason": "present when the check was introduced"
     },
     {
@@ -207,23 +183,7 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC8693-DELEGATION-DEFAULT",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8693-DELEGATION-DEPTH",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC8693-FGA-ACTOR-AND",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8693-IMPERSONATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8693-SUBJECT-TOKEN",
       "reason": "present when the check was introduced"
     },
     {
@@ -235,31 +195,11 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC8707-AUDIENCE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8707-MCP-RESOURCE-BINDING",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9068-ASYMMETRIC-SIGNATURE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9068-CLAIMS",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC9449-ATH",
       "reason": "present when the check was introduced"
     },
     {
       "id": "RFC9449-PROOF",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9700-REFRESH-REPLAY",
       "reason": "present when the check was introduced"
     },
     {
