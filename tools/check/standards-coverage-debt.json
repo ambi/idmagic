@@ -75,10 +75,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "OIDC-CORE-HYBRID-IMPLICIT",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-CORE-ID-TOKEN",
       "reason": "present when the check was introduced"
     },
@@ -115,15 +111,7 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC6749-AUTHORIZATION-CODE",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC6749-CLIENT-CREDENTIALS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC6749-IMPLICIT",
       "reason": "present when the check was introduced"
     },
     {
@@ -163,23 +151,7 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC7591-REDIRECT-URI",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC7591-REGISTER",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7636-PLAIN",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7636-S256",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7636-VERIFY",
       "reason": "present when the check was introduced"
     },
     {
@@ -279,43 +251,11 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC9126-PAR",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9126-SINGLE-USE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9207-ISS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9396-MONOTONIC-NARROWING",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9396-REGISTERED-TYPES",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9396-SCOPE-PRECEDENCE",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC9449-ATH",
       "reason": "present when the check was introduced"
     },
     {
       "id": "RFC9449-PROOF",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9700-AUTHORIZATION-CODE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9700-REDIRECT-MATCH",
       "reason": "present when the check was introduced"
     },
     {
