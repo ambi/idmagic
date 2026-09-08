@@ -1,6 +1,6 @@
 # エージェント指示
 
-文章を作成または変更するときは、[日本語文章規則](.claude/rules/japanese-writing.md)を適用する。
+回答と説明は日本語で書く。文章を作成または変更するときは、[日本語文章規則](.claude/rules/japanese-writing.md)を適用する。
 
 機能、振る舞い、設計を変更するときは、[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)に従う。仕様文書の形式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、work item の形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md)、文書体系は [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) が定める。
 
@@ -9,6 +9,8 @@
 `mise.toml` は、ツールの版、環境、リポジトリコマンドを集約する唯一の場所である。検証、ビルド、テスト、静的検査、整形、開発サーバー、デモ、コード生成などの基本操作は、下位のツールを直接呼ばず `mise run <task>` で実行する。
 
 実行前に `mise tasks` で該当タスクを探す。一般的な操作にタスクがなければ `mise.toml` へ追加する。
+
+`go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。`mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` がその用途を持つ。
 
 ## ツール
 
