@@ -53,6 +53,8 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 	return e
 }
 
+// OIDC-LOGOUT-ENDPOINT: Discovery が広告する /end_session で RP の要求を受け付けることを固定する。
+// OIDC-LOGOUT-REDIRECT: 登録済みの完全一致 URI だけへ state を保ったままリダイレクトすることを固定する。
 func TestEndSessionRedirectsToRegisteredURIWithStatePropagation(t *testing.T) {
 	e := newEndSessionServer(t)
 	q := url.Values{
@@ -80,6 +82,7 @@ func TestEndSessionRedirectsToRegisteredURIWithStatePropagation(t *testing.T) {
 
 // EX-OAUTH2-023-02: 未登録の post_logout_redirect_uri は拒否され、
 // その URI へのリダイレクトは発生しない。
+// OIDC-LOGOUT-REDIRECT: 登録されていない URI を応答先として使わないことを固定する。
 //
 // 拒否の本文を書いたうえで Location も付ける実装は、エラー本文だけを読むテストを
 // 通してしまう。ブラウザーが従うのは Location なので、そこまで読み直す。
