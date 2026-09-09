@@ -108,14 +108,13 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 				return &IntrospectionResponse{Active: false}, nil
 			}
 			resp := &IntrospectionResponse{
-				Active:    true,
-				Scope:     strings.Join(rec.Scopes, " "),
-				ClientID:  rec.ClientID,
-				Sub:       rec.UserID,
-				TokenType: "refresh_token",
-				Iat:       rec.IssuedAt.Unix(),
-				Exp:       rec.ExpiresAt.Unix(),
-				JTI:       rec.ID,
+				Active:   true,
+				Scope:    strings.Join(rec.Scopes, " "),
+				ClientID: rec.ClientID,
+				Sub:      rec.UserID,
+				Iat:      rec.IssuedAt.Unix(),
+				Exp:      rec.ExpiresAt.Unix(),
+				JTI:      rec.ID,
 				// リフレッシュトークンは act を持たないので direct か autonomous になる。
 				// 同じ導出関数を通し、トークン種別ごとに規則が分かれないようにする。
 				DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
@@ -152,7 +151,6 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 		ClientID:             r.ClientID,
 		Sub:                  r.Sub,
 		Aud:                  r.Aud,
-		TokenType:            r.TokenType,
 		Exp:                  r.Exp,
 		Iat:                  r.Iat,
 		JTI:                  r.JTI,
@@ -162,6 +160,10 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 	// 立場を語るのは active なトークンだけにする。失効したトークンにモードが付くと、
 	// リソースサーバーが active の確認を飛ばして立場だけを読む余地ができる。
 	if r.Active {
+		// 提示形式は送信者制約から導く。active でないトークンには何も付けない
+		// (RFC 7662 §2.2)。制約なしの提示形式は Bearer なので、無条件に代入すると
+		// 失効したトークンの応答まで値を運んでしまう。
+		resp.TokenType = domain.PresentationTokenType(r.SenderConstraint)
 		resp.DelegationMode = domain.DeriveDelegationMode(domain.DelegationSubject{
 			Sub: r.Sub, ClientID: r.ClientID, PrincipalType: r.PrincipalType, Act: r.Act,
 		})

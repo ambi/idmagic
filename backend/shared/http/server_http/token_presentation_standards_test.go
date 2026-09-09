@@ -645,13 +645,16 @@ func TestIntrospectionAnswersAuthenticatedResourceServers(t *testing.T) {
 	if body["scope"] != claims["scope"] {
 		t.Errorf("scope=%v, want %v", body["scope"], claims["scope"])
 	}
-	// `token_type` は、内省した値がアクセストークンとリフレッシュトークンの
-	// どちらだったかを区別する。この行が要求しているのはメタデータが返ること
-	// なので、ここで読んでいるのは 2 種類が同じ値にならないことである。返る値が
-	// RFC 7662 §2.2 の言う RFC 6749 §5.1 の種別 (`Bearer`) ではないことは
-	// [[wi-523-introspection-token-type-is-not-the-rfc6749-token-type]] が扱う。
-	if body["token_type"] != "access_token" {
-		t.Errorf("token_type=%v, want access_token", body["token_type"])
+	// RFC 7662 §2.2 の `token_type` は「Type of the token as defined in Section 5.1
+	// of OAuth 2.0」であり、RFC 6749 §5.1 が定めるのは提示形式である。だから照合の
+	// 相手はトークンの区分名ではなく、同じ 1 本について `/token` が返した値になる。
+	// 発行時と内省時で違う語彙を使う実装は、この 2 つを突き合わせないと見つからない。
+	if body["token_type"] != "Bearer" {
+		t.Errorf("token_type=%v, want Bearer", body["token_type"])
+	}
+	if body["token_type"] != issued.TokenType {
+		t.Errorf("内省の token_type=%v, /token の token_type=%q と食い違っている",
+			body["token_type"], issued.TokenType)
 	}
 
 	// リフレッシュトークンも同じエンドポイントで内省できる。JWT ではないので、
@@ -660,8 +663,10 @@ func TestIntrospectionAnswersAuthenticatedResourceServers(t *testing.T) {
 	if status != http.StatusOK || body["active"] != true {
 		t.Fatalf("リフレッシュトークンの内省 status=%d body=%v", status, body)
 	}
-	if body["token_type"] != "refresh_token" {
-		t.Errorf("token_type=%v, want refresh_token", body["token_type"])
+	// RFC 6749 §5.1 の種別はアクセストークンの提示形式であり、リフレッシュトークンは
+	// 保護リソースへ提示しない。名乗る種別が無いので、省略された状態が正しい。
+	if v, ok := body["token_type"]; ok {
+		t.Errorf("リフレッシュトークンの内省が token_type=%v を運んでいる", v)
 	}
 	if body["sub"] != claims["sub"] || body["client_id"] != claims["client_id"] {
 		t.Errorf("リフレッシュトークンの主体 sub=%v client_id=%v, want %v / %v",
@@ -936,13 +941,28 @@ func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 	}
 
 	// 内省の応答も同じ確認鍵を運ぶ。リソースサーバーが束縛を読める経路はここしかない。
+	//
+	// 確認鍵と併せて、RFC7662-INTROSPECT の `token_type` も読む。RFC 9449 §5 は DPoP
+	// 束縛トークンの提示形式を `DPoP` と定め、RFC 8705 §3 は証明書束縛トークンを
+	// `Bearer` のままとする。束縛の有無ではなく束縛の種別で分かれるので、DPoP と mTLS
+	// を対にして初めて、束縛があれば一律に `DPoP` と名乗る実装と区別できる。
 	_, introspected := fixture.introspect(t, dpopIssued.AccessToken, "access_token")
 	if cnf, ok := introspected["cnf"].(map[string]any); !ok || cnf["jkt"] != jkt {
 		t.Errorf("内省の cnf=%v, want jkt=%q", introspected["cnf"], jkt)
 	}
+	if introspected["token_type"] != "DPoP" {
+		t.Errorf("DPoP 束縛トークンの内省の token_type=%v, want DPoP", introspected["token_type"])
+	}
+	if introspected["token_type"] != dpopIssued.TokenType {
+		t.Errorf("内省の token_type=%v, /token の token_type=%q と食い違っている",
+			introspected["token_type"], dpopIssued.TokenType)
+	}
 	_, introspected = fixture.introspect(t, mtlsIssued.AccessToken, "access_token")
 	if cnf, ok := introspected["cnf"].(map[string]any); !ok || cnf["x5t#S256"] != thumbprint {
 		t.Errorf("内省の cnf=%v, want x5t#S256=%q", introspected["cnf"], thumbprint)
+	}
+	if introspected["token_type"] != "Bearer" {
+		t.Errorf("mTLS 束縛トークンの内省の token_type=%v, want Bearer", introspected["token_type"])
 	}
 }
 

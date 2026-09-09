@@ -216,10 +216,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 				d.Emit(&domain.ResourceScopedTokenIssued{At: now, TenantID: support.RequestTenantID(c), ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
 			}
 		}
-		tokenType := "Bearer"
-		if sc != nil && sc.Type == spec.SenderConstraintDPoP {
-			tokenType = "DPoP"
-		}
+		tokenType := domain.PresentationTokenType(sc)
 		return c.JSON(http.StatusOK, map[string]any{
 			"access_token": token, "token_type": tokenType,
 			"expires_in": d.TokenIssuer.AccessTokenTTLSeconds(), "scope": strings.Join(scopes, " "),

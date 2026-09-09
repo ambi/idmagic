@@ -103,4 +103,5 @@ var (
 	RotateRefreshToken            = tokendomain.RotateRefreshToken
 	IsRefreshTokenReplay          = tokendomain.IsRefreshTokenReplay
 	IsRefreshTokenAbsoluteExpired = tokendomain.IsRefreshTokenAbsoluteExpired
+	PresentationTokenType         = tokendomain.PresentationTokenType
 )

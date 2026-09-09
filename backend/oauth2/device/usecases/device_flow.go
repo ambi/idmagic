@@ -350,10 +350,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	rec.IssuedFamilyID = &fam
 	_ = deps.DeviceCodeStore.Update(ctx, rec)
 
-	tokenType := "Bearer"
-	if sc != nil && sc.Type == spec.SenderConstraintDPoP {
-		tokenType = "DPoP"
-	}
+	tokenType := domain.PresentationTokenType(sc)
 	return &ExchangeDeviceCodeResult{
 		AccessToken:  access,
 		RefreshToken: refresh.Token,

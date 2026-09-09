@@ -339,10 +339,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		return nil, err
 	}
 	emit(deps.Emit, &oauthdomain.AccessTokenIssued{At: now, TenantID: consumed.TenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: slices.Clone(consumed.Scopes), SenderConstraint: senderConstraintTag(constraint)})
-	tokenType := "Bearer"
-	if constraint != nil && constraint.Type == spec.SenderConstraintDPoP {
-		tokenType = "DPoP"
-	}
+	tokenType := oauthdomain.PresentationTokenType(constraint)
 	return &ExchangeApprovalResult{AccessToken: access, IDToken: idToken, TokenType: tokenType, ExpiresIn: deps.TokenIssuer.AccessTokenTTLSeconds(), Scope: strings.Join(consumed.Scopes, " ")}, nil
 }
 

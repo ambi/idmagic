@@ -75,8 +75,8 @@ func postIntrospect(t *testing.T, e *echo.Echo, token string) (int, map[string]a
 func TestIntrospectReturnsActiveTrueWithClaims(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, JTI: "jti-active", ClientID: "demo-client", Sub: "user_alice",
-		Scope: "openid profile", TokenType: "access_token",
-		Exp: time.Now().Add(time.Hour).Unix(), Iat: time.Now().Unix(),
+		Scope: "openid profile",
+		Exp:   time.Now().Add(time.Hour).Unix(), Iat: time.Now().Unix(),
 	}}
 	e := newIntrospectServer(intro, nil)
 	status, body := postIntrospect(t, e, "atoken")

@@ -18,6 +18,19 @@ const (
 	SenderConstraintMTLS = spec.SenderConstraintMTLS
 )
 
+// PresentationTokenType は access token の提示形式 (RFC 6749 §5.1 の種別) を送信者制約
+// から導く。DPoP 束縛は RFC 9449 §5 の `DPoP`、証明書束縛は RFC 8705 §3 のとおり
+// `Bearer` のままである。
+//
+// 発行 (`/token`) と内省 (`/introspect`) は同じ 1 本のトークンについて同じ語彙で
+// 答えなければならない。規則をここに 1 つだけ置き、両方がこれを通る。
+func PresentationTokenType(sc *SenderConstraint) string {
+	if sc != nil && sc.Type == SenderConstraintDPoP {
+		return "DPoP"
+	}
+	return "Bearer"
+}
+
 // RefreshTokenRecord は refresh token rotation の永続化レコードを表す。
 type RefreshTokenRecord struct {
 	ID                string            `json:"id"`

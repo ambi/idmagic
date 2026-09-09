@@ -16,7 +16,6 @@ type IntrospectionResult struct {
 	Scope            string
 	Exp              int64
 	Iat              int64
-	TokenType        string
 	Managed          bool
 	SenderConstraint *domain.SenderConstraint
 	// Aud / Act / MayAct は RFC 8693 トークン交換のために検証済みペイロードから抽出する。

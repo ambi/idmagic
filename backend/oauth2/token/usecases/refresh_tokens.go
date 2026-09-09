@@ -134,10 +134,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *newTok.Record.Resource, Scopes: record.Scopes})
 	}
 
-	tokenType := "Bearer"
-	if record.SenderConstraint != nil && record.SenderConstraint.Type == spec.SenderConstraintDPoP {
-		tokenType = "DPoP"
-	}
+	tokenType := domain.PresentationTokenType(record.SenderConstraint)
 	return &RefreshResult{
 		AccessToken:  access,
 		RefreshToken: newTok.Token,

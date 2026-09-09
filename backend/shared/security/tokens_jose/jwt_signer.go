@@ -271,7 +271,7 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 	if expF, _ := payload["exp"].(float64); int64(expF) < nowUnix() {
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
-	res := &oauthports.IntrospectionResult{Active: true, TokenType: "access_token"}
+	res := &oauthports.IntrospectionResult{Active: true}
 	if v, ok := payload["token_use"].(string); ok && v == "managed_api_token" {
 		res.Managed = true
 	}

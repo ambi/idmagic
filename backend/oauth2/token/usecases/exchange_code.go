@@ -213,10 +213,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		}
 	}
 
-	tokenType := "Bearer"
-	if sc != nil && sc.Type == spec.SenderConstraintDPoP {
-		tokenType = "DPoP"
-	}
+	tokenType := domain.PresentationTokenType(sc)
 	return &ExchangeCodeOutput{
 		AccessToken:  access,
 		IDToken:      idToken,

@@ -1032,7 +1032,8 @@ model IntrospectionResponse {
   aud?: Audience;
   exp?: int64;
   iat?: int64;
-  token_type?: string;
+  @doc("How the introspected access token is presented, as RFC 7662 section 2.2 requires (the type of RFC 6749 section 5.1). `DPoP` is the sender-constrained presentation of RFC 9449 section 5; a certificate-bound token stays `Bearer` per RFC 8705 section 3. It is absent for an inactive token and for a refresh token, which has no presentation type of its own. This vocabulary is distinct from `TokenType`, which names which token a request is talking about.")
+  token_type?: "Bearer" | "DPoP";
   jti?: string;
   cnf?: SenderConstraintCnf;
   @doc("The `act` claim of RFC 8693 section 4.1. For a delegated token it returns the current actor and the actor chain.")

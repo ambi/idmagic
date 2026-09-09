@@ -325,10 +325,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		})
 	}
 
-	tokenType := "Bearer"
-	if sc != nil && sc.Type == spec.SenderConstraintDPoP {
-		tokenType = "DPoP"
-	}
+	tokenType := domain.PresentationTokenType(sc)
 	return &ExchangeTokenResult{
 		AccessToken:          access,
 		IssuedTokenType:      tokenTypeAccessTokenURN,
