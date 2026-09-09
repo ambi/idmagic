@@ -7,17 +7,25 @@ description: "Implement a chosen work item end to end: specification first, sepa
 
 1. Begin from a working tree carrying no other work item's changes; one record is one commit, and a tree
    holding two records cannot be split into two without reading the diff back. Then run
-   `mise run brief -- <work-item>` and read what it names: the work item, its direct normative-scenario and
-   standard references, its TypeSpec symbols, the canonical documents those references resolve to, and the
-   smallest code and test slice involved. Read nothing else until something you have read sends you there.
-2. Change the specification first with `spec-change`, and pass `mise run check-spec`.
+   `mise run brief -- <work-item>` and make a **readiness pass** before editing frontmatter. Read what the brief
+   names: the work item, its direct normative-scenario and standard references, its TypeSpec symbols, the
+   canonical documents those references resolve to, and the smallest code and test slice involved. For a
+   standards-coverage item, resolve every scoped standard id to its declaration, debt entry, named tests,
+   smallest production entry point, and any active work item that owns missing behavior. If completion needs
+   out-of-scope implementation, record the prerequisite or defect and stop before broad checks or implementation.
+   Read nothing else until something you have read sends you there.
+2. When the work changes a specification, change it first with `spec-change` and pass `mise run check-spec`.
+   When `spec_impact: none` is still correct after the readiness pass, do not invent a specification edit or run
+   specification-only baseline gates; use the first check that can actually go RED for the work.
 3. Resolve every open question that would change product behavior, the public contract, the selected design
    boundary, or the task breakdown. Move genuinely deferred choices to Out of Scope.
-4. Rewrite `initial_context` to what you actually read — the brief's draft is a starting point, not the
-   answer, and `stop_before_reading` is always yours to decide — set `evidence_policy: risk-based-v3`, and
-   apply the risk contract in `docs/development/specification-first-workflow.md`. For an applicable feature,
-   bugfix, or standards change, name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models;
-   otherwise name the intended Acceptance RED and Unit RED checks before you start.
+4. Rewrite `initial_context` to the smallest slice actually read during readiness — the brief's draft is a
+   starting point, not the answer, and `stop_before_reading` is always yours to decide. It is an audit trail,
+   not a reason to read more: leave a category empty instead of opening files only to populate it. Set
+   `evidence_policy: risk-based-v3`, and apply the risk contract in
+   `docs/development/specification-first-workflow.md`. For an applicable feature, bugfix, or standards change,
+   name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models; otherwise name the
+   intended Acceptance RED and Unit RED checks before you start.
 5. Set the status to `in_progress` and pass `mise run check-work-items` and `mise run check-ids`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
@@ -33,13 +41,16 @@ description: "Implement a chosen work item end to end: specification first, sepa
    beside the examples and give it an oracle stronger than "does not panic"; see Properties and fuzzing in
    `docs/development/specification-first-workflow.md`.
 8. When bounded contexts, structure, technology, runtime composition, or core design rules change, use
-   `update-design`. Run the narrowest test recipe after each behavior and update its task as it completes.
-   Write that recipe into the task itself — `mise run test-go-package -- <package>`,
-   `mise run test-ui-unit-file -- <file>`, `mise run test-go-changed` — so that deciding what to re-run is
-   done once when the task is written rather than again on every red-green turn.
+   `update-design`. Keep the feedback loop tight: use `mise run test-go-test -- <package> <test>` or
+   `mise run test-ui-unit-file -- <file>` for each RED, GREEN, and fault injection; run the containing package
+   once after a coherent behavior is GREEN; use `mise run test-go-changed` after the change crosses package
+   boundaries. Defer lint and aggregate gates to final verification unless the work changes those gates.
+   Write the selected recipes into the task so the choice is made once rather than on every red-green turn.
 9. Collect the risk-selected change-resistance evidence.
-10. Pass `mise run verify`, and `mise run test-ui-e2e` as well when the change can reach the browser: the
-    standard suite no longer starts the stack, so a browser regression is otherwise left to CI. Complete
+10. After every scoped behavior and its evidence can be completed, pass `mise run verify` once, and
+    `mise run test-ui-e2e` as well when the change can reach the browser: the standard suite no longer starts
+    the stack, so a browser regression is otherwise left to CI. Do not run an aggregate gate merely as a
+    status check while a prerequisite still prevents completion. Complete
     every evidence field required by `WORK_ITEM_FORMAT.md`, reading the completion summary out of
     `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items` and `mise run check-ids`, and move the file to `work-items/done/`.
@@ -47,3 +58,7 @@ description: "Implement a chosen work item end to end: specification first, sepa
     description written back out of the diff. Do not push until explicitly told to.
 
 State the Out of Scope items and anything left undone in the final report.
+
+When the user asks for timing analysis, measure decision intervals separately from command `real` time, and
+record cold versus cached runs, environmental retries, and approval waits separately; otherwise the numbers
+cannot distinguish workflow cost from tool or sandbox cost.
