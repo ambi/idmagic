@@ -65,16 +65,20 @@ func CreateAdminOAuth2Client(
 }
 
 type UpdateAdminOAuth2ClientInput struct {
-	ActorUserID     string
-	ClientID        string
-	ClientName      *string
-	RedirectURIs    *[]string
-	GrantTypes      *[]spec.GrantType
-	ResponseTypes   *[]spec.ResponseType
-	Scope           *string
-	RequirePAR      *bool
-	DpopBoundTokens *bool
-	Now             time.Time
+	ActorUserID                       string
+	ClientID                          string
+	ClientName                        *string
+	RedirectURIs                      *[]string
+	GrantTypes                        *[]spec.GrantType
+	ResponseTypes                     *[]spec.ResponseType
+	Scope                             *string
+	RequirePAR                        *bool
+	DpopBoundTokens                   *bool
+	BackChannelLogoutURI              *string
+	BackChannelLogoutSessionRequired  *bool
+	FrontChannelLogoutURI             *string
+	FrontChannelLogoutSessionRequired *bool
+	Now                               time.Time
 }
 
 func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in UpdateAdminOAuth2ClientInput) (*domain.OAuth2Client, error) {
@@ -115,6 +119,22 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 	if in.DpopBoundTokens != nil && client.DpopBoundAccessTokens != *in.DpopBoundTokens {
 		updated.DpopBoundAccessTokens = *in.DpopBoundTokens
 		changed = append(changed, "dpop_bound_access_tokens")
+	}
+	if in.BackChannelLogoutURI != nil && !adminEqualOptionalString(client.BackChannelLogoutURI, in.BackChannelLogoutURI) {
+		updated.BackChannelLogoutURI = in.BackChannelLogoutURI
+		changed = append(changed, "backchannel_logout_uri")
+	}
+	if in.BackChannelLogoutSessionRequired != nil && client.BackChannelLogoutSessionRequired != *in.BackChannelLogoutSessionRequired {
+		updated.BackChannelLogoutSessionRequired = *in.BackChannelLogoutSessionRequired
+		changed = append(changed, "backchannel_logout_session_required")
+	}
+	if in.FrontChannelLogoutURI != nil && !adminEqualOptionalString(client.FrontChannelLogoutURI, in.FrontChannelLogoutURI) {
+		updated.FrontChannelLogoutURI = in.FrontChannelLogoutURI
+		changed = append(changed, "frontchannel_logout_uri")
+	}
+	if in.FrontChannelLogoutSessionRequired != nil && client.FrontChannelLogoutSessionRequired != *in.FrontChannelLogoutSessionRequired {
+		updated.FrontChannelLogoutSessionRequired = *in.FrontChannelLogoutSessionRequired
+		changed = append(changed, "frontchannel_logout_session_required")
 	}
 	if len(changed) == 0 {
 		return &updated, nil

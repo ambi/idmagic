@@ -6,6 +6,7 @@ package domain
 // shared に残置し、本パッケージからは spec 経由で参照する (wi-173 Plan 参照)。
 
 import (
+	"net/url"
 	"slices"
 	"time"
 
@@ -64,6 +65,10 @@ type OAuth2Client struct {
 	RequirePushedAuthorizationRequests bool                             `json:"require_pushed_authorization_requests"`
 	DpopBoundAccessTokens              bool                             `json:"dpop_bound_access_tokens"`
 	FapiProfile                        FapiProfile                      `json:"fapi_profile"`
+	BackChannelLogoutURI               *string                          `json:"backchannel_logout_uri,omitempty"`
+	BackChannelLogoutSessionRequired   bool                             `json:"backchannel_logout_session_required"`
+	FrontChannelLogoutURI              *string                          `json:"frontchannel_logout_uri,omitempty"`
+	FrontChannelLogoutSessionRequired  bool                             `json:"frontchannel_logout_session_required"`
 	// FirstParty は IdP 自身が所有する信頼済みクライアント (管理コンソール /
 	// アカウントポータル) を表す。resource owner が IdP 利用者自身であるため、
 	// authorization_code フローで consent 画面をスキップする。
@@ -75,6 +80,11 @@ type OAuth2Client struct {
 	// nil means no override: only the existing scope-gated standard claims
 	// (ClaimsForScopes) are issued.
 	ClaimPolicy *claimdomain.ClaimMappingPolicy `json:"claim_policy,omitempty"`
+}
+
+func ValidateLogoutURI(raw string) bool {
+	parsed, err := url.Parse(raw)
+	return err == nil && parsed.Scheme == "https" && parsed.Host != "" && parsed.User == nil && parsed.Fragment == ""
 }
 
 var oauth2ClientSchema = z.Struct(z.Shape{
@@ -92,6 +102,12 @@ var oauth2ClientSchema = z.Struct(z.Shape{
 	"RedirectURIs": z.Slice(
 		z.String().URL(),
 	),
+	"BackChannelLogoutURI": z.Ptr(z.String().URL().TestFunc(func(value *string, _ z.Ctx) bool {
+		return ValidateLogoutURI(*value)
+	}, z.Message("backchannel_logout_uri must be https and must not contain userinfo or fragment"))),
+	"FrontChannelLogoutURI": z.Ptr(z.String().URL().TestFunc(func(value *string, _ z.Ctx) bool {
+		return ValidateLogoutURI(*value)
+	}, z.Message("frontchannel_logout_uri must be https and must not contain userinfo or fragment"))),
 	"GrantTypes": z.Slice(
 		z.StringLike[spec.GrantType]().TestFunc(
 			func(value *spec.GrantType, _ z.Ctx) bool { return value.Valid() },

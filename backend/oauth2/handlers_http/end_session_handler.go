@@ -1,12 +1,23 @@
 package handlers_http
 
 import (
+	"bytes"
+	"context"
+	"html/template"
 	"net/http"
 	"net/url"
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
+	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/logging"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -39,46 +50,116 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 
-	d.endLocalSession(c, target.Sid)
-
-	if target.Client == nil {
-		return c.Redirect(http.StatusSeeOther, "/status?state=signed-out")
+	redirectURI, redirectStatus, err := endSessionRedirect(c, target)
+	if err != nil {
+		return err
 	}
-	// Redirect only to a URI from the client's registered allowlist (resolved by
-	// ResolveEndSession). Selecting the stored value avoids open-redirect via
-	// user input.
+	settled := d.endLocalSession(c, target.Sid, target.Subject)
+	targets := d.propagateLogout(c, settled)
+	if len(targets) > 0 {
+		return renderFrontChannelLogout(c, targets, redirectURI)
+	}
+	return c.Redirect(redirectStatus, redirectURI)
+}
+
+type settledLogout struct {
+	sid, subject string
+	settled      bool
+}
+
+func (d Deps) endLocalSession(c *echo.Context, sid, subject string) settledLogout {
+	ctx := c.Request().Context()
+	now := time.Now().UTC()
+	if d.SessionManager == nil {
+		return settledLogout{}
+	}
+	if sid == "" {
+		sid = d.SessionManager.SessionIDFromCookie(c.Request().Header.Get("Cookie"))
+	}
+	if sid != "" {
+		session, err := d.SessionManager.Store.Find(ctx, sid)
+		if err != nil || session == nil {
+			d.clearSessionCookie(c)
+			return settledLogout{sid: sid}
+		}
+		if subject == "" {
+			subject = session.UserID
+		}
+		if err := authusecases.EndSession(ctx, authusecases.SessionDeps{
+			Store: d.SessionManager.Store, Emit: d.Emit, QuotaRepo: d.SessionManager.QuotaRepo,
+		}, sid, now); err != nil {
+			d.clearSessionCookie(c)
+			return settledLogout{sid: sid, subject: subject}
+		}
+		if d.RefreshStore != nil {
+			if err := tokenusecases.RevokeTokensBySid(ctx, tokenusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, now); err != nil {
+				d.clearSessionCookie(c)
+				return settledLogout{sid: sid, subject: subject}
+			}
+		}
+		d.clearSessionCookie(c)
+		return settledLogout{sid: sid, subject: subject, settled: true}
+	}
+	d.clearSessionCookie(c)
+	return settledLogout{}
+}
+
+func (d Deps) propagateLogout(c *echo.Context, logout settledLogout) []logoutdomain.FrontChannelLogoutTarget {
+	if !logout.settled || d.ClientSessionStore == nil {
+		return nil
+	}
+	ctx := c.Request().Context()
+	issuer := support.RequestIssuer(c, d.Issuer)
+	now := time.Now().UTC()
+	if d.LogoutNotificationStore != nil && d.JobRepo != nil {
+		_, err := logoutusecases.StartBackChannelLogout(ctx, logoutusecases.StartBackChannelLogoutDeps{
+			ClientSessions: d.ClientSessionStore, Clients: d.ClientRepo, Notifications: d.LogoutNotificationStore, NewID: spec.NewUUIDv4,
+			Enqueue: func(ctx context.Context, input jobsports.EnqueueInput, now time.Time) (*jobsdomain.Job, error) {
+				return jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: d.JobRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, input, now)
+			},
+		}, logout.sid, logout.subject, issuer, now)
+		if err != nil {
+			logging.Error(ctx, "oauth2: back-channel logout enqueue failed", "error", err, "sid", logout.sid)
+		}
+	}
+	targets, err := logoutusecases.FrontChannelLogoutTargets(ctx, logoutusecases.FrontChannelLogoutDeps{ClientSessions: d.ClientSessionStore, Clients: d.ClientRepo}, logout.sid, issuer)
+	if err != nil {
+		logging.Error(ctx, "oauth2: front-channel logout target resolution failed", "error", err, "sid", logout.sid)
+		return nil
+	}
+	return targets
+}
+
+func endSessionRedirect(c *echo.Context, target *tokenusecases.EndSessionTarget) (string, int, error) {
+	if target.Client == nil {
+		return "/status?state=signed-out", http.StatusSeeOther, nil
+	}
 	u, err := url.Parse(target.RedirectURI)
 	if err != nil {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "invalid post_logout_redirect_uri"))
+		return "", 0, writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "invalid post_logout_redirect_uri"))
 	}
 	query := u.Query()
 	if state := c.QueryParam("state"); state != "" {
 		query.Set("state", state)
 	}
 	u.RawQuery = query.Encode()
-	return c.Redirect(http.StatusFound, u.String())
+	return u.String(), http.StatusFound, nil
 }
 
-// endLocalSession は id_token_hint (優先) または browser cookie から解決した sid を
-// もとに、LoginSession と同じ sid を共有する RefreshTokenRecord を失効させる。
-// RP への通知 (front/back-channel logout) は T006 のスコープであり、
-// ここではローカル revoke のみを行う。
-func (d Deps) endLocalSession(c *echo.Context, sid string) {
-	ctx := c.Request().Context()
-	now := time.Now().UTC()
-	if d.SessionManager == nil {
-		return
+var frontChannelLogoutTemplate = template.Must(template.New("front-channel-logout").Parse(`<!doctype html>
+<html><head><meta charset="utf-8"><title>Signing out</title></head>
+<body>
+{{range .Targets}}<iframe title="Sign out {{.ClientID}}" src="{{.IframeURI}}" hidden></iframe>{{end}}
+<script>setTimeout(function(){window.location.replace({{.RedirectURI}})},500)</script>
+</body></html>`))
+
+func renderFrontChannelLogout(c *echo.Context, targets []logoutdomain.FrontChannelLogoutTarget, redirectURI string) error {
+	var body bytes.Buffer
+	if err := frontChannelLogoutTemplate.Execute(&body, struct {
+		Targets     []logoutdomain.FrontChannelLogoutTarget
+		RedirectURI string
+	}{Targets: targets, RedirectURI: redirectURI}); err != nil {
+		return err
 	}
-	if sid == "" {
-		sid = d.SessionManager.SessionIDFromCookie(c.Request().Header.Get("Cookie"))
-	}
-	if sid != "" {
-		_ = authusecases.EndSession(ctx, authusecases.SessionDeps{
-			Store: d.SessionManager.Store, Emit: d.Emit, QuotaRepo: d.SessionManager.QuotaRepo,
-		}, sid, now)
-		if d.RefreshStore != nil {
-			_ = tokenusecases.RevokeTokensBySid(ctx, tokenusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, now)
-		}
-	}
-	d.clearSessionCookie(c)
+	return c.HTML(http.StatusOK, body.String())
 }

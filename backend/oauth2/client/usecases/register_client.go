@@ -20,19 +20,23 @@ import (
 )
 
 type RegisterClientInput struct {
-	ClientName              string
-	ClientType              spec.ClientType
-	RedirectURIs            []string
-	GrantTypes              []spec.GrantType
-	ResponseTypes           []spec.ResponseType
-	TokenEndpointAuthMethod domain.TokenEndpointAuthMethod
-	Scope                   string
-	JWKS                    map[string]any
-	JwksURI                 *string
-	TlsClientAuthSubjectDN  *string
-	RequirePAR              bool
-	DpopBoundAccessTokens   bool
-	FapiProfile             domain.FapiProfile
+	ClientName                        string
+	ClientType                        spec.ClientType
+	RedirectURIs                      []string
+	GrantTypes                        []spec.GrantType
+	ResponseTypes                     []spec.ResponseType
+	TokenEndpointAuthMethod           domain.TokenEndpointAuthMethod
+	Scope                             string
+	JWKS                              map[string]any
+	JwksURI                           *string
+	TlsClientAuthSubjectDN            *string
+	RequirePAR                        bool
+	DpopBoundAccessTokens             bool
+	FapiProfile                       domain.FapiProfile
+	BackChannelLogoutURI              *string
+	BackChannelLogoutSessionRequired  bool
+	FrontChannelLogoutURI             *string
+	FrontChannelLogoutSessionRequired bool
 }
 
 type RegisterClientResult struct {
@@ -144,6 +148,10 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		RequirePushedAuthorizationRequests: in.RequirePAR,
 		DpopBoundAccessTokens:              in.DpopBoundAccessTokens,
 		FapiProfile:                        fapiProfile,
+		BackChannelLogoutURI:               in.BackChannelLogoutURI,
+		BackChannelLogoutSessionRequired:   in.BackChannelLogoutSessionRequired,
+		FrontChannelLogoutURI:              in.FrontChannelLogoutURI,
+		FrontChannelLogoutSessionRequired:  in.FrontChannelLogoutSessionRequired,
 		CreatedAt:                          now,
 		UpdatedAt:                          now,
 	}

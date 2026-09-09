@@ -159,6 +159,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD00-URL-SHAPE、CIMD00-FETCH | `covered` |
 | THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: 入場制御、design/reliability/availability.md: 縮退 | `covered` |
 | THREAT-052 | Tampering | 署名アルゴリズムの取り違えを突いて署名検証を回避する | OAuth2, SigningKeys | RFC7518-SIGNATURE-ALGORITHMS、RFC9068-ASYMMETRIC-SIGNATURE | `covered` |
+| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/contexts/oauth2/internals.md: OIDC session binding and logout propagation、REQ-OAUTH2-025 | `covered` |
 | THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
 | THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | contexts/saml/internals.md | `covered` |
 

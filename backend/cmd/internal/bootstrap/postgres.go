@@ -43,6 +43,7 @@ import (
 	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
 	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
+	logoutpostgres "github.com/ambi/idmagic/backend/oauth2/logout/db_postgres"
 	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/token/db_postgres"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/db_postgres"
@@ -211,6 +212,8 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			ApprovalRequestStore:       &oauth2postgres.ApprovalRequestStore{Pool: resilientDB},
 			DpopReplayStore:            &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "dpop"},
 			ClientAssertionReplayStore: &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "client_assertion"},
+			ClientSessionStore:         &logoutpostgres.ClientSessionStore{Pool: resilientDB},
+			LogoutNotificationStore:    &logoutpostgres.NotificationStore{Pool: resilientDB},
 			AccessTokenDenylist:        &oauth2postgres.AccessTokenDenylist{Pool: resilientDB},
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},

@@ -745,6 +745,10 @@ model ClientRegistrationRequest {
   fapi_profile?: FapiProfile;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
+  backchannel_logout_uri?: url;
+  backchannel_logout_session_required?: boolean;
+  frontchannel_logout_uri?: url;
+  frontchannel_logout_session_required?: boolean;
 }
 
 
@@ -827,6 +831,10 @@ model AdminOAuth2ClientCreateRequest {
   fapi_profile?: FapiProfile;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
+  backchannel_logout_uri?: url;
+  backchannel_logout_session_required?: boolean;
+  frontchannel_logout_uri?: url;
+  frontchannel_logout_session_required?: boolean;
 }
 
 
@@ -840,6 +848,10 @@ model AdminOAuth2ClientUpdateRequest {
   scope?: string;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
+  backchannel_logout_uri?: url;
+  backchannel_logout_session_required?: boolean;
+  frontchannel_logout_uri?: url;
+  frontchannel_logout_session_required?: boolean;
 }
 
 
@@ -861,6 +873,10 @@ model AdminOAuth2ClientResponse {
   require_pushed_authorization_requests: boolean;
   dpop_bound_access_tokens: boolean;
   fapi_profile: FapiProfile;
+  backchannel_logout_uri?: url;
+  backchannel_logout_session_required: boolean;
+  frontchannel_logout_uri?: url;
+  frontchannel_logout_session_required: boolean;
   created_at: utcDateTime;
 }
 
@@ -1863,6 +1879,10 @@ model ClientRegistrationResponse {
   jwks_uri?: url;
   @doc("Echoed back only for `tls_client_auth` (RFC 8705 section 2.1).")
   tls_client_auth_subject_dn?: string;
+  backchannel_logout_uri?: url;
+  backchannel_logout_session_required: boolean;
+  frontchannel_logout_uri?: url;
+  frontchannel_logout_session_required: boolean;
 }
 
 

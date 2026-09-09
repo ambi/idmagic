@@ -19,7 +19,9 @@ import (
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
+	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -56,6 +58,9 @@ type Deps struct {
 	CodeStore                  oauthports.AuthorizationCodeStore
 	JWKResolver                *tokens_jose.JWKResolver
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
+	ClientSessionStore         logoutports.ClientSessionStore
+	LogoutNotificationStore    logoutports.LogoutNotificationStore
+	JobRepo                    jobsports.JobRepository
 	DeviceCodeStore            oauthports.DeviceCodeStore
 	ApprovalRequestStore       oauthports.ApprovalRequestStore
 	Notifier                   notificationports.Notifier

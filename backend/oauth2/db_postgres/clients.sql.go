@@ -31,6 +31,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  backchannel_logout_uri, backchannel_logout_session_required, frontchannel_logout_uri, frontchannel_logout_session_required,
   created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1 AND client_id = $2
@@ -64,6 +65,10 @@ func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (*
 		&i.RequirePushedAuthorizationRequests,
 		&i.DpopBoundAccessTokens,
 		&i.FapiProfile,
+		&i.BackchannelLogoutUri,
+		&i.BackchannelLogoutSessionRequired,
+		&i.FrontchannelLogoutUri,
+		&i.FrontchannelLogoutSessionRequired,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FirstParty,
@@ -137,6 +142,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  backchannel_logout_uri, backchannel_logout_session_required, frontchannel_logout_uri, frontchannel_logout_session_required,
   created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1
@@ -172,6 +178,10 @@ func (q *Queries) ListClientsByTenant(ctx context.Context, tenantID string) ([]*
 			&i.RequirePushedAuthorizationRequests,
 			&i.DpopBoundAccessTokens,
 			&i.FapiProfile,
+			&i.BackchannelLogoutUri,
+			&i.BackchannelLogoutSessionRequired,
+			&i.FrontchannelLogoutUri,
+			&i.FrontchannelLogoutSessionRequired,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.FirstParty,
@@ -192,6 +202,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  backchannel_logout_uri, backchannel_logout_session_required, frontchannel_logout_uri, frontchannel_logout_session_required,
   created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1
@@ -236,6 +247,10 @@ func (q *Queries) ListClientsByTenantPage(ctx context.Context, arg ListClientsBy
 			&i.RequirePushedAuthorizationRequests,
 			&i.DpopBoundAccessTokens,
 			&i.FapiProfile,
+			&i.BackchannelLogoutUri,
+			&i.BackchannelLogoutSessionRequired,
+			&i.FrontchannelLogoutUri,
+			&i.FrontchannelLogoutSessionRequired,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.FirstParty,
@@ -256,6 +271,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  backchannel_logout_uri, backchannel_logout_session_required, frontchannel_logout_uri, frontchannel_logout_session_required,
   created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1
@@ -301,6 +317,10 @@ func (q *Queries) ListClientsByTenantPageAfter(ctx context.Context, arg ListClie
 			&i.RequirePushedAuthorizationRequests,
 			&i.DpopBoundAccessTokens,
 			&i.FapiProfile,
+			&i.BackchannelLogoutUri,
+			&i.BackchannelLogoutSessionRequired,
+			&i.FrontchannelLogoutUri,
+			&i.FrontchannelLogoutSessionRequired,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.FirstParty,
@@ -321,6 +341,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  backchannel_logout_uri, backchannel_logout_session_required, frontchannel_logout_uri, frontchannel_logout_session_required,
   created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1
@@ -364,6 +385,10 @@ func (q *Queries) ListClientsByTenantPageBefore(ctx context.Context, arg ListCli
 			&i.RequirePushedAuthorizationRequests,
 			&i.DpopBoundAccessTokens,
 			&i.FapiProfile,
+			&i.BackchannelLogoutUri,
+			&i.BackchannelLogoutSessionRequired,
+			&i.FrontchannelLogoutUri,
+			&i.FrontchannelLogoutSessionRequired,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.FirstParty,
@@ -422,8 +447,9 @@ INSERT INTO oauth2_clients (
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  backchannel_logout_uri, backchannel_logout_session_required, frontchannel_logout_uri, frontchannel_logout_session_required,
   created_at, updated_at, first_party, claim_policy
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 ON CONFLICT (client_id) DO UPDATE SET
   client_secret_hash = COALESCE(EXCLUDED.client_secret_hash, oauth2_clients.client_secret_hash),
   client_name = EXCLUDED.client_name,
@@ -440,6 +466,10 @@ ON CONFLICT (client_id) DO UPDATE SET
   require_pushed_authorization_requests = EXCLUDED.require_pushed_authorization_requests,
   dpop_bound_access_tokens = EXCLUDED.dpop_bound_access_tokens,
   fapi_profile = EXCLUDED.fapi_profile,
+  backchannel_logout_uri = EXCLUDED.backchannel_logout_uri,
+  backchannel_logout_session_required = EXCLUDED.backchannel_logout_session_required,
+  frontchannel_logout_uri = EXCLUDED.frontchannel_logout_uri,
+  frontchannel_logout_session_required = EXCLUDED.frontchannel_logout_session_required,
   first_party = EXCLUDED.first_party,
   claim_policy = EXCLUDED.claim_policy,
   updated_at = EXCLUDED.updated_at
@@ -463,6 +493,10 @@ type UpsertClientParams struct {
 	RequirePushedAuthorizationRequests bool
 	DpopBoundAccessTokens              bool
 	FapiProfile                        string
+	BackchannelLogoutUri               pgtype.Text
+	BackchannelLogoutSessionRequired   bool
+	FrontchannelLogoutUri              pgtype.Text
+	FrontchannelLogoutSessionRequired  bool
 	CreatedAt                          time.Time
 	UpdatedAt                          time.Time
 	FirstParty                         bool
@@ -488,6 +522,10 @@ func (q *Queries) UpsertClient(ctx context.Context, arg UpsertClientParams) erro
 		arg.RequirePushedAuthorizationRequests,
 		arg.DpopBoundAccessTokens,
 		arg.FapiProfile,
+		arg.BackchannelLogoutUri,
+		arg.BackchannelLogoutSessionRequired,
+		arg.FrontchannelLogoutUri,
+		arg.FrontchannelLogoutSessionRequired,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.FirstParty,

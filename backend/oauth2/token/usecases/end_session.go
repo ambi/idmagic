@@ -28,7 +28,8 @@ type EndSessionTarget struct {
 	// Sid is the OIDC session id resolved from a verified id_token_hint.
 	// Empty when no hint was given; the caller falls back to the browser
 	// cookie for session resolution (decision 4).
-	Sid string
+	Sid     string
+	Subject string
 	// Client / RedirectURI are only populated when PostLogoutRedirectURI was
 	// requested. A nil Client means the caller should skip straight to the
 	// unauthenticated "signed out" status page (legacy behavior preserved).
@@ -43,6 +44,7 @@ type EndSessionTarget struct {
 func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionInput) (*EndSessionTarget, error) {
 	clientID := in.ClientID
 	sid := ""
+	subject := ""
 	if in.IDTokenHint != "" {
 		if deps.HintVerifier == nil {
 			return nil, NewOAuthError("invalid_request", "id_token_hint is not supported.")
@@ -56,9 +58,10 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 		}
 		clientID = claims.Audience
 		sid = claims.Sid
+		subject = claims.Subject
 	}
 
-	target := &EndSessionTarget{Sid: sid}
+	target := &EndSessionTarget{Sid: sid, Subject: subject}
 	if in.PostLogoutRedirectURI == "" {
 		return target, nil
 	}

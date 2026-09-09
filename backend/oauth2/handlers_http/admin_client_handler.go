@@ -20,13 +20,17 @@ import (
 )
 
 type adminClientUpdateRequest struct {
-	ClientName      *string              `json:"client_name"`
-	RedirectURIs    *[]string            `json:"redirect_uris"`
-	GrantTypes      *[]spec.GrantType    `json:"grant_types"`
-	ResponseTypes   *[]spec.ResponseType `json:"response_types"`
-	Scope           *string              `json:"scope"`
-	RequirePAR      *bool                `json:"require_pushed_authorization_requests"`
-	DpopBoundTokens *bool                `json:"dpop_bound_access_tokens"`
+	ClientName                        *string              `json:"client_name"`
+	RedirectURIs                      *[]string            `json:"redirect_uris"`
+	GrantTypes                        *[]spec.GrantType    `json:"grant_types"`
+	ResponseTypes                     *[]spec.ResponseType `json:"response_types"`
+	Scope                             *string              `json:"scope"`
+	RequirePAR                        *bool                `json:"require_pushed_authorization_requests"`
+	DpopBoundTokens                   *bool                `json:"dpop_bound_access_tokens"`
+	BackChannelLogoutURI              *string              `json:"backchannel_logout_uri"`
+	BackChannelLogoutSessionRequired  *bool                `json:"backchannel_logout_session_required"`
+	FrontChannelLogoutURI             *string              `json:"frontchannel_logout_uri"`
+	FrontChannelLogoutSessionRequired *bool                `json:"frontchannel_logout_session_required"`
 }
 
 type adminClientResponse struct {
@@ -46,6 +50,10 @@ type adminClientResponse struct {
 	RequirePushedAuthorizationRequests bool                                `json:"require_pushed_authorization_requests"`
 	DpopBoundAccessTokens              bool                                `json:"dpop_bound_access_tokens"`
 	FapiProfile                        oauthdomain.FapiProfile             `json:"fapi_profile"`
+	BackChannelLogoutURI               *string                             `json:"backchannel_logout_uri,omitempty"`
+	BackChannelLogoutSessionRequired   bool                                `json:"backchannel_logout_session_required"`
+	FrontChannelLogoutURI              *string                             `json:"frontchannel_logout_uri,omitempty"`
+	FrontChannelLogoutSessionRequired  bool                                `json:"frontchannel_logout_session_required"`
 	CreatedAt                          time.Time                           `json:"created_at"`
 	UpdatedAt                          time.Time                           `json:"updated_at"`
 }
@@ -132,6 +140,8 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 		Scope: req.Scope, JWKS: req.JWKS, JwksURI: req.JwksURI,
 		TlsClientAuthSubjectDN: req.TlsClientAuthSubjectDN, RequirePAR: req.RequirePAR,
 		DpopBoundAccessTokens: req.DpopBoundAccessTokens, FapiProfile: oauthdomain.FapiProfile(req.FapiProfile),
+		BackChannelLogoutURI: req.BackChannelLogoutURI, BackChannelLogoutSessionRequired: req.BackChannelLogoutSessionRequired,
+		FrontChannelLogoutURI: req.FrontChannelLogoutURI, FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
 	}
 	for _, grant := range req.GrantTypes {
 		registration.GrantTypes = append(registration.GrantTypes, spec.GrantType(grant))
@@ -168,6 +178,8 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
+		BackChannelLogoutURI: req.BackChannelLogoutURI, BackChannelLogoutSessionRequired: req.BackChannelLogoutSessionRequired,
+		FrontChannelLogoutURI: req.FrontChannelLogoutURI, FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
 		Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -227,7 +239,11 @@ func toAdminOAuth2ClientResponse(client *oauthdomain.OAuth2Client) adminClientRe
 		IDTokenSignedResponseAlg:           client.IDTokenSignedResponseAlg,
 		RequirePushedAuthorizationRequests: client.RequirePushedAuthorizationRequests,
 		DpopBoundAccessTokens:              client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
-		CreatedAt: client.CreatedAt,
-		UpdatedAt: client.UpdatedAt,
+		BackChannelLogoutURI:              client.BackChannelLogoutURI,
+		BackChannelLogoutSessionRequired:  client.BackChannelLogoutSessionRequired,
+		FrontChannelLogoutURI:             client.FrontChannelLogoutURI,
+		FrontChannelLogoutSessionRequired: client.FrontChannelLogoutSessionRequired,
+		CreatedAt:                         client.CreatedAt,
+		UpdatedAt:                         client.UpdatedAt,
 	}
 }

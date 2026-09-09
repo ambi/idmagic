@@ -30,17 +30,21 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 		}
 	}
 	in := clientusecases.RegisterClientInput{
-		ClientName:              req.ClientName,
-		ClientType:              spec.ClientType(req.ClientType),
-		RedirectURIs:            req.RedirectURIs,
-		TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
-		Scope:                   req.Scope,
-		JWKS:                    req.JWKS,
-		JwksURI:                 req.JwksURI,
-		TlsClientAuthSubjectDN:  req.TlsClientAuthSubjectDN,
-		RequirePAR:              req.RequirePAR,
-		DpopBoundAccessTokens:   req.DpopBoundAccessTokens,
-		FapiProfile:             oauthdomain.FapiProfile(req.FapiProfile),
+		ClientName:                        req.ClientName,
+		ClientType:                        spec.ClientType(req.ClientType),
+		RedirectURIs:                      req.RedirectURIs,
+		TokenEndpointAuthMethod:           oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
+		Scope:                             req.Scope,
+		JWKS:                              req.JWKS,
+		JwksURI:                           req.JwksURI,
+		TlsClientAuthSubjectDN:            req.TlsClientAuthSubjectDN,
+		RequirePAR:                        req.RequirePAR,
+		DpopBoundAccessTokens:             req.DpopBoundAccessTokens,
+		FapiProfile:                       oauthdomain.FapiProfile(req.FapiProfile),
+		BackChannelLogoutURI:              req.BackChannelLogoutURI,
+		BackChannelLogoutSessionRequired:  req.BackChannelLogoutSessionRequired,
+		FrontChannelLogoutURI:             req.FrontChannelLogoutURI,
+		FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
 	}
 	for _, g := range req.GrantTypes {
 		in.GrantTypes = append(in.GrantTypes, spec.GrantType(g))
@@ -73,6 +77,14 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 		"require_pushed_authorization_requests": result.Client.RequirePushedAuthorizationRequests,
 		"dpop_bound_access_tokens":              result.Client.DpopBoundAccessTokens,
 		"fapi_profile":                          result.Client.FapiProfile,
+		"backchannel_logout_session_required":   result.Client.BackChannelLogoutSessionRequired,
+		"frontchannel_logout_session_required":  result.Client.FrontChannelLogoutSessionRequired,
+	}
+	if result.Client.BackChannelLogoutURI != nil {
+		resp["backchannel_logout_uri"] = *result.Client.BackChannelLogoutURI
+	}
+	if result.Client.FrontChannelLogoutURI != nil {
+		resp["frontchannel_logout_uri"] = *result.Client.FrontChannelLogoutURI
 	}
 	if result.Client.JWKS != nil {
 		resp["jwks"] = result.Client.JWKS

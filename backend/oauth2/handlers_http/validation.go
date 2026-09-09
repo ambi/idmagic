@@ -69,19 +69,23 @@ func parseAuthorizeRequest(values url.Values) (authorizeRequest, error) {
 }
 
 type registerClientRequest struct {
-	ClientName              string         `json:"client_name"`
-	ClientType              string         `json:"client_type"`
-	RedirectURIs            []string       `json:"redirect_uris"`
-	GrantTypes              []string       `json:"grant_types"`
-	ResponseTypes           []string       `json:"response_types"`
-	TokenEndpointAuthMethod string         `json:"token_endpoint_auth_method"`
-	Scope                   string         `json:"scope"`
-	JWKS                    map[string]any `json:"jwks"`
-	JwksURI                 *string        `json:"jwks_uri"`
-	TlsClientAuthSubjectDN  *string        `json:"tls_client_auth_subject_dn"`
-	RequirePAR              bool           `json:"require_pushed_authorization_requests"`
-	DpopBoundAccessTokens   bool           `json:"dpop_bound_access_tokens"`
-	FapiProfile             string         `json:"fapi_profile"`
+	ClientName                        string         `json:"client_name"`
+	ClientType                        string         `json:"client_type"`
+	RedirectURIs                      []string       `json:"redirect_uris"`
+	GrantTypes                        []string       `json:"grant_types"`
+	ResponseTypes                     []string       `json:"response_types"`
+	TokenEndpointAuthMethod           string         `json:"token_endpoint_auth_method"`
+	Scope                             string         `json:"scope"`
+	JWKS                              map[string]any `json:"jwks"`
+	JwksURI                           *string        `json:"jwks_uri"`
+	TlsClientAuthSubjectDN            *string        `json:"tls_client_auth_subject_dn"`
+	RequirePAR                        bool           `json:"require_pushed_authorization_requests"`
+	DpopBoundAccessTokens             bool           `json:"dpop_bound_access_tokens"`
+	FapiProfile                       string         `json:"fapi_profile"`
+	BackChannelLogoutURI              *string        `json:"backchannel_logout_uri"`
+	BackChannelLogoutSessionRequired  bool           `json:"backchannel_logout_session_required"`
+	FrontChannelLogoutURI             *string        `json:"frontchannel_logout_uri"`
+	FrontChannelLogoutSessionRequired bool           `json:"frontchannel_logout_session_required"`
 }
 
 var registerClientRequestSchema = z.Struct(z.Shape{
@@ -105,6 +109,8 @@ var registerClientRequestSchema = z.Struct(z.Shape{
 	"JwksURI":                z.Ptr(jwksURI()),
 	"TlsClientAuthSubjectDN": z.Ptr(z.String().Min(1)),
 	"FapiProfile":            z.String().OneOf([]string{"none", "fapi_2_security_profile"}),
+	"BackChannelLogoutURI":   z.Ptr(z.String().URL()),
+	"FrontChannelLogoutURI":  z.Ptr(z.String().URL()),
 }).TestFunc(func(value any, _ z.Ctx) bool {
 	request, ok := value.(*registerClientRequest)
 	return ok && (request.TokenEndpointAuthMethod != "tls_client_auth" ||

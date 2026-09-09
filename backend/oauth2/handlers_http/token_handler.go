@@ -103,7 +103,8 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			RequestStore: d.RequestStore, CodeStore: d.CodeStore,
 			RefreshStore: d.RefreshStore, TokenIssuer: d.TokenIssuer,
-			Emit: d.Emit, ResolveAttributeDefs: d.effectiveUserAttributeDefs,
+			ClientSessionStore: d.ClientSessionStore,
+			Emit:               d.Emit, ResolveAttributeDefs: d.effectiveUserAttributeDefs,
 		}, tokenusecases.ExchangeCodeInput{
 			ClientID: clientStub.ID, Code: c.Request().PostFormValue("code"),
 			CodeVerifier: c.Request().PostFormValue("code_verifier"),

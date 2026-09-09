@@ -34,12 +34,16 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 
 	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/clients", csrf, cookie, map[string]any{
-		"client_name":                "Portal",
-		"client_type":                "confidential",
-		"redirect_uris":              []string{"https://portal.example/callback"},
-		"grant_types":                []string{"authorization_code"},
-		"response_types":             []string{"code"},
-		"token_endpoint_auth_method": "client_secret_basic",
+		"client_name":                          "Portal",
+		"client_type":                          "confidential",
+		"redirect_uris":                        []string{"https://portal.example/callback"},
+		"grant_types":                          []string{"authorization_code"},
+		"response_types":                       []string{"code"},
+		"token_endpoint_auth_method":           "client_secret_basic",
+		"backchannel_logout_uri":               "https://portal.example/backchannel-logout",
+		"backchannel_logout_session_required":  true,
+		"frontchannel_logout_uri":              "https://portal.example/frontchannel-logout",
+		"frontchannel_logout_session_required": true,
 	})
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
@@ -77,10 +81,13 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	if _, exists := got["client_secret_hash"]; exists {
 		t.Fatalf("secret hash leaked after create: %s", getResponse.Body.String())
 	}
+	if got["backchannel_logout_uri"] != "https://portal.example/backchannel-logout" || got["backchannel_logout_session_required"] != true || got["frontchannel_logout_uri"] != "https://portal.example/frontchannel-logout" || got["frontchannel_logout_session_required"] != true {
+		t.Fatalf("logout metadata not returned: %s", getResponse.Body.String())
+	}
 
 	update := adminJSONRequest(
 		t, e, http.MethodPatch, "/api/admin/v1/clients/"+created.Client.ClientID, csrf, cookie,
-		map[string]any{"redirect_uris": []string{"https://portal.example/new-callback"}},
+		map[string]any{"redirect_uris": []string{"https://portal.example/new-callback"}, "backchannel_logout_uri": "https://portal.example/new-backchannel-logout", "backchannel_logout_session_required": false, "frontchannel_logout_uri": "https://portal.example/new-frontchannel-logout", "frontchannel_logout_session_required": false},
 	)
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", update.Code, update.Body.String())
@@ -90,7 +97,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 	if stored == nil || len(stored.RedirectURIs) != 1 ||
-		stored.RedirectURIs[0] != "https://portal.example/new-callback" {
+		stored.RedirectURIs[0] != "https://portal.example/new-callback" || stored.BackChannelLogoutURI == nil || *stored.BackChannelLogoutURI != "https://portal.example/new-backchannel-logout" || stored.BackChannelLogoutSessionRequired || stored.FrontChannelLogoutURI == nil || *stored.FrontChannelLogoutURI != "https://portal.example/new-frontchannel-logout" || stored.FrontChannelLogoutSessionRequired {
 		t.Fatalf("updated client=%+v", stored)
 	}
 

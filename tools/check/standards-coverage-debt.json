@@ -83,10 +83,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "OIDC-FRONTCHANNEL-IFRAME",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-LOGOUT-ENDPOINT",
       "reason": "present when the check was introduced"
     },

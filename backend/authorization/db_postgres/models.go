@@ -547,6 +547,10 @@ type Oauth2Client struct {
 	RequirePushedAuthorizationRequests bool
 	DpopBoundAccessTokens              bool
 	FapiProfile                        string
+	BackchannelLogoutUri               pgtype.Text
+	BackchannelLogoutSessionRequired   bool
+	FrontchannelLogoutUri              pgtype.Text
+	FrontchannelLogoutSessionRequired  bool
 	CreatedAt                          time.Time
 	UpdatedAt                          time.Time
 	FirstParty                         bool
@@ -562,6 +566,14 @@ type Oauth2ClientSecret struct {
 	RevokedAt  pgtype.Timestamptz
 }
 
+type Oauth2ClientSession struct {
+	TenantID      string
+	Sid           string
+	ClientID      string
+	FirstIssuedAt time.Time
+	LastIssuedAt  time.Time
+}
+
 type Oauth2DeviceCode struct {
 	DeviceCodeHash string
 	TenantID       string
@@ -572,6 +584,21 @@ type Oauth2DeviceCode struct {
 	Payload        []byte
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+type Oauth2LogoutNotification struct {
+	ID             string
+	TenantID       string
+	Sid            string
+	ClientID       string
+	LogoutTokenJti string
+	TargetUri      string
+	State          string
+	Attempts       int64
+	LastError      pgtype.Text
+	JobID          pgtype.UUID
+	CreatedAt      time.Time
+	DeliveredAt    pgtype.Timestamptz
 }
 
 type Oauth2ParRequest struct {

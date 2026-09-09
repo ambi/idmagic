@@ -15,6 +15,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	logoutmemory "github.com/ambi/idmagic/backend/oauth2/logout/db_memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -210,8 +211,10 @@ func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
 	// AuthorizationCodeRecord.sid は発行 RefreshTokenRecord.sid と
 	// id_token の sid claim にそのまま引き継がれる。
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})
-	sid := "session-1"
+	sid := "10000000-0000-4000-8000-000000000001"
 	f.code.Sid = &sid
+	clientSessions := logoutmemory.NewClientSessionStore()
+	f.deps.ClientSessionStore = clientSessions
 	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
 		t.Fatal(err)
 	}
@@ -232,6 +235,13 @@ func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
 	}
 	if rec == nil || rec.Sid == nil || *rec.Sid != sid {
 		t.Fatalf("sid not propagated to refresh token record: got %v", rec)
+	}
+	participations, err := clientSessions.ListBySid(context.Background(), f.code.TenantID, sid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(participations) != 1 || participations[0].ClientID != f.code.ClientID || participations[0].FirstIssuedAt.IsZero() || participations[0].LastIssuedAt.IsZero() {
+		t.Fatalf("unexpected client session: %+v", participations)
 	}
 }
 

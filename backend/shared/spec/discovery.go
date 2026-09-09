@@ -22,6 +22,7 @@ var discoveryEndpoints = []discoveryEndpoint{
 	{"backchannel_authentication_endpoint", "BackchannelAuthenticate"},
 	{"registration_endpoint", "RegisterClient"},
 	{"end_session_endpoint", "EndSession"},
+	{"check_session_iframe", "CheckSessionIframe"},
 }
 
 var discoveryScopes = []string{
@@ -72,6 +73,10 @@ func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any,
 	doc["tls_client_certificate_bound_access_tokens"] = true
 	doc["client_id_metadata_document_supported"] = true
 	doc["authorization_response_iss_parameter_supported"] = true
+	doc["frontchannel_logout_supported"] = true
+	doc["frontchannel_logout_session_supported"] = true
+	doc["backchannel_logout_supported"] = true
+	doc["backchannel_logout_session_supported"] = true
 	doc["claims_supported"] = slices.Clone(discoveryClaims)
 	doc["acr_values_supported"] = []string{"urn:idmagic:acr:pwd", "urn:idmagic:acr:mfa"}
 	doc["service_documentation"] = issuer + "/docs"

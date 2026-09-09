@@ -21,6 +21,7 @@ import (
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -43,6 +44,22 @@ func NewJWTSigner(issuer string, ks signingports.KeyStore) *JWTSigner {
 
 func (s *JWTSigner) AccessTokenTTLSeconds() int { return accessTokenTTLSeconds }
 func (s *JWTSigner) IDTokenTTLSeconds() int     { return idTokenTTLSeconds }
+
+func (s *JWTSigner) SignLogoutToken(ctx context.Context, in logoutports.LogoutTokenInput) (string, error) {
+	key, err := s.KeyStore.GetActiveKey(ctx)
+	if err != nil {
+		return "", err
+	}
+	claims := map[string]any{
+		"iss": in.Issuer, "sub": in.Subject, "aud": in.Audience,
+		"iat": in.IssuedAt.Unix(), "jti": in.JTI,
+		"events": map[string]any{"http://schemas.openid.net/event/backchannel-logout": map[string]any{}},
+	}
+	if in.Sid != "" {
+		claims["sid"] = in.Sid
+	}
+	return SignPS256(key, map[string]string{"typ": "logout+jwt"}, claims)
+}
 
 func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	key, err := s.KeyStore.GetActiveKey(ctx)

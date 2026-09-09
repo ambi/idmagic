@@ -782,6 +782,10 @@ CREATE TABLE oauth2_clients (
     require_pushed_authorization_requests BOOLEAN NOT NULL DEFAULT FALSE,
     dpop_bound_access_tokens BOOLEAN NOT NULL DEFAULT FALSE,
     fapi_profile TEXT NOT NULL DEFAULT 'none',
+    backchannel_logout_uri TEXT,
+    backchannel_logout_session_required BOOLEAN NOT NULL DEFAULT FALSE,
+    frontchannel_logout_uri TEXT,
+    frontchannel_logout_session_required BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     first_party BOOLEAN NOT NULL DEFAULT FALSE,
@@ -806,6 +810,23 @@ CREATE INDEX oauth2_clients_application_id_idx
 -- clients in client_id order, layered on top of FindAll's created_at order).
 CREATE INDEX oauth2_clients_tenant_client_id_idx
     ON oauth2_clients (tenant_id, client_id);
+
+CREATE TABLE oauth2_client_sessions (
+    tenant_id UUID NOT NULL,
+    sid UUID NOT NULL,
+    client_id UUID NOT NULL,
+    first_issued_at TIMESTAMPTZ NOT NULL,
+    last_issued_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (tenant_id, sid, client_id),
+    CONSTRAINT oauth2_client_sessions_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_client_sessions_sid_fkey
+        FOREIGN KEY (sid) REFERENCES authentication_sessions(id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_client_sessions_client_id_fkey
+        FOREIGN KEY (client_id) REFERENCES oauth2_clients(client_id) ON DELETE CASCADE
+);
+
+CREATE INDEX oauth2_client_sessions_sid_idx ON oauth2_client_sessions (tenant_id, sid);
 
 CREATE TABLE oauth2_client_secrets (
     id UUID PRIMARY KEY,
@@ -1218,6 +1239,26 @@ CREATE INDEX jobs_lease_expiry_idx ON jobs (lane, lease_expires_at) WHERE status
 CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
     ON jobs (tenant_id, dedup_key)
     WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running');
+
+CREATE TABLE oauth2_logout_notifications (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    sid UUID NOT NULL,
+    client_id UUID NOT NULL,
+    logout_token_jti UUID NOT NULL,
+    target_uri TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('Pending', 'Delivered', 'Failed')),
+    attempts BIGINT NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+    last_error TEXT,
+    job_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    delivered_at TIMESTAMPTZ,
+    CONSTRAINT oauth2_logout_notifications_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX oauth2_logout_notifications_sid_idx
+    ON oauth2_logout_notifications (tenant_id, sid);
 
 CREATE TABLE csv_artifacts (
     id UUID PRIMARY KEY,

@@ -90,6 +90,9 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 
 `sid` クレームは `LoginSession.id` 自体であり、RP ごとの値ではなく、1 つのブラウザーセッションについてすべての relying party が共有する。OIDC の `sid` は OP セッションを表すため、RP ごとの `sid` では 1 回のセッション失効から影響する全 RP をたどれない。`sid` は `authenticate_user` の完了時に一度だけ `AuthorizationRequest` へ伝播し、その後 `AuthorizationCodeRecord` → `RefreshTokenRecord` → `IdTokenClaims` を通る。Authentication の `LoginSession` が唯一の正であり、その属性を OAuth2 へ複製しない。`ClientSession` はログアウト通知用の `(sid, client_id)` 配信インデックスであり、2 つ目のセッション状態ではない。`RefreshTokenRecord.sid` はローテーション後も残るため、ファミリーごとにたどらず、1 回の「このブラウザーセッション」の失効で、同じ `sid` にバインドされた全クライアント・全ファミリーのリフレッシュトークンを失効できる。
 
+ログアウト通知先は HTTPS に限定し、利用者情報とフラグメントを拒否する。
+バックチャネル配送では環境プロキシを使わず、名前解決後の非公開 IP とリダイレクト先を検査する共通 HTTP クライアントを使うことで、登録された通知先を経由する SSRF を防ぐ。
+
 `/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs Context に渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、`frontchannel_logout_session_required=true` を宣言した RP には `iss` と `sid` を付ける。RP 側の `iframe` の失敗は許容し、配信を保証しない。バックチャネルの配信では、署名済みのログアウトトークンを登録先へ POST し、2xx だけを成功とみなす。それ以外のレスポンス、タイムアウト、接続失敗はいずれも Job の再試行に委ね、試行上限に達した通知は配信不能として確定する。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。
 
 ## Fuzzed parse boundaries

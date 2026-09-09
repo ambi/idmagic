@@ -43,6 +43,7 @@ type Querier interface {
 	// 期限フィルタなし (parity)。state を read で payload に overlay する。
 	FindDeviceCodeByHash(ctx context.Context, arg FindDeviceCodeByHashParams) (*FindDeviceCodeByHashRow, error)
 	FindDeviceCodeByUserCode(ctx context.Context, arg FindDeviceCodeByUserCodeParams) (*FindDeviceCodeByUserCodeRow, error)
+	FindLogoutNotificationByID(ctx context.Context, arg FindLogoutNotificationByIDParams) (*Oauth2LogoutNotification, error)
 	// 期限フィルタは付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain が行う)。
 	// tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 	FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error)
@@ -60,6 +61,7 @@ type Querier interface {
 	LinkAuthorizationCodeFamily(ctx context.Context, arg LinkAuthorizationCodeFamilyParams) (int64, error)
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
+	ListClientSessionsBySid(ctx context.Context, arg ListClientSessionsBySidParams) ([]*Oauth2ClientSession, error)
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error)
 	// First page of ListAdminOAuth2Clients keyset pagination (wi-159):
 	// client_id order matches the admin handler's pre-existing re-sort of
@@ -98,11 +100,13 @@ type Querier interface {
 	SaveAuthorizationRequest(ctx context.Context, arg SaveAuthorizationRequestParams) error
 	// Save / Update 共通の upsert。device_code_hash を PK、(tenant_id,user_code) を UNIQUE 鍵に持つ。
 	SaveDeviceCode(ctx context.Context, arg SaveDeviceCodeParams) error
+	SaveLogoutNotification(ctx context.Context, arg SaveLogoutNotificationParams) error
 	SavePARRequest(ctx context.Context, arg SavePARRequestParams) error
 	UpdateAuthorizationRequestPayload(ctx context.Context, arg UpdateAuthorizationRequestPayloadParams) error
 	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error
 	UpsertClient(ctx context.Context, arg UpsertClientParams) error
+	UpsertClientSession(ctx context.Context, arg UpsertClientSessionParams) error
 	UpsertConsent(ctx context.Context, arg UpsertConsentParams) error
 	UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error
 }

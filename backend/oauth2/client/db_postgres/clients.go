@@ -36,6 +36,8 @@ func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
 		RequirePushedAuthorizationRequests: row.RequirePushedAuthorizationRequests,
 		DpopBoundAccessTokens:              row.DpopBoundAccessTokens,
 		FapiProfile:                        domain.FapiProfile(row.FapiProfile),
+		BackChannelLogoutSessionRequired:   row.BackchannelLogoutSessionRequired,
+		FrontChannelLogoutSessionRequired:  row.FrontchannelLogoutSessionRequired,
 		FirstParty:                         row.FirstParty,
 		CreatedAt:                          row.CreatedAt,
 		UpdatedAt:                          row.UpdatedAt,
@@ -51,6 +53,12 @@ func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
 	}
 	if row.TlsClientAuthSubjectDn.Valid {
 		c.TlsClientAuthSubjectDN = &row.TlsClientAuthSubjectDn.String
+	}
+	if row.BackchannelLogoutUri.Valid {
+		c.BackChannelLogoutURI = &row.BackchannelLogoutUri.String
+	}
+	if row.FrontchannelLogoutUri.Valid {
+		c.FrontChannelLogoutURI = &row.FrontchannelLogoutUri.String
 	}
 	if err := json.Unmarshal(row.RedirectUris, &c.RedirectURIs); err != nil {
 		return nil, err
@@ -209,6 +217,10 @@ func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Clien
 		RequirePushedAuthorizationRequests: c.RequirePushedAuthorizationRequests,
 		DpopBoundAccessTokens:              c.DpopBoundAccessTokens,
 		FapiProfile:                        string(c.FapiProfile),
+		BackchannelLogoutUri:               textOrNil(c.BackChannelLogoutURI),
+		BackchannelLogoutSessionRequired:   c.BackChannelLogoutSessionRequired,
+		FrontchannelLogoutUri:              textOrNil(c.FrontChannelLogoutURI),
+		FrontchannelLogoutSessionRequired:  c.FrontChannelLogoutSessionRequired,
 		FirstParty:                         c.FirstParty,
 		CreatedAt:                          c.CreatedAt,
 		UpdatedAt:                          c.UpdatedAt,

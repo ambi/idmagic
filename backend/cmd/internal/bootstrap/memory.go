@@ -40,6 +40,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	logoutmemory "github.com/ambi/idmagic/backend/oauth2/logout/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
@@ -179,6 +180,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			ApprovalRequestStore:       oauth2memory.NewApprovalRequestStore(),
 			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
 			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
+			ClientSessionStore:         logoutmemory.NewClientSessionStore(),
+			LogoutNotificationStore:    logoutmemory.NewLogoutNotificationStore(),
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},

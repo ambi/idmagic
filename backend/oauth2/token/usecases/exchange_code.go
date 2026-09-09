@@ -9,6 +9,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
+	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -19,13 +21,14 @@ import (
 // =====================================================================
 
 type ExchangeCodeDeps struct {
-	ClientRepo   ports.OAuth2ClientRepository
-	UserRepo     userports.UserRepository
-	RequestStore ports.AuthorizationRequestStore
-	CodeStore    ports.AuthorizationCodeStore
-	RefreshStore ports.RefreshTokenStore
-	TokenIssuer  ports.TokenIssuer
-	Emit         func(spec.DomainEvent)
+	ClientRepo         ports.OAuth2ClientRepository
+	UserRepo           userports.UserRepository
+	RequestStore       ports.AuthorizationRequestStore
+	CodeStore          ports.AuthorizationCodeStore
+	RefreshStore       ports.RefreshTokenStore
+	TokenIssuer        ports.TokenIssuer
+	ClientSessionStore logoutports.ClientSessionStore
+	Emit               func(spec.DomainEvent)
 	// ResolveAttributeDefs は ID Token の属性 claim 生成用 (wi-19)。nil 可。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
 }
@@ -200,6 +203,14 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 
 	if deps.RequestStore != nil {
 		_ = deps.RequestStore.UpdateState(ctx, rec.AuthorizationRequestID, spec.AuthFlowExchanged)
+	}
+	if deps.ClientSessionStore != nil && rec.Sid != nil && *rec.Sid != "" {
+		if err := deps.ClientSessionStore.Upsert(ctx, &logoutdomain.ClientSession{
+			TenantID: tenantID, Sid: *rec.Sid, ClientID: client.ClientID,
+			FirstIssuedAt: now, LastIssuedAt: now,
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	tokenType := "Bearer"

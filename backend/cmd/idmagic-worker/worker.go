@@ -21,12 +21,15 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/oauth2"
+	logoutpush "github.com/ambi/idmagic/backend/oauth2/logout/push_http"
 	"github.com/ambi/idmagic/backend/provisioning"
 	identitysource "github.com/ambi/idmagic/backend/provisioning/source_idmanagement"
 	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 	"github.com/ambi/idmagic/backend/sharedsignals/push_http"
@@ -98,6 +101,10 @@ func RunWorker() error {
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
+	oauth2.RegisterJobHandlers(handlers, oauth2.JobHandlerDeps{
+		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: tokens_jose.NewJWTSigner("", deps.SigningKeys.KeyStore),
+		BackChannelClient: logoutpush.NewBackChannelLogoutClient(nil), Now: time.Now,
+	})
 	importPlanDeps := userusecases.UserImportPlanDeps{
 		UserRepo:       deps.IdManagement.UserRepo,
 		SchemaReader:   userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
