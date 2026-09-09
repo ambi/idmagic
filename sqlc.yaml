@@ -1,3 +1,7 @@
+# 全エントリーが 1 枚の共有スキーマ infra/schema/postgres.sql を指すので、
+# 既定のままでは context ごとの models.go にスキーマ内の全テーブルの構造体が並ぶ。
+# omit_unused_structs: true は、そのエントリーの query が参照しない構造体を出力から外す。
+# 生成エントリーを新しく足すときも同じ設定を書く。
 version: "2"
 sql:
   - engine: "postgresql"
@@ -11,6 +15,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -28,6 +33,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -45,6 +51,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -62,6 +69,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -79,6 +87,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -96,6 +105,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -113,6 +123,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -130,6 +141,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -147,6 +159,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -164,6 +177,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -181,6 +195,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -198,6 +213,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -215,6 +231,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -232,6 +249,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -249,6 +267,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -266,6 +285,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -283,6 +303,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -300,6 +321,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -317,6 +339,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -334,6 +357,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -351,6 +375,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -368,6 +393,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -385,6 +411,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -402,6 +429,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -419,6 +447,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -436,6 +465,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -453,6 +483,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -470,6 +501,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -487,6 +519,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
@@ -504,6 +537,7 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_result_struct_pointers: true
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "string"
