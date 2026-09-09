@@ -6,6 +6,7 @@ import { basename, extname, join } from 'node:path'
 import { compareOpenApi, type JsonSchema } from '../../check-api-compat/src/compat.ts'
 import { verifyCanonicalDocumentSet } from '../../check/src/canonical-document-set.ts'
 import {
+  claimsSpecificationAddition,
   diffFeatureMaturities,
   type DocumentationImpactEnvironment,
   verifyDocumentationImpact,
@@ -181,26 +182,24 @@ function changedWorkItemRecords(): ReadonlySet<string> | undefined {
  * months ago declares the elements it added back then, and crediting it with
  * today's addition of the same id would be an accident of reuse rather than a
  * claim. See ownsSpecificationAdditions.
+ *
+ * The matching itself belongs to claimsSpecificationAddition, which is also
+ * what decides whether a given record owns the additions. Asking the same
+ * question two ways is how a declaration became unclaimable here while it
+ * resolved fine as a reference (wi-530).
  */
 async function specificationAdditionsClaimed(
   diff: SpecificationDiff,
   changed: ReadonlySet<string> | undefined,
 ): Promise<boolean> {
-  const added = new Set([...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations])
-  if (added.size === 0 || changed === undefined || !config.workItems) return false
+  const added = [...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations]
+  if (added.length === 0 || changed === undefined || !config.workItems) return false
   for (const path of await workItemFiles(rootPath(config.workItems))) {
     if (!changed.has(basename(path, '.md'))) continue
     const record = parseFrontmatterAndMarkdown(path, await readFile(path, 'utf8')) as {
       affected_spec?: unknown
     }
-    if (!Array.isArray(record.affected_spec)) continue
-    for (const entry of record.affected_spec) {
-      if (typeof entry !== 'object' || entry === null) continue
-      const reference = entry as { requirement?: unknown; symbol?: unknown }
-      for (const value of [reference.requirement, reference.symbol]) {
-        if (typeof value === 'string' && added.has(value.trim())) return true
-      }
-    }
+    if (claimsSpecificationAddition(record, added)) return true
   }
   return false
 }

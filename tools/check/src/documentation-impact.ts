@@ -146,18 +146,53 @@ function ownsWorkspaceDiff(
   return typeof record.id === 'string' && changed.has(record.id)
 }
 
-/** The requirement ids and TypeSpec symbols a record's `affected_spec` names. */
-function declaredSpecificationElements(record: WorkItemRecord): Set<string> {
-  const declared = new Set<string>()
-  if (!Array.isArray(record.affected_spec)) return declared
-  for (const entry of record.affected_spec) {
-    const reference = object(entry)
-    if (!reference) continue
-    for (const field of ['requirement', 'symbol']) {
-      if (nonEmpty(reference[field])) declared.add(reference[field].trim())
-    }
+/**
+ * Whether one `affected_spec` reference names this added element.
+ *
+ * A scenario or standard is added under its own id, and the record writes that
+ * id verbatim, so those compare directly. A TypeSpec declaration is added under
+ * `<path>:<name>` — the diff's own spelling — while a record names it by
+ * TypeSpec symbol (`IdMagic.Contract.Thing`) under the file's `path`, which is
+ * the spelling `work-item-references.ts` resolves. No single string satisfies
+ * both, so the declaration is split back into its parts here rather than asking
+ * records to write the diff's internal form.
+ *
+ * Both halves are required. Matching the declaration name alone would let a
+ * record claim a same-named declaration added to another context's file.
+ */
+function referenceNames(reference: Record<string, unknown>, element: string): boolean {
+  for (const field of ['requirement', 'symbol']) {
+    if (nonEmpty(reference[field]) && reference[field].trim() === element) return true
   }
-  return declared
+  const separator = element.lastIndexOf(':')
+  if (separator < 0) return false
+  if (!nonEmpty(reference.path) || !nonEmpty(reference.symbol)) return false
+  return (
+    reference.path.trim() === element.slice(0, separator) &&
+    reference.symbol.trim().split('.').at(-1) === element.slice(separator + 1)
+  )
+}
+
+/**
+ * Whether a record's `affected_spec` names any of these added elements.
+ *
+ * Exported because the same question is asked twice from different sides: this
+ * module decides whether a given record owns the additions, and the workspace
+ * checker decides whether any record claims them at all. One matching rule
+ * keeps those two answers from drifting apart.
+ */
+export function claimsSpecificationAddition(
+  record: { affected_spec?: unknown },
+  added: Iterable<string>,
+): boolean {
+  if (!Array.isArray(record.affected_spec)) return false
+  const references = record.affected_spec
+    .map((entry) => object(entry))
+    .filter((entry) => entry !== undefined)
+  for (const element of added) {
+    if (references.some((reference) => referenceNames(reference, element))) return true
+  }
+  return false
 }
 
 /**
@@ -180,10 +215,12 @@ function ownsSpecificationAdditions(
   environment: DocumentationImpactEnvironment,
 ): boolean {
   if (environment.specificationAdditionsClaimed !== true) return true
-  const declared = declaredSpecificationElements(record)
   const diff = environment.specificationDiff
-  const added = [...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations]
-  return added.some((element) => declared.has(element))
+  return claimsSpecificationAddition(record, [
+    ...diff.addedScenarios,
+    ...diff.addedStandards,
+    ...diff.addedDeclarations,
+  ])
 }
 
 export function minimumDocumentationImpact(

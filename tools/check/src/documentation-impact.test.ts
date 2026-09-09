@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   type DocumentationImpactEnvironment,
   type MaturityChange,
+  claimsSpecificationAddition,
   diffFeatureMaturities,
   verifyDocumentationImpact,
 } from './documentation-impact.ts'
@@ -98,6 +99,78 @@ describe('verifyDocumentationImpact', () => {
     expect(verifyDocumentationImpact(sibling, environment(unclaimed))).toContain(
       'documentation_impact none is weaker than inferred release_note',
     )
+  })
+
+  it('gives an added TypeSpec declaration to the record that declares it', () => {
+    // The diff spells a declaration `<path>:<name>`, while a record names it by
+    // TypeSpec symbol under the file's `path` — the spelling
+    // `work-item-references.ts` resolves. Comparing the two spellings directly
+    // matched nothing, so no record could ever claim an added declaration and
+    // every open record inherited it instead (wi-523 inflated wi-495).
+    const addedDeclaration = {
+      ...noSpecificationChange,
+      addedDeclarations: ['spec/contexts/demo/models.tsp:PresentationTokenType'],
+    }
+    const author = {
+      ...record,
+      id: 'wi-523-author',
+      status: 'in_progress',
+      affected_spec: [
+        {
+          path: 'spec/contexts/demo/models.tsp',
+          symbol: 'Demo.Contract.PresentationTokenType',
+        },
+      ],
+    }
+    const sibling = { ...record, id: 'wi-495-parent', status: 'in_progress' }
+    const claimed = { specificationDiff: addedDeclaration, specificationAdditionsClaimed: true }
+
+    expect(verifyDocumentationImpact(author, environment(claimed))).toContain(
+      'documentation_impact none is weaker than inferred release_note',
+    )
+    expect(verifyDocumentationImpact(sibling, environment(claimed))).toEqual([])
+  })
+
+  it('matches an added declaration by file and declaration name together', () => {
+    const declaration = 'spec/contexts/demo/models.tsp:PresentationTokenType'
+    const reference = (overrides: Record<string, string>) => ({
+      affected_spec: [
+        {
+          path: 'spec/contexts/demo/models.tsp',
+          symbol: 'Demo.Contract.PresentationTokenType',
+          ...overrides,
+        },
+      ],
+    })
+
+    expect(claimsSpecificationAddition(reference({}), [declaration])).toBe(true)
+
+    // The path pins the file. Without it, a same-named declaration added to
+    // another context would be claimed by an unrelated record.
+    expect(
+      claimsSpecificationAddition(reference({ path: 'spec/contexts/other/models.tsp' }), [
+        declaration,
+      ]),
+    ).toBe(false)
+    expect(
+      claimsSpecificationAddition(reference({ symbol: 'Demo.Contract.SomethingElse' }), [
+        declaration,
+      ]),
+    ).toBe(false)
+
+    // A scenario or standard is added under its own id and keeps matching the
+    // `requirement` verbatim.
+    expect(
+      claimsSpecificationAddition(
+        {
+          affected_spec: [
+            { path: 'docs/contexts/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+          ],
+        },
+        ['REQ-DEMO-001'],
+      ),
+    ).toBe(true)
+    expect(claimsSpecificationAddition({}, [declaration])).toBe(false)
   })
 
   it('derives feature maturity changes from registry definitions', () => {
