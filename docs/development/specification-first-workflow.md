@@ -157,18 +157,30 @@ or wrapper-type quota.
 
 Run the cheapest gate that can still fail on what you just changed, and widen only at the end.
 
-1. While changing the specification: `mise run check-spec`.
-2. Before implementing behavior: run the named acceptance check and observe the required behavior fail.
-3. While implementing one layer: confirm Unit RED, reach GREEN, refactor while GREEN, and run the narrowest
+1. While reading, before changing anything: `mise run lint-go` once. The cold run is the expensive one, and
+   paying it here is what leaves step 5 in the seconds.
+2. While changing the specification: `mise run check-spec`.
+3. Before implementing behavior: run the named acceptance check and observe the required behavior fail.
+4. While implementing one layer: confirm Unit RED, reach GREEN, refactor while GREEN, and run the narrowest
    per-package or per-file test recipe that covers what you touched — `mise run test-go-package <package>` or
    `mise run test-ui-unit-file <file>` here, whatever `mise tasks` offers elsewhere.
-4. When the change has spread past one package: `mise run test-go-changed`, which runs the packages the
+5. Once that behavior is GREEN, run the check that owns the layer it touched: `mise run lint-go` for Go,
+   `mise run check-contract-drift` and `mise run check-api-compat` for an admin API or a DTO once the
+   specification is regenerated, `mise run check-work-items` for the work item's own frontmatter.
+6. When the change has spread past one package: `mise run test-go-changed`, which runs the packages the
    working tree changed together with everything that compiles them in.
-5. For `medium` risk and above: perform the selected change-resistance check.
-6. Before completing the work item: `mise run verify`, and `mise run test-ui-e2e` as well when the change can
+7. For `medium` risk and above: perform the selected change-resistance check.
+8. Before completing the work item: `mise run verify`, and `mise run test-ui-e2e` as well when the change can
    reach the browser.
 
 Running the full suite after every edit is the most common way to lose time in this repository.
+
+Step 5 is not the full suite, and it is not there to catch what step 8 would catch anyway. Both would report
+the same lint finding, the same drifted contract; the difference is that at step 5 you are still holding the
+code that produced it. Reaching the same finding at step 8 means reading a file back to remember why it was
+written that way, and a batch of findings arriving together means doing that several times over. Run these
+when a behavior reaches GREEN rather than after every edit, so a lint fix never lands in the middle of a
+behavior that is still RED.
 
 The narrow steps are built the way the final gate is built. `mise run test-go-package` and
 `mise run test-go-changed` both enable the race detector, because Go keeps a separate test-cache entry per

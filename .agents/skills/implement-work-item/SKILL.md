@@ -13,7 +13,8 @@ description: "Implement a chosen work item end to end: specification first, sepa
    standards-coverage item, resolve every scoped standard id to its declaration, debt entry, named tests,
    smallest production entry point, and any active work item that owns missing behavior. If completion needs
    out-of-scope implementation, record the prerequisite or defect and stop before broad checks or implementation.
-   Read nothing else until something you have read sends you there.
+   Read nothing else until something you have read sends you there. Run `mise run lint-go` once while you read:
+   the cold run is the expensive one, and paying it here leaves every run in step 8 at a few seconds.
 2. When the work changes a specification, change it first with `spec-change` and pass `mise run check-spec`.
    When `spec_impact: none` is still correct after the readiness pass, do not invent a specification edit or run
    specification-only baseline gates; use the first check that can actually go RED for the work.
@@ -44,7 +45,18 @@ description: "Implement a chosen work item end to end: specification first, sepa
    `update-design`. Keep the feedback loop tight: use `mise run test-go-test -- <package> <test>` or
    `mise run test-ui-unit-file -- <file>` for each RED, GREEN, and fault injection; run the containing package
    once after a coherent behavior is GREEN; use `mise run test-go-changed` after the change crosses package
-   boundaries. Defer lint and aggregate gates to final verification unless the work changes those gates.
+   boundaries. Run the check that owns the layer you just touched while that layer is still what you are looking
+   at, rather than saving it for final verification:
+
+   | Just touched | Run next |
+   | --- | --- |
+   | An admin API or a DTO, after the specification is regenerated | `mise run check-contract-drift`, `mise run check-api-compat` |
+   | Go, once one behavior is GREEN | `mise run lint-go` |
+   | This record's frontmatter or Completion | `mise run check-work-items` |
+
+   Each of those costs seconds once step 1 has paid the cold run. Run `lint-go` when a behavior reaches GREEN,
+   not after every edit, so a lint fix never lands in the middle of a behavior that is still RED. The aggregate
+   gates stay where they are, run once at step 10.
    Write the selected recipes into the task so the choice is made once rather than on every red-green turn.
 9. Collect the risk-selected change-resistance evidence.
 10. After every scoped behavior and its evidence can be completed, pass `mise run verify` once, and

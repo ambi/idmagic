@@ -1,15 +1,32 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
 created_at: 2026-09-10
 priority: p1
 change_kind: tooling
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: 実装中の検査の走らせ方だけを変える。製品の振る舞いも公開契約も変わらないので、リリースの読み手に見えるものが無い。
+  references: []
 spec_impact:
   kind: none
   reason: "実装中にどの検査をいつ走らせるかという手順だけを変える。検査そのものの内容も、製品の観測可能な振る舞いも公開契約も変えない。"
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - .agents/skills/implement-work-item/SKILL.md
+    - docs/development/specification-first-workflow.md
+    - tools/check/src/agent-guidance.ts
+  tests: []
+  stop_before_reading:
+    - backend
+    - frontend
+    - spec
 ---
 
 # 層ごとの検査を、その層が GREEN になった直後へ前倒しする
@@ -90,9 +107,9 @@ wi-497 が集約ゲートを「落ちたゲートを全部報告する」形に�
 
 ## Tasks
 
-- [ ] T001 [Docs] `implement-work-item` skill の第 8 段から lint の遅延指示を外し、層と検査の対応表を入れる。作業開始時に冷状態の lint を 1 回払う指示も入れる。
-- [ ] T002 [Docs] `docs/development/specification-first-workflow.md` の検証のはしごを T001 と同じ内容にそろえる。
-- [ ] T003 [Verify] `mise run check-agent-guidance`、`mise run check-links`、`mise run verify` を通す。
+- [x] T001 [Docs] `.agents/skills/implement-work-item/SKILL.md` の第 8 段から「Defer lint and aggregate gates to final verification」を外し、層と検査の対応表を入れた。冷状態の lint を 1 回払う指示は第 1 段の読み取りと並べた。検査: `mise run check-agent-guidance` (必須マーカーと Acceptance RED → Unit RED → GREEN → refactor の順序を保つこと)。
+- [x] T002 [Docs] `docs/development/specification-first-workflow.md` 第 5 節の検証のはしごへ、作業開始時の `lint-go` を第 1 段、層ごとの検査を第 5 段として入れ、なぜ最終ゲートまで待たないかを段の後に書いた。検査: `mise run check-links`。
+- [x] T003 [Verify] `mise run check-agent-guidance`、`mise run check-links`、`mise run verify` を通した。
 
 ## Verification
 
@@ -106,3 +123,29 @@ wi-497 が集約ゲートを「落ちたゲートを全部報告する」形に�
 - 検査を前倒しすると、実装の途中で lint の指摘を直すことになり、その挙動がまだ GREEN でない状態で編集が混ざる。混ざるのを避けるため、走らせるのは「1 挙動が GREEN になった直後」であって「編集のたび」ではない。
 - 手順を細かくすると、手順そのものを読む時間が増える。対応表を 3 行に収め、条件と対象だけを書く。
 - `check-contract-drift` は作業ツリーに残っている生成物を読む。仕様を書き換えた直後に走らせると、前回の生成物に対して `ok` を出しうる。この性質は wi-497 の Risk Notes が記録しており、前倒しでも変わらない。skill には仕様生成の後に走らせる順序で書く。
+
+## Completion
+
+- **Completed At**: 2026-09-10
+- **Summary**:
+  `mise run spec-diff` は main に対して規範仕様の差分を報告しない。変わったのは実装中の手順だけである。
+  `implement-work-item` skill の第 8 段は、lint と集約ゲートを最終検証まで遅らせる指示を捨て、触った層と直後に走らせる検査の対応表を持つようになった。
+  冷状態の `lint-go` を 1 回払う指示は第 1 段の読み取りと並ぶ。
+  `docs/development/specification-first-workflow.md` の検証のはしごは、作業開始時の `lint-go` を第 1 段、層ごとの検査を第 5 段として持ち、段の数は 6 から 8 になった。
+- **Acceptance RED Evidence**:
+  - **Test**: `sed -n '43,48p' .agents/skills/implement-work-item/SKILL.md` による第 8 段の観測と、1 ファイル編集後の `mise run lint-go` の実測。
+  - **Requirement**: N/A: 実装中の手順だけを変える tooling 変更であり、対応する規範要求が無い。
+  - **Observed Failure**: 第 8 段は「Defer lint and aggregate gates to final verification unless the work changes those gates.」と書いていた。その指示が前提とする費用を測ると、温状態 1.64 秒、`backend/saml/module.go` に 1 行足した後 5.25 秒だった。遅らせる根拠となる費用は現存しない。
+  - **Detection Reason**: 観測は指示の文面と、その文面が前提とする費用の 2 つを別々に読む。文面だけを読むなら、費用が今も高い場合と区別がつかない。費用だけを測るなら、指示がすでに直っている場合と区別がつかない。両方を読んで初めて「高い費用を前提とした指示が、費用の消えた後も残っている」という不一致を指せる。
+- **Unit RED Evidence**:
+  - **Test**: `N/A: 文書だけの変更であり、内側の挙動を持つ単位が無い。` 代わりに走った検査は `mise run check-agent-guidance` と `mise run check-links` である。
+  - **Requirement**: N/A: 上と同じ。
+  - **Observed Failure**: どちらも RED にならなかった。`check-agent-guidance` が守るのは必須マーカーの存在と `Acceptance RED → Unit RED → GREEN → refactor` の出現順序であり、第 8 段の費用前提はその対象外である。この不一致を機械が捕まえられないことが、work item として記録する理由そのものである。
+  - **Detection Reason**: 変更後も両検査は `ok` を返す。すなわち編集は、skill が保つべき構造をひとつも壊していない。ただし変更が正しいことの根拠ではなく、壊していないことの根拠である。正しさの根拠は上の Acceptance RED が持つ。
+- **Change-Resistance Results**:
+  `N/A: risk は low であり、証拠契約は change-resistance を選ばない。`
+- **Verification Results**:
+  - `mise run check-agent-guidance` - passed
+  - `mise run check-links` - passed
+  - `mise run verify` - passed (19.35s)
+  - `mise run test-ui-e2e` - `N/A: 文書だけの変更であり、ブラウザへ届かない。`
