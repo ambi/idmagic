@@ -23,30 +23,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "CIBA-CORE-BACKCHANNEL-REQUEST",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIBA-CORE-BINDING-MESSAGE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIBA-CORE-PING-PUSH",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIBA-CORE-POLL-MODE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIBA-CORE-SIGNED-REQUEST",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "CIBA-CORE-USER-CODE",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "FAPI2-CLIENT-AUTH",
       "reason": "present when the check was introduced"
     },
@@ -104,14 +80,6 @@
     },
     {
       "id": "RFC8414-METADATA",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8628-DEVICE-AUTHORIZATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8628-POLLING",
       "reason": "present when the check was introduced"
     },
     {
