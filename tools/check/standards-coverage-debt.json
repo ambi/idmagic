@@ -63,27 +63,7 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "OIDC-BACKCHANNEL-DELIVERY-RETRY",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "OIDC-BACKCHANNEL-LOGOUT-TOKEN",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "OIDC-BACKCHANNEL-REPLAY",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "OIDC-DISCOVERY-CONFIGURATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "OIDC-FRONTCHANNEL-BEST-EFFORT",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "OIDC-LOGOUT-ID-TOKEN-HINT",
       "reason": "present when the check was introduced"
     },
     {

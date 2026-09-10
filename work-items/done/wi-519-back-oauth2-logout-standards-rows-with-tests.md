@@ -2,7 +2,7 @@
 depends_on:
   - wi-257-oidc-front-back-channel-logout-notifications
   - wi-524-reject-incomplete-logout-id-token-hints
-status: in_progress
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -143,19 +143,23 @@ Unit RED の代替は、対応付けたテストごとの故障注入である�
   `/session/check` の HTML が `message` を受信し、送信元 origin へ `changed` または `unchanged` を返すことを対にして観測する型とした。
   本項目に `excluded` の行は無い。
   recipe: `mise run test-go-package -- ./backend/oauth2/handlers_http`
-- [ ] T004 [Ledger] 残りを消化し、解決した id を `tools/check/standards-coverage-debt.json` から外す。
-  `OIDC-LOGOUT-ENDPOINT`、`OIDC-LOGOUT-REDIRECT`、`OIDC-SESSION-MGMT-CHECK-IFRAME` の 3 件を外した。
-  残る 6 件は 2 件の前提 work item の完了を待つ。
+- [x] T004 [Ledger] 残りを消化し、解決した id を `tools/check/standards-coverage-debt.json` から外す。
+  `OIDC-LOGOUT-ENDPOINT`、`OIDC-LOGOUT-REDIRECT`、`OIDC-SESSION-MGMT-CHECK-IFRAME` の 3 件を先に外した。
+  2 件の前提 work item の完了後、`OIDC-FRONTCHANNEL-IFRAME` が [[wi-257-oidc-front-back-channel-logout-notifications]] のテストで既に消化済みであることを確認し、
+  残る 5 件 (`OIDC-LOGOUT-ID-TOKEN-HINT`、`OIDC-FRONTCHANNEL-BEST-EFFORT`、`OIDC-BACKCHANNEL-LOGOUT-TOKEN`、`OIDC-BACKCHANNEL-DELIVERY-RETRY`、`OIDC-BACKCHANNEL-REPLAY`) を外した。
+  台帳の `untested` は 43 件から 38 件へ減り、9 件が 1 件残らず消えた。
   recipe: `mise run check-spec`
-- [ ] T005 [Resistance] 行が言っている判断を production 側で崩し、対応するテストが落ちることを行ごとに観測する。
-  現存する 3 行について、Discovery 広告、GET 経路、登録値照合、`message` 受信、`postMessage` 応答の 5 件の故障を注入し、対応するテストが落ちることを観測した。
-  残る 6 行の故障注入は前提 work item の完了後に行う。
-  recipe: `mise run test-go-package -- ./backend/oauth2/handlers_http`
+- [x] T005 [Resistance] 行が言っている判断を production 側で崩し、対応するテストが落ちることを行ごとに観測する。
+  現存する 3 行について、Discovery 広告、GET 経路、登録値照合、`message` 受信、`postMessage` 応答の 5 件の故障を注入した。
+  残る 5 行についても、ヒント由来の `sid`、`client_id` との矛盾の拒否、ローカル失効と front-channel の順序、
+  ローカル失効と back-channel 配信の順序、再試行の停止、`jti` claim、logout token の署名、`jti` の一意性、
+  再試行間の `jti` の同一性の 9 件を注入し、対応するテストが落ちることを観測した。
+  recipe: `mise run test-go-test -- <package> <test>`
 - [x] T006 [Defect] 宣言した採用を満たしていない行を実装 work item へ対応付ける。
   front-channel と back-channel の 5 行は既存の [[wi-257-oidc-front-back-channel-logout-notifications]] が持つ。
   `id_token_hint` の必須 claim とセッション主体の照合は [[wi-524-reject-incomplete-logout-id-token-hints]] へ切り出した。
   recipe: `mise run check-work-items`
-- [ ] T007 [Verify] `mise run verify`。
+- [x] T007 [Verify] `mise run verify`。
 
 ## Verification
 
@@ -194,6 +198,23 @@ Unit RED の代替は、対応付けたテストごとの故障注入である�
 
 着手から 3 行の消化と故障注入を終えた時点までの経過時間は 15 分 37 秒である。
 
+前提 work item の完了後に残る 5 行を消化した区間を以下に分けて記す。
+この区間では `/usr/bin/time -p` を使わず、ツール自身が報告する所要時間を写した。
+そのため所要はコマンドの `real` ではなく、Go のテストが報告するパッケージ時間、または検査自身の `Finished in` である。
+
+| 細目 | 所要 | 結果 |
+|---|---:|---|
+| `mise run brief -- wi-519` と work item、標準 9 行、前提 work item の読解 | — | 前提 2 件が `work-items/done/` にあり、`OIDC-FRONTCHANNEL-IFRAME` は既に消化済みだった。 |
+| 5 件を台帳から外した Acceptance RED | 2.40 秒 | 5 件すべてを個別に報告した。 |
+| テストとハーネスの追加、注記の対応付け | — | e2e の fixture にローカル失効の観測を足し、3 件のテストを新設した。 |
+| `backend/shared/http/server_http` のパッケージテスト | 8.86 秒 | 成功。 |
+| `backend/oauth2/handlers_http` のパッケージテスト | 6.54 秒 | 成功。 |
+| `backend/shared/security/tokens_jose` のパッケージテスト | 5.60 秒 | 成功。 |
+| `backend/oauth2/logout/usecases` のパッケージテスト | キャッシュ | 成功。 |
+| 9 件の故障注入 | — | いずれも対象テストが落ちた。 |
+| 5 件消化後の `mise run check-spec` | 2.40 秒 | 成功し、テストが名指す ID は 249 件になった。 |
+| `mise run lint-go` | — | 0 issues。 |
+
 ## Risk Notes
 
 - **注記だけを足して終わる。** 名指しの文字列があれば検査は通るので、読まずに id を貼れば件数は減る。注記に「何を固定しているか」を書かせ、崩して落ちることを T005 で確かめる。
@@ -201,3 +222,67 @@ Unit RED の代替は、対応付けたテストごとの故障注入である�
 - **1 行が 2 つのことを言っている。** `Statement` に動詞が 2 つあれば観測も 2 つ要る。
 - **配信の成功だけを読んで、失敗時の挙動を読まない。** 2 行が「配信結果に依存させない」ことを言っている。配信を失敗させる事例が要る。
 - **台帳の同時編集。** 台帳は id 順に 1 エントリー 1 id なので、並行しても衝突はエントリー単位に収まる。自分が持つ id のエントリーだけを削除し、コメント配列と他の id には触れない。
+
+## Completion
+
+- **Completed At**: 2026-09-11
+- **Summary**:
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範の差分は無い。
+  変わったのは、ログアウトとセッション管理が宣言する 9 行に対する観測の有無である。
+  `tools/check/standards-coverage-debt.json` の `untested` は 43 件から 38 件へ減り、本項目が持つ 9 件は
+  1 件残らず消えた。テストが名指す ID は 249 件になった。
+  `OIDC-FRONTCHANNEL-IFRAME` は前提 work item [[wi-257-oidc-front-back-channel-logout-notifications]] が
+  実装と一緒にテストを置いたため、本項目では確認だけで済んだ。
+  残る 5 行のうち、`OIDC-LOGOUT-ID-TOKEN-HINT` は「ヒントから対象を解決する」ことを固定するテストが
+  無かった。既存の受理テストは Cookie とヒントが同じセッションを指すため、ヒントを読まない実装でも通る。
+  Cookie とヒントが別のセッションを指し、`client_id` パラメーターを付けない要求を新設して区別できるようにした。
+  `OIDC-FRONTCHANNEL-BEST-EFFORT` と `OIDC-BACKCHANNEL-DELIVERY-RETRY` はどちらも「配信結果に依存させない」
+  ことを言っているので、到達し得ない front-channel 宛先と、試行を使い切って失敗する back-channel 宛先の
+  それぞれで、LoginSession と同じ `sid` の RefreshTokenRecord が失効していることを読む形にした。
+  `OIDC-BACKCHANNEL-LOGOUT-TOKEN` は claim の列挙と署名の 2 つを言っているので、署名器の単体テストと、
+  RP が実際に受け取ったトークンを OP の鍵で検証する e2e の 2 つを対応付けた。
+  `OIDC-BACKCHANNEL-REPLAY` は `jti` の一意性と、再試行が `jti` を作り直さないことの 2 つを対応付けた。
+  製品コードは変えていない。増えたのは e2e fixture のローカル失効の観測、配信ワーカーと通知待ちの
+  ヘルパー、テスト 3 件、注記 6 件である。
+- **Acceptance RED Evidence**:
+  - **Test**: `mise run check-spec`。
+  - **Requirement**: N/A: 製品の振る舞いを変えないため、対応する製品要求を持たない。
+  - **Observed Failure**: 5 件を台帳から先に外した状態で、`OIDC-LOGOUT-ID-TOKEN-HINT`、
+    `OIDC-FRONTCHANNEL-BEST-EFFORT`、`OIDC-BACKCHANNEL-LOGOUT-TOKEN`、`OIDC-BACKCHANNEL-DELIVERY-RETRY`、
+    `OIDC-BACKCHANNEL-REPLAY` を `docs/contexts/oauth2/standards.md` の行番号つきで
+    `is declared, but no test names it` と 1 件ずつ報告した。
+  - **Detection Reason**: 検査は台帳の縮小とテストによる名指しを別々に読む。台帳だけを縮めた状態で
+    RED になることを先に見ておけば、注記を足さずに件数を減らす誤りをこの検査が捕まえると確かめられる。
+- **Unit RED Evidence**:
+  - **Test**: `TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT`
+    (`backend/shared/http/server_http/end_session_hint_e2e_test.go`)。
+  - **Requirement**: N/A: 既存の振る舞いに観測を対応付ける作業であり、新しい製品要求を持たない。
+  - **Observed Failure**: 最初に注記だけを既存の `TestEndSessionAcceptsCompleteIDTokenHint` へ足したところ、
+    `ResolveEndSession` からヒント由来の `sid` を落としても同テストは通った。Cookie が同じセッションを
+    指すため、ヒントを読まない実装と区別できていなかった。テストを新設したうえで同じ故障を注入すると
+    `ヒントが指す LoginSession が失効していない` で落ちた。
+  - **Detection Reason**: Cookie とヒントを別の LoginSession に向け、`client_id` パラメーターを付けずに
+    `post_logout_redirect_uri` を要求する。ヒントを読まない実装は Cookie 側を失効させるか、
+    クライアントを解決できずに `post_logout_redirect_uri` を拒否するので、どちらでも落ちる。
+- **Change-Resistance Results**:
+  行ごとに、その行が言っている判断を production 側で崩し、対応するテストが落ちることを観測した。
+  いずれも観測後に元へ戻している。
+
+  | 行 | 注入した故障 | 落ちたテスト |
+  |---|---|---|
+  | `OIDC-LOGOUT-ID-TOKEN-HINT` | `ResolveEndSession` がヒントの `sid` を解決結果に載せない | `TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT` |
+  | `OIDC-LOGOUT-ID-TOKEN-HINT` | `client_id` と `aud` の照合を外す | `TestEndSessionRejectsIDTokenHintAudienceMismatch` |
+  | `OIDC-FRONTCHANNEL-BEST-EFFORT` | front-channel の宛先があるときローカル失効を RP へ委ねる | `TestEndSessionFrontChannelUnreachable_OIDC_FRONTCHANNEL_BEST_EFFORT` |
+  | `OIDC-BACKCHANNEL-LOGOUT-TOKEN` | logout token から `jti` claim を外す | `TestSignLogoutToken_REQ_OAUTH2_025` |
+  | `OIDC-BACKCHANNEL-LOGOUT-TOKEN` | 署名部を壊した logout token を返す | `TestEndSessionBackChannelLogout_REQ_OAUTH2_025` |
+  | `OIDC-BACKCHANNEL-DELIVERY-RETRY` | 配信失敗を初回で `Failed` にして再試行を止める | `TestBackChannelLogoutHandlerRetriesAndKeepsJTI`、`TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY` |
+  | `OIDC-BACKCHANNEL-DELIVERY-RETRY` | back-channel 通知を作る配線ではローカル失効を配信後まで遅らせる | `TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY` |
+  | `OIDC-BACKCHANNEL-REPLAY` | `jti` に通知の識別子をそのまま使う | `TestStartBackChannelLogoutIssuesUniqueJTI_OIDC_BACKCHANNEL_REPLAY` |
+  | `OIDC-BACKCHANNEL-REPLAY` | 再試行のたびに `jti` を作り直す | `TestBackChannelLogoutHandlerRetriesAndKeepsJTI` |
+
+  `OIDC-FRONTCHANNEL-IFRAME` は [[wi-257-oidc-front-back-channel-logout-notifications]] が持つテストで
+  既に消化済みであり、本項目で注記も注入も足していない。
+  この方法の限界は、注入が手書きの代表例である点にある。行が言っていない振る舞いの退行は、
+  ここで選んだ 9 件の注入では捕まえられない。
+- **Verification Results**:
+  - `mise run verify` - passed

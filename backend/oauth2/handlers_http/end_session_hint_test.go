@@ -162,6 +162,7 @@ func assertSessionAndTokensSurvived(t *testing.T, s hintTestServer, sid string) 
 
 // EX-OAUTH2-024-02: aud が client_id と一致しない id_token_hint は拒否され、
 // 対象のセッションもそのリフレッシュトークンも生き残る。
+// OIDC-LOGOUT-ID-TOKEN-HINT: client_id パラメーターと矛盾するヒントを拒否することを固定する。
 func TestEndSessionRejectsIDTokenHintAudienceMismatch(t *testing.T) {
 	s := newHintTestServer(t)
 	sid := "session-hint-2"

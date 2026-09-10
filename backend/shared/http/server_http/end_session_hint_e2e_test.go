@@ -42,8 +42,9 @@ const (
 
 // hintE2EResponse は /end_session の応答を、失敗時にそのまま読める形で運ぶ。
 type hintE2EResponse struct {
-	status int
-	body   string
+	status   int
+	body     string
+	location string
 }
 
 type hintE2EFixture struct {
@@ -51,6 +52,7 @@ type hintE2EFixture struct {
 	sessions  *sessionmemory.SessionStore
 	refresh   *oauth2memory.RefreshTokenStore
 	signer    *tokens_jose.JWTSigner
+	manager   *sessionusecases.SessionManager
 	sessionID string
 }
 
@@ -108,7 +110,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 	})
 	server := httptest.NewServer(e)
 	t.Cleanup(server.Close)
-	return hintE2EFixture{server: server, sessions: sessionStore, refresh: refreshStore, signer: signer, sessionID: sid}
+	return hintE2EFixture{server: server, sessions: sessionStore, refresh: refreshStore, signer: signer, manager: sessionManager, sessionID: sid}
 }
 
 // signHint は sub と sid を指定した ID Token を発行する。sid が空なら `sid` claim は付かない。
@@ -128,13 +130,19 @@ func (f hintE2EFixture) signHint(t *testing.T, subject, sid string) string {
 // ヒントが拒否されたあとに Cookie のセッションへ降格していないことまで観測できる。
 func (f hintE2EFixture) endSessionWithHint(t *testing.T, hint string) hintE2EResponse {
 	t.Helper()
+	return f.endSession(t, f.sessionID, url.Values{"id_token_hint": {hint}})
+}
+
+// endSession は cookie のセッションと問い合わせパラメーターを呼び出し側が決める形の
+// /end_session である。cookie とヒントが別のセッションを指す要求を作れる。
+func (f hintE2EFixture) endSession(t *testing.T, cookieSid string, query url.Values) hintE2EResponse {
+	t.Helper()
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	query := url.Values{"id_token_hint": {hint}}
 	request, err := http.NewRequest(http.MethodGet, f.server.URL+"/realms/default/end_session?"+query.Encode(), http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: f.sessionID})
+	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: cookieSid})
 	response, err := client.Do(request)
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +152,7 @@ func (f hintE2EFixture) endSessionWithHint(t *testing.T, hint string) hintE2ERes
 	if err != nil {
 		t.Fatal(err)
 	}
-	return hintE2EResponse{status: response.StatusCode, body: string(body)}
+	return hintE2EResponse{status: response.StatusCode, body: string(body), location: response.Header.Get("Location")}
 }
 
 func (f hintE2EFixture) assertNothingRevoked(t *testing.T) {
@@ -187,6 +195,41 @@ func TestEndSessionAcceptsCompleteIDTokenHint(t *testing.T) {
 	}
 	if record == nil || !record.Revoked {
 		t.Fatalf("同じ sid の RefreshTokenRecord が失効していない: %#v", record)
+	}
+}
+
+// OIDC-LOGOUT-ID-TOKEN-HINT: 検証済みヒントの `sid` と `aud` がログアウト対象の
+// LoginSession とクライアントを決めることを固定する。Cookie は別の LoginSession を
+// 指し、`client_id` パラメーターは付けない。ヒントを読まない実装なら Cookie 側が
+// 失効するか、クライアントを解決できず post_logout_redirect_uri を拒否する。
+func TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT(t *testing.T) {
+	fixture := newHintE2EFixture(t)
+	other, err := fixture.manager.Create(context.Background(), "alice", []string{"pwd"}, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := url.Values{
+		"id_token_hint":            {fixture.signHint(t, "alice", fixture.sessionID)},
+		"post_logout_redirect_uri": {"https://rp.example/callback"},
+	}
+	response := fixture.endSession(t, other.SessionID, query)
+
+	if response.status != http.StatusFound || response.location != "https://rp.example/callback" {
+		t.Fatalf("status=%d location=%q body=%s", response.status, response.location, response.body)
+	}
+	hinted, err := fixture.sessions.Find(context.Background(), fixture.sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hinted != nil {
+		t.Fatal("ヒントが指す LoginSession が失効していない")
+	}
+	cookieSession, err := fixture.sessions.Find(context.Background(), other.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cookieSession == nil {
+		t.Fatal("ヒントが指していない Cookie の LoginSession が失効した")
 	}
 }
 

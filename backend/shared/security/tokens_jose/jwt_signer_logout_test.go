@@ -12,6 +12,8 @@ import (
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 )
 
+// OIDC-BACKCHANNEL-LOGOUT-TOKEN: logout token が iss、sub、aud、iat、jti、sid と
+// back-channel logout イベントを運び、nonce を運ばないことを固定する。
 func TestSignLogoutToken_REQ_OAUTH2_025(t *testing.T) {
 	keyStore, err := signingmemory.NewInMemoryKeyStore()
 	if err != nil {

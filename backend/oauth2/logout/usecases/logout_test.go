@@ -106,6 +106,38 @@ func TestStartBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 	}
 }
 
+// OIDC-BACKCHANNEL-REPLAY: 1 度のログアウトが作る通知どうしで jti が重複せず、
+// 通知の識別子とも別の値になることを固定する。RP が jti だけでリプレイを判定できる条件である。
+func TestStartBackChannelLogoutIssuesUniqueJTI_OIDC_BACKCHANNEL_REPLAY(t *testing.T) {
+	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
+	clients := clientmemory.NewClientRepository()
+	sessions := &clientSessionStore{}
+	for _, id := range []string{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"} {
+		client := testClient(id)
+		client.BackChannelLogoutURI = new("https://rp.example/logout")
+		clients.Seed(client)
+		sessions.sessions = append(sessions.sessions, logoutdomain.ClientSession{TenantID: tenancydomain.DefaultTenantID, Sid: "10000000-0000-4000-8000-000000000001", ClientID: id})
+	}
+	// NewID を渡さず、本番の配線と同じ識別子生成を通す。
+	created, err := logoutusecases.StartBackChannelLogout(ctx, logoutusecases.StartBackChannelLogoutDeps{ClientSessions: sessions, Clients: clients, Notifications: &notificationStore{}, Enqueue: func(_ context.Context, _ jobsports.EnqueueInput, _ time.Time) (*jobsdomain.Job, error) {
+		return &jobsdomain.Job{ID: "40000000-0000-4000-8000-000000000001"}, nil
+	}}, "10000000-0000-4000-8000-000000000001", "alice", "https://idp.example/realms/default", time.Unix(1_700_000_000, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(created) != 2 {
+		t.Fatalf("created=%d", len(created))
+	}
+	if created[0].LogoutTokenJTI == "" || created[0].LogoutTokenJTI == created[1].LogoutTokenJTI {
+		t.Fatalf("jti=%q %q", created[0].LogoutTokenJTI, created[1].LogoutTokenJTI)
+	}
+	for _, notification := range created {
+		if notification.LogoutTokenJTI == notification.ID {
+			t.Fatalf("jti が通知の識別子と同じ値である: %+v", notification)
+		}
+	}
+}
+
 // OIDC-FRONTCHANNEL-IFRAME: session_required に従って RP iframe の送信先を算出する。
 func TestFrontChannelLogoutTargets_OIDC_FRONTCHANNEL_IFRAME(t *testing.T) {
 	clients := clientmemory.NewClientRepository()
@@ -148,6 +180,10 @@ func (c *backChannelClient) Deliver(context.Context, string, string) error {
 	return nil
 }
 
+// OIDC-BACKCHANNEL-DELIVERY-RETRY: 配信失敗は通知を Pending のまま残して再試行させ、
+// 再試行はジョブの試行として扱われることを固定する。
+// OIDC-BACKCHANNEL-REPLAY: 再試行が jti を作り直さないため、RP は同じ通知の再送を
+// 重複として扱えることを固定する。
 func TestBackChannelLogoutHandlerRetriesAndKeepsJTI(t *testing.T) {
 	now := time.Unix(1_700_000_100, 0).UTC()
 	notifications := &notificationStore{items: map[string]*logoutdomain.LogoutNotification{"notification-1": {ID: "notification-1", TenantID: tenancydomain.DefaultTenantID, Sid: "session-1", ClientID: "client-1", LogoutTokenJTI: "stable-jti", TargetURI: "https://rp.example/logout", State: logoutdomain.LogoutNotificationPending}}}
