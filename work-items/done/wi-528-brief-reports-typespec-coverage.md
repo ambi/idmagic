@@ -1,12 +1,28 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
 created_at: 2026-09-10
 priority: p2
 change_kind: tooling
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: "変更対象は着手時に開発者が走らせる `brief` の出力だけであり、製品の振る舞い、API、設定のいずれも変わらないため、リリースの読み手に伝える差分がない。"
+  references: []
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - tools/brief/src
+    - tools/render-spec-docs/src/traces.ts
+  tests: [tools/brief/src/brief.test.ts]
+  stop_before_reading:
+    - backend
+    - frontend
+    - docs/contexts
 spec_impact:
   kind: none
   reason: "着手時の読み取りを助ける `brief` の出力に、既存の索引から導ける項目を足すだけである。仕様も生成物も製品の振る舞いも変えない。"
@@ -80,10 +96,10 @@ wi-257 の場合、この一言があれば「TypeSpec は宣言済み、実装�
 
 ## Tasks
 
-- [ ] T001 [App] `brief.ts` に、記号と規範 ID ごとの宣言、実装、テストの有無を返す関数を足す。Unit RED を先に確認する。実行: `mise run test-tools`。
-- [ ] T002 [App] `main.ts` の出力に充足状況を 1 記号 1 行で加える。
-- [ ] T003 [Verify] `mise run brief -- wi-257` を走らせ、TypeSpec は宣言済みで実装が不在という形が出ることを確かめる。宣言なしの例として、着手前の状態を作れる完了済み work item 1 件でも確かめる。
-- [ ] T004 [Verify] `mise run verify` を通す。
+- [x] T001 [App] `brief.ts` に、記号と規範 ID ごとの宣言、実装、テストの有無を返す関数を足す。Unit RED を先に確認する。実行: `mise run test-tools`。
+- [x] T002 [App] `main.ts` の出力に充足状況を 1 記号 1 行で加える。
+- [x] T003 [Verify] `mise run brief -- wi-257` を走らせ、TypeSpec は宣言済みで実装が不在という形が出ることを確かめる。宣言なしの例として、着手前の状態を作れる完了済み work item 1 件でも確かめる。
+- [x] T004 [Verify] `mise run verify` を通す。
 
 ## Verification
 
@@ -97,3 +113,44 @@ wi-257 の場合、この一言があれば「TypeSpec は宣言済み、実装�
 - 索引は ID を名指す文字列に基づくので、名指していない実装は「実装なし」と出る。逆に、コメントで言及しているだけのファイルは「実装あり」と出る。着手時の下書きとしては許容できるが、出力の文言で「名指している」ことを示し、到達可能性の保証と読み違えられないようにする。
 - 出力が増えると、`brief` 自体を読む時間が増える。記号ごと 1 行を超えないという制約を T002 で守る。
 - wi-257 の 9 分 33 秒がすべてこの判定に費やされたわけではない。境界の把握はこの変更では短くならない。効果の主張はこの work item では「判定に要する時間」に限る。
+
+## Completion
+- **Completed At**: 2026-09-11
+- **Summary**:
+  `mise run spec-diff` reports no normative specification change against `main`, which is the intended
+  result for `spec_impact: none`. What changed is the terminal answer: every symbol and requirement a
+  work item references now carries one `Coverage` line saying whether it is declared and whether anything
+  outside `docs/` and `spec/` names it, with the reading that follows from those two answers — start from a
+  specification change, add the missing code, or read the files that already name it. The verdict counts
+  tests as naming, because `REQ-*` identifiers are named by tests rather than by implementation, and a
+  verdict that ignored them would report implemented behavior as unimplemented. Symbols are asked for by
+  their declared name, not their fully qualified one, because no Go or TypeScript file carries
+  `IdMagic.Contract.*` — the same name `declarationOf` already resolves the declaration by.
+- **Acceptance RED Evidence**:
+  - **Test**: `mise run brief -- wi-257 | grep -c '^- Coverage:'` at the tool's own output boundary.
+  - **Requirement**: N/A: spec_impact は none であり、この tooling 変更は製品の規範要件を持たない。
+  - **Observed Failure**: `0` matches, `grep` exited `1`, before the change.
+  - **Detection Reason**: The acceptance boundary for this work is the printed brief, since that is the
+    only thing a reader consumes. Counting the verdict line distinguishes a build that computes coverage
+    internally but never prints it from one that answers the question at the terminal. After the change the
+    same command reports 15 lines for `wi-257`.
+- **Unit RED Evidence**:
+  - **Test**: `mise run test-tools` over the `coverageOf` and `coverageLine` blocks added to
+    `tools/brief/src/brief.test.ts`.
+  - **Requirement**: N/A: 同上。判定は規範要件ではなく着手時の読み取り補助である。
+  - **Observed Failure**: `SyntaxError: Export named 'coverageLine' not found in module
+    '.../tools/brief/src/brief.ts'` — 451 pass, 1 fail, 1 error.
+  - **Detection Reason**: The assertions pin the reading clause per combination rather than the three
+    booleans alone, so an implementation that reports the state but sends the reader to the wrong place
+    still fails. That is not hypothetical: the first implementation said "what is missing is code" for an
+    identifier only its tests named, the second RED (`Expected to contain: "read those files before
+    changing either side"` / `Received: "... what is missing is code and not a specification edit"`) caught
+    it, and the wording was corrected before it shipped.
+- **Change-Resistance Results**:
+  Not required at `risk: low`. One correction was nonetheless observed: the tests-only combination was
+  wrong in the first GREEN implementation and was detected by a new assertion before the code changed.
+- **Verification Results**:
+  - `mise run verify` - passed
+  - `mise run test-tools` - passed (468 tests)
+  - `mise run brief -- wi-257` - all three combinations observed: declared with naming files, declared with
+    none, and (through a scratch record naming an undeclared symbol) not declared.

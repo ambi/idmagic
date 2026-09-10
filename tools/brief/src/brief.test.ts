@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  coverageLine,
+  coverageOf,
   extractDeclaration,
   initialContextDraft,
   partitionSources,
@@ -96,6 +98,68 @@ describe('partitionSources', () => {
       implementation: ['backend/system/start.go', 'frontend/src/start.tsx'],
       tests: ['backend/system/start_test.go', 'frontend/tests/e2e/start.spec.ts'],
     })
+  })
+})
+
+describe('coverageOf', () => {
+  it('reads the declaration and the naming files as three independent answers', () => {
+    expect(coverageOf('## Rule: REQ-DEMO-001', ['backend/demo/start.go'])).toEqual({
+      declared: true,
+      implementation: true,
+      tests: false,
+    })
+  })
+
+  it('reports nothing declared when no declaration was resolved', () => {
+    expect(coverageOf(undefined, [])).toEqual({
+      declared: false,
+      implementation: false,
+      tests: false,
+    })
+  })
+})
+
+describe('coverageLine', () => {
+  /**
+   * wi-257 が 9 分 33 秒かけて得た結論がこの形である。
+   * 宣言済みで実装が不在なら、読む先は仕様ではなく実装の欠けている側になる。
+   */
+  it('sends a declared but unimplemented symbol at the code, not at the specification', () => {
+    const line = coverageLine({ declared: true, implementation: false, tests: false })
+    expect(line).toContain('declared')
+    expect(line).toContain('named by no implementation')
+    expect(line).toContain('what is missing is code and not a specification edit')
+  })
+
+  it('sends an undeclared symbol at a specification change', () => {
+    const line = coverageLine({ declared: false, implementation: false, tests: false })
+    expect(line).toContain('not declared')
+    expect(line).toContain('starts from a specification change')
+  })
+
+  it('sends an identifier something already names at the naming files', () => {
+    const line = coverageLine({ declared: true, implementation: true, tests: true })
+    expect(line).toContain('named by implementation')
+    expect(line).toContain('named by tests')
+    expect(line).toContain('read those files before changing either side')
+    expect(line).not.toContain('not declared')
+  })
+
+  /**
+   * `REQ-*` を名指すのはテストだという慣行があるので、テストだけが名指す状態は
+   * 普通に起きる。そこで「実装が足りない」と言えば、実装済みの振る舞いを
+   * 未実装として読ませることになる。
+   */
+  it('does not call an identifier unimplemented when only its tests name it', () => {
+    const line = coverageLine({ declared: true, implementation: false, tests: true })
+    expect(line).toContain('named by no implementation')
+    expect(line).toContain('read those files before changing either side')
+    expect(line).not.toContain('what is missing is code')
+  })
+
+  /** 1 記号 1 行という制約は、`brief` 自体を読む時間を増やさないための約束である。 */
+  it('stays on one line', () => {
+    expect(coverageLine({ declared: true, implementation: true, tests: false })).not.toContain('\n')
   })
 })
 

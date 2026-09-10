@@ -15,6 +15,9 @@ import { basename, resolve } from 'node:path'
 import { parseFrontmatterAndMarkdown } from '../../check/src/main.ts'
 import { collectTraces } from '../../render-spec-docs/src/traces.ts'
 import {
+  COVERAGE_NOTE,
+  coverageLine,
+  coverageOf,
   extractDeclaration,
   initialContextDraft,
   partitionSources,
@@ -52,8 +55,17 @@ function git(...args: string[]): string {
  * may name one instead — so when the index has nothing, the working tree is
  * asked directly rather than reporting that nothing exists.
  */
-function namingFiles(id: string): { sources: string[]; workItems: string[] } {
-  const found = git('grep', '-l', '--fixed-strings', id, '--', ':!docs', ':!spec')
+function namingFiles(id: string, word = false): { sources: string[]; workItems: string[] } {
+  const found = git(
+    'grep',
+    '-l',
+    '--fixed-strings',
+    ...(word ? ['-w'] : []),
+    id,
+    '--',
+    ':!docs',
+    ':!spec',
+  )
   const paths = found === '' ? [] : found.split('\n')
   return {
     sources: paths.filter((one) => !one.startsWith('work-items/')),
@@ -103,6 +115,9 @@ if (affected.length === 0) {
     'The brief derives its reading list from those references, so there is nothing to resolve.',
     '',
   )
+} else {
+  // 判定の意味は 1 回だけ言う。記号ごとに繰り返せば、出力を読む時間が増える。
+  lines.push(COVERAGE_NOTE, '')
 }
 
 const traces = new Map((await collectTraces(root)).map((trace) => [trace.id, trace]))
@@ -138,6 +153,7 @@ for (const reference of affected) {
       `- Named by tests: ${partition.tests.join(', ') || 'none'}`,
       `- Named by implementation: ${partition.implementation.join(', ') || 'none'}`,
       `- Named by work items: ${trace.workItems.join(', ') || 'none'}`,
+      `- Coverage: ${coverageLine(coverageOf(declaration, trace.sources))}`,
       '',
     )
   }
@@ -145,10 +161,15 @@ for (const reference of affected) {
   if (reference.symbol) {
     typespec.push(reference.symbol)
     const declaration = await declarationOf(reference.symbol, tspFiles)
+    // 完全修飾名は Go にも TypeScript にも現れないので、宣言された名前で問う。
+    // `declarationOf` が宣言を探すときと同じ名前であり、答えの主語が揃う。
+    const name = reference.symbol.split('.').at(-1) ?? reference.symbol
+    const naming = namingFiles(name, true).sources
     lines.push(
       `## ${reference.symbol}`,
       '',
       `- Declared at: ${declaration ?? `not found under spec/ (record names ${documentPath})`}`,
+      `- Coverage: ${coverageLine(coverageOf(declaration, naming))}`,
       '',
     )
   }
