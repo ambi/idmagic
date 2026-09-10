@@ -250,6 +250,11 @@ func (s *JWTSigner) VerifyIDTokenHint(ctx context.Context, token string) (*oauth
 			claims.Audience = claims.Audiences[0]
 		}
 	}
+	// sub と aud が無ければ、hint はどの主体もどのクライアントも指していない。
+	// 署名が正しくても主体を決められないので、claim を呼び出し元へ運ばずに拒否する。
+	if claims.Subject == "" || claims.Audience == "" {
+		return nil, errors.New("id_token_hint: sub and aud are required")
+	}
 	return claims, nil
 }
 

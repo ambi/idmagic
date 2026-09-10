@@ -543,6 +543,24 @@ Primary actor: `ResourceOwner`
 - Then 期限切れの発行済み ID Token を id_token_hint として /end_session を呼ぶ
 - And exp 切れのみを理由にした拒否はされず sid によるセッション解決が成功する
 
+### Example: EX-OAUTH2-024-05 `id_token_hint` に `sid`、`sub`、`aud` のいずれかが無い
+
+- Given ユーザー "alice" が "web-app" として認可コードを交換し、`sid` 付きの ID Token を持つ
+- When "alice" が発行済み ID Token を `id_token_hint` として `/end_session` を呼ぶ
+- But `id_token_hint` に `sid`、`sub`、`aud` のいずれかが無い
+- Then エラー "InvalidRequestError"
+- And ブラウザー Cookie が示す LoginSession は失効しない
+- And その LoginSession と同じ sid の RefreshTokenRecord も失効しない
+
+### Example: EX-OAUTH2-024-06 `id_token_hint` の `sub` が `sid` の LoginSession の主体と一致しない
+
+- Given ユーザー "alice" が "web-app" として認可コードを交換し、`sid` 付きの ID Token を持つ
+- When "alice" が発行済み ID Token を `id_token_hint` として `/end_session` を呼ぶ
+- But `id_token_hint` の `sub` が `sid` の LoginSession の主体と一致しない
+- Then エラー "InvalidRequestError"
+- And `sid` が示す LoginSession は失効しない
+- And 同じ sid の RefreshTokenRecord も失効しない
+
 ## Rule: REQ-OAUTH2-025 セッション失効時は `backchannel_logout_uri` を登録済みの RP へログアウトトークンを配信する
 
 Primary actor: `ResourceOwner`

@@ -87,3 +87,42 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 		t.Fatal("expected issuer mismatch to be rejected")
 	}
 }
+
+// signHintClaims は署名と iss だけが正しい ID Token を作る。claim の欠落を検査に
+// かけるため、SignIDToken を経由せず claim 集合を直接指定する。
+func signHintClaims(t *testing.T, signer *JWTSigner, ks *signingcrypto.InMemoryKeyStore, claims map[string]any) string {
+	t.Helper()
+	key, err := ks.GetActiveKey(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims["iss"] = signer.Issuer
+	token, err := SignPS256(key, map[string]string{"typ": "JWT"}, claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return token
+}
+
+// 署名も iss も正しいが sub または aud を欠く token は、ログアウトと CIBA の
+// どちらにとっても主体を決められない。claim を運ぶ前に fail-closed で拒否する。
+func TestVerifyIDTokenHintRejectsMissingSubjectOrAudience(t *testing.T) {
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := NewJWTSigner("https://idp.test", ks)
+
+	for name, claims := range map[string]map[string]any{
+		"sub 無し":   {"aud": "web-app", "sid": "session-1"},
+		"aud 無し":   {"sub": "user-1", "sid": "session-1"},
+		"sub が空文字": {"sub": "", "aud": "web-app", "sid": "session-1"},
+		"aud が空文字": {"sub": "user-1", "aud": "", "sid": "session-1"},
+		"aud が空配列": {"sub": "user-1", "aud": []any{}, "sid": "session-1"},
+	} {
+		token := signHintClaims(t, signer, ks, claims)
+		if _, err := signer.VerifyIDTokenHint(context.Background(), token); err == nil {
+			t.Fatalf("%s: 必須 claim を欠く id_token_hint が受理された", name)
+		}
+	}
+}

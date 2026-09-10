@@ -123,3 +123,78 @@ func TestResolveEndSessionWithoutVerifierRejectsHint(t *testing.T) {
 		t.Fatalf("expected invalid_request, got %v", err)
 	}
 }
+
+// staticSessionOwner は sid ごとの LoginSession の主体を返す。存在しない sid は found=false。
+type staticSessionOwner struct {
+	owners map[string]string
+	err    error
+}
+
+func (s staticSessionOwner) LoginSessionOwner(_ context.Context, sid string) (string, bool, error) {
+	if s.err != nil {
+		return "", false, s.err
+	}
+	owner, ok := s.owners[sid]
+	return owner, ok, nil
+}
+
+// REQ-OAUTH2-024 / EX-OAUTH2-024-05: sid を持たない id_token_hint はログアウト対象を
+// 決められない。空の sid をそのまま返すと HTTP 層が browser cookie のセッションへ
+// 暗黙に降格するため、ここで fail-closed に拒否する。
+func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
+	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice"}},
+	}, EndSessionInput{IDTokenHint: "hint-token"})
+	if target != nil {
+		t.Fatalf("sid を欠くヒントで対象が解決された: %#v", target)
+	}
+	var oerr *OAuthError
+	if !errors.As(err, &oerr) || oerr.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request for a hint without sid, got %v", err)
+	}
+}
+
+// REQ-OAUTH2-024 / EX-OAUTH2-024-06: sid が示す LoginSession の主体と sub が違うヒントは、
+// 他人のセッションを名指ししている。解決の時点で拒否する。
+func TestResolveEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
+	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "mallory", Sid: "session-1"}},
+		SessionOwner: staticSessionOwner{owners: map[string]string{"session-1": "alice"}},
+	}, EndSessionInput{IDTokenHint: "hint-token"})
+	if target != nil {
+		t.Fatalf("主体の食い違うヒントで対象が解決された: %#v", target)
+	}
+	var oerr *OAuthError
+	if !errors.As(err, &oerr) || oerr.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request for a subject mismatch, got %v", err)
+	}
+}
+
+// 主体が一致するヒントは従来どおり sid を解決する。
+func TestResolveEndSessionResolvesSidWhenSubjectOwnsTheSession(t *testing.T) {
+	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-1"}},
+		SessionOwner: staticSessionOwner{owners: map[string]string{"session-1": "alice"}},
+	}, EndSessionInput{IDTokenHint: "hint-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target.Sid != "session-1" || target.Subject != "alice" {
+		t.Fatalf("unexpected target: %#v", target)
+	}
+}
+
+// sid がどの LoginSession も指さないヒントは、失効させる対象を持たない。
+// 照合する相手が無いだけなので拒否はせず、解決結果をそのまま返す。
+func TestResolveEndSessionAcceptsHintWhoseSidHasNoSession(t *testing.T) {
+	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-gone"}},
+		SessionOwner: staticSessionOwner{owners: map[string]string{}},
+	}, EndSessionInput{IDTokenHint: "hint-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target.Sid != "session-gone" {
+		t.Fatalf("unexpected target: %#v", target)
+	}
+}

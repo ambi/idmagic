@@ -45,6 +45,7 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 
 	target, err := tokenusecases.ResolveEndSession(ctx, tokenusecases.EndSessionDeps{
 		ClientRepo: d.ClientRepo, HintVerifier: d.IDTokenHintVerifier,
+		SessionOwner: loginSessionOwner{manager: d.SessionManager},
 	}, tokenusecases.EndSessionInput{ClientID: clientID, PostLogoutRedirectURI: post, IDTokenHint: idTokenHint})
 	if err != nil {
 		return writeOAuthError(c, err)
@@ -60,6 +61,25 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 		return renderFrontChannelLogout(c, targets, redirectURI)
 	}
 	return c.Redirect(redirectStatus, redirectURI)
+}
+
+// loginSessionOwner は Authentication の SessionStore を、id_token_hint の sub と
+// 対象セッションの主体を照合する use case が必要とする形へ合わせる。
+// SessionManager が無い配線ではローカル失効も起きないので、見つからないものとして扱う。
+type loginSessionOwner struct{ manager *authusecases.SessionManager }
+
+func (l loginSessionOwner) LoginSessionOwner(ctx context.Context, sid string) (string, bool, error) {
+	if l.manager == nil || l.manager.Store == nil {
+		return "", false, nil
+	}
+	session, err := l.manager.Store.Find(ctx, sid)
+	if err != nil {
+		return "", false, err
+	}
+	if session == nil {
+		return "", false, nil
+	}
+	return session.UserID, true, nil
 }
 
 type settledLogout struct {
