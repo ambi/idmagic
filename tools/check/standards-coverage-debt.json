@@ -39,14 +39,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "OIDC-DISCOVERY-CONFIGURATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7517-JWKS",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC7591-REGISTER",
       "reason": "present when the check was introduced"
     },
@@ -79,27 +71,7 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC8414-METADATA",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC8693-FGA-ACTOR-AND",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9728-CHALLENGE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9728-IDMAGIC-API",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9728-METADATA",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC9728-WELL-KNOWN",
       "reason": "present when the check was introduced"
     },
     {
