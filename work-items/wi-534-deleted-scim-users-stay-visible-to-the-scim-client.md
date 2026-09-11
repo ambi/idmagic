@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-535-standards-row-additions-cannot-be-claimed-by-any-record]
 status: pending
 authors: [tn]
 risk: medium

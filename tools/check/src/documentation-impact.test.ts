@@ -131,6 +131,52 @@ describe('verifyDocumentationImpact', () => {
     expect(verifyDocumentationImpact(sibling, environment(claimed))).toEqual([])
   })
 
+  it('gives an added standards row to the record that declares it', () => {
+    // The third spelling. The diff keys a standards row `<path>#<ID>` because
+    // one id may be declared by several documents, while a record names the id
+    // alone under the document's `path`. Comparing those directly matched
+    // nothing, so adding any row made every open `none` record fail at once
+    // (wi-534 added one row and reported wi-495 and wi-535).
+    const addedStandard = {
+      ...noSpecificationChange,
+      addedStandards: ['docs/contexts/demo/standards.md#RFC-DEMO-THREE'],
+    }
+    const author = {
+      ...record,
+      id: 'wi-534-author',
+      status: 'in_progress',
+      affected_spec: [{ path: 'docs/contexts/demo/standards.md', requirement: 'RFC-DEMO-THREE' }],
+    }
+    const sibling = { ...record, id: 'wi-495-parent', status: 'in_progress' }
+    const claimed = { specificationDiff: addedStandard, specificationAdditionsClaimed: true }
+
+    expect(verifyDocumentationImpact(author, environment(claimed))).toContain(
+      'documentation_impact none is weaker than inferred release_note',
+    )
+    expect(verifyDocumentationImpact(sibling, environment(claimed))).toEqual([])
+  })
+
+  it('matches an added standards row by document and requirement id together', () => {
+    const row = 'docs/contexts/demo/standards.md#RFC-DEMO-THREE'
+    const reference = (overrides: Record<string, string>) => ({
+      affected_spec: [
+        { path: 'docs/contexts/demo/standards.md', requirement: 'RFC-DEMO-THREE', ...overrides },
+      ],
+    })
+
+    expect(claimsSpecificationAddition(reference({}), [row])).toBe(true)
+
+    // The document pins the row. The same id adopted by another context is a
+    // different row, and a record that names it must not claim this one.
+    expect(
+      claimsSpecificationAddition(reference({ path: 'docs/contexts/other/standards.md' }), [row]),
+    ).toBe(false)
+    expect(claimsSpecificationAddition(reference({ requirement: 'RFC-DEMO-FOUR' }), [row])).toBe(
+      false,
+    )
+    expect(claimsSpecificationAddition({}, [row])).toBe(false)
+  })
+
   it('matches an added declaration by file and declaration name together', () => {
     const declaration = 'spec/contexts/demo/models.tsp:PresentationTokenType'
     const reference = (overrides: Record<string, string>) => ({

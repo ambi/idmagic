@@ -149,20 +149,29 @@ function ownsWorkspaceDiff(
 /**
  * Whether one `affected_spec` reference names this added element.
  *
- * A scenario or standard is added under its own id, and the record writes that
- * id verbatim, so those compare directly. A TypeSpec declaration is added under
- * `<path>:<name>` — the diff's own spelling — while a record names it by
- * TypeSpec symbol (`IdMagic.Contract.Thing`) under the file's `path`, which is
- * the spelling `work-item-references.ts` resolves. No single string satisfies
- * both, so the declaration is split back into its parts here rather than asking
- * records to write the diff's internal form.
+ * The diff spells its three kinds of element three different ways, and a record
+ * names all three the way `work-item-references.ts` resolves them. A scenario is
+ * added under its own id, so that one compares directly. A standards row is
+ * added under `<path>#<id>`, because one id may be adopted by several documents.
+ * A TypeSpec declaration is added under `<path>:<name>`, while a record names it
+ * by TypeSpec symbol (`IdMagic.Contract.Thing`) under the file's `path`. No
+ * single string satisfies the latter two, so each is split back into its parts
+ * here rather than asking records to write the diff's internal form.
  *
- * Both halves are required. Matching the declaration name alone would let a
- * record claim a same-named declaration added to another context's file.
+ * Both halves are required. Matching the id or declaration name alone would let
+ * a record claim a same-named element added to another context's document.
  */
 function referenceNames(reference: Record<string, unknown>, element: string): boolean {
   for (const field of ['requirement', 'symbol']) {
     if (nonEmpty(reference[field]) && reference[field].trim() === element) return true
+  }
+  const row = element.lastIndexOf('#')
+  if (row >= 0) {
+    if (!nonEmpty(reference.path) || !nonEmpty(reference.requirement)) return false
+    return (
+      reference.path.trim() === element.slice(0, row) &&
+      reference.requirement.trim() === element.slice(row + 1)
+    )
   }
   const separator = element.lastIndexOf(':')
   if (separator < 0) return false
