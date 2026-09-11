@@ -61,7 +61,7 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 - `system` の 45 件について、どの Go パッケージのテストが所有するかを決める。
 - 横断シナリオ `docs/scenarios.feature.md` の 4 件について、所有するテストを決める。あわせて `report-coverage-debt` が同文書も走査するようにし、`(unknown)` を消す。
 - 実装が具体例のとおりに振る舞っていないことが分かった場合は、**本 work item では直さず欠陥として切り出す**。テストの追加と実装の修正を同じ変更に混ぜると、どちらが何を意味するのか後から読めない。
-- 614 件が 0 になった時点で `example-coverage-debt.json` と `example-coverage-debt-baseline.json` を落とし、`checkNormativeCoverage` へ具体例側から `debt` を渡すのをやめる。例外を持たない検査にする。
+- 614 件が 0 になった時点で `example-coverage-debt.json` を落とし、`checkNormativeCoverage` へ具体例側から `debt` を渡すのをやめる。例外を持たない検査にする。
 
 ## Out of Scope
 
@@ -91,7 +91,7 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 3. 記録をもとに、残る Context を本 work item で続けるか子 work item へ割るかを決め、本節へ書く。
 4. `report-coverage-debt` に横断シナリオの走査を足し、`(unknown)` の 4 件を解決する。
 5. Context ごとに消化する。`system` の 45 件は所有パッケージを決めてから着手する。
-6. 614 件が 0 になったら、台帳、受入集合、具体例側の `debt` 引数を落とす。
+6. 614 件が 0 になったら、台帳と具体例側の `debt` 引数を落とす。
 
 ## Tasks
 
@@ -102,7 +102,7 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 - [ ] T005 [Ledger] Context ごとに消化し、解決した id を台帳から外す。
 - [ ] T006 [Ledger] `system` の 45 件の所有パッケージを決めて消化する。
 - [ ] T007 [Defect] 具体例のとおりに振る舞っていない実装が見つかったら、欠陥の work item を切り出す。
-- [ ] T008 [Tooling] 台帳が空になったら、台帳、受入集合、具体例側の `debt` 引数を落とす。
+- [ ] T008 [Tooling] 台帳が空になったら、台帳と具体例側の `debt` 引数を落とす。
 - [ ] T009 [Verify] `mise run verify`。
 
 ## Verification
@@ -116,4 +116,4 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 - **注記だけを足して終わる。** 名指しの文字列があれば検査は通るので、読まずに id を貼れば 614 件は速く減る。減った件数は何も意味しない。注記に「何を固定しているか」を書かせること、および `named` と `nearby` を削除の根拠にしないことを Scope に明記して区別する。
 - **件数が大きく、着手が広がったまま止まる。** T003 で分割を判断するまで、T001 と T002 の 2 Context 以外に着手しない。分割した場合、親である本 work item は報告ツールの修正と最後の台帳削除だけを持つ。
 - **拒否である具体例のテストが、応答の字面だけを見て書かれる。** 新しく書く拒否テストには wi-392 の規範が効く。本 work item の側では、拒否の具体例に対して「効果の不在を何で観測したか」を注記へ書かせることで、後から区別できるようにする。
-- **消化中に具体例が増える。** 受入集合 `example-coverage-debt-baseline.json` が既に効いており、新しい具体例を台帳へ足すことは検査が拒否する。増えるのは台帳ではなくテストの側なので、消化と流入の競争にはならない。
+- **消化中に具体例が増える。** Git ratchet が基準 revision にない id の追加を拒否する。増えるのは台帳ではなくテストの側なので、消化と流入の競争にはならない。

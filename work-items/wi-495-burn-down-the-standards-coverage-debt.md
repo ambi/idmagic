@@ -26,7 +26,7 @@ change_kind: tooling
 evidence_policy: risk-based-v3
 documentation_impact:
   level: none
-  reason: 受入集合は検査の内側の仕組みであり、標準の行も製品の振る舞いも変わらないので、リリースの読み手に見えるものが無い。
+  reason: Git ratchet は検査の内側の仕組みであり、標準の行も製品の振る舞いも変わらないので、リリースの読み手に見えるものが無い。
   references: []
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
@@ -38,7 +38,7 @@ initial_context:
     - tools/check/src/check-documents.ts
     - tools/check/src/normative-coverage.ts
     - tools/check/standards-coverage-debt.json
-    - tools/check/example-coverage-debt-baseline.json
+    - tools/check/src/coverage-debt-ratchet.ts
     - backend/sharedsignals/usecases/transmit.go
     - backend/sharedsignals/usecases/receive.go
     - backend/shared/security/tokens_jose/security_event_token_verifier.go
@@ -90,20 +90,20 @@ initial_context:
 
 `provisioning` だけが 13 行中 12 行の名指しを持っている。SCIM の適合作業（[[wi-238-scim-inbound-list-query-conformance]]）が id を名指しするテストを書いたからであり、消化が可能であることの実例である。裏を返せば、他の文書は適合作業を経ていないというだけで負債になっている。
 
-**もう一つ、台帳の宣言と検査が食い違っている。** `tools/check/src/check-specifications.ts:162` は `checkNormativeCoverage` に `debtBaseline` を渡すが、渡しているのは具体例の台帳だけである。標準の台帳には baseline が無いので、新しく足した `standards.md` の行を、テストを書かずに台帳へ追記しても検査は通る。「この一覧は縮むだけである」は文書の宣言であって、検査された性質ではない。消化を始める前にここを塞がないと、消化と追記が競争になる。
+**台帳の宣言と検査の食い違いは解消した。** Git ratchet が標準と具体例の台帳を各基準 revision と比較し、新しい id と解消済み id の再流入を同じく拒否する。「この一覧は縮むだけである」は検査された性質である。
 
 ## Scope
 
-T003 の判断により、134 件のうち 130 件の消化は所有文書ごとの子 work item が持つ。本項目が直接持つのは、受入集合の導入、`sharedsignals` の 4 件による測定、分割の判断、そして子 work item がすべて完了した後の台帳削除である。以下の各項は、本項目と子 work item の双方に効く規則として残す。
+T003 の判断により、134 件のうち 130 件の消化は所有文書ごとの子 work item が持つ。本項目が直接持つのは、Git ratchet の維持、`sharedsignals` の 4 件による測定、分割の判断、そして子 work item がすべて完了した後の台帳削除である。以下の各項は、本項目と子 work item の双方に効く規則として残す。
 
-- 標準の台帳にも受入集合の固定を入れ、新規の追記を拒否する。具体例側の `tools/check/example-coverage-debt-baseline.json` と同じ形にする。
+- Git ratchet が標準の台帳への新規 id の追記を拒否する。
 - 134 件を 1 件ずつ確認し、次のいずれかに解決して台帳から外す。
   - 当の行を検証しているテストが実在する → そのテストに `// <ID>: <この行の何を固定しているか>` の注記を足す。
   - 当の行を検証しているテストが無い → 書く。観測は `Adoption` 列に応じた形（Design を参照）にする。
   - 行が宣言されなくなっている → 台帳から外す（検査が落ちて教える）。
 - 名指しの対象が `docs/standards.md`（横断）の 7 件について、どのパッケージのテストが所有するかを決める。
 - 実装が宣言した採用を満たしていないことが分かった場合は、**本 work item では直さず欠陥として切り出す**。テストの追加と実装の修正を同じ変更に混ぜると、どちらが何を意味するのか後から読めない。
-- 134 件が 0 になった時点で `standards-coverage-debt.json` と受入集合のファイルを落とし、`checkNormativeCoverage` へ標準側から `debt` を渡すのをやめる。例外を持たない検査にする。
+- 134 件が 0 になった時点で `standards-coverage-debt.json` を落とし、`checkNormativeCoverage` へ標準側から `debt` を渡すのをやめる。例外を持たない検査にする。
 
 ## Out of Scope
 
@@ -129,7 +129,7 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 
 `excluded` の 15 件は「Implicit Grant を提供する」のように、行の `Statement` が製品の振る舞いではなく標準側の機能を書いている。これらのテストは `Statement` を満たすことではなく、満たさないことを観測する。書き方が `required` と逆になるため、最初の 1 件で型を決めてから残りへ広げる。
 
-受入集合の固定は消化より先に入れる。順序を逆にすると、消化している間に新しい行が台帳へ流れ込み、件数が減らない理由が消化の遅さなのか流入なのか区別できなくなる。`checkNormativeCoverage` は `debtBaseline` を任意の引数として既に受け取るので、必要なのは `standards-coverage-debt-baseline.json` を現在の 134 件で作り、`check-specifications.ts` から渡すことだけである。新しい検査の型を作らない。
+Git ratchet は消化より先に実行する。順序を逆にすると、消化している間に新しい行が台帳へ流れ込み、件数が減らない理由が消化の遅さなのか流入なのか区別できなくなる。
 
 進める単位は所有文書とする。分類（named / nearby）順に進める案は却下した。`docs/standards.md` の行は分類の材料になる `report-coverage-debt` の対象外であり（同ツールは `example-coverage-debt.json` しか読まない）、標準側には機械的な分類がそもそも存在しない。文書単位なら、標準そのものを 1 度読む文脈で連続した行を判断できる。
 
@@ -172,7 +172,7 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 
 これにより本項目の `depends_on` は 9 件から 16 件になった。
 
-本項目はこれ以降、受入集合の導入（済み）と、16 件がすべて完了した後の台帳削除だけを持つ。`depends_on` がその順序を機械で拘束する。
+本項目はこれ以降、Git ratchet の維持と、16 件がすべて完了した後の台帳削除だけを持つ。`depends_on` がその順序を機械で拘束する。
 
 ## Plan
 
@@ -180,7 +180,7 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 2. ~~`sharedsignals` の 4 件を通しで消化し、注記の型と、1 件あたりの所要を記録する。~~ 完了。記録は Design の「測定の結果」節。
 3. ~~記録をもとに、残る文書を本 work item で続けるか子 work item へ割るかを決め、本節へ書く。~~ 完了。所有文書ごとに 9 件へ割った。
 4. 16 件の子 work item の完了を待つ。`excluded` の行の観測の型は、各子がその文書の 1 件目で決める。文書をまたいで型を先に揃えることはしない。`sharedsignals` に `excluded` の行が無かったので、本項目はその型を決めていない。
-5. 134 件が 0 になったら、台帳と受入集合のファイル、および標準側の `debt` 引数を落とす。
+5. 134 件が 0 になったら、台帳と標準側の `debt` 引数を落とす。
 
 ## Tasks
 
@@ -194,13 +194,13 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
   16 件の子 work item が持つ。本項目は `depends_on` でその完了を待つ。
 - [ ] T005 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
   各子 work item が自分の文書について持つ。`sharedsignals` の 4 件では 1 件も見つからなかった。
-- [ ] T006 [Tooling] 台帳が空になったら、台帳、受入集合、標準側の `debt` 引数を落とす。
+- [ ] T006 [Tooling] 台帳が空になったら、台帳と標準側の `debt` 引数を落とす。
 - [ ] T007 [Verify] `mise run verify`。
 
 ## Verification
 
 - `mise run check-spec` が標準の被覆について例外を持たずに通る。
-- 受入集合に無い id を台帳へ足すと `mise run check-spec` が落ちる。
+- 基準 revision に無い id を台帳へ足すと `mise run check-coverage-debt-ratchet` が落ちる。
 - `mise run verify`
 
 ### T001 の観測（受入集合の RED / GREEN）
@@ -230,4 +230,4 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 
 - **注記だけを足して終わる。** 名指しの文字列があれば検査は通るので、読まずに id を貼れば件数は減る。減った件数は何も意味しない。注記に「何を固定しているか」を書かせること、および `Adoption` ごとの観測の型を先に決めることで、貼るだけの作業と区別する。
 - **`excluded` の行に書けるテストが無い。** 製品がその機能をそもそも実装していないなら、観測できるのは「入口が存在しない」ことだけになりうる。この場合に何を観測とするかは T002 の前に決める。決められない行は、台帳へ残す理由を `present when the check was introduced` から具体的な理由へ書き換えたうえで残す。理由が更新されていれば、判断済みであることが後から読める。
-- **`oauth2` の 80 件が長期化する。** T003 で分割を判断するまで着手を広げない。分割した場合、親である本 work item は受入集合の導入と最後の台帳削除だけを持つ。
+- **`oauth2` の 80 件が長期化する。** T003 で分割を判断するまで着手を広げない。分割した場合、親である本 work item は Git ratchet の維持と最後の台帳削除だけを持つ。

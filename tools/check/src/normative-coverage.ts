@@ -33,8 +33,6 @@ export type CoverageInput = {
   cited: ReadonlySet<string>
   debt: readonly DebtEntry[]
   debtPath: string
-  /** IDs admitted when this debt ledger was introduced. Omit for a non-ratcheted ledger. */
-  debtBaseline?: ReadonlySet<string>
 }
 
 function escapeForPattern(value: string): string {
@@ -73,7 +71,7 @@ export function citedNormativeIds(
 }
 
 export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] {
-  const { declared, cited, debt, debtPath, debtBaseline } = input
+  const { declared, cited, debt, debtPath } = input
   const findings: CoverageFinding[] = []
   const listed = new Set(debt.map((entry) => entry.id))
 
@@ -100,12 +98,6 @@ export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] 
       continue
     }
     seen.add(entry.id)
-    if (debtBaseline && !debtBaseline.has(entry.id)) {
-      findings.push({
-        path: debtPath,
-        message: `${entry.id} was not in the migration baseline. Add a test instead of growing the debt list.`,
-      })
-    }
     if (previous !== undefined && entry.id < previous) {
       findings.push({
         path: debtPath,

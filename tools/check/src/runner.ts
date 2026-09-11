@@ -8,6 +8,7 @@ export type CheckOutcome = {
 export type CheckOptions = {
   verbose: boolean
   listUnresolved: boolean
+  baseRevision?: string
 }
 
 export type RepositoryCheck = {
@@ -40,11 +41,17 @@ export async function runChecks(
 
 if (import.meta.main) {
   const args = process.argv.slice(2)
+  const baseRevisionIndex = args.indexOf('--base-revision')
+  const baseRevision = baseRevisionIndex === -1 ? undefined : args[baseRevisionIndex + 1]
   const options: CheckOptions = {
     verbose: args.includes('--verbose'),
     listUnresolved: args.includes('--list-unresolved'),
+    baseRevision,
   }
-  const selectors = args.filter((arg) => !arg.startsWith('--'))
+  const selectors = args.filter(
+    (arg, index) =>
+      !arg.startsWith('--') && (baseRevisionIndex === -1 || index !== baseRevisionIndex + 1),
+  )
   const [{ repositoryChecks, selectChecks }, { createWorkspaceSnapshot }] = await Promise.all([
     import('./registry.ts'),
     import('../../workspace/src/workspace.ts'),

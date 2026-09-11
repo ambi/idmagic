@@ -60,7 +60,6 @@ async function canonicalDirectories(snapshot: WorkspaceSnapshot): Promise<Direct
 }
 
 type DebtFile = { untested: DebtEntry[] }
-type DebtBaselineFile = { ids: string[] }
 
 async function readDebt(snapshot: WorkspaceSnapshot, path: string): Promise<DebtEntry[]> {
   if (!snapshot.exists(path)) return []
@@ -72,15 +71,6 @@ async function readDebt(snapshot: WorkspaceSnapshot, path: string): Promise<Debt
     }
     return entry
   })
-}
-
-async function readDebtBaseline(snapshot: WorkspaceSnapshot, path: string): Promise<Set<string>> {
-  if (!snapshot.exists(path)) return new Set()
-  const parsed = JSON.parse(await snapshot.read(path)) as DebtBaselineFile
-  if (!Array.isArray(parsed.ids) || parsed.ids.some((id) => typeof id !== 'string')) {
-    throw new Error(`${path}: ids must be an array of strings`)
-  }
-  return new Set(parsed.ids)
 }
 
 export async function checkDocuments(
@@ -191,20 +181,12 @@ export async function checkDocuments(
       cited,
       debt: await readDebt(snapshot, standardsDebt),
       debtPath: standardsDebt,
-      debtBaseline: await readDebtBaseline(
-        snapshot,
-        'tools/check/standards-coverage-debt-baseline.json',
-      ),
     }),
     ...checkNormativeCoverage({
       declared: examples,
       cited,
       debt: await readDebt(snapshot, examplesDebt),
       debtPath: examplesDebt,
-      debtBaseline: await readDebtBaseline(
-        snapshot,
-        'tools/check/example-coverage-debt-baseline.json',
-      ),
     }),
   ]
   failed ||= coverage.length > 0

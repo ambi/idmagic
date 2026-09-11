@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
           version: 2026.8.14
@@ -24,6 +25,7 @@ jobs:
       - name: Verify Core (Tools & Configs)
         run: |
           mise run check
+          mise run check-coverage-debt-ratchet -- "${{ github.event.pull_request.base.sha || github.event.before }}"
           mise run check-api-compat
           mise run test-tools
           mise run typecheck-tools

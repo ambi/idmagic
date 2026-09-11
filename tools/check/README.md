@@ -23,12 +23,16 @@ work item の識別子はファイル名の stem 全体である。
 ## Coverage debt
 
 次の二つの台帳は、テストがまだ名前を記載していない normative id を保持する。
-各 admission set は ratchet 導入時の集合を固定し、新しい未検査 id の追加を拒否する。
+`mise run check-coverage-debt-ratchet -- <base-revision>` は、指定した Git revision の台帳にない id の追加を拒否する。
 
-| ファイル | 対象 | Admission set | 検査 |
+| ファイル | 対象 | 追加を拒否する基準 | 検査 |
 | --- | --- | --- | --- |
-| `example-coverage-debt.json` | 実行可能な scenario example | `example-coverage-debt-baseline.json` | `check-spec` |
-| `standards-coverage-debt.json` | `standards.md` の行 | `standards-coverage-debt-baseline.json` | `check-spec` |
+| `example-coverage-debt.json` | 実行可能な scenario example | Git 基準 revision の同じ台帳 | `check-coverage-debt-ratchet` |
+| `standards-coverage-debt.json` | `standards.md` の行 | Git 基準 revision の同じ台帳 | `check-coverage-debt-ratchet` |
+
+ローカルの既定基準は `main` である。
+Pull Request では base SHA を、`main` への push では push 直前の SHA を CI が渡す。
+既存 id の `reason` 更新と id の削除は許可する。
 
 `mise run report-coverage-debt` は、契約上の拒否を使って debt の優先順位を報告する。
 この照会は検査の合否を変えない。

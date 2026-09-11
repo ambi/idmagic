@@ -143,19 +143,6 @@ describe('checkNormativeCoverage', () => {
     ])
   })
 
-  it('rejects admitting a new id to a ratcheted debt ledger', () => {
-    const findings = checkNormativeCoverage({
-      declared,
-      cited: new Set(['REQ-DEMO-001']),
-      debt: [{ id: 'REQ-DEMO-002', reason: 'newly added without a test' }],
-      debtPath: DEBT,
-      debtBaseline: new Set(['REQ-DEMO-001']),
-    })
-    expect(messages(findings)).toEqual([
-      'REQ-DEMO-002 was not in the migration baseline. Add a test instead of growing the debt list.',
-    ])
-  })
-
   it('rejects a debt entry nothing declares any more', () => {
     const findings = checkNormativeCoverage({
       declared,

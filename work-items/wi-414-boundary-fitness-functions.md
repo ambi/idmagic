@@ -19,7 +19,7 @@ spec_impact: { kind: none, reason: "docs/structure.md へ公開言語の定義�
 
 Modular Monolith の全体重は「モジュールの内部が外から見えないこと」に乗っている。それが慣習だけで支えられている限り、Context Map は現在の設計の記述ではなく努力目標にすぎず、`docs/development/specification-first-workflow.md` が求める「現在の設計は正本文書と work item だけから理解できる」状態を満たさない。同じ理由で、`domain` が純粋であるという性質もどこにも書かれておらず検査もされていないため、`domain` の中で `time.Now()` を呼ぶことは今のところ自由である。
 
-`checkNormativeCoverage`（`tools/check/src/normative-coverage.ts:75`）と `example-coverage-debt.json`、`example-coverage-debt-baseline.json` は、既存の違反を負債として明示管理しながら新規の違反を止めるという型を既に持っている。同じ型を境界に適用する。
+`checkNormativeCoverage`（`tools/check/src/normative-coverage.ts:75`）と `example-coverage-debt.json`、Git ratchet は、既存の違反を負債として明示管理しながら新規の違反を止めるという型を持つ。同じ型を境界に適用する。
 
 ## Scope
 
@@ -47,7 +47,7 @@ Context Map を機械可読にする方法は 2 つある。採るのは Mermaid
 
 Context 名と Go パッケージ名の対応は `docs/README.md` の索引表（Specification context 列と Go package 列）から読み取る。この表も既に存在するため、新しい対応表を作らない。
 
-負債ファイルの形式は `example-coverage-debt.json` に倣う。項目には「どの Context がどの Context の何に到達しているか」と理由を持たせ、理由の無い項目は拒否する。負債に載っていない違反が現れたら落ち、負債に載っているが既に解消された項目が残っていても落ちる。後者を入れるのは、負債ファイルが解消の進捗と乖離しないようにするためである。あわせて `example-coverage-debt-baseline.json` と同じ受入集合を置き、導入時に列挙した違反以外を負債へ追記できないようにする。負債ファイルは縮む方向にしか動かない、という性質を検査された性質にする。
+負債ファイルの形式は `example-coverage-debt.json` に倣う。項目には「どの Context がどの Context の何に到達しているか」と理由を持たせ、理由の無い項目は拒否する。負債に載っていない違反が現れたら落ち、負債に載っているが既に解消された項目が残っていても落ちる。後者を入れるのは、負債ファイルが解消の進捗と乖離しないようにするためである。Git ratchet が基準 revision にない違反の追記を拒否する。負債ファイルは縮む方向にしか動かない、という性質を検査された性質にする。
 
 `domain` の作用禁止は import 文の検査で行う。`time` パッケージ全体を禁じると `time.Duration` と `time.Time` が使えなくなるため、禁じるのは識別子 `time.Now` の呼び出しであり、パッケージの import ではない。
 

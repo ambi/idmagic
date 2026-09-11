@@ -4,6 +4,7 @@ import { checkApiCompat } from './check-api-compat.ts'
 import { checkBoundaries } from './check-boundaries.ts'
 import { checkCommandMap } from './check-command-map.ts'
 import { checkContractDrift } from './check-contract-drift.ts'
+import { checkCoverageDebtRatchet } from './coverage-debt-ratchet.ts'
 import { checkDocuments } from './check-documents.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
@@ -16,6 +17,7 @@ import type { RepositoryCheck } from './runner.ts'
 
 export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'documents', groups: ['all'], run: checkDocuments },
+  { name: 'coverage-debt-ratchet', groups: ['all'], run: checkCoverageDebtRatchet },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
   { name: 'links', groups: ['all'], run: checkLinks },
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
