@@ -212,6 +212,39 @@ describe('文書検査', () => {
     expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
   })
 
+  // 標準の側の台帳は wi-495 が空にして消した。消えたのは一覧だけでなく免除の
+  // 仕組みそのものなので、同じ名前のファイルを置き直しても行は通らない。これが
+  // 成り立たなければ、台帳の削除は誰でも元に戻せる。
+  it('admits no standards row through a recreated debt ledger', async () => {
+    const root = await workspace()
+    await writeFile(
+      join(root, 'docs', 'contexts', 'demo', 'standards.md'),
+      [
+        '# Demo の採用規範',
+        '',
+        '## Demo Protocol',
+        '',
+        'RFC DEMO — https://example.com/rfc-demo',
+        '',
+        '| ID | Adoption | Strength | Statement |',
+        '|---|---|---|---|',
+        '| RFC-DEMO-001 | required | MUST | デモは要求を受け付ける。 |',
+        '',
+      ].join('\n'),
+    )
+    await mkdir(join(root, 'tools', 'check'), { recursive: true })
+    await writeFile(
+      join(root, 'tools', 'check', 'standards-coverage-debt.json'),
+      JSON.stringify({ untested: [{ id: 'RFC-DEMO-001', reason: 'ここへ書けば通ると思った' }] }),
+    )
+
+    const result = await checkDocuments(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('RFC-DEMO-001 is declared, but no test names it')
+    // 逃げ道を案内しない。存在しない手順へ読み手を送らないための表明でもある。
+    expect(result.output).not.toContain('standards-coverage-debt.json')
+  })
+
   it('leaves a retired scenario out of the coverage gate', async () => {
     const root = await workspace()
     await writeFile(
@@ -239,11 +272,13 @@ describe('文書検査', () => {
 })
 
 describe('coverage debt ratchet', () => {
-  it('rejects additions to either ledger beyond the named Git revision', async () => {
+  it('rejects additions to the example ledger beyond the named Git revision', async () => {
     const root = await workspace()
     await mkdir(join(root, 'tools', 'check'), { recursive: true })
     const baseDebt = JSON.stringify({ untested: [{ id: 'EX-DEMO-001-01', reason: 'base debt' }] })
     await writeFile(join(root, 'tools', 'check', 'example-coverage-debt.json'), baseDebt)
+    // 標準の台帳は wi-495 で消えた。ratchet が見に行く台帳はもう 1 つだけなので、
+    // 同じ名前のファイルを置き直しても検査は読まない。
     await writeFile(
       join(root, 'tools', 'check', 'standards-coverage-debt.json'),
       JSON.stringify({ untested: [{ id: 'RFC-DEMO-001', reason: 'base debt' }] }),
@@ -275,7 +310,7 @@ describe('coverage debt ratchet', () => {
 
     expect(result.code).toBe(1)
     expect(result.output).toContain('EX-DEMO-002-01 is absent from')
-    expect(result.output).toContain('RFC-DEMO-002 is absent from')
+    expect(result.output).not.toContain('RFC-DEMO-002')
   })
 })
 

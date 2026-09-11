@@ -89,8 +89,7 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001', 'REQ-DEMO-002']),
-      debt: [],
-      debtPath: DEBT,
+      ledger: { entries: [], path: DEBT },
     })
     expect(findings).toEqual([])
   })
@@ -99,8 +98,7 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001']),
-      debt: [],
-      debtPath: DEBT,
+      ledger: { entries: [], path: DEBT },
     })
     expect(findings).toHaveLength(1)
     expect(findings[0]?.path).toBe('docs/contexts/demo/scenarios.feature.md')
@@ -108,12 +106,29 @@ describe('checkNormativeCoverage', () => {
     expect(findings[0]?.message).toContain('no test names it')
   })
 
+  // 標準の側は台帳を持たない (wi-495)。台帳が無い検査は、逃げ道を案内しては
+  // ならない。存在しないファイルへ載せろと言う指示は、読み手を実在しない手順へ
+  // 送るうえ、そのファイルを作れば通ると誤解させる。
+  it('names no escape hatch when the caller has no debt ledger', () => {
+    const findings = checkNormativeCoverage({
+      declared,
+      cited: new Set(['REQ-DEMO-001']),
+    })
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.message).toContain('REQ-DEMO-002')
+    expect(findings[0]?.message).toContain('no test names it')
+    expect(findings[0]?.message).not.toContain('debt')
+    expect(findings[0]?.message).not.toContain('list it in')
+  })
+
   it('accepts an untested declaration the debt file carries with a reason', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001']),
-      debt: [{ id: 'REQ-DEMO-002', reason: 'present when the check was introduced' }],
-      debtPath: DEBT,
+      ledger: {
+        entries: [{ id: 'REQ-DEMO-002', reason: 'present when the check was introduced' }],
+        path: DEBT,
+      },
     })
     expect(findings).toEqual([])
   })
@@ -122,8 +137,7 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001']),
-      debt: [{ id: 'REQ-DEMO-002', reason: '  ' }],
-      debtPath: DEBT,
+      ledger: { entries: [{ id: 'REQ-DEMO-002', reason: '  ' }], path: DEBT },
     })
     expect(messages(findings)).toEqual([
       'REQ-DEMO-002 is listed without a reason. State why it has no test yet.',
@@ -135,8 +149,10 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001', 'REQ-DEMO-002']),
-      debt: [{ id: 'REQ-DEMO-002', reason: 'present when the check was introduced' }],
-      debtPath: DEBT,
+      ledger: {
+        entries: [{ id: 'REQ-DEMO-002', reason: 'present when the check was introduced' }],
+        path: DEBT,
+      },
     })
     expect(messages(findings)).toEqual([
       'REQ-DEMO-002 now has a test that names it. Remove it from the list; the list only shrinks.',
@@ -147,8 +163,10 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001', 'REQ-DEMO-002']),
-      debt: [{ id: 'REQ-DEMO-404', reason: 'present when the check was introduced' }],
-      debtPath: DEBT,
+      ledger: {
+        entries: [{ id: 'REQ-DEMO-404', reason: 'present when the check was introduced' }],
+        path: DEBT,
+      },
     })
     expect(messages(findings)).toEqual([
       'REQ-DEMO-404 is listed as untested but nothing declares it any more. Remove it.',
@@ -159,11 +177,13 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001']),
-      debt: [
-        { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
-        { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
-      ],
-      debtPath: DEBT,
+      ledger: {
+        entries: [
+          { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
+          { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
+        ],
+        path: DEBT,
+      },
     })
     expect(messages(findings)).toEqual(['REQ-DEMO-002 is listed twice. Keep one entry per id.'])
   })
@@ -172,11 +192,13 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(),
-      debt: [
-        { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
-        { id: 'REQ-DEMO-001', reason: 'present when the check was introduced' },
-      ],
-      debtPath: DEBT,
+      ledger: {
+        entries: [
+          { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
+          { id: 'REQ-DEMO-001', reason: 'present when the check was introduced' },
+        ],
+        path: DEBT,
+      },
     })
     expect(messages(findings)).toEqual([
       'REQ-DEMO-001 is listed after REQ-DEMO-002. Keep the list in id order so its diffs stay readable.',
@@ -192,11 +214,13 @@ describe('checkNormativeCoverage', () => {
     const findings = checkNormativeCoverage({
       declared,
       cited: new Set(['REQ-DEMO-001']),
-      debt: [
-        { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
-        { id: 'REQ-DEMO-002', reason: 'declared a refusal when the refusal check arrived' },
-      ],
-      debtPath: DEBT,
+      ledger: {
+        entries: [
+          { id: 'REQ-DEMO-002', reason: 'present when the check was introduced' },
+          { id: 'REQ-DEMO-002', reason: 'declared a refusal when the refusal check arrived' },
+        ],
+        path: DEBT,
+      },
     })
     expect(messages(findings)).toEqual(['REQ-DEMO-002 is listed twice. Keep one entry per id.'])
   })

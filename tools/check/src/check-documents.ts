@@ -173,20 +173,15 @@ export async function checkDocuments(
     sources,
     [...standards, ...examples].map((declaration) => declaration.id),
   )
-  const standardsDebt = 'tools/check/standards-coverage-debt.json'
   const examplesDebt = 'tools/check/example-coverage-debt.json'
   const coverage = [
-    ...checkNormativeCoverage({
-      declared: standards,
-      cited,
-      debt: await readDebt(snapshot, standardsDebt),
-      debtPath: standardsDebt,
-    }),
+    // 標準の側は台帳を持たない (wi-495)。宣言した行は、その id を名指すテストを
+    // 持つか、検査に落ちるかのどちらかである。
+    ...checkNormativeCoverage({ declared: standards, cited }),
     ...checkNormativeCoverage({
       declared: examples,
       cited,
-      debt: await readDebt(snapshot, examplesDebt),
-      debtPath: examplesDebt,
+      ledger: { entries: await readDebt(snapshot, examplesDebt), path: examplesDebt },
     }),
   ]
   failed ||= coverage.length > 0

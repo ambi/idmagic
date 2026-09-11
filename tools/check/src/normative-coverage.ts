@@ -27,12 +27,25 @@ export type DebtEntry = { id: string; reason: string }
 
 export type CoverageFinding = { path: string; message: string }
 
+/**
+ * The ids allowed to have no test yet, and the file they are listed in. The
+ * entries and the path are one value because neither is usable alone: entries
+ * with no path leave the reader nowhere to be sent, and the rules that keep the
+ * list honest — one entry per id, id order, a reason, no entry a test has since
+ * covered — are all rules about that file.
+ */
+export type DebtLedger = { entries: readonly DebtEntry[]; path: string }
+
 export type CoverageInput = {
   declared: readonly DeclaredId[]
   /** The ids some test names. */
   cited: ReadonlySet<string>
-  debt: readonly DebtEntry[]
-  debtPath: string
+  /**
+   * Omitted by a caller that has no ledger, which is the end state: the
+   * standards side reached it in wi-495, and the check now refuses a row no
+   * test names outright, with no escape to offer.
+   */
+  ledger?: DebtLedger
 }
 
 function escapeForPattern(value: string): string {
@@ -71,9 +84,9 @@ export function citedNormativeIds(
 }
 
 export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] {
-  const { declared, cited, debt, debtPath } = input
+  const { declared, cited, ledger } = input
   const findings: CoverageFinding[] = []
-  const listed = new Set(debt.map((entry) => entry.id))
+  const listed = new Set((ledger?.entries ?? []).map((entry) => entry.id))
 
   for (const declaration of declared) {
     if (cited.has(declaration.id)) continue
@@ -82,9 +95,16 @@ export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] 
       path: declaration.path,
       message:
         `${declaration.id} is declared, but no test names it. ` +
-        `Cite the id from the test that exercises it, or list it in ${debtPath} with a reason.`,
+        (ledger === undefined
+          ? 'Cite the id from the test that exercises it.'
+          : `Cite the id from the test that exercises it, or list it in ${ledger.path} with a reason.`),
     })
   }
+
+  // 台帳そのものの検査は、台帳がある呼び出しにしか無い。無い側では上の 1 つの
+  // 規則だけが残り、それが「例外を持たない検査」の中身である。
+  if (ledger === undefined) return findings
+  const { entries: debt, path: debtPath } = ledger
 
   const declaredIds = new Set(declared.map((declaration) => declaration.id))
   const seen = new Set<string>()

@@ -22,13 +22,17 @@ work item の識別子はファイル名の stem 全体である。
 
 ## Coverage debt
 
-次の二つの台帳は、テストがまだ名前を記載していない normative id を保持する。
+次の台帳は、テストがまだ名前を記載していない normative id を保持する。
 `mise run check-coverage-debt-ratchet -- <base-revision>` は、指定した Git revision の台帳にない id の追加を拒否する。
 
 | ファイル | 対象 | 追加を拒否する基準 | 検査 |
 | --- | --- | --- | --- |
 | `example-coverage-debt.json` | 実行可能な scenario example | Git 基準 revision の同じ台帳 | `check-coverage-debt-ratchet` |
-| `standards-coverage-debt.json` | `standards.md` の行 | Git 基準 revision の同じ台帳 | `check-coverage-debt-ratchet` |
+
+`standards.md` の行は台帳を持たない。
+宣言した行は、その id を名指すテストを持つか `mise run check-spec` に落ちるかのどちらかである。
+台帳は wi-495 が空にして削除した。
+同じ名前のファイルを置き直しても、どの検査も読まない。
 
 ローカルの既定基準は `main` である。
 Pull Request では base SHA を、`main` への push では push 直前の SHA を CI が渡す。

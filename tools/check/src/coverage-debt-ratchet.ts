@@ -2,10 +2,12 @@ import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import type { DebtEntry } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 
-export const COVERAGE_DEBT_PATHS = [
-  'tools/check/example-coverage-debt.json',
-  'tools/check/standards-coverage-debt.json',
-] as const
+/**
+ * 台帳は 1 つだけである。標準の側の台帳は wi-495 が空にして消したので、ratchet が
+ * 守る対象も消えた。宣言した標準の行は、その id を名指すテストを持つか検査に落ちる
+ * かのどちらかであり、流入を測る基準そのものが要らない。
+ */
+export const COVERAGE_DEBT_PATHS = ['tools/check/example-coverage-debt.json'] as const
 
 type DebtFile = { untested: DebtEntry[] }
 

@@ -16,7 +16,7 @@ depends_on:
   - wi-520-back-oauth2-non-interactive-grant-standards-rows-with-tests
   - wi-521-back-oauth2-metadata-standards-rows-with-tests
   - wi-522-back-oauth2-client-profile-standards-rows-with-tests
-status: in_progress
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -37,13 +37,14 @@ initial_context:
   source:
     - tools/check/src/check-documents.ts
     - tools/check/src/normative-coverage.ts
-    - tools/check/standards-coverage-debt.json
     - tools/check/src/coverage-debt-ratchet.ts
+    - tools/check/README.md
     - backend/sharedsignals/usecases/transmit.go
     - backend/sharedsignals/usecases/receive.go
     - backend/shared/security/tokens_jose/security_event_token_verifier.go
   tests:
     - tools/check/src/normative-coverage.test.ts
+    - tools/check/src/repository-checks.acceptance.test.ts
     - backend/sharedsignals/usecases/transmit_test.go
     - backend/sharedsignals/usecases/receive_test.go
     - backend/sharedsignals/usecases/receive_subject_identifier_test.go
@@ -190,18 +191,41 @@ Git ratchet は消化より先に実行する。順序を逆にすると、消�
   4 件とも消化し、台帳は 134 → 130 件。測定は Design の「測定の結果」節。再実行の recipe は `mise run test-go-package -- ./backend/sharedsignals/usecases` と `mise run test-go-package -- ./backend/shared/security/tokens_jose`。
 - [x] T003 [Plan] 残る 130 件の進め方（本 work item で続けるか分割するか）を決めて記録する。
   所有文書ごとに 9 件へ割った。判断と根拠は Design の「T003 の判断」節。
-- [ ] T004 [Ledger] 文書ごとに消化し、解決した id を台帳から外す。
-  16 件の子 work item が持つ。本項目は `depends_on` でその完了を待つ。
-- [ ] T005 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
-  各子 work item が自分の文書について持つ。`sharedsignals` の 4 件では 1 件も見つからなかった。
-- [ ] T006 [Tooling] 台帳が空になったら、台帳と標準側の `debt` 引数を落とす。
-- [ ] T007 [Verify] `mise run verify`。
+- [x] T004 [Ledger] 文書ごとに消化し、解決した id を台帳から外す。
+  16 件の子 work item がすべて完了し、`untested` は空になった。本項目が直接消化したのは T002 の
+  `sharedsignals` の 4 件だけである。
+- [x] T005 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
+  各子 work item が自分の文書について持った。`sharedsignals` の 4 件では 1 件も見つからなかった。
+- [x] T006 [Tooling] 台帳が空になったら、台帳と標準側の `debt` 引数を落とす。
+  `tools/check/standards-coverage-debt.json` を削除し、`checkNormativeCoverage` の台帳引数を
+  `ledger?: { entries, path }` の 1 つの省略可能な値にまとめて、標準側では渡さないようにした。
+  `COVERAGE_DEBT_PATHS` からも標準の台帳を外した。recipe: `mise run test-tools`、`mise run check-spec`。
+- [x] T007 [Verify] `mise run verify`。
 
 ## Verification
 
 - `mise run check-spec` が標準の被覆について例外を持たずに通る。
 - 基準 revision に無い id を台帳へ足すと `mise run check-coverage-debt-ratchet` が落ちる。
 - `mise run verify`
+
+### T006 の観測（免除の消滅）
+
+台帳を消しただけでは、消えたのが一覧なのか免除の仕組みなのかを区別できない。区別するために、
+`docs/contexts/sharedsignals/standards.md` へ `RFC8417-SET-FIXTURE` の行を 1 行足し、2 つの状態で
+`mise run check-spec` を走らせた。
+
+| 状態 | `mise run check-spec` |
+|---|---|
+| 台帳を置かない | exit 1。`docs/contexts/sharedsignals/standards.md:20: RFC8417-SET-FIXTURE is declared, but no test names it. Cite the id from the test that exercises it.` |
+| 同じ名前の台帳を作り直し、その id を理由付きで載せる | exit 1。**文言も同じ**。台帳は読まれない |
+
+2 行目が本題である。免除の一覧が消えただけなら、作り直せば通ってしまう。文言から
+`tools/check/standards-coverage-debt.json` への案内が消えたことも、同じ観測に含まれる。存在しない
+ファイルへ読み手を送らないためであり、そのファイルを作れば通ると誤解させないためでもある。
+
+この観測は `tools/check/src/repository-checks.acceptance.test.ts` の
+`admits no standards row through a recreated debt ledger` として残した。手で 1 度観測しただけでは、
+標準側へ台帳を配線し直す変更を誰も止められない。
 
 ### T001 の観測（受入集合の RED / GREEN）
 
@@ -231,3 +255,61 @@ Git ratchet は消化より先に実行する。順序を逆にすると、消�
 - **注記だけを足して終わる。** 名指しの文字列があれば検査は通るので、読まずに id を貼れば件数は減る。減った件数は何も意味しない。注記に「何を固定しているか」を書かせること、および `Adoption` ごとの観測の型を先に決めることで、貼るだけの作業と区別する。
 - **`excluded` の行に書けるテストが無い。** 製品がその機能をそもそも実装していないなら、観測できるのは「入口が存在しない」ことだけになりうる。この場合に何を観測とするかは T002 の前に決める。決められない行は、台帳へ残す理由を `present when the check was introduced` から具体的な理由へ書き換えたうえで残す。理由が更新されていれば、判断済みであることが後から読める。
 - **`oauth2` の 80 件が長期化する。** T003 で分割を判断するまで着手を広げない。分割した場合、親である本 work item は Git ratchet の維持と最後の台帳削除だけを持つ。
+
+## Completion
+
+- **Completed At**: 2026-09-12
+- **Summary**:
+  `mise run spec-diff` は `no normative specification change against main` を返す。標準の行も製品の
+  振る舞いも変わっていない。変わったのは、標準の被覆に免除の仕組みが無くなったことである。
+  `tools/check/standards-coverage-debt.json` を削除した。投入時点の 134 件は 0 件になっており、
+  内訳は本項目が T002 で消化した `sharedsignals` の 4 件と、16 件の子 work item が消化した 130 件である。
+  宣言した標準の行は 157 件あり、そのすべてが id を名指すテストを持つ。
+  **消えたのは一覧ではなく免除である。** 台帳を消しただけなら、同じ名前のファイルを作り直せば元へ戻る。
+  `checkNormativeCoverage` の台帳引数は省略可能になり、標準側はそれを渡さない。渡さない呼び出しでは、
+  行が未消化であることを報告する規則だけが残り、台帳そのものを検査する規則（重複、id 順、理由、
+  テストが付いた id の残留）は動かない。検査する台帳が無いからである。
+  **台帳引数は 2 つの省略可能な値ではなく 1 つの組にした。** `debt` と `debtPath` を別々に省略可能に
+  すると、`debt` だけを渡して `debtPath` を書き忘れた呼び出しが型検査を通り、そのとき台帳側の 4 つの
+  規則が黙って消える。残る `example-coverage-debt.json` は 614 件を抱えているので、その 4 つが黙って
+  外れる形は作れない。`ledger?: { entries, path }` にすれば、片方だけを渡すことがそもそも書けない。
+  **`COVERAGE_DEBT_PATHS` からも標準の台帳を外した。** ratchet は「基準 revision に無い id の追加を
+  拒否する」検査であり、守る対象が無くなった。標準の行は、名指すテストを持つか `check-spec` に落ちるか
+  のどちらかなので、流入を測る基準そのものが要らない。
+  **検査自身が記録の嘘を止めた。** `initial_context` が削除した台帳を指したままだったので
+  `check-work-items` が落ちた。読んだファイルの一覧は、消えたファイルを指し続けられない。
+- **Acceptance RED Evidence**:
+  - **Test**: `mise run check-spec`（`docs/contexts/sharedsignals/standards.md` へ
+    `RFC8417-SET-FIXTURE` の行を 1 行足した状態で）
+  - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
+  - **Observed Failure**: exit 1。`docs/contexts/sharedsignals/standards.md:20: RFC8417-SET-FIXTURE is
+    declared, but no test names it. Cite the id from the test that exercises it.` 同じ id を載せた台帳を
+    作り直しても、exit 1 と文言は変わらなかった。
+  - **Detection Reason**: 免除が残っているなら、台帳へ載せた 2 回目は exit 0 になる。2 回とも同じ
+    文言で落ちることが、読まれる台帳がもう無いことの観測である。文言から台帳への案内が消えたことは、
+    存在しない手順へ読み手を送らないことの観測でもある。
+- **Unit RED Evidence**:
+  - **Test**: `tools/check/src/normative-coverage.test.ts` の
+    `names no escape hatch when the caller has no debt ledger`
+  - **Requirement**: N/A: 同上。
+  - **Observed Failure**: `TypeError: undefined is not an object (evaluating 'debt.map')`
+    （`normative-coverage.ts:76`）。型検査も
+    `Type '{ declared: …; cited: Set<string>; }' is missing the following properties from type
+    'CoverageInput': debt, debtPath` で落ちた。台帳を持たない呼び出しがそもそも書けなかった。
+  - **Detection Reason**: 台帳を渡さない呼び出しが型として存在しなければ、「例外を持たない検査」は
+    書けない。実行時の失敗と型の失敗が同じ 1 つの欠落を指している。
+- **Change-Resistance Results**:
+  3 件の故障を注入し、すべて検出された。生存はゼロ。注入は Edit で当て、毎回 `mise run test-tools` の
+  pass/fail 件数で着弾を確かめている。
+
+  | 注入した故障 | 落ちたテストと観測 |
+  |---|---|
+  | M1 標準側へ台帳を配線し直す | `admits no standards row through a recreated debt ledger`。作り直した台帳に載せた行が通ってしまう |
+  | M2 台帳が無くても逃げ道を案内する（文言を元へ戻す） | 上と `names no escape hatch when the caller has no debt ledger` の 2 件。免除は消えているのに案内だけが残る状態を、受入側と単体側の両方が落とす |
+  | M3 `COVERAGE_DEBT_PATHS` に標準の台帳を戻す | `rejects additions to the example ledger beyond the named Git revision`。消えたはずの台帳への追加を ratchet が報告する |
+
+  **方法の限界。** 注入は台帳の配線と文言だけを崩しており、`citedNormativeIds` の一致規則は動かして
+  いない。id の照合そのものが壊れる形（部分一致を許すなど）は、本項目ではなく
+  [[wi-418-normative-coverage-gates]] が入れた既存の検査が持つ。
+- **Verification Results**:
+  - `mise run verify` - passed
