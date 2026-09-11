@@ -1,13 +1,44 @@
 ---
-depends_on: []
-status: pending
+depends_on: [wi-532-fapi-security-profile-selection-applies-no-constraint]
+status: in_progress
 authors: [tn]
 risk: low
 reversibility: reversible
 created_at: 2026-09-09
 priority: p2
 change_kind: maintenance
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: 宣言済みの標準行にテストを対応付けるだけで、利用者が読むリリース情報に変化は無い。切り出した欠陥は自分のリリース文書を持つ。
+  references: []
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
+initial_context:
+  specification:
+    - docs/contexts/oauth2/standards.md#RFC7591-REGISTER
+    - docs/contexts/oauth2/standards.md#RFC8176-AMR
+    - docs/contexts/oauth2/standards.md#FAPI2-PROFILE-SELECTION
+    - docs/contexts/oauth2/standards.md#FAPI2-PAR-PKCE
+    - docs/contexts/oauth2/standards.md#FAPI2-CLIENT-AUTH
+    - docs/contexts/oauth2/standards.md#FAPI2-SENDER-CONSTRAINT
+    - docs/contexts/oauth2/decisions.md
+  typespec: []
+  source:
+    - backend/oauth2/handlers_http/routes.go
+    - backend/oauth2/handlers_http/register_handler.go
+    - backend/oauth2/client/usecases/register_client.go
+    - backend/oauth2/client/domain/client.go
+    - backend/oauth2/authorization/usecases/authorize.go
+    - backend/authentication/domain/amr.go
+    - backend/shared/spec/policy.go
+    - tools/check/standards-coverage-debt.json
+  tests:
+    - backend/shared/http/server_http/metadata_standards_test.go
+  stop_before_reading:
+    - backend/oauth2/db_postgres
+    - backend/saml
+    - backend/wsfederation
+    - frontend
 ---
 
 # クライアントの登録とプロファイル選択が宣言する標準 6 行にテストを対応付け、標準の被覆台帳から外す
@@ -50,7 +81,17 @@ spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を�
 
 この入口の観測は 2 つの対を要する。プロファイルを選んだクライアントが追加の制約を受けることと、選んでいないクライアントが同じ要求で通ることを、同じ 1 つのハーネスの中で対にして読む。片方だけでは、制約が全クライアントに掛かっている実装と区別できない。
 
-`RFC8176-AMR` は「実際に成立した認証方法を記録する」ことを言っているので、成立していない方法が `amr` に載らないことを併せて読む。[[wi-508-amr-vocabulary-declaration-and-implementation-disagree]] がこの行に隣接する欠陥を持つので、着手前に読む。
+`RFC8176-AMR` は「実際に成立した認証方法を記録する」ことを言っているので、成立していない方法が `amr` に載らないことを併せて読む。[[wi-508-amr-vocabulary-declaration-and-implementation-disagree]] がこの行に隣接する欠陥を持つので、着手前に読む。**読んだ。完了しており、語彙は `backend/authentication/domain/amr.go` に閉じている。** 本項目が読むのは語彙そのものではなく、成立した方法が `amr` として RP まで届くかである。語彙の閉じ方は `RFC8176-AMR-VOCABULARY` が持ち、そちらは既に消化されている。
+
+### 着手前の判定: 6 行のうち 4 行は製品が宣言した採用を満たしていない
+
+`FAPI2-*` の 4 行は現状のままでは消化できない。`fapi_profile` は保存され、列挙として検証され、admin API と `/register` の応答へ書き戻され、管理 UI へ表示されるが、**この値を読んで制約を掛ける箇所が製品に 1 つも無い**。非テストの Go 全体で `fapi` を探すと、当たるのは認可規則の名前 `par_required_if_fapi` と `authorize.go` の予定を書いたコメントだけである。規則の名前は FAPI を名乗るが、実装が読むのは `RequirePAR` であり、この値は `FapiProfile` からではなく登録入力の同名フラグから来る。送信者制約の `DpopBoundAccessTokens` とクライアント認証方式も同様に `FapiProfile` と無関係に決まる。
+
+したがって「プロファイルを選んだクライアントが追加の制約を受ける」という観測が作れない。Design がこの入口に要求した対 — 選んだ側と選んでいない側 — は、選んだ側が何も変わらないので成立しない。`optional` は「提供しているならその振る舞いを観測する」ことを意味するが、提供されていない。
+
+これは Scope と T006 が想定した「宣言した採用を満たしていない行」であり、[[wi-532-fapi-security-profile-selection-applies-no-constraint]] として切り出した。本項目の 4 行の消化はこの前提 work item の完了を待つ。`depends_on` へ入れた。
+
+**残る 2 行は前提を持たない。** `RFC7591-REGISTER` の `/register` は `routes.go` に配線され、`RFC8176-AMR` の記録は認可コードフローを通って ID トークンまで届く。ただし 6 行は 1 つの入口を共有するので、前提の完了を待って 6 行を 1 度に消化する。2 行だけ先に消化すると、同じハーネスを 2 度組むことになる。これは [[wi-499-back-oauth2-standards-rows-with-tests]] が測った「費用を支配するのは行数ではなく入口ごとのハーネス」という結論に反する。
 
 行ごとの観測の形は `Adoption` が決める。`required` は宣言した振る舞いが正式な入口から到達できること、`optional` は提供しているならその振る舞い、`excluded` は提供していないことと拒否が防いだ効果、`partial` は採った範囲と採らなかった範囲の扱いを、それぞれ観測する。`excluded` の観測は 1 つの型に収まらない。行の `Statement` が製品の制約を書いているのか標準側の機能を書いているのかで観測が裏返るので、本項目の `excluded` の 1 件目でどちらかを決めてから残りへ広げる。
 
@@ -58,7 +99,7 @@ spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を�
 
 1. 6 行が共有する入口にハーネスを組み、`required` の 1 件目を通しで消化して型を決める。
 2. `optional` があれば、その 1 件目で「提供している」と言える根拠の形を決める。提供していなければ規範の変更として切り出す。
-3. `excluded` があれば、その 1 件目で観測の型を決める。
+3. `excluded` があれば、その 1 件目で観測の型を決める。**本項目の 6 行に `excluded` は無い。**
 4. 残りを消化し、解決した id を台帳から外す。
 5. 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
 
@@ -66,10 +107,13 @@ spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を�
 
 - [ ] T001 [Acceptance] 消化する id を台帳から先に外し、`mise run check-spec` が当該 id ごとに `is declared, but no test names it` を報告することを観測する。
 - [ ] T002 [Harness] クライアント登録と、クライアントごとのプロファイル選択が効く各エンドポイント にハーネスを組み、`required` の 1 件目で型を決める。
-- [ ] T003 [Type] `optional` と `excluded` の観測の型を、それぞれ 1 件目で決める。
+- [ ] T003 [Type] `optional` と `excluded` の観測の型を、それぞれ 1 件目で決める。`excluded` は本項目に無い。
 - [ ] T004 [Ledger] 残りを消化し、解決した id を `tools/check/standards-coverage-debt.json` から外す。
 - [ ] T005 [Resistance] 行が言っている判断を production 側で崩し、対応するテストが落ちることを行ごとに観測する。
-- [ ] T006 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
+- [x] T006 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
+  `FAPI2-*` の 4 行が満たされていなかった。[[wi-532-fapi-security-profile-selection-applies-no-constraint]]
+  として切り出し、`depends_on` へ入れた。判定は Design の「着手前の判定」節。
+  recipe: `mise run check-work-items`
 - [ ] T007 [Verify] `mise run verify`。
 
 ## Verification
