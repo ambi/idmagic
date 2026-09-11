@@ -17,7 +17,7 @@ import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
-import { parseFrontmatterAndMarkdown } from './main.ts'
+import { parseFrontmatterAndMarkdown } from './work-item-markdown.ts'
 import { documentKind } from './specification-doc.ts'
 
 /** Repository-relative path to file contents. */
@@ -121,7 +121,7 @@ function legacyScenarioFacts(source: string): Map<string, string> {
     for (const line of source.slice(from, to).split('\n')) {
       const step = line.match(/^- (?:GIVEN|WHEN|THEN) (.+)$/)?.[1]
       if (step) fragments.add(step)
-      const alternative = line.match(/^  - ALT (.+)$/)?.[1]
+      const alternative = line.match(/^ {2}- ALT (.+)$/)?.[1]
       if (alternative) for (const fragment of alternative.split(' → ')) fragments.add(fragment)
     }
     facts.set(start[1] ?? '', ['legacy', start[2] ?? '', ...[...fragments].sort()].join('\n'))
@@ -377,7 +377,7 @@ function readRevision(root: string, ref: string): Snapshot {
   return snapshot
 }
 
-async function affectedSpecFromChangedWorkItems(
+export async function affectedSpecFromChangedWorkItems(
   root: string,
   ref: string,
 ): Promise<Array<{ path?: unknown; requirement?: unknown }>> {
@@ -404,21 +404,4 @@ async function affectedSpecFromChangedWorkItems(
     }
   }
   return references
-}
-
-if (import.meta.main) {
-  const root = resolve(import.meta.dir, '../../..')
-  const ref = process.argv[2] ?? 'main'
-  const diff = await diffWorkspaceSpecifications(root, ref)
-  console.log(formatSpecificationDiff(diff, ref))
-  const missing = unreferencedStandardChanges(
-    diff,
-    await affectedSpecFromChangedWorkItems(root, ref),
-  )
-  if (missing.length > 0) {
-    console.error(
-      `standards requirements missing from affected_spec:\n${missing.map((one) => `  ${one}`).join('\n')}`,
-    )
-    process.exitCode = 1
-  }
 }

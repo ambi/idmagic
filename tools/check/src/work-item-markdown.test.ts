@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { parseFrontmatterAndMarkdown } from './main.ts'
+import { join } from 'node:path'
+import { parseFrontmatterAndMarkdown, validateMarkdownRecord } from './work-item-markdown.ts'
 
 const temporaryDirectories: string[] = []
 
@@ -63,18 +63,9 @@ The parser must reject incomplete evidence.
 `,
     )
 
-    const child = Bun.spawn(
-      [process.execPath, 'run', resolve(import.meta.dir, 'main.ts'), '--schema=work-item', path],
-      { stderr: 'pipe', stdout: 'pipe' },
+    expect(validateMarkdownRecord(path, await Bun.file(path).text(), 'work-item').findings).toEqual(
+      [],
     )
-    const [exitCode, stdout, stderr] = await Promise.all([
-      child.exited,
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ])
-
-    expect(exitCode, stderr).toBe(0)
-    expect(stdout).toContain('ok')
   })
 
   it('parses separate Acceptance RED and Unit RED evidence', async () => {
@@ -134,18 +125,9 @@ The parser must reject either missing boundary.
 `,
     )
 
-    const child = Bun.spawn(
-      [process.execPath, 'run', resolve(import.meta.dir, 'main.ts'), '--schema=work-item', path],
-      { stderr: 'pipe', stdout: 'pipe' },
+    expect(validateMarkdownRecord(path, await Bun.file(path).text(), 'work-item').findings).toEqual(
+      [],
     )
-    const [exitCode, stdout, stderr] = await Promise.all([
-      child.exited,
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ])
-
-    expect(exitCode, stderr).toBe(0)
-    expect(stdout).toContain('ok')
   })
 
   it('parses primary-use-case completion evidence as structured YAML', () => {

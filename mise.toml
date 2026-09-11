@@ -90,28 +90,9 @@ run = "bun install --frozen-lockfile"
 description = "Run the standard verification suite in parallel, reporting every gate that failed"
 # 集約ゲートは 1 回の実行で落ちたものを全部並べて終わる。最初の失敗で残りを打ち切ると、
 # 1 回の実行で受け取れる失敗が 1 種類だけになり、直しては数分かけて次を掘り出す往復になる。
-# `check` の構成要素をここに展開してあるのは、入れ子の `mise run` にすると依存グラフが
-# 分かれ、`compile-spec` が check の内側と check-api-compat の外側で二重に走って生成物を
-# 奪い合うからである。展開の重複は mise-config.test.ts が check との包含関係で縛る。
 run = '''
 mise run -c \
-  check-spec ::: \
-  check-work-items ::: \
-  check-ids ::: \
-  check-links ::: \
-  check-boundaries ::: \
-  check-command-map ::: \
-  check-agent-guidance ::: \
-  check-config-reference ::: \
-  check-route-reference ::: \
-  check-admin-scopes ::: \
-  check-contract-drift ::: \
-  check-status-drift ::: \
-  check-event-contract ::: \
-  check-security-controls ::: \
-  check-slo-references ::: \
-  check-vulnerability-suppressions ::: \
-  check-api-compat ::: \
+  check ::: \
   test-tools ::: \
   typecheck-tools ::: \
   lint-tools ::: \
@@ -149,7 +130,6 @@ gate() {
   fi
 }
 gate mise run check
-gate mise run check-api-compat
 gate mise run test-tools
 gate mise run typecheck-tools
 gate mise run lint-tools
@@ -182,22 +162,7 @@ bun run task-timing/src/main.ts "${1:-verify}"
 description = "Validate specifications and embedded tooling, reporting every gate that failed"
 run = '''
 mise run -c \
-  check-spec ::: \
-  check-work-items ::: \
-  check-ids ::: \
-  check-links ::: \
-  check-boundaries ::: \
-  check-command-map ::: \
-  check-agent-guidance ::: \
-  check-config-reference ::: \
-  check-route-reference ::: \
-  check-admin-scopes ::: \
-  check-contract-drift ::: \
-  check-status-drift ::: \
-  check-event-contract ::: \
-  check-security-controls ::: \
-  check-slo-references ::: \
-  check-vulnerability-suppressions ::: \
+  check ::: \
   test-tools ::: \
   typecheck-tools ::: \
   lint-tools
@@ -293,7 +258,7 @@ run = "govulncheck ./..."
 [tasks.check-vulnerability-suppressions]
 description = "Require a reason and an unexpired deadline on every vulnerability suppression"
 dir = "tools"
-run = "bun run check/src/check-vulnerability-suppressions.ts"
+run = "bun run check/src/runner.ts vulnerability-suppressions"
 
 [tasks.audit-secrets-history]
 description = "Scan the whole Git history for secrets"
@@ -619,112 +584,103 @@ fi
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
+depends = ["compile-spec"]
 run = '''
 mise run -c \
-  check-spec ::: \
-  check-work-items ::: \
-  check-ids ::: \
-  check-links ::: \
-  check-boundaries ::: \
-  check-command-map ::: \
-  check-agent-guidance ::: \
+  check-generated-contract ::: \
+  check-rendered-spec ::: \
+  check-repository ::: \
   check-config-reference ::: \
-  check-route-reference ::: \
-  check-admin-scopes ::: \
-  check-contract-drift ::: \
-  check-status-drift ::: \
-  check-event-contract ::: \
-  check-security-controls ::: \
-  check-slo-references ::: \
-  check-vulnerability-suppressions
+  check-route-reference
 '''
+
+[tasks.check-repository]
+description = "Run every registered TypeScript repository check in one process"
+dir = "tools"
+run = "bun run check/src/runner.ts all"
+
+[tasks.check-rendered-spec]
+description = "Check the rendered specification site"
+dir = "tools"
+run = "bun run render-spec-docs/src/main.ts --check"
 
 [tasks.check-links]
 description = "Check repository-local Markdown links and anchors"
 dir = "tools"
-run = "bun run check/src/check-links.ts"
+run = "bun run check/src/runner.ts links"
 
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
 dir = "tools"
-run = "bun run check/src/check-security-controls.ts"
+run = "bun run check/src/runner.ts security-controls"
 
 [tasks.report-security-test-gaps]
 description = "List refused state changes no test proves were left untouched"
 dir = "tools"
-run = "bun run check/src/report-security-test-gaps.ts"
+run = "bun run security-test-gap-report/src/main.ts"
 
 [tasks.report-coverage-debt]
 description = "Order the normative ids no test names, weighted by the refusals the contract promises"
 dir = "tools"
-run = "bun run check/src/report-coverage-debt.ts"
+run = "bun run coverage-debt-report/src/main.ts"
 
 [tasks.check-admin-scopes]
 description = "Check admin API scope declarations"
 depends = ["compile-spec"]
 dir = "tools"
-run = "bun run check/src/check-admin-scopes.ts"
+run = "bun run check/src/runner.ts admin-scopes"
 
 [tasks.check-contract-drift]
 description = "Check TypeSpec request and response bodies against what the Go handlers decode and write"
 depends = ["compile-spec"]
 dir = "tools"
-run = "bun run check/src/check-contract-drift.ts"
+run = "bun run check/src/runner.ts contract-drift"
 
 [tasks.check-status-drift]
 description = "Check the status codes TypeSpec declares against the ones the Go handlers write"
 depends = ["compile-spec"]
 dir = "tools"
-run = "bun run check/src/check-status-drift.ts"
+run = "bun run check/src/runner.ts status-drift"
 
 [tasks.check-event-contract]
 description = "Check the published domain event payload vocabulary against the code that reads it"
 dir = "tools"
-run = "bun run check/src/check-event-contract.ts"
+run = "bun run check/src/runner.ts event-contract"
 
 [tasks.check-slo-references]
 description = "Check that monitoring assets name declared service level objectives"
 dir = "tools"
-run = "bun run check/src/check-slo-references.ts"
+run = "bun run check/src/runner.ts slo-references"
 
 [tasks.check-command-map]
 description = "Check workflow calls against mise tasks"
 dir = "tools"
-run = "bun run check/src/check-command-map.ts"
+run = "bun run check/src/runner.ts command-map"
 
 [tasks.check-agent-guidance]
 description = "Check repository-local agent guidance against the current workflow"
 dir = "tools"
-run = "bun run check/src/check-agent-guidance.ts"
+run = "bun run check/src/runner.ts agent-guidance"
 
 [tasks.check-spec]
 description = "Compile TypeSpec and validate canonical specification documents"
 depends = ["compile-spec"]
 run = [
   "mise run check-generated-contract",
-  "cd tools && bun run workspace/src/check-workspace.ts --documents",
-  "cd tools && bun run render-spec-docs/src/main.ts --check",
+  "cd tools && bun run check/src/runner.ts documents",
+  "mise run check-rendered-spec",
 ]
 
 [tasks.check-work-items]
 description = "Validate work-item records"
 dir = "tools"
 # 成功した対象の列挙は既定では出さない。全件を見たいときは `-- --verbose` を渡す。
-run = '''
-#!/usr/bin/env sh
-set -eu
-bun run workspace/src/check-workspace.ts --work-items "$@"
-'''
-
-[tasks.check-ids]
-description = "Detect duplicate or mismatched change-record IDs"
-dir = "tools"
-run = "bun run workspace/src/check-workspace.ts --ids"
+run = "bun run check/src/runner.ts work-items \"$@\""
 
 [tasks.check-boundaries]
 description = "Reject forbidden source dependencies"
 dir = "tools"
-run = "bun run check/src/check-boundaries.ts"
+run = "bun run check/src/runner.ts boundaries"
 
 [tasks.generate-config-reference]
 description = "Generate the operator configuration reference"
@@ -746,7 +702,7 @@ run = "go run ./backend/cmd/idmagic-route-reference --check --output ROUTE_PRIOR
 description = "Detect OpenAPI breaking changes against the release baseline"
 depends = ["compile-spec"]
 dir = "tools"
-run = "bun run check-api-compat/src/main.ts"
+run = "bun run check/src/runner.ts api-compat"
 
 [tasks.update-api-baseline]
 description = "Freeze generated OpenAPI as the release baseline"
@@ -787,7 +743,7 @@ dir = "tools"
 run = '''
 #!/usr/bin/env sh
 set -eu
-bun run check/src/spec-diff.ts "${1:-main}"
+bun run spec-diff/src/main.ts "${1:-main}"
 '''
 
 [tasks.render-spec-docs]

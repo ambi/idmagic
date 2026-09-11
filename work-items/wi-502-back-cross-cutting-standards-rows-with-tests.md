@@ -41,7 +41,7 @@ initial_context:
     - frontend/src/lib/i18n/errorMessage.ts
     - frontend/src/lib/i18n/common.i18n.ts
     - tools/check/src/normative-coverage.ts
-    - tools/check/src/check-specifications.ts
+    - tools/check/src/check-documents.ts
     - tools/check/standards-coverage-debt.json
   tests:
     - backend/authentication/handlers_http/account_consent_refusal_effects_test.go

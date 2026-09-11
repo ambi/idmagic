@@ -27,7 +27,7 @@ authorization remains executable application behavior unless a later work item a
 
 | Stage | Skill | Gate |
 |---|---|---|
-| Frame one change | `new-work-item` | `mise run check-work-items`, `mise run check-ids` |
+| Frame one change | `new-work-item` | `mise run check-work-items` |
 | Change the specification first | `spec-change` | `mise run check-spec` |
 | Resolve material questions and fix the evidence contract | `implement-work-item` | `mise run check-work-items` |
 | Confirm Acceptance RED | `implement-work-item` | the narrowest test at an observable boundary |
@@ -35,7 +35,7 @@ authorization remains executable application behavior unless a later work item a
 | Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
 | Regenerate derived views | `spec-render` | `mise run check-api-compat` |
 | Verify change resistance | `code-review` | evidence selected by risk, `mise run verify` |
-| Record completion and commit | `commit` | `mise run check-work-items`, `mise run check-ids` |
+| Record completion and commit | `commit` | `mise run check-work-items` |
 
 Before changing behavior, update the smallest owning specification: models, APIs, HTTP contracts, and
 authentication schemes in TypeSpec; scenarios, terms, standards, state transitions, decisions, and

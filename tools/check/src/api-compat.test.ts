@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { compareOpenApi, type JsonSchema } from './compat.ts'
+import { compareOpenApi, type JsonSchema } from './api-compat.ts'
 
 const messages = (baseline: JsonSchema, current: JsonSchema) =>
   compareOpenApi(baseline, current).map((f) => `${f.operation}: ${f.message}`)

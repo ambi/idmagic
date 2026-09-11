@@ -27,7 +27,7 @@ description: "Implement a chosen work item end to end: specification first, sepa
    `docs/development/specification-first-workflow.md`. For an applicable feature, bugfix, or standards change,
    name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models; otherwise name the
    intended Acceptance RED and Unit RED checks before you start.
-5. Set the status to `in_progress` and pass `mise run check-work-items` and `mise run check-ids`. A later
+5. Set the status to `in_progress` and pass `mise run check-work-items`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
@@ -65,7 +65,7 @@ description: "Implement a chosen work item end to end: specification first, sepa
     status check while a prerequisite still prevents completion. Complete
     every evidence field required by `WORK_ITEM_FORMAT.md`, reading the completion summary out of
     `mise run spec-diff`. Set the status to `completed`, pass
-    `mise run check-work-items` and `mise run check-ids`, and move the file to `work-items/done/`.
+    `mise run check-work-items`, and move the file to `work-items/done/`.
 11. Create a Conventional Commit with `commit`. Its body is the Completion Summary said in English, not a
     description written back out of the diff. Do not push until explicitly told to.
 

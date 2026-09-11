@@ -74,7 +74,7 @@ Keep each branch inside its work item's `scope` so conflicts surface early.
 
 - When several branches touch the same normative scenario, standard id, or TypeSpec symbol, agree on
   the order first.
-- When two branches create the same id or filename, follow `mise run check-ids` and renumber one of them.
+- When two branches create the same filename stem, follow `mise run check-work-items` and rename one of them. Numeric prefixes are allocation hints, not record identifiers, so an equal number alone is not a conflict.
 - Do not resolve conflicts in generated files by hand. Regenerate from the integrated TypeSpec.
 
 ## 4. Integrate

@@ -1,88 +1,5 @@
-#!/usr/bin/env bun
-/**
- * YAML check for the repository.
- *
- *   check <file>...                          # parse + lint only
- *   check --schema=<name> <file>...          # parse + lint + schema
- *   check --list-schemas                     # list available schema names
- *
- * Two layers:
- *   1. Parse via Bun's built-in YAML loader (dynamic import) — same engine
- *      used across the repository tools.
- *   2. Lint on the raw text: no tab indent, no trailing whitespace, must
- *      end with a single trailing newline.
- *   3. (opt-in) JSON Schema 2020-12 validation via Ajv. Schemas are
- *      explicit, never inferred from filename — a chance basename collision
- *      should not silently activate a schema unrelated to the file.
- *
- * Pure logic lives in `./lib.ts`; this file is the CLI shell only.
- *
- * Exits non-zero if any target has a parse error, a lint violation, or a
- * schema violation.
- */
-
-import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
-import { basename, isAbsolute, relative, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { type Finding, SCHEMAS, lintRawText, parseArgs, validateAgainstSchema } from './lib.ts'
-
-const REPO_ROOT = resolve(import.meta.dir, '../../..')
-
-// Relative paths resolve against the shell cwd first, then fall back to the
-// repo root. This way `bun --cwd tools check work-items/foo.yaml` works
-// whether invoked from the repo root or from tools/.
-function resolvePath(p: string): string {
-  if (isAbsolute(p)) return p
-  const fromCwd = resolve(process.cwd(), p)
-  if (existsSync(fromCwd)) return fromCwd
-  return resolve(REPO_ROOT, p)
-}
-
-function printUsage(): void {
-  process.stdout.write(
-    [
-      'Usage: check [--schema=<name>] [--verbose] <file-or-glob>...',
-      '       check --list-schemas',
-      '',
-      'Without --schema, only YAML parse + raw-text lint runs.',
-      'With --schema, the named JSON Schema is applied to every input file.',
-      'Passing files are counted, not listed; --verbose lists them.',
-      `Available schemas: ${Object.keys(SCHEMAS).join(', ')}`,
-      '',
-    ].join('\n'),
-  )
-}
-
-async function expandTargets(patterns: string[]): Promise<string[]> {
-  const seen = new Set<string>()
-  for (const pattern of patterns) {
-    const isGlob = /[*?[]/.test(pattern)
-    if (isGlob) {
-      // Resolve the glob against the shell cwd first (matches what the user
-      // typed), then fall back to the repo root if nothing matched. Glob
-      // patterns can contain `..` so we cannot pass them to Bun.Glob with a
-      // mismatched cwd.
-      let matched = 0
-      const tryScan = async (cwd: string): Promise<void> => {
-        const glob = new Bun.Glob(pattern)
-        for await (const match of glob.scan({ cwd, absolute: true })) {
-          if (!match.includes('/node_modules/')) {
-            seen.add(match)
-            matched++
-          }
-        }
-      }
-      await tryScan(process.cwd())
-      if (matched === 0 && process.cwd() !== REPO_ROOT) await tryScan(REPO_ROOT)
-    } else {
-      seen.add(resolvePath(pattern))
-    }
-  }
-  return [...seen].sort()
-}
-
-import { extname } from 'node:path'
+import { basename } from 'node:path'
+import { type Finding, type SCHEMAS, lintRawText, validateAgainstSchema } from './lib.ts'
 
 // Section names recognized as body headings (WORK_ITEM_FORMAT.md). The first
 // heading in the body is the record's title *unless* it is one of these —
@@ -251,113 +168,29 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
   return data
 }
 
-type ParseResult = { ok: true; data: unknown } | { ok: false; finding: Finding }
+export type RecordValidation = {
+  data?: Record<string, unknown>
+  findings: Finding[]
+}
 
-async function parseYaml(path: string, text: string): Promise<ParseResult> {
-  const ext = extname(path).toLowerCase()
-  if (ext === '.md') {
-    try {
-      const data = parseFrontmatterAndMarkdown(path, text)
-      return { ok: true, data }
-    } catch (e) {
-      return {
-        ok: false,
-        finding: {
-          line: 1,
-          column: 1,
-          message: `Failed to parse markdown frontmatter: ${String(e)}`,
-        },
-      }
-    }
-  }
-
+/** Markdown 記録を一度だけ解析し、書式と指定 schema の所見を同じ結果へまとめる。 */
+export function validateMarkdownRecord(
+  path: string,
+  text: string,
+  schema: keyof typeof SCHEMAS,
+): RecordValidation {
+  const findings = [...lintRawText(text)]
+  let data: Record<string, unknown>
   try {
-    const mod = await import(pathToFileURL(path).href)
-    return { ok: true, data: mod.default }
-  } catch (e) {
-    const err = e as { message?: string; line?: number; column?: number }
-    return {
-      ok: false,
-      finding: {
-        line: err.line ?? 0,
-        column: err.column ?? 0,
-        message: err.message ?? String(e),
-      },
-    }
+    data = parseFrontmatterAndMarkdown(path, text)
+  } catch (error) {
+    findings.unshift({
+      line: 1,
+      column: 1,
+      message: `Failed to parse markdown frontmatter: ${String(error)}`,
+    })
+    return { findings }
   }
-}
-
-function formatFindings(path: string, findings: Finding[]): string {
-  const rel = relative(process.cwd(), path) || path
-  return findings.map((f) => `${rel}:${f.line}:${f.column}: ${f.message}`).join('\n')
-}
-
-if (import.meta.main) {
-  const argsResult = parseArgs(process.argv.slice(2))
-  if (argsResult.kind === 'error') {
-    console.error(`check: ${argsResult.message}`)
-    process.exit(argsResult.code)
-  }
-  const opts = argsResult.opts
-
-  if (opts.help) {
-    printUsage()
-    process.exit(0)
-  }
-
-  if (opts.listSchemas) {
-    for (const name of Object.keys(SCHEMAS)) console.log(name)
-    process.exit(0)
-  }
-
-  if (opts.schema !== null && !(opts.schema in SCHEMAS)) {
-    console.error(
-      `check: unknown schema '${opts.schema}'. Available: ${Object.keys(SCHEMAS).join(', ')}`,
-    )
-    process.exit(2)
-  }
-
-  if (opts.files.length === 0) {
-    console.error('check: no input files given')
-    printUsage()
-    process.exit(2)
-  }
-
-  const targets = await expandTargets(opts.files)
-
-  if (targets.length === 0) {
-    console.error('check: no files matched')
-    process.exit(1)
-  }
-
-  let failed = 0
-  for (const path of targets) {
-    const text = await readFile(path, 'utf8')
-    const parseResult = await parseYaml(path, text)
-    const lintFindings = lintRawText(text)
-    const findings: Finding[] = []
-    const warnings: Finding[] = []
-    if (!parseResult.ok) findings.push(parseResult.finding)
-    findings.push(...lintFindings)
-
-    if (parseResult.ok && opts.schema !== null) {
-      findings.push(...validateAgainstSchema(opts.schema, parseResult.data, text))
-    }
-
-    const rel = relative(process.cwd(), path) || path
-    if (findings.length === 0) {
-      if (opts.verbose) console.log(`ok  ${rel}`)
-      if (warnings.length > 0) process.stdout.write(`${formatFindings(path, warnings)}\n`)
-      continue
-    }
-    failed++
-    console.log(`FAIL ${rel}`)
-    process.stdout.write(`${formatFindings(path, [...findings, ...warnings])}\n`)
-  }
-
-  if (failed > 0) {
-    console.error(`\n${failed} file(s) failed (out of ${targets.length}).`)
-    process.exit(1)
-  }
-  console.log(`ok  ${targets.length} file(s)`)
+  findings.push(...validateAgainstSchema(schema, data, text))
+  return { data, findings }
 }

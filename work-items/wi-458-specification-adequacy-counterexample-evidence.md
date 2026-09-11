@@ -39,7 +39,7 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 - 意図して決めない選択の置き場所を、当該 Context の `decisions.md` とする。新しい正本の種類も新しいファイル名も作らない。理由と、再検討の条件を伴う既存の決定の形をそのまま使う。
 - 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築と事後条件は `docs/design/application/design-rules.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `SPECIFICATION_FORMAT.md` §3 の規則は維持する。
 - `evidence_policy` を `risk-based-v4` へ上げる。完了済みの v1 / v2 / v3 の記録は履歴として再解釈しない。採用時点で `in_progress` の該当項目は新しい計画を追加してから完了できる。
-- `tools/check/src/specification-adequacy.ts` と単体検査を追加し、`tools/check/schemas/work-item.schema.json` と `tools/workspace/src/check-workspace.ts` へ接続して `mise run check-work-items` のゲートにする。
+- `tools/check/src/specification-adequacy.ts` と単体検査を追加し、`tools/check/schemas/work-item.schema.json` と `tools/check/src/check-work-items.ts` へ接続して `mise run check-work-items` のゲートにする。
 - 完了済みの実際の変更 3 件へ遡って本段階を試行し、反例が出たか、出た反例が既存の規範要素で棄却できたか、記録に要した時間を実測する。試行結果は Design へ追記する。
 - 被覆を報告するあらゆる出力について、それが**宣言済みモデルの被覆**であって実世界の網羅ではないことを、出力自身が述べる規則を書く。`docs/design/security/threat-model.md` が「一覧は網羅的ではない」と述べるのと同じ扱いを、シナリオと規範の被覆へ広げる。
 
@@ -145,7 +145,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 1. 反例が実際に見つかるかを先に測る。完了済みの変更 3 件（規範シナリオの追加、`standards.md` の行の追加、状態遷移の変更を 1 件ずつ）へ本段階を手作業で適用し、要素あたりの所要時間、反例の有無、判定の内訳を記録して Design へ追記する。反例が 1 件も出ないなら契約を導入しない。
 2. `specification_adequacy` の型、判定の閉集合、解決先の規則を確定し、不正入力（未知の判定値、空の反例、解決しない参照、`decisions.md` 以外を指す `undetermined`、要素の欠落、`affected_spec` に無い要素）を RED で固定する。
 3. `tools/check/src/specification-adequacy.ts` を実装し、`primary-use-case-evidence.ts` の構成に合わせて純粋な判定と読み取りを分離する。
-4. `tools/check/schemas/work-item.schema.json` と `tools/workspace/src/check-workspace.ts` へ接続し、`mise run check-work-items` から実行できるようにする。
+4. `tools/check/schemas/work-item.schema.json` と `tools/check/src/check-work-items.ts` へ接続し、`mise run check-work-items` から実行できるようにする。
 5. `WORK_ITEM_FORMAT.md`、`docs/development/specification-first-workflow.md` §3 のループ表と §4、`SPECIFICATION_FORMAT.md` §6 の未決定の置き場所を更新する。`new-work-item` と `implement-work-item` の skill を同じ内容へ揃える。
 6. `evidence_policy: risk-based-v4` を定義し、採用時点で `in_progress` の該当項目の移行規則を書く。
 7. 試行で見つかった仕様欠陥を、規範参照を持つ個別の work item として起票する。
@@ -157,7 +157,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 - [ ] T001 [Pilot] 完了済みの変更 3 件へ本段階を手作業で適用し、所要時間、反例の有無、判定の内訳を Design へ追記する。
 - [ ] T002 [Design] `specification_adequacy` の型、判定の閉集合、解決先の規則を確定し、不正入力を列挙する。
 - [ ] T003 [Core] 判定検査を純粋操作として実装し、各不正入力を RED で固定してから GREEN にする。
-- [ ] T004 [Tooling] JSON Schema と `check-workspace.ts` へ接続し、`mise run check-work-items` のゲートにする。
+- [ ] T004 [Tooling] JSON Schema と `check-work-items.ts` へ接続し、`mise run check-work-items` のゲートにする。
 - [ ] T005 [Doc] `WORK_ITEM_FORMAT.md`、`specification-first-workflow.md`、`SPECIFICATION_FORMAT.md` を更新する。
 - [ ] T006 [Doc] 被覆の出力が「宣言済みモデルの被覆」であることを述べる規則を追加する。
 - [ ] T007 [Policy] `risk-based-v4` を定義し、`in_progress` 項目の移行規則と v1〜v3 の非再解釈を明記する。

@@ -40,8 +40,8 @@
 
 import { readdir, readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
-import { parseScenarioDocument } from './gherkin-scenarios.ts'
-import { contractRefusalsOfStateChanges } from './security-controls.ts'
+import { parseScenarioDocument } from '../../check/src/gherkin-scenarios.ts'
+import { contractRefusalsOfStateChanges } from '../../check/src/security-controls.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const excluded = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', 'generated'])

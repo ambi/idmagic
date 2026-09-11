@@ -11,13 +11,14 @@
  * 近い許可名を示して、書いた人が何を間違えたかに到達させる。
  */
 
-import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from './specification-doc.ts'
+import {
+  canonicalDocumentNames,
+  CONTEXT_DOCUMENTS,
+  type DirectoryListing,
+} from '../../workspace/src/document-layout.ts'
 
 /** 一段のディレクトリと、その直下にあるファイル名。 */
-export interface DirectoryListing {
-  directory: string
-  files: string[]
-}
+export type { DirectoryListing } from '../../workspace/src/document-layout.ts'
 
 export interface Finding {
   path: string

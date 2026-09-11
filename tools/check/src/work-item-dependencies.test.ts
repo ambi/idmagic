@@ -9,6 +9,19 @@ const record = (id: string, depends_on: string[] = []) => ({
 })
 
 describe('verifyWorkItemDependencies', () => {
+  it('ファイル名の stem が同じ二つの記録を拒否する', () => {
+    const findings = verifyWorkItemDependencies([
+      record('wi-531-duplicate'),
+      { ...record('wi-531-duplicate'), path: 'work-items/done/wi-531-duplicate.md' },
+    ])
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toMatchObject({
+      path: 'work-items/done/wi-531-duplicate.md',
+      message: expect.stringContaining("duplicate work item 'wi-531-duplicate'"),
+    })
+  })
+
   it('accepts an acyclic graph including completed prerequisites', () => {
     expect(
       verifyWorkItemDependencies([

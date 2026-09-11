@@ -1,9 +1,13 @@
-import { type Dirent, existsSync } from 'node:fs'
-import { readdir } from 'node:fs/promises'
+import { type Dirent, existsSync, readFileSync } from 'node:fs'
+import { readdir, stat } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { DirectoryListing } from '../../check/src/canonical-document-set.ts'
-import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from '../../check/src/specification-doc.ts'
+import {
+  canonicalDocumentNames,
+  CONTEXT_DOCUMENTS,
+  FREELY_NAMED_DOCUMENT_DIRECTORIES,
+  type DirectoryListing,
+} from './document-layout.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const TOOLS_DIR = resolve(HERE, '../..')
@@ -15,6 +19,113 @@ export type WorkspaceConfig = {
   specification?: string
   documents: string[]
   workItems?: string
+}
+
+export type WorkspaceSnapshot = {
+  root: string
+  path(relativePath: string): string
+  exists(relativePath: string): boolean
+  read(relativePath: string): Promise<string>
+  readSync(relativePath: string): string
+  list(relativeDirectory?: string): Promise<Dirent[]>
+  files(relativeDirectory?: string, excludedNames?: readonly string[]): Promise<string[]>
+  generatedOpenApi(): Promise<string>
+  openApiBaseline(): Promise<string>
+}
+
+/**
+ * 一回の検査が参照するリポジトリ入力を固定する。
+ * 本文とディレクトリ一覧を記憶し、規則間の重複 I/O と編集中の不整合を避ける。
+ */
+export function createWorkspaceSnapshot(root = WORKSPACE_ROOT): WorkspaceSnapshot {
+  const resolvedRoot = resolve(root)
+  const contents = new Map<string, string | Promise<string>>()
+  const listings = new Map<string, Promise<Dirent[]>>()
+  const fileTrees = new Map<string, Promise<string[]>>()
+  const path = (relativePath: string): string => resolve(resolvedRoot, relativePath)
+  const list = async (relativeDirectory = ''): Promise<Dirent[]> => {
+    let value = listings.get(relativeDirectory)
+    if (!value) {
+      value = readdir(path(relativeDirectory), { withFileTypes: true })
+      listings.set(relativeDirectory, value)
+    }
+    return [...(await value)]
+  }
+  const discoverJson = async (directory: string, description: string): Promise<string> => {
+    const matches = (await list(directory))
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => `${directory}/${entry.name}`)
+      .sort()
+    if (matches.length !== 1) {
+      throw new Error(
+        `expected exactly one ${description} in ${path(directory)}, found ${matches.length}`,
+      )
+    }
+    return matches[0]!
+  }
+
+  return {
+    root: resolvedRoot,
+    path,
+    exists: (relativePath) => existsSync(path(relativePath)),
+    read: async (relativePath) => {
+      let value = contents.get(relativePath)
+      if (!value) {
+        value = Bun.file(path(relativePath)).text()
+        contents.set(relativePath, value)
+      }
+      const source = await value
+      contents.set(relativePath, source)
+      return source
+    },
+    readSync: (relativePath) => {
+      const value = contents.get(relativePath)
+      if (typeof value === 'string') return value
+      const source = readFileSync(path(relativePath), 'utf8')
+      contents.set(relativePath, source)
+      return source
+    },
+    list,
+    files: (relativeDirectory = '', excludedNames = []) => {
+      const excluded = [...excludedNames].sort()
+      const key = `${relativeDirectory}\0${excluded.join('\0')}`
+      let value = fileTrees.get(key)
+      if (!value) {
+        value = (async () => {
+          const result: string[] = []
+          const visit = async (directory: string): Promise<void> => {
+            for (const entry of await list(directory)) {
+              if (excluded.includes(entry.name)) continue
+              const relativePath = directory ? `${directory}/${entry.name}` : entry.name
+              if (entry.isDirectory()) await visit(relativePath)
+              else if (entry.isFile()) result.push(relativePath)
+              else if (entry.isSymbolicLink()) {
+                const target = await stat(path(relativePath)).catch(() => undefined)
+                if (target?.isFile()) result.push(relativePath)
+              }
+            }
+          }
+          await visit(relativeDirectory)
+          return result.sort()
+        })()
+        fileTrees.set(key, value)
+      }
+      return value.then((paths) => [...paths])
+    },
+    generatedOpenApi: () => discoverJson('spec/generated/openapi', 'generated OpenAPI JSON file'),
+    openApiBaseline: async () => {
+      const matches = (await list('spec'))
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.openapi.baseline.json'))
+        .map((entry) => `spec/${entry.name}`)
+        .sort()
+      if (matches.length !== 1) {
+        throw new Error(
+          `expected exactly one OpenAPI baseline JSON file in ${path('spec')}, found ${matches.length}`,
+        )
+      }
+      return matches[0]!
+    },
+  }
 }
 
 async function discoverSingleFile(
@@ -78,14 +189,6 @@ async function listFiles(root: string, directory: string): Promise<string[]> {
   }
   return entries.filter((entry) => entry.isFile()).map((entry) => entry.name)
 }
-
-/** `docs/` 以下で名前を自由に決められる段。閉じた集合の検査は届かない。 */
-const FREELY_NAMED_DOCUMENT_DIRECTORIES = new Set([
-  'docs/contexts',
-  'docs/development',
-  'docs/runbooks',
-  'docs/releases',
-])
 
 /** その段の直下にあるディレクトリ名を、並びを決めて返す。 */
 async function listDirectories(root: string, directory: string): Promise<string[]> {
@@ -158,22 +261,4 @@ export async function discoverWorkspaceConfig(root = WORKSPACE_ROOT): Promise<Wo
     throw new Error(`no specification-first workspace targets found under ${root}`)
   }
   return { specification, documents, workItems }
-}
-
-export async function loadWorkspaceConfig(): Promise<WorkspaceConfig> {
-  return discoverWorkspaceConfig()
-}
-
-export async function runTool(args: string[]): Promise<void> {
-  const proc = Bun.spawn(['bun', 'run', ...args], {
-    cwd: TOOLS_DIR,
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
-  const code = await proc.exited
-  if (code !== 0) throw new Error(`${args.join(' ')} exited with ${code}`)
-}
-
-export function rootPath(path: string): string {
-  return resolve(WORKSPACE_ROOT, path)
 }

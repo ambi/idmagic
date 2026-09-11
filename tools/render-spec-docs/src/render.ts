@@ -1,7 +1,7 @@
 import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { parseScenarioDocument } from '../../check/src/gherkin-scenarios.ts'
-import { CONTEXT_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../check/src/specification-doc.ts'
+import { CONTEXT_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 /**

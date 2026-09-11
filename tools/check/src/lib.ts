@@ -1,9 +1,4 @@
-/**
- * check library — pure helpers used by the CLI (`main.ts`).
- *
- * Everything in this module is side-effect-free except for the Ajv compile
- * step (which runs once at import time). Tests target this file directly.
- */
+/** Ajv の初期 compile 以外に副作用を持たない、記録検査の純粋な補助関数。 */
 
 import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
@@ -16,50 +11,6 @@ addFormats.default(ajv)
 
 export const SCHEMAS: Record<string, ValidateFunction> = {
   'work-item': ajv.compile(workItemSchema),
-}
-
-export type CliOptions = {
-  schema: string | null
-  files: string[]
-  listSchemas: boolean
-  help: boolean
-  /** List every passing target, not only the closing count. */
-  verbose: boolean
-}
-
-export type ArgsError = { kind: 'error'; code: number; message: string }
-export type ArgsResult = { kind: 'ok'; opts: CliOptions } | ArgsError
-
-export function parseArgs(argv: readonly string[]): ArgsResult {
-  const files: string[] = []
-  let schema: string | null = null
-  let listSchemas = false
-  let help = false
-  let verbose = false
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i] ?? ''
-    if (a === '--list-schemas') {
-      listSchemas = true
-    } else if (a === '--schema') {
-      const next = argv[i + 1]
-      if (next === undefined) {
-        return { kind: 'error', code: 2, message: '--schema requires a value' }
-      }
-      schema = next
-      i++
-    } else if (a.startsWith('--schema=')) {
-      schema = a.slice('--schema='.length)
-    } else if (a === '--verbose' || a === '-v') {
-      verbose = true
-    } else if (a === '--help' || a === '-h') {
-      help = true
-    } else if (a.startsWith('-')) {
-      return { kind: 'error', code: 2, message: `unknown flag: ${a}` }
-    } else {
-      files.push(a)
-    }
-  }
-  return { kind: 'ok', opts: { schema, files, listSchemas, help, verbose } }
 }
 
 export function lintRawText(text: string): Finding[] {

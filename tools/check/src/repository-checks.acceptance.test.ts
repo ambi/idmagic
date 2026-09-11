@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
-import { TOOLS_DIR } from './workspace.ts'
+import { TOOLS_DIR } from '../../workspace/src/workspace.ts'
 
 const cleanup: string[] = []
 afterAll(async () => {
@@ -11,7 +11,7 @@ afterAll(async () => {
 
 /**
  * 正本文書として不正な本文。H1 が 2 つある。名前が許可リストに載っていれば
- * `check-specifications.ts` が落とすので、この本文を持つファイルが通ったという
+ * 文書検査が落とすので、この本文を持つファイルが通ったという
  * ことは、そのファイルが検証の対象にすら入っていないということである。
  */
 const INVALID_BODY = '# One\n\n# Two\n'
@@ -54,19 +54,13 @@ async function workspace(): Promise<string> {
   return root
 }
 
-/** `--documents` を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
+/** 文書検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
 async function checkDocuments(
   root: string,
   ...options: string[]
 ): Promise<{ code: number; output: string }> {
   const proc = Bun.spawn(
-    [
-      'bun',
-      'run',
-      resolve(TOOLS_DIR, 'workspace/src/check-workspace.ts'),
-      '--documents',
-      ...options,
-    ],
+    ['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'documents', ...options],
     {
       cwd: TOOLS_DIR,
       env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
@@ -82,17 +76,14 @@ async function checkDocuments(
   return { code, output: `${stdout}${stderr}` }
 }
 
-/** `--work-items` を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
+/** work item 検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
 async function checkWorkItems(root: string): Promise<{ code: number; output: string }> {
-  const proc = Bun.spawn(
-    ['bun', 'run', resolve(TOOLS_DIR, 'workspace/src/check-workspace.ts'), '--work-items'],
-    {
-      cwd: TOOLS_DIR,
-      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  )
+  const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'work-items'], {
+    cwd: TOOLS_DIR,
+    env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
@@ -101,7 +92,7 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
   return { code, output: `${stdout}${stderr}` }
 }
 
-describe('check-workspace --documents', () => {
+describe('文書検査', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
     expect(result.output).toContain('ok  4 canonical document(s)')
@@ -115,9 +106,9 @@ describe('check-workspace --documents', () => {
   it('lists every passing document only when asked', async () => {
     const root = await workspace()
     expect((await checkDocuments(root)).output).not.toContain('scenarios.feature.md')
-    expect((await checkDocuments(root, '--verbose')).output).toContain(
-      'docs/contexts/demo/scenarios.feature.md',
-    )
+    const verbose = await checkDocuments(root, '--verbose')
+    expect(verbose.output).toContain('docs/contexts/demo/scenarios.feature.md')
+    expect(verbose.code).toBe(0)
   })
 
   it('rejects a Markdown file the closed set does not name', async () => {
@@ -213,7 +204,52 @@ describe('check-workspace --documents', () => {
   })
 })
 
-describe('check-workspace --work-items', () => {
+describe('work item 検査', () => {
+  it('rejects the same record in pending and done', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'work-items', 'done'), { recursive: true })
+    const record = `---
+status: pending
+authors: [tn]
+risk: low
+reversibility: reversible
+created_at: 2026-09-11
+depends_on: []
+change_kind: tooling
+spec_impact: { kind: none, reason: "The fixture changes repository tooling only." }
+---
+
+# Duplicate record fixture
+
+## Motivation
+
+Exercise work-item collection integrity.
+
+## Scope
+
+- Work-item validation
+
+## Out of Scope
+
+- Product behavior
+
+## Verification
+
+- mise run test-tools
+
+## Risk Notes
+
+The fixture must remain otherwise valid.
+`
+    const name = 'wi-531-duplicate-record.md'
+    await writeFile(join(root, 'work-items', name), record)
+    await writeFile(join(root, 'work-items', 'done', name), record)
+
+    const result = await checkWorkItems(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain(`duplicate work item '${name.replace(/\.md$/, '')}'`)
+  })
+
   it('rejects a completed item whose required release note is missing', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })

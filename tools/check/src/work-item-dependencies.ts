@@ -17,10 +17,23 @@ export function verifyWorkItemDependencies(
   records: WorkItemDependencyRecord[],
 ): WorkItemDependencyFinding[] {
   const findings: WorkItemDependencyFinding[] = []
-  const byId = new Map(records.map((record) => [record.id, record]))
+  const byId = new Map<string, WorkItemDependencyRecord>()
+  for (const record of records) {
+    const previous = byId.get(record.id)
+    if (previous) {
+      findings.push({
+        path: record.path,
+        line: 1,
+        column: 1,
+        message: `duplicate work item '${record.id}'; also declared by ${previous.path}`,
+      })
+      continue
+    }
+    byId.set(record.id, record)
+  }
   const edges = new Map<string, string[]>()
 
-  for (const record of records) {
+  for (const record of byId.values()) {
     const targets: string[] = []
     for (const target of record.depends_on) {
       if (target === record.id) {

@@ -1,30 +1,27 @@
-#!/usr/bin/env bun
-
-import { readdir } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyCommandMap } from './command-map.ts'
+import type { CheckOutcome } from './runner.ts'
 
-const root = resolve(import.meta.dir, '../../..')
-const workflowDirectory = resolve(root, '.github/workflows')
-
-const workflows: Array<{ file: string; source: string }> = []
-try {
-  for (const entry of await readdir(workflowDirectory, { withFileTypes: true })) {
-    if (!entry.isFile() || !/\.ya?ml$/.test(entry.name)) continue
-    workflows.push({
-      file: `.github/workflows/${entry.name}`,
-      source: await Bun.file(resolve(workflowDirectory, entry.name)).text(),
-    })
+export async function checkCommandMap(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
+  const workflows: Array<{ file: string; source: string }> = []
+  try {
+    for (const entry of await snapshot.list('.github/workflows')) {
+      if (!entry.isFile() || !/\.ya?ml$/.test(entry.name)) continue
+      const file = `.github/workflows/${entry.name}`
+      workflows.push({ file, source: await snapshot.read(file) })
+    }
+  } catch {
+    // workflow を持たないリポジトリには、mise と不一致になる呼び出しもない。
   }
-} catch {
-  // A repository without workflows has nothing to disagree with.
+  const findings = verifyCommandMap(await snapshot.read('mise.toml'), workflows)
+  return {
+    ok: findings.length === 0,
+    lines:
+      findings.length > 0
+        ? findings.map(
+            (finding) =>
+              `${finding.file}: workflow calls a task mise.toml does not define: ${finding.task}`,
+          )
+        : [`ok  command map (${workflows.length} workflow file(s))`],
+  }
 }
-
-const miseToml = await Bun.file(resolve(root, 'mise.toml')).text()
-const findings = verifyCommandMap(miseToml, workflows)
-
-for (const finding of findings) {
-  console.error(`${finding.file}: workflow calls a task mise.toml does not define: ${finding.task}`)
-}
-if (findings.length > 0) process.exit(1)
-console.log(`ok  command map (${workflows.length} workflow file(s))`)

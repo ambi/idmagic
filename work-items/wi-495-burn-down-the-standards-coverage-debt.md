@@ -35,7 +35,7 @@ initial_context:
     - docs/contexts/sharedsignals/standards.md
   typespec: []
   source:
-    - tools/check/src/check-specifications.ts
+    - tools/check/src/check-documents.ts
     - tools/check/src/normative-coverage.ts
     - tools/check/standards-coverage-debt.json
     - tools/check/example-coverage-debt-baseline.json

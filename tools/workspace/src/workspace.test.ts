@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
 import {
+  createWorkspaceSnapshot,
   discoverGeneratedOpenApi,
   discoverOpenApiBaseline,
   discoverWorkspaceConfig,
@@ -36,6 +37,22 @@ describe('OpenAPI artifact discovery', () => {
     await writeFile(join(root, 'spec', 'generated', 'openapi', 'two.json'), '{}\n')
 
     await expect(discoverGeneratedOpenApi(root)).rejects.toThrow('found 2')
+  })
+})
+
+describe('createWorkspaceSnapshot', () => {
+  it('一回の実行では本文とディレクトリ一覧を同じ状態に保つ', async () => {
+    const root = await workspace()
+    const snapshot = createWorkspaceSnapshot(root)
+
+    expect(await snapshot.read('docs/README.md')).toBe('# Specification\n')
+    expect((await snapshot.list('docs')).map((entry) => entry.name)).toContain('README.md')
+
+    await writeFile(join(root, 'docs', 'README.md'), '# Changed\n')
+    await writeFile(join(root, 'docs', 'later.md'), '# Later\n')
+
+    expect(await snapshot.read('docs/README.md')).toBe('# Specification\n')
+    expect((await snapshot.list('docs')).map((entry) => entry.name)).not.toContain('later.md')
   })
 })
 

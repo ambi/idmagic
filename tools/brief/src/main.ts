@@ -12,7 +12,7 @@
 
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
-import { parseFrontmatterAndMarkdown } from '../../check/src/main.ts'
+import { parseFrontmatterAndMarkdown } from '../../check/src/work-item-markdown.ts'
 import { collectTraces } from '../../render-spec-docs/src/traces.ts'
 import {
   COVERAGE_NOTE,

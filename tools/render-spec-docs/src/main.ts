@@ -7,7 +7,7 @@ import { basename, dirname, resolve } from 'node:path'
 import {
   CONTEXT_DOCUMENTS,
   SYSTEM_DOCUMENT_DIRECTORIES,
-} from '../../check/src/specification-doc.ts'
+} from '../../workspace/src/document-layout.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { renderSpecificationSite, type SourceDocument } from './render.ts'
 import { collectTraces } from './traces.ts'
