@@ -23,10 +23,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC7591-REGISTER",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC7643-ENTERPRISE-EXTENSION",
       "reason": "present when the check was introduced"
     },
@@ -48,10 +44,6 @@
     },
     {
       "id": "RFC7644-RESOURCE-OPERATIONS",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8176-AMR",
       "reason": "present when the check was introduced"
     },
     {
