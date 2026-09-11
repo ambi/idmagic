@@ -258,7 +258,9 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 		}
 	})
 
-	// 関係の事実を組み立てないまま評価器へ届いた要求は規則が落とす。
+	// AUTHZEN-FGA-FAIL-CLOSED: 事実が欠けたまま評価器へ届いた resource:access は、規則表の
+	// 側でも許可にならない。行が挙げる 4 つの状況のうち「事実が欠けている」を、事実を供給する
+	// 経路ではなく受け取る規則の側から固定する。
 	t.Run("the rule table denies a request that carries no relationship facts", func(t *testing.T) {
 		response := spec.Evaluate(spec.AuthZRequest{
 			Subject:  spec.AuthZSubject{Type: "User", ID: "alice", Properties: spec.AuthZSubjectProps{TenantID: tenantID}},

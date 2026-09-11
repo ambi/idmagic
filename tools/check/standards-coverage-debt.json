@@ -7,27 +7,7 @@
   ],
   "untested": [
     {
-      "id": "AUTHZEN-FGA-ACTOR-CHAIN",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "AUTHZEN-FGA-EVALUATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "AUTHZEN-FGA-FAIL-CLOSED",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "AUTHZEN-FGA-SEARCH",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC7643-OUT-GROUP-RESOURCES",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC8693-FGA-ACTOR-AND",
       "reason": "present when the check was introduced"
     }
   ]
