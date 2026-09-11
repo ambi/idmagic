@@ -91,6 +91,10 @@ func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
 
 // SCL policies ScimDiscovery / ScimReadUsers / ScimWriteUsers /
 // ScimReadGroups / ScimWriteGroups の route mapping を固定する。
+// RFC7644-BEARER-AUTHORIZATION: 15 経路それぞれが、その操作に該当するスコープを
+// 要求すること、および Discovery が scim:* のいずれか 1 つで参照できることを
+// ここで固定する。拒否が防いだ効果は
+// TestScimBearerAuthorization_RefusesAndLeavesTheResourceUnchanged が観測する。
 func TestScimRoutesRequireOperationScope(t *testing.T) {
 	e, apiTokens := newScopedScimHarness()
 	ctx := context.Background()
@@ -150,10 +154,18 @@ func TestScimRoutesRequireOperationScope(t *testing.T) {
 	}
 }
 
-// newScimTestHarness wires the SCIM HTTP handler against in-memory
-// repositories, matching the setup TestScimInboundProvisioning /
-// TestScimGroupSync use, for tests that only need list/filter behavior.
-func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Service) {
+// scimHarness は SCIM の HTTP 入口を in-memory のリポジトリへ結線した一式である。
+// 要求が製品側の状態に及ぼした効果、および拒否が効果を防いだことを応答の外側から
+// 読めるよう、リポジトリを公開する。
+type scimHarness struct {
+	echo      *echo.Echo
+	usecases  *usecases.Usecases
+	apiTokens *apitokenusecases.Service
+	userRepo  *usermemory.UserRepository
+	scimRepo  *scimmemory.ScimRepository
+}
+
+func newScimHarness() scimHarness {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
@@ -166,7 +178,15 @@ func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Ser
 
 	e := echo.New()
 	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
-	return e, usecasesInst, apiTokens
+	return scimHarness{echo: e, usecases: usecasesInst, apiTokens: apiTokens, userRepo: userRepo, scimRepo: scimRepo}
+}
+
+// newScimTestHarness wires the SCIM HTTP handler against in-memory
+// repositories, matching the setup TestScimInboundProvisioning /
+// TestScimGroupSync use, for tests that only need list/filter behavior.
+func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Service) {
+	h := newScimHarness()
+	return h.echo, h.usecases, h.apiTokens
 }
 
 func issueAllScimToken(t *testing.T, apiTokens *apitokenusecases.Service) string {
@@ -488,7 +508,9 @@ func TestScimInboundProvisioning(t *testing.T) {
 	// 2. アクセストークン生成
 	tokenStr := issueAllScimToken(t, apiTokens)
 
-	// 3. 有効なトークンでの ServiceProviderConfig アクセス
+	// 3. 有効なトークンでの ServiceProviderConfig アクセス。応答の中身は
+	// TestScimServiceProviderConfig_AdvertisesTheBearerAuthenticationScheme が
+	// 観測するので、ここではトークンが受け付けられることだけを見る。
 	{
 		req := httptest.NewRequest(http.MethodGet, "/scim/v2/ServiceProviderConfig", http.NoBody)
 		req.Header.Set("Authorization", "Bearer "+tokenStr)
@@ -496,29 +518,6 @@ func TestScimInboundProvisioning(t *testing.T) {
 		e.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", rec.Code)
-		}
-
-		// authenticationSchemes は RFC 7643 §5 で REQUIRED。null や空を返さず、
-		// Bearer トークン方式を申告していることを確認する。
-		var config struct {
-			AuthenticationSchemes []struct {
-				Type string `json:"type"`
-			} `json:"authenticationSchemes"`
-		}
-		if err := json.Unmarshal(rec.Body.Bytes(), &config); err != nil {
-			t.Fatalf("failed to decode ServiceProviderConfig: %v", err)
-		}
-		if len(config.AuthenticationSchemes) == 0 {
-			t.Fatal("expected authenticationSchemes to be non-empty")
-		}
-		foundBearer := false
-		for _, s := range config.AuthenticationSchemes {
-			if s.Type == "oauthbearertoken" {
-				foundBearer = true
-			}
-		}
-		if !foundBearer {
-			t.Errorf("expected an oauthbearertoken authentication scheme, got %+v", config.AuthenticationSchemes)
 		}
 	}
 

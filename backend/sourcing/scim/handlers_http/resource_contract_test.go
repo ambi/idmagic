@@ -154,6 +154,9 @@ func TestScimCreateUserResourceContract(t *testing.T) {
 
 // REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
 // CreateScimUser で対応する。
+// RFC7643-ENTERPRISE-EXTENSION: 採用した 3 属性のうち manager だけが参照であり、
+// 解決先をテナント内の User に限ることをここで固定する。採用の境界そのものは
+// TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset が観測する。
 func TestScimCreateUserEnterpriseExtension(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)

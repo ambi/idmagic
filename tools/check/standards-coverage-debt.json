@@ -23,27 +23,7 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "RFC7643-ENTERPRISE-EXTENSION",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC7643-OUT-GROUP-RESOURCES",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7643-SERVICE-PROVIDER-CONFIG",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7644-BEARER-AUTHORIZATION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7644-ERROR-RESPONSE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "RFC7644-RESOURCE-OPERATIONS",
       "reason": "present when the check was introduced"
     },
     {
