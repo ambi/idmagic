@@ -93,6 +93,14 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 	}
 
+	// 送信者制約の判定はグラント種別の分岐より前に 1 度だけ置く。分岐の後に置くと、
+	// グラントを足すたびに同じ判断を書き写すことになり、書き忘れた経路だけ制約が
+	// 消える (FAPI2-SENDER-CONSTRAINT)。
+	if !client.SenderConstraintSatisfied(dpopJKT, clientStub.MTLSThumbprintS256) {
+		return writeOAuthError(c, tokenusecases.NewOAuthError(
+			"invalid_request", "this client requires a DPoP proof or a mutual-TLS certificate"))
+	}
+
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	now := time.Now().UTC()

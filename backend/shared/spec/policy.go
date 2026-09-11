@@ -19,15 +19,18 @@ type AuthZSubject struct {
 }
 
 type AuthZSubjectProps struct {
-	ClientType    ClientType  `json:"clientType,omitempty"`
-	GrantTypes    []GrantType `json:"grantTypes,omitempty"`
-	Scopes        []string    `json:"scopes,omitempty"`
-	RedirectURIs  []string    `json:"redirectUris,omitempty"`
-	RequirePAR    bool        `json:"requirePAR,omitempty"`
-	Authenticated bool        `json:"authenticated,omitempty"`
-	Roles         []string    `json:"roles,omitempty"`
-	TenantID      string      `json:"tenantId,omitempty"`
-	DisabledAt    *time.Time  `json:"disabledAt,omitempty"`
+	ClientType   ClientType  `json:"clientType,omitempty"`
+	GrantTypes   []GrantType `json:"grantTypes,omitempty"`
+	Scopes       []string    `json:"scopes,omitempty"`
+	RedirectURIs []string    `json:"redirectUris,omitempty"`
+	RequirePAR   bool        `json:"requirePAR,omitempty"`
+	// Fapi2SecurityProfile は クライアントが FAPI 2.0 Security Profile を選択して
+	// いることを表す。選択だけで PAR が必須になる (FAPI2-PAR-PKCE)。
+	Fapi2SecurityProfile bool       `json:"fapi2SecurityProfile,omitempty"`
+	Authenticated        bool       `json:"authenticated,omitempty"`
+	Roles                []string   `json:"roles,omitempty"`
+	TenantID             string     `json:"tenantId,omitempty"`
+	DisabledAt           *time.Time `json:"disabledAt,omitempty"`
 }
 
 type AuthZResource struct {
@@ -399,8 +402,13 @@ var ruleEvaluators = map[string]ruleEvaluator{
 	"token_exchange_resource_present": func(r AuthZRequest) bool {
 		return r.Action == ActionTokenGrantTokenExchange && r.Resource.ID != "" && r.Context.Audience == r.Resource.ID
 	},
-	"pkce_present":         func(r AuthZRequest) bool { return r.Resource.Properties.CodeChallenge != "" },
-	"par_required_if_fapi": func(r AuthZRequest) bool { return !r.Subject.Properties.RequirePAR || r.Context.ParUsed },
+	"pkce_present": func(r AuthZRequest) bool { return r.Resource.Properties.CodeChallenge != "" },
+	// 規則の名前どおり、FAPI プロファイルの選択とクライアント個別の設定の
+	// どちらでも PAR が必須になる。実装の入口は Authorize が持つ。
+	"par_required_if_fapi": func(r AuthZRequest) bool {
+		required := r.Subject.Properties.RequirePAR || r.Subject.Properties.Fapi2SecurityProfile
+		return !required || r.Context.ParUsed
+	},
 	"actor_is_admin": func(r AuthZRequest) bool {
 		return r.Subject.Type == "User" && slices.Contains(r.Subject.Properties.Roles, "admin")
 	},

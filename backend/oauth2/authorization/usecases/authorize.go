@@ -95,7 +95,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 			return nil, NewOAuthError("invalid_scope", "contains undeclared scope")
 		}
 	}
-	if client.RequirePushedAuthorizationRequests && !in.ParUsed {
+	if client.MustUsePushedAuthorizationRequests() && !in.ParUsed {
 		return nil, NewOAuthError("invalid_request", "this client requires PAR")
 	}
 	if in.Prompt != "" {

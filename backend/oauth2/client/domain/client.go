@@ -82,6 +82,44 @@ type OAuth2Client struct {
 	ClaimPolicy *claimdomain.ClaimMappingPolicy `json:"claim_policy,omitempty"`
 }
 
+// UsesFapi2SecurityProfile は クライアントが FAPI 2.0 Security Profile を選択して
+// いるかを返す。プロファイルの追加制約は、選択したクライアントにだけ掛かる
+// (FAPI2-PROFILE-SELECTION)。
+//
+// 制約は選択から毎回導く。登録時に派生フラグを立てて保存すると、そのフラグだけを
+// 後から落とせてしまい、`fapi_profile` は選択のまま制約が消えた状態を作れる。
+func (c OAuth2Client) UsesFapi2SecurityProfile() bool {
+	return c.FapiProfile == FapiSecurityProfileV2
+}
+
+// MustUsePushedAuthorizationRequests は 認可リクエストを PAR 経由に限るかを返す。
+// クライアント個別の設定に加え、FAPI 2.0 プロファイルの選択でも必須になる
+// (FAPI2-PAR-PKCE)。
+func (c OAuth2Client) MustUsePushedAuthorizationRequests() bool {
+	return c.RequirePushedAuthorizationRequests || c.UsesFapi2SecurityProfile()
+}
+
+// SenderConstraintSatisfied は 提示された証拠がこのクライアントに要求される送信者
+// 制約を満たすかを返す。FAPI 2.0 プロファイルを選択したクライアントのアクセス
+// トークンは DPoP か mTLS で送信者に束縛されていなければならない
+// (FAPI2-SENDER-CONSTRAINT)。
+//
+// 証拠を引数で受けるのは、DPoP 証明の鍵サムプリントも mTLS 証明書のサムプリントも
+// トランスポートの事実であり、クライアント自身からは取り出せないからである。判断を
+// ここに置き、証拠の供給を入口に残すことで、HTTP を起動しなくてもこの判断を読める。
+func (c OAuth2Client) SenderConstraintSatisfied(dpopJKT, mtlsThumbprint string) bool {
+	if !c.UsesFapi2SecurityProfile() {
+		return true
+	}
+	return dpopJKT != "" || mtlsThumbprint != ""
+}
+
+// fapi2ClientAuthMethods は FAPI 2.0 プロファイルが許すクライアント認証方式である
+// (FAPI2-CLIENT-AUTH)。共有シークレットを使う 2 方式と `none` は入らない。
+var fapi2ClientAuthMethods = []TokenEndpointAuthMethod{
+	AuthMethodPrivateKeyJwt, AuthMethodTlsClientAuth,
+}
+
 func ValidateLogoutURI(raw string) bool {
 	parsed, err := url.Parse(raw)
 	return err == nil && parsed.Scheme == "https" && parsed.Host != "" && parsed.User == nil && parsed.Fragment == ""
@@ -159,7 +197,21 @@ var oauth2ClientSchema = z.Struct(z.Shape{
 			return len(client.RedirectURIs) > 0
 		}
 		return true
-	}, z.Message("redirect_uris is required for redirect-based grants"))
+	}, z.Message("redirect_uris is required for redirect-based grants")).
+	TestFunc(func(value any, _ z.Ctx) bool {
+		client, ok := value.(*OAuth2Client)
+		if !ok {
+			return false
+		}
+		// クライアント認証方式は保存されたクライアント自身の属性なので、要求ごとに
+		// 評価せず不変項として閉じる。保存できたクライアントは必ず適合している形に
+		// なり、/register と admin の作成・更新が 1 か所でそろう
+		// (FAPI2-CLIENT-AUTH)。
+		if !client.UsesFapi2SecurityProfile() {
+			return true
+		}
+		return slices.Contains(fapi2ClientAuthMethods, client.TokenEndpointAuthMethod)
+	}, z.Message("fapi_2_security_profile requires private_key_jwt or tls_client_auth"))
 
 func (c OAuth2Client) Validate() error {
 	return spec.Validate(oauth2ClientSchema, &c)

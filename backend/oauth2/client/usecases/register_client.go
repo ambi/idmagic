@@ -101,6 +101,10 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 			FapiProfile:              domain.FapiNone,
 			CreatedAt:                now,
+			// 検証用の候補にも UpdatedAt を入れる。スキーマがこれを必須にして
+			// いるので、欠けていると鍵の有無によらず候補が必ず落ち、どんな
+			// private_key_jwt クライアントも登録できない。
+			UpdatedAt: now,
 		}
 		if err := candidate.Validate(); err != nil {
 			return nil, NewOAuthError("invalid_client_metadata", "private_key_jwt requires non-empty inline jwks")

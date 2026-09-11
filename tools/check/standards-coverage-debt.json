@@ -23,22 +23,6 @@
       "reason": "present when the check was introduced"
     },
     {
-      "id": "FAPI2-CLIENT-AUTH",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "FAPI2-PAR-PKCE",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "FAPI2-PROFILE-SELECTION",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "FAPI2-SENDER-CONSTRAINT",
-      "reason": "present when the check was introduced"
-    },
-    {
       "id": "RFC7591-REGISTER",
       "reason": "present when the check was introduced"
     },

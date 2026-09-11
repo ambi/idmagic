@@ -89,9 +89,11 @@ initial_context:
 
 したがって「プロファイルを選んだクライアントが追加の制約を受ける」という観測が作れない。Design がこの入口に要求した対 — 選んだ側と選んでいない側 — は、選んだ側が何も変わらないので成立しない。`optional` は「提供しているならその振る舞いを観測する」ことを意味するが、提供されていない。
 
-これは Scope と T006 が想定した「宣言した採用を満たしていない行」であり、[[wi-532-fapi-security-profile-selection-applies-no-constraint]] として切り出した。本項目の 4 行の消化はこの前提 work item の完了を待つ。`depends_on` へ入れた。
+これは Scope と T006 が想定した「宣言した採用を満たしていない行」であり、[[wi-532-fapi-security-profile-selection-applies-no-constraint]] として切り出した。`depends_on` へ入れた。
 
-**残る 2 行は前提を持たない。** `RFC7591-REGISTER` の `/register` は `routes.go` に配線され、`RFC8176-AMR` の記録は認可コードフローを通って ID トークンまで届く。ただし 6 行は 1 つの入口を共有するので、前提の完了を待って 6 行を 1 度に消化する。2 行だけ先に消化すると、同じハーネスを 2 度組むことになる。これは [[wi-499-back-oauth2-standards-rows-with-tests]] が測った「費用を支配するのは行数ではなく入口ごとのハーネス」という結論に反する。
+**この 4 行は前提 work item の側で消化された。** 実装を入れたテストが 4 つの id を名指した時点で `check-spec` が台帳からの削除を要求したので、境界はそこで動いた。振る舞いを入れたテストと、その行を名指すテストを別々に書く理由は無い。本項目に残るのは `RFC7591-REGISTER` と `RFC8176-AMR` の 2 行である。
+
+**残る 2 行は前提を持たない。** `RFC7591-REGISTER` の `/register` は `routes.go` に配線され、`RFC8176-AMR` の記録は認可コードフローを通って ID トークンまで届く。ハーネスは [[wi-532-fapi-security-profile-selection-applies-no-constraint]] が `backend/shared/http/server_http/fapi_security_profile_e2e_test.go` に組んだものが `/register` まで届いているので、`RFC7591-REGISTER` はその隣に置ける。
 
 行ごとの観測の形は `Adoption` が決める。`required` は宣言した振る舞いが正式な入口から到達できること、`optional` は提供しているならその振る舞い、`excluded` は提供していないことと拒否が防いだ効果、`partial` は採った範囲と採らなかった範囲の扱いを、それぞれ観測する。`excluded` の観測は 1 つの型に収まらない。行の `Statement` が製品の制約を書いているのか標準側の機能を書いているのかで観測が裏返るので、本項目の `excluded` の 1 件目でどちらかを決めてから残りへ広げる。
 
@@ -112,13 +114,16 @@ initial_context:
 - [ ] T005 [Resistance] 行が言っている判断を production 側で崩し、対応するテストが落ちることを行ごとに観測する。
 - [x] T006 [Defect] 宣言した採用を満たしていない行が見つかったら、欠陥の work item を切り出す。
   `FAPI2-*` の 4 行が満たされていなかった。[[wi-532-fapi-security-profile-selection-applies-no-constraint]]
-  として切り出し、`depends_on` へ入れた。判定は Design の「着手前の判定」節。
+  として切り出し、`depends_on` へ入れた。判定は Design の「着手前の判定」節。4 行の消化は
+  実装と同時に起きたので、その work item が台帳から外した。
   recipe: `mise run check-work-items`
 - [ ] T007 [Verify] `mise run verify`。
 
 ## Verification
 
 - 本項目が持つ 6 件が `tools/check/standards-coverage-debt.json` から 1 件残らず消えている。
+  `FAPI2-*` の 4 件は [[wi-532-fapi-security-profile-selection-applies-no-constraint]] が実装と同時に外した。
+  本項目が直接外すのは `RFC7591-REGISTER` と `RFC8176-AMR` の 2 件である。
 - 注記を足した各テストについて、対応する production の判断を崩すとそのテストが落ちる。
 - `mise run check-spec`
 - `mise run verify`
