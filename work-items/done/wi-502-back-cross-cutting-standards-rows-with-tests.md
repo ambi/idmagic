@@ -1,6 +1,6 @@
 ---
 depends_on: []
-status: in_progress
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -205,11 +205,10 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
 - [x] T006 [Ledger] 解決した id を `standards-coverage-debt.json` から外す。
   7 件すべてを外した（104 → 97）。`ok normative coverage (..., 188 id(s) named by a test)`。
   recipe: `mise run check-spec`
-- [ ] T007 [Verify] `mise run verify` および `mise run test-ui-e2e`。
-  `mise run test-ui-e2e` は通った。`mise run verify` は、同じ作業ツリーで並行して進んでいる
-  [[wi-512-system-wide-top-down-documentation-architecture]] の未完了の文書移動により
-  4 つのゲートが落ちており、本項目の変更だけでは通せない。Completion の
-  Verification Results に内訳を書いた。
+- [x] T007 [Verify] `mise run verify` および `mise run test-ui-e2e`。
+  どちらも通った。並行していた [[wi-512-system-wide-top-down-documentation-architecture]] が
+  完了して文書の移動が収束したあと、本項目のテストだけが載った main で取り直した。
+  recipe: `mise run verify` と `mise run test-ui-e2e`
 
 ## Verification
 
@@ -222,7 +221,7 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
 
 ## Completion
 
-- **Completed At**: 2026-09-08
+- **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
   差分は `docs/standards.md` の 8 行のうち、名指しを持たなかった 7 行に対する被覆の状態である。
@@ -294,24 +293,20 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
   | `WCAG22-FOCUS` | `Input` から `focus:border-accent focus:ring-3 focus:ring-accent/15` を外す | `every focus stop on an authentication screen is visible and unobscured`: 入力の `indicator` が空 |
   | 〃 | `AuthShell` に画面全体を覆う透明な要素を重ねる | 同テスト: 走査で止まる全要素が `obscured` |
 - **Verification Results**:
-  - `mise run check-spec` - normative coverage は passed
-    (`ok normative coverage (156 standard(s), 311 rule(s), 744 example(s), 188 id(s) named by a test)`)。
-    タスク全体は下記の並行作業により失敗する。
-  - `mise run test-go-changed` - passed
-  - `mise run test-ui-unit` - passed（683 件）
-  - `mise run lint-go` / `mise run format-go` - passed
-  - `mise run lint-ui` / `mise run format-ui` / `mise run typecheck-ui` / `mise run check-ui-dependencies` - passed
+  - `mise run verify` - passed（2026-09-12 に取得）
   - `mise run test-ui-e2e` - passed（27 件、6 ファイル）
-  - `mise run check-ids` - passed（512 件）
-  - `mise run check-work-items` - 本項目と切り出した 2 件は passed。タスク全体は下記により失敗する。
-  - `mise run verify` - **failed**。落ちた 4 ゲート（`check-spec`、`check-links`、`check-slo-references`、
-    `check-work-items`）はいずれも、同じ作業ツリーで並行して進んでいる
-    [[wi-512-system-wide-top-down-documentation-architecture]] が `docs/api-rules.md`、`docs/capacity.md`、
-    `docs/deployment.md`、`docs/observability.md`、`docs/threat-model.md` などを移動している途中で
-    あることによる。`check-links` が挙げる 86 件はすべて移動中の文書を指しており、
-    `check-work-items` の 1 件は `wi-419` の `affected_spec` が `docs/capacity.md` を指していることで
-    ある。**本項目が触ったファイルは 1 つも現れない。** 本項目の変更だけを載せたツリーで
-    再実行するまで、このゲートは未取得のままである。
+  - `mise run check-spec` - passed
+    (`ok normative coverage (156 standard(s), 311 rule(s), 746 example(s), 270 id(s) named by a test)`)
+  - `mise run spec-diff` - `no normative specification change against main`
+
+  **`mise run verify` は取り直したものである。** テストを書き終えた 2026-09-08 の時点では、同じ作業
+  ツリーで並行して進んでいた [[wi-512-system-wide-top-down-documentation-architecture]] が
+  `docs/api-rules.md`、`docs/capacity.md`、`docs/deployment.md`、`docs/observability.md`、
+  `docs/threat-model.md` などを移動している途中であり、4 ゲート（`check-spec`、`check-links`、
+  `check-slo-references`、`check-work-items`）がその移動を理由に落ちていた。落ちた内訳に本項目が
+  触ったファイルは 1 つも現れていない。wi-512 の完了後、本項目のテストだけが載った main で
+  取り直して通った。上記の id 数（270）は、その間に他の work item も台帳を消化したあとの値で
+  あり、本項目が動かした 181 → 188 の差とは別である。
 
 ## Risk Notes
 
