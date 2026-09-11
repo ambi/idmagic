@@ -185,3 +185,59 @@ func TestProvisioningHealth_Valid(t *testing.T) {
 		t.Error(`ProvisioningHealth("bogus").Valid() = true, want false`)
 	}
 }
+
+// RFC7643-OUT-GROUP-RESOURCES: 取得元に選べるのは Group の名前、説明、メールアドレス
+// だけである。集合の外は管理 API の境界で止める —— 保存できてしまうと、配信時に
+// 名前へ落ちるので、効いている設定と区別が付かなくなる。
+func TestProvisioningConnection_ValidateRefusesAnUnknownDisplayNameSource(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		source  ProvisioningGroupDisplayNameSource
+		wantErr bool
+	}{
+		{name: "未設定は既定として通る", source: "", wantErr: false},
+		{name: "名前", source: GroupDisplayNameSourceName, wantErr: false},
+		{name: "説明", source: GroupDisplayNameSourceDescription, wantErr: false},
+		{name: "メールアドレス", source: GroupDisplayNameSourceEmail, wantErr: false},
+		{name: "集合の外", source: "nickname", wantErr: true},
+		{name: "SCIM 側の属性名を書いてしまう", source: "displayName", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			conn := validConnection()
+			conn.GroupPush = &GroupPushConfig{
+				Selection: GroupSelectionAssignedGroups, DisplayNameSource: tc.source,
+			}
+			err := conn.Validate()
+			if tc.wantErr && err == nil {
+				t.Fatalf("Validate() = nil, want an error for display_name_source=%q", tc.source)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("Validate() error = %v, want nil for display_name_source=%q", err, tc.source)
+			}
+		})
+	}
+}
+
+// RFC7643-OUT-GROUP-RESOURCES: 既定は Group の名前である。
+//
+// 未知の値は登録が拒否するので管理 API からは入らないが、保存済みの行が持っていた
+// 場合でも配信は止まらない。表示名は fail-closed の判断ではない。
+func TestGroupPushConfig_DisplayNameSourceKey(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		config *GroupPushConfig
+		want   string
+	}{
+		{name: "設定そのものが無い", config: nil, want: "name"},
+		{name: "取得元が未設定", config: &GroupPushConfig{}, want: "name"},
+		{name: "集合の外の値", config: &GroupPushConfig{DisplayNameSource: "nickname"}, want: "name"},
+		{name: "説明", config: &GroupPushConfig{DisplayNameSource: GroupDisplayNameSourceDescription}, want: "description"},
+		{name: "メールアドレス", config: &GroupPushConfig{DisplayNameSource: GroupDisplayNameSourceEmail}, want: "email"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.config.DisplayNameSourceKey(); got != tc.want {
+				t.Errorf("DisplayNameSourceKey() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

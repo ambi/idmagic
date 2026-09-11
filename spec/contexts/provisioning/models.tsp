@@ -78,6 +78,14 @@ enum ProvisioningGroupSelection {
 }
 
 
+@doc("下流の `displayName` へ射影する IdMagic 側の Group 属性。Group が値を持たない属性を選んだ配信は、名前へ落ちる —— 表示名は fail-closed の判断ではない。")
+enum ProvisioningGroupDisplayNameSource {
+  name: "name",
+  description: "description",
+  email: "email",
+}
+
+
 @doc("Where the value of an AttributeMappingRule comes from. An `expression` (a function evaluation) is out of scope for the first version; only a direct reference and a fixed value are permitted.")
 enum AttributeSourceKind {
   attribute: "attribute",
@@ -181,8 +189,8 @@ model GroupPushConfig {
   selection: ProvisioningGroupSelection = ProvisioningGroupSelection.assigned_groups;
   @doc("The explicit list of `Group.id` values used when `selection` is `explicit`.")
   explicit_group_ids?: string[];
-  @doc("The IdMagic Group attribute key projected onto the downstream `displayName`.")
-  display_name_source: string = "name";
+  @doc("下流の `displayName` の取得元。選べるのは `ProvisioningGroupDisplayNameSource` が列挙する属性だけで、既定は Group の名前である。")
+  display_name_source: ProvisioningGroupDisplayNameSource = ProvisioningGroupDisplayNameSource.name;
 }
 
 

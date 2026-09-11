@@ -10,14 +10,13 @@ import (
 
 // GroupAttributeSource resolves a Group's attributes for
 // spec/contexts/provisioning.yaml models.AttributeMappingRule (source_kind=attribute).
-// The resolved keys mirror the User source's shape: `id` and `display_name` are
-// always present, with `description` and `email` present only when set.
+// The resolved keys are `id` and `name`, with `description` and `email` present
+// only when the Group sets them.
 //
-// `display_name` is what a downstream SCIM Group's `displayName` maps from. Which
-// IdMagic field it is taken from is the connection's GroupPushConfig.DisplayNameSource;
-// `name` is the default and the only value with a meaning today, so an unset or
-// unknown source resolves to Group.Name rather than failing the delivery — the
-// display name is not a fail-closed decision.
+// What it resolves is what the Group is, not what any one connection wants sent.
+// `display_name`, the key a downstream `displayName` maps from, is therefore not
+// resolved here: which attribute it takes is the connection's
+// GroupPushConfig.DisplayNameSource, and the delivery engine holds the connection.
 type GroupAttributeSource struct {
 	GroupRepo groupports.GroupRepository
 	// UserRepo is unused for attribute resolution; membership is pushed by the
@@ -39,9 +38,8 @@ func (s *GroupAttributeSource) ResolveAttributes(ctx context.Context, tenantID s
 		return nil, false, nil
 	}
 	attrs := map[string]any{
-		"id":           group.ID,
-		"display_name": group.Name,
-		"name":         group.Name,
+		"id":   group.ID,
+		"name": group.Name,
 	}
 	if group.Description != nil {
 		attrs["description"] = *group.Description

@@ -95,7 +95,7 @@ describe('ConnectionSettingsForm group push consolidation', () => {
       group_push: {
         selection: 'explicit',
         explicit_group_ids: [],
-        display_name_source: 'displayName',
+        display_name_source: 'email',
       },
     }
     stubGlobal('fetch', mock().mockResolvedValue(response(200, explicitConnection)))
@@ -109,9 +109,9 @@ describe('ConnectionSettingsForm group push consolidation', () => {
       />,
     )
 
-    expect(
-      screen.getByText('Attribute path whose value is sent as the downstream group display name.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText(t.displayNameSourceHelp)).toBeInTheDocument()
+    // 取得元は自由入力ではなく選択である。保存された値が選択肢の表示名で出ている。
+    expect(screen.getByText(t.displayNameSourceEmailLabel)).toBeInTheDocument()
     const picker = screen.getByRole('combobox', { name: 'Select a group…' })
     fireEvent.mouseDown(picker)
     fireEvent.click(await screen.findByRole('option', { name: group.name }))

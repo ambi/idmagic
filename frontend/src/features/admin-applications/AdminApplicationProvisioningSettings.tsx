@@ -22,6 +22,7 @@ import type {
   ProvisioningAuthMethod,
   ProvisioningConnection,
   ProvisioningFeatureFlags,
+  ProvisioningGroupDisplayNameSource,
   ProvisioningGroupSelection,
   ProvisioningScope,
   AdminGroup,
@@ -60,7 +61,7 @@ export function ConnectionSettingsForm({
     connection.group_push ?? {
       selection: 'assigned_groups',
       explicit_group_ids: [],
-      display_name_source: '',
+      display_name_source: 'name',
     },
   )
   const [mappingJSON, setMappingJSON] = useState(
@@ -331,9 +332,19 @@ function GroupPushSection({
           </div>
           <div className="grid gap-1.5">
             <Label>{t.displayNameSourceFieldLabel}</Label>
-            <Input
-              value={groupPush.display_name_source ?? ''}
-              onChange={(e) => setGroupPush({ ...groupPush, display_name_source: e.target.value })}
+            <Select
+              value={groupPush.display_name_source ?? 'name'}
+              onValueChange={(v) =>
+                setGroupPush({
+                  ...groupPush,
+                  display_name_source: v as ProvisioningGroupDisplayNameSource,
+                })
+              }
+              options={[
+                { value: 'name', label: t.displayNameSourceNameLabel },
+                { value: 'description', label: t.displayNameSourceDescriptionLabel },
+                { value: 'email', label: t.displayNameSourceEmailLabel },
+              ]}
             />
             <p className="text-xs text-slate-500">{t.displayNameSourceHelp}</p>
           </div>

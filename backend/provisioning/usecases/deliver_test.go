@@ -34,6 +34,9 @@ type fakeTargetClient struct {
 	searchCalls     int
 	lastUpdateAttrs map[string]any
 	memberPatches   []memberPatch
+
+	createGroupID        string
+	lastCreateGroupAttrs map[string]any
 }
 
 func (f *fakeTargetClient) Discover(context.Context) (domain.ProvisioningCapabilities, error) {
@@ -61,8 +64,9 @@ func (f *fakeTargetClient) SearchUserByAttribute(context.Context, string, string
 	return f.searchRemoteID, f.searchFound, nil
 }
 
-func (f *fakeTargetClient) CreateGroup(context.Context, []domain.AttributeMappingRule, map[string]any) (string, *string, error) {
-	return "", nil, nil
+func (f *fakeTargetClient) CreateGroup(_ context.Context, _ []domain.AttributeMappingRule, attrs map[string]any) (string, *string, error) {
+	f.lastCreateGroupAttrs = attrs
+	return f.createGroupID, nil, nil
 }
 
 func (f *fakeTargetClient) UpdateGroup(context.Context, string, []domain.AttributeMappingRule, map[string]any, bool) (*string, error) {
@@ -265,5 +269,79 @@ func TestExecuteDelivery_RetryableErrorPropagatesWithoutChangingStatus(t *testin
 	got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
 	if got.Status != domain.DeliveryInFlight {
 		t.Errorf("delivery.Status = %v, want in_flight (unchanged; Jobs owns retry state)", got.Status)
+	}
+}
+
+// RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
+// `GroupPushConfig.display_name_source` が選ぶ。既定は Group の名前で、選んだ属性を
+// Group が持たないときもそこへ落ちる。
+//
+// 配送エンジンが接続を読んで `display_name` を組み立てる。属性源は Group の事実
+// (`name`、`description`、`email`) だけを解決し、どれを表示名にするかは知らない。
+func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
+	groupAttrs := func() map[string]any {
+		return map[string]any{
+			"id":          "group-eng",
+			"name":        "engineering",
+			"description": "The engineering group",
+			"email":       "engineering@example.com",
+		}
+	}
+
+	for _, tc := range []struct {
+		name   string
+		source domain.ProvisioningGroupDisplayNameSource
+		attrs  map[string]any
+		want   any
+	}{
+		{name: "既定は Group の名前", source: "", attrs: groupAttrs(), want: "engineering"},
+		{name: "名前を選ぶ", source: domain.GroupDisplayNameSourceName, attrs: groupAttrs(), want: "engineering"},
+		{name: "説明を選ぶ", source: domain.GroupDisplayNameSourceDescription, attrs: groupAttrs(), want: "The engineering group"},
+		{name: "メールアドレスを選ぶ", source: domain.GroupDisplayNameSourceEmail, attrs: groupAttrs(), want: "engineering@example.com"},
+		// 未知の取得元は接続の登録が拒否するので、ここは通れない。既定へ落ちることは
+		// domain の TestGroupPushConfig_DisplayNameSourceKey が持つ。
+		{
+			name:   "選んだ属性を Group が持たないときは名前へ落ちる",
+			source: domain.GroupDisplayNameSourceEmail,
+			attrs:  map[string]any{"id": "group-eng", "name": "engineering"},
+			want:   "engineering",
+		},
+		{
+			name:   "選んだ属性が空のときも名前へ落ちる",
+			source: domain.GroupDisplayNameSourceDescription,
+			attrs:  map[string]any{"id": "group-eng", "name": "engineering", "description": ""},
+			want:   "engineering",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &fakeTargetClient{createGroupID: "remote-group-1"}
+			deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: tc.attrs, exists: true})
+			ctx := context.Background()
+
+			conn := activeConnection("app-1", domain.ScopeAllUsers)
+			conn.FeatureFlags.PushGroups = true
+			conn.GroupPush = &domain.GroupPushConfig{
+				Selection: domain.GroupSelectionAssignedGroups, DisplayNameSource: tc.source,
+			}
+			if err := connRepo.Register(ctx, conn, "secret"); err != nil {
+				t.Fatalf("Register() error = %v", err)
+			}
+			delivery := &domain.ProvisioningDelivery{
+				ID: "delivery-group-1", TenantID: "tenant-a", ConnectionID: "app-1",
+				SourceType: domain.SourceTypeGroup, SourceID: "group-eng", SourceVersion: 1,
+				Operation: domain.OperationCreate, Status: domain.DeliveryInFlight,
+				CreatedAt: time.Now(), UpdatedAt: time.Now(),
+			}
+			if _, err := deliveryRepo.Save(ctx, delivery); err != nil {
+				t.Fatalf("Save() error = %v", err)
+			}
+
+			if err := usecases.ExecuteDelivery(ctx, deps, "tenant-a", delivery.ID, time.Now()); err != nil {
+				t.Fatalf("ExecuteDelivery() error = %v", err)
+			}
+			if got := client.lastCreateGroupAttrs["display_name"]; got != tc.want {
+				t.Errorf("display_name = %v, want %v (attrs=%+v)", got, tc.want, client.lastCreateGroupAttrs)
+			}
+		})
 	}
 }

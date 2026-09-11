@@ -457,6 +457,8 @@ export type ProvisioningScope = 'assigned_only' | 'all_users'
 export type ProvisioningConnectionStatus = 'active' | 'disabled'
 export type ProvisioningHealth = 'ok' | 'degraded' | 'quarantined'
 export type ProvisioningGroupSelection = 'assigned_groups' | 'explicit'
+
+export type ProvisioningGroupDisplayNameSource = 'name' | 'description' | 'email'
 export type ProvisioningDeprovisionAction = 'deactivate' | 'delete' | 'none'
 export type ProvisioningSourceType = 'user' | 'group'
 export type ProvisioningOperation =
@@ -495,7 +497,7 @@ export type ProvisioningConnectionCredentialMetadata = {
 export type GroupPushConfig = {
   selection: ProvisioningGroupSelection
   explicit_group_ids?: string[]
-  display_name_source?: string
+  display_name_source?: ProvisioningGroupDisplayNameSource
 }
 
 export type AttributeMappingRule = {

@@ -97,6 +97,25 @@ func (s ProvisioningGroupSelection) Valid() bool {
 	return s == GroupSelectionAssignedGroups || s == GroupSelectionExplicit
 }
 
+// ProvisioningGroupDisplayNameSource is which IdMagic Group attribute becomes the
+// downstream `displayName` (spec/contexts/provisioning/models.tsp
+// models.ProvisioningGroupDisplayNameSource). The set is closed because these are
+// the attributes an IdMagic Group has; an open string would let a typo save,
+// deliver successfully, and change nothing downstream.
+type ProvisioningGroupDisplayNameSource string
+
+const (
+	GroupDisplayNameSourceName        ProvisioningGroupDisplayNameSource = "name"
+	GroupDisplayNameSourceDescription ProvisioningGroupDisplayNameSource = "description"
+	GroupDisplayNameSourceEmail       ProvisioningGroupDisplayNameSource = "email"
+)
+
+func (s ProvisioningGroupDisplayNameSource) Valid() bool {
+	return s == GroupDisplayNameSourceName ||
+		s == GroupDisplayNameSourceDescription ||
+		s == GroupDisplayNameSourceEmail
+}
+
 // ProvisioningFeatureFlags toggles which operations a connection may perform
 // (spec/contexts/provisioning.yaml models.ProvisioningFeatureFlags).
 type ProvisioningFeatureFlags struct {
@@ -161,9 +180,22 @@ func (c ProvisioningCredentialInput) Secret() string {
 // GroupPushConfig selects push_groups targets and display name source
 // (spec/contexts/provisioning.yaml models.GroupPushConfig).
 type GroupPushConfig struct {
-	Selection         ProvisioningGroupSelection `json:"selection"`
-	ExplicitGroupIDs  []string                   `json:"explicit_group_ids,omitempty"`
-	DisplayNameSource string                     `json:"display_name_source,omitempty"`
+	Selection         ProvisioningGroupSelection         `json:"selection"`
+	ExplicitGroupIDs  []string                           `json:"explicit_group_ids,omitempty"`
+	DisplayNameSource ProvisioningGroupDisplayNameSource `json:"display_name_source,omitempty"`
+}
+
+// DisplayNameSourceKey is the resolved-attribute key the downstream `displayName`
+// is taken from. An unset config and an unknown source both fall back to the
+// Group's name: a display name is not a fail-closed decision, and refusing the
+// delivery would let one mistyped setting stop a Group from being pushed at all.
+// The nil receiver is the connection that has no GroupPushConfig yet, so callers
+// do not each repeat that check.
+func (c *GroupPushConfig) DisplayNameSourceKey() string {
+	if c == nil || !c.DisplayNameSource.Valid() {
+		return string(GroupDisplayNameSourceName)
+	}
+	return string(c.DisplayNameSource)
 }
 
 // ProvisioningConnection is the Provisioning bounded context aggregate: at most
@@ -213,6 +245,13 @@ func (c ProvisioningConnection) Validate() error {
 	quarantined := c.Health == HealthQuarantined
 	if quarantined != (c.QuarantinedAt != nil) {
 		return errors.New("provisioning: health=quarantined must be consistent with quarantined_at")
+	}
+	// An empty display_name_source means unset, which resolves to the Group's
+	// name. A value outside the set is refused here rather than falling back at
+	// delivery time: a setting that saves and then changes nothing downstream is
+	// indistinguishable from one that works.
+	if c.GroupPush != nil && c.GroupPush.DisplayNameSource != "" && !c.GroupPush.DisplayNameSource.Valid() {
+		return errors.New("provisioning: invalid group push display_name_source")
 	}
 	if err := c.DeprovisionPolicy.Validate(); err != nil {
 		return err

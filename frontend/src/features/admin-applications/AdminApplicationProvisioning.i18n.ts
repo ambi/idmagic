@@ -69,8 +69,12 @@ export const provisioningDictionary = defineDictionary(
     explicitGroupIdsFieldLabel: '明示的に連携するグループ',
     explicitGroupPickerPlaceholder: 'グループを選択…',
     removeExplicitGroup: '{name} を除外',
-    displayNameSourceFieldLabel: '表示名ソース属性',
-    displayNameSourceHelp: '下流側のグループ表示名として送信する値を取得する属性パスです。',
+    displayNameSourceFieldLabel: '表示名の取得元',
+    displayNameSourceHelp:
+      '下流側のグループ表示名として送信する値を、どのグループ属性から取るかを選びます。選んだ属性が空のグループは、グループ名を送ります。',
+    displayNameSourceNameLabel: 'グループ名',
+    displayNameSourceDescriptionLabel: '説明',
+    displayNameSourceEmailLabel: 'メールアドレス',
     attributeMappingHeading: '属性マッピング',
     attributeMappingHelp:
       'target_path (SCIM 側の属性パス) ごとの取得元を JSON 配列で定義します。source_kind は attribute か constant、apply_on は create_and_update か create_only です。',
@@ -241,9 +245,12 @@ export const provisioningDictionary = defineDictionary(
     explicitGroupIdsFieldLabel: 'Explicit groups',
     explicitGroupPickerPlaceholder: 'Select a group…',
     removeExplicitGroup: 'Remove {name}',
-    displayNameSourceFieldLabel: 'Display name source attribute',
+    displayNameSourceFieldLabel: 'Display name source',
     displayNameSourceHelp:
-      'Attribute path whose value is sent as the downstream group display name.',
+      'Which group attribute is sent as the downstream group display name. A group that leaves the chosen attribute empty is sent under its name.',
+    displayNameSourceNameLabel: 'Group name',
+    displayNameSourceDescriptionLabel: 'Description',
+    displayNameSourceEmailLabel: 'Email address',
     attributeMappingHeading: 'Attribute mapping',
     attributeMappingHelp:
       'Define each downstream SCIM target_path as a JSON array. source_kind is attribute or constant, apply_on is create_and_update or create_only.',

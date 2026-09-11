@@ -168,6 +168,7 @@ func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.Provisioni
 	if !exists {
 		return nil
 	}
+	attrs["display_name"] = groupDisplayName(attrs, conn.GroupPush)
 	remoteID := ""
 	if link != nil {
 		remoteID = link.RemoteID
@@ -195,6 +196,26 @@ func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.Provisioni
 		return nil
 	}
 	return deps.LinkRepo.Upsert(ctx, newLink)
+}
+
+// groupDisplayName resolves the attribute the connection picked as the Group's
+// downstream `displayName` (docs/contexts/provisioning/standards.md
+// RFC7643-OUT-GROUP-RESOURCES).
+//
+// Which attribute that is belongs to the connection, not to the Group, which is
+// why the attribute source resolves the Group's facts and this resolves the
+// choice: ports.AttributeSource is not handed the connection, and the delivery
+// engine already holds it.
+//
+// A Group that has not set the chosen attribute falls back to its name. Sending
+// an empty displayName is not an option either — a downstream that validates its
+// Group representation refuses it, which would turn one mistyped setting into a
+// Group that never pushes.
+func groupDisplayName(attrs map[string]any, config *domain.GroupPushConfig) any {
+	if value, ok := attrs[config.DisplayNameSourceKey()].(string); ok && value != "" {
+		return value
+	}
+	return attrs["name"]
 }
 
 // pushGroupMembers sends the Group's current direct members downstream as one

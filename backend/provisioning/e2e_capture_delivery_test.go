@@ -949,3 +949,72 @@ func (f *fakeSCIMDownstream) groupMemberPatches() []recordedRequest {
 	}
 	return out
 }
+
+// RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
+// `GroupPushConfig.display_name_source` が選ぶ。
+//
+// 既定だけを観測しても選択が働いている証拠にはならない。既定は Group の名前であり、
+// 取得元を 1 つも読まない実装でもそこは通る。既定とは違う取得元を選んだ接続を通す。
+func TestE2E_GroupChange_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
+	h := newE2EHarness(t)
+	h.enablePushGroups()
+	group := h.seedGroup()
+	h.setGroupEmail(group.ID, "engineering@example.com")
+
+	config := h.connection().GroupPush
+	config.DisplayNameSource = domain.GroupDisplayNameSourceEmail
+	h.setGroupPush(config)
+
+	h.notifyGroupCreated(group.ID)
+	if got := h.executePendingGroupDelivery(group.ID); got.Status != domain.DeliverySucceeded {
+		t.Fatalf("delivery status = %q (last_error=%v)", got.Status, got.LastError)
+	}
+
+	created := h.downstream.find(http.MethodPost, "/Groups")
+	if created == nil {
+		t.Fatalf("下流へ POST /Groups が届いていない: %+v", h.downstream.snapshot())
+	}
+	// 名前 (engineering) ではなく、選んだ属性の値が届く。
+	if created.body["displayName"] != "engineering@example.com" {
+		t.Fatalf("POST /Groups body = %+v, want displayName=engineering@example.com", created.body)
+	}
+}
+
+// 選んだ属性を Group が持たないときは名前へ落ち、配信は失敗しない。表示名を
+// fail-closed の判断にすると、設定の打ち間違い 1 つでその Group の送出全体が止まる。
+func TestE2E_GroupChange_DisplayNameFallsBackToTheNameWhenTheSourceIsEmpty(t *testing.T) {
+	h := newE2EHarness(t)
+	h.enablePushGroups()
+	group := h.seedGroup() // email も description も持たない。
+
+	config := h.connection().GroupPush
+	config.DisplayNameSource = domain.GroupDisplayNameSourceEmail
+	h.setGroupPush(config)
+
+	h.notifyGroupCreated(group.ID)
+	delivery := h.executePendingGroupDelivery(group.ID)
+	if delivery.Status != domain.DeliverySucceeded {
+		t.Fatalf("delivery status = %q, want succeeded (last_error=%v)", delivery.Status, delivery.LastError)
+	}
+	created := h.downstream.find(http.MethodPost, "/Groups")
+	if created == nil {
+		t.Fatalf("下流へ POST /Groups が届いていない: %+v", h.downstream.snapshot())
+	}
+	if created.body["displayName"] != "engineering" {
+		t.Fatalf("POST /Groups body = %+v, want displayName=engineering (名前へ落ちる)", created.body)
+	}
+}
+
+// setGroupEmail は Group にメールアドレスを与える。
+func (h *e2eHarness) setGroupEmail(groupID, email string) {
+	h.t.Helper()
+	ctx := context.Background()
+	group, err := h.groupRepo.FindByID(ctx, h.tenantID, groupID)
+	if err != nil || group == nil {
+		h.t.Fatalf("FindByID() = (%+v, %v)", group, err)
+	}
+	group.Email = &email
+	if err := h.groupRepo.Save(ctx, group); err != nil {
+		h.t.Fatalf("Save() error = %v", err)
+	}
+}
