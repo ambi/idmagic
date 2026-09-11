@@ -34,6 +34,7 @@ import (
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
@@ -92,8 +93,10 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext) 
 
 	rpRepo := wsfedmemory.NewWsFedRelyingPartyRepository()
 	rpRepo.Seed(&feddomain.WsFedRelyingParty{
-		Wtrealm:   "urn:idmagic:demo-rp",
-		ReplyURLs: []string{"https://rp.example/wsfed"},
+		Wtrealm: "urn:idmagic:demo-rp",
+		// 2 つ目の返信先は既定 (先頭) ではないので、wreply を指定した要求がその指定どおりに
+		// 届いたのか、単に先頭が使われただけなのかを区別できる。
+		ReplyURLs: []string{"https://rp.example/wsfed", "https://rp.example/wsfed/alternate"},
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
@@ -300,6 +303,108 @@ func TestWsFedSignIn_DisallowedWreplyRejected(t *testing.T) {
 	}
 }
 
+// assertNoPassiveTokenIssued は passive の応答が「トークンを返していない」ことを確かめる。
+//
+// 拒否の状態符号だけを見ると、400 を返しつつ本文に wresult を載せる実装や、拒否したのに
+// 発行 event を出す実装と区別できない。応答本文と event の両方を見る。
+func assertNoPassiveTokenIssued(t *testing.T, rec *httptest.ResponseRecorder, events []spec.DomainEvent) {
+	t.Helper()
+	body := rec.Body.String()
+	for _, marker := range []string{"wresult", "RequestSecurityTokenResponse", "Assertion"} {
+		if strings.Contains(body, marker) {
+			t.Fatalf("refused sign-in still carries %q in its body: %s", marker, body)
+		}
+	}
+	if hasEvent(events, "WsFedSignInIssued") {
+		t.Fatal("WsFedSignInIssued emitted for a refused sign-in")
+	}
+}
+
+// WSFed-PassiveSignIn: wsignin1.0 が、登録済み wtrealm と許可済み wreply の組にだけトークンを返すことを
+// 固定する。
+//
+// 成功経路だけを観測すると、wtrealm も wreply も照合しない実装と区別できない。したがって観測は 2 つ要る。
+// 登録済みの組では指定した wreply へトークンが届くこと (既定の先頭 URL で代用されないこと)、および
+// 未登録の wtrealm と、登録済み wtrealm に対する許可外の wreply のそれぞれでトークンが出ないことである。
+func TestWsFedPassiveSignIn_IssuesOnlyToTheRegisteredRealmAndAllowedReply(t *testing.T) {
+	const allowedReply = "https://rp.example/wsfed/alternate"
+
+	t.Run("registered wtrealm with an allowed wreply receives the token", func(t *testing.T) {
+		e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
+		rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wreply="+url.QueryEscape(allowedReply))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		body := rec.Body.String()
+		// 既定は先頭の返信先なので、ここが alternate であることが「指定した許可済み wreply へ返した」証拠になる。
+		if !strings.Contains(body, `action="`+allowedReply+`"`) {
+			t.Fatalf("token was not posted to the requested allowed reply URL: %s", body)
+		}
+		if !strings.Contains(wresultFromPassiveForm(t, body), "RequestSecurityTokenResponse") {
+			t.Fatalf("wresult does not carry an RSTR: %s", body)
+		}
+		if !hasEvent(*events, "WsFedSignInIssued") {
+			t.Fatal("WsFedSignInIssued not emitted for an allowed wtrealm/wreply pair")
+		}
+	})
+
+	t.Run("unregistered wtrealm receives no token", func(t *testing.T) {
+		e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
+		// wreply は登録済み RP の許可集合に属する値なので、拒否の理由は wtrealm が未登録であることに限られる。
+		rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:not-registered&wreply="+url.QueryEscape(allowedReply))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d, want 400 for an unregistered wtrealm", rec.Code)
+		}
+		assertNoPassiveTokenIssued(t, rec, *events)
+	})
+
+	t.Run("wreply outside the allowed set receives no token", func(t *testing.T) {
+		e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
+		rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wreply="+url.QueryEscape("https://evil.example/steal"))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d, want 400 for a wreply outside the allowed set", rec.Code)
+		}
+		assertNoPassiveTokenIssued(t, rec, *events)
+	})
+}
+
+// WSFed-SilentSignIn: 無音サインイン (prompt=none 相当) を提供しないことを固定する。
+//
+// excluded の行なので、観測は行の Statement を満たすことではなく満たさないことになる。無音を求める入力が
+// 正式な入口へ届いたとき、(1) 無音でトークンが出ないこと、(2) 利用者に何も見せない失敗応答にも化けず、
+// 対話的なログインへ誘導するか明示的に拒否することの 2 つを観測する。この 2 つを分けないと、「無音の
+// 発行はしないが無音で静かに失敗する」実装を通してしまう。
+//
+// 本項目はこの行で excluded の観測の型を決め、WSTrust13-WindowsTransport へ広げた。
+func TestWsFedSilentSignIn_NotProvided(t *testing.T) {
+	t.Run("a silent-auth hint on an unauthenticated request still requires interactive login", func(t *testing.T) {
+		e, events := newServer(t, nil) // セッション無し。
+		rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&prompt=none")
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("status=%d, want 303: prompt=none must not turn into a silent response", rec.Code)
+		}
+		if loc := rec.Header().Get("Location"); !strings.HasPrefix(loc, "/realms/default/login") {
+			t.Fatalf("Location = %q, want the interactive login screen", loc)
+		}
+		assertNoPassiveTokenIssued(t, rec, *events)
+	})
+
+	t.Run("the integrated Windows wauth that would authenticate silently is refused", func(t *testing.T) {
+		// セッションはあるので、拒否の理由は「要求された無音の方式を提供しない」ことに限られる。
+		e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
+		rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp&wauth=urn:federation:authentication:windows")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d, want 400: the silent integrated-Windows method is not provided", rec.Code)
+		}
+		// 実施済みのパスワード認証で黙って代用しない。要求された方式を満たさないまま発行するのは、
+		// RP から見れば無音認証が成立したのと同じ意味になる。
+		assertNoPassiveTokenIssued(t, rec, *events)
+		if !hasEvent(*events, "WsFedSignInRejected") {
+			t.Fatal("WsFedSignInRejected not emitted")
+		}
+	})
+}
+
 func TestWsFedSignOut_RedirectsToAllowedWreply(t *testing.T) {
 	e, events := newServer(t, nil)
 	rec := get(e, "/wsfed?wa=wsignout1.0&wtrealm=urn:idmagic:demo-rp&wreply=https://rp.example/wsfed")
@@ -408,32 +513,237 @@ func TestWsTrustUsernameMixed_RejectsUnknownAppliesTo(t *testing.T) {
 	}
 }
 
-func TestWsTrustUsernameMixed_RejectsExpiredTimestampAndReplay(t *testing.T) {
+func TestWsTrustUsernameMixed_RejectsExpiredTimestamp(t *testing.T) {
 	e, _ := newServer(t, nil)
 	expired := time.Now().UTC().Add(-10 * time.Minute)
 	if rec := postWsTrustSOAP(e, wsTrustRST(expired, "urn:uuid:expired", "urn:idmagic:demo-rp")); rec.Code != http.StatusBadRequest {
 		t.Fatalf("expired status=%d, want 400", rec.Code)
 	}
-	first := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:replay", "urn:idmagic:demo-rp"))
-	if first.Code != http.StatusOK {
-		t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+}
+
+// countEvents は指定 EventType の event が捕捉された件数を返す。
+//
+// 同じサーバーで先に成功した発行があるときは「出ていないこと」を hasEvent では確かめられないので、
+// 基準値との差を見る。
+func countEvents(events []spec.DomainEvent, eventType string) int {
+	count := 0
+	for _, ev := range events {
+		if ev.EventType() == eventType {
+			count++
+		}
 	}
-	second := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:replay", "urn:idmagic:demo-rp"))
-	if second.Code != http.StatusBadRequest {
-		t.Fatalf("replay status=%d, want 400", second.Code)
+	return count
+}
+
+// assertNoWsTrustTokenIssued は、この要求に対してトークンが出ていないことを確かめる。
+//
+// 拒否の状態符号だけを見ると、400 を返しつつ本文に RSTR を載せる実装と区別できない。issuedBefore は
+// 同じサーバーで先に成功した発行を除くための基準値。
+func assertNoWsTrustTokenIssued(t *testing.T, rec *httptest.ResponseRecorder, events []spec.DomainEvent, issuedBefore int) {
+	t.Helper()
+	body := rec.Body.String()
+	for _, marker := range []string{"RequestSecurityTokenResponse", "RequestedSecurityToken", "Assertion"} {
+		if strings.Contains(body, marker) {
+			t.Fatalf("refused RST still carries %q in its response: %s", marker, body)
+		}
+	}
+	if got := countEvents(events, "WsTrustTokenIssued"); got != issuedBefore {
+		t.Fatalf("WsTrustTokenIssued count = %d, want %d: a refused RST issued a token", got, issuedBefore)
 	}
 }
 
-func TestWsTrustUsernameMixed_RejectsMismatchedTo(t *testing.T) {
-	e, _ := newServer(t, nil)
-	body := strings.Replace(
-		wsTrustRST(time.Now().UTC(), "urn:uuid:mismatched-to", "urn:idmagic:demo-rp"),
-		"https://idp.example/realms/default/trust/usernamemixed",
-		"https://evil.example/trust/usernamemixed",
-		1,
-	)
-	if rec := postWsTrustSOAP(e, body); rec.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", rec.Code)
+// WSTrust13-IssueBearer: Issue 要求に対して Bearer の SAML assertion を RSTR で返すことを固定する。
+//
+// RSTR の外形だけでは、保持者証明 (holder-of-key) の assertion を包んだ応答と区別できない。Bearer で
+// あるかを決めるのは assertion の SubjectConfirmation なので、RP と同じ手順で RSTR から assertion を
+// 取り出し、確認方法まで読む。SAML 1.1 は Subject を 2 箇所 (認証文と属性文) に置くので、そのすべてが
+// Bearer であることを見る。1 箇所だけを見ると、片方を保持者証明にした実装を通してしまう。
+func TestWsTrustIssueBearer_ReturnsABearerSAMLAssertionInTheRSTR(t *testing.T) {
+	e, events := newServer(t, nil)
+	rec := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:issue-bearer", "urn:idmagic:demo-rp"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	document := etree.NewDocument()
+	if err := document.ReadFromString(rec.Body.String()); err != nil {
+		t.Fatalf("parse RSTR: %v", err)
+	}
+	// Issue に対する応答であること。
+	if got := document.FindElement("//t:RequestType"); got == nil || got.Text() != wstrust.RequestIssue {
+		t.Fatalf("RSTR does not answer an Issue request: %+v", got)
+	}
+	assertion := document.FindElement("//t:RequestedSecurityToken/Assertion")
+	if assertion == nil {
+		t.Fatalf("RequestedSecurityToken does not carry a SAML assertion: %s", rec.Body.String())
+	}
+	methods := assertion.FindElements(".//SubjectConfirmation/ConfirmationMethod")
+	if len(methods) == 0 {
+		t.Fatalf("the assertion states no subject confirmation method: %s", rec.Body.String())
+	}
+	for _, method := range methods {
+		if method.Text() != "urn:oasis:names:tc:SAML:1.0:cm:bearer" {
+			t.Fatalf("subject confirmation method = %q, want bearer", method.Text())
+		}
+	}
+	// Bearer の assertion は提示するだけで使えるので、署名が唯一の真正性の根拠になる。
+	if assertion.FindElement("./Signature") == nil {
+		t.Fatalf("the bearer assertion is not signed: %s", rec.Body.String())
+	}
+	if !hasEvent(*events, "WsTrustTokenIssued") {
+		t.Fatal("WsTrustTokenIssued not emitted")
+	}
+}
+
+// WSS-UsernameTokenPassword: 能動的 STS が UsernameToken の username/password を認証することを固定する。
+//
+// 正しい資格情報が通ることだけを観測すると、UsernameToken を読み捨てて誰にでも発行する実装と区別
+// できない。誤ったパスワードと未知の username のそれぞれについて、拒否そのものと、その拒否が防いだ
+// 効果 (トークンが出ていないこと) を観測する。
+func TestWsTrustUsernameTokenPassword_AuthenticatesTheSuppliedCredential(t *testing.T) {
+	t.Run("the registered username and password are authenticated", func(t *testing.T) {
+		e, events := newServer(t, nil)
+		rec := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:password-ok", "urn:idmagic:demo-rp"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		if !hasEvent(*events, "WsTrustTokenIssued") {
+			t.Fatal("WsTrustTokenIssued not emitted for a valid credential")
+		}
+	})
+
+	t.Run("a wrong password receives no token", func(t *testing.T) {
+		e, events := newServer(t, nil)
+		body := strings.Replace(
+			wsTrustRST(time.Now().UTC(), "urn:uuid:password-wrong", "urn:idmagic:demo-rp"),
+			"<o:Password>correct-password</o:Password>",
+			"<o:Password>wrong-password</o:Password>",
+			1,
+		)
+		rec := postWsTrustSOAP(e, body)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status=%d, want 401 for a wrong password", rec.Code)
+		}
+		assertNoWsTrustTokenIssued(t, rec, *events, 0)
+		if !hasEvent(*events, "WsTrustTokenRejected") {
+			t.Fatal("WsTrustTokenRejected not emitted")
+		}
+	})
+
+	t.Run("an unknown username receives no token", func(t *testing.T) {
+		e, events := newServer(t, nil)
+		body := strings.Replace(
+			wsTrustRST(time.Now().UTC(), "urn:uuid:username-unknown", "urn:idmagic:demo-rp"),
+			"<o:Username>alice</o:Username>",
+			"<o:Username>mallory</o:Username>",
+			1,
+		)
+		rec := postWsTrustSOAP(e, body)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status=%d, want 401 for an unknown username", rec.Code)
+		}
+		assertNoWsTrustTokenIssued(t, rec, *events, 0)
+	})
+}
+
+// WSAddressing-MessageIDToAction: MessageID をリプレイ防止のために検証し、To を能動的 STS の
+// エンドポイントとして、Action を Issue として検証することを固定する。
+//
+// 1 行が 3 つの検証を束ねているので、3 つを 1 つの入力で崩すと手前の検証で落ちて後段が確かめられない。
+// 崩すのは 1 度に 1 つだけで、崩していない要素が有効であることは、同じ組み立てから作った正しい要求が
+// 通ることで先に確認する。MessageID はリプレイ防止のための検証なので、観測は「値が読めること」では
+// なく「同じ MessageID の 2 度目が通らないこと」である。
+func TestWsTrustAddressing_ValidatesMessageIDToAndAction(t *testing.T) {
+	const validTo = "https://idp.example/realms/default/trust/usernamemixed"
+
+	t.Run("the unmodified request is accepted", func(t *testing.T) {
+		e, _ := newServer(t, nil)
+		rec := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:addressing-baseline", "urn:idmagic:demo-rp"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("baseline status=%d body=%s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("a replayed MessageID receives no second token", func(t *testing.T) {
+		e, events := newServer(t, nil)
+		first := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:addressing-replay", "urn:idmagic:demo-rp"))
+		if first.Code != http.StatusOK {
+			t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+		}
+		issued := countEvents(*events, "WsTrustTokenIssued")
+		// MessageID 以外はすべて新しく有効な要求。通らない理由は MessageID の再利用に限られる。
+		second := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:addressing-replay", "urn:idmagic:demo-rp"))
+		if second.Code != http.StatusBadRequest {
+			t.Fatalf("replay status=%d, want 400", second.Code)
+		}
+		assertNoWsTrustTokenIssued(t, second, *events, issued)
+	})
+
+	t.Run("a To outside the active STS endpoint receives no token", func(t *testing.T) {
+		e, events := newServer(t, nil)
+		body := strings.Replace(
+			wsTrustRST(time.Now().UTC(), "urn:uuid:addressing-to", "urn:idmagic:demo-rp"),
+			"<a:To>"+validTo+"</a:To>",
+			"<a:To>https://evil.example/trust/usernamemixed</a:To>",
+			1,
+		)
+		rec := postWsTrustSOAP(e, body)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d, want 400 for a To that is not the active STS endpoint", rec.Code)
+		}
+		assertNoWsTrustTokenIssued(t, rec, *events, 0)
+	})
+
+	t.Run("an Action other than Issue receives no token", func(t *testing.T) {
+		e, events := newServer(t, nil)
+		// RequestType は Issue のまま残す。崩すのは WS-Addressing の Action だけ。
+		body := strings.Replace(
+			wsTrustRST(time.Now().UTC(), "urn:uuid:addressing-action", "urn:idmagic:demo-rp"),
+			"<a:Action>"+wstrust.RequestIssue+"</a:Action>",
+			"<a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Renew</a:Action>",
+			1,
+		)
+		rec := postWsTrustSOAP(e, body)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d, want 400 for an Action other than Issue", rec.Code)
+		}
+		assertNoWsTrustTokenIssued(t, rec, *events, 0)
+	})
+}
+
+// WSTrust13-WindowsTransport: WindowsTransport / Kerberos の能動的プロファイルを提供しないことを固定する。
+//
+// excluded の観測の型は WSFed-SilentSignIn で決めたものに従う。ただしこの行は入口そのものを持たないので、
+// 「届いた要求の拒否」ではなく「要求の宛先が存在しないこと」で観測する。広告まで見るのは、入口が無くても
+// metadata がその binding を広告していれば、RP は提供されていると読んで能動的プロファイルを組み立てて
+// しまうからである。
+func TestWsTrustWindowsTransport_NotProvided(t *testing.T) {
+	e, events := newServer(t, nil)
+
+	// AD FS が WindowsTransport / Kerberos の能動的プロファイルに用いる入口。どれも存在しない。
+	for _, path := range []string{
+		"/realms/default/trust/13/windowstransport",
+		"/realms/default/trust/13/kerberosmixed",
+		"/realms/default/trust/windowstransport",
+	} {
+		rec := postWsTrustSOAPTo(e, path, wsTrustRST(time.Now().UTC(), "urn:uuid:windows-"+path, "urn:idmagic:demo-rp"))
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s status=%d, want 404: no active Windows/Kerberos endpoint is provided", path, rec.Code)
+		}
+		assertNoWsTrustTokenIssued(t, rec, *events, 0)
+	}
+
+	// 広告も無い。MEX は UsernameMixed の binding だけを載せる。
+	for _, target := range []string{"/trust/mex", "/federationmetadata/2007-06/federationmetadata.xml"} {
+		rec := get(e, target)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status=%d", target, rec.Code)
+		}
+		for _, forbidden := range []string{"WindowsTransport", "Kerberos", "windowstransport", "kerberosmixed"} {
+			if strings.Contains(rec.Body.String(), forbidden) {
+				t.Fatalf("%s advertises %q although the active Windows/Kerberos profile is not provided:\n%s",
+					target, forbidden, rec.Body.String())
+			}
+		}
 	}
 }
 
@@ -451,7 +761,13 @@ func TestWsTrustUsernameMixed_RejectsNonBearerKeyType(t *testing.T) {
 }
 
 func postWsTrustSOAP(e *echo.Echo, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/realms/default/trust/usernamemixed", strings.NewReader(body))
+	return postWsTrustSOAPTo(e, "/realms/default/trust/usernamemixed", body)
+}
+
+// postWsTrustSOAPTo は宛先を明示して RST を POST する。提供しない能動的プロファイルの入口が存在
+// しないことを確かめるために、usernamemixed 以外へも送れる必要がある。
+func postWsTrustSOAPTo(e *echo.Echo, path, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/soap+xml")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)

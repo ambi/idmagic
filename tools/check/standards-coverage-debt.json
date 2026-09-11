@@ -49,30 +49,6 @@
     {
       "id": "RFC8693-FGA-ACTOR-AND",
       "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WSAddressing-MessageIDToAction",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WSFed-PassiveSignIn",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WSFed-SilentSignIn",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WSS-UsernameTokenPassword",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WSTrust13-IssueBearer",
-      "reason": "present when the check was introduced"
-    },
-    {
-      "id": "WSTrust13-WindowsTransport",
-      "reason": "present when the check was introduced"
     }
   ]
 }

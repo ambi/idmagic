@@ -204,6 +204,43 @@ func TestIssueSignedAssertion_SAML11RoundTrip(t *testing.T) {
 	}
 }
 
+// WSTrust13-IssueBearer: 発行する assertion が版によらず Bearer で確認されることを固定する。
+//
+// HTTP 境界の観測 (handlers_http) は RP の既定 token type である SAML 1.1 しか通らないので、SAML 2.0 の
+// 枝だけを保持者証明へ変えても気づけない。両方の版で、Subject を持つすべての位置の確認方法が Bearer で
+// あることを見る。
+func TestBuildAssertion_ConfirmsTheSubjectAsBearerInBothVersions(t *testing.T) {
+	versions := map[SAMLVersion]struct {
+		path   string
+		method string
+	}{
+		SAML20: {path: ".//SubjectConfirmation", method: bearerConfirmation20},
+		SAML11: {path: ".//SubjectConfirmation/ConfirmationMethod", method: bearerConfirmation11},
+	}
+	for version, want := range versions {
+		in := sampleInput()
+		in.Version = version
+		assertion, _, err := BuildAssertion(in)
+		if err != nil {
+			t.Fatalf("build assertion: %v", err)
+		}
+		found := assertion.FindElements(want.path)
+		if len(found) == 0 {
+			doc := etree.NewDocument()
+			doc.SetRoot(assertion.Copy())
+			xml, _ := doc.WriteToString()
+			t.Fatalf("the assertion states no subject confirmation: %s", xml)
+		}
+		for _, element := range found {
+			// SAML 2.0 は属性、SAML 1.1 は子要素の本文で確認方法を述べる。
+			got := element.SelectAttrValue("Method", element.Text())
+			if got != want.method {
+				t.Fatalf("subject confirmation = %q, want %q", got, want.method)
+			}
+		}
+	}
+}
+
 func TestBuildAssertion_InputValidation(t *testing.T) {
 	base := sampleInput()
 	bad := map[string]func(*AssertionInput){
