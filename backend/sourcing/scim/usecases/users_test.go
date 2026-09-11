@@ -356,3 +356,178 @@ func TestListUsersFiltersByUsername(t *testing.T) {
 		t.Fatalf("result=%+v", result)
 	}
 }
+
+// scimDeletedFixture は User を 1 件作って SCIM の DELETE で削除し、その SCIM id を返す。
+func scimDeletedFixture(ctx context.Context, t *testing.T, u *usecases.Usecases, userName string) string {
+	t.Helper()
+	created, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": userName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scimID := created["id"].(string)
+	if err := u.DeleteUser(ctx, scimTenant, scimID); err != nil {
+		t.Fatal(err)
+	}
+	return scimID
+}
+
+// RFC7644-DELETE-SEMANTICS: 削除済みの User は、SCIM の usecase から見て消えている。
+// 判定は述語 1 つに集めてあるが、それを通るかどうかは経路ごとに別の分岐なので、
+// 参照、変更、一覧、member 解決、member 射影、manager 解決、manager 射影の
+// それぞれを個別に観測する。どれか 1 つで判定を忘れると、その経路だけ削除済みの
+// User が見え続ける。
+func TestScimDeletedUserIsGoneFromEveryUsecasePath(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("the reading and writing paths report not found", func(t *testing.T) {
+		u, _ := newScimUsecases()
+		scimID := scimDeletedFixture(ctx, t, u, "leaver@example.com")
+
+		if _, err := u.GetUser(ctx, scimTenant, scimID); !errors.Is(err, usecases.ErrNotFound) {
+			t.Errorf("GetUser err=%v, want ErrNotFound", err)
+		}
+		if _, err := u.UpdateUser(ctx, scimTenant, scimID, map[string]any{"userName": "leaver@example.com"}); !errors.Is(err, usecases.ErrNotFound) {
+			t.Errorf("UpdateUser err=%v, want ErrNotFound", err)
+		}
+		if _, err := u.PatchUser(ctx, scimTenant, scimID, patchBody(patchOp("replace", "active", true))); !errors.Is(err, usecases.ErrNotFound) {
+			t.Errorf("PatchUser err=%v, want ErrNotFound", err)
+		}
+		// 二重の削除も 404 にする。DeleteUser は削除前から ErrNotFound ではなく
+		// 素の error を返していたので、ここは判定の追加と同時に揃える。
+		if err := u.DeleteUser(ctx, scimTenant, scimID); !errors.Is(err, usecases.ErrNotFound) {
+			t.Errorf("DeleteUser err=%v, want ErrNotFound", err)
+		}
+	})
+
+	t.Run("the collection skips it without counting it", func(t *testing.T) {
+		u, _ := newScimUsecases()
+		kept, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "kept@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		scimDeletedFixture(ctx, t, u, "removed@example.com")
+
+		result, err := u.ListUsers(ctx, scimTenant, usecases.ListQuery{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Total != 1 || len(result.Items) != 1 {
+			t.Fatalf("Total=%d len(Items)=%d, want 1 and 1", result.Total, len(result.Items))
+		}
+		if result.Items[0]["id"] != kept["id"] {
+			t.Errorf("Items[0].id=%v, want %v", result.Items[0]["id"], kept["id"])
+		}
+	})
+
+	t.Run("member resolution refuses it and the group projection hides it", func(t *testing.T) {
+		u, _ := newScimUsecases()
+		staying, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "staying@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		stayingID := staying["id"].(string)
+		leavingID := ""
+		if created, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "leaving@example.com"}); err != nil {
+			t.Fatal(err)
+		} else {
+			leavingID = created["id"].(string)
+		}
+
+		group, err := u.CreateGroup(ctx, scimTenant, map[string]any{
+			"displayName": "Team",
+			"members":     memberOp(stayingID, leavingID),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		groupID := group["id"].(string)
+
+		if err := u.DeleteUser(ctx, scimTenant, leavingID); err != nil {
+			t.Fatal(err)
+		}
+
+		read, err := u.GetGroup(ctx, scimTenant, groupID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if members := groupMembers(t, read); len(members) != 1 || members[0] != stayingID {
+			t.Errorf("members=%v, want only %q", members, stayingID)
+		}
+
+		_, err = u.CreateGroup(ctx, scimTenant, map[string]any{
+			"displayName": "Other",
+			"members":     memberOp(leavingID),
+		})
+		if _, ok := errors.AsType[*scimdomain.MutationError](err); !ok {
+			t.Errorf("CreateGroup err=%v, want *scimdomain.MutationError", err)
+		}
+	})
+
+	t.Run("manager resolution refuses it and the user projection hides it", func(t *testing.T) {
+		u, _ := newScimUsecases()
+		managerID := ""
+		if created, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "manager@example.com"}); err != nil {
+			t.Fatal(err)
+		} else {
+			managerID = created["id"].(string)
+		}
+		report, err := u.CreateUser(ctx, scimTenant, map[string]any{
+			"userName": "report@example.com",
+			scimdomain.EnterpriseUserSchemaURN: map[string]any{
+				"manager": map[string]any{"value": managerID},
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		reportID := report["id"].(string)
+
+		if err := u.DeleteUser(ctx, scimTenant, managerID); err != nil {
+			t.Fatal(err)
+		}
+
+		read, err := u.GetUser(ctx, scimTenant, reportID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ext, ok := read[scimdomain.EnterpriseUserSchemaURN].(map[string]any); ok {
+			if _, present := ext["manager"]; present {
+				t.Errorf("manager=%v, want the reference to a deleted user to be gone", ext["manager"])
+			}
+		}
+
+		_, err = u.PatchUser(ctx, scimTenant, reportID, patchBody(patchOp("replace", "manager", managerID)))
+		if _, ok := errors.AsType[*scimdomain.MutationError](err); !ok {
+			t.Errorf("PatchUser err=%v, want *scimdomain.MutationError", err)
+		}
+	})
+
+	t.Run("a disabled user is not deleted", func(t *testing.T) {
+		// 判定を Active でないことと書くと、ここが落ちる。無効化は active: false
+		// として表現する状態であり、削除と区別できなくなってはいけない。
+		u, _ := newScimUsecases()
+		created, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "onleave@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		scimID := created["id"].(string)
+		if _, err := u.PatchUser(ctx, scimTenant, scimID, patchBody(patchOp("replace", "active", false))); err != nil {
+			t.Fatal(err)
+		}
+
+		read, err := u.GetUser(ctx, scimTenant, scimID)
+		if err != nil {
+			t.Fatalf("GetUser err=%v, want a disabled user to stay readable", err)
+		}
+		if read["active"] != false {
+			t.Errorf("active=%v, want false", read["active"])
+		}
+		result, err := u.ListUsers(ctx, scimTenant, usecases.ListQuery{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Total != 1 {
+			t.Errorf("Total=%d, want the disabled user to remain listed", result.Total)
+		}
+	})
+}

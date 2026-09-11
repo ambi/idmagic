@@ -172,14 +172,11 @@ func (u *Usecases) findGroupByDisplayName(ctx context.Context, tenantID, display
 func (u *Usecases) resolveMemberUserIDs(ctx context.Context, tenantID string, scimIDs []string) ([]string, error) {
 	userIDs := make([]string, 0, len(scimIDs))
 	for _, scimID := range scimIDs {
-		userRef, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+		userID, err := u.resolveLiveUserID(ctx, tenantID, "member", scimID)
 		if err != nil {
 			return nil, err
 		}
-		if userRef == nil {
-			return nil, domain.NewMutationError("invalidValue", "member %q does not resolve to a User in this tenant", scimID)
-		}
-		userIDs = append(userIDs, userRef.UserID)
+		userIDs = append(userIDs, userID)
 	}
 	return userIDs, nil
 }
@@ -418,6 +415,17 @@ func (u *Usecases) toScimGroup(ctx context.Context, group *groupdomain.Group, sc
 
 	scimMembers := []map[string]any{}
 	for _, m := range members {
+		// 削除済みの member は出さない (RFC7644-DELETE-SEMANTICS)。membership の
+		// 行そのものは残るので、判定は射影の側で行う。member 1 件ごとの読み取りが
+		// 増えるが、1 回の Group 応答あたりの member 数は SCIM の同期単位に収まる。
+		member, err := u.liveUserByID(ctx, m.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if member == nil {
+			continue
+		}
+
 		ref, err := u.ScimRepo.FindUserRefByUserID(ctx, group.TenantID, m.UserID)
 		userScimID := m.UserID
 		if err == nil && ref != nil {

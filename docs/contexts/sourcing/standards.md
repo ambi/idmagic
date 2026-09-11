@@ -17,6 +17,7 @@ RFC 7644 — https://www.rfc-editor.org/rfc/rfc7644.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC7644-RESOURCE-OPERATIONS | required | MUST | User と Group リソースに作成、参照、置換、削除の操作を提供する。 |
+| RFC7644-DELETE-SEMANTICS | partial | MUST | 削除した User の id に対する以後の操作は 404 を返し、コレクションの照会結果、Group の `members`、Enterprise 拡張の `manager` のいずれにも現れない。内部の User レコードは soft delete として残す。削除済みの User は `userName` の一意性判定には残るため、同じ `userName` での再作成は 409 の `uniqueness` になる。 |
 | RFC7644-PATCH | partial | SHOULD | User と Group リソースの部分更新を PATCH 操作で提供する。 |
 | RFC7644-BEARER-AUTHORIZATION | required | MUST | SCIM プロトコルのエンドポイントは、テナント単位の Bearer トークンで認証・認可する。トークンには ApiTokens Context が発行する API アクセストークンを使用し、SCIM 操作には `scim:users:read` / `scim:users:write` / `scim:groups:read` / `scim:groups:write` のうち該当するスコープを要求する。Discovery エンドポイントは `scim:*` のいずれかで参照できる。 |
 | RFC7644-ERROR-RESPONSE | required | MUST | プロトコル上の失敗は、HTTP ステータスと detail を持つ SCIM エラーレスポンスで返す。 |

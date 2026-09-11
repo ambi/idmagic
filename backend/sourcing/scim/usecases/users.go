@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -88,20 +87,9 @@ func userStatusFromActive(active bool) idmdomain.UserStatus {
 }
 
 func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[string]any, error) {
-	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
 		return nil, err
-	}
-	if ref == nil {
-		return nil, ErrNotFound
-	}
-
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, ErrNotFound
 	}
 
 	return u.toScimUser(ctx, tenantID, user, scimID)
@@ -113,20 +101,9 @@ func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[st
 // aggregate is validated (userName required) before the single Save call,
 // so a validation failure never leaves a partial write.
 func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
-	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
 		return nil, err
-	}
-	if ref == nil {
-		return nil, ErrNotFound
-	}
-
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, ErrNotFound
 	}
 
 	w, err := domain.ParseUserWrite(body)
@@ -164,20 +141,9 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 // operations are validated up front (validate-first) before any
 // field is mutated; the aggregate is persisted with a single Save call.
 func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
-	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
 		return nil, err
-	}
-	if ref == nil {
-		return nil, ErrNotFound
-	}
-
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, ErrNotFound
 	}
 
 	ops, err := domain.ParseUserPatchOps(body)
@@ -328,14 +294,7 @@ func (u *Usecases) resolveManagerSub(ctx context.Context, tenantID, managerScimI
 	if strings.TrimSpace(managerScimID) == "" {
 		return "", nil
 	}
-	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, managerScimID)
-	if err != nil {
-		return "", err
-	}
-	if ref == nil {
-		return "", domain.NewMutationError("invalidValue", "manager %q does not resolve to a User in this tenant", managerScimID)
-	}
-	return ref.UserID, nil
+	return u.resolveLiveUserID(ctx, tenantID, "manager", managerScimID)
 }
 
 // applyEnterpriseExtension applies the RFC7643-ENTERPRISE-EXTENSION
@@ -376,20 +335,10 @@ func (u *Usecases) setUserActive(user *userdomain.User, active bool) {
 }
 
 func (u *Usecases) DeleteUser(ctx context.Context, tenantID, scimID string) error {
-	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
+	// 二重の削除も 404 にする (RFC7644-DELETE-SEMANTICS)。
+	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
 		return err
-	}
-	if ref == nil {
-		return errors.New("user not found")
-	}
-
-	user, err := u.UserRepo.FindBySub(ctx, ref.UserID)
-	if err != nil {
-		return err
-	}
-	if user == nil {
-		return errors.New("user not found")
 	}
 
 	// Soft Delete: status = PendingDeletion
@@ -417,6 +366,13 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID string, query ListQue
 
 	var matched []map[string]any
 	for _, user := range users {
+		// 削除済みは Resources にも totalResults にも入れない
+		// (RFC7644-DELETE-SEMANTICS)。フィルターより前に落とすので、
+		// filter が何であれ現れない。
+		if scimDeleted(user) {
+			continue
+		}
+
 		ref, err := u.ScimRepo.FindUserRefByUserID(ctx, tenantID, user.ID)
 		if err != nil {
 			return ListResult{}, err
@@ -493,12 +449,21 @@ func (u *Usecases) toScimUser(ctx context.Context, tenantID string, user *userdo
 		ext["department"] = v
 	}
 	if managerSub, ok := stringAttrValue(user.Attributes, "manager_sub"); ok {
-		managerRef, err := u.ScimRepo.FindUserRefByUserID(ctx, tenantID, managerSub)
+		// 削除済みの manager は出さない (RFC7644-DELETE-SEMANTICS)。書き込みが
+		// 拒否する参照を読み取りが返すと、読んだ resource をそのまま送り返す
+		// read-modify-write が 400 になる。
+		manager, err := u.liveUserByID(ctx, managerSub)
 		if err != nil {
 			return nil, err
 		}
-		if managerRef != nil {
-			ext["manager"] = map[string]any{"value": managerRef.ScimID}
+		if manager != nil {
+			managerRef, err := u.ScimRepo.FindUserRefByUserID(ctx, tenantID, managerSub)
+			if err != nil {
+				return nil, err
+			}
+			if managerRef != nil {
+				ext["manager"] = map[string]any{"value": managerRef.ScimID}
+			}
 		}
 	}
 	if len(ext) > 0 {

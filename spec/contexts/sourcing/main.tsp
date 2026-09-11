@@ -158,7 +158,7 @@ model GetScimUserError404 {
   @body body: GetScimUserError404Body;
 }
 
-@doc("GET on SCIM 2.0 /Users/{id}. A canonical email is returned as a single type=work, primary=true entry, and only when\nthere is one. The resource carries `id`, `meta.resourceType`, `meta.created`, `meta.lastModified`, and\n`meta.location`.")
+@doc("GET on SCIM 2.0 /Users/{id}. A canonical email is returned as a single type=work, primary=true entry, and only when\nthere is one. The resource carries `id`, `meta.resourceType`, `meta.created`, `meta.lastModified`, and\n`meta.location`. An id deleted through DeleteScimUser gives 404, the same as an id that never existed\n(RFC7644-DELETE-SEMANTICS).")
 @TypeSpec.OpenAPI.operationId("GetScimUser")
 @route("/scim/v2/Users/{id}")
 @get
@@ -183,7 +183,17 @@ model PatchScimUserError400 {
   @body body: PatchScimUserError400Body;
 }
 
-@doc("PATCH on SCIM 2.0 /Users/{id} (RFC 7644 section 3.5.2). Each element of `Operations` carries an `op` -- add, replace,\nor remove -- and a `path`. `path` must name one of the User attributes RFC7644-PATCH covers: userName, name,\nname.formatted, name.givenName, name.familyName, emails, active, employeeNumber, department, and manager, where an\nenterprise extension attribute may be written either bare or fully qualified with\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User. Anything else, phoneNumbers and addresses included,\ngives `invalidPath`. An add or replace on `emails` validates every element and then projects onto a single email in\nthe order primary=true, type=work (case-insensitive), wire order, and a malformed value gives `invalidValue`. An add\nor replace on `manager` accepts a value object or a plain string, and naming a SCIM User that does not exist in the\nsame tenant gives `invalidValue`. An `op` other than add, replace, or remove, and a value whose type does not fit\nthe target attribute, also give `invalidValue`. Writing to `id`, `meta`, or `schemas` gives a mutability error.")
+union PatchScimUserError404Body {
+  IdMagic.Contract.ScimProtocolError,
+}
+
+model PatchScimUserError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/scim+json";
+  @body body: PatchScimUserError404Body;
+}
+
+@doc("PATCH on SCIM 2.0 /Users/{id} (RFC 7644 section 3.5.2). Each element of `Operations` carries an `op` -- add, replace,\nor remove -- and a `path`. `path` must name one of the User attributes RFC7644-PATCH covers: userName, name,\nname.formatted, name.givenName, name.familyName, emails, active, employeeNumber, department, and manager, where an\nenterprise extension attribute may be written either bare or fully qualified with\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User. Anything else, phoneNumbers and addresses included,\ngives `invalidPath`. An add or replace on `emails` validates every element and then projects onto a single email in\nthe order primary=true, type=work (case-insensitive), wire order, and a malformed value gives `invalidValue`. An add\nor replace on `manager` accepts a value object or a plain string, and naming a SCIM User that does not exist in the\nsame tenant gives `invalidValue`. An `op` other than add, replace, or remove, and a value whose type does not fit\nthe target attribute, also give `invalidValue`. Writing to `id`, `meta`, or `schemas` gives a mutability error.\nAn id that does not resolve to a User in this tenant, a deleted one included, gives 404 (RFC7644-DELETE-SEMANTICS).")
 @TypeSpec.OpenAPI.operationId("PatchScimUser")
 @route("/scim/v2/Users/{id}")
 @patch
@@ -191,7 +201,7 @@ op PatchScimUser(
   @path id: string,
   @header contentType: "application/scim+json",
   @body body: IdMagic.Contract.ScimResource
-): PatchScimUserSuccess_200 | PatchScimUserError400;
+): PatchScimUserSuccess_200 | PatchScimUserError400 | PatchScimUserError404;
 
 model UpdateScimUserSuccess_200 {
   @statusCode statusCode: 200;
@@ -209,7 +219,17 @@ model UpdateScimUserError400 {
   @body body: UpdateScimUserError400Body;
 }
 
-@doc("PUT on SCIM 2.0 /Users/{id}. It **replaces** the mutable attributes RFC7643-CORE-RESOURCES covers outright; this is\nnot a partial update. `userName` is required, and its absence gives an `invalidValue` ScimProtocolError. Every other\nmutable attribute left out -- name.*, emails, active, and the enterprise extension employeeNumber, department, and\nmanager -- is reset to its default: empty for name, emails, and the extension attributes, true for active. Every\nelement of `emails` is validated, then projected onto a single email in the order primary=true, type=work\n(case-insensitive), wire order. A malformed `emails`, `phoneNumbers`, or `addresses` gives `invalidValue`, as does an\n`employeeNumber` or `department` that is not a string and a `manager` naming a SCIM User that does not exist in the\nsame tenant, all under urn:ietf:params:scim:schemas:extension:enterprise:2.0:User. Writes to `id` and `meta` are\nignored (readOnly).")
+union UpdateScimUserError404Body {
+  IdMagic.Contract.ScimProtocolError,
+}
+
+model UpdateScimUserError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/scim+json";
+  @body body: UpdateScimUserError404Body;
+}
+
+@doc("PUT on SCIM 2.0 /Users/{id}. It **replaces** the mutable attributes RFC7643-CORE-RESOURCES covers outright; this is\nnot a partial update. `userName` is required, and its absence gives an `invalidValue` ScimProtocolError. Every other\nmutable attribute left out -- name.*, emails, active, and the enterprise extension employeeNumber, department, and\nmanager -- is reset to its default: empty for name, emails, and the extension attributes, true for active. Every\nelement of `emails` is validated, then projected onto a single email in the order primary=true, type=work\n(case-insensitive), wire order. A malformed `emails`, `phoneNumbers`, or `addresses` gives `invalidValue`, as does an\n`employeeNumber` or `department` that is not a string and a `manager` naming a SCIM User that does not exist in the\nsame tenant, all under urn:ietf:params:scim:schemas:extension:enterprise:2.0:User. Writes to `id` and `meta` are\nignored (readOnly). An id that does not resolve to a User in this tenant, a deleted one included, gives 404\n(RFC7644-DELETE-SEMANTICS).")
 @TypeSpec.OpenAPI.operationId("UpdateScimUser")
 @route("/scim/v2/Users/{id}")
 @put
@@ -217,7 +237,7 @@ op UpdateScimUser(
   @path id: string,
   @header contentType: "application/scim+json",
   @body body: IdMagic.Contract.ScimResource
-): UpdateScimUserSuccess_200 | UpdateScimUserError400;
+): UpdateScimUserSuccess_200 | UpdateScimUserError400 | UpdateScimUserError404;
 
 union DeleteScimUserError400Body {
   IdMagic.Contract.ScimProtocolError,
@@ -243,7 +263,7 @@ model DeleteScimUserError404 {
   @body body: DeleteScimUserError404Body;
 }
 
-@doc("DELETE on SCIM 2.0 /Users/{id}. The internal User is soft-deleted.")
+@doc("DELETE on SCIM 2.0 /Users/{id}. The internal User is soft-deleted: the record is kept and its lifecycle status\nbecomes pending_deletion. From the SCIM surface the User is gone from that point on. Every later GET, PUT, PATCH, and\nDELETE on the same id gives 404; ListScimUsers omits it from both `Resources` and `totalResults`; and it no longer\nappears in any Group `members` or as the enterprise extension `manager` of another User\n(RFC7644-DELETE-SEMANTICS). The deleted User keeps its `userName` in the uniqueness check, so recreating it with the\nsame `userName` gives 409 `uniqueness`.")
 @TypeSpec.OpenAPI.operationId("DeleteScimUser")
 @route("/scim/v2/Users/{id}")
 @delete

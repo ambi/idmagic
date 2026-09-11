@@ -72,6 +72,17 @@ Primary actor: `ScimBearerClient`
 - But 指定 ID が存在しない
 - Then 404 の ScimProtocolError を返す
 
+### Example: EX-SOURCING-002-05 削除した User は以後の SCIM 操作と照会結果から消える
+
+- Given 有効な SCIM アクセストークンが発行されている
+- When SCIM クライアントが CreateScimUser を呼び出す
+- Then 内部 User が作成され、ステータスが `Active` になる
+- When SCIM クライアントが DeleteScimUser を呼び出す
+- Then 内部 User が PendingDeletion に遷移する
+- When SCIM クライアントが同じ id で GetScimUser を呼び出す
+- Then 404 の ScimProtocolError を返す
+- And ListScimUsers の `Resources` と `totalResults` にその User は現れない
+
 ## Rule: REQ-SOURCING-003 外部 IdP は SCIM リソースを PUT で完全に置換できる
 
 Primary actor: `ScimBearerClient`
