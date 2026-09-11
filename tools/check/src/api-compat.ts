@@ -63,7 +63,37 @@ function collectContractTypeNames(
   return names
 }
 
-/** Resolve a `$ref` against components, cycle-guarded. Non-refs pass through unchanged. */
+/**
+ * OpenAPI 3.1 は JSON Schema 2020-12 なので、`$ref` と並んで書かれた keyword は
+ * 解決先と一緒に適用される。無視されたのは 3.0 までの規則である。
+ *
+ * `required` は和を取る。上書きにすると、解決先が要求する項目を傍らの required が
+ * 消せてしまい、要求が外れたことを見落とす。`properties` は名前ごとに重ねる。
+ * それ以外の keyword は傍らが勝つ。
+ */
+function mergeBeside(resolved: JsonSchema, beside: JsonSchema): JsonSchema {
+  const merged: JsonSchema = { ...resolved, ...beside }
+  if (Array.isArray(resolved.required) || Array.isArray(beside.required)) {
+    merged.required = [
+      ...new Set([
+        ...(Array.isArray(resolved.required) ? (resolved.required as unknown[]) : []),
+        ...(Array.isArray(beside.required) ? (beside.required as unknown[]) : []),
+      ]),
+    ]
+  }
+  if (isRecord(resolved.properties) || isRecord(beside.properties)) {
+    merged.properties = {
+      ...(isRecord(resolved.properties) ? resolved.properties : {}),
+      ...(isRecord(beside.properties) ? beside.properties : {}),
+    }
+  }
+  return merged
+}
+
+/**
+ * Resolve a `$ref` against components, cycle-guarded, keeping the keywords
+ * written beside the `$ref`. Non-refs pass through unchanged.
+ */
 function resolve(
   schema: JsonSchema | undefined,
   components: Record<string, JsonSchema>,
@@ -72,9 +102,13 @@ function resolve(
   if (!schema) return {}
   const name = refName(schema)
   if (name === undefined) return schema
-  if (seen.has(name)) return {} // self/mutual recursion guard: stop expanding
+  const { $ref: _reference, ...beside } = schema
+  // self/mutual recursion guard: stop expanding. What is written beside the
+  // reference is not part of the cycle, so it still applies.
+  if (seen.has(name)) return beside
   const target = components[name]
-  return target ? resolve(target, components, new Set(seen).add(name)) : {}
+  const resolved = target ? resolve(target, components, new Set(seen).add(name)) : {}
+  return mergeBeside(resolved, beside)
 }
 
 function unionMembers(schema: JsonSchema): JsonSchema[] {
