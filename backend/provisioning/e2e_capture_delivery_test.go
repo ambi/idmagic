@@ -438,6 +438,8 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 // 届くこと。正本文書は Push Groups を能力として宣言しているのに、捕捉から配信
 // までの経路がどこにも配線されておらず、設定は保存され画面は有効と表示しながら
 // 配信は 1 件も生まれていなかった。失敗として現れないぶん、気付く手掛かりが無い。
+// RFC7643-OUT-GROUP-RESOURCES: 接続の `push_groups` が有効なとき、Group を SCIM の
+// Group リソースとして送る。`displayName` の既定の取得元は Group の名前である。
 func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
@@ -569,8 +571,10 @@ func (h *e2eHarness) executePendingGroupDelivery(sourceID string) *domain.Provis
 	return got
 }
 
-// メンバーシップの変更が下流への members PATCH まで届くこと。
-// 送るのは既に下流へ provision 済みのメンバーだけである。相関の無い User を
+// RFC7643-OUT-GROUP-RESOURCES: 送るのは既に下流へ provision 済みのメンバーだけで、
+// 対応関係を持たないメンバーの識別子をこちら側で作ることはしない。
+//
+// メンバーシップの変更が下流への members PATCH まで届くこと。相関の無い User を
 // 送ると、下流はこの接続が持たないリソースを作りかねない。
 func TestE2E_GroupMembership_PatchesOnlyProvisionedMembers(t *testing.T) {
 	h := newE2EHarness(t)
@@ -619,23 +623,13 @@ func TestE2E_GroupMembership_PatchesOnlyProvisionedMembers(t *testing.T) {
 	}
 }
 
-// findGroupMemberPatch は Group への members PATCH を返す。
+// findGroupMemberPatch は Group への最初の members PATCH を返す。
 func (f *fakeSCIMDownstream) findGroupMemberPatch() *recordedRequest {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for i := range f.requests {
-		r := f.requests[i]
-		if r.method != http.MethodPatch {
-			continue
-		}
-		ops, _ := r.body["Operations"].([]any)
-		for _, op := range ops {
-			if m, ok := op.(map[string]any); ok && m["path"] == "members" {
-				return &f.requests[i]
-			}
-		}
+	patches := f.groupMemberPatches()
+	if len(patches) == 0 {
+		return nil
 	}
-	return nil
+	return &patches[0]
 }
 
 // membersOfPatch returns the members Operation's op and the member ids it names.
@@ -820,4 +814,138 @@ func TestE2E_GroupDeleted_SendsRealDELETE(t *testing.T) {
 	if got := h.downstream.find(http.MethodDelete, "/Groups/"+link.RemoteID); got == nil {
 		t.Fatalf("DELETE /Groups/%s が届いていない: %+v", link.RemoteID, h.downstream.snapshot())
 	}
+}
+
+// RFC7643-OUT-GROUP-RESOURCES: メンバーの除去は送らない。下流の現在のメンバー
+// 集合を読み戻していないので、除くべき相手を知る手段が無く、全置換はこの接続が
+// 追加していないメンバーを消す。
+//
+// 採用の境界の外側は拒否ではなく非提供である。メンバーが抜けた変更は失敗せず、
+// 配信は成功したまま、除去だけが下流に現れない。拒否として実装すると、Group から
+// 1 人外しただけで配信が dead_letter に落ち、以後の追加も届かなくなる。
+func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
+	h := newE2EHarness(t)
+	h.enablePushGroups()
+	h.deliverDeps.GroupMemberSource = &identitysource.GroupMemberSource{GroupRepo: h.groupRepo}
+	ctx := context.Background()
+
+	group := h.seedGroup()
+	stays := h.provisionUser("alice-stays")
+	leaves := h.provisionUser("bob-leaves")
+	h.addMember(group.ID, stays)
+	h.addMember(group.ID, leaves)
+
+	h.notifyGroupMembershipChanged(group.ID)
+	if got := h.executePendingGroupDelivery(group.ID); got.Status != domain.DeliverySucceeded {
+		t.Fatalf("membership delivery status = %q (last_error=%v)", got.Status, got.LastError)
+	}
+	// 2 人とも届いていること。除去を送らないという主張が、そもそも 1 人しか
+	// 送っていなかったことで成立してしまわないための錘である。
+	patches := h.downstream.groupMemberPatches()
+	if len(patches) != 1 {
+		t.Fatalf("members の PATCH = %d 件, want 1 件: %+v", len(patches), h.downstream.snapshot())
+	}
+	if _, members := membersOfPatch(t, &patches[0]); len(members) != 2 {
+		t.Fatalf("最初の PATCH の members = %v, want 2 人", members)
+	}
+
+	removed, err := h.groupRepo.RemoveMember(ctx, h.tenantID, group.ID, leaves)
+	if err != nil || !removed {
+		t.Fatalf("RemoveMember() = (%v, %v), want (true, nil)", removed, err)
+	}
+
+	h.notifyGroupMembershipChanged(group.ID)
+	after := h.executePendingGroupDelivery(group.ID)
+	// 非提供であって拒否ではない。除去を送れないことは失敗ではない。
+	if after.Status != domain.DeliverySucceeded {
+		t.Fatalf("メンバーが抜けた配信の status = %q, want succeeded (last_error=%v)", after.Status, after.LastError)
+	}
+
+	patches = h.downstream.groupMemberPatches()
+	if len(patches) != 2 {
+		t.Fatalf("members の PATCH = %d 件, want 2 件: %+v", len(patches), h.downstream.snapshot())
+	}
+	op, members := membersOfPatch(t, &patches[1])
+	// 抜けた後も送るのは残ったメンバーの増分 `add` である。`remove` も、
+	// 残りだけを並べた `replace` も、下流の現在のメンバー集合を前提にする。
+	if op != "add" {
+		t.Fatalf("メンバーが抜けた後の PATCH op = %q, want add", op)
+	}
+	stayedRemoteID := h.remoteUserID(stays)
+	if len(members) != 1 || members[0] != stayedRemoteID {
+		t.Fatalf("メンバーが抜けた後の PATCH members = %v, want [%s]", members, stayedRemoteID)
+	}
+
+	// 抜けたメンバーが後続の `add` に居残っていないこと。居残りは除去を送らない
+	// こととは別の誤りで、抜けた相手を送り続けることになる。
+	if leftRemoteID := h.remoteUserID(leaves); members[0] == leftRemoteID {
+		t.Fatalf("抜けたメンバーがまだ add に載っている: %v", members)
+	}
+
+	// 下流が受け取った要求のどこにも、除去は現れない。`remove` の Operation も、
+	// members を含むリソース表現による全置換も無い。
+	for _, request := range h.downstream.snapshot() {
+		if _, present := request.body["members"]; present && request.method != http.MethodPatch {
+			t.Fatalf("%s %s がリソース表現で members を全置換している: %+v", request.method, request.path, request.body)
+		}
+		operations, _ := request.body["Operations"].([]any)
+		for _, raw := range operations {
+			operation, _ := raw.(map[string]any)
+			if operation["op"] == "remove" {
+				t.Fatalf("除去が下流へ届いている: %s %s %+v", request.method, request.path, operation)
+			}
+		}
+	}
+}
+
+// provisionUser は User を 1 人作り、下流へ provision して id を返す。
+func (h *e2eHarness) provisionUser(username string) string {
+	h.t.Helper()
+	created, err := userusecases.CreateUser(context.Background(), h.adminUserDeps, userusecases.CreateUserInput{
+		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
+	})
+	if err != nil {
+		h.t.Fatalf("CreateUser() error = %v", err)
+	}
+	h.executePendingDelivery(created.ID)
+	return created.ID
+}
+
+// remoteUserID は provision 済みの User の下流 id を返す。
+func (h *e2eHarness) remoteUserID(userID string) string {
+	h.t.Helper()
+	link, err := h.linkRepo.Find(context.Background(), h.connectionID, domain.SourceTypeUser, userID)
+	if err != nil || link == nil || link.RemoteID == "" {
+		h.t.Fatalf("RemoteResourceLink(%s) = (%+v, %v), want a link carrying the downstream id", userID, link, err)
+	}
+	return link.RemoteID
+}
+
+func (h *e2eHarness) notifyGroupMembershipChanged(groupID string) {
+	h.t.Helper()
+	if err := h.groupNotifier.NotifyGroupMutation(
+		context.Background(), h.tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, time.Now().UTC(),
+	); err != nil {
+		h.t.Fatalf("NotifyGroupMutation() error = %v", err)
+	}
+}
+
+// groupMemberPatches は Group への members PATCH を届いた順に返す。
+func (f *fakeSCIMDownstream) groupMemberPatches() []recordedRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []recordedRequest
+	for i := range f.requests {
+		if f.requests[i].method != http.MethodPatch {
+			continue
+		}
+		operations, _ := f.requests[i].body["Operations"].([]any)
+		for _, raw := range operations {
+			if operation, ok := raw.(map[string]any); ok && operation["path"] == "members" {
+				out = append(out, f.requests[i])
+				break
+			}
+		}
+	}
+	return out
 }

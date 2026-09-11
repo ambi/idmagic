@@ -297,3 +297,118 @@ func TestClient_SendsSchemasOnResourceRepresentations(t *testing.T) {
 		}
 	}
 }
+
+// groupPushRequests は 1 つの Group に対する送出経路を 1 度ずつ通し、下流が
+// 受け取った要求を返す。attrs には対応付けの対象になっていないキーを混ぜてある
+// ——「対応付けが解決した属性で組み立てる」は、解決した属性以外が現れないことと
+// 同じことなので、解決されないキーが手元にある状況でしか観測できない。
+func groupPushRequests(t *testing.T) []recordedRequest {
+	t.Helper()
+	client, recorded := newRecordingClient(t)
+	ctx := context.Background()
+	rules := []domain.AttributeMappingRule{simpleRule("displayName", "display_name")}
+	attrs := map[string]any{
+		"display_name": "engineering",
+		"members":      []any{map[string]any{"value": "remote-user-1"}},
+		"description":  "対応付けの対象ではないので本文に現れない",
+	}
+
+	if _, _, err := client.CreateGroup(ctx, rules, attrs); err != nil {
+		t.Fatalf("CreateGroup() error = %v", err)
+	}
+	if _, err := client.UpdateGroup(ctx, "remote-1", rules, attrs, false); err != nil {
+		t.Fatalf("UpdateGroup(put) error = %v", err)
+	}
+	if err := client.PatchGroupMembers(ctx, "remote-1", "add", []string{"remote-user-1"}); err != nil {
+		t.Fatalf("PatchGroupMembers() error = %v", err)
+	}
+
+	if len(*recorded) != 3 {
+		t.Fatalf("下流が受け取った要求 = %d 件, want 3 件", len(*recorded))
+	}
+	return *recorded
+}
+
+// RFC7643-OUT-GROUP-RESOURCES: Group のリソース表現は、必須属性 `schemas`
+// (`urn:ietf:params:scim:schemas:core:2.0:Group` の 1 要素) と、接続の属性
+// 対応付けが解決した属性だけで組み立てる。メンバーシップはこの本文には載せず、
+// `members` に対する増分 `add` の PATCH として別に送る。
+//
+// User の URN との取り違えは下流の検証で拒否されるので、1 要素であることだけ
+// でなく、それが Group の URN であることまで観測する。
+func TestClient_GroupResourceBody_IsSchemasPlusMappedAttributes(t *testing.T) {
+	const groupSchemaURN = "urn:ietf:params:scim:schemas:core:2.0:Group"
+	const patchOpURN = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+
+	documentOf := func(t *testing.T, body []byte) map[string]any {
+		t.Helper()
+		var doc map[string]any
+		if err := json.Unmarshal(body, &doc); err != nil {
+			t.Fatalf("本文を解釈できない: %v (body=%s)", err, body)
+		}
+		return doc
+	}
+	schemasOf := func(t *testing.T, request recordedRequest, doc map[string]any) []string {
+		t.Helper()
+		raw, ok := doc["schemas"].([]any)
+		if !ok {
+			t.Fatalf("%s %s の schemas が配列でない: %+v", request.Method, request.Path, doc)
+		}
+		out := make([]string, 0, len(raw))
+		for _, urn := range raw {
+			text, _ := urn.(string)
+			out = append(out, text)
+		}
+		return out
+	}
+
+	seen := map[string]bool{}
+	for _, request := range groupPushRequests(t) {
+		switch {
+		case request.Method == http.MethodPost && request.Path == "/Groups",
+			request.Method == http.MethodPut && request.Path == "/Groups/remote-1":
+			seen[request.Method] = true
+			doc := documentOf(t, request.Body)
+			if got := schemasOf(t, request, doc); len(got) != 1 || got[0] != groupSchemaURN {
+				t.Fatalf("%s %s の schemas = %v, want [%s] (body=%s)", request.Method, request.Path, got, groupSchemaURN, request.Body)
+			}
+			// 対応付けが解決した属性は載る。
+			if got := doc["displayName"]; got != "engineering" {
+				t.Fatalf("%s %s の displayName = %v, want engineering (body=%s)", request.Method, request.Path, got, request.Body)
+			}
+			// メンバーシップはリソース本文には載せない。全置換になり、この接続が
+			// 追加していない下流のメンバーを消してしまう。
+			if _, present := doc["members"]; present {
+				t.Fatalf("%s %s の本文に members がある (body=%s)", request.Method, request.Path, request.Body)
+			}
+			// 対応付けが解決していないキーも載せない。
+			if _, present := doc["description"]; present {
+				t.Fatalf("%s %s の本文に対応付けの無い description がある (body=%s)", request.Method, request.Path, request.Body)
+			}
+		case request.Method == http.MethodPatch:
+			seen[request.Method] = true
+			doc := documentOf(t, request.Body)
+			// メンバーシップはリソース表現ではなくメッセージとして届く。
+			if got := schemasOf(t, request, doc); len(got) != 1 || got[0] != patchOpURN {
+				t.Fatalf("PATCH %s の schemas = %v, want [%s] (body=%s)", request.Path, got, patchOpURN, request.Body)
+			}
+			operations, _ := doc["Operations"].([]any)
+			if len(operations) != 1 {
+				t.Fatalf("Operations = %d 件, want 1 (body=%s)", len(operations), request.Body)
+			}
+			operation, _ := operations[0].(map[string]any)
+			// 増分の `add` であること。`replace` は全置換で、`remove` は読み戻して
+			// いない下流の現在のメンバー集合を前提にする。
+			if operation["op"] != "add" || operation["path"] != "members" {
+				t.Fatalf("Operation = %+v, want op=add path=members (body=%s)", operation, request.Body)
+			}
+		default:
+			t.Fatalf("宣言していない要求が下流へ届いている: %s %s", request.Method, request.Path)
+		}
+	}
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch} {
+		if !seen[method] {
+			t.Fatalf("%s の経路を通っていない: 観測が成立していない", method)
+		}
+	}
+}
