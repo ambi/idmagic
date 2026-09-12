@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-565-make-backing-declared-examples-cheap]
 status: pending
 authors: [tn]
 risk: low
@@ -16,7 +16,7 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 
 [[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/ws-federation/scenarios.feature.md` が宣言する 11 件を引き取る。
 
-親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 2 件だけ**だというものである。残る 14 件は、既存テストへ新しい観測を足すか、テスト自体を書く必要があった。件数は作業量の目安にならない。
+親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
 ## Scope
 
@@ -36,6 +36,15 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 - 見つかった実装の欠陥の修正。切り出した先で扱う。
 - 行カバレッジ率の目標または閾値。
 - `report-coverage-debt` の分類（`named`、`nearby`、`none`）を根拠にした台帳からの削除。分類は読む順を決める材料であり、台帳から外す根拠にはならない。
+
+## 作業の進め方
+
+[[wi-565-make-backing-declared-examples-cheap]] が、この作業の 1 件あたりの費用を下げる道具を用意した。使う。
+
+- 読む順と観測点は `mise run spec-route -- <id>` が出す。規則、当の具体例の本文、契約が宣言する候補 operation とそのメソッド・パス・スコープ、同じ規則の隣の id を名指している既存テストが返る。**出力は読む順を決める材料であり、台帳から外す根拠にはしない。**
+- 新しく書くテストは `backend/shared/http/testing_stack` の上に載せる。`Register` と同じ配線が option の合成で建ち、保存先は型付きの field から読み直せる。既存 fixture の全面移行はしない。触る必要が出た範囲だけ移す。
+- 変更した Go の変異は `mise run test-go-mutation -- <package-directory>` で読む。手で書く故障注入は、変異器が表現できない「配線を外す」「既定の分岐を差し替える」種類だけに残す。
+- 実装が具体例と食い違って消化できない件は、台帳の当該行へ `blocked_by`（先に決着すべき work item）と `finding`（実装が実際に何を返すか）を書いて残す。散文にだけ書くと、次の読み手が同じ測定をやり直す。
 
 ## Verification
 

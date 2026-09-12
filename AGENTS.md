@@ -12,6 +12,8 @@
 
 `go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。`mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` がその用途を持つ。
 
+テストの検出能力を測るときは `mise run test-go-mutation -- <package-directory>` を使う。手で変異を書くのは、変異器が表現できない「配線を外す」「既定の分岐を差し替える」種類だけとする。読み方は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の Mutation testing が定める。
+
 ## ツール
 
 ファイルの読み書きと値の抽出では、目的に合う専用ツールを先に使う。

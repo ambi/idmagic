@@ -20,6 +20,14 @@ description: "Implement a chosen work item end to end: specification first, sepa
    specification-only baseline gates; use the first check that can actually go RED for the work.
 3. Resolve every open question that would change product behavior, the public contract, the selected design
    boundary, or the task breakdown. Move genuinely deferred choices to Out of Scope.
+   **Do not split the record because it is large.** Volume is not a reason. Every new record repeats the
+   readiness pass, the frontmatter, the Design, and the Completion evidence, so splitting an item N ways
+   multiplies the fixed cost while the per-unit cost that made it feel large stays exactly where it was.
+   Split only when the record carries two semantic changes — ones a reader could accept separately. When
+   high per-unit cost is what makes a record look too big, that cost is the finding: measure what drives it
+   (a fixture nobody can compose, an index that does not exist, judgment the tooling discards), and file a
+   record against that instead. A repeated unit of work that stays expensive is a tooling defect wearing a
+   scheduling costume.
 4. Rewrite `initial_context` to the smallest slice actually read during readiness — the brief's draft is a
    starting point, not the answer, and `stop_before_reading` is always yours to decide. It is an audit trail,
    not a reason to read more: leave a category empty instead of opening files only to populate it. Set
@@ -58,7 +66,10 @@ description: "Implement a chosen work item end to end: specification first, sepa
    not after every edit, so a lint fix never lands in the middle of a behavior that is still RED. The aggregate
    gates stay where they are, run once at step 10.
    Write the selected recipes into the task so the choice is made once rather than on every red-green turn.
-9. Collect the risk-selected change-resistance evidence.
+9. Collect the risk-selected change-resistance evidence. Run `mise run test-go-mutation -- <package directory>`
+   for changed Go rather than hand-writing the syntactic mutations; hand-write only the faults its operators
+   cannot express — wiring removed, a `switch` default replaced, an effect redirected. Read the survivors and
+   do not score them; Mutation testing in `docs/development/specification-first-workflow.md` says why.
 10. After every scoped behavior and its evidence can be completed, pass `mise run verify` once, and
     `mise run test-ui-e2e` as well when the change can reach the browser: the standard suite no longer starts
     the stack, so a browser regression is otherwise left to CI. Do not run an aggregate gate merely as a

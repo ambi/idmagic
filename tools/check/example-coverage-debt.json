@@ -1138,7 +1138,9 @@
     },
     {
       "id": "EX-OAUTH2-003-04",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
+      "blocked_by": "wi-564-name-the-refusal-a-cross-tenant-oauth-admin-token-gets",
+      "finding": "acme レルムで発行した oauth-clients:read と oauth-clients:write のトークンを default レルムの /api/admin/v1/clients へ提示すると、参照も登録も 401 invalid_token になる。具体例が名指す AccessDeniedError ではない。拒否そのものは効いていて、default テナントのクライアント一覧は動かない。食い違っているのは型だけである (wi-538 が測定)。"
     },
     {
       "id": "EX-OAUTH2-005-01",

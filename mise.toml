@@ -173,6 +173,16 @@ description = "Run embedded repository tooling tests"
 dir = "tools"
 run = "bun test"
 
+[tasks.test-tools-file]
+description = "Run one embedded repository tooling test file"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run test-tools-file -- <path relative to tools/>" >&2; exit 2; }
+bun test "$@"
+'''
+
 [tasks.typecheck-tools]
 description = "Type-check embedded repository tooling"
 dir = "tools"
@@ -311,11 +321,16 @@ description = "Run race-enabled Go tests for one package"
 # 最後のゲート (test-go-race) と同じビルド構成にする。Go のテストキャッシュ項目は -race の
 # 有無で共有されないので、狭い段を -race なしで回すと、その結果は最後のゲートに 1 件も
 # 引き継がれない。1 パッケージなら -race でも数秒であり、そのぶん最後が短くなる。
+#
+# -count 1 は結果キャッシュの読み出しだけを止める。書き込みは残るので、最後のゲートへ
+# 引き継がれる分は変わらない。止める理由は故障注入である。製品側へ故障を入れて同じ
+# パッケージを回したとき、キャッシュが効くと `ok (cached)` が返り、検出できなかったのか
+# 走っていないのかを見分けられない。wi-565 の作業中に実際に 1 度誤読した。
 run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run test-go-package -- <package>" >&2; exit 2; }
-go test -race "$1"
+go test -race -count 1 "$1"
 '''
 
 [tasks.test-go-changed]
@@ -626,6 +641,16 @@ run = "bun run security-test-gap-report/src/main.ts"
 description = "Order the normative ids no test names, weighted by the refusals the contract promises"
 dir = "tools"
 run = "bun run coverage-debt-report/src/main.ts"
+
+[tasks.spec-route]
+description = "Show where one normative id would be observed: rule, candidate operations, tests already naming it"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run spec-route -- <EX-CONTEXT-NNN-MM | REQ-CONTEXT-NNN>" >&2; exit 2; }
+bun run spec-route/src/main.ts "$1"
+'''
 
 [tasks.check-admin-scopes]
 description = "Check admin API scope declarations"

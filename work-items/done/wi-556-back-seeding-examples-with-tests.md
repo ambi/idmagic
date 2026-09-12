@@ -39,7 +39,7 @@ initial_context:
 
 [[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/seeding/scenarios.feature.md` が宣言する 5 件を引き取る。
 
-親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 2 件だけ**だというものである。残る 14 件は、既存テストへ新しい観測を足すか、テスト自体を書く必要があった。件数は作業量の目安にならない。
+親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
 ## Scope
 

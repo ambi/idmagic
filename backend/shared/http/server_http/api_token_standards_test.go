@@ -76,12 +76,6 @@ type apiTokenStack struct {
 	// samlSPs は SAML の管理 API が読み書きする保存先。粒度スコープの具体例は、拒否が
 	// 防いだ効果をここから読み直す。
 	samlSPs *samlmemory.SamlServiceProviderRepository
-	// oauthClients、authzDetailTypes、mcpResourceServers は OAuth2 の管理 API が読み書きする
-	// 保存先。REQ-OAUTH2-003 の粒度スコープは resource ごとに別のスコープを割り当てるので、
-	// 拒否が防いだ効果は resource ごとに読み直す必要がある。
-	oauthClients       *oauth2memory.OAuth2ClientRepository
-	authzDetailTypes   *oauth2memory.AuthorizationDetailTypeRepository
-	mcpResourceServers *oauth2memory.McpResourceServerRepository
 }
 
 func newApiTokenStack(t *testing.T) *apiTokenStack {
@@ -139,12 +133,6 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	// 起こったかどうかは分からない。
 	samlSPs := samlmemory.NewSamlServiceProviderRepository()
 
-	// OAuth2 の管理 API も同じ理由で配線する。REQ-OAUTH2-003 は 3 つの resource に別々の
-	// スコープを割り当てているので、判定だけを読むと「どの resource のスコープでも通す」
-	// 実装と区別できない。
-	authzDetailTypes := oauth2memory.NewAuthorizationDetailTypeRepository()
-	mcpResourceServers := oauth2memory.NewMcpResourceServerRepository()
-
 	e := echo.New()
 	Register(e, Deps{
 		Issuer: apiTokenIssuer, Contract: spec.CurrentRuntimeContract(),
@@ -152,11 +140,9 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: managedIntrospector,
-			RefreshStore:          oauth2memory.NewRefreshTokenStore(),
-			AccessTokenDenylist:   oauth2memory.NewAccessTokenDenylist(),
-			DpopReplayStore:       oauth2memory.NewDpopReplayStore(),
-			AuthzDetailTypeRepo:   authzDetailTypes,
-			McpResourceServerRepo: mcpResourceServers,
+			RefreshStore:        oauth2memory.NewRefreshTokenStore(),
+			AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
+			DpopReplayStore:     oauth2memory.NewDpopReplayStore(),
 		},
 		ApiTokens:        apitoken.Module{Repo: repo, TokenIssuer: signer, TokenIntrospector: signer},
 		Saml:             saml.Module{SPRepo: samlSPs, ProfileRepo: samlSPs},
@@ -164,10 +150,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	})
 	return &apiTokenStack{
 		e: e, repo: repo, users: users, keyStore: keyStore, signer: signer, tenants: tenants,
-		samlSPs:            samlSPs,
-		oauthClients:       clients,
-		authzDetailTypes:   authzDetailTypes,
-		mcpResourceServers: mcpResourceServers,
+		samlSPs: samlSPs,
 		tokens: apitokenusecases.New(repo,
 			apitokenusecases.WithTokenIssuer(signer), apitokenusecases.WithTokenIntrospector(signer)),
 	}

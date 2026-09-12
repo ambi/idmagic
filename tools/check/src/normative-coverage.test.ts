@@ -225,3 +225,79 @@ describe('checkNormativeCoverage', () => {
     expect(messages(findings)).toEqual(['REQ-DEMO-002 is listed twice. Keep one entry per id.'])
   })
 })
+
+// 台帳が「読んで初めて分かったこと」を保持できるかの検査。
+//
+// wi-538 は EX-OAUTH2-003-04 について「実装は宣言と違う型で拒否する。判断は wi-558 が
+// 先に下す」と測ったが、その結論は完了した work item の散文にしか残らなかった。台帳の
+// 行は他の 567 行と区別がつかないままなので、次にこの行を読む者は同じ測定をやり直す。
+// blocked_by と finding はその判断を行そのものへ置く。導出できるもの (経路、パッケージ、
+// 拒否かどうか) は置かない。それは spec-route が計算する。
+describe('checkNormativeCoverage: 台帳が持つ判断', () => {
+  const blocked = (overrides: Record<string, unknown> = {}) => ({
+    declared,
+    cited: new Set<string>(),
+    ledger: {
+      entries: [
+        {
+          id: 'REQ-DEMO-001',
+          reason: 'まだテストが無いため',
+          blocked_by: 'wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets',
+          finding: '製品は 401 invalid_token を返す。拒否は効いており、食い違いは型だけである。',
+          ...overrides,
+        },
+        { id: 'REQ-DEMO-002', reason: 'まだテストが無いため' },
+      ],
+      path: DEBT,
+    },
+    knownWorkItems: new Set(['wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets']),
+  })
+
+  it('判断を持つ行を通す', () => {
+    expect(checkNormativeCoverage(blocked())).toEqual([])
+  })
+
+  // 実在しない記録を指した行は、読み手をどこへも送らない。reason が空の行を落とすのと
+  // 同じ理由で落とす。
+  it('存在しない work item を名指した blocked_by を落とす', () => {
+    expect(
+      messages(checkNormativeCoverage(blocked({ blocked_by: 'wi-999-does-not-exist' }))),
+    ).toEqual([
+      'REQ-DEMO-001 is blocked by wi-999-does-not-exist, which is not a work item. ' +
+        'Name the record that has to settle first.',
+    ])
+  })
+
+  // blocked_by だけの行は「待っている」としか言わない。何を測って待つことにしたのかが
+  // 無ければ、次の読み手は測り直すしかない。
+  it('finding の無い blocked_by を落とす', () => {
+    expect(messages(checkNormativeCoverage(blocked({ finding: undefined })))).toEqual([
+      'REQ-DEMO-001 is blocked by a record without saying what was found. ' +
+        'State what the implementation actually does.',
+    ])
+  })
+
+  it('空の finding を落とす', () => {
+    expect(messages(checkNormativeCoverage(blocked({ finding: '   ' })))).toEqual([
+      'REQ-DEMO-001 has an empty finding. State what the implementation actually does.',
+    ])
+  })
+
+  // 判断を持たない行は今までどおり通る。568 行のうち判断が要るのはごく一部である。
+  it('判断を持たない行はそのまま通す', () => {
+    expect(
+      checkNormativeCoverage({
+        declared,
+        cited: new Set<string>(),
+        ledger: {
+          entries: [
+            { id: 'REQ-DEMO-001', reason: 'まだテストが無いため' },
+            { id: 'REQ-DEMO-002', reason: 'まだテストが無いため' },
+          ],
+          path: DEBT,
+        },
+        knownWorkItems: new Set<string>(),
+      }),
+    ).toEqual([])
+  })
+})

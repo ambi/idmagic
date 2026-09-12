@@ -23,7 +23,30 @@
 
 export type DeclaredId = { id: string; path: string }
 
-export type DebtEntry = { id: string; reason: string }
+/**
+ * A ledger row.
+ *
+ * `reason` says why the id has no test yet, and every row has one. The two
+ * optional fields carry something else: what a reader established by actually
+ * measuring the implementation, which nothing can derive.
+ *
+ * `blocked_by` names the work item that has to settle before the id can be
+ * consumed at all — the usual case is a scenario and an implementation that
+ * disagree, where writing a test would only freeze whichever one is wrong.
+ * `finding` says what the implementation actually does. Without it a blocked
+ * row says only "waiting", and the next reader repeats the measurement.
+ *
+ * Nothing derivable belongs here. The route, the package, and whether the
+ * example states a refusal are all computed by `spec-route` and
+ * `report-coverage-debt`; storing them would create a second answer that goes
+ * stale. See wi-565.
+ */
+export type DebtEntry = {
+  id: string
+  reason: string
+  blocked_by?: string
+  finding?: string
+}
 
 export type CoverageFinding = { path: string; message: string }
 
@@ -46,6 +69,14 @@ export type CoverageInput = {
    * test names outright, with no escape to offer.
    */
   ledger?: DebtLedger
+  /**
+   * The work item names a `blocked_by` may point at, without the extension and
+   * without the directory: `work-items/` and `work-items/done/` both count,
+   * because a blocking decision stays a valid pointer after it is settled.
+   * Omitted by a caller with no work items to resolve against, which skips the
+   * existence rule rather than failing every row.
+   */
+  knownWorkItems?: ReadonlySet<string>
 }
 
 function escapeForPattern(value: string): string {
@@ -81,6 +112,46 @@ export function citedNormativeIds(
     for (const match of source.matchAll(pattern)) cited.add(match[0])
   }
   return cited
+}
+
+/**
+ * The rules over a row's measured judgement.
+ *
+ * They exist because the failure this ledger keeps having is a row that looks
+ * worked on and is not. `reason` already guards the plain case; these guard the
+ * case where somebody measured something and left the result where the next
+ * reader cannot find it.
+ */
+function checkJudgement(
+  entry: DebtEntry,
+  debtPath: string,
+  knownWorkItems: ReadonlySet<string> | undefined,
+): CoverageFinding[] {
+  const findings: CoverageFinding[] = []
+  if (entry.finding !== undefined && entry.finding.trim().length === 0) {
+    findings.push({
+      path: debtPath,
+      message: `${entry.id} has an empty finding. State what the implementation actually does.`,
+    })
+  }
+  if (entry.blocked_by === undefined) return findings
+  if (knownWorkItems !== undefined && !knownWorkItems.has(entry.blocked_by)) {
+    findings.push({
+      path: debtPath,
+      message:
+        `${entry.id} is blocked by ${entry.blocked_by}, which is not a work item. ` +
+        'Name the record that has to settle first.',
+    })
+  }
+  if (entry.finding === undefined) {
+    findings.push({
+      path: debtPath,
+      message:
+        `${entry.id} is blocked by a record without saying what was found. ` +
+        'State what the implementation actually does.',
+    })
+  }
+  return findings
 }
 
 export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] {
@@ -133,6 +204,7 @@ export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] 
         message: `${entry.id} is listed without a reason. State why it has no test yet.`,
       })
     }
+    findings.push(...checkJudgement(entry, debtPath, input.knownWorkItems))
     if (!declaredIds.has(entry.id)) {
       findings.push({
         path: debtPath,

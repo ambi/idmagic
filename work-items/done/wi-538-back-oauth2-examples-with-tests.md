@@ -45,7 +45,7 @@ initial_context:
 
 [[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/oauth2/scenarios.feature.md` が宣言する 105 件を引き取った。
 
-親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 2 件だけ**だというものである。残る 14 件は、既存テストへ新しい観測を足すか、テスト自体を書く必要があった。件数は作業量の目安にならない。
+親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
 **105 件は全体の 18 % を占め、単独の Context として最大である。** 本項目はまず 1 規則群を通しで消化して 1 件あたりの所要を測り、**残りをさらに子 work item へ割るかどうかを自分で決める。** 親が測る前に割り方を決めないのと同じ理由で、この判断は件数ではなく測定に従う。
 
@@ -63,7 +63,7 @@ initial_context:
 
 ## Out of Scope
 
-- 分割した先の子 work item が引き取る 99 件。[[wi-559-back-oauth2-authorization-code-examples-with-tests]]、[[wi-560-back-oauth2-registration-and-logout-examples-with-tests]]、[[wi-561-back-oauth2-client-administration-examples-with-tests]]、[[wi-562-back-oauth2-backchannel-approval-examples-with-tests]]、[[wi-563-back-oauth2-delegation-and-agent-examples-with-tests]] が持つ。
+- 分割した先の子 work item が引き取る 99 件。[[wi-559-back-oauth2-remaining-examples-with-tests]]、wi-560（畳んだ）、wi-561（畳んだ）、wi-562（畳んだ）、wi-563（畳んだ） が持つ。
 - 他の Context が宣言する具体例。Context ごとに別の work item が持つ。
 - `tools/check/standards-coverage-debt.json`。[[wi-495-burn-down-the-standards-coverage-debt]] が消化済みである。
 - 既に台帳に載っていない拒否テストが、防いだ効果を観測していない件。[[wi-392-refusal-tests-assert-the-absent-effect]] が持つ。本項目が新しく書く拒否テストは、その規範を満たす形で書く。既存テストに注記を足すだけの件で、そのテストが効果の不在を見ていない場合は、注記を足したうえで wi-392 の対象として残す。
@@ -100,7 +100,7 @@ initial_context:
 | EX-OAUTH2-003-04 | 規範と実装の食い違い。台帳に残す |
 | EX-OAUTH2-004-01 | 新規テスト 1 本 |
 
-**6 件のうち、既存テストへの注記だけで済んだものは 1 件も無かった。** 親項目の測定 (16 件中 2 件) より悪い。しかもこの群は、観測の位置が 1 つの HTTP 境界に揃っていて、トークンを発行するスタックが既にある、最も条件の良い群である。認可コードの完全な流れ (REQ-OAUTH2-005)、バックチャネル承認の状態機械 (REQ-OAUTH2-041 から 043)、委譲と Agent (REQ-OAUTH2-044 から 050) は、いずれも fixture を建てるところから要る。
+**6 件のうち、既存テストへの注記だけで済んだものは 1 件も無かった。** 親項目の測定 (16 件中 4 件) より悪い。しかもこの群は、観測の位置が 1 つの HTTP 境界に揃っていて、トークンを発行するスタックが既にある、最も条件の良い群である。認可コードの完全な流れ (REQ-OAUTH2-005)、バックチャネル承認の状態機械 (REQ-OAUTH2-041 から 043)、委譲と Agent (REQ-OAUTH2-044 から 050) は、いずれも fixture を建てるところから要る。
 
 1 記録 1 コミットである以上、この所要で 100 件を 1 つの差分に入れると、読み手が差分から記録を復元できなくなる。
 
@@ -110,15 +110,17 @@ initial_context:
 
 | 子 work item | 規則 | 件数 | 群としてまとめた理由 |
 | --- | --- | --- | --- |
-| [[wi-559-back-oauth2-authorization-code-examples-with-tests]] | REQ-OAUTH2-001、005〜014 | 20 | 認可コード + PKCE から `/token` までの 1 本の流れと、その上に載る PAR、DPoP、イントロスペクション、UserInfo、Discovery |
-| [[wi-560-back-oauth2-registration-and-logout-examples-with-tests]] | REQ-OAUTH2-016〜027 | 17 | 動的登録、メタデータ取得、失効、ログアウト、デバイス認可。いずれもクライアントの生存期間とセッションの終了 |
-| [[wi-561-back-oauth2-client-administration-examples-with-tests]] | REQ-OAUTH2-029〜037 | 10 | メタデータ、同意管理、クライアントとシークレットの管理 API |
-| [[wi-562-back-oauth2-backchannel-approval-examples-with-tests]] | REQ-OAUTH2-041〜043 | 23 | 1 つの承認リクエストの状態機械を 3 方向から言う 3 規則 |
-| [[wi-563-back-oauth2-delegation-and-agent-examples-with-tests]] | REQ-OAUTH2-044〜050 | 29 | 保護リソースの提示、委譲の深さ、Agent の再発行 |
+| [[wi-559-back-oauth2-remaining-examples-with-tests]] | REQ-OAUTH2-001、005〜014 | 20 | 認可コード + PKCE から `/token` までの 1 本の流れと、その上に載る PAR、DPoP、イントロスペクション、UserInfo、Discovery |
+| wi-560（畳んだ） | REQ-OAUTH2-016〜027 | 17 | 動的登録、メタデータ取得、失効、ログアウト、デバイス認可。いずれもクライアントの生存期間とセッションの終了 |
+| wi-561（畳んだ） | REQ-OAUTH2-029〜037 | 10 | メタデータ、同意管理、クライアントとシークレットの管理 API |
+| wi-562（畳んだ） | REQ-OAUTH2-041〜043 | 23 | 1 つの承認リクエストの状態機械を 3 方向から言う 3 規則 |
+| wi-563（畳んだ） | REQ-OAUTH2-044〜050 | 29 | 保護リソースの提示、委譲の深さ、Agent の再発行 |
 
 `EX-OAUTH2-001-01` を wi-559 へ入れたのは、この具体例が `/token` での交換から account リソースサーバーの参照までを言っていて、REQ-OAUTH2-005 と同じ fixture を必要とするためである。同じ組み立てを 2 つの記録で別々に建てない。
 
 `EX-OAUTH2-003-04` は台帳に残す。理由は下記の食い違いにあり、[[wi-564-name-the-refusal-a-cross-tenant-oauth-admin-token-gets]] が引き取る。
+
+**この分割は後に取り消された。** [[wi-565-make-backing-declared-examples-cheap]] が所要を測り直し、1 件あたりが高い原因は具体例の側ではなく道具の側（94 個の手組み fixture、観測点の索引の不在、読んだ結果を保持しない台帳）にあると特定した。原因を直せば分割の根拠が消えるので、wi-560 から wi-563 は [[wi-559-back-oauth2-remaining-examples-with-tests]] へ畳まれ、上の表は当時の判断の記録として残る。あわせて、粒度スコープの 3 件を観測するテストは `backend/oauth2/handlers_http/oauth2_scope_examples_test.go` へ移り、共有スタックは `backend/shared/http/testing_stack` になった。上の「観測の位置」は消化した時点のものである。
 
 ### 直さない食い違い
 
@@ -240,11 +242,11 @@ initial_context:
 
 | 記録 | 規則 | 件数 |
 | --- | --- | --- |
-| [[wi-559-back-oauth2-authorization-code-examples-with-tests]] | REQ-OAUTH2-001、005〜014 | 20 |
-| [[wi-560-back-oauth2-registration-and-logout-examples-with-tests]] | REQ-OAUTH2-016〜027 | 17 |
-| [[wi-561-back-oauth2-client-administration-examples-with-tests]] | REQ-OAUTH2-029〜037 | 10 |
-| [[wi-562-back-oauth2-backchannel-approval-examples-with-tests]] | REQ-OAUTH2-041〜043 | 23 |
-| [[wi-563-back-oauth2-delegation-and-agent-examples-with-tests]] | REQ-OAUTH2-044〜050 | 29 |
+| [[wi-559-back-oauth2-remaining-examples-with-tests]] | REQ-OAUTH2-001、005〜014 | 20 |
+| wi-560（畳んだ） | REQ-OAUTH2-016〜027 | 17 |
+| wi-561（畳んだ） | REQ-OAUTH2-029〜037 | 10 |
+| wi-562（畳んだ） | REQ-OAUTH2-041〜043 | 23 |
+| wi-563（畳んだ） | REQ-OAUTH2-044〜050 | 29 |
 | [[wi-564-name-the-refusal-a-cross-tenant-oauth-admin-token-gets]] | EX-OAUTH2-003-04 | 1 |
 
 合計 100 件で、台帳に残る OAuth2 の件数と一致する。

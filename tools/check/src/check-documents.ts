@@ -73,6 +73,32 @@ async function readDebt(snapshot: WorkspaceSnapshot, path: string): Promise<Debt
   })
 }
 
+/**
+ * The work item names a ledger row's `blocked_by` may resolve to.
+ *
+ * `work-items/done/` counts: a decision that has already been taken is still
+ * the record a blocked row points at, and dropping it the moment the item
+ * completes would turn every settled pointer into a failure.
+ *
+ * A workspace with no `work-items/` returns undefined rather than an empty set,
+ * which switches the existence rule off instead of failing every row. Minimal
+ * fixtures have no records to resolve against.
+ */
+async function knownWorkItemNames(
+  snapshot: WorkspaceSnapshot,
+): Promise<ReadonlySet<string> | undefined> {
+  try {
+    const paths = await snapshot.files('work-items', EXCLUDED_DIRECTORIES)
+    const names = paths
+      .filter((path) => path.endsWith('.md'))
+      .map((path) => (path.split('/').pop() ?? '').replace(/\.md$/, ''))
+      .filter((name) => name.startsWith('wi-'))
+    return names.length === 0 ? undefined : new Set(names)
+  } catch {
+    return undefined
+  }
+}
+
 export async function checkDocuments(
   snapshot: WorkspaceSnapshot,
   options: CheckOptions,
@@ -182,6 +208,7 @@ export async function checkDocuments(
       declared: examples,
       cited,
       ledger: { entries: await readDebt(snapshot, examplesDebt), path: examplesDebt },
+      knownWorkItems: await knownWorkItemNames(snapshot),
     }),
   ]
   failed ||= coverage.length > 0
