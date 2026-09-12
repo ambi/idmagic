@@ -571,14 +571,17 @@ run = "bun run test:e2e"
 [tasks.test-ui-e2e-file]
 description = "Run one UI end-to-end spec file"
 dir = "frontend"
+# --config は test:e2e と同じものを渡す。既定の bunfig は単体テスト用の DOM 登録を
+# preload するだけで、スタックを起動する tests/e2e/setup.ts を読まない。渡し忘れると
+# 全テストが待ち続けてタイムアウトし、失敗はスタックの不在ではなく被験コードのせいに見える。
 run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run test-ui-e2e-file -- <spec> [test name]" >&2; exit 2; }
 if [ "$#" -ge 2 ]; then
-  bun test "$1" -t "$2"
+  bun test --config=tests/e2e/bunfig.toml "$1" -t "$2"
 else
-  bun test "$1"
+  bun test --config=tests/e2e/bunfig.toml "$1"
 fi
 '''
 
