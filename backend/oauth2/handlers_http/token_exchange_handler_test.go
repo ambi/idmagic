@@ -100,6 +100,15 @@ func (v *recordingWorkloadVerifier) VerifyWorkloadToken(_ context.Context, tenan
 	return &workloaddomain.WorkloadIdentityGrant{AgentID: "checkout-bot", ClientID: exchClientID, TrustBundleID: "prod-cluster", BindingID: "checkout-binding"}, nil
 }
 
+// EX-WORKLOADIDENTITY-001-01 の 2 つ目の Then: Token Exchange の HTTP 入口は、検証が返した
+// WorkloadIdentityGrant を関連付け先 Agent の資格情報へ変換し、有効期間の短いアクセストークンを
+// 発行する。固定しているのは、発行されたトークンの `sub` が Agent の `client_id` であること、
+// つまり資格情報が「検証で決まった Agent のもの」であることと、その有効期間が有限なことである。
+//
+// 1 つ目の Then（検証がどの Agent を選ぶか）は backend/workloadidentity/usecases の
+// TestVerifyWorkloadAttestation_Success が観測する。ここでは verifier を差し替えて、
+// 入口が検証結果をどう使うかだけを見る。
+//
 // REQ-WORKLOADIDENTITY-001: Token Exchange の HTTP 入口が workload verifier の結果を Agent 資格情報へ変換する。
 func TestTokenExchangeIssuesWorkloadCredential(t *testing.T) {
 	verifier := &recordingWorkloadVerifier{}
@@ -119,6 +128,11 @@ func TestTokenExchangeIssuesWorkloadCredential(t *testing.T) {
 	issued, _ := body["access_token"].(string)
 	if issued == "" {
 		t.Fatalf("workload exchange returned no access token: %v", body)
+	}
+	// 「有効期間の短い」の観測。無期限や日単位のトークンを返す実装をここで落とす。
+	expiresIn, ok := body["expires_in"].(float64)
+	if !ok || expiresIn <= 0 || expiresIn > 3600 {
+		t.Fatalf("expires_in = %v, want a positive value no larger than an hour (body=%v)", body["expires_in"], body)
 	}
 
 	request, _ := http.NewRequest(http.MethodPost, base+"/introspect", strings.NewReader(url.Values{"token": {issued}}.Encode()))

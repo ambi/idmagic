@@ -69,13 +69,31 @@ func TestCreateAgentWorkloadBinding(t *testing.T) {
 		}
 	})
 
+	// EX-WORKLOADIDENTITY-009-01: 他テナントに属する Agent を指す関連付けは拒否され、
+	// 関連付けは作成されない。拒否応答と、拒否が防いだ効果（信頼設定配下に関連付けが
+	// 1 件も増えていないこと）の双方を固定する。
+	//
+	// 理由が ErrBindingAgentNotFound であること自体が、他テナントの Agent を見つけたうえで
+	// 弾いたのではなく、探索範囲に入っていないことを示す。素通りすれば、自テナントの信頼設定に
+	// 他テナントの Agent を繋げられ、テナント境界を越えた資格情報の発行経路ができる。
 	t.Run("rejects agent from another tenant", func(t *testing.T) {
 		otherAgentID := seedActiveAgent(ctx, t, deps.AgentRepo, "tenant-b")
-		_, err := usecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
+		before, err := deps.BindingRepo.ListByTrustBundle(ctx, "tenant-a", bundle.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = usecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
 			SubjectPattern: "spiffe://example.org/ns/prod/sa/other-*", AgentID: otherAgentID,
 		}, now)
 		if !errors.Is(err, usecases.ErrBindingAgentNotFound) {
 			t.Fatalf("err = %v, want ErrBindingAgentNotFound", err)
+		}
+		after, err := deps.BindingRepo.ListByTrustBundle(ctx, "tenant-a", bundle.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(after) != len(before) {
+			t.Fatalf("拒否されたのに関連付けが増えた: %d -> %d", len(before), len(after))
 		}
 	})
 

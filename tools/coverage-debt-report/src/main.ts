@@ -66,15 +66,31 @@ function errorCode(type: string): string {
 
 type Scenario = { id: string; title: string; context: string; step: string; types: string[] }
 
+/**
+ * The scenario documents to read, as a context label and a path.
+ *
+ * The cross-context document is here because leaving it out did not report its
+ * examples as belonging to no context — it reported them as `(unknown)`, which
+ * reads as "no scenario declares this id" and is the one thing the report is
+ * for. The label is parenthesized so it cannot be mistaken for a directory
+ * under `docs/contexts`, the way `(unknown)` already is.
+ */
+async function scenarioDocuments(): Promise<{ context: string; path: string }[]> {
+  const contextsDir = resolve(root, 'docs/contexts')
+  return [
+    { context: '(cross-context)', path: resolve(root, 'docs/scenarios.feature.md') },
+    ...(await readdir(contextsDir)).map((context) => ({
+      context,
+      path: resolve(contextsDir, context, 'scenarios.feature.md'),
+    })),
+  ]
+}
+
 /** Every scenario, with the error types its steps name. */
 async function scenarios(): Promise<Map<string, Scenario>> {
   const found = new Map<string, Scenario>()
-  const contextsDir = resolve(root, 'docs/contexts')
-  for (const context of await readdir(contextsDir)) {
-    const source = await readFile(
-      resolve(contextsDir, context, 'scenarios.feature.md'),
-      'utf8',
-    ).catch(() => undefined)
+  for (const { context, path } of await scenarioDocuments()) {
+    const source = await readFile(path, 'utf8').catch(() => undefined)
     if (!source) continue
     const parsed = parseScenarioDocument(source)
     for (const rule of parsed.rules) {

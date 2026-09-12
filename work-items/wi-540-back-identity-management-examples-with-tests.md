@@ -1,0 +1,53 @@
+---
+depends_on: []
+status: pending
+authors: [tn]
+risk: low
+reversibility: reversible
+created_at: 2026-09-12
+priority: p3
+change_kind: maintenance
+spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を名指しするテストを対応付ける作業である。シナリオも製品の振る舞いも変えない。テストが書けない具体例が見つかった場合、それは実装が具体例のとおりに振る舞っていないということなので、欠陥として個別の work item に切り出す。" }
+---
+
+# IdManagement が宣言する具体例 66 件にテストを対応付け、被覆台帳から外す
+
+## Motivation
+
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/identity-management/scenarios.feature.md` が宣言する 66 件を引き取る。
+
+親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 2 件だけ**だというものである。残る 14 件は、既存テストへ新しい観測を足すか、テスト自体を書く必要があった。件数は作業量の目安にならない。
+
+**66 件のうち拒否は 7 件で、59 件は拒否以外である。** また `backend/idmanagement` は `report-security-test-gaps` が挙げる既存拒否テストの最大の所有者（15 件）でもあるため、本項目が足す注記と [[wi-392-refusal-tests-assert-the-absent-effect]] の作業が同じファイルで交差する。注記だけを足して wi-392 の対象として残す件は、その旨を注記へ書く。
+
+## Scope
+
+- 66 件を 1 件ずつ確認し、次のいずれかに解決して `tools/check/example-coverage-debt.json` から外す。
+  - 当の具体例を検証しているテストが実在する → そのテストに `// EX-IDMANAGEMENT-NNN-MM: <この具体例の何を固定しているか>` の注記を足す。
+  - 当の具体例を検証しているテストが無い → 書く。具体例が拒否なら、[[wi-392-refusal-tests-assert-the-absent-effect]] が定める形（拒否応答と、拒否が防いだ効果の双方を観測する）で書く。
+  - 具体例が宣言されなくなっている → 台帳から外す（検査が落ちて教える）。
+- 注記は「何を固定しているか」を書く。id だけの注記は禁止する。
+- 実装が具体例のとおりに振る舞っていないことが分かった場合は、**本 work item では直さず欠陥として切り出す**。
+
+## Out of Scope
+
+- 他の Context が宣言する具体例。Context ごとに別の work item が持つ。
+- `tools/check/standards-coverage-debt.json`。[[wi-495-burn-down-the-standards-coverage-debt]] が消化済みである。
+- 既に台帳に載っていない拒否テストが、防いだ効果を観測していない件。[[wi-392-refusal-tests-assert-the-absent-effect]] が持つ。本項目が新しく書く拒否テストは、その規範を満たす形で書く。既存テストに注記を足すだけの件で、そのテストが効果の不在を見ていない場合は、注記を足したうえで wi-392 の対象として残す。
+- シナリオと具体例の追加、削除、書き換え。具体例の記述が実装と食い違うことが判明した場合は規範の変更なので、別の work item が扱う。
+- 見つかった実装の欠陥の修正。切り出した先で扱う。
+- 行カバレッジ率の目標または閾値。
+- `report-coverage-debt` の分類（`named`、`nearby`、`none`）を根拠にした台帳からの削除。分類は読む順を決める材料であり、台帳から外す根拠にはならない。
+
+## Verification
+
+- `mise run check-spec` が、`docs/contexts/identity-management/scenarios.feature.md` の 66 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
+- 消化したテストの所属パッケージに対する `mise run test-go-package -- <package>`。
+- `mise run verify`
+
+## Risk Notes
+
+- **注記だけを足して終わる。** `checkNormativeCoverage` は文字列の一致しか見ないので、読まずに id を貼れば件数は速く減る。減った件数は何も意味しない。注記に「この具体例の何を固定しているか」を書かせることで区別する。親項目の測定では、16 件のうち注記だけで済んだのは 4 件だけだった。
+- **`nearby` に分類された件を、テストがある証拠として読む。** 分類が言っているのは「近傍に他の拒否テストがある」だけである。親項目の測定では、`claim-mapping` の 3 件はすべて `nearby` でありながら 2 件はテストが無かった。分類は読む順の材料にとどめる。
+- **拒否である具体例のテストが、応答の字面だけを見て書かれる。** 新しく書く拒否テストには [[wi-392-refusal-tests-assert-the-absent-effect]] の規範が効く。注記へ「効果の不在を何で観測したか」を書き、後から区別できるようにする。
+- **具体例の `Then` が複数あるのに、観測が 1 つで済まされる。** 親項目の測定では、`EX-WORKLOADIDENTITY-008-01` のようにイベントと実際の効果の双方を言う具体例が複数あった。`Then` の数だけ観測が要る。

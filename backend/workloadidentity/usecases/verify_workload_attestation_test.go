@@ -66,6 +66,28 @@ type fixture struct {
 	rejects []workloaddomain.WorkloadAttestationRejected
 }
 
+// assertRefusedWithoutGrant は拒否の具体例が要求する 2 つの観測を 1 か所に置く。呼び出し元
+// が受け取る拒否応答と、拒否が防いだ効果 — Agent 資格情報の元になる WorkloadIdentityGrant
+// が返らないこと — の双方である。
+//
+// 仕様の WorkloadAttestationRejectedError は本体を持たない領域条件なので、Go 側に対応する
+// 型は無い。具体例が名指しする `reason` は WorkloadAttestationRejected イベントに載るため、
+// 理由の区別はイベント側で観測する。
+func assertRefusedWithoutGrant(
+	t *testing.T, f *fixture, grant *workloaddomain.WorkloadIdentityGrant, err error, reason string,
+) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected rejection")
+	}
+	if grant != nil {
+		t.Fatalf("拒否されたのに WorkloadIdentityGrant が返った: %+v", grant)
+	}
+	if len(f.rejects) != 1 || f.rejects[0].Reason != reason {
+		t.Fatalf("rejects = %+v, want exactly one with reason %q", f.rejects, reason)
+	}
+}
+
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -162,8 +184,13 @@ func (f *fixture) registerAgent(t *testing.T, id string, active bool) {
 	}
 }
 
-// TestVerifyWorkloadAttestation_Success — scenario
-// `登録済みtrustbundle経由でワークロードトークンをAgent資格情報に交換できる`。
+// EX-WORKLOADIDENTITY-001-01: `Enabled` の信頼設定と、主体パターンが `sub` に一致する
+// `Enabled` の関連付けが揃っているとき、VerifyWorkloadAttestation は関連付け先 Agent の
+// `client_id` を持つ WorkloadIdentityGrant を返し、拒否イベントを 1 件も出さない。
+// 固定しているのは、返る資格情報が「パターンに一致した関連付けの先」であることである。
+//
+// 具体例の 2 つ目の Then（短命なアクセストークンの発行）は HTTP 入口が持つので、
+// backend/oauth2/handlers_http の TestTokenExchangeIssuesWorkloadCredential が観測する。
 func TestVerifyWorkloadAttestation_Success(t *testing.T) {
 	f := newFixture(t)
 	bundle := f.registerBundle(t, testTenant, nil)
@@ -185,20 +212,25 @@ func TestVerifyWorkloadAttestation_Success(t *testing.T) {
 	}
 }
 
-// TestVerifyWorkloadAttestation_UnregisteredIssuer — scenario `未登録issuerは拒否される`。
+// EX-WORKLOADIDENTITY-002-01: `iss` に対応する WorkloadTrustBundle がテナントに無ければ、
+// 署名を検べる前に `reason=unregistered_issuer` で拒否し、資格情報を返さない。
+// 固定しているのは、発行者の登録が交換の前提条件であることである。
+//
+// 素通りすれば、誰でも自分の発行者を名乗る JWT を持ち込むだけで Agent の資格情報を得る。
+// 信頼設定の登録は、その発行者を信じると管理者が宣言した唯一の記録である。
 func TestVerifyWorkloadAttestation_UnregisteredIssuer(t *testing.T) {
 	f := newFixture(t)
 	token := signSVID(t, f.key, f.kid, "https://unknown-issuer.example", f.now, f.now.Add(10*time.Minute))
-	_, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "unregistered_issuer" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "unregistered_issuer")
 }
 
-// TestVerifyWorkloadAttestation_SpoofedSignature — scenario `署名が不正なattestationは拒否される`。
+// EX-WORKLOADIDENTITY-003-01: `iss` は登録済みの発行者を指しているが、その信頼設定の JWKS
+// では署名を検証できない JWT は `reason=invalid_signature` で拒否され、資格情報は返らない。
+// 固定しているのは、発行者の一致だけでは足りず、登録済みの鍵による署名が要ることである。
+//
+// 攻撃者は `iss` を正しく詐称できる。鍵だけが詐称できない。ここが素通りすれば、
+// 信頼設定の登録は発行者名の照合に退化する。
 func TestVerifyWorkloadAttestation_SpoofedSignature(t *testing.T) {
 	f := newFixture(t)
 	bundle := f.registerBundle(t, testTenant, nil)
@@ -210,16 +242,16 @@ func TestVerifyWorkloadAttestation_SpoofedSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 	token := signSVID(t, attacker, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	_, err = usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "invalid_signature" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "invalid_signature")
 }
 
-// TestVerifyWorkloadAttestation_Expired — scenario `期限切れのattestationは拒否される`。
+// EX-WORKLOADIDENTITY-004-01: `exp` が過去の JWT-SVID は、署名も発行者も関連付けも正しくても
+// `reason=expired` で拒否され、資格情報は返らない。固定しているのは、有効期間の判定が
+// 他の検証に合格したことで飛ばされないことである。
+//
+// 素通りすれば、一度漏れた SVID が期限に関係なく使い続けられる。短い有効期間は、
+// ワークロードの資格情報が漏洩したときの被害を限る唯一の仕組みである。
 func TestVerifyWorkloadAttestation_Expired(t *testing.T) {
 	f := newFixture(t)
 	bundle := f.registerBundle(t, testTenant, nil)
@@ -227,17 +259,16 @@ func TestVerifyWorkloadAttestation_Expired(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now.Add(-2*time.Hour), f.now.Add(-time.Hour))
-	_, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "expired" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "expired")
 }
 
-// TestVerifyWorkloadAttestation_AmbiguousMatch — scenario
-// `複数bindingに曖昧にマッチするsubjectは拒否される` (binding collision)。
+// EX-WORKLOADIDENTITY-005-01: `sub` が 2 つの `Enabled` な関連付けの主体パターンに同時に
+// 一致するとき、どちらかを選ばずに `reason=ambiguous_match` で拒否し、資格情報を返さない。
+// 固定しているのは、Agent が一意に決まらない限り交換しないことである。
+//
+// 素通りすれば、どの Agent の資格情報が返るかはパターンの評価順という実装の都合で決まる。
+// 一方のパターンをあとから足しただけで、既存のワークロードが別の Agent になりうる。
 func TestVerifyWorkloadAttestation_AmbiguousMatch(t *testing.T) {
 	f := newFixture(t)
 	bundle := f.registerBundle(t, testTenant, nil)
@@ -247,16 +278,16 @@ func TestVerifyWorkloadAttestation_AmbiguousMatch(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/worker-*", "agent_b")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	_, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "ambiguous_match" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "ambiguous_match")
 }
 
-// TestVerifyWorkloadAttestation_KilledAgent — scenario `束縛先AgentがKilled後は拒否される`。
+// EX-WORKLOADIDENTITY-006-01: 関連付けの対応先 Agent が `killed` に遷移した後は、信頼設定も
+// 関連付けも `Enabled` のままでも `reason=agent_not_active` で拒否し、資格情報を返さない。
+// 固定しているのは、KillAgent が関連付けを消さなくても交換を止めることである。
+//
+// KillAgent は Agent を止める操作であって、信頼設定を畳む操作ではない。ここが素通りすれば、
+// 停止した Agent の資格情報を、停止したことを知らない経路から取り直せてしまう。
 func TestVerifyWorkloadAttestation_KilledAgent(t *testing.T) {
 	f := newFixture(t)
 	bundle := f.registerBundle(t, testTenant, nil)
@@ -264,29 +295,26 @@ func TestVerifyWorkloadAttestation_KilledAgent(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	_, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "agent_not_active" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "agent_not_active")
 }
 
-// TestVerifyWorkloadAttestation_CrossTenant — scenario `他テナントのtrustbundleは利用できない`。
+// EX-WORKLOADIDENTITY-007-01: 同じ発行者の WorkloadTrustBundle が別テナントに登録されていても、
+// 当のテナントの実行コンテキストからは見えず、`reason=unregistered_issuer` で拒否される。
+// 固定しているのは、他テナントの登録内容が参照されないことである。理由が
+// `unregistered_issuer` であること自体が、他テナントの登録を見つけたうえで弾いたのではなく、
+// そもそも見えていないことを示す。
+//
+// 素通りすれば、あるテナントが発行者を登録するだけで、同じ発行者を使う他テナントの
+// ワークロードが自テナントの Agent に化ける。テナント境界は信頼設定の探索範囲そのものである。
 func TestVerifyWorkloadAttestation_CrossTenant(t *testing.T) {
 	f := newFixture(t)
 	// tenant-b に登録した bundle は tenant-a のコンテキストからは見えない。
 	f.registerBundle(t, "tenant-b", nil)
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	_, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "unregistered_issuer" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "unregistered_issuer")
 }
 
 // TestVerifyWorkloadAttestation_DisabledTrustBundle — 管理者が無効化した bundle は
@@ -300,11 +328,6 @@ func TestVerifyWorkloadAttestation_DisabledTrustBundle(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	_, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
-	if err == nil {
-		t.Fatal("expected rejection")
-	}
-	if len(f.rejects) != 1 || f.rejects[0].Reason != "trust_bundle_disabled" {
-		t.Fatalf("rejects = %+v", f.rejects)
-	}
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "trust_bundle_disabled")
 }
