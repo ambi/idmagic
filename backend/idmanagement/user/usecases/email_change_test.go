@@ -24,7 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// EX-IDMANAGEMENT-017-01 通常経路のうち、新アドレスへ確認リンクが送られる部分。
+//spec:covers EX-IDMANAGEMENT-017-01: 通常経路のうち、新アドレスへ確認リンクが送られる部分。
 func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
@@ -70,7 +70,7 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-017-01 通常経路、EX-IDMANAGEMENT-017-03 確定済みのトークンは再利用できない。
+//spec:covers EX-IDMANAGEMENT-017-01, EX-IDMANAGEMENT-017-03: 通常経路と、確定済みのトークンは再利用できない。
 func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
@@ -180,10 +180,10 @@ func (f *emailChangeFixture) emailHolds(t *testing.T, address string) {
 	}
 }
 
-// EX-IDMANAGEMENT-017-02 リンクを開くだけではトークンを消費しない。
-//
 // 確定は POST だけが行う。読み取りに当たる Find を何度通しても、トークンは残り、
 // アドレスも変わらない。
+//
+//spec:covers EX-IDMANAGEMENT-017-02: リンクを開くだけではトークンを消費しない。
 func TestConfirmEmailChangeIsNotReachedByReadingTheLink(t *testing.T) {
 	f := newEmailChangeFixture(t)
 	for range 3 {
@@ -199,7 +199,7 @@ func TestConfirmEmailChangeIsNotReachedByReadingTheLink(t *testing.T) {
 	f.emailHolds(t, "new@example.com")
 }
 
-// EX-IDMANAGEMENT-017-05 期限切れのトークンは受け付けない。
+//spec:covers EX-IDMANAGEMENT-017-05: 期限切れのトークンは受け付けない。
 func TestConfirmEmailChangeRejectsAnExpiredToken(t *testing.T) {
 	f := newEmailChangeFixture(t)
 	expiry := f.now.Add(time.Duration(userusecases.EmailChangeTokenTTLSeconds) * time.Second)
@@ -212,7 +212,7 @@ func TestConfirmEmailChangeRejectsAnExpiredToken(t *testing.T) {
 	f.emailHolds(t, "old@example.com")
 }
 
-// EX-IDMANAGEMENT-017-04 別の用途で発行されたトークンは受け付けない。
+//spec:covers EX-IDMANAGEMENT-017-04: 別の用途で発行されたトークンは受け付けない。
 func TestConfirmEmailChangeRejectsATokenOfAnotherPurpose(t *testing.T) {
 	f := newEmailChangeFixture(t)
 	foreign, err := actiontoken.Issue(actiontoken.IssueInput{
@@ -290,9 +290,9 @@ func (s *purposeBlindEmailStore) ConsumeAndApply(
 	return s.EmailChangeTokenStore.ConsumeAndApply(ctx, commit)
 }
 
-// EX-IDMANAGEMENT-017-06 起票後に新アドレスが他のユーザーのものになっている。
-//
 // 確定が拒否されてもトークンは未使用のまま残る。相手が手放せば、同じリンクがまだ使える。
+//
+//spec:covers EX-IDMANAGEMENT-017-06: 起票後に新アドレスが他のユーザーのものになっている。
 func TestConfirmEmailChangeKeepsTheTokenWhenTheAddressWasTaken(t *testing.T) {
 	f := newEmailChangeFixture(t)
 	taken := "new@example.com"

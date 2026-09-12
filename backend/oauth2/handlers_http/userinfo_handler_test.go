@@ -45,7 +45,7 @@ type fakeIntrospector struct {
 	result *oauthports.IntrospectionResult
 }
 
-// REQ-CLAIMMAPPING-001: UserInfo の HTTP 経路は RP の対応付けだけを公開し、未対応付け属性を漏らさない。
+//spec:covers REQ-CLAIMMAPPING-001: UserInfo の HTTP 経路は RP の対応付けだけを公開し、未対応付け属性を漏らさない。
 func TestUserInfoAppliesClientClaimMappingPolicy(t *testing.T) {
 	now := time.Now().UTC()
 	nickname, secret := "ally", "do-not-release"
@@ -202,11 +202,11 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	// DPoP ヘッダー欠落 → invalid_token。
 	mustReject("missing DPoP proof", call("DPoP atoken", ""))
 
-	// REQ-OAUTH2-045: a proof without ath only shows key possession, so invalid_token.
+	//spec:covers REQ-OAUTH2-045: a proof without ath only shows key possession, so invalid_token.
 	noATHProof := signDPoPProof(t, key, jwk, "http://test/realms/default/userinfo", "jti-no-ath", "", now)
 	mustReject("missing ath", call("DPoP atoken", noATHProof))
 
-	// REQ-OAUTH2-045: a proof made for another access token cannot be reused here.
+	//spec:covers REQ-OAUTH2-045: a proof made for another access token cannot be reused here.
 	otherATHProof := signDPoPProof(t, key, jwk, "http://test/realms/default/userinfo", "jti-other-ath", "othertoken", now)
 	mustReject("ath of another access token", call("DPoP atoken", otherATHProof))
 
@@ -361,8 +361,9 @@ func assertNoUserInfoClaims(t *testing.T, body []byte) {
 	}
 }
 
-// EX-OAUTH2-013-02: openid スコープを持たないトークンの UserInfo は拒否され、
 // 応答に sub もクレームも含まれない。
+//
+//spec:covers EX-OAUTH2-013-02: openid スコープを持たないトークンの UserInfo は拒否され、
 func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "profile", ClientID: "demo-client",
@@ -379,9 +380,10 @@ func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
 	assertNoUserInfoClaims(t, rec.Body.Bytes())
 }
 
-// RFC6750-INVALID-TOKEN / EX-OAUTH2-020-01 / EX-OAUTH2-020-02: 失効した
 // アクセストークンの UserInfo は両 binding で 401 と Bearer challenge を返し、
 // 応答に sub もクレームも含めない。
+//
+//spec:covers RFC6750-INVALID-TOKEN / EX-OAUTH2-020-01 / EX-OAUTH2-020-02: 失効した
 func TestUserInfoRejectsRevokedAccessTokenWithBearerChallenge(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		t.Run(method, func(t *testing.T) {
@@ -408,8 +410,9 @@ func TestUserInfoRejectsRevokedAccessTokenWithBearerChallenge(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-029-02: mTLS バインドされたアクセストークンを別の証明書で提示すると
 // invalid_token で拒否され、保護リソースの本文は返らない。
+//
+//spec:covers EX-OAUTH2-029-02: mTLS バインドされたアクセストークンを別の証明書で提示すると
 func TestUserInfoMTLSBoundRequiresMatchingThumbprint(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
@@ -510,7 +513,7 @@ func signECDPoPProof(t *testing.T, key *ecdsa.PrivateKey, jwk map[string]any, ht
 }
 
 func TestUserInfoDPoPAcceptsES256Proof(t *testing.T) {
-	// RFC9449-TOKEN-BINDING / REQ-OAUTH2-045: DPoP proof の alg として ES256 を
+	//spec:covers RFC9449-TOKEN-BINDING / REQ-OAUTH2-045: DPoP proof の alg として ES256 を
 	// 宣言どおり受理する以上、EC 鍵でも jkt の照合が成立しなければならない。
 	now := time.Now().UTC()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

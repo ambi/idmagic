@@ -133,11 +133,12 @@ resources:
 ` + extra
 }
 
-// EX-SEEDING-003-01: 指定したプロファイルと異なるマニフェストは、シークレットの解決と
 // 書き込みの前に拒否される。
 //
 // 素通りすれば、development のマニフェストが bootstrap のつもりの実行で適用される。
 // マニフェストとプロファイルの対応は、どの資格情報がどの環境へ入るかの唯一の対応表である。
+//
+//spec:covers EX-SEEDING-003-01: 指定したプロファイルと異なるマニフェストは、シークレットの解決と
 func TestSeedRefusesManifestProfileMismatchBeforeSecretsAndWrites(t *testing.T) {
 	deps := newSeedRefusalDeps(t)
 	testManifest, err := manifestadapter.LocateDefaultPath(domain.ProfileTest)
@@ -173,11 +174,12 @@ func TestSeedRefusesManifestProfileMismatchBeforeSecretsAndWrites(t *testing.T) 
 	}
 }
 
-// EX-SEEDING-004-01: 未知のキー、重複する論理キー、未対応のスキーマバージョン、
 // `include` の循環、ルート外のパスは、いずれもシークレットの解決と書き込みの前に拒否される。
 //
 // マニフェストは投入の入力そのものなので、壊れた入力を部分的に適用すると、
 // 直すために何が入ったかを先に調べなければならなくなる。
+//
+//spec:covers EX-SEEDING-004-01: 未知のキー、重複する論理キー、未対応のスキーマバージョン、
 func TestSeedRefusesInvalidManifestBeforeSecretsAndWrites(t *testing.T) {
 	for _, testCase := range []struct {
 		name  string
@@ -281,11 +283,12 @@ resources:
 	})
 }
 
-// EX-SEEDING-005-01: 本番で env シークレットプロバイダーを参照するマニフェストは、
 // シークレットの解決と書き込みの前に拒否され、永続状態は変更されない。
 //
 // 素通りすれば、本番の資格情報がプロセスの環境変数から入る。環境変数はプロセス一覧、
 // コンテナの設定、クラッシュダンプに現れるので、そこに置かれた秘密はもう秘密ではない。
+//
+//spec:covers EX-SEEDING-005-01: 本番で env シークレットプロバイダーを参照するマニフェストは、
 func TestSeedRefusesEnvSecretProviderInProductionBeforeResolvingIt(t *testing.T) {
 	for _, mode := range []domain.Mode{domain.ModeDryRun, domain.ModeApply} {
 		t.Run(string(mode), func(t *testing.T) {
@@ -340,12 +343,13 @@ resources:
 	})
 }
 
-// EX-SEEDING-007-01: 本番では development と performance のプロファイルを書き込み前に拒否し、
 // 既知のデモ資格情報は作成されない。
 //
 // development マニフェストは alice と root を固定の UUID と固定のパスワードで作る。
 // この拒否が素通りすれば、公開リポジトリに書いてある資格情報を持つ system_admin が
 // 本番に出来上がる。
+//
+//spec:covers EX-SEEDING-007-01: 本番では development と performance のプロファイルを書き込み前に拒否し、
 func TestSeedRefusesDevelopmentAndPerformanceProfilesInProduction(t *testing.T) {
 	for _, testCase := range []struct {
 		profile domain.Profile
@@ -399,15 +403,16 @@ func TestSeedRefusesDevelopmentAndPerformanceProfilesInProduction(t *testing.T) 
 	})
 }
 
-// EX-SEEDING-008-02: 本番の bootstrap で、未指定・localhost・HTTP のリダイレクト URI は
 // 書き込み前に拒否され、bootstrap のクライアントは作られない。
 //
-// EX-SEEDING-008-01: 明示した https の URI を指定すると、ファーストパーティークライアントは
 // 指定した URI だけをリダイレクト URI として持つ。
 //
 // 拒否が素通りすると、`seedContributor.operations` の既定値が効いて localhost の
 // リダイレクト URI を持つ本番クライアントが出来上がる。localhost へ返す認可コードは、
 // 利用者の端末で動く任意のプロセスが受け取れる。
+//
+//spec:covers EX-SEEDING-008-02: 本番の bootstrap で、未指定・localhost・HTTP のリダイレクト URI は
+//spec:covers EX-SEEDING-008-01: 明示した https の URI を指定すると、ファーストパーティークライアントは
 func TestSeedRefusesProductionBootstrapRedirectURIsBeforeWriting(t *testing.T) {
 	for _, testCase := range []struct {
 		name string
@@ -464,7 +469,6 @@ resources:
 	})
 }
 
-// EX-SEEDING-009-01: seed 管理対象の論理キーが手動で変更されているとき、再適用は競合として
 // 扱われ、手動変更は維持される。
 //
 // 規範は「投入が失敗したか」ではなく「値が守られたか」である。運用者が本番で直した値を
@@ -472,6 +476,8 @@ resources:
 //
 // マニフェスト由来のファーストパーティークライアントとデモクライアントは、それぞれ別の
 // 判定でドリフトを見ている。片方だけを確かめると、もう片方が上書きに退化しても気づけない。
+//
+//spec:covers EX-SEEDING-009-01: seed 管理対象の論理キーが手動で変更されているとき、再適用は競合として
 func TestSeedRefusesManualDriftAndKeepsTheChangedValue(t *testing.T) {
 	for _, clientID := range []string{seedAdminConsoleClientID, seedDemoClientID} {
 		t.Run(clientID, func(t *testing.T) {

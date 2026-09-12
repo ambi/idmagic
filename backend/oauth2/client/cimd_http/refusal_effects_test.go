@@ -36,8 +36,9 @@ func (l *countingListener) Accept() (net.Conn, error) {
 	return conn, err
 }
 
-// EX-OAUTH2-017-02: プライベート、ループバック、リンクローカル、CGNAT へ解決される
 // メタデータ URL はフェイルクローズで拒否され、当該 IP へ接続もしない。
+//
+//spec:covers EX-OAUTH2-017-02: プライベート、ループバック、リンクローカル、CGNAT へ解決される
 func TestClientMetadataResolutionDoesNotReachNonPublicAddresses(t *testing.T) {
 	// ループバックだけは実際に待ち受けを立てられるので、「接続が試みられていない」を
 	// 受理数で直接読む。他の範囲は環境に束縛されないよう IP リテラルで指定する。

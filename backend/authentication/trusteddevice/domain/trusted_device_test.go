@@ -48,7 +48,7 @@ func TestParseCookieRejectsMalformedValues(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-027: 絶対期限と idle 期限のどちらを過ぎても信頼は成立しない。
+//spec:covers REQ-AUTHENTICATION-027: 絶対期限と idle 期限のどちらを過ぎても信頼は成立しない。
 func TestTrustedDeviceActiveHonorsAbsoluteAndIdleExpiry(t *testing.T) {
 	t.Parallel()
 	created := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)

@@ -179,9 +179,10 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	}
 }
 
-// REQ-IDGOVERNANCE-014: ライフサイクルワークフローの管理は管理者に限られる。
 // 拒否は 403 だけでは足りない。妥当な本文をそのまま送って拒否させ、管理者として
 // 一覧を読み直してワークフローが 1 つも増えていないことまで確かめる。
+//
+//spec:covers REQ-IDGOVERNANCE-014: ライフサイクルワークフローの管理は管理者に限られる。
 func TestAdminLifecycleWorkflowRejectsNonAdmin(t *testing.T) {
 	e := newAdminLifecycleWorkflowHandler(t)
 	csrf, cookie := adminCSRF(t, e)

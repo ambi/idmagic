@@ -91,10 +91,11 @@ func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
 
 // SCL policies ScimDiscovery / ScimReadUsers / ScimWriteUsers /
 // ScimReadGroups / ScimWriteGroups の route mapping を固定する。
-// RFC7644-BEARER-AUTHORIZATION: 15 経路それぞれが、その操作に該当するスコープを
 // 要求すること、および Discovery が scim:* のいずれか 1 つで参照できることを
 // ここで固定する。拒否が防いだ効果は
 // TestScimBearerAuthorization_RefusesAndLeavesTheResourceUnchanged が観測する。
+//
+//spec:covers RFC7644-BEARER-AUTHORIZATION: 15 経路それぞれが、その操作に該当するスコープを
 func TestScimRoutesRequireOperationScope(t *testing.T) {
 	e, apiTokens := newScopedScimHarness()
 	ctx := context.Background()
@@ -391,8 +392,9 @@ func TestScimListGroupsFilter(t *testing.T) {
 	}
 }
 
-// meta.lastModified への gt/eq (dateTime 実時刻比較) と schema URN プレフィックス
-// 付き属性名の契約を固定する (interfaces.ListScimUsers、RFC7644-FILTERING、wi-244)。
+// schema URN プレフィックス付き属性名の契約を固定する (interfaces.ListScimUsers、wi-244)。
+//
+//spec:covers RFC7644-FILTERING: meta.lastModified への gt/eq (dateTime 実時刻比較) と
 func TestScimListUsersDateTimeFilterAndURNPrefix(t *testing.T) {
 	ctx := context.Background()
 	e, usecasesInst, apiTokens := newScimTestHarness()

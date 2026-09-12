@@ -90,7 +90,7 @@ func controlPlaneTestActor(tenantID string, roles ...string) *userdomain.User {
 	}
 }
 
-// REQ-SIGNINGKEYS-009: 認証状態と Group 由来を含む有効ロールを共通境界で検証する。
+//spec:covers REQ-SIGNINGKEYS-009: 認証状態と Group 由来を含む有効ロールを共通境界で検証する。
 func TestRequireControlPlaneUser(t *testing.T) {
 	t.Run("requires completed authentication", func(t *testing.T) {
 		users := usermemory.NewUserRepository()
@@ -156,7 +156,7 @@ func TestRequireControlPlaneUser(t *testing.T) {
 	})
 }
 
-// REQ-DATAKEYS-006: 要求先テナントの条件を所属先と独立に検証する。
+//spec:covers REQ-DATAKEYS-006: 要求先テナントの条件を所属先と独立に検証する。
 func TestRequireControlPlaneUserRejectsRequestOutsideControlPlaneTenant(t *testing.T) {
 	actor := controlPlaneTestActor(tenancydomain.DefaultTenantID, "system_admin")
 	if IsControlPlaneActor(actor, "acme") {

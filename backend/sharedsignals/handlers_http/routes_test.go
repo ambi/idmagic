@@ -95,8 +95,9 @@ func sharedSignalsAdminPost(t *testing.T, e *echo.Echo, path, csrf string, cooki
 	return response
 }
 
-// REQ-SHAREDSIGNALS-011: SsfStream の登録は管理者に限られる。管理者なら受理される
 // 本文をそのまま送って拒否させ、ストリームが 1 本も増えていないことを読み直す。
+//
+//spec:covers REQ-SHAREDSIGNALS-011: SsfStream の登録は管理者に限られる。管理者なら受理される
 func TestRegisterTransmitterStreamRejectsNonAdmin(t *testing.T) {
 	e := newSharedSignalsHandler(t)
 	csrf, cookie := sharedSignalsAdminCSRF(t, e)

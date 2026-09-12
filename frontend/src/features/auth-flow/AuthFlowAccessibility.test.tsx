@@ -157,7 +157,7 @@ describe('authentication screen accessibility', () => {
 
   afterEach(() => restoreGlobals())
 
-  // WCAG22-LABELS-ERRORS: どの認証画面でも、すべての入力が支援技術から読める名前を持つ。
+  //spec:covers WCAG22-LABELS-ERRORS: どの認証画面でも、すべての入力が支援技術から読める名前を持つ。
   it('gives every input on every authentication screen an accessible name', async () => {
     for (const authenticationScreen of authenticationScreens) {
       document.body.innerHTML = ''
@@ -177,7 +177,7 @@ describe('authentication screen accessibility', () => {
     }
   })
 
-  // WCAG22-LABELS-ERRORS: 送信の失敗はテキストで識別され、直せる失敗はその直し方を述べる。
+  //spec:covers WCAG22-LABELS-ERRORS: 送信の失敗はテキストで識別され、直せる失敗はその直し方を述べる。
   // 表示するのは backend の生の本文ではなく、対応付けた文言である。生の本文をそのまま出す
   // 実装は、識別はできても修正方法を示せない。
   it('identifies a failed submission in text and states how to correct it', async () => {
@@ -211,7 +211,7 @@ describe('authentication screen accessibility', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(recoveryT.passwordPolicy)
   })
 
-  // WCAG22-STATUS: 結果と送信エラーの入れ物はライブリージョンであり、状態が変わっても
+  //spec:covers WCAG22-STATUS: 結果と送信エラーの入れ物はライブリージョンであり、状態が変わっても
   // フォーカスは動かない。フォーカスを結果へ移す実装は、読み上げは起きても操作の文脈を
   // 奪うので、この行が禁じている側である。
   it('announces a submission failure through a live region without moving focus', async () => {
@@ -237,7 +237,7 @@ describe('authentication screen accessibility', () => {
     expect(document.activeElement).toBe(password)
   })
 
-  // WCAG22-STATUS: 成功の通知も同じ扱いを受ける。失敗だけをライブリージョンに入れる実装は、
+  //spec:covers WCAG22-STATUS: 成功の通知も同じ扱いを受ける。失敗だけをライブリージョンに入れる実装は、
   // 「認証結果や送信エラーを」と 2 つ挙げているこの行の片方しか満たさない。
   it('announces a successful submission through a live region without moving focus', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(204)))

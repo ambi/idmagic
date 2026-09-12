@@ -86,7 +86,7 @@ func signIn(userAgent string, at time.Time) *authdomain.UserAuthenticated {
 	}
 }
 
-// REQ-AUTHENTICATION-030: 既知でない端末からのサインインだけが通知を生む。
+//spec:covers REQ-AUTHENTICATION-030: 既知でない端末からのサインインだけが通知を生む。
 func TestDispatchNotifiesOnlyTheFirstSignInFromEachDevice(t *testing.T) {
 	t.Parallel()
 	deps, notifier, emitter := newTestDeps(t, true)
@@ -161,7 +161,7 @@ func TestDispatchIgnoresItsOwnEvent(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-031: 資格情報の変更は通知され、本文に機微は載らない。
+//spec:covers REQ-AUTHENTICATION-031: 資格情報の変更は通知され、本文に機微は載らない。
 func TestDispatchNotifiesCredentialAndMfaChangesWithoutSensitiveContent(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -248,7 +248,7 @@ func TestDispatchNotifiesOnlyExplicitSessionRevocations(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-031: 配送の失敗は元の操作へ伝播せず、記録だけが残る。
+//spec:covers REQ-AUTHENTICATION-031: 配送の失敗は元の操作へ伝播せず、記録だけが残る。
 func TestDispatchReportsDeliveryFailureWithoutFailing(t *testing.T) {
 	t.Parallel()
 	deps, notifier, emitter := newTestDeps(t, true)
@@ -286,7 +286,7 @@ func TestDispatchSkipsUsersWithoutAVerifiedAddress(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-034: 停止した種別は届かず、必須の種別は届き続ける。
+//spec:covers REQ-AUTHENTICATION-034: 停止した種別は届かず、必須の種別は届き続ける。
 func TestDispatchHonorsDisabledCategoriesButNotForMandatoryOnes(t *testing.T) {
 	t.Parallel()
 	deps, notifier, _ := newTestDeps(t, true)

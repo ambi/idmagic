@@ -57,7 +57,7 @@ func exchangeWithPolicy(
 	return issuer, err
 }
 
-// REQ-OAUTH2-048: テナントが下げた上限を超える交換は拒否され、上限内は通る。
+//spec:covers REQ-OAUTH2-048: テナントが下げた上限を超える交換は拒否され、上限内は通る。
 func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 	t.Run("a tightened limit rejects a chain the default would allow", func(t *testing.T) {
 		// 既存 act の深さ 1 → 交換後は 2。システム既定 (3) なら通るが、上限 1 では拒否。
@@ -126,7 +126,7 @@ func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 	})
 }
 
-// REQ-OAUTH2-048 / REQ-OAUTH2-049: 監査は深さと適用した上限、および委譲モードを残す。
+//spec:covers REQ-OAUTH2-048 / REQ-OAUTH2-049: 監査は深さと適用した上限、および委譲モードを残す。
 func TestExchangeTokenAuditRecordsDepthLimitAndMode(t *testing.T) {
 	var events []spec.DomainEvent
 	if _, err := exchangeWithPolicy(t, stubDelegationPolicy{depth: 2}, nil, &events); err != nil {

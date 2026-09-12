@@ -159,12 +159,13 @@ func (f *autoLinkFixture) linkedIdentity(t *testing.T) *federationdomain.Federat
 	return identity
 }
 
-// EX-AUTHENTICATION-002-02: ポリシーが `None`、メールアドレスが未検証、または一致が
 // 一意でないとき、自動リンクと LoginSession の発行を拒否する。
 //
 // この拒否が漏れると、上流で作れるだけのメールアドレスが既存アカウントの鍵になる。
 // 応答だけを読むテストでは、拒否を書いたうえでリンクとセッションを作る実装を
 // 通してしまうので、関連付けとセッション Cookie の両方を読み直す。
+//
+//spec:covers EX-AUTHENTICATION-002-02: ポリシーが `None`、メールアドレスが未検証、または一致が
 func TestAutoLinkRefusalCreatesNoIdentityAndNoSession(t *testing.T) {
 	verified := federationdomain.NormalizedClaims{
 		Subject: autoLinkSubject, Username: autoLinkEmail, Email: autoLinkEmail, EmailVerified: true,

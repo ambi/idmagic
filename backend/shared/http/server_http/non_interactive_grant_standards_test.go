@@ -476,7 +476,6 @@ func assertOAuthError(t *testing.T, what string, status int, body map[string]any
 	}
 }
 
-// RFC8628-DEVICE-AUTHORIZATION (optional):
 // device_code、user_code、verification_uri を発行し、ResourceOwner の判断を受け付ける。
 //
 // optional の行なので、まず提供していることを確かめる。提供していなければ行の Adoption が
@@ -485,6 +484,8 @@ func assertOAuthError(t *testing.T, what string, status int, body map[string]any
 // Statement が 2 つのことを言っているので観測も 2 つ置く。1 つ目は 3 つの値の発行、
 // 2 つ目は判断の受け付けである。判断の受け付けは、承認と拒否で結果が割れることでしか
 // 読めない。承認だけを見ると、判断を読まずに常に発行する実装と区別できない。
+//
+//spec:covers RFC8628-DEVICE-AUTHORIZATION (optional):
 func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 	browser, _ := fixture.signIn(t)
@@ -522,12 +523,13 @@ func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testi
 	assertOAuthError(t, "拒否された device_code", status, body, "access_denied")
 }
 
-// RFC8628-POLLING:
 // authorization_pending、slow_down、expired_token のポーリングセマンティクスを守る。
 //
 // 3 つのエラーは 3 つとも「まだ出せない」ことを言うが、機械が次に取るべき行動が違う。
 // 同じ待機状態から、間隔だけを変えて 3 つに割れることを 1 本の device_code で読む。
 // 別々のコードで読むと、コードが最初から違っていた場合と区別できない。
+//
+//spec:covers RFC8628-POLLING:
 func TestDeviceCodePollingSemantics(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 
@@ -562,7 +564,6 @@ func TestDeviceCodePollingSemantics(t *testing.T) {
 	assertOAuthError(t, "期限切れの device_code", status, body, "expired_token")
 }
 
-// CIBA-CORE-BACKCHANNEL-REQUEST (optional):
 // クライアント認証済みのバックチャネル認証リクエストを受け付ける。scope は必須で
 // openid を含み、login_hint または id_token_hint のちょうど一方から承認対象の User を
 // 解決し、auth_req_id、expires_in、interval を返す。解決できなければ unknown_user_id で
@@ -574,6 +575,8 @@ func TestDeviceCodePollingSemantics(t *testing.T) {
 //
 // 拒否では承認要求が 1 件も起票されていないことを併せて読む。起票してから拒否する
 // 実装は、本人の承認画面に身に覚えのない要求を並べる。
+//
+//spec:covers CIBA-CORE-BACKCHANNEL-REQUEST (optional):
 func TestBackchannelAuthenticationRequestResolvesExactlyOneHintForAnAuthenticatedClient(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 
@@ -632,7 +635,6 @@ func TestBackchannelAuthenticationRequestResolvesExactlyOneHintForAnAuthenticate
 	}
 }
 
-// CIBA-CORE-POLL-MODE (optional):
 // トークンエンドポイントの CIBA グラントで authorization_pending、slow_down、
 // access_denied、expired_token のポーリングセマンティクスを守り、承認成立後の
 // auth_req_id をちょうど一度だけトークン化する。
@@ -640,6 +642,8 @@ func TestBackchannelAuthenticationRequestResolvesExactlyOneHintForAnAuthenticate
 // Statement が 2 つのことを言っているので観測も 2 つ置く。1 つ目は 4 つのエラーの
 // 出し分け、2 つ目は一度きりの消費である。一度きりは、同じ auth_req_id を 2 回
 // 交換してはじめて読める。
+//
+//spec:covers CIBA-CORE-POLL-MODE (optional):
 func TestCibaPollModeSemanticsAndSingleUseExchange(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 	browser, csrf := fixture.signIn(t)
@@ -695,7 +699,6 @@ func TestCibaPollModeSemanticsAndSingleUseExchange(t *testing.T) {
 	assertOAuthError(t, "消費済みの auth_req_id", status, body, "invalid_grant")
 }
 
-// CIBA-CORE-BINDING-MESSAGE (optional):
 // binding_message を承認画面に表示し、クライアント、要求スコープ、authorization_details と
 // 併せて承認内容を示す。
 //
@@ -704,6 +707,8 @@ func TestCibaPollModeSemanticsAndSingleUseExchange(t *testing.T) {
 // 決められないまま短い文字列だけを見ることになるので、4 つを併せて読む。
 // 画面が実際にその 4 つを描くことは frontend/src/features/account/AccountApprovalsPage.test.tsx
 // が同じ id で読む。
+//
+//spec:covers CIBA-CORE-BINDING-MESSAGE (optional):
 func TestApprovalListCarriesBindingMessageWithTheRequestItBinds(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 	browser, _ := fixture.signIn(t)
@@ -737,7 +742,6 @@ func TestApprovalListCarriesBindingMessageWithTheRequestItBinds(t *testing.T) {
 	}
 }
 
-// CIBA-CORE-PING-PUSH (excluded) / CIBA-CORE-USER-CODE (excluded):
 // ping および push のトークン配信モードは提供せず、user_code パラメーターによる
 // 認証デバイス側の本人確認補助も受け付けない。
 //
@@ -749,6 +753,8 @@ func TestApprovalListCarriesBindingMessageWithTheRequestItBinds(t *testing.T) {
 // そこで観測は「能力を広告していないこと」と「機能を名指しても何も変わらないこと」の
 // 対になる。対照として同じ要求を機能なしで送り、結果が一致することを見る。一致して
 // いれば、その機能はどこにも効いていない。
+//
+//spec:covers CIBA-CORE-PING-PUSH (excluded) / CIBA-CORE-USER-CODE (excluded):
 func TestPingPushDeliveryAndUserCodeAreNotOffered(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 	browser, csrf := fixture.signIn(t)
@@ -821,13 +827,14 @@ func TestPingPushDeliveryAndUserCodeAreNotOffered(t *testing.T) {
 	}
 }
 
-// CIBA-CORE-SIGNED-REQUEST (excluded):
 // 署名済み JWT によるバックチャネル認証リクエストは受け付けない。
 //
 // この行は前の 2 行と違って拒否が起きるので、拒否の型で読む。署名済み JWT だけを
 // 送る要求は通らず、承認要求も起票されない。加えて、平文パラメーターと矛盾する
 // request を送ったとき平文側が効くことを読む。JWT を読んだうえで採用しない実装と、
 // そもそも読んでいない実装は、これでしか区別できない。
+//
+//spec:covers CIBA-CORE-SIGNED-REQUEST (excluded):
 func TestSignedBackchannelRequestObjectIsNotAccepted(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 	browser, _ := fixture.signIn(t)

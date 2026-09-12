@@ -551,9 +551,10 @@ func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 管理 API の一覧が、テナント、状態、種別、レーンで絞り込まれ、
 // キーセットでページを継ぎ、範囲を与えられなければ全件へ退避せず拒否すること。
 // memory の実装と同じ意味論を、実際の SQL に対しても固定する。
+//
+//spec:covers REQ-JOBS-012: 管理 API の一覧が、テナント、状態、種別、レーンで絞り込まれ、
 func TestListForAdmin(t *testing.T) {
 	pool := pgtest.Require(t)
 	resetJobsTable(t, pool)

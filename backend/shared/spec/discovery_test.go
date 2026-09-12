@@ -18,8 +18,9 @@ func TestBuildDiscoveryDocument_AdvertisesClientIDMetadataDocumentSupport(t *tes
 	}
 }
 
-// OIDC-LOGOUT-ENDPOINT: Discovery がテナントの issuer 配下の
 // end_session_endpoint を広告することを固定する。
+//
+//spec:covers OIDC-LOGOUT-ENDPOINT: Discovery がテナントの issuer 配下の
 func TestBuildDiscoveryDocumentAdvertisesEndSessionEndpoint(t *testing.T) {
 	contract := spec.CurrentRuntimeContract()
 	doc, err := contract.BuildDiscoveryDocument("https://idp.example.com/realms/acme")

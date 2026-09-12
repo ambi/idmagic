@@ -490,12 +490,13 @@ func decodeAccountContext(t *testing.T, recorder *httptest.ResponseRecorder) acc
 	return body
 }
 
-// EX-AUTHENTICATION-005-02: 未認証および認証途中のセッションによるアカウント
 // コンテキストの取得は拒否され、応答にアカウント情報も CSRF トークンも含まれない。
 //
 // CSRF トークンは、このエンドポイントが認証済みの呼び出し元へ渡す資格そのものである。
 // 「401 を書いてから本文も書く」実装は、ステータスだけを読むテストを素通りしたまま、
 // 未認証の呼び出し元へ後続の変更操作の鍵を渡してしまう。
+//
+//spec:covers EX-AUTHENTICATION-005-02: 未認証および認証途中のセッションによるアカウント
 func TestAccountContextRefusalLeaksNoContextOrCSRFToken(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 
@@ -543,9 +544,10 @@ func TestAccountContextRefusalLeaksNoContextOrCSRFToken(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-005-03: 許可されたポータルスコープも `account:read` も持たない
 // Bearer トークンによるアカウントコンテキストの取得は拒否され、応答にアカウント情報も
 // CSRF トークンも含まれない。
+//
+//spec:covers EX-AUTHENTICATION-005-03: 許可されたポータルスコープも `account:read` も持たない
 func TestAccountContextWithoutAccountScopeLeaksNoContext(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 
@@ -592,12 +594,13 @@ func (f *authRefusalFixture) recoveryCodeHashes(t *testing.T) []string {
 	return hashes
 }
 
-// EX-AUTHENTICATION-004-02: 対応しないスコープで機密操作の変更を要求すると拒否され、
 // 対象の認証情報は変更されない。
 //
 // 復旧コードの再生成は「古い集合を捨てて新しい集合を配る」操作なので、拒否したうえで
 // 実行も続ける実装は、呼び出し元に何も渡さないまま利用者の復旧手段だけを無効化する。
 // 応答だけを読むテストではその形を捕まえられない。
+//
+//spec:covers EX-AUTHENTICATION-004-02: 対応しないスコープで機密操作の変更を要求すると拒否され、
 func TestAccountApiTokenWithoutMatchingScopeLeavesRecoveryCodesUnchanged(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedRecoveryCodes(t, authRefusalAlice)
@@ -644,8 +647,9 @@ func equalStrings(left, right []string) bool {
 	return true
 }
 
-// EX-AUTHENTICATION-004-03: トークンのテナントまたは `user_id` が操作対象と一致しない
 // 要求は拒否され、対象のセッションは有効なまま残る。
+//
+//spec:covers EX-AUTHENTICATION-004-03: トークンのテナントまたは `user_id` が操作対象と一致しない
 func TestAccountApiTokenAcrossUserAndTenantLeavesSessionsActive(t *testing.T) {
 	t.Run("別ユーザーのセッション", func(t *testing.T) {
 		fixture := newAuthRefusalServer(t)
@@ -699,8 +703,9 @@ func TestAccountApiTokenAcrossUserAndTenantLeavesSessionsActive(t *testing.T) {
 	})
 }
 
-// EX-AUTHENTICATION-004-04: API アクセストークンはステップアップ認証のエンドポイントへ
 // 到達できず、そのトークンではどのセッションのステップアップも成立しない。
+//
+//spec:covers EX-AUTHENTICATION-004-04: API アクセストークンはステップアップ認証のエンドポイントへ
 func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedWebAuthnCredential(t, authRefusalAlice)
@@ -750,12 +755,13 @@ func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-006-02: CSRF トークンが一致しない、または WebAuthn を利用できない
 // ステップアップのチャレンジ要求は拒否され、チャレンジは 1 件も保存されない。
 //
 // チャレンジは保存された時点で「この認証器の提示を受け付ける」という約束になる。
 // 拒否の応答を書いたうえで保存も続ける実装は、応答だけを読むテストを素通りしたまま、
 // CSRF で守るはずだった再認証の入口を開けたままにする。
+//
+//spec:covers EX-AUTHENTICATION-006-02: CSRF トークンが一致しない、または WebAuthn を利用できない
 func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 	t.Run("CSRF トークンが一致しない", func(t *testing.T) {
 		fixture := newAuthRefusalServer(t)
@@ -810,12 +816,13 @@ func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 	})
 }
 
-// EX-AUTHENTICATION-008-02: 同じ識別子と IP の組で上限に達したパスワードリセットの
 // 再要求は `RateLimitedError` で拒否され、リセットトークンも通知も増えない。
 //
 // この経路の応答は成功時も 204 で本文を持たない。呼び出し元にはリセットが行われたか
 // どうかが見えないため、「429 を書いてから発行も続ける」実装はステータスを読むだけの
 // テストを通ってしまい、流量制限が守るはずだった総当たりの費用がゼロに戻る。
+//
+//spec:covers EX-AUTHENTICATION-008-02: 同じ識別子と IP の組で上限に達したパスワードリセットの
 func TestPasswordResetRateLimitIssuesNoTokenAndSendsNoMail(t *testing.T) {
 	const forwardedFor = "198.51.100.7"
 	blocked := newAuthRefusalServer(t, withAuthRefusalRateLimiter("password_reset"))
@@ -856,9 +863,10 @@ func TestPasswordResetRateLimitIssuesNoTokenAndSendsNoMail(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-020-01: `pending_purpose=Enrollment` のセッションは、アカウント・
 // 管理・Application のいずれのリソースにも到達できず、応答にそのリソースの内容が
 // 含まれない。登録の API と元の認可トランザクションだけが残る。
+//
+//spec:covers EX-AUTHENTICATION-020-01: `pending_purpose=Enrollment` のセッションは、アカウント・
 func TestEnrollmentPendingSessionReachesNoOrdinaryResource(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	pending := fixture.seedSession(t, "sess-enrollment", tenancydomain.DefaultTenantID, authRefusalAlice, pendingEnrollment)

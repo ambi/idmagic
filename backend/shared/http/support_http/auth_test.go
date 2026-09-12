@@ -83,9 +83,10 @@ func authTestJKT(t *testing.T, jwk map[string]any) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-// REQ-OAUTH2-045: a DPoP proof at a protected resource is bound to the presented access
 // token through ath. A proof that only demonstrates key possession (no ath), or one made
 // for another token, is rejected.
+//
+//spec:covers REQ-OAUTH2-045: a DPoP proof at a protected resource is bound to the presented access
 func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
 	now := time.Now().UTC()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)

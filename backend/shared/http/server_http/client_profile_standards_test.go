@@ -257,13 +257,14 @@ func cpStrings(t *testing.T, claims map[string]any, field string) []string {
 	return values
 }
 
-// RFC7591-REGISTER (optional): クライアントメタデータを受け取り、`client_id` と
 // 登録結果を返すことを固定する。
 //
 // **採番した `client_id` を返すだけでは足りない。** それでは値を作って捨てる実装が
 // 通ってしまう。返った `client_id` と `client_secret` で実際に認可コードフローを
 // 通し、発行されたトークンがその `client_id` を名乗ることを対にして読む。これに
 // より、応答が「登録結果」であって採番の記録でないことが分かる。
+//
+//spec:covers RFC7591-REGISTER (optional): クライアントメタデータを受け取り、`client_id` と
 func TestDynamicRegistrationReturnsAClientIdentityThatActuallyWorks(t *testing.T) {
 	fixture := newClientProfileFixture(t)
 
@@ -322,12 +323,13 @@ func TestDynamicRegistrationReturnsAClientIdentityThatActuallyWorks(t *testing.T
 	}
 }
 
-// RFC8176-AMR (required): 実際に成立した認証方法を `amr` 値として記録することを
 // 固定する。
 //
 // **成立した方法が載ることと、成立していない方法が載らないことを対で読む。**
 // 片方だけでは、宣言された語彙をそのまま並べる実装と区別できない。ここではパスワード
 // だけで通すので、`pwd` が載り、提示していない第二要素の値は 1 つも載らない。
+//
+//spec:covers RFC8176-AMR (required): 実際に成立した認証方法を `amr` 値として記録することを
 func TestIDTokenRecordsOnlyTheAuthenticationMethodsThatActuallyHappened(t *testing.T) {
 	fixture := newClientProfileFixture(t)
 	tokens := fixture.signIn(t, cpClientID, cpClientSecret)

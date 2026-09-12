@@ -8,7 +8,7 @@ import {
   waitForPage,
 } from './fixtures'
 
-// REQ-SYSTEM-010: 一つの言語選択が認証、アカウント、管理の実画面へ継続して反映される。
+//spec:covers REQ-SYSTEM-010: 一つの言語選択が認証、アカウント、管理の実画面へ継続して反映される。
 test('selected locale renders authentication account and admin surfaces', async () => {
   const view = new Bun.WebView({ width: 1280, height: 1600 })
   try {

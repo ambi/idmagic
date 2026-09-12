@@ -12,7 +12,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
-// REQ-AUTHENTICATION-034: 保存した設定が読み戻せ、行が無い場合は「すべて有効」になる。
+//spec:covers REQ-AUTHENTICATION-034: 保存した設定が読み戻せ、行が無い場合は「すべて有効」になる。
 func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
@@ -61,7 +61,7 @@ func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T
 	}
 }
 
-// REQ-AUTHENTICATION-030: 端末は最初の観測だけが「新しい端末」で、以後は既知になる。
+//spec:covers REQ-AUTHENTICATION-030: 端末は最初の観測だけが「新しい端末」で、以後は既知になる。
 func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

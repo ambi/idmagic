@@ -649,9 +649,10 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	}
 }
 
-// REQ-AUTHENTICATION-018: 管理者が承認していないユーザーはログインを完了できず、
 // 認証要素の登録 API も使えない。ログインの拒否だけを確かめると、拒否された後に
 // 登録 API を直接叩いて認証要素を作る経路が残る。
+//
+//spec:covers REQ-AUTHENTICATION-018: 管理者が承認していないユーザーはログインを完了できず、
 func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApproval(t *testing.T) {
 	srv := newServerWithTOTPPolicy(t, "", true)
 	defer srv.Close()
@@ -1168,12 +1169,13 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-009-01: 無効なユーザーは新規ログインも既存セッションも拒否される。
 // memory user repo に直接 disable を書き戻して、その後のフローを観測する。
 //
 // この拒否の効果は「セッションが使えないまま」なので、応答の種別だけでは足りない。
 // 拒否のあとに保護リソースへもう一度入り、それでも通らないことまで読む。新規ログインの
 // 側も同じで、401 を書いたうえでセッションを張る実装は応答だけでは見分けられない。
+//
+//spec:covers EX-AUTHENTICATION-009-01: 無効なユーザーは新規ログインも既存セッションも拒否される。
 func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	srv, repo := newServerWithUserAccess(t)
 	defer srv.Close()

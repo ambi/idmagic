@@ -164,9 +164,10 @@ func withBrowserCredentials(origin, cookie, header string) func(*http.Request) {
 	}
 }
 
-// REQ-TENANCY-012: クォータ上限の変更は制御面の状態変更であり、Cookie セッションから
 // 呼ぶ場合は Origin と CSRF トークンの一致を要求する。拒否は応答コードだけでなく、
 // 保存ポートが呼ばれないことと保存済みの値が変わらないことまでを含む。
+//
+//spec:covers REQ-TENANCY-012: クォータ上限の変更は制御面の状態変更であり、Cookie セッションから
 func TestUpdateTenantQuotaRefusesCookieSessionWithoutCSRF(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -196,10 +197,11 @@ func TestUpdateTenantQuotaRefusesCookieSessionWithoutCSRF(t *testing.T) {
 	}
 }
 
-// REQ-TENANCY-012: 拒否検査はリクエストボディのデコードより前に立つ。壊れた本文を送っても
 // 400 ではなく CSRF の 403 が返ることで、周囲資格情報を持たない呼び出し元が本文の
 // 妥当性を観測できないことを固定する。検査を本文デコードの後ろへ移す実装は、
 // 副作用を防いだままこの区別だけを失うため、状態の観測だけでは検出できない。
+//
+//spec:covers REQ-TENANCY-012: 拒否検査はリクエストボディのデコードより前に立つ。壊れた本文を送っても
 func TestUpdateTenantQuotaRefusesBeforeDecodingTheBody(t *testing.T) {
 	srv := newQuotaControlPlaneServer(t)
 
@@ -213,8 +215,9 @@ func TestUpdateTenantQuotaRefusesBeforeDecodingTheBody(t *testing.T) {
 	}
 }
 
-// REQ-TENANCY-012: 正しい Origin と double-submit された CSRF トークンを伴う
 // システムコンソールの要求は、これまでどおりクォータ上限を変更できる。
+//
+//spec:covers REQ-TENANCY-012: 正しい Origin と double-submit された CSRF トークンを伴う
 func TestUpdateTenantQuotaAcceptsMatchingOriginAndCSRFToken(t *testing.T) {
 	srv := newQuotaControlPlaneServer(t)
 
@@ -228,9 +231,10 @@ func TestUpdateTenantQuotaAcceptsMatchingOriginAndCSRFToken(t *testing.T) {
 	}
 }
 
-// REQ-TENANCY-012: Authorization ヘッダーで渡す Bearer と DPoP の資格情報は
 // 周囲資格情報ではないため、Cookie の CSRF 検査の対象外である。自動化から
 // クォータを更新する経路をこの変更で塞がないことを固定する。
+//
+//spec:covers REQ-TENANCY-012: Authorization ヘッダーで渡す Bearer と DPoP の資格情報は
 func TestUpdateTenantQuotaAcceptsNonAmbientCredentials(t *testing.T) {
 	for _, scheme := range []string{"Bearer", "DPoP"} {
 		t.Run(scheme, func(t *testing.T) {

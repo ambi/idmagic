@@ -281,11 +281,12 @@ func assertOAuthError(t *testing.T, response *httptest.ResponseRecorder, want st
 	}
 }
 
-// EX-OAUTH2-007-01: 誤った client_secret での認可コード交換は invalid_client で拒否され、
 // 認可コードは消費されない。
 //
 // 「消費されていない」は保存層を覗かず、正しい資格情報での再交換が成功することで示す。
 // 経路が変わっても壊れず、素通りした実装を捕まえる力は落ちないためである。
+//
+//spec:covers EX-OAUTH2-007-01: 誤った client_secret での認可コード交換は invalid_client で拒否され、
 func TestTokenCodeExchangeWithWrongSecretLeavesCodeUnredeemed(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedAuthorizationCode(t, fixture, tenancydomain.DefaultTenantID, "AC1", []string{"openid", "profile"})
@@ -305,8 +306,9 @@ func TestTokenCodeExchangeWithWrongSecretLeavesCodeUnredeemed(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-007-02: 未知の client_id での認可コード交換は invalid_client で拒否され、
 // 認可コードは消費されない。
+//
+//spec:covers EX-OAUTH2-007-02: 未知の client_id での認可コード交換は invalid_client で拒否され、
 func TestTokenCodeExchangeWithUnknownClientLeavesCodeUnredeemed(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedAuthorizationCode(t, fixture, tenancydomain.DefaultTenantID, "AC1", []string{"openid", "profile"})
@@ -323,8 +325,9 @@ func TestTokenCodeExchangeWithUnknownClientLeavesCodeUnredeemed(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-015-01: 認可コードの並行交換はちょうど一方だけ成功し、
 // 発行されるアクセストークンは 1 本だけである。
+//
+//spec:covers EX-OAUTH2-015-01: 認可コードの並行交換はちょうど一方だけ成功し、
 func TestTokenConcurrentCodeExchangeIssuesExactlyOneToken(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedAuthorizationCode(t, fixture, tenancydomain.DefaultTenantID, "AC1", []string{"openid", "profile"})
@@ -360,8 +363,9 @@ func TestTokenConcurrentCodeExchangeIssuesExactlyOneToken(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-021-02: offline_access を要求しない交換ではリフレッシュトークンを発行せず、
 // 保存もしない。
+//
+//spec:covers EX-OAUTH2-021-02: offline_access を要求しない交換ではリフレッシュトークンを発行せず、
 func TestTokenWithoutOfflineAccessIssuesAndStoresNoRefreshToken(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedAuthorizationCode(t, fixture, tenancydomain.DefaultTenantID, "AC1", []string{"openid", "profile"})
@@ -385,8 +389,9 @@ func TestTokenWithoutOfflineAccessIssuesAndStoresNoRefreshToken(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-018-01: 絶対有効期限を過ぎたリフレッシュトークンはローテーションできず、
 // 新しいトークンは発行も保存もされない。
+//
+//spec:covers EX-OAUTH2-018-01: 絶対有効期限を過ぎたリフレッシュトークンはローテーションできず、
 func TestTokenRefreshBeyondAbsoluteLifetimeIssuesNothing(t *testing.T) {
 	fixture := newRefusalServer(t)
 	record := seedRefreshToken(t, fixture, tenancydomain.DefaultTenantID, "RT1",
@@ -413,8 +418,9 @@ func TestTokenRefreshBeyondAbsoluteLifetimeIssuesNothing(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-034-01: 他テナントの認可コードの交換は invalid_grant で拒否され、
 // そのコードは元のテナントで引き続き交換できる。
+//
+//spec:covers EX-OAUTH2-034-01: 他テナントの認可コードの交換は invalid_grant で拒否され、
 func TestTokenCrossTenantAuthorizationCodeIsRejectedAndLeftUsable(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedAuthorizationCode(t, fixture, refusalOtherTenant, "AC1", []string{"openid", "profile"})
@@ -432,8 +438,9 @@ func TestTokenCrossTenantAuthorizationCodeIsRejectedAndLeftUsable(t *testing.T) 
 	}
 }
 
-// EX-OAUTH2-034-03: 他テナントのリフレッシュトークンの再発行は invalid_grant で拒否され、
 // そのトークンは元のテナントで引き続きローテーションできる。
+//
+//spec:covers EX-OAUTH2-034-03: 他テナントのリフレッシュトークンの再発行は invalid_grant で拒否され、
 func TestTokenCrossTenantRefreshTokenIsRejectedAndLeftUsable(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedRefreshToken(t, fixture, refusalOtherTenant, "RT1", time.Now().UTC().Add(time.Hour))
@@ -476,8 +483,9 @@ func seedApprovedDeviceCode(t *testing.T, fixture *refusalFixture, tenantID, dev
 	}
 }
 
-// EX-OAUTH2-034-02: 他テナントに登録されたクライアントでの交換は invalid_client で
 // 拒否され、そのクライアントは元のテナントでは引き続き認証できる。
+//
+//spec:covers EX-OAUTH2-034-02: 他テナントに登録されたクライアントでの交換は invalid_client で
 func TestTokenCrossTenantClientIsRejectedAndLeftUsable(t *testing.T) {
 	fixture := newRefusalServer(t)
 	// acme にだけ存在するクライアント。default 側から見れば未知でなければならない。
@@ -508,8 +516,9 @@ func TestTokenCrossTenantClientIsRejectedAndLeftUsable(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-034-04: 他テナントの device_code の交換は invalid_grant で拒否され、
 // その device_code は元のテナントで引き続き交換できる。
+//
+//spec:covers EX-OAUTH2-034-04: 他テナントの device_code の交換は invalid_grant で拒否され、
 func TestTokenCrossTenantDeviceCodeIsRejectedAndLeftUsable(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedApprovedDeviceCode(t, fixture, refusalOtherTenant, "DC1", "USER-CODE")
@@ -544,8 +553,9 @@ func (s *failingKeyStore) GetActiveKey(context.Context) (*signingdomain.SigningK
 	return nil, errors.New("key provider is unreachable")
 }
 
-// EX-OAUTH2-039-01: KeyProvider が到達不能なときトークン発行は拒否され、
 // トークンも AccessTokenIssued も出ない。
+//
+//spec:covers EX-OAUTH2-039-01: KeyProvider が到達不能なときトークン発行は拒否され、
 func TestTokenIssuanceFailsClosedWhenKeyProviderIsUnreachable(t *testing.T) {
 	keys := &failingKeyStore{}
 	fixture := newRefusalServer(t, func(deps *httpadapter.Deps) {
@@ -592,8 +602,9 @@ func withRateLimiter(limiter rlports.RateLimiter) func(*httpadapter.Deps) {
 	return func(deps *httpadapter.Deps) { deps.RateLimiter = limiter }
 }
 
-// EX-OAUTH2-040-01、EX-OAUTH2-040-02: /token の閾値超過は Retry-After 付きの 429 で
 // 拒否され、認可コードは消費されず、トークンも発行されない。
+//
+//spec:covers EX-OAUTH2-040-01, EX-OAUTH2-040-02: /token の閾値超過は Retry-After 付きの 429 で
 func TestTokenRateLimitRefusalIssuesNothingAndLeavesCodeUnredeemed(t *testing.T) {
 	fixture := newRefusalServer(t, withRateLimiter(&stubRateLimiter{
 		blockedPolicies: map[string]bool{"token": true},
@@ -626,8 +637,9 @@ func TestTokenRateLimitRefusalIssuesNothingAndLeavesCodeUnredeemed(t *testing.T)
 	}
 }
 
-// EX-OAUTH2-040-06: 共有カウンタストアへ到達できないときはフェイルクローズで拒否し、
 // 認可コードもトークンも動かさない。
+//
+//spec:covers EX-OAUTH2-040-06: 共有カウンタストアへ到達できないときはフェイルクローズで拒否し、
 func TestTokenRateLimitFailsClosedWhenSharedCounterIsUnreachable(t *testing.T) {
 	fixture := newRefusalServer(t, withRateLimiter(&stubRateLimiter{
 		err: errors.New("shared counter is unreachable"),
@@ -669,8 +681,9 @@ func seedAccountScopedClient(t *testing.T, fixture *refusalFixture) {
 	})
 }
 
-// EX-OAUTH2-001-02: User の subject を持たない client_credentials が account スコープを
 // 要求すると invalid_scope で拒否され、アクセストークンは発行されない。
+//
+//spec:covers EX-OAUTH2-001-02: User の subject を持たない client_credentials が account スコープを
 func TestTokenClientCredentialsAccountScopeIssuesNoToken(t *testing.T) {
 	fixture := newRefusalServer(t)
 	seedAccountScopedClient(t, fixture)
@@ -739,8 +752,9 @@ func withDPoPProof(proof string) func(*http.Request) {
 
 const refusalTokenHTU = "http://test/realms/default/token"
 
-// EX-OAUTH2-010-02: iat が 60 秒以上古い DPoP 証明を付けた交換は拒否され、
 // トークンは発行されず認可コードも消費されない。
+//
+//spec:covers EX-OAUTH2-010-02: iat が 60 秒以上古い DPoP 証明を付けた交換は拒否され、
 func TestTokenStaleDPoPProofIssuesNothingAndLeavesCodeUnredeemed(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -767,8 +781,9 @@ func TestTokenStaleDPoPProofIssuesNothingAndLeavesCodeUnredeemed(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-010-03: 同一 jti の DPoP 証明を再使用した 2 回目の交換は拒否され、
 // 2 回目ではトークンが発行されない。1 回目のトークンはそのまま有効である。
+//
+//spec:covers EX-OAUTH2-010-03: 同一 jti の DPoP 証明を再使用した 2 回目の交換は拒否され、
 func TestTokenReplayedDPoPJTIIssuesNoSecondToken(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -878,8 +893,9 @@ func assertionExchangeForm(code, assertion string) url.Values {
 	return form
 }
 
-// EX-OAUTH2-028-01: 改ざんされた client_assertion での交換は invalid_client で拒否され、
 // トークンは発行されず認可コードも消費されない。
+//
+//spec:covers EX-OAUTH2-028-01: 改ざんされた client_assertion での交換は invalid_client で拒否され、
 func TestTokenTamperedClientAssertionIssuesNothingAndLeavesCodeUnredeemed(t *testing.T) {
 	fixture := newRefusalServer(t, func(deps *httpadapter.Deps) {
 		deps.OAuth2.ClientAssertionReplayStore = oauth2memory.NewClientAssertionReplayStore()

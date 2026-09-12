@@ -191,8 +191,9 @@ func (f *withdrawalFixture) issuedCodes() int {
 	return count
 }
 
-// GDPR-CONSENT-WITHDRAWAL: ResourceOwner は自分の同意を自分の入口から撤回でき、撤回した
 // 同意は以後どの新規発行にも使われない。撤回前と撤回後で同じ認可要求が別の結末になる。
+//
+//spec:covers GDPR-CONSENT-WITHDRAWAL: ResourceOwner は自分の同意を自分の入口から撤回でき、撤回した
 func TestConsentWithdrawalStopsFurtherIssuance(t *testing.T) {
 	fixture := newWithdrawalFixture(t)
 	fixture.grantConsent(t)

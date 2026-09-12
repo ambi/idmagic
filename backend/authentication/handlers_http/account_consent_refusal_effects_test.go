@@ -157,8 +157,9 @@ func (f *consentRefusalFixture) consentState(t *testing.T, tenantID string) cons
 	return consent.State
 }
 
-// EX-OAUTH2-002-02: account:read だけのトークンによる同意撤回は拒否され、
 // 対象の同意は Granted のまま残る。
+//
+//spec:covers EX-OAUTH2-002-02: account:read だけのトークンによる同意撤回は拒否され、
 func TestRevokeAccountConsentWithReadOnlyScopeLeavesConsentGranted(t *testing.T) {
 	fixture := newConsentRefusalFixture(t)
 	fixture.seedConsent(t, tenancydomain.DefaultTenantID, consentUserID)
@@ -186,13 +187,14 @@ func TestRevokeAccountConsentWithReadOnlyScopeLeavesConsentGranted(t *testing.T)
 	}
 }
 
-// EX-OAUTH2-002-03: トークンのテナントまたは user_id が操作対象と一致しない撤回は
 // 拒否され、対象の同意は Granted のまま残る。
 //
 // user_id の側は、ハンドラが actor も target もトークンの sub に固定するため、
 // 別ユーザーの同意を名指しする経路が URL に存在しない。ここではその固定が
 // 実際に効いていること — 別ユーザーのトークンでは他人の同意が動かないこと — を読む。
 // テナントの側は、レルムをまたいだ提示で確かめる。
+//
+//spec:covers EX-OAUTH2-002-03: トークンのテナントまたは user_id が操作対象と一致しない撤回は
 func TestRevokeAccountConsentAcrossUserAndTenantLeavesConsentGranted(t *testing.T) {
 	t.Run("別ユーザーのトークン", func(t *testing.T) {
 		fixture := newConsentRefusalFixture(t)
@@ -254,13 +256,14 @@ func (f *consentRefusalFixture) listConsents(realm, token string) *httptest.Resp
 	return response
 }
 
-// EX-OAUTH2-002-01: active User に固定された API access トークンについて、
 // `account:read` は自身の active 同意の参照だけを許し、`account:consents:write` は
 // 自身の同意の撤回だけを許す。
 //
 // 「だけ」は 2 つの軸で言われている。操作の軸 (参照と撤回) と、主体の軸 (自身と他人) である。
 // 操作の軸だけを読むと、どのスコープでも他人の同意まで見える実装を通してしまう。
 // 主体の軸だけを読むと、参照スコープで撤回まで通る実装を通してしまう。両方を読む。
+//
+//spec:covers EX-OAUTH2-002-01: active User に固定された API access トークンについて、
 func TestAccountConsentScopesAllowOnlyTheOwnersReadAndRevoke(t *testing.T) {
 	fixture := newConsentRefusalFixture(t)
 	fixture.seedConsent(t, tenancydomain.DefaultTenantID, consentUserID)

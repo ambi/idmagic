@@ -438,8 +438,9 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 // 届くこと。正本文書は Push Groups を能力として宣言しているのに、捕捉から配信
 // までの経路がどこにも配線されておらず、設定は保存され画面は有効と表示しながら
 // 配信は 1 件も生まれていなかった。失敗として現れないぶん、気付く手掛かりが無い。
-// RFC7643-OUT-GROUP-RESOURCES: 接続の `push_groups` が有効なとき、Group を SCIM の
 // Group リソースとして送る。`displayName` の既定の取得元は Group の名前である。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: 接続の `push_groups` が有効なとき、Group を SCIM の
 func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
@@ -571,11 +572,12 @@ func (h *e2eHarness) executePendingGroupDelivery(sourceID string) *domain.Provis
 	return got
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: 送るのは既に下流へ provision 済みのメンバーだけで、
 // 対応関係を持たないメンバーの識別子をこちら側で作ることはしない。
 //
 // メンバーシップの変更が下流への members PATCH まで届くこと。相関の無い User を
 // 送ると、下流はこの接続が持たないリソースを作りかねない。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: 送るのは既に下流へ provision 済みのメンバーだけで、
 func TestE2E_GroupMembership_PatchesOnlyProvisionedMembers(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
@@ -816,13 +818,14 @@ func TestE2E_GroupDeleted_SendsRealDELETE(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: メンバーの除去は送らない。下流の現在のメンバー
 // 集合を読み戻していないので、除くべき相手を知る手段が無く、全置換はこの接続が
 // 追加していないメンバーを消す。
 //
 // 採用の境界の外側は拒否ではなく非提供である。メンバーが抜けた変更は失敗せず、
 // 配信は成功したまま、除去だけが下流に現れない。拒否として実装すると、Group から
 // 1 人外しただけで配信が dead_letter に落ち、以後の追加も届かなくなる。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: メンバーの除去は送らない。下流の現在のメンバー
 func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
@@ -950,11 +953,12 @@ func (f *fakeSCIMDownstream) groupMemberPatches() []recordedRequest {
 	return out
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
 // `GroupPushConfig.display_name_source` が選ぶ。
 //
 // 既定だけを観測しても選択が働いている証拠にはならない。既定は Group の名前であり、
 // 取得元を 1 つも読まない実装でもそこは通る。既定とは違う取得元を選んだ接続を通す。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
 func TestE2E_GroupChange_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()

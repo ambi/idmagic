@@ -98,7 +98,6 @@ func (d *countingDriver) Complete(
 	return d.claims, nil
 }
 
-// OIDC-CORE-CSRF: callback が、login attempt に束縛された単発の state を照合することを
 // 固定する。観測は「値が返ってくること」ではなく「違う値では認可が成立しないこと」で
 // ある。攻撃者が仕込んだ callback — 発行されていない state — が拒否されること、同じ
 // state の 2 度目が拒否されること、そしてどちらの拒否でもセッションが発行されず upstream
@@ -106,6 +105,8 @@ func (d *countingDriver) Complete(
 // 見ると、セッションを作ってから error を返す実装と区別が付かない。
 // 正当な state が同じ条件で成立することを最後に置くのは、拒否がすべて別の理由 (設定漏れ
 // など) で起きていた場合にそれを検出するためである。
+//
+//spec:covers OIDC-CORE-CSRF: callback が、login attempt に束縛された単発の state を照合することを
 func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()

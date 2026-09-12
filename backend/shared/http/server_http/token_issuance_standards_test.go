@@ -335,7 +335,6 @@ func assertNoTokenInBody(t *testing.T, what, body string) {
 	}
 }
 
-// RFC6749-CLIENT-CREDENTIALS (optional) / RFC6749-PASSWORD-GRANT (excluded):
 // Client Credentials Grant は confidential クライアントに限って許可し、
 // Resource Owner Password Credentials Grant は提供しない。
 //
@@ -344,6 +343,8 @@ func assertNoTokenInBody(t *testing.T, what, body string) {
 // 結果としてトークンが 1 つも出ていないこと」の対になる。利用者の正しい資格情報を
 // 載せて送るのが要点である。誤った資格情報で送ると、グラントを提供している実装でも
 // 同じ拒否になり、提供の有無を区別できない。
+//
+//spec:covers RFC6749-CLIENT-CREDENTIALS (optional) / RFC6749-PASSWORD-GRANT (excluded):
 func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 
@@ -378,12 +379,13 @@ func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *test
 }
 
 // RFC9068-CLAIMS / RFC9068-ASYMMETRIC-SIGNATURE / RFC7518-SIGNATURE-ALGORITHMS /
-// RFC7519-REGISTERED-CLAIMS / OIDC-CORE-ID-TOKEN / RFC8707-AUDIENCE:
 // 発行するトークンの中身と署名を、復号した payload から直接読む。
 //
 // 到達できることだけでは足りない。認証が読まない claim は、入口の観測では固定
 // できないからである。署名は、テナントの公開鍵で実際に検証が通ることと、
 // アルゴリズムが非対称であることの両方を読む。
+//
+//spec:covers RFC7519-REGISTERED-CLAIMS / OIDC-CORE-ID-TOKEN / RFC8707-AUDIENCE:
 func TestIssuedTokensCarryTheRegisteredClaimsAndAnAsymmetricSignature(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 	code := fixture.authorizationCode(t, nil)
@@ -391,7 +393,7 @@ func TestIssuedTokensCarryTheRegisteredClaimsAndAnAsymmetricSignature(t *testing
 
 	accessHeader, accessClaims := jwtParts(t, issued.AccessToken)
 
-	// RFC9068-CLAIMS: JWT アクセストークンが列挙された 7 つの claim を持つ。
+	//spec:covers RFC9068-CLAIMS: JWT アクセストークンが列挙された 7 つの claim を持つ。
 	for _, claim := range []string{"iss", "sub", "aud", "exp", "iat", "jti", "client_id"} {
 		if _, ok := accessClaims[claim]; !ok {
 			t.Errorf("アクセストークンに %s が無い: %v", claim, accessClaims)
@@ -401,7 +403,7 @@ func TestIssuedTokensCarryTheRegisteredClaimsAndAnAsymmetricSignature(t *testing
 		t.Errorf("アクセストークンの typ=%v, want at+jwt", accessHeader["typ"])
 	}
 
-	// RFC7519-REGISTERED-CLAIMS: 発行した値が用途に合っている。
+	//spec:covers RFC7519-REGISTERED-CLAIMS: 発行した値が用途に合っている。
 	wantIssuer := tiIssuer + "/realms/default"
 	if accessClaims["iss"] != wantIssuer {
 		t.Errorf("iss=%v, want %q", accessClaims["iss"], wantIssuer)
@@ -421,7 +423,7 @@ func TestIssuedTokensCarryTheRegisteredClaimsAndAnAsymmetricSignature(t *testing
 		t.Error("jti が空である")
 	}
 
-	// RFC8707-AUDIENCE: 空でない audience を持つ。resource 未指定なら client_id。
+	//spec:covers RFC8707-AUDIENCE: 空でない audience を持つ。resource 未指定なら client_id。
 	switch audience := accessClaims["aud"].(type) {
 	case string:
 		if audience == "" {
@@ -438,7 +440,7 @@ func TestIssuedTokensCarryTheRegisteredClaimsAndAnAsymmetricSignature(t *testing
 		t.Errorf("aud=%v が空である", accessClaims["aud"])
 	}
 
-	// RFC9068-ASYMMETRIC-SIGNATURE / RFC7518-SIGNATURE-ALGORITHMS:
+	//spec:covers RFC9068-ASYMMETRIC-SIGNATURE / RFC7518-SIGNATURE-ALGORITHMS:
 	// 署名は PS256 または ES256 であり、対称鍵ではない。
 	for name, header := range map[string]map[string]any{
 		"access_token": accessHeader,
@@ -459,7 +461,7 @@ func TestIssuedTokensCarryTheRegisteredClaimsAndAnAsymmetricSignature(t *testing
 	// 署名が対応する鍵で作られたことの証拠にならない。
 	assertVerifiableWithPublishedKey(t, fixture.base, issued.AccessToken)
 
-	// OIDC-CORE-ID-TOKEN: ID トークンが 5 つの claim と認証コンテキストを持つ。
+	//spec:covers OIDC-CORE-ID-TOKEN: ID トークンが 5 つの claim と認証コンテキストを持つ。
 	_, idClaims := jwtParts(t, issued.IDToken)
 	for _, claim := range []string{"iss", "sub", "aud", "exp", "iat"} {
 		if _, ok := idClaims[claim]; !ok {
@@ -519,13 +521,14 @@ func assertVerifiableWithPublishedKey(t *testing.T, base, token string) {
 	t.Fatalf("kid=%q の公開鍵が JWKS に無い。公開鍵での検証ができない: %s", kid, body)
 }
 
-// RFC8707-MCP-RESOURCE-BINDING:
 // `resource` で指定された McpResourceServer に audience を厳格に限定し、未登録・無効・
 // 複数指定は fail-closed で拒否する。`resource` が未指定なら client_id を audience とする。
 //
 // 行は「全経路へ一様に適用する」と言っているので、認可コードの交換と
 // client_credentials の 2 経路で同じ観測を繰り返す。1 経路だけを見るテストは、
 // 別の経路で検査が抜けている実装を通してしまう。
+//
+//spec:covers RFC8707-MCP-RESOURCE-BINDING:
 func TestAccessTokenAudienceIsBoundToTheRequestedResource(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 
@@ -593,13 +596,14 @@ func TestAccessTokenAudienceIsBoundToTheRequestedResource(t *testing.T) {
 	}
 }
 
-// RFC9700-REFRESH-REPLAY:
 // リフレッシュトークンをローテーションし、再利用を検知したら関連トークンを失効させる。
 //
 // Statement が 2 つのことを言っているので、観測も 2 つ置く。1 つ目はローテーション
 // （交換のたびに別の値が返り、古い値は使えない）、2 つ目は再利用の検知が「その 1 本」
 // ではなく family を落とすことである。後者を読まないと、古い値を拒否するだけで
 // 攻撃者が先に奪った新しい値を生かし続ける実装が通る。
+//
+//spec:covers RFC9700-REFRESH-REPLAY:
 func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 	code := fixture.authorizationCode(t, nil)
@@ -644,7 +648,6 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 }
 
 // RFC8693-DELEGATION-DEFAULT / RFC8693-IMPERSONATION (optional) /
-// RFC8693-SUBJECT-TOKEN / RFC8693-DELEGATION-DEPTH:
 // 交換の既定は委譲であり、`sub` は元の利用者のまま、現在の行為者が `act` に入り、
 // 以前の行為者は §4.1 に従って内側へ入れ子になる。受け付ける `subject_token` は
 // 自身が発行しイントロスペクションを通過したものに限る。`act` チェーンの長さは
@@ -653,6 +656,8 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 // なりすまし（`act` を落として `sub` を置き換える形）は、明示的に許可した場合だけ
 // 受け付ける。製品はその許可を持たないので、観測は「どの交換でも `sub` が入れ替わらず
 // `act` が必ず載る」ことになる。
+//
+//spec:covers RFC8693-SUBJECT-TOKEN / RFC8693-DELEGATION-DEPTH:
 func TestTokenExchangeDelegatesByDefaultAndBoundsTheActorChain(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 	code := fixture.authorizationCode(t, nil)
@@ -667,7 +672,7 @@ func TestTokenExchangeDelegatesByDefaultAndBoundsTheActorChain(t *testing.T) {
 		})
 	}
 
-	// RFC8693-DELEGATION-DEFAULT / RFC8693-IMPERSONATION:
+	//spec:covers RFC8693-DELEGATION-DEFAULT / RFC8693-IMPERSONATION:
 	// 既定の交換は sub を保ち、act に現在の行為者を入れる。
 	status, body := exchange(subject.AccessToken)
 	if status != http.StatusOK {
@@ -711,7 +716,7 @@ func TestTokenExchangeDelegatesByDefaultAndBoundsTheActorChain(t *testing.T) {
 		t.Fatalf("以前の行為者が内側へ入れ子になっていない: %v", secondAct)
 	}
 
-	// RFC8693-SUBJECT-TOKEN: 自身が発行していないトークンは受け付けない。
+	//spec:covers RFC8693-SUBJECT-TOKEN: 自身が発行していないトークンは受け付けない。
 	for name, token := range map[string]string{
 		"JWT ではない不透明な値":  "not-a-token",
 		"claim を差し替えた偽物": tamperedSubject(t, subject.AccessToken),
@@ -725,7 +730,7 @@ func TestTokenExchangeDelegatesByDefaultAndBoundsTheActorChain(t *testing.T) {
 		})
 	}
 
-	// RFC8693-DELEGATION-DEPTH: テナントが上限を下げると、その深さを超える
+	//spec:covers RFC8693-DELEGATION-DEPTH: テナントが上限を下げると、その深さを超える
 	// チェーンは拒否される。ここで観測しているのは、解決器が `/token` へ
 	// 配線されていることである。上限そのものの規則は
 	// backend/oauth2/token/usecases/exchange_token_delegation_policy_test.go が持つ。
@@ -771,11 +776,12 @@ func tamperedSubject(t *testing.T, token string) string {
 	return parts[0] + "." + base64.RawURLEncoding.EncodeToString(raw) + "." + parts[2]
 }
 
-// RFC7523-CLIENT-ASSERTION (optional):
 // クライアントアサーションの署名、発行者、subject、audience、有効期限、`jti` を
 // 検証する。6 つの要素それぞれについて、1 つだけを崩したアサーションが拒否される
 // ことを読む。崩していないアサーションが通ることを対照に置くので、拒否の理由が
 // 崩した 1 か所であることが分かる。
+//
+//spec:covers RFC7523-CLIENT-ASSERTION (optional):
 func TestClientAssertionVerifiesEveryDeclaredElement(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 	// audience は httptest の URL ではなく、製品が発行者として名乗る値である。

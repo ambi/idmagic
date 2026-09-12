@@ -21,11 +21,12 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// EX-AUTHENTICATION-021-02: 他テナントの管理者による対象ユーザーのセッション操作は
 // 拒否され、対象ユーザーのセッションは失効しない。
 //
 // 失効は 204 を返す操作なので、拒否と成功は本文で見分けられない。各操作のあとに
 // 対象のセッションを読み直して、tombstone が付いていないことを確かめる。
+//
+//spec:covers EX-AUTHENTICATION-021-02: 他テナントの管理者による対象ユーザーのセッション操作は
 func TestAdminSessionOperationsAcrossTenantsRevokeNothing(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	target := fixture.seedSession(t, "sess-target", tenancydomain.DefaultTenantID, authRefusalAlice)
@@ -95,8 +96,9 @@ func TestAdminSessionRevokeFromOwnRealmDoesNotReachAnotherTenant(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-022-02: 他テナントの管理者、または `admin` ロールを持たない操作者に
 // よる認証器のリセットは拒否され、対象ユーザーの認証器は変更されない。
+//
+//spec:covers EX-AUTHENTICATION-022-02: 他テナントの管理者、または `admin` ロールを持たない操作者に
 func TestAdminAuthenticatorResetRefusalLeavesAuthenticatorsUnchanged(t *testing.T) {
 	const seededSecret = "MFRGGZDFMZTWQ2LKNNWG23TPOB2XI4TJ"
 
@@ -193,9 +195,10 @@ func (f *authRefusalFixture) connectionNames(t *testing.T, tenantID string) map[
 	return names
 }
 
-// EX-AUTHENTICATION-025-02: API アクセストークンは、どのスコープを持っていても外部 IdP
 // 接続の管理へ到達できない。拒否は `insufficient_scope` で、必要な資格として対話
 // セッションを提示する。接続は作成も更新もされない。
+//
+//spec:covers EX-AUTHENTICATION-025-02: API アクセストークンは、どのスコープを持っていても外部 IdP
 func TestApiTokenCannotManageIdentityProviderConnections(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")
@@ -255,8 +258,9 @@ func TestApiTokenCannotManageIdentityProviderConnections(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-003-02: ステップアップ認証が古い、または行われていないセッションに
 // よる外部アイデンティティのリンクと解除は拒否され、どちらも反映されない。
+//
+//spec:covers EX-AUTHENTICATION-003-02: ステップアップ認証が古い、または行われていないセッションに
 func TestExternalIdentityLinkAndUnlinkWithoutStepUpChangeNothing(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")
@@ -302,8 +306,9 @@ func TestExternalIdentityLinkAndUnlinkWithoutStepUpChangeNothing(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-003-03: パスワード資格情報も他の外部アイデンティティのリンクも
 // 残らなくなる解除は締め出しを防ぐために拒否され、そのリンクは残る。
+//
+//spec:covers EX-AUTHENTICATION-003-03: パスワード資格情報も他の外部アイデンティティのリンクも
 func TestSoleFederatedIdentityUnlinkKeepsTheLink(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")

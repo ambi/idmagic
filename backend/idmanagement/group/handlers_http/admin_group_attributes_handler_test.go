@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// REQ-IDMANAGEMENT-024: 管理者はグループの連絡先メールとカスタム属性を、テナント定義の
+//spec:covers REQ-IDMANAGEMENT-024: 管理者はグループの連絡先メールとカスタム属性を、テナント定義の
 // スキーマに従って設定できる。
 
 import (

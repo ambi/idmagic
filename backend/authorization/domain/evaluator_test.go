@@ -68,7 +68,7 @@ func documentModel() *domain.AuthorizationModel {
 
 func user(id string) domain.SubjectRef { return domain.SubjectRef{Type: "user", ID: id} }
 
-// REQ-AUTHORIZATION-003: 直接・グループ・継承・親子のいずれの経路でも関係に到達する。
+//spec:covers REQ-AUTHORIZATION-003: 直接・グループ・継承・親子のいずれの経路でも関係に到達する。
 func TestCheckTraversesGroupAndParent(t *testing.T) {
 	model := documentModel()
 	reader := newReader(map[string][]domain.SubjectRef{
@@ -118,7 +118,7 @@ func TestCheckTraversesGroupAndParent(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-003: 経路にオブジェクト識別子と主体識別子を含めない。
+//spec:covers REQ-AUTHORIZATION-003: 経路にオブジェクト識別子と主体識別子を含めない。
 func TestCheckPathOmitsIdentifiers(t *testing.T) {
 	model := documentModel()
 	reader := newReader(map[string][]domain.SubjectRef{
@@ -140,7 +140,7 @@ func TestCheckPathOmitsIdentifiers(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-005: 循環・深さ超過・未知の関係はいずれも許可しない。
+//spec:covers REQ-AUTHORIZATION-005: 循環・深さ超過・未知の関係はいずれも許可しない。
 func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 	// tuple_to_userset の循環はタプル側でしか作れないので、親をたがいに指すデータで作る。
 	model := documentModel()
@@ -191,7 +191,7 @@ func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-005: ストア障害は許可へ退避せず error として上へ返す。
+//spec:covers REQ-AUTHORIZATION-005: ストア障害は許可へ退避せず error として上へ返す。
 func TestCheckPropagatesStoreFailure(t *testing.T) {
 	model := documentModel()
 	reader := newReader(map[string][]domain.SubjectRef{"document:a#viewer": {user("alice")}})
@@ -206,7 +206,7 @@ func TestCheckPropagatesStoreFailure(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-005: モデルが受け入れなくなった形の既存タプルは数えない。
+//spec:covers REQ-AUTHORIZATION-005: モデルが受け入れなくなった形の既存タプルは数えない。
 func TestCheckIgnoresSubjectFormsTheModelNoLongerAccepts(t *testing.T) {
 	model := documentModel()
 	reader := newReader(map[string][]domain.SubjectRef{

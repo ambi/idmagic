@@ -152,7 +152,7 @@ func TestParsePrompt(t *testing.T) {
 	}
 }
 
-// Contract: OIDC-CORE-CODE-FLOW の prompt token grammar。
+//spec:covers OIDC-CORE-CODE-FLOW: 契約が定める prompt token grammar を固定する。
 func TestParsePromptTokens(t *testing.T) {
 	for _, tt := range []struct {
 		input   string

@@ -146,8 +146,9 @@ func trustedDeviceCookieOf(t *testing.T, client *http.Client, base string) *http
 	return findCookie(client.Jar.Cookies(parsed), trustedDeviceCookieName)
 }
 
-// REQ-AUTHENTICATION-026: 第二要素の成立時に同意した端末は、次のログインで第二要素を
 // 省略でき、そのたびに verifier が回転する。
+//
+//spec:covers REQ-AUTHENTICATION-026: 第二要素の成立時に同意した端末は、次のログインで第二要素を
 func TestTrustedDeviceSkipsTheSecondFactorOnTheNextLogin(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -176,7 +177,7 @@ func TestTrustedDeviceSkipsTheSecondFactorOnTheNextLogin(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-026: 同意しなければ記憶しない。
+//spec:covers REQ-AUTHENTICATION-026: 同意しなければ記憶しない。
 func TestTrustedDeviceIsNotIssuedWithoutConsent(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -196,7 +197,7 @@ func TestTrustedDeviceIsNotIssuedWithoutConsent(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-026: テナントが機能を無効にしていれば、同意しても記憶しない。
+//spec:covers REQ-AUTHENTICATION-026: テナントが機能を無効にしていれば、同意しても記憶しない。
 func TestTrustedDeviceIsNotIssuedWhenTheTenantDisablesIt(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{totpSecret: secret, requireMFA: true})
@@ -217,7 +218,7 @@ func TestTrustedDeviceIsNotIssuedWhenTheTenantDisablesIt(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-027: allow_trusted_device=false のアプリは毎回 MFA を要求する。
+//spec:covers REQ-AUTHENTICATION-027: allow_trusted_device=false のアプリは毎回 MFA を要求する。
 func TestTrustedDeviceIsIgnoredWhenThePolicyRequiresMfaEveryTime(t *testing.T) {
 	secret := totpTestSecret
 	deny := false
@@ -239,8 +240,9 @@ func TestTrustedDeviceIsIgnoredWhenThePolicyRequiresMfaEveryTime(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-027: 別のブラウザーが持ち出した cookie でも、回転後の値でなければ
 // 第二要素を省略できない。
+//
+//spec:covers REQ-AUTHENTICATION-027: 別のブラウザーが持ち出した cookie でも、回転後の値でなければ
 func TestTrustedDeviceRejectsTheCookieFromBeforeRotation(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -268,7 +270,7 @@ func TestTrustedDeviceRejectsTheCookieFromBeforeRotation(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-027: 改竄した cookie は第二要素を省略できない。
+//spec:covers REQ-AUTHENTICATION-027: 改竄した cookie は第二要素を省略できない。
 func TestTrustedDeviceRejectsATamperedCookie(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -291,8 +293,9 @@ func TestTrustedDeviceRejectsATamperedCookie(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-029: 信頼済みデバイスで成立したセッションはステップアップ済みでは
 // なく、機微操作には再認証が要る。
+//
+//spec:covers REQ-AUTHENTICATION-029: 信頼済みデバイスで成立したセッションはステップアップ済みでは
 func TestTrustedDeviceDoesNotSatisfyStepUp(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -325,8 +328,9 @@ func TestTrustedDeviceDoesNotSatisfyStepUp(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-028: パスワードを変えると記憶済みの端末はすべて失効し、次回の
 // ログインで第二要素が再び要求される。
+//
+//spec:covers REQ-AUTHENTICATION-028: パスワードを変えると記憶済みの端末はすべて失効し、次回の
 func TestTrustedDeviceIsRevokedWhenThePasswordChanges(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -348,7 +352,7 @@ func TestTrustedDeviceIsRevokedWhenThePasswordChanges(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-028: 認証要素を解除すると記憶済みの端末はすべて失効する。
+//spec:covers REQ-AUTHENTICATION-028: 認証要素を解除すると記憶済みの端末はすべて失効する。
 func TestTrustedDeviceIsRevokedWhenTheSecondFactorIsRemoved(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -374,7 +378,7 @@ func TestTrustedDeviceIsRevokedWhenTheSecondFactorIsRemoved(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-029: 本人はステップアップ再認証のうえで記憶を個別に取り消せる。
+//spec:covers REQ-AUTHENTICATION-029: 本人はステップアップ再認証のうえで記憶を個別に取り消せる。
 func TestTrustedDeviceSelfRevocation(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{

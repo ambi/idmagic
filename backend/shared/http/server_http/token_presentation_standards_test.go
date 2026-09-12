@@ -514,7 +514,6 @@ func tpDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, in tpDPo
 // RFC 6750 — Bearer Token Usage
 // =====================================================================
 
-// RFC6750-AUTHORIZATION-HEADER (required) / RFC6750-QUERY-TOKEN (excluded):
 // ベアラーアクセストークンを受け付ける提示の形は Authorization ヘッダーだけであり、
 // URI のクエリパラメーターによる提示は提供していない。
 //
@@ -522,6 +521,8 @@ func tpDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, in tpDPo
 // 観測は「その提示が通らないこと」と「通らなかった結果として主体が漏れていないこと」の
 // 対になる。同じ 1 本のトークンをヘッダーとクエリで送り分けるのが要点である。別々の
 // トークンで比べると、最初から無効だった実装と区別できない。
+//
+//spec:covers RFC6750-AUTHORIZATION-HEADER (required) / RFC6750-QUERY-TOKEN (excluded):
 func TestBearerTokenIsAcceptedOnlyFromTheAuthorizationHeader(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	issued := fixture.userToken(t, "openid profile")
@@ -576,12 +577,13 @@ func TestBearerTokenIsAcceptedOnlyFromTheAuthorizationHeader(t *testing.T) {
 // OpenID Connect Core 1.0 — UserInfo
 // =====================================================================
 
-// OIDC-CORE-USERINFO (required): `openid` スコープのアクセストークンに対して
 // `sub` を含む UserInfo を返す。
 //
 // 200 が返ることだけでは足りない。`sub` が誰のものかを読まないと、別の利用者の
 // 主体を返す実装を見分けられない。スコープが効いていることは、`openid` を持たない
 // トークンと対で読む。`openid` の有無だけが違う 2 本を、同じ利用者について作る。
+//
+//spec:covers OIDC-CORE-USERINFO (required): `openid` スコープのアクセストークンに対して
 func TestUserInfoReturnsTheSubjectForAnOpenIDScopedToken(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -616,7 +618,6 @@ func TestUserInfoReturnsTheSubjectForAnOpenIDScopedToken(t *testing.T) {
 // RFC 7662 — Token Introspection
 // =====================================================================
 
-// RFC7662-INTROSPECT (required): 認証済みのリソースサーバーへ `active` と
 // 許可されたメタデータを返す。
 //
 // 返した値が、提示したトークンそのもののものであることを 1 つずつ照合する。
@@ -625,6 +626,8 @@ func TestUserInfoReturnsTheSubjectForAnOpenIDScopedToken(t *testing.T) {
 //
 // 「認証済みの」という限定は、認証を持たない同じリクエストが同じ答えを得ないこと
 // でしか読めない。認証なしの内省を対に置く。
+//
+//spec:covers RFC7662-INTROSPECT (required): 認証済みのリソースサーバーへ `active` と
 func TestIntrospectionAnswersAuthenticatedResourceServers(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	issued := fixture.userToken(t, "openid profile offline_access")
@@ -700,12 +703,12 @@ func TestIntrospectionAnswersAuthenticatedResourceServers(t *testing.T) {
 	}
 }
 
-// RFC7662-INACTIVE (required): 無効なトークンには `active=false` だけを返す。
-//
 // `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
 // 4 通りの入力が同じ 1 つの本文になることが、存在を漏らさないということである。
 // 未知のトークンと失効済みのトークンを見分けられる応答は、その差だけで
 // 「そのトークンは実在した」と告げてしまう。
+//
+//spec:covers RFC7662-INACTIVE (required): 無効なトークンには `active=false` だけを返す。
 func TestIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -756,7 +759,6 @@ func TestIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 // RFC 7009 — Token Revocation
 // =====================================================================
 
-// RFC7009-REVOCATION-ENDPOINT (required): 認証済みクライアントへトークン失効
 // エンドポイントを提供する。
 //
 // 失効は失効前の成功と対で観測する。失効後の拒否だけでは、そのトークンが最初から
@@ -766,6 +768,8 @@ func TestIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 // 「認証済みクライアントへ」の限定は、認証を持たない失効要求が同じ効果を持たない
 // ことでしか読めない。資格情報を欠いた要求の後もトークンが生きていることを、
 // 応答ではなく保護リソースへの到達で確かめる。
+//
+//spec:covers RFC7009-REVOCATION-ENDPOINT (required): 認証済みクライアントへトークン失効
 func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -808,7 +812,6 @@ func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 	assertNoTokenInBody(t, "失効させたリフレッシュトークン", body)
 }
 
-// RFC7009-UNKNOWN-TOKEN (required): 無効または他クライアント所有のトークンに対しても
 // 成功応答を返し、情報を漏らさない。
 //
 // 3 通りの入力の応答が状態コードも本文も区別できないことを読む。片方だけを読む
@@ -816,6 +819,8 @@ func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 // 実装は見逃す。併せて、他クライアント所有のトークンが巻き添えで失効していない
 // ことを、応答ではなく保護リソースへの到達で確かめる。成功応答を返しながら
 // 失効させる実装は、応答だけを見るテストでは通ってしまう。
+//
+//spec:covers RFC7009-UNKNOWN-TOKEN (required): 無効または他クライアント所有のトークンに対しても
 func TestRevokingAnUnknownOrForeignTokenIsAnIndistinguishableNoOp(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -867,7 +872,6 @@ func TestRevokingAnUnknownOrForeignTokenIsAnIndistinguishableNoOp(t *testing.T) 
 // RFC 7800 / RFC 9700 — 確認鍵と送信者制約
 // =====================================================================
 
-// RFC7800-CONFIRMATION (optional) / RFC9700-SENDER-CONSTRAINT (optional):
 // 送信者制約付きトークンの確認鍵情報を `cnf` クレームに格納し、送信者制約は
 // DPoP と mTLS の 2 通りから選べる。
 //
@@ -877,6 +881,8 @@ func TestRevokingAnUnknownOrForeignTokenIsAnIndistinguishableNoOp(t *testing.T) 
 // `cnf` は復号した payload から直接読む。到達できるかどうかの観測では、確認鍵を
 // 内省の応答でだけ組み立てる実装 (トークン自体には載せない実装) を見分けられない。
 // 併せて、載っている確認鍵が飾りでないことを、鍵を持たない提示が拒否されることで読む。
+//
+//spec:covers RFC7800-CONFIRMATION (optional) / RFC9700-SENDER-CONSTRAINT (optional):
 func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	key, jwk, jkt := tpDPoPKey(t)
@@ -970,7 +976,6 @@ func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 // RFC 8705 — mTLS クライアント認証と証明書束縛トークン
 // =====================================================================
 
-// RFC8705-CLIENT-AUTH (optional) / RFC8705-CERT-BOUND (optional):
 // 登録済みの Subject DN と検証済みクライアント証明書を照合してクライアントを認証し、
 // 発行したアクセストークンを証明書のサムプリントへ束縛して、リソースへのアクセス時に
 // 照合する。
@@ -978,6 +983,8 @@ func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 // 照合が働いていることは、別の Subject DN を持つ正しい形式の証明書で読む。壊れた
 // ヘッダーでは形式の検証で先に落ちるので、照合が無い実装でも同じ拒否になる。
 // 束縛の側も同じで、別の正しい証明書を提示して、サムプリントの一致だけが差になる形で読む。
+//
+//spec:covers RFC8705-CLIENT-AUTH (optional) / RFC8705-CERT-BOUND (optional):
 func TestMutualTLSAuthenticatesTheClientAndBindsTheAccessTokenToItsCertificate(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	registered, thumbprint := tpClientCertificate(t, "token-presentation-mtls-client")
@@ -1041,7 +1048,6 @@ func TestMutualTLSAuthenticatesTheClientAndBindsTheAccessTokenToItsCertificate(t
 // RFC 9449 — DPoP
 // =====================================================================
 
-// RFC9449-PROOF (optional) / RFC9449-ATH (optional):
 // DPoP proof の署名、`htm`、`htu`、`iat`、`jti` を検証し、保護リソースへ提示する
 // proof には `ath` を要求して `base64url(SHA-256(access_token))` と照合する。
 //
@@ -1053,6 +1059,8 @@ func TestMutualTLSAuthenticatesTheClientAndBindsTheAccessTokenToItsCertificate(t
 // 1 度成功した時点でコードが消えるので、`jti` のリプレイを「同じ入力の 2 回目」
 // として送れない。`ath` はトークンエンドポイントでは要求されない (RFC 9449 §4.3:
 // 束縛先のアクセストークンがまだ存在しない) ので、保護リソース側で観測する。
+//
+//spec:covers RFC9449-PROOF (optional) / RFC9449-ATH (optional):
 func TestDPoPProofElementsAreVerifiedAtTheTokenEndpointAndTheProtectedResource(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	key, jwk, jkt := tpDPoPKey(t)

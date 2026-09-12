@@ -16,9 +16,10 @@ func TestLoadSharedConfigPostgresRequiresDatabaseURL(t *testing.T) {
 }
 
 // TestLoadSharedConfigPostgresRequiresExplicitKeyProvider covers
-// REQ-SIGNINGKEYS-012: 鍵素材が永続化される配備では鍵の保管先を運用者が選ぶ。
 // 未指定を既定として通すと、秘密鍵がバックアップに入る構成が誰も選ばないまま
 // 成立する。
+//
+//spec:covers REQ-SIGNINGKEYS-012: 鍵素材が永続化される配備では鍵の保管先を運用者が選ぶ。
 func TestLoadSharedConfigPostgresRequiresExplicitKeyProvider(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(map[string]string{
@@ -133,8 +134,9 @@ func TestLoadSharedConfigDataKeyProviderOpenBaoRequiresAddrAndToken(t *testing.T
 }
 
 // TestLoadSharedConfigReportsEveryUnrelatedProblemTogether guards
-// REQ-SYSTEM-016: independent problems across unrelated fields must all
 // surface from one LoadSharedConfig call instead of stopping at the first.
+//
+//spec:covers REQ-SYSTEM-016: independent problems across unrelated fields must all
 func TestLoadSharedConfigReportsEveryUnrelatedProblemTogether(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(map[string]string{

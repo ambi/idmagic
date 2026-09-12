@@ -15,7 +15,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
-// REQ-IDMANAGEMENT-024: 管理者はグループの連絡先メールとカスタム属性を、テナント定義の
+//spec:covers REQ-IDMANAGEMENT-024: 管理者はグループの連絡先メールとカスタム属性を、テナント定義の
 // スキーマに従って設定できる。
 
 func TestCreateGroupWithEmailAndValidAttributes(t *testing.T) {

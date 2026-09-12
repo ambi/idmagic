@@ -40,7 +40,7 @@ func (*completingFederationDriver) Complete(context.Context, federationdomain.Id
 	return federationdomain.NormalizedClaims{Subject: "external-user", Username: "alice@example.com"}, nil
 }
 
-// REQ-AUTHENTICATION-001: 外部 IdP の callback を正式入口から完了し、既存の相関先 User に対するログイン session を発行する。
+//spec:covers REQ-AUTHENTICATION-001: 外部 IdP の callback を正式入口から完了し、既存の相関先 User に対するログイン session を発行する。
 func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 	now := time.Now().UTC()
 	repos := federationmemory.NewRepositories()
@@ -100,7 +100,7 @@ func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 	if err != nil || authn == nil || authn.UserID != "user-alice" {
 		t.Fatalf("authn=%+v err=%v", authn, err)
 	}
-	// RFC8176-AMR-VOCABULARY: 連合ログインが発行する `federated` が語彙の内側にあることを
+	//spec:covers RFC8176-AMR-VOCABULARY: 連合ログインが発行する `federated` が語彙の内側にあることを
 	// 固定する。語彙の検査は保存の直前に掛かるので、`federated` が語彙から落ちれば callback
 	// はここまで到達しない。宣言と実装が食い違っていた時期の帰結がこれであり、語彙を
 	// 締める変更が正規の経路を止めていないことの対照でもある (wi-508)。

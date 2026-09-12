@@ -265,7 +265,10 @@ describe('文書検査', () => {
       ].join('\n'),
     )
     await mkdir(join(root, 'backend'), { recursive: true })
-    await writeFile(join(root, 'backend', 'demo_test.go'), 'package demo\n\n// EX-DEMO-002-01\n')
+    await writeFile(
+      join(root, 'backend', 'demo_test.go'),
+      'package demo\n\n//spec:covers EX-DEMO-002-01: 正常な要求が通ることを固定する。\n',
+    )
 
     expect((await checkDocuments(root)).code).toBe(0)
   })

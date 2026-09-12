@@ -36,7 +36,7 @@ func (unmanagedImportUsers) SourceManagedUserIDs(_ context.Context, _ string, id
 	return managed, nil
 }
 
-// REQ-IDMANAGEMENT-004: 管理 API の preview/apply と worker の二段階を通し、有効な CSV 行が User repository へ反映されることを確認する。
+//spec:covers REQ-IDMANAGEMENT-004: 管理 API の preview/apply と worker の二段階を通し、有効な CSV 行が User repository へ反映されることを確認する。
 func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	users := usermemory.NewUserRepository()

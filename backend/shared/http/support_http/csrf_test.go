@@ -41,7 +41,7 @@ func TestVerifyBrowserRequest(t *testing.T) {
 		}
 	})
 
-	// EX-PLATFORM-004-01: Origin の不一致は InvalidOriginError で拒否する。
+	//spec:covers EX-PLATFORM-004-01: Origin の不一致は InvalidOriginError で拒否する。
 	t.Run("rejects a mismatched or missing origin", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodPost, "/x", http.NoBody)
@@ -56,7 +56,7 @@ func TestVerifyBrowserRequest(t *testing.T) {
 		}
 	})
 
-	// EX-PLATFORM-004-02: double-submit 値の不一致は CsrfFailedError で拒否する。
+	//spec:covers EX-PLATFORM-004-02: double-submit 値の不一致は CsrfFailedError で拒否する。
 	t.Run("rejects a matching origin without a CSRF cookie", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodPost, "/x", http.NoBody)

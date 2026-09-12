@@ -66,8 +66,9 @@ func (f *credentialCascadeFixture) counts(t *testing.T, sub string) (int, int) {
 	return len(credentials), len(codes)
 }
 
-// GDPR-ERASURE: 管理 API の消去要求が、Authentication が持つ WebAuthn 資格情報と
 // リカバリコードまで届く。届かせているのは本番の配線なので、入口も本番と同じにする。
+//
+//spec:covers GDPR-ERASURE: 管理 API の消去要求が、Authentication が持つ WebAuthn 資格情報と
 func TestAdminUserAPIPurgeDestroysWebAuthnCredentialsAndRecoveryCodes(t *testing.T) {
 	fixture := &credentialCascadeFixture{
 		credentials: webauthnmemory.NewWebAuthnCredentialRepository(),

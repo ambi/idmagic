@@ -1,6 +1,6 @@
 package client_scim
 
-// RFC7644-OUT-AUTHENTICATION: 接続が `oauth2_client_credentials` を選んだとき、
+//spec:covers RFC7644-OUT-AUTHENTICATION: 接続が `oauth2_client_credentials` を選んだとき、
 // 下流へ提示するのはクライアント資格情報フロー (RFC 6749 §4.4) で取得した
 // アクセストークンでなければならない。保存した client_secret をそのまま
 // ベアラートークンとして送ると、下流が正しく実装されていれば必ず 401 になり、

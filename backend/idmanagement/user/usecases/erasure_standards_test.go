@@ -92,8 +92,9 @@ func (f *erasureFixture) readablePII(t *testing.T) []string {
 	return found
 }
 
-// GDPR-ERASURE: Purge 遷移を経た User からは、投入した PII をどの経路でも読み出せない。
 // 消去の事実そのもの (tombstone と UserDeleted) は法的保存義務の側として残る。
+//
+//spec:covers GDPR-ERASURE: Purge 遷移を経た User からは、投入した PII をどの経路でも読み出せない。
 func TestUserPurgeLeavesNoReadablePII(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
@@ -137,9 +138,10 @@ func TestUserPurgeLeavesNoReadablePII(t *testing.T) {
 	}
 }
 
-// GDPR-ERASURE: 消去は「定義済み期間内に」起きる。削除予約の猶予期間の内側では PII が
 // 残り、期間を過ぎると Purge が走って読み出せなくなる。境界の片側だけを見るテストは、
 // 予約した瞬間に消す実装とも、永久に消さない実装とも区別できない。
+//
+//spec:covers GDPR-ERASURE: 消去は「定義済み期間内に」起きる。削除予約の猶予期間の内側では PII が
 func TestUserErasureHappensWithinTheDefinedGracePeriod(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)

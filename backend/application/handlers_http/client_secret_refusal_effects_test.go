@@ -115,7 +115,7 @@ func issueSecret(
 	return response.Code
 }
 
-// EX-OAUTH2-036-02: 1..730 の範囲外の expires_in_days は拒否され、資格情報は増えない。
+//spec:covers EX-OAUTH2-036-02: 1..730 の範囲外の expires_in_days は拒否され、資格情報は増えない。
 func TestIssueClientSecretOutOfRangeExpiryAddsNoCredential(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -132,8 +132,9 @@ func TestIssueClientSecretOutOfRangeExpiryAddsNoCredential(t *testing.T) {
 	assertCredentialsUnchanged(t, before, readSecretCredentials(t, e, csrf, cookie, applicationID))
 }
 
-// EX-OAUTH2-036-03: Active の資格情報が上限に達している状態の追加発行は拒否され、
 // 既存の資格情報は期限も状態も変わらない。
+//
+//spec:covers EX-OAUTH2-036-03: Active の資格情報が上限に達している状態の追加発行は拒否され、
 func TestIssueClientSecretBeyondActiveLimitLeavesExistingCredentials(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -157,9 +158,10 @@ func TestIssueClientSecretBeyondActiveLimitLeavesExistingCredentials(t *testing.
 	assertCredentialsUnchanged(t, before, readSecretCredentials(t, e, csrf, cookie, applicationID))
 }
 
-// EX-OAUTH2-036-04: シークレットを持てないクライアント (公開クライアント、
 // private_key_jwt、mTLS) への追加発行は拒否され、
 // 資格情報は増えない。
+//
+//spec:covers EX-OAUTH2-036-04: シークレットを持てないクライアント (公開クライアント、
 func TestIssueClientSecretForUnsupportedAuthMethodAddsNoCredential(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -174,8 +176,9 @@ func TestIssueClientSecretForUnsupportedAuthMethodAddsNoCredential(t *testing.T)
 	assertCredentialsUnchanged(t, before, readSecretCredentials(t, e, csrf, cookie, applicationID))
 }
 
-// EX-OAUTH2-036-05: 別クライアントまたは存在しない credential_id の失効は拒否され、
 // その資格情報は Active のまま残る。
+//
+//spec:covers EX-OAUTH2-036-05: 別クライアントまたは存在しない credential_id の失効は拒否され、
 func TestRevokeClientSecretWithForeignCredentialLeavesItActive(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -205,13 +208,14 @@ func TestRevokeClientSecretWithForeignCredentialLeavesItActive(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-037-02: 1..30 の範囲外の grace_days はローテーションを拒否され、
 // シークレットはローテーションされない。
 //
 // 「既存のシークレットで認証が引き続き成功する」は、この入口からはトークン
 // エンドポイントへ届かないので、同じことを資格情報側から読む。`credential_id` が
 // 変わらず、Active のまま、新しい資格情報も増えていなければ、認証に使う資格情報は
 // 拒否の前後で同一である。
+//
+//spec:covers EX-OAUTH2-037-02: 1..30 の範囲外の grace_days はローテーションを拒否され、
 func TestRotateClientSecretOutOfRangeGraceDaysDoesNotRotate(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -232,9 +236,10 @@ func TestRotateClientSecretOutOfRangeGraceDaysDoesNotRotate(t *testing.T) {
 	assertCredentialsUnchanged(t, before, readSecretCredentials(t, e, csrf, cookie, applicationID))
 }
 
-// EX-OAUTH2-037-03: シークレットを持てないクライアント (公開クライアント、
 // private_key_jwt、mTLS) のローテーションは拒否され、
 // シークレットはローテーションされない。
+//
+//spec:covers EX-OAUTH2-037-03: シークレットを持てないクライアント (公開クライアント、
 func TestRotateClientSecretForUnsupportedAuthMethodDoesNotRotate(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)

@@ -134,10 +134,11 @@ func TestLoginSessionTouch(t *testing.T) {
 	}
 }
 
-// RFC8176-AMR-VOCABULARY: LoginSession の検証が amr の語彙を閉じていることを固定する。
 // 宣言された 8 語はいずれも通り、語彙の外の値はひとつでもあれば通らない。error の本文が
 // 語彙の外の値を名指すことも観測する。何が拒否されたのかを言わない検査は、認証要素を
 // 足した人にとって「amr が不正」以上の手がかりを持たない。
+//
+//spec:covers RFC8176-AMR-VOCABULARY: LoginSession の検証が amr の語彙を閉じていることを固定する。
 func TestLoginSessionClosesTheAMRVocabulary(t *testing.T) {
 	now := time.Now().UTC()
 	session := func(amr []string) domain.LoginSession {

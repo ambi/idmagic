@@ -2,10 +2,11 @@ package usecases
 
 import "testing"
 
-// RFC8176-AMR-VOCABULARY: acr の導出が amr の語彙から決まることを固定する。
 // REQ-AUTHENTICATION-036 の内側の判断でもある。復旧コードは利用者が実際に提示した
 // 第二要素なので acr を上げ、federated と pwd は上げない。federated が上がらないのは、
 // 上流の IdP が何を検証したかをブローカーが知らないからである。
+//
+//spec:covers RFC8176-AMR-VOCABULARY: acr の導出が amr の語彙から決まることを固定する。
 func TestDeriveACRTreatsRecoveryCodeAsASecondFactor(t *testing.T) {
 	t.Parallel()
 
@@ -34,10 +35,11 @@ func TestDeriveACRTreatsRecoveryCodeAsASecondFactor(t *testing.T) {
 	}
 }
 
-// RFC8176-AMR-VOCABULARY: acr の充足判定を固定する。REQ-AUTHENTICATION-036 の締め出しは
 // DeriveACR が pwd を返したことではなく、その pwd を ACRSatisfies が mfa の要求に対して
 // false と読んだことで起きた。導出だけを観測すると、この述語がどちらへ倒れても気づけない。
 // mfa は pwd の要求を満たすが、逆は満たさない。要求は空白区切りで複数を並べられる。
+//
+//spec:covers RFC8176-AMR-VOCABULARY: acr の充足判定を固定する。REQ-AUTHENTICATION-036 の締め出しは
 func TestACRSatisfiesTreatsMfaAsStrongerThanPassword(t *testing.T) {
 	t.Parallel()
 

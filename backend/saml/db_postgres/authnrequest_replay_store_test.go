@@ -13,10 +13,11 @@ import (
 
 func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
 
-// TestAuthnRequestReplayStore は constraint SAML2Core-BearerAssertion
 // (同一 tenant / SP / request ID に対する assertion は一度だけ発行する) を、
 // PostgreSQL の実際の unique 制約・expires_at 述語・並行 INSERT に対して検証する。
 // memory adapter との振る舞いパリティを取る。
+//
+//spec:covers SAML2Core-BearerAssertion: TestAuthnRequestReplayStore は constraint
 func TestAuthnRequestReplayStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

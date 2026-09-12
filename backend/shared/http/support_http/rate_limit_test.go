@@ -97,13 +97,14 @@ func TestCheckRateLimitBlockedWrites429WithRetryAfter(t *testing.T) {
 	})
 }
 
-// EX-OAUTH2-040-06: an unreachable shared counter fails closed as the declared
 // RateLimitedError, not as a server error.
 //
 // Propagating the store error produced a 500, which no protected operation
 // declares: /token answers 400, 401, 422 or 429 and nothing else. A 500 also
 // tells a client the server is broken when the correct answer is "back off and
 // retry", so the caller has no Retry-After to obey.
+//
+//spec:covers EX-OAUTH2-040-06: an unreachable shared counter fails closed as the declared
 func TestCheckRateLimitStoreErrorFailsClosedAsRateLimited(t *testing.T) {
 	withRateLimitEchoContext(t, func(c *echo.Context, rec *httptest.ResponseRecorder) {
 		limiter := stubRateLimiter{err: errors.New("store unreachable")}

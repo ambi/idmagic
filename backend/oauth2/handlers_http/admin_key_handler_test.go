@@ -188,9 +188,10 @@ func TestAdminKeysRotateAllowsTenantAdmin(t *testing.T) {
 	}
 }
 
-// REQ-SIGNINGKEYS-011: admin / system_admin いずれのロールも持たないユーザーは回転を
 // 要求できない。拒否されたことは 403 だけでは分からないので、現在の署名鍵が変わって
 // いないことと、回転イベントが 1 件も出ていないことまで確かめる。
+//
+//spec:covers REQ-SIGNINGKEYS-011: admin / system_admin いずれのロールも持たないユーザーは回転を
 func TestAdminKeysRotateRejectsNonAdmin(t *testing.T) {
 	plain := keyAdminUser("user_alice", tenancydomain.DefaultTenantID, []string{})
 	e, keyStore, events := newKeyAdminServer(t, plain)
@@ -289,8 +290,9 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 	}
 }
 
-// REQ-SIGNINGKEYS-009: 通常のテナント管理者はシステムコンソールの署名鍵ヘルスに
 // アクセスできない。
+//
+//spec:covers REQ-SIGNINGKEYS-009: 通常のテナント管理者はシステムコンソールの署名鍵ヘルスに
 func TestAdminKeysHealthRejectsPlainAdmin(t *testing.T) {
 	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, admin)

@@ -31,7 +31,7 @@ const baseProps = {
 }
 
 describe('AccountApprovalsPresentation', () => {
-  // CIBA-CORE-BINDING-MESSAGE: binding_message を承認画面が実際に描き、クライアント、
+  //spec:covers CIBA-CORE-BINDING-MESSAGE: binding_message を承認画面が実際に描き、クライアント、
   // 要求スコープ、authorization_details と併せて示すことを固定する。API が 4 つを
   // 返すことは backend/shared/http/server_http/non_interactive_grant_standards_test.go が
   // 同じ id で読む。運ぶことと見せることは別なので、両方を読まないと片方が落ちる。

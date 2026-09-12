@@ -243,13 +243,14 @@ func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
 	}
 }
 
-// GDPR-PROCESSING-RECORDS: セキュリティイベントと認可イベントの監査記録は、定義済みの
 // 保持期間の内側では残り、外側では消える。
 //
 // 片側だけを見るテストは行を区別できない。内側だけなら「何も消さない」実装が通り、
 // 外側だけなら「全部消す」実装が通る。種類も 2 つ要る。行が「セキュリティおよび認可」と
 // 2 つ挙げているのに、期間の型が違う (認可は Default の 365 日、失敗は ByType の 30 日) ため、
 // 片方の種類だけでは他方の期間が守られていることを言えない。
+//
+//spec:covers GDPR-PROCESSING-RECORDS: セキュリティイベントと認可イベントの監査記録は、定義済みの
 func TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)

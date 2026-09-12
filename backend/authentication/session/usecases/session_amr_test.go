@@ -11,11 +11,12 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/session/usecases"
 )
 
-// RFC8176-AMR-VOCABULARY: 語彙の強制が、amr を書く 2 か所の両方に掛かっていることを固定
 // する。作成 (CreateWithPending) と第二要素の成立 (CompleteFactor) で、語彙の外の値は保存
 // されない。片方だけを観測すると、もう片方から語彙の外の値が入る実装を区別できない。
 // 拒否のときにセッションが保存されていないこと (拒否が防いだ効果) も併せて観測する。
 // error を返してから保存する実装は、戻り値だけを見ると正しい実装と区別が付かない。
+//
+//spec:covers RFC8176-AMR-VOCABULARY: 語彙の強制が、amr を書く 2 か所の両方に掛かっていることを固定
 func TestSessionManagerRefusesAMROutsideTheVocabulary(t *testing.T) {
 	ctx := context.Background()
 

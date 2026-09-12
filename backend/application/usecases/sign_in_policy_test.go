@@ -229,8 +229,9 @@ func TestValidateSignInPolicyRulesDefaultsStrengthAndNormalizesCIDR(t *testing.T
 	}
 }
 
-// REQ-AUTHENTICATION-027: 記憶済みデバイスによる昇格 (amr=tdev) は既定では MFA 要件を
 // 満たすが、allow_trusted_device=false のルールでは満たさない (wi-91)。
+//
+//spec:covers REQ-AUTHENTICATION-027: 記憶済みデバイスによる昇格 (amr=tdev) は既定では MFA 要件を
 func TestEvaluateSignInPolicyTrustedDeviceSatisfiesMfaOnlyWhenAllowed(t *testing.T) {
 	deny := false
 	trustedOnly := &authdomain.AuthenticationContext{

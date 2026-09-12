@@ -121,7 +121,7 @@ func decodeCategories(t *testing.T, rec *httptest.ResponseRecorder) categoriesBo
 	return body
 }
 
-// REQ-AUTHENTICATION-033: 全種別が返り、必須の種別には mandatory が付く。
+//spec:covers REQ-AUTHENTICATION-033: 全種別が返り、必須の種別には mandatory が付く。
 func TestGetNotificationPreferencesReturnsTheWholeCatalog(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 
@@ -152,7 +152,7 @@ func TestGetNotificationPreferencesReturnsTheWholeCatalog(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-034: 停止した種別だけが無効になり、読み戻せる。
+//spec:covers REQ-AUTHENTICATION-034: 停止した種別だけが無効になり、読み戻せる。
 func TestUpdateNotificationPreferencesDisablesOnlyTheNamedCategories(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 
@@ -176,7 +176,7 @@ func TestUpdateNotificationPreferencesDisablesOnlyTheNamedCategories(t *testing.
 	}
 }
 
-// REQ-AUTHENTICATION-033: 必須の種別を含む更新は 400 で拒否し、許された分も保存しない。
+//spec:covers REQ-AUTHENTICATION-033: 必須の種別を含む更新は 400 で拒否し、許された分も保存しない。
 func TestUpdateNotificationPreferencesRejectsMandatoryCategories(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 

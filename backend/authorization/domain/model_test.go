@@ -11,7 +11,7 @@ func direct(types ...string) domain.RelationRewrite {
 	return domain.RelationRewrite{Kind: domain.RewriteDirect, DirectSubjectTypes: types}
 }
 
-// REQ-AUTHORIZATION-001: 整合しないモデルは登録時点で拒否する。
+//spec:covers REQ-AUTHORIZATION-001: 整合しないモデルは登録時点で拒否する。
 func TestValidateRejectsUnknownRelation(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -89,7 +89,7 @@ func TestValidateAcceptsTheReferenceModel(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-002: モデルに適合しないタプルは書き込みを拒否する。
+//spec:covers REQ-AUTHORIZATION-002: モデルに適合しないタプルは書き込みを拒否する。
 func TestValidateTupleRejectsFormsTheModelDoesNotDeclare(t *testing.T) {
 	model := documentModel()
 	cases := []struct {
@@ -141,7 +141,7 @@ func TestValidateTupleAcceptsDeclaredForms(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-006: 整合トークンは発行テナントに束縛される。
+//spec:covers REQ-AUTHORIZATION-006: 整合トークンは発行テナントに束縛される。
 func TestConsistencyTokenIsBoundToItsTenant(t *testing.T) {
 	token := domain.EncodeConsistencyToken("tenant-a", 7)
 	version, err := domain.DecodeConsistencyToken(token, "tenant-a")

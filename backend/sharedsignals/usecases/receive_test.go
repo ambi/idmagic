@@ -127,11 +127,12 @@ func TestReceiveSecurityEvent_RejectsDisabledOrMissingStream(t *testing.T) {
 // 失敗は ErrSecurityEventRejected を返し、対応する VerificationResult で
 // ReceivedSecurityEvent を記録し SecurityEventRejected を emit する。
 //
-// RFC8417-SET-VERIFY: 検証を通らなかった SET が「反映されない」ことを固定する。
 // 拒否の戻り値と監査だけを見ると、失効エポックを進めてから拒否を返す実装も通って
 // しまうので、エポックが進んでいないことと accepted の受信記録が残っていないことを
 // 併せて観測する。検証器そのものの拒否条件は tokens_jose 側の
 // TestVerifySecurityEventToken が持つ。
+//
+//spec:covers RFC8417-SET-VERIFY: 検証を通らなかった SET が「反映されない」ことを固定する。
 func TestReceiveSecurityEvent_RejectsOnVerificationFailure(t *testing.T) {
 	failures := []struct {
 		name  string

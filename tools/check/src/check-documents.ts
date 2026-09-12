@@ -12,6 +12,7 @@ import {
   citedNormativeIds,
   type DebtEntry,
   type DeclaredId,
+  type SourceFile,
 } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { validateDocument } from './specification-doc.ts'
@@ -182,13 +183,17 @@ export async function checkDocuments(
     }
   }
 
-  const sources: string[] = []
+  // path を一緒に運ぶのは、指摘が「どこが名指しているか」を言えるようにするため
+  // である。読み手が rg で探し直すところから始めなくて済む。
+  const sources: SourceFile[] = []
   for (const tree of PRODUCT_TREES) {
     try {
       const paths = await snapshot.files(tree, EXCLUDED_DIRECTORIES)
       sources.push(
         ...(await Promise.all(
-          paths.filter((path) => TEST_FILE.test(path)).map((path) => snapshot.read(path)),
+          paths
+            .filter((path) => TEST_FILE.test(path))
+            .map(async (path) => ({ path, source: await snapshot.read(path) })),
         )),
       )
     } catch {

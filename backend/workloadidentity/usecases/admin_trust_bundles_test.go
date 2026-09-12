@@ -49,7 +49,7 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 		t.Fatalf("Status = %q, want enabled", bundle.Status)
 	}
 
-	// EX-WORKLOADIDENTITY-008-02: `jwks_uri` と `jwks` のどちらも無い登録要求は拒否される。
+	//spec:covers EX-WORKLOADIDENTITY-008-02: `jwks_uri` と `jwks` のどちらも無い登録要求は拒否される。
 	// 固定しているのは、署名検証の鍵の入手先が無い信頼設定を保存しないことである。鍵の
 	// 入手先が空のまま保存できると、その信頼設定は「発行者名が一致すれば通る」設定になる。
 	t.Run("rejects missing jwks source", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 		}
 	})
 
-	// EX-WORKLOADIDENTITY-008-03: 同じテナント内に同じ発行者の信頼設定がすでにあれば、
+	//spec:covers EX-WORKLOADIDENTITY-008-03: 同じテナント内に同じ発行者の信頼設定がすでにあれば、
 	// 名前が違っても拒否される。固定しているのは、発行者がテナント内で一意だということである。
 	// 重複を許すと、`iss` から信頼設定を引く経路がどちらを選ぶかで検証結果が変わる。直後の
 	// 「別テナントなら通る」対照が、一意性の範囲がテナント内であることを示す。
@@ -102,13 +102,14 @@ func TestGetWorkloadTrustBundle_CrossTenantIsNotFound(t *testing.T) {
 	}
 }
 
-// EX-WORKLOADIDENTITY-008-01: 登録した信頼設定は `enabled` で始まり、無効化すると配下の
 // 関連付けが交換に使えなくなり、再有効化すると戻る。3 つの遷移それぞれについて、発行される
 // イベントと、後続の交換可否という実際の効果の両方を固定する。
 //
 // イベントだけを観測すると、状態を書き戻さずにイベントだけ出す実装が緑になる。交換可否だけを
 // 観測すると、状態は変わるのに誰にも通知されない実装が緑になる。具体例の Then が両方を
 // 言っているので、観測も両方要る。
+//
+//spec:covers EX-WORKLOADIDENTITY-008-01: 登録した信頼設定は `enabled` で始まり、無効化すると配下の
 func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 	// 観測すべき最終効果は「状態変更が後続の交換可否に反映される」ことなので、
 	// 検証側と同じ repository を共有し、状態を変えるたびに交換を試す。

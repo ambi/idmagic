@@ -12,6 +12,8 @@
 
 `go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。`mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` がその用途を持つ。
 
+テストが宣言済みの `REQ-*`、`EX-*`、標準 id を被覆したと主張するときは、テスト関数の直上へ `//spec:covers <id>[, <id>]: <このテストが何を固定しているか>` を置く。この形だけが被覆と数えられるので、散文で id に言及するのは安全である。規約は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の「Citing a normative id from a test」が定める。
+
 テストの検出能力を測るときは `mise run test-go-mutation -- <package-directory>` を使う。手で変異を書くのは、変異器が表現できない「配線を外す」「既定の分岐を差し替える」種類だけとする。読み方は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の Mutation testing が定める。
 
 ## ツール

@@ -7,7 +7,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
-// REQ-OAUTH2-049: 委譲モードは act チェーンと principal 種別から一意に決まる。
+//spec:covers REQ-OAUTH2-049: 委譲モードは act チェーンと principal 種別から一意に決まる。
 func TestDeriveDelegationMode(t *testing.T) {
 	cases := []struct {
 		name string
@@ -103,7 +103,7 @@ func TestDeriveDelegationModeTerminatesOnSelfReferentialAct(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-006: act チェーンの参加者は、監査がチェーンのどの段からでも引ける形で列挙できる。
+//spec:covers REQ-AUDIT-006: act チェーンの参加者は、監査がチェーンのどの段からでも引ける形で列挙できる。
 func TestActorChainParticipants(t *testing.T) {
 	cases := []struct {
 		name string

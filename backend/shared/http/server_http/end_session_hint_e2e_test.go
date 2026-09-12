@@ -1,6 +1,6 @@
 package server_http_test
 
-// REQ-OAUTH2-024 のうち、`id_token_hint` が不完全なとき、あるいは `sid` が示す
+//spec:covers REQ-OAUTH2-024: のうち、`id_token_hint` が不完全なとき、あるいは `sid` が示す
 // LoginSession の主体と食い違うときの拒否を、本番と同じ配線の HTTP サーバー越しに
 // 確かめる (EX-OAUTH2-024-05、EX-OAUTH2-024-06)。
 //
@@ -173,8 +173,9 @@ func (f hintE2EFixture) assertNothingRevoked(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-024: 完全な id_token_hint はこの配線で通る。拒否のテストが
 // 「この fixture では何を送っても 400 になる」ことを見ているのではないと示す対照である。
+//
+//spec:covers REQ-OAUTH2-024: 完全な id_token_hint はこの配線で通る。拒否のテストが
 func TestEndSessionAcceptsCompleteIDTokenHint(t *testing.T) {
 	fixture := newHintE2EFixture(t)
 	response := fixture.endSessionWithHint(t, fixture.signHint(t, "alice", fixture.sessionID))
@@ -198,10 +199,11 @@ func TestEndSessionAcceptsCompleteIDTokenHint(t *testing.T) {
 	}
 }
 
-// OIDC-LOGOUT-ID-TOKEN-HINT: 検証済みヒントの `sid` と `aud` がログアウト対象の
 // LoginSession とクライアントを決めることを固定する。Cookie は別の LoginSession を
 // 指し、`client_id` パラメーターは付けない。ヒントを読まない実装なら Cookie 側が
 // 失効するか、クライアントを解決できず post_logout_redirect_uri を拒否する。
+//
+//spec:covers OIDC-LOGOUT-ID-TOKEN-HINT: 検証済みヒントの `sid` と `aud` がログアウト対象の
 func TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT(t *testing.T) {
 	fixture := newHintE2EFixture(t)
 	other, err := fixture.manager.Create(context.Background(), "alice", []string{"pwd"}, time.Now().UTC())
@@ -233,8 +235,9 @@ func TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT(t *te
 	}
 }
 
-// REQ-OAUTH2-024 / EX-OAUTH2-024-05: `sid` を持たない ID Token を id_token_hint に
 // 付けた /end_session は invalid_request で拒否され、Cookie が示すセッションへ降格しない。
+//
+//spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-05: `sid` を持たない ID Token を id_token_hint に
 func TestEndSessionRefusesIDTokenHintWithoutSid(t *testing.T) {
 	fixture := newHintE2EFixture(t)
 	response := fixture.endSessionWithHint(t, fixture.signHint(t, "alice", ""))
@@ -245,9 +248,10 @@ func TestEndSessionRefusesIDTokenHintWithoutSid(t *testing.T) {
 	fixture.assertNothingRevoked(t)
 }
 
-// REQ-OAUTH2-024 / EX-OAUTH2-024-06: `sid` が示す LoginSession の主体と違う `sub` を持つ
 // id_token_hint は invalid_request で拒否され、その LoginSession も同じ sid の
 // RefreshTokenRecord も失効しない。
+//
+//spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-06: `sid` が示す LoginSession の主体と違う `sub` を持つ
 func TestEndSessionRefusesIDTokenHintForAnotherSubject(t *testing.T) {
 	fixture := newHintE2EFixture(t)
 	response := fixture.endSessionWithHint(t, fixture.signHint(t, "mallory", fixture.sessionID))

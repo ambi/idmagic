@@ -62,13 +62,14 @@ func (s *apiTokenStack) storedServiceProviders(t *testing.T) []string {
 	return out
 }
 
-// EX-SAML-005-01: `saml:read` はサービスプロバイダーの参照だけを許し、`saml:write` は登録と
 // 削除だけを許す。
 //
 // 「だけ」の観測には 4 通り要る。read で参照が通ること、read で登録が通らないこと、
 // write で登録と削除が通ること、write で参照が通らないことである。通る側だけを読むと、
 // どのスコープでも全部通す実装と区別できない。通らない側だけを読むと、何も通さない実装と
 // 区別できない。
+//
+//spec:covers EX-SAML-005-01: `saml:read` はサービスプロバイダーの参照だけを許し、`saml:write` は登録と
 func TestSamlServiceProviderOperationsFollowTheGranularScopes(t *testing.T) {
 	stack := newApiTokenStack(t)
 	read, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeSamlRead)
@@ -111,13 +112,13 @@ func samlScopeDeleteQuery() string {
 	return "?entity_id=" + samlScopeSPEntityID
 }
 
-// EX-SAML-005-02: `saml:read` だけで変更操作をリクエストすると、操作は拒否される。
-//
 // 契約 `RegisterSamlServiceProvider` と `DeleteSamlServiceProvider` は 403 の本文として
 // `InsufficientScopeError` と `AccessDeniedError` を宣言している。スコープ不足はそのうちの
 // 前者になるので、状態コードに加えて型と `WWW-Authenticate` の要求スコープ名まで読む。
 // そして登録と削除のどちらについても、拒否が保存先を変えていないことを読み直す。
 // 応答だけを見ると、403 を書いてから保存する実装を見分けられない。
+//
+//spec:covers EX-SAML-005-02: `saml:read` だけで変更操作をリクエストすると、操作は拒否される。
 func TestSamlReadScopeCannotChangeServiceProviders(t *testing.T) {
 	stack := newApiTokenStack(t)
 	read, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeSamlRead)

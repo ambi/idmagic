@@ -152,11 +152,12 @@ func TestScimCreateUserResourceContract(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
 // CreateScimUser で対応する。
-// RFC7643-ENTERPRISE-EXTENSION: 採用した 3 属性のうち manager だけが参照であり、
 // 解決先をテナント内の User に限ることをここで固定する。採用の境界そのものは
 // TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset が観測する。
+//
+//spec:covers REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
+//spec:covers RFC7643-ENTERPRISE-EXTENSION: 採用した 3 属性のうち manager だけが参照であり、
 func TestScimCreateUserEnterpriseExtension(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)
@@ -265,8 +266,9 @@ func TestScimCreateUserEnterpriseExtension(t *testing.T) {
 	})
 }
 
-// REQ-SOURCING-007: PATCH は bare 名と URN 修飾済みパスの両方で enterprise
 // extension 属性を対応する。
+//
+//spec:covers REQ-SOURCING-007: PATCH は bare 名と URN 修飾済みパスの両方で enterprise
 func TestScimPatchUserEnterpriseExtension(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)
@@ -387,7 +389,7 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 		}
 	})
 
-	// REQ-SOURCING-007: PUT の完全置換は enterprise extension 属性にも適用される。
+	//spec:covers REQ-SOURCING-007: PUT の完全置換は enterprise extension 属性にも適用される。
 	t.Run("omitted enterprise extension resets to defaults", func(t *testing.T) {
 		const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
 		setRec, setBody := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
@@ -697,8 +699,9 @@ func TestScimGetSchemasReturnsRealAttributes(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-007: GetScimSchemas は enterprise extension schema を、
 // GetScimResourceTypes は User の schemaExtensions を広告する。
+//
+//spec:covers REQ-SOURCING-007: GetScimSchemas は enterprise extension schema を、
 func TestScimEnterpriseExtensionDiscovery(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)

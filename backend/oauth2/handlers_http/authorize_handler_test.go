@@ -388,7 +388,7 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	}
 }
 
-// REQ-APPLICATION-012: hidden 割り当ては一覧には出さないが、OAuth2 の利用可否判定では割り当て済みとして扱う。
+//spec:covers REQ-APPLICATION-012: hidden 割り当ては一覧には出さないが、OAuth2 の利用可否判定では割り当て済みとして扱う。
 func TestAuthorizeAllowsHiddenApplicationAssignment(t *testing.T) {
 	now := time.Now().UTC()
 	authn := &authdomain.AuthenticationContext{UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"}}

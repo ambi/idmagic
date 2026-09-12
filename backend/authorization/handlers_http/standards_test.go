@@ -325,9 +325,10 @@ func assertNoPermit(t *testing.T, rec *httptest.ResponseRecorder) {
 
 // ---- AUTHZEN-FGA-EVALUATION ----
 
-// AUTHZEN-FGA-EVALUATION: 関係に基づく判定が {subject, action, resource, context} の評価に
 // 載ること、そして関係の成否が判定 context の事実として渡ること。応答だけを読む観測では、
 // 関係を自分で判断して結果だけ返す実装と区別できないので、判定器へ渡った AuthZRequest を読む。
+//
+//spec:covers AUTHZEN-FGA-EVALUATION: 関係に基づく判定が {subject, action, resource, context} の評価に
 func TestAuthorizationDecisionRidesOnTheSubjectActionResourceContextEvaluation(t *testing.T) {
 	t.Run("the evaluation carries the subject, action, resource, and the relationship outcome", func(t *testing.T) {
 		f := newStandardsFixture(t, standardsSeams{})
@@ -413,9 +414,10 @@ func TestAuthorizationDecisionRidesOnTheSubjectActionResourceContextEvaluation(t
 
 // ---- AUTHZEN-FGA-ACTOR-CHAIN ----
 
-// AUTHZEN-FGA-ACTOR-CHAIN: 代行チェーンが判定 context に明示的に載り、各段がプリンシパル
 // 種別・識別子・有効性の 3 つに分かれて表れること。拒否理由だけを読む観測では、チェーンを
 // 1 個の真偽値へ畳む実装や、種別と識別子を 1 本の文字列へ連結する実装を区別できない。
+//
+//spec:covers AUTHZEN-FGA-ACTOR-CHAIN: 代行チェーンが判定 context に明示的に載り、各段がプリンシパル
 func TestAuthorizationDecisionCarriesEveryDelegationStageSeparately(t *testing.T) {
 	newFixture := func(t *testing.T) *standardsFixture {
 		t.Helper()
@@ -479,9 +481,10 @@ func TestAuthorizationDecisionCarriesEveryDelegationStageSeparately(t *testing.T
 
 // ---- AUTHZEN-FGA-FAIL-CLOSED ----
 
-// AUTHZEN-FGA-FAIL-CLOSED: 評価器が判定を返せない、事実が欠けている、深さ上限に達した、
 // ストアへ到達できない、のいずれでも許可へ退避しないこと。答えの出る入力で拒否が返ることは
 // この行の観測にならないので、4 つとも「答えが出ない入力」で作る。
+//
+//spec:covers AUTHZEN-FGA-FAIL-CLOSED: 評価器が判定を返せない、事実が欠けている、深さ上限に達した、
 func TestAuthorizationFailsClosedWhenTheDecisionCannotBeAnswered(t *testing.T) {
 	t.Run("an evaluator that cannot answer is not a permit", func(t *testing.T) {
 		f := newStandardsFixture(t, standardsSeams{authorizer: unreachableAuthorizer{}})
@@ -539,10 +542,11 @@ func TestAuthorizationFailsClosedWhenTheDecisionCannotBeAnswered(t *testing.T) {
 
 // ---- RFC8693-FGA-ACTOR-AND ----
 
-// RFC8693-FGA-ACTOR-AND: sub の主体と act チェーン上のすべての actor が同じ関係を持つときだけ
 // 許可すること。3 つの主体が関係を持つか持たないかの全 8 通りを通し、許可になるのは 3 つとも
 // 持つ 1 通りだけであることを読む。連鎖の 1 主体だけが関係を持つ入力がこの表に 3 つ含まれるので、
 // 和で効く実装、先頭の 1 段だけを見る実装、チェーンを無視する実装はいずれもここで落ちる。
+//
+//spec:covers RFC8693-FGA-ACTOR-AND: sub の主体と act チェーン上のすべての actor が同じ関係を持つときだけ
 func TestDelegatedAccessRequiresTheRelationOnEveryActorInTheChain(t *testing.T) {
 	for _, holders := range [][3]bool{
 		{false, false, false},
@@ -583,9 +587,10 @@ func TestDelegatedAccessRequiresTheRelationOnEveryActorInTheChain(t *testing.T) 
 
 // ---- AUTHZEN-FGA-SEARCH ----
 
-// AUTHZEN-FGA-SEARCH: 主体を固定したリソースの探索を提供すること、その走査が上限つきで
 // あること、打ち切りを結果に示すこと。上限を注入して観測すると既定の上限を持たない実装と
 // 区別できないので、製品の既定のまま候補を上限より 1 件多く置く。
+//
+//spec:covers AUTHZEN-FGA-SEARCH: 主体を固定したリソースの探索を提供すること、その走査が上限つきで
 func TestAccessibleResourceSearchIsSubjectFixedBoundedAndReportsTruncation(t *testing.T) {
 	searchRequest := map[string]any{
 		"resource_type": "document", "relation": "viewer",

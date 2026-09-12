@@ -352,10 +352,11 @@ func fpAccessTokenClaims(t *testing.T, body string) map[string]any {
 	return claims
 }
 
-// FAPI2-PAR-PKCE: プロファイルを選んだクライアントの認可リクエストが PAR 経由に
 // 限られることを固定する。S256 PKCE の側は製品が全クライアントへ無条件に課して
 // いるので、ここでは「選択したクライアントでも S256 以外は通らない」ことを対照と
 // して併せて読む。
+//
+//spec:covers FAPI2-PAR-PKCE: プロファイルを選んだクライアントの認可リクエストが PAR 経由に
 func TestFapi2ClientCannotStartAnAuthorizationRequestWithoutPAR(t *testing.T) {
 	fixture := newFapiProfileFixture(t)
 
@@ -376,9 +377,10 @@ func TestFapi2ClientCannotStartAnAuthorizationRequestWithoutPAR(t *testing.T) {
 	}
 }
 
-// FAPI2-CLIENT-AUTH: プロファイルを選んだクライアントが共有シークレットで認証
 // できないことを、登録の入口で固定する。方式は保存されたクライアント自身の属性
 // なので、保存できてしまえば以後どの経路からでも共有シークレットが通る。
+//
+//spec:covers FAPI2-CLIENT-AUTH: プロファイルを選んだクライアントが共有シークレットで認証
 func TestRegisterRefusesAFapi2ClientThatAuthenticatesWithASharedSecret(t *testing.T) {
 	fixture := newFapiProfileFixture(t)
 	jwks := map[string]any{"keys": []any{map[string]any{
@@ -443,10 +445,11 @@ func TestRegisterRefusesAFapi2ClientThatAuthenticatesWithASharedSecret(t *testin
 	}
 }
 
-// FAPI2-SENDER-CONSTRAINT: プロファイルを選んだクライアントが、送信者制約の証拠を
 // 持たないアクセストークンを受け取れないことを固定する。証拠を付けたときに `cnf` が
 // 載ることを対にして読む。拒否だけでは、制約を課しながら束縛を付け忘れている実装と
 // 区別できない。
+//
+//spec:covers FAPI2-SENDER-CONSTRAINT: プロファイルを選んだクライアントが、送信者制約の証拠を
 func TestFapi2ClientCannotObtainAnUnconstrainedAccessToken(t *testing.T) {
 	fixture := newFapiProfileFixture(t)
 
@@ -473,10 +476,11 @@ func TestFapi2ClientCannotObtainAnUnconstrainedAccessToken(t *testing.T) {
 	}
 }
 
-// FAPI2-PROFILE-SELECTION: 追加制約がプロファイルを選んだクライアントだけに掛かる
 // ことを、3 つの制約をまとめて対照側から読む。個々の行のテストも対照を 1 つずつ
 // 持つが、ここでは「選んでいないクライアントには 1 つも掛からない」ことを 1 か所で
 // 読む。制約が既定化した変更は、行ごとのテストより先にここが落ちる。
+//
+//spec:covers FAPI2-PROFILE-SELECTION: 追加制約がプロファイルを選んだクライアントだけに掛かる
 func TestNonFapi2ClientKeepsWorkingWithoutTheProfileConstraints(t *testing.T) {
 	fixture := newFapiProfileFixture(t)
 

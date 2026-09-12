@@ -10,9 +10,10 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// RFC6750-INVALID-TOKEN / REQ-OAUTH2-020: UserInfo 固有のエラー写像は、
 // invalid_token を OAuth の認可サーバー用 400 写像へ流さず、保護リソース用の
 // 401 と Bearer challenge へ写す。
+//
+//spec:covers RFC6750-INVALID-TOKEN / REQ-OAUTH2-020: UserInfo 固有のエラー写像は、
 func TestWriteUserInfoErrorMapsInvalidTokenToBearerChallenge(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)

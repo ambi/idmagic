@@ -177,7 +177,6 @@ func TestIntrospectToken(t *testing.T) {
 	})
 }
 
-// RFC7662-INTROSPECT: 内省の `token_type` は RFC 7662 §2.2 が RFC 6749 §5.1 を
 // 参照して定める提示形式であり、トークンの区分名ではない。
 //
 // 読むのは 3 つである。アクセストークンは送信者制約から導いた提示形式を名乗ること、
@@ -185,6 +184,8 @@ func TestIntrospectToken(t *testing.T) {
 // RFC 7662 §2.2 のとおり `active` 以外を返さないことである。3 つ目は、制約なしの
 // 提示形式が `Bearer` であるために、無条件の代入が `active: false` の応答まで
 // 汚してしまう経路を押さえる。
+//
+//spec:covers RFC7662-INTROSPECT: 内省の `token_type` は RFC 7662 §2.2 が RFC 6749 §5.1 を
 func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 	ctx := tenantContext()
 	refreshStore := memory.NewRefreshTokenStore()

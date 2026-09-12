@@ -189,13 +189,14 @@ func publishedCertificates(t *testing.T, metadataXML []byte) map[string]bool {
 // REQ-SAML-001 SP は署名証明書を取得できる
 // =====================================================================
 
-// EX-SAML-001-01: 証明書ダウンロード URL は「現在有効な」`XmlFederationSigning` 証明書を PEM で
 // 返し、同じ時点のメタデータがその証明書を公開し、ローテーションの移行期間中に信頼すべき証明書は
 // すべてメタデータから取れる。
 //
 // 3 つの `Then` に 3 つの観測を置く。ダウンロードとメタデータの一致だけを読むと、ローテート中に
 // 旧証明書をメタデータから落とす実装が通る。落とすと、旧鍵で署名済みのアサーションを
 // 受け取った SP は検証鍵を得られず、移行期間そのものが成立しない。
+//
+//spec:covers EX-SAML-001-01: 証明書ダウンロード URL は「現在有効な」`XmlFederationSigning` 証明書を PEM で
 func TestSamlSigningCertificateIsTheActiveCredentialAndMetadataCarriesEveryTrustedOne(t *testing.T) {
 	e, keyStore := newServerWithKeyStore(t)
 
@@ -248,13 +249,14 @@ func TestSamlSigningCertificateIsTheActiveCredentialAndMetadataCarriesEveryTrust
 // REQ-SAML-002 / REQ-SAML-003 IdP プロファイル
 // =====================================================================
 
-// EX-SAML-002-01: `profile-a` に割り当てられた SP が `profile-a` の SSO エンドポイントへ送った
 // AuthnRequest には、`profile-a` の entityID と `profile-a` の署名資格情報で SAMLResponse が返る。
 //
 // Destination、SP の Issuer、プロファイルとの関連付けの 3 つが揃ったときにだけ発行されることの、
 // 発行側の観測である。3 つのうち 1 つを崩した場合の拒否は refusal_effects_test.go が持つ。
 // 発行された Response の Issuer と署名鍵の両方を読むのは、正しいプロファイルへ返しながら
 // デフォルトプロファイルの鍵で署名する実装を、Issuer だけでは見分けられないためである。
+//
+//spec:covers EX-SAML-002-01: `profile-a` に割り当てられた SP が `profile-a` の SSO エンドポイントへ送った
 func TestSamlSSOIssuesWithTheAssignedProfileEntityIDAndCredentials(t *testing.T) {
 	e, _ := newProfileBoundServer(t, true)
 
@@ -303,12 +305,13 @@ func validateAgainst(assertion *etree.Element, certificate *x509.Certificate) er
 	return err
 }
 
-// EX-SAML-003-01: 専用プロファイルのメタデータは、そのプロファイル固有の entityID、
 // SSO / SLO URL、署名証明書を公開し、デフォルトプロファイルのメタデータは別の署名資格情報を公開する。
 //
 // 「固有である」ことの観測は、2 つのプロファイルのメタデータを並べて値が違うことである。
 // 片方だけを読むと、URL にプロファイル ID を差し込んでいるだけで署名鍵は共有している実装を
 // 通してしまう。鍵を共有していれば、プロファイルを分ける目的そのものが失われる。
+//
+//spec:covers EX-SAML-003-01: 専用プロファイルのメタデータは、そのプロファイル固有の entityID、
 func TestSamlDedicatedProfilePublishesItsOwnEndpointsAndSigningCredential(t *testing.T) {
 	e, _ := newProfileBoundServer(t, true)
 
@@ -340,12 +343,13 @@ func TestSamlDedicatedProfilePublishesItsOwnEndpointsAndSigningCredential(t *tes
 	}
 }
 
-// EX-SAML-003-02: 存在しないプロファイル ID と、別テナントに属するプロファイル ID は、
 // どちらも not found を返し、メタデータも証明書も公開しない。
 //
 // 状態コードだけでなく本文も読む。404 を返しながらデフォルトプロファイルのメタデータを本文に
 // 載せる実装は、状態コードだけでは見分けられない。テナント越えのほうは、プロファイル ID を
 // 知っているだけの相手に別テナントの entityID と署名証明書を渡さないことそのものである。
+//
+//spec:covers EX-SAML-003-02: 存在しないプロファイル ID と、別テナントに属するプロファイル ID は、
 func TestSamlProfileEndpointsRefuseAnUnknownOrForeignProfileID(t *testing.T) {
 	e, repo := newProfileBoundServerWithRepository(t)
 
@@ -387,13 +391,14 @@ func TestSamlProfileEndpointsRefuseAnUnknownOrForeignProfileID(t *testing.T) {
 // REQ-SAML-006 / REQ-SAML-007 SP 起点 SSO
 // =====================================================================
 
-// EX-SAML-006-02 / EX-SAML-007-01: entityID、ACS、Destination、対象者の割り当てのいずれかが
 // 不正なら、SAMLResponse を発行せず SamlSignInRejected を発行してフェイルクローズで拒否する。
 //
 // 4 つの次元を 1 本で回すのは、どれか 1 つだけを読むテストが「その次元だけ検査する実装」を
 // 通してしまうためである。次元ごとに、応答が Assertion を運んでいないことと、
 // SamlSignInRejected が出て SamlSignInIssued が出ていないことの 2 つを読む。
 // 拒否のたびに対照を置き、同じ入口で無傷の要求が発行に進むことを確かめる。
+//
+//spec:covers EX-SAML-006-02 / EX-SAML-007-01: entityID、ACS、Destination、対象者の割り当てのいずれかが
 func TestSamlSSOFailsClosedOnEveryInvalidRequestDimension(t *testing.T) {
 	authenticated := &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
 
@@ -475,12 +480,13 @@ func TestSamlSSOFailsClosedOnEveryInvalidRequestDimension(t *testing.T) {
 	})
 }
 
-// EX-SAML-006-03: AuthnRequest の解析または署名検証に失敗したら、SamlSignInRejected を発行して
 // プロトコルエラーを返す。
 //
 // 解析の失敗と署名検証の失敗は別の入口条件なので、2 つとも通す。どちらも「Assertion が
 // 1 通も出ていないこと」と「SamlSignInRejected が出ていること」を読む。署名検証のほうには
 // 対照を置く: 同じ署名の無い要求でも、検証を要求していない SP なら通る。
+//
+//spec:covers EX-SAML-006-03: AuthnRequest の解析または署名検証に失敗したら、SamlSignInRejected を発行して
 func TestSamlSSORejectsUnparsableAndUnverifiableAuthnRequests(t *testing.T) {
 	t.Run("the AuthnRequest does not parse", func(t *testing.T) {
 		e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()})
@@ -511,12 +517,13 @@ func TestSamlSSORejectsUnparsableAndUnverifiableAuthnRequests(t *testing.T) {
 	})
 }
 
-// EX-SAML-006-06: 同じテナント、SP、AuthnRequest ID の組み合わせに対する Assertion が発行済みなら、
 // Assertion を発行せず SamlSignInRejected を発行してフェイルクローズで拒否する。
 //
 // リプレイの観測は同じ要求を 2 回送ることでしかできない。1 回目が発行することと 2 回目が
 // 発行しないことを 1 本で読むので、対照は本体に含まれている。ID を変えた 3 回目を足すのは、
 // 2 回目の拒否が「2 回目だから」ではなく「同じ ID だから」であることを示すためである。
+//
+//spec:covers EX-SAML-006-06: 同じテナント、SP、AuthnRequest ID の組み合わせに対する Assertion が発行済みなら、
 func TestSamlSSORefusesAReplayedAuthnRequestIDAndIssuesNoSecondAssertion(t *testing.T) {
 	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
@@ -587,12 +594,13 @@ func listedServiceProviders(t *testing.T, e *echo.Echo) string {
 	return recorder.Body.String()
 }
 
-// EX-SAML-004-01: 管理者は追加プロファイルを作成し、名前とモードを変更し、`shared` を複数の SP に、
 // `dedicated` を 1 つの SP に割り当て、未使用の追加プロファイルを削除できる。
 //
 // 具体例の `Then` は 5 つある。作成の応答だけを読むと、保存されないまま応答だけ返す実装が
 // 通るので、変更と割り当てはいずれも保存側から読み直す。画面遷移の `Then`（一覧と詳細が
 // 表示される）は frontend/src/features/admin-saml-idp-profiles が同じ id で持つ。
+//
+//spec:covers EX-SAML-004-01: 管理者は追加プロファイルを作成し、名前とモードを変更し、`shared` を複数の SP に、
 func TestAdminManagesSharedAndDedicatedIDPProfilesEndToEnd(t *testing.T) {
 	e := newAdminServer(t)
 
@@ -648,13 +656,14 @@ func TestAdminManagesSharedAndDedicatedIDPProfilesEndToEnd(t *testing.T) {
 	}
 }
 
-// EX-SAML-004-02: `dedicated` プロファイルを別の SP にも割り当てる要求は、InvalidRequestError で
 // 拒否される。
 //
 // 契約 `RegisterSamlServiceProvider` は 400 `InvalidRequestError` を宣言し、500 を宣言していない。
 // 状態コードと本文の型に加えて、2 つ目の SP が保存されていないことまで読む。拒否の応答を
 // 返しながら保存だけ済ませる実装は、応答だけでは見分けられない。専用プロファイルの意味は
 // 「この鍵と entityID を使うのはこの SP だけ」なので、保存されてしまえば分離は失われている。
+//
+//spec:covers EX-SAML-004-02: `dedicated` プロファイルを別の SP にも割り当てる要求は、InvalidRequestError で
 func TestAdminServiceProviderRefusesASecondBindingToADedicatedProfile(t *testing.T) {
 	e := newAdminServer(t)
 	dedicated := createIDPProfile(t, e, "Only one", samldomain.IDPProfileModeDedicated)
@@ -686,12 +695,13 @@ func TestAdminServiceProviderRefusesASecondBindingToADedicatedProfile(t *testing
 	}
 }
 
-// EX-SAML-004-03: SP から参照されているプロファイルとデフォルトプロファイルは、削除を conflict で
 // 拒否される。
 //
 // 2 つの条件は別の理由で同じ答えを返すので、両方を通す。どちらも、拒否のあとにプロファイルが
 // 一覧へ残っていることまで読む。参照されたまま消えれば、その SP の SSO は次の要求から
 // プロファイル未解決で落ちる。デフォルトが消えれば、テナントの SAML そのものが入口を失う。
+//
+//spec:covers EX-SAML-004-03: SP から参照されているプロファイルとデフォルトプロファイルは、削除を conflict で
 func TestAdminIDPProfileDeletionIsRefusedWhileReferencedOrDefault(t *testing.T) {
 	e := newAdminServer(t)
 	referenced := createIDPProfile(t, e, "Referenced", samldomain.IDPProfileModeShared)

@@ -130,11 +130,9 @@ func issuedAnAssertion(t *testing.T, recorder *httptest.ResponseRecorder) bool {
 // SAML2Profile — Web Browser SSO と ECP
 // =====================================================================
 
-// SAML2Profile-WebBrowserSSO: 未対応の ACS インデックスと NameID 形式は、フェイルクローズで
 // 拒否される。1 属性だけを差し替えた要求を送り、対照として無傷の要求が Assertion を発行する
 // ことを先に確かめる。
 //
-// EX-SAML-006-04: Version、IssueInstant、ProtocolBinding、ACS インデックス、NameIDPolicy の
 // 形式が未対応または矛盾する要求には Assertion を発行せず、検証済みの ACS が確定している
 // 場合だけ HTTP-POST のプロトコルエラーを返し、それ以外は SamlSignInRejected を発行して
 // フェイルクローズで拒否する。
@@ -145,6 +143,9 @@ func issuedAnAssertion(t *testing.T, recorder *httptest.ResponseRecorder) bool {
 // NoPassive で成立し、それは EX-SAML-006-05 が持つ。ここでは、確定した ACS が無いのに
 // 拒否をプロトコルエラーとして ACS へ POST してしまう実装を落とすため、応答が自動 POST
 // フォームでないことまで読む。
+//
+//spec:covers SAML2Profile-WebBrowserSSO: 未対応の ACS インデックスと NameID 形式は、フェイルクローズで
+//spec:covers EX-SAML-006-04: Version、IssueInstant、ProtocolBinding、ACS インデックス、NameIDPolicy の
 func TestSamlWebBrowserSSOFailsClosedOnUnsupportedRequestParameters(t *testing.T) {
 	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
@@ -215,17 +216,18 @@ func TestSamlWebBrowserSSOFailsClosedOnUnsupportedRequestParameters(t *testing.T
 	}
 }
 
-// SAML2Profile-WebBrowserSSO: `IsPassive=true` でログインが必要なとき、返るのは NoPassive の
 // プロトコルレスポンスである。
 //
 // 同じ要求を認証済みの利用者で送ると Assertion が出るので、差が `IsPassive` と認証状態だけで
 // あることが分かる。`IsPassive` を無視してログイン画面へ飛ばす実装は、SP から見ると
 // 「利用者に見えない認証」という約束が破られる形になる。
 //
-// EX-SAML-006-05: `IsPassive=true` で利用可能な既存セッションが無いとき、ログイン画面へ
 // 遷移せず、検証済みの ACS へ HTTP-POST の NoPassive プロトコルレスポンスを返す。
 // 「遷移しない」は Location ヘッダーが無いことで読む。状態コードだけでは、303 を返さずに
 // 本文でログイン画面を描く実装と区別できない。
+//
+//spec:covers SAML2Profile-WebBrowserSSO: `IsPassive=true` でログインが必要なとき、返るのは NoPassive の
+//spec:covers EX-SAML-006-05: `IsPassive=true` で利用可能な既存セッションが無いとき、ログイン画面へ
 func TestSamlWebBrowserSSOReturnsNoPassiveWhenLoginIsRequired(t *testing.T) {
 	options := authnRequestOptions{acsURL: "https://sp.example.com/acs", isPassive: true}
 
@@ -274,12 +276,12 @@ func responseXMLString(t *testing.T, document *etree.Document) string {
 	return out
 }
 
-// SAML2Profile-ECP: Enhanced Client or Proxy プロファイルは提供していない。
-//
 // `excluded` の行なので、観測は満たさないことである。ECP は PAOS バインディングを使うので、
 // 入口の有無は 2 つの形で読める。メタデータが PAOS / SOAP の SingleSignOnService を広告して
 // いないことと、PAOS を名乗る要求が ECP の応答（SOAP エンベロープ）を返さないことである。
 // 対照として、広告している 2 つのバインディングでは SSO が成立することを併せて読む。
+//
+//spec:covers SAML2Profile-ECP: Enhanced Client or Proxy プロファイルは提供していない。
 func TestSamlDoesNotOfferTheECPProfile(t *testing.T) {
 	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
@@ -326,8 +328,6 @@ func TestSamlDoesNotOfferTheECPProfile(t *testing.T) {
 // SAML2Core — 暗号化 Assertion
 // =====================================================================
 
-// SAML2Core-EncryptedAssertion: 暗号化 Assertion は提供していない。
-//
 // `excluded` の行なので、観測は満たさないことである。発行された Response が平文の
 // `<Assertion>` を持ち `<EncryptedAssertion>` を持たないこと、メタデータが暗号化鍵
 // (`KeyDescriptor use="encryption"`) を広告していないこと、そして SP 登録に暗号化を
@@ -335,6 +335,8 @@ func TestSamlDoesNotOfferTheECPProfile(t *testing.T) {
 //
 // 平文であることだけを読むと、SP ごとに暗号化を有効にできる実装を見逃す。有効化の入口が
 // 無いことまで読んで、初めて「提供していない」の観測になる。
+//
+//spec:covers SAML2Core-EncryptedAssertion: 暗号化 Assertion は提供していない。
 func TestSamlDoesNotOfferEncryptedAssertions(t *testing.T) {
 	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
@@ -387,11 +389,12 @@ func TestSamlDoesNotOfferEncryptedAssertions(t *testing.T) {
 // SAML2Bindings — Redirect と POST
 // =====================================================================
 
-// SAML2Bindings-RedirectPost: AuthnRequest は HTTP-Redirect と HTTP-POST の両方で受理され、
 // HTTP-POST 以外の ProtocolBinding は拒否され、SAMLResponse は HTTP-POST で返る。
 //
 // 行は 3 つのことを言っているので観測も 3 つ要る。片方のバインディングだけを観測すると、
 // もう片方を提供していない実装と区別できない。
+//
+//spec:covers SAML2Bindings-RedirectPost: AuthnRequest は HTTP-Redirect と HTTP-POST の両方で受理され、
 func TestSamlAcceptsRedirectAndPostBindingsAndRepliesByPost(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
 	options := authnRequestOptions{acsURL: "https://sp.example.com/acs"}
@@ -464,11 +467,12 @@ func TestSamlAcceptsRedirectAndPostBindingsAndRepliesByPost(t *testing.T) {
 // SAML2Metadata — IDPSSODescriptor と WantAuthnRequestsSigned
 // =====================================================================
 
-// SAML2Metadata-IDPSSODescriptor: IdP メタデータは SSO エンドポイント、SLO エンドポイント、
 // 署名証明書、NameID 形式を公開する。
 //
 // 4 つとも、SP が IdP を設定するために読む値である。文字列の有無ではなく、値が製品の
 // 実際のエンドポイントおよび実際に受理する NameID 形式と一致することを読む。
+//
+//spec:covers SAML2Metadata-IDPSSODescriptor: IdP メタデータは SSO エンドポイント、SLO エンドポイント、
 func TestSamlMetadataPublishesTheIDPSSODescriptorContract(t *testing.T) {
 	e, _ := newServer(t, nil)
 	recorder := get(e, "/saml/metadata")
@@ -552,7 +556,6 @@ func TestSamlMetadataPublishesTheIDPSSODescriptorContract(t *testing.T) {
 	}
 }
 
-// SAML2Metadata-WantAuthnRequestsSigned: SP ごとの信頼ポリシーとして、AuthnRequest の署名検証を
 // 要求できる。
 //
 // `optional` の行なので、提供しているならその振る舞いを観測する。**要求できることの観測は、
@@ -560,6 +563,8 @@ func TestSamlMetadataPublishesTheIDPSSODescriptorContract(t *testing.T) {
 // 見ると、常に検証する実装とも、決して検証しない実装とも区別が付かない。
 // 併せて、証明書を伴わない有効化は登録そのものが拒否されることを読む。検証する鍵を持たない
 // ポリシーは、効いていないのに効いているように見える設定になる。
+//
+//spec:covers SAML2Metadata-WantAuthnRequestsSigned: SP ごとの信頼ポリシーとして、AuthnRequest の署名検証を
 func TestSamlServiceProviderTrustPolicyCanRequireSignedAuthnRequests(t *testing.T) {
 	admin := newAdminServer(t)
 	certificate := strings.ReplaceAll(certPEM(t), "\n", "\\n")

@@ -110,15 +110,16 @@ func TestRegisterTrustBundleRejectsMissingName(t *testing.T) {
 	}
 }
 
-// EX-WORKLOADIDENTITY-010-01: 認証済みだが `admin` ロールを持たない "alice" の登録要求は
 // 拒否され、信頼設定は作成されない。拒否応答と、拒否が防いだ効果（一覧が空のまま）の双方を
 // 固定する。
 //
 // 管理者なら受理される本文をそのまま送っているので、拒否の理由は本文の不備ではなく
 // ロールだけに由来する。素通りすれば、テナントの利用者なら誰でも発行者を信頼設定へ足せる。
 //
-// REQ-WORKLOADIDENTITY-010: 信頼設定の登録は管理者に限られる。管理者なら受理される
 // 本文をそのまま送って拒否させ、信頼設定が 1 件も増えていないことを読み直す。
+//
+//spec:covers EX-WORKLOADIDENTITY-010-01: 認証済みだが `admin` ロールを持たない "alice" の登録要求は
+//spec:covers REQ-WORKLOADIDENTITY-010: 信頼設定の登録は管理者に限られる。管理者なら受理される
 func TestRegisterTrustBundleRejectsNonAdmin(t *testing.T) {
 	e := newWorkloadIdentityHandler(t)
 	csrf, cookie := workloadAdminCSRF(t, e)
@@ -167,7 +168,7 @@ func TestRegisterTrustBundleRejectsNonAdmin(t *testing.T) {
 	}
 }
 
-// REQ-WORKLOADIDENTITY-008: 管理 API で保存した信頼設定の状態変更を、同じ公開読取経路で観測する。
+//spec:covers REQ-WORKLOADIDENTITY-008: 管理 API で保存した信頼設定の状態変更を、同じ公開読取経路で観測する。
 func TestAdminWorkloadTrustBundleLifecycle(t *testing.T) {
 	e := newWorkloadIdentityHandler(t)
 	csrf, cookie := workloadAdminCSRF(t, e)
@@ -225,7 +226,6 @@ func TestAdminWorkloadTrustBundleLifecycle(t *testing.T) {
 	}
 }
 
-// EX-WORKLOADIDENTITY-010-02: 登録以外の管理操作 — 信頼設定の更新、無効化、再有効化、削除、
 // JWKS の再取得、関連付けの作成、無効化、再有効化、削除 — も "alice" には 1 つも通らない。
 // 具体例が 9 つの操作を並べているので、観測も 9 つ要る。
 //
@@ -236,6 +236,8 @@ func TestAdminWorkloadTrustBundleLifecycle(t *testing.T) {
 // 関連付けの操作には実在しない id を使う。認可が資源の解決より先に効くなら 403 が返り、
 // あとに効くなら 404 が返るので、403 を要求すること自体が順序を固定している。
 // 拒否が防いだ効果は、admin で読み直した信頼設定が登録直後のままであることで観測する。
+//
+//spec:covers EX-WORKLOADIDENTITY-010-02: 登録以外の管理操作 — 信頼設定の更新、無効化、再有効化、削除、
 func TestWorkloadIdentityAdminOperationsRejectNonAdmin(t *testing.T) {
 	e := newWorkloadIdentityHandler(t)
 	csrf, cookie := workloadAdminCSRF(t, e)

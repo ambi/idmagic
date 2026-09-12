@@ -229,13 +229,14 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	}
 }
 
-// REQ-SHAREDSIGNALS-001: TestAdminAgentKill_AdvancesRevocationEpoch は composition-root wiring
 // end to end (KillAgent HTTP → deps_http.Deps.ReactiveEmit →
 // sharedsignalsusecases.AgentRevocationReactor.React →
 // AdvanceRevocationEpoch), not just the reactor unit in isolation. Confirms
 // the SCL scenario `kill-switchは既発行トークンをintrospectionで即時無効化する`'s
 // precondition actually gets wired when SharedSignals.Module is configured
 // (wi-58).
+//
+//spec:covers REQ-SHAREDSIGNALS-001: TestAdminAgentKill_AdvancesRevocationEpoch は composition-root wiring
 func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()

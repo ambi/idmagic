@@ -73,9 +73,10 @@ func TestActorUsernameAndClientIPAreVisibleAndRawStorable(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸が registry にあり、多値なのは
 // チェーンの参加者だけであること。多値の軸が増えれば sidecar の書き込みも
 // 照合も影響を受けるので、境界をここで固定する。
+//
+//spec:covers REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸が registry にあり、多値なのは
 func TestAuditSearchRegistryHasDelegationAxes(t *testing.T) {
 	want := []string{"actor.type", "agent.id", "delegation.actor", "delegation.depth", "delegation.mode"}
 	for _, field := range want {

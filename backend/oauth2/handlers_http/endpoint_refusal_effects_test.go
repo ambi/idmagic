@@ -230,8 +230,9 @@ func assertRateLimited(t *testing.T, response *httptest.ResponseRecorder) {
 	}
 }
 
-// EX-OAUTH2-009-02: PAR 必須のクライアントが直接送信した認可リクエストは
 // invalid_request で拒否され、認可コードは作られない。
+//
+//spec:covers EX-OAUTH2-009-02: PAR 必須のクライアントが直接送信した認可リクエストは
 func TestAuthorizeWithoutRequiredPARCreatesNoAuthorizationCode(t *testing.T) {
 	fixture := newEndpointServer(t)
 	response := fixture.authorize(endpointAuthorizeQuery(endpointFapiClientID))
@@ -257,8 +258,9 @@ func TestAuthorizeWithoutRequiredPARCreatesNoAuthorizationCode(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-040-03: /authorize と /par の閾値超過は 429 で拒否され、
 // 認可コードも PAR レコードも作られない。
+//
+//spec:covers EX-OAUTH2-040-03: /authorize と /par の閾値超過は 429 で拒否され、
 func TestAuthorizeAndPARRateLimitRefusalsCreateNoRecords(t *testing.T) {
 	t.Run("authorize", func(t *testing.T) {
 		fixture := newEndpointServer(t, withRateLimiter(&stubRateLimiter{
@@ -298,8 +300,9 @@ func TestAuthorizeAndPARRateLimitRefusalsCreateNoRecords(t *testing.T) {
 	})
 }
 
-// EX-OAUTH2-040-04: /device_authorization の閾値超過は 429 で拒否され、
 // device_code は作られない。
+//
+//spec:covers EX-OAUTH2-040-04: /device_authorization の閾値超過は 429 で拒否され、
 func TestDeviceAuthorizationRateLimitRefusalCreatesNoDeviceCode(t *testing.T) {
 	form := endpointClientForm(url.Values{"scope": {"openid"}})
 	fixture := newEndpointServer(t, withRateLimiter(&stubRateLimiter{
@@ -319,7 +322,7 @@ func TestDeviceAuthorizationRateLimitRefusalCreatesNoDeviceCode(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-040-05: /bc-authorize の閾値超過は 429 で拒否され、承認要求は作られない。
+//spec:covers EX-OAUTH2-040-05: /bc-authorize の閾値超過は 429 で拒否され、承認要求は作られない。
 func TestBackchannelAuthorizationRateLimitRefusalCreatesNoApprovalRequest(t *testing.T) {
 	form := endpointClientForm(url.Values{
 		"login_hint": {"alice"}, "scope": {"openid profile"},
@@ -354,9 +357,10 @@ func TestPARFailsClosedWhenSharedCounterIsUnreachable(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-001-03: 許可スコープに account を含まないクライアントの account 要求は
 // 拒否され、認可コードは作られない。許可された要求で作られる認可コードにも
 // account スコープは入らない。
+//
+//spec:covers EX-OAUTH2-001-03: 許可スコープに account を含まないクライアントの account 要求は
 func TestAuthorizeWithUndeclaredAccountScopeIssuesNoAccountScope(t *testing.T) {
 	fixture := newEndpointServer(t)
 	query := endpointAuthorizeQuery(endpointClientID)

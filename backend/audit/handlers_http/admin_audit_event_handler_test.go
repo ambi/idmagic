@@ -284,8 +284,9 @@ func TestAdminAuditEventsAllTenantsRejectsSystemAdminOutsideControlPlaneTenant(t
 	}
 }
 
-// EX-AUDIT-007-01: システム経路は全テナントの監査イベントを返し、エクスポートも 1 件参照も
 // 同じ範囲で答える。REQ-AUDIT-007。
+//
+//spec:covers EX-AUDIT-007-01: システム経路は全テナントの監査イベントを返し、エクスポートも 1 件参照も
 func TestListSystemAuditEventsSpansEveryTenant(t *testing.T) {
 	sysAdmin := auditUser("user_system_admin", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	now := time.Now().UTC()
@@ -322,11 +323,11 @@ func TestListSystemAuditEventsSpansEveryTenant(t *testing.T) {
 	}
 }
 
-// EX-AUDIT-007-03: テナント管理経路で発行したカーソルはシステム経路の続きにならない。
-//
 // 制御面主体はテナント管理経路でも所属テナントが制御面テナントなので、カーソルの指紋に
 // 範囲を混ぜていなければ両経路の指紋が一致し、テナント内で発行したカーソルが横断検索の
 // 続きとして黙って読めてしまう。ここで見ているのはその取り違えである。
+//
+//spec:covers EX-AUDIT-007-03: テナント管理経路で発行したカーソルはシステム経路の続きにならない。
 func TestTenantAuditCursorDoesNotContinueTheSystemSearch(t *testing.T) {
 	sysAdmin := auditUser("user_system_admin", tenancydomain.DefaultTenantID, []string{"system_admin", "admin"})
 	base := time.Now().UTC().Add(-time.Hour)
@@ -365,7 +366,7 @@ func TestTenantAuditCursorDoesNotContinueTheSystemSearch(t *testing.T) {
 	}
 }
 
-// EX-AUDIT-007-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの記録も返さない。
+//spec:covers EX-AUDIT-007-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの記録も返さない。
 func TestSystemAuditEventRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	now := time.Now().UTC()
 	foreign := auditEvent("acme", "X", "a", now)

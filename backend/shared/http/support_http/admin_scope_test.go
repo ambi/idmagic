@@ -55,11 +55,11 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 			name: "read scope does not reach a write operation", method: http.MethodPost,
 			routePath: "/api/admin/v1/saml/service-providers",
 			granted:   []apitokendomain.Scope{apitokendomain.ScopeSamlRead},
-			// REQ-SAML-005: saml:read だけで変更操作を要求すると拒否される。
+			//spec:covers REQ-SAML-005: saml:read だけで変更操作を要求すると拒否される。
 			wantRequired: "saml:write",
 		},
 		{
-			// REQ-WSFEDERATION-001: wsfed:read だけで変更操作を要求すると拒否される。
+			//spec:covers REQ-WSFEDERATION-001: wsfed:read だけで変更操作を要求すると拒否される。
 			// 参照のスコープが変更へ届かないことは、そのスコープを配った相手が信頼設定を
 			// 書き換えられないことそのものなので、宣言だけでなくここで固定する。
 			name: "ws-federation read scope does not reach a write operation", method: http.MethodPost,
@@ -68,7 +68,7 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 			wantRequired: "wsfed:write",
 		},
 		{
-			// REQ-SIGNINGKEYS-011: signing-keys:read だけでは鍵の回転へ届かない。
+			//spec:covers REQ-SIGNINGKEYS-011: signing-keys:read だけでは鍵の回転へ届かない。
 			// 参照のスコープを配った相手が署名鍵を差し替えられないことそのものなので、
 			// 宣言だけでなくここで固定する。
 			name: "signing key read scope does not reach a rotation", method: http.MethodPost,
@@ -80,7 +80,7 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 			name: "another resource's scope does not reach", method: http.MethodGet,
 			routePath: "/api/admin/v1/users",
 			granted:   []apitokendomain.Scope{apitokendomain.ScopeSamlRead},
-			// REQ-OAUTH2-003: 別 resource の scope で操作を要求すると拒否される。
+			//spec:covers REQ-OAUTH2-003: 別 resource の scope で操作を要求すると拒否される。
 			wantRequired: "users:read",
 		},
 		{
@@ -145,9 +145,10 @@ func TestAdminPortalTokenSkipsGranularScopes(t *testing.T) {
 	}
 }
 
-// TestAdminApiTokenInsufficientScopeChallenge は RFC6750-API-TOKEN-ERROR を固定する。
 // スコープ不足は insufficient_scope と必要なスコープ名を返し、ロール不足の access_denied
 // とは区別できる。
+//
+//spec:covers RFC6750-API-TOKEN-ERROR: TestAdminApiTokenInsufficientScopeChallenge が を固定する。
 func TestAdminApiTokenInsufficientScopeChallenge(t *testing.T) {
 	e := echo.New()
 	request := httptest.NewRequest(http.MethodPost, "/api/admin/v1/saml/service-providers", http.NoBody)

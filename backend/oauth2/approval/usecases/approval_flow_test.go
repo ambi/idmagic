@@ -24,7 +24,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// REQ-OAUTH2-041: CIBA requires exactly one hint and an openid scope.
+//spec:covers REQ-OAUTH2-041: CIBA requires exactly one hint and an openid scope.
 func TestValidateStartApprovalInputRejectsMalformedCIBARequest(t *testing.T) {
 	t.Parallel()
 	tests := []approvalusecases.StartApprovalInput{
@@ -200,9 +200,10 @@ func TestApprovalFlowPollingDecisionAndReplay(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-042: a denied approval never becomes a token. The refusal is the
 // OAuth-shaped access_denied, and the request stays Denied: an exchange that
 // answered "denied" while still issuing would look identical from the error alone.
+//
+//spec:covers REQ-OAUTH2-042: a denied approval never becomes a token. The refusal is the
 func TestApprovalExchangeRejectsDeniedRequest(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -234,7 +235,7 @@ func TestApprovalExchangeRejectsDeniedRequest(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-042: the agent kill switch is checked again after human approval.
+//spec:covers REQ-OAUTH2-042: the agent kill switch is checked again after human approval.
 func TestApprovalExchangeFailsClosedAfterAgentKill(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -266,7 +267,7 @@ func TestApprovalExchangeFailsClosedAfterAgentKill(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-042: a bearer secret is bound to both its client and tenant.
+//spec:covers REQ-OAUTH2-042: a bearer secret is bound to both its client and tenant.
 func TestApprovalExchangeRejectsOtherClientAndTenant(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -289,7 +290,7 @@ func TestApprovalExchangeRejectsOtherClientAndTenant(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-042: concurrent exchanges consume an approved request exactly once.
+//spec:covers REQ-OAUTH2-042: concurrent exchanges consume an approved request exactly once.
 func TestApprovalExchangeConcurrentConsume(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()

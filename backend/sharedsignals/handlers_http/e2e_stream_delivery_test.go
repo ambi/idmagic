@@ -28,7 +28,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// REQ-SHAREDSIGNALS-006: 管理 API で登録した送信 stream に失効 event を射影し、worker が実 HTTP receiver へ SET を配送して delivered にする。
+//spec:covers REQ-SHAREDSIGNALS-006: 管理 API で登録した送信 stream に失効 event を射影し、worker が実 HTTP receiver へ SET を配送して delivered にする。
 func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	var received atomic.Int32
 	var receivedBody string

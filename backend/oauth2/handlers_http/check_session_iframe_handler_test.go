@@ -36,8 +36,9 @@ func newCheckSessionIframeServer() (*echo.Echo, *sessionmemory.SessionStore) {
 	return e, store
 }
 
-// OIDC-SESSION-MGMT-CHECK-IFRAME: RP の postMessage を受ける iframe が、
 // OP セッションを解決できない状態を changed として送信元 origin へ返すことを固定する。
+//
+//spec:covers OIDC-SESSION-MGMT-CHECK-IFRAME: RP の postMessage を受ける iframe が、
 func TestCheckSessionIframe_noSession_respondsChanged(t *testing.T) {
 	e, _ := newCheckSessionIframeServer()
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/session/check", http.NoBody)
@@ -64,7 +65,7 @@ func TestCheckSessionIframe_noSession_respondsChanged(t *testing.T) {
 	}
 }
 
-// OIDC-SESSION-MGMT-CHECK-IFRAME: 有効な OP セッションを unchanged として返すことを固定する。
+//spec:covers OIDC-SESSION-MGMT-CHECK-IFRAME: 有効な OP セッションを unchanged として返すことを固定する。
 func TestCheckSessionIframe_validSession_respondsUnchanged(t *testing.T) {
 	e, store := newCheckSessionIframeServer()
 	sess := &sessiondomain.LoginSession{

@@ -29,13 +29,14 @@ func subjectIdentifierEvent(jti string, subjectID map[string]any) *ssports.Verif
 // テナントは受信ストリームが属するテナントで決まり、識別子は Agent の識別子か、
 // Agent に束縛済みの OAuth2Client の識別子として解決する。
 //
-// RFC9493-SUBID-FORMAT: 種別を決めるのが `format` の値だけであることを固定する。
 // 解釈する `iss_sub` と `opaque` が主体を解決すること、解釈しない `format` は
 // 解決できる識別子を同じ Subject Identifier の中に持っていても拒否されること、
 // そして拒否が失効エポックを進めないことを併せて観測する。
-// RFC9493-SUBID-ISS-SUB: `format=iss_sub` の `iss` が受信ストリームの
 // `trusted_issuer` と完全一致しない場合、SET 自体の検証を通っていても主体を解決
 // せず、失効エポックを進めないことを固定する。
+//
+//spec:covers RFC9493-SUBID-FORMAT: 種別を決めるのが `format` の値だけであることを固定する。
+//spec:covers RFC9493-SUBID-ISS-SUB: `format=iss_sub` の `iss` が受信ストリームの
 func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 	const agentID = "agent_1"
 	const boundClientID = "client_1"

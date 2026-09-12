@@ -22,7 +22,7 @@ func newRequest(t *testing.T, state spec.ApprovalRequestState, now time.Time) *a
 	}
 }
 
-// REQ-OAUTH2-042: transitions are one-way and only Approved can reach Consumed.
+//spec:covers REQ-OAUTH2-042: transitions are one-way and only Approved can reach Consumed.
 func TestApprovalRequestTransitionsAreOneWay(t *testing.T) {
 	t.Parallel()
 
@@ -80,7 +80,7 @@ func TestApprovalRequestTerminalStates(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-042: expiry includes both the exact deadline and the Expired state.
+//spec:covers REQ-OAUTH2-042: expiry includes both the exact deadline and the Expired state.
 func TestIsExpired(t *testing.T) {
 	t.Parallel()
 
@@ -103,7 +103,7 @@ func TestIsExpired(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-041: requested_expiry uses the default only when omitted.
+//spec:covers REQ-OAUTH2-041: requested_expiry uses the default only when omitted.
 func TestResolveTTL(t *testing.T) {
 	t.Parallel()
 
@@ -126,7 +126,7 @@ func TestResolveTTL(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-041: only polling faster than the interval triggers slow_down.
+//spec:covers REQ-OAUTH2-041: only polling faster than the interval triggers slow_down.
 func TestIsPollTooFast(t *testing.T) {
 	t.Parallel()
 

@@ -235,7 +235,7 @@ func TestVerifyDPoPRejectsInvalidSignature(t *testing.T) {
 }
 
 func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
-	// REQ-OAUTH2-045: a proof presented to a protected resource must carry
+	//spec:covers REQ-OAUTH2-045: a proof presented to a protected resource must carry
 	// base64url(SHA-256) of the presented access token in ath.
 	key, jwk := dpopTestKey(t)
 	now := time.Now().UTC()
@@ -313,7 +313,7 @@ func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
 }
 
 func TestVerifyDPoPForTokenAcceptsProofWithoutATH(t *testing.T) {
-	// REQ-OAUTH2-045: the token endpoint requires no ath because the target access
+	//spec:covers REQ-OAUTH2-045: the token endpoint requires no ath because the target access
 	// token does not exist yet. Guards against leaking the requirement onto that path.
 	key, jwk := dpopTestKey(t)
 	now := time.Now().UTC()

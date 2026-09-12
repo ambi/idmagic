@@ -122,7 +122,7 @@ function buttonWithText(texts: string[]): string {
   return `el.tagName === 'BUTTON' && ${JSON.stringify(texts)}.some((text) => (el.textContent ?? '').includes(text))`
 }
 
-// WCAG22-KEYBOARD: サインインから同意までの認証操作は、ポインターを 1 度も使わずに
+//spec:covers WCAG22-KEYBOARD: サインインから同意までの認証操作は、ポインターを 1 度も使わずに
 // キーボードだけで完了する。走査で届き、走査で活性化し、判断がクライアントへ返るところまで
 // 到達する。
 //
@@ -171,7 +171,7 @@ test('every authentication step completes with the keyboard alone', async () => 
   }
 }, 60_000)
 
-// WCAG22-FOCUS: 走査で止まる要素はどれも、視認できるフォーカス表示を持ち、他の要素に
+//spec:covers WCAG22-FOCUS: 走査で止まる要素はどれも、視認できるフォーカス表示を持ち、他の要素に
 // 完全に隠れていない。表示の有無だけを見ると、透明なリングを描く実装も通ってしまうので、
 // 非フォーカス時との差と、その差が透明でないことの両方を読む。
 test('every focus stop on an authentication screen is visible and unobscured', async () => {

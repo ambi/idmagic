@@ -83,7 +83,7 @@ func TestEnforcePasswordExpiry(t *testing.T) {
 	})
 }
 
-// REQ-TENANCY-019: every password-setting path reads the same tenant-resolved policy.
+//spec:covers REQ-TENANCY-019: every password-setting path reads the same tenant-resolved policy.
 func TestResolveTenantPolicy(t *testing.T) {
 	t.Parallel()
 

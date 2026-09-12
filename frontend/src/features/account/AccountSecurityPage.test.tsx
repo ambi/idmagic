@@ -478,7 +478,7 @@ describe('AccountSecurityPage notification preferences', () => {
 
   afterEach(() => restoreGlobals())
 
-  // REQ-AUTHENTICATION-033: 必須の種別はトグルを操作できず、常に通知であることを示す。
+  //spec:covers REQ-AUTHENTICATION-033: 必須の種別はトグルを操作できず、常に通知であることを示す。
   it('locks the toggle for categories the user cannot turn off', async () => {
     stubGlobal(
       'fetch',
@@ -507,7 +507,7 @@ describe('AccountSecurityPage notification preferences', () => {
     ).not.toBeChecked()
   })
 
-  // REQ-AUTHENTICATION-034: 停止は「止める種別」の集合として送り、既存の停止を保つ。
+  //spec:covers REQ-AUTHENTICATION-034: 停止は「止める種別」の集合として送り、既存の停止を保つ。
   it('sends the whole disabled set when a category is turned off', async () => {
     stubGlobal(
       'fetch',

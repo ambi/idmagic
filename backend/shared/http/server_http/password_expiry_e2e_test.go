@@ -1,6 +1,6 @@
 package server_http_test
 
-// REQ-AUTHENTICATION-024: end-to-end coverage that a tenant's max_age_days
+//spec:covers REQ-AUTHENTICATION-024: end-to-end coverage that a tenant's max_age_days
 // reaches the login path. The use case is unit-tested in
 // authentication/password/usecases; what these tests pin down is the wiring:
 // the tenant override is resolved for the request, an expired password gates the

@@ -2,8 +2,7 @@ package handlers_http_test
 
 // 主要ユースケース追跡: REQ-AUTHORIZATION-003。
 
-// REQ-AUTHORIZATION-001 / REQ-AUTHORIZATION-002 / REQ-AUTHORIZATION-004 /
-// REQ-AUTHORIZATION-006 を /api/admin/v1/authorization/* 経由で検証する。
+//spec:covers REQ-AUTHORIZATION-001, REQ-AUTHORIZATION-002, REQ-AUTHORIZATION-004, REQ-AUTHORIZATION-006: /api/admin/v1/authorization/* 経由で検証する。
 
 import (
 	"bytes"
@@ -242,7 +241,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 			t.Fatalf("resource_ids = %v, want [d1]", listed.Result.ResourceIDs)
 		}
 
-		// REQ-AUTHORIZATION-009: 監査には非 PII の要約だけが残る。
+		//spec:covers REQ-AUTHORIZATION-009: 監査には非 PII の要約だけが残る。
 		var evaluated int
 		for _, event := range *events {
 			if event.EventType() == "FgaCheckEvaluated" {
@@ -331,7 +330,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 	})
 
-	// REQ-AUTHORIZATION-006: 呼び出し元のテナントで解決した境界が常に優先される。
+	//spec:covers REQ-AUTHORIZATION-006: 呼び出し元のテナントで解決した境界が常に優先される。
 	t.Run("tuples written in one realm are invisible from another", func(t *testing.T) {
 		e, _, _ := newServer(t, actor("admin", []string{"admin"}))
 		if rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest()); rec.Code != http.StatusCreated {
@@ -348,7 +347,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 	})
 
-	// REQ-AUTHORIZATION-010: 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる。
+	//spec:covers REQ-AUTHORIZATION-010: 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる。
 	// 拒否は 403 だけでは確かめたことにならない。妥当な本文をそのまま送って拒否させ、
 	// 版もタプルも 1 つも増えていないことを保管庫から読み直す。
 	t.Run("a non-administrator is rejected on every endpoint", func(t *testing.T) {

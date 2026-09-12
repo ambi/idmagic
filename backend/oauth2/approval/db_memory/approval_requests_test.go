@@ -13,7 +13,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// REQ-OAUTH2-043: a pending request accepts exactly one account decision.
+//spec:covers REQ-OAUTH2-043: a pending request accepts exactly one account decision.
 func TestApprovalRequestStoreDecideIsCompareAndSet(t *testing.T) {
 	t.Parallel()
 	store := approvaldb.NewApprovalRequestStore()

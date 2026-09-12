@@ -89,8 +89,9 @@ func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-005: エージェントが代行した操作は、行為者の種別とエージェントの識別子を持ち、
 // actor.id が利用者へ読み替えられない。
+//
+//spec:covers REQ-AUDIT-005: エージェントが代行した操作は、行為者の種別とエージェントの識別子を持ち、
 func TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "TokenExchanged",
@@ -121,8 +122,9 @@ func TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser(t *testing.T)
 	}
 }
 
-// REQ-AUDIT-005: agentId を持つイベントでも、Agent が操作の対象であるものは
 // 行為者を Agent としない。管理者による Agent の登録がその例。
+//
+//spec:covers REQ-AUDIT-005: agentId を持つイベントでも、Agent が操作の対象であるものは
 func TestExtractSearchAttributesAgentAsTargetKeepsTheHumanActor(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "AgentRegistered",
@@ -143,8 +145,9 @@ func TestExtractSearchAttributesAgentAsTargetKeepsTheHumanActor(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-005: 行為者が Agent で、その識別子しか無いイベントは actor.id を
 // 代行された利用者で埋めない。
+//
+//spec:covers REQ-AUDIT-005: 行為者が Agent で、その識別子しか無いイベントは actor.id を
 func TestExtractSearchAttributesAgentActorWithoutAnActorSubUsesTheAgent(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "BackchannelAuthRequested",
@@ -166,8 +169,9 @@ func TestExtractSearchAttributesAgentActorWithoutAnActorSubUsesTheAgent(t *testi
 	}
 }
 
-// REQ-AUDIT-005: エージェントを名指さないイベントの行為者は利用者であり、
 // 既存の userId フォールバックはそのまま残る。
+//
+//spec:covers REQ-AUDIT-005: エージェントを名指さないイベントの行為者は利用者であり、
 func TestExtractSearchAttributesUserActorKeepsTheExistingFallback(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type:    "UserAuthenticated",
@@ -185,7 +189,7 @@ func TestExtractSearchAttributesUserActorKeepsTheExistingFallback(t *testing.T) 
 	}
 }
 
-// REQ-AUDIT-006: 委譲チェーンの参加者は多値の軸として並び、どの段からでも引ける。
+//spec:covers REQ-AUDIT-006: 委譲チェーンの参加者は多値の軸として並び、どの段からでも引ける。
 func TestExtractSearchAttributesDelegationChainIsMultiValued(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "TokenExchanged",
@@ -212,8 +216,9 @@ func TestExtractSearchAttributesDelegationChainIsMultiValued(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-005: 委譲の軸を持たない過去のイベントは、その軸のどの値にも一致しない
 // 形で保存される (値を補って埋めない)。
+//
+//spec:covers REQ-AUDIT-005: 委譲の軸を持たない過去のイベントは、その軸のどの値にも一致しない
 func TestExtractSearchAttributesLeavesDelegationAxesAbsent(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type:    "ClientCreated",

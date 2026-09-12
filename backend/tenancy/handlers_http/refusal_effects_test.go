@@ -170,12 +170,13 @@ func refusalAdmin(tenantID string) *userdomain.User {
 	return actor
 }
 
-// EX-TENANCY-001-02: 連携エンドポイント画面には対象テナントの指定手段が無く、
 // 別テナントの realm を URL に混ぜても解決済みテナント以外の情報は返らない。
 // 応答にクライアントシークレット、API トークン、秘密鍵は含まれない。
 //
 // この画面は 1 リクエストでテナントの連携構成を丸ごと返す。越境を許せば、
 // 他テナントの発行者、エンドポイント、署名証明書の指紋がまとめて読める。
+//
+//spec:covers EX-TENANCY-001-02: 連携エンドポイント画面には対象テナントの指定手段が無く、
 func TestAdminIntegrationEndpointsRefuseCrossTenantTargetingAndLeakNoSecret(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 
@@ -219,11 +220,12 @@ func TestAdminIntegrationEndpointsRefuseCrossTenantTargetingAndLeakNoSecret(t *t
 	}
 }
 
-// EX-TENANCY-014-01: `admin` ロールだけを持つテナント管理者は、システムコンソールの
 // テナント一覧に到達できない。
 //
 // この拒否が素通りすれば、他テナントの存在そのものが漏れる。テナント名は多くの場合
 // 顧客名なので、一覧が読めることは顧客名簿が読めることに等しい。
+//
+//spec:covers EX-TENANCY-014-01: `admin` ロールだけを持つテナント管理者は、システムコンソールの
 func TestListTenantsRefusesTenantAdminAndReturnsNoOtherTenant(t *testing.T) {
 	server := newRefusalServer(t,
 		refusalAdmin(domain.DefaultTenantID),
@@ -295,13 +297,14 @@ func (s *refusalServer) brandingIsSystemDefault(t *testing.T) {
 	}
 }
 
-// EX-TENANCY-005-01: `javascript:` スキームの footer リンクと SVG のロゴは
 // `InvalidRequestError` で拒否され、保存されない。branding は組込みデフォルトのままになる。
 //
 // 保存されてしまえば、ログイン画面のフッターが `javascript:` を実行するリンクになる。
 // ログイン画面は資格情報を入力する画面なので、そこでの任意スクリプト実行は
 // そのままパスワードの窃取になる。SVG も同じで、画像として配られる SVG は
 // スクリプトを運べる。
+//
+//spec:covers EX-TENANCY-005-01: `javascript:` スキームの footer リンクと SVG のロゴは
 func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	const path = "/realms/acme/api/admin/v1/tenant/branding"
@@ -342,12 +345,13 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 	}
 }
 
-// EX-TENANCY-005-02: label だけを指定した footer リンクは `InvalidRequestError` で拒否され、
 // 片方だけの上書きは保存されない。
 //
 // ラベルだけのリンクが保存されると、ログイン画面には押せる見た目のリンクが出て
 // どこへも行かない。フッターは問い合わせ先を出す場所なので、押せない問い合わせ先は
 // 利用者を締め出す。
+//
+//spec:covers EX-TENANCY-005-02: label だけを指定した footer リンクは `InvalidRequestError` で拒否され、
 func TestUpdateBrandingRefusesIncompleteFooterLinkAndSavesNothing(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	const path = "/realms/acme/api/admin/v1/tenant/branding"
@@ -407,12 +411,13 @@ func (s *refusalServer) groupUsage(t *testing.T) int {
 	return usage.Groups
 }
 
-// EX-TENANCY-013-01: 上限に達したテナントの Group 作成は `QuotaExceededError` で拒否され、
 // Group は作成されず、使用量も増えない。
 //
 // 使用量だけ増える実装は、応答からは正しい拒否と区別できないのに、以後の正当な作成まで
 // 拒否し続ける。上限を上げても使用量が先に進んでいるので、被害は運用で消えない。
 // だから拒否の効果は「作られていない」と「使用量が動いていない」の両方で読む。
+//
+//spec:covers EX-TENANCY-013-01: 上限に達したテナントの Group 作成は `QuotaExceededError` で拒否され、
 func TestCreateGroupRefusesOverHardQuotaAndLeavesUsageUnchanged(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin(domain.DefaultTenantID))
 	ctx := context.Background()
@@ -496,13 +501,14 @@ func (s *refusalServer) templateDetail(t *testing.T) struct {
 	return detail
 }
 
-// EX-TENANCY-017-01: 許可集合外の差し込み変数を含む上書きは拒否され、保存されない。
 // 以後も利用者には組込みデフォルトのリセットメールが届く。
 //
 // `{{password}}` のような変数を通せば、テンプレートは秘密の引き出し口になる。
 // 逆に `{{reset_url}}` を落とした本文が保存されれば、リンクの無いリセットメールが
 // 配られて利用者はパスワードを直せなくなる。だから効果は「保存されていない」だけでなく
 // 「次に届くメールが組込みデフォルトのままである」ことまで読む。
+//
+//spec:covers EX-TENANCY-017-01: 許可集合外の差し込み変数を含む上書きは拒否され、保存されない。
 func TestNotificationTemplateRefusesUnknownPlaceholderAndSendsTheBuiltinDefault(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	before := server.templateDetail(t)
@@ -573,12 +579,13 @@ func TestNotificationTemplateRefusesUnknownPlaceholderAndSendsTheBuiltinDefault(
 	}
 }
 
-// EX-TENANCY-017-02: テキスト本文だけ、あるいは HTML 本文だけの上書きは拒否され、
 // 片方だけの上書きは作られない。
 //
 // 片方だけが保存されると、そのテンプレートは「HTML を読めない受信者には何も伝えない
 // メール」か「HTML クライアントで空に見えるメール」のどちらかになる。
 // 部分的に保存された状態は、次の編集者にも壊れているように見えない。
+//
+//spec:covers EX-TENANCY-017-02: テキスト本文だけ、あるいは HTML 本文だけの上書きは拒否され、
 func TestNotificationTemplateRefusesPartialBodyAndCreatesNoOverride(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	before := server.templateDetail(t)
@@ -605,12 +612,13 @@ func TestNotificationTemplateRefusesPartialBodyAndCreatesNoOverride(t *testing.T
 	}
 }
 
-// EX-TENANCY-017-03: カタログに無い locale を指定した上書きは拒否され、
 // その locale の上書きは作られない。
 //
 // カタログ外の locale に上書きが作られると、その locale の利用者には組込みデフォルトも
 // 上書きも届かないテンプレートが生まれる。存在しない locale へ書けること自体が、
 // 配信できないメールを静かに増やす。
+//
+//spec:covers EX-TENANCY-017-03: カタログに無い locale を指定した上書きは拒否され、
 func TestNotificationTemplateRefusesUnknownLocaleAndCreatesNoOverride(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	body := map[string]any{"subject": "件名", "body_text": "{{reset_url}}", "body_html": "<p>{{reset_url}}</p>"}
@@ -654,12 +662,13 @@ func TestNotificationTemplateRefusesUnknownLocaleAndCreatesNoOverride(t *testing
 	}
 }
 
-// EX-TENANCY-017-04: 差出人メールアドレスを上書きする入力は受け付けない。
 // 上書きできるのは表示名だけである。
 //
 // 差出人アドレスをテナントが決められると、この IdP は任意の送信元を名乗るメールの
 // 中継になる。SPF と DKIM は送信ドメインに紐づくので、こちらの正当な署名がついたまま
 // 別のドメインを名乗るメールが出ていく。表示名だけなら、この危険は生まれない。
+//
+//spec:covers EX-TENANCY-017-04: 差出人メールアドレスを上書きする入力は受け付けない。
 func TestNotificationTemplateRefusesFromAddressOverrideAndKeepsDisplayNameOnly(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	before := server.templateDetail(t)
@@ -698,11 +707,11 @@ func TestNotificationTemplateRefusesFromAddressOverrideAndKeepsDisplayNameOnly(t
 	}
 }
 
-// EX-TENANCY-018-03: テスト送信には宛先の指定手段が無く、常に操作者本人へ送られる。
-//
 // この拒否が素通りすれば、テナント管理者の権限がそのまま任意宛先メールの送信手段になる。
 // 送られるのはこちらのドメインから出る正当なパスワードリセットメールなので、
 // 受け取った側には見分けがつかない。
+//
+//spec:covers EX-TENANCY-018-03: テスト送信には宛先の指定手段が無く、常に操作者本人へ送られる。
 func TestSendTestNotificationRefusesARequestedRecipient(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 
@@ -742,12 +751,13 @@ func TestSendTestNotificationRefusesARequestedRecipient(t *testing.T) {
 	}
 }
 
-// EX-TENANCY-018-04: 検証済みメールアドレスを持たない操作者のテスト送信は
 // `InvalidRequestError` で拒否され、メールは送信されない。
 //
 // 未検証のアドレスへ送れば、そのアドレスの持ち主が操作者本人だという保証が無いまま
 // メールが出る。アドレスの検証は「本人にしか届かない」の前提そのものなので、
 // 検証されていない時点で本人宛だと言えない。
+//
+//spec:covers EX-TENANCY-018-04: 検証済みメールアドレスを持たない操作者のテスト送信は
 func TestSendTestNotificationRefusesUnverifiedActorAndSendsNothing(t *testing.T) {
 	unverified := settingsActor("operator", "acme", []string{"admin"})
 	address := "operator@example.test"

@@ -186,9 +186,10 @@ func TestProvisioningHealth_Valid(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: 取得元に選べるのは Group の名前、説明、メールアドレス
 // だけである。集合の外は管理 API の境界で止める —— 保存できてしまうと、配信時に
 // 名前へ落ちるので、効いている設定と区別が付かなくなる。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: 取得元に選べるのは Group の名前、説明、メールアドレス
 func TestProvisioningConnection_ValidateRefusesAnUnknownDisplayNameSource(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -218,10 +219,10 @@ func TestProvisioningConnection_ValidateRefusesAnUnknownDisplayNameSource(t *tes
 	}
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: 既定は Group の名前である。
-//
 // 未知の値は登録が拒否するので管理 API からは入らないが、保存済みの行が持っていた
 // 場合でも配信は止まらない。表示名は fail-closed の判断ではない。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: 既定は Group の名前である。
 func TestGroupPushConfig_DisplayNameSourceKey(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

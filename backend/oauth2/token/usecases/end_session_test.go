@@ -138,9 +138,10 @@ func (s staticSessionOwner) LoginSessionOwner(_ context.Context, sid string) (st
 	return owner, ok, nil
 }
 
-// REQ-OAUTH2-024 / EX-OAUTH2-024-05: sid を持たない id_token_hint はログアウト対象を
 // 決められない。空の sid をそのまま返すと HTTP 層が browser cookie のセッションへ
 // 暗黙に降格するため、ここで fail-closed に拒否する。
+//
+//spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-05: sid を持たない id_token_hint はログアウト対象を
 func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
 	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice"}},
@@ -154,8 +155,9 @@ func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-024 / EX-OAUTH2-024-06: sid が示す LoginSession の主体と sub が違うヒントは、
 // 他人のセッションを名指ししている。解決の時点で拒否する。
+//
+//spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-06: sid が示す LoginSession の主体と sub が違うヒントは、
 func TestResolveEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
 	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "mallory", Sid: "session-1"}},

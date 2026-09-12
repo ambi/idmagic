@@ -320,12 +320,13 @@ func assertNoPassiveTokenIssued(t *testing.T, rec *httptest.ResponseRecorder, ev
 	}
 }
 
-// WSFed-PassiveSignIn: wsignin1.0 が、登録済み wtrealm と許可済み wreply の組にだけトークンを返すことを
 // 固定する。
 //
 // 成功経路だけを観測すると、wtrealm も wreply も照合しない実装と区別できない。したがって観測は 2 つ要る。
 // 登録済みの組では指定した wreply へトークンが届くこと (既定の先頭 URL で代用されないこと)、および
 // 未登録の wtrealm と、登録済み wtrealm に対する許可外の wreply のそれぞれでトークンが出ないことである。
+//
+//spec:covers WSFed-PassiveSignIn: wsignin1.0 が、登録済み wtrealm と許可済み wreply の組にだけトークンを返すことを
 func TestWsFedPassiveSignIn_IssuesOnlyToTheRegisteredRealmAndAllowedReply(t *testing.T) {
 	const allowedReply = "https://rp.example/wsfed/alternate"
 
@@ -368,14 +369,14 @@ func TestWsFedPassiveSignIn_IssuesOnlyToTheRegisteredRealmAndAllowedReply(t *tes
 	})
 }
 
-// WSFed-SilentSignIn: 無音サインイン (prompt=none 相当) を提供しないことを固定する。
-//
 // excluded の行なので、観測は行の Statement を満たすことではなく満たさないことになる。無音を求める入力が
 // 正式な入口へ届いたとき、(1) 無音でトークンが出ないこと、(2) 利用者に何も見せない失敗応答にも化けず、
 // 対話的なログインへ誘導するか明示的に拒否することの 2 つを観測する。この 2 つを分けないと、「無音の
 // 発行はしないが無音で静かに失敗する」実装を通してしまう。
 //
 // 本項目はこの行で excluded の観測の型を決め、WSTrust13-WindowsTransport へ広げた。
+//
+//spec:covers WSFed-SilentSignIn: 無音サインイン (prompt=none 相当) を提供しないことを固定する。
 func TestWsFedSilentSignIn_NotProvided(t *testing.T) {
 	t.Run("a silent-auth hint on an unauthenticated request still requires interactive login", func(t *testing.T) {
 		e, events := newServer(t, nil) // セッション無し。
@@ -552,12 +553,12 @@ func assertNoWsTrustTokenIssued(t *testing.T, rec *httptest.ResponseRecorder, ev
 	}
 }
 
-// WSTrust13-IssueBearer: Issue 要求に対して Bearer の SAML assertion を RSTR で返すことを固定する。
-//
 // RSTR の外形だけでは、保持者証明 (holder-of-key) の assertion を包んだ応答と区別できない。Bearer で
 // あるかを決めるのは assertion の SubjectConfirmation なので、RP と同じ手順で RSTR から assertion を
 // 取り出し、確認方法まで読む。SAML 1.1 は Subject を 2 箇所 (認証文と属性文) に置くので、そのすべてが
 // Bearer であることを見る。1 箇所だけを見ると、片方を保持者証明にした実装を通してしまう。
+//
+//spec:covers WSTrust13-IssueBearer: Issue 要求に対して Bearer の SAML assertion を RSTR で返すことを固定する。
 func TestWsTrustIssueBearer_ReturnsABearerSAMLAssertionInTheRSTR(t *testing.T) {
 	e, events := newServer(t, nil)
 	rec := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), "urn:uuid:issue-bearer", "urn:idmagic:demo-rp"))
@@ -594,11 +595,11 @@ func TestWsTrustIssueBearer_ReturnsABearerSAMLAssertionInTheRSTR(t *testing.T) {
 	}
 }
 
-// WSS-UsernameTokenPassword: 能動的 STS が UsernameToken の username/password を認証することを固定する。
-//
 // 正しい資格情報が通ることだけを観測すると、UsernameToken を読み捨てて誰にでも発行する実装と区別
 // できない。誤ったパスワードと未知の username のそれぞれについて、拒否そのものと、その拒否が防いだ
 // 効果 (トークンが出ていないこと) を観測する。
+//
+//spec:covers WSS-UsernameTokenPassword: 能動的 STS が UsernameToken の username/password を認証することを固定する。
 func TestWsTrustUsernameTokenPassword_AuthenticatesTheSuppliedCredential(t *testing.T) {
 	t.Run("the registered username and password are authenticated", func(t *testing.T) {
 		e, events := newServer(t, nil)
@@ -645,13 +646,14 @@ func TestWsTrustUsernameTokenPassword_AuthenticatesTheSuppliedCredential(t *test
 	})
 }
 
-// WSAddressing-MessageIDToAction: MessageID をリプレイ防止のために検証し、To を能動的 STS の
 // エンドポイントとして、Action を Issue として検証することを固定する。
 //
 // 1 行が 3 つの検証を束ねているので、3 つを 1 つの入力で崩すと手前の検証で落ちて後段が確かめられない。
 // 崩すのは 1 度に 1 つだけで、崩していない要素が有効であることは、同じ組み立てから作った正しい要求が
 // 通ることで先に確認する。MessageID はリプレイ防止のための検証なので、観測は「値が読めること」では
 // なく「同じ MessageID の 2 度目が通らないこと」である。
+//
+//spec:covers WSAddressing-MessageIDToAction: MessageID をリプレイ防止のために検証し、To を能動的 STS の
 func TestWsTrustAddressing_ValidatesMessageIDToAndAction(t *testing.T) {
 	const validTo = "https://idp.example/realms/default/trust/usernamemixed"
 
@@ -710,12 +712,12 @@ func TestWsTrustAddressing_ValidatesMessageIDToAndAction(t *testing.T) {
 	})
 }
 
-// WSTrust13-WindowsTransport: WindowsTransport / Kerberos の能動的プロファイルを提供しないことを固定する。
-//
 // excluded の観測の型は WSFed-SilentSignIn で決めたものに従う。ただしこの行は入口そのものを持たないので、
 // 「届いた要求の拒否」ではなく「要求の宛先が存在しないこと」で観測する。広告まで見るのは、入口が無くても
 // metadata がその binding を広告していれば、RP は提供されていると読んで能動的プロファイルを組み立てて
 // しまうからである。
+//
+//spec:covers WSTrust13-WindowsTransport: WindowsTransport / Kerberos の能動的プロファイルを提供しないことを固定する。
 func TestWsTrustWindowsTransport_NotProvided(t *testing.T) {
 	e, events := newServer(t, nil)
 

@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// REQ-AUTHENTICATION-036: 復旧コードで成立した第二要素が MFA の要求を満たすことを、製品の
+//spec:covers REQ-AUTHENTICATION-036: 復旧コードで成立した第二要素が MFA の要求を満たすことを、製品の
 // 正式な入口から通しで観測する。TOTP 認証器を失った利用者にとって復旧コードが唯一の経路
 // なので、ここが通らないと MFA 必須のアプリケーションから締め出される。
 
@@ -121,12 +121,13 @@ func postRecoveryCode(t *testing.T, e *echo.Echo, cookie, body string) *httptest
 	return recorder
 }
 
-// REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-01: 正しい復旧コードで第二要素が成立し、
 // 同じセッションによる次の認可要求が第二要素の画面へ戻されずに認可コードの発行まで進む。
 //
 // 観測を `/authorize` の応答まで伸ばしているのは、`amr` と `acr` を読むだけでは足りない
 // からである。値が正しくても、ポリシーがそれを充足として読まなければ利用者は同じ画面へ
 // 戻され続ける。復旧コードは要素を失ったときの唯一の経路なので、そこが締め出しになる。
+//
+//spec:covers REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-01: 正しい復旧コードで第二要素が成立し、
 func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	e, store, manager := newRecoveryCodeServer(t)
@@ -171,9 +172,10 @@ func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *te
 	}
 }
 
-// REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-02: 誤った復旧コードは拒否され、その
 // 拒否が何も動かしていない。戻り値の 401 だけを観測すると、amr を先に書いてから拒否を
 // 返す実装と区別が付かない。
+//
+//spec:covers REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-02: 誤った復旧コードは拒否され、その
 func TestWrongRecoveryCodeLeavesTheSessionPending_REQ_AUTHENTICATION_036(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	e, store, manager := newRecoveryCodeServer(t)

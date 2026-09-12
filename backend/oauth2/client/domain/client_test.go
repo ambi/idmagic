@@ -45,8 +45,9 @@ func fapi2TestClient(profile FapiProfile, method TokenEndpointAuthMethod) OAuth2
 	}
 }
 
-// FAPI2-CLIENT-AUTH: プロファイルを選択したクライアントのクライアント認証方式が
 // `private_key_jwt` と `tls_client_auth` に限られることを固定する。
+//
+//spec:covers FAPI2-CLIENT-AUTH: プロファイルを選択したクライアントのクライアント認証方式が
 func TestOAuth2ClientRejectsSharedSecretAuthUnderFapi2(t *testing.T) {
 	for _, method := range []TokenEndpointAuthMethod{
 		AuthMethodClientSecretBasic, AuthMethodClientSecretPost, AuthMethodNone,
@@ -70,8 +71,9 @@ func TestOAuth2ClientRejectsSharedSecretAuthUnderFapi2(t *testing.T) {
 	}
 }
 
-// FAPI2-SENDER-CONSTRAINT: プロファイルを選択したクライアントが、DPoP 証明も mTLS
 // 証明書のサムプリントも持たない要求でトークンを得られないことを固定する。
+//
+//spec:covers FAPI2-SENDER-CONSTRAINT: プロファイルを選択したクライアントが、DPoP 証明も mTLS
 func TestOAuth2ClientRequiresSenderConstraintEvidenceUnderFapi2(t *testing.T) {
 	client := fapi2TestClient(FapiSecurityProfileV2, AuthMethodPrivateKeyJwt)
 	if client.SenderConstraintSatisfied("", "") {
@@ -86,8 +88,9 @@ func TestOAuth2ClientRequiresSenderConstraintEvidenceUnderFapi2(t *testing.T) {
 	}
 }
 
-// FAPI2-PROFILE-SELECTION: プロファイルを選択していないクライアントに、3 つの追加
 // 制約が 1 つも掛からないことを固定する。制約が既定化した変更はここが落ちる。
+//
+//spec:covers FAPI2-PROFILE-SELECTION: プロファイルを選択していないクライアントに、3 つの追加
 func TestOAuth2ClientLeavesNonFapi2ClientsUnconstrained(t *testing.T) {
 	client := fapi2TestClient(FapiNone, AuthMethodClientSecretBasic)
 	if client.UsesFapi2SecurityProfile() {
@@ -110,7 +113,7 @@ func TestOAuth2ClientLeavesNonFapi2ClientsUnconstrained(t *testing.T) {
 	}
 }
 
-// FAPI2-PAR-PKCE: プロファイルの選択だけで PAR が必須になることを固定する。
+//spec:covers FAPI2-PAR-PKCE: プロファイルの選択だけで PAR が必須になることを固定する。
 func TestOAuth2ClientRequiresPushedAuthorizationRequestsUnderFapi2(t *testing.T) {
 	client := fapi2TestClient(FapiSecurityProfileV2, AuthMethodPrivateKeyJwt)
 	if !client.MustUsePushedAuthorizationRequests() {

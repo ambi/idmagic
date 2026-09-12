@@ -109,7 +109,7 @@ func (v *recordingWorkloadVerifier) VerifyWorkloadToken(_ context.Context, tenan
 // TestVerifyWorkloadAttestation_Success が観測する。ここでは verifier を差し替えて、
 // 入口が検証結果をどう使うかだけを見る。
 //
-// REQ-WORKLOADIDENTITY-001: Token Exchange の HTTP 入口が workload verifier の結果を Agent 資格情報へ変換する。
+//spec:covers REQ-WORKLOADIDENTITY-001: Token Exchange の HTTP 入口が workload verifier の結果を Agent 資格情報へ変換する。
 func TestTokenExchangeIssuesWorkloadCredential(t *testing.T) {
 	verifier := &recordingWorkloadVerifier{}
 	base := newTokenExchangeServer(t, func(deps *httpadapter.Deps) {

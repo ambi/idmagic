@@ -164,8 +164,9 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-006: 多値の検索属性は、いずれか 1 つの参加者が一致すればそのイベントを返す。
 // PostgreSQL 側の EXISTS 照合と同じ意味論であることを、memory store でも保つ。
+//
+//spec:covers REQ-AUDIT-006: 多値の検索属性は、いずれか 1 つの参加者が一致すればそのイベントを返す。
 func TestAuditEventStoreMatchesAnyValueOfAMultiValuedAttribute(t *testing.T) {
 	store := NewAuditEventStore(0)
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)

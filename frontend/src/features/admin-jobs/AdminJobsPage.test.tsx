@@ -68,7 +68,7 @@ describe('AdminJobsPage', () => {
     expect(screen.getByText(t.selectJobPrompt)).toBeInTheDocument()
   })
 
-  // REQ-JOBS-014: ハンドラーの入出力は表示せず、その旨を運用者へ明示する。
+  //spec:covers REQ-JOBS-014: ハンドラーの入出力は表示せず、その旨を運用者へ明示する。
   it('states that the handler payload is deliberately not shown', async () => {
     await renderPage([job()])
     expect(screen.getByText(t.payloadOmittedNotice)).toBeInTheDocument()
@@ -79,13 +79,13 @@ describe('AdminJobsPage', () => {
     expect(screen.getByText('destination unreachable')).toBeInTheDocument()
   })
 
-  // REQ-JOBS-013: 終端に達していないジョブには取り消しを出す。
+  //spec:covers REQ-JOBS-013: 終端に達していないジョブには取り消しを出す。
   it('offers cancel while the job is still running', async () => {
     await renderPage([job({ status: 'running' })])
     expect(screen.getByRole('button', { name: t.cancelAction })).toBeInTheDocument()
   })
 
-  // REQ-JOBS-013: 終端に達したジョブには取り消しを出さない。
+  //spec:covers REQ-JOBS-013: 終端に達したジョブには取り消しを出さない。
   it('does not offer cancel once the job has finished', async () => {
     await renderPage([job({ id: 'job-done', status: 'succeeded' })])
     expect(screen.queryByRole('button', { name: t.cancelAction })).not.toBeInTheDocument()
@@ -122,7 +122,7 @@ describe('AdminJobsPage', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  // EX-SYSTEM-020-01: テナント管理コンソールに横断の入口を置かない。ページは操作者の
+  //spec:covers EX-SYSTEM-020-01: テナント管理コンソールに横断の入口を置かない。ページは操作者の
   // ロールも realm も受け取らないので、どの操作者に対しても切替が現れることはない。
   // 横断はシステムコンソールが持つ (REQ-SYSTEM-020)。
   it('does not offer a cross-tenant toggle to a control-plane operator', async () => {

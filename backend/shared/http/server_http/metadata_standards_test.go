@@ -540,8 +540,6 @@ var apiTokenScopeSample = []string{
 	string(apitokendomain.ScopeScimGroupsWrite),
 }
 
-// RFC7517-JWKS (required): 公開可能な検証鍵を JWK Set として配布する。
-//
 // 行は 1 つの動詞に見えるが、実際は 3 つのことを言っている。JWK Set の形で配ること、
 // 配るのが「検証鍵」であること、配ってよいのが「公開可能な」ものだけであることである。
 // 3 つとも別々に崩せるので、3 つとも読む。
@@ -554,6 +552,8 @@ var apiTokenScopeSample = []string{
 // 時点で作られるためである。1 度も発行していない realm の JWK Set は空で、これは
 // メモリと PostgreSQL のどちらの鍵ストアでも同じである。行が言っているのは製品が
 // 実際に使う検証鍵を配ることなので、検証鍵が存在する状態で読む。
+//
+//spec:covers RFC7517-JWKS (required): 公開可能な検証鍵を JWK Set として配布する。
 func TestJWKSPublishesOnlyPublicVerificationKeys(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -602,7 +602,6 @@ func TestJWKSPublishesOnlyPublicVerificationKeys(t *testing.T) {
 // 置くので、期待値の側でも 1 か所に置く。
 const mdRealmIssuer = mdIssuer + mdRealmPath
 
-// RFC8414-METADATA (required): 発行者と利用可能なエンドポイントおよび機能を
 // Authorization Server Metadata として公開する。
 //
 // 行は 3 つのことを言っているので 3 つとも読む。発行者、利用可能なエンドポイント、
@@ -615,6 +614,8 @@ const mdRealmIssuer = mdIssuer + mdRealmPath
 //     ある。存在しない経路を広告する文書は、形が正しくてもその役に立たない。
 //   - 機能は、広告した `token_endpoint_auth_methods_supported` と
 //     `code_challenge_methods_supported` を実際に使ったリクエストが通ることで読む。
+//
+//spec:covers RFC8414-METADATA (required): 発行者と利用可能なエンドポイントおよび機能を
 func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -665,7 +666,6 @@ func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t
 	}
 }
 
-// OIDC-DISCOVERY-CONFIGURATION (required): well-known 設定から発行者、エンドポイント、
 // 対応機能を Discovery Metadata として公開する。
 //
 // RFC8414-METADATA と入口が違う。OpenID Provider の設定は
@@ -677,6 +677,8 @@ func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t
 //
 // 「対応機能」は、広告した ID トークンの署名アルゴリズムが実際に発行された ID トークンの
 // `alg` と合うこと、広告した `userinfo_endpoint` が実際にその主体を返すことで読む。
+//
+//spec:covers OIDC-DISCOVERY-CONFIGURATION (required): well-known 設定から発行者、エンドポイント、
 func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -729,7 +731,6 @@ func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t
 	}
 }
 
-// RFC9728-WELL-KNOWN (required): `/.well-known/oauth-protected-resource` で `resource` を
 // 指定して Protected Resource Metadata を取得できるようにする。
 //
 // この行が固定しているのは配信の場所と指定の方法である。中身が正しくても、
@@ -738,6 +739,8 @@ func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t
 // パラメーター名を実際に読んでいることは、別名で同じ値を送った要求が当のリソースの
 // 文書を返さないことで読む。名前を無視して「URL らしい値」を拾う実装は、指定した
 // つもりのないリソースの文書を返してしまう。
+//
+//spec:covers RFC9728-WELL-KNOWN (required): `/.well-known/oauth-protected-resource` で `resource` を
 func TestProtectedResourceMetadataIsFetchedFromTheWellKnownPathByResource(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -756,7 +759,6 @@ func TestProtectedResourceMetadataIsFetchedFromTheWellKnownPathByResource(t *tes
 	}
 }
 
-// RFC9728-METADATA (required): 登録済みの `McpResourceServer` ごとに、対象リソースに
 // 対応する `authorization_servers` と対応スコープを含む Protected Resource Metadata を
 // 配信する。
 //
@@ -768,6 +770,8 @@ func TestProtectedResourceMetadataIsFetchedFromTheWellKnownPathByResource(t *tes
 //
 // `authorization_servers` は、広告された URL が実際に Authorization Server Metadata を
 // 返すことまで読む。到達できない発行者を指す文書は、クライアントの経路を組み立てない。
+//
+//spec:covers RFC9728-METADATA (required): 登録済みの `McpResourceServer` ごとに、対象リソースに
 func TestProtectedResourceMetadataIsDerivedFromEachRegisteredResourceServer(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -808,7 +812,6 @@ func TestProtectedResourceMetadataIsDerivedFromEachRegisteredResourceServer(t *t
 	}
 }
 
-// RFC9728-IDMAGIC-API (required): `resource` が未指定であれば、realm の IdMagic API に
 // 対する Protected Resource Metadata と `account`、`management`、SCIM の各スコープ、
 // 対応する `bearer_methods_supported` を公開する。
 //
@@ -821,6 +824,8 @@ func TestProtectedResourceMetadataIsDerivedFromEachRegisteredResourceServer(t *t
 // `bearer_methods_supported` は、載っている名前だけでなく、その方法が実際に通ることを
 // 対で読む。`header` と書いてあるのにヘッダー提示が通らない実装は、宣言だけを見ている
 // 限り区別できない。
+//
+//spec:covers RFC9728-IDMAGIC-API (required): `resource` が未指定であれば、realm の IdMagic API に
 func TestProtectedResourceMetadataWithoutAResourceDescribesTheRealmApi(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -851,7 +856,6 @@ func TestProtectedResourceMetadataWithoutAResourceDescribesTheRealmApi(t *testin
 	}
 }
 
-// RFC9728-CHALLENGE (required): ベアラー保護リソースの `401 invalid_token` と
 // `403 insufficient_scope` レスポンスでは、当該 realm の Protected Resource Metadata URL を
 // `resource_metadata` 認証パラメーターで提示する。
 //
@@ -861,6 +865,8 @@ func TestProtectedResourceMetadataWithoutAResourceDescribesTheRealmApi(t *testin
 // 提示された URL は、それ自体が Protected Resource Metadata を返すところまで読む。
 // この認証パラメーターの目的は、トークンを持たないクライアントに次の一手を教えることに
 // あるので、辿れない URL では行の言うことが果たされない。
+//
+//spec:covers RFC9728-CHALLENGE (required): ベアラー保護リソースの `401 invalid_token` と
 func TestBearerChallengesPointAtTheRealmProtectedResourceMetadata(t *testing.T) {
 	fixture := newMetadataFixture(t)
 	tokens := fixture.tokens(t)

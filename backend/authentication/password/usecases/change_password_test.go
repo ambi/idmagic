@@ -155,8 +155,9 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-010: change-password runs the same validation stages as
 // reset-password.
+//
+//spec:covers REQ-AUTHENTICATION-010: change-password runs the same validation stages as
 func TestChangePasswordRejectsBreachedPassword(t *testing.T) {
 	t.Parallel()
 

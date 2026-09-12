@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/securitynotification/domain"
 )
 
-// REQ-AUTHENTICATION-033: 全種別が返り、必須の種別は mandatory かつ常に有効である。
+//spec:covers REQ-AUTHENTICATION-033: 全種別が返り、必須の種別は mandatory かつ常に有効である。
 func TestGetPreferencesReturnsEveryCategoryWithItsMandatoryFlag(t *testing.T) {
 	t.Parallel()
 	deps := PreferenceDeps{Repo: db_memory.NewPreferenceRepository()}
@@ -34,7 +34,7 @@ func TestGetPreferencesReturnsEveryCategoryWithItsMandatoryFlag(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-033: 必須の種別を含む更新は保存の前に丸ごと拒否する。
+//spec:covers REQ-AUTHENTICATION-033: 必須の種別を含む更新は保存の前に丸ごと拒否する。
 func TestUpdatePreferencesRejectsMandatoryCategoriesWithoutPartialApplication(t *testing.T) {
 	t.Parallel()
 	repo := db_memory.NewPreferenceRepository()
@@ -55,7 +55,7 @@ func TestUpdatePreferencesRejectsMandatoryCategoriesWithoutPartialApplication(t 
 	}
 }
 
-// REQ-AUTHENTICATION-034: 更新は無効化の集合を置き換え、結果をそのまま読み戻せる。
+//spec:covers REQ-AUTHENTICATION-034: 更新は無効化の集合を置き換え、結果をそのまま読み戻せる。
 func TestUpdatePreferencesReplacesTheDisabledSet(t *testing.T) {
 	t.Parallel()
 	deps := PreferenceDeps{Repo: db_memory.NewPreferenceRepository()}

@@ -25,7 +25,7 @@ func TestEnsureDefaultAndRejectDefaultDisable(t *testing.T) {
 	if tenant == nil || tenant.Status != domain.TenantStatusActive {
 		t.Fatalf("default tenant = %#v", tenant)
 	}
-	// REQ-TENANCY-003: default テナントの無効化は拒否される。
+	//spec:covers REQ-TENANCY-003: default テナントの無効化は拒否される。
 	if _, err := SetDisabled(
 		context.Background(), repo, domain.DefaultTenantID, true, now,
 	); !errors.Is(err, ErrDefaultTenant) {
@@ -135,7 +135,7 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 		{"shorter min_length", domain.PasswordPolicyOverride{MinLength: new(8)}},
 		{"longer max_length", domain.PasswordPolicyOverride{MaxLength: new(256)}},
 		{"shorter history_depth", domain.PasswordPolicyOverride{HistoryDepth: new(2)}},
-		// REQ-TENANCY-019: an expiry that is too short or too long is rejected by
+		//spec:covers REQ-TENANCY-019: an expiry that is too short or too long is rejected by
 		// the system bounds.
 		{"max_age_days below the system floor", domain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysFloor - 1)}},
 		{"max_age_days above the system ceiling", domain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysCeiling + 1)}},
@@ -157,8 +157,9 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-024: the override change time is recorded because expiry is
 // measured from it.
+//
+//spec:covers REQ-AUTHENTICATION-024: the override change time is recorded because expiry is
 func TestUpdateRecordsPasswordPolicyUpdatedAt(t *testing.T) {
 	repo := memory.NewTenantRepository()
 	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())

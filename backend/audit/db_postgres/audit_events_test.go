@@ -112,8 +112,9 @@ func TestAuditEventRepositoryListRejectsMalformedUserIDAsNoMatch(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸で、エージェントが代行した操作を本人の操作と
 // 区別して引ける。チェーンの参加者は多値なので、どの段からでも同じイベントに当たる。
+//
+//spec:covers REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸で、エージェントが代行した操作を本人の操作と
 func TestAuditEventRepositoryDelegationAxes(t *testing.T) {
 	db := pgtest.Require(t)
 	newUUID := func() string {

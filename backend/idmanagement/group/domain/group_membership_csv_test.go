@@ -32,9 +32,10 @@ func collectGroupMembershipCSV(t *testing.T, document string) ([]idmdomain.CSVRo
 	return rows, nil
 }
 
-// scenario EX-IDMANAGEMENT-029-03: 機械キーの語彙は閉じており、順序と部分集合は自由。
 // 各列の役割まで主張するのは、`source` や `created_at` を書き込み可能にした実装と、
 // `membership_state` 以外にも意図を持たせた実装を区別するためである。
+//
+//spec:covers EX-IDMANAGEMENT-029-03: 機械キーの語彙は閉じており、順序と部分集合は自由。
 func TestGroupMembershipCSVSchemaIsAClosedMachineKeyVocabulary(t *testing.T) {
 	schema := NewGroupMembershipCSVSchema()
 	want := []struct {
@@ -83,8 +84,9 @@ func TestGroupMembershipCSVSchemaIsAClosedMachineKeyVocabulary(t *testing.T) {
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-04: `membership_state` を欠いたファイルは受理しない。
 // 他の列と違い、この列が無いファイルは意図をひとつも表せない。
+//
+//spec:covers EX-IDMANAGEMENT-029-04: `membership_state` を欠いたファイルは受理しない。
 func TestGroupMembershipCSVSchemaRequiresTheIntentColumn(t *testing.T) {
 	schema := NewGroupMembershipCSVSchema()
 	if missing := schema.MissingRequiredColumn([]string{"user_id", "preferred_username", "source"}); missing != "membership_state" {
@@ -100,9 +102,10 @@ func TestGroupMembershipCSVSchemaRequiresTheIntentColumn(t *testing.T) {
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-05: `present|absent` は閉じた集合であり、空セルも
 // 未知の値も既知の値へ丸めず拒否する。丸めると、ファイルが表明していない側の
 // 意図 (追加か解除か) を勝手に選ぶことになる。
+//
+//spec:covers EX-IDMANAGEMENT-029-05: `present|absent` は閉じた集合であり、空セルも
 func TestGroupMembershipCSVStateVocabularyIsClosed(t *testing.T) {
 	for _, accepted := range []struct {
 		raw  string
@@ -123,8 +126,9 @@ func TestGroupMembershipCSVStateVocabularyIsClosed(t *testing.T) {
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-06: 行の識別子は `user_id` を優先し、無ければ
 // `preferred_username` にたどる。どちらも無い行は識別できない。
+//
+//spec:covers EX-IDMANAGEMENT-029-06: 行の識別子は `user_id` を優先し、無ければ
 func TestGroupMembershipCSVIdentifierPrefersUserIDAndFallsBackToUsername(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -170,8 +174,9 @@ func TestGroupMembershipCSVIdentifierPrefersUserIDAndFallsBackToUsername(t *test
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-01: 拒否行は位置と安定コードだけを運び、セル値を
 // 決して載せない。
+//
+//spec:covers EX-IDMANAGEMENT-029-01: 拒否行は位置と安定コードだけを運び、セル値を
 func TestRejectedGroupMembershipImportRowCarriesNoValue(t *testing.T) {
 	plan := RejectedGroupMembershipImportRow(7, "membership_state", "invalid_membership_state")
 	if plan.Action != GroupMembershipImportRejected || plan.Row != 7 {

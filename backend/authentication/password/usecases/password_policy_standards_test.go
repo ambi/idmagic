@@ -70,11 +70,12 @@ func (f standardsFixture) change(t *testing.T, next string) error {
 	return err
 }
 
-// NIST63B4-NO-COMPOSITION: 文字種の混在をどこでも要求していないことを固定する。入力は
 // 小文字 20 文字だけ、つまり大文字も数字も記号も持たない一方で長さは下限を明らかに
 // 超えている。長さが理由で落ちる余地を消してあるので、これが受理されない実装は構成規則を
 // 課している実装である。違反の語彙に構成規則の項目が無いことも併せて観測する: 規則を
 // 課しておいて「違反として報告しない」実装を、受理の一点だけでは区別できないからである。
+//
+//spec:covers NIST63B4-NO-COMPOSITION: 文字種の混在をどこでも要求していないことを固定する。入力は
 func TestPasswordPolicyImposesNoCompositionRule(t *testing.T) {
 	t.Parallel()
 
@@ -104,12 +105,13 @@ func TestPasswordPolicyImposesNoCompositionRule(t *testing.T) {
 	}
 }
 
-// NIST63B4-PASSWORD-MINIMUM: 15 文字以上という最小長を課していないことを固定する
 // (excluded なので、行が書いている標準側の規則を「満たさない」ことが観測すべきものである)。
 // 入力は 14 文字で大文字・小文字・数字・記号を混ぜてある。構成規則が理由で落ちる余地を
 // 消してあるので、これが受理されない実装は 15 文字下限を課している実装である。
 // 行の後半 (デフォルトは 12、テナントはより長い下限へ上書きできる) も併せて観測する。
 // 受理の一点だけを見ると、下限そのものを持たない実装と区別できない。
+//
+//spec:covers NIST63B4-PASSWORD-MINIMUM: 15 文字以上という最小長を課していないことを固定する
 func TestPasswordPolicyExcludesTheFifteenCharacterMinimum(t *testing.T) {
 	t.Parallel()
 
@@ -167,13 +169,14 @@ func TestPasswordPolicyExcludesTheFifteenCharacterMinimum(t *testing.T) {
 	}
 }
 
-// NIST63B4-PASSWORD-STORAGE: パスワードを設定した後に保存先を読み直し、そこに残って
 // いるものが平文でも可逆でもないことを固定する。ハッシュ関数を呼んだかどうかは保管の形
 // ではないので観測しない。行が言う 3 つ — salt、コストパラメーター、オフライン攻撃に
 // 耐えるハッシュ — にそれぞれ観測を与える。salt は「同じ平文を 2 人に設定すると保存値が
 // 割れる」ことで、コストパラメーターは保存値そのものが m/t/p を持ち運ぶことで、可逆で
 // ないことは平文が保存値のどこにも現れないことで観測する。パスワード履歴も同じ保管の
 // 対象なので、user とあわせて 2 つの保存先を読む。
+//
+//spec:covers NIST63B4-PASSWORD-STORAGE: パスワードを設定した後に保存先を読み直し、そこに残って
 func TestPasswordStorageKeepsNeitherPlaintextNorAReversibleForm(t *testing.T) {
 	t.Parallel()
 

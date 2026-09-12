@@ -193,7 +193,6 @@ func fakeHTTPClient(responses map[string]any) *http.Client {
 	})}
 }
 
-// OIDC-DISCOVERY-ISSUER: Discovery Metadata の受け入れ条件を固定する。行は 2 つのことを
 // 言っているので観測も 2 つ要る。issuer が「設定した発行者と完全一致」であること —
 // 前後に何かが付いた値や末尾のスラッシュ違いは別の発行者である — と、endpoint と JWKS URI
 // が HTTPS の公開オーソリティに限られることである。どの拒否でも connection の
@@ -204,6 +203,8 @@ func fakeHTTPClient(responses map[string]any) *http.Client {
 // いるだけの状態を「検証している」と読み違える。差し替える要素以外はすべて正当な
 // document を fixture にし、無傷の document が受理されて connection を書き換えることを
 // 対照として最後に観測する。
+//
+//spec:covers OIDC-DISCOVERY-ISSUER: Discovery Metadata の受け入れ条件を固定する。行は 2 つのことを
 func TestRefreshDiscoveryRequiresAnExactIssuerAndHTTPSAuthorities(t *testing.T) {
 	const configured = "https://idp.example"
 	key, err := rsa.GenerateKey(rand.Reader, 2048)

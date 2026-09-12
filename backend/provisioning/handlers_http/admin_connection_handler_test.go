@@ -56,7 +56,7 @@ func (discoveryTarget) SearchGroupByAttribute(context.Context, string, string) (
 
 func (discoveryTarget) PatchGroupMembers(context.Context, string, string, []string) error { return nil }
 
-// REQ-PROVISIONING-002: 管理 API で登録した下流接続をテストし、検出した能力を同じ接続の管理状態から読み直す。
+//spec:covers REQ-PROVISIONING-002: 管理 API で登録した下流接続をテストし、検出した能力を同じ接続の管理状態から読み直す。
 func TestAdminProvisioningConnectionLifecycle(t *testing.T) {
 	now := time.Now().UTC()
 	users := usermemory.NewUserRepository()

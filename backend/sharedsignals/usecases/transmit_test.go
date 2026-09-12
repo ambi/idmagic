@@ -21,9 +21,10 @@ import (
 // events) を組み立て、SigningKeys の既存鍵で PS256 署名した compact JWT を返す
 // (決定3/7、既存の JWT 署名鍵管理を再利用する)。
 //
-// RFC8417-SET-SIGNED: 発行した SET が jti/iat/iss/aud/events の 5 つを実際に載せて
 // おり、かつその署名がテナントの公開鍵で検証を通ることを固定する。claim の有無だけを
 // 見ると、署名の付いていない 3 分割文字列でも通ってしまう。
+//
+//spec:covers RFC8417-SET-SIGNED: 発行した SET が jti/iat/iss/aud/events の 5 つを実際に載せて
 func TestBuildAndSignSecurityEventToken(t *testing.T) {
 	ctx := context.Background()
 	keyStore, err := signingmemory.NewInMemoryKeyStore()

@@ -94,7 +94,7 @@ func TestRegisterClientAPI(t *testing.T) {
 		}
 	})
 
-	// EX-OAUTH2-016-02: redirect_uri を持たない登録要求は拒否され、
+	//spec:covers EX-OAUTH2-016-02: redirect_uri を持たない登録要求は拒否され、
 	// クライアントは作成されない。
 	//
 	// 400 を書いてから保存も続ける実装はステータスだけを読むテストを通すので、

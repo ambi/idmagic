@@ -206,9 +206,10 @@ func rowCodes(rows []groupdomain.GroupMembershipImportRowPlan) []string {
 	return codes
 }
 
-// REQ-IDMANAGEMENT-029 / scenario EX-IDMANAGEMENT-029-01: `present` の行だけが追加され、`absent` の行だけが
 // 解除される。件数だけでなく、確定ポートへ渡った書き込み集合の向きと監査種別も見る。
 // 「拒否コードを返しつつ処理は続ける」実装は前者を通っても後者で落ちる。
+//
+//spec:covers REQ-IDMANAGEMENT-029 / EX-IDMANAGEMENT-029-01: `present` の行だけが追加され、`absent` の行だけが
 func TestGroupMembershipImportPreviewThenApplyAddsAndReleasesOnlyTheDeclaredRows(t *testing.T) {
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	document := "user_id,preferred_username,membership_state\n" +
@@ -258,9 +259,10 @@ func TestGroupMembershipImportPreviewThenApplyAddsAndReleasesOnlyTheDeclaredRows
 	}
 }
 
-// REQ-IDMANAGEMENT-030 / scenario EX-IDMANAGEMENT-030-01: ファイルが名指ししない行は変更しない。ここが
 // authoritative full-sync を採らなかったことの観測点であり、分割ファイルの安全性
 // そのものである。
+//
+//spec:covers REQ-IDMANAGEMENT-030 / EX-IDMANAGEMENT-030-01: ファイルが名指ししない行は変更しない。ここが
 func TestGroupMembershipImportLeavesRowsTheFileDoesNotName(t *testing.T) {
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	// alice の行だけを含むファイル。carol はファイルに現れない。
@@ -279,9 +281,9 @@ func TestGroupMembershipImportLeavesRowsTheFileDoesNotName(t *testing.T) {
 	}
 }
 
-// REQ-IDMANAGEMENT-031 / scenario EX-IDMANAGEMENT-031-01, EX-IDMANAGEMENT-031-02, EX-IDMANAGEMENT-031-03,
-// EX-IDMANAGEMENT-031-04, EX-IDMANAGEMENT-031-05: 上位の権威が所有する所属は、
 // CSV から書き換えない。判定不能も所有と同じに扱う。
+//
+//spec:covers REQ-IDMANAGEMENT-031 / EX-IDMANAGEMENT-031-01, EX-IDMANAGEMENT-031-02, EX-IDMANAGEMENT-031-03, EX-IDMANAGEMENT-031-04, EX-IDMANAGEMENT-031-05: 上位の権威が所有する所属は、
 func TestGroupMembershipImportFailsClosedForDynamicAndSourceManagedAuthorities(t *testing.T) {
 	document := "user_id,membership_state\nuser-bob,present\nuser-alice,absent\n"
 
@@ -400,9 +402,9 @@ func assertMembershipFileRefusal(t *testing.T, err error, want idmdomain.CSVErro
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-04, EX-IDMANAGEMENT-029-05, EX-IDMANAGEMENT-029-06,
-// EX-IDMANAGEMENT-029-07: 意図の列を欠いたファイル、丸められない値、解決できない
 // 識別子、別グループを指す照合列。どれもメンバーシップを変えない。
+//
+//spec:covers EX-IDMANAGEMENT-029-04, EX-IDMANAGEMENT-029-05, EX-IDMANAGEMENT-029-06, EX-IDMANAGEMENT-029-07: 意図の列を欠いたファイル、丸められない値、解決できない
 func TestGroupMembershipImportRefusesUnusableRowsWithoutTouchingMembership(t *testing.T) {
 	t.Run("membership_state 列が無いファイルは受理しない", func(t *testing.T) {
 		f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
@@ -443,7 +445,7 @@ func TestGroupMembershipImportRefusesUnusableRowsWithoutTouchingMembership(t *te
 		f.assertMembersUnchanged()
 	})
 
-	// scenario EX-IDMANAGEMENT-030-04: 読み取り専用の列を編集しても行操作は変わらない。
+	//spec:covers EX-IDMANAGEMENT-030-04: 読み取り専用の列を編集しても行操作は変わらない。
 	// `group_name` だけは照合列なので、別のグループを指したときにだけ行を拒否する。
 	t.Run("読み取り専用の列は受理して無視する", func(t *testing.T) {
 		f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
@@ -467,8 +469,9 @@ func TestGroupMembershipImportRefusesUnusableRowsWithoutTouchingMembership(t *te
 	})
 }
 
-// scenario EX-IDMANAGEMENT-029-02: 実効転送ポリシーの上限を超えたインポートは、
 // 1 行も計画せずファイルごと拒否される。上限は行数、byte 数、項目長のそれぞれに効く。
+//
+//spec:covers EX-IDMANAGEMENT-029-02: 実効転送ポリシーの上限を超えたインポートは、
 func TestGroupMembershipImportRefusesFilesBeyondTheTransferPolicy(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -516,9 +519,10 @@ func TestGroupMembershipImportRefusesFilesBeyondTheTransferPolicy(t *testing.T) 
 	}
 }
 
-// scenario EX-IDMANAGEMENT-030-03: 生成結果が転送ポリシーを超えるエクスポートは
 // 失敗し、再インポートできない成功済み成果物を作らない。成果物ストアに何も残らない
 // ことまで読むのは、書き終えてから失敗する実装と区別するためである。
+//
+//spec:covers EX-IDMANAGEMENT-030-03: 生成結果が転送ポリシーを超えるエクスポートは
 func TestGroupMembershipExportFailsRatherThanWriteAnUnimportableArtifact(t *testing.T) {
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	artifacts := newMembershipArtifactStore()
@@ -544,8 +548,9 @@ func TestGroupMembershipExportFailsRatherThanWriteAnUnimportableArtifact(t *test
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-09: 適用は古い計画を実行せず、現在の所属から
 // 判定し直す。プレビューが暗黙の楽観的ロックの迂回路にならないことの観測点である。
+//
+//spec:covers EX-IDMANAGEMENT-029-09: 適用は古い計画を実行せず、現在の所属から
 func TestGroupMembershipImportApplyReplansAgainstCurrentState(t *testing.T) {
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	document := "user_id,membership_state\nuser-bob,present\nuser-alice,absent\n"
@@ -579,8 +584,9 @@ func TestGroupMembershipImportApplyReplansAgainstCurrentState(t *testing.T) {
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-10: 1 行の確定が失敗しても、その行だけが拒否になり、
 // 先に受理した行は巻き戻らない。
+//
+//spec:covers EX-IDMANAGEMENT-029-10: 1 行の確定が失敗しても、その行だけが拒否になり、
 func TestGroupMembershipImportKeepsRowsAppliedWhenALaterRowFails(t *testing.T) {
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	f.committer.failFor = map[string]bool{"user-dave": true}
@@ -597,11 +603,12 @@ func TestGroupMembershipImportKeepsRowsAppliedWhenALaterRowFails(t *testing.T) {
 	}
 }
 
-// scenario EX-IDMANAGEMENT-030-01, EX-IDMANAGEMENT-030-02: 10,000 件の所属を全 import
 // 互換列でエクスポートし、無編集のプレビューが全行 `unchanged` になる。利用者名に数式の
 // 引き金・アポストロフィー・カンマ・引用符・改行を含めることで、可逆な数式安全変換と
 // RFC 4180 の引用を通しても `decode(encode(value))` が元の値と一致することを、往復
 // そのもので観測する。容量の契約でもある。
+//
+//spec:covers EX-IDMANAGEMENT-030-01, EX-IDMANAGEMENT-030-02: 10,000 件の所属を全 import
 func TestGroupMembershipImportTenThousandMembershipsRoundTripAsUnchanged(t *testing.T) {
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	now := time.Date(2026, 9, 6, 9, 0, 0, 0, time.UTC)

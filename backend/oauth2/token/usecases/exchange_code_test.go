@@ -128,13 +128,14 @@ func exchangeInput(verifier string) ExchangeCodeInput {
 	}
 }
 
-// EX-OAUTH2-005-06: 認可コードを誤った code_verifier で交換すると InvalidGrantError で
 // 拒否され、トークンは 1 本も発行されない。認可コードは消費されないので、正しい verifier
 // なら後から交換できる。
 //
 // 拒否の型まで読むのは、`invalid_request` で落ちる実装 — 例えば verifier の長さ検査に
 // 先に引っかかる実装 — と区別するためである。「トークンは発行されない」は応答の 3 本と
 // イベントの双方で読む。エラーを返しつつ署名器を呼ぶ実装は、応答だけでは見分けられない。
+//
+//spec:covers EX-OAUTH2-005-06: 認可コードを誤った code_verifier で交換すると InvalidGrantError で
 func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid"})
 	refused, err := ExchangeCodeForToken(context.Background(), f.deps, exchangeInput("wrong-verifier"))

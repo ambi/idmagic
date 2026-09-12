@@ -51,7 +51,7 @@ func mustLane(t *testing.T, kind domain.JobKind) domain.ExecutionLane {
 	return lane
 }
 
-// REQ-JOBS-012: 一覧は自テナントに閉じ、他テナントの Job は結果にも件数にも現れない。
+//spec:covers REQ-JOBS-012: 一覧は自テナントに閉じ、他テナントの Job は結果にも件数にも現れない。
 func TestListJobsForAdmin_StaysInsideTheTenant(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 
@@ -76,7 +76,7 @@ func TestListJobsForAdmin_StaysInsideTheTenant(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: system_admin が制御面テナントから明示したときだけ全テナントを見る。
+//spec:covers REQ-JOBS-012: system_admin が制御面テナントから明示したときだけ全テナントを見る。
 func TestListJobsForAdmin_AllTenantsRequiresAnAuthorizedScope(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 
@@ -96,7 +96,7 @@ func TestListJobsForAdmin_AllTenantsRequiresAnAuthorizedScope(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 状態・種別・レーンで絞り込める。
+//spec:covers REQ-JOBS-012: 状態・種別・レーンで絞り込める。
 func TestListJobsForAdmin_Filters(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 	ctx := context.Background()
@@ -136,7 +136,7 @@ func TestListJobsForAdmin_Filters(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: カーソルはページを継いで重複も欠落も生まず、絞り込みが変われば拒否される。
+//spec:covers REQ-JOBS-012: カーソルはページを継いで重複も欠落も生まず、絞り込みが変われば拒否される。
 func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 	ctx := context.Background()
@@ -184,7 +184,7 @@ func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 他テナントの Job は id を知っていても存在しないものとして扱う。
+//spec:covers REQ-JOBS-012: 他テナントの Job は id を知っていても存在しないものとして扱う。
 func TestGetJobForAdmin_HidesOtherTenants(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 	ctx := context.Background()
@@ -212,7 +212,7 @@ func TestGetJobForAdmin_HidesOtherTenants(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-013: 終端に達していない Job だけを取り消せ、JobCanceled が発行される。
+//spec:covers REQ-JOBS-013: 終端に達していない Job だけを取り消せ、JobCanceled が発行される。
 func TestCancelJobForAdmin(t *testing.T) {
 	repo, base := seedAdminJobs(t)
 	ctx := context.Background()
@@ -245,7 +245,7 @@ func TestCancelJobForAdmin(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-013: 他テナントの Job は取り消せず、存在しないものとして扱う。
+//spec:covers REQ-JOBS-013: 他テナントの Job は取り消せず、存在しないものとして扱う。
 func TestCancelJobForAdmin_HidesOtherTenants(t *testing.T) {
 	repo, base := seedAdminJobs(t)
 	ctx := context.Background()

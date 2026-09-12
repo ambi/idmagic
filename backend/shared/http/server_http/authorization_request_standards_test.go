@@ -371,7 +371,6 @@ func assertNoCredentialIssued(t *testing.T, what, body string) {
 	}
 }
 
-// RFC6749-AUTHORIZATION-CODE / RFC9700-AUTHORIZATION-CODE:
 // Authorization Code Grant を認可エンドポイントとトークンエンドポイントの両方で
 // 提供し、単一値であるべきセキュリティパラメーターが認可リクエスト内で重複していれば
 // invalid_request として拒否する。リダイレクトを使うフローは、そのコードグラントと
@@ -379,6 +378,8 @@ func assertNoCredentialIssued(t *testing.T, what, body string) {
 //
 // 提供していることは「/authorize が 303 を返す」では足りない。コードがトークンへ
 // 交換できて初めて、2 つの入口の両方で提供されていると言える。
+//
+//spec:covers RFC6749-AUTHORIZATION-CODE / RFC9700-AUTHORIZATION-CODE:
 func TestAuthorizationCodeGrantSpansBothEndpointsAndRejectsDuplicatedParameters(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -414,13 +415,14 @@ func TestAuthorizationCodeGrantSpansBothEndpointsAndRejectsDuplicatedParameters(
 	})
 }
 
-// RFC6749-IMPLICIT / OIDC-CORE-HYBRID-IMPLICIT (excluded):
 // Implicit Grant も、OpenID Connect の Implicit / Hybrid Flow も提供しない。
 //
 // この 2 行の Statement は製品の制約ではなく標準側の機能を書いているので、観測は
 // 「その機能を要求するリクエストが通らないこと」と「通らなかった結果として資格情報が
 // 1 つも出ていないこと」の対になる。フラグメントに直接トークンを載せる流儀なので、
 // 応答が資格情報を運んでいないことを本文とリダイレクト先の両方で読む。
+//
+//spec:covers RFC6749-IMPLICIT / OIDC-CORE-HYBRID-IMPLICIT (excluded):
 func TestImplicitAndHybridResponseTypesAreRefused(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -448,10 +450,11 @@ func TestImplicitAndHybridResponseTypesAreRefused(t *testing.T) {
 	}
 }
 
-// RFC7636-VERIFY:
 // トークンリクエストの code_verifier を認可時の code_challenge と照合し、認可リクエスト
 // 内で PKCE パラメーターが重複していれば拒否する。Statement が 2 つのことを言っている
 // ので、観測も 2 つ置く。
+//
+//spec:covers RFC7636-VERIFY:
 func TestPKCEVerifierIsCheckedAtTheTokenEndpointAndDuplicatesAreRefused(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -488,12 +491,13 @@ func TestPKCEVerifierIsCheckedAtTheTokenEndpointAndDuplicatesAreRefused(t *testi
 	}
 }
 
-// RFC7636-S256 / RFC7636-PLAIN (excluded):
 // code_challenge_method は S256 だけを許可し、RFC 7636 が定める plain 方式は提供しない。
 //
 // plain の事例は、challenge と verifier が RFC 上は正しく対応する組（plain では
 // challenge == verifier）で送る。壊れた値で送ると、method を見ていない実装でも同じ
 // 拒否になり、method の扱いを区別できない。
+//
+//spec:covers RFC7636-S256 / RFC7636-PLAIN (excluded):
 func TestOnlyS256CodeChallengeMethodIsAccepted(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -514,12 +518,13 @@ func TestOnlyS256CodeChallengeMethodIsAccepted(t *testing.T) {
 	}
 }
 
-// RFC9126-PAR (optional) / RFC9126-SINGLE-USE:
 // クライアント認証済みの PAR を保存して短命な request_uri を返し、その request_uri は
 // 一度だけ使える。
 //
 // optional の行なので、まず提供していることを確かめる。提供していなければ行の
 // Adoption が誤っていることになるので、その場合は規範の変更として切り出す。
+//
+//spec:covers RFC9126-PAR (optional) / RFC9126-SINGLE-USE:
 func TestPushedAuthorizationRequestIsAuthenticatedShortLivedAndSingleUse(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -595,13 +600,14 @@ func TestPushedAuthorizationRequestIsAuthenticatedShortLivedAndSingleUse(t *test
 	}
 }
 
-// RFC9207-ISS:
 // 認可レスポンス、および安全に確定した redirect_uri へ返す認可エラーに発行者の
 // 識別子を含める。
 //
 // 「安全に確定した」を読むために、確定していない場合を対に置く。登録されていない
 // redirect_uri へのリクエストは、iss を付けてリダイレクトするのではなく、そもそも
 // リダイレクトしない。ここを読まないと、未検証の宛先へ iss 付きで飛ばす実装が通る。
+//
+//spec:covers RFC9207-ISS:
 func TestIssuerIdentifierAccompaniesAuthorizationResponsesAndRedirectedErrors(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 	const wantIssuer = arIssuer + "/realms/default"
@@ -639,12 +645,13 @@ func TestIssuerIdentifierAccompaniesAuthorizationResponsesAndRedirectedErrors(t 
 	}
 }
 
-// RFC9396-REGISTERED-TYPES:
 // authorization_details は、テナントが事前登録した type とそのスキーマに対して
 // 検証する。未登録の型やスキーマの不一致は部分的に受理せず拒否する。
 //
 // 「部分的に受理せず」は、妥当な detail と不当な detail を 1 通に混ぜた事例でしか
 // 読めない。妥当な方だけを取り込んで進む実装は、不当な方だけの事例では捕まらない。
+//
+//spec:covers RFC9396-REGISTERED-TYPES:
 func TestAuthorizationDetailsAreValidatedAgainstRegisteredTypes(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -694,7 +701,6 @@ func TestAuthorizationDetailsAreValidatedAgainstRegisteredTypes(t *testing.T) {
 	})
 }
 
-// RFC9396-MONOTONIC-NARROWING:
 // 発行または交換するトークンが持てるのは、同意した権限の部分集合に限る。後続の交換は
 // 権限を狭めることだけを許し、広げる要求は拒否する。
 //
@@ -703,6 +709,8 @@ func TestAuthorizationDetailsAreValidatedAgainstRegisteredTypes(t *testing.T) {
 // 交換が、狭める要求だけを通すことである。後半は正式な入口 (/token の
 // token-exchange) から観測する。domain の DetailsSubsetOf を直接呼ぶ形では、
 // 交換の経路に配線されていない実装を素通りさせる。
+//
+//spec:covers RFC9396-MONOTONIC-NARROWING:
 func TestAuthorizationDetailsCanOnlyNarrowAcrossExchange(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -771,13 +779,14 @@ func TestAuthorizationDetailsCanOnlyNarrowAcrossExchange(t *testing.T) {
 	}
 }
 
-// RFC9396-SCOPE-PRECEDENCE:
 // 同じ領域で type と粗い scope が重なる場合は構造化された詳細の上限を優先し、
 // authorization_details で制限した領域を scope が再び広げる要求は拒否する。
 //
 // 製品でこれが現れるのは同意の判定である。過去に scope 全体へ与えた同意は、構造化
 // された detail の同意を代替しない。scope の同意だけで detail 付きのリクエストが
 // 自動で通ってしまう実装は、粗い scope が構造化された上限を上書きしたことになる。
+//
+//spec:covers RFC9396-SCOPE-PRECEDENCE:
 func TestCoarseScopeConsentDoesNotCoverStructuredAuthorizationDetails(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -837,12 +846,13 @@ func TestCoarseScopeConsentDoesNotCoverStructuredAuthorizationDetails(t *testing
 	}
 }
 
-// RFC9700-REDIRECT-MATCH:
 // redirect_uri は登録値と完全に一致させ、未検証の URI へリダイレクトしない。
 //
 // 「完全に一致」を読むため、別ホストだけでなく末尾スラッシュ 1 文字違いとクエリの
 // 追加も試す。正規化や前方一致で受け入れる実装へ緩めば、攻撃者は登録値を接頭辞に
 // 持つ別の宛先へ認可コードを配送できる。
+//
+//spec:covers RFC9700-REDIRECT-MATCH:
 func TestRedirectURIMustMatchARegisteredValueExactly(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -869,11 +879,12 @@ func TestRedirectURIMustMatchARegisteredValueExactly(t *testing.T) {
 	}
 }
 
-// RFC7591-REDIRECT-URI:
 // Authorization Code Grant を利用するクライアントには redirect_uri の登録を要求する。
 //
 // 登録の入口で拒否することと、拒否が防いだ効果 (redirect_uri を持たないクライアントが
 // 登録簿に現れないこと) を対で読む。
+//
+//spec:covers RFC7591-REDIRECT-URI:
 func TestDynamicRegistrationRequiresARedirectURIForTheCodeGrant(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 

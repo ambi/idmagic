@@ -69,8 +69,9 @@ func TestParseUserWriteExplicitValues(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-006: SCIM multi-valued emails は primary、work、wire order の順で
 // canonical email へ投影する。
+//
+//spec:covers REQ-SOURCING-006: SCIM multi-valued emails は primary、work、wire order の順で
 func TestProjectCanonicalEmailPriority(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -117,7 +118,7 @@ func TestProjectCanonicalEmailPriority(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-006: 選ばれない element も含めて配列全体を先に検証する。
+//spec:covers REQ-SOURCING-006: 選ばれない element も含めて配列全体を先に検証する。
 func TestProjectCanonicalEmailRejectsInvalidValues(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -147,7 +148,7 @@ func TestProjectCanonicalEmailRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-006: POST/PUT body の未対応 complex core 属性は silent に捨てない。
+//spec:covers REQ-SOURCING-006: POST/PUT body の未対応 complex core 属性は silent に捨てない。
 func TestParseUserWriteRejectsUnsupportedComplexAttributes(t *testing.T) {
 	for _, attr := range []string{"phoneNumbers", "addresses"} {
 		t.Run(attr, func(t *testing.T) {
@@ -157,8 +158,9 @@ func TestParseUserWriteRejectsUnsupportedComplexAttributes(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
 // POST/PUT body から解析する。manager は value オブジェクトと文字列の両方を許可する。
+//
+//spec:covers REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
 func TestParseUserWriteEnterpriseExtension(t *testing.T) {
 	t.Run("value object form", func(t *testing.T) {
 		body := map[string]any{
@@ -205,7 +207,7 @@ func TestParseUserWriteEnterpriseExtension(t *testing.T) {
 	})
 }
 
-// REQ-SOURCING-007: 不正な enterprise extension は invalidValue で拒否する。
+//spec:covers REQ-SOURCING-007: 不正な enterprise extension は invalidValue で拒否する。
 func TestParseUserWriteRejectsInvalidEnterpriseExtension(t *testing.T) {
 	tests := []struct {
 		name string
@@ -230,7 +232,7 @@ func TestParseUserWriteRejectsInvalidEnterpriseExtension(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-006: PATCH emails は domain validation 中に canonical value へ解決する。
+//spec:covers REQ-SOURCING-006: PATCH emails は domain validation 中に canonical value へ解決する。
 func TestParseUserPatchOpsProjectsCanonicalEmail(t *testing.T) {
 	body := map[string]any{
 		"Operations": []any{map[string]any{
@@ -251,7 +253,7 @@ func TestParseUserPatchOpsProjectsCanonicalEmail(t *testing.T) {
 	}
 }
 
-// PATCH は RFC7644-PATCH の allowlist に閉じた path だけを受け付ける。
+//spec:covers RFC7644-PATCH: PATCH は allowlist に閉じた path だけを受け付ける。
 func TestParseUserPatchOpsAllowedPath(t *testing.T) {
 	body := map[string]any{
 		"Operations": []any{
@@ -302,8 +304,9 @@ func TestParseUserPatchOpsRejectsUnknownOp(t *testing.T) {
 	assertMutationError(t, err, "invalidValue")
 }
 
-// REQ-SOURCING-007: enterprise extension PATCH path は bare 名と URN 修飾済みの
 // 完全パスの両方を受け付ける。
+//
+//spec:covers REQ-SOURCING-007: enterprise extension PATCH path は bare 名と URN 修飾済みの
 func TestParseUserPatchOpsEnterpriseExtensionPaths(t *testing.T) {
 	tests := []struct {
 		name string
@@ -333,8 +336,9 @@ func TestParseUserPatchOpsEnterpriseExtensionPaths(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-007: PATCH manager は value オブジェクトと文字列の両方を canonical
 // scim id 文字列へ投影する。
+//
+//spec:covers REQ-SOURCING-007: PATCH manager は value オブジェクトと文字列の両方を canonical
 func TestParseUserPatchOpsProjectsManagerValue(t *testing.T) {
 	t.Run("value object form", func(t *testing.T) {
 		body := map[string]any{
@@ -440,7 +444,7 @@ func TestParseGroupWriteMembers(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-005: Group member は type 省略または User だけを受け付ける。
+//spec:covers REQ-SOURCING-005: Group member は type 省略または User だけを受け付ける。
 func TestParseGroupWriteMemberType(t *testing.T) {
 	t.Run("accepts case insensitive User", func(t *testing.T) {
 		w, err := domain.ParseGroupWrite(map[string]any{
@@ -466,7 +470,7 @@ func TestParseGroupWriteMemberType(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-005: PATCH も mutation 適用前に全 member type を検証する。
+//spec:covers REQ-SOURCING-005: PATCH も mutation 適用前に全 member type を検証する。
 func TestParseGroupPatchOpsRejectsGroupMemberType(t *testing.T) {
 	body := map[string]any{
 		"Operations": []any{map[string]any{

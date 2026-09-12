@@ -7,7 +7,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 )
 
-// RFC7643-OUT-CORE-RESOURCES: 単純パスは同名の属性になる。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: 単純パスは同名の属性になる。
 func TestBuildResource_SimplePath(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate},
@@ -21,7 +21,7 @@ func TestBuildResource_SimplePath(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-CORE-RESOURCES: `.` 区切りのパスは入れ子のオブジェクトになる。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: `.` 区切りのパスは入れ子のオブジェクトになる。
 func TestBuildResource_NestedPath(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "name.givenName", SourceKind: domain.SourceKindAttribute, SourceKey: "given_name", ApplyOn: domain.ApplyCreateAndUpdate},
@@ -40,7 +40,7 @@ func TestBuildResource_NestedPath(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-CORE-RESOURCES: 多値フィルターパスは `emails[type eq "work"].value` の 1 段だけを解釈する。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: 多値フィルターパスは `emails[type eq "work"].value` の 1 段だけを解釈する。
 func TestBuildResource_MultiValuedFilterPath(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: `emails[type eq "work"].value`, SourceKind: domain.SourceKindAttribute, SourceKey: "email", ApplyOn: domain.ApplyCreateAndUpdate},
@@ -59,7 +59,7 @@ func TestBuildResource_MultiValuedFilterPath(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-CORE-RESOURCES: 定数の対応付けは属性の解決を経ずに値になる。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: 定数の対応付けは属性の解決を経ずに値になる。
 func TestBuildResource_ConstantSource(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "active", SourceKind: domain.SourceKindConstant, ConstantValue: true, ApplyOn: domain.ApplyCreateAndUpdate},
@@ -73,7 +73,7 @@ func TestBuildResource_ConstantSource(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-CORE-RESOURCES: 属性が空のときは既定値が入る。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: 属性が空のときは既定値が入る。
 func TestBuildResource_DefaultValueWhenSourceEmpty(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "displayName", SourceKind: domain.SourceKindAttribute, SourceKey: "display_name", DefaultValue: "unknown", ApplyOn: domain.ApplyCreateAndUpdate},
@@ -87,7 +87,7 @@ func TestBuildResource_DefaultValueWhenSourceEmpty(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-CORE-RESOURCES: required の対応付けが解決できない配信は、部分的な本文を送らずに失敗する。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: required の対応付けが解決できない配信は、部分的な本文を送らずに失敗する。
 func TestBuildResource_RequiredMissingFailsClosed(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", Required: true, ApplyOn: domain.ApplyCreateAndUpdate},
@@ -98,7 +98,7 @@ func TestBuildResource_RequiredMissingFailsClosed(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-EXTERNAL-ID: externalId は作成時だけ送り、更新では送り直さない。
+//spec:covers RFC7643-OUT-EXTERNAL-ID: externalId は作成時だけ送り、更新では送り直さない。
 func TestBuildResource_CreateOnlySkippedOnUpdate(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "externalId", SourceKind: domain.SourceKindAttribute, SourceKey: "id", ApplyOn: domain.ApplyCreateOnly},
@@ -117,9 +117,10 @@ func TestBuildResource_CreateOnlySkippedOnUpdate(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-SCHEMA-EXTENSIONS: 拡張スキーマの属性を送らない。
 // 対象パスは `.` で区切った単純パスと 1 段の多値フィルターパスしか表現できないため、
 // 拡張スキーマの URN で修飾したパスを書いても、URN を鍵とする拡張オブジェクトにはならない。
+//
+//spec:covers RFC7643-OUT-SCHEMA-EXTENSIONS: 拡張スキーマの属性を送らない。
 func TestBuildResource_OmitsExtensionSchemaAttributes(t *testing.T) {
 	const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
 	rules := []domain.AttributeMappingRule{

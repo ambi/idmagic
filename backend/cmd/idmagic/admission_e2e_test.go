@@ -1,6 +1,6 @@
 package main
 
-// REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
+//spec:covers REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
 //
 // 本番と同じ経路で入場制御が選ばれることを確かめる E2E である。環境変数 →
 // bootstrap.LoadAPIConfig → httpadapter.Deps.Admission → Register という、Run() が

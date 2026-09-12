@@ -107,7 +107,7 @@ func baseInput() usecases.CheckAccessInput {
 	}
 }
 
-// REQ-AUTHORIZATION-004: 主体と全 actor の双方が関係を持つときだけ許可する。
+//spec:covers REQ-AUTHORIZATION-004: 主体と全 actor の双方が関係を持つときだけ許可する。
 func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 	t.Run("the user alone is permitted without a delegation chain", func(t *testing.T) {
 		h := newHarness(t)
@@ -218,7 +218,7 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 	})
 }
 
-// REQ-AUTHORIZATION-005: 判定不能はいずれも許可へ退避しない。
+//spec:covers REQ-AUTHORIZATION-005: 判定不能はいずれも許可へ退避しない。
 func TestCheckAccessFailsClosed(t *testing.T) {
 	t.Run("an unpublished model is an error, not a permit", func(t *testing.T) {
 		store := db_memory.NewStore()
@@ -258,7 +258,7 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 		}
 	})
 
-	// AUTHZEN-FGA-FAIL-CLOSED: 事実が欠けたまま評価器へ届いた resource:access は、規則表の
+	//spec:covers AUTHZEN-FGA-FAIL-CLOSED: 事実が欠けたまま評価器へ届いた resource:access は、規則表の
 	// 側でも許可にならない。行が挙げる 4 つの状況のうち「事実が欠けている」を、事実を供給する
 	// 経路ではなく受け取る規則の側から固定する。
 	t.Run("the rule table denies a request that carries no relationship facts", func(t *testing.T) {
@@ -276,7 +276,7 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 	})
 }
 
-// REQ-AUTHORIZATION-006: 整合トークンは自テナントのものだけを受け付ける。
+//spec:covers REQ-AUTHORIZATION-006: 整合トークンは自テナントのものだけを受け付ける。
 func TestCheckAccessRejectsUnsatisfiedConsistency(t *testing.T) {
 	h := newHarness(t)
 	consistency := h.write(t, viewerTuple("user", "alice"))
@@ -298,7 +298,7 @@ func TestCheckAccessRejectsUnsatisfiedConsistency(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-009: 判定の監査は非個人識別情報の要約だけを残す。
+//spec:covers REQ-AUTHORIZATION-009: 判定の監査は非個人識別情報の要約だけを残す。
 func TestCheckAccessAuditKeepsNoIdentifiers(t *testing.T) {
 	h := newHarness(t)
 	h.write(t, viewerTuple("user", "alice"))
@@ -333,7 +333,7 @@ func TestCheckAccessAuditKeepsNoIdentifiers(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-007: 列挙は許可されたものだけを返し、打ち切りを隠さない。
+//spec:covers REQ-AUTHORIZATION-007: 列挙は許可されたものだけを返し、打ち切りを隠さない。
 func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	h := newHarness(t)
 	h.write(t,
@@ -366,7 +366,7 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 		t.Fatal("three candidates must not truncate")
 	}
 
-	// REQ-AUTHORIZATION-007 / REQ-AUTHORIZATION-009: 走査は 1 件ごとの判定を監査へ
+	//spec:covers REQ-AUTHORIZATION-007 / REQ-AUTHORIZATION-009: 走査は 1 件ごとの判定を監査へ
 	// 展開せず、まとめた 1 件だけを残す。
 	var perCheck, enumerated int
 	for _, event := range h.events {
@@ -394,7 +394,7 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-002: モデルに適合しない差分は 1 件も適用しない。
+//spec:covers REQ-AUTHORIZATION-002: モデルに適合しない差分は 1 件も適用しない。
 func TestWriteRelationTuplesRejectsTheWholeDiff(t *testing.T) {
 	h := newHarness(t)
 	_, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
@@ -420,7 +420,7 @@ func TestWriteRelationTuplesRejectsTheWholeDiff(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-008: オブジェクトの削除は、それに依存していた間接的な関係も止める。
+//spec:covers REQ-AUTHORIZATION-008: オブジェクトの削除は、それに依存していた間接的な関係も止める。
 func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 	h := newHarness(t)
 	h.write(t,
@@ -463,7 +463,7 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 	}
 }
 
-// REQ-AUTHORIZATION-001: 整合しないモデルは版を作らない。
+//spec:covers REQ-AUTHORIZATION-001: 整合しないモデルは版を作らない。
 func TestPutAuthorizationModelRejectsAnInconsistentModel(t *testing.T) {
 	h := newHarness(t)
 	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, []domain.ResourceTypeDefinition{

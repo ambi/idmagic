@@ -211,10 +211,10 @@ func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-EXTERNAL-ID: 既定の属性対応付けは、IdMagic 側の識別子を作成時だけ
 // `externalId` として送る。以後の相関は保存した対応関係が担うので、更新では送り直さない。
 //
-// RFC7643-OUT-SCHEMA-EXTENSIONS: 既定の対応付けは拡張スキーマの属性を 1 件も含まない。
+//spec:covers RFC7643-OUT-EXTERNAL-ID: 既定の属性対応付けは、IdMagic 側の識別子を作成時だけ
+//spec:covers RFC7643-OUT-SCHEMA-EXTENSIONS: 既定の対応付けは拡張スキーマの属性を 1 件も含まない。
 func TestRegisterConnection_DefaultMappingSendsExternalIdOnCreateOnly(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	conn, err := usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{

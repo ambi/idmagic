@@ -56,13 +56,14 @@ func sessionCookieValue(t *testing.T, client *http.Client, base string) string {
 	return cookie.Value
 }
 
-// EX-AUTHENTICATION-017-02: 誤った TOTP コードの送信は拒否され、LoginSession は
 // `authentication_pending` のまま残る。
 //
 // 「拒否を書いたうえで第二要素も成立させる」実装は、次画面の名前を読むテストを
 // 素通りする。そこで拒否のあとに、同じセッションがまだ第二要素を待っていること、
 // 通常のリソースへ到達できないこと、そして正しいコードで同じセッションが継続する
 // ことの 3 つを読む。逆に「拒否のついでにセッションを捨てる」実装も 3 つ目で落ちる。
+//
+//spec:covers EX-AUTHENTICATION-017-02: 誤った TOTP コードの送信は拒否され、LoginSession は
 func TestWrongTotpCodeLeavesTheLoginSessionPending(t *testing.T) {
 	secret := totpTestSecret
 	srv := newServerWithTOTPPolicy(t, secret, true)

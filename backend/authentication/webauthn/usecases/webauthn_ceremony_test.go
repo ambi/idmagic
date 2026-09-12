@@ -231,13 +231,14 @@ func beginAssertion(ctx context.Context, t *testing.T, deps usecases.WebAuthnDep
 	return assertion.Response.Challenge.String()
 }
 
-// WEBAUTHN3-REGISTRATION: 登録が attestation の challenge / RP ID / origin を検証し、
 // COSE の公開鍵と sign count を保存することを固定する。4 つを別々の入力で観測する:
 // 詐称する要素をひとつだけ差し替えた 3 通りの応答が拒否され、そのとき credential が
 // 1 つも保存されていないこと (拒否が防いだ効果) と、正当な応答では authenticator が
 // 出した COSE 公開鍵そのものと sign count が保存先に残っていることである。
 // 保存の観測を「保存された」だけにすると、公開鍵を捨てて credential id だけを持つ実装を
 // 区別できない。
+//
+//spec:covers WEBAUTHN3-REGISTRATION: 登録が attestation の challenge / RP ID / origin を検証し、
 func TestWebAuthnRegistrationVerifiesTheCeremonyAndStoresTheCOSEKey(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
@@ -295,13 +296,14 @@ func TestWebAuthnRegistrationVerifiesTheCeremonyAndStoresTheCOSEKey(t *testing.T
 	}
 }
 
-// WEBAUTHN3-AUTHENTICATION: 認証が、オリジンと Relying Party の範囲に限定された公開鍵
 // クレデンシャルを検証することを固定する。登録した鍵の署名だけが通ること、別の鍵で
 // 署名した assertion、別の origin の assertion、別の RP ID の assertion がいずれも拒否
 // されること、そして拒否のとき sign count が進んでいないこと (拒否が防いだ効果) を
 // 観測する。戻り値の error だけを見ると、検証に失敗しても sign count を書き換える実装を
 // 区別できない。登録側と別のテストにしてあるのは、片方の検証だけを持つ実装が 1 つの
 // テストでは区別できないからである。
+//
+//spec:covers WEBAUTHN3-AUTHENTICATION: 認証が、オリジンと Relying Party の範囲に限定された公開鍵
 func TestWebAuthnAuthenticationVerifiesTheOriginAndRelyingPartyScopedCredential(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)

@@ -159,14 +159,14 @@ func assertHealthRefusal(t *testing.T, rec *httptest.ResponseRecorder, findAllCa
 	}
 }
 
-// REQ-SIGNINGKEYS-009: 制御面テナント外の system_admin は、署名鍵ヘルスも横断収集も観測できない。
+//spec:covers REQ-SIGNINGKEYS-009: 制御面テナント外の system_admin は、署名鍵ヘルスも横断収集も観測できない。
 func TestControlPlaneSigningKeyHealthRejectsSystemAdminOutsideControlPlaneTenant(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("acme-operator", "acme", "system_admin"))
 	rec := getControlPlaneBoundary(srv.e, "/realms/acme/api/admin/v1/keys/health")
 	assertHealthRefusal(t, rec, srv.tenants.findAllCalls.Load())
 }
 
-// REQ-DATAKEYS-006: 制御面テナント外の system_admin は、DEK ヘルスも横断収集も観測できない。
+//spec:covers REQ-DATAKEYS-006: 制御面テナント外の system_admin は、DEK ヘルスも横断収集も観測できない。
 func TestControlPlaneDataKeyHealthRejectsSystemAdminOutsideControlPlaneTenant(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("acme-operator", "acme", "system_admin"))
 	rec := getControlPlaneBoundary(srv.e, "/realms/acme/api/admin/v1/data-keys/health")
@@ -199,7 +199,7 @@ func browserPost(t *testing.T, e *echo.Echo, path string) *httptest.ResponseReco
 	return rec
 }
 
-// REQ-JOBS-015 / EX-JOBS-015-01: 制御面主体はシステム経路で admin ロールなしに一覧、詳細、取消しを横断できる。
+//spec:covers REQ-JOBS-015 / EX-JOBS-015-01: 制御面主体はシステム経路で admin ロールなしに一覧、詳細、取消しを横断できる。
 func TestControlPlaneJobOversightNeedsNoAdminRole(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
 
@@ -229,7 +229,7 @@ func TestControlPlaneJobOversightNeedsNoAdminRole(t *testing.T) {
 	}
 }
 
-// EX-JOBS-015-03: ブラウザーからの要求であることを証明できない取消しは、Job を変えずに拒否される。
+//spec:covers EX-JOBS-015-03: ブラウザーからの要求であることを証明できない取消しは、Job を変えずに拒否される。
 func TestSystemJobCancelRefusesWithoutBrowserProof(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
 
@@ -250,7 +250,7 @@ func TestSystemJobCancelRefusesWithoutBrowserProof(t *testing.T) {
 	}
 }
 
-// REQ-AUDIT-007 / EX-AUDIT-007-01: 制御面主体はシステム経路で全テナントの監査イベントを検索、参照、エクスポートできる。
+//spec:covers REQ-AUDIT-007 / EX-AUDIT-007-01: 制御面主体はシステム経路で全テナントの監査イベントを検索、参照、エクスポートできる。
 func TestSystemAuditEventsSpanEveryTenantForControlPlaneActor(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
 
@@ -278,8 +278,9 @@ func TestSystemAuditEventsSpanEveryTenantForControlPlaneActor(t *testing.T) {
 	}
 }
 
-// EX-AUDIT-007-02、EX-JOBS-015-02、EX-SYSTEM-020-03: 制御面主体でない実行者はシステム経路から
 // どのテナントの記録も観測できない。
+//
+//spec:covers EX-AUDIT-007-02, EX-JOBS-015-02, EX-SYSTEM-020-03: 制御面主体でない実行者はシステム経路から
 func TestSystemRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("acme-operator", "acme", "system_admin", "admin"))
 
@@ -303,8 +304,9 @@ func TestSystemRoutesRefuseNonControlPlaneActor(t *testing.T) {
 }
 
 // REQ-JOBS-012、REQ-JOBS-013 のテナント境界をこの経路で確かめる。
-// EX-JOBS-012-04、EX-JOBS-013-05、EX-SYSTEM-020-01: テナント管理経路は制御面主体に対しても
 // 要求先テナントへ閉じる。横断を求める入力を添えても範囲は変わらない。
+//
+//spec:covers EX-JOBS-012-04, EX-JOBS-013-05, EX-SYSTEM-020-01: テナント管理経路は制御面主体に対しても
 func TestTenantAdminApisStayInsideRequestTenant(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t,
 		controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin", "admin"))

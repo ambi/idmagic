@@ -316,9 +316,10 @@ func (s *apiTokenStack) introspect(t *testing.T, realm, token string) map[string
 // RFC 6750 — Bearer Token Usage
 // =====================================================================
 
-// RFC6750-API-TOKEN-HEADER: API アクセストークンを受け付ける提示の形は、Authorization ヘッダーの
 // Bearer と DPoP スキームだけである。同じ 1 本のトークンを、スキームだけ変えて提示する。
 // トークンの側は毎回有効なので、到達できたかどうかの差は提示の形だけで決まる。
+//
+//spec:covers RFC6750-API-TOKEN-HEADER: API アクセストークンを受け付ける提示の形は、Authorization ヘッダーの
 func TestApiTokenIsAcceptedOnlyFromTheAuthorizationHeaderScheme(t *testing.T) {
 	stack := newApiTokenStack(t)
 	literal, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
@@ -358,13 +359,14 @@ func TestApiTokenIsAcceptedOnlyFromTheAuthorizationHeaderScheme(t *testing.T) {
 	}
 }
 
-// RFC6750-API-TOKEN-QUERY: URI クエリパラメーターによる提示は提供していない。
 // 提供していないことの観測なので、`excluded` の行は満たすことではなく満たさないことを読む。
 //
 // 受理されない一点だけでは、そのトークンが最初から無効だった実装と区別できない。そこで
 // 同じ 1 本のトークンがヘッダーでは通ることを先に確かめ、クエリでは通らないことと対にする。
 // 参照だけでなく状態を変える操作でも確かめ、拒否が防いだ効果 (利用者が無効化されていないこと)
 // を保存先から読み直す。
+//
+//spec:covers RFC6750-API-TOKEN-QUERY: URI クエリパラメーターによる提示は提供していない。
 func TestApiTokenIsNotAcceptedFromTheQueryString(t *testing.T) {
 	stack := newApiTokenStack(t)
 	literal, _ := stack.issue(t, tenancydomain.DefaultRealm, "",
@@ -426,9 +428,10 @@ func (s *apiTokenStack) disableTarget(t *testing.T, path, authorization string) 
 // RFC 9068 — JWT Profile for OAuth 2.0 Access Tokens
 // =====================================================================
 
-// RFC9068-API-TOKEN-CLAIMS: 管理発行トークンは 8 つの claim を持つ。
 // 復号した payload をそのまま読む。管理 API へ到達できることだけでは、認証が使わない
 // claim (`iat`) を落とした実装を見分けられない。
+//
+//spec:covers RFC9068-API-TOKEN-CLAIMS: 管理発行トークンは 8 つの claim を持つ。
 func TestManagedApiTokenCarriesTheRFC9068Claims(t *testing.T) {
 	stack := newApiTokenStack(t)
 	literal, metadata := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
@@ -466,11 +469,12 @@ func TestManagedApiTokenCarriesTheRFC9068Claims(t *testing.T) {
 	}
 }
 
-// RFC9068-API-TOKEN-SIGNATURE: 管理発行トークンは通常の OAuth アクセストークンと同じ
 // 非対称鍵で署名され、`typ` は `at+jwt` である。
 //
 // header の値を読むだけでは、署名を検証していない実装を見分けられない。そこで、同じ kid を
 // 名乗りながら別の鍵で署名したトークンが管理 API へ届かないことを併せて観測する。
+//
+//spec:covers RFC9068-API-TOKEN-SIGNATURE: 管理発行トークンは通常の OAuth アクセストークンと同じ
 func TestManagedApiTokenIsSignedWithTheTenantAccessTokenKey(t *testing.T) {
 	stack := newApiTokenStack(t)
 	ctx := stack.realmContext(t, tenancydomain.DefaultRealm)
@@ -549,11 +553,12 @@ func verifyPS256WithKey(t *testing.T, token string, key *signingdomain.SigningKe
 // RFC 9700 / BCP 240 — audience と送信者制約
 // =====================================================================
 
-// RFC9700-API-TOKEN-AUDIENCE: API アクセストークンは発行元レルムの API audience に束縛され、
 // 別のレルムまたはリソースでは拒否される。
 //
 // 壊れた文字列では形式の検証で落ちるので、audience の照合が無い実装でも同じ拒否になる。
 // そこで aud だけが違う、他はすべて有効なトークンをテナントの現行鍵で作って提示する。
+//
+//spec:covers RFC9700-API-TOKEN-AUDIENCE: API アクセストークンは発行元レルムの API audience に束縛され、
 func TestApiTokenIsBoundToTheIssuingRealmAudience(t *testing.T) {
 	stack := newApiTokenStack(t)
 	literal, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
@@ -585,9 +590,10 @@ func TestApiTokenIsBoundToTheIssuingRealmAudience(t *testing.T) {
 	}
 }
 
-// RFC9700-API-TOKEN-SENDER-CONSTRAINT: 送信者制約は発行時に選べる。
 // 選べることの観測なので、制約なしと制約ありの 2 本を同じ提示で比べる。制約ありの 1 本だけを
 // 見ても、常に DPoP を要求する実装と区別できない。
+//
+//spec:covers RFC9700-API-TOKEN-SENDER-CONSTRAINT: 送信者制約は発行時に選べる。
 func TestApiTokenSenderConstraintIsChosenAtIssuance(t *testing.T) {
 	stack := newApiTokenStack(t)
 	key, jwk, jkt := newApiTokenDPoPKey(t)
@@ -686,11 +692,12 @@ func apiTokenDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, in
 	return input + "." + base64.RawURLEncoding.EncodeToString(signature)
 }
 
-// RFC9449-API-TOKEN-DPOP: `dpop_jkt` に束縛したトークンでは、DPoP 証明の署名、`htm`、`htu`、
 // `iat`、`jti` のリプレイ、およびサムプリントの一致が検証される。
 //
 // 行が挙げる要素ごとに、1 要素だけを崩した証明を作る。崩していない要素が有効であることは、
 // 無傷の証明が通ることで先に確かめる。まとめて壊した証明では、どの検証が働いたのか分からない。
+//
+//spec:covers RFC9449-API-TOKEN-DPOP: `dpop_jkt` に束縛したトークンでは、DPoP 証明の署名、`htm`、`htu`、
 func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 	stack := newApiTokenStack(t)
 	key, jwk, jkt := newApiTokenDPoPKey(t)
@@ -777,9 +784,10 @@ func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 // RFC 7662 — Token Introspection
 // =====================================================================
 
-// RFC7662-API-TOKEN-INTROSPECT: 認証済みリソースサーバーへ返す内省の内容を読む。
 // 返した値が発行したトークンのものであることを 1 つずつ照合する。`active` だけを読むテストは、
 // 別のトークンの内容を返す実装も、`scope` を落とす実装も見分けられない。
+//
+//spec:covers RFC7662-API-TOKEN-INTROSPECT: 認証済みリソースサーバーへ返す内省の内容を読む。
 func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
 	stack := newApiTokenStack(t)
 	_, _, jkt := newApiTokenDPoPKey(t)
@@ -823,7 +831,6 @@ func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
 	}
 }
 
-// RFC7662-API-TOKEN-INACTIVE: 未知、失効済み、期限切れ、レルム不一致のいずれでも、返るのは
 // `active=false` だけである。
 //
 // `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
@@ -833,6 +840,8 @@ func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
 // 失効リストに載り、管理コンソールを通した失効はライフサイクル記録にしか載らない。
 // 後者を落とすのは overlay の introspector だけなので、`/revoke` の側だけを観測すると、
 // overlay を持たない配線と製品を区別できない。
+//
+//spec:covers RFC7662-API-TOKEN-INACTIVE: 未知、失効済み、期限切れ、レルム不一致のいずれでも、返るのは
 func TestApiTokenIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 	stack := newApiTokenStack(t)
 
@@ -893,12 +902,13 @@ func (s *apiTokenStack) revoke(t *testing.T, token string) *httptest.ResponseRec
 	}, false)
 }
 
-// RFC7009-API-TOKEN-REVOKE: `access_token` ヒントと組み込みの公開クライアント ID で提示した
 // 管理発行 JWT は、その場で失効する。
 //
 // 失効は失効前の成功と対で観測する。失効後の 401 だけでは、そのトークンが最初から
 // 通らなかった実装と区別できない。応答に加えて、ライフサイクル記録の `revoked_at` と、
 // 保護されたエンドポイントへの到達可否の 3 つを読む。
+//
+//spec:covers RFC7009-API-TOKEN-REVOKE: `access_token` ヒントと組み込みの公開クライアント ID で提示した
 func TestRevokingAManagedApiTokenTakesEffectImmediately(t *testing.T) {
 	stack := newApiTokenStack(t)
 	literal, metadata := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
@@ -939,12 +949,13 @@ func TestRevokingAManagedApiTokenTakesEffectImmediately(t *testing.T) {
 	}
 }
 
-// RFC7009-API-TOKEN-UNKNOWN: 未知または失効済みのトークンの失効要求も 200 の何もしない処理で
 // あり、存在を漏らさない。
 //
 // 3 通りの入力の応答が状態コードも本文も区別できないことを読む。片方だけを読むテストは、
 // 未知のトークンに 400 を返す実装を見分けられるが、本文で存在を漏らす実装は見逃す。
 // 併せて、未知のトークンの失効要求が他のトークンを巻き添えにしないことを観測する。
+//
+//spec:covers RFC7009-API-TOKEN-UNKNOWN: 未知または失効済みのトークンの失効要求も 200 の何もしない処理で
 func TestRevokingAnUnknownApiTokenIsAnIndistinguishableNoOp(t *testing.T) {
 	stack := newApiTokenStack(t)
 	live, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)

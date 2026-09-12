@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// REQ-SYSTEM-002: 起動済みでも永続化依存が失敗したプロセスは ready と判定しない。
+//spec:covers REQ-SYSTEM-002: 起動済みでも永続化依存が失敗したプロセスは ready と判定しない。
 func TestReadinessReportsDependencyFailure(t *testing.T) {
 	var started atomic.Bool
 	started.Store(true)

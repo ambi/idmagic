@@ -50,9 +50,10 @@ func doScimRequest(t *testing.T, e *echo.Echo, method, authorization, path strin
 	return rec
 }
 
-// RFC7643-SERVICE-PROVIDER-CONFIG: ServiceProviderConfig が authenticationSchemes を
 // 持ち、その中で Bearer トークン方式を広告することを固定する。SCIM クライアントは
 // ここを読んで認証方式を選ぶので、空の配列や別方式だけの広告と区別する。
+//
+//spec:covers RFC7643-SERVICE-PROVIDER-CONFIG: ServiceProviderConfig が authenticationSchemes を
 func TestScimServiceProviderConfig_AdvertisesTheBearerAuthenticationScheme(t *testing.T) {
 	h := newScimHarness()
 	tokenStr := issueAllScimToken(t, h.apiTokens)
@@ -82,9 +83,10 @@ func TestScimServiceProviderConfig_AdvertisesTheBearerAuthenticationScheme(t *te
 	}
 }
 
-// RFC7644-RESOURCE-OPERATIONS: User と Group のどちらにも、作成・参照・置換・削除の
 // 4 操作が SCIM の入口から到達できることを固定する。置換と削除は、応答だけでなく
 // 後続の参照でも効果を読み、応答の組み立てで終わっている実装と区別する。
+//
+//spec:covers RFC7644-RESOURCE-OPERATIONS: User と Group のどちらにも、作成・参照・置換・削除の
 func TestScimResourceOperations_UsersAndGroupsSupportCreateReadReplaceDelete(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -190,10 +192,11 @@ func TestScimResourceOperations_UsersAndGroupsSupportCreateReadReplaceDelete(t *
 	})
 }
 
-// RFC7644-BEARER-AUTHORIZATION: SCIM の入口は、該当スコープを持つテナント単位の
 // API アクセストークンを要求する。拒否そのものと、**その拒否が防いだ効果**、
 // つまり対象リソースが変わっていないことを対で固定する。状態符号だけでは、
 // 変更してから拒否を返す実装と区別できない。
+//
+//spec:covers RFC7644-BEARER-AUTHORIZATION: SCIM の入口は、該当スコープを持つテナント単位の
 func TestScimBearerAuthorization_RefusesAndLeavesTheResourceUnchanged(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -273,9 +276,10 @@ func TestScimBearerAuthorization_RefusesAndLeavesTheResourceUnchanged(t *testing
 	}
 }
 
-// RFC7644-ERROR-RESPONSE: プロトコル上の失敗は、SCIM の誤り応答の形で返る。
 // schemas / status / detail と application/scim+json まで読み、状態符号だけが
 // 合っている素の JSON と区別する。
+//
+//spec:covers RFC7644-ERROR-RESPONSE: プロトコル上の失敗は、SCIM の誤り応答の形で返る。
 func TestScimErrorResponse_FailuresCarryTheScimErrorBody(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -375,11 +379,12 @@ func TestScimErrorResponse_FailuresCarryTheScimErrorBody(t *testing.T) {
 	}
 }
 
-// RFC7643-ENTERPRISE-EXTENSION: 採用したのは Enterprise 拡張のうち
 // employeeNumber / department / manager の 3 属性だけである。採用した側
 // (Discovery と CRUD / PATCH で扱う) と、採用していない側 (広告せず、作成では
 // 保存も応答もせず、PATCH では拒否する) を続けて観測する。片側だけでは、
 // 拡張を全部採用している実装とも、何も採用していない実装とも区別できない。
+//
+//spec:covers RFC7643-ENTERPRISE-EXTENSION: 採用したのは Enterprise 拡張のうち
 func TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -531,7 +536,6 @@ func scimResourceIDs(t *testing.T, body map[string]any) []string {
 	return ids
 }
 
-// RFC7644-DELETE-SEMANTICS (EX-SOURCING-002-05): 削除した User は SCIM の表面から
 // 消える。内部では soft delete なのでレコードは残るが、SCIM クライアントから見て
 // 削除済みの id は「存在しない id」と区別できてはいけない。
 //
@@ -542,6 +546,8 @@ func scimResourceIDs(t *testing.T, body map[string]any) []string {
 //
 // 無効化した User が消えないことも対で固定する。判定を「Active でない」と書くと
 // 無効化まで消え、外部 IdP が無効化を削除と読む。
+//
+//spec:covers RFC7644-DELETE-SEMANTICS, EX-SOURCING-002-05: 削除した User は SCIM の表面から
 func TestScimDeleteSemantics_DeletedUserIsGoneFromTheScimSurface(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo

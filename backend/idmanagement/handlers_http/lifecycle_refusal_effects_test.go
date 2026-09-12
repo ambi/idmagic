@@ -18,13 +18,14 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// EX-IDMANAGEMENT-013-02: 対象が操作者自身であり `admin` または `system_admin` を
 // 持つ場合、削除の予約、復元、完全削除のいずれも `self_delete_forbidden` で拒否され、
 // 対象ユーザーは `Active` のまま在籍する。
 //
 // 削除の予約は状態遷移だけで、応答も本文を持たない。予約が通ったかどうかは対象を
 // 読み直すほかに知る方法がない。完全削除は取り返しがつかないので、拒否が
 // 「応答を書いてから cascade も走る」形になっていないことまで確かめる。
+//
+//spec:covers EX-IDMANAGEMENT-013-02: 対象が操作者自身であり `admin` または `system_admin` を
 func TestSelfDeleteRefusalKeepsTheAdministratorActive(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-self", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -89,7 +90,6 @@ func TestSelfDeleteRefusalKeepsTheAdministratorActive(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-022-01: 未定義の属性または許可外の関数を参照する CEL 式の保存は
 // 拒否され、動的グループへの手動メンバー操作も拒否される。規則は保存されず、
 // メンバーシップも変わらない。
 //
@@ -97,6 +97,8 @@ func TestSelfDeleteRefusalKeepsTheAdministratorActive(t *testing.T) {
 // 保存されている式と版の両方である。式だけを見ると、版だけ上げて式を捨てる実装を
 // 見逃す。手動操作の側は 409 の本文を持つが、拒否したうえで追加も行う実装は
 // 応答からは見分けられないので、メンバーの集合を読み直す。
+//
+//spec:covers EX-IDMANAGEMENT-022-01: 未定義の属性または許可外の関数を参照する CEL 式の保存は
 func TestDynamicGroupRefusalsSaveNoRuleAndChangeNoMembership(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-dynamic", tenancydomain.DefaultTenantID, idmRefusalAdmin)

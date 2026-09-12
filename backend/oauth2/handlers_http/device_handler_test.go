@@ -204,7 +204,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 			t.Errorf("expected state DeviceFlowApproved, got %v", stored.State)
 		}
 
-		// REQ-OAUTH2-027: 承認後の device_code を正式な token endpoint で交換し、最終成果の資格情報を得る。
+		//spec:covers REQ-OAUTH2-027: 承認後の device_code を正式な token endpoint で交換し、最終成果の資格情報を得る。
 		tokenForm := url.Values{
 			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
 			"device_code": {fix.deviceCode},

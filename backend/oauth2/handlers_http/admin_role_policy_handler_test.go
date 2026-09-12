@@ -44,11 +44,12 @@ func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-004-02: admin でも system_admin でもない主体のロールポリシー一覧は
 // 拒否され、レスポンスボディにロールポリシーが 1 件も含まれない。
 //
 // 403 を書いてから一覧も書く実装はステータスだけを読むテストを通すので、
 // 本文にロールポリシーが漏れていないことまで読み直す。
+//
+//spec:covers EX-OAUTH2-004-02: admin でも system_admin でもない主体のロールポリシー一覧は
 func TestAdminRolePoliciesRequireAdminRole(t *testing.T) {
 	e, _, _ := newKeyAdminServer(t, keyAdminUser("plain", "acme", nil))
 	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")
@@ -129,13 +130,14 @@ func hasAdminRolePermission(roles []oauth2http.AdminRolePolicyResponse, roleName
 	return false
 }
 
-// EX-OAUTH2-004-01: 認証済みの管理者が受け取るロールポリシー一覧には、参照可能なロールと、
 // その権限と、権限ごとの HTTP インターフェース (名前、メソッド、パス) が入っている。
 //
 // 3 つを別々に読むのは、どれか 1 つを落としても他の 2 つは揃う実装があるためである。
 // とくに interfaces は入れ子の最下層なので、ロールと権限だけを読むテストは、
 // interfaces を常に空配列で返す実装を通してしまう。実際の対応まで読むために、
 // `AdminUserRead` が GET /api/admin/v1/users を指していることを名指しで確かめる。
+//
+//spec:covers EX-OAUTH2-004-01: 認証済みの管理者が受け取るロールポリシー一覧には、参照可能なロールと、
 func TestAdminRolePoliciesListVisibleRolesPermissionsAndInterfaces(t *testing.T) {
 	e, _, _ := newKeyAdminServer(t, keyAdminUser("admin", "acme", []string{"admin"}))
 	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")

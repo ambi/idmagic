@@ -40,8 +40,9 @@ const (
 	credentialPassword = "erasure-password-4821"
 )
 
-// GDPR-ERASURE: 削除要求を受けた利用者の資格情報は Authentication 側の保存先から
 // 1 つ残らず消え、元のパスワードはもう照合されない。
+//
+//spec:covers GDPR-ERASURE: 削除要求を受けた利用者の資格情報は Authentication 側の保存先から
 func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)

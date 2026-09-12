@@ -53,7 +53,7 @@ func TestFieldCipherEncryptDecryptRoundTrip(t *testing.T) {
 	}
 }
 
-// REQ-DATAKEYS-002: 実際の FieldCipher 配線でも、回転前の暗号文は retiring 鍵で復号できる。
+//spec:covers REQ-DATAKEYS-002: 実際の FieldCipher 配線でも、回転前の暗号文は retiring 鍵で復号できる。
 func TestFieldCipherDecryptsExistingCiphertextAfterRotation(t *testing.T) {
 	fieldCipher, deps := newTestFieldCipher(t)
 	ctx := context.Background()

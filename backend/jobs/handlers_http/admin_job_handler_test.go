@@ -217,7 +217,7 @@ func decodeJobList(t *testing.T, rec *httptest.ResponseRecorder) jobListBody {
 	return body
 }
 
-// REQ-JOBS-012: 一覧は自テナントに閉じる。
+//spec:covers REQ-JOBS-012: 一覧は自テナントに閉じる。
 func TestListJobsStaysInsideTheTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	body := decodeJobList(t, srv.get("/realms/acme/api/admin/v1/jobs"))
@@ -231,7 +231,7 @@ func TestListJobsStaysInsideTheTenant(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-014: params / result / dedup_key は応答に現れない。
+//spec:covers REQ-JOBS-014: params / result / dedup_key は応答に現れない。
 func TestListJobsOmitsHandlerInputAndOutput(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	rec := srv.get("/realms/acme/api/admin/v1/jobs")
@@ -257,8 +257,9 @@ func TestListJobsOmitsHandlerInputAndOutput(t *testing.T) {
 	}
 }
 
-// EX-JOBS-012-02: 要求先テナントの admin ロールを持たない実行者は拒否される。制御面主体の
 // 資格も特例にならない。テナント管理経路の受け入れはロールを見て分岐しない。
+//
+//spec:covers EX-JOBS-012-02: 要求先テナントの admin ロールを持たない実行者は拒否される。制御面主体の
 func TestListJobsRequiresAdminRole(t *testing.T) {
 	for name, actor := range map[string]*userdomain.User{
 		"no roles at all":                    jobsAdminUser("nobody", "acme", []string{}),
@@ -271,7 +272,7 @@ func TestListJobsRequiresAdminRole(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 絞り込みは許可された語彙に限り、未知の値は無視せず拒否する。
+//spec:covers REQ-JOBS-012: 絞り込みは許可された語彙に限り、未知の値は無視せず拒否する。
 func TestListJobsRejectsAnUnknownFilterValue(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	for _, query := range []string{"status=nonsense", "kind=nonsense", "lane=nonsense"} {
@@ -282,7 +283,7 @@ func TestListJobsRejectsAnUnknownFilterValue(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 種別で絞り込める。
+//spec:covers REQ-JOBS-012: 種別で絞り込める。
 func TestListJobsFiltersByKind(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	body := decodeJobList(t, srv.get("/realms/acme/api/admin/v1/jobs?kind=user_import_apply"))
@@ -291,8 +292,9 @@ func TestListJobsFiltersByKind(t *testing.T) {
 	}
 }
 
-// EX-JOBS-012-04: テナント管理経路は横断を求める入力を添えても要求先テナントへ閉じる。
 // 制御面主体の資格を持つ実行者でも変わらない。REQ-JOBS-012。
+//
+//spec:covers EX-JOBS-012-04: テナント管理経路は横断を求める入力を添えても要求先テナントへ閉じる。
 func TestListJobsIgnoresAnyCrossTenantInput(t *testing.T) {
 	for name, actor := range map[string]*userdomain.User{
 		"tenant admin": jobsAdminUser("admin", "acme", []string{"admin"}),
@@ -309,8 +311,9 @@ func TestListJobsIgnoresAnyCrossTenantInput(t *testing.T) {
 	}
 }
 
-// EX-JOBS-015-01: システム経路は制御面主体に対し、admin ロールなしで全テナントの一覧、
 // 1 件参照、取り消しを提供する。REQ-JOBS-015。
+//
+//spec:covers EX-JOBS-015-01: システム経路は制御面主体に対し、admin ロールなしで全テナントの一覧、
 func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
 	// 実行者は制御面テナントに所属するので、横断の対象は "acme" の Job である。
@@ -341,9 +344,10 @@ func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
 	}
 }
 
-// EX-JOBS-015-04: システム経路でも、終端に達した Job の取り消しは成功として黙認せず拒否し、
 // 状態を変えない。止めるよう頼んだ運用者にとって、すでに終わっていたのか止まったのかは
 // 別の事実である。REQ-JOBS-015。
+//
+//spec:covers EX-JOBS-015-04: システム経路でも、終端に達した Job の取り消しは成功として黙認せず拒否し、
 func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
 	foreign := srv.acmeJob
@@ -373,7 +377,7 @@ func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
 	}
 }
 
-// EX-JOBS-015-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの Job も返さない。
+//spec:covers EX-JOBS-015-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの Job も返さない。
 func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	for name, actor := range map[string]*userdomain.User{
 		"tenant admin at the control plane":      jobsAdminUser("admin", tenancydomain.DefaultTenantID, []string{"admin"}),
@@ -410,7 +414,7 @@ func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 他テナントの Job は id を知っていても存在しないものとして扱う。
+//spec:covers REQ-JOBS-012: 他テナントの Job は id を知っていても存在しないものとして扱う。
 func TestGetJobHidesAnotherTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	rec := srv.get("/realms/acme/api/admin/v1/jobs/" + srv.otherJob.ID)
@@ -424,7 +428,7 @@ func TestGetJobHidesAnotherTenant(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-013: 終端に達していない Job を取り消せ、JobCanceled が発行される。
+//spec:covers REQ-JOBS-013: 終端に達していない Job を取り消せ、JobCanceled が発行される。
 func TestCancelJob(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	rec := srv.cancel(t, srv.acmeJob.ID)
@@ -451,7 +455,7 @@ func TestCancelJob(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-013: 終端に達した Job の取り消しは成功として黙認せず 409 で拒否する。
+//spec:covers REQ-JOBS-013: 終端に達した Job の取り消しは成功として黙認せず 409 で拒否する。
 func TestCancelJobRefusesATerminalJob(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	if rec := srv.cancel(t, srv.acmeJob.ID); rec.Code != http.StatusOK {
@@ -463,7 +467,7 @@ func TestCancelJobRefusesATerminalJob(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-013: 他テナントの Job は取り消せず、状態も変わらない。
+//spec:covers REQ-JOBS-013: 他テナントの Job は取り消せず、状態も変わらない。
 func TestCancelJobHidesAnotherTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	if rec := srv.cancel(t, srv.otherJob.ID); rec.Code != http.StatusNotFound {

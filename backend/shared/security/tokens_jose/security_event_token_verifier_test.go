@@ -42,10 +42,11 @@ func signSecurityEventToken(t *testing.T, key *rsa.PrivateKey, alg, iss, aud, jt
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
-// RFC8417-SET-VERIFY: 検証を通過した SET だけが claims を返すこと、および署名の
 // 偽造、鍵の入れ替え、署名後の改ざんがいずれも fail-closed で拒否されることを固定
 // する。「反映しない」側の効果は usecases 側の
 // TestReceiveSecurityEvent_RejectsOnVerificationFailure が持つ。
+//
+//spec:covers RFC8417-SET-VERIFY: 検証を通過した SET だけが claims を返すこと、および署名の
 func TestVerifySecurityEventToken(t *testing.T) {
 	const (
 		issuer   = "https://transmitter.example"

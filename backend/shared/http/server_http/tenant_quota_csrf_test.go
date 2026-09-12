@@ -126,10 +126,11 @@ func withSystemConsoleCSRF(token string) func(*http.Request) {
 	}
 }
 
-// REQ-TENANCY-012 / REQ-PLATFORM-004 / EX-PLATFORM-004-01 / EX-PLATFORM-004-02: セッション Cookie
 // だけでは、そのクォータ変更が管理 UI から出たことを証明できない。Origin または
 // CSRF トークンの検証に失敗した要求は 403 で拒否され、保存ポートは呼ばれず、
 // 保存済みのクォータも利用量も変わらない。
+//
+//spec:covers REQ-TENANCY-012 / REQ-PLATFORM-004 / EX-PLATFORM-004-01 / EX-PLATFORM-004-02: セッション Cookie
 func TestUpdateTenantQuotaRejectsCookieSessionWithoutCSRF(t *testing.T) {
 	for _, tc := range []struct {
 		name, code string
@@ -164,8 +165,9 @@ func TestUpdateTenantQuotaRejectsCookieSessionWithoutCSRF(t *testing.T) {
 	}
 }
 
-// REQ-TENANCY-012: 正しい Origin と double-submit された CSRF トークンを持つ
 // システムコンソールのセッションは、これまでどおりクォータ上限を変更できる。
+//
+//spec:covers REQ-TENANCY-012: 正しい Origin と double-submit された CSRF トークンを持つ
 func TestUpdateTenantQuotaAcceptsSystemConsoleSessionWithCSRF(t *testing.T) {
 	srv := newQuotaCsrfServer(t)
 

@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// REQ-TENANCY-020: 管理者はテナント固有のグループ属性スキーマを定義できる。
+//spec:covers REQ-TENANCY-020: 管理者はテナント固有のグループ属性スキーマを定義できる。
 // /api/admin/v1/tenant/group_attribute_schema 経由で検証する (wi-315)。
 
 import (

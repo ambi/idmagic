@@ -69,7 +69,7 @@ func TestCreateAgentWorkloadBinding(t *testing.T) {
 		}
 	})
 
-	// EX-WORKLOADIDENTITY-009-01: 他テナントに属する Agent を指す関連付けは拒否され、
+	//spec:covers EX-WORKLOADIDENTITY-009-01: 他テナントに属する Agent を指す関連付けは拒否され、
 	// 関連付けは作成されない。拒否応答と、拒否が防いだ効果（信頼設定配下に関連付けが
 	// 1 件も増えていないこと）の双方を固定する。
 	//

@@ -98,12 +98,13 @@ func (f *idmRefusalFixture) exportIDs(t *testing.T, session, path string) []stri
 	return ids
 }
 
-// EX-IDMANAGEMENT-006-02: `User` の許可一覧にないキー (`password_hash`) を選択列に
 // 含むエクスポートの開始は `InvalidRequestError` (`invalid_columns`) で拒否され、
 // エクスポートは作成されず、ファイルも生まれない。
 //
 // この拒否が素通りすれば、パスワードハッシュがそのまま CSV で持ち出せる。
 // 応答だけを読むテストは、ジョブを作ってから生成時に落ちる実装を成功と区別できない。
+//
+//spec:covers EX-IDMANAGEMENT-006-02: `User` の許可一覧にないキー (`password_hash`) を選択列に
 func TestUserExportWithDisallowedColumnCreatesNoExport(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-columns", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -140,11 +141,12 @@ func TestUserExportWithDisallowedColumnCreatesNoExport(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-006-05: 保持期限を過ぎたエクスポートは `expired` となり
 // `downloadable` は false、ダウンロードは拒否される。
 //
 // 「拒否が変えなかったもの」は CSV の中身である。期限切れを応答に書きながら本体を
 // 返す実装は、ステータスだけを読むテストでは成功と区別できない。
+//
+//spec:covers EX-IDMANAGEMENT-006-05: 保持期限を過ぎたエクスポートは `expired` となり
 func TestExpiredUserExportRefusesDownloadAndReturnsNoCSV(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-expiry", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -204,11 +206,12 @@ func TestExpiredUserExportRefusesDownloadAndReturnsNoCSV(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-006-06: `User` エクスポートの ID を `/groups/exports` または別テナントで
 // 指定した参照、ダウンロード、取り消しは拒否され、CSV の中身は返らず、取り消しも効かない。
 //
 // 取り消しは種別の境界を越えた側から見ると成功と区別しにくい。拒否のあとに正しい
 // 経路から読み直し、エクスポートが `succeeded` のままであることを確かめる。
+//
+//spec:covers EX-IDMANAGEMENT-006-06: `User` エクスポートの ID を `/groups/exports` または別テナントで
 func TestUserExportAcrossTypeAndTenantReturnsNoCSVAndCancelsNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-boundary", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -287,11 +290,12 @@ func TestUserExportAcrossTypeAndTenantReturnsNoCSVAndCancelsNothing(t *testing.T
 	}
 }
 
-// EX-IDMANAGEMENT-008-02: `group_id` を指定しないメンバーエクスポートの開始は
 // `InvalidRequestError` で拒否され、エクスポートは作成されない。
 //
 // グループ単位の指定が必須なのは、指定を落とすとテナント全体のメンバーシップが
 // 1 つの CSV になるからである。拒否がジョブを作ってしまえば、あとは worker が出力する。
+//
+//spec:covers EX-IDMANAGEMENT-008-02: `group_id` を指定しないメンバーエクスポートの開始は
 func TestGroupMemberExportWithoutGroupCreatesNoExport(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-member", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -331,8 +335,9 @@ func TestGroupMemberExportWithoutGroupCreatesNoExport(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-008-03: 別グループのパスでメンバーエクスポートの ID を指定した
 // 参照とダウンロードは拒否され、他グループのメンバーは応答に出ない。
+//
+//spec:covers EX-IDMANAGEMENT-008-03: 別グループのパスでメンバーエクスポートの ID を指定した
 func TestGroupMemberExportUnderAnotherGroupReturnsNoMembers(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-cross-group", tenancydomain.DefaultTenantID, idmRefusalAdmin)

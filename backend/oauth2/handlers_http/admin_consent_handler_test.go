@@ -113,8 +113,9 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-038-01: 同意管理 API は別テナントの同意を公開せず、
 // 拒否の応答に対象の同意が 1 件も含まれない。
+//
+//spec:covers EX-OAUTH2-038-01: 同意管理 API は別テナントの同意を公開せず、
 func TestAdminConsentRequiresAdminAndHidesOtherTenant(t *testing.T) {
 	e, consents, _ := newAdminConsentHandler()
 	now := time.Now().UTC()

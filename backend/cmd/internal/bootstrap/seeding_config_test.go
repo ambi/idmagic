@@ -6,8 +6,9 @@ import (
 )
 
 // TestLoadSeedConfigRejectsUnknownProfileAndEnvironment covers
-// REQ-SYSTEM-016: seed selectors are startup configuration, so unknown
 // values must join the aggregated error before Assemble or seed application.
+//
+//spec:covers REQ-SYSTEM-016: seed selectors are startup configuration, so unknown
 func TestLoadSeedConfigRejectsUnknownProfileAndEnvironment(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(map[string]string{

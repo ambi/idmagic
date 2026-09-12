@@ -102,9 +102,10 @@ func newFapi2AuthorizeDeps(profile domain.FapiProfile) AuthorizeDeps {
 	}
 }
 
-// FAPI2-PAR-PKCE: プロファイルを選択しただけのクライアントが、PAR を経由しない
 // 認可リクエストを通せないことを固定する。クライアント個別の PAR 設定は false の
 // ままなので、拒否の理由はプロファイルの選択だけである。
+//
+//spec:covers FAPI2-PAR-PKCE: プロファイルを選択しただけのクライアントが、PAR を経由しない
 func TestAuthorizeRequiresPARFromFapi2Clients(t *testing.T) {
 	in := validAuthorizeInput()
 	if _, err := Authorize(context.Background(), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err == nil {

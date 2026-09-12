@@ -43,6 +43,10 @@ description: "Implement a chosen work item end to end: specification first, sepa
 7. Run the named observable-boundary check and confirm Acceptance RED or the applicable E2E RED. Then implement
    Domain → Use Cases → Adapters → Infrastructure / UI one behavior at a time: confirm Unit RED, reach GREEN with the simplest
    complete behavior, refactor while GREEN, and widen through the adapters until the acceptance check passes.
+   A test claims a declared id with a `//spec:covers <id>[, <id>]: <what it fixes>` directive above the test
+   function, and only that shape counts — see Citing a normative id from a test in
+   `docs/development/specification-first-workflow.md`. Naming an id in prose claims nothing, so say freely in
+   a comment that another record owns one.
    Retain both failing checks, test names, and applicable normative scenario ids in the task. For tooling,
    documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate
    check that actually failed instead of inventing a product requirement or test boundary.

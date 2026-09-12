@@ -5,9 +5,10 @@ import (
 	"testing"
 )
 
-// RFC8176-AMR-VOCABULARY: 語彙が閉じていること、つまり宣言された値だけが通り、それ以外は
 // 名指しで返ることを固定する。bool ではなく語彙の外の値そのものを返すのは、拒否した側が
 // 何を拒否したのかを言えないと、要素を足した人にとって手がかりにならないからである。
+//
+//spec:covers RFC8176-AMR-VOCABULARY: 語彙が閉じていること、つまり宣言された値だけが通り、それ以外は
 func TestUnknownAMRValuesNamesWhatIsOutsideTheVocabulary(t *testing.T) {
 	t.Parallel()
 
@@ -26,8 +27,9 @@ func TestUnknownAMRValuesNamesWhatIsOutsideTheVocabulary(t *testing.T) {
 	}
 }
 
-// RFC8176-AMR-VOCABULARY: acr を mfa へ上げる部分集合が語彙の内側にあることを固定する。
 // 語彙に無い値が MFA 充足として通ると、語彙の検査をすり抜けた値が強度の申告まで届く。
+//
+//spec:covers RFC8176-AMR-VOCABULARY: acr を mfa へ上げる部分集合が語彙の内側にあることを固定する。
 func TestMfaAMRValuesAreASubsetOfTheVocabulary(t *testing.T) {
 	t.Parallel()
 

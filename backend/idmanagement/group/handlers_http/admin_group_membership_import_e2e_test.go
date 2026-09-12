@@ -273,9 +273,10 @@ func equalStrings(got, want []string) bool {
 	return true
 }
 
-// REQ-IDMANAGEMENT-029 / scenario EX-IDMANAGEMENT-029-01: 管理 route を通した preview → apply が、
 // `present` の行だけメンバーシップを追加し、`absent` の行だけ手動メンバーシップを
 // 解除する。件数が正しいだけの実装と区別するため、所属そのものを読み戻す。
+//
+//spec:covers REQ-IDMANAGEMENT-029 / EX-IDMANAGEMENT-029-01: 管理 route を通した preview → apply が、
 func TestE2EGroupMembershipImportPreviewThenApplyThroughTheAdminRoutes(t *testing.T) {
 	h := newMembershipImportHarness(t, groupdomain.GroupMembershipManual)
 	base := "/realms/default/api/admin/v1/groups/group-engineering/members/imports"
@@ -305,9 +306,10 @@ func TestE2EGroupMembershipImportPreviewThenApplyThroughTheAdminRoutes(t *testin
 	}
 }
 
-// scenario EX-IDMANAGEMENT-029-08: 適用は同一グループのプレビューにしか結び付かない。
 // 別グループの route から同じプレビュー ID を出しても、どちらのグループのメンバーシップも
 // 変わらないことを読み戻して確かめる。
+//
+//spec:covers EX-IDMANAGEMENT-029-08: 適用は同一グループのプレビューにしか結び付かない。
 func TestE2EGroupMembershipImportRefusesAPreviewFromAnotherGroup(t *testing.T) {
 	h := newMembershipImportHarness(t, groupdomain.GroupMembershipManual)
 	previewID := h.acceptedJobID(h.post(
@@ -327,8 +329,9 @@ func TestE2EGroupMembershipImportRefusesAPreviewFromAnotherGroup(t *testing.T) {
 	}
 }
 
-// REQ-IDMANAGEMENT-030 / scenario EX-IDMANAGEMENT-030-01: 無編集のエクスポートは全行 `unchanged` になり、
 // 分割したファイルの片方だけを適用しても、他方にしか現れない所属は残る。
+//
+//spec:covers REQ-IDMANAGEMENT-030 / EX-IDMANAGEMENT-030-01: 無編集のエクスポートは全行 `unchanged` になり、
 func TestE2EGroupMembershipExportRoundTripsAsUnchangedThroughTheAdminRoutes(t *testing.T) {
 	h := newMembershipImportHarness(t, groupdomain.GroupMembershipManual)
 	base := "/realms/default/api/admin/v1/groups/group-engineering/members/imports"
@@ -372,8 +375,9 @@ func TestE2EGroupMembershipExportRoundTripsAsUnchangedThroughTheAdminRoutes(t *t
 	}
 }
 
-// REQ-IDMANAGEMENT-031 / scenario EX-IDMANAGEMENT-031-01: 動的グループはファイル全体を拒否する。判定が
 // 計画器の外にある実装は、この経路で拒否されずに通ってしまう。
+//
+//spec:covers REQ-IDMANAGEMENT-031 / EX-IDMANAGEMENT-031-01: 動的グループはファイル全体を拒否する。判定が
 func TestE2EGroupMembershipImportRefusesADynamicGroupThroughTheAdminRoutes(t *testing.T) {
 	h := newMembershipImportHarness(t, groupdomain.GroupMembershipDynamic)
 	base := "/realms/default/api/admin/v1/groups/group-engineering/members/imports"

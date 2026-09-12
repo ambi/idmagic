@@ -6,10 +6,11 @@ import (
 	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
 )
 
-// UserCoreSchema advertises exactly the RFC7643-CORE-RESOURCES
-// adoption:partial attribute subset with correct mutability/required flags,
+// adopted attribute subset with correct mutability/required flags,
 // so SCIM clients discover real capabilities instead of an empty array.
 // interfaces.GetScimSchemas
+//
+//spec:covers RFC7643-CORE-RESOURCES (partial): UserCoreSchema advertises exactly the
 func TestUserCoreSchemaAttributes(t *testing.T) {
 	schema := domain.UserCoreSchema()
 	if len(schema.Attributes) == 0 {
@@ -77,10 +78,11 @@ func TestUserCoreSchemaAttributes(t *testing.T) {
 	}
 }
 
-// REQ-SOURCING-007: EnterpriseUserSchema advertises exactly the employeeNumber /
 // department / manager subset (costCenter / division / organization stay
 // unadvertised, matching the WI's Out of Scope).
 // interfaces.GetScimSchemas
+//
+//spec:covers REQ-SOURCING-007: EnterpriseUserSchema advertises exactly the employeeNumber /
 func TestEnterpriseUserSchemaAttributes(t *testing.T) {
 	schema := domain.EnterpriseUserSchema()
 	if schema.ID != domain.EnterpriseUserSchemaURN {

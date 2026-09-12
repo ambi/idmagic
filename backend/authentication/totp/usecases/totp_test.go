@@ -7,10 +7,11 @@ import (
 
 const rfc6238SHA1SecretBase32 = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
 
-// RFC6238-TOTP: 共有シークレットと時間ステップから OTP を「生成する」側を固定する。
 // 入力は RFC 6238 Appendix B の SHA-1 テストベクターそのもので、期待値は RFC が載せている
 // 値である。自前の実装の出力を期待値に置くと、時間ステップの計算やダイナミックトランケー
 // ションを取り違えたまま自己整合してしまう。
+//
+//spec:covers RFC6238-TOTP: 共有シークレットと時間ステップから OTP を「生成する」側を固定する。
 func TestGenerateTOTPRFC6238Vectors(t *testing.T) {
 	for _, tc := range []struct {
 		at   int64
@@ -33,10 +34,11 @@ func TestGenerateTOTPRFC6238Vectors(t *testing.T) {
 	}
 }
 
-// RFC6238-TOTP: 「検証する」側を固定する。時間ステップの許容窓が前後 1 step であり
 // 2 step 離れた OTP は受理しないこと、そして受理の可否が共有シークレットに依存すること
 // である。窓だけを観測すると、シークレットを見ずに時刻だけから OTP を導く実装が通って
 // しまうので、別のシークレットで生成した同時刻の OTP が拒否されることを併せて観測する。
+//
+//spec:covers RFC6238-TOTP: 「検証する」側を固定する。時間ステップの許容窓が前後 1 step であり
 func TestVerifyTOTPWindow(t *testing.T) {
 	now := int64(1_700_000_000)
 	previous, err := GenerateTOTP(rfc6238SHA1SecretBase32, now-30)

@@ -221,11 +221,11 @@ describe('AdminSettingsPage', () => {
 
     expect(screen.getByRole('heading', { name: t.passwordPolicyHeading })).toBeInTheDocument()
     expect(screen.getAllByText('8 chars').length).toBeGreaterThan(0)
-    // REQ-AUTHENTICATION-024: expiry is off unless the tenant opted in.
+    //spec:covers REQ-AUTHENTICATION-024: expiry is off unless the tenant opted in.
     expect(screen.getAllByText(t.noExpiryValue).length).toBeGreaterThan(0)
   })
 
-  // REQ-AUTHENTICATION-024: the tenant's expiry opt-in is editable and is sent as
+  //spec:covers REQ-AUTHENTICATION-024: the tenant's expiry opt-in is editable and is sent as
   // max_age_days.
   it('saves the password expiry as part of the policy override', async () => {
     const fetch = mock().mockResolvedValue(

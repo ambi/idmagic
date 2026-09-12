@@ -28,7 +28,7 @@ describe('validateAuditEventsSearch', () => {
     })
   })
 
-  // EX-SYSTEM-020-02: 古いブックマークに残った横断の状態は検証で落ち、テナント内表示へ戻る。
+  //spec:covers EX-SYSTEM-020-02: 古いブックマークに残った横断の状態は検証で落ち、テナント内表示へ戻る。
   // 横断はシステムコンソールの経路が持つ (REQ-SYSTEM-020)。
   it('drops a cross-tenant request left in an old bookmark', () => {
     expect(validateAuditEventsSearch({ allTenants: true })).toEqual({})

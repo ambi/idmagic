@@ -40,7 +40,7 @@ func TestRuntimeContractOperation(t *testing.T) {
 }
 
 func TestRuntimeContractPreservesUniqueOperationIDsAcrossBindings(t *testing.T) {
-	// OPENAPI31-OPERATION-ID: 既定プロファイル、名前付きプロファイル、HTTP binding は、
+	//spec:covers OPENAPI31-OPERATION-ID: 既定プロファイル、名前付きプロファイル、HTTP binding は、
 	// 生成時にいずれかが黙って捨てられず、それぞれ一意な名前で実行時契約に残る。
 	want := map[string]Operation{
 		"SamlSingleSignOnDefault":     {Method: "GET", Path: "/saml/sso"},

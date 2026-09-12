@@ -49,7 +49,7 @@ func TestResolvePasswordPolicy(t *testing.T) {
 		}
 	})
 
-	// REQ-AUTHENTICATION-024: expiry is a tenant opt-in, and the snapshot also
+	//spec:covers REQ-AUTHENTICATION-024: expiry is a tenant opt-in, and the snapshot also
 	// carries the policy update time the evaluation starts from.
 	t.Run("max age and policy update time are resolved from the tenant", func(t *testing.T) {
 		maxAge := 90

@@ -1,6 +1,6 @@
 package server_http_test
 
-// REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
+//spec:covers REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
 //
 // これは待ち行列の性質の観測であって、docs/requirements/quality.md の Evidence classes が言う
 // Measurement ではない。参照運用プロファイルのデータも、実データベースも、負荷試験

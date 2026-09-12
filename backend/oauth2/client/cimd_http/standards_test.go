@@ -149,13 +149,14 @@ func requireRefused(t *testing.T, resolved *clientdomain.OAuth2Client, emitted [
 	}
 }
 
-// CIMD00-FETCH / CIMD00-URL-SHAPE:
 // 登録簿を外した client_id が https かつ空でないパスを持つ URL の形をしていれば、
 // その URL から文書を取得してクライアントを組み立てる。形が外れていれば、
 // 同じ文書が同じホストで配られていても取得そのものを行わない。
 //
 // 取得数を読むのは、形の検査が通信の前に立っていることを固定するためである。
 // 応答だけでは、取得してから捨てる実装と区別できない。
+//
+//spec:covers CIMD00-FETCH / CIMD00-URL-SHAPE:
 func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T) {
 	host := newMetadataHost(t, validDocument)
 	repository, emitted := host.resolution()
@@ -221,11 +222,12 @@ func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T)
 	}
 }
 
-// CIMD00-CLIENT-ID-MATCH:
 // 取得した文書の client_id フィールドが取得元 URL と厳密に一致しなければ、
 // その文書をクライアントにしない。「厳密に」を読むため、別ホストだけでなく
 // 末尾スラッシュ 1 文字違いとホスト名の大文字化も試す。正規化して受け入れる
 // 実装へ緩めば、攻撃者は自分の配る文書で別の client_id を名乗れる。
+//
+//spec:covers CIMD00-CLIENT-ID-MATCH:
 func TestClientIDMetadataDocumentMustNameTheURLItWasFetchedFrom(t *testing.T) {
 	// 対照: 完全に一致する文書は解決される。
 	resolved, emitted := resolveDocument(t, validDocument)
@@ -256,13 +258,14 @@ func TestClientIDMetadataDocumentMustNameTheURLItWasFetchedFrom(t *testing.T) {
 	}
 }
 
-// CIMD00-STRUCTURE:
 // 文書が正しい JSON であり、client_id、client_name、空でない redirect_uris を
 // 含むことを検証する。欠けていればフェイルクローズで拒否する。
 //
 // フェイルクローズであることは「拒否した」だけでは読めない。欠けた項目を
 // 既定値で埋めて組み立てる実装も、その 1 点では同じに見える。ここでは
 // クライアントが 1 つも組み立てられていないことと、拒否が監査に残ることを対で読む。
+//
+//spec:covers CIMD00-STRUCTURE:
 func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 	for name, body := range map[string]string{
 		"JSON ではない":   `not json at all`,
@@ -296,7 +299,6 @@ func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 	}
 }
 
-// CIMD00-PRIVATE-KEY-JWT (excluded):
 // private_key_jwt クライアント認証を、インラインの jwks または jwks_uri 経由で
 // 提供してよい、という選択肢は採らない。
 //
@@ -310,6 +312,8 @@ func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 //   - 認証方式を宣言せず鍵材料だけ載せた文書は解決されるが、その鍵材料は
 //     クライアントへ 1 つも入らない。文書に書いてあっても private_key_jwt の
 //     資格情報にはならない。
+//
+//spec:covers CIMD00-PRIVATE-KEY-JWT (excluded):
 func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *testing.T) {
 	const inlineJWKS = `"jwks": {"keys": [{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB"}]}`
 
@@ -357,13 +361,14 @@ func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *test
 	}
 }
 
-// CIMD00-CACHE (partial):
 // 採っている範囲は「文書をキャッシュする」ことだけで、「HTTP キャッシュヘッダーに
 // 従って」の部分は採っていない。Fetcher は解決に成功した文書を一律 5 分保持し、
 // 応答の Cache-Control を読まない。partial はこの 2 面を対で読む。
 //
 // 採らなかった側を no-store で観測するのは、この行が partial である理由を
 // 記録に残すためである。ここが required へ変わるなら、まずこのテストが落ちる。
+//
+//spec:covers CIMD00-CACHE (partial):
 func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t *testing.T) {
 	host := newMetadataHost(t, validDocument)
 	// 採っていない側: 標準に従うなら、この応答は再利用してはならない。
@@ -396,13 +401,14 @@ func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t 
 	}
 }
 
-// CIMD00-REDIRECT-VALIDATE:
 // 認可リクエストの redirect_uri が、取得した文書の redirect_uris 一覧に
 // 含まれることを検証する。
 //
 // この行だけは解決したクライアントを使う側の判断なので、Authorize から観測する。
 // 拒否は「拒否した」だけでは足りない。認可リクエストが保存されていないことを
 // 併せて読む。保存してから拒否する実装は、後続の経路へ材料を残す。
+//
+//spec:covers CIMD00-REDIRECT-VALIDATE:
 func TestAuthorizationRequestRedirectURIMustBeListedInTheFetchedDocument(t *testing.T) {
 	host := newMetadataHost(t, validDocument)
 	repository, _ := host.resolution()

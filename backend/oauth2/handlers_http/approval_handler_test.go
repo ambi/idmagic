@@ -31,7 +31,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// REQ-OAUTH2-041: an authenticated confidential client can create a backchannel request.
+//spec:covers REQ-OAUTH2-041: an authenticated confidential client can create a backchannel request.
 func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
 	tenantRepo := tenancymemory.NewTenantRepository()
 	_ = tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
@@ -84,7 +84,7 @@ func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-041: バックチャネル要求は本人の承認後にだけ一度だけアクセストークンへ交換できる。
+//spec:covers REQ-OAUTH2-041: バックチャネル要求は本人の承認後にだけ一度だけアクセストークンへ交換できる。
 func TestBackchannelApprovalIssuesTokenOnce(t *testing.T) {
 	tenantRepo := tenancymemory.NewTenantRepository()
 	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
@@ -206,7 +206,7 @@ func newApprovalHandlerFixture(t *testing.T) approvalHandlerFixture {
 	return approvalHandlerFixture{e: e, store: store, authn: authn, id: id}
 }
 
-// REQ-OAUTH2-043: a stale session cannot decide even with a valid CSRF token.
+//spec:covers REQ-OAUTH2-043: a stale session cannot decide even with a valid CSRF token.
 func TestApprovalDecisionRequiresRecentStepUp(t *testing.T) {
 	fix := newApprovalHandlerFixture(t)
 	fix.authn.ctx.AuthTime = time.Now().Add(-time.Hour).Unix()
@@ -225,7 +225,7 @@ func TestApprovalDecisionRequiresRecentStepUp(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-043: the decision endpoint rejects a missing CSRF proof.
+//spec:covers REQ-OAUTH2-043: the decision endpoint rejects a missing CSRF proof.
 func TestApprovalDecisionRequiresCSRF(t *testing.T) {
 	fix := newApprovalHandlerFixture(t)
 	req := approvalDecisionRequest(fix.id, false)
@@ -236,7 +236,7 @@ func TestApprovalDecisionRequiresCSRF(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-043: an authenticated, stepped-up owner can decide once.
+//spec:covers REQ-OAUTH2-043: an authenticated, stepped-up owner can decide once.
 func TestApprovalDecisionSucceedsForOwner(t *testing.T) {
 	fix := newApprovalHandlerFixture(t)
 	req := approvalDecisionRequest(fix.id, true)

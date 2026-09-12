@@ -35,7 +35,7 @@ type failOnceJobRepository struct {
 	fail bool
 }
 
-// REQ-IDGOVERNANCE-003: 利用者の正式な変更経路で捕捉したワークフローをジョブとして実行し、宣言した効果まで到達させる。
+//spec:covers REQ-IDGOVERNANCE-003: 利用者の正式な変更経路で捕捉したワークフローをジョブとして実行し、宣言した効果まで到達させる。
 func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	ctx := workflowContext()
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)

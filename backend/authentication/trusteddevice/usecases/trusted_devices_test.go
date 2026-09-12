@@ -34,8 +34,9 @@ func issue(t *testing.T, deps Deps, factor string, now time.Time) string {
 	return cookie
 }
 
-// REQ-AUTHENTICATION-026: 記憶した端末は次のログインで第二要素を省略でき、利用のたびに
 // verifier が回転する。
+//
+//spec:covers REQ-AUTHENTICATION-026: 記憶した端末は次のログインで第二要素を省略でき、利用のたびに
 func TestEvaluateTrustsTheIssuedCookieAndRotatesIt(t *testing.T) {
 	t.Parallel()
 	deps, events := testDeps()
@@ -63,8 +64,9 @@ func TestEvaluateTrustsTheIssuedCookieAndRotatesIt(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-026: 復旧コードでの成功と、テナントが機能を無効にしている場合は
 // 記憶しない。
+//
+//spec:covers REQ-AUTHENTICATION-026: 復旧コードでの成功と、テナントが機能を無効にしている場合は
 func TestIssueRefusesRecoveryCodeAndDisabledTenants(t *testing.T) {
 	t.Parallel()
 	deps, _ := testDeps()
@@ -85,7 +87,7 @@ func TestIssueRefusesRecoveryCodeAndDisabledTenants(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-027: 回転前の古い cookie は次の正規利用で無効になる。
+//spec:covers REQ-AUTHENTICATION-027: 回転前の古い cookie は次の正規利用で無効になる。
 func TestEvaluateRejectsTheCookieFromBeforeRotation(t *testing.T) {
 	t.Parallel()
 	deps, _ := testDeps()
@@ -104,8 +106,9 @@ func TestEvaluateRejectsTheCookieFromBeforeRotation(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-027: 期限切れ、別テナント、別ユーザー、改竄した cookie は
 // いずれも第二要素を省略できない。
+//
+//spec:covers REQ-AUTHENTICATION-027: 期限切れ、別テナント、別ユーザー、改竄した cookie は
 func TestEvaluateFailsClosedOnEveryMismatch(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
@@ -168,7 +171,7 @@ func TestEvaluateHonorsAShortTenantLifetime(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-028: 資格情報が変わると全デバイスが失効し、以後は第二要素が要る。
+//spec:covers REQ-AUTHENTICATION-028: 資格情報が変わると全デバイスが失効し、以後は第二要素が要る。
 func TestRevokeAllForUserRevokesEveryDevice(t *testing.T) {
 	t.Parallel()
 	deps, events := testDeps()
@@ -234,7 +237,7 @@ func TestRevokeAllForUserIsIdempotent(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-029: 本人は個別に失効でき、再送は成功、他人のデバイスは見つからない。
+//spec:covers REQ-AUTHENTICATION-029: 本人は個別に失効でき、再送は成功、他人のデバイスは見つからない。
 func TestRevokeOneScopesToTheOwnerAndIsIdempotent(t *testing.T) {
 	t.Parallel()
 	deps, _ := testDeps()

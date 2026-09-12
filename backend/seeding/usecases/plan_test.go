@@ -109,8 +109,9 @@ func (c *partialFailureContributor) Apply(context.Context, domain.Request) error
 	return nil
 }
 
-// EX-SEEDING-010-01: 一部の論理キーを適用した後に失敗しても、再試行ではそのキーを noop とし、
 // 未完了のキーだけを一度適用して目的の状態へ収束させる。
+//
+//spec:covers EX-SEEDING-010-01: 一部の論理キーを適用した後に失敗しても、再試行ではそのキーを noop とし、
 func TestRunCanBeRetriedAfterApplyFailure(t *testing.T) {
 	contributor := &partialFailureContributor{applied: map[string]bool{}, failOnce: true}
 	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileBootstrap, Mode: domain.ModeApply}

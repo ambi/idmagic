@@ -22,11 +22,12 @@ import (
 // emailChangeTokenPattern はメール本文の確認リンクからトークンを取り出す。
 var emailChangeTokenPattern = regexp.MustCompile(`token=([A-Za-z0-9_-]+)`)
 
-// EX-IDMANAGEMENT-002-02: `account:read` だけの API アクセストークンによる変更操作は
 // 拒否され、プロフィールもメールアドレスの変更申請も残らない。
 //
 // 変更申請は 204 で終わるので、応答からは拒否と成功を見分けられない。申請が
 // 生む副作用 (確認メールの送信) を数えて、拒否が何も起こしていないことを読む。
+//
+//spec:covers EX-IDMANAGEMENT-002-02: `account:read` だけの API アクセストークンによる変更操作は
 func TestAccountReadScopeChangesNoProfileAndRequestsNoEmailChange(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	readOnly := fixture.issueApiToken(
@@ -83,7 +84,6 @@ func TestAccountReadScopeChangesNoProfileAndRequestsNoEmailChange(t *testing.T) 
 	}
 }
 
-// EX-IDMANAGEMENT-002-03 (テナントの側): トークンのテナントが操作対象と一致しない
 // 要求は拒否され、対象ユーザーの属性は変更されない。
 //
 // テナント束縛は 6 重になっている。最も外側は署名鍵そのものがテナントごとに
@@ -93,6 +93,8 @@ func TestAccountReadScopeChangesNoProfileAndRequestsNoEmailChange(t *testing.T) 
 // 越境したトークンは acme の鍵では検証できないため拒否は残る。
 // このテストが固定するのは境界が保たれていることであり、特定の 1 行の有無ではない。
 // 取り外せる判定に対する変更耐性は、同じ具体例の `user_id` の側が持つ。
+//
+//spec:covers EX-IDMANAGEMENT-002-03: (テナントの側): トークンのテナントが操作対象と一致しない
 func TestAccountTokenFromAnotherTenantChangesNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	// default のテナントで alice に固定したトークンを、acme のレルムへ持ち込む。
@@ -146,7 +148,6 @@ func TestAccountTokenFromAnotherTenantChangesNothing(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-002-03 (`user_id` の側): トークンの `user_id` が操作対象と
 // 一致しない要求は拒否され、どちらの利用者の属性も変更されない。
 //
 // アカウント API の操作対象はトークン自身の主体なので、この不一致は保存された
@@ -154,6 +155,8 @@ func TestAccountTokenFromAnotherTenantChangesNothing(t *testing.T) {
 // フェイルクローズで二重にある。どちらが選ばれても操作が通ってはならないのは、
 // 「トークンが名乗る主体」と「サーバが記録した主体」のどちらを信じるかを
 // 決めきれていない状態だからである。
+//
+//spec:covers EX-IDMANAGEMENT-002-03: (`user_id` の側): トークンの `user_id` が操作対象と
 func TestAccountTokenWithMismatchedUserIDChangesNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	token := fixture.issueApiToken(
@@ -216,12 +219,13 @@ func TestAccountTokenWithMismatchedUserIDChangesNothing(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-003-02: CSRF トークンと Cookie が一致しないメールアドレスの確認は
 // `InvalidRequestError` で拒否され、メールアドレスは確認済みにならない。
 //
 // 確認は一度きりのトークンを消費する。したがって「拒否が変えなかったもの」には、
 // 対象のメールアドレスに加えて、そのトークンが今も使えることが含まれる。
 // 拒否のついでにトークンを消費する実装は、状態だけを見ると成功と区別できない。
+//
+//spec:covers EX-IDMANAGEMENT-003-02: CSRF トークンと Cookie が一致しないメールアドレスの確認は
 func TestEmailConfirmationWithMismatchedCSRFVerifiesNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	alice := fixture.seedSession(t, "sess-alice-email", tenancydomain.DefaultTenantID, idmRefusalAlice, withFreshStepUp)

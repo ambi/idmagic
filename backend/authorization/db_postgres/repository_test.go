@@ -60,8 +60,9 @@ func TestAuthorizationModelRepositoryContract(t *testing.T) {
 	testing_contract.RunAuthorizationModelRepositoryContract(t, newFixture)
 }
 
-// REQ-AUTHORIZATION-001: 版の採番は INSERT の中で行うので、同時に published しても
 // 同じ版を 2 つ作らない。採番を読み書き 2 回に分ければここで衝突する。
+//
+//spec:covers REQ-AUTHORIZATION-001: 版の採番は INSERT の中で行うので、同時に published しても
 func TestConcurrentPublishNeverReusesAVersion(t *testing.T) {
 	f := newFixture(t, "tenant-a")
 	tenantA := f.Tenant("tenant-a")

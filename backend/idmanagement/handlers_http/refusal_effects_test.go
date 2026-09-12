@@ -433,11 +433,12 @@ func (f *idmRefusalFixture) agent(t *testing.T, id string) *agentdomain.Agent {
 	return agent
 }
 
-// EX-IDMANAGEMENT-014-02: `admin` ロールを持たないユーザーの管理 API 呼び出しは拒否され、
 // 応答に管理対象の一覧は含まれず、作成も通らない。
 //
 // 一覧の拒否は 403 の本文を返すので応答だけでも見分けが付くが、作成の側は
 // 「403 を書いてから作る」実装と区別できない。作成のあとで一覧を読み直す。
+//
+//spec:covers EX-IDMANAGEMENT-014-02: `admin` ロールを持たないユーザーの管理 API 呼び出しは拒否され、
 func TestAdminApiWithoutAdminRoleListsNothingAndCreatesNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	plain := fixture.seedSession(t, "sess-bob", tenancydomain.DefaultTenantID, idmRefusalBob)
@@ -485,11 +486,12 @@ func TestAdminApiWithoutAdminRoleListsNothingAndCreatesNothing(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-005-05: TenantAdministrator ロールを持たない実行者の
 // `ListAdminUsers` は `AccessDeniedError` で拒否され、応答にユーザーは 1 件も含まれない。
 //
 // 014-02 と同じ防護だが、こちらが名指すのは一覧の総件数とページングのメタデータまで
 // 漏れないことである。件数だけを返す実装は「一覧は返していない」と言えてしまう。
+//
+//spec:covers EX-IDMANAGEMENT-005-05: TenantAdministrator ロールを持たない実行者の
 func TestListAdminUsersWithoutAdminRoleReturnsNoUsersAndNoCounts(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	plain := fixture.seedSession(t, "sess-bob-list", tenancydomain.DefaultTenantID, idmRefusalBob)
@@ -523,12 +525,13 @@ func TestListAdminUsersWithoutAdminRoleReturnsNoUsersAndNoCounts(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-005-06: 別テナントで発行された、改ざんされた、または発行時と
 // `query` / `status` が異なるカーソルは `InvalidRequestError` で拒否され、
 // 別テナントのページは返らない。
 //
 // カーソルはテナントと絞り込みを HMAC の付随データとして束ねる。したがって
 // 「拒否が変えなかったもの」は、越境したページの中身が応答に出ないことである。
+//
+//spec:covers EX-IDMANAGEMENT-005-06: 別テナントで発行された、改ざんされた、または発行時と
 func TestListAdminUsersRejectsForeignTamperedAndRefilteredCursors(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-cursor", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -630,9 +633,10 @@ func tamperCursor(cursor string) string {
 	return "v3." + body[:at] + string(replacement) + body[at+1:]
 }
 
-// EX-IDMANAGEMENT-025-02: `users:read` だけの API アクセストークンによる User の変更と
 // CSV インポートは `AccessDeniedError` で拒否され、User は変更されず、
 // インポートのジョブも作られない。
+//
+//spec:covers EX-IDMANAGEMENT-025-02: `users:read` だけの API アクセストークンによる User の変更と
 func TestUsersReadScopeChangesNoUserAndStartsNoImport(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	readOnly := fixture.issueApiToken(
@@ -684,12 +688,13 @@ func TestUsersReadScopeChangesNoUserAndStartsNoImport(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-025-03: `groups:read` だけの API アクセストークンによる Group CSV の
 // インポートとその適用は `AccessDeniedError` で拒否され、`Group` は 1 件も作成、更新、
 // 削除されない。
 //
 // この具体例は副作用の不在まで宣言している。宣言がその形なのに引用するテストが
 // 無かったので、テスト側も同じ形で読む。
+//
+//spec:covers EX-IDMANAGEMENT-025-03: `groups:read` だけの API アクセストークンによる Group CSV の
 func TestGroupsReadScopeImportsNothingAndLeavesGroupsUnchanged(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	readOnly := fixture.issueApiToken(
@@ -741,8 +746,9 @@ func TestGroupsReadScopeImportsNothingAndLeavesGroupsUnchanged(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-025-04: `users:*` だけの API アクセストークンによる Group と Agent の
 // 操作は `AccessDeniedError` で拒否され、Group も Agent も作成されない。
+//
+//spec:covers EX-IDMANAGEMENT-025-04: `users:*` だけの API アクセストークンによる Group と Agent の
 func TestUsersScopeCreatesNoGroupAndNoAgent(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	usersOnly := fixture.issueApiToken(
@@ -798,11 +804,12 @@ func TestUsersScopeCreatesNoGroupAndNoAgent(t *testing.T) {
 	}
 }
 
-// EX-IDMANAGEMENT-025-05: `agents:read` だけの API アクセストークンによる Agent の
 // キルと削除は `AccessDeniedError` で拒否され、対象の Agent は在籍したままである。
 //
 // キルも削除も応答の本文を持たないので、拒否と成功は本文では見分けられない。
 // どちらのあとでも Agent を読み直す。
+//
+//spec:covers EX-IDMANAGEMENT-025-05: `agents:read` だけの API アクセストークンによる Agent の
 func TestAgentsReadScopeKillsAndDeletesNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	readOnly := fixture.issueApiToken(

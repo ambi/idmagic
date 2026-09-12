@@ -108,8 +108,9 @@ func fullLifecycleRequests(t *testing.T) []recordedRequest {
 	return *recorded
 }
 
-// RFC7644-OUT-BULK: /Bulk を使わない。下流が bulk.supported を広告していても、
 // 配信 1 件につき 1 リソースの要求を送る。
+//
+//spec:covers RFC7644-OUT-BULK: /Bulk を使わない。下流が bulk.supported を広告していても、
 func TestClient_SendsNoBulkRequest(t *testing.T) {
 	for _, request := range fullLifecycleRequests(t) {
 		if strings.HasPrefix(request.Path, "/Bulk") {
@@ -118,7 +119,7 @@ func TestClient_SendsNoBulkRequest(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-SORT: 照会に sortBy と sortOrder を送らない。
+//spec:covers RFC7644-OUT-SORT: 照会に sortBy と sortOrder を送らない。
 func TestClient_SendsNoSortParameters(t *testing.T) {
 	for _, request := range fullLifecycleRequests(t) {
 		for _, name := range []string{"sortBy", "sortOrder"} {
@@ -129,8 +130,9 @@ func TestClient_SendsNoSortParameters(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-ETAG: 条件付き要求を送らない。作成と更新の応答が ETag を返していても、
 // 後続の要求の前提条件には使わない。
+//
+//spec:covers RFC7644-OUT-ETAG: 条件付き要求を送らない。作成と更新の応答が ETag を返していても、
 func TestClient_SendsNoConditionalRequestHeaders(t *testing.T) {
 	for _, request := range fullLifecycleRequests(t) {
 		for _, name := range []string{"If-Match", "If-None-Match", "If-Unmodified-Since"} {
@@ -141,9 +143,10 @@ func TestClient_SendsNoConditionalRequestHeaders(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-DISCOVERY: 取得するのは /ServiceProviderConfig だけであり、
 // /ResourceTypes と /Schemas は取得しない。下流が広告するスキーマに送出内容を合わせない
 // という宣言は、そのスキーマを読んでいないことによって支えられている。
+//
+//spec:covers RFC7644-OUT-DISCOVERY: 取得するのは /ServiceProviderConfig だけであり、
 func TestClient_DiscoversOnlyServiceProviderConfig(t *testing.T) {
 	client, recorded := newRecordingClient(t)
 	if _, err := client.Discover(context.Background()); err != nil {
@@ -159,9 +162,10 @@ func TestClient_DiscoversOnlyServiceProviderConfig(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-AUTHENTICATION: 認証は接続に保存した資格情報を Authorization: Bearer で
 // 提示する 1 方式だけであり、資格情報を得るための別の要求は送らない。
 // 送った要求が操作の数と一致することが、トークンエンドポイントを呼んでいないことの証拠になる。
+//
+//spec:covers RFC7644-OUT-AUTHENTICATION: 認証は接続に保存した資格情報を Authorization: Bearer で
 func TestClient_SendsOneAuthenticatedRequestPerOperation(t *testing.T) {
 	requests := fullLifecycleRequests(t)
 	for _, request := range requests {
@@ -174,8 +178,9 @@ func TestClient_SendsOneAuthenticatedRequestPerOperation(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-RESOURCE-OPERATIONS: 要求は Accept: application/scim+json を持ち、
 // 本文を伴う要求は Content-Type: application/scim+json を持つ。
+//
+//spec:covers RFC7644-OUT-RESOURCE-OPERATIONS: 要求は Accept: application/scim+json を持ち、
 func TestClient_SendsScimMediaTypes(t *testing.T) {
 	for _, request := range fullLifecycleRequests(t) {
 		if got := request.Header.Get("Accept"); got != "application/scim+json" {
@@ -191,8 +196,9 @@ func TestClient_SendsScimMediaTypes(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-FILTERING: 組み立てるのは <属性> eq "<値>" という比較 1 つだけで、
 // 論理演算子もグループ化も組み立てない。値に空白が含まれていても比較は 1 つのままである。
+//
+//spec:covers RFC7644-OUT-FILTERING: 組み立てるのは <属性> eq "<値>" という比較 1 つだけで、
 func TestClient_SearchBuildsSingleEqualityFilter(t *testing.T) {
 	client, recorded := newRecordingClient(t)
 	if _, _, err := client.SearchUserByAttribute(context.Background(), "userName", "alice smith"); err != nil {
@@ -212,9 +218,10 @@ func TestClient_SearchBuildsSingleEqualityFilter(t *testing.T) {
 	}
 }
 
-// RFC7644-OUT-ERROR-RESPONSE: 409 / 404 / 429 / 5xx 以外の 2xx でない応答は、
 // 再試行しない失敗として扱う。400 を再試行可能と読むと、拒否された本文を
 // 上限まで送り続けることになる。
+//
+//spec:covers RFC7644-OUT-ERROR-RESPONSE: 409 / 404 / 429 / 5xx 以外の 2xx でない応答は、
 func TestClient_UnknownErrorStatusIsNotRetryable(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -241,12 +248,13 @@ func TestClient_UnknownErrorStatusIsNotRetryable(t *testing.T) {
 	}
 }
 
-// RFC7643-OUT-CORE-RESOURCES: RFC 7643 §3 はリソース表現が `schemas` を持つことを
 // 要求する。User なら `urn:ietf:params:scim:schemas:core:2.0:User` である。
 // 受け取り側が検証する実装なら、欠けていれば作成も置換も 400 で拒否され、
 // その拒否は「再試行しない失敗」として dead_letter に落ちる。IdMagic 自身の内向き
 // サーバーは `schemas` を読み取り専用属性として無視するので、IdMagic どうしを
 // 繋いだ試験では再現しない。
+//
+//spec:covers RFC7643-OUT-CORE-RESOURCES: RFC 7643 §3 はリソース表現が `schemas` を持つことを
 func TestClient_SendsSchemasOnResourceRepresentations(t *testing.T) {
 	const userSchemaURN = "urn:ietf:params:scim:schemas:core:2.0:User"
 	const patchOpURN = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
@@ -329,13 +337,14 @@ func groupPushRequests(t *testing.T) []recordedRequest {
 	return *recorded
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: Group のリソース表現は、必須属性 `schemas`
 // (`urn:ietf:params:scim:schemas:core:2.0:Group` の 1 要素) と、接続の属性
 // 対応付けが解決した属性だけで組み立てる。メンバーシップはこの本文には載せず、
 // `members` に対する増分 `add` の PATCH として別に送る。
 //
 // User の URN との取り違えは下流の検証で拒否されるので、1 要素であることだけ
 // でなく、それが Group の URN であることまで観測する。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: Group のリソース表現は、必須属性 `schemas`
 func TestClient_GroupResourceBody_IsSchemasPlusMappedAttributes(t *testing.T) {
 	const groupSchemaURN = "urn:ietf:params:scim:schemas:core:2.0:Group"
 	const patchOpURN = "urn:ietf:params:scim:api:messages:2.0:PatchOp"

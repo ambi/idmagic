@@ -107,13 +107,14 @@ func storedMcpResourceServers(t *testing.T, s *stack.Stack) []string {
 	return names
 }
 
-// EX-OAUTH2-003-01: `oauth-clients:read` は OAuth2 クライアントの参照だけを、
 // `authorization-detail-types:write` は認可詳細タイプの変更だけを、
 // `mcp-resource-servers:read` は MCP リソースサーバーの参照だけを許す。
 //
 // 具体例は `Then` を 3 つ並べていて、resource ごとに別のスコープを名指ししている。
 // 「だけ」の観測には resource あたり 2 方向が要る。許す側だけを読むとどのスコープでも
 // 全部通す実装と、拒む側だけを読むと何も通さない実装と区別できない。
+//
+//spec:covers EX-OAUTH2-003-01: `oauth-clients:read` は OAuth2 クライアントの参照だけを、
 func TestOAuth2AdminOperationsFollowTheGranularScopes(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithOAuth2Clients())
 	clientsRead, _ := s.IssueApiToken(t, tenancydomain.DefaultRealm, apitokendomain.ScopeOAuthClientsRead)
@@ -175,11 +176,11 @@ func TestOAuth2AdminOperationsFollowTheGranularScopes(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-003-02: `oauth-clients:read` だけで OAuth2 クライアントの変更を要求すると拒否される。
-//
 // 契約 `CreateAdminOAuth2Client` などは 403 の本文として `InsufficientScopeError` を宣言して
 // いる。状態コードに加えて `WWW-Authenticate` が要求スコープ名を名指ししていることまで読み、
 // 変更 3 種 (登録、更新、削除) のどれについても保存先が変わっていないことを読み直す。
+//
+//spec:covers EX-OAUTH2-003-02: `oauth-clients:read` だけで OAuth2 クライアントの変更を要求すると拒否される。
 func TestOAuth2ReadScopeCannotChangeOAuth2Clients(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithOAuth2Clients())
 	clientsRead, _ := s.IssueApiToken(t, tenancydomain.DefaultRealm, apitokendomain.ScopeOAuthClientsRead)
@@ -210,12 +211,12 @@ func TestOAuth2ReadScopeCannotChangeOAuth2Clients(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-003-03: 別 resource のスコープで操作を要求すると拒否される。
-//
 // スコープの粒度は resource で切ってあるので、`authorization-detail-types:write` を持って
 // いても OAuth2 クライアントには届かず、`oauth-clients:write` を持っていても認可詳細タイプ
 // には届かない。両方向を読むのは、片方向だけでは「この resource は誰にも書けない」実装と
 // 区別できないためである。対照として、正しいスコープなら同じ要求が通ることも読む。
+//
+//spec:covers EX-OAUTH2-003-03: 別 resource のスコープで操作を要求すると拒否される。
 func TestOAuth2ScopeOfAnotherResourceCannotReachTheOperation(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithOAuth2Clients())
 	clientsWrite, _ := s.IssueApiToken(t, tenancydomain.DefaultRealm, apitokendomain.ScopeOAuthClientsWrite)

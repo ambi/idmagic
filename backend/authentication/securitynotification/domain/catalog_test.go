@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// REQ-AUTHENTICATION-033: 必須の種別はカタログ側で固定し、設定からは外せない。
+//spec:covers REQ-AUTHENTICATION-033: 必須の種別はカタログ側で固定し、設定からは外せない。
 func TestMandatoryCategoriesCannotBeDisabled(t *testing.T) {
 	t.Parallel()
 
@@ -27,7 +27,7 @@ func TestMandatoryCategoriesCannotBeDisabled(t *testing.T) {
 	}
 }
 
-// REQ-AUTHENTICATION-034: 停止した種別だけが止まり、他の種別は届き続ける。
+//spec:covers REQ-AUTHENTICATION-034: 停止した種別だけが止まり、他の種別は届き続ける。
 func TestPreferencesAllowEveryCategoryExceptTheDisabledOnes(t *testing.T) {
 	t.Parallel()
 

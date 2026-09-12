@@ -1,6 +1,6 @@
 package support_http_test
 
-// REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
+//spec:covers REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
 
 import (
 	"encoding/json"

@@ -16,12 +16,13 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// EX-SEEDING-001-01: development を明示した dry_run は development の既定マニフェストを選び、
 // 作成操作を含む機密値を持たない plan を返すが、永続状態を変更しない。
-// EX-SEEDING-002-02: ManifestPath を指定しない Seed は、プロファイルの Repository にある既定
 // マニフェストを選ぶ。
-// EX-SEEDING-006-01: 同じ development seed を再適用すると、すべての操作が noop となり、利用者と
 // パスワード履歴を変更しない。
+//
+//spec:covers EX-SEEDING-001-01: development を明示した dry_run は development の既定マニフェストを選び、
+//spec:covers EX-SEEDING-002-02: ManifestPath を指定しない Seed は、プロファイルの Repository にある既定
+//spec:covers EX-SEEDING-006-01: 同じ development seed を再適用すると、すべての操作が noop となり、利用者と
 func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")

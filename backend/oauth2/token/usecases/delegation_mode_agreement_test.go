@@ -11,8 +11,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// REQ-OAUTH2-049: 交換が監査へ残したモードと、発行トークンをイントロスペクトした
 // モードが一致する。導出が 2 箇所に分かれると、この 2 つが食い違ったまま気付けない。
+//
+//spec:covers REQ-OAUTH2-049: 交換が監査へ残したモードと、発行トークンをイントロスペクトした
 func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 	ctx := tenantContext()
 
@@ -60,7 +61,7 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 	}
 }
 
-// REQ-OAUTH2-049: エージェント自身のトークンは自律実行として返る。
+//spec:covers REQ-OAUTH2-049: エージェント自身のトークンは自律実行として返る。
 func TestIntrospectionReportsAutonomousForAgentTokens(t *testing.T) {
 	ctx := tenantContext()
 	deps := IntrospectDeps{

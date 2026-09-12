@@ -27,7 +27,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// EX-AUTHENTICATION-016-01 通常経路、EX-AUTHENTICATION-016-04 確定済みのトークンは再利用できない。
+//spec:covers EX-AUTHENTICATION-016-01: 通常経路、EX-AUTHENTICATION-016-04 確定済みのトークンは再利用できない。
 func TestPasswordResetHTTPFlow(t *testing.T) {
 	e, userRepo, sender, hasher := newPasswordResetHandler(t)
 	csrf, cookie := passwordResetCSRF(t, e)
@@ -79,10 +79,10 @@ func TestPasswordResetHTTPFlow(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-016-03 リンクを開くだけではトークンを消費しない。
-//
 // ブラウザーとメールスキャナーが行うのはリンクの GET と HEAD である。作用を起こすのは
 // POST だけなので、先読みの後も同じトークンで更新できなければならない。
+//
+//spec:covers EX-AUTHENTICATION-016-03: リンクを開くだけではトークンを消費しない。
 func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
 	e, userRepo, sender, hasher := newPasswordResetHandler(t)
 	csrf, cookie := passwordResetCSRF(t, e)

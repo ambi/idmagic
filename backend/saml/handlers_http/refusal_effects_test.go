@@ -174,12 +174,13 @@ func assertNoAssertionIssued(t *testing.T, recorder *httptest.ResponseRecorder) 
 	}
 }
 
-// EX-SAML-002-02: `profile-a` に割り当てられた SP の AuthnRequest を `profile-b` の
 // SSO エンドポイントへ送っても、SAMLResponse は発行されず SamlSignInRejected だけが出る。
 //
 // この拒否が素通りすれば、SP は自分に割り当てられていないプロファイルの署名資格情報で
 // アサーションを受け取れる。プロファイルの分離は、どの鍵で誰に対して何を主張するかの
 // 分離そのものなので、素通りは鍵の分離を無効にする。
+//
+//spec:covers EX-SAML-002-02: `profile-a` に割り当てられた SP の AuthnRequest を `profile-b` の
 func TestSamlSSORefusesUnassignedIDPProfileAndIssuesNoAssertion(t *testing.T) {
 	e, events := newProfileBoundServer(t, true)
 
@@ -214,11 +215,12 @@ func TestSamlSSORefusesUnassignedIDPProfileAndIssuesNoAssertion(t *testing.T) {
 	}
 }
 
-// EX-SAML-002-03: `profile-a` の SSO URL と異なる Destination を指定した AuthnRequest は
 // フェイルクローズで拒否され、アサーションは 1 通も発行されない。
 //
 // Destination は「このリクエストは自分宛か」を確かめる唯一の手段である。素通りすれば、
 // 別の IdP 宛に作られたリクエストに対してこちらが署名付きのアサーションを発行する。
+//
+//spec:covers EX-SAML-002-03: `profile-a` の SSO URL と異なる Destination を指定した AuthnRequest は
 func TestSamlSSORefusesDestinationMismatchAndIssuesNoAssertion(t *testing.T) {
 	e, events := newProfileBoundServer(t, true)
 
@@ -249,12 +251,13 @@ func TestSamlSSORefusesDestinationMismatchAndIssuesNoAssertion(t *testing.T) {
 	}
 }
 
-// EX-SAML-001-02: フェデレーション署名資格情報を利用できないとき、証明書ダウンロードと
 // メタデータのどちらも証明書を返さずエラーを返す。
 //
 // これは可用性ではなくフェイルクローズの宣言である。空の PEM や空の X509Certificate 要素を
 // 返せば、受け取った SP は署名検証を諦めるか、検証なしで受理する実装に当たる。
 // 「エラーを返すこと」と「空を返さないこと」は別の要求なので、両方を読む。
+//
+//spec:covers EX-SAML-001-02: フェデレーション署名資格情報を利用できないとき、証明書ダウンロードと
 func TestSamlSigningCertificateRefusesWithoutCredentialsAndReturnsNoCertificate(t *testing.T) {
 	e, _ := newProfileBoundServer(t, false)
 

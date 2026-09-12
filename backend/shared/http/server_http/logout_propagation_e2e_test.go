@@ -128,7 +128,7 @@ func (f logoutE2EFixture) endSession(t *testing.T) *http.Response {
 	return response
 }
 
-// OIDC-FRONTCHANNEL-IFRAME: 本番配線の end_session 応答が参加済み RP の iframe を含む。
+//spec:covers OIDC-FRONTCHANNEL-IFRAME: 本番配線の end_session 応答が参加済み RP の iframe を含む。
 func TestEndSessionFrontChannelLogout_OIDC_FRONTCHANNEL_IFRAME(t *testing.T) {
 	fixture := newLogoutE2EFixture(t, func(client *clientdomain.OAuth2Client) {
 		uri := "https://rp.example/frontchannel-logout"
@@ -191,8 +191,9 @@ func (f logoutE2EFixture) awaitNotification(t *testing.T, accept func(*logoutdom
 	return nil
 }
 
-// OIDC-FRONTCHANNEL-BEST-EFFORT: 到達し得ない frontchannel_logout_uri でも、
 // end_session は iframe を並べた 200 を返し、ローカルの失効はそれに影響されない。
+//
+//spec:covers OIDC-FRONTCHANNEL-BEST-EFFORT: 到達し得ない frontchannel_logout_uri でも、
 func TestEndSessionFrontChannelUnreachable_OIDC_FRONTCHANNEL_BEST_EFFORT(t *testing.T) {
 	// 閉じたポートを指す。ブラウザーがこの iframe を読み込めば必ず失敗する宛先である。
 	const unreachable = "https://127.0.0.1:1/frontchannel-logout"
@@ -212,8 +213,9 @@ func TestEndSessionFrontChannelUnreachable_OIDC_FRONTCHANNEL_BEST_EFFORT(t *test
 	fixture.assertLocalLogoutSettled(t)
 }
 
-// OIDC-BACKCHANNEL-DELIVERY-RETRY: backchannel_logout_uri への配信が試行を使い切って
 // 失敗しても、ローカルセッションとリフレッシュトークンの失効は成立したままである。
+//
+//spec:covers OIDC-BACKCHANNEL-DELIVERY-RETRY: backchannel_logout_uri への配信が試行を使い切って
 func TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY(t *testing.T) {
 	var attempts atomic.Int64
 	rp := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -237,8 +239,8 @@ func TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY(
 	fixture.assertLocalLogoutSettled(t)
 }
 
-// REQ-OAUTH2-025: 本番配線の end_session が TLS の RP へ logout token を配送する。
-// OIDC-BACKCHANNEL-LOGOUT-TOKEN: RP が受け取った logout token が OP の署名鍵で検証できる。
+//spec:covers REQ-OAUTH2-025: 本番配線の end_session が TLS の RP へ logout token を配送する。
+//spec:covers OIDC-BACKCHANNEL-LOGOUT-TOKEN: RP が受け取った logout token が OP の署名鍵で検証できる。
 func TestEndSessionBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 	tokenCh := make(chan string, 1)
 	rp := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

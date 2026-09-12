@@ -27,7 +27,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// EX-AUTHENTICATION-016-01 通常経路のうち、登録済みアドレスへリンクが送られる部分。
+//spec:covers EX-AUTHENTICATION-016-01: 通常経路のうち、登録済みアドレスへリンクが送られる部分。
 func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 	userRepo := usermemory.NewUserRepository()
 	tokenStore := newResetTokenStore(userRepo)
@@ -159,7 +159,7 @@ func (f *resetFixture) currentPasswordHolds(t *testing.T, password string) {
 	}
 }
 
-// EX-AUTHENTICATION-016-01 通常経路、EX-AUTHENTICATION-016-04 確定済みのトークンは再利用できない。
+//spec:covers EX-AUTHENTICATION-016-01, EX-AUTHENTICATION-016-04: 通常経路と、確定済みのトークンは再利用できない。
 func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	f := newResetFixture(t)
 	var events []spec.DomainEvent
@@ -190,7 +190,7 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	f.currentPasswordHolds(t, "fresh-password-9182")
 }
 
-// EX-AUTHENTICATION-016-02 トークンが期限切れまたは不正である。
+//spec:covers EX-AUTHENTICATION-016-02: トークンが期限切れまたは不正である。
 func TestResetPasswordWithTokenRejectsExpiredOrUnknownToken(t *testing.T) {
 	for name, presented := range map[string]func(f *resetFixture) (string, time.Time){
 		"expired":  func(f *resetFixture) (string, time.Time) { return f.rawToken, f.now.Add(31 * time.Minute) },
@@ -213,10 +213,10 @@ func TestResetPasswordWithTokenRejectsExpiredOrUnknownToken(t *testing.T) {
 	}
 }
 
-// EX-AUTHENTICATION-016-05 別の用途で発行されたトークンは受け付けない。
-//
 // 用途はどの表を引いたかではなく、保存された値が決める。用途違いのエンベロープが
 // 読めてしまっても、共通核の検証がそこで止める。
+//
+//spec:covers EX-AUTHENTICATION-016-05: 別の用途で発行されたトークンは受け付けない。
 func TestResetPasswordWithTokenRejectsATokenOfAnotherPurpose(t *testing.T) {
 	f := newResetFixture(t)
 	foreign, err := actiontoken.Issue(actiontoken.IssueInput{
@@ -276,10 +276,10 @@ func (s *purposeBlindStore) ConsumeAndApply(
 	return s.PasswordResetTokenStore.ConsumeAndApply(ctx, commit)
 }
 
-// EX-AUTHENTICATION-016-06 新しいパスワードがパスワード規則に反する。
-//
 // 規則で止まったとき、トークンまで失うと利用者は正当な回復手段を失う。拒否の後で
 // 同じリンクがまだ使えることが、この例の要点である。
+//
+//spec:covers EX-AUTHENTICATION-016-06: 新しいパスワードがパスワード規則に反する。
 func TestResetPasswordWithTokenKeepsTheTokenWhenThePolicyRefuses(t *testing.T) {
 	f := newResetFixture(t)
 	_, err := usecases.ResetPasswordWithToken(f.ctx, f.deps(nil),

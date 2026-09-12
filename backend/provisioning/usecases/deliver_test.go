@@ -272,12 +272,13 @@ func TestExecuteDelivery_RetryableErrorPropagatesWithoutChangingStatus(t *testin
 	}
 }
 
-// RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
 // `GroupPushConfig.display_name_source` が選ぶ。既定は Group の名前で、選んだ属性を
 // Group が持たないときもそこへ落ちる。
 //
 // 配送エンジンが接続を読んで `display_name` を組み立てる。属性源は Group の事実
 // (`name`、`description`、`email`) だけを解決し、どれを表示名にするかは知らない。
+//
+//spec:covers RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
 func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 	groupAttrs := func() map[string]any {
 		return map[string]any{

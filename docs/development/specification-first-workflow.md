@@ -91,6 +91,26 @@ After both boundaries are fixed, implement one behavior at a time: make the narr
 simplest complete behavior, refactor while it remains GREEN, then widen through adapters until the acceptance
 test passes. Do not treat a generated or broad acceptance test as the unit test for the inner calculation.
 
+### 規範IDをテストから参照する
+
+テストが宣言済みのIDを検査するときは、テスト関数の直前に `//spec:covers` ディレクティブを書く。
+ディレクティブにはID、コロン、テストが固定する内容をこの順で記述する。
+
+```go
+//spec:covers EX-OAUTH2-005-06: the refusal type, that no token is returned, and that no event is emitted
+func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
+```
+
+複数のIDは `,` で区切る。
+長い列挙では、行末に区切り文字を置き、次のコメント行へ続けてよい。
+列挙の先頭には規則IDを置ける。
+IDだけでは何を観測したか分からず、検査対象を増やさずに対応済みIDの件数だけを増やせてしまうため、テストが固定する内容を省略しない。
+表駆動テストが例のIDを文字列リテラルとして列挙する場合は、その列挙を参照とみなし、ディレクティブを重ねて書かない。
+
+これら以外の記述は、テストによる検査の根拠に数えない。
+本文、見出し、別の記録が所有すると述べる注記にはIDを自由に書けるため、ディレクティブによって検査の主張だけを区別する。
+以前は「テストファイル内に宣言済みIDが現れること」を検査の根拠としていたため、別の記録が所有すると説明したコメントまで、そのIDを検査する主張として扱われていた。
+
 ### 主要ユースケースの証拠
 
 `risk-based-v3` adds a primary-use-case contract to feature and bugfix work, and to work of any `change_kind`

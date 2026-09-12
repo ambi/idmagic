@@ -230,7 +230,7 @@ func TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge(t *testing.T) {
 	}
 }
 
-// REQ-TENANCY-021: 設定 API は現在の上書きとシステム上限を返し、厳しい上書きだけを保存する。
+//spec:covers REQ-TENANCY-021: 設定 API は現在の上書きとシステム上限を返し、厳しい上書きだけを保存する。
 func TestAdminSettingsExposeAndUpdateMaxDelegationDepth(t *testing.T) {
 	e, repo, _ := newSettingsServer(
 		t,
