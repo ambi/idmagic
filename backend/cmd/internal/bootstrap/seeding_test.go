@@ -4,8 +4,10 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +16,12 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
+// EX-SEEDING-001-01: development を明示した dry_run は development の既定マニフェストを選び、
+// 作成操作を含む機密値を持たない plan を返すが、永続状態を変更しない。
+// EX-SEEDING-002-02: ManifestPath を指定しない Seed は、プロファイルの Repository にある既定
+// マニフェストを選ぶ。
+// EX-SEEDING-006-01: 同じ development seed を再適用すると、すべての操作が noop となり、利用者と
+// パスワード履歴を変更しない。
 func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
@@ -29,6 +37,9 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	}
 	if plan.Count(domain.OperationCreate) == 0 {
 		t.Fatal("dry-run plan has no create operation")
+	}
+	if rendered := fmt.Sprintf("%+v", plan); strings.Contains(rendered, "demo-client-secret") || strings.Contains(rendered, "demo-password-1234") {
+		t.Fatalf("dry-run plan leaks a configured secret: %s", rendered)
 	}
 	user, err := deps.IdManagement.UserRepo.FindBySub(ctx, seedUserAliceID)
 	if err != nil || user != nil {
@@ -63,7 +74,7 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Seed(second apply) error = %v", err)
 	}
-	if second.Count(domain.OperationCreate) != 0 || second.Count(domain.OperationConflict) != 0 {
+	if len(second.Operations) == 0 || second.Count(domain.OperationNoop) != len(second.Operations) {
 		t.Fatalf("second apply plan = %+v, want only no-op operations", second)
 	}
 	aliceAfter, err := deps.IdManagement.UserRepo.FindBySub(ctx, seedUserAliceID)

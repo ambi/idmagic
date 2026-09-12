@@ -9,6 +9,8 @@ import (
 	"github.com/ambi/idmagic/backend/seeding/domain"
 )
 
+// EX-SEEDING-002-01: 明示したマニフェストのパスを厳密にデコードし、その配下の include を
+// 読み込んで、両方の型付きリソースを計画器へ渡せる形に統合する。
 func TestLoadStrictlyDecodesAndMergesContainedIncludes(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "common.yaml"), `

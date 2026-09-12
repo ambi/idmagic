@@ -5,6 +5,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -16,6 +17,12 @@ type testContributor struct {
 	plan    domain.Plan
 	applied bool
 	fail    bool
+}
+
+type partialFailureContributor struct {
+	applied  map[string]bool
+	failOnce bool
+	applyLog []string
 }
 
 type fakeSecretResolver map[string]string
@@ -75,14 +82,51 @@ func (c *testContributor) Apply(context.Context, domain.Request) error {
 	return nil
 }
 
+func (c *partialFailureContributor) Plan(context.Context, domain.Request) (domain.Plan, error) {
+	operations := make([]domain.Operation, 0, 2)
+	for _, logicalKey := range []string{"completed", "remaining"} {
+		kind := domain.OperationCreate
+		if c.applied[logicalKey] {
+			kind = domain.OperationNoop
+		}
+		operations = append(operations, domain.Operation{LogicalKey: logicalKey, Kind: kind})
+	}
+	return domain.Plan{Operations: operations}, nil
+}
+
+func (c *partialFailureContributor) Apply(context.Context, domain.Request) error {
+	for _, logicalKey := range []string{"completed", "remaining"} {
+		if c.applied[logicalKey] {
+			continue
+		}
+		c.applied[logicalKey] = true
+		c.applyLog = append(c.applyLog, logicalKey)
+		if c.failOnce {
+			c.failOnce = false
+			return fmt.Errorf("injected partial failure")
+		}
+	}
+	return nil
+}
+
+// EX-SEEDING-010-01: 一部の論理キーを適用した後に失敗しても、再試行ではそのキーを noop とし、
+// 未完了のキーだけを一度適用して目的の状態へ収束させる。
 func TestRunCanBeRetriedAfterApplyFailure(t *testing.T) {
-	contributor := &testContributor{plan: domain.Plan{Operations: []domain.Operation{{LogicalKey: "test", Kind: domain.OperationCreate}}}, fail: true}
+	contributor := &partialFailureContributor{applied: map[string]bool{}, failOnce: true}
 	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileBootstrap, Mode: domain.ModeApply}
-	if _, err := Run(context.Background(), request, contributor); err == nil {
+	failedPlan, err := Run(context.Background(), request, contributor)
+	if err == nil {
 		t.Fatal("first Run() error = nil, want injected failure")
 	}
-	if _, err := Run(context.Background(), request, contributor); err != nil {
+	if failedPlan.Count(domain.OperationCreate) != 2 || !contributor.applied["completed"] || contributor.applied["remaining"] {
+		t.Fatalf("failed Run() plan = %+v, applied = %#v; want only completed applied", failedPlan, contributor.applied)
+	}
+	converged, err := Run(context.Background(), request, contributor)
+	if err != nil {
 		t.Fatalf("retry Run() error = %v", err)
+	}
+	if converged.Count(domain.OperationNoop) != 2 || !reflect.DeepEqual(contributor.applyLog, []string{"completed", "remaining"}) {
+		t.Fatalf("retry plan = %+v, apply log = %v; want two no-ops and one apply per logical key", converged, contributor.applyLog)
 	}
 }
 
