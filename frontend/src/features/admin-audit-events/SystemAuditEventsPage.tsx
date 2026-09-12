@@ -1,20 +1,20 @@
 import {
   type AdminAuditEventSearchOptions,
   type AdminAuditEventsSearchParams,
-  adminAuditEventsExportURL,
-  listAdminAuditEvents,
+  listSystemAuditEvents,
+  systemAuditEventsExportURL,
 } from '../../api'
-import { AdminShell } from '../../components/AdminShell'
+import { SystemShell } from '../../components/SystemShell'
 import type { PageNavigationData } from '../../components/ui/page-navigation'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminAuditEvent } from '../../types'
 import { adminAuditEventsDictionary } from './AdminAuditEventsPage.i18n'
 import { AuditEventsBrowser } from './AuditEventsBrowser'
 
-// AdminAuditEventsPage はテナント管理コンソールの監査ログ画面。範囲は常に要求先テナントで
-// あり、操作者が `system_admin` であっても横断しない。横断はシステムコンソールが持つ
-// (REQ-SYSTEM-020)。そのため、このページはロールも realm も見ない。
-export function AdminAuditEventsPage({
+// SystemAuditEventsPage はシステムコンソールの監査ログ画面。範囲は全テナントに固定され、
+// 切り替える UI を持たない。検索、ページング、エクスポートはいずれも専用のシステム API を
+// 呼ぶ (REQ-AUDIT-007 / REQ-SYSTEM-020)。
+export function SystemAuditEventsPage({
   actorUsername,
   events,
   pagination,
@@ -41,11 +41,11 @@ export function AdminAuditEventsPage({
 }) {
   const t = useDictionary(adminAuditEventsDictionary)
   return (
-    <AdminShell
+    <SystemShell
       active="audit-events"
       actorUsername={actorUsername}
-      title={t.pageTitle}
-      description={t.pageDescription}
+      title={t.systemPageTitle}
+      description={t.systemPageDescription}
     >
       <AuditEventsBrowser
         events={events}
@@ -54,13 +54,13 @@ export function AdminAuditEventsPage({
         nextCursor={nextCursor}
         search={search}
         searchOptions={searchOptions}
-        listEvents={listAdminAuditEvents}
-        exportURL={adminAuditEventsExportURL}
+        listEvents={listSystemAuditEvents}
+        exportURL={systemAuditEventsExportURL}
         onSearch={onSearch}
         onPage={onPage}
         cursorReset={cursorReset}
         initialError={initialError}
       />
-    </AdminShell>
+    </SystemShell>
   )
 }

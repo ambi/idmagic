@@ -5,6 +5,7 @@ import { test } from 'bun:test'
 import {
   clickNavLinkByAnyText,
   demo,
+  hasText,
   uiOrigin,
   waitForLocationPath,
   waitForPage,
@@ -86,3 +87,40 @@ test('admin console scenarios are reachable after admin-audience login', async (
     view.close()
   }
 }, 90_000)
+
+// EX-SYSTEM-020-01、EX-SYSTEM-020-03: テナント横断の監査とジョブはシステムコンソールだけに
+// あり、テナント管理コンソールには横断への入口が無い (REQ-SYSTEM-020)。経路も配線も本物を
+// 通すので、画面の分離と API の分離がどちらも成立していないと通らない。
+test('system console cross-tenant surfaces are reachable and the admin console has no cross-tenant toggle', async () => {
+  const view = new Bun.WebView({ width: 1280, height: 2200 })
+  try {
+    await navigateAndLogin(view, '/system/tenants', 'system-tenants', demo.systemAdminUsername)
+
+    const systemPages = [
+      [['監査イベント', 'Audit events'], '/system/audit-events', 'system-audit-events'],
+      [['非同期ジョブ', 'Background jobs'], '/system/jobs', 'system-jobs'],
+    ] as const
+
+    for (const [label, path, marker] of systemPages) {
+      await clickNavLinkByAnyText(view, ['システムメニュー', 'System navigation'], [...label])
+      await waitForLocationPath(view, path)
+      await waitForPage(view, marker)
+    }
+
+    // 同じ操作者がテナント管理コンソールへ移ると、横断の切替はどこにも無い。
+    for (const [path, marker] of [
+      ['/admin/jobs', 'admin-jobs'],
+      ['/admin/audit_events', 'admin-audit-events'],
+    ] as const) {
+      await view.navigate(`${uiOrigin}${path}`)
+      await waitForPage(view, marker)
+      for (const wording of ['全テナント横断', 'Across all tenants']) {
+        if (await hasText(view, wording)) {
+          throw new Error(`${path} still offers a cross-tenant toggle: ${wording}`)
+        }
+      }
+    }
+  } finally {
+    view.close()
+  }
+}, 120_000)

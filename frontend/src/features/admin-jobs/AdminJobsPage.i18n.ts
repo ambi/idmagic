@@ -18,7 +18,11 @@ export const adminJobsDictionary = defineDictionary(
     laneDefault: '既定',
     laneBulk: '大量処理',
     filterAction: '絞り込み',
-    crossTenantLabel: '全テナント横断 (system_admin)',
+    systemPageTitle: '非同期ジョブ (全テナント)',
+    systemPageDescription:
+      'すべてのテナントのジョブの状態、試行回数、失敗理由を確認し、終了していないジョブを取り消します。対象のテナントは一覧の列と取り消しの確認で示します。',
+    systemCancelConfirm:
+      '次のジョブを取り消しますか。他テナントの実行に影響します。実行中のハンドラーは次の報告で中断しますが、すでに確定した副作用は元に戻りません。',
     tableHeaderKind: '種別',
     tableHeaderStatus: '状態',
     tableHeaderLane: 'レーン',
@@ -65,7 +69,11 @@ export const adminJobsDictionary = defineDictionary(
     laneDefault: 'Default',
     laneBulk: 'Bulk',
     filterAction: 'Filter',
-    crossTenantLabel: 'Across all tenants (system_admin)',
+    systemPageTitle: 'Background jobs (all tenants)',
+    systemPageDescription:
+      'Check the state, attempts, and failure reason of work running in every tenant, and cancel a job that has not finished. The tenant a job belongs to is shown as a column and repeated in the cancellation prompt.',
+    systemCancelConfirm:
+      "Cancel the following job? It affects another tenant's run. A running handler stops at its next report, but side effects already committed are not undone.",
     tableHeaderKind: 'Kind',
     tableHeaderStatus: 'Status',
     tableHeaderLane: 'Lane',

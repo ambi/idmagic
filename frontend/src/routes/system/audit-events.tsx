@@ -1,70 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import {
-  type AdminAuditEventCategory,
-  type AdminAuditEventsSearchParams,
   AuthenticationAPIError,
-  listAdminAuditEvents,
   listAdminAuditEventSearchOptions,
+  listSystemAuditEvents,
 } from '../../api'
-import { AdminAuditEventsPage } from '../../features/admin-audit-events/AdminAuditEventsPage'
+import { SystemAuditEventsPage } from '../../features/admin-audit-events/SystemAuditEventsPage'
 import type { AdminAuditEvent } from '../../types'
-import { requirePortalAccount } from '../-guards'
+import { validateAuditEventsSearch } from '../admin/audit_events'
+import { requireSystemAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
-const AUDIT_EVENT_CATEGORIES: AdminAuditEventCategory[] = [
-  'authentication',
-  'success',
-  'fail',
-  'aggregated',
-  'user',
-  'group',
-  'client',
-  'consent',
-  'token',
-  'tenant',
-  'key',
-]
-
-// URL query string を検索フォームの正とする (wi-147)。想定外の値は静かに無視し、
-// 監査イベント検索を壊さない (壊れた URL でも空条件として動作する)。
-//
-// 横断を求める `allTenants` はここで落ちる。古い画面のブックマークに残っていても、
-// テナント管理コンソールはテナント内表示へ戻る。横断はシステムコンソールの経路が持つ
-// (REQ-SYSTEM-020)。テナント側とシステム側の両方がこの検証を共有するが、範囲を運ぶ値が
-// そもそも存在しないため、どちらの URL 状態も範囲を動かさない。
-export function validateAuditEventsSearch(
-  search: Record<string, unknown>,
-): AdminAuditEventsSearchParams {
-  const result: AdminAuditEventsSearchParams = {}
-  if (
-    typeof search.category === 'string' &&
-    (AUDIT_EVENT_CATEGORIES as string[]).includes(search.category)
-  ) {
-    result.category = search.category as AdminAuditEventCategory
-  }
-  if (typeof search.sub === 'string' && search.sub) result.sub = search.sub
-  if (typeof search.username === 'string' && search.username) result.username = search.username
-  if (typeof search.after === 'string' && search.after) result.after = search.after
-  if (typeof search.before === 'string' && search.before) result.before = search.before
-  if (typeof search.limit === 'number' && Number.isFinite(search.limit)) {
-    result.limit = search.limit
-  }
-  if (typeof search.cursor === 'string' && search.cursor) result.cursor = search.cursor
-  if (Array.isArray(search.filter)) {
-    const filter = search.filter.filter((v): v is string => typeof v === 'string')
-    if (filter.length > 0) result.filter = filter
-  }
-  return result
-}
-
-export const Route = createFileRoute('/admin/audit_events')({
+export const Route = createFileRoute('/system/audit-events')({
   validateSearch: validateAuditEventsSearch,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps, location }) => {
-    const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    // 検索条件 (URL) に起因する取得失敗 (例: 不正な値による 4xx) はページ全体を壊さず、
-    // ページ内のエラー表示に留める。認証そのものの失敗は requirePortalAccount 側で扱う (wi-147)。
+    const account = await requireSystemAccount(location.pathname, location.searchStr)
+    // 検索条件 (URL) に起因する取得失敗はページ全体を壊さず、ページ内のエラー表示に留める。
     let events: AdminAuditEvent[] = []
     let nextCursor: string | null = null
     let previousCursor: string | null = null
@@ -77,7 +29,7 @@ export const Route = createFileRoute('/admin/audit_events')({
     let cursorReset = false
     let searchError = ''
     try {
-      const page = await listAdminAuditEvents(deps)
+      const page = await listSystemAuditEvents(deps)
       events = page.events
       previousCursor = page.previousCursor
       nextCursor = page.nextCursor
@@ -88,13 +40,15 @@ export const Route = createFileRoute('/admin/audit_events')({
       currentPage = page.currentPage
       pageSize = page.pageSize
     } catch (cause) {
+      // テナント管理経路で発行したカーソルはシステム経路の続きにならない。持ち込まれた
+      // ときは先頭ページへ戻し、画面を行き止まりにしない。
       if (
         deps.cursor &&
         cause instanceof AuthenticationAPIError &&
         cause.code === 'invalid_request'
       ) {
         const { cursor: _cursor, ...withoutCursor } = deps
-        const page = await listAdminAuditEvents(withoutCursor)
+        const page = await listSystemAuditEvents(withoutCursor)
         events = page.events
         previousCursor = page.previousCursor
         nextCursor = page.nextCursor
@@ -111,7 +65,6 @@ export const Route = createFileRoute('/admin/audit_events')({
     }
     const searchOptions = await listAdminAuditEventSearchOptions().catch(() => undefined)
     return {
-      csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       events,
       previousCursor,
@@ -128,10 +81,10 @@ export const Route = createFileRoute('/admin/audit_events')({
       cursorReset,
     }
   },
-  component: AdminAuditEventsRoute,
+  component: SystemAuditEventsRoute,
 })
 
-function AdminAuditEventsRoute() {
+function SystemAuditEventsRoute() {
   const data = Route.useLoaderData()
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
@@ -146,8 +99,8 @@ function AdminAuditEventsRoute() {
     return navigate({ search: withoutCursor })
   }
   return (
-    <PageMarker kind="admin-audit-events">
-      <AdminAuditEventsPage
+    <PageMarker kind="system-audit-events">
+      <SystemAuditEventsPage
         key={JSON.stringify(search)}
         {...data}
         pagination={data}

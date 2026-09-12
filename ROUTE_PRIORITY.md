@@ -25,7 +25,7 @@ both forms carry the same class.
 
 ## `management_bulk`
 
-29 route(s).
+31 route(s).
 
 | Route | Methods |
 | --- | --- |
@@ -51,6 +51,8 @@ both forms carry the same class.
 | `/api/admin/v1/groups/{group_id}/members/imports/{job_id}` | GET |
 | `/api/admin/v1/groups/{group_id}/members/imports/{preview_job_id}/apply` | POST |
 | `/api/admin/v1/lifecycle_workflows/{workflow_id}/dry_run` | POST |
+| `/api/admin/v1/system/audit_events` | GET |
+| `/api/admin/v1/system/audit_events/export` | GET |
 | `/api/admin/v1/users/exports` | GET, POST |
 | `/api/admin/v1/users/exports/{export_id}` | GET |
 | `/api/admin/v1/users/exports/{export_id}/cancel` | POST |
@@ -61,7 +63,7 @@ both forms carry the same class.
 
 ## `management`
 
-167 route(s).
+171 route(s).
 
 | Route | Methods |
 | --- | --- |
@@ -183,6 +185,10 @@ both forms carry the same class.
 | `/api/admin/v1/shared-signals/streams/{stream_id}/deliveries` | GET |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/disable` | POST |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/enable` | POST |
+| `/api/admin/v1/system/audit_events/{id}` | GET |
+| `/api/admin/v1/system/jobs` | GET |
+| `/api/admin/v1/system/jobs/{job_id}` | GET |
+| `/api/admin/v1/system/jobs/{job_id}/cancel` | POST |
 | `/api/admin/v1/tenant/branding` | PUT |
 | `/api/admin/v1/tenant/branding/assets/{kind}` | DELETE, POST |
 | `/api/admin/v1/tenant/group_attribute_schema` | GET, PUT |

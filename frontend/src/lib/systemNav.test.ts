@@ -1,35 +1,26 @@
 import { describe, it, expect } from 'bun:test'
-import { systemNavItems } from './systemNav'
+import { systemNavItems, type SystemNavKey } from './systemNav'
+
+// システムコンソールの並び。テナント横断の操作はここだけに置くので、監査とジョブも
+// この一覧に載る (REQ-SYSTEM-020)。
+const ORDER: SystemNavKey[] = ['tenants', 'audit-events', 'jobs', 'key-health', 'data-key-health']
 
 describe('systemNavItems', () => {
-  it('should return system nav items with tenants active', () => {
-    const items = systemNavItems('tenants')
-    expect(items).toHaveLength(3)
-    expect(items[0].key).toBe('tenants')
-    expect(items[0].active).toBe(true)
-    expect(items[1].key).toBe('key-health')
-    expect(items[1].active).toBe(false)
-    expect(items[2].key).toBe('data-key-health')
-    expect(items[2].active).toBe(false)
+  it('should list every system console entry in a stable order', () => {
+    expect(systemNavItems('tenants').map((item) => item.key)).toEqual(ORDER)
   })
 
-  it('should return system nav items with key-health active', () => {
-    const items = systemNavItems('key-health')
-    expect(items).toHaveLength(3)
-    expect(items[0].key).toBe('tenants')
-    expect(items[0].active).toBe(false)
-    expect(items[1].key).toBe('key-health')
-    expect(items[1].active).toBe(true)
-    expect(items[2].key).toBe('data-key-health')
-    expect(items[2].active).toBe(false)
+  it('should mark exactly the requested entry active', () => {
+    for (const active of ORDER) {
+      const items = systemNavItems(active)
+      expect(items.filter((item) => item.active).map((item) => item.key)).toEqual([active])
+    }
   })
 
-  it('should return system nav items with data-key-health active', () => {
-    const items = systemNavItems('data-key-health')
-    expect(items).toHaveLength(3)
-    expect(items[0].active).toBe(false)
-    expect(items[1].active).toBe(false)
-    expect(items[2].key).toBe('data-key-health')
-    expect(items[2].active).toBe(true)
+  it('should point the cross-tenant entries at the system console routes', () => {
+    const href = (key: SystemNavKey) =>
+      systemNavItems('tenants').find((item) => item.key === key)?.href
+    expect(href('audit-events')).toBe('/system/audit-events')
+    expect(href('jobs')).toBe('/system/jobs')
   })
 })

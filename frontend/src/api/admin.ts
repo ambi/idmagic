@@ -779,7 +779,6 @@ export type AdminAuditEventQuery = {
   // cursor: Link の prev/next cursor を渡して隣接ページを取得する。フィルタ変更時は
   // 呼び出し側で cursor を落として先頭ページに戻す。
   cursor?: string
-  allTenants?: boolean
   filter?: string[]
 }
 
@@ -797,7 +796,6 @@ function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   if (query.before) params.set('before', query.before)
   if (query.limit !== undefined) params.set('limit', String(query.limit))
   if (query.cursor) params.set('cursor', query.cursor)
-  if (query.allTenants) params.set('all_tenants', 'true')
   for (const filter of query.filter ?? []) {
     if (filter) params.append('filter', filter)
   }
@@ -808,14 +806,15 @@ export type AdminAuditEventPage = PaginationPageMetadata & {
   events: AdminAuditEvent[]
 }
 
-export async function listAdminAuditEvents(
+// テナントの範囲は経路が決める。監査イベントの検索は 2 本あり、
+// /api/admin/v1/audit_events が要求先テナントに閉じ、/api/admin/v1/system/audit_events が
+// 制御面主体だけに全テナントを返す。範囲を切り替えるクエリは持たない (wi-462)。
+async function fetchAuditEventPage(
+  base: string,
   query: AdminAuditEventQuery,
 ): Promise<AdminAuditEventPage> {
   const params = auditEventParams(query)
-  const url =
-    params.size > 0
-      ? `/api/admin/v1/audit_events?${params.toString()}`
-      : '/api/admin/v1/audit_events'
+  const url = params.size > 0 ? `${base}?${params.toString()}` : base
   const page = await requestPage<AdminAuditEventListResponse>(url)
   return {
     events: page.body.events,
@@ -830,10 +829,27 @@ export async function listAdminAuditEvents(
   }
 }
 
+export async function listAdminAuditEvents(
+  query: AdminAuditEventQuery,
+): Promise<AdminAuditEventPage> {
+  return fetchAuditEventPage('/api/admin/v1/audit_events', query)
+}
+
+export async function listSystemAuditEvents(
+  query: AdminAuditEventQuery,
+): Promise<AdminAuditEventPage> {
+  return fetchAuditEventPage('/api/admin/v1/system/audit_events', query)
+}
+
 // 監査イベントのエクスポート URL (認証イベント含む)。新規タブで開いてダウンロードする。
 export function adminAuditEventsExportURL(query: AdminAuditEventQuery): string {
   const params = auditEventParams(query)
   return tenantURL(`/api/admin/v1/audit_events/export?${params.toString()}`)
+}
+
+export function systemAuditEventsExportURL(query: AdminAuditEventQuery): string {
+  const params = auditEventParams(query)
+  return tenantURL(`/api/admin/v1/system/audit_events/export?${params.toString()}`)
 }
 
 // event.type / outcome / actor.type / delegation.mode を選択式にするための選択肢一覧
@@ -879,7 +895,6 @@ export type AdminJobQuery = {
   lane?: AdminJobLane
   limit?: number
   cursor?: string
-  allTenants?: boolean
 }
 
 export type AdminJobPage = {
@@ -894,14 +909,23 @@ function adminJobParams(query: AdminJobQuery): URLSearchParams {
   if (query.lane) params.set('lane', query.lane)
   if (query.limit !== undefined) params.set('limit', String(query.limit))
   if (query.cursor) params.set('cursor', query.cursor)
-  if (query.allTenants) params.set('all_tenants', 'true')
   return params
 }
 
-export async function listAdminJobs(query: AdminJobQuery = {}): Promise<AdminJobPage> {
+// ジョブも監査と同じく、テナントの範囲は呼ぶ経路が決める。
+// /api/admin/v1/jobs は要求先テナントに閉じ、/api/admin/v1/system/jobs は制御面主体だけに
+// 全テナントを扱わせる (wi-462)。
+async function fetchJobPage(base: string, query: AdminJobQuery): Promise<AdminJobPage> {
   const params = adminJobParams(query)
-  const url = params.size > 0 ? `/api/admin/v1/jobs?${params.toString()}` : '/api/admin/v1/jobs'
-  return request<AdminJobPage>(url)
+  return request<AdminJobPage>(params.size > 0 ? `${base}?${params.toString()}` : base)
+}
+
+export async function listAdminJobs(query: AdminJobQuery = {}): Promise<AdminJobPage> {
+  return fetchJobPage('/api/admin/v1/jobs', query)
+}
+
+export async function listSystemJobs(query: AdminJobQuery = {}): Promise<AdminJobPage> {
+  return fetchJobPage('/api/admin/v1/system/jobs', query)
 }
 
 export async function getAdminJob(jobID: string): Promise<AdminJob> {
@@ -911,6 +935,13 @@ export async function getAdminJob(jobID: string): Promise<AdminJob> {
 export async function cancelAdminJob(csrfToken: string, jobID: string): Promise<AdminJob> {
   return request<AdminJob>(
     `/api/admin/v1/jobs/${encodeURIComponent(jobID)}/cancel`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function cancelSystemJob(csrfToken: string, jobID: string): Promise<AdminJob> {
+  return request<AdminJob>(
+    `/api/admin/v1/system/jobs/${encodeURIComponent(jobID)}/cancel`,
     adminRequest(csrfToken, 'POST'),
   )
 }

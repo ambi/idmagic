@@ -1,8 +1,11 @@
 package handlers_http
 
-// SCL interfaces: ListAdminAuditEvents / GetAdminAuditEvent (bounded_context: Audit)。
-// SCL permission: AdminAuditEventsRead — admin は所属テナント内、system_admin は
-// default tenant 経路から全テナント横断で参照できる。書き込み経路は定義しない。
+// SCL interfaces: ListAdminAuditEvents / GetAdminAuditEvent / ExportAdminAuditEvents と、
+// その制御面の双子 ListSystemAuditEvents / GetSystemAuditEvent / ExportSystemAuditEvents
+// (bounded_context: Audit)。
+// SCL permission: AdminAuditEventsRead — テナント管理経路は要求元の所属テナントへ閉じ、
+// 全テナント横断はシステム経路の制御面主体だけが到達できる (REQ-AUDIT-001 / REQ-AUDIT-007)。
+// 書き込み経路は定義しない。
 
 import (
 	"errors"
@@ -149,15 +152,37 @@ const (
 	listAdminAuditEventsMaxLimit = 999
 )
 
-// auditEventQueryHash fingerprints every filter/sort query param (everything
-// except cursor/limit, which are pagination controls, not filter identity)
-// so a cursor issued for one filter/sort combination is rejected if the
-// caller changes filters before following it (wi-159).
-func auditEventQueryHash(c *echo.Context) string {
+// auditScope は問い合わせが扱うテナントの範囲。経路が決めるものであり、リクエストの
+// パラメーターからは決して作らない。範囲を切り替える入力を持たせると、その入力の
+// 書き漏らし 1 つがテナント境界の穴になる (REQ-AUDIT-001 / REQ-AUDIT-007)。
+type auditScope struct {
+	tenantID   string
+	allTenants bool
+}
+
+func tenantAuditScope(tenantID string) auditScope { return auditScope{tenantID: tenantID} }
+
+func systemAuditScope() auditScope { return auditScope{allTenants: true} }
+
+// cursorKey はカーソルの指紋へ混ぜる範囲の識別子。制御面主体はテナント管理経路でも
+// 所属テナントが制御面テナントなので、これを混ぜないと両経路の指紋が一致し、テナント内で
+// 発行したカーソルが横断検索の続きとして読めてしまう。
+func (s auditScope) cursorKey() string {
+	if s.allTenants {
+		return "system"
+	}
+	return "tenant:" + s.tenantID
+}
+
+// auditEventQueryHash fingerprints the scope together with every filter/sort
+// query param (everything except cursor/limit, which are pagination controls,
+// not filter identity) so a cursor issued for one scope and filter combination
+// is rejected if the caller changes either before following it (wi-159).
+func auditEventQueryHash(c *echo.Context, scope auditScope) string {
 	q := c.Request().URL.Query()
 	q.Del("cursor")
 	q.Del("limit")
-	return q.Encode()
+	return scope.cursorKey() + "|" + q.Encode()
 }
 
 func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
@@ -165,11 +190,23 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	query, noMatch, err := d.parseAuditEventQuery(c, actor)
+	return d.listAuditEvents(c, actor, tenantAuditScope(actor.TenantID))
+}
+
+func (d Deps) handleListSystemAuditEvents(c *echo.Context) error {
+	actor, err := d.RequireControlPlaneUser(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	return d.listAuditEvents(c, actor, systemAuditScope())
+}
+
+func (d Deps) listAuditEvents(c *echo.Context, actor *userdomain.User, scope auditScope) error {
+	query, noMatch, err := d.parseAuditEventQuery(c, actor, scope)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, auditEventQueryHash(c), listAdminAuditEventsDefaultLimit, listAdminAuditEventsMaxLimit)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, auditEventQueryHash(c, scope), listAdminAuditEventsDefaultLimit, listAdminAuditEventsMaxLimit)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -224,7 +261,7 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 		firstPrimary, firstID = first.OccurredAt.UTC().Format(time.RFC3339Nano), first.ID
 		lastPrimary, lastID = last.OccurredAt.UTC().Format(time.RFC3339Nano), last.ID
 	}
-	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c), page,
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c, scope), page,
 		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
 		return err
 	}
@@ -236,21 +273,36 @@ func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	return d.getAuditEvent(c, tenantAuditScope(actor.TenantID))
+}
+
+func (d Deps) handleGetSystemAuditEvent(c *echo.Context) error {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	return d.getAuditEvent(c, systemAuditScope())
+}
+
+func (d Deps) getAuditEvent(c *echo.Context, scope auditScope) error {
 	if d.AuditEventRepo == nil {
-		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
+		return writeAuditEventNotFound(c)
 	}
 	rec, err := d.AuditEventRepo.FindByID(c.Request().Context(), c.Param("id"))
 	if err != nil {
 		return support.WriteServerError(c, err)
 	}
 	if rec == nil {
-		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
+		return writeAuditEventNotFound(c)
 	}
-	if !auditEventVisibleTo(rec, actor, support.RequestTenantID(c)) {
+	if !scope.includes(rec) {
 		// 別テナントのイベントは存在を隠す。
-		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
+		return writeAuditEventNotFound(c)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminAuditEventResponse(rec))
+}
+
+func writeAuditEventNotFound(c *echo.Context) error {
+	return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 }
 
 func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
@@ -258,7 +310,19 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	query, noMatch, err := d.parseAuditEventQuery(c, actor)
+	return d.exportAuditEvents(c, actor, tenantAuditScope(actor.TenantID))
+}
+
+func (d Deps) handleExportSystemAuditEvents(c *echo.Context) error {
+	actor, err := d.RequireControlPlaneUser(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	return d.exportAuditEvents(c, actor, systemAuditScope())
+}
+
+func (d Deps) exportAuditEvents(c *echo.Context, actor *userdomain.User, scope auditScope) error {
+	query, noMatch, err := d.parseAuditEventQuery(c, actor, scope)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -327,22 +391,14 @@ func (d Deps) handleAdminAuditEventSearchOptions(c *echo.Context) error {
 	})
 }
 
-// requireAuditReader は AdminAuditEventsRead パーミッションを満たすユーザーを返す。
-// admin / system_admin のどちらでも通る。所属テナントの拘束は問わない (実際の
-// テナント絞り込みは List のクエリ生成時に行う)。
-
-// parseAuditEventQuery は query string を AuditEventQuery へ変換する。第 2 戻り値 noMatch が
+// parseAuditEventQuery は query string を AuditEventQuery へ変換する。テナントの範囲は
+// 引数の scope が決め、query string は絞り込みにしか使わない。第 2 戻り値 noMatch が
 // true の場合、username が実アカウントに解決できなかったことを示し、呼び出し側は
 // AuditEventRepo.List を呼ばず空の結果を返す (フィルタ無視で全件返すという誤動作を避ける)。
-func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User) (auditports.AuditEventQuery, bool, error) {
+func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User, scope auditScope) (auditports.AuditEventQuery, bool, error) {
 	q := auditports.AuditEventQuery{
-		TenantID:   actor.TenantID,
-		AllTenants: false,
-	}
-	// system_admin が default tenant 経路で全テナント横断する場合のみ all_tenants を許可する。
-	if support.IsControlPlaneActor(actor, support.RequestTenantID(c)) && c.QueryParam("all_tenants") == "true" {
-		q.AllTenants = true
-		q.TenantID = ""
+		TenantID:   scope.tenantID,
+		AllTenants: scope.allTenants,
 	}
 	if t := c.QueryParam("type"); t != "" {
 		q.Type = t
@@ -434,13 +490,9 @@ func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpres
 	return auditusecases.ParseAuditFilter(parsed)
 }
 
-// auditEventVisibleTo は GetAdminAuditEvent で別テナントイベントを隠すための判定。
-// 制御面主体なら全件を、それ以外は所属テナントのイベントだけを見せる。
-func auditEventVisibleTo(rec *auditports.AuditEventRecord, actor *userdomain.User, requestTenantID string) bool {
-	if support.IsControlPlaneActor(actor, requestTenantID) {
-		return true
-	}
-	return rec.TenantID == actor.TenantID
+// includes は 1 件参照でイベントがこの範囲から見えるかを返す。範囲外は存在を隠す。
+func (s auditScope) includes(rec *auditports.AuditEventRecord) bool {
+	return s.allTenants || (rec != nil && rec.TenantID == s.tenantID)
 }
 
 func toAdminAuditEventResponse(rec *auditports.AuditEventRecord) AdminAuditEventResponse {

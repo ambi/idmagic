@@ -15,7 +15,6 @@ describe('validateAuditEventsSearch', () => {
         after: '2026-01-01T00:00:00.000Z',
         before: '2026-01-02T00:00:00.000Z',
         limit: 50,
-        allTenants: true,
         filter: ['event.type:eq:UserCreated'],
       }),
     ).toEqual({
@@ -25,9 +24,15 @@ describe('validateAuditEventsSearch', () => {
       after: '2026-01-01T00:00:00.000Z',
       before: '2026-01-02T00:00:00.000Z',
       limit: 50,
-      allTenants: true,
       filter: ['event.type:eq:UserCreated'],
     })
+  })
+
+  // EX-SYSTEM-020-02: 古いブックマークに残った横断の状態は検証で落ち、テナント内表示へ戻る。
+  // 横断はシステムコンソールの経路が持つ (REQ-SYSTEM-020)。
+  it('drops a cross-tenant request left in an old bookmark', () => {
+    expect(validateAuditEventsSearch({ allTenants: true })).toEqual({})
+    expect(validateAuditEventsSearch({ sub: 'alice', allTenants: true })).toEqual({ sub: 'alice' })
   })
 
   it('ignores an unknown category rather than throwing', () => {
@@ -40,7 +45,6 @@ describe('validateAuditEventsSearch', () => {
         category: 42,
         sub: 123,
         limit: 'fifty',
-        allTenants: 'true',
         filter: 'not-an-array',
       }),
     ).toEqual({})

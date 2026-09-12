@@ -1,7 +1,8 @@
 // Package http: audit コンテキストの HTTP アダプタ。
 //
 // 管理者向けの監査イベント検索 / 参照 / エクスポート API
-// (ListAdminAuditEvents / GetAdminAuditEvent / ExportAdminAuditEvents) を所有する。
+// (ListAdminAuditEvents / GetAdminAuditEvent / ExportAdminAuditEvents) と、その制御面の
+// 双子 (ListSystemAuditEvents / GetSystemAuditEvent / ExportSystemAuditEvents) を所有する。
 // 共有基盤 support.Deps を受け取り router から登録される。
 package handlers_http
 
@@ -26,10 +27,19 @@ type Deps struct {
 }
 
 // RegisterRoutes はテナント解決済みグループに audit コンテキストのエンドポイントを
-// 登録する。パス・メソッド・middleware は分割前と一致する。
+// 登録する。
+//
+// テナント管理経路とシステム経路は別のパスに分かれ、どちらを呼んだかがテナントの範囲を
+// 決める。同じハンドラーへ合流させて範囲をロールから推定する形にはしない。
+// 検索選択肢だけは 1 本を両方が呼ぶ。返すのは検索軸の語彙で、どのテナントの記録も
+// 含まないためである。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/audit_events", d.handleListAdminAuditEvents)
 	g.GET("/api/admin/v1/audit_events/export", d.handleExportAdminAuditEvents)
 	g.GET("/api/admin/v1/audit_events/search_options", d.handleAdminAuditEventSearchOptions)
 	g.GET("/api/admin/v1/audit_events/:id", d.handleGetAdminAuditEvent)
+
+	g.GET("/api/admin/v1/system/audit_events", d.handleListSystemAuditEvents)
+	g.GET("/api/admin/v1/system/audit_events/export", d.handleExportSystemAuditEvents)
+	g.GET("/api/admin/v1/system/audit_events/:id", d.handleGetSystemAuditEvent)
 }

@@ -68,6 +68,9 @@ var routeClassRules = []routeClassRule{
 	{path: "/api/admin/v1/audit_events", exact: true, class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/audit_events/export", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/audit_events/search_options", class: support.ClassManagementBulk},
+	// 制御面の監査検索は同じ走査を全テナント分行うので、テナント側と同じクラスに置く。
+	{path: "/api/admin/v1/system/audit_events", exact: true, class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/system/audit_events/export", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/authentication_event_buckets", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/users/exports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/users/imports", class: support.ClassManagementBulk},

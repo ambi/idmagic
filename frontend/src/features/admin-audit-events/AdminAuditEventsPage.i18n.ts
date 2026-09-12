@@ -70,7 +70,9 @@ export const adminAuditEventsDictionary = defineDictionary(
     removeConditionAria: '検索条件を削除',
     filterAction: '絞り込み',
     exportAction: 'エクスポート',
-    crossTenantLabel: '全テナント横断 (system_admin)',
+    systemPageTitle: '監査イベント (全テナント)',
+    systemPageDescription:
+      'すべてのテナントで起きた重要な操作の記録。検索結果とエクスポートはどちらも全テナントを範囲とします。',
     tableHeaderOccurredAt: '発生日時',
     tableHeaderType: '種別',
     tableHeaderTenant: 'テナント',
@@ -152,7 +154,9 @@ export const adminAuditEventsDictionary = defineDictionary(
     removeConditionAria: 'Remove search condition',
     filterAction: 'Filter',
     exportAction: 'Export',
-    crossTenantLabel: 'Across all tenants (system_admin)',
+    systemPageTitle: 'Audit events (all tenants)',
+    systemPageDescription:
+      'A record of important operations across every tenant. Both the search result and the export cover every tenant.',
     tableHeaderOccurredAt: 'Occurred at',
     tableHeaderType: 'Type',
     tableHeaderTenant: 'Tenant',

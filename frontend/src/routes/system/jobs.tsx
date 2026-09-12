@@ -1,25 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { type AdminJob, AuthenticationAPIError, listAdminJobs } from '../../api'
-import { AdminJobsPage } from '../../features/admin-jobs/AdminJobsPage'
-import { requirePortalAccount } from '../-guards'
+import { type AdminJob, AuthenticationAPIError, listSystemJobs } from '../../api'
+import { SystemJobsPage } from '../../features/admin-jobs/SystemJobsPage'
+import { jobKindsOf } from '../admin/jobs'
+import { requireSystemAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
-// 登録済みの JobKind は API が別途返さないので、読み込んだページに現れた種別から
-// 絞り込みの選択肢を作る。手書きの一覧を UI に持つと Go 側の登録と食い違う。
-export function jobKindsOf(jobs: AdminJob[]): string[] {
-  return [...new Set(jobs.map((job) => job.kind))].sort()
-}
-
-export const Route = createFileRoute('/admin/jobs')({
+export const Route = createFileRoute('/system/jobs')({
   loader: async ({ location }) => {
-    const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
+    const account = await requireSystemAccount(location.pathname, location.searchStr)
     // 一覧の取得失敗はページ全体を壊さず、ページ内のエラー表示に留める。
-    // 認証そのものの失敗は requirePortalAccount 側が扱う。
+    // 認証そのものの失敗は requireSystemAccount 側が扱う。
     let jobs: AdminJob[] = []
     let nextCursor: string | undefined
     let initialError = ''
     try {
-      const page = await listAdminJobs()
+      const page = await listSystemJobs()
       jobs = page.jobs
       nextCursor = page.next_cursor
     } catch (cause) {
@@ -33,14 +28,14 @@ export const Route = createFileRoute('/admin/jobs')({
       initialError,
     }
   },
-  component: AdminJobsRoute,
+  component: SystemJobsRoute,
 })
 
-function AdminJobsRoute() {
+function SystemJobsRoute() {
   const data = Route.useLoaderData()
   return (
-    <PageMarker kind="admin-jobs">
-      <AdminJobsPage
+    <PageMarker kind="system-jobs">
+      <SystemJobsPage
         actorUsername={data.actorUsername}
         jobs={data.jobs}
         nextCursor={data.nextCursor}

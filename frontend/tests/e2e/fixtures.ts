@@ -27,6 +27,10 @@ export const demo = Object.freeze({
   email: 'alice@example.com',
   redirectUri: 'http://localhost:3000/callback',
   scope: 'openid profile email offline_access',
+  // systemAdminUsername は制御面テナントに所属し system_admin を持つ投入済み利用者。
+  // テナント管理だけを持つ demo.username と分けてあるので、システムコンソールへ入れるのは
+  // こちらだけである (REQ-SYSTEM-020)。
+  systemAdminUsername: 'root',
 })
 
 // /authorize は PKCE 必須 (routes_e2e_test.go と同条件)。本スモークは
@@ -720,10 +724,15 @@ export async function waitForAnyText(
   throw new Error(`timeout waiting for text: ${texts.join(' / ')}`)
 }
 
-export async function loginFromCurrentPage(view: Bun.WebView): Promise<void> {
+// username を渡せるのは、制御面のシナリオが system_admin を持つ別の投入済み利用者を
+// 要するためである。投入した利用者はいずれも同じ user_password を共有する。
+export async function loginFromCurrentPage(
+  view: Bun.WebView,
+  username: string = demo.username,
+): Promise<void> {
   await waitForPage(view, 'login')
   await view.click('input[name="username"]')
-  await view.type(demo.username)
+  await view.type(username)
   await view.click('input[name="password"]')
   await view.type(demo.password)
   await view.click('button[type="submit"]')
@@ -733,8 +742,9 @@ export async function navigateAndLogin(
   view: Bun.WebView,
   path: string,
   expectedPage: string,
+  username: string = demo.username,
 ): Promise<void> {
   await view.navigate(`${uiOrigin}${path}`)
-  await loginFromCurrentPage(view)
+  await loginFromCurrentPage(view, username)
   await waitForPage(view, expectedPage, 30_000)
 }

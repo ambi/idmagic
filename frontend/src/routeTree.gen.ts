@@ -51,7 +51,9 @@ import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-po
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminWorkloadIdentityRouteImport } from './routes/admin/workload-identity'
 import { Route as SystemIndexRouteImport } from './routes/system/index'
+import { Route as SystemAuditEventsRouteImport } from './routes/system/audit-events'
 import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
+import { Route as SystemJobsRouteImport } from './routes/system/jobs'
 import { Route as SystemKeysRouteImport } from './routes/system/keys'
 import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
@@ -317,9 +319,19 @@ const SystemIndexRoute = SystemIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SystemRouteRoute,
 } as any)
+const SystemAuditEventsRoute = SystemAuditEventsRouteImport.update({
+  id: '/audit-events',
+  path: '/audit-events',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
 const SystemDataKeysRoute = SystemDataKeysRouteImport.update({
   id: '/data-keys',
   path: '/data-keys',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
+const SystemJobsRoute = SystemJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
   getParentRoute: () => SystemRouteRoute,
 } as any)
 const SystemKeysRoute = SystemKeysRouteImport.update({
@@ -655,7 +667,9 @@ export interface FileRoutesByFullPath {
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
+  '/system/audit-events': typeof SystemAuditEventsRoute
   '/system/data-keys': typeof SystemDataKeysRoute
+  '/system/jobs': typeof SystemJobsRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account/': typeof AccountIndexRoute
@@ -750,7 +764,9 @@ export interface FileRoutesByTo {
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
+  '/system/audit-events': typeof SystemAuditEventsRoute
   '/system/data-keys': typeof SystemDataKeysRoute
+  '/system/jobs': typeof SystemJobsRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account': typeof AccountIndexRoute
@@ -841,7 +857,9 @@ export interface FileRoutesById {
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
+  '/system/audit-events': typeof SystemAuditEventsRoute
   '/system/data-keys': typeof SystemDataKeysRoute
+  '/system/jobs': typeof SystemJobsRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account/': typeof AccountIndexRoute
@@ -941,7 +959,9 @@ export interface FileRouteTypes {
     | '/admin/sign-in-policy'
     | '/admin/users'
     | '/admin/workload-identity'
+    | '/system/audit-events'
     | '/system/data-keys'
+    | '/system/jobs'
     | '/system/keys'
     | '/system/tenants'
     | '/account/'
@@ -1036,7 +1056,9 @@ export interface FileRouteTypes {
     | '/admin/sign-in-policy'
     | '/admin/users'
     | '/admin/workload-identity'
+    | '/system/audit-events'
     | '/system/data-keys'
+    | '/system/jobs'
     | '/system/keys'
     | '/system/tenants'
     | '/account'
@@ -1126,7 +1148,9 @@ export interface FileRouteTypes {
     | '/admin/sign-in-policy'
     | '/admin/users'
     | '/admin/workload-identity'
+    | '/system/audit-events'
     | '/system/data-keys'
+    | '/system/jobs'
     | '/system/keys'
     | '/system/tenants'
     | '/account/'
@@ -1497,11 +1521,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemIndexRouteImport
       parentRoute: typeof SystemRouteRoute
     }
+    '/system/audit-events': {
+      id: '/system/audit-events'
+      path: '/audit-events'
+      fullPath: '/system/audit-events'
+      preLoaderRoute: typeof SystemAuditEventsRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
     '/system/data-keys': {
       id: '/system/data-keys'
       path: '/data-keys'
       fullPath: '/system/data-keys'
       preLoaderRoute: typeof SystemDataKeysRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
+    '/system/jobs': {
+      id: '/system/jobs'
+      path: '/jobs'
+      fullPath: '/system/jobs'
+      preLoaderRoute: typeof SystemJobsRouteImport
       parentRoute: typeof SystemRouteRoute
     }
     '/system/keys': {
@@ -2146,14 +2184,18 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface SystemRouteRouteChildren {
+  SystemAuditEventsRoute: typeof SystemAuditEventsRoute
   SystemDataKeysRoute: typeof SystemDataKeysRoute
+  SystemJobsRoute: typeof SystemJobsRoute
   SystemKeysRoute: typeof SystemKeysRoute
   SystemTenantsRoute: typeof SystemTenantsRoute
   SystemIndexRoute: typeof SystemIndexRoute
 }
 
 const SystemRouteRouteChildren: SystemRouteRouteChildren = {
+  SystemAuditEventsRoute: SystemAuditEventsRoute,
   SystemDataKeysRoute: SystemDataKeysRoute,
+  SystemJobsRoute: SystemJobsRoute,
   SystemKeysRoute: SystemKeysRoute,
   SystemTenantsRoute: SystemTenantsRoute,
   SystemIndexRoute: SystemIndexRoute,

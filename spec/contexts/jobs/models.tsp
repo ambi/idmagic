@@ -117,7 +117,7 @@ model AdminJobResponse {
 }
 
 
-@doc("The filter of ListJobs. `tenant_id` comes from the authentication context and is never a parameter.")
+@doc("The filter of ListJobs and ListSystemJobs. The tenant scope comes from the route and the authentication context, never from a parameter: ListJobs is fixed to the request tenant and ListSystemJobs to every tenant, so no input widens or narrows it.")
 model AdminJobQuery {
   @doc("Narrows to these JobStatus values. Omitted, every status is returned.")
   status?: JobStatus[];
@@ -129,8 +129,6 @@ model AdminJobQuery {
   limit?: int64;
   @doc("Pass through `next_cursor` from the previous response. It is an opaque keyset anchor over `(created_at, id)`; a cursor\nissued for a different tenant or a different filter is rejected rather than silently re-anchored.")
   cursor?: string;
-  @doc("Return every tenant's Jobs. Honoured only for a `system_admin` calling through the control-plane tenant; anyone else stays inside their own tenant (REQ-JOBS-012).")
-  all_tenants?: boolean;
 }
 
 

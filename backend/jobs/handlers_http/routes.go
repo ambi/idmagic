@@ -23,8 +23,14 @@ type Deps struct {
 	Emit func(spec.DomainEvent)
 }
 
+// RegisterRoutes はテナント管理経路とシステム経路を別のパスへ登録する。どちらを呼んだかが
+// テナントの範囲を決め、範囲を切り替えるクエリは持たない。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/jobs", d.handleListJobs)
 	g.GET("/api/admin/v1/jobs/:job_id", d.handleGetJob)
 	g.POST("/api/admin/v1/jobs/:job_id/cancel", d.handleCancelJob)
+
+	g.GET("/api/admin/v1/system/jobs", d.handleListSystemJobs)
+	g.GET("/api/admin/v1/system/jobs/:job_id", d.handleGetSystemJob)
+	g.POST("/api/admin/v1/system/jobs/:job_id/cancel", d.handleCancelSystemJob)
 }

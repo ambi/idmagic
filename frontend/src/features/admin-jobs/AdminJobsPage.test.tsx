@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import type { AdminJob } from '../../api'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { renderWithRouter } from '../../test/renderWithRouter'
@@ -31,12 +31,10 @@ function job(overrides: Partial<AdminJob> = {}): AdminJob {
   }
 }
 
-function renderPage(jobs: AdminJob[], roles: string[] = ['admin'], realm = 'acme') {
+function renderPage(jobs: AdminJob[]) {
   return renderWithRouter(
     <AdminJobsPage
       actorUsername="admin"
-      actorRoles={roles}
-      actorRealm={realm}
       jobs={jobs}
       kinds={[...new Set(jobs.map((j) => j.kind))]}
       csrfToken="csrf"
@@ -124,14 +122,32 @@ describe('AdminJobsPage', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  // 全テナント横断は system_admin かつ制御面テナントの経路でのみ提示する。
-  it('hides the cross-tenant toggle from a tenant administrator', async () => {
+  // EX-SYSTEM-020-01: テナント管理コンソールに横断の入口を置かない。ページは操作者の
+  // ロールも realm も受け取らないので、どの操作者に対しても切替が現れることはない。
+  // 横断はシステムコンソールが持つ (REQ-SYSTEM-020)。
+  it('does not offer a cross-tenant toggle to a control-plane operator', async () => {
     await renderPage([job()])
-    expect(screen.queryByLabelText(t.crossTenantLabel)).not.toBeInTheDocument()
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    // 「全テナント」を名乗る文言そのものが画面に無いことも確かめる。ラベルの付け替えで
+    // 切替が生き残っていれば、checkbox の有無だけでは気づけない。
+    for (const wording of ['Across all tenants', '全テナント']) {
+      expect(screen.queryByText(new RegExp(wording))).not.toBeInTheDocument()
+    }
   })
 
-  it('offers the cross-tenant toggle to a system_admin on the control plane', async () => {
-    await renderPage([job()], ['admin', 'system_admin'], 'default')
-    expect(screen.getByLabelText(t.crossTenantLabel)).toBeInTheDocument()
+  // テナント側の一覧は API へも横断を求めない。
+  it('asks the tenant-scoped listing for no cross-tenant parameter', async () => {
+    const fetchMock = mock(() => Promise.resolve(response(200, { jobs: [job()] })))
+    stubGlobal('fetch', fetchMock)
+    await renderPage([job()])
+
+    fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+
+    const url = String(fetchMock.mock.calls.at(0)?.at(0))
+    expect(url).toContain('/api/admin/v1/jobs')
+    expect(url).not.toContain('/system/')
+    expect(url).not.toContain('all_tenants')
   })
 })

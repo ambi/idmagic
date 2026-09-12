@@ -84,11 +84,14 @@ func jobsAdminUser(sub, tenantID string, roles []string) *userdomain.User {
 }
 
 type jobsTestServer struct {
-	e        *echo.Echo
-	repo     *jobsmemory.JobRepository
-	emitted  []spec.DomainEvent
-	acmeJob  *domain.Job
+	e       *echo.Echo
+	repo    *jobsmemory.JobRepository
+	emitted []spec.DomainEvent
+	acmeJob *domain.Job
+	// otherJob は制御面テナントの Job。"acme" の管理者から見て他テナントに当たる。
 	otherJob *domain.Job
+	// actorRealm は実行者の所属テナントの realm。経路を組み立てるのに使う。
+	actorRealm string
 }
 
 // newJobsAdminServer は "acme" に 2 件、制御面テナントに 1 件の Job を持つサーバーを作る。
@@ -116,7 +119,10 @@ func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 		}
 		return job
 	}
-	srv := &jobsTestServer{repo: repo}
+	srv := &jobsTestServer{repo: repo, actorRealm: "acme"}
+	if actor != nil && actor.TenantID == tenancydomain.DefaultTenantID {
+		srv.actorRealm = tenancydomain.DefaultRealm
+	}
 	enqueue("acme", domain.KindUserImportApply, 0)
 	srv.acmeJob = enqueue("acme", domain.KindNoopEcho, time.Minute)
 	srv.otherJob = enqueue(tenancydomain.DefaultTenantID, domain.KindNoopEcho, 2*time.Minute)
@@ -169,9 +175,14 @@ func (s *jobsTestServer) csrf(t *testing.T, realmPath string) (string, *http.Coo
 
 func (s *jobsTestServer) cancel(t *testing.T, jobID string) *httptest.ResponseRecorder {
 	t.Helper()
-	const realmPath = "/realms/acme"
-	token, cookie := s.csrf(t, realmPath)
-	req := httptest.NewRequest(http.MethodPost, realmPath+"/api/admin/v1/jobs/"+jobID+"/cancel", http.NoBody)
+	return s.cancelPath(t, "/realms/acme/api/admin/v1/jobs/"+jobID+"/cancel")
+}
+
+// cancelPath は任意の取消し経路へ、ブラウザー経路に必要なトークンと Cookie を揃えて送る。
+func (s *jobsTestServer) cancelPath(t *testing.T, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	token, cookie := s.csrf(t, "/realms/"+s.actorRealm)
+	req := httptest.NewRequest(http.MethodPost, path, http.NoBody)
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", token)
 	req.AddCookie(cookie)
@@ -246,11 +257,17 @@ func TestListJobsOmitsHandlerInputAndOutput(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: admin ロールを持たない実行者は拒否される。
+// EX-JOBS-012-02: 要求先テナントの admin ロールを持たない実行者は拒否される。制御面主体の
+// 資格も特例にならない。テナント管理経路の受け入れはロールを見て分岐しない。
 func TestListJobsRequiresAdminRole(t *testing.T) {
-	srv := newJobsAdminServer(t, jobsAdminUser("nobody", "acme", []string{}))
-	if rec := srv.get("/realms/acme/api/admin/v1/jobs"); rec.Code != http.StatusForbidden {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	for name, actor := range map[string]*userdomain.User{
+		"no roles at all":                    jobsAdminUser("nobody", "acme", []string{}),
+		"system_admin without an admin role": jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}),
+	} {
+		srv := newJobsAdminServer(t, actor)
+		if rec := srv.get("/realms/" + srv.actorRealm + "/api/admin/v1/jobs"); rec.Code != http.StatusForbidden {
+			t.Errorf("%s: status=%d body=%s", name, rec.Code, rec.Body.String())
+		}
 	}
 }
 
@@ -274,21 +291,122 @@ func TestListJobsFiltersByKind(t *testing.T) {
 	}
 }
 
-// REQ-JOBS-012: 横断は system_admin かつ制御面テナントの経路でのみ認める。
-func TestListJobsAllTenantsRequiresSystemAdminOnTheControlPlane(t *testing.T) {
-	// 通常の admin が all_tenants を指定しても自テナントに閉じる。
-	tenantAdmin := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
-	body := decodeJobList(t, tenantAdmin.get("/realms/acme/api/admin/v1/jobs?all_tenants=true"))
-	for _, j := range body.Jobs {
-		if j.TenantID != "acme" {
-			t.Fatalf("a tenant admin saw tenant %q", j.TenantID)
+// EX-JOBS-012-04: テナント管理経路は横断を求める入力を添えても要求先テナントへ閉じる。
+// 制御面主体の資格を持つ実行者でも変わらない。REQ-JOBS-012。
+func TestListJobsIgnoresAnyCrossTenantInput(t *testing.T) {
+	for name, actor := range map[string]*userdomain.User{
+		"tenant admin": jobsAdminUser("admin", "acme", []string{"admin"}),
+		"control-plane operator holding admin as well": jobsAdminUser(
+			"root", tenancydomain.DefaultTenantID, []string{"admin", "system_admin"}),
+	} {
+		srv := newJobsAdminServer(t, actor)
+		body := decodeJobList(t, srv.get("/realms/"+srv.actorRealm+"/api/admin/v1/jobs?all_tenants=true"))
+		for _, j := range body.Jobs {
+			if j.TenantID != actor.TenantID {
+				t.Errorf("%s: tenant route returned tenant %q, want only %q", name, j.TenantID, actor.TenantID)
+			}
 		}
 	}
+}
 
-	sysAdmin := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"admin", "system_admin"}))
-	crossed := decodeJobList(t, sysAdmin.get("/realms/default/api/admin/v1/jobs?all_tenants=true"))
-	if len(crossed.Jobs) != 3 {
-		t.Fatalf("system_admin saw %d jobs, want every tenant's 3", len(crossed.Jobs))
+// EX-JOBS-015-01: システム経路は制御面主体に対し、admin ロールなしで全テナントの一覧、
+// 1 件参照、取り消しを提供する。REQ-JOBS-015。
+func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
+	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
+	// 実行者は制御面テナントに所属するので、横断の対象は "acme" の Job である。
+	foreign := srv.acmeJob
+
+	body := decodeJobList(t, srv.get("/realms/default/api/admin/v1/system/jobs"))
+	if len(body.Jobs) != 3 {
+		t.Fatalf("system route saw %d jobs, want every tenant's 3", len(body.Jobs))
+	}
+
+	detail := srv.get("/realms/default/api/admin/v1/system/jobs/" + foreign.ID)
+	if detail.Code != http.StatusOK {
+		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
+	}
+
+	cancel := srv.cancelPath(t, "/realms/default/api/admin/v1/system/jobs/"+foreign.ID+"/cancel")
+	if cancel.Code != http.StatusOK {
+		t.Fatalf("cancel status=%d body=%s", cancel.Code, cancel.Body.String())
+	}
+	// 応答ではなく効果を読む。取り消したと答えつつ状態を変えないハンドラーは、応答だけを
+	// 見るテストを同じように通過する。
+	got, err := srv.repo.Get(t.Context(), foreign.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != domain.StatusCanceled {
+		t.Fatalf("cross-tenant job status=%q, want %q", got.Status, domain.StatusCanceled)
+	}
+}
+
+// EX-JOBS-015-04: システム経路でも、終端に達した Job の取り消しは成功として黙認せず拒否し、
+// 状態を変えない。止めるよう頼んだ運用者にとって、すでに終わっていたのか止まったのかは
+// 別の事実である。REQ-JOBS-015。
+func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
+	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
+	foreign := srv.acmeJob
+
+	// 先に取り消して終端へ送る。2 回目が拒否される側である。
+	if first := srv.cancelPath(t, "/realms/default/api/admin/v1/system/jobs/"+foreign.ID+"/cancel"); first.Code != http.StatusOK {
+		t.Fatalf("setup cancel status=%d body=%s", first.Code, first.Body.String())
+	}
+	before, err := srv.repo.Get(t.Context(), foreign.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	again := srv.cancelPath(t, "/realms/default/api/admin/v1/system/jobs/"+foreign.ID+"/cancel")
+	if again.Code != http.StatusConflict {
+		t.Fatalf("second cancel status=%d, want %d; body=%s", again.Code, http.StatusConflict, again.Body.String())
+	}
+	if !strings.Contains(again.Body.String(), "job_not_cancelable") {
+		t.Errorf("refusal did not name job_not_cancelable: %s", again.Body.String())
+	}
+	after, err := srv.repo.Get(t.Context(), foreign.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !after.UpdatedAt.Equal(before.UpdatedAt) || after.Status != before.Status {
+		t.Errorf("a refused cancel changed the job: before=%+v after=%+v", before, after)
+	}
+}
+
+// EX-JOBS-015-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの Job も返さない。
+func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
+	for name, actor := range map[string]*userdomain.User{
+		"tenant admin at the control plane":      jobsAdminUser("admin", tenancydomain.DefaultTenantID, []string{"admin"}),
+		"system_admin outside the control plane": jobsAdminUser("root", "acme", []string{"system_admin", "admin"}),
+	} {
+		srv := newJobsAdminServer(t, actor)
+		// どちらの実行者からも他テナントに当たる Job を対象にする。
+		foreign := srv.acmeJob
+		if actor.TenantID == "acme" {
+			foreign = srv.otherJob
+		}
+		base := "/realms/" + srv.actorRealm + "/api/admin/v1/system/jobs"
+		for _, path := range []string{base, base + "/" + foreign.ID} {
+			rec := srv.get(path)
+			if rec.Code != http.StatusForbidden {
+				t.Errorf("%s: %s status=%d want %d body=%s", name, path, rec.Code, http.StatusForbidden, rec.Body.String())
+			}
+			if strings.Contains(rec.Body.String(), foreign.ID) {
+				t.Errorf("%s: %s leaked job %q: %s", name, path, foreign.ID, rec.Body.String())
+			}
+		}
+		// 取り消しは拒否のうえ、対象の状態を変えない。
+		cancel := srv.cancelPath(t, base+"/"+foreign.ID+"/cancel")
+		if cancel.Code != http.StatusForbidden {
+			t.Errorf("%s: cancel status=%d want %d body=%s", name, cancel.Code, http.StatusForbidden, cancel.Body.String())
+		}
+		got, err := srv.repo.Get(t.Context(), foreign.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Status == domain.StatusCanceled {
+			t.Errorf("%s: refused cancel still canceled job %q", name, foreign.ID)
+		}
 	}
 }
 

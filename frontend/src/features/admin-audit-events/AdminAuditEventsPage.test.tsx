@@ -56,8 +56,6 @@ function BrowserHistoryHarness() {
       <AdminAuditEventsPage
         key={JSON.stringify(routeData.search)}
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={routeData.events}
         nextCursor={null}
         search={routeData.search}
@@ -71,13 +69,7 @@ describe('locale', () => {
 
   it('renders the audit events page in English by default', async () => {
     await renderWithRouter(
-      <AdminAuditEventsPage
-        actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
-        events={[]}
-        nextCursor={null}
-      />,
+      <AdminAuditEventsPage actorUsername="admin" events={[]} nextCursor={null} />,
     )
     expect(
       screen.getByRole('heading', { name: adminAuditEventsDictionary.en.pageTitle }),
@@ -89,13 +81,7 @@ describe('locale', () => {
 
   it('renders the audit events page in Japanese when explicitly selected', async () => {
     await renderWithRouter(
-      <AdminAuditEventsPage
-        actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
-        events={[]}
-        nextCursor={null}
-      />,
+      <AdminAuditEventsPage actorUsername="admin" events={[]} nextCursor={null} />,
       { locale: 'ja' },
     )
     expect(
@@ -113,13 +99,7 @@ describe('AdminAuditEventsPage', () => {
       mock(() => Promise.resolve(response(200, { events: [] }))),
     )
     await renderWithRouter(
-      <AdminAuditEventsPage
-        actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
-        events={[event]}
-        nextCursor={null}
-      />,
+      <AdminAuditEventsPage actorUsername="admin" events={[event]} nextCursor={null} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
@@ -134,13 +114,7 @@ describe('AdminAuditEventsPage', () => {
       mock(() => Promise.resolve(response(500, { message: 'Could not fetch audit events.' }))),
     )
     await renderWithRouter(
-      <AdminAuditEventsPage
-        actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
-        events={[event]}
-        nextCursor={null}
-      />,
+      <AdminAuditEventsPage actorUsername="admin" events={[event]} nextCursor={null} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
@@ -153,8 +127,6 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={[event]}
         nextCursor={null}
         search={{ category: 'authentication', sub: 'usr_from_url' }}
@@ -192,8 +164,6 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={[event]}
         nextCursor={null}
         onSearch={onSearch}
@@ -221,8 +191,6 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={[event]}
         nextCursor={null}
         onSearch={onSearch}
@@ -249,8 +217,6 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={[event]}
         nextCursor={null}
         onSearch={onSearch}
@@ -293,8 +259,6 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={[exchanged]}
         nextCursor={null}
         onSearch={onSearch}
@@ -315,13 +279,7 @@ describe('AdminAuditEventsPage', () => {
 
   it('shows no delegation chain for an event that has none (wi-377)', async () => {
     await renderWithRouter(
-      <AdminAuditEventsPage
-        actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
-        events={[event]}
-        nextCursor={null}
-      />,
+      <AdminAuditEventsPage actorUsername="admin" events={[event]} nextCursor={null} />,
     )
 
     expect(screen.queryByText(t.delegationChainHeading)).not.toBeInTheDocument()
@@ -332,8 +290,6 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
-        actorRoles={[]}
-        actorRealm="tenant-1"
         events={[event]}
         nextCursor="abc"
         search={{ sub: 'usr_current' }}

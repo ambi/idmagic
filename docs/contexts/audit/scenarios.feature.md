@@ -152,3 +152,34 @@ Primary actor: `TenantAdministrator`
 - Then チェーンの中間にいる "app-a" が関与したイベントが返り、参加者には識別子だけが含まれユーザー名は含まれない
 - When 管理者がフィルターに `delegation.mode` を指定して絞り込む
 - Then 絞り込みに使う値は、同じ交換について REQ-OAUTH2-049 がイントロスペクションへ返すモードと一致する
+
+## Rule: REQ-AUDIT-007 制御面主体はシステム経路で全テナントの監査ログを検索・エクスポートできる
+
+Primary actor: `SystemAdministrator`
+
+### Example: EX-AUDIT-007-01 通常経路
+
+- Given テナント "tenant-a" と "tenant-b" にそれぞれ監査イベントが存在する
+- And 制御面テナントに所属する `system_admin` の操作者が制御面テナントの経路を使う
+- When 操作者がシステム経路の監査イベント検索を要求する
+- Then すべてのテナントの監査イベントが時系列降順で返り、`admin` ロールを併せ持つかどうかは結果を変えない
+- When 操作者が同じ絞り込みでシステム経路のエクスポートを要求する
+- Then 検索と同じ全テナントの範囲がエクスポートデータとして返る
+- When 操作者が "tenant-b" のイベントの id を指定して 1 件を要求する
+- Then そのイベントが返る
+
+### Example: EX-AUDIT-007-02 実行者が `system_admin` を持たない、制御面テナントの所属ではない、または制御面テナント以外の経路である
+
+- Given テナント "tenant-a" と "tenant-b" にそれぞれ監査イベントが存在する
+- And 制御面テナントに所属する `system_admin` の操作者が制御面テナントの経路を使う
+- When 操作者がシステム経路の監査イベント検索を要求する
+- But 実行者が `system_admin` を持たない、制御面テナントの所属ではない、または制御面テナント以外の経路である
+- Then AccessDeniedError で拒否され、応答はどのテナントの監査イベントも含まない
+
+### Example: EX-AUDIT-007-03 テナント管理経路で発行したカーソルをシステム経路へ持ち込む
+
+- Given テナント "tenant-a" と "tenant-b" にそれぞれ監査イベントが存在する
+- And 制御面テナントに所属する `system_admin` の操作者が制御面テナントの経路を使う
+- When 操作者がシステム経路の監査イベント検索を要求する
+- But テナント管理経路で発行したカーソルをシステム経路へ持ち込む
+- Then InvalidRequestError を返し、続きとして読み替えない

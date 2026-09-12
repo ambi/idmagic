@@ -1,16 +1,15 @@
 package handlers_http
 
-// SCL interfaces: ListJobs / GetJob / CancelJob (bounded_context: Jobs)。
-// REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014。
+// SCL interfaces: ListJobs / GetJob / CancelJob と、その制御面の双子
+// ListSystemJobs / GetSystemJob / CancelSystemJob (bounded_context: Jobs)。
+// REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014 / REQ-JOBS-015。
 
 import (
 	"errors"
 	"net/http"
-	"slices"
 	"strconv"
 	"time"
 
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobusecases "github.com/ambi/idmagic/backend/jobs/usecases"
@@ -69,14 +68,25 @@ type adminJobListResponse struct {
 }
 
 func (d Deps) handleListJobs(c *echo.Context) error {
-	actor, err := d.requireJobAdministrator(c)
+	actor, err := d.RequireAdmin(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	return d.listJobs(c, jobusecases.TenantScope{TenantID: actor.TenantID})
+}
+
+func (d Deps) handleListSystemJobs(c *echo.Context) error {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	return d.listJobs(c, jobusecases.TenantScope{AllTenants: true})
+}
+
+func (d Deps) listJobs(c *echo.Context, scope jobusecases.TenantScope) error {
 	if d.Repo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, adminJobListResponse{Jobs: []adminJobResponse{}})
 	}
-	in, err := parseListJobsQuery(c, actor.TenantID, support.IsControlPlaneActor(actor, support.RequestTenantID(c)))
+	in, err := parseListJobsQuery(c, scope)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -96,15 +106,25 @@ func (d Deps) handleListJobs(c *echo.Context) error {
 }
 
 func (d Deps) handleGetJob(c *echo.Context) error {
-	actor, err := d.requireJobAdministrator(c)
+	actor, err := d.RequireAdmin(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	return d.getJob(c, jobusecases.TenantScope{TenantID: actor.TenantID})
+}
+
+func (d Deps) handleGetSystemJob(c *echo.Context) error {
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	return d.getJob(c, jobusecases.TenantScope{AllTenants: true})
+}
+
+func (d Deps) getJob(c *echo.Context, scope jobusecases.TenantScope) error {
 	if d.Repo == nil {
 		return writeJobNotFound(c)
 	}
-	job, err := jobusecases.GetJobForAdmin(c.Request().Context(), d.adminDeps(),
-		c.Param("job_id"), scopeFor(actor, support.RequestTenantID(c)))
+	job, err := jobusecases.GetJobForAdmin(c.Request().Context(), d.adminDeps(), c.Param("job_id"), scope)
 	if err != nil {
 		if errors.Is(err, jobports.ErrJobNotFound) {
 			return writeJobNotFound(c)
@@ -119,15 +139,31 @@ func (d Deps) handleCancelJob(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.requireJobAdministrator(c)
+	actor, err := d.RequireAdmin(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	return d.cancelJob(c, jobusecases.TenantScope{TenantID: actor.TenantID})
+}
+
+func (d Deps) handleCancelSystemJob(c *echo.Context) error {
+	// システム経路でも同じ順で検証する。制御面の取消しは影響範囲が他テナントへ及ぶので、
+	// ブラウザー経路の証明を省く理由はいっそう無い。
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	if _, err := d.RequireControlPlaneUser(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	return d.cancelJob(c, jobusecases.TenantScope{AllTenants: true})
+}
+
+func (d Deps) cancelJob(c *echo.Context, scope jobusecases.TenantScope) error {
 	if d.Repo == nil {
 		return writeJobNotFound(c)
 	}
 	job, err := jobusecases.CancelJobForAdmin(c.Request().Context(), d.adminDeps(),
-		c.Param("job_id"), scopeFor(actor, support.RequestTenantID(c)), time.Now().UTC())
+		c.Param("job_id"), scope, time.Now().UTC())
 	switch {
 	case errors.Is(err, jobports.ErrJobNotFound):
 		return writeJobNotFound(c)
@@ -146,43 +182,17 @@ func (d Deps) adminDeps() jobusecases.AdminJobDeps {
 	return jobusecases.AdminJobDeps{Repo: d.Repo, Emit: d.Emit}
 }
 
-func (d Deps) requireJobAdministrator(c *echo.Context) (*userdomain.User, error) {
-	actor, err := d.ResolveAdminActor(c)
-	if err != nil {
-		return nil, err
-	}
-	if support.IsControlPlaneActor(actor, support.RequestTenantID(c)) {
-		return actor, nil
-	}
-	if actor.TenantID != support.RequestTenantID(c) || !slices.Contains(actor.Roles, "admin") {
-		return nil, support.ErrAdminAccessDenied
-	}
-	return actor, nil
-}
-
-// scopeFor は呼び出し元の認可からテナントの範囲を決める。一覧と違い、1 件の参照と
-// 取り消しには横断を明示するパラメーターが無いので、権限を持つ者は自然に横断できる。
-func scopeFor(actor *userdomain.User, requestTenantID string) jobusecases.TenantScope {
-	if support.IsControlPlaneActor(actor, requestTenantID) {
-		return jobusecases.TenantScope{AllTenants: true}
-	}
-	return jobusecases.TenantScope{TenantID: actor.TenantID}
-}
-
 // writeJobNotFound は「他テナントの Job」と「存在しない Job」を同じ応答にする。
 // 区別できる応答を返すと、id を総当たりするだけで他テナントに Job があることが分かる。
 func writeJobNotFound(c *echo.Context) error {
 	return support.WriteProblem(c, http.StatusNotFound, "job_not_found", "The job does not exist.")
 }
 
-// parseListJobsQuery は query string を一覧の入力へ変換する。テナントの範囲は認可から
-// 決まり、クエリが動かせるのは絞り込みだけである。未知の状態・種別・レーンは無視せず
-// 拒否する。黙って無視すると、運用者は絞り込んだつもりの一覧を絞り込みなしで読む。
-func parseListJobsQuery(c *echo.Context, tenantID string, mayReadAllTenants bool) (jobusecases.ListJobsInput, error) {
-	in := jobusecases.ListJobsInput{Scope: jobusecases.TenantScope{TenantID: tenantID}}
-	if mayReadAllTenants && c.QueryParam("all_tenants") == "true" {
-		in.Scope = jobusecases.TenantScope{AllTenants: true}
-	}
+// parseListJobsQuery は query string を一覧の入力へ変換する。テナントの範囲は呼んだ経路が
+// 決めて引数で渡り、クエリが動かせるのは絞り込みだけである。未知の状態・種別・レーンは
+// 無視せず拒否する。黙って無視すると、運用者は絞り込んだつもりの一覧を絞り込みなしで読む。
+func parseListJobsQuery(c *echo.Context, scope jobusecases.TenantScope) (jobusecases.ListJobsInput, error) {
+	in := jobusecases.ListJobsInput{Scope: scope}
 	query := c.Request().URL.Query()
 	for _, raw := range query["status"] {
 		status := domain.JobStatus(raw)
