@@ -1,4 +1,4 @@
-# Feature: IdGovernance Scenarios
+# Feature: IdGovernance のシナリオ
 
 ## Rule: REQ-IDGOVERNANCE-001 管理者はライフサイクルワークフローを作成できる
 

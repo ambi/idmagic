@@ -1,4 +1,4 @@
-# Feature: Seeding Scenarios
+# Feature: Seeding のシナリオ
 
 ## Rule: REQ-SEEDING-001 環境別の明示プロファイルが選択される
 

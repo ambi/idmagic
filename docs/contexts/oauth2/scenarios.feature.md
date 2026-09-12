@@ -1,4 +1,4 @@
-# Feature: OAuth2 Scenarios
+# Feature: OAuth2 のシナリオ
 
 ## Rule: REQ-OAUTH2-001 ユーザーに紐づく OAuth グラントは account スコープのアクセストークンを発行できる
 

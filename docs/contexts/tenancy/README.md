@@ -12,4 +12,4 @@ Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストか�
 | [Tenancy の状態遷移](states.md) | 状態と遷移 |
 | [Tenancy の設計判断](decisions.md) | 設計判断 |
 | [Tenancy の内部設計](internals.md) | 機構の説明 |
-| [Tenancy Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Tenancy のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

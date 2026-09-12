@@ -1,4 +1,4 @@
-# Feature: Sourcing Scenarios
+# Feature: Sourcing のシナリオ
 
 ## Rule: REQ-SOURCING-001 SCIM クライアントは Users と Groups のコレクションを検索できる
 

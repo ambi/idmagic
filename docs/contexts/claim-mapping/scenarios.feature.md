@@ -1,4 +1,4 @@
-# Feature: ClaimMapping Scenarios
+# Feature: ClaimMapping のシナリオ
 
 ## Rule: REQ-CLAIMMAPPING-001 対応付け規則のないカスタム属性はクレームとして発行されない
 

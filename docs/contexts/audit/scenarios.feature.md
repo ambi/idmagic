@@ -1,4 +1,4 @@
-# Feature: Audit Scenarios
+# Feature: Audit のシナリオ
 
 ## Rule: REQ-AUDIT-001 管理者は監査ログを期間で絞り込み参照・エクスポートできる
 

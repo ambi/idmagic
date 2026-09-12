@@ -1,4 +1,4 @@
-# Saml の採用規範
+# Saml の標準仕様
 
 ## Assertions and Protocols for the OASIS Security Assertion Markup Language (SAML) V2.0
 

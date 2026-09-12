@@ -1,4 +1,4 @@
-# Feature: Jobs Scenarios
+# Feature: Jobs のシナリオ
 
 ## Rule: REQ-JOBS-001 Docker なしの標準開発環境で `worker` ジョブを完了する
 

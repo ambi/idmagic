@@ -1,4 +1,4 @@
-# Feature: Application Scenarios
+# Feature: Application のシナリオ
 
 ## Rule: REQ-APPLICATION-001 管理者はアプリケーション詳細で IdMagic 側の連携設定を確認できる
 

@@ -50,6 +50,13 @@ type RenderedDocument = SourceDocument & {
   context?: string
 }
 
+type NavigationDirectory = {
+  name: string
+  document?: RenderedDocument
+  documents: RenderedDocument[]
+  directories: NavigationDirectory[]
+}
+
 type DocumentCategory =
   | 'method'
   | 'development'
@@ -88,7 +95,7 @@ export function escapeHtml(value: string): string {
  */
 const inlineMarkdown = new MarkdownIt({ html: false, linkify: false, typographer: false })
 
-function renderDoc(value: string | undefined, fallback = 'No description.'): string {
+function renderDoc(value: string | undefined, fallback = '説明未記載。'): string {
   return inlineMarkdown.renderInline(value ?? fallback)
 }
 
@@ -509,19 +516,36 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   const owner = documents.find(
     (document) => document.category === 'context' && document.context === entry.context,
   )
-  return owner && entry.title.startsWith(`${owner.title} `)
-    ? entry.title.slice(owner.title.length + 1)
-    : entry.title
+  if (!owner) return entry.title
+  const japanesePossessive = `${owner.title} の`
+  if (entry.title.startsWith(japanesePossessive))
+    return entry.title.slice(japanesePossessive.length)
+  const spacedPrefix = `${owner.title} `
+  return entry.title.startsWith(spacedPrefix) ? entry.title.slice(spacedPrefix.length) : entry.title
 }
 
 /**
  * `docs/` から見た段。ディレクトリの索引はその段自身に、ほかの文書は索引の一段下に
  * 置く。上から下へ分解した体系は、この入れ子でしか読み手に伝わらない。
  */
-function systemDepth(path: string): number {
-  const segments = path.slice('docs/'.length).split('/')
-  const file = segments.pop() ?? ''
-  return file === 'README.md' ? segments.length : segments.length + 1
+function systemTree(documents: RenderedDocument[]): NavigationDirectory {
+  const root: NavigationDirectory = { name: 'docs', documents: [], directories: [] }
+  for (const document of documents) {
+    const parts = document.path.slice('docs/'.length).split('/')
+    const file = parts.pop() ?? ''
+    let node = root
+    for (const part of parts) {
+      let directory = node.directories.find((candidate) => candidate.name === part)
+      if (!directory) {
+        directory = { name: part, documents: [], directories: [] }
+        node.directories.push(directory)
+      }
+      node = directory
+    }
+    if (file === 'README.md') node.document = document
+    else node.documents.push(document)
+  }
+  return root
 }
 
 function navigation(page: string, documents: RenderedDocument[]): string {
@@ -532,48 +556,76 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const rootChildren = inGroup(documents, 'whole-system-child')
   const contexts = inGroup(documents, 'context')
   const current = documents.find((document) => document.outputPath === page)
-  // The section a reader is inside is the only one whose files are worth
-  // listing; expanding all of them at once buries the section list itself.
   const openContext = current?.context
-  const insideWholeSystem =
-    current?.category === 'whole-system' || current?.category === 'whole-system-child'
-  const insideDevelopment =
-    current?.category === 'development' || current?.category === 'development-child'
-  const link = (entry: RenderedDocument, depth: number) => {
+  const link = (entry: RenderedDocument, label?: string, extraClass = '') => {
     const marker = entry.outputPath === page ? ' aria-current="page"' : ''
-    const cls = depth > 0 ? ` class="nav-child${depth > 1 ? `-${depth}` : ''}"` : ''
-    const label = depth > 0 ? childLabel(entry, documents) : entry.title
-    return `<a data-site-link${cls}${marker} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(label)}</a>`
+    const display = label ?? entry.title
+    return `<a data-site-link class="nav-link${extraClass}"${marker} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(display)}</a>`
   }
-  const branch = (entry: RenderedDocument, children: RenderedDocument[]) =>
-    link(entry, 0) + children.map((child) => link(child, 1)).join('')
-  const flatBranch = (entry: RenderedDocument, children: RenderedDocument[]) =>
-    link(entry, 0) + children.map((child) => link(child, 0)).join('')
-  const systemBranch = (entry: RenderedDocument, children: RenderedDocument[]) =>
-    link(entry, 0) +
-    children.map((child) => link(child, Math.max(0, systemDepth(child.path) - 1))).join('')
-  // 現在位置を含むグループだけを初期展開し、常時参照する項目は展開しておく。
-  const group = (title: string, body: string, open: boolean) =>
-    `<details class="nav-group"${open ? ' open' : ''}><summary>${escapeHtml(title)}</summary>${body}</details>`
+  const leaf = (entry: RenderedDocument, label?: string, extraClass = '') =>
+    `<li class="nav-item">${link(entry, label, extraClass)}</li>`
+  const containsCurrent = (node: NavigationDirectory): boolean =>
+    node.document?.outputPath === page ||
+    node.documents.some((document) => document.outputPath === page) ||
+    node.directories.some(containsCurrent)
+  const directory = (node: NavigationDirectory): string => {
+    const children = containsCurrent(node)
+      ? [
+          ...node.documents.map((document) => leaf(document, childLabel(document, documents))),
+          ...node.directories.map(directory),
+        ].join('')
+      : ''
+    if (!node.document)
+      return `<li class="nav-branch"><span class="nav-label">${escapeHtml(node.name)}</span>${children ? `<ul>${children}</ul>` : ''}</li>`
+    return `<li class="nav-branch">${link(node.document)}${children ? `<ul>${children}</ul>` : ''}</li>`
+  }
+  const referenceLink = (path: string, label: string) => {
+    const marker = page === path ? ' aria-current="page"' : ''
+    return `<li class="nav-item"><a data-site-link class="nav-link"${marker} href="${escapeHtml(pageHref(page, path))}">${escapeHtml(label)}</a></li>`
+  }
+  const group = (title: string, body: string, index?: RenderedDocument) => {
+    const marker = index?.outputPath === page ? ' aria-current="page"' : ''
+    const heading = index
+      ? `<a data-site-link class="nav-section-link"${marker} href="${escapeHtml(pageHref(page, index.outputPath))}">${escapeHtml(title)}</a>`
+      : escapeHtml(title)
+    return `<section class="nav-section"><h2>${heading}</h2><ul class="nav-tree">${body}</ul></section>`
+  }
   const contextChildren = (entry: RenderedDocument) =>
     entry.context === openContext
       ? inGroup(documents, 'context-child').filter((document) => document.context === entry.context)
       : []
+  const contextBranch = (entry: RenderedDocument) => {
+    const children = contextChildren(entry)
+      .map((child) => leaf(child, childLabel(child, documents), ' nav-context-child'))
+      .join('')
+    return `<li class="${children ? 'nav-branch' : 'nav-item'}">${link(entry)}${children ? `<ul>${children}</ul>` : ''}</li>`
+  }
+  const wholeSystemContextDocuments = rootChildren.filter(
+    (document) => !document.path.slice('docs/'.length).includes('/'),
+  )
+  const designTree = systemTree(
+    rootChildren.filter((document) => !wholeSystemContextDocuments.includes(document)),
+  )
+  const wholeSystemContext = `<li class="nav-branch"><span class="nav-label">システム全体</span><ul>${wholeSystemContextDocuments.map((document) => leaf(document, childLabel(document, documents))).join('')}</ul></li>`
+  const contextTree = `<li class="nav-branch"><span class="nav-label">コンテキスト文書</span><ul>${wholeSystemContext}${contexts.map(contextBranch).join('')}</ul></li>`
+  const designBody = [
+    ...designTree.documents.map((document) => leaf(document, childLabel(document, documents))),
+    ...designTree.directories.map(directory),
+    contextTree,
+  ].join('')
   return [
-    group('方法論', method.map((entry) => link(entry, 0)).join(''), current?.category === 'method'),
+    root ? group('設計文書', designBody, root) : '',
+    group('フォーマット', method.map((entry) => leaf(entry)).join('')),
     development
-      ? group('開発', flatBranch(development, developmentChildren), insideDevelopment)
+      ? group(
+          '開発文書',
+          developmentChildren.map((child) => leaf(child, childLabel(child, documents))).join(''),
+          development,
+        )
       : '',
-    root ? group('システム', systemBranch(root, rootChildren), insideWholeSystem) : '',
     group(
-      'コンテキスト別',
-      contexts.map((entry) => branch(entry, contextChildren(entry))).join(''),
-      Boolean(openContext),
-    ),
-    group(
-      '参照',
-      `${siteLink(page, 'api/index.html', 'API リファレンス')}${siteLink(page, 'models/index.html', 'モデルカタログ')}${siteLink(page, 'traceability/index.html', 'トレーサビリティ')}`,
-      true,
+      'リファレンス',
+      `${referenceLink('api/index.html', 'API リファレンス')}${referenceLink('models/index.html', 'モデルカタログ')}${referenceLink('traceability/index.html', 'トレーサビリティ')}`,
     ),
   ].join('')
 }
@@ -615,10 +667,10 @@ function contextReference(args: {
   const filtered = (tag: string) =>
     `<a data-site-link href="${escapeHtml(`${pageHref(page, 'api/index.html')}?tag=${encodeURIComponent(tag)}`)}">${escapeHtml(tag)}</a>`
   const operations = args.operations.length
-    ? `<h3 id="${id}-operations">操作</h3><p class="muted">API リファレンスでは ${args.tags.map(filtered).join('、')} のタグで掲載する。</p><div class="table-wrap"><table><thead><tr><th scope="col">メソッド</th><th scope="col">パス</th><th scope="col">概要</th></tr></thead><tbody>${args.operations
+    ? `<h3 id="${id}-operations">API</h3><p class="muted">API リファレンスでは ${args.tags.map(filtered).join('、')} のタグで掲載する。</p><div class="table-wrap"><table><thead><tr><th scope="col">メソッド</th><th scope="col">パス</th><th scope="col">説明</th></tr></thead><tbody>${args.operations
         .map(
           (operation) =>
-            `<tr><th scope="row"><code>${escapeHtml(operation.method)}</code></th><td><code>${escapeHtml(operation.path)}</code></td><td>${operation.summary ? renderDoc(operation.summary) : '<span class="muted">—</span>'}</td></tr>`,
+            `<tr><th scope="row"><code>${escapeHtml(operation.method)}</code></th><td><code>${escapeHtml(operation.path)}</code></td><td>${operation.summary || operation.description ? renderDoc(operation.summary ?? operation.description ?? '') : '<span class="muted">説明未記入</span>'}</td></tr>`,
         )
         .join('')}</tbody></table></div>`
     : ''
@@ -685,14 +737,13 @@ function safeJson(value: unknown): string {
 }
 
 function apiPage(
-  openapi: OpenApiDocument,
+  _openapi: OpenApiDocument,
   openapiFileName: string,
   documents: RenderedDocument[],
 ): string {
   const page = 'api/index.html'
   const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI に基づくリファレンス</p><h1>API リファレンス</h1><p>生成した OpenAPI を Swagger UI で直接表示する。<code>?tag=</code> を指定すると、一つの Context の操作へ絞り込める。<a href="../../openapi/${encodeURIComponent(openapiFileName)}">OpenAPI JSON を開く</a>。</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API 操作"></div></div></article>`
   const head = `<link rel="stylesheet" href="${escapeHtml(assetHref(page, 'swagger-ui.css'))}">`
-  // Blob URL を OpenAPI 自身の基準 URI にする。file:// で開いても内部 $ref が HTML を参照しない。
   // Swagger UI が実行時に作る表示文言は、DOM の更新後に既知の固定語だけを日本語へ置き換える。
   const swaggerTranslations = {
     'Filter by tag': 'タグで絞り込む',
@@ -718,7 +769,7 @@ function apiPage(
     Model: 'モデル',
     Schema: 'スキーマ',
   }
-  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');var specification=${safeJson(openapi)};var specificationUrl=URL.createObjectURL(new Blob([JSON.stringify(specification)],{type:'application/json'}));var translations=${safeJson(swaggerTranslations)};var root=document.querySelector('#swagger-ui');var localize=function(){root.querySelectorAll('input').forEach(function(input){if(translations[input.placeholder])input.placeholder=translations[input.placeholder]});var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);var node;while(node=walker.nextNode()){var key=node.nodeValue.trim();if(translations[key])node.nodeValue=node.nodeValue.replace(key,translations[key])}};new MutationObserver(localize).observe(root,{childList:true,subtree:true});SwaggerUIBundle({url:specificationUrl,dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true,onComplete:localize});});</script>`
+  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');var translations=${safeJson(swaggerTranslations)};var root=document.querySelector('#swagger-ui');var localize=function(){root.querySelectorAll('input').forEach(function(input){if(translations[input.placeholder])input.placeholder=translations[input.placeholder]});var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);var node;while(node=walker.nextNode()){var key=node.nodeValue.trim();if(translations[key])node.nodeValue=node.nodeValue.replace(key,translations[key])}};new MutationObserver(localize).observe(root,{childList:true,subtree:true});SwaggerUIBundle({url:${safeJson(`../../openapi/${encodeURIComponent(openapiFileName)}`)},dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true,onComplete:localize});});</script>`
   return shell({
     page,
     title: 'API リファレンス',
@@ -761,9 +812,80 @@ function propertyRows(
   return properties
     .map(
       (property) =>
-        `<tr><th scope="row"><code>${escapeHtml(property.name)}</code>${property.optional ? '<span class="optional">任意</span>' : '<span class="required">必須</span>'}</th><td><code>${escapeHtml(property.type)}</code>${property.default ? `<div class="meta">既定値: <code>${escapeHtml(property.default)}</code></div>` : ''}</td><td>${property.doc ? renderDoc(property.doc) : '<span class="muted">説明なし。</span>'}${property.constraints.length ? `<ul class="compact">${property.constraints.map((constraint) => `<li><code>${escapeHtml(constraint)}</code></li>`).join('')}</ul>` : ''}${property.references.length ? `<div class="meta">参照: ${referenceList(page, property.references, symbols)}</div>` : ''}</td></tr>`,
+        `<tr><th scope="row"><code>${escapeHtml(property.name)}</code>${property.optional ? '<span class="optional">任意</span>' : '<span class="required">必須</span>'}</th><td><code>${escapeHtml(property.type)}</code>${property.default ? `<div class="meta">既定値: <code>${escapeHtml(property.default)}</code></div>` : ''}</td><td>${renderDoc(property.doc, propertyDescription(property))}${property.constraints.length ? `<ul class="compact">${property.constraints.map((constraint) => `<li><code>${escapeHtml(constraint)}</code></li>`).join('')}</ul>` : ''}${property.references.length ? `<div class="meta">参照: ${referenceList(page, property.references, symbols)}</div>` : ''}</td></tr>`,
     )
     .join('')
+}
+
+const commonPropertyDescriptions: Record<string, string> = {
+  occurredAt: '事象が発生した日時。',
+  created_at: 'レコードを作成した日時。',
+  updated_at: 'レコードを最後に更新した日時。',
+  issued_at: '資格情報または要求を発行した日時。',
+  expires_at: '値が失効する日時。',
+  disabled_at: '対象を無効化した日時。',
+  revoked_at: '対象を失効させた日時。',
+  tenantId: '対象テナントの識別子。',
+  tenant_id: '対象テナントの識別子。',
+  userId: '対象利用者の識別子。',
+  user_id: '対象利用者の識別子。',
+  actorUserId: '操作を実行した利用者の識別子。',
+  targetUserId: '操作対象となる利用者の識別子。',
+  clientId: 'OAuthクライアントの識別子。',
+  client_id: 'OAuthクライアントの識別子。',
+  applicationId: '対象アプリケーションの識別子。',
+  application_id: '対象アプリケーションの識別子。',
+  agentId: '対象エージェントの識別子。',
+  agent_id: '対象エージェントの識別子。',
+  groupId: '対象グループの識別子。',
+  group_id: '対象グループの識別子。',
+  sessionId: '対象セッションの識別子。',
+  streamId: '対象ストリームの識別子。',
+  workflowId: '対象ワークフローの識別子。',
+  runId: 'ワークフロー実行の識別子。',
+  jobId: '対象ジョブの識別子。',
+  connectionId: '対象接続の識別子。',
+  deliveryId: '対象配送の識別子。',
+  exportId: '対象エクスポートの識別子。',
+  id: 'このデータを一意に識別する値。',
+  name: '利用者に表示する名前。',
+  display_name: '利用者に表示する名前。',
+  description: '対象の目的や内容を説明する文。',
+  status: '現在の処理状態。',
+  state: '現在の状態。',
+  kind: '対象の種類。',
+  type: '対象の型または分類。',
+  reason: 'この結果になった理由。',
+  email: '利用者のメールアドレス。',
+  scopes: '許可する OAuth スコープの集合。',
+  scope: '許可または要求する OAuth スコープ。',
+  roles: '割り当てられたロールの集合。',
+  attributes: '対象に付随する属性。',
+  subject: '処理または資格情報の主体。',
+  audience: '資格情報を受け取る対象。',
+  issuer: '資格情報または表明の発行者。',
+  code: '処理結果または手続きを識別するコード。',
+  version: 'データまたは仕様の版。',
+  rules: '適用する規則の集合。',
+  label: '画面に表示する短い名称。',
+  mode: '処理方式。',
+  protocol: '通信に使用するプロトコル。',
+  realm: 'テナントを URL 上で識別するレルム。',
+  jti: 'JWT を一意に識別する値。',
+  nonce: '要求と応答を対応付ける一回限りの値。',
+  schema: '値が従うスキーマ。',
+  revision: '対象定義の改訂番号。',
+  locale: '表示や通知に使用するロケール。',
+}
+
+function propertyDescription(property: CatalogProperty): string {
+  const known = commonPropertyDescriptions[property.name]
+  if (known) return known
+  if (/(?:Id|_id)$/.test(property.name)) return `\`${property.name}\` が指す対象の識別子。`
+  if (/(?:At|_at)$/.test(property.name)) return `\`${property.name}\` が表す出来事の日時。`
+  if (/^(?:is|has|can|allow|enable|require|include)[A-Z_]/.test(property.name))
+    return `\`${property.name}\` の条件を満たすかどうか。`
+  return `このモデルで \`${property.name}\` が表す値。`
 }
 
 function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
@@ -824,7 +946,7 @@ function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]
       return `<tr class="trace-${scenario.kind}"><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span>${scenario.parentId ? `<span class="trace-parent">${escapeHtml(scenario.parentId)}</span>` : ''}</th><td>${paths('テスト参照', trace?.sources ?? [])}${scenario.kind === 'example' ? debt : ''}</td><td>${paths('作業項目', trace?.workItems ?? [])}</td></tr>`
     })
     .join('')
-  const body = `<header class="reference-header"><p class="eyebrow">リポジトリから生成</p><h1>トレーサビリティ</h1><p>すべての規範的な規則と実行可能な例を示す。例の被覆は EX 識別子を名指しするプロダクトテストだけから算出し、未被覆の場合は移行負債の理由を示す。${examples.length} 件中 ${covered.length} 件の例がテスト参照を持つ。</p></header><table class="trace-table"><thead><tr><th scope="col">規則／例</th><th scope="col">テストまたは負債</th><th scope="col">作業項目</th></tr></thead><tbody>${rows}</tbody></table>`
+  const body = `<header class="reference-header"><p class="eyebrow">リポジトリから生成</p><h1>トレーサビリティ</h1><p>すべての規範的な規則と実行可能な例を示す。例へのテスト対応は EX 識別子を名指しするプロダクトテストだけから算出し、テスト未対応の場合は移行負債の理由を示す。${examples.length} 件中 ${covered.length} 件の例がテスト参照を持つ。</p></header><table class="trace-table"><thead><tr><th scope="col">規則／例</th><th scope="col">テストまたは負債</th><th scope="col">作業項目</th></tr></thead><tbody>${rows}</tbody></table>`
   return shell({ page, title: 'トレーサビリティ', current: 'トレーサビリティ', body, documents })
 }
 
@@ -865,7 +987,7 @@ function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): str
         `<section class="model-group" data-model-group><h2 id="${escapeHtml(group.id)}">${escapeHtml(group.title)}</h2><div class="model-list">${group.entries
           .map(
             (entry) =>
-              `<article data-model-card data-search="${escapeHtml(`${entry.name} ${group.title} ${entry.doc ?? ''}`.toLowerCase())}"><div><span class="kind">${escapeHtml(entry.kind)}</span>${entry.apiExposed ? '<span class="api-exposed">API 公開</span>' : ''}</div><h3>${siteLink(page, modelPath(entry), entry.shortName)}</h3><p>${renderDoc(entry.doc)}</p></article>`,
+              `<article data-model-card data-search="${escapeHtml(`${entry.name} ${group.title} ${entry.doc ?? ''}`.toLowerCase())}"><div><span class="kind">${escapeHtml(entry.kind)}</span>${entry.apiExposed ? '<span class="api-exposed">API 公開</span>' : ''}</div><h3>${siteLink(page, modelPath(entry), entry.shortName)}</h3><p>${renderDoc(entry.doc, `\`${entry.shortName}\` が表すデータ構造。`)}</p></article>`,
           )
           .join('')}</div></section>`,
     )
@@ -897,11 +1019,11 @@ function modelPage(
     ? `<section><h2>${model.kind === 'union' ? 'バリアント' : 'メンバー'}</h2><div class="table-wrap"><table><thead><tr><th>名前</th><th>値または型</th><th>説明</th></tr></thead><tbody>${model.members
         .map(
           (member) =>
-            `<tr><th scope="row"><code>${escapeHtml(member.name)}</code></th><td><code>${escapeHtml(member.value ?? member.type ?? '—')}</code></td><td>${renderDoc(member.doc, '—')}</td></tr>`,
+            `<tr><th scope="row"><code>${escapeHtml(member.name)}</code></th><td><code>${escapeHtml(member.value ?? member.type ?? '—')}</code></td><td>${renderDoc(member.doc, `\`${member.name}\` が表す選択肢。`)}</td></tr>`,
         )
         .join('')}</tbody></table></div></section>`
     : ''
-  const body = `<article class="model-detail"><header><p class="eyebrow">${escapeHtml(model.namespace)} · ${escapeHtml(model.kind)}</p><h1>${escapeHtml(model.shortName)}</h1><div class="badges">${exposure}</div><p>${renderDoc(model.doc)}</p><p class="qualified"><strong>TypeSpec シンボル</strong> <code>${escapeHtml(model.name)}</code></p>${model.base ? `<p><strong>基底</strong> ${modelLink(page, model.base, symbols)}</p>` : ''}</header>${properties}${members}<section><h2>参照</h2><p>${referenceList(page, model.references, symbols)}</p></section></article>`
+  const body = `<article class="model-detail"><header><p class="eyebrow">${escapeHtml(model.namespace)} · ${escapeHtml(model.kind)}</p><h1>${escapeHtml(model.shortName)}</h1><div class="badges">${exposure}</div><p>${renderDoc(model.doc, `\`${model.shortName}\` が表すデータ構造。`)}</p><p class="qualified"><strong>TypeSpec シンボル</strong> <code>${escapeHtml(model.name)}</code></p>${model.base ? `<p><strong>基底</strong> ${modelLink(page, model.base, symbols)}</p>` : ''}</header>${properties}${members}<section><h2>参照</h2><p>${referenceList(page, model.references, symbols)}</p></section></article>`
   return shell({
     page,
     title: model.shortName,
@@ -915,6 +1037,7 @@ type ApiOperation = {
   method: string
   path: string
   summary?: string
+  description?: string
   tags: string[]
 }
 
@@ -931,7 +1054,8 @@ function inspectOpenApi(openapi: OpenApiDocument): { operations: ApiOperation[];
       operations.push({
         method: method.toUpperCase(),
         path,
-        summary: operation.summary ?? operation.operationId,
+        summary: operation.summary,
+        description: operation.description,
         tags: owners,
       })
     }
@@ -982,8 +1106,10 @@ function validateSiteLinks(files: Record<string, string>): void {
 const styles = `
 :root{color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--panel-2:#f8f9fd;--text:#182033;--muted:#667085;--line:#d9dfeb;--accent:#3457d5;--accent-soft:#e9eeff;--code:#edf1f8;--shadow:0 12px 32px rgba(25,35,60,.08);--given:#176b87;--when:#9a5b00;--then:#157347;--diagram-line:#294cba}
 @media(prefers-color-scheme:dark){:root{--bg:#0f131b;--panel:#171c27;--panel-2:#1d2431;--text:#eef2f8;--muted:#a7b0c1;--line:#30394b;--accent:#9db1ff;--accent-soft:#242f52;--code:#242b39;--shadow:none;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--diagram-line:#b9c8ff}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group>summary{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;list-style:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:"▸";display:inline-block;width:12px}.nav-group[open]>summary::before{content:"▾"}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:22px;font-size:13px;color:var(--muted)}a.nav-child-2{padding-left:38px;font-size:13px;color:var(--muted)}a.nav-child-3{padding-left:54px;font-size:13px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}main:has(.swagger-shell){width:calc(100% - 340px);max-width:none}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent,.trace-debt{font-size:12px}.trace-debt{display:block;margin-top:6px;color:var(--muted)}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group>summary{display:block;margin:0;padding:5px 8px;color:var(--text);font-size:15px;font-weight:700;letter-spacing:normal;text-transform:none;cursor:pointer;list-style:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:"▸";display:inline-block;width:12px}.nav-group[open]>summary::before{content:"▾"}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:24px;font-size:14px;color:var(--muted)}a.nav-child-2{padding-left:40px;font-size:14px;color:var(--muted)}a.nav-child-3{padding-left:56px;font-size:14px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}main:has(.swagger-shell){width:calc(100% - 340px);max-width:none}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent,.trace-debt{font-size:12px}.trace-debt{display:block;margin-top:6px;color:var(--muted)}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
 .model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}th{background:var(--panel-2)}.term-table td:first-child{white-space:nowrap}.context-reference{margin-top:38px;padding-top:8px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
+.nav-group a[class^="nav-child"]{padding-left:calc(8px + 16px * var(--nav-depth));font-size:14px;color:var(--muted)}.nav-directory{margin:0}.nav-directory>summary{padding:3px 8px 3px calc(8px + 16px * var(--nav-depth));color:var(--text);font-size:14px;font-weight:700;cursor:pointer;list-style:none}.nav-directory>summary::-webkit-details-marker{display:none}.nav-directory>summary::before{content:"▸";display:inline-block;width:12px}.nav-directory[open]>summary::before{content:"▾"}
+.nav-section{margin:20px 0}.nav-section h2{margin:0 0 6px;padding:0 8px;border:0;color:var(--text);font-size:15px;font-weight:800;letter-spacing:.02em}.nav-section-link{color:inherit;text-decoration:none}.nav-section-link:hover,.nav-section-link[aria-current=page]{color:var(--accent)}.nav-tree,.nav-tree ul{margin:0;padding:0;list-style:none}.nav-tree ul{margin-left:13px;padding-left:12px;border-left:1px solid var(--line)}.nav-item,.nav-branch{margin:1px 0}.nav-link,.nav-label{display:block;padding:5px 8px;border-radius:7px;color:var(--muted);font-size:14px;line-height:1.45;text-decoration:none}.nav-branch>.nav-link,.nav-branch>.nav-label{color:var(--text);font-weight:650}.nav-link:hover,.nav-link[aria-current=page]{color:var(--accent);background:var(--accent-soft)}.nav-link[aria-current=page]{font-weight:750}.nav-link[aria-current=page]::before{content:"";display:inline-block;width:3px;height:1em;margin:0 7px 0 -8px;border-radius:2px;background:var(--accent);vertical-align:-.12em}
 @media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}main:has(.swagger-shell){width:auto}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
 @media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link{display:none}main{width:auto;margin:0;padding:0}.document,.reference-page,.model-detail,.hero{border:0;box-shadow:none;padding:0}a{color:inherit;text-decoration:none}}
 `

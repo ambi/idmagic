@@ -1,4 +1,4 @@
-# Feature: SharedSignals Scenarios
+# Feature: SharedSignals のシナリオ
 
 ## Rule: REQ-SHAREDSIGNALS-001 キルスイッチは発行済みトークンをイントロスペクションで即時無効化する
 

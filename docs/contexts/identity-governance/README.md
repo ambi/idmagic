@@ -10,4 +10,4 @@
 | [IdGovernance の状態遷移](states.md) | 状態と遷移 |
 | [IdGovernance の設計判断](decisions.md) | 設計判断 |
 | [IdGovernance の内部設計](internals.md) | 機構の説明 |
-| [IdGovernance Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [IdGovernance のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

@@ -1,4 +1,4 @@
-# Authentication の採用規範
+# Authentication の標準仕様
 
 ## OpenID Connect Core 1.0
 

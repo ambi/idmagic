@@ -10,4 +10,4 @@
 | [DataKeys の状態遷移](states.md) | 状態と遷移 |
 | [DataKeys の設計判断](decisions.md) | 設計判断 |
 | [DataKeys の内部設計](internals.md) | 機構の説明 |
-| [DataKeys Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [DataKeys のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

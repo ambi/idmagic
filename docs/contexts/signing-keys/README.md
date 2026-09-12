@@ -10,4 +10,4 @@
 | [SigningKeys の状態遷移](states.md) | 状態と遷移 |
 | [SigningKeys の設計判断](decisions.md) | 設計判断 |
 | [SigningKeys の内部設計](internals.md) | 機構の説明 |
-| [SigningKeys Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [SigningKeys のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

@@ -7,8 +7,8 @@
 | 文書 | 内容 |
 |---|---|
 | [Provisioning の用語集](glossary.md) | この Context での語義 |
-| [Provisioning の採用規範](standards.md) | 準拠する外部規範 |
+| [Provisioning の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [Provisioning の状態遷移](states.md) | 状態と遷移 |
 | [Provisioning の設計判断](decisions.md) | 設計判断 |
 | [Provisioning の内部設計](internals.md) | 機構の説明 |
-| [Provisioning Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Provisioning のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

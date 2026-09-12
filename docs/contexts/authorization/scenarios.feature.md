@@ -1,4 +1,4 @@
-# Feature: Authorization Scenarios
+# Feature: Authorization のシナリオ
 
 ## Rule: REQ-AUTHORIZATION-001 管理者は認可モデルを版として登録でき、整合しないモデルは拒否される
 
@@ -25,11 +25,11 @@ Primary actor: `TenantAdministrator`
 - But 書き換え規則が循環する
 - Then AuthorizationModelInvalidError で拒否し、版を作らない
 
-### Example: EX-AUTHORIZATION-001-04 型名または関係名が書式に反する
+### Example: EX-AUTHORIZATION-001-04 型名または関係名がフォーマットに反する
 
 - Given `AdminAuthorizationModelManage` を持つ管理者として認証済みである
 - When 管理者がリソース型と関係の定義を PutAuthorizationModel へ渡す
-- But 型名または関係名が書式に反する
+- But 型名または関係名がフォーマットに反する
 - Then AuthorizationModelInvalidError で拒否し、版を作らない
 
 ## Rule: REQ-AUTHORIZATION-002 関係タプルの書き込みは登録済みモデルに適合するものだけを一括で適用する

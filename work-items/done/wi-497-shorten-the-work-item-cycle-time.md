@@ -93,7 +93,7 @@ work-item 1 件を実装しきるまでの時間が延びている。体感と�
 
 ### O2 検証のはしごの狭い段と、最後のゲートがキャッシュを共有していない
 
-[検証のはしご](../../docs/development/specification-first-workflow.md#5-verification-ladder) の第 3 段は `mise run test-go-package <package>`、すなわち `go test <package>` である。最後のゲートは `mise run test-go-race`、すなわち `go test -race ./...` である。`-race` は別のビルド構成なので、Go のテストキャッシュ項目は両者のあいだで共有されない。実装中に狭いテストを何度回しても、最後のゲートはその結果を 1 件も再利用しない。「部分テストと全体テストを両方走らせて損をしていないか」という問いに対する答えは、Go については「損をしている」である。損の出方はキャッシュの当たり外れではなく、狭い段が最後のゲートを一切前倒ししていないことにある。
+[検証の段階](../../docs/development/specification-first-workflow.md#5-検証の段階)の第 3 段は `mise run test-go-package <package>`、すなわち `go test <package>` である。最後のゲートは `mise run test-go-race`、すなわち `go test -race ./...` である。`-race` は別のビルド構成なので、Go のテストキャッシュ項目は両者のあいだで共有されない。実装中に狭いテストを何度回しても、最後のゲートはその結果を 1 件も再利用しない。「部分テストと全体テストを両方走らせて損をしていないか」という問いに対する答えは、Go については「損をしている」である。損の出方はキャッシュの当たり外れではなく、狭い段が最後のゲートを一切前倒ししていないことにある。
 
 ### O3 `-race` の下では Argon2id のコスト設定が支配的である
 
@@ -117,7 +117,7 @@ work-item 1 件を実装しきるまでの時間が延びている。体感と�
 
 ### O7 着手時の読み込みに単一の入口がない
 
-`docs/` は 13,104 行あり、`docs/contexts/oauth2/` だけで 2,187 行ある。Go は 297 パッケージ 1,550 ファイルである。[Context economy](../../docs/development/specification-first-workflow.md#8-context-economy) は work item の `initial_context` から読み始めよと書くが、`initial_context` は着手時に人またはエージェントが書くものなので、着手前には存在しない。つまり最初の探索だけは毎回素手で行われる。
+`docs/` は 13,104 行あり、`docs/contexts/oauth2/` だけで 2,187 行ある。Go は 297 パッケージ 1,550 ファイルである。[コンテキストの節約](../../docs/development/specification-first-workflow.md#8-コンテキストの節約)は work item の `initial_context` から読み始めよと書くが、`initial_context` は着手時に人またはエージェントが書くものなので、着手前には存在しない。つまり最初の探索だけは毎回素手で行われる。
 
 素手でなくてよいはずの材料はすでにある。`tools/render-spec-docs/src/main.ts` の `collectTraces()` はリポジトリ全体を走査して、規範 ID ごとに「その ID を名指すコードとテスト」と「その ID を名指す work item」を集めている。ところがこの索引は Traceability の HTML を描くためだけに使われ、端末から引く手段がない。`mise run spec-where` はあるが、これは `docs`、コード、work items に対する 3 回の `rg` を見出し付きで並べるだけで、規範 ID から仕様本文、TypeSpec 記号、既存テスト、先行事例へはたどらない。
 

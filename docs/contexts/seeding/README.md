@@ -11,4 +11,4 @@ HTTP の接点も持たない。seed を実行できるかどうかは権限で�
 | [Seeding の用語集](glossary.md) | この Context での語義 |
 | [Seeding の設計判断](decisions.md) | 設計判断 |
 | [Seeding の内部設計](internals.md) | 機構の説明 |
-| [Seeding Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Seeding のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

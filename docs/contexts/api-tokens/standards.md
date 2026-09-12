@@ -1,4 +1,4 @@
-# ApiTokens の採用規範
+# ApiTokens の標準仕様
 
 ## The OAuth 2.0 Authorization Framework Bearer Token Usage
 

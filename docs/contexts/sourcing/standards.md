@@ -1,4 +1,4 @@
-# Sourcing の採用規範
+# Sourcing の標準仕様
 
 ## System for Cross-domain Identity Management Core Schema
 

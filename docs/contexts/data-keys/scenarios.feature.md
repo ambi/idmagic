@@ -1,4 +1,4 @@
-# Feature: DataKeys Scenarios
+# Feature: DataKeys のシナリオ
 
 ## Rule: REQ-DATAKEYS-001 テナントの初回利用時に DEK を生成する
 

@@ -7,8 +7,8 @@
 | 文書 | 内容 |
 |---|---|
 | [Authentication の用語集](glossary.md) | この Context での語義 |
-| [Authentication の採用規範](standards.md) | 準拠する外部規範 |
+| [Authentication の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [Authentication の状態遷移](states.md) | 状態と遷移 |
 | [Authentication の設計判断](decisions.md) | 設計判断 |
 | [Authentication の内部設計](internals.md) | 機構の説明 |
-| [Authentication Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Authentication のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

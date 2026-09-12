@@ -10,4 +10,4 @@ IdMagic は SPIRE のサーバーやエージェントを同梱・運用せず�
 | [WorkloadIdentity の状態遷移](states.md) | 状態と遷移 |
 | [WorkloadIdentity の設計判断](decisions.md) | 設計判断 |
 | [WorkloadIdentity の内部設計](internals.md) | 機構の説明 |
-| [WorkloadIdentity Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [WorkloadIdentity のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

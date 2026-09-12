@@ -1,4 +1,4 @@
-# 全体規範
+# 全体の標準仕様
 
 プロダクト全体が従う外部規範を宣言する。ここに置くのは、二つ以上の Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるものだけである。1 つの Context が単独で満たす規範 — OAuth 2.0 と OIDC、SAML 2.0、SCIM 2.0、WS-Federation、SSF — は、その Context の `standards.md` が持つ。
 

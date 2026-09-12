@@ -1,4 +1,4 @@
-# Feature: IdManagement Scenarios
+# Feature: IdManagement のシナリオ
 
 ## Rule: REQ-IDMANAGEMENT-001 フェデレーションの JIT はパスワード資格情報を作らず有効な User を作成する
 

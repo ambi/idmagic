@@ -1,10 +1,10 @@
-# 仕様書式
+# 仕様フォーマット
 
 The exact, current grammar is whatever `mise run check-spec` accepts; its diagnostics are the precise rule.
 This document states intent, examples, and the decisions a checker cannot make for you. Rules marked
 *(checked)* fail the build; the rest are review judgment.
 
-## 1. Layout
+## 1. 配置
 
 Sections do not divide the specification; files do. A file's name says what kind of content it holds, and
 that name is what the checker validates the body against.
@@ -73,7 +73,7 @@ still need only `README.md` and `scenarios.feature.md`.
 owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`, which keeps
 every generated artifact out of `docs/`: everything under `docs/` is written by a person.
 
-## 2. TypeSpec scope
+## 2. TypeSpec の範囲
 
 Use TypeSpec for models, constraints, API operations, HTTP routes, request and response shapes, status codes,
 error unions, deprecation metadata, and authentication mechanisms. Prefer standard libraries and emitters.
@@ -82,13 +82,13 @@ Each operation must inherit an OpenAPI tag from its owning context; do not leave
 Keep stable wire names when source ownership moves. Do not recreate TypeSpec constructs in Markdown or a
 project-specific YAML dialect.
 
-## 3. The canonical documents
+## 3. 正準文書
 
 Every canonical document has exactly one H1 *(checked)*. There is no frontmatter and no fixed section set:
 the file name has already said what the file holds, so what would have been a section is now a file, and
 its H2s are free to name what the content actually is.
 
-### README.md — the boundary declaration
+### README.md — 境界の宣言
 
 `README.md` states what the directory owns, what it does not own and which owner takes it instead, and —
 when membership is easy to get wrong — the criterion that decides. It is a boundary declaration, not a
@@ -98,7 +98,7 @@ in the work item; a deliberate non-adoption belongs in `decisions.md` with the c
 it.
 
 ```markdown
-# Directory
+# ディレクトリ
 <!-- good: ownership, delegation, and the criterion that settles the hard cases -->
 Owns the lifecycle of X and the metadata around it.
 Does not own the cryptography itself; that is a shared adapter. Signing keys belong to <other context>.
@@ -126,7 +126,7 @@ A context owns only behavior it can satisfy and verify on its own. Behavior that
 contexts cooperate belongs to `docs/scenarios.feature.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
-### design-rules.md — how design choices are evaluated
+### design-rules.md — 設計判断の評価方法
 
 The root `design-rules.md` owns the system-wide criteria for module interfaces, seams, adapters, type
 ownership, effects, and errors. It states the current rule and the shape of a violation, so a reviewer can
@@ -134,7 +134,7 @@ apply it to a concrete change. It does not own directories or dependency directi
 rationale for one bounded decision (`decisions.md`), or mechanism that cannot be recovered from code
 (`internals.md`). Context directories do not carry their own copy of this file.
 
-### decisions.md — what was decided and why
+### decisions.md — 判断内容と理由
 
 One item per decision: what was decided, and why, each in a sentence. An item with no reason is a restated
 rule, not a decision. The test is whether the code could be read to recover it; if it could, leave it out.
@@ -150,7 +150,7 @@ invariant worth writing down is usually a decision with a reason, and written as
 A decision large enough to need rejected alternatives, the conditions under which it holds, and the
 condition that would reopen it gets a heading of its own.
 
-### internals.md — how a mechanism works
+### internals.md — 仕組みの動作
 
 Write this only when the working of a mechanism cannot be recovered from the code. The test is whether
 someone could read the code alone and know how to fix the mechanism when it breaks. If they could, leave it
@@ -175,7 +175,7 @@ shapes, columns and indexes, permission assignments, or rules every context foll
 owner: the code, the work item, `standards.md`, `states.md`, `scenarios.feature.md`, TypeSpec, the schema file,
 `docs/design/security/authorization.md`, or the matching file in the fixed system-document tree.
 
-## 4. State transitions
+## 4. 状態遷移
 
 `states.md` gives every state machine an H2 heading and two language-independent tables under it, the
 states first and then the transitions:
@@ -204,7 +204,7 @@ The tables are the normative source. The generated specification site derives on
 from the transition rows and displays the tables with the diagram; do not maintain a second hand-written
 state diagram for the same machine.
 
-## 5. Standards
+## 5. 標準仕様
 
 In `standards.md`, give every adopted standard an H2 named after it, a source URL on its own line, and one
 table:
@@ -242,7 +242,7 @@ the whole obligation. Rows that predate the check are carried in a coverage debt
 a reason for it, and that list only shrinks: an id it holds that has grown a test has to come off, and an id
 added from here on is not admitted to it *(checked)*.
 
-## 6. Scenarios and normative IDs
+## 6. シナリオと規範 ID
 
 `scenarios.feature.md` is the sole source of truth for observable, non-negotiable behavior. It uses
 [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md): one
@@ -326,7 +326,7 @@ State what the caller observes and what the refusal leaves untouched. "Rejected 
 half of it; the half that matters to a reader deciding whether the control works is that the operation had
 no effect.
 
-## 7. Authorization
+## 7. 認可
 
 Authorization is not a section of each context. It is `docs/design/security/authorization.md`, because someone checking
 authorization wants the product's authorization, not one context's share of it. That file holds the
@@ -347,7 +347,7 @@ downstream call, what stays inside a tenant, and what happens when the decision 
 scope vocabulary a context uses, and the conclusion and reason wherever an operation's assignment does not
 follow from its name.
 
-## 8. Threat model
+## 8. 脅威モデル
 
 The other documents state what the product does, so an implemented control can be checked against them. A
 control that was never built contradicts nothing: no scenario declares it, no test names it, and the refusal
@@ -380,7 +380,7 @@ canonical document. Do not mint a second identifier for a control that already h
 happen, never how: reproduction steps, concrete parameters, and the details of an unfixed path do not belong
 in a specification.
 
-## 9. Generated views and validation
+## 9. 生成ビューと検証
 
 - Compile TypeSpec and validate canonical documents through the repository's specification check.
 - Compare generated OpenAPI with the released baseline for compatibility.

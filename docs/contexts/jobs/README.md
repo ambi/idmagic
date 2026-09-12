@@ -12,4 +12,4 @@ API プロセスはジョブを投入するが実行せず、`worker` プロセ�
 | [Jobs の状態遷移](states.md) | 状態と遷移 |
 | [Jobs の設計判断](decisions.md) | 設計判断 |
 | [Jobs の内部設計](internals.md) | 機構の説明 |
-| [Jobs Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Jobs のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

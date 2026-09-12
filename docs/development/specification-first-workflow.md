@@ -1,6 +1,6 @@
 # 仕様先行の開発ワークフロー
 
-## 1. Purpose
+## 1. 目的
 
 This workflow keeps product behavior, current design, implementation, and verification aligned with a
 small set of established formats. It favors direct ownership, generated views, and focused checks over
@@ -10,7 +10,7 @@ Three documents carry the formats: this one for the loop, [Specification Format]
 for specification documents, and [Work Item Format](../../WORK_ITEM_FORMAT.md) for work items. Read the
 section you need; none of them is required reading.
 
-## 2. Sources of truth
+## 2. 正本
 
 | Concern | Source of truth |
 |---|---|
@@ -23,7 +23,7 @@ section you need; none of them is required reading.
 Generated OpenAPI and HTML documentation are views, not additional sources of truth. Fine-grained
 authorization remains executable application behavior unless a later work item adopts a policy language.
 
-## 3. The loop
+## 3. 開発サイクル
 
 | Stage | Skill | Gate |
 |---|---|---|
@@ -46,7 +46,7 @@ express state machines as a state table and a transition table. A normative chan
 implementation returns to the specification stage; do not relax a scenario merely to make an implementation
 pass.
 
-## 4. Evidence contract
+## 4. 証拠の要件
 
 Every work item that enters `in_progress` declares `evidence_policy: risk-based-v3`. The risk selects the
 minimum evidence the work must produce; it does not grant permission to push, merge, write to an external
@@ -78,7 +78,7 @@ implementer cannot satisfy by intending something. That is what the RED results 
 check are, and asking a work item to also record that somebody read it would only restate the review that
 already happened.
 
-### Acceptance and unit evidence
+### 受け入れ証拠と単体証拠
 
 Acceptance RED and Unit RED have different responsibilities. Acceptance RED fails at the narrowest boundary
 where a caller can observe the normative behavior and names the applicable `REQ-<CONTEXT>-NNN`. Unit RED fails
@@ -91,7 +91,7 @@ After both boundaries are fixed, implement one behavior at a time: make the narr
 simplest complete behavior, refactor while it remains GREEN, then widen through adapters until the acceptance
 test passes. Do not treat a generated or broad acceptance test as the unit test for the inner calculation.
 
-### Primary use-case evidence
+### 主要ユースケースの証拠
 
 `risk-based-v3` adds a primary-use-case contract to feature and bugfix work, and to work of any `change_kind`
 whose `affected_spec` names a requirement in a `standards.md`. A primary use case is the central successful
@@ -120,7 +120,7 @@ An applicable item already `in_progress` when `risk-based-v3` takes effect must 
 pass `mise run check-work-items`; an existing deficiency it exposes becomes a separate work item rather than
 an allow-list entry.
 
-### Refactoring
+### リファクタリング
 
 Refactoring is changing structure without changing behavior, and the test is what makes that claim checkable:
 if a change is a refactoring, the tests do not move. Editing a test in the same step is the signal that
@@ -140,7 +140,7 @@ refactoring necessary: a boundary or structural gate that was failing, an import
 `check` suite now rejects. If nothing was failing and no gate was asking for the change, that is worth
 noticing before starting rather than after.
 
-### Type and effect design
+### 型と副作用の設計
 
 Before implementation, resolve every open question whose answer would change product behavior,
 the public contract, the chosen design boundary, or the task breakdown. Record genuinely deferred choices in
@@ -153,7 +153,7 @@ decisions as calculations over data where that separation makes the rule easier 
 use cases orchestrate the actions. This is a design test for the changed logic, not a repository-wide purity
 or wrapper-type quota.
 
-## 5. Verification ladder
+## 5. 検証の段階
 
 Run the cheapest gate that can still fail on what you just changed, and widen only at the end.
 
@@ -196,7 +196,7 @@ data that nothing else in the suite needs.
 `mise run time-verify` runs the members of a suite one at a time and prints what each cost, which is how a
 claim that a gate got slower or faster is settled.
 
-### When the response does not entail the effect
+### レスポンスだけでは副作用を証明できない場合
 
 On most successful paths, asserting the response is enough. The response is derived from the effect —
 the created row comes back as the body, the issued token works on the next call — so a test that reads
@@ -234,7 +234,7 @@ the response returned, because that is nil and the caller will carry on. `mise r
 shape, and follows it through whatever helpers stand between the guard and the response: a wrapper that
 returns what a writer returned is the same defect one call further away.
 
-### Properties and fuzzing
+### プロパティテストとファジング
 
 An example-based test is written by whoever wrote the branches, out of the same reading of the problem, so it
 inherits that reading's blind spots. This weighs more when an agent writes both: implementation and table of
@@ -287,7 +287,7 @@ evidence too. When one guard's cases are also caught by another, removing the fi
 table says nothing about it. That is not hypothetical: a table meant to exercise a cost check here was entirely
 shadowed by a length check standing in front of it, and the mutation run is what exposed the table as empty.
 
-### Mutation testing
+### ミューテーションテスト
 
 `mise run test-go-mutation -- <package directory>` mutates one Go package and reports the mutants its own
 tests fail to kill. It walks the syntactic space mechanically — negated conditions, moved boundaries,
@@ -313,7 +313,7 @@ Like fuzz exploration, this stays out of the pull-request gate. The run costs mi
 copy of the whole repository per worker rather than anything about the package under test; and the mutant set
 moves under changes that have nothing to do with it.
 
-## 6. Current-state documents
+## 6. 現在状態の文書
 
 `docs/` holds the cross-context structure and policy, one file per kind; `docs/contexts/<context>/` holds
 that context's vocabulary, adopted standards, state transitions, decisions, mechanism, and acceptance
@@ -336,7 +336,7 @@ so backend, frontend, workers, and external implementations see the same
 language-independent source. A generated HTML view provides
 cross-document navigation without becoming an authored format.
 
-### Redrawing a context boundary
+### コンテキスト境界の引き直し
 
 Moving a boundary is a change to the specification like any other, and it starts the same way: one work item,
 and the specification before the code. What makes it its own case is that the unit being moved is a context,
@@ -358,7 +358,7 @@ Event Storming is available as a technique for such a work item, and is not part
 session pays for itself when the participants disagree about where an event belongs, which is exactly the
 state a boundary move starts from and is not the state ordinary feature work starts from.
 
-## 7. Work items
+## 7. 作業項目
 
 A work item is the design and execution record for one meaningful change. It holds motivation, scope,
 alternatives, plan, tasks, risks, and completion evidence. When the work lands, copy only the conclusion
@@ -370,7 +370,7 @@ writing the completion summary, so the recorded semantic difference is observed 
 
 Current design must be understandable from the canonical documents and the work item alone.
 
-## 8. Context economy
+## 8. コンテキストの節約
 
 Start from the work item's `initial_context`, which is written when the item starts and names the
 specification, code, and tests to read — and what to leave unread. Naming a file is enough to say what to
@@ -384,7 +384,7 @@ Naming a requirement ID in implementation code keeps the high-level rule findabl
 a product test is what covers a concrete example; a parent `REQ-*` mention does not cover its children. Both
 links appear on the generated Traceability page.
 
-## 9. Influences and references
+## 9. 参考資料
 
 Each entry names one representative source for one influence. The list explains provenance, not additional
 sources of truth or complete conformance. IdMagic's evidence contract is a repository-specific adaptation.

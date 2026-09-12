@@ -1,4 +1,4 @@
-# Feature: System Scenarios
+# Feature: System のシナリオ
 
 ## Rule: REQ-SYSTEM-001 Operator は分離された運用資産で SLO を検証する
 
@@ -177,14 +177,14 @@ Primary actor: `EndUser`
 - When EndUser または Administrator が表示言語 "en" を選択する
 - When EndUser または Administrator が任意の UI 画面を表示する
 - Then 画面、共有シェル、ダイアログ、空状態の ARIA ラベル、状態ラベルが `en` 辞書で表示される
-- Then 日時および数値が `en` の書式で表示される
+- Then 日時および数値が `en` のフォーマットで表示される
 
 ### Example: EX-SYSTEM-010-02 `ja` を選択する
 
 - Given 対応する画面へ遷移できる認証状態である
 - When EndUser または Administrator が表示言語 "en" を選択する
 - But `ja` を選択する
-- Then 同じ要素が `ja` 辞書および `ja` の書式で表示される
+- Then 同じ要素が `ja` 辞書および `ja` のフォーマットで表示される
 
 ### Example: EX-SYSTEM-010-03 翻訳キーが欠落している
 

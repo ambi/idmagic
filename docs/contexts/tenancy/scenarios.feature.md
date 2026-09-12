@@ -1,4 +1,4 @@
-# Feature: Tenancy Scenarios
+# Feature: Tenancy のシナリオ
 
 ## Rule: REQ-TENANCY-001 管理者は正規ロケーションの連携情報を取得する
 

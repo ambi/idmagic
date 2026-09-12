@@ -1,4 +1,4 @@
-# Feature: SigningKeys Scenarios
+# Feature: SigningKeys のシナリオ
 
 ## Rule: REQ-SIGNINGKEYS-001 署名鍵をローテーションしても以前の kid は JWKS に残る
 

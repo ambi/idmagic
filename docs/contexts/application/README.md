@@ -9,4 +9,4 @@
 | [Application の用語集](glossary.md) | この Context での語義 |
 | [Application の設計判断](decisions.md) | 設計判断 |
 | [Application の内部設計](internals.md) | 機構の説明 |
-| [Application Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Application のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

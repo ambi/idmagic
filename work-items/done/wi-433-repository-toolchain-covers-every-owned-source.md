@@ -136,7 +136,7 @@ Markdown のリンクと参照の整合性は、この リポジトリが自分�
 
 **新しい検査は `lint-repo` 1 つに束ねる。** 着手時は `verify` の平らな依存の形に合わせて言語ごとにタスクを分ける予定だったが、そうすると 12 個増えて `mise tasks` が読めなくなる。**この判断は実装中に取り消した。**
 
-分けない根拠は所要時間である。shellcheck、shfmt、actionlint、zizmor、hadolint、Biome、betterleaks を合わせても数秒で終わり、Go の 1 パッケージのテストより安い。[検証のはしご](../../docs/development/specification-first-workflow.md#5-verification-ladder) が「最も狭いタスクから」と言うのは、狭くすることに実際の時間差があるからであって、ここには差が無い。差の無いところで選択肢を増やすと、はしごが読みにくくなるだけである。
+分けない根拠は所要時間である。shellcheck、shfmt、actionlint、zizmor、hadolint、Biome、betterleaks を合わせても数秒で終わり、Go の 1 パッケージのテストより安い。[検証の段階](../../docs/development/specification-first-workflow.md#5-検証の段階)が「最も狭いタスクから」と言うのは、狭くすることに実際の時間差があるからであって、ここには差が無い。差の無いところで選択肢を増やすと、段階が読みにくくなるだけである。
 
 `lint-repo` は**最初の失敗で止めず、落ちた検査を全部並べてから終わる**。1 つ直すたびに走らせ直して次の 1 つを知る往復は、束ねたことで生まれる形の待ち時間なので、そこは埋める。
 

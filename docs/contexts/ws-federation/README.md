@@ -7,7 +7,7 @@
 | 文書 | 内容 |
 |---|---|
 | [WsFederation の用語集](glossary.md) | この Context での語義 |
-| [WsFederation の採用規範](standards.md) | 準拠する外部規範 |
+| [WsFederation の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [WsFederation の設計判断](decisions.md) | 設計判断 |
 | [WsFederation の内部設計](internals.md) | 機構の説明 |
-| [WsFederation Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [WsFederation のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

@@ -12,4 +12,4 @@
 | [IdManagement の状態遷移](states.md) | 状態と遷移 |
 | [IdManagement の設計判断](decisions.md) | 設計判断 |
 | [IdManagement の内部設計](internals.md) | 機構の説明 |
-| [IdManagement Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [IdManagement のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

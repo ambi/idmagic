@@ -7,8 +7,8 @@ OAuth 2.0 / OIDC プロトコル群の全責務を担う。クライアントメ
 | 文書 | 内容 |
 |---|---|
 | [OAuth2 の用語集](glossary.md) | この Context での語義 |
-| [OAuth2 の採用規範](standards.md) | 準拠する外部規範 |
+| [OAuth2 の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [OAuth2 の状態遷移](states.md) | 状態と遷移 |
 | [OAuth2 の設計判断](decisions.md) | 設計判断 |
 | [OAuth2 の内部設計](internals.md) | 機構の説明 |
-| [OAuth2 Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [OAuth2 のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

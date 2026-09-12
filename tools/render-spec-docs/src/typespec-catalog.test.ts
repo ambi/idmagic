@@ -97,4 +97,28 @@ namespace Example.Demo {
     expect(catalog.symbols[0]?.context).toBeUndefined()
     expect(catalog.contextTags).toEqual({})
   })
+
+  it('inherits documentation from a spread source property', async () => {
+    const host = await createTestHost()
+    host.addTypeSpecFile(
+      'main.tsp',
+      `namespace Example.Demo;
+
+model Source {
+  @doc("安定した識別子。")
+  id: string;
+}
+
+model Response {
+  ...Source;
+}
+`,
+    )
+    await host.compile('main.tsp')
+
+    const catalog = extractTypeSpecCatalog(host.program, new Set(), '/test')
+    const response = catalog.symbols.find((symbol) => symbol.shortName === 'Response')
+
+    expect(response?.properties[0]?.doc).toBe('安定した識別子。')
+  })
 })

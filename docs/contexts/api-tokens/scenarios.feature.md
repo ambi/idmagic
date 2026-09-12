@@ -1,4 +1,4 @@
-# Feature: ApiTokens Scenarios
+# Feature: ApiTokens のシナリオ
 
 ## Rule: REQ-APITOKENS-001 管理者は接続先とスコープの意味を確認して API アクセストークンを構成できる
 

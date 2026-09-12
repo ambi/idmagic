@@ -1,4 +1,4 @@
-# Feature: Saml Scenarios
+# Feature: Saml のシナリオ
 
 ## Rule: REQ-SAML-001 SP は署名証明書を取得できる
 

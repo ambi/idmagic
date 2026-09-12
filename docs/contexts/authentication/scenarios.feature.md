@@ -1,4 +1,4 @@
-# Feature: Authentication Scenarios
+# Feature: Authentication のシナリオ
 
 ## Rule: REQ-AUTHENTICATION-001 外部 OIDC 認証は検証済みの subject を常に同じローカル User へ相関する
 

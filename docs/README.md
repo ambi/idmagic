@@ -17,7 +17,7 @@
 
 | 層 | 正本の内容 |
 | --- | --- |
-| システムの目的 | [プロダクト概要](product-overview.md)、[用語集](glossary.md)、[全体規範](standards.md) |
+| システムの目的 | [プロダクト概要](product-overview.md)、[用語集](glossary.md)、[全体の標準仕様](standards.md) |
 | 要求 | [機能要求](requirements/functional.md)、[品質要求](requirements/quality.md)、[システム制約](requirements/constraints.md) |
 | アーキテクチャ | [システムコンテキスト](architecture/system-context.md)、[論理アーキテクチャ](architecture/logical.md)、[実行時アーキテクチャ](architecture/runtime.md)、[配備アーキテクチャ](architecture/deployment.md)、[アーキテクチャ上の判断](architecture/decisions.md) |
 | 設計 | [アプリケーション](design/application/)、[データ](design/data/)、[インフラストラクチャ](design/infrastructure/)、[セキュリティ](design/security/)、[信頼性](design/reliability/)、[性能](design/performance/)、[観測可能性](design/observability/) |

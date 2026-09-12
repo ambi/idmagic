@@ -7,4 +7,4 @@
 | [Audit の用語集](glossary.md) | この Context での語義 |
 | [Audit の設計判断](decisions.md) | 設計判断 |
 | [Audit の内部設計](internals.md) | 機構の説明 |
-| [Audit Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [Audit のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

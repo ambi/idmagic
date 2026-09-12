@@ -1,4 +1,4 @@
-# Feature: WorkloadIdentity Scenarios
+# Feature: WorkloadIdentity のシナリオ
 
 ## Rule: REQ-WORKLOADIDENTITY-001 登録済みの信頼設定を使ってワークロードトークンを Agent 資格情報に交換できる
 

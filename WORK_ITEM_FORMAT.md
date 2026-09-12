@@ -1,30 +1,29 @@
-# 作業項目の書式
+# 作業項目フォーマット
 
-A work item is one unit of work that can describe, design, implement, and verify one semantic change.
-Pending items live in `work-items/`; completed or cancelled items live in `work-items/done/`. File names use
-`wi-<sequence>-<kebab-title>.md`.
+作業項目は、一つの意味上の変更を説明、設計、実装、検証する作業単位である。
+未完了の項目は `work-items/`、完了または中止した項目は `work-items/done/` に置く。
+ファイル名には `wi-<連番>-<ケバブケースの題名>.md` を使う。
 
-A work item is also the task list, change-specific design document, and implementation history for that
-change. When the item is completed, conclusions that remain current must be reflected in TypeSpec or the
-canonical file that owns that kind of content.
+作業項目は、タスクリスト、変更固有の設計文書、実装履歴も兼ねる。
+完了時点でも有効な結論は、TypeSpec またはその種類の内容を所有する正準文書へ反映しなければならない。
 
 ```markdown
 ---
 status: pending
 authors: [name]
 risk: low
-reversibility: reversible # optional; decide it, do not inherit it from this template
+reversibility: reversible # 任意。このテンプレートを写さず、変更ごとに判断する
 created_at: 2026-01-01
 priority: p1
 depends_on: []
 change_kind: feature
-evidence_policy: risk-based-v3 # required after the item starts
-documentation_impact: # required after the item starts
+evidence_policy: risk-based-v3 # 着手後は必須
+documentation_impact: # 着手後は必須
   level: release_note
-  reason: The new supported capability should be visible to release readers.
+  reason: 新たにサポートする機能をリリースの読者へ知らせる必要がある。
   references:
     - { kind: release_note, path: docs/releases/changes/wi-999-start-task.md }
-initial_context: # written when the item starts, not when it is filed
+initial_context: # 起票時ではなく着手時に記入する
   specification: [docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
@@ -33,79 +32,77 @@ initial_context: # written when the item starts, not when it is filed
 affected_spec:
   - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
-primary_use_cases: # required for feature, bugfix, and standards.md work after it starts
+primary_use_cases: # feature、bugfix、standards.md の変更では着手後に必須
   - id: start-task
     requirement: REQ-SYSTEM-001
-    observable_result: The caller observes the task running.
+    observable_result: 呼び出し元がタスクの実行開始を観測できる。
     unit_test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
     e2e_test: { path: backend/system/e2e_test.go, name: TestE2E_StartTask_REQ_SYSTEM_001, task: test-go-race }
-    unit_fault_model: The use case does not emit the start command.
-    e2e_fault_model: The configured route does not connect the handler to the use case.
-maturity_evidence: # required at completion for a detected maturity promotion
+    unit_fault_model: ユースケースが開始コマンドを発行しない。
+    e2e_fault_model: 構成済みの経路がハンドラーとユースケースを接続しない。
+maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必須
   - feature: start-task-v1
     from: preview
     to: supported
-    security: The security review found no unresolved control gap for the supported use case.
-    compatibility: Existing preview configuration remains accepted without migration.
+    security: セキュリティレビューで、対象ユースケースに未解決の統制不足がないことを確認した。
+    compatibility: 既存の preview 設定は移行せずに引き続き受理される。
     documentation: docs/releases/changes/wi-999-start-task.md
 ---
 
-# One-sentence semantic change
+# 意味上の変更を表す一文
 
-## Motivation
-Why the change is needed.
+## 動機
+変更が必要な理由を書く。
 
-## Scope
-- Specifications and implementation included in the change.
+## 対象範囲
+- 変更に含める仕様と実装を書く。
 
-## Out of Scope
-- Work explicitly excluded from the change.
+## 対象外
+- 変更から明示的に除外する作業を書く。
 
-## Design
-The selected design, considerations, and rejected alternatives.
+## 設計
+採用する設計、考慮事項、採用しない代替案を書く。
 
-## Plan
-Implementation order, migration, and open questions. Resolve every question that would change what gets built
-before implementation.
+## 計画
+実装順序、移行、未解決の問いを書く。
+作るものを変え得る問いは、実装前にすべて解決する。
 
-## Tasks
-- [ ] T001 [Spec] Update the specification.
-- [ ] T002 [Acceptance] Confirm Acceptance RED at an observable boundary.
-- [ ] T003 [App] Confirm Unit RED, reach GREEN, and refactor the behavior.
-- [ ] T004 [Verify] Verify the change.
+## タスク
+- [ ] T001 [Spec] 仕様を更新する。
+- [ ] T002 [Acceptance] 観測可能な境界で受け入れ RED を確認する。
+- [ ] T003 [App] 単体 RED を確認し、GREEN にしてからリファクタリングする。
+- [ ] T004 [Verify] 変更を検証する。
 
-## Verification
+## 検証
 - `mise run verify`
 
-## Risk Notes
-Risks and mitigations.
+## リスク
+リスクと緩和策を書く。
 ```
 
-`priority` (`p0`–`p3`) and `depends_on` answer different questions. `depends_on` states what must be
-completed first; it is machine-checked and it constrains order. `priority` states what deserves attention
-first among the items nothing blocks; it is advisory, and an item may be left unset to mean unranked.
+`priority`（`p0`〜`p3`）と `depends_on` は別の問いに答える。
+`depends_on` は先に完了すべき項目を示し、機械検査によって作業順を制約する。
+`priority` は、依存関係に妨げられていない項目のうち何を先に扱うべきかを示す参考値である。
+未設定なら順位を付けていないことを表す。
 
-`risk` and `reversibility` answer different questions too. `risk` states how much damage the change does when
-it is wrong; `reversibility` states whether the decision it makes can be taken back afterwards. The two vary
-independently: a replica topology, a cache policy, or a screen layout can be severe and still reversible,
-while a wire format, the meaning of an identifier, a published schema, a destroyed key, or an assigned `REQ`
-number is irreversible however small it looked. Write `irreversible` when undoing the decision would require
-someone outside this repository to change what they already store, send, or trust.
+`risk` と `reversibility` も別の問いに答える。
+`risk` は変更を誤った場合の被害を、`reversibility` は判断を後から取り消せるかを表す。
+両者は独立している。
+レプリカ構成、キャッシュ方針、画面配置は影響が大きくても元に戻せる場合がある。
+一方、通信フォーマット、識別子の意味、公開済みスキーマ、破棄した鍵、割り当てた `REQ` 番号は、小さな変更に見えても取り消せない。
+判断を戻すためにリポジトリ外の利用者が保存済み、送信済み、または信頼済みのものを変える必要がある場合は `irreversible` とする。
 
-`reversibility` selects no evidence of its own; it records which decisions cannot be withdrawn, so that a
-later reader can tell a choice that is still open from one the repository now has to live with. It never
-relaxes anything either: declaring an item `reversible` leaves its `risk` contract exactly as it was, because
-a relaxation path would turn the declaration into a way around the evidence. The field is optional so that
-records written before it existed stay valid, and an unstated value means the axis was not assessed rather
-than that the change is reversible.
+`reversibility` 自体は必要な証拠を選ばない。
+後から読む人が、まだ選び直せる判断と、今後も維持すべき判断を区別できるように記録する。
+`reversible` としても `risk` が求める証拠は緩和しない。
+このフィールドは導入前の記録を有効に保つため任意であり、未記入は可逆を意味せず、評価していないことを意味する。
 
-When an item enters `in_progress`, add `evidence_policy: risk-based-v3`. The risk selects the evidence the
-item must produce before it can be completed; it grants no permission to push, merge, operate production, or
-modify an external system. Filing the item is what authorizes the work, so the item keeps no separate
-approval record. Resolve every open question that would change product behavior, the public contract, the
-selected design boundary, or the task breakdown before implementation begins. If implementation discovers a
-normative change, return to specification work; never weaken a scenario to let an implementation pass. The
-risk-to-evidence rules live in [specification-first-workflow.md](docs/development/specification-first-workflow.md#4-evidence-contract).
+項目を `in_progress` にするときは `evidence_policy: risk-based-v3` を追加する。
+リスクは完了までに必要な証拠を決めるが、push、merge、本番操作、外部システムの変更を許可するものではない。
+作業の権限は項目の起票によって与えられるため、別の承認記録は持たない。
+プロダクトの振る舞い、公開契約、採用する設計境界、タスク分割を変え得る問いは実装前に解決する。
+実装中に規範の変更が必要だと分かった場合は仕様作業へ戻り、実装を通すためにシナリオを弱めてはならない。
+リスクと証拠の対応は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#4-証拠の要件)が定める。
 
 `affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
 normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,
@@ -169,7 +166,7 @@ When the work is complete, set `status` to `completed`, append the following sec
 to `work-items/done/`:
 
 ```markdown
-## Completion
+## 完了
 - **Completed At**: 2026-01-01
 - **Summary**:
   The semantic difference introduced by the work, read from `mise run spec-diff` rather than recalled.

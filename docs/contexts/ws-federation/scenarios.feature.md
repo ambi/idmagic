@@ -1,4 +1,4 @@
-# Feature: WsFederation Scenarios
+# Feature: WsFederation のシナリオ
 
 ## Rule: REQ-WSFEDERATION-001 管理 API クライアントは WS-Fed スコープの信頼設定だけを操作できる
 

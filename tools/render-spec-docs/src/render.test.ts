@@ -23,9 +23,14 @@ flowchart LR
 `,
 }
 
+const rootProductOverviewDocument = {
+  path: 'docs/product-overview.md',
+  source: '# プロダクト概要\n\nプロダクトの目的。\n',
+}
+
 const rootGlossaryDocument = {
   path: 'docs/glossary.md',
-  source: `# Glossary
+  source: `# 用語集
 
 | Term | Definition |
 |---|---|
@@ -33,9 +38,19 @@ const rootGlossaryDocument = {
 `,
 }
 
+const rootStandardsDocument = {
+  path: 'docs/standards.md',
+  source: '# 全体の標準仕様\n\n採用する標準仕様。\n',
+}
+
 const rootStructureDocument = {
   path: 'docs/structure.md',
-  source: '# Structure\n\nディレクトリの配置。\n',
+  source: '# 構造\n\nディレクトリの配置。\n',
+}
+
+const rootScenariosDocument = {
+  path: 'docs/scenarios.feature.md',
+  source: '# Feature: Cross-Context Scenarios\n',
 }
 
 const requirementsIndexDocument = {
@@ -46,6 +61,26 @@ const requirementsIndexDocument = {
 const qualityDocument = {
   path: 'docs/requirements/quality.md',
   source: '# 品質要求\n\nシステム品質の目標。\n',
+}
+
+const designDocument = {
+  path: 'docs/design/README.md',
+  source: '# 設計\n\n設計の索引。\n',
+}
+
+const applicationDesignDocument = {
+  path: 'docs/design/application/README.md',
+  source: '# アプリケーション\n\nアプリケーション設計の索引。\n',
+}
+
+const apiRulesDocument = {
+  path: 'docs/design/application/api-rules.md',
+  source: '# API規則\n\nAPI の設計規則。\n',
+}
+
+const designRulesDocument = {
+  path: 'docs/design/application/design-rules.md',
+  source: '# 設計規則\n\n設計規則。\n',
 }
 
 const contextDocument = {
@@ -169,8 +204,11 @@ const site = () =>
   renderSpecificationSite({
     documents: [
       rootDocument,
+      rootProductOverviewDocument,
       rootGlossaryDocument,
+      rootStandardsDocument,
       rootStructureDocument,
+      rootScenariosDocument,
       requirementsIndexDocument,
       qualityDocument,
       contextDocument,
@@ -209,17 +247,10 @@ const sidebar = (html: string | undefined) =>
   (html ?? '').slice((html ?? '').indexOf('<aside class="sidebar">'))
 
 const childLabels = (html: string | undefined) => {
-  const contexts = sidebar(html).match(
-    /<details class="nav-group"[^>]*><summary>コンテキスト別<\/summary>([\s\S]*?)<\/details>/,
-  )?.[1]
-  return [...(contexts ?? '').matchAll(/class="nav-child"[^>]*>([^<]+)</g)].map((match) => match[1])
-}
-
-/** 深さつきの子項目。`nav-child` が 1 段目、`nav-child-2` が 2 段目を表す。 */
-const nestedLabels = (html: string | undefined) =>
-  [...sidebar(html).matchAll(/class="nav-child(-\d)?"[^>]*>([^<]+)</g)].map(
-    (match) => `${match[1] ? match[1].slice(1) : '1'}:${match[2]}`,
+  return [...sidebar(html).matchAll(/class="nav-link nav-context-child"[^>]*>([^<]+)</g)].map(
+    (match) => match[1],
   )
+}
 
 describe('renderSpecificationSite', () => {
   it('renders development documents as their own navigable plane', () => {
@@ -234,8 +265,16 @@ describe('renderSpecificationSite', () => {
 
     expect(result.files['development/index.html']).toContain('href="release.html"')
     expect(result.files['development/release.html']).toContain('リリース')
-    expect(sidebar(result.files['development/index.html'])).toContain('<summary>開発</summary>')
-    expect(nestedLabels(result.files['development/index.html'])).toEqual([])
+    expect(sidebar(result.files['development/index.html'])).toContain(
+      '<h2><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></h2>',
+    )
+    expect(sidebar(result.files['development/index.html'])).toContain(
+      '<h2><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></h2><ul class="nav-tree">',
+    )
+    expect(
+      sidebar(result.files['development/index.html']).indexOf('>設計文書</a></h2>'),
+    ).toBeLessThan(sidebar(result.files['development/index.html']).indexOf('>開発文書</a></h2>'))
+    expect(sidebar(result.files['development/index.html'])).toContain('>リリース</a>')
   })
 
   it('renders a linked multi-page specification site', () => {
@@ -253,8 +292,11 @@ describe('renderSpecificationSite', () => {
       'models/index.html',
       'specification/glossary.html',
       'specification/index.html',
+      'specification/product-overview.html',
       'specification/requirements/index.html',
       'specification/requirements/quality.html',
+      'specification/scenarios.html',
+      'specification/standards.html',
       'specification/structure.html',
       'traceability/index.html',
     ])
@@ -278,12 +320,11 @@ describe('renderSpecificationSite', () => {
     expect(result.files['specification/index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')
-    expect(result.files['api/index.html']).toContain('"/things"')
+    expect(result.files['api/index.html']).toContain('url:"../../openapi/example.openapi.json"')
     expect(result.files['api/index.html']).toContain('<h1>API リファレンス</h1>')
     expect(result.files['api/index.html']).toContain('レスポンスボディ')
     expect(result.files['api/index.html']).toContain('リクエストボディ')
-    expect(result.files['api/index.html']).toContain('URL.createObjectURL(new Blob(')
-    expect(result.files['api/index.html']).toContain('url:specificationUrl')
+    expect(result.files['api/index.html']).not.toContain('URL.createObjectURL(new Blob(')
     expect(result.files['api/index.html']).not.toContain('SwaggerUIBundle({spec:')
     expect(result.files['api/index.html']).toContain('../../openapi/example.openapi.json')
     expect(result.files['models/index.html']).toContain('InternalRecord')
@@ -316,45 +357,98 @@ describe('renderSpecificationSite', () => {
     expect(page).not.toContain('>glossary.md<')
   })
 
-  /**
-   * 上から下へ分解した体系は、一段の一覧では読めない。ディレクトリの索引を
-   * 親に、その配下の文書を子に置き、名札は各文書自身の題名にする。英語の
-   * ディレクトリ名を接頭辞として足すと、日本語の題名の前に別の語彙が並ぶ。
-   */
-  it('lists the root and directory indexes at one level without a single-child wrapper', () => {
-    const result = site()
-    expect(nestedLabels(result.files['specification/index.html'])).toEqual(['1:品質要求'])
-    expect(sidebar(result.files['specification/index.html'])).toContain(
-      '>Whole-System Specification</a>',
+  it('keeps a parent page distinct from its children and removes Japanese possession', () => {
+    const result = renderSpecificationSite({
+      documents: [
+        rootDocument,
+        developmentDocument,
+        contextDocument,
+        {
+          path: 'docs/contexts/demo/glossary.md',
+          source: '# Demo の用語集\n\n| 用語 | 定義 |\n|---|---|\n| 用語 | 定義 |\n',
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+    const page = result.files['development/index.html'] ?? ''
+
+    expect(sidebar(page)).toContain(
+      '<h2><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></h2>',
     )
-    expect(sidebar(result.files['specification/index.html'])).toContain('>要求</a>')
     expect(sidebar(result.files['contexts/demo/index.html'])).toContain(
-      'href="../../specification/structure.html"',
+      '<span class="nav-label">コンテキスト文書</span>',
     )
+    expect(sidebar(result.files['contexts/demo/index.html'])).toContain('>用語集</a>')
+    expect(sidebar(result.files['contexts/demo/index.html'])).not.toContain('>の用語集</a>')
   })
 
-  it('folds every navigation group the same way, with method alone starting folded', () => {
-    const result = site()
-    const groups = (page: string) =>
-      [
-        ...sidebar(result.files[page]).matchAll(
-          /<details class="nav-group"( open)?><summary>([^<]+)/g,
-        ),
-      ].map((match) => `${match[2]}${match[1] ? ' open' : ''}`)
+  it('renders system documents as a directory tree', () => {
+    const result = renderSpecificationSite({
+      documents: [
+        rootDocument,
+        designDocument,
+        applicationDesignDocument,
+        apiRulesDocument,
+        designRulesDocument,
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+    const page = sidebar(result.files['specification/design/application/api-rules.html'])
 
-    expect(groups('contexts/demo/index.html')).toEqual([
-      '方法論',
-      'システム',
-      'コンテキスト別 open',
-      '参照 open',
-    ])
-    expect(groups('specification/index.html')).toEqual([
-      '方法論',
-      'システム open',
-      'コンテキスト別',
-      '参照 open',
-    ])
-    expect(groups('method/work-item-format.html')[0]).toBe('方法論 open')
+    expect(page).toContain('>設計</a><ul><li class="nav-branch">')
+    expect(page).toContain('>アプリケーション</a><ul><li class="nav-item">')
+    expect(page).not.toContain('>概要</a>')
+    expect(page).toContain('>API規則</a>')
+    expect(page).toContain('>設計規則</a>')
+    expect(page).not.toContain('nav-child')
+  })
+
+  it('places whole-system context documents beside bounded contexts', () => {
+    const page = sidebar(site().files['specification/glossary.html'])
+    const wholeSystem = page.match(
+      /<span class="nav-label">システム全体<\/span><ul>([\s\S]*?)<\/ul>/,
+    )?.[1]
+
+    expect(page).toContain(
+      '<span class="nav-label">コンテキスト文書</span><ul><li class="nav-branch"><span class="nav-label">システム全体</span>',
+    )
+    expect(
+      [...(wholeSystem ?? '').matchAll(/class="nav-link[^>]*>([^<]+)/g)].map((match) => match[1]),
+    ).toEqual(['プロダクト概要', '用語集', '全体の標準仕様', '構造', 'シナリオ'])
+    expect(page.indexOf('>システム全体</span>')).toBeLessThan(page.indexOf('>Demo</a>'))
+  })
+
+  it('keeps every available top-level section visible without disclosure state', () => {
+    const result = site()
+    const top = sidebar(result.files['index.html'])
+
+    expect(
+      [...top.matchAll(/<section class="nav-section"><h2>(?:<a[^>]*>)?([^<]+)/g)].map(
+        (match) => match[1],
+      ),
+    ).toEqual(['設計文書', 'フォーマット', 'リファレンス'])
+    expect(top).not.toContain('<h2>方法論</h2>')
+    expect(top).not.toContain('<h2>システム</h2>')
+    expect(top).not.toContain('<details class="nav-group"')
+  })
+
+  it('styles hierarchy from nested lists instead of depth-specific classes', () => {
+    const css = site().assets['site.css']
+
+    expect(css).toContain(
+      '.nav-section h2{margin:0 0 6px;padding:0 8px;border:0;color:var(--text);font-size:15px;font-weight:800;',
+    )
+    expect(css).toContain(
+      '.nav-tree ul{margin-left:13px;padding-left:12px;border-left:1px solid var(--line)}',
+    )
   })
 
   it('uses the full reference width without Swagger UI wrapper padding', () => {
@@ -363,6 +457,13 @@ describe('renderSpecificationSite', () => {
     expect(css).toContain('main:has(.swagger-shell){width:calc(100% - 340px);max-width:none}')
     expect(css).toContain('.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}')
     expect(css).toContain('main:has(.swagger-shell){width:auto}')
+  })
+
+  it('loads the published OpenAPI URL so Swagger UI can resolve schema references', () => {
+    const page = site().files['api/index.html'] ?? ''
+
+    expect(page).toContain('url:"../../openapi/example.openapi.json"')
+    expect(page).not.toContain('URL.createObjectURL(new Blob(')
   })
 
   it('keeps a glossary term on one line', () => {
@@ -375,11 +476,39 @@ describe('renderSpecificationSite', () => {
     const page = result.files['contexts/demo/index.html'] ?? ''
 
     expect(page).toContain('API とモデル')
+    expect(page).toContain('>API</h3>')
+    expect(page).toContain('<th scope="col">説明</th>')
     expect(page).toContain('href="../../api/index.html?tag=Demo"')
     expect(page).toContain('List things')
     expect(page).toContain('href="../../models/index.html#context-demo"')
     expect(page).toContain('href="../../models/example-demo-internalrecord.html"')
     expect(result.files['models/index.html']).toContain('<h2 id="context-demo">Demo</h2>')
+  })
+
+  it('uses an OpenAPI description before exposing an operation identifier', () => {
+    const result = renderSpecificationSite({
+      documents: [rootDocument, contextDocument],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: {
+        paths: {
+          '/things': {
+            get: {
+              operationId: 'ListThings',
+              description: '利用可能な Thing を一覧する。',
+              tags: ['Demo'],
+            },
+          },
+        },
+      },
+      models: [],
+      contextTags: { demo: ['Demo'] },
+    })
+    const page = result.files['contexts/demo/index.html'] ?? ''
+
+    expect(page).toContain('利用可能な Thing を一覧する。')
+    expect(page).not.toContain('<td>ListThings</td>')
   })
 
   /**
@@ -446,6 +575,34 @@ describe('renderSpecificationSite', () => {
     expect(page).toContain('Paired with <code>expires_at</code>.')
     expect(page).toContain('Set once <code>expires_at</code> passes.')
     expect(result.files['models/index.html']).toContain('Expires at <code>expires_at</code>.')
+  })
+
+  it('explains undocumented model properties from their established field meaning', () => {
+    const result = renderSpecificationSite({
+      documents: [rootDocument, contextDocument],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: { paths: {} },
+      models: [
+        {
+          ...models[0]!,
+          properties: [
+            {
+              name: 'tenantId',
+              type: 'string',
+              optional: false,
+              constraints: [],
+              references: [],
+            },
+          ],
+        },
+      ],
+    })
+    const page = result.files['models/example-demo-internalrecord.html'] ?? ''
+
+    expect(page).toContain('対象テナントの識別子。')
+    expect(page).not.toContain('説明なし')
   })
 
   it('rejects unclassified operations', () => {

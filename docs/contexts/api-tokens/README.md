@@ -5,7 +5,7 @@
 | 文書 | 内容 |
 |---|---|
 | [ApiTokens の用語集](glossary.md) | この Context での語義 |
-| [ApiTokens の採用規範](standards.md) | 準拠する外部規範 |
+| [ApiTokens の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [ApiTokens の設計判断](decisions.md) | 設計判断 |
 | [ApiTokens の内部設計](internals.md) | 機構の説明 |
-| [ApiTokens Scenarios](scenarios.feature.md) | 受け入れシナリオ |
+| [ApiTokens のシナリオ](scenarios.feature.md) | 受け入れシナリオ |

@@ -1,4 +1,4 @@
-# Feature: Provisioning Scenarios
+# Feature: Provisioning のシナリオ
 
 ## Rule: REQ-PROVISIONING-001 管理 API クライアントは Provisioning スコープの範囲でだけ接続と配信を操作できる
 

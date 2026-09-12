@@ -1,4 +1,4 @@
-# OAuth2 の採用規範
+# OAuth2 の標準仕様
 
 ## The OAuth 2.0 Authorization Framework
 
