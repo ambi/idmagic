@@ -128,3 +128,53 @@ func hasAdminRolePermission(roles []oauth2http.AdminRolePolicyResponse, roleName
 	}
 	return false
 }
+
+// EX-OAUTH2-004-01: 認証済みの管理者が受け取るロールポリシー一覧には、参照可能なロールと、
+// その権限と、権限ごとの HTTP インターフェース (名前、メソッド、パス) が入っている。
+//
+// 3 つを別々に読むのは、どれか 1 つを落としても他の 2 つは揃う実装があるためである。
+// とくに interfaces は入れ子の最下層なので、ロールと権限だけを読むテストは、
+// interfaces を常に空配列で返す実装を通してしまう。実際の対応まで読むために、
+// `AdminUserRead` が GET /api/admin/v1/users を指していることを名指しで確かめる。
+func TestAdminRolePoliciesListVisibleRolesPermissionsAndInterfaces(t *testing.T) {
+	e, _, _ := newKeyAdminServer(t, keyAdminUser("admin", "acme", []string{"admin"}))
+	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	roles := decodeAdminRolePolicies(t, rec)
+
+	// 参照可能なロールが含まれる。
+	var admin *oauth2http.AdminRolePolicyResponse
+	for i, role := range roles {
+		if role.Name == "admin" {
+			admin = &roles[i]
+		}
+	}
+	if admin == nil {
+		t.Fatalf("参照可能なロール admin が一覧に無い: %+v", roles)
+	}
+
+	// その権限が含まれる。
+	found := false
+	// 対応する HTTP インターフェースが含まれる。
+	interfaced := false
+	for _, permission := range admin.Permissions {
+		if permission.Name != "AdminUserRead" {
+			continue
+		}
+		found = true
+		for _, iface := range permission.Interfaces {
+			if iface.Name == "ListAdminUsers" && iface.Method == http.MethodGet &&
+				iface.Path == "/api/admin/v1/users" {
+				interfaced = true
+			}
+		}
+		if !interfaced {
+			t.Fatalf("AdminUserRead に GET /api/admin/v1/users の対応が無い: %+v", permission.Interfaces)
+		}
+	}
+	if !found {
+		t.Fatalf("admin の権限 AdminUserRead が一覧に無い: %+v", admin.Permissions)
+	}
+}

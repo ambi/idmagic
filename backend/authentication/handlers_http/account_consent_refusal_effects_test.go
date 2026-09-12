@@ -9,6 +9,7 @@ package handlers_http_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -239,4 +240,97 @@ func TestRevokeAccountConsentAcrossUserAndTenantLeavesConsentGranted(t *testing.
 			t.Fatalf("前提が壊れている: 同一テナントのトークンまで invalid_token になった: %s", body)
 		}
 	})
+}
+
+// listConsents は account 同意 API の参照側を 1 回叩く。撤回と同じトークンで参照も
+// 試せるようにしてあるのは、EX-OAUTH2-002-01 が「参照だけ」「撤回だけ」という 2 つの
+// 「だけ」を宣言していて、その双方に反対方向の観測が要るためである。
+func (f *consentRefusalFixture) listConsents(realm, token string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodGet,
+		"/realms/"+realm+"/api/account/v1/consents", http.NoBody)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	f.e.ServeHTTP(response, request)
+	return response
+}
+
+// EX-OAUTH2-002-01: active User に固定された API access トークンについて、
+// `account:read` は自身の active 同意の参照だけを許し、`account:consents:write` は
+// 自身の同意の撤回だけを許す。
+//
+// 「だけ」は 2 つの軸で言われている。操作の軸 (参照と撤回) と、主体の軸 (自身と他人) である。
+// 操作の軸だけを読むと、どのスコープでも他人の同意まで見える実装を通してしまう。
+// 主体の軸だけを読むと、参照スコープで撤回まで通る実装を通してしまう。両方を読む。
+func TestAccountConsentScopesAllowOnlyTheOwnersReadAndRevoke(t *testing.T) {
+	fixture := newConsentRefusalFixture(t)
+	fixture.seedConsent(t, tenancydomain.DefaultTenantID, consentUserID)
+	fixture.seedConsent(t, tenancydomain.DefaultTenantID, consentOtherUser)
+
+	read := fixture.issueToken(t, tenancydomain.DefaultTenantID, consentUserID, "account:read")
+	revokeOnly := fixture.issueToken(t, tenancydomain.DefaultTenantID, consentUserID, "account:consents:write")
+
+	// account:read は自身の active 同意の参照へ届く。
+	listed := fixture.listConsents(tenancydomain.DefaultRealm, read)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("account:read の参照 status=%d body=%s, want 200", listed.Code, listed.Body.String())
+	}
+	// 返るのは自身の active 同意 1 件だけである。bob の同意も同じテナントへ seed して
+	// あるので、主体の固定が効いていなければここで 2 件返る。
+	consents := decodeAccountConsents(t, listed)
+	if len(consents) != 1 || consents[0].ClientID != consentClientID ||
+		consents[0].State != consentdomain.ConsentGranted {
+		t.Fatalf("自身の active 同意が 1 件だけ返らない: %+v", consents)
+	}
+
+	// account:consents:write は撤回へ届き、自身の同意だけが Revoked になる。
+	revoked := fixture.revoke(tenancydomain.DefaultRealm, revokeOnly)
+	if revoked.Code != http.StatusNoContent {
+		t.Fatalf("account:consents:write の撤回 status=%d body=%s, want 204",
+			revoked.Code, revoked.Body.String())
+	}
+	if state := fixture.consentState(t, tenancydomain.DefaultTenantID); state != consentdomain.ConsentRevoked {
+		t.Fatalf("撤回したのに alice の同意が %s のままである", state)
+	}
+	if state := fixture.userConsentState(t, tenancydomain.DefaultTenantID, consentOtherUser); state != consentdomain.ConsentGranted {
+		t.Fatalf("自身の撤回が bob の同意まで %s にした", state)
+	}
+
+	// account:consents:write は参照へ届かない。撤回を配ることが参照を配ることに
+	// ならないのが、この 2 つを別スコープにしている理由である。
+	if response := fixture.listConsents(tenancydomain.DefaultRealm, revokeOnly); response.Code == http.StatusOK {
+		t.Fatalf("account:consents:write だけで同意一覧が読めた: body=%s", response.Body.String())
+	}
+}
+
+// userConsentState は主体を指定して同意の状態を読む。consentState は alice に固定して
+// いるので、他人の同意が動いていないことを読むにはこちらが要る。
+func (f *consentRefusalFixture) userConsentState(
+	t *testing.T, tenantID, userID string,
+) consentdomain.ConsentState {
+	t.Helper()
+	consent, err := f.consents.Find(context.Background(), tenantID, userID, consentClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if consent == nil {
+		t.Fatalf("同意が消えている: tenant=%s user=%s", tenantID, userID)
+	}
+	return consent.State
+}
+
+func decodeAccountConsents(t *testing.T, response *httptest.ResponseRecorder) []struct {
+	ClientID string                     `json:"client_id"`
+	State    consentdomain.ConsentState `json:"state"`
+} {
+	t.Helper()
+	var body struct {
+		Consents []struct {
+			ClientID string                     `json:"client_id"`
+			State    consentdomain.ConsentState `json:"state"`
+		} `json:"consents"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("同意一覧の復号: %v body=%s", err, response.Body.String())
+	}
+	return body.Consents
 }
