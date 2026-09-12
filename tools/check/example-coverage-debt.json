@@ -1163,16 +1163,16 @@
       "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
     },
     {
-      "id": "EX-OAUTH2-005-06",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
       "id": "EX-OAUTH2-005-07",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
+      "blocked_by": "wi-566-authorization-code-replay-and-expiry-leave-no-record",
+      "finding": "認可コードを 2 回交換すると、発行ファミリーは失効し RefreshTokenReuseDetected も発行される (wi-559 が発行漏れを修正) が、具体例が言う TokenRevoked は発行されない。RefreshTokenStore.RevokeFamily が失効させた token を返さないため、TokenID を持つイベントを組み立てられない。port の署名を決め直す必要がある。"
     },
     {
       "id": "EX-OAUTH2-005-08",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
+      "blocked_by": "wi-566-authorization-code-replay-and-expiry-leave-no-record",
+      "finding": "発行から 60 秒を超えた認可コードの交換は invalid_grant で拒否されるが、記録の状態は issued のまま残る。spec.AuthorizationCodeRecordState は expired を持ち authorization_code_machine.go が遷移を宣言しているのに、遷移を実行する製品コードが存在しない。誰がいつ遷移させるかの判断が要る。"
     },
     {
       "id": "EX-OAUTH2-006-01",

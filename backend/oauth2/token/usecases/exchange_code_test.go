@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -48,6 +49,7 @@ type exchangeFixture struct {
 	refreshStore *oauth2memory.RefreshTokenStore
 	code         *domain.AuthorizationCodeRecord
 	issuer       *fakeTokenIssuer
+	events       *[]spec.DomainEvent
 }
 
 func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
@@ -96,13 +98,27 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 	if err := codeStore.Save(context.Background(), code); err != nil {
 		t.Fatal(err)
 	}
+	// 具体例が `Then` にイベントの発行を並べているので、fixture は発行されたイベントを
+	// 保持する。応答だけを読むと、失効の記録は残しつつ通知を出さない実装を見分けられない。
+	events := &[]spec.DomainEvent{}
 	return exchangeFixture{
 		deps: ExchangeCodeDeps{
 			ClientRepo: clientRepo, UserRepo: userRepo, CodeStore: codeStore,
 			RefreshStore: refreshStore, TokenIssuer: issuer,
+			Emit: func(event spec.DomainEvent) { *events = append(*events, event) },
 		},
 		codeStore: codeStore, refreshStore: refreshStore, code: code, issuer: issuer,
+		events: events,
 	}
+}
+
+// emitted は発行されたイベント型の一覧を返す。
+func (f exchangeFixture) emitted() []string {
+	types := make([]string, 0, len(*f.events))
+	for _, event := range *f.events {
+		types = append(types, event.EventType())
+	}
+	return types
 }
 
 func exchangeInput(verifier string) ExchangeCodeInput {
@@ -112,10 +128,28 @@ func exchangeInput(verifier string) ExchangeCodeInput {
 	}
 }
 
+// EX-OAUTH2-005-06: 認可コードを誤った code_verifier で交換すると InvalidGrantError で
+// 拒否され、トークンは 1 本も発行されない。認可コードは消費されないので、正しい verifier
+// なら後から交換できる。
+//
+// 拒否の型まで読むのは、`invalid_request` で落ちる実装 — 例えば verifier の長さ検査に
+// 先に引っかかる実装 — と区別するためである。「トークンは発行されない」は応答の 3 本と
+// イベントの双方で読む。エラーを返しつつ署名器を呼ぶ実装は、応答だけでは見分けられない。
 func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid"})
-	if _, err := ExchangeCodeForToken(context.Background(), f.deps, exchangeInput("wrong-verifier")); err == nil {
+	refused, err := ExchangeCodeForToken(context.Background(), f.deps, exchangeInput("wrong-verifier"))
+	if err == nil {
 		t.Fatal("expected PKCE failure")
+	}
+	var oe *OAuthError
+	if !errors.As(err, &oe) || oe.Code != "invalid_grant" {
+		t.Fatalf("PKCE 不一致の拒否が invalid_grant ではない: %v", err)
+	}
+	if refused != nil {
+		t.Fatalf("拒否された交換がトークンを返した: %+v", refused)
+	}
+	if emitted := f.emitted(); len(emitted) != 0 {
+		t.Fatalf("拒否された交換がイベントを発行した: %v", emitted)
 	}
 
 	out, err := ExchangeCodeForToken(
@@ -131,6 +165,11 @@ func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 	}
 }
 
+// 認可コードの再交換は invalid_grant で拒否され、発行ファミリーのトークンは失効する。
+//
+// 通知のうち TokenRevoked はまだ出ない。RevokeFamily が失効させた token を返さないためで、
+// 台帳の該当行に finding として記録し、wi-566 が引き取る。ここでは失効の記録と
+// RefreshTokenReuseDetected の発行までを固定する。
 func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})
 	out, err := ExchangeCodeForToken(
@@ -141,15 +180,20 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.RefreshToken == "" {
-		t.Fatal("refresh token missing")
+	if out.AccessToken == "" || out.RefreshToken == "" {
+		t.Fatalf("1 回目がトークンを返していない: %+v", out)
 	}
-	if _, err := ExchangeCodeForToken(
+	_, err = ExchangeCodeForToken(
 		context.Background(),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-	); err == nil {
+	)
+	if err == nil {
 		t.Fatal("expected replay rejection")
+	}
+	var oe *OAuthError
+	if !errors.As(err, &oe) || oe.Code != "invalid_grant" {
+		t.Fatalf("再交換の拒否が invalid_grant ではない: %v", err)
 	}
 	rec, err := f.refreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
 	if err != nil {
@@ -157,6 +201,9 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	}
 	if rec == nil || !rec.Revoked {
 		t.Fatal("refresh family was not revoked")
+	}
+	if emitted := f.emitted(); !slices.Contains(emitted, "RefreshTokenReuseDetected") {
+		t.Fatalf("再交換の検出で RefreshTokenReuseDetected が発行されていない: %v", emitted)
 	}
 }
 
