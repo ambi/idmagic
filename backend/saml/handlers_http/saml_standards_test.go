@@ -43,6 +43,10 @@ type authnRequestOptions struct {
 	protocolBinding string
 	isPassive       bool
 	destination     string
+	// version と issueInstant は、空なら受理される既定値を使う。未対応の値を 1 つだけ
+	// 差し替えるための入口である。
+	version      string
+	issueInstant string
 }
 
 // authnRequestSequence は AuthnRequest の ID を要求ごとに変える。ID を使い回すと、
@@ -56,10 +60,18 @@ func buildAuthnRequestXML(options authnRequestOptions) string {
 	if destination == "" {
 		destination = "https://idp.example/realms/default/saml/sso"
 	}
+	version := options.version
+	if version == "" {
+		version = "2.0"
+	}
+	issueInstant := options.issueInstant
+	if issueInstant == "" {
+		issueInstant = time.Now().UTC().Format(time.RFC3339)
+	}
 	request := `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +
 		`xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ` +
-		`ID="_req-std-` + strconv.FormatInt(authnRequestSequence.Add(1), 10) + `" Version="2.0" ` +
-		`IssueInstant="` + time.Now().UTC().Format(time.RFC3339) + `" ` +
+		`ID="_req-std-` + strconv.FormatInt(authnRequestSequence.Add(1), 10) + `" Version="` + version + `" ` +
+		`IssueInstant="` + issueInstant + `" ` +
 		`Destination="` + destination + `"`
 	if options.acsURL != "" {
 		request += ` AssertionConsumerServiceURL="` + options.acsURL + `"`
@@ -121,8 +133,20 @@ func issuedAnAssertion(t *testing.T, recorder *httptest.ResponseRecorder) bool {
 // SAML2Profile-WebBrowserSSO: 未対応の ACS インデックスと NameID 形式は、フェイルクローズで
 // 拒否される。1 属性だけを差し替えた要求を送り、対照として無傷の要求が Assertion を発行する
 // ことを先に確かめる。
+//
+// EX-SAML-006-04: Version、IssueInstant、ProtocolBinding、ACS インデックス、NameIDPolicy の
+// 形式が未対応または矛盾する要求には Assertion を発行せず、検証済みの ACS が確定している
+// 場合だけ HTTP-POST のプロトコルエラーを返し、それ以外は SamlSignInRejected を発行して
+// フェイルクローズで拒否する。
+//
+// 5 つの形式をすべて通すのは、1 つだけを読むテストが「その 1 つだけ検査する実装」を
+// 通してしまうためである。どの形式でも検証は ACS を確定させる前に終わるので、確定した
+// ACS は無く、答えは常にフェイルクローズの側になる。プロトコルエラーを返す側の分岐は
+// NoPassive で成立し、それは EX-SAML-006-05 が持つ。ここでは、確定した ACS が無いのに
+// 拒否をプロトコルエラーとして ACS へ POST してしまう実装を落とすため、応答が自動 POST
+// フォームでないことまで読む。
 func TestSamlWebBrowserSSOFailsClosedOnUnsupportedRequestParameters(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
 	intact := authnRequestOptions{acsURL: "https://sp.example.com/acs"}
 	if !issuedAnAssertion(t, redirectSSO(t, e, intact)) {
@@ -132,6 +156,8 @@ func TestSamlWebBrowserSSOFailsClosedOnUnsupportedRequestParameters(t *testing.T
 	for _, tc := range []struct {
 		name    string
 		options authnRequestOptions
+		version string
+		issued  string
 	}{
 		{
 			// 契約は ACS の閉集合を URL で持つ。索引で指されると、どの URL を指しているかを
@@ -147,14 +173,43 @@ func TestSamlWebBrowserSSOFailsClosedOnUnsupportedRequestParameters(t *testing.T
 			name:    "unsupported NameIDPolicy format",
 			options: authnRequestOptions{acsURL: "https://sp.example.com/acs", nameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos"},
 		},
+		{
+			// SAML 1.1 の要求を 2.0 として扱うと、2.0 でしか定義されていない検査が
+			// 素通りする。
+			name:    "unsupported Version",
+			options: authnRequestOptions{acsURL: "https://sp.example.com/acs"},
+			version: "1.1",
+		},
+		{
+			// 受理窓の外にある IssueInstant。窓を見ない実装は、いつ作られた要求でも
+			// 受け取ることになる。
+			name:    "IssueInstant outside the accepted window",
+			options: authnRequestOptions{acsURL: "https://sp.example.com/acs"},
+			issued:  time.Now().UTC().Add(-time.Hour).Format(time.RFC3339),
+		},
+		{
+			// HTTP-POST 以外の応答バインディングは提供していない。
+			name:    "unsupported response ProtocolBinding",
+			options: authnRequestOptions{acsURL: "https://sp.example.com/acs", protocolBinding: samldomain.SamlBindingHTTPRedirect},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			recorder := redirectSSO(t, e, tc.options)
+			options := tc.options
+			options.version, options.issueInstant = tc.version, tc.issued
+			before := len(*events)
+			recorder := redirectSSO(t, e, options)
 			if issuedAnAssertion(t, recorder) {
 				t.Fatalf("未対応の要求で Assertion が発行された: body=%s", recorder.Body.String())
 			}
 			if recorder.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want 400 (body=%s)", recorder.Code, recorder.Body.String())
+			}
+			// 検証済みの ACS は確定していないので、答えは ACS 宛の自動 POST ではない。
+			if strings.Contains(recorder.Body.String(), `name="SAMLResponse"`) {
+				t.Fatalf("確定した ACS が無いのにプロトコルエラーを POST している: %s", recorder.Body.String())
+			}
+			if !hasEvent((*events)[before:], "SamlSignInRejected") {
+				t.Fatal("SamlSignInRejected が発行されていない")
 			}
 		})
 	}
@@ -166,6 +221,11 @@ func TestSamlWebBrowserSSOFailsClosedOnUnsupportedRequestParameters(t *testing.T
 // 同じ要求を認証済みの利用者で送ると Assertion が出るので、差が `IsPassive` と認証状態だけで
 // あることが分かる。`IsPassive` を無視してログイン画面へ飛ばす実装は、SP から見ると
 // 「利用者に見えない認証」という約束が破られる形になる。
+//
+// EX-SAML-006-05: `IsPassive=true` で利用可能な既存セッションが無いとき、ログイン画面へ
+// 遷移せず、検証済みの ACS へ HTTP-POST の NoPassive プロトコルレスポンスを返す。
+// 「遷移しない」は Location ヘッダーが無いことで読む。状態コードだけでは、303 を返さずに
+// 本文でログイン画面を描く実装と区別できない。
 func TestSamlWebBrowserSSOReturnsNoPassiveWhenLoginIsRequired(t *testing.T) {
 	options := authnRequestOptions{acsURL: "https://sp.example.com/acs", isPassive: true}
 
@@ -174,8 +234,15 @@ func TestSamlWebBrowserSSOReturnsNoPassiveWhenLoginIsRequired(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want a protocol response (body=%s)", recorder.Code, recorder.Body.String())
 	}
+	if location := recorder.Header().Get("Location"); location != "" {
+		t.Fatalf("IsPassive なのにログインへ遷移している: Location=%q", location)
+	}
 	if issuedAnAssertion(t, recorder) {
 		t.Fatal("IsPassive で未認証なのに Assertion が発行された")
+	}
+	// 応答は検証済みの ACS 宛の自動 POST である。
+	if !strings.Contains(recorder.Body.String(), `action="https://sp.example.com/acs"`) {
+		t.Fatalf("NoPassive の送信先が検証済みの ACS ではない: %s", recorder.Body.String())
 	}
 
 	document := etree.NewDocument()

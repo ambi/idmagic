@@ -54,6 +54,13 @@ const partnerProfile: AdminSamlIDPProfile = {
   service_provider_count: 0,
 }
 
+// EX-SAML-004-01 の画面側。読み取り専用の一覧と詳細から、作成と編集の専用ルートへ移れる。
+// 具体例の残りの `Then`（変更が保存される、`shared` を複数の SP から選べる、`dedicated` と
+// SP の関連付けが保存される、削除される）は保存側の話なので、
+// backend/saml/handlers_http/scenario_examples_test.go が同じ id で持つ。
+//
+// ここで読むのは「表示される」ことなので、要素の有無だけでなく遷移先のルートまで見る。
+// ボタンを描くだけでどこへも繋がっていない画面は、有無だけでは見分けられない。
 describe('SAML IdP profile routed management', () => {
   afterEach(() => restoreGlobals())
 

@@ -45,6 +45,11 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 	}); !errors.Is(err, domain.ErrDedicatedIDPProfileCardinality) {
 		t.Fatalf("second dedicated binding error = %v", err)
 	}
+	// 拒否した保存は何も残さない。エラーだけを読むと、返り値はエラーでも書き込みは
+	// 済ませている実装を通してしまい、専用プロファイルの基数はその時点で崩れている。
+	if bound, err := repo.ListAll(ctx, "tenant-a"); err != nil || len(bound) != 1 || bound[0].EntityID != "urn:sp:a" {
+		t.Fatalf("refused save left %+v (err=%v), want only urn:sp:a", bound, err)
+	}
 	if err := repo.DeleteIDPProfile(ctx, "tenant-a", dedicated.ProfileID); !errors.Is(err, domain.ErrIDPProfileInUse) {
 		t.Fatalf("delete in-use profile error = %v", err)
 	}

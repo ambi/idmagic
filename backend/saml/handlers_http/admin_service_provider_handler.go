@@ -130,8 +130,12 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 	} else {
 		sp.UpdatedAt = now
 	}
+	// IdP プロファイルの規則違反は、保存を試みて初めて分かる。プロファイルの基数は
+	// SP 側の入力だけでは判定できず、同じプロファイルに束ねられた他の SP を数えて決まる
+	// ためである。契約はこの拒否を 400 InvalidRequestError と宣言していて 500 を宣言して
+	// いないので、写像は SP の登録経路にも要る。
 	if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
-		return err
+		return d.writeIDPProfileError(c, err)
 	}
 	return support.NoStoreJSON(c, status, sp)
 }

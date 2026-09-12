@@ -187,6 +187,12 @@ func authnRequestRedirectWith(t *testing.T, issuer, acsURL, destination string, 
 // AuthnRequest を出した SP が、自分の ACS 宛の、自分を audience とする署名済み Assertion を
 // 受け取るところまでを読む。行の残りの句（フェイルクローズの拒否と NoPassive）は
 // saml_standards_test.go が持つ。
+//
+// EX-SAML-006-01: 登録済み SP の AuthnRequest を検証したうえで、署名済み SAMLResponse を
+// ACS へ POST し、RelayState を同値で返し、署名にはリクエスト先テナントで現在有効な
+// `XmlFederationSigning` 鍵を使う。要求の検証が効いていることは InResponseTo が要求 ID を
+// 往復することで読む。応答を組み立てるだけで要求を読んでいない実装は、そこで落ちる。
+// 署名鍵は、公開されている証明書に対して assertion 署名が検証できることで読む。
 func TestSamlSSO_SPInitiatedAuthenticatedIssuesPostForm(t *testing.T) {
 	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
 
@@ -221,6 +227,11 @@ func TestSamlSSO_SPInitiatedAuthenticatedIssuesPostForm(t *testing.T) {
 	}
 	if got := document.Root().SelectAttrValue("Destination", ""); got != "https://sp.example.com/acs" {
 		t.Fatalf("Destination=%q, want the registered ACS URL", got)
+	}
+	// 受け取った AuthnRequest の ID が往復している。応答を組み立てるだけで要求を読んで
+	// いない実装は、ここで落ちる。
+	if got := document.Root().SelectAttrValue("InResponseTo", ""); got != "_req-1" {
+		t.Fatalf("InResponseTo=%q, want the AuthnRequest ID", got)
 	}
 	assertion := document.FindElement("//Assertion")
 	if assertion == nil {
@@ -318,6 +329,13 @@ func TestSamlSSO_UnauthenticatedRedirectsToLogin(t *testing.T) {
 	}
 }
 
+// EX-SAML-008-01: ForceAuthn=true で認証時刻が再認証猶予より古いとき、古い認証コンテキストを
+// 検出してログインへリダイレクトする。
+//
+// 観測は 3 つ要る。リダイレクトが起きること、Assertion が 1 通も出ていないこと、そして
+// 対照として、同じ ForceAuthn の要求でも認証したばかりなら発行に進むことである。対照が
+// 無いと、ForceAuthn を見た時点で常にログインへ飛ばす実装と区別できない。それは無限の
+// ログイン往復になるので、拒否側だけを読んでも欠陥に気づけない。
 func TestSamlSSO_ForceAuthnWithStaleSessionRedirectsToLogin(t *testing.T) {
 	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Add(-10 * time.Minute).Unix(), AMR: []string{"pwd"}})
 
@@ -328,6 +346,16 @@ func TestSamlSSO_ForceAuthnWithStaleSessionRedirectsToLogin(t *testing.T) {
 	}
 	if loc := rec.Header().Get("Location"); !strings.HasPrefix(loc, "/realms/default/login") {
 		t.Fatalf("Location=%q, want /realms/default/login", loc)
+	}
+	if strings.Contains(rec.Body.String(), "SAMLResponse") {
+		t.Fatalf("ログインへ戻しながら SAMLResponse を返している: %s", rec.Body.String())
+	}
+
+	// 対照: 認証したばかりなら、同じ ForceAuthn の要求が発行に進む。
+	fresh, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}})
+	freshRequest := authnRequestRedirectWith(t, "https://sp.example.com", "https://sp.example.com/acs", "https://idp.example/realms/default/saml/sso", true)
+	if !issuedAnAssertion(t, get(fresh, "/saml/sso?SAMLRequest="+url.QueryEscape(freshRequest))) {
+		t.Fatal("認証したばかりの ForceAuthn 要求で Assertion が発行されない")
 	}
 }
 

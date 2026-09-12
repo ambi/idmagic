@@ -35,6 +35,8 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/saml"
+	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -44,6 +46,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 const (
@@ -70,6 +73,9 @@ type apiTokenStack struct {
 	keyStore *signingmemory.InMemoryKeyStore
 	signer   *tokensjose.JWTSigner
 	tenants  *tenancymemory.TenantRepository
+	// samlSPs は SAML の管理 API が読み書きする保存先。粒度スコープの具体例は、拒否が
+	// 防いだ効果をここから読み直す。
+	samlSPs *samlmemory.SamlServiceProviderRepository
 }
 
 func newApiTokenStack(t *testing.T) *apiTokenStack {
@@ -122,6 +128,11 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	// 入口を通すことに意味があるのは、入口の組み立てが製品と同じときだけである。
 	managedIntrospector := apitokenusecases.New(repo, apitokenusecases.WithTokenIntrospector(signer))
 
+	// SAML を配線するのは、粒度スコープの具体例が「参照」と「登録・削除」を別のスコープに
+	// 割り当てているためである。スコープの判定だけを読むと、判定が正しくても保存が
+	// 起こったかどうかは分からない。
+	samlSPs := samlmemory.NewSamlServiceProviderRepository()
+
 	e := echo.New()
 	Register(e, Deps{
 		Issuer: apiTokenIssuer, Contract: spec.CurrentRuntimeContract(),
@@ -133,10 +144,13 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 			AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
 			DpopReplayStore:     oauth2memory.NewDpopReplayStore(),
 		},
-		ApiTokens: apitoken.Module{Repo: repo, TokenIssuer: signer, TokenIntrospector: signer},
+		ApiTokens:        apitoken.Module{Repo: repo, TokenIssuer: signer, TokenIntrospector: signer},
+		Saml:             saml.Module{SPRepo: samlSPs, ProfileRepo: samlSPs},
+		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
 	})
 	return &apiTokenStack{
 		e: e, repo: repo, users: users, keyStore: keyStore, signer: signer, tenants: tenants,
+		samlSPs: samlSPs,
 		tokens: apitokenusecases.New(repo,
 			apitokenusecases.WithTokenIssuer(signer), apitokenusecases.WithTokenIntrospector(signer)),
 	}

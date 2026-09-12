@@ -75,6 +75,20 @@ func (unreachableKeyStore) ListPublicKeys(context.Context, time.Time) ([]*signin
 // profile-b は同じテナントに存在するが、この SP からは使えない。
 func newProfileBoundServer(t *testing.T, reachableKeys bool) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
+	e, events, _ := newProfileBoundServerWith(t, reachableKeys)
+	return e, events
+}
+
+// newProfileBoundServerWithRepository は同じサーバーを、保存先を呼び出し側へ渡す形で組む。
+// 別テナントのプロファイルのような、HTTP からは作れない状態を置くために要る。
+func newProfileBoundServerWithRepository(t *testing.T) (*echo.Echo, *samlmemory.SamlServiceProviderRepository) {
+	t.Helper()
+	e, _, repo := newProfileBoundServerWith(t, true)
+	return e, repo
+}
+
+func newProfileBoundServerWith(t *testing.T, reachableKeys bool) (*echo.Echo, *[]spec.DomainEvent, *samlmemory.SamlServiceProviderRepository) {
+	t.Helper()
 
 	spRepo := samlmemory.NewSamlServiceProviderRepository()
 	for _, profileID := range []string{refusalProfileA, refusalProfileB} {
@@ -125,7 +139,7 @@ func newProfileBoundServer(t *testing.T, reachableKeys bool) (*echo.Echo, *[]spe
 			UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}},
 	})
-	return e, captured
+	return e, captured, spRepo
 }
 
 // profileSSOURL はプロファイルの正規 SSO URL を返す。AuthnRequest の Destination と
