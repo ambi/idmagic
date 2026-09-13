@@ -33,6 +33,10 @@
   Go の Fuzz target は `mise run test-go-fuzz -- <package> <target>` で実行する。
 - **変異テスト**：変更した純粋な判定、境界、算術、状態遷移を、既存テストが実際に検出できるか調べる。
   `mise run test-go-mutation -- <package-directory>` が構文上の変異を作る。
+  既定では worker 数 2、Gremlins と比較可能な 5 operator、cache off で実行し、JSON report を一時領域へ書く。
+  同一変更を反復するときだけ、第 3 引数へ cache file を明示する。
+  report の stable mutant ID を調べ直すときは `mise run test-go-mutation-mutant -- <package-directory> <mutant-id>` を使う。
+  ツール更新後は `mise run check-go-mutation-tool` で lived と not viable の分類を検算する。
   配線の切断や効果の向きの変更は表現できないため、主要ユースケースの故障注入で別に確認する。
 - **特性化テスト**：既存の振る舞いを変更前に観測して固定する。
   仕様が不足している既存コードを安全に分解、置換、移行するときに使う。

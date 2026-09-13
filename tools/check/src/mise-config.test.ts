@@ -191,36 +191,59 @@ describe('mise aggregate gate reporting', () => {
 
 describe('mise mutation testing boundary', () => {
   const mutation = String(config.tasks?.['test-go-mutation']?.run ?? '')
+  const singleMutation = String(config.tasks?.['test-go-mutation-mutant']?.run ?? '')
+  const canary = String(config.tasks?.['check-go-mutation-tool']?.run ?? '')
 
   it('mutates one Go package through the pinned tool', () => {
-    expect(mutation).toContain('gremlins unleash')
+    expect(mutation).toContain('gomutants')
   })
 
   /** ツールの保守が止まったときに動く版が残らないと、証拠の作り方ごと失われる。 */
   it('pins the mutation tool to an exact version', () => {
-    const pinned = Object.entries(config.tools ?? {}).find(([name]) => name.includes('gremlins'))
-    expect(pinned?.[1]).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(config.tools?.['go:github.com/szhekpisov/gomutants']).toBe('0.6.1')
   })
 
   /**
-   * 変異ごとのテストに許される時間は「カバレッジ取得にかかった時間 × 係数」で決まり、
-   * 既定の係数 3 はカバレッジ取得が 1 秒未満で終わるパッケージでは再ビルドすら収まらない。
-   * 全件 TIMED OUT でも終了コードは 0 なので、何も測れていない実行が、殺せなかった変異が
-   * 無い実行と見分けられなくなる。係数は task が明示的に渡す。
+   * runner の変更と operator の変更を同時に持ち込むと、結果の差をどちらに帰属すべきか
+   * 分からない。移行境界では Gremlins の既定集合と同系統の 5 種類へ固定する。
    */
-  it('passes the mutant timeout coefficient explicitly', () => {
-    expect(mutation).toContain('--timeout-coefficient')
+  it('keeps the comparable five-operator boundary', () => {
+    for (const operator of [
+      'ARITHMETIC_BASE',
+      'CONDITIONALS_BOUNDARY',
+      'CONDITIONALS_NEGATION',
+      'INCREMENT_DECREMENT',
+      'INVERT_NEGATIVES',
+    ]) {
+      expect(mutation).toContain(operator)
+    }
   })
 
   /**
-   * 対象範囲は引数の path ではなく呼び出したディレクトリで決まる。リポジトリ root から
-   * 呼ぶとカバレッジ取得がモジュール全体に広がり、embedded-postgres を起動する
-   * パッケージまで巻き込む。
+   * gomutants 0.6.1 の cache key は対象 package が import する package の変更を完全には
+   * 追跡しない。既定では再利用せず、同一変更を反復するときだけ cache file を明示する。
    */
-  it('runs from the package directory rather than the repository root', () => {
-    const movedInto = mutation.indexOf('cd ')
-    expect(movedInto).toBeGreaterThanOrEqual(0)
-    expect(mutation.indexOf('gremlins unleash')).toBeGreaterThan(movedInto)
+  it('uses conservative worker and cache defaults', () => {
+    expect(mutation).toContain('$' + '{2:-2}')
+    expect(mutation).toContain('$' + '{3:-off}')
+  })
+
+  it('normalizes a repository-relative directory to a Go package pattern', () => {
+    expect(mutation).toContain('target="./$directory"')
+  })
+
+  it('writes the report outside the repository by default', () => {
+    expect(mutation).toContain('idmagic-mutation-report.json')
+    expect(mutation).toContain('--output "$report"')
+  })
+
+  it('reruns one stable mutant id without the incremental cache', () => {
+    expect(singleMutation).toContain('--run-mutant-id')
+    expect(singleMutation).toContain('--cache off')
+  })
+
+  it('provides a manual verdict canary', () => {
+    expect(canary).toContain('mutation-canary')
   })
 
   /**
@@ -230,6 +253,8 @@ describe('mise mutation testing boundary', () => {
   it('keeps mutation testing out of the standard gates', () => {
     for (const suite of ['check', 'verify', 'verify-serial', 'verify-full']) {
       expect(members(suite)).not.toContain('test-go-mutation')
+      expect(members(suite)).not.toContain('test-go-mutation-mutant')
+      expect(members(suite)).not.toContain('check-go-mutation-tool')
     }
   })
 })

@@ -16,7 +16,7 @@ bun = "1.4.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.7.0"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでも版を固定するのは、
 # 生成される変異の集合が版で変わり、work item に残した一覧が再現できなくなるためである。
-"go:github.com/go-gremlins/gremlins/cmd/gremlins" = "0.6.0"
+"go:github.com/szhekpisov/gomutants" = "0.6.1"
 
 [tasks.setup]
 description = "Install repository dependencies and link agent skills"
@@ -49,9 +49,7 @@ run = [
   "betterleaks version",
   "osv-scanner --version",
   "govulncheck -version",
-  # gremlins は版をリリース時の ldflags で埋めるため、`go install` したものは `--version` に
-  # `dev` としか答えない。mise が選んだ版は導入先の path にしか現れない。
-  "mise which gremlins",
+  "gomutants -version",
 ]
 
 [tasks.setup-cli-tools]
@@ -461,20 +459,64 @@ description = "Mutate one Go package and report the mutants its tests do not kil
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run test-go-mutation -- <package-directory> [workers] [timeout-coefficient]" >&2; exit 2; }
+test "$#" -ge 1 || { echo "usage: mise run test-go-mutation -- <package-directory> [workers] [cache-file] [report-file]" >&2; exit 2; }
 directory="$1"
 test -d "$directory" || { echo "$directory is not a directory; name the package directory, not an import path" >&2; exit 2; }
-# Gremlins の対象範囲は引数の path ではなく、呼び出したディレクトリで決まる。リポジトリ root から
-# 呼ぶとカバレッジ取得が `go test ./...` に広がり、embedded-postgres を起動するパッケージまで
-# 巻き込んで戻ってこない。
-cd "$directory"
-# worker ごとにモジュール root 全体を一時ディレクトリへ複製するため、並列度を上げるほど遅くなる。
-# 実測では 8 (論理 CPU 数、既定) で 3 分 18 秒、2 で 1 分 6 秒、結果は同一だった。
-#
-# timeout 係数を明示するのは、既定の 3 が「カバレッジ取得にかかった時間 × 3」を変異ごとの制限に
-# するためである。カバレッジ取得が 1 秒未満で終わるパッケージでは変異後の再ビルドすら収まらず、
-# 全件 TIMED OUT を終了コード 0 で返す。詳細は wi-493。
-gremlins unleash --workers "${2:-2}" --timeout-coefficient "${3:-60}"
+case "$directory" in
+  /*|./*|../*) target="$directory" ;;
+  *) target="./$directory" ;;
+esac
+# runner の変更と operator の変更を同時に持ち込まないよう、Gremlins の既定集合と同系統の
+# 5 種類に固定する。gomutants の全 operator は survivor の仕分け量を測ってから別に判断する。
+operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT_DECREMENT,INVERT_NEGATIVES"
+report="${4:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
+# gomutants 0.6.1 の cache key は、対象 package が import する package の変更を完全には追跡しない。
+# 既定では無効にし、同一変更を反復するときだけ第 3 引数へ cache file を明示する。
+gomutants --workers "${2:-2}" --cache "${3:-off}" --only "$operators" --output "$report" "$target"
+'''
+
+[tasks.test-go-mutation-mutant]
+description = "Rerun one Go mutant by its stable report id"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 2 || { echo "usage: mise run test-go-mutation-mutant -- <package-directory> <mutant-id> [report-file]" >&2; exit 2; }
+directory="$1"
+test -d "$directory" || { echo "$directory is not a directory; name the package directory, not an import path" >&2; exit 2; }
+case "$directory" in
+  /*|./*|../*) target="$directory" ;;
+  *) target="./$directory" ;;
+esac
+operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT_DECREMENT,INVERT_NEGATIVES"
+report="${3:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
+gomutants \
+  --workers 1 \
+  --cache off \
+  --only "$operators" \
+  --output "$report" \
+  --run-mutant-id "$2" \
+  "$target"
+'''
+
+[tasks.check-go-mutation-tool]
+description = "Check mutation survivor and compile-failure verdicts against a fixed canary"
+run = '''
+#!/usr/bin/env sh
+set -eu
+canary_tmp=$(mktemp -d)
+trap 'rm -rf "$canary_tmp"' EXIT
+cache="$canary_tmp/cache.json"
+report="$canary_tmp/report.json"
+for attempt in first cached; do
+  echo "mutation canary: $attempt run"
+  gomutants \
+    --workers 1 \
+    --cache "$cache" \
+    --only ARITHMETIC_BASE,CONDITIONALS_BOUNDARY \
+    --output "$report" \
+    ./tools/check/testdata/mutation-canary
+  (cd tools && bun run check/src/mutation-canary.ts "$report")
+done
 '''
 
 [tasks.build-go]
