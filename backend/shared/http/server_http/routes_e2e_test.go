@@ -154,6 +154,10 @@ type totpServerOptions struct {
 	trustedDeviceMaxAgeSeconds int
 	// allowTrustedDevice は MFA ルールの allow_trusted_device。nil は既定 (true)。
 	allowTrustedDevice *bool
+	// enrollmentDeadlineIn は、登録期限を「いま」から見てどれだけ先に置くかである。
+	// 0 のときは 1 時間。登録期限を過ぎた確定を観測する具体例は、ログインの時点では
+	// 期限内で、確定の時点では期限外という状態を必要とする (EX-AUTHENTICATION-018-03)。
+	enrollmentDeadlineIn time.Duration
 }
 
 func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, enrollment ...bool) *httptest.Server {
@@ -169,6 +173,15 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 }
 
 func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
+	t.Helper()
+	server, _ := newTOTPServerWithEvents(t, opts)
+	return server
+}
+
+// newTOTPServerWithEvents は同じスタックを建て、発行されたイベントの記録も返す。
+// 宣言済みの具体例の `Then` は発行で書かれているものが多く、応答だけを読むテストは
+// 画面は進めるが記録を残さない実装を通してしまう。
+func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Server, *[]spec.DomainEvent) {
 	t.Helper()
 	totpSecret, requireMFA := opts.totpSecret, opts.requireMFA
 
@@ -226,7 +239,13 @@ func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
 		enrollmentEnabled := opts.enrollment
 		var enrollmentPolicy *appdomain.MfaEnrollmentPolicy
 		if enrollmentEnabled {
-			start := now.Add(-time.Minute)
+			deadlineIn := opts.enrollmentDeadlineIn
+			if deadlineIn == 0 {
+				deadlineIn = time.Hour
+			}
+			// 猶予期間は開始時刻からの長さなので、期限を「いまから deadlineIn 後」へ
+			// 置くには開始時刻を同じだけ過去へ動かす。
+			start := now.Add(deadlineIn - time.Hour)
 			grace := 3600
 			enrollmentPolicy = &appdomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true}
 			bypassExpiresAt := now.Add(15 * time.Minute)
@@ -278,8 +297,10 @@ func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
 	e := echo.New()
+	events := &[]spec.DomainEvent{}
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          "http://test",
+		Emit:            func(event spec.DomainEvent) { *events = append(*events, event) },
 		TenantRepo:      seedTrustedDeviceTenant(t, opts.trustedDeviceMaxAgeSeconds),
 		StartupComplete: startupComplete, ShuttingDown: shuttingDown, OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
@@ -298,7 +319,21 @@ func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
 			SignInPolicyRepo: signInPolicyRepo, DefaultSignInPolicyRepo: defaultSignInPolicyRepo,
 		},
 	})
-	return httptest.NewServer(e)
+	return httptest.NewServer(e), events
+}
+
+// assertEmitted は名指したイベント型がすべて発行されたことを確かめる。
+func assertEmitted(t *testing.T, events *[]spec.DomainEvent, wanted ...string) {
+	t.Helper()
+	emitted := make([]string, 0, len(*events))
+	for _, event := range *events {
+		emitted = append(emitted, event.EventType())
+	}
+	for _, want := range wanted {
+		if !slices.Contains(emitted, want) {
+			t.Fatalf("%s が発行されていない: %v", want, emitted)
+		}
+	}
 }
 
 // seedTrustedDeviceTenant は既定テナントを 1 件だけ持つリポジトリを返す。
@@ -505,6 +540,7 @@ func postTokenForm(t *testing.T, client *http.Client, baseURL string, form url.V
 	return tokenResponse{status: resp.StatusCode, body: body}
 }
 
+//spec:covers REQ-AUTHENTICATION-015, EX-AUTHENTICATION-015-01: MFA 登録済みの利用者でも、実効ポリシーが Password なら LoginSession が authentication_pending=false で成立し、第二要素画面を挟まずに同意へ進むことを固定する。
 func TestBrowserAuthorizationFlowSkipsTOTPWhenPolicyAllowsPassword(t *testing.T) {
 	secret := totpTestSecret
 	srv := newServerWithTOTP(t, secret)
@@ -528,11 +564,25 @@ func TestBrowserAuthorizationFlowSkipsTOTPWhenPolicyAllowsPassword(t *testing.T)
 	if loginResult["next"] != "/realms/default/consent" {
 		t.Fatalf("login next=%q, want /realms/default/consent", loginResult["next"])
 	}
+
+	// 次画面の名前だけでは、保留のまま同意画面を見せる実装と区別できない。
+	// 保留でないセッションだけがアカウント API へ到達するので、そこから読み直す。
+	sessions := getJSON[struct {
+		Sessions []struct {
+			Current bool     `json:"current"`
+			AMR     []string `json:"amr"`
+		} `json:"sessions"`
+	}](t, client, srv.URL+"/realms/default/api/account/v1/sessions")
+	if len(sessions.Sessions) != 1 || !sessions.Sessions[0].Current ||
+		!slices.Equal(sessions.Sessions[0].AMR, []string{"pwd"}) {
+		t.Fatalf("sessions=%+v, want one current pwd-only session", sessions.Sessions)
+	}
 }
 
+//spec:covers REQ-AUTHENTICATION-015, EX-AUTHENTICATION-015-02, EX-AUTHENTICATION-017-01: 実効ポリシーが Mfa のとき LoginSession が authentication_pending=true へ切り替わって第二要素画面へ進み、正しい TOTP コードで認証が成立して認可が継続し、UserAuthenticated が残ることを固定する。
 func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T) {
 	secret := totpTestSecret
-	srv := newServerWithTOTPPolicy(t, secret, true)
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{totpSecret: secret, requireMFA: true})
 	defer srv.Close()
 	client := browserClient(t)
 
@@ -552,6 +602,23 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	})
 	if loginResult["next"] != "/realms/default/totp" {
 		t.Fatalf("login next=%q, want /realms/default/totp", loginResult["next"])
+	}
+	// 保留のセッションは通常のリソースへ届かない (REQ-AUTHENTICATION-020)。
+	// これが authentication_pending=true の観測可能な形である。
+	pending, err := client.Get(srv.URL + "/realms/default/api/auth/account")
+	if err != nil {
+		t.Fatalf("GET /api/auth/account: %v", err)
+	}
+	pendingStatus := pending.StatusCode
+	pending.Body.Close()
+	if pendingStatus != http.StatusUnauthorized {
+		t.Fatalf("第二要素を待つセッションが account context を取れた: status=%d", pendingStatus)
+	}
+	// この時点では認証は成立していないので、記録も残っていない。
+	for _, event := range *events {
+		if event.EventType() == "UserAuthenticated" {
+			t.Fatalf("第二要素の前に UserAuthenticated が発行された: %#v", event)
+		}
 	}
 
 	totpTransaction := getJSON[struct {
@@ -603,10 +670,12 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	if redirectTo.Query().Get("code") == "" {
 		t.Fatalf("authorization did not resume into a code: %s", consentResult["redirect_to"])
 	}
+	assertEmitted(t, events, "UserAuthenticated")
 }
 
+//spec:covers REQ-AUTHENTICATION-018, EX-AUTHENTICATION-018-01: バイパスを消費して同じ LoginSession が Enrollment の保留になり、MfaEnrollmentRequired と MfaEnrollmentBypassConsumed が残ること、確定で amr に otp が加わって保留が解け、MfaEnrollmentCompleted と UserAuthenticated が残って元の認可が継続することを固定する。
 func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testing.T) {
-	srv := newServerWithTOTPPolicy(t, "", true, true)
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{requireMFA: true, enrollment: true})
 	defer srv.Close()
 	client := browserClient(t)
 
@@ -628,6 +697,7 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	if enrollmentTransaction.Kind != "mfa_enrollment" {
 		t.Fatalf("kind=%q", enrollmentTransaction.Kind)
 	}
+	assertEmitted(t, events, "MfaEnrollmentRequired", "MfaEnrollmentBypassConsumed")
 	start := postJSON[struct {
 		Secret string `json:"secret"`
 	}](t, client, srv.URL+"/realms/default/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
@@ -647,12 +717,26 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	if consent.Kind != "consent" {
 		t.Fatalf("post-enrollment kind=%q", consent.Kind)
 	}
+	// 昇格したのは新しいセッションではなく同じセッションである。保留が解けていれば
+	// アカウント API へ届き、amr には登録で成立した otp が加わっている。
+	sessions := getJSON[struct {
+		Sessions []struct {
+			Current bool     `json:"current"`
+			AMR     []string `json:"amr"`
+		} `json:"sessions"`
+	}](t, client, srv.URL+"/realms/default/api/account/v1/sessions")
+	if len(sessions.Sessions) != 1 || !sessions.Sessions[0].Current ||
+		!slices.Contains(sessions.Sessions[0].AMR, "pwd") ||
+		!slices.Contains(sessions.Sessions[0].AMR, "otp") {
+		t.Fatalf("sessions=%+v, want one current pwd+otp session", sessions.Sessions)
+	}
+	assertEmitted(t, events, "MfaEnrollmentCompleted", "UserAuthenticated")
 }
 
 // 認証要素の登録 API も使えない。ログインの拒否だけを確かめると、拒否された後に
 // 登録 API を直接叩いて認証要素を作る経路が残る。
 //
-//spec:covers REQ-AUTHENTICATION-018: 管理者が承認していないユーザーはログインを完了できず、
+//spec:covers REQ-AUTHENTICATION-018, EX-AUTHENTICATION-018-02: 登録バイパスの無いユーザーはパスワードが正しくてもログインを完了できず、認証要素の登録 API も MfaEnrollmentNotAllowedError で拒否され、シークレットも認証要素も作られないことを固定する。
 func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApproval(t *testing.T) {
 	srv := newServerWithTOTPPolicy(t, "", true)
 	defer srv.Close()
@@ -950,6 +1034,7 @@ func TestBrowserAPIPostRejectsForeignOrigin(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-010, EX-AUTHENTICATION-010-03: 直近の履歴に一致する新しいパスワードが password_reuse で拒否されることを HTTP の境界で固定する。変更そのものが成立することは対照として先に置く。
 func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
@@ -1115,6 +1200,7 @@ func TestAccountContextReturnsCSRFTokenForAuthenticatedSession(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-010, EX-AUTHENTICATION-010-02: 12 文字未満の新しいパスワードが違反つきで拒否され、保存されたパスワードが変わらないことを HTTP の境界で固定する。
 func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
@@ -1167,6 +1253,23 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 	if !found {
 		t.Fatalf("violations=%v, want to include too_short", body.Violations)
 	}
+
+	// 拒否が変えなかったもの: もとのパスワードで依然としてログインできる。
+	// 400 を書いたうえで保存も続ける実装は、応答だけを読むテストを素通りする。
+	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": demoPassword})
+	loginReq, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginReq.Header.Set("Origin", "http://test")
+	loginReq.Header.Set("X-Csrf-Token", transaction.CSRFToken)
+	loginResp, err := client.Do(loginReq)
+	if err != nil {
+		t.Fatalf("POST /api/auth/login with the original password: %v", err)
+	}
+	defer loginResp.Body.Close()
+	if loginResp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(loginResp.Body)
+		t.Fatalf("拒否されたのにもとのパスワードが使えない: status=%d body=%s", loginResp.StatusCode, raw)
+	}
 }
 
 // memory user repo に直接 disable を書き戻して、その後のフローを観測する。
@@ -1175,7 +1278,7 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 // 拒否のあとに保護リソースへもう一度入り、それでも通らないことまで読む。新規ログインの
 // 側も同じで、401 を書いたうえでセッションを張る実装は応答だけでは見分けられない。
 //
-//spec:covers EX-AUTHENTICATION-009-01: 無効なユーザーは新規ログインも既存セッションも拒否される。
+//spec:covers REQ-AUTHENTICATION-009, EX-AUTHENTICATION-009-01: 無効なユーザーは新規ログインも既存セッションも拒否される。
 func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	srv, repo := newServerWithUserAccess(t)
 	defer srv.Close()

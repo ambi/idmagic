@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +40,9 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_memory"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
 	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
@@ -46,6 +51,8 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
@@ -86,12 +93,16 @@ const (
 type countingWebAuthnSessionStore struct {
 	*webauthnmemory.WebAuthnSessionStore
 	saved int
+	// keys は保存に使われた鍵を保存順に覚える。チャレンジがどのセッションへ束縛されたかは
+	// 応答からは読めず、保存の鍵にしか現れない。
+	keys []string
 }
 
 func (s *countingWebAuthnSessionStore) Save(
 	ctx context.Context, key string, data gowebauthn.SessionData, expiresAt time.Time,
 ) error {
 	s.saved++
+	s.keys = append(s.keys, key)
 	return s.WebAuthnSessionStore.Save(ctx, key, data, expiresAt)
 }
 
@@ -139,6 +150,10 @@ type authRefusalFixture struct {
 	emails      *emailmemory.NoopEmailSender
 	apiTokens   *apitokenusecases.Service
 	events      *[]spec.DomainEvent
+	// signer はポータルのアクセストークンを 1 本署名するために握る。
+	signer *tokensjose.JWTSigner
+	// devices は記憶済みの端末。資格情報の変更が端末を失効させたかは、ここからしか読めない。
+	devices *trusteddevicememory.TrustedDeviceRepository
 }
 
 func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *authRefusalFixture {
@@ -217,7 +232,9 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 		apiTokens: apitoken.Module{
 			Repo: apiTokenRepo, TokenIssuer: signer, TokenIntrospector: signer,
 		}.Service(),
-		events: &[]spec.DomainEvent{},
+		events:  &[]spec.DomainEvent{},
+		signer:  signer,
+		devices: trusteddevicememory.NewTrustedDeviceRepository(),
 	}
 
 	sessionManager := sessionusecases.NewSessionManager(fixture.sessions)
@@ -229,7 +246,8 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 		Tenancy:      tenancy.Module{AttrSchemaRepo: usermemory.NewTenantUserAttributeSchemaRepository()},
 		Authentication: authentication.Module{
 			SessionStore: fixture.sessions, SessionManager: sessionManager, AuthnResolver: sessionManager,
-			MfaFactorRepo: fixture.factors, RecoveryCodeRepo: fixture.recovery,
+			TrustedDeviceRepo: fixture.devices,
+			MfaFactorRepo:     fixture.factors, RecoveryCodeRepo: fixture.recovery,
 			MfaEnrollmentBypassRepo:  mfamemory.NewMfaEnrollmentBypassRepository(),
 			WebAuthnRP:               relyingParty,
 			WebAuthnCredentialRepo:   fixture.credentials,
@@ -400,8 +418,10 @@ func problemCode(t *testing.T, recorder *httptest.ResponseRecorder) string {
 }
 
 // seedTotpFactor は TOTP 認証要素を 1 件置く。
-func (f *authRefusalFixture) seedTotpFactor(t *testing.T, userID, secret string) {
+// 主体は seedRecoveryCodes と同じく alice に固定する。
+func (f *authRefusalFixture) seedTotpFactor(t *testing.T, secret string) {
 	t.Helper()
+	userID := authRefusalAlice
 	value := secret
 	if err := f.factors.Save(context.Background(), &totpdomain.MfaFactor{
 		UserID: userID, Type: spec.MfaFactorTOTP, Secret: &value, CreatedAt: time.Now().UTC(),
@@ -411,8 +431,11 @@ func (f *authRefusalFixture) seedTotpFactor(t *testing.T, userID, secret string)
 }
 
 // seedRecoveryCodes は復旧コードを 1 件置く。
-func (f *authRefusalFixture) seedRecoveryCodes(t *testing.T, userID string) {
+// 主体は recoveryCodeHashes と同じく alice に固定する。拒否が動かしてはならない
+// 対象はどのテストでも alice である。
+func (f *authRefusalFixture) seedRecoveryCodes(t *testing.T) {
 	t.Helper()
+	userID := authRefusalAlice
 	if err := f.recovery.ReplaceAll(context.Background(), userID, []*recoverydomain.RecoveryCode{
 		{UserID: userID, CodeHash: "seeded-recovery-code-hash", GeneratedAt: time.Now().UTC()},
 	}); err != nil {
@@ -422,8 +445,10 @@ func (f *authRefusalFixture) seedRecoveryCodes(t *testing.T, userID string) {
 
 // seedWebAuthnCredential は WebAuthn クレデンシャルを 1 件置く。チャレンジの発行は
 // 登録済みクレデンシャルを要求するので、拒否と成功を対照できるようにこれを置く。
-func (f *authRefusalFixture) seedWebAuthnCredential(t *testing.T, userID string) {
+// 主体は alice に固定する。WebAuthn を登録済みの利用者を要求するのはどのテストも alice である。
+func (f *authRefusalFixture) seedWebAuthnCredential(t *testing.T) {
 	t.Helper()
+	userID := authRefusalAlice
 	encode := base64.RawURLEncoding.EncodeToString
 	if err := f.credentials.Save(context.Background(), &webauthndomain.WebAuthnCredential{
 		CredentialID: encode([]byte("credential-" + userID)), UserID: userID,
@@ -478,9 +503,10 @@ func (f *authRefusalFixture) sessionRevoked(t *testing.T, id, userID string) boo
 // accountContextBody は /api/auth/account の応答から、拒否が漏らしてはならない
 // 2 つ — アカウント情報と CSRF トークン — を取り出す。
 type accountContextBody struct {
-	CSRFToken string `json:"csrf_token"`
-	ID        string `json:"id"`
-	Realm     string `json:"realm"`
+	CSRFToken string   `json:"csrf_token"`
+	ID        string   `json:"id"`
+	Realm     string   `json:"realm"`
+	Roles     []string `json:"roles"`
 }
 
 func decodeAccountContext(t *testing.T, recorder *httptest.ResponseRecorder) accountContextBody {
@@ -496,7 +522,7 @@ func decodeAccountContext(t *testing.T, recorder *httptest.ResponseRecorder) acc
 // 「401 を書いてから本文も書く」実装は、ステータスだけを読むテストを素通りしたまま、
 // 未認証の呼び出し元へ後続の変更操作の鍵を渡してしまう。
 //
-//spec:covers EX-AUTHENTICATION-005-02: 未認証および認証途中のセッションによるアカウント
+//spec:covers REQ-AUTHENTICATION-005, EX-AUTHENTICATION-005-02: 未認証および認証途中のセッションによるアカウント
 func TestAccountContextRefusalLeaksNoContextOrCSRFToken(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 
@@ -547,7 +573,7 @@ func TestAccountContextRefusalLeaksNoContextOrCSRFToken(t *testing.T) {
 // Bearer トークンによるアカウントコンテキストの取得は拒否され、応答にアカウント情報も
 // CSRF トークンも含まれない。
 //
-//spec:covers EX-AUTHENTICATION-005-03: 許可されたポータルスコープも `account:read` も持たない
+//spec:covers REQ-AUTHENTICATION-005, EX-AUTHENTICATION-005-03: 許可されたポータルスコープも `account:read` も持たない
 func TestAccountContextWithoutAccountScopeLeaksNoContext(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 
@@ -600,10 +626,10 @@ func (f *authRefusalFixture) recoveryCodeHashes(t *testing.T) []string {
 // 実行も続ける実装は、呼び出し元に何も渡さないまま利用者の復旧手段だけを無効化する。
 // 応答だけを読むテストではその形を捕まえられない。
 //
-//spec:covers EX-AUTHENTICATION-004-02: 対応しないスコープで機密操作の変更を要求すると拒否され、
+//spec:covers REQ-AUTHENTICATION-004, EX-AUTHENTICATION-004-02: 対応しないスコープで機密操作の変更を要求すると拒否され、
 func TestAccountApiTokenWithoutMatchingScopeLeavesRecoveryCodesUnchanged(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
-	fixture.seedRecoveryCodes(t, authRefusalAlice)
+	fixture.seedRecoveryCodes(t)
 	before := fixture.recoveryCodeHashes(t)
 
 	readOnly := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalAlice, apitokendomain.ScopeAccountRead)
@@ -649,7 +675,7 @@ func equalStrings(left, right []string) bool {
 
 // 要求は拒否され、対象のセッションは有効なまま残る。
 //
-//spec:covers EX-AUTHENTICATION-004-03: トークンのテナントまたは `user_id` が操作対象と一致しない
+//spec:covers REQ-AUTHENTICATION-004, EX-AUTHENTICATION-004-03: トークンのテナントまたは `user_id` が操作対象と一致しない
 func TestAccountApiTokenAcrossUserAndTenantLeavesSessionsActive(t *testing.T) {
 	t.Run("別ユーザーのセッション", func(t *testing.T) {
 		fixture := newAuthRefusalServer(t)
@@ -705,10 +731,10 @@ func TestAccountApiTokenAcrossUserAndTenantLeavesSessionsActive(t *testing.T) {
 
 // 到達できず、そのトークンではどのセッションのステップアップも成立しない。
 //
-//spec:covers EX-AUTHENTICATION-004-04: API アクセストークンはステップアップ認証のエンドポイントへ
+//spec:covers REQ-AUTHENTICATION-004, EX-AUTHENTICATION-004-04: API アクセストークンはステップアップ認証のエンドポイントへ
 func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
-	fixture.seedWebAuthnCredential(t, authRefusalAlice)
+	fixture.seedWebAuthnCredential(t)
 	stale := fixture.seedSession(t, "sess-stale", tenancydomain.DefaultTenantID, authRefusalAlice,
 		func(session *sessiondomain.LoginSession) {
 			session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
@@ -761,11 +787,11 @@ func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 // 拒否の応答を書いたうえで保存も続ける実装は、応答だけを読むテストを素通りしたまま、
 // CSRF で守るはずだった再認証の入口を開けたままにする。
 //
-//spec:covers EX-AUTHENTICATION-006-02: CSRF トークンが一致しない、または WebAuthn を利用できない
+//spec:covers REQ-AUTHENTICATION-006, EX-AUTHENTICATION-006-02: CSRF トークンが一致しない、または WebAuthn を利用できない
 func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 	t.Run("CSRF トークンが一致しない", func(t *testing.T) {
 		fixture := newAuthRefusalServer(t)
-		fixture.seedWebAuthnCredential(t, authRefusalAlice)
+		fixture.seedWebAuthnCredential(t)
 		session := fixture.seedSession(t, "sess-csrf", tenancydomain.DefaultTenantID, authRefusalAlice)
 
 		refused := fixture.send(t, authRefusalRequest{
@@ -797,7 +823,7 @@ func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 
 	t.Run("WebAuthn を利用できない", func(t *testing.T) {
 		fixture := newAuthRefusalServer(t, withoutWebAuthn())
-		fixture.seedWebAuthnCredential(t, authRefusalAlice)
+		fixture.seedWebAuthnCredential(t)
 		session := fixture.seedSession(t, "sess-no-webauthn", tenancydomain.DefaultTenantID, authRefusalAlice)
 
 		refused := fixture.send(t, authRefusalRequest{
@@ -822,7 +848,7 @@ func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 // どうかが見えないため、「429 を書いてから発行も続ける」実装はステータスを読むだけの
 // テストを通ってしまい、流量制限が守るはずだった総当たりの費用がゼロに戻る。
 //
-//spec:covers EX-AUTHENTICATION-008-02: 同じ識別子と IP の組で上限に達したパスワードリセットの
+//spec:covers REQ-AUTHENTICATION-008, EX-AUTHENTICATION-008-02: 同じ識別子と IP の組で上限に達したパスワードリセットの
 func TestPasswordResetRateLimitIssuesNoTokenAndSendsNoMail(t *testing.T) {
 	const forwardedFor = "198.51.100.7"
 	blocked := newAuthRefusalServer(t, withAuthRefusalRateLimiter("password_reset"))
@@ -866,7 +892,7 @@ func TestPasswordResetRateLimitIssuesNoTokenAndSendsNoMail(t *testing.T) {
 // 管理・Application のいずれのリソースにも到達できず、応答にそのリソースの内容が
 // 含まれない。登録の API と元の認可トランザクションだけが残る。
 //
-//spec:covers EX-AUTHENTICATION-020-01: `pending_purpose=Enrollment` のセッションは、アカウント・
+//spec:covers REQ-AUTHENTICATION-020, EX-AUTHENTICATION-020-01: `pending_purpose=Enrollment` のセッションは、アカウント・
 func TestEnrollmentPendingSessionReachesNoOrdinaryResource(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	pending := fixture.seedSession(t, "sess-enrollment", tenancydomain.DefaultTenantID, authRefusalAlice, pendingEnrollment)
@@ -903,5 +929,633 @@ func TestEnrollmentPendingSessionReachesNoOrdinaryResource(t *testing.T) {
 	})
 	if accepted.Code != http.StatusOK || !strings.Contains(accepted.Body.String(), visible) {
 		t.Fatalf("前提が壊れている: 認証済みの一覧 status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+}
+
+// アカウント API のスコープは、それぞれが許す操作だけを許す。
+//
+// 拒否の側は 004-02 から 004-04 が見ている。ここは受理の側で、4 つのスコープが
+// **何を通すか**を 1 件ずつ観測する。受理の観測が無いと、すべてを拒否する実装でも
+// 拒否のテストは全部通ってしまう。
+//
+//spec:covers REQ-AUTHENTICATION-004, EX-AUTHENTICATION-004-01: account:read が参照だけを、account:mfa:write が認証要素と復旧コードの変更を、account:sessions:write が自身のセッションの失効を、account:password:write と現在のパスワードがパスワードの変更を通すことを、それぞれ効果の側から固定する。
+func TestAccountApiTokenScopesAllowExactlyTheirOwnOperations(t *testing.T) {
+	t.Run("account:read は参照を通す", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		own := fixture.seedSession(t, "sess-read", tenancydomain.DefaultTenantID, authRefusalAlice)
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalAlice,
+			apitokendomain.ScopeAccountRead)
+		for _, resource := range []struct{ name, path, want string }{
+			{"アカウントのセキュリティ設定", "/api/account/v1/security", "totp_enrolled"},
+			{"サインイン履歴", "/api/account/v1/signin_activity", "["},
+			{"セッション一覧", "/api/account/v1/sessions", own},
+		} {
+			accepted := fixture.send(t, authRefusalRequest{
+				method: http.MethodGet, path: resource.path, bearer: token,
+			})
+			if accepted.Code != http.StatusOK {
+				t.Fatalf("%s: status=%d body=%s", resource.name, accepted.Code, accepted.Body.String())
+			}
+			if !strings.Contains(accepted.Body.String(), resource.want) {
+				t.Fatalf("%s: 参照が通ったのに内容が返らない: %s", resource.name, accepted.Body.String())
+			}
+		}
+	})
+
+	t.Run("account:mfa:write は認証要素と復旧コードを変える", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		fixture.seedRecoveryCodes(t)
+		before := fixture.recoveryCodeHashes(t)
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalAlice,
+			apitokendomain.ScopeAccountMFAWrite)
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, path: "/api/account/v1/mfa/recovery-codes/generate",
+			bearer: token, body: map[string]any{},
+		})
+		if accepted.Code != http.StatusOK && accepted.Code != http.StatusCreated {
+			t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+		}
+		if after := fixture.recoveryCodeHashes(t); equalStrings(before, after) {
+			t.Fatalf("受理されたのに復旧コードが入れ替わっていない: %v", after)
+		}
+	})
+
+	t.Run("account:sessions:write は自身のセッションを失効させる", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		target := fixture.seedSession(t, "sess-own", tenancydomain.DefaultTenantID, authRefusalAlice)
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalAlice,
+			apitokendomain.ScopeAccountSessionsWrite)
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, path: "/api/account/v1/sessions/" + target + "/revoke", bearer: token,
+		})
+		if accepted.Code != http.StatusNoContent {
+			t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+		}
+		if !fixture.sessionRevoked(t, target, authRefusalAlice) {
+			t.Fatal("受理されたのにセッションが失効していない")
+		}
+	})
+
+	t.Run("account:password:write と現在のパスワードはパスワードを変える", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalAlice,
+			apitokendomain.ScopeAccountPasswordWrite)
+		const replacement = "refusal-password-9876"
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, path: "/api/auth/change_password", bearer: token,
+			body: map[string]any{"current_password": authRefusalPassword, "new_password": replacement},
+		})
+		if accepted.Code != http.StatusNoContent && accepted.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+		}
+		// 効果は保存されたハッシュにしか現れない。現在のパスワードの提示が要ることは、
+		// 同じトークンで誤った現在のパスワードを出すと通らないことで示す。
+		if !fixture.passwordMatches(t, authRefusalAlice, replacement) {
+			t.Fatal("受理されたのにパスワードが変わっていない")
+		}
+		refused := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, path: "/api/auth/change_password", bearer: token,
+			body: map[string]any{"current_password": "not-the-current-password", "new_password": "another-password-4321"},
+		})
+		if refused.Code == http.StatusNoContent || refused.Code == http.StatusOK {
+			t.Fatalf("誤った現在のパスワードで変更が通った: status=%d", refused.Code)
+		}
+		if !fixture.passwordMatches(t, authRefusalAlice, replacement) {
+			t.Fatal("拒否されたのにパスワードが変わった")
+		}
+	})
+}
+
+// passwordMatches は保存されているパスワードハッシュが平文と一致するかを返す。
+func (f *authRefusalFixture) passwordMatches(t *testing.T, userID, plaintext string) bool {
+	t.Helper()
+	user, err := f.users.FindBySub(context.Background(), userID)
+	if err != nil || user == nil {
+		t.Fatalf("user=%v err=%v", user, err)
+	}
+	ok, err := testing_passwords.NewHasher().Verify(plaintext, user.PasswordHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ok
+}
+
+// アカウントコンテキストは、3 つの入口のどれからでも同じ内容で取れる。
+//
+// 拒否の側は 005-02 と 005-03 が見ている。ここは「同じアカウントコンテキストを
+// 取得できる」という受理の側で、入口ごとに subject・realm・実効ロール・CSRF トークンの
+// 4 つが揃うことを観測する。未認証のリセット画面だけは CSRF トークンだけが返る。
+//
+//spec:covers REQ-AUTHENTICATION-005, EX-AUTHENTICATION-005-01: セッション、ポータルのアクセストークン、account:read のいずれからも subject・realm・実効ロール・CSRF トークンを含む同じコンテキストが返り、未認証のパスワードリセット画面には CSRF トークンだけが返ることを固定する。
+func TestAccountContextIsTheSameFromEveryAllowedCredential(t *testing.T) {
+	fixture := newAuthRefusalServer(t)
+	session := fixture.seedSession(t, "sess-context", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
+
+	for _, entry := range []struct {
+		name    string
+		request authRefusalRequest
+	}{
+		{"認証済みセッション", authRefusalRequest{
+			method: http.MethodGet, path: "/api/auth/account", sessionID: session,
+		}},
+		{"管理ポータルの idmagic.admin", authRefusalRequest{
+			method: http.MethodGet, path: "/api/auth/account",
+			bearer: fixture.issuePortalToken(t, authRefusalHomeAdmin, "idmagic.admin"),
+		}},
+		{"アカウントポータルの idmagic.account", authRefusalRequest{
+			method: http.MethodGet, path: "/api/auth/account",
+			bearer: fixture.issuePortalToken(t, authRefusalHomeAdmin, "idmagic.account"),
+		}},
+		{"自己管理 API クライアントの account:read", authRefusalRequest{
+			method: http.MethodGet, path: "/api/auth/account",
+			bearer: fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalHomeAdmin,
+				apitokendomain.ScopeAccountRead),
+		}},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			accepted := fixture.send(t, entry.request)
+			if accepted.Code != http.StatusOK {
+				t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+			}
+			body := decodeAccountContext(t, accepted)
+			if body.ID != authRefusalHomeAdmin {
+				t.Fatalf("subject=%q、期待は %s", body.ID, authRefusalHomeAdmin)
+			}
+			if body.Realm != tenancydomain.DefaultRealm {
+				t.Fatalf("realm=%q、期待は %s", body.Realm, tenancydomain.DefaultRealm)
+			}
+			if !slices.Contains(body.Roles, "admin") {
+				t.Fatalf("実効ロールが返らない: %v", body.Roles)
+			}
+			if body.CSRFToken == "" {
+				t.Fatal("CSRF トークンが返らない")
+			}
+		})
+	}
+
+	// 未認証のパスワードリセット画面。ここだけは主体が無く、CSRF トークンだけが返る。
+	reset := fixture.send(t, authRefusalRequest{
+		method: http.MethodGet, path: "/api/auth/password_reset_context",
+	})
+	if reset.Code != http.StatusOK {
+		t.Fatalf("リセットコンテキスト status=%d body=%s", reset.Code, reset.Body.String())
+	}
+	if body := decodeAccountContext(t, reset); body.CSRFToken == "" {
+		t.Fatalf("リセットコンテキストに CSRF トークンが無い: %+v", body)
+	}
+}
+
+// issuePortalToken は指定のポータルスコープを持つアクセストークンを 1 本署名する。
+// ポータルスコープは OAuth2 の認可で降りるもので、API トークンの粒度スコープとは別物である。
+func (f *authRefusalFixture) issuePortalToken(t *testing.T, userID string, scopes ...string) string {
+	t.Helper()
+	ctx := tenancy.WithTenant(
+		context.Background(),
+		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm},
+		authRefusalIssuer+"/realms/"+tenancydomain.DefaultRealm,
+		"/realms/"+tenancydomain.DefaultRealm,
+	)
+	token, _, err := f.signer.SignAccessToken(ctx, oauthports.AccessTokenInput{
+		Client:   &oauthdomain.OAuth2Client{ClientID: "portal"},
+		Sub:      userID,
+		Scopes:   scopes,
+		AuthTime: time.Now().UTC().Unix(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return token
+}
+
+// ステップアップの WebAuthn チャレンジは、いま認証されているセッションへ束縛される。
+//
+// 拒否の側は 006-02 が見ている。ここは受理の側で、発行された
+// `PublicKeyCredentialRequestOptions` が登録済みの認証器を指し、保存されたチャレンジの
+// 鍵が**そのセッション**であることを観測する。鍵が利用者やレルムだけで決まる実装では、
+// 別のセッションで開始したチャレンジを別のセッションが使い切れてしまう。
+//
+//spec:covers REQ-AUTHENTICATION-006, EX-AUTHENTICATION-006-01: 正しい CSRF トークンで要求したチャレンジが発行され、保存の鍵が要求したセッションの id であることを固定する。
+func TestStepUpWebAuthnChallengeIsBoundToTheCurrentSession(t *testing.T) {
+	fixture := newAuthRefusalServer(t)
+	fixture.seedWebAuthnCredential(t)
+	first := fixture.seedSession(t, "sess-challenge-first", tenancydomain.DefaultTenantID, authRefusalAlice)
+	second := fixture.seedSession(t, "sess-challenge-second", tenancydomain.DefaultTenantID, authRefusalAlice)
+
+	for _, session := range []string{first, second} {
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, path: "/api/account/v1/step_up/webauthn/challenge",
+			sessionID: session, csrf: authRefusalCSRF, body: map[string]any{},
+		})
+		if accepted.Code != http.StatusOK {
+			t.Fatalf("%s: status=%d body=%s", session, accepted.Code, accepted.Body.String())
+		}
+		if !strings.Contains(accepted.Body.String(), "challenge") {
+			t.Fatalf("%s: 応答にチャレンジが無い: %s", session, accepted.Body.String())
+		}
+		if !strings.Contains(accepted.Body.String(), "allowCredentials") {
+			t.Fatalf("%s: 応答が登録済みの認証器を指していない: %s", session, accepted.Body.String())
+		}
+	}
+	// 束縛は保存の鍵にしか現れない。2 本のセッションが別々の鍵を得ることで、
+	// 鍵が利用者だけで決まる実装と区別できる。
+	if len(fixture.challenges.keys) != 2 {
+		t.Fatalf("保存されたチャレンジ=%v", fixture.challenges.keys)
+	}
+	for i, session := range []string{first, second} {
+		if !strings.Contains(fixture.challenges.keys[i], session) {
+			t.Fatalf("チャレンジ %d の鍵=%q、セッション %s に束縛されていない",
+				i, fixture.challenges.keys[i], session)
+		}
+	}
+	if fixture.challenges.keys[0] == fixture.challenges.keys[1] {
+		t.Fatalf("2 本のセッションが同じ鍵を共有している: %q", fixture.challenges.keys[0])
+	}
+}
+
+// パスワードリセットの要求は、宛先が登録済みかどうかで区別できない。
+//
+// 列挙を防ぐのは応答の側で、記録は残す側である。応答だけを読むテストは、登録済みの
+// ときだけイベントを出す実装と区別できない。逆に記録だけを読むテストは、未登録の
+// ときに 404 を返す実装を通してしまう。両方を読む。
+//
+//spec:covers REQ-AUTHENTICATION-008, EX-AUTHENTICATION-008-01: 登録済みと未登録のどちらの宛先でも 204 が返り、どちらでも PasswordResetRequested が発行されることを固定する。送信の有無だけが違う。
+func TestPasswordResetRequestIsIndistinguishableAndRecorded(t *testing.T) {
+	for _, recipient := range []struct {
+		name, email string
+		wantMails   int
+	}{
+		{"登録済みのアドレス", authRefusalAlice + "@example.test", 1},
+		{"未登録のアドレス", "nobody@example.test", 0},
+	} {
+		t.Run(recipient.name, func(t *testing.T) {
+			fixture := newAuthRefusalServer(t)
+			accepted := fixture.send(t, authRefusalRequest{
+				method: http.MethodPost, path: "/api/auth/forgot_password", csrf: authRefusalCSRF,
+				body: map[string]any{"email": recipient.email},
+			})
+			if accepted.Code != http.StatusNoContent {
+				t.Fatalf("status=%d body=%s、期待は 204", accepted.Code, accepted.Body.String())
+			}
+			if accepted.Body.Len() != 0 {
+				t.Fatalf("204 に本文がある: %s", accepted.Body.String())
+			}
+			if len(fixture.emails.Sent) != recipient.wantMails {
+				t.Fatalf("送信されたメール=%d、期待は %d", len(fixture.emails.Sent), recipient.wantMails)
+			}
+			recorded := false
+			for _, event := range *fixture.events {
+				if event.EventType() == "PasswordResetRequested" {
+					recorded = true
+				}
+			}
+			if !recorded {
+				t.Fatalf("PasswordResetRequested が発行されていない: %v", eventTypes(*fixture.events))
+			}
+		})
+	}
+}
+
+// eventTypes は発行されたイベント型を発行順に返す。
+func eventTypes(events []spec.DomainEvent) []string {
+	types := make([]string, len(events))
+	for i, event := range events {
+		types[i] = event.EventType()
+	}
+	return types
+}
+
+// ステップアップ無しの TOTP 解除は拒否され、認証要素は残る。
+//
+// 解除は「最後の第二要素を外す」操作になりうるので、応答だけを読むテストでは、
+// 403 を書いたうえで消す実装を見分けられない。保存層から読み直す。
+//
+//spec:covers REQ-AUTHENTICATION-012, EX-AUTHENTICATION-012-02: ステップアップ認証を成立させていないセッションからの TOTP 解除が step_up_required で拒否され、認証要素が残ることを固定する。
+func TestTotpRemovalWithoutStepUpKeepsTheFactor(t *testing.T) {
+	const secret = "JBSWY3DPEHPK3PXP"
+	fixture := newAuthRefusalServer(t)
+	fixture.seedTotpFactor(t, secret)
+	// ステップアップは「直近 5 分以内の再認証」なので、認証時刻そのものが新しい
+	// セッションは条件を満たしてしまう。行われていない状態を作るには両方を過去へ置く。
+	stale := fixture.seedSession(t, "sess-no-step-up", tenancydomain.DefaultTenantID, authRefusalAlice,
+		func(session *sessiondomain.LoginSession) {
+			session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
+		})
+
+	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused := fixture.send(t, authRefusalRequest{
+		method: http.MethodPost, path: "/api/account/v1/mfa/totp/remove",
+		sessionID: stale, csrf: authRefusalCSRF, body: map[string]any{"code": code},
+	})
+	if refused.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s、期待は 403", refused.Code, refused.Body.String())
+	}
+	if problem := problemCode(t, refused); problem != "step_up_required" {
+		t.Fatalf("error=%q、期待は step_up_required", problem)
+	}
+	if factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP); factor == nil {
+		t.Fatal("ステップアップ無しの要求で認証要素が消えた")
+	}
+
+	// 対照: ステップアップを済ませたセッションでは同じコードで解除が通る。
+	// 拒否の理由がコードでも CSRF でもなくステップアップであると示す。
+	fresh := fixture.seedSession(t, "sess-step-up", tenancydomain.DefaultTenantID, authRefusalAlice,
+		func(session *sessiondomain.LoginSession) {
+			session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
+		}, withFreshStepUp)
+	accepted := fixture.send(t, authRefusalRequest{
+		method: http.MethodPost, path: "/api/account/v1/mfa/totp/remove",
+		sessionID: fresh, csrf: authRefusalCSRF, body: map[string]any{"code": code},
+	})
+	if accepted.Code != http.StatusNoContent {
+		t.Fatalf("前提が壊れている: ステップアップ済みの解除が status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+	if factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP); factor != nil {
+		t.Fatal("前提が壊れている: ステップアップ済みの解除で認証要素が残っている")
+	}
+}
+
+// issuePasswordResetToken は forgot_password を 1 回叩き、送られたメールから
+// 生のリセットトークンを取り出す。トークンは保存層にはダイジェストしか残らないので、
+// 製品と同じ経路を通さないと手に入らない。
+func (f *authRefusalFixture) issuePasswordResetToken(t *testing.T, userID string) string {
+	t.Helper()
+	before := len(f.emails.Sent)
+	requested := f.send(t, authRefusalRequest{
+		method: http.MethodPost, path: "/api/auth/forgot_password", csrf: authRefusalCSRF,
+		body: map[string]any{"email": userID + "@example.test"},
+	})
+	if requested.Code != http.StatusNoContent {
+		t.Fatalf("forgot_password status=%d body=%s", requested.Code, requested.Body.String())
+	}
+	if len(f.emails.Sent) != before+1 {
+		t.Fatalf("リセットのメールが送られていない: %d 通", len(f.emails.Sent))
+	}
+	message := f.emails.Sent[len(f.emails.Sent)-1].Text
+	start := strings.Index(message, "http://")
+	if start < 0 {
+		t.Fatalf("リセット URL がメールに無い: %q", message)
+	}
+	rawURL := message[start:]
+	if end := strings.IndexByte(rawURL, '\n'); end >= 0 {
+		rawURL = rawURL[:end]
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := parsed.Query().Get("token")
+	if token == "" {
+		t.Fatalf("リセット URL がトークンを運んでいない: %q", rawURL)
+	}
+	return token
+}
+
+// seedTrustedDevice は記憶済みの端末を 1 台置き、その id を返す。
+func (f *authRefusalFixture) seedTrustedDevice(t *testing.T, userID string) string {
+	t.Helper()
+	device, _, err := trusteddevicedomain.NewTrustedDevice(
+		tenancydomain.DefaultTenantID, userID, "Firefox on macOS", 30*24*time.Hour, time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.devices.Save(context.Background(), device); err != nil {
+		t.Fatal(err)
+	}
+	return device.ID
+}
+
+// activeTrustedDevices は失効していない端末の台数を返す。
+func (f *authRefusalFixture) activeTrustedDevices(t *testing.T, userID string) int {
+	t.Helper()
+	devices, err := f.devices.ListActiveByUser(context.Background(), tenancydomain.DefaultTenantID, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(devices)
+}
+
+// 資格情報が変わる操作は、どの入口から来ても記憶済みの端末をすべて失効させる。
+//
+// 端末を残すかどうかは応答に現れない。失効を配線し忘れた入口は、応答だけを読むテストを
+// 素通りしたまま、変更前の資格情報で成立した記憶を生かし続ける。入口ごとに保存層を
+// 読み直す。パスワードの変更と認証要素の解除は trusted_device_e2e_test.go が持つので、
+// ここは残り 4 つの入口を見る。
+//
+//spec:covers REQ-AUTHENTICATION-028, EX-AUTHENTICATION-028-02, EX-AUTHENTICATION-028-04, EX-AUTHENTICATION-028-05, EX-AUTHENTICATION-028-06: メールのリセットリンクによる再設定、管理者による認証器のリセット、管理者による無効化、本人による TOTP 認証要素の登録、本人による他セッションの一括失効のいずれでも、記憶済みの端末がすべて失効することを固定する。
+func TestCredentialChangingEntryPointsRevokeEveryTrustedDevice(t *testing.T) {
+	for _, entry := range []struct {
+		name    string
+		arrange func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest
+	}{
+		{
+			name: "メールのリセットリンクでパスワードを再設定する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/auth/reset_password", csrf: authRefusalCSRF,
+					body: map[string]any{
+						"token":        fixture.issuePasswordResetToken(t, authRefusalAlice),
+						"new_password": "reset-by-link-password-1234",
+					},
+				}
+			},
+		},
+		{
+			name: "管理者が認証器をリセットする",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				fixture.seedTotpFactor(t, "JBSWY3DPEHPK3PXP")
+				admin := fixture.seedSession(t, "sess-admin-reset", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
+				return authRefusalRequest{
+					method: http.MethodPost, sessionID: admin, csrf: authRefusalCSRF,
+					path: "/api/admin/v1/users/" + authRefusalAlice + "/authenticator-reset",
+					body: map[string]any{"targets": []string{"totp"}},
+				}
+			},
+		},
+		{
+			name: "管理者が無効化する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				admin := fixture.seedSession(t, "sess-admin-disable", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
+				return authRefusalRequest{
+					method: http.MethodPost, sessionID: admin, csrf: authRefusalCSRF,
+					path: "/api/admin/v1/users/" + authRefusalAlice + "/disable",
+					body: map[string]any{},
+				}
+			},
+		},
+		{
+			name: "本人が TOTP 認証要素を登録する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				const secret = "JBSWY3DPEHPK3PXP"
+				code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+				if err != nil {
+					t.Fatal(err)
+				}
+				session := fixture.seedSession(t, "sess-enroll", tenancydomain.DefaultTenantID, authRefusalAlice)
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/account/v1/mfa/totp/enroll/confirm",
+					sessionID: session, csrf: authRefusalCSRF,
+					body: map[string]any{"secret": secret, "code": code},
+				}
+			},
+		},
+		{
+			name: "本人が他のセッションを一括失効させる",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				fixture.seedSession(t, "sess-other", tenancydomain.DefaultTenantID, authRefusalAlice)
+				current := fixture.seedSession(t, "sess-current", tenancydomain.DefaultTenantID, authRefusalAlice,
+					func(session *sessiondomain.LoginSession) {
+						session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
+					}, withFreshStepUp)
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/account/v1/sessions/revoke_others",
+					sessionID: current, csrf: authRefusalCSRF, body: map[string]any{},
+				}
+			},
+		},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			fixture := newAuthRefusalServer(t)
+			fixture.seedTrustedDevice(t, authRefusalAlice)
+			// 対照の主体。他人の端末まで巻き添えにする実装を見分ける。
+			fixture.seedTrustedDevice(t, authRefusalBob)
+			request := entry.arrange(t, fixture)
+			if fixture.activeTrustedDevices(t, authRefusalAlice) != 1 {
+				t.Fatalf("前提が壊れている: 記憶済みの端末=%d", fixture.activeTrustedDevices(t, authRefusalAlice))
+			}
+
+			accepted := fixture.send(t, request)
+			if accepted.Code >= http.StatusBadRequest {
+				t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+			}
+			if got := fixture.activeTrustedDevices(t, authRefusalAlice); got != 0 {
+				t.Fatalf("記憶済みの端末が %d 台残っている", got)
+			}
+			if got := fixture.activeTrustedDevices(t, authRefusalBob); got != 1 {
+				t.Fatalf("他人の端末まで失効した: 残り %d 台", got)
+			}
+		})
+	}
+}
+
+// 信頼済みデバイスで成立したセッションは、機微操作の再認証を肩代わりしない。
+//
+// 記憶済みの端末は「第二要素をもう一度出さなくてよい」という約束であって、
+// 「いま本人がそこに居る」という証明ではない。肩代わりを許すと、盗まれた端末が
+// パスワードの変更まで到達する。応答だけを読むテストでは、拒否を書いたうえで
+// 操作も続ける実装を見分けられないので、入口ごとに効果を読み直す。
+//
+//spec:covers REQ-AUTHENTICATION-029, EX-AUTHENTICATION-029-02: ステップアップを成立させていないセッションからのパスワード変更・TOTP 解除・他セッションの一括失効・信頼済みデバイスの失効が、いずれも step_up_required で拒否され、対象が変わらないことを固定する。
+func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
+	const totpSecret = "JBSWY3DPEHPK3PXP"
+	code, err := totpusecases.GenerateTOTP(totpSecret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, operation := range []struct {
+		name    string
+		request func(fixture *authRefusalFixture, deviceID string) authRefusalRequest
+		// unchanged は拒否が守るはずのものが動いていないことを確かめる。
+		unchanged func(t *testing.T, fixture *authRefusalFixture, otherSession string)
+	}{
+		{
+			name: "パスワードの変更",
+			request: func(*authRefusalFixture, string) authRefusalRequest {
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/auth/change_password",
+					body: map[string]any{
+						"current_password": authRefusalPassword, "new_password": "taken-over-password-1234",
+					},
+				}
+			},
+			unchanged: func(t *testing.T, fixture *authRefusalFixture, _ string) {
+				t.Helper()
+				if !fixture.passwordMatches(t, authRefusalAlice, authRefusalPassword) {
+					t.Fatal("拒否されたのにパスワードが変わった")
+				}
+			},
+		},
+		{
+			name: "TOTP 認証要素の解除",
+			request: func(*authRefusalFixture, string) authRefusalRequest {
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/account/v1/mfa/totp/remove",
+					body: map[string]any{"code": code},
+				}
+			},
+			unchanged: func(t *testing.T, fixture *authRefusalFixture, _ string) {
+				t.Helper()
+				factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP)
+				if factor == nil {
+					t.Fatal("拒否されたのに認証要素が消えた")
+				}
+			},
+		},
+		{
+			name: "他セッションの一括失効",
+			request: func(*authRefusalFixture, string) authRefusalRequest {
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/account/v1/sessions/revoke_others",
+					body: map[string]any{},
+				}
+			},
+			unchanged: func(t *testing.T, fixture *authRefusalFixture, otherSession string) {
+				t.Helper()
+				if fixture.sessionRevoked(t, otherSession, authRefusalAlice) {
+					t.Fatal("拒否されたのに他のセッションが失効した")
+				}
+			},
+		},
+		{
+			name: "信頼済みデバイスの失効",
+			request: func(_ *authRefusalFixture, deviceID string) authRefusalRequest {
+				return authRefusalRequest{
+					method: http.MethodPost,
+					path:   "/api/account/v1/trusted_devices/" + deviceID + "/revoke",
+					body:   map[string]any{},
+				}
+			},
+			unchanged: func(t *testing.T, fixture *authRefusalFixture, _ string) {
+				t.Helper()
+				if got := fixture.activeTrustedDevices(t, authRefusalAlice); got != 1 {
+					t.Fatalf("拒否されたのに記憶済みの端末が %d 台になった", got)
+				}
+			},
+		},
+	} {
+		t.Run(operation.name, func(t *testing.T) {
+			fixture := newAuthRefusalServer(t)
+			fixture.seedTotpFactor(t, totpSecret)
+			deviceID := fixture.seedTrustedDevice(t, authRefusalAlice)
+			otherSession := fixture.seedSession(t, "sess-other", tenancydomain.DefaultTenantID, authRefusalAlice)
+			// 記憶済みの端末で成立したセッション。認証時刻も古いので、ステップアップの
+			// 条件はどちらの成分からも満たされない。
+			trusted := fixture.seedSession(t, "sess-tdev", tenancydomain.DefaultTenantID, authRefusalAlice,
+				func(session *sessiondomain.LoginSession) {
+					session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
+					session.AMR = []string{"pwd", "tdev"}
+					session.ACR = authusecases.DeriveACR(session.AMR)
+				})
+
+			request := operation.request(fixture, deviceID)
+			request.sessionID = trusted
+			request.csrf = authRefusalCSRF
+			refused := fixture.send(t, request)
+			if refused.Code != http.StatusForbidden {
+				t.Fatalf("status=%d body=%s、期待は 403", refused.Code, refused.Body.String())
+			}
+			if problem := problemCode(t, refused); problem != "step_up_required" {
+				t.Fatalf("error=%q、期待は step_up_required", problem)
+			}
+			operation.unchanged(t, fixture, otherSession)
+		})
 	}
 }

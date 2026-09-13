@@ -124,8 +124,10 @@ func adminRequest(method, path string) *http.Request {
 // adminMutationRequest builds a POST request satisfying VerifyBrowserRequest
 // (matching Origin + double-submit CSRF cookie/header), mirroring the
 // existing passwordResetCSRF helper used elsewhere in this package.
-func adminMutationRequest(t *testing.T, e *echo.Echo, method, path string) *http.Request {
+// 管理 API の変更操作はすべて POST なので、メソッドはここに畳む。
+func adminMutationRequest(t *testing.T, e *echo.Echo, path string) *http.Request {
 	t.Helper()
+	method := http.MethodPost
 	csrf, cookie := sessionTestCSRF(t, e)
 	req := httptest.NewRequest(method, defaultRealmPath(path), http.NoBody)
 	req.Header.Set("X-Demo-Sub", "admin")
@@ -160,7 +162,7 @@ func TestAdminRevokeSessionCascadesToRefreshTokens(t *testing.T) {
 	f.seedSession(t, "s1", "alice", base)
 	f.seedRefreshToken(t, "s1", "web-app")
 
-	req := adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/v1/users/alice/sessions/s1/revoke")
+	req := adminMutationRequest(t, f.e, "/api/admin/v1/users/alice/sessions/s1/revoke")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
@@ -182,7 +184,7 @@ func TestAdminRevokeSessionRejectsMismatchedUser(t *testing.T) {
 
 	// bob という URL に対して alice のセッション id を指定しても 404 になる。
 	rec := httptest.NewRecorder()
-	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/v1/users/bob/sessions/s1/revoke"))
+	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, "/api/admin/v1/users/bob/sessions/s1/revoke"))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -199,7 +201,7 @@ func TestAdminRevokeAllSessionsRevokesEveryTargetSession(t *testing.T) {
 	f.seedSession(t, "s3", "bob", base)
 
 	rec := httptest.NewRecorder()
-	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/v1/users/alice/sessions/revoke_all"))
+	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, "/api/admin/v1/users/alice/sessions/revoke_all"))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -236,4 +238,40 @@ func defaultRealmPath(path string) string {
 		return path
 	}
 	return "/realms/default" + path
+}
+
+// 失効済みのセッションへの再失効は、成功として扱われ、最初の失効時刻を保持する。
+//
+// 「204 が返る」だけを読むと、2 度目に時刻を上書きする実装を通してしまう。上書きされると、
+// そのセッションがいつ切れたかという監査上の事実が失われる。
+//
+//spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-03: 失効済みのセッションへ再度 RevokeSession を呼んでも 204 が返り、revoked_at が初回の値を保持することを固定する。
+func TestAdminRevokeSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
+	f := newAdminSessionsFixture(t)
+	base := time.Now().UTC().Truncate(time.Second)
+	f.seedSession(t, "s1", "alice", base)
+
+	first := httptest.NewRecorder()
+	f.e.ServeHTTP(first, adminMutationRequest(t, f.e, "/api/admin/v1/users/alice/sessions/s1/revoke"))
+	if first.Code != http.StatusNoContent {
+		t.Fatalf("初回 status=%d body=%s", first.Code, first.Body.String())
+	}
+	revoked, err := f.sessionStore.FindOwned(context.Background(), "s1", "alice")
+	if err != nil || revoked == nil || revoked.RevokedAt == nil {
+		t.Fatalf("session=%#v err=%v", revoked, err)
+	}
+	firstRevokedAt := *revoked.RevokedAt
+
+	second := httptest.NewRecorder()
+	f.e.ServeHTTP(second, adminMutationRequest(t, f.e, "/api/admin/v1/users/alice/sessions/s1/revoke"))
+	if second.Code != http.StatusNoContent {
+		t.Fatalf("再送 status=%d body=%s、期待は 204", second.Code, second.Body.String())
+	}
+	again, err := f.sessionStore.FindOwned(context.Background(), "s1", "alice")
+	if err != nil || again == nil || again.RevokedAt == nil {
+		t.Fatalf("session=%#v err=%v", again, err)
+	}
+	if !again.RevokedAt.Equal(firstRevokedAt) {
+		t.Fatalf("revoked_at=%s, want %s (初回の値)", again.RevokedAt, firstRevokedAt)
+	}
 }

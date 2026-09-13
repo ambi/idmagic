@@ -26,7 +26,7 @@ import (
 // 失効は 204 を返す操作なので、拒否と成功は本文で見分けられない。各操作のあとに
 // 対象のセッションを読み直して、tombstone が付いていないことを確かめる。
 //
-//spec:covers EX-AUTHENTICATION-021-02: 他テナントの管理者による対象ユーザーのセッション操作は
+//spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-02: 他テナントの管理者による対象ユーザーのセッション操作は
 func TestAdminSessionOperationsAcrossTenantsRevokeNothing(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	target := fixture.seedSession(t, "sess-target", tenancydomain.DefaultTenantID, authRefusalAlice)
@@ -98,7 +98,7 @@ func TestAdminSessionRevokeFromOwnRealmDoesNotReachAnotherTenant(t *testing.T) {
 
 // よる認証器のリセットは拒否され、対象ユーザーの認証器は変更されない。
 //
-//spec:covers EX-AUTHENTICATION-022-02: 他テナントの管理者、または `admin` ロールを持たない操作者に
+//spec:covers REQ-AUTHENTICATION-022, EX-AUTHENTICATION-022-02: 他テナントの管理者、または `admin` ロールを持たない操作者に
 func TestAdminAuthenticatorResetRefusalLeavesAuthenticatorsUnchanged(t *testing.T) {
 	const seededSecret = "MFRGGZDFMZTWQ2LKNNWG23TPOB2XI4TJ"
 
@@ -122,8 +122,8 @@ func TestAdminAuthenticatorResetRefusalLeavesAuthenticatorsUnchanged(t *testing.
 	} {
 		t.Run(actor.name, func(t *testing.T) {
 			fixture := newAuthRefusalServer(t)
-			fixture.seedTotpFactor(t, authRefusalAlice, seededSecret)
-			fixture.seedRecoveryCodes(t, authRefusalAlice)
+			fixture.seedTotpFactor(t, seededSecret)
+			fixture.seedRecoveryCodes(t)
 			session := fixture.seedSession(t, "sess-actor", actor.tenantID, actor.userID)
 
 			refused := fixture.send(t, authRefusalRequest{
@@ -147,8 +147,8 @@ func TestAdminAuthenticatorResetRefusalLeavesAuthenticatorsUnchanged(t *testing.
 
 	// 対照: 同一テナントの admin では同じ要求が通り、TOTP と復旧コードが消える。
 	fixture := newAuthRefusalServer(t)
-	fixture.seedTotpFactor(t, authRefusalAlice, seededSecret)
-	fixture.seedRecoveryCodes(t, authRefusalAlice)
+	fixture.seedTotpFactor(t, seededSecret)
+	fixture.seedRecoveryCodes(t)
 	homeAdmin := fixture.seedSession(t, "sess-home-admin", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
 	accepted := fixture.send(t, authRefusalRequest{
 		method: http.MethodPost, csrf: authRefusalCSRF, sessionID: homeAdmin,
@@ -198,7 +198,7 @@ func (f *authRefusalFixture) connectionNames(t *testing.T, tenantID string) map[
 // 接続の管理へ到達できない。拒否は `insufficient_scope` で、必要な資格として対話
 // セッションを提示する。接続は作成も更新もされない。
 //
-//spec:covers EX-AUTHENTICATION-025-02: API アクセストークンは、どのスコープを持っていても外部 IdP
+//spec:covers REQ-AUTHENTICATION-025, EX-AUTHENTICATION-025-02: API アクセストークンは、どのスコープを持っていても外部 IdP
 func TestApiTokenCannotManageIdentityProviderConnections(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")
@@ -260,7 +260,7 @@ func TestApiTokenCannotManageIdentityProviderConnections(t *testing.T) {
 
 // よる外部アイデンティティのリンクと解除は拒否され、どちらも反映されない。
 //
-//spec:covers EX-AUTHENTICATION-003-02: ステップアップ認証が古い、または行われていないセッションに
+//spec:covers REQ-AUTHENTICATION-003, EX-AUTHENTICATION-003-02: ステップアップ認証が古い、または行われていないセッションに
 func TestExternalIdentityLinkAndUnlinkWithoutStepUpChangeNothing(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")
@@ -308,7 +308,7 @@ func TestExternalIdentityLinkAndUnlinkWithoutStepUpChangeNothing(t *testing.T) {
 
 // 残らなくなる解除は締め出しを防ぐために拒否され、そのリンクは残る。
 //
-//spec:covers EX-AUTHENTICATION-003-03: パスワード資格情報も他の外部アイデンティティのリンクも
+//spec:covers REQ-AUTHENTICATION-003, EX-AUTHENTICATION-003-03: パスワード資格情報も他の外部アイデンティティのリンクも
 func TestSoleFederatedIdentityUnlinkKeepsTheLink(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")
@@ -340,4 +340,88 @@ func TestSoleFederatedIdentityUnlinkKeepsTheLink(t *testing.T) {
 	if providers := fixture.linkedProviders(t, authRefusalSoleFederated); len(providers) != 1 {
 		t.Fatalf("前提が壊れている: 解除後のリンク=%v", providers)
 	}
+}
+
+// 外部 IdP 接続の管理は対話セッションからは通り、セッションと認証情報の管理 API は
+// 粒度スコープごとに許された操作だけを通す。
+//
+// 拒否の側は 025-02 が見ている。ここは受理の側で、`admin` ロールを持つ主体が
+// ブラウザーの管理セッションからは接続を扱えること、そして 3 つの粒度スコープが
+// それぞれ何を通すかを効果の側から観測する。受理の観測が無いと、すべてを拒否する
+// 実装でも拒否のテストは全部通る。
+//
+//spec:covers REQ-AUTHENTICATION-025, EX-AUTHENTICATION-025-01: 外部 IdP 接続の参照と変更が対話セッションからは通ること、sessions:read がセッションとサインイン履歴の参照を、sessions:write がセッションの失効を、users:write が認証器のリセットを許すことを固定する。
+func TestInteractiveSessionManagesConnectionsAndAdminScopesAllowTheirOwnOperations(t *testing.T) {
+	t.Run("対話セッションは外部 IdP 接続を参照できる", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		fixture.seedConnection(t, authRefusalProviderID, "Workforce")
+		session := fixture.seedSession(t, "sess-admin-read", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
+
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodGet, path: "/api/admin/v1/identity-providers", sessionID: session,
+		})
+		if accepted.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+		}
+		if !strings.Contains(accepted.Body.String(), authRefusalProviderID) {
+			t.Fatalf("参照が通ったのに接続が返らない: %s", accepted.Body.String())
+		}
+	})
+
+	t.Run("sessions:read は利用者のセッションとサインイン履歴を参照できる", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		target := fixture.seedSession(t, "sess-target", tenancydomain.DefaultTenantID, authRefusalAlice)
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalHomeAdmin,
+			apitokendomain.ScopeSessionsRead)
+
+		sessions := fixture.send(t, authRefusalRequest{
+			method: http.MethodGet, path: "/api/admin/v1/users/" + authRefusalAlice + "/sessions", bearer: token,
+		})
+		if sessions.Code != http.StatusOK || !strings.Contains(sessions.Body.String(), target) {
+			t.Fatalf("セッション一覧 status=%d body=%s", sessions.Code, sessions.Body.String())
+		}
+		activity := fixture.send(t, authRefusalRequest{
+			method: http.MethodGet, path: "/api/admin/v1/users/" + authRefusalAlice + "/signin_activity", bearer: token,
+		})
+		if activity.Code != http.StatusOK {
+			t.Fatalf("サインイン履歴 status=%d body=%s", activity.Code, activity.Body.String())
+		}
+	})
+
+	t.Run("sessions:write はセッションを失効させる", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		target := fixture.seedSession(t, "sess-revoke", tenancydomain.DefaultTenantID, authRefusalAlice)
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalHomeAdmin,
+			apitokendomain.ScopeSessionsWrite)
+
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, bearer: token,
+			path: "/api/admin/v1/users/" + authRefusalAlice + "/sessions/" + target + "/revoke",
+		})
+		if accepted.Code != http.StatusNoContent {
+			t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+		}
+		if !fixture.sessionRevoked(t, target, authRefusalAlice) {
+			t.Fatal("受理されたのにセッションが失効していない")
+		}
+	})
+
+	t.Run("users:write は認証器をリセットする", func(t *testing.T) {
+		fixture := newAuthRefusalServer(t)
+		fixture.seedTotpFactor(t, "JBSWY3DPEHPK3PXP")
+		token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalHomeAdmin,
+			apitokendomain.ScopeUsersWrite)
+
+		accepted := fixture.send(t, authRefusalRequest{
+			method: http.MethodPost, bearer: token,
+			path: "/api/admin/v1/users/" + authRefusalAlice + "/authenticator-reset",
+			body: map[string]any{"targets": []string{"totp"}},
+		})
+		if accepted.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+		}
+		if factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP); factor != nil {
+			t.Fatal("受理されたのに認証要素が残っている")
+		}
+	})
 }

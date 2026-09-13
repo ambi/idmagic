@@ -106,7 +106,7 @@ func (d *countingDriver) Complete(
 // 正当な state が同じ条件で成立することを最後に置くのは、拒否がすべて別の理由 (設定漏れ
 // など) で起きていた場合にそれを検出するためである。
 //
-//spec:covers OIDC-CORE-CSRF: callback が、login attempt に束縛された単発の state を照合することを
+//spec:covers OIDC-CORE-CSRF, EX-AUTHENTICATION-001-02: callback が login attempt に束縛された単発の state を照合し、再送された state ではセッションが 1 件も増えず上流の応答が検証にすら到達しないことを固定する。
 func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()

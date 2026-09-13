@@ -29,6 +29,15 @@ describe('accountActivityMethodSummary', () => {
   it('falls back to the raw code for unknown amr values', () => {
     expect(accountActivityMethodSummary(['unknown-code'])).toBe('unknown-code')
   })
+
+  // 認証手段の表示は利用者向けの語で行う。技術名がそのまま出ると、利用者は自分が
+  // 何を使ってサインインしたのかを辞書なしには読めない。
+  //spec:covers EX-AUTHENTICATION-014-02: 認証手段に webauthn が含まれるサインインが、技術名ではなくパスキーとして表示されることを固定する。
+  it('names webauthn as a passkey rather than by its technical code', () => {
+    expect(accountActivityMethodSummary(['pwd', 'webauthn'])).toBe(`${t.pwd} + ${t.webauthn}`)
+    expect(accountActivityMethodSummary(['pwd', 'webauthn'])).not.toContain('webauthn')
+    expect(accountActivityDictionary.ja.webauthn).not.toContain('webauthn')
+  })
 })
 
 describe('SessionsSection', () => {

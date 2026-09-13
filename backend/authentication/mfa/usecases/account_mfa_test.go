@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,7 @@ func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *usermemory.UserReposito
 	return deps, userRepo, &events
 }
 
+//spec:covers REQ-AUTHENTICATION-011, EX-AUTHENTICATION-011-01: 登録の開始がシークレットとアカウント名を返し、そのシークレットに対する正しいコードでの確定が認証要素を保存して MFA 状態を登録済みにし、MfaFactorEnrolled を発行することを固定する。
 func TestTOTPEnrollmentConfirmPersistsFactorAndFlag(t *testing.T) {
 	ctx := context.Background()
 	deps, userRepo, events := newMfaDeps(t)
@@ -43,6 +45,11 @@ func TestTOTPEnrollmentConfirmPersistsFactorAndFlag(t *testing.T) {
 	}
 	if start.Secret == "" || start.OTPAuthURI == "" {
 		t.Fatalf("incomplete enrollment start: %#v", start)
+	}
+	// アカウント名は認証器アプリに表示される識別で、URI にも入っていないと
+	// 利用者は同じ発行者の複数アカウントを見分けられない。
+	if start.AccountName != "alice" || !strings.Contains(start.OTPAuthURI, "alice") {
+		t.Fatalf("account name=%q uri=%q", start.AccountName, start.OTPAuthURI)
 	}
 
 	code, err := totpusecases.GenerateTOTP(start.Secret, now.Unix())
@@ -103,9 +110,10 @@ func TestTOTPEnrollmentStartRejectsWhenAlreadyEnrolled(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-012, EX-AUTHENTICATION-012-01: 現在の TOTP コードでの解除が認証要素を消し、MfaFactorRemoved を発行することを固定する。ステップアップの要求は HTTP の境界にあり、TestTotpRemovalWithoutStepUpKeepsTheFactor が持つ。
 func TestRemoveTOTPFactorRequiresValidCode(t *testing.T) {
 	ctx := context.Background()
-	deps, userRepo, _ := newMfaDeps(t)
+	deps, userRepo, events := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	start, _ := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
 	code, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
@@ -138,6 +146,17 @@ func TestRemoveTOTPFactorRequiresValidCode(t *testing.T) {
 	stored, _ := userRepo.FindBySub(ctx, "user-alice")
 	if stored.MfaEnrolled {
 		t.Fatal("MfaEnrolled flag not cleared")
+	}
+	// 解除は本人以外にも知らせるべき出来事なので、記録が残ることまで読む。
+	// 状態だけを読むテストは、消しはするが通知を出さない実装を通してしまう。
+	removed := false
+	for _, event := range *events {
+		if event.EventType() == "MfaFactorRemoved" {
+			removed = true
+		}
+	}
+	if !removed {
+		t.Fatalf("MfaFactorRemoved が発行されていない: %#v", *events)
 	}
 }
 

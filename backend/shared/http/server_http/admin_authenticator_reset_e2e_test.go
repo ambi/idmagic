@@ -9,9 +9,11 @@ package server_http_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -31,6 +33,7 @@ import (
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -52,6 +55,10 @@ const (
 	resetAdminUsername = "admin-reset"
 	resetAdminPassword = "admin-reset-password-1234"
 	resetAdminTOTP     = "MFRGGZDFMZTWQ2LKNNWG23TPOB2XI4TJ"
+	// bob は TOTP と WebAuthn を両方持つ。一部リセットで残る要素があるのはこの形だけである。
+	resetBobUsername = "bob-reset"
+	resetBobPassword = "bob-reset-password-1234"
+	resetBobTOTP     = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
 )
 
 // newServerForAuthenticatorReset seeds a tenant whose default sign-in policy
@@ -60,6 +67,18 @@ const (
 // and an admin actor enrolled with their own TOTP so they can authenticate
 // through the same MFA-required policy before calling the admin API.
 func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
+	t.Helper()
+	server, _ := newServerForAuthenticatorResetWithEvents(t)
+	return server
+}
+
+// newServerForAuthenticatorResetWithEvents は同じスタックを建て、発行されたイベントの
+// 記録も返す。リセットの具体例の `Then` は 3 種のイベント発行で書かれていて、
+// 応答だけを読むテストは、消しはするが記録を残さない実装を通してしまう。
+//
+// 追加で "bob" を置く。bob は TOTP と WebAuthn の両方を持つ利用者で、一部だけを
+// リセットしたときに残る要素があるのはこの形の利用者だけである。
+func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *[]spec.DomainEvent) {
 	t.Helper()
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -111,6 +130,28 @@ func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
 		t.Fatalf("seed alice recovery codes: %v", err)
 	}
 
+	bobHash, err := hasher.Hash(resetBobPassword)
+	if err != nil {
+		t.Fatalf("hash bob password: %v", err)
+	}
+	userRepo.Seed(&userdomain.User{
+		ID: "user_bob", PreferredUsername: resetBobUsername, PasswordHash: bobHash,
+		MfaEnrolled: true, CreatedAt: now, UpdatedAt: now,
+	})
+	bobTOTPSecret := resetBobTOTP
+	if err := mfaFactorRepo.Save(ctx, &totpdomain.MfaFactor{
+		UserID: "user_bob", Type: spec.MfaFactorTOTP, Secret: &bobTOTPSecret, CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("seed bob totp: %v", err)
+	}
+	encode := base64.RawURLEncoding.EncodeToString
+	if err := webAuthnCredentialRepo.Save(ctx, &webauthndomain.WebAuthnCredential{
+		CredentialID: encode([]byte("credential-user_bob")), UserID: "user_bob",
+		PublicKey: encode([]byte("public-key")), CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("seed bob webauthn credential: %v", err)
+	}
+
 	adminHash, err := hasher.Hash(resetAdminPassword)
 	if err != nil {
 		t.Fatalf("hash admin password: %v", err)
@@ -152,8 +193,10 @@ func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
 	e := echo.New()
+	events := &[]spec.DomainEvent{}
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          "http://test",
+		Emit:            func(event spec.DomainEvent) { *events = append(*events, event) },
 		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
@@ -170,7 +213,7 @@ func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		Application: application.Module{DefaultSignInPolicyRepo: defaultSignInPolicyRepo},
 	})
-	return httptest.NewServer(e)
+	return httptest.NewServer(e), events
 }
 
 // loginDirectAdmin performs the "direct admin console" login (no OAuth2
@@ -224,8 +267,10 @@ func adminCSRFToken(t *testing.T, client *http.Client, srv *httptest.Server) str
 // TestAdminResetUserAuthenticatorsFullResetForcesReenrollment fixes the
 // scenario "管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる"
 // (spec/contexts/authentication.yaml).
+//
+//spec:covers REQ-AUTHENTICATION-022, EX-AUTHENTICATION-022-01: 全リセットが TOTP と復旧コードを消して mfa_enrolled を false にし、reenrollment_required=true と単回限りのバイパスを返し、AuthenticatorResetRequested・AuthenticatorResetCompleted・MfaEnrollmentBypassIssued を残すこと、次のログインで同じ LoginSession が Enrollment の保留になり、新しい TOTP の確定で元の遷移先へ進むことを固定する。
 func TestAdminResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
-	srv := newServerForAuthenticatorReset(t)
+	srv, events := newServerForAuthenticatorResetWithEvents(t)
 	defer srv.Close()
 
 	adminClient := loginDirectAdmin(t, srv, resetAdminUsername, resetAdminPassword, resetAdminTOTP)
@@ -244,6 +289,8 @@ func TestAdminResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 	if resetResult["bypass"] == nil {
 		t.Fatal("expected an issued bypass in the reset response")
 	}
+	assertEmitted(t, events,
+		"AuthenticatorResetRequested", "AuthenticatorResetCompleted", "MfaEnrollmentBypassIssued")
 
 	// alice はもう TOTP を持たないので、通常のパスワードのみでの次回ログインは
 	// enrollment-required pending flow へ入り、新しい TOTP factor の登録を求められる。
@@ -431,5 +478,50 @@ func TestAdminMfaOperationsRejectDisallowedRequests(t *testing.T) {
 				t.Fatalf("body=%s, want type urn:idmagic:error:%s", body, testCase.code)
 			}
 		})
+	}
+}
+
+// WebAuthn だけをリセットしても、TOTP が残っている利用者は同じ要素でログインを続けられる。
+//
+// 既存の一部リセットの記録は復旧コードだけを対象にしていて、認証要素そのものは 1 つも
+// 消していない。宣言済みの具体例が言っているのは認証器の一方を消す場合なので、
+// WebAuthn を持つ利用者を別に置いて観測する。
+//
+//spec:covers REQ-AUTHENTICATION-023, EX-AUTHENTICATION-023-01: targets=[webauthn] のリセットが WebAuthn クレデンシャルだけを消し、TOTP が残るため mfa_enrolled が true のままで reenrollment_required=false かつバイパスを発行せず、次のログインが残った TOTP で完了することを固定する。
+func TestAdminResetUserAuthenticatorsWebauthnOnlyKeepsTheRemainingFactor(t *testing.T) {
+	srv := newServerForAuthenticatorReset(t)
+	defer srv.Close()
+
+	adminClient := loginDirectAdmin(t, srv, resetAdminUsername, resetAdminPassword, resetAdminTOTP)
+	csrf := adminCSRFToken(t, adminClient, srv)
+
+	resetResult := postJSON[map[string]any](
+		t, adminClient, srv.URL+"/realms/default/api/admin/v1/users/user_bob/authenticator-reset", csrf,
+		map[string]any{"targets": []string{"webauthn"}},
+	)
+	if enrolled, _ := resetResult["mfa_enrolled"].(bool); !enrolled {
+		t.Fatalf("mfa_enrolled=%v, want true (TOTP は残る)", resetResult["mfa_enrolled"])
+	}
+	if required, _ := resetResult["reenrollment_required"].(bool); required {
+		t.Fatalf("reenrollment_required=%v, want false", resetResult["reenrollment_required"])
+	}
+	if resetResult["bypass"] != nil {
+		t.Fatalf("一部リセットでバイパスが発行された: %v", resetResult["bypass"])
+	}
+
+	// bob は残った TOTP で第二要素を満たしてログインを完了できる。loginDirectAdmin は
+	// 第二要素の画面へ進むことを前提として組み立てるので、要求されなくなっていれば
+	// そこで落ちる。
+	bobClient := loginDirectAdmin(t, srv, resetBobUsername, resetBobPassword, resetBobTOTP)
+	sessions := getJSON[struct {
+		Sessions []struct {
+			Current bool     `json:"current"`
+			AMR     []string `json:"amr"`
+		} `json:"sessions"`
+	}](t, bobClient, srv.URL+"/realms/default/api/account/v1/sessions")
+	if len(sessions.Sessions) != 1 || !sessions.Sessions[0].Current ||
+		!slices.Contains(sessions.Sessions[0].AMR, "pwd") ||
+		!slices.Contains(sessions.Sessions[0].AMR, "otp") {
+		t.Fatalf("sessions=%+v, want one current pwd+otp session", sessions.Sessions)
 	}
 }

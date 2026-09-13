@@ -10,6 +10,7 @@ package testing_stack_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -19,12 +20,9 @@ import (
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 )
 
-func get(t *testing.T, s *stack.Stack, path, token string) *httptest.ResponseRecorder {
+func get(t *testing.T, s *stack.Stack, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, stack.Issuer+path, http.NoBody)
-	if token != "" {
-		request.Header.Set("Authorization", "Bearer "+token)
-	}
 	recorder := httptest.NewRecorder()
 	s.Echo.ServeHTTP(recorder, request)
 	return recorder
@@ -52,7 +50,7 @@ func TestAuthorizationCodeAndAccountApiComposeIntoOneStack(t *testing.T) {
 		{"Discovery", "/realms/default/.well-known/openid-configuration"},
 		{"account 同意", "/realms/default/api/account/v1/consents"},
 	} {
-		if recorder := get(t, s, entry.path, ""); recorder.Code == http.StatusNotFound {
+		if recorder := get(t, s, entry.path); recorder.Code == http.StatusNotFound {
 			t.Fatalf("%s の入口が登録されていない: %s", entry.name, entry.path)
 		}
 	}
@@ -163,5 +161,82 @@ func TestBrowserFlowDrivesAuthorizationThroughToAToken(t *testing.T) {
 	// 呼び出し側のテストは「発行されていない」と「配線していない」を区別できない。
 	if len(s.Events.Types()) == 0 {
 		t.Fatal("認可からトークン発行まで通したのにイベントが 1 件も記録されていない")
+	}
+}
+
+// サインインの駆動部を、成立する側と成立しない側の両方で踏む。
+//
+// 拒否された応答を返す入口 (SignInAttempt、SignInWithBadCSRF) と、発行された
+// セッション Cookie を読み出す入口 (SessionCookie) は、呼び出し側のテストからしか
+// 実行されていなかった。そこで落ちたとき、壊れているのが製品なのか駆動部なのかを
+// 見分ける手掛かりが無い。
+//
+// 具体例の id はここに書かない。被覆の検査は id を名指したテストの存在で判定するので、
+// 駆動部の健全性を示しただけの本ファイルが名指すと、消化済みと数えられてしまう。
+func TestBrowserDrivesBothSidesOfSignIn(t *testing.T) {
+	const clientIP = "198.51.100.3"
+	// 上限に達しているのはこの送信元 IP だけである。名乗った IP が要求として届いて
+	// いなければ、最後の 429 は起きない。駆動部が連なりを組み立てていることは、
+	// ここでしか読めない。
+	s := stack.New(t, stack.WithBrowserFlow(), stack.WithLoginThrottle(5, 100),
+		stack.WithEndpointRateLimitReached("login", clientIP))
+	browser := s.Browser(t, tenancydomain.DefaultRealm)
+	const verifier = "testing-stack-sign-in-driver-pkce-verifier-01234567"
+	_ = browser.Authorize(t, stack.AuthorizationQuery(verifier, nil)).Body.Close()
+
+	if cookie := browser.SessionCookie(t); cookie != "" {
+		t.Fatalf("認証の前から SessionCookie が値を返す: %q", cookie)
+	}
+	if status, body := browser.SignInWithBadCSRF(t, "user", stack.UserPassword); status == http.StatusOK {
+		t.Fatalf("二重送信の成立しない要求が status=%d body=%v で通った", status, body)
+	}
+	if status, body := browser.SignInAttempt(t, "user", "not-the-password", "198.51.100.9"); status != http.StatusUnauthorized {
+		t.Fatalf("上限に達していない送信元からの誤ったパスワード status=%d body=%v、期待は 401", status, body)
+	}
+	if status, body := browser.SignInAttempt(t, "user", stack.UserPassword, clientIP); status != http.StatusTooManyRequests {
+		t.Fatalf("上限に達した送信元 status=%d body=%v、期待は 429", status, body)
+	}
+	if cookie := browser.SessionCookie(t); cookie != "" {
+		t.Fatalf("成立しなかった要求のあとに SessionCookie が値を返す: %q", cookie)
+	}
+
+	// 成立する側。失敗の計数はアカウント単位に残るので、別のスタックで踏む。
+	allowed := stack.New(t, stack.WithBrowserFlow())
+	fresh := allowed.Browser(t, tenancydomain.DefaultRealm)
+	_ = fresh.Authorize(t, stack.AuthorizationQuery(verifier, nil)).Body.Close()
+	if status, body := fresh.SignInAttempt(t, "user", stack.UserPassword, "198.51.100.4"); status != http.StatusOK {
+		t.Fatalf("正しいパスワード status=%d body=%v", status, body)
+	}
+	if fresh.SessionCookie(t) == "" {
+		t.Fatal("認証が成立したのに SessionCookie が空を返す")
+	}
+}
+
+// WS-Federation の配線が、SAML と同じスタックへ option 1 つで乗る。
+func TestWsFederationComposesWithSaml(t *testing.T) {
+	s := stack.New(t, stack.WithAuthorizationCodeFlow(), stack.WithSaml(), stack.WithWsFederation())
+	if s.WsFedRPs == nil {
+		t.Fatal("WithWsFederation が RP の保存先を配らない")
+	}
+
+	// 入口があることは、ルート未登録の 404 でないことで読む。
+	signOut := get(t, s, "/realms/"+tenancydomain.DefaultRealm+
+		"/wsfed?wa=wsignout1.0&wtrealm="+url.QueryEscape(stack.WsFedRealm))
+	if signOut.Code == http.StatusNotFound {
+		t.Fatalf("WS-Federation の入口が登録されていない: body=%s", signOut.Body.String())
+	}
+	metadata := get(t, s, "/realms/"+tenancydomain.DefaultRealm+
+		"/federationmetadata/2007-06/federationmetadata.xml")
+	if metadata.Code != http.StatusOK {
+		t.Fatalf("フェデレーションメタデータ status=%d", metadata.Code)
+	}
+
+	// WS-Federation 単独でも署名者が配線される。SAML と合成したときだけ配線される
+	// 実装では、この 1 本が署名できない。
+	alone := stack.New(t, stack.WithWsFederation())
+	if aloneMetadata := get(t, alone, "/realms/"+tenancydomain.DefaultRealm+
+		"/federationmetadata/2007-06/federationmetadata.xml"); aloneMetadata.Code != http.StatusOK {
+		t.Fatalf("WS-Federation 単独のメタデータ status=%d body=%s",
+			aloneMetadata.Code, aloneMetadata.Body.String())
 	}
 }

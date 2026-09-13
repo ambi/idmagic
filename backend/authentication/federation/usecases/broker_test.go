@@ -45,8 +45,9 @@ func TestCompleteUsesExistingFederatedIdentityAndIssuesSession(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-002, EX-AUTHENTICATION-002-01: 明示した VerifiedEmail ポリシーと検証済みの一意なメールアドレスの一致だけが、既存の User に対する FederatedIdentity を作ることを固定する。
 func TestCompleteRequiresExplicitVerifiedEmailPolicyForAutoLink(t *testing.T) {
-	deps, connection, users, _ := brokerFixture(t)
+	deps, connection, users, repos := brokerFixture(t)
 	now := time.Now().UTC()
 	users.Seed(activeUser("user-1", "linked@example.com", now))
 	claims := federationdomain.NormalizedClaims{
@@ -68,10 +69,21 @@ func TestCompleteRequiresExplicitVerifiedEmailPolicyForAutoLink(t *testing.T) {
 	if completion.LinkingMethod != federationusecases.LinkingMethodVerifiedEmail {
 		t.Fatalf("linking method=%q", completion.LinkingMethod)
 	}
+	// 戻り値だけでは、関連付けを保存せずに「リンクした」と名乗る実装を通してしまう。
+	linked, err := repos.Identities.FindBySubject(
+		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "external",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked == nil || linked.LocalUserID != "user-1" {
+		t.Fatalf("既存の User に対する関連付けが作られていない: %+v", linked)
+	}
 }
 
+//spec:covers REQ-AUTHENTICATION-001, EX-AUTHENTICATION-001-01: 初回は、明示した JIT ポリシーとクレームの対応付けに従ってローカルの User と FederatedIdentity が作られることを固定する。
 func TestCompleteJITRequiresPolicyAndProvisioner(t *testing.T) {
-	deps, connection, _, _ := brokerFixture(t)
+	deps, connection, _, repos := brokerFixture(t)
 	now := time.Now().UTC()
 	claims := federationdomain.NormalizedClaims{
 		Subject: "external", Username: "new-user", Email: "new@example.com", EmailVerified: true,
@@ -93,6 +105,72 @@ func TestCompleteJITRequiresPolicyAndProvisioner(t *testing.T) {
 	}
 	if completion.User.ID != "jit-user" || completion.LinkingMethod != federationusecases.LinkingMethodJIT {
 		t.Fatalf("completion=%+v", completion)
+	}
+	linked, err := repos.Identities.FindBySubject(
+		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "external",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked == nil || linked.LocalUserID != "jit-user" {
+		t.Fatalf("JIT で作った User に対する関連付けが残っていない: %+v", linked)
+	}
+}
+
+// 明示的なリンクは、上流の callback が「この利用者へ結び付ける」試行として戻ったときに
+// 成立する。未使用の外部 subject だけが対象で、他人が使っている subject は横取りできない。
+//
+//spec:covers REQ-AUTHENTICATION-003, EX-AUTHENTICATION-003-01: 未使用の外部 subject が要求元の User 自身へリンクされ、既に他人が使っている subject は拒否されることを固定する (解除の側は TestUnlinkRequiresRecentStepUpAndPreservesLastLoginMethod が持つ)。
+func TestCompleteLinksAnUnusedSubjectToTheRequestingUser(t *testing.T) {
+	deps, connection, users, repos := brokerFixture(t)
+	now := time.Now().UTC()
+	self := activeUser("user-self", "self@example.com", now)
+	users.Seed(self)
+	attempt := federationdomain.FederatedLoginAttempt{LinkUserID: self.ID}
+	claims := federationdomain.NormalizedClaims{Subject: "unused-external", Username: "self@example.com"}
+
+	completion, err := federationusecases.CompleteIdentity(
+		context.Background(), deps, connection, attempt, claims, now,
+	)
+	if err != nil {
+		t.Fatalf("CompleteIdentity: %v", err)
+	}
+	if completion.LinkingMethod != federationusecases.LinkingMethodExplicit {
+		t.Fatalf("linking method=%q", completion.LinkingMethod)
+	}
+	linked, err := repos.Identities.FindBySubject(
+		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "unused-external",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked == nil || linked.LocalUserID != self.ID {
+		t.Fatalf("自身へのリンクが残っていない: %+v", linked)
+	}
+
+	// 未使用であることが条件である。他人が使っている subject は横取りできない。
+	other := activeUser("user-other", "other@example.com", now)
+	users.Seed(other)
+	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+		TenantID: tenancydomain.DefaultTenantID, ProviderID: connection.ID,
+		ExternalSubject: "taken-external", LocalUserID: other.ID, LinkedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := federationusecases.CompleteIdentity(
+		context.Background(), deps, connection, attempt,
+		federationdomain.NormalizedClaims{Subject: "taken-external", Username: "self@example.com"}, now,
+	); !errors.Is(err, federationusecases.ErrLinkingDenied) {
+		t.Fatalf("他人が使っている subject のリンク err=%v", err)
+	}
+	taken, err := repos.Identities.FindBySubject(
+		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "taken-external",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if taken == nil || taken.LocalUserID != other.ID {
+		t.Fatalf("拒否したのに既存の関連付けが動いた: %+v", taken)
 	}
 }
 

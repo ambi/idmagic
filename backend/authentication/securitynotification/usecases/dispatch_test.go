@@ -3,6 +3,8 @@ package usecases
 import (
 	"context"
 	"errors"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -86,7 +88,7 @@ func signIn(userAgent string, at time.Time) *authdomain.UserAuthenticated {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-030: 既知でない端末からのサインインだけが通知を生む。
+//spec:covers REQ-AUTHENTICATION-030, EX-AUTHENTICATION-030-01: 既知でない端末からの最初のサインインだけが検証済みアドレスへ通知を送り AccountSecurityNotificationSent を残すこと、同じ端末の再サインインでは通知を送らず端末の最終利用時刻だけが進むことを固定する。
 func TestDispatchNotifiesOnlyTheFirstSignInFromEachDevice(t *testing.T) {
 	t.Parallel()
 	deps, notifier, emitter := newTestDeps(t, true)
@@ -120,6 +122,16 @@ func TestDispatchNotifiesOnlyTheFirstSignInFromEachDevice(t *testing.T) {
 	}
 	if notifier.callCount != 1 {
 		t.Fatalf("a repeat sign-in from the same device sent %d notification(s), want none", notifier.callCount-1)
+	}
+	// 通知が出ないことと、端末が忘れられていないことは別である。記録を捨てる実装は、
+	// 次のサインインをもう一度「既知でない端末」として通知してしまう。Observe は
+	// 「この呼び出しで行が新しく作られたか」を返すので、false が既知であることを表す。
+	stillKnown, err := deps.KnownDevices.Observe(ctx, knownDeviceForTest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stillKnown {
+		t.Fatal("同じ端末の再サインインのあとも「新しい端末」のままである")
 	}
 
 	if err := Dispatch(ctx, deps, signIn(otherUA, testNow().Add(2*time.Hour))); err != nil {
@@ -161,7 +173,7 @@ func TestDispatchIgnoresItsOwnEvent(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-031: 資格情報の変更は通知され、本文に機微は載らない。
+//spec:covers REQ-AUTHENTICATION-031, EX-AUTHENTICATION-031-01: パスワード・認証要素・復旧コード・信頼済みデバイスの増減が検証済みアドレスへ通知され、本文の差し込み値が固定の 5 つだけで、生の IP も User-Agent も載らないことを固定する。
 func TestDispatchNotifiesCredentialAndMfaChangesWithoutSensitiveContent(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -201,6 +213,16 @@ func TestDispatchNotifiesCredentialAndMfaChangesWithoutSensitiveContent(t *testi
 		if notifier.sent[0].Vars["device_summary"] != "-" {
 			t.Errorf("%s: device_summary = %q, want the placeholder for events without a device",
 				event.EventType(), notifier.sent[0].Vars["device_summary"])
+		}
+		// 差し込み値の名前を固定する。イベントの積荷をそのまま流し込む実装に変えると
+		// ここが落ちる。トークンや資格情報が本文へ出る経路は、その形でしか生まれない。
+		names := slices.Sorted(maps.Keys(notifier.sent[0].Vars))
+		want := []string{
+			"device_summary", "event_description", "occurred_at",
+			"security_review_url", "user_display_name",
+		}
+		if !slices.Equal(names, want) {
+			t.Errorf("%s: 差し込み値=%v, want %v", event.EventType(), names, want)
 		}
 	}
 }
@@ -248,7 +270,7 @@ func TestDispatchNotifiesOnlyExplicitSessionRevocations(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-031: 配送の失敗は元の操作へ伝播せず、記録だけが残る。
+//spec:covers REQ-AUTHENTICATION-031, EX-AUTHENTICATION-031-02: メールの配送に失敗しても資格情報の変更は成立したままで、失敗が呼び出し元へ伝播せず Delivered=false の記録だけが残ることを固定する。
 func TestDispatchReportsDeliveryFailureWithoutFailing(t *testing.T) {
 	t.Parallel()
 	deps, notifier, emitter := newTestDeps(t, true)
@@ -266,6 +288,8 @@ func TestDispatchReportsDeliveryFailureWithoutFailing(t *testing.T) {
 }
 
 // 検証済みアドレスが無ければ送らない。ただし端末は既知として記録する。
+//
+//spec:covers REQ-AUTHENTICATION-030, EX-AUTHENTICATION-030-02: 検証済みのメールアドレスを持たない利用者には通知を送らず、記録も残さず、それでも端末は既知として記録して認証を成功のまま返すことを固定する。
 func TestDispatchSkipsUsersWithoutAVerifiedAddress(t *testing.T) {
 	t.Parallel()
 	deps, notifier, emitter := newTestDeps(t, false)
@@ -286,7 +310,7 @@ func TestDispatchSkipsUsersWithoutAVerifiedAddress(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-034: 停止した種別は届かず、必須の種別は届き続ける。
+//spec:covers REQ-AUTHENTICATION-034, EX-AUTHENTICATION-034-01: 既知でない端末からのサインイン通知を停止すると以後その通知は届かず、資格情報の変更に対する通知は届き続けることを固定する。
 func TestDispatchHonorsDisabledCategoriesButNotForMandatoryOnes(t *testing.T) {
 	t.Parallel()
 	deps, notifier, _ := newTestDeps(t, true)
@@ -361,4 +385,59 @@ func (failingPreferences) Find(context.Context, string) (*domain.Preferences, er
 
 func (failingPreferences) Save(context.Context, domain.Preferences) error {
 	return errors.New("preference store is down")
+}
+
+// メールアドレスの変更は、変更前と変更後のどちらのアドレスにも 1 通ずつ届く。
+//
+// 宛先は「そのとき保存されている検証済みアドレス」から引く。変更の要求は書き換えの
+// 前に、確定は書き換えの後に起きるので、同じ規則が 2 つの宛先を作る。宛先を固定して
+// 引く実装に変えると、変更前のアドレスの持ち主が乗っ取りに気づけなくなる。
+//
+//spec:covers REQ-AUTHENTICATION-032, EX-AUTHENTICATION-032-01: メールアドレスの変更要求の通知が変更前のアドレスへ、確定の通知が変更後のアドレスへ送られることを固定する。
+func TestDispatchSendsTheEmailChangeNoticeToBothAddressesInTurn(t *testing.T) {
+	t.Parallel()
+	const oldAddress, newAddress = "old@example.test", "new@example.test"
+	ctx := context.Background()
+
+	repo := userdb.NewUserRepository()
+	address := oldAddress
+	user := &userdomain.User{
+		ID: testSub, TenantID: testTenant, PreferredUsername: "alice",
+		Email: &address, EmailVerified: true, CreatedAt: testNow(), UpdatedAt: testNow(),
+	}
+	if err := repo.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	notifier := &recordingNotifier{}
+	deps := DispatchDeps{
+		UserRepo: repo, Preferences: db_memory.NewPreferenceRepository(),
+		KnownDevices: db_memory.NewKnownDeviceRepository(), Notifier: notifier,
+		IssuerResolver: func(context.Context, string) string {
+			return "https://idp.example.test/realms/default"
+		},
+	}
+
+	if err := Dispatch(ctx, deps, &idmdomain.EmailChangeRequested{
+		At: testNow(), TenantID: testTenant, UserID: testSub, NewEmailHash: "hash",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if notifier.callCount != 1 || notifier.sent[0].To != oldAddress {
+		t.Fatalf("変更の要求が %#v へ送られた、期待は %q", notifier.sent, oldAddress)
+	}
+
+	// 確定で保存されているアドレスが入れ替わる。
+	changed := newAddress
+	user.Email = &changed
+	if err := repo.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	if err := Dispatch(ctx, deps, &idmdomain.EmailChanged{
+		At: testNow(), TenantID: testTenant, UserID: testSub,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if notifier.callCount != 2 || notifier.sent[1].To != newAddress {
+		t.Fatalf("確定が %#v へ送られた、期待は %q", notifier.sent, newAddress)
+	}
 }

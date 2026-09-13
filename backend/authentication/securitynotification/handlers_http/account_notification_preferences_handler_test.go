@@ -82,8 +82,19 @@ func newPreferencesServer(t *testing.T) (*echo.Echo, string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// 直近性を満たさないセッション。認証時刻も step-up も過去にある。
+	if err := store.Save(ctx, &sessiondomain.LoginSession{
+		ID: staleSessionID, TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
+		AuthTime: now.Add(-time.Hour).Unix(), AMR: []string{"pwd"},
+		ACR: authusecases.DeriveACR([]string{"pwd"}), ExpiresAt: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
 	return e, sessionID
 }
+
+// staleSessionID はステップアップの直近性を満たさないセッション。
+const staleSessionID = "sess-stale"
 
 func preferencesRequest(
 	t *testing.T, e *echo.Echo, method, sessionID string, body any,
@@ -121,7 +132,7 @@ func decodeCategories(t *testing.T, rec *httptest.ResponseRecorder) categoriesBo
 	return body
 }
 
-//spec:covers REQ-AUTHENTICATION-033: 全種別が返り、必須の種別には mandatory が付く。
+//spec:covers REQ-AUTHENTICATION-033, EX-AUTHENTICATION-033-01: 通知設定の取得で全種別が返り、資格情報・認証要素・連絡先・なりすましの各種別に mandatory が付くことを固定する。
 func TestGetNotificationPreferencesReturnsTheWholeCatalog(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 
@@ -176,7 +187,7 @@ func TestUpdateNotificationPreferencesDisablesOnlyTheNamedCategories(t *testing.
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-033: 必須の種別を含む更新は 400 で拒否し、許された分も保存しない。
+//spec:covers REQ-AUTHENTICATION-033, EX-AUTHENTICATION-033-01: 必須の種別を含む更新は 400 で拒否され、同じ要求に含まれた許された種別も保存されないことを固定する。
 func TestUpdateNotificationPreferencesRejectsMandatoryCategories(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 
@@ -208,5 +219,43 @@ func TestUpdateNotificationPreferencesRejectsUnknownCategories(t *testing.T) {
 		map[string]any{"disabled_categories": []string{"does_not_exist"}})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400", rec.Code, rec.Body.String())
+	}
+}
+
+// ステップアップを成立させていないセッションからの更新は、再認証を要求される。
+//
+// 通知設定の停止は「気づける経路を自分で閉じる」操作なので、機微操作と同じ再認証が要る。
+// 応答だけを読むテストでは、403 を書いたうえで保存も続ける実装を見分けられないので、
+// 取得側から読み直す。
+//
+//spec:covers REQ-AUTHENTICATION-033, EX-AUTHENTICATION-033-02: ステップアップを成立させていないセッションからの通知設定の更新が step_up_required で拒否され、設定がいずれの種別についても変わらないことを固定する。
+func TestUpdateNotificationPreferencesWithoutStepUpChangesNothing(t *testing.T) {
+	e, fresh := newPreferencesServer(t)
+
+	refused := preferencesRequest(t, e, http.MethodPut, staleSessionID, map[string]any{
+		"disabled_categories": []string{"new_device_sign_in"},
+	})
+	if refused.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s、期待は 403", refused.Code, refused.Body.String())
+	}
+
+	// 設定は取得側からしか読めない。すべての種別が有効のままであることを確かめる。
+	listed := preferencesRequest(t, e, http.MethodGet, fresh, nil)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("取得 status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	for _, category := range decodeCategories(t, listed).Categories {
+		if !category.Enabled {
+			t.Fatalf("拒否されたのに %s が無効になった", category.Category)
+		}
+	}
+
+	// 対照: ステップアップを満たすセッションでは同じ更新が通る。拒否の理由が
+	// 直近性であって、要求の中身でも CSRF でもないと示す。
+	accepted := preferencesRequest(t, e, http.MethodPut, fresh, map[string]any{
+		"disabled_categories": []string{"new_device_sign_in"},
+	})
+	if accepted.Code != http.StatusOK {
+		t.Fatalf("前提が壊れている: ステップアップ済みの更新が status=%d body=%s", accepted.Code, accepted.Body.String())
 	}
 }

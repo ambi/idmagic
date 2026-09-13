@@ -61,7 +61,7 @@ func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-030: 端末は最初の観測だけが「新しい端末」で、以後は既知になる。
+//spec:covers REQ-AUTHENTICATION-030, EX-AUTHENTICATION-030-01: 端末は最初の観測だけが「新しい端末」で、以後は既知になり、再観測では最終利用時刻だけが進むことを固定する。
 func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
@@ -90,6 +90,21 @@ func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 	same, err := repo.Observe(ctx, device)
 	if err != nil || same {
 		t.Fatalf("re-observing at the same instant = %v, err %v; want false", same, err)
+	}
+
+	// 再観測で最終利用時刻が進んでいる。進まない実装では、使い続けている端末が
+	// やがて idle として掃除され、次のサインインが「新しい端末」に戻ってしまう。
+	// 最終利用時刻は掃除の境界からしか読めないので、そこで観測する。
+	device.SeenAt = now.Add(time.Hour)
+	if _, err := repo.Observe(ctx, device); err != nil {
+		t.Fatal(err)
+	}
+	deleted, err := repo.DeleteIdleBefore(ctx, now.Add(30*time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 0 {
+		t.Fatalf("最終利用時刻が進んでいれば掃除されないはずだが %d 行消えた", deleted)
 	}
 
 	// 別のユーザーの同じ端末は、そのユーザーにとっては新しい。

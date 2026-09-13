@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"slices"
 	"testing"
 	"time"
 
@@ -148,10 +149,10 @@ func trustedDeviceCookieOf(t *testing.T, client *http.Client, base string) *http
 
 // 省略でき、そのたびに verifier が回転する。
 //
-//spec:covers REQ-AUTHENTICATION-026: 第二要素の成立時に同意した端末は、次のログインで第二要素を
+//spec:covers REQ-AUTHENTICATION-026, EX-AUTHENTICATION-026-01: 同意した端末に realm scope の HttpOnly cookie が発行されて TrustedDeviceRegistered が残ること、同じブラウザーの次のログインが第二要素を挟まずに成立して amr に tdev が加わり acr が mfa になること、verifier が回転して cookie が再発行されることを固定する。
 func TestTrustedDeviceSkipsTheSecondFactorOnTheNextLogin(t *testing.T) {
 	secret := totpTestSecret
-	srv := newTOTPServer(t, totpServerOptions{
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{
 		totpSecret: secret, requireMFA: true, trustedDeviceMaxAgeSeconds: trustedDeviceMaxAge,
 	})
 	defer srv.Close()
@@ -175,6 +176,74 @@ func TestTrustedDeviceSkipsTheSecondFactorOnTheNextLogin(t *testing.T) {
 	if rotated == nil || rotated.Value == issued.Value {
 		t.Fatal("the trusted device cookie must be rotated on every use")
 	}
+	// 画面が進むことと、そのセッションが MFA として通用することは別である。
+	// 認可の判定は amr と acr しか読まないので、そこまで読み直す。
+	// 最初のログインのセッションも残っているので、いまの端末のものを選ぶ。
+	current := currentSessionOf(t, reused, base)
+	if !slices.Contains(current.AMR, "tdev") || current.ACR != "urn:idmagic:acr:mfa" {
+		t.Fatalf("amr=%v acr=%q, want tdev と mfa", current.AMR, current.ACR)
+	}
+	assertEmitted(t, events, "TrustedDeviceRegistered")
+}
+
+// 絶対期限を過ぎた cookie は第二要素を省略できない。
+//
+//spec:covers REQ-AUTHENTICATION-027, EX-AUTHENTICATION-027-01: 絶対期限を過ぎた cookie を提示したログインは第二要素の選択画面へ進み、そのセッションの amr に tdev が加わらないことを固定する。
+func TestTrustedDeviceBeyondTheAbsoluteLifetimeRequiresTheSecondFactor(t *testing.T) {
+	const lifetimeSeconds = 1
+	secret := totpTestSecret
+	srv := newTOTPServer(t, totpServerOptions{
+		totpSecret: secret, requireMFA: true, trustedDeviceMaxAgeSeconds: lifetimeSeconds,
+	})
+	defer srv.Close()
+	base := srv.URL + "/realms/default"
+	client := browserClient(t)
+
+	signInWithTOTP(t, client, base, true)
+	if cookie := trustedDeviceCookieOf(t, client, base); cookie == nil || cookie.Value == "" {
+		t.Fatal("前提が壊れている: 同意しても cookie が発行されていない")
+	}
+
+	// 絶対期限を跨ぐ。同じ cookie が期限前には効いていたことは、上の発行で示している。
+	time.Sleep(time.Duration(lifetimeSeconds)*time.Second + 200*time.Millisecond)
+
+	next, expired := signInWithPasswordOn(t, nextLoginClient(t, client, base), base)
+	if next != "/realms/default/totp" {
+		t.Fatalf("next=%q, want the second factor to be required", next)
+	}
+	// 保留のセッションが tdev で昇格していないことを、第二要素を終えたあとの amr で読む。
+	second := getJSON[authTransaction](t, expired, base+"/api/auth/transaction")
+	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatalf("generate totp: %v", err)
+	}
+	postJSON[browserFlow](t, expired, base+"/api/auth/totp", second.CSRFToken, map[string]any{"code": code})
+	if current := currentSessionOf(t, expired, base); slices.Contains(current.AMR, "tdev") {
+		t.Fatalf("期限切れの cookie で amr に tdev が加わった: %v", current.AMR)
+	}
+}
+
+// sessionView は自分のセッション一覧の 1 行のうち、認可の判定が読む部分である。
+type sessionView struct {
+	Current bool     `json:"current"`
+	AMR     []string `json:"amr"`
+	ACR     string   `json:"acr"`
+}
+
+// currentSessionOf は、そのブラウザーがいま使っているセッションを返す。
+// 一覧には前のログインのセッションも残るので、current の印で選ぶ。
+func currentSessionOf(t *testing.T, client *http.Client, base string) sessionView {
+	t.Helper()
+	listed := getJSON[struct {
+		Sessions []sessionView `json:"sessions"`
+	}](t, client, base+"/api/account/v1/sessions")
+	for _, session := range listed.Sessions {
+		if session.Current {
+			return session
+		}
+	}
+	t.Fatalf("current と印の付いたセッションが無い: %+v", listed.Sessions)
+	return sessionView{}
 }
 
 //spec:covers REQ-AUTHENTICATION-026: 同意しなければ記憶しない。
@@ -197,7 +266,7 @@ func TestTrustedDeviceIsNotIssuedWithoutConsent(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-026: テナントが機能を無効にしていれば、同意しても記憶しない。
+//spec:covers REQ-AUTHENTICATION-026, EX-AUTHENTICATION-026-02: テナントの trusted_device_max_age_seconds が未設定なら、同意しても cookie は発行されず、次のログインでも第二要素が要ることを固定する。
 func TestTrustedDeviceIsNotIssuedWhenTheTenantDisablesIt(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{totpSecret: secret, requireMFA: true})
@@ -242,7 +311,7 @@ func TestTrustedDeviceIsIgnoredWhenThePolicyRequiresMfaEveryTime(t *testing.T) {
 
 // 第二要素を省略できない。
 //
-//spec:covers REQ-AUTHENTICATION-027: 別のブラウザーが持ち出した cookie でも、回転後の値でなければ
+//spec:covers REQ-AUTHENTICATION-027, EX-AUTHENTICATION-027-03: 回転前の古い cookie を提示しても第二要素を省略できないことを固定する。
 func TestTrustedDeviceRejectsTheCookieFromBeforeRotation(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -270,7 +339,7 @@ func TestTrustedDeviceRejectsTheCookieFromBeforeRotation(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-027: 改竄した cookie は第二要素を省略できない。
+//spec:covers REQ-AUTHENTICATION-027, EX-AUTHENTICATION-027-05: selector は正しいが verifier が一致しない cookie を提示しても第二要素を省略できないことを固定する。
 func TestTrustedDeviceRejectsATamperedCookie(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -330,10 +399,10 @@ func TestTrustedDeviceDoesNotSatisfyStepUp(t *testing.T) {
 
 // ログインで第二要素が再び要求される。
 //
-//spec:covers REQ-AUTHENTICATION-028: パスワードを変えると記憶済みの端末はすべて失効し、次回の
+//spec:covers REQ-AUTHENTICATION-028, EX-AUTHENTICATION-028-01: 本人のパスワード変更で記憶済みの端末がすべて失効して TrustedDeviceRevoked が残り、その端末の次のログインで第二要素が再び要求されることを固定する。
 func TestTrustedDeviceIsRevokedWhenThePasswordChanges(t *testing.T) {
 	secret := totpTestSecret
-	srv := newTOTPServer(t, totpServerOptions{
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{
 		totpSecret: secret, requireMFA: true, trustedDeviceMaxAgeSeconds: trustedDeviceMaxAge,
 	})
 	defer srv.Close()
@@ -350,9 +419,10 @@ func TestTrustedDeviceIsRevokedWhenThePasswordChanges(t *testing.T) {
 	if next := signInWithPasswordAs(t, client, base, "another-strong-password-1"); next != "/realms/default/totp" {
 		t.Fatalf("next=%q, want the second factor to be required after a password change", next)
 	}
+	assertEmitted(t, events, "TrustedDeviceRevoked")
 }
 
-//spec:covers REQ-AUTHENTICATION-028: 認証要素を解除すると記憶済みの端末はすべて失効する。
+//spec:covers REQ-AUTHENTICATION-028, EX-AUTHENTICATION-028-03: 本人が TOTP 認証要素を解除すると記憶済みの端末がすべて失効することを固定する。登録の側は TestCredentialChangingEntryPointsRevokeEveryTrustedDevice が持つ。
 func TestTrustedDeviceIsRevokedWhenTheSecondFactorIsRemoved(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{
@@ -378,7 +448,7 @@ func TestTrustedDeviceIsRevokedWhenTheSecondFactorIsRemoved(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-029: 本人はステップアップ再認証のうえで記憶を個別に取り消せる。
+//spec:covers REQ-AUTHENTICATION-029, EX-AUTHENTICATION-029-01: 自分の信頼済みデバイスの一覧が selector も verifier も含まず現在の端末を current として返すこと、ステップアップを成立させた失効で対象が一覧から消えて TrustedDeviceRevoked が残ることを固定する。
 func TestTrustedDeviceSelfRevocation(t *testing.T) {
 	secret := totpTestSecret
 	srv := newTOTPServer(t, totpServerOptions{

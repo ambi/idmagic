@@ -29,6 +29,7 @@ func seedSession(t *testing.T, store *memory.SessionStore, id, sub string, authT
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-01: 自分の有効なセッションだけが新しい順に返り、現在のセッションに current が付くことを固定する。
 func TestListSessionsMarksCurrentAndSortsDesc(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()
@@ -53,6 +54,7 @@ func TestListSessionsMarksCurrentAndSortsDesc(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-01: 自分のセッション 1 件の失効が一覧から消え SessionEnded を残すこと、他人のセッションには届かないことを固定する。
 func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()
@@ -84,6 +86,7 @@ func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-01: 現在以外のすべてを一括失効させると現在のセッションだけが残ることを固定する。
 func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()
@@ -151,6 +154,8 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 // wi-28 T007: admin 向け session 管理は self-service と対で、
 // 既存の ListUserSignInActivity と同じアクセス制御パターン (TenantAdministrator,
 // resource=User/input.user_id) を踏襲する。current マーカーは持たない。
+//
+//spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-01: 管理者の一覧が対象ユーザーの有効なセッションだけを開始時刻の降順で返すことを固定する。
 func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()
@@ -175,6 +180,7 @@ func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-01: 管理者による 1 件の失効が revoke_reason=admin_revoke でセッションを失効させ、操作者を載せた SessionEnded を発行することを固定する。
 func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()
@@ -206,8 +212,18 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 	if !ok || ended.ActorUserID != "admin-1" {
 		t.Fatalf("ActorUserID should be the admin, got %#v", events[0])
 	}
+	// 失効の理由は行に残る。本人による失効と管理者による失効を後から区別できるのは
+	// この値だけなので、失効したことと併せて読む。
+	revoked, err := store.FindOwned(ctx, "s1", "alice")
+	if err != nil || revoked == nil {
+		t.Fatalf("session=%#v err=%v", revoked, err)
+	}
+	if revoked.RevokeReason == nil || *revoked.RevokeReason != spec.SessionEndAdminRevoke {
+		t.Fatalf("revoke_reason=%v, want %q", revoked.RevokeReason, spec.SessionEndAdminRevoke)
+	}
 }
 
+//spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-01: 管理者の全失効が対象ユーザーの残り全セッションを失効させ、他のユーザーには届かないことを固定する。
 func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 	ctx := context.Background()
 	store := memory.NewSessionStore()
@@ -243,5 +259,45 @@ func TestEndSessionUnknownSidIsNoop(t *testing.T) {
 	}
 	if len(events) != 0 {
 		t.Fatalf("unexpected events: %#v", events)
+	}
+}
+
+// 失効は tombstone なので、同じ対象への再送は成功する。
+//
+// 「成功として扱われ」だけを応答で読むと、2 度目に時刻を上書きする実装を通してしまう。
+// 上書きされると、そのセッションがいつ切れたかという監査上の事実が失われる。
+//
+//spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-03: 失効済みのセッションへ同じ失効を再送しても成功し、revoked_at が初回の値のまま変わらないことを固定する。
+func TestRevokeOwnSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
+	ctx := context.Background()
+	store := memory.NewSessionStore()
+	base := time.Now().UTC().Truncate(time.Second)
+	seedSession(t, store, "s1", "alice", base)
+
+	if err := usecases.RevokeOwnSession(ctx, usecases.SessionDeps{Store: store}, "alice", "s1", base); err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.FindOwned(ctx, "s1", "alice")
+	if err != nil || first == nil || first.RevokedAt == nil {
+		t.Fatalf("session=%#v err=%v", first, err)
+	}
+	firstRevokedAt := *first.RevokedAt
+
+	var events []spec.DomainEvent
+	if err := usecases.RevokeOwnSession(ctx, usecases.SessionDeps{
+		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
+	}, "alice", "s1", base.Add(time.Minute)); err != nil {
+		t.Fatalf("再送が失敗した: %v", err)
+	}
+	again, err := store.FindOwned(ctx, "s1", "alice")
+	if err != nil || again == nil || again.RevokedAt == nil {
+		t.Fatalf("session=%#v err=%v", again, err)
+	}
+	if !again.RevokedAt.Equal(firstRevokedAt) {
+		t.Fatalf("revoked_at=%s, want %s (初回の値)", again.RevokedAt, firstRevokedAt)
+	}
+	// 2 度目は出来事ではないので、記録も増えない。
+	if len(events) != 0 {
+		t.Fatalf("再送で %#v が発行された", events)
 	}
 }

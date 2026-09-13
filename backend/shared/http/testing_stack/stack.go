@@ -47,7 +47,9 @@ import (
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
@@ -59,6 +61,7 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -68,6 +71,9 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/wsfederation"
+	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
+	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
@@ -93,6 +99,10 @@ const (
 	BrowserClientSecret = "web-app-secret"
 	BrowserRedirectURI  = "https://app.example.com/callback"
 	UserPassword        = "testing-stack-password-1234"
+
+	// WsFedRealm と WsFedReplyURL は WithWsFederation が登録する RP である。
+	WsFedRealm    = "urn:idmagic:testing-stack-rp"
+	WsFedReplyURL = "https://rp.example/wsfed"
 )
 
 // EventLog は `Deps.Emit` が受けたイベントを発行順に覚える。
@@ -168,7 +178,11 @@ type Stack struct {
 	Refresh            *oauth2memory.RefreshTokenStore
 	ApiTokens          apitokenports.Repository
 	SamlSPs            *samlmemory.SamlServiceProviderRepository
+	WsFedRPs           *wsfedmemory.WsFedRelyingPartyRepository
 	Sessions           *sessionusecases.SessionManager
+	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
+	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
+	SessionStore *sessionmemory.SessionStore
 
 	apiTokens *apitokenusecases.Service
 	// owner は New を呼んだテストである。HTTP サーバーの後始末はここへ登録する。
@@ -225,7 +239,8 @@ func WithAuthorizationCodeFlow() Option {
 			b.deps.OAuth2.ConsentRepo = b.stack.Consents
 		}
 		b.stack.Codes = oauth2memory.NewAuthorizationCodeStore()
-		b.stack.Sessions = sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+		b.stack.SessionStore = sessionmemory.NewSessionStore()
+		b.stack.Sessions = sessionusecases.NewSessionManager(b.stack.SessionStore)
 		b.deps.OAuth2.RequestStore = oauth2memory.NewAuthorizationRequestStore()
 		b.deps.OAuth2.CodeStore = b.stack.Codes
 		b.stack.PAR = oauth2memory.NewPARStore()
@@ -296,6 +311,60 @@ func WithBrowserFlow() Option {
 	}
 }
 
+// WithLoginThrottle はアカウント単位と IP 単位のログイン失敗の計数を配線する。
+//
+// 既定では配線しない。宣言済みの具体例が言う閾値 (900 秒で 10 回) をそのまま使うと、
+// 1 件の観測に 10 往復かかる。閾値は呼び出し側が決め、時間枠と締め出しは具体例と同じ
+// 900 秒に固定する。締め出しが「失敗を数えた結果」であることは、閾値までの試行が
+// 通ることで示す。
+func WithLoginThrottle(accountFailures, ipFailures int) Option {
+	return func(b *builder) {
+		b.deps.Authentication.LoginAttemptThrottle = sessionmemory.NewLoginAttemptThrottle(
+			sessionports.LoginThrottleConfigs{
+				Account: sessionports.LoginThrottleConfig{
+					MaxFailures: accountFailures, WindowSeconds: 900, LockoutSeconds: 900,
+				},
+				IP: sessionports.LoginThrottleConfig{
+					MaxFailures: ipFailures, WindowSeconds: 900, LockoutSeconds: 900,
+				},
+			})
+		// IP 単位の計数は送信元 IP が解決できて初めて効く。信頼するホップ数が 0 の
+		// ままだと `X-Forwarded-For` は読まれず、IP の閾値は一度も評価されない。
+		b.deps.TrustedForwardedHops = 1
+	}
+}
+
+// blockingRateLimiter は名指したポリシーだけを閾値超過として拒否する。
+//
+// `EndpointRateLimitPolicy` の時間枠そのものは Tenancy の設定であり、この具体例が
+// 言っているのは「上限に達しているとき何が起きるか」である。実際に時間枠を埋めると、
+// 観測したい拒否ではなく設定の再現に費用がかかる。
+// 上限に達しているのは名指したポリシーと鍵の組だけである。鍵まで見るのは、
+// 「同一 IP からの要求が」という具体例の主語を観測に残すためである。ポリシーだけで
+// 拒否すると、送信元 IP が要求から読めていない実装でも同じ拒否が起きてしまう。
+type blockingRateLimiter struct {
+	policy string
+	key    string
+}
+
+func (l *blockingRateLimiter) Allow(
+	_ context.Context, policyID, key string, _ time.Time,
+) (rlports.RateLimitResult, error) {
+	if policyID == l.policy && key == l.key {
+		return rlports.RateLimitResult{Allowed: false, RetryAfterSeconds: 30}, nil
+	}
+	return rlports.RateLimitResult{Allowed: true}, nil
+}
+
+// WithEndpointRateLimitReached は、名指したエンドポイントの流量制限が、名指した鍵
+// (ログインなら送信元 IP) について上限に達している状態にする。ほかの鍵は通る。
+func WithEndpointRateLimitReached(policy, key string) Option {
+	return func(b *builder) {
+		b.deps.RateLimiter = &blockingRateLimiter{policy: policy, key: key}
+		b.deps.TrustedForwardedHops = 1
+	}
+}
+
 // WithApiTokens は管理発行の API アクセストークンを配線する。
 //
 // `OAuth2.TokenIntrospector` へ渡すのは生の署名検証器ではなく、管理発行トークンの
@@ -332,8 +401,33 @@ func WithAccountApi() Option {
 func WithSaml() Option {
 	return func(b *builder) {
 		b.stack.SamlSPs = samlmemory.NewSamlServiceProviderRepository()
-		b.deps.Saml = saml.Module{SPRepo: b.stack.SamlSPs, ProfileRepo: b.stack.SamlSPs}
+		b.deps.Saml = saml.Module{
+			SPRepo: b.stack.SamlSPs, ProfileRepo: b.stack.SamlSPs,
+			ReplayStore: samlmemory.NewAuthnRequestReplayStore(),
+		}
 		b.deps.FederationSigner = samltoken.KeyStoreSignerProvider{KeyStore: b.stack.KeyStore}
+	}
+}
+
+// WithWsFederation は WS-Federation の保存先を配線し、返信先を登録した RP を 1 つ置く。
+// サインアウトはその RP を名指しで呼ぶので、登録が無いと入口そのものが無い。
+func WithWsFederation() Option {
+	return func(b *builder) {
+		b.stack.WsFedRPs = wsfedmemory.NewWsFedRelyingPartyRepository()
+		b.stack.WsFedRPs.Seed(&feddomain.WsFedRelyingParty{
+			Wtrealm:   WsFedRealm,
+			ReplyURLs: []string{WsFedReplyURL},
+			ClaimPolicy: claimdomain.ClaimMappingPolicy{
+				NameID: claimdomain.NameIdConfiguration{
+					Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+					SourceAttribute: "user_id",
+				},
+			},
+		})
+		b.deps.WsFederation = wsfederation.Module{RPRepo: b.stack.WsFedRPs}
+		if b.deps.FederationSigner == nil {
+			b.deps.FederationSigner = samltoken.KeyStoreSignerProvider{KeyStore: b.stack.KeyStore}
+		}
 	}
 }
 
@@ -582,6 +676,28 @@ func (b *Browser) SignIn(t *testing.T, username, password string) map[string]any
 		map[string]string{"username": username, "password": password})
 }
 
+// TrustedProxyIP は、信頼するホップ 1 つぶんの代理としてテストが名乗るアドレスである。
+// 製品は `X-Forwarded-For` の末尾から数えて信頼するホップ数だけ内側を送信元とみなすので、
+// 送信元 IP を 1 つ名乗るには連なりが 2 つ必要になる。
+const TrustedProxyIP = "10.0.0.1"
+
+// SignInAttempt は SignIn と同じ要求を送り、拒否された応答もそのまま返す。
+// 流量制限と失敗回数の具体例は、成立しない応答そのものが観測対象である。
+// clientIP が空でなければ、信頼する代理を 1 つ挟んだ連なりとしてその値を名乗る。
+func (b *Browser) SignInAttempt(
+	t *testing.T, username, password, clientIP string,
+) (int, map[string]any) {
+	t.Helper()
+	transaction := b.Transaction(t)
+	csrf, _ := transaction["csrf_token"].(string)
+	forwardedFor := ""
+	if clientIP != "" {
+		forwardedFor = clientIP + ", " + TrustedProxyIP
+	}
+	return b.postJSONAttempt(t, "/api/auth/login", csrf, forwardedFor,
+		map[string]string{"username": username, "password": password})
+}
+
 // Consent は同意画面の判断を送り、リダイレクト先を返す。
 func (b *Browser) Consent(t *testing.T, action string) string {
 	t.Helper()
@@ -649,6 +765,18 @@ func (b *Browser) PostToken(t *testing.T, form url.Values) (int, map[string]any)
 
 func (b *Browser) postJSON(t *testing.T, path, csrf string, payload any) map[string]any {
 	t.Helper()
+	status, result := b.postJSONAttempt(t, path, csrf, "", payload)
+	if status != http.StatusOK {
+		t.Fatalf("POST %s status=%d body=%v", path, status, result)
+	}
+	return result
+}
+
+// postJSONAttempt は成立しない応答も返す。csrf を空にすると二重送信が成立しない要求になる。
+func (b *Browser) postJSONAttempt(
+	t *testing.T, path, csrf, forwardedFor string, payload any,
+) (int, map[string]any) {
+	t.Helper()
 	encoded, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatal(err)
@@ -659,22 +787,47 @@ func (b *Browser) postJSON(t *testing.T, path, csrf string, payload any) map[str
 		t.Fatal(err)
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-Csrf-Token", csrf)
+	if csrf != "" {
+		request.Header.Set("X-Csrf-Token", csrf)
+	}
 	request.Header.Set("Origin", Issuer)
+	if forwardedFor != "" {
+		request.Header.Set("X-Forwarded-For", forwardedFor)
+	}
 	response, err := b.client.Do(request)
 	if err != nil {
 		t.Fatalf("POST %s: %v", path, err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	raw, _ := io.ReadAll(response.Body)
-	if response.StatusCode != http.StatusOK {
-		t.Fatalf("POST %s status=%d body=%s", path, response.StatusCode, raw)
-	}
 	result := map[string]any{}
-	if err := json.Unmarshal(raw, &result); err != nil {
-		t.Fatalf("POST %s の応答が JSON ではない body=%s: %v", path, raw, err)
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &result)
 	}
-	return result
+	return response.StatusCode, result
+}
+
+// SignInWithBadCSRF は CSRF の二重送信が成立しないログイン要求を送る。
+func (b *Browser) SignInWithBadCSRF(t *testing.T, username, password string) (int, map[string]any) {
+	t.Helper()
+	_ = b.Transaction(t)
+	return b.postJSONAttempt(t, "/api/auth/login", "tampered-csrf-token", "",
+		map[string]string{"username": username, "password": password})
+}
+
+// SessionCookie は browser が保持しているセッション Cookie の値を返す。無ければ空文字。
+func (b *Browser) SessionCookie(t *testing.T) string {
+	t.Helper()
+	base, err := url.Parse(b.base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cookie := range b.client.Jar.Cookies(base) {
+		if cookie.Name == sessionusecases.SessionCookie {
+			return cookie.Value
+		}
+	}
+	return ""
 }
 
 // PushAuthorizationRequest は `/par` へクライアント認証付きで 1 回送り、状態行と

@@ -249,6 +249,8 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 // SessionRepository / SessionManager は Pool 以外の状態を持たないため、"process 再起動" を
 // 「同じ DB に対して新しいインスタンスを作る」ことでシミュレートする。プロセスメモリに
 // session を持つ実装では再起動で失われるが、PostgreSQL を正本にした後は生き残ることを確認する。
+//
+//spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-02: 同じセッション Cookie が、プロセスを挟んだ別インスタンスからも再起動前と同じ内容で解決できることを固定する。
 func TestSessionResolutionSurvivesProcessRestart(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

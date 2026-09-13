@@ -66,7 +66,7 @@ func TestEvaluateTrustsTheIssuedCookieAndRotatesIt(t *testing.T) {
 
 // 記憶しない。
 //
-//spec:covers REQ-AUTHENTICATION-026: 復旧コードでの成功と、テナントが機能を無効にしている場合は
+//spec:covers REQ-AUTHENTICATION-026, EX-AUTHENTICATION-026-03, EX-AUTHENTICATION-026-04: 第二要素として復旧コードを消費した場合と、パスワードだけで認証が完了した場合のどちらでも、同意があっても端末を記憶しないことを固定する。
 func TestIssueRefusesRecoveryCodeAndDisabledTenants(t *testing.T) {
 	t.Parallel()
 	deps, _ := testDeps()
@@ -108,7 +108,7 @@ func TestEvaluateRejectsTheCookieFromBeforeRotation(t *testing.T) {
 
 // いずれも第二要素を省略できない。
 //
-//spec:covers REQ-AUTHENTICATION-027: 期限切れ、別テナント、別ユーザー、改竄した cookie は
+//spec:covers REQ-AUTHENTICATION-027, EX-AUTHENTICATION-027-02, EX-AUTHENTICATION-027-04: 直近利用から idle 期限を過ぎた cookie と、別テナントの realm で発行された cookie のどちらも信頼されないことを固定する。絶対期限と改竄は同じ表で併せて見る。
 func TestEvaluateFailsClosedOnEveryMismatch(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
@@ -237,7 +237,7 @@ func TestRevokeAllForUserIsIdempotent(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHENTICATION-029: 本人は個別に失効でき、再送は成功、他人のデバイスは見つからない。
+//spec:covers REQ-AUTHENTICATION-029, EX-AUTHENTICATION-029-03: 失効済みの端末へ同じ失効を再送しても成功し、最初の失効時刻が保たれることを固定する。他人の端末は見つからない。
 func TestRevokeOneScopesToTheOwnerAndIsIdempotent(t *testing.T) {
 	t.Parallel()
 	deps, _ := testDeps()
@@ -253,8 +253,22 @@ func TestRevokeOneScopesToTheOwnerAndIsIdempotent(t *testing.T) {
 	if err := RevokeOne(ctx, deps, testTenant, testUser, deviceID, spec.TrustedDeviceSelfRevoke, now.Add(time.Hour)); err != nil {
 		t.Fatalf("RevokeOne: %v", err)
 	}
+	revoked, err := deps.Repo.FindByID(ctx, testTenant, testUser, deviceID)
+	if err != nil || revoked == nil || revoked.RevokedAt == nil {
+		t.Fatalf("device=%+v err=%v", revoked, err)
+	}
+	firstRevokedAt := *revoked.RevokedAt
+
 	if err := RevokeOne(ctx, deps, testTenant, testUser, deviceID, spec.TrustedDeviceSelfRevoke, now.Add(2*time.Hour)); err != nil {
 		t.Fatalf("re-revoking must be idempotent: %v", err)
+	}
+	// 「成功として扱われる」だけを戻り値で読むと、2 度目に時刻を上書きする実装を通す。
+	again, err := deps.Repo.FindByID(ctx, testTenant, testUser, deviceID)
+	if err != nil || again == nil || again.RevokedAt == nil {
+		t.Fatalf("device=%+v err=%v", again, err)
+	}
+	if !again.RevokedAt.Equal(firstRevokedAt) {
+		t.Fatalf("revoked_at=%s, want %s (初回の値)", again.RevokedAt, firstRevokedAt)
 	}
 	other := "44444444-4444-4444-8444-444444444444"
 	if err := RevokeOne(ctx, deps, testTenant, other, deviceID, spec.TrustedDeviceSelfRevoke, now); !errors.Is(err, ErrTrustedDeviceNotFound) {

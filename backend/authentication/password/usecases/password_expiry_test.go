@@ -14,7 +14,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// REQ-AUTHENTICATION-024
+//spec:covers REQ-AUTHENTICATION-024, EX-AUTHENTICATION-024-05: パスワード資格情報を持たない利用者 (フェデレーションまたはパスワードレス) には、経過日数によらず update_password が付与されないことを固定する。
 func TestEnforcePasswordExpiry(t *testing.T) {
 	t.Parallel()
 

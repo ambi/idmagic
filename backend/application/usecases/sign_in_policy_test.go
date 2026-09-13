@@ -59,6 +59,41 @@ func TestEvaluateSignInPolicyMfaSatisfied(t *testing.T) {
 	}
 }
 
+// 強制開始前は、MFA を要求するルールでもパスワードだけのセッションを通す。
+//
+// EX-AUTHENTICATION-019-01 はこの分岐に加えて、UI が強制開始日時と事前登録を促す警告を
+// 出すことも要求している。アカウント API はその日時を返しておらず、UI も表示しない。
+// この記録は判定の側だけを固定し、具体例の主張はしない。決着は wi-572 が持つ。
+//
+//spec:covers REQ-AUTHENTICATION-019: 強制開始が将来のルールは MFA を要求せず、強制開始を過ぎると同じルールが要求することを固定する。
+func TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart(t *testing.T) {
+	now := time.Now().UTC()
+	grace := 3600
+	future := now.Add(time.Hour)
+	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+		RuleID: "rule-1", Name: "MFA", Enabled: true,
+		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+		MfaEnrollment: &domain.MfaEnrollmentPolicy{
+			EnforcementStartAt: &future, GracePeriodSeconds: &grace, AllowAdminBypass: true,
+		},
+	}}}
+	passwordOnly := &authdomain.AuthenticationContext{
+		UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
+	}
+
+	if got := EvaluateSignInPolicy(policy, passwordOnly, "", now); got.Decision != PolicyAllow {
+		t.Fatalf("decision=%s, want %s (強制開始前)", got.Decision, PolicyAllow)
+	}
+
+	// 対照: 同じルールでも強制開始を過ぎていれば第二要素を要求する。日時を見ずに
+	// 常に通す実装と区別できる。
+	past := now.Add(-time.Hour)
+	policy.Rules[0].MfaEnrollment.EnforcementStartAt = &past
+	if got := EvaluateSignInPolicy(policy, passwordOnly, "", now); got.Decision != PolicyStepUpRequired {
+		t.Fatalf("decision=%s, want %s (強制開始後)", got.Decision, PolicyStepUpRequired)
+	}
+}
+
 func TestEvaluateSignInPolicyNetworkCIDRAllows(t *testing.T) {
 	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
 		RuleID: "rule-1", Name: "Network", Enabled: true,

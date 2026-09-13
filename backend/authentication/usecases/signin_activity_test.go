@@ -10,6 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/usecases"
 )
 
+//spec:covers REQ-AUTHENTICATION-014, EX-AUTHENTICATION-014-01: サインイン履歴に自分のテナントの自分の UserAuthenticated だけが返り、第二要素を使ったサインインが pwd と第二要素の amr を持つ完了後の 1 件として現れることを固定する。
 func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 	ctx := context.Background()
 	store := auditmemory.NewAuditEventStore(0)

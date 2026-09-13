@@ -12,6 +12,7 @@ func TestValidatePasswordAcceptsMinimumLength(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-AUTHENTICATION-010, EX-AUTHENTICATION-010-02: 12 文字未満の新しいパスワードが too_short として拒否されることを固定する。
 func TestValidatePasswordRejectsTooShort(t *testing.T) {
 	got := ValidatePassword(strings.Repeat("x", PasswordPolicyMinLength-1))
 	if got.OK || len(got.Violations) != 1 || got.Violations[0] != ViolationTooShort {

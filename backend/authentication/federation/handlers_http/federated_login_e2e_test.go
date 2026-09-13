@@ -40,7 +40,7 @@ func (*completingFederationDriver) Complete(context.Context, federationdomain.Id
 	return federationdomain.NormalizedClaims{Subject: "external-user", Username: "alice@example.com"}, nil
 }
 
-//spec:covers REQ-AUTHENTICATION-001: 外部 IdP の callback を正式入口から完了し、既存の相関先 User に対するログイン session を発行する。
+//spec:covers REQ-AUTHENTICATION-001, EX-AUTHENTICATION-001-01: start が単回限りの試行として state を保存して上流へ遷移し、callback が既存の関連付けから同じローカル User を解決して `federated` の AMR を持つ LoginSession を発行することを固定する (初回の JIT 作成は TestCompleteJITRequiresPolicyAndProvisioner が持つ)。
 func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 	now := time.Now().UTC()
 	repos := federationmemory.NewRepositories()

@@ -10,9 +10,11 @@ package handlers_http_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"testing"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -40,8 +43,10 @@ const (
 
 // claimsDriver は上流の応答を差し替える stub。State は start が採番した値を控える。
 type claimsDriver struct {
-	state  string
-	claims federationdomain.NormalizedClaims
+	state       string
+	claims      federationdomain.NormalizedClaims
+	completeErr error
+	completed   int
 }
 
 func (d *claimsDriver) Start(
@@ -55,22 +60,24 @@ func (d *claimsDriver) Start(
 }
 
 func (d *claimsDriver) Complete(
-	context.Context,
-	federationdomain.IdentityProviderConnection,
-	federationdomain.FederatedLoginAttempt,
-	string,
-	string,
-	time.Time,
+	_ context.Context,
+	_ federationdomain.IdentityProviderConnection,
+	_ federationdomain.FederatedLoginAttempt,
+	_ string,
+	_ string,
+	_ time.Time,
 ) (federationdomain.NormalizedClaims, error) {
-	return d.claims, nil
+	d.completed++
+	return d.claims, d.completeErr
 }
 
 // autoLinkFixture は自動リンクの拒否が変えなかったものを読み直すための保存層を持つ。
 type autoLinkFixture struct {
 	e        *echo.Echo
 	repos    federationmemory.Repositories
-	sessions *sessionusecases.SessionManager
+	sessions *sessionmemory.SessionStore
 	driver   *claimsDriver
+	events   []string
 }
 
 // newAutoLinkServer は 1 本の接続と、`policy` に応じた linking policy を持つ環境を組む。
@@ -80,6 +87,19 @@ func newAutoLinkServer(
 	policy federationdomain.LinkingPolicy,
 	duplicateEmail bool,
 	claims federationdomain.NormalizedClaims,
+) *autoLinkFixture {
+	t.Helper()
+	return newFederationServer(t, policy, duplicateEmail, &claimsDriver{claims: claims})
+}
+
+// newFederationServer は driver を呼び出し側が握る形の同じ環境である。上流の応答が
+// 検証に落ちる経路は driver の戻り値でしか作れず、発行されたイベントも読み直せる
+// ようにしてある。
+func newFederationServer(
+	t *testing.T,
+	policy federationdomain.LinkingPolicy,
+	duplicateEmail bool,
+	driver *claimsDriver,
 ) *autoLinkFixture {
 	t.Helper()
 	ctx := context.Background()
@@ -113,8 +133,9 @@ func newAutoLinkServer(
 		t.Fatal(err)
 	}
 
-	driver := &claimsDriver{claims: claims}
-	sessions := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	store := sessionmemory.NewSessionStore()
+	sessions := sessionusecases.NewSessionManager(store)
+	fixture := &autoLinkFixture{repos: repos, sessions: store, driver: driver}
 	e := echo.New()
 	federationhttp.RegisterRoutes(e.Group(""), federationhttp.Deps{
 		Broker: federationusecases.BrokerDeps{
@@ -123,10 +144,12 @@ func newAutoLinkServer(
 			Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
 				federationdomain.ProtocolOIDC: driver,
 			},
+			Emit: func(event spec.DomainEvent) { fixture.events = append(fixture.events, event.EventType()) },
 		},
 		Auth: httpdeps.Deps{Deps: support.Deps{Issuer: "http://idp.test"}},
 	})
-	return &autoLinkFixture{e: e, repos: repos, sessions: sessions, driver: driver}
+	fixture.e = e
+	return fixture
 }
 
 // completeLogin は start から callback までを production と同じ経路で 1 往復する。
@@ -147,6 +170,16 @@ func (f *autoLinkFixture) completeLogin(t *testing.T) *httptest.ResponseRecorder
 	return completed
 }
 
+// issuedSessions は seed 済みの利用者に対して発行されたセッションの数を返す。
+func (f *autoLinkFixture) issuedSessions(t *testing.T, userID string) int {
+	t.Helper()
+	issued, err := f.sessions.ListBySub(context.Background(), userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(issued)
+}
+
 // linkedIdentity は外部 subject に対する関連付けを読み直す。
 func (f *autoLinkFixture) linkedIdentity(t *testing.T) *federationdomain.FederatedIdentity {
 	t.Helper()
@@ -165,7 +198,7 @@ func (f *autoLinkFixture) linkedIdentity(t *testing.T) *federationdomain.Federat
 // 応答だけを読むテストでは、拒否を書いたうえでリンクとセッションを作る実装を
 // 通してしまうので、関連付けとセッション Cookie の両方を読み直す。
 //
-//spec:covers EX-AUTHENTICATION-002-02: ポリシーが `None`、メールアドレスが未検証、または一致が
+//spec:covers REQ-AUTHENTICATION-002, EX-AUTHENTICATION-002-02: ポリシーが `None`、メールアドレスが未検証、または一致が
 func TestAutoLinkRefusalCreatesNoIdentityAndNoSession(t *testing.T) {
 	verified := federationdomain.NormalizedClaims{
 		Subject: autoLinkSubject, Username: autoLinkEmail, Email: autoLinkEmail, EmailVerified: true,
@@ -224,5 +257,53 @@ func TestAutoLinkRefusalCreatesNoIdentityAndNoSession(t *testing.T) {
 	}
 	if cookies := accepted.Result().Cookies(); len(cookies) != 1 || cookies[0].Value == "" {
 		t.Fatalf("前提が壊れている: 自動リンク後の Cookie=%+v", cookies)
+	}
+}
+
+// 上流の応答が検証に落ちたときの callback。
+//
+// 拒否の応答だけを読むと、セッションを発行してから error を返す実装と区別が付かない。
+// 関連付けとセッションの双方を保存層から読み直し、そのうえで記録が残ることを確かめる。
+// 記録が無いと、同じ IdP に対する総当たりが監査から見えない。
+//
+// EX-AUTHENTICATION-001-03 はこの経路を含むが、同じ `Then` が `state` 不一致でも
+// FederatedLoginRejected を要求している。実装はそちらでは発行しないため、この記録は
+// 具体例を主張しない。決着は wi-571 が持つ。
+//
+//spec:covers REQ-AUTHENTICATION-001: 上流の応答が検証に落ちた callback は拒否され、LoginSession も関連付けも作られず、FederatedLoginRejected が残ることを固定する。
+func TestProtocolValidationRefusalCreatesNothingAndRecordsTheRejection(t *testing.T) {
+	driver := &claimsDriver{
+		claims:      federationdomain.NormalizedClaims{Subject: autoLinkSubject, Username: autoLinkEmail},
+		completeErr: errors.New("id token signature does not verify"),
+	}
+	fixture := newFederationServer(t, federationdomain.LinkingVerifiedEmail, false, driver)
+
+	refused := fixture.completeLogin(t)
+	if refused.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s、期待は 401", refused.Code, refused.Body.String())
+	}
+	if identity := fixture.linkedIdentity(t); identity != nil {
+		t.Fatalf("拒否されたのに関連付けが作られた: %+v", identity)
+	}
+	if got := fixture.issuedSessions(t, "user-alice"); got != 0 {
+		t.Fatalf("拒否されたのに LoginSession が %d 件発行された", got)
+	}
+	if cookies := refused.Result().Cookies(); len(cookies) != 0 {
+		t.Fatalf("拒否されたのにセッション Cookie が発行された: %+v", cookies)
+	}
+	if !slices.Contains(fixture.events, "FederatedLoginRejected") {
+		t.Fatalf("FederatedLoginRejected が発行されていない: %v", fixture.events)
+	}
+
+	// 対照: 同じ往復が、検証を通る応答では成立する。これが無いと、拒否が上流の検証
+	// ではなく環境の不足で起きていた場合を見分けられない。
+	accepted := newFederationServer(t, federationdomain.LinkingVerifiedEmail, false, &claimsDriver{
+		claims: federationdomain.NormalizedClaims{
+			Subject: autoLinkSubject, Username: autoLinkEmail,
+			Email: autoLinkEmail, EmailVerified: true,
+		},
+	})
+	if response := accepted.completeLogin(t); response.Code != http.StatusSeeOther {
+		t.Fatalf("前提が壊れている: 検証を通る応答が status=%d", response.Code)
 	}
 }

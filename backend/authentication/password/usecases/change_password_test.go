@@ -16,6 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+//spec:covers REQ-AUTHENTICATION-010, EX-AUTHENTICATION-010-01: 正しい現在のパスワードでの変更がハッシュと password_changed_at を更新し、PasswordChanged を発行することを固定する。
 func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	t.Parallel()
 
@@ -55,6 +56,11 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	}
 	if updated.UpdatedAt != now {
 		t.Fatalf("updated_at=%s, want %s", updated.UpdatedAt, now)
+	}
+	// 有効期限の判定はこの時刻だけを読む (REQ-AUTHENTICATION-024)。更新し忘れると、
+	// 変更したはずの利用者が次のログインで再び変更を強制される。
+	if updated.Lifecycle.PasswordChangedAt == nil || !updated.Lifecycle.PasswordChangedAt.Equal(now) {
+		t.Fatalf("password_changed_at=%v, want %s", updated.Lifecycle.PasswordChangedAt, now)
 	}
 	ok, err := hasher.Verify("fresh-pass-9182", updated.PasswordHash)
 	if err != nil {
@@ -200,6 +206,7 @@ type breachedChecker struct{}
 
 func (breachedChecker) IsBreached(context.Context, string) bool { return true }
 
+//spec:covers REQ-AUTHENTICATION-010, EX-AUTHENTICATION-010-03: 直近 5 件の履歴に一致する新しいパスワードが拒否され、保存されているハッシュが変わらないことを固定する。
 func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	t.Parallel()
 
@@ -236,5 +243,13 @@ func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	})
 	if !errors.Is(err, ErrPasswordReused) {
 		t.Fatalf("err=%v, want password reused", err)
+	}
+	// 拒否の戻り値だけでは、履歴と照合する前に保存する実装を通してしまう。
+	stored, err := userRepo.FindBySub(context.Background(), "user-1")
+	if err != nil || stored == nil {
+		t.Fatalf("user=%v err=%v", stored, err)
+	}
+	if stored.PasswordHash != initialHash {
+		t.Fatal("再利用を拒否したのに保存されたハッシュが変わった")
 	}
 }
