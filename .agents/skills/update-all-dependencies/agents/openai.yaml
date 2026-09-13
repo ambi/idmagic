@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update All Dependencies"
+  short_description: "Update application dependencies and development tools"
+  default_prompt: "Use $update-all-dependencies to update every repository dependency and toolchain component to the latest stable release."
