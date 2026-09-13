@@ -182,6 +182,13 @@ func renderedReferencePath(pattern string) string {
 // 生成物が答えられない経路が 1 つでもあると、運用者はそこだけ実装を読むことになり、
 // 「参照すれば分かる」という前提が崩れる。件数の一致ではなく経路ごとの出現を見るのは、
 // 数だけ合っていて中身が入れ替わっている生成物を通さないためである。
+//
+// 経路がどのクラスの節に現れるかまで見るのは、具体例が「属する優先度クラスを示す」と
+// 言っているからである。どこかに 1 行あることだけを見る検査は、全経路を 1 つの節へ
+// まとめた生成物を通す。その生成物は、運用者の問い (この経路は最初に捨てられるのか)
+// に答えない。
+//
+//spec:covers EX-SYSTEM-019-01: 生成物が組み立て済みの各経路について、経路パターンとメソッドを、属する優先度クラスの節に示すこと。
 func TestPriorityClassReferenceCoversEveryAssembledRoute(t *testing.T) {
 	t.Parallel()
 
@@ -196,8 +203,15 @@ func TestPriorityClassReferenceCoversEveryAssembledRoute(t *testing.T) {
 		}
 		seen++
 		rendered := renderedReferencePath(route.Path)
-		if !strings.Contains(reference, "| `"+rendered+"` |") {
-			t.Errorf("route %s %s (as %q) does not appear in the generated reference", route.Method, route.Path, rendered)
+		class := httpadapter.ClassifyRoute(route.Path)
+		section := referenceSection(t, reference, "`"+string(class)+"`")
+		row := referenceRowFor(section, rendered)
+		if row == "" {
+			t.Errorf("route %s %s (as %q) does not appear under `%s` in the generated reference", route.Method, route.Path, rendered, class)
+			continue
+		}
+		if !strings.Contains(row, route.Method) {
+			t.Errorf("route %s %s appears as %q, which does not name the method", route.Method, route.Path, row)
 		}
 	}
 	if seen == 0 {
@@ -205,9 +219,37 @@ func TestPriorityClassReferenceCoversEveryAssembledRoute(t *testing.T) {
 	}
 }
 
+// referenceSection は生成物から見出し 1 つぶんの節を切り出す。
+func referenceSection(t *testing.T, reference, heading string) string {
+	t.Helper()
+	_, tail, ok := strings.Cut(reference, "## "+heading+"\n")
+	if !ok {
+		t.Fatalf("the generated reference has no section for %q", heading)
+	}
+	if next, _, found := strings.Cut(tail, "\n## "); found {
+		return next
+	}
+	return tail
+}
+
+func referenceRowFor(section, path string) string {
+	for line := range strings.SplitSeq(section, "\n") {
+		if strings.HasPrefix(line, "| `"+path+"` |") {
+			return line
+		}
+	}
+	return ""
+}
+
 // TestPriorityClassReferenceNamesEveryClass は、生成物が 4 つのクラスすべてを見出しと
 // して持つことを確かめる。クラスを足して生成物の側を直し忘れると、その経路群は
 // どこにも現れない。
+//
+// 併せて、クラスごとに縮退のステージと上限を与える設定キーが並んでいることを見る。
+// 見出しだけを見る検査は、運用者が「どれをいくつまで上げれば縮退が緩むか」を答えられない
+// 生成物を通す。
+//
+//spec:covers EX-SYSTEM-019-01: 生成物が優先度クラスごとに、対応する縮退のステージと上限を与える起動時設定のキーを示すこと。
 func TestPriorityClassReferenceNamesEveryClass(t *testing.T) {
 	t.Parallel()
 
@@ -220,6 +262,25 @@ func TestPriorityClassReferenceNamesEveryClass(t *testing.T) {
 	} {
 		if !strings.Contains(reference, "## `"+string(class)+"`") {
 			t.Errorf("the generated reference has no section for %q", class)
+		}
+	}
+
+	for class, want := range map[support.PriorityClass]struct{ stage, limitKey string }{
+		support.ClassManagementBulk:  {"3", "`ADMISSION_MANAGEMENT_BULK_MAX_CONCURRENT_REQUESTS`"},
+		support.ClassManagement:      {"4", "`ADMISSION_MANAGEMENT_MAX_CONCURRENT_REQUESTS`"},
+		support.ClassInteractiveAuth: {"5", "`ADMISSION_MAX_CONCURRENT_REQUESTS`"},
+		support.ClassInfrastructure:  {"—", "—"},
+	} {
+		row := referenceRowFor(referenceSection(t, reference, "Classes"), string(class))
+		if row == "" {
+			t.Errorf("the Classes table has no row for %q", class)
+			continue
+		}
+		if !strings.Contains(row, "| "+want.stage+" |") {
+			t.Errorf("Classes row for %q = %s, want degradation stage %s", class, row, want.stage)
+		}
+		if !strings.Contains(row, "| "+want.limitKey+" |") {
+			t.Errorf("Classes row for %q = %s, want the limit key %s", class, row, want.limitKey)
 		}
 	}
 }

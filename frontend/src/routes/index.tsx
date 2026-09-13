@@ -1,11 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { demoLoginEnabled } from '../features/auth-flow/demoLogin'
 import { HomePage } from '../features/auth-flow/HomePage'
 import { PageMarker } from './-page'
 
 export const Route = createFileRoute('/')({
-  loader: () => ({
-    demoEnabled: import.meta.env.DEV || import.meta.env.VITE_DEMO_LOGIN_ENABLED === 'true',
-  }),
+  loader: () => ({ demoEnabled: demoLoginEnabled() }),
   component: HomeRoute,
 })
 

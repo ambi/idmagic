@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+// 5 種類の誤りを同時に与えて、5 件が 1 回の Err() に揃っていることを件数と鍵の両方で
+// 読む。最初の 1 件で止まる実装では、運用者が 1 つ直して起動し直すたびに次の 1 件が
+// 出るので、5 回の起動試行が要る。
+//
+//spec:covers EX-SYSTEM-016-01: 発生したすべての検証エラーが 1 回の起動試行で集約されて報告されること。
 func TestConfigLoaderAggregatesEveryError(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(map[string]string{
@@ -71,6 +76,7 @@ func TestConfigLoaderNoErrorsWhenEverythingValid(t *testing.T) {
 	}
 }
 
+//spec:covers EX-SYSTEM-016-01: 検証エラーおよび起動ログが、シークレットに分類された値を含まないこと。
 func TestSecretNeverLeaksThroughFormattingOrJSON(t *testing.T) {
 	t.Parallel()
 	s := NewSecret("super-sensitive-value")

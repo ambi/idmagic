@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../test/globals'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { AdminShell } from './AdminShell'
+import { shellDictionary } from './shell.i18n'
 
 describe('AdminShell', () => {
   afterEach(() => restoreGlobals())
@@ -18,6 +19,30 @@ describe('AdminShell', () => {
     const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
     expect(within(breadcrumb).getByRole('link', { name: 'Admin console' })).toBeInTheDocument()
     expect(screen.getByText('Description')).toBeInTheDocument()
+  })
+
+  // 管理コンソールの言語切り替えは、切り替えた側 (ボタン) ではなく切り替えられた側
+  // (シェルの文言) で観測する。押した結果が aria-pressed にしか出ない実装でも前者は通る。
+  //
+  //spec:covers EX-SYSTEM-009-01: Administrator が管理画面で表示言語を選ぶと、シェルとパンくずの文言がその辞書へ替わること。
+  it('renders the admin chrome in the language the administrator selects', async () => {
+    await renderWithRouter(
+      <AdminShell active="dashboard" title="Dashboard">
+        <p>content</p>
+      </AdminShell>,
+      { locale: 'ja' },
+    )
+
+    expect(
+      screen.getByRole('navigation', { name: shellDictionary.ja.breadcrumb }),
+    ).toHaveTextContent(shellDictionary.ja.adminConsole)
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }))
+
+    expect(
+      screen.getByRole('navigation', { name: shellDictionary.en.breadcrumb }),
+    ).toHaveTextContent(shellDictionary.en.adminConsole)
+    expect(document.documentElement.lang).toBe('en')
   })
 
   it('collapses the breadcrumb to a single entry on the dashboard', async () => {

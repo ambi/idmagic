@@ -12,6 +12,8 @@ import (
 // wi-297 T005: interfaces marked deprecated_since must return the
 // Deprecation header (RFC 9745), and Sunset (RFC 8594) when sunset_at is
 // also set. Non-deprecated interfaces must not gain either header.
+//
+//spec:covers EX-SYSTEM-014-01, EX-SYSTEM-014-02, EX-SYSTEM-014-03: deprecated_since を持つ経路に Deprecation が付き、sunset_at も持つ経路には Sunset も付き、deprecated_since を持たない経路にはどちらも付かないこと。
 func TestDeprecationHeadersMiddleware(t *testing.T) {
 	contract := &spec.RuntimeContract{
 		Operations: map[string]spec.Operation{

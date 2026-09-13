@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test'
+import { commonDictionary } from '../lib/i18n/common.i18n'
+import { getCurrentLocale } from '../lib/i18n/currentLocale'
+import { localizedErrorMessage } from '../lib/i18n/errorMessage'
 import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
+  apiErrorCode,
+  apiErrorMessage,
   tenantBasePath,
   tenantLocalPath,
   tenantRouterPath,
@@ -365,6 +370,51 @@ describe('core api utils', () => {
       await expect(requestPage('/api/admin/v1/users')).rejects.toThrow(
         'Missing or invalid Pagination-Total-Items',
       )
+    })
+  })
+
+  describe('error bodies', () => {
+    // 通信障害のフォールバックは、本文を 1 つも読めなかったときだけのものである。
+    // 有効なエラーレスポンスでもそれを出す実装は、利用者へ「通信に失敗しました」と伝えて
+    // 拒否の理由を隠す。空の本文との対照を置かないと、この検査は空振りする。
+    //
+    //spec:covers EX-SYSTEM-011-02: 未知のコードまたは任意の message / Problem Details だけの応答で、利用可能な人間可読文を表示し、有効なエラーレスポンスに通信障害用のフォールバックを出さないこと。
+    it('prefers any human-readable field over the network-failure fallback', () => {
+      const networkError = commonDictionary[getCurrentLocale()].networkError
+      for (const body of [
+        { message: 'The request was refused.' },
+        { error_description: 'The request was refused.' },
+        { detail: 'The request was refused.' },
+        { title: 'The request was refused.' },
+      ]) {
+        expect(apiErrorMessage(body)).toBe('The request was refused.')
+        expect(apiErrorMessage(body)).not.toBe(networkError)
+      }
+      // 本文を読めなかったときだけフォールバックが出る。
+      expect(apiErrorMessage({})).toBe(networkError)
+    })
+
+    // type から取り出したコードが辞書を引けることまで見る。接尾辞を読むだけの検査は、
+    // 読んだコードを翻訳へ渡していない実装を通す。そのとき ja の利用者には英語の detail が
+    // 出続ける。
+    //
+    //spec:covers EX-SYSTEM-011-03: Problem Details の type の urn:idmagic:error: に続く部分をエラーコードとして解釈し、そのコードで辞書のエラー文を表示すること。
+    it('reads the problem type suffix as the error code the dictionary is keyed by', () => {
+      const body = {
+        type: 'urn:idmagic:error:access_denied',
+        title: 'Access denied',
+        status: 403,
+        detail: 'The request was refused.',
+      }
+      expect(apiErrorCode(body)).toBe('access_denied')
+      expect(localizedErrorMessage('ja', apiErrorCode(body), apiErrorMessage(body))).toBe(
+        commonDictionary.ja.accessDenied,
+      )
+      expect(localizedErrorMessage('en', apiErrorCode(body), apiErrorMessage(body))).toBe(
+        commonDictionary.en.accessDenied,
+      )
+      // idmagic の名前空間でない type はコードとして解釈しない。
+      expect(apiErrorCode({ type: 'https://example.com/errors/access_denied' })).toBeUndefined()
     })
   })
 })

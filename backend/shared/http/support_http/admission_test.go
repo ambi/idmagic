@@ -35,6 +35,9 @@ func testBudget() support.AdmissionBudget {
 // TestAdmissionBudgetAdmit は入場可否の純粋な計算を、ステージ 3 / ステージ 4 / ステージ 5 の境界の
 // 両側で検査する (REQ-SYSTEM-018)。境界のちょうど上と下を並べているのは、上限を
 // 「未満」で判定する実装と「以下」で判定する実装を区別するためである。
+//
+//spec:covers EX-SYSTEM-018-01: どの入場上限にも達していない実行中数では、どの優先度クラスの要求も拒否されないこと。
+//spec:covers EX-SYSTEM-018-02: 実行中の要求数が management_bulk の上限に達していなければ、その要求は受け付けられること。
 func TestAdmissionBudgetAdmit(t *testing.T) {
 	t.Parallel()
 
@@ -132,6 +135,8 @@ func TestPriorityClassRetryAfterSeconds(t *testing.T) {
 // 残したもの (ハンドラーが 1 度も走らないこと) である。後者が縮退順序のステージ 5 が求める
 // 「状態を部分的に更新しない」の中身であり、状態コードだけを見る検査は、拒否を書いて
 // から操作を実行する実装に対しても同じように通ってしまう (REQ-SYSTEM-018)。
+//
+//spec:covers EX-SYSTEM-018-01: management_bulk の上限に達した状態の要求が Retry-After と service_overloaded の Problem Details を伴う 503 になり、ハンドラーへ到達しないこと。
 func TestAdmissionMiddlewareRefusesWithoutRunningHandler(t *testing.T) {
 	t.Parallel()
 
@@ -189,9 +194,64 @@ func TestAdmissionMiddlewareRefusesWithoutRunningHandler(t *testing.T) {
 	occupied.Wait()
 }
 
+// プロセス全体の上限に達すると interactive_auth も拒否される。下位のクラスだけを拒否する
+// 実装はここで止まらず、対話的な認証を無制限に受け続けて、そのぶんの接続とメモリーを
+// 確保しようとする。拒否したことと、拒否がハンドラーへ到達していないことを対で読む。
+// 状態コードだけを見る検査は、拒否を書いてからハンドラーも走らせる実装を通す。
+//
+//spec:covers EX-SYSTEM-018-03: 実行中の要求数がプロセス全体の上限に達すると interactive_auth も同じ 503 で拒否され、要求がハンドラーへ到達しないこと。
+func TestAdmissionMiddlewareShedsInteractiveAuthAtTheProcessLimit(t *testing.T) {
+	t.Parallel()
+
+	release := make(chan struct{})
+	entered := make(chan struct{}, 1)
+	var handlerRuns atomic.Int64
+
+	e := echo.New()
+	e.Use(support.AdmissionMiddleware(
+		support.AdmissionBudget{Enabled: true, MaxConcurrent: 1, ManagementLimit: 1, ManagementBulkLimit: 1},
+		func(string) support.PriorityClass { return support.ClassInteractiveAuth },
+		nil,
+	))
+	e.GET("/authorize", func(c *echo.Context) error {
+		handlerRuns.Add(1)
+		entered <- struct{}{}
+		awaitRelease(release)
+		return c.NoContent(http.StatusOK)
+	})
+
+	var occupied sync.WaitGroup
+	occupied.Go(func() {
+		e.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/authorize", http.NoBody))
+	})
+	<-entered
+
+	recorder := httptest.NewRecorder()
+	e.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/authorize", http.NoBody))
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("interactive_auth status at the process limit = %d, want 503", recorder.Code)
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem details: %v", err)
+	}
+	if problem.Type != "urn:idmagic:error:service_overloaded" {
+		t.Fatalf("problem type = %q, want urn:idmagic:error:service_overloaded", problem.Type)
+	}
+	if runs := handlerRuns.Load(); runs != 1 {
+		t.Fatalf("handler ran %d times, want 1 (the shed request must not reach it)", runs)
+	}
+
+	close(release)
+	occupied.Wait()
+}
+
 // TestAdmissionMiddlewareNeverShedsInfrastructure は、受付可否のプローブが飽和中も
 // 拒否されないことを確かめる。拒否すると飽和した全レプリカが同時に負荷分散から
 // 外れ、部分的な縮退が完全な停止になる (REQ-SYSTEM-018)。
+//
+//spec:covers EX-SYSTEM-018-01: infrastructure に分類された経路が、実行中の要求数にかかわらず拒否されないこと。
 func TestAdmissionMiddlewareNeverShedsInfrastructure(t *testing.T) {
 	t.Parallel()
 

@@ -781,6 +781,21 @@ func (b *Browser) postJSONAttempt(
 	if err != nil {
 		t.Fatal(err)
 	}
+	return b.postBody(t, path, csrf, forwardedFor, encoded)
+}
+
+// PostRawJSON は body をそのまま送る。不正な JSON のように、値として組み立てられない
+// body を渡すための入口である。json.Marshal を通す postJSONAttempt では、復号が失敗する
+// 要求そのものを作れない。
+func (b *Browser) PostRawJSON(t *testing.T, path, csrf, body string) (int, map[string]any) {
+	t.Helper()
+	return b.postBody(t, path, csrf, "", []byte(body))
+}
+
+func (b *Browser) postBody(
+	t *testing.T, path, csrf, forwardedFor string, encoded []byte,
+) (int, map[string]any) {
+	t.Helper()
 	request, err := http.NewRequestWithContext(
 		t.Context(), http.MethodPost, b.base+path, bytes.NewReader(encoded))
 	if err != nil {

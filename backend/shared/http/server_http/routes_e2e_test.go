@@ -1479,6 +1479,12 @@ func mustJSON(t *testing.T, value any) string {
 	return string(body)
 }
 
+// 3 つのプローブを 3 つの段階すべてで読み、状態コードと本文の status を対で見る。
+// 状態コードだけを見る検査は、本文を空にした実装や status を書き換えた実装を通す。具体例が
+// 言っているのは `200 healthy` であって 200 ではない。
+//
+//spec:covers EX-SYSTEM-002-01: 初期化完了後は生存・受付可否・起動完了の 3 つすべてが 200 healthy を返すこと。
+//spec:covers EX-SYSTEM-002-02: 初期化中とグレースフルドレイン中は生存確認が 200 healthy を維持し、受付可否または起動完了が 503 を返すこと。
 func TestHealthProbes(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
@@ -1510,86 +1516,49 @@ func TestHealthProbes(t *testing.T) {
 
 	client := &http.Client{}
 
-	// 1. 起動前状態のテスト
-	// startupz: 503
-	resp, err := client.Get(srv.URL + "/startupz")
-	if err != nil {
-		t.Fatal(err)
+	expect := func(stage, path string, wantCode int, wantStatus string) {
+		t.Helper()
+		resp, err := client.Get(srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var body struct {
+			Status string `json:"status"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("%s: decode GET %s body: %v", stage, path, err)
+		}
+		if resp.StatusCode != wantCode || body.Status != wantStatus {
+			t.Errorf("%s: GET %s = %d %q, want %d %q", stage, path, resp.StatusCode, body.Status, wantCode, wantStatus)
+		}
 	}
-	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Errorf("expected 503 for /startupz before startup complete, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
 
-	// readyz: 503 (starting)
-	resp, err = client.Get(srv.URL + "/readyz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Errorf("expected 503 for /readyz before startup complete, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
+	// 1. 初期化中: 受付可否と起動完了は 503、生存確認は healthy を維持する。
+	expect("before startup", "/startupz", http.StatusServiceUnavailable, "starting")
+	expect("before startup", "/readyz", http.StatusServiceUnavailable, "starting")
+	expect("before startup", "/livez", http.StatusOK, "healthy")
 
-	// livez: 200 (liveness is always OK if process is running)
-	resp, err = client.Get(srv.URL + "/livez")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for /livez, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
-
-	// 2. 起動完了後のテスト
+	// 2. 初期化完了後: 3 つすべてが 200 healthy を返す。
 	startupComplete.Store(true)
+	expect("after startup", "/startupz", http.StatusOK, "healthy")
+	expect("after startup", "/readyz", http.StatusOK, "healthy")
+	expect("after startup", "/livez", http.StatusOK, "healthy")
 
-	// startupz: 200
-	resp, err = client.Get(srv.URL + "/startupz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for /startupz, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
-
-	// readyz: 200
-	resp, err = client.Get(srv.URL + "/readyz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for /readyz, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
-
-	// 3. シャットダウン中のテスト
+	// 3. グレースフルドレイン中: 受付可否は 503、生存確認は healthy を維持する。
 	shuttingDown.Store(true)
-
-	// readyz: 503 (unavailable)
-	resp, err = client.Get(srv.URL + "/readyz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Errorf("expected 503 for /readyz during shutdown, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
-
-	// livez: 200
-	resp, err = client.Get(srv.URL + "/livez")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for /livez during shutdown, got %d", resp.StatusCode)
-	}
-	resp.Body.Close()
+	expect("draining", "/readyz", http.StatusServiceUnavailable, "unavailable")
+	expect("draining", "/livez", http.StatusOK, "healthy")
 }
 
 // TestHealthReportsFeatureMetadata_REQ_SYSTEM_017 は REQ-SYSTEM-017 に対し、composition root から渡された
 // 解決済み機能を /health が捨てる誤配線を検出する。
+//
+// 併せて応答の key 集合そのものを固定する。有効な機能を報告する応答へ設定を足すのは
+// 運用中にいちばん起きやすい変更であり、そこには DSN も SMTP の資格情報も入りうる。
+// 「シークレットを含まない」を後から確かめる方法は無いので、報告する項目を数え上げる。
+//
+//spec:covers EX-SYSTEM-017-01: /health がメタデータ形式の版と有効な各機能の識別子・版・成熟度・更新方針を返し、それ以外の項目を返さないこと。
 func TestHealthReportsFeatureMetadata_REQ_SYSTEM_017(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
@@ -1622,5 +1591,21 @@ func TestHealthReportsFeatureMetadata_REQ_SYSTEM_017(t *testing.T) {
 	}
 	if !reflect.DeepEqual(body.Features, want) {
 		t.Fatalf("features = %#v, want %#v", body.Features, want)
+	}
+
+	reported := map[string]any{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &reported); err != nil {
+		t.Fatalf("decode /health as an object: %v", err)
+	}
+	declared := map[string]bool{"status": true, "persistence": true, "observability": true, "authzen": true, "features": true}
+	for key := range reported {
+		if !declared[key] {
+			t.Errorf("/health reports %q, which the operational metadata does not declare", key)
+		}
+	}
+	for key := range declared {
+		if _, ok := reported[key]; !ok {
+			t.Errorf("/health no longer reports %q", key)
+		}
 	}
 }

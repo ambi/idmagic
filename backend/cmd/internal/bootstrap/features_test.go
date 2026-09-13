@@ -53,6 +53,12 @@ func TestFeatureResolutionMetadata_REQ_SYSTEM_017(t *testing.T) {
 	}
 }
 
+// 6 種類の registry の誤りを同時に置いて、報告がそのすべてを名指すことと、解決結果に
+// 部分的な有効化が残らないことを読む。最初の 1 件で止まる実装は運用者に起動試行を
+// 繰り返させ、部分的な結果を返す実装は、エラーを無視した呼び出し元に半端な機能集合で
+// 起動させる。
+//
+//spec:covers EX-SYSTEM-016-05: FeatureRegistry の識別子と未版名の重複、存在しない依存、依存循環、実験的機能と非推奨機能の既定有効化をすべて報告し、部分的な解決を返さないこと。
 func TestResolveFeaturesRejectsEveryInvalidRegistryEntry_REQ_SYSTEM_016(t *testing.T) {
 	t.Parallel()
 	registry := FeatureRegistry{
@@ -67,7 +73,7 @@ func TestResolveFeaturesRejectsEveryInvalidRegistryEntry_REQ_SYSTEM_016(t *testi
 		{ID: "deprecated-v1", Name: "deprecated", Version: "1", Maturity: FeatureDeprecated, DefaultEnablement: FeatureEnabled, UpdatePolicy: UpdateRolling},
 	}
 
-	_, err := ResolveFeatures(registry, nil, nil)
+	resolution, err := ResolveFeatures(registry, nil, nil)
 	if err == nil {
 		t.Fatal("ResolveFeatures accepted an invalid registry")
 	}
@@ -76,8 +82,15 @@ func TestResolveFeaturesRejectsEveryInvalidRegistryEntry_REQ_SYSTEM_016(t *testi
 			t.Errorf("ResolveFeatures error = %q, want %q", err, want)
 		}
 	}
+	if len(resolution.Enabled) != 0 {
+		t.Fatalf("resolution.Enabled = %#v, want no partial resolution on error", resolution.Enabled)
+	}
 }
 
+// 警告を DeepEqual で固定するのは、具体例が「識別子と成熟度だけを」と言っているからである。
+// 部分一致で読む検査は、環境変数の生値を理由に混ぜた実装を通す。そこには DSN も入りうる。
+//
+//spec:covers EX-SYSTEM-016-01: 明示指定と既定値と依存閉包から有効機能を決め、明示的に有効化した preview と有効な deprecated の機能を識別子と成熟度だけの起動警告へ記録すること。
 func TestResolveFeaturesAppliesDefaultsDependenciesAndWarnings_REQ_SYSTEM_016(t *testing.T) {
 	t.Parallel()
 	registry := FeatureRegistry{
@@ -106,13 +119,18 @@ func TestResolveFeaturesAppliesDefaultsDependenciesAndWarnings_REQ_SYSTEM_016(t 
 	}
 }
 
+// 存在しない識別子を有効化と無効化の両側で指定し、さらに同じ機能を両方で指定する。
+// 3 件すべてが 1 回の報告に揃うこと、そして部分的な解決が残らないことを読む。
+// 明示的に無効化した依存を要求する選択は TestResolveFeatures_REQ_SYSTEM_016 が持つ。
+//
+//spec:covers EX-SYSTEM-016-06: FEATURES_ENABLE と FEATURES_DISABLE の存在しない機能と矛盾する指定をすべて報告し、部分的な解決を返さないこと。
 func TestResolveFeaturesRejectsEveryInvalidSelection_REQ_SYSTEM_016(t *testing.T) {
 	t.Parallel()
 	registry := FeatureRegistry{
 		{ID: "known-v1", Name: "known", Version: "1", Maturity: FeatureSupported, DefaultEnablement: FeatureDisabled, UpdatePolicy: UpdateRolling},
 	}
 
-	_, err := ResolveFeatures(registry, []FeatureID{"known-v1", "missing-enable-v1"}, []FeatureID{"known-v1", "missing-disable-v1"})
+	resolution, err := ResolveFeatures(registry, []FeatureID{"known-v1", "missing-enable-v1"}, []FeatureID{"known-v1", "missing-disable-v1"})
 	if err == nil {
 		t.Fatal("ResolveFeatures accepted unknown and contradictory selections")
 	}
@@ -120,5 +138,8 @@ func TestResolveFeaturesRejectsEveryInvalidSelection_REQ_SYSTEM_016(t *testing.T
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("ResolveFeatures error = %q, want %q", err, want)
 		}
+	}
+	if len(resolution.Enabled) != 0 {
+		t.Fatalf("resolution.Enabled = %#v, want no partial resolution on error", resolution.Enabled)
 	}
 }

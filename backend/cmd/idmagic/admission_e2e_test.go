@@ -72,6 +72,9 @@ func (s *admissionSpy) count(class, outcome string) int {
 // 無い管理 API の要求は、通常なら guard が 401 を返す。飽和時に同じ要求が 503 になる
 // ことは、guard にすら到達していないこと、したがってハンドラーも状態も触れていないこと
 // を意味する。
+//
+//spec:covers EX-SYSTEM-018-01: 飽和したプロセスが management_bulk を Retry-After と service_overloaded の 503 で拒否し、要求はハンドラーへ到達せず、同じ状態の interactive_auth と infrastructure は通ること。
+//spec:covers EX-SYSTEM-018-02: 実行中の要求数が management_bulk の上限に達していないときは同じ要求がハンドラーへ渡り、飽和が去れば再び渡ること。
 func TestAdmissionMiddlewareShedsLowerPriorityFirst(t *testing.T) {
 	const bulkLimit = 2
 

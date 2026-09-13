@@ -3,6 +3,7 @@ import { commonDictionary } from './common.i18n'
 import { localizedErrorMessage } from './errorMessage'
 
 describe('localizedErrorMessage', () => {
+  //spec:covers EX-SYSTEM-011-01: バックエンドが既知の stable エラーコードを返したとき、選択済みの表示言語の辞書にあるエラー文を表示すること。
   it('maps a known code to the localized dictionary value', () => {
     expect(localizedErrorMessage('en', 'access_denied', 'fallback')).toBe(
       commonDictionary.en.accessDenied,
@@ -12,6 +13,11 @@ describe('localizedErrorMessage', () => {
     )
   })
 
+  // 未知のコードでバックエンドの文をそのまま出すことが、翻訳の範囲を stable なコードに
+  // 限る約束の裏側である。勝手に訳す実装も、辞書に無いコードで空文字を出す実装も、
+  // ここで落ちる。
+  //
+  //spec:covers EX-SYSTEM-011-02: エラーコードが未知のとき、バックエンドが返した人間可読文をそのまま表示すること。
   it('returns the fallback for an unknown code', () => {
     expect(localizedErrorMessage('en', 'unknown_code', 'fallback text')).toBe('fallback text')
     expect(localizedErrorMessage('en', undefined, 'fallback text')).toBe('fallback text')
