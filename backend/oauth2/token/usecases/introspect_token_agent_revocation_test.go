@@ -14,11 +14,11 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// TestIntrospectToken_AgentRevocationEpoch — RED: scenario
-// `kill-switchは既発行トークンをintrospectionで即時無効化する` (spec/contexts/oauth2.yaml
-// Introspect). Agent 主体の access token は issued_at と SharedSignals の
-// revocation epoch を比較し、epoch 以前に発行された token は fail-closed で
-// active=false になる。epoch より後に発行された token は通常どおり active=true。
+// Agent 主体の access token は issued_at と SharedSignals の revocation epoch を比較する。
+//
+// 境界の両側を踏むのは、比較演算子の向きを取り違えた実装を片側だけでは見分けられないためである。
+//
+//spec:covers EX-OAUTH2-012-01, EX-OAUTH2-012-02: epoch 以前に発行された token は fail-closed で active=false だけを返して claim を 1 つも運ばず、epoch より後に発行された token は active=true と claim を返す。
 func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 	ctx := tenantContext()
 	now := time.Now().UTC()
@@ -53,22 +53,20 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 
 	t.Run("IssuedBeforeEpochIsInactive", func(t *testing.T) {
 		introspector.result = &ports.IntrospectionResult{
-			Active: true, JTI: "jti-before", ClientID: "agent_client",
-			Iat: epoch.Add(-time.Minute).Unix(), Exp: epoch.Add(time.Hour).Unix(),
+			Active: true, JTI: "jti-before", ClientID: "agent_client", Sub: "agent_client",
+			Scope: "openid", Iat: epoch.Add(-time.Minute).Unix(), Exp: epoch.Add(time.Hour).Unix(),
 		}
 		resp, err := IntrospectToken(ctx, deps, IntrospectInput{Token: "t", TokenTypeHint: "access_token"}, now)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if resp.Active {
-			t.Fatal("expected inactive for a token issued before the revocation epoch")
-		}
+		assertOnlyInactive(t, resp)
 	})
 
 	t.Run("IssuedAfterEpochStaysActive", func(t *testing.T) {
 		introspector.result = &ports.IntrospectionResult{
-			Active: true, JTI: "jti-after", ClientID: "agent_client",
-			Iat: epoch.Add(time.Minute).Unix(), Exp: epoch.Add(time.Hour).Unix(),
+			Active: true, JTI: "jti-after", ClientID: "agent_client", Sub: "agent_client",
+			Scope: "openid", Iat: epoch.Add(time.Minute).Unix(), Exp: epoch.Add(time.Hour).Unix(),
 		}
 		resp, err := IntrospectToken(ctx, deps, IntrospectInput{Token: "t", TokenTypeHint: "access_token"}, now)
 		if err != nil {
@@ -76,6 +74,9 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 		}
 		if !resp.Active {
 			t.Fatal("expected a token issued after the revocation epoch to stay active")
+		}
+		if resp.Sub != "agent_client" || resp.Scope != "openid" {
+			t.Fatalf("kill 後に再発行された token の claim が失われている: %+v", resp)
 		}
 	})
 

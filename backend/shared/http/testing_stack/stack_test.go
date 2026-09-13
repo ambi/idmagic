@@ -112,3 +112,56 @@ func TestEachOptionThatNeedsConsentsWiresItOnItsOwn(t *testing.T) {
 		})
 	}
 }
+
+// ブラウザー経由の認可を 1 本通す駆動部そのものを、この package のテストでも踏む。
+//
+// 変異テストが示したのは、`Browser` の全行がこの package からは 1 度も実行されて
+// いないことだった。呼び出し側 (backend/oauth2/handlers_http) のテストが落ちれば
+// 気づけるとはいえ、そのときに壊れているのが製品なのか駆動部なのかが分からない。
+// 基盤は自分が動くことを自分で言えなければならない。
+//
+// 具体例の id はここに書かない。被覆の検査は id を名指したテストの存在で判定するので、
+// 駆動部の健全性を示しただけの本ファイルが名指すと、消化済みと数えられてしまう。
+func TestBrowserFlowDrivesAuthorizationThroughToAToken(t *testing.T) {
+	s := stack.New(t, stack.WithBrowserFlow())
+	browser := s.Browser(t, tenancydomain.DefaultRealm)
+	const verifier = "testing-stack-browser-flow-pkce-verifier-0123456789"
+
+	// WithBrowserFlow 単独でトークンの保管先まで配線される。ここを読まないと、
+	// 発行の保管先が無いスタックでも「認可コードは出た」で通ってしまう。
+	if s.Refresh == nil {
+		t.Fatal("WithBrowserFlow だけではリフレッシュトークンの保管先が配線されない")
+	}
+
+	code, redirect := browser.AuthorizationCode(t, stack.AuthorizationQuery(verifier, nil))
+	if code == "" {
+		t.Fatalf("認可コードが返っていない: %s", redirect)
+	}
+	if got := redirect.Query().Get("state"); got != "opaque-state" {
+		t.Fatalf("state=%q が伝播していない: %s", got, redirect)
+	}
+
+	status, body := browser.ExchangeCode(t, code, verifier)
+	if status != http.StatusOK {
+		t.Fatalf("交換 status=%d body=%v", status, body)
+	}
+	if token, _ := body["access_token"].(string); token == "" {
+		t.Fatalf("交換がアクセストークンを返さない: %v", body)
+	}
+
+	// 事前送信の駆動部も同じ 1 本で踏む。
+	pushStatus, pushed := browser.PushAuthorizationRequest(t,
+		stack.AuthorizationQuery(verifier, nil))
+	if pushStatus != http.StatusCreated {
+		t.Fatalf("/par status=%d body=%v", pushStatus, pushed)
+	}
+	if requestURI, _ := pushed["request_uri"].(string); requestURI == "" {
+		t.Fatalf("/par が request_uri を返さない: %v", pushed)
+	}
+
+	// 記録が配線されていることを 1 点で読む。ここが空なら、イベントを読む
+	// 呼び出し側のテストは「発行されていない」と「配線していない」を区別できない。
+	if len(s.Events.Types()) == 0 {
+		t.Fatal("認可からトークン発行まで通したのにイベントが 1 件も記録されていない")
+	}
+}

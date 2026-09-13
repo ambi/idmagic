@@ -57,8 +57,7 @@ func assertApprovalRequired(t *testing.T, issuer *recordingIssuer, events []spec
 	t.Fatalf("expected AgentApprovalRequired for %q, got %v", agentID, events)
 }
 
-// TestExchangeTokenRejectsSupervisedWorkloadAgent — ワークロード ID 連携の attestation
-// が Supervised な Agent の client へ写る交換は成立しない。
+//spec:covers EX-OAUTH2-050-05: ワークロード ID 連携の attestation が Supervised な Agent の client へ写る交換は unauthorized_client で拒否され、トークンは発行されない。
 func TestExchangeTokenRejectsSupervisedWorkloadAgent(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, nil)
@@ -84,8 +83,9 @@ func TestExchangeTokenRejectsSupervisedWorkloadAgent(t *testing.T) {
 	assertApprovalRequired(t, issuer, events, err, "agent_1")
 }
 
-// TestExchangeTokenRejectsSupervisedSubjectAgent — 承認を経て発行済みのトークンで
-// あっても、そこからの派生は拒否する。一つの承認は一つのトークンに対応する。
+// 一つの承認は一つのトークンに対応し、派生トークンへは継承しない。
+//
+//spec:covers EX-OAUTH2-050-06: 承認を経て発行済みのトークンであっても、そこからの派生は unauthorized_client で拒否される。
 func TestExchangeTokenRejectsSupervisedSubjectAgent(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
@@ -103,8 +103,7 @@ func TestExchangeTokenRejectsSupervisedSubjectAgent(t *testing.T) {
 	assertApprovalRequired(t, issuer, events, err, "agent_1")
 }
 
-// TestExchangeTokenRejectsSupervisedActingClient — 交換を行うクライアント自身が
-// Supervised な Agent に束縛されているなら、利用者のトークンを代行する交換も拒否する。
+//spec:covers EX-OAUTH2-050-01: 交換を行うクライアント自身が Supervised な Agent に束縛されているなら、利用者のトークンを代行する交換も unauthorized_client で拒否され、AgentApprovalRequired が残る。
 func TestExchangeTokenRejectsSupervisedActingClient(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
@@ -122,7 +121,7 @@ func TestExchangeTokenRejectsSupervisedActingClient(t *testing.T) {
 	assertApprovalRequired(t, issuer, events, err, "agent_2")
 }
 
-// TestExchangeTokenAllowsAutonomousAgents — Autonomous だけが関与する交換は退行しない。
+//spec:covers EX-OAUTH2-050-07: 交換に関与するどの Agent も autonomous なら交換は成立する。
 func TestExchangeTokenAllowsAutonomousAgents(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{

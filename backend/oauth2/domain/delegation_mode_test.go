@@ -7,7 +7,9 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
-//spec:covers REQ-OAUTH2-049: 委譲モードは act チェーンと principal 種別から一意に決まる。
+// 3 つを 1 つの表で並べるのは、区別が分岐の順序に依存するためである。
+//
+//spec:covers REQ-OAUTH2-049, EX-OAUTH2-049-02, EX-OAUTH2-049-03, EX-OAUTH2-049-04: subject と異なる行為者が act にいれば利用者の代理、代行が無く subject が非人間なら自律実行、代行が無く subject が人間なら直接のアクセスになる。
 func TestDeriveDelegationMode(t *testing.T) {
 	cases := []struct {
 		name string

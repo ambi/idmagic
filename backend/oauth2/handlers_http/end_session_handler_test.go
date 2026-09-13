@@ -55,6 +55,7 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 
 //spec:covers OIDC-LOGOUT-ENDPOINT: Discovery が広告する /end_session で RP の要求を受け付けることを固定する。
 //spec:covers OIDC-LOGOUT-REDIRECT: 登録済みの完全一致 URI だけへ state を保ったままリダイレクトすることを固定する。
+//spec:covers EX-OAUTH2-023-01: 登録済みの post_logout_redirect_uri へのログアウトでは、要求した state がそのリダイレクト先へ伝播する。
 func TestEndSessionRedirectsToRegisteredURIWithStatePropagation(t *testing.T) {
 	e := newEndSessionServer(t)
 	q := url.Values{

@@ -21,10 +21,12 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// TestResolveAuthnContextAppliesRevocation — RED: REQ-OAUTH2-047
-// (docs/contexts/oauth2/scenarios.feature.md)。admin / account portal の Bearer 認証は
-// /introspect と同じ失効判定 (AgentRevocationEpoch と AccessTokenDenylist) を通る。
-// wi-58 T006 の時点では、この経路だけが両判定を迂回していた。
+// admin / account portal の Bearer 認証は、/introspect と同じ失効判定
+// (AgentRevocationEpoch と AccessTokenDenylist) を通る。
+//
+// 境界の両側と失効リストを 1 つの表で踏むのは、片方の判定だけを実装した経路を見分けるためである。
+//
+//spec:covers EX-OAUTH2-047-01, EX-OAUTH2-047-02, EX-OAUTH2-047-03: revocation epoch より前に発行された token と jti が失効リストに載った token は invalid_token で拒否され、epoch より後に発行された token は認証が成立する。
 func TestResolveAuthnContextAppliesRevocation(t *testing.T) {
 	now := time.Now().UTC()
 	const clientID = "agent_client"

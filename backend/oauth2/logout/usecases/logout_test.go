@@ -64,7 +64,7 @@ func testClient(id string) *clientdomain.OAuth2Client {
 	return &clientdomain.OAuth2Client{TenantID: tenancydomain.DefaultTenantID, ClientID: id, ClientType: spec.ClientPublic, GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, TokenEndpointAuthMethod: clientdomain.AuthMethodNone, Scope: "openid", CreatedAt: time.Now().UTC()}
 }
 
-//spec:covers REQ-OAUTH2-025: ローカルログアウト後に参加済み RP ごとの back-channel 通知とジョブを作る。
+//spec:covers REQ-OAUTH2-025, EX-OAUTH2-025-01: ローカルログアウト後に、backchannel_logout_uri を登録した参加済み RP ごとの LogoutNotification とジョブを作る。
 func TestStartBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
 	clients := clientmemory.NewClientRepository()
@@ -186,6 +186,7 @@ func (c *backChannelClient) Deliver(context.Context, string, string) error {
 //
 //spec:covers OIDC-BACKCHANNEL-DELIVERY-RETRY: 配信失敗は通知を Pending のまま残して再試行させ、
 //spec:covers OIDC-BACKCHANNEL-REPLAY: 再試行が jti を作り直さないため、RP は同じ通知の再送を
+//spec:covers EX-OAUTH2-025-02: 一時的な配送失敗では LogoutNotification は Pending のまま残り、次の試行で Delivered へ進む。
 func TestBackChannelLogoutHandlerRetriesAndKeepsJTI(t *testing.T) {
 	now := time.Unix(1_700_000_100, 0).UTC()
 	notifications := &notificationStore{items: map[string]*logoutdomain.LogoutNotification{"notification-1": {ID: "notification-1", TenantID: tenancydomain.DefaultTenantID, Sid: "session-1", ClientID: "client-1", LogoutTokenJTI: "stable-jti", TargetURI: "https://rp.example/logout", State: logoutdomain.LogoutNotificationPending}}}
@@ -214,6 +215,7 @@ func TestBackChannelLogoutHandlerRetriesAndKeepsJTI(t *testing.T) {
 	}
 }
 
+//spec:covers EX-OAUTH2-025-03: max_attempts まで再試行しても配送できない LogoutNotification は Failed (dead-letter) へ確定する。
 func TestBackChannelLogoutHandlerMarksFinalFailure(t *testing.T) {
 	n := &notificationStore{items: map[string]*logoutdomain.LogoutNotification{"n": {ID: "n", TenantID: tenancydomain.DefaultTenantID, Sid: "s", ClientID: "c", LogoutTokenJTI: "j", TargetURI: "https://rp.example/logout", State: logoutdomain.LogoutNotificationPending}}}
 	params, err := json.Marshal(logoutports.BackChannelLogoutJobParams{NotificationID: "n"})

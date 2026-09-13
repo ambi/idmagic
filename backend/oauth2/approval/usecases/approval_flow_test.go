@@ -160,7 +160,9 @@ func newApprovalFixture(t *testing.T) approvalFixture {
 	}
 }
 
-// REQ-OAUTH2-041/042: pending polling, slow_down, approval, token claims, and replay are one flow.
+// Pending polling, slow_down, approval, token claims, and replay are one flow.
+//
+//spec:covers EX-OAUTH2-041-09, EX-OAUTH2-041-10, EX-OAUTH2-042-01, EX-OAUTH2-042-04: a token appears only once the request is Approved, the replay refuses with invalid_grant, and the record stays Consumed.
 func TestApprovalFlowPollingDecisionAndReplay(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -198,12 +200,22 @@ func TestApprovalFlowPollingDecisionAndReplay(t *testing.T) {
 	if _, err := approvalusecases.ExchangeApproval(f.ctx, f.exchangeDeps, exchange, t0.Add(12*time.Second)); approvalOAuthErrorCode(err) != "invalid_grant" {
 		t.Fatalf("replay: %v", err)
 	}
+	if f.issuer.accessCalls != 1 {
+		t.Fatalf("token issues = %d, want the replay to have issued nothing", f.issuer.accessCalls)
+	}
+	consumed, err := f.store.FindByID(f.ctx, records[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if consumed.State != spec.ApprovalConsumed {
+		t.Fatalf("state after replay = %v, want %v", consumed.State, spec.ApprovalConsumed)
+	}
 }
 
-// OAuth-shaped access_denied, and the request stays Denied: an exchange that
-// answered "denied" while still issuing would look identical from the error alone.
+// An exchange that answered "denied" while still issuing would look identical from the
+// error alone, so the test reads the issuance count and the stored state too.
 //
-//spec:covers REQ-OAUTH2-042: a denied approval never becomes a token. The refusal is the
+//spec:covers REQ-OAUTH2-042, EX-OAUTH2-042-02: a denied approval never becomes a token — the refusal is access_denied, no token is issued, and the request is left Denied.
 func TestApprovalExchangeRejectsDeniedRequest(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -235,7 +247,7 @@ func TestApprovalExchangeRejectsDeniedRequest(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-OAUTH2-042: the agent kill switch is checked again after human approval.
+//spec:covers REQ-OAUTH2-042, EX-OAUTH2-042-08: the agent kill switch is checked again after human approval, so the exchange refuses with invalid_grant and issues no token.
 func TestApprovalExchangeFailsClosedAfterAgentKill(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -267,7 +279,7 @@ func TestApprovalExchangeFailsClosedAfterAgentKill(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-OAUTH2-042: a bearer secret is bound to both its client and tenant.
+//spec:covers REQ-OAUTH2-042, EX-OAUTH2-042-06, EX-OAUTH2-042-07: a bearer secret is bound to both its client and tenant, so neither another client nor another realm can exchange it.
 func TestApprovalExchangeRejectsOtherClientAndTenant(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()
@@ -290,7 +302,7 @@ func TestApprovalExchangeRejectsOtherClientAndTenant(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-OAUTH2-042: concurrent exchanges consume an approved request exactly once.
+//spec:covers REQ-OAUTH2-042, EX-OAUTH2-042-05: concurrent exchanges consume an approved request exactly once, so one of the two gets a token and the other gets invalid_grant.
 func TestApprovalExchangeConcurrentConsume(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()

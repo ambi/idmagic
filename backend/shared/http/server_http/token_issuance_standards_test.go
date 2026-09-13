@@ -10,6 +10,7 @@ package server_http_test
 // いる claim のうち認証が読まないものは、到達できるという観測では固定できない。
 
 import (
+	"context"
 	stdcrypto "crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -38,6 +39,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	tokendomain "github.com/ambi/idmagic/backend/oauth2/token/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -67,6 +69,7 @@ type tiFixture struct {
 	assertionKey  *rsa.PrivateKey
 	tenants       *tenancymemory.TenantRepository
 	refreshTokens *oauth2memory.RefreshTokenStore
+	events        *eventRecorder
 }
 
 // newTokenIssuanceFixture は本番と同じ Register で `/authorize` と `/token` を 1 つの
@@ -170,12 +173,14 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
+	events := &eventRecorder{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          tiIssuer,
 		TenantRepo:      tenants,
 		StartupComplete: startupComplete,
 		ShuttingDown:    &atomic.Bool{},
+		Emit:            events.record,
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: oauth2memory.NewAuthorizationRequestStore(),
@@ -197,7 +202,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	t.Cleanup(server.Close)
 	return &tiFixture{
 		base: server.URL + "/realms/default", assertionKey: assertionKey,
-		tenants: tenants, refreshTokens: refreshTokens,
+		tenants: tenants, refreshTokens: refreshTokens, events: events,
 	}
 }
 
@@ -335,6 +340,31 @@ func assertNoTokenInBody(t *testing.T, what, body string) {
 	}
 }
 
+// assertOAuthErrorCode は拒否された `/token` 応答の `error` を読む。状態行だけでは、
+// 具体例が名指すエラー種別と違う理由で落ちた実装を見分けられない。
+func assertOAuthErrorCode(t *testing.T, what, body, want string) {
+	t.Helper()
+	var decoded struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(body), &decoded); err != nil {
+		t.Fatalf("%s: 応答を JSON として読めない body=%s: %v", what, body, err)
+	}
+	if decoded.Error != want {
+		t.Fatalf("%s: error=%q, want %q body=%s", what, decoded.Error, want, body)
+	}
+}
+
+// refreshRecord は平文のリフレッシュトークンに対応する保存層の記録を返す。
+func (f *tiFixture) refreshRecord(t *testing.T, token string) *tokendomain.RefreshTokenRecord {
+	t.Helper()
+	record, err := f.refreshTokens.FindByHash(context.Background(), domain.HashRefreshToken(token))
+	if err != nil || record == nil {
+		t.Fatalf("リフレッシュトークンの記録が見つからない: record=%v err=%v", record, err)
+	}
+	return record
+}
+
 // Client Credentials Grant は confidential クライアントに限って許可し、
 // Resource Owner Password Credentials Grant は提供しない。
 //
@@ -343,6 +373,10 @@ func assertNoTokenInBody(t *testing.T, what, body string) {
 // 結果としてトークンが 1 つも出ていないこと」の対になる。利用者の正しい資格情報を
 // 載せて送るのが要点である。誤った資格情報で送ると、グラントを提供している実装でも
 // 同じ拒否になり、提供の有無を区別できない。
+//
+// EX-OAUTH2-026-01 の最後の Then（public クライアントの登録を InvalidRequestError で
+// 拒否する）は、この配線では観測できない。製品は登録では拒否せず、/token で
+// unauthorized_client を返す。どちらが正かは規範の判断なので wi-569 が持つ。
 //
 //spec:covers RFC6749-CLIENT-CREDENTIALS (optional) / RFC6749-PASSWORD-GRANT (excluded):
 func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *testing.T) {
@@ -355,6 +389,15 @@ func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *test
 	if issued.AccessToken == "" {
 		t.Fatal("confidential クライアントの client_credentials でトークンが出ない")
 	}
+	// M2M の発行なので、利用者のいないトークンに refresh を付けない。付けてしまうと
+	// クライアント認証を持たない経路から無期限に再発行できる。
+	if issued.RefreshToken != "" {
+		t.Fatalf("client_credentials がリフレッシュトークンを返した: %q", issued.RefreshToken)
+	}
+	if sub := accessTokenClaims(t, issued.AccessToken)["sub"]; sub != tiClientID {
+		t.Fatalf("sub = %#v, want %q (client_credentials の主体はクライアント自身)", sub, tiClientID)
+	}
+	fixture.events.assertEmitted(t, "AccessTokenIssued")
 
 	// public クライアントは、同じグラントを宣言していても使えない。
 	status, body := fixture.postToken(t, url.Values{
@@ -604,6 +647,7 @@ func TestAccessTokenAudienceIsBoundToTheRequestedResource(t *testing.T) {
 // 攻撃者が先に奪った新しい値を生かし続ける実装が通る。
 //
 //spec:covers RFC9700-REFRESH-REPLAY:
+//spec:covers EX-OAUTH2-006-01: ローテーションは新しい access_token と refresh_token を返し、旧記録を Rotated にして RefreshTokenRotated・AccessTokenIssued・RefreshTokenIssued を発行する。
 func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 	code := fixture.authorizationCode(t, nil)
@@ -630,6 +674,16 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	if rotated.RefreshToken == "" || rotated.RefreshToken == first.RefreshToken {
 		t.Fatalf("ローテーションしていない: %q", rotated.RefreshToken)
 	}
+	if rotated.AccessToken == "" {
+		t.Fatalf("ローテーションが新しいアクセストークンを返さない: %s", body)
+	}
+	// 応答が別の値になっただけでは、古い記録を残したまま新しい記録を足した実装と
+	// 区別できない。旧記録が Rotated へ遷移したことを保存層から読む。
+	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Rotated {
+		t.Fatalf("旧リフレッシュトークンの記録が Rotated になっていない: %+v", record)
+	}
+	fixture.events.assertEmitted(t,
+		"RefreshTokenRotated", "AccessTokenIssued", "RefreshTokenIssued")
 
 	// 再利用の検知: 使い終えた値をもう一度出すと拒否される。
 	status, body = refresh(first.RefreshToken)
@@ -637,6 +691,14 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 		t.Fatalf("使用済みのリフレッシュトークンが受理された: %s", body)
 	}
 	assertNoTokenInBody(t, "使用済みの再利用", body)
+	assertOAuthErrorCode(t, "使用済みの再利用", body, "invalid_grant")
+	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Revoked {
+		t.Fatalf("再使用された記録が Revoked になっていない: %+v", record)
+	}
+	// EX-OAUTH2-006-02 が言う TokenRevoked はまだ出ない。RevokeFamily が失効させた
+	// token を返さないので、TokenID を持つイベントを組み立てられない。この欠落は
+	// wi-566 が持つので、ここでは検知そのものが記録に残ることまでを固定する。
+	fixture.events.assertEmitted(t, "RefreshTokenReuseDetected")
 
 	// 再利用が防いだもの: 検知の時点で family ごと落ちるので、攻撃者が先に
 	// 奪っていた新しい値も、その後は使えない。

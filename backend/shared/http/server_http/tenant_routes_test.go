@@ -31,6 +31,7 @@ func (r *fixedAuthnResolver) Resolve(
 	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix()}, nil
 }
 
+//spec:covers EX-OAUTH2-033-01: realm 接頭辞付きの Discovery Metadata は、issuer も authorization_endpoint も基底 URL + /realms/<realm> を接頭辞に持つ。
 func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 	tenants := tenancymemory.NewTenantRepository()
 	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{

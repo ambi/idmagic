@@ -14,6 +14,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 
@@ -23,14 +25,17 @@ import (
 type registerFixture struct {
 	e          *echo.Echo
 	clientRepo *oauth2memory.OAuth2ClientRepository
+	events     *[]spec.DomainEvent
 }
 
 func newRegisterServer() registerFixture {
 	clientRepo := oauth2memory.NewClientRepository()
+	events := &[]spec.DomainEvent{}
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Issuer:     "http://test",
 		TenantRepo: tenancymemory.NewTenantRepository(),
+		Emit:       func(event spec.DomainEvent) { *events = append(*events, event) },
 		OAuth2:     oauth2.Module{ClientRepo: clientRepo},
 	}
 	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
@@ -44,9 +49,11 @@ func newRegisterServer() registerFixture {
 	return registerFixture{
 		e:          e,
 		clientRepo: clientRepo,
+		events:     events,
 	}
 }
 
+//spec:covers EX-OAUTH2-016-01: 動的クライアント登録は client_id を採番して client_secret と一緒に一度だけ返し、ClientRegistered を発行する。
 func TestRegisterClientAPI(t *testing.T) {
 	fix := newRegisterServer()
 
@@ -79,6 +86,15 @@ func TestRegisterClientAPI(t *testing.T) {
 		if resp["client_type"] != "confidential" {
 			t.Errorf("expected client_type confidential, got %v", resp["client_type"])
 		}
+		// 採番した client_id は保存層にも存在する。応答だけを読むと、値を作って
+		// 返しただけで登録していない実装を通してしまう。
+		clientID, _ := resp["client_id"].(string)
+		stored, err := fix.clientRepo.FindByID(
+			context.Background(), tenancydomain.DefaultTenantID, clientID)
+		if err != nil || stored == nil {
+			t.Fatalf("採番した client_id が保存されていない: stored=%v err=%v", stored, err)
+		}
+		assertRegisteredEvent(t, *fix.events, clientID)
 	})
 
 	t.Run("Register_InvalidJSON", func(t *testing.T) {
@@ -166,4 +182,17 @@ func TestRegisterClientAPI(t *testing.T) {
 			t.Errorf("expected error invalid_client_metadata, got %v", resp["error"])
 		}
 	})
+}
+
+// assertRegisteredEvent は、登録が採番した client_id を名指す ClientRegistered が
+// 発行されたことを確かめる。型だけを読むと、別のクライアントの登録と区別できない。
+func assertRegisteredEvent(t *testing.T, events []spec.DomainEvent, clientID string) {
+	t.Helper()
+	for _, event := range events {
+		registered, ok := event.(*oauthdomain.ClientRegistered)
+		if ok && registered.ClientID == clientID {
+			return
+		}
+	}
+	t.Fatalf("client_id=%q の ClientRegistered が発行されていない: %v", clientID, events)
 }

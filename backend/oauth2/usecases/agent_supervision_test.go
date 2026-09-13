@@ -17,9 +17,12 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// TestAgentRequiresHumanApproval — RED: REQ-OAUTH2-050
-// (docs/contexts/oauth2/scenarios.feature.md)。承認を記録しない発行経路を通ってよいのは
-// autonomous と確認できた Agent だけで、判定は区分の否定形で行う。
+// 承認を記録しない発行経路を通ってよいのは autonomous と確認できた Agent だけで、
+// 判定は区分の否定形で行う。
+//
+// 列挙を網羅するだけのテストは未知の値を通してしまうので、区分そのものを未知の値で踏む。
+//
+//spec:covers EX-OAUTH2-050-02, EX-OAUTH2-050-03: autonomous だけが承認なしで通り、既知のどの値でもない区分は承認が必要な側へ倒れる。
 func TestAgentRequiresHumanApproval(t *testing.T) {
 	cases := []struct {
 		name string
@@ -47,9 +50,10 @@ func TestAgentRequiresHumanApproval(t *testing.T) {
 	})
 }
 
-// TestResolveIssuableAgentWithoutApproval — RED: REQ-OAUTH2-050。承認を記録しない
-// 発行経路は Supervised な Agent を unauthorized_client で拒否し、判断の根拠とした
-// 区分を AgentApprovalRequired へ残す。
+// 未知の区分は読んだ値のまま記録して拒否し、どの Agent も束縛されていないクライアントは
+// 区分の判定を行わずに通る。
+//
+//spec:covers EX-OAUTH2-050-01, EX-OAUTH2-050-03, EX-OAUTH2-050-04: 承認を記録しない発行経路は Supervised な Agent を unauthorized_client で拒否してトークンを発行せず、判断の根拠とした区分を AgentApprovalRequired へ残す。
 func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	now := time.Now().UTC()

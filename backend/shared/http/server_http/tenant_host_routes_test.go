@@ -7,10 +7,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -18,7 +21,9 @@ import (
 )
 
 // hostRoutingFixture は default (path) と acme (subdomain) を持つスタックを組む。
-func hostRoutingFixture(t *testing.T, baseDomain string) *echo.Echo {
+// decorate は Register へ渡す前の Deps を足す口である。ホスト解決そのものを読む
+// テストは配線を要らないが、Bearer の challenge を読むテストは検証器が要る。
+func hostRoutingFixture(t *testing.T, baseDomain string, decorate ...func(*Deps)) *echo.Echo {
 	t.Helper()
 	tenants := tenancymemory.NewTenantRepository()
 	now := time.Now().UTC()
@@ -38,11 +43,15 @@ func hostRoutingFixture(t *testing.T, baseDomain string) *echo.Echo {
 			t.Fatal(err)
 		}
 	}
-	e := echo.New()
-	Register(e, Deps{
+	deps := Deps{
 		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, TenantBaseDomain: baseDomain,
-	})
+	}
+	for _, apply := range decorate {
+		apply(&deps)
+	}
+	e := echo.New()
+	Register(e, deps)
 	return e
 }
 
@@ -165,5 +174,40 @@ func TestHostIsNormalizedBeforeMatching(t *testing.T) {
 				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+// ホストルート形式のレルムでは、発行者にレルム接頭辞が付かない。Bearer の challenge が
+// 提示する Protected Resource Metadata の URL も、その発行者配下でなければならない。
+// パス形式の発行者を組み立てて返す実装は、パス形式のテストだけでは見分けられない。
+//
+//spec:covers EX-OAUTH2-044-03: ホストルート形式のレルムの resource_metadata は、ホストルートの発行者配下にある /.well-known/oauth-protected-resource を指す。
+func TestBearerChallengeOnAHostRoutedRealmPointsAtTheHostRootMetadata(t *testing.T) {
+	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := tokensJOSE.NewJWTSigner("https://idp.example", keyStore)
+	e := hostRoutingFixture(t, "idp.example", func(deps *Deps) {
+		deps.KeyStore = keyStore
+		deps.TokenIssuer = signer
+		deps.TokenIntrospector = signer
+	})
+
+	request := requestWithHost("acme.idp.example", "/api/auth/account")
+	request.Header.Set("Authorization", "Bearer not.a.valid.token")
+	recorder := httptest.NewRecorder()
+	e.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+
+	challenge := recorder.Header().Get("WWW-Authenticate")
+	const want = `resource_metadata="https://acme.idp.example/.well-known/oauth-protected-resource"`
+	if !strings.Contains(challenge, want) {
+		t.Fatalf("WWW-Authenticate=%q に %s が無い", challenge, want)
+	}
+	if strings.Contains(challenge, "/realms/") {
+		t.Fatalf("ホストルートの challenge がレルム接頭辞を運んでいる: %q", challenge)
 	}
 }

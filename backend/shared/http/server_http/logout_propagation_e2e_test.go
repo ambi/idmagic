@@ -216,6 +216,7 @@ func TestEndSessionFrontChannelUnreachable_OIDC_FRONTCHANNEL_BEST_EFFORT(t *test
 // 失敗しても、ローカルセッションとリフレッシュトークンの失効は成立したままである。
 //
 //spec:covers OIDC-BACKCHANNEL-DELIVERY-RETRY: backchannel_logout_uri への配信が試行を使い切って
+//spec:covers EX-OAUTH2-025-02, EX-OAUTH2-025-03: 配送が繰り返し失敗しても再試行が走り、最後は Failed へ確定し、ローカルのセッションと refresh トークンの失効は取り消されない。
 func TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY(t *testing.T) {
 	var attempts atomic.Int64
 	rp := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -239,7 +240,7 @@ func TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY(
 	fixture.assertLocalLogoutSettled(t)
 }
 
-//spec:covers REQ-OAUTH2-025: 本番配線の end_session が TLS の RP へ logout token を配送する。
+//spec:covers REQ-OAUTH2-025, EX-OAUTH2-025-01: 本番配線の end_session が TLS の RP へ署名済み logout token を配送し、LogoutNotification は Delivered になる。
 //spec:covers OIDC-BACKCHANNEL-LOGOUT-TOKEN: RP が受け取った logout token が OP の署名鍵で検証できる。
 func TestEndSessionBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 	tokenCh := make(chan string, 1)

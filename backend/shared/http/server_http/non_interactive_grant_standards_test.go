@@ -24,7 +24,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -78,12 +80,43 @@ func (s *countingApprovalStore) Save(ctx context.Context, rec *approvaldomain.Ap
 	return s.ApprovalRequestStore.Save(ctx, rec)
 }
 
+// eventRecorder は Register が配る Emit を受けて、発行されたイベント型を順に覚える。
+// スタックは httptest.Server 越しに動くので、記録は排他しないと data race になる。
+type eventRecorder struct {
+	mu    sync.Mutex
+	types []string
+}
+
+func (r *eventRecorder) record(event spec.DomainEvent) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.types = append(r.types, event.EventType())
+}
+
+func (r *eventRecorder) emitted() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.types...)
+}
+
+// assertEmitted は、名指したイベント型がすべて発行されていることを確かめる。
+func (r *eventRecorder) assertEmitted(t *testing.T, eventTypes ...string) {
+	t.Helper()
+	emitted := r.emitted()
+	for _, want := range eventTypes {
+		if !slices.Contains(emitted, want) {
+			t.Fatalf("%s が発行されていない: %v", want, emitted)
+		}
+	}
+}
+
 type nigFixture struct {
 	server    *httptest.Server
 	base      string
 	devices   *oauth2memory.DeviceCodeStore
 	approvals *approvalmemory.ApprovalRequestStore
 	counted   *countingApprovalStore
+	events    *eventRecorder
 }
 
 // newNonInteractiveGrantFixture は本番と同じ Register でデバイス認可、CIBA、トークン、
@@ -165,6 +198,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
+	events := &eventRecorder{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          nigIssuer,
@@ -172,6 +206,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		Contract:        spec.CurrentRuntimeContract(),
 		StartupComplete: startupComplete,
 		ShuttingDown:    &atomic.Bool{},
+		Emit:            events.record,
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore:    oauth2memory.NewAuthorizationRequestStore(),
@@ -196,7 +231,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	t.Cleanup(server.Close)
 	return &nigFixture{
 		server: server, base: server.URL + "/realms/default",
-		devices: devices, approvals: approvals, counted: counted,
+		devices: devices, approvals: approvals, counted: counted, events: events,
 	}
 }
 
@@ -486,6 +521,7 @@ func assertOAuthError(t *testing.T, what string, status int, body map[string]any
 // 読めない。承認だけを見ると、判断を読まずに常に発行する実装と区別できない。
 //
 //spec:covers RFC8628-DEVICE-AUTHORIZATION (optional):
+//spec:covers EX-OAUTH2-027-01: 起票の応答は device_code・user_code・verification_uri・interval を運び、承認後の交換が access_token と id_token を返し、3 つのイベントが順に発行される。
 func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 	browser, _ := fixture.signIn(t)
@@ -497,6 +533,10 @@ func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testi
 	if deviceCode == "" || userCode == "" || verificationURI == "" {
 		t.Fatalf("device_code / user_code / verification_uri が揃っていない: %v", issued)
 	}
+	if interval, _ := issued["interval"].(float64); interval <= 0 {
+		t.Fatalf("interval が返っていない: %v", issued)
+	}
+	fixture.events.assertEmitted(t, "DeviceAuthorizationRequested")
 	if !strings.HasPrefix(verificationURI, nigIssuer) {
 		t.Fatalf("verification_uri=%q が発行者配下を指していない", verificationURI)
 	}
@@ -506,6 +546,7 @@ func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testi
 
 	// 承認: 人が承認画面で決めてはじめて、機械はトークンを得る。
 	fixture.decideUserCode(t, browser, userCode, "approve")
+	fixture.events.assertEmitted(t, "DeviceAuthorizationApproved")
 	status, body := fixture.exchangeDeviceCode(t, deviceCode)
 	if status != http.StatusOK {
 		t.Fatalf("承認済みの device_code が交換できない status=%d body=%v", status, body)
@@ -513,6 +554,12 @@ func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testi
 	if token, _ := body["access_token"].(string); token == "" {
 		t.Fatalf("承認済みの交換がアクセストークンを返さない: %v", body)
 	}
+	// openid を要求しているので ID トークンも返る。access_token だけを読むと、
+	// 認証の結果を運ばない実装と区別できない。
+	if token, _ := body["id_token"].(string); token == "" {
+		t.Fatalf("openid を要求した交換が ID トークンを返さない: %v", body)
+	}
+	fixture.events.assertEmitted(t, "AccessTokenIssued")
 
 	// 拒否: 同じ経路で拒否した device_code は、何も通さない。
 	denied := fixture.requestDeviceAuthorization(t)
@@ -530,6 +577,7 @@ func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testi
 // 別々のコードで読むと、コードが最初から違っていた場合と区別できない。
 //
 //spec:covers RFC8628-POLLING:
+//spec:covers EX-OAUTH2-027-02, EX-OAUTH2-027-03, EX-OAUTH2-027-04: 承認前は authorization_pending、間隔より短い再試行は slow_down、expires_in 超過は expired_token になる。
 func TestDeviceCodePollingSemantics(t *testing.T) {
 	fixture := newNonInteractiveGrantFixture(t)
 

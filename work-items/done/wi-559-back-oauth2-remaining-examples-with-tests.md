@@ -1,6 +1,6 @@
 ---
 depends_on: [wi-565-make-backing-declared-examples-cheap]
-status: in_progress
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -46,7 +46,7 @@ initial_context:
 ## Scope
 
 - 99 件を 1 件ずつ確認し、次のいずれかに解決して `tools/check/example-coverage-debt.json` から外す。
-  - 当の具体例を検証しているテストが実在する → そのテストに `// EX-OAUTH2-NNN-MM: <この具体例の何を固定しているか>` の注記を足す。
+  - 当の具体例を検証しているテストが実在する → そのテストに `//spec:covers EX-OAUTH2-NNN-MM: <この具体例の何を固定しているか>` のディレクティブを足す。
   - 当の具体例を検証しているテストが無い → 書く。具体例が拒否なら、[[wi-392-refusal-tests-assert-the-absent-effect]] が定める形（拒否応答と、拒否が防いだ効果の双方を観測する）で書く。
   - 具体例が宣言されなくなっている → 台帳から外す（検査が落ちて教える）。
 - 読む順は `mise run spec-route -- <id>` で決める。出力は読む順の材料であり、台帳から外す根拠にはしない。
@@ -86,12 +86,24 @@ initial_context:
 
 ### 消化の状況
 
+引き取った 93 件のうち **89 件を消化し、4 件を欠陥として切り出した。**
+
 | 具体例 | 状態 |
 | --- | --- |
-| EX-OAUTH2-005-06 | 消化。`TestExchangeCodePKCEFailureDoesNotConsumeCode` に拒否の型、トークン不発行、イベント不発行を追加 |
-| EX-OAUTH2-005-07 | 台帳に残す。`RefreshTokenReuseDetected` の発行漏れは本項目で修正したが、`TokenRevoked` は port の変更が要る |
-| EX-OAUTH2-005-08 | 台帳に残す。`expired` 遷移を実行する製品コードが存在しない |
-| EX-OAUTH2-001-01、005-01〜05 | 未着手 |
+| 89 件 | 消化。台帳から外し、`//spec:covers` を持つテストへ対応付けた |
+| EX-OAUTH2-001-01 | 台帳に残す。`aud` がレルムの IdMagic API にならず、account リソースサーバーも audience を読まない。[[wi-570-account-scoped-tokens-name-no-audience]] |
+| EX-OAUTH2-006-02 | 台帳に残す。`TokenRevoked` が出ない。原因は 005-07 と同じ `RevokeFamily` の署名。[[wi-566-authorization-code-replay-and-expiry-leave-no-record]] |
+| EX-OAUTH2-026-01、035-02 | 台帳に残す。拒否は成立しているが、境界とエラー種別が宣言と違う。[[wi-569-declared-refusals-that-live-at-a-different-boundary]] |
+
+### 費用がどこにあったか
+
+道具の側で効いたのは 2 つで、どちらも**具体例ではなく基盤の欠落**だった。
+
+1 つは **`Deps.Emit` の未配線**である。通常経路の `Then` はほぼイベント発行で書かれているのに、既存 fixture はイベントを 1 つも受けていなかった。私はこれに気づく前に、4 つの fixture (`nigFixture`、`tiFixture`、`tpFixture`、承認の handler) へ同じ配線を手で足している。**その 4 回が無駄だった。** `testing_stack` へ `EventLog` を常設したのはそのあとで、順序が逆だった。次の Context では基盤を先に見る。
+
+もう 1 つは **ブラウザー経由の認可を通す seed** である。wi-538 が `EX-OAUTH2-001-01` を子項目へ回した理由がこれで、「ログインできる利用者」と「リダイレクト先を登録したクライアント」が揃った fixture がどこにも無かった。`WithBrowserFlow` を 1 つ足すと、そこから 7 件が出た。
+
+**残りの費用は候補テストを読んで `Then` と突き合わせる判断で、ここは下がっていない。** コマンドは律速ではない (`check-spec` 1〜2 秒、`lint-go` 5 秒、対象 package のテスト 9 秒)。
 
 ### 局所と判定して直した欠陥
 
@@ -99,15 +111,24 @@ initial_context:
 
 監査から見ると、この欠落は「refresh トークンの再利用は記録に残り、認可コードの再利用は残らない」という差になっていた。
 
+`TestEndSessionAcceptsExpiredIDTokenHint` は「期限切れのヒントを受け入れる」と名乗りながら、実際には未来の `exp` を持つトークンを渡していた。テスト自身のコメントが「実装が `exp` を参照しないことでも担保される」と書いていて、観測ではなく実装の読みに寄りかかっていた。`exp` を検証する実装を入れても通ってしまうので、`SignPS256` で `iat` と `exp` だけを過去へ動かした本物の期限切れヒントに差し替えた。
+
+### `//spec:covers` は 1 行に収める
+
+gofumpt はこの形をディレクティブとして扱い、doc コメントの**末尾へ動かす**。説明を次の行へ continuation として続けると、その続きだけが上に取り残されて文が裂ける。リポジトリの既存の注記にも同じ裂け方をしたものがある。本項目が足した注記は、説明まで含めて 1 行に収めた。散文が要るときはディレクティブの上に、それだけで完結する文として置く。
+
 ## Tasks
 
 - [x] T001 [Acceptance] `mise run check-spec` が対象 9 件を名指しで落とすことを、消化前に観測する。
 - [x] T002 [Use Cases] EX-OAUTH2-005-06 を消化する。`mise run test-go-package -- ./backend/oauth2/token/usecases`。
 - [x] T003 [Use Cases] EX-OAUTH2-005-07 の `RefreshTokenReuseDetected` 発行漏れを RED → GREEN で直す。
 - [x] T004 [Decision] EX-OAUTH2-005-07 の `TokenRevoked` と EX-OAUTH2-005-08 の `expired` 遷移を局所でないと判定し、[[wi-566-authorization-code-replay-and-expiry-leave-no-record]] へ切り出して台帳へ finding を書く。
-- [ ] T005 EX-OAUTH2-005-01 から 005-05 と EX-OAUTH2-001-01 を消化する。
-- [ ] T006 残る REQ-OAUTH2-006 以降を消化する。
-- [ ] T007 [Verify] `mise run verify`。
+- [x] T005 [Tooling] `testing_stack` にイベント記録 (`EventLog`) とブラウザー駆動 (`WithBrowserFlow`、`Browser`) を足す。通常経路の `Then` はほぼイベント発行で書かれているのに、既存 fixture は `Deps.Emit` を配線していなかった。
+- [x] T006 EX-OAUTH2-005-01 から 005-05、008、009-01、021-01、022-01 を、その基盤の上で消化する。`mise run test-go-package -- ./backend/oauth2/handlers_http`。
+- [x] T007 残る REQ-OAUTH2-006 以降を消化する。既存テストのある行は `//spec:covers` を足し、`Then` の観測が欠けている分を補強する。
+- [x] T008 [Decision] 具体例と実装が食い違う 4 件 (001-01、006-02、026-01、035-02) を局所でないと判定し、[[wi-566-authorization-code-replay-and-expiry-leave-no-record]]、[[wi-569-declared-refusals-that-live-at-a-different-boundary]]、[[wi-570-account-scoped-tokens-name-no-audience]] へ切り出して台帳へ finding を書く。
+- [x] T009 [Tooling] `testing_stack` の変異を読み、駆動部が自 package のテストから 1 度も実行されていないことを直す。`mise run test-go-mutation -- ./backend/shared/http/testing_stack`。
+- [x] T010 [Verify] `mise run verify`。
 
 ## Verification
 
@@ -124,3 +145,48 @@ initial_context:
 - **委譲深さの上限を、境界の片側だけで観測する。** `EX-OAUTH2-048-02` は上限以内、`048-03` は上限超えを言う。片側だけでは比較演算子の向きを取り違えた実装を見分けられない。
 - **Agent の種別を、既知の値だけで観測する。** `EX-OAUTH2-050-03` は「既知のどの値でもない」場合を言う。列挙を網羅するテストはこの件を通してしまう。
 - **99 件を、また量を理由に割る。** 割ってよいのは意味が 2 つあるときだけである。所要が下がらないと分かったら、下がらない原因を測って道具の側を直す。それが wi-565 のやり方である。
+
+## Completion
+
+- **Completed At**: 2026-09-13
+- **Summary**:
+  `mise run spec-diff -- 00a1aa20` は「no normative specification change」を返す。規範は動いていない。
+  動いたのは対応付けで、OAuth2 が宣言する具体例のうち本項目が引き取った 93 件から 89 件を
+  `tools/check/example-coverage-debt.json` から外し、`//spec:covers` を持つテストへ結び付けた。
+  台帳の OAuth2 行は 96 件から 7 件へ減り、残る 7 件はすべて `blocked_by` と `finding` を持つ。
+  併せて、`testing_stack` がイベントの記録とブラウザー経由の認可を配るようになった。
+- **Acceptance RED Evidence**:
+  - **Test**: `mise run check-spec`
+  - **Requirement**: REQ-OAUTH2-005
+  - **Observed Failure**: 対象 id を台帳から外した状態で 86 件を名指しで落とした。例:
+    `docs/contexts/oauth2/scenarios.feature.md:110: EX-OAUTH2-005-01 is declared, but no test names it.`
+  - **Detection Reason**: 検査は「その id を名指したテストが存在するか」だけを見る。
+    台帳から外したうえで落ちることを先に観測しているので、通ったことは注記が実在することを意味する。
+    注記の中身が空でないことは検査では読めないため、そこは各テストで `Then` の数だけ観測を置いた。
+- **Unit RED Evidence**:
+  - **Test**: `TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily` (`backend/shared/http/server_http`)
+  - **Requirement**: REQ-OAUTH2-006
+  - **Observed Failure**: `TokenRevoked が発行されていない: [UserAuthenticated ConsentGranted
+    AuthorizationCodeIssued AccessTokenIssued AuthorizationCodeRedeemed RefreshTokenIssued
+    RefreshTokenRotated AccessTokenIssued RefreshTokenReuseDetected]`
+  - **Detection Reason**: 応答と保存層だけを読むテストは、失効はするが通知を出さない実装を通す。
+    実際にこの観測が `EX-OAUTH2-006-02` の欠落を出した。原因は `EX-OAUTH2-005-07` と同じ
+    `RefreshTokenStore.RevokeFamily` の署名で、局所では直せないため
+    [[wi-566-authorization-code-replay-and-expiry-leave-no-record]] へ移した。
+- **Change-Resistance Results**:
+  本項目が触れた製品コードは `backend/shared/http/testing_stack` だけである (ほかはテスト)。
+  `mise run test-go-mutation -- ./backend/shared/http/testing_stack` を 3 回読んだ。
+  1 回目は Killed 18 / Lived 0 / Not covered 37 で、**駆動部の全行が自 package のテストから
+  1 度も実行されていなかった**。呼び出し側のテストが落ちれば気づけるが、そのとき壊れているのが
+  製品か駆動部か分からない。`TestBrowserFlowDrivesAuthorizationThroughToAToken` を足して
+  Killed 51 / Lived 3 / Not covered 1 になった。
+  生き残った 3 件のうち `WithBrowserFlow` の `if b.stack.Refresh == nil` の否定は本物で、
+  反転すると保管先を配線しないまま認可コードだけが出る。保管先を直接読む観測を足して殺した
+  (Killed 52 / Lived 2)。
+  残る 2 件は `PostToken` と `PushAuthorizationRequest` の `len(raw) > 0` を `>= 0` にする変異で、
+  どちらも空の本文を `json.Unmarshal` へ渡すだけになり、その戻り値は捨てているので振る舞いが
+  変わらない。等価変異として残す。
+  手書きの故障注入は行っていない。本項目が足したのは観測であって配線ではなく、
+  「配線を外す」種類の変異を当てる新しい結線が無いためである。
+- **Verification Results**:
+  - `mise run verify` - passed

@@ -5,9 +5,12 @@ package handlers_http_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +41,7 @@ const hintClientID = "hint-web-app"
 type hintTestServer struct {
 	e            *echo.Echo
 	signer       *cryptoadapter.JWTSigner
+	keyStore     *signingcrypto.InMemoryKeyStore
 	sessionStore *sessionmemory.SessionStore
 	refreshStore *oauth2memory.RefreshTokenStore
 }
@@ -74,7 +78,10 @@ func newHintTestServer(t *testing.T) hintTestServer {
 		},
 		Authentication: authentication.Module{SessionManager: sessionusecases.NewSessionManager(sessionStore)},
 	})
-	return hintTestServer{e: e, signer: signer, sessionStore: sessionStore, refreshStore: refreshStore}
+	return hintTestServer{
+		e: e, signer: signer, keyStore: ks,
+		sessionStore: sessionStore, refreshStore: refreshStore,
+	}
 }
 
 func (s hintTestServer) seedSession(t *testing.T, sid string) {
@@ -115,6 +122,39 @@ func (s hintTestServer) signIDTokenHint(t *testing.T, clientID, sub, sid string)
 	return token
 }
 
+// signExpiredIDTokenHint は、正規に発行した ID Token の iat と exp だけを過去へ動かし、
+// 同じ署名鍵で署名し直す。iss、aud、sub、sid は変えないので、拒否されたなら理由は exp に
+// 限られる。
+func (s hintTestServer) signExpiredIDTokenHint(t *testing.T, clientID, sub, sid string) string {
+	t.Helper()
+	valid := s.signIDTokenHint(t, clientID, sub, sid)
+	parts := strings.Split(valid, ".")
+	if len(parts) != 3 {
+		t.Fatalf("ID Token の形式が JWT ではない: %q", valid)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := map[string]any{}
+	if err := json.Unmarshal(raw, &claims); err != nil {
+		t.Fatal(err)
+	}
+	expired := time.Now().Add(-2 * time.Hour).Unix()
+	claims["iat"] = expired
+	claims["exp"] = expired + 60
+	key, err := s.keyStore.GetActiveKey(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := cryptoadapter.SignPS256(key, nil, claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return token
+}
+
+//spec:covers EX-OAUTH2-024-01: id_token_hint の sid が示す LoginSession が失効し、同じ sid を持つ全クライアントの RefreshTokenRecord が Revoked へ遷移する。
 func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testing.T) {
 	s := newHintTestServer(t)
 	sid := "session-hint-1"
@@ -213,16 +253,15 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 	assertSessionAndTokensSurvived(t, s, sid)
 }
 
+// exp を過ぎたヒントを実際に署名して提示する。未来の exp を持つトークンで代用すると、
+// exp を検証する実装を入れても通ってしまい、この具体例の要点を確かめられない。
+//
+//spec:covers EX-OAUTH2-024-04: exp を過ぎた id_token_hint は、exp 切れだけを理由に拒否されず、sid による LoginSession の解決と失効が成立する。
 func TestEndSessionAcceptsExpiredIDTokenHint(t *testing.T) {
-	// 決定4: exp は検証しない。ここでは JWTSigner が iat/exp を現在時刻から
-	// 発行するため、代わりに「署名・iss・aud・sub・sid は正しいが期限切れの表明」を
-	// 直接検証する代わりに、通常発行 (未来 exp) のトークンで正常に解決できることを
-	// 確認する回帰的な健全性チェックとして扱う。expのみを理由に拒否されないことは
-	// VerifyIDTokenHint が exp claim を一切参照しない実装であることでも担保される。
 	s := newHintTestServer(t)
 	sid := "session-hint-4"
 	s.seedSession(t, sid)
-	hint := s.signIDTokenHint(t, hintClientID, "alice", sid)
+	hint := s.signExpiredIDTokenHint(t, hintClientID, "alice", sid)
 
 	q := url.Values{"id_token_hint": {hint}}
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)

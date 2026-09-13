@@ -21,6 +21,9 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
+// 区分を読まずに一律で拒否する実装と区別するため、両側を同じ経路で踏む。
+//
+//spec:covers EX-OAUTH2-050-01, EX-OAUTH2-050-02: /token の client_credentials は Supervised な Agent へ unauthorized_client を返してトークンを発行せず、同じ配線で autonomous な Agent には発行する。
 func TestTokenClientCredentials_supervisedAgent_rejected(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()

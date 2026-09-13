@@ -10,10 +10,12 @@ package handlers_http_test
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -245,5 +247,60 @@ func TestConsentWithdrawalStopsFurtherIssuance(t *testing.T) {
 	}
 	if issued := fixture.issuedCodes(); issued != 1 {
 		t.Fatalf("prompt=none で認可コードが増えた: 発行数=%d, want 1", issued)
+	}
+}
+
+// connectedApps は利用者自身の入口から接続済みアプリ一覧を取り、client_id を返す。
+func (f *withdrawalFixture) connectedApps(t *testing.T) []string {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet,
+		"/realms/"+tenancydomain.DefaultRealm+"/api/account/v1/consents", http.NoBody)
+	request.Header.Set("Authorization", "Bearer "+f.accessToken(t, "account:read"))
+	response := httptest.NewRecorder()
+	f.e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("接続済みアプリ一覧 status=%d body=%s", response.Code, response.Body.String())
+	}
+	var listed struct {
+		Consents []struct {
+			ClientID string `json:"client_id"`
+		} `json:"consents"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("一覧が JSON ではない body=%s: %v", response.Body.String(), err)
+	}
+	clientIDs := make([]string, len(listed.Consents))
+	for i, consent := range listed.Consents {
+		clientIDs[i] = consent.ClientID
+	}
+	return clientIDs
+}
+
+// 撤回の前後で同じ一覧を読む。撤回後だけを読むと、そもそも一覧に出ていなかった場合と
+// 区別できない。
+//
+//spec:covers EX-OAUTH2-032-01: 利用者は接続済みアプリ一覧から自分の同意を撤回でき、撤回した同意は Revoked になって一覧から消える。
+func TestConnectedAppDisappearsFromTheOwnersListAfterWithdrawal(t *testing.T) {
+	fixture := newWithdrawalFixture(t)
+	fixture.grantConsent(t)
+
+	if apps := fixture.connectedApps(t); !slices.Contains(apps, withdrawalClientID) {
+		t.Fatalf("同意済みのクライアントが接続済みアプリ一覧に無い: %v", apps)
+	}
+
+	if revoked := fixture.withdraw(t); revoked.Code != http.StatusNoContent {
+		t.Fatalf("本人による撤回 status=%d body=%s", revoked.Code, revoked.Body.String())
+	}
+
+	stored, err := fixture.consents.Find(
+		context.Background(), tenancydomain.DefaultTenantID, withdrawalUserID, withdrawalClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored == nil || stored.State != domain.ConsentRevoked {
+		t.Fatalf("撤回後の同意=%+v, want state=revoked", stored)
+	}
+	if apps := fixture.connectedApps(t); slices.Contains(apps, withdrawalClientID) {
+		t.Fatalf("撤回したクライアントが接続済みアプリ一覧に残っている: %v", apps)
 	}
 }

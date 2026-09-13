@@ -25,6 +25,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+//spec:covers EX-OAUTH2-031-01: 管理者は所属テナントの同意だけを参照し、撤回は Revoked と revoked_at を残して ConsentRevoked を actorUserId 付きで発行する。作成と scope 拡張の入口は存在しない。
 func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	e, consents, events := newAdminConsentHandler()
 	now := time.Now().UTC()
@@ -110,6 +111,20 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	event, ok := (*events)[0].(*oauthdomain.ConsentRevokedEvent)
 	if !ok || event.ActorUserID != "admin" {
 		t.Fatalf("event=%+v", (*events)[0])
+	}
+
+	// 管理者が同意を代行して与える入口は存在しない。参照と撤回だけを列挙して終わると、
+	// 付与の経路が後から足されても誰も気づかない。
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch} {
+		created := adminJSONRequest(
+			t, e, method, "/api/admin/v1/consents/alice/portal", csrf, cookie,
+			map[string]any{"scopes": []string{"openid", "profile", "email"}},
+		)
+		if created.Code != http.StatusNotFound && created.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("%s /api/admin/v1/consents が status=%d で応答した。管理者が同意を"+
+				"作成または拡張できる入口があってはならない: body=%s",
+				method, created.Code, created.Body.String())
+		}
 	}
 }
 

@@ -24,15 +24,17 @@ affected_spec:
 
 **残るのは `TokenRevoked` である。** これは局所では済まない。`RefreshTokenStore.RevokeFamily(ctx, familyID) error` は失効させた token を返さないので、token ごとの `TokenRevoked{TokenID, Reason}` を組み立てる材料が呼び出し側に無い。port の署名を変えるか、失効を通知する別の口を設けるかを決める必要がある。
 
+**`EX-OAUTH2-006-02` も同じ欠落を持つ。** wi-559 が `/token` の入口から測った。ローテーション済みの旧 refresh トークンを再使用すると、`invalid_grant` で拒否され、記録は `Revoked` になり、family も失効し、`RefreshTokenReuseDetected` も発行される。出ないのは `TokenRevoked` だけである。原因は同じ `RevokeFamily` の署名なので、認可コード側と一緒に直る。片方だけ直すと、また片方が黙る。
+
 **`EX-OAUTH2-005-08`：** 発行から 60 秒を超えた認可コードの交換は `invalid_grant` で拒否される（ここは正しい）。しかし具体例が言う「認可コードの状態は Expired になる」が起きない。実測では記録の状態は `issued` のままだった。
 
 `spec.AuthorizationCodeRecordState` は `expired` を持ち、`authorization_code_machine.go` は `{issued, Expire, expired}` の遷移を宣言している。**遷移を実行する製品コードが 1 行も無い。** 宣言だけがあって、誰もその状態へ動かさない。
 
 ## Scope
 
-- `EX-OAUTH2-005-07` の `TokenRevoked` を発行できるようにする。`RevokeFamily` が失効させた token を報告する形にするか、別の口を設けるかを決め、Design に理由を書く。`db_memory` と `db_postgres` の双方を揃える。
+- `EX-OAUTH2-005-07` と `EX-OAUTH2-006-02` の `TokenRevoked` を発行できるようにする。`RevokeFamily` が失効させた token を報告する形にするか、別の口を設けるかを決め、Design に理由を書く。`db_memory` と `db_postgres` の双方を揃える。
 - `EX-OAUTH2-005-08` の `expired` 遷移を実装する。**誰がいつ遷移させるかを先に決める。** 交換の拒否時に遅延で書くのか、掃除の job が持つのかで、監査に残る時刻の意味も、期限切れのまま提示されなかったコードの扱いも変わる。決めた理由を Design に書く。
-- 両方について、`tools/check/example-coverage-debt.json` の当該行から `blocked_by` と `finding` を外し、id を名指すテストを対応付けて台帳から削除する。
+- 3 件すべてについて、`tools/check/example-coverage-debt.json` の当該行から `blocked_by` と `finding` を外し、id を名指すテストを対応付けて台帳から削除する。
 - 認可コード再提示の経路と refresh トークン再利用の経路が、同じ状況で同じイベントを出すことを 1 つのテストで固定する。片方だけ直すと、また片方が黙る。
 
 ## Out of Scope
@@ -44,7 +46,7 @@ affected_spec:
 
 ## Verification
 
-- `mise run check-spec` が、`EX-OAUTH2-005-07` と `EX-OAUTH2-005-08` を台帳から外した状態で通る。
+- `mise run check-spec` が、`EX-OAUTH2-005-07`、`EX-OAUTH2-005-08`、`EX-OAUTH2-006-02` を台帳から外した状態で通る。
 - `mise run test-go-package -- ./backend/oauth2/token/usecases`
 - `mise run test-go-package -- ./backend/oauth2/token/db_postgres`
 - `mise run verify`

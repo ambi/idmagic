@@ -29,6 +29,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+//spec:covers EX-OAUTH2-035-01: 作成の応答だけが client_secret を運び、更新した redirect_uris は保存され、削除まで通すと 3 つの Admin イベントが順に発行される。
 func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	e, clients, events := newAdminOAuth2ClientHandler(t)
 	csrf, cookie := adminCSRF(t, e)
@@ -124,6 +125,11 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	}
 }
 
+// EX-OAUTH2-035-02 が名指すエラー種別はここで観測できない。具体例は InvalidRequestError と
+// 言うが、製品は別テナントのクライアントを 404 として扱い、存在そのものを漏らさない。
+// どちらが正かは規範の判断なので wi-569 が持つ。
+//
+//spec:covers EX-OAUTH2-035-01: 管理 API が返すのは所属テナントのクライアントだけで、別テナントに同じ client_id があっても参照できない。
 func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 	e, clients, _ := newAdminOAuth2ClientHandler(t)
 	now := time.Now().UTC()

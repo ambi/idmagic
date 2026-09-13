@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -23,6 +24,9 @@ func (f *fakeIntrospector) IntrospectAccessToken(ctx context.Context, token stri
 	return f.result, f.err
 }
 
+// active の値だけを読むテストは、失効を報告しながら claim を返し続ける応答を通してしまう。
+//
+//spec:covers EX-OAUTH2-011-01: 失効済みの access トークンを検査した応答は active=false だけを運び、scope や sub のような他のフィールドを 1 つも含まない。
 func TestIntrospectToken(t *testing.T) {
 	ctx := tenantContext()
 	refreshStore := memory.NewRefreshTokenStore()
@@ -142,8 +146,9 @@ func TestIntrospectToken(t *testing.T) {
 	t.Run("AccessTokenRevokedInDenylist", func(t *testing.T) {
 		tokenVal := "access-token-revoked"
 		introspector.result = &ports.IntrospectionResult{
-			Active: true,
-			JTI:    "jti-revoked",
+			Active: true, JTI: "jti-revoked", ClientID: "client-1", Sub: "user-1",
+			Scope: "openid profile", Exp: now.Add(10 * time.Minute).Unix(),
+			Iat: now.Add(-10 * time.Minute).Unix(),
 		}
 		// Denylist に登録
 		_ = denylist.Add(ctx, "jti-revoked", now.Add(10*time.Minute))
@@ -152,9 +157,7 @@ func TestIntrospectToken(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if resp.Active {
-			t.Error("expected inactive for revoked access token")
-		}
+		assertOnlyInactive(t, resp)
 	})
 
 	t.Run("IntrospectorError", func(t *testing.T) {
@@ -266,4 +269,17 @@ func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 			t.Errorf("token_type=%q, want 空 (active=false に付随する値は返さない)", resp.TokenType)
 		}
 	})
+}
+
+// assertOnlyInactive は、RFC 7662 §2.2 が定める「無効なトークンには active=false だけを返す」
+// 形を、応答全体を零値と突き合わせて確かめる。individual なフィールドを列挙して読むと、
+// 後から足されたフィールドが漏れても気づけない。
+func assertOnlyInactive(t *testing.T, resp *IntrospectionResponse) {
+	t.Helper()
+	if resp == nil {
+		t.Fatal("応答が nil である")
+	}
+	if !reflect.DeepEqual(*resp, IntrospectionResponse{}) {
+		t.Fatalf("active=false の応答が他のフィールドを運んでいる: %+v", resp)
+	}
 }

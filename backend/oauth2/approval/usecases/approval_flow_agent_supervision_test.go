@@ -13,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+//spec:covers EX-OAUTH2-050-01: Supervised な Agent が唯一通れる CIBA の承認は、BackchannelAuthApproved に承認の対象となった Agent の id を残す。
 func TestApprovalRecordsTheAgentItPermitted(t *testing.T) {
 	f := newApprovalFixture(t)
 	t0 := time.Now().UTC()

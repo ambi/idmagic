@@ -23,12 +23,19 @@
 package testing_stack
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,6 +63,7 @@ import (
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -78,7 +86,66 @@ const (
 	// 要求するので、これが無いとトークンの状態を製品の入口から読めない。
 	ResourceServerClientID = "resource-server"
 	ResourceServerSecret   = "resource-server-secret"
+
+	// BrowserClientID から UserPassword までは WithBrowserFlow が置く、ブラウザー経由の
+	// 認可を 1 本通すために必要な最小の組である。
+	BrowserClientID     = "web-app"
+	BrowserClientSecret = "web-app-secret"
+	BrowserRedirectURI  = "https://app.example.com/callback"
+	UserPassword        = "testing-stack-password-1234"
 )
+
+// EventLog は `Deps.Emit` が受けたイベントを発行順に覚える。
+//
+// 宣言済みの具体例の `Then` は「どのイベントが発行されるか」で書かれていることが多く、
+// 応答だけを読むテストは、状態は変えたが通知を出さない実装を通してしまう。記録は
+// 常時行う。option にすると「イベントを読まないテストでは配線しない」が既定になり、
+// 読みたくなったときに配線から書き直すことになる。
+//
+// 排他するのは、`httptest.Server` 越しに動かすテストが同じ log へ並行に書くためである。
+type EventLog struct {
+	mu     sync.Mutex
+	events []spec.DomainEvent
+}
+
+func (l *EventLog) record(event spec.DomainEvent) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.events = append(l.events, event)
+}
+
+// Types は発行されたイベント型を発行順に返す。
+func (l *EventLog) Types() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	types := make([]string, len(l.events))
+	for i, event := range l.events {
+		types[i] = event.EventType()
+	}
+	return types
+}
+
+// AssertEmitted は、名指したイベント型がすべて発行されたことを確かめる。
+func (l *EventLog) AssertEmitted(t *testing.T, eventTypes ...string) {
+	t.Helper()
+	emitted := l.Types()
+	for _, want := range eventTypes {
+		if !slices.Contains(emitted, want) {
+			t.Fatalf("%s が発行されていない: %v", want, emitted)
+		}
+	}
+}
+
+// AssertNotEmitted は、拒否がそのイベントを 1 件も残していないことを確かめる。
+func (l *EventLog) AssertNotEmitted(t *testing.T, eventTypes ...string) {
+	t.Helper()
+	emitted := l.Types()
+	for _, unwanted := range eventTypes {
+		if slices.Contains(emitted, unwanted) {
+			t.Fatalf("%s が発行されている: %v", unwanted, emitted)
+		}
+	}
+}
 
 // Stack は建てたスタックと、そこへ配線した保存先をまとめて持つ。
 //
@@ -86,6 +153,7 @@ const (
 // その option を渡していないことを意味する。
 type Stack struct {
 	Echo     *echo.Echo
+	Events   *EventLog
 	Tenants  *tenancymemory.TenantRepository
 	Users    *usermemory.UserRepository
 	KeyStore *signingmemory.InMemoryKeyStore
@@ -96,18 +164,25 @@ type Stack struct {
 	AuthzDetailTypes   *oauth2memory.AuthorizationDetailTypeRepository
 	McpResourceServers *oauth2memory.McpResourceServerRepository
 	Codes              *oauth2memory.AuthorizationCodeStore
+	PAR                *oauth2memory.PARStore
 	Refresh            *oauth2memory.RefreshTokenStore
 	ApiTokens          apitokenports.Repository
 	SamlSPs            *samlmemory.SamlServiceProviderRepository
 	Sessions           *sessionusecases.SessionManager
 
 	apiTokens *apitokenusecases.Service
+	// owner は New を呼んだテストである。HTTP サーバーの後始末はここへ登録する。
+	// Browser を呼んだ subtest へ登録すると、その subtest が終わった時点でサーバーが
+	// 閉じ、同じスタックを使う次の subtest が接続できなくなる。
+	owner  *testing.T
+	server *httptest.Server
 }
 
 // Option は 1 つの入口を配線へ足す。
 type Option func(*builder)
 
 type builder struct {
+	t     *testing.T
 	deps  httpadapter.Deps
 	stack *Stack
 }
@@ -153,7 +228,8 @@ func WithAuthorizationCodeFlow() Option {
 		b.stack.Sessions = sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 		b.deps.OAuth2.RequestStore = oauth2memory.NewAuthorizationRequestStore()
 		b.deps.OAuth2.CodeStore = b.stack.Codes
-		b.deps.OAuth2.PARStore = oauth2memory.NewPARStore()
+		b.stack.PAR = oauth2memory.NewPARStore()
+		b.deps.OAuth2.PARStore = b.stack.PAR
 		b.deps.SessionManager = b.stack.Sessions
 		b.deps.AuthnResolver = b.stack.Sessions
 		b.deps.PasswordHasher = testingpasswords.NewHasher()
@@ -169,6 +245,54 @@ func WithTokenIssuance() Option {
 		b.deps.OAuth2.AccessTokenDenylist = oauth2memory.NewAccessTokenDenylist()
 		b.deps.OAuth2.DpopReplayStore = oauth2memory.NewDpopReplayStore()
 		b.deps.OAuth2.ClientAssertionReplayStore = oauth2memory.NewClientAssertionReplayStore()
+	}
+}
+
+// WithBrowserFlow は `/authorize` からブラウザーのログインと同意を経て `/token` まで
+// 通せる状態にする。配線だけでは通らないので、confidential クライアントと、パスワードを
+// 持つ利用者も一緒に置く。
+//
+// wi-538 が `EX-OAUTH2-001-01` を子 work item へ回した理由がここだった。認可コードと
+// `/token` を同時に配線した fixture は 94 個のどれかにあっても、そこへ「ログインできる
+// 利用者」と「リダイレクト先を登録したクライアント」が揃っているものは無く、具体例を
+// 1 件消化するたびに seed から書き直していた。
+func WithBrowserFlow() Option {
+	return func(b *builder) {
+		WithAuthorizationCodeFlow()(b)
+		if b.stack.Refresh == nil {
+			WithTokenIssuance()(b)
+		}
+		secretHash := oauthdomain.HashClientSecret(BrowserClientSecret)
+		for _, tenantID := range []string{tenancydomain.DefaultTenantID, OtherRealm} {
+			b.stack.Clients.Seed(&oauthdomain.OAuth2Client{
+				TenantID: tenantID, ClientID: BrowserClientID, ClientSecretHash: &secretHash,
+				ClientType:   spec.ClientConfidential,
+				RedirectURIs: []string{BrowserRedirectURI},
+				GrantTypes: []spec.GrantType{
+					spec.GrantAuthorizationCode, spec.GrantRefreshToken,
+				},
+				ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
+				TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
+				// account スコープまで許可しておく。REQ-OAUTH2-001 の具体例は、利用者に
+				// 紐づくグラントが account リソースサーバーへ通ることを言っていて、
+				// 許可スコープに無いクライアントではその経路そのものを作れない。
+				Scope:                    "openid profile email offline_access account:read account:write",
+				IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+				FapiProfile:              oauthdomain.FapiNone,
+				CreatedAt:                time.Now().UTC(),
+			})
+		}
+		hasher := testingpasswords.NewHasher()
+		hash, err := hasher.Hash(UserPassword)
+		if err != nil {
+			b.t.Fatalf("seed password: %v", err)
+		}
+		user, err := b.stack.Users.FindBySub(context.Background(), UserID)
+		if err != nil || user == nil {
+			b.t.Fatalf("seed user %s: user=%v err=%v", UserID, user, err)
+		}
+		user.PasswordHash = hash
+		b.stack.Users.Seed(user)
 	}
 }
 
@@ -258,16 +382,18 @@ func New(t *testing.T, options ...Option) *Stack {
 	signer := tokensjose.NewJWTSigner(Issuer, keyStore)
 
 	stack := &Stack{
-		Echo: echo.New(), Tenants: tenants, Users: users, KeyStore: keyStore, Signer: signer,
+		Echo: echo.New(), Events: &EventLog{}, owner: t,
+		Tenants: tenants, Users: users, KeyStore: keyStore, Signer: signer,
 	}
 	b := &builder{
-		stack: stack,
+		t: t, stack: stack,
 		// 渡すのは module だけである。`Deps` は移行期の互換入力として `UserRepo`、
 		// `KeyStore`、`TokenIssuer` を平置きでも受けるが、bootstrap は module しか設定
 		// しない。互換入力を使うと、この基盤を共有する全テストが製品と違う経路の
 		// 組み立てを観測することになる。
 		deps: httpadapter.Deps{
 			Issuer: Issuer, Contract: spec.CurrentRuntimeContract(),
+			Emit:         stack.Events.record,
 			TenantRepo:   tenants,
 			IdManagement: idmanagement.Module{UserRepo: users},
 			SigningKeys:  signingkeys.Module{KeyStore: keyStore},
@@ -345,4 +471,232 @@ func (s *Stack) Introspect(t *testing.T, realm, token string) map[string]any {
 		t.Fatalf("introspect body %s: %v", recorder.Body.String(), err)
 	}
 	return body
+}
+
+// Browser はブラウザー経由の認可を 1 本通すための、cookie を持つクライアントである。
+//
+// `s.Echo.ServeHTTP` を直接呼ぶ形にしないのは、この経路が cookie に依存しているため
+// である。認可トランザクション、CSRF、ログインセッションの 3 つが cookie で運ばれ、
+// 手で付け替える fixture は「どの cookie を運ぶか」を毎回書き直すことになる。
+type Browser struct {
+	base   string
+	client *http.Client
+}
+
+// Browser は realm の入口を指す browser を返す。スタックごとに 1 つの HTTP サーバーを
+// 立て、テストの終了で閉じる。
+func (s *Stack) Browser(t *testing.T, realm string) *Browser {
+	t.Helper()
+	if s.server == nil {
+		s.server = httptest.NewServer(s.Echo)
+		s.owner.Cleanup(s.server.Close)
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookie jar: %v", err)
+	}
+	return &Browser{
+		base: s.server.URL + "/realms/" + realm,
+		client: &http.Client{
+			Jar: jar,
+			// リダイレクトは追わない。Location そのものが観測対象だからである。
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+	}
+}
+
+// AuthorizationQuery は 1 本通る認可リクエストを返す。個々のテストはここから 1 か所だけを
+// 崩す。崩していない事例が通ることを対照に置けるので、拒否の理由が崩した 1 か所であると
+// 読める。
+func AuthorizationQuery(verifier string, overrides map[string]string) url.Values {
+	challenge := sha256.Sum256([]byte(verifier))
+	query := url.Values{
+		"client_id":             {BrowserClientID},
+		"redirect_uri":          {BrowserRedirectURI},
+		"response_type":         {"code"},
+		"scope":                 {"openid profile"},
+		"state":                 {"opaque-state"},
+		"code_challenge":        {base64.RawURLEncoding.EncodeToString(challenge[:])},
+		"code_challenge_method": {"S256"},
+	}
+	for key, value := range overrides {
+		if value == "" {
+			query.Del(key)
+			continue
+		}
+		query.Set(key, value)
+	}
+	return query
+}
+
+// Authorize は `/authorize` を 1 回叩く。応答は閉じずに返すので、呼び出し側が
+// Location も本文も読める。
+func (b *Browser) Authorize(t *testing.T, query url.Values) *http.Response {
+	t.Helper()
+	request, err := http.NewRequestWithContext(
+		t.Context(), http.MethodGet, b.base+"/authorize?"+query.Encode(), http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := b.client.Do(request)
+	if err != nil {
+		t.Fatalf("GET /authorize: %v", err)
+	}
+	t.Cleanup(func() { _ = response.Body.Close() })
+	return response
+}
+
+// Transaction は現在の認可トランザクションを返す。`kind` が login と consent のどちらで
+// あるかが、同意画面を出し分ける規則の観測点になる。
+func (b *Browser) Transaction(t *testing.T) map[string]any {
+	t.Helper()
+	request, err := http.NewRequestWithContext(
+		t.Context(), http.MethodGet, b.base+"/api/auth/transaction", http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := b.client.Do(request)
+	if err != nil {
+		t.Fatalf("GET /api/auth/transaction: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	raw, _ := io.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/auth/transaction status=%d body=%s", response.StatusCode, raw)
+	}
+	transaction := map[string]any{}
+	if err := json.Unmarshal(raw, &transaction); err != nil {
+		t.Fatalf("transaction が JSON ではない body=%s: %v", raw, err)
+	}
+	return transaction
+}
+
+// SignIn はトランザクションの利用者を認証する。
+func (b *Browser) SignIn(t *testing.T, username, password string) map[string]any {
+	t.Helper()
+	transaction := b.Transaction(t)
+	csrf, _ := transaction["csrf_token"].(string)
+	return b.postJSON(t, "/api/auth/login", csrf,
+		map[string]string{"username": username, "password": password})
+}
+
+// Consent は同意画面の判断を送り、リダイレクト先を返す。
+func (b *Browser) Consent(t *testing.T, action string) string {
+	t.Helper()
+	transaction := b.Transaction(t)
+	csrf, _ := transaction["csrf_token"].(string)
+	result := b.postJSON(t, "/api/auth/consent", csrf, map[string]string{"action": action})
+	redirect, _ := result["redirect_to"].(string)
+	if redirect == "" {
+		t.Fatalf("同意の応答がリダイレクト先を運んでいない: %v", result)
+	}
+	return redirect
+}
+
+// AuthorizationCode は `/authorize` からログインと同意までを通し、発行された認可コードを
+// 返す。2 つ目の戻り値はリダイレクト先そのもので、`state` や `iss` の観測に使う。
+func (b *Browser) AuthorizationCode(t *testing.T, query url.Values) (string, *url.URL) {
+	t.Helper()
+	_ = b.Authorize(t, query).Body.Close()
+	b.SignIn(t, "user", UserPassword)
+	redirect, err := url.Parse(b.Consent(t, "allow"))
+	if err != nil {
+		t.Fatalf("リダイレクト先を URL として読めない: %v", err)
+	}
+	code := redirect.Query().Get("code")
+	if code == "" {
+		t.Fatalf("リダイレクト先が認可コードを運んでいない: %s", redirect)
+	}
+	return code, redirect
+}
+
+// ExchangeCode は認可コードを `/token` で交換し、状態行と復号した本文を返す。
+func (b *Browser) ExchangeCode(t *testing.T, code, verifier string) (int, map[string]any) {
+	t.Helper()
+	return b.PostToken(t, url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"code_verifier": {verifier},
+		"redirect_uri":  {BrowserRedirectURI},
+	})
+}
+
+// PostToken は `/token` へフォームを 1 通送る。クライアント認証は WithBrowserFlow が
+// seed した confidential クライアントで行う。
+func (b *Browser) PostToken(t *testing.T, form url.Values) (int, map[string]any) {
+	t.Helper()
+	request, err := http.NewRequestWithContext(
+		t.Context(), http.MethodPost, b.base+"/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.SetBasicAuth(BrowserClientID, BrowserClientSecret)
+	response, err := b.client.Do(request)
+	if err != nil {
+		t.Fatalf("POST /token: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	raw, _ := io.ReadAll(response.Body)
+	body := map[string]any{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &body)
+	}
+	return response.StatusCode, body
+}
+
+func (b *Browser) postJSON(t *testing.T, path, csrf string, payload any) map[string]any {
+	t.Helper()
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := http.NewRequestWithContext(
+		t.Context(), http.MethodPost, b.base+path, bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-Csrf-Token", csrf)
+	request.Header.Set("Origin", Issuer)
+	response, err := b.client.Do(request)
+	if err != nil {
+		t.Fatalf("POST %s: %v", path, err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	raw, _ := io.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("POST %s status=%d body=%s", path, response.StatusCode, raw)
+	}
+	result := map[string]any{}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("POST %s の応答が JSON ではない body=%s: %v", path, raw, err)
+	}
+	return result
+}
+
+// PushAuthorizationRequest は `/par` へクライアント認証付きで 1 回送り、状態行と
+// 復号した本文を返す。事前送信は認可の前段なので、browser の cookie は関係しない。
+func (b *Browser) PushAuthorizationRequest(t *testing.T, query url.Values) (int, map[string]any) {
+	t.Helper()
+	request, err := http.NewRequestWithContext(
+		t.Context(), http.MethodPost, b.base+"/par", strings.NewReader(query.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.SetBasicAuth(BrowserClientID, BrowserClientSecret)
+	response, err := b.client.Do(request)
+	if err != nil {
+		t.Fatalf("POST /par: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	raw, _ := io.ReadAll(response.Body)
+	body := map[string]any{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &body)
+	}
+	return response.StatusCode, body
 }

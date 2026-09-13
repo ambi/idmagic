@@ -15,10 +15,10 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// TestResolveIssuableAgent_OwnerOffboarding — RED: REQ-OAUTH2-046
-// (docs/contexts/oauth2/scenarios.feature.md)。所有者がオフボードされた Agent は
-// client_credentials で新しいトークンを取得できない。所有者の状態は Agent の
-// status を書き換えず、発行のたびに解決する。
+// 所有者がオフボードされた Agent は client_credentials で新しいトークンを取得できない。
+// 所有者の状態は Agent の status を書き換えず、発行のたびに解決する。
+//
+//spec:covers EX-OAUTH2-046-01, EX-OAUTH2-046-02, EX-OAUTH2-046-04: 無効化された所有者と解決できない所有者はどちらも invalid_client で拒否され Agent は Active のまま残り、どの Agent も束縛されていないクライアントは所有者の解決を行わずに通る。
 func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	now := time.Now().UTC()

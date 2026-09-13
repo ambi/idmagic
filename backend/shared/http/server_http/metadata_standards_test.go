@@ -616,6 +616,7 @@ const mdRealmIssuer = mdIssuer + mdRealmPath
 //     `code_challenge_methods_supported` を実際に使ったリクエストが通ることで読む。
 //
 //spec:covers RFC8414-METADATA (required): 発行者と利用可能なエンドポイントおよび機能を
+//spec:covers EX-OAUTH2-030-01: RFC 8414 のメタデータ文書は issuer、authorization_endpoint、token_endpoint、jwks_uri、grant_types_supported を OIDC Discovery と同等に返す。
 func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -679,6 +680,7 @@ func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t
 // `alg` と合うこと、広告した `userinfo_endpoint` が実際にその主体を返すことで読む。
 //
 //spec:covers OIDC-DISCOVERY-CONFIGURATION (required): well-known 設定から発行者、エンドポイント、
+//spec:covers EX-OAUTH2-014-01: Discovery Metadata は宣言された全エンドポイントを広告し、広告した先が実在する経路へ解決される。
 func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -687,12 +689,20 @@ func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t
 	if got := stringOf(t, configuration, "issuer"); got != mdRealmIssuer {
 		t.Errorf("issuer = %q, want %q", got, mdRealmIssuer)
 	}
+	// EX-OAUTH2-014-01 が名指す全エンドポイントを 1 つの文書から読む。広告と実在の対を
+	// 読むので、宣言だけ増やして経路を作らなかった実装はここで落ちる。
 	for field, operation := range map[string]string{
-		"authorization_endpoint": "Authorize",
-		"token_endpoint":         "Token",
-		"userinfo_endpoint":      "UserInfo",
-		"jwks_uri":               "GetJwks",
-		"end_session_endpoint":   "EndSession",
+		"authorization_endpoint":                "Authorize",
+		"token_endpoint":                        "Token",
+		"userinfo_endpoint":                     "UserInfo",
+		"jwks_uri":                              "GetJwks",
+		"introspection_endpoint":                "Introspect",
+		"revocation_endpoint":                   "Revoke",
+		"pushed_authorization_request_endpoint": "PushAuthorizationRequest",
+		"device_authorization_endpoint":         "DeviceAuthorization",
+		"backchannel_authentication_endpoint":   "BackchannelAuthenticate",
+		"registration_endpoint":                 "RegisterClient",
+		"end_session_endpoint":                  "EndSession",
 	} {
 		fixture.assertRouted(t, field, stringOf(t, configuration, field), operation)
 	}
@@ -867,6 +877,7 @@ func TestProtectedResourceMetadataWithoutAResourceDescribesTheRealmApi(t *testin
 // あるので、辿れない URL では行の言うことが果たされない。
 //
 //spec:covers RFC9728-CHALLENGE (required): ベアラー保護リソースの `401 invalid_token` と
+//spec:covers EX-OAUTH2-044-01, EX-OAUTH2-044-02: 401 と 403 の WWW-Authenticate は、error と必要なスコープ、および辿れる resource_metadata URL を引用符付きの auth-param として運ぶ。
 func TestBearerChallengesPointAtTheRealmProtectedResourceMetadata(t *testing.T) {
 	fixture := newMetadataFixture(t)
 	tokens := fixture.tokens(t)
@@ -877,6 +888,9 @@ func TestBearerChallengesPointAtTheRealmProtectedResourceMetadata(t *testing.T) 
 		token      string
 		wantStatus int
 		wantError  string
+		// wantScope は insufficient_scope のときだけ立てる。不足したスコープを
+		// 名乗らない challenge は、クライアントに次の一手を教えられない。
+		wantScope string
 	}{
 		{
 			// 検証できないトークンの提示。
@@ -887,6 +901,7 @@ func TestBearerChallengesPointAtTheRealmProtectedResourceMetadata(t *testing.T) 
 			// 有効だが、この API が要求するスコープを持たないトークンの提示。
 			name: "insufficient_scope", path: "/api/admin/v1/clients", token: tokens.AccessToken,
 			wantStatus: http.StatusForbidden, wantError: "insufficient_scope",
+			wantScope: "idmagic.admin",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -896,6 +911,9 @@ func TestBearerChallengesPointAtTheRealmProtectedResourceMetadata(t *testing.T) 
 			}
 			if got := challengeParameter(t, header, "error"); got != testCase.wantError {
 				t.Fatalf("error = %q, want %q (challenge=%q)", got, testCase.wantError, header)
+			}
+			if got := challengeParameter(t, header, "scope"); got != testCase.wantScope {
+				t.Fatalf("scope = %q, want %q (challenge=%q)", got, testCase.wantScope, header)
 			}
 
 			advertised := challengeParameter(t, header, "resource_metadata")

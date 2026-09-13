@@ -10,6 +10,7 @@ package server_http_test
 // 素通りするからである。
 
 import (
+	"context"
 	stdcrypto "crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -64,6 +65,7 @@ const (
 	tpUsername       = "alice"
 	tpUserID         = "user_alice"
 	tpUserEmail      = "alice@example.test"
+	tpUserName       = "Alice Example"
 	tpPassword       = "token-presentation-password-1234"
 	tpVerifier       = "token-presentation-standards-pkce-verifier-0123456789"
 	tpUserInfoPath   = "/userinfo"
@@ -73,7 +75,9 @@ const (
 )
 
 type tpFixture struct {
-	base string
+	base          string
+	refreshTokens *oauth2memory.RefreshTokenStore
+	events        *eventRecorder
 }
 
 // newTokenPresentationFixture は本番と同じ Register で、トークンを発行する
@@ -157,10 +161,11 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 		t.Fatal(err)
 	}
 	email := tpUserEmail
+	name := tpUserName
 	users := usermemory.NewUserRepository()
 	users.Seed(&userdomain.User{
 		ID: tpUserID, PreferredUsername: tpUsername, PasswordHash: passwordHash,
-		Email: &email, EmailVerified: true,
+		Name: &name, Email: &email, EmailVerified: true,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 
@@ -181,18 +186,21 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
+	refreshTokens := oauth2memory.NewRefreshTokenStore()
+	events := &eventRecorder{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          tpIssuer,
 		TenantRepo:      tenants,
 		StartupComplete: startupComplete,
 		ShuttingDown:    &atomic.Bool{},
+		Emit:            events.record,
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore:               oauth2memory.NewAuthorizationRequestStore(),
 			CodeStore:                  oauth2memory.NewAuthorizationCodeStore(),
 			PARStore:                   oauth2memory.NewPARStore(),
-			RefreshStore:               oauth2memory.NewRefreshTokenStore(),
+			RefreshStore:               refreshTokens,
 			McpResourceServerRepo:      oauth2memory.NewMcpResourceServerRepository(),
 			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
@@ -208,7 +216,9 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	})
 	server := httptest.NewServer(e)
 	t.Cleanup(server.Close)
-	return &tpFixture{base: server.URL + "/realms/default"}
+	return &tpFixture{
+		base: server.URL + "/realms/default", refreshTokens: refreshTokens, events: events,
+	}
 }
 
 // htu は DPoP proof が名乗るべき絶対 URL を返す。製品が期待値を組み立てるのと
@@ -584,6 +594,7 @@ func TestBearerTokenIsAcceptedOnlyFromTheAuthorizationHeader(t *testing.T) {
 // トークンと対で読む。`openid` の有無だけが違う 2 本を、同じ利用者について作る。
 //
 //spec:covers OIDC-CORE-USERINFO (required): `openid` スコープのアクセストークンに対して
+//spec:covers EX-OAUTH2-013-01: openid と profile のアクセストークンでの UserInfo は sub、name、preferred_username を返す。
 func TestUserInfoReturnsTheSubjectForAnOpenIDScopedToken(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -599,6 +610,9 @@ func TestUserInfoReturnsTheSubjectForAnOpenIDScopedToken(t *testing.T) {
 	// スコープを無視して常に最小の応答を返す実装を見分けられない。
 	if body["preferred_username"] != tpUsername {
 		t.Errorf("preferred_username=%v, want %q", body["preferred_username"], tpUsername)
+	}
+	if body["name"] != tpUserName {
+		t.Errorf("name=%v, want %q", body["name"], tpUserName)
 	}
 	if body["email"] != tpUserEmail {
 		t.Errorf("email=%v, want %q", body["email"], tpUserEmail)
@@ -770,6 +784,7 @@ func TestIntrospectionRevealsNothingAboutInactiveTokens(t *testing.T) {
 // 応答ではなく保護リソースへの到達で確かめる。
 //
 //spec:covers RFC7009-REVOCATION-ENDPOINT (required): 認証済みクライアントへトークン失効
+//spec:covers EX-OAUTH2-019-01: クライアント自身のリフレッシュトークンの失効は記録を Revoked にし、TokenRevoked を発行する。
 func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -810,6 +825,18 @@ func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 		t.Fatalf("失効させたリフレッシュトークンで新しいトークンが出た: %s", body)
 	}
 	assertNoTokenInBody(t, "失効させたリフレッシュトークン", body)
+
+	// 応答が 200 で、再発行が止まっただけでは足りない。記録そのものが Revoked へ
+	// 遷移し、失効が通知として残ることまで読む。
+	record, err := fixture.refreshTokens.FindByHash(
+		context.Background(), domain.HashRefreshToken(issued.RefreshToken))
+	if err != nil || record == nil {
+		t.Fatalf("リフレッシュトークンの記録が見つからない: record=%v err=%v", record, err)
+	}
+	if !record.Revoked {
+		t.Fatalf("失効させた記録が Revoked になっていない: %+v", record)
+	}
+	fixture.events.assertEmitted(t, "TokenRevoked")
 }
 
 // 成功応答を返し、情報を漏らさない。
@@ -821,6 +848,7 @@ func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 // 失効させる実装は、応答だけを見るテストでは通ってしまう。
 //
 //spec:covers RFC7009-UNKNOWN-TOKEN (required): 無効または他クライアント所有のトークンに対しても
+//spec:covers EX-OAUTH2-019-02: 所有者でないクライアントの失効要求には 200 OK だけを返し、対象のトークンは失効せず使えるままである。
 func TestRevokingAnUnknownOrForeignTokenIsAnIndistinguishableNoOp(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 
@@ -883,6 +911,8 @@ func TestRevokingAnUnknownOrForeignTokenIsAnIndistinguishableNoOp(t *testing.T) 
 // 併せて、載っている確認鍵が飾りでないことを、鍵を持たない提示が拒否されることで読む。
 //
 //spec:covers RFC7800-CONFIRMATION (optional) / RFC9700-SENDER-CONSTRAINT (optional):
+//spec:covers EX-OAUTH2-010-01: DPoP 証明を付けた交換は、cnf.jkt が提示鍵のサムプリントであるアクセストークンと、センダー制約が Dpop のリフレッシュトークンを発行する。
+//spec:covers EX-OAUTH2-029-01: mTLS 証明書を提示した交換はその証明書に束縛されたアクセストークンを発行し、同じ証明書を提示した保護リソース要求だけが 200 を返す。
 func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	key, jwk, jkt := tpDPoPKey(t)
@@ -901,8 +931,10 @@ func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 		t.Fatalf("制約なしのトークンが通らない: status=%d body=%v", status, body)
 	}
 
-	// 2. DPoP。cnf.jkt が提示鍵のサムプリントになる。
-	dpopCode := fixture.authorizationCode(t, tpClientID, "openid profile")
+	// 2. DPoP。cnf.jkt が提示鍵のサムプリントになる。offline_access も要求するのは、
+	// 束縛がアクセストークンだけでなくリフレッシュトークンの記録にも残ることを、
+	// 同じ 1 回の発行から読むためである。
+	dpopCode := fixture.authorizationCode(t, tpClientID, "openid profile offline_access")
 	dpopIssued := fixture.mustToken(t, tpCodeExchangeForm(tpClientID, dpopCode),
 		func(request *http.Request) {
 			request.SetBasicAuth(tpClientID, tpClientSecret)
@@ -914,6 +946,15 @@ func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 	confirmation, ok := dpopClaims["cnf"].(map[string]any)
 	if !ok || confirmation["jkt"] != jkt {
 		t.Fatalf("DPoP トークンの cnf=%v, want jkt=%q", dpopClaims["cnf"], jkt)
+	}
+	dpopRefresh, err := fixture.refreshTokens.FindByHash(
+		context.Background(), domain.HashRefreshToken(dpopIssued.RefreshToken))
+	if err != nil || dpopRefresh == nil {
+		t.Fatalf("DPoP 発行のリフレッシュトークンの記録が無い: record=%v err=%v", dpopRefresh, err)
+	}
+	if dpopRefresh.SenderConstraint == nil ||
+		dpopRefresh.SenderConstraint.Type != spec.SenderConstraintDPoP {
+		t.Fatalf("リフレッシュトークンのセンダー制約=%+v, want DPoP", dpopRefresh.SenderConstraint)
 	}
 	// 確認鍵は飾りではない。証明を持たない提示は保護リソースへ届かない。
 	if status, body := fixture.userInfo(t, "DPoP "+dpopIssued.AccessToken, nil, nil); reachedUserInfo(status, body) {
@@ -1061,6 +1102,7 @@ func TestMutualTLSAuthenticatesTheClientAndBindsTheAccessTokenToItsCertificate(t
 // 束縛先のアクセストークンがまだ存在しない) ので、保護リソース側で観測する。
 //
 //spec:covers RFC9449-PROOF (optional) / RFC9449-ATH (optional):
+//spec:covers EX-OAUTH2-045-04: ath を含まない proof をトークンエンドポイントへ提示した要求は受理され、アクセストークンが発行される。
 func TestDPoPProofElementsAreVerifiedAtTheTokenEndpointAndTheProtectedResource(t *testing.T) {
 	fixture := newTokenPresentationFixture(t)
 	key, jwk, jkt := tpDPoPKey(t)

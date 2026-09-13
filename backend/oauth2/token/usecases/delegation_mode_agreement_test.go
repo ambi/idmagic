@@ -11,9 +11,12 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// モードが一致する。導出が 2 箇所に分かれると、この 2 つが食い違ったまま気付けない。
+// 導出が 2 箇所に分かれると、この 2 つが食い違ったまま気付けない。
 //
-//spec:covers REQ-OAUTH2-049: 交換が監査へ残したモードと、発行トークンをイントロスペクトした
+// リソースサーバーは応答の delegation_mode を読むだけでよく、act と principal 種別から
+// 導出し直す必要がない。
+//
+//spec:covers REQ-OAUTH2-049, EX-OAUTH2-049-01, EX-OAUTH2-049-02: 交換が監査へ残したモードと、発行トークンをイントロスペクトしたモードが一致する。
 func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 	ctx := tenantContext()
 
@@ -61,7 +64,7 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-OAUTH2-049: エージェント自身のトークンは自律実行として返る。
+//spec:covers REQ-OAUTH2-049, EX-OAUTH2-049-03: 代行が無く subject が非人間のプリンシパルなら、イントロスペクションは自律実行として返す。
 func TestIntrospectionReportsAutonomousForAgentTokens(t *testing.T) {
 	ctx := tenantContext()
 	deps := IntrospectDeps{
@@ -77,6 +80,26 @@ func TestIntrospectionReportsAutonomousForAgentTokens(t *testing.T) {
 	}
 	if resp.DelegationMode != domain.DelegationModeAutonomous {
 		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, domain.DelegationModeAutonomous)
+	}
+}
+
+// 自律実行との違いは principal 種別だけなので、同じ入口で両方を読む。
+//
+//spec:covers EX-OAUTH2-049-04: 代行が無く subject が人間の利用者なら、イントロスペクションは直接のアクセスとして返す。
+func TestIntrospectionReportsDirectAccessForUserTokens(t *testing.T) {
+	ctx := tenantContext()
+	deps := IntrospectDeps{
+		Introspector: &fakeIntrospector{result: &ports.IntrospectionResult{
+			Active: true, Sub: "user-alice", ClientID: "portal", Scope: "openid",
+		}},
+		RefreshStore: memory.NewRefreshTokenStore(),
+	}
+	resp, err := IntrospectToken(ctx, deps, IntrospectInput{Token: "t", TokenTypeHint: "access_token"}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("IntrospectToken: %v", err)
+	}
+	if resp.DelegationMode != domain.DelegationModeDirect {
+		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, domain.DelegationModeDirect)
 	}
 }
 

@@ -21,6 +21,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
+//spec:covers EX-OAUTH2-046-01, EX-OAUTH2-046-03: /token の client_credentials は所有者の無効化で invalid_client になりトークンを発行せず Agent は Active のまま残り、所有者が再び有効化されれば同じ要求が通る。
 func TestTokenClientCredentials_offboardedOwner_rejected(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()

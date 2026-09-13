@@ -57,16 +57,22 @@ func exchangeWithPolicy(
 	return issuer, err
 }
 
-//spec:covers REQ-OAUTH2-048: テナントが下げた上限を超える交換は拒否され、上限内は通る。
+// 境界の両側を踏むのは、比較演算子の向きを取り違えた実装を片側だけでは見分けられないためである。
+//
+//spec:covers REQ-OAUTH2-048, EX-OAUTH2-048-02, EX-OAUTH2-048-03, EX-OAUTH2-048-04: 上限以内の交換は成立し、超える交換は拒否して理由を監査へ残し、上限を解決できないときはシステム既定へ退避せず拒否する。
 func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 	t.Run("a tightened limit rejects a chain the default would allow", func(t *testing.T) {
 		// 既存 act の深さ 1 → 交換後は 2。システム既定 (3) なら通るが、上限 1 では拒否。
-		issuer, err := exchangeWithPolicy(t, stubDelegationPolicy{depth: 1}, actChainOfDepth(1), nil)
+		var events []spec.DomainEvent
+		issuer, err := exchangeWithPolicy(t, stubDelegationPolicy{depth: 1}, actChainOfDepth(1), &events)
 		if err == nil {
 			t.Fatal("a chain beyond the tenant limit must be rejected")
 		}
 		if issuer.calls != 0 {
 			t.Fatal("a rejected exchange must not issue a token")
+		}
+		if !hasTokenExchangeRejected(events) {
+			t.Fatalf("a refused exchange must record its reason in the audit trail: %v", events)
 		}
 	})
 
@@ -90,13 +96,7 @@ func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 		if issuer.calls != 0 {
 			t.Fatal("a rejected exchange must not issue a token")
 		}
-		var rejected *domain.TokenExchangeRejected
-		for _, event := range events {
-			if typed, ok := event.(*domain.TokenExchangeRejected); ok {
-				rejected = typed
-			}
-		}
-		if rejected == nil {
+		if !hasTokenExchangeRejected(events) {
 			t.Fatal("a fail-closed rejection must still be audited")
 		}
 	})
@@ -126,7 +126,19 @@ func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 	})
 }
 
-//spec:covers REQ-OAUTH2-048 / REQ-OAUTH2-049: 監査は深さと適用した上限、および委譲モードを残す。
+// hasTokenExchangeRejected は、拒否された交換が監査へ理由を残したかを返す。
+func hasTokenExchangeRejected(events []spec.DomainEvent) bool {
+	for _, event := range events {
+		if _, ok := event.(*domain.TokenExchangeRejected); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// 片方だけでは、どの上限で通したのかを後から言えない。
+//
+//spec:covers REQ-OAUTH2-048, REQ-OAUTH2-049, EX-OAUTH2-048-01: 監査は発行トークンの深さと、判定に適用した上限の双方を残す。
 func TestExchangeTokenAuditRecordsDepthLimitAndMode(t *testing.T) {
 	var events []spec.DomainEvent
 	if _, err := exchangeWithPolicy(t, stubDelegationPolicy{depth: 2}, nil, &events); err != nil {

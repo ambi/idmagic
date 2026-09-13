@@ -146,6 +146,7 @@ func signDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, htu, j
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
+//spec:covers EX-OAUTH2-045-01, EX-OAUTH2-045-02, EX-OAUTH2-045-03: 提示したアクセストークンの ath を持つ proof だけが保護リソースで受理され、ath を欠く proof も別トークンの ath を持つ proof も invalid_token になる。
 func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	now := time.Now().UTC()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
