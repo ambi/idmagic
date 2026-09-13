@@ -167,6 +167,11 @@ func TestAdminUserListPreviousLinkReturnsPriorPage(t *testing.T) {
 	}
 }
 
+// 具体例は `pagination.total_items` と `total_users` を別々に言う。前者は条件一致件数、
+// 後者は削除済みを除くフィルター非依存の件数である。片方だけを見るテストは、両方を
+// 同じ値にする実装を通してしまう。
+//
+//spec:covers EX-IDMANAGEMENT-005-02: query / status を指定した一覧が条件に一致する User だけを返し、total_items が条件一致件数、total_users がフィルター非依存の件数になること。
 func TestAdminUserListSearchAndStatusApplyBeforePaging(t *testing.T) {
 	e, repo := newAdminUserHandler(t)
 	now := time.Now().UTC()
@@ -218,6 +223,11 @@ func TestAdminUserListLastLinkReturnsOnlyRemainder(t *testing.T) {
 	}
 }
 
+// 具体例は「`query` または `status` を変更した管理者はカーソルを破棄して先頭ページから
+// 取得する」と言う。それは呼び出し元の作法ではなく、サーバーが古いカーソルを受理しない
+// ことで担保される。発行時と違う絞り込みのカーソルは拒否される。
+//
+//spec:covers EX-IDMANAGEMENT-005-02: 発行時と異なる query を添えたカーソルが拒否され、管理者が先頭ページから取り直すほかなくなること。
 func TestAdminUserListRejectsCursorAfterQueryChanges(t *testing.T) {
 	e, repo := newAdminUserHandler(t)
 	now := time.Now().UTC()

@@ -5,6 +5,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -28,6 +29,10 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+// 010-01 が言うのは再有効化の 2 つの `Then` である。戻り値は use case が組み立てるので、
+// 状態は保存層から読み直す。
+//
+//spec:covers EX-IDMANAGEMENT-010-01: 無効化した User の再有効化で、保存された状態が Active に戻り UserEnabled が発行されること。
 func TestCreateUpdateAndDisableUser(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
@@ -88,33 +93,233 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	if got := events[len(events)-1].EventType(); got != "UserEnabled" {
 		t.Fatalf("last event=%s", got)
 	}
+	stored, err := userRepo.FindBySub(ctx, user.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("FindBySub=(%v,%v)", stored, err)
+	}
+	if stored.Lifecycle.Status != idmdomain.UserStatusActive {
+		t.Fatalf("保存された状態 = %s, want active", stored.Lifecycle.Status)
+	}
 }
 
+// federatedProvisioningDeps は JIT の入口が読む 4 つの検証源 (一意性、属性スキーマ、
+// リソース上限、発行先) をすべて配線した Deps を建てる。既定は上限も属性も通る側に置き、
+// 具体例ごとに 1 つだけ外す。userLimit が 0 なら上限を設定しない。
+func federatedProvisioningDeps(
+	ctx context.Context, t *testing.T, userLimit int,
+) (userusecases.AdminUserDeps, *usermemory.UserRepository, *[]spec.DomainEvent) {
+	t.Helper()
+	userRepo := usermemory.NewUserRepository()
+	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
+	if err := schemaRepo.Save(ctx, &userdomain.TenantUserAttributeSchema{
+		TenantID: tenancydomain.DefaultTenantID,
+		Attributes: []userdomain.UserAttributeDef{
+			{Key: "department", Type: idmdomain.AttributeTypeString},
+		},
+	}); err != nil {
+		t.Fatalf("Save schema: %v", err)
+	}
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	if userLimit > 0 {
+		if err := quotaRepo.SetQuota(
+			ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &userLimit},
+		); err != nil {
+			t.Fatalf("SetQuota: %v", err)
+		}
+	}
+	events := &[]spec.DomainEvent{}
+	deps := userusecases.AdminUserDeps{
+		UserRepo: userRepo, AttrSchemaRepo: schemaRepo, QuotaRepo: quotaRepo,
+		Emit: func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
+	}
+	return deps, userRepo, events
+}
+
+// 応答の組み立てだけでは通らないよう、保存層から読み直した User の `password_hash` と
+// 状態を見て、発行されたイベントの種類と対象 User まで突き合わせる。任意の名前・
+// メールアドレス・属性がそのまま保存されることも、同じ読み直しで固定する。
+//
+//spec:covers EX-IDMANAGEMENT-001-01: 上流の検証を終えた JIT が password_hash の空な Active User を作り、UserCreated を発行すること。
 func TestProvisionFederatedUserCreatesCredentiallessActiveUser(t *testing.T) {
 	ctx := context.Background()
-	userRepo := usermemory.NewUserRepository()
+	deps, userRepo, events := federatedProvisioningDeps(ctx, t, 0)
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 	email := "federated@example.com"
+	name := "Federated Example"
 	user, err := userusecases.ProvisionFederatedUser(
 		ctx,
-		userusecases.AdminUserDeps{UserRepo: userRepo},
+		deps,
 		userusecases.ProvisionFederatedUserInput{
-			PreferredUsername: "federated", Email: &email, EmailVerified: true, Now: now,
+			PreferredUsername: "federated", Name: &name, Email: &email, EmailVerified: true,
+			Attributes: map[string]userdomain.AttributeValue{
+				"department": {Type: idmdomain.AttributeTypeString, String: new("engineering")},
+			},
+			Now: now,
 		},
 	)
 	if err != nil {
 		t.Fatalf("ProvisionFederatedUser: %v", err)
 	}
-	if user.PasswordHash != "" {
-		t.Fatalf("password_hash=%q, want credentialless", user.PasswordHash)
-	}
-	if !user.IsActive() || !user.EmailVerified {
-		t.Fatalf("user=%+v", user)
-	}
 	found, err := userRepo.FindByUsername(ctx, user.TenantID, user.PreferredUsername)
 	if err != nil || found == nil || found.ID != user.ID {
 		t.Fatalf("persisted user=(%+v,%v)", found, err)
 	}
+	if found.PasswordHash != "" {
+		t.Fatalf("persisted password_hash=%q, want credentialless", found.PasswordHash)
+	}
+	if !found.IsActive() || !found.EmailVerified {
+		t.Fatalf("persisted user=%+v", found)
+	}
+	if found.Name == nil || *found.Name != name || found.Email == nil || *found.Email != email {
+		t.Fatalf("persisted name/email=%+v", found)
+	}
+	if got := found.Attributes["department"]; got.String == nil || *got.String != "engineering" {
+		t.Fatalf("persisted attributes=%+v", found.Attributes)
+	}
+	created := lastEventOfType(*events, "UserCreated")
+	if created == nil {
+		t.Fatalf("UserCreated was not emitted, events=%v", eventTypes(*events))
+	}
+	if got := created.(*idmdomain.UserCreated).TargetUserID; got != user.ID {
+		t.Fatalf("UserCreated target=%s, want %s", got, user.ID)
+	}
+}
+
+// **拒否の型だけでなく効果の不在を見る。** 応答を組み立てる前に保存してしまう実装を
+// 落とすため、4 つの経路それぞれで保存層の対象が増えていないことと、`UserCreated` が
+// 1 件も出ていないことを確かめる。
+//
+//spec:covers EX-IDMANAGEMENT-001-02: 一意性・リソース上限・属性スキーマのいずれかに反する JIT が、User を作らずエラーを返すこと。
+func TestProvisionFederatedUserRejectsWithoutCreatingTheUser(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	takenEmail := "taken@example.com"
+
+	// arrange は「先に居る User」を宣言で書く。クロージャーで書くと具体例ごとの
+	// 差が手続きに埋もれ、どの検証源を外しているかが読み取れなくなる。
+	type seed struct {
+		username string
+		email    *string
+	}
+	tests := []struct {
+		name string
+		// userLimit が 0 なら上限を設定しない。
+		userLimit int
+		seeds     []seed
+		input     userusecases.ProvisionFederatedUserInput
+		wantErr   error
+	}{
+		{
+			name:    "ユーザー名が衝突する",
+			seeds:   []seed{{username: "collide"}},
+			input:   userusecases.ProvisionFederatedUserInput{PreferredUsername: "collide", Now: now},
+			wantErr: userusecases.ErrUsernameConflict,
+		},
+		{
+			name:  "メールアドレスが衝突する",
+			seeds: []seed{{username: "first", email: &takenEmail}},
+			input: userusecases.ProvisionFederatedUserInput{
+				PreferredUsername: "second", Email: &takenEmail, Now: now,
+			},
+			wantErr: userusecases.ErrEmailConflict,
+		},
+		{
+			name:      "リソース上限を超える",
+			userLimit: 1,
+			seeds:     []seed{{username: "within-limit"}},
+			input:     userusecases.ProvisionFederatedUserInput{PreferredUsername: "over-limit", Now: now},
+			wantErr:   nil, // *tenancydomain.QuotaExceededError は下で個別に確かめる
+		},
+		{
+			name: "属性スキーマに違反する",
+			input: userusecases.ProvisionFederatedUserInput{
+				PreferredUsername: "bad-attributes", Now: now,
+				Attributes: map[string]userdomain.AttributeValue{
+					"undeclared": {Type: idmdomain.AttributeTypeString, String: new("x")},
+				},
+			},
+			wantErr: userusecases.ErrInvalidAttribute,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deps, userRepo, events := federatedProvisioningDeps(ctx, t, tc.userLimit)
+			for _, arranged := range tc.seeds {
+				provisionFederated(ctx, t, deps, arranged.username, arranged.email, now)
+			}
+			before := len(*events)
+			// ユーザー名の衝突では、同じ名前の User が arrange 済みで存在する。
+			// 「存在しないこと」ではなく「増えていないこと」が具体例の言う効果の不在である。
+			existing, err := userRepo.FindByUsername(
+				ctx, tenancydomain.DefaultTenantID, tc.input.PreferredUsername,
+			)
+			if err != nil {
+				t.Fatalf("FindByUsername before: %v", err)
+			}
+
+			user, err := userusecases.ProvisionFederatedUser(ctx, deps, tc.input)
+			if err == nil {
+				t.Fatalf("expected refusal, got user=%+v", user)
+			}
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Fatalf("err=%v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErr == nil {
+				var qErr *tenancydomain.QuotaExceededError
+				if !errors.As(err, &qErr) || qErr.Resource != tenancydomain.ResourceUsers {
+					t.Fatalf("err=%v, want *QuotaExceededError for users", err)
+				}
+			}
+			found, err := userRepo.FindByUsername(
+				ctx, tenancydomain.DefaultTenantID, tc.input.PreferredUsername,
+			)
+			if err != nil {
+				t.Fatalf("FindByUsername after: %v", err)
+			}
+			switch {
+			case existing == nil && found != nil:
+				t.Fatalf("refused provisioning persisted %+v", found)
+			case existing != nil && (found == nil || found.ID != existing.ID):
+				t.Fatalf("refused provisioning replaced %+v with %+v", existing, found)
+			}
+			for _, event := range (*events)[before:] {
+				if event.EventType() == "UserCreated" {
+					t.Fatalf("refused provisioning emitted UserCreated")
+				}
+			}
+		})
+	}
+}
+
+func provisionFederated(
+	ctx context.Context, t *testing.T, deps userusecases.AdminUserDeps,
+	username string, email *string, now time.Time,
+) {
+	t.Helper()
+	if _, err := userusecases.ProvisionFederatedUser(
+		ctx, deps,
+		userusecases.ProvisionFederatedUserInput{PreferredUsername: username, Email: email, Now: now},
+	); err != nil {
+		t.Fatalf("arrange ProvisionFederatedUser(%s): %v", username, err)
+	}
+}
+
+func lastEventOfType(events []spec.DomainEvent, eventType string) spec.DomainEvent {
+	for _, event := range slices.Backward(events) {
+		if event.EventType() == eventType {
+			return event
+		}
+	}
+	return nil
+}
+
+func eventTypes(events []spec.DomainEvent) []string {
+	types := make([]string, 0, len(events))
+	for _, event := range events {
+		types = append(types, event.EventType())
+	}
+	return types
 }
 
 func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
@@ -476,6 +681,10 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 	}
 }
 
+// 具体例は削除の予約と復元の 2 段で、段ごとに状態とイベントの 2 つを言う。
+// 4 つの `Then` に 4 つの観測を置き、状態はいずれも保存層から読み直す。
+//
+//spec:covers EX-IDMANAGEMENT-011-01: 削除の予約で PendingDeletion と UserSoftDeleted、復元で Active と UserRestored になること。
 func TestRestoreUserReturnsToActive(t *testing.T) {
 	ctx := context.Background()
 	var events []spec.DomainEvent
@@ -491,6 +700,14 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	pending, err := userRepo.FindBySub(ctx, "alice-1")
+	if err != nil || pending == nil || !pending.IsSoftDeleted() {
+		t.Fatalf("削除の予約後の状態 = (%+v, %v)", pending, err)
+	}
+	if got := events[len(events)-1].EventType(); got != "UserSoftDeleted" {
+		t.Fatalf("last event=%s, want UserSoftDeleted", got)
+	}
+
 	restored, err := userusecases.RestoreUser(ctx, deps, "admin", "alice-1", now.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
@@ -500,6 +717,50 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 	}
 	if got := events[len(events)-1].EventType(); got != "UserRestored" {
 		t.Fatalf("last event=%s, want UserRestored", got)
+	}
+	stored, err := userRepo.FindBySub(ctx, "alice-1")
+	if err != nil || stored == nil || !stored.IsActive() {
+		t.Fatalf("復元後の保存された状態 = (%+v, %v)", stored, err)
+	}
+}
+
+// 具体例の `Given` は PendingDeletion である。有効な User をそのまま完全削除する経路とは
+// 別で、既存のテストが押さえているのは後者と自動 purge だった。
+//
+//spec:covers EX-IDMANAGEMENT-013-01: PendingDeletion の User を管理者が完全削除すると、状態が Deleted になり UserDeleted が発行されること。
+func TestPurgePendingDeletionUserTombstonesAndEmitsUserDeleted(t *testing.T) {
+	ctx := context.Background()
+	var events []spec.DomainEvent
+	deps, _, userRepo := softDeleteTestDeps(&events)
+	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
+	userRepo.Seed(&userdomain.User{
+		ID: "alice-1", PreferredUsername: "alice", PasswordHash: "hash",
+		CreatedAt: now, UpdatedAt: now,
+	})
+	if err := userusecases.SoftDeleteUser(ctx, deps, userusecases.SoftDeleteUserInput{
+		ActorUserID: "admin", Sub: "alice-1", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if pending, _ := userRepo.FindBySub(ctx, "alice-1"); pending == nil || !pending.IsSoftDeleted() {
+		t.Fatalf("前提が壊れている: %+v", pending)
+	}
+
+	if err := userusecases.DeleteUser(ctx, deps, userusecases.DeleteUserInput{
+		ActorUserID: "admin", Sub: "alice-1", Now: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	tombstone, err := userRepo.FindBySubIncludingDeleted(ctx, "alice-1")
+	if err != nil || tombstone == nil || !tombstone.IsDeleted() {
+		t.Fatalf("完全削除後の状態 = (%+v, %v)", tombstone, err)
+	}
+	deleted := lastEventOfType(events, "UserDeleted")
+	if deleted == nil {
+		t.Fatalf("UserDeleted が発行されていない: %v", eventTypes(events))
+	}
+	if got := deleted.(*idmdomain.UserDeleted).TargetUserID; got != "alice-1" {
+		t.Fatalf("UserDeleted target=%s", got)
 	}
 }
 

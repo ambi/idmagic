@@ -45,6 +45,11 @@ func applyUserImportForTest(
 	return summary, rows, err
 }
 
+// 失敗した行は確定境界へ 1 度も渡らない。**行の一部だけが残る形を落とすのが
+// この具体例である。** 確定の回数だけでなく、失敗した行の対象を読み直して
+// プロフィールもロールも必須操作もカスタム属性も動いていないことを見る。
+//
+//spec:covers EX-IDMANAGEMENT-004-08: 1 行の確定が途中で失敗したとき、その行のプロフィール・ロール・必須操作・カスタム属性が一部も保存されず、他の有効な行は適用され続けること。
 func TestApplyUserImportCommitsEachRowAtomicallyAndContinuesAfterFailure(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	repo.Seed(importPlannerUser("user-alice", "alice"))
@@ -85,6 +90,23 @@ func TestApplyUserImportCommitsEachRowAtomicallyAndContinuesAfterFailure(t *test
 	}
 	if mutation.ActorUserID != "admin" || mutation.AuditEventType != "UserUpdated" || mutation.Now.IsZero() {
 		t.Fatalf("audit metadata=%+v", mutation)
+	}
+	// 失敗した行は不可分である。4 つの書き込み先のどれにも痕跡が残ってはいけない。
+	bob, err := repo.FindBySub(importPlannerContext(), "user-bob")
+	if err != nil || bob == nil {
+		t.Fatalf("FindBySub=(%+v,%v)", bob, err)
+	}
+	if bob.Email == nil || *bob.Email != "bob@example.com" {
+		t.Fatalf("失敗した行の email が保存された: %v", bob.Email)
+	}
+	if len(bob.Roles) != 1 || bob.Roles[0] != "support" {
+		t.Fatalf("失敗した行の roles が保存された: %v", bob.Roles)
+	}
+	if len(bob.Lifecycle.RequiredActions) != 0 {
+		t.Fatalf("失敗した行の required_actions が保存された: %v", bob.Lifecycle.RequiredActions)
+	}
+	if got := bob.Attributes["department"].String; got == nil || *got != "Old" {
+		t.Fatalf("失敗した行のカスタム属性が保存された: %+v", got)
 	}
 }
 

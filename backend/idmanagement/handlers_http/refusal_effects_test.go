@@ -29,6 +29,7 @@ import (
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
 	"github.com/ambi/idmagic/backend/authentication"
+	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
@@ -46,6 +47,9 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/oauth2"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
@@ -53,6 +57,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -105,7 +110,20 @@ type idmRefusalFixture struct {
 	apiTokens   *apitokenusecases.Service
 	apiTokenDB  *apitokenmemory.Repository
 	events      *[]spec.DomainEvent
+	// consents はアカウントのデータエクスポートが読む先。同意が 1 件も無いテナントでも
+	// 経路自体は通るが、repository が未配線だと nil 参照で落ちる。
+	consents *oauth2memory.ConsentRepository
+	// clients は Agent への資格情報のバインドが照合する先。テナントごとに 1 つずつ
+	// 置いてあり、越境したバインドの拒否はこの分離の上でしか観測できない。
+	clients *oauth2memory.OAuth2ClientRepository
 }
+
+const (
+	// idmRefusalClient は default テナントの OAuth2 クライアント。
+	idmRefusalClient = "client-default"
+	// idmRefusalForeignClient は acme テナントの OAuth2 クライアント。
+	idmRefusalForeignClient = "client-acme"
+)
 
 func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	t.Helper()
@@ -201,6 +219,22 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		}.Service(),
 		apiTokenDB: apiTokenRepo,
 		events:     &[]spec.DomainEvent{},
+		consents:   oauth2memory.NewConsentRepository(),
+		clients:    oauth2memory.NewClientRepository(),
+	}
+	for tenantID, clientID := range map[string]string{
+		tenancydomain.DefaultTenantID: idmRefusalClient,
+		idmRefusalOtherTenant:         idmRefusalForeignClient,
+	} {
+		if err := fixture.clients.Save(ctx, &oauthdomain.OAuth2Client{
+			TenantID: tenantID, ClientID: clientID, ClientType: spec.ClientConfidential,
+			GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
+			TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+			CreatedAt:                now,
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	sessionManager := sessionusecases.NewSessionManager(fixture.sessions)
@@ -219,7 +253,11 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		Authentication: authentication.Module{
 			SessionStore: fixture.sessions, SessionManager: sessionManager, AuthnResolver: sessionManager,
 			PasswordHasher: testing_passwords.NewHasher(),
+			// 管理 API の作成は履歴の追記まで進む。拒否だけを見ていた間は届かなかった
+			// 経路なので未配線だったが、通常経路を通すと nil 参照で落ちる。
+			PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
 		},
+		OAuth2:            oauth2.Module{ConsentRepo: fixture.consents, ClientRepo: fixture.clients},
 		Notification:      sharednotification.Module{EmailSender: fixture.emails},
 		Jobs:              jobs.Module{Repo: fixture.jobClock},
 		ApiTokens:         apitoken.Module{Repo: apiTokenRepo},

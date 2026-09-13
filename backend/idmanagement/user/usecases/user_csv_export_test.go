@@ -44,6 +44,10 @@ func (s *exportArtifactStore) ReadCSVArtifactPage(context.Context, string, strin
 	return nil, idmports.CSVArtifact{}, errors.New("not implemented")
 }
 
+// 往復の保証を、小さな移行単位を超える規模で確かめる。少数の User では、
+// ページングの継ぎ目で行を落とす実装が通ってしまう。
+//
+//spec:covers EX-IDMANAGEMENT-007-01: 10,000 件の User を機械可読ヘッダーでエクスポートし、無編集のまま preview すると全行 unchanged になること。
 func TestExportUserCSVTenThousandRowsRoundTripAsUnchanged(t *testing.T) {
 	ctx := importPlannerContext()
 	repo := usermemory.NewUserRepository()
@@ -96,6 +100,11 @@ func TestExportUserCSVTenThousandRowsRoundTripAsUnchanged(t *testing.T) {
 	}
 }
 
+// 上限を超えたエクスポートは失敗し、再インポートできない成功済み成果物を作らない。
+// 成果物ストアが空のままであることを読むのは、書き終えてから失敗する実装と
+// 区別するためである。
+//
+//spec:covers EX-IDMANAGEMENT-007-03: 生成結果が CsvTransferPolicy の上限を超える User エクスポートが失敗し、成果物を残さないこと。
 func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 	ctx := importPlannerContext()
 	repo := usermemory.NewUserRepository()
@@ -120,13 +129,19 @@ func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 
 	policy.MaxRows = 1
 	repo.Seed(importPlannerUser("user-bob", "bob"))
+	overflow := &exportArtifactStore{}
 	_, err = ExportUserCSV(ctx, UserCSVExportDeps{
 		UserRepo:     repo,
 		SchemaReader: importSchemaReader{defs: []userdomain.UserAttributeDef{{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate}}},
-		Artifacts:    &exportArtifactStore{},
+		Artifacts:    overflow,
 	}, []string{"id", "preferred_username"}, "", policy)
 	var csvErr *idmdomain.CSVError
 	if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorTooManyRows {
 		t.Fatalf("err=%v", err)
+	}
+	// 「再インポートできない成功済み成果物を作らない」。途中まで書いた内容が
+	// 成果物として残れば、上限を超えた CSV がそのまま持ち出せてしまう。
+	if len(overflow.content) != 0 {
+		t.Fatalf("上限を超えたエクスポートが %d byte の成果物を残した", len(overflow.content))
 	}
 }

@@ -6,9 +6,11 @@ import (
 	"testing"
 )
 
-// scenario: エクスポートとインポートは `decode(encode(value)) == value` を共有する
-// (REQ-IDMANAGEMENT-007 / REQ-IDMANAGEMENT-027)。数式安全変換は情報を失う
-// エスケープではなく、可逆な接頭辞でなければならない。
+// 数式安全変換は情報を失うエスケープではなく、可逆な接頭辞でなければならない。
+// 既にアポストロフィーで始まる値を二重に守らないことと、RFC 4180 の引用を経ても
+// カンマ・引用符・改行が戻ることを、同じ 1 本で読む。
+//
+//spec:covers EX-IDMANAGEMENT-007-02, EX-IDMANAGEMENT-027-02: 危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む値で decode(encode(value)) が元の値と一致すること。
 func TestCSVFormulaSafeCodecIsReversible(t *testing.T) {
 	values := []string{
 		"plain", "=SUM(A1:A2)", "+1", "-1", "@name", "\tvalue", "\rvalue", "\nvalue",
@@ -50,12 +52,18 @@ func TestCSVFormulaSafeCodecIsReversible(t *testing.T) {
 	}
 }
 
-// scenario: シークレットを含むヘッダーはどの CSV 種別でもファイルごと拒否する
-// (REQ-IDMANAGEMENT-004 / REQ-IDMANAGEMENT-026)。拒否は observable な誤りを
-// 返すだけでなく、1 行も読ませてはならない。
+// 拒否は observable な誤りを返すだけでなく、1 行も読ませてはならない。
+// `accepts` が `password` を許していても拒否が残ることで、禁止一覧が種別ごとの
+// 語彙とは別の防護であることを固定する。
+//
+//spec:covers EX-IDMANAGEMENT-004-03, EX-IDMANAGEMENT-026-03: 未知の列、重複した列、password / password_hash を含むヘッダーが invalid_header でファイルごと拒否され、1 行も読めないこと。
 func TestCSVReaderRefusesForbiddenAndUnknownHeaders(t *testing.T) {
-	accepts := func(key string) bool { return key == "id" || key == "name" || key == "password" }
-	for _, header := range []string{"id,password", "id,unknown", "id,id"} {
+	// `accepts` が秘密の列まで許していても拒否は残る。禁止一覧は種別ごとの語彙とは
+	// 別の防護であり、語彙の側を緩めても素通りしてはならない。
+	accepts := func(key string) bool {
+		return key == "id" || key == "name" || key == "password" || key == "password_hash"
+	}
+	for _, header := range []string{"id,password", "id,password_hash", "id,unknown", "id,id"} {
 		reader, err := NewCSVReader(strings.NewReader(header+"\na,b\n"), accepts, DefaultCSVTransferPolicy())
 		var csvErr *CSVError
 		if reader != nil {

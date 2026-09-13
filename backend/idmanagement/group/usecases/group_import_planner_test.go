@@ -22,8 +22,11 @@ func planRows(t *testing.T, f *groupImportFixture, document string) []groupdomai
 	return rows
 }
 
-// scenario REQ-IDMANAGEMENT-026: `id` で解決し、`name` が別の Group を指す行は
-// identifier_mismatch。一致すれば改名として計画する。
+// 026-04 が並べる 3 つの識別子の誤りのうち、食い違いをここが持つ。重複は
+// TestGroupImportPlannerRefusesDuplicateTargetsWithinOneFile、欠落は
+// TestGroupImportPlannerRefusesRowsWithNoIdentifier が持つ。
+//
+//spec:covers EX-IDMANAGEMENT-026-04: id と name が別の Group を指す行が identifier_mismatch で rejected になること。
 func TestGroupImportPlannerResolvesByIDThenName(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
@@ -48,8 +51,10 @@ func TestGroupImportPlannerResolvesByIDThenName(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-026: ファイル内で同じ対象や同じ最終 name を複数行が
-// 指せば拒否する。リポジトリを引かずに判定できる衝突である。
+// リポジトリを引かずに判定できる衝突である。対象の重複と最終 name の重複は
+// 別のコードを持つので、両方を並べて読む。
+//
+//spec:covers EX-IDMANAGEMENT-026-04: 同じ対象または同じ最終 name を複数行が指すファイルが、duplicate_target と duplicate_name で rejected になること。
 func TestGroupImportPlannerRefusesDuplicateTargetsWithinOneFile(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual)
@@ -63,8 +68,9 @@ func TestGroupImportPlannerRefusesDuplicateTargetsWithinOneFile(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-027: 列が無ければ維持、optional 列の空は clear、
-// roles の空は空集合。読み取り専用列は受理して無視する。
+// 列が無ければ維持、optional 列の空は clear、roles の空は空集合。
+//
+//spec:covers EX-IDMANAGEMENT-027-04: 読み取り専用列だけを編集した行が受理されたうえで unchanged になること。
 func TestGroupImportPlannerHonoursColumnPresence(t *testing.T) {
 	f := newGroupImportFixture(t)
 	description := "the platform team"
@@ -93,8 +99,10 @@ func TestGroupImportPlannerHonoursColumnPresence(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-026: dynamic rule は片方の列だけを与えた行でも、
-// 維持された相方と組み合わせた最終状態として検証する。
+// 片方の列だけを与えた行でも、維持された相方と組み合わせた最終状態として検証する。
+// 列ごとに見ると通ってしまう組み合わせがあるので、そこが具体例の要点である。
+//
+//spec:covers EX-IDMANAGEMENT-026-09: manual グループへの式、式の無いまま有効化する行、未定義の属性や許可外の関数を参照する式が、いずれも invalid_dynamic_rule で rejected になること。
 func TestGroupImportPlannerValidatesTheDynamicRuleAsAFinalState(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.plan.SchemaRepo = ruleSchemaRepo{}
@@ -167,7 +175,10 @@ func TestGroupImportPlannerChoosesMembershipTypeOnlyAtCreation(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-026: 適用は古い計画を実行せず、現在状態から再計画する。
+// 別の操作がプレビューと同じ最終状態を先に作ったとき、適用は updated ではなく
+// unchanged になる。判定が保存済みの計画からではなく現在状態から出ている証拠である。
+//
+//spec:covers EX-IDMANAGEMENT-026-06: プレビュー後に Group の状態が別の操作で変わったとき、適用が古い計画を実行せず現在状態から再判定すること。
 func TestGroupImportApplyReplansAgainstCurrentState(t *testing.T) {
 	f := newGroupImportFixture(t)
 	group := f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
@@ -213,9 +224,10 @@ var errReadOnlySchemaRepo = errors.New("the group import test schema repository 
 
 var _ tenantports.TenantUserAttributeSchemaRepository = ruleSchemaRepo{}
 
-// scenario REQ-IDMANAGEMENT-026 / REQ-IDMANAGEMENT-027: `email` と `custom:<key>` は
-// 他の書き込み可能列と同じ規則に従う。列が無ければ維持、空セルは消去、値が不正なら
-// 行を拒否して連絡先も属性も変更しない。
+// `email` と `custom:<key>` は他の書き込み可能列と同じ規則に従う。列が無ければ維持、
+// 空セルは消去、値が不正なら行を拒否して連絡先も属性も変更しない。
+//
+//spec:covers EX-IDMANAGEMENT-026-10: email の形式違反が invalid_email で rejected になり、連絡先もカスタム属性も変更されないこと。
 func TestGroupImportPlannerAppliesEmailAndCustomAttributes(t *testing.T) {
 	f := newGroupImportFixture(t)
 	email := "eng@example.test"
@@ -277,8 +289,10 @@ func TestGroupImportPlannerAppliesEmailAndCustomAttributes(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-026: テナントスキーマに無い `custom:<key>` 列は
-// ヘッダーの時点でファイルごと拒否する。未検証の属性が CSV から入る余地を作らない。
+// 未検証の属性が CSV から入る余地を作らない。行ごとの拒否ではなくヘッダーの時点で
+// ファイルごと落ちるので、1 行も読まれないことがこの拒否の効果である。
+//
+//spec:covers EX-IDMANAGEMENT-026-10: テナントスキーマに無い custom:<key> 列を持つファイルが invalid_header でファイルごと拒否されること。
 func TestGroupImportPlannerRefusesUndeclaredCustomColumns(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual)

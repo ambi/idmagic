@@ -62,6 +62,10 @@ func eventTypes(events []spec.DomainEvent) []string {
 	return out
 }
 
+// 015-02 の「再発行されない」は、イベントの列が増えないことと、所属が二重にならない
+// ことの両方で読む。イベントだけを数えると、行を増やしてから発行を抑える実装が通る。
+//
+//spec:covers EX-IDMANAGEMENT-015-01, EX-IDMANAGEMENT-015-02: グループ由来のロールが実効ロールに乗ること、同じ所属の再登録が GroupMemberAdded も所属の行も増やさないこと。
 func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
 	ctx := context.Background()
 	deps, events := newGroupDeps(t)
@@ -104,6 +108,14 @@ func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
 	want := []string{"GroupCreated", "GroupMemberAdded"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("events = %v, want %v", got, want)
+	}
+	// 再登録が所属の行を増やしていないこと。
+	_, members, err := groupusecases.GetGroup(ctx, deps, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(members) != 1 || members[0].UserID != "user_alice" {
+		t.Fatalf("再登録で所属が %d 件になった: %+v", len(members), members)
 	}
 }
 

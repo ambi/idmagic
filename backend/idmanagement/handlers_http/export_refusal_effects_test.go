@@ -21,6 +21,8 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -35,6 +37,9 @@ func (f *idmRefusalFixture) runExport(t *testing.T, exportID string) {
 	}
 	deps := idmusecases.DataExportDeps{
 		UserRepo: f.users, GroupRepo: f.groups, JobRepo: f.jobs, CSVArtifacts: f.artifacts,
+		// 生成の 3 段はどれもイベントとしてしか観測できない。ここを配線しないと、
+		// 「状態は変えるが記録を残さない」実装がそのまま通る。
+		Emit: func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps: userusecases.UserCSVExportDeps{
 				UserRepo: f.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: f.artifacts,
@@ -57,6 +62,69 @@ func (f *idmRefusalFixture) runExport(t *testing.T, exportID string) {
 	}
 	if _, err := f.jobs.Complete(ctx, exportID, "w1", raw, time.Now().UTC()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// failExport は生成を失敗させたうえで、worker と同じ手順で failed まで進める。
+// 失敗の作り方は転送ポリシーの上限で、生成器の内側には触れない。
+func (f *idmRefusalFixture) failExport(t *testing.T, exportID string, policy idmdomain.CSVTransferPolicy) {
+	t.Helper()
+	ctx := context.Background()
+	job, err := f.jobs.Get(ctx, exportID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := idmusecases.DataExportDeps{
+		UserRepo: f.users, GroupRepo: f.groups, JobRepo: f.jobs, CSVArtifacts: f.artifacts,
+		Emit: func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps: userusecases.UserCSVExportDeps{
+				UserRepo: f.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: f.artifacts,
+			},
+			Policy: policy,
+		},
+	}
+	if _, err := idmusecases.DataExportHandler(deps)(ctx, job); err == nil {
+		t.Fatalf("前提が壊れている: 生成が成功した")
+	}
+	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.jobs.Fail(ctx, exportID, "w1", jobsports.FailOutcome{
+		NextStatus: jobsdomain.StatusFailed, Error: "csv_transfer_limit_exceeded",
+	}, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// createManualGroup は管理 route を通して手動メンバーシップのグループを建て、id を返す。
+func (f *idmRefusalFixture) createManualGroup(t *testing.T, session, name string) string {
+	t.Helper()
+	response := f.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/groups", sessionID: session, csrf: idmRefusalCSRF,
+		body: map[string]any{"name": name},
+	})
+	if response.Code != http.StatusCreated {
+		t.Fatalf("グループの作成が status=%d body=%s", response.Code, response.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil || created.ID == "" {
+		t.Fatalf("グループ id を読めない: %s", response.Body.String())
+	}
+	return created.ID
+}
+
+// addGroupMember は管理 route を通してグループへ利用者を足す。
+func (f *idmRefusalFixture) addGroupMember(t *testing.T, session, groupID, userID string) {
+	t.Helper()
+	response := f.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/groups/" + groupID + "/members/" + userID,
+		sessionID: session, csrf: idmRefusalCSRF,
+	})
+	if response.Code != http.StatusNoContent && response.Code != http.StatusOK {
+		t.Fatalf("メンバーの追加が status=%d body=%s", response.Code, response.Body.String())
 	}
 }
 

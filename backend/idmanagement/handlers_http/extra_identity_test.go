@@ -414,6 +414,11 @@ func TestAdminUserLifecycleExtra(t *testing.T) {
 	}
 }
 
+// **200 だけでは足りない。** 具体例が言うのは「レスポンスに含まれる」であって
+// 「要求が通る」ではないので、同意を 1 件与えたうえで応答の中身を読み、
+// プロフィールが呼び出し元のものであることまで確かめる。
+//
+//spec:covers EX-IDMANAGEMENT-018-01: 自己サービスのデータエクスポートが、呼び出し元のプロフィールと同意の一覧の両方を運ぶこと。
 func TestAccountDataExport(t *testing.T) {
 	h := newIdentityTestHandler(t)
 	e := h.echo
@@ -444,6 +449,25 @@ func TestAccountDataExport(t *testing.T) {
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
 		t.Fatalf("export data status=%d body=%s", response.Code, response.Body.String())
+	}
+	var exported struct {
+		Profile struct {
+			ID                string `json:"id"`
+			PreferredUsername string `json:"preferred_username"`
+		} `json:"profile"`
+		Consents []struct {
+			ClientID string   `json:"client_id"`
+			Scopes   []string `json:"scopes"`
+		} `json:"consents"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &exported); err != nil {
+		t.Fatalf("decode export: %v body=%s", err, response.Body.String())
+	}
+	if exported.Profile.ID != "regular" {
+		t.Fatalf("エクスポートが呼び出し元のプロフィールでない: %+v", exported.Profile)
+	}
+	if len(exported.Consents) != 1 || exported.Consents[0].ClientID != "client-1" {
+		t.Fatalf("同意の一覧が含まれていない: %+v", exported.Consents)
 	}
 }
 

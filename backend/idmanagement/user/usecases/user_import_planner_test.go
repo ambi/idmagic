@@ -114,6 +114,10 @@ func TestPlanUserImportCreateUpdateUnchangedAndFieldPresence(t *testing.T) {
 	}
 }
 
+// 004-04 が並べる識別子の誤りのうち、食い違いと欠落をここが持つ。重複は
+// TestPlanUserImportRefusesDuplicateTargetsAndFinalUsernames が持つ。
+//
+//spec:covers EX-IDMANAGEMENT-004-04: id と preferred_username が別の User を指す行、識別子を 1 つも持たない行が、それぞれ安定コードで rejected になること。
 func TestPlanUserImportRejectsIdentifierMismatchInvalidTypesAndMissingIdentifier(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	repo.Seed(importPlannerUser("user-alice", "alice"))
@@ -139,6 +143,10 @@ func TestPlanUserImportRejectsIdentifierMismatchInvalidTypesAndMissingIdentifier
 	}
 }
 
+// ガードが読めなかった場合も、ガードが配線されていない場合も同じ拒否になる。
+// 読めないことを「管理外」と読み替える実装は、外部管理の User を上書きしてしまう。
+//
+//spec:covers EX-IDMANAGEMENT-004-07: 外部の取り込み元が管理する User への行が source_managed で rejected になり、その User が変更されないこと。
 func TestPlanUserImportFailsClosedForSourceManagedUsers(t *testing.T) {
 	for name, guard := range map[string]perUserImportOwnershipGuard{
 		"managed":       {managed: map[string]bool{"user-alice": true}},
@@ -159,10 +167,22 @@ func TestPlanUserImportFailsClosedForSourceManagedUsers(t *testing.T) {
 			if plan.RejectedRows() != 1 || plan.Rows[0].Error == nil || plan.Rows[0].Error.Code != "source_managed" {
 				t.Fatalf("plan=%+v", plan)
 			}
+			// 具体例は「`User` は変更されない」まで言う。計画は保存層を動かさない。
+			stored, err := repo.FindBySub(importPlannerContext(), "user-alice")
+			if err != nil || stored == nil {
+				t.Fatalf("FindBySub=(%+v,%v)", stored, err)
+			}
+			if stored.Email == nil || *stored.Email != "alice@example.com" {
+				t.Fatalf("拒否が email を変えた: %v", stored.Email)
+			}
 		})
 	}
 }
 
+// 別の操作がプレビューと同じ最終状態を先に作ったとき、再計画は updated ではなく
+// unchanged になる。判定が保存済みの計画からではなく現在状態から出ている証拠である。
+//
+//spec:covers EX-IDMANAGEMENT-004-06: プレビュー後に User の状態が別の操作で変わったとき、適用が古い計画を実行せず現在状態から再判定すること。
 func TestPlanUserImportReplansAgainstCurrentRepositoryState(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	alice := importPlannerUser("user-alice", "alice")

@@ -168,8 +168,11 @@ func rowByNumber(t *testing.T, rows []groupdomain.GroupImportRowPlan, number int
 	return groupdomain.GroupImportRowPlan{}
 }
 
-// scenario REQ-IDMANAGEMENT-027: 無編集の export をそのまま preview すると全行
-// unchanged になり、`lifecycle_action` は全行で空として出力される。
+// 値には数式の引き金と引用符を混ぜてある。可逆な数式安全変換と RFC 4180 の引用を
+// 経ても差分にならないことが、027-02 の言う `decode(encode(value)) == value` の
+// エクスポート経路での姿である。
+//
+//spec:covers EX-IDMANAGEMENT-027-01, EX-IDMANAGEMENT-027-02: 無編集のエクスポートが全行 unchanged で往復すること、危険な先頭文字と引用符を含む値も差分にならないこと。
 func TestGroupImportUneditedExportRoundTripsAsUnchanged(t *testing.T) {
 	f := newGroupImportFixture(t)
 	// 連絡先とカスタム属性を持つ Group も往復の対象である。値には数式の引き金と
@@ -211,11 +214,14 @@ func TestGroupImportUneditedExportRoundTripsAsUnchanged(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-026: 既存 Group の membership_type を変える行は
-// immutable_membership_type で拒否され、その Group は何も変わらない。
+// 具体例は `membership_type`、ロール、メンバーシップのいずれも変わらないと言う。
+// 3 つとも読む。行が拒否されても同じ行のロールだけ書いてしまう実装がありうる。
+//
+//spec:covers EX-IDMANAGEMENT-026-07: 既存 Group の membership_type を変える行が immutable_membership_type で rejected になり、membership_type もロールもメンバーシップも変わらないこと。
 func TestGroupImportRefusesMembershipTypeChangeAndLeavesTheGroupUntouched(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
+	f.seedMember(t, "group-1", "alice")
 
 	document := "id,name,roles,membership_type\ngroup-1,engineering,catalog:read|invoice:read,dynamic\n"
 	summary, rows := f.preview(t, document)
@@ -241,10 +247,18 @@ func TestGroupImportRefusesMembershipTypeChangeAndLeavesTheGroupUntouched(t *tes
 	if len(after.Roles) != 1 || after.Roles[0] != "catalog:read" {
 		t.Fatalf("roles = %v, want the original roles: the refusal must not apply the rest of the row", after.Roles)
 	}
+	// 具体例は membership も変わらないと言う。membership_type を dynamic へ倒す実装は
+	// 手動の所属を捨てるので、ロールだけを見るテストでは見分けが付かない。
+	members, err := f.groupRepo.ListMembersByGroup(f.ctx, "acme", "group-1")
+	if err != nil || len(members) != 1 || members[0].UserID != "alice" {
+		t.Fatalf("memberships = %+v, %v; want the refusal to leave them alone", members, err)
+	}
 }
 
-// scenario REQ-IDMANAGEMENT-026: 外部の取り込み元が管理する Group と、所有権を
-// 判定できない Group は fail-closed に拒否され、値は 1 つも書き換わらない。
+// 所有権を「判定できない」側も同じ拒否になる。読めなかったガードを「管理外」と
+// 読み替える実装は、外部管理の Group を上書きしてしまう。
+//
+//spec:covers EX-IDMANAGEMENT-026-08: 外部の取り込み元が管理する Group と所有権を判定できない Group が fail-closed に rejected になり、値が 1 つも書き換わらないこと。
 func TestGroupImportRefusesSourceManagedGroupsFailClosed(t *testing.T) {
 	for name, guard := range map[string]groupSourceGuardStub{
 		"source managed":       {managed: map[string]bool{"group-1": true}},
@@ -272,8 +286,10 @@ func TestGroupImportRefusesSourceManagedGroupsFailClosed(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-028: `lifecycle_action=delete` の行だけが Group と
-// その membership を消し、同じファイルの create/update は影響を受けない。
+// 削除は membership の解放と同じ 1 つの書き込み集合で確定する。同じファイルの
+// create と update が巻き込まれないことも同時に読む。
+//
+//spec:covers EX-IDMANAGEMENT-028-01: lifecycle_action=delete の行だけが Group と membership を消し、同じファイルの create と update は影響を受けないこと。
 func TestGroupImportDeletesOnlyTheRowsThatAskForIt(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
@@ -340,8 +356,9 @@ func TestGroupImportDeletesOnlyTheRowsThatAskForIt(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-028: 削除の意図は更新と同居できず、対象を解決できない
-// 削除は作成に落ちない。どちらの拒否も Group を作らず消さない。
+// 3 つの拒否を 1 本のファイルで並べる。どれも Group を作らず消さないことまで読む。
+//
+//spec:covers EX-IDMANAGEMENT-028-02, EX-IDMANAGEMENT-028-03, EX-IDMANAGEMENT-028-04: delete 以外の lifecycle_action、差分を伴う delete 行、既存の Group を指さない delete 行が、それぞれ安定コードで rejected になり Group を作らず消さないこと。
 func TestGroupImportRefusesConflictingAndUnresolvableDeletions(t *testing.T) {
 	f := newGroupImportFixture(t)
 	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
@@ -394,9 +411,10 @@ func (g groupSourceGuardStub) SourceManagedGroupIDs(_ context.Context, _ string,
 	return out, nil
 }
 
-// scenario REQ-IDMANAGEMENT-027: 10,000 Group を全 import 互換列で export し、
-// 無編集のまま preview すると全行 unchanged になる。往復の保証を、小さな移行
-// 単位を超える規模で確かめる。
+// 往復の保証を、小さな移行単位を超える規模で確かめる。少数の Group では、
+// ページングの継ぎ目で行を落とす実装が通ってしまう。
+//
+//spec:covers EX-IDMANAGEMENT-027-01: 10,000 Group を全 import 互換列でエクスポートし、無編集のまま preview すると全行 unchanged になること。
 func TestGroupImportTenThousandGroupsRoundTripAsUnchanged(t *testing.T) {
 	f := newGroupImportFixture(t)
 	for index := range 10_000 {
