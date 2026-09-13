@@ -50,7 +50,7 @@
 - **バックエンド**：Go。
 - **フロントエンド**：React/TypeScript、Bun。
 - **データベース**：PostgreSQL。
-- **インフラ基盤**：Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Promtail、k6。
+- **インフラ基盤**：Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Grafana Alloy、k6。
 - **開発ツール管理**：mise。Go、Bun、golangci-lint、sqlc、psqldef、PostgreSQL クライアントのバージョンとリポジトリタスクを `mise.toml` に集約する。
 
 ## Context の内部構造

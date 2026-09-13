@@ -1,19 +1,19 @@
-min_version = "2026.8.0"
+min_version = "2026.9.6"
 
 [tools]
-go = "1.27.0"
-bun = "1.4.0"
-"aqua:golangci/golangci-lint" = "2.13.1"
+go = "1.27.1"
+bun = "1.4.2"
+"aqua:golangci/golangci-lint" = "2.13.2"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.20"
 "aqua:koalaman/shellcheck" = "0.11.0"
-"aqua:zizmorcore/zizmor" = "1.29.0"
+"aqua:zizmorcore/zizmor" = "1.30.1"
 "aqua:betterleaks/betterleaks" = "1.8.1"
 "aqua:google/osv-scanner" = "2.5.1"
 # govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
 # 宣言する言語版でビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
 # られるためである。詳細は wi-291。
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.7.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでも版を固定するのは、
 # 生成される変異の集合が版で変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/szhekpisov/gomutants" = "0.6.1"
@@ -51,6 +51,14 @@ run = [
   "govulncheck -version",
   "gomutants -version",
 ]
+
+[tasks.list-outdated-development-tools]
+description = "List development runtimes and standalone CLI tools that have a newer release"
+run = "mise outdated --bump --local"
+
+[tasks.update-development-tools]
+description = "Update development runtimes and standalone CLI tools to the latest releases"
+run = "mise upgrade --bump --local"
 
 [tasks.setup-cli-tools]
 description = "Install host CLI tools used by repository instructions"
@@ -393,6 +401,10 @@ go run ./backend/cmd/idmagic-batch "$@"
 [tasks.go-mod-tidy]
 description = "Synchronize Go module requirements and checksums"
 run = "go mod tidy"
+
+[tasks.list-outdated-go-dependencies]
+description = "List Go module dependencies that have a newer release in their current module path"
+run = "go list -m -u -mod=readonly all"
 
 [tasks.update-go-dependencies]
 description = "Update Go module requirements to the latest minor and patch releases"
@@ -883,6 +895,18 @@ run = "docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema"
 description = "Validate Docker Compose configuration"
 run = "docker compose -f infra/docker/docker-compose.dev.yaml config --quiet"
 
+[tasks.check-container-images]
+description = "Verify that pinned third-party container images can be resolved"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run check-container-images -- <image...>" >&2; exit 2; }
+for dependency_image in "$@"; do
+  docker manifest inspect "$dependency_image" >/dev/null
+  echo "ok  $dependency_image"
+done
+'''
+
 [tasks.check-schema]
 description = "Verify PostgreSQL schema convergence"
 run = "./infra/schema/check-convergence.sh"
@@ -915,7 +939,7 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 overlay=${1:-dev}
-docker run --rm -v "$PWD:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build "infra/k8s/overlays/$overlay" | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary
+docker run --rm -v "$PWD:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build "infra/k8s/overlays/$overlay" | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary
 '''
 
 [tasks.deploy-k8s]
@@ -935,13 +959,15 @@ kubectl rollout undo "deployment/${1:-idmagic-api}"
 '''
 
 [tasks.check-monitoring]
-description = "Validate Prometheus rules and Grafana/Kubernetes assets"
+description = "Validate Prometheus, Alloy, Grafana, and Kubernetes monitoring assets"
 run = [
-  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v2.55.1 check rules /workspace/infra/docker/prometheus-rules.yml",
+  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.14.0 check rules /workspace/infra/docker/prometheus-rules.yml",
+  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.19.2 validate /workspace/infra/docker/alloy-config.alloy",
+  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.19.2 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
   "jq empty infra/docker/grafana-dashboard.json",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring > /dev/null",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring/operator > /dev/null",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring/loki > /dev/null",
+  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring > /dev/null",
+  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring/operator > /dev/null",
+  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring/loki > /dev/null",
 ]
 
 [tasks.deploy-monitoring]
@@ -959,12 +985,12 @@ run = '''
 set -eu
 base_url=${1:-http://host.docker.internal:8080/realms/default}
 browser_origin=${2:-http://localhost:8080}
-docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:0.54.0 run /scripts/oauth-smoke.js
+docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.2.0 run /scripts/oauth-smoke.js
 '''
 
 [tasks.check-k6]
 description = "Parse and inspect the k6 module"
-run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:0.54.0 inspect /scripts/oauth-smoke.js"
+run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.2.0 inspect /scripts/oauth-smoke.js"
 
 [tasks.demo]
 description = "Run the OAuth2/OIDC demo"

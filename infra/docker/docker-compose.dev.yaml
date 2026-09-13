@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: idmagic
       POSTGRES_USER: idmagic
@@ -13,7 +13,7 @@ services:
     ports: ["5432:5432"]
 
   schema:
-    image: sqldef/psqldef:3.11.18
+    image: sqldef/psqldef:3.11.20
     environment:
       PGPASSWORD: idmagic
     volumes:
@@ -25,7 +25,7 @@ services:
 
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.153.0
+    image: otel/opentelemetry-collector-contrib:0.160.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
@@ -34,7 +34,7 @@ services:
   # MetricsExposition の /metrics を pull-scrape する最小例。recording/alert
   # rule と dashboard は wi-11 (Kubernetes/monitoring 資産) が所有する。
   prometheus:
-    image: prom/prometheus:v2.55.1
+    image: prom/prometheus:v3.14.0
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus-rules.yml:/etc/prometheus/rules.yml:ro
@@ -44,26 +44,25 @@ services:
 
   # wi-304: application log aggregation (JSON Lines -> Loki).
   loki:
-    image: grafana/loki:3.1.1
+    image: grafana/loki:3.7.7
     command: ["-config.file=/etc/loki/loki-config.yaml"]
     volumes:
       - ./loki-config.yaml:/etc/loki/loki-config.yaml:ro
     ports: ["3100:3100"]
 
-  # Reads every container's logs via the Docker Engine API (docker_sd_configs
-  # in promtail-config.yaml), so only the socket is mounted, not a host log
-  # directory.
-  promtail:
-    image: grafana/promtail:3.1.1
-    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+  # Alloy は Docker Engine API から全コンテナのログを読み取るため、
+  # ホストのログディレクトリではなく Docker socket だけをマウントする。
+  alloy:
+    image: grafana/alloy:v1.19.2
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     volumes:
-      - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       loki: { condition: service_started }
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:13.2.1
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin

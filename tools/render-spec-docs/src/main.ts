@@ -93,7 +93,12 @@ Object.assign(globalThis, {
   SVGElement: validationWindow.SVGElement,
 })
 const { default: mermaid } = await import('mermaid')
-mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
+mermaid.initialize({
+  startOnLoad: false,
+  securityLevel: 'strict',
+  layout: 'dagre',
+  look: 'classic',
+})
 for (const source of result.mermaidSources) await mermaid.parse(source)
 await validationWindow.close()
 

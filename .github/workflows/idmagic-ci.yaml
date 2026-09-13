@@ -13,13 +13,13 @@ jobs:
     name: Verify specification, backend, and UI
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          version: 2026.8.14
+          version: 2026.9.6
       - name: Install dependencies
         run: mise run setup
       - name: Verify Core (Tools & Configs)
@@ -47,7 +47,7 @@ jobs:
       - name: Build UI
         run: mise run build-ui
       - name: Upload UI coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -58,12 +58,12 @@ jobs:
     name: Run the browser end-to-end tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          version: 2026.8.14
+          version: 2026.9.6
       - name: Install dependencies
         run: mise run setup
       - name: Test UI (End-to-end)
@@ -73,12 +73,12 @@ jobs:
     name: Verify psqldef schema convergence
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          version: 2026.8.14
+          version: 2026.9.6
       - name: Verify empty-database convergence
         run: mise run check-schema
 
@@ -89,13 +89,13 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: go,javascript-typescript
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
 
   dependency-audit:
     name: Audit dependencies for known vulnerabilities
@@ -105,12 +105,12 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          version: 2026.8.14
+          version: 2026.9.6
       - name: Require a reason and an unexpired deadline on every suppression
         run: mise run check-vulnerability-suppressions
       # 終了コードを残したまま失敗する。0 は検出なし、1 は検出あり、それ以外は検査器自身の
@@ -144,7 +144,7 @@ jobs:
               )
             )
           }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: osv-results.sarif
           category: osv-scanner-source

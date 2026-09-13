@@ -1,4 +1,4 @@
-FROM oven/bun:1.4.0-alpine AS build
+FROM oven/bun:1.4.2-alpine AS build
 ARG VITE_DEMO_LOGIN_ENABLED=false
 ENV VITE_DEMO_LOGIN_ENABLED=$VITE_DEMO_LOGIN_ENABLED
 WORKDIR /src
@@ -7,7 +7,7 @@ RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
-FROM caddy:2.10-alpine
+FROM caddy:2.11.4-alpine
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/dist /srv
 EXPOSE 8080

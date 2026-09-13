@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: idmagic-alloy
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: alloy
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: alloy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: alloy
+        app.kubernetes.io/part-of: idmagic
+    spec:
+      serviceAccountName: idmagic-alloy
+      # すべてのノードの Pod ログを取りこぼさないように control-plane でも実行する。
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.19.2
+          args:
+            - run
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --storage.path=/var/lib/alloy/data
+            - /etc/alloy/config.alloy
+          ports:
+            - name: http
+              containerPort: 12345
+          env:
+            - name: HOSTNAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          readinessProbe:
+            httpGet: { path: /-/ready, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /-/ready, port: http }
+            periodSeconds: 30
+          securityContext:
+            # ホスト所有の Pod ログを読むため、アプリケーションとは異なり root で実行する。
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: config, mountPath: /etc/alloy }
+            - { name: data, mountPath: /var/lib/alloy/data }
+            - { name: varlogpods, mountPath: /var/log/pods, readOnly: true }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 200m, memory: 256Mi }
+      volumes:
+        - name: config
+          configMap: { name: idmagic-alloy }
+        - name: data
+          emptyDir: {}
+        - name: varlogpods
+          hostPath: { path: /var/log/pods }

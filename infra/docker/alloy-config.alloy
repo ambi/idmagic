@@ -1,0 +1,73 @@
+discovery.docker "docker" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "5s"
+}
+
+loki.process "docker" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.match {
+		selector = "{compose_service=~\"idp|worker\"}"
+
+		stage.json {
+			expressions = {
+				level      = "level",
+				request_id = "request_id",
+				service    = "service",
+				span_id    = "span_id",
+				timestamp  = "timestamp",
+				trace_id   = "trace_id",
+			}
+		}
+
+		stage.labels {
+			values = {
+				level   = null,
+				service = null,
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				request_id = null,
+				span_id    = null,
+				trace_id   = null,
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339Nano"
+		}
+	}
+}
+
+discovery.relabel "docker" {
+	targets = []
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "compose_service"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+}
+
+loki.source.docker "docker" {
+	host             = "unix:///var/run/docker.sock"
+	targets          = discovery.docker.docker.targets
+	forward_to       = [loki.process.docker.receiver]
+	relabel_rules    = discovery.relabel.docker.rules
+	refresh_interval = "5s"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+	external_labels = {}
+}

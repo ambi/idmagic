@@ -45,7 +45,7 @@ function SessionRow({
   const t = useDictionary(accountActivityDictionary)
   const { formatDateTime } = useFormatters()
   return (
-    <li className="flex items-start justify-between gap-3 px-5 py-4">
+    <li data-session-id={session.id} className="flex items-start justify-between gap-3 px-5 py-4">
       <div className="flex min-w-0 items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
           <IconDeviceDesktop size={18} aria-hidden="true" />

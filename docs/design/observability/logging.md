@@ -66,6 +66,8 @@ URI のクエリ文字列と `Authorization` ヘッダーは既定で記録し�
 
 ## 収集と未確定事項
 
-ローカルの Docker Compose では Promtail が Docker のログを Loki へ送り、Kubernetes では DaemonSet が Pod ログを収集する。
+ローカルの Docker Compose では Grafana Alloy が Docker Engine API からコンテナログを読み、Loki へ送る。
+Kubernetes では Alloy の DaemonSet が同じノードの Pod ログを収集する。
+どちらも `service` と `level` をラベルにし、`trace_id`、`span_id`、`request_id` を structured metadata にする。
 保持期間、外部オブジェクトストレージ、閲覧権限、削除、容量超過時の挙動は配備環境に依存し、現在の本番設計としては未確定である。
 開発用 Loki の単一レプリカとローカルファイル保存を、本番の可用性または保持保証として扱わない。

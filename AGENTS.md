@@ -10,6 +10,8 @@
 
 実行前に `mise tasks` で該当タスクを探す。一般的な操作にタスクがなければ `mise.toml` へ追加する。
 
+一度だけの調査または移行に使い、反復利用しないコマンドは `mise` タスクにせず直接実行する。
+
 `go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。`mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` がその用途を持つ。
 
 テストが宣言済みの `REQ-*`、`EX-*`、標準 id を被覆したと主張するときは、テスト関数の直上へ `//spec:covers <id>[, <id>]: <このテストが何を固定しているか>` を置く。この形だけが被覆と数えられるので、散文で id に言及するのは安全である。規約は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の「Citing a normative id from a test」が定める。

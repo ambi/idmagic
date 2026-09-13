@@ -331,6 +331,7 @@ describe('renderSpecificationSite', () => {
     expect(result.files['models/index.html']).toContain('data-model-search')
     expect(result.files['models/index.html']).toContain('assets/site.js')
     expect(result.assets['site.css']).toContain('--diagram-line:#b9c8ff')
+    expect(result.assets['site.js']).toContain("layout:'dagre',look:'classic'")
     expect(result.files['models/example-demo-internalrecord.html']).toContain('API 非公開')
     expect(result.files['models/example-demo-internalrecord.html']).toContain('minLength: 3')
   })

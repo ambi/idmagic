@@ -76,10 +76,11 @@ describe('mise dependency audit boundary', () => {
     expect(String(config.tasks?.['audit-go-reachability']?.run ?? '')).toContain('govulncheck')
   })
 
-  /** 版が動くと検出も到達性の判定も動く。Design の議論はこの 2 つの版を前提にしている。 */
+  /** 版が動くと検出も到達性の判定も動くため、可動指定や版範囲を許さない。 */
   it('pins both scanners to an exact version', () => {
-    expect(config.tools?.['go:golang.org/x/vuln/cmd/govulncheck']).toBe('1.7.0')
-    expect(config.tools?.['aqua:google/osv-scanner']).toBe('2.5.1')
+    const exactVersion = /^\d+\.\d+\.\d+$/
+    expect(config.tools?.['go:golang.org/x/vuln/cmd/govulncheck']).toMatch(exactVersion)
+    expect(config.tools?.['aqua:google/osv-scanner']).toMatch(exactVersion)
   })
 
   it('runs the suppression checker from the standard check suite', () => {

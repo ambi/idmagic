@@ -1118,7 +1118,7 @@ const siteScript = `
 window.addEventListener('DOMContentLoaded',function(){
   if(window.mermaid&&document.querySelector('.mermaid')){
     var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-    window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',themeVariables:dark?{background:'#1d2431',primaryColor:'#242f52',primaryTextColor:'#eef2f8',primaryBorderColor:'#b9c8ff',lineColor:'#b9c8ff',textColor:'#eef2f8',edgeLabelBackground:'#171c27',tertiaryColor:'#1d2431'}:{background:'#f8f9fd',primaryColor:'#e9eeff',primaryTextColor:'#182033',primaryBorderColor:'#294cba',lineColor:'#294cba',textColor:'#182033',edgeLabelBackground:'#fff',tertiaryColor:'#f8f9fd'}});
+    window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',layout:'dagre',look:'classic',theme:'base',themeVariables:dark?{background:'#1d2431',primaryColor:'#242f52',primaryTextColor:'#eef2f8',primaryBorderColor:'#b9c8ff',lineColor:'#b9c8ff',textColor:'#eef2f8',edgeLabelBackground:'#171c27',tertiaryColor:'#1d2431'}:{background:'#f8f9fd',primaryColor:'#e9eeff',primaryTextColor:'#182033',primaryBorderColor:'#294cba',lineColor:'#294cba',textColor:'#182033',edgeLabelBackground:'#fff',tertiaryColor:'#f8f9fd'}});
     window.mermaid.run({querySelector:'.mermaid'});
   }
   var search=document.querySelector('[data-model-search]');

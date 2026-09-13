@@ -22,7 +22,7 @@ API は入口で `traceparent` を検証し、有効ならトレースを継続�
 
 ## 所有と流れ
 
-アプリケーションは OpenTelemetry と構造化ログを生成し、Prometheus はメトリクスを収集する。現行のローカル監視構成では Promtail がコンテナログを Loki へ送り、Grafana が Prometheus と Loki を表示する。プロダクトコードは特定の可視化プロダクトへ依存せず、信号の意味と属性名を安定させる。
+アプリケーションは OpenTelemetry と構造化ログを生成し、Prometheus はメトリクスを収集する。現行のローカル監視構成では Grafana Alloy がコンテナログを Loki へ送り、Grafana が Prometheus と Loki を表示する。プロダクトコードは特定の可視化プロダクトへ依存せず、信号の意味と属性名を安定させる。
 
 サービス目標の測定境界と値は [品質要求](../../requirements/quality.md) が、アラートからの対応手順は [Runbooks](../../runbooks/) が所有する。観測設計は、目標を計算できる信号と手順へ到達できる通知を提供する。
 

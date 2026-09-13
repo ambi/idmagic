@@ -335,41 +335,39 @@ test('account session list can revoke a different browser session', async () => 
     await first.navigate(`${uiOrigin}/account/activity`)
     await waitForPage(first, 'account-activity')
     await waitForText(first, 'End other sessions')
-    const beforeCount = Number(
-      await first.evaluate(`(() => [...document.querySelectorAll('button')]
-        .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
-    )
-    expect(beforeCount).toBeGreaterThan(0)
-    const clicked = await first.evaluate(`(() => {
+    const revokedSessionID = String(
+      await first.evaluate(`(() => {
       const target = [...document.querySelectorAll('button')]
         .find((button) => (button.textContent ?? '').trim() === 'End')
-      if (!target) return false
+      if (!target) return ''
+      const sessionID = target.closest('[data-session-id]')?.getAttribute('data-session-id') ?? ''
       target.click()
-      return true
-    })()`)
-    expect(clicked).toBe(true)
+      return sessionID
+    })()`),
+    )
+    expect(revokedSessionID).not.toBe('')
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
-      const afterCount = Number(
-        await first.evaluate(`(() => [...document.querySelectorAll('button')]
-          .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
+      const revokedRowExists = Boolean(
+        await first.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
+          .some((row) => row.getAttribute('data-session-id') === ${JSON.stringify(revokedSessionID)}))()`),
       )
-      if (afterCount < beforeCount) {
+      if (!revokedRowExists) {
         // 行が消えるのは画面上の状態にすぎない。読み直してサーバーの一覧からも
         // 消えていることを確かめ、失効が実際に保存されたことまで観測する。
         await first.navigate(`${uiOrigin}/account/activity`)
         await waitForPage(first, 'account-activity')
         await waitForText(first, 'End other sessions')
-        const reloadedCount = Number(
-          await first.evaluate(`(() => [...document.querySelectorAll('button')]
-            .filter((button) => (button.textContent ?? '').trim() === 'End').length)()`),
+        const reloadedRowExists = Boolean(
+          await first.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
+            .some((row) => row.getAttribute('data-session-id') === ${JSON.stringify(revokedSessionID)}))()`),
         )
-        expect(reloadedCount).toBeLessThan(beforeCount)
+        expect(reloadedRowExists).toBe(false)
         return
       }
       await Bun.sleep(POLL_INTERVAL_MS)
     }
-    throw new Error('timeout waiting for revoked session row count to decrease')
+    throw new Error('timeout waiting for the revoked session row to disappear')
   } finally {
     first.close()
     second.close()

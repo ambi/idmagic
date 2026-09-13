@@ -10,6 +10,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // 期限は Scan まで生きていなければならず、Scan を終えたら解放されなければならない。
@@ -283,3 +284,4 @@ func (r *contextCheckingRows) Scan(dest ...any) error {
 func (*contextCheckingRows) Values() ([]any, error) { return []any{42}, nil }
 func (*contextCheckingRows) RawValues() [][]byte    { return nil }
 func (*contextCheckingRows) Conn() *pgx.Conn        { return nil }
+func (*contextCheckingRows) TypeMap() *pgtype.Map   { return nil }

@@ -4,7 +4,17 @@ resources:
   - loki-configmap.yaml
   - loki-statefulset.yaml
   - loki-networkpolicy.yaml
-  - promtail-rbac.yaml
-  - promtail-configmap.yaml
-  - promtail-daemonset.yaml
+  - alloy-rbac.yaml
+  - alloy-daemonset.yaml
   - grafana-loki-datasource.yaml
+configMapGenerator:
+  - name: idmagic-alloy
+    files:
+      - config.alloy=alloy-config.alloy
+    options:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: alloy
+        app.kubernetes.io/part-of: idmagic
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,0 +1,101 @@
+discovery.kubernetes "kubernetes_pods" {
+	role = "pod"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+loki.process "kubernetes_pods" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.cri {}
+
+	stage.match {
+		selector = "{component=~\"api|worker.*\"}"
+
+		stage.json {
+			expressions = {
+				level      = "level",
+				request_id = "request_id",
+				service    = "service",
+				span_id    = "span_id",
+				timestamp  = "timestamp",
+				trace_id   = "trace_id",
+			}
+		}
+
+		stage.labels {
+			values = {
+				level   = null,
+				service = null,
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				request_id = null,
+				span_id    = null,
+				trace_id   = null,
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339Nano"
+		}
+	}
+}
+
+discovery.relabel "kubernetes_pods" {
+	targets = discovery.kubernetes.kubernetes_pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_node_name"]
+		target_label  = "__host__"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_component"]
+		target_label  = "component"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		target_label  = "__path__"
+		replacement   = "/var/log/pods/*$1/*.log"
+	}
+}
+
+loki.source.file "kubernetes_pods" {
+	targets    = discovery.relabel.kubernetes_pods.output
+	forward_to = [loki.process.kubernetes_pods.receiver]
+
+	file_match {
+		enabled = true
+	}
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://idmagic-loki:3100/loki/api/v1/push"
+	}
+	external_labels = {}
+}
