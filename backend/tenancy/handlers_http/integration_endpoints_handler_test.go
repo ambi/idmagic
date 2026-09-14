@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,6 +87,7 @@ func (s stubIntegrationAuthnResolver) Resolve(context.Context, authdomain.Header
 	return &authdomain.AuthenticationContext{UserID: s.userID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}, nil
 }
 
+//spec:covers EX-TENANCY-001-01: path 形式の正規 issuer から各プロトコルの公開 URL と署名証明書情報を導出し、秘密を返さない。
 func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
 	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStylePath)
 	rec := httptest.NewRecorder()
@@ -110,11 +112,17 @@ func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
 	if got.SAML.SigningCertificate.FingerprintSHA256 == "" {
 		t.Fatal("certificate fingerprint is required")
 	}
+	for _, secretName := range []string{"client_secret", "api_token", "private_key"} {
+		if strings.Contains(rec.Body.String(), secretName) {
+			t.Fatalf("response contains secret field %q: %s", secretName, rec.Body.String())
+		}
+	}
 	if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
 		t.Fatalf("Cache-Control=%q", cc)
 	}
 }
 
+//spec:covers EX-TENANCY-001-01: subdomain 形式ではリクエスト先テナントの host を正規 issuer として返す。
 func TestAdminIntegrationEndpointsUseCanonicalSubdomainIssuer(t *testing.T) {
 	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStyleSubdomain)
 	rec := httptest.NewRecorder()

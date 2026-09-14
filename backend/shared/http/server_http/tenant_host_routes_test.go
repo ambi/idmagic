@@ -64,6 +64,8 @@ func requestWithHost(host, target string) *http.Request {
 // fail-closed: 未登録の Host はどのテナントにも解決してはならない。
 // ここが fail-open だと任意の Host ヘッダで default テナントに到達でき、
 // テナント境界の破りになる。resolver で最初に固定するのはこの性質。
+//
+//spec:covers EX-TENANCY-008-01: 未知の subdomain は default を含むどのテナントにも解決されず 404 になる。
 func TestUnknownSubdomainDoesNotResolveToDefaultTenant(t *testing.T) {
 	e := hostRoutingFixture(t, "idp.example")
 
@@ -75,16 +77,22 @@ func TestUnknownSubdomainDoesNotResolveToDefaultTenant(t *testing.T) {
 }
 
 // prefix 無しの path は default テナントの第 2 ロケーションになるため廃止した。
+//
+//spec:covers EX-TENANCY-006-03: realm prefix の無い /authorize は default テナントへ落ちず 404 tenant_not_found になる。
 func TestBareRouteOnBaseDomainIsNotATenantLocation(t *testing.T) {
 	e := hostRoutingFixture(t, "idp.example")
 
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, requestWithHost("idp.example", "/.well-known/openid-configuration"))
+	e.ServeHTTP(rec, requestWithHost("idp.example", "/authorize"))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), "tenant_not_found") {
+		t.Fatalf("body = %s, want tenant_not_found", rec.Body.String())
+	}
 }
 
+//spec:covers EX-TENANCY-007-01, EX-TENANCY-010-01: subdomain の Host から acme を解決し、issuer と endpoint URL を同じ host の正規ロケーションから組み立てる。
 func TestSubdomainTenantResolvesFromHost(t *testing.T) {
 	e := hostRoutingFixture(t, "idp.example")
 
@@ -110,6 +118,8 @@ func TestSubdomainTenantResolvesFromHost(t *testing.T) {
 
 // 不変条件「1 テナント = 1 正規ロケーション」: テナントは自分の endpoint_style が
 // 指す経路からのみ到達でき、他方の経路では不在として扱う。
+//
+//spec:covers EX-TENANCY-009-01, EX-TENANCY-009-02, EX-TENANCY-009-03: path と subdomain の各テナントは正規ロケーション以外から到達できず、同じ origin から別 realm へ越境できない。
 func TestTenantIsReachableOnlyAtItsCanonicalLocation(t *testing.T) {
 	e := hostRoutingFixture(t, "idp.example")
 

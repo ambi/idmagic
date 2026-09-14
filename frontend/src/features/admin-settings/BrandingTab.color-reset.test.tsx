@@ -16,6 +16,7 @@ const response = (status: number, body: unknown = {}) => ({
 describe('BrandingTab color reset', () => {
   afterEach(() => restoreGlobals())
 
+  //spec:covers EX-TENANCY-004-01: 設定済み色の現在値と既定へ戻す操作を表示し、解除した色を空文字列で保存する。
   it('resets each configured color to unset and saves empty color values', async () => {
     const fetch = mock()
       .mockResolvedValueOnce(

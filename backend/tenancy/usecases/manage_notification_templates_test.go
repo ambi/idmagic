@@ -51,6 +51,8 @@ func validTemplateInput() tenantusecases.NotificationTemplateInput {
 }
 
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
+//
+//spec:covers EX-TENANCY-016-01: 全 template key と全対応 locale を未上書き状態で一覧する。
 func TestListNotificationTemplatesCoversTheWholeCatalog(t *testing.T) {
 	ctx := context.Background()
 	deps, _ := newNotificationTemplateDeps(ctx, t)
@@ -77,6 +79,8 @@ func TestListNotificationTemplatesCoversTheWholeCatalog(t *testing.T) {
 }
 
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
+//
+//spec:covers EX-TENANCY-016-01, EX-TENANCY-016-03: 上書きの保存と組込み既定への reset を行い、上書きが無い reset も冪等に成功する。
 func TestUpdateThenResetNotificationTemplate(t *testing.T) {
 	ctx := context.Background()
 	deps, _ := newNotificationTemplateDeps(ctx, t)
@@ -185,6 +189,8 @@ func TestUpdateNotificationTemplateRejectsInvalidInput(t *testing.T) {
 }
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
+//
+//spec:covers EX-TENANCY-018-01: 保存前の文面をサンプル値で描画し、メール送信も上書き保存も行わない。
 func TestPreviewNotificationTemplateDoesNotSendOrSave(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)
@@ -241,6 +247,8 @@ func TestPreviewNotificationTemplateFallsBackToTheEffectiveTemplate(t *testing.T
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
 // 宛先は操作者本人に固定する。任意宛先を許すとメール送信の踏み台になる。
+//
+//spec:covers EX-TENANCY-018-01: テスト通知を操作者本人にだけ送り、text と HTML を含む配送結果を返す。
 func TestSendTestNotificationGoesToTheActorOnly(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)

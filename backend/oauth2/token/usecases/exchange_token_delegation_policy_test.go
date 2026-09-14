@@ -59,7 +59,7 @@ func exchangeWithPolicy(
 
 // 境界の両側を踏むのは、比較演算子の向きを取り違えた実装を片側だけでは見分けられないためである。
 //
-//spec:covers REQ-OAUTH2-048, EX-OAUTH2-048-02, EX-OAUTH2-048-03, EX-OAUTH2-048-04: 上限以内の交換は成立し、超える交換は拒否して理由を監査へ残し、上限を解決できないときはシステム既定へ退避せず拒否する。
+//spec:covers REQ-OAUTH2-048, EX-OAUTH2-048-02, EX-OAUTH2-048-03, EX-OAUTH2-048-04, EX-TENANCY-021-02: テナントの厳しい上書きを交換判定に使い、上限以内は成立し、超過と解決失敗は token を発行せず拒否する。
 func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 	t.Run("a tightened limit rejects a chain the default would allow", func(t *testing.T) {
 		// 既存 act の深さ 1 → 交換後は 2。システム既定 (3) なら通るが、上限 1 では拒否。

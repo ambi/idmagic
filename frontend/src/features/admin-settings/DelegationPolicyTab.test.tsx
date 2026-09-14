@@ -27,7 +27,7 @@ const response = (status: number, body: unknown = {}) => ({
 describe('DelegationPolicyTab', () => {
   afterEach(() => restoreGlobals())
 
-  //spec:covers REQ-TENANCY-021: 空欄はシステム既定の継承を表し、厳しい上書きだけを保存できる。
+  //spec:covers REQ-TENANCY-021, EX-TENANCY-021-01, EX-TENANCY-021-02, EX-TENANCY-021-05: 現在値とシステム既定を表示し、厳しい上書きを保存して空欄から 0 を送り継承へ戻す。
   it('saves a tighter delegation depth and can clear it back to the system default', async () => {
     const fetch = mock()
       .mockResolvedValueOnce(response(200, { ...settings, max_delegation_depth: 1 }))
@@ -62,7 +62,7 @@ describe('DelegationPolicyTab', () => {
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ max_delegation_depth: 0 })
   })
 
-  //spec:covers REQ-TENANCY-021: システム上限を超える値は往復前に presentation logic で拒否する。
+  //spec:covers REQ-TENANCY-021, EX-TENANCY-021-03: システム上限を超える値は往復前に presentation logic で拒否する。
   it('rejects a value above the system ceiling without sending it', () => {
     const fetch = mock()
     stubGlobal('fetch', fetch)

@@ -31,7 +31,7 @@ func (r *fixedAuthnResolver) Resolve(
 	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix()}, nil
 }
 
-//spec:covers EX-OAUTH2-033-01: realm 接頭辞付きの Discovery Metadata は、issuer も authorization_endpoint も基底 URL + /realms/<realm> を接頭辞に持つ。
+//spec:covers EX-OAUTH2-033-01, EX-TENANCY-006-01, EX-TENANCY-010-01: realm 接頭辞付きの Discovery Metadata は、issuer と endpoint URL を同じ path 形式の正規ロケーションから組み立てる。
 func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 	tenants := tenancymemory.NewTenantRepository()
 	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
@@ -59,6 +59,7 @@ func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-006-02: 無効化済みの path 形式テナントは存在を漏らさない invalid request として拒否される。
 func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 	tenants := tenancymemory.NewTenantRepository()
 	now := time.Now().UTC()

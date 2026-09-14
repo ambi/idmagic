@@ -106,13 +106,14 @@ func TestUserAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-002-01: admin が editable_by_user=true の custom 属性を追加すると更新後のスキーマへ保存される。
 func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	e, schemaRepo, events := newUserAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
 	)
 	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/user_attribute_schema", map[string]any{
 		"attributes": []map[string]any{
-			{"key": "region", "type": "string", "visibility": "claim_exposed", "claim_name": "region"},
+			{"key": "region", "type": "string", "visibility": "claim_exposed", "claim_name": "region", "editable_by_user": true},
 		},
 	})
 	if rec.Code != http.StatusOK {
@@ -122,7 +123,7 @@ func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored == nil || len(stored.Attributes) != 1 || stored.Attributes[0].Key != "region" {
+	if stored == nil || len(stored.Attributes) != 1 || stored.Attributes[0].Key != "region" || !stored.Attributes[0].EditableByUser {
 		t.Fatalf("schema not persisted: %#v", stored)
 	}
 	found := false

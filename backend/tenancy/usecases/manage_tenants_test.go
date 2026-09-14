@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
+//spec:covers EX-TENANCY-003-01, EX-TENANCY-003-03: default テナントを active で作成し、無効化を拒否して状態を変えない。
 func TestEnsureDefaultAndRejectDefaultDisable(t *testing.T) {
 	repo := memory.NewTenantRepository()
 	now := time.Now().UTC()
@@ -75,6 +76,8 @@ func TestTenantLifecycle(t *testing.T) {
 
 // wi-285 / scenario Tenancy.tenant_endpoint_style: endpoint style は破壊的な
 // 専用操作でのみ切り替え、subdomain は base domain を持つ配備でしか選べない。
+//
+//spec:covers EX-TENANCY-011-01, EX-TENANCY-011-02: endpoint style の切替を保存し、base domain が無い subdomain 指定は状態を変えず拒否する。
 func TestSetEndpointStyle(t *testing.T) {
 	ctx := context.Background()
 	repo := memory.NewTenantRepository()
@@ -85,6 +88,13 @@ func TestSetEndpointStyle(t *testing.T) {
 	if _, err := SetEndpointStyle(ctx, repo, tenant.ID, domain.TenantEndpointStyleSubdomain, "", time.Now().UTC()); !errors.Is(err, domain.ErrSubdomainStyleNoBase) {
 		t.Fatalf("unset base domain error = %v", err)
 	}
+	unchanged, err := repo.FindByID(ctx, tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.EndpointStyle != domain.TenantEndpointStylePath {
+		t.Fatalf("a rejected switch changed endpoint style to %q", unchanged.EndpointStyle)
+	}
 	updated, err := SetEndpointStyle(ctx, repo, tenant.ID, domain.TenantEndpointStyleSubdomain, "idp.example", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -94,6 +104,7 @@ func TestSetEndpointStyle(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-019-01: 管理者が保存したパスワードポリシー上書きを更新後のテナントへ反映する。
 func TestUpdateAppliesDisplayNameAndPolicyOverride(t *testing.T) {
 	repo := memory.NewTenantRepository()
 	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())
@@ -126,6 +137,7 @@ func TestUpdateAppliesDisplayNameAndPolicyOverride(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-019-02, EX-TENANCY-019-03: 標準より弱い上書きと max_age_days の範囲外を PolicyOverrideWeakerError で拒否する。
 func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 	cases := []struct {

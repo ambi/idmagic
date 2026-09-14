@@ -23,6 +23,7 @@ describe('Brand Component', () => {
     expect(brandElement).not.toHaveClass('text-slate-950')
   })
 
+  //spec:covers EX-TENANCY-004-01: login、同意、account portal が共有する Brand は realm 配下の同一 origin logo URL を画像へ反映する。
   it('renders a same-origin realm branding asset URL as the logo', () => {
     const { container } = render(
       <Brand logoURL="/realms/acme/tenant-branding-assets/logo/logo-key" />,

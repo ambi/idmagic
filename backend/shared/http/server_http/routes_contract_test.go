@@ -95,6 +95,28 @@ func TestAssembledRoutesMatchGeneratedOpenAPI(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-003-02: テナント削除 operation は公開契約にも組み立て済み router にも存在しない。
+func TestAssembledRoutesExposeNoTenantDeleteOperation(t *testing.T) {
+	e := echo.New()
+	Register(e, Deps{})
+
+	for _, route := range e.Router().Routes() {
+		if route.Method == "DELETE" && normalizeContractPath(route.Path) == "/api/admin/v1/tenants/{param}" {
+			t.Fatalf("unexpected tenant delete route: %s %s", route.Method, route.Path)
+		}
+	}
+
+	operations, err := loadGeneratedOpenAPIOperations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, operation := range operations {
+		if strings.EqualFold(operation.method, "DELETE") && normalizeContractPath(operation.path) == "/api/admin/v1/tenants/{param}" {
+			t.Fatalf("unexpected tenant delete contract operation: %s", operation)
+		}
+	}
+}
+
 func loadGeneratedOpenAPIOperations() ([]routeOperation, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {

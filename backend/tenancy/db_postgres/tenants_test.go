@@ -73,7 +73,7 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 // columns existed, Save dropped the value, so a tenant's policy had no effect at
 // all on a PostgreSQL deployment.
 //
-//spec:covers REQ-TENANCY-019: an override an administrator saves is persisted. Before the
+//spec:covers REQ-TENANCY-019, EX-TENANCY-019-01: 管理者が保存したパスワードポリシー上書きと更新時刻を PostgreSQL で往復する。
 func TestTenantRepositoryPersistsPasswordPolicyOverride(t *testing.T) {
 	db := pgtest.Require(t)
 	repo := &TenantRepository{Pool: db}
@@ -179,7 +179,7 @@ func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-TENANCY-021: 委譲深さの上書きは往復し、解除すると NULL に戻る。
+//spec:covers REQ-TENANCY-021, EX-TENANCY-021-02, EX-TENANCY-021-05: 厳しい委譲深さの上書きは PostgreSQL で往復し、解除すると NULL に戻る。
 func TestTenantRepositoryPersistsMaxDelegationDepth(t *testing.T) {
 	db := pgtest.Require(t)
 	repo := &TenantRepository{Pool: db}

@@ -167,7 +167,7 @@ func TestUpdateTenantQuotaRejectsCookieSessionWithoutCSRF(t *testing.T) {
 
 // システムコンソールのセッションは、これまでどおりクォータ上限を変更できる。
 //
-//spec:covers REQ-TENANCY-012: 正しい Origin と double-submit された CSRF トークンを持つ
+//spec:covers REQ-TENANCY-012, EX-TENANCY-012-01: 正しい Origin と double-submit された CSRF トークンを持つ
 func TestUpdateTenantQuotaAcceptsSystemConsoleSessionWithCSRF(t *testing.T) {
 	srv := newQuotaCsrfServer(t)
 

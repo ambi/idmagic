@@ -86,6 +86,7 @@ func TestGroupAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-020-01: cost_center 属性を保存し、更新後のスキーマと TenantGroupAttributeSchemaUpdated を観測する。
 func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	e, schemaRepo, events := newGroupAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
@@ -116,6 +117,7 @@ func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-020-02: 同じ key を重複して追加すると InvalidGroupAttributeSchemaError で拒否する。
 func TestGroupAttributeSchemaPutRejectsDuplicateKey(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),

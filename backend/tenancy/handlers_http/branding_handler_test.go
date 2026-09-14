@@ -110,11 +110,13 @@ func TestUpdateBrandingRejectsNonAdmin(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-004-01: 管理者が設定した配色、footer link、footer text は保存され、公開 branding から読める。
 func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	e, repo, _, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	resp := patchBranding(t, e, map[string]any{
 		"product_name":  "Acme",
 		"primary_color": "#0f172a",
+		"accent_color":  "#38bdf8",
 		"footer_link_1": map[string]any{"label": "ヘルプ", "url": "https://support.example.com"},
 		"footer_text":   "(c) Acme",
 	})
@@ -141,7 +143,8 @@ func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.ProductName != "Acme" || body.PrimaryColor != "#0f172a" {
+	if body.ProductName != "Acme" || body.PrimaryColor != "#0f172a" || body.AccentColor != "#38bdf8" ||
+		body.FooterLink1 == nil || body.FooterLink1.Label != "ヘルプ" || body.FooterText != "(c) Acme" {
 		t.Fatalf("public branding not reflected: %+v", body)
 	}
 }
@@ -183,6 +186,7 @@ func TestUpdateBrandingAcceptsLowContrastColor(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-004-01: PNG ロゴの upload response が示す同一 realm の URL から検証済み画像を取得できる。
 func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	e, repo, assetStore, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}

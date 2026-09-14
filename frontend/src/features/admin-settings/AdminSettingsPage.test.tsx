@@ -326,6 +326,7 @@ describe('AdminSettingsPage', () => {
     ).toBeInTheDocument()
   })
 
+  //spec:covers EX-TENANCY-001-01: 連携情報をプロトコル別に読み取り専用で表示し、SAML profile の値を copy または証明書 download に使える。
   it('groups canonical integration endpoints by protocol and keeps profile values read-only', async () => {
     const writeText = mock().mockResolvedValue(undefined)
     stubGlobal('navigator', { clipboard: { writeText } })

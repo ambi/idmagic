@@ -13,6 +13,8 @@ import (
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
 // (extension at 2): HTML 側の差し込み値はエスケープされて描画され、タグとして
 // 解釈されない。エスケープはレンダラの責務に閉じる。
+//
+//spec:covers EX-TENANCY-018-02: 差し込み値を text では保持し、HTML ではタグとして解釈されないよう escape する。
 func TestRenderEscapesVariablesInHTMLOnly(t *testing.T) {
 	def := template.Definition{
 		Subject:  "{{product_name}} からのお知らせ",

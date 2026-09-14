@@ -20,7 +20,7 @@ func newDelegationDepthTenant(t *testing.T) (*memory.TenantRepository, string) {
 	return repo, created.ID
 }
 
-//spec:covers REQ-TENANCY-021: 上書きは厳しい方向にのみ働く。
+//spec:covers REQ-TENANCY-021, EX-TENANCY-021-02, EX-TENANCY-021-03, EX-TENANCY-021-04, EX-TENANCY-021-05: 厳しい上書きだけを保存し、上限超過と負数を拒否し、0 で既定へ戻す。
 func TestUpdateMaxDelegationDepthOnlyTightens(t *testing.T) {
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 

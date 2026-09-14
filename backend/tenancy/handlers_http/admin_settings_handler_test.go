@@ -129,6 +129,7 @@ func TestAdminSettingsGetAllowsSystemAdmin(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-019-01: 管理設定 API がパスワードポリシー上書きを返し、保存して更新イベントを発行する。
 func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 	e, repo, events := newSettingsServer(
 		t,
@@ -230,7 +231,7 @@ func TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-TENANCY-021: 設定 API は現在の上書きとシステム上限を返し、厳しい上書きだけを保存する。
+//spec:covers REQ-TENANCY-021, EX-TENANCY-021-01: 設定 API は現在の上書きとシステム既定を返し、厳しい上書きだけを保存する。
 func TestAdminSettingsExposeAndUpdateMaxDelegationDepth(t *testing.T) {
 	e, repo, _ := newSettingsServer(
 		t,

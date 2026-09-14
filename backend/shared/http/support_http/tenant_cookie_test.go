@@ -12,6 +12,8 @@ import (
 
 // wi-285 / scenario Tenancy.tenant_endpoint_style: subdomain の cookie は
 // __Host- prefix と root path を持ち、path style は従来の名前と realm prefix を保つ。
+//
+//spec:covers EX-TENANCY-007-01, EX-TENANCY-011-01: subdomain 形式の session cookie は __Host- prefix、Path=/、Secure を持ち Domain 属性を使わないための scope を返す。
 func TestTenantCookieScope(t *testing.T) {
 	e := echo.New()
 	for _, tc := range []struct {

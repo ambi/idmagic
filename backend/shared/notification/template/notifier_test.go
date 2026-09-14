@@ -44,6 +44,8 @@ func passwordResetNotification() notificationports.Notification {
 }
 
 // scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
+//
+//spec:covers EX-TENANCY-015-01: 受信者 locale の組込み日本語テンプレートを text と HTML の両方で描画する。
 func TestNotifyUsesRecipientLocaleAndSendsTextAndHTML(t *testing.T) {
 	notifier, sender := newNotifier(t, stubTenantSource{
 		settings: notificationports.TenantNotificationSettings{ProductName: "IdMagic", TenantDisplayName: "Acme"},
@@ -75,6 +77,8 @@ func TestNotifyUsesRecipientLocaleAndSendsTextAndHTML(t *testing.T) {
 
 // scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
 // (extension at 1): 受信者 locale が未設定ならテナント既定が採用される。
+//
+//spec:covers EX-TENANCY-015-02: 受信者 locale が未設定ならテナント既定の ja を採用する。
 func TestNotifyFallsBackToTenantDefaultLocale(t *testing.T) {
 	notifier, sender := newNotifier(t, stubTenantSource{
 		settings: notificationports.TenantNotificationSettings{DefaultLocale: "ja", ProductName: "IdMagic"},
@@ -92,6 +96,8 @@ func TestNotifyFallsBackToTenantDefaultLocale(t *testing.T) {
 
 // scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
 // (extension at 1): 受信者もテナントも未設定ならシステム既定が採用される。
+//
+//spec:covers EX-TENANCY-015-03: 受信者とテナントの locale が未設定ならシステム既定の en を採用する。
 func TestNotifyFallsBackToSystemDefaultLocale(t *testing.T) {
 	notifier, sender := newNotifier(t, stubTenantSource{
 		settings: notificationports.TenantNotificationSettings{ProductName: "IdMagic"},
@@ -107,7 +113,28 @@ func TestNotifyFallsBackToSystemDefaultLocale(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-015-04: 未対応の受信者 locale を飛ばし、テナント既定の文面を空にせず送る。
+func TestNotifySkipsUnsupportedRecipientLocale(t *testing.T) {
+	notifier, sender := newNotifier(t, stubTenantSource{
+		settings: notificationports.TenantNotificationSettings{DefaultLocale: "ja", ProductName: "IdMagic"},
+	})
+	notification := passwordResetNotification()
+	notification.RecipientLocale = "fr"
+
+	if !notifier.Notify(context.Background(), notification) {
+		t.Fatal("Notify returned false")
+	}
+	if len(sender.Sent) != 1 || sender.Sent[0].Text == "" || sender.Sent[0].HTML == "" {
+		t.Fatalf("unexpected messages: %#v", sender.Sent)
+	}
+	if !containsJapanese(sender.Sent[0].Subject) {
+		t.Fatalf("subject = %q, want the tenant default ja template", sender.Sent[0].Subject)
+	}
+}
+
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
+//
+//spec:covers EX-TENANCY-016-01: ja の保存済みテナント上書きを組込み既定より優先して送る。
 func TestNotifyPrefersTenantOverrideOverBuiltin(t *testing.T) {
 	notifier, sender := newNotifier(t, stubTenantSource{
 		settings: notificationports.TenantNotificationSettings{ProductName: "IdMagic"},
@@ -136,6 +163,8 @@ func TestNotifyPrefersTenantOverrideOverBuiltin(t *testing.T) {
 
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
 // (extension at 5): ja の上書きは en の受信者に影響しない。
+//
+//spec:covers EX-TENANCY-016-02: ja の上書きは en の受信者へ影響せず、en の組込み既定を使う。
 func TestNotifyIgnoresOverrideForAnotherLocale(t *testing.T) {
 	notifier, sender := newNotifier(t, stubTenantSource{
 		settings: notificationports.TenantNotificationSettings{ProductName: "IdMagic"},

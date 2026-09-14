@@ -118,6 +118,7 @@ describe('auth-flow pages', () => {
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
   })
 
+  //spec:covers EX-TENANCY-004-01: login 画面へテナントの footer link label を反映し、HTML として解釈しない。
   it('renders configured footer link labels as text', async () => {
     stubGlobal(
       'fetch',

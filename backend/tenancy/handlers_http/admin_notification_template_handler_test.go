@@ -105,6 +105,7 @@ func TestNotificationTemplatesRejectNonAdmin(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-016-01: 管理 API は全 template key と全対応 locale を未上書き状態で一覧する。
 func TestNotificationTemplatesListReturnsWholeCatalog(t *testing.T) {
 	e, _, _ := newNotificationTemplateServer(t, notificationAdmin())
 	rec := httptest.NewRecorder()
@@ -135,6 +136,8 @@ func TestNotificationTemplatesListReturnsWholeCatalog(t *testing.T) {
 }
 
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
+//
+//spec:covers EX-TENANCY-016-01, EX-TENANCY-016-03: 管理 API は上書きと reset のイベントを発行し、組込み既定へ戻す。
 func TestNotificationTemplateUpdateAndReset(t *testing.T) {
 	e, _, events := newNotificationTemplateServer(t, notificationAdmin())
 	path := notificationTemplatePath + "/password_reset/ja"
@@ -224,6 +227,8 @@ func TestNotificationTemplateUpdateRejectsUnknownKeyAndLocale(t *testing.T) {
 }
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
+//
+//spec:covers EX-TENANCY-018-01: 管理 API の preview は描画済みの文面を返し、メールを送信しない。
 func TestNotificationTemplatePreviewDoesNotSend(t *testing.T) {
 	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
 
@@ -253,6 +258,8 @@ func TestNotificationTemplatePreviewDoesNotSend(t *testing.T) {
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
 // 宛先は操作者本人に固定され、リクエストで指定できない。
+//
+//spec:covers EX-TENANCY-018-01: 管理 API のテスト送信は要求された別宛先を使わず操作者本人へ送る。
 func TestNotificationTemplateTestSendGoesToTheActorOnly(t *testing.T) {
 	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
 
