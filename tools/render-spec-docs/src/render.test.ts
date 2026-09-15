@@ -73,14 +73,14 @@ const applicationDesignDocument = {
   source: '# アプリケーション\n\nアプリケーション設計の索引。\n',
 }
 
-const apiRulesDocument = {
-  path: 'docs/design/application/api-rules.md',
-  source: '# API規則\n\nAPI の設計規則。\n',
+const apiGuidelinesDocument = {
+  path: 'docs/design/application/api-guidelines.md',
+  source: '# API ガイドライン\n\nAPI の設計の観点。\n',
 }
 
-const designRulesDocument = {
-  path: 'docs/design/application/design-rules.md',
-  source: '# 設計規則\n\n設計規則。\n',
+const designGuidelinesDocument = {
+  path: 'docs/design/application/design-guidelines.md',
+  source: '# 設計ガイドライン\n\n設計の観点。\n',
 }
 
 const contextDocument = {
@@ -393,8 +393,8 @@ describe('renderSpecificationSite', () => {
         rootDocument,
         designDocument,
         applicationDesignDocument,
-        apiRulesDocument,
-        designRulesDocument,
+        apiGuidelinesDocument,
+        designGuidelinesDocument,
       ],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/spec/generated/docs',
@@ -402,13 +402,13 @@ describe('renderSpecificationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = sidebar(result.files['specification/design/application/api-rules.html'])
+    const page = sidebar(result.files['specification/design/application/api-guidelines.html'])
 
     expect(page).toContain('>設計</a><ul><li class="nav-branch">')
     expect(page).toContain('>アプリケーション</a><ul><li class="nav-item">')
     expect(page).not.toContain('>概要</a>')
-    expect(page).toContain('>API規則</a>')
-    expect(page).toContain('>設計規則</a>')
+    expect(page).toContain('>API ガイドライン</a>')
+    expect(page).toContain('>設計ガイドライン</a>')
     expect(page).not.toContain('nav-child')
   })
 

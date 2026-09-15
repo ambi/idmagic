@@ -6,6 +6,6 @@
 | 文書 | 責務 |
 | --- | --- |
 | [サービス管理](service-management.md) | SLO 評価、当番、障害、変更、サービス継続 |
-| [保守](maintenance.md) | 定期作業、更新、容量確認、廃止と引渡し |
+| [保守](maintenance.md) | 定期作業、更新、キャパシティ確認、廃止と引渡し |
 
-作業中に読む手順は[runbook](../runbooks/)、配備と後退は[リリース手順](../development/release.md)、目標値は[品質要求](../requirements/quality.md)が持つ。
+作業中に読む手順は[runbook](../runbooks/)、デプロイと後退は[リリース手順](../development/release.md)、目標値は[品質要求](../requirements/quality.md)が持つ。

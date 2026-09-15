@@ -27,7 +27,7 @@ describe('documentKind', () => {
     expect(documentKind('docs/standards.md')).toBe('standards')
     expect(documentKind('docs/design/security/authorization.md')).toBe('prose')
     expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
-    expect(documentKind('docs/design/application/design-rules.md')).toBe('prose')
+    expect(documentKind('docs/design/application/design-guidelines.md')).toBe('prose')
   })
 
   it('names the grammar of the top-down system document tree', () => {

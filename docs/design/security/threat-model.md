@@ -83,10 +83,10 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ID | 分類 | 脅威 | Context | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-001 | Spoofing | 攻撃者のサイトが利用者のセッション Cookie に便乗して状態変更操作を呼ぶ | System, Authentication | docs/design/security/authorization.md: その他の境界の規則、REQ-AUTHENTICATION-005 | `covered` |
-| THREAT-002 | Tampering | ログイン、同意、ポータルの画面を埋め込み、利用者の操作を別の意味に変える | System | design/application/api-rules.md: セキュリティレスポンスヘッダー | `covered` |
-| THREAT-003 | Information disclosure | 注入したスクリプトがセッションとトークンを持ち出す | System | design/application/api-rules.md: セキュリティレスポンスヘッダー | `covered` |
+| THREAT-002 | Tampering | ログイン、同意、ポータルの画面を埋め込み、利用者の操作を別の意味に変える | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
+| THREAT-003 | Information disclosure | 注入したスクリプトがセッションとトークンを持ち出す | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
 | THREAT-004 | Information disclosure | 単一ページアプリがブラウザーに保持するアクセストークンが、スクリプト実行の成立時にそのまま持ち出される | System | contexts/system/decisions.md | `accepted` |
-| THREAT-005 | Information disclosure | 認可コードやトークンを含む URL が Referer で外部へ渡る | System, OAuth2 | design/application/api-rules.md: セキュリティレスポンスヘッダー | `covered` |
+| THREAT-005 | Information disclosure | 認可コードやトークンを含む URL が Referer で外部へ渡る | System, OAuth2 | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
 | THREAT-006 | Elevation of privilege | アカウントポータルのトークンで管理 API へ到達する | System, ApiTokens | docs/design/security/authorization.md: スコープの語彙、REQ-APITOKENS-004 | `covered` |
 | THREAT-007 | Denial of service | 低速な接続と過大な本体で接続枠とメモリを枯渇させる | System | design/performance/scaling.md: 接続と本体の上限 | `covered` |
 | THREAT-008 | Spoofing | ログイン画面を模した別のサイトが資格情報を受け取る | Authentication | WEBAUTHN3-AUTHENTICATION | `accepted` |
@@ -97,8 +97,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 |---|---|---|---|---|---|
 | THREAT-009 | Repudiation | クライアントが `X-Request-ID` を偽装し、相関を壊して追跡を妨げる | System | design/observability/README.md: 相関 | `covered` |
 | THREAT-010 | Tampering | 受信ヘッダーの制御文字がログとレスポンスヘッダーへ注入される | System | design/observability/README.md: 相関 | `covered` |
-| THREAT-011 | Information disclosure | 平文への降格により、Cookie とトークンが経路上で読まれる | System | design/application/api-rules.md: セキュリティレスポンスヘッダー | `accepted` |
-| THREAT-012 | Spoofing | 同一オリジンでない構成で配備され、Cookie のスコープと `Origin` 検証の前提が崩れる | System | architecture/runtime.md: 実行単位 | `planned` |
+| THREAT-011 | Information disclosure | 平文への降格により、Cookie とトークンが経路上で読まれる | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `accepted` |
+| THREAT-012 | Spoofing | 同一オリジンでない構成でデプロイされ、Cookie のスコープと `Origin` 検証の前提が崩れる | System | architecture/runtime.md: 実行単位 | `planned` |
 
 ## テナント境界
 
@@ -157,7 +157,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-048 | Spoofing | クライアントアサーションを改竄または再生してクライアントになりすます | OAuth2 | RFC7523-CLIENT-ASSERTION、REQ-OAUTH2-028、REQ-OAUTH2-007 | `covered` |
 | THREAT-049 | Information disclosure | クライアント認証の失敗理由の差から、登録済みクライアントの存在を見分ける | OAuth2 | REQ-OAUTH2-007 | `covered` |
 | THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD00-URL-SHAPE、CIMD00-FETCH | `covered` |
-| THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: 入場制御、design/reliability/availability.md: 縮退 | `covered` |
+| THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: アドミッションコントロール、design/reliability/availability.md: 縮退 | `covered` |
 | THREAT-052 | Tampering | 署名アルゴリズムの取り違えを突いて署名検証を回避する | OAuth2, SigningKeys | RFC7518-SIGNATURE-ALGORITHMS、RFC9068-ASYMMETRIC-SIGNATURE | `covered` |
 | THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/contexts/oauth2/internals.md: OIDC session binding and logout propagation、REQ-OAUTH2-025 | `covered` |
 | THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
@@ -204,7 +204,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-073 | Tampering | 入力が問い合わせの構造として解釈される | 全 Context | docs/design/data/database.md: ポートとアダプター | `covered` |
 | THREAT-074 | Repudiation | 状態は変わったのに、対応する監査イベントが残らない | Audit | — | `planned` |
 | THREAT-075 | Tampering | 再試行と再取得によって副作用が重複して起きる | Jobs | REQ-JOBS-003、REQ-JOBS-004、REQ-JOBS-007 | `covered` |
-| THREAT-076 | Denial of service | 有効期限を過ぎた一時データの滞留が容量を圧迫する | Jobs, OAuth2, Authentication | design/reliability/availability.md: 共有状態 | `covered` |
+| THREAT-076 | Denial of service | 有効期限を過ぎた一時データの滞留が保存容量を圧迫する | Jobs, OAuth2, Authentication | design/reliability/availability.md: 共有状態 | `covered` |
 
 ## 運用者と制御面
 
@@ -225,7 +225,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 **THREAT-008（ログイン画面の模倣）** — IdP 単独では、利用者が別のサイトへ資格情報を入力することを防げない。フィッシングに耐える要素として WebAuthn を提供するが、その利用はテナントの選択である。**再検討の条件**は、フィッシング耐性のある要素をテナントへ強制できるポリシーを持ったときである。
 
-**THREAT-011（平文への降格）** — `Strict-Transport-Security` は既定で無効であり、TLS を終端する側が設定する。平文の `http` を使う開発環境に影響させないためである。**再検討の条件**は、プロダクトが TLS 終端を自ら担う配備形態を支援するときである。
+**THREAT-011（平文への降格）** — `Strict-Transport-Security` は既定で無効であり、TLS を終端する側が設定する。平文の `http` を使う開発環境に影響させないためである。**再検討の条件**は、プロダクトが TLS 終端を自ら担うデプロイ形態を支援するときである。
 
 **THREAT-034（漏洩パスワードの使い回し）** — 漏洩との照合は `BreachedPasswordChecker` として存在するが、既定は何もしないアダプターである。有効にした場合、同梱辞書との照合は確実に働き、外部の HIBP を使う追加の照合だけが障害時にフェイルオープンする。外部への依存を既定で持ち込まないという判断の帰結として、**既定の構成では漏洩照合が働かない**ことを受け入れている。**再検討の条件**は、同梱辞書だけで既定を有効にできると判断したとき、または規制がこの照合を要求するときである。
 
@@ -238,7 +238,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 - **新しい信頼境界が増える。** 新しい実行単位、新しい外部依存、新しいネットワーク経路。
 - **主体の種類が増えるか、既存の主体が新しい境界へ到達できるようになる。** [認可設計](authorization.md) の主体の表かスコープの語彙が変わるとき。
 - **新しい外部連携が加わる。** 上流の権威、下流の受信者、新しいプロトコルのバインディング。
-- **資産が増える。** 新しい種類の秘密、個人データ、または後から証明を求められる記録を持つとき。
+- **資産が増える。** 新しい種類のシークレット、個人データ、または後から証明を求められる記録を持つとき。
 - **`accepted` の再検討の条件が満たされる。**
 
 この義務は [仕様先行の開発ワークフロー](../../development/specification-first-workflow.md) の現在状態の同期に含まれる。`planned` の行は、応える規範が書かれた時点で `covered` へ移し、`Controls` にその規範 ID を入れる。`—` のまま `covered` になる行は無い。

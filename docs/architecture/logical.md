@@ -4,7 +4,7 @@
 
 IdMagic は、一つの Go モジュール内で Bounded Context のモデル境界を保つ Modular Monolith である。独立したデータ所有権、担当チーム、サービス目標が必要になるまではサービスへ分割しない。ドメイン層とユースケース層は外部技術へ依存せず、ポートを通じて PostgreSQL、HTTP、通知などのアダプターへ接続する。
 
-コードの依存方向と配置は [構造](../structure.md) が、境界とモジュールを評価する規則は [設計規則](../design/application/design-rules.md) が所有する。論理単位をプロセスへ割り当てる方法は [実行時アーキテクチャ](runtime.md) が所有する。
+コードの依存方向と配置は [構造](../structure.md) が、境界とモジュールを評価する規則は [設計ガイドライン](../design/application/design-guidelines.md) が所有する。論理単位をプロセスへ割り当てる方法は [ランタイムアーキテクチャ](runtime.md) が所有する。
 
 ## Context Map
 

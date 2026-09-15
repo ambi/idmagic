@@ -126,9 +126,9 @@ A context owns only behavior it can satisfy and verify on its own. Behavior that
 contexts cooperate belongs to `docs/scenarios.feature.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
-### design-rules.md — 設計判断の評価方法
+### design-guidelines.md — 設計判断の評価方法
 
-The root `design-rules.md` owns the system-wide criteria for module interfaces, seams, adapters, type
+The root `design-guidelines.md` owns the system-wide criteria for module interfaces, seams, adapters, type
 ownership, effects, and errors. It states the current rule and the shape of a violation, so a reviewer can
 apply it to a concrete change. It does not own directories or dependency direction (`structure.md`), the
 rationale for one bounded decision (`decisions.md`), or mechanism that cannot be recovered from code
@@ -144,7 +144,7 @@ Make the heading the decision, never the aspect. `Invariants`, `Concurrency`, an
 aspect names: a writer reads them as boxes to fill, and either invents prose for an aspect that does not
 apply or splits one decision across several. Do not enumerate invariants at all — uniqueness and
 referential integrity belong to the schema, observable properties to `scenarios.feature.md`, and construction and
-postconditions to the type or operation as directed by `docs/design/application/design-rules.md`; the rest is unbounded. An
+postconditions to the type or operation as directed by `docs/design/application/design-guidelines.md`; the rest is unbounded. An
 invariant worth writing down is usually a decision with a reason, and written as one it keeps the reason.
 
 A decision large enough to need rejected alternatives, the conditions under which it holds, and the

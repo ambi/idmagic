@@ -11,6 +11,7 @@ import { checkLinks } from './check-links.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
 import { checkSloReferences } from './check-slo-references.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
+import { checkTerminology } from './check-terminology.ts'
 import { checkVulnerabilitySuppressions } from './check-vulnerability-suppressions.ts'
 import { checkWorkItems } from './check-work-items.ts'
 import type { RepositoryCheck } from './runner.ts'
@@ -20,6 +21,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'coverage-debt-ratchet', groups: ['all'], run: checkCoverageDebtRatchet },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
   { name: 'links', groups: ['all'], run: checkLinks },
+  { name: 'terminology', groups: ['all'], run: checkTerminology },
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
   { name: 'command-map', groups: ['all'], run: checkCommandMap },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },

@@ -1,8 +1,8 @@
-# 実行時アーキテクチャ
+# ランタイムアーキテクチャ
 
 ## 目的
 
-本書は、論理アーキテクチャを実行時のプロセスと通信へ写像する。レプリカ数、配置先、ネットワーク制御、可用性、容量はそれぞれの設計文書が所有し、本書は値を再掲しない。
+本書は、論理アーキテクチャを実行時のプロセスと通信へ写像する。レプリカ数、配置先、ネットワーク制御、可用性、キャパシティはそれぞれの設計文書が所有し、本書は値を再掲しない。
 
 ## 実行単位
 
@@ -31,9 +31,9 @@ Context 間の同期処理は、公開されたポートを `backend/cmd/interna
 
 ## 関連文書
 
-- 物理的な配備構成と環境差は [配備アーキテクチャ](deployment.md) が所有する。
-- 基盤資源と Kubernetes の方針は [基盤設計](../design/infrastructure/platform.md) が所有する。
+- 物理的なデプロイ構成と環境差は [デプロイメントアーキテクチャ](deployment.md) が所有する。
+- 基盤資源と Kubernetes の方針は [プラットフォーム設計](../design/infrastructure/platform.md) が所有する。
 - 通信経路とネットワーク境界は [ネットワーク設計](../design/infrastructure/network.md) が所有する。
 - レプリカ配置と障害耐性は [可用性設計](../design/reliability/availability.md) が所有する。
-- 負荷、入場制御、縮退は [性能設計](../design/performance/README.md) が所有する。
+- 負荷、アドミッションコントロール、縮退は [性能設計](../design/performance/README.md) が所有する。
 - 信頼境界と攻撃者モデルは [脅威モデル](../design/security/threat-model.md) が所有する。

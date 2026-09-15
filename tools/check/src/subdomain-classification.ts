@@ -12,7 +12,7 @@
  * 判断が書かれていない行が無いことだけである。
  */
 
-/** 索引表が引ける区分。`docs/design/application/design-rules.md` が何を左右するかを定める。 */
+/** 索引表が引ける区分。`docs/design/application/design-guidelines.md` が何を左右するかを定める。 */
 const SUBDOMAINS = ['Core', 'Supporting', 'Generic'] as const
 
 /** Context 索引表を選ぶヘッダー行。見出しではなく列の並びで表を特定する。 */

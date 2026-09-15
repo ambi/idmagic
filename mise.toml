@@ -681,6 +681,11 @@ description = "Check repository-local Markdown links and anchors"
 dir = "tools"
 run = "bun run check/src/runner.ts links"
 
+[tasks.check-terminology]
+description = "Check design documents against the adopted terminology"
+dir = "tools"
+run = "bun run check/src/runner.ts terminology"
+
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
 dir = "tools"

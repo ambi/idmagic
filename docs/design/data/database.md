@@ -379,7 +379,7 @@ PostgreSQL の構造を変更する場合は、まず `infra/schema/postgres.sql
 列型の選択を一貫させるため、次の規則を適用する。
 
 - **自由形式の文字列、長さ無制限**：`TEXT` を使う。制約のない `varchar` は使わない。
-- **長さの上限がある文字列**：`TEXT` + `CHECK (char_length(col) <= N)` を使う。`varchar(N)` は使わない。上限を宣言と別の場所に置かず、他の `CHECK` と同じ書き方で並べるためである。`N` の決め方は [文字列長の上限](../application/api-rules.md#文字列長の上限) に従う。フォーマットが固定された識別子は `CHECK (... ~ regex)` で併せて守る。
+- **長さの上限がある文字列**：`TEXT` + `CHECK (char_length(col) <= N)` を使う。`varchar(N)` は使わない。上限を宣言と別の場所に置かず、他の `CHECK` と同じ書き方で並べるためである。`N` の決め方は [文字列長の上限](../application/api-guidelines.md#文字列長の上限) に従う。フォーマットが固定された識別子は `CHECK (... ~ regex)` で併せて守る。
 - **内部で生成する ID**：IdMagic が `spec.NewUUIDv4()` で生成する列は `UUID` とする。Go 側は `string` で保持し、pgx のテキスト用符号器（`RegisterUUIDAsText`）が両者を変換する。
 - **外部が決める ID**：`entity_id` や `wtrealm` など、外部が値を決める ID は `TEXT` とする。IdMagic が採番する値ではなく、UUID とも限らないためである。索引の鍵の成分になる場合は、`CHECK (char_length(col) <= N AND octet_length(col) <= M)` を 1 つの制約として置く。同じ列に `CHECK` を 2 つ並べると psqldef の差分が収束しない。
 - **時刻**：すべて `TIMESTAMPTZ` とし、マイクロ秒の精度を正とする。スキーマで丸めない。

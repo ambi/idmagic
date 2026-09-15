@@ -150,7 +150,7 @@ Primary actor: `SystemAdministrator`
 
 ### Example: EX-SIGNINGKEYS-012-01 通常経路
 
-- Given 配備の `PERSISTENCE` が `postgres` である
+- Given デプロイ先の `PERSISTENCE` が `postgres` である
 - And `KEY_PROVIDER` が指定されていない
 - When `system_admin` が起動時設定を読むプロセスを起動する
 - Then 起動は設定エラーで拒否され、`KEY_PROVIDER` を明示するよう示す

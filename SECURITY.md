@@ -35,7 +35,7 @@ IdMagic は ID プロバイダーなので、次の境界が破れることを�
 ## セキュリティ上の問題として扱わないもの
 
 - **開発用の既定値を本番で使った場合の問題。** `DATA_KEY_PROVIDER` を設定しないときのプロセス内の平文鍵セット、`PERSISTENCE=memory`、デモ用にシードしたアカウントは、いずれも開発専用であることを [README.md](README.md) と [CONFIGURATION.md](CONFIGURATION.md) が明示しています。
-- **設定で有効化できる防御を無効にしたままの構成。** TLS を終端しない配備での HSTS 無効、信頼できないプロキシの背後での `REQUEST_ID_TRUST_INBOUND=true` などが該当します。
+- **設定で有効化できる防御を無効にしたままの構成。** TLS を終端しないデプロイ先での HSTS 無効、信頼できないプロキシの背後での `REQUEST_ID_TRUST_INBOUND=true` などが該当します。
 - **実際の到達経路を示さない、スキャナーの出力そのもの。**
 
 ## 修正の順序

@@ -6,7 +6,7 @@ API はステートレスなレプリカ、ワーカーは実行レーン、バ�
 PostgreSQL の接続プールはレプリカごとの値と総接続数を分けて予算化し、アプリケーションのレプリカ追加でデータベースの競合を増幅させない。
 データ層のパーティショニング、読み取りレプリカ、接続プールの具体化は [wi-164](../../../work-items/wi-164-data-tier-scalability-partitioning-read-replica-pooling.md) が扱う。
 
-## 入場制御
+## アドミッションコントロール
 
 API は実行中リクエスト数が上限に達したとき、`management_bulk`、`management`、`interactive_auth` の順に低い優先度から 503 と `Retry-After` で拒否する。
 ルート分類はコードから生成する `ROUTE_PRIORITY.md` が正本である。

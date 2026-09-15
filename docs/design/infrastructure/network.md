@@ -11,7 +11,7 @@ Kubernetes の既定 NetworkPolicy は API への UI ゲートウェイと Prome
 
 ## 名前と証明書の所有
 
-DNS、公開証明書、ワイルドカード証明書の発行と更新は配備基盤の責任である。
+DNS、公開証明書、ワイルドカード証明書の発行と更新はデプロイ基盤の責任である。
 `TENANT_BASE_DOMAIN` を使うのは、ワイルドカード DNS と証明書を用意し、キャッシュキーへ Host を含めた場合に限る。
 発行者 URL、Cookie のスコープ、WebAuthn の RP ID は名前の構成に依存するため、切替を単なる DNS 変更として扱わない。
 

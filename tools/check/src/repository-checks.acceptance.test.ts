@@ -76,6 +76,22 @@ async function checkDocuments(
   return { code, output: `${stdout}${stderr}` }
 }
 
+/** 用語検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
+async function checkTerminology(root: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'terminology'], {
+    cwd: TOOLS_DIR,
+    env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
 /** work item 検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
 async function checkWorkItems(root: string): Promise<{ code: number; output: string }> {
   const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'work-items'], {
@@ -564,5 +580,41 @@ The feature could remain disconnected.
     const unreachable = await checkWorkItems(root)
     expect(unreachable.code).not.toBe(0)
     expect(unreachable.output).toContain('task is not required by verify or CI: test-go')
+  })
+})
+
+describe('用語検査', () => {
+  it('採らない表記を含む設計文書を、行と採用語つきで拒否する', async () => {
+    const root = await workspace()
+    await writeFile(
+      join(root, 'docs', 'architecture', 'deployment.md'),
+      '# 概要\n\n配備の不変条件。\n',
+    )
+
+    const result = await checkTerminology(root)
+
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/architecture/deployment.md:3:1')
+    expect(result.output).toContain('デプロイ')
+  })
+
+  // 対象は `docs/` だけではない。root 直下の文書集合を読み落とすと、文書体系の
+  // 入口にあたる文書だけ用語が戻っても誰も気付かない。
+  it('root 直下の文書も対象にする', async () => {
+    const root = await workspace()
+    await writeFile(join(root, 'DOCUMENTATION_GUIDE.md'), '# 文書体系\n\n観測可能性の設計。\n')
+
+    const result = await checkTerminology(root)
+
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('DOCUMENTATION_GUIDE.md:3:1')
+    expect(result.output).toContain('オブザーバビリティ')
+  })
+
+  it('採用語だけの作業ツリーを通す', async () => {
+    const result = await checkTerminology(await workspace())
+
+    expect(result.code).toBe(0)
+    expect(result.output).toContain('ok  terminology')
   })
 })

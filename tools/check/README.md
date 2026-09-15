@@ -40,3 +40,27 @@ Pull Request では base SHA を、`main` への push では push 直前の SHA 
 
 `mise run report-coverage-debt` は、契約上の拒否を使って debt の優先順位を報告する。
 この照会は検査の合否を変えない。
+
+## 用語
+
+`mise run check-terminology` は、設計文書が採らないと決めた表記を拒否する。
+対象は `docs/` の Markdown と、`terminology.ts` の `TERMINOLOGY_ROOT_DOCUMENTS` が挙げる root 直下の文書である。
+生成物の `CONFIGURATION.md` と `ROUTE_PRIORITY.md`、および書かれた時点の記録である `work-items/` は読まない。
+
+規則は `terminology.ts` の `TERMINOLOGY_RULES` が持つ。
+1 件は、採らない表記、代わりに使う表記、そして残す共起からなる。
+
+```ts
+{
+  term: '秘密',
+  adopt: '「シークレット」',
+  allow: [{ literal: '秘密鍵', reason: 'private key であってシークレットではない' }],
+}
+```
+
+`allow` の literal は対象語を含み、その literal が覆う位置に現れた occurrence だけを通す。
+「トポロジ」と「トポロジー」のように、採用した表記が採らない表記を含む場合もこれで扱える。
+
+免除はこの規則表にしかない。
+ファイル単位の免除は持たない。文書ごとに外せるようにすると、その文書だけ用語が戻ったことに誰も気付かないためである。
+正当な用法が落ちたときは、理由を書いた `allow` を足す。
