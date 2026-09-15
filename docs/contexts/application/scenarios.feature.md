@@ -65,12 +65,11 @@ Primary actor: `SelfApiClient`
 - When クライアントが `account:write` スコープで、自分のアプリケーション順序の保存をリクエストする
 - Then クライアント自身のアプリケーション順序が保存される
 
-### Example: EX-APPLICATION-003-02 トークンのテナントまたは `user_id` が操作対象と一致しない
+### Example: EX-APPLICATION-003-02 別テナント向けのトークンを account API へ提示する
 
-- Given クライアントは対象テナントの `active` User に固定された有効な API アクセストークンを提示している
-- When クライアントが `account:read` スコープで、自分に割り当てられたアプリケーションと保存済みの順序をリクエストする
-- But トークンのテナントまたは `user_id` が操作対象と一致しない
-- Then 操作を AccessDeniedError で拒否する
+- Given クライアントは発行元テナントでは有効な `account:read` スコープの API アクセストークンを持つ
+- When クライアントがそのトークンを別テナントの Application account API へ提示する
+- Then 操作を 401 の InvalidAccessTokenError で拒否する
 
 ### Example: EX-APPLICATION-003-03 クライアントが `account:read` スコープだけを持つ
 
@@ -102,10 +101,9 @@ Primary actor: `ManagementApiClient`
 
 ### Example: EX-APPLICATION-004-03 トークンのテナントとリクエスト先のテナントが一致しない
 
-- Given クライアントは対象テナントの有効な API アクセストークンを提示している
-- When クライアントが Application、カテゴリ、割り当て、またはテナントのデフォルトサインインポリシーに対する操作をリクエストする
-- But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作を AccessDeniedError で拒否する
+- Given クライアントは発行元テナントでは有効な Application スコープの API アクセストークンを持つ
+- When クライアントがそのトークンを別テナントの Application admin API へ提示する
+- Then 操作を 401 の InvalidAccessTokenError で拒否する
 
 ## Rule: REQ-APPLICATION-005 管理者は Application の SAML プロトコル設定を更新できる
 

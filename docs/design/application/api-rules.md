@@ -42,9 +42,16 @@ operation は、自身のハンドラーと、その手前に立つ guard が書
 
 ミドルウェアが返すこの 2 つだけは、契約ではなくここに書く。
 
-401 と 403 は、同じ guard の 2 つの分岐である。認証済みのセッションが無ければ 401 `authentication_required`、あっても権限が足りなければ 403 `access_denied` になる。したがって 403 を宣言する operation は 401 も宣言する。片方だけを宣言することは、呼び出し側に「サインインしていない」を「権限が無い」として扱わせることであり、再認証すれば通るリクエストを通らないものとして扱わせる。
+401 と 403 は、同じ guard の認証と認可の分岐である。
+認証済みの主体を確定できなければ 401 になり、利用できる資格情報がなければ `authentication_required`、提示されたアクセストークンを検証できなければ `invalid_token` を返す。
+主体を確定できても権限が足りなければ 403 の `access_denied` または `insufficient_scope` になる。
+したがって 403 を宣言する operation は 401 も宣言する。
+片方だけを宣言することは、呼び出し側に認証の失敗を権限の不足として扱わせ、資格情報を取得し直せば通るリクエストを通らないものとして扱わせる。
 
-401 の本文は operation ごとに変わらないので、共有のレスポンスモデルを 1 つ置いて参照する。[HTTP error responses](#http-エラーレスポンス) が定める 3 系統のエラー本文に対応して、汎用 API は `IdMagic.Contract.AuthenticationRequiredResponse` (Problem Details)、OAuth 2.0 / OIDC は `IdMagic.Contract.OAuthUnauthorizedResponse`、SCIM は `IdMagic.Contract.ScimUnauthorizedResponse` を参照する。403 が operation ごとのモデルを持つのは、その本文が operation ごとに違う (`AccessDeniedError` / `InsufficientScopeError` / `MfaEnrollmentNotAllowedError`) からであって、様式の統一のためではない。
+401 の本文候補は接点ごとに共通なので、共有のレスポンスモデルを 1 つ置いて参照する。
+[HTTP error responses](#http-エラーレスポンス) が定める 3 系統のエラー本文に対応して、汎用 API は `IdMagic.Contract.AuthenticationRequiredResponse`、OAuth 2.0 / OIDC は `IdMagic.Contract.OAuthUnauthorizedResponse`、SCIM は `IdMagic.Contract.ScimUnauthorizedResponse` を参照する。
+汎用 API の共有モデルは、資格情報を利用できない `AuthenticationRequiredError` と、提示されたアクセストークンを検証できない `InvalidAccessTokenError` の union を Problem Details で返す。
+403 が operation ごとのモデルを持つのは、その本文が operation ごとに違う (`AccessDeniedError` / `InsufficientScopeError` / `MfaEnrollmentNotAllowedError`) からであって、様式の統一のためではない。
 
 この節が定める一致は `mise run check-status-drift` が検査する。検査は operation ごとに、契約が宣言する集合と、ハンドラーおよび guard が書くコードを突き合わせる。エラー値からレスポンスを決めるヘルパー (`WriteAccountError` のような写像) は辿らない。どの分岐に入るかはユースケースが返すエラーで決まり、ハンドラーの字面には現れないためである。辿れなかった operation は「合格」ではなく「読み残しあり」として数え、その件数を毎回の出力に書く。
 

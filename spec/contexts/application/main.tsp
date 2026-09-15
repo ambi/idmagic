@@ -1053,7 +1053,7 @@ model ListMyApplicationsError403 {
 @get
 op ListMyApplications(
 
-): ListMyApplicationsSuccess_200 | ListMyApplicationsError403;
+): ListMyApplicationsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMyApplicationsError403;
 
 model GetMyApplicationOrderSuccess_200 {
   @statusCode statusCode: 200;
@@ -1076,7 +1076,7 @@ model GetMyApplicationOrderError403 {
 @get
 op GetMyApplicationOrder(
 
-): GetMyApplicationOrderSuccess_200 | GetMyApplicationOrderError403;
+): GetMyApplicationOrderSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetMyApplicationOrderError403;
 
 model ReorderMyApplicationsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1111,7 +1111,7 @@ model ReorderMyApplicationsError403 {
 @put
 op ReorderMyApplications(
   @body body: IdMagic.Contract.ReorderMyApplicationsRequest
-): ReorderMyApplicationsSuccess_200 | ReorderMyApplicationsError400 | ReorderMyApplicationsError403;
+): ReorderMyApplicationsSuccess_200 | ReorderMyApplicationsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ReorderMyApplicationsError403;
 }
 
 }

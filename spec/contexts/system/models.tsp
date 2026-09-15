@@ -46,11 +46,17 @@ model ProblemDetails {
 }
 
 
-@doc("The 401 an operation answers when the guard in front of it finds no authenticated session. It is one shared response rather than one model per operation because the body never varies: 401 and 403 are the two branches of a single guard, and only the 403 differs from operation to operation (`AccessDeniedError`, `InsufficientScopeError`, `MfaEnrollmentNotAllowedError`). See the Declared status codes section of the root specification.")
+union AuthenticationRequiredResponseBody {
+  AuthenticationRequiredError,
+  InvalidAccessTokenError,
+}
+
+
+@doc("The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.")
 model AuthenticationRequiredResponse {
   @statusCode statusCode: 401;
   @header contentType: "application/problem+json";
-  @body body: AuthenticationRequiredError;
+  @body body: AuthenticationRequiredResponseBody;
 }
 
 

@@ -1208,6 +1208,10 @@ model StepUpCompleted {
 model AuthenticationRequiredError is ProblemDetails;
 
 
+@doc("The presented access token cannot authenticate a principal at this resource server because it is expired, revoked, malformed, tampered with, or has the wrong audience. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_token`; the `WWW-Authenticate` header carries the RFC 6750 `invalid_token` challenge.")
+model InvalidAccessTokenError is ProblemDetails;
+
+
 @doc("The login session named by the request does not exist, or has already ended. RFC 9457 Problem Details with `type` = `urn:idmagic:error:session_not_found`.")
 model SessionNotFoundError is ProblemDetails;
 

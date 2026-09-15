@@ -2,6 +2,7 @@ package support_http
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -174,6 +175,32 @@ func TestWriteAdminAccessError(t *testing.T) {
 			t.Fatalf("err=%v, want passthrough of %v", err, other)
 		}
 	})
+}
+
+//spec:covers REQ-APPLICATION-004, EX-APPLICATION-004-03: admin API まで届いた別 realm 向けトークンの検証失敗を 401 invalid_token のまま公開する。
+func TestWriteAdminAccessErrorPreservesInvalidTokenClassification(t *testing.T) {
+	e := echo.New()
+	request := httptest.NewRequest(http.MethodGet, "/api/admin/v1/applications", http.NoBody)
+	recorder := httptest.NewRecorder()
+	c := e.NewContext(request, recorder)
+
+	err := (&Authenticator{}).WriteAdminAccessError(c, &InvalidTokenError{})
+	if !errors.Is(err, ErrResponseWritten) {
+		t.Fatalf("err=%v, want a refusal wrapping ErrResponseWritten", err)
+	}
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d, want %d; body=%s", recorder.Code, http.StatusUnauthorized, recorder.Body.String())
+	}
+	var problem Problem
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Type != "urn:idmagic:error:invalid_token" {
+		t.Fatalf("problem type=%q, want invalid_token", problem.Type)
+	}
+	if challenge := recorder.Header().Get("WWW-Authenticate"); challenge != `Bearer error="invalid_token"` {
+		t.Fatalf("WWW-Authenticate=%q, want invalid_token challenge", challenge)
+	}
 }
 
 func TestResolveAdminActor(t *testing.T) {

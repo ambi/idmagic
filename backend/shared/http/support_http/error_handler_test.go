@@ -92,6 +92,32 @@ func TestErrorHandler_QuotaExceededWritesProblemDetails422(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-APPLICATION-003, EX-APPLICATION-003-02: account API まで届いた別 realm 向けトークンの検証失敗を 401 invalid_token として公開する。
+func TestErrorHandlerWritesInvalidTokenAsUnauthorized(t *testing.T) {
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler(nil, nil)
+	e.GET("/probe", func(c *echo.Context) error {
+		return &InvalidTokenError{}
+	})
+
+	recorder := httptest.NewRecorder()
+	e.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/probe", http.NoBody))
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d, want %d; body=%s", recorder.Code, http.StatusUnauthorized, recorder.Body.String())
+	}
+	var problem Problem
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Type != "urn:idmagic:error:invalid_token" {
+		t.Fatalf("problem type=%q, want invalid_token", problem.Type)
+	}
+	if challenge := recorder.Header().Get("WWW-Authenticate"); challenge != `Bearer error="invalid_token"` {
+		t.Fatalf("WWW-Authenticate=%q, want invalid_token challenge", challenge)
+	}
+}
+
 // 未知の内部エラーは、ステータスとエラーコードを保ったまま英語の本文を返す。「英語である」
 // ことを機械で読む方法は 1 つしかない。人が読む文が非 ASCII を含まないことである。
 //

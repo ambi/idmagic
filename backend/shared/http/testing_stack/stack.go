@@ -46,6 +46,8 @@ import (
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+	"github.com/ambi/idmagic/backend/application"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
@@ -169,17 +171,20 @@ type Stack struct {
 	KeyStore *signingmemory.InMemoryKeyStore
 	Signer   *tokensjose.JWTSigner
 
-	Clients            *oauth2memory.OAuth2ClientRepository
-	Consents           *consentmemory.ConsentRepository
-	AuthzDetailTypes   *oauth2memory.AuthorizationDetailTypeRepository
-	McpResourceServers *oauth2memory.McpResourceServerRepository
-	Codes              *oauth2memory.AuthorizationCodeStore
-	PAR                *oauth2memory.PARStore
-	Refresh            *oauth2memory.RefreshTokenStore
-	ApiTokens          apitokenports.Repository
-	SamlSPs            *samlmemory.SamlServiceProviderRepository
-	WsFedRPs           *wsfedmemory.WsFedRelyingPartyRepository
-	Sessions           *sessionusecases.SessionManager
+	Clients                *oauth2memory.OAuth2ClientRepository
+	Consents               *consentmemory.ConsentRepository
+	AuthzDetailTypes       *oauth2memory.AuthorizationDetailTypeRepository
+	McpResourceServers     *oauth2memory.McpResourceServerRepository
+	Codes                  *oauth2memory.AuthorizationCodeStore
+	PAR                    *oauth2memory.PARStore
+	Refresh                *oauth2memory.RefreshTokenStore
+	ApiTokens              apitokenports.Repository
+	Applications           *appmemory.ApplicationRepository
+	ApplicationAssignments *appmemory.ApplicationAssignmentRepository
+	ApplicationOrderings   *appmemory.ApplicationOrderingRepository
+	SamlSPs                *samlmemory.SamlServiceProviderRepository
+	WsFedRPs               *wsfedmemory.WsFedRelyingPartyRepository
+	Sessions               *sessionusecases.SessionManager
 	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
 	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
 	SessionStore *sessionmemory.SessionStore
@@ -393,6 +398,20 @@ func WithAccountApi() Option {
 		if b.stack.Consents == nil {
 			b.stack.Consents = consentmemory.NewConsentRepository()
 			b.deps.OAuth2.ConsentRepo = b.stack.Consents
+		}
+	}
+}
+
+// WithApplicationApi は Application の admin / account API と、拒否後に読み直す保存先を配線する。
+func WithApplicationApi() Option {
+	return func(b *builder) {
+		b.stack.Applications = appmemory.NewApplicationRepository()
+		b.stack.ApplicationAssignments = appmemory.NewApplicationAssignmentRepository()
+		b.stack.ApplicationOrderings = appmemory.NewApplicationOrderingRepository()
+		b.deps.Application = application.Module{
+			Repo:           b.stack.Applications,
+			AssignmentRepo: b.stack.ApplicationAssignments,
+			OrderingRepo:   b.stack.ApplicationOrderings,
 		}
 	}
 }
