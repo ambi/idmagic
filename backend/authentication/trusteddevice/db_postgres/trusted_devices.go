@@ -53,9 +53,10 @@ func (r *TrustedDeviceRepository) FindByID(
 func (r *TrustedDeviceRepository) ListActiveByUser(
 	ctx context.Context,
 	tenantID, userID string,
+	now time.Time,
 ) ([]*domain.TrustedDevice, error) {
 	rows, err := r.queries().ListActiveTrustedDevicesByUser(ctx, ListActiveTrustedDevicesByUserParams{
-		TenantID: tenantID, UserID: userID, ExpiresAt: time.Now().UTC(),
+		TenantID: tenantID, UserID: userID, ExpiresAt: now,
 	})
 	if err != nil {
 		return nil, err

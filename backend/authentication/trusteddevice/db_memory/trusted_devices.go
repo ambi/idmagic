@@ -50,10 +50,10 @@ func (r *TrustedDeviceRepository) FindByID(
 func (r *TrustedDeviceRepository) ListActiveByUser(
 	_ context.Context,
 	tenantID, userID string,
+	now time.Time,
 ) ([]*domain.TrustedDevice, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	now := time.Now().UTC()
 	out := []*domain.TrustedDevice{}
 	for _, device := range r.devices {
 		if device.TenantID != tenantID || device.UserID != userID {

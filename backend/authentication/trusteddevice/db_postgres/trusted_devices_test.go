@@ -112,7 +112,7 @@ func TestTrustedDeviceRepositoryRevokesAllOnce(t *testing.T) {
 	if err != nil || len(again) != 0 {
 		t.Fatalf("re-revoking = %d row(s), err %v, want 0", len(again), err)
 	}
-	active, err := repo.ListActiveByUser(ctx, tenant.ID, user.ID)
+	active, err := repo.ListActiveByUser(ctx, tenant.ID, user.ID, now.Add(2*time.Hour))
 	if err != nil || len(active) != 0 {
 		t.Fatalf("ListActiveByUser = %d row(s), err %v, want 0", len(active), err)
 	}

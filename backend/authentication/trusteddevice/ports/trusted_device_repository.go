@@ -17,9 +17,9 @@ type TrustedDeviceRepository interface {
 	// FindByID は本人のデバイス 1 件を失効済みも含めて引く。tenantID / userID が
 	// 一致しない行は「無い」として扱うので、他人のデバイス ID の存在は試せない。
 	FindByID(ctx context.Context, tenantID, userID, deviceID string) (*domain.TrustedDevice, error)
-	// ListActiveByUser は失効しておらず絶対期限内の行を last_used_at の降順で返す。
+	// ListActiveByUser は now の時点で失効しておらず絶対期限内の行を last_used_at の降順で返す。
 	// idle 期限の判定は時刻の比較なので呼び出し側 (domain.Active) が行う。
-	ListActiveByUser(ctx context.Context, tenantID, userID string) ([]*domain.TrustedDevice, error)
+	ListActiveByUser(ctx context.Context, tenantID, userID string, now time.Time) ([]*domain.TrustedDevice, error)
 	Save(ctx context.Context, device *domain.TrustedDevice) error
 	// RevokeAllForUser は対象ユーザーの未失効の行をすべて失効させ、失効した行を返す。
 	// 既に失効済みの行は idempotent にスキップする。

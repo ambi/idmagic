@@ -1331,7 +1331,7 @@ func (f *authRefusalFixture) seedTrustedDevice(t *testing.T, userID string) stri
 // activeTrustedDevices は失効していない端末の台数を返す。
 func (f *authRefusalFixture) activeTrustedDevices(t *testing.T, userID string) int {
 	t.Helper()
-	devices, err := f.devices.ListActiveByUser(context.Background(), tenancydomain.DefaultTenantID, userID)
+	devices, err := f.devices.ListActiveByUser(context.Background(), tenancydomain.DefaultTenantID, userID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -131,7 +131,7 @@ func ListActive(
 	if deps.Repo == nil {
 		return []*domain.TrustedDevice{}, nil
 	}
-	devices, err := deps.Repo.ListActiveByUser(ctx, tenantID, userID)
+	devices, err := deps.Repo.ListActiveByUser(ctx, tenantID, userID, now)
 	if err != nil {
 		return nil, err
 	}
