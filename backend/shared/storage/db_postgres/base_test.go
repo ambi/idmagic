@@ -191,8 +191,14 @@ func TestResilientDBQueryRowReportsDeadlineExceeded(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("QueryRow().Scan() error = %v, want context deadline exceeded", err)
 	}
+	// 期限切れで閉じた接続は puddle の非同期破棄へ渡されるため、Scan が返った時点では
+	// プール統計に一時的に残り得る。リークを見逃さない上限を設けて最終状態を待つ。
+	deadline := time.Now().Add(time.Second)
+	for pool.Stat().AcquiredConns() != acquired && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
 	if got := pool.Stat().AcquiredConns(); got != acquired {
-		t.Fatalf("acquired connections after the interrupted Scan = %d, want %d", got, acquired)
+		t.Fatalf("acquired connections after waiting for the interrupted Scan cleanup = %d, want %d", got, acquired)
 	}
 }
 
