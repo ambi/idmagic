@@ -27,8 +27,8 @@ type Problem struct {
 }
 
 // WriteProblem writes an RFC 9457 Problem Details response, the
-// default envelope for generic API errors (see docs/design/application/api-guidelines.md HTTP error
-// responses). code becomes both the `type` URN suffix and, humanized, the
+// default envelope for generic API errors (see docs/design/application/api-guidelines.md
+// 「HTTP エラーレスポンス」). code becomes both the `type` URN suffix and, humanized, the
 // stable `title`; detail carries the occurrence-specific explanation.
 // instance is the request's correlation id (docs/design/observability/README.md request
 // correlation), read from context rather than passed in so call sites cannot

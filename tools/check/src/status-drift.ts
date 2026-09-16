@@ -5,7 +5,7 @@
  * wi-382 closed five of these by hand and left the sweep undone; wi-386 found
  * that the disagreement is systemic rather than incidental — 401 was declared on
  * 10 operations and written by the admin guard on 250 of them. The rule the
- * contract now holds to lives in docs/design/application/api-guidelines.md, Declared status codes.
+ * contract now holds to lives in docs/design/application/api-guidelines.md, 「宣言する状態コード」.
  *
  * The chain is wi-385's: operationId to route to handler. What is new here is
  * the reading rule, and it is the whole design. Only a holder of the echo
