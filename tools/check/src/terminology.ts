@@ -76,6 +76,14 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     term: '訓練',
     adopt: '演習なら「ドリル」、人への教育なら「研修」。どちらを指すかを決めて書く',
   },
+  { term: '参照トポロジー', adopt: '「共通トポロジー」' },
+  { term: '参照プロファイル', adopt: '「デプロイプロファイル」' },
+  { term: '既定', adopt: '「デフォルト」' },
+  { term: 'コンピュート', adopt: '「コンピューティング」' },
+  {
+    term: '資材',
+    adopt: '「構成ファイル」。Kubernetes に限るなら「マニフェスト」',
+  },
 ]
 
 /** 用語を固定する文書のうち、リポジトリ root 直下にあるもの。 */

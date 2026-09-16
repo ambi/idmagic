@@ -38,7 +38,7 @@ mise run dev-compose
 mise run demo-ciba
 ```
 
-`dev-memory` は永続ジョブとワーカーを使わない最小構成である。`dev-compose` は PostgreSQL、OpenTelemetry Collector、Prometheus、API、UI ゲートウェイを <http://localhost:8080/> で起動する。
+`dev-memory` は永続ジョブとワーカーを使わない最小構成である。`dev-compose` は PostgreSQL、OpenTelemetry Collector、Prometheus、API、フロントエンドゲートウェイを <http://localhost:8080/> で起動する。
 
 ## ビルドと検証
 
@@ -97,4 +97,4 @@ flowchart LR
 
 ## 外部サービスのローカル代替
 
-メール配信の確認には Mailpit などのローカル SMTP サーバーを使い、本番の資格情報を開発環境へ持ち込まない。起動時設定の型、既定値、条件付き要件、機密区分は [Configuration Reference](../../CONFIGURATION.md) を参照する。
+メール配信の確認には Mailpit などのローカル SMTP サーバーを使い、本番の資格情報を開発環境へ持ち込まない。起動時設定の型、デフォルト値、条件付き要件、機密区分は [Configuration Reference](../../CONFIGURATION.md) を参照する。

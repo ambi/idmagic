@@ -2,7 +2,7 @@
 
 Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストからのテナント解決、テナント単位の設定・外装・属性スキーマ・通知テンプレート・リソース上限、そして制御面のテナント管理 API を担う。Tenant は IdMagic のあらゆる Aggregate が属する境界である。
 
-テナントの中に置かれる記録そのものは扱わない。User と Group は `IdManagement`、Application は `Application`、資格情報とセッションは `Authentication` が持つ。この Context が決めるのは、それらがどの境界に属し、その境界にどんな上限と既定が効くかである。
+テナントの中に置かれる記録そのものは扱わない。User と Group は `IdManagement`、Application は `Application`、資格情報とセッションは `Authentication` が持つ。この Context が決めるのは、それらがどの境界に属し、その境界にどんな上限とデフォルトが効くかである。
 
 テナント分離の規則そのものはプロダクト全体の関心事なので [認可設計](../../design/security/authorization.md) が正であり、ここはその境界を決める側の記録を持つ。
 

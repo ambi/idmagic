@@ -7,7 +7,7 @@ loki.process "docker" {
 	forward_to = [loki.write.default.receiver]
 
 	stage.match {
-		selector = "{compose_service=~\"idp|worker\"}"
+		selector = "{compose_service=~\"api|worker\"}"
 
 		stage.json {
 			expressions = {

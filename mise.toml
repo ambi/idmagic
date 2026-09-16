@@ -686,6 +686,11 @@ description = "Check design documents against the adopted terminology"
 dir = "tools"
 run = "bun run check/src/runner.ts terminology"
 
+[tasks.check-work-item-references]
+description = "Reject work item references in current-state documents"
+dir = "tools"
+run = "bun run check/src/runner.ts work-item-references"
+
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
 dir = "tools"

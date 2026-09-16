@@ -397,7 +397,7 @@ Primary actor: `TenantAdministrator`
 - When 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
 - But `kind` を指定しない
 - Then エラー "AgentKindRequiredError"
-- And 区分は実行時のトークン発行可否を決めるため、既定値で補わない (REQ-OAUTH2-050)
+- And 区分は実行時のトークン発行可否を決めるため、デフォルト値で補わない (REQ-OAUTH2-050)
 
 ### Example: EX-IDMANAGEMENT-009-03 `kind` が既知のどの値でもない
 

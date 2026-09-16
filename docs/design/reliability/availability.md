@@ -3,8 +3,9 @@
 ## 障害単位
 
 API とワーカーのプロセスまたは Pod、ノード、可用性ゾーン、PostgreSQL の primary、ゲートウェイ、DNS、証明書、外部依存、監視基盤を別の障害単位として扱う。
-現在の Kubernetes 資材は複数レプリカ、PodDisruptionBudget、HPA、NetworkPolicy を持つが、PostgreSQL の自動フェイルオーバーとゾーン配置を実装しない。
-単一障害時の無停止を検証済みとは扱わず、具体化と障害試験は [wi-165](../../../work-items/wi-165-high-availability-and-failover-resilience-topology.md) が担う。
+現在の Kubernetes マニフェストは複数レプリカ、PodDisruptionBudget、HPA、NetworkPolicy を持つが、PostgreSQL の自動フェイルオーバーとゾーン配置を実装しない。
+単一障害時の無停止を検証済みとは扱わない。
+構成の具体化と障害試験は、まだ行っていない。
 
 ## 健全性と停止
 

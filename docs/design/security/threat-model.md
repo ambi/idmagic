@@ -105,7 +105,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ID | 分類 | 脅威 | Context | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-013 | Elevation of privilege | リクエストに含めた `tenant_id` や `sub` を信じさせ、別テナントを操作する | Tenancy | docs/design/security/authorization.md: テナント境界、REQ-TENANCY-009 | `covered` |
-| THREAT-014 | Information disclosure | 未知のサブドメインが既定テナントへ落ち、既定テナントの情報が見える | Tenancy | REQ-TENANCY-008 | `covered` |
+| THREAT-014 | Information disclosure | 未知のサブドメインがデフォルトテナントへ落ち、デフォルトテナントの情報が見える | Tenancy | REQ-TENANCY-008 | `covered` |
 | THREAT-015 | Information disclosure | 正規ロケーション以外の経路からテナントへ到達する | Tenancy | REQ-TENANCY-009、REQ-TENANCY-010 | `covered` |
 | THREAT-016 | Information disclosure | 別テナントで発行されたページングのカーソルを再利用する | Tenancy, Audit | docs/design/security/authorization.md: テナント境界、REQ-AUDIT-004 | `covered` |
 | THREAT-017 | Information disclosure | 権限のない対象と存在しない対象のレスポンス差から、他テナントの資源の存在を推測する | Tenancy, Authorization | docs/design/security/authorization.md: その他の境界の規則 | `covered` |
@@ -225,9 +225,9 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 **THREAT-008（ログイン画面の模倣）** — IdP 単独では、利用者が別のサイトへ資格情報を入力することを防げない。フィッシングに耐える要素として WebAuthn を提供するが、その利用はテナントの選択である。**再検討の条件**は、フィッシング耐性のある要素をテナントへ強制できるポリシーを持ったときである。
 
-**THREAT-011（平文への降格）** — `Strict-Transport-Security` は既定で無効であり、TLS を終端する側が設定する。平文の `http` を使う開発環境に影響させないためである。**再検討の条件**は、プロダクトが TLS 終端を自ら担うデプロイ形態を支援するときである。
+**THREAT-011（平文への降格）** — `Strict-Transport-Security` はデフォルトで無効であり、TLS を終端する側が設定する。平文の `http` を使う開発環境に影響させないためである。**再検討の条件**は、プロダクトが TLS 終端を自ら担うデプロイ形態を支援するときである。
 
-**THREAT-034（漏洩パスワードの使い回し）** — 漏洩との照合は `BreachedPasswordChecker` として存在するが、既定は何もしないアダプターである。有効にした場合、同梱辞書との照合は確実に働き、外部の HIBP を使う追加の照合だけが障害時にフェイルオープンする。外部への依存を既定で持ち込まないという判断の帰結として、**既定の構成では漏洩照合が働かない**ことを受け入れている。**再検討の条件**は、同梱辞書だけで既定を有効にできると判断したとき、または規制がこの照合を要求するときである。
+**THREAT-034（漏洩パスワードの使い回し）** — 漏洩との照合は `BreachedPasswordChecker` として存在するが、デフォルトは何もしないアダプターである。有効にした場合、同梱辞書との照合は確実に働き、外部の HIBP を使う追加の照合だけが障害時にフェイルオープンする。外部への依存をデフォルトで持ち込まないという判断の帰結として、**デフォルトの構成では漏洩照合が働かない**ことを受け入れている。**再検討の条件**は、同梱辞書だけでデフォルトを有効にできると判断したとき、または規制がこの照合を要求するときである。
 
 **THREAT-077（実行環境を取得した者）** — `Seeding` は権限ではなく実行環境そのものを境界とする。プロセスを起動できる者は既にデータベースへ到達できるので、この経路を塞いでも実効的な防御にならない。**再検討の条件**は、`Seeding` に HTTP の入口を与えるときである。
 

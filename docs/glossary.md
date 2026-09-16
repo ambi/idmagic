@@ -53,9 +53,13 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 
 | 用語 | 指す概念 | 正本 |
 |---|---|---|
-| デプロイ、デプロイメント | deployment。実行単位をどの環境と計算資源へ配置するか。ビューの名前としては「デプロイメント」を使う。 | [デプロイメントアーキテクチャ](architecture/deployment.md) |
+| デプロイ、デプロイメント | deployment。実行単位をどの環境とコンピューティングへ配置するか。ビューの名前としては「デプロイメント」を使う。 | [デプロイメントアーキテクチャ](architecture/deployment.md) |
 | ランタイム | runtime。論理構成を実行中のプロセスと通信へ写した姿。副詞としての「実行時に」はこの語に含めない。 | [ランタイムアーキテクチャ](architecture/runtime.md) |
-| プラットフォーム | platform。計算資源、ストレージ、環境差、構成管理、IaC の責任分界。 | [プラットフォーム設計](design/infrastructure/platform.md) |
+| プラットフォーム | platform。コンピューティング、ストレージ、環境差、構成管理、IaC の責任分界。 | [プラットフォーム設計](design/infrastructure/platform.md) |
+| コンピューティング | computing。構成要素を動かす CPU とメモリの提供元。ホスト、コンテナの実行環境、Kubernetes のクラスター、マネージドの実行環境を含む。 | [プラットフォーム設計](design/infrastructure/platform.md#コンピューティング) |
+| 構成ファイル | `infra/` の下にある Docker Compose ファイル、Kubernetes マニフェスト、Terraform。デプロイ先の構成を記述し、その設定値の正本になる。 | [デプロイメントアーキテクチャ](architecture/deployment.md) |
+| 共通トポロジー | どのデプロイ先でも変わらない実行単位の並びと通信の向き。製品名を含まない。 | [デプロイメントアーキテクチャ](architecture/deployment.md#共通トポロジー) |
+| デプロイプロファイル | 共通トポロジーの各要素を具体の製品とリソースへ割り当てた構成。選べる候補であり、適用済みの本番構成を意味しない。想定負荷を指す「リファレンスワークロードプロファイル」とは別の概念。 | [デプロイメントアーキテクチャ](architecture/deployment.md#デプロイプロファイル) |
 | シークレット | secret。起動時に注入し、リポジトリへ置かない値。復号できる形で保持する機微データは「秘密情報」、非対称鍵の片側は「秘密鍵」であり、どちらもこの語ではない。 | [シークレットと鍵の設計](design/security/secrets.md) |
 | キャパシティ | capacity。処理能力とその算出。ストレージの量は「保存容量」であり、この語ではない。 | [キャパシティ設計](design/performance/capacity.md) |
 | リファレンスワークロードプロファイル | reference workload profile。キャパシティ算出の設計入力となる想定負荷。すべてのデプロイ先へ要求する最小構成ではない。 | [キャパシティ設計](design/performance/capacity.md#リファレンスワークロードプロファイル) |

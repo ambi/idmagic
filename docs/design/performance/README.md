@@ -8,4 +8,4 @@
 | [スケーリングと過負荷の設計](scaling.md) | 水平拡張、同時実行、待ち行列、受付制限、再試行 |
 
 目標値と測定境界は[品質要求](../../requirements/quality.md)が持つ。
-現在の数値は実測ではなく、ステージング検証は [wi-282](../../../work-items/wi-282-staging-load-testing-and-capacity-validation.md) が扱う。
+現在の数値は実測ではなく、ステージングでの検証もまだ行っていない。

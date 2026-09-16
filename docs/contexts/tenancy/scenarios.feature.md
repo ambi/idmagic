@@ -468,20 +468,20 @@ Primary actor: `TenantAdministrator`
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" が委譲深さの上限を保存する
-- Then 設定取得のレスポンスは現在の上書き値と、上書きが無いときに適用されるシステム既定の双方を返す
+- Then 設定取得のレスポンスは現在の上書き値と、上書きが無いときに適用されるシステムデフォルトの双方を返す
 
-### Example: EX-TENANCY-021-02 システム既定より小さい値を保存する
+### Example: EX-TENANCY-021-02 システムデフォルトより小さい値を保存する
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" が委譲深さの上限を保存する
-- But システム既定より小さい値を保存する
+- But システムデフォルトより小さい値を保存する
 - Then 上書きが永続化され、以後のトークン交換の判定に使われる
 
-### Example: EX-TENANCY-021-03 システム既定を超える値を保存する
+### Example: EX-TENANCY-021-03 システムデフォルトを超える値を保存する
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" が委譲深さの上限を保存する
-- But システム既定を超える値を保存する
+- But システムデフォルトを超える値を保存する
 - Then エラー "PolicyOverrideWeakerError"
 
 ### Example: EX-TENANCY-021-04 1 未満の値を保存する
@@ -496,4 +496,4 @@ Primary actor: `TenantAdministrator`
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" が委譲深さの上限を保存する
 - But 0 を保存する
-- Then 上書きを解除し、システム既定を継承する状態へ戻す
+- Then 上書きを解除し、システムデフォルトを継承する状態へ戻す

@@ -8,7 +8,7 @@
 - **管理 API**: クライアント (`admin:clients_manage`)、同意 (`admin:consents_manage`)、`authorization_details` の型 (`admin:authorization_detail_types_manage`) の管理は、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行う。
 - 管理 API では、API アクセストークンにロールに加えてリソースごとのスコープを要求する。`oauth-clients:*`、`consents:*`、`authorization-detail-types:*`、`mcp-resource-servers:*` がそれぞれのリソースに対応し、`read` が参照だけを、`write` が変更を許可する。リソースをまたぐ流用はできず、あるリソースのスコープで別のリソースを操作することはない。ロールポリシー一覧だけはテナント設定の参照なので `settings:read` に対応させる。
 - すべての判定は AuthZEN 形式の `authorize()` ポートを通り、規則表が要件の論理積を評価する。判定を返せない場合、事実が欠けている場合、ストアへ到達できない場合のいずれも、許可へ退避しない。
-- 代行 (Token Exchange) は権限を広げない。`act` チェーン上のすべての actor が有効であり、要求するスコープと `authorization_details` が元の権限の部分集合であることを求める。チェーンの深さはテナントの `max_delegation_depth` (システム既定 3) を超えられず、上書きを解決できない場合は交換を拒否する。
+- 代行 (Token Exchange) は権限を広げない。`act` チェーン上のすべての actor が有効であり、要求するスコープと `authorization_details` が元の権限の部分集合であることを求める。チェーンの深さはテナントの `max_delegation_depth` (システムデフォルト 3) を超えられず、上書きを解決できない場合は交換を拒否する。
 - 認可リクエストとデバイスコードのライフサイクルは、その場の条件分岐ではなく宣言的な遷移表で表す。条件分岐に散らすと、クライアントに許可する遷移の集合が実装のたびに暗黙にずれるからである。
 - PKCE はすべてのクライアントに一律で強制せず、公開クライアントと FAPI 2.0 クライアントではデフォルトで必須、従来の confidential クライアントでは任意とする。
 - Pushed Authorization Requests は FAPI 2.0 クライアントで必須、その他では任意とし、最も強い保証が必要なクライアントの `/authorize` で URL の改ざんと未認証リクエストの偽造を防ぐ。

@@ -40,7 +40,7 @@ services:
       - ./prometheus-rules.yml:/etc/prometheus/rules.yml:ro
     ports: ["9090:9090"]
     depends_on:
-      idp: { condition: service_started }
+      api: { condition: service_started }
 
   # wi-304: application log aggregation (JSON Lines -> Loki).
   loki:
@@ -76,7 +76,7 @@ services:
       prometheus: { condition: service_started }
       loki: { condition: service_started }
 
-  idp:
+  api:
     image: idmagic:dev
     build:
       context: ../..
@@ -111,9 +111,9 @@ services:
       args:
         VITE_DEMO_LOGIN_ENABLED: "true"
     environment:
-      BACKEND_ADDRESS: http://idp:8081
+      BACKEND_ADDRESS: http://api:8081
     depends_on:
-      idp: { condition: service_started }
+      api: { condition: service_started }
     ports: ["8080:8080"]
 
 

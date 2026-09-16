@@ -6,7 +6,7 @@ Primary actor: `Operator`
 
 ### Example: EX-SYSTEM-001-01 通常経路
 
-- Given API、UI ゲートウェイ、イベントリレーは個別の実行単位としてデプロイされる
+- Given API、フロントエンドゲートウェイ、Worker は個別の実行単位としてデプロイされる
 - And `MetricsExposition` の公開範囲は管理ネットワークに制限される
 - And OAuth2/OIDC のサービス目標、母集団、時間窓、除外条件は `docs/requirements/quality.md` に定められている
 - And 各サービス目標は `docs/design/observability/monitoring.md` の HTTP RED メトリクスと Prometheus のスクレイプ状態に対応づけられている
@@ -16,7 +16,7 @@ Primary actor: `Operator`
 
 ### Example: EX-SYSTEM-001-02 PostgreSQL へ到達できない
 
-- Given API、UI ゲートウェイ、イベントリレーは個別の実行単位としてデプロイされる
+- Given API、フロントエンドゲートウェイ、Worker は個別の実行単位としてデプロイされる
 - And `MetricsExposition` の公開範囲は管理ネットワークに制限される
 - And OAuth2/OIDC のサービス目標、母集団、時間窓、除外条件は `docs/requirements/quality.md` に定められている
 - And 各サービス目標は `docs/design/observability/monitoring.md` の HTTP RED メトリクスと Prometheus のスクレイプ状態に対応づけられている
@@ -27,7 +27,7 @@ Primary actor: `Operator`
 
 ### Example: EX-SYSTEM-001-03 Prometheus Operator が導入されていない
 
-- Given API、UI ゲートウェイ、イベントリレーは個別の実行単位としてデプロイされる
+- Given API、フロントエンドゲートウェイ、Worker は個別の実行単位としてデプロイされる
 - And `MetricsExposition` の公開範囲は管理ネットワークに制限される
 - And OAuth2/OIDC のサービス目標、母集団、時間窓、除外条件は `docs/requirements/quality.md` に定められている
 - And 各サービス目標は `docs/design/observability/monitoring.md` の HTTP RED メトリクスと Prometheus のスクレイプ状態に対応づけられている
@@ -321,18 +321,18 @@ Primary actor: `Operator`
 ### Example: EX-SYSTEM-016-01 通常経路
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、既定の有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
 - Then 発生したすべての検証エラーが 1 回の起動試行で集約されて報告される
 - Then 検証エラーおよび起動ログは、シークレットに分類された値（DSN、SMTP 資格情報、API キーなど）を含まない
 - When すべての検証を通過する
-- Then プロセスは明示指定、既定値、依存閉包から決定した有効機能と検証済みの `Config` を用いて初期化を完了する
+- Then プロセスは明示指定、デフォルト値、依存閉包から決定した有効機能と検証済みの `Config` を用いて初期化を完了する
 - Then 明示的に有効化した `experimental` または `preview` の機能と、有効な `deprecated` の機能は、識別子と成熟度だけを秘密情報を含まない起動警告へ記録する
 
 ### Example: EX-SYSTEM-016-02 必須値が欠落している
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、既定の有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
 - But 必須値が欠落している
 - Then 検証は該当キーを含む集約エラーを返す
@@ -341,7 +341,7 @@ Primary actor: `Operator`
 ### Example: EX-SYSTEM-016-03 値の型または範囲が不正である（数値でない、負の期間など）
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、既定の有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
 - But 値の型または範囲が不正である（数値でない、負の期間など）
 - Then 検証は該当キーを含む集約エラーを返す
@@ -350,25 +350,25 @@ Primary actor: `Operator`
 ### Example: EX-SYSTEM-016-04 相互に矛盾する組み合わせである（`persistence=postgres` なのに DSN が空など）
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、既定の有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
 - But 相互に矛盾する組み合わせである（`persistence=postgres` なのに DSN が空など）
 - Then 検証は該当する組み合わせを含む集約エラーを返す
 - And プロセスは副作用のある初期化を開始せず終了する
 
-### Example: EX-SYSTEM-016-05 `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能の既定有効化、非推奨機能の新規既定有効化がある
+### Example: EX-SYSTEM-016-05 `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能のデフォルト有効化、非推奨機能の新規デフォルト有効化がある
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、既定の有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
-- But `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能の既定有効化、非推奨機能の新規既定有効化がある
+- But `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能のデフォルト有効化、非推奨機能の新規デフォルト有効化がある
 - Then 検証はすべての registry エラーを返す
 - And プロセスは副作用のある初期化を開始せず終了する
 
 ### Example: EX-SYSTEM-016-06 `FEATURES_ENABLE` または `FEATURES_DISABLE` が存在しない機能を指すか、同じ機能を両方で指定するか、明示的に無効化した依存を必要とする
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、既定の有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
 - But `FEATURES_ENABLE` または `FEATURES_DISABLE` が存在しない機能を指すか、同じ機能を両方で指定するか、明示的に無効化した依存を必要とする
 - Then 検証はすべての選択エラーを返す
@@ -383,7 +383,7 @@ Primary actor: `Operator`
 - Given バックエンドプロセスの起動時設定が `Config` として一箇所で定義されている
 - When ConfigurationReference を生成する
 - Then 生成物は設定可能な各キーについて、キー名、値の型、デフォルト値、必須か、読むプロセス、説明を含む
-- Then 生成物は `FeatureRegistry` に登録された各機能について、識別子、版、成熟度、既定の有効化、依存機能、更新方針を含み、registry が空なら選択可能な機能が無いことを示す
+- Then 生成物は `FeatureRegistry` に登録された各機能について、識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を含み、registry が空なら選択可能な機能が無いことを示す
 - Then 生成物はシークレットに分類されたキーの値を含まず、シークレットであることだけを示す
 - When 生成物と `Config` の定義を突き合わせる
 - Then Operator は `Config` の実装を読まずに設定可能なすべてのキーを参照できる
@@ -395,7 +395,7 @@ Primary actor: `Operator`
 - Given バックエンドプロセスの起動時設定が `Config` として一箇所で定義されている
 - When ConfigurationReference を生成する
 - Then 生成物は設定可能な各キーについて、キー名、値の型、デフォルト値、必須か、読むプロセス、説明を含む
-- Then 生成物は `FeatureRegistry` に登録された各機能について、識別子、版、成熟度、既定の有効化、依存機能、更新方針を含み、registry が空なら選択可能な機能が無いことを示す
+- Then 生成物は `FeatureRegistry` に登録された各機能について、識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を含み、registry が空なら選択可能な機能が無いことを示す
 - Then 生成物はシークレットに分類されたキーの値を含まず、シークレットであることだけを示す
 - When 生成物と `Config` の定義を突き合わせる
 - But 生成物が定義と一致しない

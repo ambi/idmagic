@@ -14,4 +14,4 @@
 ## 現在の証拠の限界
 
 ローカルのスモーク試験と復旧ドリルは存在するが、ステージングの全運用プロファイル、マルチ AZ のフェイルオーバー、本番相当の RPO と RTO は未検証である。
-負荷試験は [wi-282](../../work-items/wi-282-staging-load-testing-and-capacity-validation.md)、高可用性は [wi-165](../../work-items/wi-165-high-availability-and-failover-resilience-topology.md)、異なる版の混在は [wi-450](../../work-items/wi-450-mixed-version-release-acceptance.md) が扱う。
+ステージングでの負荷試験、高可用性の障害試験、異なるバージョンが混在する状態でのリリースの受け入れ試験は、まだ実施していない。

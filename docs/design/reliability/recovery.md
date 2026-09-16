@@ -18,4 +18,4 @@
 
 ローカルの復旧ドリルの時間は本番のデータ量、外部鍵、ネットワーク、承認手順を含まない。
 本番のデータ種別ごとの RPO と RTO、バックアップ頻度、保管先、暗号化、リージョン喪失時の切替は未確定である。
-これらは [wi-165](../../../work-items/wi-165-high-availability-and-failover-resilience-topology.md) と既存の復旧作業の後続で確定し、[品質要求](../../requirements/quality.md)へ目標を追加する。
+これらは高可用性の構成と復旧の手順を具体化した後に確定し、[品質要求](../../requirements/quality.md)へ目標を追加する。

@@ -20,7 +20,7 @@ IdMagic の長時間処理（利用者の一括取り込み、動的グループ
 
 ## worker の起動と設定
 
-`worker` は次の環境変数で調整します。既定値と完全な一覧は [Configuration Reference](../../CONFIGURATION.md) が持ちます。
+`worker` は次の環境変数で調整します。デフォルト値と完全な一覧は [Configuration Reference](../../CONFIGURATION.md) が持ちます。
 
 | 変数 | 意味 |
 |---|---|
@@ -101,7 +101,7 @@ POST /api/admin/v1/jobs/{job_id}/cancel
 
 ラベルに `tenant_id` や `job_id` は載りません。値の種類に上限がないためです。個々のジョブを追うときはメトリクスではなく、構造化ログと管理 API を使ってください。配信不能の確定は `jobs: job dead-lettered` として `job_id`、`tenant_id`、`kind`、`lane`、`attempts` とともにログに残ります。
 
-既定のアラートは `infra/k8s/monitoring/prometheus-rule.yaml` にあります。`latency_sensitive` の取得遅延、失敗率、滞留件数を見ています。
+デフォルトのアラートは `infra/k8s/monitoring/prometheus-rule.yaml` にあります。`latency_sensitive` の取得遅延、失敗率、滞留件数を見ています。
 
 ## 保持期間
 

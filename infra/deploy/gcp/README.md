@@ -1,84 +1,54 @@
-# GCP への IdMagic の配備
+# 採らなかった Cloud Run 案のひな型
 
-コンピューティングリソース、データベース、イベントリレーを **単一 VPC・単一リージョン** に配置する。レイテンシーと egress コストを抑え、CUD（確約利用割引）で費用を圧縮し、運用を単一ベンダー内で完結させる。中規模 SaaS、本番の高可用性、イベントリレーを前提とする。
+このディレクトリは、Google Cloud のデプロイプロファイルを Cloud Run で作る案のひな型を持つ。
+**現在の設計はこの案を採らず、GKE Autopilot を使う。**
+ここにあるものは、見直す場合に出発点として使えるよう残している。
 
+採らなかった理由と、見直す条件は[プラットフォーム設計](../../../docs/design/infrastructure/platform.md#アーキテクチャの選択)が持つ。
+採った構成は次の文書が持つ。
 
+- 実行単位の配置先とプロファイルの一覧：[デプロイメントアーキテクチャ](../../../docs/architecture/deployment.md)
+- コンピューティング、データベース、シークレットの注入、スキーマ適用、スケール単位、費用：[プラットフォーム設計](../../../docs/design/infrastructure/platform.md)
+- エッジ、セグメンテーション、ファイアウォールルール、Egress、DNS と証明書：[ネットワーク設計](../../../docs/design/infrastructure/network.md)
+- 起動時設定の項目、デフォルト値、検証規則：[`CONFIGURATION.md`](../../../CONFIGURATION.md)
 
-## アーキテクチャ
+## ひな型が現在の設計と食い違う点
 
-- フロントエンド: React + Vite の**純粋な SPA**（`frontend/` → `dist/`）。SSR は使わない。
-- ゲートウェイ: **Caddy**（`frontend/Caddyfile`）が静的アセットを配信し、同一オリジンで API / OIDC のパスをバックエンドへプロキシする。CSP は SPA の HTML だけに付与する。
-- バックエンド: 常駐する 2 個の Go プロセス、`idmagic`（API `:8080`）と `idmagic-worker`。CGO を使わない distroless イメージ（`infra/docker/Dockerfile`）で実行し、`PERSISTENCE=postgres` によりステートレスに水平スケーリングできる。
-- データ: **PostgreSQL 17** が業務データ、BLOB、セッション、OAuth の一時状態を保持する。揮発性の状態も同じ PostgreSQL に置くため、2 個目のステートフル基盤はない。
-- 署名鍵: 全レプリカの JWKS を一致させるため、**データベース保存の永続鍵**を推奨する。Vault Transit も利用できる。
-- スキーマ: `psqldef` を**配備工程で適用**する。起動時の適用と `--enable-drop` の使用は禁止する。
+ひな型は手を入れずに残しているため、現在の設計と次の点で食い違う。
+使う前にこれらを直す。
 
-## トポロジー
+- `startupProbe` と `livenessProbe` に `/health` を使い、`readinessProbe` を持たない。現在の設計は `/startupz`、`/livez`、`/readyz` を分ける。
+- `idmagic-worker` をレーンに分けず、一つの worker pool で全レーンを処理する。
+- 専用のサービスアカウントを作らず、デフォルトのサービスアカウントで動く。
+- `provision.sh` は、一般提供になった worker pools をまだ `gcloud beta run worker-pools` で呼ぶ。
+- Cloud Run の終了猶予は 10 秒で固定されており、汎用 Kubernetes のマニフェストの終了猶予と揃わない。
 
-```
-利用者
-  ▼
-Cloud Load Balancing（HTTPS）+ Cloud CDN + Cloud Armor（WAF）
-  │
-  ├─ 静的 SPA … GCS バケット + Cloud CDN
-  │
-  └─ /api・/authorize・/token・/.well-known など → Cloud Run（idmagic API、minScale=2、高可用性）
-                                                     │
-        ┌─────────────────────────────────────┼─────────────────────────────┐
-        ▼                                                                   ▼
-  Cloud SQL for PostgreSQL                                            Secret Manager
-   （REGIONAL = 高可用性、揮発性状態も同居）                              / Cloud KMS
+## 前提
 
-バックグラウンド処理（HTTP を持たない常駐プロセス）：
-  Cloud Run worker pools ─ idmagic-worker（ジョブ実行と保持期間スイープ）
-```
+- コンピューティング、データベース、シークレットを単一 VPC、単一リージョンへ置く。
+- ひな型の値はプレースホルダーである。実行前に環境へ合わせて置き換える。
+- `provision.sh` を実行する前に `gcloud components update` を済ませる。
 
-## サービスの対応
+## デプロイ順序
 
-| プロセス | 実行基盤 | 選定理由 |
+1. `infra/docker/Dockerfile` からイメージをビルドし、Artifact Registry へ登録する。
+2. Cloud SQL のインスタンス、データベース、ユーザーを作る。
+3. 接続文字列などのシークレットを Secret Manager へ登録する。
+4. `psqldef --apply` でスキーマを適用する。起動時には適用せず、`--enable-drop` は使わない。
+5. API を Cloud Run Service、ワーカーを worker pools としてデプロイする。
+6. ロードバランサー、Cloud CDN、Cloud Armor、静的アセットのバケット、DNS、TLS を構成する。
+
+ひな型は [`provision.sh`](./provision.sh)（1 から 5）と [`cloudrun-idmagic.yaml`](./cloudrun-idmagic.yaml)（API の Service 定義）にある。
+6 のひな型は持たない。
+
+## 置き換える値
+
+| 置き換える対象 | 出現箇所 | 説明 |
 |---|---|---|
-| `idmagic`（API） | **Cloud Run Service** | HTTP（`:8080`）を提供する。`minScale=2` で高可用性と自動スケーリングを実現する。 |
-| `idmagic-worker` | **Cloud Run worker pools** | HTTP を持たない常駐 `worker` プロセスであり、`$PORT` のリッスンが不要な worker pools が適する。 |
-| `idmagic-seed` | Cloud Run Job（任意・一過性） | 初期 seed |
+| `PROJECT`、`REGION` | `provision.sh`、`cloudrun-idmagic.yaml` | プロジェクト ID とリージョン |
+| `REPLACE_ME` | `provision.sh` | データベースユーザーのパスワード。Secret Manager へ登録する接続文字列にも同じ値が入る |
+| `PROJECT:REGION:idmagic-pg` | `cloudrun-idmagic.yaml` | Cloud SQL の接続名。プライベート IP で接続する場合はこの注釈を外す |
+| `https://id.example.com`、`id.example.com` | `cloudrun-idmagic.yaml` | 公開ホスト名。`ISSUER` は Discovery Metadata の `issuer` と一致させ、WebAuthn の RP ID と RP オリジンも同じ名前から決める |
+| イメージタグ | `provision.sh`、`cloudrun-idmagic.yaml` | リリースではタグではなくダイジェストを指定する |
 
-> Cloud Run の通常の Service は `$PORT` への HTTP レスポンスが必須なので、HTTP を持たない `worker` プロセスとイベントリレーには **worker pools** を使う。
-
-## 配備順序
-
-1. 既存の `infra/docker/Dockerfile` から、2 個のバイナリを含む distroless イメージをビルドし、Artifact Registry へ登録する。
-2. Cloud SQL（REGIONAL）を用意する。
-3. `DATABASE_URL` などのシークレットを Secret Manager に登録する。
-4. `psqldef --apply` で**スキーマを適用する**。起動時ではなくこの工程で実行し、`--enable-drop` は使わない。
-5. `idmagic`（Service）、`idmagic-worker`（worker pools）の順に配備する。
-6. Cloud Load Balancing、Cloud CDN、Cloud Armor、DNS、TLS を配備する。
-
-ひな型は [`provision.sh`](./provision.sh)（準備と配備）と [`cloudrun-idmagic.yaml`](./cloudrun-idmagic.yaml)（API Service）を参照する。
-
-## 環境変数
-
-| 変数 | 設定値または参照 | 説明 |
-|---|---|---|
-| `PERSISTENCE` | `postgres` | ステートレス・水平スケール前提 |
-| `DATABASE_URL` | Secret Manager の `idmagic-database-url` シークレットの `latest` 版 | Cloud Run が環境変数へ注入する Cloud SQL 接続文字列（プライベート IP または Unix ソケット） |
-| `KEY_PROVIDER` | `local` | データベース保存の署名鍵。全レプリカで JWKS が一致する代わりに、秘密鍵は平文で Cloud SQL のバックアップに入る |
-| `ISSUER` | `https://id.example.com` | Discovery Metadata の `issuer` と一致必須 |
-| `OBSERVABILITY` / `OTEL_EXPORTER_OTLP_ENDPOINT` | `otel` / コレクター | OTLP 送信、`/metrics` はプル方式 |
-
-## 高可用性とスケーリング
-
-- API: `minScale=2`（最低 2 レプリカ）とし、`maxScale` は負荷に応じて決める。ステートレスなので水平スケーリングできる。
-- `worker` プロセス: リース方式なので複数インスタンスを実行できる。`min-instances>=1` とする。
-- データベース: `REGIONAL`（同期スタンバイ）とする。揮発性の状態も同じデータベースに置くため、2 個目のステートフル基盤はない。
-- 署名鍵はデータベースに保存し、全レプリカで一致させる。Vault を使う場合も共通の鍵を参照させる。
-
-## 費用の目安
-
-| 項目 | 構成 | 月額（USD） |
-|---|---|---|
-| Cloud Run | API×2 + worker pools | $180–250 |
-| Cloud SQL PostgreSQL HA | 2–4 vCPU/8–16GB + 100GB SSD | $300–450 |
-| LB + Cloud CDN + GCS(SPA) | | $30–60 |
-| Secret Manager/KMS/ログ/egress | | $30–60 |
-| **合計** | | **~$540–830（中心 ~$685）** |
-
-ステートフル基盤は PostgreSQL 1 個であり、揮発性の状態も同居する。2 個目のキャッシュ基盤（月 $150–200 規模）の固定費は発生しない。CUD（1 年 20–25% / 3 年 40–52%）により **~$520–700** まで低下しうる。割引はコンピューティングとデータベースの演算リソースに適用され、ストレージは対象外である。
+インスタンスの種別、ストレージの大きさ、最小と最大のインスタンス数、同時実行数、タイムアウトは、`provision.sh` と `cloudrun-idmagic.yaml` が正本である。

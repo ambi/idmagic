@@ -161,10 +161,10 @@ RFC 8693 — https://www.rfc-editor.org/rfc/rfc8693.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC8693-DELEGATION-DEFAULT | required | MUST | 交換の既定は委譲とする。発行するトークンは元のユーザーを `sub` に保ち、現在の行為者を `act` に記録し、以前の行為者を §4.1 に従って内側へ入れ子にする。 |
+| RFC8693-DELEGATION-DEFAULT | required | MUST | 交換のデフォルトは委譲とする。発行するトークンは元のユーザーを `sub` に保ち、現在の行為者を `act` に記録し、以前の行為者を §4.1 に従って内側へ入れ子にする。 |
 | RFC8693-IMPERSONATION | optional | MAY | なりすまし (`act` を落として `sub` を置き換える形) は、クライアントまたは Agent へ明示的に許可した場合だけ受け付ける。 |
 | RFC8693-SUBJECT-TOKEN | required | MUST | 受け付ける `subject_token` は、自身が発行しイントロスペクションを通過したトークンか、`subject_token_type` が JWT-SVID の登録済み外部アテステーションに限る。 |
-| RFC8693-DELEGATION-DEPTH | required | MUST | `act` チェーンの長さをテナントの実効委譲深さで制限する。テナントはシステム既定を下げられるが上げられず、ポリシーを解決できない場合は交換を拒否する。 |
+| RFC8693-DELEGATION-DEPTH | required | MUST | `act` チェーンの長さをテナントの実効委譲深さで制限する。テナントはシステムデフォルトを下げられるが上げられず、ポリシーを解決できない場合は交換を拒否する。 |
 
 ## OAuth 2.0 Rich Authorization Requests
 

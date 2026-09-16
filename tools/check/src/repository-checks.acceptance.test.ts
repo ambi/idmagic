@@ -92,6 +92,25 @@ async function checkTerminology(root: string): Promise<{ code: number; output: s
   return { code, output: `${stdout}${stderr}` }
 }
 
+/** work item 参照の検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
+async function checkWorkItemReferences(root: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(
+    ['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'work-item-references'],
+    {
+      cwd: TOOLS_DIR,
+      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  )
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
 /** work item 検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
 async function checkWorkItems(root: string): Promise<{ code: number; output: string }> {
   const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'work-items'], {
@@ -616,5 +635,28 @@ describe('用語検査', () => {
 
     expect(result.code).toBe(0)
     expect(result.output).toContain('ok  terminology')
+  })
+})
+
+describe('現在状態の文書からの work item 参照の検査', () => {
+  it('設計文書の work item 参照を、位置つきで拒否する', async () => {
+    const root = await workspace()
+    await writeFile(
+      join(root, 'docs', 'architecture', 'deployment.md'),
+      '# 概要\n\n試験は [wi-165](../../work-items/wi-165-ha.md) が扱う。\n',
+    )
+
+    const result = await checkWorkItemReferences(root)
+
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/architecture/deployment.md:3:6')
+    expect(result.output).toContain('wi-165')
+  })
+
+  it('work item を参照しない作業ツリーを通す', async () => {
+    const result = await checkWorkItemReferences(await workspace())
+
+    expect(result.code).toBe(0)
+    expect(result.output).toContain('ok  work-item-references')
   })
 })

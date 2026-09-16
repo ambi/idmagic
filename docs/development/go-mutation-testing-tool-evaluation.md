@@ -60,7 +60,7 @@ Mutago は operator の広さと変更行への絞り込みに優れる。
 | gomutants 0.6.1、Gremlins と同系統の 5 operator、cache off | killed 38、lived 14、not covered 16、not viable 1 | 約 22.0 秒 |
 | gomutants 0.6.1、論理反転を含む 5 operator、cache cold | killed 43、lived 19、not covered 21、not viable 1 | 約 22.6 秒 |
 | 同じ gomutants 実行、cache warm | 63 件を再利用 | 約 1.7 秒 |
-| gomutants 0.6.1、既定の 28 operator、dry-run | mutant 399 件、うち test 対象 299 件 | 約 1.3 秒 |
+| gomutants 0.6.1、デフォルトの 28 operator、dry-run | mutant 399 件、うち test 対象 299 件 | 約 1.3 秒 |
 
 同じ AST に対する tool 間の mutant 分割と重複除去が異なるため、総数と score は直接比較しない。
 時間はローカル環境での一回の観測であり、benchmark ではない。
@@ -82,7 +82,7 @@ coverage prefilter、変更箇所限定、永続結果キャッシュもない�
 ## 導入条件
 
 最初の移行では Gremlins と同系統の 5 operator に限定し、既存結果と比較できる状態を保つ。
-対象は引き続き package directory とし、worker の既定値は 2、PR の必須 CI gate にはしない。
+対象は引き続き package directory とし、worker のデフォルト値は 2、PR の必須 CI gate にはしない。
 初回と依存 package を変更した後は `--cache=off` を使う。
 同一変更上で survivor を潰す反復だけは cache を許可する。
 
@@ -90,13 +90,13 @@ tool 更新時には、既知の survivor と既知の not viable mutant を固�
 同じ入力を再実行して分類が一致することも確認する。
 この条件により、過去に gomu で見つかった Go test cache の誤判定と、今回 Gremlins で観測した全 killed の異常を検出する。
 
-gomutants の import 先を含むキャッシュ無効化が解決し、安定 release と利用実績が増えた時点で cache の既定値を再評価する。
+gomutants の import 先を含むキャッシュ無効化が解決し、安定 release と利用実績が増えた時点で cache のデフォルト値を再評価する。
 Ooze は retract されていない次版が公開された時点で、実行モデルと IdMagic 上の時間を再評価する。
 
 ## 実行方法
 
 通常の調査は package directory を指定して実行する。
-worker 数は 2、cache は無効、JSON report は一時領域の `idmagic-mutation-report.json` が既定値である。
+worker 数は 2、cache は無効、JSON report は一時領域の `idmagic-mutation-report.json` がデフォルト値である。
 
 ```console
 mise run test-go-mutation -- backend/idmanagement/group/domain

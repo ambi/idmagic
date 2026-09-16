@@ -11,7 +11,7 @@
 - **Measurement**：日付、ソース版、実行環境、データ分布、負荷構成、試験時間、結果の保存先を伴う再現可能な実測値である。
 
 現時点で Measurement はない。
-ステージングでの測定は [wi-282](../../work-items/wi-282-staging-load-testing-and-capacity-validation.md) が扱う。
+ステージングでの測定も、まだ行っていない。
 
 ## 測定境界
 
@@ -43,7 +43,7 @@ API のスクレイプ対象が区分を通じて一つ以上利用可能で、�
 | SLO-REVOKE-LATENCY | `POST /revoke` | p99 ≤ 100 ms | `http_request_duration_seconds` |
 | SLO-USERINFO-LATENCY | `GET` と `POST /userinfo` | p99 ≤ 100 ms | `http_request_duration_seconds` |
 | SLO-DISCOVERY-LATENCY | OIDC Discovery と OAuth Authorization Server Metadata | p99 ≤ 20 ms | `http_request_duration_seconds` |
-| SLO-JWKS-LATENCY | 既定テナントと明示テナントの JWKS | p99 ≤ 20 ms | `http_request_duration_seconds` |
+| SLO-JWKS-LATENCY | デフォルトテナントと明示テナントの JWKS | p99 ≤ 20 ms | `http_request_duration_seconds` |
 | SLO-REGISTER-LATENCY | `POST /register` | p99 ≤ 500 ms | `http_request_duration_seconds` |
 | SLO-DEVICE-AUTHORIZATION-LATENCY | `POST /device_authorization` | p99 ≤ 300 ms | `http_request_duration_seconds` |
 | SLO-FEDERATION-CALLBACK-LATENCY | OIDC と SAML の外部連携コールバック | p95 ≤ 2 s | `http_request_duration_seconds` |
@@ -74,4 +74,5 @@ API のスクレイプ対象が区分を通じて一つ以上利用可能で、�
 ## 品質特性の網羅状況
 
 ISO/IEC 25010:2023 の品質モデルを点検網として使う。
-現在の要求が定量化していない機能適合性、相互運用性、使用性、保守性、移植性、安全性については、該当する規範または検証を参照し、測定可能な目標の追加は [wi-419](../../work-items/wi-419-quantification-beyond-performance.md) が扱う。
+現在の要求が定量化していない機能適合性、相互運用性、使用性、保守性、移植性、安全性については、該当する規範または検証を参照する。
+これらの特性の測定可能な目標は、まだ定めていない。

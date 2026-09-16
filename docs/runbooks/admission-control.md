@@ -42,4 +42,4 @@ API プロセスは、実行中の要求数が優先度クラスごとの上限�
 
 ## 収束後
 
-平常時に 1 件も拒否が出ない状態へ戻ったことを `rate(http_admission_decisions_total{outcome="shed"}[5m])` で確かめる。閾値を触った場合は、既定値が Planning assumption であることを踏まえ、キャパシティ検証で置き直すまでの暫定であることを記録に残す。
+平常時に 1 件も拒否が出ない状態へ戻ったことを `rate(http_admission_decisions_total{outcome="shed"}[5m])` で確かめる。閾値を触った場合は、デフォルト値が Planning assumption であることを踏まえ、キャパシティ検証で置き直すまでの暫定であることを記録に残す。

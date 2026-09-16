@@ -210,7 +210,7 @@ erDiagram
     oauth2_clients ||--o| agent_credential_bindings : エージェントに結ばれる
     applications ||--o{ application_icons : アイコンを持つ
     applications ||--o| application_sign_in_policies : サインイン方針を持つ
-    tenants ||--|| tenant_default_sign_in_policies : 既定方針を持つ
+    tenants ||--|| tenant_default_sign_in_policies : デフォルト方針を持つ
     applications ||--o{ application_assignments : 割り当てを持つ
     tenants ||--o{ saml_identity_provider_profiles : IdP設定を持つ
     saml_identity_provider_profiles ||--o{ saml_service_providers : SPへ供給する

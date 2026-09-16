@@ -6,7 +6,7 @@
 
 ## HTTP エラーレスポンス
 
-汎用 API のエラーレスポンスには、既定形式として RFC 9457 Problem Details（`application/problem+json`、`type`、`title`、`status`、`detail`、`instance`）を使う。`instance` には上記のリクエスト相関用の `request_id` を載せる。HTTP ステータスコードは RFC 9110 に従い、400 はリクエストを解析できないこと（不正な JSON、必須構造の欠落）を、422 は解析できた内容が業務規則に違反すること（不正なロール、参照の不一致、ポリシー違反）を表す。
+汎用 API のエラーレスポンスには、デフォルト形式として RFC 9457 Problem Details（`application/problem+json`、`type`、`title`、`status`、`detail`、`instance`）を使う。`instance` には上記のリクエスト相関用の `request_id` を載せる。HTTP ステータスコードは RFC 9110 に従い、400 はリクエストを解析できないこと（不正な JSON、必須構造の欠落）を、422 は解析できた内容が業務規則に違反すること（不正なロール、参照の不一致、ポリシー違反）を表す。
 
 OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handlers_http`）、Dynamic Client Registration（RFC 7591、`backend/oauth2/handlers_http` の一部）、SharedSignals の受信エンドポイント（RFC 8935、`/ssf/streams/{stream_id}/events`）は、各標準が定めるエラーレスポンスを返す。標準に従うクライアントとの相互運用性を保つため、これらには Problem Details を適用しない。この境界は接点ごとに引く。同じパッケージの中でも、ブラウザーや管理コンソールが呼ぶ汎用 API は Problem Details を返し、標準が形を定める相手だけが例外である。
 
@@ -24,7 +24,7 @@ CSP と `frame-ancestors` は経路ごとの判断が要るため、IdMagic 自�
 最小構成のプロキシの背後でも、プロキシが無くても保護が成立する。単一ページアプリケーションはゲートウェイが配信し、静的 HTML に対して `script-src 'self'` を含む CSP を設定する。
 
 HSTS は TLS を終端する側が設定する。
-`Strict-Transport-Security` は既定で無効とし、平文の `http` を使う開発環境に影響させない。TLS がこの区間かその手前で終端される場合にだけ有効にする（`HSTS_ENABLED`、`HSTS_MAX_AGE_SECONDS`、`HSTS_INCLUDE_SUBDOMAINS`）。
+`Strict-Transport-Security` はデフォルトで無効とし、平文の `http` を使う開発環境に影響させない。TLS がこの区間かその手前で終端される場合にだけ有効にする（`HSTS_ENABLED`、`HSTS_MAX_AGE_SECONDS`、`HSTS_INCLUDE_SUBDOMAINS`）。
 
 画面を壊さずに CSP を厳しくするには、`CSP_REPORT_ONLY=true` で `Content-Security-Policy-Report-Only` を出し、`CSP_REPORT_URI=<url>` で違反を収集し、観察してから強制へ戻す。
 
@@ -91,7 +91,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 
 例外は、準拠する標準自身がオクテットで上限を定めている値に限る。メールアドレスは RFC 5321 の 254 オクテット、realm は DNS ラベルの 63 オクテットである。どちらもフォーマットを ASCII に限っているため、実際の値ではコードポイント数と一致する。
 
-上限を置く値は、次の既定の区分から選ぶ。外部の標準も固定の表示面も関与しない値のために、新しい数を持ち込まない。
+上限を置く値は、次のデフォルトの区分から選ぶ。外部の標準も固定の表示面も関与しない値のために、新しい数を持ち込まない。
 
 | 区分 | 上限 | 適用対象 |
 | --- | --- | --- |
@@ -113,7 +113,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 | `Tenant.realm` | 63 | DNS ラベル |
 | `WorkloadTrustBundle.trust_domain` | 255 | DNS 名 |
 | `client_id` | 128 | UUID を収めたうえで、他の認可サーバーから移入した値も受けられる幅 |
-| パスワード | 128 | `PasswordPolicy` の既定の上限 |
+| パスワード | 128 | `PasswordPolicy` のデフォルトの上限 |
 | ブランディングの短いラベル | 80 | サインイン画面とメールの固定枠に収まる幅 |
 | ブランディングの補足テキスト | 280 | 同上 |
 

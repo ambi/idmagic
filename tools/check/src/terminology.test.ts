@@ -30,7 +30,7 @@ describe('用語検査', () => {
       verifyTerminology([
         {
           file: 'docs/architecture/deployment.md',
-          source: 'デプロイメントアーキテクチャは参照トポロジーを持つ。\n',
+          source: 'デプロイメントアーキテクチャは共通トポロジーを持つ。\n',
         },
       ]),
     ).toEqual([])
@@ -53,11 +53,44 @@ describe('用語検査', () => {
   // 判定されないと、採用した表記そのものが毎回落ちる。
   it('採用語が採らない表記を含む場合でも、採用語を落とさない', () => {
     expect(
-      verifyTerminology([{ file: 'docs/architecture/deployment.md', source: '参照トポロジー\n' }]),
+      verifyTerminology([{ file: 'docs/architecture/deployment.md', source: '共通トポロジー\n' }]),
     ).toEqual([])
     expect(
-      verifyTerminology([{ file: 'docs/architecture/deployment.md', source: '参照トポロジ\n' }]),
+      verifyTerminology([{ file: 'docs/architecture/deployment.md', source: '共通トポロジ\n' }]),
     ).toHaveLength(1)
+  })
+
+  // 「参照」は「〜を参照する」と読めるため、構成の名前には使わない。
+  // 動詞としての「参照」まで落とすと、文書間の案内が書けなくなる。
+  it('構成の名前としての「参照」だけを対象にする', () => {
+    const findings = verifyTerminology([
+      {
+        file: 'docs/architecture/deployment.md',
+        source: '参照トポロジーと参照プロファイルは、別の文書を参照する。\n',
+      },
+    ])
+
+    expect(findings.map((finding) => finding.term)).toEqual(['参照トポロジー', '参照プロファイル'])
+  })
+
+  it('既定、コンピュート、資材を、採用語へ寄せる', () => {
+    const findings = verifyTerminology([
+      { file: 'docs/design/infrastructure/platform.md', source: '既定のコンピュートと資材。\n' },
+    ])
+
+    expect(findings.map((finding) => finding.term)).toEqual(['既定', 'コンピュート', '資材'])
+  })
+
+  // 「コンピューティング」は「コンピュート」を含まないので、許可の literal は要らない。
+  it('採用語のコンピューティングを落とさない', () => {
+    expect(
+      verifyTerminology([
+        {
+          file: 'docs/design/infrastructure/platform.md',
+          source: 'コンピューティングとデフォルト。\n',
+        },
+      ]),
+    ).toEqual([])
   })
 
   // 許可の literal より前に現れた occurrence を、後続の literal が覆ったことに

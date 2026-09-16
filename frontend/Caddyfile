@@ -8,7 +8,7 @@
 	@realmBackend path_regexp realmBackend ^/realms/[^/]+/(api|scim|saml|federationmetadata|wsfed|trust|authorize|token|revoke|introspect|userinfo|register|par|device_authorization|bc-authorize|end_session|\.well-known|jwks|tenant-branding-assets)(/.*)?$
 
 	handle @realmBackend {
-		reverse_proxy {$BACKEND_ADDRESS:http://idp:8081}
+		reverse_proxy {$BACKEND_ADDRESS:http://api:8081}
 	}
 
 	@backend path \
@@ -34,7 +34,7 @@
  /health
 
 	handle @backend {
-		reverse_proxy {$BACKEND_ADDRESS:http://idp:8081}
+		reverse_proxy {$BACKEND_ADDRESS:http://api:8081}
 	}
 
 	handle /assets/* {

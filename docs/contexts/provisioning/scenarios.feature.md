@@ -86,7 +86,7 @@ Primary actor: `System`
 - Then ProvisioningDelivery (operation=deactivate) が作成される
 - Then `worker` プロセスが下流へ `active=false` の PATCH を送り、`UserDeprovisioned` が発行される
 
-## Rule: REQ-PROVISIONING-005 Application からの割り当て解除は既定で下流の無効化として配信される
+## Rule: REQ-PROVISIONING-005 Application からの割り当て解除はデフォルトで下流の無効化として配信される
 
 Primary actor: `System`
 

@@ -72,7 +72,7 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 mise run dev-compose
 ```
 
-`schema` は PostgreSQL を待ち、`psqldef --apply --file /schema/postgres.sql` を実行して終了する。その後に `idp` が起動する。適用処理は冪等であり、データベースが `postgres.sql` と一致した後に Compose を再実行しても、追加の DDL は生成されない。
+`schema` は PostgreSQL を待ち、`psqldef --apply --file /schema/postgres.sql` を実行して終了する。その後に `api` が起動する。適用処理は冪等であり、データベースが `postgres.sql` と一致した後に Compose を再実行しても、追加の DDL は生成されない。
 
 スキーマだけを変更し、スタックがすでに動いている場合は、スタック全体を作り直さずに適用する:
 

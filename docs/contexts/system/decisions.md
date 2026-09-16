@@ -11,7 +11,7 @@
 - この Context を `Supporting` に分類する。起動、経路の組み立て、UI の合成はこのプロダクトに固有だが、競合との差にはならない。`Generic` にしないのは、組み立てる対象がこのプロダクトの Context 群そのものであり、既製の実装へ委ねられる部分が無いためである。
 - この Context は Aggregate を持たない。起動と経路の組み立てだけを担い、記録の正はすべて各 Context に残る。
 - 実行時に選択可能な機能は、composition root が静的に組み立てる `FeatureRegistry` を唯一の一覧とする。registry は API の安定性、標準の採否、テナント設定を所有せず、実行時選択と更新影響だけを保持する。常時提供する機能は登録せず、選択可能な機能が無いビルドでは空の registry を有効な状態として扱う。
-- `FeatureRegistry` の成熟度は `experimental`、`preview`、`supported`、`deprecated`、更新方針は `rolling`、`recreate_on_version_change`、`recreate_always` の閉じた語彙とする。実験的機能は既定無効とし、非推奨機能を新たに既定有効へ変更できないよう registry 検証で拒否する。
+- `FeatureRegistry` の成熟度は `experimental`、`preview`、`supported`、`deprecated`、更新方針は `rolling`、`recreate_on_version_change`、`recreate_always` の閉じた語彙とする。実験的機能はデフォルト無効とし、非推奨機能を新たにデフォルト有効へ変更できないよう registry 検証で拒否する。
 
 ## One entrance for cross-tenant operation
 
@@ -61,7 +61,7 @@
 
 却下したのは 3 つである。**自動水平スケールだけを入れる案。** 判定間隔と Pod 起動の間、ログインは管理系と同じ待ち行列に並び、束縛条件がデータベース側にあるときはレプリカを増やすことが接続の競合を悪化させる。**エンドポイント別の流量制限の閾値を下げる案。** 濫用には効くが、抑えたいのは正当な管理操作の影響であって、それを拒否したいわけではない。**分類を起動時設定に置く案。** 経路と分類の対応がデプロイ先ごとに変わりうる状態を作り、`interactive_auth` に入れるべき経路が `management_bulk` に入っているという最も重い誤りが、負荷の高いときにしか現れなくなる。分類をコードに置けば、経路の全量に対する網羅性を検査できる。
 
-**再検討する条件**は次のいずれかである。飽和の判定に実行中リクエスト数では足りないと実測で示されたとき。アドミッションコントロールを入れてなお混合負荷で認証系のサービス目標を満たせないとき——これは [No API plane separation](#no-api-plane-separation) の再検討条件 (a) でもある。閾値の既定値が平常時に発動し、運用者が機構を無効化して運用する状態が生じたとき。
+**再検討する条件**は次のいずれかである。飽和の判定に実行中リクエスト数では足りないと実測で示されたとき。アドミッションコントロールを入れてなお混合負荷で認証系のサービス目標を満たせないとき——これは [No API plane separation](#no-api-plane-separation) の再検討条件 (a) でもある。閾値のデフォルト値が平常時に発動し、運用者が機構を無効化して運用する状態が生じたとき。
 
 ## No API plane separation
 

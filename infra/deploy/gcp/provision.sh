@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# IdMagic — GCP 構成の払い出し（最小例 / シンプル雛形）
+# IdMagic: Google Cloud 構成の払い出し（最小のひな型）
 #
-# 目的: Cloud SQL(Postgres HA) / Pub/Sub / Secret /
+# 目的: Cloud SQL(Postgres HA) / Secret /
 #       Artifact Registry を作成し、2サービス（API=Cloud Run Service,
 #       worker=Cloud Run worker pools）をデプロイする流れを示す。
 #

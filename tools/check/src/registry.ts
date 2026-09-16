@@ -3,6 +3,7 @@ import { checkAgentGuidance } from './check-agent-guidance.ts'
 import { checkApiCompat } from './check-api-compat.ts'
 import { checkBoundaries } from './check-boundaries.ts'
 import { checkCommandMap } from './check-command-map.ts'
+import { checkDocsWorkItemLinks } from './check-docs-work-item-links.ts'
 import { checkContractDrift } from './check-contract-drift.ts'
 import { checkCoverageDebtRatchet } from './coverage-debt-ratchet.ts'
 import { checkDocuments } from './check-documents.ts'
@@ -22,6 +23,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
   { name: 'links', groups: ['all'], run: checkLinks },
   { name: 'terminology', groups: ['all'], run: checkTerminology },
+  { name: 'work-item-references', groups: ['all'], run: checkDocsWorkItemLinks },
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
   { name: 'command-map', groups: ['all'], run: checkCommandMap },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },

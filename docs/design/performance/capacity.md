@@ -100,7 +100,7 @@ API レプリカの必要数は、エンドポイント `e` ごとに `ceil(API 
 
 実測前は `/token` 250 rps、`/authorize` 100 rps、`/introspect` 1,000 rps を仮定する。この場合の API は 30 レプリカだが、達成済みの構成を示す値ではない。管理系、ポータル系、SCIM、Shared Signals を含む混合負荷で測定して置き換える。
 
-実行レーン `l` の必要なワーカー枠は `ceil(peak arrival_l × p95 handler time_l × 1.5)` とする。既定の一プロセス四枠では `latency_sensitive` 四レプリカ、`default` 八レプリカ、`bulk` 八レプリカとなる。レーン間で枠を融通せず、`bulk` の滞留を理由に `latency_sensitive` の枠を減らさない。
+実行レーン `l` の必要なワーカー枠は `ceil(peak arrival_l × p95 handler time_l × 1.5)` とする。デフォルトの一プロセス四枠では `latency_sensitive` 四レプリカ、`default` 八レプリカ、`bulk` 八レプリカとなる。レーン間で枠を融通せず、`bulk` の滞留を理由に `latency_sensitive` の枠を減らさない。
 
 PostgreSQL の論理接続予算は `API replicas × API pool limit + worker replicas × worker pool limit + concurrent batches × batch pool limit + operator reserve` とする。実測前は API 一レプリカ 16 接続、Worker 一レプリカ 8 接続、同時 Batch 四個で各 4 接続、運用予約 64 接続とし、参照構成では 720 接続となる。論理接続予算は利用可能接続数の 70% 以下に保つため、この構成には少なくとも 1,029 接続のキャパシティを要する。
 

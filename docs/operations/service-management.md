@@ -4,7 +4,7 @@
 
 運用者は[品質要求](../requirements/quality.md)の SLO を同じ母集団と時間窓で評価する。
 アラートは目標の月次判定値ではなく error budget の消費速度で発報し、通知には対象 SLO と runbook を付ける。
-error budget を使い切った場合の変更凍結と例外判断は未確定であり、[wi-419](../../work-items/wi-419-quantification-beyond-performance.md)が扱う。
+error budget を使い切った場合の変更凍結と例外判断は、まだ決めていない。
 
 ## インシデント時の役割
 
