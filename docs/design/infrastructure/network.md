@@ -116,7 +116,7 @@ Google Cloud では、GKE の Ingress リソースから外部アプリケーシ
 FrontendConfig が SSL ポリシーと HTTPS へのリダイレクトを、BackendConfig が Cloud Armor のセキュリティポリシー、Cloud CDN、接続ドレイン、ヘルスチェックを、`idmagic-frontend` のバックエンドサービスへ指定する。
 Gateway API を使わないのは、GKE の Gateway API のクラスが Cloud CDN に対応していないためである。
 
-優先して受け付けるリクエストの決め方と、縮退の順序は[スケーリングと過負荷の設計](../performance/scaling.md)が持つ。
+優先して受け付けるリクエストの決め方と、縮退の順序は[スケーリング・負荷設計](../performance/scaling.md)が持つ。
 
 ## セグメンテーションと信頼境界
 

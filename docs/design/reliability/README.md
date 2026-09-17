@@ -4,7 +4,7 @@
 
 | 文書 | 責務 |
 | --- | --- |
-| [可用性設計](availability.md) | 障害単位、冗長性、健全性、切替、共有状態、縮退 |
-| [復旧設計](recovery.md) | 論理破損、バックアップ、復元、災害復旧、演習 |
+| [可用性設計](availability.md) | 障害単位ごとの検知、影響、対処、現状、PostgreSQL の可用性、健全性と停止、共有状態、縮退 |
+| [リカバリ設計](recovery.md) | 保護の三段、データの種類ごとの取得方式と復元試験、鍵素材、復元の順序、災害の範囲 |
 
-可用性の目標値は[品質要求](../../requirements/quality.md)、負荷不足への対処は[拡張設計](../performance/scaling.md)、実作業は[運用手順](../../runbooks/)が持つ。
+可用性の目標値は[品質要求](../../requirements/quality.md)、負荷不足への対処は[スケーリング・負荷設計](../performance/scaling.md)、実作業は[運用手順](../../runbooks/)が持つ。

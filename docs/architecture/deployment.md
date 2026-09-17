@@ -230,4 +230,4 @@ flowchart TB
 ## 関連文書
 
 各プロファイルのコンピューティング、シークレットの注入、スキーマ適用、スケール単位は[プラットフォーム設計](../design/infrastructure/platform.md)、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../design/infrastructure/network.md)が持つ。
-負荷に応じた拡張は[スケーリングと過負荷の設計](../design/performance/scaling.md)、障害時の配置と切替は[可用性設計](../design/reliability/availability.md)が持つ。
+負荷に応じた拡張は[スケーリング・負荷設計](../design/performance/scaling.md)、障害時の配置と切替は[可用性設計](../design/reliability/availability.md)が持つ。
