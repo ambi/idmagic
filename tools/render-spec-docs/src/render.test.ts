@@ -149,6 +149,11 @@ const glossaryDocument = {
 `,
 }
 
+const documentationGuideDocument = {
+  path: 'DOCUMENTATION_GUIDE.md',
+  source: '# 文書ガイド\n\n文書体系と配置を定める。\n',
+}
+
 const guideDocument = {
   path: 'WORK_ITEM_FORMAT.md',
   source: `# Work Item Format
@@ -215,10 +220,11 @@ const site = () =>
       statesDocument,
       glossaryDocument,
       scenariosDocument,
+      documentationGuideDocument,
       guideDocument,
     ],
     repositoryRoot: '/repo',
-    outputDirectory: '/repo/spec/generated/docs',
+    outputDirectory: '/repo/site',
     openapiFileName: 'example.openapi.json',
     openapi: {
       info: { title: 'Demo API', version: '1.0.0' },
@@ -257,7 +263,7 @@ describe('renderSpecificationSite', () => {
     const result = renderSpecificationSite({
       documents: [rootDocument, developmentDocument, releaseDocument],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
@@ -266,14 +272,14 @@ describe('renderSpecificationSite', () => {
     expect(result.files['development/index.html']).toContain('href="release.html"')
     expect(result.files['development/release.html']).toContain('リリース')
     expect(sidebar(result.files['development/index.html'])).toContain(
-      '<h2><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></h2>',
+      '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary>',
     )
     expect(sidebar(result.files['development/index.html'])).toContain(
-      '<h2><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></h2><ul class="nav-tree">',
+      '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary><ul class="nav-tree">',
     )
     expect(
-      sidebar(result.files['development/index.html']).indexOf('>設計文書</a></h2>'),
-    ).toBeLessThan(sidebar(result.files['development/index.html']).indexOf('>開発文書</a></h2>'))
+      sidebar(result.files['development/index.html']).indexOf('>設計文書</a></summary>'),
+    ).toBeLessThan(sidebar(result.files['development/index.html']).indexOf('>開発文書</a></summary>'))
     expect(sidebar(result.files['development/index.html'])).toContain('>リリース</a>')
   })
 
@@ -287,6 +293,7 @@ describe('renderSpecificationSite', () => {
       'contexts/demo/scenarios.html',
       'contexts/demo/states.html',
       'index.html',
+      'method/documentation-guide.html',
       'method/work-item-format.html',
       'models/example-demo-internalrecord.html',
       'models/index.html',
@@ -300,7 +307,12 @@ describe('renderSpecificationSite', () => {
       'specification/structure.html',
       'traceability/index.html',
     ])
-    expect(result.files['index.html']).toContain('Whole-System Specification')
+    expect(result.files['index.html']).toContain('<h2 id="primary">主要文書</h2>')
+    expect(result.files['index.html']).toContain('href="specification/product-overview.html"')
+    expect(result.files['index.html']).toContain('href="specification/requirements/index.html"')
+    expect(result.files['index.html']).toContain('<h2 id="resources">開発とリファレンス</h2>')
+    expect(result.files['index.html']).toContain('href="method/documentation-guide.html"')
+    expect(result.files['index.html']).not.toContain('<h2 id="method">方法論</h2>')
     expect(result.files['index.html']).toContain('href="contexts/demo/index.html"')
     expect(result.files['contexts/demo/index.html']).toContain('href="states.html"')
     expect(result.files['contexts/demo/states.html']).toContain('stateDiagram-v2')
@@ -320,13 +332,13 @@ describe('renderSpecificationSite', () => {
     expect(result.files['specification/index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')
-    expect(result.files['api/index.html']).toContain('url:"../../openapi/example.openapi.json"')
+    expect(result.files['api/index.html']).toContain('url:"../openapi/example.openapi.json"')
     expect(result.files['api/index.html']).toContain('<h1>API リファレンス</h1>')
     expect(result.files['api/index.html']).toContain('レスポンスボディ')
     expect(result.files['api/index.html']).toContain('リクエストボディ')
     expect(result.files['api/index.html']).not.toContain('URL.createObjectURL(new Blob(')
     expect(result.files['api/index.html']).not.toContain('SwaggerUIBundle({spec:')
-    expect(result.files['api/index.html']).toContain('../../openapi/example.openapi.json')
+    expect(result.files['api/index.html']).toContain('../openapi/example.openapi.json')
     expect(result.files['models/index.html']).toContain('InternalRecord')
     expect(result.files['models/index.html']).toContain('data-model-search')
     expect(result.files['models/index.html']).toContain('assets/site.js')
@@ -370,7 +382,7 @@ describe('renderSpecificationSite', () => {
         },
       ],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
@@ -378,7 +390,7 @@ describe('renderSpecificationSite', () => {
     const page = result.files['development/index.html'] ?? ''
 
     expect(sidebar(page)).toContain(
-      '<h2><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></h2>',
+      '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary>',
     )
     expect(sidebar(result.files['contexts/demo/index.html'])).toContain(
       '<span class="nav-label">コンテキスト文書</span>',
@@ -397,7 +409,7 @@ describe('renderSpecificationSite', () => {
         designGuidelinesDocument,
       ],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
@@ -427,28 +439,44 @@ describe('renderSpecificationSite', () => {
     expect(page.indexOf('>システム全体</span>')).toBeLessThan(page.indexOf('>Demo</a>'))
   })
 
-  it('keeps every available top-level section visible without disclosure state', () => {
+  it('names the complete site IdMagic ドキュメント', () => {
+    const result = site()
+
+    expect(result.files['index.html']).toContain('<title>IdMagic ドキュメント</title>')
+    expect(result.files['index.html']).toContain('<h1>IdMagic ドキュメント</h1>')
+    expect(result.files['contexts/demo/index.html']).toContain(
+      '<title>Demo · IdMagic ドキュメント</title>',
+    )
+    expect(result.files['contexts/demo/index.html']).toContain('>IdMagic ドキュメント</a>')
+  })
+
+  it('closes top-level sections on the landing page and opens only the current section elsewhere', () => {
     const result = site()
     const top = sidebar(result.files['index.html'])
 
     expect(
-      [...top.matchAll(/<section class="nav-section"><h2>(?:<a[^>]*>)?([^<]+)/g)].map(
+      [...top.matchAll(/<details class="nav-section"><summary>(?:<a[^>]*>)?([^<]+)/g)].map(
         (match) => match[1],
       ),
     ).toEqual(['設計文書', 'フォーマット', 'リファレンス'])
-    expect(top).not.toContain('<h2>方法論</h2>')
-    expect(top).not.toContain('<h2>システム</h2>')
-    expect(top).not.toContain('<details class="nav-group"')
+    expect(top).not.toContain('<details class="nav-section" open>')
+
+    const context = sidebar(result.files['contexts/demo/index.html'])
+    expect(context.match(/<details class="nav-section" open>/g)).toHaveLength(1)
+    expect(context).toContain('<details class="nav-section" open><summary>')
   })
 
   it('styles hierarchy from nested lists instead of depth-specific classes', () => {
     const css = site().assets['site.css']
 
     expect(css).toContain(
-      '.nav-section h2{margin:0 0 6px;padding:0 8px;border:0;color:var(--text);font-size:15px;font-weight:800;',
+      '.nav-section>summary{margin:0 0 6px;padding:0 8px;color:var(--text);font-size:15px;font-weight:800;',
     )
     expect(css).toContain(
-      '.nav-tree ul{margin-left:13px;padding-left:12px;border-left:1px solid var(--line)}',
+      '.nav-tree{margin:0 0 0 15px;padding:0 0 0 12px;border-left:1px solid var(--line);list-style:none}',
+    )
+    expect(css).toContain(
+      '.nav-tree ul{margin:0 0 0 13px;padding:0 0 0 12px;border-left:1px solid var(--line);list-style:none}',
     )
   })
 
@@ -463,7 +491,7 @@ describe('renderSpecificationSite', () => {
   it('loads the published OpenAPI URL so Swagger UI can resolve schema references', () => {
     const page = site().files['api/index.html'] ?? ''
 
-    expect(page).toContain('url:"../../openapi/example.openapi.json"')
+    expect(page).toContain('url:"../openapi/example.openapi.json"')
     expect(page).not.toContain('URL.createObjectURL(new Blob(')
   })
 
@@ -490,7 +518,7 @@ describe('renderSpecificationSite', () => {
     const result = renderSpecificationSite({
       documents: [rootDocument, contextDocument],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: {
         paths: {
@@ -531,7 +559,7 @@ describe('renderSpecificationSite', () => {
         },
       ],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
@@ -549,7 +577,7 @@ describe('renderSpecificationSite', () => {
     const result = renderSpecificationSite({
       documents: [rootDocument, contextDocument],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: { paths: {} },
       models: [
@@ -582,7 +610,7 @@ describe('renderSpecificationSite', () => {
     const result = renderSpecificationSite({
       documents: [rootDocument, contextDocument],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: { paths: {} },
       models: [
@@ -611,7 +639,7 @@ describe('renderSpecificationSite', () => {
       renderSpecificationSite({
         documents: [rootDocument],
         repositoryRoot: '/repo',
-        outputDirectory: '/repo/spec/generated/docs',
+        outputDirectory: '/repo/site',
         openapiFileName: 'example.openapi.json',
         openapi: { paths: { '/things': { get: { operationId: 'ListThings' } } } },
         models: [],
@@ -623,7 +651,7 @@ describe('renderSpecificationSite', () => {
     const result = renderSpecificationSite({
       documents: [rootDocument],
       repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
+      outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
       openapi: { info: { title: '</script><script>bad()</script>' }, paths: {} },
       models: [

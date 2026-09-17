@@ -20,7 +20,7 @@ initial_context:
     - mise.toml
     - docs/development/testing.md
     - docs/development/specification-first-workflow.md
-    - docs/development/go-mutation-testing-tool-evaluation.md
+    - docs/development/testing.md
     - backend/idmanagement/group/domain/dynamic_group_rule.go
     - backend/idmanagement/group/domain/group_csv.go
   tests:
@@ -46,7 +46,7 @@ spec_impact:
 当時の gomutants は公開された直後で、固定して採用できる版と実績がなかった。
 
 その後、gomutants 0.6.1 が公開され、overlay、対象 package の絞り込み、stable mutant ID、永続キャッシュを備えた実行系を IdMagic で試せる状態になった。
-[Go mutation testing tool の再評価](../../docs/development/go-mutation-testing-tool-evaluation.md)では、`backend/idmanagement/group/domain` に Gremlins と同系統の 5 operator を適用し、gomutants が約 22.0 秒、Gremlins が約 30.5 秒で完了した。
+[テスト方針の Go ミューテーションテスト](../../docs/development/testing.md#go-のミューテーションテスト)では、`backend/idmanagement/group/domain` に Gremlins と同系統の 5 operator を適用し、gomutants が約 22.0 秒、Gremlins が約 30.5 秒で完了した。
 同じ再評価で、gomutants は既知の境界値不足を lived と判定したが、現在の Gremlins は covered mutant 56 件をすべて killed と判定した。
 
 Gremlins 0.6.0 は終了コード 2 だけを not viable として扱い、終了コード 1 を killed として扱う。

@@ -27,6 +27,7 @@ frontend/.tanstack/
 
 # Generated specification artifacts
 spec/generated/
+site/
 spec/idmagic.full.html
 
 # Local dev state (persistent embedded PostgreSQL cluster for `mise run dev`)

@@ -70,8 +70,9 @@ intended name; another disallowed name reports the set that directory accepts. A
 still need only `README.md` and `scenarios.feature.md`.
 
 `main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`
-owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`, which keeps
-every generated artifact out of `docs/`: everything under `docs/` is written by a person.
+owns operations. Generated OpenAPI lives below ignored `spec/generated/`, while the generated documentation
+site lives in ignored `site/`. This keeps every generated artifact out of `docs/`: everything under `docs/`
+is written by a person.
 
 ## 2. TypeSpec の範囲
 
@@ -384,10 +385,17 @@ in a specification.
 
 - Compile TypeSpec and validate canonical documents through the repository's specification check.
 - Compare generated OpenAPI with the released baseline for compatibility.
-- Generate OpenAPI and a multi-page, navigation-linked HTML site from TypeSpec and the canonical Markdown.
-  The entry point is `spec/generated/docs/index.html`; Method, whole-system, context, API, and model
-  content are separate pages, and each canonical file is its own page reached from its directory's
-  `README.md`.
+- Generate OpenAPI and a multi-page, navigation-linked HTML site named `IdMagic ドキュメント` from
+  TypeSpec and the canonical Markdown. The entry point is `site/index.html`; Method, whole-system, context,
+  API, and model content are separate pages, and each canonical file is its own page reached from its
+  directory's `README.md`.
+- Include `DOCUMENTATION_GUIDE.md`, `SPECIFICATION_FORMAT.md`, and `WORK_ITEM_FORMAT.md` as the document
+  system and format references. The landing page follows the reading order in `docs/README.md`, then links
+  to development and generated references; it does not promote the methodology files as a separate starting
+  point.
+- Render the sidebar's top-level sections as disclosures. Keep every section closed on the landing page, and
+  open only the section containing the current page elsewhere. Indent every child list, including the first
+  level below a disclosure, so parent-child relationships remain visible.
 - Delegate API operation/schema presentation to an OpenAPI-native viewer over the generated OpenAPI.
   Generate the broader model catalog from repository-owned TypeSpec model, enum, union, and scalar
   declarations, including declarations not reachable from HTTP operations. Transport wrapper declarations

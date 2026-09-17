@@ -14,7 +14,8 @@ import { collectTraces } from './traces.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
 const root = resolve(import.meta.dir, '../../..')
-const outputDirectory = resolve(root, 'spec/generated/docs')
+const outputDirectory = resolve(root, 'site')
+const legacyOutputDirectory = resolve(root, 'spec/generated/docs')
 const typespecPath = resolve(root, 'spec/main.tsp')
 const checkOnly = process.argv.includes('--check')
 const openapiPath = await discoverGeneratedOpenApi(root)
@@ -43,7 +44,7 @@ async function procedureDocuments(directory: string): Promise<string[]> {
     .map((name) => `${directory}/${name}`)
 }
 
-const paths = ['SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
+const paths = ['DOCUMENTATION_GUIDE.md', 'SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
 for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
   paths.push(...(await canonicalDocuments(directory, names)))
 }
@@ -115,9 +116,10 @@ const dependencyAssets = new Map<string, string>([
 ])
 
 if (!checkOnly) {
-  if (outputDirectory !== resolve(root, 'spec/generated/docs'))
+  if (outputDirectory !== resolve(root, 'site'))
     throw new Error(`refusing to replace unexpected output directory ${outputDirectory}`)
   await rm(outputDirectory, { recursive: true, force: true })
+  await rm(legacyOutputDirectory, { recursive: true, force: true })
   for (const [path, content] of Object.entries(result.files)) {
     const output = resolve(outputDirectory, path)
     await mkdir(dirname(output), { recursive: true })
@@ -133,6 +135,9 @@ if (!checkOnly) {
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, await readFile(source))
   }
+  const publishedOpenapi = resolve(outputDirectory, 'openapi', basename(openapiPath))
+  await mkdir(dirname(publishedOpenapi), { recursive: true })
+  await writeFile(publishedOpenapi, await readFile(openapiPath))
   console.log(`wrote ${Object.keys(result.files).length} page(s) to ${outputDirectory}`)
 }
 console.log(

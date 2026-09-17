@@ -31,19 +31,47 @@
 - **プロパティベーステストとファジング**：信頼境界で値を解析、分割、正規化、比較するときに使う。
   仕様から導いた不変条件、往復、順序、単調性、拒否後の無作用をオラクルにし、「panic しない」だけを成功条件にしない。
   Go の Fuzz target は `mise run test-go-fuzz -- <package> <target>` で実行する。
-- **変異テスト**：変更した純粋な判定、境界、算術、状態遷移を、既存テストが実際に検出できるか調べる。
-  `mise run test-go-mutation -- <package-directory>` が構文上の変異を作る。
-  デフォルトでは worker 数 2、Gremlins と比較可能な 5 operator、cache off で実行し、JSON report を一時領域へ書く。
-  同一変更を反復するときだけ、第 3 引数へ cache file を明示する。
-  report の stable mutant ID を調べ直すときは `mise run test-go-mutation-mutant -- <package-directory> <mutant-id>` を使う。
-  ツール更新後は `mise run check-go-mutation-tool` で lived と not viable の分類を検算する。
-  配線の切断や効果の向きの変更は表現できないため、主要ユースケースの故障注入で別に確認する。
 - **特性化テスト**：既存の振る舞いを変更前に観測して固定する。
   仕様が不足している既存コードを安全に分解、置換、移行するときに使う。
   特性化テストは現状を記録するだけであり、望ましい仕様を決める根拠にはしない。
 
-適用条件、オラクル、変異の生存結果の読み方は、[仕様先行の開発ワークフロー](specification-first-workflow.md#プロパティテストとファジング) が定める。
+プロパティテストとファジングの適用条件とオラクルは、[仕様先行の開発ワークフロー](specification-first-workflow.md#プロパティテストとファジング) が定める。
 テスト水準はこの節の手法ではなく、どの公開境界と依存を実物にするかで選ぶ。
+
+### Go のミューテーションテスト
+
+変更した純粋な判定、境界、算術、状態遷移は、構文上の変異を与えて既存テストが検出できるか調べる。
+mutation score の閾値は CI の合否に使わず、生き残った変異をテストの不足と等価な変異へ分類して読む。
+変異の適用条件と結果の読み方は、[仕様先行の開発ワークフロー](specification-first-workflow.md#ミューテーションテスト) が定める。
+
+通常の調査は、対象のパッケージディレクトリを指定する。
+デフォルトでは worker 数 2、5 種類の operator、cache off で実行し、JSON report を一時領域へ書く。
+
+```console
+mise run test-go-mutation -- backend/idmanagement/group/domain
+```
+
+同じ変更で生き残った変異を調べ直す反復に限り、第 3 引数へ cache file を指定する。
+対象パッケージが import するパッケージを変更した後は、以前の cache file を再利用しない。
+
+```console
+mise run test-go-mutation -- backend/idmanagement/group/domain 2 /tmp/idmagic-gomutants-cache.json
+```
+
+JSON report の stable mutant ID を 1 件だけ再実行する場合は、cache を使わない専用タスクを実行する。
+
+```console
+mise run test-go-mutation-mutant -- backend/idmanagement/group/domain '<mutant-id>'
+```
+
+ツールの版を更新した後と change-resistance evidence を作る前には、固定した canary で lived と not viable の分類を検算する。
+
+```console
+mise run check-go-mutation-tool
+```
+
+変異器は既存の構文を書き換えるため、配線の切断、デフォルト分岐の差し替え、効果の向きの変更を表現できない。
+これらは主要ユースケースの故障注入で別に確認する。
 
 ## テストダブル
 

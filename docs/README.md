@@ -29,6 +29,6 @@
 
 ## 執筆上の境界
 
-人が書く現在状態の正本は `docs/` に置く。機械が読むモデルと API 契約は `spec/` に置き、生成物は追跡しない `spec/generated/` に出力する。変更固有の分析、代替案、実装履歴は `work-items/` が、開発手順は[開発文書](development/)が、リリース固有の差分は `releases/` が所有する。
+人が書く現在状態の正本は `docs/` に置く。機械が読むモデルと API 契約は `spec/` に置き、生成した OpenAPI は追跡しない `spec/generated/`、生成したドキュメントサイトは追跡しない `site/` に出力する。変更固有の分析、代替案、実装履歴は `work-items/` が、開発手順は[開発文書](development/)が、リリース固有の差分は `releases/` が所有する。
 
 文書配置、正本の種類、仕様先行の変更手順は、ルートの [文書ガイド](../DOCUMENTATION_GUIDE.md)、[Specification Format](../SPECIFICATION_FORMAT.md)、[Work Item Format](../WORK_ITEM_FORMAT.md) が定める。開発ツールのバージョンとコマンドは `mise.toml` に集約し、基本操作は `mise run <task>` から実行する。

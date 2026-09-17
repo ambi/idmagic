@@ -80,7 +80,7 @@ mise run brief -- wi-123
 flowchart LR
   TypeSpec[spec/**/*.tsp] --> OpenAPI[spec/generated/openapi]
   TypeSpec --> Contract[生成された経路メタデータ]
-  Canonical[docs/**/*.md] --> Site[spec/generated/docs]
+  Canonical[docs/**/*.md] --> Site[site/]
   Config[起動時設定の宣言] --> ConfigReference[CONFIGURATION.md]
   SQL[SQL クエリとスキーマ] --> SQLC[sqlc 生成コード]
   Routes[フロントエンドの経路定義] --> RouteTree[生成された経路ツリー]
@@ -93,7 +93,7 @@ flowchart LR
 | SQL または sqlc のクエリ | `mise run sqlc-generate` |
 | フロントエンドの経路 | `mise run generate-routes` |
 
-生成結果を含むかどうかは各タスクの所有規則に従う。`spec/generated/` は追跡しない派生表示であり、リリース用の OpenAPI 互換性ベースラインは [リリース](release.md) でだけ更新する。
+生成結果を含むかどうかは各タスクの所有規則に従う。`spec/generated/` と `site/` は追跡しない派生表示であり、リリース用の OpenAPI 互換性ベースラインは [リリース](release.md) でだけ更新する。
 
 ## 外部サービスのローカル代替
 
