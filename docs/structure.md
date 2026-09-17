@@ -124,7 +124,19 @@ backend/idmanagement/
 
 ## フロントエンドのコンポーネント構造
 
-仕様上の機能とそろえた UI の境界は `frontend/src/features/<feature>/` に置く。その機能のビュー、ローカルコンポーネント、ヘルパー、テスト、ローカライズ辞書（`*.i18n.ts`）は必ずそのディレクトリに置く。特定の機能境界にひも付かない、横断的で再利用可能なコンポーネントは `frontend/src/components/` に置く。
+フロントエンドのコードは `frontend/src/` の次のディレクトリに分ける。どのコードをどこへ置くかの判定、ルーティング、状態の持ち方は [フロントエンド設計](design/application/frontend.md) が持つ。
+
+| ディレクトリ | 置くもの |
+| --- | --- |
+| `frontend/src/routes/` | ファイルベースの経路定義。生成物 `frontend/src/routeTree.gen.ts` の入力 |
+| `frontend/src/features/<feature>/` | 機能ごとのビュー、その機能だけで使う部品と補助、テスト、ローカライズ辞書（`*.i18n.ts`） |
+| `frontend/src/components/` | 画面の外枠と、どの機能にも属さない再利用部品。基本部品は `components/ui/` |
+| `frontend/src/lib/` | どの機能にも属さない、描画を持たない補助 |
+| `frontend/src/api/` | バックエンドの HTTP API の呼び出し |
+| `frontend/src/test/` | 単体テストが共有する準備と描画の補助 |
+| `frontend/tests/e2e/` | ブラウザーを使う E2E テスト |
+
+表の上の五つのディレクトリの間では、依存を上から下への向きに限る。例外は、`api/` がエラーの文言のために `lib/i18n/` を参照することだけである。機能スライスどうしは参照しない。この向きを機械的に検査する仕組みはない。
 
 ## HTTP ルーティング
 

@@ -31,6 +31,7 @@ Context 間の同期処理は、公開されたポートを `backend/cmd/interna
 
 ## 関連文書
 
+- Frontend gateway が配信する画面の構成と、中継する経路の設計は [フロントエンド設計](../design/application/frontend.md) が所有する。
 - 物理的なデプロイ構成と環境差は [デプロイメントアーキテクチャ](deployment.md) が所有する。
 - コンピューティングとストレージ、Kubernetes の方針は [プラットフォーム設計](../design/infrastructure/platform.md) が所有する。
 - 通信経路とネットワーク境界は [ネットワーク設計](../design/infrastructure/network.md) が所有する。

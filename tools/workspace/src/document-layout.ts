@@ -43,7 +43,13 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
   { directory: 'docs/design', names: ['README.md'] },
   {
     directory: 'docs/design/application',
-    names: ['README.md', 'api-guidelines.md', 'design-guidelines.md', 'user-interface.md'],
+    names: [
+      'README.md',
+      'api-guidelines.md',
+      'design-guidelines.md',
+      'frontend.md',
+      'user-interface.md',
+    ],
   },
   { directory: 'docs/design/data', names: ['README.md', 'database.md', 'lifecycle.md'] },
   {
