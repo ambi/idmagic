@@ -125,7 +125,7 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 
 - データ移行、バックフィル、改名は `data-migrations/` に `YYYY-MM-DD-<変更内容>.sql` として置き、スキーマ適用の前後どちらで実行するかと、後退できるかをファイル冒頭に書く。
 - `postgres.sql` に SQL コメント (`--`) を書かない。設計上の根拠は `docs/design/data/` に置き、DDL の中で言い直さない。`psqldef` の依存順序の解決へコメントが影響しないようにする目的もある。
-- 表を追加、削除するとき、表の種類（`UNLOGGED` かどうか）や `tenant_id` の置き方を変えるときは、`docs/design/data/database.md` の ER 図と説明表を同じ変更で更新する。`mise run check-schema-tables` が食い違いを検出する。
+- テーブルを追加、削除するとき、テーブル種別（`LOGGED` / `UNLOGGED`）や `tenant_id` 列の区分を変えるときは、`docs/design/data/database.md` の ER 図とテーブル一覧を同じ変更で更新する。`mise run check-schema-tables` が食い違いを検出する。
 - 次の規約は設計ではなく SQL の書き方に関するため、このファイルで維持する。これを超える内容は `docs/design/data/database.md` を参照する:
   - テーブル自身の識別子は `id` とする。別のテーブルから `User` を参照する列は `user_id` とし、所有者の参照は `owner_user_id` とする。
   - すべてのテーブルが `created_at` を持つ。作成後に行を更新できるテーブルは `updated_at` も持つが、挿入専用または削除専用の行は持たない。Domain のタイムスタンプ (`issued_at`、`granted_at`、`occurred_at`、`expires_at`、`revoked_at`、`first_seen`、`last_seen`) はそれぞれの意味を維持し、`created_at` の代わりにはしない。

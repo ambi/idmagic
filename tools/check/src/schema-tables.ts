@@ -1,8 +1,8 @@
 /**
- * データベース設計のテーブル説明表が、物理スキーマの宣言と一致することを確かめる。
+ * データベース設計のテーブル一覧が、物理スキーマの宣言と一致することを確かめる。
  *
- * 照合するのは SQL から機械的に決まるもの（テーブル名、表の種類、`tenant_id` の
- * 置き方）に限る。役割と所有 Context は判断を書いた列であり、SQL からは決まらない。
+ * 照合するのは SQL から機械的に決まるもの（テーブル名、テーブル種別、`tenant_id` 列の
+ * 区分）に限る。役割と所有 Context は判断を書いた列であり、SQL からは決まらない。
  */
 
 export type TenantIdPlacement = 'primary-key' | 'primary-key-part' | 'column' | 'absent'
@@ -14,7 +14,7 @@ export interface DeclaredTable {
   tenantId: TenantIdPlacement
 }
 
-/** 説明表の 1 行。セルの値は照合前の文字列のまま持つ。 */
+/** テーブル一覧の 1 行。セルの値は照合前の文字列のまま保持する。 */
 export interface DescribedTable {
   name: string
   line: number
@@ -26,16 +26,16 @@ export interface Finding {
   message: string
 }
 
-const LOGGED_KIND = '通常表'
-const UNLOGGED_KIND = '`UNLOGGED` 表'
-const KIND_HEADER = '表の種類'
-const TENANT_ID_HEADER = '`tenant_id`'
+const LOGGED_KIND = '`LOGGED`'
+const UNLOGGED_KIND = '`UNLOGGED`'
+const KIND_HEADER = 'テーブル種別'
+const TENANT_ID_HEADER = '`tenant_id` 列'
 
 const TENANT_ID_LABELS: Record<TenantIdPlacement, string> = {
-  'primary-key': '主キー',
-  'primary-key-part': '主キーの一部',
-  column: '持つ',
-  absent: '持たない',
+  'primary-key': '単独主キー',
+  'primary-key-part': '複合主キーの一部',
+  column: '非キー列',
+  absent: 'なし',
 }
 
 const CREATE_TABLE = /^CREATE\s+(UNLOGGED\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z0-9_]+)/

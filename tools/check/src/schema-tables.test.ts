@@ -40,11 +40,11 @@ const SQL = [
 const DOC = [
   '# データベース設計',
   '',
-  '| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |',
+  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` 列 |',
   '| --- | --- | --- | --- | --- |',
-  '| `tenants` | テナントそのもの | Tenancy | 通常表 | 持たない |',
-  '| `tenant_quotas` | 上限 | Tenancy | 通常表 | 主キー |',
-  '| `users` | 利用者 | IdManagement | 通常表 | 持つ |',
+  '| `tenants` | テナントそのもの | Tenancy | `LOGGED` | なし |',
+  '| `tenant_quotas` | 上限 | Tenancy | `LOGGED` | 単独主キー |',
+  '| `users` | 利用者 | IdManagement | `LOGGED` | 非キー列 |',
   '',
   '本文の表は対象にしない。',
   '',
@@ -52,11 +52,11 @@ const DOC = [
   '| --- | --- |',
   '| `not_a_table` | 見出しが「テーブル」ではない |',
   '',
-  '| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |',
+  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` 列 |',
   '| --- | --- | --- | --- | --- |',
-  '| `scim_user_refs` | 外部 ID の対応 | Sourcing | 通常表 | 主キーの一部 |',
-  '| `group_members` | 所属 | IdManagement | 通常表 | 持たない |',
-  '| `login_counters` | 回数 | Authentication | `UNLOGGED` 表 | 主キーの一部 |',
+  '| `scim_user_refs` | 外部 ID の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |',
+  '| `group_members` | 所属 | IdManagement | `LOGGED` | なし |',
+  '| `login_counters` | 回数 | Authentication | `UNLOGGED` | 複合主キーの一部 |',
 ].join('\n')
 
 describe('declaredTables', () => {
@@ -97,8 +97,8 @@ describe('describedTables', () => {
     expect(describedTables(DOC)[0]).toEqual({
       name: 'tenants',
       line: 5,
-      kind: '通常表',
-      tenantId: '持たない',
+      kind: '`LOGGED`',
+      tenantId: 'なし',
     })
   })
 })
@@ -126,7 +126,9 @@ describe('compareTables', () => {
   })
 
   it('reports a table described twice', () => {
-    const described = describedTables(`${DOC}\n| \`users\` | 重複 | IdManagement | 通常表 | 持つ |`)
+    const described = describedTables(
+      `${DOC}\n| \`users\` | 重複 | IdManagement | \`LOGGED\` | 非キー列 |`,
+    )
     expect(compareTables(declared, described).map((finding) => finding.message)).toEqual([
       'line 20: users is described more than once',
     ])
@@ -134,27 +136,27 @@ describe('compareTables', () => {
 
   it('reports a logged table described as UNLOGGED and the reverse', () => {
     const described = describedTables(
-      DOC.replace('| Tenancy | 通常表 | 主キー |', '| Tenancy | `UNLOGGED` 表 | 主キー |').replace(
-        '| `UNLOGGED` 表 | 主キーの一部 |',
-        '| 通常表 | 主キーの一部 |',
-      ),
+      DOC.replace(
+        '| Tenancy | `LOGGED` | 単独主キー |',
+        '| Tenancy | `UNLOGGED` | 単独主キー |',
+      ).replace('| `UNLOGGED` | 複合主キーの一部 |', '| `LOGGED` | 複合主キーの一部 |'),
     )
     expect(compareTables(declared, described).map((finding) => finding.message)).toEqual([
-      'line 6: tenant_quotas is a logged table but is described as `UNLOGGED` 表',
-      'line 19: login_counters is an UNLOGGED table but is described as 通常表',
+      'line 6: tenant_quotas is a logged table but is described as `UNLOGGED`',
+      'line 19: login_counters is an UNLOGGED table but is described as `LOGGED`',
     ])
   })
 
   it('reports a tenant_id classification that disagrees with the schema', () => {
     const described = describedTables(
-      DOC.replace('| 通常表 | 持つ |', '| 通常表 | 持たない |').replace(
-        '| Sourcing | 通常表 | 主キーの一部 |',
-        '| Sourcing | 通常表 | 持つ |',
+      DOC.replace('| `LOGGED` | 非キー列 |', '| `LOGGED` | なし |').replace(
+        '| Sourcing | `LOGGED` | 複合主キーの一部 |',
+        '| Sourcing | `LOGGED` | 非キー列 |',
       ),
     )
     expect(compareTables(declared, described).map((finding) => finding.message)).toEqual([
-      'line 7: users has tenant_id as 持つ but is described as 持たない',
-      'line 17: scim_user_refs has tenant_id as 主キーの一部 but is described as 持つ',
+      'line 7: users has tenant_id as 非キー列 but is described as なし',
+      'line 17: scim_user_refs has tenant_id as 複合主キーの一部 but is described as 非キー列',
     ])
   })
 

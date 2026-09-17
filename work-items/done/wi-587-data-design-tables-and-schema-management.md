@@ -71,13 +71,13 @@ initial_context:
 | テーブル | 名前 | — |
 | 役割 | 何のために存在するか（一行） | 名前と列からは目的が決まらない |
 | 所有 Context | 書き込む Bounded Context | スキーマは一枚のファイルで、Context 境界を持たない |
-| `tenant_id` | 主キー / 主キーの一部 / 持つ / 持たない | 現行の[保持区分](../../docs/design/data/database.md#tenant_id-の保持区分)が定める判断の適用結果。読み手が SQL を開かずに区分を知るために置き、SQL との一致は検査する |
+| `tenant_id` 列 | 単独主キー / 複合主キーの一部 / 非キー列 / なし | 現行の[保持区分](../../docs/design/data/database.md#tenant_id-の保持区分)が定める判断の適用結果。読み手が SQL を開かずに区分を知るために置き、SQL との一致は検査する |
 
 列の一覧は書かない。一覧を生成する余地は残すが、この work item では作らない。
 ER 図の本体が空であることは変えない。図は表の存在と外部キーだけを示し、意味は隣の表が持つ。
 
-表には「表の種類」（通常表 / `UNLOGGED` 表）の列も加える。
-着手時の読み取りで、「再生成可能な認証状態と流量制御」の図が「次の `UNLOGGED` 表」と述べながら、通常表の `oauth2_access_token_denylist` と `login_throttle_counters` を含んでいることが分かった。
+テーブル一覧には「テーブル種別」（`LOGGED` / `UNLOGGED`）の列も加える。
+着手時の読み取りで、「再生成可能な認証状態と流量制御」の図が「次の `UNLOGGED` 表」と述べながら、`LOGGED` テーブルの `oauth2_access_token_denylist` と `login_throttle_counters` を含んでいることが分かった。
 図の区分だけでは、この種の食い違いを読み手も検査も拾えない。
 
 #### 表と SQL の照合
@@ -88,8 +88,8 @@ ER 図の本体が空であることは変えない。図は表の存在と外�
 | 照合内容 | SQL 側の根拠 | 文書側の根拠 |
 | --- | --- | --- |
 | テーブル名の集合 | `CREATE [UNLOGGED] TABLE <name>` | 先頭の見出しが「テーブル」である Markdown 表の行 |
-| 表の種類 | `UNLOGGED` の有無 | 「表の種類」列の `通常表` / `UNLOGGED` 表 |
-| `tenant_id` の区分 | `tenant_id` 列の有無と主キーの構成 | 「`tenant_id`」列の `主キー` / `主キーの一部` / `持つ` / `持たない` |
+| テーブル種別 | `UNLOGGED` の有無 | 「テーブル種別」列の `LOGGED` / `UNLOGGED` |
+| `tenant_id` 列の区分 | `tenant_id` 列の有無と主キーの構成 | 「`tenant_id` 列」列の `単独主キー` / `複合主キーの一部` / `非キー列` / `なし` |
 
 ```ts
 type DeclaredTable = { name: string; unlogged: boolean; tenantId: TenantIdPlacement }
@@ -175,19 +175,19 @@ function compareTables(declared: readonly DeclaredTable[], described: readonly D
 
 - **Completed At**: 2026-09-18
 - **Summary**:
-  `mise run spec-diff` は main に対して規範の変更がないことを報告した。変更は設計文書と文書検査に限られる。`docs/design/data/database.md` の六つの ER 図に、全 88 テーブルの役割、所有 Context、表の種類、`tenant_id` の区分を示す説明表を添え、所有 Context の外から行われる四種類の書き込みを表にした。「再生成可能な認証状態」の図が通常表の `oauth2_access_token_denylist` と `login_throttle_counters` を `UNLOGGED` 表と説明していた誤りを直し、通常表にしている理由を書いた。スキーマの宣言、収束の検査、拡張と縮小の四段階、データ移行、適用する地点、`psqldef` の規則を `docs/design/data/schema-management.md` に集め、`database.md`、`maintenance.md`、`infra/schema/README.md` からは参照に置き換えた。README がデータ移行の置き場所を `infra/schema/` の外としていた誤りも直した。`lifecycle.md` は担当範囲を宣言し、データの区分ごとの消え方、削除と匿名化の判断基準、`RESTRICT` と `CASCADE` から決まるテナント退去の順序（仮）、暗号学的消去が消すものと消さないもの、復元で消去済みのデータが戻る問題を書いた。リポジトリ検査 `schema-tables`（`mise run check-schema-tables`）を加え、説明表のテーブル名の集合、表の種類、`tenant_id` の区分を `postgres.sql` と照合する。着手時の読み取りで見つかった二つの欠陥を wi-611 と wi-612 に起票した。
+  `mise run spec-diff` は main に対して規範の変更がないことを報告した。変更は設計文書と文書検査に限られる。`docs/design/data/database.md` の六つの ER 図に、全 88 テーブルの役割、所有 Context、テーブル種別、`tenant_id` 列の区分を示すテーブル一覧を添え、所有 Context の外から行われる四種類の書き込みを表にした。「再生成可能な認証状態」の図が `LOGGED` テーブルの `oauth2_access_token_denylist` と `login_throttle_counters` を `UNLOGGED` と説明していた誤りを直し、`LOGGED` にしている理由を書いた。スキーマの宣言、収束の検査、拡張と縮小の四段階、データ移行、適用する地点、`psqldef` の規則を `docs/design/data/schema-management.md` に集め、`database.md`、`maintenance.md`、`infra/schema/README.md` からは参照に置き換えた。README がデータ移行の置き場所を `infra/schema/` の外としていた誤りも直した。`lifecycle.md` は担当範囲を宣言し、データの区分ごとの消え方、削除と匿名化の判断基準、`RESTRICT` と `CASCADE` から決まるテナント退去の順序（仮）、暗号学的消去が消すものと消さないもの、復元で消去済みのデータが戻る問題を書いた。リポジトリ検査 `schema-tables`（`mise run check-schema-tables`）を加え、テーブル一覧のテーブル名の集合、テーブル種別、`tenant_id` 列の区分を `postgres.sql` と照合する。着手時の読み取りで見つかった二つの欠陥を wi-611 と wi-612 に起票した。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-schema-tables`
   - **Requirement**: N/A: 文書と文書検査の変更で、製品の規範要求を持たない。
-  - **Observed Failure**: 説明表を持たない変更前の `database.md` に対して、88 テーブルすべてについて `<table> is declared in the schema but not described` を報告し、終了コード 1 で失敗した。
-  - **Detection Reason**: スキーマの `CREATE TABLE` の集合と文書の説明表の行の集合を比べるので、表が一つでも欠ければ失敗する。説明のない文書を通してしまう実装は区別できる。
+  - **Observed Failure**: テーブル一覧のない変更前の `database.md` に対して、88 テーブルすべてについて `<table> is declared in the schema but not described` を報告し、終了コード 1 で失敗した。
+  - **Detection Reason**: スキーマの `CREATE TABLE` の集合と文書のテーブル一覧の行の集合を比べるので、テーブルが一つでも欠ければ失敗する。説明のない文書を通してしまう実装は区別できる。
 - **Unit RED Evidence**:
   - **Test**: `mise run test-tools-file -- check/src/schema-tables.test.ts`
   - **Requirement**: N/A: 文書検査の内部規則であり、製品の規範要求を持たない。
   - **Observed Failure**: `schema-tables.ts` が存在せず、テストファイルの読み込みで失敗した（0 pass、1 fail、1 error）。実装後は 11 件が通った。
-  - **Detection Reason**: テストは、インラインと表レベルの主キー、SQL コメント中の `tenant_id`、見出しが「テーブル」でない表の除外、欠落、余剰、重複、表の種類の食い違い、`tenant_id` の区分の食い違い、空のスキーマをそれぞれ別の期待値で固定する。
+  - **Detection Reason**: テストは、インラインとテーブルレベルの主キー、SQL コメント中の `tenant_id`、見出しが「テーブル」でない表の除外、欠落、余剰、重複、テーブル種別の食い違い、`tenant_id` 列の区分の食い違い、空のスキーマをそれぞれ別の期待値で固定する。
 - **Change-Resistance Results**:
-  `database.md` の `login_throttle_counters` の表の種類を `UNLOGGED` 表に、`consents` の `tenant_id` を `持つ` に書き換えると、`mise run check-schema-tables` は両方の行番号を挙げて失敗した。元に戻すと通った。risk は low なので変異テストは実行していない。
+  `database.md` の `login_throttle_counters` のテーブル種別を `UNLOGGED` に、`consents` の `tenant_id` 列を `非キー列` に書き換えると、`mise run check-schema-tables` は両方の行番号を挙げて失敗した。元に戻すと通った。risk は low なので変異テストは実行していない。
 - **Verification Results**:
   - `mise run check-schema-tables` - passed
   - `mise run check-links` - passed
