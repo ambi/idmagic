@@ -158,17 +158,20 @@ initial_context:
 
 ## Completion
 
-- **Completed At**: 2026-09-17
+- **Completed At**: 2026-09-18
 - **Summary**:
-  API ガイドラインが、`DOCUMENTATION_GUIDE.md` §4.5 の全観点を、規則、守っているもの、強制点、適用状況の 4 列で持つようになった。
-  リソースの命名、値の表現、HTTP メソッドの割り当て、コレクションの操作、再送と重複防止、条件付きリクエスト、長時間かかる操作、CRUD に収まらない操作、上限と流量を新しく書き、既存の 8 節は意味を変えずに表へ組み直した。
-  決めた論点は次のとおりである。プロパティとパラメーターはスネークケース、固定のパス区間はケバブケース、時点は RFC 3339 の UTC、期間は単位付きの整数、列挙値は小文字のスネークケース、値がないことは省略で表す。
-  `Idempotency-Key` は受け付けず、一意制約と「管理コンソールは `POST` を自動で再送しない」ことで重複を防ぐ。見直し条件は、`POST` を自動で再送する機械クライアントを支えるときである。
-  `ETag` と `If-Match` は採らず、取りこぼしを防ぐ必要がある資源は本文の版番号で比べる（ライフサイクルワークフローの `expected_revision`）。
-  長時間かかる操作は、AIP-151 の汎用 `Operation` ではなく、操作ごとの資源を 202 で返す。残りの枠を伝えるレート制限ヘッダーは返さない。
-  観測で見つかった未適用の接点は適用状況の列が名指す。スネークケースのパス区間 24 個、パスカルケースの列挙 9 個、区切らない一覧 2 つ、`Link` を宣言しない契約、Jobs の本文カーソル、監査イベントのオブジェクト型クエリパラメーター、409 を宣言しない作成操作、`Bind` で復号して未知のフィールドを無視する 5 操作、`@maxItems` のない `WriteRelationTuples`、TypeSpec から運ばれない `deprecated_since`（`RuntimeContract.Deprecations` が常に空）である。これらの改修は Out of Scope のとおり別に扱う。
-  コードのコメントが英語の旧節名（"String length limits" など）で指していた箇所を、現在の見出しへ合わせた。
-  `DOCUMENTATION_GUIDE.md` §4.5 は `POST` に冪等キーを受け付ける方針を示すが、このリポジトリは上の理由で採らず、その決定を API ガイドラインに残した。
+  API ガイドラインが、`DOCUMENTATION_GUIDE.md` §4.5 の全観点をルール単位の小見出しで持ち、各ルールに目的、担保手段、適用状況を記載するようになった。
+  当初は 4 列の表で書いたが、ルール本文が長く表では横に伸びて読めなかったため、小見出しと 3 項目の箇条書きに改めた。「接点」「強制点」「ワイヤ本体」などの造語も、「API 区分」「担保手段」「HTTP ボディの宣言」などの用語に改めた。
+  リソースの命名、値の表現、HTTP メソッドの割り当て、コレクション操作、冪等性と再試行、条件付きリクエスト、長時間実行操作、カスタムメソッド、上限とレートリミットを新しく書き、既存の 8 節は意味を変えずに組み直した。
+  決めた論点は次のとおりである。
+  パラメーターとプロパティはスネークケース、静的パスセグメントはケバブケース、日時は RFC 3339 の UTC、期間は単位付きの整数、列挙値は小文字のスネークケース、値の不在は省略で表す。
+  管理 API の作成、長時間実行操作の開始、クレデンシャルを発行する `POST` は、任意指定の `Idempotency-Key` を受け付ける。自動化クライアントのタイムアウト後の再送で、管理されないクレデンシャルが二重に作成されることを防ぐためである。
+  管理 API の更新は `ETag` と `If-Match` で競合を検出し、不一致を 412 で返す。`PUT` で全体を置換するセキュリティ設定が、同時編集で気付かれないまま失われることを防ぐためである。
+  長時間実行操作は、AIP-151 の汎用 `Operation` ではなく、操作ごとのリソースを 202 で返す。
+  レートリミットの残量ヘッダーは返さない。制限の対象が認証とトークン発行の経路であり、残量は攻撃者に制限を回避する送信間隔を教えるためである。
+  実装が従っていない箇所は適用状況に記載し、すべてに work item を起票した。
+  [[wi-593-kebab-case-static-path-segments]]、[[wi-594-lower-snake-case-enum-values]]、[[wi-595-declare-uniqueness-conflict-responses]]、[[wi-596-paginate-remaining-collections-with-shared-cursor]]、[[wi-597-declare-pagination-response-headers]]、[[wi-598-declare-audit-event-query-parameters]]、[[wi-599-decode-admin-request-bodies-strictly]]、[[wi-600-bound-relation-tuple-write-batch-size]]、[[wi-601-declare-date-format-for-attribute-values]]、[[wi-602-carry-deprecation-dates-into-runtime-contract]]、[[wi-603-declare-interface-stability-in-typespec]]、[[wi-604-accept-idempotency-key-on-admin-post]]、[[wi-605-detect-lost-updates-with-etag-and-if-match]]、[[wi-606-verify-null-omission-in-responses-and-patch]] である。
+  コードのコメントが英語の旧節名で指していた箇所を、現在の見出しに合わせた。
   外部ガイドラインのページは取得しておらず、観点の点検は §4.5 の観点表と §11 が挙げる出典の既知の観点で行った。
   `mise run spec-diff` は規範の変更を報告しない。
 - **Acceptance RED Evidence**:

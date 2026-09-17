@@ -312,7 +312,7 @@ func (d Deps) handleListSecurityEventDeliveries(c *echo.Context) error {
 
 // writeAdminSharedSignalsError は管理 API のエラーを返す。管理 API は汎用 API なので
 // 既定の envelope である RFC 9457 Problem Details を使う (docs/design/application/api-guidelines.md
-// の「HTTP エラーレスポンス」)。inbound SET receiver は形式が違うので
+// の「エラーレスポンスの形式」)。inbound SET receiver は形式が違うので
 // writeSecurityEventReceiverError を使うこと。
 func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 	switch {
@@ -340,7 +340,7 @@ func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 // writeSecurityEventReceiverError は inbound SET receiver
 // (POST /ssf/streams/:stream_id/events) のエラーを返す。この endpoint の応答形式は
 // RFC 8935 §2.3 が固定しており、汎用 API の Problem Details を適用しない
-// (docs/design/application/api-guidelines.md の「HTTP エラーレスポンス」が定める標準準拠の例外)。
+// (docs/design/application/api-guidelines.md の「標準準拠の例外」)。
 // writeSecurityEventReceiverError は RFC 8935 §2.3 が定める拒否の応答本体を書く。
 // この接点を Problem Details の外に置いている理由がその標準なので、欄の名前も
 // 標準どおり `err` と `description` でなければ、例外扱いの根拠が成り立たない。

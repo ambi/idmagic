@@ -159,7 +159,7 @@ func AdmissionMiddleware(budget AdmissionBudget, classify RouteClassifier, metri
 // WriteServiceOverloaded は入場制御による拒否を返す。汎用 API の既定形式である
 // Problem Details を使い、429 ではなく 503 とする。429 は backend/shared/ratelimit が
 // 濫用の抑止に使うコードで、目的の違う 2 つの機構が同じコードを返すと呼び出し側からも
-// メトリクスからも区別できなくなる (docs/design/application/api-guidelines.md の「宣言する状態コード」)。
+// メトリクスからも区別できなくなる (docs/design/application/api-guidelines.md の「ステータスコードの宣言」)。
 func WriteServiceOverloaded(c *echo.Context, class PriorityClass) error {
 	c.Response().Header().Set("Retry-After", strconv.Itoa(class.RetryAfterSeconds()))
 	return WriteProblem(c, http.StatusServiceUnavailable, "service_overloaded",
