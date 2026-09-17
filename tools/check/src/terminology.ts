@@ -69,7 +69,15 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     allow: [{ literal: 'トポロジー', reason: '採用した表記そのもの' }],
   },
   { term: '入場制御', adopt: '「アドミッションコントロール」' },
-  { term: '参照運用プロファイル', adopt: '「リファレンスワークロードプロファイル」' },
+  { term: '参照運用プロファイル', adopt: '「想定ワークロード」' },
+  { term: 'リファレンスワークロードプロファイル', adopt: '「想定ワークロード」' },
+  { term: 'Planning assumption', adopt: '「仮定値」' },
+  { term: 'Specification target', adopt: '「仕様目標」' },
+  {
+    term: '本書',
+    adopt: '「この文書」',
+    allow: [{ literal: '「本書は」', reason: '採らない書き出しとして引用している' }],
+  },
   { term: '構成算出規則', adopt: '「サイジング計算式」' },
   { term: '縮退順序', adopt: '「ロードシェディング順序」' },
   {

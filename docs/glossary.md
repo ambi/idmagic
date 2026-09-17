@@ -26,7 +26,7 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 | Aggregate | 1 つの単位として変更されるドメインオブジェクトの集まり。ちょうど 1 つのルートエンティティを持ち、その識別子が全体を名指す。常に成り立たなければならない不変条件は 1 つの Aggregate の内側に収め、境界を越える整合は結果整合として明示的に組む。外部からはルートの識別子で参照し、内部の要素を直接指さない。1 つの Aggregate はちょうど 1 つの Bounded Context に属する。境界の引き方、トランザクションとの対応、Repository の粒度は [設計ガイドライン](design/application/design-guidelines.md#aggregate-境界と-repository) が、テナントに属する Aggregate が `tenant_id` を持つことは [データベース設計](design/data/database.md#tenant_id-の保持区分) が定める。 |  |
 | Subdomain | Bounded Context を、事業上の差別化とモデルの複雑さで `Core`、`Supporting`、`Generic` のいずれかに分ける区分。全 Context の区分は [論理アーキテクチャ](architecture/logical.md#context-の責務) の索引表が持ち、ある Context が今の区分にある理由はその Context の `decisions.md` が持つ。区分が何を左右し、何を左右しないかは [設計ガイドライン](design/application/design-guidelines.md#subdomain-と設計投資) が定める。 | サブドメイン |
 
-この 2 語は Latin 表記のまま使う。「集約」は日本語で観測値や設定をまとめる操作も指し、本文書群でも [キャパシティ設計](design/performance/capacity.md) と [Observability Design](design/observability/) がその意味で使っている。同じ語に 2 つの読みを持たせると、`tenant_id` を持つかどうかのような規則がどちらの意味で書かれているのか判別できなくなる。
+この 2 語は Latin 表記のまま使う。「集約」は日本語で観測値や設定をまとめる操作も指し、このリポジトリの文書でも [キャパシティ設計](design/performance/capacity.md) と [Observability Design](design/observability/) がその意味で使っている。同じ語に 2 つの読みを持たせると、`tenant_id` を持つかどうかのような規則がどちらの意味で書かれているのか判別できなくなる。
 
 ## 外部契約
 
@@ -59,10 +59,10 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 | コンピューティング | computing。構成要素を動かす CPU とメモリの提供元。ホスト、コンテナの実行環境、Kubernetes のクラスター、マネージドの実行環境を含む。 | [プラットフォーム設計](design/infrastructure/platform.md#コンピューティング) |
 | 構成ファイル | `infra/` の下にある Docker Compose ファイル、Kubernetes マニフェスト、Terraform。デプロイ先の構成を記述し、その設定値の正本になる。 | [デプロイメントアーキテクチャ](architecture/deployment.md) |
 | 共通トポロジー | どのデプロイ先でも変わらない実行単位の並びと通信の向き。製品名を含まない。 | [デプロイメントアーキテクチャ](architecture/deployment.md#共通トポロジー) |
-| デプロイプロファイル | 共通トポロジーの各要素を具体の製品とリソースへ割り当てた構成。選べる候補であり、適用済みの本番構成を意味しない。想定負荷を指す「リファレンスワークロードプロファイル」とは別の概念。 | [デプロイメントアーキテクチャ](architecture/deployment.md#デプロイプロファイル) |
+| デプロイプロファイル | 共通トポロジーの各要素を具体の製品とリソースへ割り当てた構成。選べる候補であり、適用済みの本番構成を意味しない。想定する負荷を指す「想定ワークロード」とは別の概念。 | [デプロイメントアーキテクチャ](architecture/deployment.md#デプロイプロファイル) |
 | シークレット | secret。起動時に注入し、リポジトリへ置かない値。復号できる形で保持する機微データは「秘密情報」、非対称鍵の片側は「秘密鍵」であり、どちらもこの語ではない。 | [シークレットと鍵の設計](design/security/secrets.md) |
 | キャパシティ | capacity。処理能力とその算出。ストレージの量は「保存容量」であり、この語ではない。 | [キャパシティ設計](design/performance/capacity.md) |
-| リファレンスワークロードプロファイル | reference workload profile。キャパシティ算出の設計入力となる想定負荷。すべてのデプロイ先へ要求する最小構成ではない。 | [キャパシティ設計](design/performance/capacity.md#リファレンスワークロードプロファイル) |
+| 想定ワークロード | reference workload。キャパシティを算出するために想定する利用規模と負荷。すべてのデプロイ先へ要求する最小構成ではない。 | [キャパシティ設計](design/performance/capacity.md#想定ワークロード) |
 | サイジング計算式 | sizing formula。レプリカ数と接続数を求める式そのもの。 | [キャパシティ設計](design/performance/capacity.md#サイジング計算式) |
 | ロードシェディング順序 | load shedding order。飽和時に優先度の低い経路から受け付けを落とす順序。 | [キャパシティ設計](design/performance/capacity.md#ロードシェディング順序) |
 | アドミッションコントロール | admission control。過負荷時に、ハンドラーへ入る前の入口で受け付けを止める機構。 | [System の内部設計](contexts/system/internals.md#admission-control) |

@@ -2,11 +2,11 @@ package server_http_test
 
 //spec:covers REQ-SYSTEM-018: 飽和した API プロセスは優先度の低い要求から拒否する。
 //
-// これは待ち行列の性質の観測であって、docs/requirements/quality.md の Evidence classes が言う
-// Measurement ではない。参照運用プロファイルのデータも、実データベースも、負荷試験
+// これは待ち行列の性質の観測であって、docs/requirements/quality.md の証拠の区分が言う
+// 実測値ではない。想定ワークロードのデータも、実データベースも、負荷試験
 // 基盤も使っていないので、SLO-LOGIN-LATENCY に対する製品の実測を名乗れない。
 // 観測しているのは 1 つだけである——先着順の待ち行列では対話的な認証が管理系の後ろに
-// 並び、入場制御を入れるとその並びが消える。
+// 並び、アドミッションコントロールを入れるとその並びが消える。
 
 import (
 	"net/http"

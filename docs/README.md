@@ -1,6 +1,6 @@
 # システム文書
 
-このディレクトリは、IdMagic の目的、要求、アーキテクチャ、設計、検証、運用をシステムの目的からトップダウンでたどるための正本文書を収める。個別のモデル、API、認証機構は `spec/contexts/<context>/` の TypeSpec が、一つの Bounded Context で閉じる振る舞いと設計は `docs/contexts/<context>/` が所有する。
+この文書は、`docs/` に収めた正本文書の入口である。`docs/` の文書は、IdMagic の目的、要求、アーキテクチャ、設計、検証、運用を、システムの目的からトップダウンでたどれるように並べてある。個別のモデル、API、認証機構は `spec/contexts/<context>/` の TypeSpec で、一つの Bounded Context で閉じる振る舞いと設計は `docs/contexts/<context>/` で定める。
 
 ## 読み順
 

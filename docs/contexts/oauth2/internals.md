@@ -2,7 +2,7 @@
 
 ## Authorization and device lifecycles as declarative state machines
 
-`AuthorizationRequest` とデバイスコードのライフサイクルは、`if` / `switch` のロジックへ分散させず、本書の State Transitions が規定する宣言的な遷移表（状態、イベント、遷移）で表す。アダプター層を再生成しても、クライアントに許可する遷移の集合が暗黙にずれないようにするためである。リフレッシュトークンファミリーは意図的に対象外とする。その状態空間は実質的に `{active, revoked, rotated}` だけであり、遷移の適否より親子関係のローテーショングラフが重要なため、レコードのフィールドと失効規則で表す（下記の Refresh token rotation を参照）。`authorization/usecase` と `device/usecase` は遷移ロジックを再実装せず、これらの表を直接使う。
+`AuthorizationRequest` とデバイスコードのライフサイクルは、`if` / `switch` のロジックへ分散させず、この文書の State Transitions が規定する宣言的な遷移表（状態、イベント、遷移）で表す。アダプター層を再生成しても、クライアントに許可する遷移の集合が暗黙にずれないようにするためである。リフレッシュトークンファミリーは意図的に対象外とする。その状態空間は実質的に `{active, revoked, rotated}` だけであり、遷移の適否より親子関係のローテーショングラフが重要なため、レコードのフィールドと失効規則で表す（下記の Refresh token rotation を参照）。`authorization/usecase` と `device/usecase` は遷移ロジックを再実装せず、これらの表を直接使う。
 
 ## PKCE and Pushed Authorization Requests
 
