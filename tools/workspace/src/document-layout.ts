@@ -51,7 +51,10 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
       'user-interface.md',
     ],
   },
-  { directory: 'docs/design/data', names: ['README.md', 'database.md', 'lifecycle.md'] },
+  {
+    directory: 'docs/design/data',
+    names: ['README.md', 'database.md', 'schema-management.md', 'lifecycle.md'],
+  },
   {
     directory: 'docs/design/infrastructure',
     names: ['README.md', 'platform.md', 'network.md'],

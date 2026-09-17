@@ -6,10 +6,25 @@
 同ファイルは、通常表と障害復旧後に再生成できる `UNLOGGED` 表を宣言する。
 列、索引、検査制約、外部キー、削除規則の完全な定義は同ファイルで確認する。
 
-本節の ER 図は、物理スキーマにあるすべての表を機能領域ごとに示す。
+本節は、物理スキーマにあるすべての表を機能領域ごとに、ER 図と説明表の組で示す。
+ER 図は表の存在と外部キーだけを示し、列を描かない。
 線は外部キーを表し、図をまたぐ参照先は該当する図にも再掲する。
 外部キーを持たない表も、表の存在を見落とさないように図へ含める。
 多重度は現在の `NULL` 許容と一意性を要約したものであり、最終的な制約は正本の SQL に従う。
+
+説明表は、SQL からは読み取れない表の意味を持つ。
+各表は、再掲ではなく自身が属する図の説明表に一度だけ現れる。
+
+| 列 | 内容 |
+| --- | --- |
+| テーブル | 表の名前 |
+| 役割 | その表が存在する理由。列の言い換えではない |
+| 所有 Context | 表へ書き込む Bounded Context。Context に属さない技術基盤は「共通基盤」とする |
+| 表の種類 | `通常表` または `` `UNLOGGED` 表 `` |
+| `tenant_id` | `主キー`（`tenant_id` だけが主キー）、`主キーの一部`、`持つ`（主キー以外の列）、`持たない`。判断の規則は [`tenant_id` の保持区分](#tenant_id-の保持区分)が定める |
+
+`mise run check-schema-tables` は、説明表のテーブル名の集合、表の種類、`tenant_id` の区分が `postgres.sql` と一致することを確かめる。
+役割と所有 Context は検査の対象外なので、スキーマを変えるときに同じ変更の中で見直す。
 
 ### テナント、利用者、認証
 
@@ -78,6 +93,29 @@ erDiagram
     users ||--o{ authentication_sessions : サインインする
     users ||--o{ email_change_tokens : メールを変更する
 ```
+
+| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |
+| --- | --- | --- | --- | --- |
+| `tenants` | テナントそのもの。realm、状態、テナント単位で上書きした方針を持つ | Tenancy | 通常表 | 持たない |
+| `tenant_quotas` | テナントが作れる資源の上限 | Tenancy | 通常表 | 主キー |
+| `tenant_usages` | 上限と照合する現在の使用量。資源を作るたびに全件を数えずに上限を判定するための集計 | Tenancy | 通常表 | 主キー |
+| `tenant_brandings` | サインイン画面や通知に使う外観の設定 | Tenancy | 通常表 | 主キー |
+| `notification_templates` | テナントが上書きした通知メールの文面。行がなければ組込みの文面を使う | Tenancy | 通常表 | 主キーの一部 |
+| `tenant_branding_assets` | 外観の設定が参照するロゴとファビコンの画像本体 | Tenancy | 通常表 | 持つ |
+| `users` | 利用者の Aggregate。属性、ロール、ライフサイクルの状態、パスワードハッシュを持つ | IdManagement | 通常表 | 持つ |
+| `mfa_factors` | 利用者が登録した TOTP などの第二要素と、その暗号化済みシークレット | Authentication | 通常表 | 持たない |
+| `mfa_enrollment_bypasses` | 管理者が発行する、MFA の登録期限の一回限りの免除。消費、失効、期限切れを記録する | Authentication | 通常表 | 持つ |
+| `webauthn_credentials` | 登録済みの WebAuthn 資格情報（パスキーを含む）と署名カウンター | Authentication | 通常表 | 持たない |
+| `recovery_codes` | 第二要素を失ったときに使う回復コードのハッシュ | Authentication | 通常表 | 持たない |
+| `trusted_devices` | MFA を省略できる信頼済み端末。Cookie のセレクターと検証子のハッシュで照合する | Authentication | 通常表 | 持つ |
+| `notification_preferences` | 利用者が受信を止めたセキュリティ通知の分類 | Authentication | 通常表 | 持たない |
+| `known_sign_in_devices` | 過去にサインインした端末の指紋。未知の端末からのサインインを通知するために使う | Authentication | 通常表 | 持たない |
+| `signing_keys` | トークンとアサーションに署名する鍵の世代と公開鍵 | SigningKeys | 通常表 | 持つ |
+| `tenant_data_encryption_keys` | 可逆な秘密情報を暗号化するテナントごとの DEK。ラップ済みの鍵と版の状態を持つ | DataKeys | 通常表 | 持つ |
+| `password_history` | 再利用を禁じるための過去のパスワードハッシュ | Authentication | 通常表 | 持たない |
+| `password_reset_tokens` | パスワードの再設定と初期設定のリンクに埋める使い捨てトークンのハッシュ | Authentication | 通常表 | 持たない |
+| `authentication_sessions` | サインイン済みのブラウザーセッション。認証時刻、認証方式、MFA の登録待ちと段階的な認証の状態を持つ | Authentication | 通常表 | 持つ |
+| `email_change_tokens` | メールアドレス変更の確認リンクに埋める使い捨てトークンのハッシュ | IdManagement | 通常表 | 持たない |
 
 ### フェデレーション、グループ、監査、エージェント
 
@@ -149,7 +187,29 @@ erDiagram
     agents ||--|| agent_revocation_epochs : 失効世代を持つ
 ```
 
-`audit_events`、`authentication_event_buckets`、`tenant_correlation_salts` は、監査データの保持や匿名化を独立して制御するため、テナント表への外部キーを持たない。
+| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |
+| --- | --- | --- | --- | --- |
+| `identity_provider_connections` | 外部 IdP（OIDC、SAML）との接続設定。クレームの対応付け、アカウント連携と JIT 作成の方針を含む | Authentication | 通常表 | 持つ |
+| `federated_identities` | 外部 IdP の主体と、このテナントの利用者の対応 | Authentication | 通常表 | 主キーの一部 |
+| `federated_login_attempts` | 外部 IdP へ送り出したサインインの state、nonce、PKCE。戻ってきた応答を照合するまで保持する | Authentication | 通常表 | 主キーの一部 |
+| `federated_response_replays` | 受け取った外部 IdP の応答の ID。同じ応答の再送を拒否する | Authentication | 通常表 | 主キーの一部 |
+| `groups` | グループの Aggregate。属性、ロール、所属の決め方（静的、動的）を持つ | IdManagement | 通常表 | 持つ |
+| `group_members` | グループと利用者の所属。手動か動的規則かという由来を持つ | IdManagement | 通常表 | 持たない |
+| `dynamic_group_rules` | 動的グループの所属を決める式と、式が参照する属性 | IdManagement | 通常表 | 持つ |
+| `tenant_user_attribute_schemas` | テナントが定義する利用者の拡張属性 | IdManagement | 通常表 | 主キー |
+| `tenant_group_attribute_schemas` | テナントが定義するグループの拡張属性 | IdManagement | 通常表 | 主キー |
+| `audit_events` | 各 Context が発行した監査イベント。追記だけで保持する | Audit | 通常表 | 持つ |
+| `authentication_event_buckets` | 同じ鍵から続く認証失敗を 5 分の時間枠で数える集計。攻撃による急増で監査イベントの行を増やさない | Authentication | 通常表 | 主キーの一部 |
+| `tenant_correlation_salts` | 利用者名や IP アドレスを相関用にハッシュするときのテナントごとのソルト | 共通基盤 | 通常表 | 主キー |
+| `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | 通常表 | 持つ |
+| `agents` | エージェントの Aggregate。所有者、状態、ロールを持つ | IdManagement | 通常表 | 持つ |
+| `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | 通常表 | 主キーの一部 |
+| `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ | OAuth2 | 通常表 | 持つ |
+| `workload_trust_bundles` | ワークロード ID のトークンを検証する信頼ドメインと鍵 | WorkloadIdentity | 通常表 | 持つ |
+| `agent_workload_bindings` | 信頼ドメインのワークロード主体とエージェントの対応 | WorkloadIdentity | 通常表 | 持つ |
+| `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | 通常表 | 持つ |
+
+`audit_events`、`authentication_event_buckets`、`tenant_correlation_salts`、`audit_event_search_attributes` は、監査データの保持や匿名化を独立して制御するため、テナント表への外部キーを持たない。
 
 ### アプリケーション、OAuth、SAML、WS-Federation
 
@@ -222,6 +282,26 @@ erDiagram
     users ||--o{ api_tokens : 発行される
 ```
 
+| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |
+| --- | --- | --- | --- | --- |
+| `applications` | アプリケーションの Aggregate。ポータルに並ぶ単位で、プロトコルごとの設定を束ねる | Application | 通常表 | 持つ |
+| `oauth2_clients` | OAuth 2.0 と OIDC のクライアントの登録内容 | OAuth2 | 通常表 | 持つ |
+| `oauth2_client_sessions` | 一つのサインインセッションでトークンを受け取ったクライアント。ログアウトを伝える先を決める | OAuth2 | 通常表 | 主キーの一部 |
+| `oauth2_client_secrets` | ローテーション中に並存するクライアントシークレットのハッシュと期限 | OAuth2 | 通常表 | 持たない |
+| `consents` | 利用者がクライアントに与えた同意とスコープ | OAuth2 | 通常表 | 持たない |
+| `refresh_tokens` | リフレッシュトークンのハッシュ。ローテーションの系譜をたどって再利用を検知する | OAuth2 | 通常表 | 持たない |
+| `agent_credential_bindings` | エージェントと、そのエージェントが使う OAuth クライアントの対応 | IdManagement | 通常表 | 持たない |
+| `application_icons` | アプリケーションのアイコン画像本体 | Application | 通常表 | 持たない |
+| `application_sign_in_policies` | アプリケーション単位のサインイン方針 | Application | 通常表 | 持たない |
+| `tenant_default_sign_in_policies` | 個別の方針を持たないアプリケーションに適用するデフォルトのサインイン方針 | Application | 通常表 | 主キー |
+| `application_assignments` | アプリケーションを使える利用者とグループ、ポータルに表示するかどうか | Application | 通常表 | 持たない |
+| `saml_identity_provider_profiles` | SAML IdP として名乗る設定の組。SP ごとに選ぶ | Saml | 通常表 | 主キーの一部 |
+| `saml_service_providers` | SAML SP の登録内容 | Saml | 通常表 | 主キーの一部 |
+| `wsfed_relying_parties` | WS-Federation の Relying Party の登録内容 | WsFederation | 通常表 | 主キーの一部 |
+| `application_orderings` | 利用者ごとの、ポータルでのアプリケーションの並び順 | Application | 通常表 | 持たない |
+| `application_categories` | ポータルでアプリケーションをまとめる分類 | Application | 通常表 | 主キーの一部 |
+| `api_tokens` | 管理 API 用に利用者へ発行した長期トークンの記録と失効の状態 | ApiTokens | 通常表 | 持つ |
+
 ### SCIM、ライフサイクル、プロビジョニング、ジョブ
 
 ```mermaid
@@ -279,10 +359,31 @@ erDiagram
     provisioning_connections ||--o{ provisioning_deliveries : 配送する
 ```
 
+| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |
+| --- | --- | --- | --- | --- |
+| `scim_user_refs` | SCIM クライアントが指定した外部 ID と利用者の対応 | Sourcing | 通常表 | 主キーの一部 |
+| `scim_group_refs` | SCIM クライアントが指定した外部 ID とグループの対応 | Sourcing | 通常表 | 主キーの一部 |
+| `jobs` | 非同期ジョブのキュー。リースと再試行の状態を持つ | Jobs | 通常表 | 持つ |
+| `oauth2_logout_notifications` | バックチャネルログアウト通知の一件ごとの配送状態 | OAuth2 | 通常表 | 持つ |
+| `csv_artifacts` | CSV インポートの入力と結果の成果物。本体は分割片に置く | IdManagement | 通常表 | 持つ |
+| `csv_artifact_chunks` | 成果物の本体を分けた断片 | IdManagement | 通常表 | 持たない |
+| `lifecycle_workflows` | 利用者の変化を契機に実行するワークフローの定義 | IdGovernance | 通常表 | 持つ |
+| `lifecycle_workflow_revisions` | ワークフロー定義の改訂。実行は開始時の改訂を固定して参照する | IdGovernance | 通常表 | 持つ |
+| `lifecycle_workflow_runs` | 一人の利用者に対するワークフローの一回の実行 | IdGovernance | 通常表 | 持つ |
+| `lifecycle_workflow_steps` | 実行の各手順の結果 | IdGovernance | 通常表 | 持たない |
+| `provisioning_connections` | アプリケーションへ利用者とグループを送り出す SCIM 接続の設定と健全性 | Provisioning | 通常表 | 持つ |
+| `provisioning_remote_links` | 送り出した利用者やグループと、接続先での ID の対応 | Provisioning | 通常表 | 持つ |
+| `provisioning_deliveries` | 接続先への一件ごとの配送と、その状態 | Provisioning | 通常表 | 持つ |
+
 ### 再生成可能な認証状態と流量制御
 
-次の `UNLOGGED` 表はクラッシュ復旧後に内容が失われ得る。
-いずれも認証要求、短命なコード、再送検知、流量制御など、正本の業務状態から切り離せるデータだけを保持する。
+次の表は、認証要求、短命なコード、再送検知、流量制御など、期限付きで正本の業務状態から切り離せるデータだけを保持する。
+多くは `UNLOGGED` 表であり、クラッシュ復旧後やフェイルオーバー後に内容が失われ得る。
+失われても、利用者が認証をやり直せば済むからである。
+
+`oauth2_access_token_denylist` と `login_throttle_counters` は、同じ種類の短命な状態だが通常表にする。
+前者が失われると失効させたアクセストークンが期限まで再び通り、後者が失われるとロックアウトが解ける。
+どちらもフェイルクローズの前提が崩れるため、書き込み先行ログの費用を払う。
 
 ```mermaid
 erDiagram
@@ -330,6 +431,20 @@ erDiagram
     tenants ||--o{ saml_authnrequest_replays : SAML再送を持つ
 ```
 
+| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |
+| --- | --- | --- | --- | --- |
+| `oauth2_authorization_requests` | 認可エンドポイントで受け付け、サインインの完了を待っている要求 | OAuth2 | `UNLOGGED` 表 | 持つ |
+| `oauth2_authorization_codes` | 発行した認可コードと、交換済みかどうか | OAuth2 | `UNLOGGED` 表 | 持つ |
+| `oauth2_par_requests` | PAR で先に預かった認可要求 | OAuth2 | `UNLOGGED` 表 | 持つ |
+| `oauth2_device_codes` | デバイス認可フローのコードと承認の状態 | OAuth2 | `UNLOGGED` 表 | 持つ |
+| `oauth2_approval_requests` | CIBA の承認要求と、クライアントのポーリングの状態 | OAuth2 | `UNLOGGED` 表 | 持つ |
+| `oauth2_replay_jtis` | 一度だけ受け付ける JWT の `jti`。同じ JWT の再送を拒否する | OAuth2 | `UNLOGGED` 表 | 主キーの一部 |
+| `oauth2_access_token_denylist` | 失効させたアクセストークンの `jti`。トークンの期限まで拒否する | OAuth2 | 通常表 | 主キーの一部 |
+| `webauthn_sessions` | WebAuthn の登録と認証で発行したチャレンジ | Authentication | `UNLOGGED` 表 | 主キーの一部 |
+| `login_throttle_counters` | サインイン失敗の回数とロックアウトの期限 | Authentication | 通常表 | 主キーの一部 |
+| `endpoint_rate_limit_counters` | エンドポイントごとの流量制御の回数 | 共通基盤 | `UNLOGGED` 表 | 主キーの一部 |
+| `saml_authnrequest_replays` | 受け取った SAML AuthnRequest の ID。同じ要求の再送を拒否する | Saml | `UNLOGGED` 表 | 主キーの一部 |
+
 ### セキュリティイベントと認可関係
 
 ```mermaid
@@ -362,9 +477,34 @@ erDiagram
     tenants ||--|| authorization_write_versions : 書き込み版を持つ
 ```
 
-表は Context が所有する業務データ、業務データに従属する関連レコード、期限付きの認証または再送状態、横断的な技術基盤に分けて読む。
-ある Context が別の Context の表を直接更新することはなく、永続化ポートを通じて自身が所有する表だけを扱う。
-スキーマ変更では、表の追加と削除、外部キーの変更、`UNLOGGED` の区分を確認し、同じ work item で図と本文を更新する。
+| テーブル | 役割 | 所有 Context | 表の種類 | `tenant_id` |
+| --- | --- | --- | --- | --- |
+| `ssf_streams` | SSF の送信ストリームまたは受信ストリーム | SharedSignals | 通常表 | 持つ |
+| `ssf_transmitter_configs` | 送信ストリームの配送先と、配送時の認証 | SharedSignals | 通常表 | 持つ |
+| `ssf_receiver_configs` | 受信ストリームで信頼する発行者と鍵 | SharedSignals | 通常表 | 持つ |
+| `security_event_deliveries` | 送信する SET の一件ごとの配送状態と再試行 | SharedSignals | 通常表 | 持つ |
+| `received_security_events` | 受信した SET と、その検証結果、反映した時刻 | SharedSignals | 通常表 | 持つ |
+| `authorization_models` | テナントの関係ベース認可のモデル定義と、その版 | Authorization | 通常表 | 持つ |
+| `authorization_relation_tuples` | リソースと主体の関係 | Authorization | 通常表 | 主キーの一部 |
+| `authorization_write_versions` | 関係を書き込むたびに進む、テナント単位の版番号 | Authorization | 通常表 | 主キー |
+
+### 所有と書き込みの境界
+
+各 Context は、永続化ポートを通じて自身が所有する表を扱う。
+現在、次の書き込みだけが所有 Context の外から行われる。
+
+| 書き込む Context | 対象の表 | 書き込む内容 |
+| --- | --- | --- |
+| Application | `oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties` | プロトコル設定の行を、作成したアプリケーションへ結び付ける `application_id` |
+| IdManagement | `password_history` | CSV インポートで設定したパスワードの履歴 |
+| IdManagement | `audit_events` | CSV インポートの確定と同じトランザクションで記録する監査イベント |
+| IdManagement | `jobs` | グループの CSV インポートの確定と同じトランザクションで投入するジョブ |
+
+いずれも、一つのトランザクションで確定しなければ整合が崩れる書き込みである。
+これ以外の書き込みを所有 Context の外へ加えるときは、この表へ行を足し、同じトランザクションで確定する必要を説明する。
+
+スキーマを変えるときは、表の追加と削除、外部キーの変更、表の種類を確認し、同じ変更の中で図と説明表を更新する。
+変更の進め方は[スキーマ管理](schema-management.md)が定める。
 
 ## ポートとアダプター
 
@@ -372,7 +512,7 @@ erDiagram
 
 `db_postgres` の静的な SQL 文はすべて `sqlc` の入力とし、型安全な Go コードを生成しなければならない。SQL 文字列を直接渡す `Pool.Query` と `Pool.Exec` は、問い合わせの構造が実行時まで決まらず、`sqlc` の型生成を利用できない場合に限って許される。
 
-PostgreSQL の構造を変更する場合は、まず `infra/schema/postgres.sql` の現行スキーマを更新する。`psqldef` で差分をプレビューしてから適用し、適用後と再適用後のプレビューが空になることを確認する。手順は `infra/schema/README.md` に記載しており、CI では空のデータベースに対して `postgres.sql` が収束することを `mise run check-schema` で検証する。既存データのバックフィル、値の変換、削除前の退避など、構造差分で表現できない変更は work item の手順または専用 SQL に明記する。アプリケーション起動時にスキーマを移行する仕組みは設けない。
+PostgreSQL の構造をどう変え、どう適用するかは[スキーマ管理](schema-management.md)が定める。
 
 ## 列型の選択
 
@@ -383,7 +523,7 @@ PostgreSQL の構造を変更する場合は、まず `infra/schema/postgres.sql
 - **内部で生成する ID**：IdMagic が `spec.NewUUIDv4()` で生成する列は `UUID` とする。Go 側は `string` で保持し、pgx のテキスト用符号器（`RegisterUUIDAsText`）が両者を変換する。
 - **外部が決める ID**：`entity_id` や `wtrealm` など、外部が値を決める ID は `TEXT` とする。IdMagic が採番する値ではなく、UUID とも限らないためである。索引の鍵の成分になる場合は、`CHECK (char_length(col) <= N AND octet_length(col) <= M)` を 1 つの制約として置く。同じ列に `CHECK` を 2 つ並べると psqldef の差分が収束しない。
 - **時刻**：すべて `TIMESTAMPTZ` とし、マイクロ秒の精度を正とする。スキーマで丸めない。
-- **有限の値集合**：`TEXT` + `CHECK (col IN (...))` とする。PostgreSQL の列挙型は避ける。値の追加に `ALTER TYPE` が必要で、宣言的なスキーマの差分取りと相性が悪いためである。
+- **有限の値集合**：`TEXT` + `CHECK (col IN (...))` とする。PostgreSQL の列挙型は避ける。値の追加に `ALTER TYPE` が必要で、[宣言的なスキーマ](schema-management.md#宣言的スキーマ)の差分取りと相性が悪いためである。
 - **JSONB**：結合や絞り込みが必要な値、外部キーや一意性の制約を持つ値などは JSONB の中に置かない。
 
 ## `tenant_id` の保持区分

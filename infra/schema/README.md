@@ -35,7 +35,7 @@ export PGDATABASE=idmagic
 ## 変更手順
 
 1. `infra/schema/postgres.sql` を望ましい現在のスキーマへ編集する。
-2. 変更にデータ移動が必要な場合は、バックフィルまたは値変換のための明示的なランブックか専用の SQL スクリプトを追加する。宣言的スキーマファイルにデータ移動を隠さない。
+2. 変更にデータ移動が必要な場合は、バックフィルまたは値変換のための SQL を `data-migrations/` に追加する。宣言的スキーマファイルにデータ移動を隠さない。
 3. 適用せずに予定される DDL を生成する:
 
 ```bash
@@ -120,16 +120,12 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 
 ## 規則
 
-- 構造的なスキーマは `postgres.sql` に置く。
-- データ移行、バックフィル、危険性の高い破壊的変更は、`infra/schema/` の外に明示的な SQL スクリプトまたはランブックとして置く。
-- このファイルに参照データを置かない。デフォルトテナントなどの必須参照データは、アプリケーションが起動時に収束させる。
-- アプリケーション起動時の移行ランナーを再導入しない。スキーマ変更は配備時の操作である。
-- レビュー済みの移行計画なしに、自動化で `--enable-drop` を使わない。
-- `postgres.sql` に SQL コメント (`--`) を書かない。理由は独立して 2 つある:
-  - 設計上の根拠は DDL ファイルではなく、責務を持つ `spec/` の正本に置く。「なぜ」を言い直すコメントは、意思決定を複製した場合と同じように正本の設計記録からずれる。列型の規則と `tenant_id` の保持区分は `docs/design/data/database.md` を参照し、ここでは繰り返さない。
-  - `postgres.sql` にコメントを含めない。`psqldef` の依存順序の解決へコメントが影響しないようにするためである。
-- 複数列を対象とする制約には、PostgreSQL が無名の単一列制約へ付けるデフォルト名と衝突しない明示名を付ける。`UNIQUE` の `<table>_<column>_key` と `CHECK` の `<table>_<column>_check` に相当する名前を避け、たとえば整合性制約には `..._consistency` を使う。衝突すると `psqldef` が制約を自動生成扱いし、再適用時に対応する追加なしで削除する可能性があるためである。`mise run check-schema` はこの問題を検出する安全網であり、命名規則の代替ではない。
-- すべての `CHECK (col IN (...))` の値一覧をアルファベット順に書く。意味のない制約の再作成を避け、`psqldef` のプレビューを実際の変更を示す信頼できる信号に保つためである。
+何を `postgres.sql` に置くか、構造の変更をどう段階に分けるか、`psqldef` の性質から来る規則（制約の命名、`CHECK` の値の順序、`--enable-drop` の扱いなど）とその理由は、[スキーマ管理](../../docs/design/data/schema-management.md)が定める。
+ここでは手順に直接かかわる規則だけを置く。
+
+- データ移行、バックフィル、改名は `data-migrations/` に `YYYY-MM-DD-<変更内容>.sql` として置き、スキーマ適用の前後どちらで実行するかと、後退できるかをファイル冒頭に書く。
+- `postgres.sql` に SQL コメント (`--`) を書かない。設計上の根拠は `docs/design/data/` に置き、DDL の中で言い直さない。`psqldef` の依存順序の解決へコメントが影響しないようにする目的もある。
+- 表を追加、削除するとき、表の種類（`UNLOGGED` かどうか）や `tenant_id` の置き方を変えるときは、`docs/design/data/database.md` の ER 図と説明表を同じ変更で更新する。`mise run check-schema-tables` が食い違いを検出する。
 - 次の規約は設計ではなく SQL の書き方に関するため、このファイルで維持する。これを超える内容は `docs/design/data/database.md` を参照する:
   - テーブル自身の識別子は `id` とする。別のテーブルから `User` を参照する列は `user_id` とし、所有者の参照は `owner_user_id` とする。
   - すべてのテーブルが `created_at` を持つ。作成後に行を更新できるテーブルは `updated_at` も持つが、挿入専用または削除専用の行は持たない。Domain のタイムスタンプ (`issued_at`、`granted_at`、`occurred_at`、`expires_at`、`revoked_at`、`first_seen`、`last_seen`) はそれぞれの意味を維持し、`created_at` の代わりにはしない。

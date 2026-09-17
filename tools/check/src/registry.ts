@@ -9,6 +9,7 @@ import { checkCoverageDebtRatchet } from './coverage-debt-ratchet.ts'
 import { checkDocuments } from './check-documents.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
+import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
 import { checkSloReferences } from './check-slo-references.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
@@ -33,6 +34,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'event-contract', groups: ['all'], run: checkEventContract },
   { name: 'security-controls', groups: ['all'], run: checkSecurityControls },
   { name: 'slo-references', groups: ['all'], run: checkSloReferences },
+  { name: 'schema-tables', groups: ['all'], run: checkSchemaTables },
   {
     name: 'vulnerability-suppressions',
     groups: ['all'],

@@ -744,6 +744,11 @@ description = "Check that monitoring assets name declared service level objectiv
 dir = "tools"
 run = "bun run check/src/runner.ts slo-references"
 
+[tasks.check-schema-tables]
+description = "Check the table descriptions in the database design against the schema"
+dir = "tools"
+run = "bun run check/src/runner.ts schema-tables"
+
 [tasks.check-command-map]
 description = "Check workflow calls against mise tasks"
 dir = "tools"
