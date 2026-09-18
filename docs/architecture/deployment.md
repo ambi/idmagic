@@ -80,7 +80,7 @@ flowchart TB
 
 | プロファイル | 構成ファイル | 用途 | 検証状況 |
 | --- | --- | --- | --- |
-| ローカル Docker Compose | `infra/docker/` | ローカル開発、デモ、復旧ドリル | `mise run check-compose` が構成を検査し、`mise run dev-compose` が日常の開発で起動する |
+| ローカル Docker Compose | `infra/docker/` | ローカル開発、デモ、復元試験 | `mise run check-compose` が構成を検査し、`mise run dev-compose` が日常の開発で起動する |
 | 汎用 Kubernetes | `infra/k8s/` | クラスターへのデプロイ | `mise run check-k8s` がレンダリングとスキーマを検査する。適用した環境の稼働実績はリポジトリから確認できない |
 | Google Cloud | `infra/k8s/` と GKE 向けの overlay（未作成） | GKE Autopilot とマネージドサービスによる、単一 VPC、単一リージョンの構成 | GKE 向けの構成ファイルはまだ無い。`infra/deploy/gcp/` にあるのは、採らなかった Cloud Run 案のひな型である |
 
