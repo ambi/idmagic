@@ -1,19 +1,27 @@
 import { basename } from 'node:path'
 import { type Finding, type SCHEMAS, lintRawText, validateAgainstSchema } from './lib.ts'
 
-// Section names recognized as body headings (WORK_ITEM_FORMAT.md). The first
-// heading in the body is the record's title *unless* it is one of these —
-// that signals an older, title-less document (body starts straight with
-// `# Motivation` etc.) and the id/title must come from elsewhere.
-const KNOWN_SECTION_HEADINGS = new Set([
-  'motivation',
-  'scope',
-  'out of scope',
-  'plan',
-  'tasks',
-  'verification',
-  'risk notes',
-  'completion',
+// 節見出しと記録の項目名の対応 (WORK_ITEM_FORMAT.md)。フォーマット文書は日本語の
+// 見出しを示し、既存の記録は英語の見出しで書かれているため、どちらの表記も同じ項目
+// へ解決する。対応表にない見出し (`## Design` / `## 設計` など) は記録の項目を作らず、
+// 本文としてそのまま残る。
+const SECTION_KEYS = new Map<string, string>([
+  ['motivation', 'motivation'],
+  ['動機', 'motivation'],
+  ['scope', 'scope'],
+  ['対象範囲', 'scope'],
+  ['out of scope', 'out_of_scope'],
+  ['対象外', 'out_of_scope'],
+  ['plan', 'plan'],
+  ['計画', 'plan'],
+  ['tasks', 'tasks'],
+  ['タスク', 'tasks'],
+  ['verification', 'verification'],
+  ['検証', 'verification'],
+  ['risk notes', 'risk_notes'],
+  ['リスク', 'risk_notes'],
+  ['completion', 'completion'],
+  ['完了', 'completion'],
 ])
 
 export function parseFrontmatterAndMarkdown(path: string, text: string): Record<string, unknown> {
@@ -43,7 +51,7 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
   if (typeof data.title !== 'string' || data.title.length === 0) {
     const firstHeading = bodyText.match(/^#{1,2}\s+(.+)$/m)
     const headingText = firstHeading?.[1]?.trim()
-    if (firstHeading && headingText && !KNOWN_SECTION_HEADINGS.has(headingText.toLowerCase())) {
+    if (firstHeading && headingText && !SECTION_KEYS.has(headingText.toLowerCase())) {
       data.title = headingText
       bodyText = bodyText.replace(firstHeading[0], '')
     }
@@ -58,31 +66,31 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
     const headerLine = lines[0] ?? ''
     const headerMatch = headerLine.match(/^#{1,2}\s+(.+)$/)
     if (headerMatch?.[1]) {
-      const headerTitle = headerMatch[1].trim().toLowerCase()
+      const sectionKey = SECTION_KEYS.get(headerMatch[1].trim().toLowerCase())
       const content = lines.slice(1).join('\n').trim()
-      if (!content) continue
+      if (!sectionKey || !content) continue
 
-      if (headerTitle === 'motivation') {
+      if (sectionKey === 'motivation') {
         data.motivation = content
-      } else if (headerTitle === 'scope') {
+      } else if (sectionKey === 'scope') {
         data.scope = content
-      } else if (headerTitle === 'out of scope') {
+      } else if (sectionKey === 'out_of_scope') {
         data.out_of_scope = content
           .split('\n')
           .map((l) => l.replace(/^-\s*/, '').trim())
           .filter(Boolean)
-      } else if (headerTitle === 'plan') {
+      } else if (sectionKey === 'plan') {
         data.plan = content
-      } else if (headerTitle === 'tasks') {
+      } else if (sectionKey === 'tasks') {
         data.tasks = content
-      } else if (headerTitle === 'verification') {
+      } else if (sectionKey === 'verification') {
         data.verification = content
           .split('\n')
           .map((l) => l.replace(/^-\s*/, '').trim())
           .filter(Boolean)
-      } else if (headerTitle === 'risk notes') {
+      } else if (sectionKey === 'risk_notes') {
         data.risk_notes = content
-      } else if (headerTitle === 'completion') {
+      } else if (sectionKey === 'completion') {
         const completion: Record<string, unknown> = {}
         const compLines = content.split('\n')
         let currentField = ''
