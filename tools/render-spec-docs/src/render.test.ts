@@ -279,7 +279,9 @@ describe('renderSpecificationSite', () => {
     )
     expect(
       sidebar(result.files['development/index.html']).indexOf('>設計文書</a></summary>'),
-    ).toBeLessThan(sidebar(result.files['development/index.html']).indexOf('>開発文書</a></summary>'))
+    ).toBeLessThan(
+      sidebar(result.files['development/index.html']).indexOf('>開発文書</a></summary>'),
+    )
     expect(sidebar(result.files['development/index.html'])).toContain('>リリース</a>')
   })
 
