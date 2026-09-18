@@ -25,7 +25,6 @@ IdMagic を動かすコンピューティング、ストレージ、コンテナ
 | --- | --- | --- | --- |
 | コンピューティング | 一台のホストの Docker。各サービスは一インスタンス | 構成要素ごとの Deployment と、保守処理ごとの CronJob | GKE Autopilot のリージョンクラスター。汎用 Kubernetes のマニフェストに GKE 向けの overlay を重ねる（仮） |
 | データベース | `postgres` コンテナ。永続ボリュームを宣言しないため、停止すると状態が消える | CloudNativePG オペレーターが管理する PostgreSQL クラスター（仮） | Cloud SQL for PostgreSQL。可用性の種類を REGIONAL（同期スタンバイ）にする |
-| シークレットの注入 | 構成ファイルに書いた開発専用の平文の値 | プラットフォームが先に作成した Secret を `envFrom` で環境変数へ展開する | Secret Manager を正本とし、Kubernetes Secret へ同期して `envFrom` で展開する（仮） |
 | スキーマ適用 | `schema` サービスが `psqldef` を実行し、その正常終了を `api` と `worker` の起動条件にする | リリースパイプラインが `psqldef` の Job を起動し、完了を待ってから Deployment を更新する（仮） | 汎用 Kubernetes と同じ（仮） |
 | スケール単位 | 独立に増減できる単位を持たない | `idmagic-api` は HorizontalPodAutoscaler、`idmagic-worker` はレーンごとの Deployment、`idmagic-frontend` はレプリカ数で増減する。PodDisruptionBudget が、計画的な中断のときに最小限の稼働数を守る | 汎用 Kubernetes と同じ。ノードの台数は Autopilot が Pod の要求量から決める |
 | メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。Alloy が Docker Engine API から全コンテナのログを読んで Loki へ送る | `infra/k8s/monitoring/` が同じ仕組みのマニフェストを持つ。Alloy は DaemonSet で動き、`/metrics` の取得は Prometheus または ServiceMonitor が行う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。シグナルの契約は[オブザーバビリティ設計](../observability/README.md)が持つ |
@@ -180,7 +179,7 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 
 | 項目 | 内容 |
 | --- | --- |
-| 起動時シークレットの注入 | 「プロファイルの比較」の表のとおり |
+| 起動時シークレットの供給元 | プロファイルごとの供給元、プロセスへの渡り方、保存時の保護は[シークレットと鍵の設計](../security/secrets.md#起動時シークレットの供給元)が持つ |
 | 署名鍵の保管先 | デフォルトはデータベースである。全レプリカで JWKS が一致する代わりに、秘密鍵が平文でデータベースとそのバックアップに入る |
 | 鍵素材を外部の鍵管理に置く場合 | 条件は[シークレットと鍵の設計](../security/secrets.md)が持つ |
 | ローテーション | [シークレットと鍵の設計](../security/secrets.md)が持つ |
