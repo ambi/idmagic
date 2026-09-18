@@ -60,7 +60,7 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 | 構成ファイル | `infra/` の下にある Docker Compose ファイル、Kubernetes マニフェスト、Terraform。デプロイ先の構成を記述し、その設定値の正本になる。 | [デプロイメントアーキテクチャ](architecture/deployment.md) |
 | 共通トポロジー | どのデプロイ先でも変わらない実行単位の並びと通信の向き。製品名を含まない。 | [デプロイメントアーキテクチャ](architecture/deployment.md#共通トポロジー) |
 | デプロイプロファイル | 共通トポロジーの各要素を具体の製品とリソースへ割り当てた構成。選べる候補であり、適用済みの本番構成を意味しない。想定する負荷を指す「想定ワークロード」とは別の概念。 | [デプロイメントアーキテクチャ](architecture/deployment.md#デプロイプロファイル) |
-| シークレット | secret。起動時に注入し、リポジトリへ置かない値。復号できる形で保持する機微データは「秘密情報」、非対称鍵の片側は「秘密鍵」であり、どちらもこの語ではない。 | [シークレットと鍵の設計](design/security/secrets.md) |
+| シークレット | secret。起動時に注入し、リポジトリへ置かない値。復号できる形で保持する機微データは「秘密情報」、非対称鍵の片側は「秘密鍵」であり、どちらもこの語ではない。 | [シークレット設計](design/security/secrets.md) |
 | キャパシティ | capacity。処理能力とその算出。ストレージの量は「保存容量」であり、この語ではない。 | [キャパシティ設計](design/performance/capacity.md) |
 | 想定ワークロード | reference workload。キャパシティを算出するために想定する利用規模と負荷。すべてのデプロイ先へ要求する最小構成ではない。 | [キャパシティ設計](design/performance/capacity.md#想定ワークロード) |
 | サイジング計算式 | sizing formula。レプリカ数と接続数を求める式そのもの。 | [キャパシティ設計](design/performance/capacity.md#サイジング計算式) |
