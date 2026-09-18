@@ -75,7 +75,7 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
     directory: 'docs/design/observability',
     names: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
   },
-  { directory: 'docs/verification', names: ['README.md', 'system-acceptance.md'] },
+  { directory: 'docs/verification', names: ['README.md', 'system-acceptance.md', 'security.md'] },
   {
     directory: 'docs/operations',
     names: ['README.md', 'service-management.md', 'maintenance.md'],

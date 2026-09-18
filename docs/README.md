@@ -22,7 +22,7 @@
 | アーキテクチャ | [システムコンテキスト](architecture/system-context.md)、[論理アーキテクチャ](architecture/logical.md)、[ランタイムアーキテクチャ](architecture/runtime.md)、[デプロイメントアーキテクチャ](architecture/deployment.md)、[アーキテクチャ上の判断](architecture/decisions.md) |
 | 設計 | [アプリケーション](design/application/)、[データ](design/data/)、[インフラストラクチャ](design/infrastructure/)、[セキュリティ](design/security/)、[信頼性](design/reliability/)、[性能](design/performance/)、[オブザーバビリティ](design/observability/) |
 | Context 横断の振る舞い | [システム横断シナリオ](scenarios.feature.md) |
-| 検証 | [システム受入れ設計](verification/system-acceptance.md) |
+| 検証 | [検証設計](verification/)、[システム受入れ設計](verification/system-acceptance.md)、[セキュリティ検証設計](verification/security.md) |
 | 運用 | [サービス管理](operations/service-management.md)、[保守](operations/maintenance.md)、[運用手順](runbooks/) |
 | ドメインの詳細 | [Context 別仕様](contexts/)と隣接する `spec/contexts/` |
 | リポジトリ構造 | [構造](structure.md) |
