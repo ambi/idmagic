@@ -442,13 +442,13 @@ Markdownの表が窮屈なら、同じ内容をYAMLのフェンス付きブロ�
 
 ### 4.6 design/observability/
 
-`README.md`は相関ID、信号間の関係、共通属性を持つ。`monitoring.md`はアプリケーション、基盤、ネットワーク、外部依存、観測基盤自体の監視対象、検知、通知を持つ。`logging.md`はログの生成、収集、転送、保存、検索、アクセス制御、機微情報の除外、容量超過と収集停止時の動作を持つ。`tracing.md`は伝播、収集、標本化、保持を持つ。
+`README.md`は相関ID、シグナル間の関係、共通属性を持つ。`monitoring.md`はアプリケーション、基盤、ネットワーク、外部依存、観測基盤自体の監視対象、検知、通知を持つ。`logging.md`はログの生成、収集、転送、保存、検索、アクセス制御、機微情報の除外、容量超過と収集停止時の動作を持つ。`tracing.md`は伝播、収集、標本化、保持を持つ。
 
 **予期された業務上の失敗をERRORにしない。** 当番担当者を起こす根拠にならない失敗がERRORで日常的に出ていると、本当のERRORが埋もれる。
 
 **件数を数えたいものはログではなく指標にする。** ログの集計で件数を出すと、保持期間を過ぎた時点で過去と比べられなくなる。指標のラベルは有限の集合に限り、値の種類に上限がないものをラベルにしない。
 
-**属性の名前を自前で決めない。** 信号（ログ、指標、トレース）を跨いで同じものを指す名前は、OpenTelemetryの意味規約に既存のものがあればそれを使い、無いものだけを自分で決めてここに書く。名前を自分で決めた分だけ、既製の可視化と分析が効かなくなる。
+**属性の名前を自前で決めない。** シグナル（ログ、指標、トレース）を跨いで同じものを指す名前は、OpenTelemetryの意味規約に既存のものがあればそれを使い、無いものだけを自分で決めてここに書く。名前を自分で決めた分だけ、既製の可視化と分析が効かなくなる。
 
 SLOの目標値は`requirements/quality.md`が持ち、ここには測定の仕組みだけを書く。監査証跡はアプリケーションログではなく監査の仕組みへ記録し、監査イベント名と必須属性はTypeSpecが持つ。
 
@@ -900,7 +900,7 @@ runbookは障害時のものに限らない。**人が手で実行する運用�
 | §4.3 | [Semantic Versioning](https://semver.org/) | 公開APIの定義と版番号の意味 |
 | §4.3 | [Kubernetes Deprecation Policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/) | 非推奨の告知と最短存続期間 |
 | §4.4 | [OpenTelemetry Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-model/) | ログの時刻、重大度、本文、リソース、属性、相関情報の意味 |
-| §4.4 | [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) | 信号を跨ぐattribute名 |
+| §4.4 | [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) | シグナルを跨ぐattribute名 |
 | §4.4 | [Google SRE Book: Effective Troubleshooting](https://sre.google/sre-book/effective-troubleshooting/) | 構造化ログ、相関識別子、診断可能なインターフェース |
 | §4.4 | [AWS Prescriptive Guidance: Event types](https://docs.aws.amazon.com/prescriptive-guidance/latest/logging-monitoring-for-application-owners/event-types.html) | 記録を検討する認証、認可、検証、高リスク操作の事象分類 |
 | §4.4 | [Prometheus Naming](https://prometheus.io/docs/practices/naming/) | 指標名と基数の制御 |

@@ -58,6 +58,7 @@ initial_context:
 - [ログ設計](../../docs/design/observability/logging.md)に、`event_name` の命名規約、サンプリング規則、保持と閲覧権限、容量超過と収集停止時の動作を書く。
 - [トレース設計](../../docs/design/observability/tracing.md)に、伝播、標本化、属性、保持の目標設計を書き、実装の現状と分けて示す。
 - オブザーバビリティ設計の索引と未確定事項を追従させる。
+- オブザーバビリティの用語を、分野で実際に使われている表記へ合わせる。
 
 ## Out of Scope
 
@@ -113,6 +114,22 @@ initial_context:
 - **属性**。OpenTelemetry の意味規約にあるものを使い、自分で決めたものだけをここへ書くという既存の原則の適用結果。span 名の付け方（高カーディナリティな値を span 名に入れない）。
 - **保持とコスト**。保持期間、保存先、標本化率と保持期間の関係。
 - **相関**。`X-Request-ID` が別の相関軸として常に存在することと、trace が無い環境での調査経路。
+
+### 用語
+
+レビューで、この階層が使っていた「信号」「相関」「所有境界」が造語であると指摘を受けた。
+造語かどうかを一次資料で確かめ、分野の表記へ合わせる。
+
+| これまでの表記 | 採る表記 | 根拠 |
+| --- | --- | --- |
+| 信号 | シグナル | OpenTelemetry 日本語ドキュメントの[シグナル](https://opentelemetry.io/ja/docs/concepts/signals/)が、テレメトリーの種類を指してこの語を使う |
+| 相関 | 相関（維持） | Datadog 日本語ドキュメントの「ログとトレースの相関」が同じ意味で使う。OpenTelemetry 日本語ドキュメントは「関連付け」と書く |
+| 所有境界 | 採らない | 一次資料に対応する語が無い。文書の分担の話であり、オブザーバビリティの用語ではないため、平易な日本語で書く |
+| 公開入口 | エッジ | [デプロイメントアーキテクチャ](../../docs/architecture/deployment.md)がロードバランサーと Ingress の層をエッジと呼んでいる |
+| 重大度 | ログレベル | 一般的な表記であり、`level` フィールドの値そのものを指す |
+
+「シグナル」は OS のシグナルと衝突する。
+語を変えるのではなく、オブザーバビリティ設計の冒頭で、この文書群のシグナルがテレメトリーの種類を指すと明示して区別する。
 
 ## Plan
 
@@ -176,6 +193,16 @@ initial_context:
   retention is shortened before the sampling rate is lowered.
   The observability README gains an index of what each child document owns and points each open item at the
   child that records it.
+  A review pass then replaced the vocabulary this layer had coined. `信号` becomes `シグナル`, the term the
+  Japanese OpenTelemetry documentation uses for a category of telemetry, with a sentence in the README
+  separating it from an operating-system signal. `相関` is kept, because the Japanese Datadog documentation
+  uses it for the same idea. `所有境界` is dropped and written out in plain Japanese, because no primary
+  source has a matching term and it describes which document decides what, not observability. `公開入口`
+  becomes `エッジ`, the name the deployment architecture already gives that layer, and `重大度` becomes
+  `ログレベル`. The rename reaches the glossary entry, the documentation guide, and the design documents that
+  referred to the old words, so no definition is left behind. Tracing also gains a section stating what it
+  answers that logs cannot, which is why it is a document of its own rather than a section of the logging
+  design, and its implemented state moves from four prose subsections into one table.
 - **Acceptance RED Evidence**:
   - **Test**: `N/A: この変更は設計文書だけを変え、観測可能なプロダクトの境界を持たない。`
   - **Requirement**: N/A: spec_impact は none であり、規範シナリオも標準 id も変えていない。

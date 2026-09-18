@@ -28,7 +28,7 @@ IdMagic を動かすコンピューティング、ストレージ、コンテナ
 | シークレットの注入 | 構成ファイルに書いた開発専用の平文の値 | プラットフォームが先に作成した Secret を `envFrom` で環境変数へ展開する | Secret Manager を正本とし、Kubernetes Secret へ同期して `envFrom` で展開する（仮） |
 | スキーマ適用 | `schema` サービスが `psqldef` を実行し、その正常終了を `api` と `worker` の起動条件にする | リリースパイプラインが `psqldef` の Job を起動し、完了を待ってから Deployment を更新する（仮） | 汎用 Kubernetes と同じ（仮） |
 | スケール単位 | 独立に増減できる単位を持たない | `idmagic-api` は HorizontalPodAutoscaler、`idmagic-worker` はレーンごとの Deployment、`idmagic-frontend` はレプリカ数で増減する。PodDisruptionBudget が、計画的な中断のときに最小限の稼働数を守る | 汎用 Kubernetes と同じ。ノードの台数は Autopilot が Pod の要求量から決める |
-| メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。Alloy が Docker Engine API から全コンテナのログを読んで Loki へ送る | `infra/k8s/monitoring/` が同じ仕組みのマニフェストを持つ。Alloy は DaemonSet で動き、`/metrics` の取得は Prometheus または ServiceMonitor が行う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。信号の契約は[オブザーバビリティ設計](../observability/README.md)が持つ |
+| メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。Alloy が Docker Engine API から全コンテナのログを読んで Loki へ送る | `infra/k8s/monitoring/` が同じ仕組みのマニフェストを持つ。Alloy は DaemonSet で動き、`/metrics` の取得は Prometheus または ServiceMonitor が行う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。シグナルの契約は[オブザーバビリティ設計](../observability/README.md)が持つ |
 
 ステートフルな基盤は、どのプロファイルでも PostgreSQL 一つである。
 業務データ、BLOB、認証セッション、認可コード、ジョブのような短命状態を同じデータベースへ置き、二つ目のステートフル基盤を持たない。

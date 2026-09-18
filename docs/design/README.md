@@ -11,4 +11,4 @@
 | [security/](security/) | 資産と境界をどの制御で守るか |
 | [reliability/](reliability/) | 障害、冗長性、縮退、復元をどう扱うか |
 | [performance/](performance/) | 負荷、資源、待ち行列、拡張をどう扱うか |
-| [observability/](observability/) | 状態をどの信号で観測し、検知するか |
+| [observability/](observability/) | 状態をどのシグナルで観測し、検知するか |

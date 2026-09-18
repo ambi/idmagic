@@ -66,7 +66,7 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 | サイジング計算式 | sizing formula。レプリカ数と接続数を求める式そのもの。 | [キャパシティ設計](design/performance/capacity.md#サイジング計算式) |
 | ロードシェディング順序 | load shedding order。飽和時に優先度の低い経路から受け付けを落とす順序。 | [キャパシティ設計](design/performance/capacity.md#ロードシェディング順序) |
 | アドミッションコントロール | admission control。過負荷時に、ハンドラーへ入る前の入口で受け付けを止める機構。 | [System の内部設計](contexts/system/internals.md#admission-control) |
-| オブザーバビリティ | observability。信号、相関、所有境界。 | [オブザーバビリティ設計](design/observability/) |
+| オブザーバビリティ | observability。メトリクス、ログ、トレースの設計と、シグナル間の相関。 | [オブザーバビリティ設計](design/observability/) |
 | ガイドライン | guidelines。設計の観点を並べた指針。個々の強制点は TypeSpec と検査が持つ。 | [API ガイドライン](design/application/api-guidelines.md)、[設計ガイドライン](design/application/design-guidelines.md) |
 
 採らないと決めた表記は `mise run check-terminology` が拒否する。
