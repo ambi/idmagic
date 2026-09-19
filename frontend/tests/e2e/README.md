@@ -39,6 +39,21 @@ WebView を開くときは `new Bun.WebView` を直接呼ばず `openWebView` �
 前の実行がタイムアウトで打ち切られるとスタックが残り、次の実行は専用ポートが応答することを理由に起動せず失敗する。
 `8082`、`5174`、`3000` を掴んでいるプロセスを止めてからやり直す。
 
+## 既知の不安定さ
+
+**webkit バックエンド（macOS の既定）では、実行あたり 0〜2 件が upstream の欠陥で落ちる。**
+飛んでいる `evaluate` の最中に文書が入れ替わると、WebKit が完了ハンドラーを呼ばずに捨て、「1 view に 1 つ」の枠も解放しない。
+ページ自身が遷移を始める（ログイン後の `location.replace` から `/authorize`、302、`/callback` の連鎖）ので、呼び出し側では避けられない。
+[oven-sh/bun#43412](https://github.com/oven-sh/bun/issues/43412) が追っており、chrome バックエンドでは拒否されて view が生き残る。
+
+この失敗は `WebViewCallExpired` として落ち、止まった呼び出しと既知の欠陥の名前を述べる。
+**その名前が出ている失敗は、被験コードの回帰ではない。** 再実行して確かめる。
+名前が出ていないタイムアウトは回帰として扱う。
+
+`openWebView` が返す WebView は期限付きである。期限は待ちを短くするためではなく、返らない呼び出しがテストの持ち時間を丸ごと使って原因を名乗らずに落ちるのを防ぐためにある。
+
+失敗を追うときは、`WebViewCallExpired` の本文が挙げる Go と Vite のログ（`$TMPDIR/idmagic-e2e-api-<pid>.log`、`idmagic-e2e-vite-<pid>.log`）とページ側 `console` の最後の 30 行を読む。
+
 ## 構成
 
 - 実行全体が 1 プロセスで、スタックの起動と停止は `setup.ts` が 1 回だけ行う。`bunfig.toml` はこれを preload として宣言する。spec ごとの `beforeAll` でスタックを起動しない。

@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto'
+import { closeSync, openSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer, type Server, type Socket } from 'node:net'
 import { spawn, spawnSync, type Subprocess } from 'bun'
+import { WebViewCallExpired, withCallDeadlines } from './webview-deadline'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const uiDir = resolve(here, '../..')
@@ -202,13 +204,66 @@ export async function detectWebViewSupport(): Promise<boolean> {
   return false
 }
 
+// サーバーの出力を捨てると、テストが止まったときに手掛かりが残らない。Vite の強制リロード、
+// Go の panic、遅い要求はここにしか出ない。実行ごとのファイルへ流し、場所は期限切れの本文が
+// 述べる。
+export const apiLogPath = join(tmpdir(), `idmagic-e2e-api-${process.pid}.log`)
+export const uiLogPath = join(tmpdir(), `idmagic-e2e-vite-${process.pid}.log`)
+let apiLogFd: number | undefined
+let uiLogFd: number | undefined
+
+// ページ側の console は輪バッファーへ残し、期限切れのときだけ本文へ出す。常に流すと 34 本の
+// テストの出力へ混ざって読めなくなる。
+const PAGE_LOG_LIMIT = 30
+
+function describeConsoleArg(arg: unknown): string {
+  if (typeof arg === 'string') return arg
+  try {
+    return JSON.stringify(arg) ?? String(arg)
+  } catch {
+    return String(arg)
+  }
+}
+
+function diagnosticContext(pageLog: readonly string[]): string {
+  const lines = [`server logs: ${apiLogPath}, ${uiLogPath}`]
+  if (pageLog.length === 0) {
+    lines.push('page console: nothing was logged')
+  } else {
+    lines.push(`page console (last ${pageLog.length}):`, ...pageLog)
+  }
+  return lines.join('\n  ')
+}
+
+// CALL_BUDGETS は 1 回の呼び出しが応答を返すまでの猶予。待ちを短くするための値ではないので、
+// 正常な呼び出しを落とさない大きさを採る。evaluate の実測は 1 回あたり数ミリ秒、click と type は
+// Bun 側で要素が操作可能になるまで待つ。テスト自身の上限 60 秒より手前で落ちればよい。
+const CALL_BUDGETS = {
+  evaluate: 10_000,
+  navigate: 20_000,
+  click: 20_000,
+  type: 20_000,
+  press: 20_000,
+} as const
+
 // openWebView は WebView を開く唯一の入口。判定が採った起動方法で開き、描画できないと
 // 分かっている環境では待たずにその場で失敗する。**待たせないことが目的である。** 待たせると
 // 29 本の spec がそれぞれ固有のタイムアウトを報告し、原因を名乗らない失敗が被験コードの
 // 回帰と見分けられなくなる。
+//
+// 返す WebView は期限付きである。返らない 1 回の呼び出しは、bun の「60 秒経った」ではなく
+// どの呼び出しが返らなかったかとして落ちる (wi-624)。
 export function openWebView(options: { width: number; height: number }): Bun.WebView {
   if (launch === null) throw new Error(webViewUnavailable())
-  return new Bun.WebView(launch === undefined ? options : webViewOptions(launch, options))
+  const pageLog: string[] = []
+  const view = new Bun.WebView({
+    ...(launch === undefined ? options : webViewOptions(launch, options)),
+    console: (type: string, ...args: unknown[]) => {
+      pageLog.push(`[${type}] ${args.map(describeConsoleArg).join(' ')}`.slice(0, 200))
+      if (pageLog.length > PAGE_LOG_LIMIT) pageLog.shift()
+    },
+  })
+  return withCallDeadlines(view, CALL_BUDGETS, () => diagnosticContext(pageLog))
 }
 
 export async function startE2EEnvironment(): Promise<void> {
@@ -233,6 +288,8 @@ export async function startE2EEnvironment(): Promise<void> {
   }
 
   await startMailSink()
+  apiLogFd = openSync(apiLogPath, 'a')
+  uiLogFd = openSync(uiLogPath, 'a')
   goBinary = join(tmpdir(), `idmagic-e2e-${process.pid}`)
   const build = spawnSync(['go', 'build', '-o', goBinary, './cmd/idmagic'], { cwd: goDir })
   if (build.exitCode !== 0) {
@@ -271,8 +328,8 @@ export async function startE2EEnvironment(): Promise<void> {
       DEMO_USER_PASSWORD: 'demo-password-1234',
       DEMO_CLIENT_SECRET: 'demo-client-secret',
     },
-    stdout: 'ignore',
-    stderr: 'ignore',
+    stdout: apiLogFd,
+    stderr: apiLogFd,
   })
 
   // `bun run dev` 越しではなく Vite を直に起動する。package script を挟むと停止時に殺すのが
@@ -284,8 +341,8 @@ export async function startE2EEnvironment(): Promise<void> {
       VITE_DEV_PORT: String(uiPort),
       VITE_API_TARGET: `http://localhost:${apiPort}`,
     },
-    stdout: 'ignore',
-    stderr: 'ignore',
+    stdout: uiLogFd,
+    stderr: uiLogFd,
   })
 
   await waitForUp(apiHealth)
@@ -306,6 +363,10 @@ export async function stopE2EEnvironment(): Promise<void> {
   }
   callback?.stop(true)
   mailSink?.close()
+  // ログのファイルは消さない。失敗した実行の記録は、実行が終わった後に読むものである。
+  for (const fd of [apiLogFd, uiLogFd]) if (fd !== undefined) closeSync(fd)
+  apiLogFd = undefined
+  uiLogFd = undefined
   goServer = undefined
   viteServer = undefined
   callback = undefined
@@ -440,8 +501,11 @@ export async function waitForPage(
       if ((await metaPage(view)) === kind) {
         return
       }
-    } catch {
-      // 遷移中は evaluate が失敗しうる。リトライする。
+    } catch (error) {
+      // 遷移中は evaluate が破棄済みの文書に当たって失敗しうる。これはリトライする。
+      // 応答が返らなかったこと (WebViewCallExpired) は別である。飲めば、原因を調べずに
+      // 再試行で隠したことになる。
+      if (error instanceof WebViewCallExpired) throw error
     }
     await Bun.sleep(POLL_INTERVAL_MS)
   }
@@ -625,8 +689,10 @@ export async function setInputValue(
         return true
       })()`)
       if (changed === true) return
-    } catch {
+    } catch (error) {
       // クライアント側の画面遷移中は evaluate が破棄済みの文書に当たりうるため、描画完了まで再試行する。
+      // 応答が返らなかったことは別であり、飲まずに投げる。
+      if (error instanceof WebViewCallExpired) throw error
     }
     await Bun.sleep(POLL_INTERVAL_MS)
   }
