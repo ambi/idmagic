@@ -1,5 +1,5 @@
 ---
-status: in_progress
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -161,7 +161,7 @@ WKWebView で成立していた「`openWebView` ごとに新しいブラウザ�
 - [x] T005 [Unit] `webview-process-lease.test.ts` を module 不在と `waitUntilReady` 不在で RED にし、最後の view だけが process reset を所有することと、終了待ちが次の view を止めることを固定する。
 - [x] T006 [Tooling] `openWebView` を非同期にし、Chrome プロセスの lease と終了待ちを返してテスト間の Cookie を分離する。
 - [x] T007 [Acceptance] 複数 view の共有 Cookie に依存せず、別ブラウザーセッションを画面から失効できることを固定した。Chrome 強制の対象テストと全 E2E 38 件が通過した。
-- [ ] T008 [Verify] macOS と Linux (Bun 1.4.2 / Chromium 153) の `mise run test-ui-e2e` 相当は 38 pass、`mise run verify-ui` と `mise run verify` は通過した。実 GitHub Actions の `ui-e2e` は、この変更を push した後に確認する。
+- [x] T008 [Verify] macOS と Linux (Bun 1.4.2 / Chromium 153) の `mise run test-ui-e2e` 相当は 38 pass、`mise run verify-ui` と `mise run verify` は通過した。GitHub Actions run `35476161558` の `Run the browser end-to-end tests` ジョブも commit `fa9943db` で成功した。
 
 ## 検証
 
@@ -185,3 +185,29 @@ E2E が開くのは、この実行が自分で起動した `localhost` の Vite 
 
 `reversibility` は reversible。
 テストの足回りの変更であり、公開契約もデータも変えない。
+
+## 完了
+
+- **Completed At**: 2026-09-20
+- **Summary**:
+  No normative specification change against main.
+- **Acceptance RED Evidence**:
+  - **Test**: GitHub Actions run `35455470818` の `Run the browser end-to-end tests` ジョブ。
+  - **Requirement**: N/A: 製品要件を変えないブラウザー E2E 実行基盤の変更である。
+  - **Observed Failure**: Chrome で 36 件が実行されたが 10 pass / 26 fail となり、後続 WebView が最初の認証 Cookie を引き継いで `page kind=login` を待ち続けた。
+  - **Detection Reason**: 各シナリオが未認証のログイン画面から始まることを E2E 境界で待つため、同一プロセス内の共有 Cookie による誤ったセッション再利用を検出した。
+- **Unit RED Evidence**:
+  - **Test**: `mise run test-ui-unit-file -- frontend/tests/e2e/webview-process-lease.test.ts`。
+  - **Requirement**: N/A: 製品要件を変えないブラウザー E2E 実行基盤の変更である。
+  - **Observed Failure**: 初回は `webview-process-lease` module が存在せず、次は `waitUntilReady` が存在しないため失敗した。
+  - **Detection Reason**: 最後の view だけが共有プロセスをリセットすることと、終了待ちが完了するまで次の view を開始しないことを、独立した lease 境界で固定した。
+- **Change-Resistance Results**:
+  Low risk の tooling 変更であり、Go の mutation testing は対象外。代表故障として最後の view 以外で reset する実装と、settle Promise を待たない実装を単体テストがそれぞれ検出した。
+- **Verification Results**:
+  - `mise run lint-go` - passed
+  - `mise run test-ui-e2e` - passed (macOS, 38 pass)
+  - Linux Bun 1.4.2 / Chromium 153 での `mise run test-ui-e2e` 相当 - passed (38 pass)
+  - `mise run verify-ui` - passed
+  - `mise run verify` - passed
+  - `mise run spec-diff` - `no normative specification change against main`
+  - GitHub Actions run `35476161558`, `Run the browser end-to-end tests` - passed for `fa9943db`
