@@ -10,7 +10,7 @@
 // 写像されるので、ボタンの上では何も起きず、Tab ではフォーカスが 1 つも動かない。生の文字
 // (`"\t"` と `" "`) は raw keyDown/keyUp へ落ちるため、実際の走査と活性化になる。
 import { expect, test } from 'bun:test'
-import { authorizePath, demo, uiOrigin, waitForPage, waitForUrl } from './fixtures'
+import { authorizePath, demo, openWebView, uiOrigin, waitForPage, waitForUrl } from './fixtures'
 
 const TAB = '\t'
 const ACTIVATE = ' '
@@ -134,7 +134,7 @@ function buttonWithText(texts: string[]): string {
 // するだけでレコードを残さないので、共有の状態に触れずに済む。許可の側は「走査で届く」ところ
 // まで観測する。
 test('every authentication step completes with the keyboard alone', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  const view = openWebView({ width: 1280, height: 2000 })
   try {
     // prompt=consent で毎回同意画面を通す。指定が無いと、先に同意を与えた spec があるかどうかで
     // この試験が測る歩数が変わる。
@@ -175,7 +175,7 @@ test('every authentication step completes with the keyboard alone', async () => 
 // 完全に隠れていない。表示の有無だけを見ると、透明なリングを描く実装も通ってしまうので、
 // 非フォーカス時との差と、その差が透明でないことの両方を読む。
 test('every focus stop on an authentication screen is visible and unobscured', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  const view = openWebView({ width: 1280, height: 2000 })
   try {
     await view.navigate(`${uiOrigin}${authorizePath('wcag-focus')}&prompt=consent`)
     await waitForPage(view, 'login')

@@ -3,6 +3,7 @@
 // SPA route loader、OIDC RP ログイン、サイドバー遷移、フォーム送信の接続を検証する。
 import { test } from 'bun:test'
 import {
+  openWebView,
   clickNavLinkByAnyText,
   demo,
   hasText,
@@ -14,7 +15,7 @@ import {
 } from './fixtures'
 
 test('login assistance pages render and forgot password has enumeration-safe success copy', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 1600 })
+  const view = openWebView({ width: 1280, height: 1600 })
   try {
     await view.navigate(`${uiOrigin}/forgot_password`)
     await waitForPage(view, 'forgot-password')
@@ -34,7 +35,7 @@ test('login assistance pages render and forgot password has enumeration-safe suc
 }, 60_000)
 
 test('account portal scenarios are reachable after account-audience login', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  const view = openWebView({ width: 1280, height: 2000 })
   try {
     await navigateAndLogin(view, '/account', 'account-home')
 
@@ -59,7 +60,7 @@ test('account portal scenarios are reachable after account-audience login', asyn
 }, 90_000)
 
 test('admin console scenarios are reachable after admin-audience login', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2200 })
+  const view = openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(view, '/admin', 'admin-dashboard')
 
@@ -92,7 +93,7 @@ test('admin console scenarios are reachable after admin-audience login', async (
 // あり、テナント管理コンソールには横断への入口が無い (REQ-SYSTEM-020)。経路も配線も本物を
 // 通すので、画面の分離と API の分離がどちらも成立していないと通らない。
 test('system console cross-tenant surfaces are reachable and the admin console has no cross-tenant toggle', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2200 })
+  const view = openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(view, '/system/tenants', 'system-tenants', demo.systemAdminUsername)
 

@@ -10,6 +10,7 @@
 // CSRF/origin 検査 (verifyBrowserRequest) を通すため。
 import { expect, test } from 'bun:test'
 import {
+  openWebView,
   authorizePath,
   clickButtonByAnyText,
   clickNavLinkByAnyText,
@@ -22,7 +23,7 @@ import {
 } from './fixtures'
 
 test('authorize golden path: login -> consent -> callback keeps code and iss', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  const view = openWebView({ width: 1280, height: 2000 })
   try {
     await view.navigate(`${uiOrigin}${authorizePath('e2e-state')}`)
 
@@ -53,7 +54,7 @@ test('authorize golden path: login -> consent -> callback keeps code and iss', a
 // /admin は OIDC RP としてログインし、ログイン後はサイドバーの Link 遷移が
 // ページを再読込せず、対象 route のデータだけを取得することを検証する。
 test('admin sidebar navigation is client-side (no full reload)', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  const view = openWebView({ width: 1280, height: 2000 })
   try {
     // 管理コンソールを開く → OIDC RP として /authorize 経由でログイン画面へ。
     await view.navigate(`${uiOrigin}/admin`)

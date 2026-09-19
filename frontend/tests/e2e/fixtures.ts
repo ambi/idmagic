@@ -91,6 +91,57 @@ export async function waitForUp(url: string, timeoutMs = 120_000): Promise<void>
   throw new Error(`timeout waiting for ${url}`)
 }
 
+// WebView が描画できるかどうか。detectWebViewSupport が一度だけ決める。
+let webViewRenders: boolean | undefined
+
+// WEBVIEW_PROBE_TIMEOUT_MS は空白ページを描いて評価を返すまでの猶予。健全なホストでの
+// 実測は 0.3 秒未満なので、1 桁以上の余裕がある。届かない環境では丸ごとこの時間を使うが、
+// 1 実行につき 1 回であり、spec ごとの 60〜90 秒のタイムアウトとは比べものにならない。
+const WEBVIEW_PROBE_TIMEOUT_MS = 5_000
+
+const WEBVIEW_UNAVAILABLE = [
+  'Bun.WebView could not render a blank page.',
+  'The usual cause is an OS-level sandbox (macOS Seatbelt): the WebView needs the window',
+  'server, and a sandbox refuses that connection, so every browser spec waits for a page',
+  'that is never drawn and reports its own timeout instead of naming the cause.',
+  'Run `mise run test-ui-e2e` outside the sandbox. Specs that only use fetch are unaffected.',
+].join('\n')
+
+// detectWebViewSupport は WebView の能力そのものを試す。環境変数でサンドボックスを当てに
+// いかないのは、名前も有無もホスト側の都合で変わるうえ、当たったところで「描画できるか」
+// には答えないからである。空白ページを描いて評価を 1 つ返せるかだけを見る。
+export async function detectWebViewSupport(): Promise<boolean> {
+  if (webViewRenders !== undefined) return webViewRenders
+  const view = new Bun.WebView({ width: 200, height: 200 })
+  try {
+    const probe = (async () => {
+      await view.navigate('about:blank')
+      return await view.evaluate('1 + 1')
+    })()
+    const answer = await Promise.race([
+      probe.catch(() => undefined),
+      Bun.sleep(WEBVIEW_PROBE_TIMEOUT_MS).then(() => undefined),
+    ])
+    webViewRenders = answer === 2
+  } finally {
+    try {
+      view.close()
+    } catch {
+      // 描画できない環境では close 自体も失敗しうる。判定はもう出ている。
+    }
+  }
+  if (!webViewRenders) console.error(`\n${WEBVIEW_UNAVAILABLE}\n`)
+  return webViewRenders
+}
+
+// openWebView は WebView を開く唯一の入口。描画できないと分かっている環境では、待たずに
+// その場で失敗する。**待たせないことが目的である。** 待たせると 29 本の spec がそれぞれ
+// 固有のタイムアウトを報告し、原因を名乗らない失敗が被験コードの回帰と見分けられなくなる。
+export function openWebView(options: { width: number; height: number }): Bun.WebView {
+  if (webViewRenders === false) throw new Error(WEBVIEW_UNAVAILABLE)
+  return new Bun.WebView(options)
+}
+
 export async function startE2EEnvironment(): Promise<void> {
   // 専用ポートが既に応答するなら、前の実行の後始末が済んでいない。API と Vite は無条件に
   // spawn されるので、束縛に失敗しても waitForUp は古いサーバーに対して成功してしまう。

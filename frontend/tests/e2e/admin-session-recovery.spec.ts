@@ -9,6 +9,7 @@
 // 401 を再現する (署名鍵が回転して過去トークンが無効化された状態と等価)。
 import { expect, test } from 'bun:test'
 import {
+  openWebView,
   loginFromCurrentPage,
   metaPage,
   POLL_INTERVAL_MS,
@@ -40,7 +41,7 @@ async function waitForAnyPage(
 }
 
 test('admin console recovers from a stale token and returns to the original page', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  const view = openWebView({ width: 1280, height: 2000 })
   try {
     // 管理コンソールの内側の画面 (/admin/users) に OIDC RP としてログインして到達する。
     await navigateAndLogin(view, '/admin/users', 'admin-users')

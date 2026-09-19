@@ -1,6 +1,7 @@
 import { test } from 'bun:test'
 
 import {
+  openWebView,
   clickButtonByText,
   loginFromCurrentPage,
   uiOrigin,
@@ -11,7 +12,7 @@ import {
 //spec:covers REQ-SYSTEM-010: 一つの言語選択が認証、アカウント、管理の実画面へ継続して反映される。
 //spec:covers EX-SYSTEM-010-02: ja を選んだあと、ログイン・アカウント・管理の実画面が ja 辞書の文言で描画されること。
 test('selected locale renders authentication account and admin surfaces', async () => {
-  const view = new Bun.WebView({ width: 1280, height: 1600 })
+  const view = openWebView({ width: 1280, height: 1600 })
   try {
     await view.navigate(`${uiOrigin}/account`)
     await waitForPage(view, 'login')

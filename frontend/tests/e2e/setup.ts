@@ -8,10 +8,12 @@
 // 分けるのをやめると、spec 間の状態が独立しているという暗黙の保証も無くなる。各 spec は自分が
 // 操作する対象を自分で用意し、共有フィクスチャ (`demo`) を書き換えないこと。
 import { afterAll, beforeAll } from 'bun:test'
-import { startE2EEnvironment, stopE2EEnvironment } from './fixtures'
+import { detectWebViewSupport, startE2EEnvironment, stopE2EEnvironment } from './fixtures'
 
 beforeAll(async () => {
-  await startE2EEnvironment()
+  // WebView の能力判定はスタックの起動と並べる。健全なホストでは 0.3 秒未満で終わるので、
+  // 起動時間の影に隠れて実行時間を変えない。
+  await Promise.all([startE2EEnvironment(), detectWebViewSupport()])
 }, 180_000)
 
 afterAll(async () => {
