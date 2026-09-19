@@ -80,6 +80,8 @@ describe('AdminApplicationEditPage', () => {
     )
   })
 
+  //spec:covers EX-APPLICATION-002-01: 編集画面は `client_id` を通常の OIDC 設定フォームの中に置き、
+  // 資格情報の節を同じ保存フォームの外の最上位カードとして分ける。
   it('places client secret management outside the settings form in its own top-level card', async () => {
     const oidcDetail: AdminApplicationDetail = {
       application: app,

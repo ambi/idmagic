@@ -102,6 +102,8 @@ describe('AdminApplicationDetailPage', () => {
     expect(await screen.findByText('Could not delete the application.')).toBeInTheDocument()
   })
 
+  //spec:covers EX-APPLICATION-001-01: OIDC アプリケーションの詳細は、登録済みの RP 設定とは別の見出しで
+  // IdMagic の Discovery URL を示し、`client_id` を表示し、クライアントシークレットは表示しない。
   it('shows OIDC RP setup guidance separately from registered application settings', async () => {
     stubGlobal('fetch', assignmentFetch)
     const oidcDetail: AdminApplicationDetail = {
@@ -143,6 +145,8 @@ describe('AdminApplicationDetailPage', () => {
     expect(screen.queryByText('authorization_code, refresh_token')).not.toBeInTheDocument()
   })
 
+  //spec:covers EX-APPLICATION-001-01: SAML アプリケーションの詳細は、接続先へ設定する IdP メタデータ URL、
+  // entityID、SSO URL、SLO URL、署名証明書をそろえて示す。
   it('shows SAML SP setup guidance and certificate download', async () => {
     stubGlobal('fetch', assignmentFetch)
     const samlApp = { ...app, protocol: { type: 'saml' as const, entity_id: 'https://sp.example' } }
@@ -193,6 +197,8 @@ describe('AdminApplicationDetailPage', () => {
     )
     expect(screen.getByText(dedicatedProfile.metadata_url)).toBeInTheDocument()
     expect(screen.getByText(dedicatedProfile.entity_id)).toBeInTheDocument()
+    expect(screen.getByText(dedicatedProfile.sso_url)).toBeInTheDocument()
+    expect(screen.getByText(dedicatedProfile.slo_url)).toBeInTheDocument()
     expect(
       screen.getByText(dedicatedProfile.signing_certificate_fingerprint_sha256),
     ).toBeInTheDocument()

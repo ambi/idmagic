@@ -155,6 +155,7 @@ func myApplications(t *testing.T, e *echo.Echo, sub string) []map[string]any {
 	return body.Applications
 }
 
+//spec:covers REQ-APPLICATION-012, EX-APPLICATION-012-01: `visibility=hidden` で割り当てた Application が ListMyApplications の一覧から外れること。フェデレーションを完了できる側は TestAuthorizeAllowsHiddenApplicationAssignment が固定する。
 func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -209,6 +210,8 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 // テナント既定サインインポリシーを設定すると、アプリ個別ポリシーが未設定でも
 // 上書きモデル: 個別ポリシー未設定なら effective はデフォルト、設定するとデフォルトを上書きし
 // デフォルトより弱ければ weaker_than_default が立つ (wi-115)。
+//
+//spec:covers REQ-APPLICATION-010, EX-APPLICATION-010-01: テナントデフォルト・この Application の上書き・最終的に適用されるポリシーを区別して返し、デフォルトより弱い上書きを警告フラグ付きで保存し、上書きを持たない隣の Application にはデフォルトを適用し続けること。
 func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -305,6 +308,33 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 	if !updView.WeakerThanDefault {
 		t.Fatal("password override under mfa default must set weaker_than_default")
+	}
+
+	// 上書きを持たない隣のアプリは、デフォルトの MFA 必須を適用し続ける。
+	// 上書きしたアプリだけを見ると、デフォルトごと弱くなった実装も通ってしまう。
+	bystander := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
+		"name": "Directory", "type": "weblink", "launch_url": "https://directory.example",
+	})
+	var other struct {
+		Application struct {
+			ID string `json:"id"`
+		} `json:"application"`
+	}
+	if err := json.Unmarshal(bystander.Body.Bytes(), &other); err != nil {
+		t.Fatal(err)
+	}
+	otherView := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+other.Application.ID+"/sign-in-policy", csrf, cookie, nil)
+	var otherDecoded struct {
+		EffectiveRules []map[string]any `json:"effective_rules"`
+	}
+	if err := json.Unmarshal(otherView.Body.Bytes(), &otherDecoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(otherDecoded.EffectiveRules) != 1 {
+		t.Fatalf("bystander effective_rules=%+v, want the tenant default", otherDecoded.EffectiveRules)
+	}
+	if strength, _ := otherDecoded.EffectiveRules[0]["required_authn"].(map[string]any); strength["strength"] != "Mfa" {
+		t.Fatalf("bystander effective strength=%v, want the default Mfa", strength["strength"])
 	}
 
 	// 非管理者はデフォルトポリシーを更新できない。

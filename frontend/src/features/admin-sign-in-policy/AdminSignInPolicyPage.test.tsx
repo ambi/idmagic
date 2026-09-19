@@ -35,4 +35,24 @@ describe('AdminSignInPolicyPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(adminSignInPolicyDictionary.ja.noAppsNotice)).toBeInTheDocument()
   })
+
+  //spec:covers EX-APPLICATION-010-01: 画面は MFA 未登録の有効なユーザー数と、強制開始までに
+  // 何を用意する必要があるかを示す。未登録が 0 人ならその案内は出さない。
+  it('shows how many active users have not enrolled in MFA and what enforcement needs', async () => {
+    await renderWithRouterBase(
+      <AdminSignInPolicyPage csrfToken="csrf" policy={policy} apps={[]} unenrolledUserCount={2} />,
+    )
+    expect(
+      screen.getByText(adminSignInPolicyDictionary.en.unenrolledWarning.replace('{count}', '2')),
+    ).toBeInTheDocument()
+  })
+
+  it('omits the enrollment impact notice when every active user has enrolled', async () => {
+    await renderWithRouterBase(
+      <AdminSignInPolicyPage csrfToken="csrf" policy={policy} apps={[]} unenrolledUserCount={0} />,
+    )
+    expect(
+      screen.queryByText(adminSignInPolicyDictionary.en.unenrolledWarning.replace('{count}', '0')),
+    ).not.toBeInTheDocument()
+  })
 })

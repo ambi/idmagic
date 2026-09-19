@@ -17,6 +17,9 @@ describe('AdminApplicationCreatePage', () => {
   const originalLocation = window.location
   afterEach(() => restoreGlobals())
 
+  //spec:covers EX-APPLICATION-001-01: 作成に成功したときのレスポンスがクライアントシークレットを運び、
+  // 画面はその値を確認ダイアログで一度だけ示す。詳細画面が二度と示さないことは同じ id の
+  // AdminApplicationDetailPage.test.tsx が固定する。
   it('creates an OIDC application and redirects to its detail page after confirming the secret', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(
@@ -44,6 +47,7 @@ describe('AdminApplicationCreatePage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: t.create }))
 
+    expect(await screen.findByText('secret-2')).toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: t.storedConfirm }))
 
     await waitFor(() =>

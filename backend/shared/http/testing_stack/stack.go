@@ -182,9 +182,15 @@ type Stack struct {
 	Applications           *appmemory.ApplicationRepository
 	ApplicationAssignments *appmemory.ApplicationAssignmentRepository
 	ApplicationOrderings   *appmemory.ApplicationOrderingRepository
-	SamlSPs                *samlmemory.SamlServiceProviderRepository
-	WsFedRPs               *wsfedmemory.WsFedRelyingPartyRepository
-	Sessions               *sessionusecases.SessionManager
+	ApplicationCategories  *appmemory.ApplicationCategoryRepository
+	ApplicationIcons       *appmemory.ApplicationIconStore
+	// AppSignInPolicies と DefaultSignInPolicy は、サインインポリシーの具体例が
+	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
+	AppSignInPolicies   *appmemory.SignInPolicyRepository
+	DefaultSignInPolicy *appmemory.DefaultSignInPolicyRepository
+	SamlSPs             *samlmemory.SamlServiceProviderRepository
+	WsFedRPs            *wsfedmemory.WsFedRelyingPartyRepository
+	Sessions            *sessionusecases.SessionManager
 	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
 	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
 	SessionStore *sessionmemory.SessionStore
@@ -408,10 +414,18 @@ func WithApplicationApi() Option {
 		b.stack.Applications = appmemory.NewApplicationRepository()
 		b.stack.ApplicationAssignments = appmemory.NewApplicationAssignmentRepository()
 		b.stack.ApplicationOrderings = appmemory.NewApplicationOrderingRepository()
+		b.stack.ApplicationCategories = appmemory.NewApplicationCategoryRepository()
+		b.stack.ApplicationIcons = appmemory.NewApplicationIconStore()
+		b.stack.AppSignInPolicies = appmemory.NewSignInPolicyRepository()
+		b.stack.DefaultSignInPolicy = appmemory.NewDefaultSignInPolicyRepository()
 		b.deps.Application = application.Module{
-			Repo:           b.stack.Applications,
-			AssignmentRepo: b.stack.ApplicationAssignments,
-			OrderingRepo:   b.stack.ApplicationOrderings,
+			Repo:                    b.stack.Applications,
+			IconStore:               b.stack.ApplicationIcons,
+			AssignmentRepo:          b.stack.ApplicationAssignments,
+			OrderingRepo:            b.stack.ApplicationOrderings,
+			CategoryRepo:            b.stack.ApplicationCategories,
+			SignInPolicyRepo:        b.stack.AppSignInPolicies,
+			DefaultSignInPolicyRepo: b.stack.DefaultSignInPolicy,
 		}
 	}
 }

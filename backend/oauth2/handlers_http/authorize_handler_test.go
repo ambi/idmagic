@@ -388,7 +388,10 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-APPLICATION-012: hidden 割り当ては一覧には出さないが、OAuth2 の利用可否判定では割り当て済みとして扱う。
+// フェデレーションを OAuth2.Authorize で拒否し、`visibility=visible` の割り当てを先に置けば完了できること。
+//
+//spec:covers REQ-APPLICATION-011, EX-APPLICATION-011-01, EX-APPLICATION-011-02: 割り当てのない主体の
+//spec:covers REQ-APPLICATION-012, EX-APPLICATION-012-01: hidden 割り当てでもフェデレーションを完了できること。ポータル一覧から外れる側は TestApplicationAdminCRUDAndAccountVisibility が固定する。
 func TestAuthorizeAllowsHiddenApplicationAssignment(t *testing.T) {
 	now := time.Now().UTC()
 	authn := &authdomain.AuthenticationContext{UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"}}
@@ -419,6 +422,21 @@ func TestAuthorizeAllowsHiddenApplicationAssignment(t *testing.T) {
 	if denied.Code != http.StatusForbidden && !strings.Contains(denied.Header().Get("Location"), "error=access_denied") {
 		t.Fatalf("unassigned subject must be denied: status=%d location=%q body=%s",
 			denied.Code, denied.Header().Get("Location"), denied.Body.String())
+	}
+
+	// visible 割当を先に置けばフェデレーションは完了する。拒否側だけを観測すると、
+	// 何も通さない実装も同じテストを通ってしまう。
+	if err := assignments.Save(context.Background(), &appdomain.ApplicationAssignment{
+		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "hidden-app",
+		SubjectType: appdomain.AssignmentSubjectUser, SubjectID: authn.UserID, Visibility: appdomain.AssignmentVisible,
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	visible := runAuthorize(t, e, authorizeQuery(url.Values{}))
+	if !strings.Contains(visible.Header().Get("Location"), "code=") {
+		t.Fatalf("visible assignment must allow the protocol: status=%d location=%q body=%s",
+			visible.Code, visible.Header().Get("Location"), visible.Body.String())
 	}
 
 	// hidden 割当はポータルから隠すだけで、protocol の利用は許す。

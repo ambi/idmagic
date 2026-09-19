@@ -38,6 +38,8 @@ const credentials: ClientSecretCredentialMetadata[] = [
 describe('ClientSecretRotationPanel', () => {
   afterEach(() => restoreGlobals())
 
+  //spec:covers EX-APPLICATION-002-01, EX-APPLICATION-002-03: 資格情報の一覧は作成日、有効期限、
+  // `Active` / `Expired` / `Revoked` の 3 状態を示し、個別失効の操作は `Active` の 1 件にだけ現れる。
   it('credential の作成日・有効期限・3状態を一覧し、Active だけ失効できる', async () => {
     await renderWithRouter(
       <ClientSecretRotationPanel
@@ -72,6 +74,8 @@ describe('ClientSecretRotationPanel', () => {
     }
   })
 
+  //spec:covers EX-APPLICATION-002-01: 90 日の有効期限を選んだ追加発行は、新しいシークレットの平文を
+  // 一度だけ示し、一覧へ作成日、有効期限、`Active` を持つ行を足す。
   it('期限付き secret を追加発行し、平文を一度限り表示して一覧を更新する', async () => {
     const issued = {
       credential_id: 'new-credential',
@@ -105,6 +109,8 @@ describe('ClientSecretRotationPanel', () => {
     expect(call[1].body).toBe(JSON.stringify({ expires_in_days: 90 }))
   })
 
+  //spec:covers EX-APPLICATION-002-01: 個別失効は指定した資格情報だけを `Revoked` にし、失効後は
+  // その行の失効操作を出さない。
   it('確認後に指定 credential だけを失効し、再取得結果で一覧を更新する', async () => {
     const revoked = {
       ...credentials[0],
@@ -129,6 +135,8 @@ describe('ClientSecretRotationPanel', () => {
     expect(screen.queryByRole('button', { name: t.secretRevokeButton })).not.toBeInTheDocument()
   })
 
+  //spec:covers EX-APPLICATION-002-02: `Active` の資格情報が既に 2 件あるとき、追加発行の操作を無効にし、
+  // 先に既存の資格情報を失効するよう案内する。
   it('Active credential が2件なら追加発行を無効化して先に失効するよう案内する', async () => {
     const second = { ...credentials[0], credential_id: 'second-active' }
     await renderWithRouter(

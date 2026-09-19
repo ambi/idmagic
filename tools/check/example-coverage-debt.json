@@ -69,124 +69,34 @@
       "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
     },
     {
-      "id": "EX-APPLICATION-001-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-002-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-002-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-002-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-003-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-003-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-004-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-004-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-005-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-005-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-006-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-006-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-006-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-007-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
       "id": "EX-APPLICATION-007-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "割り当ての主体を検査する経路そのものが無く、具体例の `Then` を満たせない",
+      "blocked_by": "wi-625-application-assignment-accepts-any-subject",
+      "finding": "AssignApplication は対象 Application の実在とテナントを確かめたあと、SubjectType の妥当性と SubjectID が空でないことだけを検査して保存する (backend/application/usecases/assignments.go)。handleAssignApplication にも主体の実在検査は無い。存在しない主体と別テナントの主体の割り当ては 201 で成立し、ApplicationAssigned も発行される。"
     },
     {
       "id": "EX-APPLICATION-007-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-008-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-008-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "越境した id の参照は拒否されるが、公開するエラー契約が具体例と一致しないため",
+      "blocked_by": "wi-626-align-cross-tenant-application-read-refusals",
+      "finding": "handleGetApplication は解決済みテナントを検索キーに含め、対象を返さない。応答は具体例が定める InvalidRequestError ではなく 404 application_not_found である (backend/application/handlers_http/admin_application_handler.go)。TypeSpec の GetAdminApplication は 200/400/401/403 しか宣言していない。"
     },
     {
       "id": "EX-APPLICATION-008-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-009-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-009-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-009-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-010-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-010-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-011-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-011-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-012-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-APPLICATION-013-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "越境したアイコンは返らないが、公開するエラー契約が具体例と一致しないため",
+      "blocked_by": "wi-626-align-cross-tenant-application-read-refusals",
+      "finding": "handleGetApplicationIcon は解決済みテナントを含むキーで検索し、内容を返さない。応答は具体例が定める InvalidRequestError ではなく 404 not_found である。TypeSpec の GetApplicationIcon は 404 ApplicationIconNotFoundError を宣言しており、契約と実装は一致している。食い違うのは具体例だけである。"
     },
     {
       "id": "EX-APPLICATION-014-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "具体例が名指す操作の実装が存在しないため",
+      "blocked_by": "wi-628-implement-desired-state-application-assignment",
+      "finding": "AssignApplicationDesiredState は docs/domain/application/decisions.md と scenarios.feature.md にしか現れず、backend のどこにも実装が無い。既存の AssignApplication は指定した subject_type の行をそのまま保存するだけで、あるべき状態との差分判定を持たない。"
     },
     {
       "id": "EX-APPLICATION-014-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "具体例が名指す操作と `changed=false` の応答が存在しないため",
+      "blocked_by": "wi-628-implement-desired-state-application-assignment",
+      "finding": "UnassignApplicationDesiredState も実装が無い。既存の UnassignApplication は AssignmentRepo.Delete を呼んで常に ApplicationUnassigned を発行し、差分が無いことを呼び出し元へ返す戻り値を持たない。"
     },
     {
       "id": "EX-AUDIT-001-01",
