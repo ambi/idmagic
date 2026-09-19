@@ -663,7 +663,8 @@ mise run -c \
   check-rendered-docs ::: \
   check-repository ::: \
   check-config-reference ::: \
-  check-route-reference
+  check-route-reference ::: \
+  check-gateway-routes
 '''
 
 [tasks.check-repository]
@@ -804,6 +805,10 @@ run = "go run ./backend/cmd/idmagic-route-reference --output ROUTE_PRIORITY.md"
 [tasks.check-route-reference]
 description = "Check the route priority reference"
 run = "go run ./backend/cmd/idmagic-route-reference --check --output ROUTE_PRIORITY.md"
+
+[tasks.check-gateway-routes]
+description = "Check the frontend gateway route allowlists against the assembled router"
+run = "go run ./backend/cmd/idmagic-gateway-routes"
 
 [tasks.check-api-compat]
 description = "Detect OpenAPI breaking changes against the release baseline"
