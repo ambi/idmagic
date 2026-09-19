@@ -81,7 +81,7 @@ async function waitForPaginationPage(
 }
 
 test('account profile can be updated from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 2000 })
+  const view = await openWebView({ width: 1280, height: 2000 })
   try {
     await navigateAndLogin(view, '/account/profile', 'account-profile')
 
@@ -102,7 +102,7 @@ test('account profile can be updated from the browser', async () => {
 }, 60_000)
 
 test('account data export is triggered from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 1600 })
+  const view = await openWebView({ width: 1280, height: 1600 })
   try {
     await navigateAndLogin(view, '/account/data', 'account-data')
     await view.evaluate(`(() => {
@@ -130,7 +130,7 @@ test('account data export is triggered from the browser', async () => {
 }, 60_000)
 
 test('admin general settings can be updated from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 1800 })
+  const view = await openWebView({ width: 1280, height: 1800 })
   try {
     await navigateAndLogin(view, '/admin/settings', 'admin-settings')
 
@@ -147,7 +147,7 @@ test('admin general settings can be updated from the browser', async () => {
 }, 60_000)
 
 test('admin can create a shared SAML identity provider profile', async () => {
-  const view = openWebView({ width: 1280, height: 2200 })
+  const view = await openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(
       view,
@@ -167,7 +167,7 @@ test('admin can create a shared SAML identity provider profile', async () => {
 }, 60_000)
 
 test('admin API access token lifecycle works with selected SCIM scopes', async () => {
-  const view = openWebView({ width: 1280, height: 2200 })
+  const view = await openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(view, '/admin/settings', 'admin-settings')
     await clickButtonByText(view, 'API access tokens')
@@ -197,7 +197,7 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
 }, 60_000)
 
 test('admin MCP resource server lifecycle works from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 1800 })
+  const view = await openWebView({ width: 1280, height: 1800 })
   try {
     await navigateAndLogin(view, '/admin/mcp-resource-servers', 'admin-mcp-resource-servers')
 
@@ -233,7 +233,7 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
 }, 60_000)
 
 test('admin signing key rotation action is available to tenant admins', async () => {
-  const view = openWebView({ width: 1280, height: 1800 })
+  const view = await openWebView({ width: 1280, height: 1800 })
   try {
     await navigateAndLogin(view, '/admin/keys', 'admin-keys')
     await waitForText(view, 'Signing keys')
@@ -247,7 +247,7 @@ test('admin signing key rotation action is available to tenant admins', async ()
 }, 60_000)
 
 test('account connected application consent can be revoked from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 2000 })
+  const view = await openWebView({ width: 1280, height: 2000 })
   try {
     // 先に account audience でログインして browser session を確立する。新規 WebView
     // から直接 /authorize を開くとログインコンテキストが作られる前に SPA route を読むため、
@@ -284,7 +284,7 @@ test('account connected application consent can be revoked from the browser', as
 }, 60_000)
 
 test('account TOTP enrollment and removal step-up work from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 2200 })
+  const view = await openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(view, '/account/security', 'account-security')
 
@@ -327,17 +327,23 @@ test('account TOTP enrollment and removal step-up work from the browser', async 
 }, 60_000)
 
 test('account session list can revoke a different browser session', async () => {
-  const first = openWebView({ width: 1280, height: 1800 })
-  const second = openWebView({ width: 1280, height: 1200 })
+  const otherSession = await openWebView({ width: 1280, height: 1200 })
   try {
-    await navigateAndLogin(first, '/account', 'account-home')
-    await navigateAndLogin(second, '/account', 'account-home')
+    await navigateAndLogin(otherSession, '/account', 'account-home')
+  } finally {
+    otherSession.close()
+  }
 
-    await first.navigate(`${uiOrigin}/account/activity`)
-    await waitForPage(first, 'account-activity')
-    await waitForText(first, 'End other sessions')
+  // Chrome backend は 1 プロセス内の WebView で Cookie を共有する。先の WebView を閉じて
+  // プロセスを替えてから current session を作れば、サーバー上には独立した 2 session が残る。
+  const currentSession = await openWebView({ width: 1280, height: 1800 })
+  try {
+    await navigateAndLogin(currentSession, '/account', 'account-home')
+    await currentSession.navigate(`${uiOrigin}/account/activity`)
+    await waitForPage(currentSession, 'account-activity')
+    await waitForText(currentSession, 'End other sessions')
     const revokedSessionID = String(
-      await first.evaluate(`(() => {
+      await currentSession.evaluate(`(() => {
       const target = [...document.querySelectorAll('button')]
         .find((button) => (button.textContent ?? '').trim() === 'End')
       if (!target) return ''
@@ -350,17 +356,17 @@ test('account session list can revoke a different browser session', async () => 
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
       const revokedRowExists = Boolean(
-        await first.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
+        await currentSession.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
           .some((row) => row.getAttribute('data-session-id') === ${JSON.stringify(revokedSessionID)}))()`),
       )
       if (!revokedRowExists) {
         // 行が消えるのは画面上の状態にすぎない。読み直してサーバーの一覧からも
         // 消えていることを確かめ、失効が実際に保存されたことまで観測する。
-        await first.navigate(`${uiOrigin}/account/activity`)
-        await waitForPage(first, 'account-activity')
-        await waitForText(first, 'End other sessions')
+        await currentSession.navigate(`${uiOrigin}/account/activity`)
+        await waitForPage(currentSession, 'account-activity')
+        await waitForText(currentSession, 'End other sessions')
         const reloadedRowExists = Boolean(
-          await first.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
+          await currentSession.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
             .some((row) => row.getAttribute('data-session-id') === ${JSON.stringify(revokedSessionID)}))()`),
         )
         expect(reloadedRowExists).toBe(false)
@@ -370,13 +376,12 @@ test('account session list can revoke a different browser session', async () => 
     }
     throw new Error('timeout waiting for the revoked session row to disappear')
   } finally {
-    first.close()
-    second.close()
+    currentSession.close()
   }
 }, 60_000)
 
 test('admin audit log can be filtered and export can be triggered', async () => {
-  const view = openWebView({ width: 1280, height: 2000 })
+  const view = await openWebView({ width: 1280, height: 2000 })
   try {
     await navigateAndLogin(view, '/admin/audit_events', 'admin-audit-events')
     await view.evaluate(`(() => {
@@ -422,7 +427,7 @@ test('admin audit log can be filtered and export can be triggered', async () => 
 }, 60_000)
 
 test('admin audit pagination preserves addressable history and supports both ends', async () => {
-  const view = openWebView({ width: 1280, height: 2000 })
+  const view = await openWebView({ width: 1280, height: 2000 })
   try {
     await navigateAndLogin(view, '/admin/audit_events?limit=1', 'admin-audit-events')
     const totalPages = await waitForPaginationPage(view, 1)
@@ -459,7 +464,7 @@ test('admin audit pagination preserves addressable history and supports both end
 }, 90_000)
 
 test('admin user attribute schema can add and delete a custom attribute', async () => {
-  const view = openWebView({ width: 1280, height: 2200 })
+  const view = await openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(view, '/admin/tenant/attributes', 'admin-tenant-attributes')
 
@@ -490,7 +495,7 @@ test('admin user attribute schema can add and delete a custom attribute', async 
 // 実際のブラウザーが行うリンクの GET が確定を起こさないこと、確定が一度きりであることを、
 // 配線されたルートと SMTP 受信先を通して確かめる。
 test('account email change confirms through the local SMTP sink', async () => {
-  const view = openWebView({ width: 1280, height: 2000 })
+  const view = await openWebView({ width: 1280, height: 2000 })
   try {
     await navigateAndLogin(view, '/account/emails', 'account-emails')
 
@@ -545,7 +550,7 @@ test('account email change confirms through the local SMTP sink', async () => {
 // 実際のブラウザーが行うリンクの GET が消費を起こさないこと、確定が一度きりであることを、
 // 配線されたルートと SMTP 受信先を通して確かめる。
 test('password reset succeeds through the local SMTP sink without external mail', async () => {
-  const view = openWebView({ width: 1280, height: 1800 })
+  const view = await openWebView({ width: 1280, height: 1800 })
   try {
     const suffix = Date.now()
     const username = `reset-e2e-${suffix}`
@@ -593,7 +598,7 @@ test('password reset succeeds through the local SMTP sink without external mail'
 }, 60_000)
 
 test('admin application lifecycle and agent credential binding work from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 2400 })
+  const view = await openWebView({ width: 1280, height: 2400 })
   try {
     const suffix = Date.now()
     const appName = `E2E OIDC App ${suffix}`
@@ -667,7 +672,7 @@ test('admin application lifecycle and agent credential binding work from the bro
 }, 90_000)
 
 test('admin user list opens a user detail page', async () => {
-  const view = openWebView({ width: 1280, height: 1800 })
+  const view = await openWebView({ width: 1280, height: 1800 })
   try {
     await navigateAndLogin(view, '/admin/users', 'admin-users')
     // 一覧で先頭ユーザーが選択され、右ペインの「詳細」から専用詳細画面へ遷移する。
@@ -687,7 +692,7 @@ test('admin user list opens a user detail page', async () => {
 // (Enrollment-required flow への実際の接続 = 次回ログインでの強制は、
 // backend/shared/http/server_http の Go E2E テストで固定済み。)
 test('admin can reset a user authenticator from the browser', async () => {
-  const view = openWebView({ width: 1280, height: 2200 })
+  const view = await openWebView({ width: 1280, height: 2200 })
   try {
     await navigateAndLogin(view, '/account/security', 'account-security')
     await clickButtonByText(view, 'Set up authenticator app')

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { createServer, type Server, type Socket } from 'node:net'
 import { spawn, spawnSync, type Subprocess } from 'bun'
 import { WebViewCallExpired, withCallDeadlines } from './webview-deadline'
+import { createWebViewProcessLease } from './webview-process-lease'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const uiDir = resolve(here, '../..')
@@ -114,6 +115,15 @@ const LAUNCH_CANDIDATES: readonly LaunchCandidate[] = [
     backend: { type: 'chrome', argv: ['--no-sandbox', '--disable-dev-shm-usage'] },
   },
 ]
+
+// closeAll は Chrome の pipe を同期的に閉じるが、子プロセスの終了は少し遅れて完了する。
+// 直後に作ると閉じた pipe を再利用するため、実測で失敗した 0 ms と成功した 25 ms の間に
+// 十分な余裕を取り、次の view の生成だけを待たせる。
+const CHROME_PROCESS_SETTLE_MS = 100
+const chromeProcessLease = createWebViewProcessLease(
+  () => Bun.WebView.closeAll(),
+  () => Bun.sleep(CHROME_PROCESS_SETTLE_MS),
+)
 
 // 採用した起動方法。detectWebViewSupport が一度だけ決める。undefined は未判定、null は
 // どの候補でも描画できなかったことを表す。
@@ -253,8 +263,15 @@ const CALL_BUDGETS = {
 //
 // 返す WebView は期限付きである。返らない 1 回の呼び出しは、bun の「60 秒経った」ではなく
 // どの呼び出しが返らなかったかとして落ちる (wi-624)。
-export function openWebView(options: { width: number; height: number }): Bun.WebView {
+export async function openWebView(options: {
+  width: number
+  height: number
+}): Promise<Bun.WebView> {
   if (launch === null) throw new Error(webViewUnavailable())
+  const backend = launch?.backend
+  const usesChrome =
+    backend === 'chrome' || (typeof backend === 'object' && backend.type === 'chrome')
+  if (usesChrome) await chromeProcessLease.waitUntilReady()
   const pageLog: string[] = []
   const view = new Bun.WebView({
     ...(launch === undefined ? options : webViewOptions(launch, options)),
@@ -263,7 +280,8 @@ export function openWebView(options: { width: number; height: number }): Bun.Web
       if (pageLog.length > PAGE_LOG_LIMIT) pageLog.shift()
     },
   })
-  return withCallDeadlines(view, CALL_BUDGETS, () => diagnosticContext(pageLog))
+  const bounded = withCallDeadlines(view, CALL_BUDGETS, () => diagnosticContext(pageLog))
+  return usesChrome ? chromeProcessLease.hold(bounded) : bounded
 }
 
 export async function startE2EEnvironment(): Promise<void> {
