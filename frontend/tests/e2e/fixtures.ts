@@ -91,38 +91,90 @@ export async function waitForUp(url: string, timeoutMs = 120_000): Promise<void>
   throw new Error(`timeout waiting for ${url}`)
 }
 
-// WebView が描画できるかどうか。detectWebViewSupport が一度だけ決める。
-let webViewRenders: boolean | undefined
+// Bun.WebView のバックエンドはプラットフォームで違う。macOS は WKWebView で画面サーバーへの
+// 接続を要し、Linux と Windows はインストール済みの Chrome を CDP で駆動して画面サーバーを
+// 要しない。成立の条件が違うので、起動方法も 1 つでは足りない。
+type LaunchCandidate = {
+  // name は失敗メッセージにそのまま出る。
+  readonly name: string
+  readonly backend?: Bun.WebView.Backend
+}
+
+// LAUNCH_CANDIDATES は試す順そのものである。既定を先に置くので、Chrome の sandbox が働く
+// ホストでは sandbox が有効なまま実行される。--no-sandbox が効くのは、AppArmor が非特権の
+// user namespace を拒む Linux (Ubuntu 23.10 以降の既定、GitHub Actions の ubuntu-latest を
+// 含む) やコンテナーのように、それ以外では Chrome が起動できないホストに限られる。argv は
+// 既定のフラグの後ろへ足され、重複したスイッチは後勝ちなので、--headless は残る。
+const LAUNCH_CANDIDATES: readonly LaunchCandidate[] = [
+  { name: 'the default backend' },
+  {
+    name: 'the chrome backend with --no-sandbox',
+    backend: { type: 'chrome', argv: ['--no-sandbox', '--disable-dev-shm-usage'] },
+  },
+]
+
+// 採用した起動方法。detectWebViewSupport が一度だけ決める。undefined は未判定、null は
+// どの候補でも描画できなかったことを表す。
+let launch: LaunchCandidate | null | undefined
+
+// 候補ごとの失敗理由。どれも成立しなかったときに、そのまま失敗メッセージへ運ぶ。
+const launchFailures: string[] = []
 
 // WEBVIEW_PROBE_TIMEOUT_MS は空白ページを描いて評価を返すまでの猶予。健全なホストでの
 // 実測は 0.3 秒未満なので、1 桁以上の余裕がある。届かない環境では丸ごとこの時間を使うが、
 // 1 実行につき 1 回であり、spec ごとの 60〜90 秒のタイムアウトとは比べものにならない。
 const WEBVIEW_PROBE_TIMEOUT_MS = 5_000
 
-const WEBVIEW_UNAVAILABLE = [
-  'Bun.WebView could not render a blank page.',
-  'The usual cause is an OS-level sandbox (macOS Seatbelt): the WebView needs the window',
-  'server, and a sandbox refuses that connection, so every browser spec waits for a page',
-  'that is never drawn and reports its own timeout instead of naming the cause.',
-  'Run `mise run test-ui-e2e` outside the sandbox. Specs that only use fetch are unaffected.',
-].join('\n')
+function webViewOptions(
+  candidate: LaunchCandidate,
+  viewport: { width: number; height: number },
+): Bun.WebView.ConstructorOptions {
+  return candidate.backend === undefined ? viewport : { ...viewport, backend: candidate.backend }
+}
 
-// detectWebViewSupport は WebView の能力そのものを試す。環境変数でサンドボックスを当てに
-// いかないのは、名前も有無もホスト側の都合で変わるうえ、当たったところで「描画できるか」
-// には答えないからである。空白ページを描いて評価を 1 つ返せるかだけを見る。
-export async function detectWebViewSupport(): Promise<boolean> {
-  if (webViewRenders !== undefined) return webViewRenders
-  const view = new Bun.WebView({ width: 200, height: 200 })
+function failureReason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+// webViewUnavailable は候補ごとの失敗をそのまま並べる。原因を 1 つに決め打ちすると、
+// 当たらないプラットフォームでは読んでも直せない案内になる。
+function webViewUnavailable(): string {
+  return [
+    'Bun.WebView could not render a blank page. Every launch method failed:',
+    ...launchFailures.map((failure) => `  - ${failure}`),
+    'Bun.WebView uses WKWebView on macOS, and an installed headless Chrome over CDP elsewhere.',
+    'On macOS the usual cause is an OS-level sandbox (Seatbelt) refusing the window server:',
+    'run `mise run test-ui-e2e` outside the sandbox.',
+    'On Linux the cause is Chrome: install Chrome or Chromium, or set BUN_CHROME_PATH when the',
+    'executable lives outside the standard locations.',
+    'Specs that only use fetch are unaffected.',
+  ].join('\n')
+}
+
+// probeLaunch は 1 つの候補で空白ページを描いて評価を 1 つ返せるかを試す。成功なら
+// undefined、失敗なら理由を返す。理由を捨てないことが目的である。捨てると、残るのは
+// 「描画できなかった」という一文だけになり、Chrome の不在と起動の失敗が区別できない。
+async function probeLaunch(candidate: LaunchCandidate): Promise<string | undefined> {
+  let view: Bun.WebView
   try {
-    const probe = (async () => {
+    view = new Bun.WebView(webViewOptions(candidate, { width: 200, height: 200 }))
+  } catch (error) {
+    // Chrome が見つからない場合など、コンストラクター自身が投げる。
+    return `${candidate.name}: ${failureReason(error)}`
+  }
+  try {
+    const drawn = (async () => {
       await view.navigate('about:blank')
-      return await view.evaluate('1 + 1')
-    })()
-    const answer = await Promise.race([
-      probe.catch(() => undefined),
-      Bun.sleep(WEBVIEW_PROBE_TIMEOUT_MS).then(() => undefined),
+      const answer = await view.evaluate('1 + 1')
+      return answer === 2 ? undefined : `the blank page answered 1 + 1 with ${String(answer)}`
+    })().catch(failureReason)
+    const failure = await Promise.race([
+      drawn,
+      Bun.sleep(WEBVIEW_PROBE_TIMEOUT_MS).then(
+        () => `no answer within ${WEBVIEW_PROBE_TIMEOUT_MS} ms`,
+      ),
     ])
-    webViewRenders = answer === 2
+    return failure === undefined ? undefined : `${candidate.name}: ${failure}`
   } finally {
     try {
       view.close()
@@ -130,16 +182,33 @@ export async function detectWebViewSupport(): Promise<boolean> {
       // 描画できない環境では close 自体も失敗しうる。判定はもう出ている。
     }
   }
-  if (!webViewRenders) console.error(`\n${WEBVIEW_UNAVAILABLE}\n`)
-  return webViewRenders
 }
 
-// openWebView は WebView を開く唯一の入口。描画できないと分かっている環境では、待たずに
-// その場で失敗する。**待たせないことが目的である。** 待たせると 29 本の spec がそれぞれ
-// 固有のタイムアウトを報告し、原因を名乗らない失敗が被験コードの回帰と見分けられなくなる。
+// detectWebViewSupport は WebView の能力そのものを試す。環境変数やプラットフォーム名で
+// ホストを当てにいかないのは、どちらも「描画できるか」に答えないからである。コンテナーや
+// WSL のような組み合わせは、名前からは読めない。描けるかどうかは描かせて確かめる。
+export async function detectWebViewSupport(): Promise<boolean> {
+  if (launch !== undefined) return launch !== null
+  for (const candidate of LAUNCH_CANDIDATES) {
+    const failure = await probeLaunch(candidate)
+    if (failure === undefined) {
+      launch = candidate
+      return true
+    }
+    launchFailures.push(failure)
+  }
+  launch = null
+  console.error(`\n${webViewUnavailable()}\n`)
+  return false
+}
+
+// openWebView は WebView を開く唯一の入口。判定が採った起動方法で開き、描画できないと
+// 分かっている環境では待たずにその場で失敗する。**待たせないことが目的である。** 待たせると
+// 29 本の spec がそれぞれ固有のタイムアウトを報告し、原因を名乗らない失敗が被験コードの
+// 回帰と見分けられなくなる。
 export function openWebView(options: { width: number; height: number }): Bun.WebView {
-  if (webViewRenders === false) throw new Error(WEBVIEW_UNAVAILABLE)
-  return new Bun.WebView(options)
+  if (launch === null) throw new Error(webViewUnavailable())
+  return new Bun.WebView(launch === undefined ? options : webViewOptions(launch, options))
 }
 
 export async function startE2EEnvironment(): Promise<void> {
