@@ -1,6 +1,6 @@
 # エージェント指示
 
-回答と説明は日本語で書く。文章を作成または変更するときは、[日本語文章規則](.claude/rules/japanese-writing.md)を適用する。
+エージェントが利用者へ向けて書く文章は日本語にする。作業の報告、提案、確認、要約、差分の説明など、会話へ出す文章をすべて含む。
 
 機能、振る舞い、設計を変更するときは、[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)に従う。仕様文書の形式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、work item の形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md)、文書体系は [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) が定める。
 
