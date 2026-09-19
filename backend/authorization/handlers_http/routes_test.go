@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -348,8 +349,11 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	})
 
 	//spec:covers REQ-AUTHORIZATION-010: 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる。
+	//spec:covers EX-AUTHORIZATION-010-01: PutAuthorizationModel と WriteRelationTuples が拒否され、認可モデルの版が 1 つも作られず、タプルが 1 件も書き込まれない。
+	//spec:covers EX-AUTHORIZATION-010-02: CheckAccess と ListAccessibleResources が拒否され、応答が判定を載せない。
 	// 拒否は 403 だけでは確かめたことにならない。妥当な本文をそのまま送って拒否させ、
-	// 版もタプルも 1 つも増えていないことを保管庫から読み直す。
+	// 版もタプルも 1 つも増えていないことを保管庫から読み直す。判定の 2 つは保管庫を
+	// 変えないので、拒否が防いだ効果は「応答が判定を載せていないこと」で読む。
 	t.Run("a non-administrator is rejected on every endpoint", func(t *testing.T) {
 		e, _, store := newServer(t, actor("alice", nil))
 		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/model"); rec.Code != http.StatusForbidden {
@@ -357,6 +361,10 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples"); rec.Code != http.StatusForbidden {
 			t.Fatalf("ListRelationTuples status=%d, want 403", rec.Code)
+		}
+		decision := map[string]any{
+			"resource_type": "document", "resource_id": "d1", "relation": "viewer",
+			"subject_type": "user", "subject_id": "alice",
 		}
 		for _, call := range []struct {
 			path string
@@ -366,11 +374,16 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 			{"/api/admin/v1/authorization/relation-tuples", map[string]any{
 				"writes": []map[string]any{viewerTuple("user", "alice")},
 			}},
-			{"/api/admin/v1/authorization/check", map[string]any{}},
-			{"/api/admin/v1/authorization/list-accessible-resources", map[string]any{}},
+			{"/api/admin/v1/authorization/check", decision},
+			{"/api/admin/v1/authorization/list-accessible-resources", decision},
 		} {
-			if rec := post(t, e, realmPrefix+call.path, call.body); rec.Code != http.StatusForbidden {
+			rec := post(t, e, realmPrefix+call.path, call.body)
+			if rec.Code != http.StatusForbidden {
 				t.Fatalf("POST %s status=%d, want 403", call.path, rec.Code)
+			}
+			// 403 を返しながら判定も載せる応答を見逃さない。
+			if strings.Contains(strings.ReplaceAll(rec.Body.String(), " ", ""), `"permitted"`) {
+				t.Fatalf("POST %s refused but still carried a decision: %s", call.path, rec.Body.String())
 			}
 		}
 

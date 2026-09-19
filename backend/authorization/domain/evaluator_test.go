@@ -68,7 +68,16 @@ func documentModel() *domain.AuthorizationModel {
 
 func user(id string) domain.SubjectRef { return domain.SubjectRef{Type: "user", ID: id} }
 
+// EX-AUTHORIZATION-003-02 と EX-AUTHORIZATION-003-03 は別々の経路を言うので、subject set
+// だけをたどる d5 と、親オブジェクトだけをたどる d6 を分けて置く。両方を兼ねる d3 しか
+// 無いと、親の解決が壊れたときに 2 つの具体例が同時に落ち、どちらの経路が切れたのか
+// 読み手に伝わらない。
+//
 //spec:covers REQ-AUTHORIZATION-003: 直接・グループ・継承・親子のいずれの経路でも関係に到達する。
+//spec:covers EX-AUTHORIZATION-003-01: 許可と不許可の双方を返し、経路は関係名だけを並べる。
+//spec:covers EX-AUTHORIZATION-003-02: subject set の成員として間接的に関係を持つ主体を許可する。
+//spec:covers EX-AUTHORIZATION-003-03: 親オブジェクト側で関係を持つ主体を許可する。
+//spec:covers EX-AUTHORIZATION-003-04: どの経路でも関係に到達しない主体を許可しない。
 func TestCheckTraversesGroupAndParent(t *testing.T) {
 	model := documentModel()
 	reader := newReader(map[string][]domain.SubjectRef{
@@ -79,6 +88,9 @@ func TestCheckTraversesGroupAndParent(t *testing.T) {
 		"group:eng#member":      {{Type: "group", ID: "platform", Relation: "member"}},
 		"group:platform#member": {user("carol")},
 		"document:d4#viewer":    {{Type: "user", ID: domain.Wildcard}},
+		"document:d5#viewer":    {{Type: "group", ID: "eng", Relation: "member"}},
+		"document:d6#parent":    {{Type: "folder", ID: "f2"}},
+		"folder:f2#viewer":      {user("erin")},
 	})
 
 	cases := []struct {
@@ -97,6 +109,18 @@ func TestCheckTraversesGroupAndParent(t *testing.T) {
 			[]string{"document#viewer", "folder#viewer", "group#member", "group#member"},
 		},
 		{"wildcard", domain.ObjectRef{Type: "document", ID: "d4"}, user("dave"), true, []string{"document#viewer"}},
+		{
+			"subject set membership alone",
+			domain.ObjectRef{Type: "document", ID: "d5"},
+			user("carol"), true,
+			[]string{"document#viewer", "group#member", "group#member"},
+		},
+		{
+			"parent object alone",
+			domain.ObjectRef{Type: "document", ID: "d6"},
+			user("erin"), true,
+			[]string{"document#viewer", "folder#viewer"},
+		},
 		{"unrelated subject", domain.ObjectRef{Type: "document", ID: "d1"}, user("mallory"), false, nil},
 	}
 	for _, tc := range cases {
@@ -119,6 +143,7 @@ func TestCheckTraversesGroupAndParent(t *testing.T) {
 }
 
 //spec:covers REQ-AUTHORIZATION-003: 経路にオブジェクト識別子と主体識別子を含めない。
+//spec:covers EX-AUTHORIZATION-003-01: 具体例の 2 つ目の Then。経路の各段がオブジェクト識別子も主体識別子も含まないことを、識別子が見分けやすい名前のタプルで観測する。
 func TestCheckPathOmitsIdentifiers(t *testing.T) {
 	model := documentModel()
 	reader := newReader(map[string][]domain.SubjectRef{
@@ -141,6 +166,8 @@ func TestCheckPathOmitsIdentifiers(t *testing.T) {
 }
 
 //spec:covers REQ-AUTHORIZATION-005: 循環・深さ超過・未知の関係はいずれも許可しない。
+//spec:covers EX-AUTHORIZATION-005-02: 深さ上限を超えた探索が、許可せず ReasonDepthExceeded を添える。
+//spec:covers EX-AUTHORIZATION-005-03: モデルが宣言していない関係の指定が、許可せず ReasonUnknownRelation を添える。
 func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 	// tuple_to_userset の循環はタプル側でしか作れないので、親をたがいに指すデータで作る。
 	model := documentModel()
@@ -178,6 +205,40 @@ func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 	}
 	if !slices.Contains(decision.Reasons, domain.ReasonDepthExceeded) {
 		t.Fatalf("Reasons = %v, want %s", decision.Reasons, domain.ReasonDepthExceeded)
+	}
+
+	// 上限の境界そのもの。上限より十分に深い連なりだけを見ると、境界を 1 つずらした
+	// 実装も、段数の数え方を逆向きにした実装も、同じく拒否を返して通ってしまう。
+	// computed_userset と tuple_to_userset の双方で、許可する側と拒否する側を対にする。
+	for name, tuples := range map[string]map[string][]domain.SubjectRef{
+		"through a computed userset": {"document:a#editor": {user("alice")}},
+		"through a parent object": {
+			"document:a#parent": {{Type: "folder", ID: "f1"}},
+			"folder:f1#viewer":  {user("alice")},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			within, err := model.Check(context.Background(), newReader(tuples), "tenant-a",
+				domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{MaxDepth: 2})
+			if err != nil {
+				t.Fatalf("Check returned error: %v", err)
+			}
+			if !within.Permitted {
+				t.Fatalf("one hop is inside a bound of 2, got reasons %v", within.Reasons)
+			}
+
+			atBound, err := model.Check(context.Background(), newReader(tuples), "tenant-a",
+				domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{MaxDepth: 1})
+			if err != nil {
+				t.Fatalf("Check returned error: %v", err)
+			}
+			if atBound.Permitted {
+				t.Fatal("a hop that reaches the bound must not permit")
+			}
+			if !slices.Contains(atBound.Reasons, domain.ReasonDepthExceeded) {
+				t.Fatalf("Reasons = %v, want %s", atBound.Reasons, domain.ReasonDepthExceeded)
+			}
+		})
 	}
 
 	// モデルが宣言していない関係。
