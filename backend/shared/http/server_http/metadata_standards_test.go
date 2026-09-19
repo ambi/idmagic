@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/contexts/oauth2/standards.md のうち、クライアントとリソースサーバーが製品の
+// docs/domain/oauth2/standards.md のうち、クライアントとリソースサーバーが製品の
 // 設定を読む経路に立つ 7 行を観測する。
 //
 // 入口は Register が組み立てたスタックの `/.well-known/openid-configuration`、

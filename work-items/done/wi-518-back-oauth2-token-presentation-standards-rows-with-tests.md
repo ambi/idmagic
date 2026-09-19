@@ -15,7 +15,7 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
   typespec: []
   source:
     - backend/oauth2/handlers_http/userinfo_handler.go
@@ -44,7 +44,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/contexts/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 13 行を持つ。
+[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/domain/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 13 行を持つ。
 
 13 行は、発行済みのトークンをどう受け取り、どう無効にするかを定める。提示の形、内省の応答、失効の即時性、そして DPoP と mTLS による送信者制約がここに集まる。6 行が `optional` であり、13 行の半分近くが「提供していること」以外を観測する行である。
 
@@ -163,7 +163,7 @@ initial_context:
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
 
-  `docs/contexts/oauth2/standards.md` のうち、発行済みトークンの提示・内省・失効・送信者制約に立つ
+  `docs/domain/oauth2/standards.md` のうち、発行済みトークンの提示・内省・失効・送信者制約に立つ
   **13 行**が、その行の `Statement` を区別できる入力と観測を持つテストを得て
   `tools/check/standards-coverage-debt.json` から消えた。台帳は 60 件から 47 件になった。テストは
   1 ファイル（`backend/shared/http/server_http/token_presentation_standards_test.go`、9 テスト）で、
@@ -181,7 +181,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（13 件を台帳から外し、テストを書く前に）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/oauth2/standards.md` の 13 行それぞれに
+  - **Observed Failure**: exit 1。`docs/domain/oauth2/standards.md` の 13 行それぞれに
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（20 行目 `RFC6750-AUTHORIZATION-HEADER` から
     245 行目 `OIDC-CORE-USERINFO` まで 13 件）

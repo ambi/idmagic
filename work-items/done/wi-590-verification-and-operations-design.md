@@ -38,7 +38,7 @@ initial_context:
   stop_before_reading:
     - backend
     - frontend
-    - docs/contexts
+    - docs/domain
     - spec
 ---
 

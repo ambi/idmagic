@@ -135,7 +135,7 @@ function verifyCompletionEvidence(
 }
 
 /**
- * スキーマ検証済みの work item に、版付きの主要ユースケース証拠契約を適用する。
+ * スキーマ検証済みの work item に、バージョン付きの主要ユースケース証拠契約を適用する。
  * ファイルシステムとタスク探索は環境へ追い出し、この関数自身は判断だけを行う。
  */
 export function verifyPrimaryUseCaseEvidence(

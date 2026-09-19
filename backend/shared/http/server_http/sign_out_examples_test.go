@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/contexts/authentication/scenarios.feature.md の REQ-AUTHENTICATION-035 が宣言する
+// docs/domain/authentication/scenarios.feature.md の REQ-AUTHENTICATION-035 が宣言する
 // 具体例を、サインアウトの 2 つのプロトコル入口から観測する。
 //
 // この規則が言っているのは「テナントのエンドポイント形式によらず、サーバー側の

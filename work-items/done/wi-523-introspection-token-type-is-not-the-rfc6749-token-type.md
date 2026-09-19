@@ -15,11 +15,11 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-523-introspection-token-type.md }
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-523-introspection-token-type.md }
 affected_spec:
-  - { path: docs/contexts/oauth2/standards.md, requirement: RFC7662-INTROSPECT }
+  - { path: docs/domain/oauth2/standards.md, requirement: RFC7662-INTROSPECT }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.IntrospectionResponse }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md#RFC7662-INTROSPECT
+    - docs/domain/oauth2/standards.md#RFC7662-INTROSPECT
   typespec:
     - IdMagic.Contract.IntrospectionResponse
     - IdMagic.Contract.TokenResponse

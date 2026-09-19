@@ -8,7 +8,7 @@ change_kind: feature
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.EnableTenant }
@@ -34,7 +34,7 @@ affected_spec:
 - `SetTenantEndpointStyle`、`DisableTenant`、`EnableTenant` の `x-api-token-scopes` を `interactive_session` に変更する。
 - `REQ-TENANCY-011` に正規ロケーション切替の資格情報境界を追加する。
 - テナントの停止と再開について、通常テナントの状態遷移と資格情報境界を表す新しい規範シナリオを追加する。
-- `docs/contexts/tenancy/decisions.md` を、`tenants:*` が届く操作と対話セッションに限定される操作を区別できる説明へ更新する。
+- `docs/domain/tenancy/decisions.md` を、`tenants:*` が届く操作と対話セッションに限定される操作を区別できる説明へ更新する。
 - 管理コンソールから3操作を実行できることと、API アクセストークンでは拒否されることを同じ受け入れ境界で確認する。
 - 公開契約の互換性変更としてアップグレードノートを作成する。
 
@@ -98,7 +98,7 @@ affected_spec:
 
 ## Plan
 
-1. `docs/design/security/authorization.md` と `docs/contexts/tenancy/decisions.md` に分類規則と対象操作を記述する。
+1. `docs/design/security/authorization.md` と `docs/domain/tenancy/decisions.md` に分類規則と対象操作を記述する。
 2. `REQ-TENANCY-011` を更新し、停止と再開の新しい規範シナリオを追加する。
 3. API アクセストークンが3操作に到達でき、対話セッションでも成功する現在の挙動を HTTP 境界で観測し、資格情報境界の受け入れ RED を確認する。
 4. 3操作の `x-api-token-scopes` を `interactive_session` に変更し、実行時契約を再生成する。

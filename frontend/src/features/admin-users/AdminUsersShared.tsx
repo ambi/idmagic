@@ -341,7 +341,7 @@ export function UserGroupsSection({
 
 // sessionAmrSummary は AMR コードを人間可読なラベル列に変換する
 // (frontend/src/features/account/AccountActivityPage.tsx の同名処理と対をなす
-// admin 版。管理者向け辞書 (adminUsersDictionary) の sessionAmr* キーを使う)。
+// admin 向け。管理者向け辞書 (adminUsersDictionary) の sessionAmr* キーを使う)。
 export function sessionAmrSummary(amr: string[], t: Record<string, string>): string {
   if (amr.length === 0) return t.sessionAmrUnknown
   const labels: Record<string, string> = {

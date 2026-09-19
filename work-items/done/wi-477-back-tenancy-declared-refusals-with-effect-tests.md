@@ -14,12 +14,12 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-001
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-005
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-013
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-014
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-017
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-018
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-001
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-005
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-013
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-014
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-017
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-018
   typespec:
     - IdMagic.Tenancy.Operations.GetAdminIntegrationEndpoints
     - IdMagic.Tenancy.Operations.ListTenants
@@ -37,12 +37,12 @@ initial_context:
   tests:
     - backend/tenancy/handlers_http
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-001 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-005 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-013 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-014 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-017 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-018 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-001 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-005 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-013 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-017 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-018 }
 ---
 
 # Tenancy が宣言する未検証の拒否 6 件に効果まで確かめるテストを与え、台帳から外す

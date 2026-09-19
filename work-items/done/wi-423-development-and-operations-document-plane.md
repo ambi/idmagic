@@ -5,7 +5,7 @@ authors: [tn]
 risk: low
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/README.md, docs/structure.md, docs/deployment.md, docs/capacity.md]
+  specification: [docs/README.md, docs/domain/structure.md, docs/deployment.md, docs/capacity.md]
   source:
     - README.md
     - CONTRIBUTING.md
@@ -26,7 +26,7 @@ initial_context:
     - tools/render-spec-docs/src/main.ts
     - tools/render-spec-docs/src/render.ts
   tests: [tools/check/src/specification-doc.test.ts, tools/render-spec-docs/src/render.test.ts]
-  stop_before_reading: [backend, frontend, spec/contexts, docs/contexts]
+  stop_before_reading: [backend, frontend, spec/contexts, docs/domain]
 created_at: 2026-08-27
 priority: p2
 change_kind: docs
@@ -37,7 +37,7 @@ spec_impact: { kind: none, reason: "製品概要と手順の文書平面を新�
 
 ## Motivation
 
-`SPECIFICATION_FORMAT.md` の配置図は `docs/product-overview.md`（問題、利用者、非目標）と `docs/development/`（環境、ビルド、生成、CI、テスト、リリースの手順）を載せている。どちらも存在しない。形式文書が宣言している配置と実体がずれており、配置図を信じて探した人は何も見つからない。
+`SPECIFICATION_FORMAT.md` の配置図は `docs/design/product-overview.md`（問題、利用者、非目標）と `docs/development/`（環境、ビルド、生成、CI、テスト、リリースの手順）を載せている。どちらも存在しない。形式文書が宣言している配置と実体がずれており、配置図を信じて探した人は何も見つからない。
 
 欠けているのは器だけではない。中身が本当に無い。
 
@@ -51,7 +51,7 @@ Extreme Programming の技術プラクティスのうち、小さな変更、継
 
 ## Scope
 
-- **`docs/product-overview.md`**：解く問題、想定する利用者、非目標を書く。`SPECIFICATION_FORMAT.md` が既に宣言している内容に従う。
+- **`docs/design/product-overview.md`**：解く問題、想定する利用者、非目標を書く。`SPECIFICATION_FORMAT.md` が既に宣言している内容に従う。
 - **`docs/development/`**：環境、ビルド、生成、CI、テスト、リリースの手順を置く。`README.md` と `CONTRIBUTING.md` にある手順は、正本をこの平面へ移して参照へ置き換える。
 - **リリースと後退**：リリースの単位と頻度、版の付け方、後退の判断基準と手順を書く。
 - **開発プロセスの指標**：変更のリードタイム、デプロイの頻度、変更失敗率、復旧時間を測るかどうかを判断し、測るなら `docs/capacity.md` と同じ Evidence classes の区分で書く。
@@ -67,7 +67,7 @@ Extreme Programming の技術プラクティスのうち、小さな変更、継
 
 ## Design
 
-`docs/development/` と `docs/runbooks/` は `SPECIFICATION_FORMAT.md` が述べるとおり「閉じたファイル集合の下に位置し、手順は固定した種類の集合ではないので自由に名前を付ける」。したがって新しいファイル名の検査は不要で、既存の検査器に手を入れる必要はない。`docs/product-overview.md` は閉じた集合の側に属し、`specification-doc.ts` の許可リストに既に含まれているかを確認する。含まれていなければ加える。
+`docs/development/` と `docs/runbooks/` は `SPECIFICATION_FORMAT.md` が述べるとおり「閉じたファイル集合の下に位置し、手順は固定した種類の集合ではないので自由に名前を付ける」。したがって新しいファイル名の検査は不要で、既存の検査器に手を入れる必要はない。`docs/design/product-overview.md` は閉じた集合の側に属し、`specification-doc.ts` の許可リストに既に含まれているかを確認する。含まれていなければ加える。
 
 手順文書の分類には Diátaxis を用いる。学習のための手引き、目的を達成するための手順、事実の参照、背景の解説という 4 分類は、この製品の手順文書の実態によく合う。`docs/runbooks/` は「事象の最中に読むもの」として既に目的達成型の手順に相当し、`CONFIGURATION.md` は参照に相当する。採用の理由は、`docs/` の正本文書が既に「ファイル名がその中身の種類を語る」という同じ原理で組まれており、手順の平面へ同じ原理を延長するだけで済むことである。4 分類を機械検査はしない。手順は種類が固定されないという `SPECIFICATION_FORMAT.md` の判断を覆さないためである。
 
@@ -77,7 +77,7 @@ Extreme Programming の技術プラクティスのうち、小さな変更、継
 
 `DOCUMENTATION_GUIDE.md` を配置の基準にする。ルートの `DEVELOPMENT.md` は仕様先行ループ、証拠契約、検証のはしごを持つ開発文書であり、ルートに置く例外を支える別の役割はない。内容を `docs/development/specification-first-workflow.md` へ移し、エージェント向けの案内、work item 書式、スキル、生成仕様サイトを含む参照を張り替える。
 
-既存の記述は種類に従って移す。`README.md` の製品説明、対象範囲、対象外は `docs/product-overview.md` へ移し、環境とコマンドの手順は `docs/development/` へ移す。`CONTRIBUTING.md` は Pull Request の規則だけを残し、手順を参照する。同じ内容を 2 か所に置かない。
+既存の記述は種類に従って移す。`README.md` の製品説明、対象範囲、対象外は `docs/design/product-overview.md` へ移し、環境とコマンドの手順は `docs/development/` へ移す。`CONTRIBUTING.md` は Pull Request の規則だけを残し、手順を参照する。同じ内容を 2 か所に置かない。
 
 リリースは API、ワーカー、バッチ、UI を同じコミットと版に束ねる。版は Semantic Versioning の `vMAJOR.MINOR.PATCH` タグで識別し、利用者に見える互換な変更は `MINOR`、互換性を壊す変更は `MAJOR`、修正だけなら `PATCH` とする。固定した暦上の頻度は置かず、依存関係のない完了済み work item を不必要に束ねない小さなリリースを原則とする。現在はリリース用 CI が存在しないため、文書は検証、版付け、成果物の同一性、段階的展開、確認までを定め、実行の自動化は対象外に残す。
 
@@ -88,8 +88,8 @@ Extreme Programming の技術プラクティスのうち、小さな変更、継
 ## Plan
 
 1. `specification-doc.ts` の許可リストに `product-overview.md` があるかを確認する。無ければ加える。
-2. `DEVELOPMENT.md` を `docs/development/specification-first-workflow.md` へ移し、`SPECIFICATION_FORMAT.md`、`docs/README.md`、`docs/structure.md` と全参照を更新する。
-3. `docs/product-overview.md` を書き、`README.md` の製品説明と対象外を移す。
+2. `DEVELOPMENT.md` を `docs/development/specification-first-workflow.md` へ移し、`SPECIFICATION_FORMAT.md`、`docs/README.md`、`docs/domain/structure.md` と全参照を更新する。
+3. `docs/design/product-overview.md` を書き、`README.md` の製品説明と対象外を移す。
 4. `docs/development/` を作り、環境、生成、CI、テストの手順を移す。`README.md` と `CONTRIBUTING.md` は入口と規則だけに絞る。
 5. リリースの手順を `docs/development/` に、後退を `docs/runbooks/` に書く。
 6. 開発プロセスの指標を採らない理由と再評価条件を書く。
@@ -98,8 +98,8 @@ Extreme Programming の技術プラクティスのうち、小さな変更、継
 ## Tasks
 
 - [x] T001 [Baseline] 許可リスト、既存の手順、リリース用 CI とタグ、配備資材、開発プロセス指標の情報源を確認した。
-- [x] T002 [Spec] `docs/product-overview.md` を書き、既存の許可リストで受け入れられることを確認した。
-- [x] T003 [Spec] `DEVELOPMENT.md` を `docs/development/specification-first-workflow.md` へ移し、`SPECIFICATION_FORMAT.md`、`docs/README.md`、`docs/structure.md` と全参照を更新した。
+- [x] T002 [Spec] `docs/design/product-overview.md` を書き、既存の許可リストで受け入れられることを確認した。
+- [x] T003 [Spec] `DEVELOPMENT.md` を `docs/development/specification-first-workflow.md` へ移し、`SPECIFICATION_FORMAT.md`、`docs/README.md`、`docs/domain/structure.md` と全参照を更新した。
 - [x] T004 [Docs] `docs/development/` に環境、生成、CI、テストの手順と索引を書いた。
 - [x] T005 [Docs] `README.md` と `CONTRIBUTING.md` を入口と規則へ絞り、移した手順を参照させた。
 - [x] T006 [Docs] リリースの手順を書いた。
@@ -113,7 +113,7 @@ Extreme Programming の技術プラクティスのうち、小さな変更、継
 
 - `mise run check-spec` が新しいファイルを受け入れ、閉じた集合の側に許可されていないファイル名は引き続き拒否する。
 - `SPECIFICATION_FORMAT.md` の配置図に載る全ての項目が実在する。
-- 生成された仕様サイトから `docs/development/` と `docs/product-overview.md` へ到達できる。
+- 生成された仕様サイトから `docs/development/` と `docs/design/product-overview.md` へ到達できる。
 - 同じ内容が `README.md`、`CONTRIBUTING.md`、`docs/development/` の各文書で重複していない。
 - `mise run verify`
 
@@ -125,7 +125,7 @@ Unit RED は `mise run test-tools` で、`renderSpecificationSite` に Developme
 
 手順の平面を作ると、既存文書からの重複が生まれやすい。特に `CONTRIBUTING.md` と仕様先行ワークフローは内容が近く、移設と参照の区別が曖昧になると複数箇所に似た記述が並ぶ。参照だけを置き、内容を書かないという原則を各ファイルの冒頭に明記する。
 
-`docs/product-overview.md` は書き手の主観が入りやすく、製品の現状ではなく願望を書いてしまう危険がある。非目標を先に書くと、書ける範囲が自然に定まる。
+`docs/design/product-overview.md` は書き手の主観が入りやすく、製品の現状ではなく願望を書いてしまう危険がある。非目標を先に書くと、書ける範囲が自然に定まる。
 
 開発プロセスの指標は、測ること自体が目的化しやすい。何のために測るか（たとえば「変更のリードタイムが延びていることを検知して、work item の粒度を見直す」）を先に書き、書けない指標は採らない。
 

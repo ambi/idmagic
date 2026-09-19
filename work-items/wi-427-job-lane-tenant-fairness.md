@@ -7,14 +7,14 @@ created_at: 2026-08-27
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-009 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-009 }
 ---
 
 # 実行レーンの中で、単一テナントの投入が他テナントを飢えさせないようにする
 
 ## Motivation
 
-`docs/contexts/jobs/decisions.md` は「実行レーンは呼び出し元ではなく `JobKind` の登録が決める。レーンは呼び出しごとの優先度ではなく容量の隔離単位である」と述べ、`REQ-JOBS-009` が `bulk` の滞留から `latency_sensitive` を守ることを保証する。隔離はレーンとレーンの間には効いている。
+`docs/domain/jobs/decisions.md` は「実行レーンは呼び出し元ではなく `JobKind` の登録が決める。レーンは呼び出しごとの優先度ではなく容量の隔離単位である」と述べ、`REQ-JOBS-009` が `bulk` の滞留から `latency_sensitive` を守ることを保証する。隔離はレーンとレーンの間には効いている。
 
 **レーンの中には効いていない。** 取得は `FOR UPDATE SKIP LOCKED` によるもので、テナントを区別しない。あるテナントが同じレーンへ大量に投入すると、同じレーンを使う他テナントのジョブは、その山を消化し終えるまで取得されない。`docs/design/performance/capacity.md` はレーンごとの必要枠を算出するが、その枠がテナント間でどう配分されるかは書かれていない。
 
@@ -25,8 +25,8 @@ affected_spec:
 ## Scope
 
 - 同じレーンの中で、単一テナントの滞留が他テナントの取得を妨げないようにする取得規則を定める。
-- 同じレーンの中で、単一の `JobKind`（とくに下流の応答を待つもの）が枠を長く占有して他の `JobKind` を止めないようにする。`docs/contexts/jobs/internals.md` は「`JobKind` ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない」と明言しており、テナント別の偏りと投入元別の偏りは同じ機構の欠落から来る。
-- 規則を `docs/contexts/jobs/decisions.md` の判断として書き、対応する規範シナリオを足す。
+- 同じレーンの中で、単一の `JobKind`（とくに下流の応答を待つもの）が枠を長く占有して他の `JobKind` を止めないようにする。`docs/domain/jobs/internals.md` は「`JobKind` ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない」と明言しており、テナント別の偏りと投入元別の偏りは同じ機構の欠落から来る。
+- 規則を `docs/domain/jobs/decisions.md` の判断として書き、対応する規範シナリオを足す。
 - 公平性の観測手段を `docs/design/observability/README.md` の指標へ加えるかを判断する。
 - `docs/design/performance/capacity.md` に、テナント間の配分に関する前提を書く。
 
@@ -53,7 +53,7 @@ affected_spec:
 
 - [ ] T001 [Baseline] 現在の取得規則と、テナントの偏りの影響を確認する。
 - [ ] T002 [Acceptance] 単一テナントが同じレーンを埋めたとき、他テナントのジョブが取得されないことを観測する。
-- [ ] T003 [Spec] 取得規則を `docs/contexts/jobs/decisions.md` へ判断として書き、規範シナリオを足す。
+- [ ] T003 [Spec] 取得規則を `docs/domain/jobs/decisions.md` へ判断として書き、規範シナリオを足す。
 - [ ] T004 [App] 取得規則を実装する。
 - [ ] T005 [Verify] 偏った投入の下で、他テナントのジョブが有限時間で取得されることを確認する。
 

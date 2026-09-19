@@ -6,4 +6,4 @@
 
 GET と POST の両 binding が同じレスポンスになる。レスポンスボディは引き続き OAuth エラー本文であり、`error` は `invalid_token` のままである。データ移行や設定変更は不要である。
 
-互換性境界は [REQ-OAUTH2-020](../../contexts/oauth2/scenarios.feature.md#rule-req-oauth2-020-失効したアクセストークンによる-userinfo-の取得は-invalid_token-で拒否される) と [RFC6750-INVALID-TOKEN](../../contexts/oauth2/standards.md#the-oauth-20-authorization-framework-bearer-token-usage) が定める。
+互換性境界は [REQ-OAUTH2-020](../../domain/oauth2/scenarios.feature.md#rule-req-oauth2-020-失効したアクセストークンによる-userinfo-の取得は-invalid_token-で拒否される) と [RFC6750-INVALID-TOKEN](../../domain/oauth2/standards.md#the-oauth-20-authorization-framework-bearer-token-usage) が定める。

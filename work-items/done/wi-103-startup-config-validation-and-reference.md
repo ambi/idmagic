@@ -7,8 +7,8 @@ created_at: 2026-07-04
 change_kind: feature
 initial_context:
   specification:
-    - docs/contexts/system/SPECIFICATION.md#REQ-SYSTEM-016
-    - docs/contexts/system/SPECIFICATION.md#REQ-SYSTEM-017
+    - docs/domain/system/SPECIFICATION.md#REQ-SYSTEM-016
+    - docs/domain/system/SPECIFICATION.md#REQ-SYSTEM-017
   source:
     - backend/cmd/internal/bootstrap
     - backend/cmd/idmagic/server.go
@@ -22,8 +22,8 @@ initial_context:
     - backend/cmd/internal/bootstrap
     - backend/cmd/idmagic-worker
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-017 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-017 }
 ---
 
 # 起動時の設定を集約・検証し fail-fast させ、単一の設定リファレンスを生成する
@@ -47,7 +47,7 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 - **decision**:
   - ADR は廃止済み (wi-358)。設定を集約する Config 型の位置づけ、fail-fast の対象
     （必須欠落・型不正・範囲外・相互矛盾）は本 work item と owning
-    `docs/contexts/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
+    `docs/domain/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
     secret は値をログに出さない方針も同様にそこへ明記する。
 - **go**:
   - env 由来設定を単一の Config 構造体へ集約してパース・検証する層を bootstrap に追加する。 検証失敗は Run() の起動前に集約エラーで返し、部分起動させない。
@@ -64,7 +64,7 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 
 ## Design
 - ADR は廃止済み (wi-358) のため、判断根拠は本 work item とこの Design section、および
-  `docs/contexts/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
+  `docs/domain/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
 - 検証と組み立てを2段階に分離する: `LoadSharedConfig`/`LoadAPIConfig` は I/O を一切行わず
   env を型付き struct へパースしながら `ConfigLoader` へ全エラーを集約するだけで、
   `Assemble()`/`assemblePostgres()` 等の実際の adapter 組み立て (DB pool open 等) は

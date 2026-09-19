@@ -470,7 +470,7 @@ describe('checkContractRefusalsAreDeclared', () => {
     expect(findings).toHaveLength(1)
     expect(findings[0]?.rule).toBe('R4')
     expect(findings[0]?.message).toContain('RotateTenantSigningKey')
-    expect(findings[0]?.path).toBe('docs/contexts/signing-keys/scenarios.feature.md')
+    expect(findings[0]?.path).toBe('docs/domain/signing-keys/scenarios.feature.md')
   })
 
   it('accepts the refusal once a scenario declares it', () => {

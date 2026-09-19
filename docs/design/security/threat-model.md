@@ -1,6 +1,6 @@
 # 脅威モデル
 
-プロダクトが何から守られているかを、脅威の側から書く。ほかの正本文書はプロダクトが何をするかを書くので、実装された制御が正しく働いているかは照合できる。しかし**応えるべき制御がそもそも無い**とき、その欠落はどの記述とも矛盾しないので見過ごされる。この文書はその一段上を引き受ける。
+プロダクトが何から守られているかを、脅威の側から書く。ほかの一次情報文書はプロダクトが何をするかを書くので、実装された制御が正しく働いているかは照合できる。しかし**応えるべき制御がそもそも無い**とき、その欠落はどの記述とも矛盾しないので見過ごされる。この文書はその一段上を引き受ける。
 
 [Specification Format](../../../SPECIFICATION_FORMAT.md) は「拒否が書かれていない制御は、照合すべき記述を持たない」と述べる。同じ形が一段上にも当てはまる。**脅威が書かれていなければ、制御の欠落は何の記述とも矛盾しない。** `mise run check-security-controls` は宣言された拒否がテストされていることを確かめるが、宣言そのものが無い制御については何も言わない。
 
@@ -21,11 +21,11 @@
 | `Denial of service` | 正規の利用を妨げる |
 | `Elevation of privilege` | 与えられていない権限を得る |
 
-LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を持つ Identifying と Data disclosure は STRIDE の情報漏洩と重なり、Non-compliance は [全体の標準仕様](../../standards.md) の GDPR 3 行が既に持つ。残る Linking、Detecting、Unawareness を脅威として立てると、主体を識別し関連付けるという IdP の職務そのものを脅威と呼ぶことになる。Non-repudiation は符号が逆で、LINDDUN では否認できないことが脅威、STRIDE では否認できることが脅威であり、監査を保証するプロダクトとしては後者を採る。個人データの観点は情報漏洩の下位として扱い、該当する行を GDPR の規範 ID へ結びつける。**再検討の条件**は、同意管理または目的制限をテナント向けの機能として提供したときである。
+LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を持つ Identifying と Data disclosure は STRIDE の情報漏洩と重なり、Non-compliance は [全体の標準仕様](../../domain/standards.md) の GDPR 3 行が既に持つ。残る Linking、Detecting、Unawareness を脅威として立てると、主体を識別し関連付けるという IdP の職務そのものを脅威と呼ぶことになる。Non-repudiation は符号が逆で、LINDDUN では否認できないことが脅威、STRIDE では否認できることが脅威であり、監査を保証するプロダクトとしては後者を採る。個人データの観点は情報漏洩の下位として扱い、該当する行を GDPR の規範 ID へ結びつける。**再検討の条件**は、同意管理または目的制限をテナント向けの機能として提供したときである。
 
 `THREAT-NNN` は不変であり、一度参照されたら変更しない。境界や分類を ID に埋めないのは、再分類のたびに ID が嘘になるからである。分類は列で持てば、再分類は列の変更で済む。脅威が当てはまらなくなったときは行を削除せず、`Threat` 列の末尾に後継の ID または当てはまらなくなった理由を書き、`Status` を `retired` にする。ID を消すと、その脅威を検討したという事実まで消える。
 
-`Controls` が指すのは次の 4 つに限る。`REQ-<CONTEXT>-NNN` は規範シナリオ、大文字の識別子は [全体の標準仕様](../../standards.md) または各 Context の `standards.md` の規範、`<file>.md: <節>` はその文書の節、`<file>.md` は節に切り出せない文書全体の判断である。応える規範が 1 つも無い行は `—` とする。**制御の側に新しい ID 体系を作らず、計画中のものも指さない。** ここは現在存在する保護だけを並べる列であり、これから作るものを混ぜると、読み手は表を見て何が守られているかを判断できなくなる。
+`Controls` が指すのは次の 4 つに限る。`REQ-<CONTEXT>-NNN` は規範シナリオ、大文字の識別子は [全体の標準仕様](../../domain/standards.md) または各 Context の `standards.md` の規範、`<file>.md: <節>` はその文書の節、`<file>.md` は節に切り出せない文書全体の判断である。応える規範が 1 つも無い行は `—` とする。**制御の側に新しい ID 体系を作らず、計画中のものも指さない。** ここは現在存在する保護だけを並べる列であり、これから作るものを混ぜると、読み手は表を見て何が守られているかを判断できなくなる。
 
 `runbooks/` を指す行は必ず `planned` になる。runbook は事象の最中に読む手順であってプロダクトが従う規範ではないので、対応するテストを持たず、検査の対象にもならない。手順としての保護が実在することと、それが規範として書かれていることは別である。
 
@@ -33,14 +33,14 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 | 状態 | 意味 |
 |---|---|
-| `covered` | 応える制御があり、規範 ID または正本文書の規則として名指しできる |
+| `covered` | 応える制御があり、規範 ID または一次情報文書の規則として名指しできる |
 | `planned` | 応える制御が無いか、あっても規範として書かれていない |
 | `accepted` | 制御を持たないことを意図して選んだ。理由と再検討の条件を [Accepted residual risk](#受容した残留リスク) に書く |
 | `retired` | この脅威はもう当てはまらない。行は残し、`Threat` 列に後継または理由を書く |
 
 **`planned` は「何も無い」と「あるが規範化されていない」の両方を含む。** どちらであるかは `Controls` を見れば分かる。`—` の行には応える保護が無く、識別子が並ぶ行には規範として書かれていない部分的な保護がある。この区別を落とすと、runbook の指示やゲートウェイへの要求として実在する保護が、表の上では存在しないものとして読まれる。
 
-**是正を担う work item はこの表に書かない。** 対応は work item の側が `THREAT-NNN` を名指しすることで持つ。向きを一方向に保つのは、正本文書が現在の状態を書く場所であり、まだ存在しない制御への前方参照を持つと、work item が完了して移動した時点で参照が黙って腐るからである。どの work item がある脅威を担っているかは `mise run spec-where THREAT-NNN` で引ける。
+**是正を担う work item はこの表に書かない。** 対応は work item の側が `THREAT-NNN` を名指しすることで持つ。向きを一方向に保つのは、一次情報文書が現在の状態を書く場所であり、まだ存在しない制御への前方参照を持つと、work item が完了して移動した時点で参照が黙って腐るからである。どの work item がある脅威を担っているかは `mise run spec-where THREAT-NNN` で引ける。
 
 `planned` と `accepted` の行こそがこの文書の主な出力である。だから負債を別ファイルへ切り出さない。切り出すと、一覧を読んだ人が欠落に気づかずに読み終えてしまう。
 
@@ -64,7 +64,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 資産
 
-| 資産 | 喪失時の影響 | 正本 |
+| 資産 | 喪失時の影響 | 一次情報 |
 |---|---|---|
 | パスワード、TOTP シード、WebAuthn 資格情報、復旧コード | 任意のユーザーへのなりすまし | Authentication、可逆なものは DataKeys の DEK で保護 |
 | 署名鍵 | 任意のトークン、アサーション、SET の偽造 | SigningKeys |
@@ -159,7 +159,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD00-URL-SHAPE、CIMD00-FETCH | `covered` |
 | THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: アドミッションコントロール、design/reliability/availability.md: 縮退 | `covered` |
 | THREAT-052 | Tampering | 署名アルゴリズムの取り違えを突いて署名検証を回避する | OAuth2, SigningKeys | RFC7518-SIGNATURE-ALGORITHMS、RFC9068-ASYMMETRIC-SIGNATURE | `covered` |
-| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/contexts/oauth2/internals.md: OIDC session binding and logout propagation、REQ-OAUTH2-025 | `covered` |
+| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/domain/oauth2/internals.md: OIDC session binding and logout propagation、REQ-OAUTH2-025 | `covered` |
 | THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
 | THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | contexts/saml/internals.md | `covered` |
 
@@ -173,7 +173,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-058 | Information disclosure | 管理 API またはエラーレスポンスから鍵素材が出る | DataKeys, SigningKeys | REQ-DATAKEYS-006、docs/design/security/authorization.md: レスポンスが決して含まないもの | `covered` |
 | THREAT-059 | Denial of service | 鍵提供元の障害が、発行と検証の両方を止める | SigningKeys, OAuth2 | REQ-OAUTH2-039、REQ-SIGNINGKEYS-008、REQ-SIGNINGKEYS-001 | `covered` |
 | THREAT-060 | Tampering | 攻撃者の鍵を JWKS へ紛れ込ませ、偽造したトークンを信頼させる | SigningKeys | REQ-SIGNINGKEYS-004、REQ-SIGNINGKEYS-010、REQ-SIGNINGKEYS-011 | `covered` |
-| THREAT-061 | Information disclosure | 起動時設定のシークレットが、生成した設定リファレンスやログへ出る | System | REQ-SYSTEM-016、REQ-SYSTEM-017、docs/glossary.md: 外部契約 | `covered` |
+| THREAT-061 | Information disclosure | 起動時設定のシークレットが、生成した設定リファレンスやログへ出る | System | REQ-SYSTEM-016、REQ-SYSTEM-017、docs/domain/glossary.md: 外部契約 | `covered` |
 | THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、contexts/signing-keys/decisions.md、runbooks/backup-restore-dr.md | `planned` |
 
 ## 上流の外部権威
@@ -214,8 +214,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-078 | Tampering | 本番で開発用の構成や環境変数由来のシークレットが使われる | Seeding | REQ-SEEDING-005、REQ-SEEDING-007、REQ-SEEDING-008 | `covered` |
 | THREAT-079 | Tampering | 適用が、運用中に加えた変更を黙って上書きする | Seeding | REQ-SEEDING-009、REQ-SEEDING-010 | `covered` |
 | THREAT-080 | Information disclosure | 指標の公開先からテナントの活動が推測される | System | design/observability/monitoring.md: 監視する層 | `covered` |
-| THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/structure.md: Context internals | `covered` |
-| THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全 Context | docs/structure.md: Stack | `planned` |
+| THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/domain/structure.md: Context internals | `covered` |
+| THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全 Context | docs/domain/structure.md: Stack | `planned` |
 
 ## 受容した残留リスク
 

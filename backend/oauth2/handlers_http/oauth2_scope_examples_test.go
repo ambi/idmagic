@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/contexts/oauth2/scenarios.feature.md の REQ-OAUTH2-003 が宣言する具体例を、
+// docs/domain/oauth2/scenarios.feature.md の REQ-OAUTH2-003 が宣言する具体例を、
 // 実際に発行した API アクセストークンで OAuth2 の管理 API を叩いて観測する。
 //
 // 判定関数 `requireAdminApiTokenScope` だけを呼ぶテストは、判定が正しくても配線されて

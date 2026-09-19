@@ -125,7 +125,7 @@ describe('用語検査', () => {
   it('副詞的な「実行時」ではなくビュー名だけを対象にする', () => {
     expect(
       verifyTerminology([
-        { file: 'docs/contexts/jobs/internals.md', source: '実行時に評価し、実行時刻へ達する。\n' },
+        { file: 'docs/domain/jobs/internals.md', source: '実行時に評価し、実行時刻へ達する。\n' },
       ]),
     ).toEqual([])
     expect(rule('実行時アーキテクチャ').term).toBe('実行時アーキテクチャ')
@@ -135,7 +135,7 @@ describe('用語検査', () => {
     expect(
       verifyTerminology([
         {
-          file: 'docs/contexts/authorization/internals.md',
+          file: 'docs/domain/authorization/internals.md',
           source: '認可規則と検証規則は残す。\n',
         },
       ]),

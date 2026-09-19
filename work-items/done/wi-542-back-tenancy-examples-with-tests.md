@@ -15,23 +15,23 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-001
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-002
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-003
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-004
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-006
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-007
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-008
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-009
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-010
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-011
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-012
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-015
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-016
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-018
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-019
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-020
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-021
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-001
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-002
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-003
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-004
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-006
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-007
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-008
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-009
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-010
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-011
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-012
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-015
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-016
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-018
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-019
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-020
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-021
   typespec: []
   source:
     - backend/tenancy/handlers_http/branding_handler.go
@@ -74,7 +74,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/tenancy/scenarios.feature.md` が宣言する 39 件を引き取る。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/domain/tenancy/scenarios.feature.md` が宣言する 39 件を引き取る。
 
 親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 

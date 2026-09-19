@@ -30,7 +30,7 @@ initial_context:
   stop_before_reading:
     - frontend
     - spec
-    - docs/contexts
+    - docs/domain
     - backend/cmd
     - backend/shared
 spec_impact:

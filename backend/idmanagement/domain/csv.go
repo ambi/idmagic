@@ -3,7 +3,7 @@ package domain
 // 種別に依存しない CSV 往復基盤。転送ポリシー、可逆なセル変換、行単位の解析器と
 // 直列化器を持ち、User と Group の CSV はこれを共有する。種別ごとに違うのは
 // 「どの機械キーを受理するか」だけなので、解析器はその判定だけを受け取る。
-// 列の語彙と計画器は共有しない (docs/contexts/identity-management/internals.md)。
+// 列の語彙と計画器は共有しない (docs/domain/identity-management/internals.md)。
 
 import (
 	"encoding/csv"

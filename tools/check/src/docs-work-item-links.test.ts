@@ -42,7 +42,7 @@ describe('現在状態の文書からの work item 参照', () => {
     expect(isCurrentStateDocument('docs/design/infrastructure/network.md')).toBe(true)
     expect(isCurrentStateDocument('docs/architecture/deployment.md')).toBe(true)
     expect(isCurrentStateDocument('docs/requirements/quality.md')).toBe(true)
-    expect(isCurrentStateDocument('docs/contexts/oauth2/decisions.md')).toBe(true)
+    expect(isCurrentStateDocument('docs/domain/oauth2/decisions.md')).toBe(true)
     expect(isCurrentStateDocument('docs/runbooks/async-jobs.md')).toBe(true)
     expect(isCurrentStateDocument('docs/README.md')).toBe(true)
     expect(isCurrentStateDocument('docs/releases/changes/wi-532.md')).toBe(false)

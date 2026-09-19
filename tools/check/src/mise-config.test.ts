@@ -63,7 +63,7 @@ describe('mise dependency audit boundary', () => {
   })
 
   /**
-   * OSV-Scanner は go/types を自分のバイナリに焼き込むので、go.mod の言語版を配布バイナリの
+   * OSV-Scanner は go/types を自分のバイナリに焼き込むので、go.mod の言語バージョンを配布バイナリの
    * ビルド Go が下回ると解析が壊れ、それが検出結果には現れない。到達性は govulncheck が持つ。
    * `--call-analysis=none` は none という言語名として一般エラーになるだけで無効化にならない。
    */
@@ -76,7 +76,7 @@ describe('mise dependency audit boundary', () => {
     expect(String(config.tasks?.['audit-go-reachability']?.run ?? '')).toContain('govulncheck')
   })
 
-  /** 版が動くと検出も到達性の判定も動くため、可動指定や版範囲を許さない。 */
+  /** バージョンが動くと検出も到達性の判定も動くため、可動指定やバージョン範囲を許さない。 */
   it('pins both scanners to an exact version', () => {
     const exactVersion = /^\d+\.\d+\.\d+$/
     expect(config.tools?.['go:golang.org/x/vuln/cmd/govulncheck']).toMatch(exactVersion)
@@ -111,9 +111,9 @@ describe('mise Markdown link boundary', () => {
 
 describe('Bun version boundary', () => {
   /**
-   * Bun は三か所が同じ版を指して初めて再現する。mise が手元と CI の実行系を選び、
-   * `packageManager` が bun install の版を宣言し、Dockerfile が配信用イメージを構築する。
-   * 一つだけ更新しても各所は動き続け、ずれは別の版が壊れたときにしか現れない。
+   * Bun は三か所が同じバージョンを指して初めて再現する。mise が手元と CI の実行系を選び、
+   * `packageManager` が bun install のバージョンを宣言し、Dockerfile が配信用イメージを構築する。
+   * 一つだけ更新しても各所は動き続け、ずれは別のバージョンが壊れたときにしか現れない。
    */
   const declared = String(config.tools?.bun ?? '')
 
@@ -199,7 +199,7 @@ describe('mise mutation testing boundary', () => {
     expect(mutation).toContain('gomutants')
   })
 
-  /** ツールの保守が止まったときに動く版が残らないと、証拠の作り方ごと失われる。 */
+  /** ツールの保守が止まったときに動くバージョンが残らないと、証拠の作り方ごと失われる。 */
   it('pins the mutation tool to an exact version', () => {
     expect(config.tools?.['go:github.com/szhekpisov/gomutants']).toBe('0.6.1')
   })

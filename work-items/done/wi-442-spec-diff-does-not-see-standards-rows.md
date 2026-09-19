@@ -17,7 +17,7 @@ spec_impact: { kind: none, reason: "規範の差分を読む道具の視野を�
 
 **`standards.md` の行は入っていない。**
 
-[[wi-403-provisioning-declares-no-scim-conformance]] は `docs/contexts/provisioning/standards.md` を新設し、RFC 7643 / RFC 7644 の準拠範囲を 12 行宣言した。`spec-diff` の出力は `no normative specification change against main` だった。**成果物の全体が、規範の差分を読む道具から見えなかった。**
+[[wi-403-provisioning-declares-no-scim-conformance]] は `docs/domain/provisioning/standards.md` を新設し、RFC 7643 / RFC 7644 の準拠範囲を 12 行宣言した。`spec-diff` の出力は `no normative specification change against main` だった。**成果物の全体が、規範の差分を読む道具から見えなかった。**
 
 これは要約を書くときだけの不便ではない。`standards.md` の行は、`Adoption` が `excluded` から `partial` へ動けば製品の約束が変わり、`Strength` が `MUST` から `SHOULD` へ落ちれば守る強さが変わる、正真正銘の規範である。その変化がレビューの視野に入らないまま通る経路がいま開いている。行の削除も同じで、規範 ID は消えても誰も差分として気付かない。
 

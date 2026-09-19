@@ -16,7 +16,7 @@ initial_context:
   specification:
     - docs/design/observability/README.md
     - docs/design/observability/logging.md
-    - docs/structure.md
+    - docs/domain/structure.md
   typespec: []
   source:
     - mise.toml

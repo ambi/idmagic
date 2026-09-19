@@ -17,8 +17,8 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md
-    - docs/contexts/oauth2/scenarios.feature.md
+    - docs/domain/oauth2/standards.md
+    - docs/domain/oauth2/scenarios.feature.md
   typespec:
     - IdMagic.Contract.EndSessionParameters
     - IdMagic.Contract.EndSession1
@@ -50,7 +50,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/contexts/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 9 行を持つ。
+[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/domain/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 9 行を持つ。
 
 9 行は、セッションを終わらせる経路を定める。`id_token_hint` の検証、`post_logout_redirect_uri` の登録値限定、front-channel の `iframe`、back-channel のログアウトトークンと再試行がここに集まる。8 行が `required` であり、この文書の中でもっとも `required` に偏った 9 行である。
 
@@ -249,7 +249,7 @@ Unit RED の代替は、対応付けたテストごとの故障注入である�
   - **Requirement**: N/A: 製品の振る舞いを変えないため、対応する製品要求を持たない。
   - **Observed Failure**: 5 件を台帳から先に外した状態で、`OIDC-LOGOUT-ID-TOKEN-HINT`、
     `OIDC-FRONTCHANNEL-BEST-EFFORT`、`OIDC-BACKCHANNEL-LOGOUT-TOKEN`、`OIDC-BACKCHANNEL-DELIVERY-RETRY`、
-    `OIDC-BACKCHANNEL-REPLAY` を `docs/contexts/oauth2/standards.md` の行番号つきで
+    `OIDC-BACKCHANNEL-REPLAY` を `docs/domain/oauth2/standards.md` の行番号つきで
     `is declared, but no test names it` と 1 件ずつ報告した。
   - **Detection Reason**: 検査は台帳の縮小とテストによる名指しを別々に読む。台帳だけを縮めた状態で
     RED になることを先に見ておけば、注記を足さずに件数を減らす誤りをこの検査が捕まえると確かめられる。

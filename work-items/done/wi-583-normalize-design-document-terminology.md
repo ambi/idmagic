@@ -19,7 +19,7 @@ initial_context:
   specification: []
   typespec: []
   source:
-    - docs/glossary.md
+    - docs/domain/glossary.md
     - docs/architecture/deployment.md
     - docs/runbooks/backup-restore-dr.md
     - infra/backup/restore-drill.sh
@@ -57,7 +57,7 @@ initial_context:
 ## Scope
 
 - `docs/` 配下の Markdown と、`AGENTS.md`、`CONTRIBUTING.md`、`DOCUMENTATION_GUIDE.md`、`README.md`、`SECURITY.md`、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md` の用語を、採用語の表へ揃える。
-- 採用語と、それが指す英語の概念を [用語集](../../docs/glossary.md) へ登録する。
+- 採用語と、それが指す英語の概念を [用語集](../../docs/domain/glossary.md) へ登録する。
 - 見出しを変えた文書について、他文書からのリンクとアンカーを追従させる。
 - 題名が「ガイドライン」になる 2 文書のファイル名を `api-guidelines.md`、`design-guidelines.md` へ改め、リポジトリ全体の参照を追従させる。
 - 「訓練」のように意味が復元できない箇所は、置換ではなく元の意味を書き直す。
@@ -82,7 +82,7 @@ initial_context:
 | 採らない表記 | 採用 | 理由 |
 | --- | --- | --- |
 | 配備 | デプロイ（行為）、デプロイメント（ビュー名） | 「配備アーキテクチャ」は deployment view を指す |
-| 秘密 | シークレット | [用語集](../../docs/glossary.md) の `ConfigurationReference` が既に「シークレット」を使う |
+| 秘密 | シークレット | [用語集](../../docs/domain/glossary.md) の `ConfigurationReference` が既に「シークレット」を使う |
 | 実行時アーキテクチャ | ランタイムアーキテクチャ | runtime view を指す。副詞的な「実行時」は対象ではない |
 | API 規則 | API ガイドライン | 設計の観点を並べた指針であり、個々の強制点は TypeSpec と検査が持つ |
 | 設計規則 | 設計ガイドライン | 同上。兄弟文書に別の外来語を当てない |
@@ -122,7 +122,7 @@ restore drill を指す箇所は「復旧ドリル」とする。
 
 1. 用語表と、残す共起の一覧を確定する。
 2. 採用しない表記を検出する検査を `tools/check` へ追加し、現在の文書に対して落ちることを確かめる。この検査が観測可能な境界になる。
-3. 採用語を [用語集](../../docs/glossary.md) へ登録し、指す英語の概念を併記する。
+3. 採用語を [用語集](../../docs/domain/glossary.md) へ登録し、指す英語の概念を併記する。
 4. 文書の所有単位ごとに置換する。`architecture/`、`design/`、`operations/` と `verification/`、`contexts/`、`development/` と `runbooks/` と `releases/`、ルート直下の順とし、単位ごとに差分を読む。
 5. 「訓練」の各箇所を、意味を確定させて書き直す。
 6. 見出しが変わった文書について、参照元のリンクとアンカーを更新する。
@@ -136,7 +136,7 @@ restore drill を指す箇所は「復旧ドリル」とする。
 - [x] T004 [Docs] `docs/architecture/` の用語と見出しを揃える。
 - [x] T005 [Docs] `docs/design/` の用語と見出しを揃える。
 - [x] T006 [Docs] `docs/operations/`、`docs/verification/`、`docs/requirements/` を揃える。
-- [x] T007 [Docs] `docs/contexts/` を揃える。
+- [x] T007 [Docs] `docs/domain/` を揃える。
 - [x] T008 [Docs] `docs/development/`、`docs/runbooks/`、`docs/releases/`、`docs/README.md` ほか `docs/` 直下を揃える。
 - [x] T009 [Docs] ルート直下の人が読む Markdown を揃える。
 - [x] T010 [Docs] 「訓練」の各箇所を、意味を確定させて書き直す。

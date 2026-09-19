@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/contexts/authorization/standards.md が宣言する 5 行を、製品の正式な入口である
+// docs/domain/authorization/standards.md が宣言する 5 行を、製品の正式な入口である
 // POST /api/admin/v1/authorization/check と
 // POST /api/admin/v1/authorization/list-accessible-resources から観測する。
 //

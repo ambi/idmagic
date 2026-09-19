@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/standards.md の GDPR-CONSENT-WITHDRAWAL を観測する。
+// docs/domain/standards.md の GDPR-CONSENT-WITHDRAWAL を観測する。
 //
 // 行は 2 つのことを言っている。ResourceOwner が自分で撤回できること、そして撤回した同意が
 // その後の新規発行に使われないことである。前者だけを見るテストは、撤回を記録したうえで

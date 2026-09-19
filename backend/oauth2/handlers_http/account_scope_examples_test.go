@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/contexts/oauth2/scenarios.feature.md の REQ-OAUTH2-001 が宣言する通常経路を観測する。
+// docs/domain/oauth2/scenarios.feature.md の REQ-OAUTH2-001 が宣言する通常経路を観測する。
 //
 // この具体例は「発行したトークンが account リソースサーバーで何を許すか」まで言っている
 // ので、発行の観測だけでは足りない。トークンを組み立てて直接 API を叩くのでもない。

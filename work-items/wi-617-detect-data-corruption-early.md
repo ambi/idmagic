@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # 整合性検査を定期実行し、削除件数を指標にして、データの破損に早く気付く

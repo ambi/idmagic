@@ -28,22 +28,22 @@ spec_impact: { kind: none, reason: "検査の追加と SPECIFICATION_FORMAT.md �
 
 `SPECIFICATION_FORMAT.md` はこう述べる。
 
-> The file set and the file names are *(checked)* for `docs/` and `docs/contexts/<context>/`; anything else at those two levels is not a canonical document and is rejected.
+> The file set and the file names are *(checked)* for `docs/` and `docs/domain/<context>/`; anything else at those two levels is not a canonical document and is rejected.
 
 **拒否されない。** `tools/workspace/src/workspace.ts` の `scanCanonicalDocuments` は、許可リストに一致する名前だけを拾う絞り込みである。一致しないファイルは検証の対象から外れるだけで、何のエラーも出ない。関数のコメント自体が「an unrelated Markdown file next to them is not mistaken for specification source」と、絞り込みが意図であることを述べている。
 
-結果として、`docs/` 直下または `docs/contexts/<context>/` に置いた未登録の Markdown は、次のすべてを満たしたまま存在できる。`mise run check-spec` は exit 0 を返す。ファイル名は出力に一度も現れない。生成される仕様サイトにも載らない。正本文書として不正な本文（H1 が 2 つある、遷移表の `From` が宣言されていない状態を指す、など）を持っていても、何も落ちない。
+結果として、`docs/` 直下または `docs/domain/<context>/` に置いた未登録の Markdown は、次のすべてを満たしたまま存在できる。`mise run check-spec` は exit 0 を返す。ファイル名は出力に一度も現れない。生成される仕様サイトにも載らない。正本文書として不正な本文（H1 が 2 つある、遷移表の `From` が宣言されていない状態を指す、など）を持っていても、何も落ちない。
 
 これは wi-424 の実装中に、Acceptance RED を仕掛けようとして発見した。二重の H1 を持つファイルを `docs/` に置いて `check-spec` が拒否することを期待したところ、exit 0 で通った。
 
 **害は「間違ったファイルが通る」ことではなく、「正しいつもりのファイルが黙って無視される」ことである。** 名前を打ち間違えた正本文書（`decision.md`、`scenario.md`、`glossary.MD`）は、書いた人からは存在して見え、検査からは存在しない。書いた内容は誰にも検証されず、生成された仕様サイトにも現れない。気づく契機が無い。
 
-これは `docs/standards.md` の「各行は、規範 ID をテスト名に含めた対応するテストを持つ」が現在偽であること（wi-418 が扱う）と同じ型の欠陥である。宣言された規則と、実際に強制されている規則が違う。
+これは `docs/domain/standards.md` の「各行は、規範 ID をテスト名に含めた対応するテストを持つ」が現在偽であること（wi-418 が扱う）と同じ型の欠陥である。宣言された規則と、実際に強制されている規則が違う。
 
 ## Scope
 
-- `docs/` 直下と `docs/contexts/<context>/` の直下にある、許可リストに無い Markdown を検出して落とす。
-- 意図的な例外の扱いを決める。`docs/contexts/` 自体のような、ディレクトリと同居する非文書をどう区別するかを含む。
+- `docs/` 直下と `docs/domain/<context>/` の直下にある、許可リストに無い Markdown を検出して落とす。
+- 意図的な例外の扱いを決める。`docs/domain/` 自体のような、ディレクトリと同居する非文書をどう区別するかを含む。
 - 落とすときの失敗メッセージに、名前の打ち間違いを疑わせるだけの情報を持たせる。近い名前が許可リストにあるならそれを示す。
 - `SPECIFICATION_FORMAT.md` の記述を、実装される挙動と一致させる。
 - 既存の作業ツリーに未登録の Markdown が無いことを確認し、あれば登録するか移動するかを判断する。
@@ -53,7 +53,7 @@ spec_impact: { kind: none, reason: "検査の追加と SPECIFICATION_FORMAT.md �
 - `docs/development/` と `docs/runbooks/` の中身の検査。それらは固定した種類の集合を持たないという既存の判断を変えない。
 - Markdown 以外のファイル。図表や添付の扱いは本件では決めない。
 - 正本文書の集合そのものの変更。
-- 閉じた 2 段より外側の Markdown。`docs/contexts/` 直下に置いた Markdown や、`docs/` の下に新しく掘ったディレクトリの中身は、依然として黙って無視される。`SPECIFICATION_FORMAT.md` が閉じていると言っているのはこの 2 段であり、その言明と実装は一致した。3 段目をどうするかは別の判断であり、独立検証がこの穴を指摘している。
+- 閉じた 2 段より外側の Markdown。`docs/domain/` 直下に置いた Markdown や、`docs/` の下に新しく掘ったディレクトリの中身は、依然として黙って無視される。`SPECIFICATION_FORMAT.md` が閉じていると言っているのはこの 2 段であり、その言明と実装は一致した。3 段目をどうするかは別の判断であり、独立検証がこの穴を指摘している。
 
 ## Design
 
@@ -80,17 +80,17 @@ spec_impact: { kind: none, reason: "検査の追加と SPECIFICATION_FORMAT.md �
 
 ## Tasks
 
-- [x] T001 [Baseline] 現在の作業ツリーに未登録の Markdown があるかを確認する。`docs/` 直下 12 件と `docs/contexts/<context>/` 21 ディレクトリの直下 124 件はすべて許可リスト内で、未登録の Markdown は無い。例外の仕組みは持たない。
+- [x] T001 [Baseline] 現在の作業ツリーに未登録の Markdown があるかを確認する。`docs/` 直下 12 件と `docs/domain/<context>/` 21 ディレクトリの直下 124 件はすべて許可リスト内で、未登録の Markdown は無い。例外の仕組みは持たない。
 - [x] T002 [Acceptance] 未登録かつ内容の不正な Markdown を置いても `check-spec` が通ることを観測する。二重 H1 を持つ `docs/decision.md` を置いて `mise run check-spec` が exit 0 を返し、出力にその名前が 1 度も現れないことを確認した。
 - [x] T003 [Acceptance RED] `check-workspace.ts --documents` が未登録の Markdown を拒否することを確かめるテストを書き、失敗を観測する。`tools/workspace/src/check-workspace.test.ts` の 4 件のうち拒否を見る 2 件が落ち、受け入れを見る 2 件は通った。
 - [x] T004 [Unit RED] 閉じた集合を判定する純関数のテストを書き、失敗を観測する。`tools/check/src/canonical-document-set.test.ts` は所見を返さない骨格に対して 8 件中 6 件が落ちた。
 - [x] T005 [Tooling] 許可リストに無い Markdown を拒否する検査を実装し、失敗メッセージに近い名前の候補を含める。`tools/check/src/canonical-document-set.ts` に純関数を置き、`check-workspace.ts --documents` から呼ぶ。
 - [x] T006 [Spec] `SPECIFICATION_FORMAT.md` の記述を実装と一致させる。
-- [x] T007 [Verify] 打ち間違えた名前で落ち、正しい名前で通ることを確認する。実際の作業ツリーで `docs/scenario.md` と `docs/contexts/system/decision.md` がそれぞれ `scenarios.feature.md`、`decisions.md` を候補として示して落ち、取り除くと `mise run check-spec` は exit 0 に戻った。`glossary.MD` は macOS のファイルシステムが大文字小文字を区別しないため実ツリーでは再現できず、純関数の単体テストで確かめている。
+- [x] T007 [Verify] 打ち間違えた名前で落ち、正しい名前で通ることを確認する。実際の作業ツリーで `docs/scenario.md` と `docs/domain/system/decision.md` がそれぞれ `scenarios.feature.md`、`decisions.md` を候補として示して落ち、取り除くと `mise run check-spec` は exit 0 に戻った。`glossary.MD` は macOS のファイルシステムが大文字小文字を区別しないため実ツリーでは再現できず、純関数の単体テストで確かめている。
 
 ## Verification
 
-- `docs/` 直下と `docs/contexts/<context>/` の直下に許可リストに無い Markdown を置くと `mise run check-spec` が落ちる。
+- `docs/` 直下と `docs/domain/<context>/` の直下に許可リストに無い Markdown を置くと `mise run check-spec` が落ちる。
 - 打ち間違えた名前が、その段の許可名に近いなら、候補として失敗メッセージに現れる。近い名前が無いときは、代わりにその段の許可名が並ぶ。
 - 現在の作業ツリーで `mise run check-spec` が通り続ける。
 - `docs/development/` と `docs/runbooks/` の自由な命名が引き続き許される。
@@ -108,10 +108,10 @@ spec_impact: { kind: none, reason: "検査の追加と SPECIFICATION_FORMAT.md �
 
 - **Completed At**: 2026-08-28
 - **Summary**:
-  `mise run spec-diff` は `no normative specification change against main` を返す。規範仕様は動いていない。変わったのは検査の強制力である。`docs/` 直下と `docs/contexts/<context>/` 直下に置かれた Markdown のうち、配置が定めない名前を持つものが `mise run check-spec` を落とすようになった。それまでは、そのファイルは検証の対象から外れるだけで、終了コードにも出力にも現れなかった。落とすときは、両辺を小文字にそろえて測った編集距離が 2 以下の許可名を候補として示し、近い名前が無ければその段の許可名を並べる。`SPECIFICATION_FORMAT.md` の宣言も 2 点で実装に合わせた。「file set が checked」は必須ファイルの存在検査が元から無いため偽であり、`file names` に改めた。候補提示についても、無条件に最も近い文書を示すという書き方をやめ、近い名前があるときとないときを書き分けた。判定は `verifyCanonicalDocumentSet` という純関数が持ち、走査は `listCanonicalDirectories` が、終了コードは `check-workspace.ts --documents` が持つ。集める側の `discoverSpecificationDocuments` は同じ走査結果を絞り込むだけで、絞り込みという性格は変わっていない。
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範仕様は動いていない。変わったのは検査の強制力である。`docs/` 直下と `docs/domain/<context>/` 直下に置かれた Markdown のうち、配置が定めない名前を持つものが `mise run check-spec` を落とすようになった。それまでは、そのファイルは検証の対象から外れるだけで、終了コードにも出力にも現れなかった。落とすときは、両辺を小文字にそろえて測った編集距離が 2 以下の許可名を候補として示し、近い名前が無ければその段の許可名を並べる。`SPECIFICATION_FORMAT.md` の宣言も 2 点で実装に合わせた。「file set が checked」は必須ファイルの存在検査が元から無いため偽であり、`file names` に改めた。候補提示についても、無条件に最も近い文書を示すという書き方をやめ、近い名前があるときとないときを書き分けた。判定は `verifyCanonicalDocumentSet` という純関数が持ち、走査は `listCanonicalDirectories` が、終了コードは `check-workspace.ts --documents` が持つ。集める側の `discoverSpecificationDocuments` は同じ走査結果を絞り込むだけで、絞り込みという性格は変わっていない。
 - **Acceptance RED Evidence**:
   - **Test**: `tools/workspace/src/check-workspace.test.ts` の `check-workspace --documents > rejects a Markdown file the closed set does not name` と `> names the canonical document a misspelled file was meant to be`
-  - **Requirement**: N/A: リポジトリの検査ツールであり、対応する規範的な製品要件を持たない。代わりに失敗したのは、`SPECIFICATION_FORMAT.md` が *(checked)* と宣言している「`docs/` と `docs/contexts/<context>/` の名前は検査される」という言明である。
+  - **Requirement**: N/A: リポジトリの検査ツールであり、対応する規範的な製品要件を持たない。代わりに失敗したのは、`SPECIFICATION_FORMAT.md` が *(checked)* と宣言している「`docs/` と `docs/domain/<context>/` の名前は検査される」という言明である。
   - **Observed Failure**: 両方とも `expect(result.code).not.toBe(0)` が `Expected: not 0` で失敗。`2 pass 2 fail`。同じ性質を実ツリーでも観測した。二重 H1 を持つ `docs/decision.md` を置いた状態で `mise run check-spec` は exit 0 を返し、`decision.md` は出力に 1 度も現れなかった。
   - **Detection Reason**: この 2 件は、`mise run check-spec` の利用者が見るのと同じ境界、すなわち `check-workspace.ts --documents` の起動の終了コードと標準エラーを見ている。置くファイルの本文は H1 が 2 つある不正な本文なので、通ってしまうということは、そのファイルが内容検査にすら届いていないということである。同じ 4 件のうち受け入れを見る 2 件は RED の時点でも通っており、失敗が拒否の欠如だけに由来することを分けている。
 - **Unit RED Evidence**:

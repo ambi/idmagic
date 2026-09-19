@@ -1,6 +1,6 @@
 package main
 
-// docs/contexts/system/scenarios.feature.md の REQ-SYSTEM-016 が宣言する、起動時設定の
+// docs/domain/system/scenarios.feature.md の REQ-SYSTEM-016 が宣言する、起動時設定の
 // 検証に失敗した具体例を Run() の入口から観測する。
 //
 // 拒否が防いだ効果を読む必要がある (wi-392)。設定を読む関数だけを呼ぶ試験は「集約された

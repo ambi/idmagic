@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決めたが、`docs/scenarios.feature.md` が宣言する 4 件はどの Context にも属さない。**複数の Context が協調して初めて成り立つ振る舞いなので、どの Context の子 work item に入れても片側の話にしかならない。** 本項目がこの 4 件を引き取る。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決めたが、`docs/domain/scenarios.feature.md` が宣言する 4 件はどの Context にも属さない。**複数の Context が協調して初めて成り立つ振る舞いなので、どの Context の子 work item に入れても片側の話にしかならない。** 本項目がこの 4 件を引き取る。
 
 対象は `EX-PLATFORM-001-01`、`EX-PLATFORM-002-01`、`EX-PLATFORM-003-01`、`EX-PLATFORM-003-02` である。`REQ-PLATFORM-004` の 2 件は既に名指しを持つ。
 
@@ -53,7 +53,7 @@ spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を�
 
 ## Verification
 
-- `mise run check-spec` が、`docs/scenarios.feature.md` の 4 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
+- `mise run check-spec` が、`docs/domain/scenarios.feature.md` の 4 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
 - 消化したテストの所属パッケージに対する `mise run test-go-package -- <package>`。
 - `mise run verify`
 

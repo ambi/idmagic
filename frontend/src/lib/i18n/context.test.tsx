@@ -21,7 +21,7 @@ function Probe() {
 describe('the selected locale reaches both the dictionary and the formatters', () => {
   // 文言だけを見る検査は、日時と数値を locale と無関係に組み立てる実装を通す。それが
   // いちばん起きやすい退行であり (`String(value)` や固定の 'en')、辞書の側からは直せない。
-  // 書式の判定に固定の文字列を使わないのは、ICU の版で表記が動くためである。en と ja を
+  // 書式の判定に固定の文字列を使わないのは、ICU のバージョンで表記が動くためである。en と ja を
   // 区別する印 (月の略称と年から始まる並び) と、両者が異なることだけを見る。
   //
   //spec:covers EX-SYSTEM-010-01: en を選んだ画面が en 辞書の文言と en の日時・数値の書式で表示すること。

@@ -1,6 +1,6 @@
 package server_http
 
-// docs/contexts/api-tokens/standards.md が宣言する行を、製品の正式な入口から観測する。
+// docs/domain/api-tokens/standards.md が宣言する行を、製品の正式な入口から観測する。
 //
 // API アクセストークンの検証はミドルウェアの位置にあるので、入口は保護されたエンドポイントで
 // なければならない。トークン検証関数だけを呼ぶテストは、関数が正しくても配線されていない

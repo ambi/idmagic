@@ -15,9 +15,9 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/api-tokens/standards.md
-    - docs/contexts/api-tokens/internals.md
-    - docs/contexts/api-tokens/README.md
+    - docs/domain/api-tokens/standards.md
+    - docs/domain/api-tokens/internals.md
+    - docs/domain/api-tokens/README.md
   typespec: []
   source:
     - backend/apitoken/usecases/usecases.go
@@ -46,7 +46,7 @@ initial_context:
     - backend/apitoken/handlers_http/handlers_test.go
     - backend/sourcing/scim/handlers_http/scim_test.go
   stop_before_reading:
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
     - backend/oauth2/authorization
     - backend/saml
     - backend/wsfederation
@@ -57,7 +57,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/api-tokens/standards.md` の 11 行を引き取る。この文書は 12 行のうち 11 行が名指しを持たない。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/api-tokens/standards.md` の 11 行を引き取る。この文書は 12 行のうち 11 行が名指しを持たない。
 
 11 行が扱うのは API アクセストークンの提示、内省、失効、そして送信者拘束である。この防護は他の Context のスコープ検査より手前にあり、ここが素通りすれば以降の検査は攻撃者の名乗った主体に対して働く。件数の少なさは重要度の低さを意味しない。
 
@@ -215,7 +215,7 @@ initial_context:
 - **Completed At**: 2026-09-07
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/contexts/api-tokens/standards.md` の 12 行のうち、名指しを持たなかった 11 行に対する被覆の
+  差分は `docs/domain/api-tokens/standards.md` の 12 行のうち、名指しを持たなかった 11 行に対する被覆の
   状態である。**11 行すべて**がその行の `Statement` を区別できる入力と観測を持つテストを得て
   `tools/check/standards-coverage-debt.json` から消え、台帳は 121 件から 110 件になった。
   テストは 1 ファイル（`api_token_standards_test.go`、11 テスト）で、`Register` が組み立てたスタックへ
@@ -229,7 +229,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（新しいテストファイルを退避し、台帳から外した状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/api-tokens/standards.md` の 10 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/api-tokens/standards.md` の 10 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（9 行目 `RFC6750-API-TOKEN-HEADER` から
     55 行目 `RFC9700-API-TOKEN-SENDER-CONSTRAINT` まで 10 件。`RFC7662-API-TOKEN-INACTIVE` は

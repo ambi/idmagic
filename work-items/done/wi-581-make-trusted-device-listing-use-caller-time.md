@@ -13,7 +13,7 @@ documentation_impact:
   reason: 公開仕様と利用者向けの振る舞いは変わらず、内部の時刻依存だけを明示するためである。
   references: []
 initial_context:
-  specification: [docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-029]
+  specification: [docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-029]
   typespec: []
   source:
     - backend/authentication/trusteddevice/usecases/trusted_devices.go

@@ -14,19 +14,19 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-532.md }
 affected_spec:
-  - { path: docs/contexts/oauth2/standards.md, requirement: FAPI2-PROFILE-SELECTION }
-  - { path: docs/contexts/oauth2/standards.md, requirement: FAPI2-PAR-PKCE }
-  - { path: docs/contexts/oauth2/standards.md, requirement: FAPI2-CLIENT-AUTH }
-  - { path: docs/contexts/oauth2/standards.md, requirement: FAPI2-SENDER-CONSTRAINT }
+  - { path: docs/domain/oauth2/standards.md, requirement: FAPI2-PROFILE-SELECTION }
+  - { path: docs/domain/oauth2/standards.md, requirement: FAPI2-PAR-PKCE }
+  - { path: docs/domain/oauth2/standards.md, requirement: FAPI2-CLIENT-AUTH }
+  - { path: docs/domain/oauth2/standards.md, requirement: FAPI2-SENDER-CONSTRAINT }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md#FAPI2-PROFILE-SELECTION
-    - docs/contexts/oauth2/standards.md#FAPI2-PAR-PKCE
-    - docs/contexts/oauth2/standards.md#FAPI2-CLIENT-AUTH
-    - docs/contexts/oauth2/standards.md#FAPI2-SENDER-CONSTRAINT
-    - docs/contexts/oauth2/decisions.md
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-009
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-010
+    - docs/domain/oauth2/standards.md#FAPI2-PROFILE-SELECTION
+    - docs/domain/oauth2/standards.md#FAPI2-PAR-PKCE
+    - docs/domain/oauth2/standards.md#FAPI2-CLIENT-AUTH
+    - docs/domain/oauth2/standards.md#FAPI2-SENDER-CONSTRAINT
+    - docs/domain/oauth2/decisions.md
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-009
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-010
   typespec:
     - IdMagic.Contract.FapiProfile
     - IdMagic.Contract.OAuth2Client
@@ -80,7 +80,7 @@ primary_use_cases:
 
 ## Motivation
 
-`docs/contexts/oauth2/standards.md` の FAPI 2.0 Security Profile 節は 4 行を宣言する。
+`docs/domain/oauth2/standards.md` の FAPI 2.0 Security Profile 節は 4 行を宣言する。
 
 | ID | Adoption | Statement |
 |---|---|---|
@@ -89,7 +89,7 @@ primary_use_cases:
 | `FAPI2-CLIENT-AUTH` | optional | FAPI クライアントは `private_key_jwt` または mTLS で認証する。 |
 | `FAPI2-SENDER-CONSTRAINT` | optional | FAPI アクセストークンに DPoP または mTLS による送信者制約を付ける。 |
 
-`docs/contexts/oauth2/decisions.md` も同じ向きの判断を 2 つ持つ。PKCE は「公開クライアントと FAPI 2.0 クライアントではデフォルトで必須」であり、PAR は「FAPI 2.0 クライアントで必須」である。
+`docs/domain/oauth2/decisions.md` も同じ向きの判断を 2 つ持つ。PKCE は「公開クライアントと FAPI 2.0 クライアントではデフォルトで必須」であり、PAR は「FAPI 2.0 クライアントで必須」である。
 
 実装は `fapi_profile` を保存し、列挙として検証し、admin API と `/register` の応答へ書き戻し、管理 UI へ表示する。**しかしこの値を読んで制約を掛ける箇所が 1 つも無い。** 非テストの Go 全体で `fapi` を探すと、当たるのは認可規則の名前 `par_required_if_fapi` と `authorize.go` の予定を書いたコメントだけである。
 

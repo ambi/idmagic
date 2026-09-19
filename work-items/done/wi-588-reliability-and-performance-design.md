@@ -27,7 +27,7 @@ initial_context:
     - docs/design/infrastructure/platform.md
     - docs/design/infrastructure/network.md
     - docs/design/data/lifecycle.md
-    - docs/contexts/system/internals.md
+    - docs/domain/system/internals.md
     - docs/runbooks/backup-restore-dr.md
     - docs/requirements/quality.md
     - DOCUMENTATION_GUIDE.md

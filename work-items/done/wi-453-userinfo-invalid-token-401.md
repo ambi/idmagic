@@ -16,8 +16,8 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-453-userinfo-invalid-token-401.md }
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-020
-    - docs/contexts/oauth2/standards.md#RFC6750-INVALID-TOKEN
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-020
+    - docs/domain/oauth2/standards.md#RFC6750-INVALID-TOKEN
     - docs/api-rules.md#http-error-responses
   typespec:
     - IdMagic.OAuth2.Operations.UserInfo
@@ -42,8 +42,8 @@ primary_use_cases:
     unit_fault_model: UserInfo 固有の写像が invalid_token を OAuth 認可サーバー用の汎用 400 写像へ渡す。
     e2e_fault_model: UserInfo ハンドラーが固有の写像を迂回して writeOAuthError を直接呼ぶ。
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-020 }
-  - { path: docs/contexts/oauth2/standards.md, requirement: RFC6750-INVALID-TOKEN }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-020 }
+  - { path: docs/domain/oauth2/standards.md, requirement: RFC6750-INVALID-TOKEN }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.UserInfo }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.PostUserInfo }
 ---

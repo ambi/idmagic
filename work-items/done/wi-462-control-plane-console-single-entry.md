@@ -16,13 +16,13 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-462.md }
 initial_context:
   specification:
-    - docs/contexts/audit/scenarios.feature.md#REQ-AUDIT-001
-    - docs/contexts/audit/decisions.md
-    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-012
-    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-013
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-018
-    - docs/contexts/system/decisions.md
-    - docs/structure.md
+    - docs/domain/audit/scenarios.feature.md#REQ-AUDIT-001
+    - docs/domain/audit/decisions.md
+    - docs/domain/jobs/scenarios.feature.md#REQ-JOBS-012
+    - docs/domain/jobs/scenarios.feature.md#REQ-JOBS-013
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-018
+    - docs/domain/system/decisions.md
+    - docs/domain/structure.md
   typespec:
     - IdMagic.Audit.Operations.ListAdminAuditEvents
     - IdMagic.Audit.Operations.GetAdminAuditEvent
@@ -55,12 +55,12 @@ initial_context:
     - backend/jobs/db_postgres
     - spec/generated
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
-  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-007 }
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-015 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-020 }
+  - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
+  - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-007 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-015 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-020 }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListAdminAuditEvents }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.GetAdminAuditEvent }
   - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
@@ -117,7 +117,7 @@ primary_use_cases:
 
 仕様にも欠落がある。
 
-Audit の決定と TypeSpec は制御面テナントの `system_admin` による横断検索を説明するが、`docs/contexts/audit/scenarios.feature.md` に成功シナリオがない。
+Audit の決定と TypeSpec は制御面テナントの `system_admin` による横断検索を説明するが、`docs/domain/audit/scenarios.feature.md` に成功シナリオがない。
 
 Jobs は `ListJobs` の横断一覧を TypeSpec とテストで説明する一方、`GetJob` と `CancelJob` が制御面主体に限って別テナントへ届く現在の挙動を TypeSpec とシナリオに記述していない。
 
@@ -134,7 +134,7 @@ Jobs は `ListJobs` の横断一覧を TypeSpec とテストで説明する一�
 - Jobs に制御面主体の横断一覧、詳細参照、取消しを表す規範シナリオを追加し、テナント管理者の操作範囲と分ける。
 - System に、テナント横断 UI はシステムコンソールだけに置き、テナント管理コンソールは操作者のロールにかかわらず要求先テナントへ閉じるシナリオと決定を追加する。
 - Audit と Jobs の TypeSpec にテナント内操作とシステム操作を別の操作記号として定義し、同じハンドラーへ暗黙に合流させない。
-- `docs/structure.md` の「制御面のテナント管理だけを専用経路へ登録する」という現在の実装と異なる説明を修正する。
+- `docs/domain/structure.md` の「制御面のテナント管理だけを専用経路へ登録する」という現在の実装と異なる説明を修正する。
 - 既存の `system_admin` 向け横断呼出しが新しいシステム API へ移ることをアップグレードノートへ記載する。
 
 ## Out of Scope
@@ -225,7 +225,7 @@ Audit の `RequireAuditReader` は認証イベントバケットの参照とも�
 - **画面だけを分け、両方から同じ API を呼ぶ。** 直接の API 呼出しではテナント管理側から横断できるため、経路が認可範囲を表さない。
 - **システムコンソールを廃止し、すべてをテナント管理コンソールのロール分岐へ統合する。** 横断能力が各画面の条件分岐へ散らばり、運用者が制御面にいることをシェルと経路で確認できなくなる。
 - **監査とジョブの一覧だけを移し、エクスポート、詳細参照、取消しをテナント側へ残す。** 一覧で見つけた別テナントの対象を操作するためにコンソールを行き来することになり、横断操作の入口が一つにならない。
-- **`docs/structure.md` の説明に合わせて制御面 API を `/realms/default` だけへ登録する。** 経路登録の変更は公開入口と配備境界の判断を伴い、画面配置の変更より広い。
+- **`docs/domain/structure.md` の説明に合わせて制御面 API を `/realms/default` だけへ登録する。** 経路登録の変更は公開入口と配備境界の判断を伴い、画面配置の変更より広い。
 
 ## Plan
 
@@ -243,7 +243,7 @@ Audit の `RequireAuditReader` は認証イベントバケットの参照とも�
 
 検証の刻みは各タスクに書いた recipe を使う。赤緑ごとに選び直さない。
 
-- [x] T001 [Spec] Audit、Jobs、System の規範シナリオ、決定、TypeSpec 操作、`docs/structure.md` を更新する。
+- [x] T001 [Spec] Audit、Jobs、System の規範シナリオ、決定、TypeSpec 操作、`docs/domain/structure.md` を更新する。
   `REQ-AUDIT-007`、`REQ-JOBS-015`、`REQ-SYSTEM-020` を割り当てる。recipe: `mise run check-spec`。
 - [x] T002 [Acceptance] テナント管理 API から横断できる現在の挙動を HTTP 境界で観測し、RED を確認する。
   `TestSystemAuditEventsSpanEveryTenantForControlPlaneActor` と `TestControlPlaneJobOversightNeedsNoAdminRole`

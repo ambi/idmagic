@@ -29,7 +29,7 @@ initial_context:
   stop_before_reading:
     - backend
     - spec
-    - docs/contexts
+    - docs/domain
 spec_impact: { kind: none, reason: "フロントエンドの依存宣言、開発ツール設定、検証経路を保守する変更であり、製品のモデル、公開インターフェース、認証、認可、利用者から観測できる振る舞いを変更しない。" }
 ---
 

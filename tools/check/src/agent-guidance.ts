@@ -13,11 +13,11 @@ export type AgentGuidanceFinding = {
 const requiredMarkers = new Map<string, string[]>([
   [
     '.agents/skills/spec-change/SKILL.md',
-    ['spec/contexts/<context>/{models,main}.tsp', 'docs/contexts/<context>/scenarios.feature.md'],
+    ['spec/contexts/<context>/{models,main}.tsp', 'docs/domain/<context>/scenarios.feature.md'],
   ],
   [
     '.agents/skills/update-design/SKILL.md',
-    ['docs/README.md', 'docs/structure.md', 'docs/contexts/<context>/README.md'],
+    ['docs/README.md', 'docs/domain/structure.md', 'docs/domain/<context>/README.md'],
   ],
   [
     '.agents/skills/implement-work-item/SKILL.md',

@@ -3,7 +3,7 @@ package domain
 // Group CSV の方言。転送ポリシー、解析器、直列化器、可逆なセル変換は idmdomain の
 // 種別非依存な CSV 基盤が持ち、ここには Group 固有の列の語彙、字句形、行計画の型だけを置く。
 // 語彙が閉じているのは、未検証の項目が CSV という便宜的な経路から出入りしないためである
-// (docs/contexts/identity-management/internals.md)。
+// (docs/domain/identity-management/internals.md)。
 
 import (
 	"errors"

@@ -8,8 +8,8 @@ change_kind: maintenance
 priority: p3
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-015 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-015 }
 ---
 
 # System の台帳 2 件を、フェイルクローズの検証と誤検出の是正に分けて解消する

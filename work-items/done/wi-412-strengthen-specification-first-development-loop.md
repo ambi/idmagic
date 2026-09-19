@@ -17,7 +17,7 @@ initial_context:
   typespec: []
   source: [.agents/skills/new-work-item/SKILL.md, .agents/skills/spec-change/SKILL.md, .agents/skills/update-design/SKILL.md, .agents/skills/implement-work-item/SKILL.md, tools/check/src/main.ts, tools/check/schemas/work-item.schema.json, mise.toml]
   tests: [tools/check/src/lib.test.ts, tools/check/src/work-item-markdown.test.ts, tools/check/src/mise-config.test.ts]
-  stop_before_reading: [backend, frontend, spec, docs/contexts]
+  stop_before_reading: [backend, frontend, spec, docs/domain]
 spec_impact: { kind: none, reason: "製品の外部契約と実行時の振る舞いを変えず、開発方法の正本、エージェント向けスキル、作業項目の証拠契約と検査を更新する。" }
 ---
 

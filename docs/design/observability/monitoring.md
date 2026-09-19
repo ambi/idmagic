@@ -4,10 +4,10 @@
 
 この文書は、**何を検知したいか**と、**それをどのシグナルでどう判定し、どこへ通知し、どの手順へつなぐか**の対応を定める。
 
-指標名、閾値の値、通知の宛先は構成ファイルが正本である。
+指標名、閾値の値、通知の宛先は構成ファイルが一次情報である。
 ローカル Docker Compose は `infra/docker/prometheus.yml` と `infra/docker/prometheus-rules.yml`、Kubernetes は `infra/k8s/monitoring/prometheus-rule.yaml` と `infra/k8s/monitoring/operator/servicemonitor.yaml` が持つ。
 この文書は同じ値を写さない。
-写すと、計装のコードと構成ファイルに続く三つ目の複製になり、どれが正本か分からなくなる。
+写すと、計装のコードと構成ファイルに続く三つ目の複製になり、どれが一次情報か分からなくなる。
 
 サービス目標の値と測定境界は[品質要求](../../requirements/quality.md)、アラートを受けた後の対応手順は [Runbooks](../../runbooks/) が所有する。
 ログの内容とトレースの設計は[ログ設計](logging.md)と[トレース設計](tracing.md)が持つ。

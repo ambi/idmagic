@@ -10,15 +10,15 @@ change_kind: feature
 evidence_policy: risk-based-v3
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-016
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-017
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-016
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-017
   typespec:
     - IdMagic.Contract.FeatureRuntimeMetadata
     - IdMagic.OAuth2.Operations.HealthHttpResponse
   source:
-    - docs/contexts/system/decisions.md
-    - docs/contexts/system/internals.md
-    - docs/structure.md
+    - docs/domain/system/decisions.md
+    - docs/domain/system/internals.md
+    - docs/domain/structure.md
     - docs/deployment.md
     - backend/cmd/internal/bootstrap/config.go
     - backend/cmd/internal/bootstrap/configreference.go
@@ -32,8 +32,8 @@ initial_context:
     - backend/shared/http/server_http/routes_e2e_test.go
   stop_before_reading: [backend/application, frontend, infra]
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-017 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-017 }
   - { path: spec/contexts/system/models.tsp, symbol: IdMagic.Contract.FeatureRuntimeMetadata }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.HealthHttpResponse }
 primary_use_cases:

@@ -13,18 +13,21 @@ export const CONTEXT_DOCUMENTS = [
   'scenarios.feature.md',
 ] as const
 
-export const ROOT_DOCUMENTS = [
+export const ROOT_DOCUMENTS = ['README.md'] as const
+
+/** ドメイン全体を対象とし、Bounded Context のディレクトリより上に置く文書。 */
+export const DOMAIN_DOCUMENTS = [
   'README.md',
-  'product-overview.md',
   'glossary.md',
   'standards.md',
   'structure.md',
   'scenarios.feature.md',
 ] as const
 
-/** 正準文書を上位から読む順序で定義する。 */
+/** 一次情報文書を上位から読む順序で定義する。 */
 export const SYSTEM_DOCUMENT_DIRECTORIES = [
   { directory: 'docs', names: ROOT_DOCUMENTS },
+  { directory: 'docs/domain', names: DOMAIN_DOCUMENTS },
   {
     directory: 'docs/requirements',
     names: ['README.md', 'functional.md', 'quality.md', 'constraints.md'],
@@ -40,7 +43,7 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
       'decisions.md',
     ],
   },
-  { directory: 'docs/design', names: ['README.md'] },
+  { directory: 'docs/design', names: ['README.md', 'product-overview.md'] },
   {
     directory: 'docs/design/application',
     names: [
@@ -90,9 +93,12 @@ export const SYSTEM_DOCUMENT_PATHS = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ dire
   names.map((name) => `${directory}/${name}`),
 )
 
-/** 内容に応じた任意名を許し、閉じたファイル集合の対象にしない段。 */
+/**
+ * 内容に応じた任意名を許し、閉じたファイル集合の対象にしない段。`docs/domain` は
+ * 直下のファイル集合が閉じており、配下のディレクトリ名だけが自由なので、ここには載せない。
+ * 配下は `canonicalDocumentNames` が名前を持たないため `CONTEXT_DOCUMENTS` で判定される。
+ */
 export const FREELY_NAMED_DOCUMENT_DIRECTORIES = new Set([
-  'docs/contexts',
   'docs/development',
   'docs/runbooks',
   'docs/releases',

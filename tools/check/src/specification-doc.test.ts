@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import { documentKind, validateDocument } from './specification-doc.ts'
 
-const SCENARIOS = 'docs/contexts/demo/scenarios.feature.md'
-const STATES = 'docs/contexts/demo/states.md'
-const STANDARDS = 'docs/contexts/demo/standards.md'
+const SCENARIOS = 'docs/domain/demo/scenarios.feature.md'
+const STATES = 'docs/domain/demo/states.md'
+const STANDARDS = 'docs/domain/demo/standards.md'
 
 const scenarios = `# Feature: Demo
 
@@ -21,10 +21,10 @@ const messages = (path: string, source: string) =>
 
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {
-    expect(documentKind('docs/contexts/demo/states.md')).toBe('states')
-    expect(documentKind('docs/contexts/demo/scenarios.feature.md')).toBe('scenarios')
-    expect(documentKind('docs/contexts/demo/decisions.md')).toBe('prose')
-    expect(documentKind('docs/standards.md')).toBe('standards')
+    expect(documentKind('docs/domain/demo/states.md')).toBe('states')
+    expect(documentKind('docs/domain/demo/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/domain/demo/decisions.md')).toBe('prose')
+    expect(documentKind('docs/domain/standards.md')).toBe('standards')
     expect(documentKind('docs/design/security/authorization.md')).toBe('prose')
     expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
     expect(documentKind('docs/design/application/design-guidelines.md')).toBe('prose')
@@ -40,21 +40,21 @@ describe('documentKind', () => {
   })
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
-    expect(documentKind('docs/contexts/demo/notes.md')).toBeUndefined()
+    expect(documentKind('docs/domain/demo/notes.md')).toBeUndefined()
     expect(documentKind('docs/states.md')).toBeUndefined()
     expect(documentKind('docs/authorization.md')).toBeUndefined()
-    expect(documentKind('docs/contexts/demo/user/scenarios.feature.md')).toBeUndefined()
+    expect(documentKind('docs/domain/demo/user/scenarios.feature.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
     expect(documentKind('docs/design/security/network.md')).toBeUndefined()
   })
 
   it('no longer recognizes the single canonical document', () => {
     expect(documentKind('docs/SPECIFICATION.md')).toBeUndefined()
-    expect(documentKind('docs/contexts/demo/SPECIFICATION.md')).toBeUndefined()
+    expect(documentKind('docs/domain/demo/SPECIFICATION.md')).toBeUndefined()
   })
 
   it('rejects a path the canonical layout does not define', () => {
-    expect(messages('docs/contexts/demo/notes.md', '# Notes\n')).toEqual([
+    expect(messages('docs/domain/demo/notes.md', '# Notes\n')).toEqual([
       'not a canonical specification document',
     ])
   })
@@ -128,7 +128,7 @@ Replaced by the valid request scenario.
 
 ## Rule: REQ-DEMO-002 A behavior
 `
-    const result = validateDocument('docs/contexts/demo/decisions.md', source)
+    const result = validateDocument('docs/domain/demo/decisions.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
       'REQ-DEMO-002 must be declared in scenarios.feature.md',
     ])

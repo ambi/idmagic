@@ -44,7 +44,7 @@ initial_context:
     - frontend/tests/e2e
   stop_before_reading:
     - spec/contexts
-    - docs/contexts
+    - docs/domain
     - backend/oauth2
     - backend/saml
     - frontend/src
@@ -117,7 +117,7 @@ work-item 1 件を実装しきるまでの時間が延びている。体感と�
 
 ### O7 着手時の読み込みに単一の入口がない
 
-`docs/` は 13,104 行あり、`docs/contexts/oauth2/` だけで 2,187 行ある。Go は 297 パッケージ 1,550 ファイルである。[コンテキストの節約](../../docs/development/specification-first-workflow.md#8-コンテキストの節約)は work item の `initial_context` から読み始めよと書くが、`initial_context` は着手時に人またはエージェントが書くものなので、着手前には存在しない。つまり最初の探索だけは毎回素手で行われる。
+`docs/` は 13,104 行あり、`docs/domain/oauth2/` だけで 2,187 行ある。Go は 297 パッケージ 1,550 ファイルである。[コンテキストの節約](../../docs/development/specification-first-workflow.md#8-コンテキストの節約)は work item の `initial_context` から読み始めよと書くが、`initial_context` は着手時に人またはエージェントが書くものなので、着手前には存在しない。つまり最初の探索だけは毎回素手で行われる。
 
 素手でなくてよいはずの材料はすでにある。`tools/render-spec-docs/src/main.ts` の `collectTraces()` はリポジトリ全体を走査して、規範 ID ごとに「その ID を名指すコードとテスト」と「その ID を名指す work item」を集めている。ところがこの索引は Traceability の HTML を描くためだけに使われ、端末から引く手段がない。`mise run spec-where` はあるが、これは `docs`、コード、work items に対する 3 回の `rg` を見出し付きで並べるだけで、規範 ID から仕様本文、TypeSpec 記号、既存テスト、先行事例へはたどらない。
 

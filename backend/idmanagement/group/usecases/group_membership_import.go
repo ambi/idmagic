@@ -4,7 +4,7 @@ package usecases
 // 1 回だけで、適用は成功済みプレビューの ID と server-computed SHA-256 だけを参照する。
 // 結合の条件にはテナントに加えて Group も入れる。行エラーは同じ不変ストアの固定件数
 // ページへ直列化し、CSV 種別ごとのエラーテーブルを作らない
-// (docs/contexts/identity-management/internals.md)。
+// (docs/domain/identity-management/internals.md)。
 
 import (
 	"context"

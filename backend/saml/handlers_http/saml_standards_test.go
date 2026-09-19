@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/contexts/saml/standards.md が宣言する行を、製品の正式な入口から観測する。
+// docs/domain/saml/standards.md が宣言する行を、製品の正式な入口から観測する。
 //
 // 入口は `httpadapter.Register` が組み立てた `/saml/*` である。ハーネスの配線は
 // `backend/cmd/idmagic/server.go`（`Saml: deps.Saml`、`FederationSigner:

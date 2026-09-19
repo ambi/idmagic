@@ -10,7 +10,7 @@ macOS の場合:
 brew install sqldef/sqldef/psqldef
 ```
 
-Linux では、sqldef のリリースページからビルド済みの `psqldef` バイナリをダウンロードするか、配備ジョブで sqldef の Docker イメージを使う。CI/CD ジョブでは無指定の最新版を使わず、バージョンを固定する。開発用 Compose の `schema` サービスは `sqldef/psqldef:3.11.20` に固定しているため、CI または Compose の結果を正確に再現するときはローカルでも同じバージョンを使う。
+Linux では、sqldef のリリースページからビルド済みの `psqldef` バイナリをダウンロードするか、配備ジョブで sqldef の Docker イメージを使う。CI/CD ジョブでは無指定の最新バージョンを使わず、バージョンを固定する。開発用 Compose の `schema` サービスは `sqldef/psqldef:3.11.20` に固定しているため、CI または Compose の結果を正確に再現するときはローカルでも同じバージョンを使う。
 
 インストールしたコマンドを確認する:
 

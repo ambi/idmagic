@@ -15,10 +15,10 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-001
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-002
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-006
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-010
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-001
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-002
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-006
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-010
   typespec: []
   source:
     - backend/cmd/internal/bootstrap/seeding.go
@@ -30,14 +30,14 @@ initial_context:
     - backend/seeding/usecases/plan_test.go
   stop_before_reading:
     - frontend
-    - docs/contexts/oauth2
+    - docs/domain/oauth2
 ---
 
 # Seeding が宣言する具体例 5 件にテストを対応付け、被覆台帳から外す
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/seeding/scenarios.feature.md` が宣言する 5 件を引き取る。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/domain/seeding/scenarios.feature.md` が宣言する 5 件を引き取る。
 
 親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
@@ -62,7 +62,7 @@ initial_context:
 
 ## Verification
 
-- `mise run check-spec` が、`docs/contexts/seeding/scenarios.feature.md` の 5 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
+- `mise run check-spec` が、`docs/domain/seeding/scenarios.feature.md` の 5 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
 - 消化したテストの所属パッケージに対する `mise run test-go-package -- <package>`。
 - `mise run verify`
 

@@ -8,7 +8,7 @@ priority: p2
 change_kind: bugfix
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/contexts/provisioning/standards.md]
+  specification: [docs/domain/provisioning/standards.md]
   typespec: [IdMagic.Contract.AttributeMappingRule]
   source:
     - backend/provisioning/client_scim/client.go
@@ -17,7 +17,7 @@ initial_context:
     - backend/provisioning/client_scim
   stop_before_reading: [frontend, backend/oauth2, backend/authentication]
 affected_spec:
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7643-OUT-CORE-RESOURCES }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7643-OUT-CORE-RESOURCES }
   - { path: spec/contexts/provisioning/models.tsp, symbol: IdMagic.Contract.AttributeMappingRule }
 ---
 
@@ -33,7 +33,7 @@ PATCH の本文だけは `urn:ietf:params:scim:api:messages:2.0:PatchOp` を持�
 
 **これは連携先を選ぶ欠陥である。** 受け取り側が `schemas` の有無を検証する実装なら、作成も置換も 400 で拒否される。拒否は `RFC7644-OUT-ERROR-RESPONSE` が「再試行しない失敗」として扱う経路に落ちるため、配信は試行上限を待たずに死に、原因は下流のエラー本文にしか残らない。IdMagic 自身の内向きサーバーは `schemas` を読み取り専用属性として無視するので、IdMagic どうしを繋いだ試験では再現しない。
 
-[docs/contexts/provisioning/standards.md](../../docs/contexts/provisioning/standards.md) の `RFC7643-OUT-CORE-RESOURCES` を `partial` に留めているのはこの欠落のためである。直った時点で、この行の `Statement` は本文が `schemas` を持つことを言えるようになる。
+[docs/domain/provisioning/standards.md](../../docs/domain/provisioning/standards.md) の `RFC7643-OUT-CORE-RESOURCES` を `partial` に留めているのはこの欠落のためである。直った時点で、この行の `Statement` は本文が `schemas` を持つことを言えるようになる。
 
 ## Scope
 
@@ -92,7 +92,7 @@ PATCH の本文だけは `urn:ietf:params:scim:api:messages:2.0:PatchOp` を持�
   `mise run spec-diff` は `no normative specification change against main` を返す。`REQ-` シナリオは動いておらず、変わったのは `RFC7643-OUT-CORE-RESOURCES` の `Statement` と、下流へ送る本文である。作成 (POST) と置換 (PUT) のリソース表現が `schemas` を持つようになった。User は `urn:ietf:params:scim:schemas:core:2.0:User`、Group は `...:Group` の 1 要素で、属性対応付けの外側 (`withSchemas`) で載せている。PATCH の本文は従来どおり `PatchOp` の URN を持ち、その `Operations[].value` は部分断片なので `schemas` を持たない。行の `Adoption` は `partial` のままとした。`schemas` の欠落は解けたが、対応付けで書ける範囲 (拡張スキーマを送らないこと) の制約は変わっていないためである。
 - **Acceptance RED Evidence**:
   - **Test**: `TestClient_SendsSchemasOnResourceRepresentations` (`backend/provisioning/client_scim/conformance_test.go`)
-  - **Requirement**: N/A: 該当する `REQ-` シナリオは無い。規範は `docs/contexts/provisioning/standards.md` の標準行 `RFC7643-OUT-CORE-RESOURCES` (MUST) と RFC 7643 §3 である。
+  - **Requirement**: N/A: 該当する `REQ-` シナリオは無い。規範は `docs/domain/provisioning/standards.md` の標準行 `RFC7643-OUT-CORE-RESOURCES` (MUST) と RFC 7643 §3 である。
   - **Observed Failure**: `POST /Users の schemas = [], want [urn:ietf:params:scim:schemas:core:2.0:User] (body={"userName":"alice"})`
   - **Detection Reason**: 下流が実際に受け取った要求の本文を、既存の `fullLifecycleRequests` が通す 6 経路すべてについて見る。POST と PUT には core スキーマの URN が 1 要素だけ在ること、PATCH には `PatchOp` の URN が在ることを、方法ごとに別々に主張する。URN を照合するので種別を取り違えた実装は落ち、要素数を見るので余計な URN を足した実装も落ちる。さらに `Operations[].value` に `schemas` が**無い**ことを主張するので、「リソース表現に載せる」を「本文ならどこでも載せる」と取り違えた実装が分かれる。この最後の主張が無ければ、RFC 7644 §3.5.2 に反する PATCH を送る実装が通ってしまう。
 - **Unit RED Evidence**:

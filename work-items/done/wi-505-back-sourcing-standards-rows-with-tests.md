@@ -15,8 +15,8 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/sourcing/standards.md
-    - docs/contexts/provisioning/standards.md
+    - docs/domain/sourcing/standards.md
+    - docs/domain/provisioning/standards.md
   typespec: []
   source:
     - backend/sourcing/scim/handlers_http/routes.go
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/sourcing/standards.md` の 5 行を引き取る。この文書は 8 行のうち 5 行が名指しを持たない。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/sourcing/standards.md` の 5 行を引き取る。この文書は 8 行のうち 5 行が名指しを持たない。
 
 **同じ SCIM の規範を扱う Provisioning は 13 行のうち 12 行が名指しを持つ。** [[wi-238-scim-inbound-list-query-conformance]] の適合作業が id を名指すテストを書いたからである。Sourcing は同じ RFC 7643 / RFC 7644 を、下流へ送る Provisioning とは逆に、SCIM のサービス提供者として受け取る側から採用しているが、その適合作業を経ていない。つまりこの 5 行は、規範が難しいのではなく、作業がまだ来ていないだけである。Provisioning 側の 12 行が消化の実例として読める。
 
@@ -156,7 +156,7 @@ initial_context:
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/contexts/sourcing/standards.md` の 5 行に対する被覆の状態である。5 行すべてが
+  差分は `docs/domain/sourcing/standards.md` の 5 行に対する被覆の状態である。5 行すべてが
   その行の `Statement` を区別できる入力と観測を持つテストを得て `tools/check/standards-coverage-debt.json`
   から消え、台帳は 11 件から 6 件になった。名指しを持つ id は 276 件から 281 件へ増えた。
   新設したテストは Go 5 件（部分試験を数えると 24 件）で、**製品コードは 1 行も変わっていない**。
@@ -179,7 +179,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（5 件を台帳から外し、テストを書く前の状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/sourcing/standards.md` の 5 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/sourcing/standards.md` の 5 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（9 行目 `RFC7643-SERVICE-PROVIDER-CONFIG`、
     11 行目 `RFC7643-ENTERPRISE-EXTENSION`、19 行目 `RFC7644-RESOURCE-OPERATIONS`、

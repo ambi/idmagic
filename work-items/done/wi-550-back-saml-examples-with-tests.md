@@ -14,14 +14,14 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-001
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-002
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-003
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-004
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-005
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-006
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-007
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-008
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-001
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-002
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-003
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-004
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-005
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-006
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-007
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-008
   typespec:
     - IdMagic.Saml.Operations.RegisterSamlServiceProvider
     - IdMagic.Saml.Operations.ListSamlServiceProviders
@@ -52,14 +52,14 @@ initial_context:
     - backend/application
     - infra
 affected_spec:
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-001 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-002 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-003 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-004 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-005 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-006 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-007 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-008 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-001 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-002 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-003 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-004 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-005 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-006 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-007 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-008 }
   - { path: spec/contexts/saml/main.tsp, symbol: IdMagic.Saml.Operations.RegisterSamlServiceProvider }
 ---
 
@@ -67,7 +67,7 @@ affected_spec:
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/saml/scenarios.feature.md` が宣言する 18 件を引き取る。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/domain/saml/scenarios.feature.md` が宣言する 18 件を引き取る。
 
 親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
@@ -137,7 +137,7 @@ EX-SAML-005-03 は「トークンのテナントとリクエスト先のテナ�
 
 ## Verification
 
-- `mise run check-spec` が、`docs/contexts/saml/scenarios.feature.md` の消化済みの件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
+- `mise run check-spec` が、`docs/domain/saml/scenarios.feature.md` の消化済みの件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
 - 消化したテストの所属パッケージに対する `mise run test-go-package -- <package>`。
 - `mise run test-ui-unit-file -- frontend/src/features/admin-saml-idp-profiles/AdminSamlIDPProfilesPages.test.tsx`
 - `mise run verify`
@@ -155,7 +155,7 @@ EX-SAML-005-03 は「トークンのテナントとリクエスト先のテナ�
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範は 1 行も動いていない。
-  変わったのは、`docs/contexts/saml/scenarios.feature.md` が宣言する 18 件のうち 17 件が、
+  変わったのは、`docs/domain/saml/scenarios.feature.md` が宣言する 18 件のうち 17 件が、
   その id を名指しするテストから到達されるようになったことと、
   `POST /api/admin/v1/saml/service-providers` が IdP プロファイルの基数違反へ返す状態コードが 500 から
   契約どおりの 400 `invalid_request` になったことである。台帳は 598 件から 581 件へ減った。

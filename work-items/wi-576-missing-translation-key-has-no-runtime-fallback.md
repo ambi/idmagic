@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-010 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-010 }
 ---
 
 # 翻訳キーの欠落に実行時のフォールバックが無い
@@ -30,7 +30,7 @@ affected_spec:
 - 次のどちらが正かを決める。**決めるまでテストを書かない。**
   - シナリオを実装に合わせる。`TranslationKeyIntegrity` が欠落を型で防ぐことを規範として書き、`EX-SYSTEM-010-03` をその形に書き直す。この場合、52 個の `*.i18n.ts` 全体に対してキー集合の一致を機械で確かめる検査が要る (いまあるのは `commonDictionary` の 1 件だけ)。型検査を通らない書き方が将来できたときに落ちる場所を持たないと、規範に検査が対応しない。
   - 実装をシナリオに合わせる。`useDictionary` にキー単位のフォールバックを足す。値が空または未定義のときに `en` の同じキーを返す経路を作る。
-- 決めた側に応じて `docs/contexts/system/scenarios.feature.md` または `frontend/src/lib/i18n` を変える。
+- 決めた側に応じて `docs/domain/system/scenarios.feature.md` または `frontend/src/lib/i18n` を変える。
 - `EX-SYSTEM-010-03` を名指すテストを書き、`tools/check/example-coverage-debt.json` から外す。
 
 ## Out of Scope

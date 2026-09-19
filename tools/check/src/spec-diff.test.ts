@@ -54,7 +54,7 @@ const gherkinScenario = (id: string, result: string): string =>
 
 const snapshot = (documentSource: string, tsp = 'op StartTask(): void;'): Snapshot =>
   new Map([
-    ['docs/contexts/demo/SPECIFICATION.md', documentSource],
+    ['docs/domain/demo/SPECIFICATION.md', documentSource],
     ['spec/contexts/demo/main.tsp', tsp],
   ])
 
@@ -115,7 +115,7 @@ describe('diffSpecifications', () => {
       document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Completed')),
     )
     expect(diffSpecifications(base, changed).changedTransitions).toEqual([
-      'docs/contexts/demo#Lifecycle',
+      'docs/domain/demo#Lifecycle',
     ])
   })
 
@@ -123,11 +123,11 @@ describe('diffSpecifications', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
     const head: Snapshot = new Map([
       [
-        'docs/contexts/demo/scenarios.feature.md',
+        'docs/domain/demo/scenarios.feature.md',
         `${gherkinScenario('REQ-DEMO-001', 'it succeeds')}\n`,
       ],
       [
-        'docs/contexts/demo/states.md',
+        'docs/domain/demo/states.md',
         [
           '# Demo State Transitions',
           '',
@@ -196,7 +196,7 @@ describe('diffSpecifications', () => {
       ].join('\n')
     const base: Snapshot = new Map([
       [
-        'docs/contexts/demo/standards.md',
+        'docs/domain/demo/standards.md',
         standard([
           '| RFC-DEMO-ONE | required | MUST | The first behavior. |',
           '| RFC-DEMO-TWO | partial | SHOULD | The old behavior. |',
@@ -205,7 +205,7 @@ describe('diffSpecifications', () => {
     ])
     const head: Snapshot = new Map([
       [
-        'docs/contexts/demo/standards.md',
+        'docs/domain/demo/standards.md',
         standard([
           '| RFC-DEMO-ONE | required | MUST | The changed behavior. |',
           '| RFC-DEMO-THREE | required | MUST | The new behavior. |',
@@ -214,11 +214,11 @@ describe('diffSpecifications', () => {
     ])
 
     const diff = diffSpecifications(base, head)
-    expect(diff.addedStandards).toEqual(['docs/contexts/demo/standards.md#RFC-DEMO-THREE'])
-    expect(diff.removedStandards).toEqual(['docs/contexts/demo/standards.md#RFC-DEMO-TWO'])
-    expect(diff.changedStandards).toEqual(['docs/contexts/demo/standards.md#RFC-DEMO-ONE'])
+    expect(diff.addedStandards).toEqual(['docs/domain/demo/standards.md#RFC-DEMO-THREE'])
+    expect(diff.removedStandards).toEqual(['docs/domain/demo/standards.md#RFC-DEMO-TWO'])
+    expect(diff.changedStandards).toEqual(['docs/domain/demo/standards.md#RFC-DEMO-ONE'])
     expect(formatSpecificationDiff(diff, 'main')).toContain(
-      'changed standards requirements:\n  docs/contexts/demo/standards.md#RFC-DEMO-ONE',
+      'changed standards requirements:\n  docs/domain/demo/standards.md#RFC-DEMO-ONE',
     )
   })
 
@@ -269,14 +269,14 @@ describe('diffSpecifications', () => {
   it('reports added and changed standards rows absent from affected_spec', () => {
     const diff = {
       ...diffSpecifications(new Map(), new Map()),
-      addedStandards: ['docs/standards.md#RFC-ONE'],
-      changedStandards: ['docs/contexts/demo/standards.md#RFC-TWO'],
-      removedStandards: ['docs/standards.md#RFC-OLD'],
+      addedStandards: ['docs/domain/standards.md#RFC-ONE'],
+      changedStandards: ['docs/domain/demo/standards.md#RFC-TWO'],
+      removedStandards: ['docs/domain/standards.md#RFC-OLD'],
     }
     expect(
       unreferencedStandardChanges(diff, [
-        { path: 'docs/contexts/demo/standards.md', requirement: 'RFC-TWO' },
+        { path: 'docs/domain/demo/standards.md', requirement: 'RFC-TWO' },
       ]),
-    ).toEqual(['docs/standards.md#RFC-ONE'])
+    ).toEqual(['docs/domain/standards.md#RFC-ONE'])
   })
 })

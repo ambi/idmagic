@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/standards.md の GDPR-ERASURE のうち、Purge が Authentication の資格情報まで届いて
+// docs/domain/standards.md の GDPR-ERASURE のうち、Purge が Authentication の資格情報まで届いて
 // いることを、管理 API の入口から観測する。
 //
 // use case を直接呼ぶテストでは、この観測は書けない。cascade の到達先は

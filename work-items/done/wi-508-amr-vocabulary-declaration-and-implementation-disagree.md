@@ -14,15 +14,15 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-508.md }
 affected_spec:
-  - { path: docs/contexts/authentication/standards.md, requirement: RFC8176-AMR-VOCABULARY }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-036 }
+  - { path: docs/domain/authentication/standards.md, requirement: RFC8176-AMR-VOCABULARY }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-036 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.LoginSession }
 initial_context:
   specification:
-    - docs/contexts/authentication/standards.md#RFC8176-AMR-VOCABULARY
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-001
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-036
-    - docs/contexts/authentication/internals.md
+    - docs/domain/authentication/standards.md#RFC8176-AMR-VOCABULARY
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-001
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-036
+    - docs/domain/authentication/internals.md
   typespec:
     - IdMagic.Contract.LoginSession
   source:
@@ -69,7 +69,7 @@ primary_use_cases:
 
 [[wi-501-back-authentication-standards-rows-with-tests]] が `RFC8176-AMR-VOCABULARY` にテストを対応付けようとして見つけた。**この行はいま製品と一致していないので、行を満たすテストが書けない。**
 
-`docs/contexts/authentication/standards.md` の `RFC8176-AMR-VOCABULARY` は、`LoginSession.amr` に許される語彙を `pwd` / `otp` / `webauthn` / `hwk` / `swk` / `rc` / `tdev` の 7 語と宣言している。一方 `docs/contexts/authentication/scenarios.feature.md:17` は「AMR に `federated` を持つ LoginSession を発行する」を規範として書いており、`docs/contexts/authentication/internals.md:13` も同じことを書いている。実装 (`backend/authentication/federation/usecases/broker.go:106`) は後者に従っている。`federated` は RFC 8176 の登録値でもなければ、標準の行が挙げる非 IANA 拡張値でもない。
+`docs/domain/authentication/standards.md` の `RFC8176-AMR-VOCABULARY` は、`LoginSession.amr` に許される語彙を `pwd` / `otp` / `webauthn` / `hwk` / `swk` / `rc` / `tdev` の 7 語と宣言している。一方 `docs/domain/authentication/scenarios.feature.md:17` は「AMR に `federated` を持つ LoginSession を発行する」を規範として書いており、`docs/domain/authentication/internals.md:13` も同じことを書いている。実装 (`backend/authentication/federation/usecases/broker.go:106`) は後者に従っている。`federated` は RFC 8176 の登録値でもなければ、標準の行が挙げる非 IANA 拡張値でもない。
 
 同じ context の 2 つの正典文書が、同じフィールドについて両立しないことを言っている。どちらが正しいかを決めるのは規範の変更であり、テストの追加ではない。
 
@@ -88,7 +88,7 @@ primary_use_cases:
 
 ## Out of Scope
 
-- `docs/contexts/authentication/standards.md` の他の行。[[wi-501-back-authentication-standards-rows-with-tests]] が済ませた。
+- `docs/domain/authentication/standards.md` の他の行。[[wi-501-back-authentication-standards-rows-with-tests]] が済ませた。
 - 認証要素の追加や削除。
 - `acr` の URN そのものの変更。
 - `federated` を MFA 充足として扱うこと。上流の IdP が何を検証したかはブローカーに分からないので、別の判断であり別の work item が要る。

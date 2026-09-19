@@ -9,7 +9,7 @@ priority: p2
 change_kind: bugfix
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/contexts/provisioning/standards.md]
+  specification: [docs/domain/provisioning/standards.md]
   typespec: [IdMagic.Contract.ProvisioningAuthMethod]
   source:
     - backend/provisioning/module.go
@@ -23,7 +23,7 @@ initial_context:
     - backend/provisioning/db_memory
   stop_before_reading: [frontend, backend/oauth2, backend/authentication]
 affected_spec:
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-AUTHENTICATION }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-AUTHENTICATION }
   - { path: spec/contexts/provisioning/models.tsp, symbol: IdMagic.Contract.ProvisioningAuthMethod }
 ---
 
@@ -37,7 +37,7 @@ affected_spec:
 
 さらに、401 は `RFC7644-OUT-ERROR-RESPONSE` の「再試行しない失敗」に落ちるので、管理者が見るのは配信の `dead_letter` だけで、「この認証方式は動かない」という事実はどこにも現れない。設定できるのに動かない選択肢が、失敗の原因として自分を名乗らないまま残っている。
 
-[docs/contexts/provisioning/standards.md](../../docs/contexts/provisioning/standards.md) の `RFC7644-OUT-AUTHENTICATION` は、この食い違いを避けるために「認証は `Authorization: Bearer` の 1 方式に限り、資格情報を得るための別の要求は送らない」という真の宣言を置いている。この work item が直せば、その行は方式ごとの分岐を書けるようになる。
+[docs/domain/provisioning/standards.md](../../docs/domain/provisioning/standards.md) の `RFC7644-OUT-AUTHENTICATION` は、この食い違いを避けるために「認証は `Authorization: Bearer` の 1 方式に限り、資格情報を得るための別の要求は送らない」という真の宣言を置いている。この work item が直せば、その行は方式ごとの分岐を書けるようになる。
 
 ## Scope
 
@@ -139,7 +139,7 @@ affected_spec:
   `mise run spec-diff` は `no normative specification change against main` を返す。`REQ-` シナリオは動いていない。変わったのは `RFC7644-OUT-AUTHENTICATION` の `Adoption` (`partial` → `required`) と `Statement`、TypeSpec の 2 モデルの記述、そして実装である。`oauth2_client_credentials` の接続が、クライアント資格情報フロー (RFC 6749 §4.4) で取得したアクセストークンを提示するようになった。それまでは保存した `client_secret` をそのままベアラートークンとして送っており、この方式の接続は 1 件も配信できていなかった。トークンは失効の 60 秒手前まで再利用し、期限切れと下流の 401 で取り直す。401 による取り直しは 1 度だけである。**永続化も併せて足した** —— トークン URL・`client_id`・`scope` は以前 API が受理して検証したあと捨てられており、保存先が集約にも表にも無かった。列 3 つと、`active` な oauth2 接続に token URL と client_id を要求する CHECK 制約 1 つを加えている。未リリースなので、制約に掛かる既存行は無く、移行は要らない。
 - **Acceptance RED Evidence**:
   - **Test**: `TestClient_OAuth2ClientCredentials_FetchesAndPresentsAnAccessToken` ほか `TestClient_OAuth2ClientCredentials_*` 6 件 (`backend/provisioning/client_scim/oauth2_test.go`)
-  - **Requirement**: N/A: 該当する `REQ-` シナリオは無い。規範は `docs/contexts/provisioning/standards.md` の標準行 `RFC7644-OUT-AUTHENTICATION` (MUST) と RFC 6749 §4.4 である。
+  - **Requirement**: N/A: 該当する `REQ-` シナリオは無い。規範は `docs/domain/provisioning/standards.md` の標準行 `RFC7644-OUT-AUTHENTICATION` (MUST) と RFC 6749 §4.4 である。
   - **Observed Failure**: `undefined: newOAuth2TokenSource` / `undefined: oauth2ClientCredentials` (build failed)。振る舞いが存在しないことがコンパイル段階で現れた。
   - **Detection Reason**: 下流を、**発行したアクセストークンだけを受理する**サーバーとして組み立てる。`client_secret` をそのまま提示する実装はここで 401 になり、通らない。加えて `Authorization` の値を直接見て、秘密の文字列が含まれていないことを主張する —— 下流が緩い実装だった場合 (秘密がトークンとして通ってしまう場合) を、下流の応答とは独立に分けるためである。トークン取得の回数を数えるので、期限内の再利用と再取得を取り違えた実装も分かれる。
 - **Unit RED Evidence**:

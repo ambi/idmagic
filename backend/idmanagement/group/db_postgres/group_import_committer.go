@@ -3,7 +3,7 @@ package db_postgres
 // 受理した 1 行の完全な書き込み集合を、1 つの PostgreSQL トランザクションで確定する。
 // Group 本体、動的規則、membership の cascade、グループクォータの増減、監査記録は
 // 同じ境界に入る。行の途中で失敗すれば先行する部分的な変更は残らず、他の受理済み行は
-// 巻き戻さない (docs/contexts/identity-management/internals.md)。
+// 巻き戻さない (docs/domain/identity-management/internals.md)。
 
 import (
 	"context"

@@ -23,7 +23,7 @@ initial_context:
     - docs/design/data/database.md
     - docs/design/observability/logging.md
     - docs/README.md
-    - docs/standards.md
+    - docs/domain/standards.md
     - infra/schema/postgres.sql
     - DOCUMENTATION_GUIDE.md
   tests:

@@ -15,7 +15,7 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
   typespec: []
   source:
     - backend/oauth2/client/domain/cimd.go
@@ -47,7 +47,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/oauth2/standards.md` の 80 行を引き取る。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/oauth2/standards.md` の 80 行を引き取る。
 
 80 行は台帳全体 130 件の 6 割であり、他のどの文書よりひと桁多い。この文書だけが取り残されると、台帳は残り 8 文書を消化しても空にならず、[[wi-495-burn-down-the-standards-coverage-debt]] の最後の台帳削除が実行できない。
 
@@ -57,7 +57,7 @@ initial_context:
 
 T002 の判断により、80 行のうち 73 行の消化は子 work item 7 件が持つ。本項目が直接持つのは、`OAuth Client ID Metadata Document` の 7 行の消化と、分割の判断と起票である。
 
-- `docs/contexts/oauth2/standards.md` の `OAuth Client ID Metadata Document` 節が宣言する 7 行を消化する。
+- `docs/domain/oauth2/standards.md` の `OAuth Client ID Metadata Document` 節が宣言する 7 行を消化する。
 - 1 行ごとに、その行の `Statement` を区別できる入力と観測を持つテストを対応付け、`// <ID>: <この行の何を固定しているか>` の注記を足す。
 - 観測の形は行の `Adoption` に従う。型は [[wi-495-burn-down-the-standards-coverage-debt]] の Design が定める。
 - 消化した id を `tools/check/standards-coverage-debt.json` から外す。
@@ -210,7 +210,7 @@ T002 の判断により、80 行のうち 73 行の消化は子 work item 7 件�
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
 
-  本項目は 2 つのことをした。1 つは `docs/contexts/oauth2/standards.md` の
+  本項目は 2 つのことをした。1 つは `docs/domain/oauth2/standards.md` の
   `OAuth Client ID Metadata Document` 節が宣言する **7 行の消化**である。7 行とも、その行の `Statement` を
   区別できる入力と観測を持つテストを得て `tools/check/standards-coverage-debt.json` から消え、台帳は
   97 件から 90 件になった。テストは 1 ファイル（`backend/oauth2/client/cimd_http/standards_test.go`、
@@ -229,7 +229,7 @@ T002 の判断により、80 行のうち 73 行の消化は子 work item 7 件�
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（`CIMD00-*` の 7 件を台帳から外し、テストを書く前に）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/oauth2/standards.md` の 80 行目から 86 行目まで 7 件それぞれに
+  - **Observed Failure**: exit 1。`docs/domain/oauth2/standards.md` の 80 行目から 86 行目まで 7 件それぞれに
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`
   - **Detection Reason**: この検査は、宣言された id・テストが名指す id・台帳の 3 つを突き合わせる。台帳から

@@ -11,7 +11,7 @@ that name is what the checker validates the body against.
 
 Prose lives under `docs/`; the TypeSpec a compiler consumes lives under `spec/`. The two trees mirror each
 other at `contexts/<context>/`, so one context's specification is one name looked up in two places — the
-prose in `docs/contexts/oauth2/`, the contract in `spec/contexts/oauth2/`.
+prose in `docs/domain/oauth2/`, the contract in `spec/contexts/oauth2/`.
 
 ```text
 docs/
@@ -83,7 +83,7 @@ Each operation must inherit an OpenAPI tag from its owning context; do not leave
 Keep stable wire names when source ownership moves. Do not recreate TypeSpec constructs in Markdown or a
 project-specific YAML dialect.
 
-## 3. 正準文書
+## 3. 一次情報文書
 
 Every canonical document has exactly one H1 *(checked)*. There is no frontmatter and no fixed section set:
 the file name has already said what the file holds, so what would have been a section is now a file, and
@@ -124,7 +124,7 @@ the reason differs per context and does not fit a cell. A workspace with no cont
 such table.
 
 A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
-contexts cooperate belongs to `docs/scenarios.feature.md`, and the scenario names the participating contexts.
+contexts cooperate belongs to `docs/domain/scenarios.feature.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
 ### design-guidelines.md — 設計判断の評価方法

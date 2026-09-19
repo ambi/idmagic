@@ -73,12 +73,12 @@ type Scenario = { id: string; title: string; context: string; step: string; type
  * examples as belonging to no context — it reported them as `(unknown)`, which
  * reads as "no scenario declares this id" and is the one thing the report is
  * for. The label is parenthesized so it cannot be mistaken for a directory
- * under `docs/contexts`, the way `(unknown)` already is.
+ * under `docs/domain`, the way `(unknown)` already is.
  */
 async function scenarioDocuments(): Promise<{ context: string; path: string }[]> {
-  const contextsDir = resolve(root, 'docs/contexts')
+  const contextsDir = resolve(root, 'docs/domain')
   return [
-    { context: '(cross-context)', path: resolve(root, 'docs/scenarios.feature.md') },
+    { context: '(cross-context)', path: resolve(root, 'docs/domain/scenarios.feature.md') },
     ...(await readdir(contextsDir)).map((context) => ({
       context,
       path: resolve(contextsDir, context, 'scenarios.feature.md'),

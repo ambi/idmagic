@@ -35,8 +35,8 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を名指しするテストを対応付ける作業である。シナリオも製品の振る舞いも変えない。テストが書けない具体例が見つかった場合、それは実装が具体例のとおりに振る舞っていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/claim-mapping/scenarios.feature.md
-    - docs/contexts/workloadidentity/scenarios.feature.md
+    - docs/domain/claim-mapping/scenarios.feature.md
+    - docs/domain/workloadidentity/scenarios.feature.md
   typespec: []
   source:
     - tools/check/src/normative-coverage.ts
@@ -51,8 +51,8 @@ initial_context:
     - backend/workloadidentity/handlers_http/routes_test.go
     - backend/oauth2/handlers_http/token_exchange_handler_test.go
   stop_before_reading:
-    - docs/contexts/oauth2/scenarios.feature.md
-    - docs/contexts/authentication/scenarios.feature.md
+    - docs/domain/oauth2/scenarios.feature.md
+    - docs/domain/authentication/scenarios.feature.md
     - frontend
 ---
 
@@ -96,7 +96,7 @@ initial_context:
 
 この 3 分類は機械判定であり、危険度の順位ではない。分類が言っているのは「id を名指しするテストが無い」だけであって「振る舞いが検証されていない」ではない。逆に、`named` だからといって当の具体例を検証しているとは限らない。**分類は読む順を決める材料であり、台帳から外す根拠にはならない。**
 
-報告そのものにも 2 つの穴がある。`report-coverage-debt` は `docs/contexts/*/scenarios.feature.md` しか走査しないため、横断シナリオ `docs/scenarios.feature.md` の 4 件（`EX-PLATFORM-001-01` など）は Context 不明として `(unknown)` に落ちる。また `system` の 45 件は `backend/system` というディレクトリが無いため候補が 1 件も解決せず、全件が `none` に入る。どちらも「テストが無い」ことの証拠ではなく、報告が見ていないことの証拠である。
+報告そのものにも 2 つの穴がある。`report-coverage-debt` は `docs/domain/*/scenarios.feature.md` しか走査しないため、横断シナリオ `docs/domain/scenarios.feature.md` の 4 件（`EX-PLATFORM-001-01` など）は Context 不明として `(unknown)` に落ちる。また `system` の 45 件は `backend/system` というディレクトリが無いため候補が 1 件も解決せず、全件が `none` に入る。どちらも「テストが無い」ことの証拠ではなく、報告が見ていないことの証拠である。
 
 ## Scope
 
@@ -105,7 +105,7 @@ initial_context:
   - 当の具体例を検証しているテストが無い → 書く。具体例が拒否なら、[[wi-392-refusal-tests-assert-the-absent-effect]] が定める形（拒否応答と、拒否が防いだ効果の双方を観測する）で書く。
   - 具体例が宣言されなくなっている → 台帳から外す（検査が落ちて教える）。
 - `system` の 45 件について、どの Go パッケージのテストが所有するかを決める。
-- 横断シナリオ `docs/scenarios.feature.md` の 4 件について、所有するテストを決める。あわせて `report-coverage-debt` が同文書も走査するようにし、`(unknown)` を消す。
+- 横断シナリオ `docs/domain/scenarios.feature.md` の 4 件について、所有するテストを決める。あわせて `report-coverage-debt` が同文書も走査するようにし、`(unknown)` を消す。
 - 実装が具体例のとおりに振る舞っていないことが分かった場合は、**本 work item では直さず欠陥として切り出す**。テストの追加と実装の修正を同じ変更に混ぜると、どちらが何を意味するのか後から読めない。
 - 614 件が 0 になった時点で `example-coverage-debt.json` を落とし、`checkNormativeCoverage` へ具体例側から `debt` を渡すのをやめる。例外を持たない検査にする。
 
@@ -159,26 +159,26 @@ initial_context:
 
 | 子 | 宣言する文書 | 件数 |
 |---|---|---:|
-| [[wi-538-back-oauth2-examples-with-tests]] | `docs/contexts/oauth2/scenarios.feature.md` | 105 |
-| [[wi-539-back-authentication-examples-with-tests]] | `docs/contexts/authentication/scenarios.feature.md` | 71 |
-| [[wi-540-back-identity-management-examples-with-tests]] | `docs/contexts/identity-management/scenarios.feature.md` | 66 |
-| [[wi-541-back-system-examples-with-tests]] | `docs/contexts/system/scenarios.feature.md` | 45 |
-| [[wi-542-back-tenancy-examples-with-tests]] | `docs/contexts/tenancy/scenarios.feature.md` | 39 |
-| [[wi-543-back-application-examples-with-tests]] | `docs/contexts/application/scenarios.feature.md` | 32 |
-| [[wi-544-back-authorization-examples-with-tests]] | `docs/contexts/authorization/scenarios.feature.md` | 31 |
-| [[wi-545-back-provisioning-examples-with-tests]] | `docs/contexts/provisioning/scenarios.feature.md` | 27 |
-| [[wi-546-back-sourcing-examples-with-tests]] | `docs/contexts/sourcing/scenarios.feature.md` | 25 |
-| [[wi-547-back-jobs-examples-with-tests]] | `docs/contexts/jobs/scenarios.feature.md` | 24 |
-| [[wi-548-back-identity-governance-examples-with-tests]] | `docs/contexts/identity-governance/scenarios.feature.md` | 21 |
-| [[wi-549-back-sharedsignals-examples-with-tests]] | `docs/contexts/sharedsignals/scenarios.feature.md` | 20 |
-| [[wi-550-back-saml-examples-with-tests]] | `docs/contexts/saml/scenarios.feature.md` | 18 |
-| [[wi-551-back-api-tokens-examples-with-tests]] | `docs/contexts/api-tokens/scenarios.feature.md` | 16 |
-| [[wi-552-back-signing-keys-examples-with-tests]] | `docs/contexts/signing-keys/scenarios.feature.md` | 14 |
-| [[wi-553-back-audit-examples-with-tests]] | `docs/contexts/audit/scenarios.feature.md` | 14 |
-| [[wi-554-back-ws-federation-examples-with-tests]] | `docs/contexts/ws-federation/scenarios.feature.md` | 11 |
-| [[wi-555-back-data-keys-examples-with-tests]] | `docs/contexts/data-keys/scenarios.feature.md` | 10 |
-| [[wi-556-back-seeding-examples-with-tests]] | `docs/contexts/seeding/scenarios.feature.md` | 5 |
-| [[wi-557-back-cross-context-examples-with-tests]] | `docs/scenarios.feature.md` | 4 |
+| [[wi-538-back-oauth2-examples-with-tests]] | `docs/domain/oauth2/scenarios.feature.md` | 105 |
+| [[wi-539-back-authentication-examples-with-tests]] | `docs/domain/authentication/scenarios.feature.md` | 71 |
+| [[wi-540-back-identity-management-examples-with-tests]] | `docs/domain/identity-management/scenarios.feature.md` | 66 |
+| [[wi-541-back-system-examples-with-tests]] | `docs/domain/system/scenarios.feature.md` | 45 |
+| [[wi-542-back-tenancy-examples-with-tests]] | `docs/domain/tenancy/scenarios.feature.md` | 39 |
+| [[wi-543-back-application-examples-with-tests]] | `docs/domain/application/scenarios.feature.md` | 32 |
+| [[wi-544-back-authorization-examples-with-tests]] | `docs/domain/authorization/scenarios.feature.md` | 31 |
+| [[wi-545-back-provisioning-examples-with-tests]] | `docs/domain/provisioning/scenarios.feature.md` | 27 |
+| [[wi-546-back-sourcing-examples-with-tests]] | `docs/domain/sourcing/scenarios.feature.md` | 25 |
+| [[wi-547-back-jobs-examples-with-tests]] | `docs/domain/jobs/scenarios.feature.md` | 24 |
+| [[wi-548-back-identity-governance-examples-with-tests]] | `docs/domain/identity-governance/scenarios.feature.md` | 21 |
+| [[wi-549-back-sharedsignals-examples-with-tests]] | `docs/domain/sharedsignals/scenarios.feature.md` | 20 |
+| [[wi-550-back-saml-examples-with-tests]] | `docs/domain/saml/scenarios.feature.md` | 18 |
+| [[wi-551-back-api-tokens-examples-with-tests]] | `docs/domain/api-tokens/scenarios.feature.md` | 16 |
+| [[wi-552-back-signing-keys-examples-with-tests]] | `docs/domain/signing-keys/scenarios.feature.md` | 14 |
+| [[wi-553-back-audit-examples-with-tests]] | `docs/domain/audit/scenarios.feature.md` | 14 |
+| [[wi-554-back-ws-federation-examples-with-tests]] | `docs/domain/ws-federation/scenarios.feature.md` | 11 |
+| [[wi-555-back-data-keys-examples-with-tests]] | `docs/domain/data-keys/scenarios.feature.md` | 10 |
+| [[wi-556-back-seeding-examples-with-tests]] | `docs/domain/seeding/scenarios.feature.md` | 5 |
+| [[wi-557-back-cross-context-examples-with-tests]] | `docs/domain/scenarios.feature.md` | 4 |
 
 `oauth2` の 105 件をここでさらに割らないのは、割る根拠がまだ無いからである。**分割の判断そのものを [[wi-538-back-oauth2-examples-with-tests]] へ渡す。** 同項目は最も件数の多い規則群を通しで消化してから決める。本項目が `claim-mapping` と `workloadidentity` で採ったのと同じ順序であり、[[wi-495-burn-down-the-standards-coverage-debt]] が `oauth2` について採ったのと同じ形である。
 
@@ -207,7 +207,7 @@ initial_context:
   `mise run test-go-test -- ./backend/oauth2/handlers_http TestTokenExchangeIssuesWorkloadCredential`。
 - [x] T003 [Plan] 残る 598 件の進め方（本 work item で続けるか分割するか）を決めて記録する。
   Context ごとに 20 件へ割った。判断と根拠は Design の「T003 の判断」節。
-- [x] T004 [Tooling] `report-coverage-debt` が `docs/scenarios.feature.md` も走査するようにし、`(unknown)` を消す。
+- [x] T004 [Tooling] `report-coverage-debt` が `docs/domain/scenarios.feature.md` も走査するようにし、`(unknown)` を消す。
   `scenarioDocuments()` を足し、横断文書を `(cross-context)` として読むようにした。再実行の recipe は
   `mise run report-coverage-debt` と `mise run typecheck-tools`。
 - [ ] T005 [Ledger] 20 件の子 work item の完了を待つ。消化そのものは各子が持つ。

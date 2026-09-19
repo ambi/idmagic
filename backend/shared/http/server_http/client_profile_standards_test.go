@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/contexts/oauth2/standards.md のうち、クライアントの登録と、成立した認証方法の
+// docs/domain/oauth2/standards.md のうち、クライアントの登録と、成立した認証方法の
 // 記録を定める 2 行を観測する。
 //
 // 入口は Register が組み立てたスタックの `/register` と、`/authorize` からログインを

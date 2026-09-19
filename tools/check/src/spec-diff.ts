@@ -86,7 +86,25 @@ function deprecatedDeclarations(path: string, source: string): Set<string> {
   return declarations
 }
 
+/**
+ * 文書を移しただけの改名を、規範の変更として数えない。この道具は履歴のリビジョンを読むので、
+ * 当時のパスを現在の配置へ写してから同定する。
+ */
+const RELOCATED_DOCUMENTS = new Map([
+  ['docs/glossary.md', 'docs/domain/glossary.md'],
+  ['docs/standards.md', 'docs/domain/standards.md'],
+  ['docs/structure.md', 'docs/domain/structure.md'],
+  ['docs/scenarios.feature.md', 'docs/domain/scenarios.feature.md'],
+  ['docs/product-overview.md', 'docs/design/product-overview.md'],
+])
+
+function currentPath(path: string): string {
+  return RELOCATED_DOCUMENTS.get(path) ?? path.replace(/^docs\/contexts\//, 'docs/domain/')
+}
+
+/** 標準仕様の行は、それを所有する文書と ID で同定する。 */
 function standardRows(path: string, source: string): Map<string, string> {
+  const owner = currentPath(path)
   const rows = new Map<string, string>()
   let cells: string[] | undefined
   for (const token of markdown.parse(source, {})) {
@@ -96,7 +114,7 @@ function standardRows(path: string, source: string): Map<string, string> {
       cells.push(token.content.trim().replaceAll(/\s+/g, ' '))
     } else if (token.type === 'tr_close' && cells) {
       const id = cells[0]
-      if (id && /^[A-Z][A-Z0-9-]+$/.test(id)) rows.set(`${path}#${id}`, cells.join(' | '))
+      if (id && /^[A-Z][A-Z0-9-]+$/.test(id)) rows.set(`${owner}#${id}`, cells.join(' | '))
       cells = undefined
     }
   }
@@ -180,7 +198,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
 
     // A machine belongs to the context that owns it, not to the file that
     // happens to hold it, so moving it between files is not a change.
-    const owner = path.slice(0, Math.max(0, path.length - name.length - 1)) || path
+    const owner = currentPath(path.slice(0, Math.max(0, path.length - name.length - 1)) || path)
     const split = name === 'states.md'
     const transitions = split ? source : section(source, 'State Transitions')
     const machineHeading = split ? /^## (?!#)(.+)$/ : /^### (.+)$/
@@ -329,6 +347,17 @@ function isSpecificationSource(path: string): boolean {
   // nothing writes it any more.
   if (path.endsWith('/SPECIFICATION.md')) return true
   if (path.endsWith('/scenarios.md') || path === 'docs/scenarios.md') return true
+  // `docs/domain/` へ移す前は、これらが `docs/` 直下にあった。
+  if (
+    [
+      'docs/glossary.md',
+      'docs/standards.md',
+      'docs/structure.md',
+      'docs/scenarios.feature.md',
+      'docs/product-overview.md',
+    ].includes(path)
+  )
+    return true
   return path.endsWith('.tsp') || documentKind(path) !== undefined
 }
 

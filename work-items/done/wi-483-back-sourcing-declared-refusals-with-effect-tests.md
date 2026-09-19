@@ -8,9 +8,9 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-001 }
-  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-003 }
-  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-004 }
+  - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-001 }
+  - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-003 }
+  - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-004 }
 ---
 
 # Sourcing が宣言する未検証の拒否 3 件に効果まで確かめるテストを与え、台帳から外す

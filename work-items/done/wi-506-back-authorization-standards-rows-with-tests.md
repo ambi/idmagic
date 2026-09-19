@@ -15,7 +15,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/authorization/standards.md
+    - docs/domain/authorization/standards.md
   typespec: []
   source:
     - backend/authorization/usecases/check_access.go
@@ -38,7 +38,7 @@ initial_context:
   stop_before_reading:
     - backend/authorization/db_postgres
     - backend/oauth2
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
     - frontend
 ---
 
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/authorization/standards.md` の 5 行を引き取る。**この文書は 5 行すべてが名指しを持たない。** WsFederation と並んで、台帳の中で全滅している 2 文書のうちの 1 つである。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/authorization/standards.md` の 5 行を引き取る。**この文書は 5 行すべてが名指しを持たない。** WsFederation と並んで、台帳の中で全滅している 2 文書のうちの 1 つである。
 
 5 行が扱うのは認可の判定そのものである。`AUTHZEN-FGA-FAIL-CLOSED` は、判定できないときに拒否する側へ倒れることを宣言している。この行が守られていなければ、他の 4 行が正しくても、判定器が答えられない場面で通ってしまう。全滅している 5 行の中で最も先に観測すべき行である。
 
@@ -190,7 +190,7 @@ HTTP から入った要求が作った `AuthZRequest` を読むことにする�
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/contexts/authorization/standards.md` の 5 行に対する被覆の状態である。5 行すべてが
+  差分は `docs/domain/authorization/standards.md` の 5 行に対する被覆の状態である。5 行すべてが
   その行の `Statement` を区別できる入力と観測を持つテストを得て `tools/check/standards-coverage-debt.json`
   から消え、台帳は 6 件から 1 件になった。名指しを持つ id は 283 件から 288 件へ増えた（stash して測った）。
   新設したテストは Go 5 件（部分試験を数えると 21 件）で、**製品コードは 1 行も変わっていない**。
@@ -213,7 +213,7 @@ HTTP から入った要求が作った `AuthZRequest` を読むことにする�
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（5 件を台帳から外し、テストを書く前の状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/authorization/standards.md` の 5 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/authorization/standards.md` の 5 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（9 行目 `AUTHZEN-FGA-EVALUATION`、
     10 行目 `AUTHZEN-FGA-ACTOR-CHAIN`、11 行目 `AUTHZEN-FGA-FAIL-CLOSED`、12 行目 `AUTHZEN-FGA-SEARCH`、

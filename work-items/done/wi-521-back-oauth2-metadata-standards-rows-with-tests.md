@@ -15,13 +15,13 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md#RFC7517-JWKS
-    - docs/contexts/oauth2/standards.md#RFC8414-METADATA
-    - docs/contexts/oauth2/standards.md#RFC9728-METADATA
-    - docs/contexts/oauth2/standards.md#RFC9728-WELL-KNOWN
-    - docs/contexts/oauth2/standards.md#RFC9728-IDMAGIC-API
-    - docs/contexts/oauth2/standards.md#RFC9728-CHALLENGE
-    - docs/contexts/oauth2/standards.md#OIDC-DISCOVERY-CONFIGURATION
+    - docs/domain/oauth2/standards.md#RFC7517-JWKS
+    - docs/domain/oauth2/standards.md#RFC8414-METADATA
+    - docs/domain/oauth2/standards.md#RFC9728-METADATA
+    - docs/domain/oauth2/standards.md#RFC9728-WELL-KNOWN
+    - docs/domain/oauth2/standards.md#RFC9728-IDMAGIC-API
+    - docs/domain/oauth2/standards.md#RFC9728-CHALLENGE
+    - docs/domain/oauth2/standards.md#OIDC-DISCOVERY-CONFIGURATION
   typespec:
     - IdMagic.Contract.DiscoveryDocument
     - IdMagic.Contract.ProtectedResourceMetadata
@@ -52,7 +52,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/contexts/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 7 行を持つ。
+[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/domain/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 7 行を持つ。
 
 7 行は、クライアントとリソースサーバーが製品の設定を読む唯一の経路を定める。7 行とも `required` である。ここに書かれた内容が実際の振る舞いとずれると、適合クライアントは製品が受け付けない要求を組み立てる。
 

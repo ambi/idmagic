@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specification-first/schemas/work-item.json",
   "title": "Work Item",
-  "description": "WORK_ITEM_FORMAT.md を正本とするワークアイテムのスキーマ（同文書からの派生物）。work-items/<id>.md に置き、完了時は completion を同じファイルに追記する。",
+  "description": "WORK_ITEM_FORMAT.md を一次情報とするワークアイテムのスキーマ（同文書からの派生物）。work-items/<id>.md に置き、完了時は completion を同じファイルに追記する。",
   "type": "object",
   "required": [
     "id",
@@ -230,7 +230,7 @@
       "additionalProperties": false,
       "properties": {
         "specification": {
-          "description": "normative scenario への direct reference。docs/contexts/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN 形式。",
+          "description": "normative scenario への direct reference。docs/domain/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN 形式。",
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
@@ -265,9 +265,9 @@
             "additionalProperties": false,
             "properties": {
               "path": {
-                "description": "docs/ 直下または docs/contexts/<context>/ 直下の正本。完了済み記録が指す SPECIFICATION.md も受け付ける。",
+                "description": "docs/ 直下または docs/domain/<context>/ 直下の一次情報。完了済み記録が指す SPECIFICATION.md も受け付ける。",
                 "type": "string",
-                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|contexts/[^/]+/[^/]+)\\.md$"
+                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|domain/[^/]+/[^/]+|domain/[^/]+)\\.md$"
               },
               "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" }
             }

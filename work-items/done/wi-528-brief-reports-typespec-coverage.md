@@ -22,7 +22,7 @@ initial_context:
   stop_before_reading:
     - backend
     - frontend
-    - docs/contexts
+    - docs/domain
 spec_impact:
   kind: none
   reason: "着手時の読み取りを助ける `brief` の出力に、既存の索引から導ける項目を足すだけである。仕様も生成物も製品の振る舞いも変えない。"

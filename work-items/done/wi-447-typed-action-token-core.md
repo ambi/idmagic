@@ -15,8 +15,8 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-447.md }
 initial_context:
   specification:
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-016
-    - docs/contexts/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-017
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-016
+    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-017
   typespec: []
   source:
     - backend/authentication/password
@@ -33,8 +33,8 @@ initial_context:
     - backend/saml
     - backend/sourcing
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
-  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
 primary_use_cases:
   - id: password-reset-action-token
     requirement: REQ-AUTHENTICATION-016

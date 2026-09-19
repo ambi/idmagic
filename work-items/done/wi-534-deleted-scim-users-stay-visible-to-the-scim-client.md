@@ -15,8 +15,8 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-534.md }
 initial_context:
   specification:
-    - docs/contexts/sourcing/scenarios.feature.md#REQ-SOURCING-002
-    - docs/contexts/sourcing/standards.md
+    - docs/domain/sourcing/scenarios.feature.md#REQ-SOURCING-002
+    - docs/domain/sourcing/standards.md
   typespec:
     - IdMagic.Sourcing.Operations.GetScimUser
     - IdMagic.Sourcing.Operations.UpdateScimUser
@@ -43,9 +43,9 @@ initial_context:
     - backend/sourcing/scim/db_postgres
     - backend/sourcing/scim/domain/filter.go
 affected_spec:
-  - { path: docs/contexts/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-002 }
-  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-DELETE-SEMANTICS }
-  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-RESOURCE-OPERATIONS }
+  - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-002 }
+  - { path: docs/domain/sourcing/standards.md, requirement: RFC7644-DELETE-SEMANTICS }
+  - { path: docs/domain/sourcing/standards.md, requirement: RFC7644-RESOURCE-OPERATIONS }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Sourcing.Operations.GetScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Sourcing.Operations.UpdateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Sourcing.Operations.PatchScimUser }
@@ -87,8 +87,8 @@ RFC 7644 §3.6 は、サービス提供者が実際にレコードを消さな�
   - Group の member 射影は削除済みの User を出さない。`CreateScimGroup` / `UpdateScimGroup` / `PatchScimGroup` が削除済みの id を member として受け取ったときは `invalidValue` で拒否し、Group を変更しない。
   - Enterprise 拡張の `manager` が削除済みの User の id を指すときは `invalidValue` で拒否する。読み取りの射影も同じで、`manager_sub` が削除済みの User を指す User の応答に `manager` を載せない。
 - 削除済みと判定する状態を 1 箇所で決め、上記のすべてがその判定を通る形にする。
-- `docs/contexts/sourcing/standards.md` に、削除後の意味論を宣言する行 `RFC7644-DELETE-SEMANTICS` を足し、その id を名指すテストを同時に書く。
-- `docs/contexts/sourcing/scenarios.feature.md` の `REQ-SOURCING-002` に、削除後の到達性を観測する Example を足す。
+- `docs/domain/sourcing/standards.md` に、削除後の意味論を宣言する行 `RFC7644-DELETE-SEMANTICS` を足し、その id を名指すテストを同時に書く。
+- `docs/domain/sourcing/scenarios.feature.md` の `REQ-SOURCING-002` に、削除後の到達性を観測する Example を足す。
 - TypeSpec を宣言に合わせる。`UpdateScimUser` と `PatchScimUser` に 404 を足し、`DeleteScimUser` と `GetScimUser` の `@doc` を削除後の意味論まで含む記述にする。
 
 ## Out of Scope
@@ -242,7 +242,7 @@ RFC 7644 §3.6 は、削除済みリソースを衝突判定に含めないこ�
 
 - **Completed At**: 2026-09-12
 - **Summary**:
-  `mise run spec-diff` は、`docs/contexts/sourcing/standards.md#RFC7644-DELETE-SEMANTICS` の追加と
+  `mise run spec-diff` は、`docs/domain/sourcing/standards.md#RFC7644-DELETE-SEMANTICS` の追加と
   `REQ-SOURCING-002` の変更を返す。規範の差分はこの 2 件である。
   `REQ-SOURCING-002` の変更は `EX-SOURCING-002-05` の追加であり、既存の 4 例は動いていない。
   `mise run check-spec` は標準 156 行から 157 行、具体例 746 件から 747 件、テストが名指す id は

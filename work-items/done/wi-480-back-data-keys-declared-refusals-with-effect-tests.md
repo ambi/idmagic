@@ -8,10 +8,10 @@ change_kind: maintenance
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-001 }
-  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-003 }
-  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-004 }
-  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-005 }
+  - { path: docs/domain/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-001 }
+  - { path: docs/domain/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-003 }
+  - { path: docs/domain/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-004 }
+  - { path: docs/domain/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-005 }
 ---
 
 # DataKeys が宣言する未検証の拒否 4 件に効果まで確かめるテストを与え、台帳から外す

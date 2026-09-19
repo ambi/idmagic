@@ -13,7 +13,7 @@ documentation_impact:
   reason: 利用者向けの振る舞いは変わらず、既存の接続解放テストを依存ライブラリの非同期破棄契約へ合わせるためである。
   references: []
 initial_context:
-  specification: [docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-012]
+  specification: [docs/domain/system/scenarios.feature.md#REQ-SYSTEM-012]
   typespec: []
   source: [backend/shared/storage/db_postgres/base.go]
   tests: [backend/shared/storage/db_postgres/base_test.go]

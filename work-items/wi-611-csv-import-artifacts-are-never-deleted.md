@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/standards.md, requirement: GDPR-ERASURE }
+  - { path: docs/domain/standards.md, requirement: GDPR-ERASURE }
 ---
 
 # CSV インポートの成果物が消えず、消去した利用者の個人識別情報を持ち続ける

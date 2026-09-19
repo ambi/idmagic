@@ -15,8 +15,8 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/authentication/standards.md
-    - docs/contexts/authentication/internals.md
+    - docs/domain/authentication/standards.md
+    - docs/domain/authentication/internals.md
   typespec:
     - IdMagic.Contract.LoginSession
   source:
@@ -46,7 +46,7 @@ initial_context:
     - backend/authentication/federation/usecases/flow_test.go
     - backend/authentication/federation/usecases/broker_test.go
   stop_before_reading:
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
     - backend/oauth2
     - frontend
 ---
@@ -55,7 +55,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/authentication/standards.md` の 9 行を引き取る。この文書は 10 行のうち 9 行が名指しを持たない。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/authentication/standards.md` の 9 行を引き取る。この文書は 10 行のうち 9 行が名指しを持たない。
 
 9 行が扱うのはパスワードの規則と保管、WebAuthn の登録と認証、TOTP、認証方式の申告（`amr`）、そして認可要求の CSRF 防護である。いずれも認証そのものの強度に直結し、外部の規範が具体的な形を指定している領域である。
 
@@ -191,7 +191,7 @@ initial_context:
 - **Completed At**: 2026-09-06
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/contexts/authentication/standards.md` の 10 行のうち、名指しを持たなかった 9 行に対する
+  差分は `docs/domain/authentication/standards.md` の 10 行のうち、名指しを持たなかった 9 行に対する
   被覆の状態である。8 行がその行の `Statement` を区別できる入力と観測を持つテストを得て
   `tools/check/standards-coverage-debt.json` から消え、台帳は 130 件から 122 件になった。
   残る `RFC8176-AMR-VOCABULARY` は、行と `scenarios.feature.md` が `federated` について両立しないため
@@ -200,7 +200,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（9 件を台帳から外した状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/authentication/standards.md` の 9 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/authentication/standards.md` の 9 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`
   - **Detection Reason**: この検査は、宣言された id・テストが名指す id・台帳の 3 つを突き合わせる。

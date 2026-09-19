@@ -1,6 +1,6 @@
 package server_http
 
-// docs/contexts/saml/scenarios.feature.md の REQ-SAML-005 が宣言する具体例を、
+// docs/domain/saml/scenarios.feature.md の REQ-SAML-005 が宣言する具体例を、
 // 実際に発行した API アクセストークンで管理 API を叩いて観測する。
 //
 // スコープの判定関数だけを呼ぶテストは、判定が正しくても配線されていない実装を素通りさせる。

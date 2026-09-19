@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/contexts/sourcing/standards.md が宣言する採用規範のうち、SCIM の
+// docs/domain/sourcing/standards.md が宣言する採用規範のうち、SCIM の
 // サービス提供者としての入口 (/scim/v2/...) から観測できる行を固定する。
 
 import (

@@ -1,6 +1,6 @@
 package usecases_test
 
-// docs/standards.md の GDPR-ERASURE のうち、IdManagement が担う UserLifecycle の Purge
+// docs/domain/standards.md の GDPR-ERASURE のうち、IdManagement が担う UserLifecycle の Purge
 // 遷移を観測する。Authentication が担う資格情報の破棄は
 // backend/authentication/usecases/credential_erasure_standards_test.go が別に観測する。
 // 行が 2 つの Context を名指しているので、片方だけに注記を置くともう片方は素通りする。

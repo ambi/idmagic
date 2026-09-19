@@ -9,7 +9,7 @@ depends_on: []
 change_kind: bugfix
 spec_impact: { kind: none, reason: "契約と具体例が宣言している拒否の形に、実装が従っていない。規範は動かさず実装を合わせる。" }
 affected_spec:
-  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
 ---
 
 # Agent 管理 API が、契約の宣言に無い 404 と 409 で拒否する

@@ -15,13 +15,13 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-524-incomplete-logout-id-token-hints.md }
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-524-incomplete-logout-id-token-hints.md }
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-024 }
-  - { path: docs/contexts/oauth2/standards.md, requirement: OIDC-LOGOUT-ID-TOKEN-HINT }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-024 }
+  - { path: docs/domain/oauth2/standards.md, requirement: OIDC-LOGOUT-ID-TOKEN-HINT }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.EndSession1 }
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-024
-    - docs/contexts/oauth2/standards.md#OIDC-LOGOUT-ID-TOKEN-HINT
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-024
+    - docs/domain/oauth2/standards.md#OIDC-LOGOUT-ID-TOKEN-HINT
   typespec:
     - IdMagic.Contract.EndSession1
   source:

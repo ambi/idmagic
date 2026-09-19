@@ -8,7 +8,7 @@ created_at: 2026-09-07
 priority: p1
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/api-tokens/standards.md, requirement: RFC9449-API-TOKEN-DPOP }
+  - { path: docs/domain/api-tokens/standards.md, requirement: RFC9449-API-TOKEN-DPOP }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DpopProofClaims }
 ---
 
@@ -26,7 +26,7 @@ RFC 9449 §4.2 は `htu` を「the HTTP target URI, without query and fragment p
 
 **送信者制約付きの API アクセストークンは、適合クライアントからは 1 度も使えない。** `/token` で受け取ったトークンを持って保護リソースへ行くと、同じクライアントが同じ規則で作った証明が今度は拒否される。この経路を通せるのは、保護リソースにだけパスを送るように作り分けた非適合クライアントだけである。
 
-`docs/contexts/oauth2/internals.md:37` は「Proof の検証はパラメーター化せず、エンドポイントの種類で分ける」と書いているが、分けると書いてあるのは `ath` の要否であって `htu` の形ではない。`htu` がエンドポイントごとに違う形になることは、どの正典文書にも書かれていない。
+`docs/domain/oauth2/internals.md:37` は「Proof の検証はパラメーター化せず、エンドポイントの種類で分ける」と書いているが、分けると書いてあるのは `ath` の要否であって `htu` の形ではない。`htu` がエンドポイントごとに違う形になることは、どの正典文書にも書かれていない。
 
 ## Scope
 

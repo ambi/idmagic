@@ -16,15 +16,15 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-460.md }
 initial_context:
   specification:
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-008
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-009
-    - docs/contexts/data-keys/scenarios.feature.md#REQ-DATAKEYS-006
-    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-012
-    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-013
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-008
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-009
+    - docs/domain/data-keys/scenarios.feature.md#REQ-DATAKEYS-006
+    - docs/domain/jobs/scenarios.feature.md#REQ-JOBS-012
+    - docs/domain/jobs/scenarios.feature.md#REQ-JOBS-013
     - docs/authorization.md
-    - docs/contexts/signing-keys/decisions.md
-    - docs/contexts/data-keys/decisions.md
-    - docs/contexts/identity-management/glossary.md
+    - docs/domain/signing-keys/decisions.md
+    - docs/domain/data-keys/decisions.md
+    - docs/domain/identity-management/glossary.md
   typespec:
     - IdMagic.SigningKeys.Operations.ListTenantKeyHealth
     - IdMagic.DataKeys.Operations.ListTenantDataKeyHealth
@@ -93,11 +93,11 @@ primary_use_cases:
     unit_fault_model: 解決済み actor に対する制御面判定が、`system_admin` 以外の管理ロールでも真を返す。
     e2e_fault_model: ジョブ管理経路が制御面主体にも `admin` ロールを要求し、横断へ到達できない。
 affected_spec:
-  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-008 }
-  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-009 }
-  - { path: docs/contexts/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-006 }
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
+  - { path: docs/domain/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-008 }
+  - { path: docs/domain/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-009 }
+  - { path: docs/domain/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-006 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-012 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-013 }
   - { path: spec/contexts/signing-keys/main.tsp, symbol: IdMagic.SigningKeys.Operations.ListTenantKeyHealth }
   - { path: spec/contexts/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.ListTenantDataKeyHealth }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListJobs }
@@ -129,7 +129,7 @@ Jobs は横断範囲を作る前に `RequireAdmin` を通すため、TypeSpec �
 - `ListTenantKeyHealth` と `ListTenantDataKeyHealth` の TypeSpec 文書コメントを同じ条件へ揃える。
 - 認証済みで保留状態ではなく、有効であり、要求先と所属先がともに `default` テナントで、有効ロールに `system_admin` を含む User を返す共通の `RequireControlPlaneUser` を `support_http.Authenticator` に追加する。
 - Tenancy の制御面 CRUD、Audit の横断検索、Jobs の横断一覧、詳細参照、取消し、SigningKeys と DataKeys の横断ヘルスを共通判定へ移し、Jobs の余分な `admin` 条件を除く。
-- `docs/contexts/signing-keys/decisions.md`、`docs/contexts/data-keys/decisions.md`、`docs/contexts/identity-management/glossary.md` に残る「`system_admin` だけでよい」という説明を、制御面テナント所属と有効ロールを含む定義へ修正する。
+- `docs/domain/signing-keys/decisions.md`、`docs/domain/data-keys/decisions.md`、`docs/domain/identity-management/glossary.md` に残る「`system_admin` だけでよい」という説明を、制御面テナント所属と有効ロールを含む定義へ修正する。
 - フロントエンドの `requireSystemAccount` も、アカウント文脈の有効ロールと realm の両方を確認する。
 
 ## Out of Scope

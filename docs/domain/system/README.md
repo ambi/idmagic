@@ -4,7 +4,7 @@
 
 業務データそのものは扱わない。どのユーザーに何ができるかは記録の正を持つ各 Context が決め、この Context が決めるのは、どの経路へどの資格情報で到達できるかである。
 
-プロダクト全体が従う外部規範は [全体の標準仕様](../../standards.md)、Context を跨ぐ語は [用語集](../../glossary.md)、実行単位は [ランタイムアーキテクチャ](../../architecture/runtime.md)、信頼境界は [脅威モデル](../../design/security/threat-model.md) が持つ。実行手順と検証コマンドは仕様ではなく、リポジトリの `README.md` にある。
+プロダクト全体が従う外部規範は [全体の標準仕様](../standards.md)、Context を跨ぐ語は [用語集](../glossary.md)、実行単位は [ランタイムアーキテクチャ](../../architecture/runtime.md)、信頼境界は [脅威モデル](../../design/security/threat-model.md) が持つ。実行手順と検証コマンドは仕様ではなく、リポジトリの `README.md` にある。
 
 | 文書 | 内容 |
 |---|---|

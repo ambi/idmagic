@@ -4,12 +4,11 @@ import { verifyAgentGuidance } from './agent-guidance.ts'
 const currentGuidance = [
   {
     file: '.agents/skills/spec-change/SKILL.md',
-    source:
-      'spec/contexts/<context>/{models,main}.tsp\ndocs/contexts/<context>/scenarios.feature.md',
+    source: 'spec/contexts/<context>/{models,main}.tsp\ndocs/domain/<context>/scenarios.feature.md',
   },
   {
     file: '.agents/skills/update-design/SKILL.md',
-    source: 'docs/README.md\ndocs/structure.md\ndocs/contexts/<context>/README.md',
+    source: 'docs/README.md\ndocs/domain/structure.md\ndocs/domain/<context>/README.md',
   },
   {
     file: '.agents/skills/implement-work-item/SKILL.md',
@@ -41,7 +40,7 @@ describe('verifyAgentGuidance', () => {
     )
     expect(verifyAgentGuidance(guidance)).toContainEqual({
       file: '.agents/skills/update-design/SKILL.md',
-      message: 'is missing required marker: docs/structure.md',
+      message: 'is missing required marker: docs/domain/structure.md',
     })
   })
 

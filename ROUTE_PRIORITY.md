@@ -8,7 +8,7 @@ When the API process saturates it refuses requests from the lowest priority clas
 upward, with 503, `Retry-After`, and a `urn:idmagic:error:service_overloaded`
 Problem Details. The refusal happens after routing and before any handler, so a
 refused request changes no state. Thresholds, defaults, and the operational
-reasoning live in `docs/contexts/system/decisions.md`; the degradation order they implement is
+reasoning live in `docs/domain/system/decisions.md`; the degradation order they implement is
 normative in `docs/design/performance/capacity.md`.
 
 A route reachable both unprefixed and under `/realms/{tenant_id}/…` appears once:

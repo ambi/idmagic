@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/contexts/oauth2/standards.md のうち、発行済みトークンの提示・内省・失効・
+// docs/domain/oauth2/standards.md のうち、発行済みトークンの提示・内省・失効・
 // 送信者制約に立つ 13 行を観測する。
 //
 // 入口は Register が組み立てたスタックの `/userinfo`、`/introspect`、`/revoke` である。

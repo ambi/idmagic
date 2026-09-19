@@ -11,15 +11,15 @@ evidence_policy: risk-based-v2
 initial_context:
   specification:
     - docs/README.md
-    - docs/structure.md
+    - docs/domain/structure.md
     - docs/deployment.md
     - docs/capacity.md
     - docs/threat-model.md
-    - docs/contexts/system/decisions.md
-    - docs/contexts/jobs/decisions.md
-    - docs/contexts/audit/internals.md
-    - docs/contexts/audit/scenarios.feature.md#REQ-AUDIT-002
-    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-003
+    - docs/domain/system/decisions.md
+    - docs/domain/jobs/decisions.md
+    - docs/domain/audit/internals.md
+    - docs/domain/audit/scenarios.feature.md#REQ-AUDIT-002
+    - docs/domain/provisioning/scenarios.feature.md#REQ-PROVISIONING-003
   typespec:
     - IdMagic.Contract.AdminAuditEventResponse
     - IdMagic.Contract.AuditEventQuery
@@ -38,8 +38,8 @@ initial_context:
     - tools/check/src
   stop_before_reading: [frontend, infra, load]
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-002 }
-  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-003 }
+  - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-002 }
+  - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-003 }
 ---
 
 # ドメインイベントの契約と配信意味論を仕様として持つ
@@ -48,13 +48,13 @@ affected_spec:
 
 `docs/README.md` の Context Map は `IdManagement --Events: lifecycle--> IdGovernance`、`IdManagement --Events: lifecycle--> Provisioning`、`Authentication --Events: audit facts--> Audit` など、公開イベントによる関係を 6 本宣言している。ところが、その関係の契約はどこにも仕様化されていない。
 
-モデルと API の契約は TypeSpec が持ち、`mise run check-api-compat` がリリース済み OpenAPI ベースラインとの互換性を検査する。イベントにはその対応物が無い。具象のドメインイベントは `backend/<context>/domain/events.go` にあり、`backend/shared/spec/events.go` がエンベロープのインターフェースとワイヤ表現への変換を持つ、と `docs/structure.md` が述べるだけで、イベントのスキーマ、フィールドの意味、バージョニング、互換性の保証はコードが唯一の正本になっている。Context Map が公開関係として宣言しているものの契約が仕様に無い、という状態である。
+モデルと API の契約は TypeSpec が持ち、`mise run check-api-compat` がリリース済み OpenAPI ベースラインとの互換性を検査する。イベントにはその対応物が無い。具象のドメインイベントは `backend/<context>/domain/events.go` にあり、`backend/shared/spec/events.go` がエンベロープのインターフェースとワイヤ表現への変換を持つ、と `docs/domain/structure.md` が述べるだけで、イベントのスキーマ、フィールドの意味、バージョニング、互換性の保証はコードが唯一の正本になっている。Context Map が公開関係として宣言しているものの契約が仕様に無い、という状態である。
 
 正本が失われた痕跡も残っている。`spec/contexts/audit/models.tsp` は `AdminAuditEventResponse.payload` を「the payload in the events section of the specification」と説明し、`AuditEventQuery.type` と `AuditEventSearchOptionsResponse.event_types` も同じ「events section」を指す。この節は SCL の廃止 (`1b7b2cef`、2026-08-11) とともに消えており、**外部に公開している API の説明が、存在しない仕様の節を指したまま残っている**。
 
-配信の意味論も同じ穴を持つ。`docs/contexts/jobs/decisions.md` は「配送は少なくとも 1 回とし、冪等性はハンドラーの責務とする。ちょうど 1 回を基盤側で保証しようとすると、プロセスの異常終了と完了報告の競合を塞ぎきれないからである」という優れた判断を持つが、これは Jobs Context のローカルな判断であって、Context 間の `Events` 関係全体に効く規範ではない。順序、重複、遅延、再生について、製品全体としてどこまで保証しどこから保証しないかを述べた場所が無い。
+配信の意味論も同じ穴を持つ。`docs/domain/jobs/decisions.md` は「配送は少なくとも 1 回とし、冪等性はハンドラーの責務とする。ちょうど 1 回を基盤側で保証しようとすると、プロセスの異常終了と完了報告の競合を塞ぎきれないからである」という優れた判断を持つが、これは Jobs Context のローカルな判断であって、Context 間の `Events` 関係全体に効く規範ではない。順序、重複、遅延、再生について、製品全体としてどこまで保証しどこから保証しないかを述べた場所が無い。
 
-状態変更とイベント発行の原子性も未文書化である。リポジトリ全体を検索しても Outbox に相当する記述は 1 件も出てこない。監査を製品の重要な性質として扱い、`docs/standards.md` が `GDPR-PROCESSING-RECORDS` として監査記録の保持を約束している以上、「状態は変わったがイベントは出なかった」が起こりうるのかどうかは、全体規範として答えられていなければならない。`docs/capacity.md` の縮退順序も「監査イベントを黙って破棄することは縮退手段に含めない」と述べているが、破棄されないことを何が保証するかは書かれていない。
+状態変更とイベント発行の原子性も未文書化である。リポジトリ全体を検索しても Outbox に相当する記述は 1 件も出てこない。監査を製品の重要な性質として扱い、`docs/domain/standards.md` が `GDPR-PROCESSING-RECORDS` として監査記録の保持を約束している以上、「状態は変わったがイベントは出なかった」が起こりうるのかどうかは、全体規範として答えられていなければならない。`docs/capacity.md` の縮退順序も「監査イベントを黙って破棄することは縮退手段に含めない」と述べているが、破棄されないことを何が保証するかは書かれていない。
 
 容量の面でも、`docs/capacity.md` はジョブレーンごとの実行枠の算出まではあるが、消費者の遅れ、再生、イベントの保持期間を扱っていない。
 
@@ -75,7 +75,7 @@ affected_spec:
 ## Out of Scope
 
 - Outbox パターンの実装。現状の記述と負債の把握までを担い、原子性が保証されていない経路の是正は経路ごとに別の work item が扱う。
-- 専用のキューミドルウェアやイベントストアの導入。`docs/contexts/jobs/decisions.md` の「運用するデータストアを増やさない」という判断は本件では覆さない。
+- 専用のキューミドルウェアやイベントストアの導入。`docs/domain/jobs/decisions.md` の「運用するデータストアを増やさない」という判断は本件では覆さない。
 - イベントの外部公開。SharedSignals による SET の配信は既に独自の契約（RFC 8417）を持ち、本件の対象外である。
 - Audit の Read Model の再設計。
 - **214 件すべてのイベント payload の TypeSpec 宣言**。Design で述べるとおり、契約の対象は公開項目の語彙であって Context 内部の項目ではない。内部の項目まで宣言すると、検査されない写しが 214 個できる。
@@ -121,11 +121,11 @@ Context Map はこの辺を 4 本しか宣言していないが、実際に閉�
 
 ### 配信意味論と実現方法は、別々のファイルが持つ
 
-**実現方法**（どの辺がどの機構で実現されているか、公開項目の語彙が何であるか）は `docs/structure.md` に置く。この文書は依存の向き、層、アーキテクチャスタイルを持ち、既に `domain/events.go` の配置規則と Anti-Corruption Layer の置き方を持っている。辺の実体はその隣にある事実である。
+**実現方法**（どの辺がどの機構で実現されているか、公開項目の語彙が何であるか）は `docs/domain/structure.md` に置く。この文書は依存の向き、層、アーキテクチャスタイルを持ち、既に `domain/events.go` の配置規則と Anti-Corruption Layer の置き方を持っている。辺の実体はその隣にある事実である。
 
 **保証**（何を保証し何を保証しないか）は `docs/deployment.md` に置く。この文書は実行単位と可用性を持ち、「Availability and shared state」で既に、何が永続で何が一時か、再試行が安全か、障害時にフェイルクローズするかを述べている。イベントが失われうるかどうかは同じ種類の問いである。
 
-**非採用の判断**は `docs/contexts/system/decisions.md` に置く。配信点を所有する Context の判断だからである。
+**非採用の判断**は `docs/domain/system/decisions.md` に置く。配信点を所有する Context の判断だからである。
 
 ### 効果の境界
 
@@ -142,22 +142,22 @@ diffEventFieldVocabulary(declared, consumed): { missing: string[]; undeclared: s
 ## Plan
 
 1. TypeSpec に封筒と公開項目の語彙を宣言し、`spec/contexts/audit/models.tsp` の「events section」への 3 箇所の参照をこの宣言へ向け直す。
-2. `docs/structure.md` に辺の実現方法と公開項目の語彙を書く。
+2. `docs/domain/structure.md` に辺の実現方法と公開項目の語彙を書く。
 3. `docs/README.md` の Context Map を実態へ合わせる。`Events: lifecycle` の 2 本を `OHS/PL` へ改め、`Events: audit facts` を実際に発行する Context へ広げ、セキュリティ通知の辺を足す。
 4. `docs/deployment.md` に配信意味論の全体規範を書く。守られている保証だけを保証として書き、原子性の欠落は保証しないと明記する。
 5. `docs/capacity.md` に消費者の遅れ、再生、保持を Planning assumption として加える。
-6. `docs/contexts/system/decisions.md` にストリーミング基盤の非採用判断を、再開の条件とともに書く。
+6. `docs/domain/system/decisions.md` にストリーミング基盤の非採用判断を、再開の条件とともに書く。
 7. `check-event-contract` の RED を観測してから実装する。
 
 ## Tasks
 
 - [x] T001 [Baseline] `Events` の 6 本の辺の実現方法、運ばれるイベント、発行の原子性を経路ごとに調査する。結果は Design に記録した。
 - [x] T002 [Spec] 封筒と公開項目の語彙を `spec/contexts/system/models.tsp` へ宣言し、`spec/contexts/audit/models.tsp` の宙に浮いた参照を向け直す。`mise run check-spec` と `mise run check-api-compat`。
-- [x] T003 [Spec] `docs/structure.md` に辺の実現方法、公開項目の語彙、後方互換の規則を書く。
+- [x] T003 [Spec] `docs/domain/structure.md` に辺の実現方法、公開項目の語彙、後方互換の規則を書く。
 - [x] T004 [Spec] `docs/README.md` の Context Map を実態へ合わせる。
 - [x] T005 [Spec] `docs/deployment.md` に配信意味論の全体規範と、原子性が保証されていない経路を書く。
 - [x] T006 [Spec] `docs/capacity.md` に消費者の遅れ、再生、保持を Planning assumption として加える。
-- [x] T007 [Spec] `docs/contexts/system/decisions.md` に非採用判断を書く。
+- [x] T007 [Spec] `docs/domain/system/decisions.md` に非採用判断を書く。
 - [x] T008 [Acceptance] `mise run check-event-contract` が語彙の不一致で落ちることを、宣言を入れる前に観測する。
 - [x] T009 [App] Unit RED を確認してから `diffEventFieldVocabulary` と 2 つの抽出関数を実装し、`mise run check-event-contract` を GREEN にする。
 - [x] T010 [Verify] `mise run verify`。
@@ -187,7 +187,7 @@ Context Map の辺を書き換える影響は本 work item に閉じない。[[w
 - **Completed At**: 2026-08-29
 - **Summary**:
   `mise run spec-diff` が出したのは `spec/contexts/system/models.tsp` への `DomainEventEnvelope` と `DomainEventPayload` の追加 2 件だけである。規範シナリオ、状態遷移の行、規範 ID はいずれも増減していない。ドメインイベントの契約が、今回はじめて機械が読める形で仕様に載った。
-  この出力が成果物の全体を映していないことは、そのまま [[wi-442-spec-diff-does-not-see-standards-rows]] の Motivation の裏付けになる。`docs/structure.md` の Cross-context events、`docs/deployment.md` の Domain event delivery、`docs/contexts/system/decisions.md` の非採用判断、`docs/README.md` の Context Map の 3 辺の書き換えは、いずれも `spec-diff` の視野に入らない。
+  この出力が成果物の全体を映していないことは、そのまま [[wi-442-spec-diff-does-not-see-standards-rows]] の Motivation の裏付けになる。`docs/domain/structure.md` の Cross-context events、`docs/deployment.md` の Domain event delivery、`docs/domain/system/decisions.md` の非採用判断、`docs/README.md` の Context Map の 3 辺の書き換えは、いずれも `spec-diff` の視野に入らない。
 - **Acceptance RED Evidence**:
   - **Test**: `bun run check/src/check-event-contract.ts`（`mise run check-event-contract` として登録する前の直接実行）。
   - **Requirement**: N/A: 製品の振る舞いを変えない。REQ-AUDIT-002 と REQ-PROVISIONING-003 は本 work item が記述した配信経路が満たしている既存の規範であり、変更の対象ではない。
@@ -214,6 +214,6 @@ Context Map の辺を書き換える影響は本 work item に閉じない。[[w
   | M8 | 出力の整列をやめる | KILLED |
   | M9 | `undeclared` を常に空にする | KILLED |
 
-  **手法の限界**：変異は抽出と差分の計算だけを対象にしており、抽出点の一覧そのもの（`check-event-contract.ts` の `CONSUMERS`）は変異させていない。Context をまたいで payload を読む第 4 の箇所が将来加わっても、この検査は気付かない。一覧が実態を覆っているかを守るのは、`docs/structure.md` の Cross-context events を読んだ人間のレビューであって、この検査ではない。
+  **手法の限界**：変異は抽出と差分の計算だけを対象にしており、抽出点の一覧そのもの（`check-event-contract.ts` の `CONSUMERS`）は変異させていない。Context をまたいで payload を読む第 4 の箇所が将来加わっても、この検査は気付かない。一覧が実態を覆っているかを守るのは、`docs/domain/structure.md` の Cross-context events を読んだ人間のレビューであって、この検査ではない。
 - **Verification Results**:
   - `mise run verify` - passed

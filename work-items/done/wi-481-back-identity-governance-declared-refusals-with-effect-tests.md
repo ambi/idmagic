@@ -8,10 +8,10 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-006 }
-  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-007 }
-  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-011 }
-  - { path: docs/contexts/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-012 }
+  - { path: docs/domain/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-006 }
+  - { path: docs/domain/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-007 }
+  - { path: docs/domain/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-011 }
+  - { path: docs/domain/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-012 }
 ---
 
 # IdentityGovernance が宣言する未検証の拒否 4 件に効果まで確かめるテストを与え、台帳から外す

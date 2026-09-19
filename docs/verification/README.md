@@ -1,11 +1,11 @@
 # 検証設計
 
 システム要求を満たしたと判断する証拠の種類、実行境界、合否条件への入口を持つ。
-テストコード、CI の実行結果、作業項目の RED と変更耐性の証拠はそれぞれの正本に残し、この文書へ結果を複製しない。
+テストコード、CI の実行結果、作業項目の RED と変更耐性の証拠はそれぞれの一次情報に残し、この文書へ結果を複製しない。
 
 ## 担当範囲
 
-| 問い | 正本 |
+| 問い | 一次情報 |
 | --- | --- |
 | どの要求をどの証拠で満たしたと判断するか | この文書と子文書 |
 | テストの水準、境界、実物にする依存、テストダブルの選び方 | [テスト方針](../development/testing.md) |
@@ -17,7 +17,7 @@
 
 検証設計は「単体テスト設計」や「E2E テスト設計」に相当する文書を持たない。
 テストの水準は、何を確かめるかではなく、どの公開境界と依存を実物にするかで選ぶ設計であり、[テスト方針](../development/testing.md)が水準ごとの目的と境界を定めている。
-同じ観点の正本を二つ置くと、片方だけが更新される。
+同じ観点の一次情報を二つ置くと、片方だけが更新される。
 検証設計が持つのは、要求の側から見てどの証拠を必要とするかであり、その証拠をどう書くかではない。
 
 ## 子文書
@@ -38,9 +38,9 @@
 
 | 要求 | 証拠 | 実行 | 合否条件 | 実行環境 |
 | --- | --- | --- | --- | --- |
-| 正本文書と TypeSpec の規範の形式、ID、参照、生成物 | 静的解析 | `mise run check-spec`、`mise run verify-spec` | 形式、ID の一意性、参照の解決、再生成した成果物との一致がすべて成立する | リポジトリ内 |
+| 一次情報文書と TypeSpec の規範の形式、ID、参照、生成物 | 静的解析 | `mise run check-spec`、`mise run verify-spec` | 形式、ID の一意性、参照の解決、再生成した成果物との一致がすべて成立する | リポジトリ内 |
 | Context の規範シナリオ `REQ-*` | 単体、アダプター統合、受け入れ | `mise run test-go-race`、`mise run test-ui-unit` | 当該 ID を `//spec:covers` で名指すテストが通る | リポジトリ内 |
-| [全体の標準仕様](../standards.md)と Context の標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-coverage-debt-ratchet`、`mise run report-coverage-debt` | テストを持たない規範 ID を新たに増やさない | リポジトリ内 |
+| [全体の標準仕様](../domain/standards.md)と Context の標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-coverage-debt-ratchet`、`mise run report-coverage-debt` | テストを持たない規範 ID を新たに増やさない | リポジトリ内 |
 | 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査 | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run check-api-compat` | 宣言と実装に差が無く、公開済みの契約を壊す変更が無い | リポジトリ内 |
 | 利用者経路とブラウザー固有の振る舞い | E2E | `mise run test-ui-e2e` | 正式な入口から最終効果までが実配線で成立する | リポジトリ内 |
 | WCAG 2.2 のアクセシビリティ規範 | 単体、E2E | `mise run test-ui-unit`、`mise run test-ui-e2e` | 当該規範 ID を名指すテストが通る | リポジトリ内 |

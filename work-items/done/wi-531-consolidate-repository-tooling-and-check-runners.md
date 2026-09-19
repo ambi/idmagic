@@ -39,7 +39,7 @@ initial_context:
     - backend
     - frontend
     - spec
-    - docs/contexts
+    - docs/domain
 ---
 
 # リポジトリツールの責任を整理し、検査の実行基盤をまとめる

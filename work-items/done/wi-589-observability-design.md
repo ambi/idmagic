@@ -65,7 +65,7 @@ initial_context:
 - 計装の実装。分散トレースの実装と検証は [[wi-107-opentelemetry-distributed-tracing]] が扱う。
 - アラートの追加と runbook の整備。[[wi-290-alert-runbook-catalog-and-on-call-operations]] が扱う。
 - SLO の値と測定境界。[品質要求](../../docs/requirements/quality.md)が正本である。
-- 監査イベント。診断ログではなく業務記録であり、[Audit](../../docs/contexts/audit/README.md) が持つ。
+- 監査イベント。診断ログではなく業務記録であり、[Audit](../../docs/domain/audit/README.md) が持つ。
 - 監視基盤のデプロイ構成。[[wi-584-ground-deployment-design-in-reference-profiles]] が扱う。
 
 ## Design

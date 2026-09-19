@@ -23,7 +23,7 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 - 仕様が二通りに読める。実装は片方を選び、テストは同じ読み方から書かれ、両者は一致する。
 - 規範文書どうしが矛盾する。`states.md` の遷移表が禁じる遷移を `scenarios.feature.md` の `ALT` が許す、といった形で、どちらも単独では検査を通る。
 
-これは仮説ではない。`REQ-OAUTH2-009` は PAR の `request_uri` について `THEN その PAR レコードの状態は "Used"` までを書いているが、**同じ `request_uri` を二度目に提示したときに何が起きるか**を書いていない。一度限りの使用は `docs/contexts/oauth2/states.md` の状態表と `docs/contexts/oauth2/internals.md` に書かれており、実装も RFC 9126 に従っている。しかし `SPECIFICATION_FORMAT.md` §6 は「セキュリティ制御が責任を負う拒否は観測可能な振る舞いであり、シナリオに書く」と定めている。二度目の提示を受理してもなお `REQ-OAUTH2-009` に反しない実装が書けるのだから、この規範要素は一度限りの使用を規定していない。`wi-418` の被覆ゲートを入れても、名指しするテストが 1 件あれば通ってしまう。
+これは仮説ではない。`REQ-OAUTH2-009` は PAR の `request_uri` について `THEN その PAR レコードの状態は "Used"` までを書いているが、**同じ `request_uri` を二度目に提示したときに何が起きるか**を書いていない。一度限りの使用は `docs/domain/oauth2/states.md` の状態表と `docs/domain/oauth2/internals.md` に書かれており、実装も RFC 9126 に従っている。しかし `SPECIFICATION_FORMAT.md` §6 は「セキュリティ制御が責任を負う拒否は観測可能な振る舞いであり、シナリオに書く」と定めている。二度目の提示を受理してもなお `REQ-OAUTH2-009` に反しない実装が書けるのだから、この規範要素は一度限りの使用を規定していない。`wi-418` の被覆ゲートを入れても、名指しするテストが 1 件あれば通ってしまう。
 
 不足しているのは検査の厳しさではなく、**実装前に一度だけ立てる問い**である。
 
@@ -68,11 +68,11 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
   - element: REQ-OAUTH2-009
     counterexample: 使用済みの request_uri を二度目に受理して認可コードを再発行する実装も、この scenario に反しない。
     disposition: strengthened
-    resolution: docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-009
+    resolution: docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-009
   - element: Product.OAuth2.Operations.PushedAuthorizationRequest
     counterexample: expires_in を 600 ちょうどで返し続ける実装も、TypeSpec の制約に反しない。
     disposition: refuted
-    resolution: docs/contexts/oauth2/states.md#par-request-uri
+    resolution: docs/domain/oauth2/states.md#par-request-uri
 ```
 
 `element` は `affected_spec` が名指しした規範 ID、標準 ID、または TypeSpec シンボルと一致する。`counterexample` は「仕様を満たしたまま誤っている実装」を 1 文で述べる。`disposition` と `resolution` の対応は次のとおり固定する。
@@ -116,7 +116,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 
 **`REQ-JOBS-003`（`refuted` になる例）。** 反例の候補は「`dedup_key` を見ずに毎回通知する実装」だが、これは `THEN ハンドラーは dedup_key を用いて冪等に判定し、重複した通知を送らない` が直接排除している。`resolution` はその `THEN` を持つシナリオ ID 自身になる。反例が立たない要素が存在すること自体は健全であり、契約は反例の存在を強制しない。強制するのは、立たなかったときに根拠を名指しすることである。
 
-**並行性の例（`undetermined` になる例）。** リースの期限切れと完了報告が同時に起きたときの順序は、`docs/contexts/jobs/decisions.md` が「停止時の回復は明示的な再投入ではなくリースの自然な期限切れに委ねる」と決めており、その帰結として一部の順序を規定しないままにしている。反例は書けるが、規定しないことが決定である。この形が `undetermined` であり、`decisions.md` に再検討の条件を伴って残る。work item の Out of Scope に書いて完了ファイルへ移動させると、仕様を読む人には二度と見えない。
+**並行性の例（`undetermined` になる例）。** リースの期限切れと完了報告が同時に起きたときの順序は、`docs/domain/jobs/decisions.md` が「停止時の回復は明示的な再投入ではなくリースの自然な期限切れに委ねる」と決めており、その帰結として一部の順序を規定しないままにしている。反例は書けるが、規定しないことが決定である。この形が `undetermined` であり、`decisions.md` に再検討の条件を伴って残る。work item の Out of Scope に書いて完了ファイルへ移動させると、仕様を読む人には二度と見えない。
 
 ### 性質と反証
 

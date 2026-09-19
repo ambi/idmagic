@@ -62,7 +62,7 @@ CPU で詰まって拒否が起きている場合は、CPU 使用率が上がる
 ## アドミッションコントロール
 
 アドミッションコントロールは、`idmagic-api` のプロセスが、同時に処理しているリクエストの数を優先度クラスごとの上限と比べ、上限を超えたリクエストをハンドラーへ渡さずに拒否する仕組みである。
-機構の正しさの論証は [System Context の内部設計](../../contexts/system/internals.md#admission-control)に書く。
+機構の正しさの論証は [System Context の内部設計](../../domain/system/internals.md#admission-control)に書く。
 
 | 項目 | 内容 |
 | --- | --- |

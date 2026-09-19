@@ -8,7 +8,7 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-002 }
+  - { path: docs/domain/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-002 }
 ---
 
 # ApiTokens が宣言する未検証の拒否 1 件に効果まで確かめるテストを与え、台帳から外す

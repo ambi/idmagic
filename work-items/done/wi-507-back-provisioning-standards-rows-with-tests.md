@@ -15,7 +15,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/provisioning/standards.md
+    - docs/domain/provisioning/standards.md
   typespec:
     - IdMagic.Contract.GroupPushConfig
   source:
@@ -40,7 +40,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/provisioning/standards.md` の 1 行を引き取る。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/provisioning/standards.md` の 1 行を引き取る。
 
 **この文書は 13 行のうち 12 行が既に名指しを持つ。** [[wi-238-scim-inbound-list-query-conformance]] の適合作業が id を名指すテストを書いたからであり、消化が可能であることの実例になっている。残る 1 行は `RFC7643-OUT-GROUP-RESOURCES` だけで、採用は `partial` である。**12 行を書いた作業がこの 1 行だけを残したという事実そのものが、この行の観測が他の 12 行と違う形を要求している徴候である。** 単に忘れられただけなのか、`partial` の境界が書きにくかったのかを、まずそこから読む。
 
@@ -50,7 +50,7 @@ initial_context:
 - その行の `Statement` を区別できる入力と観測を持つテストを対応付け、`// RFC7643-OUT-GROUP-RESOURCES: <この行の何を固定しているか>` の注記を足す。
 - `partial` の観測は、採用した範囲の振る舞いと、採用していない範囲がどう扱われるか（拒否するのか、単に提供しないのか）の両方を持つ。
 - 消化した id を `tools/check/standards-coverage-debt.json` から外す。
-- 12 行が既に消化されているので、この行が消えた時点で `docs/contexts/provisioning/standards.md` は台帳から完全に外れる。
+- 12 行が既に消化されているので、この行が消えた時点で `docs/domain/provisioning/standards.md` は台帳から完全に外れる。
 
 ## Out of Scope
 
@@ -76,7 +76,7 @@ initial_context:
 2. 行の `Statement` が引いている採用の境界を読み、境界の内側と外側それぞれの観測を決める。
 3. 境界の内側を消化する。
 4. 境界の外側を、拒否なのか非提供なのかに合わせて消化する。
-5. `standards-coverage-debt.json` から `RFC7643-OUT-GROUP-RESOURCES` を外し、`docs/contexts/provisioning/standards.md` が台帳から完全に外れたことを確かめる。
+5. `standards-coverage-debt.json` から `RFC7643-OUT-GROUP-RESOURCES` を外し、`docs/domain/provisioning/standards.md` が台帳から完全に外れたことを確かめる。
 
 ## Tasks
 
@@ -107,7 +107,7 @@ initial_context:
 ## Verification
 
 - `RFC7643-OUT-GROUP-RESOURCES` が `tools/check/standards-coverage-debt.json` から消えている。
-- `docs/contexts/provisioning/standards.md` の行が 1 つも台帳に残っていない。
+- `docs/domain/provisioning/standards.md` の行が 1 つも台帳に残っていない。
 - 注記を足したテストについて、対応する production の判断を崩すとそのテストが落ちる。
 - `mise run check-spec`
 - `mise run verify`
@@ -123,7 +123,7 @@ initial_context:
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無く、
-  **製品コードも 1 行も変わっていない**。差分は `docs/contexts/provisioning/standards.md` の
+  **製品コードも 1 行も変わっていない**。差分は `docs/domain/provisioning/standards.md` の
   `RFC7643-OUT-GROUP-RESOURCES` に対する被覆の状態である。この 1 行が
   `tools/check/standards-coverage-debt.json` から消え、**台帳の `untested` は空になった**。台帳に残る
   文書はもう無く、名指しを持つ id は 288 件から 289 件へ増えた。
@@ -151,7 +151,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（`RFC7643-OUT-GROUP-RESOURCES` を台帳から外し、テストを書く前の状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/provisioning/standards.md:11: RFC7643-OUT-GROUP-RESOURCES
+  - **Observed Failure**: exit 1。`docs/domain/provisioning/standards.md:11: RFC7643-OUT-GROUP-RESOURCES
     is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.` 報告はこの 1 行だけだった。
   - **Detection Reason**: 検査は、宣言された id・テストが名指す id・台帳の 3 つを突き合わせる。台帳から

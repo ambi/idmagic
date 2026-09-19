@@ -14,4 +14,4 @@ WI-524 は、`/end_session` が `id_token_hint` からログアウト対象を�
 
 `id_token_hint` の有効期限の扱いは変わっていない。`exp` を過ぎたヒントは、それだけを理由に拒否されない。CIBA が `id_token_hint` から利用者を解決する経路も変わっていない。CIBA は `sid` を持たない ID Token をヒントに使うため、`sid` の必須化はログアウトの経路だけに置いた。
 
-規範上の条件は [REQ-OAUTH2-024](../../contexts/oauth2/scenarios.feature.md#rule-req-oauth2-024-rp-initiated-logout-は-id_token_hint-からセッションとクライアントを特定する) と [OIDC-LOGOUT-ID-TOKEN-HINT](../../contexts/oauth2/standards.md#openid-connect-rp-initiated-logout-10) が定める。
+規範上の条件は [REQ-OAUTH2-024](../../domain/oauth2/scenarios.feature.md#rule-req-oauth2-024-rp-initiated-logout-は-id_token_hint-からセッションとクライアントを特定する) と [OIDC-LOGOUT-ID-TOKEN-HINT](../../domain/oauth2/standards.md#openid-connect-rp-initiated-logout-10) が定める。

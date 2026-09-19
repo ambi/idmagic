@@ -15,11 +15,11 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/standards.md
-    - docs/contexts/oauth2/states.md
-    - docs/contexts/identity-management/states.md
-    - docs/contexts/audit/decisions.md
-    - docs/contexts/audit/internals.md
+    - docs/domain/standards.md
+    - docs/domain/oauth2/states.md
+    - docs/domain/identity-management/states.md
+    - docs/domain/audit/decisions.md
+    - docs/domain/audit/internals.md
   typespec:
     - spec/contexts/oauth2/models.tsp
   source:
@@ -63,9 +63,9 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/standards.md` の 7 行を引き取る。この文書は 8 行のうち 7 行が名指しを持たない。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/standards.md` の 7 行を引き取る。この文書は 8 行のうち 7 行が名指しを持たない。
 
-`docs/standards.md` は「二つ以上の Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるもの」だけを置くと自ら宣言している。**この 7 行が他の文書の行と違うのは、どのパッケージのテストが所有するかが決まっていない点である。** WCAG 22 の 4 行はフロントエンド、GDPR の 3 行は複数の Context にまたがり、行そのものが担い手を名指している（`GDPR-ERASURE` は IdManagement の Purge 遷移と Authentication の資格情報破棄）。所有を先に決めないと、名指しが 1 箇所に付いて残りの Context が素通りする。
+`docs/domain/standards.md` は「二つ以上の Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるもの」だけを置くと自ら宣言している。**この 7 行が他の文書の行と違うのは、どのパッケージのテストが所有するかが決まっていない点である。** WCAG 22 の 4 行はフロントエンド、GDPR の 3 行は複数の Context にまたがり、行そのものが担い手を名指している（`GDPR-ERASURE` は IdManagement の Purge 遷移と Authentication の資格情報破棄）。所有を先に決めないと、名指しが 1 箇所に付いて残りの Context が素通りする。
 
 ## Scope
 
@@ -120,7 +120,7 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
 
 `GDPR-ERASURE` だけが 2 つの担い手を持つので、テストも注記も 2 つのパッケージへ置く。他の 6 行は担い手が 1 つである。
 
-`GDPR-PROCESSING-RECORDS` の所有は 1 か所だが、**行が名指す Context と実装の位置がずれている。** 行は「保持期間は Audit Context が定める」と書き、`docs/contexts/audit/decisions.md` も保持を宣言しているのに、期間を計算して適用するのは `backend/authentication/usecases/retention.go` の `RetentionPolicy` である。監査レコードと削除境界（`AuditEventRepository` / `DeleteOlderThan`）だけが `backend/audit` にある。観測は両方をまたぐ必要があるので、`RunRetentionSweep` を呼ぶ側、つまり `backend/authentication/usecases` に置く。位置のずれそのものは規範ではなく構造の話なので、本項目では動かさない。
+`GDPR-PROCESSING-RECORDS` の所有は 1 か所だが、**行が名指す Context と実装の位置がずれている。** 行は「保持期間は Audit Context が定める」と書き、`docs/domain/audit/decisions.md` も保持を宣言しているのに、期間を計算して適用するのは `backend/authentication/usecases/retention.go` の `RetentionPolicy` である。監査レコードと削除境界（`AuditEventRepository` / `DeleteOlderThan`）だけが `backend/audit` にある。観測は両方をまたぐ必要があるので、`RunRetentionSweep` を呼ぶ側、つまり `backend/authentication/usecases` に置く。位置のずれそのものは規範ではなく構造の話なので、本項目では動かさない。
 
 ### WCAG 22 の 2 行を E2E に、2 行を単体テストに置く理由
 
@@ -144,7 +144,7 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
 
 ### 観測の型
 
-4 行はいずれも `required` なので、型は [[wi-495-burn-down-the-standards-coverage-debt]] が定めた「宣言した振る舞いが、製品の正式な入口から到達できること」である。`docs/standards.md` の行はどれも `required` で、`excluded` や `partial` の型は本項目には要らない。
+4 行はいずれも `required` なので、型は [[wi-495-burn-down-the-standards-coverage-debt]] が定めた「宣言した振る舞いが、製品の正式な入口から到達できること」である。`docs/domain/standards.md` の行はどれも `required` で、`excluded` や `partial` の型は本項目には要らない。
 
 `Statement` に動詞が 2 つあれば観測も 2 つ要るという [[wi-495-burn-down-the-standards-coverage-debt]] の読み方を、7 行すべてに当てる。
 
@@ -224,7 +224,7 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/standards.md` の 8 行のうち、名指しを持たなかった 7 行に対する被覆の状態である。
+  差分は `docs/domain/standards.md` の 8 行のうち、名指しを持たなかった 7 行に対する被覆の状態である。
   7 行すべてがその行の `Statement` を区別できる入力と観測を持つテストを得て
   `tools/check/standards-coverage-debt.json` から消え、台帳は 104 件から 97 件になった。
   新設したテストは Go 4 件、フロントエンドの単体 4 件、ブラウザー E2E 2 件の計 10 件で、
@@ -233,7 +233,7 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
   IdManagement と Authentication の 2 つのパッケージに注記と観測を置いた。
   **欠陥を 2 件見つけ、どちらも切り出した。** Purge の cascade が WebAuthn 資格情報と
   リカバリコードを消していないこと（[[wi-513-purge-leaves-webauthn-credentials-and-recovery-codes]]）と、
-  監査記録の保持について `docs/contexts/audit/decisions.md` の決定（7 年、削除の入口なし）と
+  監査記録の保持について `docs/domain/audit/decisions.md` の決定（7 年、削除の入口なし）と
   実装（365/90/30 日、`DeleteOlderThan` を一括処理から公開）が食い違っていること
   （[[wi-514-audit-retention-decision-and-sweep-disagree]]）である。**どちらも行そのものは
   満たしたままなので、7 行の消化は成立している。** 前者は `GDPR-ERASURE` が名指す資格情報の
@@ -254,7 +254,7 @@ GDPR の 3 行は、いずれも「後から効く」性質を持つ。`GDPR-CON
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（7 件を台帳から外し、テストを書く前の状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/standards.md` の 7 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/standards.md` の 7 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（13 行目 `WCAG22-KEYBOARD` から
     26 行目 `GDPR-PROCESSING-RECORDS` まで 7 件）

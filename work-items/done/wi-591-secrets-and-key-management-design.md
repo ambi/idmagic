@@ -17,11 +17,11 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-001
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-008
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-012
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-036
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-037
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-001
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-008
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-012
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-036
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-037
   typespec: []
   source:
     - DOCUMENTATION_GUIDE.md
@@ -34,14 +34,14 @@ initial_context:
     - docs/design/infrastructure/network.md
     - docs/architecture/deployment.md
     - docs/runbooks/backup-restore-dr.md
-    - docs/contexts/data-keys/README.md
-    - docs/contexts/data-keys/states.md
-    - docs/contexts/data-keys/internals.md
-    - docs/contexts/data-keys/decisions.md
-    - docs/contexts/signing-keys/README.md
-    - docs/contexts/signing-keys/states.md
-    - docs/contexts/signing-keys/internals.md
-    - docs/contexts/signing-keys/decisions.md
+    - docs/domain/data-keys/README.md
+    - docs/domain/data-keys/states.md
+    - docs/domain/data-keys/internals.md
+    - docs/domain/data-keys/decisions.md
+    - docs/domain/signing-keys/README.md
+    - docs/domain/signing-keys/states.md
+    - docs/domain/signing-keys/internals.md
+    - docs/domain/signing-keys/decisions.md
     - backend/cmd/internal/bootstrap/config.go
     - backend/cmd/internal/bootstrap/sharedconfig.go
     - backend/cmd/internal/bootstrap/apiconfig.go
@@ -93,7 +93,7 @@ initial_context:
 
 ## Out of Scope
 
-- 個別 Context の鍵ライフサイクルの詳細。[Data Keys](../../docs/contexts/data-keys/README.md) と [Signing Keys](../../docs/contexts/signing-keys/README.md) が正本である。
+- 個別 Context の鍵ライフサイクルの詳細。[Data Keys](../../docs/domain/data-keys/README.md) と [Signing Keys](../../docs/domain/signing-keys/README.md) が正本である。
 - 暗号方式の選択と実装。エンベロープ暗号の設計は [データベース設計](../../docs/design/data/database.md#可逆な秘密情報のエンベロープ暗号)が持つ。
 - 鍵のローテーション運用の実装。[[wi-307-datakeys-rotation-lifecycle-operations]] が扱う。
 - FIPS 準拠の暗号プロファイル。[[wi-296-fips-approved-cryptography-profile]] が扱う。

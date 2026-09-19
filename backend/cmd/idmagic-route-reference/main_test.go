@@ -1,6 +1,6 @@
 package main
 
-// docs/contexts/system/scenarios.feature.md の REQ-SYSTEM-019 が宣言する、生成物と分類の
+// docs/domain/system/scenarios.feature.md の REQ-SYSTEM-019 が宣言する、生成物と分類の
 // 突き合わせを、この command の入口から観測する。
 //
 // 生成器そのものの中身は server_http の側のテストが持つ。ここで観測するのは突き合わせで

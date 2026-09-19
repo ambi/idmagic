@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-008 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-008 }
 ---
 
 # 明示選択した表示言語が `ui_locales` ヒントに負ける
@@ -17,7 +17,7 @@ affected_spec:
 
 [[wi-541-back-system-examples-with-tests]] が `EX-SYSTEM-008-02` を消化しようとして、シナリオと実装が食い違っていることを測った。
 
-`EX-SYSTEM-008-02` は「表示言語を `ja` と明示選択済みの EndUser へ `ui_locales=en` の認可リクエストが来ても、ログイン画面は `ja` 辞書で表示される」と述べる。[System の用語集](../docs/contexts/system/glossary.md)の `DisplayLanguage` も「選択はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する」と述べている。
+`EX-SYSTEM-008-02` は「表示言語を `ja` と明示選択済みの EndUser へ `ui_locales=en` の認可リクエストが来ても、ログイン画面は `ja` 辞書で表示される」と述べる。[System の用語集](../docs/domain/system/glossary.md)の `DisplayLanguage` も「選択はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する」と述べている。
 
 実装の解決順は `frontend/src/lib/i18n/resolveLocale.ts` にあり、**`ui_locales` ヒント > 保存済み設定 > ブラウザー言語 > 起動時の既定**である。明示選択を保存する先は `localStorage` の `idmagic.displayLocale` だけで (`context.tsx` の `writeSavedLocale`)、その値は「保存済み設定」として読み直される。したがって:
 
@@ -31,7 +31,7 @@ affected_spec:
 - 次のどちらが正かを決める。**決めるまでテストを書かない。** どちらを選んでも、いま台帳に残っている `EX-SYSTEM-008-02` を消化できる。
   - 解決順を「保存済みの明示選択 > `ui_locales` ヒント」に変える。用語集の記述と `EX-SYSTEM-008-02` はそのまま通る。OP が `ui_locales` で指定した言語を RP が上書きできなくなる影響を評価する。
   - シナリオを変える。`ui_locales` は RP の意図として明示選択より優先する、と規範側を書き直す。用語集の `DisplayLanguage` の記述も併せて直す。
-- 決めた側に応じて、`resolveLocale.ts` または `docs/contexts/system/scenarios.feature.md` と用語集を変える。
+- 決めた側に応じて、`resolveLocale.ts` または `docs/domain/system/scenarios.feature.md` と用語集を変える。
 - `EX-SYSTEM-008-02` を名指すテストを書き、`tools/check/example-coverage-debt.json` から外す。
 
 ## Out of Scope

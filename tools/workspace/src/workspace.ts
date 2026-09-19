@@ -199,7 +199,7 @@ async function listDirectories(root: string, directory: string): Promise<string[
     return []
   }
   return entries
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
     .map((entry) => entry.name)
     .sort((a, b) => a.localeCompare(b))
 }
@@ -221,17 +221,11 @@ export async function listCanonicalDirectories(root = WORKSPACE_ROOT): Promise<D
       if (!FREELY_NAMED_DOCUMENT_DIRECTORIES.has(child)) pending.push(child)
     }
   }
-  for (const name of await listDirectories(root, 'docs/contexts')) {
-    listings.push({
-      directory: `docs/contexts/${name}`,
-      files: await listFiles(root, `docs/contexts/${name}`),
-    })
-  }
   return listings
 }
 
 /**
- * 分割配置の正本文書。配置が定める名前だけを返すので、隣にある無関係な Markdown を
+ * 分割配置の一次情報文書。配置が定める名前だけを返すので、隣にある無関係な Markdown を
  * 仕様の原稿と取り違えることはない。そのファイルが存在してよいかどうかを問うのは
  * `verifyCanonicalDocumentSet` であってここではない。対象を集める操作が落ちると、
  * 差分を読むだけの操作まで未登録のファイルを理由に落ちることになる。

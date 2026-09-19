@@ -38,7 +38,7 @@ SCL と `decisions/` は撤去済みだが、そこを指すポインタが残�
   導出された」と説明している。生成 OpenAPI 経由で API 利用者にも見える。
 - wi-359 で追加した cross-context 配置規約が「root `SPECIFICATION.md` に `REQ-SYSTEM-NNN` を置く」と
   書いているが、実際には root は Overview と Design だけで Scenarios を持たず、context 横断シナリオは
-  `docs/contexts/system/SPECIFICATION.md` が所有している（同文書の Overview がそう宣言している）。
+  `docs/domain/system/SPECIFICATION.md` が所有している（同文書の Overview がそう宣言している）。
   規約の側が実態と食い違っている。
 
 ## Scope
@@ -111,7 +111,7 @@ SCL と `decisions/` は撤去済みだが、そこを指すポインタが残�
   tenancy の PasswordPolicyDefaults、`just check-boundaries`）へ付け替え、既に存在しない coherence
   test への言及を削除した。`ListAdminRolePolicies` の `@doc` から SCL の語を外した。
   加えて wi-359 で入れた cross-context 配置規約の誤りを修正した。root `SPECIFICATION.md` は Overview
-  と Design だけで Scenarios を持たず、context 横断シナリオは `docs/contexts/system/SPECIFICATION.md`
+  と Design だけで Scenarios を持たず、context 横断シナリオは `docs/domain/system/SPECIFICATION.md`
   が所有している。`SPECIFICATION_FORMAT.md` は製品非依存に「cross-context view の所有を宣言している
   文書に置く」とし、`spec-change` skill でこのリポジトリの所有者を示した。この誤りは、wi-360 で入れた
   `initial_context` の参照解決検査が本 work item 自身の `REQ-SYSTEM-001` 参照を落として発覚した。

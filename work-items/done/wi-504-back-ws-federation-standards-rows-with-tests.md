@@ -15,7 +15,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/ws-federation/standards.md
+    - docs/domain/ws-federation/standards.md
   typespec: []
   source:
     - backend/wsfederation/domain/wsfed.go
@@ -49,7 +49,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/ws-federation/standards.md` の 6 行を引き取る。**この文書だけが 6 行すべて名指しを持たない。** 台帳の中で全滅している唯一の文書である。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/ws-federation/standards.md` の 6 行を引き取る。**この文書だけが 6 行すべて名指しを持たない。** 台帳の中で全滅している唯一の文書である。
 
 一方で `backend/wsfederation` にはテストが揃っている。`wsfed_handler_test.go`、`federation_metadata_test.go`、`rstr_test.go`、`assertion_test.go`、`wsfed_test.go`、それに `rst_fuzz_test.go` と `wsfed_fuzz_test.go` がある。つまり 6 行の全滅は、検証が無いからではなく、名指しが無いからである可能性が高い。**それでも注記だけを足す解消は認めない。** 既存のテストが行の `Statement` を区別できているかを読み、区別できていない行にはテストを足す。
 
@@ -185,7 +185,7 @@ initial_context:
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/contexts/ws-federation/standards.md` の 6 行に対する被覆の状態である。6 行すべてが
+  差分は `docs/domain/ws-federation/standards.md` の 6 行に対する被覆の状態である。6 行すべてが
   その行の `Statement` を区別できる入力と観測を持つテストを得て `tools/check/standards-coverage-debt.json`
   から消え、台帳は 17 件から 11 件になった。名指しを持つ id は 270 件から 276 件へ増えた。
   新設したテストは Go 6 件（部分試験を数えると 14 件）で、**製品コードは 1 行も変わっていない**。
@@ -210,7 +210,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（6 件を台帳から外し、テストを書く前の状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/ws-federation/standards.md` の 6 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/ws-federation/standards.md` の 6 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（9 行目 `WSFed-PassiveSignIn`、10 行目
     `WSFed-SilentSignIn`、18 行目 `WSTrust13-IssueBearer`、19 行目 `WSTrust13-WindowsTransport`、

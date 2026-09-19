@@ -15,9 +15,9 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-580.md }
 initial_context:
   specification:
-    - docs/contexts/application/scenarios.feature.md#REQ-APPLICATION-003
-    - docs/contexts/application/scenarios.feature.md#REQ-APPLICATION-004
-    - docs/contexts/api-tokens/standards.md#RFC9700-API-TOKEN-AUDIENCE
+    - docs/domain/application/scenarios.feature.md#REQ-APPLICATION-003
+    - docs/domain/application/scenarios.feature.md#REQ-APPLICATION-004
+    - docs/domain/api-tokens/standards.md#RFC9700-API-TOKEN-AUDIENCE
     - docs/design/security/authorization.md
     - docs/design/application/api-rules.md
   typespec:
@@ -42,8 +42,8 @@ initial_context:
     - frontend
     - backend/application/db_postgres
 affected_spec:
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-003 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-004 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-003 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-004 }
   - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListAdminApplications }
   - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListMyApplications }
   - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.GetMyApplicationOrder }

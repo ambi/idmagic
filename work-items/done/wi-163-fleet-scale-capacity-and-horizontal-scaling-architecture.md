@@ -7,15 +7,15 @@ created_at: 2026-07-10
 change_kind: operations
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-001
     - docs/README.md
     - docs/deployment.md
     - docs/observability.md
-    - docs/structure.md
-    - docs/contexts/audit/decisions.md
-    - docs/contexts/authentication/internals.md
-    - docs/contexts/jobs/internals.md
-    - docs/contexts/oauth2/internals.md
+    - docs/domain/structure.md
+    - docs/domain/audit/decisions.md
+    - docs/domain/authentication/internals.md
+    - docs/domain/jobs/internals.md
+    - docs/domain/oauth2/internals.md
   typespec:
     - IdMagic.System.Operations.MetricsExposition
     - IdMagic.OAuth2.Operations.RegisterClient
@@ -40,14 +40,14 @@ initial_context:
     - frontend
     - infra
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # 1000万ユーザー、10万テナント規模の容量目標と水平スケール参照構成を定義する
 
 ## Motivation
 
-SCL の `objectives` は `dc0961d0` で削除され、後続の `1b7b2cef` で仕様が TypeSpec と正典文書へ移行した際にも移送先が作られなかった。このため、`REQ-SYSTEM-001` は Prometheus が OAuth2 の可用性、レイテンシー、エラー率の目標を評価すると規定している一方、現在の `spec/` にはその目標値が存在しない。`docs/observability.md` は評価に使うメトリクスを定め、`docs/structure.md` は SLO をサービス分割の判断材料に挙げているが、どちらも目標値の正典ではない。
+SCL の `objectives` は `dc0961d0` で削除され、後続の `1b7b2cef` で仕様が TypeSpec と正典文書へ移行した際にも移送先が作られなかった。このため、`REQ-SYSTEM-001` は Prometheus が OAuth2 の可用性、レイテンシー、エラー率の目標を評価すると規定している一方、現在の `spec/` にはその目標値が存在しない。`docs/observability.md` は評価に使うメトリクスを定め、`docs/domain/structure.md` は SLO をサービス分割の判断材料に挙げているが、どちらも目標値の正典ではない。
 
 フリート全体の容量前提も未定義である。1000万ユーザー、10万テナントを扱うという目標だけでは、同時アクティブ数、オブジェクト数、保持期間、ストレージ成長、集中時間帯の要求率が決まらず、API レプリカ数、PostgreSQL 接続数、ワーカー実行枠を算出できない。計画上の仮定と実測済みの上限を区別しなければ、参照構成が目標を満たすかどうかも判断できない。
 
@@ -77,7 +77,7 @@ SCL の `objectives` は `dc0961d0` で削除され、後続の `1b7b2cef` で�
 
 ### 正典文書の分担
 
-フリート全体の決定は Context 固有の `decisions.md` には置かない。`docs/contexts/system/decisions.md` はシステム入口の境界を所有しており、データ層とワーカーを含むフリート全体はその責務を超える。実行単位と接続関係は `docs/deployment.md`、想定規模、目標値、限界の決め方、縮退順序は `docs/capacity.md` に置く。変更時に検討した代替案と判断履歴は本 work item に残し、ADR は作成しない。
+フリート全体の決定は Context 固有の `decisions.md` には置かない。`docs/domain/system/decisions.md` はシステム入口の境界を所有しており、データ層とワーカーを含むフリート全体はその責務を超える。実行単位と接続関係は `docs/deployment.md`、想定規模、目標値、限界の決め方、縮退順序は `docs/capacity.md` に置く。変更時に検討した代替案と判断履歴は本 work item に残し、ADR は作成しない。
 
 `docs/capacity.md` だけにトポロジも集約する案は採らない。容量の数値を変えずに実行単位や接続関係だけを変更する場合があり、両者を同じ文書に置くと変更理由とレビュー対象が混ざるためである。
 

@@ -15,7 +15,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.feature.md
+    - docs/domain/system/scenarios.feature.md
   typespec: []
   source:
     - tools/check/src/normative-coverage.ts
@@ -61,7 +61,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/system/scenarios.feature.md` が宣言する 45 件を引き取る。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/domain/system/scenarios.feature.md` が宣言する 45 件を引き取る。
 
 親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
@@ -180,7 +180,7 @@ EX-SYSTEM-001-01 と 001-03 の `Then` は `infra/` の資材について述べ�
 
 ## Verification
 
-- `mise run check-spec` が、`docs/contexts/system/scenarios.feature.md` の 45 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
+- `mise run check-spec` が、`docs/domain/system/scenarios.feature.md` の 45 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
 - 消化したテストの所属パッケージに対する `mise run test-go-package -- <package>`。
 - `mise run verify`
 
@@ -215,7 +215,7 @@ EX-SYSTEM-001-01 と 001-03 の `Then` は `infra/` の資材について述べ�
   - **Test**: `mise run check-spec`
   - **Requirement**: REQ-SYSTEM-016
   - **Observed Failure**: 対象 45 件を台帳から外した状態で、45 件すべてを名指しで落とした。例:
-    `docs/contexts/system/scenarios.feature.md:7: EX-SYSTEM-001-01 is declared, but no test names it.`
+    `docs/domain/system/scenarios.feature.md:7: EX-SYSTEM-001-01 is declared, but no test names it.`
   - **Detection Reason**: 検査は「その id を名指したテストが存在するか」だけを見る。
     台帳から外したうえで落ちることを先に観測しているので、通ったことはディレクティブが実在することを意味する。
     ディレクティブの中身が空でないことは検査では読めないため、そこは各テストで `Then` の数だけ観測を置き、

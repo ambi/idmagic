@@ -17,19 +17,19 @@ initial_context:
   specification:
     - docs/authorization.md
     - docs/deployment.md
-    - docs/standards.md
+    - docs/domain/standards.md
     - docs/capacity.md
     - docs/database.md
     - docs/observability.md
-    - docs/scenarios.feature.md#REQ-PLATFORM-001
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-009
-    - docs/contexts/authorization/scenarios.feature.md#REQ-AUTHORIZATION-005
-    - docs/contexts/tenancy/scenarios.feature.md#REQ-TENANCY-009
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-015
-    - docs/contexts/data-keys/scenarios.feature.md#REQ-DATAKEYS-005
-    - docs/contexts/workloadidentity/scenarios.feature.md#REQ-WORKLOADIDENTITY-002
-    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-006
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-005
+    - docs/domain/scenarios.feature.md#REQ-PLATFORM-001
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-009
+    - docs/domain/authorization/scenarios.feature.md#REQ-AUTHORIZATION-005
+    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-009
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-015
+    - docs/domain/data-keys/scenarios.feature.md#REQ-DATAKEYS-005
+    - docs/domain/workloadidentity/scenarios.feature.md#REQ-WORKLOADIDENTITY-002
+    - docs/domain/jobs/scenarios.feature.md#REQ-JOBS-006
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-005
   typespec: []
   source:
     - tools/check/src/specification-doc.ts
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-この製品はアイデンティティプロバイダーであり、認証、認可、テナント境界、暗号鍵、プロトコル互換を扱う。それにもかかわらず、`docs/` に脅威モデルの正本が無い。`docs/authorization.md` は主体とスコープとテナント境界を定め、`docs/standards.md` は準拠する外部規範を宣言し、`docs/deployment.md` は実行単位と配備の構成を示すが、いずれも「何が攻撃されうるか」を列挙したものではない。`docs/README.md` の索引は `docs/deployment.md` が信頼境界を持つと述べていたが、実際には同文書に信頼境界の記述は無く、宣言だけが残っていた。
+この製品はアイデンティティプロバイダーであり、認証、認可、テナント境界、暗号鍵、プロトコル互換を扱う。それにもかかわらず、`docs/` に脅威モデルの正本が無い。`docs/authorization.md` は主体とスコープとテナント境界を定め、`docs/domain/standards.md` は準拠する外部規範を宣言し、`docs/deployment.md` は実行単位と配備の構成を示すが、いずれも「何が攻撃されうるか」を列挙したものではない。`docs/README.md` の索引は `docs/deployment.md` が信頼境界を持つと述べていたが、実際には同文書に信頼境界の記述は無く、宣言だけが残っていた。
 
 その結果、検証の効き方に構造的な偏りが生じている。`DEVELOPMENT.md` の「Testing a refusal」と `checkRefusalCoverage` は、実装された制御が正しく拒否することをきわめて強く保証する。「拒否と応答してから操作を実行してしまう実装」を捕まえるところまで踏み込んでおり、実際にそれが出荷されて全行被覆を保ったまま生き延びた事例まで記録されている。しかしこの仕組みが答えられるのは「宣言された制御が働いているか」だけである。**制御そのものが最初から無い**場合、宣言も無く、シナリオも無く、テストも無く、`security-refusal-debt.json` にも載らない。何も落ちない。
 
@@ -74,7 +74,7 @@ initial_context:
 
 置き場所は `docs/` 直下とする。`SPECIFICATION_FORMAT.md` が `docs/authorization.md` について述べる理由がそのまま当てはまる。「認可を確認しに来た人が欲しいのは、製品の認可であって、1 つの Context の取り分ではない」。脅威も同じで、Context ごとに分割すると、複数の Context にまたがる攻撃経路——たとえばテナント境界を越える経路や、認証から認可へ主体が伝播する経路——を書く場所が無くなる。ファイル集合が閉じているため、`SPECIFICATION_FORMAT.md` の配置図と検査器の許可リストを同時に更新する。wi-415 が同じ操作を行うため、実装が前後する場合は結論を共有する。
 
-分類の枠組みは STRIDE を採る。理由は、脅威の見落としを防ぐための網としては十分に粗く、かつこの製品の主要な関心（なりすまし、改竄、否認、情報漏洩、サービス拒否、権限昇格）を素直に覆うからである。攻撃木や攻撃ライブラリを採らないのは、網羅性の主張が弱く、維持の費用が高いためである。LINDDUN については、`docs/standards.md` が GDPR の消去と処理記録を既に規範として持ち、`docs/contexts/audit/` が個人識別情報の変換を持っているため、privacy の分類を全面的に導入する価値があるかを T002 で判断する。
+分類の枠組みは STRIDE を採る。理由は、脅威の見落としを防ぐための網としては十分に粗く、かつこの製品の主要な関心（なりすまし、改竄、否認、情報漏洩、サービス拒否、権限昇格）を素直に覆うからである。攻撃木や攻撃ライブラリを採らないのは、網羅性の主張が弱く、維持の費用が高いためである。LINDDUN については、`docs/domain/standards.md` が GDPR の消去と処理記録を既に規範として持ち、`docs/domain/audit/` が個人識別情報の変換を持っているため、privacy の分類を全面的に導入する価値があるかを T002 で判断する。
 
 脅威と制御の対応の形式は、`docs/capacity.md` の `SLO-*` に倣って安定 ID を持つ表とする。他の文書とテストがこの ID を参照でき、ID から `spec-where` で引ける。制御の側は既存の ID（`REQ-*`、規範 ID）を参照し、新しい ID 体系を制御の側に作らない。二重の命名を避けるためである。
 
@@ -109,7 +109,7 @@ initial_context:
 新しい文脈のエージェントによる独立検証で 14 件の指摘を受け、うち実質的な欠陥 13 件を是正した。検証者は識別子の実在性 139 件をすべて再確認したうえで、**引用の妥当性**に踏み込んだ。以下は是正した内容である。
 
 - **THREAT-068 の制御 3 つがいずれも脅威に応えていなかった。** `REQ-PROVISIONING-001` は管理 API のスコープ、`REQ-PLATFORM-003` は配信のトランザクション、`GDPR-PROCESSING-RECORDS` は事後の記録であり、「誤った接続先へ送る」ことを防ぐものは 1 つも無かった。同じファイルに実在する `REQ-PROVISIONING-002`（`base_url` の https と内部 IP の拒否）、`REQ-PROVISIONING-015`（テナント境界）、`REQ-PROVISIONING-018`（フェイルクローズ）へ差し替えた。
-- **THREAT-072 の `covered` が過大主張だった。** `docs/contexts/jobs/internals.md` は「`JobKind` ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない」と明言しており、同型の THREAT-022 を `planned` としながらこちらを `covered` とする根拠が無かった。`planned` へ移し、wi-427 の Scope を投入元別の偏りまで広げた。
+- **THREAT-072 の `covered` が過大主張だった。** `docs/domain/jobs/internals.md` は「`JobKind` ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない」と明言しており、同型の THREAT-022 を `planned` としながらこちらを `covered` とする根拠が無かった。`planned` へ移し、wi-427 の Scope を投入元別の偏りまで広げた。
 - **`planned` が「何も無い」と「あるが規範化されていない」を区別できなかった。** THREAT-012、THREAT-062、THREAT-082 は制御が皆無ではなく、それぞれゲートウェイへの要求、runbook の指示、固定した依存バージョンが実在する。`Controls` にその部分的な保護を書き、応える規範が 1 つも無い行だけを `—` とする規則を定めた。欠落の可視化がこの文書の唯一の存在理由である以上、この混同は中心的な弱点だった。
 - **THREAT-001 の `OIDC-CORE-CSRF` は別種の CSRF だった。** フェデレーションの callback における `state` の照合であり、ファーストパーティーのセッション CSRF には応えない。削除した。
 - **THREAT-061 が `REQ-SYSTEM-016` を引き忘れていた。** 脅威はログ側にも及ぶが、引かれていたのは設定リファレンス側だけだった。
@@ -142,11 +142,11 @@ initial_context:
 
 実装中に、承認範囲の外にある欠陥を 1 件見つけた。是正は本 work item では行わず、wi-430 として切り出した。
 
-`SPECIFICATION_FORMAT.md` は「The file set and the file names are *(checked)* for `docs/` and `docs/contexts/<context>/`; anything else at those two levels is not a canonical document and is rejected.」と述べるが、**拒否されない**。`tools/workspace/src/workspace.ts` の `scanCanonicalDocuments` は許可リストに一致する名前だけを拾う絞り込みであり、一致しないファイルは黙って無視される。したがって `docs/` 直下に置いた未登録の Markdown は、検証もされず、生成される仕様サイトにも現れず、何も落とさないまま存在できる。
+`SPECIFICATION_FORMAT.md` は「The file set and the file names are *(checked)* for `docs/` and `docs/domain/<context>/`; anything else at those two levels is not a canonical document and is rejected.」と述べるが、**拒否されない**。`tools/workspace/src/workspace.ts` の `scanCanonicalDocuments` は許可リストに一致する名前だけを拾う絞り込みであり、一致しないファイルは黙って無視される。したがって `docs/` 直下に置いた未登録の Markdown は、検証もされず、生成される仕様サイトにも現れず、何も落とさないまま存在できる。
 
 これは本 work item の Acceptance RED の設計を直接覆した。当初は「新しいファイルを置くと `check-spec` が拒否する」ことを RED として予定していたが、実際には exit 0 で通る。代わりに、正本文書として不正な本文（二重の H1）を置いても検証されないことを RED とし、許可リストへの登録によって同じ本文が落ちるようになることを GREEN とした。この差し替えは規範の変更ではなく、証拠の境界の選び直しなので、再承認は要していない。
 
-wi-418 が扱う「宣言されているが検査されていない」という同じ型の欠陥であり、`docs/standards.md` の被覆の主張と並ぶ 2 件目である。
+wi-418 が扱う「宣言されているが検査されていない」という同じ型の欠陥であり、`docs/domain/standards.md` の被覆の主張と並ぶ 2 件目である。
 
 ## Verification
 

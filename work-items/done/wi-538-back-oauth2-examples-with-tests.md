@@ -15,10 +15,10 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-001
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-002
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-003
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-004
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-001
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-002
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-003
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-004
   typespec: []
   source:
     - backend/oauth2/handlers_http/routes.go
@@ -43,7 +43,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/oauth2/scenarios.feature.md` が宣言する 105 件を引き取った。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/domain/oauth2/scenarios.feature.md` が宣言する 105 件を引き取った。
 
 親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
@@ -168,7 +168,7 @@ initial_context:
 - **Completed At**: 2026-09-12
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範は 1 行も動いていない。
-  変わったのは 2 つである。`docs/contexts/oauth2/scenarios.feature.md` の REQ-OAUTH2-002、REQ-OAUTH2-003、
+  変わったのは 2 つである。`docs/domain/oauth2/scenarios.feature.md` の REQ-OAUTH2-002、REQ-OAUTH2-003、
   REQ-OAUTH2-004 が宣言する 6 件のうち 5 件が、その id を名指しするテストから到達されるようになったこと
   （台帳は 573 件から 568 件へ減った）。そして、残る 99 件の割り方が測定にもとづいて決まり、
   5 つの子 work item として存在するようになったことである。製品コードは 1 行も変えていない。

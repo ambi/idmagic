@@ -14,4 +14,4 @@
 
 データ移行と設定変更は要らない。`id_token_hint` の有効期限の扱いも変わっていないため、`exp` を過ぎたヒントはこれまでどおり受理される。
 
-互換性境界は [REQ-OAUTH2-024](../../contexts/oauth2/scenarios.feature.md#rule-req-oauth2-024-rp-initiated-logout-は-id_token_hint-からセッションとクライアントを特定する) と [OIDC-LOGOUT-ID-TOKEN-HINT](../../contexts/oauth2/standards.md#openid-connect-rp-initiated-logout-10) が定める。
+互換性境界は [REQ-OAUTH2-024](../../domain/oauth2/scenarios.feature.md#rule-req-oauth2-024-rp-initiated-logout-は-id_token_hint-からセッションとクライアントを特定する) と [OIDC-LOGOUT-ID-TOKEN-HINT](../../domain/oauth2/standards.md#openid-connect-rp-initiated-logout-10) が定める。

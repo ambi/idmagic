@@ -20,7 +20,7 @@ initial_context:
     - backend
     - frontend
     - spec
-    - docs/contexts
+    - docs/domain
 spec_impact: { kind: none, reason: "検査を減らす変更であり、製品の振る舞いも公開契約も変えない。" }
 ---
 

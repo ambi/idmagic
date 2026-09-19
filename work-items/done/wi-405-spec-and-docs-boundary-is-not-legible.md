@@ -3,7 +3,7 @@ depends_on: []
 status: completed
 authors: [tn]
 initial_context:
-  specification: [docs/README.md, docs/structure.md]
+  specification: [docs/README.md, docs/domain/structure.md]
   source: [DOCUMENTATION_GUIDE.md, SPECIFICATION_FORMAT.md, DEVELOPMENT.md, tools/check/src/specification-doc.ts, mise.toml]
   tests: [tools/check/src/specification-doc.test.ts]
   stop_before_reading: [backend, frontend, work-items/done]
@@ -33,7 +33,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 | ガイドが置く場所 | このリポジトリの実態 |
 |---|---|
 | `docs/build.md`、`docs/ci.md`、`docs/testing.md` | `DEVELOPMENT.md`（ルート）、`README.md` の「主なコマンド」、`mise.toml` |
-| `docs/product-overview.md` | `README.md`（[[wi-404-repository-entrance-documents-are-missing]] で「対象外」節を追加） |
+| `docs/design/product-overview.md` | `README.md`（[[wi-404-repository-entrance-documents-are-missing]] で「対象外」節を追加） |
 | `operations/runbooks/` | `infra/runbooks/` |
 | `operations/backup-and-recovery.md` | `infra/runbooks/backup-restore-dr.md` |
 | `operations/reliability.md` | 無い。サービス目標は `spec/capacity.md` にある（[[wi-400-service-objectives-need-stable-ids]]） |
@@ -55,10 +55,10 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 
 - `SPECIFICATION_FORMAT.md` の `ROOT_DOCUMENTS` / `CONTEXT_DOCUMENTS` **が何を含むか**。集合を適用する場所を `spec/` から `docs/` へ移すだけで、文書の種類を増減する判断は別の問題である。
 
-  例外が 1 件ある。**`product-overview.md` を `ROOT_DOCUMENTS` に足した。** ガイド §4 と §9.2 が `docs/product-overview.md` を挙げるのに集合へ入っていないと、その名前で作った瞬間に検査が「正規文書ではない」と拒否する。ガイドと検査が食い違う状態は本 work item が診断した病そのものなので、ここだけは直した。
+  例外が 1 件ある。**`product-overview.md` を `ROOT_DOCUMENTS` に足した。** ガイド §4 と §9.2 が `docs/design/product-overview.md` を挙げるのに集合へ入っていないと、その名前で作った瞬間に検査が「正規文書ではない」と拒否する。ガイドと検査が食い違う状態は本 work item が診断した病そのものなので、ここだけは直した。
 - 方法論文書（`DEVELOPMENT.md`、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md`、`DOCUMENTATION_GUIDE.md`）自身の置き場所。別リポジトリへ抽出する想定があるため、ルートに残す。`docs/development/` へ入れるかどうかはその抽出と一緒に決まる。
 - `docs/development/` と `docs/operations/` の中身を書くこと。ガイドが場所を定めるだけで、`build.md` や `reliability.md` を新しく書き起こしはしない。該当する内容が無いファイルは作らない（§3）。
-- `docs/scenarios.feature.md` の新設（[[wi-401-cross-context-scenarios-have-no-home]]）とサービス目標の正本化（[[wi-400-service-objectives-need-stable-ids]]）。どちらも文書の中身の話であり、配置とは独立である。
+- `docs/domain/scenarios.feature.md` の新設（[[wi-401-cross-context-scenarios-have-no-home]]）とサービス目標の正本化（[[wi-400-service-objectives-need-stable-ids]]）。どちらも文書の中身の話であり、配置とは独立である。
 - 完了済み work item の散文に残る歴史的なパス（`spec/scl.yaml` など）。当時そこにあった記録であり、書き換えれば履歴の改竄になる。解決を要求される `affected_spec` だけを張り替えた。
 
 ## Design
@@ -73,7 +73,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 
    | 決めたこと | 置き場所 |
    |---|---|
-   | 現在の仕様と設計（正規文書 134 件） | `docs/` 直下と `docs/contexts/<context>/` |
+   | 現在の仕様と設計（正規文書 134 件） | `docs/` 直下と `docs/domain/<context>/` |
    | 手順 | `docs/development/`、`docs/operations/` |
    | TypeSpec、`tspconfig.yaml`、OpenAPI ベースライン | `spec/` |
    | 生成物 | 追跡しない `spec/generated/` |
@@ -123,13 +123,13 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 - **Summary**:
   人が書く文書を 1 つの根へ集めた。`docs/` が正規文書 134 件（直下 10 件と `contexts/<context>/` 124 件）と `operations/runbooks/` を持ち、`spec/` は TypeSpec 43 件・`tspconfig.yaml`・OpenAPI ベースラインだけになった。2 つの木は `contexts/<context>/` で対応する。DOCUMENTATION_GUIDE §4 は構成図を差し替えたうえで、判定の理由——深さは重要度の裏返しにする、境界の判定は §5.9、`docs/` 直下に生成物が混ざらない——を 3 つの小節として明示した。§10 と §11 には配置を書き、§11 には runbook だけが読み手で分かれる理由（当番担当者は原因が分からない状態で呼び出される）を、手順一般の規則ではないと限定したうえで書いた。`ROOT_DOCUMENTS` には `product-overview.md` を足し、ガイドが挙げる名前を検査が拒否する食い違いを解消した。検査・生成・スキーマ・タスクの経路と、294 箇所の参照を張り替えた。規範的な要素は 1 件も動いていない。
 - **Verification Results**:
-  - `mise run verify` - passed（exit 0）。ただしこの移動は `check-security-controls` の R4 も壊しており、`.tsp` を `docs/contexts/` から読んで**契約が約束する 403 を 1 件も検査していなかった**。`verify` は成功を報告し続けた。[[wi-401-cross-context-scenarios-have-no-home]] で修正した。
+  - `mise run verify` - passed（exit 0）。ただしこの移動は `check-security-controls` の R4 も壊しており、`.tsp` を `docs/domain/` から読んで**契約が約束する 403 を 1 件も検査していなかった**。`verify` は成功を報告し続けた。[[wi-401-cross-context-scenarios-have-no-home]] で修正した。
   - `mise run spec-render` - 137 document(s), 330 operation(s), 19 API tag(s), 836 TypeSpec symbol(s)
   - `mise run spec-diff` - no normative specification change against main - **無効（後日訂正）**。この移動で `spec-diff` 自身が壊れており、`git ls-tree -- spec` と `walk(spec/)` しか見ていないため散文を 1 件も読んでいなかった。常に「変更なし」を返す状態だった。主張（規範要素は動いていない）は結果的に正しいが、根拠は空である。[[wi-401-cross-context-scenarios-have-no-home]] で両方の木を読むよう修正した。
   - `mise run test-tools` - 167 pass / 0 fail
   - 手動: 全 Markdown の相対リンクを全件解決確認 - **無効（後日訂正）**。使った `fd` の呼び出しが 0 件を返しており、1 つも検査していなかった。[[wi-406-operations-holds-only-runbooks]] で検査を作り直したところ、本 work item が壊した実リンクが 2 件あった（`infra/backup/README.md` と、`done/` へ移した本ファイル自身の `../DOCUMENTATION_GUIDE.md`）。いずれも wi-406 で修正した。
   - 手動: ガイド内の `§N.M` 参照が実在する節を指すことを全件確認 - passed
-  - 手動: `docs/product-overview.md` を一時的に置いて検査が受理することを確認 - passed
+  - 手動: `docs/design/product-overview.md` を一時的に置いて検査が受理することを確認 - passed
   - 手動: このリポジトリの実配置がガイドに照らして違反でないことを確認 - passed
 
 ## Left Undone

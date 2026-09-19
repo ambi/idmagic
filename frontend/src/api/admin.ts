@@ -145,7 +145,7 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
     .users
 }
 
-// listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 版。
+// listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 専用の関数である。
 export async function listAdminUsersPage(params?: {
   cursor?: string
   limit?: number
@@ -1283,7 +1283,7 @@ export type AdminGroupPage = PaginationPageMetadata & {
   groups: AdminGroup[]
 }
 
-// listAdminGroupsPage はグループ一覧画面専用の addressable cursor pagination 版。
+// listAdminGroupsPage はグループ一覧画面専用の addressable cursor pagination 専用の関数である。
 export async function listAdminGroupsPage(params?: {
   cursor?: string
   limit?: number
@@ -1412,7 +1412,7 @@ export type AdminAgentPage = PaginationPageMetadata & {
   agents: AdminAgent[]
 }
 
-// listAdminAgentsPage はエージェント一覧画面専用の addressable cursor pagination 版。
+// listAdminAgentsPage はエージェント一覧画面専用の addressable cursor pagination 専用の関数である。
 export async function listAdminAgentsPage(params?: {
   cursor?: string
   limit?: number
@@ -1635,7 +1635,7 @@ export type AdminApplicationPage = PaginationPageMetadata & {
   applications: AdminApplication[]
 }
 
-// listAdminApplicationsPage はアプリケーション一覧画面専用の addressable cursor pagination 版。
+// listAdminApplicationsPage はアプリケーション一覧画面専用の addressable cursor pagination 専用の関数である。
 export async function listAdminApplicationsPage(params?: {
   cursor?: string
   limit?: number

@@ -16,16 +16,16 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-396.md }
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-016
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-018
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-019
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-001
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-016
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-018
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-019
     - docs/capacity.md
     - docs/api-rules.md
     - docs/deployment.md
     - docs/observability.md
-    - docs/contexts/system/decisions.md
-    - docs/contexts/system/internals.md
+    - docs/domain/system/decisions.md
+    - docs/domain/system/internals.md
   typespec: []
   source:
     - backend/shared/http/support_http/admission.go
@@ -51,10 +51,10 @@ initial_context:
     - backend/authentication
     - spec/generated
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-018 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-019 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-018 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-019 }
 ---
 
 # 容量が足りないときにログインが管理系トラフィックより先に生き残るようにする
@@ -90,11 +90,11 @@ IdP としての idmagic は、止まると依存する全システムのログ�
 - 優先度クラスごとの PostgreSQL 接続予算。
 - 縮退が発動したことを観測できるメトリクスと、`docs/capacity.md` のサービス目標に対する影響の測定。
 - 縮退の閾値を運用者が調整できる起動時設定（REQ-SYSTEM-016 に従って検証する）。
-- 縮退の振る舞いを規範的シナリオとして `docs/contexts/system/scenarios.feature.md` に追加する。
+- 縮退の振る舞いを規範的シナリオとして `docs/domain/system/scenarios.feature.md` に追加する。
 
 ## Out of Scope
 
-- **API プロセスを認証プレーンと管理プレーンに分けてデプロイすること。** 本 work item では採らない。判断そのものは [[wi-459-api-process-plane-separation-decision]] が持ち、結論と再検討の条件は `docs/contexts/system/decisions.md` にある。
+- **API プロセスを認証プレーンと管理プレーンに分けてデプロイすること。** 本 work item では採らない。判断そのものは [[wi-459-api-process-plane-separation-decision]] が持ち、結論と再検討の条件は `docs/domain/system/decisions.md` にある。
 - ソースツリーとバイナリの分割。`backend/` の Context 構成も `backend/cmd/` の構成も変えない。
 - マルチ AZ、自動フェイルオーバー、障害種別ごとの遷移。[[wi-165-high-availability-and-failover-resilience-topology]] が持つ。
 - データ層の分割、読み取りレプリカ、接続プール製品の選定。[[wi-164-data-tier-scalability-partitioning-read-replica-pooling]] が持つ。
@@ -155,7 +155,7 @@ API はステートレスなので、水平にスケールできる。だから�
 
 ### プレーン分割を採らなかった理由
 
-当初は API を認証プレーンと管理プレーンに分け、同一イメージのまま Deployment を 2 つにする案を検討した。ワーカーが `JOB_WORKER_LANES` で実行レーンごとに分かれている前例もある。本 work item では採らない。判断そのものは [[wi-459-api-process-plane-separation-decision]] が持ち、結論は `docs/contexts/system/decisions.md` の `No API plane separation` にある。採らない理由は次のとおりである。
+当初は API を認証プレーンと管理プレーンに分け、同一イメージのまま Deployment を 2 つにする案を検討した。ワーカーが `JOB_WORKER_LANES` で実行レーンごとに分かれている前例もある。本 work item では採らない。判断そのものは [[wi-459-api-process-plane-separation-decision]] が持ち、結論は `docs/domain/system/decisions.md` の `No API plane separation` にある。採らない理由は次のとおりである。
 
 - **PostgreSQL の競合は分割しても残る。** 共有ストアが束縛条件である限り、API 側を分けても DB 側は分かれない。接続予算をクラス別に分けるほうが直接的である。
 - **常時費用が先に出る。** 追加するプレーンは自分の可用性下限レプリカ数、PodDisruptionBudget、容量モデル、監視、障害対応の手順を 1 組ずつ持つ。それを必要とする容量も障害波及も、まだ実測で示されていない。
@@ -170,7 +170,7 @@ API はステートレスなので、水平にスケールできる。だから�
 
 - **HPA だけを入れる。** 反応時間の窓が残り、DB が束縛条件のときは逆効果になりうる。
 - **エンドポイント別のレート制限の閾値を下げる。** 濫用には効くが正当な一括操作には効かない。抑えたいのは正当な管理操作の影響であって、拒否したいわけではない。
-- **管理 API を別のバイナリにする。** ログイン経路は IdM 側の読み取りに依存しており、リンクされるコードはほとんど同じである。`docs/structure.md` が定める単一の `Config` も 2 系統になり、REQ-SYSTEM-016 が避けている「あるプロセスだけ検証されていない値を持つ」状態を作る。この案は [[wi-459-api-process-plane-separation-decision]] が D4 として改めて評価し、独立したデータ所有権、担当チーム、SLO が現れるまで採らないと結論している。
+- **管理 API を別のバイナリにする。** ログイン経路は IdM 側の読み取りに依存しており、リンクされるコードはほとんど同じである。`docs/domain/structure.md` が定める単一の `Config` も 2 系統になり、REQ-SYSTEM-016 が避けている「あるプロセスだけ検証されていない値を持つ」状態を作る。この案は [[wi-459-api-process-plane-separation-decision]] が D4 として改めて評価し、独立したデータ所有権、担当チーム、SLO が現れるまで採らないと結論している。
 
 ## Plan
 
@@ -240,7 +240,7 @@ func (c PriorityClass) RetryAfterSeconds() int
 - [x] T001 [Measure] 管理系バースト下でログインのレイテンシーがサービス目標をどれだけ侵すかを実測する。侵さないなら T003 以降を取り下げる。→ ステージング基盤が無いため製品の実測は不可。Plan の「測定について実際にできたこと」に、代わりに何を観測し、取り下げの判断をどう置いたかを記録した。待ち行列の観測は `TestAdmissionControlPreservesInteractiveAuthUnderBulkSaturation`（`backend/shared/http/server_http/admission_saturation_test.go`）。
 - [x] T002 [Ops] API に HPA を入れる。`replicas` 固定をやめ、最小値、最大値、判定指標を `docs/capacity.md` の Sizing rules と整合させる。
 - [x] T003 [Design] 飽和の判定基準、優先度クラスの境界、拒否の状態コード、接続予算の分け方を確定し `## Design` に記録する。
-- [x] T004 [Spec] 縮退の振る舞いを `docs/contexts/system/scenarios.feature.md` に規範的シナリオとして追加する。→ REQ-SYSTEM-018。`docs/api-rules.md` の Declared status codes に、ミドルウェアが返す 3 つ目の例外として 503 を記録した。
+- [x] T004 [Spec] 縮退の振る舞いを `docs/domain/system/scenarios.feature.md` に規範的シナリオとして追加する。→ REQ-SYSTEM-018。`docs/api-rules.md` の Declared status codes に、ミドルウェアが返す 3 つ目の例外として 503 を記録した。
 - [x] T005 [App] 優先度クラスの分類をルート登録と同じ場所で宣言し、**分類の無いルートが存在しないことを検査するテスト**を同時に入れる。ルートを 1 つ分類から外すと落ちることを確認する。→ `backend/shared/http/server_http/priority_class.go`、`TestEveryAssembledRouteDeclaresAPriorityClass`（REQ-SYSTEM-018）。
 - [x] T012 [Ops] 分類を運用者が参照できる生成物にする。組み立て済みの router と `ClassifyRoute` から `ROUTE_PRIORITY.md` を生成し、`mise run check-route-reference` を `mise run check` に入れる（REQ-SYSTEM-019）。`decisions.md` と `deployment.md` からクラスの所属を述べる散文を消す。
 - [x] T006 [App] 負荷連動の入場制御を実装する。Degradation order のステージ 3、4、5 に対応させる。→ `backend/shared/http/support_http/admission.go`、`TestAdmissionBudgetAdmit`、`TestAdmissionMiddlewareShedsLowerPriorityFirst`（REQ-SYSTEM-018）。

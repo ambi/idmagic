@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/contexts/sharedsignals/standards.md]
+  specification: [docs/domain/sharedsignals/standards.md]
   typespec:
     - IdMagic.Contract.SecurityEventRejectedError
     - IdMagic.Contract.SecurityEventTokenTooLargeError

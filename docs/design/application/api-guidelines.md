@@ -28,7 +28,7 @@
 | 管理 API | `/api/admin/v1/` | この文書 |
 | アカウント API | `/api/account/v1/` | この文書 |
 | ブラウザー API | `/api/auth/` | この文書。バージョンを持たず、安定性区分は `internal` とする |
-| プロトコルエンドポイント | OAuth 2.0 と OIDC、Dynamic Client Registration、SAML、WS-Federation、SCIM、Shared Signals | 各標準。採用する版と差分は各 Context の `standards.md` が定める |
+| プロトコルエンドポイント | OAuth 2.0 と OIDC、Dynamic Client Registration、SAML、WS-Federation、SCIM、Shared Signals | 各標準。採用するバージョンと差分は各 Context の `standards.md` が定める |
 | 運用エンドポイント | `/readyz`、`/startupz`、`/metrics` | 監視の慣行。この文書の命名とバージョンのルールは適用しない |
 
 以降、管理 API、アカウント API、ブラウザー API の 3 区分を総称して汎用 API と呼ぶ。
@@ -204,7 +204,7 @@ API 操作は、そのハンドラーと、手前に位置するガードが返�
 | --- | --- | --- |
 | ハンドラーがマッピングしなかったエラーに対する 500 | 共通のエラーハンドラー | 全 API 操作で同一に発生し、クライアントが API 操作ごとに対応を変える余地もない。ただし、ハンドラーが固有のエラーコードを付けて返す 5xx（パスキーの依存先が利用できないときの 503 `webauthn_unavailable` など）は、その API 操作固有の結果として宣言する |
 | ホスト名から解決できないテナントへの 404 `{"error": "tenant_not_found"}` | テナント解決ミドルウェア。ルーティングの前に返す | API 操作ごとに宣言すると、その API 操作固有の 404（リソースが存在しない）と同じ行に 2 つの意味が重なり、クライアントはレスポンスボディを見て判別することになる。経路にかかわらず 404 と `tenant_not_found` を返す |
-| 過負荷時の 503 `urn:idmagic:error:service_overloaded` | アドミッションコントロールミドルウェア。ルーティングの後、ハンドラーの前に返す | どの API 操作でも「キャパシティ不足のため受け付けなかった」という単一の意味を持ち、クライアントの対応も `Retry-After` の秒数だけ待機して再送することに限られる。拒否する経路と順序は[キャパシティ設計](../performance/capacity.md#ロードシェディング順序)、機構は [System Context の内部設計](../../contexts/system/internals.md#admission-control)が定める |
+| 過負荷時の 503 `urn:idmagic:error:service_overloaded` | アドミッションコントロールミドルウェア。ルーティングの後、ハンドラーの前に返す | どの API 操作でも「キャパシティ不足のため受け付けなかった」という単一の意味を持ち、クライアントの対応も `Retry-After` の秒数だけ待機して再送することに限られる。拒否する経路と順序は[キャパシティ設計](../performance/capacity.md#ロードシェディング順序)、機構は [System Context の内部設計](../../domain/system/internals.md#admission-control)が定める |
 
 ### 400 と 422 の区別
 

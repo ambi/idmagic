@@ -58,7 +58,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 3 点とも着手時に確定した。1 と 2 は人が決めた（DOCUMENTATION_GUIDE §12.3 が「プロダクトの目的、対象ユーザー、対象外の線引き」「許容するセキュリティ・運用リスク」を人間の責任とする）。
 
-1. **対象外の宣言は `README.md` の節に置く。** DOCUMENTATION_GUIDE §9.2 は `/docs/product-overview.md` を挙げるが、このリポジトリに `docs/` は無く、手順は `DEVELOPMENT.md`（ルート）、`infra/README.md`、`docs/operations/runbooks/`、`frontend/README.md` と、**それが動かすものの隣**に置かれている。対象外 3 行のためにディレクトリを 1 つ増やすと、`DEVELOPMENT.md` などをそこへ移すかどうかの判断まで巻き込む。`spec/` と `docs/` の区別そのものへの疑問は別の work item が持つ。
+1. **対象外の宣言は `README.md` の節に置く。** DOCUMENTATION_GUIDE §9.2 は `/docs/design/product-overview.md` を挙げるが、このリポジトリに `docs/` は無く、手順は `DEVELOPMENT.md`（ルート）、`infra/README.md`、`docs/operations/runbooks/`、`frontend/README.md` と、**それが動かすものの隣**に置かれている。対象外 3 行のためにディレクトリを 1 つ増やすと、`DEVELOPMENT.md` などをそこへ移すかどうかの判断まで巻き込む。`spec/` と `docs/` の区別そのものへの疑問は別の work item が持つ。
 
 2. **`SECURITY.md` は GitHub Security Advisories の非公開報告を経路とし、応答の日数を約束しない。** リモートが `github.com/ambi/idmagic` なので追加の運用なしに使え、報告者に公開 issue 以外の選択肢を渡せる。日数を約束しないのは、守れない期限を書くことが期限を書かないことより悪いためである。後から厳しくするのは容易で、緩めるのは難しい。
 

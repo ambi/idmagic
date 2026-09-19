@@ -74,7 +74,7 @@ mise run audit-go-reachability   # そのうち Go のコードが実際に呼�
 
 ### 抑止には理由と再評価期限が要ります
 
-修正版が無い、到達不能である、互換性の問題で今は上げられない、といった事情で検出を通す必要があるときは、リポジトリ直下の `osv-scanner.toml` に記録します。**`reason` と `ignoreUntil` の両方が必須です。**
+修正済みのバージョンが無い、到達不能である、互換性の問題で今は上げられない、といった事情で検出を通す必要があるときは、リポジトリ直下の `osv-scanner.toml` に記録します。**`reason` と `ignoreUntil` の両方が必須です。**
 
 ```toml
 [[IgnoredVulns]]

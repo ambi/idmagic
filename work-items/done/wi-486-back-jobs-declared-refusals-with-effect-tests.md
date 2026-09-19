@@ -8,8 +8,8 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-006 }
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-010 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-006 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-010 }
 ---
 
 # Jobs が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す

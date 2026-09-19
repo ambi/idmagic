@@ -15,7 +15,7 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-536.md }
 initial_context:
   specification:
-    - docs/contexts/provisioning/standards.md
+    - docs/domain/provisioning/standards.md
   typespec:
     - IdMagic.Contract.GroupPushConfig
     - IdMagic.Contract.ProvisioningGroupDisplayNameSource
@@ -35,7 +35,7 @@ initial_context:
     - backend/provisioning/db_postgres
     - backend/provisioning/client_scim
 affected_spec:
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7643-OUT-GROUP-RESOURCES }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7643-OUT-GROUP-RESOURCES }
   - { path: spec/contexts/provisioning/models.tsp, symbol: IdMagic.Contract.GroupPushConfig }
   - { path: spec/contexts/provisioning/models.tsp, symbol: IdMagic.Contract.ProvisioningGroupDisplayNameSource }
 primary_use_cases:
@@ -52,7 +52,7 @@ primary_use_cases:
 
 ## Motivation
 
-`docs/contexts/provisioning/standards.md` の `RFC7643-OUT-GROUP-RESOURCES` は「`displayName` の取得元は
+`docs/domain/provisioning/standards.md` の `RFC7643-OUT-GROUP-RESOURCES` は「`displayName` の取得元は
 `GroupPushConfig.display_name_source` が選び、既定は Group の名前である」と宣言する。TypeSpec の
 `GroupPushConfig.display_name_source` も「下流の `displayName` へ射影する IdMagic 側の Group 属性キー」と
 説明し、管理画面は自由入力の欄として書き込める。

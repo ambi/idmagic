@@ -10,13 +10,13 @@ change_kind: docs
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/contexts/provisioning/README.md
-    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-002
-    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-007
-    - docs/contexts/provisioning/scenarios.feature.md#REQ-PROVISIONING-009
-    - docs/contexts/provisioning/internals.md
-    - docs/contexts/provisioning/decisions.md
-    - docs/contexts/sourcing/standards.md
+    - docs/domain/provisioning/README.md
+    - docs/domain/provisioning/scenarios.feature.md#REQ-PROVISIONING-002
+    - docs/domain/provisioning/scenarios.feature.md#REQ-PROVISIONING-007
+    - docs/domain/provisioning/scenarios.feature.md#REQ-PROVISIONING-009
+    - docs/domain/provisioning/internals.md
+    - docs/domain/provisioning/decisions.md
+    - docs/domain/sourcing/standards.md
   typespec:
     - IdMagic.Contract.ProvisioningCapabilities
     - IdMagic.Contract.ProvisioningAuthMethod
@@ -33,18 +33,18 @@ initial_context:
     - frontend
     - backend/provisioning/db_postgres
 affected_spec:
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7643-OUT-CORE-RESOURCES }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7643-OUT-EXTERNAL-ID }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7643-OUT-SCHEMA-EXTENSIONS }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-RESOURCE-OPERATIONS }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-PATCH }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-DISCOVERY }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-FILTERING }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-ERROR-RESPONSE }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-AUTHENTICATION }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-BULK }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-SORT }
-  - { path: docs/contexts/provisioning/standards.md, requirement: RFC7644-OUT-ETAG }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7643-OUT-CORE-RESOURCES }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7643-OUT-EXTERNAL-ID }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7643-OUT-SCHEMA-EXTENSIONS }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-RESOURCE-OPERATIONS }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-PATCH }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-DISCOVERY }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-FILTERING }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-ERROR-RESPONSE }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-AUTHENTICATION }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-BULK }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-SORT }
+  - { path: docs/domain/provisioning/standards.md, requirement: RFC7644-OUT-ETAG }
 ---
 
 # Provisioning に `standards.md` を置き、外向き SCIM の準拠範囲を宣言する
@@ -53,7 +53,7 @@ affected_spec:
 
 IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サーバー）と外向き（`Provisioning`、SCIM クライアント）である。**準拠範囲を宣言しているのは内向きだけである。**
 
-`docs/contexts/sourcing/standards.md` は RFC 7643 と RFC 7644 に 8 行の `Adoption` / `Strength` / `Statement` を与えている。`docs/contexts/provisioning/` に `standards.md` は無く、`README.md` の索引にも行が無い。
+`docs/domain/sourcing/standards.md` は RFC 7643 と RFC 7644 に 8 行の `Adoption` / `Strength` / `Statement` を与えている。`docs/domain/provisioning/` に `standards.md` は無く、`README.md` の索引にも行が無い。
 
 宣言が無いだけで、外向きも同じ RFC が形を定める部分を実装している。`provisioning/internals.md` 自身がそう書いている。
 
@@ -67,7 +67,7 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
 
 ## Scope
 
-- `docs/contexts/provisioning/standards.md` を作り、外向き SCIM クライアントとしての RFC 7643 / RFC 7644 の準拠範囲を宣言する。
+- `docs/domain/provisioning/standards.md` を作り、外向き SCIM クライアントとしての RFC 7643 / RFC 7644 の準拠範囲を宣言する。
 - 少なくとも次を `Adoption` / `Strength` / `Statement` の行として決める。
   - User / Group リソースの作成・置換・削除。
   - 部分更新に PATCH を使うか PUT を使うか、接続設定で選べるのか。
@@ -76,7 +76,7 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
   - 連携先の `ServiceProviderConfig` / `ResourceTypes` / `Schemas` の探索と、探索結果に従うのか無視するのか。
   - フィルターを使う場面と、組み立てる構文の範囲。
   - 連携先が返す SCIM エラーレスポンスの解釈（どの状態を再試行し、どれを隔離するか）。
-- `docs/contexts/provisioning/README.md` の索引に行を足す。
+- `docs/domain/provisioning/README.md` の索引に行を足す。
 - 各行に対応するテストを確かめ、無い行にはテストを足す。
 
 ## Out of Scope
@@ -148,8 +148,8 @@ DOCUMENTATION_GUIDE §3.3 の 4 値は提供者側の語彙なので、送出側
 
 - [x] T001 [Spec] 外向き SCIM の実装を読み、いま何を送り何を送っていないかを列挙する。
 - [x] T002 [Design] `Adoption` の読み替え、ID 空間の分け方、証拠テストの過不足を確定し `## Design` に記録する。
-- [x] T003 [Spec] `docs/contexts/provisioning/standards.md` を作る。
-- [x] T004 [Spec] `docs/contexts/provisioning/README.md` の索引に行を足す。
+- [x] T003 [Spec] `docs/domain/provisioning/standards.md` を作る。
+- [x] T004 [Spec] `docs/domain/provisioning/README.md` の索引に行を足す。
 - [x] T005 [Test] 各行の証拠テストを確かめ、名指しを足す。無い行にはテストを書く。`backend/provisioning/client_scim`、`backend/provisioning/usecases`。
 - [x] T006 [Test] `excluded` の行に否定テストを置く。`RFC7643-OUT-SCHEMA-EXTENSIONS`、`RFC7644-OUT-BULK`、`RFC7644-OUT-SORT`、`RFC7644-OUT-ETAG`。
 - [x] T007 [Triage] 実装が仕様として妥当でない箇所を、欠陥として個別の work item へ切り出す。wi-439、wi-440、wi-441。
@@ -162,7 +162,7 @@ DOCUMENTATION_GUIDE §3.3 の 4 値は提供者側の語彙なので、送出側
 - `mise run test-go`
 - `mise run verify`
 - 手動: `excluded` と宣言した行を 1 つ選び、その機能を実際に送るよう実装を一時的に変えて、否定テストが落ちることを確認する。落ちなければ、その行は誰も守っていない。
-- 手動: `docs/contexts/sourcing/standards.md` と並べて読み、内向きと外向きで同じ RFC の同じ条項について矛盾した宣言をしていないことを確認する。
+- 手動: `docs/domain/sourcing/standards.md` と並べて読み、内向きと外向きで同じ RFC の同じ条項について矛盾した宣言をしていないことを確認する。
 
 ## Risk Notes
 
@@ -177,7 +177,7 @@ DOCUMENTATION_GUIDE §3.3 の 4 値は提供者側の語彙なので、送出側
 - **Completed At**: 2026-08-29
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返した。この道具が見ているのは規範シナリオ、状態遷移の行、TypeSpec の宣言の 3 つで、`standards.md` の行は対象外だからである。**本 work item の成果物は全体が規範の差分に映らなかった。** これ自体が発見であり、[[wi-442-spec-diff-does-not-see-standards-rows]] へ切り出した。
-  意味上の差分は次のとおり。`docs/contexts/provisioning/standards.md` が新設され、外向き SCIM クライアントとしての準拠範囲が 12 行の規範として存在するようになった。RFC 7643 に 3 行（`RFC7643-OUT-CORE-RESOURCES`、`RFC7643-OUT-EXTERNAL-ID`、`RFC7643-OUT-SCHEMA-EXTENSIONS`）、RFC 7644 に 9 行（`RFC7644-OUT-RESOURCE-OPERATIONS`、`-PATCH`、`-DISCOVERY`、`-FILTERING`、`-ERROR-RESPONSE`、`-AUTHENTICATION`、`-BULK`、`-SORT`、`-ETAG`）。うち 4 行が `excluded` であり、送らないと決めたものが初めて記述された。`SPECIFICATION_FORMAT.md` §5 には、標準を提供する側ではなく消費する側で `Adoption` をどう読むかの段落が加わった。
+  意味上の差分は次のとおり。`docs/domain/provisioning/standards.md` が新設され、外向き SCIM クライアントとしての準拠範囲が 12 行の規範として存在するようになった。RFC 7643 に 3 行（`RFC7643-OUT-CORE-RESOURCES`、`RFC7643-OUT-EXTERNAL-ID`、`RFC7643-OUT-SCHEMA-EXTENSIONS`）、RFC 7644 に 9 行（`RFC7644-OUT-RESOURCE-OPERATIONS`、`-PATCH`、`-DISCOVERY`、`-FILTERING`、`-ERROR-RESPONSE`、`-AUTHENTICATION`、`-BULK`、`-SORT`、`-ETAG`）。うち 4 行が `excluded` であり、送らないと決めたものが初めて記述された。`SPECIFICATION_FORMAT.md` §5 には、標準を提供する側ではなく消費する側で `Adoption` をどう読むかの段落が加わった。
 - **Acceptance RED Evidence**:
   - **Test**: `N/A: 文書の追加であり、利用者が観測できる製品の振る舞いを変えていない。`
   - **Requirement**: N/A: 新しい REQ を起こしていない。宣言したのは既存の実装が既に従っている外部規範である。
@@ -185,7 +185,7 @@ DOCUMENTATION_GUIDE §3.3 の 4 値は提供者側の語彙なので、送出側
   - **Detection Reason**: `excluded` の行に義務を付ける形は、「提供しない能力について守るべき義務がある」という意味を成さない宣言であり、書式の検査が落とせる唯一の種類の誤りである。`Statement` が真かどうかは書式検査では落とせないため、そちらの証拠は下の Unit RED が担う。
 - **Unit RED Evidence**:
   - **Test**: `TestClient_SendsNoBulkRequest`、`TestClient_SendsNoSortParameters`、`TestClient_SendsNoConditionalRequestHeaders`、`TestClient_DiscoversOnlyServiceProviderConfig`、`TestClient_SendsOneAuthenticatedRequestPerOperation`、`TestBuildResource_OmitsExtensionSchemaAttributes`、`TestRegisterConnection_DefaultMappingSendsExternalIdOnCreateOnly`
-  - **Requirement**: N/A: 規範シナリオではなく規範 ID を証拠の対象とする。各テストは docs/contexts/provisioning/standards.md の 1 行を名指ししている。
+  - **Requirement**: N/A: 規範シナリオではなく規範 ID を証拠の対象とする。各テストは docs/domain/provisioning/standards.md の 1 行を名指ししている。
   - **Observed Failure**: 宣言した振る舞いは既に成立しているため、テストは書いた時点で緑である。RED は実装を宣言に反する側へ一時的に変えて観測した。下の Change-Resistance Results が観測した失敗そのものである。
   - **Detection Reason**: 否定テストは「送っていないこと」を主張するので、何も送らなくても通ってしまう。`fullLifecycleRequests` が送出経路 6 件を通したうえで要求数を確かめてから各主張を評価するのは、この空振りを塞ぐためである。実際 `RFC7644-OUT-DISCOVERY` の最初の版はこの件数の錘に先に落ち、意図した `/Schemas` の主張が評価されていなかったので、探索だけを通す独立したテストへ書き直した。
 - **Change-Resistance Results**:
@@ -205,4 +205,4 @@ DOCUMENTATION_GUIDE §3.3 の 4 値は提供者側の語彙なので、送出側
   - `mise run check-ids` - passed
   - `mise run lint-go` - passed (0 issues)
   - `mise run verify` - passed
-  - 手動: `docs/contexts/sourcing/standards.md` と並べて読み、同じ RFC の同じ条項について内向きと外向きが矛盾していないことを確かめた。重なるのは PATCH と Enterprise 拡張とフィルターで、内向きは提供者として `partial`、外向きは消費者として PATCH を `optional`、拡張を `excluded`、フィルターを `partial` と宣言しており、どちらも相手の宣言を否定していない。
+  - 手動: `docs/domain/sourcing/standards.md` と並べて読み、同じ RFC の同じ条項について内向きと外向きが矛盾していないことを確かめた。重なるのは PATCH と Enterprise 拡張とフィルターで、内向きは提供者として `partial`、外向きは消費者として PATCH を `optional`、拡張を `excluded`、フィルターを `partial` と宣言しており、どちらも相手の宣言を否定していない。

@@ -8,7 +8,7 @@ created_at: 2026-09-14
 priority: p2
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
 ---
 
 # realm 配下の branding アセット転送例を現行 gateway と一致させる

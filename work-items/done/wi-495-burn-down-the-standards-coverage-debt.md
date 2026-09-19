@@ -31,8 +31,8 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/standards.md
-    - docs/contexts/sharedsignals/standards.md
+    - docs/domain/standards.md
+    - docs/domain/sharedsignals/standards.md
   typespec: []
   source:
     - tools/check/src/check-documents.ts
@@ -50,7 +50,7 @@ initial_context:
     - backend/sharedsignals/usecases/receive_subject_identifier_test.go
     - backend/shared/security/tokens_jose/security_event_token_verifier_test.go
   stop_before_reading:
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
     - backend/oauth2
     - frontend
 ---
@@ -59,7 +59,7 @@ initial_context:
 
 ## Motivation
 
-`docs/standards.md` は自らの表について「各行は、規範 ID を名指しするテストを製品のテストの中に持つ。まだテストの無い行は `tools/check/standards-coverage-debt.json` に理由付きで残っており、この一覧は縮むだけである」と宣言している。
+`docs/domain/standards.md` は自らの表について「各行は、規範 ID を名指しするテストを製品のテストの中に持つ。まだテストの無い行は `tools/check/standards-coverage-debt.json` に理由付きで残っており、この一覧は縮むだけである」と宣言している。
 
 [[wi-418-normative-coverage-gates]] がこの検査を入れたとき、154 行のうち 134 行が名指しを持っていなかったので、134 件がそのまま台帳へ入った。行は 155 行へ増えたが、台帳は 2026-09-06 時点でも 134 件のままである。`git log -- tools/check/standards-coverage-debt.json` が返すコミットは、台帳を作った 1 件だけである。
 
@@ -78,16 +78,16 @@ initial_context:
 
 | 文書 | 負債 / 行 |
 |---|---:|
-| `docs/contexts/oauth2/standards.md` | 80 / 83 |
-| `docs/contexts/api-tokens/standards.md` | 11 / 12 |
-| `docs/contexts/authentication/standards.md` | 9 / 10 |
-| `docs/standards.md` | 7 / 8 |
-| `docs/contexts/saml/standards.md` | 6 / 7 |
-| `docs/contexts/ws-federation/standards.md` | 6 / 6 |
-| `docs/contexts/authorization/standards.md` | 5 / 5 |
-| `docs/contexts/sourcing/standards.md` | 5 / 8 |
-| `docs/contexts/sharedsignals/standards.md` | 4 / 4 |
-| `docs/contexts/provisioning/standards.md` | 1 / 13 |
+| `docs/domain/oauth2/standards.md` | 80 / 83 |
+| `docs/domain/api-tokens/standards.md` | 11 / 12 |
+| `docs/domain/authentication/standards.md` | 9 / 10 |
+| `docs/domain/standards.md` | 7 / 8 |
+| `docs/domain/saml/standards.md` | 6 / 7 |
+| `docs/domain/ws-federation/standards.md` | 6 / 6 |
+| `docs/domain/authorization/standards.md` | 5 / 5 |
+| `docs/domain/sourcing/standards.md` | 5 / 8 |
+| `docs/domain/sharedsignals/standards.md` | 4 / 4 |
+| `docs/domain/provisioning/standards.md` | 1 / 13 |
 
 `provisioning` だけが 13 行中 12 行の名指しを持っている。SCIM の適合作業（[[wi-238-scim-inbound-list-query-conformance]]）が id を名指しするテストを書いたからであり、消化が可能であることの実例である。裏を返せば、他の文書は適合作業を経ていないというだけで負債になっている。
 
@@ -102,7 +102,7 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
   - 当の行を検証しているテストが実在する → そのテストに `// <ID>: <この行の何を固定しているか>` の注記を足す。
   - 当の行を検証しているテストが無い → 書く。観測は `Adoption` 列に応じた形（Design を参照）にする。
   - 行が宣言されなくなっている → 台帳から外す（検査が落ちて教える）。
-- 名指しの対象が `docs/standards.md`（横断）の 7 件について、どのパッケージのテストが所有するかを決める。
+- 名指しの対象が `docs/domain/standards.md`（横断）の 7 件について、どのパッケージのテストが所有するかを決める。
 - 実装が宣言した採用を満たしていないことが分かった場合は、**本 work item では直さず欠陥として切り出す**。テストの追加と実装の修正を同じ変更に混ぜると、どちらが何を意味するのか後から読めない。
 - 134 件が 0 になった時点で `standards-coverage-debt.json` を落とし、`checkNormativeCoverage` へ標準側から `debt` を渡すのをやめる。例外を持たない検査にする。
 
@@ -132,7 +132,7 @@ T003 の判断により、134 件のうち 130 件の消化は所有文書ごと
 
 Git ratchet は消化より先に実行する。順序を逆にすると、消化している間に新しい行が台帳へ流れ込み、件数が減らない理由が消化の遅さなのか流入なのか区別できなくなる。
 
-進める単位は所有文書とする。分類（named / nearby）順に進める案は却下した。`docs/standards.md` の行は分類の材料になる `report-coverage-debt` の対象外であり（同ツールは `example-coverage-debt.json` しか読まない）、標準側には機械的な分類がそもそも存在しない。文書単位なら、標準そのものを 1 度読む文脈で連続した行を判断できる。
+進める単位は所有文書とする。分類（named / nearby）順に進める案は却下した。`docs/domain/standards.md` の行は分類の材料になる `report-coverage-debt` の対象外であり（同ツールは `example-coverage-debt.json` しか読まない）、標準側には機械的な分類がそもそも存在しない。文書単位なら、標準そのものを 1 度読む文脈で連続した行を判断できる。
 
 `oauth2` の 80 件を 1 つの work item で扱うかは未決である。**最初の 1 文書（`ws-federation` の 6 件、または `sharedsignals` の 4 件）を通しで消化して 1 件あたりの所要を測り、そこで決める。** 測る前に分割の粒度を決めない。
 
@@ -155,15 +155,15 @@ Git ratchet は消化より先に実行する。順序を逆にすると、消�
 
 | 子 | 文書 | 件数 |
 |---|---|---:|
-| [[wi-499-back-oauth2-standards-rows-with-tests]] | `docs/contexts/oauth2/standards.md` | 80 |
-| [[wi-500-back-api-tokens-standards-rows-with-tests]] | `docs/contexts/api-tokens/standards.md` | 11 |
-| [[wi-501-back-authentication-standards-rows-with-tests]] | `docs/contexts/authentication/standards.md` | 9 |
-| [[wi-502-back-cross-cutting-standards-rows-with-tests]] | `docs/standards.md` | 7 |
-| [[wi-503-back-saml-standards-rows-with-tests]] | `docs/contexts/saml/standards.md` | 6 |
-| [[wi-504-back-ws-federation-standards-rows-with-tests]] | `docs/contexts/ws-federation/standards.md` | 6 |
-| [[wi-505-back-sourcing-standards-rows-with-tests]] | `docs/contexts/sourcing/standards.md` | 5 |
-| [[wi-506-back-authorization-standards-rows-with-tests]] | `docs/contexts/authorization/standards.md` | 5 |
-| [[wi-507-back-provisioning-standards-rows-with-tests]] | `docs/contexts/provisioning/standards.md` | 1 |
+| [[wi-499-back-oauth2-standards-rows-with-tests]] | `docs/domain/oauth2/standards.md` | 80 |
+| [[wi-500-back-api-tokens-standards-rows-with-tests]] | `docs/domain/api-tokens/standards.md` | 11 |
+| [[wi-501-back-authentication-standards-rows-with-tests]] | `docs/domain/authentication/standards.md` | 9 |
+| [[wi-502-back-cross-cutting-standards-rows-with-tests]] | `docs/domain/standards.md` | 7 |
+| [[wi-503-back-saml-standards-rows-with-tests]] | `docs/domain/saml/standards.md` | 6 |
+| [[wi-504-back-ws-federation-standards-rows-with-tests]] | `docs/domain/ws-federation/standards.md` | 6 |
+| [[wi-505-back-sourcing-standards-rows-with-tests]] | `docs/domain/sourcing/standards.md` | 5 |
+| [[wi-506-back-authorization-standards-rows-with-tests]] | `docs/domain/authorization/standards.md` | 5 |
+| [[wi-507-back-provisioning-standards-rows-with-tests]] | `docs/domain/provisioning/standards.md` | 1 |
 
 `oauth2` の 80 件をここでさらに割らないのは、割る根拠がまだ無いからである。この文書は 33 の標準節にまたがり、節ごとの負債は最大でも 7 件しかないので、節を単位に割ると 33 件の work item になる。機能領域を単位に割る案は、領域の境界を測定ではなく読みで引くことになる。したがって**分割の判断そのものを [[wi-499-back-oauth2-standards-rows-with-tests]] へ渡す**。同項目は最大の節（`OAuth Client ID Metadata Document` の 7 件）を通しで消化してから決める。本項目が `sharedsignals` で採ったのと同じ順序である。
 
@@ -211,12 +211,12 @@ Git ratchet は消化より先に実行する。順序を逆にすると、消�
 ### T006 の観測（免除の消滅）
 
 台帳を消しただけでは、消えたのが一覧なのか免除の仕組みなのかを区別できない。区別するために、
-`docs/contexts/sharedsignals/standards.md` へ `RFC8417-SET-FIXTURE` の行を 1 行足し、2 つの状態で
+`docs/domain/sharedsignals/standards.md` へ `RFC8417-SET-FIXTURE` の行を 1 行足し、2 つの状態で
 `mise run check-spec` を走らせた。
 
 | 状態 | `mise run check-spec` |
 |---|---|
-| 台帳を置かない | exit 1。`docs/contexts/sharedsignals/standards.md:20: RFC8417-SET-FIXTURE is declared, but no test names it. Cite the id from the test that exercises it.` |
+| 台帳を置かない | exit 1。`docs/domain/sharedsignals/standards.md:20: RFC8417-SET-FIXTURE is declared, but no test names it. Cite the id from the test that exercises it.` |
 | 同じ名前の台帳を作り直し、その id を理由付きで載せる | exit 1。**文言も同じ**。台帳は読まれない |
 
 2 行目が本題である。免除の一覧が消えただけなら、作り直せば通ってしまう。文言から
@@ -229,7 +229,7 @@ Git ratchet は消化より先に実行する。順序を逆にすると、消�
 
 ### T001 の観測（受入集合の RED / GREEN）
 
-固定具は 2 つを対にして足す。`docs/contexts/sharedsignals/standards.md` へ `RFC8417-SET-FIXTURE` の行を 1 行足し、同じ id を `tools/check/standards-coverage-debt.json` へ理由付きで追記する。宣言だけ、または台帳だけでは既存の別の規則が拒否するので、受入集合の有無を分離できない。
+固定具は 2 つを対にして足す。`docs/domain/sharedsignals/standards.md` へ `RFC8417-SET-FIXTURE` の行を 1 行足し、同じ id を `tools/check/standards-coverage-debt.json` へ理由付きで追記する。宣言だけ、または台帳だけでは既存の別の規則が拒否するので、受入集合の有無を分離できない。
 
 | | `mise run check-spec` |
 |---|---|
@@ -279,10 +279,10 @@ Git ratchet は消化より先に実行する。順序を逆にすると、消�
   **検査自身が記録の嘘を止めた。** `initial_context` が削除した台帳を指したままだったので
   `check-work-items` が落ちた。読んだファイルの一覧は、消えたファイルを指し続けられない。
 - **Acceptance RED Evidence**:
-  - **Test**: `mise run check-spec`（`docs/contexts/sharedsignals/standards.md` へ
+  - **Test**: `mise run check-spec`（`docs/domain/sharedsignals/standards.md` へ
     `RFC8417-SET-FIXTURE` の行を 1 行足した状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/sharedsignals/standards.md:20: RFC8417-SET-FIXTURE is
+  - **Observed Failure**: exit 1。`docs/domain/sharedsignals/standards.md:20: RFC8417-SET-FIXTURE is
     declared, but no test names it. Cite the id from the test that exercises it.` 同じ id を載せた台帳を
     作り直しても、exit 1 と文言は変わらなかった。
   - **Detection Reason**: 免除が残っているなら、台帳へ載せた 2 回目は exit 0 になる。2 回とも同じ

@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: operations
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # 実行単位ごとの接続プール上限を構成ファイルで指定する

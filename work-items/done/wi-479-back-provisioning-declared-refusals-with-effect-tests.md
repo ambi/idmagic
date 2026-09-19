@@ -8,11 +8,11 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-001 }
-  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-010 }
-  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-011 }
-  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-012 }
-  - { path: docs/contexts/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-015 }
+  - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-001 }
+  - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-010 }
+  - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-011 }
+  - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-012 }
+  - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-015 }
 ---
 
 # Provisioning が宣言する未検証の拒否 5 件に効果まで確かめるテストを与え、台帳から外す

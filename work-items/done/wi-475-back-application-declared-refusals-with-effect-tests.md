@@ -8,14 +8,14 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-003 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-004 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-005 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-006 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-008 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-009 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-011 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-013 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-003 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-004 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-005 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-006 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-008 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-009 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-011 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-013 }
 ---
 
 # Application が宣言する未検証の拒否 8 件に効果まで確かめるテストを与え、台帳から外す

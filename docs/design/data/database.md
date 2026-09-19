@@ -2,7 +2,7 @@
 
 ## スキーマの読み方
 
-現行の物理スキーマは [`infra/schema/postgres.sql`](../../../infra/schema/postgres.sql) が正本である。
+現行の物理スキーマは [`infra/schema/postgres.sql`](../../../infra/schema/postgres.sql) が一次情報である。
 同ファイルは、WAL に記録する `LOGGED` テーブルと、クラッシュ復旧で内容が消えてもよい `UNLOGGED` テーブルを宣言する。
 列、索引、検査制約、外部キー、削除規則の完全な定義は同ファイルで確認する。
 
@@ -10,7 +10,7 @@
 ER 図はテーブルの存在と外部キーだけを示し、列を描かない。
 線は外部キーを表し、図をまたぐ参照先は該当する図にも再掲する。
 外部キーのないテーブルも、存在を見落とさないように図へ含める。
-多重度は現在の `NULL` 許容と一意性を要約したものであり、最終的な制約は正本の SQL に従う。
+多重度は現在の `NULL` 許容と一意性を要約したものであり、最終的な制約は一次情報の SQL に従う。
 
 テーブル一覧は、SQL からは読み取れないテーブルの意味を記す。
 各テーブルは、自身が属する図のテーブル一覧に一度だけ現れ、再掲した図の一覧には現れない。
@@ -546,6 +546,6 @@ PostgreSQL の構造をどう変え、どう適用するかは[スキーマ管�
 - マスターキーの提供元は OpenBao（Vault Transit 互換の HTTP API）である。開発環境とローカル環境では Tink の平文鍵セットを使うため、OpenBao は不要である。提供元は設計上差し替え可能である。
 - 唯一の HTTP 接点は、読み取り専用で `system_admin` に限定した `GET /api/admin/data-keys/health`（`backend/datakeys/handlers_http`）である。各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告し、鍵素材は決して返さない。ローテーション、無効化、破棄は内部操作とし、管理用エンドポイントを公開しない。
 
-署名鍵の秘密鍵はこの規範の対象ではない。`signing_keys.private_jwk` に何が入るかは `KeyProvider` の選択で決まり、その規範は [SigningKeys Context の判断](../../contexts/signing-keys/decisions.md) が定める。
+署名鍵の秘密鍵はこの規範の対象ではない。`signing_keys.private_jwk` に何が入るかは `KeyProvider` の選択で決まり、その規範は [SigningKeys Context の判断](../../domain/signing-keys/decisions.md) が定める。
 
 DEK の破棄では `tenant_data_encryption_keys` の行を削除せず、`wrapped_dek` を `NULL` にして暗号学的に消去する。これにより、鍵素材を失った後も `active`、`retiring`、`disabled`、`destroyed` というライフサイクルの履歴を参照できる。

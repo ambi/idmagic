@@ -15,7 +15,7 @@ initial_context:
     - SPECIFICATION_FORMAT.md
     - WORK_ITEM_FORMAT.md
     - docs/README.md
-    - docs/structure.md
+    - docs/domain/structure.md
     - docs/design-rules.md
     - tools/check/src/specification-doc.ts
     - work-items/wi-414-boundary-fitness-functions.md
@@ -70,7 +70,7 @@ spec_impact: { kind: none, reason: "設計原則の正本文書を新設し SPEC
 
 配置先には 2 つの案がある。
 
-第一案は `docs/structure.md` に節を足すことである。既存ファイルの範囲は「ディレクトリ、依存の向き、層の構成、アーキテクチャスタイル」であり、設計原則はその延長として読める。`docs/` 直下のファイル集合は `SPECIFICATION_FORMAT.md` で閉じた集合として検査されているため、この案は形式文書にも検査器にも手を入れずに済む。
+第一案は `docs/domain/structure.md` に節を足すことである。既存ファイルの範囲は「ディレクトリ、依存の向き、層の構成、アーキテクチャスタイル」であり、設計原則はその延長として読める。`docs/` 直下のファイル集合は `SPECIFICATION_FORMAT.md` で閉じた集合として検査されているため、この案は形式文書にも検査器にも手を入れずに済む。
 
 第二案は `docs/design-rules.md` を新設することである。設計原則は構造の記述とは寿命も読まれ方も違い、`structure.md` に混ぜると「ディレクトリを確認しに来た人」が原則を読み飛ばす。ただし閉じた集合を広げるため、`SPECIFICATION_FORMAT.md` の配置図と `tools/check/src/specification-doc.ts` の許可リストを同時に変える必要がある。
 

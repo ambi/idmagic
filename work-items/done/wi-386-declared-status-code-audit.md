@@ -26,7 +26,7 @@ initial_context:
     - docs/api-rules.md
   tests:
     - tools/check/src
-  stop_before_reading: [frontend, docs/contexts, load, infra]
+  stop_before_reading: [frontend, docs/domain, load, infra]
 affected_spec:
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.RegisterClient }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.Authorize }

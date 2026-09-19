@@ -8,7 +8,7 @@ priority: p1
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/sharedsignals/main.tsp, symbol: IdMagic.SharedSignals.Operations.ReceiveSecurityEvent }
 ---
 
@@ -78,7 +78,7 @@ affected_spec:
 
 ### 運用経路の扱い
 
-`/livez`、`/readyz`、`/startupz`、`/metrics` は Kubernetes が Pod へ直接当てるので、ゲートウェイを通す必要は必ずしもない。`/metrics` は認証を持たないため、`docs/contexts/system/decisions.md` が「公開先は折り返しアドレス、管理用ネットワーク、認証付きプロキシの背後に限る」と定めている。**つまり `/metrics` はゲートウェイを通してはならない経路である。** 照合は「通すべき」と「通してはならない」を区別できる必要があり、単なる集合の差では表せない。分類は経路表の側に持たせるか、照合の設定として持つかを着手時に決める。
+`/livez`、`/readyz`、`/startupz`、`/metrics` は Kubernetes が Pod へ直接当てるので、ゲートウェイを通す必要は必ずしもない。`/metrics` は認証を持たないため、`docs/domain/system/decisions.md` が「公開先は折り返しアドレス、管理用ネットワーク、認証付きプロキシの背後に限る」と定めている。**つまり `/metrics` はゲートウェイを通してはならない経路である。** 照合は「通すべき」と「通してはならない」を区別できる必要があり、単なる集合の差では表せない。分類は経路表の側に持たせるか、照合の設定として持つかを着手時に決める。
 
 ## Plan
 
@@ -107,7 +107,7 @@ affected_spec:
 
 **照合の網羅性そのものは検査できない。** 「実行時経路の正」が実際にすべての経路を含んでいることは、その正の作り方に依存する。`operations_gen.go` に現れない経路があれば、照合を通っても届かない経路が残る。T001 でこの網羅性を確かめ、確かめられない部分は Risk として残す。
 
-**運用経路の分類を誤ると、`/metrics` を公開しうる。** `docs/contexts/system/decisions.md` は `/metrics` を認証なしと定めているので、「通すべき経路」の集合へ誤って入れると認証のない指標が公開入口から読める。分類は既定を「通してはならない」にし、通す経路だけを明示する向きにする。
+**運用経路の分類を誤ると、`/metrics` を公開しうる。** `docs/domain/system/decisions.md` は `/metrics` を認証なしと定めているので、「通すべき経路」の集合へ誤って入れると認証のない指標が公開入口から読める。分類は既定を「通してはならない」にし、通す経路だけを明示する向きにする。
 
 `reversibility` は reversible。設定の変更であり、データも公開契約も変えない。
 

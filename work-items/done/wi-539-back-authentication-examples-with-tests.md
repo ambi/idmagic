@@ -15,7 +15,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/authentication/scenarios.feature.md
+    - docs/domain/authentication/scenarios.feature.md
   typespec: []
   source:
     - backend/shared/http/testing_stack/stack.go
@@ -38,7 +38,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/contexts/authentication/scenarios.feature.md` が宣言する 71 件を引き取る。
+[[wi-496-burn-down-the-example-coverage-debt]] は具体例の被覆台帳の消化単位を Context と決め、測定のうえで残りを Context ごとの子 work item へ割った。本項目はそのうち `docs/domain/authentication/scenarios.feature.md` が宣言する 71 件を引き取る。
 
 親項目が `claim-mapping` の 3 件と `workloadidentity` の 13 件で測った結果は、**16 件のうち注記だけで済んだのは 4 件だけ**だというものである。3 件はテストが 1 つも無く、9 件は既存テストへ新しい観測を足す必要があった。件数は作業量の目安にならない。
 
@@ -152,7 +152,7 @@ wi-559 が測った「経路探索は速くなり、`Then` との突き合わせ
 
 ## Verification
 
-- `mise run check-spec` が、`docs/contexts/authentication/scenarios.feature.md` の 71 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
+- `mise run check-spec` が、`docs/domain/authentication/scenarios.feature.md` の 71 件を `tools/check/example-coverage-debt.json` から外した状態で通る。台帳から外す前に同じ検査が当の id を名指しで落とすことを、消化ごとに観測する。
 - 消化したテストの所属パッケージに対する `mise run test-go-package -- <package>`。
 - `mise run verify`
 
@@ -177,7 +177,7 @@ wi-559 が測った「経路探索は速くなり、`Then` との突き合わせ
   - **Test**: `mise run check-spec`
   - **Requirement**: REQ-AUTHENTICATION-007
   - **Observed Failure**: 対象 71 件を台帳から外した状態で、71 件すべてを名指しで落とした。例:
-    `docs/contexts/authentication/scenarios.feature.md:173: EX-AUTHENTICATION-007-01 is declared, but no test names it.`
+    `docs/domain/authentication/scenarios.feature.md:173: EX-AUTHENTICATION-007-01 is declared, but no test names it.`
   - **Detection Reason**: 検査は「その id を名指したテストが存在するか」だけを見る。
     台帳から外したうえで落ちることを先に観測しているので、通ったことは注記が実在することを意味する。
     注記の中身が空でないことは検査では読めないため、そこは各テストで `Then` の数だけ観測を置いた。

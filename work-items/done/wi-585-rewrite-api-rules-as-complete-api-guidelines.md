@@ -76,7 +76,7 @@ initial_context:
 - 上に挙げた未記述の観点について、採用する規則を決めて書く。採らない観点は、採らない決定として残す。
 - 既存の八つの節を、意味を変えずに表中心へ組み直す。
 - 文書の題名を「API ガイドライン」にする。
-- [用語集](../../docs/glossary.md)の `InterfaceStability` など、この文書を名指す記述の参照を追従させる。
+- [用語集](../../docs/domain/glossary.md)の `InterfaceStability` など、この文書を名指す記述の参照を追従させる。
 
 ## Out of Scope
 
@@ -113,7 +113,7 @@ initial_context:
 - **日時と期間**。既存の契約が RFC 3339 の日時を使うことを確認し、期間を秒の整数で表すか ISO 8601 の期間で表すかを、現行の `retry_after_seconds` などから決める。
 - **冪等キー**。`POST` を使う経路のうち再送で二重作用が起きるものを洗い出し、冪等キーを受け付ける規則を書くか、経路ごとの再送防止で足りるとする決定を書く。現行に `Idempotency-Key` の受け付けは無いため、後者ならその理由を残す。
 - **条件付きリクエスト**。`ETag` と `If-Match` は [[wi-250-scim-sort-and-etag]] が SCIM について扱う。管理 API 全体へ広げるかを決め、広げないなら更新の取りこぼしを何が防ぐかを書く。
-- **長時間かかる操作**。現行は [Jobs](../../docs/contexts/jobs/README.md) が非同期処理を持ち、管理 API には操作リソースがない。Google AIP-151 の `Operation` 相当を採るか、ジョブ資源をそのまま公開するかを決める。
+- **長時間かかる操作**。現行は [Jobs](../../docs/domain/jobs/README.md) が非同期処理を持ち、管理 API には操作リソースがない。Google AIP-151 の `Operation` 相当を採るか、ジョブ資源をそのまま公開するかを決める。
 - **レート制限の伝え方**。`EndpointRateLimitPolicy` の 429 が `retry_after_seconds` と `Retry-After` を返すことは決まっている。残枠を伝えるヘッダーを持つかどうかを決める。
 
 採らない案は、新しい「API ガイドライン」文書を作って `api-guidelines.md` を残す案である。
@@ -154,7 +154,7 @@ initial_context:
 
 既存の節を表へ組み直すときに、散文が持っていた条件や例外が落ちる。文字列長と状態コードの節は特に条件が多いため、組み直した後に元の節と突き合わせる。
 
-節の再構成はアンカーを変える。`docs/glossary.md`、`docs/design/data/database.md`、各 Context の文書がこの文書の節を名指しているため、`mise run check-links` で確かめる。
+節の再構成はアンカーを変える。`docs/domain/glossary.md`、`docs/design/data/database.md`、各 Context の文書がこの文書の節を名指しているため、`mise run check-links` で確かめる。
 
 ## Completion
 

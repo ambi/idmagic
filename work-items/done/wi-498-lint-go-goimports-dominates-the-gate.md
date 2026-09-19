@@ -25,7 +25,7 @@ initial_context:
   stop_before_reading:
     - backend
     - frontend
-    - docs/contexts
+    - docs/domain
     - spec
 spec_impact: { kind: none, reason: "検証ゲートの構成と計測手段だけを変え、製品の観測可能な振る舞いも公開契約も変えない。" }
 ---

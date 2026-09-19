@@ -3,7 +3,7 @@ package usecases
 // Group CSV の preview/apply ジョブ境界。プレビューが CSV を受け取るのは 1 回だけで、
 // 適用は成功済みプレビューの ID と server-computed SHA-256 だけを参照する。
 // 行エラーは同じ不変ストアの固定件数ページへ直列化し、CSV 種別ごとのエラーテーブルを
-// 作らない (docs/contexts/identity-management/internals.md)。
+// 作らない (docs/domain/identity-management/internals.md)。
 
 import (
 	"context"

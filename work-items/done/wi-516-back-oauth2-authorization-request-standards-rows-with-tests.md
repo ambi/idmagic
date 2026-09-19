@@ -15,7 +15,7 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md
+    - docs/domain/oauth2/standards.md
   typespec: []
   source:
     - backend/oauth2/handlers_http/authorize_handler.go
@@ -49,7 +49,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/contexts/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 15 行を持つ。
+[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/domain/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 15 行を持つ。
 
 15 行は、認可リクエストを受け取ってから認可コードを渡すまでに立つ判断である。`redirect_uri` の厳密一致、PKCE、`request_uri` の 1 回限りの使用、`authorization_details` の検証、`iss` の付与がここに集まる。ここが素通りすれば、以降のトークン発行はすべて攻撃者の選んだ宛先とクライアントに対して働く。
 
@@ -173,7 +173,7 @@ initial_context:
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
 
-  `docs/contexts/oauth2/standards.md` のうち、認可リクエストの入口に立つ **15 行**が、その行の
+  `docs/domain/oauth2/standards.md` のうち、認可リクエストの入口に立つ **15 行**が、その行の
   `Statement` を区別できる入力と観測を持つテストを得て `tools/check/standards-coverage-debt.json` から
   消えた。台帳は 90 件から 75 件になった。テストは 1 ファイル
   （`backend/shared/http/server_http/authorization_request_standards_test.go`、11 テスト）で、
@@ -189,7 +189,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（15 件を台帳から外し、テストを書く前に）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/oauth2/standards.md` の 15 行それぞれに
+  - **Observed Failure**: exit 1。`docs/domain/oauth2/standards.md` の 15 行それぞれに
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（9 行目 `RFC6749-AUTHORIZATION-CODE` から
     246 行目 `OIDC-CORE-HYBRID-IMPLICIT` まで 15 件）

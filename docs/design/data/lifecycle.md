@@ -20,7 +20,7 @@
 短命な認証状態では、有効かどうかを読み取り時に `expires_at` で判定する。
 掃除が遅れても有効期間は延びず、掃除は保存容量のためだけに行う。
 
-監査イベントは、削除やアーカイブのインターフェースを提供しない（[Audit Context の判断](../../contexts/audit/decisions.md)）。
+監査イベントは、削除やアーカイブのインターフェースを提供しない（[Audit Context の判断](../../domain/audit/decisions.md)）。
 保持期間を過ぎたものの一括削除だけが、監査イベントを消す経路である。
 
 資産のうち `csv_artifacts` は、インポートが完了しても消える経路がない。
@@ -38,12 +38,12 @@ CSV の入力には利用者の個人識別情報が含まれるため、[削除
 
 利用者を物理的に削除しないのは、監査イベントの `sub` が指す先を失うと「誰が何をいつ行ったか」を再構成できなくなり、「削除済み」と「停止中」の区別も消えるからである。
 グループは監査イベントから参照されても、指す先の行が消えるだけで個人の情報は残らないので、匿名化を必要としない。
-利用者の削除は、猶予期間のある `PendingDeletion` を経て `Deleted` へ進む（[IdManagement の状態遷移](../../contexts/identity-management/states.md)）。
-消去が満たすべき規範は [`GDPR-ERASURE`](../../standards.md) が定める。
+利用者の削除は、猶予期間のある `PendingDeletion` を経て `Deleted` へ進む（[IdManagement の状態遷移](../../domain/identity-management/states.md)）。
+消去が満たすべき規範は [`GDPR-ERASURE`](../../domain/standards.md) が定める。
 
 ## テナントの退去
 
-現在、テナントの物理削除は提供していない（[Tenancy の状態遷移](../../contexts/tenancy/states.md)）。
+現在、テナントの物理削除は提供していない（[Tenancy の状態遷移](../../domain/tenancy/states.md)）。
 テナントを退去させる手段は無効化だけであり、無効化してもテナントのデータはすべて残る。
 
 テナントの物理削除を設計するときは、スキーマの次の性質が順序を決める。

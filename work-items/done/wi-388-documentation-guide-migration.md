@@ -52,7 +52,7 @@ initial_context:
 
 - `tools/check`：正本のファイル名と節構成の検査を、種類ごとのファイル構成へ対応させる
 - `tools/render-spec-docs`：分割後のファイル群から仕様サイトを生成する
-- `docs/contexts/*`：全 Context の `SPECIFICATION.md` を `README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md` へ分割する
+- `docs/domain/*`：全 Context の `SPECIFICATION.md` を `README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md` へ分割する
 - `docs/SPECIFICATION.md`：`README.md`、`structure.md`、`api-rules.md`、`observability.md`、`deployment.md`、`capacity.md`、`persistence.md`、`authorization.md` へ分割する
 - `states.md`：状態の表（`State` / 種別 / 意味）を追加し、`Initial:` / `Terminal:` の行を置き換える
 - `Design` の内容を、判断（`decisions.md`）と機構の説明（`internals.md`）へ振り分ける
@@ -117,7 +117,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
 
 未解決だった問いの結論。
 
-- **機能分割は含めない。** `docs/contexts/<context>/<feature>/` への分割は別項目とする。本項目で `identity-management` は 470 行から最大 150 行のファイル群になり、機能分割の動機だった長さの問題は解消した。検査ツールも `docs/contexts/<context>/<file>` の 1 段だけを正本として受け付ける実装のままなので、機能分割にはツールの変更が別途要る
+- **機能分割は含めない。** `docs/domain/<context>/<feature>/` への分割は別項目とする。本項目で `identity-management` は 470 行から最大 150 行のファイル群になり、機能分割の動機だった長さの問題は解消した。検査ツールも `docs/domain/<context>/<file>` の 1 段だけを正本として受け付ける実装のままなので、機能分割にはツールの変更が別途要る
 - **仕様サイトの URL は保たない。** `spec/generated/docs/` は追跡しない生成物であり、外部から参照している箇所はリポジトリ内に無かった。Context のページ (`contexts/<context>/index.html`) は URL が変わらないので、変わるのは新しく増えたページの追加だけである
 
 ## Tasks
@@ -177,6 +177,6 @@ Context の移行順は、小さいものから始めて形式を固めてから
 
 - **Left Undone**:
   - `docs/capacity.md` は作らなかった。想定規模、縮退の順序、上限の置き方の方針にあたる記述がリポジトリに無く、唯一近い文字列長の区分は、それを使う契約の規則と一緒に読めないと判断できないため `api-rules.md` に残した
-  - `docs/glossary.md`、`docs/standards.md`、`docs/scenarios.feature.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
+  - `docs/domain/glossary.md`、`docs/domain/standards.md`、`docs/domain/scenarios.feature.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
   - T003 の「`State` 列と TypeSpec の列挙値の一致」は実装しなかった。状態機械が扱う集合は列挙型の部分集合であることが多く（`UserLifecycle` は `UserStatus` の 7 個のうち 4 個）、しかもその列挙型は別の Context にある。等値検査は偽になるため、対応関係を宣言する書式を先に決める必要がある。検査したのは `Kind` の語彙、初期状態が 1 つであること、遷移表の `From` と `To` が状態の表に現れることの 3 つである
-  - `docs/contexts/system/internals.md` の UI 指針（デザイン指針、管理コンソールの方針、ライブラリ選定表、ナビゲーション方針、コンテナ／表示の分割）は、`DOCUMENTATION_GUIDE.md` §5.9 ではコードの近くに置くものだが、本項目では移動先を作らずそのまま移した
+  - `docs/domain/system/internals.md` の UI 指針（デザイン指針、管理コンソールの方針、ライブラリ選定表、ナビゲーション方針、コンテナ／表示の分割）は、`DOCUMENTATION_GUIDE.md` §5.9 ではコードの近くに置くものだが、本項目では移動先を作らずそのまま移した

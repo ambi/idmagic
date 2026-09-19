@@ -12,15 +12,15 @@ depends_on:
   - wi-471-align-the-tenant-quota-update-route-with-the-admin-api-conventions
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-003 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-012 }
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-014 }
-  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/contexts/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/contexts/application/scenarios.feature.md, requirement: REQ-APPLICATION-001 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-035 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-003 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-012 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-001 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-035 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.GetTenant }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant }

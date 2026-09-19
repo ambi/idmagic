@@ -99,7 +99,7 @@ describe('validateAgainstSchema — work-item', () => {
     verification: [{ cmd: 'go test ./...', result: 'ok' }],
   }
   const validInitialContext = {
-    specification: ['docs/scenarios.feature.md#REQ-DEMO-001'],
+    specification: ['docs/domain/scenarios.feature.md#REQ-DEMO-001'],
   }
   const validDocumentationImpact = {
     level: 'none',
@@ -126,7 +126,7 @@ describe('validateAgainstSchema — work-item', () => {
         {
           ...feature,
           affected_spec: [
-            { path: 'docs/contexts/demo/scenarios.feature.md', requirement: 'REQ-DEMO-CHECK' },
+            { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-CHECK' },
           ],
         },
         '',

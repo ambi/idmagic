@@ -8,7 +8,7 @@ priority: p2
 change_kind: bugfix
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/contexts/oauth2/standards.md]
+  specification: [docs/domain/oauth2/standards.md]
   typespec:
     - IdMagic.OAuth2.Operations.Token
     - IdMagic.OAuth2.Operations.Authorize

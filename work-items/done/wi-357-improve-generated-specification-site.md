@@ -16,8 +16,8 @@ initial_context:
     - SPECIFICATION_FORMAT.md
     - spec/main.tsp
     - docs/SPECIFICATION.md
-    - docs/contexts/*/SPECIFICATION.md
-    - docs/contexts/*/*.tsp
+    - docs/domain/*/SPECIFICATION.md
+    - docs/domain/*/*.tsp
     - spec/generated/openapi/*.json
     - tools/render-spec-docs/src/main.ts
     - tools/render-spec-docs/src/render.ts

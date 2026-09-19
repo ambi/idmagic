@@ -64,7 +64,7 @@ JSON report の stable mutant ID を 1 件だけ再実行する場合は、cache
 mise run test-go-mutation-mutant -- backend/idmanagement/group/domain '<mutant-id>'
 ```
 
-ツールの版を更新した後と change-resistance evidence を作る前には、固定した canary で lived と not viable の分類を検算する。
+ツールのバージョンを更新した後と change-resistance evidence を作る前には、固定した canary で lived と not viable の分類を検算する。
 
 ```console
 mise run check-go-mutation-tool

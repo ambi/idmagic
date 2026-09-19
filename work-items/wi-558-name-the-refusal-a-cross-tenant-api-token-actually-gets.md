@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "本項目が決めるのは、シナリオ�
 
 ## Motivation
 
-`docs/contexts/saml/scenarios.feature.md` の `EX-SAML-005-03` は、トークンのテナントとリクエスト先のテナントが一致しないとき「操作を `AccessDeniedError` で拒否する」と宣言している。
+`docs/domain/saml/scenarios.feature.md` の `EX-SAML-005-03` は、トークンのテナントとリクエスト先のテナントが一致しないとき「操作を `AccessDeniedError` で拒否する」と宣言している。
 
 [[wi-550-back-saml-examples-with-tests]] が測ったところ、製品が返すのは 401 `invalid_token` である。`acme` レルムで発行した `saml:read` と `saml:write` のトークンを `default` レルムの `/api/admin/v1/saml/service-providers` へ提示すると、参照も登録も 401 になり、保存先には何も残らない。
 

@@ -8,8 +8,8 @@ change_kind: bugfix
 priority: p2
 initial_context:
   specification:
-    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-002
-    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-020
+    - docs/domain/tenancy/SPECIFICATION.md#REQ-TENANCY-002
+    - docs/domain/tenancy/SPECIFICATION.md#REQ-TENANCY-020
     - docs/SPECIFICATION.md
   typespec:
     - Product.ClaimMapping.UserAttributeDef

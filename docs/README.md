@@ -1,34 +1,44 @@
-# システム文書
+# IdMagic ドキュメント
 
-この文書は、`docs/` に収めた正本文書の入口である。`docs/` の文書は、IdMagic の目的、要求、アーキテクチャ、設計、検証、運用を、システムの目的からトップダウンでたどれるように並べてある。個別のモデル、API、認証機構は `spec/contexts/<context>/` の TypeSpec で、一つの Bounded Context で閉じる振る舞いと設計は `docs/contexts/<context>/` で定める。
+IdMagic は、人間とエージェントのアイデンティティ、認証、委譲、プロビジョニングをテナント単位で管理するアイデンティティ基盤である。
+より詳しい説明は[プロダクト概要](design/product-overview.md)を参照する。
+
+このサイトは `docs/` に収めた一次情報文書から生成する。
+`docs/` は種類ごとにディレクトリへ分かれており、その分かれ方がサイドバーの区分とそのまま対応する。
+個別のモデル、API、認証機構の契約は `spec/contexts/<context>/` の TypeSpec が定める。
+
+## 区分
+
+| 区分 | 収める内容 | 入口 |
+| --- | --- | --- |
+| 設計文書 | プロダクトの目的、要求、アーキテクチャ、領域ごとの実現方式、検証の設計 | [設計文書](design/README.md) |
+| ドメイン設計文書 | Context を跨いで固定される語と標準仕様、横断シナリオ、リポジトリの構造、Bounded Context ごとの責務と内部設計 | [ドメイン設計文書](domain/README.md) |
+| 開発文書 | 開発環境、テスト、継続的インテグレーション、リリース、仕様先行の進め方 | [開発文書](development/README.md) |
+| 運用文書 | 平常時のサービス管理、保守、人が手を動かす運用手順 | [運用文書](operations/README.md) |
+
+生成した参照は「リファレンス」に、文書と記録の書き方は「フォーマット」に並ぶ。
+どちらも人が書く文書ではなく、前者は TypeSpec と規範シナリオから、後者はリポジトリ直下の規約から来る。
 
 ## 読み順
 
-1. [プロダクト概要](product-overview.md)で、解く問題、利用者、対象外を確認する。
-2. [要求](requirements/)で、機能、品質、制約を確認する。
-3. [アーキテクチャ](architecture/)で、外部境界、論理構成、ランタイム構成、デプロイ構成、全体判断を確認する。
-4. [設計](design/)で、アプリケーション、データ、基盤、セキュリティ、信頼性、性能、オブザーバビリティの実現方式を確認する。
-5. [検証](verification/)で、要求をどの証拠で受け入れるかを確認する。
-6. [運用](operations/)と[運用手順](runbooks/)で、平常時の管理と障害時の具体的な操作を確認する。
+1. [プロダクト概要](design/product-overview.md)で、何をする製品か、誰が使うか、何を対象としないかを確認する。
+2. [要求](requirements/README.md)で、機能、品質、制約を確認する。
+3. [アーキテクチャ](architecture/README.md)で、外部境界、論理構成、ランタイム構成、デプロイ構成、全体判断を確認する。
+4. [設計文書](design/README.md)で、領域ごとの実現方式を確認する。
+5. [ドメイン設計文書](domain/README.md)で、Context ごとの振る舞いと内部設計を確認する。
+6. [検証設計](verification/README.md)で、要求をどの証拠で受け入れるかを確認する。
+7. [運用文書](operations/README.md)で、平常時の管理と障害時の操作を確認する。
 
-この順序は文書の依存方向でもある。下位文書は上位の要求と判断を参照し、上位文書へ実装詳細を逆流させない。数値、境界、判断には一つの所有者を定め、別の文書は値を写さずリンクまたは安定 ID で参照する。
-
-## 文書体系
-
-| 層 | 正本の内容 |
-| --- | --- |
-| システムの目的 | [プロダクト概要](product-overview.md)、[用語集](glossary.md)、[全体の標準仕様](standards.md) |
-| 要求 | [機能要求](requirements/functional.md)、[品質要求](requirements/quality.md)、[システム制約](requirements/constraints.md) |
-| アーキテクチャ | [システムコンテキスト](architecture/system-context.md)、[論理アーキテクチャ](architecture/logical.md)、[ランタイムアーキテクチャ](architecture/runtime.md)、[デプロイメントアーキテクチャ](architecture/deployment.md)、[アーキテクチャ上の判断](architecture/decisions.md) |
-| 設計 | [アプリケーション](design/application/)、[データ](design/data/)、[インフラストラクチャ](design/infrastructure/)、[セキュリティ](design/security/)、[信頼性](design/reliability/)、[性能](design/performance/)、[オブザーバビリティ](design/observability/) |
-| Context 横断の振る舞い | [システム横断シナリオ](scenarios.feature.md) |
-| 検証 | [検証設計](verification/)、[システム受入れ設計](verification/system-acceptance.md)、[セキュリティ検証設計](verification/security.md) |
-| 運用 | [サービス管理](operations/service-management.md)、[保守](operations/maintenance.md)、[運用手順](runbooks/) |
-| ドメインの詳細 | [Context 別仕様](contexts/)と隣接する `spec/contexts/` |
-| リポジトリ構造 | [構造](structure.md) |
+この順序は文書の依存方向でもある。
+下位文書は上位の要求と判断を参照し、上位文書へ実装詳細を逆流させない。
+数値、境界、判断には一つの所有者を定め、別の文書は値を写さずリンクまたは安定 ID で参照する。
 
 ## 執筆上の境界
 
-人が書く現在状態の正本は `docs/` に置く。機械が読むモデルと API 契約は `spec/` に置き、生成した OpenAPI は追跡しない `spec/generated/`、生成したドキュメントサイトは追跡しない `site/` に出力する。変更固有の分析、代替案、実装履歴は `work-items/` が、開発手順は[開発文書](development/)が、リリース固有の差分は `releases/` が所有する。
+人が書く現在状態の一次情報は `docs/` に置く。
+機械が読むモデルと API 契約は `spec/` に置き、生成した OpenAPI は追跡しない `spec/generated/`、生成したドキュメントサイトは追跡しない `site/` に出力する。
+変更固有の分析、代替案、実装履歴は `work-items/` が、リリースごとの差分は `docs/releases/` が所有する。
 
-文書配置、正本の種類、仕様先行の変更手順は、ルートの [文書ガイド](../DOCUMENTATION_GUIDE.md)、[Specification Format](../SPECIFICATION_FORMAT.md)、[Work Item Format](../WORK_ITEM_FORMAT.md) が定める。開発ツールのバージョンとコマンドは `mise.toml` に集約し、基本操作は `mise run <task>` から実行する。
+文書の配置、一次情報の種類、仕様先行の変更手順は、リポジトリ直下の [文書ガイド](../DOCUMENTATION_GUIDE.md)、[仕様フォーマット](../SPECIFICATION_FORMAT.md)、[作業項目フォーマット](../WORK_ITEM_FORMAT.md) が定める。
+開発ツールのバージョンとコマンドは `mise.toml` に集約し、基本操作は `mise run <task>` から実行する。
+このサイトは `mise run render-docs` で作り、`mise run serve-docs` で読む。

@@ -5,7 +5,7 @@
 ファイル名には `wi-<連番>-<ケバブケースの題名>.md` を使う。
 
 作業項目は、タスクリスト、変更固有の設計文書、実装履歴も兼ねる。
-完了時点でも有効な結論は、TypeSpec またはその種類の内容を所有する正準文書へ反映しなければならない。
+完了時点でも有効な結論は、TypeSpec またはその種類の内容を所有する一次情報文書へ反映しなければならない。
 
 ```markdown
 ---
@@ -24,13 +24,13 @@ documentation_impact: # 着手後は必須
   references:
     - { kind: release_note, path: docs/releases/changes/wi-999-start-task.md }
 initial_context: # 起票時ではなく着手時に記入する
-  specification: [docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-001]
+  specification: [docs/domain/system/scenarios.feature.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
   tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 primary_use_cases: # feature、bugfix、standards.md の変更では着手後に必須
   - id: start-task
@@ -121,7 +121,7 @@ reading list that points at moved or deleted files is worse than none. A pending
 Motivation, Scope, and Out of Scope to be useful.
 
 Once the item is `in_progress`, `mise run check-work-items` resolves that list: every path must exist, and a
-`docs/contexts/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
+`docs/domain/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
 
 `affected_spec` is resolved for every record, completed ones included, because it indexes the normative
 element the change touched rather than what someone read at the time. When a normative element moves to a

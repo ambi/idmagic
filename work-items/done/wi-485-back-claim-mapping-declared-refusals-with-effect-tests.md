@@ -8,8 +8,8 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-002 }
-  - { path: docs/contexts/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-003 }
+  - { path: docs/domain/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-002 }
+  - { path: docs/domain/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-003 }
 ---
 
 # ClaimMapping が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す

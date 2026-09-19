@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/standards.md, requirement: GDPR-ERASURE }
+  - { path: docs/domain/standards.md, requirement: GDPR-ERASURE }
 ---
 
 # バックアップから復元すると、消去した利用者と破棄した DEK が戻る

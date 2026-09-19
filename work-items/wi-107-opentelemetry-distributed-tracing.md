@@ -8,7 +8,7 @@ created_at: 2026-07-04
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # OpenTelemetry の伝播をデータベース、外部 HTTP、非同期ジョブまで延ばす

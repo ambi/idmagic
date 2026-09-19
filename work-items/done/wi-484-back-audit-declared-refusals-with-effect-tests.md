@@ -8,8 +8,8 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-003 }
-  - { path: docs/contexts/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-003 }
+  - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
 ---
 
 # Audit が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す

@@ -10,4 +10,4 @@
 
 データ移行と設定変更は要らない。`/token` の応答の `token_type` は変わっていないため、発行の経路に手を入れる必要は無い。
 
-互換性境界は [RFC7662-INTROSPECT](../../contexts/oauth2/standards.md#oauth-20-token-introspection) が定める。
+互換性境界は [RFC7662-INTROSPECT](../../domain/oauth2/standards.md#oauth-20-token-introspection) が定める。

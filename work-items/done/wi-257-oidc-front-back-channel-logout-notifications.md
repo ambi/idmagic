@@ -15,10 +15,10 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-257.md }
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-025
-    - docs/contexts/oauth2/standards.md
-    - docs/contexts/oauth2/internals.md
-    - docs/contexts/jobs/decisions.md
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-025
+    - docs/domain/oauth2/standards.md
+    - docs/domain/oauth2/internals.md
+    - docs/domain/jobs/decisions.md
   typespec:
     - spec/contexts/oauth2/models.tsp
     - spec/contexts/oauth2/main.tsp
@@ -46,11 +46,11 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.LogoutNotification }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.FrontChannelLogoutTarget }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DiscoveryDocument }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-023 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-025 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-023 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-025 }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.CheckSessionIframe }
-  - { path: docs/contexts/oauth2/standards.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
-  - { path: docs/contexts/oauth2/standards.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
+  - { path: docs/domain/oauth2/standards.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
+  - { path: docs/domain/oauth2/standards.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
   - { path: spec/contexts/jobs/models.tsp, symbol: IdMagic.Contract.JobKind }
 primary_use_cases:
   - id: back-channel-logout-delivery
@@ -88,7 +88,7 @@ primary_use_cases:
 revoke に伴う refresh token family の失効と `/end_session` の `id_token_hint`
 検証は実運用相当まで完成した。しかし、接続済み RP (Relying Party) へ「ユーザーが
 ログアウトしたこと」を伝播する OpenID Connect Front-Channel Logout 1.0 /
-Back-Channel Logout 1.0 は未実装であり、`docs/contexts/oauth2/` の
+Back-Channel Logout 1.0 は未実装であり、`docs/domain/oauth2/` の
 `standards.OpenIDConnectFrontChannelLogout` / `OpenIDConnectBackChannelLogout` は
 既に `adoption: required` として宣言済みである (wi-28 T001)。宣言した標準と実装の
 不一致を解消するため、通知配送を実装する。
@@ -98,8 +98,8 @@ Keycloak / Okta / Google 相当の IdP では、ユーザーが idmagic から�
 idmagic 上ではログアウト済みでも RP 側では認証済みのまま残り続ける。
 
 ## Scope
-以下は wi-28 の T001 (specification-first) で既に `docs/contexts/oauth2/` /
-`docs/contexts/jobs/` に追加・コミット済みであり、本 WI はそれらに対する
+以下は wi-28 の T001 (specification-first) で既に `docs/domain/oauth2/` /
+`docs/domain/jobs/` に追加・コミット済みであり、本 WI はそれらに対する
 Go 実装を担当する (追加の specification 変更が必要になった場合のみ `spec-change` に戻る)。
 
 - `models.ClientSession` — sid が発行結果を渡した RP (client_id) の参加記録。
@@ -134,12 +134,12 @@ Go 実装スコープ:
 - `FrontChannelLogout` (iframe target 一覧の算出) を実装し、`/end_session`
   応答へ埋め込む。
 - `CheckSessionIframe` (静的ページ、`session_state` 相関アルゴリズムは実装しない
-  — `docs/contexts/oauth2/internals.md` の「広告と静的検査だけを提供する」に従う) を実装する。
+  — `docs/domain/oauth2/internals.md` の「広告と静的検査だけを提供する」に従う) を実装する。
 - `LogoutNotification` の状態遷移を監査可能にする (配送成功/失敗の追跡)。
 
 ## Out of Scope
 - CAEP / Shared Signals。別 WI で扱う (wi-28 と同じ整理)。
-- access token の即時失効 (denylist)。`docs/contexts/oauth2/internals.md` が
+- access token の即時失効 (denylist)。`docs/domain/oauth2/internals.md` が
   「アクセストークンの失効は対象外とし、最大 600 秒の残存リスクを受け入れる」と定めている。
 - `check_session_iframe` の `session_state` salted hash 相関アルゴリズム
   (Draft 28 のため `adoption: optional`)。
@@ -161,15 +161,15 @@ back-channel は `LogoutNotification` を先に保存し、その ID と token �
 
 配送はプロキシを使わず private IP を拒否し、redirect ごとに同じ検証を行う既存の `safehttp` client を使う。
 
-この制御は `docs/contexts/oauth2/internals.md` と `docs/design/security/threat-model.md` に反映した。
+この制御は `docs/domain/oauth2/internals.md` と `docs/design/security/threat-model.md` に反映した。
 
 ## Plan
-- 設計判断は `docs/contexts/oauth2/internals.md` の「OIDC session binding and logout propagation」に
+- 設計判断は `docs/domain/oauth2/internals.md` の「OIDC session binding and logout propagation」に
   既に書かれている (back-channel の配送は永続的で冪等な `Job`、front-channel は同じリクエスト内で
   計算する `iframe` 送信先一覧で配送保証なし、`check_session_iframe` は広告と静的検査だけ)。
   つまり本 work item に残っているのは設計ではなく実装と規範シナリオである。
   仕様は既に「そう動く」と書いているのに実装が無い状態なので、この乖離を閉じることが目的になる。
-  新規の設計判断が必要になった場合のみ `docs/contexts/oauth2/decisions.md` に追記する。
+  新規の設計判断が必要になった場合のみ `docs/domain/oauth2/decisions.md` に追記する。
 - `LogoutNotification` の specification モデルは `sub` (対象ユーザー) を持たない
   (session 状態の複製を避けるため)。しかし logout token は `sub` claim を
   必須とする (`OIDC-BACKCHANNEL-LOGOUT-TOKEN`)。ワーカープロセス内でテナント別
@@ -220,7 +220,7 @@ back-channel は `LogoutNotification` を先に保存し、その ID と token �
       fail 確認 (`backend/oauth2/handlers_http/check_session_iframe_handler_test.go`)
       → GREEN (`check_session_iframe_handler.go`)。静的ページ + 現在の browser
       cookie が有効な LoginSession に解決できるかどうかだけを埋め込んで返す
-      最小実装 (`docs/contexts/oauth2/internals.md`)。`d.AuthnResolver.Resolve` の結果 (nil または
+      最小実装 (`docs/domain/oauth2/internals.md`)。`d.AuthnResolver.Resolve` の結果 (nil または
       `AuthenticationPending`) を fail-safe 側 ("changed") に倒す。
       route を `backend/oauth2/handlers_http/routes.go` に登録し、
       `TestAssembledRoutesMatchGeneratedOpenAPI` の `GET /session/check` 差分を
@@ -251,7 +251,7 @@ logout token 配送は RP という外部境界への outbound HTTP であり、
 本 WI でも採用しない。
 
 `sub`/`iss` を job params (JSONB) 経由で運ぶ設計は、Jobs の汎用性
-(`docs/contexts/jobs/decisions.md`: Jobs は汎用の永続キュー) を維持しつつ、ワーカー内でのテナント別
+(`docs/domain/jobs/decisions.md`: Jobs は汎用の永続キュー) を維持しつつ、ワーカー内でのテナント別
 issuer 再解決という複雑さを避けるための選択。将来 Jobs 側で機微情報を job params
 に含めることが問題になった場合は再検討する。
 

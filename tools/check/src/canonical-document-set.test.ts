@@ -5,10 +5,11 @@ describe('verifyCanonicalDocumentSet', () => {
   it('accepts a directory holding only canonical documents', () => {
     expect(
       verifyCanonicalDocumentSet([
-        { directory: 'docs', files: ['README.md', 'glossary.md'] },
+        { directory: 'docs', files: ['README.md'] },
+        { directory: 'docs/domain', files: ['glossary.md', 'structure.md'] },
         { directory: 'docs/requirements', files: ['README.md', 'quality.md'] },
         { directory: 'docs/design/infrastructure', files: ['README.md', 'network.md'] },
-        { directory: 'docs/contexts/demo', files: ['README.md', 'scenarios.feature.md'] },
+        { directory: 'docs/domain/demo', files: ['README.md', 'scenarios.feature.md'] },
       ]),
     ).toEqual([])
   })
@@ -26,14 +27,14 @@ describe('verifyCanonicalDocumentSet', () => {
   // 通ってしまう。
   it('names the canonical document a misspelled file was meant to be', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/contexts/demo', files: ['decision.md'] },
+      { directory: 'docs/domain/demo', files: ['decision.md'] },
     ])
     expect(findings[0]?.message).toContain('did you mean decisions.md?')
   })
 
   it('reads a name that differs only in the extension case as a misspelling', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/contexts/demo', files: ['glossary.MD'] },
+      { directory: 'docs/domain/demo', files: ['glossary.MD'] },
     ])
     expect(findings).toHaveLength(1)
     expect(findings[0]?.message).toContain('did you mean glossary.md?')
@@ -49,7 +50,7 @@ describe('verifyCanonicalDocumentSet', () => {
 
   it('suggests a canonical document for a name shouted in full uppercase', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/contexts/demo', files: ['GLOSSARY.MD'] },
+      { directory: 'docs/domain/demo', files: ['GLOSSARY.MD'] },
     ])
     expect(findings[0]?.message).toContain('did you mean glossary.md?')
   })
@@ -57,26 +58,26 @@ describe('verifyCanonicalDocumentSet', () => {
   // 候補を出す距離の上限そのものを固定する。上限が動けば、どちらかが落ちる。
   it('suggests a name two edits away', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/contexts/demo', files: ['internl.md'] },
+      { directory: 'docs/domain/demo', files: ['internl.md'] },
     ])
     expect(findings[0]?.message).toContain('did you mean internals.md?')
   })
 
   it('suggests nothing for a name three edits away', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/contexts/demo', files: ['intrnl.md'] },
+      { directory: 'docs/domain/demo', files: ['intrnl.md'] },
     ])
     expect(findings[0]?.message).not.toContain('did you mean')
   })
 
   it('holds each level to its own set of names', () => {
     // states.md は Context の文書であり docs/ 直下の文書ではない。逆に
-    // structure.md は docs/ 直下の文書であり Context の文書ではない。
+    // structure.md は docs/domain/ の文書であり Context の文書ではない。
     expect(verifyCanonicalDocumentSet([{ directory: 'docs', files: ['states.md'] }])).toHaveLength(
       1,
     )
     expect(
-      verifyCanonicalDocumentSet([{ directory: 'docs/contexts/demo', files: ['structure.md'] }]),
+      verifyCanonicalDocumentSet([{ directory: 'docs/domain/demo', files: ['structure.md'] }]),
     ).toHaveLength(1)
     expect(
       verifyCanonicalDocumentSet([{ directory: 'docs/design/security', files: ['network.md'] }]),
@@ -89,7 +90,7 @@ describe('verifyCanonicalDocumentSet', () => {
     ])
     expect(findings).toHaveLength(1)
     expect(findings[0]?.message).not.toContain('did you mean')
-    expect(findings[0]?.message).toContain('structure.md')
+    expect(findings[0]?.message).toContain('README.md')
   })
 
   it('ignores files that are not Markdown', () => {
@@ -102,7 +103,7 @@ describe('verifyCanonicalDocumentSet', () => {
     expect(
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['one.md', 'two.md'] },
-        { directory: 'docs/contexts/demo', files: ['three.md'] },
+        { directory: 'docs/domain/demo', files: ['three.md'] },
       ]),
     ).toHaveLength(3)
   })

@@ -8,10 +8,10 @@ change_kind: maintenance
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-003 }
-  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-004 }
-  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-005 }
-  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-008 }
+  - { path: docs/domain/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-003 }
+  - { path: docs/domain/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-004 }
+  - { path: docs/domain/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-005 }
+  - { path: docs/domain/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-008 }
 ---
 
 # SharedSignals が宣言する未検証の拒否 4 件に効果まで確かめるテストを与え、台帳から外す

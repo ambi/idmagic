@@ -13,7 +13,7 @@ import { TotpPage } from './TotpPage'
 import { loginPageDictionary } from './LoginPage.i18n'
 import { passwordRecoveryDictionary } from './PasswordRecoveryPages.i18n'
 
-// docs/standards.md の WCAG22-LABELS-ERRORS と WCAG22-STATUS を、認証画面を入口として
+// docs/domain/standards.md の WCAG22-LABELS-ERRORS と WCAG22-STATUS を、認証画面を入口として
 // 観測する。行は「すべての認証操作」を対象にしているので、入口は個々の部品ではなく画面で
 // あり、8 つある認証画面すべてを通す。
 //

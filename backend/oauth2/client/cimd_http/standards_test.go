@@ -1,6 +1,6 @@
 package cimd_http
 
-// docs/contexts/oauth2/standards.md の `OAuth Client ID Metadata Document`
+// docs/domain/oauth2/standards.md の `OAuth Client ID Metadata Document`
 // (draft-ietf-oauth-client-id-metadata-document-00) が宣言する 7 行を、
 // 製品の解決経路そのもので観測する。
 //

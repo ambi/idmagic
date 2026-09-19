@@ -18,7 +18,7 @@ initial_context:
     - SPECIFICATION_FORMAT.md
     - WORK_ITEM_FORMAT.md
     - docs/README.md
-    - docs/structure.md
+    - docs/domain/structure.md
     - docs/development/specification-first-workflow.md
   typespec: []
   source:
@@ -55,7 +55,7 @@ spec_impact:
 
 - SWEBOK、SEBoK、ISO/IEC/IEEE 42010、ISO/IEC/IEEE 15289、ISO/IEC 25010 の一次資料に基づき、文書体系の分類原則、階層、各文書の責務、最小記載項目、参照規則、作成順序を定める。
 - `DOCUMENTATION_GUIDE.md` をプロダクト非依存の文書体系として再構成する。機能要求と非機能要求、アーキテクチャ、機能設計、データ、インフラ、ネットワーク、セキュリティ、可用性、冗長性、災害復旧、拡張性、性能、監視、ログ、開発、運用、検証を配置する。
-- idmagic の現在の正準文書、`infra/` 以下の説明文書、開発文書、運用手順を棚卸しし、節単位で移行先を決め、実際に移行する。`docs/README.md` と `docs/structure.md` を同期する。
+- idmagic の現在の正準文書、`infra/` 以下の説明文書、開発文書、運用手順を棚卸しし、節単位で移行先を決め、実際に移行する。`docs/README.md` と `docs/domain/structure.md` を同期する。
 - ソース、構成資材、既存仕様、実際に得られた検証結果から確認できる設計を補完する。確認できない本番環境の構成や測定値には、必要な調査と判断を明記する。
 - `SPECIFICATION_FORMAT.md`、開発ワークフロー、必要な範囲の `WORK_ITEM_FORMAT.md`、`AGENTS.md` とリポジトリ内スキルを新体系へ同期する。
 - 文書探索、形式検査、規範差分、要求の参照解決、SLO 参照、HTML 生成を新階層へ対応させる。既存の要求 ID、TypeSpec シンボル、監視資材、作業項目からの参照を維持する。
@@ -96,7 +96,7 @@ SWEBOK は知識領域の確認、SEBoK はシステムとしての分解、4201
 
 ### Target document tree
 
-次の物理配置を採用する。`docs/contexts/` と `spec/contexts/` の対応は保ち、アプリケーション設計の索引から既存の詳細仕様へ進めるようにする。ツリー中のファイルは各領域の正本候補を明示したものであり、対象外の領域では親の索引に理由を記し、空ファイルは作らない。
+次の物理配置を採用する。`docs/domain/` と `spec/contexts/` の対応は保ち、アプリケーション設計の索引から既存の詳細仕様へ進めるようにする。ツリー中のファイルは各領域の正本候補を明示したものであり、対象外の領域では親の索引に理由を記し、空ファイルは作らない。
 
 ```text
 docs/
@@ -246,7 +246,7 @@ work-items/                         # 変更固有の分析、計画、証拠、
 | `docs/observability.md` | Metrics | `docs/design/observability/monitoring.md` |
 | `docs/observability.md` | Logging | `docs/design/observability/logging.md` |
 
-`docs/README.md`、`docs/product-overview.md`、`docs/glossary.md`、`docs/standards.md`、`docs/structure.md`、`docs/scenarios.feature.md` は直下に残し、参照先だけを新しい配置へ更新した。`docs/contexts/`、`docs/development/`、`docs/runbooks/`、`docs/releases/` の配置は変えていない。
+`docs/README.md`、`docs/design/product-overview.md`、`docs/domain/glossary.md`、`docs/domain/standards.md`、`docs/domain/structure.md`、`docs/domain/scenarios.feature.md` は直下に残し、参照先だけを新しい配置へ更新した。`docs/domain/`、`docs/development/`、`docs/runbooks/`、`docs/releases/` の配置は変えていない。
 
 移行で本文が二重にならないよう、旧ファイルは削除し、`backend/`、`frontend/`、`infra/`、`load/` のコメントにある正本パスと、監視資材および完了済み作業項目からの参照を同じ変更で更新した。`REQ-*`、`EX-*`、`SLO-*`、`CAP-*`、TypeSpec シンボルは改番していない。
 
@@ -281,7 +281,7 @@ Unit RED は、`documentKind` が新しい正準パスを文書種別へ解決�
 - [x] T009 [Docs] 可用性、冗長性、復旧、性能、容量、拡張性、監視、ログ、トレースの設計を移行して補完する。
 - [x] T010 [Docs] システム受入設計、開発と運用の文書を整理し、正準設計、運用手順、実行証拠の参照をつなぐ。
 - [x] T011 [Docs] 大きな不足を既存項目へ割り当て、担当のない不足だけを新規起票する。現状と制約を正準文書へ残す。
-- [x] T012 [Docs] `docs/README.md`、`docs/structure.md`、各入口文書、作業項目、監視資材などからの参照を更新し、旧本文の重複を除く。
+- [x] T012 [Docs] `docs/README.md`、`docs/domain/structure.md`、各入口文書、作業項目、監視資材などからの参照を更新し、旧本文の重複を除く。
 - [x] T013 [Verify] 規範差分、参照整合、領域の充足状況、生成 HTML の到達性、代表的な誤変更の検出を確認する。
 - [x] T014 [Verify] 所定の検査を通し、完了記録を追加して `work-items/done/` へ移す。
 

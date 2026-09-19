@@ -8,7 +8,7 @@
 | 種類 | 配置 | 責任 |
 | --- | --- | --- |
 | 検査 | `check/` | registry に登録した規則を共有 snapshot に対して実行し、所見を返す |
-| 生成 | `generate-contract/`、`render-spec-docs/` | 正準入力から派生成果物を作る |
+| 生成 | `generate-contract/`、`render-docs/` | 正準入力から派生成果物を作る |
 | 照会 | `brief/`、`changed-packages/`、`task-timing/`、`spec-diff/`、`coverage-debt-report/`、`security-test-gap-report/` | 作業対象、差分、時間、残存 debt を人へ報告する |
 | 共有 | `workspace/` | リポジトリを発見して一度だけ読み、上のモジュールへ渡す |
 
@@ -20,4 +20,4 @@
 TypeSpec の所有元は compiler の source location、OpenAPI の名前は `spec/` 以下、Go の import root は `go.mod` から得る。
 
 基本操作はリポジトリ root から `mise run` で実行する。
-ツールの版と環境は `mise.toml` が管理する。
+ツールのバージョンと環境は `mise.toml` が管理する。

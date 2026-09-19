@@ -11,11 +11,11 @@ bun = "1.4.2"
 "aqua:betterleaks/betterleaks" = "1.8.1"
 "aqua:google/osv-scanner" = "2.5.1"
 # govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
-# 宣言する言語版でビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
+# 宣言する言語バージョンでビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
 # られるためである。詳細は wi-291。
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
-# 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでも版を固定するのは、
-# 生成される変異の集合が版で変わり、work item に残した一覧が再現できなくなるためである。
+# 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
+# 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/szhekpisov/gomutants" = "0.6.1"
 
 [tasks.setup]
@@ -124,7 +124,7 @@ run = "mise run -c verify ::: test-ui-e2e"
 description = "Run the standard verification suite serially, reporting every gate that failed"
 # 逐次実行でも規律は同じで、落ちたものを全部並べて終わる。
 # 呼び出しは `mise run <task>` の形をそのまま書く。タスク名を変数に畳むと短くなるが、
-# 並列版と同じ一式を並べているかを機械的に読めなくなり、drift は人が気付くまで残る。
+# 並列実行と同じ一式を並べているかを機械的に読めなくなり、drift は人が気付くまで残る。
 run = '''
 #!/usr/bin/env sh
 set -u
@@ -251,7 +251,7 @@ description = "Scan Go and Bun dependencies for known vulnerabilities"
 # 対象は列挙する。--recursive にすると、後から増えた依存定義ファイルが所有者と抑止方針の
 # 決まらないうちにゲートへ入り、CI の意味が黙って変わる。
 # 呼び出し解析は切る。OSV-Scanner は go/types を自分のバイナリに焼き込むので、go.mod が
-# 宣言する言語版を配布バイナリのビルド Go が下回った瞬間に解析が壊れ、しかもそれが検出結果に
+# 宣言する言語バージョンを配布バイナリのビルド Go が下回った瞬間に解析が壊れ、しかもそれが検出結果に
 # 現れない。到達性は audit-go-reachability が持つ。--call-analysis=none は「none という言語」
 # として一般エラーになるだけで、無効化にはならない。
 # 出力引数は透過する。CI は同じ対象定義のまま --format=sarif を足して呼ぶ。
@@ -660,7 +660,7 @@ depends = ["compile-spec"]
 run = '''
 mise run -c \
   check-generated-contract ::: \
-  check-rendered-spec ::: \
+  check-rendered-docs ::: \
   check-repository ::: \
   check-config-reference ::: \
   check-route-reference
@@ -671,10 +671,10 @@ description = "Run every registered TypeScript repository check in one process"
 dir = "tools"
 run = "bun run check/src/runner.ts all --base-revision \"${1:-main}\""
 
-[tasks.check-rendered-spec]
-description = "Check the rendered specification site"
+[tasks.check-rendered-docs]
+description = "Check the rendered documentation site"
 dir = "tools"
-run = "bun run render-spec-docs/src/main.ts --check"
+run = "bun run render-docs/src/main.ts --check"
 
 [tasks.check-links]
 description = "Check repository-local Markdown links and anchors"
@@ -765,7 +765,7 @@ depends = ["compile-spec"]
 run = [
   "mise run check-generated-contract",
   "cd tools && bun run check/src/runner.ts documents",
-  "mise run check-rendered-spec",
+  "mise run check-rendered-docs",
 ]
 
 [tasks.check-coverage-debt-ratchet]
@@ -853,17 +853,24 @@ set -eu
 bun run spec-diff/src/main.ts "${1:-main}"
 '''
 
-[tasks.render-spec-docs]
-description = "Render browsable specification and API documentation"
+[tasks.render-docs]
+description = "Render the browsable documentation and API reference site"
 dir = "tools"
-run = "bun run render-spec-docs/src/main.ts"
+run = "bun run render-docs/src/main.ts"
+
+# Swagger UI は OpenAPI を fetch で読む。file:// で開くとブラウザーがその取得を拒むので、
+# API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。
+[tasks.serve-docs]
+description = "Serve the rendered documentation site over HTTP"
+dir = "tools"
+run = "bun run render-docs/src/serve.ts"
 
 [tasks.spec-render]
 description = "Regenerate TypeSpec-derived artifacts"
 run = [
   "mise run compile-spec",
   "mise run generate-contract",
-  "mise run render-spec-docs",
+  "mise run render-docs",
 ]
 
 [tasks.dev]

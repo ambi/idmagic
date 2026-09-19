@@ -1,7 +1,7 @@
 // 優先度クラスの分類。経路の登録と同じパッケージに置く。
 //
 // 起動時設定に置かないのは、経路と分類の対応が配備ごとに変わりうる状態を作らない
-// ためである (docs/contexts/system/decisions.md の Load shedding by priority class)。
+// ためである (docs/domain/system/decisions.md の Load shedding by priority class)。
 // ここに書いておけば、組み立てた router の全量に対して網羅性を検査できる。その検査が
 // この表の唯一の防壁である。分類の抜けは、平常時のテストでは決して現れない。
 package server_http

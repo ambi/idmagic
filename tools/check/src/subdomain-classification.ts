@@ -34,14 +34,14 @@ function cells(row: string): string[] {
   return parts
 }
 
-/** `[Name](../contexts/<dir>/README.md)` が指す Context ディレクトリ名。 */
+/** `[Name](../domain/<dir>/README.md)` が指す Context ディレクトリ名。 */
 function contextDirectory(cell: string): string | undefined {
-  return cell.match(/\((?:\.\.\/)?contexts\/([^/)]+)\/README\.md\)/)?.[1]
+  return cell.match(/\((?:\.\.\/)?domain\/([^/)]+)\/README\.md\)/)?.[1]
 }
 
 /**
  * `source` は `docs/architecture/logical.md` の本文、`contextDirectories` は
- * `docs/contexts/` の直下にあるディレクトリ名。どちらも引数で入るので、この
+ * `docs/domain/` の直下にあるディレクトリ名。どちらも引数で入るので、この
  * 関数はファイルシステムも作業ディレクトリも読まない。
  */
 export function verifySubdomainClassification(
@@ -92,7 +92,7 @@ export function verifySubdomainClassification(
     listed.set(directory, line)
 
     if (!known.has(directory)) {
-      findings.push({ line, message: `docs/contexts/${directory}/ does not exist` })
+      findings.push({ line, message: `docs/domain/${directory}/ does not exist` })
       continue
     }
 
@@ -111,7 +111,7 @@ export function verifySubdomainClassification(
     if (listed.has(directory)) continue
     findings.push({
       line: headerIndex + 1,
-      message: `docs/contexts/${directory}/ is not listed in the context index table`,
+      message: `docs/domain/${directory}/ is not listed in the context index table`,
     })
   }
 

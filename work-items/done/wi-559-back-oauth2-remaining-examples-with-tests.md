@@ -15,8 +15,8 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-001
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-005
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-001
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-005
   typespec: []
   source: []
   tests:
@@ -35,7 +35,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-538-back-oauth2-examples-with-tests]] は `docs/contexts/oauth2/scenarios.feature.md` が宣言する 105 件を引き取り、REQ-OAUTH2-002 から REQ-OAUTH2-004 までの 6 件を消化して 1 件あたりの所要を測った。**6 件のうち注記だけで済んだものは 1 件も無かった。** 親項目の測定（16 件中 2 件）より悪い。
+[[wi-538-back-oauth2-examples-with-tests]] は `docs/domain/oauth2/scenarios.feature.md` が宣言する 105 件を引き取り、REQ-OAUTH2-002 から REQ-OAUTH2-004 までの 6 件を消化して 1 件あたりの所要を測った。**6 件のうち注記だけで済んだものは 1 件も無かった。** 親項目の測定（16 件中 2 件）より悪い。
 
 その所要を根拠に、wi-538 は残る 99 件を 5 つの子 work item へ割った。
 
@@ -159,7 +159,7 @@ gofumpt はこの形をディレクティブとして扱い、doc コメント�
   - **Test**: `mise run check-spec`
   - **Requirement**: REQ-OAUTH2-005
   - **Observed Failure**: 対象 id を台帳から外した状態で 86 件を名指しで落とした。例:
-    `docs/contexts/oauth2/scenarios.feature.md:110: EX-OAUTH2-005-01 is declared, but no test names it.`
+    `docs/domain/oauth2/scenarios.feature.md:110: EX-OAUTH2-005-01 is declared, but no test names it.`
   - **Detection Reason**: 検査は「その id を名指したテストが存在するか」だけを見る。
     台帳から外したうえで落ちることを先に観測しているので、通ったことは注記が実在することを意味する。
     注記の中身が空でないことは検査では読めないため、そこは各テストで `Then` の数だけ観測を置いた。

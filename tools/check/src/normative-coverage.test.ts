@@ -4,8 +4,8 @@ import { checkNormativeCoverage, citedNormativeIds } from './normative-coverage.
 const DEBT = 'tools/check/example-coverage-debt.json'
 
 const declared = [
-  { id: 'REQ-DEMO-001', path: 'docs/contexts/demo/scenarios.feature.md' },
-  { id: 'REQ-DEMO-002', path: 'docs/contexts/demo/scenarios.feature.md' },
+  { id: 'REQ-DEMO-001', path: 'docs/domain/demo/scenarios.feature.md' },
+  { id: 'REQ-DEMO-002', path: 'docs/domain/demo/scenarios.feature.md' },
 ]
 
 const at = (...ids: string[]) =>
@@ -115,7 +115,7 @@ describe('checkNormativeCoverage', () => {
       ledger: { entries: [], path: DEBT },
     })
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.path).toBe('docs/contexts/demo/scenarios.feature.md')
+    expect(findings[0]?.path).toBe('docs/domain/demo/scenarios.feature.md')
     expect(findings[0]?.message).toContain('REQ-DEMO-002')
     expect(findings[0]?.message).toContain('no test names it')
   })

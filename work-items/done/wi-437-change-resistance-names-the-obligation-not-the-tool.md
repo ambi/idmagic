@@ -21,7 +21,7 @@ initial_context:
   stop_before_reading:
     - frontend
     - spec
-    - docs/contexts
+    - docs/domain
 spec_impact: { kind: none, reason: "開発時の道具を 1 つ外し、証拠契約の書き方を道具名から義務の記述へ戻す変更であり、製品の振る舞いも公開契約も変えない。" }
 ---
 

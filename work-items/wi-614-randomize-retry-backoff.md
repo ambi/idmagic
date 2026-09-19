@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/jobs/scenarios.feature.md, requirement: REQ-JOBS-005 }
-  - { path: docs/contexts/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-006 }
+  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-005 }
+  - { path: docs/domain/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-006 }
 ---
 
 # 再試行の待ち時間に一様乱数のばらつきを付ける

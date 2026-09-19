@@ -8,7 +8,7 @@ created_at: 2026-09-14
 priority: p2
 change_kind: bugfix
 affected_spec:
-  - { path: docs/contexts/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
 ---
 
 # テナントをまたぐ branding アセット取得の拒否契約を実装と一致させる

@@ -15,8 +15,8 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/saml/standards.md
-    - docs/contexts/saml/scenarios.feature.md
+    - docs/domain/saml/standards.md
+    - docs/domain/saml/scenarios.feature.md
   typespec: []
   source:
     - backend/saml/domain/authnrequest.go
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/contexts/saml/standards.md` の 6 行を引き取る。この文書は 7 行のうち 6 行が名指しを持たない。
+[[wi-495-burn-down-the-standards-coverage-debt]] は標準の被覆台帳へ受入集合を入れ、消化の単位を所有文書と決めた。本項目はそのうち `docs/domain/saml/standards.md` の 6 行を引き取る。この文書は 7 行のうち 6 行が名指しを持たない。
 
 SAML の行 id は `SAML2Core-BearerAssertion` のように大文字と小文字が混じる。[[wi-418-normative-coverage-gates]] の当初の実装は「ハイフンで繋いだ大文字の並び」を id の形と決め打ちしていたため、SAML と WS-Federation の 13 行はどれほど明白に名指されても被覆と認められなかった。この形の推測は既に取り除かれ、宣言された id そのものを探すようになっている。したがって本項目の消化は、名指しさえ書けば必ず届く。
 
@@ -162,7 +162,7 @@ SAML の 2 行はどちらも、製品がその機能を実装していない種
 - **Completed At**: 2026-09-07
 - **Summary**:
   `mise run spec-diff` は `no normative specification change against main` を返す。規範の変更は無い。
-  差分は `docs/contexts/saml/standards.md` の 7 行のうち、名指しを持たなかった 6 行に対する被覆の状態で
+  差分は `docs/domain/saml/standards.md` の 7 行のうち、名指しを持たなかった 6 行に対する被覆の状態で
   ある。6 行すべてがその行の `Statement` を区別できる入力と観測を持つテストを得て
   `tools/check/standards-coverage-debt.json` から消え、台帳は 110 件から 104 件になった。
   新設したテストは `backend/saml/handlers_http/saml_standards_test.go` の 6 件で、既存の 2 件へ注記を
@@ -173,7 +173,7 @@ SAML の 2 行はどちらも、製品がその機能を実装していない種
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`（6 件を台帳から外し、テストを書く前の状態で）
   - **Requirement**: N/A: 標準の被覆はテストの有無についての性質であり、製品の規範要求ではない。
-  - **Observed Failure**: exit 1。`docs/contexts/saml/standards.md` の 6 行それぞれについて
+  - **Observed Failure**: exit 1。`docs/domain/saml/standards.md` の 6 行それぞれについて
     `<ID> is declared, but no test names it. Cite the id from the test that exercises it, or list it in
     tools/check/standards-coverage-debt.json with a reason.`（10 行目 `SAML2Core-EncryptedAssertion` から
     36 行目 `SAML2Metadata-WantAuthnRequestsSigned` まで 6 件）

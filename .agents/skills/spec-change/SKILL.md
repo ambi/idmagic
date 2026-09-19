@@ -11,8 +11,8 @@ current document kinds and grammar.
 1. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
    deprecation metadata, and authentication mechanisms in
    `spec/contexts/<context>/{models,main}.tsp`.
-2. Put context boundaries in `docs/contexts/<context>/README.md`, observable behavior in
-   `docs/contexts/<context>/scenarios.feature.md`, vocabulary in `glossary.md`, adopted protocol rules in
+2. Put context boundaries in `docs/domain/<context>/README.md`, observable behavior in
+   `docs/domain/<context>/scenarios.feature.md`, vocabulary in `glossary.md`, adopted protocol rules in
    `standards.md`, state machines in `states.md`, durable rationale in `decisions.md`, and durable mechanism
    that cannot be recovered from code in `internals.md`. Use the matching file under `docs/requirements/`,
    `docs/architecture/`, `docs/design/`, `docs/verification/`, or `docs/operations/` for a whole-system fact.

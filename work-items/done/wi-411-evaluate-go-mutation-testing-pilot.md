@@ -16,7 +16,7 @@ initial_context:
   typespec: []
   source: [mise.toml, backend/jobs/domain/job.go]
   tests: [backend/jobs/domain/job_test.go, tools/check/src/mise-config.test.ts]
-  stop_before_reading: [frontend, spec, docs/contexts]
+  stop_before_reading: [frontend, spec, docs/domain]
 spec_impact: { kind: none, reason: "開発時の変異試験を評価する道具と任意実行タスクだけを追加し、製品の外部契約、振る舞い、保証は変更しない。" }
 ---
 

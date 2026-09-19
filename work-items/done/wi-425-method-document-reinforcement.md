@@ -21,7 +21,7 @@ initial_context:
     - frontend/src
   stop_before_reading:
     - spec
-    - docs/contexts
+    - docs/domain
 ---
 
 # 方法論文書に、判断の可逆性・テストダブルの方針・記録の根拠を足す

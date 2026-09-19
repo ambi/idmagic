@@ -1,7 +1,11 @@
 import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { parseScenarioDocument } from '../../check/src/gherkin-scenarios.ts'
-import { CONTEXT_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
+import {
+  CONTEXT_DOCUMENTS,
+  DOMAIN_DOCUMENTS,
+  SYSTEM_DOCUMENT_PATHS,
+} from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 /**
@@ -58,15 +62,20 @@ type NavigationDirectory = {
 }
 
 type DocumentCategory =
-  | 'method'
+  | 'format'
+  | 'domain'
+  | 'domain-child'
   | 'development'
   | 'development-child'
+  | 'operations'
+  | 'operations-child'
+  | 'runbook'
   | 'whole-system'
   | 'whole-system-child'
   | 'context'
   | 'context-child'
 
-export type RenderedSpecificationSite = {
+export type RenderedDocumentationSite = {
   files: Record<string, string>
   assets: Record<string, string>
   operations: number
@@ -133,17 +142,94 @@ function canonicalOrder(names: readonly string[], name: string, fallback: number
   return index < 0 ? fallback : index
 }
 
+/**
+ * 表題の Markdown は本文としては組まれるが、名札、パンくず、`<title>` では地の文になる。
+ * 記法を残すと `` `/token` のエラー率 `` や `**必須**` がそのまま読み手へ出る。囲みの
+ * 種類を数え上げると強調や参照を取りこぼすので、インラインとして組んでからタグを外す。
+ * 呼び出し側が改めて escape するため、実体参照は元の文字へ戻す。
+ */
+function plainTitle(value: string): string {
+  return inlineMarkdown
+    .renderInline(value)
+    .replace(/<[^>]*>/g, '')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&')
+}
+
 function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
-  const declaredTitle = document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path
+  const declaredTitle = plainTitle(document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path)
   const title =
-    document.path === 'docs/scenarios.feature.md' ? 'システム横断シナリオ' : declaredTitle
+    document.path === 'docs/domain/scenarios.feature.md' ? 'システム横断シナリオ' : declaredTitle
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
+  const operationsDocument = document.path.match(/^docs\/operations\/([^/]+)$/)?.[1]
+  if (operationsDocument) {
+    const stem = operationsDocument.replace(/\.md$/, '')
+    return operationsDocument === 'README.md'
+      ? {
+          ...document,
+          id: 'operations',
+          title,
+          sections,
+          outputPath: 'operations/index.html',
+          category: 'operations',
+          order: 0,
+        }
+      : {
+          ...document,
+          id: `operations-${slug(stem)}`,
+          title,
+          sections,
+          outputPath: `operations/${slug(stem)}.html`,
+          category: 'operations-child',
+          order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
+        }
+  }
+  const runbookDocument = document.path.match(/^docs\/runbooks\/([^/]+)$/)?.[1]
+  if (runbookDocument) {
+    const stem = runbookDocument.replace(/\.md$/, '')
+    return {
+      ...document,
+      id: `runbook-${slug(stem)}`,
+      title,
+      sections,
+      outputPath: `operations/runbooks/${slug(stem)}.html`,
+      category: 'runbook',
+      order: index,
+    }
+  }
+  const domainDocument = document.path.match(/^docs\/domain\/([^/]+\.md)$/)?.[1]
+  if (domainDocument) {
+    const stem =
+      domainDocument === 'scenarios.feature.md' ? 'scenarios' : domainDocument.replace(/\.md$/, '')
+    return domainDocument === 'README.md'
+      ? {
+          ...document,
+          id: 'domain',
+          title,
+          sections,
+          outputPath: 'domain/index.html',
+          category: 'domain',
+          order: 0,
+        }
+      : {
+          ...document,
+          id: `domain-${slug(stem)}`,
+          title,
+          sections,
+          outputPath: `domain/${slug(stem)}.html`,
+          category: 'domain-child',
+          order: canonicalOrder(DOMAIN_DOCUMENTS, domainDocument, index),
+        }
+  }
   const systemDocument = document.path.match(/^docs\/(.+)$/)?.[1]
   if (
     systemDocument &&
-    !systemDocument.startsWith('contexts/') &&
+    !systemDocument.startsWith('domain/') &&
     !systemDocument.startsWith('development/')
   ) {
     const segments = systemDocument.split('/')
@@ -153,16 +239,16 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
     const outputPath =
       file === 'README.md'
         ? directory
-          ? `specification/${directory}/index.html`
-          : 'specification/index.html'
-        : `specification/${directory ? `${directory}/` : ''}${slug(stem)}.html`
+          ? `docs/${directory}/index.html`
+          : 'docs/index.html'
+        : `docs/${directory ? `${directory}/` : ''}${slug(stem)}.html`
     return systemDocument === 'README.md'
       ? {
           ...document,
           id: 'whole-system',
           title,
           sections,
-          outputPath: 'specification/index.html',
+          outputPath: 'index.html',
           category: 'whole-system',
           order: 0,
         }
@@ -199,7 +285,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           order: index,
         }
   }
-  const contextDocument = document.path.match(/^docs\/contexts\/([^/]+)\/([^/]+)$/)
+  const contextDocument = document.path.match(/^docs\/domain\/([^/]+)\/([^/]+)$/)
   const context = contextDocument?.[1]
   const contextFile = contextDocument?.[2]
   if (context && contextFile) {
@@ -211,7 +297,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           id: `context-${context}`,
           title,
           sections,
-          outputPath: `contexts/${context}/index.html`,
+          outputPath: `domain/${context}/index.html`,
           category: 'context',
           order: index,
           context,
@@ -221,7 +307,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           id: `context-${context}-${slug(stem)}`,
           title,
           sections,
-          outputPath: `contexts/${context}/${slug(stem)}.html`,
+          outputPath: `domain/${context}/${slug(stem)}.html`,
           category: 'context-child',
           order: canonicalOrder(CONTEXT_DOCUMENTS, contextFile, index),
           context,
@@ -230,11 +316,11 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   const name = document.path.split('/').at(-1)?.replace(/\.md$/, '') ?? document.path
   return {
     ...document,
-    id: `method-${slug(name)}`,
+    id: `format-${slug(name)}`,
     title,
     sections,
-    outputPath: `method/${slug(name)}.html`,
-    category: 'method',
+    outputPath: `format/${slug(name)}.html`,
+    category: 'format',
     order: index,
   }
 }
@@ -400,7 +486,7 @@ function markdownRenderer(
   }
 
   // Gherkin のキーワードは英語の普通の語でもある。印を付けるのは規範シナリオの
-  // 正本に限り、方法論文書の "When the work is complete, ..." のような本文や、
+  // 一次情報に限り、方法論文書の "When the work is complete, ..." のような本文や、
   // その中の箇条書きは対象にしない。キーワードと主役の名札は行頭にしか立たない
   // ので、インラインの先頭であることも条件にする。
   const defaultText =
@@ -465,7 +551,9 @@ function markdownRenderer(
         const fragment = hash >= 0 ? decodeFragment(href.slice(hash + 1)) : ''
         const currentSource = resolve(repositoryRoot, current.document.path)
         const absolute = pathPart ? resolve(dirname(currentSource), pathPart) : currentSource
-        const target = bySource.get(absolute)
+        // `[設計](design/)` のようなディレクトリへの参照は、リポジトリでは読めるが生成
+        // サイトには対応するページがない。その段の索引へ向ける。
+        const target = bySource.get(absolute) ?? bySource.get(resolve(absolute, 'README.md'))
         if (target) {
           const unprefixedFragment = fragment.startsWith(`${target.id}-`)
             ? fragment.slice(target.id.length + 1)
@@ -511,9 +599,11 @@ function inGroup(documents: RenderedDocument[], category: DocumentCategory): Ren
  * file holds, which is what tells the children apart.
  */
 function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): string {
+  // 「運用手順」の枝の下では、題名の末尾の種類名は枝の名札と同じことを言う。
+  if (entry.category === 'runbook') return entry.title.replace(/のランブック$/, '')
+  // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
+  if (entry.category !== 'context-child') return entry.title
   if (entry.path.endsWith('scenarios.feature.md')) return 'シナリオ'
-  // 全体文書は入れ子の段そのものが所属を示すので、名札は題名だけでよい。
-  if (entry.category === 'whole-system-child') return entry.title
   const owner = documents.find(
     (document) => document.category === 'context' && document.context === entry.context,
   )
@@ -529,7 +619,7 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
  * `docs/` から見た段。ディレクトリの索引はその段自身に、ほかの文書は索引の一段下に
  * 置く。上から下へ分解した体系は、この入れ子でしか読み手に伝わらない。
  */
-function systemTree(documents: RenderedDocument[]): NavigationDirectory {
+function documentTree(documents: RenderedDocument[]): NavigationDirectory {
   const root: NavigationDirectory = { name: 'docs', documents: [], directories: [] }
   for (const document of documents) {
     const parts = document.path.slice('docs/'.length).split('/')
@@ -550,85 +640,102 @@ function systemTree(documents: RenderedDocument[]): NavigationDirectory {
 }
 
 function navigation(page: string, documents: RenderedDocument[]): string {
-  const method = inGroup(documents, 'method')
-  const development = documents.find((document) => document.category === 'development')
-  const developmentChildren = inGroup(documents, 'development-child')
-  const root = documents.find((document) => document.category === 'whole-system')
+  const formats = inGroup(documents, 'format')
+  const index = (category: DocumentCategory) =>
+    documents.find((document) => document.category === category)
+  const development = index('development')
+  const operations = index('operations')
   const rootChildren = inGroup(documents, 'whole-system-child')
   const contexts = inGroup(documents, 'context')
-  const current = documents.find((document) => document.outputPath === page)
-  const openContext = current?.context
+  const runbooks = inGroup(documents, 'runbook')
   const link = (entry: RenderedDocument, label?: string, extraClass = '') => {
     const marker = entry.outputPath === page ? ' aria-current="page"' : ''
     const display = label ?? entry.title
     return `<a data-site-link class="nav-link${extraClass}"${marker} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(display)}</a>`
   }
-  const leaf = (entry: RenderedDocument, label?: string, extraClass = '') =>
-    `<li class="nav-item">${link(entry, label, extraClass)}</li>`
+  const leaf = (entry: RenderedDocument) =>
+    `<li class="nav-item">${link(
+      entry,
+      childLabel(entry, documents),
+      entry.category === 'context-child' ? ' nav-context-child' : '',
+    )}</li>`
   const containsCurrent = (node: NavigationDirectory): boolean =>
     node.document?.outputPath === page ||
     node.documents.some((document) => document.outputPath === page) ||
     node.directories.some(containsCurrent)
+  /**
+   * 枝は `details` として畳む。子は常に HTML へ載るので、どのページからでも到達でき、
+   * 開くかどうかの判断だけを現在位置に任せられる。読み手は自分で開くこともできる。
+   * 子を出す条件と到達性を一つの規則で両立させるため、例外は置かない。
+   */
   const directory = (node: NavigationDirectory): string => {
-    const children = containsCurrent(node)
-      ? [
-          ...node.documents.map((document) => leaf(document, childLabel(document, documents))),
-          ...node.directories.map(directory),
-        ].join('')
-      : ''
-    if (!node.document)
-      return `<li class="nav-branch"><span class="nav-label">${escapeHtml(node.name)}</span>${children ? `<ul>${children}</ul>` : ''}</li>`
-    return `<li class="nav-branch">${link(node.document)}${children ? `<ul>${children}</ul>` : ''}</li>`
+    const children = [...node.documents.map(leaf), ...node.directories.map(directory)].join('')
+    const heading = node.document
+      ? link(node.document)
+      : `<span class="nav-label">${escapeHtml(node.name)}</span>`
+    if (!children) return `<li class="nav-branch">${heading}</li>`
+    return `<li class="nav-branch"><details class="nav-directory"${containsCurrent(node) ? ' open' : ''}><summary>${heading}</summary><ul>${children}</ul></details></li>`
   }
   const referenceLink = (path: string, label: string) => {
     const marker = page === path ? ' aria-current="page"' : ''
     return `<li class="nav-item"><a data-site-link class="nav-link"${marker} href="${escapeHtml(pageHref(page, path))}">${escapeHtml(label)}</a></li>`
   }
-  const group = (title: string, body: string, index?: RenderedDocument) => {
-    const marker = index?.outputPath === page ? ' aria-current="page"' : ''
-    const heading = index
-      ? `<a data-site-link class="nav-section-link"${marker} href="${escapeHtml(pageHref(page, index.outputPath))}">${escapeHtml(title)}</a>`
+  const group = (title: string, body: string, index?: RenderedDocument | string) => {
+    const indexPath = typeof index === 'string' ? index : index?.outputPath
+    const marker = indexPath === page ? ' aria-current="page"' : ''
+    const heading = indexPath
+      ? `<a data-site-link class="nav-section-link"${marker} href="${escapeHtml(pageHref(page, indexPath))}">${escapeHtml(title)}</a>`
       : escapeHtml(title)
     const open = marker || body.includes('aria-current="page"') ? ' open' : ''
     return `<details class="nav-section"${open}><summary>${heading}</summary><ul class="nav-tree">${body}</ul></details>`
   }
-  const contextChildren = (entry: RenderedDocument) =>
-    entry.context === openContext
-      ? inGroup(documents, 'context-child').filter((document) => document.context === entry.context)
-      : []
-  const contextBranch = (entry: RenderedDocument) => {
-    const children = contextChildren(entry)
-      .map((child) => leaf(child, childLabel(child, documents), ' nav-context-child'))
-      .join('')
-    return `<li class="${children ? 'nav-branch' : 'nav-item'}">${link(entry)}${children ? `<ul>${children}</ul>` : ''}</li>`
-  }
-  const wholeSystemContextDocuments = rootChildren.filter(
-    (document) => !document.path.slice('docs/'.length).includes('/'),
+  const tree = documentTree(rootChildren)
+  /**
+   * 「システム設計」は 7 領域の索引にすぎず、抽象的な名前のまま段を一つ増やす。枝を
+   * 廃して領域を区分の直下へ上げる。索引そのものは `docs/README.md` の文書体系から辿る。
+   */
+  const designNode = tree.directories.find((node) => node.name === 'design')
+  const areas = tree.directories.flatMap((node) =>
+    node.name === 'design' ? node.directories.map(directory) : [directory(node)],
   )
-  const designTree = systemTree(
-    rootChildren.filter((document) => !wholeSystemContextDocuments.includes(document)),
-  )
-  const wholeSystemContext = `<li class="nav-branch"><span class="nav-label">システム全体</span><ul>${wholeSystemContextDocuments.map((document) => leaf(document, childLabel(document, documents))).join('')}</ul></li>`
-  const contextTree = `<li class="nav-branch"><span class="nav-label">コンテキスト文書</span><ul>${wholeSystemContext}${contexts.map(contextBranch).join('')}</ul></li>`
+  const domainBody = [
+    ...inGroup(documents, 'domain-child').map(leaf),
+    ...contexts.map((entry) =>
+      directory({
+        name: entry.title,
+        document: entry,
+        documents: inGroup(documents, 'context-child').filter(
+          (document) => document.context === entry.context,
+        ),
+        directories: [],
+      }),
+    ),
+  ].join('')
+  const designIndex = designNode?.document
   const designBody = [
-    ...designTree.documents.map((document) => leaf(document, childLabel(document, documents))),
-    ...designTree.directories.map(directory),
-    contextTree,
+    ...(designNode?.documents ?? []).map(leaf),
+    ...tree.documents.map(leaf),
+    ...areas,
+  ].join('')
+  const operationsBody = [
+    ...inGroup(documents, 'operations-child').map(leaf),
+    ...(runbooks.length
+      ? [directory({ name: '運用手順', documents: runbooks, directories: [] })]
+      : []),
   ].join('')
   return [
-    root ? group('設計文書', designBody, root) : '',
-    group('フォーマット', method.map((entry) => leaf(entry)).join('')),
+    designBody ? group('設計文書', designBody, designIndex) : '',
+    domainBody ? group('ドメイン設計文書', domainBody, index('domain')) : '',
     development
-      ? group(
-          '開発文書',
-          developmentChildren.map((child) => leaf(child, childLabel(child, documents))).join(''),
-          development,
-        )
+      ? group('開発文書', inGroup(documents, 'development-child').map(leaf).join(''), development)
       : '',
+    operations ? group('運用文書', operationsBody, operations) : '',
     group(
       'リファレンス',
       `${referenceLink('api/index.html', 'API リファレンス')}${referenceLink('models/index.html', 'モデルカタログ')}${referenceLink('traceability/index.html', 'トレーサビリティ')}`,
+      'reference/index.html',
     ),
+    group('フォーマット', formats.map(leaf).join(''), 'format/index.html'),
   ].join('')
 }
 
@@ -649,7 +756,7 @@ function shell(args: {
   const documentTitle = args.page === 'index.html' ? SITE_TITLE : `${args.title} · ${SITE_TITLE}`
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(documentTitle)}</title><link rel="stylesheet" href="${escapeHtml(stylesheetHref(args.page))}">${args.head ?? ''}</head>
-<body><a class="skip-link" href="#content">本文へ移動</a><header class="mobile-header">${siteLink(args.page, 'index.html', SITE_TITLE)}<details><summary>ナビゲーション</summary><nav aria-label="モバイル">${nav}</nav></details></header><aside class="sidebar"><div class="site-title">${siteLink(args.page, 'index.html', SITE_TITLE)}</div><nav aria-label="主要">${nav}</nav></aside><main id="content">${breadcrumbs(args.page, args.current)}${args.body}</main>${args.scripts ?? ''}</body></html>\n`
+<body><a class="skip-link" href="#content">本文へ移動</a><header class="mobile-header">${siteLink(args.page, 'index.html', SITE_TITLE)}<details><summary>ナビゲーション</summary><nav aria-label="モバイル">${nav}</nav></details></header><aside class="sidebar"><div class="site-title">${siteLink(args.page, 'index.html', SITE_TITLE)}</div><nav aria-label="主要">${nav}</nav></aside><main id="content">${args.page === 'index.html' ? '' : breadcrumbs(args.page, args.current)}${args.body}</main>${args.scripts ?? ''}</body></html>\n`
 }
 
 function modelGroupId(context: string): string {
@@ -685,6 +792,28 @@ function contextReference(args: {
   return `<section class="context-reference"><h2 id="${id}">API とモデル</h2><p>この Context が宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
 }
 
+/**
+ * 目次は組み上げた本文から作る。見出しの id を綴りから作り直すと、囲み記号の中の行や
+ * 生成した節を取りこぼすので、出力に実在する見出しだけを並べる。
+ */
+function pageOutline(body: string): string {
+  const headings = [...body.matchAll(/<h([23]) id="([^"]+)">([\s\S]*?)<\/h\1>/g)].map((match) => ({
+    level: match[1] ?? '2',
+    id: match[2] ?? '',
+    // 見出しの中の `<code>` は目次では区別しない。本文は既に escape 済みである。
+    text: (match[3] ?? '').replace(/<[^>]*>/g, '').trim(),
+  }))
+  // 見出しが一つしかないページの目次は、本文の書き出しを繰り返すだけである。
+  if (headings.length < 2) return ''
+  const items = headings
+    .map(
+      (heading) =>
+        `<li class="page-toc-h${heading.level}"><a data-site-link href="#${escapeHtml(heading.id)}">${heading.text}</a></li>`,
+    )
+    .join('')
+  return `<nav class="page-toc" aria-label="このページの内容"><p class="page-toc-title">このページの内容</p><ul>${items}</ul></nav>`
+}
+
 function documentPage(
   document: RenderedDocument,
   documents: RenderedDocument[],
@@ -695,7 +824,8 @@ function documentPage(
     stripFrontmatter(document.source),
     document.path.endsWith('/states.md'),
   )
-  const body = `<article class="document">${markdown.render(source, { document })}${reference}</article>`
+  const article = `<article class="document">${markdown.render(source, { document })}${reference}</article>`
+  const body = `<div class="page">${article}${pageOutline(article)}</div>`
   const scripts = `<script src="${escapeHtml(assetHref(document.outputPath, 'mermaid.min.js'))}"></script><script src="${escapeHtml(assetHref(document.outputPath, 'site.js'))}"></script>`
   return shell({
     page: document.outputPath,
@@ -707,30 +837,11 @@ function documentPage(
   })
 }
 
-function card(page: string, path: string, title: string, description: string): string {
-  return `<article class="card"><h2>${siteLink(page, path, title)}</h2><p>${escapeHtml(description)}</p></article>`
-}
-
-function landingPage(documents: RenderedDocument[], modelCount: number): string {
-  const page = 'index.html'
-  const development = documents.find((document) => document.category === 'development')
-  const byPath = new Map(documents.map((document) => [document.path, document]))
-  const documentCard = (path: string, description: string) => {
-    const document = byPath.get(path)
-    return document ? card(page, document.outputPath, document.title, description) : ''
-  }
-  const contexts = inGroup(documents, 'context')
-  const body = `<section class="hero"><p class="eyebrow">正準 Markdown と TypeSpec から生成</p><h1>${SITE_TITLE}</h1><p>要件、アーキテクチャ、設計、検証、開発、運用、Bounded Context ごとの仕様、API 契約、TypeSpec のモデルカタログを参照できる。この生成サイト自体は正本ではない。</p></section>
-<section aria-labelledby="primary"><h2 id="primary">主要文書</h2><div class="card-grid">${documentCard('docs/product-overview.md', 'IdMagic が解く問題、利用者、システムの対象範囲。')}${documentCard('docs/requirements/README.md', '機能要求、品質要求、システム制約。')}${documentCard('docs/architecture/README.md', '外部境界、論理構成、実行時と配置の構成。')}${documentCard('docs/design/README.md', 'アプリケーション、データ、基盤、セキュリティなどの実現方式。')}${documentCard('docs/verification/README.md', '要求を受け入れるための検証設計。')}${documentCard('docs/operations/README.md', '平常時のサービス管理、保守、運用手順への入口。')}</div></section>
-<section aria-labelledby="resources"><h2 id="resources">開発とリファレンス</h2><div class="card-grid">${development ? card(page, development.outputPath, development.title, '開発環境、テスト、継続的インテグレーション、リリース。') : ''}${documentCard('DOCUMENTATION_GUIDE.md', '正本文書の体系、責務、配置。')}${card(page, 'api/index.html', 'API リファレンス', '生成した OpenAPI を Swagger UI で表示する。')}${card(page, 'models/index.html', 'モデルカタログ', `HTTP に公開しないものを含む、リポジトリ所有の TypeSpec シンボル ${modelCount} 個。`)}${card(page, 'traceability/index.html', 'トレーサビリティ', '規範 ID とテスト、実装、作業項目の対応。')}</div></section>
-<section aria-labelledby="contexts"><h2 id="contexts">Bounded Context</h2><div class="card-grid">${contexts.map((entry) => card(page, entry.outputPath, entry.title, '概要、現在の設計、状態遷移、シナリオ。')).join('')}</div></section>`
-  return shell({
-    page,
-    title: SITE_TITLE,
-    current: 'ホーム',
-    body,
-    documents,
-  })
+/** フォーマット文書が何を定めるか。題名だけでは対象が分からない。 */
+const FORMAT_SUMMARIES: Record<string, string> = {
+  'DOCUMENTATION_GUIDE.md': '文書の種類、置き場所、それぞれが所有する内容',
+  'SPECIFICATION_FORMAT.md': '規範シナリオと標準仕様の書き方、ID の付け方',
+  'WORK_ITEM_FORMAT.md': '作業項目の書き方、必要な証拠、完了の記録',
 }
 
 function safeJson(value: unknown): string {
@@ -742,8 +853,49 @@ function safeJson(value: unknown): string {
     .replaceAll('\u2029', '\\u2029')
 }
 
+/**
+ * `#/components/schemas/...` のような内部参照であっても、Swagger UI 5.x は `baseDoc` の URI を
+ * 取得して解決する。`baseDoc` は文書の URL から必ず組まれるので、`file://` で開いた生成物では
+ * どの渡し方でも取得が拒まれ、参照が解決しない。
+ *
+ * 参照を残さなければ、解決そのものが起きない。組み立て時にすべての `$ref` を展開して渡す。
+ * 展開した節には `$$ref` を残すので、Swagger UI は元のモデル名を表示できる。
+ */
+/**
+ * `$ref` を展開した文書。Swagger UI へ渡すのはこれで、参照が残らないので解決の取得が起きない。
+ * 自分自身へ戻る参照は展開できないため、そこだけ型だけの節へ置き換えて打ち切る。SCIM の
+ * 属性定義が入れ子の属性を持つ 1 種類だけがこれに当たる。
+ */
+function dereference(openapi: OpenApiDocument): unknown {
+  const schemas = (openapi.components?.schemas ?? {}) as Record<string, unknown>
+  const SCHEMA_REF = /^#\/components\/schemas\/(.+)$/
+  const expand = (node: unknown, open: readonly string[]): unknown => {
+    if (Array.isArray(node)) return node.map((item) => expand(item, open))
+    if (node === null || typeof node !== 'object') return node
+    const entries = node as Record<string, unknown>
+    const reference = typeof entries.$ref === 'string' ? entries.$ref.match(SCHEMA_REF) : null
+    const name = reference?.[1]
+    if (name === undefined) {
+      return Object.fromEntries(
+        Object.entries(entries).map(([key, value]) => [key, expand(value, open)]),
+      )
+    }
+    const target = schemas[name]
+    if (target === undefined) return entries
+    if (open.includes(name)) {
+      return { type: 'object', description: `${name} と同じ形の入れ子。` }
+    }
+    const expanded = expand(target, [...open, name])
+    // Swagger UI は `$$ref` からモデル名を表示する。展開しても名前を失わない。
+    return expanded !== null && typeof expanded === 'object' && !Array.isArray(expanded)
+      ? { ...(expanded as Record<string, unknown>), $$ref: entries.$ref }
+      : expanded
+  }
+  return expand(openapi, [])
+}
+
 function apiPage(
-  _openapi: OpenApiDocument,
+  openapi: OpenApiDocument,
   openapiFileName: string,
   documents: RenderedDocument[],
 ): string {
@@ -775,7 +927,7 @@ function apiPage(
     Model: 'モデル',
     Schema: 'スキーマ',
   }
-  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');var translations=${safeJson(swaggerTranslations)};var root=document.querySelector('#swagger-ui');var localize=function(){root.querySelectorAll('input').forEach(function(input){if(translations[input.placeholder])input.placeholder=translations[input.placeholder]});var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);var node;while(node=walker.nextNode()){var key=node.nodeValue.trim();if(translations[key])node.nodeValue=node.nodeValue.replace(key,translations[key])}};new MutationObserver(localize).observe(root,{childList:true,subtree:true});SwaggerUIBundle({url:${safeJson(`../openapi/${encodeURIComponent(openapiFileName)}`)},dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true,onComplete:localize});});</script>`
+  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');var specification=${safeJson(dereference(openapi))};var translations=${safeJson(swaggerTranslations)};var root=document.querySelector('#swagger-ui');var localize=function(){root.querySelectorAll('input').forEach(function(input){if(translations[input.placeholder])input.placeholder=translations[input.placeholder]});var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);var node;while(node=walker.nextNode()){var key=node.nodeValue.trim();if(translations[key])node.nodeValue=node.nodeValue.replace(key,translations[key])}};new MutationObserver(localize).observe(root,{childList:true,subtree:true});SwaggerUIBundle({spec:specification,dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true,onComplete:localize});});</script>`
   return shell({
     page,
     title: 'API リファレンス',
@@ -871,7 +1023,7 @@ const commonPropertyDescriptions: Record<string, string> = {
   audience: '資格情報を受け取る対象。',
   issuer: '資格情報または表明の発行者。',
   code: '処理結果または手続きを識別するコード。',
-  version: 'データまたは仕様の版。',
+  version: 'データまたは仕様のバージョン。',
   rules: '適用する規則の集合。',
   label: '画面に表示する短い名称。',
   mode: '処理方式。',
@@ -928,6 +1080,33 @@ type ScenarioEntry = {
   anchor: string
   kind: 'rule' | 'example'
   parentId?: string
+}
+
+/**
+ * 生成した区分の入口。中身は下位のページが持つので、この段は何がどこにあるかだけを言う。
+ * 入口が無いと、サイドバーの区分名だけがクリックできない例外になる。
+ */
+function divisionIndex(args: {
+  page: string
+  title: string
+  lead: string
+  entries: { path: string; label: string; content: string }[]
+  documents: RenderedDocument[]
+}): string {
+  const rows = args.entries
+    .map(
+      (entry) =>
+        `<tr><th scope="row">${siteLink(args.page, entry.path, entry.label)}</th><td>${escapeHtml(entry.content)}</td></tr>`,
+    )
+    .join('')
+  const body = `<article class="document"><h1>${escapeHtml(args.title)}</h1><p>${escapeHtml(args.lead)}</p><div class="table-wrap"><table><thead><tr><th scope="col">ページ</th><th scope="col">示すもの</th></tr></thead><tbody>${rows}</tbody></table></div></article>`
+  return shell({
+    page: args.page,
+    title: args.title,
+    current: args.title,
+    body,
+    documents: args.documents,
+  })
 }
 
 function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]): string {
@@ -1110,21 +1289,38 @@ function validateSiteLinks(files: Record<string, string>): void {
 }
 
 const styles = `
-:root{color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--panel-2:#f8f9fd;--text:#182033;--muted:#667085;--line:#d9dfeb;--accent:#3457d5;--accent-soft:#e9eeff;--code:#edf1f8;--shadow:0 12px 32px rgba(25,35,60,.08);--given:#176b87;--when:#9a5b00;--then:#157347;--diagram-line:#294cba}
-@media(prefers-color-scheme:dark){:root{--bg:#0f131b;--panel:#171c27;--panel-2:#1d2431;--text:#eef2f8;--muted:#a7b0c1;--line:#30394b;--accent:#9db1ff;--accent-soft:#242f52;--code:#242b39;--shadow:none;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--diagram-line:#b9c8ff}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group>summary{display:block;margin:0;padding:5px 8px;color:var(--text);font-size:15px;font-weight:700;letter-spacing:normal;text-transform:none;cursor:pointer;list-style:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:"▸";display:inline-block;width:12px}.nav-group[open]>summary::before{content:"▾"}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:24px;font-size:14px;color:var(--muted)}a.nav-child-2{padding-left:40px;font-size:14px;color:var(--muted)}a.nav-child-3{padding-left:56px;font-size:14px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}main:has(.swagger-shell){width:calc(100% - 340px);max-width:none}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent,.trace-debt{font-size:12px}.trace-debt{display:block;margin-top:6px;color:var(--muted)}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
-.model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}th{background:var(--panel-2)}.term-table td:first-child{white-space:nowrap}.context-reference{margin-top:38px;padding-top:8px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
-.nav-group a[class^="nav-child"]{padding-left:calc(8px + 16px * var(--nav-depth));font-size:14px;color:var(--muted)}.nav-directory{margin:0}.nav-directory>summary{padding:3px 8px 3px calc(8px + 16px * var(--nav-depth));color:var(--text);font-size:14px;font-weight:700;cursor:pointer;list-style:none}.nav-directory>summary::-webkit-details-marker{display:none}.nav-directory>summary::before{content:"▸";display:inline-block;width:12px}.nav-directory[open]>summary::before{content:"▾"}
-.nav-section{margin:20px 0}.nav-section>summary{margin:0 0 6px;padding:0 8px;color:var(--text);font-size:15px;font-weight:800;letter-spacing:.02em;cursor:pointer;list-style:none}.nav-section>summary::-webkit-details-marker{display:none}.nav-section>summary::before{content:"▸";display:inline-block;width:16px}.nav-section[open]>summary::before{content:"▾"}.nav-section-link{color:inherit;text-decoration:none}.nav-section-link:hover,.nav-section-link[aria-current=page]{color:var(--accent)}.nav-tree{margin:0 0 0 15px;padding:0 0 0 12px;border-left:1px solid var(--line);list-style:none}.nav-tree ul{margin:0 0 0 13px;padding:0 0 0 12px;border-left:1px solid var(--line);list-style:none}.nav-item,.nav-branch{margin:1px 0}.nav-link,.nav-label{display:block;padding:5px 8px;border-radius:7px;color:var(--muted);font-size:14px;line-height:1.45;text-decoration:none}.nav-branch>.nav-link,.nav-branch>.nav-label{color:var(--text);font-weight:650}.nav-link:hover,.nav-link[aria-current=page]{color:var(--accent);background:var(--accent-soft)}.nav-link[aria-current=page]{font-weight:750}.nav-link[aria-current=page]::before{content:"";display:inline-block;width:3px;height:1em;margin:0 7px 0 -8px;border-radius:2px;background:var(--accent);vertical-align:-.12em}
-@media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}main:has(.swagger-shell){width:auto}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
-@media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link{display:none}main{width:auto;margin:0;padding:0}.document,.reference-page,.model-detail,.hero{border:0;box-shadow:none;padding:0}a{color:inherit;text-decoration:none}}
+:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--diagram-line:#294cba;--measure:760px;--sidebar:290px;--toc:216px}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--diagram-line:#b9c8ff}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:16px/1.75 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--bg);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);overflow:auto;padding:26px 14px 64px;border-right:1px solid var(--line);background:var(--bg-soft)}.site-title{margin:0 10px 22px;font-size:16px;font-weight:700;letter-spacing:-.01em}.site-title a{color:inherit;text-decoration:none}
+.nav-section{margin:0 0 4px}.nav-section>summary{padding:7px 10px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;list-style:none}.nav-section>summary::-webkit-details-marker{display:none}.nav-section>summary::before{content:"▸";display:inline-block;width:14px;color:var(--line-strong)}.nav-section[open]>summary::before{content:"▾"}.nav-section-link{color:inherit;text-decoration:none}.nav-section-link:hover,.nav-section-link[aria-current=page]{color:var(--accent)}
+.nav-tree{margin:0 0 10px;padding:0;list-style:none}.nav-tree ul{margin:0;padding:0 0 0 18px;list-style:none}.nav-item,.nav-branch{margin:0}.nav-link,.nav-label{display:block;padding:4px 10px;border-left:2px solid transparent;color:var(--text);font-size:13.5px;line-height:1.5;text-decoration:none}.nav-label{cursor:pointer}.nav-link:hover{background:var(--accent-soft)}.nav-link[aria-current=page]{border-left-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:700}
+.nav-directory>summary{display:flex;align-items:flex-start;cursor:pointer;list-style:none}.nav-directory>summary::-webkit-details-marker{display:none}.nav-directory>summary::before{content:"▸";flex:none;width:16px;padding:4px 0;color:var(--line-strong);font-size:10px;line-height:1.9;text-align:center}.nav-directory[open]>summary::before{content:"▾"}.nav-directory>summary>.nav-link,.nav-directory>summary>.nav-label{flex:1;min-width:0}.nav-item>.nav-link{padding-left:26px}
+main{margin-left:var(--sidebar);padding:34px 40px 140px}main:has(.swagger-shell){max-width:none;padding-inline:26px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 26px;color:var(--muted);font-size:13px}.mobile-header{display:none}
+.page{display:grid;grid-template-columns:minmax(0,var(--measure)) minmax(0,var(--toc));gap:56px;align-items:start}.landing{max-width:880px}
+.page-toc{position:sticky;top:34px;max-height:calc(100vh - 80px);overflow:auto;padding-left:16px;border-left:1px solid var(--line);font-size:13px;line-height:1.5}.page-toc-title{margin:0 0 8px;color:var(--muted);font-weight:700}.page-toc ul{margin:0;padding:0;list-style:none}.page-toc a{display:block;padding:4px 0;color:var(--muted);text-decoration:none}.page-toc a:hover{color:var(--text)}.page-toc a[aria-current=location]{color:var(--accent)}.page-toc-h3 a{padding-left:14px;font-size:12.5px}
+h1,h2,h3,h4{line-height:1.35;letter-spacing:-.012em;scroll-margin-top:26px}h1{margin:0 0 .7em;font-size:30px}h2{margin:2.4em 0 .7em;font-size:21px}h3{margin:1.9em 0 .5em;font-size:17px}h4{margin:1.6em 0 .4em;font-size:15px}p,ul,ol{margin:0 0 1.1em}
+a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;background:var(--code);font-size:.87em}pre{max-width:100%;overflow:auto;margin:1.4em 0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--code)}pre code{padding:0;border:0;background:none;font-size:.86em}
+.hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
+.context-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
+.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
+.diagram-shell{max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}
+.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
+.reference-header{margin-bottom:26px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px 0 0;padding:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}
+.model-group{margin-top:34px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.model-search{display:grid;max-width:520px;gap:6px;margin-top:22px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:8px;font:inherit}
+.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent,.trace-debt{font-size:12px}.trace-debt{display:block;margin-top:6px;color:var(--muted)}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
+.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--bg-soft)}.badges{margin:.5em 0}.context-reference{margin-top:44px;padding-top:10px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
+@media(max-width:1200px){.page{grid-template-columns:minmax(0,1fr)}.page-toc{display:none}}
+@media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--bg)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);box-shadow:0 12px 32px rgba(20,23,28,.18)}main{margin:0;padding:20px 18px 80px}main:has(.swagger-shell){padding-inline:18px}.hero h1{font-size:28px}.diagram-shell .mermaid{min-width:480px}}
+@media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link,.page-toc{display:none}main{margin:0;padding:0}.page{display:block}a{color:inherit;text-decoration:none}}
 `
 
 const siteScript = `
 window.addEventListener('DOMContentLoaded',function(){
   if(window.mermaid&&document.querySelector('.mermaid')){
     var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-    window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',layout:'dagre',look:'classic',theme:'base',themeVariables:dark?{background:'#1d2431',primaryColor:'#242f52',primaryTextColor:'#eef2f8',primaryBorderColor:'#b9c8ff',lineColor:'#b9c8ff',textColor:'#eef2f8',edgeLabelBackground:'#171c27',tertiaryColor:'#1d2431'}:{background:'#f8f9fd',primaryColor:'#e9eeff',primaryTextColor:'#182033',primaryBorderColor:'#294cba',lineColor:'#294cba',textColor:'#182033',edgeLabelBackground:'#fff',tertiaryColor:'#f8f9fd'}});
+    window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',layout:'dagre',look:'classic',theme:'base',themeVariables:dark?{background:'#1a1e25',primaryColor:'#1e2740',primaryTextColor:'#e7ebf1',primaryBorderColor:'#b9c8ff',lineColor:'#b9c8ff',textColor:'#e7ebf1',edgeLabelBackground:'#14171c',tertiaryColor:'#1a1e25'}:{background:'#f6f7f9',primaryColor:'#eef2ff',primaryTextColor:'#1c2024',primaryBorderColor:'#294cba',lineColor:'#294cba',textColor:'#1c2024',edgeLabelBackground:'#fff',tertiaryColor:'#f6f7f9'}});
     window.mermaid.run({querySelector:'.mermaid'});
   }
   var search=document.querySelector('[data-model-search]');
@@ -1133,10 +1329,30 @@ window.addEventListener('DOMContentLoaded',function(){
     document.querySelectorAll('[data-model-card]').forEach(function(card){card.hidden=Boolean(query&&!card.dataset.search.includes(query));});
     document.querySelectorAll('[data-model-group]').forEach(function(group){group.hidden=group.querySelectorAll('[data-model-card]:not([hidden])').length===0;});
   });}
+  var toc=document.querySelector('.page-toc');
+  if(toc&&window.IntersectionObserver){
+    var order=[];var links={};var visible={};
+    toc.querySelectorAll('a[href^="#"]').forEach(function(anchor){
+      var id=anchor.getAttribute('href').slice(1);
+      if(document.getElementById(id)){order.push(id);links[id]=anchor;}
+    });
+    var mark=function(){
+      var current=order.filter(function(id){return visible[id];})[0];
+      order.forEach(function(id){
+        if(id===current)links[id].setAttribute('aria-current','location');
+        else links[id].removeAttribute('aria-current');
+      });
+    };
+    var observer=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){visible[entry.target.id]=entry.isIntersecting;});
+      mark();
+    },{rootMargin:'-80px 0px -70% 0px'});
+    order.forEach(function(id){observer.observe(document.getElementById(id));});
+  }
 });
 `
 
-export function renderSpecificationSite(args: {
+export function renderDocumentationSite(args: {
   documents: SourceDocument[]
   openapi: OpenApiDocument
   repositoryRoot: string
@@ -1145,7 +1361,7 @@ export function renderSpecificationSite(args: {
   models: CatalogSymbol[]
   traces?: ScenarioTrace[]
   contextTags?: Record<string, string[]>
-}): RenderedSpecificationSite {
+}): RenderedDocumentationSite {
   const documents = args.documents.map(documentMetadata)
   const openapi = inspectOpenApi(args.openapi)
   const modelPaths = new Map<string, string>()
@@ -1163,11 +1379,45 @@ export function renderSpecificationSite(args: {
     args.outputDirectory,
     mermaidSources,
   )
+  const formats = inGroup(documents, 'format')
   const files: Record<string, string> = {
-    'index.html': landingPage(documents, args.models.length),
     'api/index.html': apiPage(args.openapi, args.openapiFileName, documents),
     'models/index.html': modelIndex(args.models, documents),
     'traceability/index.html': traceabilityPage(documents, args.traces ?? []),
+    'reference/index.html': divisionIndex({
+      page: 'reference/index.html',
+      title: 'リファレンス',
+      lead: 'TypeSpec と規範シナリオから生成した参照である。人が書く文書ではないので、内容を直すには生成元を直す。',
+      entries: [
+        {
+          path: 'api/index.html',
+          label: 'API リファレンス',
+          content: '公開する HTTP 操作、要求と応答の形、認証方式',
+        },
+        {
+          path: 'models/index.html',
+          label: 'モデルカタログ',
+          content: `HTTP に公開しないものを含む、リポジトリ所有の TypeSpec シンボル ${args.models.length} 個`,
+        },
+        {
+          path: 'traceability/index.html',
+          label: 'トレーサビリティ',
+          content: '規範 ID と、それを名指すテスト、実装、作業項目の対応',
+        },
+      ],
+      documents,
+    }),
+    'format/index.html': divisionIndex({
+      page: 'format/index.html',
+      title: 'フォーマット',
+      lead: '文書と記録の書き方を定める。プロダクトの振る舞いではなく、このリポジトリの進め方が対象である。',
+      entries: formats.map((entry) => ({
+        path: entry.outputPath,
+        label: entry.title,
+        content: FORMAT_SUMMARIES[entry.path] ?? '書き方の規則',
+      })),
+      documents,
+    }),
   }
   for (const document of documents) {
     const tags = (document.context ? args.contextTags?.[document.context] : undefined) ?? []

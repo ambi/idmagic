@@ -9,7 +9,7 @@ depends_on: []
 change_kind: bugfix
 spec_impact: { kind: none, reason: "宣言済みの具体例が要求する警告の表示を、アカウント API も UI も持っていない。規範は動かさず実装を合わせる。" }
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-019 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-019 }
 ---
 
 # MFA の強制開始日時が利用者へ届かない

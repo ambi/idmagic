@@ -21,7 +21,7 @@ initial_context:
     - docs/design/application/README.md
     - docs/design/application/user-interface.md
     - docs/design/application/api-guidelines.md
-    - docs/structure.md
+    - docs/domain/structure.md
     - docs/architecture/logical.md
     - docs/architecture/runtime.md
   typespec: []
@@ -60,7 +60,7 @@ initial_context:
 
 フロントエンドの設計は、いま三か所に断片として存在する。
 [ユーザーインターフェース設計](../../docs/design/application/user-interface.md)は 12 行で、機能ディレクトリの配置を一文、情報構造を二文、国際化を二文書いて終わる。
-[構造](../../docs/structure.md#フロントエンドのコンポーネント構造)の該当節は 4 行で、`features/` と `components/` の区別だけを述べる。
+[構造](../../docs/domain/structure.md#フロントエンドのコンポーネント構造)の該当節は 4 行で、`features/` と `components/` の区別だけを述べる。
 [ランタイムアーキテクチャ](../../docs/architecture/runtime.md)はフロントエンドゲートウェイを実行単位として一行で挙げる。
 
 実装は `frontend/src/features/` に 26 個の機能スライスを持ち、ビュー、局所コンポーネント、ヘルパー、テスト、`*.i18n.ts` の辞書をスライス内に同居させる Vertical Slice の構造になっている。
@@ -74,7 +74,7 @@ UI 側も足りない。
 
 - 新しい文書 `docs/design/application/frontend.md`「フロントエンド設計」を作り、フロントエンドのアーキテクチャを持たせる。
 - [ユーザーインターフェース設計](../../docs/design/application/user-interface.md)を、画面を跨ぐ UI の規範として書き足す。
-- [構造](../../docs/structure.md#フロントエンドのコンポーネント構造)のフロントエンド節を、コードの配置と依存方向に絞る。
+- [構造](../../docs/domain/structure.md#フロントエンドのコンポーネント構造)のフロントエンド節を、コードの配置と依存方向に絞る。
 - [論理アーキテクチャ](../../docs/architecture/logical.md)と[ランタイムアーキテクチャ](../../docs/architecture/runtime.md)から、フロントエンド設計への到達経路を置く。
 - [アプリケーション設計の索引](../../docs/design/application/README.md)と `DOCUMENTATION_GUIDE.md` §4.12 の記述を追従させる。
 - `frontend/README.md` と `frontend/src/features/README.md` が持つ設計の記述（ライブラリの選定理由、ルーティング、コンテナと表示用コンポーネントの分割、画面の設計指針、ナビゲーションの規約、ローカライゼーション）を新しい二文書へ移し、README には開発時に実行する手順だけを残す。同じ規則を二か所に置かないためである。
@@ -84,7 +84,7 @@ UI 側も足りない。
 
 - 実装の変更。既存スライスの再配置、依存の整理、コンポーネントの抽出は含めない。
 - 画面ごとの URL、表示項目、文言、色や余白の値。実装とローカライズ辞書から導ける（`DOCUMENTATION_GUIDE.md` §3.9）。
-- アクセシビリティの規範そのもの。[全体の標準仕様](../../docs/standards.md)が持ち、自動検査は [[wi-292-wcag22-accessibility-conformance-and-automated-checks]] が扱う。
+- アクセシビリティの規範そのもの。[全体の標準仕様](../../docs/domain/standards.md)が持ち、自動検査は [[wi-292-wcag22-accessibility-conformance-and-automated-checks]] が扱う。
 - デザイントークンの値とテーマ。[[wi-196-tenant-admin-console-theming]] が扱う。
 - API ガイドライン。[[wi-585-rewrite-api-rules-as-complete-api-guidelines]] が扱う。
 
@@ -95,7 +95,7 @@ UI 側も足りない。
 
 | 文書 | 持つもの |
 | --- | --- |
-| `docs/structure.md` | ディレクトリの配置と依存の向き。コードの構造だけ |
+| `docs/domain/structure.md` | ディレクトリの配置と依存の向き。コードの構造だけ |
 | `docs/design/application/frontend.md` | スライスの境界規則、ルーティング、データ取得と状態、ビルドと配信、テストの置き場所 |
 | `docs/design/application/user-interface.md` | 画面を跨ぐ情報構造、操作、表示状態、フォーム、アクセシビリティ、国際化 |
 
@@ -124,10 +124,10 @@ UI 側も足りない。
 - **一覧**。ページング操作、絞り込みと並べ替えの見せ方、件数の扱い。
 - **通知とエラー表示**。エラーコードから文言を引く仕組み、辞書に無いコードのときに英語の `detail` を出すこと。
 - **国際化**。`ja` と `en` を同じ変更で更新すること、辞書がスライス内にあること、日時と数値の表示形式。
-- **アクセシビリティ**。規範は `docs/standards.md` が持ち、ここは実装がそれを満たす手段（セマンティック HTML、キーボード操作、可視フォーカス、ラベルとエラーの関連、状態通知）を持つ。
+- **アクセシビリティ**。規範は `docs/domain/standards.md` が持ち、ここは実装がそれを満たす手段（セマンティック HTML、キーボード操作、可視フォーカス、ラベルとエラーの関連、状態通知）を持つ。
 
 採らない案を二つ記録する。
-一つは、フロントエンドのアーキテクチャを `docs/structure.md` に全部置く案である。`structure.md` はコードの配置と依存方向を持つ文書であり、データ取得や表示状態の設計を混ぜると、この文書が何に答えるのかが曖昧になる。
+一つは、フロントエンドのアーキテクチャを `docs/domain/structure.md` に全部置く案である。`structure.md` はコードの配置と依存方向を持つ文書であり、データ取得や表示状態の設計を混ぜると、この文書が何に答えるのかが曖昧になる。
 もう一つは、`user-interface.md` を拡張して構造も持たせる案である。読者が違う。UI の規範は画面を作る人が読み、スライスの境界規則はコードを足す人が読む。
 
 ## Plan
@@ -144,7 +144,7 @@ UI 側も足りない。
 - [x] T001 [Design] 現行の `frontend/src/` の分かれ方を観測し、境界規則を言語化する。
 - [x] T002 [Docs] `docs/design/application/frontend.md` を作る。
 - [x] T003 [Docs] `docs/design/application/user-interface.md` を書き足す。
-- [x] T004 [Docs] `docs/structure.md` のフロントエンド節を配置と依存方向へ絞る。
+- [x] T004 [Docs] `docs/domain/structure.md` のフロントエンド節を配置と依存方向へ絞る。
 - [x] T005 [Docs] 論理・ランタイムアーキテクチャ、アプリケーション設計の索引、`DOCUMENTATION_GUIDE.md` §4.12 を追従させる。
 - [x] T006 [Verify] リンク、仕様、UI 依存、全体検証を通す。
 
@@ -163,7 +163,7 @@ UI 側も足りない。
 
 ライブラリ名と版を文書へ写すと、更新のたびに古くなる。`package.json` が正本であり、文書が持つのは「ファイルベースのルーターを使う」「サーバー状態のキャッシュライブラリを持たない」といった設計上の選択と理由だけにする。
 
-`user-interface.md` にアクセシビリティの規範そのものを書くと、`docs/standards.md` と二重になる。規範は参照し、ここには実装手段だけを置く。
+`user-interface.md` にアクセシビリティの規範そのものを書くと、`docs/domain/standards.md` と二重になる。規範は参照し、ここには実装手段だけを置く。
 
 ## Completion
 
@@ -171,12 +171,12 @@ UI 側も足りない。
 - **Summary**:
   フロントエンドの設計が、`docs/design/application/frontend.md` と `docs/design/application/user-interface.md` の二文書に分かれて置かれるようになった。
   `frontend.md` は、コードの置き場所を決める判定表、ディレクトリ間の依存の向き、機能スライスどうしを参照しない規則、`admin-users` の木構造の実例、機能スライスと Bounded Context が一致しない理由、ルーティングと認証ガード、サーバー状態のキャッシュを持たない選択と状態の置き場所、コンテナと表示用コンポーネントの分割、ビルドと配信、テストの置き場所を持つ。
-  `user-interface.md` は、情報構造とナビゲーションに加えて、表示状態、破壊的な操作、フォームと検証、一覧、エラーの文言、国際化、`docs/standards.md` の WCAG 2.2 の各行を満たす実装手段を持つ。
+  `user-interface.md` は、情報構造とナビゲーションに加えて、表示状態、破壊的な操作、フォームと検証、一覧、エラーの文言、国際化、`docs/domain/standards.md` の WCAG 2.2 の各行を満たす実装手段を持つ。
   `frontend/README.md` と `frontend/src/features/README.md` にあった設計と開発時の作業の記述は `frontend.md` と `user-interface.md` へ移し、README には文書へのリンクとよく使うタスクだけを残した。
   レビューを受けて、二文書の冒頭で対象が Web フロントエンド・アプリケーションであることと対象の画面を示し、規則を表と番号付きリストに組み直し、採らなかった案を独立した表にまとめた。
   `DOCUMENTATION_GUIDE.md` には、コードのディレクトリの README は入口に留め、`docs/` の文書は内容を README に委ねないという規則を加えた。
   README は削除ボタンに `variant="outline" tone="danger"` を使うと書いていたが、ボタンに `tone` はなく、実装は `variant="destructive"` を使っていたので、実装に合わせて書いた。
-  `docs/structure.md` のフロントエンドの節はディレクトリの表と依存の向きに絞り、論理アーキテクチャ、ランタイムアーキテクチャ、アプリケーション設計の索引、`DOCUMENTATION_GUIDE.md` §4.12 からの参照を加えた。
+  `docs/domain/structure.md` のフロントエンドの節はディレクトリの表と依存の向きに絞り、論理アーキテクチャ、ランタイムアーキテクチャ、アプリケーション設計の索引、`DOCUMENTATION_GUIDE.md` §4.12 からの参照を加えた。
   正準文書の閉じた集合に `frontend.md` を加えた。
   Motivation はサーバー状態を `usePaginatedList` のようなフックが持つと書いていたが、観測するとこのフックと `LoadMoreButton` はどの画面からも使われておらず、一覧のページングは検索パラメーターと `PageNavigation` が持っていた。
   規則に従わない現行の箇所は、文書には書かず、意図の確認を含めて work item に起票した。

@@ -19,7 +19,7 @@ initial_context:
     - backend/shared/spec/operations_gen.go
   tests:
     - tools/check/src
-  stop_before_reading: [frontend, docs/contexts, spec/contexts]
+  stop_before_reading: [frontend, docs/domain, spec/contexts]
 affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.UpdateAuthorizationDetailTypeRequest }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.AdminSettingsUpdateRequest }

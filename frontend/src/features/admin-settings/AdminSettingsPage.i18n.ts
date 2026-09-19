@@ -209,7 +209,7 @@ export const adminSettingsDictionary = defineDictionary(
     tokenExpiryLabel: '有効期間 (日数)',
     tokenScopesLabel: '許可する操作 (scope)',
     tokenScopesHelp:
-      '利用する API を開き、必要な操作だけを選択してください。正準 scope 値は各操作の下に表示します。',
+      '利用する API を開き、必要な操作だけを選択してください。送信する scope の値は各操作の下に表示します。',
     selectedScopesCount: '{count} 個選択中',
     managementScopesHeading: '管理 API',
     managementScopesDescription: 'テナント内のユーザー、アプリケーション、設定などを管理します。',
@@ -460,7 +460,7 @@ export const adminSettingsDictionary = defineDictionary(
     tokenExpiryLabel: 'Expiry (days)',
     tokenScopesLabel: 'Allowed operations (scopes)',
     tokenScopesHelp:
-      'Open the API you use and select only the operations it needs. The canonical scope value appears below each operation.',
+      'Open the API you use and select only the operations it needs. The scope value that is sent appears below each operation.',
     selectedScopesCount: '{count} selected',
     managementScopesHeading: 'Management API',
     managementScopesDescription:

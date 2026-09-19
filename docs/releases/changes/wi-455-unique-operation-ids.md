@@ -6,4 +6,4 @@ WI-455 は、SAML のデフォルト/名前付きプロファイル経路、GET/
 
 これまで生成契約が黙って捨てていた operation も個別の生成クライアントメソッドとして現れる。既存生成契約が参照していた代表経路の base ID は維持する。
 
-規範上の条件は [OPENAPI31-OPERATION-ID](../../standards.md#openapi-specification-311) が定める。
+規範上の条件は [OPENAPI31-OPERATION-ID](../../domain/standards.md#openapi-specification-311) が定める。

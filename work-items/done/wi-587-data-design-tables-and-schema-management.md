@@ -16,7 +16,7 @@ spec_impact:
   kind: none
   reason: "現行スキーマの読み方とスキーマ管理の設計を書き下すだけで、列、制約、データ、移行手順は変えない。"
 initial_context:
-  specification: [docs/design/data/database.md, docs/design/data/lifecycle.md, docs/design/data/README.md, docs/operations/maintenance.md, docs/architecture/deployment.md, docs/design/infrastructure/platform.md, docs/design/reliability/recovery.md, docs/contexts/tenancy/states.md, docs/contexts/identity-management/states.md, docs/contexts/audit/decisions.md, docs/contexts/authentication/internals.md]
+  specification: [docs/design/data/database.md, docs/design/data/lifecycle.md, docs/design/data/README.md, docs/operations/maintenance.md, docs/architecture/deployment.md, docs/design/infrastructure/platform.md, docs/design/reliability/recovery.md, docs/domain/tenancy/states.md, docs/domain/identity-management/states.md, docs/domain/audit/decisions.md, docs/domain/authentication/internals.md]
   typespec: []
   source: [infra/schema/postgres.sql, infra/schema/README.md, infra/schema/check-convergence.sh, infra/schema/data-migrations, backend/application/db_postgres/applications.sql, backend/audit/ports/tenant_salt_store.go, tools/check/src/registry.ts, tools/check/src/slo-references.ts, tools/check/src/check-slo-references.ts]
   tests: [tools/check/src/slo-references.test.ts]

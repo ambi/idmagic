@@ -14,13 +14,13 @@
 | Seed | `backend/cmd/idmagic-seed` | 初期データを投入する一回限りの管理実行単位 | PostgreSQL に結果を確定する |
 | Frontend gateway | `frontend` | ブラウザー向け画面と同一オリジンの API 中継を提供する | ブラウザーセッション以外の正となる業務状態を持たない |
 
-API は通常、複数の Bounded Context を一つのプロセスに組み立てる。ジョブとバッチは処理時間と再試行の性質が HTTP リクエストと異なるため、別の実行単位にする。API の用途別分割は [System Context の判断](../contexts/system/decisions.md#no-api-plane-separation) の再検討条件を満たすまで採らない。
+API は通常、複数の Bounded Context を一つのプロセスに組み立てる。ジョブとバッチは処理時間と再試行の性質が HTTP リクエストと異なるため、別の実行単位にする。API の用途別分割は [System Context の判断](../domain/system/decisions.md#no-api-plane-separation) の再検討条件を満たすまで採らない。
 
 ## 通信
 
 ブラウザーは Frontend gateway と通信し、gateway が API へ HTTP リクエストを中継する。ブラウザー Cookie を用いる画面と API は同一オリジンで公開する。外部クライアントと上流の IdP は公開 HTTP エンドポイントへ到達し、API と Worker は PostgreSQL を共有する。署名鍵や可逆な秘密情報の保護に外部提供元を選ぶ場合、対象の実行単位だけがその提供元へ接続する。
 
-Context 間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [構造](../structure.md#context-間イベント) が所有する。
+Context 間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [構造](../domain/structure.md#context-間イベント) が所有する。
 
 ## 実行時の規則
 

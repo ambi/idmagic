@@ -11,7 +11,7 @@ initial_context:
   typespec: []
   source: [.agents/skills/implement-work-item/SKILL.md]
   tests: []
-  stop_before_reading: [backend, frontend, spec, docs/contexts]
+  stop_before_reading: [backend, frontend, spec, docs/domain]
 spec_impact: { kind: none, reason: "Agentic Discipline と現行開発フローの適合性を評価し、開発方法の改善候補だけを記録する作業項目であり、製品の外部契約、振る舞い、保証は変更しない。" }
 ---
 

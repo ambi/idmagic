@@ -13,7 +13,7 @@ initial_context:
   typespec: []
   source: [DOCUMENTATION_GUIDE.md, mise.toml, tools/check/src]
   tests: [tools/check/src]
-  stop_before_reading: [backend, frontend, spec, docs/contexts]
+  stop_before_reading: [backend, frontend, spec, docs/domain]
 ---
 
 # 壊れた Markdown リンクを検出する検査を、仕組みとして持つ

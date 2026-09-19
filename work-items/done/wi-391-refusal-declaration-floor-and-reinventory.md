@@ -8,13 +8,13 @@ priority: p1
 change_kind: tooling
 initial_context:
   specification:
-    - docs/contexts/signing-keys/scenarios.feature.md
-    - docs/contexts/authorization/scenarios.feature.md
-    - docs/contexts/identity-governance/scenarios.feature.md
-    - docs/contexts/sharedsignals/scenarios.feature.md
-    - docs/contexts/workloadidentity/scenarios.feature.md
-    - docs/contexts/authentication/scenarios.feature.md
-    - docs/contexts/oauth2/scenarios.feature.md
+    - docs/domain/signing-keys/scenarios.feature.md
+    - docs/domain/authorization/scenarios.feature.md
+    - docs/domain/identity-governance/scenarios.feature.md
+    - docs/domain/sharedsignals/scenarios.feature.md
+    - docs/domain/workloadidentity/scenarios.feature.md
+    - docs/domain/authentication/scenarios.feature.md
+    - docs/domain/oauth2/scenarios.feature.md
   typespec:
     - IdMagic.SigningKeys.Operations.RotateTenantSigningKey
     - IdMagic.SigningKeys.Operations.DisableTenantKey

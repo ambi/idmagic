@@ -35,7 +35,7 @@ DOCUMENTATION_GUIDE は §3 の構成図と §5.7 で既に `database.md` を指
 
 - `docs/persistence.md` を `docs/database.md` へ改名し、見出しを `# Database` にする。
 - `tools/check/src/specification-doc.ts` の `ROOT_DOCUMENTS` を張り替える。
-- 参照を張り替える: `docs/README.md` の索引、`docs/glossary.md`、`docs/contexts/authentication/internals.md`、`docs/contexts/tenancy/internals.md`、`infra/schema/README.md`、`backend/` の Go コメント 3 か所。
+- 参照を張り替える: `docs/README.md` の索引、`docs/domain/glossary.md`、`docs/domain/authentication/internals.md`、`docs/domain/tenancy/internals.md`、`infra/schema/README.md`、`backend/` の Go コメント 3 か所。
 - `SPECIFICATION_FORMAT.md` §1 の構成図を追随させる。
 - 進行中の work item（wi-164、wi-186、wi-282、wi-293、wi-295）の参照を張り替える。
 
@@ -76,11 +76,11 @@ DOCUMENTATION_GUIDE は §3 の構成図と §5.7 で既に `database.md` を指
 ## Completion
 
 - **Completed At**: 2026-08-26
-- **Summary**: `docs/persistence.md` を `docs/database.md` へ改名し、見出しを `# Database` にした。本文は 1 行も変えていない。`ROOT_DOCUMENTS` を張り替え、正規文書の集合が改名後の名前を指すようにした。参照は 4 種類——索引（`docs/README.md`）、本文からの相対リンク（`docs/glossary.md`、`authentication/internals.md` 2 か所、`tenancy/internals.md`。後ろの 3 つは `#tenant_id-retention-classes` のアンカー付き）、スキーマ側からの参照（`infra/schema/README.md` 2 か所）、Go コメント（`datakeys/db_memory`、`datakeys/usecases`、`jobs/db_postgres`）——をすべて張り替えた。`SPECIFICATION_FORMAT.md` の構成図と、進行中の work item 5 件（wi-164、wi-186、wi-282、wi-293、wi-295）も追随させた。節見出しを変えていないのでアンカーはそのまま解決する。設定値の `persistence=postgres` と、層を指す一般名詞としての `persistence` には触れていない。
+- **Summary**: `docs/persistence.md` を `docs/database.md` へ改名し、見出しを `# Database` にした。本文は 1 行も変えていない。`ROOT_DOCUMENTS` を張り替え、正規文書の集合が改名後の名前を指すようにした。参照は 4 種類——索引（`docs/README.md`）、本文からの相対リンク（`docs/domain/glossary.md`、`authentication/internals.md` 2 か所、`tenancy/internals.md`。後ろの 3 つは `#tenant_id-retention-classes` のアンカー付き）、スキーマ側からの参照（`infra/schema/README.md` 2 か所）、Go コメント（`datakeys/db_memory`、`datakeys/usecases`、`jobs/db_postgres`）——をすべて張り替えた。`SPECIFICATION_FORMAT.md` の構成図と、進行中の work item 5 件（wi-164、wi-186、wi-282、wi-293、wi-295）も追随させた。節見出しを変えていないのでアンカーはそのまま解決する。設定値の `persistence=postgres` と、層を指す一般名詞としての `persistence` には触れていない。
 - **Acceptance RED Evidence**:
   - **Test**: `docs/` の相対リンク解決。HEAD 版の参照文字列を、改名後の作業ツリーへ突き合わせる
   - **Requirement**: N/A: 文書体系の整合であり、製品の規範要求ではない
-  - **Observed Failure**: 5 件がすべて MISS（`docs/glossary.md`、`docs/README.md`、`authentication/internals.md` 2 か所、`tenancy/internals.md`）。張り替え後は同じ 5 件が OK
+  - **Observed Failure**: 5 件がすべて MISS（`docs/domain/glossary.md`、`docs/README.md`、`authentication/internals.md` 2 か所、`tenancy/internals.md`）。張り替え後は同じ 5 件が OK
   - **Detection Reason**: 読み手が実際に辿る経路そのものを解決するので、ファイル名だけを変えて参照を残した場合を直接捉える
 - **Unit RED Evidence**:
   - **Test**: `bun run workspace/src/check-workspace.ts --documents`（`ROOT_DOCUMENTS` を旧名 `persistence.md` のままにした状態）

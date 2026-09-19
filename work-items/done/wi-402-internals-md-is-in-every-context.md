@@ -3,7 +3,7 @@ depends_on: []
 status: completed
 authors: [tn]
 initial_context:
-  specification: [docs/contexts/workloadidentity/internals.md, docs/contexts/provisioning/internals.md, docs/contexts/saml/internals.md, docs/contexts/api-tokens/internals.md]
+  specification: [docs/domain/workloadidentity/internals.md, docs/domain/provisioning/internals.md, docs/domain/saml/internals.md, docs/domain/api-tokens/internals.md]
   source: [SPECIFICATION_FORMAT.md, DOCUMENTATION_GUIDE.md]
   tests: []
   stop_before_reading: [backend, frontend, spec, work-items/done]

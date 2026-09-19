@@ -19,7 +19,7 @@ export interface VocabularyDiff {
   undeclared: string[]
 }
 
-/** 公開項目を宣言するモデルの名前。この名前だけを正本として読む。 */
+/** 公開項目を宣言するモデルの名前。この名前だけを一次情報として読む。 */
 const PAYLOAD_MODEL = 'DomainEventPayload'
 
 /** `name: type;` と `name?: type;` の左辺。装飾子の行とスプレッドは対象にしない。 */

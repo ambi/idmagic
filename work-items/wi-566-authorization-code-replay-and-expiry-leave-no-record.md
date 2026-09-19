@@ -9,7 +9,7 @@ priority: p2
 change_kind: bugfix
 spec_impact: { kind: none, reason: "EX-OAUTH2-005-07 と EX-OAUTH2-005-08 は既に宣言済みである。実装をその宣言へ合わせる作業であり、規範は動かない。" }
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-005 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-005 }
 ---
 
 # 認可コードの再交換と期限切れが、宣言どおりの記録を残さない

@@ -82,7 +82,7 @@ describe('verifyDocumentationImpact', () => {
       id: 'wi-508-author',
       status: 'in_progress',
       affected_spec: [
-        { path: 'docs/contexts/system/scenarios.feature.md', requirement: 'REQ-SYSTEM-018' },
+        { path: 'docs/domain/system/scenarios.feature.md', requirement: 'REQ-SYSTEM-018' },
       ],
     }
     const sibling = { ...record, id: 'wi-495-parent', status: 'in_progress' }
@@ -139,13 +139,13 @@ describe('verifyDocumentationImpact', () => {
     // (wi-534 added one row and reported wi-495 and wi-535).
     const addedStandard = {
       ...noSpecificationChange,
-      addedStandards: ['docs/contexts/demo/standards.md#RFC-DEMO-THREE'],
+      addedStandards: ['docs/domain/demo/standards.md#RFC-DEMO-THREE'],
     }
     const author = {
       ...record,
       id: 'wi-534-author',
       status: 'in_progress',
-      affected_spec: [{ path: 'docs/contexts/demo/standards.md', requirement: 'RFC-DEMO-THREE' }],
+      affected_spec: [{ path: 'docs/domain/demo/standards.md', requirement: 'RFC-DEMO-THREE' }],
     }
     const sibling = { ...record, id: 'wi-495-parent', status: 'in_progress' }
     const claimed = { specificationDiff: addedStandard, specificationAdditionsClaimed: true }
@@ -157,10 +157,10 @@ describe('verifyDocumentationImpact', () => {
   })
 
   it('matches an added standards row by document and requirement id together', () => {
-    const row = 'docs/contexts/demo/standards.md#RFC-DEMO-THREE'
+    const row = 'docs/domain/demo/standards.md#RFC-DEMO-THREE'
     const reference = (overrides: Record<string, string>) => ({
       affected_spec: [
-        { path: 'docs/contexts/demo/standards.md', requirement: 'RFC-DEMO-THREE', ...overrides },
+        { path: 'docs/domain/demo/standards.md', requirement: 'RFC-DEMO-THREE', ...overrides },
       ],
     })
 
@@ -169,7 +169,7 @@ describe('verifyDocumentationImpact', () => {
     // The document pins the row. The same id adopted by another context is a
     // different row, and a record that names it must not claim this one.
     expect(
-      claimsSpecificationAddition(reference({ path: 'docs/contexts/other/standards.md' }), [row]),
+      claimsSpecificationAddition(reference({ path: 'docs/domain/other/standards.md' }), [row]),
     ).toBe(false)
     expect(claimsSpecificationAddition(reference({ requirement: 'RFC-DEMO-FOUR' }), [row])).toBe(
       false,
@@ -210,7 +210,7 @@ describe('verifyDocumentationImpact', () => {
       claimsSpecificationAddition(
         {
           affected_spec: [
-            { path: 'docs/contexts/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+            { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
           ],
         },
         ['REQ-DEMO-001'],
@@ -337,7 +337,7 @@ describe('verifyDocumentationImpact', () => {
       ...record,
       status: 'completed',
       affected_spec: [
-        { path: 'docs/contexts/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+        { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
       ],
       documentation_impact: {
         level: 'release_note',

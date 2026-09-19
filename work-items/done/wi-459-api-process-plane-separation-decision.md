@@ -17,8 +17,8 @@ initial_context:
   specification:
     - docs/capacity.md
     - docs/deployment.md
-    - docs/structure.md
-    - docs/contexts/system/decisions.md
+    - docs/domain/structure.md
+    - docs/domain/system/decisions.md
     - SPECIFICATION_FORMAT.md
   source:
     - backend/shared/http/server_http/routes.go
@@ -70,7 +70,7 @@ initial_context:
 - **将来分ける確率が高いなら、後から分けるより今分けたほうが安いのではないか**という問いに答える。分割の費用が時間とともに増えるかどうかを変更ごとに調べる。
 - [[wi-396-prioritize-login-under-saturation]] との関係を決める。両者は代替か補完か、どちらを先に入れるかを明示する。
 - 分離候補となる種別を確定する。認証・プロトコル系の内部を分けるかどうかは本 work item では決めない。
-- 判断、却下した選択肢、再検討の条件を `docs/contexts/system/decisions.md` に記録し、見積もりを `docs/capacity.md` へ追加する。
+- 判断、却下した選択肢、再検討の条件を `docs/domain/system/decisions.md` に記録し、見積もりを `docs/capacity.md` へ追加する。
 
 ## Out of Scope
 
@@ -275,10 +275,10 @@ wi-396 の Design にある「プレーン分割を採らなかった理由」�
 3. 管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の通常時、最繁時、集中実行時を見積もる。導入率、操作頻度、同期頻度、時間帯への集中、ハンドラー時間は幅を持つ Planning assumption として明示する。
 4. 単一 Deployment と、管理系、ポータル系、SCIM、Shared Signals の各分離案を比較する。仮定の上下限で結論が変わる場合は、決着に必要な Measurement を特定する。
 5. 比較結果を C1–C6 に照らす。再検討条件が成立しなければ「現時点では D1–D4 を実施しない」という結論を維持し、成立した場合だけ結論と理由を更新する。
-6. 結論を `docs/contexts/system/decisions.md` へ記録する。同書の `No dedicated event infrastructure` と同じ形（採らない理由、却下した選択肢、再検討する条件）に揃える。分離候補となる種別と C1–C6 も置く。
+6. 結論を `docs/domain/system/decisions.md` へ記録する。同書の `No dedicated event infrastructure` と同じ形（採らない理由、却下した選択肢、再検討する条件）に揃える。分離候補となる種別と C1–C6 も置く。
 7. 容量シナリオを `docs/capacity.md` の Peak request profile と Sizing rules に追加する。
 8. `docs/deployment.md` の Runtime units から判断への参照を張る。内容は複製しない。
-9. `docs/structure.md` の Modular Monolith の記述の要否を確認する。
+9. `docs/domain/structure.md` の Modular Monolith の記述の要否を確認する。
 10. [[wi-396-prioritize-login-under-saturation]] の Design を、本 work item の結論と「両者は代替ではない」という整理に合わせて更新する。
 
 C1–C6 のいずれかが成立して結論を変える場合、本 work item は採る変更と分離対象までを記録し、実施は別の work item へ渡す。判断と実施を同じ item に入れないのは、D1–D4 のどれを採るかによって実施の規模が変わるためである。
@@ -293,9 +293,9 @@ C1–C6 のいずれかが成立して結論を変える場合、本 work item �
 - [x] T006 [Research] Shared Signals の通常時、最繁時、集中配信時をストリーム数、イベント発生率、再送を含む前提で見積もる。→ 同上。対象は受信 1 経路に絞られる。
 - [x] T007 [Research] ワーカーへ出ていない同期処理のピークメモリ、同時実行数、接続待ちを調べ、混合負荷試験の対象を確定する。→ `GET /api/admin/v1/audit_events/export` 1 つ。流量制限も同時実行制限もない。
 - [x] T008 [Decision] 容量比較と C1–C6 に照らして結論を再確認し、変える場合は採る変更と分離対象を確定する。→ C1–C6 のいずれも成立せず、結論は変わらない。C2 の表現だけ改めた。
-- [x] T009 [Docs] `docs/contexts/system/decisions.md` に節を追加する。→ `No API plane separation`。
+- [x] T009 [Docs] `docs/domain/system/decisions.md` に節を追加する。→ `No API plane separation`。
 - [x] T010 [Docs] `docs/capacity.md` に管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の容量シナリオを追加する。→ `Non-protocol request profile` と Sizing rules への追記。
-- [x] T011 [Docs] `docs/deployment.md` から参照を張り、`docs/structure.md` の要否を判断する。→ 両方に参照を追加した。`structure.md` は Context の分割を扱っており、種別ごとの Deployment 分割とは軸が違うので、内容を複製せず参照だけを張った。
+- [x] T011 [Docs] `docs/deployment.md` から参照を張り、`docs/domain/structure.md` の要否を判断する。→ 両方に参照を追加した。`structure.md` は Context の分割を扱っており、種別ごとの Deployment 分割とは軸が違うので、内容を複製せず参照だけを張った。
 - [x] T012 [Docs] wi-396 の Design を更新する。→ 「入場制御と重なる」と「3 Pod が最低 6 Pod になる」を書き換え、判断の所在を本 work item と `decisions.md` へ移した。
 - [x] T013 [Verify] 検査を通す。
 
@@ -326,11 +326,11 @@ C1–C6 のいずれかが成立して結論を変える場合、本 work item �
 
 - **Completed At**: 2026-09-03
 - **Summary**:
-  `mise run spec-diff` は `no normative specification change against main` を返す。規範的シナリオ、標準要件、TypeSpec 宣言のいずれも追加、変更、削除していない。意味上の差分は正準文書の側にあり、次の 3 つである。第一に `docs/capacity.md` に `Non-protocol request profile` を追加し、管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の受信について、18 個の入力とそこから導いた通常時、最繁時、集中実行時の到達率を Planning assumption として置いた。最繁 15 分の合計は中央値 1,550 rps、上界 2,710 rps で、認証・プロトコル系 41,250 rps に対して 4–7% にあたる。第二に同書の Sizing rules へ、種別ごとの 1 レプリカ当たり持続処理能力と、種別ごとに実行単位を分ける構成を同じ式で評価する方法を加えた。分離に固有の常時増分は総需要ではなく可用性下限の重複、`ceil` の重複、余裕を融通できないことの 3 つから生じ、最小の分離でも +3 レプリカ、+48 論理接続、利用可能接続の必要量 +69 が下限になる。第三に `docs/contexts/system/decisions.md` へ `No API plane separation` を追加し、単一の API Deployment を維持する判断、却下した 3 つの案、再検討する条件を記録した。`docs/deployment.md` と `docs/structure.md` からはこの節を参照するだけにして内容を複製していない。
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範的シナリオ、標準要件、TypeSpec 宣言のいずれも追加、変更、削除していない。意味上の差分は正準文書の側にあり、次の 3 つである。第一に `docs/capacity.md` に `Non-protocol request profile` を追加し、管理コンソール、管理 API 自動化、ポータル、SCIM、Shared Signals の受信について、18 個の入力とそこから導いた通常時、最繁時、集中実行時の到達率を Planning assumption として置いた。最繁 15 分の合計は中央値 1,550 rps、上界 2,710 rps で、認証・プロトコル系 41,250 rps に対して 4–7% にあたる。第二に同書の Sizing rules へ、種別ごとの 1 レプリカ当たり持続処理能力と、種別ごとに実行単位を分ける構成を同じ式で評価する方法を加えた。分離に固有の常時増分は総需要ではなく可用性下限の重複、`ceil` の重複、余裕を融通できないことの 3 つから生じ、最小の分離でも +3 レプリカ、+48 論理接続、利用可能接続の必要量 +69 が下限になる。第三に `docs/domain/system/decisions.md` へ `No API plane separation` を追加し、単一の API Deployment を維持する判断、却下した 3 つの案、再検討する条件を記録した。`docs/deployment.md` と `docs/domain/structure.md` からはこの節を参照するだけにして内容を複製していない。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-links`
   - **Requirement**: N/A: 判断と容量計画の記録であり、製品の規範要件を持たない。
-  - **Observed Failure**: `docs/deployment.md:13` と `docs/structure.md:137` の 2 件が `Markdown anchor does not exist in docs/contexts/system/decisions.md: #no-api-plane-separation` で失敗する。これは判断の節が存在しない実装前の状態と同じ入力である。
+  - **Observed Failure**: `docs/deployment.md:13` と `docs/domain/structure.md:137` の 2 件が `Markdown anchor does not exist in docs/domain/system/decisions.md: #no-api-plane-separation` で失敗する。これは判断の節が存在しない実装前の状態と同じ入力である。
   - **Detection Reason**: 観測可能な境界は「他の正準文書からこの判断へ到達できること」である。この検査は参照元と参照先を別々に読むので、判断を書いたつもりで見出しが無い、見出しはあるが別の文書に置いた、参照だけ張って中身が無いという 3 つの誤りをいずれも落とす。節の中身を読まずに参照の有無だけを見る検査では、この区別ができない。
 - **Unit RED Evidence**:
   - **Test**: `mise run check-links`（`docs/capacity.md` 内)
@@ -338,7 +338,7 @@ C1–C6 のいずれかが成立して結論を変える場合、本 work item �
   - **Observed Failure**: `docs/capacity.md:218: Markdown anchor does not exist in docs/capacity.md: #non-protocol-request-profile`。Sizing rules が容量シナリオの節を参照しているのに、その節が無い状態で失敗する。
   - **Detection Reason**: Sizing rules の追記は、追加した容量シナリオを入力として初めて意味を持つ。片方だけを書いた状態を落とす。加えて `mise run check-work-items` は着手時に `/documentation_impact must have required property 'references'` で実際に失敗し、記録側の契約が満たされていないことを検出した。
 - **Change-Resistance Results**:
-  2 つの誤りを注入し、いずれも検出された。(1) `docs/contexts/system/decisions.md` の見出しを `## No API plane separation` から `## API plane separation policy` へ変えると、`mise run check-links` が `docs/deployment.md:13` と `docs/structure.md:137` の 2 件で失敗した。(2) `docs/capacity.md` の見出しを `### Non-protocol request profile` から `### Extra request profile` へ変えると、同じ検査が `docs/capacity.md:218` で失敗した。
+  2 つの誤りを注入し、いずれも検出された。(1) `docs/domain/system/decisions.md` の見出しを `## No API plane separation` から `## API plane separation policy` へ変えると、`mise run check-links` が `docs/deployment.md:13` と `docs/domain/structure.md:137` の 2 件で失敗した。(2) `docs/capacity.md` の見出しを `### Non-protocol request profile` から `### Extra request profile` へ変えると、同じ検査が `docs/capacity.md:218` で失敗した。
   **方法の限界を記録する。** 同じ見出しを `### Non protocol request profile` へ変える注入は検出されなかった。アンカーの導出でハイフンと空白が同じ文字へ落ちるため、等価な変異である。より重要な限界として、`mise run check-links` は参照先とアンカーの存在しか検査しない。入力表と到達率表の整合、必要レプリカ数と接続予算の算術、判断の内容そのものを検査する仕組みは無く、これらは手で確かめた。この work item は実装を伴わないので、変異を殺す試験は文書構造の層にしか存在しない。
 - **Verification Results**:
   - `mise run check-work-items` - passed

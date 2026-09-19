@@ -10,15 +10,15 @@ change_kind: docs
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-012
-    - docs/contexts/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-007
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-005
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-012
+    - docs/domain/signing-keys/scenarios.feature.md#REQ-SIGNINGKEYS-007
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-005
   typespec: [IdMagic.Contract.KeyProvider]
   source: [backend/cmd/internal/bootstrap, backend/signingkeys/db_postgres, infra/deploy, infra/k8s, infra/docker, infra/backup]
   tests: [backend/cmd/internal/bootstrap]
   stop_before_reading: [frontend, backend/datakeys]
 affected_spec:
-  - { path: docs/contexts/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-012 }
+  - { path: docs/domain/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-012 }
   - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.KeyProvider }
 ---
 
@@ -38,7 +38,7 @@ affected_spec:
 
 ## Scope
 
-- 平文の鍵素材が永続化される条件と、そのときに要求する保護を規範として書く。owner は `docs/contexts/signing-keys/decisions.md` とする。
+- 平文の鍵素材が永続化される条件と、そのときに要求する保護を規範として書く。owner は `docs/domain/signing-keys/decisions.md` とする。
 - 鍵提供元ごとに、鍵素材がデータベースに平文で置かれるかどうかを明示する。TypeSpec の `KeyProvider` の doc も実態に合わせる。
 - 平文で置かれる提供元を選んだ場合の扱いを決め、規範シナリオ REQ-SIGNINGKEYS-012 として書く。
 - 規範を起動時設定で強制する。`PERSISTENCE=postgres` では `KEY_PROVIDER` の明示を要求する。
@@ -57,7 +57,7 @@ affected_spec:
 
 ## Design
 
-規範の owner は `docs/contexts/signing-keys/decisions.md` とする。平文で置かれるかどうかは提供元の性質であり、`SigningKeys` が持つ判断だからである。`docs/database.md` は列型と保持区分とエンベロープ暗号化という横断的な方針を持つ場所であり、提供元ごとの差はそこには収まらない。ただしエンベロープ暗号化の記述と近接するため、`database.md` からは「署名鍵の秘密鍵はこの規範の対象ではない」という 1 文で相互に参照する。
+規範の owner は `docs/domain/signing-keys/decisions.md` とする。平文で置かれるかどうかは提供元の性質であり、`SigningKeys` が持つ判断だからである。`docs/database.md` は列型と保持区分とエンベロープ暗号化という横断的な方針を持つ場所であり、提供元ごとの差はそこには収まらない。ただしエンベロープ暗号化の記述と近接するため、`database.md` からは「署名鍵の秘密鍵はこの規範の対象ではない」という 1 文で相互に参照する。
 
 本番で平文の提供元を選んだ場合の扱いは、拒否と警告の両案を検討して**どちらも採らない**。前提としていた本番判定が存在しないからである。`REQ-SEEDING-005` が拒否できるのは `SEED_ENVIRONMENT` が seed 要求の引数として与えられるからであって、API と worker のプロセスには配備環境を表す起動時設定が無い。無いものを新設して拒否を組み立てれば、判定の正しさを誰も検証できないまま拒否が働くことになる。
 
@@ -105,7 +105,7 @@ Acceptance と Unit の境界は次のように分ける。Unit は変わった�
 
 - **Completed At**: 2026-08-29
 - **Summary**:
-  `mise run spec-diff` が示す規範上の差分は `REQ-SIGNINGKEYS-012` の追加 1 件である。秘密鍵素材の保管先が提供元で決まること、平文で永続化する構成を既定にしないこと、保存先の暗号化は配備側の責務であること、本番判定に基づく提供元の拒否は判定材料が無いため採らないことを `docs/contexts/signing-keys/decisions.md` に規範として置いた。runbook は保護を要求する側から手段を示す側へ退き、同じ内容を二重に持たなくなった。起動時設定は `PERSISTENCE=postgres` で `KEY_PROVIDER` の明示を要求するようになり、未指定のまま平文の KeyStore が組み立てられる経路が閉じた。TypeSpec の `KeyProvider` は `Database` が鍵素材をプロセス内に持つと述べていたが、実際にはデータベースへ平文で置くので doc を実態に合わせた。副産物として `infra/deploy/gcp/cloudrun-idmagic.yaml` の `KEY_PROVIDER: "db"` が許可されない値であること、すなわちこの本番向けサンプルがそもそも起動しないことが分かり、`local` に正した。
+  `mise run spec-diff` が示す規範上の差分は `REQ-SIGNINGKEYS-012` の追加 1 件である。秘密鍵素材の保管先が提供元で決まること、平文で永続化する構成を既定にしないこと、保存先の暗号化は配備側の責務であること、本番判定に基づく提供元の拒否は判定材料が無いため採らないことを `docs/domain/signing-keys/decisions.md` に規範として置いた。runbook は保護を要求する側から手段を示す側へ退き、同じ内容を二重に持たなくなった。起動時設定は `PERSISTENCE=postgres` で `KEY_PROVIDER` の明示を要求するようになり、未指定のまま平文の KeyStore が組み立てられる経路が閉じた。TypeSpec の `KeyProvider` は `Database` が鍵素材をプロセス内に持つと述べていたが、実際にはデータベースへ平文で置くので doc を実態に合わせた。副産物として `infra/deploy/gcp/cloudrun-idmagic.yaml` の `KEY_PROVIDER: "db"` が許可されない値であること、すなわちこの本番向けサンプルがそもそも起動しないことが分かり、`local` に正した。
 - **Acceptance RED Evidence**:
   - **Test**: `TestPlaintextKeyCustodyIsNeverImplicit`（`backend/cmd/internal/bootstrap/keystore_test.go`）
   - **Requirement**: REQ-SIGNINGKEYS-012

@@ -1,6 +1,6 @@
 package bootstrap
 
-// docs/contexts/system/scenarios.feature.md の REQ-SYSTEM-006 は、DemoLoginAffordance が
+// docs/domain/system/scenarios.feature.md の REQ-SYSTEM-006 は、DemoLoginAffordance が
 // 使う資格情報を `development` プロファイルが投入することを述べる。導線の表示そのものは
 // frontend が持つ (routes/-demo-login.ts)。ここで観測するのは、その導線が始める認可が
 // 成立する側の条件、つまり demo クライアントと資格情報を持つ利用者が

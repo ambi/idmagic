@@ -12,4 +12,4 @@ WI-523 は、`/introspect` の応答の `token_type` を RFC 6749 §5.1 の提�
 
 `/token` の応答の `token_type` は変わっていない。
 
-規範上の条件は [RFC7662-INTROSPECT](../../contexts/oauth2/standards.md#oauth-20-token-introspection) が定める。
+規範上の条件は [RFC7662-INTROSPECT](../../domain/oauth2/standards.md#oauth-20-token-introspection) が定める。

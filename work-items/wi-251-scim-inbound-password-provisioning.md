@@ -7,7 +7,7 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: docs/domain/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
 ---
@@ -40,16 +40,16 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 
 ## Plan
 
-- 対応可否の判断を `docs/contexts/sourcing/decisions.md` として先に記録する(却下する場合もその理由を残す)。
+- 対応可否の判断を `docs/domain/sourcing/decisions.md` として先に記録する(却下する場合もその理由を残す)。
 - 対応する場合、平文 password が SCIM request body・ログ・トレースに残らない
   ことを実装・テストの両方で保証する。
 
 ## Tasks
 
-- [ ] T000 [Decision] 対応するかどうかを `docs/contexts/sourcing/decisions.md` で判断する。却下する場合は
-      `docs/contexts/sourcing/standards.md` の `RFC7643-CORE-RESOURCES` 行に明記して
+- [ ] T000 [Decision] 対応するかどうかを `docs/domain/sourcing/decisions.md` で判断する。却下する場合は
+      `docs/domain/sourcing/standards.md` の `RFC7643-CORE-RESOURCES` 行に明記して
       work item を `cancelled` にする。
-- [ ] T001 [Spec] (対応する場合) password の契約を `docs/contexts/sourcing/standards.md` と `models.tsp` に追加する。
+- [ ] T001 [Spec] (対応する場合) password の契約を `docs/domain/sourcing/standards.md` と `models.tsp` に追加する。
 - [ ] T002 [Domain] RED: password のハッシュ化・ポリシー検証 test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: CreateScimUser/UpdateScimUser/PatchScimUser の
       password 処理 HTTP contract test を先に失敗させて実装する。ログ・エラー
@@ -71,4 +71,4 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 攻撃面を広げる(弱いパスワードの一括投入、パスワードポリシー回避、transport/ログ
 上の露出リスク)。既存の自己サービスパスワードフロー・パスワードポリシーとの
 整合が取れない場合は、恒久的に非対応とする判断も正当である。実装前に必ず
-方針を `docs/contexts/sourcing/decisions.md` で確定してから着手する(T000 を他の Task より先に完了させる)。
+方針を `docs/domain/sourcing/decisions.md` で確定してから着手する(T000 を他の Task より先に完了させる)。

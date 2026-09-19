@@ -16,9 +16,9 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-455-unique-operation-ids.md }
 initial_context:
   specification:
-    - docs/standards.md#openapi-specification-311
-    - docs/contexts/saml/decisions.md
-    - docs/contexts/oauth2/decisions.md
+    - docs/domain/standards.md#openapi-specification-311
+    - docs/domain/saml/decisions.md
+    - docs/domain/oauth2/decisions.md
   typespec:
     - IdMagic.Saml.Operations.SamlSingleSignOn1
     - IdMagic.Authentication.Operations.CompleteFederatedLogin1
@@ -44,7 +44,7 @@ primary_use_cases:
     unit_fault_model: operationId を Set で重複排除して後続経路を黙って捨てる。
     e2e_fault_model: check-spec から重複検査を外して重複 TypeSpec を合格させる。
 affected_spec:
-  - { path: docs/standards.md, requirement: OPENAPI31-OPERATION-ID }
+  - { path: docs/domain/standards.md, requirement: OPENAPI31-OPERATION-ID }
   - { path: spec/contexts/saml/main.tsp, symbol: IdMagic.Saml.Operations.SamlSingleSignOn1 }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CompleteFederatedLogin1 }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.EndSession1 }

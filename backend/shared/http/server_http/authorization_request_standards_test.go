@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/contexts/oauth2/standards.md のうち、認可リクエストの入口に立つ 15 行を観測する。
+// docs/domain/oauth2/standards.md のうち、認可リクエストの入口に立つ 15 行を観測する。
 //
 // 入口は Register が組み立てたスタックへの HTTP である。認可リクエストの検証は
 // ハンドラー、use case、domain の 3 層に分かれて立っており、どれか 1 つの単体テストでは

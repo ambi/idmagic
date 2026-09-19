@@ -10,8 +10,8 @@ depends_on: []
 change_kind: tooling
 initial_context:
   specification:
-    - docs/contexts/jobs/states.md#JobLifecycle
-    - docs/contexts/jobs/scenarios.feature.md#REQ-JOBS-004
+    - docs/domain/jobs/states.md#JobLifecycle
+    - docs/domain/jobs/scenarios.feature.md#REQ-JOBS-004
     - docs/development/specification-first-workflow.md
     - docs/development/testing.md
     - WORK_ITEM_FORMAT.md
@@ -45,7 +45,7 @@ Jobs のリースは評価対象に適している。正準文書には `JobLife
 ## Scope
 
 - Quint の現行版、ライセンス、配布形態、`mise` での版固定方法、TLC と Apalache の取得方法、キャッシュ、macOS と Linux での再現性を調べる。
-- `docs/contexts/jobs/states.md`、`REQ-JOBS-004`、Jobs のリース機構から、二つの `worker`、一つの Job、明示的な論理時刻を持つ有限の Quint 模型を試作する。
+- `docs/domain/jobs/states.md`、`REQ-JOBS-004`、Jobs のリース機構から、二つの `worker`、一つの Job、明示的な論理時刻を持つ有限の Quint 模型を試作する。
 - `JobLifecycle` の状態と遷移は `states.md` から生成するか機械比較し、手書きの Quint 模型が正準文書から黙って乖離しない経路を試作する。
 - 安全性として「有効なリース所有者は同時に一人以下」「リースを持たない `worker` は完了または失敗を確定できない」「終端状態から `running` へ戻らない」を検査し、到達可能性の witness と期待した反例トレースを得る。
 - 固定 seed のシミュレーションとモデル検査を `mise` タスクから実行し、型検査、シミュレーション、TLC と Apalache の有界検査について実行時間と導入物を記録する。
@@ -361,7 +361,7 @@ Decision Criteria に対する判定は次のとおりである。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-model-sync`（評価用タスク。`tools/model-sync/src/main.ts --check`）
   - **Requirement**: N/A: 道具の評価であり、対応する規範的な製品要件を持たない。
-  - **Observed Failure**: 片側だけを変えた 2 つの fixture の両方で失敗した。`docs/contexts/jobs/states.md` から `| running | JobCanceled | — | canceled | |` の行だけを削ると、`fail backend/jobs/model/joblifecycle.qnt does not match ... line 33 / specification: ")" / model: "{ from: Running, event: JobCanceled, guard: "", to: Canceled },"` を出して非ゼロ終了した。逆に `joblifecycle.qnt` へ `{ from: Succeeded, event: JobStarted, guard: "", to: Running },` を手で足すと、`line 29` の不一致を出して非ゼロ終了した。どちらも復元すると `ok` に戻った。
+  - **Observed Failure**: 片側だけを変えた 2 つの fixture の両方で失敗した。`docs/domain/jobs/states.md` から `| running | JobCanceled | — | canceled | |` の行だけを削ると、`fail backend/jobs/model/joblifecycle.qnt does not match ... line 33 / specification: ")" / model: "{ from: Running, event: JobCanceled, guard: "", to: Canceled },"` を出して非ゼロ終了した。逆に `joblifecycle.qnt` へ `{ from: Succeeded, event: JobStarted, guard: "", to: Running },` を手で足すと、`line 29` の不一致を出して非ゼロ終了した。どちらも復元すると `ok` に戻った。
   - **Detection Reason**: 受け入れ境界が適用できないので、代わりに失敗させた検査がこれである。妥当な誤り方は「`states.md` を直して模型の再生成を忘れる」と「模型だけ手で直す」の 2 つで、方向が逆なので片方向の検査では取り逃がす。生成結果とファイルのバイト比較は方向を持たないため両方で落ちる。この検査が担っていることの証拠として、**手書き改変のほうは `mise run model-typecheck` を通過した**ことも観測した。終端状態から `running` へ戻る遷移を足しても Quint の型は合うので、型検査を同期の証拠に数えることはできない。
 
 - **Unit RED Evidence**:

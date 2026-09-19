@@ -3,7 +3,7 @@ package db_postgres
 // 受理した 1 行の完全な書き込み集合を、1 つの PostgreSQL トランザクションで確定する。
 // メンバーシップの追加または解除と監査記録は同じ境界に入る。行の途中で失敗すれば
 // 部分的な変更は残らず、他の受理済み行は巻き戻さない
-// (docs/contexts/identity-management/internals.md)。
+// (docs/domain/identity-management/internals.md)。
 
 import (
 	"context"

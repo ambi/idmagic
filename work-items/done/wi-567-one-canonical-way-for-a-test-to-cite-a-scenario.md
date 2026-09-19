@@ -94,7 +94,7 @@ initial_context:
 
 ### 実行可能な Gherkin を採らない理由
 
-`docs/contexts/*/scenarios.feature.md` は Markdown with Gherkin であり、`@cucumber/gherkin` が実際に解析している。ならば step 定義を書いて仕様そのものを実行するのが素直に見える。測って取り下げた。
+`docs/domain/*/scenarios.feature.md` は Markdown with Gherkin であり、`@cucumber/gherkin` が実際に解析している。ならば step 定義を書いて仕様そのものを実行するのが素直に見える。測って取り下げた。
 
 | 測定 | 値 |
 | --- | --- |

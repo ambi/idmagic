@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/contexts/authentication/scenarios.feature.md の REQ-AUTHENTICATION-007 と 008 が
+// docs/domain/authentication/scenarios.feature.md の REQ-AUTHENTICATION-007 と 008 が
 // 宣言する具体例を、ブラウザー経由のログインの入口から観測する。
 //
 // スタックは `testing_stack` が建てる。この具体例群が要求するのは「/authorize から

@@ -9,7 +9,7 @@ depends_on: []
 change_kind: bugfix
 spec_impact: { kind: none, reason: "宣言済みの具体例が要求している発行を、実装が一部の分岐で行っていない。規範は動かさず実装を合わせる。" }
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
 ---
 
 # `state` が一致しないフェデレーションの callback が記録を残さない

@@ -6,14 +6,14 @@ risk: medium
 created_at: 2026-08-27
 priority: p1
 change_kind: docs
-spec_impact: { kind: none, reason: "docs/structure.md へ公開言語の定義を書き層名を実装に合わせるが、規範シナリオ、規範 ID、TypeSpec シンボルを追加も変更もしない。" }
+spec_impact: { kind: none, reason: "docs/domain/structure.md へ公開言語の定義を書き層名を実装に合わせるが、規範シナリオ、規範 ID、TypeSpec シンボルを追加も変更もしない。" }
 ---
 
 # Context 境界と作用の禁止を機械検査する適応度関数を足す
 
 ## Motivation
 
-`docs/structure.md` は「Context 間は公開された言語とポートで接続する」と宣言し、`docs/README.md` の Context Map は関係の向きと種類（OHS/PL、C/S、ACL、Events）まで型付けしている。しかし `tools/check/src/check-boundaries.ts` が検査するのは層の方向（`domain` が `usecases`/`handlers_*`/`db_*` を import しないこと、`usecases` が外向きに import しないこと）と起動時設定の読み取り点だけであり、Context 間の依存は 1 行も見ていない。
+`docs/domain/structure.md` は「Context 間は公開された言語とポートで接続する」と宣言し、`docs/README.md` の Context Map は関係の向きと種類（OHS/PL、C/S、ACL、Events）まで型付けしている。しかし `tools/check/src/check-boundaries.ts` が検査するのは層の方向（`domain` が `usecases`/`handlers_*`/`db_*` を import しないこと、`usecases` が外向きに import しないこと）と起動時設定の読み取り点だけであり、Context 間の依存は 1 行も見ていない。
 
 実際の import グラフは宣言と一致していない。`backend/oauth2` は `authentication/mfa/usecases`、`authentication/session/usecases`、`authentication/totp/usecases`、`authentication/webauthn/handlers_http` を直接 import している。Context Map が `Authentication --OHS/PL--> OAuth2` の一方向だけを宣言しているのに対し、実装は `oauth2 → authentication` と `authentication → oauth2` の双方向であり、`idmanagement ↔ authentication`、`tenancy ↔ idmanagement` にも循環がある。公開言語であるはずの `domain` と `ports` を越えて、他 Context の `usecases` と `handlers_http` に到達している。
 
@@ -23,14 +23,14 @@ Modular Monolith の全体重は「モジュールの内部が外から見えな
 
 ## Scope
 
-- **公開言語の定義**：`docs/structure.md` に、Context の外へ公開されるのは `domain` と `ports` だけであること、他 Context の `usecases`、`handlers_*`、`db_*` へ到達してはならないことを書く。
+- **公開言語の定義**：`docs/domain/structure.md` に、Context の外へ公開されるのは `domain` と `ports` だけであること、他 Context の `usecases`、`handlers_*`、`db_*` へ到達してはならないことを書く。
 - **Context 間の禁止依存**：`check-boundaries` に、他 Context の非公開パッケージへの import を拒否する規則を足す。
 - **循環の非存在**：Context 単位の依存グラフを組み立て、循環を拒否する。
 - **Context Map との一致**：`docs/README.md` の Context Map の矢印を読み取り、実 import グラフが宣言に無い辺を持つ場合に拒否する。Context Map を機械可読な正本として扱えるようにする。
 - **`domain` の作用禁止**：`domain` パッケージが `time.Now`、`math/rand`、`crypto/rand`、`os`、`net`、`database/sql` を参照することを拒否する。作用は引数として入るという `docs/development/specification-first-workflow.md` の規律を、変更時の手順ではなくシステムの現在の性質として固定する。
 - **迂回の検出**：`backend/shared/` を経由して禁止された方向へ到達する経路を、直接の import と同じ扱いで拒否する。
 - **負債の明示管理**：既存の違反は `tools/check/boundary-debt.json` に列挙し、新規の違反だけを落とす。負債ファイルに残る項目は、その Context 対と理由を持つ。
-- **層名の修正**：`docs/structure.md` が層を `usecase/`（単数）と書いているが実体は `usecases/`（複数）なので、実装に合わせる。
+- **層名の修正**：`docs/domain/structure.md` が層を `usecase/`（単数）と書いているが実体は `usecases/`（複数）なので、実装に合わせる。
 
 ## Out of Scope
 
@@ -56,7 +56,7 @@ Context 名と Go パッケージ名の対応は `docs/README.md` の索引表�
 ## Plan
 
 1. 現在の Context 間 import グラフを取得し、Context Map の宣言との差分を一覧にする。この一覧が負債ファイルの初期値になる。
-2. 公開言語の定義と層名の修正を `docs/structure.md` へ入れる。
+2. 公開言語の定義と層名の修正を `docs/domain/structure.md` へ入れる。
 3. Context Map の解析、禁止依存、循環、`domain` の作用禁止、迂回検出を順に実装する。各規則は違反する fixture を先に用意し、規則を入れる前にその fixture が通ってしまうことを観測する。
 4. 負債ファイルを初期値で投入し、`mise run check-boundaries` が現状の作業ツリーで通ることを確認する。
 5. 意図的な新規違反（他 Context の `usecases` を import する、`domain` で `time.Now()` を呼ぶ、Context Map に無い辺を作る）を入れて、それぞれが落ちることを確認する。
@@ -64,7 +64,7 @@ Context 名と Go パッケージ名の対応は `docs/README.md` の索引表�
 ## Tasks
 
 - [ ] T001 [Baseline] Context 間 import グラフと Context Map の宣言の差分を取得し、負債ファイルの初期値と `Events` 関係の実現方法を記録する。
-- [ ] T002 [Spec] `docs/structure.md` に公開言語の定義を書き、層名を `usecases` へ修正する。
+- [ ] T002 [Spec] `docs/domain/structure.md` に公開言語の定義を書き、層名を `usecases` へ修正する。
 - [ ] T003 [Acceptance] 違反する fixture が現在の `check-boundaries` を通過することを観測する。
 - [ ] T004 [Tooling] Context Map の解析と Context 名からパッケージ名への対応の導出を実装する。
 - [ ] T005 [Tooling] 他 Context の非公開パッケージへの import、循環、Context Map に無い辺、`domain` の作用、`shared` 経由の迂回を検査する規則を実装する。

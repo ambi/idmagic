@@ -8,13 +8,13 @@ change_kind: maintenance
 priority: p1
 depends_on: []
 affected_spec:
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-002 }
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-003 }
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-004 }
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-005 }
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-006 }
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-007 }
-  - { path: docs/contexts/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-009 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-002 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-003 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-004 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-005 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-006 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-007 }
+  - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-009 }
 ---
 
 # WorkloadIdentity が宣言する未検証の拒否 7 件に効果まで確かめるテストを与え、台帳から外す

@@ -15,8 +15,8 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md
-    - docs/contexts/oauth2/scenarios.feature.md
+    - docs/domain/oauth2/standards.md
+    - docs/domain/oauth2/scenarios.feature.md
   typespec:
     - IdMagic.Contract.DeviceAuthorizationRequest
     - IdMagic.Contract.DeviceAuthorizationResponse
@@ -57,7 +57,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/contexts/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 8 行を持つ。
+[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/domain/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 8 行を持つ。
 
 8 行は、ブラウザーのリダイレクトを使わずに承認を取る 2 つのグラントを定める。`authorization_pending`、`slow_down`、`expired_token` のポーリングの意味づけが両方に現れ、CIBA の 3 行は提供しない配信モードと補助パラメーターを言う。7 行が `optional` または `excluded` であり、8 行のほとんどが「提供していること」以外を観測する行である。
 
@@ -147,7 +147,7 @@ Unit RED の代替は、対応付けたテストごとの故障注入である�
 ## Tasks
 
 - [x] T001 [Acceptance] 消化する id を台帳から先に外し、`mise run check-spec` が当該 id ごとに `is declared, but no test names it` を報告することを観測する。
-  8 件すべてが `docs/contexts/oauth2/standards.md` の行番号つきで個別に報告された。
+  8 件すべてが `docs/domain/oauth2/standards.md` の行番号つきで個別に報告された。
   recipe: `mise run check-spec`
 - [x] T002 [Harness] デバイス認可エンドポイントと CIBA のバックチャネル認証エンドポイント にハーネスを組み、`required` の 1 件目で型を決める。
   `Register` が組み立てたスタックへ HTTP で入る `newNonInteractiveGrantFixture` を
@@ -222,7 +222,7 @@ Unit RED の代替は、対応付けたテストごとの故障注入である�
   - **Observed Failure**: 8 件を台帳から先に外した状態で、`RFC8628-DEVICE-AUTHORIZATION`、
     `RFC8628-POLLING`、`CIBA-CORE-BACKCHANNEL-REQUEST`、`CIBA-CORE-POLL-MODE`、
     `CIBA-CORE-BINDING-MESSAGE`、`CIBA-CORE-PING-PUSH`、`CIBA-CORE-USER-CODE`、
-    `CIBA-CORE-SIGNED-REQUEST` を `docs/contexts/oauth2/standards.md` の行番号つきで
+    `CIBA-CORE-SIGNED-REQUEST` を `docs/domain/oauth2/standards.md` の行番号つきで
     `is declared, but no test names it` と 1 件ずつ報告した。
   - **Detection Reason**: 検査は台帳の縮小とテストによる名指しを別々に読む。台帳だけを縮めた状態で
     RED になることを先に見ておけば、注記を足さずに件数を減らす誤りをこの検査が捕まえると確かめられる。

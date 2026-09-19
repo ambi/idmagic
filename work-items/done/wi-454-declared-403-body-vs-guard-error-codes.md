@@ -16,8 +16,8 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-454-declared-403-body-vs-guard-error-codes.md }
 initial_context:
   specification:
-    - docs/scenarios.feature.md#REQ-PLATFORM-004
-    - docs/contexts/api-tokens/scenarios.feature.md#REQ-APITOKENS-004
+    - docs/domain/scenarios.feature.md#REQ-PLATFORM-004
+    - docs/domain/api-tokens/scenarios.feature.md#REQ-APITOKENS-004
     - docs/api-rules.md#http-error-responses
     - docs/api-rules.md#declared-status-codes
   typespec:
@@ -55,8 +55,8 @@ primary_use_cases:
     unit_fault_model: VerifyBrowserRequest が書く error code を responder の伝播対象から落とす。
     e2e_fault_model: VerifyBrowserRequest が 403 を書いた後も保存処理へ進む。
 affected_spec:
-  - { path: docs/scenarios.feature.md, requirement: REQ-PLATFORM-004 }
-  - { path: docs/contexts/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-004 }
+  - { path: docs/domain/scenarios.feature.md, requirement: REQ-PLATFORM-004 }
+  - { path: docs/domain/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-004 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminUser }
   - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.AccessDeniedError }
 ---

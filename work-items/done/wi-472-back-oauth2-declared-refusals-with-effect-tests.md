@@ -14,29 +14,29 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-001
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-002
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-004
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-007
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-009
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-010
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-013
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-015
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-016
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-017
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-018
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-020
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-021
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-023
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-024
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-028
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-029
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-034
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-036
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-037
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-038
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-039
-    - docs/contexts/oauth2/scenarios.feature.md#REQ-OAUTH2-040
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-001
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-002
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-004
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-007
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-009
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-010
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-013
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-015
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-016
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-017
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-018
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-020
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-021
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-023
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-024
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-028
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-029
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-034
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-036
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-037
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-038
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-039
+    - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-040
   typespec: []
   source:
     - backend/oauth2/handlers_http
@@ -56,29 +56,29 @@ initial_context:
     - backend/saml
     - backend/wsfederation
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-001 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-002 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-004 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-007 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-009 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-010 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-013 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-015 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-016 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-017 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-018 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-020 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-021 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-023 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-024 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-028 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-029 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-034 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-036 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-037 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-038 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-039 }
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-040 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-001 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-002 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-004 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-007 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-009 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-010 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-013 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-015 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-016 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-017 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-018 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-020 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-021 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-023 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-024 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-028 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-029 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-034 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-036 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-037 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-038 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-039 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-040 }
 ---
 
 # OAuth2 が宣言する未検証の拒否に効果まで確かめるテストを与え、台帳から外す

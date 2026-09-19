@@ -14,12 +14,12 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-003
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-004
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-005
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-007
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-008
-    - docs/contexts/seeding/scenarios.feature.md#REQ-SEEDING-009
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-003
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-004
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-005
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-007
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-008
+    - docs/domain/seeding/scenarios.feature.md#REQ-SEEDING-009
   typespec:
     - IdMagic.Contract.SeedRequest
     - IdMagic.Contract.SeedManifest
@@ -35,12 +35,12 @@ initial_context:
   tests:
     - backend/cmd/internal/bootstrap
 affected_spec:
-  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-003 }
-  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-004 }
-  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-005 }
-  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-007 }
-  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-008 }
-  - { path: docs/contexts/seeding/scenarios.feature.md, requirement: REQ-SEEDING-009 }
+  - { path: docs/domain/seeding/scenarios.feature.md, requirement: REQ-SEEDING-003 }
+  - { path: docs/domain/seeding/scenarios.feature.md, requirement: REQ-SEEDING-004 }
+  - { path: docs/domain/seeding/scenarios.feature.md, requirement: REQ-SEEDING-005 }
+  - { path: docs/domain/seeding/scenarios.feature.md, requirement: REQ-SEEDING-007 }
+  - { path: docs/domain/seeding/scenarios.feature.md, requirement: REQ-SEEDING-008 }
+  - { path: docs/domain/seeding/scenarios.feature.md, requirement: REQ-SEEDING-009 }
 ---
 
 # Seeding が宣言する未検証の拒否 6 件に効果まで確かめるテストを与え、台帳から外す

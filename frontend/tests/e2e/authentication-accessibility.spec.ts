@@ -1,4 +1,4 @@
-// docs/standards.md の WCAG22-KEYBOARD と WCAG22-FOCUS を、実ブラウザーの認証画面で観測する。
+// docs/domain/standards.md の WCAG22-KEYBOARD と WCAG22-FOCUS を、実ブラウザーの認証画面で観測する。
 //
 // この 2 行は算出後の状態でしか区別できない。前者は実キーの走査と活性化がフォーカスをどう
 // 動かすかであり、後者は Tailwind を算出したあとのスタイルとヒットテストである。Happy DOM の

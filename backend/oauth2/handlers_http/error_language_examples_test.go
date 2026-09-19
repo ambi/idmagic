@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/contexts/system/scenarios.feature.md の REQ-SYSTEM-013 が宣言する具体例を、実際の
+// docs/domain/system/scenarios.feature.md の REQ-SYSTEM-013 が宣言する具体例を、実際の
 // 経路を通して観測する。
 //
 // 「英語で返る」ことを機械で読む方法は 1 つしかない。人が読む文が非 ASCII を含まない

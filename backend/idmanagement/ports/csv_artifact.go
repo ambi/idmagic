@@ -2,7 +2,7 @@ package ports
 
 // 種別に依存しない CSV 成果物ストア。upload payload と結果ページのどちらも同じ
 // 不変ストアに置き、CSV 種別ごとに artifact / error のテーブルを増やさない
-// (docs/contexts/identity-management/internals.md)。
+// (docs/domain/identity-management/internals.md)。
 
 import (
 	"context"

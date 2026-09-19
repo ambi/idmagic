@@ -13,7 +13,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import { parseFrontmatterAndMarkdown } from '../../check/src/work-item-markdown.ts'
-import { collectTraces } from '../../render-spec-docs/src/traces.ts'
+import { collectTraces } from '../../render-docs/src/traces.ts'
 import {
   COVERAGE_NOTE,
   coverageLine,
@@ -131,7 +131,7 @@ const contexts = new Set<string>()
 
 for (const reference of affected) {
   const documentPath = reference.path ?? ''
-  contexts.add(documentPath.match(/^docs\/contexts\/([^/]+)\//)?.[1] ?? '')
+  contexts.add(documentPath.match(/^docs\/domain\/([^/]+)\//)?.[1] ?? '')
 
   if (reference.requirement) {
     const id = reference.requirement
@@ -193,7 +193,7 @@ const named = new Set<string>()
 for (const context of contexts) {
   if (context === '') continue
   const result = Bun.spawnSync(
-    ['git', 'log', '-5', '--format=%h %s', '--', `docs/contexts/${context}`],
+    ['git', 'log', '-5', '--format=%h %s', '--', `docs/domain/${context}`],
     {
       cwd: root,
     },

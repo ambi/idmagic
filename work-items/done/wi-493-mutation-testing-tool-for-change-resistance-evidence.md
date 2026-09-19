@@ -25,7 +25,7 @@ initial_context:
     - backend/idmanagement/group/domain
   stop_before_reading:
     - frontend
-    - docs/contexts
+    - docs/domain
     - spec
 spec_impact: { kind: none, reason: "検証手法の道具立てだけを変え、製品の観測可能な振る舞いも公開契約も変えない。" }
 ---

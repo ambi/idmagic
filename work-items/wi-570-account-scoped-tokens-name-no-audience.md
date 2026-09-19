@@ -9,7 +9,7 @@ depends_on: []
 change_kind: bugfix
 spec_impact: { kind: none, reason: "EX-OAUTH2-001-01 は既に宣言済みである。実装をその宣言へ合わせるか、宣言の側を現在の設計へ寄せるかを決める作業であり、判断のあとで仕様先行に戻る。" }
 affected_spec:
-  - { path: docs/contexts/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-001 }
+  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-001 }
 ---
 
 # account スコープのトークンが、宛先のリソースサーバーを名乗らない

@@ -15,12 +15,12 @@ documentation_impact:
 spec_impact:
   {
     kind: none,
-    reason: "`docs/standards.md` の冒頭の文だけを実態に合わせて直す。規範行、シナリオ、TypeSpec symbol のいずれも増減も変更もしない。",
+    reason: "`docs/domain/standards.md` の冒頭の文だけを実態に合わせて直す。規範行、シナリオ、TypeSpec symbol のいずれも増減も変更もしない。",
   }
 initial_context:
   specification:
     [
-      docs/standards.md,
+      docs/domain/standards.md,
       SPECIFICATION_FORMAT.md,
       docs/development/specification-first-workflow.md,
     ]
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-`docs/standards.md` は冒頭でこう宣言している。「`Statement` は製品が何をするかを書き、標準の側の義務を要約しない。各行は、規範 ID をテスト名に含めた対応するテストを持つ。」
+`docs/domain/standards.md` は冒頭でこう宣言している。「`Statement` は製品が何をするかを書き、標準の側の義務を要約しない。各行は、規範 ID をテスト名に含めた対応するテストを持つ。」
 
 確認したところ、この文は現在ただの偽である。`WCAG22-KEYBOARD`、`GDPR-ERASURE`、`GDPR-CONSENT-WITHDRAWAL` のいずれも、`backend/` と `frontend/` に 1 件も出現しない。`tools/check/src/specification-doc.ts` は表の見出しと列の値集合は検証するが、テストからの参照は見ていない。GDPR と WCAG は外部の監査で問われる種類の規範であり、根拠を求められたときに示せるものが無い。
 
@@ -54,15 +54,15 @@ initial_context:
 
 `docs/development/specification-first-workflow.md` は「テストやコードに要求 ID を書くことが、後から `spec-where` と生成されたトレーサビリティのページの両方でその対応を見つけられるようにする」と述べており、トレーサビリティのページは `render-spec-docs` が生成する。しかしそれは view であってゲートではない。名指しが無いことは、生成された表に空欄として現れるだけで、何も止めない。Behavior-Driven Development の中心はシナリオが実行されることにあるので、拒否だけが検査されている現状はその中心を半分しか満たしていない。
 
-第三の穴として、`docs/glossary.md` と各 Context の `glossary.md` が Published Language を定めているのに、そこに無い語をシナリオが使っても検査は通る。用語集とシナリオが同じ語彙を使っていることは、誰も見ていない。
+第三の穴として、`docs/domain/glossary.md` と各 Context の `glossary.md` が Published Language を定めているのに、そこに無い語をシナリオが使っても検査は通る。用語集とシナリオが同じ語彙を使っていることは、誰も見ていない。
 
 ## Scope
 
-- **規範の被覆**：`docs/standards.md` と各 Context の `standards.md` の全行について、規範 ID を名指しするテストの存在を検査する。
+- **規範の被覆**：`docs/domain/standards.md` と各 Context の `standards.md` の全行について、規範 ID を名指しするテストの存在を検査する。
 - **シナリオの被覆**：拒否を宣言したシナリオに限らず、全 `REQ-<CONTEXT>-NNN` について、名指しするテストの存在を検査する。
 - **負債の明示管理**：既存の未対応分を負債ファイルに列挙し、新規の未対応だけを落とす。`security-refusal-debt.json` の形式に揃え、拒否の負債ファイルとは併存させる。
 - **退役の扱い**：後継へ差し替えられたシナリオは被覆の対象から外す。
-- **宣言の修正**：`docs/standards.md` の冒頭の文が偽であり続けないよう、記述と実態を一致させる。
+- **宣言の修正**：`docs/domain/standards.md` の冒頭の文が偽であり続けないよう、記述と実態を一致させる。
 
 ## Out of Scope
 
@@ -102,11 +102,11 @@ initial_context:
 
 規範 ID の名指しを探す場所は、拒否の被覆と同じくテストファイルに限る（`*_test.go`、`*.test.ts`、`*.test.tsx`、`*.spec.ts`、`*.spec.tsx`）。実装コードの中の言及を数えると、コメントに ID を書くだけで検査が通ってしまう。
 
-テストファイルの中では、名前に限らず任意の位置の言及を認める。Risk Notes が挙げた命名の窮屈さは実在し、`TestAuthorizeCode_WCAG22_KEYBOARD_GDPR_ERASURE` のような名前を強制すると意図が読めなくなる。拒否の被覆が既に「ファイル内の任意の位置」で運用されており、二つ目の規則を持ち込む理由も無い。この決定の帰結として、`docs/standards.md` の「規範 ID をテスト名に含めた」という表現自体が実態と違うことになるので、T006 でそこも直す。
+テストファイルの中では、名前に限らず任意の位置の言及を認める。Risk Notes が挙げた命名の窮屈さは実在し、`TestAuthorizeCode_WCAG22_KEYBOARD_GDPR_ERASURE` のような名前を強制すると意図が読めなくなる。拒否の被覆が既に「ファイル内の任意の位置」で運用されており、二つ目の規則を持ち込む理由も無い。この決定の帰結として、`docs/domain/standards.md` の「規範 ID をテスト名に含めた」という表現自体が実態と違うことになるので、T006 でそこも直す。
 
 ### 語彙の対応を Scope から外した根拠
 
-着手前に検出可能性を測った。`docs/glossary.md` と 21 個の Context の `glossary.md` が定義する語と別名は 590 件、TypeSpec の symbol は 2997 件ある。全 `scenarios.feature.md` に現れる PascalCase の語 314 件をこの 3587 件と突き合わせると、解決できない語は 60 件残る。その 60 件を読むと、過半は外部プロトコルの要素名（`AuthnRequest`、`NameIDPolicy`、`RelayState`、`IssueInstant`、`ForceAuthn`、`ProtocolBinding`、`UsernameToken`）、Web プラットフォームの語（`SameSite`、`HttpOnly`、`WebAuthn`、`PublicKeyCredentialRequestOptions`）、製品名（`PostgreSQL`、`WebP`）、Context 名（`IdManagement`、`SharedSignals`、`DataKeys`、`WorkloadIdentity`）であり、用語集に無いことは欠陥ではない。本当に定義の無い語は `AdminDashboard`、`HomePage`、`SeedData`、`KeyStore` のような少数である。
+着手前に検出可能性を測った。`docs/domain/glossary.md` と 21 個の Context の `glossary.md` が定義する語と別名は 590 件、TypeSpec の symbol は 2997 件ある。全 `scenarios.feature.md` に現れる PascalCase の語 314 件をこの 3587 件と突き合わせると、解決できない語は 60 件残る。その 60 件を読むと、過半は外部プロトコルの要素名（`AuthnRequest`、`NameIDPolicy`、`RelayState`、`IssueInstant`、`ForceAuthn`、`ProtocolBinding`、`UsernameToken`）、Web プラットフォームの語（`SameSite`、`HttpOnly`、`WebAuthn`、`PublicKeyCredentialRequestOptions`）、製品名（`PostgreSQL`、`WebP`）、Context 名（`IdManagement`、`SharedSignals`、`DataKeys`、`WorkloadIdentity`）であり、用語集に無いことは欠陥ではない。本当に定義の無い語は `AdminDashboard`、`HomePage`、`SeedData`、`KeyStore` のような少数である。
 
 誤検出を消すには、外部プロトコルの要素名と Context 名を列挙した許可一覧を保守し続けることになる。それは「リポジトリのどこかに現れる PascalCase の語か」を問う検査に退化し、用語集との対応を見ていない。Design の予告どおり、絞れなかったので入れない。
 
@@ -117,7 +117,7 @@ initial_context:
 3. `normative-coverage.ts` に純粋な判定を実装し、`specification-doc.ts` に規範 ID の収集を足す。
 4. `check-specifications.ts` から負債ファイル、正本文書、テスト本文を渡して配線する。
 5. 負債ファイル 2 種を初期値で生成する。
-6. `docs/standards.md` の冒頭と `SPECIFICATION_FORMAT.md` の記述を検査の実態と一致させる。
+6. `docs/domain/standards.md` の冒頭と `SPECIFICATION_FORMAT.md` の記述を検査の実態と一致させる。
 7. 負債に無い規範 ID とシナリオを足して落ちることを確認する。
 
 ## Tasks
@@ -127,7 +127,7 @@ initial_context:
 - [x] T003 [Tooling] `normative-coverage.ts` の `checkNormativeCoverage` と、`specification-doc.ts` が返す `standardIds` で規範 ID の被覆を検査する。`normative-coverage.test.ts` の `rejects a declaration no test names and no debt entry covers` が RED から GREEN。
 - [x] T004 [Tooling] シナリオの被覆を同じ検査で扱い、`supersededBy` を持つ見出しを `check-specifications.ts` が `declared` から外す。`check-workspace.test.ts` の `leaves a retired scenario out of the coverage gate` と `rejects a scenario no test names when no debt list admits it` が対応する。
 - [x] T005 [Tooling] 負債の項目を `{ id, reason }` とし、非空の理由、ID 順、重複の排除、宣言の消滅、テストが付いた項目、拒否の負債との二重記載を検査する。`normative-coverage.test.ts` の 7 件が対応する。
-- [x] T006 [Spec] `docs/standards.md` の冒頭を「テスト名に含めた」から「テストが名指しし、無い行は理由付きで負債台帳に残る」へ直した。`SPECIFICATION_FORMAT.md` §5 と §6 に同じ規則を `*(checked)*` として置いた。
+- [x] T006 [Spec] `docs/domain/standards.md` の冒頭を「テスト名に含めた」から「テストが名指しし、無い行は理由付きで負債台帳に残る」へ直した。`SPECIFICATION_FORMAT.md` §5 と §6 に同じ規則を `*(checked)*` として置いた。
 - [x] T007 [Scope] 検出可能性を測り、誤検出が支配的であることを確認して Out of Scope へ移した（Design に測定を記載）。
 - [x] T008 [Verify] 新しい規範行、新しいシナリオ、理由の削除、テストが付いた負債項目、二重記載、並び順の崩れの 6 通りで `mise run check-spec` が落ちること、テストを足すか退役させると通ることを実測した。
 
@@ -152,7 +152,7 @@ initial_context:
 
 - **Completed At**: 2026-09-05
 - **Summary**:
-  `mise run spec-diff` は `no normative specification change against main` を返す。規範行もシナリオも増減せず、`docs/standards.md` の冒頭の文だけが実態に合う表現へ変わった。意味の差は仕様の内容ではなく、仕様と実装の対応が検査されるかどうかにある。`mise run check-spec` は今後、規範行 154 件とシナリオ 306 件のそれぞれについて、製品のテストがその ID を名指ししているか、負債台帳が理由付きで保持しているかのどちらかを要求する。着手時点で名指しがあるのは 134 件で、残りは `tools/check/standards-coverage-debt.json`（134 件）、`tools/check/example-coverage-debt.json`（89 件）、既存の `tools/check/security-refusal-debt.json`（102 件）が保持する。3 つの台帳は互いに素であり、縮む方向にしか動かない。
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範行もシナリオも増減せず、`docs/domain/standards.md` の冒頭の文だけが実態に合う表現へ変わった。意味の差は仕様の内容ではなく、仕様と実装の対応が検査されるかどうかにある。`mise run check-spec` は今後、規範行 154 件とシナリオ 306 件のそれぞれについて、製品のテストがその ID を名指ししているか、負債台帳が理由付きで保持しているかのどちらかを要求する。着手時点で名指しがあるのは 134 件で、残りは `tools/check/standards-coverage-debt.json`（134 件）、`tools/check/example-coverage-debt.json`（89 件）、既存の `tools/check/security-refusal-debt.json`（102 件）が保持する。3 つの台帳は互いに素であり、縮む方向にしか動かない。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`
   - **Requirement**: N/A: 製品の規範要求ではなく、仕様文書に対する検査を足す変更である。

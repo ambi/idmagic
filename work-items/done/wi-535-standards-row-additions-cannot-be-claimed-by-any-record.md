@@ -32,7 +32,7 @@ initial_context:
 
 ## Motivation
 
-`docs/contexts/<context>/standards.md` に行を 1 つ足すと、その行を足した記録ではなく、無関係な in_progress 記録が `mise run check-work-items` で落ちる。
+`docs/domain/<context>/standards.md` に行を 1 つ足すと、その行を足した記録ではなく、無関係な in_progress 記録が `mise run check-work-items` で落ちる。
 
 ```
 work-items/wi-495-burn-down-the-standards-coverage-debt.md: documentation_impact none is weaker than inferred release_note
@@ -43,7 +43,7 @@ work-items/wi-495-burn-down-the-standards-coverage-debt.md: documentation_impact
 `standards.md` の行に対しては、この仕組みが働かない。
 
 原因は突き合わせる文字列の綴りである。
-`spec-diff.ts` の `standardRows` は標準行を `<path>#<ID>` を鍵として集める（`docs/contexts/sourcing/standards.md#RFC7644-DELETE-SEMANTICS`）。
+`spec-diff.ts` の `standardRows` は標準行を `<path>#<ID>` を鍵として集める（`docs/domain/sourcing/standards.md#RFC7644-DELETE-SEMANTICS`）。
 一方 `referenceNames` は `affected_spec` の `requirement` をその鍵と丸ごと比較し、一致しなければ `<path>:<name>` 形式の TypeSpec 宣言として解釈しようとする。
 記録が書くのは規範 id そのもの（`RFC7644-DELETE-SEMANTICS`）なので、どちらの経路でも一致しない。
 `#` を含む鍵を扱う分岐が無い。
@@ -121,7 +121,7 @@ path#id form: true    # requirement: docs/.../standards.md#RFC7644-DELETE-SEMANT
   `spec-diff.ts:178` で id そのものを鍵にするので逐語比較で足り、declaration は
   `spec-diff.ts:79,157` で `<path>:<name>` を鍵にし、対応する分岐が既にある。
 - **Acceptance RED Evidence**:
-  - **Test**: `mise run check-work-items`（`docs/contexts/sourcing/standards.md` に行を 1 つ足し、
+  - **Test**: `mise run check-work-items`（`docs/domain/sourcing/standards.md` に行を 1 つ足し、
     その id を [[wi-534-deleted-scim-users-stay-visible-to-the-scim-client]] の `affected_spec` に
     書いた作業木で）
   - **Requirement**: N/A: 検査器の突き合わせ規則の欠陥であり、製品の規範要求には対応しない。
@@ -149,7 +149,7 @@ path#id form: true    # requirement: docs/.../standards.md#RFC7644-DELETE-SEMANT
   `#` の分岐から `path` の一致検査を落とし、id だけで主張できるようにした
   （`git diff --stat` で `tools/check/src/documentation-impact.ts | 24 +++++---` を確認）。
   `matches an added standards row by document and requirement id together` が
-  `docs/contexts/other/standards.md` の参照について `Expected: false / Received: true` で落ちた。
+  `docs/domain/other/standards.md` の参照について `Expected: false / Received: true` で落ちた。
   注入は観測後に元へ戻し、13 件が通ることを確認している。
 - **Verification Results**:
   - `mise run verify` - passed（2026-09-12 に取得、exit 0、13.87s）

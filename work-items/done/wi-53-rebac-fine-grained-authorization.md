@@ -8,8 +8,8 @@ change_kind: feature
 initial_context:
   specification:
     - docs/SPECIFICATION.md
-    - docs/contexts/authorization/SPECIFICATION.md#REQ-AUTHORIZATION-001
-    - docs/contexts/oauth2/SPECIFICATION.md
+    - docs/domain/authorization/SPECIFICATION.md#REQ-AUTHORIZATION-001
+    - docs/domain/oauth2/SPECIFICATION.md
   typespec:
     - IdMagic.Contract.AuthorizationModel
     - IdMagic.Contract.RelationTuple
@@ -31,9 +31,9 @@ initial_context:
     - backend/saml
     - backend/wsfederation
 affected_spec:
-  - { path: docs/contexts/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-001 }
-  - { path: docs/contexts/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-004 }
-  - { path: docs/contexts/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-005 }
+  - { path: docs/domain/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-001 }
+  - { path: docs/domain/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-004 }
+  - { path: docs/domain/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-005 }
   - { path: spec/contexts/authorization/models.tsp, symbol: IdMagic.Contract.RelationTuple }
   - { path: spec/contexts/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.CheckAccess }
 ---

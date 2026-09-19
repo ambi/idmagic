@@ -1,7 +1,7 @@
 # データ設計
 
 PostgreSQL に置くデータの構造、所有、整合性、保持、移行を扱う。
-概念モデルと API モデルは TypeSpec、物理的な列、索引、制約は `infra/schema/postgres.sql` が正本である。
+概念モデルと API モデルは TypeSpec、物理的な列、索引、制約は `infra/schema/postgres.sql` が一次情報である。
 
 | 文書 | 責務 |
 | --- | --- |

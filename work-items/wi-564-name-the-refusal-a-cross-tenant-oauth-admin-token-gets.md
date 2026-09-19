@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "本項目が決めるのは、具体例が�
 
 ## Motivation
 
-`docs/contexts/oauth2/scenarios.feature.md` の `EX-OAUTH2-003-04` は、トークンのテナントとリクエスト先のテナントが一致しないとき「操作を `AccessDeniedError` で拒否する」と宣言している。
+`docs/domain/oauth2/scenarios.feature.md` の `EX-OAUTH2-003-04` は、トークンのテナントとリクエスト先のテナントが一致しないとき「操作を `AccessDeniedError` で拒否する」と宣言している。
 
 [[wi-538-back-oauth2-examples-with-tests]] が測ったところ、製品が返すのは 401 `invalid_token` である。`acme` レルムで発行した `oauth-clients:read` と `oauth-clients:write` のトークンを `default` レルムの `/api/admin/v1/clients` へ提示すると、参照も登録も 401 になり、`default` テナントのクライアント一覧は 1 件も動かない。`WWW-Authenticate` は `Bearer error="invalid_token"` を返す。
 

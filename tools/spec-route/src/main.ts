@@ -64,7 +64,7 @@ const wantedRule = ruleOf(query)
 // The declaring document is found by searching, not by mapping the id prefix to
 // a directory name. A mapping is a guess, it is wrong for exactly the contexts
 // whose prefix and directory disagree, and being wrong there is silent.
-const contextDirs = (await readdir(resolve(root, 'docs/contexts'), { withFileTypes: true }))
+const contextDirs = (await readdir(resolve(root, 'docs/domain'), { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
 let located:
@@ -76,8 +76,8 @@ let located:
   | undefined
 for (const contextDir of [...contextDirs, '']) {
   const docPath = contextDir
-    ? `docs/contexts/${contextDir}/scenarios.feature.md`
-    : 'docs/scenarios.feature.md'
+    ? `docs/domain/${contextDir}/scenarios.feature.md`
+    : 'docs/domain/scenarios.feature.md'
   const source = await readFile(resolve(root, docPath), 'utf8').catch(() => undefined)
   if (source === undefined) continue
   const rule = parseScenarioDocument(source).rules.find((candidate) => candidate.id === wantedRule)

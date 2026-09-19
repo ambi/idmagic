@@ -11,11 +11,11 @@ evidence_policy: risk-based-v2
 initial_context:
   specification:
     - docs/README.md
-    - docs/glossary.md
-    - docs/structure.md
+    - docs/domain/glossary.md
+    - docs/domain/structure.md
     - docs/design-rules.md
     - docs/database.md
-    - docs/product-overview.md
+    - docs/design/product-overview.md
     - docs/development/specification-first-workflow.md
     - SPECIFICATION_FORMAT.md
   source:
@@ -35,9 +35,9 @@ spec_impact: { kind: none, reason: "サブドメイン分類、用語定義、Ag
 
 ## Motivation
 
-戦略的な Domain-Driven Design は厚く入っている。`docs/contexts/`、`spec/contexts/`、`backend/<context>` の三つの木が同じ名前で対応し、Context Map は関係の種類まで型付けされ、`docs/glossary.md` は「全体の用語を Context の用語集が狭めることがあり、狭めた先では狭めた定義が読み方になる。別のものを指すようになったならそれは同じ語ではない」という Published Language の中核を正しく形にしている。
+戦略的な Domain-Driven Design は厚く入っている。`docs/domain/`、`spec/contexts/`、`backend/<context>` の三つの木が同じ名前で対応し、Context Map は関係の種類まで型付けされ、`docs/domain/glossary.md` は「全体の用語を Context の用語集が狭めることがあり、狭めた先では狭めた定義が読み方になる。別のものを指すようになったならそれは同じ語ではない」という Published Language の中核を正しく形にしている。
 
-一方で戦術的なパターンの規範は事実上存在しない。`Aggregate` という語は `docs/contexts/jobs/decisions.md`、`docs/database.md`、`docs/contexts/identity-management/internals.md` などで使われているが、どこにも定義されていない。`docs/structure.md` の `domain/` の説明に「エンティティ、値オブジェクト、状態遷移、純粋な検証」という 1 行があるだけで、Aggregate の境界をどこに引くか、一貫性の境界がトランザクションの境界とどう対応するか、Repository は Aggregate 単位かは書かれていない。`docs/database.md` の `tenant_id` 保持区分は「テナントに属する Aggregate は `tenant_id` を持つ」という規則を Aggregate の概念に依存させているのに、その概念の定義が体系の外にある。
+一方で戦術的なパターンの規範は事実上存在しない。`Aggregate` という語は `docs/domain/jobs/decisions.md`、`docs/database.md`、`docs/domain/identity-management/internals.md` などで使われているが、どこにも定義されていない。`docs/domain/structure.md` の `domain/` の説明に「エンティティ、値オブジェクト、状態遷移、純粋な検証」という 1 行があるだけで、Aggregate の境界をどこに引くか、一貫性の境界がトランザクションの境界とどう対応するか、Repository は Aggregate 単位かは書かれていない。`docs/database.md` の `tenant_id` 保持区分は「テナントに属する Aggregate は `tenant_id` を持つ」という規則を Aggregate の概念に依存させているのに、その概念の定義が体系の外にある。
 
 戦略面にも欠落がある。21 個の Bounded Context が索引表の中で完全に対等に並んでおり、どれが競争優位の中心でどれが必要だが差別化しない領域かが書かれていない。Core と Supporting と Generic の区別が無いと、設計投資の配分も、自作するか既製品に委ねるかの判断も、その都度の裁量になる。実際には「AEAD と鍵セットの処理は Tink に委ね、nonce や認証タグの組み立てを自作しない」（`docs/database.md`）という優れた判断を既にしているが、その根拠が一般化されていないため、次の同種の判断で再利用できない。
 
@@ -49,7 +49,7 @@ Anti-Corruption Layer についても、Context Map に Sourcing と WorkloadIde
 
 - **サブドメインの分類**：全 Bounded Context を Core、Supporting、Generic に分類し、`docs/README.md` の索引表へ列として加える。分類の理由は各 Context の `decisions.md` が持つ。
 - **分類の使い道**：分類が何を左右するか（設計投資の厚み、自作と委譲の判断、検証の強度）を書く。分類が何も変えないなら書く意味がないため、ここを曖昧にしない。
-- **Aggregate の定義**：`docs/glossary.md` に Aggregate を、この製品で意味が固定される語として定義する。一貫性の境界であること、トランザクションの境界との対応、テナント境界との関係を含める。
+- **Aggregate の定義**：`docs/domain/glossary.md` に Aggregate を、この製品で意味が固定される語として定義する。一貫性の境界であること、トランザクションの境界との対応、テナント境界との関係を含める。
 - **Aggregate の境界の記録先**：各 Context のどのファイルが Aggregate の境界を持つかを定める。
 - **Repository の粒度**：Repository が Aggregate 単位であるかどうかを決め、現状と食い違う場合はその理由を書く。
 - **ACL の配置規約**：Anti-Corruption Layer をどのディレクトリに、どの命名で置くかを定め、Sourcing と WorkloadIdentity の現状を照合する。
@@ -68,7 +68,7 @@ Anti-Corruption Layer についても、Context Map に Sourcing と WorkloadIde
 
 分類の判断基準には 2 つの候補がある。Core Domain Chart（モデルの複雑さと事業上の差別化の二軸）と、Wardley Map（進化の度合いと価値連鎖上の位置）である。採るのは前者である。後者は市場と調達の判断に強いが、この製品にとって差し迫っているのは「どの Context に設計と検証の厚みを配分するか」であり、そこには二軸の分類で足りる。Wardley Map は判断の入力を大きく増やす割に、出力が同じところへ収束する。
 
-Aggregate の定義を `docs/glossary.md`（全体の用語集）に置くのは、この語が既に複数の Context の文書で使われており、Context ごとに違う意味を持つべきではないからである。同じ理由で、`docs/database.md` の `tenant_id` 保持区分が依存している概念が体系の内側へ入る。
+Aggregate の定義を `docs/domain/glossary.md`（全体の用語集）に置くのは、この語が既に複数の Context の文書で使われており、Context ごとに違う意味を持つべきではないからである。同じ理由で、`docs/database.md` の `tenant_id` 保持区分が依存している概念が体系の内側へ入る。
 
 Aggregate の境界をどこに記録するかには 2 案ある。各 Context の `glossary.md` に載せる案と、`decisions.md` に判断として書く案である。採るのは `decisions.md` である。境界は「なぜここで切ったか」を伴わなければ次の変更で守られず、`SPECIFICATION_FORMAT.md` は理由の無い項目を「言い換えた規則であって判断ではない」として退けている。ただし Aggregate の名前そのものは `glossary.md` に載せ、定義と判断を分ける。
 
@@ -106,19 +106,19 @@ Event Storming は境界の引き直しが必要と判断された場合の手�
 
 ### ACL の配置規約
 
-Context Map は ACL を Sourcing と WorkloadIdentity の 2 か所で宣言しているが、実装は既に一貫した形を持っている。相手 Context の語彙を自分のポートへ翻訳するアダプターを `<role>_<相手 Context>` という名前のパッケージに置く形で、`sourcing/scim/source_idmanagement`、`provisioning/source_idmanagement`、`authorization/principals_idmanagement`、`oauth2/policy_tenancy` の 4 件が該当する。置き場所を決めているのは「翻訳する側」ではなく「Context Map が依存を許す側」である。`provisioning/source_idmanagement` は下流である Provisioning に立ち、`sourcing/scim/source_idmanagement` は逆に上流である Sourcing に立って IdManagement のポートを満たす。IdManagement が Sourcing を知ることを避けるためであり、この非対称は規約として書かないと読んだだけでは分からない。既存のアダプター命名規則 `<role>_<technology>` の `technology` の位置に Context 名が入る形なので、規則自体は増やさず `docs/structure.md` の同じ段落を広げる。
+Context Map は ACL を Sourcing と WorkloadIdentity の 2 か所で宣言しているが、実装は既に一貫した形を持っている。相手 Context の語彙を自分のポートへ翻訳するアダプターを `<role>_<相手 Context>` という名前のパッケージに置く形で、`sourcing/scim/source_idmanagement`、`provisioning/source_idmanagement`、`authorization/principals_idmanagement`、`oauth2/policy_tenancy` の 4 件が該当する。置き場所を決めているのは「翻訳する側」ではなく「Context Map が依存を許す側」である。`provisioning/source_idmanagement` は下流である Provisioning に立ち、`sourcing/scim/source_idmanagement` は逆に上流である Sourcing に立って IdManagement のポートを満たす。IdManagement が Sourcing を知ることを避けるためであり、この非対称は規約として書かないと読んだだけでは分からない。既存のアダプター命名規則 `<role>_<technology>` の `technology` の位置に Context 名が入る形なので、規則自体は増やさず `docs/domain/structure.md` の同じ段落を広げる。
 
 ### 分類を飾りにしないための検査
 
-索引表の列は、放置すれば新しい Context が分類なしで追加される。`tools/check/src/subdomain-classification.ts` に、`docs/README.md` の Context 索引表が `docs/contexts/` の全ディレクトリを 1 行ずつ持ち、各行が `Core` / `Supporting` / `Generic` のいずれかを宣言していることを確かめる純関数を置き、`check-workspace --documents` から呼ぶ。README の本文とディレクトリ一覧は引数として入り、この関数はファイルシステムを読まない。これが本 work item の Acceptance と Unit の RED を与える。
+索引表の列は、放置すれば新しい Context が分類なしで追加される。`tools/check/src/subdomain-classification.ts` に、`docs/README.md` の Context 索引表が `docs/domain/` の全ディレクトリを 1 行ずつ持ち、各行が `Core` / `Supporting` / `Generic` のいずれかを宣言していることを確かめる純関数を置き、`check-workspace --documents` から呼ぶ。README の本文とディレクトリ一覧は引数として入り、この関数はファイルシステムを読まない。これが本 work item の Acceptance と Unit の RED を与える。
 
 ## Plan
 
 1. 分類、Aggregate の洗い出し、Repository の粒度、ACL の実装位置を現状調査する（完了、上の Design に記録）。
 2. `subdomain-classification` の検査を書き、Unit RED と Acceptance RED を確認する。
-3. `docs/glossary.md` に Aggregate を定義し、`docs/database.md` の保持区分がその定義で読めることを確認する。
+3. `docs/domain/glossary.md` に Aggregate を定義し、`docs/database.md` の保持区分がその定義で読めることを確認する。
 4. `docs/design-rules.md` に、Aggregate 境界、Repository の粒度、`Repository` と `Store` の呼び分け、分類が左右するものを書く。
-5. `docs/structure.md` に ACL の配置規約を書く。
+5. `docs/domain/structure.md` に ACL の配置規約を書く。
 6. `docs/README.md` の索引表へ `Subdomain` 列を足し、検査を GREEN にする。
 7. 各 Context の `decisions.md` へ分類の理由を、`glossary.md` へ Aggregate root であることを書く。判断が要った境界だけを `decisions.md` に足す。
 8. 境界の見直しの手順を `docs/development/specification-first-workflow.md` へ接続する。
@@ -128,9 +128,9 @@ Context Map は ACL を Sourcing と WorkloadIdentity の 2 か所で宣言し�
 - [x] T001 [Baseline] 全 Context の仮分類、Aggregate の洗い出し、Repository の粒度と ACL の実装位置の現状調査を行う。
 - [x] T002 [Acceptance] `mise run check-spec` が `docs/README.md` の分類欠落で落ちることを確認する（Acceptance RED）。
 - [x] T003 [App] `tools/check/src/subdomain-classification.ts` の Unit RED を確認し、GREEN にする。
-- [x] T004 [Spec] `docs/glossary.md` に Aggregate を定義する。
+- [x] T004 [Spec] `docs/domain/glossary.md` に Aggregate を定義する。
 - [x] T005 [Spec] `docs/design-rules.md` に Aggregate 境界、Repository の粒度と命名、分類が左右するものを書く。
-- [x] T006 [Spec] `docs/structure.md` に ACL の配置規約を書く。
+- [x] T006 [Spec] `docs/domain/structure.md` に ACL の配置規約を書く。
 - [x] T007 [Spec] `docs/README.md` の索引表へ `Subdomain` 列を足す。
 - [x] T008 [Spec] 各 Context の `decisions.md` と `glossary.md` へ分類の理由と Aggregate root を書く。
 - [x] T009 [Spec] 境界の見直しの手順を `docs/development/specification-first-workflow.md` へ接続する。
@@ -139,7 +139,7 @@ Context Map は ACL を Sourcing と WorkloadIdentity の 2 か所で宣言し�
 ## Verification
 
 - `mise run check-spec` が通る。
-- `docs/database.md` の `tenant_id` 保持区分と `docs/contexts/jobs/decisions.md` の「別テナントの Aggregate の識別子」という記述が、新しい定義と矛盾しない。
+- `docs/database.md` の `tenant_id` 保持区分と `docs/domain/jobs/decisions.md` の「別テナントの Aggregate の識別子」という記述が、新しい定義と矛盾しない。
 - `docs/README.md` の索引表の全行に分類が入っていることを `subdomain-classification` の検査が確かめる。
 - `mise run verify`
 
@@ -155,11 +155,11 @@ Repository の粒度を現状と異なる規範に決めると、広範な改修
 
 - **Completed At**: 2026-08-29
 - **Summary**:
-  `mise run spec-diff` は `no normative specification change against main` を返す。規範シナリオ、規範 ID、TypeSpec シンボルはいずれも増減していない。変わったのは、それらを読むための語彙と規則である。`docs/glossary.md` が `Aggregate` と `Subdomain` を定義し、`docs/design-rules.md` が Aggregate の境界の引き方、トランザクションとの対応、Repository は Aggregate root 単位という規則、`Repository` と `Store` の接尾辞が種類を区別しないという事実、そしてサブドメインの区分が左右する 3 つと左右しない 1 つ（検証の強度）を持つ。`docs/structure.md` が Anti-Corruption Layer の配置規約を持ち、`docs/README.md` の索引表が全 21 Context の区分を宣言する。各 Context の `decisions.md` はその区分の理由を、`Core` 5 件の `glossary.md` は Aggregate root の名前を持つ。`SPECIFICATION_FORMAT.md` は索引表が区分を宣言することを *(checked)* の規則として記載する。
+  `mise run spec-diff` は `no normative specification change against main` を返す。規範シナリオ、規範 ID、TypeSpec シンボルはいずれも増減していない。変わったのは、それらを読むための語彙と規則である。`docs/domain/glossary.md` が `Aggregate` と `Subdomain` を定義し、`docs/design-rules.md` が Aggregate の境界の引き方、トランザクションとの対応、Repository は Aggregate root 単位という規則、`Repository` と `Store` の接尾辞が種類を区別しないという事実、そしてサブドメインの区分が左右する 3 つと左右しない 1 つ（検証の強度）を持つ。`docs/domain/structure.md` が Anti-Corruption Layer の配置規約を持ち、`docs/README.md` の索引表が全 21 Context の区分を宣言する。各 Context の `decisions.md` はその区分の理由を、`Core` 5 件の `glossary.md` は Aggregate root の名前を持つ。`SPECIFICATION_FORMAT.md` は索引表が区分を宣言することを *(checked)* の規則として記載する。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`
   - **Requirement**: N/A: 文書と検査の変更であり、製品の観測可能な振る舞いを 1 件も変えないため、対応する規範シナリオが無い。
-  - **Observed Failure**: `fail  docs/README.md:80: the context index table declares no Subdomain column; its header must read | Specification context | Subdomain | Go package | Responsibility |` で終了コード 1。列を足した後は通る。さらに `docs/contexts/zz-probe/` を作って索引に載せない状態を作ると `fail  docs/README.md:80: docs/contexts/zz-probe/ is not listed in the context index table` で落ちることを実地で確認した。
+  - **Observed Failure**: `fail  docs/README.md:80: the context index table declares no Subdomain column; its header must read | Specification context | Subdomain | Go package | Responsibility |` で終了コード 1。列を足した後は通る。さらに `docs/domain/zz-probe/` を作って索引に載せない状態を作ると `fail  docs/README.md:80: docs/domain/zz-probe/ is not listed in the context index table` で落ちることを実地で確認した。
   - **Detection Reason**: この検査が区別するのは「分類を書いた作業ツリー」と「分類を書かずに Context を増やした作業ツリー」である。索引表を人が読んで確かめる案では、増えた 1 行が空欄であることは誰も見ないまま通る。実際に落ちる 2 つの経路（列が無い場合と、ディレクトリが索引に無い場合）を両方観測した。
 - **Unit RED Evidence**:
   - **Test**: `tools/check/src/subdomain-classification.test.ts`

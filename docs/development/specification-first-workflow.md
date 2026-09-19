@@ -10,7 +10,7 @@ Three documents carry the formats: this one for the loop, [Specification Format]
 for specification documents, and [Work Item Format](../../WORK_ITEM_FORMAT.md) for work items. Read the
 section you need; none of them is required reading.
 
-## 2. 正本
+## 2. 一次情報
 
 | Concern | Source of truth |
 |---|---|
@@ -335,7 +335,7 @@ moves under changes that have nothing to do with it.
 
 ## 6. 現在状態の文書
 
-`docs/` holds the cross-context structure and policy, one file per kind; `docs/contexts/<context>/` holds
+`docs/` holds the cross-context structure and policy, one file per kind; `docs/domain/<context>/` holds
 that context's vocabulary, adopted standards, state transitions, decisions, mechanism, and acceptance
 scenarios, again one file per kind. Each directory's `README.md` declares what it owns and indexes its
 siblings.
@@ -370,7 +370,7 @@ two contexts at once and therefore has no aggregate that can enforce it. State w
 work item's Motivation; a move with neither reason behind it is a rename.
 
 Then: carry the `REQ-<CONTEXT>-NNN` scenarios by retiring and superseding, never by renumbering, so the old
-identifiers keep resolving; move the `docs/contexts/<context>/` and `spec/contexts/<context>/` trees together,
+identifiers keep resolving; move the `docs/domain/<context>/` and `spec/contexts/<context>/` trees together,
 because a context is one name in two places; update the Context Map, the index table, and `structure.md`
 through `update-design`; and run `mise run check-boundaries` and `mise run check-spec` as the gates.
 

@@ -14,8 +14,8 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-001
-    - docs/contexts/saml/scenarios.feature.md#REQ-SAML-002
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-001
+    - docs/domain/saml/scenarios.feature.md#REQ-SAML-002
   typespec:
     - IdMagic.Saml.Operations.DownloadSamlSigningCertificate
     - IdMagic.Saml.Operations.PublishSamlMetadata
@@ -30,8 +30,8 @@ initial_context:
   tests:
     - backend/saml/handlers_http
 affected_spec:
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-001 }
-  - { path: docs/contexts/saml/scenarios.feature.md, requirement: REQ-SAML-002 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-001 }
+  - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-002 }
 ---
 
 # SAML が宣言する未検証の拒否 2 件に効果まで確かめるテストを与え、台帳から外す

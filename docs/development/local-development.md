@@ -2,7 +2,7 @@
 
 ## 環境の準備
 
-ツールの版とコマンドは `mise.toml` が正本である。ただし **mise 自身は `mise.toml` では導入できない**ので、最初の 1 つだけは外から入れる。
+ツールのバージョンとコマンドは `mise.toml` が一次情報である。ただし **mise 自身は `mise.toml` では導入できない**ので、最初の 1 つだけは外から入れる。
 
 ```bash
 brew install mise         # macOS
@@ -48,7 +48,7 @@ mise run build-ui
 mise run verify
 ```
 
-Go の版情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発版の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
+Go のバージョン情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発用の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
 
 変更中は全体検証を繰り返さず、[検証の段階](specification-first-workflow.md#5-検証の段階) に従って、変更したものについて失敗しうる最も狭い `mise` タスクから実行する。変更が 1 パッケージを越えたら `mise run test-go-changed` が、作業ツリーで変わったパッケージとその逆依存だけを最後のゲートと同じ構成で実行する。
 
@@ -88,7 +88,7 @@ flowchart LR
 
 | 変更した入力 | 再生成 |
 | --- | --- |
-| TypeSpec または正準 Markdown | `mise run spec-render`、必要に応じて `mise run generate-contract` |
+| TypeSpec または一次情報の Markdown | `mise run spec-render`、必要に応じて `mise run generate-contract` |
 | 起動時設定の宣言 | `mise run generate-config-reference` |
 | SQL または sqlc のクエリ | `mise run sqlc-generate` |
 | フロントエンドの経路 | `mise run generate-routes` |

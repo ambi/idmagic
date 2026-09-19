@@ -15,13 +15,13 @@ documentation_impact:
 spec_impact: { kind: none, reason: "宣言済みの標準行に、その id を名指しするテストを対応付ける作業である。standards.md の行そのものも製品の振る舞いも変えない。テストが書けない行が見つかった場合、それは製品が宣言した採用を満たしていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
-    - docs/contexts/oauth2/standards.md#RFC7591-REGISTER
-    - docs/contexts/oauth2/standards.md#RFC8176-AMR
-    - docs/contexts/oauth2/standards.md#FAPI2-PROFILE-SELECTION
-    - docs/contexts/oauth2/standards.md#FAPI2-PAR-PKCE
-    - docs/contexts/oauth2/standards.md#FAPI2-CLIENT-AUTH
-    - docs/contexts/oauth2/standards.md#FAPI2-SENDER-CONSTRAINT
-    - docs/contexts/oauth2/decisions.md
+    - docs/domain/oauth2/standards.md#RFC7591-REGISTER
+    - docs/domain/oauth2/standards.md#RFC8176-AMR
+    - docs/domain/oauth2/standards.md#FAPI2-PROFILE-SELECTION
+    - docs/domain/oauth2/standards.md#FAPI2-PAR-PKCE
+    - docs/domain/oauth2/standards.md#FAPI2-CLIENT-AUTH
+    - docs/domain/oauth2/standards.md#FAPI2-SENDER-CONSTRAINT
+    - docs/domain/oauth2/decisions.md
   typespec: []
   source:
     - backend/oauth2/handlers_http/routes.go
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/contexts/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 6 行を持つ。
+[[wi-499-back-oauth2-standards-rows-with-tests]] は `docs/domain/oauth2/standards.md` の 80 行を引き取り、最初の節（`OAuth Client ID Metadata Document` の 7 行）を消化したうえで、残る 73 行を**行が共有する製品の入口**を単位に 7 件へ割った。本項目はそのうち 6 行を持つ。
 
 6 行は、クライアントごとに制約を変える仕組みを定める。FAPI 2.0 の 4 行は、プロファイルを選んだクライアントにだけ PAR、S256 PKCE、`private_key_jwt` または mTLS、送信者制約を課す。残る 2 行は動的登録と `amr` の記録である。5 行が `optional` である。
 
@@ -177,7 +177,7 @@ initial_context:
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`
   - **Requirement**: N/A: 宣言済みの標準行へ検証を対応付ける保守であり、製品の規範要求は変更しない。
-  - **Observed Failure**: 台帳から `RFC7591-REGISTER` と `RFC8176-AMR` を外した状態では、`docs/contexts/oauth2/standards.md:71` と `:121` のそれぞれについて `is declared, but no test names it` を報告して exit 1 になった。
+  - **Observed Failure**: 台帳から `RFC7591-REGISTER` と `RFC8176-AMR` を外した状態では、`docs/domain/oauth2/standards.md:71` と `:121` のそれぞれについて `is declared, but no test names it` を報告して exit 1 になった。
   - **Detection Reason**: 検査は標準行、テストから見つけた ID、被覆台帳を独立に突き合わせるため、テストを足さずに台帳だけを削除した状態を行ごとに区別する。逆向きにも効き、前提 work item の実装テストが `FAPI2-*` の 4 件を名指した時点で台帳からの削除を要求した。消化の境界が動いたのはこの検査の指摘による。
 
 - **Unit RED Evidence**:

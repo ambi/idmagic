@@ -10,10 +10,10 @@ change_kind: tooling
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-005
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-006
-    - docs/contexts/system/scenarios.feature.md#REQ-SYSTEM-007
-    - docs/contexts/system/glossary.md
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-005
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-006
+    - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-007
+    - docs/domain/system/glossary.md
   typespec: []
   source:
     - frontend/vite.config.ts
@@ -40,9 +40,9 @@ initial_context:
     - spec
     - infra/k8s
 affected_spec:
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-005 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-006 }
-  - { path: docs/contexts/system/scenarios.feature.md, requirement: REQ-SYSTEM-007 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-005 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-006 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-007 }
 ---
 
 # Vite を Bun のフロントエンド開発サーバーとバンドラーへ置き換えられるか実証し、成立する場合だけ移行する

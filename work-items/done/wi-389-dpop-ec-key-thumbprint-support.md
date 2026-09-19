@@ -8,7 +8,7 @@ priority: p2
 change_kind: bugfix
 evidence_policy: risk-based-v2
 initial_context:
-  specification: [docs/contexts/oauth2/standards.md]
+  specification: [docs/domain/oauth2/standards.md]
   typespec: []
   source:
     - backend/shared/security/tokens_jose/dpop_verifier.go
@@ -17,7 +17,7 @@ initial_context:
     - backend/oauth2/handlers_http/userinfo_handler_test.go
   stop_before_reading: [frontend, spec, backend/signingkeys]
 affected_spec:
-  - { path: docs/contexts/oauth2/standards.md, requirement: RFC9449-TOKEN-BINDING }
+  - { path: docs/domain/oauth2/standards.md, requirement: RFC9449-TOKEN-BINDING }
 ---
 
 # DPoP proof の JWK サムプリント計算を EC (ES256) 鍵にも対応させる
@@ -120,7 +120,7 @@ RSA-DPoP クライアントの jkt 値に影響は無いはずだが、修正後
   `jwkThumbprint` の正規メンバー集合を `kty` で分岐させ、EC は RFC 7638 §3.2 が定める `{crv, kty, x, y}` で計算するようにした。宣言どおり受理される ES256 DPoP proof が、署名検証を通ったあと最終段の jkt 算出で必ず落ちていた食い違いが解けている。未対応の `kty` は空のサムプリントで通さず明示エラーで拒否する (fail-closed)。RSA の集合 `{e, kty, n}` は変えていないので、発行済みの RSA 由来 `cnf.jkt` は動かない。`mise run spec-diff` は `no normative specification change against main` を返す。標準行 `RFC9449-TOKEN-BINDING` は元から MUST を宣言しており、実装がそれに追いついた変更である。
 - **Acceptance RED Evidence**:
   - **Test**: `TestUserInfoDPoPAcceptsES256Proof` (`backend/oauth2/handlers_http/userinfo_handler_test.go`)
-  - **Requirement**: N/A: 該当する規範は `docs/contexts/oauth2/standards.md` の標準行 `RFC9449-TOKEN-BINDING` (MUST) であり、`REQ-` シナリオではない。近接する `REQ-OAUTH2-045` は `ath` による結び付けを述べる別の要件なので、ここには挙げない。
+  - **Requirement**: N/A: 該当する規範は `docs/domain/oauth2/standards.md` の標準行 `RFC9449-TOKEN-BINDING` (MUST) であり、`REQ-` シナリオではない。近接する `REQ-OAUTH2-045` は `ath` による結び付けを述べる別の要件なので、ここには挙げない。
   - **Observed Failure**: `valid ES256 proof status=400 body={"error":"invalid_token","error_description":"DPoP key binding mismatch"}`
   - **Detection Reason**: 保護リソース `/userinfo` という、呼び出し側が結合の成否を観測できる最も狭い境界で、正しい ES256 proof の受理と、別の EC 鍵で署名した proof の拒否を対で確認する。受理だけを見るテストは jkt を照合しない実装にも通るため、結合が実際に効いていることを拒否側で固定した。期待値の jkt は正規メンバー集合から検証対象とは独立に組み立てており、実装を呼び戻していない。
 - **Unit RED Evidence**:

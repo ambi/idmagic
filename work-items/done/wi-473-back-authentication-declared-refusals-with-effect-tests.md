@@ -14,18 +14,18 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-002
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-003
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-004
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-005
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-006
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-008
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-009
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-017
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-020
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-021
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-022
-    - docs/contexts/authentication/scenarios.feature.md#REQ-AUTHENTICATION-025
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-002
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-003
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-004
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-005
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-006
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-008
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-009
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-017
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-020
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-021
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-022
+    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-025
   typespec:
     - IdMagic.Authentication.Operations.SubmitBrowserTotp
     - IdMagic.Authentication.Operations.ListIdentityProviderConnections
@@ -46,18 +46,18 @@ initial_context:
     - backend/shared/http/support_http
     - tools/check/src
 affected_spec:
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-002 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-003 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-004 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-005 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-006 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-008 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-009 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-017 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-020 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-021 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-022 }
-  - { path: docs/contexts/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-025 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-002 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-003 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-004 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-005 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-006 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-008 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-009 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-017 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-020 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-021 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-022 }
+  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-025 }
 ---
 
 # Authentication が宣言する未検証の拒否に効果まで確かめるテストを与え、台帳から外す

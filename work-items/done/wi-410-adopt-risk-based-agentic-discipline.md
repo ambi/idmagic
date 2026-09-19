@@ -17,7 +17,7 @@ initial_context:
   typespec: []
   source: [.agents/skills/implement-work-item/SKILL.md, tools/check/schemas/work-item.schema.json, tools/check/src/main.ts]
   tests: [tools/check/src/lib.test.ts, tools/check/src/work-item-markdown.test.ts]
-  stop_before_reading: [backend, frontend, spec, docs/contexts]
+  stop_before_reading: [backend, frontend, spec, docs/domain]
 spec_impact: { kind: none, reason: "製品の外部契約と実行時の振る舞いを変えず、開発作業の承認、証拠、独立検証、変更耐性確認の規約と検査を更新する。" }
 ---
 

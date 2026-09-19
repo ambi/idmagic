@@ -13,10 +13,10 @@ import {
 
 export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const findings: Finding[] = [...checkSecurityGuards(await repositoryGoFiles(snapshot, true))]
-  const contextsDirectory = 'docs/contexts'
+  const contextsDirectory = 'docs/domain'
   const contractDirectory = 'spec/contexts'
   const platformRefusals = browserRefusalTypesNamedByPlatformScenario(
-    await snapshot.read('docs/scenarios.feature.md'),
+    await snapshot.read('docs/domain/scenarios.feature.md'),
   )
   const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(
     await snapshot.read(`${contextsDirectory}/api-tokens/scenarios.feature.md`),

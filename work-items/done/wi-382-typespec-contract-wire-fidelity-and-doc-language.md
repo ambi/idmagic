@@ -9,9 +9,9 @@ priority: p1
 initial_context:
   specification:
     - docs/SPECIFICATION.md
-    - docs/contexts/oauth2/SPECIFICATION.md
-    - docs/contexts/sharedsignals/SPECIFICATION.md
-    - docs/contexts/signing-keys/SPECIFICATION.md
+    - docs/domain/oauth2/SPECIFICATION.md
+    - docs/domain/sharedsignals/SPECIFICATION.md
+    - docs/domain/signing-keys/SPECIFICATION.md
   typespec:
     - IdMagic.Contract.GrantType
     - IdMagic.Contract.OAuthErrorCode

@@ -9,7 +9,7 @@ import {
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
-import { renderSpecificationSite, type SourceDocument } from './render.ts'
+import { renderDocumentationSite, type SourceDocument } from './render.ts'
 import { collectTraces } from './traces.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
@@ -49,13 +49,14 @@ for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
   paths.push(...(await canonicalDocuments(directory, names)))
 }
 paths.push(...(await procedureDocuments('docs/development')))
-const contextRoot = resolve(root, 'docs/contexts')
+paths.push(...(await procedureDocuments('docs/runbooks')))
+const contextRoot = resolve(root, 'docs/domain')
 const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort()
 for (const name of contextDirectories) {
-  paths.push(...(await canonicalDocuments(`docs/contexts/${name}`, CONTEXT_DOCUMENTS)))
+  paths.push(...(await canonicalDocuments(`docs/domain/${name}`, CONTEXT_DOCUMENTS)))
 }
 
 // The order the canonical layout defines is the order the site lists, so the
@@ -74,7 +75,7 @@ if (program.hasError()) {
 }
 const apiSchemas = new Set<string>(Object.keys(openapi.components?.schemas ?? {}))
 const catalog = extractTypeSpecCatalog(program, apiSchemas, root)
-const result = renderSpecificationSite({
+const result = renderDocumentationSite({
   documents,
   openapi,
   repositoryRoot: root,

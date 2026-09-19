@@ -14,7 +14,7 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-513.md }
 affected_spec:
-  - { path: docs/standards.md, requirement: GDPR-ERASURE }
+  - { path: docs/domain/standards.md, requirement: GDPR-ERASURE }
 primary_use_cases:
   - id: purge-destroys-every-authentication-credential
     requirement: GDPR-ERASURE
@@ -35,8 +35,8 @@ primary_use_cases:
     e2e_fault_model: adminUserDeps が受け取った 2 つの port を AdminUserDeps へ渡さない（配線の欠け）。
 initial_context:
   specification:
-    - docs/standards.md#GDPR-ERASURE
-    - docs/contexts/identity-management/states.md
+    - docs/domain/standards.md#GDPR-ERASURE
+    - docs/domain/identity-management/states.md
   typespec: []
   source:
     - backend/idmanagement/user/usecases/admin_users.go
@@ -69,7 +69,7 @@ initial_context:
 
 ## Motivation
 
-`docs/standards.md` の `GDPR-ERASURE` は「削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う」と宣言している。
+`docs/domain/standards.md` の `GDPR-ERASURE` は「削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う」と宣言している。
 
 Purge の cascade は `backend/idmanagement/user/usecases/admin_users.go` の `cascadeDeleteForSub` にある。消しているのは Consent、リフレッシュトークン、セッション、パスワード履歴、MFA 要素、信頼済みデバイス、デバイスコード、承認要求の 8 種である。**`WebAuthnCredentialRepository` と `RecoveryCodeRepository` はここに現れない。** `AdminUserDeps` がその 2 つの port を持っていないので、配線の抜けではなく型の抜けである。両 port は `DeleteAllForSub` を「anonymize cascade から呼ばれる」と自ら doc コメントに書いているが、呼んでいるのは MFA の管理者リセット (`backend/authentication/mfa/usecases/admin_reset.go`) とリカバリコードの再発行 (`backend/authentication/recovery/usecases/recovery_codes.go`) だけである。
 
@@ -88,7 +88,7 @@ PostgreSQL 側の `recovery_codes` には `FOREIGN KEY (user_id) REFERENCES user
 
 ## Out of Scope
 
-- `docs/standards.md` の `GDPR-ERASURE` の文面。宣言は正しく、満たしていないのは実装である。
+- `docs/domain/standards.md` の `GDPR-ERASURE` の文面。宣言は正しく、満たしていないのは実装である。
 - Tombstone 化をやめて users の行を物理削除する設計変更。外部キーの cascade に頼る形は、監査に必要な Tombstone と両立しない。
 - `webauthn_credentials` に外部キーを足すこと。Purge が UPDATE である限り cascade は発火しないので、外部キーはこの欠陥を直さない。参照整合性そのものは別の関心である。
 - 既存データの後追い消去。製品は未リリースなので、残留している行は存在しない。
@@ -195,7 +195,7 @@ Acceptance の入口は既存の `newAdminUserHandler` が使う `httpadapter.Re
 - **Completed At**: 2026-09-08
 - **Summary**:
   Purge の cascade が破棄する資格情報に、WebAuthn 資格情報とリカバリコードの 2 種が加わった。
-  これで `docs/standards.md` の `GDPR-ERASURE` が言う「Authentication の資格情報破棄」に、
+  これで `docs/domain/standards.md` の `GDPR-ERASURE` が言う「Authentication の資格情報破棄」に、
   Authentication が持つ資格情報の取りこぼしが無くなる。
   `mise run spec-diff` は規範差分なしであり、本項目は既存の `GDPR-ERASURE` を実装で満たす。
   変更は 3 層に分かれる。`AdminUserDeps` へ port を 2 つ足して `cascadeDeleteForSub` から
@@ -208,7 +208,7 @@ Acceptance の入口は既存の `newAdminUserHandler` が使う `httpadapter.Re
 - **Acceptance RED Evidence**:
   - **Test**: `TestAdminUserAPIPurgeDestroysWebAuthnCredentialsAndRecoveryCodes`
     (`backend/idmanagement/user/handlers_http/purge_credential_cascade_test.go`)
-  - **Requirement**: N/A: 観測は docs/standards.md の GDPR-ERASURE 行に対応し、REQ 番号を持つ規範シナリオには対応しない。
+  - **Requirement**: N/A: 観測は docs/domain/standards.md の GDPR-ERASURE 行に対応し、REQ 番号を持つ規範シナリオには対応しない。
   - **Observed Failure**: `消去後に残った資格情報 webauthn=1 recovery=2, want どちらも 0`。
     `DELETE /api/admin/v1/users/{sub}?purge=true` が 204 を返したあとも、その利用者の
     WebAuthn 資格情報 1 件とリカバリコード 2 件が引けたままだった。
@@ -218,7 +218,7 @@ Acceptance の入口は既存の `newAdminUserHandler` が使う `httpadapter.Re
 - **Unit RED Evidence**:
   - **Test**: `TestCredentialErasureLeavesNothingAuthenticable`
     (`backend/authentication/usecases/credential_erasure_standards_test.go`)
-  - **Requirement**: N/A: 観測は docs/standards.md の GDPR-ERASURE 行に対応し、REQ 番号を持つ規範シナリオには対応しない。
+  - **Requirement**: N/A: 観測は docs/domain/standards.md の GDPR-ERASURE 行に対応し、REQ 番号を持つ規範シナリオには対応しない。
   - **Observed Failure**: `消去後に残った WebAuthn 資格情報=[0x...] err=<nil>`。
     port を型に足しただけで `cascadeDeleteForSub` から呼ばない状態で観測した。それより前は
     `AdminUserDeps` に該当のフィールドが無く、テストがコンパイルできない

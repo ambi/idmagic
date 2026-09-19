@@ -32,9 +32,9 @@
 | Concern | Location | Detail |
 | --- | --- | --- |
 | システム要求と設計 | `docs/{requirements,architecture,design,verification,operations}/**` | 目的から要求、構造、実現方式、受入れ、運用へトップダウンでたどる現在状態。 |
-| Context の仕様と設計 | `spec/contexts/**/*.tsp`, `docs/contexts/**` | Context 単位のモデル、API、認証、規範的な振る舞い、設計判断、機構。シナリオ正本は公式 Markdown with Gherkin として解析する。 |
+| Context の仕様と設計 | `spec/contexts/**/*.tsp`, `docs/domain/**` | Context 単位のモデル、API、認証、規範的な振る舞い、設計判断、機構。シナリオの一次情報は公式 Markdown with Gherkin として解析する。 |
 | 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース。 |
-| リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は正準文書が所有する。 |
+| リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は一次情報文書が所有する。 |
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |
 | 変更の記録 | `work-items/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録。 |
 | ドメインモデル | `backend/<context>/(<feature>/)domain` | フレームワークに依存しないドメインモデル。 |
@@ -63,8 +63,8 @@ backend/<context>/
   usecase/           # 仕様で定めた操作を行うアプリケーションロジック
   ports/             # Repository、ストア、外部サービスの抽象
   handlers_http/     # 受信 HTTP アダプター
-  db_memory/         # メモリ版 Repository アダプター
-  db_postgres/       # PostgreSQL 版 Repository アダプター
+  db_memory/         # メモリ実装の Repository アダプター
+  db_postgres/       # PostgreSQL 実装の Repository アダプター
 ```
 
 アダプターはそれが属する Context または機能の直下に置き、snake_case の `<role>_<technology>` で命名する。
@@ -99,7 +99,7 @@ backend/idmanagement/
 
 ## Context 間イベント
 
-[論理アーキテクチャ](architecture/logical.md#context-map) の Context Map に属するドメインイベントの関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
+[論理アーキテクチャ](../architecture/logical.md#context-map) の Context Map に属するドメインイベントの関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
 
 **ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、上流の IdManagement が語彙とポートを宣言し、下流の Context がそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションで配信対象を捕捉する。上流が公開言語を持ち下流が従う形なので、これらは公開イベントによる関係ではなく Open Host Service である。
 
@@ -112,7 +112,7 @@ backend/idmanagement/
 - **エンベロープ**：`spec.MarshalDomainEvent` が必ず載せるイベント種別名と発生時刻。監査の記録、管理 API のレスポンス、セキュリティ通知のディスパッチがすべてこの形の上で動く。
 - **公開項目の語彙**：他の Context が名前で読む payload の項目。監査の検索属性の抽出器がこれを検索軸へ写し、セキュリティ通知が宛先と送信条件をここから解決する。
 
-どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が正本である。配信点を所有する System が持ち、消費者である Audit は持たない。供給側が下流の契約に従う倒立を避けるためである。
+どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を所有する System が持ち、消費者である Audit は持たない。供給側が下流の契約に従う倒立を避けるためである。
 
 宣言を置くだけでは、読み取り側と静かに食い違う。項目名を変えてもコンパイルは通り、監査の絞り込みが空を返すようになるだけだからである。`mise run check-event-contract` が、宣言された語彙と Go の読み取り点の集合が一致することを確かめる。
 
@@ -124,7 +124,7 @@ backend/idmanagement/
 
 ## フロントエンドのコンポーネント構造
 
-Web フロントエンド・アプリケーションのコードは、`frontend/src/` の次のディレクトリに分ける。どのコードをどこへ置くかの判定基準、ルーティング、画面の状態の置き場所は [フロントエンド設計](design/application/frontend.md) が定める。
+Web フロントエンド・アプリケーションのコードは、`frontend/src/` の次のディレクトリに分ける。どのコードをどこへ置くかの判定基準、ルーティング、画面の状態の置き場所は [フロントエンド設計](../design/application/frontend.md) が定める。
 
 | ディレクトリ | 置くもの |
 | --- | --- |
@@ -150,6 +150,6 @@ HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み
 
 通常は複数の Context を 1 つの API プロセスに組み合わせ、リソースやレイテンシーの特性が異なるジョブと横断的なバッチ処理だけを別の実行単位にする。独立したデータ所有権、担当チーム、SLO が必要になるまではサービスを分割しない。この記述は現在の設計を示すものであり、将来も同じ構成を義務付けるものではない。
 
-Context の分割とは別に、同じ実装のまま API の Deployment を用途別の種別へ分けるかどうかという軸がある。こちらは [contexts/system/decisions.md](contexts/system/decisions.md#no-api-plane-separation) が判断を持つ。
+Context の分割とは別に、同じ実装のまま API の Deployment を用途別の種別へ分けるかどうかという軸がある。こちらは [contexts/system/decisions.md](system/decisions.md#no-api-plane-separation) が判断を持つ。
 
 `backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す依存を集約し、メモリ、PostgreSQL、コンソール、OpenTelemetry など実行時の実装選択を吸収する。Context 固有の Repository は各 `Module` にまとめ、中央の `Dependencies` とサーバーの `Deps` はその Module を受け取る。ポートを追加した場合は、その Context の `ports/`、メモリと PostgreSQL の各アダプター、スキーマ変更の要否、`bootstrap.Dependencies`、`assembleMemory`、`assemblePostgres`、`support.Deps`、関連する HTTP ハンドラーまたはユースケースの構築処理を確認する。

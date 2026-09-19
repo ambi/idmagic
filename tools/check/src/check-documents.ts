@@ -38,24 +38,11 @@ async function canonicalDirectories(snapshot: WorkspaceSnapshot): Promise<Direct
       files: entries.filter((entry) => entry.isFile()).map((entry) => entry.name),
     })
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue
+      // 道具の作業跡は文書の置き場所ではないので、隠しディレクトリはたどらない。
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue
       const child = `${directory}/${entry.name}`
       if (!FREELY_NAMED_DOCUMENT_DIRECTORIES.has(child)) pending.push(child)
     }
-  }
-  try {
-    for (const entry of await snapshot.list('docs/contexts')) {
-      if (!entry.isDirectory()) continue
-      const directory = `docs/contexts/${entry.name}`
-      listings.push({
-        directory,
-        files: (await snapshot.list(directory))
-          .filter((item) => item.isFile())
-          .map((item) => item.name),
-      })
-    }
-  } catch {
-    // Context がまだ無い最小 workspace も、残りの文書を検査する。
   }
   return listings
 }
@@ -110,8 +97,8 @@ export async function checkDocuments(
   )
   let failed = lines.length > 0
   const contextDirectories = listings
-    .filter((listing) => listing.directory.startsWith('docs/contexts/'))
-    .map((listing) => listing.directory.slice('docs/contexts/'.length))
+    .filter((listing) => listing.directory.startsWith('docs/domain/'))
+    .map((listing) => listing.directory.slice('docs/domain/'.length))
   if (snapshot.exists('docs/architecture/logical.md')) {
     const classifications = verifySubdomainClassification(
       await snapshot.read('docs/architecture/logical.md'),

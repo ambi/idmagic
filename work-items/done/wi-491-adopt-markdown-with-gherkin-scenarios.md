@@ -17,7 +17,7 @@ initial_context:
     - DOCUMENTATION_GUIDE.md
     - docs/development/specification-first-workflow.md
     - docs/README.md
-    - docs/structure.md
+    - docs/domain/structure.md
     - tools/package.json
     - tools/check/src/specification-doc.ts
     - tools/check/src/specification-doc.test.ts
@@ -63,7 +63,7 @@ initial_context:
 - `REQ-*` の被覆を、配下にあるすべての生きた `EX-*` がテストから名指しされていることとして導出する。テストは引き続き Go と TypeScript のネイティブなテストとし、一つのパラメーター化テストが複数の `EX-*` を名指してよい。
 - 既存の `REQ-*` 引用を子の `EX-*` へ自動的に配賦しない。移行時にテストを読んで対応を確定できた例だけを名指しし、それ以外は理由付きの例被覆負債へ入れる。
 - 生成仕様サイトのシナリオ表示とトレーサビリティを `Feature`、`Rule`、`Example`、Decision Table の階層に対応させ、各例からテストソースと負債状態を確認できるようにする。
-- `SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`docs/development/specification-first-workflow.md`、`docs/README.md`、`docs/structure.md`、リポジトリ内の agent guidance と skills を新しい正本名と追跡規則へ同期する。
+- `SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`docs/development/specification-first-workflow.md`、`docs/README.md`、`docs/domain/structure.md`、リポジトリ内の agent guidance と skills を新しい正本名と追跡規則へ同期する。
 - `affected_spec`、`initial_context`、Markdown リンク、生成器、検査器、負債報告に残る `scenarios.md` の参照を `scenarios.feature.md` へ移す。
 
 ## Out of Scope
@@ -183,7 +183,7 @@ Gherkin の構文を採用しても、Cucumber の実行器は導入しない。
 4. `Example` と Decision Table 行の被覆を検査し、旧 `REQ-*` 引用が子の `EX-*` を自動的に被覆しないことを RED で固定する。例被覆負債のラチェットと報告を追加する。
 5. 生成仕様サイトを Gherkin AST から描画し、Rule ごとに例、Decision Table、テストソース、負債を表示する。
 6. Context 単位で残りの正本を移行する。機械変換した後に旧シナリオと新しい例を一件ずつ照合し、意味を判断できない `ALT` は負債へ隠さず移行を停止して、仕様欠陥の follow-up work item を起票する。
-7. 全 work item、正本文書、検査、生成器、agent guidance、skills のパス参照を更新する。`docs/README.md` と `docs/structure.md` に正本名と構造を反映する。
+7. 全 work item、正本文書、検査、生成器、agent guidance、skills のパス参照を更新する。`docs/README.md` と `docs/domain/structure.md` に正本名と構造を反映する。
 8. 全 Context の移行後に旧形式の互換読み取り、`ALT` の検査、`ACTOR` の装飾、`→` の分割処理を削除する。
 9. 仕様差分が既存 `REQ-*` の追加、削除、退役、本文の意味変更を報告しないことを確認し、意味変更が見つかった場合は本項目から外して規範参照を持つ work item を起票する。
 
@@ -199,8 +199,8 @@ Gherkin の構文を採用しても、Cucumber の実行器は導入しない。
 - [x] T008 [Render] 生成仕様サイトとトレーサビリティを Rule、Example、Decision Table、テストソース、負債の階層へ対応させる。トレーサビリティ表が Rule と Example を別行にし、例ごとにテストソースまたは負債理由を表示する。
 - [x] T009 [Migrate] ルートと全 Context の規範シナリオを移行し、既存テストへ確認済みの `EX-*` を追加し、未確認分を理由付き負債へ入れる。22 ファイル、308 規則、405 `ALT` を 711 例へ移した。既存テストの観測が例の結果ステップ全体と一致する例はなかったため、確認済みの `EX-*` は 0 件、711 件すべてを理由付き負債に置いた。
 - [x] T010 [References] work item、正本文書、検査、生成器、報告、agent guidance、skills の `scenarios.md` 参照を `scenarios.feature.md` へ更新する。`docs/releases/**` の見出しアンカーも `#rule-req-*` へ移し、`mise run check-links` が 681 文書で通る。
-- [x] T011 [Docs] `SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`specification-first-workflow.md`、`docs/README.md`、`docs/structure.md` を新しい正本形式と追跡規則へ同期する。
-- [x] T012 [Remove Legacy] 旧形式の互換読み取り、`ALT`、`ACTOR`、`→` に依存する検査と表示を削除し、旧 `scenarios.md` の再導入を拒否する。`docs/contexts/audit/scenarios.md` を置くと正本集合の検査が拒否することを確認した。`spec-diff` だけは履歴を読むため旧文法の読み取りを残す。
+- [x] T011 [Docs] `SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`specification-first-workflow.md`、`docs/README.md`、`docs/domain/structure.md` を新しい正本形式と追跡規則へ同期する。
+- [x] T012 [Remove Legacy] 旧形式の互換読み取り、`ALT`、`ACTOR`、`→` に依存する検査と表示を削除し、旧 `scenarios.md` の再導入を拒否する。`docs/domain/audit/scenarios.md` を置くと正本集合の検査が拒否することを確認した。`spec-diff` だけは履歴を読むため旧文法の読み取りを残す。
 - [x] T013 [Verify] 標準検証と意味保存の監査を通し、移行で見つかった製品仕様の変更候補を別の work item へ分離する。`mise run verify` と `mise run audit-scenario-migration` が通り、`mise run spec-diff` は規範的な意味変更を報告しない。
 
 ## Verification
@@ -249,7 +249,7 @@ Gherkin の構文を採用しても、Cucumber の実行器は導入しない。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-spec`
   - **Requirement**: N/A: 製品の振る舞いを変えない仕様方法論と検査の変更であり、観測可能な製品境界を持たない。
-  - **Observed Failure**: 移行前の検査は `scenarios.feature.md` を正本と認めず、`docs/contexts/*/scenarios.feature.md: not a canonical document` で拒否した。逆向きの確認として、移行後に `docs/contexts/audit/scenarios.md` を置くと `not a canonical document; docs/contexts/audit/ holds only README.md, glossary.md, standards.md, states.md, decisions.md, internals.md, scenarios.feature.md` で拒否する。
+  - **Observed Failure**: 移行前の検査は `scenarios.feature.md` を正本と認めず、`docs/domain/*/scenarios.feature.md: not a canonical document` で拒否した。逆向きの確認として、移行後に `docs/domain/audit/scenarios.md` を置くと `not a canonical document; docs/domain/audit/ holds only README.md, glossary.md, standards.md, states.md, decisions.md, internals.md, scenarios.feature.md` で拒否する。
   - **Detection Reason**: 受け入れ境界の代わりに正本集合の検査が実際に失敗した。この検査は正本の名前を集合として持つため、「新形式を受理する」と「旧形式を再導入できない」の両方向を区別する。片方だけを満たす実装は、どちらかの実行で必ず落ちる。
 - **Unit RED Evidence**:
   - **Test**: `tools/check/src/gherkin-scenarios.test.ts` と `tools/check/src/normative-coverage.test.ts`

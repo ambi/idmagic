@@ -3,7 +3,7 @@ package domain
 // メンバーシップ CSV の方言。転送ポリシー、解析器、直列化器、可逆なセル変換は
 // idmdomain の種別非依存な CSV 基盤が持ち、ここにはメンバーシップ固有の列の語彙、
 // 閉じた状態語彙、識別子、行計画の型だけを置く
-// (docs/contexts/identity-management/internals.md)。
+// (docs/domain/identity-management/internals.md)。
 
 import (
 	"errors"

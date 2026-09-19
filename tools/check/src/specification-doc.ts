@@ -36,12 +36,19 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
 ])
 
 /**
+ * Bounded Context の文書が入る段。`docs/contexts/` は `docs/domain/` へ改名する前の名前で、
+ * 履歴を読む道具（`spec-diff`）がその時点のリビジョンを規範文書として認識し続けるために残す。
+ * 現在の配置へ書き込むものは `docs/domain/` だけを使う。
+ */
+const CONTEXT_DIRECTORIES = /^docs\/(?:domain|contexts)\/[^/]+\/[^/]+$/
+
+/**
  * The kind of a canonical document, or undefined when the path is not one.
  * `path` is repository-relative and uses forward slashes.
  */
 export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
-  const allowed = /^docs\/contexts\/[^/]+\/[^/]+$/.test(path)
+  const allowed = CONTEXT_DIRECTORIES.test(path)
     ? (CONTEXT_DOCUMENTS as readonly string[])
     : canonicalDocumentNames(path.slice(0, path.lastIndexOf('/')))
   if (!allowed?.includes(name)) return undefined

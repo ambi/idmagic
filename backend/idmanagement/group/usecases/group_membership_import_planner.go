@@ -3,7 +3,7 @@ package usecases
 // メンバーシップ CSV の計画器。プレビューと適用が共有する 1 個の決定的な計算であり、
 // リポジトリの読み取り以外に効果を持たない。適用はこの計画器を現在の所属に対して
 // 再び走らせるため、プレビューが暗黙の楽観的ロックの迂回路にならない
-// (docs/contexts/identity-management/internals.md)。
+// (docs/domain/identity-management/internals.md)。
 
 import (
 	"context"

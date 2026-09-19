@@ -17,7 +17,7 @@ initial_context:
     - docs/development/release.md
     - docs/development/specification-first-workflow.md
     - docs/README.md
-    - docs/structure.md
+    - docs/domain/structure.md
     - WORK_ITEM_FORMAT.md
     - tools/check/schemas/work-item.schema.json
     - tools/check/src/main.ts

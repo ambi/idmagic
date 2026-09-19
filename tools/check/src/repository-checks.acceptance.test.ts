@@ -10,7 +10,7 @@ afterAll(async () => {
 })
 
 /**
- * 正本文書として不正な本文。H1 が 2 つある。名前が許可リストに載っていれば
+ * 一次情報文書として不正な本文。H1 が 2 つある。名前が許可リストに載っていれば
  * 文書検査が落とすので、この本文を持つファイルが通ったという
  * ことは、そのファイルが検証の対象にすら入っていないということである。
  */
@@ -27,11 +27,11 @@ const DEMO_SCENARIO = [
   '',
 ].join('\n')
 
-/** 仮の作業ツリー。正本文書の集合が閉じているかどうかだけを見る最小の形。 */
+/** 仮の作業ツリー。一次情報文書の集合が閉じているかどうかだけを見る最小の形。 */
 async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
-  await mkdir(join(root, 'docs', 'contexts', 'demo'), { recursive: true })
+  await mkdir(join(root, 'docs', 'domain', 'demo'), { recursive: true })
   await mkdir(join(root, 'docs', 'architecture'), { recursive: true })
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
   // Context を 1 つでも持つ作業ツリーは、索引表でその区分を宣言しなければならない。
@@ -42,13 +42,13 @@ async function workspace(): Promise<string> {
       '',
       '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
       '| --- | --- | --- | --- |',
-      '| [Demo](../contexts/demo/README.md) | Core | `demo` | Demo. |',
+      '| [Demo](../domain/demo/README.md) | Core | `demo` | Demo. |',
       '',
     ].join('\n'),
   )
-  await writeFile(join(root, 'docs', 'contexts', 'demo', 'README.md'), '# Demo\n')
+  await writeFile(join(root, 'docs', 'domain', 'demo', 'README.md'), '# Demo\n')
   await writeFile(
-    join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
+    join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
     '# Feature: Demo Scenarios\n',
   )
   return root
@@ -176,7 +176,7 @@ describe('文書検査', () => {
     const root = await workspace()
     expect((await checkDocuments(root)).output).not.toContain('scenarios.feature.md')
     const verbose = await checkDocuments(root, '--verbose')
-    expect(verbose.output).toContain('docs/contexts/demo/scenarios.feature.md')
+    expect(verbose.output).toContain('docs/domain/demo/scenarios.feature.md')
     expect(verbose.code).toBe(0)
   })
 
@@ -191,7 +191,7 @@ describe('文書検査', () => {
 
   it('names the canonical document a misspelled file was meant to be', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenario.md'), INVALID_BODY)
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'scenario.md'), INVALID_BODY)
 
     const result = await checkDocuments(root)
     expect(result.code).not.toBe(0)
@@ -228,7 +228,7 @@ describe('文書検査', () => {
   it('rejects a scenario no test names when no debt list admits it', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
+      join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
       [
         '# Feature: Demo Scenarios',
         '',
@@ -253,7 +253,7 @@ describe('文書検査', () => {
   it('admits no standards row through a recreated debt ledger', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'standards.md'),
+      join(root, 'docs', 'domain', 'demo', 'standards.md'),
       [
         '# Demo の採用規範',
         '',
@@ -283,7 +283,7 @@ describe('文書検査', () => {
   it('leaves a retired scenario out of the coverage gate', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'),
+      join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
       [
         '# Feature: Demo Scenarios',
         '',
@@ -469,7 +469,7 @@ The gate must reject an absent document.
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
-    await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
     await writeFile(
       join(root, 'work-items', 'wi-439-missing-primary-use-case.md'),
       `---
@@ -486,9 +486,9 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
-  source: [docs/contexts/demo/scenarios.feature.md]
+  source: [docs/domain/demo/scenarios.feature.md]
 affected_spec:
-  - { path: docs/contexts/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
+  - { path: docs/domain/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
 ---
 
 # Feature without a primary use case
@@ -524,7 +524,7 @@ The feature could remain disconnected.
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
-    await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
     await writeFile(
       join(root, 'mise.toml'),
       '[tasks.verify]\ndepends = ["test-go-race"]\n\n[tasks.test-go-race]\nrun = "go test -race ./..."\n',
@@ -545,7 +545,7 @@ created_at: 2026-08-30
 change_kind: feature
 evidence_policy: risk-based-v3
 affected_spec:
-  - { path: docs/contexts/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
+  - { path: docs/domain/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
   - id: demo-success
     requirement: REQ-DEMO-001

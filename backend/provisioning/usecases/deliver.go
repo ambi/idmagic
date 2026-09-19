@@ -199,7 +199,7 @@ func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.Provisioni
 }
 
 // groupDisplayName resolves the attribute the connection picked as the Group's
-// downstream `displayName` (docs/contexts/provisioning/standards.md
+// downstream `displayName` (docs/domain/provisioning/standards.md
 // RFC7643-OUT-GROUP-RESOURCES).
 //
 // Which attribute that is belongs to the connection, not to the Group, which is
