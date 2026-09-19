@@ -82,7 +82,7 @@ enum AgentKind {
 }
 
 
-@doc("`roles` contains a role the server does not know. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_role`.")
+@doc("`roles` contains a role the server refuses to store: an empty name, or the reserved role `system_admin` newly assigned to something that may not hold it. `system_admin` is reserved for the control plane, so a write may add it only to a User or a Group of the control-plane tenant, and never to an Agent in any tenant. The decision reads the target's kind and tenant, not the caller's own roles, and it reads what the write adds rather than the resulting set, so a value already stored on the target may be sent again and an explicit `roles` update may take it away. A refused write stores nothing at all, including the other fields of the same request. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_role`; `detail` says which of the two reasons applies.")
 model InvalidRoleError is ProblemDetails;
 
 
@@ -355,7 +355,7 @@ model UserImportResult {
 }
 
 
-@doc("A safe validation or application error for one CSV row. It returns no value, only the column name and a stable code.")
+@doc("A safe validation or application error for one CSV row. It returns no value, only the column name and a stable code. A row whose `roles` column newly adds the reserved role `system_admin` outside the control-plane tenant is rejected with `invalid_roles` on that column, both at preview and at the replan the apply performs; a row that merely re-sends a value the target already holds stays `unchanged`.")
 model UserImportRowError {
   row: int64;
   column?: string;
@@ -433,7 +433,7 @@ model GroupImportResult {
 }
 
 
-@doc("A safe validation or application error for one CSV group row. It returns no value, only the column name and a stable code.")
+@doc("A safe validation or application error for one CSV group row. It returns no value, only the column name and a stable code. A row whose `roles` column newly adds the reserved role `system_admin` outside the control-plane tenant is rejected with `invalid_roles` on that column, both at preview and at the replan the apply performs; a row that merely re-sends a value the target already holds stays `unchanged`.")
 model GroupImportRowError {
   row: int64;
   column?: string;

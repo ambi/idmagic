@@ -412,6 +412,11 @@ func writeAdminGroupError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusConflict, "group_name_conflict", "The group name is already in use.")
 	case errors.Is(err, groupusecases.ErrGroupNameEmpty):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "group_name_required", "The group name is required.")
+	case errors.Is(err, idmusecases.ErrReservedRole):
+		return support.WriteProblem(
+			c, http.StatusUnprocessableEntity, "invalid_role",
+			"The role system_admin is reserved for control plane users.",
+		)
 	case errors.Is(err, idmusecases.ErrInvalidRole):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
 	case errors.Is(err, groupusecases.ErrDynamicMembershipManaged):

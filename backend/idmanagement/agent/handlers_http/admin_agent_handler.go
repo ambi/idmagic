@@ -300,6 +300,11 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusConflict, "agent_killed", "A stopped agent cannot be modified.")
 	case errors.Is(err, agentusecases.ErrAgentClientBound):
 		return support.WriteProblem(c, http.StatusConflict, "agent_client_already_bound", "The client is already bound to another agent.")
+	case errors.Is(err, idmusecases.ErrReservedRole):
+		return support.WriteProblem(
+			c, http.StatusUnprocessableEntity, "invalid_role",
+			"The role system_admin is reserved for control plane users.",
+		)
 	case errors.Is(err, idmusecases.ErrInvalidRole):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
 	default:

@@ -6,6 +6,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -302,5 +303,52 @@ func TestGroupImportPlannerRefusesUndeclaredCustomColumns(t *testing.T) {
 	csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
 	if !ok || csvErr.Code != idmdomain.CSVErrorInvalidHeader {
 		t.Fatalf("error = %v, want invalid_header for an undeclared custom column", err)
+	}
+}
+
+// 予約ロールを新しく加える行は rejected になり、適用まで進めても Group は変わらない。
+//
+// テナントは acme、すなわち制御面ではない。プレビューだけを直して適用の再計画を
+// 直さない実装と区別するため、同じ文書を適用にも通して Group を読み直す。
+//
+//spec:covers EX-IDMANAGEMENT-032-07: 制御面テナント以外のテナントの Group CSV の行が `system_admin` を新しく加えると `roles` 列を指す invalid_roles で rejected になり、その Group のロールも他の項目も変更されないこと。
+func TestGroupImportPlannerRefusesTheReservedRole(t *testing.T) {
+	f := newGroupImportFixture(t)
+	f.seedGroup(t, "group-engineering", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
+
+	document := "id,name,description,roles\n" +
+		"group-engineering,engineering,escalation path,system_admin\n"
+
+	rows := planRows(t, f, document)
+	if len(rows) != 1 {
+		t.Fatalf("rows=%+v", rows)
+	}
+	if rows[0].Action != groupdomain.GroupImportRejected {
+		t.Fatalf("Action=%s, want rejected", rows[0].Action)
+	}
+	if rows[0].Error == nil || rows[0].Error.Code != "invalid_roles" || rows[0].Error.Column != "roles" {
+		t.Fatalf("Error=%+v, want column=roles code=invalid_roles", rows[0].Error)
+	}
+
+	// 適用も同じ計画器を通ること。ロールだけでなく同じ行が与えた description も入らない。
+	if summary := f.applyCSV(t, document); summary.RejectedRows != 1 || summary.UpdatedRows != 0 {
+		t.Fatalf("apply summary=%+v", summary)
+	}
+	stored, err := f.groupRepo.FindByID(f.ctx, "acme", "group-engineering")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(stored.Roles, []string{"catalog:read"}) {
+		t.Fatalf("拒否されたのに roles=%v が変わった", stored.Roles)
+	}
+	if stored.Description != nil {
+		t.Fatalf("拒否されたのに description=%q が入った", *stored.Description)
+	}
+
+	// 対照: 予約ロール以外の名前なら同じ行が通り、description も入る。
+	accepted := "id,name,description,roles\n" +
+		"group-engineering,engineering,escalation path,catalog:write\n"
+	if summary := f.applyCSV(t, accepted); summary.UpdatedRows != 1 {
+		t.Fatalf("前提が壊れている: 通常ロールの適用 summary=%+v", summary)
 	}
 }

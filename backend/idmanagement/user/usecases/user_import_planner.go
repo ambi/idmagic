@@ -271,6 +271,12 @@ func applyUserImportCells(candidate *userdomain.User, row idmdomain.CSVRow, sche
 		if err != nil {
 			return "roles", "invalid_roles"
 		}
+		// candidate.Roles はまだ既存 User の写しなので、そのまま現在値として渡せる。
+		if err := idmusecases.ValidateRoleAssignment(
+			idmusecases.RoleTargetUser, candidate.TenantID, candidate.Roles, roles,
+		); err != nil {
+			return "roles", "invalid_roles"
+		}
 		candidate.Roles = roles
 	}
 	if cell, ok := row.Cell("required_actions"); ok {

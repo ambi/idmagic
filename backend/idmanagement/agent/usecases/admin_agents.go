@@ -151,6 +151,9 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err != nil {
 		return nil, err
 	}
+	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetAgent, tenantID, nil, roles); err != nil {
+		return nil, err
+	}
 	now := idmusecases.NormalizedNow(in.Now)
 	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceAgents, now); err != nil {
 		return nil, err
@@ -249,6 +252,11 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 	if in.Roles != nil {
 		roles, err := idmusecases.NormalizeRoles(*in.Roles)
 		if err != nil {
+			return nil, err
+		}
+		if err := idmusecases.ValidateRoleAssignment(
+			idmusecases.RoleTargetAgent, agent.TenantID, agent.Roles, roles,
+		); err != nil {
 			return nil, err
 		}
 		if !slices.Equal(roles, agent.Roles) {

@@ -152,6 +152,9 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if err != nil {
 		return nil, err
 	}
+	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetUser, tenantID, nil, roles); err != nil {
+		return nil, err
+	}
 	now := idmusecases.NormalizedNow(in.Now)
 	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceUsers, now); err != nil {
 		return nil, err
@@ -281,6 +284,11 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 	if in.Roles != nil {
 		roles, err := idmusecases.NormalizeRoles(*in.Roles)
 		if err != nil {
+			return nil, err
+		}
+		if err := idmusecases.ValidateRoleAssignment(
+			idmusecases.RoleTargetUser, user.TenantID, user.Roles, roles,
+		); err != nil {
 			return nil, err
 		}
 		if !slices.Equal(roles, user.Roles) {

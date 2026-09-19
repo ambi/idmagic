@@ -359,7 +359,7 @@ model CreateAdminUserError422 {
   @body body: CreateAdminUserError422Body;
 }
 
-@doc("An administrator creates a user with an initial password that satisfies the PasswordPolicy of the Authentication context.")
+@doc("An administrator creates a user with an initial password that satisfies the PasswordPolicy of the Authentication context. `roles` may carry the reserved role `system_admin` only in the control-plane tenant; see InvalidRoleError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminUser")
 @route("/api/admin/v1/users")
@@ -1630,7 +1630,7 @@ model UpdateAdminUserError422 {
   @body body: UpdateAdminUserError422Body;
 }
 
-@doc("An administrator updates a user's profile, `email_verified`, and roles.")
+@doc("An administrator updates a user's profile, `email_verified`, and roles. Adding the reserved role `system_admin` is accepted only in the control-plane tenant, and a refusal leaves the other fields of the same request unwritten; see InvalidRoleError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminUser")
 @route("/api/admin/v1/users/{user_id}")
@@ -2028,7 +2028,7 @@ model CreateGroupError422 {
   @body body: CreateGroupError422Body;
 }
 
-@doc("An administrator creates a group in their tenant. The name is unique within the tenant. The email is only checked for its form and carries no uniqueness constraint, and the attributes are validated against the tenant's TenantGroupAttributeSchema.")
+@doc("An administrator creates a group in their tenant. The name is unique within the tenant. The email is only checked for its form and carries no uniqueness constraint, and the attributes are validated against the tenant's TenantGroupAttributeSchema. `roles` may carry the reserved role `system_admin` only in the control-plane tenant, where the Group grants it to the effective roles of its member control-plane Users; see InvalidRoleError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("CreateGroup")
 @route("/api/admin/v1/groups")
@@ -2078,7 +2078,7 @@ model UpdateGroupError422 {
   @body body: UpdateGroupError422Body;
 }
 
-@doc("An administrator updates the name, description, email, attributes, or roles of a group.")
+@doc("An administrator updates the name, description, email, attributes, or roles of a group. Adding the reserved role `system_admin` is accepted only in the control-plane tenant, and a refusal leaves the other fields of the same request unwritten; see InvalidRoleError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateGroup")
 @route("/api/admin/v1/groups/{group_id}")
@@ -2520,7 +2520,7 @@ model RegisterAgentError422 {
   @body body: RegisterAgentError422Body;
 }
 
-@doc("An administrator registers an Agent in their tenant. The name is unique within the tenant, and leaving out `owner_user_id` makes the caller the owner.")
+@doc("An administrator registers an Agent in their tenant. The name is unique within the tenant, and leaving out `owner_user_id` makes the caller the owner. `roles` may never carry the reserved role `system_admin`, in any tenant, because an Agent is a different kind of principal from a system operator; see InvalidRoleError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("RegisterAgent")
 @route("/api/admin/v1/agents")
@@ -2571,7 +2571,7 @@ model UpdateAgentError422 {
   @body body: UpdateAgentError422Body;
 }
 
-@doc("An administrator updates the name, description, kind, `owner_user_id`, or roles of an Agent. Changing `owner_user_id` transfers ownership.")
+@doc("An administrator updates the name, description, kind, `owner_user_id`, or roles of an Agent. Changing `owner_user_id` transfers ownership. Adding the reserved role `system_admin` is refused in every tenant, and the refusal leaves the other fields of the same request unwritten; see InvalidRoleError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAgent")
 @route("/api/admin/v1/agents/{agent_id}")

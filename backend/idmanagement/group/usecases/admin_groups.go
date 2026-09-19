@@ -211,6 +211,9 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err != nil {
 		return nil, err
 	}
+	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetGroup, tenantID, nil, roles); err != nil {
+		return nil, err
+	}
 	email, err := normalizeGroupEmail(in.Email)
 	if err != nil {
 		return nil, err
@@ -311,6 +314,11 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 	if in.Roles != nil {
 		roles, err := idmusecases.NormalizeRoles(*in.Roles)
 		if err != nil {
+			return nil, err
+		}
+		if err := idmusecases.ValidateRoleAssignment(
+			idmusecases.RoleTargetGroup, group.TenantID, group.Roles, roles,
+		); err != nil {
 			return nil, err
 		}
 		if !slices.Equal(roles, group.Roles) {

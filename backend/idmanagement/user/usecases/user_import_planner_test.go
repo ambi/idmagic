@@ -5,6 +5,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -201,5 +202,62 @@ func TestPlanUserImportReplansAgainstCurrentRepositoryState(t *testing.T) {
 	replanned, err := planUserImportForTest(importPlannerContext(), deps, csv)
 	if err != nil || replanned.UnchangedRows() != 1 {
 		t.Fatalf("replanned=%+v error=%v", replanned, err)
+	}
+}
+
+// 予約ロールを新しく加える行は rejected になり、既に持っている値の再送は unchanged になる。
+//
+// テナントは acme、すなわち制御面ではない。プレビューと適用の再計画はどちらもこの
+// 計画器を通るので、片方だけを直した実装はここで落ちる。
+//
+// 差分で判定するところまでを 1 本で固定する。拒否だけを見るテストは、絶対集合で
+// 判定する実装 (既存値を持つ環境の無編集エクスポートを全行 rejected にする実装) を
+// そのまま通す。
+//
+//spec:covers EX-IDMANAGEMENT-032-06, EX-IDMANAGEMENT-032-08: 制御面テナント以外のテナントの行が `system_admin` を新しく加えると `roles` 列を指す invalid_roles で rejected になり、その User は変更されないこと。既に `system_admin` を持つ User の行が同じ値を再送すると unchanged になること。
+func TestPlanUserImportRefusesTheReservedRoleButKeepsAStoredOne(t *testing.T) {
+	repo := usermemory.NewUserRepository()
+	alice := importPlannerUser("user-alice", "alice")
+	legacy := importPlannerUser("user-legacy", "legacy")
+	legacy.Roles = []string{"system_admin"}
+	repo.Seed(alice)
+	repo.Seed(legacy)
+
+	csv := "id,preferred_username,roles\n" +
+		"user-alice,alice,system_admin\n" +
+		"user-legacy,legacy,system_admin\n"
+	plan, err := planUserImportForTest(
+		importPlannerContext(), importPlannerDeps(repo, perUserImportOwnershipGuard{}), csv,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.RejectedRows() != 1 || plan.UnchangedRows() != 1 {
+		t.Fatalf("plan=%+v", plan)
+	}
+	refused := plan.Rows[0]
+	if refused.Action != userdomain.UserImportRejected {
+		t.Fatalf("row[0].Action=%s, want rejected", refused.Action)
+	}
+	if refused.Error == nil || refused.Error.Code != "invalid_roles" || refused.Error.Column != "roles" {
+		t.Fatalf("row[0].Error=%+v, want column=roles code=invalid_roles", refused.Error)
+	}
+	// 拒否された行は計画に User を載せない。載せる実装は適用側で保存しうる。
+	if refused.User != nil {
+		t.Fatalf("拒否された行が User を載せている: %+v", refused.User)
+	}
+	// 保存層の User は計画では変わらない。プレビューは読み取りだけの計画である。
+	if stored, err := repo.FindBySub(importPlannerContext(), "user-alice"); err != nil {
+		t.Fatal(err)
+	} else if slices.Contains(stored.Roles, "system_admin") {
+		t.Fatalf("プレビューが User を変更した: roles=%v", stored.Roles)
+	}
+
+	kept := plan.Rows[1]
+	if kept.Action != userdomain.UserImportUnchanged {
+		t.Fatalf("row[1].Action=%s, want unchanged", kept.Action)
+	}
+	if !slices.Contains(kept.User.Roles, "system_admin") {
+		t.Fatalf("row[1] の roles=%v が system_admin を失っている", kept.User.Roles)
 	}
 }

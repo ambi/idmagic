@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -312,5 +313,68 @@ func TestDeleteGroupCascadesMembership(t *testing.T) {
 	}
 	if _, _, err := groupusecases.GetGroup(ctx, deps, group.ID); !errors.Is(err, groupusecases.ErrGroupNotFound) {
 		t.Fatalf("expected ErrGroupNotFound after delete, got %v", err)
+	}
+}
+
+// 制御面テナントの Group は `system_admin` を保持でき、所属 User の実効ロールへ配る。
+//
+// 主要ユースケース control-plane-group-grants-system-admin の単体証拠。実効ロールまで
+// 読むのは、Group が自身でシステム運用者になるのではなく制御面 User へロールを配る束
+// だという設計を、Group の保存だけでは確かめられないからである。
+//
+// 対照として同じロールを acme テナントで拒否する。許可の側だけを見るテストは、
+// テナントを一切見ない実装を通してしまう。
+//
+//spec:covers REQ-IDMANAGEMENT-032, EX-IDMANAGEMENT-032-01, EX-IDMANAGEMENT-032-04: 制御面テナントの Group への `system_admin` の付与が受理され、所属 User の実効ロールへ group 由来として現れること。制御面以外のテナントでは同じ付与が ErrReservedRole で拒否され、Group が作られないこと。
+func TestCreateGroupKeepsTheReservedRoleInsideTheControlPlane(t *testing.T) {
+	ctx := context.Background()
+	deps, events := newGroupDeps(t)
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "system-operators",
+		Roles: []string{idmusecases.ReservedRoleSystemAdmin}, Now: now,
+	})
+	if err != nil {
+		t.Fatalf("制御面 Group の作成が拒否された: %v", err)
+	}
+	if !slices.Equal(group.Roles, []string{idmusecases.ReservedRoleSystemAdmin}) {
+		t.Fatalf("roles=%v", group.Roles)
+	}
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+	view, err := groupusecases.UserGroups(ctx, deps, "user_alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(view.EffectiveRoles, []string{idmusecases.ReservedRoleSystemAdmin}) {
+		t.Fatalf("実効ロール=%v", view.EffectiveRoles)
+	}
+	if !slices.Equal(view.GroupRoles, []string{idmusecases.ReservedRoleSystemAdmin}) || len(view.DirectRoles) != 0 {
+		t.Fatalf("direct=%v group=%v", view.DirectRoles, view.GroupRoles)
+	}
+
+	// 対照: 制御面以外のテナントでは同じ付与が拒否され、Group も残らない。
+	foreign := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	foreignDeps, foreignEvents := newGroupDeps(t)
+	if _, err := groupusecases.CreateGroup(foreign, foreignDeps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "escalation",
+		Roles: []string{idmusecases.ReservedRoleSystemAdmin}, Now: now,
+	}); !errors.Is(err, idmusecases.ErrReservedRole) {
+		t.Fatalf("err=%v, want ErrReservedRole", err)
+	}
+	groups, err := foreignDeps.GroupRepo.ListAll(foreign, "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(groups) != 0 {
+		t.Fatalf("拒否されたのに Group が %d 件残った: %+v", len(groups), groups)
+	}
+	if len(*foreignEvents) != 0 {
+		t.Fatalf("拒否されたのに %v が発行された", eventTypes(*foreignEvents))
+	}
+	if got := eventTypes(*events); !slices.Equal(got, []string{"GroupCreated", "GroupMemberAdded"}) {
+		t.Fatalf("events=%v", got)
 	}
 }
