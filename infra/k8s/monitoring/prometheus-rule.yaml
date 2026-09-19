@@ -33,6 +33,79 @@ spec:
       rules:
         - record: idmagic:http_admission_shed_ratio:ratio_rate5m
           expr: sum by (class) (rate(http_admission_decisions_total{outcome="shed"}[5m])) / sum by (class) (rate(http_admission_decisions_total[5m]))
+    # `family` は要求の用途による種別であり、`route` の正規表現から導く。上の優先度クラス
+    # とは別の分類である。優先度クラスは飽和時に何を先に捨てるかを決め、種別は
+    # docs/design/performance/capacity.md の「管理と連携」のどの行に対応するかを決める。
+    #
+    # 分類の実体はこの 6 本の正規表現である。ここから漏れた経路は集計から消えるだけで、
+    # 系列も警告も出ない。backend/shared/http/server_http/request_family_test.go が、
+    # 組み立て済みの経路がちょうど 1 つの種別に当たること、同じ種別の 3 本が同じ正規表現を
+    # 使うこと、この節と infra/docker/prometheus-rules.yml が一致することを見る。
+    - name: idmagic-request-families
+      rules:
+        - record: idmagic:http_requests_by_family_status:rate5m
+          labels: { family: authentication }
+          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"}[5m]))
+        - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
+          labels: { family: authentication }
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"}[5m]))
+        - record: idmagic:http_requests_in_flight_by_family:sum
+          labels: { family: authentication }
+          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"})
+        - record: idmagic:http_requests_by_family_status:rate5m
+          labels: { family: portal }
+          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/api/account/v1/.*"}[5m]))
+        - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
+          labels: { family: portal }
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?/api/account/v1/.*"}[5m]))
+        - record: idmagic:http_requests_in_flight_by_family:sum
+          labels: { family: portal }
+          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?/api/account/v1/.*"})
+        - record: idmagic:http_requests_by_family_status:rate5m
+          labels: { family: management }
+          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/api/admin/v1/.*"}[5m]))
+        - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
+          labels: { family: management }
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?/api/admin/v1/.*"}[5m]))
+        - record: idmagic:http_requests_in_flight_by_family:sum
+          labels: { family: management }
+          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?/api/admin/v1/.*"})
+        - record: idmagic:http_requests_by_family_status:rate5m
+          labels: { family: scim }
+          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/scim/v2/.*"}[5m]))
+        - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
+          labels: { family: scim }
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?/scim/v2/.*"}[5m]))
+        - record: idmagic:http_requests_in_flight_by_family:sum
+          labels: { family: scim }
+          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?/scim/v2/.*"})
+        - record: idmagic:http_requests_by_family_status:rate5m
+          labels: { family: shared_signals }
+          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/ssf/.*"}[5m]))
+        - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
+          labels: { family: shared_signals }
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?/ssf/.*"}[5m]))
+        - record: idmagic:http_requests_in_flight_by_family:sum
+          labels: { family: shared_signals }
+          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?/ssf/.*"})
+        - record: idmagic:http_requests_by_family_status:rate5m
+          labels: { family: operations }
+          expr: sum by (status_code) (rate(http_requests_total{route=~"/livez|/readyz|/startupz|/health|/metrics"}[5m]))
+        - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
+          labels: { family: operations }
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"/livez|/readyz|/startupz|/health|/metrics"}[5m]))
+        - record: idmagic:http_requests_in_flight_by_family:sum
+          labels: { family: operations }
+          expr: sum(http_requests_in_flight{route=~"/livez|/readyz|/startupz|/health|/metrics"})
+        # 以下の 4 本は種別を知らず、上が付けた `family` ラベルを集計するだけである。
+        - record: idmagic:http_requests_by_family:rate5m
+          expr: sum by (family) (idmagic:http_requests_by_family_status:rate5m)
+        - record: idmagic:http_request_success_ratio_by_family:ratio_rate5m
+          expr: sum by (family) (idmagic:http_requests_by_family_status:rate5m{status_code!~"5.."}) / sum by (family) (idmagic:http_requests_by_family_status:rate5m)
+        - record: idmagic:http_request_duration_seconds_by_family:p50_5m
+          expr: histogram_quantile(0.5, idmagic:http_request_duration_seconds_by_family:histogram_rate5m)
+        - record: idmagic:http_request_duration_seconds_by_family:p99_5m
+          expr: histogram_quantile(0.99, idmagic:http_request_duration_seconds_by_family:histogram_rate5m)
     - name: idmagic-slo-alerts
       rules:
         - alert: TokenErrorRateBudgetBurn

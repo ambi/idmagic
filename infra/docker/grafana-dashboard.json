@@ -4,13 +4,21 @@
   "editable": true,
   "timezone": "utc",
   "schemaVersion": 39,
-  "time": { "from": "now-6h", "to": "now" },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "panels": [
     {
       "id": 1,
       "title": "HTTP request rate by route",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "sum by (route) (rate(http_requests_total[5m]))",
@@ -22,7 +30,12 @@
       "id": 2,
       "title": "HTTP non-2xx/3xx error ratio by route",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
       "targets": [
         {
           "expr": "idmagic:http_request_error_ratio:ratio_rate5m",
@@ -34,7 +47,12 @@
       "id": 3,
       "title": "HTTP p99 latency by route",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "idmagic:http_request_duration_seconds:p99_5m",
@@ -46,7 +64,12 @@
       "id": 4,
       "title": "HTTP requests in flight",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "sum by (route) (http_requests_in_flight)",
@@ -55,10 +78,87 @@
       ]
     },
     {
+      "id": 14,
+      "title": "HTTP request rate by family",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "idmagic:http_requests_by_family:rate5m",
+          "legendFormat": "{{family}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "HTTP non-5xx ratio by family",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "idmagic:http_request_success_ratio_by_family:ratio_rate5m",
+          "legendFormat": "{{family}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "HTTP latency by family (p50/p99)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "idmagic:http_request_duration_seconds_by_family:p50_5m",
+          "legendFormat": "p50 {{family}}"
+        },
+        {
+          "expr": "idmagic:http_request_duration_seconds_by_family:p99_5m",
+          "legendFormat": "p99 {{family}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "HTTP requests in flight by family",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "idmagic:http_requests_in_flight_by_family:sum",
+          "legendFormat": "{{family}}"
+        }
+      ]
+    },
+    {
       "id": 5,
       "title": "Login attempts by outcome",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
       "targets": [
         {
           "expr": "sum by (outcome) (rate(authn_login_attempts_total[5m]))",
@@ -70,7 +170,12 @@
       "id": 6,
       "title": "Login throttle hit ratio",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
       "targets": [
         {
           "expr": "idmagic:login_throttle_hit_ratio:ratio_rate5m",
@@ -82,7 +187,12 @@
       "id": 7,
       "title": "Token issuance rate by grant_type/outcome",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
       "targets": [
         {
           "expr": "sum by (grant_type, outcome) (rate(oauth2_token_issuance_total[5m]))",
@@ -94,7 +204,12 @@
       "id": 8,
       "title": "Jobs queue depth by lane (queued/running, wi-261 )",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
       "targets": [
         {
           "expr": "jobs_queue_depth",
@@ -106,7 +221,12 @@
       "id": 9,
       "title": "Jobs claim latency p99 by lane",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
       "targets": [
         {
           "expr": "idmagic:jobs_claim_latency_seconds:p99_5m",
@@ -118,7 +238,12 @@
       "id": 10,
       "title": "Jobs failure ratio by lane",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
       "targets": [
         {
           "expr": "idmagic:jobs_failure_ratio:ratio_rate5m",
@@ -130,7 +255,12 @@
       "id": 11,
       "title": "Jobs retry rate by lane",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
       "targets": [
         {
           "expr": "sum by (lane) (rate(jobs_retry_total[5m]))",
@@ -142,7 +272,12 @@
       "id": 12,
       "title": "Admission control: shed rate by priority class",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
       "targets": [
         {
           "expr": "sum by (class) (rate(http_admission_decisions_total{outcome=\"shed\"}[5m]))",
@@ -154,7 +289,12 @@
       "id": 13,
       "title": "Admission control: in-flight requests",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 64
+      },
       "targets": [
         {
           "expr": "http_admission_in_flight_requests",
