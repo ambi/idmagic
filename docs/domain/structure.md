@@ -34,7 +34,7 @@
 | システム要求と設計 | `docs/{requirements,architecture,design,verification,operations}/**` | 目的から要求、構造、実現方式、受入れ、運用へトップダウンでたどる現在状態。 |
 | Context の仕様と設計 | `spec/contexts/**/*.tsp`, `docs/domain/**` | Context 単位のモデル、API、認証、規範的な振る舞い、設計判断、機構。シナリオの一次情報は公式 Markdown with Gherkin として解析する。 |
 | 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース。 |
-| リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は一次情報文書が所有する。 |
+| リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は一次情報文書に書く。 |
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |
 | 変更の記録 | `work-items/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録。 |
 | ドメインモデル | `backend/<context>/(<feature>/)domain` | フレームワークに依存しないドメインモデル。 |
@@ -73,13 +73,13 @@ backend/<context>/
 
 翻訳するアダプターを置くのは、Context Map が依存を許すほうの Context であり、翻訳される側ではない。`provisioning/source_idmanagement` は下流の Provisioning に立って IdManagement の `User` を自分の `AttributeSource` へ写す。`sourcing/scim/source_idmanagement` は反対に上流の Sourcing に立ち、IdManagement が公開する取り込み元判定のポートを満たす。IdManagement が Sourcing を知ると Context Map に無い向きの依存ができるためである。どちらに立つかは Context Map が決めるので、翻訳の向きから配置を推測しない。
 
-翻訳する語彙の差が無ければ、専用のパッケージも置かない。`WorkloadIdentity` から `OAuth2` への関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、実装は `backend/workloadidentity/usecases` が持ち、組み立て地点で結ぶ。越えるのが WorkloadIdentity の公開言語に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
+翻訳する語彙の差が無ければ、専用のパッケージも置かない。`WorkloadIdentity` から `OAuth2` への関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、`backend/workloadidentity/usecases` で実装して、組み立て地点で結ぶ。越えるのが WorkloadIdentity の公開言語に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
 
 `backend/shared/` は、複数の Context が実際に共有する技術的な能力のための場所である。
 
 起動時設定と実行時に選択可能な機能の定義も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。`FeatureRegistry` は実行時選択と更新影響だけを持ち、各 Context の API、標準対応、テナント設定を複製しない。読み取り点や選択規則が散らばると、あるプロセスだけが検証されない値または異なる機能集合を持つ状態が作れてしまうためである。運用者向けの設定リファレンスと機能メタデータはこれらの定義から生成し、手書きの一覧を併存させない。
 
-具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` はイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを持つ。イベントが Context の境界を越えるときに何が契約になるかは [Context 間イベント](#context-間イベント) が持つ。
+具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` にはイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを置く。イベントが Context の境界を越えるときに何が契約になるかは [Context 間イベント](#context-間イベント) で定める。
 
 2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<context>/<feature>/{domain,ports,usecase,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
 
@@ -112,7 +112,7 @@ backend/idmanagement/
 - **エンベロープ**：`spec.MarshalDomainEvent` が必ず載せるイベント種別名と発生時刻。監査の記録、管理 API のレスポンス、セキュリティ通知のディスパッチがすべてこの形の上で動く。
 - **公開項目の語彙**：他の Context が名前で読む payload の項目。監査の検索属性の抽出器がこれを検索軸へ写し、セキュリティ通知が宛先と送信条件をここから解決する。
 
-どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を所有する System が持ち、消費者である Audit は持たない。供給側が下流の契約に従う倒立を避けるためである。
+どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を担う System で定義し、消費者である Audit では定義しない。供給側が下流の契約に従う倒立を避けるためである。
 
 宣言を置くだけでは、読み取り側と静かに食い違う。項目名を変えてもコンパイルは通り、監査の絞り込みが空を返すようになるだけだからである。`mise run check-event-contract` が、宣言された語彙と Go の読み取り点の集合が一致することを確かめる。
 
@@ -120,7 +120,7 @@ backend/idmanagement/
 
 公開したイベント種別名と公開項目の名前は、削除も改名もしない。監査記録は追記のみで 7 年保持するので、名前を変えても既存の行は書き換えられず、古い行だけが新しい軸から見えなくなる。項目の追加と、まだ誰も読んでいない内部項目の変更は、この規則の対象ではない。
 
-リリース済みベースラインとの互換性判定は持たない。公開イベントの消費者はこのリポジトリの中にしかおらず、外部の消費者がいない契約にベースラインを敷いても守る相手がいないためである。この判断は、外部に配信する Security Event Token には及ばない。あちらは RFC 8417 が別の契約を定めている。
+リリース済みベースラインとの互換性は判定しない。公開イベントの消費者はこのリポジトリの中にしかおらず、外部の消費者がいない契約にベースラインを敷いても守る相手がいないためである。この判断は、外部に配信する Security Event Token には及ばない。あちらは RFC 8417 が別の契約を定めている。
 
 ## フロントエンドのコンポーネント構造
 
@@ -131,7 +131,7 @@ Web フロントエンド・アプリケーションのコードは、`frontend/
 | `frontend/src/routes/` | ファイルベースの経路定義。生成物 `frontend/src/routeTree.gen.ts` の入力 |
 | `frontend/src/features/<feature>/` | 機能ごとのビュー、その機能だけで使う部品と補助、テスト、ローカライズ辞書（`*.i18n.ts`） |
 | `frontend/src/components/` | 画面の外枠と、どの機能にも属さない再利用部品。基本部品は `components/ui/` |
-| `frontend/src/lib/` | どの機能にも属さない、描画を持たない補助 |
+| `frontend/src/lib/` | どの機能にも属さず、描画を行わない補助 |
 | `frontend/src/api/` | バックエンドの HTTP API の呼び出し |
 | `frontend/src/test/` | 単体テストが共有する準備と描画の補助 |
 | `frontend/tests/e2e/` | ブラウザーを使う E2E テスト |

@@ -2,7 +2,7 @@
 
 ## 目的
 
-この文書は、論理アーキテクチャを実行時のプロセスと通信へ写像する。レプリカ数、配置先、ネットワーク制御、可用性、キャパシティはそれぞれの設計文書が所有し、この文書は値を再掲しない。
+この文書は、論理アーキテクチャを実行時のプロセスと通信へ写像する。レプリカ数、配置先、ネットワーク制御、可用性、キャパシティはそれぞれの設計文書で定め、この文書は値を再掲しない。
 
 ## 実行単位
 
@@ -12,7 +12,7 @@
 | Worker | `backend/cmd/idmagic-worker` | キューに記録された遅延・再試行可能なジョブを処理する | PostgreSQL のジョブ状態を取得して確定する |
 | Batch | `backend/cmd/idmagic-batch` | 保持期限に基づく削除など、横断的な保守処理を実行する | PostgreSQL の対象状態を更新する |
 | Seed | `backend/cmd/idmagic-seed` | 初期データを投入する一回限りの管理実行単位 | PostgreSQL に結果を確定する |
-| Frontend gateway | `frontend` | ブラウザー向け画面と同一オリジンの API 中継を提供する | ブラウザーセッション以外の正となる業務状態を持たない |
+| Frontend gateway | `frontend` | ブラウザー向け画面と同一オリジンの API 中継を提供する | ブラウザーセッション以外の正となる業務状態を保存しない |
 
 API は通常、複数の Bounded Context を一つのプロセスに組み立てる。ジョブとバッチは処理時間と再試行の性質が HTTP リクエストと異なるため、別の実行単位にする。API の用途別分割は [System Context の判断](../domain/system/decisions.md#no-api-plane-separation) の再検討条件を満たすまで採らない。
 
@@ -20,7 +20,7 @@ API は通常、複数の Bounded Context を一つのプロセスに組み立�
 
 ブラウザーは Frontend gateway と通信し、gateway が API へ HTTP リクエストを中継する。ブラウザー Cookie を用いる画面と API は同一オリジンで公開する。外部クライアントと上流の IdP は公開 HTTP エンドポイントへ到達し、API と Worker は PostgreSQL を共有する。署名鍵や可逆な秘密情報の保護に外部提供元を選ぶ場合、対象の実行単位だけがその提供元へ接続する。
 
-Context 間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [構造](../domain/structure.md#context-間イベント) が所有する。
+Context 間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [構造](../domain/structure.md#context-間イベント) で定める。
 
 ## 実行時の規則
 
@@ -31,10 +31,10 @@ Context 間の同期処理は、公開されたポートを `backend/cmd/interna
 
 ## 関連文書
 
-- Frontend gateway が配信する画面の構成と、中継する経路の設計は [フロントエンド設計](../design/application/frontend.md) が所有する。
-- 物理的なデプロイ構成と環境差は [デプロイメントアーキテクチャ](deployment.md) が所有する。
-- コンピューティングとストレージ、Kubernetes の方針は [プラットフォーム設計](../design/infrastructure/platform.md) が所有する。
-- 通信経路とネットワーク境界は [ネットワーク設計](../design/infrastructure/network.md) が所有する。
-- レプリカ配置と障害耐性は [可用性設計](../design/reliability/availability.md) が所有する。
-- 負荷、アドミッションコントロール、縮退は [性能設計](../design/performance/README.md) が所有する。
-- 信頼境界と攻撃者モデルは [脅威モデル](../design/security/threat-model.md) が所有する。
+- Frontend gateway が配信する画面の構成と、中継する経路は [フロントエンド設計](../design/application/frontend.md) で設計する。
+- 物理的なデプロイ構成と環境差は [デプロイメントアーキテクチャ](deployment.md) で定める。
+- コンピューティングとストレージ、Kubernetes の方針は [プラットフォーム設計](../design/infrastructure/platform.md) で定める。
+- 通信経路とネットワーク境界は [ネットワーク設計](../design/infrastructure/network.md) で定める。
+- レプリカ配置と障害耐性は [可用性設計](../design/reliability/availability.md) で定める。
+- 負荷、アドミッションコントロール、縮退は [性能設計](../design/performance/README.md) で扱う。
+- 信頼境界と攻撃者モデルは [脅威モデル](../design/security/threat-model.md) で定める。

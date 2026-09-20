@@ -15,10 +15,10 @@
 | 検証をいつ、誰が実施するか | [保守](../operations/maintenance.md)と[サービス管理](../operations/service-management.md) |
 | 事象の最中に実施する手順 | [運用手順](../runbooks/) |
 
-検証設計は「単体テスト設計」や「E2E テスト設計」に相当する文書を持たない。
+検証設計には「単体テスト設計」や「E2E テスト設計」に相当する文書を設けない。
 テストの水準は、何を確かめるかではなく、どの公開境界と依存を実物にするかで選ぶ設計であり、[テスト方針](../development/testing.md)が水準ごとの目的と境界を定めている。
 同じ観点の一次情報を二つ置くと、片方だけが更新される。
-検証設計が持つのは、要求の側から見てどの証拠を必要とするかであり、その証拠をどう書くかではない。
+検証設計で定めるのは、要求の側から見てどの証拠を必要とするかであり、その証拠をどう書くかではない。
 
 ## 子文書
 
@@ -30,7 +30,7 @@
 ## 要求の群ごとの証拠
 
 行は要求の群に対応する。
-個々の `REQ-*` とテストの対応はテストの `//spec:covers` が持ち、この表は持たない。
+個々の `REQ-*` とテストの対応はテストの `//spec:covers` に記録し、この表には書かない。
 一行ずつ並べるとテストの増減のたびに表が古くなり、しかも同じ対応が二か所に載る。
 
 「実行環境」は、その証拠を作るために何を用意するかを表す。
@@ -40,7 +40,7 @@
 | --- | --- | --- | --- | --- |
 | 一次情報文書と TypeSpec の規範の形式、ID、参照、生成物 | 静的解析 | `mise run check-spec`、`mise run verify-spec` | 形式、ID の一意性、参照の解決、再生成した成果物との一致がすべて成立する | リポジトリ内 |
 | Context の規範シナリオ `REQ-*` | 単体、アダプター統合、受け入れ | `mise run test-go-race`、`mise run test-ui-unit` | 当該 ID を `//spec:covers` で名指すテストが通る | リポジトリ内 |
-| [全体の標準仕様](../domain/standards.md)と Context の標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-coverage-debt-ratchet`、`mise run report-coverage-debt` | テストを持たない規範 ID を新たに増やさない | リポジトリ内 |
+| [全体の標準仕様](../domain/standards.md)と Context の標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-coverage-debt-ratchet`、`mise run report-coverage-debt` | 対応するテストがない規範 ID を新たに増やさない | リポジトリ内 |
 | 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査 | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run check-api-compat` | 宣言と実装に差が無く、公開済みの契約を壊す変更が無い | リポジトリ内 |
 | 利用者経路とブラウザー固有の振る舞い | E2E | `mise run test-ui-e2e` | 正式な入口から最終効果までが実配線で成立する | リポジトリ内 |
 | WCAG 2.2 のアクセシビリティ規範 | 単体、E2E | `mise run test-ui-unit`、`mise run test-ui-e2e` | 当該規範 ID を名指すテストが通る | リポジトリ内 |
@@ -74,7 +74,7 @@
 | 生成した経路の優先順位 | `mise run check-route-reference` | ルーティングの実装から再生成した内容がコミット済みの文書と一致する |
 
 いずれもリポジトリ内で実行でき、Kubernetes、Docker Compose、監視資産、イメージ、負荷試験スクリプトの検証は Docker を要する。
-どれを集約ゲートと CI に入れ、どれを変更者が手元で走らせるかは[継続的インテグレーション](../development/continuous-integration.md#ci-で検証しないもの)が持つ。
+どれを集約ゲートと CI に入れ、どれを変更者が手元で走らせるかは[継続的インテグレーション](../development/continuous-integration.md#ci-で検証しないもの)で定める。
 
 この検証が示すのは、ファイルが意図どおり解釈されることまでである。
 資源の割り当て、スケジューリング、ネットワークポリシー、アラートが意図した事象で発報するかは、[システム受入れ設計](system-acceptance.md#可用性と復旧の試験)の障害試験が引き受ける。

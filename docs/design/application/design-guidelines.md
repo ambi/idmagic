@@ -4,7 +4,7 @@
 
 ## Subdomain と設計投資
 
-Bounded Context は、事業上の差別化とモデルの複雑さの二軸で `Core`、`Supporting`、`Generic` のいずれかに分ける。全 Context の区分は [論理アーキテクチャ](../../architecture/logical.md#context-の責務) の索引表が持ち、ある Context が今の区分にある理由はその Context の `decisions.md` が持つ。理由を索引表に置かないのは、理由が Context ごとに違って表のセルに収まらないためである。
+Bounded Context は、事業上の差別化とモデルの複雑さの二軸で `Core`、`Supporting`、`Generic` のいずれかに分ける。全 Context の区分は [論理アーキテクチャ](../../architecture/logical.md#context-の責務) の索引表に、ある Context が今の区分にある理由はその Context の `decisions.md` に記録する。理由を索引表に置かないのは、理由が Context ごとに違って表のセルに収まらないためである。
 
 区分が左右するのは次の 3 つである。
 
@@ -34,17 +34,17 @@ Seam は、その場所を編集せずに振る舞いを差し替えられる位
 
 一つのアダプターしかない場所に、将来の差し替えだけを理由とするインターフェースは足さない。二つ以上のアダプターまたは呼び出し方式が同じ振る舞いを必要とした時点で Seam を設けるため、現在の HTTP アダプターが具象ユースケースを直接呼ぶ構成も許される。
 
-メールのリンクで一度だけ実行される操作は、`backend/shared/security/actiontoken` の共通核を通す。共通核が持つのは、用途を閉じた集合として識別する型、生トークンを保持しない保存表現、そして発行と検証という二つの決定的な計算だけである。用途別のペイロードと業務作用は所有 Context に残り、共通核はそれらを知らない。実行時にハンドラーを登録する仕組みは持たず、用途はコードの列挙としてのみ増える。これは、目的の束縛、有効期限、ダイジェストだけの保存という同じ安全性条件を用途ごとに書き直させないための Seam であり、新しい用途がそのどれかを書き忘れても共通の検証を通れないようにするためである。
+メールのリンクで一度だけ実行される操作は、`backend/shared/security/actiontoken` の共通核を通す。共通核には、用途を閉じた集合として識別する型、生トークンを保持しない保存表現、そして発行と検証という二つの決定的な計算だけを実装する。用途別のペイロードと業務作用は担当 Context に残り、共通核はそれらを知らない。実行時にハンドラーを登録する仕組みは設けず、用途はコードの列挙としてのみ増える。これは、目的の束縛、有効期限、ダイジェストだけの保存という同じ安全性条件を用途ごとに書き直させないための Seam であり、新しい用途がそのどれかを書き忘れても共通の検証を通れないようにするためである。
 
 ## Aggregate 境界と Repository
 
 Aggregate は一貫性の境界である（語の定義は [用語集](../../domain/glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[Tenancy Context の判断](../../domain/tenancy/decisions.md)）は、この基準を適用した結果である。
 
-1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断はその Context の `decisions.md` または `internals.md` が理由とともに持つ。現在ある類型は 2 つである。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[IdManagement Context の内部設計](../../domain/identity-management/internals.md)）。もう 1 つは、アクショントークンの使用済み化と、そのトークンが認可した用途別作用である（[Authentication Context の判断](../../domain/authentication/decisions.md)、[IdManagement Context の判断](../../domain/identity-management/decisions.md)）。片方だけが残る状態は、同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失うかのどちらかになる。
+1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断と理由はその Context の `decisions.md` または `internals.md` に記録する。現在ある類型は 2 つである。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[IdManagement Context の内部設計](../../domain/identity-management/internals.md)）。もう 1 つは、アクショントークンの使用済み化と、そのトークンが認可した用途別作用である（[Authentication Context の判断](../../domain/authentication/decisions.md)、[IdManagement Context の判断](../../domain/identity-management/decisions.md)）。片方だけが残る状態は、同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失うかのどちらかになる。
 
 Repository は Aggregate root 単位に置く。1 つの Repository が複数の root を扱うと、どの操作がどの一貫性の境界に属するかがインターフェースから読めなくなり、呼び出し側は境界を知るために実装を読むことになる。反している状態は現在 1 つある。`backend/sourcing/scim/ports` の `ScimRepository` が `ScimUserRef` と `ScimGroupRef` の 2 つを扱っており、これは取り込み元との対応表という同じ役割の 2 つを 1 つのアダプターで実装したまま、ポートの側も分けなかったものである。
 
-ポート名の `Repository` と `Store` は、扱うものの種類を区別しない。`Store` を名乗るもののうち `SessionStore`、`ApprovalRequestStore`、`RefreshTokenStore`、`KeyStore` が持つのは Aggregate であり、`PARStore`、`DeviceCodeStore`、各 `ReplayStore` が持つのは不透明な鍵で引く短命なプロトコル状態、`ApplicationIconStore` や `TenantBrandingAssetStore` が持つのは Aggregate に属さない資産である。したがって、ある永続化ポートが Aggregate を扱うかどうかを接尾辞から推測してはならない。決めるのはポートが `Save` に受け取る型であり、`Core` に分類した Context ではその型の名前が `glossary.md` に Aggregate root として定義されている。
+ポート名の `Repository` と `Store` は、扱うものの種類を区別しない。`Store` を名乗るもののうち `SessionStore`、`ApprovalRequestStore`、`RefreshTokenStore`、`KeyStore` は Aggregate を保存し、`PARStore`、`DeviceCodeStore`、各 `ReplayStore` は不透明な鍵で引く短命なプロトコル状態を保存する。`ApplicationIconStore` や `TenantBrandingAssetStore` は Aggregate に属さない資産を保存する。したがって、ある永続化ポートが Aggregate を扱うかどうかを接尾辞から推測してはならない。決めるのはポートが `Save` に受け取る型であり、`Core` に分類した Context ではその型の名前が `glossary.md` に Aggregate root として定義されている。
 
 ## アダプターと表現
 
@@ -60,7 +60,7 @@ TypeSpec は、HTTP を含む外部境界の型、制約、エラー和、認証
 
 別名型や構築関数は、値の取り違えを防ぐか、一つの検証済み表現を作る場合に使う。すべての識別子を一律に別名型へする規則は設けず、文字列から業務上の意味を分離できない別名も増やさない。
 
-不変条件は、最も狭く強制できる場所が持つ。一つの値の妥当性と複数フィールドの整合はドメイン型の構築または状態遷移、操作後に成立する条件は事後条件、永続データの一意性と参照整合性はデータベース制約、外部から観測できる保証は `scenarios.feature.md` が持つ。
+不変条件は、最も狭い場所で強制する。一つの値の妥当性と複数フィールドの整合はドメイン型の構築または状態遷移で、操作後に成立する条件は事後条件で、永続データの一意性と参照整合性はデータベース制約で強制する。外部から観測できる保証は `scenarios.feature.md` で定める。
 
 反している状態は、同じ条件を TypeSpec、Go、SQL、散文へ重複して書き、変更時にどれが一次情報か決められない状態である。既存のドメイン構造体には構築後の `Validate` を必要とするものもあるため、「不正な状態を型だけでは構築できない」ことをリポジトリ全体の性質とはしない。
 
@@ -72,6 +72,6 @@ TypeSpec は、HTTP を含む外部境界の型、制約、エラー和、認証
 
 ## エラーと拒否
 
-入力から生じうる失敗は値として返し、部分関数とパニックを通常の分岐に使わない。ドメインは業務上成立しない状態、ユースケースは操作の拒否と作用の失敗、アダプターは外部入力の不正と外部向けエラー表現を持つ。
+入力から生じうる失敗は値として返し、部分関数とパニックを通常の分岐に使わない。ドメインでは業務上成立しない状態を、ユースケースでは操作の拒否と作用の失敗を、アダプターでは外部入力の不正と外部向けエラー表現を扱う。
 
 拒否は、拒否したという結果だけでなく、実行しなかった作用と組にして検証できるインターフェースを持つ。反している状態は、アダプターがエラーメッセージを解析して業務上の拒否を推測する状態、または失敗時に永続化や通知が起きたかを呼び出し側が確認できない状態である。

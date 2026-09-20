@@ -2,7 +2,7 @@
 
 この文書は、`docs/domain/` に収めたドメイン設計文書の入口である。
 IdMagic を Bounded Context へ分け、各 Context が何を意味し、どう振る舞い、内部をどう作るかを定める。
-要求をどの機構で満たすかは[設計文書](../design/README.md)が持ち、ここは扱わない。
+要求をどの機構で満たすかは[設計文書](../design/README.md)で定め、ここは扱わない。
 
 ## システム全体
 
@@ -18,10 +18,10 @@ Context を跨いで固定されるもの。
 
 ## Bounded Context
 
-Context の一覧と Subdomain の区分は[論理アーキテクチャ](../architecture/logical.md#context-map)が持つ。
+Context の一覧と Subdomain の区分は[論理アーキテクチャ](../architecture/logical.md#context-map)に記録する。
 ここに一覧を複製すると、Context を足したときに片方が古くなる。
 
-各 Context のディレクトリは同じ 7 文書を持つ。
+各 Context のディレクトリには同じ 7 文書を置く。
 
 | 文書 | 定めるもの |
 | --- | --- |

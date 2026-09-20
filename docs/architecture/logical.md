@@ -4,13 +4,13 @@
 
 IdMagic は、一つの Go モジュール内で Bounded Context のモデル境界を保つ Modular Monolith である。独立したデータ所有権、担当チーム、サービス目標が必要になるまではサービスへ分割しない。ドメイン層とユースケース層は外部技術へ依存せず、ポートを通じて PostgreSQL、HTTP、通知などのアダプターへ接続する。
 
-コードの依存方向と配置は [構造](../domain/structure.md) が、境界とモジュールを評価する規則は [設計ガイドライン](../design/application/design-guidelines.md) が所有する。論理単位をプロセスへ割り当てる方法は [ランタイムアーキテクチャ](runtime.md) が所有する。System Context が持つ画面は、Context ごとではなく利用者の操作の単位で分けており、その分け方は [フロントエンド設計](../design/application/frontend.md#機能スライスと-bounded-context-の対応) が所有する。
+コードの依存方向と配置は [構造](../domain/structure.md) で、境界とモジュールを評価する規則は [設計ガイドライン](../design/application/design-guidelines.md) で定める。論理単位をプロセスへ割り当てる方法は [ランタイムアーキテクチャ](runtime.md) で定める。System Context の画面は、Context ごとではなく利用者の操作の単位で分けており、その分け方は [フロントエンド設計](../design/application/frontend.md#機能スライスと-bounded-context-の対応) で定める。
 
 ## Context Map
 
 この図はドメイン上の関係と統合境界を示す。矢印は Supplier から Customer へ向かう。`OHS/PL` は Published Language を伴う Open Host Service、`C/S` は Customer/Supplier、`ACL` は Anti-Corruption Layer を表す。
 
-ドメインイベントの関係は図に描かない。発行する Context は共通のワイヤ表現を使い、組み立て地点にある一つの配信点を通じて Audit と Authentication の通知機構へ事実を渡すため、Context 間の import を生まない。契約となる語彙は [Context 間イベント](../domain/structure.md#context-間イベント) が所有する。
+ドメインイベントの関係は図に描かない。発行する Context は共通のワイヤ表現を使い、組み立て地点にある一つの配信点を通じて Audit と Authentication の通知機構へ事実を渡すため、Context 間の import を生まない。契約となる語彙は [Context 間イベント](../domain/structure.md#context-間イベント) で定める。
 
 ```mermaid
 flowchart LR
@@ -95,4 +95,4 @@ flowchart LR
 | [WorkloadIdentity](../domain/workloadidentity/README.md) | Core | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
 | [SharedSignals](../domain/sharedsignals/README.md) | Supporting | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |
 
-各 Subdomain 区分の理由は Context の `decisions.md` が所有する。Context 間の統合では供給側の公開言語を使い、顧客側で語彙の差を翻訳する。PostgreSQL は業務データと短命状態の論理的な正本だが、テーブルを共有して Context 境界を迂回してはならない。
+各 Subdomain 区分の理由は Context の `decisions.md` に記録する。Context 間の統合では供給側の公開言語を使い、顧客側で語彙の差を翻訳する。PostgreSQL は業務データと短命状態の論理的な正本だが、テーブルを共有して Context 境界を迂回してはならない。

@@ -37,7 +37,7 @@ IdMagic は、人間とエージェントのアイデンティティ、認証、
 
 人が書く現在状態の一次情報は `docs/` に置く。
 機械が読むモデルと API 契約は `spec/` に置き、生成した OpenAPI は追跡しない `spec/generated/`、生成したドキュメントサイトは追跡しない `site/` に出力する。
-変更固有の分析、代替案、実装履歴は `work-items/` が、リリースごとの差分は `docs/releases/` が所有する。
+変更固有の分析、代替案、実装履歴は `work-items/` に、リリースごとの差分は `docs/releases/` に記録する。
 
 文書の配置、一次情報の種類、仕様先行の変更手順は、リポジトリ直下の [文書ガイド](../DOCUMENTATION_GUIDE.md)、[仕様フォーマット](../SPECIFICATION_FORMAT.md)、[作業項目フォーマット](../WORK_ITEM_FORMAT.md) が定める。
 開発ツールのバージョンとコマンドは `mise.toml` に集約し、基本操作は `mise run <task>` から実行する。

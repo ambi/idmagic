@@ -42,7 +42,7 @@ Primary actor: `TenantAdministrator`
 ## Rule: REQ-PLATFORM-003 記録の正の変更は、有効な接続を持つ下流へ配信される
 
 参加する Context: IdManagement、Application、Provisioning、Jobs
-**配信行は発火元の変更と同時にコミットまたはロールバックする。** 記録の正が変わったのに配信が作られない状態、およびその逆は、いずれもこの保証に違反する。個々の変更がどの下流操作へ対応するかは Provisioning の `scenarios.feature.md` が持つ。
+**配信行は発火元の変更と同時にコミットまたはロールバックする。** 記録の正が変わったのに配信が作られない状態、およびその逆は、いずれもこの保証に違反する。個々の変更がどの下流操作へ対応するかは Provisioning の `scenarios.feature.md` で定める。
 
 Primary actor: `TenantAdministrator`
 

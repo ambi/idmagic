@@ -20,7 +20,7 @@ IdMagic の長時間処理（利用者の一括取り込み、動的グループ
 
 ## worker の起動と設定
 
-`worker` は次の環境変数で調整します。デフォルト値と完全な一覧は [Configuration Reference](../../CONFIGURATION.md) が持ちます。
+`worker` は次の環境変数で調整します。デフォルト値と完全な一覧は [Configuration Reference](../../CONFIGURATION.md) に記載されています。
 
 | 変数 | 意味 |
 |---|---|

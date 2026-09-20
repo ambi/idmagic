@@ -224,7 +224,7 @@ Primary actor: `EndUser`
 
 ## Rule: REQ-AUTHENTICATION-009 無効なユーザーは新規ログインも既存セッションも拒否される
 
-無効化そのものは IdManagement の操作であり、無効化から到達経路が閉じるまでの連鎖は REQ-PLATFORM-001 が持つ。ここは、無効な主体を Authentication が単独で拒否することだけを述べる。
+無効化そのものは IdManagement の操作であり、無効化から到達経路が閉じるまでの連鎖は REQ-PLATFORM-001 で定める。ここは、無効な主体を Authentication が単独で拒否することだけを述べる。
 
 Primary actor: `EndUser`
 

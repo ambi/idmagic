@@ -15,9 +15,9 @@ IdMagic が何をする製品かは[プロダクト概要](product-overview.md)�
 | 検証 | 要求を受け入れる証拠の設計 | [検証設計](../verification/README.md) |
 
 上の層が下の層を拘束する。
-実装詳細を上の段へ逆流させず、数値と判断には一つの所有者を定め、ほかの文書は値を写さず参照する。
+実装詳細を上の段へ逆流させず、数値と判断の一次情報源を一つに定め、ほかの文書は値を写さず参照する。
 
-ドメインそのもの——Bounded Context ごとの振る舞い、状態、設計判断、そしてそれらを跨いで固定される語——は[ドメイン設計文書](../domain/README.md)が持つ。
+ドメインそのもの（Bounded Context ごとの振る舞い、状態、設計判断、そしてそれらを跨いで固定される語）は[ドメイン設計文書](../domain/README.md)で定める。
 
 ## 領域
 
@@ -59,7 +59,7 @@ IdMagic が何をする製品かは[プロダクト概要](product-overview.md)�
 | ロードシェディング順序 | load shedding order。飽和時に優先度の低い経路から受け付けを落とす順序。 | [キャパシティ設計](performance/capacity.md#ロードシェディング順序) |
 | アドミッションコントロール | admission control。過負荷時に、ハンドラーへ入る前の入口で受け付けを止める機構。 | [System の内部設計](../domain/system/internals.md#admission-control) |
 | オブザーバビリティ | observability。メトリクス、ログ、トレースの設計と、シグナル間の相関。 | [オブザーバビリティ設計](observability/) |
-| ガイドライン | guidelines。設計の観点を並べた指針。個々の強制点は TypeSpec と検査が持つ。 | [API ガイドライン](application/api-guidelines.md)、[設計ガイドライン](application/design-guidelines.md) |
+| ガイドライン | guidelines。設計の観点を並べた指針。個々の強制点は TypeSpec で定義し、検査で強制する。 | [API ガイドライン](application/api-guidelines.md)、[設計ガイドライン](application/design-guidelines.md) |
 
 採らないと決めた表記は `mise run check-terminology` が拒否する。
-残す共起とその理由は `tools/check/src/terminology.ts` の規則表が持ち、免除はそこにしかない。
+残す共起とその理由は `tools/check/src/terminology.ts` の規則表に記録し、免除はそこにしかない。

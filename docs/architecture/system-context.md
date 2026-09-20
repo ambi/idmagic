@@ -34,6 +34,6 @@ flowchart LR
 | ゲートウェイ | `frontend` サービスの Caddy が、一つのコンテナで同一オリジンを組み立てる | `idmagic-frontend` の Caddy が同一オリジンを組み立て、TLS の終端はクラスターの Ingress が担う | GKE Ingress で構成する外部アプリケーションロードバランサーが TLS を終端し、その後ろの `idmagic-frontend` が同一オリジンを組み立てる。Cloud CDN が静的アセットをキャッシュする（仮） |
 | デプロイの基盤 | Docker Compose | Kubernetes のコントロールプレーンとリリースパイプライン | GKE Autopilot、Artifact Registry、リリースパイプライン（仮） |
 | シークレットの基盤 | 構成ファイルに書いた開発用の値 | プラットフォームが先に作る Kubernetes Secret | Secret Manager と Cloud KMS（仮） |
-| 監視の基盤 | Prometheus、Loki、Alloy、Grafana のコンテナ | `infra/k8s/monitoring/` の同じ仕組みのマニフェスト、または Prometheus Operator | Managed Service for Prometheus と Cloud Logging（仮）。収集の契約は[オブザーバビリティ設計](../design/observability/README.md)が持つ |
+| 監視の基盤 | Prometheus、Loki、Alloy、Grafana のコンテナ | `infra/k8s/monitoring/` の同じ仕組みのマニフェスト、または Prometheus Operator | Managed Service for Prometheus と Cloud Logging（仮）。収集の契約は[オブザーバビリティ設計](../design/observability/README.md)で定める |
 
-信頼しない入力と制御は[脅威モデル](../design/security/threat-model.md)、ネットワークの境界は[ネットワーク設計](../design/infrastructure/network.md)が持つ。
+信頼しない入力と制御は[脅威モデル](../design/security/threat-model.md)で、ネットワークの境界は[ネットワーク設計](../design/infrastructure/network.md)で定める。

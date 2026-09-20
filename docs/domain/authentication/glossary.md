@@ -14,4 +14,4 @@
 | EndUser | 認証済みまたは認証を試みる一般利用者。ログイン・MFA継続・パスワードリセットなど、認証が未完了の操作の主体を指す。 |  |
 | ResourceOwner | OAuth2/OIDC 認可フローでリソースの所有者として認可判断を行う利用者。EndUser と同一人物を OAuth2 文脈で指す呼称。 |  |
 
-この Context の Aggregate root は `LoginSession`、`MfaFactor`、`WebAuthnCredential`、`RecoveryCode`、`TrustedDevice`、`MfaEnrollmentBypass`、`PasswordHistory`、`IdentityProviderConnection`、`FederatedIdentity` である。いずれも `User` の識別子を参照するが、`User` の Aggregate には含まれない。User の削除がこれらへどうカスケードするかは [identity-management/internals.md](../identity-management/internals.md) が持つ。
+この Context の Aggregate root は `LoginSession`、`MfaFactor`、`WebAuthnCredential`、`RecoveryCode`、`TrustedDevice`、`MfaEnrollmentBypass`、`PasswordHistory`、`IdentityProviderConnection`、`FederatedIdentity` である。いずれも `User` の識別子を参照するが、`User` の Aggregate には含まれない。User の削除がこれらへどうカスケードするかは [identity-management/internals.md](../identity-management/internals.md) で定める。

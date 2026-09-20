@@ -14,5 +14,5 @@ IdMagic は、人とワークロードのアイデンティティを管理し、
 | 鍵、API トークン、非同期処理、監査を管理する | [Signing Keys](../domain/signing-keys/)、[Data Keys](../domain/data-keys/)、[API Tokens](../domain/api-tokens/)、[Jobs](../domain/jobs/)、[Audit](../domain/audit/) |
 | システムを構成し、初期データを投入する | [System](../domain/system/)、[Seeding](../domain/seeding/) |
 
-複数の Context が協調しなければ満たせない振る舞いは[システム横断シナリオ](../domain/scenarios.feature.md)が持つ。
-API のモデル、操作、HTTP バインディング、認証機構は `spec/contexts/` の TypeSpec が持つ。
+複数の Context が協調しなければ満たせない振る舞いは[システム横断シナリオ](../domain/scenarios.feature.md)で定める。
+API のモデル、操作、HTTP バインディング、認証機構は `spec/contexts/` の TypeSpec で定義する。

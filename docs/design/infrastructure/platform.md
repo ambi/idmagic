@@ -3,8 +3,8 @@
 ## 対象範囲
 
 IdMagic を動かすコンピューティング、ストレージ、コンテナイメージのサプライチェーン、サービスアカウントと IAM、リリース、構成管理を扱う。
-デプロイプロファイルの一覧と構成要素の配置先は[デプロイメントアーキテクチャ](../../architecture/deployment.md)が持ち、この文書は配置先の表を繰り返さない。
-エッジ、セグメンテーション、ファイアウォールルール、DNS は[ネットワーク設計](network.md)が持つ。
+デプロイプロファイルの一覧と構成要素の配置先は[デプロイメントアーキテクチャ](../../architecture/deployment.md)で定め、この文書は配置先の表を繰り返さない。
+エッジ、セグメンテーション、ファイアウォールルール、DNS は[ネットワーク設計](network.md)で定める。
 
 ## この文書の読み方
 
@@ -26,19 +26,19 @@ IdMagic を動かすコンピューティング、ストレージ、コンテナ
 | コンピューティング | 一台のホストの Docker。各サービスは一インスタンス | 構成要素ごとの Deployment と、保守処理ごとの CronJob | GKE Autopilot のリージョンクラスター。汎用 Kubernetes のマニフェストに GKE 向けの overlay を重ねる（仮） |
 | データベース | `postgres` コンテナ。永続ボリュームを宣言しないため、停止すると状態が消える | CloudNativePG オペレーターが管理する PostgreSQL クラスター（仮） | Cloud SQL for PostgreSQL。可用性の種類を REGIONAL（同期スタンバイ）にする |
 | スキーマ適用 | `schema` サービスが `psqldef` を実行し、その正常終了を `api` と `worker` の起動条件にする | リリースパイプラインが `psqldef` の Job を起動し、完了を待ってから Deployment を更新する（仮） | 汎用 Kubernetes と同じ（仮） |
-| スケール単位 | 独立に増減できる単位を持たない | `idmagic-api` は HorizontalPodAutoscaler、`idmagic-worker` はレーンごとの Deployment、`idmagic-frontend` はレプリカ数で増減する。PodDisruptionBudget が、計画的な中断のときに最小限の稼働数を守る | 汎用 Kubernetes と同じ。ノードの台数は Autopilot が Pod の要求量から決める |
-| メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。Alloy が Docker Engine API から全コンテナのログを読んで Loki へ送る | `infra/k8s/monitoring/` が同じ仕組みのマニフェストを持つ。Alloy は DaemonSet で動き、`/metrics` の取得は Prometheus または ServiceMonitor が行う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。シグナルの契約は[オブザーバビリティ設計](../observability/README.md)が持つ |
+| スケール単位 | 独立に増減できる単位がない | `idmagic-api` は HorizontalPodAutoscaler、`idmagic-worker` はレーンごとの Deployment、`idmagic-frontend` はレプリカ数で増減する。PodDisruptionBudget が、計画的な中断のときに最小限の稼働数を守る | 汎用 Kubernetes と同じ。ノードの台数は Autopilot が Pod の要求量から決める |
+| メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。Alloy が Docker Engine API から全コンテナのログを読んで Loki へ送る | `infra/k8s/monitoring/` に同じ仕組みのマニフェストを置く。Alloy は DaemonSet で動き、`/metrics` の取得は Prometheus または ServiceMonitor が行う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。シグナルの契約は[オブザーバビリティ設計](../observability/README.md)で定める |
 
 ステートフルな基盤は、どのプロファイルでも PostgreSQL 一つである。
-業務データ、BLOB、認証セッション、認可コード、ジョブのような短命状態を同じデータベースへ置き、二つ目のステートフル基盤を持たない。
+業務データ、BLOB、認証セッション、認可コード、ジョブのような短命状態を同じデータベースへ置き、二つ目のステートフル基盤は設けない。
 
-汎用 Kubernetes のマニフェストは、現在 PostgreSQL とスキーマ適用を持たない。
+汎用 Kubernetes のマニフェストには、現在 PostgreSQL とスキーマ適用を定義していない。
 これでは、このプロファイルだけでは IdMagic が動かない。
-PostgreSQL を CloudNativePG で、スキーマ適用と初期データ投入を Job で持たせ（仮）、プロファイル単体で動く状態を目標にする。
+PostgreSQL は CloudNativePG で実行し、スキーマ適用と初期データ投入は Job として実行して（仮）、プロファイル単体で動く状態を目標にする。
 
 ## 命名とラベル
 
-名前の組み立て規則は、構成ファイルが持つ個々の名前と違い、構成要素を足すたびに再び使う決定である。
+名前の組み立て規則は、構成ファイルに書く個々の名前と違い、構成要素を足すたびに再び使う決定である。
 
 | 命名対象 | 命名規則 |
 | --- | --- |
@@ -64,8 +64,8 @@ Kubernetes がコンテナの状態を確かめるために、`idmagic-api` の 
 `livenessProbe` と `readinessProbe` を分けるのは、データベースの障害でコンテナの再起動を繰り返させないためである。
 再起動してもデータベースへ到達できない状態は直らず、復旧した時点で全インスタンスの再接続が一度に押し寄せる。
 
-`idmagic-worker` はアプリケーションの HTTP エンドポイントを持たないため、`livenessProbe` と `readinessProbe` を持たない。
-`idmagic-frontend` は現在 Probe を持たない。
+`idmagic-worker` はアプリケーションの HTTP エンドポイントを公開しないため、`livenessProbe` と `readinessProbe` を設定しない。
+`idmagic-frontend` には現在 Probe を設定していない。
 静的な経路で `readinessProbe` を設定する（仮）。
 
 ## リソース階層と環境の分離
@@ -102,7 +102,7 @@ Google Cloud ではプロジェクトが IAM、課金、API の有効化の単�
 
 | 項目 | 内容 |
 | --- | --- |
-| バックエンドのベースイメージ | `gcr.io/distroless/static-debian12:nonroot`。CGO を使わない静的リンクの実行ファイルを置くため、シェルとパッケージ管理を持たないイメージで足りる |
+| バックエンドのベースイメージ | `gcr.io/distroless/static-debian12:nonroot`。CGO を使わない静的リンクの実行ファイルを置くため、シェルとパッケージ管理を含まないイメージで足りる |
 | バックエンドのイメージに入る実行ファイル | `idmagic`、`idmagic-worker`、`idmagic-batch` の三つ。`idmagic-seed` は入っていない |
 | フロントエンドのイメージ | Caddy のイメージに、ビルドした静的アセットを入れる |
 | レジストリ | Kubernetes のマニフェストは `ghcr.io` を参照する。Google Cloud では Artifact Registry を使う（仮） |
@@ -140,19 +140,19 @@ Google Cloud ではプロジェクトが IAM、課金、API の有効化の単�
 `idmagic-frontend` はデータベースへ接続する必要がまったくない。
 
 運用者と管理者がプラットフォームをどう操作できるかは、ここでいう権限の話である。
-IdMagic 自身が提供する認可は[認可設計](../security/authorization.md)が持ち、混ぜない。
+IdMagic 自身が提供する認可は[認可設計](../security/authorization.md)で定め、混ぜない。
 
 ## ストレージ
 
 | 項目 | 内容 |
 | --- | --- |
-| 業務データと短命状態 | すべて PostgreSQL に置く。構造は[データベース設計](../data/database.md)が持つ |
+| 業務データと短命状態 | すべて PostgreSQL に置く。構造は[データベース設計](../data/database.md)で定める |
 | BLOB | PostgreSQL に置く。オブジェクトストレージを二つ目の状態の置き場所にしない |
-| 静的アセット | `idmagic-frontend` のイメージへビルド時に入れ、オブジェクトストレージへ別に置かない。キャッシュは[ネットワーク設計](network.md)が持つ |
+| 静的アセット | `idmagic-frontend` のイメージへビルド時に入れ、オブジェクトストレージへ別に置かない。キャッシュは[ネットワーク設計](network.md)で定める |
 | 保存データの暗号化 | データベースを、共通プロジェクトの鍵による顧客管理の暗号鍵（CMEK）で暗号化する（仮）。鍵の管理主体とローテーションは[シークレット設計](../security/secrets.md)が決める |
 | Kubernetes Secret の保護 | クラスターのアプリケーション層のシークレット暗号化を有効にし、共通プロジェクトの鍵で暗号化する。Secret Manager から同期した値がクラスター内にも置かれるためである（仮） |
 | ストレージの増加 | 自動増加を有効にし、使用率が上限に近づいた時点で通知する。自動増加だけに任せると、増え続ける原因に気付かない（仮） |
-| 保持期間 | 値は各 Context の仕様と[品質要求](../../requirements/quality.md)が、値を変えるときの順序は[データライフサイクル設計](../data/lifecycle.md#保持期間を変えるときの順序)が持つ |
+| 保持期間 | 値は各 Context の仕様と[品質要求](../../requirements/quality.md)で、値を変えるときの順序は[データライフサイクル設計](../data/lifecycle.md#保持期間を変えるときの順序)で定める |
 
 ## バックアップと復旧
 
@@ -163,7 +163,7 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 | 保管先 | 本番のバックアップを別のリージョンへ複製する。リージョン全体の障害では、同じリージョンの複製ごと失われる（仮） |
 | 保持期間 | 一か月を超える期間を保持する。データの論理的な破損は発生から時間が経って気付くため、直近の数日分では戻る先が残らない（仮） |
 | 復元試験 | 月に一度、取得したバックアップから復元し、`mise run restore-drill` と同じ手順で確かめる（仮） |
-| 復旧目標と復旧の手順 | [リカバリ設計](../reliability/recovery.md)が持つ。目標値は未検証である |
+| 復旧目標と復旧の手順 | [リカバリ設計](../reliability/recovery.md)で定める。目標値は未検証である |
 
 ## スキーマ適用と初期データ投入
 
@@ -181,8 +181,8 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 | --- | --- |
 | 起動時シークレットの供給元 | プロファイルごとの供給元、プロセスへの渡り方、保存時の保護は[シークレット設計](../security/secrets.md#起動時シークレットの供給元)が定める |
 | 署名鍵の保管先 | デフォルトはデータベースである。全レプリカで JWKS が一致する代わりに、秘密鍵が平文でデータベースとそのバックアップに入る |
-| 鍵素材を外部の鍵管理に置く場合 | 条件は[シークレット設計](../security/secrets.md)が持つ |
-| ローテーション | [シークレット設計](../security/secrets.md)が持つ |
+| 鍵素材を外部の鍵管理に置く場合 | 条件は[シークレット設計](../security/secrets.md)で定める |
+| ローテーション | [シークレット設計](../security/secrets.md)で定める |
 | 鍵とシークレットの置き場所 | 共通のセキュリティ用プロジェクトへ集め、環境のプロジェクトの実行主体に IAM で利用を許可する。環境ごとに置くと、誰がどの鍵を使えるかを環境の数だけ確かめることになる（仮） |
 | Secret Manager からクラスターへの同期 | 未決定。アプリケーションは環境変数でシークレットを読むため、ファイルとしてマウントする方式はそのままでは使えない。Kubernetes Secret へ同期する仕組みの選定が要る |
 
@@ -199,7 +199,7 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 
 ## 構成管理
 
-`infra/k8s/base/` は環境に共通のマニフェスト、`overlays/` は環境ごとの差分、`infra/docker/` はローカルの構成を持つ。
+`infra/k8s/base/` には環境に共通のマニフェストを、`overlays/` には環境ごとの差分を、`infra/docker/` にはローカルの構成を置く。
 アプリケーションの設定項目、デフォルト値、検証規則は、コードから生成する [`CONFIGURATION.md`](../../../CONFIGURATION.md) が示す。
 シークレットとイメージのダイジェストはデプロイ時に注入し、Git の構成ファイルへは書かない。
 
@@ -207,7 +207,7 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 | --- | --- |
 | Kubernetes のマニフェストの管理 | Kustomize の base と overlay で管理する |
 | GKE 向けの差分 | `infra/k8s/overlays/` に GKE 向けの overlay を足す。中身は「Google Cloud」の節の「汎用 Kubernetes のマニフェストから変える点」の表のとおり（仮） |
-| クラウドのリソースの管理 | Terraform を使う。クラスター、VPC、Cloud SQL、IAM、証明書、ポリシーを Terraform が持ち、クラスターの中身は Kubernetes のマニフェストに任せる（仮） |
+| クラウドのリソースの管理 | Terraform を使う。クラスター、VPC、Cloud SQL、IAM、証明書、ポリシーを Terraform で管理し、クラスターの中身は Kubernetes のマニフェストに任せる（仮） |
 | Terraform の状態ファイルの保管 | 共通プロジェクトの Cloud Storage バケットに置き、オブジェクトのバージョンを残す。同時に適用しないための排他も同じ仕組みで行う（仮） |
 | Terraform の分割単位 | 組織とプロジェクトを作る単位、共通リソースの単位、環境ごとのワークロードの単位の三つに分け、単位の間を出力と入力で結ぶ。担当する人の範囲と一致させるためである（仮） |
 | 適用前の検査 | 変更の差分を出した後、組織のポリシー制約に反する構成をパイプラインが拒否する。`mise run check-k8s` はレンダリングとスキーマを検査するが、方針への違反は調べない（仮） |
@@ -217,12 +217,12 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 
 | 項目 | 内容 |
 | --- | --- |
-| アプリケーションのメトリクス、ログ、トレース | [オブザーバビリティ設計](../observability/README.md)が収集と保持の契約を持つ |
+| アプリケーションのメトリクス、ログ、トレース | [オブザーバビリティ設計](../observability/README.md)で収集と保持の契約を定める |
 | 監査ログの集約 | 組織の集約ログシンクで、全環境の管理操作の記録を共通のログ用プロジェクトのログバケットへ転送し、一年を超えて保持する。環境のプロジェクトに置いたままだと、その環境の権限を得た人が消せる（仮） |
 | 構成の変化の検知 | 公開設定と権限付与の変更を監査ログから検出して通知する。組織のポリシー制約で拒否できる構成は事前に止まるが、制約の外の構成は後から気付くしかない（仮） |
 | 実行中のコンテナの監視 | 未決定。実行時の脅威検知を入れるかを決めていない。distroless の非 root イメージと読み取り専用のファイルシステムで攻撃面を狭めた後に、残る検知の必要性を評価する |
 
-脅威と攻撃者の想定は[脅威モデル](../security/threat-model.md)が持つ。
+脅威と攻撃者の想定は[脅威モデル](../security/threat-model.md)で定める。
 この文書が扱うのは、その想定に対して基盤側で何を監視するかである。
 
 ## 費用
@@ -262,7 +262,7 @@ Kubernetes Engine の確約利用割引を使うと、vCPU の単価は 1 年契
 環境を三つ作るとクラスターも三つになり、無料枠を超える二つ分の管理料金と、`staging` と `development` の Pod の分が加わる。
 複数のリージョンへ展開すると、クラスターとデータベースが二重になり、リージョン間の転送が加わるため、この表は使えない。
 
-他の二つのプロファイルはクラウド事業者の料金表を持たないため、見積もりを書かない。
+他の二つのプロファイルにはクラウド事業者の料金表を適用できないため、見積もりを書かない。
 
 ## プロファイルごとの構成
 
@@ -283,7 +283,7 @@ Kubernetes Engine の確約利用割引を使うと、vCPU の単価は 1 年契
 `idmagic-worker` をレーンごとの Deployment に分けるのは、あるレーンの取り出しと実行の余力が、別のレーンの滞留に食われないようにするためである。
 一つのプロセスで全レーンを処理すると、`bulk` の滞留が `latency_sensitive` の取り出しを遅らせる。
 
-現在のマニフェストは、エッジと証明書、PostgreSQL、スキーマ適用、初期データ投入を持たない。
+現在のマニフェストには、エッジと証明書、PostgreSQL、スキーマ適用、初期データ投入を定義していない。
 エッジと証明書はクラスターの運用基盤が提供する前提とする。
 PostgreSQL は CloudNativePG オペレーターのクラスターとして、スキーマ適用と初期データ投入は Job として、このプロファイルに加える（仮）。
 CloudNativePG を選ぶのは、ストリーミングレプリケーション、自動フェイルオーバー、オブジェクトストレージへのバックアップを、オペレーターが Kubernetes のリソースとして管理するためである。
@@ -291,7 +291,7 @@ CloudNativePG を選ぶのは、ストリーミングレプリケーション、
 ### Google Cloud
 
 GKE Autopilot のリージョンクラスターと Cloud SQL for PostgreSQL を、単一の VPC と単一のリージョンに置く構成である。
-クラスターの中身は汎用 Kubernetes のマニフェストを使い、GKE に固有の差分だけを overlay に持つ。
+クラスターの中身は汎用 Kubernetes のマニフェストを使い、GKE に固有の差分だけを overlay に置く。
 構成ファイルがまだ無いため、この節の構成は全体が（仮）である。
 
 #### リソース階層
@@ -438,7 +438,7 @@ Cloud Run 案のひな型は `infra/deploy/gcp/` に残してある。
 
 #### 汎用 Kubernetes のマニフェストから変える点
 
-汎用 Kubernetes のマニフェストは、そのままでは GKE で期待どおりに動かない箇所を持つ。
+汎用 Kubernetes のマニフェストには、そのままでは GKE で期待どおりに動かない箇所がある。
 GKE 向けの overlay で次のとおり変える。
 
 | 変更対象 | 汎用 Kubernetes | GKE 向け overlay |

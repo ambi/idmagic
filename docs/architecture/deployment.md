@@ -102,12 +102,12 @@ flowchart TB
 
 | 構成要素 | ローカル Docker Compose | 汎用 Kubernetes | Google Cloud |
 | --- | --- | --- | --- |
-| エッジ | 持たない。`frontend` サービスがホストのポートを直接開く | クラスターの Ingress。構成ファイルは宣言しない | GKE Ingress で構成する外部アプリケーションロードバランサー |
+| エッジ | 設けない。`frontend` サービスがホストのポートを直接開く | クラスターの Ingress。構成ファイルは宣言しない | GKE Ingress で構成する外部アプリケーションロードバランサー |
 | `idmagic-frontend` | `frontend` サービス | Deployment と Service `idmagic-frontend` | 汎用 Kubernetes と同じ |
 | `idmagic-api` | `api` サービスの単一インスタンス | Deployment と Service `idmagic-api` | 汎用 Kubernetes と同じ |
 | `idmagic-worker` | `worker` サービス。一つのプロセスで全レーンを処理する | レーンごとの Deployment `idmagic-worker-latency-sensitive`、`-default`、`-bulk` | 汎用 Kubernetes と同じ |
-| `idmagic-batch` | 常設のサービスを持たない | 保守処理ごとの CronJob | 汎用 Kubernetes と同じ |
-| `idmagic-seed` | 持たない。`api` が起動時に `SEED_PROFILE` の投入を一度だけ行う | 初回だけ起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
+| `idmagic-batch` | 常設のサービスとして実行しない | 保守処理ごとの CronJob | 汎用 Kubernetes と同じ |
+| `idmagic-seed` | 独立して実行しない。`api` が起動時に `SEED_PROFILE` の投入を一度だけ行う | 初回だけ起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
 | `psqldef` | `schema` サービス | リリースパイプラインが起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
 | PostgreSQL | `postgres` サービス | CloudNativePG オペレーターが管理するクラスター（仮） | Cloud SQL for PostgreSQL |
 
@@ -121,7 +121,7 @@ Job として起動するには、イメージへ加える必要がある（仮�
 #### ローカル Docker Compose
 
 一台のホストに全サービスを並べる。
-`frontend` サービスの Caddy が同一オリジンを組み立て、エッジは持たない。
+`frontend` サービスの Caddy が同一オリジンを組み立て、エッジは設けない。
 
 ```mermaid
 flowchart TB
@@ -219,7 +219,7 @@ flowchart TB
   Gmp -->|/metrics を定期取得| Lanes
 ```
 
-各構成要素の説明と、GKE Autopilot を採った判断は[プラットフォーム設計](../design/infrastructure/platform.md#google-cloud)が持つ。
+各構成要素の説明と、GKE Autopilot を採った判断は[プラットフォーム設計](../design/infrastructure/platform.md#google-cloud)に書く。
 
 ## デプロイの不変条件
 
@@ -230,11 +230,11 @@ flowchart TB
 | `idmagic-api` を複数インスタンスで動かすなら `PERSISTENCE=postgres` にする | メモリ実装はインスタンス間で状態を共有しないため、認証セッションや認可コードを作ったインスタンス以外へリクエストが届いた時点で、その状態は見つからない |
 | `idmagic-api` のレプリカ数は HorizontalPodAutoscaler だけが決め、Deployment には書かない | 両方が値を持つと、構成ファイルを適用するたびにレプリカ数が固定値へ戻され、自動スケールが決めた数と取り合いになる |
 | シークレットは環境ごとの外部の Secret から注入し、構成ファイルには値を書かない | Git の履歴へ入った値は後から取り消せず、リポジトリを読める全員が読める |
-| `idmagic-frontend` は `MetricsExposition` の経路を中継しない | 指標の公開は認証を持たないため、公開入口から読めると運用の内情が外部へ出る |
+| `idmagic-frontend` は `MetricsExposition` の経路を中継しない | 指標の公開では認証しないため、公開入口から読めると運用の内情が外部へ出る |
 | ロードバランサーへ受付の停止を伝えてから、処理中のリクエストを終わらせる | 逆の順序では、ロードバランサーがまだ振り分けてくるリクエストを、閉じた受け口が拒否する |
 | スキーマの変更は、新旧のアプリケーションが同時に動ける拡張と縮小の段階に分ける | ローリング更新の途中では新旧両方のバージョンが同じデータベースを読み書きするため、片方しか解釈できない形へ一度に変えると、更新中のリクエストが失敗する |
 
 ## 関連文書
 
-各プロファイルのコンピューティング、シークレットの注入、スキーマ適用、スケール単位は[プラットフォーム設計](../design/infrastructure/platform.md)、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../design/infrastructure/network.md)が持つ。
-負荷に応じた拡張は[スケーリング・負荷設計](../design/performance/scaling.md)、障害時の配置と切替は[可用性設計](../design/reliability/availability.md)が持つ。
+各プロファイルのコンピューティング、シークレットの注入、スキーマ適用、スケール単位は[プラットフォーム設計](../design/infrastructure/platform.md)で、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../design/infrastructure/network.md)で定める。
+負荷に応じた拡張は[スケーリング・負荷設計](../design/performance/scaling.md)で、障害時の配置と切替は[可用性設計](../design/reliability/availability.md)で定める。

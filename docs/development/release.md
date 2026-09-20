@@ -10,7 +10,7 @@ API、各実行レーンのワーカー、バッチ、UI は、同じ Git コミ
 
 ## リリース文書
 
-現在状態の説明は一次情報文書と TypeSpec が所有し、リリース固有の差分だけを `docs/releases/` に置く。注目すべき新機能と非推奨の告知は `docs/releases/changes/wi-<id>.md`、既存利用者が必要とする操作、互換性、期限、後退条件は `docs/releases/upgrades/wi-<id>.md` が所有する。各断片は一つの work item だけを扱い、work item ID と、一次情報文書の規範 ID または TypeSpec symbol への参照を持つ。一次情報文書の利用方法や現在のサポート水準を断片へ複製しない。
+現在状態は一次情報文書と TypeSpec で説明し、リリース固有の差分だけを `docs/releases/` に置く。注目すべき新機能と非推奨の告知は `docs/releases/changes/wi-<id>.md` に、既存利用者が必要とする操作、互換性、期限、後退条件は `docs/releases/upgrades/wi-<id>.md` に書く。各断片は一つの work item だけを扱い、work item ID と、一次情報文書の規範 ID または TypeSpec symbol への参照を書く。一次情報文書の利用方法や現在のサポート水準を断片へ複製しない。
 
 リリース担当者は断片を対象バージョンへ束ねるが、元の断片を生成物にはしない。変更の作業者が利用者への影響と移行条件を知っている間に編集し、レビューで内容を確定するためである。バージョンの変更履歴は `changes/` の対象断片を索引し、更新ガイドは `upgrades/` の対象断片を順序付ける。リリース後も断片は work item ID で参照できる履歴として残す。
 
