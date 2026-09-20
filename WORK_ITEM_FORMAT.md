@@ -137,9 +137,12 @@ Every item that enters `in_progress` declares one `documentation_impact` and kee
 through completion. `level` is one of `none`, `release_note`, `upgrade_note`, `deprecation_notice`, or
 `removal_notice`. `none` requires a concrete reason and no release-document references. Every other level
 declares the planned release-document paths before implementation; completion requires those paths to exist,
-name the work item, and link to an `affected_spec` requirement or TypeSpec symbol. A release note lives at
-`docs/releases/changes/wi-<id>.md`; an upgrade note lives at
-`docs/releases/upgrades/wi-<id>.md`. `upgrade_note`, `deprecation_notice`, and `removal_notice` require both
+name the work item, and link to an `affected_spec` requirement or TypeSpec symbol. The release-document file
+name copies the work item's complete filename stem, including its sequence and kebab-case title. For example,
+`work-items/wi-999-start-task.md` uses `docs/releases/changes/wi-999-start-task.md` for its release note and
+`docs/releases/upgrades/wi-999-start-task.md` for its upgrade note. Existing release documents keep the names
+recorded when their work items were completed; do not rename historical records merely to adopt this rule.
+`upgrade_note`, `deprecation_notice`, and `removal_notice` require both
 kinds because a reader needs the noteworthy delta and the action or compatibility information. The checker
 derives a minimum from the change kind, normative specification diff, TypeSpec deprecations, and feature-
 registry maturity diff. An author may select a stronger level, never a weaker one.

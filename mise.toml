@@ -765,7 +765,7 @@ description = "Compile TypeSpec and validate canonical specification documents"
 depends = ["compile-spec"]
 run = [
   "mise run check-generated-contract",
-  "cd tools && bun run check/src/runner.ts documents",
+  "cd tools && bun run check/src/runner.ts documents document-layout",
   "mise run check-rendered-docs",
 ]
 

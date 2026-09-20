@@ -20,56 +20,9 @@
 
 節ではなくファイルで分ける。ファイル名が内容の種類を表す。**人が読む文書は`docs/`に集める。** 機械が食う契約——インターフェース定義言語のソース——だけを別に置き、そのディレクトリはその契約の名前で呼ぶ。
 
-```text
-/
-├── README.md
-├── CONTRIBUTING.md
-├── CHANGELOG.md
-├── SECURITY.md
-├── LICENSE
-├── CONFIGURATION.md              # 生成物
-│
-├── docs/
-│   ├── README.md                         # システム文書の入口と読み順
-│   ├── product-overview.md               # 目的、利用者、利用状況、対象範囲
-│   ├── glossary.md                       # システム共通語彙
-│   ├── standards.md                      # 全体で採用する外部標準仕様
-│   ├── structure.md                      # リポジトリ配置と実装構造への案内
-│   ├── scenarios.feature.md              # コンテキストを跨ぐ振る舞い
-│   ├── requirements/                     # 機能要求、品質要求、制約
-│   ├── architecture/                     # システム文脈、論理、ランタイム、デプロイメントの各ビュー
-│   ├── design/
-│   │   ├── application/                  # 機能、API、UI、ソフトウェアの設計
-│   │   ├── data/                         # データとデータライフサイクルの設計
-│   │   ├── infrastructure/               # 実行基盤とネットワークの設計
-│   │   ├── security/                     # 脅威、認証、認可、シークレットの設計
-│   │   ├── reliability/                  # 可用性、冗長性、復旧の設計
-│   │   ├── performance/                  # 性能、キャパシティ、拡張性の設計
-│   │   └── observability/                # 監視、ログ、トレースの設計
-│   ├── contexts/<context>/
-│   │   ├── README.md             # 境界の宣言と索引
-│   │   ├── glossary.md
-│   │   ├── standards.md
-│   │   ├── states.md
-│   │   ├── decisions.md
-│   │   ├── internals.md          # コードから復元できない機構があるときだけ
-│   │   └── scenarios.feature.md
-│   │
-│   ├── verification/                     # システム要求の検証と受入の設計
-│   ├── development/                      # 環境構築、ビルド、生成、CI、テスト、リリース
-│   ├── operations/                       # 稼働後のサービス管理と保守
-│   ├── runbooks/<name>.md                # 運用と障害対応の手順
-│   └── releases/                         # 利用者向けの変更と移行の告知
-│
-├── spec/                         # 機械が食う契約
-│   ├── main.tsp
-│   └── contexts/<context>/{models.tsp,main.tsp}
-│
-├── infra/
-│   └── schema/                   # データベース構造の宣言的なスキーマファイル
-│
-└── work-items/
-```
+The canonical `docs/` and `spec/` layout and every fixed document name are defined in
+[Specification Format §1](SPECIFICATION_FORMAT.md#1-配置). The repository check compares that human-readable
+tree with `tools/workspace/src/document-layout.ts`, so this guide does not reproduce the tree.
 
 `README.md`はディレクトリを開いたときに表示されるため、境界の宣言と索引の置き場所として使う。
 
@@ -79,7 +32,7 @@
 
 ### 上位と下位の分かれ目
 
-`docs/README.md`、`product-overview.md`、`requirements/`、`architecture/`の順に、目的、義務、構造を上から読む。`design/`は、アーキテクチャが各構成要素へ割り当てた要求をどの機構で満たすかを書く。`contexts/`とTypeSpecでアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
+`docs/README.md`、`docs/design/product-overview.md`、`docs/requirements/`、`docs/architecture/`の順に、目的、義務、構造を上から読む。`docs/design/`は、アーキテクチャが各構成要素へ割り当てた要求をどの機構で満たすかを書く。`docs/domain/<context>/`とTypeSpecでアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
 
 `verification/`には要求を満たしたと判断する方法を書く。`development/`、`operations/`、`runbooks/`には、それぞれ開発の進め方、稼働後の管理、作業中に実行する手順を書く。現在の設計と作業手順が同じファイルに入った場合は、設計を該当する`design/`へ、手順を後三者の該当先へ分ける。ただし、一つの構成要素だけに関わる開発時の作業（フロントエンドの依存の宣言や部品の追加など）は、その構成要素の設計文書に含めてよい。
 
@@ -121,225 +74,11 @@
 
 ## 3. コンテキストの仕様
 
-ここでいうコンテキストは、ドメイン駆動設計の**Bounded Context**——一つのモデルと一つの用語体系が一貫して通用する範囲——である。以降は短くコンテキストと書く。
-
-コンテキストごとに次のファイルを置く。該当するものが無いファイルは作らない。表に対するCRUDの形をした領域なら、`README.md`と`decisions.md`だけになることもある。
-
-### 3.1 README.md — 境界の宣言
-
-そのコンテキストが**何を担い、何を担わず、担わないものを代わりに誰が担うか**を書く。所属の判断を誤りやすい場合は、それを決める基準も書く。末尾に、そのディレクトリにあるファイルの索引を一行ずつ置く。
-
-```markdown
-# <コンテキスト名>
-
-<何を担うか>。<何を担わないか。それは誰が担うか>。
-
-<所属の判断を分ける基準>
-
-| ファイル | 内容 |
-|---|---|
-| [glossary.md](glossary.md) | <このコンテキストでの語義> |
-```
-
-文書の案内でも、これから作るものの計画でもない。予定はwork itemに置く。
-
-### 3.2 glossary.md
-
-そのコンテキストの**Ubiquitous Language**——仕様、コード、会話で同じ意味に使うと決めた語——の語彙集である。語とその語義を一行で書く。ここに無い語をモデルの名前に使わない。
-
-同じ語の意味はコンテキストごとに異なり得るため、全社で一つの用語集に統一しない。コンテキストを跨いで意味が固定される語（**Published Language**）は`docs/domain/glossary.md`に置く。
-
-### 3.3 standards.md
-
-採用する外部標準仕様を宣言する。
-RFC、W3C 勧告、法令、業界ガイドラインを区別しない。
-
-````markdown
-### <標準仕様の名前とバージョン>
-
-<発行者> — <出典URL>
-
-| ID | Adoption | Strength | Statement |
-|---|---|---|---|
-| <NORM-ID> | required | MUST | <プロダクトが何をするか、何を拒否するか> |
-````
-
-`Adoption`は能力を取り入れるかどうかを表す。
-
-| 値 | 意味 |
-|---|---|
-| `required` | 常に提供する |
-| `optional` | 提供するが、使うかは呼び出し側が決める |
-| `partial` | 一部だけ提供する |
-| `excluded` | 提供しない |
-
-`Strength`は取り入れた後にどれだけ固く守るかをRFC 2119の語（`MUST`、`MUST NOT`、`SHOULD`、`MAY`）で表す。二つは独立した軸であり、`optional`かつ`MUST`は「提供するかは選べるが、提供した以上は必ずこう振る舞う」を意味する。`excluded`の行は`MUST`も`SHOULD`も取れない。
-
-`Statement`は**プロダクトが何をするか、何を拒否するか**を書く。標準の要約ではない。
-
-標準仕様の出自を問わないので、この形式がアクセシビリティ文書、プライバシー文書、プロトコル適合性の節を兼ねる。
-
-**各行に証拠を要求する。** フォーマットは検査できても`Statement`が真かどうかは検査できないため、テスト名に規範IDを含め、対応するテストの存在を検査する。
-
-| `Adoption` | 要求する証拠 |
-|---|---|
-| `required` | その振る舞いを確かめるテスト |
-| `optional` | 有効時の振る舞いと、無効時に提供されないことを確かめるテスト |
-| `partial` | 提供する範囲と、範囲外が拒否されることを確かめるテスト |
-| `excluded` | **提供されていないことを確かめる否定テスト** |
-
-否定テストが無ければ、`excluded`の行は誰も気付かないうちに嘘になる。
-
-### 3.4 states.md
-
-状態機械一つにつき、**状態の表**と**遷移の表**を書く。図は表から生成し、手で書かない。
-
-````markdown
-### <状態機械の名前>
-
-<何のライフサイクルか>
-
-| State | 種別 | 意味 |
-|---|---|---|
-| <状態名> | 初期 | <一行の意味> |
-| <状態名> | — | <一行の意味> |
-| <状態名> | 終端 | <一行の意味> |
-
-| From | Event | Guard | To | Effects |
-|---|---|---|---|---|
-| <状態名> | <イベント名> | <式> | <状態名> | <発行するドメインイベント> |
-| <状態名> | <イベント名> | — | <状態名> | |
-````
-
-`種別`は`初期`、`終端`、`—`のいずれかとする。初期状態は一つ、終端状態は複数あってよい。`Guard`が無条件のときは`—`を使い、空文字列を使わない。`Effects`にはその遷移が発行するドメインイベントを書き、イベントの構造はTypeSpecで定義する。
-
-状態の表を遷移表から分けるのは、状態の集合を明示するためである。遷移表の`From`と`To`から集合を導くと、どこからも遷移しない状態を落とす。
-
-状態の表の`State`列はTypeSpecの列挙値と一致させる。遷移表の`From`と`To`は状態の表に現れる値だけを取る。どちらも機械検査する。
-
-**`Guard`には式言語を一つ決めて使う。** 自然言語で書いた条件は、実装が正しく実装したかを機械が確かめられない。CELのように言語非依存で複数言語に評価器がある式言語が適している。式で表せない条件（外部システムの返答など）だけを名前にし、意味を`decisions.md`に書く。
-
-Markdownの表が窮屈なら、同じ内容をYAMLのフェンス付きブロックで書いてもよい。**選ぶのはプロジェクト単位で一度だけとし、状態機械ごとに変えない。**
-
-項目名はSCXMLの語彙（`state`、`transition`、`event`、`cond`、`target`）に対応させておく。階層状態や並行状態が要るときに、独自記法を発明せずその標準の語彙へ寄せられる。表一枚で書けなくなったら、状態機械を分けるか、その標準の形式そのものへ移す。
-
-### 3.5 decisions.md
-
-そう決めたこと、なぜか、何が起きたら見直すかを書く。採らないと決めたことも含む。基準は**コードを読んでも復元できないこと**である。
-
-小さい判断は箇条書きの一項目とし、**何を決めたか**と**なぜか**を一文ずつ書く。理由のない項目は規則の再掲であって判断ではない。大きい判断は独立した見出しにする。
-
-```markdown
-- <何を決めたか>。<なぜそう決めたか>。
-
-## <判断そのものを表す見出し>
-
-- 判断: <決めたこと>
-- 理由: <なぜ>
-- 却下した案: <案と、それを採らない理由>
-- 成立条件: <これが崩れたら判断も崩れる前提>
-- 見直し条件: <何が起きたら見直すか>
-```
-
-**見出しは判断そのものにする。** `Invariants`、`Concurrency`、`Failure handling`のような観点名の見出しを使わない。観点名を並べると書き手はそれを埋める欄と受け取り、該当しない観点に文章が生まれる。
-
-とくに不変条件を列挙しない。一意性や参照整合性はスキーマで強制し、観測できる性質は`scenarios.feature.md`で定める。書く価値のある「不変条件」はたいてい理由つきの判断であり、判断として書けば理由が残る。
-
-| 置かないもの | 正しい置き場所 |
-|---|---|
-| ディレクトリ構成、パッケージ一覧、クラス図 | コードそのもの |
-| 変更の経緯、比較検討の詳細、「今後こうする予定」 | work item |
-| 外部標準の要約 | `standards.md` |
-| 状態と遷移の一覧 | `states.md` |
-| 受け入れ例、入出力の具体例 | `scenarios.feature.md` |
-| リクエストとレスポンスの形、ステータスコード | TypeSpec |
-| 列、索引、一意制約 | スキーマファイル |
-| 権限の割り当て | `docs/design/security/authorization.md` |
-| 全コンテキストが従う規則 | `docs/`直下の該当ファイル |
-| 機構の働きの説明 | `internals.md` |
-
-### 3.6 internals.md
-
-機構そのものの働きがコードから復元できないときだけ書く。判定は「この機構が壊れたとき、コードだけを読んで正しい直し方が分かるか」である。分かるなら書かない。この判定は機械にはできないので、レビューで見る（§10.4）。
-
-**何が保証されるか**を、実装の手順ではなく保証の側から書く。
-
-表に対するCRUDの形をしたコンテキストには、説明すべき機構はたいてい無い。一方、フェイルクローズの拒否、鍵の寿命、リース、エポック、同一トランザクションでの捕捉といったものの上に建っているコンテキストにはたいてい在る。**何件になるかは領域の性質であって割り当てではない。想定した件数に合わせるためにファイルを消さない。**
-
-判断と機構の説明を分けるのは、二つの寿命が違うからである。判断は状況が変われば見直され、一覧として古くなっていないかを定期的に確かめる対象になる。機構の説明は実装が変わらないかぎり有効で、散文として読まれる。
-
-### 3.7 scenarios.feature.md
-
-このファイルはMarkdown with Gherkinで書く。一ファイルを一つの`Feature`とし、一つの`Rule`が外部から観測できる非交渉的な振る舞い一つを、一つの`Example`が分岐を含まない具体的な経路一つを表す。`REQ-`の識別子が規範性を担うので、`SHALL`や`MUST`の定型文を重ねない。
-
-```markdown
-# Feature: Account
-
-## Rule: REQ-ACCOUNT-002 有効なセッションからアカウントを参照できる
-
-### Example: EX-ACCOUNT-002-01 利用可能なアカウントを返す
-
-- Given 利用者は有効なセッションを持つ
-- When 利用者がアカウント概要を要求する
-- Then アカウント概要を返す
-
-### Example: EX-ACCOUNT-002-02 利用不能なアカウントを返さない
-
-- Given 利用者は有効なセッションを持つ
-- And アカウントは利用不能である
-- When 利用者がアカウント概要を要求する
-- Then エラーを返す
-- And アカウント概要を返さない
-```
-
-| キーワード | 書くこと |
-|---|---|
-| `Feature` | ファイルが扱う機能または境界 |
-| `Rule` | 一つの規範的な振る舞い。名前の先頭に`REQ-<CONTEXT>-NNN`を置く |
-| `Example` | 一本の具体的な経路。名前の先頭に`EX-<CONTEXT>-<REQ-NNN>-<連番>`を置く |
-| `Given` | 振る舞いが始まる前に成り立っている状態と前提 |
-| `When` | 振る舞いを引き起こす操作、入力、外部イベント。行為者は主語として書く |
-| `Then` | その引き金の後に観測できる結果 |
-| `And`、`But` | 直前のステップ種を継続する条件または結果 |
-
-引き金と結果が一文に混ざっていたら分割する。すべての生きた規則に一つ以上の例を書き、すべての例に`When`と`Then`を一つ以上書く。複数の操作からなる流れではそれらを繰り返す。
-
-正常経路、代替成功、拒否は別々の`Example`にする。拒否では呼び出し元が観測するレスポンスだけでなく、変更されない状態や発行されない成果物も結果として書く。これにより、仕様の例とテストを`EX-*`で一対一または多対一に対応させられる。
-
-同じステップ構造で値だけが違う族は`Scenario Outline`と`Examples`表で表し、各行の`example_id`へ`EX-*`を置く。独立した条件の組み合わせから結果が決まる場合だけ`Examples: Decision table (Unique)`と名付ける。`Unique`では実行可能な入力がちょうど一行に一致し、条件セルの`any`はその条件が行の結果へ影響しないことを表す。ハイフンだけのセルを含む行は公式 Markdown with Gherkin パーサーが表の区切り行として除外するため、無関係値に`-`を使わない。順序、履歴、再試行、時間経過を決定表へ畳まない。
-
-`Rule`は配下の全`EX-*`がプロダクトテストから名指しされるか、理由付きのテスト未対応一覧に載っている場合だけ対応状況を確定できる。親の`REQ-*`だけを引用しても具体例へのテスト対応には数えない。決定表は行識別子と組み合わせを見えるようにするが、自然言語で書いた値域に対する完全性を自動的には証明しない。
-
-`REQ-*`と`EX-*`は一度参照されたら変更しない。振る舞いをやめるときは`Rule`を削除せず、名前の末尾に後継IDを添えて退役させ、例を外して置き換えた理由を一行書く。後継は実在しなければならず、退役した識別子は再利用しない。退役の前に、前提条件、事後条件、失敗時の扱いのそれぞれを新しい所有者へ割り当てる。
-
-### 3.8 分割
-
-コンテキストに独立した機能が二つ以上あるとき、機能ごとのディレクトリへ分ける。実装が同じ理由で垂直分割されるなら、仕様も同じ線で分かれる。分けるのは`states.md`、`decisions.md`、`scenarios.feature.md`であり、境界の宣言と索引、機能を跨いで意味が固定される語、外部規範はコンテキスト直下に残す。
-
-分けるかコンテキストを割るかは`README.md`で判定する。
-
-| `README.md`の様子 | 対処 |
-|---|---|
-| 一文で担当範囲を言える。機能が同じ語彙と不変条件を共有する | 機能へ分ける |
-| 担当範囲を言うのに「および」が要る。機能どうしが違う語彙を使う | コンテキストを割る |
-| 担当範囲は言えるが、他コンテキストの語を頻繁に持ち込む | 境界を引き直す |
-
-行数に上限は置かない。難しい設計は長い。
-
-### 3.9 仕様に入れないもの
-
-「独立した文書を作らない」は「すべてを仕様へ入れる」ではない。
-
-| 内容 | 置き場所 |
-|---|---|
-| ライブラリやフレームワークの選定 | 開発文書、または`decisions.md`の一行 |
-| コーディングスタイル | 開発文書の`coding-style.md` |
-| 手順（環境構築、リリース、デバッグ） | 開発文書、運用文書 |
-| デザイントークンの値、翻訳文言 | 各リソースファイル |
-| 画面ごとのURL・表示項目・状態の一覧 | 実装とコンポーネントカタログ |
-| 環境変数の一覧 | 生成された設定リファレンス |
-
-判定は「**それが変わったとき、外部から観測できる振る舞いか、守るべき境界が変わるか**」である。UIライブラリを入れ替えてもキーボード操作の規範は変わらないので、前者は仕様ではなく、後者は`standards.md`の行である。
+ここでいうコンテキストは、ドメイン駆動設計の **Bounded Context**、すなわち一つのモデルと一つの用語体系が一貫して通用する範囲である。
+
+コンテキストの一次情報文書の役割と形式、コンテキスト内の分割基準は、
+[Specification Format §3–§6](SPECIFICATION_FORMAT.md#3-一次情報文書) が定める。
+この文書は、同じテンプレート、表、規範 ID の文法を再掲しない。
 
 ## 4. システム要求と設計
 
@@ -357,7 +96,7 @@ Markdownの表が窮屈なら、同じ内容をYAMLのフェンス付きブロ�
 
 複数のコンテキストが使う共有機構は、担当を決めてその担当が詳細を定める。ここに置くのは、機構と担当と利用するコンテキストの索引だけである。
 
-末尾に子ディレクトリを含む文書の索引を置く。索引は文書の対象範囲と読み順を示し、プロダクトの対象範囲は`product-overview.md`、システム境界は`architecture/system-context.md`で定める。
+末尾に子ディレクトリを含む文書の索引を置く。索引は文書の対象範囲と読み順を示し、プロダクトの対象範囲は`docs/design/product-overview.md`、システム境界は`docs/architecture/system-context.md`で定める。
 
 ````markdown
 # <プロダクト名>
@@ -569,22 +308,9 @@ DDLと宣言的な差分適用ツールの組み合わせ、ORMやスキーマ�
 
 ## 5. TypeSpecの範囲
 
-モデル、制約、API操作、HTTPルート、リクエストとレスポンスの形、ステータスコード、エラーの直和、非推奨のメタデータ、認証機構、スコープの注釈をTypeSpecで書く。
-
-モデルは`models.tsp`で、操作は`main.tsp`で宣言する。各操作は担当するコンテキストのタグを継承させる。担当が移っても、外部に見えている名前は変えない。
-
-本体に宣言する型は、サーバーが実際に受理し返すJSONそのものとする。サーバーが送らない封筒を契約側で挟まない。パスやクエリのパラメータをリクエスト本体のプロパティにしない。
-
-次はTypeSpecに書かない。
-
-| 規則 | 一次情報源 |
-|---|---|
-| 複合的な一意性、参照整合性、索引 | スキーマファイル |
-| ライフサイクルの遷移 | `states.md` |
-| 細粒度の認可、境界の規則 | `docs/design/security/authorization.md` と実装 |
-| 競合解決、冪等性の判断 | `decisions.md` |
-| 受け入れ条件 | `scenarios.feature.md` |
-
+TypeSpec が定める契約と Markdown またはスキーマが定める内容の境界は、
+[Specification Format §2](SPECIFICATION_FORMAT.md#2-typespec-の範囲) が定める。
+この文書は、その対応表を再掲しない。
 ## 6. 変更の記録
 
 一つの意味のある変更につき、一つのwork itemを作る。work itemはその変更の作業一覧、変更固有の設計文書、実装の履歴を兼ねる。
@@ -606,52 +332,9 @@ ADR台帳を設けない体系が成立するのはこの置き場所がある�
 
 ### 6.2 形式
 
-```markdown
----
-status: <pending | in_progress | completed | cancelled>
-created_at: <YYYY-MM-DD>
-authors: [<担当>]
-priority: <優先度>
-risk: <危険度>
-change_kind: <変更の種類>
-depends_on: [<先に終わっている必要があるwork item>]
-initial_context:            # 着手時に書く。起票時ではない
-  specification: [<読む仕様>]
-  source: [<読む実装>]
-  tests: [<読むテスト>]
-  stop_before_reading: [<読まないと決めた範囲>]
-affected_spec: [<影響する規範ID、またはTypeSpecのシンボル>]
----
-
-# <一文で表す意味上の変更>
-
-## Motivation
-<なぜこの変更が必要か>
-
-## Scope / Out of Scope
-<含める仕様と実装> / <明示的に除外する作業>
-
-## Design
-<採用した設計、却下した代替案>
-
-## Tasks
-- [ ] <作業>
-
-## Verification
-<検証の手順>
-
-## Risk Notes
-<リスクと緩和策>
-
-## Completion
-<完了日、入れた意味上の差分、検証の結果>
-```
-
-`affected_spec`は規範的なシナリオIDまたはTypeSpecのシンボルを直接参照する。仕様に影響しない変更では、影響がないことと具体的な理由を書く。
-
-`initial_context`は読み始める資料と、**何を読まないか**の一覧である。**着手時に書き、起票時には書かない。** 積み残しの項目のために書いた一覧は作業が始まる前に古くなり、移動または削除されたファイルを指す一覧は無いより悪い。
-
-完了時は状態を更新し、完了日、入れた意味上の差分、検証の結果を追記して`done/`へ移す。要約は記憶からではなく、観測した仕様の差分から書く。
+work item の正確な frontmatter、本文、証拠、完了記録の形式は、
+[Work Item Format](WORK_ITEM_FORMAT.md) が定める。
+この文書は、検査が受理するテンプレートを再掲しない。
 
 ## 7. 導入・プロダクト文書
 
@@ -887,11 +570,11 @@ runbookは障害時のものに限らない。**人が手で実行する運用�
 | §4.3 | [ISO/IEC/IEEE 42010:2022](https://www.iso.org/standard/74393.html) | アーキテクチャ記述、関心事、視点、ビュー、対応関係の区別 |
 | §2 / §4 | [ISO/IEC/IEEE 15289:2019](https://www.iso.org/standard/74909.html) | ライフサイクル情報項目の目的を分け、設計、計画、手順、記録を混在させない考え方 |
 | §4.2 | [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html) | ICTプロダクトの品質要求を特性と副特性で点検するための参照モデル |
-| §3.2 / §4.1 | Eric Evans, *Domain-Driven Design* | Bounded Context、Context Map、Ubiquitous Language、関係パターン |
-| §3.3 | [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) | `Strength`列の語彙 |
-| §3.4 | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
-| §3.4 | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
-| §3.7 | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
+| §3 / §4.1 | Eric Evans, *Domain-Driven Design* | Bounded Context、Context Map、Ubiquitous Language、関係パターン |
+| [Specification Format §5](SPECIFICATION_FORMAT.md#5-標準仕様) | [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) | `Strength`列の語彙 |
+| [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
+| [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
+| [Specification Format §6](SPECIFICATION_FORMAT.md#6-シナリオと規範-id) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
 | §4.2 | [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) | portとadapterによる隔離 |
 | §4.2 | [C4 model](https://c4model.com/) | System Context、Containerの語彙 |
 | §4.3 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) | メソッドの安全・冪等、条件付きリクエスト、ステータスコードの意味 |
@@ -914,7 +597,7 @@ runbookは障害時のものに限らない。**人が手で実行する運用�
 | §4.7 | [Evolutionary Database Design](https://martinfowler.com/articles/evodb.html) | 拡張と縮小に分けた構造変更 |
 | §4.8 | [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) | 検証手段を伴う形で認可の要件を書く |
 | §4.8 | [NIST SP 800-162](https://csrc.nist.gov/pubs/sp/800/162/upd2/final) | 主体・対象・行為・環境という判断要素の分け方 |
-| §5 | [TypeSpec](https://typespec.io/docs/) | モデルとAPI契約の実行可能な仕様 |
+| [Specification Format §2](SPECIFICATION_FORMAT.md#2-typespec-の範囲) | [TypeSpec](https://typespec.io/docs/) | モデルとAPI契約の実行可能な仕様 |
 | §8.3 | [Google Style Guides](https://google.github.io/styleguide/) | 規約の出発点。差分だけを自分で書く |
 | §8.4 | [Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) | 水準の分け方と、上の層を厚くしない理由 |
 | §8.4 | [Software Engineering at Google, Ch.11](https://abseil.io/resources/swe-book/html/ch11.html) | 速さと決定性でテストを分ける |

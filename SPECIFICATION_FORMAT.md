@@ -9,39 +9,84 @@ This document states intent, examples, and the decisions a checker cannot make f
 Sections do not divide the specification; files do. A file's name says what kind of content it holds, and
 that name is what the checker validates the body against.
 
-Prose lives under `docs/`; the TypeSpec a compiler consumes lives under `spec/`. The two trees mirror each
-other at `contexts/<context>/`, so one context's specification is one name looked up in two places — the
-prose in `docs/domain/oauth2/`, the contract in `spec/contexts/oauth2/`.
+Prose lives under `docs/`; the TypeSpec a compiler consumes lives under `spec/`. A context name is mirrored
+between `docs/domain/<context>/` and `spec/contexts/<context>/`, so one context's prose and contract are
+looked up by the same name in the two trees.
 
 ```text
 docs/
   README.md                     # system-document entry point and reading order
-  product-overview.md           # purpose, users, situations, and system scope
-  glossary.md                   # published language
-  standards.md                  # external norms the whole system follows
-  structure.md                  # repository and implementation layout
-  scenarios.feature.md          # behavior no single context can satisfy alone
-  requirements/                 # functional requirements, quality requirements, and constraints
-  architecture/                 # system context, logical, runtime, and deployment views
-  design/
-    application/                # functional, API, UI, and software design
-    data/                       # data and data-lifecycle design
-    infrastructure/             # platform and network design
-    security/                   # threat, authorization, and secret design
-    reliability/                # availability, redundancy, and recovery design
-    performance/                # performance, capacity, and scaling design
-    observability/              # monitoring, logging, and tracing design
-  contexts/<context>/
-    README.md          # boundary declaration and index
-    glossary.md
-    standards.md
-    states.md
+  domain/
+    README.md                   # domain-document boundary and context index
+    glossary.md                 # published language
+    standards.md                # external norms the whole system follows
+    structure.md                # repository and implementation layout
+    scenarios.feature.md        # behavior no single context can satisfy alone
+    <context>/
+      README.md                 # boundary declaration and index
+      glossary.md
+      standards.md
+      states.md
+      decisions.md
+      internals.md              # only when a mechanism cannot be read out of the code
+      scenarios.feature.md
+  requirements/
+    README.md
+    functional.md
+    quality.md
+    constraints.md
+  architecture/
+    README.md
+    system-context.md
+    logical.md
+    runtime.md
+    deployment.md
     decisions.md
-    internals.md       # only when a mechanism cannot be read out of the code
-    scenarios.feature.md
-  verification/                 # system verification and acceptance design
+  design/
+    README.md
+    product-overview.md         # purpose, users, situations, and system scope
+    application/
+      README.md
+      api-guidelines.md
+      design-guidelines.md
+      frontend.md
+      user-interface.md
+    data/
+      README.md
+      database.md
+      schema-management.md
+      lifecycle.md
+    infrastructure/
+      README.md
+      platform.md
+      network.md
+    security/
+      README.md
+      threat-model.md
+      authorization.md
+      secrets.md
+    reliability/
+      README.md
+      availability.md
+      recovery.md
+    performance/
+      README.md
+      capacity.md
+      scaling.md
+    observability/
+      README.md
+      monitoring.md
+      logging.md
+      tracing.md
+  verification/
+    README.md
+    system-acceptance.md
+    security.md
   development/                  # development workflow and procedures
-  operations/                   # service management and maintenance
+  operations/
+    README.md
+    service-management.md
+    maintenance.md
   runbooks/<event>.md           # what on-call reads mid-incident
   releases/                     # user-facing change and migration notices
 
@@ -82,6 +127,16 @@ Each operation must inherit an OpenAPI tag from its owning context; do not leave
 
 Keep stable wire names when source ownership moves. Do not recreate TypeSpec constructs in Markdown or a
 project-specific YAML dialect.
+
+Keep the following concerns in their owning sources rather than TypeSpec:
+
+| Concern | Source of truth |
+|---|---|
+| Compound uniqueness, referential integrity, and indexes | Schema files |
+| Lifecycle transitions | `states.md` |
+| Fine-grained authorization and boundary rules | `docs/design/security/authorization.md` and implementation |
+| Conflict resolution and idempotency decisions | `decisions.md` |
+| Acceptance criteria | `scenarios.feature.md` |
 
 ## 3. 一次情報文書
 
@@ -126,6 +181,13 @@ such table.
 A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
 contexts cooperate belongs to `docs/domain/scenarios.feature.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
+
+### glossary.md — 語彙
+
+`glossary.md` defines the Ubiquitous Language used with one meaning in specifications, code, and
+conversation inside its context. Give each term and its meaning in one line, and do not use an absent term
+as a model name. A term whose meaning is fixed across contexts is Published Language and belongs in
+`docs/domain/glossary.md`; do not force context-local meanings into one system-wide vocabulary.
 
 ### design-guidelines.md — 設計判断の評価方法
 
@@ -175,6 +237,38 @@ plans, summaries of external standards, states and transitions, acceptance examp
 shapes, columns and indexes, permission assignments, or rules every context follows. Each of those has an
 owner: the code, the work item, `standards.md`, `states.md`, `scenarios.feature.md`, TypeSpec, the schema file,
 `docs/design/security/authorization.md`, or the matching file in the fixed system-document tree.
+
+### コンテキスト内の分割
+
+When a context has two or more independent capabilities, split them into capability directories along the
+same vertical boundary as the implementation. Split `states.md`, `decisions.md`, and
+`scenarios.feature.md`; keep the boundary declaration and index, shared vocabulary, and adopted external
+standards at the context root.
+
+Use the context `README.md` to decide whether to split a capability or redraw the context boundary:
+
+| Shape of the boundary declaration | Action |
+|---|---|
+| One sentence states the responsibility, and the capabilities share vocabulary and invariants | Split into capability directories |
+| The responsibility needs “and”, and the capabilities use different vocabulary | Split the context |
+| The responsibility is clear, but vocabulary from another context appears repeatedly | Redraw the boundary |
+
+Do not impose a line limit. A difficult design may be long.
+
+### 一次情報文書に置かない内容
+
+| Content | Owner |
+|---|---|
+| Library or framework selection | Development documentation, or one decision in `decisions.md` |
+| Coding style | `docs/development/coding-style.md` |
+| Procedures for setup, release, or debugging | Development or operations documentation |
+| Design-token values and translated copy | Resource files |
+| Per-screen URLs, fields, and states | Implementation and the component catalog |
+| Environment-variable inventory | Generated configuration reference |
+
+The deciding question is whether changing the content changes externally observable behavior or a boundary
+the product must preserve. A UI library is not specification; the keyboard-accessibility rule it must
+satisfy is a row in `standards.md`.
 
 ## 4. 状態遷移
 

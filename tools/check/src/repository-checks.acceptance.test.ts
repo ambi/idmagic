@@ -76,6 +76,25 @@ async function checkDocuments(
   return { code, output: `${stdout}${stderr}` }
 }
 
+/** 文書配置図と定義済み文書の整合検査を仮の作業ツリーに対して起動する。 */
+async function checkDocumentLayout(root: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(
+    ['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'document-layout'],
+    {
+      cwd: TOOLS_DIR,
+      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  )
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
 /** 用語検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
 async function checkTerminology(root: string): Promise<{ code: number; output: string }> {
   const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'terminology'], {
@@ -306,6 +325,22 @@ describe('文書検査', () => {
     )
 
     expect((await checkDocuments(root)).code).toBe(0)
+  })
+})
+
+describe('文書配置図の整合検査', () => {
+  it('登録した文書配置検査が配置図の欠落を拒否する', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'check-document-layout-test-'))
+    cleanup.push(root)
+    await writeFile(
+      join(root, 'SPECIFICATION_FORMAT.md'),
+      '# 仕様フォーマット\n\n## 1. 配置\n\n```text\ndocs/\n  README.md\n```\n',
+    )
+
+    const result = await checkDocumentLayout(root)
+
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/domain/<context>/standards.md')
   })
 })
 
