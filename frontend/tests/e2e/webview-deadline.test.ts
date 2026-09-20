@@ -11,7 +11,7 @@ const neverAnswers = () => new Promise<never>(() => {})
 // fakeView は evaluate の応答を呼ばれた順に返す。足りなくなったら最後の応答を繰り返す。
 function fakeView(answers: Array<() => Promise<unknown>>): {
   url: string
-  evaluate: () => Promise<unknown>
+  evaluate: (_expression?: string) => Promise<unknown>
   close: () => void
   closed: boolean
 } {
@@ -33,12 +33,14 @@ function fakeView(answers: Array<() => Promise<unknown>>): {
 
 test('a call that never answers names the method, the argument, and the url', async () => {
   const view = withCallDeadlines(fakeView([neverAnswers]), { evaluate: 50 })
+  const expression = 'document.body.textContent'
 
-  const failure = await view.evaluate().catch((error: unknown) => error)
+  const failure = await view.evaluate(expression).catch((error: unknown) => error)
 
   expect(failure).toBeInstanceOf(WebViewCallExpired)
   expect((failure as Error).message).toContain('Bun.WebView.evaluate')
   expect((failure as Error).message).toContain('50 ms')
+  expect((failure as Error).message).toContain(expression)
   expect((failure as Error).message).toContain('url=http://localhost:5174/admin/users')
 })
 

@@ -1,5 +1,5 @@
 ---
-status: in_progress
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -14,9 +14,12 @@ documentation_impact:
   references: []
 spec_impact: { kind: none, reason: "ブラウザー E2E の安定性の問題であり、製品の観測可能な振る舞いも公開契約も変えない。" }
 initial_context:
-  source: [frontend/tests/e2e/fixtures.ts]
-  tests: [frontend/tests/e2e]
-  stop_before_reading: [backend, spec]
+  source:
+    - frontend/tests/e2e/README.md
+    - frontend/tests/e2e/fixtures.ts
+    - frontend/tests/e2e/webview-deadline.ts
+  tests: [frontend/tests/e2e/webview-deadline.test.ts]
+  stop_before_reading: [frontend/src, backend, spec]
 ---
 
 # ブラウザー E2E が実行ごとに結果を変えるのをやめさせる
@@ -220,6 +223,11 @@ JS 起点の遷移は `loading` が立つまでわずかに遅れるため、窓
 4. 原因を確定させる。
 5. 既知の欠陥として名乗らせ、サーバー側の記録を残す。
 
+この tooling 変更には製品の規範要件が無い。
+Acceptance RED は `mise run test-ui-unit-file -- tests/e2e/webview-deadline.test.ts` で、返らない呼び出しを外側から観測したときにメソッド、引数、期限、URL が欠ける失敗とする。
+Unit RED は同じ recipe の `a wait does not swallow an unanswered call` で、待ちヘルパーが専用の期限切れを飲み込む失敗とする。
+ブラウザーを通る変更なので、最終確認には `mise run test-ui-e2e` も使う。
+
 ### 対策を保留する判断
 
 原因は [oven-sh/bun#43412](https://github.com/oven-sh/bun/issues/43412) であり、呼び出し側では閉じられない。
@@ -241,7 +249,7 @@ upstream が直り次第 bun を上げて確かめる。
 - [x] T003 [Diagnose] 連続実行で再現を捕まえ、どの呼び出しがどの画面で返らなかったかを記録する。
 - [x] T004 [Diagnose] 原因を確定し、upstream の欠陥として特定する。
 - [x] T005 [App] 既知の欠陥を失敗メッセージへ名乗らせ、Go と Vite の出力をファイルへ残す。
-- [x] T006 [Verify] `mise run test-ui-e2e` と `mise run verify` を通す。`verify` は通過。`test-ui-e2e` は 34 pass / 2 fail で、落ちた 2 件はいずれも #43412 の名乗り付きである。
+- [x] T006 [Verify] `mise run test-ui-e2e` と `mise run verify` を通す。診断中の `test-ui-e2e` では 34 pass / 2 fail を観測し、2 件はいずれも #43412 を名乗った。最終確認は 38 pass、`verify` も通過した。
 
 ## Verification
 
@@ -256,3 +264,34 @@ upstream が直り次第 bun を上げて確かめる。
 **誤った直し方が 1 つだけ危ない。** 待ちの条件を緩める、あるいは失敗した待ちを黙って通す形で「安定」させると、テストは通るようになるが、そのとき失われるのは不安定さではなく検出能力である。直したかどうかは、失敗が消えたことではなく、原因を名指しできたことで判断する。
 
 `reversibility` は reversible。テストの変更であり、公開契約もデータも変えない。
+
+## Completion
+
+- **Completed At**: 2026-09-21
+- **Summary**:
+  `mise run spec-diff` は、`main` と比較して規範仕様の変更がないと判定した。
+  `openWebView` が返す WebView は呼び出し単位の期限を持ち、応答しない呼び出しをメソッド、引数、期限、URL とともに `WebViewCallExpired` として報告する。
+  期限切れ後の追試が占有済みの `evaluate` を示す場合は oven-sh/bun#43412 を名指しし、Go、Vite、ページ console の記録場所も失敗へ添える。
+  待ちヘルパーは遷移中の通常の `evaluate` 失敗だけを再試行し、`WebViewCallExpired` は隠さず呼び出し元へ返す。
+- **Acceptance RED Evidence**:
+  - **Test**: `mise run test-ui-e2e` と `a call that never answers names the method, the argument, and the url`。
+  - **Requirement**: N/A: 製品要件を変えないブラウザー E2E 診断基盤の tooling 変更である。
+  - **Observed Failure**: 実ブラウザーでは 1 件が Bun の 60 秒上限まで止まり、メソッド、引数、URL を示さない `this test timed out after 60000ms` だけを報告した。期限ラッパー導入前の focused check も、返らない `evaluate` をこの診断へ変換できなかった。
+  - **Detection Reason**: 返らない呼び出しを利用側から観測し、一般的なテスト上限ではなく、原因調査に必要なメソッド、引数、期限、URL が揃うことを固定する。
+- **Unit RED Evidence**:
+  - **Test**: `mise run test-ui-unit-file -- tests/e2e/webview-deadline.test.ts` の `a wait does not swallow an unanswered call`。
+  - **Requirement**: N/A: 製品要件を変えないブラウザー E2E 診断基盤の tooling 変更である。
+  - **Observed Failure**: 期限ラッパー導入前は、返らない `evaluate` が `waitForText` のループを止め、専用の `WebViewCallExpired` を呼び出し元へ返さなかった。
+  - **Detection Reason**: 待ちが通常の遷移エラーだけを再試行し、応答しない呼び出しを再試行で隠さないことを、返らない fake WebView で直接区別する。
+- **Change-Resistance Results**:
+  Low risk の tooling 変更であり、Go の mutation testing は対象外。
+  応答しない呼び出し、占有済みの追試、正常に応答する追試を別々に与え、期限切れの診断、既知欠陥の帰属、誤帰属の防止を 6 件の focused test で固定した。
+  レビューで、テスト名が主張していた引数の診断を実際には表明していないことを検出し、式そのものを失敗メッセージに要求する assertion を追加した。
+- **Verification Results**:
+  - `mise run lint-go` - passed (0 issues)
+  - `mise run check-work-items` - passed
+  - `mise run test-ui-unit-file -- tests/e2e/webview-deadline.test.ts` - passed (6 tests, 13 assertions)
+  - `mise run typecheck-ui` - passed
+  - `mise run test-ui-e2e` - passed (38 tests)
+  - `mise run verify` - passed
+  - `mise run spec-diff` - `no normative specification change against main`
