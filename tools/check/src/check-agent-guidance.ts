@@ -12,6 +12,6 @@ export async function checkAgentGuidance(snapshot: WorkspaceSnapshot): Promise<C
     lines:
       findings.length > 0
         ? findings.map((finding) => `${finding.file}: ${finding.message}`)
-        : [`ok  agent guidance (${documents.length} skill file(s))`],
+        : [`ok  agent guidance (${documents.length} guidance file(s))`],
   }
 }

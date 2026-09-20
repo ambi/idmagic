@@ -7,6 +7,7 @@
 | 読みたいこと | 文書 | 主な分類 |
 | --- | --- | --- |
 | 仕様先行の進め方、証拠契約、検証のはしご | [Specification-first Development Workflow](specification-first-workflow.md) | 解説、参照 |
+| 命名、コメント、関数、抽象化、テストコード、依存関係のコーディングスタイル | [コーディングスタイル](coding-style.md) | 参照 |
 | 開発環境、起動、ビルド、生成 | [ローカル開発](local-development.md) | 手順 |
 | CI の一次情報と失敗時の切り分け | [継続的インテグレーション](continuous-integration.md) | 参照、解説 |
 | テスト水準、実行境界、ミューテーションテスト、テストダブル | [テスト方針](testing.md) | 参照 |

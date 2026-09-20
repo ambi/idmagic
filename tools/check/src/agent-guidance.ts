@@ -11,6 +11,7 @@ export type AgentGuidanceFinding = {
 }
 
 const requiredMarkers = new Map<string, string[]>([
+  ['AGENTS.md', ['コードの編集またはレビュー', 'docs/development/coding-style.md']],
   [
     '.agents/skills/spec-change/SKILL.md',
     ['spec/contexts/<context>/{models,main}.tsp', 'docs/domain/<context>/scenarios.feature.md'],
@@ -30,6 +31,9 @@ const requiredMarkers = new Map<string, string[]>([
       'refactor',
       'N/A:',
       'actually failed',
+      'Before the first source or test edit',
+      'docs/development/coding-style.md',
+      'review the changed code',
     ],
   ],
 ])

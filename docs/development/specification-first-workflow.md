@@ -145,6 +145,7 @@ an allow-list entry.
 Refactoring is changing structure without changing behavior, and the test is what makes that claim checkable:
 if a change is a refactoring, the tests do not move. Editing a test in the same step is the signal that
 behavior changed too — separate the two steps and let the behavior change go through its own RED.
+Commit and Pull Request boundaries follow [構造変更と振る舞いの変更を分ける](coding-style.md#構造変更と振る舞いの変更を分ける).
 
 Refactor in the moment the test just went GREEN, while what the code is supposed to do is still in front of
 you. Deferring it turns it into a separate piece of work that has to re-establish that context, and separate

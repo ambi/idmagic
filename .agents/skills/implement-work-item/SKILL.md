@@ -5,8 +5,9 @@ description: "Implement a chosen work item end to end: specification first, sepa
 
 # Implementing a work item
 
-1. Begin from a working tree carrying no other work item's changes; one record is one commit, and a tree
-   holding two records cannot be split into two without reading the diff back. Then run
+1. Begin from a working tree carrying no other work item's changes. One record owns one independently
+   acceptable outcome, while that record may use multiple commits to keep structural and behavioral changes
+   separate as `docs/development/coding-style.md` requires. Then run
    `mise run brief -- <work-item>` and make a **readiness pass** before editing frontmatter. Read what the brief
    names: the work item, its direct normative-scenario and standard references, its TypeSpec symbols, the
    canonical documents those references resolve to, and the smallest code and test slice involved. For a
@@ -23,7 +24,9 @@ description: "Implement a chosen work item end to end: specification first, sepa
    **Do not split the record because it is large.** Volume is not a reason. Every new record repeats the
    readiness pass, the frontmatter, the Design, and the Completion evidence, so splitting an item N ways
    multiplies the fixed cost while the per-unit cost that made it feel large stays exactly where it was.
-   Split only when the record carries two semantic changes — ones a reader could accept separately. When
+   Split only when the record carries changes a reader could accept separately. Give a structural change that
+   can land before the behavioral change its own record and pull request; otherwise keep one record and use
+   separate commits. When
    high per-unit cost is what makes a record look too big, that cost is the finding: measure what drives it
    (a fixture nobody can compose, an index that does not exist, judgment the tooling discards), and file a
    record against that instead. A repeated unit of work that stays expensive is a tooling defect wearing a
@@ -40,13 +43,16 @@ description: "Implement a chosen work item end to end: specification first, sepa
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
-7. Run the named observable-boundary check and confirm Acceptance RED or the applicable E2E RED. Then implement
+7. Before the first source or test edit, read `docs/development/coding-style.md`. Run the named
+   observable-boundary check and confirm Acceptance RED or the applicable E2E RED. Then implement
    Domain → Use Cases → Adapters → Infrastructure / UI one behavior at a time: confirm Unit RED, reach GREEN with the simplest
    complete behavior, refactor while GREEN, and widen through the adapters until the acceptance check passes.
    A test claims a declared id with a `//spec:covers <id>[, <id>]: <what it fixes>` directive above the test
    function, and only that shape counts — see Citing a normative id from a test in
    `docs/development/specification-first-workflow.md`. Naming an id in prose claims nothing, so say freely in
-   a comment that another record owns one.
+   a comment that another record owns one. When the work moves between structural and behavioral changes,
+   leave each category GREEN and commit it separately; when they share a pull request, put the structural
+   commit first.
    Retain both failing checks, test names, and applicable normative scenario ids in the task. For tooling,
    documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate
    check that actually failed instead of inventing a product requirement or test boundary.
@@ -74,15 +80,17 @@ description: "Implement a chosen work item end to end: specification first, sepa
    for changed Go rather than hand-writing the syntactic mutations; hand-write only the faults its operators
    cannot express — wiring removed, a `switch` default replaced, an effect redirected. Read the survivors and
    do not score them; Mutation testing in `docs/development/specification-first-workflow.md` says why.
-10. After every scoped behavior and its evidence can be completed, pass `mise run verify` once, and
+10. After every scoped behavior and its evidence can be completed, review the changed code with the seven
+    perspectives in `docs/development/coding-style.md`. Then pass `mise run verify` once, and
     `mise run test-ui-e2e` as well when the change can reach the browser: the standard suite no longer starts
     the stack, so a browser regression is otherwise left to CI. Do not run an aggregate gate merely as a
     status check while a prerequisite still prevents completion. Complete
     every evidence field required by `WORK_ITEM_FORMAT.md`, reading the completion summary out of
     `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items`, and move the file to `work-items/done/`.
-11. Create a Conventional Commit with `commit`. Its body is the Completion Summary said in English, not a
-    description written back out of the diff. Do not push until explicitly told to.
+11. Create any remaining Conventional Commit with `commit`. A record may have multiple commits only where
+    separately reviewable structural and behavioral changes require that boundary. Use the Completion Summary
+    in English for the final commit body rather than writing the diff back out. Do not push until explicitly told to.
 
 State the Out of Scope items and anything left undone in the final report.
 

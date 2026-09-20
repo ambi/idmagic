@@ -2,7 +2,17 @@
 
 エージェントが利用者へ向けて書く文章は日本語にする。作業の報告、提案、確認、要約、差分の説明など、会話へ出す文章をすべて含む。
 
-機能、振る舞い、設計を変更するときは、[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)に従う。仕様文書の形式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、work item の形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md)、文書体系は [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) が定める。
+## 作業ごとの参照先
+
+作業に該当する文書を、編集またはレビューを始める前に読む。
+
+| 作業 | 読む文書 |
+| --- | --- |
+| 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、work item の形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md)、文書体系は [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) |
+| コードの編集またはレビュー | [コーディングスタイル](docs/development/coding-style.md)。七つの視点を実装とレビューの判断に用いる |
+| テスト水準、実行境界、テストダブルの選択 | [テスト方針](docs/development/testing.md) |
+| モジュール、型、依存、作用、エラーの設計 | [設計ガイドライン](docs/design/application/design-guidelines.md) |
+| 開発環境、ビルド、生成、CI、リリース | [開発文書の索引](docs/development/README.md)から該当する文書を選ぶ |
 
 ## mise
 
