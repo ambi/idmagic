@@ -156,7 +156,9 @@ func TestDeleteApplicationRemovesAssignmentsAndPolicy(t *testing.T) {
 	deps := fullAppDeps()
 	app := seedApp(ctx, t, deps, "Payroll")
 
-	assignDeps := appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}
+	assignDeps := appusecases.AssignmentDeps{
+		Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{},
+	}
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: app.ID,
 		SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
@@ -274,7 +276,9 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	ctx := tenantContext()
 	deps := fullAppDeps()
 	app := seedApp(ctx, t, deps, "Payroll")
-	assignDeps := appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}
+	assignDeps := appusecases.AssignmentDeps{
+		Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{},
+	}
 
 	// 不明なアプリ。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
@@ -435,7 +439,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 		ActorUserID: "admin", Name: "Service App", Kind: domain.ApplicationService,
 		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "service-client"},
 	})
-	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: serviceApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
@@ -447,7 +451,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 	_, _ = appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
 		ActorUserID: "admin", ApplicationID: disabledApp.ID, Status: &disabled,
 	})
-	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: disabledApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
@@ -456,11 +460,11 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 		ActorUserID: "admin", Name: "Normal App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	// assign to user "alice"
-	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 	// assign to group "alice-group"
-	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
+	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: domain.AssignmentSubjectGroup, SubjectID: "alice-group",
 	})
 	subjectsWithGroup := []ports.SubjectRef{

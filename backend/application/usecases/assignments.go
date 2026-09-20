@@ -17,10 +17,11 @@ import (
 )
 
 type AssignmentDeps struct {
-	Repo           ports.ApplicationRepository
-	AssignmentRepo ports.AssignmentRepository
-	OrderingRepo   ports.ApplicationOrderingRepository
-	Emit           func(spec.DomainEvent)
+	Repo             ports.ApplicationRepository
+	AssignmentRepo   ports.AssignmentRepository
+	SubjectDirectory ports.SubjectDirectory
+	OrderingRepo     ports.ApplicationOrderingRepository
+	Emit             func(spec.DomainEvent)
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier ports.ProvisioningNotifier
 }
@@ -68,6 +69,16 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 	}
 	if !visibility.Valid() {
 		return nil, ErrInvalidVisibility
+	}
+	if deps.SubjectDirectory == nil {
+		return nil, ErrSubjectNotFound
+	}
+	subjectExists, err := deps.SubjectDirectory.SubjectExists(ctx, tenantID, in.SubjectType, subjectID)
+	if err != nil {
+		return nil, err
+	}
+	if !subjectExists {
+		return nil, ErrSubjectNotFound
 	}
 	assignment := &domain.ApplicationAssignment{
 		TenantID:      tenantID,

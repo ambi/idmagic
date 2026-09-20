@@ -31,6 +31,7 @@ type Deps struct {
 	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
 	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+	AssignmentSubjectDirectory  appports.SubjectDirectory
 	GroupRepo                   groupports.GroupRepository
 	UserRepo                    userports.UserRepository
 	ClientRepo                  oauthports.OAuth2ClientRepository

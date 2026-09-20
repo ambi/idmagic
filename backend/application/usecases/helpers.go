@@ -11,6 +11,7 @@ import (
 var (
 	ErrInvalidSubjectType = errors.New("invalid assignment subject type")
 	ErrSubjectRequired    = errors.New("assignment subject id is required")
+	ErrSubjectNotFound    = errors.New("assignment subject does not exist in tenant")
 	ErrInvalidVisibility  = errors.New("invalid assignment visibility")
 )
 

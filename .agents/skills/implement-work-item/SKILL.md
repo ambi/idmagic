@@ -89,8 +89,10 @@ description: "Implement a chosen work item end to end: specification first, sepa
     `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items`, and move the file to `work-items/done/`.
 11. Create any remaining Conventional Commit with `commit`. A record may have multiple commits only where
-    separately reviewable structural and behavioral changes require that boundary. Use the Completion Summary
-    in English for the final commit body rather than writing the diff back out. Do not push until explicitly told to.
+    separately reviewable structural and behavioral changes require that boundary. Keep all free-form prose in
+    the Completion section in the language used by the work item's prose; do not change that section to English
+    for the commit. For the final commit only, translate or summarize the Completion Summary into English and
+    use it as the commit body rather than writing the diff back out. Do not push until explicitly told to.
 
 State the Out of Scope items and anything left undone in the final report.
 

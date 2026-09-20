@@ -4,6 +4,9 @@
 package application
 
 import (
+	"context"
+
+	"github.com/ambi/idmagic/backend/application/domain"
 	apphttp "github.com/ambi/idmagic/backend/application/handlers_http"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
@@ -17,6 +20,41 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
+
+type idManagementSubjectDirectory struct {
+	users  userports.UserRepository
+	groups groupports.GroupRepository
+}
+
+func (d idManagementSubjectDirectory) SubjectExists(
+	ctx context.Context,
+	tenantID string,
+	subjectType domain.AssignmentSubjectType,
+	subjectID string,
+) (bool, error) {
+	switch subjectType {
+	case domain.AssignmentSubjectUser:
+		if d.users == nil {
+			return false, nil
+		}
+		user, err := d.users.FindBySub(ctx, subjectID)
+		if err != nil {
+			return false, err
+		}
+		return user != nil && user.TenantID == tenantID, nil
+	case domain.AssignmentSubjectGroup:
+		if d.groups == nil {
+			return false, nil
+		}
+		group, err := d.groups.FindByID(ctx, tenantID, subjectID)
+		if err != nil {
+			return false, err
+		}
+		return group != nil, nil
+	default:
+		return false, nil
+	}
+}
 
 // Module は application context が所有する repository の束。bootstrap は永続化 backend
 // (memory / postgres) に応じてこれらを組み立て、Module へ渡すだけでよい。
@@ -69,6 +107,7 @@ func (m Module) Register(
 		ApplicationCategoryRepo:     m.CategoryRepo,
 		ApplicationSignInPolicyRepo: m.SignInPolicyRepo,
 		DefaultSignInPolicyRepo:     m.DefaultSignInPolicyRepo,
+		AssignmentSubjectDirectory:  idManagementSubjectDirectory{users: userRepo, groups: groupRepo},
 		GroupRepo:                   groupRepo,
 		UserRepo:                    userRepo,
 		ClientRepo:                  clientRepo,

@@ -15,7 +15,9 @@ func newOrderingDeps() appusecases.AssignmentDeps {
 	apps := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
 	orderings := appmemory.NewApplicationOrderingRepository()
-	return appusecases.AssignmentDeps{Repo: apps, AssignmentRepo: assignments, OrderingRepo: orderings}
+	return appusecases.AssignmentDeps{
+		Repo: apps, AssignmentRepo: assignments, SubjectDirectory: existingSubjectDirectoryFake{}, OrderingRepo: orderings,
+	}
 }
 
 func TestApplyManualOrderOverlaysAndAppendsRemainder(t *testing.T) {

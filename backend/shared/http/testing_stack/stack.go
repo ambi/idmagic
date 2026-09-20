@@ -54,6 +54,7 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -168,6 +169,7 @@ type Stack struct {
 	Events   *EventLog
 	Tenants  *tenancymemory.TenantRepository
 	Users    *usermemory.UserRepository
+	Groups   *groupmemory.GroupRepository
 	KeyStore *signingmemory.InMemoryKeyStore
 	Signer   *tokensjose.JWTSigner
 
@@ -501,6 +503,7 @@ func New(t *testing.T, options ...Option) *Stack {
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: created, UpdatedAt: created,
 	})
+	groups := groupmemory.NewGroupRepository()
 
 	keyStore, err := signingmemory.NewInMemoryKeyStore()
 	if err != nil {
@@ -510,7 +513,7 @@ func New(t *testing.T, options ...Option) *Stack {
 
 	stack := &Stack{
 		Echo: echo.New(), Events: &EventLog{}, owner: t,
-		Tenants: tenants, Users: users, KeyStore: keyStore, Signer: signer,
+		Tenants: tenants, Users: users, Groups: groups, KeyStore: keyStore, Signer: signer,
 	}
 	b := &builder{
 		t: t, stack: stack,
@@ -522,7 +525,7 @@ func New(t *testing.T, options ...Option) *Stack {
 			Issuer: Issuer, Contract: spec.CurrentRuntimeContract(),
 			Emit:         stack.Events.record,
 			TenantRepo:   tenants,
-			IdManagement: idmanagement.Module{UserRepo: users},
+			IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups},
 			SigningKeys:  signingkeys.Module{KeyStore: keyStore},
 			OAuth2:       oauth2.Module{TokenIssuer: signer, TokenIntrospector: signer},
 		},

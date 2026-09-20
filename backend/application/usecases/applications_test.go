@@ -23,7 +23,9 @@ func newDeps() (appusecases.ApplicationDeps, appusecases.AssignmentDeps) {
 	apps := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
 	appDeps := appusecases.ApplicationDeps{Repo: apps, AssignmentRepo: assignments}
-	assignDeps := appusecases.AssignmentDeps{Repo: apps, AssignmentRepo: assignments}
+	assignDeps := appusecases.AssignmentDeps{
+		Repo: apps, AssignmentRepo: assignments, SubjectDirectory: existingSubjectDirectoryFake{},
+	}
 	return appDeps, assignDeps
 }
 
