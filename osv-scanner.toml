@@ -8,3 +8,8 @@
 id = "GO-2026-5932"
 ignoreUntil = 2026-11-28
 reason = "golang.org/x/crypto/openpgp is unmaintained and has no fixed version. IdMagic never imports it: x/crypto enters the module graph only through backend/shared/security/passwords_argon2id, which uses golang.org/x/crypto/argon2. mise run audit-go-reachability reports the advisory as required but not called."
+
+[[IgnoredVulns]]
+id = "GO-2026-6443"
+ignoreUntil = 2026-11-28
+reason = "google.golang.org/grpc is required transitively by the OpenTelemetry exporter stack, but govulncheck finds no vulnerable call in IdMagic. OSV reports only a development pseudo-version as fixed, so this suppression is revisited when a stable fixed release is available."
