@@ -65,6 +65,7 @@ func TestCaptureLifecycleEvent_UserCreated_AllUsersScope(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-003-02: assigned_only 接続では未割り当て User の作成から配信を作らない。
 func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeSkipsUnassignedUser(t *testing.T) {
 	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
 	ctx := context.Background()
@@ -216,6 +217,7 @@ func TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections(t *testing
 	}
 }
 
+//spec:covers EX-PROVISIONING-016-01: 同じライフサイクルイベントを繰り返し捕捉しても、同じ idempotency key の配信を一件に収束させる。
 func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
 	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
 	ctx := context.Background()

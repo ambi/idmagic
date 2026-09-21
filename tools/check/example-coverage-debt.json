@@ -433,112 +433,82 @@
       "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
     },
     {
-      "id": "EX-PROVISIONING-001-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-001-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
       "id": "EX-PROVISIONING-001-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-002-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-002-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-002-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "他テナントの有効な provisioning:write トークンは接続を作らないが、AccessDeniedError ではなく 401 invalid_token を返すため",
+      "blocked_by": "wi-37560-return-access-denied-for-cross-tenant-provisioning-api-tokens",
+      "finding": "default realm の接続登録へ acme realm 発行トークンを提示すると 401 invalid_token となる。"
     },
     {
       "id": "EX-PROVISIONING-003-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-003-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "配信の状態遷移はあるが、宣言された ProvisioningDeliveryStarted と UserProvisioned を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-004-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "下流への deactivate は実行するが、UserDeprovisioned を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-005-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "割り当て解除の deactivate 配信に必要な UserDeprovisioned を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-006-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "削除捕捉が grace_period_days を待たず delete 配信を直ちに作るため",
+      "blocked_by": "wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period",
+      "finding": "TriggerUserDeleted は deprovision policy から直ちに OperationDelete へ変換される。"
     },
     {
       "id": "EX-PROVISIONING-006-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-007-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-008-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-009-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "猶予配信の予約状態がなく、再割り当てで取り消す対象が存在しないため",
+      "blocked_by": "wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period",
+      "finding": "削除後の配信は即時作成され、予約と取消を表す状態が無い。"
     },
     {
       "id": "EX-PROVISIONING-010-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-010-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "dead_letter と retry 状態遷移はあるが、UserProvisioningFailed を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-011-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-011-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-012-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-012-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "隔離と解除の状態遷移はあるが、ConnectionQuarantined と ProvisioningConnectionQuarantineCleared を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-013-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "Full Resync の対象配信を追跡せず、FullResyncCompleted を発行しないため",
+      "blocked_by": "wi-22987-track-full-resync-completion",
+      "finding": "StartFullResync の実装コメントが完了追跡とイベント発行を未実装と明記している。"
     },
     {
       "id": "EX-PROVISIONING-014-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "資格情報は更新するが、ProvisioningCredentialRotated を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-015-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PROVISIONING-016-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "リポジトリの tenant 分離だけが検証され、tenant-b 管理者の HTTP 入口から接続と配信を共に not found とする証拠が無いため",
+      "blocked_by": "wi-93622-acceptance-test-provisioning-tenant-isolation",
+      "finding": "API トークンで tenant-b の管理者を表すと認証段階で 401 となり、この規範の actor を観測できなかった。"
     },
     {
       "id": "EX-PROVISIONING-017-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "未関連付け配信の回収はあるが、ProvisioningDeliveryStarted を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-PROVISIONING-018-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "required 属性対応付けの fail-closed 判定はあるが、UserProvisioningFailed を本番が発行しないため",
+      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
+      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-SAML-005-03",

@@ -146,6 +146,7 @@ func TestExecuteDelivery_Create_NewLinkOnSuccess(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-007-01: 下流の create が 409 のとき、既存 resource を検索して RemoteResourceLink を作成する。
 func TestExecuteDelivery_Create_ConflictAdoptsExistingViaSearch(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: &ports.ConflictError{Detail: "exists"}, searchRemoteID: "remote-existing", searchFound: true}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
@@ -181,6 +182,7 @@ func TestExecuteDelivery_Update_UsesExistingLinkRemoteID(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-008-01: 下流の update が 404 のとき、新しい resource を create して RemoteResourceLink を更新する。
 func TestExecuteDelivery_Update_RecreatesOn404(t *testing.T) {
 	client := &fakeTargetClient{updateErr: &ports.NotFoundError{}, createUserID: "remote-new"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
@@ -256,6 +258,7 @@ func TestExecuteDelivery_Deactivate_UsesUpdatePathWithResolvedAttributes(t *test
 	}
 }
 
+//spec:covers EX-PROVISIONING-009-01: 一時的な下流エラーでは配信を in_flight のまま残し、再試行できるようにする。
 func TestExecuteDelivery_RetryableErrorPropagatesWithoutChangingStatus(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: &ports.RetryableError{StatusCode: 503}}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}

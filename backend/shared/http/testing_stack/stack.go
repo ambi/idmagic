@@ -61,6 +61,8 @@ import (
 	consentmemory "github.com/ambi/idmagic/backend/oauth2/consent/db_memory"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/provisioning"
+	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -173,19 +175,21 @@ type Stack struct {
 	KeyStore *signingmemory.InMemoryKeyStore
 	Signer   *tokensjose.JWTSigner
 
-	Clients                *oauth2memory.OAuth2ClientRepository
-	Consents               *consentmemory.ConsentRepository
-	AuthzDetailTypes       *oauth2memory.AuthorizationDetailTypeRepository
-	McpResourceServers     *oauth2memory.McpResourceServerRepository
-	Codes                  *oauth2memory.AuthorizationCodeStore
-	PAR                    *oauth2memory.PARStore
-	Refresh                *oauth2memory.RefreshTokenStore
-	ApiTokens              apitokenports.Repository
-	Applications           *appmemory.ApplicationRepository
-	ApplicationAssignments *appmemory.ApplicationAssignmentRepository
-	ApplicationOrderings   *appmemory.ApplicationOrderingRepository
-	ApplicationCategories  *appmemory.ApplicationCategoryRepository
-	ApplicationIcons       *appmemory.ApplicationIconStore
+	Clients                 *oauth2memory.OAuth2ClientRepository
+	Consents                *consentmemory.ConsentRepository
+	AuthzDetailTypes        *oauth2memory.AuthorizationDetailTypeRepository
+	McpResourceServers      *oauth2memory.McpResourceServerRepository
+	Codes                   *oauth2memory.AuthorizationCodeStore
+	PAR                     *oauth2memory.PARStore
+	Refresh                 *oauth2memory.RefreshTokenStore
+	ApiTokens               apitokenports.Repository
+	Applications            *appmemory.ApplicationRepository
+	ApplicationAssignments  *appmemory.ApplicationAssignmentRepository
+	ApplicationOrderings    *appmemory.ApplicationOrderingRepository
+	ApplicationCategories   *appmemory.ApplicationCategoryRepository
+	ApplicationIcons        *appmemory.ApplicationIconStore
+	ProvisioningConnections *provisioningmemory.ProvisioningConnectionRepository
+	ProvisioningDeliveries  *provisioningmemory.ProvisioningDeliveryRepository
 	// AppSignInPolicies と DefaultSignInPolicy は、サインインポリシーの具体例が
 	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
 	AppSignInPolicies   *appmemory.SignInPolicyRepository
@@ -428,6 +432,22 @@ func WithApplicationApi() Option {
 			CategoryRepo:            b.stack.ApplicationCategories,
 			SignInPolicyRepo:        b.stack.AppSignInPolicies,
 			DefaultSignInPolicyRepo: b.stack.DefaultSignInPolicy,
+		}
+	}
+}
+
+// WithProvisioning は Provisioning の管理 API と、接続・配信を読み直す保存先を配線する。
+func WithProvisioning() Option {
+	return func(b *builder) {
+		if b.stack.ApplicationAssignments == nil {
+			WithApplicationApi()(b)
+		}
+		b.stack.ProvisioningConnections = provisioningmemory.NewProvisioningConnectionRepository()
+		b.stack.ProvisioningDeliveries = provisioningmemory.NewProvisioningDeliveryRepository()
+		b.deps.Provisioning = provisioning.Module{
+			ConnectionRepo: b.stack.ProvisioningConnections,
+			DeliveryRepo:   b.stack.ProvisioningDeliveries,
+			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
 		}
 	}
 }

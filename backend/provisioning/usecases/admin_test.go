@@ -21,6 +21,7 @@ func newAdminDeps() (usecases.AdminDeps, *memory.ProvisioningConnectionRepositor
 	return usecases.AdminDeps{ConnectionRepo: connRepo, DeliveryRepo: deliveryRepo}, connRepo, deliveryRepo
 }
 
+//spec:covers EX-PROVISIONING-002-02: https ではない base_url の接続登録を拒否し、接続を作らない。
 func TestRegisterConnection_SeedsDefaultsAndRejectsUnsafeURL(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	_, err := usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{
@@ -33,6 +34,7 @@ func TestRegisterConnection_SeedsDefaultsAndRejectsUnsafeURL(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-002-03: 同じ Application への二重登録を AlreadyExists として拒否する。
 func TestRegisterConnection_SeedsDefaultAttributeMappingAndRejectsDuplicate(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	now := time.Now()
@@ -112,6 +114,7 @@ func TestUpdateConnection_RotatesCredentialWhenProvided(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-011-02: quarantined ではない接続を再開せず、状態変更を拒否する。
 func TestResumeConnection_RequiresQuarantined(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	ctx := context.Background()
@@ -174,6 +177,7 @@ func TestResumeConnection_ClearsQuarantineAndAllowsNextDelivery(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-010-02: dead_letter 以外の配信を pending へ戻さず、再試行を拒否する。
 func TestRetryDelivery_RequiresDeadLetter(t *testing.T) {
 	deps, connRepo, deliveryRepo := newAdminDeps()
 	ctx := context.Background()
@@ -196,6 +200,7 @@ func TestRetryDelivery_RequiresDeadLetter(t *testing.T) {
 	}
 }
 
+//spec:covers EX-PROVISIONING-012-02: assigned_only の範囲外の subject に pending 配信を作らず、要求を拒否する。
 func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	ctx := context.Background()
@@ -208,6 +213,37 @@ func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	_, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
 	if !errors.Is(err, usecases.ErrSubjectNotInScope) {
 		t.Errorf("ProvisionOnDemand() for an unassigned user (scope=assigned_only) error = %v, want ErrSubjectNotInScope", err)
+	}
+}
+
+//spec:covers EX-PROVISIONING-012-01: scope 内の subject を On-Demand Provision すると、pending 配信をただちに作成する。
+func TestProvisionOnDemand_CreatesPendingDeliveryForSubjectInScope(t *testing.T) {
+	deps, _, deliveryRepo := newAdminDeps()
+	ctx := context.Background()
+	now := time.Now()
+	conn, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
+		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Now:        now,
+	})
+	if err != nil {
+		t.Fatalf("RegisterConnection() error = %v", err)
+	}
+	conn.Scope = domain.ScopeAllUsers
+	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
+		t.Fatalf("ConnectionRepo.Update() error = %v", err)
+	}
+
+	delivery, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
+	if err != nil {
+		t.Fatalf("ProvisionOnDemand() error = %v", err)
+	}
+	if delivery.Status != domain.DeliveryPending {
+		t.Fatalf("delivery.Status = %q, want pending", delivery.Status)
+	}
+	stored, err := deliveryRepo.Find(ctx, "tenant-a", delivery.ID)
+	if err != nil || stored == nil || stored.Status != domain.DeliveryPending {
+		t.Fatalf("stored delivery = (%+v, %v), want pending delivery", stored, err)
 	}
 }
 
