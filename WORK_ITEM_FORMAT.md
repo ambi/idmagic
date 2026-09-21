@@ -2,7 +2,12 @@
 
 作業項目は、一つの意味上の変更を説明、設計、実装、検証する作業単位である。
 未完了の項目は `work-items/`、完了または中止した項目は `work-items/done/` に置く。
-ファイル名には `wi-<連番>-<ケバブケースの題名>.md` を使う。
+ファイル名には `wi-<識別番号>-<ケバブケースの題名>.md` を使う。
+識別番号は、10000 から 99999 のうち、`work-items/` と `work-items/done/` のどちらにも現れない値を無作為に選ぶ。
+`mise run work-item-number` がこの値を一つ出力する。
+最大値に 1 を足す手順は使わない。
+その手順は番号を配る主体が一つであることを前提にするが、各自がローカルで起票し、一人が並列のワークツリーで起票する運用では、まだ push されていない起票を見られないためである。
+既存の記録は 3 桁以下に収まっているので、新規を 5 桁に限れば番号空間が重ならない。
 
 作業項目は、タスクリスト、変更固有の設計文書、実装履歴も兼ねる。
 完了時点でも有効な結論は、TypeSpec またはその種類の内容を扱う一次情報文書へ反映しなければならない。
@@ -22,7 +27,7 @@ documentation_impact: # 着手後は必須
   level: release_note
   reason: 新たにサポートする機能をリリースの読者へ知らせる必要がある。
   references:
-    - { kind: release_note, path: docs/releases/changes/wi-999-start-task.md }
+    - { kind: release_note, path: docs/releases/changes/wi-48213-start-task.md }
 initial_context: # 起票時ではなく着手時に記入する
   specification: [docs/domain/system/scenarios.feature.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
@@ -46,7 +51,7 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
     to: supported
     security: セキュリティレビューで、対象ユースケースに未解決の統制不足がないことを確認した。
     compatibility: 既存の preview 設定は移行せずに引き続き受理される。
-    documentation: docs/releases/changes/wi-999-start-task.md
+    documentation: docs/releases/changes/wi-48213-start-task.md
 ---
 
 # 意味上の変更を表す一文
@@ -137,8 +142,8 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 `none` には具体的な理由が必要であり、リリース文書への参照を含めない。
 それ以外の水準では、実装前にリリース文書の予定パスを宣言する。
 完了時には、そのパスが存在し、作業項目名を記載し、`affected_spec` の要件または TypeSpec のシンボルへリンクしていなければならない。
-リリース文書のファイル名には、連番とケバブケースの題名を含む作業項目の完全なファイル名から、拡張子を除いた部分を使う。
-たとえば、`work-items/wi-999-start-task.md` のリリースノートには `docs/releases/changes/wi-999-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-999-start-task.md` を使う。
+リリース文書のファイル名には、識別番号とケバブケースの題名を含む作業項目の完全なファイル名から、拡張子を除いた部分を使う。
+たとえば、`work-items/wi-48213-start-task.md` のリリースノートには `docs/releases/changes/wi-48213-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-48213-start-task.md` を使う。
 既存のリリース文書は、対応する作業項目が完了したときの名前を保つ。
 この規則へ合わせるためだけに過去の記録を改名しない。
 `upgrade_note`、`deprecation_notice`、`removal_notice` では、注目すべき差分と、必要な操作または互換性情報を読者へ示すため、両方の種類の文書が必要になる。

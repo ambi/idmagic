@@ -20,6 +20,7 @@ import { parseMiseTasks, taskClosure } from './verification-tasks.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
+  verifyWorkItemIdentifiers,
 } from './work-item-dependencies.ts'
 import type { ReferenceEnvironment } from './work-item-references.ts'
 import { verifyWorkItemReferences } from './work-item-references.ts'
@@ -215,14 +216,15 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       ),
     )
   }
+  const identifiers = verifyWorkItemIdentifiers(dependencyRecords)
   lines.push(
-    ...verifyWorkItemDependencies(dependencyRecords).map(
+    ...[...verifyWorkItemDependencies(dependencyRecords), ...identifiers.findings].map(
       (finding) => `${finding.path}: ${finding.message}`,
     ),
   )
-  return {
-    ok: lines.length === 0,
-    lines:
-      lines.length > 0 ? lines : [`ok  ${dependencyRecords.length} work-item dependency record(s)`],
-  }
+  // 空き枠の警告は検査を落とさない。桁を増やす判断に要る観測であって、
+  // 誰かが直せる欠陥ではないため、`ok` の根拠は所見の件数だけにする。
+  const ok = lines.length === 0
+  if (ok) lines.push(`ok  ${dependencyRecords.length} work-item dependency record(s)`)
+  return { ok, lines: [...lines, ...identifiers.warnings] }
 }

@@ -6,8 +6,8 @@ description: Create a specification-first work item under work-items using the c
 # Creating a work item
 
 1. Read `WORK_ITEM_FORMAT.md` as the authority for the format.
-2. Find the highest number across `work-items/` and `done/`, then create an unused
-   `wi-NNN-kebab-title.md`.
+2. Run `mise run work-item-number` and create `wi-<that number>-kebab-title.md`. Do not count the
+   highest existing number: that counts only what has been pushed, so parallel worktrees collide.
 3. Write Motivation, Scope, Out of Scope, Design, Plan, Tasks, Verification, and Risk Notes. Surface open
    questions in Design or Plan; resolve every question that would change what gets built before
    implementation, and move genuinely deferred choices to Out of Scope.
