@@ -149,7 +149,7 @@ affected_spec:
 
 ## Motivation
 
-[API ガイドライン](../docs/design/application/api-guidelines.md)の「静的パスセグメントの記法」は、パスパラメーター以外のパスセグメントをケバブケースで記述すると定める。
+[API ガイドライン](../../docs/design/application/api-guidelines.md)の「静的パスセグメントの記法」は、パスパラメーター以外のパスセグメントをケバブケースで記述すると定める。
 現行の汎用 API では、24 個の静的パスセグメントがスネークケースであり、同じ API の中で `identity-providers` と `audit_events` が混在している。
 クライアントはパスを類推で記述できず、セグメントごとに区切り文字を確認することになる。
 

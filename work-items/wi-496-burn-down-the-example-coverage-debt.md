@@ -29,9 +29,10 @@ priority: p2
 change_kind: tooling
 evidence_policy: risk-based-v3
 documentation_impact:
-  level: none
-  reason: 宣言済みの具体例にテストを対応付ける作業であり、製品の振る舞いも公開契約も変わらないので、リリースの読み手に見えるものが無い。
-  references: []
+  level: release_note
+  reason: 規範シナリオの具体例をテストで検証できる状態へ進める継続的な品質改善であり、リリースの読み手が追跡できるようにする。
+  references:
+    - { kind: release_note, path: docs/releases/changes/wi-496-burn-down-the-example-coverage-debt.md }
 spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を名指しするテストを対応付ける作業である。シナリオも製品の振る舞いも変えない。テストが書けない具体例が見つかった場合、それは実装が具体例のとおりに振る舞っていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
   specification:
