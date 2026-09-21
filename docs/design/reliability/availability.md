@@ -65,7 +65,7 @@ PostgreSQL は IdMagic の唯一の永続化先であり、primary の障害は�
 | デプロイプロファイル | 採用する手段 | 実装状況 |
 | --- | --- | --- |
 | ローカル Docker Compose | 単一インスタンス | 構成ファイルあり |
-| 汎用 Kubernetes | CloudNativePG が管理するクラスター | 設計上の想定 |
+| 汎用 Kubernetes | [CloudNativePG のクラスター](../infrastructure/platform.md#汎用-kubernetes) | 設計上の想定 |
 | Google Cloud | Cloud SQL for PostgreSQL の `REGIONAL` 構成 | 設計上の想定 |
 
 フェイルオーバーの間、アプリケーションは次のように振る舞う。

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -7,6 +7,33 @@ created_at: 2026-09-19
 priority: p3
 depends_on: []
 change_kind: docs
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: "既存の設計内容を変えず、設計文書間の一次情報源と参照関係だけを整理するため、利用者向けのリリース文書は不要である。"
+  references: []
+initial_context:
+  specification:
+    - DOCUMENTATION_GUIDE.md
+    - SPECIFICATION_FORMAT.md
+    - WORK_ITEM_FORMAT.md
+    - docs/development/specification-first-workflow.md
+    - docs/development/coding-style.md
+    - docs/development/testing.md
+    - docs/design/application/design-guidelines.md
+    - docs/architecture/deployment.md
+    - docs/design/infrastructure/platform.md
+    - docs/design/observability/logging.md
+    - docs/design/reliability/availability.md
+    - docs/domain/jobs/internals.md
+    - docs/runbooks/async-jobs.md
+  typespec: []
+  source:
+    - infra/docker/docker-compose.dev.yaml
+    - infra/k8s/base/worker.yaml
+    - infra/k8s/overlays
+  tests: []
+  stop_before_reading: [backend, frontend, spec]
 spec_impact:
   kind: none
   reason: "設計文書が同じ事実を複数箇所へ書いている状態を一次情報源へ集約するだけで、設計の内容も規範要素も変えない。"
@@ -80,18 +107,19 @@ spec_impact:
 
 ## Tasks
 
-- [ ] T001 [Docs] Alloy の収集経路を `logging.md` へ集約し、3 か所を参照へ置き換える。
-- [ ] T002 [Docs] CloudNativePG の判断を `platform.md` へ集約し、`deployment.md` と `availability.md` を参照へ置き換える。
-- [ ] T003 [Docs] （仮）の範囲の記述を `deployment.md` へ集約する。
-- [ ] T004 [Docs] レーンの隔離の意味を `jobs/internals.md` へ集約し、`platform.md` と `runbooks/async-jobs.md` を参照へ置き換える。
-- [ ] T005 [Docs] 「プロファイルごとの構成」の担当を分け、両文書の冒頭へ宣言を書く。
-- [ ] T006 [Verify] 変更を検証する。
+- [x] T001 [Acceptance] `deployment.md`、`platform.md`、`availability.md`、`async-jobs.md` に残る一次情報源と同義の説明を `rg` で検出し、文書間の重複が残っているため失敗することを確認する。規範要件は `N/A: 製品の振る舞いを変えない文書整理である`。
+- [x] T002 [Unit] `deployment.md` と `platform.md` の担当宣言を `rg` で探し、配置と接続、実現方式と選定理由の境界がまだ書かれていないため失敗することを確認する。規範要件は `N/A: 実行可能な単体境界を持たない文書整理である`。
+- [x] T003 [Docs] Alloy の収集経路を `logging.md` へ集約し、3 か所を参照へ置き換える。
+- [x] T004 [Docs] CloudNativePG の判断を `platform.md` へ集約し、`deployment.md` と `availability.md` を参照へ置き換える。
+- [x] T005 [Docs] （仮）の範囲の記述を `deployment.md` へ集約する。
+- [x] T006 [Docs] レーンの隔離の意味を `jobs/internals.md` へ集約し、`deployment.md`、`platform.md`、`runbooks/async-jobs.md` を参照へ置き換える。
+- [x] T007 [Docs] 「プロファイルごとの構成」の担当を分け、両文書の冒頭へ宣言を書く。
+- [x] T008 [Verify] 変更を検証する。
 
 ## Verification
 
 - `mise run check-links`
 - `mise run check-terminology`
-- `mise run check-spec`
 - `mise run verify`
 
 ## Risk Notes
@@ -103,3 +131,34 @@ runbook は障害対応の最中に読むため、リンクをたどらせると
 一次情報源へ集約する過程で、複数の記述の間にある食い違いが見つかる可能性がある。
 食い違いは、どちらが正しいかを構成ファイルとコードで確かめてから書く。
 確かめられない場合は（仮）または未決定として残し、文書どうしの多数決で決めない。
+
+## Completion
+
+- **Completed At**: 2026-09-21
+- **Summary**:
+  `mise run spec-diff` は `main` に対する規範仕様の変更がないことを報告した。
+  Alloy の収集経路、CloudNativePG の選定、Google Cloud プロファイルの検証状況、実行レーンの隔離を、それぞれ一つの設計文書へ集約した。
+  デプロイメントアーキテクチャは構成要素の配置と接続を、プラットフォーム設計は実現方式と選定理由を担当する形に分けた。
+- **Acceptance RED Evidence**:
+  - **Test**: `deployment.md`、`platform.md`、`availability.md`、`async-jobs.md` に残る、一次情報源と同義の説明を拒否する `rg` 検査
+  - **Requirement**: N/A: 製品の振る舞いを変えない文書整理である。
+  - **Observed Failure**: 検査は、ログドライバーへの非依存、CloudNativePG の採用、Google Cloud 全体の（仮）、レーンの隔離を重ねて説明する 9 箇所を報告して終了コード 1 になった。
+  - **Detection Reason**: 一次情報源以外に説明が残ると検査対象の語句へ一致するため、参照へ置き換えず重複を残す変更を区別できる。
+- **Unit RED Evidence**:
+  - **Test**: `deployment.md` と `platform.md` から「配置と接続」「実現方式と選定理由」の担当宣言を探す `rg` 検査
+  - **Requirement**: N/A: 実行可能な単体境界を持たない文書整理である。
+  - **Observed Failure**: 役割の組み合わせを述べる行がなく、`rg` は一致なしの終了コード 1 になった。
+  - **Detection Reason**: 両文書の冒頭に担当宣言がなければ一致しないため、節の重なりだけを直して責務を明示し忘れた変更を検出できる。
+- **Change-Resistance Results**:
+  `N/A: low-risk の文書変更であり、Go のロジックを変更していないため mutation testing は適用しない。RED に使った二つの検査を変更後に再実行し、重複説明が消え、担当宣言が両文書に現れることを確認した。`
+- **Source Comparison Results**:
+  `infra/docker/docker-compose.dev.yaml` は Alloy が Docker socket だけをマウントすることを、`infra/k8s/base/worker.yaml` は三つの Deployment がそれぞれ一つの `JOB_WORKER_LANES` を持つことを示していた。
+  `infra/k8s/overlays/` には dev と prod だけがあり、GKE 向け overlay は存在しなかった。
+- **Verification Results**:
+  - 文書間の重複説明を拒否する `rg` 検査 - passed
+  - 両文書の担当宣言を確認する `rg` 検査 - passed
+  - `mise run check-links` - passed (881 documents)
+  - `mise run check-terminology` - passed (231 documents)
+  - `mise run check-work-items` - passed
+  - `mise run verify` - passed
+  - `mise run test-ui-e2e` - N/A: ブラウザーへ到達するプロダクト変更ではない。

@@ -16,7 +16,8 @@ IdMagic の長時間処理（利用者の一括取り込み、動的グループ
 | `default` | 上のどちらでもない処理 |
 | `bulk` | 長時間かつ大量の処理。一括取り込みや再暗号化 |
 
-レーンが与えるのは順序ではなくキャパシティの隔離です。`bulk` にどれだけ滞留しても、`latency_sensitive` の実行枠を奪うことはありません。本番では `infra/k8s/base/worker.yaml` が定義する `idmagic-worker-{latency-sensitive,default,bulk}` の 3 つの Deployment を並べ、それぞれ `JOB_WORKER_LANES` で 1 レーンに固定します。
+本番では `infra/k8s/base/worker.yaml` が定義する `idmagic-worker-{latency-sensitive,default,bulk}` の 3 つの Deployment を並べ、それぞれ `JOB_WORKER_LANES` で 1 レーンに固定します。
+レーンが保証する隔離と順序の扱いは[Jobs の内部設計](../domain/jobs/internals.md#execution-lanes)で定めます。
 
 ## worker の起動と設定
 

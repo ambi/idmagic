@@ -1,6 +1,7 @@
 # デプロイメントアーキテクチャ
 
 この文書は、[ランタイムアーキテクチャ](runtime.md)が宣言する実行単位を、どこへ置き、どうつなぐかを示す。
+プロファイルごとの構成では、この文書が構成要素の配置と接続を、[プラットフォーム設計](../design/infrastructure/platform.md)が各構成要素の実現方式と選定理由を担当する。
 `infra/` の下にある Docker Compose ファイル、Kubernetes マニフェスト、Terraform を、この文書では**構成ファイル**と呼ぶ。
 
 ## 共通トポロジー
@@ -70,7 +71,7 @@ flowchart TB
 | 上流の IdP | 外部の OIDC プロバイダーと SAML IdP。`idmagic-api` がメタデータ、トークン、公開鍵を取得する | 対象外 | 外部サービス |
 | 下流の送信先 | ユーザーとグループを反映する SaaS の SCIM サーバー、失効を伝える SSF の受信側、メールを送る SMTP サーバー。`idmagic-api` と `idmagic-worker` が送信する | 対象外 | 外部サービス |
 
-レーンを別のプロセスに分けるのは、あるレーンの滞留が別のレーンの処理枠を食わないようにするためである。
+レーンが与える隔離と順序の扱いは[Jobs の内部設計](../domain/jobs/internals.md#execution-lanes)で定める。
 ローカル Docker Compose だけは、一つのプロセスで全レーンを処理する。
 
 `idmagic-frontend` がどのパスを中継するかは、設定上の許可リストが決める。
@@ -109,7 +110,7 @@ flowchart TB
 | `idmagic-batch` | 常設のサービスとして実行しない | 保守処理ごとの CronJob | 汎用 Kubernetes と同じ |
 | `idmagic-seed` | 独立して実行しない。`api` が起動時に `SEED_PROFILE` の投入を一度だけ行う | 初回だけ起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
 | `psqldef` | `schema` サービス | リリースパイプラインが起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
-| PostgreSQL | `postgres` サービス | CloudNativePG オペレーターが管理するクラスター（仮） | Cloud SQL for PostgreSQL |
+| PostgreSQL | `postgres` サービス | [CloudNativePG のクラスター](../design/infrastructure/platform.md#汎用-kubernetes)（仮） | Cloud SQL for PostgreSQL |
 
 `idmagic-seed` の実行ファイルは `backend/cmd/idmagic-seed` にあるが、`infra/docker/Dockerfile` が作るイメージには入っていない。
 Job として起動するには、イメージへ加える必要がある（仮）。
@@ -147,7 +148,7 @@ flowchart TB
 ```
 
 `schema` が正常終了するまで、`api` と `worker` は起動しない。
-`alloy` はホストのログディレクトリではなく Docker Engine API を読むため、ホストのログドライバーの設定に依存しない。
+ローカルプロファイルのログ収集経路は[ログ設計](../design/observability/logging.md#収集経路)で定める。
 
 #### 汎用 Kubernetes
 
@@ -236,5 +237,5 @@ flowchart TB
 
 ## 関連文書
 
-各プロファイルのコンピューティング、シークレットの注入、スキーマ適用、スケール単位は[プラットフォーム設計](../design/infrastructure/platform.md)で、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../design/infrastructure/network.md)で定める。
+各プロファイルの構成要素の実現方式と選定理由は[プラットフォーム設計](../design/infrastructure/platform.md)で、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../design/infrastructure/network.md)で定める。
 負荷に応じた拡張は[スケーリング・負荷設計](../design/performance/scaling.md)で、障害時の配置と切替は[可用性設計](../design/reliability/availability.md)で定める。

@@ -3,7 +3,8 @@
 ## 対象範囲
 
 IdMagic を動かすコンピューティング、ストレージ、コンテナイメージのサプライチェーン、サービスアカウントと IAM、リリース、構成管理を扱う。
-デプロイプロファイルの一覧と構成要素の配置先は[デプロイメントアーキテクチャ](../../architecture/deployment.md)で定め、この文書は配置先の表を繰り返さない。
+デプロイプロファイルの一覧、構成要素の配置と接続は[デプロイメントアーキテクチャ](../../architecture/deployment.md)で定める。
+この文書は配置先の表を繰り返さず、各構成要素の実現方式と選定理由を定める。
 エッジ、セグメンテーション、ファイアウォールルール、DNS は[ネットワーク設計](network.md)で定める。
 
 ## この文書の読み方
@@ -27,7 +28,7 @@ IdMagic を動かすコンピューティング、ストレージ、コンテナ
 | データベース | `postgres` コンテナ。永続ボリュームを宣言しないため、停止すると状態が消える | CloudNativePG オペレーターが管理する PostgreSQL クラスター（仮） | Cloud SQL for PostgreSQL。可用性の種類を REGIONAL（同期スタンバイ）にする |
 | スキーマ適用 | `schema` サービスが `psqldef` を実行し、その正常終了を `api` と `worker` の起動条件にする | リリースパイプラインが `psqldef` の Job を起動し、完了を待ってから Deployment を更新する（仮） | 汎用 Kubernetes と同じ（仮） |
 | スケール単位 | 独立に増減できる単位がない | `idmagic-api` は HorizontalPodAutoscaler、`idmagic-worker` はレーンごとの Deployment、`idmagic-frontend` はレプリカ数で増減する。PodDisruptionBudget が、計画的な中断のときに最小限の稼働数を守る | 汎用 Kubernetes と同じ。ノードの台数は Autopilot が Pod の要求量から決める |
-| メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。Alloy が Docker Engine API から全コンテナのログを読んで Loki へ送る | `infra/k8s/monitoring/` に同じ仕組みのマニフェストを置く。Alloy は DaemonSet で動き、`/metrics` の取得は Prometheus または ServiceMonitor が行う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。シグナルの契約は[オブザーバビリティ設計](../observability/README.md)で定める |
+| メトリクスとログの収集経路 | `api` と `worker` が OTLP をコレクターへ送る。Prometheus が `/metrics` を定期的に取得する。ログは[ログ設計の収集経路](../observability/logging.md#収集経路)に従う | `/metrics` は Prometheus または ServiceMonitor が取得する。ログは[ログ設計の収集経路](../observability/logging.md#収集経路)に従う | `/metrics` は Managed Service for Prometheus が PodMonitoring の指定に従って取得し、コンテナの標準出力は Cloud Logging が収集する（仮）。シグナルの契約は[オブザーバビリティ設計](../observability/README.md)で定める |
 
 ステートフルな基盤は、どのプロファイルでも PostgreSQL 一つである。
 業務データ、BLOB、認証セッション、認可コード、ジョブのような短命状態を同じデータベースへ置き、二つ目のステートフル基盤は設けない。
@@ -264,14 +265,13 @@ Kubernetes Engine の確約利用割引を使うと、vCPU の単価は 1 年契
 
 他の二つのプロファイルにはクラウド事業者の料金表を適用できないため、見積もりを書かない。
 
-## プロファイルごとの構成
+## プロファイルごとの実現方式
 
 ### ローカル Docker Compose
 
 開発者の手元での開発、デモ、復元試験のための構成である。
 
-ログは Alloy が Docker Engine API から読む。
-ホストのログディレクトリを前提にしないため、ホストのログドライバーの設定に依存しない。
+ログの収集経路とホストへの依存は[ログ設計](../observability/logging.md#収集経路)で定める。
 
 このプロファイルは、TLS の終端、シークレットの隔離、レーンの分離、レプリカの冗長化、データベースの永続化、保守処理の定期実行を提供しない。
 本番の前提を欠く構成なので、開発と復元試験の範囲を超えて使わない。
@@ -280,8 +280,7 @@ Kubernetes Engine の確約利用割引を使うと、vCPU の単価は 1 年契
 
 クラウド事業者に依存しない、クラスターへのデプロイのための構成である。
 
-`idmagic-worker` をレーンごとの Deployment に分けるのは、あるレーンの取り出しと実行の余力が、別のレーンの滞留に食われないようにするためである。
-一つのプロセスで全レーンを処理すると、`bulk` の滞留が `latency_sensitive` の取り出しを遅らせる。
+レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../domain/jobs/internals.md#execution-lanes)で定める。
 
 現在のマニフェストには、エッジと証明書、PostgreSQL、スキーマ適用、初期データ投入を定義していない。
 エッジと証明書はクラスターの運用基盤が提供する前提とする。
@@ -292,7 +291,7 @@ CloudNativePG を選ぶのは、ストリーミングレプリケーション、
 
 GKE Autopilot のリージョンクラスターと Cloud SQL for PostgreSQL を、単一の VPC と単一のリージョンに置く構成である。
 クラスターの中身は汎用 Kubernetes のマニフェストを使い、GKE に固有の差分だけを overlay に置く。
-構成ファイルがまだ無いため、この節の構成は全体が（仮）である。
+このプロファイルの構成ファイルの有無と（仮）の範囲は[デプロイメントアーキテクチャ](../../architecture/deployment.md#デプロイプロファイル)で定める。
 
 #### リソース階層
 

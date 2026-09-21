@@ -132,6 +132,7 @@ URI のクエリ文字列と `Authorization` ヘッダーはデフォルトで�
 ## 収集経路
 
 ローカルの Docker Compose では Grafana Alloy が Docker Engine API からコンテナログを読み、Loki へ送る。
+Alloy はホストのログディレクトリを読まないため、ホストのログドライバーの設定に依存しない。
 Kubernetes では Alloy の DaemonSet が同じノードの Pod ログを収集する。
 どちらも `service` と `level` をラベルにし、`trace_id`、`span_id`、`request_id` を structured metadata にする。
 
