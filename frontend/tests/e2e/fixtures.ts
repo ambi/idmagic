@@ -117,9 +117,10 @@ const LAUNCH_CANDIDATES: readonly LaunchCandidate[] = [
 ]
 
 // closeAll は Chrome の pipe を同期的に閉じるが、子プロセスの終了は少し遅れて完了する。
-// 直後に作ると閉じた pipe を再利用するため、実測で失敗した 0 ms と成功した 25 ms の間に
-// 十分な余裕を取り、次の view の生成だけを待たせる。
-const CHROME_PROCESS_SETTLE_MS = 100
+// 直後に作ると閉じた pipe を再利用するため、子プロセスが確実に終了するまで、次の view の
+// 生成だけを待たせる。GitHub Actions では 100 ms 待機だと終了前の Chrome が蓄積して OOM kill
+// されるため、余裕を 1 秒にする。
+const CHROME_PROCESS_SETTLE_MS = 1_000
 const chromeProcessLease = createWebViewProcessLease(
   () => Bun.WebView.closeAll(),
   () => Bun.sleep(CHROME_PROCESS_SETTLE_MS),
