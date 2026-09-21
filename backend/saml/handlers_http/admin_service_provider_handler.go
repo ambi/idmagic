@@ -75,7 +75,7 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 	}
 	var req serviceProviderRequest
-	if err := c.Bind(&req); err != nil {
+	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
 	}
 	if err := req.validate(); err != nil {

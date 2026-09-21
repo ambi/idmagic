@@ -668,33 +668,25 @@ func TestNotificationTemplateRefusesUnknownLocaleAndCreatesNoOverride(t *testing
 // 中継になる。SPF と DKIM は送信ドメインに紐づくので、こちらの正当な署名がついたまま
 // 別のドメインを名乗るメールが出ていく。表示名だけなら、この危険は生まれない。
 //
-//spec:covers EX-TENANCY-017-04: 差出人メールアドレスを上書きする入力は受け付けない。
-func TestNotificationTemplateRefusesFromAddressOverrideAndKeepsDisplayNameOnly(t *testing.T) {
+//spec:covers REQ-PLATFORM-005, EX-PLATFORM-005-01, EX-TENANCY-017-04: 未知の差出人アドレスを無視し、既知の表示名だけを保存する。
+func TestNotificationTemplateIgnoresFromAddressOverrideAndKeepsDisplayNameOnly(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
-	before := server.templateDetail(t)
 
 	for _, field := range []string{"from_email", "from_address", "from"} {
-		refused := server.send(t, http.MethodPut, refusalTemplatePath+"/password_reset/ja", map[string]any{
+		accepted := server.send(t, http.MethodPut, refusalTemplatePath+"/password_reset/ja", map[string]any{
 			"subject": "件名", "body_text": "{{reset_url}}", "body_html": "<p>{{reset_url}}</p>",
-			field: "billing@victim.example",
+			"from_display_name": "Acme サポート",
+			field:               "billing@victim.example",
 		})
-		if refused.Code != http.StatusBadRequest {
-			t.Fatalf("%s: status=%d body=%s, want 400", field, refused.Code, refused.Body.String())
+		if accepted.Code != http.StatusOK {
+			t.Fatalf("%s: status=%d body=%s, want 200", field, accepted.Code, accepted.Body.String())
 		}
-		if after := server.templateDetail(t); after != before {
-			t.Fatalf("%s: 拒否されたのにテンプレートが変わった: %+v", field, after)
+		if after := server.templateDetail(t); after.FromDisplayName != "Acme サポート" {
+			t.Fatalf("%s: 既知の表示名が保存されていない: %+v", field, after)
 		}
 	}
 
-	// 対照: 表示名だけの上書きは通り、実際に送られるメールへ反映される。
 	// アドレスはサーバー設定のままなので、送信メッセージにはそもそもアドレスの欄が無い。
-	accepted := server.send(t, http.MethodPut, refusalTemplatePath+"/password_reset/ja", map[string]any{
-		"subject": "件名", "body_text": "{{reset_url}}", "body_html": "<p>{{reset_url}}</p>",
-		"from_display_name": "Acme サポート",
-	})
-	if accepted.Code != http.StatusOK {
-		t.Fatalf("対照 status=%d body=%s, want 200", accepted.Code, accepted.Body.String())
-	}
 	sent := server.send(t, http.MethodPost, refusalTemplatePath+"/password_reset/ja/test", nil)
 	if sent.Code != http.StatusOK {
 		t.Fatalf("test send status=%d body=%s", sent.Code, sent.Body.String())
@@ -703,7 +695,7 @@ func TestNotificationTemplateRefusesFromAddressOverrideAndKeepsDisplayNameOnly(t
 		t.Fatalf("送信メッセージ = %+v, want the display name only", server.sender.Sent)
 	}
 	if strings.Contains(server.sender.Sent[0].FromDisplayName, "victim.example") {
-		t.Fatalf("拒否したアドレスが差出人に混ざった: %+v", server.sender.Sent[0])
+		t.Fatalf("無視したアドレスが差出人に混ざった: %+v", server.sender.Sent[0])
 	}
 }
 

@@ -157,12 +157,23 @@ func TestIssueApiTokenRejectsInvalidRequest(t *testing.T) {
 // usecases.ErrInvalidRequest) must return application/problem+json.
 func TestIssueApiToken_InvalidRequestIsProblemDetails(t *testing.T) {
 	e := newHandler(t)
-	for name, body := range map[string]map[string]any{
-		"malformed json (unknown field)": {"description": "x", "scopes": []string{}, "expiry_days": 7, "unknown_field": true},
-		"business rule (bad expiry)":     {"description": "x", "scopes": []string{"scim:users:read"}, "expiry_days": 0},
+	for name, send := range map[string]func() *httptest.ResponseRecorder{
+		"malformed json": func() *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodPost, "/api/admin/v1/api-tokens", bytes.NewBufferString(`{"description":`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Demo-Sub", "admin")
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			return rec
+		},
+		"business rule (bad expiry)": func() *httptest.ResponseRecorder {
+			return request(t, e, http.MethodPost, "/api/admin/v1/api-tokens", map[string]any{
+				"description": "x", "scopes": []string{"scim:users:read"}, "expiry_days": 0,
+			}, true)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			rec := request(t, e, http.MethodPost, "/api/admin/v1/api-tokens", body, true)
+			rec := send()
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 			}

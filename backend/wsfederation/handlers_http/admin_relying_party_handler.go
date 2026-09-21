@@ -58,7 +58,7 @@ func (d Deps) handleUpsertRelyingParty(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	var req relyingPartyRequest
-	if err := c.Bind(&req); err != nil {
+	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
 	}
 	if err := req.validate(); err != nil {

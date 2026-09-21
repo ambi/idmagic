@@ -374,7 +374,7 @@ Primary actor: `TenantAdministrator`
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PasswordReset の本文に許可集合外の変数 `{{password}}` を書いて保存を試みる
 - But "operator" が差出人メールアドレスの上書きを試みる
-- Then アドレスを上書きする入力は受け付けず、上書きできるのは表示名だけである
+- Then アドレスを上書きする未知のプロパティは無視され、上書きできるのは表示名だけである
 
 ## Rule: REQ-TENANCY-018 プレビューは実送信せずテスト送信は操作者本人にしか届かない
 

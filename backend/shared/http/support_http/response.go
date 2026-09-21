@@ -2,6 +2,7 @@ package support_http
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -40,9 +41,17 @@ func WriteServerError(c *echo.Context, err error) error {
 	return WriteProblem(c, http.StatusInternalServerError, "internal_server_error", "Internal server error.")
 }
 
-// DecodeJSON はリクエスト body を上限付き (64KiB) かつ未知フィールド拒否で復号する。
+const maxJSONBodyBytes = 64 << 10
+
+// DecodeJSON はリクエスト body を 64 KiB 以内に制限して復号する。
+// 未知のプロパティは前方互換性のため無視する。
 func DecodeJSON(request *http.Request, destination any) error {
-	decoder := json.NewDecoder(io.LimitReader(request.Body, 64<<10))
-	decoder.DisallowUnknownFields()
-	return decoder.Decode(destination)
+	body, err := io.ReadAll(io.LimitReader(request.Body, maxJSONBodyBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(body) > maxJSONBodyBytes {
+		return fmt.Errorf("JSON request body exceeds %d bytes", maxJSONBodyBytes)
+	}
+	return json.Unmarshal(body, destination)
 }

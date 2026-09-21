@@ -308,7 +308,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 	}
 
 	var req tenantQuotaUpdateRequest
-	if err := c.Bind(&req); err != nil {
+	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, 400, "invalid_request", "invalid request body: "+err.Error())
 	}
 

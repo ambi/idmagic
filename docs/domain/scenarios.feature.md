@@ -82,3 +82,23 @@ Primary actor: `AuthenticatedBrowserUser`
 - When ユーザーが Cookie とヘッダーで一致する CSRF トークンを持たずに状態変更を要求する
 - Then 403 の `CsrfFailedError` で拒否される
 - And 要求された状態変更は行われない
+
+## Rule: REQ-PLATFORM-005 汎用 API の JSON リクエストボディは上限内で前方互換にデコードされる
+
+参加する Context: ApiTokens、Application、Authentication、Authorization、IdGovernance、IdManagement、OAuth2、Provisioning、Saml、SharedSignals、Tenancy、WorkloadIdentity、WsFederation
+
+Primary actor: `APIConsumer`
+
+### Example: EX-PLATFORM-005-01 未知のプロパティを含む
+
+- Given APIConsumer は管理 API の操作を呼び出せる
+- When APIConsumer が有効な既知のプロパティと未知のプロパティを含む JSON リクエストボディを送信する
+- Then 未知のプロパティは無視される
+- And 既知のプロパティによる要求は、未知のプロパティがない場合と同じように処理される
+
+### Example: EX-PLATFORM-005-02 64 KiB を超える
+
+- Given APIConsumer は管理 API の操作を呼び出せる
+- When APIConsumer が 64 KiB を超える JSON リクエストボディを送信する
+- Then 400 の `InvalidRequestError` で拒否される
+- And 要求された状態変更は行われない

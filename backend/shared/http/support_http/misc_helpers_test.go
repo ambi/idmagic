@@ -58,33 +58,47 @@ func TestWriteServerError(t *testing.T) {
 }
 
 func TestDecodeJSON(t *testing.T) {
-	t.Run("decodes a valid body", func(t *testing.T) {
-		var dest struct{ Name string }
-		req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewBufferString(`{"Name":"alice"}`))
-		if err := DecodeJSON(req, &dest); err != nil {
-			t.Fatal(err)
-		}
-		if dest.Name != "alice" {
-			t.Fatalf("dest=%+v", dest)
-		}
-	})
+	var dest struct{ Name string }
+	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewBufferString(`{"Name":"alice"}`))
+	if err := DecodeJSON(req, &dest); err != nil {
+		t.Fatal(err)
+	}
+	if dest.Name != "alice" {
+		t.Fatalf("dest=%+v", dest)
+	}
+}
 
-	t.Run("rejects unknown fields", func(t *testing.T) {
-		var dest struct{ Name string }
-		req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewBufferString(`{"Name":"alice","Extra":1}`))
-		if err := DecodeJSON(req, &dest); err == nil {
-			t.Fatal("expected error for an unknown field")
-		}
-	})
+//spec:covers REQ-PLATFORM-005, EX-PLATFORM-005-01: 未知のプロパティを無視し、既知のプロパティを復号する。
+func TestDecodeJSONIgnoresUnknownProperties_REQ_PLATFORM_005(t *testing.T) {
+	var dest struct{ Name string }
+	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewBufferString(`{"Name":"alice","Extra":1}`))
+	if err := DecodeJSON(req, &dest); err != nil {
+		t.Fatalf("DecodeJSON returned an error for an unknown property: %v", err)
+	}
+	if dest.Name != "alice" {
+		t.Fatalf("dest=%+v, want the known property to be decoded", dest)
+	}
+}
 
-	t.Run("rejects a body over the size limit", func(t *testing.T) {
-		var dest struct{ Name string }
-		huge := `{"Name":"` + strings.Repeat("a", 70<<10) + `"}`
-		req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewBufferString(huge))
-		if err := DecodeJSON(req, &dest); err == nil {
-			t.Fatal("expected error for an oversized body")
-		}
-	})
+//spec:covers REQ-PLATFORM-005, EX-PLATFORM-005-02: 有効な JSON の後ろに空白を加えた本文でも 64 KiB 超過を拒否する。
+func TestDecodeJSONRejectsOversizedBody_REQ_PLATFORM_005(t *testing.T) {
+	const maxBodyBytes = 64 << 10
+	validJSON := []byte(`{"Name":"alice"}`)
+	atLimit := append([]byte(nil), validJSON...)
+	atLimit = append(atLimit, bytes.Repeat([]byte(" "), maxBodyBytes-len(validJSON))...)
+	var accepted struct{ Name string }
+	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader(atLimit))
+	if err := DecodeJSON(req, &accepted); err != nil {
+		t.Fatalf("DecodeJSON rejected a body exactly 64 KiB long: %v", err)
+	}
+
+	overLimit := append([]byte(nil), atLimit...)
+	overLimit = append(overLimit, ' ')
+	var rejected struct{ Name string }
+	req = httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader(overLimit))
+	if err := DecodeJSON(req, &rejected); err == nil {
+		t.Fatal("DecodeJSON accepted a body larger than 64 KiB")
+	}
 }
 
 func TestLoggingMiddleware(t *testing.T) {
