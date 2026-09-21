@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-153-identity-lifecycle-workflows, wi-126-async-job-runner]
+depends_on: [wi-153-identity-lifecycle-workflows, wi-42-async-job-runner]
 status: completed
 authors: [tn]
 risk: high

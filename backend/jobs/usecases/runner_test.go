@@ -638,7 +638,7 @@ func TestRunner_DrainWaitsForInFlight(t *testing.T) {
 	waitForStatus(t, repo, job.ID, domain.StatusSucceeded, time.Second)
 }
 
-// TestRunner_ReclaimsAfterWorkerCrash is the wi-126 T012 smoke test: enqueue
+// TestRunner_ReclaimsAfterWorkerCrash is the wi-42 T012 smoke test: enqueue
 // a no-op/echo Job, have "worker-1" claim it and then go silent forever
 // (crash, never heartbeating/completing/failing again), and confirm a second
 // worker reclaims it once the lease expires and drives it to Succeeded.

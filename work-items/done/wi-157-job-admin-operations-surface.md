@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-126-async-job-runner]
+depends_on: [wi-42-async-job-runner]
 status: completed
 authors: ["tn"]
 risk: medium
@@ -51,7 +51,7 @@ affected_spec:
 # 非同期ジョブの管理 API・運用 UI・観測面を整備する
 
 ## Motivation
-[[wi-126-async-job-runner]] は durable queue と worker runtime の core を導入するが、
+[[wi-42-async-job-runner]] は durable queue と worker runtime の core を導入するが、
 それだけでは管理者や運用者がジョブの状態、失敗理由、進捗、再試行、キャンセル可否を確認できない。
 CSV export、bulk import、outbound SCIM、DR drill などの長時間処理は、実行基盤だけでなく
 「何が走っているか」「なぜ失敗したか」「止められるか」を安全に見える化する面が必要である。
@@ -82,7 +82,7 @@ worker 実行モデルとは分け、ユーザー操作面と運用面の品質�
   - README または運用 runbook に worker 起動、ジョブ確認、キャンセル、失敗時調査、保持期間を記載する。
 
 ## Out of Scope
-- durable queue / worker runtime の core 実装。これは [[wi-126-async-job-runner]] の範囲。
+- durable queue / worker runtime の core 実装。これは [[wi-42-async-job-runner]] の範囲。
 - 個別 feature の非同期化。CSV export は [[wi-148-admin-resource-csv-export]]、bulk import は
   [[wi-96-bulk-user-import-csv]] で扱う。
 - cron / DAG / fan-out-fan-in などの上位オーケストレーション。
@@ -120,7 +120,7 @@ Jobs には「キューを操作する HTTP のエンドポイントは持たな
 この防護にはテストがあり、カバレッジもあった。それでも見つからなかったのは、3 つの拒否ケースがいずれも 403 のステータスコードだけを assert し、戻り値が `nil` であることを「期待どおり」として固定していたからである。再発防止は [[wi-390-security-control-test-standard-and-gate]] が扱う。
 
 ## Plan
-- [[wi-126-async-job-runner]] 完了後、既存 `Job` read model を拡張せずに管理表示に必要な projection を切る。
+- [[wi-42-async-job-runner]] 完了後、既存 `Job` read model を拡張せずに管理表示に必要な projection を切る。
 - API は read と cancel に閉じる。retry / replay / force-complete は初期導入では提供しない。
 - UI は全ジョブ横断の運用画面を作る。個別 feature 画面からは job detail へリンクできる形にする。
 - metrics は Prometheus の既存方針に合わせ、ラベルに tenant_id や PII を載せない。

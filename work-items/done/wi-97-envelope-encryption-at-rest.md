@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-126-async-job-runner]
+depends_on: [wi-42-async-job-runner]
 status: completed
 authors: ["tn"]
 risk: high
@@ -81,7 +81,7 @@ per-tenant DEK / `EnvelopeCrypto` がその「既存 KMS」の実体であり、
 - 初期対象をScope記載のclient/provider secret、SMTP/connector credential、sensitive user attributes等にinventoryし、fieldごとにowner context repositoryでencrypt/decryptする。domain model全体をreflectionで暗号化しない。
 - rotationは新DEKをactiveにしてnew writeを切替え、旧version decryptを保ちながらbackground re-encryption jobを再開可能に進める。全参照が移行するまで旧DEKをdestroyしない。DEKのin-memoryキャッシュはrotate/disable/destroy時に無効化し、複数worker replicaでも古いDEKで暗号化し続けないようにする。
 - migrationはdual-read（encrypted優先、legacy plaintext fallback）→backfill→plaintext write停止→検証→plaintext列除去の段階導入にし、ログ/error/event/backupからplaintextを排除する。
-- 移行/再暗号化ジョブは[[wi-126-async-job-runner]]が提供する`backend/jobs`のJobKind登録(HandlerRegistry)を使って実装し、独自のジョブ基盤を作らない。
+- 移行/再暗号化ジョブは[[wi-42-async-job-runner]]が提供する`backend/jobs`のJobKind登録(HandlerRegistry)を使って実装し、独自のジョブ基盤を作らない。
 
 ## Tasks
 - [x] T001 [Inventory/ADR] 暗号化対象field/owner、Tink+OpenBao(初期provider)/AEAD、AAD、DEK cache/fail mode、rotation/destroy、backup recovery、新規bounded context名、provider非ロックインの明記を決定する。→ [[ADR-148]] (`decisions/ADR-148-envelope-encryption-and-datakeys-context.md`)。設計本文は `ARCHITECTURE.md` §Persistence #3 / Context Map / Structural Decisions に記載し、ADRは「なぜ」に限定。
@@ -109,7 +109,7 @@ per-tenant DEK / `EnvelopeCrypto` がその「既存 KMS」の実体であり、
   - bootstrap配線 (`backend/cmd/internal/bootstrap/`): `datakeys.go` (`selectMasterKeyProvider`、`DATA_KEY_PROVIDER=openbao`でOpenBao、既定はTink cleartext keyset)、`deps.go`/`postgres.go`/`memory.go` に `DataKeys` module追加、`MfaFactorRepository` へ実際の `FieldCipher` を注入 (これが無いとPostgres経路で最初のMFA登録がnilポインタで落ちるため必須)。
   - 副作用の発見と対応: `backend/shared/architecture.yaml` の `shared-security-tokens-jose` に既存の未宣言 depends_on (oauth2-ports/shared-spec/signingkeys-domain/signingkeys-ports/tenancy-public) を発見・追加 (wi-97以前からの既存不備、`git show` で確認)。新設した `shared-security-envelope-crypto` のlayerを `adapters` から `use_cases` に修正 (port本体を持つ shared-services と同じ扱い。use_cases層のdatakeys-usecases/datakeys-publicから直接依存できるようにするため)。`backend/datakeys/architecture.yaml` を新設し、`backend/authentication/architecture.yaml`・`backend/cmd/architecture.yaml` の depends_on を同期。
   - `just check` / `just verify-go` (pre-existing, unrelated `TestAgentStatusMatchesSCL` を除く) / `just build-go` green。
-- [x] T006 [Migration Job] [[wi-126-async-job-runner]]のJobKind/HandlerRegistryに登録する形でresumable backfill/re-encryption、per-field progress/checkpoint、verification queryと旧key destroy gateを実装する。
+- [x] T006 [Migration Job] [[wi-42-async-job-runner]]のJobKind/HandlerRegistryに登録する形でresumable backfill/re-encryption、per-field progress/checkpoint、verification queryと旧key destroy gateを実装する。
   → SCL: `spec/contexts/jobs.yaml` の `JobKind` に `data_key_reencryption` を追加。`spec/contexts/data-keys.yaml` に `DataKeyStillReferencedError` を追加し、`DestroyTenantDataKey` の `requires`/`errors` に反映、対応する destroy 拒否 scenario extension を追加。
   → Go: `backend/datakeys/ports/field_migrator.go` (`FieldMigrator` port: `ReencryptBatch`/`PendingCount`)。`backend/datakeys/usecases/migrator_registry.go` (`MigratorRegistry`、`jobs/usecases.HandlerRegistry` と同型)。`backend/datakeys/usecases/reencrypt.go` (`ReencryptTenantField`: 1 run あたり `ReencryptMaxBatchesPerRun`(25)×`ReencryptBatchSize`(200) まで進めて打ち切る、`ReencryptionHandler`: `data_key_reencryption` Job の Handler、残件があれば dedup 付きで続行 Job を再 enqueue、`EnqueueReencryptionJob`/`ReencryptionDedupKey`)。`backend/datakeys/usecases/lifecycle.go`: `Deps` に `Migrators`/`Jobs` を追加 (nil で無効化、既存呼び出し元は無変更)、`RotateTenantDataKey` が登録済み migrator ごとに再暗号化 Job を自動 enqueue、`DestroyTenantDataKey` が登録済み migrator の `PendingCount>0` を `ErrDataKeyStillReferenced` で拒否 (fail-closed destroy gate)。
   → 第一の FieldMigrator 実装: `backend/authentication/totp/db_postgres/reencrypt.go` (`MfaFactorReencryptor`: legacy plaintext と旧 DEK version の両方を対象に一括で再暗号化、`mfa_factors`/`users` を JOIN してテナントスコープする)。SQL は `reencrypt.sql` (`ListMfaFactorsPendingReencryption`/`CountMfaFactorsPendingReencryption`/`UpdateMfaFactorCiphertext`)、`just sqlc-generate` で生成。
@@ -175,7 +175,7 @@ fallback を用意し、開発時に OpenBao を必須にしない。
   (`backend/shared/security/{envelope_crypto,envelope_openbao,envelope_cleartext}`)。
   第一の移行対象として MFA TOTP シード (`mfa_factors.secret`) を dual-read
   移行 (legacy plaintext → ciphertext) で暗号化対応した。
-  移行/再暗号化は [[wi-126-async-job-runner]] の JobKind/HandlerRegistry に
+  移行/再暗号化は [[wi-42-async-job-runner]] の JobKind/HandlerRegistry に
   `data_key_reencryption` を追加して実装し、`FieldMigrator` port
   (`backend/datakeys/ports`) で DataKeys が消費側のスキーマを知らずに再暗号化
   ジョブを駆動できるようにした。Rotate は登録済み migrator ごとに再暗号化

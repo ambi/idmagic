@@ -40,7 +40,7 @@ created_at: 2026-07-10
   - contract test、repository test、handler test、主要画面の component/e2e test を追加する。
 
 ## Out of Scope
-- CSV export や bulk import の非同期化。CSV export は [[wi-148-admin-resource-csv-export]]、job runtime は [[wi-126-async-job-runner]] / [[wi-157-job-admin-operations-surface]] で扱う。
+- CSV export や bulk import の非同期化。CSV export は [[wi-148-admin-resource-csv-export]]、job runtime は [[wi-42-async-job-runner]] / [[wi-157-job-admin-operations-surface]] で扱う。
 - テナント別の総量制限・作成拒否。これは [[wi-160-tenant-resource-quotas]] で扱う。
 - 横断検索や集計 read model の導入。これは [[wi-161-large-tenant-performance-foundation]] で扱う。
 - SCIM の RFC 準拠ページング全面対応。必要なら別 WI として切り出す。

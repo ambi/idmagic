@@ -23,7 +23,7 @@ Google / Entra ID（combined registration）が示すとおり、最も費用対
 idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき、同期 passkey を示す
 `backup_eligible` / `backup_state` も保存済みで、この層に自然に乗る。層状のアカウント復旧の第 1 層として、
 2 個目認証器（2 個目の passkey、または TOTP + passkey）の登録を推奨・任意強制できる仕組みを
-仕様化する。MFA 登録オンボーディング（[[wi-127-mfa-enrollment-onboarding-and-enforcement]]）と連携し、初回登録直後に 2 個目を促す。
+仕様化する。MFA 登録オンボーディング（[[wi-245-mfa-enrollment-onboarding-and-enforcement]]）と連携し、初回登録直後に 2 個目を促す。
 
 ## Scope
 
@@ -34,7 +34,7 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 - `docs/domain/application/` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
   推奨するか必須にするか」を設定する項目。
 - Account UI（`AccountSecurityPage`）: 復旧手段が単一のときの警告と、2 個目登録への導線。
-- 登録オンボーディング（wi-127）: 初回 MFA 登録完了直後に 2 個目認証器登録を促すステップ。
+- 登録オンボーディング（wi-245）: 初回 MFA 登録完了直後に 2 個目認証器登録を促すステップ。
 
 ## Out of Scope
 
@@ -51,13 +51,13 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
   - 「復旧手段が単一か」を派生状態として計算し、account security とオンボーディングで提示する。
     同期 passkey（`backup_state=true`）は復旧耐性が高い扱いとし、単一警告の判定に反映する。
   - 2 個目登録の強制はテナント / アプリのオプトインポリシーに留め、既定は推奨（非強制）とする。
-    強制する場合は wi-127 の enrollment-required flow を再利用し、fail-closed で扱う。
+    強制する場合は wi-245 の enrollment-required flow を再利用し、fail-closed で扱う。
 - 参考にする外部パターン: Entra ID combined registration、Google の複数手段・同期 passkey。
 - 却下する代替案:
   - 常に 2 個目を必須化: 小規模運用の導入摩擦が大きい。既定は推奨に留めオプトインで必須化。
   - recovery code を廃止して冗長化のみに依存: セルフサービスの最終手段を失う（`docs/domain/authentication/decisions.md` で却下済み）。
 - 未決定事項: 「復旧手段が単一」の厳密な判定基準（同期 passkey 1 個を単一とみなすか）、
-  推奨導線を wi-127 に統合するか独立ステップにするか。
+  推奨導線を wi-245 に統合するか独立ステップにするか。
 
 ## Tasks
 
@@ -82,5 +82,5 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 ## Risk Notes
 
 リスクは中程度。強制ポリシーを誤ると登録摩擦やロックアウトを招くため、既定は推奨（非強制）
-とし、強制は明示オプトイン + wi-127 の fail-closed な enrollment-required flow に限定する。
+とし、強制は明示オプトイン + wi-245 の fail-closed な enrollment-required flow に限定する。
 「復旧手段が単一か」の判定は保守的に倒し、過剰警告より見落としを避ける。

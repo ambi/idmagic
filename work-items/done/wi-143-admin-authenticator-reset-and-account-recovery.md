@@ -32,7 +32,7 @@ backstop として備える。idmagic はこの層を欠いている。`ADR-088`
   - ユーザー詳細画面での「認証器をリセット」操作、リセット対象 factor の選択、確認 UX。
   - 権限モデル（管理者 / 委任管理者スコープ）を既存の admin 操作に揃える。
 - Authentication use cases: リセット実行、`mfa_enrolled` 再計算、再登録強制状態のセット、
-  再登録強制と [[wi-127-mfa-enrollment-onboarding-and-enforcement]] の enrollment-required flow の接続。
+  再登録強制と [[wi-245-mfa-enrollment-onboarding-and-enforcement]] の enrollment-required flow の接続。
 - OAuth2 browser login handlers: リセット済みユーザーは次回ログインで MFA 再登録 flow に入る。
 - Persistence adapters: 再登録強制状態 / required action の保存（必要に応じて）。
 
@@ -49,7 +49,7 @@ backstop として備える。idmagic はこの層を欠いている。`ADR-088`
 - 方針:
   - リセットは既存の管理者操作・権限モデル・監査枠組みに揃え、新しい認可軸を増やさない。
   - リセットで対象 factor を削除し、`mfa_enrolled` を残存要素に応じて再計算する。全 factor を
-    失った場合は「次回ログインで MFA 再登録を要求」状態にし、wi-127 の enrollment-required flow へ接続する。
+    失った場合は「次回ログインで MFA 再登録を要求」状態にし、wi-245 の enrollment-required flow へ接続する。
   - リセット単体では新しい factor を作らない（管理者が任意の factor を勝手に登録できると別の
     なりすまし面になる）。あくまで削除 + 再登録要求に留める。
   - 全操作を監査イベント化し、誰が誰の何をリセットしたかを追跡可能にする。
@@ -63,10 +63,10 @@ backstop として備える。idmagic はこの層を欠いている。`ADR-088`
 
 ## Tasks
 
-- [x] T001 [SCL] 認証器リセット interface、再登録強制状態、監査イベント、管理 UX を `authentication.yaml` に仕様化する。実装調査の結果、対象 UI アクションは wi-127 の enrollment bypass ボタンと同じ画面 (AdminUserDetailPage) に載る既存パターンであり、`flows:` セクションへのエントリ追加は wi-127 でも行われていない (先例踏襲)。`application.yaml` は変更不要と判断。
+- [x] T001 [SCL] 認証器リセット interface、再登録強制状態、監査イベント、管理 UX を `authentication.yaml` に仕様化する。実装調査の結果、対象 UI アクションは wi-245 の enrollment bypass ボタンと同じ画面 (AdminUserDetailPage) に載る既存パターンであり、`flows:` セクションへのエントリ追加は wi-245 でも行われていない (先例踏襲)。`application.yaml` は変更不要と判断。
 - [x] T002 [Domain] リセット後の `mfa_enrolled` 再計算と再登録要求状態の判定を追加する。既存 `SyncMfaEnrolled` (authentication/usecases) をそのまま再利用し、新規 `AuthenticatorResetTarget` enum の SCL↔Go coherence test を追加。RED: `TestAuthenticatorResetTargetMatchesSCL` を先に fail 確認 (wire alias 未登録) → glossary に `RecoveryCode` alias を追加して GREEN (spec `AuthenticatorResetTarget`)。
 - [x] T003 [UseCase] 管理者リセット use case（対象 factor 削除 + 再登録要求セット）を追加する。RED: `TestResetUserAuthenticatorsFullResetForcesReenrollment` を `SyncMfaEnrolled` 呼び出しを一時的に外して fail 確認 (mfa_enrolled が再計算されない) → GREEN (scenario `管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる`)。`TestResetUserAuthenticatorsPartialResetKeepsMfaEnrolled` / `RejectsEmptyTargets` / `RejectsCrossTenantTarget` も追加。
-- [x] T004 [UseCase] リセット済みユーザーのログインを wi-127 の enrollment-required flow に接続する。設計判断: 新しい状態機械は追加せず、mfa_enrolled が false になった時点で既存 `IssueMfaEnrollmentBypass` を呼んで同じ `MfaEnrollmentBypass` を発行するだけで、既存の `EvaluateMfaEnrollment` / `beginMfaEnrollment` (wi-127) がそのまま次回ログインを Enrollment pending へ導く。RED: `TestAdminResetUserAuthenticatorsFullResetForcesReenrollment` (Go HTTP e2e) をバイパス自動発行を無効化して fail 確認 (`reenrollment_required=false`) → GREEN。
+- [x] T004 [UseCase] リセット済みユーザーのログインを wi-245 の enrollment-required flow に接続する。設計判断: 新しい状態機械は追加せず、mfa_enrolled が false になった時点で既存 `IssueMfaEnrollmentBypass` を呼んで同じ `MfaEnrollmentBypass` を発行するだけで、既存の `EvaluateMfaEnrollment` / `beginMfaEnrollment` (wi-245) がそのまま次回ログインを Enrollment pending へ導く。RED: `TestAdminResetUserAuthenticatorsFullResetForcesReenrollment` (Go HTTP e2e) をバイパス自動発行を無効化して fail 確認 (`reenrollment_required=false`) → GREEN。
 - [x] T005 [Admin/UI] ユーザー詳細画面にリセット操作・対象選択・確認 UX を追加する。`AdminUserDetailPage.tsx` にドロップダウン項目、`AdminUserDialogs.tsx` に `ResetAuthenticatorDialog` (対象 factor チェックボックス、削除のみである旨の警告) を追加。
 - [x] T006 [Audit] リセット要求 / 完了 / 再登録要求を監査イベントに出す。`AuthenticatorResetRequested` / `AuthenticatorResetCompleted` を新設し、再登録要求は既存 `MfaEnrollmentBypassIssued` を再利用 (bypass 発行自体が要求の証跡になるため新規イベントは追加しない)。監査カテゴリ `"user"` に登録。
 - [x] T007 [Verify] E2E で、全 factor リセット後の再登録強制ログイン、部分リセット後の残存要素動作、権限外操作の拒否を固定する。Go HTTP e2e (`backend/shared/http/server_http/admin_authenticator_reset_e2e_test.go`) で 3 scenario を実際のログインフロー込みで固定し、ブラウザ e2e (`frontend/tests/e2e/ui-scenario-actions.spec.ts`) で admin コンソールの実操作 (ドロップダウン→ダイアログ→送信→通知→メニュー再表示) を固定した。
@@ -88,7 +88,7 @@ backstop として備える。idmagic はこの層を欠いている。`ADR-088`
 リスクは高い。認証器リセットは認証境界を管理者権限で越える操作であり、乱用や設計ミスは
 なりすまし・恒久ロックアウトに直結する。緩和策として、リセットは削除 + 再登録要求に限定して
 管理者による factor 直接登録を禁じ、既存の admin 権限・監査枠組みに揃え、全操作を監査イベント
-必須とする。再登録強制は wi-127 の fail-closed な enrollment-required flow を再利用する。
+必須とする。再登録強制は wi-245 の fail-closed な enrollment-required flow を再利用する。
 
 ## Completion
 
@@ -98,7 +98,7 @@ backstop として備える。idmagic はこの層を欠いている。`ADR-088`
     policy `TenantAdministrator`) を追加し、対象 user の TOTP factor / WebAuthn credential /
     recovery code から選んだ種別だけを削除する。管理者は代わりの factor を登録できない。
   - 削除後は既存 `SyncMfaEnrolled` で `mfa_enrolled` を再計算し、TOTP と WebAuthn が両方
-    無くなった場合だけ既存の `IssueMfaEnrollmentBypass` (wi-127) をそのまま呼んで単発
+    無くなった場合だけ既存の `IssueMfaEnrollmentBypass` (wi-245) をそのまま呼んで単発
     enrollment bypass を自動発行する。新しい状態機械や pending 概念は追加せず、既存の
     fail-closed な `EvaluateMfaEnrollment` / `beginMfaEnrollment` gate がそのまま次回ログインを
     Enrollment pending へ導く。一部 factor のみ削除した場合は bypass を発行せず、残存要素で
@@ -129,7 +129,7 @@ backstop として備える。idmagic はこの層を欠いている。`ADR-088`
   - guarantee: 管理者は対象 user の認証器 (TOTP / WebAuthn / recovery code) を選択削除できるが、
     代わりの factor を直接登録することはできない。
   - state: passed
-  - guarantee: TOTP と WebAuthn の両方が無くなった場合、次回ログインは既存の wi-127
+  - guarantee: TOTP と WebAuthn の両方が無くなった場合、次回ログインは既存の wi-245
     enrollment-required flow (fail-closed) に入り、新しい factor の登録を確定するまで
     元の authorization transaction は完了しない。
   - state: passed

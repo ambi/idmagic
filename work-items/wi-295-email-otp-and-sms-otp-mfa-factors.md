@@ -130,7 +130,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
   restricted factor を提供する前提条件である。
 - 未決定: restricted factor のみのユーザーに強い factor の登録を「促す」のか
   「required action で強制する」のか。第 1 段では促す (通知 + 画面上の案内) とし、
-  強制は [[wi-127-mfa-enrollment-onboarding-and-enforcement]] の仕組みに委ねる。
+  強制は [[wi-245-mfa-enrollment-onboarding-and-enforcement]] の仕組みに委ねる。
 
 ## Tasks
 

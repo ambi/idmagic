@@ -35,7 +35,7 @@ func (s JobStatus) Valid() bool {
 type JobKind string
 
 const (
-	// KindNoopEcho is the wi-126 core-runtime smoke-test job kind.
+	// KindNoopEcho is the wi-42 core-runtime smoke-test job kind.
 	KindNoopEcho           JobKind = "noop_echo"
 	KindUserImportPreview  JobKind = "user_import_preview"
 	KindUserImportApply    JobKind = "user_import_apply"

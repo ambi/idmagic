@@ -46,7 +46,7 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
 - **go**:
   - campaign scheduler (one-time / recurring)、対象抽出、reviewer 解決、decision 記録
     usecase、締切超過時の auto-revoke executor、memory / postgres リポジトリを実装する。
-  - `wi-126-async-job-runner` を使い、大量対象の抽出と auto-revoke 処理を job として
+  - `wi-42-async-job-runner` を使い、大量対象の抽出と auto-revoke 処理を job として
     実行する。
 - **http**:
   - campaign CRUD、対象プレビュー、reviewer 向け決定 API (自分がレビューすべき一覧を

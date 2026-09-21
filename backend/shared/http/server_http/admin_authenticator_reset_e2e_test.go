@@ -1,7 +1,7 @@
 package server_http_test
 
 // wi-143 / 第 2 層: 管理者による認証器リセットが、削除した factor に応じて
-// (1) 全喪失時は wi-127 の enrollment-required flow へ fail-closed に接続され次回ログインで
+// (1) 全喪失時は wi-245 の enrollment-required flow へ fail-closed に接続され次回ログインで
 // 再登録を強制すること、(2) 一部喪失では残存要素で通常ログインを継続できること、
 // (3) admin ロールを持たない操作者には拒否されることを、実際の HTTP ルーティングと
 // メモリアダプタを通して固定する。

@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-126-async-job-runner]
+depends_on: [wi-42-async-job-runner]
 status: completed
 authors: ["tn"]
 risk: high
@@ -35,7 +35,7 @@ SCIM service provider へ反映する。確実性のため push は同期呼び�
 本 WI の核心は「outbound provisioning の設定をどこに置き、何を設定させ、どう確実に
 配送するか」である。ここでは他社 IdP (Okta / Entra ID / Google / Keycloak) の実装を
 調査した上で、idmagic の既存構造 (`Application` と `ApplicationAssignment`、
-`outbox` + Relay、[[wi-126-async-job-runner]]) に無理なく載る形を確定し、実装が仕様判断で
+`outbox` + Relay、[[wi-42-async-job-runner]]) に無理なく載る形を確定し、実装が仕様判断で
 止まらないようにする。
 
 ### 参照サービス調査と採用方針
@@ -65,7 +65,7 @@ SCIM service provider へ反映する。確実性のため push は同期呼び�
    上書きする (Okta の "profile master" と同じ)。
 4. **配送は同期呼び出しにしない**。committed lifecycle event を `outbox` 経由で観測し、
    `(tenant, connection, source_type, source_id, source_version)` を idempotency key とする
-   `ProvisioningDelivery` を [[wi-126-async-job-runner]] 上で冪等・順序保証・retry 付き実行する。
+   `ProvisioningDelivery` を [[wi-42-async-job-runner]] 上で冪等・順序保証・retry 付き実行する。
 
 ### context 境界の決定
 
@@ -181,7 +181,7 @@ trigger × 設定可能アクション (既定は破壊性が低い側に倒す)
 
 - **配送単位**: `ProvisioningDelivery` (poly `pending|in_flight|succeeded|failed|dead_letter`)。idempotency key = `(tenant, connection, source_type, source_id, source_version)`。同一 key の重複 enqueue は no-op。
 - **順序**: `(connection, remote resource)` 単位で create → update → deprovision の順序を保証 (out-of-order event を source_version 単調性で解決)。
-- **retry**: 指数 backoff + jitter、`Retry-After` / 429 尊重、`max_attempts` 超過で dead-letter。runtime は [[wi-126-async-job-runner]]。
+- **retry**: 指数 backoff + jitter、`Retry-After` / 429 尊重、`max_attempts` 超過で dead-letter。runtime は [[wi-42-async-job-runner]]。
 - **rate limit**: connection ごとの token bucket。429 で自動減速。
 - **quarantine**: 連続失敗が `quarantine_after_consecutive_failures` に達したら停止 + 通知メール。管理者が原因解消後に再開。
 - **手動運用**: on-demand provision (単一 subject を即時試験配送)、full resync (scope 内 subject を全走査して収束)、個別 delivery の manual retry。
@@ -190,8 +190,8 @@ trigger × 設定可能アクション (既定は破壊性が低い側に倒す)
 
 ## Scope
 - **decision**:
-  - 新規 ADR: outbound provisioning model を定義する。§設計 の確定事項 — connection の Application への帰属、scope としての `ApplicationAssignment` 再利用、真実源=内部 aggregate / 下流=mirror、`active=false` / delete の下流翻訳と deprovision マトリクス、`externalId` 相関と 409/404 解決、`outbox`+[[wi-126-async-job-runner]] による冪等配送、SSRF/secret 保護 — を記録する。
-  - 配送基盤は [[wi-126-async-job-runner]] (completed) を利用する。[[wi-184-transactional-event-log-foundation]] の `event_logs`/`event_deliveries` は ADR-095 で撤去済みのため、lifecycle event は現行の `outbox` (Relay drain) から観測する。二重 queue は作らない。
+  - 新規 ADR: outbound provisioning model を定義する。§設計 の確定事項 — connection の Application への帰属、scope としての `ApplicationAssignment` 再利用、真実源=内部 aggregate / 下流=mirror、`active=false` / delete の下流翻訳と deprovision マトリクス、`externalId` 相関と 409/404 解決、`outbox`+[[wi-42-async-job-runner]] による冪等配送、SSRF/secret 保護 — を記録する。
+  - 配送基盤は [[wi-42-async-job-runner]] (completed) を利用する。[[wi-184-transactional-event-log-foundation]] の `event_logs`/`event_deliveries` は ADR-095 で撤去済みのため、lifecycle event は現行の `outbox` (Relay drain) から観測する。二重 queue は作らない。
 - **scl** (application/scim):
   - 新規 model: `ProvisioningConnection` (Application ごと 1、endpoint / auth / feature flags / scope / mapping / deprovision policy / 信頼性 / health)、`AttributeMappingRule`・`MatchingRule`・`DeprovisionPolicy`・`ProvisioningFeatureFlags` (value object)、`RemoteResourceLink` (下流 id 相関 entity)、`ProvisioningDelivery` (poly、idempotency key)。enum: `ProvisioningAuthMethod` / `ProvisioningScope` / `ProvisioningDeprovisionAction` / `AttributeApplyOn` / `ProvisioningHealth`。
   - **`ProvisioningAssignment` は新設しない** (既存 `ApplicationAssignment` を scope に再利用)。
@@ -199,7 +199,7 @@ trigger × 設定可能アクション (既定は破壊性が低い側に倒す)
   - 新規 interface (admin, permission `AdminProvisioningRead` / `AdminProvisioningWrite`): `GetProvisioningConnection` / `RegisterProvisioningConnection` / `UpdateProvisioningConnection` / `DeleteProvisioningConnection` / `TestProvisioningConnection` / `ProvisionOnDemand` / `StartFullResync` / `ListProvisioningDeliveries` / `GetProvisioningDelivery` / `RetryProvisioningDelivery` / `ListTenantProvisioningConnections` (テナント集約 read)。
 - **go**:
   - SCIM wire client adapter (`backend/scim` の outbound 側): 下流 `/scim/v2/Users` `/scim/v2/Groups` への POST / PATCH / (PUT fallback) / DELETE を仕様準拠で送る。`externalId` 相関、409/404 冪等解決、pagination / error / `Retry-After` 処理。bearer / OAuth2 client credentials に対応し secret をログに出さない。
-  - 配送: committed lifecycle event (create / attribute update / disable / delete / membership / assignment 変更) を projector で受け、対象 connection の `ProvisioningDelivery` を [[wi-126-async-job-runner]] に enqueue。指数 backoff retry、dead-letter、per-connection rate limit、順序保証。
+  - 配送: committed lifecycle event (create / attribute update / disable / delete / membership / assignment 変更) を projector で受け、対象 connection の `ProvisioningDelivery` を [[wi-42-async-job-runner]] に enqueue。指数 backoff retry、dead-letter、per-connection rate limit、順序保証。
   - Postgres adapter: `provisioning_connections` / `provisioning_remote_links` / `provisioning_deliveries` テーブルと index。credential は既存 secret 保管方針に従う。
 - **ui**:
   - Application 詳細に「プロビジョニング」サブルート (§設定の置き場所)。接続 test、機能トグル、scope、属性マッピングエディタ、push groups、deprovision policy、配送一覧/詳細/retry、on-demand provision、full resync。secret は write-only 表示。
@@ -216,12 +216,12 @@ trigger × 設定可能アクション (既定は破壊性が低い側に倒す)
 - **context 境界を最初に確定する** (§context 境界の決定)。inbound (server) と outbound (client) は SCIM 仕様を共有するだけで model・aggregate・admin API・invariant が別なので、outbound を独立の provisioning subdomain として切り出し、SCIM の wire 表現 (resource marshal + filter) だけを共有 kernel にする。
 - SCIM wire client/serializer は共有 wire kernel を使い、下流 `/scim/v2/Users` `/scim/v2/Groups` への CRUD を出す outbound adapter として実装する。接続 test/discovery で `/ServiceProviderConfig` と schema を取得し、https 必須・内部 IP / 任意 redirect 拒否で SSRF/credential leak を防ぐ。
 - connection は base URL、auth credential reference、capabilities、feature flags、scope (`ApplicationAssignment` 参照)、attribute mapping、deprovision policy を持つ。**scope 用の割当 model は新設せず既存 `ApplicationAssignment` を使う**。
-- committed lifecycle event (user/group/assignment) を現行の `outbox` (Relay drain) から観測し、`(tenant, connection, source_type, source_id, source_version)` を idempotency key に `ProvisioningDelivery` を作る。HTTP request 内で下流を呼ばない。配送 runtime は [[wi-126-async-job-runner]] (completed) を使い、二重 queue を作らない ([[wi-184-transactional-event-log-foundation]] の `event_logs` は ADR-095 で撤去済み)。
+- committed lifecycle event (user/group/assignment) を現行の `outbox` (Relay drain) から観測し、`(tenant, connection, source_type, source_id, source_version)` を idempotency key に `ProvisioningDelivery` を作る。HTTP request 内で下流を呼ばない。配送 runtime は [[wi-42-async-job-runner]] (completed) を使い、二重 queue を作らない ([[wi-184-transactional-event-log-foundation]] の `event_logs` は ADR-095 で撤去済み)。
 - delivery は per-(connection, remote resource) 順序、指数 backoff、`Retry-After`、dead-letter、manual retry、quarantine を持つ。
 - remote SCIM ID と local resource の mapping (`RemoteResourceLink`) を durable に保持し、PATCH 非対応先は PUT fallback、409/404 を冪等解決、delete は deprovision policy により deactivate/delete/none を選ぶ。
 
 ## Tasks
-- [x] T001 [Decision/ADR] context 境界 (§context 境界の決定) を確定し、outbound ownership・scope=`ApplicationAssignment` 再利用・真実源/mirror・deprovision マトリクス・delivery guarantee (idempotency key / 順序 / quarantine)・secret 保護を ADR に記録する。ADR-128: `outbox`+[[wi-126-async-job-runner]] 利用は当初案から変更し、既存 outbox はトピック未登録・非原子的書き込み・in-process consumer 不在の三重の欠落があるため観測経路として採用せず、`UserMutationCommitter` 型の same-Tx capture で `ProvisioningDelivery` を書き Jobs へ渡す方式に置換した。context 名は独立 `Provisioning` (outbound 専用)、内部は protocol 非依存コア + protocol 別 feature slice (`provisioning/scim` 等)。inbound 側リファクタは [[wi-258-inbound-integration-taxonomy]] / [[wi-259-rename-scim-inbound-server-context]] / [[wi-260-relocate-csv-user-import-to-inbound]] へ分離。
+- [x] T001 [Decision/ADR] context 境界 (§context 境界の決定) を確定し、outbound ownership・scope=`ApplicationAssignment` 再利用・真実源/mirror・deprovision マトリクス・delivery guarantee (idempotency key / 順序 / quarantine)・secret 保護を ADR に記録する。ADR-128: `outbox`+[[wi-42-async-job-runner]] 利用は当初案から変更し、既存 outbox はトピック未登録・非原子的書き込み・in-process consumer 不在の三重の欠落があるため観測経路として採用せず、`UserMutationCommitter` 型の same-Tx capture で `ProvisioningDelivery` を書き Jobs へ渡す方式に置換した。context 名は独立 `Provisioning` (outbound 専用)、内部は protocol 非依存コア + protocol 別 feature slice (`provisioning/scim` 等)。inbound 側リファクタは [[wi-258-inbound-integration-taxonomy]] / [[wi-259-rename-scim-inbound-server-context]] / [[wi-260-relocate-csv-user-import-to-inbound]] へ分離。
 - [x] T002 [SCL] `spec/contexts/provisioning.yaml` を新設し、connection、feature flags、scope、attribute mapping、matching、deprovision policy、remote link、delivery lifecycle、management interfaces/events/authorization/scenarios/flows を追加。`spec/scl.yaml` context_map と `ARCHITECTURE.md` を同期。共有 SCIM wire kernel は作らない (ADR-128 決定3。inbound `Scim` の filter パーサ・固定 DTO は outbound の mapping 駆動シリアライズと再利用性が低いため)。派生成果物を `just scl-render` で再生成済み。`just yaml-check` 全緑。
 - [x] T003 [Domain] `backend/provisioning/domain` に `ProvisioningConnection`・`AttributeMappingRule`/`MatchingRule`/`DeprovisionPolicy`・`RemoteResourceLink`・`ProvisioningDelivery`・`ProvisioningDeliveryLifecycle` 状態機械・14 個の domain event を実装。test-first 証跡:
   - `TransitionProvisioningDeliveryLifecycle` / `IsProvisioningDeliveryTerminal` — RED: `TestTransitionProvisioningDeliveryLifecycle_DeclaredTransitions` 等を先に fail 確認 (undefined symbols) → GREEN (states `ProvisioningDeliveryLifecycle`)。

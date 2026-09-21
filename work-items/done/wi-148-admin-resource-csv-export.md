@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-126-async-job-runner]
+depends_on: [wi-42-async-job-runner]
 status: completed
 authors: ["tn"]
 risk: medium
@@ -23,7 +23,7 @@ CSV ダウンロードを行う。Microsoft Learn は 1 時間内に終わらな
 PII の過剰露出、再実行不能な失敗が問題になる。
 
 本 WI は管理者向けに、フィルタ済みリソースの CSV エクスポート要求、進捗確認、完了ファイルの期限付き
-ダウンロードを提供し、大量エクスポートは [[wi-126-async-job-runner]] の core runtime に載せる。
+ダウンロードを提供し、大量エクスポートは [[wi-42-async-job-runner]] の core runtime に載せる。
 横断的なジョブ一覧 / 詳細 / キャンセル UI は [[wi-157-job-admin-operations-surface]] に委ね、
 本 WI では ResourceExport 専用の開始・状態確認・ダウンロード導線に集中する。
 
@@ -59,8 +59,8 @@ PII の過剰露出、再実行不能な失敗が問題になる。
   - `flows` と `scenarios`: AdminUsers / AdminGroups の一覧画面からエクスポートでき、詳細から
     進捗とダウンロード状態を確認できることを追加する。
 - **scl** (`spec/scl.yaml` / context map):
-  - `IdentityManagement` が `Jobs` の published language を使う前提で、[[wi-126-async-job-runner]] と整合する
-    dependency / interface を反映する。`Jobs` context が未実装の場合は本 WI の実装開始時に `wi-126` を先行する。
+  - `IdentityManagement` が `Jobs` の published language を使う前提で、[[wi-42-async-job-runner]] と整合する
+    dependency / interface を反映する。`Jobs` context が未実装の場合は本 WI の実装開始時に `wi-42` を先行する。
     横断ジョブ管理 UI が必要な場合は [[wi-157-job-admin-operations-surface]] を後続依存として扱う。
 - **decision**:
   - 新規 ADR: CSV エクスポート方式を記録する。小規模同期ダウンロードと大規模非同期ジョブの切替条件、
@@ -108,7 +108,7 @@ PII の過剰露出、再実行不能な失敗が問題になる。
   列 allowlist の拡張で追加できる形にする。
 - 同期エクスポートは小規模・短時間のケースだけに限定する。閾値は行数推定、選択列、明示 `async=true`、
   サーバ設定のいずれかで決め、閾値超過時は 202 + export id 相当の非同期契約へ寄せる。
-- 非同期実行は [[wi-126-async-job-runner]] を前提にする。`wi-126` が未実装なら本 WI の実装前に先行させる。
+- 非同期実行は [[wi-42-async-job-runner]] を前提にする。`wi-42` が未実装なら本 WI の実装前に先行させる。
   横断ジョブ管理画面は [[wi-157-job-admin-operations-surface]] に任せ、本 WI の UI は ResourceExport の開始と
   export 自身の状態確認に閉じる。
 - CSV 生成は全件をメモリに載せず、repository のページング/カーソルと writer stream で処理する。成功時だけ
@@ -124,7 +124,7 @@ PII の過剰露出、再実行不能な失敗が問題になる。
 ## Tasks
 - [x] T001 [SCL] `ResourceExport*` の語彙、モデル、状態、イベント、interfaces、authorization/access、scenarios、UX を追加する。`spec/contexts/identity-management.yaml` に models(8)・events(7)・interfaces(5)・`ResourceExportLifecycle`・`ResourceExportDirectory` resource・scenario・AdminUsers/AdminGroups flow を追加。`just check` green。
 - [x] T002 [ADR] `decisions/ADR-140-admin-data-csv-export.md` を作成。全件 Jobs 非同期経路に統一、ファイルは Job result 保持 + Jobs 30日 retention TTL、列 allowlist、PII/sensitive 除外、formula injection 対策、fine-grained permission 却下 (coarse TenantAdministrator 流用) を決定。
-- [x] T003 [Dependency] [[wi-126-async-job-runner]] は完了済み (`work-items/done/`)。`data_export` JobKind を既存 Jobs runtime に載せる。
+- [x] T003 [Dependency] [[wi-42-async-job-runner]] は完了済み (`work-items/done/`)。`data_export` JobKind を既存 Jobs runtime に載せる。
 - [x] T004 [Go] User / Group / GroupMembership の export target と列 allowlist を `backend/idmanagement/domain/data_export.go` に実装。RED: `TestValidateExportColumns` / `TestColumnsForTarget_NoSensitiveColumns` を先に fail 確認（scenario "allowlist 外の key" → invalid_columns、ADR-140 sensitive 除外）→ GREEN。
 - [x] T005 [Go] CSV writer (RFC4180 + formula injection escaping)・生成・失敗/キャンセル/期限切れ・`data_export` JobKind とハンドラ・`ListByTenantAndKinds` ポートを実装。RED: `TestEscapeCSVField` / `TestEncodeCSVRecords_RFC4180AndInjectionSafe`（scenario formula injection extension）、`TestResourceExportHandler_User_GeneratesInjectionSafeCSV`（scenario succeeded/downloadable）、`TestDownloadResourceExport_OnlySucceeded`（succeeded 限定 DL）を先に fail 確認 → GREEN。formula injection は fuzz `FuzzEncodeCSVRecords` を採用（ADR-121: 外部未信頼入力を表計算ソフトが解釈する高リスク面。165 万 exec 違反なし）。
 - [x] T006 [HTTP] `backend/idmanagement/handlers_http/admin_data_export_handler.go` に per-type (users/groups/groups-members) の開始(202)/一覧/詳細/ダウンロード(content-disposition)/キャンセル API を追加、routes.go に 15 route 登録、worker に `data_export` ハンドラ登録。RED: `TestDataExportHTTP_UserFullFlow`（+per-type 分離 404）/ `_GroupMemberFlow`（per-group 分離）/ `_RejectsInvalidColumns` / `_NotFoundForUnknownID` / `_RequiresAdmin` を先に fail 確認 → GREEN。

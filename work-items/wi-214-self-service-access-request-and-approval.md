@@ -40,7 +40,7 @@ group membership / application assignment を反映する access request workflo
   - catalog 管理、request submission usecase、approver 解決 (明示的承認者または
     [[wi-94-delegated-administration]] の resource owner)、承認時の自動付与 /
     却下時の no-op executor、期限付き付与の失効を実装する。
-  - `wi-126-async-job-runner` を使い期限失効を job として実行する。
+  - `wi-42-async-job-runner` を使い期限失効を job として実行する。
 - **http**:
   - catalog CRUD、request 送信、承認者向けの承認 / 却下 API、request 履歴・状態確認
     API を追加する。

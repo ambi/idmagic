@@ -3,7 +3,7 @@ status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-19
-depends_on: [wi-126-async-job-runner]
+depends_on: [wi-42-async-job-runner]
 change_kind: feature
 initial_context:
   scl:

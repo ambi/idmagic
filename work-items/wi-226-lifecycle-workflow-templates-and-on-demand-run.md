@@ -34,7 +34,7 @@ trigger/filter/action から構築する必要があり、導入コストが高�
   チェック選択) に対して手動実行 (on-demand run) できる interface を追加する。on-demand run は通常の
   trigger 評価をバイパスするが、action 実行・checkpoint・audit・retry は通常の `WorkflowRun` と同じ
   経路を通す。
-- on-demand run の対象選択は一括処理になり得るため、大量対象時は [[wi-126-async-job-runner]] 経由で
+- on-demand run の対象選択は一括処理になり得るため、大量対象時は [[wi-42-async-job-runner]] 経由で
   run 生成自体を非同期化する。
 
 ## Out of Scope

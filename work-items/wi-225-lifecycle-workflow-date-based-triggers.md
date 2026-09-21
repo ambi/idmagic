@@ -30,7 +30,7 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 - `spec/contexts/identity-governance/models.tsp` の `WorkflowTriggerKind` に `date_attribute_offset`
   (仮称) を追加し、対象の日付型属性、offset 方向 (before/after)、offset 日数を持つ trigger 定義を
   追加する。
-- 日次スキャン job (既存の [[wi-126-async-job-runner]] を利用) を追加し、対象日付属性を持つ全 User
+- 日次スキャン job (既存の [[wi-42-async-job-runner]] を利用) を追加し、対象日付属性を持つ全 User
   × enabled workflow を評価し、条件を満たす User に対して `WorkflowRun` を生成する。
 - 同一 User × workflow × 対象日について 1 日 1 回のみ run を生成する重複排除
   (`source_occurrence_id` を評価日ベースで構成する等) を設計する。

@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-126-async-job-runner]
+depends_on: [wi-42-async-job-runner]
 status: completed
 authors: ["tn"]
 risk: medium
@@ -40,13 +40,13 @@ created_at: 2026-07-03
 
 ## Plan
 - [[ADR-094-transactional-event-log-and-audit-projection]] がCSV全件処理を単一transaction外と明記するため、upload/stage、parse+dry-run、confirm、chunk apply、resultの状態機械にする。HTTP request内で全件適用しない。
-- core runtimeは [[wi-126-async-job-runner]] を完了前提として利用する。wi-126未完了の同期fallbackを本番機能として作らず、必要なら depends_onを更新して着手順を固定する。
+- core runtimeは [[wi-42-async-job-runner]] を完了前提として利用する。wi-42未完了の同期fallbackを本番機能として作らず、必要なら depends_onを更新して着手順を固定する。
 - CSV schemaはversion、UTF-8/BOM、header、最大bytes/rows/field length、user attributes/groups、create/update modeを明示する。password/hashをimportせず、初期password設定/招待は別の安全なrequired actionにする。
 - dry-runで全行を正規化・validateし、row number、stable error code、masked inputを結果に保存する。confirm時はupload digestとdry-run versionを照合し、差し替えを防ぐ。
 - applyは行/chunk idempotency keyで再実行可能にし、Identity Management create/update、group membership、password policy、quotaを既存use case経由で適用する。all-or-nothingではなく行結果を確定する。
 
 ## Tasks
-- [x] T001 [Dependency/ADR] wi-126 Job contract、blob staging/retention、partial-success/idempotency、CSV schema versionを確定する。
+- [x] T001 [Dependency/ADR] wi-42 Job contract、blob staging/retention、partial-success/idempotency、CSV schema versionを確定する。
 - [x] T002 [SCL] UserImport lifecycle、row/result models、Upload/Preview/Confirm/GetResult interfaces、events/limits/invariants/scenariosを追加して再生成する。
 - [x] T003 [Parser] streaming CSV parser、header/version/encoding/size/row/field validationとsafe error rendererを実装しfuzz testを追加する。
 - [ ] T004 [Staging] tenant-scoped upload/result storage、digest/TTL、job repository referencesとcleanupを実装する。

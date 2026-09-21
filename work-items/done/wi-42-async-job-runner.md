@@ -449,7 +449,7 @@ T012・T013 を実施し、全フェーズ完了。
   か、admin 運用面を扱う [[wi-157-job-admin-operations-surface]] で
   行うのが適切と判断した。
 
-wi-126 の core runtime 実装が完了した。管理者向け一覧/詳細/キャンセル UI・
+wi-42 の core runtime 実装が完了した。管理者向け一覧/詳細/キャンセル UI・
 運用 metrics・runbook は [[wi-157-job-admin-operations-surface]] へ、
 個別機能の非同期化 (CSV import・outbound SCIM 等) は各機能側 WI へ、
 それぞれ既存の Out of Scope の通り委譲する。

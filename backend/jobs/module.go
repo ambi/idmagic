@@ -19,7 +19,7 @@ type Module struct {
 	Repo ports.JobRepository
 }
 
-// NoopEchoHandler is the wi-126 core-runtime smoke-test handler for
+// NoopEchoHandler is the wi-42 core-runtime smoke-test handler for
 // domain.KindNoopEcho: it does nothing but echo its params back as the
 // result, proving worker claim -> execute -> complete end to end without
 // depending on any other bounded context.
