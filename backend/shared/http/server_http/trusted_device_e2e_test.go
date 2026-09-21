@@ -388,7 +388,7 @@ func TestTrustedDeviceDoesNotSatisfyStepUp(t *testing.T) {
 			Label   string `json:"label"`
 		} `json:"devices"`
 		MaxAgeSeconds int `json:"max_age_seconds"`
-	}](t, client, base+"/api/account/v1/trusted_devices")
+	}](t, client, base+"/api/account/v1/trusted-devices")
 	if len(devices.Devices) != 1 || !devices.Devices[0].Current {
 		t.Fatalf("trusted devices = %+v, want exactly one marked current", devices.Devices)
 	}
@@ -463,7 +463,7 @@ func TestTrustedDeviceSelfRevocation(t *testing.T) {
 	if len(devices) != 1 {
 		t.Fatalf("trusted devices = %d, want 1", len(devices))
 	}
-	target := base + "/api/account/v1/trusted_devices/" + devices[0].ID + "/revoke"
+	target := base + "/api/account/v1/trusted-devices/" + devices[0].ID + "/revoke"
 
 	postNoContent(t, client, target, second.CSRFToken, map[string]any{})
 	// 再送は idempotent に成功する。
@@ -487,7 +487,7 @@ func listTrustedDevices(t *testing.T, client *http.Client, base string) []accoun
 	t.Helper()
 	return getJSON[struct {
 		Devices []accountTrustedDevice `json:"devices"`
-	}](t, client, base+"/api/account/v1/trusted_devices").Devices
+	}](t, client, base+"/api/account/v1/trusted-devices").Devices
 }
 
 // signInWithPasswordAs は指定したパスワードで「次回ログイン」を行う。
@@ -505,7 +505,7 @@ func signInWithPasswordAs(t *testing.T, client *http.Client, base, password stri
 
 func changePassword(t *testing.T, client *http.Client, base, csrf, current, next string) {
 	t.Helper()
-	postNoContent(t, client, base+"/api/auth/change_password", csrf, map[string]any{
+	postNoContent(t, client, base+"/api/auth/change-password", csrf, map[string]any{
 		"current_password": current, "new_password": next,
 	})
 }

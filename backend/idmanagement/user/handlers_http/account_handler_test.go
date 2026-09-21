@@ -306,7 +306,7 @@ func patchSettings(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecor
 	t.Helper()
 	path := accountProfilePath
 	csrf, cookie := passwordResetContextCSRF(
-		t, e, tenantPrefix(path)+"/api/auth/password_reset_context",
+		t, e, tenantPrefix(path)+"/api/auth/password-reset-context",
 	)
 	payload, err := json.Marshal(body)
 	if err != nil {

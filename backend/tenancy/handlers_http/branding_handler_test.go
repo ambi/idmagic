@@ -236,7 +236,7 @@ func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 func patchBranding(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	const path = "/realms/acme/api/admin/v1/tenant/branding"
-	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password-reset-context")
 	payload, err := json.Marshal(body)
 	if err != nil {
 		t.Fatal(err)
@@ -253,7 +253,7 @@ func patchBranding(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecor
 
 func uploadBrandingAsset(t *testing.T, e *echo.Echo, path string, data []byte) *httptest.ResponseRecorder {
 	t.Helper()
-	csrf, cookie := passwordResetContextCSRF(t, e, tenantPrefix(path)+"/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, e, tenantPrefix(path)+"/api/auth/password-reset-context")
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	part, err := writer.CreateFormFile("file", "logo.png")
@@ -278,7 +278,7 @@ func uploadBrandingAsset(t *testing.T, e *echo.Echo, path string, data []byte) *
 
 func deleteBrandingAsset(t *testing.T, e *echo.Echo, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	csrf, cookie := passwordResetContextCSRF(t, e, tenantPrefix(path)+"/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, e, tenantPrefix(path)+"/api/auth/password-reset-context")
 	req := httptest.NewRequest(http.MethodDelete, path, http.NoBody)
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)

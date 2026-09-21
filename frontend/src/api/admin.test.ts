@@ -183,7 +183,7 @@ describe('admin API client', () => {
     expect(calls.map(([url]) => url)).toEqual(
       expect.arrayContaining([
         expect.stringContaining('/api/admin/v1/users/user%2Fa%20b'),
-        expect.stringContaining('/required_actions/reset%2Fpassword'),
+        expect.stringContaining('/required-actions/reset%2Fpassword'),
         expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/disable'),
         expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/enable'),
         expect.stringContaining('/api/admin/v1/users/user%2Fa%20b?purge=true'),
@@ -209,7 +209,7 @@ describe('admin API client', () => {
     expect(calls.map(([url]) => url)).toEqual([
       expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions'),
       expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions/session%2F1/revoke'),
-      expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions/revoke_all'),
+      expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions/revoke-all'),
     ])
     expect(new Headers(calls[0][1]?.headers).get('X-CSRF-Token')).toBeNull()
     expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'POST' }))
@@ -278,7 +278,7 @@ describe('admin API client', () => {
       }),
     )
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/admin/v1/tenant/user_attribute_schema'),
+      expect.stringContaining('/api/admin/v1/tenant/user-attribute-schema'),
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ attributes: [] }) }),
     )
 

@@ -254,7 +254,7 @@ func TestSystemJobCancelRefusesWithoutBrowserProof(t *testing.T) {
 func TestSystemAuditEventsSpanEveryTenantForControlPlaneActor(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
 
-	list := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/system/audit_events")
+	list := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/system/audit-events")
 	if list.Code != http.StatusOK {
 		t.Fatalf("list status = %d, body = %s", list.Code, list.Body.String())
 	}
@@ -264,7 +264,7 @@ func TestSystemAuditEventsSpanEveryTenantForControlPlaneActor(t *testing.T) {
 		}
 	}
 
-	export := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/system/audit_events/export")
+	export := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/system/audit-events/export")
 	if export.Code != http.StatusOK {
 		t.Fatalf("export status = %d, body = %s", export.Code, export.Body.String())
 	}
@@ -272,7 +272,7 @@ func TestSystemAuditEventsSpanEveryTenantForControlPlaneActor(t *testing.T) {
 		t.Fatalf("cross-tenant export omitted audit event %q: %s", srv.otherAuditID, export.Body.String())
 	}
 
-	detail := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/system/audit_events/"+srv.otherAuditID)
+	detail := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/system/audit-events/"+srv.otherAuditID)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("detail status = %d, body = %s", detail.Code, detail.Body.String())
 	}
@@ -285,9 +285,9 @@ func TestSystemRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("acme-operator", "acme", "system_admin", "admin"))
 
 	for _, path := range []string{
-		"/realms/acme/api/admin/v1/system/audit_events",
-		"/realms/acme/api/admin/v1/system/audit_events/export",
-		"/realms/acme/api/admin/v1/system/audit_events/" + srv.otherAuditID,
+		"/realms/acme/api/admin/v1/system/audit-events",
+		"/realms/acme/api/admin/v1/system/audit-events/export",
+		"/realms/acme/api/admin/v1/system/audit-events/" + srv.otherAuditID,
 		"/realms/acme/api/admin/v1/system/jobs",
 		"/realms/acme/api/admin/v1/system/jobs/" + srv.otherJob.ID,
 	} {
@@ -319,7 +319,7 @@ func TestTenantAdminApisStayInsideRequestTenant(t *testing.T) {
 		t.Errorf("tenant listing crossed into another tenant's job %q: %s", srv.otherJob.ID, list.Body.String())
 	}
 
-	events := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/audit_events?all_tenants=true")
+	events := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/audit-events?all_tenants=true")
 	if events.Code != http.StatusOK {
 		t.Fatalf("audit status = %d, body = %s", events.Code, events.Body.String())
 	}
@@ -331,7 +331,7 @@ func TestTenantAdminApisStayInsideRequestTenant(t *testing.T) {
 	if detail.Code != http.StatusNotFound {
 		t.Errorf("cross-tenant detail status = %d, want %d; body = %s", detail.Code, http.StatusNotFound, detail.Body.String())
 	}
-	auditDetail := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/audit_events/"+srv.otherAuditID)
+	auditDetail := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/audit-events/"+srv.otherAuditID)
 	if auditDetail.Code != http.StatusNotFound {
 		t.Errorf("cross-tenant audit detail status = %d, want %d; body = %s",
 			auditDetail.Code, http.StatusNotFound, auditDetail.Body.String())

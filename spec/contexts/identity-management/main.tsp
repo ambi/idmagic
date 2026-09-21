@@ -20,7 +20,7 @@ model GetEmailVerificationContextSuccess_200 {
 @doc("The email verification screen, which opens unauthenticated, reads the CSRF token that protects its confirmation POST.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetEmailVerificationContext")
-@route("/api/account/v1/email/verify_context")
+@route("/api/account/v1/email/verify-context")
 @get
 op GetEmailVerificationContext(
 
@@ -177,7 +177,7 @@ model RequestEmailChangeSuccess_204 {
 
 @doc("An authenticated user raises a change of their own primary email (self-service). It only sends a one-time link to the\nnew address; `User.email` is left alone. The target is fixed to `subject.id`, and an address already in use inside the\ntenant is refused.\nThe wording of the confirmation message is resolved from the Tenancy notification template catalogue\n(`template_key=EmailChangeConfirmation`), and the locale is decided in the order: the recipient User's locale attribute,\nthe tenant's `default_locale`, the system default locale. A tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the confirmation link is built from the issuer URL of the request.")
 @TypeSpec.OpenAPI.operationId("RequestEmailChange")
-@route("/api/account/v1/email/change_request")
+@route("/api/account/v1/email/change-request")
 @post
 op RequestEmailChange(
   @body body: IdMagic.Contract.AccountEmailChangeRequest
@@ -241,7 +241,7 @@ model ExportAccountDataError403 {
 
 @doc("An authenticated user reads their own personal data as JSON (self-service, GDPR access).\nThe target is fixed to `subject.id`. At this stage it is generated synchronously and carries the profile and the consents.")
 @TypeSpec.OpenAPI.operationId("ExportAccountData")
-@route("/api/account/v1/data_export")
+@route("/api/account/v1/data-export")
 @get
 op ExportAccountData(
 
@@ -1864,7 +1864,7 @@ model SetUserRequiredActionError422 {
 @doc("An administrator gives a target user an action to be forced at their next sign-in (a RequiredAction).\nA user given `update_password` is sent to the change-password screen at their next sign-in, and changing it clears\nthe action automatically. It is idempotent: if the action is already there, the current state is returned. Administrators only.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("SetUserRequiredAction")
-@route("/api/admin/v1/users/{user_id}/required_actions")
+@route("/api/admin/v1/users/{user_id}/required-actions")
 @post
 op SetUserRequiredAction(
   @path user_id: string,
@@ -1902,7 +1902,7 @@ model ClearUserRequiredActionError403 {
 @doc("An administrator clears a forced action from a target user. It is idempotent: if the action was not there,\nthe current state is returned. Administrators only. The automatic clearing of `update_password` when the user changes\ntheir own password happens in ChangePassword and ResetPasswordWithToken instead.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ClearUserRequiredAction")
-@route("/api/admin/v1/users/{user_id}/required_actions/{action}")
+@route("/api/admin/v1/users/{user_id}/required-actions/{action}")
 @delete
 op ClearUserRequiredAction(
   @path user_id: string,

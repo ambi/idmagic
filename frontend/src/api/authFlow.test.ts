@@ -49,7 +49,7 @@ describe('auth flow API client', () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     await expect(changePassword('csrf', 'old', 'new')).resolves.toBeUndefined()
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/auth/change_password'),
+      expect.stringContaining('/api/auth/change-password'),
       expect.objectContaining({
         body: JSON.stringify({ current_password: 'old', new_password: 'new' }),
       }),

@@ -33,7 +33,7 @@ func TestAccountScopesAllowTheReadsAndWritesTheyName(t *testing.T) {
 	}{
 		{"概要", "/api/account/v1/summary"},
 		{"プロフィール", "/api/account/v1/profile"},
-		{"データエクスポート", "/api/account/v1/data_export"},
+		{"データエクスポート", "/api/account/v1/data-export"},
 	} {
 		t.Run(read.name, func(t *testing.T) {
 			response := fixture.send(t, idmRefusalRequest{
@@ -64,7 +64,7 @@ func TestAccountScopesAllowTheReadsAndWritesTheyName(t *testing.T) {
 	}
 
 	requested := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, path: "/api/account/v1/email/change_request", bearer: writable,
+		method: http.MethodPost, path: "/api/account/v1/email/change-request", bearer: writable,
 		body: map[string]any{"new_email": "moved@example.test"},
 	})
 	if requested.Code != http.StatusNoContent {
@@ -89,7 +89,7 @@ func TestEmailVerifyContextEstablishesTheCSRFBoundaryItThenAccepts(t *testing.T)
 
 	// 未認証で確認の文脈を取る。ここに認証を付けないことが具体例の前提である。
 	verifyContext := fixture.send(t, idmRefusalRequest{
-		method: http.MethodGet, path: "/api/account/v1/email/verify_context",
+		method: http.MethodGet, path: "/api/account/v1/email/verify-context",
 	})
 	if verifyContext.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", verifyContext.Code, verifyContext.Body.String())
@@ -114,7 +114,7 @@ func TestEmailVerifyContextEstablishesTheCSRFBoundaryItThenAccepts(t *testing.T)
 
 	// 変更申請を出し、確認リンクのトークンを取る。ここは 002-01 が固定する経路。
 	requested := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, path: "/api/account/v1/email/change_request",
+		method: http.MethodPost, path: "/api/account/v1/email/change-request",
 		sessionID: alice, csrf: idmRefusalCSRF, body: map[string]any{"new_email": "moved@example.test"},
 	})
 	if requested.Code != http.StatusNoContent {

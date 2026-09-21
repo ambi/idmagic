@@ -114,7 +114,7 @@ func get(t *testing.T, e *echo.Echo, path string) *httptest.ResponseRecorder {
 func post(t *testing.T, e *echo.Echo, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	csrfRec := httptest.NewRecorder()
-	e.ServeHTTP(csrfRec, httptest.NewRequest(http.MethodGet, realmPrefix+"/api/auth/password_reset_context", http.NoBody))
+	e.ServeHTTP(csrfRec, httptest.NewRequest(http.MethodGet, realmPrefix+"/api/auth/password-reset-context", http.NoBody))
 	var csrfBody struct {
 		CSRFToken string `json:"csrf_token"`
 	}

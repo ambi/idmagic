@@ -1,4 +1,4 @@
-// /api/account/v1/notification_preferences — 本人によるセキュリティ通知の受信設定
+// /api/account/v1/notification-preferences — 本人によるセキュリティ通知の受信設定
 // (wi-90)。取得は認証済みセッションで読めるが、更新は通知を止める操作であり、乗っ取りの
 // 直後に最初に行われる操作でもあるため、直近のステップアップ再認証を要求する。
 package handlers_http

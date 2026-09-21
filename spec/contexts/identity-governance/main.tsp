@@ -29,7 +29,7 @@ model ListLifecycleWorkflowsError403 {
 @doc("An administrator lists the LifecycleWorkflows of their tenant that have not been deleted. Deleted definitions are not returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflows")
-@route("/api/admin/v1/lifecycle_workflows")
+@route("/api/admin/v1/lifecycle-workflows")
 @get
 op ListLifecycleWorkflows(
 
@@ -66,7 +66,7 @@ model CreateLifecycleWorkflowError403 {
 @doc("An administrator creates a LifecycleWorkflow. The workflow itself and the draft of revision 1 are both persisted, and `name` is unique within the tenant among workflows that have not been deleted. The name of a deleted workflow may be used again.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("CreateLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows")
+@route("/api/admin/v1/lifecycle-workflows")
 @post
 op CreateLifecycleWorkflow(
   @body body: IdMagic.Contract.LifecycleWorkflowCreateRequest
@@ -103,7 +103,7 @@ model GetLifecycleWorkflowError403 {
 @doc("An administrator reads one LifecycleWorkflow. A workflow of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}")
 @get
 op GetLifecycleWorkflow(
   @path workflow_id: string
@@ -150,7 +150,7 @@ model UpdateLifecycleWorkflowError409 {
 @doc("An administrator updates the trigger, the actions, or the display fields of a LifecycleWorkflow. When `expected_revision`\ndoes not match `current_revision` the update is rejected with WorkflowRevisionConflictError, so a lost update cannot happen.\nA change to the trigger or the actions raises `current_revision` by one but leaves `status` and `enabled_revision` alone,\nso the old revision keeps being evaluated until EnableLifecycleWorkflow is called again. An archived workflow is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("UpdateLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}")
 @put
 op UpdateLifecycleWorkflow(
   @path workflow_id: string,
@@ -189,7 +189,7 @@ model EnableLifecycleWorkflowError403 {
 @doc("An administrator validates `current_revision` and, if it passes, sets it as `enabled_revision` and moves `status` to `enabled`.\nFrom then on it is that revision the trigger evaluates. A failed validation, and an archived workflow, are both refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("EnableLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}/enable")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}/enable")
 @post
 op EnableLifecycleWorkflow(
   @path workflow_id: string,
@@ -228,7 +228,7 @@ model DisableLifecycleWorkflowError403 {
 @doc("An administrator disables a LifecycleWorkflow. No new run is triggered, and a queued run that has not started is canceled.\nA running run stops after the checkpoint of its current step and before the next one.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DisableLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}/disable")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}/disable")
 @post
 op DisableLifecycleWorkflow(
   @path workflow_id: string,
@@ -265,7 +265,7 @@ model DeleteLifecycleWorkflowError403 {
 @doc("An administrator deletes a LifecycleWorkflow whatever its state. Afterwards it is excluded from listing, reading, updating, and the name uniqueness check. If it was enabled, no new run is triggered and queued runs are canceled. Existing runs and audit events are kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DeleteLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}")
 @delete
 op DeleteLifecycleWorkflow(
   @path workflow_id: string,
@@ -303,7 +303,7 @@ model DryRunLifecycleWorkflowError403 {
 @doc("An administrator dry-runs `enabled_revision`, or `current_revision` when none is named, against a target user. It uses the same\nvalidator, trigger evaluator, and action planner as a real run, and reads the target User's current group memberships,\napplication assignments, required actions, status, and email verification state to decide per action whether it would_change,\nis a no_op, or is blocked. When the trigger filter does not match the target User, every action comes back blocked with the\nreason `trigger_not_matched`. A target user that does not exist, or belongs to another tenant, gives InvalidRequestError.\nNothing is created or changed: no WorkflowRun, no Job, no membership, assignment, required action, status, or email.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("DryRunLifecycleWorkflow")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}/dry_run")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}/dry-run")
 @post
 op DryRunLifecycleWorkflow(
   @path workflow_id: string,
@@ -341,7 +341,7 @@ model ListLifecycleWorkflowRunsError403 {
 @doc("An administrator lists the run history of one LifecycleWorkflow, newest first.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflowRuns")
-@route("/api/admin/v1/lifecycle_workflows/{workflow_id}/runs")
+@route("/api/admin/v1/lifecycle-workflows/{workflow_id}/runs")
 @get
 op ListLifecycleWorkflowRuns(
   @path workflow_id: string
@@ -378,7 +378,7 @@ model GetLifecycleWorkflowRunError403 {
 @doc("An administrator reads one WorkflowRun in detail: its trigger, revision, target user, Job attempts, and each step. A run of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflowRun")
-@route("/api/admin/v1/lifecycle_workflow_runs/{run_id}")
+@route("/api/admin/v1/lifecycle-workflow-runs/{run_id}")
 @get
 op GetLifecycleWorkflowRun(
   @path run_id: string
@@ -415,7 +415,7 @@ model RetryLifecycleWorkflowRunError403 {
 @doc("An administrator retries a WorkflowRun that is `partially_failed` or `failed`. A new Job is attached to the failed steps only;\nsteps already `changed` or `no_op` are left alone. When it races a disable, no new step is started.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("RetryLifecycleWorkflowRun")
-@route("/api/admin/v1/lifecycle_workflow_runs/{run_id}/retry")
+@route("/api/admin/v1/lifecycle-workflow-runs/{run_id}/retry")
 @post
 op RetryLifecycleWorkflowRun(
   @path run_id: string,): RetryLifecycleWorkflowRunSuccess_200 | RetryLifecycleWorkflowRunError400 | IdMagic.Contract.AuthenticationRequiredResponse | RetryLifecycleWorkflowRunError403;

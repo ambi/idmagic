@@ -65,13 +65,13 @@ var routeClassRules = []routeClassRule{
 	// --- management_bulk (ステージ 3): 集計、エクスポート、取り込み、全同期。
 	// 監査イベントは 1 日 500 万件、7 年保持なので、一覧と検索条件の列挙は走査になる。
 	// id 指定の 1 件取得は走査しないので下の management に残す。
-	{path: "/api/admin/v1/audit_events", exact: true, class: support.ClassManagementBulk},
-	{path: "/api/admin/v1/audit_events/export", class: support.ClassManagementBulk},
-	{path: "/api/admin/v1/audit_events/search_options", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/audit-events", exact: true, class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/audit-events/export", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/audit-events/search-options", class: support.ClassManagementBulk},
 	// 制御面の監査検索は同じ走査を全テナント分行うので、テナント側と同じクラスに置く。
-	{path: "/api/admin/v1/system/audit_events", exact: true, class: support.ClassManagementBulk},
-	{path: "/api/admin/v1/system/audit_events/export", class: support.ClassManagementBulk},
-	{path: "/api/admin/v1/authentication_event_buckets", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/system/audit-events", exact: true, class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/system/audit-events/export", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/authentication-event-buckets", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/users/exports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/users/imports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/groups/exports", class: support.ClassManagementBulk},
@@ -81,9 +81,9 @@ var routeClassRules = []routeClassRule{
 	// 動的 Group の事前評価とライフサイクルの試験実行は、いずれもテナントの利用者
 	// 母集団を走査する。
 	{path: "/api/admin/v1/groups/{}/dynamic-rule/preview", class: support.ClassManagementBulk},
-	{path: "/api/admin/v1/lifecycle_workflows/{}/dry_run", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/lifecycle-workflows/{}/dry-run", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/applications/{}/provisioning/full-resync", class: support.ClassManagementBulk},
-	{path: "/api/account/v1/data_export", class: support.ClassManagementBulk},
+	{path: "/api/account/v1/data-export", class: support.ClassManagementBulk},
 
 	// --- interactive_auth (ステージ 5): 最後まで受ける。
 	{path: "/authorize", class: support.ClassInteractiveAuth},
@@ -110,7 +110,7 @@ var routeClassRules = []routeClassRule{
 	{path: "/api/branding", class: support.ClassInteractiveAuth},
 	{path: "/tenant-branding-assets", class: support.ClassInteractiveAuth},
 	// ポータルの段階的認証は認証の儀式そのものなので、ポータルの他の経路とは分ける。
-	{path: "/api/account/v1/step_up", class: support.ClassInteractiveAuth},
+	{path: "/api/account/v1/step-up", class: support.ClassInteractiveAuth},
 
 	// --- management (ステージ 4): 既存セッションの認証とトークン処理に不要なもの。
 	// 動的クライアント登録は docs/design/performance/capacity.md がステージ 4 の例として名指ししている。

@@ -440,7 +440,7 @@ func TestAccountDataExport(t *testing.T) {
 	_ = h.consents.Save(context.Background(), tenancydomain.DefaultTenantID, consent)
 
 	// Test Export for regular user
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/data_export", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/data-export", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "regular")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -525,7 +525,7 @@ func TestEmailChangeLifecycle(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 
 	// GET verify context
-	ctxReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/email/verify_context", http.NoBody)
+	ctxReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/email/verify-context", http.NoBody)
 	ctxRes := httptest.NewRecorder()
 	e.ServeHTTP(ctxRes, ctxReq)
 	if ctxRes.Code != http.StatusOK {
@@ -533,7 +533,7 @@ func TestEmailChangeLifecycle(t *testing.T) {
 	}
 
 	// POST email change request
-	changeReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change_request", csrf, cookie, map[string]any{
+	changeReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change-request", csrf, cookie, map[string]any{
 		"new_email": "admin-new@example.com",
 	})
 	if changeReq.Code != http.StatusNoContent {
@@ -688,7 +688,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 
 	// --- 4. Email Change Errors ---
 	// Invalid email format (422)
-	badEmailReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change_request", csrf, cookie, map[string]any{
+	badEmailReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change-request", csrf, cookie, map[string]any{
 		"new_email": "invalid-email-format",
 	})
 	if badEmailReq.Code != http.StatusUnprocessableEntity {
@@ -698,7 +698,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 	// Unchanged email (422)
 	unchangedReq := httptest.NewRequest(
 		http.MethodPost,
-		"/realms/default/api/account/v1/email/change_request",
+		"/realms/default/api/account/v1/email/change-request",
 		bytes.NewBufferString(`{"new_email":"regular@example.com"}`),
 	)
 	unchangedReq.Header.Set("Content-Type", "application/json")
@@ -713,7 +713,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 	}
 
 	// Email taken (409)
-	takenEmailReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change_request", csrf, cookie, map[string]any{
+	takenEmailReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change-request", csrf, cookie, map[string]any{
 		"new_email": "regular@example.com",
 	})
 	if takenEmailReq.Code != http.StatusConflict {

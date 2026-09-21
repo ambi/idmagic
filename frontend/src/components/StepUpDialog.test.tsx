@@ -17,8 +17,8 @@ function stubStepUpFetch(methods: string[], completeStatus?: number, completeBod
   stubGlobal(
     'fetch',
     mock((url: string) => {
-      if (url.includes('/step_up/start')) return Promise.resolve(response(200, { methods }))
-      if (url.includes('/step_up/complete') && completeStatus !== undefined) {
+      if (url.includes('/step-up/start')) return Promise.resolve(response(200, { methods }))
+      if (url.includes('/step-up/complete') && completeStatus !== undefined) {
         return Promise.resolve(response(completeStatus, completeBody))
       }
       throw new Error(`unexpected fetch ${url}`)

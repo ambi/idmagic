@@ -93,7 +93,7 @@ describe('AdminTenantGroupAttributesPage', () => {
       ).toBeInTheDocument(),
     )
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/admin/v1/tenant/group_attribute_schema'),
+      expect.stringContaining('/api/admin/v1/tenant/group-attribute-schema'),
       expect.objectContaining({ method: 'PUT' }),
     )
   })

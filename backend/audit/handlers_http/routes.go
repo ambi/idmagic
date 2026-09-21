@@ -34,12 +34,12 @@ type Deps struct {
 // 検索選択肢だけは 1 本を両方が呼ぶ。返すのは検索軸の語彙で、どのテナントの記録も
 // 含まないためである。
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/v1/audit_events", d.handleListAdminAuditEvents)
-	g.GET("/api/admin/v1/audit_events/export", d.handleExportAdminAuditEvents)
-	g.GET("/api/admin/v1/audit_events/search_options", d.handleAdminAuditEventSearchOptions)
-	g.GET("/api/admin/v1/audit_events/:id", d.handleGetAdminAuditEvent)
+	g.GET("/api/admin/v1/audit-events", d.handleListAdminAuditEvents)
+	g.GET("/api/admin/v1/audit-events/export", d.handleExportAdminAuditEvents)
+	g.GET("/api/admin/v1/audit-events/search-options", d.handleAdminAuditEventSearchOptions)
+	g.GET("/api/admin/v1/audit-events/:id", d.handleGetAdminAuditEvent)
 
-	g.GET("/api/admin/v1/system/audit_events", d.handleListSystemAuditEvents)
-	g.GET("/api/admin/v1/system/audit_events/export", d.handleExportSystemAuditEvents)
-	g.GET("/api/admin/v1/system/audit_events/:id", d.handleGetSystemAuditEvent)
+	g.GET("/api/admin/v1/system/audit-events", d.handleListSystemAuditEvents)
+	g.GET("/api/admin/v1/system/audit-events/export", d.handleExportSystemAuditEvents)
+	g.GET("/api/admin/v1/system/audit-events/:id", d.handleGetSystemAuditEvent)
 }

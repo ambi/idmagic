@@ -50,7 +50,7 @@
 
 - **目的**：区切り文字の混在を防ぎ、クライアントがパスを類推で記述できるようにする。
 - **担保手段**：なし。
-- **適用状況**：未適用。次の 24 個の静的パスセグメントがスネークケースである。`audit_events`、`authentication_event_buckets`、`change_password`、`change_request`、`data_export`、`dry_run`、`endpoint_style`、`forgot_password`、`group_attribute_schema`、`lifecycle_workflow_runs`、`lifecycle_workflows`、`notification_preferences`、`notification_templates`、`password_reset_context`、`required_actions`、`reset_password`、`revoke_all`、`revoke_others`、`search_options`、`signin_activity`、`step_up`、`trusted_devices`、`user_attribute_schema`、`verify_context`。
+- **適用状況**：全面適用。
 
 ### パラメーターとプロパティの記法
 

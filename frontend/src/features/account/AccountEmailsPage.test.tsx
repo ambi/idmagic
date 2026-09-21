@@ -130,7 +130,7 @@ describe('AccountEmailsPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {
-        if (url.includes('/step_up/start')) {
+        if (url.includes('/step-up/start')) {
           return Promise.resolve(response(200, { methods: ['password'] }))
         }
         return Promise.resolve(

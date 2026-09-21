@@ -160,7 +160,7 @@ func TestLoginWithExpiredPasswordIsGatedToChangePassword(t *testing.T) {
 	account := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
 	}](t, client, srv.URL+"/realms/default/api/auth/account")
-	changed := postAuthJSON(t, client, srv.URL+"/realms/default/api/auth/change_password",
+	changed := postAuthJSON(t, client, srv.URL+"/realms/default/api/auth/change-password",
 		account.CSRFToken, map[string]string{
 			"current_password": expiryTestPassword, "new_password": replacement,
 		})

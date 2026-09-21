@@ -111,7 +111,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatalf("add member status=%d body=%s", add.Code, add.Body.String())
 	}
 
-	create := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, "/api/admin/v1/lifecycle-workflows", csrf, cookie, map[string]any{
 		"name":    "Joiner",
 		"trigger": map[string]any{"kind": "user_created"},
 		"actions": []map[string]any{{"kind": "add_group_member", "group_id": createdGroup.ID}},
@@ -126,7 +126,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dryRun := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "alice"})
+	dryRun := adminJSONRequest(t, e, "/api/admin/v1/lifecycle-workflows/"+createdWorkflow.ID+"/dry-run", csrf, cookie, map[string]any{"target_user_id": "alice"})
 	if dryRun.Code != http.StatusOK {
 		t.Fatalf("dry_run status=%d body=%s", dryRun.Code, dryRun.Body.String())
 	}
@@ -163,7 +163,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatalf("dry-run must not mutate membership: groups=%#v", view.Groups)
 	}
 
-	missingUser := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "no-such-user"})
+	missingUser := adminJSONRequest(t, e, "/api/admin/v1/lifecycle-workflows/"+createdWorkflow.ID+"/dry-run", csrf, cookie, map[string]any{"target_user_id": "no-such-user"})
 	if missingUser.Code != http.StatusBadRequest {
 		t.Fatalf("dry_run for missing user status=%d body=%s", missingUser.Code, missingUser.Body.String())
 	}
@@ -200,7 +200,7 @@ func TestAdminLifecycleWorkflowRejectsNonAdmin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	created := jsonRequestAs(t, e, "alice", "/api/admin/v1/lifecycle_workflows", csrf, cookie, map[string]any{
+	created := jsonRequestAs(t, e, "alice", "/api/admin/v1/lifecycle-workflows", csrf, cookie, map[string]any{
 		"name":    "Joiner",
 		"trigger": map[string]any{"kind": "user_created"},
 		"actions": []map[string]any{{"kind": "add_group_member", "group_id": createdGroup.ID}},
@@ -216,7 +216,7 @@ func TestAdminLifecycleWorkflowRejectsNonAdmin(t *testing.T) {
 
 	// 有効化は作成と違い、この経路だけが認可を判定する。管理者が作った draft を
 	// "alice" が有効化できないこと、拒否のあとも draft のままであることを確かめる。
-	create := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, "/api/admin/v1/lifecycle-workflows", csrf, cookie, map[string]any{
 		"name":    "Joiner",
 		"trigger": map[string]any{"kind": "user_created"},
 		"actions": []map[string]any{{"kind": "add_group_member", "group_id": createdGroup.ID}},
@@ -231,7 +231,7 @@ func TestAdminLifecycleWorkflowRejectsNonAdmin(t *testing.T) {
 	if err := json.Unmarshal(create.Body.Bytes(), &draft); err != nil {
 		t.Fatal(err)
 	}
-	enabled := jsonRequestAs(t, e, "alice", "/api/admin/v1/lifecycle_workflows/"+draft.ID+"/enable", csrf, cookie, map[string]any{
+	enabled := jsonRequestAs(t, e, "alice", "/api/admin/v1/lifecycle-workflows/"+draft.ID+"/enable", csrf, cookie, map[string]any{
 		"expected_revision": 1,
 	})
 	if enabled.Code != http.StatusForbidden {
@@ -244,7 +244,7 @@ func TestAdminLifecycleWorkflowRejectsNonAdmin(t *testing.T) {
 
 	// 参照も同じ判定に載る。拒否した後もハンドラーが動き続けると、状態コードは 403 の
 	// まま本文に一覧が続く。応答の中身までワークフローに触れていないことを確かめる。
-	listedByAlice := httptest.NewRequest(http.MethodGet, defaultRealmPath("/api/admin/v1/lifecycle_workflows"), http.NoBody)
+	listedByAlice := httptest.NewRequest(http.MethodGet, defaultRealmPath("/api/admin/v1/lifecycle-workflows"), http.NoBody)
 	listedByAlice.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, listedByAlice)
@@ -261,7 +261,7 @@ func listWorkflowsAsAdmin(t *testing.T, e *echo.Echo) []struct {
 	Status string `json:"status"`
 } {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, defaultRealmPath("/api/admin/v1/lifecycle_workflows"), http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, defaultRealmPath("/api/admin/v1/lifecycle-workflows"), http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)

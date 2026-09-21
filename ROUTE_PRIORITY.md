@@ -29,12 +29,12 @@ both forms carry the same class.
 
 | Route | Methods |
 | --- | --- |
-| `/api/account/v1/data_export` | GET |
+| `/api/account/v1/data-export` | GET |
 | `/api/admin/v1/applications/{id}/provisioning/full-resync` | POST |
-| `/api/admin/v1/audit_events` | GET |
-| `/api/admin/v1/audit_events/export` | GET |
-| `/api/admin/v1/audit_events/search_options` | GET |
-| `/api/admin/v1/authentication_event_buckets` | GET |
+| `/api/admin/v1/audit-events` | GET |
+| `/api/admin/v1/audit-events/export` | GET |
+| `/api/admin/v1/audit-events/search-options` | GET |
+| `/api/admin/v1/authentication-event-buckets` | GET |
 | `/api/admin/v1/groups/exports` | GET, POST |
 | `/api/admin/v1/groups/exports/{export_id}` | GET |
 | `/api/admin/v1/groups/exports/{export_id}/cancel` | POST |
@@ -50,9 +50,9 @@ both forms carry the same class.
 | `/api/admin/v1/groups/{group_id}/members/imports` | POST |
 | `/api/admin/v1/groups/{group_id}/members/imports/{job_id}` | GET |
 | `/api/admin/v1/groups/{group_id}/members/imports/{preview_job_id}/apply` | POST |
-| `/api/admin/v1/lifecycle_workflows/{workflow_id}/dry_run` | POST |
-| `/api/admin/v1/system/audit_events` | GET |
-| `/api/admin/v1/system/audit_events/export` | GET |
+| `/api/admin/v1/lifecycle-workflows/{workflow_id}/dry-run` | POST |
+| `/api/admin/v1/system/audit-events` | GET |
+| `/api/admin/v1/system/audit-events/export` | GET |
 | `/api/admin/v1/users/exports` | GET, POST |
 | `/api/admin/v1/users/exports/{export_id}` | GET |
 | `/api/admin/v1/users/exports/{export_id}/cancel` | POST |
@@ -73,9 +73,9 @@ both forms carry the same class.
 | `/api/account/v1/approval-requests/{id}/decision` | POST |
 | `/api/account/v1/consents` | GET |
 | `/api/account/v1/consents/{client_id}/revoke` | POST |
-| `/api/account/v1/email/change_request` | POST |
+| `/api/account/v1/email/change-request` | POST |
 | `/api/account/v1/email/verify` | POST |
-| `/api/account/v1/email/verify_context` | GET |
+| `/api/account/v1/email/verify-context` | GET |
 | `/api/account/v1/linked-identities` | GET |
 | `/api/account/v1/linked-identities/{provider_id}` | DELETE, POST |
 | `/api/account/v1/mfa/recovery-codes/generate` | POST |
@@ -86,17 +86,17 @@ both forms carry the same class.
 | `/api/account/v1/mfa/webauthn/register/finish` | POST |
 | `/api/account/v1/mfa/webauthn/register/start` | POST |
 | `/api/account/v1/mfa/webauthn/remove` | POST |
-| `/api/account/v1/notification_preferences` | GET, PUT |
+| `/api/account/v1/notification-preferences` | GET, PUT |
 | `/api/account/v1/profile` | GET, PATCH |
 | `/api/account/v1/security` | GET |
 | `/api/account/v1/sessions` | GET |
-| `/api/account/v1/sessions/revoke_others` | POST |
+| `/api/account/v1/sessions/revoke-others` | POST |
 | `/api/account/v1/sessions/{id}/revoke` | POST |
-| `/api/account/v1/signin_activity` | GET |
+| `/api/account/v1/signin-activity` | GET |
 | `/api/account/v1/summary` | GET |
-| `/api/account/v1/trusted_devices` | GET |
-| `/api/account/v1/trusted_devices/revoke_all` | POST |
-| `/api/account/v1/trusted_devices/{id}/revoke` | POST |
+| `/api/account/v1/trusted-devices` | GET |
+| `/api/account/v1/trusted-devices/revoke-all` | POST |
+| `/api/account/v1/trusted-devices/{id}/revoke` | POST |
 | `/api/admin/v1/agents` | GET, POST |
 | `/api/admin/v1/agents/{agent_id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/agents/{agent_id}/credentials` | POST |
@@ -128,7 +128,7 @@ both forms carry the same class.
 | `/api/admin/v1/applications/{id}/saml` | PATCH |
 | `/api/admin/v1/applications/{id}/sign-in-policy` | GET, PUT |
 | `/api/admin/v1/applications/{id}/wsfed` | PATCH |
-| `/api/admin/v1/audit_events/{id}` | GET |
+| `/api/admin/v1/audit-events/{id}` | GET |
 | `/api/admin/v1/authorization-detail-types` | GET, POST |
 | `/api/admin/v1/authorization-detail-types/{type}` | DELETE, GET, PATCH |
 | `/api/admin/v1/authorization/check` | POST |
@@ -163,13 +163,13 @@ both forms carry the same class.
 | `/api/admin/v1/keys/rotate` | POST |
 | `/api/admin/v1/keys/{kid}` | GET |
 | `/api/admin/v1/keys/{kid}/disable` | POST |
-| `/api/admin/v1/lifecycle_workflow_runs/{run_id}` | GET |
-| `/api/admin/v1/lifecycle_workflow_runs/{run_id}/retry` | POST |
-| `/api/admin/v1/lifecycle_workflows` | GET, POST |
-| `/api/admin/v1/lifecycle_workflows/{workflow_id}` | DELETE, GET, PUT |
-| `/api/admin/v1/lifecycle_workflows/{workflow_id}/disable` | POST |
-| `/api/admin/v1/lifecycle_workflows/{workflow_id}/enable` | POST |
-| `/api/admin/v1/lifecycle_workflows/{workflow_id}/runs` | GET |
+| `/api/admin/v1/lifecycle-workflow-runs/{run_id}` | GET |
+| `/api/admin/v1/lifecycle-workflow-runs/{run_id}/retry` | POST |
+| `/api/admin/v1/lifecycle-workflows` | GET, POST |
+| `/api/admin/v1/lifecycle-workflows/{workflow_id}` | DELETE, GET, PUT |
+| `/api/admin/v1/lifecycle-workflows/{workflow_id}/disable` | POST |
+| `/api/admin/v1/lifecycle-workflows/{workflow_id}/enable` | POST |
+| `/api/admin/v1/lifecycle-workflows/{workflow_id}/runs` | GET |
 | `/api/admin/v1/mcp-resource-servers` | GET, POST |
 | `/api/admin/v1/mcp-resource-servers/{id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/policy/roles` | GET |
@@ -185,23 +185,23 @@ both forms carry the same class.
 | `/api/admin/v1/shared-signals/streams/{stream_id}/deliveries` | GET |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/disable` | POST |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/enable` | POST |
-| `/api/admin/v1/system/audit_events/{id}` | GET |
+| `/api/admin/v1/system/audit-events/{id}` | GET |
 | `/api/admin/v1/system/jobs` | GET |
 | `/api/admin/v1/system/jobs/{job_id}` | GET |
 | `/api/admin/v1/system/jobs/{job_id}/cancel` | POST |
 | `/api/admin/v1/tenant/branding` | PUT |
 | `/api/admin/v1/tenant/branding/assets/{kind}` | DELETE, POST |
-| `/api/admin/v1/tenant/group_attribute_schema` | GET, PUT |
-| `/api/admin/v1/tenant/notification_templates` | GET |
-| `/api/admin/v1/tenant/notification_templates/{template_key}/{locale}` | DELETE, GET, PUT |
-| `/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/preview` | POST |
-| `/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/test` | POST |
-| `/api/admin/v1/tenant/user_attribute_schema` | GET, PUT |
+| `/api/admin/v1/tenant/group-attribute-schema` | GET, PUT |
+| `/api/admin/v1/tenant/notification-templates` | GET |
+| `/api/admin/v1/tenant/notification-templates/{template_key}/{locale}` | DELETE, GET, PUT |
+| `/api/admin/v1/tenant/notification-templates/{template_key}/{locale}/preview` | POST |
+| `/api/admin/v1/tenant/notification-templates/{template_key}/{locale}/test` | POST |
+| `/api/admin/v1/tenant/user-attribute-schema` | GET, PUT |
 | `/api/admin/v1/tenants` | GET, POST |
 | `/api/admin/v1/tenants/{target_tenant_id}` | GET, PATCH |
 | `/api/admin/v1/tenants/{target_tenant_id}/disable` | POST |
 | `/api/admin/v1/tenants/{target_tenant_id}/enable` | POST |
-| `/api/admin/v1/tenants/{target_tenant_id}/endpoint_style` | PUT |
+| `/api/admin/v1/tenants/{target_tenant_id}/endpoint-style` | PUT |
 | `/api/admin/v1/tenants/{target_tenant_id}/quota` | PUT |
 | `/api/admin/v1/users` | GET, POST |
 | `/api/admin/v1/users/{sub}` | DELETE, GET, PATCH |
@@ -210,13 +210,13 @@ both forms carry the same class.
 | `/api/admin/v1/users/{sub}/enable` | POST |
 | `/api/admin/v1/users/{sub}/groups` | GET |
 | `/api/admin/v1/users/{sub}/mfa-enrollment-bypass` | DELETE, POST |
-| `/api/admin/v1/users/{sub}/required_actions` | POST |
-| `/api/admin/v1/users/{sub}/required_actions/{action}` | DELETE |
+| `/api/admin/v1/users/{sub}/required-actions` | POST |
+| `/api/admin/v1/users/{sub}/required-actions/{action}` | DELETE |
 | `/api/admin/v1/users/{sub}/restore` | POST |
 | `/api/admin/v1/users/{sub}/sessions` | GET |
-| `/api/admin/v1/users/{sub}/sessions/revoke_all` | POST |
+| `/api/admin/v1/users/{sub}/sessions/revoke-all` | POST |
 | `/api/admin/v1/users/{sub}/sessions/{id}/revoke` | POST |
-| `/api/admin/v1/users/{sub}/signin_activity` | GET |
+| `/api/admin/v1/users/{sub}/signin-activity` | GET |
 | `/api/admin/v1/workload-identity/bindings/{binding_id}` | DELETE |
 | `/api/admin/v1/workload-identity/bindings/{binding_id}/disable` | POST |
 | `/api/admin/v1/workload-identity/bindings/{binding_id}/enable` | POST |
@@ -248,24 +248,24 @@ both forms carry the same class.
 | `/.well-known/oauth-authorization-server` | GET |
 | `/.well-known/oauth-protected-resource` | GET |
 | `/.well-known/openid-configuration` | GET |
-| `/api/account/v1/step_up/complete` | POST |
-| `/api/account/v1/step_up/start` | POST |
-| `/api/account/v1/step_up/webauthn/challenge` | POST |
+| `/api/account/v1/step-up/complete` | POST |
+| `/api/account/v1/step-up/start` | POST |
+| `/api/account/v1/step-up/webauthn/challenge` | POST |
 | `/api/auth/account` | GET |
-| `/api/auth/change_password` | POST |
+| `/api/auth/change-password` | POST |
 | `/api/auth/consent` | POST |
 | `/api/auth/device` | GET, POST |
 | `/api/auth/federation/oidc/callback` | GET |
 | `/api/auth/federation/providers` | GET |
 | `/api/auth/federation/saml/callback` | POST |
 | `/api/auth/federation/start` | GET |
-| `/api/auth/forgot_password` | POST |
+| `/api/auth/forgot-password` | POST |
 | `/api/auth/login` | POST |
 | `/api/auth/mfa/enrollment/totp/confirm` | POST |
 | `/api/auth/mfa/enrollment/totp/start` | POST |
-| `/api/auth/password_reset_context` | GET |
+| `/api/auth/password-reset-context` | GET |
 | `/api/auth/recovery-code` | POST |
-| `/api/auth/reset_password` | POST |
+| `/api/auth/reset-password` | POST |
 | `/api/auth/totp` | POST |
 | `/api/auth/transaction` | GET |
 | `/api/auth/webauthn` | POST |

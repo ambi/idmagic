@@ -52,7 +52,7 @@ func TestAccountReadScopeChangesNoProfileAndRequestsNoEmailChange(t *testing.T) 
 	}
 
 	changed := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, path: "/api/account/v1/email/change_request", bearer: readOnly,
+		method: http.MethodPost, path: "/api/account/v1/email/change-request", bearer: readOnly,
 		body: map[string]any{"new_email": "moved@example.test"},
 	})
 	if changed.Code != http.StatusForbidden {
@@ -74,7 +74,7 @@ func TestAccountReadScopeChangesNoProfileAndRequestsNoEmailChange(t *testing.T) 
 		t.Fatalf("前提が壊れている: account:write の変更が status=%d body=%s", accepted.Code, accepted.Body.String())
 	}
 	if accepted := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, path: "/api/account/v1/email/change_request", bearer: writable,
+		method: http.MethodPost, path: "/api/account/v1/email/change-request", bearer: writable,
 		body: map[string]any{"new_email": "moved@example.test"},
 	}); accepted.Code != http.StatusNoContent {
 		t.Fatalf("前提が壊れている: account:write の変更申請が status=%d body=%s", accepted.Code, accepted.Body.String())
@@ -232,14 +232,14 @@ func TestEmailConfirmationWithMismatchedCSRFVerifiesNothing(t *testing.T) {
 
 	// 未認証でも開かれる確認画面が CSRF 境界を張る。ここは正常系の前提。
 	verifyContext := fixture.send(t, idmRefusalRequest{
-		method: http.MethodGet, path: "/api/account/v1/email/verify_context",
+		method: http.MethodGet, path: "/api/account/v1/email/verify-context",
 	})
 	if verifyContext.Code != http.StatusOK {
 		t.Fatalf("前提が壊れている: 確認の文脈が status=%d body=%s", verifyContext.Code, verifyContext.Body.String())
 	}
 
 	requested := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, path: "/api/account/v1/email/change_request",
+		method: http.MethodPost, path: "/api/account/v1/email/change-request",
 		sessionID: alice, csrf: idmRefusalCSRF, body: map[string]any{"new_email": "moved@example.test"},
 	})
 	if requested.Code != http.StatusNoContent {

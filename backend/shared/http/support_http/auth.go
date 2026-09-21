@@ -207,7 +207,7 @@ func requiredPortalScope(path string) string {
 	switch {
 	case strings.Contains(path, "/api/admin/v1/"):
 		return "idmagic.admin"
-	case strings.Contains(path, "/api/account/v1/") || strings.HasSuffix(path, "/api/auth/account") || strings.HasSuffix(path, "/api/auth/change_password"):
+	case strings.Contains(path, "/api/account/v1/") || strings.HasSuffix(path, "/api/auth/account") || strings.HasSuffix(path, "/api/auth/change-password"):
 		return "idmagic.account"
 	default:
 		return ""
@@ -216,9 +216,9 @@ func requiredPortalScope(path string) string {
 
 func requiredAccountScope(method, path string) (string, bool) {
 	switch {
-	case strings.Contains(path, "/api/account/v1/step_up/"),
+	case strings.Contains(path, "/api/account/v1/step-up/"),
 		strings.HasSuffix(path, "/api/account/v1/email/verify"),
-		strings.HasSuffix(path, "/api/account/v1/email/verify_context"):
+		strings.HasSuffix(path, "/api/account/v1/email/verify-context"):
 		return "", false
 	case strings.Contains(path, "/api/account/v1/mfa/"):
 		return "account:mfa:write", true
@@ -226,7 +226,7 @@ func requiredAccountScope(method, path string) (string, bool) {
 		return "account:sessions:write", true
 	case strings.Contains(path, "/api/account/v1/consents/") && method != http.MethodGet:
 		return "account:consents:write", true
-	case strings.HasSuffix(path, "/api/auth/change_password"):
+	case strings.HasSuffix(path, "/api/auth/change-password"):
 		return "account:password:write", true
 	case method == http.MethodPatch || method == http.MethodPut || method == http.MethodPost || method == http.MethodDelete:
 		return "account:write", true

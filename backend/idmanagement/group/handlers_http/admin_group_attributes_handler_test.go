@@ -45,7 +45,7 @@ func newAdminGroupHandlerWithAttrSchema(t *testing.T) (*echo.Echo, *groupmemory.
 func TestAdminGroupAPICreateWithEmailAndAttributes(t *testing.T) {
 	e, schemaRepo := newAdminGroupHandlerWithAttrSchema(t)
 	csrf, cookie := adminCSRF(t, e)
-	putAttrs := adminJSONRequest(t, e, http.MethodPut, "/api/admin/v1/tenant/group_attribute_schema", csrf, cookie, map[string]any{
+	putAttrs := adminJSONRequest(t, e, http.MethodPut, "/api/admin/v1/tenant/group-attribute-schema", csrf, cookie, map[string]any{
 		"attributes": []map[string]any{{"key": "cost_center", "type": "string"}},
 	})
 	if putAttrs.Code != http.StatusOK {

@@ -11,8 +11,8 @@ export const Route = createFileRoute('/admin/groups_/$groupId/edit')({
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [{ group }, schema, groupAttributeSchema] = await Promise.all([
       getAdminGroup(params.groupId),
-      request<TenantUserAttributeSchema>('/api/admin/v1/tenant/user_attribute_schema'),
-      request<TenantGroupAttributeSchema>('/api/admin/v1/tenant/group_attribute_schema'),
+      request<TenantUserAttributeSchema>('/api/admin/v1/tenant/user-attribute-schema'),
+      request<TenantGroupAttributeSchema>('/api/admin/v1/tenant/group-attribute-schema'),
     ])
     return {
       csrfToken: account.csrf_token,

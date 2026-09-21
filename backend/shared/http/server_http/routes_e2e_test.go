@@ -1055,13 +1055,13 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 		"current_password": demoPassword,
 		"new_password":     "fresh-pass-9182",
 	})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change_password", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change-password", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Fatalf("POST /api/auth/change_password: %v", err)
+		t.Fatalf("POST /api/auth/change-password: %v", err)
 	}
 	if resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
@@ -1090,13 +1090,13 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 		"current_password": "fresh-pass-9182",
 		"new_password":     demoPassword,
 	})
-	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change_password", bytes.NewReader(reqBody))
+	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change-password", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
 	resp, err = client.Do(req)
 	if err != nil {
-		t.Fatalf("POST /api/auth/change_password reuse: %v", err)
+		t.Fatalf("POST /api/auth/change-password reuse: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnprocessableEntity {
@@ -1221,13 +1221,13 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 		"current_password": demoPassword,
 		"new_password":     "short",
 	})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change_password", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change-password", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Fatalf("POST /api/auth/change_password: %v", err)
+		t.Fatalf("POST /api/auth/change-password: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {

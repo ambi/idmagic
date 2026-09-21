@@ -7,7 +7,7 @@ type PasswordResetContextResponse = { csrf_token: string }
 
 export const Route = createFileRoute('/forgot_password')({
   loader: async () => {
-    const data = await request<PasswordResetContextResponse>('/api/auth/password_reset_context')
+    const data = await request<PasswordResetContextResponse>('/api/auth/password-reset-context')
     return { csrfToken: data.csrf_token }
   },
   component: ForgotPasswordRoute,

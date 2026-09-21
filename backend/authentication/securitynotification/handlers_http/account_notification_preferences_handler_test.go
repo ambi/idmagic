@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// /api/account/v1/notification_preferences の取得と更新 (wi-90)。ここで確かめるのは、
+// /api/account/v1/notification-preferences の取得と更新 (wi-90)。ここで確かめるのは、
 // 全種別が必須の印つきで返ること、必須の種別を止める要求が丸ごと拒否されること、
 // そして停止した設定がそのまま読み戻せることである。
 
@@ -32,7 +32,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-const preferencesPath = "/realms/default/api/account/v1/notification_preferences"
+const preferencesPath = "/realms/default/api/account/v1/notification-preferences"
 
 func newPreferencesServer(t *testing.T) (*echo.Echo, string) {
 	t.Helper()

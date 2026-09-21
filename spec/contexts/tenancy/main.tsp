@@ -257,7 +257,7 @@ model SetTenantEndpointStyleError403 {
 @doc("A system_admin switches the shape of a tenant's canonical location.\nIt is kept apart from the ordinary attribute update (UpdateTenant) because it is a destructive operation that\nremakes the tenant's identity: the issuer changes, which breaks `iss` verification of already-issued tokens and the\nconfiguration of every relying party; the WebAuthn RP ID changes, which invalidates every existing passkey; and the\ncookie scope changes, which cuts sessions that are in progress.\n`Subdomain` can be chosen only in a deployment where `tenant_base_domain` is configured; without it the request gives\nInvalidRequestError. The realm is immutable, so the hostname after the switch follows from the existing realm.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("SetTenantEndpointStyle")
-@route("/api/admin/v1/tenants/{tenant_id}/endpoint_style")
+@route("/api/admin/v1/tenants/{tenant_id}/endpoint-style")
 @put
 op SetTenantEndpointStyle(
   @path tenant_id: string,
@@ -427,7 +427,7 @@ model GetTenantUserAttributeSchemaError403 {
 @doc("A tenant administrator reads their own tenant's custom attribute definitions.\nThe target is fixed to `context.tenant_id`, which rules out a cross-tenant read structurally.\nBesides the tenant's own custom definitions the response carries the built-in catalogue (`builtin`), so the UI can list\nevery attribute and avoid a key collision.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantUserAttributeSchema")
-@route("/api/admin/v1/tenant/user_attribute_schema")
+@route("/api/admin/v1/tenant/user-attribute-schema")
 @get
 op GetTenantUserAttributeSchema(
 
@@ -484,7 +484,7 @@ model UpdateTenantUserAttributeSchemaError409 {
 @doc("A tenant administrator replaces the custom attribute definitions outright. With the target fixed to `context.tenant_id`,\neach UserAttributeDef is validated and a key that collides with a built-in attribute, or a duplicate key, is refused. A\nkey a DynamicGroupRule still refers to can be neither removed nor retyped. Only the definitions are handled; no value is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantUserAttributeSchema")
-@route("/api/admin/v1/tenant/user_attribute_schema")
+@route("/api/admin/v1/tenant/user-attribute-schema")
 @put
 op UpdateTenantUserAttributeSchema(
   @body body: IdMagic.Contract.TenantUserAttributeSchemaUpdateRequest
@@ -509,7 +509,7 @@ model GetTenantGroupAttributeSchemaError403 {
 @doc("A tenant administrator reads their own tenant's Group custom attribute definitions.\nThe target is fixed to `context.tenant_id`, which rules out a cross-tenant read structurally.\nGroup has no built-in catalogue, so the response carries the tenant's own custom definitions alone.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantGroupAttributeSchema")
-@route("/api/admin/v1/tenant/group_attribute_schema")
+@route("/api/admin/v1/tenant/group-attribute-schema")
 @get
 op GetTenantGroupAttributeSchema(
 
@@ -556,7 +556,7 @@ model UpdateTenantGroupAttributeSchemaError422 {
 @doc("A tenant administrator replaces the Group custom attribute definitions outright. With the target fixed to `context.tenant_id`,\neach GroupAttributeDef is validated and a duplicate key is refused. Only the definitions are handled; no value is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantGroupAttributeSchema")
-@route("/api/admin/v1/tenant/group_attribute_schema")
+@route("/api/admin/v1/tenant/group-attribute-schema")
 @put
 op UpdateTenantGroupAttributeSchema(
   @body body: IdMagic.Contract.TenantGroupAttributeSchemaUpdateRequest
@@ -715,7 +715,7 @@ model ListNotificationTemplatesError403 {
 @doc("A tenant administrator lists the notification templates. It returns every template_key of the catalogue against every supported locale, each with whether it is customized and the subject currently in force. The target is fixed to `context.tenant_id`, so a cross-tenant read cannot arise structurally.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("ListNotificationTemplates")
-@route("/api/admin/v1/tenant/notification_templates")
+@route("/api/admin/v1/tenant/notification-templates")
 @get
 op ListNotificationTemplates(
 
@@ -750,7 +750,7 @@ model GetNotificationTemplateError403 {
 @doc("A tenant administrator reads one template for editing. It returns the wording currently in force, the built-in default wording, and the permitted set of substitution variables together. A template_key or locale the catalogue does not know is refused with InvalidRequestError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetNotificationTemplate")
-@route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}")
+@route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}")
 @get
 op GetNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
@@ -788,7 +788,7 @@ model UpdateNotificationTemplateError403 {
 @doc("A tenant administrator saves a template override. The subject, the text body, and the HTML body are replaced as one required set, so an override of only the text or only the HTML cannot be made. A substitution variable in the body or the subject that falls outside the permitted set of the template_key is refused at save time, before it could collapse into an empty string at run time (fail-closed). The sender email address is a server setting and cannot be overridden; only the display name can.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateNotificationTemplate")
-@route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}")
+@route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}")
 @put
 op UpdateNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
@@ -827,7 +827,7 @@ model ResetNotificationTemplateError403 {
 @doc("A tenant administrator deletes a template override and returns to the built-in default. It succeeds for a template that has no override too, so it is idempotent. There is no version history, so what it returns to is always the built-in default and never the previous override.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("ResetNotificationTemplate")
-@route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}")
+@route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}")
 @delete
 op ResetNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
@@ -865,7 +865,7 @@ model PreviewNotificationTemplateError403 {
 @doc("A tenant administrator renders unsaved wording against sample values. A field left out uses the wording currently in force. Substituted values on the HTML side are always escaped before expansion, and link URLs are built from the sample issuer URL. No mail is sent and no override is saved.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("PreviewNotificationTemplate")
-@route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/preview")
+@route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}/preview")
 @post
 op PreviewNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
@@ -904,7 +904,7 @@ model SendTestNotificationError403 {
 @doc("A tenant administrator receives a test message using the wording currently in force. The recipient is fixed to the administrator's own verified email address and cannot be named in the request. Permitting an arbitrary recipient would make administrative privilege a relay for sending mail, so fixing it is deliberate. When the caller has no verified address, the request is refused with InvalidRequestError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("SendTestNotification")
-@route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/test")
+@route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}/test")
 @post
 op SendTestNotification(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,

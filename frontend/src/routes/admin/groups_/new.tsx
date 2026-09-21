@@ -9,7 +9,7 @@ export const Route = createFileRoute('/admin/groups_/new')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const groupAttributeSchema = await request<TenantGroupAttributeSchema>(
-      '/api/admin/v1/tenant/group_attribute_schema',
+      '/api/admin/v1/tenant/group-attribute-schema',
     )
     return {
       csrfToken: account.csrf_token,

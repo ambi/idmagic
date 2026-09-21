@@ -1,7 +1,7 @@
 package handlers_http_test
 
 //spec:covers REQ-TENANCY-020: 管理者はテナント固有のグループ属性スキーマを定義できる。
-// /api/admin/v1/tenant/group_attribute_schema 経由で検証する (wi-315)。
+// /api/admin/v1/tenant/group-attribute-schema 経由で検証する (wi-315)。
 
 import (
 	"context"
@@ -64,7 +64,7 @@ func newGroupAttributeSchemaServer(
 func TestGroupAttributeSchemaGetReturnsEmptyForUndefinedTenant(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenant/group_attribute_schema", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenant/group-attribute-schema", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -80,7 +80,7 @@ func TestGroupAttributeSchemaGetReturnsEmptyForUndefinedTenant(t *testing.T) {
 func TestGroupAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenant/group_attribute_schema", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenant/group-attribute-schema", http.NoBody))
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -91,7 +91,7 @@ func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	e, schemaRepo, events := newGroupAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
 	)
-	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/group_attribute_schema", map[string]any{
+	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/group-attribute-schema", map[string]any{
 		"attributes": []map[string]any{
 			{"key": "cost_center", "type": "string"},
 		},
@@ -122,7 +122,7 @@ func TestGroupAttributeSchemaPutRejectsDuplicateKey(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
 	)
-	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/group_attribute_schema", map[string]any{
+	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/group-attribute-schema", map[string]any{
 		"attributes": []map[string]any{
 			{"key": "cost_center", "type": "string"},
 			{"key": "cost_center", "type": "number"},

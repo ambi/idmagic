@@ -90,7 +90,7 @@ func TestAdminAuthEventBucketListSetsLinkHeaderWhenMorePagesExist(t *testing.T) 
 		seedAuthEventBucket(t, store, keyHash, now)
 	}
 
-	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication_event_buckets?limit=2")
+	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication-event-buckets?limit=2")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -104,7 +104,7 @@ func TestAdminAuthEventBucketListOmitsLinkHeaderOnLastPage(t *testing.T) {
 	e, store := newAdminAuthEventBucketPaginationHandler(t)
 	seedAuthEventBucket(t, store, "solo", time.Now().UTC())
 
-	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication_event_buckets?limit=200")
+	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication-event-buckets?limit=200")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -120,7 +120,7 @@ func TestAdminAuthEventBucketListNextPageContinuesWithoutOverlap(t *testing.T) {
 		seedAuthEventBucket(t, store, keyHash, now)
 	}
 
-	first := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication_event_buckets?limit=2")
+	first := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication-event-buckets?limit=2")
 	link := first.Header().Get("Link")
 	if link == "" {
 		t.Fatal("expected a Link header on the first page")
@@ -154,7 +154,7 @@ func TestAdminAuthEventBucketListNextPageContinuesWithoutOverlap(t *testing.T) {
 
 func TestAdminAuthEventBucketListRejectsInvalidCursor(t *testing.T) {
 	e, _ := newAdminAuthEventBucketPaginationHandler(t)
-	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication_event_buckets?cursor=not-a-real-cursor")
+	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication-event-buckets?cursor=not-a-real-cursor")
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -170,7 +170,7 @@ func TestAdminAuthEventBucketListRejectsCursorFromAnotherTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode foreign cursor: %v", err)
 	}
-	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication_event_buckets?cursor="+foreignCursor)
+	resp := adminAuthEventBucketListRequest(e, "/api/admin/v1/authentication-event-buckets?cursor="+foreignCursor)
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}

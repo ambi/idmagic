@@ -45,7 +45,7 @@ func TestAdminSessionOperationsAcrossTenantsRevokeNothing(t *testing.T) {
 
 	for _, operation := range []struct{ name, path string }{
 		{"個別失効", "/api/admin/v1/users/" + authRefusalAlice + "/sessions/" + target + "/revoke"},
-		{"全失効", "/api/admin/v1/users/" + authRefusalAlice + "/sessions/revoke_all"},
+		{"全失効", "/api/admin/v1/users/" + authRefusalAlice + "/sessions/revoke-all"},
 	} {
 		refused := fixture.send(t, authRefusalRequest{
 			method: http.MethodPost, path: operation.path, sessionID: foreignAdmin,
@@ -88,7 +88,7 @@ func TestAdminSessionRevokeFromOwnRealmDoesNotReachAnotherTenant(t *testing.T) {
 	refused := fixture.send(t, authRefusalRequest{
 		method: http.MethodPost, tenantID: authRefusalOtherTenant, csrf: authRefusalCSRF,
 		sessionID: foreignAdmin, body: map[string]any{},
-		path: "/api/admin/v1/users/" + authRefusalAlice + "/sessions/revoke_all",
+		path: "/api/admin/v1/users/" + authRefusalAlice + "/sessions/revoke-all",
 	})
 	if fixture.sessionRevoked(t, target, authRefusalAlice) {
 		t.Fatalf("acme の管理者が default の利用者のセッションを失効させた: status=%d body=%s",
@@ -381,7 +381,7 @@ func TestInteractiveSessionManagesConnectionsAndAdminScopesAllowTheirOwnOperatio
 			t.Fatalf("セッション一覧 status=%d body=%s", sessions.Code, sessions.Body.String())
 		}
 		activity := fixture.send(t, authRefusalRequest{
-			method: http.MethodGet, path: "/api/admin/v1/users/" + authRefusalAlice + "/signin_activity", bearer: token,
+			method: http.MethodGet, path: "/api/admin/v1/users/" + authRefusalAlice + "/signin-activity", bearer: token,
 		})
 		if activity.Code != http.StatusOK {
 			t.Fatalf("サインイン履歴 status=%d body=%s", activity.Code, activity.Body.String())

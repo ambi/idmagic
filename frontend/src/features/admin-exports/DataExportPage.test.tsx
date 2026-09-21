@@ -32,7 +32,7 @@ describe('DataExportPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.endsWith('/api/admin/v1/tenant/user_attribute_schema')) {
+        if (url.endsWith('/api/admin/v1/tenant/user-attribute-schema')) {
           return Promise.resolve(
             response(200, {
               tenant_id: 'tenant-1',

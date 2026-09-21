@@ -130,7 +130,7 @@ var configFieldDescriptions = map[string]string{
 	"RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS":       "Window length for the `/device_authorization` limit.",
 	"RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTS":   "`/bc-authorize` fixed-window limit, keyed by client_id and IP.",
 	"RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_WINDOW_SECONDS": "Window length for the `/bc-authorize` limit.",
-	"RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS":               "`/api/auth/forgot_password` fixed-window limit, keyed by the submitted identifier and IP.",
+	"RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS":               "`/api/auth/forgot-password` fixed-window limit, keyed by the submitted identifier and IP.",
 	"RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS":             "Window length for the password reset limit.",
 	"RATE_LIMIT_LOGIN_MAX_REQUESTS":                        "`/api/auth/login` fixed-window limit, keyed by IP. Separate from, and in addition to, the per-account login throttle.",
 	"RATE_LIMIT_LOGIN_WINDOW_SECONDS":                      "Window length for the login limit.",

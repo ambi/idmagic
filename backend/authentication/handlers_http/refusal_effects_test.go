@@ -744,9 +744,9 @@ func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 		apitokendomain.ScopeAccountRead, apitokendomain.ScopeAccountMFAWrite,
 		apitokendomain.ScopeAccountPasswordWrite)
 	for _, path := range []string{
-		"/api/account/v1/step_up/start",
-		"/api/account/v1/step_up/complete",
-		"/api/account/v1/step_up/webauthn/challenge",
+		"/api/account/v1/step-up/start",
+		"/api/account/v1/step-up/complete",
+		"/api/account/v1/step-up/webauthn/challenge",
 	} {
 		refused := fixture.send(t, authRefusalRequest{
 			method: http.MethodPost, path: path, bearer: token,
@@ -795,7 +795,7 @@ func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 		session := fixture.seedSession(t, "sess-csrf", tenancydomain.DefaultTenantID, authRefusalAlice)
 
 		refused := fixture.send(t, authRefusalRequest{
-			method: http.MethodPost, path: "/api/account/v1/step_up/webauthn/challenge",
+			method: http.MethodPost, path: "/api/account/v1/step-up/webauthn/challenge",
 			sessionID: session, body: map[string]any{},
 		})
 		if refused.Code != http.StatusForbidden {
@@ -810,7 +810,7 @@ func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 
 		// 対照: 二重送信が成立する同じ要求ではチャレンジが 1 件保存される。
 		accepted := fixture.send(t, authRefusalRequest{
-			method: http.MethodPost, path: "/api/account/v1/step_up/webauthn/challenge",
+			method: http.MethodPost, path: "/api/account/v1/step-up/webauthn/challenge",
 			sessionID: session, csrf: authRefusalCSRF, body: map[string]any{},
 		})
 		if accepted.Code != http.StatusOK {
@@ -827,7 +827,7 @@ func TestStepUpWebAuthnChallengeRefusalStoresNoChallenge(t *testing.T) {
 		session := fixture.seedSession(t, "sess-no-webauthn", tenancydomain.DefaultTenantID, authRefusalAlice)
 
 		refused := fixture.send(t, authRefusalRequest{
-			method: http.MethodPost, path: "/api/account/v1/step_up/webauthn/challenge",
+			method: http.MethodPost, path: "/api/account/v1/step-up/webauthn/challenge",
 			sessionID: session, csrf: authRefusalCSRF, body: map[string]any{},
 		})
 		if refused.Code != http.StatusServiceUnavailable {
@@ -853,7 +853,7 @@ func TestPasswordResetRateLimitIssuesNoTokenAndSendsNoMail(t *testing.T) {
 	const forwardedFor = "198.51.100.7"
 	blocked := newAuthRefusalServer(t, withAuthRefusalRateLimiter("password_reset"))
 	refused := blocked.send(t, authRefusalRequest{
-		method: http.MethodPost, path: "/api/auth/forgot_password", csrf: authRefusalCSRF,
+		method: http.MethodPost, path: "/api/auth/forgot-password", csrf: authRefusalCSRF,
 		forwardedFor: forwardedFor, body: map[string]any{"email": authRefusalAlice + "@example.test"},
 	})
 	if refused.Code != http.StatusTooManyRequests {
@@ -878,7 +878,7 @@ func TestPasswordResetRateLimitIssuesNoTokenAndSendsNoMail(t *testing.T) {
 	// 拒否が副作用まで止めた証拠になり、「元から何も起きない構成だった」と区別できる。
 	allowed := newAuthRefusalServer(t)
 	accepted := allowed.send(t, authRefusalRequest{
-		method: http.MethodPost, path: "/api/auth/forgot_password", csrf: authRefusalCSRF,
+		method: http.MethodPost, path: "/api/auth/forgot-password", csrf: authRefusalCSRF,
 		forwardedFor: forwardedFor, body: map[string]any{"email": authRefusalAlice + "@example.test"},
 	})
 	if accepted.Code != http.StatusNoContent {
@@ -947,7 +947,7 @@ func TestAccountApiTokenScopesAllowExactlyTheirOwnOperations(t *testing.T) {
 			apitokendomain.ScopeAccountRead)
 		for _, resource := range []struct{ name, path, want string }{
 			{"アカウントのセキュリティ設定", "/api/account/v1/security", "totp_enrolled"},
-			{"サインイン履歴", "/api/account/v1/signin_activity", "["},
+			{"サインイン履歴", "/api/account/v1/signin-activity", "["},
 			{"セッション一覧", "/api/account/v1/sessions", own},
 		} {
 			accepted := fixture.send(t, authRefusalRequest{
@@ -1002,7 +1002,7 @@ func TestAccountApiTokenScopesAllowExactlyTheirOwnOperations(t *testing.T) {
 			apitokendomain.ScopeAccountPasswordWrite)
 		const replacement = "refusal-password-9876"
 		accepted := fixture.send(t, authRefusalRequest{
-			method: http.MethodPost, path: "/api/auth/change_password", bearer: token,
+			method: http.MethodPost, path: "/api/auth/change-password", bearer: token,
 			body: map[string]any{"current_password": authRefusalPassword, "new_password": replacement},
 		})
 		if accepted.Code != http.StatusNoContent && accepted.Code != http.StatusOK {
@@ -1014,7 +1014,7 @@ func TestAccountApiTokenScopesAllowExactlyTheirOwnOperations(t *testing.T) {
 			t.Fatal("受理されたのにパスワードが変わっていない")
 		}
 		refused := fixture.send(t, authRefusalRequest{
-			method: http.MethodPost, path: "/api/auth/change_password", bearer: token,
+			method: http.MethodPost, path: "/api/auth/change-password", bearer: token,
 			body: map[string]any{"current_password": "not-the-current-password", "new_password": "another-password-4321"},
 		})
 		if refused.Code == http.StatusNoContent || refused.Code == http.StatusOK {
@@ -1095,7 +1095,7 @@ func TestAccountContextIsTheSameFromEveryAllowedCredential(t *testing.T) {
 
 	// 未認証のパスワードリセット画面。ここだけは主体が無く、CSRF トークンだけが返る。
 	reset := fixture.send(t, authRefusalRequest{
-		method: http.MethodGet, path: "/api/auth/password_reset_context",
+		method: http.MethodGet, path: "/api/auth/password-reset-context",
 	})
 	if reset.Code != http.StatusOK {
 		t.Fatalf("リセットコンテキスト status=%d body=%s", reset.Code, reset.Body.String())
@@ -1143,7 +1143,7 @@ func TestStepUpWebAuthnChallengeIsBoundToTheCurrentSession(t *testing.T) {
 
 	for _, session := range []string{first, second} {
 		accepted := fixture.send(t, authRefusalRequest{
-			method: http.MethodPost, path: "/api/account/v1/step_up/webauthn/challenge",
+			method: http.MethodPost, path: "/api/account/v1/step-up/webauthn/challenge",
 			sessionID: session, csrf: authRefusalCSRF, body: map[string]any{},
 		})
 		if accepted.Code != http.StatusOK {
@@ -1190,7 +1190,7 @@ func TestPasswordResetRequestIsIndistinguishableAndRecorded(t *testing.T) {
 		t.Run(recipient.name, func(t *testing.T) {
 			fixture := newAuthRefusalServer(t)
 			accepted := fixture.send(t, authRefusalRequest{
-				method: http.MethodPost, path: "/api/auth/forgot_password", csrf: authRefusalCSRF,
+				method: http.MethodPost, path: "/api/auth/forgot-password", csrf: authRefusalCSRF,
 				body: map[string]any{"email": recipient.email},
 			})
 			if accepted.Code != http.StatusNoContent {
@@ -1284,7 +1284,7 @@ func (f *authRefusalFixture) issuePasswordResetToken(t *testing.T, userID string
 	t.Helper()
 	before := len(f.emails.Sent)
 	requested := f.send(t, authRefusalRequest{
-		method: http.MethodPost, path: "/api/auth/forgot_password", csrf: authRefusalCSRF,
+		method: http.MethodPost, path: "/api/auth/forgot-password", csrf: authRefusalCSRF,
 		body: map[string]any{"email": userID + "@example.test"},
 	})
 	if requested.Code != http.StatusNoContent {
@@ -1356,7 +1356,7 @@ func TestCredentialChangingEntryPointsRevokeEveryTrustedDevice(t *testing.T) {
 			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
 				t.Helper()
 				return authRefusalRequest{
-					method: http.MethodPost, path: "/api/auth/reset_password", csrf: authRefusalCSRF,
+					method: http.MethodPost, path: "/api/auth/reset-password", csrf: authRefusalCSRF,
 					body: map[string]any{
 						"token":        fixture.issuePasswordResetToken(t, authRefusalAlice),
 						"new_password": "reset-by-link-password-1234",
@@ -1416,7 +1416,7 @@ func TestCredentialChangingEntryPointsRevokeEveryTrustedDevice(t *testing.T) {
 						session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
 					}, withFreshStepUp)
 				return authRefusalRequest{
-					method: http.MethodPost, path: "/api/account/v1/sessions/revoke_others",
+					method: http.MethodPost, path: "/api/account/v1/sessions/revoke-others",
 					sessionID: current, csrf: authRefusalCSRF, body: map[string]any{},
 				}
 			},
@@ -1470,7 +1470,7 @@ func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
 			name: "パスワードの変更",
 			request: func(*authRefusalFixture, string) authRefusalRequest {
 				return authRefusalRequest{
-					method: http.MethodPost, path: "/api/auth/change_password",
+					method: http.MethodPost, path: "/api/auth/change-password",
 					body: map[string]any{
 						"current_password": authRefusalPassword, "new_password": "taken-over-password-1234",
 					},
@@ -1503,7 +1503,7 @@ func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
 			name: "他セッションの一括失効",
 			request: func(*authRefusalFixture, string) authRefusalRequest {
 				return authRefusalRequest{
-					method: http.MethodPost, path: "/api/account/v1/sessions/revoke_others",
+					method: http.MethodPost, path: "/api/account/v1/sessions/revoke-others",
 					body: map[string]any{},
 				}
 			},
@@ -1519,7 +1519,7 @@ func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
 			request: func(_ *authRefusalFixture, deviceID string) authRefusalRequest {
 				return authRefusalRequest{
 					method: http.MethodPost,
-					path:   "/api/account/v1/trusted_devices/" + deviceID + "/revoke",
+					path:   "/api/account/v1/trusted-devices/" + deviceID + "/revoke",
 					body:   map[string]any{},
 				}
 			},

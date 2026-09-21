@@ -317,7 +317,7 @@ describe('AccountSecurityPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {
-        if (url.includes('/step_up/start')) {
+        if (url.includes('/step-up/start')) {
           return Promise.resolve(response(200, { methods: ['password'] }))
         }
         if (url.includes('/mfa/recovery-codes/generate')) {
@@ -426,7 +426,7 @@ describe('AccountSecurityPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string) =>
-        Promise.resolve(url.includes('/trusted_devices/') ? response(204) : response(200, {})),
+        Promise.resolve(url.includes('/trusted-devices/') ? response(204) : response(200, {})),
       ),
     )
     await renderWithRouter(
@@ -455,7 +455,7 @@ describe('AccountSecurityPage', () => {
 
     expect(await screen.findByText(t.trustedDeviceEmpty)).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/v1/trusted_devices/device-1/revoke'),
+      expect.stringContaining('/api/account/v1/trusted-devices/device-1/revoke'),
       expect.objectContaining({ method: 'POST' }),
     )
   })
@@ -537,7 +537,7 @@ describe('AccountSecurityPage notification preferences', () => {
 
     expect(await screen.findByText(t.notificationUpdated)).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/v1/notification_preferences'),
+      expect.stringContaining('/api/account/v1/notification-preferences'),
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ disabled_categories: ['new_device_sign_in', 'session_revoked'] }),

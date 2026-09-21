@@ -157,7 +157,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
-  const response = await fetch(tenantURL('/api/auth/change_password'), {
+  const response = await fetch(tenantURL('/api/auth/change-password'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ export async function changePassword(
 }
 
 export async function requestPasswordReset(csrfToken: string, email: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/auth/forgot_password'), {
+  const response = await fetch(tenantURL('/api/auth/forgot-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ email }),
@@ -196,7 +196,7 @@ export async function resetPassword(
   token: string,
   newPassword: string,
 ): Promise<void> {
-  const response = await fetch(tenantURL('/api/auth/reset_password'), {
+  const response = await fetch(tenantURL('/api/auth/reset-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ token, new_password: newPassword }),

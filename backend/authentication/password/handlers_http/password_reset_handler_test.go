@@ -32,7 +32,7 @@ func TestPasswordResetHTTPFlow(t *testing.T) {
 	e, userRepo, sender, hasher := newPasswordResetHandler(t)
 	csrf, cookie := passwordResetCSRF(t, e)
 
-	forgot := serveJSON(t, e, "/api/auth/forgot_password", csrf, cookie, map[string]string{
+	forgot := serveJSON(t, e, "/api/auth/forgot-password", csrf, cookie, map[string]string{
 		"email": "alice@example.com",
 	})
 	if forgot.Code != http.StatusNoContent {
@@ -43,7 +43,7 @@ func TestPasswordResetHTTPFlow(t *testing.T) {
 	}
 	token := resetTokenFromEmail(t, sender.Sent[0].Text)
 
-	reset := serveJSON(t, e, "/api/auth/reset_password", csrf, cookie, map[string]string{
+	reset := serveJSON(t, e, "/api/auth/reset-password", csrf, cookie, map[string]string{
 		"token": token, "new_password": "fresh-password-9182",
 	})
 	if reset.Code != http.StatusOK {
@@ -58,7 +58,7 @@ func TestPasswordResetHTTPFlow(t *testing.T) {
 		t.Fatalf("new password matched=%v err=%v", matched, err)
 	}
 
-	replay := serveJSON(t, e, "/api/auth/reset_password", csrf, cookie, map[string]string{
+	replay := serveJSON(t, e, "/api/auth/reset-password", csrf, cookie, map[string]string{
 		"token": token, "new_password": "another-password-9182",
 	})
 	if replay.Code != http.StatusGone {
@@ -87,7 +87,7 @@ func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
 	e, userRepo, sender, hasher := newPasswordResetHandler(t)
 	csrf, cookie := passwordResetCSRF(t, e)
 
-	forgot := serveJSON(t, e, "/api/auth/forgot_password", csrf, cookie, map[string]string{
+	forgot := serveJSON(t, e, "/api/auth/forgot-password", csrf, cookie, map[string]string{
 		"email": "alice@example.com",
 	})
 	if forgot.Code != http.StatusNoContent {
@@ -97,7 +97,7 @@ func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
 
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		request := httptest.NewRequest(
-			method, defaultRealmPath("/api/auth/reset_password")+"?token="+url.QueryEscape(token), http.NoBody,
+			method, defaultRealmPath("/api/auth/reset-password")+"?token="+url.QueryEscape(token), http.NoBody,
 		)
 		request.AddCookie(cookie)
 		response := httptest.NewRecorder()
@@ -117,7 +117,7 @@ func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
 	}
 
 	// 先読みの後でも同じトークンで更新できる。トークンが読み取りで消えていないことの証拠。
-	reset := serveJSON(t, e, "/api/auth/reset_password", csrf, cookie, map[string]string{
+	reset := serveJSON(t, e, "/api/auth/reset-password", csrf, cookie, map[string]string{
 		"token": token, "new_password": "fresh-password-9182",
 	})
 	if reset.Code != http.StatusOK {
@@ -128,7 +128,7 @@ func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
 func TestForgotPasswordHTTPDoesNotRevealUnknownEmail(t *testing.T) {
 	e, _, sender, _ := newPasswordResetHandler(t)
 	csrf, cookie := passwordResetCSRF(t, e)
-	response := serveJSON(t, e, "/api/auth/forgot_password", csrf, cookie, map[string]string{
+	response := serveJSON(t, e, "/api/auth/forgot-password", csrf, cookie, map[string]string{
 		"email": "unknown@example.com",
 	})
 	if response.Code != http.StatusNoContent {
@@ -172,7 +172,7 @@ func newPasswordResetHandler(
 
 func passwordResetCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password_reset_context", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password-reset-context", http.NoBody)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {

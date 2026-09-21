@@ -174,15 +174,15 @@ var stepUpGatedEndpoints = []struct {
 	method string
 	path   string
 }{
-	{"change_password", http.MethodPost, "/realms/default/api/auth/change_password"},
+	{"change_password", http.MethodPost, "/realms/default/api/auth/change-password"},
 	{"totp_enroll_confirm", http.MethodPost, "/realms/default/api/account/v1/mfa/totp/enroll/confirm"},
 	{"totp_remove", http.MethodPost, "/realms/default/api/account/v1/mfa/totp/remove"},
-	{"email_change", http.MethodPost, "/realms/default/api/account/v1/email/change_request"},
-	{"revoke_others", http.MethodPost, "/realms/default/api/account/v1/sessions/revoke_others"},
+	{"email_change", http.MethodPost, "/realms/default/api/account/v1/email/change-request"},
+	{"revoke_others", http.MethodPost, "/realms/default/api/account/v1/sessions/revoke-others"},
 	{"webauthn_remove", http.MethodPost, "/realms/default/api/account/v1/mfa/webauthn/remove"},
 	{"recovery_codes_generate", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/generate"},
 	{"recovery_codes_revoke", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/revoke"},
-	{"notification_preferences_update", http.MethodPut, "/realms/default/api/account/v1/notification_preferences"},
+	{"notification_preferences_update", http.MethodPut, "/realms/default/api/account/v1/notification-preferences"},
 	{"link_external_identity", http.MethodPost, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
 	{"unlink_external_identity", http.MethodDelete, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
 }
@@ -216,7 +216,7 @@ func TestStepUpGateAllowsFreshSession(t *testing.T) {
 func TestStepUpStartReturnsAvailableMethods(t *testing.T) {
 	e, store, _ := newStepUpServer(t)
 	fresh := seedSession(t, store, "sess-fresh", time.Now())
-	rec := postAccount(t, e, "/realms/default/api/account/v1/step_up/start", fresh, map[string]any{})
+	rec := postAccount(t, e, "/realms/default/api/account/v1/step-up/start", fresh, map[string]any{})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -240,7 +240,7 @@ func TestStepUpCompleteFlipsGateForStaleSession(t *testing.T) {
 	}
 
 	// 2. パスワードで step-up を成立させる。
-	rec = postAccount(t, e, "/realms/default/api/account/v1/step_up/complete", stale,
+	rec = postAccount(t, e, "/realms/default/api/account/v1/step-up/complete", stale,
 		map[string]any{"method": "password", "password": stepUpTestPassword})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("complete: status=%d body=%s", rec.Code, rec.Body.String())
@@ -267,7 +267,7 @@ func TestStepUpCompleteFlipsGateForStaleSession(t *testing.T) {
 func TestStepUpCompleteWrongPasswordFails(t *testing.T) {
 	e, store, _ := newStepUpServer(t)
 	stale := seedSession(t, store, "sess-stale", time.Now().Add(-10*time.Minute))
-	rec := postAccount(t, e, "/realms/default/api/account/v1/step_up/complete", stale,
+	rec := postAccount(t, e, "/realms/default/api/account/v1/step-up/complete", stale,
 		map[string]any{"method": "password", "password": "wrong"})
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())

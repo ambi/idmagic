@@ -3,7 +3,7 @@ package handlers_http_test
 // SCL scenario "テナントの通知テンプレート上書きは組込み既定より優先される" /
 // "許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される" /
 // "プレビューは実送信せずテスト送信は操作者本人にしか届かない" を
-// /api/admin/v1/tenant/notification_templates 経由で検証する。
+// /api/admin/v1/tenant/notification-templates 経由で検証する。
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-const notificationTemplatePath = "/realms/acme/api/admin/v1/tenant/notification_templates"
+const notificationTemplatePath = "/realms/acme/api/admin/v1/tenant/notification-templates"
 
 func newNotificationTemplateServer(t *testing.T, actor *userdomain.User) (*echo.Echo, *email_memory.NoopEmailSender, *[]spec.DomainEvent) {
 	t.Helper()
@@ -85,7 +85,7 @@ func notificationRequest(t *testing.T, e *echo.Echo, method, path string, body a
 	} else {
 		reader = bytes.NewReader(nil)
 	}
-	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password-reset-context")
 	req := httptest.NewRequest(method, defaultRealmPath(path), reader)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")

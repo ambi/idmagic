@@ -88,13 +88,13 @@ func (f adminSessionsFixture) seedRefreshToken(t *testing.T, sid, clientID strin
 	}
 }
 
-// sessionTestCSRF は /api/auth/password_reset_context (CSRF cookie 発行専用の GET) を叩いて
+// sessionTestCSRF は /api/auth/password-reset-context (CSRF cookie 発行専用の GET) を叩いて
 // CSRF token/cookie を得る。password feature の password_reset_handler_test.go の
 // passwordResetCSRF と同じ実装だが、_test.go はパッケージを跨げないため複製する
 // (Phase 2 と同方針)。
 func sessionTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password_reset_context", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password-reset-context", http.NoBody)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
@@ -201,7 +201,7 @@ func TestAdminRevokeAllSessionsRevokesEveryTargetSession(t *testing.T) {
 	f.seedSession(t, "s3", "bob", base)
 
 	rec := httptest.NewRecorder()
-	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, "/api/admin/v1/users/alice/sessions/revoke_all"))
+	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, "/api/admin/v1/users/alice/sessions/revoke-all"))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}

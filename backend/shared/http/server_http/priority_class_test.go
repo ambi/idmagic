@@ -84,7 +84,7 @@ func TestClassifyRouteKeepsAuthenticationOutOfTheSheddableClasses(t *testing.T) 
 		"/saml/sso",
 		"/wsfed",
 		"/realms/:tenant_id/api/auth/login",
-		"/api/account/v1/step_up/start",
+		"/api/account/v1/step-up/start",
 		"/api/branding",
 		"/tenant-branding-assets/:kind/:id",
 	} {
@@ -102,19 +102,19 @@ func TestClassifyRouteAssignsTheDeclaredClasses(t *testing.T) {
 		want support.PriorityClass
 	}{
 		// ステージ 3: 集計、エクスポート、取り込み、全同期。
-		{"/api/admin/v1/audit_events", support.ClassManagementBulk},
-		{"/api/admin/v1/audit_events/export", support.ClassManagementBulk},
-		{"/api/admin/v1/audit_events/search_options", support.ClassManagementBulk},
-		{"/api/admin/v1/authentication_event_buckets", support.ClassManagementBulk},
+		{"/api/admin/v1/audit-events", support.ClassManagementBulk},
+		{"/api/admin/v1/audit-events/export", support.ClassManagementBulk},
+		{"/api/admin/v1/audit-events/search-options", support.ClassManagementBulk},
+		{"/api/admin/v1/authentication-event-buckets", support.ClassManagementBulk},
 		{"/api/admin/v1/users/exports", support.ClassManagementBulk},
 		{"/api/admin/v1/users/imports", support.ClassManagementBulk},
 		{"/api/admin/v1/groups/:group_id/members/exports", support.ClassManagementBulk},
 		{"/api/admin/v1/groups/:group_id/dynamic-rule/preview", support.ClassManagementBulk},
-		{"/api/admin/v1/lifecycle_workflows/:workflow_id/dry_run", support.ClassManagementBulk},
+		{"/api/admin/v1/lifecycle-workflows/:workflow_id/dry-run", support.ClassManagementBulk},
 		{"/api/admin/v1/applications/:id/provisioning/full-resync", support.ClassManagementBulk},
-		{"/api/account/v1/data_export", support.ClassManagementBulk},
+		{"/api/account/v1/data-export", support.ClassManagementBulk},
 		// 監査イベントの一件取得は走査しないので、一覧と同じクラスにはしない。
-		{"/api/admin/v1/audit_events/:id", support.ClassManagement},
+		{"/api/admin/v1/audit-events/:id", support.ClassManagement},
 		// ステージ 4。
 		{"/register", support.ClassManagement},
 		{"/api/admin/v1/users", support.ClassManagement},

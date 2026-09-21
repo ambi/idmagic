@@ -66,7 +66,7 @@ func TestAdminAuditEventListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 	}
 	e := newAuditAdminPaginationServer(t, events)
 
-	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?limit=2")
+	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?limit=2")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -85,7 +85,7 @@ func TestAdminAuditEventListOmitsLinkHeaderOnLastPage(t *testing.T) {
 	}
 	e := newAuditAdminPaginationServer(t, events)
 
-	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?limit=200")
+	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?limit=200")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -103,7 +103,7 @@ func TestAdminAuditEventListNextPageContinuesWithoutOverlap(t *testing.T) {
 	}
 	e := newAuditAdminPaginationServer(t, events)
 
-	first := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?limit=2")
+	first := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?limit=2")
 	link := first.Header().Get("Link")
 	if link == "" {
 		t.Fatal("expected a Link header on the first page")
@@ -137,7 +137,7 @@ func TestAdminAuditEventListNextPageContinuesWithoutOverlap(t *testing.T) {
 
 func TestAdminAuditEventListRejectsInvalidCursor(t *testing.T) {
 	e := newAuditAdminPaginationServer(t, nil)
-	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?cursor=not-a-real-cursor")
+	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?cursor=not-a-real-cursor")
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -155,7 +155,7 @@ func TestAdminAuditEventListRejectsCursorFromAnotherTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode foreign cursor: %v", err)
 	}
-	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?cursor="+foreignCursor)
+	resp := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?cursor="+foreignCursor)
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}

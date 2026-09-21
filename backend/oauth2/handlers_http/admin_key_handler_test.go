@@ -81,7 +81,7 @@ func getAdminKeys(e *echo.Echo, path string) *httptest.ResponseRecorder {
 func postRotate(t *testing.T, e *echo.Echo, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	// CSRF token / cookie は password_reset_context 経由で発行する。
-	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/default/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/default/api/auth/password-reset-context")
 	req := httptest.NewRequest(http.MethodPost, defaultRealmPath(path), bytes.NewReader([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")

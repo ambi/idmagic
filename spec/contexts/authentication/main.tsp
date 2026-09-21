@@ -40,7 +40,7 @@ model GetPasswordResetContextSuccess_200 {
 @doc("The unauthenticated password reset screen reads the CSRF token that protects its POST.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetPasswordResetContext")
-@route("/api/auth/password_reset_context")
+@route("/api/auth/password-reset-context")
 @get
 op GetPasswordResetContext(
 
@@ -85,7 +85,7 @@ model StartStepUpWebAuthnChallengeError503 {
 
 @doc("Issues a WebAuthn assertion challenge for step-up, bound to the authenticated session. It verifies CSRF, and fails closed when WebAuthn is disabled.")
 @TypeSpec.OpenAPI.operationId("StartStepUpWebAuthnChallenge")
-@route("/api/account/v1/step_up/webauthn/challenge")
+@route("/api/account/v1/step-up/webauthn/challenge")
 @post
 op StartStepUpWebAuthnChallenge(
 
@@ -335,7 +335,7 @@ model ChangePasswordSuccess_204 {
 
 @doc("An authenticated user changes their own password. `current_password` is verified, and `new_password` has to satisfy the length constraint of 12 to 128 characters and differ from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse).")
 @TypeSpec.OpenAPI.operationId("ChangePassword")
-@route("/api/auth/change_password")
+@route("/api/auth/change-password")
 @post
 op ChangePassword(
   @body body: IdMagic.Contract.BrowserChangePasswordRequest
@@ -381,7 +381,7 @@ model GetMyNotificationPreferencesError403 {
 
 @doc("An authenticated user reads their own security notification preferences (self-service). The target is fixed to\n`actor.sub`. Every category is returned in the stable order the specification fixes, and a category the user may not\nturn off carries `mandatory=true`.")
 @TypeSpec.OpenAPI.operationId("GetMyNotificationPreferences")
-@route("/api/account/v1/notification_preferences")
+@route("/api/account/v1/notification-preferences")
 @get
 op GetMyNotificationPreferences(
 
@@ -416,7 +416,7 @@ model UpdateMyNotificationPreferencesError403 {
 
 @doc("An authenticated user updates their own security notification preferences (self-service). The target is fixed to\n`actor.sub`. Silencing notifications is the first thing an attacker does after taking over an account, so a recent\nstep-up reauthentication is required. A request listing a mandatory category in `disabled_categories` is refused with\n400, and nothing is applied partially.")
 @TypeSpec.OpenAPI.operationId("UpdateMyNotificationPreferences")
-@route("/api/account/v1/notification_preferences")
+@route("/api/account/v1/notification-preferences")
 @put
 op UpdateMyNotificationPreferences(
   @body body: IdMagic.Contract.UpdateNotificationPreferencesRequest
@@ -892,7 +892,7 @@ model ListMySignInActivityError400 {
 
 @doc("An authenticated user reads their own recent sign-in history (self-service). The target is fixed to\n`subject.id`. It returns at most `limit` UserAuthenticated events from the existing audit event store, newest first.\n`limit` defaults to 10 and tops out at 50.")
 @TypeSpec.OpenAPI.operationId("ListMySignInActivity")
-@route("/api/account/v1/signin_activity")
+@route("/api/account/v1/signin-activity")
 @get
 op ListMySignInActivity(
   @query limit?: int64
@@ -917,7 +917,7 @@ model ListUserSignInActivityError403 {
 @doc("An administrator reads the sign-in history of a target user. It stays inside the tenant boundary and returns\nat most `limit` UserAuthenticated events for the user named in the path, newest first.\n`limit` defaults to 10 and tops out at 50.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:read"])
 @TypeSpec.OpenAPI.operationId("ListUserSignInActivity")
-@route("/api/admin/v1/users/{user_id}/signin_activity")
+@route("/api/admin/v1/users/{user_id}/signin-activity")
 @get
 op ListUserSignInActivity(
   @path user_id: string,
@@ -953,7 +953,7 @@ model ListAuthenticationEventBucketsError400 {
 @doc("An administrator lists the authentication event aggregates (buckets) by `window_start` descending. Sign-in failures and\nthe like, aggregated into 5-minute windows rather than kept as individual rows during an attack, are read inside the tenant\nboundary through bidirectional keyset pagination. The cursor comes from the Link response header of the response\n(`rel=\"prev\"` and `rel=\"next\"`). `limit` defaults to 50 and tops out at 200.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListAuthenticationEventBuckets")
-@route("/api/admin/v1/authentication_event_buckets")
+@route("/api/admin/v1/authentication-event-buckets")
 @get
 op ListAuthenticationEventBuckets(
   @query cursor?: string,
@@ -1035,7 +1035,7 @@ model RevokeMyOtherSessionsError403 {
 
 @doc("An authenticated user revokes all of their own sessions except the current one (self-service).\nThis is the \"sign out everywhere else\" operation. Each target is a tombstone setting `revoked_at` and\n`revoke_reason=self_revoke`, and one already revoked is skipped idempotently.")
 @TypeSpec.OpenAPI.operationId("RevokeMyOtherSessions")
-@route("/api/account/v1/sessions/revoke_others")
+@route("/api/account/v1/sessions/revoke-others")
 @post
 op RevokeMyOtherSessions(
 
@@ -1058,7 +1058,7 @@ model ListMyTrustedDevicesError403 {
 
 @doc("An authenticated user reads their own live trusted devices (self-service). The target is fixed to\n`subject.id`, and they are returned by last use, newest first. The device matching the cookie the current request\npresented is marked `current=true`. Neither the selector nor `verifier_hash` is returned.")
 @TypeSpec.OpenAPI.operationId("ListMyTrustedDevices")
-@route("/api/account/v1/trusted_devices")
+@route("/api/account/v1/trusted-devices")
 @get
 op ListMyTrustedDevices(
 
@@ -1092,7 +1092,7 @@ model RevokeMyTrustedDeviceError403 {
 
 @doc("An authenticated user revokes one of their own trusted devices (self-service). Taking away the ability to\nskip the second factor conditionally is a sensitive operation, so a recent step-up reauthentication is required.\nA device that is not theirs is refused. Revocation is a tombstone setting `revoked_at` and `revoke_reason=self_revoke`,\nand revoking an already-revoked device succeeds idempotently.")
 @TypeSpec.OpenAPI.operationId("RevokeMyTrustedDevice")
-@route("/api/account/v1/trusted_devices/{id}/revoke")
+@route("/api/account/v1/trusted-devices/{id}/revoke")
 @post
 op RevokeMyTrustedDevice(
   @path id: string
@@ -1116,7 +1116,7 @@ model RevokeMyTrustedDevicesError403 {
 
 @doc("An authenticated user revokes all of their own trusted devices (self-service). This is the \"forget every\ndevice\" operation and includes the current one, so a recent step-up reauthentication is required.\nEach target is revoked as a tombstone, and one already revoked is skipped idempotently.")
 @TypeSpec.OpenAPI.operationId("RevokeMyTrustedDevices")
-@route("/api/account/v1/trusted_devices/revoke_all")
+@route("/api/account/v1/trusted-devices/revoke-all")
 @post
 op RevokeMyTrustedDevices(
 
@@ -1203,7 +1203,7 @@ model RevokeUserSessionsError403 {
 @doc("An administrator revokes every session of a target user -- the \"sign out everywhere\"\noperation. Unlike RevokeMyOtherSessions the sessions are not the caller's own, so nothing is excluded and every\nlive session of the target user becomes a tombstone. Each one is revoked idempotently.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:write"])
 @TypeSpec.OpenAPI.operationId("RevokeUserSessions")
-@route("/api/admin/v1/users/{user_id}/sessions/revoke_all")
+@route("/api/admin/v1/users/{user_id}/sessions/revoke-all")
 @post
 op RevokeUserSessions(
   @path user_id: string,): RevokeUserSessionsSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeUserSessionsError403;
@@ -1227,7 +1227,7 @@ model StartStepUpAuthenticationError403 {
 
 @doc("Starts a step-up reauthentication ahead of a high-sensitivity operation (self-service). It is fixed to the subject's own session and returns the factors available: password always, TOTP once enrolled. The interface itself does not require step-up, being the way into a reauthentication.")
 @TypeSpec.OpenAPI.operationId("StartStepUpAuthentication")
-@route("/api/account/v1/step_up/start")
+@route("/api/account/v1/step-up/start")
 @post
 op StartStepUpAuthentication(
 
@@ -1261,7 +1261,7 @@ model CompleteStepUpAuthenticationSuccess_204 {
 
 @doc("Verifies the factor presented -- a password or a TOTP code -- and, when it holds, stamps `step_up_at` on the\nsession. Inside the recency window of five minutes, operations marked `step_up: required` are then permitted. A failed\nverification gives AccessDeniedError.")
 @TypeSpec.OpenAPI.operationId("CompleteStepUpAuthentication")
-@route("/api/account/v1/step_up/complete")
+@route("/api/account/v1/step-up/complete")
 @post
 op CompleteStepUpAuthentication(
   @body body: IdMagic.Contract.StepUpCompleteRequest
@@ -1430,7 +1430,7 @@ model RequestPasswordResetError403 {
 @doc("An unauthenticated user asks for a password reset link.\nTo prevent enumeration it always returns 204, whether or not the email exists, and a token is issued and sent only\nwhen a user with a verified email is found.\nThe wording is resolved from the Tenancy notification template catalogue (`template_key=PasswordReset`).\nThe locale is decided in the order: the recipient User's locale attribute, the tenant's `default_locale`, the system\ndefault locale; a tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the reset link is built from the issuer URL of the\nrequest, so the template never has to join URLs itself.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("RequestPasswordReset")
-@route("/api/auth/forgot_password")
+@route("/api/auth/forgot-password")
 @post
 op RequestPasswordReset(
   @body body: IdMagic.Contract.BrowserForgotPasswordRequest
@@ -1491,7 +1491,7 @@ model ResetPasswordWithTokenError410 {
 @doc("A user returning from the reset link sets a new password.\nThe token is consumed once -- it lives 1800 seconds and cannot be reused once `consumed_at` is set -- and\n`User.password_hash` is updated with a `new_password` that passed the length constraint of 12 to 128 characters and\ndiffers from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse). On success PasswordChanged is emitted.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ResetPasswordWithToken")
-@route("/api/auth/reset_password")
+@route("/api/auth/reset-password")
 @post
 op ResetPasswordWithToken(
   @body body: IdMagic.Contract.BrowserResetPasswordRequest

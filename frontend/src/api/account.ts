@@ -35,7 +35,7 @@ export async function getAccountSummary(): Promise<AccountSummary> {
 }
 
 export async function requestEmailChange(csrfToken: string, newEmail: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/email/change_request'), {
+  const response = await fetch(tenantURL('/api/account/v1/email/change-request'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ new_email: newEmail }),
@@ -47,7 +47,7 @@ export async function requestEmailChange(csrfToken: string, newEmail: string): P
 }
 
 export async function exportAccountData(): Promise<unknown> {
-  return request<unknown>('/api/account/v1/data_export')
+  return request<unknown>('/api/account/v1/data-export')
 }
 
 export async function listAccountConsents(): Promise<AccountConsent[]> {
@@ -139,7 +139,7 @@ export async function unlinkIdentity(csrfToken: string, providerId: string): Pro
 }
 
 export async function getSignInActivity(): Promise<AccountSignInActivity[]> {
-  return (await request<{ activities: AccountSignInActivity[] }>('/api/account/v1/signin_activity'))
+  return (await request<{ activities: AccountSignInActivity[] }>('/api/account/v1/signin-activity'))
     .activities
 }
 
@@ -162,7 +162,7 @@ export async function revokeAccountSession(csrfToken: string, id: string): Promi
 }
 
 export async function revokeOtherAccountSessions(csrfToken: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/sessions/revoke_others'), {
+  const response = await fetch(tenantURL('/api/account/v1/sessions/revoke-others'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -182,7 +182,7 @@ export function isStepUpRequired(cause: unknown): boolean {
 
 // step-up 再認証用の WebAuthn assertion challenge を取得し、パスキーで署名した結果を返す。
 async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
-  const response = await fetch(tenantURL('/api/account/v1/step_up/webauthn/challenge'), {
+  const response = await fetch(tenantURL('/api/account/v1/step-up/webauthn/challenge'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -195,7 +195,7 @@ async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
 }
 
 export async function startStepUp(csrfToken: string): Promise<StepUpMethod[]> {
-  const response = await fetch(tenantURL('/api/account/v1/step_up/start'), {
+  const response = await fetch(tenantURL('/api/account/v1/step-up/start'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -222,7 +222,7 @@ export async function completeStepUp(
     // totp / recovery_code はコード入力型。
     payload = { method, code: credential }
   }
-  const response = await fetch(tenantURL('/api/account/v1/step_up/complete'), {
+  const response = await fetch(tenantURL('/api/account/v1/step-up/complete'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify(payload),
@@ -397,12 +397,12 @@ export type AccountTrustedDevices = {
 }
 
 export async function listTrustedDevices(): Promise<AccountTrustedDevices> {
-  return request('/api/account/v1/trusted_devices')
+  return request('/api/account/v1/trusted-devices')
 }
 
 export async function revokeTrustedDevice(csrfToken: string, id: string): Promise<void> {
   const response = await fetch(
-    tenantURL(`/api/account/v1/trusted_devices/${encodeURIComponent(id)}/revoke`),
+    tenantURL(`/api/account/v1/trusted-devices/${encodeURIComponent(id)}/revoke`),
     {
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfToken },
@@ -415,7 +415,7 @@ export async function revokeTrustedDevice(csrfToken: string, id: string): Promis
 }
 
 export async function revokeAllTrustedDevices(csrfToken: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/trusted_devices/revoke_all'), {
+  const response = await fetch(tenantURL('/api/account/v1/trusted-devices/revoke-all'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -447,7 +447,7 @@ export type AccountNotificationPreferences = {
 }
 
 export async function getNotificationPreferences(): Promise<AccountNotificationPreferences> {
-  return request('/api/account/v1/notification_preferences')
+  return request('/api/account/v1/notification-preferences')
 }
 
 // 更新は「止める種別」を丸ごと置き換える。必須の種別を含めるとサーバーが 400 で拒否し、
@@ -457,7 +457,7 @@ export async function updateNotificationPreferences(
   disabledCategories: SecurityNotificationCategory[],
 ): Promise<AccountNotificationPreferences> {
   return request(
-    '/api/account/v1/notification_preferences',
+    '/api/account/v1/notification-preferences',
     adminRequest(csrfToken, 'PUT', { disabled_categories: disabledCategories }),
   )
 }

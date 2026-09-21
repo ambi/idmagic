@@ -122,7 +122,7 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	}
 
 	set := adminJSONRequest(t, e, http.MethodPost,
-		"/api/admin/v1/users/"+created.ID+"/required_actions", csrf, cookie,
+		"/api/admin/v1/users/"+created.ID+"/required-actions", csrf, cookie,
 		map[string]any{"action": "update_password"})
 	if set.Code != http.StatusOK {
 		t.Fatalf("set status=%d body=%s", set.Code, set.Body.String())
@@ -145,14 +145,14 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	}
 
 	bad := adminJSONRequest(t, e, http.MethodPost,
-		"/api/admin/v1/users/"+created.ID+"/required_actions", csrf, cookie,
+		"/api/admin/v1/users/"+created.ID+"/required-actions", csrf, cookie,
 		map[string]any{"action": "teleport"})
 	if bad.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("invalid action status=%d body=%s", bad.Code, bad.Body.String())
 	}
 
 	cleared := adminJSONRequest(t, e, http.MethodDelete,
-		"/api/admin/v1/users/"+created.ID+"/required_actions/update_password", csrf, cookie, nil)
+		"/api/admin/v1/users/"+created.ID+"/required-actions/update_password", csrf, cookie, nil)
 	if cleared.Code != http.StatusOK {
 		t.Fatalf("clear status=%d body=%s", cleared.Code, cleared.Body.String())
 	}

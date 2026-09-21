@@ -61,7 +61,7 @@ describe('account API client', () => {
     await confirmEmailChange('csrf', 'verification-token')
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/v1/email/change_request'),
+      expect.stringContaining('/api/account/v1/email/change-request'),
       expect.objectContaining({ body: JSON.stringify({ new_email: 'new@example.com' }) }),
     )
     expect(fetch).toHaveBeenCalledWith(
@@ -82,7 +82,7 @@ describe('account API client', () => {
     await completeStepUp('csrf', 'totp', '123456')
     await completeStepUp('csrf', 'recovery_code', 'recovery')
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/v1/step_up/complete'),
+      expect.stringContaining('/api/account/v1/step-up/complete'),
       expect.objectContaining({ body: JSON.stringify({ method: 'password', password: 'secret' }) }),
     )
   })
@@ -99,7 +99,7 @@ describe('account API client', () => {
     )
     await completeStepUp('csrf', 'webauthn', '')
     expect(fetch).toHaveBeenLastCalledWith(
-      expect.stringContaining('/api/account/v1/step_up/complete'),
+      expect.stringContaining('/api/account/v1/step-up/complete'),
       expect.objectContaining({ body: expect.stringContaining('"method":"webauthn"') }),
     )
   })

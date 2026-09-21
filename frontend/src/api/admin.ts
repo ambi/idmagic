@@ -208,7 +208,7 @@ export async function setAdminUserRequiredAction(
   action: string,
 ): Promise<AdminUser> {
   return request(
-    `/api/admin/v1/users/${encodeURIComponent(id)}/required_actions`,
+    `/api/admin/v1/users/${encodeURIComponent(id)}/required-actions`,
     adminRequest(csrfToken, 'POST', { action }),
   )
 }
@@ -219,7 +219,7 @@ export async function clearAdminUserRequiredAction(
   action: string,
 ): Promise<AdminUser> {
   return request(
-    `/api/admin/v1/users/${encodeURIComponent(id)}/required_actions/${encodeURIComponent(action)}`,
+    `/api/admin/v1/users/${encodeURIComponent(id)}/required-actions/${encodeURIComponent(action)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }
@@ -407,17 +407,17 @@ export type LifecycleWorkflowInput = {
 }
 export async function listLifecycleWorkflows(): Promise<AdminLifecycleWorkflow[]> {
   return (
-    await request<{ workflows: AdminLifecycleWorkflow[] }>('/api/admin/v1/lifecycle_workflows')
+    await request<{ workflows: AdminLifecycleWorkflow[] }>('/api/admin/v1/lifecycle-workflows')
   ).workflows
 }
 export async function getLifecycleWorkflow(id: string): Promise<AdminLifecycleWorkflow> {
-  return request(`/api/admin/v1/lifecycle_workflows/${encodeURIComponent(id)}`)
+  return request(`/api/admin/v1/lifecycle-workflows/${encodeURIComponent(id)}`)
 }
 export async function createLifecycleWorkflow(
   csrfToken: string,
   input: LifecycleWorkflowInput,
 ): Promise<AdminLifecycleWorkflow> {
-  return request('/api/admin/v1/lifecycle_workflows', adminRequest(csrfToken, 'POST', input))
+  return request('/api/admin/v1/lifecycle-workflows', adminRequest(csrfToken, 'POST', input))
 }
 export async function updateLifecycleWorkflow(
   csrfToken: string,
@@ -425,7 +425,7 @@ export async function updateLifecycleWorkflow(
   input: LifecycleWorkflowInput,
 ): Promise<AdminLifecycleWorkflow> {
   return request(
-    `/api/admin/v1/lifecycle_workflows/${encodeURIComponent(id)}`,
+    `/api/admin/v1/lifecycle-workflows/${encodeURIComponent(id)}`,
     adminRequest(csrfToken, 'PUT', input),
   )
 }
@@ -436,7 +436,7 @@ export async function setLifecycleWorkflowState(
   expected_revision: number,
 ): Promise<AdminLifecycleWorkflow> {
   return request(
-    `/api/admin/v1/lifecycle_workflows/${encodeURIComponent(id)}/${state}`,
+    `/api/admin/v1/lifecycle-workflows/${encodeURIComponent(id)}/${state}`,
     adminRequest(csrfToken, 'POST', { expected_revision }),
   )
 }
@@ -446,7 +446,7 @@ export async function deleteLifecycleWorkflow(
   expected_revision: number,
 ): Promise<void> {
   await request(
-    `/api/admin/v1/lifecycle_workflows/${encodeURIComponent(id)}`,
+    `/api/admin/v1/lifecycle-workflows/${encodeURIComponent(id)}`,
     adminRequest(csrfToken, 'DELETE', { expected_revision }),
   )
 }
@@ -456,14 +456,14 @@ export async function dryRunLifecycleWorkflow(
   targetUserID: string,
 ): Promise<{ steps: { action_kind: string; would_change: string; reason?: string }[] }> {
   return request(
-    `/api/admin/v1/lifecycle_workflows/${encodeURIComponent(id)}/dry_run`,
+    `/api/admin/v1/lifecycle-workflows/${encodeURIComponent(id)}/dry-run`,
     adminRequest(csrfToken, 'POST', { target_user_id: targetUserID }),
   )
 }
 export async function listLifecycleWorkflowRuns(id: string): Promise<WorkflowRun[]> {
   return (
     await request<{ runs: WorkflowRun[] }>(
-      `/api/admin/v1/lifecycle_workflows/${encodeURIComponent(id)}/runs`,
+      `/api/admin/v1/lifecycle-workflows/${encodeURIComponent(id)}/runs`,
     )
   ).runs
 }
@@ -472,7 +472,7 @@ export async function retryLifecycleWorkflowRun(
   id: string,
 ): Promise<WorkflowRun> {
   return request(
-    `/api/admin/v1/lifecycle_workflow_runs/${encodeURIComponent(id)}/retry`,
+    `/api/admin/v1/lifecycle-workflow-runs/${encodeURIComponent(id)}/retry`,
     adminRequest(csrfToken, 'POST'),
   )
 }
@@ -807,7 +807,7 @@ export type AdminAuditEventPage = PaginationPageMetadata & {
 }
 
 // テナントの範囲は経路が決める。監査イベントの検索は 2 本あり、
-// /api/admin/v1/audit_events が要求先テナントに閉じ、/api/admin/v1/system/audit_events が
+// /api/admin/v1/audit-events が要求先テナントに閉じ、/api/admin/v1/system/audit-events が
 // 制御面主体だけに全テナントを返す。範囲を切り替えるクエリは持たない (wi-462)。
 async function fetchAuditEventPage(
   base: string,
@@ -832,24 +832,24 @@ async function fetchAuditEventPage(
 export async function listAdminAuditEvents(
   query: AdminAuditEventQuery,
 ): Promise<AdminAuditEventPage> {
-  return fetchAuditEventPage('/api/admin/v1/audit_events', query)
+  return fetchAuditEventPage('/api/admin/v1/audit-events', query)
 }
 
 export async function listSystemAuditEvents(
   query: AdminAuditEventQuery,
 ): Promise<AdminAuditEventPage> {
-  return fetchAuditEventPage('/api/admin/v1/system/audit_events', query)
+  return fetchAuditEventPage('/api/admin/v1/system/audit-events', query)
 }
 
 // 監査イベントのエクスポート URL (認証イベント含む)。新規タブで開いてダウンロードする。
 export function adminAuditEventsExportURL(query: AdminAuditEventQuery): string {
   const params = auditEventParams(query)
-  return tenantURL(`/api/admin/v1/audit_events/export?${params.toString()}`)
+  return tenantURL(`/api/admin/v1/audit-events/export?${params.toString()}`)
 }
 
 export function systemAuditEventsExportURL(query: AdminAuditEventQuery): string {
   const params = auditEventParams(query)
-  return tenantURL(`/api/admin/v1/system/audit_events/export?${params.toString()}`)
+  return tenantURL(`/api/admin/v1/system/audit-events/export?${params.toString()}`)
 }
 
 // event.type / outcome / actor.type / delegation.mode を選択式にするための選択肢一覧
@@ -863,7 +863,7 @@ export type AdminAuditEventSearchOptions = {
 }
 
 export async function listAdminAuditEventSearchOptions(): Promise<AdminAuditEventSearchOptions> {
-  return request<AdminAuditEventSearchOptions>('/api/admin/v1/audit_events/search_options')
+  return request<AdminAuditEventSearchOptions>('/api/admin/v1/audit-events/search-options')
 }
 
 // 非同期ジョブの管理 API (wi-157)。参照と取り消しだけで、投入も再試行も持たない。
@@ -1133,11 +1133,11 @@ export async function deleteIdentityProviderConnection(
 // 通知テンプレート (wi-288)。文面は組込み既定カタログとテナント上書きの
 // 2 段で解決され、DELETE (reset) は上書きを消して組込み既定へ戻す。
 function notificationTemplatePath(templateKey: string, locale: string): string {
-  return `/api/admin/v1/tenant/notification_templates/${encodeURIComponent(templateKey)}/${encodeURIComponent(locale)}`
+  return `/api/admin/v1/tenant/notification-templates/${encodeURIComponent(templateKey)}/${encodeURIComponent(locale)}`
 }
 
 export async function listNotificationTemplates(): Promise<NotificationTemplateList> {
-  return request<NotificationTemplateList>('/api/admin/v1/tenant/notification_templates')
+  return request<NotificationTemplateList>('/api/admin/v1/tenant/notification-templates')
 }
 
 export async function getNotificationTemplate(
@@ -1192,7 +1192,7 @@ export async function sendTestNotification(
 }
 
 export async function getTenantUserAttributeSchema(): Promise<TenantUserAttributeSchema> {
-  return request<TenantUserAttributeSchema>('/api/admin/v1/tenant/user_attribute_schema')
+  return request<TenantUserAttributeSchema>('/api/admin/v1/tenant/user-attribute-schema')
 }
 
 export async function updateTenantUserAttributeSchema(
@@ -1200,13 +1200,13 @@ export async function updateTenantUserAttributeSchema(
   attributes: UserAttributeDef[],
 ): Promise<TenantUserAttributeSchema> {
   return request(
-    '/api/admin/v1/tenant/user_attribute_schema',
+    '/api/admin/v1/tenant/user-attribute-schema',
     adminRequest(csrfToken, 'PUT', { attributes }),
   )
 }
 
 export async function getTenantGroupAttributeSchema(): Promise<TenantGroupAttributeSchema> {
-  return request<TenantGroupAttributeSchema>('/api/admin/v1/tenant/group_attribute_schema')
+  return request<TenantGroupAttributeSchema>('/api/admin/v1/tenant/group-attribute-schema')
 }
 
 export async function updateTenantGroupAttributeSchema(
@@ -1214,7 +1214,7 @@ export async function updateTenantGroupAttributeSchema(
   attributes: GroupAttributeDef[],
 ): Promise<TenantGroupAttributeSchema> {
   return request(
-    '/api/admin/v1/tenant/group_attribute_schema',
+    '/api/admin/v1/tenant/group-attribute-schema',
     adminRequest(csrfToken, 'PUT', { attributes }),
   )
 }
@@ -1268,7 +1268,7 @@ export async function setAdminTenantEndpointStyle(
   endpointStyle: NonNullable<AdminTenant['endpoint_style']>,
 ): Promise<void> {
   await request(
-    `/api/admin/v1/tenants/${encodeURIComponent(tenantID)}/endpoint_style`,
+    `/api/admin/v1/tenants/${encodeURIComponent(tenantID)}/endpoint-style`,
     adminRequest(csrfToken, 'PUT', { endpoint_style: endpointStyle }),
   )
 }
@@ -1945,7 +1945,7 @@ export async function revokeAdminUserSession(
 
 export async function revokeAllAdminUserSessions(csrfToken: string, userID: string): Promise<void> {
   await request(
-    `/api/admin/v1/users/${encodeURIComponent(userID)}/sessions/revoke_all`,
+    `/api/admin/v1/users/${encodeURIComponent(userID)}/sessions/revoke-all`,
     adminRequest(csrfToken, 'POST'),
   )
 }

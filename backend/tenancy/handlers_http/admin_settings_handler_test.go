@@ -340,7 +340,7 @@ func patchSettings(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecor
 	const path = "/realms/acme/api/admin/v1/settings"
 	// CSRF token / cookie を tenant local の password_reset_context 経由で発行する。
 	tenant := tenantPrefix(path)
-	csrf, cookie := passwordResetContextCSRF(t, e, tenant+"/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, e, tenant+"/api/auth/password-reset-context")
 	payload, err := json.Marshal(body)
 	if err != nil {
 		t.Fatal(err)

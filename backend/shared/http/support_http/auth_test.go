@@ -153,9 +153,9 @@ func TestRequiredAccountScope(t *testing.T) {
 		{http.MethodPost, "/realms/acme/api/account/v1/mfa/totp/remove", "account:mfa:write", true},
 		{http.MethodPost, "/realms/acme/api/account/v1/sessions/s1/revoke", "account:sessions:write", true},
 		{http.MethodPost, "/realms/acme/api/account/v1/consents/c1/revoke", "account:consents:write", true},
-		{http.MethodPost, "/realms/acme/api/auth/change_password", "account:password:write", true},
-		{http.MethodPost, "/realms/acme/api/account/v1/step_up/start", "", false},
-		{http.MethodGet, "/realms/acme/api/account/v1/email/verify_context", "", false},
+		{http.MethodPost, "/realms/acme/api/auth/change-password", "account:password:write", true},
+		{http.MethodPost, "/realms/acme/api/account/v1/step-up/start", "", false},
+		{http.MethodGet, "/realms/acme/api/account/v1/email/verify-context", "", false},
 	} {
 		got, allowed := requiredAccountScope(tc.method, tc.path)
 		if got != tc.scope || allowed != tc.allowed {

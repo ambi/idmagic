@@ -1,4 +1,4 @@
-// /api/account/v1/trusted_devices — 本人の信頼済みデバイスの一覧と失効 (wi-91)。
+// /api/account/v1/trusted-devices — 本人の信頼済みデバイスの一覧と失効 (wi-91)。
 // 一覧は認証済みセッションで読めるが、失効は第二要素を条件付きで飛ばす能力を取り消す
 // 機微操作なので、直近のステップアップ再認証を要求する。
 package handlers_http

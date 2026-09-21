@@ -24,13 +24,13 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// rootTestCSRF は /api/auth/password_reset_context (CSRF cookie 発行専用の GET) を叩いて
+// rootTestCSRF は /api/auth/password-reset-context (CSRF cookie 発行専用の GET) を叩いて
 // CSRF token/cookie を得る。password feature の password_reset_handler_test.go の
 // passwordResetCSRF と同じ実装だが、_test.go はパッケージを跨げないため複製する
 // (Phase 2 と同方針)。
 func rootTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password_reset_context", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password-reset-context", http.NoBody)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {

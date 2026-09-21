@@ -150,7 +150,7 @@ func (s *refusalServer) send(t *testing.T, method, path string, body any) *httpt
 			t.Fatal(err)
 		}
 	}
-	csrf, cookie := passwordResetContextCSRF(t, s.e, tenantPrefix(path)+"/api/auth/password_reset_context")
+	csrf, cookie := passwordResetContextCSRF(t, s.e, tenantPrefix(path)+"/api/auth/password-reset-context")
 	request := httptest.NewRequest(method, path, bytes.NewReader(payload))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
@@ -472,7 +472,7 @@ func TestCreateGroupRefusesOverHardQuotaAndLeavesUsageUnchanged(t *testing.T) {
 	}
 }
 
-const refusalTemplatePath = "/realms/acme/api/admin/v1/tenant/notification_templates"
+const refusalTemplatePath = "/realms/acme/api/admin/v1/tenant/notification-templates"
 
 // templateDetail は 1 テンプレートの現在値を管理 API から読み直す。
 // 「上書きが保存されていない」は保存層ではなく、次に編集画面を開いた人が見る値で読む。

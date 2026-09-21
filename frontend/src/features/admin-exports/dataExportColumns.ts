@@ -1,7 +1,7 @@
 import type { dataExportDictionary } from './DataExportPage.i18n'
 
 // ExportColumn は 1 列の UI 定義。key は backend の allowlist (backend/idmanagement/
-// domain/data_export.go) と一致させ、labelKey は i18n dict の key、pii は個人情報を含むか。
+// domain/data-export.go) と一致させ、labelKey は i18n dict の key、pii は個人情報を含むか。
 export type ExportColumn = {
   key: string
   labelKey?: keyof typeof dataExportDictionary.ja

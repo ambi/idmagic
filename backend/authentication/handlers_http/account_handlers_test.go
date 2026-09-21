@@ -264,7 +264,7 @@ func TestHandleListSignInActivityReturnsSeededEvent(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
 	f.seedSignIn(t, "alice", []string{"pwd"}, time.Now().UTC())
-	resp := f.request("/api/account/v1/signin_activity", "alice")
+	resp := f.request("/api/account/v1/signin-activity", "alice")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -276,7 +276,7 @@ func TestHandleListSignInActivityReturnsSeededEvent(t *testing.T) {
 func TestHandleGetUserSignInActivityRequiresAdmin(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
-	resp := f.request("/api/admin/v1/users/alice/signin_activity", "alice")
+	resp := f.request("/api/admin/v1/users/alice/signin-activity", "alice")
 	if resp.Code == http.StatusOK {
 		t.Fatalf("expected non-admin caller to be rejected, status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -287,7 +287,7 @@ func TestHandleGetUserSignInActivitySucceedsForAdmin(t *testing.T) {
 	f.seedUser(t, "alice")
 	f.seedUser(t, "admin", "admin")
 	f.seedSignIn(t, "alice", []string{"pwd", "otp"}, time.Now().UTC())
-	resp := f.request("/api/admin/v1/users/alice/signin_activity", "admin")
+	resp := f.request("/api/admin/v1/users/alice/signin-activity", "admin")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}

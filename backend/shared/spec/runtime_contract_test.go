@@ -1,6 +1,9 @@
 package spec
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNormalizeRoutePath(t *testing.T) {
 	cases := []struct {
@@ -36,6 +39,23 @@ func TestRuntimeContractOperation(t *testing.T) {
 	var nilContract *RuntimeContract
 	if _, ok := nilContract.Operation("Authorize"); ok {
 		t.Fatal("expected ok=false for a nil contract")
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-010: 汎用 API の生成済み操作契約は、パスパラメーターを除く静的セグメントにアンダースコアを含めない。
+func TestOperationsUseKebabCaseStaticPathSegments_REQ_AUTHENTICATION_010(t *testing.T) {
+	for name, operation := range generatedOperations {
+		if !strings.HasPrefix(operation.Path, "/api/") {
+			continue
+		}
+		for segment := range strings.SplitSeq(operation.Path, "/") {
+			if strings.HasPrefix(segment, "{") {
+				continue
+			}
+			if strings.Contains(segment, "_") {
+				t.Errorf("operation %s has snake_case static path segment %q in %q", name, segment, operation.Path)
+			}
+		}
 	}
 }
 

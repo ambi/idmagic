@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	bulkRoute        = "/realms/default/api/admin/v1/audit_events"
+	bulkRoute        = "/realms/default/api/admin/v1/audit-events"
 	interactiveRoute = "/realms/default/.well-known/openid-configuration"
 )
 
