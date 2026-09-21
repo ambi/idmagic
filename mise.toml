@@ -5,11 +5,11 @@ go = "1.27.1"
 bun = "1.4.2"
 "aqua:golangci/golangci-lint" = "2.13.2"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
-"aqua:sqldef/sqldef/psqldef" = "3.11.20"
+"aqua:sqldef/sqldef/psqldef" = "3.11.23"
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:zizmorcore/zizmor" = "1.30.1"
 "aqua:betterleaks/betterleaks" = "1.8.1"
-"aqua:google/osv-scanner" = "2.5.1"
+"aqua:google/osv-scanner" = "2.6.0"
 # govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
 # 宣言する言語バージョンでビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
 # られるためである。詳細は wi-291。
