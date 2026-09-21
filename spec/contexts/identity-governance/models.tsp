@@ -94,6 +94,10 @@ enum WorkflowStepOutcome {
 model WorkflowRevisionConflictError is ProblemDetails;
 
 
+@doc("The requested LifecycleWorkflow `name` is already used by a non-deleted workflow in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workflow_name_conflict`.")
+model WorkflowNameConflictError is ProblemDetails;
+
+
 @doc("One term of `WorkflowTrigger.filters`. Only a field that exists in the TenantUserAttributeSchema and whose type matches can be\nstored; a free-text regex over PII and an unknown field are both refused at save time. Several filters are ANDed.")
 model WorkflowFilter {
   @doc("A `TenantUserAttributeSchema.key`, or a built-in attribute key of User.")

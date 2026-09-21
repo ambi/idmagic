@@ -348,6 +348,16 @@ model CreateAdminUserError403 {
   @body body: CreateAdminUserError403Body;
 }
 
+union CreateAdminUserError409Body {
+  IdMagic.Contract.UsernameConflictError,
+}
+
+model CreateAdminUserError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CreateAdminUserError409Body;
+}
+
 union CreateAdminUserError422Body {
   IdMagic.Contract.QuotaExceededError,
   IdMagic.Contract.InvalidRoleError,
@@ -366,7 +376,7 @@ model CreateAdminUserError422 {
 @post
 op CreateAdminUser(
   @body body: IdMagic.Contract.AdminUserCreateRequest
-): CreateAdminUserSuccess_201 | CreateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminUserError403 | CreateAdminUserError422;
+): CreateAdminUserSuccess_201 | CreateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminUserError403 | CreateAdminUserError409 | CreateAdminUserError422;
 
 model ImportAdminUsersSuccess_202 {
   @statusCode statusCode: 202;
@@ -1619,6 +1629,16 @@ model UpdateAdminUserError403 {
   @body body: UpdateAdminUserError403Body;
 }
 
+union UpdateAdminUserError409Body {
+  IdMagic.Contract.UsernameConflictError,
+}
+
+model UpdateAdminUserError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAdminUserError409Body;
+}
+
 union UpdateAdminUserError422Body {
   IdMagic.Contract.InvalidRoleError,
   IdMagic.Contract.InvalidUserAttributeError,
@@ -1638,7 +1658,7 @@ model UpdateAdminUserError422 {
 op UpdateAdminUser(
   @path user_id: string,
   @body body: IdMagic.Contract.AdminUserUpdateRequest
-): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminUserError403 | UpdateAdminUserError422;
+): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminUserError403 | UpdateAdminUserError409 | UpdateAdminUserError422;
 
 model DisableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -2013,6 +2033,16 @@ model CreateGroupError403 {
   @body body: CreateGroupError403Body;
 }
 
+union CreateGroupError409Body {
+  IdMagic.Contract.GroupNameConflictError,
+}
+
+model CreateGroupError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CreateGroupError409Body;
+}
+
 union CreateGroupError422Body {
   IdMagic.Contract.GroupNameRequiredError,
   IdMagic.Contract.InvalidRoleError,
@@ -2035,7 +2065,7 @@ model CreateGroupError422 {
 @post
 op CreateGroup(
   @body body: IdMagic.Contract.GroupCreateRequest
-): CreateGroupSuccess_201 | CreateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateGroupError403 | CreateGroupError422;
+): CreateGroupSuccess_201 | CreateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateGroupError403 | CreateGroupError409 | CreateGroupError422;
 
 model UpdateGroupSuccess_200 {
   @statusCode statusCode: 200;
@@ -2065,6 +2095,16 @@ model UpdateGroupError403 {
   @body body: UpdateGroupError403Body;
 }
 
+union UpdateGroupError409Body {
+  IdMagic.Contract.GroupNameConflictError,
+}
+
+model UpdateGroupError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: UpdateGroupError409Body;
+}
+
 union UpdateGroupError422Body {
   IdMagic.Contract.GroupNameRequiredError,
   IdMagic.Contract.InvalidRoleError,
@@ -2086,7 +2126,7 @@ model UpdateGroupError422 {
 op UpdateGroup(
   @path group_id: string,
   @body body: IdMagic.Contract.GroupUpdateRequest
-): UpdateGroupSuccess_200 | UpdateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateGroupError403 | UpdateGroupError422;
+): UpdateGroupSuccess_200 | UpdateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateGroupError403 | UpdateGroupError409 | UpdateGroupError422;
 
 model DeleteGroupSuccess_204 {
   @statusCode statusCode: 204;
@@ -2504,6 +2544,16 @@ model RegisterAgentError403 {
   @body body: RegisterAgentError403Body;
 }
 
+union RegisterAgentError409Body {
+  IdMagic.Contract.AgentNameConflictError,
+}
+
+model RegisterAgentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: RegisterAgentError409Body;
+}
+
 union RegisterAgentError422Body {
   IdMagic.Contract.QuotaExceededError,
   IdMagic.Contract.AgentNameRequiredError,
@@ -2527,7 +2577,7 @@ model RegisterAgentError422 {
 @post
 op RegisterAgent(
   @body body: IdMagic.Contract.AgentRegisterRequest
-): RegisterAgentSuccess_201 | RegisterAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterAgentError403 | RegisterAgentError422;
+): RegisterAgentSuccess_201 | RegisterAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterAgentError403 | RegisterAgentError409 | RegisterAgentError422;
 
 model UpdateAgentSuccess_200 {
   @statusCode statusCode: 200;
@@ -2557,6 +2607,16 @@ model UpdateAgentError403 {
   @body body: UpdateAgentError403Body;
 }
 
+union UpdateAgentError409Body {
+  IdMagic.Contract.AgentNameConflictError,
+}
+
+model UpdateAgentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAgentError409Body;
+}
+
 union UpdateAgentError422Body {
   IdMagic.Contract.AgentNameRequiredError,
   IdMagic.Contract.InvalidAgentKindError,
@@ -2579,7 +2639,7 @@ model UpdateAgentError422 {
 op UpdateAgent(
   @path agent_id: string,
   @body body: IdMagic.Contract.AgentUpdateRequest
-): UpdateAgentSuccess_200 | UpdateAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAgentError403 | UpdateAgentError422;
+): UpdateAgentSuccess_200 | UpdateAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAgentError403 | UpdateAgentError409 | UpdateAgentError422;
 
 model DisableAgentSuccess_204 {
   @statusCode statusCode: 204;

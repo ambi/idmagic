@@ -96,6 +96,17 @@ model RegisterWorkloadTrustBundleError403 {
   @body body: RegisterWorkloadTrustBundleError403Body;
 }
 
+union RegisterWorkloadTrustBundleError409Body {
+  IdMagic.Contract.WorkloadTrustBundleNameConflictError,
+  IdMagic.Contract.WorkloadTrustBundleIssuerConflictError,
+}
+
+model RegisterWorkloadTrustBundleError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: RegisterWorkloadTrustBundleError409Body;
+}
+
 union RegisterWorkloadTrustBundleError422Body {
   IdMagic.Contract.WorkloadTrustBundleJwksRequiredError,
   IdMagic.Contract.WorkloadTrustBundleNameRequiredError,
@@ -117,7 +128,7 @@ model RegisterWorkloadTrustBundleError422 {
 @post
 op RegisterWorkloadTrustBundle(
   @body body: IdMagic.Contract.WorkloadTrustBundleRegisterRequest
-): RegisterWorkloadTrustBundleSuccess_201 | RegisterWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterWorkloadTrustBundleError403 | RegisterWorkloadTrustBundleError422;
+): RegisterWorkloadTrustBundleSuccess_201 | RegisterWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterWorkloadTrustBundleError403 | RegisterWorkloadTrustBundleError409 | RegisterWorkloadTrustBundleError422;
 
 model UpdateWorkloadTrustBundleSuccess_200 {
   @statusCode statusCode: 200;
@@ -147,6 +158,17 @@ model UpdateWorkloadTrustBundleError403 {
   @body body: UpdateWorkloadTrustBundleError403Body;
 }
 
+union UpdateWorkloadTrustBundleError409Body {
+  IdMagic.Contract.WorkloadTrustBundleNameConflictError,
+  IdMagic.Contract.WorkloadTrustBundleIssuerConflictError,
+}
+
+model UpdateWorkloadTrustBundleError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: UpdateWorkloadTrustBundleError409Body;
+}
+
 union UpdateWorkloadTrustBundleError422Body {
   IdMagic.Contract.WorkloadTrustBundleNameRequiredError,
   IdMagic.Contract.WorkloadTrustBundleAudiencesRequiredError,
@@ -167,7 +189,7 @@ model UpdateWorkloadTrustBundleError422 {
 op UpdateWorkloadTrustBundle(
   @path trust_bundle_id: string,
   @body body: IdMagic.Contract.WorkloadTrustBundleUpdateRequest
-): UpdateWorkloadTrustBundleSuccess_200 | UpdateWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateWorkloadTrustBundleError403 | UpdateWorkloadTrustBundleError422;
+): UpdateWorkloadTrustBundleSuccess_200 | UpdateWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateWorkloadTrustBundleError403 | UpdateWorkloadTrustBundleError409 | UpdateWorkloadTrustBundleError422;
 
 model DisableWorkloadTrustBundleSuccess_204 {
   @statusCode statusCode: 204;

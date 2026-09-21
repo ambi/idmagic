@@ -110,6 +110,44 @@ func TestRegisterTrustBundleRejectsMissingName(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-WORKLOADIDENTITY-008: 名前または発行者が重複する信頼設定の登録は、Problem Details の 409 を返す。
+func TestRegisterTrustBundleReportsUniquenessConflict(t *testing.T) {
+	e := newWorkloadIdentityHandler(t)
+	csrf, cookie := workloadAdminCSRF(t, e)
+	payload, err := json.Marshal(map[string]any{
+		"name": "prod-cluster", "trust_domain": "issuer.example", "issuer": "https://issuer.example",
+		"accepted_audiences": []string{"https://idmagic.example"}, "jwks_uri": "https://issuer.example/jwks",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	register := func() *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodPost, "/realms/default/api/admin/v1/workload-identity/trust-bundles", bytes.NewReader(payload))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Origin", "http://idp.test")
+		request.Header.Set("X-Csrf-Token", csrf)
+		request.Header.Set("X-Demo-Sub", "admin")
+		request.AddCookie(cookie)
+		response := httptest.NewRecorder()
+		e.ServeHTTP(response, request)
+		return response
+	}
+	if response := register(); response.Code != http.StatusCreated {
+		t.Fatalf("first registration status=%d body=%s", response.Code, response.Body.String())
+	}
+	response := register()
+	if response.Code != http.StatusConflict {
+		t.Fatalf("duplicate registration status=%d body=%s, want 409", response.Code, response.Body.String())
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("unmarshal body: %v (body=%s)", err, response.Body.String())
+	}
+	if problem.Type != "urn:idmagic:error:workload_trust_bundle_name_conflict" {
+		t.Fatalf("type=%q, want workload_trust_bundle_name_conflict", problem.Type)
+	}
+}
+
 // 拒否され、信頼設定は作成されない。拒否応答と、拒否が防いだ効果（一覧が空のまま）の双方を
 // 固定する。
 //

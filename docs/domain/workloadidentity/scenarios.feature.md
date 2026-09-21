@@ -93,14 +93,14 @@ Primary actor: `TenantAdministrator`
 - Given 管理者としてテナントに認証済みである
 - When 発行者 "https://issuer.example" と JWKS の取得元を指定して RegisterWorkloadTrustBundle を呼ぶ
 - But `jwks_uri` と `jwks` のどちらも指定しない
-- Then RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
+- Then RegisterWorkloadTrustBundle が WorkloadTrustBundleJwksRequiredError で拒否される
 
 ### Example: EX-WORKLOADIDENTITY-008-03 同じテナント内に同じ発行者の WorkloadTrustBundle がすでに存在する
 
 - Given 管理者としてテナントに認証済みである
 - When 発行者 "https://issuer.example" と JWKS の取得元を指定して RegisterWorkloadTrustBundle を呼ぶ
 - But 同じテナント内に同じ発行者の WorkloadTrustBundle がすでに存在する
-- Then RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
+- Then RegisterWorkloadTrustBundle が WorkloadTrustBundleIssuerConflictError で拒否される
 
 ## Rule: REQ-WORKLOADIDENTITY-009 管理者は他テナントの Agent への関連付けを作成できない
 

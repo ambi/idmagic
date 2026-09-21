@@ -86,6 +86,18 @@ enum AgentKind {
 model InvalidRoleError is ProblemDetails;
 
 
+@doc("The requested `preferred_username` is already used by a User in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:username_conflict`.")
+model UsernameConflictError is ProblemDetails;
+
+
+@doc("The requested Group `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_name_conflict`.")
+model GroupNameConflictError is ProblemDetails;
+
+
+@doc("The requested Agent `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_name_conflict`.")
+model AgentNameConflictError is ProblemDetails;
+
+
 @doc("The operator tried to delete their own User. RFC 9457 Problem Details with `type` = `urn:idmagic:error:self_delete_forbidden`.")
 model SelfDeleteForbiddenError is ProblemDetails;
 

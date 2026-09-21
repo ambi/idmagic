@@ -63,6 +63,16 @@ model CreateLifecycleWorkflowError403 {
   @body body: CreateLifecycleWorkflowError403Body;
 }
 
+union CreateLifecycleWorkflowError409Body {
+  IdMagic.Contract.WorkflowNameConflictError,
+}
+
+model CreateLifecycleWorkflowError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CreateLifecycleWorkflowError409Body;
+}
+
 @doc("An administrator creates a LifecycleWorkflow. The workflow itself and the draft of revision 1 are both persisted, and `name` is unique within the tenant among workflows that have not been deleted. The name of a deleted workflow may be used again.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("CreateLifecycleWorkflow")
@@ -70,7 +80,7 @@ model CreateLifecycleWorkflowError403 {
 @post
 op CreateLifecycleWorkflow(
   @body body: IdMagic.Contract.LifecycleWorkflowCreateRequest
-): CreateLifecycleWorkflowSuccess_201 | CreateLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateLifecycleWorkflowError403;
+): CreateLifecycleWorkflowSuccess_201 | CreateLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateLifecycleWorkflowError403 | CreateLifecycleWorkflowError409;
 
 model GetLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;

@@ -36,6 +36,7 @@ func validRegisterInput() usecases.RegisterWorkloadTrustBundleInput {
 	}
 }
 
+//spec:covers REQ-WORKLOADIDENTITY-008: 同一テナント内で名前または発行者が重複する信頼設定を保存しない。
 func TestRegisterWorkloadTrustBundle(t *testing.T) {
 	deps := newAdminDeps()
 	ctx := withTenant("tenant-a")

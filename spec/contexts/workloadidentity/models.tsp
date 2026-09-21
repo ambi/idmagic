@@ -1,5 +1,12 @@
 namespace IdMagic.Contract {
 
+@doc("The requested WorkloadTrustBundle `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_name_conflict`.")
+model WorkloadTrustBundleNameConflictError is ProblemDetails;
+
+
+@doc("The requested WorkloadTrustBundle `issuer` is already registered in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_issuer_conflict`.")
+model WorkloadTrustBundleIssuerConflictError is ProblemDetails;
+
 @doc("Published-language stub for the Agent principal the IdManagement context publishes, carrying only the attributes binding verification needs.")
 model AgentRef {
   id: string;
