@@ -1,6 +1,6 @@
 # Seeding の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | SeedProfile | seed の内容と生成規則を表す、明示的に選択するプロファイル。`bootstrap` は稼働に必要な最小データだけ、`development` と `test` は既知のサンプル、`performance` は機密情報を含まない合成データを表す。 | seed プロファイル |
 | SeedPlan | 現在の状態とプロファイルのマニフェストを比較して作る、シークレットを除いた変更計画。プレビューと適用は同じ計画規則を使う。 | seed 計画 |

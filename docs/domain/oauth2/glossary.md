@@ -1,6 +1,6 @@
 # OAuth2 の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | ResourceOwner | 保護リソースに対するアクセス権限を付与できる主体。本アプリではエンドユーザー。 | resource_owner, リソースオーナー, EndUser |
 | Client | ResourceOwner に代わって保護リソースへのアクセスを要求するアプリケーション。`client_id` で識別される。`client_id` が Client ID Metadata Document (CIMD) の URL 形式である場合は、永続的な登録を使わず、認可リクエストごとに文書を取得して解決する。 | クライアント, RelyingParty |

@@ -1,6 +1,6 @@
 # Provisioning の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | ProvisioningConnection | Application 1 件に対して最大 1 件だけ存在する外向きプロビジョニングの設定。接続先 `base_url`、認証、機能トグル、スコープ、属性の対応付け、プロビジョニング解除ポリシー、信頼性設定をまとめる。 | connection, 接続 |
 | RemoteResourceLink | IdMagic の `User` または `Group` と、下流の SCIM サービスプロバイダー上のリソース（リモート ID、`externalId`、`etag`）との対応を保持するエンティティ。HTTP 409（既存リソースとの衝突）では照合属性を使って既存リソースへ関連付け、HTTP 404（リソースの消失）では再作成して関連付けを更新する。 | remote link, 相関 |

@@ -1,6 +1,6 @@
 # Audit の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | AuditEventSearchRegistry | 監査イベントで使用できる検索属性（`AuditEventSearchAttribute`）の定義一覧。属性ごとにフィールド、演算子、変換方法を宣言し、任意の SQL や JSONPath を受け付けない閉じた検索文法を定める。Go の `AuditSearchRegistry` マップを唯一の正とする。 | search-attribute-registry, 検索属性定義 |
 | AuditEventFilterExpression | `AuditEventQuery.filter` を構成する論理積 (AND) の 1 要素。レジストリの許可リストにあるフィールド、演算子、値からなる。個人識別情報の属性は平文入力をサーバー側で変換してから照合する。 | filter-expression, フィルター式 |

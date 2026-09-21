@@ -1,6 +1,6 @@
 # Sourcing の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | IdentitySource | あるアイデンティティ集団について IdMagic の外部で権威を持つシステムと、その関係を表すテナント単位の関連付け。取り込み元の種類、資格情報と登録情報、有効・無効、属性の対応付け、削除・無効化を上流の権威にどこまで従わせるかをまとめる。取り込み元との関連付けを持たない経路は本 Context の対象外とする。 | source, アイデンティティソース, 取り込み元 |
 | SourceCorrelation | 外部の取り込み元の不変 ID と、IdMagic 内部のプリンシパル（User / Group）を結ぶ関連付け。取り込みを冪等にし、名前や属性が変わっても同一性を失わないための基準となる。`scim` 機能では ScimUserRef / ScimGroupRef が該当する。 | correlation link, external identity link, 相関 |

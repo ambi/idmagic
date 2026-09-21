@@ -1,6 +1,6 @@
 # Jobs の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | JobLease | `worker` が Job を Running にする際に確保する排他権。`lease_owner`（`worker` 識別子）と `lease_expires_at` を持ち、ハートビートで更新する。ハートビートが途絶えて期限切れになると、別の `worker` が再取得できる。 | lease, リース |
 | DeadLetter | `attempts` が `max_attempts` に達して `Failed` に確定した Job。再試行されず、エラーを保持したまま調査対象として残る。 | 配信不能 |

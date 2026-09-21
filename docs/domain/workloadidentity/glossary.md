@@ -1,6 +1,6 @@
 # WorkloadIdentity の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | WorkloadTrustBundle | テナントが登録する外部アテステーション発行者の信頼設定。トラストドメイン、発行者、JWKS の取得元またはインライン JWKS、受理する audience、外部 SVID の最大 TTL をまとめる。事前に登録した発行者だけを信頼し、Trust On First Use は許可しない。 |  |
 | AgentWorkloadBinding | `WorkloadTrustBundle` の配下で、外部主体に対する glob パターンを同じテナントの既存 `Agent` に対応付けるレコード。パターンに一致しない主体や、複数の有効な関連付けに一致するため対象を一意に決められない主体は、フェイルクローズで拒否する。 |  |

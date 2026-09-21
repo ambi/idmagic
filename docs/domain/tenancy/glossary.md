@@ -1,6 +1,6 @@
 # Tenancy の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | Tenant | 独立した認可境界。URL 上は Realm という別名で表現される。 | テナント, Realm, realm |
 | DefaultTenant | 起動時に自動作成される `realm == "default"` のテナント。ID は固定 UUID の代理キー。単一テナント運用時の互換性と、接頭辞のない HTTP リクエストの解決先を兼ねる。 | デフォルトテナント |

@@ -1,6 +1,6 @@
 # ClaimMapping の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | ClaimMappingPolicy | プリンシパルの属性を外部のアプリケーション、RP、SP、クライアントへ公開するための、属性解決と公開許可の規則。 | ClaimMappingPolicy, attribute release, claim mapping |
 | IssuedClaim | `ClaimMappingPolicy` を適用して得られる、クレーム型 (URI) と値の組。プロトコルごとのワイヤー表現へ変換する前の中間表現である。 | IssuedClaim |

@@ -1,6 +1,6 @@
 # Authorization の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | AuthorizationModel | テナントが公開しているリソース型と関係の定義の集合。版を追記のみで積み上げ、最新版が判定に使われる。未知の型・関係を参照する版、書き換え規則が循環する版は登録時に拒否する。 | 認可モデル |
 | ResourceTypeDefinition | 認可モデルが宣言する 1 つのリソース型。関係タプルの `resource_type` と `subject_type` は、ここで宣言した型名しか取りえない。 | リソース型定義 |

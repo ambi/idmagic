@@ -2,7 +2,7 @@
 
 この Context の中でだけ意味が定まる語を置く。Context を跨いで意味が固定される語は [docs/domain/glossary.md](../glossary.md) で定義する。
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | Locale | UI の表示言語を一意に決める BCP 47 言語タグ。IdMagic は `ja` と `en` だけに対応し、それ以外は未対応のロケールとして扱う。 | locale tag, 表示言語コード |
 | DisplayLanguage | EndUser または Administrator が言語切り替え UI で明示的に選択したロケール。選択はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する。 | 表示言語, 言語設定 |

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -7,6 +7,25 @@ created_at: 2026-09-19
 priority: p2
 depends_on: []
 change_kind: docs
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: "開発方法論と文書形式の表現を日本語へ揃えるだけで、利用者へ知らせる製品変更はない。"
+  references: []
+initial_context:
+  specification:
+    - .claude/rules/japanese-writing.md
+    - SPECIFICATION_FORMAT.md
+    - WORK_ITEM_FORMAT.md
+    - docs/development/specification-first-workflow.md
+  typespec: []
+  source: []
+  tests: []
+  stop_before_reading:
+    - backend
+    - frontend
+    - spec
+    - docs/releases
 spec_impact:
   kind: none
   reason: "文章の言語と表見出しの語を揃えるだけで、規範要素の意味も機械検査が読む形も変えない。"
@@ -69,6 +88,7 @@ Markdown はタイトル、見出し、表見出し、リンクラベルを含�
 
 原表記を保つ対象を先に決める。
 識別子、frontmatter のキー、`REQ-*` と `EX-*`、`risk-based-v3` のような規約の名前、`mise` タスク名、ファイルパス、TypeSpec のシンボル、`Adoption` と `Strength` の値はそのまま残す。
+完了記録の `Completed At`、`Acceptance RED Evidence`、`Primary Use Case Evidence` など、機械検査がフィールド名として読むラベルも原表記を保つ。
 これらは文章の言語とは別の軸にあり、書き換えると検査と文書の対応が切れる。
 
 索引表の見出しは `文書 \| 内容` を採る。
@@ -89,12 +109,12 @@ Markdown はタイトル、見出し、表見出し、リンクラベルを含�
 
 ## Tasks
 
-- [ ] T001 [Docs] 原表記を保つ語の一覧を決める。
-- [ ] T002 [Docs] `WORK_ITEM_FORMAT.md` の英語部分を日本語で書き直す。
-- [ ] T003 [Docs] `SPECIFICATION_FORMAT.md` を日本語で書き直す。
-- [ ] T004 [Docs] `docs/development/specification-first-workflow.md` を日本語で書き直す。
-- [ ] T005 [Docs] 用語集 21 件と索引表の見出しを揃え、`SPECIFICATION_FORMAT.md` へ採った形を書く。
-- [ ] T006 [Verify] 変更を検証する。
+- [x] T001 [Docs] 原表記を保つ語の一覧を決める。
+- [x] T002 [Docs] `WORK_ITEM_FORMAT.md` の英語部分を日本語で書き直す。
+- [x] T003 [Docs] `SPECIFICATION_FORMAT.md` を日本語で書き直す。
+- [x] T004 [Docs] `docs/development/specification-first-workflow.md` を日本語で書き直す。
+- [x] T005 [Docs] 用語集 21 件と索引表の見出しを揃え、`SPECIFICATION_FORMAT.md` へ採った形を書く。
+- [x] T006 [Verify] 変更を検証する。
 
 ## Verification
 
@@ -103,6 +123,11 @@ Markdown はタイトル、見出し、表見出し、リンクラベルを含�
 - `mise run check-terminology`
 - `mise run check-work-items`
 - `mise run verify`
+
+## Evidence Plan
+
+- **Acceptance RED**: 対象三文書の行頭に残る英語散文、Context の用語集に残る `| Term | Definition | Aliases |`、索引表に残る `責務` と `定めるもの` の見出しを `rg` で列挙し、対象の英語表現と揺れが存在することを確認する。
+- **Unit RED**: N/A。実行可能な単体境界はない。代わりに、対象三文書の冒頭の規則を目視で比較し、同じ文書体系の規則が日本語と英語に分かれていることを確認する。
 
 ## Risk Notes
 
@@ -115,3 +140,35 @@ Markdown はタイトル、見出し、表見出し、リンクラベルを含�
 
 表見出しの一括置換は、同じ文字列が別の意味で使われている箇所へ当たる恐れがある。
 `| Term | Definition | Aliases |` は行全体で一致させ、`sd -s` の結果を `git diff --stat` で着弾件数が 21 件であることから確かめる。
+
+## Completion
+
+- **Completed At**: 2026-09-21
+- **Summary**:
+  `WORK_ITEM_FORMAT.md`、`SPECIFICATION_FORMAT.md`、`docs/development/specification-first-workflow.md` の人が読む散文を日本語で書き直し、識別子、パス、機械検査が読む名前は原表記を保った。
+  Context の用語集 21 件を `用語 | 定義 | 別名`、索引表 11 か所を `文書 | 内容` に揃え、採用した見出しを `SPECIFICATION_FORMAT.md` に明記した。
+  開発方法論の参照は、Extreme Programming を Kent Beck の Tidy First?、Screaming Architecture を Jimmy Bogard の Vertical Slice Architecture に置き換えた。Tidy First? は、小さな整理、整理を先に行うリファクタリング、その反復によるインクリメンタルな設計として記述した。
+  `mise run spec-diff` は main に対して規範の変更なしと報告した。
+- **Acceptance RED Evidence**:
+  - **Test**: `rg --count-matches '^[A-Za-z]' WORK_ITEM_FORMAT.md SPECIFICATION_FORMAT.md docs/development/specification-first-workflow.md` と、表見出しの完全一致検索
+  - **Requirement**: N/A: 文書表現と開発方法論の参照だけの変更で、プロダクトの規範 ID は変更しない
+  - **Observed Failure**: 着手時は英字から始まる行が順に 57、206、231 行あり、英語の用語集見出しが 21 か所、索引表の不統一な見出しが 11 か所あった
+  - **Detection Reason**: 書き直し後は英字から始まる行が順に 17、11、18 行まで減り、残った行が識別子、パス、コード、機械検査が読むフィールドだけであることを確認した。旧表見出しと代表的な英語の冒頭文は完全一致検索で 0 件になった
+- **Unit RED Evidence**:
+  - **Test**: N/A: 実行可能な単体境界がないため、対象三文書の冒頭の規則を目視で比較した
+  - **Requirement**: N/A: 文書表現だけの変更で、プロダクトの規範 ID は変更しない
+  - **Observed Failure**: 着手時は同じ文書体系の規則が日本語と英語に分かれ、三文書の本文が英語で始まっていた
+  - **Detection Reason**: 完了時は三文書の人が読む本文が日本語で始まり、固定した識別子と機械可読な名前だけが原表記で残ることを確認した
+- **Change-Resistance Results**:
+  `risk: low` の文書変更なので変異試験は行っていない。完全一致検索で表見出しの置換件数と旧表記の消失を確かめた。`mise run test-tools` は書き直し時に混入した不採用語「独自版」を検出し、表現を修正した後に 572 件すべて通過した。
+- **Verification Results**:
+  - `git diff --check` - passed
+  - `mise run check-spec` - passed（175 canonical documents、157 standards、316 rules、771 examples）
+  - `mise run check-links` - passed（881 文書）
+  - `mise run check-terminology` - passed（231 文書）
+  - `mise run check-agent-guidance` - passed（4 guidance files）
+  - `mise run check-work-items` - passed（627 dependency records）
+  - `mise run test-tools` - passed（572 tests）
+  - `mise run spec-diff` - no normative specification change against main
+  - `mise run lint-go` - passed（0 issues）
+  - `mise run verify` - passed

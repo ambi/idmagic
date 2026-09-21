@@ -9,7 +9,7 @@ IdMagic を Bounded Context へ分け、各 Context が何を意味し、どう�
 Context を跨いで固定されるもの。
 どの Context を読む前でも成り立つ。
 
-| 文書 | 定めるもの |
+| 文書 | 内容 |
 | --- | --- |
 | [用語集](glossary.md) | Context を跨いで意味が固定される語 |
 | [全体の標準仕様](standards.md) | システム全体として準拠する外部規範 |
@@ -23,7 +23,7 @@ Context の一覧と Subdomain の区分は[論理アーキテクチャ](../arch
 
 各 Context のディレクトリには同じ 7 文書を置く。
 
-| 文書 | 定めるもの |
+| 文書 | 内容 |
 | --- | --- |
 | `README.md` | その Context の責務と境界 |
 | `glossary.md` | その Context でだけ意味が定まる語、および全体の語をその Context へ狭めた定義 |

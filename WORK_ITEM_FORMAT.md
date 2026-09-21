@@ -107,112 +107,102 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 実装中に規範の変更が必要だと分かった場合は仕様作業へ戻り、実装を通すためにシナリオを弱めてはならない。
 リスクと証拠の対応は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#4-証拠の要件)が定める。
 
-`affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
-normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,
-`docs`, `tooling`, or `maintenance`) may use:
+`feature`、`bugfix`、`operations` の作業項目には `affected_spec` が必要である。
+`affected_spec` からは、規範シナリオまたは標準仕様の ID、もしくは TypeSpec のシンボルを直接参照する。
+仕様に影響しない変更（`refactor`、`docs`、`tooling`、`maintenance`）では、次の形を使用できる。
 
 ```yaml
-spec_impact: { kind: none, reason: "A concrete reason." }
+spec_impact: { kind: none, reason: "具体的な理由。" }
 ```
 
-`initial_context` is the reading list one agent starts from. Write it when the item moves to
-`in_progress`, not when it is filed: a list written for a backlog item rots before the work begins, and a
-reading list that points at moved or deleted files is worse than none. A pending item needs only
-Motivation, Scope, and Out of Scope to be useful.
+`initial_context` は、一人のエージェントが最初に読む対象の一覧である。
+起票時ではなく、作業項目を `in_progress` にするときに書く。
+バックログにある間に書いた一覧は着手前に古くなり、移動または削除されたファイルを指す一覧は、一覧がない状態より作業を誤らせる。
+`pending` の作業項目は、Motivation、Scope、Out of Scope だけでも役に立つ。
 
-Once the item is `in_progress`, `mise run check-work-items` resolves that list: every path must exist, and a
-`docs/domain/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
+作業項目を `in_progress` にすると、`mise run check-work-items` が一覧を解決する。
+すべてのパスが存在し、`docs/domain/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN` の項目が、その文書で宣言されたシナリオを指さなければならない。
 
-`affected_spec` is resolved for every record, completed ones included, because it indexes the normative
-element the change touched rather than what someone read at the time. When a normative element moves to a
-different file, repoint those references; when it is retired, the retired heading keeps them resolving.
+`affected_spec` は、完了済みを含むすべての記録で解決する。
+これは当時読んだものではなく、変更が触れた規範要素の索引だからである。
+規範要素を別のファイルへ移したら参照先を更新し、廃止した場合は廃止済みの見出しを残して参照を解決できるようにする。
 
-For medium and larger changes, make `Design` and `Plan` concrete. For changed core logic, name the principal
-domain data types and operation signatures, and identify time, randomness, identifier generation,
-configuration, persistence, notification, and other effects at the boundary where they enter or leave the
-calculation. Domain, Use Cases, and Adapters tasks must retain the corresponding tests and normative scenario
-ID as self-evidence.
+中リスク以上の変更では、`Design` と `Plan` を具体的に書く。
+中核ロジックを変更する場合は、主要なドメインデータ型と操作のシグネチャを挙げる。
+時刻、乱数、識別子生成、設定、永続化、通知などの作用は、計算へ入る境界または計算から出る境界を明示する。
+Domain、Use Cases、Adapters の各タスクには、自己証明となる対応テストと規範シナリオ ID を残す。
 
-Every item that enters `in_progress` declares one `documentation_impact` and keeps the same structured field
-through completion. `level` is one of `none`, `release_note`, `upgrade_note`, `deprecation_notice`, or
-`removal_notice`. `none` requires a concrete reason and no release-document references. Every other level
-declares the planned release-document paths before implementation; completion requires those paths to exist,
-name the work item, and link to an `affected_spec` requirement or TypeSpec symbol. The release-document file
-name copies the work item's complete filename stem, including its sequence and kebab-case title. For example,
-`work-items/wi-999-start-task.md` uses `docs/releases/changes/wi-999-start-task.md` for its release note and
-`docs/releases/upgrades/wi-999-start-task.md` for its upgrade note. Existing release documents keep the names
-recorded when their work items were completed; do not rename historical records merely to adopt this rule.
-`upgrade_note`, `deprecation_notice`, and `removal_notice` require both
-kinds because a reader needs the noteworthy delta and the action or compatibility information. The checker
-derives a minimum from the change kind, normative specification diff, TypeSpec deprecations, and feature-
-registry maturity diff. An author may select a stronger level, never a weaker one.
+`in_progress` になる作業項目は、`documentation_impact` を一つ宣言し、完了まで同じ構造化フィールドを保つ。
+`level` には `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを指定する。
+`none` には具体的な理由が必要であり、リリース文書への参照を含めない。
+それ以外の水準では、実装前にリリース文書の予定パスを宣言する。
+完了時には、そのパスが存在し、作業項目名を記載し、`affected_spec` の要件または TypeSpec のシンボルへリンクしていなければならない。
+リリース文書のファイル名には、連番とケバブケースの題名を含む作業項目の完全なファイル名から、拡張子を除いた部分を使う。
+たとえば、`work-items/wi-999-start-task.md` のリリースノートには `docs/releases/changes/wi-999-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-999-start-task.md` を使う。
+既存のリリース文書は、対応する作業項目が完了したときの名前を保つ。
+この規則へ合わせるためだけに過去の記録を改名しない。
+`upgrade_note`、`deprecation_notice`、`removal_notice` では、注目すべき差分と、必要な操作または互換性情報を読者へ示すため、両方の種類の文書が必要になる。
+検査は、変更種別、規範仕様の差分、TypeSpec の非推奨指定、機能レジストリの成熟度の差分から最低水準を導く。
+作成者は最低水準より強い水準を選べるが、弱い水準は選べない。
 
-When the feature-registry diff promotes `experimental` to `preview` or `preview` to `supported`, completion
-also records one `maturity_evidence` entry for each promoted feature. The entry names the exact transition,
-the security-check result, either compatibility or migration information, and the release-document path that
-shows the new maturity. The applicable item still declares `primary_use_cases`; maturity evidence does not
-replace its Unit RED, E2E RED, or fault-injection results. Completed records written before this contract are
-history and are not reinterpreted.
+機能レジストリの差分で `experimental` から `preview`、または `preview` から `supported` へ昇格する場合は、完了時に昇格した機能ごとの `maturity_evidence` も記録する。
+各項目には、正確な遷移、セキュリティ検査の結果、互換性情報または移行情報、新しい成熟度を示すリリース文書のパスを書く。
+該当する作業項目には引き続き `primary_use_cases` が必要である。
+成熟度の証拠は、Unit RED、E2E RED、フォールト注入の結果を置き換えない。
+この契約より前に書かれた完了記録は履歴であり、再解釈しない。
 
-For `feature`, `bugfix`, and any item whose `affected_spec` references a requirement in a `standards.md`, add
-`primary_use_cases` before implementation. Each entry declares one central successful route with a stable
-kebab-case `id`, its exact `REQ-*` or standards requirement, the final `observable_result`, Unit and E2E test
-references, and the distinct plausible fault each test must detect. A test reference contains the repository-
-relative `path`, stable `name`, and required `mise` or CI `task`. The test may be absent while the item is
-`in_progress`; at completion the checker requires the file and identifier, the requirement in the test source,
-and reachability through the declared standard task. Do not use input acceptance, enum validation, line
-coverage, or a directly constructed lower-level component as an E2E result when production uses a wider entry
-and composition path.
+`feature`、`bugfix`、および `affected_spec` から `standards.md` の要件を参照する作業項目では、実装前に `primary_use_cases` を追加する。
+各項目では、中心となる一つの正常経路について、安定したケバブケースの `id`、正確な `REQ-*` または標準要件、最終的な `observable_result`、Unit テストと E2E テストへの参照、各テストが検出すべき互いに異なる現実的な障害を宣言する。
+テストへの参照には、リポジトリ相対の `path`、安定した `name`、必要な `mise` または CI の `task` を含める。
+作業項目が `in_progress` の間は、予定したテストがまだ存在しなくてもよい。
+完了時には、ファイルと識別子が存在し、テストソースが要件を参照し、宣言した標準タスクから到達できることを検査する。
+本番がより外側の入口と構成経路を使う場合は、入力の受理、列挙値の検証、行カバレッジ、直接構築した下位コンポーネントを E2E の結果にしない。
 
-`risk-based-v3` applies this contract to newly started work. Completed `risk-based-v1` and `risk-based-v2`
-records remain valid history. An applicable item that was already `in_progress` at adoption moves to v3 and
-adds the plan; no completed record is rewritten.
+`risk-based-v3` は、新しく着手する作業にこの契約を適用する。
+完了済みの `risk-based-v1` と `risk-based-v2` の記録は、有効な履歴として残す。
+導入時点ですでに `in_progress` だった該当項目は v3 へ移行して計画を追加するが、完了済みの記録は書き換えない。
 
-When the work is complete, set `status` to `completed`, append the following section, and move the file
-to `work-items/done/`:
+作業が完了したら `status` を `completed` にし、次の節を追加して、ファイルを `work-items/done/` へ移す。
 
 ```markdown
 ## 完了
 - **Completed At**: 2026-01-01
 - **Summary**:
-  The semantic difference introduced by the work, read from `mise run spec-diff` rather than recalled.
+  記憶ではなく `mise run spec-diff` の結果から読み取った、この作業による意味上の差分。
 - **Acceptance RED Evidence**:
-  - **Test**: The failing test or check observed before implementation.
-  - **Requirement**: `REQ-CONTEXT-NNN`, or `N/A: <reason>` for work with no normative product requirement.
-  - **Observed Failure**: The expected failure that was actually observed.
-  - **Detection Reason**: Why the assertion distinguishes a plausible wrong implementation from the required
-    behavior. When an acceptance boundary is inapplicable, identify the alternate check that actually failed.
+  - **Test**: 実装前に失敗を観測したテストまたは検査。
+  - **Requirement**: `REQ-CONTEXT-NNN`。規範となる製品要件がない作業では `N/A: <理由>`。
+  - **Observed Failure**: 実際に観測した、想定どおりの失敗。
+  - **Detection Reason**: その表明によって、現実的な誤実装と要求された振る舞いを区別できる理由。受け入れ境界が該当しない場合は、実際に失敗した代替検査を示す。
 - **Unit RED Evidence**:
-  - **Test**: The failing test or check observed before implementation.
-  - **Requirement**: `REQ-CONTEXT-NNN`, or `N/A: <reason>` for work with no normative product requirement.
-  - **Observed Failure**: The expected failure that was actually observed.
-  - **Detection Reason**: Why the assertion distinguishes a plausible wrong implementation from the required
-    inner behavior. When a unit boundary is inapplicable, identify the alternate check that actually failed.
+  - **Test**: 実装前に失敗を観測したテストまたは検査。
+  - **Requirement**: `REQ-CONTEXT-NNN`。規範となる製品要件がない作業では `N/A: <理由>`。
+  - **Observed Failure**: 実際に観測した、想定どおりの失敗。
+  - **Detection Reason**: その表明によって、現実的な誤実装と要求された内部の振る舞いを区別できる理由。単体境界が該当しない場合は、実際に失敗した代替検査を示す。
 - **Change-Resistance Results**:
-  For medium risk and above, record the representative incorrect implementation, diff mutation, or explicit
-  fault injection and whether the tests detected it. For high and critical pure-logic changes, one
-  representative is not enough: mutate the changed logic systematically or inject explicit faults across it,
-  and record the equivalent mutations and the limits of the method rather than hiding them. A mutation tool
-  produces the systematic half — it rewrites the tokens that are already there — and the mutations that add,
-  remove, or redirect behavior stay hand-written; the split, and how to read the survivors without scoring
-  them, is in
-  [docs/development/specification-first-workflow.md](docs/development/specification-first-workflow.md).
+  中リスク以上では、代表的な誤実装、差分による変異、または明示的なフォールト注入と、それをテストが検出したかを記録する。
+  高リスクまたは重大リスクの純粋ロジック変更では、代表例が一つだけでは足りない。
+  変更したロジックへ体系的に変異を加えるか、全体に明示的な障害を注入し、等価な変異と手法の限界を隠さず記録する。
+  変異ツールは、既存のトークンを書き換える体系的な部分を担う。
+  振る舞いを追加、削除、転送する変異は手作業で行う。
+  この分担と、生き残った変異を点数化せず読む方法は、[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)で定める。
 - **Verification Results**:
-  - `mise run verify` - passed
+  - `mise run verify` - 成功
 ```
 
-The Acceptance and Unit RED fields above are the completion shape for work without a primary-use-case
-requirement. Applicable `risk-based-v3` items use the following field instead; they may retain additional
-Acceptance or Unit evidence for non-primary behavior, but it does not replace this evidence:
+上の Acceptance RED と Unit RED のフィールドは、主要ユースケースの要件がない作業で使う完了形式である。
+該当する `risk-based-v3` の作業項目では、代わりに次のフィールドを使う。
+主要でない振る舞いの Acceptance 証拠または Unit 証拠を追加で残してもよいが、次の証拠の代わりにはならない。
 
 ```markdown
 - **Primary Use Case Evidence**:
   - id: start-task
-    unit_red: TestStartTask_REQ_SYSTEM_001 failed because no start command was emitted.
-    e2e_red: TestE2E_StartTask_REQ_SYSTEM_001 failed because the configured route produced no running task.
-    unit_fault_injection: Removing command emission made TestStartTask_REQ_SYSTEM_001 fail.
-    e2e_fault_injection: Disconnecting the route made TestE2E_StartTask_REQ_SYSTEM_001 fail.
+    unit_red: 開始コマンドを発行しないため、TestStartTask_REQ_SYSTEM_001 が失敗した。
+    e2e_red: 構成済みの経路から実行中のタスクが生成されないため、TestE2E_StartTask_REQ_SYSTEM_001 が失敗した。
+    unit_fault_injection: コマンドの発行を削除すると、TestStartTask_REQ_SYSTEM_001 が失敗した。
+    e2e_fault_injection: 経路の接続を外すと、TestE2E_StartTask_REQ_SYSTEM_001 が失敗した。
 ```
 
-The `id` must match a `primary_use_cases` plan entry. Every planned entry needs exactly one completion entry;
-each RED and fault-injection result is a non-empty observation, not a future instruction.
+`id` は、`primary_use_cases` の計画項目と一致させる。
+計画した各項目には、完了項目がちょうど一つ必要である。
+RED とフォールト注入の各結果には、将来の指示ではなく、実際に観測した内容を書く。

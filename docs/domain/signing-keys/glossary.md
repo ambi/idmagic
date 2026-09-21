@@ -1,6 +1,6 @@
 # SigningKeys の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | SigningKeys | テナント単位の署名鍵素材について、ライフサイクルと公開を扱う境界。OAuth2 / OIDC は JWK / JWKS、SAML / WS-* は X.509 証明書を使用する。 | KeyMaterial, signing keys |
 | Retire | SigningKey を Verifying から Retired に移す。 | retire |

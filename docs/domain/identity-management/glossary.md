@@ -1,6 +1,6 @@
 # IdManagement の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | Administrator | `User.roles` に `admin` を持ち、所属テナント内の管理 API の利用を許可された認証済みユーザー。テナント境界を越える操作は SystemAdministrator に限定する。 | admin, 管理者, TenantAdmin |
 | SystemAdministrator | 制御面テナントに所属する認証済みで有効なユーザーのうち、User への直接付与と Group 由来を合わせた有効ロールに `system_admin` を持つもの。制御面テナントの経路から要求したときにだけ、テナント管理（CRUD・無効化・有効化）とテナント横断操作を許可され、システムコンソール (`/system`) から `/api/admin/tenants/*` や `/api/admin/keys/health` を呼び出せる。所属テナントと要求先テナントを条件に含めるのは、ロール名だけで判定すると他テナントの管理経路がテナント境界を越える入口になるためである。 | system_admin, システム管理者, 制御面主体 |

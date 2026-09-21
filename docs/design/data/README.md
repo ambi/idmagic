@@ -3,7 +3,7 @@
 PostgreSQL に置くデータの構造、所有、整合性、保持、移行を扱う。
 概念モデルと API モデルは TypeSpec、物理的な列、索引、制約は `infra/schema/postgres.sql` が一次情報である。
 
-| 文書 | 責務 |
+| 文書 | 内容 |
 | --- | --- |
 | [データベース設計](database.md) | テーブルの役割と所有 Context、テーブル種別、型、制約、`tenant_id` の保持区分、秘密情報の暗号化 |
 | [スキーマ管理](schema-management.md) | 宣言的スキーマ、収束の検査、拡張と縮小、データ移行、適用する地点、`psqldef` の規則 |

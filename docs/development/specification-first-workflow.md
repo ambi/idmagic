@@ -2,94 +2,86 @@
 
 ## 1. 目的
 
-This workflow keeps product behavior, current design, implementation, and verification aligned with a
-small set of established formats. It favors direct ownership, generated views, and focused checks over
-custom specification languages, exhaustive registries, and separate decision archives.
+このワークフローは、少数の定まった形式を使い、製品の振る舞い、現在の設計、実装、検証を一致させる。
+独自の仕様言語、網羅的な登録簿、独立した判断記録より、担当を直接示すこと、ビューを生成すること、対象を絞った検査を優先する。
 
-Three documents carry the formats: this one for the loop, [Specification Format](../../SPECIFICATION_FORMAT.md)
-for specification documents, and [Work Item Format](../../WORK_ITEM_FORMAT.md) for work items. Read the
-section you need; none of them is required reading.
+形式は三つの文書で定める。
+開発サイクルはこの文書、仕様文書は[仕様フォーマット](../../SPECIFICATION_FORMAT.md)、作業項目は[作業項目フォーマット](../../WORK_ITEM_FORMAT.md)で扱う。
+どの文書も通読を前提とせず、必要な節を読む。
 
 ## 2. 一次情報
 
-| Concern | Source of truth |
+| 事項 | 一次情報 |
 |---|---|
-| Models, API interfaces, HTTP bindings, authentication | TypeSpec (`spec/**/*.tsp`) |
-| Normative scenarios, glossary, standards, states, decisions, mechanism | The Markdown under `docs/` |
-| One change's motivation, alternatives, plan, and history | `work-items/wi-*.md` |
-| Executable behavior | Application code and tests |
-| Released HTTP compatibility | The tracked OpenAPI release baseline |
+| モデル、API インターフェース、HTTP バインディング、認証 | TypeSpec（`spec/**/*.tsp`） |
+| 規範シナリオ、用語集、標準、状態、判断、仕組み | `docs/` 配下の Markdown |
+| 一つの変更の動機、選択肢、計画、履歴 | `work-items/wi-*.md` |
+| 実行可能な振る舞い | アプリケーションコードとテスト |
+| リリース済み HTTP 契約との互換性 | 追跡対象の OpenAPI リリース基準 |
 
-Generated OpenAPI and HTML documentation are views, not additional sources of truth. Fine-grained
-authorization remains executable application behavior unless a later work item adopts a policy language.
+生成した OpenAPI と HTML 文書はビューであり、別の一次情報ではない。
+今後の作業項目でポリシー言語を採用しない限り、きめ細かな認可は実行可能なアプリケーションの振る舞いとして扱う。
 
 ## 3. 開発サイクル
 
-| Stage | Skill | Gate |
+| 段階 | スキル | ゲート |
 |---|---|---|
-| Frame one change | `new-work-item` | `mise run check-work-items` |
-| Change the specification first | `spec-change` | `mise run check-spec` |
-| Resolve material questions and fix the evidence contract | `implement-work-item` | `mise run check-work-items` |
-| Confirm Acceptance RED | `implement-work-item` | the narrowest test at an observable boundary |
-| Confirm Unit RED, reach GREEN, and refactor inner behavior to outer adapters | `implement-work-item` | layer-local tests |
-| Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
-| Regenerate derived views | `spec-render` | `mise run check-api-compat` |
-| Verify change resistance | `code-review` | evidence selected by risk, `mise run verify` |
-| Record completion and commit | `commit` | `mise run check-work-items` |
+| 一つの変更を定義する | `new-work-item` | `mise run check-work-items` |
+| 仕様を先に変更する | `spec-change` | `mise run check-spec` |
+| 重要な問いを解決し、証拠の契約を確定する | `implement-work-item` | `mise run check-work-items` |
+| Acceptance RED を確認する | `implement-work-item` | 観測可能な境界の最小テスト |
+| Unit RED を確認し、GREEN にしてから、内部の振る舞いから外側のアダプターまでリファクタリングする | `implement-work-item` | 各層の局所テスト |
+| 構造変更時に現在の設計を同期する | `update-design` | `mise run check-boundaries` |
+| 派生ビューを再生成する | `spec-render` | `mise run check-api-compat` |
+| 変更への耐性を検証する | `code-review` | リスクに応じて選んだ証拠、`mise run verify` |
+| 完了を記録してコミットする | `commit` | `mise run check-work-items` |
 
-Before changing behavior, update the smallest owning specification: models, APIs, HTTP contracts, and
-authentication schemes in TypeSpec; scenarios, terms, standards, state transitions, decisions, and
-mechanism in the file that holds that kind of content. The file name says which one — a new behavior goes
-in `scenarios.feature.md`, a new reason in `decisions.md` — so the smallest owning file is usually one file, not
-a section inside a large one. Give each normative behavior an immutable `REQ-<CONTEXT>-NNN` ID, and
-express state machines as a state table and a transition table. A normative change discovered during
-implementation returns to the specification stage; do not relax a scenario merely to make an implementation
-pass.
+振る舞いを変える前に、その内容を担当する最小の仕様を更新する。
+モデル、API、HTTP 契約、認証方式は TypeSpec で扱い、シナリオ、用語、標準、状態遷移、判断、仕組みは、それぞれの種類を扱うファイルで更新する。
+ファイル名が内容の種類を示すため、新しい振る舞いは `scenarios.feature.md`、新しい理由は `decisions.md` に置く。
+担当する最小単位は通常、大きなファイル内の一節ではなく一つのファイルになる。
+各規範的振る舞いには変更しない `REQ-<CONTEXT>-NNN` ID を付け、状態機械は状態表と遷移表で表す。
+実装中に規範の変更が必要だと分かった場合は仕様の段階へ戻り、実装を通すためだけにシナリオを緩めない。
 
 ## 4. 証拠の要件
 
-Every work item that enters `in_progress` declares `evidence_policy: risk-based-v3`. The risk selects the
-minimum evidence the work must produce; it does not grant permission to push, merge, write to an external
-system, or operate production. Filing the work item is what authorizes the work, so nothing here records a
-separate approval: an approval field would be signed without thought, while the checks below can only be
-satisfied by an observation.
+`in_progress` になるすべての作業項目は、`evidence_policy: risk-based-v3` を宣言する。
+リスクは作業で必要な最小の証拠を選ぶが、push、merge、外部システムへの書き込み、本番操作を許可するものではない。
+作業の権限は作業項目の起票によって与えられるため、別の承認は記録しない。
+承認フィールドは確認せず記入できるが、次の検査は実際に観測しなければ満たせない。
 
-| Risk | Before implementation | Before completion |
+| リスク | 実装前 | 完了前 |
 |---|---|---|
-| `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended RED checks. A feature, bugfix, or change referencing a `standards.md` requirement declares every primary use case, observable result, Unit test, E2E test, and the distinct fault each test must detect. Other work names the intended Acceptance RED and Unit RED checks. | For each declared primary use case, record Unit RED, E2E RED, and the results of injecting the two declared faults. Other work records Acceptance RED and Unit RED; if either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
-| `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary and show that a representative incorrect implementation is detected. |
-| `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements. One representative wrong implementation is no longer enough: mutate every piece of changed pure logic systematically, or inject explicit faults across it, and record which mutations the tests killed. Record equivalent mutations and the limits of the method rather than hiding them. Mutation testing below says which half of that a tool produces. |
+| `low` | 実装者が `initial_context` を確定し、作るものを変え得る問いを解決し、予定する RED 検査を記す。feature、bugfix、または `standards.md` の要件を参照する変更では、すべての主要ユースケース、観測可能な結果、Unit テスト、E2E テスト、各テストが検出すべき互いに異なる障害を宣言する。それ以外の作業では、予定する Acceptance RED と Unit RED の検査を記す。 | 宣言した主要ユースケースごとに Unit RED、E2E RED、宣言した二つの障害を注入した結果を記録する。それ以外の作業では Acceptance RED と Unit RED を記録する。どちらかが該当しない場合は、その理由と、実際に失敗を観測した最も安価な代替検査を記録する。 |
+| `medium` | `low` の要件を適用する。 | `mise run spec-diff` の結果を完了要約へ反映し、代表的な誤実装を検出できることを示す。 |
+| `high` / `critical` | `medium` の要件を適用し、セキュリティ、互換性、移行、ロールバックの前提を明示する。 | `medium` の要件を適用する。代表的な誤実装一つでは足りないため、変更した純粋ロジックの各部分へ体系的に変異を加えるか、全体に明示的な障害を注入し、テストが検出した変異を記録する。等価な変異と手法の限界を隠さず記録する。下のミューテーションテストの節で、ツールがこのうちどの部分を担うかを定める。 |
 
-Authentication, authorization, tenant boundaries, cryptography, protocol compatibility, and persistent-data
-migrations reach the stronger rows quickly. Raise the risk when the table's stronger contract describes the
-actual consequence, rather than leaving the initial classification in place.
+認証、認可、テナント境界、暗号、プロトコル互換性、永続データの移行には、早い段階で強い行が該当する。
+表の強い契約が実際の影響に合う場合は、最初の分類を維持せずリスクを引き上げる。
 
-The risk column reads one axis only: how much damage a wrong change does. It says nothing about whether the
-decision can be taken back, and those two come apart constantly. A work item that declares
-`reversibility: irreversible` — the field and its examples are defined in
-[Work Item Format](../../WORK_ITEM_FORMAT.md) — records that the decision cannot be withdrawn later, so a
-reader can see which choices are load-bearing. It adds no evidence of its own, and `reversible` never lowers
-what the risk row already asks for.
+リスクの列が表すのは、変更を誤った場合の被害だけである。
+判断を後から取り消せるかは別の軸であり、両者はたびたび一致しない。
+`reversibility: irreversible` を宣言する作業項目は、その判断を後から取り消せないことを記録し、今後も維持すべき選択を読者が識別できるようにする。
+このフィールドと例は[作業項目フォーマット](../../WORK_ITEM_FORMAT.md)で定める。
+`reversibility` 自体は証拠を追加せず、`reversible` としてもリスクの行が求める証拠は減らない。
 
-A second reader belongs to review, not to this contract. Extreme Programming gets one onto every line as the
-line is written; a repository worked by one person and by agents spends that attention when the change is
-read as a whole instead. What the evidence contract can ask for is different in kind: an observation the
-implementer cannot satisfy by intending something. That is what the RED results and the change-resistance
-check are, and asking a work item to also record that somebody read it would only restate the review that
-already happened.
+二人目の読み手はレビューの一部であり、この証拠契約には含めない。
+実装中に同時に読むか、変更全体をレビューするときに読むかは作業形態で変わるが、どちらも変更を人が読む行為である。
+証拠契約が求めるのは別種のものであり、実装者の意図だけでは満たせない観測である。
+RED の結果と変更への耐性検査が、その観測に当たる。
+誰かが読んだことまで作業項目へ記録させても、すでに行ったレビューを言い換えるだけになる。
 
 ### 受け入れ証拠と単体証拠
 
-Acceptance RED and Unit RED have different responsibilities. Acceptance RED fails at the narrowest boundary
-where a caller can observe the normative behavior and names the applicable `REQ-<CONTEXT>-NNN`. Unit RED fails
-on the changed domain or use-case logic without depending on the acceptance test as its only proof. A product
-behavior change records both before implementation. Tooling, documentation, and pure refactoring may mark one
-or both as not applicable only when they record the reason and an alternate check that was actually observed
-failing.
+Acceptance RED と Unit RED は異なる責務を担う。
+Acceptance RED は、呼び出し元が規範的な振る舞いを観測できる最小の境界で失敗し、該当する `REQ-<CONTEXT>-NNN` を示す。
+Unit RED は、受け入れテストだけを根拠にせず、変更したドメインまたはユースケースのロジックで失敗する。
+製品の振る舞いを変える場合は、実装前に両方を記録する。
+ツール、文書、純粋なリファクタリングでは、理由と実際に失敗を観測した代替検査を記録した場合に限り、一方または両方を該当なしにできる。
 
-After both boundaries are fixed, implement one behavior at a time: make the narrow unit test GREEN with the
-simplest complete behavior, refactor while it remains GREEN, then widen through adapters until the acceptance
-test passes. Do not treat a generated or broad acceptance test as the unit test for the inner calculation.
+両方の境界を確定した後は、一度に一つの振る舞いを実装する。
+最も単純で完全な振る舞いによって対象を絞った単体テストを GREEN にし、GREEN を保ったままリファクタリングし、受け入れテストが通るまでアダプターを通して外側へ広げる。
+生成した受け入れテストや広範な受け入れテストを、内部計算の単体テストとして扱わない。
 
 ### 規範IDをテストから参照する
 
@@ -97,7 +89,7 @@ test passes. Do not treat a generated or broad acceptance test as the unit test 
 ディレクティブにはID、コロン、テストが固定する内容をこの順で記述する。
 
 ```go
-//spec:covers EX-OAUTH2-005-06: the refusal type, that no token is returned, and that no event is emitted
+//spec:covers EX-OAUTH2-005-06: 拒否の種類、トークンを返さないこと、イベントを発行しないこと
 func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 ```
 
@@ -113,359 +105,295 @@ IDだけでは何を観測したか分からず、検査対象を増やさずに
 
 ### 主要ユースケースの証拠
 
-`risk-based-v3` adds a primary-use-case contract to feature and bugfix work, and to work of any `change_kind`
-whose `affected_spec` names a requirement in a `standards.md`. A primary use case is the central successful
-route that must work before the feature or standards adoption can be called implemented. It names a stable
-`REQ-*` or standards requirement, the externally observable result, one Unit test, one E2E test, and a distinct
-fault model for each. It does not turn every branch, alternative, and refusal into E2E coverage.
+`risk-based-v3` は、feature と bugfix、および `affected_spec` から `standards.md` の要件を参照するすべての `change_kind` に、主要ユースケースの契約を追加する。
+主要ユースケースとは、機能または標準の採用を実装済みと呼ぶ前に動作していなければならない、中心となる正常経路である。
+安定した `REQ-*` または標準の要件、外部から観測可能な結果、Unit テスト一つ、E2E テスト一つ、テストごとに異なる障害モデルを示す。
+すべての分岐、代替経路、拒否へ E2E 被覆を求めるものではない。
 
-The Unit test executes the changed domain rule or use-case branch through its public module boundary and
-asserts the resulting state transition or outgoing effect. The E2E test starts at the product's declared
-external entry point and includes the configuration, composition, adapters, and routing that select the
-feature, then asserts a result visible to a user, persistent state, or an external boundary. A directly
-constructed provider or handler is not E2E evidence when production selects it through configuration. A
-test double for an external service is valid when it records the destination, method, and payload emitted by
-the product.
+Unit テストでは、公開されたモジュール境界を通して変更したドメイン規則またはユースケース分岐を実行し、結果となる状態遷移または外向きの作用を表明する。
+E2E テストは、製品で宣言した外部入口から開始し、機能を選択する設定、構成、アダプター、ルーティングを含める。
+そのうえで、利用者、永続状態、または外部境界から見える結果を表明する。
+本番が設定によって `provider` または `handler` を選択する場合、直接構築したものは E2E の証拠にならない。
+外部サービスのテストダブルは、製品が出力した宛先、メソッド、ペイロードを記録する場合に有効である。
 
-Before implementation, both test references name their repository path, stable test identifier, and required
-`mise` or CI task. The checker verifies that the paths and identifiers exist once the item completes, that the
-test source names the requirement, and that the task is part of the standard verification or CI path. During
-implementation a planned test may not exist yet. Completion records the observed Unit RED and E2E RED plus
-the result of injecting the declared broken internal decision and broken wiring or final effect. The checker
-does not infer assertion quality from source text; the fault-injection observations are the evidence of
-detection capability.
+実装前に、両方のテスト参照へリポジトリ内のパス、安定したテスト識別子、必要な `mise` または CI タスクを記す。
+作業項目の完了時には、パスと識別子が存在し、テストソースが要件を参照し、タスクが標準検証または CI の経路に含まれることを検査する。
+実装中は、予定したテストがまだ存在しなくてもよい。
+完了時には、観測した Unit RED と E2E RED に加え、宣言した内部判断の破損と、配線または最終作用の破損を注入した結果を記録する。
+検査はソーステキストから表明の品質を推測しないため、フォールト注入の観測結果が検出能力の証拠になる。
 
-Completed `risk-based-v1` and `risk-based-v2` records remain historical evidence and are not reinterpreted.
-An applicable item already `in_progress` when `risk-based-v3` takes effect must add the new plan before it can
-pass `mise run check-work-items`; an existing deficiency it exposes becomes a separate work item rather than
-an allow-list entry.
+完了済みの `risk-based-v1` と `risk-based-v2` の記録は過去の証拠として残し、再解釈しない。
+`risk-based-v3` の導入時点ですでに `in_progress` だった該当項目は、新しい計画を追加しなければ `mise run check-work-items` を通過できない。
+この移行で明らかになった既存の不足は、許可リストへ加えず別の作業項目にする。
 
 ### リファクタリング
 
-Refactoring is changing structure without changing behavior, and the test is what makes that claim checkable:
-if a change is a refactoring, the tests do not move. Editing a test in the same step is the signal that
-behavior changed too — separate the two steps and let the behavior change go through its own RED.
-Commit and Pull Request boundaries follow [構造変更と振る舞いの変更を分ける](coding-style.md#構造変更と振る舞いの変更を分ける).
+リファクタリングとは、振る舞いを変えずに構造を変えることであり、その主張を検査可能にするのがテストである。
+変更がリファクタリングなら、テストは変更しない。
+同じ段階でテストも編集する必要があるなら振る舞いも変わっているため、二つの段階に分け、振る舞いの変更では独立した RED を確認する。
+コミットと Pull Request の境界は、[構造変更と振る舞いの変更を分ける](coding-style.md#構造変更と振る舞いの変更を分ける)に従う。
 
-Refactor in the moment the test just went GREEN, while what the code is supposed to do is still in front of
-you. Deferring it turns it into a separate piece of work that has to re-establish that context, and separate
-work is what gets dropped. Stop when the next behavior can be added without fighting the current shape. That
-is the whole condition: not a metric, not a pass over everything the change touched, and not a general
-tidying of code the change did not need. A refactoring that outruns the behavior it was clearing the way for
-is a second change riding on the first one's evidence.
+テストを GREEN にした直後、コードが何をすべきかを把握している間にリファクタリングする。
+後回しにすると、その文脈を再構築する別作業になり、独立した作業は取りこぼされやすい。
+次の振る舞いを現在の形に妨げられず追加できる状態になったら止める。
+判断条件はこれだけであり、指標、変更箇所全体の見直し、変更に不要なコードの一般的な整理ではない。
+追加する振る舞いの準備を超えたリファクタリングは、最初の変更の証拠へ便乗する別の変更になる。
 
-Refactoring done this way carries no evidence of its own — it happens inside a behavior's GREEN step and that
-behavior's RED results already cover it. A work item that is *only* refactoring is the case the previous
-section's not-applicable path exists for, and what it records as the alternate check is the check that made the
-refactoring necessary: a boundary or structural gate that was failing, an import rule, a duplicated rule the
-`check` suite now rejects. If nothing was failing and no gate was asking for the change, that is worth
-noticing before starting rather than after.
+この進め方で行うリファクタリングには、独自の証拠を求めない。
+振る舞いを GREEN にする段階の中で行い、その振る舞いの RED 結果がすでに被覆しているためである。
+リファクタリングだけの作業項目には、前節の該当なしとする経路を使う。
+代替検査には、失敗していた境界または構造ゲート、import 規則、`check` スイートが新たに拒否する重複規則など、リファクタリングを必要にした検査を記録する。
+何も失敗しておらず、どのゲートも変更を求めていない場合は、完了後ではなく着手前にその事実を確認する。
 
 ### 型と副作用の設計
 
-Before implementation, resolve every open question whose answer would change product behavior,
-the public contract, the chosen design boundary, or the task breakdown. Record genuinely deferred choices in
-Out of Scope instead of turning an unstated assumption into implementation.
+実装前に、製品の振る舞い、公開契約、採用する設計境界、タスク分割を答えによって変え得る未解決の問いをすべて解決する。
+実際に先送りする選択肢は、暗黙の仮定として実装へ埋め込まず、Out of Scope に記録する。
 
-For changed core logic, use the work item's Design to sketch the domain data types and principal operation
-signatures before filling in behavior. Identify time, randomness, identifier generation, configuration,
-persistence, notification, and other effects as explicit inputs, outputs, or ports. Keep deterministic
-decisions as calculations over data where that separation makes the rule easier to test or read, and let
-use cases orchestrate the actions. This is a design test for the changed logic, not a repository-wide purity
-or wrapper-type quota.
+中核ロジックを変更する場合は、振る舞いを実装する前に、作業項目の Design へドメインデータ型と主要な操作のシグネチャを示す。
+時刻、乱数、識別子生成、設定、永続化、通知などの作用を、明示的な入力、出力、またはポートとして特定する。
+分離によって規則をテストしやすく、または読みやすくできる場合は、決定論的な判断をデータ上の計算に保ち、ユースケースで作用を編成する。
+これは変更するロジックの設計を検査するものであり、リポジトリ全体へ純粋性やラッパー型の割り当て目標を課すものではない。
 
 ## 5. 検証の段階
 
-Run the cheapest gate that can still fail on what you just changed, and widen only at the end.
+直前に変えた内容について失敗し得る最も安価なゲートを実行し、最後にだけ範囲を広げる。
 
-1. While reading, before changing anything: `mise run lint-go` once. The cold run is the expensive one, and
-   paying it here is what leaves step 5 in the seconds.
-2. While changing the specification: `mise run check-spec`.
-3. Before implementing behavior: run the named acceptance check and observe the required behavior fail.
-4. While implementing one layer: confirm Unit RED, reach GREEN, refactor while GREEN, and run the narrowest
-   per-package or per-file test recipe that covers what you touched — `mise run test-go-package <package>` or
-   `mise run test-ui-unit-file <file>` here, whatever `mise tasks` offers elsewhere.
-5. Once that behavior is GREEN, run the check that owns the layer it touched: `mise run lint-go` for Go,
-   `mise run check-contract-drift` and `mise run check-api-compat` for an admin API or a DTO once the
-   specification is regenerated, `mise run check-work-items` for the work item's own frontmatter.
-6. When the change has spread past one package: `mise run test-go-changed`, which runs the packages the
-   working tree changed together with everything that compiles them in.
-7. For `medium` risk and above: perform the selected change-resistance check.
-8. Before completing the work item: `mise run verify`, and `mise run test-ui-e2e` as well when the change can
-   reach the browser.
+1. 何も変更せず読んでいる間に、`mise run lint-go` を一度実行する。
+   コールド実行に時間がかかるため、この段階で済ませれば手順 5 は数秒で終わる。
+2. 仕様の変更中は、`mise run check-spec` を実行する。
+3. 振る舞いの実装前に、指定した受け入れ検査を実行し、要求する振る舞いがないため失敗することを観測する。
+4. 一つの層を実装している間に Unit RED を確認し、GREEN にして、GREEN のままリファクタリングする。
+   その後、変更箇所を被覆する最小のパッケージ別またはファイル別テストを実行する。
+   Go では `mise run test-go-package <package>`、UI では `mise run test-ui-unit-file <file>` を使い、その他は `mise tasks` が示すタスクから選ぶ。
+5. 振る舞いが GREEN になったら、変更した層を担当する検査を実行する。
+   Go では `mise run lint-go`、仕様を再生成した管理 API または DTO では `mise run check-contract-drift` と `mise run check-api-compat`、作業項目の frontmatter では `mise run check-work-items` を使う。
+6. 変更が複数のパッケージに広がったら、`mise run test-go-changed` を実行する。
+   このタスクは、作業ツリーで変更したパッケージと、それらを組み込んでコンパイルするすべてのパッケージを実行する。
+7. `medium` 以上のリスクでは、選択した変更への耐性検査を行う。
+8. 作業項目を完了する前に `mise run verify` を実行し、変更がブラウザへ到達する場合は `mise run test-ui-e2e` も実行する。
 
-Running the full suite after every edit is the most common way to lose time in this repository.
+編集のたびにスイート全体を実行することが、このリポジトリで時間を浪費する最も一般的な原因である。
 
-Step 5 is not the full suite, and it is not there to catch what step 8 would catch anyway. Both would report
-the same lint finding, the same drifted contract; the difference is that at step 5 you are still holding the
-code that produced it. Reaching the same finding at step 8 means reading a file back to remember why it was
-written that way, and a batch of findings arriving together means doing that several times over. Run these
-when a behavior reaches GREEN rather than after every edit, so a lint fix never lands in the middle of a
-behavior that is still RED.
+手順 5 はスイート全体ではなく、手順 8 でも検出するものを先に重ねて検出するためのものでもない。
+どちらも同じ lint の指摘や契約のずれを報告するが、手順 5 では原因となったコードをまだ把握している。
+同じ指摘へ手順 8 で到達すると、なぜその形で書いたかを思い出すためにファイルを読み直す必要がある。
+複数の指摘がまとめて届けば、その作業を何度も繰り返すことになる。
+編集のたびではなく振る舞いが GREEN になったときに実行し、まだ RED の振る舞いへ lint の修正を混ぜない。
 
-The narrow steps are built the way the final gate is built. `mise run test-go-package` and
-`mise run test-go-changed` both enable the race detector, because Go keeps a separate test-cache entry per
-build configuration: a package run without `-race` leaves `mise run test-go-race` nothing to reuse, and the
-final gate runs it again from scratch. Running it the expensive way once is what makes the last step cheap.
+対象を絞った手順は、最終ゲートと同じ構成で実行する。
+`mise run test-go-package` と `mise run test-go-changed` は、どちらも race detector を有効にする。
+Go はビルド構成ごとに別のテストキャッシュを使うため、`-race` なしでパッケージを実行しても `mise run test-go-race` は結果を再利用できず、最終ゲートで最初から実行することになる。
+先に一度、高コストな構成で実行することで、最後の手順を安価にする。
 
-The aggregate gates — `check`, `verify-spec`, `verify` — report every member that failed rather than stopping
-at the first. One run therefore hands back the whole list, and the round trip of fixing one failure to
-discover the next does not happen. `verify` does not start the browser stack; `mise run verify-full` and a CI
-job of its own carry `test-ui-e2e`, whose cost is a Go build, an API server, a development server, and seed
-data that nothing else in the suite needs.
+集約ゲートである `check`、`verify-spec`、`verify` は、最初の失敗で止まらず、失敗した構成要素をすべて報告する。
+一度の実行で一覧全体が返るため、一つ直してから次の失敗を見つける往復は発生しない。
+`verify` はブラウザ用のスタックを起動しない。
+`test-ui-e2e` は `mise run verify-full` と独立した CI ジョブで実行する。
+このテストには Go のビルド、API サーバー、開発サーバー、スイート内のほかの検査では使わないシードデータが必要になる。
 
-`mise run time-verify` runs the members of a suite one at a time and prints what each cost, which is how a
-claim that a gate got slower or faster is settled.
+`mise run time-verify` はスイートの構成要素を一つずつ実行し、それぞれの所要時間を表示する。
+ゲートが遅くなった、または速くなったという主張は、この結果で判断する。
 
 ### レスポンスだけでは副作用を証明できない場合
 
-On most successful paths, asserting the response is enough. The response is derived from the effect —
-the created row comes back as the body, the issued token works on the next call — so a test that reads
-the response has read the effect through it.
+大半の正常経路では、レスポンスを表明すれば十分である。
+作成した行をボディとして返す、発行したトークンを次の呼び出しで使えるなど、レスポンスを作用から導出しているため、レスポンスを読むテストが作用も間接的に読んでいる。
 
-Some steps break that. The observable answer is generated on a branch of its own, beside the effect
-rather than out of it, and then the response can be right while the effect is wrong. Those steps are
-tested by two assertions, not one.
+この関係が成り立たない処理もある。
+観測可能な応答を作用から導出せず、作用と並ぶ別の分岐で生成する場合は、レスポンスが正しくても作用を誤り得る。
+そのような処理は、一つではなく二つの表明で検査する。
 
-1. **What the caller observes.** The status and the kind of error, or the success the caller is handed.
-2. **What actually happened.** Read the state back and assert it: the row was not created, the value
-   still holds what it held, the event was or was not emitted.
+1. **呼び出し元が観測する内容。** ステータスとエラーの種類、または呼び出し元へ返す正常結果。
+2. **実際に起きた内容。** 状態を読み戻し、行を作成していないこと、値が以前のままであること、イベントを発行したことまたは発行していないことを表明する。
 
-The second is the one that matters and the one that gets left out.
+重要でありながら抜け落ちやすいのは、二つ目の表明である。
 
-**A control that refuses** is the largest case — authorization, the tenant boundary, CSRF and origin,
-scope, a fail-closed branch. A guard writes the 403 on its own branch, so a test that checks only the
-response passes just as happily against a control that writes "denied" and then performs the operation
-anyway. That is not hypothetical: it is what shipped, survived review, and held full line coverage
-until a refusal was tested for its effect rather than its wording.
+最も多いのは、**拒否する統制**である。
+認可、テナント境界、CSRF と origin、スコープ、fail-closed の分岐が該当する。
+ガードは独立した分岐で 403 を書くため、レスポンスだけを検査するテストは、「拒否」と書いてから操作を続行する統制でも通る。
+これは仮定上の問題ではない。
+実際にリリースされ、レビューを通過し、拒否の文言ではなく作用を検査するまで、行カバレッジもすべて満たしていた。
 
-**An effect that no response reports** is the same shape without a refusal in sight. The control-plane
-quota update answered 200 whether or not it emitted its audit event, and it emitted none; the type
-existed in TypeSpec and in Go, every check passed, and the response could not have told anyone. Ask of
-any step that writes, emits, revokes, or schedules: would this test still pass if that stopped
-happening?
+**レスポンスが報告しない作用**にも、拒否を除けば同じ構造がある。
+コントロールプレーンのクォータ更新は、監査イベントを発行したかにかかわらず 200 を返していたが、実際にはイベントを発行していなかった。
+型は TypeSpec と Go の両方にあり、すべての検査が通っていたものの、レスポンスから欠落を判断することはできなかった。
+書き込み、発行、失効、スケジュールを行う各処理について、それが止まってもテストが通るかを確認する。
 
-Name the scenario the step comes from in the test, so the specification and the test can be read
-against each other. `mise run check` requires every normative id to be named by some test, whether or
-not it refuses.
+その処理に対応するシナリオをテストから参照し、仕様とテストを照合できるようにする。
+拒否の有無にかかわらず、`mise run check` はすべての規範 ID がいずれかのテストから参照されることを求める。
 
-A helper that a caller guards with — anything called as `if err := guard(...); err != nil` — reports its
-refusal through the return value. Write the response, then return an error; never hand back what writing
-the response returned, because that is nil and the caller will carry on. `mise run check` rejects the
-shape, and follows it through whatever helpers stand between the guard and the response: a wrapper that
-returns what a writer returned is the same defect one call further away.
+呼び出し側がガードとして使う補助関数（`if err := guard(...); err != nil` の形で呼ぶもの）は、戻り値で拒否を報告する。
+レスポンスを書いてからエラーを返す。
+レスポンスの書き込みが返した値は nil であり、呼び出し側が処理を続けてしまうため、その値を返さない。
+`mise run check` はこの形を拒否し、ガードとレスポンスの間にある補助関数も追跡する。
+`writer` の戻り値を返すラッパーは、同じ欠陥が一回の呼び出しだけ離れた形である。
 
 ### プロパティテストとファジング
 
-An example-based test is written by whoever wrote the branches, out of the same reading of the problem, so it
-inherits that reading's blind spots. This weighs more when an agent writes both: implementation and table of
-examples come out of one pass over one understanding, and the table then agrees with the code about what could
-go wrong. A property is stated from the specification instead, and a generator supplies the cases nobody
-thought of. It is the cheapest check available that is not downstream of the author's own assumptions.
+例ベースのテストは、分岐を書いた人が問題に対する同じ理解から書くため、その理解の盲点も引き継ぐ。
+エージェントが両方を書く場合は、この影響が大きくなる。
+実装と例の表を一度の理解から同時に作り、何が誤り得るかについて表とコードが一致してしまうためである。
+一方、プロパティは仕様から記述し、誰も思いつかなかった事例を生成器が与える。
+これは作成者自身の仮定から導出されない検査のうち、最も安価なものである。
 
-Reach for a property or a fuzz target when the input crosses a trust boundary and is decoded, parsed, split,
-normalized, or compared before a decision is made about it; when the parsing is hand-written rather than a call
-into a library that already has this treatment; when there is a round trip to state, such as encode and decode,
-derive and verify, or parse and serialize; or when one rule is restated at several call sites, because writing
-the target forces the rule into one place. Do not reach for it for orchestration, for a workflow whose
-correctness is a policy choice rather than a property, or for anything that needs a database to say what
-correct means. There is no coverage quota: the count follows the boundaries, and a boundary already covered
-upstream does not get a second target.
+入力が信頼境界を越え、その入力について判断する前にデコード、解析、分割、正規化、比較を行う場合は、プロパティまたはファズ対象を使う。
+同じく、既にこの検査を備えるライブラリを呼ばず手書きで解析する場合、エンコードとデコード、導出と検証、解析とシリアライズのように状態を往復する場合、一つの規則を複数の呼び出し箇所で言い換えている場合にも使う。
+最後の場合は、ファズ対象を書くことで規則を一箇所へ集められる。
+作用の編成、正しさがプロパティではなく方針で決まるワークフロー、正しさの判断にデータベースを必要とする処理には使わない。
+被覆の割り当て目標は設けない。
+ファズ対象の数は境界に従い、上流ですでに被覆している境界へ二つ目を置かない。
 
-**The oracle is the whole exercise.** "Does not panic" is not an oracle — it passes just as happily against a
-parser that accepts everything. State one of these instead.
+**この検査の中心は判定基準である。**
+「panic しない」は判定基準にならず、すべてを受理するパーサーでも通ってしまう。
+代わりに、次のいずれかを記述する。
 
-- **Round trip.** What was correctly built is accepted, and any mutation of it is rejected.
-- **Strictness.** Acceptance implies exact equality with something registered. On its own this also passes
-  against an implementation that rejects everything, so pair it with the assertion that a legitimate input is
-  accepted. Strictness without that pairing is a vacuous test that looks like a strong one.
-- **Structural bound.** A declared limit — size after expansion, nesting depth, segment count — always refuses.
-- **Idempotence.** Normalizing twice changes nothing.
+- **往復。** 正しく構築したものを受理し、それへ変更を加えたものを拒否する。
+- **厳密性。** 受理した値は、登録済みの値と正確に一致する。
+  この条件だけでは、すべてを拒否する実装でも通るため、正当な入力を受理するという表明と組み合わせる。
+  この組み合わせがない厳密性の検査は、強く見えても常に成立し得る空虚なテストになる。
+- **構造上の上限。** 展開後の大きさ、入れ子の深さ、セグメント数など、宣言した上限を超える入力を常に拒否する。
+- **冪等性。** 二回正規化しても結果が変わらない。
 
-Never make time the oracle. "Returns within N milliseconds" varies by several multiples under load, on a shared
-runner and on a laptop alike, so it becomes a permanently flaky assertion. State denial-of-service resistance as
-a structural bound and leave hangs to the fuzzer's own detection. Never sign per input either: build keys and
-certificates once in the seed phase, because signing inside the loop costs two or three orders of magnitude of
-throughput and the search stops moving. A property that does not vary with the input — that an entity reference
-is refused, say — is a table, not a target.
+時間を判定基準にしない。
+「N ミリ秒以内に返る」は、共有実行環境でも開発端末でも負荷によって数倍変動し、常に不安定な表明になる。
+サービス拒否への耐性は構造上の上限として記述し、停止はファザー自体の検出に委ねる。
+入力ごとに署名もしない。
+ループ内で署名すると処理量が二桁から三桁下がり、探索が進まなくなるため、シードの段階で鍵と証明書を一度だけ構築する。
+たとえばエンティティ参照を拒否するというように、入力によって変わらないプロパティはファズ対象ではなく表にする。
 
-Put the target on the function that parses, not on the HTTP handler, or a failure will not say which of
-routing, middleware, and parsing produced it. Effects enter as arguments: a fixed clock, a key set built in the
-seed phase, a stub that always reports "first seen" for a replay store whose behavior is not what is under test.
+ファズ対象は HTTP `handler` ではなく解析する関数へ置く。
+そうしなければ、失敗がルーティング、ミドルウェア、解析のどこで起きたか分からない。
+作用は引数として渡す。
+固定時刻、シードの段階で構築した鍵集合、検査対象ではないリプレイストアについて常に「初見」と報告するスタブなどが該当する。
 
-**How much.** Seeds and the retained corpus run inside the ordinary test suite, cost milliseconds, and are the
-part that earns its keep every day. Exploration is a separate, deliberate act: run it locally against what you
-changed, on a time budget — `mise run test-go-fuzz -- <package> <target> <time>` for one target, and
-`mise run test-go-fuzz-all -- <time>` for a sweep. Do not put exploration in the pull-request gate: it tries
-different inputs each run, so it will eventually fail on a change that has nothing to do with the finding, and
-a gate that fails for reasons unrelated to the change stops being read. What a crash costs forever is its
-corpus entry, so minimize it, promote it to a named regression test, and fold inputs of one class into one
-entry instead of accumulating raw findings.
+**実行量。** シードと保存したコーパスは通常のテストスイート内で実行し、所要時間をミリ秒に抑える。
+この部分が日常的な価値を生む。
+探索は独立した意図的な作業とし、変更対象に対して時間上限を設けてローカルで実行する。
+一つのファズ対象には `mise run test-go-fuzz -- <package> <target> <time>`、一括実行には `mise run test-go-fuzz-all -- <time>` を使う。
+探索を Pull Request のゲートへ入れない。
+毎回異なる入力を試すため、いずれ発見内容と無関係な変更で失敗し、変更と無関係な理由で失敗するゲートは読まれなくなる。
+クラッシュによって継続的に発生するコストはコーパスの項目である。
+入力を最小化して名前付きの退行テストへ昇格し、生の発見を蓄積せず、同じ種類の入力を一項目へまとめる。
 
-Finally, check the oracle the way section 4 asks you to check any test: write the plausible wrong
-implementation and watch the target catch it. Guards that stand separately in the code must be separated in the
-evidence too. When one guard's cases are also caught by another, removing the first changes nothing and the
-table says nothing about it. That is not hypothetical: a table meant to exercise a cost check here was entirely
-shadowed by a length check standing in front of it, and the mutation run is what exposed the table as empty.
+最後に、4 節でほかのテストに求めた方法と同じく、現実的な誤実装を書いてファズ対象が検出することを確認する。
+コード内で独立しているガードは、証拠でも分ける。
+あるガードの事例を別のガードも検出する場合、最初のガードを削除しても結果が変わらず、表はそのガードについて何も示さない。
+これも仮定上の問題ではない。
+コスト検査を実行するための表が、前にある長さ検査によってすべて遮られ、変異の実行によって初めて表が空虚だと分かった事例がある。
 
 ### ミューテーションテスト
 
-`mise run test-go-mutation -- <package directory>` mutates one Go package and reports the mutants its own
-tests fail to kill. It walks the syntactic space mechanically — negated conditions, moved boundaries,
-inverted signs, altered arithmetic — and that is exactly the part a hand-written fault model gets wrong.
-Whoever writes the mutations by hand thinks of them out of the same reading of the problem that wrote the
-branches, so the branch nobody thought of is also the branch nobody mutates.
+`mise run test-go-mutation -- <package directory>` は、一つの Go パッケージへ変異を加え、そのパッケージのテストで検出できなかった変異を報告する。
+条件の否定、境界の移動、符号の反転、算術演算の変更といった構文上の空間を機械的に調べる。
+この部分は、手書きの障害モデルで誤りやすい。
+変異を手書きする人は、分岐を書いたときと同じ問題理解から変異を考えるため、誰も思いつかなかった分岐には誰も変異を加えないからである。
 
-It does not reach the semantic space, and the gap is not a matter of degree. The operators rewrite tokens
-that are already there. They cannot add the loop that turns an incremental sync into an authoritative one,
-replace what a `switch` default returns and so open a closed vocabulary, rewrite a column table to make a
-read-only column writable, or change the value an export writes into a cell. Those are the mutations the
-specification cares about, and they stay hand-written. The tool covers the syntax; the hand-written fault
-model covers the meaning.
+一方、ツールは意味上の空間へ到達できず、この差は検出量の違いではない。
+オペレーターは既存のトークンだけを書き換える。
+増分同期を authoritative な同期へ変えるループの追加、`switch` の default が返す値を置き換えて閉じた語彙を開く変更、読み取り専用列を書き込み可能にする列テーブルの変更、export がセルへ書く値の変更はできない。
+これらは仕様が問題にする変異であり、手作業で加える。
+ツールは構文を、手書きの障害モデルは意味を被覆する。
 
-Read the survivors; do not score them. The efficacy percentage moves the wrong way when tests are removed:
-skipping two tests over one package here raised efficacy from 69.64% to 86.67% while mutant coverage fell
-from 77.78% to 41.67%, because a deleted test turns killed mutants into uncovered ones and uncovered mutants
-leave the denominator. A threshold on that number buys tests written to kill equivalent mutants, which is a
-coverage quota with extra steps. Sort the survivors into equivalent mutants and gaps the same way a fault
-model is read, and write both into the work item.
+生き残った変異を読み、点数化しない。
+テストを削除すると efficacy の割合が誤った方向へ動く。
+あるパッケージで二つのテストをスキップすると、`mutant coverage` が 77.78% から 41.67% へ下がった一方、`efficacy` は 69.64% から 86.67% へ上がった。
+削除したテストによって、検出済みの変異が未被覆の変異となり、未被覆の変異が分母から外れたためである。
+この数値へ閾値を設けると、等価な変異を検出するためのテストが増え、手順を増やした coverage の割り当て目標になる。
+障害モデルを読むときと同じように、生き残った変異を等価な変異と不足に分類し、両方を作業項目へ記録する。
 
-Like fuzz exploration, this stays out of the pull-request gate. The run costs minutes; its fixed cost is a
-copy of the whole repository per worker rather than anything about the package under test; and the mutant set
-moves under changes that have nothing to do with it.
+fuzz の探索と同じく、ミューテーションテストは Pull Request のゲートへ入れない。
+実行には数分かかり、固定費は検査対象のパッケージではなく worker ごとにリポジトリ全体を複製することから生じる。
+さらに、無関係な変更でも変異の集合が変わる。
 
 ## 6. 現在状態の文書
 
-`docs/` holds the cross-context structure and policy, one file per kind; `docs/domain/<context>/` holds
-that context's vocabulary, adopted standards, state transitions, decisions, mechanism, and acceptance
-scenarios, again one file per kind. Each directory's `README.md` declares what it owns and indexes its
-siblings.
+`docs/` では、コンテキストをまたぐ構造と方針を種類ごとに一ファイルで扱う。
+`docs/domain/<context>/` では、そのコンテキストの語彙、採用した標準、状態遷移、判断、仕組み、受け入れシナリオを、同じく種類ごとに一ファイルで扱う。
+各ディレクトリの `README.md` は、そのディレクトリが扱う内容を宣言し、同じディレクトリのファイルを索引する。
 
-Sections are not what divides the specification — files are. A context that grows does not grow one file;
-it grows the file whose kind the new content belongs to, and the rest stay the size they were. Keep one
-boundary declaration and one home for each fact; do not create a second copy beside one implementation
-language.
+仕様は節ではなくファイルで分割する。
+コンテキストが成長しても一つのファイル全体が大きくなるのではなく、新しい内容と同じ種類のファイルだけが大きくなり、ほかのファイルは元の大きさに留まる。
+境界の宣言と各事実の置き場所を一つに保ち、特定の実装言語に並べて二つ目の写しを作らない。
 
-A change that adds a trust boundary, a principal kind, an external integration, or a new kind of secret,
-personal data, or record that must later be proven, revisits the threat model in the same pass. Those are
-exactly the changes that introduce a threat with no control, and the threat model is the only document where
-a missing control contradicts something. A threat recorded as accepted is revisited when the condition it
-names is met.
+信頼境界、プリンシパルの種類、外部連携、または新しい種類の秘密情報、個人データ、後で証明が必要な記録を追加する変更では、同じ作業で脅威モデルを見直す。
+これらの変更は統制のない脅威を導入し得るうえ、統制の欠落が何かと矛盾する唯一の文書が脅威モデルだからである。
+受容したと記録した脅威は、そこに示した条件が成立したときに見直す。
 
-TypeSpec under `spec/` and the canonical Markdown under `docs/` mirror each other at `contexts/<context>/`,
-so backend, frontend, workers, and external implementations see the same
-language-independent source. A generated HTML view provides
-cross-document navigation without becoming an authored format.
+`spec/` 配下の TypeSpec と `docs/` 配下の一次情報 Markdown は、`contexts/<context>/` で対応させる。
+これにより、backend、frontend、worker、外部実装が、同じ言語非依存の一次情報を参照する。
+生成した HTML ビューは、執筆形式を増やさずに文書間の移動を提供する。
 
 ### コンテキスト境界の引き直し
 
-Moving a boundary is a change to the specification like any other, and it starts the same way: one work item,
-and the specification before the code. What makes it its own case is that the unit being moved is a context,
-so the ordinary "smallest owning file" rule does not say where to start.
+境界の移動もほかの仕様変更と同じく、一つの作業項目を起票し、コードより先に仕様を変える。
+ただし、移動する単位がコンテキストであるため、通常の「担当する最小のファイル」という規則だけでは着手点を決められない。
 
-Start from the two things that already record where the seams are. `docs/README.md` says what each context is
-and how differentiating it is, and each context's `decisions.md` says why its aggregates were cut where they
-were. A boundary usually needs to move because one of those two turned out to be wrong — a context classified
-as `Supporting` that keeps absorbing the product's distinctive rules, or an invariant that has to hold across
-two contexts at once and therefore has no aggregate that can enforce it. State which of the two it is in the
-work item's Motivation; a move with neither reason behind it is a rename.
+境界の位置をすでに記録している二つの文書から始める。
+`docs/README.md` は各コンテキストの内容と差別化への寄与を示し、各コンテキストの `decisions.md` は aggregate をその境界で分けた理由を示す。
+通常、境界を動かす必要が生じるのは、このどちらかが誤っていた場合である。
+たとえば、`Supporting` に分類したコンテキストが製品固有の規則を取り込み続ける場合や、二つのコンテキストをまたいで同時に成立させる必要がある不変条件を、どの aggregate でも強制できない場合が該当する。
+どちらに当たるかを作業項目の Motivation に記す。
+どちらの理由もない移動は、名前の変更にすぎない。
 
-Then: carry the `REQ-<CONTEXT>-NNN` scenarios by retiring and superseding, never by renumbering, so the old
-identifiers keep resolving; move the `docs/domain/<context>/` and `spec/contexts/<context>/` trees together,
-because a context is one name in two places; update the Context Map, the index table, and `structure.md`
-through `update-design`; and run `mise run check-boundaries` and `mise run check-spec` as the gates.
+次に、`REQ-<CONTEXT>-NNN` のシナリオを改番せず、廃止と後継の指定によって移し、以前の識別子を解決できる状態に保つ。
+一つのコンテキストを二箇所で同じ名前にするため、`docs/domain/<context>/` と `spec/contexts/<context>/` の木を一緒に移す。
+`update-design` を使って Context Map、索引表、`structure.md` を更新し、`mise run check-boundaries` と `mise run check-spec` をゲートとして実行する。
 
-Event Storming is available as a technique for such a work item, and is not part of the ordinary loop. A
-session pays for itself when the participants disagree about where an event belongs, which is exactly the
-state a boundary move starts from and is not the state ordinary feature work starts from.
+この種類の作業項目では Event Storming を利用できるが、通常の開発サイクルには含めない。
+参加者の間でイベントの所属に意見の相違がある場合に、セッションの効果がコストを上回る。
+これは境界の移動に着手するときの状態であり、通常の機能開発に着手するときの状態ではない。
 
 ## 7. 作業項目
 
-A work item is the design and execution record for one meaningful change. It holds motivation, scope,
-alternatives, plan, tasks, risks, and completion evidence. When the work lands, copy only the conclusion
-that remains true into TypeSpec or the canonical file that owns that kind of content.
+作業項目は、一つの意味のある変更について設計と実行を記録する。
+動機、対象範囲、選択肢、計画、タスク、リスク、完了証拠を記載する。
+変更を取り込むときは、完了後も有効な結論だけを TypeSpec またはその種類の内容を扱う一次情報ファイルへ反映する。
 
-`mise run spec-diff [ref]` derives what the working tree changed in the specification — scenarios added,
-removed, or changed, transition rows moved, declarations gained or lost. Read it before review and when
-writing the completion summary, so the recorded semantic difference is observed rather than recalled.
+`mise run spec-diff [ref]` は、追加、削除、変更したシナリオ、移動した遷移行、増減した宣言など、作業ツリーが仕様へ加えた変更を導出する。
+レビュー前と完了要約の記述時に結果を読み、意味上の差分を記憶ではなく観測から記録する。
 
-Current design must be understandable from the canonical documents and the work item alone.
+現在の設計は、一次情報文書と作業項目だけから理解できなければならない。
 
 ## 8. コンテキストの節約
 
-Start from the work item's `initial_context`, which is written when the item starts and names the
-specification, code, and tests to read — and what to leave unread. Naming a file is enough to say what to
-read, because the file names carry the kinds: `scenarios.feature.md` for what a context must do,
-`decisions.md` for why it does it that way, `internals.md` for how a mechanism works. Reach anything else
-with `mise run spec-where <requirement-id-or-term>`, which returns locations rather than whole files. Do not
-preload generated artifacts, unrelated contexts, or repository-wide method documents for an ordinary
-feature change.
+作業項目の着手時に書く `initial_context` から読み始める。
+ここには、読む仕様、コード、テストと、読まずに止める範囲を記す。
+ファイル名が内容の種類を表すため、読む対象はファイル名だけで十分に指定できる。
+コンテキストが満たすべき内容は `scenarios.feature.md`、その方法を選んだ理由は `decisions.md`、仕組みの動作は `internals.md` から読む。
+ほかの情報は、ファイル全体ではなく該当箇所を返す `mise run spec-where <requirement-id-or-term>` で探す。
+通常の機能変更で、生成物、無関係なコンテキスト、リポジトリ全体の方法論文書を事前に読み込まない。
 
-Naming a requirement ID in implementation code keeps the high-level rule findable. Naming an `EX-*` ID in
-a product test is what covers a concrete example; a parent `REQ-*` mention does not cover its children. Both
-links appear on the generated Traceability page.
+実装コードから要件 ID を参照すると、上位の規則を検索可能に保てる。
+具体的な例を被覆するのは、製品テストからの `EX-*` ID の参照であり、親の `REQ-*` だけを参照しても子の例は被覆しない。
+どちらのリンクも、生成した Traceability ページに表示する。
 
 ## 9. 参考資料
 
-Each entry names one representative source for one influence. The list explains provenance, not additional
-sources of truth or complete conformance. IdMagic's evidence contract is a repository-specific adaptation.
+各項目には、影響を受けた考え方ごとに代表的な出典を一つ挙げる。
+この一覧は由来を説明するものであり、別の一次情報や完全な準拠を表さない。
+IdMagic の証拠契約は、このリポジトリ向けに調整したものである。
 
-- **Spec-Driven Development:** GitHub's
-  [Specification-Driven Development](https://github.com/github/spec-kit/blob/27f50f7e6b618ea14d74dd4037f9e7c60218b16c/spec-driven.md)
-  informs using specifications to drive planning, implementation, and verification.
-- **OpenSpec:** Fission AI's
-  [OpenSpec](https://github.com/Fission-AI/OpenSpec/blob/f1b521dffac38ed6638689cd28b0c204b1eef0f1/README.md)
-  informs the change-oriented proposal → specifications → design → tasks → apply/archive loop. IdMagic keeps
-  its own formats and does not adopt the OpenSpec CLI.
-- **Agentic Discipline:** Robert C. Martin and Justin Martin's
-  [Clean AI: Agentic Engineering](https://learning.oreilly.com/course/clean-ai-agentic/9780135968819/)
-  provides the umbrella reference for disciplined agent-assisted engineering. The evidence boundary and public
-  examples used for this adaptation are recorded in `wi-409`.
-- **Domain-Driven Design:** Eric Evans's
-  [Domain-Driven Design Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)
-  informs bounded contexts and consistent domain vocabulary.
-- **Clean Architecture:** Robert C. Martin's
-  [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-  informs inward-pointing dependencies.
-- **Hexagonal Architecture (Ports and Adapters):** Alistair Cockburn's
-  [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
-  informs explicit application ports and technology-specific adapters.
-- **Screaming Architecture:** Robert C. Martin's
-  [Screaming Architecture](https://blog.cleancoder.com/uncle-bob/2011/09/30/Screaming-Architecture.html)
-  informs the context- and capability-oriented repository layout.
-- **Modular Monolith:** Simon Brown's
-  [Modular monolith and package by component](https://simonbrown.je/modular-monolith/)
-  informs the current single deployment unit with enforced context boundaries.
-- **Microservice Architecture:** James Lewis and Martin Fowler's
-  [Microservices](https://martinfowler.com/articles/microservices.html)
-  informs business-capability boundaries and loose coupling; it does not imply that IdMagic currently deploys
-  each context independently.
-- **Functional Design:** Eric Normand's
-  [Grokking Simplicity](https://www.manning.com/books/grokking-simplicity)
-  informs the separation of immutable data, deterministic calculations, and effectful actions.
-- **Type-First Development:** Tomas Petricek's
-  [Why type-first development matters](https://tomasp.net/blog/type-first-development.aspx/)
-  informs defining TypeSpec contracts and domain data types before dependent implementation.
-- **Extreme Programming:** Kent Beck's
-  [Extreme Programming Explained](https://www.informit.com/store/extreme-programming-explained-embrace-change-9780321278654)
-  informs small changes, rapid feedback, simple design, continuous integration, and refactoring.
-- **Test-Driven Development:** Kent Beck's
-  [Test Driven Development: By Example](https://www.informit.com/store/test-driven-development-by-example-9780321146533)
-  informs the RED-first implementation loop.
-- **Property-Based Testing:** Koen Claessen and John Hughes's
-  [QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs](https://doi.org/10.1145/351240.351266)
-  informs stating an invariant and letting generated input search for the counterexample, rather than
-  enumerating the examples the author already had in mind.
-- **Behavior-Driven Development:** Dan North's
-  [Introducing BDD](https://dannorth.net/introducing-bdd/)
-  informs behavior-oriented normative scenarios. The sole scenario source uses the official Markdown with
-  Gherkin dialect for `Feature`, `Rule`, `Example`, and `Scenario Outline`; it does not introduce Cucumber as
-  a test runner or generate product tests from steps.
-- **Acceptance Test-Driven Development:** Robert C. Martin and Grigori Melnik's
-  [Tests and Requirements, Requirements and Tests: A Möbius Strip](https://doi.org/10.1109/MS.2008.24)
-  informs defining acceptance evidence before implementation.
-- **Rational Reconstruction:** David L. Parnas and Paul C. Clements's
-  [A Rational Design Process: How and Why to Fake It](https://doi.org/10.1109/TSE.1986.6312940)
-  informs why a work item presents its evidence in the order the format asks for rather than the order the
-  work happened in: real work is exploratory, and a record reproducing every detour would not be readable by
-  the next person.
+- **仕様駆動開発：** GitHub の [Specification-Driven Development](https://github.com/github/spec-kit/blob/27f50f7e6b618ea14d74dd4037f9e7c60218b16c/spec-driven.md)から、仕様によって計画、実装、検証を進める考えを参照した。
+- **OpenSpec：** Fission AI の [OpenSpec](https://github.com/Fission-AI/OpenSpec/blob/f1b521dffac38ed6638689cd28b0c204b1eef0f1/README.md)から、変更単位で提案、仕様、設計、タスク、適用と保管を進めるサイクルを参照した。
+  IdMagic は独自の形式を維持し、OpenSpec CLI は採用しない。
+- **エージェントを使う開発の規律：** Robert C. Martin と Justin Martin の [Clean AI: Agentic Engineering](https://learning.oreilly.com/course/clean-ai-agentic/9780135968819/)を、規律あるエージェント支援開発の包括的な参考資料とした。
+  この調整で用いた証拠境界と公開例は `wi-409` に記録している。
+- **ドメイン駆動設計：** Eric Evans の [Domain-Driven Design Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)から、境界づけられたコンテキストと一貫したドメイン語彙を参照した。
+- **クリーンアーキテクチャ：** Robert C. Martin の [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)から、内側へ向く依存関係を参照した。
+- **ヘキサゴナルアーキテクチャ（Ports and Adapters）：** Alistair Cockburn の [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)から、明示的なアプリケーションポートと技術固有のアダプターを参照した。
+- **Vertical Slice Architecture：** Jimmy Bogard の [Vertical Slice Architecture](https://www.jimmybogard.com/vertical-slice-architecture/)から、変更の軸に沿って機能の関心事を端から端まで一つのスライスにまとめ、スライス間の結合を減らす考えを参照した。
+- **モジュラーモノリス：** Simon Brown の [Modular monolith and package by component](https://simonbrown.je/modular-monolith/)から、コンテキスト境界を強制する現在の単一デプロイ単位を参照した。
+- **マイクロサービスアーキテクチャ：** James Lewis と Martin Fowler の [Microservices](https://martinfowler.com/articles/microservices.html)から、事業機能の境界と疎結合を参照した。
+  これは、IdMagic が現在各コンテキストを独立してデプロイすることを意味しない。
+- **関数型設計：** Eric Normand の [Grokking Simplicity](https://www.manning.com/books/grokking-simplicity)から、変更不能なデータ、決定論的な計算、作用を伴う操作の分離を参照した。
+- **型先行開発：** Tomas Petricek の [Why type-first development matters](https://tomasp.net/blog/type-first-development.aspx/)から、依存する実装より先に TypeSpec の契約とドメインデータ型を定義する考えを参照した。
+- **Tidy First?：** Kent Beck の [Tidy First?](https://www.oreilly.com/library/view/tidy-first/9781098151232/)から、振る舞いの変更を容易にする小さな整理を選び、必要に応じて整理を先に行い、その反復によって設計をインクリメンタルに改善する考えを参照した。
+- **テスト駆動開発：** Kent Beck の [Test Driven Development: By Example](https://www.informit.com/store/test-driven-development-by-example-9780321146533)から、RED を先に確認する実装サイクルを参照した。
+- **プロパティベーステスト：** Koen Claessen と John Hughes の [QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs](https://doi.org/10.1145/351240.351266)から、作成者が思いついた例を列挙する代わりに、不変条件を記述して生成入力から反例を探す考えを参照した。
+- **振る舞い駆動開発：** Dan North の [Introducing BDD](https://dannorth.net/introducing-bdd/)から、振る舞いを中心にした規範シナリオを参照した。
+  シナリオの唯一の一次情報では、`Feature`、`Rule`、`Example`、`Scenario Outline` に公式の Markdown with Gherkin 方言を使う。
+  Cucumber をテストランナーとして導入せず、ステップから製品テストを生成しない。
+- **受け入れテスト駆動開発：** Robert C. Martin と Grigori Melnik の [Tests and Requirements, Requirements and Tests: A Möbius Strip](https://doi.org/10.1109/MS.2008.24)から、実装前に受け入れ証拠を定める考えを参照した。
+- **合理的再構成：** David L. Parnas と Paul C. Clements の [A Rational Design Process: How and Why to Fake It](https://doi.org/10.1109/TSE.1986.6312940)から、作業項目では実際の作業順ではなく、形式が求める順序で証拠を示す理由を参照した。
+  実際の作業には探索が伴い、すべての回り道を再現する記録は次の担当者にとって読みにくいためである。

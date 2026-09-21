@@ -1,6 +1,6 @@
 # DataKeys の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | DataEncryptionKey | レコード単位の可逆なシークレットを Tink AEAD で直接暗号化・復号する、テナントスコープの対称鍵 (DEK)。 | DEK |
 | MasterKey | DEK をラップしてエンベロープ暗号化する KMS 側の鍵。プロバイダー (OpenBao Transit 互換、または開発環境とローカル環境で使う Tink の平文鍵セット) が管理し、アプリケーションデータベースには平文で残らない。 |  |

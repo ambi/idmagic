@@ -1,6 +1,6 @@
 # SharedSignals の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | SSF | OpenID Shared Signals Framework。Security Event Token (SET) を搬送形式として、セキュリティイベントをプッシュまたは受信する標準。IdMagic は送信側と受信側の両方として振る舞う。 |  |
 | CAEP | OpenID Continuous Access Evaluation Profile。SSF 上で `session-revoked`、`token-claims-change`、`credential-change`、`assurance-level-change` を表現するイベント種別の規約。 |  |

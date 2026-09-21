@@ -1,34 +1,33 @@
 # 仕様フォーマット
 
-The exact, current grammar is whatever `mise run check-spec` accepts; its diagnostics are the precise rule.
-This document states intent, examples, and the decisions a checker cannot make for you. Rules marked
-*(checked)* fail the build; the rest are review judgment.
+現在の正確な文法は、`mise run check-spec` が受理する形であり、その診断が厳密な規則を示す。
+この文書では、意図、例、検査だけでは決められない判断を示す。
+*(checked)* と記した規則への違反はビルドを失敗させ、それ以外はレビューで判断する。
 
 ## 1. 配置
 
-Sections do not divide the specification; files do. A file's name says what kind of content it holds, and
-that name is what the checker validates the body against.
+仕様は節ではなくファイルで分割する。
+ファイル名が内容の種類を表し、検査は本文がその種類に合うかを確かめる。
 
-Prose lives under `docs/`; the TypeSpec a compiler consumes lives under `spec/`. A context name is mirrored
-between `docs/domain/<context>/` and `spec/contexts/<context>/`, so one context's prose and contract are
-looked up by the same name in the two trees.
+文章は `docs/`、コンパイラが読み取る TypeSpec は `spec/` に置く。
+コンテキスト名は `docs/domain/<context>/` と `spec/contexts/<context>/` で一致させ、同じ名前から一つのコンテキストの文章と契約を探せるようにする。
 
 ```text
 docs/
-  README.md                     # system-document entry point and reading order
+  README.md                     # システム文書の入口と読む順序
   domain/
-    README.md                   # domain-document boundary and context index
-    glossary.md                 # published language
-    standards.md                # external norms the whole system follows
-    structure.md                # repository and implementation layout
-    scenarios.feature.md        # behavior no single context can satisfy alone
+    README.md                   # ドメイン文書の境界とコンテキスト索引
+    glossary.md                 # 公開言語
+    standards.md                # システム全体が従う外部規範
+    structure.md                # リポジトリと実装の配置
+    scenarios.feature.md        # 一つのコンテキストだけでは満たせない振る舞い
     <context>/
-      README.md                 # boundary declaration and index
+      README.md                 # 境界の宣言と索引
       glossary.md
       standards.md
       states.md
       decisions.md
-      internals.md              # only when a mechanism cannot be read out of the code
+      internals.md              # 仕組みをコードから読み取れない場合だけ
       scenarios.feature.md
   requirements/
     README.md
@@ -44,7 +43,7 @@ docs/
     decisions.md
   design/
     README.md
-    product-overview.md         # purpose, users, situations, and system scope
+    product-overview.md         # 目的、利用者、利用場面、システムの範囲
     application/
       README.md
       api-guidelines.md
@@ -82,13 +81,13 @@ docs/
     README.md
     system-acceptance.md
     security.md
-  development/                  # development workflow and procedures
+  development/                  # 開発ワークフローと手順
   operations/
     README.md
     service-management.md
     maintenance.md
-  runbooks/<event>.md           # what on-call reads mid-incident
-  releases/                     # user-facing change and migration notices
+  runbooks/<event>.md           # インシデント対応中に当番が読む内容
+  releases/                     # 利用者向けの変更通知と移行通知
 
 spec/
   main.tsp
@@ -97,183 +96,177 @@ spec/
   contexts/<context>/{models.tsp,main.tsp}
 ```
 
-The system tree is read from purpose through requirements, architecture, detailed design, verification, and
-operation. This is an ownership and navigation order, not a one-pass lifecycle: feasibility and verification
-findings return to their parent requirements and designs. A quality requirement is declared once under
-`requirements/`; architecture allocates it, and the applicable design documents explain its realization.
+システム文書の木は、目的、要件、アーキテクチャ、詳細設計、検証、運用の順で読む。
+これは担当範囲と案内の順序であり、一方向に一度だけ進むライフサイクルではない。
+実現可能性と検証から得た知見は、対応する要件と設計へ戻す。
+品質要件は `requirements/` で一度だけ宣言し、アーキテクチャで割り当て、該当する設計文書で実現方法を説明する。
 
-Every fixed design directory has a `README.md` that declares its scope, exclusions, children, and adjacent
-designs. Files below it are accepted only when the layout defines their responsibility. `docs/development/`,
-`docs/runbooks/`, and `docs/releases/` remain open sets because procedures and change notices are not canonical
-system-design kinds. `docs/operations/` and `docs/verification/` are fixed design sets even though they link to
-procedures and evidence elsewhere.
+固定された各設計ディレクトリには、その範囲、対象外、子要素、隣接する設計を宣言する `README.md` を置く。
+その配下には、文書配置で責務を定義したファイルだけを置ける。
+手順と変更通知は現在状態のシステム設計の種類ではないため、`docs/development/`、`docs/runbooks/`、`docs/releases/` は開いた集合とする。
+`docs/operations/` と `docs/verification/` は別の場所にある手順や証拠へリンクするが、固定された設計文書の集合である。
 
-`README.md` is the file a reader lands on when they open a directory, so it holds the boundary declaration
-and child index. Create no file that has no content to hold: record an inapplicable concern and its reason in
-the parent index. File names are *(checked)* for every fixed directory in the tree. A near miss reports the
-intended name; another disallowed name reports the set that directory accepts. A small bounded context may
-still need only `README.md` and `scenarios.feature.md`.
+読者がディレクトリを開いたとき最初に到達するファイルが `README.md` であるため、ここに境界の宣言と子要素の索引を書く。
+内容のないファイルは作らず、該当しない事項とその理由を親の索引へ記録する。
+固定された各ディレクトリでは、ファイル名を *(checked)* する。
+許可された名前に近い誤記には意図した名前を、その他の許可されない名前にはそのディレクトリで許可される名前の集合を報告する。
+小さな境界づけられたコンテキストでは、`README.md` と `scenarios.feature.md` だけで足りる場合もある。
 
-`main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`
-owns operations. Generated OpenAPI lives below ignored `spec/generated/`, while the generated documentation
-site lives in ignored `site/`. This keeps every generated artifact out of `docs/`: everything under `docs/`
-is written by a person.
+`main.tsp` は TypeSpec プログラムを構成する。
+モデル宣言は `models.tsp`、操作はコンテキストの `main.tsp` で扱う。
+生成した OpenAPI は追跡しない `spec/generated/` 配下、生成した文書サイトは追跡しない `site/` 配下に置く。
+これにより、生成物を `docs/` に置かず、`docs/` 配下をすべて人が書く文書に保つ。
 
 ## 2. TypeSpec の範囲
 
-Use TypeSpec for models, constraints, API operations, HTTP routes, request and response shapes, status codes,
-error unions, deprecation metadata, and authentication mechanisms. Prefer standard libraries and emitters.
-Each operation must inherit an OpenAPI tag from its owning context; do not leave operations in `default`.
+モデル、制約、API 操作、HTTP ルート、リクエストとレスポンスの形、ステータスコード、エラーの union、非推奨メタデータ、認証方式は TypeSpec で定義する。
+標準のライブラリと emitter を優先する。
+各操作は担当コンテキストから OpenAPI タグを継承し、`default` に残さない。
 
-Keep stable wire names when source ownership moves. Do not recreate TypeSpec constructs in Markdown or a
-project-specific YAML dialect.
+ソースの担当が移っても、安定した通信上の名前は維持する。
+TypeSpec の構造を Markdown やプロジェクト固有の YAML 方言で作り直さない。
 
-Keep the following concerns in their owning sources rather than TypeSpec:
+次の事項は TypeSpec ではなく、それぞれを担当する一次情報に置く。
 
-| Concern | Source of truth |
+| 事項 | 一次情報 |
 |---|---|
-| Compound uniqueness, referential integrity, and indexes | Schema files |
-| Lifecycle transitions | `states.md` |
-| Fine-grained authorization and boundary rules | `docs/design/security/authorization.md` and implementation |
-| Conflict resolution and idempotency decisions | `decisions.md` |
-| Acceptance criteria | `scenarios.feature.md` |
+| 複合一意性、参照整合性、索引 | スキーマファイル |
+| ライフサイクルの遷移 | `states.md` |
+| きめ細かな認可と境界の規則 | `docs/design/security/authorization.md` と実装 |
+| 競合解決と冪等性の判断 | `decisions.md` |
+| 受け入れ基準 | `scenarios.feature.md` |
 
 ## 3. 一次情報文書
 
-Every canonical document has exactly one H1 *(checked)*. There is no frontmatter and no fixed section set:
-the file name has already said what the file holds, so what would have been a section is now a file, and
-its H2s are free to name what the content actually is.
+各一次情報文書には H1 を一つだけ置く *(checked)*。
+frontmatter と固定された節の集合は設けない。
+ファイル名が内容の種類をすでに示し、従来なら節になった内容を一つのファイルにするため、H2 には実際の内容に合う名前を付けられる。
 
 ### README.md — 境界の宣言
 
-`README.md` states what the directory owns, what it does not own and which owner takes it instead, and —
-when membership is easy to get wrong — the criterion that decides. It is a boundary declaration, not a
-guide to the document. A reading order and a plan for later both fail that test: the first describes the
-file rather than the system, and the second describes a system that does not exist yet. Keep planned work
-in the work item; a deliberate non-adoption belongs in `decisions.md` with the condition that would reopen
-it.
+`README.md` には、そのディレクトリが扱うもの、扱わないものと代わりの担当を記す。
+所属を誤りやすい場合は、所属を決める基準も記す。
+これは境界の宣言であり、文書の案内ではない。
+読む順序はシステムではなくファイルを説明し、将来の計画はまだ存在しないシステムを説明するため、どちらも境界の宣言にはならない。
+予定している作業は作業項目に残す。
+意図して採用しなかった判断は、再検討する条件とともに `decisions.md` へ書く。
 
 ```markdown
 # ディレクトリ
-<!-- good: ownership, delegation, and the criterion that settles the hard cases -->
-Owns the lifecycle of X and the metadata around it.
-Does not own the cryptography itself; that is a shared adapter. Signing keys belong to <other context>.
-Membership follows whether a persistent external authority exists, not the direction of traffic, so
-an administrator-driven import belongs to <other context> instead.
+<!-- 良い例：担当、委譲、判断が難しい場合の基準を示す -->
+X のライフサイクルと付随するメタデータを扱う。
+暗号処理自体は扱わず、共有アダプターに委ねる。署名鍵は <別のコンテキスト> が扱う。
+所属は通信の方向ではなく、永続的な外部の権威が存在するかで決めるため、管理者主導のインポートは <別のコンテキスト> が扱う。
 
-<!-- bad: a guide to the document, and a plan -->
-This document covers A, then B, then C, in that order.
-A fourth source kind will be added to this context later.
+<!-- 悪い例：文書の案内と計画になっている -->
+この文書では A、B、C の順に説明する。
+今後、このコンテキストへ四つ目のソース種別を追加する。
 ```
 
-Below the declaration, index the sibling files as Markdown links. That index is what makes them reachable
-from the generated site, and it is the only place a reader is told which of them exist.
+宣言の下には、同じディレクトリにあるファイルを Markdown リンクで索引する。
+この索引によって生成サイトから各ファイルへ到達でき、どのファイルが存在するかを読者へ示す場所もこの索引だけである。
+索引表の見出しは `| 文書 | 内容 |` とする。
 
-The root `README.md` additionally indexes the contexts themselves, and that index says of each one whether
-it is `Core`, `Supporting`, or `Generic` *(checked)*. Every context directory appears exactly once, and a
-directory the index does not list is rejected — a new context otherwise arrives unclassified and stays that
-way, because nothing else in the layout ever asks. Which of the three a context is, and what the answer
-governs, are decisions the checker cannot make; it only refuses to let the question go unanswered. The
-reason a context sits where it does belongs in that context's `decisions.md`, not in the table, because
-the reason differs per context and does not fit a cell. A workspace with no context directories needs no
-such table.
+ルートの `README.md` ではコンテキスト自体も索引し、それぞれを `Core`、`Supporting`、`Generic` のいずれかに分類する *(checked)*。
+各コンテキストディレクトリは一度だけ掲載し、索引にないディレクトリは拒否する。
+この制約がなければ、新しいコンテキストが未分類のまま追加され、文書配置のほかの箇所では分類を問われないため、その状態が続いてしまう。
+どの分類を選ぶかと、その分類が何を左右するかは検査では決められない。
+検査は、分類の問いが未回答になることだけを拒否する。
+コンテキストごとに異なる分類理由は表のセルに収まらないため、そのコンテキストの `decisions.md` に書く。
+コンテキストディレクトリがないワークスペースでは、この表は不要である。
 
-A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
-contexts cooperate belongs to `docs/domain/scenarios.feature.md`, and the scenario names the participating contexts.
-Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
+各コンテキストは、単独で満たして検証できる振る舞いだけを扱う。
+複数のコンテキストが協調した場合にだけ成り立つ振る舞いは `docs/domain/scenarios.feature.md` に置き、シナリオで参加するコンテキストを示す。
+そのような流れをコンテキストごとの断片に分けると、実際の保証を記す場所がなくなる。
 
 ### glossary.md — 語彙
 
-`glossary.md` defines the Ubiquitous Language used with one meaning in specifications, code, and
-conversation inside its context. Give each term and its meaning in one line, and do not use an absent term
-as a model name. A term whose meaning is fixed across contexts is Published Language and belongs in
-`docs/domain/glossary.md`; do not force context-local meanings into one system-wide vocabulary.
+`glossary.md` では、そのコンテキスト内の仕様、コード、会話で一つの意味に使うユビキタス言語を定義する。
+各用語と意味を一行で書き、用語集にない語をモデル名に使わない。
+複数のコンテキストで意味が固定された語は公開言語として `docs/domain/glossary.md` に置く。
+コンテキスト固有の意味を、システム全体で一つの語彙へ無理に統合しない。
+用語集の表見出しは `| 用語 | 定義 | 別名 |` とする。
 
 ### design-guidelines.md — 設計判断の評価方法
 
-The root `design-guidelines.md` owns the system-wide criteria for module interfaces, seams, adapters, type
-ownership, effects, and errors. It states the current rule and the shape of a violation, so a reviewer can
-apply it to a concrete change. It does not own directories or dependency direction (`structure.md`), the
-rationale for one bounded decision (`decisions.md`), or mechanism that cannot be recovered from code
-(`internals.md`). Context directories do not carry their own copy of this file.
+ルートの `design-guidelines.md` では、モジュールのインターフェース、seam、アダプター、型の担当、作用、エラーに関するシステム全体の評価基準を定める。
+レビュー担当者が具体的な変更へ適用できるように、現在の規則と違反の形を示す。
+ディレクトリと依存方向は `structure.md`、範囲を限定した一つの判断理由は `decisions.md`、コードから復元できない仕組みは `internals.md` が扱う。
+コンテキストディレクトリには、このファイルの独自の写しを置かない。
 
 ### decisions.md — 判断内容と理由
 
-One item per decision: what was decided, and why, each in a sentence. An item with no reason is a restated
-rule, not a decision. The test is whether the code could be read to recover it; if it could, leave it out.
-Include what was decided against, with the condition that would reopen it.
+一つの判断を一項目とし、何を決めたかと、その理由をそれぞれ一文で書く。
+理由のない項目は規則の言い換えであり、判断の記録ではない。
+コードを読めば復元できる内容は書かない。
+採用しなかった選択肢は、再検討する条件とともに記録する。
 
-Make the heading the decision, never the aspect. `Invariants`, `Concurrency`, and `Failure handling` are
-aspect names: a writer reads them as boxes to fill, and either invents prose for an aspect that does not
-apply or splits one decision across several. Do not enumerate invariants at all — uniqueness and
-referential integrity belong to the schema, observable properties to `scenarios.feature.md`, and construction and
-postconditions to the type or operation as directed by `docs/design/application/design-guidelines.md`; the rest is unbounded. An
-invariant worth writing down is usually a decision with a reason, and written as one it keeps the reason.
+見出しには側面ではなく判断そのものを書く。
+`不変条件`、`並行処理`、`失敗処理` は側面の名前である。
+このような見出しは記入欄に見えるため、該当しない側面の文章を作るか、一つの判断を複数箇所へ分散させることになる。
+不変条件の一覧は作らない。
+一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築条件と事後条件は `docs/design/application/design-guidelines.md` に従って型または操作で扱い、その他には際限がない。
+記録する価値のある不変条件は通常、理由のある判断であり、判断として書けば理由も残る。
 
-A decision large enough to need rejected alternatives, the conditions under which it holds, and the
-condition that would reopen it gets a heading of its own.
+不採用の選択肢、成立条件、再検討する条件が必要なほど大きな判断には、独立した見出しを設ける。
 
 ### internals.md — 仕組みの動作
 
-Write this only when the working of a mechanism cannot be recovered from the code. The test is whether
-someone could read the code alone and know how to fix the mechanism when it breaks. If they could, leave it
-out. Write what is guaranteed, not the steps the implementation takes.
+仕組みの動作をコードから復元できない場合だけ、この文書を書く。
+コードだけを読んで、仕組みが壊れたときの直し方を判断できるなら、この文書は不要である。
+実装が踏む手順ではなく、保証する内容を書く。
 
-**How many contexts need one is a property of the domain, not a quota.** A context shaped like CRUD over a
-table rarely has a mechanism worth explaining. One built on fail-closed refusals, key lifetimes, leases,
-epochs, or same-transaction capture usually does, and a product made mostly of those will have one almost
-everywhere. Never delete a file to reach an expected count: the test is the rule, and the count is whatever
-the test leaves behind. The failure this guards against is the opposite of the obvious one — not a directory
-of thin files, but the deletion of the few paragraphs that would have told the next person how to repair
-something they cannot read out of the code.
+**`internals.md` が必要なコンテキストの数は、割り当て目標ではなくドメインの性質で決まる。**
+一つの表を CRUD 操作する形のコンテキストには、説明する価値のある仕組みがほとんどない。
+fail-closed の拒否、鍵の有効期間、リース、epoch、同一トランザクションでの取得を基盤とするコンテキストには通常そのような仕組みがあり、そうしたコンテキストが大半を占める製品では、ほぼすべてに `internals.md` が必要になる。
+期待した数へ合わせるためにファイルを削除しない。
+必要性の判定規則を適用した結果が、そのままファイル数になる。
+この規則が防ぐのは、内容の薄いファイルが並ぶことではない。
+コードから読み取れない仕組みの修復方法を次の担当者へ伝える数段落が、削除されることを防ぐ。
 
-Decisions and mechanism live in separate files because they have different lifetimes. A decision is
-revisited when circumstances change and is audited as a list; a mechanism holds as long as the
-implementation does and is read as prose. Together in one file, every audit of the first means skimming
-past the second.
+判断と仕組みは寿命が異なるため、別のファイルに置く。
+判断は状況が変わったときに再検討し、一覧として監査する。
+仕組みの説明は実装が存在する間は有効であり、文章として読む。
+一つのファイルに混在させると、判断を監査するたびに仕組みの説明を読み飛ばすことになる。
 
-Neither file carries directory listings, package inventories, change history, comparisons of alternatives,
-plans, summaries of external standards, states and transitions, acceptance examples, request and response
-shapes, columns and indexes, permission assignments, or rules every context follows. Each of those has an
-owner: the code, the work item, `standards.md`, `states.md`, `scenarios.feature.md`, TypeSpec, the schema file,
-`docs/design/security/authorization.md`, or the matching file in the fixed system-document tree.
+どちらのファイルにも、ディレクトリ一覧、パッケージ一覧、変更履歴、選択肢の比較、計画、外部標準の要約、状態と遷移、受け入れ例、リクエストとレスポンスの形、列と索引、権限の割り当て、すべてのコンテキストが従う規則は書かない。
+これらはそれぞれ、コード、作業項目、`standards.md`、`states.md`、`scenarios.feature.md`、TypeSpec、スキーマファイル、`docs/design/security/authorization.md`、または固定されたシステム文書の木にある対応ファイルで扱う。
 
 ### コンテキスト内の分割
 
-When a context has two or more independent capabilities, split them into capability directories along the
-same vertical boundary as the implementation. Split `states.md`, `decisions.md`, and
-`scenarios.feature.md`; keep the boundary declaration and index, shared vocabulary, and adopted external
-standards at the context root.
+コンテキストに独立した機能が二つ以上ある場合は、実装と同じ縦の境界に沿って機能別ディレクトリへ分割する。
+`states.md`、`decisions.md`、`scenarios.feature.md` は分割する。
+境界の宣言と索引、共有語彙、採用した外部標準はコンテキストのルートに残す。
 
-Use the context `README.md` to decide whether to split a capability or redraw the context boundary:
+機能を分割するか、コンテキスト境界を引き直すかは、コンテキストの `README.md` を使って判断する。
 
-| Shape of the boundary declaration | Action |
+| 境界宣言の形 | 対応 |
 |---|---|
-| One sentence states the responsibility, and the capabilities share vocabulary and invariants | Split into capability directories |
-| The responsibility needs “and”, and the capabilities use different vocabulary | Split the context |
-| The responsibility is clear, but vocabulary from another context appears repeatedly | Redraw the boundary |
+| 一文で責務を表せて、各機能が語彙と不変条件を共有する | 機能別ディレクトリへ分割する |
+| 責務の説明に「および」が必要で、各機能が異なる語彙を使う | コンテキストを分割する |
+| 責務は明確だが、別のコンテキストの語彙が繰り返し現れる | 境界を引き直す |
 
-Do not impose a line limit. A difficult design may be long.
+行数の上限は設けない。
+難しい設計は長くなる場合がある。
 
 ### 一次情報文書に置かない内容
 
-| Content | Owner |
+| 内容 | 担当 |
 |---|---|
-| Library or framework selection | Development documentation, or one decision in `decisions.md` |
-| Coding style | `docs/development/coding-style.md` |
-| Procedures for setup, release, or debugging | Development or operations documentation |
-| Design-token values and translated copy | Resource files |
-| Per-screen URLs, fields, and states | Implementation and the component catalog |
-| Environment-variable inventory | Generated configuration reference |
+| ライブラリまたはフレームワークの選定 | 開発文書、または `decisions.md` の一つの判断 |
+| コーディングスタイル | `docs/development/coding-style.md` |
+| セットアップ、リリース、デバッグの手順 | 開発文書または運用文書 |
+| デザイントークンの値と翻訳済み文言 | リソースファイル |
+| 画面ごとの URL、フィールド、状態 | 実装とコンポーネントカタログ |
+| 環境変数の一覧 | 生成した設定リファレンス |
 
-The deciding question is whether changing the content changes externally observable behavior or a boundary
-the product must preserve. A UI library is not specification; the keyboard-accessibility rule it must
-satisfy is a row in `standards.md`.
+判断基準は、その内容を変えると外部から観測できる振る舞い、または製品が保つべき境界が変わるかである。
+UI ライブラリは仕様ではないが、そのライブラリが満たすべきキーボード操作のアクセシビリティ規則は `standards.md` の一行になる。
 
 ## 4. 状態遷移
 
-`states.md` gives every state machine an H2 heading and two language-independent tables under it, the
-states first and then the transitions:
+`states.md` では、各状態機械に H2 見出しを付け、その下に言語に依存しない二つの表を置く。
+状態の表を先、遷移の表を後に置く。
 
 ```markdown
 | State | Kind | Meaning |
@@ -283,221 +276,216 @@ states first and then the transitions:
 |---|---|---|---|---|
 ```
 
-`Kind` is `initial`, `terminal`, or `—`. Exactly one state is `initial`; any number may be `terminal`
-*(checked)*. Every `From` and `To` must name a state the state table declares *(checked)*.
+`Kind` には `initial`、`terminal`、`—` のいずれかを使う。
+`initial` の状態はちょうど一つ、`terminal` の状態はいくつでもよい *(checked)*。
+すべての `From` と `To` は、状態表で宣言した状態を指さなければならない *(checked)*。
 
-The state table exists because the set of states is otherwise never stated. Derived from the `From` and
-`To` columns it silently loses any state nothing transitions into, and no state gets to say in one line
-what it means — which is exactly what a reader needs to tell two similar-looking waiting states apart.
+状態表がなければ、状態の集合を宣言する場所がない。
+`From` 列と `To` 列から状態を導くと、どの遷移も到達しない状態が黙って失われる。
+さらに、各状態の意味を一行で示せないため、読者は見た目の似た二つの待機状態を区別できない。
 
-Use `—` in `Guard` when the transition is unconditional *(checked)*. Do not use an empty string literal
-such as `""`; it looks like an executable condition in both the source table and the derived diagram. A
-guard may contain an escaped pipe, which does not end the cell.
+無条件の遷移では `Guard` に `—` を使う *(checked)*。
+`""` のような空文字列リテラルは、一次情報の表と生成した図のどちらでも実行可能な条件に見えるため、使用しない。
+ガードにはエスケープしたパイプを含められ、そのパイプでセルは終わらない。
 
-Application code and tests are executable evidence, not the only state-transition documentation.
-The tables are the normative source. The generated specification site derives one Mermaid state diagram
-from the transition rows and displays the tables with the diagram; do not maintain a second hand-written
-state diagram for the same machine.
+アプリケーションコードとテストは実行可能な証拠であり、状態遷移を記述する唯一の文書ではない。
+規範となる一次情報は表である。
+生成する仕様サイトでは、遷移行から Mermaid の状態図を一つ導出し、表とともに表示する。
+同じ状態機械について、手書きの状態図を別に保守しない。
 
 ## 5. 標準仕様
 
-In `standards.md`, give every adopted standard an H2 named after it, a source URL on its own line, and one
-table:
+`standards.md` では、採用する各標準にその名称の H2 見出しを付け、独立した行に出典 URL を書き、表を一つ置く。
 
 ```markdown
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 ```
 
-`Adoption` says whether the product takes the standard's capability at all — `required` when it is always
-provided, `optional` when it is provided but its use is the caller's choice, `partial` when only some of it
-is, `excluded` when it is not. `Strength` says how firmly the product holds the rule once taken, in RFC 2119
-keywords: `MUST`, `MUST NOT`, `SHOULD`, `MAY`. The two are independent axes, and `optional` with `MUST` is
-the ordinary case rather than a contradiction: offering the capability is a choice, honoring the rule once
-offered is not. An `excluded` row cannot carry `MUST` or `SHOULD`, because there is no obligation to state
-about a capability the product does not provide *(checked)*.
+`Adoption` は、製品が標準の機能を採用するかを示す。
+常に提供する場合は `required`、提供するが使用を呼び出し元が選べる場合は `optional`、一部だけを提供する場合は `partial`、提供しない場合は `excluded` とする。
+`Strength` は、採用した規則を製品がどの強さで守るかを RFC 2119 のキーワード `MUST`、`MUST NOT`、`SHOULD`、`MAY` で示す。
+この二つは独立した軸である。
+`optional` と `MUST` の組み合わせは矛盾ではなく、通常の形である。
+機能を提供するかは選べるが、提供した後に規則を守るかは選べないためである。
+製品が提供しない機能には義務を定められないため、`excluded` の行に `MUST` または `SHOULD` は指定できない *(checked)*。
 
-The same two columns read one step over when the product consumes a standard rather than provides it — a
-client that sends, a receiver that follows someone else's contract. The capability is then what the product
-exercises: `required` is what it always sends or always does, `optional` what it does only when a configured
-or discovered condition holds, `partial` the part of the facility it uses, and `excluded` what it never
-sends. An `optional` row written from that side states the condition and what goes out when the condition
-does not hold, because a row that names neither cannot be told apart from a row that always sends.
+製品が標準を提供する側ではなく利用する側（送信するクライアントや他者の契約に従う受信者）の場合は、同じ二列を一段ずらして読む。
+この場合の機能は、製品が実行する内容を指す。
+常に送信または実行するものは `required`、設定または検出した条件が成立するときだけ実行するものは `optional`、機能の一部だけを使うものは `partial`、決して送信しないものは `excluded` とする。
+利用側から書く `optional` の行には、条件と、その条件が成立しないときに送る内容を記す。
+どちらも書かない行は、常に送信する行と区別できないためである。
 
-`Statement` declares what the product does or refuses to do. It is not a summary of the standard's own
-text — a row written from the standard's point of view reads as an obligation the product has accepted even
-when `Adoption` says the opposite. IDs are stable and unique within the document *(checked)*; the value sets
-for both columns are *(checked)*.
+`Statement` には、製品が実行すること、または拒否することを宣言する。
+標準自体の文章を要約する欄ではない。
+標準の視点から書いた行は、`Adoption` が反対の内容を示していても、製品が受け入れた義務として読めてしまう。
+ID は安定させ、文書内で一意にする *(checked)*。
+両方の列で使用できる値の集合も検査する *(checked)*。
 
-A row that nothing exercises is a claim, not a standard the product holds, so every id is named by a test
-*(checked)*. The mention may sit anywhere in a test file rather than in the test's own name: an id pushed
-into the name buys no more than an id written beside the assertion, and it costs the name the sentence that
-says what the test does. Only tests count — an id mentioned in implementation code would let a comment carry
-the whole obligation. Rows that predate the check are carried in a coverage debt list, one entry per id with
-a reason for it, and that list only shrinks: an id it holds that has grown a test has to come off, and an id
-added from here on is not admitted to it *(checked)*.
+実行するものがない行は、製品が守る標準ではなく主張にすぎないため、すべての ID をテストから参照する *(checked)*。
+参照はテスト名ではなく、テストファイル内のどこに置いてもよい。
+ID をテスト名へ入れても表明のそばに書く以上の効果はなく、テスト名から何を検査するかを説明する文を奪ってしまう。
+根拠に数えるのはテストだけである。
+実装コードの ID 参照も数えると、コメントだけで義務全体を担えてしまう。
+この検査より前からある未検査の行は、ID ごとに理由を添えて coverage debt の一覧へ記録する。
+この一覧は減る方向にだけ変え、テストを追加した ID は一覧から除き、新しく追加する ID は一覧へ入れない *(checked)*。
 
 ## 6. シナリオと規範 ID
 
-`scenarios.feature.md` is the sole source of truth for observable, non-negotiable behavior. It uses
-[Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md): one
-`Feature` per file, one normative behavior per `Rule`, and one branch-free path per `Example`. The official
-JavaScript Gherkin parser accepts every file *(checked)*. The `REQ-*` marker carries normative force; do not
-add a second boilerplate sentence using `SHALL` or `MUST`.
+`scenarios.feature.md` は、観測可能で変更の余地がない振る舞いの唯一の一次情報である。
+[Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) を使い、一ファイルに一つの `Feature`、一つの `Rule` に一つの規範的な振る舞い、一つの `Example` に分岐のない一経路を書く。
+すべてのファイルを公式の JavaScript Gherkin パーサーが受理することを検査する *(checked)*。
+`REQ-*` マーカー自体に規範としての効力があるため、`SHALL` や `MUST` を使った定型文を重ねない。
 
-IDs are immutable once referenced. Models and external interfaces belong in TypeSpec; adopted protocol
-rules belong in `standards.md`; lifecycle invariants belong in `states.md`; decisions belong in
-`decisions.md` and mechanism in `internals.md`. Do not duplicate those concerns as prose requirements. Use
-`SHOULD` or `MAY` only in explanatory or standards policy text when an exception or option is genuinely
-intended.
+一度参照された ID は変更しない。
+モデルと外部インターフェースは TypeSpec、採用したプロトコル規則は `standards.md`、ライフサイクルの不変条件は `states.md`、判断は `decisions.md`、仕組みは `internals.md` に置く。
+これらを文章の要件として重複させない。
+`SHOULD` と `MAY` は、例外または選択肢を実際に意図する場合だけ、説明または標準方針の文章で使う。
 
-Retire a behavior instead of deleting it. Mark the rule, drop its examples, and state the successor:
-
-```markdown
-## Rule: REQ-ACCOUNT-002 a valid session opens the account (superseded by REQ-ACCOUNT-042)
-
-Replaced by session-scoped account access.
-```
-
-Every live rule has at least one example *(checked)*. A normal `Example` starts its name with
-`EX-<CONTEXT>-<REQ-NNN>-<sequence>`. A `Scenario Outline` puts that identifier in the `example_id` column of
-each `Examples` row. Example IDs are immutable, globally unique, and belong to the `REQ-*` named by their
-parent rule *(checked)*. A rule is covered only when every child example is named by a test or appears in the
-reasoned example-coverage debt list *(checked)*. A test that names only the parent `REQ-*` does not cover any
-child example. A retired rule is exempt because it has no executable example.
-
-The successor must exist *(checked)*. A retired ID is never reused. Deleting the heading outright leaves
-nothing saying the behavior existed, and the work item alone cannot be searched by ID. Before retiring,
-map every precondition, postcondition, failure case, and invariant to its new owner — TypeSpec, scenarios,
-`standards.md`, `states.md`, or `decisions.md`. A title matching a TypeSpec operation is not by itself
-evidence that a scenario became redundant.
-
-Use the English Markdown with Gherkin keywords and Japanese prose. Put the actor in the `When` subject;
-`ACTOR` is not a step. Use `Given` for state, `When` for the trigger, and `Then` for observable results.
-`And` and `But` continue the preceding step kind. Each example has at least one `When` and one `Then`
-*(checked)*:
+振る舞いは削除せず、廃止する。
+規則へ廃止を記し、例を取り除き、後継を示す。
 
 ```markdown
-# Feature: Account
+## Rule: REQ-ACCOUNT-002 有効なセッションでアカウントを開く（REQ-ACCOUNT-042 により廃止）
 
-## Rule: REQ-ACCOUNT-002 a valid session opens the account
-
-### Example: EX-ACCOUNT-002-01 an available account is returned
-
-- Given the end user has a valid session
-- When the end user requests the account summary
-- Then the account summary is returned
-- And the activity timestamp is updated
-
-### Example: EX-ACCOUNT-002-02 an unavailable account is not returned
-
-- Given the end user has a valid session
-- And the account is unavailable
-- When the end user requests the account summary
-- Then an error is returned
-- And no account summary is returned
+セッション単位のアカウントアクセスに置き換えた。
 ```
 
-Do not encode a branch inside an example. An alternate success or refusal is another `Example`; multiple
-observations are separate `Then` or `And` steps. Multi-operation flows may repeat `When` and `Then`.
+有効な各規則には、一つ以上の例を置く *(checked)*。
+通常の `Example` は、名前を `EX-<CONTEXT>-<REQ-NNN>-<sequence>` で始める。
+`Scenario Outline` では、各 `Examples` 行の `example_id` 列にその識別子を置く。
+例の ID は変更せず、全体で一意にし、親規則で示した `REQ-*` に所属させる *(checked)*。
+規則を検査済みとみなすには、すべての子の例をテストから参照するか、理由を記した example-coverage debt の一覧へ載せなければならない *(checked)*。
+親の `REQ-*` だけを参照するテストでは、子の例を一つも検査したことにならない。
+廃止済みの規則には実行可能な例がないため、この制約を適用しない。
 
-Use `Scenario Outline` when paths have the same step structure and differ only by values. Every executable
-row has a nonempty, unique `example_id`. A set of independent conditions that determines an outcome may be
-named `Examples: Decision table (Unique)`. `Unique` is the only supported hit policy: each executable input
-matches exactly one row. `any` in a condition cell means that condition does not affect the row's outcome.
-Do not use `-` for this purpose: the official Markdown matcher treats any row containing a hyphen-only cell
-as a GFM table separator and omits it from the AST. A decision row has at least one nonempty outcome cell
-*(checked)*. Ordinary representative or boundary data remains a plain `Examples` table. Do not collapse
-ordering, history, retry, or elapsed-time behavior into a decision table.
+後継は実在しなければならない *(checked)*。
+廃止した ID は再利用しない。
+見出し自体を削除すると、その振る舞いが存在したことを示すものがなくなり、作業項目だけでは ID から検索できない。
+廃止する前に、すべての事前条件、事後条件、失敗事例、不変条件を、新しい担当である TypeSpec、シナリオ、`standards.md`、`states.md`、`decisions.md` のいずれかへ対応づける。
+題名が TypeSpec の操作名と一致するだけでは、シナリオが不要になった根拠にならない。
 
-A refusal a security control is responsible for — an unauthorized caller, another tenant's resource, a
-request that cannot prove it came from the product's own UI, a token without the scope, a decision that
-cannot be made — is observable behavior, and belongs in the scenario on the same footing as the path that
-succeeds. Write it as its own `Example` under the owning `Rule`. A control whose refusal is written down nowhere has nothing to be checked
-against: an implementation that stops refusing then contradicts no statement, and the specification cannot
-say the product regressed. Give each refusal its own example.
+Markdown with Gherkin の英語キーワードと日本語の文章を使う。
+行為者は `When` の主語に置き、`ACTOR` を独立したステップにしない。
+状態には `Given`、契機には `When`、観測可能な結果には `Then` を使う。
+`And` と `But` は直前のステップ種別を継続する。
+各例には `When` と `Then` を一つ以上含める *(checked)*。
 
-State what the caller observes and what the refusal leaves untouched. "Rejected with an error" is only
-half of it; the half that matters to a reader deciding whether the control works is that the operation had
-no effect.
+```markdown
+# Feature: アカウント
+
+## Rule: REQ-ACCOUNT-002 有効なセッションでアカウントを開く
+
+### Example: EX-ACCOUNT-002-01 利用可能なアカウントを返す
+
+- Given エンドユーザーに有効なセッションがある
+- When エンドユーザーがアカウントの概要を要求する
+- Then アカウントの概要を返す
+- And 最終利用日時を更新する
+
+### Example: EX-ACCOUNT-002-02 利用できないアカウントは返さない
+
+- Given エンドユーザーに有効なセッションがある
+- And アカウントは利用できない
+- When エンドユーザーがアカウントの概要を要求する
+- Then エラーを返す
+- And アカウントの概要を返さない
+```
+
+例の中に分岐を書かない。
+別の正常経路または拒否は別の `Example` とし、複数の観測結果は別々の `Then` または `And` ステップにする。
+複数操作の流れでは、`When` と `Then` を繰り返してよい。
+
+各経路のステップ構造が同じで値だけが異なる場合は、`Scenario Outline` を使う。
+実行可能な各行には、空でない一意の `example_id` を付ける。
+結果を決める独立した条件の集合には、`Examples: Decision table (Unique)` という名前を付けられる。
+対応する hit policy は `Unique` だけであり、実行可能な各入力はちょうど一行に一致する。
+条件セルの `any` は、その条件が行の結果に影響しないことを表す。
+この意味で `-` を使わない。
+公式の Markdown 照合器は、ハイフンだけのセルを含む行を GFM の表区切りとして扱い、AST から除外するためである。
+決定表の各行には、空でない結果セルを一つ以上置く *(checked)*。
+通常の代表値または境界値には、通常の `Examples` 表を使う。
+順序、履歴、再試行、経過時間に関する振る舞いを決定表へまとめない。
+
+セキュリティ統制が担う拒否は、観測可能な振る舞いであり、正常経路と同じ位置づけでシナリオへ記す。
+該当するのは、認可されていない呼び出し元、別テナントのリソース、製品自身の UI から来たと証明できないリクエスト、必要なスコープのないトークン、判断不能な状態などである。
+各拒否を、担当する `Rule` の独立した `Example` として書く。
+どこにも拒否を記していない統制には、検査対象となる規範がない。
+その実装が拒否をやめても違反する記述がなく、仕様から製品の退行を判定できないためである。
+
+呼び出し元が観測する内容と、拒否によって変更されない内容の両方を書く。
+「エラーで拒否する」だけでは半分しか記述していない。
+統制が働いたかを判断する読者には、その操作が作用を起こさなかったことも必要である。
 
 ## 7. 認可
 
-Authorization is not a section of each context. It is `docs/design/security/authorization.md`, because someone checking
-authorization wants the product's authorization, not one context's share of it. That file holds the
-principal kinds, the scope namespaces, the tenant boundary, and the rules that apply when a decision
-cannot be made. What one context decides about its own operations stays in that context's
-`decisions.md`.
+認可は各コンテキストの節として分割せず、`docs/design/security/authorization.md` にまとめる。
+認可を確認する人が必要とするのは、コンテキストごとの断片ではなく製品全体の認可だからである。
+このファイルでは、プリンシパルの種類、スコープの名前空間、テナント境界、判断できない場合に適用する規則を扱う。
+各コンテキストが自身の操作について下した判断は、そのコンテキストの `decisions.md` に置く。
 
-TypeSpec records whether an API is authenticated or public, and carries whatever per-operation permission
-or scope annotation the project enforces. Fine-grained authorization is executable application behavior
-with tests unless the project explicitly adopts a standard policy language. Do not add an ad hoc
-authorization DSL to the specification format.
+TypeSpec には、API が認証付きか公開かを記録し、プロジェクトが強制する操作ごとの権限またはスコープの注釈を付ける。
+プロジェクトが標準のポリシー言語を明示的に採用しない限り、きめ細かな認可はテストを伴う実行可能なアプリケーションの振る舞いとする。
+仕様フォーマットへ独自の認可 DSL を追加しない。
 
-Which operation requires which scope is therefore contract data, checkable against the vocabulary it draws
-from. Do not restate that mapping as prose: two copies of one mapping cannot be diffed against each other,
-and the unchecked copy is the one that goes stale. Prose records what the annotation cannot — the roles and
-principal kinds a boundary admits, what a response may never carry, whether authority propagates to a
-downstream call, what stays inside a tenant, and what happens when the decision cannot be made. Name the
-scope vocabulary a context uses, and the conclusion and reason wherever an operation's assignment does not
-follow from its name.
+どの操作にどのスコープが必要かは契約データであり、参照する語彙と照合できる。
+この対応を文章で言い換えない。
+同じ対応の二つの写しは互いに差分検査できず、検査されない写しが古くなるためである。
+文章には、注釈では表せない内容を書く。
+具体的には、境界が受け入れるロールとプリンシパルの種類、レスポンスに決して含めない内容、権限を下流の呼び出しへ伝播するか、テナント内に留める内容、判断不能な場合の処理である。
+コンテキストが使用するスコープ語彙を示し、操作名から割り当てを導けない場合は結論と理由を書く。
 
 ## 8. 脅威モデル
 
-The other documents state what the product does, so an implemented control can be checked against them. A
-control that was never built contradicts nothing: no scenario declares it, no test names it, and the refusal
-coverage check has no declaration to look for. `docs/design/security/threat-model.md` is where that gap becomes visible. It
-holds the trust boundaries and what is not trusted at each, the assets, and one row per identified threat
-naming the control that answers it.
+ほかの文書は製品が実行する内容を記すため、実装済みの統制をそれらと照合できる。
+一方、実装されなかった統制は何とも矛盾しない。
+宣言するシナリオも参照するテストもなく、拒否の被覆検査にも探すべき宣言がないためである。
+この欠落は `docs/design/security/threat-model.md` で可視化する。
+この文書には、信頼境界と各境界で信頼しないもの、資産、特定した脅威ごとの行と対応する統制を書く。
 
-Give every threat a stable id, and a status from a closed set that separates a threat with a control from
-one without. Do not encode the boundary or the category into the id: both are reclassified as the system
-changes, and an id that carries them becomes a lie the moment it is. Carry them in columns instead.
+各脅威には安定した ID と、統制の有無を区別する閉じた集合の状態を付ける。
+境界と分類を ID へ組み込まず、列として記録する。
+システムの変更に伴ってどちらも再分類されるため、組み込むと ID が実態と一致しなくなる。
 
-The rows with no control are the document's main output, so keep them in the same table rather than in a
-separate debt file. A reader who finishes the list must not be able to finish it without seeing them. State
-for each whether it will be fixed or is accepted, and an accepted threat carries the condition that would
-reopen it. An acceptance with no such condition is neglect with a label on it.
+統制のない行はこの文書の主要な出力であるため、別の debt ファイルではなく同じ表に置く。
+読者が一覧を最後まで読めば、必ず統制のない行も目に入る形にする。
+各行には、修正するか受容するかを記し、受容する脅威には再検討する条件も付ける。
+再検討する条件のない受容は、放置へ名前を付けただけである。
 
-Separate a threat nothing answers from one a control answers without a norm behind it — a procedure, a
-deployment requirement, a property of the toolchain. Both are unfinished, and they are not the same kind of
-unfinished, so a status alone cannot carry the difference. Let the control column carry it. Do not put the
-work item that will fix a threat into that column: a current-state document holds what exists, and a forward
-reference rots the moment the work item is completed and moved. Point from the work item to the threat id
-instead, so the link is findable and the direction stays one way.
+何も対応していない脅威と、手順、デプロイ要件、ツールチェーンの性質など、背後に規範のない統制が対応している脅威を区別する。
+どちらも未完了だが、未完了の種類が異なるため、状態だけでは差を表せない。
+この差は統制の列で表す。
+脅威を修正する作業項目をその列へ書かない。
+現在状態の文書には存在するものを書くため、作業項目への前方参照は、完了して移動した時点で古くなる。
+代わりに作業項目から脅威 ID を参照し、リンクを検索可能な一方向に保つ。
 
-Say in the document that the list is not exhaustive, and name what obliges a revisit. A threat model read as
-a complete guarantee is worse than none, because a threat that was never considered becomes indistinguishable
-from one considered and dismissed.
+一覧が網羅的ではないことを文書に明記し、見直しが必要になる条件を示す。
+完全な保証として読める脅威モデルは、脅威モデルがない状態より危険である。
+一度も検討していない脅威と、検討したうえで退けた脅威を区別できなくなるためである。
 
-Reference existing control identifiers — normative scenarios, adopted standards, the rules in another
-canonical document. Do not mint a second identifier for a control that already has one. Write what could
-happen, never how: reproduction steps, concrete parameters, and the details of an unfixed path do not belong
-in a specification.
+既存の統制識別子である規範シナリオ、採用した標準、別の一次情報文書にある規則を参照する。
+すでに識別子がある統制へ、二つ目の識別子を作らない。
+起こり得ることを書き、方法は書かない。
+再現手順、具体的なパラメーター、未修正経路の詳細は仕様に含めない。
 
 ## 9. 生成ビューと検証
 
-- Compile TypeSpec and validate canonical documents through the repository's specification check.
-- Compare generated OpenAPI with the released baseline for compatibility.
-- Generate OpenAPI and a multi-page, navigation-linked HTML site named `IdMagic ドキュメント` from
-  TypeSpec and the canonical Markdown. The entry point is `site/index.html`; Method, whole-system, context,
-  API, and model content are separate pages, and each canonical file is its own page reached from its
-  directory's `README.md`.
-- Include `DOCUMENTATION_GUIDE.md`, `SPECIFICATION_FORMAT.md`, and `WORK_ITEM_FORMAT.md` as the document
-  system and format references. The landing page follows the reading order in `docs/README.md`, then links
-  to development and generated references; it does not promote the methodology files as a separate starting
-  point.
-- Render the sidebar's top-level sections as disclosures. Keep every section closed on the landing page, and
-  open only the section containing the current page elsewhere. Indent every child list, including the first
-  level below a disclosure, so parent-child relationships remain visible.
-- Delegate API operation/schema presentation to an OpenAPI-native viewer over the generated OpenAPI.
-  Generate the broader model catalog from repository-owned TypeSpec model, enum, union, and scalar
-  declarations, including declarations not reachable from HTTP operations. Transport wrapper declarations
-  in `Operations` namespaces belong to the OpenAPI reference and are not duplicated in the catalog.
-- Render Mermaid fences from canonical documents and derive state diagrams from normative transition
-  tables. Scenario keywords remain plain Markdown grammar in the source and receive semantic styling in
-  the generated view.
-- Canonical documents state design and rationale inline rather than linking out to a separate decision
-  archive for it. Linking between canonical files is how the layout works; linking to `decisions/` is
-  rejected *(checked)*.
-- Never edit or treat generated HTML/OpenAPI as normative source.
+- リポジトリの仕様検査で TypeSpec をコンパイルし、一次情報文書を検証する。
+- 生成した OpenAPI とリリース済みの基準を比較し、互換性を検査する。
+- TypeSpec と一次情報の Markdown から OpenAPI と、ページ間を移動できる複数ページの HTML サイト `IdMagic ドキュメント` を生成する。
+  入口は `site/index.html` とし、開発方法、システム全体、コンテキスト、API、モデルの内容を別々のページにする。
+  各一次情報ファイルは独立したページとし、そのディレクトリの `README.md` から到達できるようにする。
+- `DOCUMENTATION_GUIDE.md`、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md` を文書体系とフォーマットの参考資料として含める。
+  ランディングページでは `docs/README.md` の読む順序に従った後、開発資料と生成資料へリンクする。
+  方法論文書を独立した別の入口として強調しない。
+- サイドバーの最上位の節を開閉要素として表示する。
+  ランディングページではすべて閉じ、それ以外のページでは現在のページを含む節だけを開く。
+  親子関係が見えるように、開閉要素直下の最初の階層を含むすべての子リストを字下げする。
+- 生成した OpenAPI の API 操作とスキーマの表示は、OpenAPI 専用のビューアーに委ねる。
+  HTTP 操作から到達できない宣言も含め、リポジトリで管理する TypeSpec のモデル、enum、union、scalar の宣言から、より広いモデルカタログを生成する。
+  `Operations` 名前空間の通信ラッパー宣言は OpenAPI リファレンスに置き、カタログでは重複させない。
+- 一次情報文書の Mermaid コードフェンスを描画し、規範となる遷移表から状態図を導出する。
+  シナリオキーワードは一次情報では通常の Markdown 文法のままにし、生成ビューで意味に応じたスタイルを付ける。
+- 一次情報文書では、設計と理由を本文に書き、別の判断記録へリンクして済ませない。
+  一次情報ファイル間のリンクは文書配置の一部だが、`decisions/` へのリンクは拒否する *(checked)*。
+- 生成した HTML と OpenAPI を編集せず、規範となる一次情報として扱わない。

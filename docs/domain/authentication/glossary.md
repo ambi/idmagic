@@ -1,6 +1,6 @@
 # Authentication の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | IdentityBroker | 外部の IdP による認証結果を検証し、テナント内のローカル User と安全に相関させて、LoginSession の発行へ引き渡す機能。 |  |
 | ExternalIdentityProvider | IdMagic にとって上流の認証権威となる OIDC Provider または SAML Identity Provider。 | 上流 IdP, 外部 IdP |

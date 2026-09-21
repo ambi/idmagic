@@ -1,6 +1,6 @@
 # IdGovernance の用語集
 
-| Term | Definition | Aliases |
+| 用語 | 定義 | 別名 |
 |---|---|---|
 | LifecycleWorkflow | テナント管理者が事前に定義し、User の作成、属性変更、`status` の遷移をトリガーとして構造化されたアクションを実行する。`draft` / `enabled` / `disabled` / `archived` のライフサイクルを持ち、有効化したリビジョンだけが新しい WorkflowRun を生成する。DAG や条件分岐は持たず、アクションは定義順の線形リストとする。 | lifecycle workflow, ライフサイクルワークフロー |
 | WorkflowTrigger | LifecycleWorkflow のリビジョンに固定する発火条件。`user_created` / `user_attributes_changed` / `user_status_changed` のいずれかの種別と、0〜20 件の型付きフィルター（`field` / `operator` / `value` の AND）からなる。User を変更した後の状態に対して評価し、属性変更の前後比較だけは変更差分を使う。 | workflow trigger, トリガー |
