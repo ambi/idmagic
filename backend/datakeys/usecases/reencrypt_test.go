@@ -139,6 +139,45 @@ func TestReencryptionHandler_ReturnsResultJSONWithoutEnqueueingWhenDone(t *testi
 	}
 }
 
+// 両テナントに鍵を用意し、拒否が鍵の不在ではなくテナントの食い違いから来ることを確かめる。
+//
+//spec:covers EX-JOBS-006-02: Job のテナントと異なるテナントを指す params を渡された再暗号化ハンドラーは、操作を拒否してどちらのテナントの行も再暗号化しない。
+func TestReencryptionHandler_RefusesParamsNamingAnotherTenant(t *testing.T) {
+	repo := newReencryptTestRepo(t)
+	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BootstrapTenantDataKey(context.Background(), Deps{Repository: repo, Crypto: envelope_crypto.NewTinkEnvelopeCrypto(master)}, "tenant-b", time.Now().UTC()); err != nil {
+		t.Fatalf("bootstrap tenant-b data key: %v", err)
+	}
+	migrators := NewMigratorRegistry()
+	migrator := &fakeReencryptMigrator{batchReturns: []int{2}}
+	migrators.Register("mfa_totp_secret", migrator)
+	jobRepo := jobsdbmemory.NewJobRepository()
+	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: jobRepo})
+
+	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-b", Migrator: "mfa_totp_secret"})
+	if err != nil {
+		t.Fatalf("marshal params: %v", err)
+	}
+	if _, err := handler(context.Background(), &jobsdomain.Job{TenantID: "tenant-a", Kind: jobsdomain.KindDataKeyReencryption, Params: params}); err == nil {
+		t.Fatal("handler accepted params naming another tenant")
+	}
+	if migrator.calls != 0 {
+		t.Fatalf("ReencryptBatch ran %d times, want none", migrator.calls)
+	}
+	for _, tenantID := range []string{"tenant-a", "tenant-b"} {
+		jobs, err := jobRepo.ListByTenantAndKinds(context.Background(), tenantID, []jobsdomain.JobKind{jobsdomain.KindDataKeyReencryption}, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(jobs) != 0 {
+			t.Fatalf("a refused run enqueued %d continuation jobs for %s", len(jobs), tenantID)
+		}
+	}
+}
+
 func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 	repo := newReencryptTestRepo(t)
 	migrators := NewMigratorRegistry()

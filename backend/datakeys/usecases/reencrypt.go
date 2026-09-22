@@ -131,6 +131,11 @@ func ReencryptionHandler(deps ReencryptDeps) func(ctx context.Context, job *jobs
 		if err := json.Unmarshal(job.Params, &p); err != nil {
 			return nil, err
 		}
+		// 実行コンテキストは Job のテナントに固定されている。params が別のテナントを
+		// 指すなら、そのテナントの行へは触れずに拒否する。
+		if p.TenantID != job.TenantID {
+			return nil, fmt.Errorf("datakeys: reencryption params name tenant %q, but the job belongs to %q", p.TenantID, job.TenantID)
+		}
 		migrated, remaining, err := ReencryptTenantField(ctx, deps, p.TenantID, p.Migrator)
 		if err != nil {
 			return nil, err
