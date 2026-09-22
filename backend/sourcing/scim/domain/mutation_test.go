@@ -72,6 +72,7 @@ func TestParseUserWriteExplicitValues(t *testing.T) {
 // canonical email へ投影する。
 //
 //spec:covers REQ-SOURCING-006: SCIM multi-valued emails は primary、work、wire order の順で
+//spec:covers EX-SOURCING-006-03, EX-SOURCING-006-04: primary がなければ大文字小文字を問わず最初の work を、work もなければ通信上で最初の要素を正規メールアドレスに選ぶ。
 func TestProjectCanonicalEmailPriority(t *testing.T) {
 	tests := []struct {
 		name   string

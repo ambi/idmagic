@@ -114,6 +114,68 @@ func TestUpdateUserFullReplace(t *testing.T) {
 	}
 }
 
+// 失敗する書き込みは、保存先が返した User を途中まで書き換えてはいけない。in-memory の
+// リポジトリは保存済みの値そのものを返すので、Save を呼ばなくても書き換えが残る。
+//
+//spec:covers EX-SOURCING-007-03: UpdateUser と PatchUser は、テナントに存在しない manager で失敗したとき、先に適用しうる userName・email・active・employeeNumber の変更も保存先へ残さない。
+func TestWriteUserRefusedByAnUnresolvableManagerLeavesTheStoredUserUnchanged(t *testing.T) {
+	unknownManager := map[string]any{"manager": map[string]any{"value": "no-such-manager"}}
+	writes := map[string]func(*usecases.Usecases, string) error{
+		"UpdateUser": func(u *usecases.Usecases, scimID string) error {
+			_, err := u.UpdateUser(context.Background(), scimTenant, scimID, map[string]any{
+				"userName": "renamed@example.com", "active": false,
+				scimdomain.EnterpriseUserSchemaURN: unknownManager,
+			})
+			return err
+		},
+		"PatchUser": func(u *usecases.Usecases, scimID string) error {
+			_, err := u.PatchUser(context.Background(), scimTenant, scimID, map[string]any{
+				"Operations": []any{
+					map[string]any{"op": "replace", "path": "userName", "value": "renamed@example.com"},
+					map[string]any{"op": "replace", "path": "active", "value": false},
+					map[string]any{"op": "remove", "path": "emails"},
+					map[string]any{"op": "replace", "path": "employeeNumber", "value": "E-9"},
+					map[string]any{"op": "replace", "path": "manager", "value": "no-such-manager"},
+				},
+			})
+			return err
+		},
+	}
+	for name, write := range writes {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			u, userRepo := newScimUsecases()
+			created, err := u.CreateUser(ctx, scimTenant, map[string]any{
+				"userName": "kept@example.com",
+				"emails":   []any{map[string]any{"value": "kept@example.com", "primary": true}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = write(u, created["id"].(string))
+			if _, ok := errors.AsType[*scimdomain.MutationError](err); !ok {
+				t.Fatalf("err=%v, want *scimdomain.MutationError", err)
+			}
+			stored, err := userRepo.FindByUsername(ctx, scimTenant, "kept@example.com")
+			if err != nil || stored == nil {
+				t.Fatalf("expected the user to keep its userName, got %v (%v)", stored, err)
+			}
+			if stored.Email == nil {
+				t.Error("email = nil, want kept@example.com")
+			} else if *stored.Email != "kept@example.com" {
+				t.Errorf("email = %q, want kept@example.com", *stored.Email)
+			}
+			if stored.Lifecycle.Status != idmdomain.UserStatusActive {
+				t.Errorf("status = %s, want %s", stored.Lifecycle.Status, idmdomain.UserStatusActive)
+			}
+			if value, exists := stored.Attributes["employee_number"]; exists {
+				t.Errorf("Attributes[employee_number] = %v, want it absent", value)
+			}
+		})
+	}
+}
+
 func TestUpdateUserNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()

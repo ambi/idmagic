@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v5"
@@ -27,6 +29,28 @@ func doScimJSON(t *testing.T, e *echo.Echo, method, tokenStr, path string, body 
 	var respBody map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &respBody)
 	return rec, respBody
+}
+
+func decodeScimBody(t *testing.T, raw []byte) map[string]any {
+	t.Helper()
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatalf("failed to decode %q: %v", raw, err)
+	}
+	return body
+}
+
+// assertScimResourceUnchanged は拒否の後に資源を読み直し、拒否の前に読んだ表現と
+// 比べる。meta.lastModified も比較に含むので、値を戻しただけの書き込みも検出する。
+func assertScimResourceUnchanged(t *testing.T, h scimHarness, tokenStr, path string, before map[string]any) {
+	t.Helper()
+	rec, after := doScimGet(t, h.echo, tokenStr, path)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("re-read %s: expected 200, got %d body=%v", path, rec.Code, after)
+	}
+	if !reflect.DeepEqual(after, before) {
+		t.Errorf("the refusal changed %s:\n before=%v\n  after=%v", path, before, after)
+	}
 }
 
 func patchOp(op, path string, value any) map[string]any {
@@ -341,9 +365,16 @@ func TestScimPatchUserEnterpriseExtension(t *testing.T) {
 }
 
 // interfaces.UpdateScimUser: PUT は完全置換 (省略した属性は既定値にリセット)。
+// 拒否の段は置換の段より先に走らせ、givenName と active=false が残った状態で
+// 変わらないことを読む。
+//
+//spec:covers EX-SOURCING-003-01: userName だけの PUT が name.givenName を空文字へ、active を true へ戻し、応答が id と meta の resourceType・created・lastModified・location を持つ。
+//spec:covers EX-SOURCING-003-02: userName のない PUT を 400 invalidValue で拒否し、読み直した User が拒否の前と同じである。
+//spec:covers EX-SOURCING-003-03: 本文の id が既存値と異なる PUT でもサーバーが割り当てた id を維持し、本文の id では User を参照できない。
 func TestScimUpdateUserFullReplace(t *testing.T) {
-	e, _, apiTokens := newScimTestHarness()
-	tokenStr := issueAllScimToken(t, apiTokens)
+	h := newScimHarness()
+	e := h.echo
+	tokenStr := issueAllScimToken(t, h.apiTokens)
 
 	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
 		"userName": "bjensen@example.com",
@@ -357,13 +388,17 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 	scimID := created["id"].(string)
 
 	t.Run("missing userName is invalidValue", func(t *testing.T) {
-		rec, body := doScimJSON(t, e, http.MethodPut, tokenStr, "/scim/v2/Users/"+scimID, map[string]any{})
+		_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
+		rec, body := doScimJSON(t, e, http.MethodPut, tokenStr, "/scim/v2/Users/"+scimID, map[string]any{
+			"name": map[string]any{"givenName": "Replaced"},
+		})
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d body=%v", rec.Code, body)
 		}
 		if body["scimType"] != "invalidValue" {
 			t.Errorf("scimType = %v, want invalidValue", body["scimType"])
 		}
+		assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 	})
 
 	t.Run("omitted mutable attributes reset to defaults", func(t *testing.T) {
@@ -386,6 +421,23 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 		}
 		if _, exists := body["emails"]; exists {
 			t.Errorf("expected omitted emails to clear canonical email, got %v", body["emails"])
+		}
+		meta, _ := body["meta"].(map[string]any)
+		if meta["resourceType"] != "User" {
+			t.Errorf("meta.resourceType = %v, want User", meta["resourceType"])
+		}
+		for _, attr := range []string{"created", "lastModified"} {
+			if value, _ := meta[attr].(string); value == "" {
+				t.Errorf("meta.%s = %v, want a timestamp", attr, meta[attr])
+			}
+		}
+		if location, _ := meta["location"].(string); !strings.HasSuffix(location, "/Users/"+scimID) {
+			t.Errorf("meta.location = %v, want it to end with /Users/%s", meta["location"], scimID)
+		}
+
+		overrideRec, _ := doScimGet(t, e, tokenStr, "/scim/v2/Users/attempted-override")
+		if overrideRec.Code != http.StatusNotFound {
+			t.Errorf("GET by the body id = %d, want 404 because the id was not reassigned", overrideRec.Code)
 		}
 	})
 
@@ -702,6 +754,7 @@ func TestScimGetSchemasReturnsRealAttributes(t *testing.T) {
 // GetScimResourceTypes は User の schemaExtensions を広告する。
 //
 //spec:covers REQ-SOURCING-007: GetScimSchemas は enterprise extension schema を、
+//spec:covers EX-SOURCING-007-01: GetScimSchemas が Enterprise 拡張スキーマを返し、GetScimResourceTypes の User エントリーが schemaExtensions にその URN を広告する。
 func TestScimEnterpriseExtensionDiscovery(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)

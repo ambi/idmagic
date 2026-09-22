@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -105,6 +106,7 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	if err != nil {
 		return nil, err
 	}
+	user = editableCopy(user)
 
 	w, err := domain.ParseUserWrite(body)
 	if err != nil {
@@ -145,6 +147,7 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	if err != nil {
 		return nil, err
 	}
+	user = editableCopy(user)
 
 	ops, err := domain.ParseUserPatchOps(body)
 	if err != nil {
@@ -252,6 +255,16 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 		setOrDeleteStringAttr(user.Attributes, "manager_sub", managerSub)
 	}
 	return nil
+}
+
+// editableCopy は保存先が返した User を、書き込みの途中で失敗しても保存先へ届かない
+// 複製にする。リポジトリによっては返す値が保存済みの値そのものなので、Save を呼ばない
+// 失敗でも書き換えが残る。書き込みがその場で変える参照型の field は Attributes だけで、
+// ポインターの field は差し替えるので浅い複製で足りる。
+func editableCopy(user *userdomain.User) *userdomain.User {
+	clone := *user
+	clone.Attributes = maps.Clone(user.Attributes)
+	return &clone
 }
 
 // ensureAttributes guarantees user.Attributes is non-nil before a sparse

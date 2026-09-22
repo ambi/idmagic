@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -68,9 +69,10 @@ func (c *scimTokenCodec) IntrospectAccessToken(_ context.Context, token string) 
 	return &oauthports.IntrospectionResult{Active: false}, nil
 }
 
-func newTestApiTokenService() *apitokenusecases.Service {
+func newTestApiTokenService(options ...apitokenusecases.Option) *apitokenusecases.Service {
 	codec := newScimTokenCodec()
-	return apitokenusecases.New(apitokenmemory.NewRepository(), apitokenusecases.WithTokenIssuer(codec), apitokenusecases.WithTokenIntrospector(codec))
+	options = append(options, apitokenusecases.WithTokenIssuer(codec), apitokenusecases.WithTokenIntrospector(codec))
+	return apitokenusecases.New(apitokenmemory.NewRepository(), options...)
 }
 
 func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
@@ -159,19 +161,23 @@ func TestScimRoutesRequireOperationScope(t *testing.T) {
 // 要求が製品側の状態に及ぼした効果、および拒否が効果を防いだことを応答の外側から
 // 読めるよう、リポジトリを公開する。
 type scimHarness struct {
-	echo      *echo.Echo
-	usecases  *usecases.Usecases
-	apiTokens *apitokenusecases.Service
-	userRepo  *usermemory.UserRepository
-	scimRepo  *scimmemory.ScimRepository
+	echo          *echo.Echo
+	usecases      *usecases.Usecases
+	apiTokens     *apitokenusecases.Service
+	userRepo      *usermemory.UserRepository
+	groupRepo     *groupmemory.GroupRepository
+	scimRepo      *scimmemory.ScimRepository
+	authenticator *support.Authenticator
 }
 
-func newScimHarness() scimHarness {
+// tokenOptions は API トークンの検証側へ渡す。失効や期限切れを観測するテストが
+// 時計を差し替えるために使う。
+func newScimHarness(tokenOptions ...apitokenusecases.Option) scimHarness {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
-	apiTokens := newTestApiTokenService()
+	apiTokens := newTestApiTokenService(tokenOptions...)
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo}
@@ -179,7 +185,10 @@ func newScimHarness() scimHarness {
 
 	e := echo.New()
 	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
-	return scimHarness{echo: e, usecases: usecasesInst, apiTokens: apiTokens, userRepo: userRepo, scimRepo: scimRepo}
+	return scimHarness{
+		echo: e, usecases: usecasesInst, apiTokens: apiTokens,
+		userRepo: userRepo, groupRepo: groupRepo, scimRepo: scimRepo, authenticator: authenticator,
+	}
 }
 
 // newScimTestHarness wires the SCIM HTTP handler against in-memory
@@ -468,6 +477,9 @@ func TestScimListUsersDateTimeFilterAndURNPrefix(t *testing.T) {
 	})
 }
 
+// 作成・無効化・削除の各段で、応答ではなく内部 User の lifecycle を読み直す。
+//
+//spec:covers EX-SOURCING-002-01: CreateScimUser で内部 User が Active で作られ、PatchScimUser の active=false で Disabled、DeleteScimUser で PendingDeletion へ遷移する。
 func TestScimInboundProvisioning(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
@@ -643,6 +655,9 @@ func TestScimInboundProvisioning(t *testing.T) {
 	}
 }
 
+// メンバーシップは保存先から、有効ロールは認可が使う Authenticator から読む。
+//
+//spec:covers EX-SOURCING-005-01: CreateScimGroup でグループを作り、PatchScimGroup のメンバー追加と削除が GroupMembership と User の有効ロールへ届き、応答のメンバーが type=User を持つ。
 func TestScimGroupSync(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
@@ -709,6 +724,17 @@ func TestScimGroupSync(t *testing.T) {
 		if len(members) != 1 || members[0].UserID != user1Sub {
 			t.Fatalf("expected member user1, got %v", members)
 		}
+
+		// SCIM はグループのロールを運ばない。管理者がロールを割り当てた後の
+		// メンバー変更が、有効ロールへ届くかを次の段で読む。
+		group, err := groupRepo.FindByID(ctx, tenancydomain.DefaultTenantID, ref.GroupID)
+		if err != nil || group == nil {
+			t.Fatalf("setup: find group: %v (%v)", group, err)
+		}
+		group.Roles = []string{"engineer"}
+		if err := groupRepo.Save(ctx, group); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// 3. グループメンバーシップ PATCH (Add user2, Remove user1)
@@ -749,6 +775,30 @@ func TestScimGroupSync(t *testing.T) {
 		members, _ := groupRepo.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, ref.GroupID)
 		if len(members) != 1 || members[0].UserID != user2Sub {
 			t.Fatalf("expected member user2, got %v", members)
+		}
+
+		var patched map[string]any
+		_ = json.Unmarshal(rec.Body.Bytes(), &patched)
+		responseMembers, _ := patched["members"].([]any)
+		if len(responseMembers) != 1 {
+			t.Fatalf("response members = %v, want one member", patched["members"])
+		}
+		if member, _ := responseMembers[0].(map[string]any); member["type"] != "User" {
+			t.Errorf("response member type = %v, want User", member["type"])
+		}
+
+		for _, tc := range []struct {
+			sub      string
+			wantRole bool
+		}{{sub: user2Sub, wantRole: true}, {sub: user1Sub, wantRole: false}} {
+			user, err := userRepo.FindBySub(ctx, tc.sub)
+			if err != nil || user == nil {
+				t.Fatalf("find %s: %v (%v)", tc.sub, user, err)
+			}
+			roles := authenticator.EffectiveRoles(ctx, user)
+			if got := slices.Contains(roles, "engineer"); got != tc.wantRole {
+				t.Errorf("%s effective roles = %v, want engineer present=%v", tc.sub, roles, tc.wantRole)
+			}
 		}
 	}
 }
