@@ -93,4 +93,4 @@ reason = "何が到達しないのか、あるいはなぜ今は上げられな�
 
 配った成果物が本当に私たちの作ったものかという**真正性** (SBOM、署名、provenance) は別の面です。両方が要ります。真正性を証明できても、その中身に既知の脆弱性が入っていれば検知の失敗です。逆に、検知が緑でも、配布経路で差し替えられていれば真正性の失敗です。
 
-真正性の方針はまだ書かれていません。[Deployment Architecture](docs/architecture/deployment.md) が置き場になりますが、現時点では署名鍵の取り扱いしかありません。SBOM の生成、cosign 署名、SLSA provenance は未着手です。
+真正性の方針はまだ書かれていません。[Deployment Architecture](docs/design/architecture/deployment.md) が置き場になりますが、現時点では署名鍵の取り扱いしかありません。SBOM の生成、cosign 署名、SLSA provenance は未着手です。

@@ -18,7 +18,7 @@ Context を跨いで固定されるもの。
 
 ## Bounded Context
 
-Context の一覧と Subdomain の区分は[論理アーキテクチャ](../architecture/logical.md#context-map)に記録する。
+Context の一覧と Subdomain の区分は[論理アーキテクチャ](../design/architecture/logical.md#context-map)に記録する。
 ここに一覧を複製すると、Context を足したときに片方が古くなる。
 
 各 Context のディレクトリには同じ 7 文書を置く。

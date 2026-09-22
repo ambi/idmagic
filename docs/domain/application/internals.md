@@ -1,6 +1,6 @@
 # Application の内部設計
 
-## Assignment as a desired state, not a command
+## コマンドではなく望ましい状態としての割り当て
 
 割り当ての作成と解除は、呼び出し元の Bounded Context (IdManagement の LifecycleWorkflow など) が「こうあるべき」という状態を渡す形をとる。HTTP には公開せず、同じプロセス内の Go 呼び出しとして各 Context のユースケースから使う。
 
@@ -8,7 +8,7 @@
 
 呼び出し元が渡せるのは同じテナント内の識別子だけである。内部インターフェースであっても、テナント境界を呼び出し元の作法に委ねない。
 
-## Sign-in policy evaluation
+## サインインポリシーの評価
 
 ApplicationCatalog は、テナントとアプリケーションごとに順序付けた `SignInRule` の集合を `AppSignInPolicy` として持つ。OIDC の認可、SAML の SSO、WS-Fed のサインインなど、フェデレーションを開始するたびにトークンや Assertion の発行前に評価する。アプリケーションとプロトコル設定の関連付けを確認するのと同じ関門で評価するため、別のプロトコルを入口に選んでもポリシー評価を迂回できない。設定できるのは評価器が実際に確認できる値だけである。
 
@@ -18,7 +18,7 @@ ApplicationCatalog は、テナントとアプリケーションごとに順序�
 
 評価はすべてフェイルクローズで行う。OIDC は認証強度不足の結果を既存のステップアップ認証フローへ送れる。一方、SAML と WS-Fed には遷移先となるステップアップ認証機構がまだないため、明示的な拒否理由を付けてプロトコルトランザクションを直ちに停止する。空でない CIDR 許可リストにクライアント IP が一致しない場合や、リクエスト元のクライアント IP を特定できない場合は、ステップアップ認証の機会とはせず、無条件に拒否する。
 
-## Tenant default policy composition
+## テナントデフォルトポリシーの構成
 
 `TenantDefaultSignInPolicy` により、テナントは独自のポリシーを定義していないすべてのアプリケーションに対して、基準となるサインインポリシーを 1 つ設定できる。アプリケーションごとのポリシーと同じ `SignInRule` の語彙と評価器を使用し、別のポリシー言語は設けない。これはテナント Aggregate ではなくアプリケーションへのサインイン方法に関する概念なので、`Tenancy` ではなく ApplicationCatalog に属する。
 
@@ -26,7 +26,7 @@ ApplicationCatalog は、テナントとアプリケーションごとに順序�
 
 上書きによってアプリケーションはテナントのデフォルトより弱いポリシーを設定できるため、`AppSignInPolicyResponse` は `weaker_than_default` フラグを持つ。要求する認証強度を下げる、再認証の時間制限を緩めるか外す、許可ネットワークを広げる、デフォルトが禁じている信頼済みデバイスによる充足を許す場合に、`AppPolicyWeakerThanDefault(default, app)` がこの値を算出する。保存を禁止するのではなく、UI に警告を表示する。新しいテナントは規則が空の、すべてを許可するデフォルトから始める。デフォルトは通常のテーブル行として保存するので、規則を空にするか行を削除すれば、スキーマを変更せずにすべてを許可する状態へ戻せる。
 
-## Application/protocol relation
+## アプリケーションとプロトコルの関係
 
 Application に関連付けるプロトコル設定は最大 1 つとし、作成時に固定する。`weblink` アプリケーションにはプロトコル設定を関連付けず、`federated` と `service` のアプリケーションには、OAuth2 クライアント、SAML SP、WS-Federation RP のいずれか 1 つだけを関連付ける。作成後の再接続、切り離し、プロトコル種別の変更には対応しない。
 
@@ -36,6 +36,6 @@ Application に関連付けるプロトコル設定は最大 1 つとし、作�
 
 OAuth2 のプロトコルテーブルは `oauth2_clients` とする。SAML と WS-Fed のテーブル（`saml_service_providers`、`wsfed_relying_parties`）と同様に、プロトコル固有の標準用語を使う。
 
-## Portal application ordering and category
+## ポータルでのアプリケーションの順序と分類
 
 ApplicationCatalog は、エンドユーザーポータルでの手動の並び順と、管理者が定義するカテゴリの両方を扱う。どちらも IdentityManagement の User Aggregate ではなく、`Application` の表示に関する概念だからである。手動の並び順は `ApplicationOrdering` として、`(tenant_id, user_sub)` ごとの `application_id` の一覧で表す。`ListMyApplications` は、割り当て済みで可視かつ有効なアプリケーションを解決してから保存済みの並び順を適用する。割り当てが外れた項目は除外し、保存済みの一覧にない割り当て済みアプリケーションは名前順で末尾に加える。並び順が保存されていない場合は、すべてを名前の昇順に並べる。このため、割り当てが並行して変わっても一覧は壊れない。`ReorderMyApplications` は並び順の一覧を作成または更新するだけであり、個人の表示設定なのでドメインイベントを発行しない。カテゴリはテナントごとに管理者が定義し、Application ごとに 0 個以上を割り当てる。

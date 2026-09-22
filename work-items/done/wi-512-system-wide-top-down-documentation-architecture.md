@@ -47,7 +47,7 @@ spec_impact:
 
 `DOCUMENTATION_GUIDE.md` §1 はアーキテクチャ文書や品質要件文書を設けないと定め、§2 は現在の仕様と設計を直下へ配置し、`architecture/` などの階層を禁止している。`SPECIFICATION_FORMAT.md` と文書検査もこの平坦な配置を前提にする。トップダウンの体系を導入するには、これらの規則と実際の文書を一緒に変更する必要がある。
 
-インフラに関する情報がすべて欠落しているわけではない。`docs/architecture/deployment.md` には実行単位、水平拡張、共有状態、ヘルスチェックがあり、`docs/design/performance/capacity.md` には品質目標と容量の前提がある。ただし、`docs/design/observability/README.md` は相関、指標、ログをまとめ、監視基盤自体の設計や運用の責任分界へ進む導線が弱い。ガイドが SLO と復旧目標の正本に指定する `reliability.md` と `recovery.md` は実際の直下文書にも許可ファイル集合にもなく、ガイドとリポジトリの配置も一致していない。
+インフラに関する情報がすべて欠落しているわけではない。`docs/design/architecture/deployment.md` には実行単位、水平拡張、共有状態、ヘルスチェックがあり、`docs/design/performance/capacity.md` には品質目標と容量の前提がある。ただし、`docs/design/observability/README.md` は相関、指標、ログをまとめ、監視基盤自体の設計や運用の責任分界へ進む導線が弱い。ガイドが SLO と復旧目標の正本に指定する `reliability.md` と `recovery.md` は実際の直下文書にも許可ファイル集合にもなく、ガイドとリポジトリの配置も一致していない。
 
 本項目の成果は、新しい目次の提案に加えて、ガイドへの反映、既存文書の移行、根拠のある不足記述の補完、継続して検査できる状態までとする。「完璧な構成」は、対象システムに適用する関心事の担当が一意に決まり、親要求から設計と検証をたどれ、欠落と未確定事項が識別できる構成として検証する。
 
@@ -237,8 +237,8 @@ work-items/                         # 変更固有の分析、計画、証拠、
 | `docs/design-rules.md` | 全節 | `docs/design/application/design-rules.md` |
 | `docs/capacity.md` | Evidence classes、Measurement boundary、Service level objectives | `docs/requirements/quality.md` |
 | `docs/capacity.md` | Reference operating profile、Peak request profile、Sizing rules、Degradation order | `docs/design/performance/capacity.md` |
-| `docs/deployment.md` | Runtime units、Domain event delivery | `docs/architecture/runtime.md` |
-| `docs/deployment.md` | Horizontal scaling reference topology | `docs/architecture/deployment.md` と `docs/design/performance/scaling.md` |
+| `docs/deployment.md` | Runtime units、Domain event delivery | `docs/design/architecture/runtime.md` |
+| `docs/deployment.md` | Horizontal scaling reference topology | `docs/design/architecture/deployment.md` と `docs/design/performance/scaling.md` |
 | `docs/deployment.md` | Load shedding under saturation、Endpoint rate limiting | `docs/design/performance/scaling.md` |
 | `docs/deployment.md` | Health probes and graceful drain、Availability and shared state | `docs/design/reliability/availability.md` |
 | `docs/deployment.md` | HTTP server hardening、Security response headers | `docs/design/security/threat-model.md` と `docs/design/infrastructure/network.md` |

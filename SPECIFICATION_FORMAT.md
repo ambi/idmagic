@@ -14,7 +14,7 @@
 
 ```text
 docs/
-  README.md                     # システム文書の入口と読む順序
+  README.md                     # システム文書の入口
   domain/
     README.md                   # ドメイン文書の境界とコンテキスト索引
     glossary.md                 # 公開言語
@@ -31,19 +31,18 @@ docs/
       scenarios.feature.md
   requirements/
     README.md
+    product-overview.md         # 目的、利用者、利用場面、システムの範囲
     functional.md
     quality.md
-    constraints.md
-  architecture/
-    README.md
-    system-context.md
-    logical.md
-    runtime.md
-    deployment.md
-    decisions.md
   design/
     README.md
-    product-overview.md         # 目的、利用者、利用場面、システムの範囲
+    architecture/
+      README.md
+      system-boundary.md
+      logical.md
+      runtime.md
+      deployment.md
+      decisions.md
     application/
       README.md
       api-guidelines.md
@@ -77,10 +76,10 @@ docs/
       monitoring.md
       logging.md
       tracing.md
-  verification/
-    README.md
-    system-acceptance.md
-    security.md
+    verification/
+      README.md
+      system-acceptance.md
+      security.md
   development/                  # 開発ワークフローと手順
   operations/
     README.md
@@ -96,15 +95,12 @@ spec/
   contexts/<context>/{models.tsp,main.tsp}
 ```
 
-システム文書の木は、目的、要件、アーキテクチャ、詳細設計、検証、運用の順で読む。
-これは担当範囲と案内の順序であり、一方向に一度だけ進むライフサイクルではない。
-実現可能性と検証から得た知見は、対応する要件と設計へ戻す。
 品質要件は `requirements/` で一度だけ宣言し、アーキテクチャで割り当て、該当する設計文書で実現方法を説明する。
 
 固定された各設計ディレクトリには、その範囲、対象外、子要素、隣接する設計を宣言する `README.md` を置く。
 その配下には、文書配置で責務を定義したファイルだけを置ける。
 手順と変更通知は現在状態のシステム設計の種類ではないため、`docs/development/`、`docs/runbooks/`、`docs/releases/` は開いた集合とする。
-`docs/operations/` と `docs/verification/` は別の場所にある手順や証拠へリンクするが、固定された設計文書の集合である。
+`docs/operations/` と `docs/design/verification/` は別の場所にある手順や証拠へリンクするが、固定された設計文書の集合である。
 
 読者がディレクトリを開いたとき最初に到達するファイルが `README.md` であるため、ここに境界の宣言と子要素の索引を書く。
 内容のないファイルは作らず、該当しない事項とその理由を親の索引へ記録する。

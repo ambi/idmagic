@@ -95,7 +95,8 @@ const RELOCATED_DOCUMENTS = new Map([
   ['docs/standards.md', 'docs/domain/standards.md'],
   ['docs/structure.md', 'docs/domain/structure.md'],
   ['docs/scenarios.feature.md', 'docs/domain/scenarios.feature.md'],
-  ['docs/product-overview.md', 'docs/design/product-overview.md'],
+  ['docs/product-overview.md', 'docs/requirements/product-overview.md'],
+  ['docs/design/product-overview.md', 'docs/requirements/product-overview.md'],
 ])
 
 function currentPath(path: string): string {

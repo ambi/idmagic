@@ -21,7 +21,7 @@ initial_context:
     - docs/development/coding-style.md
     - docs/development/testing.md
     - docs/design/application/design-guidelines.md
-    - docs/architecture/deployment.md
+    - docs/design/architecture/deployment.md
     - docs/design/infrastructure/platform.md
     - docs/design/observability/logging.md
     - docs/design/reliability/availability.md
@@ -69,7 +69,7 @@ spec_impact:
 
 - 上表の 4 件について、事実ごとに一次情報源を一つ決め、他の場所を参照へ置き換える。
 - `deployment.md` と `platform.md` の「プロファイルごとの構成」の担当を分け、どちらが何を述べるかを両文書の冒頭に書く。
-- 決めた担当を、`docs/design/infrastructure/platform.md` の「対象範囲」と `docs/architecture/deployment.md` の「関連文書」へ反映する。
+- 決めた担当を、`docs/design/infrastructure/platform.md` の「対象範囲」と `docs/design/architecture/deployment.md` の「関連文書」へ反映する。
 
 ## Out of Scope
 

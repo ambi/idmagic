@@ -99,15 +99,16 @@ export async function checkDocuments(
   const contextDirectories = listings
     .filter((listing) => listing.directory.startsWith('docs/domain/'))
     .map((listing) => listing.directory.slice('docs/domain/'.length))
-  if (snapshot.exists('docs/architecture/logical.md')) {
+  if (snapshot.exists('docs/design/architecture/logical.md')) {
     const classifications = verifySubdomainClassification(
-      await snapshot.read('docs/architecture/logical.md'),
+      await snapshot.read('docs/design/architecture/logical.md'),
       contextDirectories,
     )
     failed ||= classifications.length > 0
     lines.push(
       ...classifications.map(
-        (finding) => `fail  docs/architecture/logical.md:${finding.line}: ${finding.message}`,
+        (finding) =>
+          `fail  docs/design/architecture/logical.md:${finding.line}: ${finding.message}`,
       ),
     )
   }

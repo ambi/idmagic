@@ -1,6 +1,6 @@
 # Tenancy の内部設計
 
-## Tenant resolution
+## テナントの解決
 
 **1 テナント = 1 正規ロケーション = 1 発行者。** テナントは `endpoint_style` が指す正規ロケーションからだけ到達でき、もう一方の経路では不在として扱う。同一テナントへ 2 つのオリジンから到達できると発行者が一意に定まらず、Discovery Metadata の `issuer` が取得元 URL と一致しなくなる (OpenID Connect Discovery 1.0 §4.3 / RFC 8414 §3.3 違反)。この 1 対 1 が、以下の解決規則が守っているものである。
 
@@ -18,13 +18,13 @@
 
 `Subdomain` を選べるのはデプロイ時に基底ドメインを設定した場合だけであり、設定しないデプロイ先は `Path` のままでワイルドカード DNS も証明書も要らない。`realm` は変更できるが、発行者にも `Subdomain` ではホスト名にも現れるため、その変更は `endpoint_style` の変更と同じく既存クライアントとの互換性を壊す。RP の再設定、既存パスキーの再登録、進行中のセッションの終了を伴うので、アイデンティティの移行として計画する。
 
-## Tenant identity: UUID key and realm slug
+## テナント識別子：UUID キーと realm slug
 
 `tenants` は、不変の代理キー `id UUID` と、変更可能で一意な識別子 `realm TEXT` を持つ。これにより、組織名やブランド名の変更、綴りの訂正で realm を改名しても、他のテーブルの `tenant_id` 外部キーは変更せずに済む。URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に公開する識別子には `realm` を使い、`tenant_id` 外部キー列、`spec.DefaultTenantID`、Context 内の `TenantID` など内部参照には UUID を使う。解決ミドルウェアが `FindByRealm(realm)` で両者を対応付け、管理 API は URL の `realm` をユースケースの呼び出し前に UUID へ解決する。
 
 デフォルトテナントを表す 2 つの定数も同じ分離に従う。`spec.DefaultTenantID` は固定の UUID であり、IdMagic が生成する ID の列が全体を通じて UUID 型であることと整合する。`spec.DefaultRealm` は文字列 `"default"` であり、テナントを URL に表す箇所だけで使う。`tenants(id)` を参照する外部キー列は UUID 型とし、`tenant_id` に SQL のデフォルト値は持たせない。すべての挿入で `tenant_id` を明示しなければならず、値が欠けた場合はデフォルトテナントへ黙って混入させず、明確に失敗させる。これはリポジトリ全体の [`tenant_id` retention classes](../../design/data/database.md#tenant_id-の保持区分) 方針をさらに厳しくした例である。`tenants` への外部キーを持たない追記専用テーブル、または不透明なキーを持つテーブル（`audit_events.tenant_id`、`authentication_event_buckets.tenant_id`）では、`tenant_id` を `UUID` ではなく `TEXT` のままにする。テナントに属さない監査イベントには、UUID 列で自然に表せない番兵値が必要なためである。
 
-## Tenant security policy overrides
+## テナント単位のセキュリティポリシー上書き
 
 `Tenant` に設定するセキュリティポリシーの上書きは、デプロイ全体のプロダクトデフォルトを緩めず、厳しい方向にだけ働く。パスワードポリシーでは最小長と履歴件数を下げず最大長を上げない。Token Exchange の `max_delegation_depth` ではシステムデフォルトの 3 を超えて上げず、未設定なら 3 を継承する。管理 API の `0` は委譲を全面禁止する値ではなく、上書きを解除して SQL の `NULL` へ戻す操作として扱う。設定取得では現在の任意上書きとシステムデフォルトを別々に返し、管理 UI が継承状態と実効値を区別できるようにする。
 
@@ -32,7 +32,7 @@
 
 OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返す小さなポートに依存する。`oauth2/policy_tenancy` アダプターがこのポートを `Tenant` の実効値へ接続する。上書きを読めないときにシステムデフォルトへ退避すると、テナントが意図して下げた認可境界を黙って広げるため、解決失敗では Token Exchange を拒否する。
 
-## Tenant branding
+## テナントのブランド設定
 
 `TenantBranding` は `Tenant` に埋め込まず、`tenant_id` をキーとする独立したエンティティとする。独立して更新される外観設定によって、認可と realm 解決が依存する中核の `Tenant` Aggregate を肥大化させないためである。設定項目は、プロダクト名、ロゴ、ファビコン、2 つのブランドカラー、サポート導線、法務導線、フッター文言に限る。任意の CSS、HTML、スクリプト、背景画像は受け付けない。
 
@@ -40,7 +40,7 @@ OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返
 
 ロゴとファビコンには、Application アイコンと同じ検証処理を使う。先頭バイト、サイズ、形式を検証し、`nosniff` を付けて配信する。検証処理は `backend/shared/mediavalidation` で共有するが、保存先は専用の `tenant_branding_assets` テーブルとし、管理は Tenancy に残す。`GetTenantBranding` は、設定やアセットが欠けていてもシステムデフォルトへフォールバックし、ログイン画面を失敗させない。更新時は `updated_at` を進め、公開レスポンスではキャッシュ版または ETag として使う。`tenant_id` は URL の一部なので、テナント間でキャッシュを混同せずに古い外観を無効化できる。
 
-## Tenant resource quotas
+## テナントのリソース上限
 
 リソースの作成にはテナントごとの上限を設ける。共有基盤上で、負荷の高い、または暴走した 1 つのテナントが及ぼす影響範囲を抑えるためである。上限は強制方法によって 2 つに分かれる。**Hard** の上限（`users`、`groups`、`agents`、`applications`、`oauth2_clients`、`active_sessions`、`consents`、`active_jobs`、`ssf_streams`）は作成トランザクション内で同期的に確認し、超過していれば操作を拒否する。**Soft** の上限（`audit_events_retained`、`export_artifacts_bytes`）は操作を成功させ、代わりに非同期の警告と監査イベントを発行する。Hard の上限はデータベースの枯渇を防ぎ、Soft の上限は記録の欠落を避けながら長期的な蓄積を検知する。
 
@@ -48,7 +48,7 @@ OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返
 
 既存テナントへ初めて上限を適用する際は、現在の使用量を下回って直ちに操作を拒否しないよう、十分な余裕を持つ値を割り当てる。たとえば現在の使用量の 2 倍またはデフォルトの 10 倍を使う。その後、バックグラウンドの照合ジョブで使用量カウンターと実際の行数を一致させてから、System Admin が意図した値へ上限を引き下げる。
 
-## Notification template catalog and locale resolution
+## 通知テンプレートカタログとロケール解決
 
 通知メールの内容は、システムが同梱する日本語と英語の組み込みカタログと、必要に応じた `(tenant_id, template_key, locale)` ごとの上書きという 2 段階で解決する。版の履歴は持たず、`ResetNotificationTemplate` は常に既知の正常な組み込み文面へ戻す。`template_key` は仕様で定める固定の列挙であり、テナントは追加できない。各キーは 1 つの送信経路に対応し、送信元のないテンプレートは作成できない。
 

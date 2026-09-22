@@ -1,6 +1,6 @@
 # System の内部設計
 
-## Feature registry and resolution
+## 機能レジストリと解決
 
 `FeatureDefinition` は `FeatureID`、`FeatureVersion`、`FeatureMaturity`、`DefaultEnablement`、依存する `FeatureID`、`UpdatePolicy`、任意の `SpecificationReference` を持つ不変値である。composition root が静的な `FeatureRegistry` を渡し、設定ファイルやデータベースから機能の定義を増やさない。registry の検証は識別子と未版名の重複、存在しない依存、循環、不正なデフォルト有効化をすべて集約して返す。
 
@@ -8,7 +8,7 @@
 
 解決結果は、有効な `FeatureDefinition`、起動警告、版付きの運用メタデータを一度に返す。設定リファレンスと `/health` はこの registry と解決結果から導出し、手書きの機能一覧は設けない。警告と運用メタデータは識別子、版、成熟度、更新方針だけを含み、環境変数の生値を含まない。
 
-## Admission control
+## アドミッションコントロール
 
 アドミッションコントロールは 1 プロセスの中で完結し、他のレプリカとも共有ストアとも通信しない。保証しているのは次の 3 つである。
 
@@ -22,7 +22,7 @@
 
 上限は起動時設定から入り、実行中は変わらない。したがって縮退の強さを変えるには再起動が要る。設定を実行中に変えられるようにしていないのは、飽和している最中に閾値を変える操作そのものが、原因の切り分けを難しくするためである。
 
-## Authorization transaction
+## 認可トランザクション
 
 OAuth の認可要求は、その内容を丸ごとサーバー側に保持する。ブラウザーへ渡すのは、短命な内部 UUID を載せたトランザクション Cookie (`HttpOnly`、`SameSite=Lax`、HTTPS では `Secure`) だけである。リダイレクト URI、PKCE 値、スコープ、クライアント識別子は、HTML にも URL にも JavaScript から読める状態にも現れない。これが、ログイン画面と同意画面を描く JavaScript を差し替えられても、認可要求そのものは書き換えられないことの根拠である。
 
@@ -30,11 +30,11 @@ SPA が `GET /api/auth/transaction` で取得できるのは、画面の種類�
 
 認可リクエストは 10 分で期限切れとなり、完了したリクエストは再利用できない。UI API のレスポンスには `Cache-Control: no-store` を付け、資格情報も内部のリクエスト ID も返さない。
 
-## API boundary
+## API 境界
 
 入口は 4 つに分かれ、それぞれ別の認可を通る。ブラウザー向け認証 API は `/api/auth/*`、管理 API は `/api/admin/*`、セルフサービス API は `/api/account/*` に置き、OAuth / OIDC のプロトコルエンドポイントは各標準が定めるパスを保つ。この配置によって、管理 API とセルフサービス API の認可をログイントランザクション API から分離する。ログインの途中であることは管理操作の権限に影響しない。
 
-## Admin console and account portal as OIDC RPs
+## OIDC RP としての管理コンソールとアカウントポータル
 
 管理コンソール (`/admin/*`) とアカウントポータル (`/account/*`) は IdP 自身の OIDC RP である。IdP の `/authorize` と `/token` に対する `authorization_code` + PKCE で認証し、管理用の `…0022` とアカウント用の `…0023` という固定 UUID の `client_id` を持つファーストパーティーのパブリッククライアントとして登録する。リソース所有者が IdP 自身のユーザーなので、同意画面は省略する。
 

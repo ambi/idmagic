@@ -1,6 +1,6 @@
 # Jobs の内部設計
 
-## Execution lanes
+## 実行レーン
 
 `JobKind` はちょうど 1 つの `ExecutionLane` (`latency_sensitive`、`default`、`bulk`) を持ち、`domain.RegisterKind(kind, lane)` による登録の時点で固定される。投入する呼び出し元はレーンを指定できず、`Job.Lane` は種別の登録から導かれる。
 
@@ -8,7 +8,7 @@
 
 各レーンは独自の並行数上限を持つ独立した `Runner` を備え、空いている実行枠の数だけジョブを一括取得して、ハンドラーを並行実行する（デフォルトは 4 枠）。1 つのプロセスで複数レーンの `Runner` を同時に起動することもでき、これは `JOB_WORKER_LANES` が未設定の場合の互換動作である。本番のデフォルトは、1 つのレーンの `Runner` だけを持つ専用の Deployment を並べる構成であり、`infra/k8s/base/worker.yaml` が `idmagic-worker-{latency-sensitive,default,bulk}` の 3 つを定義する。
 
-## Claim and lease
+## 取得とリース
 
 取得は自分のレーンに限り、実行時刻に達した `queued` のジョブと、リースが切れた `running` のジョブを対象にする。PostgreSQL では `WHERE lane = $lane AND (...) ORDER BY run_at FOR UPDATE SKIP LOCKED` を同じ文の `running` への更新と組み合わせるため、2 つの `worker` が同じジョブに対して有効なリースを同時に持つことはない。
 
@@ -16,13 +16,13 @@
 
 同じ作業が二重に積まれることは、投入の側でも防げる。`dedup_key` を伴う投入は、`(tenant_id, dedup_key)` に一致する未終端のジョブがあれば新しく作らず既存の参照を返す。この一意性はアプリケーションの検査ではなく部分一意インデックスが保証するので、同時に投入した 2 つの要求のうち片方だけが行を作る。
 
-## Retry and dead-letter
+## 再試行とデッドレター
 
 失敗したジョブは指数的に後ろ倒しした `run_at` とともに `queued` へ戻り、`max_attempts` に達すると `failed` として確定する。取得の間隔、プロセス内の並行度、リース、再試行の間隔はプロセス全体の設定である（`JOB_POLL_INTERVAL`、`JOB_WORKER_CONCURRENCY`、`JOB_LEASE_DURATION`、`JOB_BACKOFF_BASE`、`JOB_BACKOFF_CAP`）。JobKind ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない。
 
 SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期間まで実行中のハンドラーを待つ。猶予期間の後は終了し、回復は明示的な再投入ではなくリースの自然な期限切れによって起こる。
 
-## Boundary with scheduled batch
+## 定期バッチとの境界
 
 全テナントを対象とする定期的な保持期間の処理と署名鍵のライフサイクルの処理は、永続ジョブに混ぜず、外部のスケジューラーが `idmagic-batch` を 1 回限りで起動する。
 

@@ -10,12 +10,12 @@ const rule = (term: string): TerminologyRule => {
 describe('用語検査', () => {
   it('採らない表記を、行と採用語つきで指摘する', () => {
     const findings = verifyTerminology([
-      { file: 'docs/architecture/deployment.md', source: '# 概要\n\n配備の不変条件。\n' },
+      { file: 'docs/design/architecture/deployment.md', source: '# 概要\n\n配備の不変条件。\n' },
     ])
 
     expect(findings).toEqual([
       {
-        file: 'docs/architecture/deployment.md',
+        file: 'docs/design/architecture/deployment.md',
         line: 3,
         column: 1,
         term: '配備',
@@ -29,7 +29,7 @@ describe('用語検査', () => {
     expect(
       verifyTerminology([
         {
-          file: 'docs/architecture/deployment.md',
+          file: 'docs/design/architecture/deployment.md',
           source: 'デプロイメントアーキテクチャは共通トポロジーを持つ。\n',
         },
       ]),
@@ -53,10 +53,14 @@ describe('用語検査', () => {
   // 判定されないと、採用した表記そのものが毎回落ちる。
   it('採用語が採らない表記を含む場合でも、採用語を落とさない', () => {
     expect(
-      verifyTerminology([{ file: 'docs/architecture/deployment.md', source: '共通トポロジー\n' }]),
+      verifyTerminology([
+        { file: 'docs/design/architecture/deployment.md', source: '共通トポロジー\n' },
+      ]),
     ).toEqual([])
     expect(
-      verifyTerminology([{ file: 'docs/architecture/deployment.md', source: '共通トポロジ\n' }]),
+      verifyTerminology([
+        { file: 'docs/design/architecture/deployment.md', source: '共通トポロジ\n' },
+      ]),
     ).toHaveLength(1)
   })
 
@@ -65,7 +69,7 @@ describe('用語検査', () => {
   it('構成の名前としての「参照」だけを対象にする', () => {
     const findings = verifyTerminology([
       {
-        file: 'docs/architecture/deployment.md',
+        file: 'docs/design/architecture/deployment.md',
         source: '参照トポロジーと参照プロファイルは、別の文書を参照する。\n',
       },
     ])

@@ -13,8 +13,8 @@ describe('verifySubdomainClassification', () => {
     expect(
       verifySubdomainClassification(
         readme(
-          '| [Demo](../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
-          '| [Other](../domain/other/README.md) | Generic | `backend/other` | Other. |',
+          '| [Demo](../../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
+          '| [Other](../../domain/other/README.md) | Generic | `backend/other` | Other. |',
         ),
         ['demo', 'other'],
       ),
@@ -25,9 +25,9 @@ describe('verifySubdomainClassification', () => {
     expect(
       verifySubdomainClassification(
         readme(
-          '| [A](../domain/a/README.md) | Core | `backend/a` | A. |',
-          '| [B](../domain/b/README.md) | Supporting | `backend/b` | B. |',
-          '| [C](../domain/c/README.md) | Generic | `backend/c` | C. |',
+          '| [A](../../domain/a/README.md) | Core | `backend/a` | A. |',
+          '| [B](../../domain/b/README.md) | Supporting | `backend/b` | B. |',
+          '| [C](../../domain/c/README.md) | Generic | `backend/c` | C. |',
         ),
         ['a', 'b', 'c'],
       ),
@@ -46,7 +46,7 @@ describe('verifySubdomainClassification', () => {
       '',
       '| 仕様上の Context | Go パッケージ | 責務 |',
       '| --- | --- | --- |',
-      '| [Demo](../domain/demo/README.md) | `backend/demo` | Demo. |',
+      '| [Demo](../../domain/demo/README.md) | `backend/demo` | Demo. |',
       '',
     ].join('\n')
     const findings = verifySubdomainClassification(source, ['demo'])
@@ -58,7 +58,7 @@ describe('verifySubdomainClassification', () => {
 
   it('rejects a value outside Core, Supporting, and Generic', () => {
     const findings = verifySubdomainClassification(
-      readme('| [Demo](../domain/demo/README.md) | Essential | `backend/demo` | Demo. |'),
+      readme('| [Demo](../../domain/demo/README.md) | Essential | `backend/demo` | Demo. |'),
       ['demo'],
     )
     expect(findings).toHaveLength(1)
@@ -68,7 +68,7 @@ describe('verifySubdomainClassification', () => {
 
   it('rejects an empty classification cell', () => {
     const findings = verifySubdomainClassification(
-      readme('| [Demo](../domain/demo/README.md) |  | `backend/demo` | Demo. |'),
+      readme('| [Demo](../../domain/demo/README.md) |  | `backend/demo` | Demo. |'),
       ['demo'],
     )
     expect(findings).toHaveLength(1)
@@ -79,7 +79,7 @@ describe('verifySubdomainClassification', () => {
   // 止めたい主な失敗である。分類の欠落と同じ重さで報告する。
   it('rejects a context directory the index table does not list', () => {
     const findings = verifySubdomainClassification(
-      readme('| [Demo](../domain/demo/README.md) | Core | `backend/demo` | Demo. |'),
+      readme('| [Demo](../../domain/demo/README.md) | Core | `backend/demo` | Demo. |'),
       ['demo', 'forgotten'],
     )
     expect(findings).toHaveLength(1)
@@ -89,8 +89,8 @@ describe('verifySubdomainClassification', () => {
   it('rejects a row naming a context directory that does not exist', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [Demo](../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
-        '| [Gone](../domain/gone/README.md) | Core | `backend/gone` | Gone. |',
+        '| [Demo](../../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
+        '| [Gone](../../domain/gone/README.md) | Core | `backend/gone` | Gone. |',
       ),
       ['demo'],
     )
@@ -101,8 +101,8 @@ describe('verifySubdomainClassification', () => {
   it('rejects the same context listed twice', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [Demo](../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
-        '| [Demo again](../domain/demo/README.md) | Generic | `backend/demo` | Demo. |',
+        '| [Demo](../../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
+        '| [Demo again](../../domain/demo/README.md) | Generic | `backend/demo` | Demo. |',
       ),
       ['demo'],
     )
@@ -116,8 +116,8 @@ describe('verifySubdomainClassification', () => {
   it('reports every unclassified row rather than stopping at the first', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [A](../domain/a/README.md) | Kernel | `backend/a` | A. |',
-        '| [B](../domain/b/README.md) | Kernel | `backend/b` | B. |',
+        '| [A](../../domain/a/README.md) | Kernel | `backend/a` | A. |',
+        '| [B](../../domain/b/README.md) | Kernel | `backend/b` | B. |',
       ),
       ['a', 'b'],
     )
@@ -133,8 +133,8 @@ describe('verifySubdomainClassification', () => {
   it('points at the line the offending row sits on', () => {
     const findings = verifySubdomainClassification(
       readme(
-        '| [A](../domain/a/README.md) | Core | `backend/a` | A. |',
-        '| [B](../domain/b/README.md) | Kernel | `backend/b` | B. |',
+        '| [A](../../domain/a/README.md) | Core | `backend/a` | A. |',
+        '| [B](../../domain/b/README.md) | Kernel | `backend/b` | B. |',
       ),
       ['a', 'b'],
     )
@@ -153,7 +153,7 @@ describe('verifySubdomainClassification', () => {
       '',
       header,
       rule,
-      '| [Demo](../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
+      '| [Demo](../../domain/demo/README.md) | Core | `backend/demo` | Demo. |',
       '',
     ].join('\n')
     expect(verifySubdomainClassification(source, ['demo'])).toEqual([])

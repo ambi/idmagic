@@ -22,8 +22,8 @@ initial_context:
     - docs/design/application/user-interface.md
     - docs/design/application/api-guidelines.md
     - docs/domain/structure.md
-    - docs/architecture/logical.md
-    - docs/architecture/runtime.md
+    - docs/design/architecture/logical.md
+    - docs/design/architecture/runtime.md
   typespec: []
   source:
     - frontend/README.md
@@ -61,7 +61,7 @@ initial_context:
 フロントエンドの設計は、いま三か所に断片として存在する。
 [ユーザーインターフェース設計](../../docs/design/application/user-interface.md)は 12 行で、機能ディレクトリの配置を一文、情報構造を二文、国際化を二文書いて終わる。
 [構造](../../docs/domain/structure.md#フロントエンドのコンポーネント構造)の該当節は 4 行で、`features/` と `components/` の区別だけを述べる。
-[ランタイムアーキテクチャ](../../docs/architecture/runtime.md)はフロントエンドゲートウェイを実行単位として一行で挙げる。
+[ランタイムアーキテクチャ](../../docs/design/architecture/runtime.md)はフロントエンドゲートウェイを実行単位として一行で挙げる。
 
 実装は `frontend/src/features/` に 26 個の機能スライスを持ち、ビュー、局所コンポーネント、ヘルパー、テスト、`*.i18n.ts` の辞書をスライス内に同居させる Vertical Slice の構造になっている。
 ルーティングは `frontend/src/routes/` のファイルベースで、サーバー状態は `frontend/src/api/` の呼び出しと `usePaginatedList` のようなフックが持つ。
@@ -75,7 +75,7 @@ UI 側も足りない。
 - 新しい文書 `docs/design/application/frontend.md`「フロントエンド設計」を作り、フロントエンドのアーキテクチャを持たせる。
 - [ユーザーインターフェース設計](../../docs/design/application/user-interface.md)を、画面を跨ぐ UI の規範として書き足す。
 - [構造](../../docs/domain/structure.md#フロントエンドのコンポーネント構造)のフロントエンド節を、コードの配置と依存方向に絞る。
-- [論理アーキテクチャ](../../docs/architecture/logical.md)と[ランタイムアーキテクチャ](../../docs/architecture/runtime.md)から、フロントエンド設計への到達経路を置く。
+- [論理アーキテクチャ](../../docs/design/architecture/logical.md)と[ランタイムアーキテクチャ](../../docs/design/architecture/runtime.md)から、フロントエンド設計への到達経路を置く。
 - [アプリケーション設計の索引](../../docs/design/application/README.md)と `DOCUMENTATION_GUIDE.md` §4.12 の記述を追従させる。
 - `frontend/README.md` と `frontend/src/features/README.md` が持つ設計の記述（ライブラリの選定理由、ルーティング、コンテナと表示用コンポーネントの分割、画面の設計指針、ナビゲーションの規約、ローカライゼーション）を新しい二文書へ移し、README には開発時に実行する手順だけを残す。同じ規則を二か所に置かないためである。
 - 正準文書の閉じた集合（`tools/workspace/src/document-layout.ts`）へ `frontend.md` を加える。

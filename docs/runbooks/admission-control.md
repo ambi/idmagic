@@ -1,6 +1,6 @@
 # アドミッションコントロールが発動したとき
 
-`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [System の内部設計](../domain/system/internals.md#admission-control)で、判断の理由は [System の設計判断](../domain/system/decisions.md#load-shedding-by-priority-class)で説明する。
+`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [System の内部設計](../domain/system/internals.md#アドミッションコントロール)で、判断の理由は [System の設計判断](../domain/system/decisions.md#load-shedding-by-priority-class)で説明する。
 
 ## 何が起きているか
 

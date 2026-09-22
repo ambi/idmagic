@@ -3,7 +3,7 @@
 ## 対象範囲
 
 IdMagic を動かすコンピューティング、ストレージ、コンテナイメージのサプライチェーン、サービスアカウントと IAM、リリース、構成管理を扱う。
-デプロイプロファイルの一覧、構成要素の配置と接続は[デプロイメントアーキテクチャ](../../architecture/deployment.md)で定める。
+デプロイプロファイルの一覧、構成要素の配置と接続は[デプロイメントアーキテクチャ](../architecture/deployment.md)で定める。
 この文書は配置先の表を繰り返さず、各構成要素の実現方式と選定理由を定める。
 エッジ、セグメンテーション、ファイアウォールルール、DNS は[ネットワーク設計](network.md)で定める。
 
@@ -195,7 +195,7 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 | 環境へ適用する順序 | `development`、`staging`、`production` の順に、同じダイジェストのイメージを適用する（仮） |
 | 段階的な公開 | 本番では新しいバージョンのレプリカを少数だけ先に起動し、エラー率とレイテンシーを確かめてから全体を置き換える（仮） |
 | ロールバック | 一つ前のリリースのダイジェストを適用する |
-| スキーマとアプリケーションの順序 | [デプロイメントアーキテクチャ](../../architecture/deployment.md#デプロイの不変条件)の不変条件が定める |
+| スキーマとアプリケーションの順序 | [デプロイメントアーキテクチャ](../architecture/deployment.md#デプロイの不変条件)の不変条件が定める |
 | 停止時の処理 | ロードバランサーへ受付の停止を伝えた後、処理中のリクエストとジョブに猶予を与えてから終了する |
 
 ## 構成管理
@@ -280,7 +280,7 @@ Kubernetes Engine の確約利用割引を使うと、vCPU の単価は 1 年契
 
 クラウド事業者に依存しない、クラスターへのデプロイのための構成である。
 
-レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../domain/jobs/internals.md#execution-lanes)で定める。
+レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../domain/jobs/internals.md#実行レーン)で定める。
 
 現在のマニフェストには、エッジと証明書、PostgreSQL、スキーマ適用、初期データ投入を定義していない。
 エッジと証明書はクラスターの運用基盤が提供する前提とする。
@@ -291,7 +291,7 @@ CloudNativePG を選ぶのは、ストリーミングレプリケーション、
 
 GKE Autopilot のリージョンクラスターと Cloud SQL for PostgreSQL を、単一の VPC と単一のリージョンに置く構成である。
 クラスターの中身は汎用 Kubernetes のマニフェストを使い、GKE に固有の差分だけを overlay に置く。
-このプロファイルの構成ファイルの有無と（仮）の範囲は[デプロイメントアーキテクチャ](../../architecture/deployment.md#デプロイプロファイル)で定める。
+このプロファイルの構成ファイルの有無と（仮）の範囲は[デプロイメントアーキテクチャ](../architecture/deployment.md#デプロイプロファイル)で定める。
 
 #### リソース階層
 
@@ -380,7 +380,7 @@ flowchart LR
 | Cloud CDN | ロードバランサーのバックエンドサービスに付くキャッシュ。`idmagic-frontend` が保存を許した静的アセットだけを保持する |
 | Google マネージド証明書 | 公開ドメインの TLS 証明書。Google が発行と更新を行う |
 | `idmagic-frontend` | Caddy のコンテナ。イメージに入った静的アセットを返し、API の経路に当たるリクエストだけを `idmagic-api` へ中継する。静的な画面と API を同じオリジンに並べるため、`idmagic-api` の前に置く |
-| `idmagic-api`、`idmagic-worker`、`idmagic-batch` | [デプロイメントアーキテクチャ](../../architecture/deployment.md#構成要素)の構成要素と同じ |
+| `idmagic-api`、`idmagic-worker`、`idmagic-batch` | [デプロイメントアーキテクチャ](../architecture/deployment.md#構成要素)の構成要素と同じ |
 | `psqldef` の Job | リリースパイプラインが、新しい `idmagic-api` を動かす前に起動し、スキーマを適用する |
 | `idmagic-seed` の Job | 環境を作った直後に一度だけ起動し、初期データを投入する |
 | Cloud SQL for PostgreSQL | 唯一の状態の置き場所。REGIONAL は、同じリージョンの別ゾーンに同期スタンバイを置く構成である。プライベート IP だけで接続を受ける |

@@ -8,10 +8,10 @@ description: Update the owning current-state canonical documents when bounded co
 `SPECIFICATION_FORMAT.md` defines the canonical document kinds. Record each current fact in the smallest file
 whose name owns that kind of content.
 
-1. Update the cross-context boundary map in `docs/architecture/logical.md`, the top-down index in
+1. Update the cross-context boundary map in `docs/design/architecture/logical.md`, the top-down index in
    `docs/README.md`, and directory structure, dependency direction, and layers in `docs/domain/structure.md`.
-2. Update runtime units in `docs/architecture/runtime.md`, deployment topology in
-   `docs/architecture/deployment.md`, and trust boundaries in `docs/design/security/threat-model.md`; use the
+2. Update runtime units in `docs/design/architecture/runtime.md`, deployment topology in
+   `docs/design/architecture/deployment.md`, and trust boundaries in `docs/design/security/threat-model.md`; use the
    other matching whole-system file when it owns the changed concern.
 3. Update a context boundary and sibling index in `docs/domain/<context>/README.md`. Put durable rationale in
    its `decisions.md`, and mechanism that cannot be recovered from code in `internals.md`.

@@ -17,9 +17,9 @@ spec_impact:
   reason: "規範 ID、TypeSpec のシンボル、設定キー、プロダクトの振る舞いは変えない。spec-diff は REQ-SYSTEM-001、REQ-SYSTEM-016、REQ-SYSTEM-017、REQ-IDMANAGEMENT-009、REQ-OAUTH2-048、REQ-PROVISIONING-005、REQ-TENANCY-021、RFC8693-DELEGATION-DEFAULT、RFC8693-DELEGATION-DEPTH、RFC7643-OUT-CORE-RESOURCES、RFC7643-OUT-GROUP-RESOURCES を挙げるが、変わったのは「既定」から「デフォルト」への表記と、REQ-SYSTEM-001 の Given にあった実在しない実行単位名を実在の名前へ直したことだけで、条件も要求する結果も同じである。"
 initial_context:
   specification:
-    - docs/architecture/deployment.md
-    - docs/architecture/system-context.md
-    - docs/architecture/runtime.md
+    - docs/design/architecture/deployment.md
+    - docs/design/architecture/system-boundary.md
+    - docs/design/architecture/runtime.md
     - docs/design/infrastructure/README.md
     - docs/design/infrastructure/platform.md
     - docs/design/infrastructure/network.md
@@ -44,10 +44,10 @@ initial_context:
 
 ## Motivation
 
-[システムコンテキスト](../../docs/architecture/system-context.md)の図には「ゲートウェイ」と「デプロイ、シークレット、監視のプラットフォーム」が現れるが、それが何であるかの記述がどこにもない。
+[システムコンテキスト](../../docs/design/architecture/system-boundary.md)の図には「ゲートウェイ」と「デプロイ、シークレット、監視のプラットフォーム」が現れるが、それが何であるかの記述がどこにもない。
 IdMagic 単体では確定しない部分だが、`infra/docker/`、`infra/k8s/`、`infra/deploy/gcp/` に三つの具体があり、Google Cloud なら Cloud Load Balancing と Cloud Run、ローカルなら Caddy と Docker Compose だと書ける。
 
-[デプロイアーキテクチャ](../../docs/architecture/deployment.md)は共通トポロジーを ASCII で描いており、同じリポジトリの他文書が Mermaid を使っているのと揃っていない。
+[デプロイアーキテクチャ](../../docs/design/architecture/deployment.md)は共通トポロジーを ASCII で描いており、同じリポジトリの他文書が Mermaid を使っているのと揃っていない。
 本文も「ゲートウェイ」「ワーカー」の抽象のままで、Docker Compose と Google Cloud で何がその役を担うかを書いていない。
 
 [プラットフォーム設計](../../docs/design/infrastructure/platform.md)は 23 行、[ネットワーク設計](../../docs/design/infrastructure/network.md)は 22 行で、計算資源、ストレージ、入口、TLS 終端、名前解決、シークレット供給のいずれも、環境ごとの具体を持たない。
@@ -58,8 +58,8 @@ IdMagic 単体では確定しない部分だが、`infra/docker/`、`infra/k8s/`
 ## Scope
 
 - デプロイプロファイルを三つ定義する。ローカル Docker Compose、汎用 Kubernetes、Google Cloud。
-- [デプロイアーキテクチャ](../../docs/architecture/deployment.md)の共通トポロジーを Mermaid にし、プロファイルごとに実行単位と配置先の対応を書く。
-- [システムコンテキスト](../../docs/architecture/system-context.md)の「ゲートウェイ」と「プラットフォーム」が、各プロファイルで何であるかを書く。
+- [デプロイアーキテクチャ](../../docs/design/architecture/deployment.md)の共通トポロジーを Mermaid にし、プロファイルごとに実行単位と配置先の対応を書く。
+- [システムコンテキスト](../../docs/design/architecture/system-boundary.md)の「ゲートウェイ」と「プラットフォーム」が、各プロファイルで何であるかを書く。
 - [プラットフォーム設計](../../docs/design/infrastructure/platform.md)に、計算資源、ストレージ、シークレット供給、スキーマ適用、スケール単位をプロファイル別に書く。
 - [ネットワーク設計](../../docs/design/infrastructure/network.md)に、入口、TLS 終端、名前解決、送信先の許可、管理接続をプロファイル別に書く。
 - `infra/deploy/gcp/README.md` が持つ設計判断を `docs/` へ移し、構成ファイル側は手順と値に寄せる。
@@ -77,10 +77,10 @@ IdMagic 単体では確定しない部分だが、`infra/docker/`、`infra/k8s/`
 
 実装中の指摘により、当初の Out of Scope から次を範囲へ移した。
 
-- **Docker Compose の `idp` サービス名の変更**。IdP 以外の機能も持つ実行単位に `idp` という名は合わない。[ランタイムアーキテクチャ](../../docs/architecture/runtime.md)が宣言する実行単位名に合わせて `api` へ変更した。構成ファイルの変更を含まないという当初の線は、この一点について外した。
+- **Docker Compose の `idp` サービス名の変更**。IdP 以外の機能も持つ実行単位に `idp` という名は合わない。[ランタイムアーキテクチャ](../../docs/design/architecture/runtime.md)が宣言する実行単位名に合わせて `api` へ変更した。構成ファイルの変更を含まないという当初の線は、この一点について外した。
 - **費用見積もりの移動**。`infra/deploy/gcp/README.md` が持っていた費用表を[プラットフォーム設計](../../docs/design/infrastructure/platform.md)へ移した。見積もりの値を新たに確定したわけではなく、置き場所を判断の側へ移しただけである。
 - **決めるべき論点の追加と仮決定**。プロファイル別の観点表だけでは、決めるべき論点そのものが欠けていた。リソース階層、IAM、イメージのサプライチェーン、監査、セグメンテーション、通信の許可規則を項目として追加し、状態を確定・仮決定・委譲・未決定の四値で示した。未決定を並べるだけでは反対する対象が無いため、外部の入力を待たない項目はこの文書の中で仮決定した。
-- **規範シナリオの訂正**。`docs/domain/system/scenarios.feature.md` の EX-SYSTEM-001-01 から 03 の Given が、実行単位として存在しない「イベントリレー」を宣言していた。[ランタイムアーキテクチャ](../../docs/architecture/runtime.md)が宣言する実行単位名へ揃えた。振る舞いの要求は変えていないので `REQ-SYSTEM-001` は据え置く。`infra/README.md` の同じ記述と、構成ファイルと食い違っていた本番レプリカ数の記述も直した。
+- **規範シナリオの訂正**。`docs/domain/system/scenarios.feature.md` の EX-SYSTEM-001-01 から 03 の Given が、実行単位として存在しない「イベントリレー」を宣言していた。[ランタイムアーキテクチャ](../../docs/design/architecture/runtime.md)が宣言する実行単位名へ揃えた。振る舞いの要求は変えていないので `REQ-SYSTEM-001` は据え置く。`infra/README.md` の同じ記述と、構成ファイルと食い違っていた本番レプリカ数の記述も直した。
 - **Google Cloud プロファイルのコンピュートを GKE Autopilot へ変更**。Cloud Run では、実行レーンを PostgreSQL のキューの滞留で増減できない（worker pools の自動スケールは CPU か Pub/Sub の滞留だけ）、HPA の振る舞いと PodDisruptionBudget を表現できない、停止猶予が 10 秒で固定される、`/metrics` のプルにサイドカーが要る、経路の許可リストが URL マップと二重になる。汎用 Kubernetes の構成ファイルが表現する設計をそのまま動かせる GKE Autopilot を採り、エッジは Cloud CDN に対応する GKE Ingress とした。Cloud Run のひな型は採らなかった案として `infra/deploy/gcp/` に残し、README をその位置付けへ書き換えた。費用表は Pod の要求量から見積もり直した。
 - **用語の具体化**。「計算資源」「シークレット供給」「信号の収集」「区画」のような、概念が普通名詞へ吸収される語を、コンピューティング、シークレットの注入、メトリクスとログの収集経路、セグメンテーションへ改めた。途中で「コンピュート」と置いた語も、通じにくいため「コンピューティング」へ直した。
 - **文書全体の用語の統一と検査への追加**。「資材」を「構成ファイル」（Kubernetes に限るなら「マニフェスト」）、「既定」を「デフォルト」へ、`docs/` と root の文書全体で置き換え、`tools/check/src/terminology.ts` の規則へ「参照トポロジー」「参照プロファイル」「既定」「コンピュート」「資材」を加えた。「既定」の置き換えは規範シナリオの文言にも及ぶが、要求の意味は変えていない。
@@ -89,7 +89,7 @@ IdMagic 単体では確定しない部分だが、`infra/docker/`、`infra/k8s/`
 ## Design
 
 デプロイプロファイルは、実行単位と配置先の対応表を三つ並べる形にする。
-行は[ランタイムアーキテクチャ](../../docs/architecture/runtime.md)が宣言済みの実行単位（API、Worker、Batch、Seed、フロントエンドゲートウェイ）に固定し、列にプロファイルを置く。
+行は[ランタイムアーキテクチャ](../../docs/design/architecture/runtime.md)が宣言済みの実行単位（API、Worker、Batch、Seed、フロントエンドゲートウェイ）に固定し、列にプロファイルを置く。
 実行単位の一覧を新しく作らない。
 
 各プロファイルについて、次の観点を同じ順序で書く。

@@ -1,7 +1,7 @@
 # デプロイメントアーキテクチャ
 
 この文書は、[ランタイムアーキテクチャ](runtime.md)が宣言する実行単位を、どこへ置き、どうつなぐかを示す。
-プロファイルごとの構成では、この文書が構成要素の配置と接続を、[プラットフォーム設計](../design/infrastructure/platform.md)が各構成要素の実現方式と選定理由を担当する。
+プロファイルごとの構成では、この文書が構成要素の配置と接続を、[プラットフォーム設計](../infrastructure/platform.md)が各構成要素の実現方式と選定理由を担当する。
 `infra/` の下にある Docker Compose ファイル、Kubernetes マニフェスト、Terraform を、この文書では**構成ファイル**と呼ぶ。
 
 ## 共通トポロジー
@@ -71,14 +71,11 @@ flowchart TB
 | 上流の IdP | 外部の OIDC プロバイダーと SAML IdP。`idmagic-api` がメタデータ、トークン、公開鍵を取得する | 対象外 | 外部サービス |
 | 下流の送信先 | ユーザーとグループを反映する SaaS の SCIM サーバー、失効を伝える SSF の受信側、メールを送る SMTP サーバー。`idmagic-api` と `idmagic-worker` が送信する | 対象外 | 外部サービス |
 
-レーンが与える隔離と順序の扱いは[Jobs の内部設計](../domain/jobs/internals.md#execution-lanes)で定める。
+レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../domain/jobs/internals.md#実行レーン)で定める。
 ローカル Docker Compose だけは、一つのプロセスで全レーンを処理する。
 
-`idmagic-frontend` がどのパスを中継するかは、設定上の許可リストが決める。
-**どの経路を通すかは、この文書も含めどの散文にも書かない。**
-経路ごとの公開可否は `idmagic-api` の経路登録と同じ場所に一箇所あり、リポジトリが同梱する参照設定との突き合わせは `mise run check-gateway-routes` が行う（REQ-SYSTEM-021）。
-散文に一覧を写すと、経路を足したときに写しだけが古くなる。
-しかもゲートウェイは中継しないパスを静的アセットの配信へ落とすので、その食い違いは 404 ではなく `index.html` の 200 として現れる。
+`idmagic-frontend` が中継するパスは、設定上の許可リストで管理する。
+経路の一覧はこの文書へ重複して記載しない。
 
 ## デプロイプロファイル
 
@@ -91,10 +88,9 @@ flowchart TB
 | 汎用 Kubernetes | `infra/k8s/` | クラスターへのデプロイ | `mise run check-k8s` がレンダリングとスキーマを検査する。適用した環境の稼働実績はリポジトリから確認できない |
 | Google Cloud | `infra/k8s/` と GKE 向けの overlay（未作成） | GKE Autopilot とマネージドサービスによる、単一 VPC、単一リージョンの構成 | GKE 向けの構成ファイルはまだ無い。`infra/deploy/gcp/` にあるのは、採らなかった Cloud Run 案のひな型である |
 
-どのプロファイルも選べる候補であり、適用済みまたは検証済みの本番構成ではない。
-本番環境がいずれを採用しているかは、このリポジトリだけからは確認できない。
+各プロファイルは構成例であり、本番環境への適用や検証の完了を示すものではない。
 
-キャパシティ算出の設計入力である[想定ワークロード](../design/performance/capacity.md#想定ワークロード)とは別の概念である。
+キャパシティ算出の設計入力である[想定ワークロード](../performance/capacity.md#想定ワークロード)とは別の概念である。
 前者は想定する負荷、デプロイプロファイルは構成要素の置き場所を指す。
 
 ### 構成要素の配置先
@@ -110,7 +106,7 @@ flowchart TB
 | `idmagic-batch` | 常設のサービスとして実行しない | 保守処理ごとの CronJob | 汎用 Kubernetes と同じ |
 | `idmagic-seed` | 独立して実行しない。`api` が起動時に `SEED_PROFILE` の投入を一度だけ行う | 初回だけ起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
 | `psqldef` | `schema` サービス | リリースパイプラインが起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
-| PostgreSQL | `postgres` サービス | [CloudNativePG のクラスター](../design/infrastructure/platform.md#汎用-kubernetes)（仮） | Cloud SQL for PostgreSQL |
+| PostgreSQL | `postgres` サービス | [CloudNativePG のクラスター](../infrastructure/platform.md#汎用-kubernetes)（仮） | Cloud SQL for PostgreSQL |
 
 `idmagic-seed` の実行ファイルは `backend/cmd/idmagic-seed` にあるが、`infra/docker/Dockerfile` が作るイメージには入っていない。
 Job として起動するには、イメージへ加える必要がある（仮）。
@@ -148,7 +144,7 @@ flowchart TB
 ```
 
 `schema` が正常終了するまで、`api` と `worker` は起動しない。
-ローカルプロファイルのログ収集経路は[ログ設計](../design/observability/logging.md#収集経路)で定める。
+ローカルプロファイルのログ収集経路は[ログ設計](../observability/logging.md#収集経路)で定める。
 
 #### 汎用 Kubernetes
 
@@ -220,7 +216,7 @@ flowchart TB
   Gmp -->|/metrics を定期取得| Lanes
 ```
 
-各構成要素の説明と、GKE Autopilot を採った判断は[プラットフォーム設計](../design/infrastructure/platform.md#google-cloud)に書く。
+各構成要素の説明と、GKE Autopilot を採った判断は[プラットフォーム設計](../infrastructure/platform.md#google-cloud)に書く。
 
 ## デプロイの不変条件
 
@@ -237,5 +233,5 @@ flowchart TB
 
 ## 関連文書
 
-各プロファイルの構成要素の実現方式と選定理由は[プラットフォーム設計](../design/infrastructure/platform.md)で、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../design/infrastructure/network.md)で定める。
-負荷に応じた拡張は[スケーリング・負荷設計](../design/performance/scaling.md)で、障害時の配置と切替は[可用性設計](../design/reliability/availability.md)で定める。
+各プロファイルの構成要素の実現方式と選定理由は[プラットフォーム設計](../infrastructure/platform.md)で、エッジ、ファイアウォールルール、DNS は[ネットワーク設計](../infrastructure/network.md)で定める。
+負荷に応じた拡張は[スケーリング・負荷設計](../performance/scaling.md)で、障害時の配置と切替は[可用性設計](../reliability/availability.md)で定める。

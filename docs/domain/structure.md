@@ -99,7 +99,7 @@ backend/idmanagement/
 
 ## Context 間イベント
 
-[論理アーキテクチャ](../architecture/logical.md#context-map) の Context Map に属するドメインイベントの関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
+[論理アーキテクチャ](../design/architecture/logical.md#context-map) の Context Map に属するドメインイベントの関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
 
 **ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、上流の IdManagement が語彙とポートを宣言し、下流の Context がそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションで配信対象を捕捉する。上流が公開言語を持ち下流が従う形なので、これらは公開イベントによる関係ではなく Open Host Service である。
 

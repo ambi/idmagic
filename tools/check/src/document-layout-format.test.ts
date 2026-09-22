@@ -18,8 +18,16 @@ docs/
 `)
 
     expect(findings).toContainEqual({
-      path: 'docs/design/product-overview.md',
-      message: '配置図に定義済み文書のパスがない: docs/design/product-overview.md',
+      path: 'docs/requirements/product-overview.md',
+      message: '配置図に定義済み文書のパスがない: docs/requirements/product-overview.md',
+    })
+    expect(findings).toContainEqual({
+      path: 'docs/design/architecture/system-boundary.md',
+      message: '配置図に定義済み文書のパスがない: docs/design/architecture/system-boundary.md',
+    })
+    expect(findings).toContainEqual({
+      path: 'docs/design/verification/system-acceptance.md',
+      message: '配置図に定義済み文書のパスがない: docs/design/verification/system-acceptance.md',
     })
     expect(findings).toContainEqual({
       path: 'docs/domain/<context>/standards.md',

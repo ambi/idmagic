@@ -1,12 +1,12 @@
 # IdManagement の内部設計
 
-## Just-in-time provisioning from federation
+## フェデレーションによる Just-in-Time プロビジョニング
 
 フェデレーションのログイン時に User を作る経路は、通常の作成経路と同じ不変条件を通る。テナントのクォータ、ユーザー名とメールアドレスの一意性、属性スキーマ、`UserCreated` イベントは、上流からの作成であっても緩まない。この経路のためだけの近道は存在しない。
 
 作られる User にはパスワード資格情報を設定しない。上流が認証の権威である以上、ローカルの資格情報を同時に設定すると、上流を無効にした後もローカルのパスワードでサインインできる経路が残るからである。資格情報を後から追加するかどうかは、テナントの明示的な設定に委ねる。
 
-## User Lifecycle: Deletion and Anonymization
+## 利用者のライフサイクル：削除と匿名化
 
 削除は物理的な除去ではなく匿名化である。`User.lifecycle.status` は `Deleted` へ遷移する。これはどの状態からも到達でき、戻る遷移がない終端状態である。Aggregate は破棄せず、その場で書き換える。`AdminAuditEvent` をはじめとする追記専用の記録が `sub` を参照しており、物理削除はその参照を壊すうえ、「削除済み」と単なる「停止中」の運用上の区別も消してしまうからである。`sub` は永久に保持し、再利用しない。
 
@@ -16,13 +16,13 @@
 
 削除は冪等である。すでに Tombstone 化したユーザーに対して再び呼び出しても、監査イベントを再発行せず成功を返す `no_op` になる。そのため、再試行や管理者の並行操作が失敗として現れたり、監査記録を重複させたりしない。自己破壊を防ぐため、操作者と対象が同じプリンシパルで、対象が `admin` または `system_admin` を持つ場合は削除を拒否する。管理者が自身の特権アカウントを削除する経路は、どの対話フローにも必要ないためである。削除のたびに `actorSub` / `targetSub` / `reason` / `occurredAt` を載せた `UserDeleted` 監査イベントを発行する。`sub` と Tombstone が残るため、匿名化後も「誰が何をいつ削除したか」を再構成できる。
 
-## User Profile: Thin Core and Attribute Bag
+## 利用者プロフィール：最小限の中核と属性バッグ
 
 `User` は型として持つ中核を、アイデンティティ、認証、RBAC に必要なものだけに限る。`sub`、`tenant_id`、`preferred_username`、`password_hash`、`email`、`email_verified`、`mfa_enrolled`、`roles`、`name` / `given_name` / `family_name`、`lifecycle`、各種の時刻である。滅多に使わない OIDC や SCIM の任意項目 25 個ほどを、すべてのユーザーに型と保存の水準で持たせると、それらを使わないテナントにとってモデルが肥大するだけである。それ以外のプロフィール属性 — 残りの OIDC §5.1 の任意クレーム (`middle_name`、`nickname`、`picture`、`phone_number`、`address_*` など)、SCIM 相当の組織属性 (`title`、`department`、`manager_sub` など)、テナントが定義する独自項目 — は、単一の疎な `attributes: Map<String, AttributeValue>` に置き、実際に値を持つキーだけが領域を消費する。OIDC の `address` クレームは入れ子の構造ではなく平坦なキー (`address_formatted`、`address_locality` など) として保存し、`AttributeValue` を素直な直和型 (文字列、数値、真偽値、日付、文字列の配列) に保つ。入れ子の `address` へ組み直すのは、UserInfo や ID Token のクレームを作るときだけである。
 
 ライフサイクルの正は `User.lifecycle.status`（`Active` / `Disabled` / `Locked` / `Staged` / `Suspended` / `Deleted`）と `status_changed_at` の 1 組だけである。遷移時刻の監査記録は、時刻を持つ `UserDisabled` / `UserDeleted` イベントに残す。認証を許可するのは `status == Active` だけであり、それ以外の状態は、デフォルトで `Active` に解決されるゼロ値も含めて認証を拒否する。
 
-#### Attribute Definitions (`UserAttributeDef`)
+#### 属性定義（`UserAttributeDef`）
 
 OIDC と SCIM の組み込みの属性も、テナントが定義する独自の属性も、同じ `UserAttributeDef` の仕組みが統べるので、管理者が設定するスキーマの形は 2 つではなく 1 つで済む。定義は 2 つの段から来て、1 つの実効的なスキーマに合わさる。
 
@@ -33,7 +33,7 @@ OIDC と SCIM の組み込みの属性も、テナントが定義する独自の
 
 `ValidateAttributes` は `User.attributes` の対応表を、保存する前に実効的なスキーマと照合する。定義のない鍵、欠けている必須の値、型の不一致を拒否し、各 `AttributeValue` が宣言された `type` の選ぶ項目だけを埋めていることを強制する。利用者自身の経路 (`UpdateUserProfile` と `/api/account/profile`) はさらに、書き込みを `editable_by_user == true` の属性に限り、対応表全体を置き換えるのではなく鍵ごとに併合する。これにより利用者自身の編集が、触れる理由のない管理者管理の属性を上書きすることはない。またユーザーへ開示するのも `self_readable` と `claim_exposed` の属性だけである。削除の際は型として持つ中核とともに `attributes` の対応表も丸ごと消えるので、疎な入れ物が墓標より長生きすることはない。
 
-## CSV Round Trip
+## CSV の往復変換
 
 CSV は 2 つ目のプロビジョニング権威ではなく、IdManagement が備える部分更新の窓口である。機械処理用の列名の語彙と可逆なセル変換はドメインに置き、エクスポートとインポートが HTTP のラベルや UI のロケールに依存せず 1 つの定義を共有する。組み込みの書き込み可能列、読み取り専用列、禁止列は種別ごとに閉じた集合とする。`User` のテナント定義の列は、ユーザーのユースケースポートを介して実効属性スキーマを解決した後にだけ `custom:<key>` として追加する。これにより解析を決定的に保ちながら、テナントのスキーマを CSV 処理とは独立して発展させられる。
 
@@ -55,7 +55,7 @@ CSV は 2 つ目のプロビジョニング権威ではなく、IdManagement が
 
 ユースケースポートにより、Context をまたぐ知識を CSV ドメインの外に保つ。実効ユーザー属性スキーマのリーダーは型付きのテナント定義を提供し、取り込み元の所有権ガードは既存の `User` または `Group` が外部管理かどうかを返す。これらのアダプターはアプリケーション境界で組み立てる。所有権を確認できない場合や確認に失敗した場合は、対象を外部管理として扱う。CSV という便宜的な経路が、より強い上流の権威を暗黙に上書きしてはならないためである。
 
-## Group CSV Invariants and Deletion
+## グループ CSV の不変条件と削除
 
 `Group` の CSV は上の往復基盤をそのまま使い、その上に `Group` 固有の不変条件だけを載せる。`membership_type` は作成時に選べるが後から変えられない。既存の `Group` に現在値と異なる値を書いた行は、暗黙に変換せず安定したエラーで拒否する。手動所属と動的所属では既存メンバーシップの意味そのものが変わり、CSV の 1 セルでそれを反転させると、どの経路で付いた所属なのかを後から復元できないからである。
 
@@ -67,7 +67,7 @@ CSV は 2 つ目のプロビジョニング権威ではなく、IdManagement が
 
 削除の適用は、`Group` の削除、メンバーシップの cascade 解除、グループクォータの解放、監査記録を 1 行 1 トランザクションで確定する。プレビューは削除件数と巻き込まれるメンバーシップ件数を他の操作と分けて返し、管理 UI は削除を含む適用に明示の確認を要求する。削除は不可逆で、cascade により所属していた全 `User` の実効ロールを一度に変えるため、preview と apply の結合、現在状態からの再計画、閉じた語彙、明示確認、エクスポートでの常時空出力を多層で維持する。1 つでも欠けると、分割ファイルや編集ミスがそのまま権限の一括剥奪になる。
 
-## Group Membership CSV and Explicit Desired State
+## グループ所属 CSV と明示的な望ましい状態
 
 メンバーシップの CSV が変更できる `Group` は 1 つだけである。どの `Group` かを決めるのは URL の `group_id` であって、ファイルの中身ではない。CSV の `group_id` 列と `group_name` 列は、その行が本当に対象の `Group` の行かを確かめるためだけにあり、書き込みには使わない。別の `Group` を指す行はその行だけを拒否し、指された `Group` には何も書かない。もしファイルの中身が対象を選べるなら、1 つの `Group` を編集する権限が、そのファイルに書いた任意の `Group` を編集する権限になってしまう。
 
@@ -85,7 +85,7 @@ CSV に書かれていない `User` は、何も変更しない。ここが auth
 
 エクスポートは、インポートと同じ機械キーの語彙、同じ転送ポリシー、同じ不変な成果物ストアを使い、`membership_state` を全行 `present` として出力する。そのため、編集していないエクスポートをそのままプレビューすれば全行が `unchanged` になる。適用が受け取るのは、成功したプレビューの ID とその SHA-256 だけであり、テナントと `Group` の両方が一致することを結合の条件にする。計画は現在の所属から作り直すので、プレビュー後に別の経路で行われた追加や解除も、そこで判定し直される。受理した行は、メンバーシップの追加または解除と監査記録を 1 行 1 トランザクションで確定する。ある行が失敗しても、すでに適用した行は巻き戻さない。
 
-## Group Aggregate and Effective Roles
+## Group Aggregate と実効ロール
 
 `Group` はテナント単位の Aggregate であり、`(id, tenant_id, name, description?, roles[], created_at, updated_at?)` を持つ。組織変更のたびに影響する全 User の `roles` を個別に編集せず、ロールの組（「営業チーム = `catalog:read` + `invoice:read`」）を 1 単位として付与・取り消しできるよう導入した。`id` は生成後に変わらない `group_<uuid>` である。`name` はテナント内で一意な編集可能な表示名であり、`(tenant_id, name)` の一意インデックスで強制する。テナントをまたぐメンバーシップは無条件に拒否する。`AddMember` は対象の `User` を読み込み、存在しない場合や別テナントに属する場合は拒否する。
 
@@ -93,13 +93,13 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 
 メンバーシップ操作は冪等である。既存メンバーの追加や、メンバーではない User の削除はドメインイベントを再発行しない `no_op` とし、Okta と Keycloak のメンバーシップ API の扱いに合わせる。Group の CRUD とメンバーシップの変更では、`AdminAuditEvent` と、`GroupCreated` / `GroupUpdated` / `GroupDeleted` / `GroupMemberAdded` / `GroupMemberRemoved` のいずれかを発行する。Group の削除ではメンバーシップをカスケード削除し、最後の `GroupDeleted` より前にメンバーごとの `GroupMemberRemoved` を発行する。
 
-## Group Contact and Custom Attributes
+## グループの連絡先とカスタム属性
 
 `Group` は任意の `email` (部署のメーリングリストなど単純な連絡先) と、テナントが定義する任意の項目を入れる疎な `attributes` も持つ。スキーマを持たない自由形式のキー・値ではなく、管理者が定義したスキーマでグループのプロフィールを拡張する方式を採り、`User` の属性と同じ統治の姿勢を保つ。`email` は `User.email` と同じ形式検査だけを行い、検証済みフラグ、変更要求のフロー、一意性の制約は持たない。グループには受信箱を支配していることを示せる本人がおらず、それに依存する認証経路もないからである。
 
 `Group.attributes` は、`GroupAttributeDef` で定義する `TenantGroupAttributeSchema` に対して検証する。これは `Tenancy` に属するテナント単位の Aggregate である。どのプリンシパルを統治するスキーマであっても、テナント単位のスキーマ管理は `Tenancy` の関心事であるため、`TenantUserAttributeSchema` と同じ場所に置く。`GroupAttributeDef` は `UserAttributeDef` と異なり、`key`、`label`、`type`、`multi_valued`、`required` だけを持ち、`editable_by_user`、`claim_name` / `oidc_scope`、`visibility` は持たない。`Group` にはセルフサービスの編集画面がなく、その属性を OIDC / SAML クレームへ射影しないためである。和集合にする組み込みカタログもない。`User` の組み込み層は、OIDC §5.1 と SCIM `enterprise:User` が多数の任意プロフィールクレームを固定的に定めるため存在するが、Group には同様の標準語彙がない。そのため `TenantGroupAttributeSchema.attributes` だけが実効定義の集合になる。未定義キーの拒否、型の一致、`multi_valued` の整合性、`required` の充足という `ValidateAttributes` 型の検査は概念として再利用する。一方で、2 つの定義がすべてのフィールドを共有するわけではないため、`GroupAttributeDef` に対する Group 固有の処理として実装する。管理者は、ユーザースキーマと同じ形の 2 つのエンドポイント `GetTenantGroupAttributeSchema` / `UpdateTenantGroupAttributeSchema` (`/api/admin/v1/tenant/group_attribute_schema`) を通じてスキーマを管理する。
 
-## Agent Principal
+## エージェント主体
 
 `Agent` は、`User` と、OAuth2 で定義する資格情報プリミティブに並ぶ、第 3 の第一級プリンシパル型である。この Context では、アイデンティティ、所有者、ライフサイクル、資格情報のバインディングを含む Aggregate 自体を扱う。エージェントがトークン交換のチェーンで actor として振る舞うための委譲機構は `OAuth2` が担う。
 

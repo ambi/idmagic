@@ -25,8 +25,8 @@
 
 非 5xx 比率は、対象母集団のうち状態コードが 500 未満であるレスポンスの割合とする。
 可用性は 5 分の時間区分で評価し、対象リクエストが一件以上完了した区分だけを観測対象とする。
-API のスクレイプ対象が区分を通じて一つ以上利用可能で、対象リクエストに非 5xx レスポンスが一件以上あれば利用可能とする。
-要求がない区分は母集団から除外し、スクレイプ対象が失われた区分は利用不能として数える。
+API のメトリクス収集対象が区分を通じて一つ以上利用可能で、対象リクエストに非 5xx レスポンスが一件以上あれば利用可能とする。
+要求がない区分は母集団から除外し、メトリクス収集対象が失われた区分は利用不能として数える。
 
 ## サービス目標
 
@@ -49,10 +49,14 @@ API のスクレイプ対象が区分を通じて一つ以上利用可能で、�
 | SLO-FEDERATION-CALLBACK-LATENCY | OIDC と SAML の外部連携コールバック | p95 ≤ 2 s | `http_request_duration_seconds` |
 | SLO-PRIMARY-ERRORS | ログイン、認可、PAR、トークン、失効、UserInfo、動的登録、デバイス認可 | 非 5xx ≥ 99.9% | `http_requests_total` |
 | SLO-LOOKUP-ERRORS | introspection、Discovery、Authorization Server Metadata、JWKS | 非 5xx ≥ 99.99% | `http_requests_total` |
-| SLO-OAUTH2-AVAILABILITY | OAuth2 と OIDC の対象エンドポイント全体 | ≥ 99.9% | `http_requests_total` とスクレイプ状態 |
-| SLO-TOKEN-AVAILABILITY | `/token` | ≥ 99.95% | `http_requests_total` とスクレイプ状態 |
+| SLO-OAUTH2-AVAILABILITY | OAuth2 と OIDC の対象エンドポイント全体 | ≥ 99.9% | `http_requests_total` とメトリクス収集状態 |
+| SLO-TOKEN-AVAILABILITY | `POST /token` | ≥ 99.95% | `http_requests_total` とメトリクス収集状態 |
 
 外部連携コールバックの非 5xx 目標と、セッション一覧のページ別レイテンシー目標は、現在の計装では母集団を定義できないため設けない。
+
+数値目標は、ログイン、OAuth 2.0、OpenID Connect、および上流の OpenID Connect・SAML 連携コールバックを対象とする。
+SAML IdP、管理 API、SCIM、監査、ワーカー、バッチの数値目標は、測定境界と運用実績がないため未定義である。
+セキュリティとアクセシビリティは、数値目標ではなく標準仕様と検証設計で扱う。
 
 ## キャパシティ受入れ
 
@@ -60,9 +64,9 @@ API のスクレイプ対象が区分を通じて一つ以上利用可能で、�
 
 | ID | エンドポイント | 必要なリクエスト率 | 満たす目標 |
 | --- | --- | --- | --- |
-| CAP-TOKEN-THROUGHPUT | `/token` | 5,000 rps | SLO-TOKEN-LATENCY と SLO-PRIMARY-ERRORS |
-| CAP-AUTHORIZE-THROUGHPUT | `/authorize` | 1,000 rps | SLO-AUTHORIZE-LATENCY と SLO-PRIMARY-ERRORS |
-| CAP-INTROSPECT-THROUGHPUT | `/introspect` | 20,000 rps | SLO-INTROSPECT-LATENCY と SLO-LOOKUP-ERRORS |
+| CAP-TOKEN-THROUGHPUT | `POST /token` | 5,000 rps | SLO-TOKEN-LATENCY と SLO-PRIMARY-ERRORS |
+| CAP-AUTHORIZE-THROUGHPUT | `GET /authorize` | 1,000 rps | SLO-AUTHORIZE-LATENCY と SLO-PRIMARY-ERRORS |
+| CAP-INTROSPECT-THROUGHPUT | `POST /introspect` | 20,000 rps | SLO-INTROSPECT-LATENCY と SLO-LOOKUP-ERRORS |
 
 流量制限で返した 429 は非 5xx 比率には含むが、Required rate の処理済み要求には数えない。
 

@@ -60,7 +60,7 @@ Markdown はタイトル、見出し、表見出し、リンクラベルを含�
 同じ役割の表が、`docs/domain/` の直下と配下で違う言語の見出しを使っている。
 
 索引表の見出し語も 3 種類に割れている。
-`docs/domain/` の Context が `文書 \| 内容`、`docs/design/` と `docs/requirements/` と `docs/verification/` が `文書 \| 責務`、`docs/domain/README.md` と `docs/operations/README.md` が `文書 \| 定めるもの` を使う。
+`docs/domain/` の Context が `文書 \| 内容`、`docs/design/` と `docs/requirements/` と `docs/design/verification/` が `文書 \| 責務`、`docs/domain/README.md` と `docs/operations/README.md` が `文書 \| 定めるもの` を使う。
 どれも「そのディレクトリのファイルを一行ずつ挙げる表」であり、役割は同じである。
 
 ## Scope

@@ -40,7 +40,7 @@ describe('現在状態の文書からの work item 参照', () => {
   // 変更単位で書くリリースノートと、手順の例を持つ開発文書は対象にしない。
   it('現在状態を書く文書だけを対象にする', () => {
     expect(isCurrentStateDocument('docs/design/infrastructure/network.md')).toBe(true)
-    expect(isCurrentStateDocument('docs/architecture/deployment.md')).toBe(true)
+    expect(isCurrentStateDocument('docs/design/architecture/deployment.md')).toBe(true)
     expect(isCurrentStateDocument('docs/requirements/quality.md')).toBe(true)
     expect(isCurrentStateDocument('docs/domain/oauth2/decisions.md')).toBe(true)
     expect(isCurrentStateDocument('docs/runbooks/async-jobs.md')).toBe(true)

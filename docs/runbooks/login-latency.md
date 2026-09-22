@@ -8,7 +8,7 @@
 
 1. **パスワード検証そのものを疑う。** ログインは Argon2id の計算を含み、**これは意図的に高価である**（`backend/shared/security` の `passwords_argon2id`）。パラメーターを上げる変更が直前に入っていないか確認する。上げたなら、遅いのは障害ではなく設定の帰結である。
 
-2. **スロットルの直列化。** ログインスロットルは共有カウンターを `SELECT ... FOR UPDATE` で直列化して更新する（[ランタイムアーキテクチャ](../architecture/runtime.md)）。同一アカウントまたは同一 IP へ試行が集中すると、この行がボトルネックになる。
+2. **スロットルの直列化。** ログインスロットルは共有カウンターを `SELECT ... FOR UPDATE` で直列化して更新する（[ランタイムアーキテクチャ](../design/architecture/runtime.md)）。同一アカウントまたは同一 IP へ試行が集中すると、この行がボトルネックになる。
 
    ```promql
    sum by (policy, outcome) (rate(authn_login_throttle_total[5m]))

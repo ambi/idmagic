@@ -26,7 +26,7 @@ initial_context:
     - backend/shared/http/server_http/priority_class_reference.go
     - backend/cmd/idmagic-route-reference/main.go
     - ROUTE_PRIORITY.md
-    - docs/architecture/deployment.md
+    - docs/design/architecture/deployment.md
     - mise.toml
   tests:
     - frontend/src/devProxy.test.ts
@@ -52,7 +52,7 @@ primary_use_cases:
 
 ## Motivation
 
-ブラウザーから見える境界を同一オリジンに揃えるのはゲートウェイの役目である（`docs/architecture/deployment.md`）。そのゲートウェイは、どのパスを Go へ渡すかを**手書きの接頭辞列挙**で決めている。列挙は 3 か所にあり、いずれも実行時の経路表と照合されていない。
+ブラウザーから見える境界を同一オリジンに揃えるのはゲートウェイの役目である（`docs/design/architecture/deployment.md`）。そのゲートウェイは、どのパスを Go へ渡すかを**手書きの接頭辞列挙**で決めている。列挙は 3 か所にあり、いずれも実行時の経路表と照合されていない。
 
 | 場所 | 形 |
 | --- | --- |
@@ -85,7 +85,7 @@ primary_use_cases:
 
 ## Out of Scope
 
-- ゲートウェイ設定そのものを必須のランタイムにすること。`docs/architecture/deployment.md` の「Caddy は参照用の設定であり、必須のランタイムではない」という判断は変えない。検査するのはリポジトリが同梱する参照設定である。
+- ゲートウェイ設定そのものを必須のランタイムにすること。`docs/design/architecture/deployment.md` の「Caddy は参照用の設定であり、必須のランタイムではない」という判断は変えない。検査するのはリポジトリが同梱する参照設定である。
 - 列挙を 1 か所へ統合し、Caddyfile と Vite の設定を生成物にすること。有力だが、生成に倒すかどうかは Design で判断する。判断が生成なら本 work item で実施し、そうでなければ照合だけを持つ。
 - 経路ごとの認可、ヘッダー、キャッシュ方針の照合。本 work item は「Go へ届くか」だけを見る。
 - 同一オリジンの前提が満たされているかの実行時検証。[[wi-426-same-origin-deployment-assumption-detection]] が持つ。

@@ -21,7 +21,7 @@ initial_context:
   source:
     - docs/design/observability
     - docs/requirements/quality.md
-    - docs/architecture/deployment.md
+    - docs/design/architecture/deployment.md
     - docs/design/infrastructure/platform.md
     - infra/k8s/monitoring
     - infra/docker/prometheus.yml
@@ -125,7 +125,7 @@ initial_context:
 | 信号 | シグナル | OpenTelemetry 日本語ドキュメントの[シグナル](https://opentelemetry.io/ja/docs/concepts/signals/)が、テレメトリーの種類を指してこの語を使う |
 | 相関 | 相関（維持） | Datadog 日本語ドキュメントの「ログとトレースの相関」が同じ意味で使う。OpenTelemetry 日本語ドキュメントは「関連付け」と書く |
 | 所有境界 | 採らない | 一次資料に対応する語が無い。文書の分担の話であり、オブザーバビリティの用語ではないため、平易な日本語で書く |
-| 公開入口 | エッジ | [デプロイメントアーキテクチャ](../../docs/architecture/deployment.md)がロードバランサーと Ingress の層をエッジと呼んでいる |
+| 公開入口 | エッジ | [デプロイメントアーキテクチャ](../../docs/design/architecture/deployment.md)がロードバランサーと Ingress の層をエッジと呼んでいる |
 | 重大度 | ログレベル | 一般的な表記であり、`level` フィールドの値そのものを指す |
 
 「シグナル」は OS のシグナルと衝突する。

@@ -1,16 +1,16 @@
 # WsFederation の内部設計
 
-## Sign-out on the passive endpoint
+## パッシブエンドポイントでのサインアウト
 
 サインインとサインアウトは 1 本のパッシブエンドポイントを共有し、`wa` パラメーターで分かれる。どちらの `wa` でもローカルセッションを破棄したうえで、`wsignout1.0` では許可済みの `wreply` へのリダイレクトまで行い、`wsignoutcleanup1.0` では破棄だけを行って 200 を返す。`wreply` へのリダイレクトは、その `wtrealm` に登録済みの宛先に限る。登録されていない宛先へ送る経路が無いことが、サインアウトを開いたリダイレクターに変えないことの保証である。
 
-## Tenant signing
+## テナント単位の署名
 
 受動的な発行でも能動的な発行でも、発行時にリクエスト元テナントの有効な `XmlFederationSigning` 資格情報を取得する。フェデレーションメタデータでは、広告する役割ごとに現在有効な証明書と有効期限内の検証用証明書を公開する。これにより、RP は計画されたローテーションの前後でも検証を継続できる。
 
 署名は、プロセス起動時に保持した状態ではなく、`SigningKeys` から取得した資格情報で行う。これにより、WS-Fed と SAML は XML 署名資格情報のライフサイクルを共有しながら、OAuth2 と JWT の鍵から分離できる。
 
-## Federation metadata
+## フェデレーションメタデータ
 
 この Context は、各レルムの `/{realm}/federationmetadata/2007-06/federationmetadata.xml` で AD FS 互換の `federationmetadata.xml` を公開し、テナントの発行者（デフォルトテナントでは `/realms/default`）を entityID として広告する。これにより、WS-Fed RP と Microsoft Entra のドメインフェデレーションは、別の導入手順を使わずに発行者、エンドポイント、署名証明書を検出できる。
 
@@ -18,7 +18,7 @@
 
 クレームの公開は宣言的に定義する。AD FS のクレーム規則言語は採用せず、`ClaimMappingPolicy` を WS-Fed、WS-Trust、SAML で共有する。対応付けたクレームの集合には AD FS 規則言語ほどの表現力は不要であり、検証コストだけが増えるためである。対応付けのない属性は決して発行しない。
 
-## WS-Trust active STS scope
+## WS-Trust Active STS の対象範囲
 
 能動的な WS-Trust への対応は、汎用的な相互運用ではなく、Microsoft 365 型のリッチクライアントによるサインインを対象とする。SOAP、WS-Security、WS-Addressing、SAML の署名は相互に関係するため、対応するバインディングを増やすほど再送や XML 署名ラッピングの攻撃面が広がる。そこで、初期の対応範囲は意図的に狭くする。
 
@@ -26,7 +26,7 @@
 
 WS-Addressing と WS-Security の必須要素（`MessageID`、`To`、`Action`、UsernameToken、Timestamp、`AppliesTo`）はフェイルクローズで検証する。Timestamp は期限切れの値と遠い未来の値を拒否し、`MessageID` は有効期間の短いリプレイ防止ストアに記録する。`AppliesTo` は登録済みの WS-Fed RP に解決できなければならず、未登録の宛先は拒否する。発行する Assertion の audience と recipient はその RP に限定し、クレームは RP の `ClaimMappingPolicy` を通じて発行する。これにより、リプレイや audience の取り違えが RP の境界を越えることを防ぐ。RSTR は SOAP 1.2 で署名済み SAML Assertion を返し、RST が SAML 1.1 または SAML 2.0 を明示的に要求しない場合は SAML 1.1 をデフォルトとする。
 
-## Entra domain federation profile
+## Entra ドメインフェデレーションプロファイル
 
 `EntraFederationProfile` は、WS-Federation RP 用の定型設定である。ドメイン、IssuerUri、sourceAnchor 属性、受動・能動・MEX の各エンドポイントを受け取り、wtrealm と audience に同じ IssuerUri を持つ `WsFedRelyingParty` を作成または更新する。定型設定にすることで、クレーム設定の JSON を手書きする必要がなくなる。手書きの設定を誤ると Entra 側では原因を特定しにくく、設定時に sourceAnchor の安定性や一意性も保証できない。
 
@@ -34,6 +34,6 @@ WS-Addressing と WS-Security の必須要素（`MessageID`、`To`、`Action`、
 
 GUID の形をした sourceAnchor の値は、ImmutableID として使う前に .NET の `Guid.ToByteArray()` のバイト順 — AD FS と Entra の慣行 — で base64 に符号化する。既に base64 の値はそのまま通す。このバイト順を誤ると、Entra は assertion を元の社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。プロファイルのデフォルトのトークンの型は SAML 1.1 であり、Entra と AD FS の WS-Fed のデフォルトに合わせている。Hybrid Azure AD Join の端末の登録 (`windowstransport` とコンピューターアカウントの Kerberos) は明確に範囲外であり、設定の案内では managed や PHS、あるいは AD FS の併存のデプロイへ誘導する。
 
-## Fuzzed parse boundaries
+## パース境界のファズテスト
 
 パッシブサインインの `wreply` 解決と WS-Trust の RST エンベロープ解析は Go native fuzzing の対象である。`ValidateSignIn` が返す返信先は、必ず RP に登録済みの集合の要素でなければならず、`wreply` を指定した要求が通ったならその値とバイト単位で一致していなければならない。接頭辞一致や正規化を伴う一致へ退行すると、攻撃者は RP のドメイン配下に見える別の宛先へトークンを配送できる。`ParseRST` は拒否したエンベロープから Username や AppliesTo を持ち出さない。実体参照の非展開は SAML と同じく回帰テストで押さえる。

@@ -23,7 +23,7 @@ initial_context:
     - docs/design/performance/capacity.md
     - docs/design/performance/scaling.md
     - docs/design/performance/README.md
-    - docs/architecture/deployment.md
+    - docs/design/architecture/deployment.md
     - docs/design/infrastructure/platform.md
     - docs/design/infrastructure/network.md
     - docs/design/data/lifecycle.md
@@ -177,7 +177,7 @@ PostgreSQL の可用性は、選択肢（マネージドサービスの高可用
 
 目標値を設計文書へ写すと、[品質要求](../../docs/requirements/quality.md)と二重になる。値は参照し、この四文書には機構だけを書く。
 
-題名の変更はアンカーと索引を変える。`docs/design/performance/README.md`、`docs/architecture/deployment.md`、`docs/design/reliability/availability.md` がこの文書を名指しているため、`mise run check-links` で確かめる。
+題名の変更はアンカーと索引を変える。`docs/design/performance/README.md`、`docs/design/architecture/deployment.md`、`docs/design/reliability/availability.md` がこの文書を名指しているため、`mise run check-links` で確かめる。
 
 ## Completion
 

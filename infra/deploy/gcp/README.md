@@ -7,7 +7,7 @@
 採らなかった理由と、見直す条件は[プラットフォーム設計](../../../docs/design/infrastructure/platform.md#アーキテクチャの選択)が持つ。
 採った構成は次の文書が持つ。
 
-- 実行単位の配置先とプロファイルの一覧：[デプロイメントアーキテクチャ](../../../docs/architecture/deployment.md)
+- 実行単位の配置先とプロファイルの一覧：[デプロイメントアーキテクチャ](../../../docs/design/architecture/deployment.md)
 - コンピューティング、データベース、シークレットの注入、スキーマ適用、スケール単位、費用：[プラットフォーム設計](../../../docs/design/infrastructure/platform.md)
 - エッジ、セグメンテーション、ファイアウォールルール、Egress、DNS と証明書：[ネットワーク設計](../../../docs/design/infrastructure/network.md)
 - 起動時設定の項目、デフォルト値、検証規則：[`CONFIGURATION.md`](../../../CONFIGURATION.md)

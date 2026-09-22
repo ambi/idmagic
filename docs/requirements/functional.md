@@ -1,7 +1,17 @@
 # 機能要求
 
 IdMagic は、人とワークロードのアイデンティティを管理し、認証、認可、フェデレーション、プロビジョニング、監査を一つのプロダクト境界で提供する。
-利用者の目的と担当する詳細仕様は次のように割り当てる。
+
+## 主な機能
+
+| 分類 | 提供する機能 |
+| --- | --- |
+| 認証要素 | パスワード、TOTP、WebAuthn パスキー、リカバリーコード |
+| 上流からの同期 | SCIM による利用者とグループの取り込み |
+| 上流 IdP との連携 | OpenID Connect、SAML 2.0、WS-Federation |
+| 下流への同期 | SCIM による利用者とグループのプロビジョニング |
+
+## 担当する仕様
 
 | 利用目的 | 担当する仕様 |
 | --- | --- |
@@ -13,6 +23,3 @@ IdMagic は、人とワークロードのアイデンティティを管理し、
 | ワークロードを認証し、継続的なアクセス評価を行う | [Workload Identity](../domain/workloadidentity/)、[Shared Signals](../domain/sharedsignals/) |
 | 鍵、API トークン、非同期処理、監査を管理する | [Signing Keys](../domain/signing-keys/)、[Data Keys](../domain/data-keys/)、[API Tokens](../domain/api-tokens/)、[Jobs](../domain/jobs/)、[Audit](../domain/audit/) |
 | システムを構成し、初期データを投入する | [System](../domain/system/)、[Seeding](../domain/seeding/) |
-
-複数の Context が協調しなければ満たせない振る舞いは[システム横断シナリオ](../domain/scenarios.feature.md)で定める。
-API のモデル、操作、HTTP バインディング、認証機構は `spec/contexts/` の TypeSpec で定義する。

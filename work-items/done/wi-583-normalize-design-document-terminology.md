@@ -20,7 +20,7 @@ initial_context:
   typespec: []
   source:
     - docs/domain/glossary.md
-    - docs/architecture/deployment.md
+    - docs/design/architecture/deployment.md
     - docs/runbooks/backup-restore-dr.md
     - infra/backup/restore-drill.sh
     - tools/check/src/registry.ts
@@ -48,10 +48,10 @@ initial_context:
 用語から概念へたどれないため、検索も外部資料との突き合わせも効かない。
 
 同じ語の表記も揺れている。
-`docs/architecture/deployment.md` は見出しで「参照トポロジー」、本文で「参照トポロジ」と書く。
+`docs/design/architecture/deployment.md` は見出しで「参照トポロジー」、本文で「参照トポロジ」と書く。
 
 意味を復元できない語もある。
-`docs/architecture/deployment.md` の「Docker Compose はローカル開発と訓練」は、何の訓練を指すのか本文から決まらない。
+`docs/design/architecture/deployment.md` の「Docker Compose はローカル開発と訓練」は、何の訓練を指すのか本文から決まらない。
 一方で `recovery.md` や `system-acceptance.md` の「復元訓練」は restore drill を指しており、同じ「訓練」が二つの別のものに使われている。
 
 ## Scope
@@ -97,7 +97,7 @@ initial_context:
 
 「訓練」は語を置き換えるのではなく、箇所ごとに意味を確定させる。
 restore drill を指す箇所は「復旧ドリル」とする。
-`docs/architecture/deployment.md` の「ローカル開発と訓練」は「ローカル開発と復旧ドリル」とする。
+`docs/design/architecture/deployment.md` の「ローカル開発と訓練」は「ローカル開発と復旧ドリル」とする。
 `infra/backup/restore-drill.sh` が `infra/docker/docker-compose.dev.yaml` を使い捨てプロジェクトとして起動しており、Docker Compose が実際に担っている二つ目の用途はこれである。
 
 **機械的な一括置換はしない。** 対象語は別の意味でも現れる。
@@ -133,9 +133,9 @@ restore drill を指す箇所は「復旧ドリル」とする。
 - [x] T001 [Design] 用語表と、残す共起の一覧を確定する。
 - [x] T002 [Tools] 採用しない表記を検出する検査を追加し、現在の文書に対して RED を観測する。`mise run test-tools-file -- check/src/terminology.test.ts`、`mise run test-tools-file -- check/src/repository-checks.acceptance.test.ts`、`mise run check-terminology`。
 - [x] T003 [Docs] 採用語を用語集へ登録する。
-- [x] T004 [Docs] `docs/architecture/` の用語と見出しを揃える。
+- [x] T004 [Docs] `docs/design/architecture/` の用語と見出しを揃える。
 - [x] T005 [Docs] `docs/design/` の用語と見出しを揃える。
-- [x] T006 [Docs] `docs/operations/`、`docs/verification/`、`docs/requirements/` を揃える。
+- [x] T006 [Docs] `docs/operations/`、`docs/design/verification/`、`docs/requirements/` を揃える。
 - [x] T007 [Docs] `docs/domain/` を揃える。
 - [x] T008 [Docs] `docs/development/`、`docs/runbooks/`、`docs/releases/`、`docs/README.md` ほか `docs/` 直下を揃える。
 - [x] T009 [Docs] ルート直下の人が読む Markdown を揃える。
@@ -170,7 +170,7 @@ restore drill を指す箇所は「復旧ドリル」とする。
   設計文書の用語が、指す英語の概念へ一対一で戻せるようになった。
   deployment、runtime、platform、secret、capacity、observability、admission control、guidelines、load shedding order、sizing formula、reference workload profile の各概念が、それぞれ「デプロイ／デプロイメント」「ランタイム」「プラットフォーム」「シークレット」「キャパシティ」「オブザーバビリティ」「アドミッションコントロール」「ガイドライン」「ロードシェディング順序」「サイジング計算式」「リファレンスワークロードプロファイル」という一つの表記を持つ。
   「秘密鍵」「秘密情報」「保存容量」「容量超過」「実行時に」のように別概念を指す共起は残っており、規則表がその理由を持つ。
-  意味の復元できなかった「訓練」は箇所ごとに確定した。`docs/architecture/deployment.md` の「ローカル開発と訓練」は「ローカル開発と復旧ドリル」になり、これは `infra/backup/restore-drill.sh` が `infra/docker/docker-compose.dev.yaml` を使い捨てプロジェクトとして起動している事実に基づく。
+  意味の復元できなかった「訓練」は箇所ごとに確定した。`docs/design/architecture/deployment.md` の「ローカル開発と訓練」は「ローカル開発と復旧ドリル」になり、これは `infra/backup/restore-drill.sh` が `infra/docker/docker-compose.dev.yaml` を使い捨てプロジェクトとして起動している事実に基づく。
   題名が「ガイドライン」になった 2 文書はファイル名も `api-guidelines.md`、`design-guidelines.md` へ改めた。`rules` と `guidelines` の二つの英語が同じ文書を指す状態を残さないためである。
   `mise run spec-diff` は REQ-SIGNINGKEYS-012 を挙げる。EX-SIGNINGKEYS-012-01 の Given 1 行が「配備の `PERSISTENCE`」から「デプロイ先の `PERSISTENCE`」になったためで、id、条件、要求する結果はいずれも同じである。
   再発は `mise run check-terminology` が拒否する。免除は `tools/check/src/terminology.ts` の規則表が持つ理由付きの共起だけで、ファイル単位の免除は無い。

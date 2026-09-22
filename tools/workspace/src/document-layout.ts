@@ -30,20 +30,20 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
   { directory: 'docs/domain', names: DOMAIN_DOCUMENTS },
   {
     directory: 'docs/requirements',
-    names: ['README.md', 'functional.md', 'quality.md', 'constraints.md'],
+    names: ['README.md', 'product-overview.md', 'functional.md', 'quality.md'],
   },
   {
-    directory: 'docs/architecture',
+    directory: 'docs/design/architecture',
     names: [
       'README.md',
-      'system-context.md',
+      'system-boundary.md',
       'logical.md',
       'runtime.md',
       'deployment.md',
       'decisions.md',
     ],
   },
-  { directory: 'docs/design', names: ['README.md', 'product-overview.md'] },
+  { directory: 'docs/design', names: ['README.md'] },
   {
     directory: 'docs/design/application',
     names: [
@@ -78,7 +78,10 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
     directory: 'docs/design/observability',
     names: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
   },
-  { directory: 'docs/verification', names: ['README.md', 'system-acceptance.md', 'security.md'] },
+  {
+    directory: 'docs/design/verification',
+    names: ['README.md', 'system-acceptance.md', 'security.md'],
+  },
   {
     directory: 'docs/operations',
     names: ['README.md', 'service-management.md', 'maintenance.md'],

@@ -1,6 +1,6 @@
 # ClaimMapping の内部設計
 
-## The single claim-resolution path
+## クレーム解決経路の一元化
 
 `NameID` と `IssuedClaim[]` の組み立ては、WS-Fed、SAML、OIDC の各 issuer が共有する唯一の経路を通る。プロトコルごとに解決を書くと、あるプロトコルでだけ非公開属性が漏れる形が作れてしまう。テナントの属性可視性 (`visibility != Private`) と予約済みクレーム型の固定集合は、ポリシーでは緩和できない制約として、この経路の中で強制する。
 
@@ -8,7 +8,7 @@
 
 `user_id` は User Aggregate の識別子を指す、プロトコルに依存しない内部属性キーであり、OIDC の ID Token や UserInfo が発行するワイヤークレーム `sub` とは別物である。両者の対応付けは OIDC 側の issuer が行う。
 
-## Declarative claim-issuance engine
+## 宣言的なクレーム発行エンジン
 
 `ClaimMappingRule` は AD FS 風のクレーム規則言語ではなく、出力するクレーム型 (URI) とそのソース — ユーザー属性、固定値、`NameID` のいずれか — を宣言する。`ClaimMappingPolicy` は RP ごとの規則集合を `NameIdConfiguration` と束ねる。処理系はポリシーと解決済み属性の対応表を受け取り、`IssuedClaim[]` を返す。
 

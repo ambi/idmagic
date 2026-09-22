@@ -32,17 +32,17 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'docs', 'domain', 'demo'), { recursive: true })
-  await mkdir(join(root, 'docs', 'architecture'), { recursive: true })
+  await mkdir(join(root, 'docs', 'design', 'architecture'), { recursive: true })
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
   // Context を 1 つでも持つ作業ツリーは、索引表でその区分を宣言しなければならない。
   await writeFile(
-    join(root, 'docs', 'architecture', 'logical.md'),
+    join(root, 'docs', 'design', 'architecture', 'logical.md'),
     [
       '# 論理アーキテクチャ',
       '',
       '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
       '| --- | --- | --- | --- |',
-      '| [Demo](../domain/demo/README.md) | Core | `demo` | Demo. |',
+      '| [Demo](../../domain/demo/README.md) | Core | `demo` | Demo. |',
       '',
     ].join('\n'),
   )
@@ -641,14 +641,14 @@ describe('用語検査', () => {
   it('採らない表記を含む設計文書を、行と採用語つきで拒否する', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'architecture', 'deployment.md'),
+      join(root, 'docs', 'design', 'architecture', 'deployment.md'),
       '# 概要\n\n配備の不変条件。\n',
     )
 
     const result = await checkTerminology(root)
 
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/architecture/deployment.md:3:1')
+    expect(result.output).toContain('docs/design/architecture/deployment.md:3:1')
     expect(result.output).toContain('デプロイ')
   })
 
@@ -677,14 +677,14 @@ describe('現在状態の文書からの work item 参照の検査', () => {
   it('設計文書の work item 参照を、位置つきで拒否する', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'architecture', 'deployment.md'),
+      join(root, 'docs', 'design', 'architecture', 'deployment.md'),
       '# 概要\n\n試験は [wi-165](../../work-items/wi-165-ha.md) が扱う。\n',
     )
 
     const result = await checkWorkItemReferences(root)
 
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/architecture/deployment.md:3:6')
+    expect(result.output).toContain('docs/design/architecture/deployment.md:3:6')
     expect(result.output).toContain('wi-165')
   })
 

@@ -20,7 +20,7 @@ SPA は次の四種類の画面を提供する。
 | --- | --- |
 | `frontend/src/` のディレクトリ構成と依存の向き | [構造](../../domain/structure.md#フロントエンドのコンポーネント構造)の「フロントエンドのコンポーネント構造」 |
 | 画面を跨いで揃える表示と操作の規範 | [ユーザーインターフェース設計](user-interface.md) |
-| Frontend gateway の実行単位としての位置付け | [ランタイムアーキテクチャ](../../architecture/runtime.md#実行単位) |
+| フロントエンドゲートウェイ の実行単位としての位置付け | [ランタイムアーキテクチャ](../architecture/runtime.md#実行単位) |
 | API の形とエラーの形式 | [API ガイドライン](api-guidelines.md) |
 | ライブラリのバージョン | `frontend/package.json` と `frontend/bun.lock` |
 

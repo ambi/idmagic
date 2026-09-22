@@ -24,7 +24,7 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 | 用語 | 定義 | 別名 |
 |---|---|---|
 | Aggregate | 1 つの単位として変更されるドメインオブジェクトの集まり。ちょうど 1 つのルートエンティティを持ち、その識別子が全体を名指す。常に成り立たなければならない不変条件は 1 つの Aggregate の内側に収め、境界を越える整合は結果整合として明示的に組む。外部からはルートの識別子で参照し、内部の要素を直接指さない。1 つの Aggregate はちょうど 1 つの Bounded Context に属する。境界の引き方、トランザクションとの対応、Repository の粒度は [設計ガイドライン](../design/application/design-guidelines.md#aggregate-境界と-repository) が、テナントに属する Aggregate が `tenant_id` を持つことは [データベース設計](../design/data/database.md#tenant_id-の保持区分) が定める。 |  |
-| Subdomain | Bounded Context を、事業上の差別化とモデルの複雑さで `Core`、`Supporting`、`Generic` のいずれかに分ける区分。全 Context の区分は [論理アーキテクチャ](../architecture/logical.md#context-の責務) の索引表に、ある Context が今の区分にある理由はその Context の `decisions.md` に記録する。区分が何を左右し、何を左右しないかは [設計ガイドライン](../design/application/design-guidelines.md#subdomain-と設計投資) が定める。 | サブドメイン |
+| Subdomain | Bounded Context を、事業上の差別化とモデルの複雑さで `Core`、`Supporting`、`Generic` のいずれかに分ける区分。全 Context の区分は [論理アーキテクチャ](../design/architecture/logical.md#context-の責務) の索引表に、ある Context が今の区分にある理由はその Context の `decisions.md` に記録する。区分が何を左右し、何を左右しないかは [設計ガイドライン](../design/application/design-guidelines.md#subdomain-と設計投資) が定める。 | サブドメイン |
 
 この 2 語は Latin 表記のまま使う。「集約」は日本語で観測値や設定をまとめる操作も指し、このリポジトリの文書でも [キャパシティ設計](../design/performance/capacity.md) と [Observability Design](../design/observability/) がその意味で使っている。同じ語に 2 つの読みを持たせると、`tenant_id` を持つかどうかのような規則がどちらの意味で書かれているのか判別できなくなる。
 

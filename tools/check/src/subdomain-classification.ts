@@ -1,5 +1,5 @@
 /**
- * `docs/architecture/logical.md` の Context 索引表が、全 Bounded Context をサブドメインの
+ * `docs/design/architecture/logical.md` の Context 索引表が、全 Bounded Context をサブドメインの
  * 区分つきで 1 行ずつ持つことを確かめる。
  *
  * 分類は、それに依存するものが無ければ飾りになる。索引表は新しい Context が
@@ -34,13 +34,13 @@ function cells(row: string): string[] {
   return parts
 }
 
-/** `[Name](../domain/<dir>/README.md)` が指す Context ディレクトリ名。 */
+/** `[Name](../../domain/<dir>/README.md)` が指す Context ディレクトリ名。 */
 function contextDirectory(cell: string): string | undefined {
-  return cell.match(/\((?:\.\.\/)?domain\/([^/)]+)\/README\.md\)/)?.[1]
+  return cell.match(/\((?:\.\.\/)+domain\/([^/)]+)\/README\.md\)/)?.[1]
 }
 
 /**
- * `source` は `docs/architecture/logical.md` の本文、`contextDirectories` は
+ * `source` は `docs/design/architecture/logical.md` の本文、`contextDirectories` は
  * `docs/domain/` の直下にあるディレクトリ名。どちらも引数で入るので、この
  * 関数はファイルシステムも作業ディレクトリも読まない。
  */

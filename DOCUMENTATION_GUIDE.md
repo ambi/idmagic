@@ -32,9 +32,9 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 
 ### 上位と下位の分かれ目
 
-`docs/README.md`、`docs/design/product-overview.md`、`docs/requirements/`、`docs/architecture/`の順に、目的、義務、構造を上から読む。`docs/design/`は、アーキテクチャが各構成要素へ割り当てた要求をどの機構で満たすかを書く。`docs/domain/<context>/`とTypeSpecでアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
+`docs/README.md`、`docs/requirements/product-overview.md`、`docs/requirements/`、`docs/design/architecture/`の順に、目的、義務、構造を上から読む。`docs/design/`は、アーキテクチャが各構成要素へ割り当てた要求をどの機構で満たすかを書く。`docs/domain/<context>/`とTypeSpecでアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
 
-`verification/`には要求を満たしたと判断する方法を書く。`development/`、`operations/`、`runbooks/`には、それぞれ開発の進め方、稼働後の管理、作業中に実行する手順を書く。現在の設計と作業手順が同じファイルに入った場合は、設計を該当する`design/`へ、手順を後三者の該当先へ分ける。ただし、一つの構成要素だけに関わる開発時の作業（フロントエンドの依存の宣言や部品の追加など）は、その構成要素の設計文書に含めてよい。
+`design/verification/`には要求を満たしたと判断する方法を書く。`development/`、`operations/`、`runbooks/`には、それぞれ開発の進め方、稼働後の管理、作業中に実行する手順を書く。現在の設計と作業手順が同じファイルに入った場合は、設計を該当する`design/`へ、手順を後三者の該当先へ分ける。ただし、一つの構成要素だけに関わる開発時の作業（フロントエンドの依存の宣言や部品の追加など）は、その構成要素の設計文書に含めてよい。
 
 各ディレクトリの`README.md`には、対象範囲、対象外の内容、子文書の索引、隣接する領域への参照を書く。対象システムに該当しない子文書は作らず、親の索引に適用対象外の理由を書く。
 
@@ -92,11 +92,11 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 
 ドメイン駆動設計の型の名前——Bounded Context、Context Map、関係パターン——は原語のまま使う。訳語が定まっておらず、訳すと参照元の議論を引けなくなるためである。一方、普通名詞として使う context は「コンテキスト」と書く。
 
-外部の主体とシステムとの責任分界は`architecture/system-context.md`で定める。Context Mapはアプリケーション内部のモデル境界を示すため、外部環境と物理的な運用境界を一枚に押し込まない。
+外部の主体とシステムとの責任分界は`design/architecture/system-boundary.md`で定める。Context Mapはアプリケーション内部のモデル境界を示すため、外部環境と物理的な運用境界を一枚に押し込まない。
 
 複数のコンテキストが使う共有機構は、担当を決めてその担当が詳細を定める。ここに置くのは、機構と担当と利用するコンテキストの索引だけである。
 
-末尾に子ディレクトリを含む文書の索引を置く。索引は文書の対象範囲と読み順を示し、プロダクトの対象範囲は`docs/design/product-overview.md`、システム境界は`docs/architecture/system-context.md`で定める。
+末尾に子ディレクトリを含む文書の索引を置く。索引は文書の対象範囲を示し、プロダクトの対象範囲は`docs/requirements/product-overview.md`、システム境界は`docs/design/architecture/system-boundary.md`で定める。
 
 ````markdown
 # <プロダクト名>
@@ -123,17 +123,17 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 
 ### 4.2 requirements/
 
+`requirements/product-overview.md`は、解決する課題、利用者、対象としない責務を記載する。
+
 `requirements/functional.md`は、利用者と外部システムが必要とする機能を、担当するコンテキストの規範シナリオとTypeSpecへ割り当てる。上位文書は個別の振る舞いを再掲せず、機能群と担当を書き、詳細仕様を参照する。
 
 `requirements/quality.md`は、システムに求める品質と測定境界を一度だけ宣言する。品質の点検には採用したバージョンのISO/IEC 25010を使い、適用する特性と適用しない特性を理由付きで示す。SLO、キャパシティ受入、RPO、RTO、互換性、セキュリティ、利用時品質などの数値と義務はここを一次情報とし、設計文書は識別子を参照する。
 
-`requirements/constraints.md`には、法令、外部規格、デプロイ先、利用可能な技術、運用体制、データ所在地など、設計が選択できない条件を書く。外部規範の採用内容は`standards.md`を参照し、同じ規則を再掲しない。
-
-### 4.3 architecture/
+### 4.3 design/architecture/
 
 アーキテクチャ記述はISO/IEC/IEEE 42010の関心事、視点、ビュー、対応関係の考え方を借りる。規格が特定のファイル構成や作図法を要求しているとは扱わない。
 
-`system-context.md`には利用者、外部システム、運用者、責任分界を、`logical.md`には機能分割、Context Map、データ所有を、`runtime.md`には実行単位と主要な相互作用を、`deployment.md`には実行単位と配置先の対応を書く。`decisions.md`には、複数のビューに作用する現在有効な判断と見直し条件を書く。
+`system-boundary.md`には利用者、外部システム、運用者、責任分界を、`logical.md`には機能分割、Context Map、データ所有を、`runtime.md`には実行単位と主要な相互作用を、`deployment.md`には実行単位と配置先の対応を書く。`decisions.md`には、複数の文書に作用する現在有効な判断と見直し条件を書く。
 
 各ビューは、対象となる関心事、用いる表現、構成要素、要素間の関係、対応する要求を冒頭で示す。別のビューと同じ構成を再定義せず、対応表または参照で結ぶ。
 
@@ -340,7 +340,7 @@ work item の正確な frontmatter、本文、証拠、完了記録の形式は�
 
 ### 7.1 リポジトリREADME
 
-一文のプロダクト説明、起動コマンド、そして三つの入口（`docs/design/product-overview.md`、`docs/README.md`、`CONTRIBUTING.md`）へのリンクだけを置く。README自身に仕様を書かない。
+一文のプロダクト説明、起動コマンド、そして三つの入口（`docs/requirements/product-overview.md`、`docs/README.md`、`CONTRIBUTING.md`）へのリンクだけを置く。README自身に仕様を書かない。
 
 ### 7.2 product-overview.md
 
@@ -616,7 +616,7 @@ runbookは障害時のものに限らない。**人が手で実行する運用�
 5. `docs/design/application/api-guidelines.md`、`docs/design/security/authorization.md`
 6. 各コンテキストの`standards.md`——プロトコル、アクセシビリティ、法令
 7. スキーマファイルと`docs/design/data/database.md`
-8. `docs/architecture/`と`docs/design/`の各領域、`docs/verification/`、`docs/operations/`、runbook
+8. `docs/design/architecture/`と`docs/design/`の各領域、`docs/design/verification/`、`docs/operations/`、runbook
 9. 設定リファレンスの生成、追跡ページの生成、機械検査
 
 開発環境とCIを最初に置くのは、生成と検査の土台がないと仕様が単なる散文になるためである。work itemの形式を早く決めるのは、それが無いと変更時点の検討が仕様へ流れ込むためである。

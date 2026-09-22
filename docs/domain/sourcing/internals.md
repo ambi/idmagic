@@ -1,6 +1,6 @@
 # Sourcing の内部設計
 
-## SCIM 2.0 inbound provisioning
+## SCIM 2.0 による取り込み
 
 各テナントは `/realms/{realm_id}/scim/v2` を持ち、テナントを特定できるテナントごとの Bearer トークンで認証する。全体で 1 つのトークンを共有する方式は、テナント間の分離を破るため採用しない。サーバーは `/Users` と `/Groups`（GET、POST、GET/{id}、PUT/{id}、PATCH/{id}、DELETE/{id}）、`/ServiceProviderConfig`、`/ResourceTypes`、`/Schemas` を実装する。
 
@@ -28,6 +28,6 @@ Enterprise 拡張は `employeeNumber`、`department`、`manager` の 3 属性だ
 
 PATCH や PUT で `active` を `false` にすると `User.lifecycle.status` は `Disabled` へ遷移し、`true` に戻すと `Active` へ戻る。`DELETE /Users/{id}` は完全な削除を行わず、プラットフォームの他の部分と同じ論理削除 (`PendingDeletion`、30 日の猶予、その後に匿名化を伴う連鎖的な完全削除) を行う。これにより設定を誤った、あるいは誤動作した外部の同期が、回復不能な PII の喪失を引き起こすことはない。SCIM の削除を既存の論理削除の方針に統合するものであり、迂回するものではない。`DELETE /Groups/{id}` は即時かつ完全である。group は PII を持たないからである。
 
-## Fuzzed parse boundaries
+## パース境界のファズテスト
 
 外部 IdP から届く SCIM の書き込みボディは Go native fuzzing の対象である。フィルタ式に加えて、`ParseUserWrite`・`ParseUserPatchOps`・`ParseGroupWrite`・`ParseGroupPatchOps` が対象になる。拒否したボディから値を持ち出さないこと、受理した PATCH 操作が宣言済みの op と属性だけからなること、空の操作列を成功として返さないことを表明する。未知の op がそのまま下位へ流れると、許可属性の判定を経ないまま適用される経路ができる。

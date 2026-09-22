@@ -24,7 +24,7 @@ flowchart LR
 }
 
 const rootProductOverviewDocument = {
-  path: 'docs/design/product-overview.md',
+  path: 'docs/requirements/product-overview.md',
   source: '# プロダクト概要\n\nプロダクトの目的。\n',
 }
 
@@ -320,8 +320,8 @@ describe('renderDocumentationSite', () => {
       'development/index.html',
       'development/release.html',
       'docs/design/index.html',
-      'docs/design/product-overview.html',
       'docs/requirements/index.html',
+      'docs/requirements/product-overview.html',
       'docs/requirements/quality.html',
       'domain/demo/glossary.html',
       'domain/demo/index.html',
@@ -480,7 +480,7 @@ describe('renderDocumentationSite', () => {
 
     expect(
       [...design.matchAll(/class="nav-link"[^>]*>([^<]+)/g)].map((match) => match[1]).slice(0, 2),
-    ).toEqual(['プロダクト概要', '要求'])
+    ).toEqual(['要求', 'プロダクト概要'])
     expect(design).not.toContain('ドメイン設計')
     expect(
       [...domain.matchAll(/class="nav-link"[^>]*>([^<]+)/g)].map((match) => match[1]).slice(0, 5),
@@ -492,7 +492,7 @@ describe('renderDocumentationSite', () => {
    * 開いたままにすると、無関係なページを開いただけで一覧がすべて展開される。
    */
   it('opens a branch only while the current page is inside it', () => {
-    const away = sidebar(site().files['docs/design/product-overview.html'])
+    const away = sidebar(site().files['docs/design/index.html'])
     const inside = sidebar(site().files['docs/requirements/quality.html'])
 
     expect(away).toContain('<details class="nav-directory"><summary>')
@@ -552,7 +552,7 @@ describe('renderDocumentationSite', () => {
       'class="page-toc-h3"><a data-site-link href="#context-demo-scenarios-example-ex-demo-001-01-a-ready-demo-starts"',
     )
     // 見出しが一つしかないページに目次を出しても、本文を繰り返すだけである。
-    expect(site().files['docs/design/product-overview.html']).not.toContain('page-toc')
+    expect(site().files['docs/requirements/product-overview.html']).not.toContain('page-toc')
   })
 
   it('names the complete site IdMagic ドキュメント', () => {

@@ -32,10 +32,10 @@ describe('documentKind', () => {
 
   it('names the grammar of the top-down system document tree', () => {
     expect(documentKind('docs/requirements/quality.md')).toBe('prose')
-    expect(documentKind('docs/architecture/deployment.md')).toBe('prose')
+    expect(documentKind('docs/design/architecture/deployment.md')).toBe('prose')
     expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
     expect(documentKind('docs/design/observability/logging.md')).toBe('prose')
-    expect(documentKind('docs/verification/system-acceptance.md')).toBe('prose')
+    expect(documentKind('docs/design/verification/system-acceptance.md')).toBe('prose')
     expect(documentKind('docs/operations/service-management.md')).toBe('prose')
   })
 

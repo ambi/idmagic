@@ -32,7 +32,7 @@ initial_context:
     - docs/design/reliability/recovery.md
     - docs/design/infrastructure/platform.md
     - docs/design/infrastructure/network.md
-    - docs/architecture/deployment.md
+    - docs/design/architecture/deployment.md
     - docs/runbooks/backup-restore-dr.md
     - docs/domain/data-keys/README.md
     - docs/domain/data-keys/states.md

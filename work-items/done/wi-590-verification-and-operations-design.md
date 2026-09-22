@@ -19,8 +19,8 @@ initial_context:
   specification: []
   typespec: []
   source:
-    - docs/verification/README.md
-    - docs/verification/system-acceptance.md
+    - docs/design/verification/README.md
+    - docs/design/verification/system-acceptance.md
     - docs/operations/README.md
     - docs/operations/service-management.md
     - docs/operations/maintenance.md
@@ -46,7 +46,7 @@ initial_context:
 
 ## Motivation
 
-[検証設計](../../docs/verification/README.md)は 15 行の索引と、その子である [システム受入れ設計](../../docs/verification/system-acceptance.md) 17 行だけからなる。
+[検証設計](../../docs/design/verification/README.md)は 15 行の索引と、その子である [システム受入れ設計](../../docs/design/verification/system-acceptance.md) 17 行だけからなる。
 索引の表は「対象」と「主な証拠」を六行で対応させるが、どの要求にどの証拠が要るかという対応は持たない。
 子がシステム受入れ一つだけなので、このディレクトリがシステム受入れのためだけに存在するように見える。
 
@@ -61,7 +61,7 @@ initial_context:
 
 ## Scope
 
-- [検証設計](../../docs/verification/README.md)の担当範囲を冒頭で宣言し、テストの水準設計が [テスト方針](../../docs/development/testing.md)にあることへの到達経路を置く。
+- [検証設計](../../docs/design/verification/README.md)の担当範囲を冒頭で宣言し、テストの水準設計が [テスト方針](../../docs/development/testing.md)にあることへの到達経路を置く。
 - 要求と証拠の対応を、要求 ID、証拠の種類、実行するタスク、合否条件、現在の状態の表として書く。
 - システム境界でしか確かめられない検証のうち、現在どの文書も持っていないもの（セキュリティ検証、可用性と復旧の試験、宣言的なファイルの検証）の設計を足す。
 - 受入れと、許可しないリクエストの確認対象を、使う文書の冒頭で書き下す。
@@ -119,9 +119,9 @@ initial_context:
 
 | 検証 | 置き場所 | 理由 |
 | --- | --- | --- |
-| セキュリティ検証 | 新設する [セキュリティ検証設計](../../docs/verification/security.md) | 脅威 ID と証拠の対応、許可しない操作の確認、依存監査、供給鎖の四つを持ち、受入れの節に収まらない |
-| 可用性と復旧の試験 | [システム受入れ設計](../../docs/verification/system-acceptance.md)の節 | 品質受入れが既に可用性と復旧を対象にしており、何を起こし、何を見て、何をもって合格とするかはその具体化である |
-| 運用検証 | [検証設計](../../docs/verification/README.md)の節 | 独立した文書にはしない。理由は次の節に書く |
+| セキュリティ検証 | 新設する [セキュリティ検証設計](../../docs/design/verification/security.md) | 脅威 ID と証拠の対応、許可しない操作の確認、依存監査、供給鎖の四つを持ち、受入れの節に収まらない |
+| 可用性と復旧の試験 | [システム受入れ設計](../../docs/design/verification/system-acceptance.md)の節 | 品質受入れが既に可用性と復旧を対象にしており、何を起こし、何を見て、何をもって合格とするかはその具体化である |
+| 運用検証 | [検証設計](../../docs/design/verification/README.md)の節 | 独立した文書にはしない。理由は次の節に書く |
 
 ### 運用検証を独立した文書にしない
 
@@ -252,24 +252,24 @@ initial_context:
 - **Completed At**: 2026-09-19
 - **Summary**:
   `mise run spec-diff` は main に対する規範仕様の変更を挙げない。
-  [検証設計](../../docs/verification/README.md)は、自分が持つ問いと[テスト方針](../../docs/development/testing.md)、運用文書、運用手順が持つ問いを冒頭の表で分け、要求の群ごとの証拠を、証拠の種類、実行、合否条件、実行環境の列で持つようになった。
+  [検証設計](../../docs/design/verification/README.md)は、自分が持つ問いと[テスト方針](../../docs/development/testing.md)、運用文書、運用手順が持つ問いを冒頭の表で分け、要求の群ごとの証拠を、証拠の種類、実行、合否条件、実行環境の列で持つようになった。
   実行環境の列は進捗ではなく、証拠を得るために何を用意するかを「リポジトリ内」「実環境が必要」「手段が未定」で表す。
   宣言的なファイル（Kubernetes マニフェスト、Docker Compose 構成、監視資産、スキーマ定義、生成した参照文書）の検証は、独立した文書ではなく検証設計の節として置いた。デプロイ前にリポジトリ上で走らせる検査であり、稼働後を扱う運用文書には収まらず、実行のタイミングは[継続的インテグレーション](../../docs/development/continuous-integration.md)が既に正本として持つためである。
-  [セキュリティ検証設計](../../docs/verification/security.md)は、脅威の状態ごとに求める証拠、制御の種類ごとの検証手段、許可しない操作の確認、見直しのタイミングを持つ。
-  [システム受入れ設計](../../docs/verification/system-acceptance.md)は、受入れと、許可しないリクエストの確認対象を冒頭で書き下し、機能受入れの代表経路を領域ごとの表にし、可用性と復旧の試験として起こす障害、観測対象、成功条件、実行環境を持つ。
+  [セキュリティ検証設計](../../docs/design/verification/security.md)は、脅威の状態ごとに求める証拠、制御の種類ごとの検証手段、許可しない操作の確認、見直しのタイミングを持つ。
+  [システム受入れ設計](../../docs/design/verification/system-acceptance.md)は、受入れと、許可しないリクエストの確認対象を冒頭で書き下し、機能受入れの代表経路を領域ごとの表にし、可用性と復旧の試験として起こす障害、観測対象、成功条件、実行環境を持つ。
   [サービス管理](../../docs/operations/service-management.md)は、当番の役とエスカレーション、宣言の水準、変更の分類、ポストモーテムを持ち、error budget の扱いが未決であることの帰結を書いた。
   [保守](../../docs/operations/maintenance.md)は、定期作業を「頻度を決める条件」と担当の分界で持ち、可用性と復旧の試験の実施をその行に加え、依存更新の範囲と後退、廃止と引渡しの六段階を持つ。
   正本文書の集合を宣言する `tools/workspace/src/document-layout.ts` は、`docs/verification` に `security.md` を許すようになった。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run check-links`
   - **Requirement**: N/A: 文書の担当範囲と証拠設計を書く変更であり、プロダクトの規範シナリオを変えない。
-  - **Observed Failure**: 索引と作業項目から新設予定の子文書へリンクを置いた時点で、`docs/verification/README.md:17` と作業項目の 2 行について `relative link target does not exist` が 4 件失敗した。
+  - **Observed Failure**: 索引と作業項目から新設予定の子文書へリンクを置いた時点で、`docs/design/verification/README.md:17` と作業項目の 2 行について `relative link target does not exist` が 4 件失敗した。
   - **Detection Reason**: 検証設計から子文書へ到達できない状態と到達できる状態を、リンク先の実在で区別する。索引だけを書いて子文書を書かない誤りをこの検査が落とす。
   - **Retained**: 独立した文書をやめた運用検証について、`operational-verification.md` を削除した直後も同じ検査が参照元の 1 件を挙げ、参照を節へ向け直して解消した。
 - **Unit RED Evidence**:
   - **Test**: `mise run check`（`check-repository` の正本文書集合）
   - **Requirement**: N/A: 同上。
-  - **Observed Failure**: 子文書を書いた直後、`docs/verification/security.md` と `docs/verification/operational-verification.md` について `not a canonical document; docs/verification/ holds only README.md, system-acceptance.md` が 2 件失敗した。
+  - **Observed Failure**: 子文書を書いた直後、`docs/design/verification/security.md` と `docs/design/verification/operational-verification.md` について `not a canonical document; docs/design/verification/ holds only README.md, system-acceptance.md` が 2 件失敗した。
   - **Detection Reason**: 正本文書の集合は `tools/workspace/src/document-layout.ts` の宣言が持つ。宣言を更新せずにファイルだけを増やす誤りを、この検査が文書体系の外側にある文書として落とす。
 - **Change-Resistance Results**:
   正本文書集合の宣言から子文書を外す故障注入は、実装前後の状態がそのまま相当する。宣言が無い状態で `mise run check` は所見を挙げて失敗し、宣言を足すと成功した。運用検証を独立文書からやめたときも、宣言から `operational-verification.md` を消し忘れていれば同じ検査が落ちる。文書の変更であり変異器の対象となる分岐を持たないため、`mise run test-go-mutation` は実行していない。
