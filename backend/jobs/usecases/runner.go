@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
@@ -160,9 +161,13 @@ func (rn *Runner) poll(ctx context.Context) {
 }
 
 func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
-	execCtx, stopHeartbeat := context.WithCancel(ctx)
-	defer stopHeartbeat()
-	go rn.heartbeatLoop(execCtx, job)
+	// ハンドラーの実行コンテキストは Job のテナントに固定する。worker はすべての
+	// テナントの Job を実行するので、固定しなければ tenancy.TenantID は既定テナントを
+	// 返し、ハンドラーは別テナントの範囲で動く。
+	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+	execCtx, cancelExecution := context.WithCancelCause(ctx)
+	defer cancelExecution(nil)
+	go rn.heartbeatLoop(execCtx, job, cancelExecution)
 
 	handler, err := rn.deps.Handlers.Lookup(job.Kind)
 	if err != nil {
@@ -174,6 +179,11 @@ func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 	startedAt := rn.deps.Now()
 	result, err := handler(execCtx, job)
 	elapsed := rn.deps.Now().Sub(startedAt)
+	if errors.Is(context.Cause(execCtx), ports.ErrJobLeaseLost) {
+		// Job はもうこの worker のものではない。取り消しなら終端に、リースの失効なら
+		// 別の worker の手にあるので、完了も失敗も報告しない。
+		return
+	}
 	if err != nil {
 		rn.jobsMetrics().RecordJobDuration(rn.cfg.Lane, "failed", elapsed)
 		rn.fail(execCtx, job, err)
@@ -183,7 +193,9 @@ func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 	rn.complete(execCtx, job, result)
 }
 
-func (rn *Runner) heartbeatLoop(ctx context.Context, job *domain.Job) {
+// heartbeatLoop はリースを延長し続ける。リースを失ったと分かったら（取り消し、
+// またはリースの失効）、abandon でハンドラーの実行コンテキストを取り消して中断させる。
+func (rn *Runner) heartbeatLoop(ctx context.Context, job *domain.Job, abandon context.CancelCauseFunc) {
 	interval := rn.cfg.LeaseDuration / 3
 	if interval <= 0 {
 		interval = time.Second
@@ -197,6 +209,9 @@ func (rn *Runner) heartbeatLoop(ctx context.Context, job *domain.Job) {
 		case <-ticker.C:
 			if _, err := rn.deps.Repo.Heartbeat(ctx, job.ID, rn.cfg.WorkerID, rn.cfg.LeaseDuration, rn.deps.Now()); err != nil {
 				logging.Warn(ctx, "jobs: heartbeat failed, lease likely lost", "job_id", job.ID, "error", err)
+				if errors.Is(err, ports.ErrJobLeaseLost) {
+					abandon(err)
+				}
 				return
 			}
 		}

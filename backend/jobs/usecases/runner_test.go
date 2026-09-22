@@ -15,6 +15,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -232,23 +233,16 @@ func enqueueTestJobWithKind(t *testing.T, repo *memoryjobs.JobRepository, kind d
 	return job
 }
 
-// TestRunner_BulkBacklogDoesNotStarveLatencySensitive is the wi-261 T008
-// integration test for the work item's core Motivation and the scenario
-// spec/contexts/jobs.yaml "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる":
-// a bulk-lane Runner saturated with more long-running jobs than its
-// concurrency (so a backlog persists queued behind them) must never delay a
-// concurrently running latency_sensitive-lane Runner's independent claim and
-// completion of a latency_sensitive Job. This is the automated counterpart
-// to the work item's manual verification step (reserved capacity under a
-// saturated bulk backlog).
+// bulk レーンの Runner を並行数より多い長時間 Job で埋め、滞留を残したまま
+// latency_sensitive レーンの Job を投入する。
+//
+//spec:covers EX-JOBS-009-01: bulk レーンに並行数を超える Job が滞留したままでも、latency_sensitive レーンの worker は投入された Job を取得して running にし、実行まで進める。
 func TestRunner_BulkBacklogDoesNotStarveLatencySensitive(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	handlers := usecases.NewHandlerRegistry()
 
-	// No built-in JobKind is registered to LaneLatencySensitive yet in this
-	// binary (backchannel_logout_delivery, 's real assignment, is
-	// wi-257's still-pending handler); register a test-only kind so this
-	// test exercises the same lane a real latency-sensitive JobKind would.
+	// 実在の latency_sensitive の種別 (backchannel_logout_delivery) は oauth2 の Context が
+	// 登録する。Jobs のテストはそれに依存せず、同じレーンへ試験用の種別を登録する。
 	const latencySensitiveTestKind domain.JobKind = "test_latency_sensitive_delivery"
 	domain.RegisterKind(latencySensitiveTestKind, domain.LaneLatencySensitive)
 
@@ -258,7 +252,11 @@ func TestRunner_BulkBacklogDoesNotStarveLatencySensitive(t *testing.T) {
 		<-bulkRelease
 		return json.RawMessage(`{}`), nil
 	})
+	latencyStarted := make(chan struct{})
+	latencyRelease := make(chan struct{})
 	handlers.Register(latencySensitiveTestKind, func(_ context.Context, job *domain.Job) (json.RawMessage, error) {
+		close(latencyStarted)
+		<-latencyRelease
 		return json.RawMessage(`{"echo":true}`), nil
 	})
 
@@ -290,12 +288,110 @@ func TestRunner_BulkBacklogDoesNotStarveLatencySensitive(t *testing.T) {
 	time.Sleep(30 * time.Millisecond)
 
 	latencyJob := enqueueTestJobWithKind(t, repo, latencySensitiveTestKind, domain.DefaultMaxAttempts)
+	select {
+	case <-latencyStarted:
+	case <-time.After(time.Second):
+		t.Fatal("the latency_sensitive job was not claimed while the bulk lane was backlogged")
+	}
+	running, err := repo.Get(context.Background(), latencyJob.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if running.Status != domain.StatusRunning {
+		t.Fatalf("latency_sensitive job Status = %q, want %q", running.Status, domain.StatusRunning)
+	}
+	// 取得の時点で bulk レーンの滞留が実在していたこと。
+	depths, err := repo.LaneDepths(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range depths {
+		if d.Lane == domain.LaneBulk && d.Queued == 0 {
+			t.Fatalf("bulk lane has no backlog (%+v); the test did not saturate it", d)
+		}
+	}
+	close(latencyRelease)
 	waitForStatus(t, repo, latencyJob.ID, domain.StatusSucceeded, time.Second)
 
 	close(bulkRelease)
 	cancel()
 	<-bulkDone
 	<-latencyDone
+}
+
+//spec:covers EX-JOBS-002-01: tenant-a へ投入した noop_echo の Job は queued で始まり、`worker` が取得して running になり、ハンドラーの正常終了で succeeded になって result を保持する。
+func TestRunner_DrivesAQueuedJobThroughRunningToSucceeded(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
+	if job.Status != domain.StatusQueued {
+		t.Fatalf("enqueued Status = %q, want %q", job.Status, domain.StatusQueued)
+	}
+	handlers := usecases.NewHandlerRegistry()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	handlers.Register(domain.KindNoopEcho, func(context.Context, *domain.Job) (json.RawMessage, error) {
+		close(started)
+		<-release
+		return json.RawMessage(`{"echo":true}`), nil
+	})
+	runner := usecases.NewRunner(
+		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers},
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	defer func() { cancel(); <-done }()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler never started")
+	}
+	running, err := repo.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if running.Status != domain.StatusRunning || running.LeaseOwner == nil || *running.LeaseOwner != "worker-1" {
+		t.Fatalf("while the handler runs: Status = %q LeaseOwner = %v, want running held by worker-1", running.Status, running.LeaseOwner)
+	}
+	close(release)
+	final := waitForStatus(t, repo, job.ID, domain.StatusSucceeded, 2*time.Second)
+	if string(final.Result) != `{"echo":true}` {
+		t.Errorf("Result = %s, want the handler's result", final.Result)
+	}
+}
+
+// ハンドラーは実行コンテキストからテナントを読む。Runner が固定しなければ、
+// tenancy.TenantID は既定テナントを返し、ハンドラーは別テナントの範囲で動く。
+//
+//spec:covers EX-JOBS-006-01: Runner はハンドラーの実行コンテキストのテナントを、取得した Job の tenant_id に固定する。
+func TestRunner_BindsTheHandlerContextToTheJobsTenant(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
+	handlers := usecases.NewHandlerRegistry()
+	seen := make(chan string, 1)
+	handlers.Register(domain.KindNoopEcho, func(ctx context.Context, _ *domain.Job) (json.RawMessage, error) {
+		seen <- tenancy.TenantID(ctx)
+		return json.RawMessage(`{}`), nil
+	})
+	runner := usecases.NewRunner(
+		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers},
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	defer func() { cancel(); <-done }()
+
+	select {
+	case got := <-seen:
+		if got != job.TenantID {
+			t.Fatalf("handler context tenant = %q, want the job's tenant %q", got, job.TenantID)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler never ran")
+	}
 }
 
 func TestRunner_SuccessPath(t *testing.T) {
@@ -422,10 +518,16 @@ func TestRunner_RetryThenSucceed(t *testing.T) {
 	}
 }
 
+//spec:covers EX-JOBS-005-01: max_attempts=3 の Job が 3 回目も失敗すると attempts が上限に達して failed になりエラーを保持し、その後も取得されずハンドラーは 3 回を超えて呼ばれない。
 func TestRunner_DeadLetterAfterMaxAttempts(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	handlers := usecases.NewHandlerRegistry()
+	var mu sync.Mutex
+	invocations := 0
 	handlers.Register(domain.KindNoopEcho, func(_ context.Context, job *domain.Job) (json.RawMessage, error) {
+		mu.Lock()
+		invocations++
+		mu.Unlock()
 		return nil, errors.New("permanent failure")
 	})
 	rec := &eventRecorder{}
@@ -437,15 +539,15 @@ func TestRunner_DeadLetterAfterMaxAttempts(t *testing.T) {
 		usecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: rec.record},
 	)
 
-	job := enqueueTestJob(t, repo, 2)
+	job := enqueueTestJob(t, repo, 3)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- runner.Run(ctx) }()
 
 	final := waitForStatus(t, repo, job.ID, domain.StatusFailed, 2*time.Second)
-	if final.Attempts != 2 {
-		t.Errorf("Attempts = %d, want 2 (MaxAttempts)", final.Attempts)
+	if final.Attempts != 3 {
+		t.Errorf("Attempts = %d, want 3 (MaxAttempts)", final.Attempts)
 	}
 	if final.Error == nil || *final.Error != "permanent failure" {
 		t.Errorf("Error = %v, want %q", final.Error, "permanent failure")
@@ -454,14 +556,27 @@ func TestRunner_DeadLetterAfterMaxAttempts(t *testing.T) {
 		t.Error("dead-lettered Job should be terminal")
 	}
 
+	// 配信不能の後も取得を繰り返させ、Job が二度と running にならないことを見る。
+	time.Sleep(50 * time.Millisecond)
 	cancel()
 	<-done
 
+	after, err := repo.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	got := invocations
+	mu.Unlock()
+	if after.Status != domain.StatusFailed || after.Attempts != 3 || got != 3 {
+		t.Errorf("after dead-letter: Status = %q Attempts = %d handler invocations = %d, want failed, 3, 3", after.Status, after.Attempts, got)
+	}
+
 	counts := rec.typeCounts()
-	// Both attempts fail: the first is a retry (JobFailed + JobRetried), the
-	// second exhausts MaxAttempts (JobFailed only, terminal=true).
-	if counts["JobFailed"] != 2 || counts["JobRetried"] != 1 || counts["JobSucceeded"] != 0 {
-		t.Errorf("event counts = %+v, want JobFailed=2 JobRetried=1 JobSucceeded=0", counts)
+	// 3 回とも失敗する。最初の 2 回は再試行 (JobFailed + JobRetried)、3 回目は
+	// MaxAttempts を使い切る (JobFailed だけ、terminal=true)。
+	if counts["JobFailed"] != 3 || counts["JobRetried"] != 2 || counts["JobStarted"] != 3 || counts["JobSucceeded"] != 0 {
+		t.Errorf("event counts = %+v, want JobStarted=3 JobFailed=3 JobRetried=2 JobSucceeded=0", counts)
 	}
 }
 

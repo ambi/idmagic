@@ -245,6 +245,129 @@ func TestCancelJobForAdmin(t *testing.T) {
 	}
 }
 
+// runLaneDefault は既定レーンの Runner を起動し、止める関数を返す。
+func runLaneDefault(t *testing.T, repo *memoryjobs.JobRepository, handlers *usecases.HandlerRegistry, emit func(spec.DomainEvent), lease time.Duration) func() {
+	t.Helper()
+	runner := usecases.NewRunner(
+		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: lease},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: emit},
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	return func() { cancel(); <-done }
+}
+
+//spec:covers EX-JOBS-013-01: queued の Job を取り消すと canceled になって JobCanceled が発行され、その後 `worker` が取得を繰り返してもハンドラーは呼ばれず running にも再試行にも戻らない。
+func TestCancelJobForAdmin_AQueuedJobNeverRuns(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
+	var emitted []spec.DomainEvent
+	deps := usecases.AdminJobDeps{Repo: repo, Emit: func(e spec.DomainEvent) { emitted = append(emitted, e) }}
+	if _, err := usecases.CancelJobForAdmin(context.Background(), deps, job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC()); err != nil {
+		t.Fatalf("CancelJobForAdmin() error = %v", err)
+	}
+	if len(emitted) != 1 {
+		t.Fatalf("emitted %d events, want exactly JobCanceled", len(emitted))
+	}
+	if _, ok := emitted[0].(*domain.JobCanceled); !ok {
+		t.Fatalf("emitted %T, want *domain.JobCanceled", emitted[0])
+	}
+
+	handlers := usecases.NewHandlerRegistry()
+	invoked := make(chan struct{}, 1)
+	handlers.Register(domain.KindNoopEcho, func(context.Context, *domain.Job) (json.RawMessage, error) {
+		invoked <- struct{}{}
+		return json.RawMessage(`{}`), nil
+	})
+	rec := &eventRecorder{}
+	stop := runLaneDefault(t, repo, handlers, rec.record, time.Minute)
+	time.Sleep(50 * time.Millisecond) // 10 回ほど取得を試みさせる
+	stop()
+
+	select {
+	case <-invoked:
+		t.Fatal("the handler ran a canceled job")
+	default:
+	}
+	if counts := rec.typeCounts(); len(counts) != 0 {
+		t.Fatalf("worker emitted %v for a canceled job, want nothing", counts)
+	}
+	got, err := repo.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != domain.StatusCanceled || got.Attempts != 0 {
+		t.Fatalf("Status = %q Attempts = %d, want canceled and never attempted", got.Status, got.Attempts)
+	}
+}
+
+// 取り消しはリースを解放するので、実行中の worker の次のハートビートはリースの喪失を
+// 知る。ハンドラーがそこで止まらなければ、取り消した Job の副作用を最後まで起こす。
+//
+//spec:covers EX-JOBS-013-02: running の Job の取り消しは受理され、リースを失ったハンドラーは次のハートビートで実行コンテキストを取り消されて中断し、Job は canceled のまま残る。
+func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
+	handlers := usecases.NewHandlerRegistry()
+	started := make(chan struct{})
+	interrupted := make(chan struct{})
+	handlers.Register(domain.KindNoopEcho, func(ctx context.Context, _ *domain.Job) (json.RawMessage, error) {
+		close(started)
+		select {
+		case <-ctx.Done():
+			close(interrupted)
+			return nil, ctx.Err()
+		case <-time.After(2 * time.Second):
+			return json.RawMessage(`{"finished":true}`), nil
+		}
+	})
+	rec := &eventRecorder{}
+	metrics := &fakeJobsMetrics{}
+	// ハートビートはリース期間の 3 分の 1 ごとに送られる。
+	runner := usecases.NewRunner(
+		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: 30 * time.Millisecond},
+		usecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: rec.record, Metrics: metrics},
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler never started")
+	}
+
+	canceled, err := usecases.CancelJobForAdmin(context.Background(), usecases.AdminJobDeps{Repo: repo}, job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("CancelJobForAdmin() on a running job error = %v", err)
+	}
+	if canceled.Status != domain.StatusCanceled {
+		t.Fatalf("Status = %q, want canceled", canceled.Status)
+	}
+	select {
+	case <-interrupted:
+	case <-time.After(time.Second):
+		t.Fatal("the handler kept running after its job was canceled")
+	}
+	// 中断した実行を待ち切ってから、何も報告しなかったことを見る。
+	cancel()
+	<-done
+	if outcomes := metrics.durationOutcomes(); len(outcomes) != 0 {
+		t.Fatalf("worker recorded %v for an execution it no longer owned", outcomes)
+	}
+	got, err := repo.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != domain.StatusCanceled {
+		t.Fatalf("Status after the handler stopped = %q, want canceled", got.Status)
+	}
+	if counts := rec.typeCounts(); counts["JobSucceeded"] != 0 || counts["JobFailed"] != 0 {
+		t.Fatalf("worker recorded an outcome for a canceled job: %v", counts)
+	}
+}
+
 //spec:covers REQ-JOBS-013: 他テナントの Job は取り消せず、存在しないものとして扱う。
 func TestCancelJobForAdmin_HidesOtherTenants(t *testing.T) {
 	repo, base := seedAdminJobs(t)
