@@ -38,6 +38,9 @@ func TestHandlerRegistry_LookupUnregisteredReturnsErr(t *testing.T) {
 	}
 }
 
+// worker はハンドラーの一覧を起動処理の中で登録するので、この panic が起動を失敗させる。
+//
+//spec:covers EX-JOBS-010-01: レーンを登録していない JobKind のハンドラーを登録しようとすると、起動処理は panic で止まる。
 func TestHandlerRegistry_RegisterPanicsOnInvalidKind(t *testing.T) {
 	defer func() {
 		if recover() == nil {

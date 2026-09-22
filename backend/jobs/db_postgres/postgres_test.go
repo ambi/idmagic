@@ -187,6 +187,7 @@ func TestClaimBatch_IncrementsAttemptsAndSetsLease(t *testing.T) {
 	}
 }
 
+//spec:covers EX-JOBS-004-01: worker-1 が取得して running の Job は、ハートビートの無いままリースの期限を過ぎると worker-2 が取得でき、running のまま worker-2 のリースへ移る。期限前には取得できない。
 func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	pool := pgtest.Require(t)
 	resetJobsTable(t, pool)
@@ -222,6 +223,37 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	}
 	if got.LeaseOwner == nil || *got.LeaseOwner != "worker-2" {
 		t.Errorf("LeaseOwner = %v, want worker-2", got.LeaseOwner)
+	}
+}
+
+// レーン列を持たない時期に書かれた行、またはレーン列を指定しない INSERT を模す。
+//
+//spec:covers EX-JOBS-011-01: lane 列を省略して作成した queued の Job はスキーマの既定値で default レーンになり、default レーンの取得で取得される。
+func TestClaimBatch_ClaimsARowWhoseLaneWasOmitted(t *testing.T) {
+	pool := pgtest.Require(t)
+	resetJobsTable(t, pool)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	r := &postgres.JobRepository{Pool: pool}
+	now := pgtest.Now()
+	const jobID = "00000000-0000-4000-8000-00000000d001"
+	if _, err := pool.Exec(context.Background(), `INSERT INTO jobs
+		(id, tenant_id, kind, status, params, max_attempts, run_at)
+		VALUES ($1, $2, 'noop_echo', 'queued', '{}', 3, $3)`, jobID, tenant.ID, now); err != nil {
+		t.Fatalf("insert without lane: %v", err)
+	}
+	stored, err := r.Get(context.Background(), jobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Lane != domain.LaneDefault {
+		t.Fatalf("Lane = %q, want %q from the column default", stored.Lane, domain.LaneDefault)
+	}
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	if err != nil {
+		t.Fatalf("ClaimBatch() error = %v", err)
+	}
+	if len(claimed) != 1 || claimed[0].ID != jobID {
+		t.Fatalf("ClaimBatch(default) = %v, want the row whose lane was omitted", claimed)
 	}
 }
 

@@ -168,6 +168,8 @@ func TestRegisterKind_AssignsLane(t *testing.T) {
 // startup/test で検出する" requirement — re-registering the same JobKind with a
 // different lane is a programmer error caught at startup, not silently
 // overwritten.
+//
+//spec:covers EX-JOBS-010-02: 登録済みの JobKind を別のレーンで登録し直そうとすると、上書きせずに panic で起動を止める。
 func TestRegisterKind_ConflictingLanePanics(t *testing.T) {
 	kind := JobKind("test_register_kind_conflicting_lane")
 	RegisterKind(kind, LaneDefault)

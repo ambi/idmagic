@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
+	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	clientmemory "github.com/ambi/idmagic/backend/oauth2/client/db_memory"
 	clientdomain "github.com/ambi/idmagic/backend/oauth2/client/domain"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
@@ -212,6 +215,79 @@ func TestBackChannelLogoutHandlerRetriesAndKeepsJTI(t *testing.T) {
 	}
 	if notifications.items["notification-1"].State != logoutdomain.LogoutNotificationDelivered || len(signer.inputs) != 2 || signer.inputs[0].JTI != signer.inputs[1].JTI {
 		t.Fatalf("unexpected retry result: %+v %+v", notifications.items["notification-1"], signer.inputs)
+	}
+}
+
+type countingBackChannelClient struct {
+	mu         sync.Mutex
+	deliveries int
+}
+
+func (c *countingBackChannelClient) Deliver(context.Context, string, string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.deliveries++
+	return nil
+}
+
+func (c *countingBackChannelClient) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.deliveries
+}
+
+// 配送は少なくとも 1 回なので、完了を報告した Job も同じ内容でもう一度ハンドラーへ
+// 渡りうる。ハンドラーは dedup_key が名指す LogoutNotification の状態で送信済みかを
+// 判定する。
+//
+//spec:covers EX-JOBS-003-01: dedup_key 付きで投入した配送 Job は 1 回目の実行で通知を送って succeeded になり、同じ Job が再配送されてもハンドラーは通知を重ねて送らない。
+func TestBackChannelLogoutRedeliveredJobDoesNotResendTheNotification(t *testing.T) {
+	ctx := context.Background()
+	notifications := &notificationStore{items: map[string]*logoutdomain.LogoutNotification{"notification-1": {ID: "notification-1", TenantID: tenancydomain.DefaultTenantID, Sid: "session-1", ClientID: "client-1", LogoutTokenJTI: "jti-1", TargetURI: "https://rp.example/logout", State: logoutdomain.LogoutNotificationPending}}}
+	params, err := json.Marshal(logoutports.BackChannelLogoutJobParams{NotificationID: "notification-1", Subject: "alice", Issuer: "https://idp.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobs := jobsmemory.NewJobRepository()
+	dedupKey := "logout-notification:notification-1"
+	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+		TenantID: tenancydomain.DefaultTenantID, Kind: logoutdomain.KindBackChannelLogoutDelivery, Params: params, DedupKey: &dedupKey,
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &countingBackChannelClient{}
+	handler := logoutusecases.BackChannelLogoutHandler(logoutusecases.BackChannelLogoutHandlerDeps{Notifications: notifications, Signer: &logoutTokenSigner{}, Client: client})
+	handlers := jobsusecases.NewHandlerRegistry()
+	handlers.Register(logoutdomain.KindBackChannelLogoutDelivery, handler)
+	runner := jobsusecases.NewRunner(
+		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneLatencySensitive, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		jobsusecases.RunnerDeps{Repo: jobs, Handlers: handlers},
+	)
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(runCtx) }()
+
+	var completed *jobsdomain.Job
+	for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		if completed, err = jobs.Get(ctx, job.ID); err != nil {
+			t.Fatal(err)
+		}
+		if completed.Status == jobsdomain.StatusSucceeded {
+			break
+		}
+	}
+	cancel()
+	<-done
+	if completed.Status != jobsdomain.StatusSucceeded || client.count() != 1 {
+		t.Fatalf("first execution: Status = %q deliveries = %d, want succeeded after 1 delivery", completed.Status, client.count())
+	}
+
+	if _, err := handler(ctx, completed); err != nil {
+		t.Fatalf("redelivered job failed: %v", err)
+	}
+	if client.count() != 1 {
+		t.Fatalf("deliveries after redelivery = %d, want still 1", client.count())
 	}
 }
 

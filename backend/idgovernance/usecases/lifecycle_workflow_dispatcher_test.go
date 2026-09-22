@@ -14,6 +14,7 @@ import (
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	"github.com/ambi/idmagic/backend/idgovernance/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
@@ -24,6 +25,7 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -121,15 +123,34 @@ func (r *failOnceJobRepository) Enqueue(ctx context.Context, in jobsports.Enqueu
 	return r.JobRepository.Enqueue(ctx, in)
 }
 
-func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T) {
-	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+// queuedDisableRun は tenant-a の user-1 を無効化する、job_id 未設定で queued の実行を保存する。
+func queuedDisableRun(t *testing.T, runs *igmemory.LifecycleWorkflowRunRepository, users *usermemory.UserRepository, now time.Time) *igdomain.WorkflowRun {
+	t.Helper()
+	if users != nil {
+		user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+		if err := users.Save(context.Background(), user); err != nil {
+			t.Fatal(err)
+		}
+	}
 	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: "user-1", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
 	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: run.Actions[0], Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(context.Background(), run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	jobs := &failOnceJobRepository{JobRepository: jobsmemory.NewJobRepository(), fail: true}
+	return run
+}
+
+// 1 回目の投入は API プロセスの即時投入に当たり、失敗させる。2 回目は worker の定期
+// ディスパッチャーの再走査に当たる。
+//
+//spec:covers EX-JOBS-008-01: 即時の投入に失敗した queued の実行を、ディスパッチャーが dedup_key=lifecycle-workflow-run:{run_id} で投入して job_id を関連付け、worker がその Job を取得してハンドラーを実行する。
+func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T) {
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	users := usermemory.NewUserRepository()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	run := queuedDisableRun(t, runs, users, now)
+	jobRepo := jobsmemory.NewJobRepository()
+	jobs := &failOnceJobRepository{JobRepository: jobRepo, fail: true}
 	deps := usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, JobRepo: jobs}
 	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err == nil {
 		t.Fatal("first dispatch must expose enqueue failure")
@@ -140,6 +161,78 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	stored, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
 	if err != nil || stored.JobID == nil {
 		t.Fatalf("run job attachment = %#v, %v", stored, err)
+	}
+	job, err := jobRepo.Get(context.Background(), *stored.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.DedupKey == nil || *job.DedupKey != "lifecycle-workflow-run:run-1" || job.Kind != usecases.LifecycleWorkflowRunJobKind || job.TenantID != "tenant-a" {
+		t.Fatalf("dispatched job = kind %q tenant %q dedup %v, want the run's deduplicated lifecycle job", job.Kind, job.TenantID, job.DedupKey)
+	}
+
+	handlers := jobsusecases.NewHandlerRegistry()
+	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users}))
+	runner := jobsusecases.NewRunner(
+		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		jobsusecases.RunnerDeps{Repo: jobRepo, Handlers: handlers},
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		if job, err = jobRepo.Get(context.Background(), job.ID); err != nil || job.Status == jobsdomain.StatusSucceeded {
+			break
+		}
+	}
+	cancel()
+	<-done
+	if err != nil || job.Status != jobsdomain.StatusSucceeded {
+		t.Fatalf("dispatched job status = %q, %v; want succeeded", job.Status, err)
+	}
+	user, err := users.FindBySub(context.Background(), "user-1")
+	if err != nil || user.Lifecycle.Status != idmdomain.UserStatusDisabled {
+		t.Fatalf("user after the handler ran = %#v, %v; want disabled", user, err)
+	}
+}
+
+// staleRunListing は、別のディスパッチャーが job_id を関連付ける前に読んだ一覧を返し続ける。
+type staleRunListing struct {
+	igports.LifecycleWorkflowRunRepository
+	listed []*igdomain.WorkflowRun
+}
+
+func (s staleRunListing) ListUnenqueuedRuns(context.Context, int) ([]*igdomain.WorkflowRun, error) {
+	return s.listed, nil
+}
+
+//spec:covers EX-JOBS-007-01: 同じ実行を重複して投入するディスパッチャーは、同じ dedup_key の既存 Job を受け取り、lifecycle_workflow_run の Job を新しく作らない。
+func TestDuplicateDispatchReusesTheLifecycleWorkflowJob(t *testing.T) {
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
+	run := queuedDisableRun(t, runs, nil, now)
+	jobs := jobsmemory.NewJobRepository()
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, JobRepo: jobs}, 10, now); err != nil {
+		t.Fatal(err)
+	}
+	first, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
+	if err != nil || first.JobID == nil {
+		t.Fatalf("first dispatch attachment = %#v, %v", first, err)
+	}
+
+	stale := staleRunListing{LifecycleWorkflowRunRepository: runs, listed: []*igdomain.WorkflowRun{run}}
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: stale, JobRepo: jobs}, 10, now.Add(time.Second)); err != nil {
+		t.Fatalf("duplicate dispatch: %v", err)
+	}
+	queued, err := jobs.ListByTenantAndKinds(context.Background(), "tenant-a", []jobsdomain.JobKind{usecases.LifecycleWorkflowRunJobKind}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(queued) != 1 || queued[0].ID != *first.JobID {
+		t.Fatalf("jobs after a duplicate dispatch = %d (first %q), want only the original job", len(queued), *first.JobID)
+	}
+	after, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
+	if err != nil || after.JobID == nil || *after.JobID != *first.JobID {
+		t.Fatalf("run job after a duplicate dispatch = %#v, %v; want the original job", after, err)
 	}
 }
 

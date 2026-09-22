@@ -88,6 +88,8 @@ type jobsTestServer struct {
 	repo    *jobsmemory.JobRepository
 	emitted []spec.DomainEvent
 	acmeJob *domain.Job
+	// acmeImport は "acme" の bulk レーンの Job。acmeJob より古い。
+	acmeImport *domain.Job
 	// otherJob は制御面テナントの Job。"acme" の管理者から見て他テナントに当たる。
 	otherJob *domain.Job
 	// actorRealm は実行者の所属テナントの realm。経路を組み立てるのに使う。
@@ -96,6 +98,13 @@ type jobsTestServer struct {
 
 // newJobsAdminServer は "acme" に 2 件、制御面テナントに 1 件の Job を持つサーバーを作る。
 func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
+	t.Helper()
+	return newJobsAdminServerServing(t, actor, func(repo jobports.JobRepository) jobports.JobRepository { return repo })
+}
+
+// newJobsAdminServerServing は、管理 API が読む保存先を serve で包んだサーバーを作る。
+// 状態を作る操作は包む前の保存先へ直接行う。
+func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(jobports.JobRepository) jobports.JobRepository) *jobsTestServer {
 	t.Helper()
 	userRepo := usermemory.NewUserRepository()
 	if actor != nil {
@@ -109,8 +118,9 @@ func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 		if !ok {
 			t.Fatalf("no lane registered for %q", kind)
 		}
+		dedup := "seed:" + tenantID + ":" + string(kind)
 		job, _, err := repo.Enqueue(context.Background(), jobports.EnqueueInput{
-			TenantID: tenantID, Kind: kind, Lane: lane,
+			TenantID: tenantID, Kind: kind, Lane: lane, DedupKey: &dedup,
 			Params:      json.RawMessage(`{"email":"alice@example.test"}`),
 			MaxAttempts: 3, RunAt: base.Add(offset), Now: base.Add(offset),
 		})
@@ -123,7 +133,7 @@ func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 	if actor != nil && actor.TenantID == tenancydomain.DefaultTenantID {
 		srv.actorRealm = tenancydomain.DefaultRealm
 	}
-	enqueue("acme", domain.KindUserImportApply, 0)
+	srv.acmeImport = enqueue("acme", domain.KindUserImportApply, 0)
 	srv.acmeJob = enqueue("acme", domain.KindNoopEcho, time.Minute)
 	srv.otherJob = enqueue(tenancydomain.DefaultTenantID, domain.KindNoopEcho, 2*time.Minute)
 
@@ -140,7 +150,7 @@ func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 		UserRepo:      userRepo,
 		IdManagement:  idmanagement.Module{UserRepo: userRepo},
 		AuthnResolver: resolver,
-		Jobs:          jobs.Module{Repo: repo},
+		Jobs:          jobs.Module{Repo: serve(repo)},
 	})
 	srv.e = e
 	return srv
@@ -467,11 +477,15 @@ func TestCancelJobRefusesATerminalJob(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-JOBS-013: 他テナントの Job は取り消せず、状態も変わらない。
+//spec:covers EX-JOBS-013-04: 他テナントの Job の取り消しは存在しない id と同じ 404 で拒否され、その Job は queued のまま残る。
 func TestCancelJobHidesAnotherTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
-	if rec := srv.cancel(t, srv.otherJob.ID); rec.Code != http.StatusNotFound {
+	rec := srv.cancel(t, srv.otherJob.ID)
+	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if missing := srv.cancel(t, "does-not-exist"); missing.Code != rec.Code {
+		t.Fatalf("an unknown id answered %d while another tenant's answered %d", missing.Code, rec.Code)
 	}
 	got, err := srv.repo.Get(context.Background(), srv.otherJob.ID)
 	if err != nil {
@@ -497,5 +511,195 @@ func TestCancelJobRequiresBrowserVerification(t *testing.T) {
 	}
 	if got.Status != domain.StatusQueued {
 		t.Fatalf("the job changed to %q despite a refused request", got.Status)
+	}
+}
+
+//spec:covers EX-JOBS-012-01: 自テナントの一覧は自テナントの Job だけを新しい順に返し、他テナントの Job を件数にも含めず、params、result、dedup_key を含まない。他テナントの Job の 1 件参照は存在しない id と同じ応答になる。
+func TestTenantAdministratorListsOnlyTheirTenantsJobsNewestFirst(t *testing.T) {
+	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
+	rec := srv.get("/realms/acme/api/admin/v1/jobs")
+	body := decodeJobList(t, rec)
+	var ids []string
+	for _, j := range body.Jobs {
+		ids = append(ids, j.ID)
+	}
+	if want := []string{srv.acmeJob.ID, srv.acmeImport.ID}; strings.Join(ids, ",") != strings.Join(want, ",") {
+		t.Fatalf("listed %v, want acme's jobs newest first %v", ids, want)
+	}
+	if strings.Contains(rec.Body.String(), srv.otherJob.ID) {
+		t.Fatalf("another tenant's job appeared in the listing: %s", rec.Body.String())
+	}
+	var raw struct {
+		Jobs []map[string]any `json:"jobs"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, job := range raw.Jobs {
+		for _, forbidden := range []string{"params", "result", "dedup_key"} {
+			if _, present := job[forbidden]; present {
+				t.Fatalf("listing carries %q: %v", forbidden, job)
+			}
+		}
+	}
+	if strings.Contains(rec.Body.String(), "seed:") {
+		t.Fatalf("a dedup key leaked into the listing: %s", rec.Body.String())
+	}
+
+	foreign := srv.get("/realms/acme/api/admin/v1/jobs/" + srv.otherJob.ID)
+	missing := srv.get("/realms/acme/api/admin/v1/jobs/does-not-exist")
+	if foreign.Code != http.StatusNotFound || missing.Code != foreign.Code {
+		t.Fatalf("another tenant's job answered %d, an unknown id %d; want the same 404", foreign.Code, missing.Code)
+	}
+}
+
+//spec:covers EX-JOBS-012-03: 状態、種別、レーンの絞り込みは、それぞれとその組み合わせに一致する自テナントの Job だけを返す。
+func TestListJobsFiltersByStatusKindAndLane(t *testing.T) {
+	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
+	// 状態で分けられるよう、acme の noop_echo を取り消しておく。
+	if _, err := srv.repo.Cancel(context.Background(), srv.acmeJob.ID, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	for query, want := range map[string]string{
+		"status=canceled": srv.acmeJob.ID,
+		"status=queued":   srv.acmeImport.ID,
+		// 制御面テナントにも noop_echo があるが、自テナントに閉じる。
+		"kind=noop_echo": srv.acmeJob.ID,
+		"lane=bulk":      srv.acmeImport.ID,
+		"lane=default":   srv.acmeJob.ID,
+		"status=queued&kind=user_import_apply&lane=bulk": srv.acmeImport.ID,
+	} {
+		body := decodeJobList(t, srv.get("/realms/acme/api/admin/v1/jobs?"+query))
+		if len(body.Jobs) != 1 || body.Jobs[0].ID != want {
+			t.Errorf("%s returned %+v, want only %s", query, body.Jobs, want)
+		}
+	}
+	if body := decodeJobList(t, srv.get("/realms/acme/api/admin/v1/jobs?status=canceled&lane=bulk")); len(body.Jobs) != 0 {
+		t.Errorf("a combination matching nothing returned %+v", body.Jobs)
+	}
+}
+
+//spec:covers EX-JOBS-013-03: 既に succeeded、failed、canceled の Job の取り消しは 409 job_not_cancelable で拒否され、状態も更新時刻も変わらない。
+func TestCancelJobRefusesEveryTerminalState(t *testing.T) {
+	now := time.Now().UTC()
+	for state, finish := range map[domain.JobStatus]func(*testing.T, *jobsTestServer){
+		domain.StatusSucceeded: func(t *testing.T, srv *jobsTestServer) {
+			t.Helper()
+			claimJobs(t, srv, now)
+			if _, err := srv.repo.Complete(context.Background(), srv.acmeJob.ID, "worker-1", json.RawMessage(`{}`), now); err != nil {
+				t.Fatal(err)
+			}
+		},
+		domain.StatusFailed: func(t *testing.T, srv *jobsTestServer) {
+			t.Helper()
+			claimJobs(t, srv, now)
+			if _, err := srv.repo.Fail(context.Background(), srv.acmeJob.ID, "worker-1", jobports.FailOutcome{NextStatus: domain.StatusFailed, Error: "permanent"}, now); err != nil {
+				t.Fatal(err)
+			}
+		},
+		domain.StatusCanceled: func(t *testing.T, srv *jobsTestServer) {
+			t.Helper()
+			if _, err := srv.repo.Cancel(context.Background(), srv.acmeJob.ID, now); err != nil {
+				t.Fatal(err)
+			}
+		},
+	} {
+		t.Run(string(state), func(t *testing.T) {
+			srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
+			finish(t, srv)
+			before, err := srv.repo.Get(context.Background(), srv.acmeJob.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if before.Status != state {
+				t.Fatalf("setup left the job %q, want %q", before.Status, state)
+			}
+			rec := srv.cancel(t, srv.acmeJob.ID)
+			if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "job_not_cancelable") {
+				t.Fatalf("status=%d body=%s, want 409 job_not_cancelable", rec.Code, rec.Body.String())
+			}
+			after, err := srv.repo.Get(context.Background(), srv.acmeJob.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if after.Status != before.Status || !after.UpdatedAt.Equal(before.UpdatedAt) {
+				t.Fatalf("a refused cancel changed the job: before=%+v after=%+v", before, after)
+			}
+		})
+	}
+}
+
+// claimJobs は既定レーンの Job を worker-1 で取得する。acmeJob はここで running になる。
+func claimJobs(t *testing.T, srv *jobsTestServer, now time.Time) {
+	t.Helper()
+	if _, err := srv.repo.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// progressReportingRepo は進捗を報告済みの Job を返す保存先である。進捗を書く経路は
+// まだ無いので、読み出しの側で差し込む。
+type progressReportingRepo struct {
+	jobports.JobRepository
+	progress *domain.JobProgress
+}
+
+func (r progressReportingRepo) Get(ctx context.Context, id string) (*domain.Job, error) {
+	job, err := r.JobRepository.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	job.Progress = r.progress
+	return job, nil
+}
+
+//spec:covers EX-JOBS-014-01: Job の詳細は進捗、試行回数、上限、リースの保有者と期限、失敗理由、レーン、状態、時刻を返し、params と result は本文のどこにも現れない。
+func TestGetJobReturnsOperationalDetailWithoutHandlerInputOrOutput(t *testing.T) {
+	percent, message := 40, "4 of 10 rows"
+	progress := &domain.JobProgress{Percent: &percent, Message: &message, UpdatedAt: time.Date(2026, 3, 1, 0, 5, 0, 0, time.UTC)}
+	srv := newJobsAdminServerServing(t, jobsAdminUser("admin", "acme", []string{"admin"}), func(repo jobports.JobRepository) jobports.JobRepository {
+		return progressReportingRepo{JobRepository: repo, progress: progress}
+	})
+	// 1 回目は失敗して再試行へ戻り、2 回目の取得で running になる。失敗理由は残る。
+	now := time.Date(2026, 3, 1, 0, 10, 0, 0, time.UTC)
+	claimJobs(t, srv, now)
+	if _, err := srv.repo.Fail(context.Background(), srv.acmeJob.ID, "worker-1", jobports.FailOutcome{NextStatus: domain.StatusQueued, RunAt: now, Error: "smtp timeout"}, now); err != nil {
+		t.Fatal(err)
+	}
+	claimJobs(t, srv, now)
+
+	rec := srv.get("/realms/acme/api/admin/v1/jobs/" + srv.acmeJob.ID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var detail map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{
+		"status": "running", "lane": "default", "attempts": float64(2), "max_attempts": float64(3),
+		"error": "smtp timeout", "lease_owner": "worker-1",
+	}
+	for field, value := range want {
+		if detail[field] != value {
+			t.Errorf("%s = %v, want %v", field, detail[field], value)
+		}
+	}
+	for _, field := range []string{"lease_expires_at", "run_at", "created_at", "updated_at"} {
+		if s, ok := detail[field].(string); !ok || s == "" {
+			t.Errorf("%s = %v, want a timestamp", field, detail[field])
+		}
+	}
+	gotProgress, ok := detail["progress"].(map[string]any)
+	if !ok || gotProgress["percent"] != float64(40) || gotProgress["message"] != message {
+		t.Errorf("progress = %v, want the reported progress", detail["progress"])
+	}
+	for _, forbidden := range []string{"params", "result", "dedup_key"} {
+		if _, present := detail[forbidden]; present {
+			t.Errorf("detail carries %q", forbidden)
+		}
+	}
+	if strings.Contains(rec.Body.String(), "alice@example.test") {
+		t.Fatalf("handler params leaked into the detail: %s", rec.Body.String())
 	}
 }
