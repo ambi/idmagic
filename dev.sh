@@ -63,16 +63,6 @@ fi
   go build -o "$RUN_DIR/" "${build_pkgs[@]}"
 )
 
-# Start the UI first: it does not depend on the database, so its dev-server
-# warm-up overlaps with the embedded infrastructure bring-up below.
-echo "Starting UI at http://localhost:5173"
-echo "Demo credentials: alice / demo-password-1234"
-(
-  cd "$ROOT_DIR/frontend"
-  exec bun ./node_modules/vite/bin/vite.js
-) &
-UI_PID=$!
-
 DATABASE_URL=
 if [ "$MODE" = "durable" ]; then
   READY_FILE="$RUN_DIR/infra-ready.json"
@@ -103,6 +93,16 @@ if [ "$MODE" = "durable" ]; then
 else
   echo "Starting lightweight memory mode: durable jobs and CSV import are unavailable"
 fi
+
+# UI は基盤の準備が済んでから起動する。基盤の準備に失敗した起動は、API も UI も
+# 起動しないまま止まらなければならない (EX-JOBS-001-02)。
+echo "Starting UI at http://localhost:5173"
+echo "Demo credentials: alice / demo-password-1234"
+(
+  cd "$ROOT_DIR/frontend"
+  exec bun ./node_modules/vite/bin/vite.js
+) &
+UI_PID=$!
 
 echo "Starting idmagic API at $DEV_API_ADDR"
 (
