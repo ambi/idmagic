@@ -43,7 +43,10 @@ const LifecycleWorkflowRunJobKind jobsdomain.JobKind = "lifecycle_workflow_run"
 func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind, jobsdomain.LaneDefault) }
 
 type LifecycleWorkflowExecutorDeps struct {
-	RunRepo         igports.LifecycleWorkflowRunRepository
+	RunRepo igports.LifecycleWorkflowRunRepository
+	// WorkflowRepo は各ステップの前にワークフローの状態を読み直し、無効化または削除された
+	// ワークフローの WorkflowRun を次のステップの前で打ち切るために使う。nil なら読み直さない。
+	WorkflowRepo    igports.LifecycleWorkflowRepository
 	UserRepo        userports.UserRepository
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
@@ -97,6 +100,17 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 		if run == nil || run.TenantID != job.TenantID || run.Status.Terminal() {
 			return nil, fmt.Errorf("lifecycle workflow run not runnable")
 		}
+		steps, err := deps.RunRepo.ListSteps(ctx, job.TenantID, run.ID)
+		if err != nil {
+			return nil, err
+		}
+		stopped, err := workflowStopped(ctx, deps, run)
+		if err != nil {
+			return nil, err
+		}
+		if stopped {
+			return cancelLifecycleWorkflowRun(ctx, deps, run, steps)
+		}
 		if run.Status == igdomain.WorkflowRunQueued {
 			started, startErr := deps.RunRepo.StartRun(ctx, job.TenantID, run.ID, time.Now().UTC())
 			if startErr != nil {
@@ -107,18 +121,22 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 			}
 			emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
 		}
-		steps, err := deps.RunRepo.ListSteps(ctx, job.TenantID, run.ID)
-		if err != nil {
-			return nil, err
-		}
 		succeeded, failed := 0, 0
-		for _, step := range steps {
+		for i, step := range steps {
 			if step.Outcome == igdomain.WorkflowStepChanged || step.Outcome == igdomain.WorkflowStepNoop {
 				succeeded++
 				continue
 			}
 			if step.Outcome == igdomain.WorkflowStepCanceled {
 				continue
+			}
+			// 無効化は実行中のステップを止めない。次のステップを始める前にだけ打ち切る。
+			stopped, err := workflowStopped(ctx, deps, run)
+			if err != nil {
+				return nil, err
+			}
+			if stopped {
+				return cancelLifecycleWorkflowRun(ctx, deps, run, steps[i:])
 			}
 			outcome, code := executeLifecycleAction(ctx, deps, run, step.Action)
 			now := time.Now().UTC()
@@ -134,6 +152,11 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 				emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
 			}
 		}
+		// 試行が残っている間は WorkflowRun を running のまま Jobs に再試行させる。次の試行は
+		// changed と no_op のステップを飛ばし、failed のステップだけを実行する。
+		if failed > 0 && job.Attempts < job.MaxAttempts {
+			return nil, fmt.Errorf("%d lifecycle workflow step(s) failed on attempt %d of %d", failed, job.Attempts, job.MaxAttempts)
+		}
 		status := igdomain.WorkflowRunSucceeded
 		switch {
 		case failed > 0 && succeeded == 0:
@@ -147,6 +170,38 @@ func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(contex
 		emitWorkflowRunCompletion(deps.Emit, status, run)
 		return json.Marshal(map[string]string{"run_id": run.ID, "status": string(status)})
 	}
+}
+
+// workflowStopped は、WorkflowRun のワークフローがもう enabled でないかを同じテナントで確かめる。
+func workflowStopped(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun) (bool, error) {
+	if deps.WorkflowRepo == nil {
+		return false, nil
+	}
+	workflow, err := deps.WorkflowRepo.Find(ctx, run.TenantID, run.WorkflowID)
+	if err != nil {
+		return false, err
+	}
+	return workflow == nil || workflow.Status != igdomain.LifecycleWorkflowEnabled, nil
+}
+
+// cancelLifecycleWorkflowRun は未完了のステップを canceled として記録し、WorkflowRun を
+// canceled で終える。
+func cancelLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun, remaining []igdomain.WorkflowStep) (json.RawMessage, error) {
+	for _, step := range remaining {
+		if step.Outcome.Complete() {
+			continue
+		}
+		now := time.Now().UTC()
+		step.Outcome, step.ErrorCode, step.CompletedAt = igdomain.WorkflowStepCanceled, "", &now
+		if err := deps.RunRepo.CheckpointStep(ctx, run.TenantID, run.ID, step); err != nil {
+			return nil, err
+		}
+	}
+	if err := deps.RunRepo.CompleteRun(ctx, run.TenantID, run.ID, igdomain.WorkflowRunCanceled, time.Now().UTC()); err != nil {
+		return nil, err
+	}
+	emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowRunCanceled{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	return json.Marshal(map[string]string{"run_id": run.ID, "status": string(igdomain.WorkflowRunCanceled)})
 }
 
 func emitWorkflowRunCompletion(emit func(spec.DomainEvent) error, status igdomain.WorkflowRunStatus, run *igdomain.WorkflowRun) {

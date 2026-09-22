@@ -42,7 +42,7 @@ type lifecycleDryRunStepResponse struct {
 }
 
 func (d Deps) workflowDeps() igusecases.LifecycleWorkflowDeps {
-	return igusecases.LifecycleWorkflowDeps{Repo: d.LifecycleWorkflowRepo, RunRepo: d.LifecycleWorkflowRunRepo, Emit: func(event spec.DomainEvent) error {
+	return igusecases.LifecycleWorkflowDeps{Repo: d.LifecycleWorkflowRepo, RunRepo: d.LifecycleWorkflowRunRepo, GroupRepo: d.GroupRepo, ApplicationRepo: d.ApplicationRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: func(event spec.DomainEvent) error {
 		if d.Emit != nil {
 			d.Emit(event)
 		}
@@ -327,16 +327,20 @@ func (d Deps) handleRetryLifecycleWorkflowRun(c *echo.Context) error {
 }
 
 func (d Deps) writeLifecycleWorkflowError(c *echo.Context, err error) error {
+	// 契約が 400 として宣言するのは InvalidRequestError だけである。別テナントの
+	// ワークフローも、存在しないものとして同じ形で拒否する。
 	switch {
 	case errors.Is(err, igusecases.ErrLifecycleWorkflowNotFound):
-		return support.WriteProblem(c, http.StatusNotFound, "workflow_not_found", "The workflow does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The workflow does not exist.")
 	case errors.Is(err, igusecases.ErrWorkflowRevisionConflict):
 		return support.WriteProblem(c, http.StatusConflict, "workflow_revision_conflict", "The workflow was updated by another change.")
 	case errors.Is(err, igusecases.ErrWorkflowNameConflict):
 		return support.WriteProblem(c, http.StatusConflict, "workflow_name_conflict", "The workflow name is already in use.")
 	case errors.Is(err, igusecases.ErrLifecycleWorkflowTargetUserNotFound):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The target user was not found.")
+	case errors.Is(err, igusecases.ErrLifecycleWorkflowInvalidReference):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The workflow refers to a field or resource that does not exist in this tenant.")
 	default:
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_workflow", "The workflow input is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The workflow input is invalid.")
 	}
 }

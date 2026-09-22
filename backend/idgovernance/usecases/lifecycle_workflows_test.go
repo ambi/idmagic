@@ -194,6 +194,8 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 
 // wi-222: dry-run must evaluate enabled_revision, not a later unenabled draft
 // edit, so a draft change never appears to the admin as production behavior.
+//
+//spec:covers EX-IDGOVERNANCE-013-02: 有効化後の下書き編集があっても、プレビューは enabled_revision のアクションとトリガーを評価し、下書きで変えたアクションも、対象 User に一致しなくなるトリガーのフィルターも反映しないことを固定する。
 func TestDryRunLifecycleWorkflowUsesEnabledRevisionNotDraft(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
@@ -212,7 +214,9 @@ func TestDryRunLifecycleWorkflowUsesEnabledRevisionNotDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Draft edit after enable: current_revision moves to 2 but enabled_revision stays 1.
-	if _, err := usecases.UpdateLifecycleWorkflow(ctx, deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: now}); err != nil {
+	// 下書きのフィルターは disabled の対象 User に一致しないので、反映されれば trigger_not_matched になる。
+	draftTrigger := igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated, Filters: []igdomain.WorkflowFilter{{Field: "status", Operator: igdomain.WorkflowFilterEqual, Value: "active"}}}
+	if _, err := usecases.UpdateLifecycleWorkflow(ctx, deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: draftTrigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: now}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
@@ -237,7 +241,7 @@ func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
-	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo, GroupRepo: groups}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
@@ -269,6 +273,8 @@ func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
 
 // wi-222: when the trigger's filters don't match the target User's current
 // attributes, dry-run must say so instead of pretending the actions would run.
+//
+//spec:covers EX-IDGOVERNANCE-013-03: トリガーのフィルターが対象 User の現在の属性に一致しないと、目的の状態にあるアクションも含めてすべてのアクションを blocked、理由を trigger_not_matched として返すことを固定する。
 func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
@@ -281,7 +287,8 @@ func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T
 		t.Fatal(err)
 	}
 	trigger := igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated, Filters: []igdomain.WorkflowFilter{{Field: "department", Operator: igdomain.WorkflowFilterEqual, Value: "engineering"}}}
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: trigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}, Now: now})
+	// enable_user は active の対象 User にとって既に目的の状態であり、フィルターが一致すれば no_op になる。
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: trigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}, {Kind: igdomain.WorkflowActionDisableUser}}, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,8 +296,13 @@ func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T
 	if err != nil {
 		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
 	}
-	if len(result.Steps) != 1 || result.Steps[0].Outcome != igdomain.WorkflowActionBlocked || result.Steps[0].Reason != "trigger_not_matched" {
-		t.Fatalf("steps = %#v, want blocked/trigger_not_matched", result.Steps)
+	if len(result.Steps) != 2 {
+		t.Fatalf("steps = %#v, want one result per action", result.Steps)
+	}
+	for _, step := range result.Steps {
+		if step.Outcome != igdomain.WorkflowActionBlocked || step.Reason != "trigger_not_matched" {
+			t.Fatalf("steps = %#v, want every action blocked/trigger_not_matched", result.Steps)
+		}
 	}
 }
 

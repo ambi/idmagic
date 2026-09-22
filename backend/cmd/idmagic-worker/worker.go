@@ -202,14 +202,7 @@ func RunWorker() error {
 		Migrators:  deps.DataKeys.Migrators,
 		Jobs:       deps.Jobs.Repo,
 	}))
-	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
-		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, Notifier: deps.Notification.Notifier,
-		Emit: func(event spec.DomainEvent) error {
-			deps.NewEmitFunc(logger)(event)
-			return nil
-		},
-	}))
+	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
 	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
@@ -337,6 +330,20 @@ func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies, inter
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+// lifecycleWorkflowExecutorDeps は WorkflowRun の実行ハンドラーへ渡す依存を組み立てる。
+// WorkflowRepo を渡さないと、無効化されたワークフローの WorkflowRun が次のステップへ進む。
+func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.Logger) igusecases.LifecycleWorkflowExecutorDeps {
+	return igusecases.LifecycleWorkflowExecutorDeps{
+		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, WorkflowRepo: deps.IdGovernance.LifecycleWorkflowRepo,
+		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
+		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, Notifier: deps.Notification.Notifier,
+		Emit: func(event spec.DomainEvent) error {
+			deps.NewEmitFunc(logger)(event)
+			return nil
+		},
 	}
 }
 

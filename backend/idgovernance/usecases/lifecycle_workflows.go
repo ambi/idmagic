@@ -3,26 +3,99 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"time"
 
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var (
 	ErrLifecycleWorkflowNotFound = errors.New("lifecycle workflow not found")
 	ErrWorkflowRevisionConflict  = errors.New("workflow revision conflict")
 	ErrWorkflowNameConflict      = errors.New("lifecycle workflow name already exists")
+	// ErrLifecycleWorkflowInvalidReference は、revision がワークフローと同じテナントに
+	// 存在しないフィールドまたはリソースを参照していることを表す。
+	ErrLifecycleWorkflowInvalidReference = errors.New("lifecycle workflow refers to an unknown field or resource")
 )
+
+// workflowCoreFields はフィルターが属性スキーマを介さずに読める User の中核フィールドである。
+var workflowCoreFields = []string{"preferred_username", "email", "status"}
+
+// validateRevisionReferences は、revision のフィルターのフィールドとアクションの参照先が
+// ワークフローと同じテナントに存在することを確かめる。別テナントの同じ id へは
+// フォールバックしない。照合に要る保存先が無い構成は、確かめられないので拒否する。
+func validateRevisionReferences(ctx context.Context, deps LifecycleWorkflowDeps, revision *igdomain.LifecycleWorkflowRevision) error {
+	if len(revision.Trigger.Filters) > 0 {
+		fields := slices.Clone(workflowCoreFields)
+		for _, def := range userdomain.BuiltinUserAttributeDefs() {
+			fields = append(fields, def.Key)
+		}
+		if deps.AttrSchemaRepo != nil {
+			schema, err := deps.AttrSchemaRepo.FindByTenant(ctx, revision.TenantID)
+			if err != nil {
+				return err
+			}
+			if schema != nil {
+				for _, def := range schema.Attributes {
+					fields = append(fields, def.Key)
+				}
+			}
+		}
+		for _, filter := range revision.Trigger.Filters {
+			if !slices.Contains(fields, filter.Field) {
+				return fmt.Errorf("%w: filter field %q", ErrLifecycleWorkflowInvalidReference, filter.Field)
+			}
+		}
+	}
+	for _, action := range revision.Actions {
+		switch action.Kind {
+		case igdomain.WorkflowActionAddGroupMember, igdomain.WorkflowActionRemoveGroupMember:
+			if deps.GroupRepo == nil {
+				return fmt.Errorf("%w: group repository is not configured", ErrLifecycleWorkflowInvalidReference)
+			}
+			group, err := deps.GroupRepo.FindByID(ctx, revision.TenantID, action.GroupID)
+			if err != nil {
+				return err
+			}
+			// 動的グループのメンバーはルールが決めるので、アクションで足し引きできない。
+			if group == nil || group.MembershipType == groupdomain.GroupMembershipDynamic {
+				return fmt.Errorf("%w: group %q", ErrLifecycleWorkflowInvalidReference, action.GroupID)
+			}
+		case igdomain.WorkflowActionAssignApplication, igdomain.WorkflowActionUnassignApplication:
+			if deps.ApplicationRepo == nil {
+				return fmt.Errorf("%w: application repository is not configured", ErrLifecycleWorkflowInvalidReference)
+			}
+			app, err := deps.ApplicationRepo.FindByID(ctx, revision.TenantID, action.ApplicationID)
+			if err != nil {
+				return err
+			}
+			if app == nil {
+				return fmt.Errorf("%w: application %q", ErrLifecycleWorkflowInvalidReference, action.ApplicationID)
+			}
+		}
+	}
+	return nil
+}
 
 type LifecycleWorkflowDeps struct {
 	Repo    igports.LifecycleWorkflowRepository
 	RunRepo igports.LifecycleWorkflowRunRepository
-	Emit    func(spec.DomainEvent) error
+	// GroupRepo、ApplicationRepo、AttrSchemaRepo は、保存と有効化で revision の参照先を
+	// ワークフローと同じテナントで照合するために使う。
+	GroupRepo       groupports.GroupRepository
+	ApplicationRepo appports.ApplicationRepository
+	AttrSchemaRepo  tenantports.TenantUserAttributeSchemaRepository
+	Emit            func(spec.DomainEvent) error
 }
 
 // PlanLifecycleWorkflowRuns evaluates enabled definitions against one committed
@@ -101,6 +174,9 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := revision.Validate(); err != nil {
 		return nil, err
 	}
+	if err := validateRevisionReferences(ctx, deps, revision); err != nil {
+		return nil, err
+	}
 	workflow := &igdomain.LifecycleWorkflow{ID: id, TenantID: tenantID, Name: name, Description: normalizedDescription(input.Description), Status: igdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
 	if err := workflow.Validate(); err != nil {
 		return nil, err
@@ -155,6 +231,9 @@ func UpdateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if err := revision.Validate(); err != nil {
 		return nil, err
 	}
+	if err := validateRevisionReferences(ctx, deps, revision); err != nil {
+		return nil, err
+	}
 	workflow.Name, workflow.Description, workflow.CurrentRevision, workflow.UpdatedAt = name, normalizedDescription(input.Description), next, now
 	if err := deps.Repo.SaveRevision(ctx, revision); err != nil {
 		return nil, err
@@ -182,6 +261,14 @@ func EnableLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, wo
 	}
 	if revision == nil {
 		return nil, errors.New("workflow revision not found")
+	}
+	// 保存から有効化までの間に参照先が削除または移動していることがあるので、
+	// 有効化する revision を改めて検証する。
+	if err := revision.Validate(); err != nil {
+		return nil, err
+	}
+	if err := validateRevisionReferences(ctx, deps, revision); err != nil {
+		return nil, err
 	}
 	now = normalizedNow(now)
 	if err := workflow.Enable(expectedRevision, now); err != nil {

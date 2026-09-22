@@ -57,7 +57,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	if err := applications.Save(ctx, application); err != nil {
 		t.Fatal(err)
 	}
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows}, usecases.CreateLifecycleWorkflowInput{
+	workflow, err := usecases.CreateLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows, GroupRepo: groups, ApplicationRepo: applications}, usecases.CreateLifecycleWorkflowInput{
 		Name:    "Joiner",
 		Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated},
 		Actions: []igdomain.WorkflowAction{
@@ -69,7 +69,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows}, workflow.ID, workflow.CurrentRevision, "admin", now); err != nil {
+	if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows, GroupRepo: groups, ApplicationRepo: applications}, workflow.ID, workflow.CurrentRevision, "admin", now); err != nil {
 		t.Fatal(err)
 	}
 
@@ -140,10 +140,7 @@ func queuedDisableRun(t *testing.T, runs *igmemory.LifecycleWorkflowRunRepositor
 	return run
 }
 
-// 1 回目の投入は API プロセスの即時投入に当たり、失敗させる。2 回目は worker の定期
-// ディスパッチャーの再走査に当たる。
-//
-//spec:covers EX-JOBS-008-01: 即時の投入に失敗した queued の実行を、ディスパッチャーが dedup_key=lifecycle-workflow-run:{run_id} で投入して job_id を関連付け、worker がその Job を取得してハンドラーを実行する。
+//spec:covers EX-JOBS-008-01: 即時の投入に失敗した queued の実行を、ディスパッチャーが dedup_key=lifecycle-workflow-run:{run_id} で投入して job_id を関連付け、worker がその Job を取得してハンドラーを実行する。1 回目の投入は API プロセスの即時投入に当たり、失敗させる。2 回目は worker の定期ディスパッチャーの再走査に当たる。
 func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T) {
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := usermemory.NewUserRepository()
@@ -397,6 +394,8 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 
 // wi-222: add_group_member against a User who is already a member must report
 // no_op, not changed, so dry-run and the real run agree.
+//
+//spec:covers EX-IDGOVERNANCE-005-01: 既にメンバーである User への add_group_member は no_op になり、メンバーシップの行を重ねず、WorkflowRun は succeeded で終わることを固定する。
 func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
@@ -431,6 +430,12 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
 	if err != nil || storedSteps[0].Outcome != igdomain.WorkflowStepNoop {
 		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
+	}
+	if members, err := groups.ListMembersByGroup(ctx, "tenant-a", group.ID); err != nil || len(members) != 1 {
+		t.Fatalf("members = %#v, %v, want the single seeded membership", members, err)
+	}
+	if stored, err := runs.FindRun(ctx, run.TenantID, run.ID); err != nil || stored.Status != igdomain.WorkflowRunSucceeded {
+		t.Fatalf("run = %#v, %v, want succeeded", stored, err)
 	}
 }
 

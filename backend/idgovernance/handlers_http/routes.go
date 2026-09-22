@@ -34,6 +34,8 @@ type Deps struct {
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	Notifier        sharednotification.Notifier
+	// AttrSchemaRepo は保存と有効化で、フィルターのフィールドをテナントの属性スキーマと照合する。
+	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
 	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160)
 	// for the LifecycleWorkflowRun job this package dispatches. nil
 	// skips enforcement.

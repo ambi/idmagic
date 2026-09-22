@@ -595,8 +595,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		JobRepo:                  d.Jobs.Repo,
 		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
-		Notifier:  d.Notification.Notifier,
-		QuotaRepo: d.Tenancy.QuotaRepo,
+		Notifier:       d.Notification.Notifier,
+		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
+		QuotaRepo:      d.Tenancy.QuotaRepo,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
