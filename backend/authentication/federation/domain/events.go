@@ -34,6 +34,11 @@ type FederatedIdentityUnlinked struct {
 func (e *FederatedIdentityUnlinked) EventType() string     { return "FederatedIdentityUnlinked" }
 func (e *FederatedIdentityUnlinked) OccurredAt() time.Time { return e.At }
 
+// FederatedLoginRejected の Reason。監査が拒否の種類を区別するための値である。
+const (
+	RejectionProtocolValidationFailed = "protocol_validation_failed"
+)
+
 type FederatedLoginRejected struct {
 	At         time.Time `json:"-"`
 	TenantID   string    `json:"tenantId"`

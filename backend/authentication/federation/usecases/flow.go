@@ -107,7 +107,7 @@ func CompleteLogin(
 	if err != nil {
 		emit(deps.Emit, &federationdomain.FederatedLoginRejected{
 			At: normalizedNow(now), TenantID: tenantID, ProviderID: connection.ID,
-			Reason: "protocol_validation_failed",
+			Reason: federationdomain.RejectionProtocolValidationFailed,
 		})
 		return nil, err
 	}

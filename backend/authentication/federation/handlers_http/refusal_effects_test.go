@@ -78,6 +78,8 @@ type autoLinkFixture struct {
 	sessions *sessionmemory.SessionStore
 	driver   *claimsDriver
 	events   []string
+	// rejections は発行された FederatedLoginRejected を、Reason を読めるように値ごと控える。
+	rejections []federationdomain.FederatedLoginRejected
 }
 
 // newAutoLinkServer は 1 本の接続と、`policy` に応じた linking policy を持つ環境を組む。
@@ -144,7 +146,12 @@ func newFederationServer(
 			Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
 				federationdomain.ProtocolOIDC: driver,
 			},
-			Emit: func(event spec.DomainEvent) { fixture.events = append(fixture.events, event.EventType()) },
+			Emit: func(event spec.DomainEvent) {
+				fixture.events = append(fixture.events, event.EventType())
+				if rejected, ok := event.(*federationdomain.FederatedLoginRejected); ok {
+					fixture.rejections = append(fixture.rejections, *rejected)
+				}
+			},
 		},
 		Auth: httpdeps.Deps{Deps: support.Deps{Issuer: "http://idp.test"}},
 	})
@@ -155,6 +162,12 @@ func newFederationServer(
 // completeLogin は start から callback までを production と同じ経路で 1 往復する。
 func (f *autoLinkFixture) completeLogin(t *testing.T) *httptest.ResponseRecorder {
 	t.Helper()
+	return f.callback(t, f.startLogin(t))
+}
+
+// startLogin は login attempt を 1 件作り、上流へ渡した state を返す。
+func (f *autoLinkFixture) startLogin(t *testing.T) string {
+	t.Helper()
 	started := httptest.NewRecorder()
 	f.e.ServeHTTP(started, httptest.NewRequest(
 		http.MethodGet, "/api/auth/federation/start?provider_id="+autoLinkProviderID, http.NoBody,
@@ -162,9 +175,15 @@ func (f *autoLinkFixture) completeLogin(t *testing.T) *httptest.ResponseRecorder
 	if started.Code != http.StatusSeeOther || f.driver.state == "" {
 		t.Fatalf("前提が壊れている: start status=%d state=%q", started.Code, f.driver.state)
 	}
+	return f.driver.state
+}
+
+// callback は上流から戻る callback を、指定した state で 1 回送る。
+func (f *autoLinkFixture) callback(t *testing.T, state string) *httptest.ResponseRecorder {
+	t.Helper()
 	completed := httptest.NewRecorder()
 	f.e.ServeHTTP(completed, httptest.NewRequest(http.MethodGet,
-		"/api/auth/federation/oidc/callback?state="+url.QueryEscape(f.driver.state)+"&code=verified",
+		"/api/auth/federation/oidc/callback?state="+url.QueryEscape(state)+"&code=verified",
 		http.NoBody,
 	))
 	return completed
