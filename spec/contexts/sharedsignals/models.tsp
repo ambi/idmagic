@@ -337,7 +337,7 @@ model SecurityEventTransmitted {
 }
 
 
-@doc("A SecurityEventDelivery failed and a retry was scheduled.")
+@doc("A SecurityEventDelivery attempt failed. Every failed attempt emits this event: a retry is scheduled, or, once `max_delivery_attempts` is used up, SecurityEventDeliveryDeadLettered follows.")
 model SecurityEventDeliveryFailed {
   occurredAt: utcDateTime;
   tenantId: string;

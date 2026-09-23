@@ -36,7 +36,13 @@ func subjectIdentifierEvent(jti string, subjectID map[string]any) *ssports.Verif
 // せず、失効エポックを進めないことを固定する。
 //
 //spec:covers RFC9493-SUBID-FORMAT: 種別を決めるのが `format` の値だけであることを固定する。
-//spec:covers RFC9493-SUBID-ISS-SUB: `format=iss_sub` の `iss` が受信ストリームの
+//spec:covers RFC9493-SUBID-ISS-SUB: `format=iss_sub` の `iss` が受信ストリームの `trusted_issuer` と一致しなければ主体を解決せず、失効エポックを進めないことを固定する。
+//spec:covers EX-SHAREDSIGNALS-010-01: `iss_sub` で Agent を名指した SET が、その Agent の失効エポックを InboundSecurityEvent で進め、SecurityEventReceived を発行する。
+//spec:covers EX-SHAREDSIGNALS-010-02: `sub` が束縛先クライアントの識別子でも、束縛元の Agent の失効エポックが進む。
+//spec:covers EX-SHAREDSIGNALS-010-03: 自身の発行者もテナントも持たない `opaque` の `id` が、受信ストリームのテナントの Agent として解決される。
+//spec:covers EX-SHAREDSIGNALS-010-04: `iss` が `trusted_issuer` と一致しない SET を ErrSecurityEventRejected で拒否し、rejected_subject_unresolved を発行し、失効エポックを進めない。
+//spec:covers EX-SHAREDSIGNALS-010-05: 解釈しない `format=email` を、解決できる識別子を同居させても拒否し、失効エポックを進めない。
+//spec:covers EX-SHAREDSIGNALS-010-06: どの Agent にも束縛先クライアントにも一致しない識別子を拒否し、失効エポックを進めない。
 func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 	const agentID = "agent_1"
 	const boundClientID = "client_1"

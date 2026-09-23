@@ -103,22 +103,27 @@ func deliverOne(ctx context.Context, deps DeliverDeps, d *ssdomain.SecurityEvent
 	if config != nil {
 		maxAttempts = config.MaxDeliveryAttempts
 	}
-	if updated.AttemptCount >= maxAttempts {
+	// 失敗した試行はすべて failed を経る (states.md の pending → failed)。上限に
+	// 達した試行はそこから dead_letter へ進むので、Failed の後に DeadLettered が続く。
+	exhausted := updated.AttemptCount >= maxAttempts
+	if exhausted {
 		updated.Status = ssdomain.SecurityEventDeliveryStatusDeadLetter
 		updated.NextAttemptAt = nil
-		if err := deps.DeliveryRepo.Save(ctx, &updated); err != nil {
-			return err
-		}
-		return emit(deps.Emit, &ssdomain.SecurityEventDeliveryDeadLettered{At: now, TenantID: d.TenantID, StreamID: d.StreamID, SetJTI: d.SetJTI})
+	} else {
+		updated.Status = ssdomain.SecurityEventDeliveryStatusFailed
+		next := now.Add(nextAttemptDelay(updated.AttemptCount))
+		updated.NextAttemptAt = &next
 	}
-
-	updated.Status = ssdomain.SecurityEventDeliveryStatusFailed
-	next := now.Add(nextAttemptDelay(updated.AttemptCount))
-	updated.NextAttemptAt = &next
 	if err := deps.DeliveryRepo.Save(ctx, &updated); err != nil {
 		return err
 	}
-	return emit(deps.Emit, &ssdomain.SecurityEventDeliveryFailed{At: now, TenantID: d.TenantID, StreamID: d.StreamID, SetJTI: d.SetJTI, AttemptCount: updated.AttemptCount})
+	if err := emit(deps.Emit, &ssdomain.SecurityEventDeliveryFailed{At: now, TenantID: d.TenantID, StreamID: d.StreamID, SetJTI: d.SetJTI, AttemptCount: updated.AttemptCount}); err != nil {
+		return err
+	}
+	if !exhausted {
+		return nil
+	}
+	return emit(deps.Emit, &ssdomain.SecurityEventDeliveryDeadLettered{At: now, TenantID: d.TenantID, StreamID: d.StreamID, SetJTI: d.SetJTI})
 }
 
 // pushToConfig pushes to config's delivery endpoint, or fails closed if the
