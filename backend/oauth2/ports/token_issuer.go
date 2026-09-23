@@ -22,7 +22,9 @@ type AccessTokenInput struct {
 	// 非空のとき agent_id / principal_type=agent claim を付与する。
 	AgentID string
 	// Audiences は発行トークンの aud を明示指定する (RFC 8707 / RFC 8693)。
-	// 空のときは従来どおり Client.ClientID を aud に用いる。len==1 なら単一文字列、
+	// 空のときは Scopes からデフォルトの資源を推定し (RFC 9068 §3)、account スコープを含めば
+	// レルムの発行者識別子 (レルムの IdMagic API) を、含まなければ Client.ClientID を
+	// aud に用いる。len==1 なら単一文字列、
 	// len>1 なら配列として書き込む。AllAccessTokensCarryAudience 不変条件のため
 	// 結果の aud は常に 1 個以上になる。
 	Audiences []string

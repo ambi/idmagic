@@ -73,10 +73,13 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	now := nowUnix()
 	issuer := tenancy.Issuer(ctx, s.Issuer)
 	// aud は AllAccessTokensCarryAudience 不変条件により常に 1 個以上。
-	// Audiences が指定されていればそれを使い (RFC 8707 / RFC 8693)、なければ
-	// 従来どおり client_id を単一 audience とする。
+	// Audiences が指定されていればそれを使う (RFC 8707 / RFC 8693)。なければ scope から
+	// デフォルトの資源を推定する (RFC 9068 §3)。account スコープの資源はレルムの IdMagic API で、
+	// その識別子は iss と同じレルムの発行者識別子である。どれにも当たらなければ client_id。
 	var aud any = in.Client.ClientID
 	switch {
+	case len(in.Audiences) == 0 && slices.ContainsFunc(in.Scopes, spec.IsAccountScope):
+		aud = issuer
 	case len(in.Audiences) == 1:
 		aud = in.Audiences[0]
 	case len(in.Audiences) > 1:

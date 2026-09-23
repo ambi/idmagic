@@ -153,7 +153,7 @@ RFC 8707 — https://www.rfc-editor.org/rfc/rfc8707.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC8707-AUDIENCE | required | SHOULD | 発行するアクセストークンに空でない `audience` を設定し、意図しないリソースサーバーでの利用を防ぐ。 |
-| RFC8707-MCP-RESOURCE-BINDING | required | MUST | `resource` パラメーターで指定された `McpResourceServer` にアクセストークンの `audience` を厳格に限定し、未登録、無効、複数指定の `resource` は fail-closed で拒否する。認可、Pushed Authorization Requests、トークン発行（認可コードの交換、リフレッシュトークンのローテーション、`client_credentials`、`device_code`、トークン交換）の全経路へ一様に適用する。`resource` が未指定であれば `client_id` を `audience` とする。 |
+| RFC8707-MCP-RESOURCE-BINDING | required | MUST | `resource` パラメーターで指定された `McpResourceServer` にアクセストークンの `audience` を厳格に限定し、未登録、無効、複数指定の `resource` は fail-closed で拒否する。認可、Pushed Authorization Requests、トークン発行（認可コードの交換、リフレッシュトークンのローテーション、`client_credentials`、`device_code`、トークン交換）の全経路へ一様に適用する。`resource` が未指定のときの `audience` は `RFC9068-DEFAULT-AUDIENCE` が定める。 |
 
 ## OAuth 2.0 Token Exchange
 
@@ -184,6 +184,7 @@ RFC 9068 — https://www.rfc-editor.org/rfc/rfc9068.html
 |---|---|---|---|
 | RFC9068-CLAIMS | required | MUST | JWT アクセストークンに `iss`、`sub`、`aud`、`exp`、`iat`、`jti`、`client_id` を含める。 |
 | RFC9068-ASYMMETRIC-SIGNATURE | required | MUST | アクセストークンを非対称アルゴリズムで署名し、公開鍵で検証可能にする。 |
+| RFC9068-DEFAULT-AUDIENCE | required | MUST | `resource` を含まないトークン要求では、`scope` からデフォルトの資源を推定して `aud` に入れる。`account:` で始まるスコープを含めばレルムの IdMagic API（レルムの発行者識別子）を、含まなければ `client_id` を `audience` とする。account リソースサーバーは、この `audience` を含まない account スコープのトークンを拒否する。 |
 
 ## OAuth 2.0 Pushed Authorization Requests
 

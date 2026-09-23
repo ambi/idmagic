@@ -34,7 +34,7 @@
 | SenderConstrainedToken | 所有証明（DPoP または mTLS）と組み合わさったトークン。所有者以外による再利用を防ぐ。 |  |
 | Issuer | トークンを発行した認可サーバーの URL 識別子。 | iss |
 | Subject | トークンの主体（通常は ResourceOwner）の仮名化された識別子。削除後も監査ログに残る。 | sub |
-| Audience | トークンの想定受信者を表す `audience`。通常はクライアントの `client_id`。 | aud |
+| Audience | トークンの想定受信者を表す `audience`。`resource` で指定した資源、account スコープを持つトークンではレルムの IdMagic API（レルムの発行者識別子）、それ以外ではクライアントの `client_id` になる。 | aud |
 | JwtId | JWT 一意識別子。リプレイ防止と監査の追跡に使用。 | jti |
 | Nonce | クライアントが認可リクエストに含め、ID トークンに含めて返される値。ID トークンのリプレイを防ぐ。 |  |
 | Scope | クライアントが要求する権限の集合。クライアントメタデータで宣言した集合の部分集合でなければならない。 |  |

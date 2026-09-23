@@ -21,8 +21,19 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/labstack/echo/v5"
 )
+
+// authTestRealmAPI は、テストのリクエスト先レルムの IdMagic API (レルムの発行者識別子) である。
+// account スコープのトークンはこの値を audience に持たなければ受けられない。
+const authTestRealmAPI = "https://idp.test/realms/acme"
+
+// withAuthTestRealm は、テナント middleware が組み立てるのと同じレルムの文脈を req に載せる。
+func withAuthTestRealm(req *http.Request) *http.Request {
+	return req.WithContext(tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: "acme"}, authTestRealmAPI, "/realms/acme"))
+}
 
 type authTestIntrospector struct {
 	result *oauthports.IntrospectionResult
@@ -114,10 +125,11 @@ func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 			req.Header.Set("Authorization", "DPoP "+accessToken)
 			req.Header.Set("DPoP", authTestDPoPProof(t, key, jwk, http.MethodGet, path, tc.name, tc.ath, now))
+			req = withAuthTestRealm(req)
 			c := e.NewContext(req, httptest.NewRecorder())
 			a := Authenticator{
 				TokenIntrospector: authTestIntrospector{result: &oauthports.IntrospectionResult{
-					Active: true, Sub: "user-1", Scope: "account:read",
+					Active: true, Sub: "user-1", Scope: "account:read", Aud: []string{authTestRealmAPI},
 					SenderConstraint: &oauthdomain.SenderConstraint{
 						Type: spec.SenderConstraintDPoP, JKT: authTestJKT(t, jwk),
 					},
@@ -179,9 +191,10 @@ func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, tc.path, http.NoBody)
 			req.Header.Set("Authorization", "Bearer jwt")
+			req = withAuthTestRealm(req)
 			c := e.NewContext(req, httptest.NewRecorder())
 			a := Authenticator{TokenIntrospector: authTestIntrospector{
-				result: &oauthports.IntrospectionResult{Active: true, Sub: "user-1", Scope: tc.scope},
+				result: &oauthports.IntrospectionResult{Active: true, Sub: "user-1", Scope: tc.scope, Aud: []string{authTestRealmAPI}},
 			}}
 
 			got, err := a.resolveAuthnContext(c)
@@ -202,7 +215,7 @@ func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
 }
 
 func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
-	base := &oauthports.IntrospectionResult{Active: true, Managed: true, Sub: "user-1", ClientID: apitokendomain.BuiltinClientID, Scope: "account:read"}
+	base := &oauthports.IntrospectionResult{Active: true, Managed: true, Sub: "user-1", ClientID: apitokendomain.BuiltinClientID, Scope: "account:read", Aud: []string{authTestRealmAPI}}
 	for _, tc := range []struct {
 		name, method, path string
 		principal          apitokendomain.Principal
@@ -216,6 +229,7 @@ func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(tc.method, tc.path, http.NoBody)
 			req.Header.Set("Authorization", "Bearer jwt")
+			req = withAuthTestRealm(req)
 			c := e.NewContext(req, httptest.NewRecorder())
 			a := Authenticator{TokenIntrospector: authTestIntrospector{result: base}, ApiTokenAuthenticator: authTestManagedAuthenticator{principal: tc.principal}}
 			got, err := a.resolveAuthnContext(c)
@@ -237,6 +251,51 @@ func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
 			}
 			if (got != nil) != tc.authenticated {
 				t.Fatalf("authn=%+v want=%v", got, tc.authenticated)
+			}
+		})
+	}
+}
+
+// account スコープのトークンは、スコープに加えてリクエスト先レルムの IdMagic API を
+// audience に持たなければ受けない。ポータル境界のスコープだけのトークンは検査の外に置く。
+// 期待する値はリクエストのテナント文脈から取るので、文脈を持たない要求も通さない。
+//
+//spec:covers REQ-OAUTH2-001, EX-OAUTH2-001-04: account スコープのトークンは aud がリクエスト先レルムの発行者識別子を含むときだけ受理し、client_id、別レルム、audience なし、レルム未解決では InvalidTokenError を返し、ポータル境界のスコープだけのトークンは検査しない。
+func TestAccountScopedTokenMustNameTheRealmApi(t *testing.T) {
+	for _, tc := range []struct {
+		name, scope string
+		aud         []string
+		inRealm     bool
+		accepted    bool
+	}{
+		{name: "レルムの IdMagic API", scope: "account:read", aud: []string{authTestRealmAPI}, inRealm: true, accepted: true},
+		{name: "複数の audience の 1 つ", scope: "account:read", aud: []string{"web-app", authTestRealmAPI}, inRealm: true, accepted: true},
+		{name: "client_id", scope: "account:read", aud: []string{"web-app"}, inRealm: true},
+		{name: "別レルムの IdMagic API", scope: "account:read", aud: []string{"https://idp.test/realms/other"}, inRealm: true},
+		{name: "audience なし", scope: "account:read", inRealm: true},
+		{name: "リクエスト先レルムを解決できない", scope: "account:read", aud: []string{authTestRealmAPI}},
+		{name: "ポータル境界のスコープだけ", scope: "openid idmagic.account", aud: []string{"web-app"}, inRealm: true, accepted: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/account/v1/profile", http.NoBody)
+			req.Header.Set("Authorization", "Bearer jwt")
+			if tc.inRealm {
+				req = withAuthTestRealm(req)
+			}
+			c := echo.New().NewContext(req, httptest.NewRecorder())
+			a := Authenticator{TokenIntrospector: authTestIntrospector{
+				result: &oauthports.IntrospectionResult{Active: true, Sub: "user-1", Scope: tc.scope, Aud: tc.aud},
+			}}
+
+			got, err := a.resolveAuthnContext(c)
+			if tc.accepted {
+				if err != nil || got == nil || got.UserID != "user-1" {
+					t.Fatalf("authn=%+v err=%v; want accepted", got, err)
+				}
+				return
+			}
+			if _, ok := errors.AsType[*InvalidTokenError](err); !ok {
+				t.Fatalf("authn=%+v err=%v; want InvalidTokenError", got, err)
 			}
 		})
 	}

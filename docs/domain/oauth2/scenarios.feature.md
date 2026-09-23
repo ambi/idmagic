@@ -9,7 +9,7 @@ Primary actor: `RegisteredClient`
 - Given クライアントは `account:read` と `account:write` を許可スコープとして登録している
 - And 有効な User が Authorization Code + PKCE または Device Authorization で `account:read` に同意している
 - When クライアントがユーザーに紐づくグラントを `/token` で交換する
-- Then アクセストークンの `sub` は同意した User、audience はレルムの IdMagic API、スコープは `account:read` になる
+- Then アクセストークンの `sub` は同意した User、audience はレルムの IdMagic API（レルムの発行者識別子）、スコープは `account:read` になる
 - Then account リソースサーバーは、トークンの subject 本人による参照操作だけを許可する
 
 ### Example: EX-OAUTH2-001-02 `client_credentials` または User の subject を持たない Token Exchange で account スコープを要求する
@@ -27,6 +27,14 @@ Primary actor: `RegisteredClient`
 - When クライアントがユーザーに紐づくグラントを `/token` で交換する
 - But クライアントの許可スコープまたは User の同意に account スコープが含まれない
 - Then account スコープは発行されない
+
+### Example: EX-OAUTH2-001-04 audience がレルムの IdMagic API ではない account スコープのトークンを提示する
+
+- Given 有効な User を subject とし、スコープに `account:read` を持つアクセストークンがある
+- But アクセストークンの audience はリクエスト先レルムの IdMagic API を含まない
+- When クライアントがそのトークンで account リソースサーバーを参照する
+- Then account リソースサーバーは 401 の InvalidAccessTokenError で拒否する
+- Then ポータル境界のスコープだけを持ち account スコープを持たないトークンは、この audience の検査を受けない
 
 ## Rule: REQ-OAUTH2-002 API トークン発行者は account 同意スコープで自分の同意だけを操作できる
 

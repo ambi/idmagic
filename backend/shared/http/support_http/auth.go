@@ -14,6 +14,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -127,6 +128,12 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 		if revoked {
 			return nil, &InvalidTokenError{}
 		}
+		// account スコープの資源はレルムの IdMagic API である (RFC9068-DEFAULT-AUDIENCE)。
+		// 別の資源へ宛てたトークンを、同じスコープ名を持つだけで受けない。不一致はスコープ
+		// 不足ではなくトークン自体の無効なので、RFC 6750 §3.1 の invalid_token で返す。
+		if !accountScopedTokenNamesRealmAPI(c, res) {
+			return nil, &InvalidTokenError{}
+		}
 		var apiToken *apitokendomain.Principal
 		if res.Managed {
 			if a.ApiTokenAuthenticator == nil {
@@ -198,6 +205,17 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 		c.Request().Context(),
 		authdomain.HTTPHeadersAdapter{H: c.Request().Header},
 	)
+}
+
+// accountScopedTokenNamesRealmAPI は、account スコープを持つトークンの audience がリクエスト先
+// レルムの IdMagic API (レルムの発行者識別子) を含むかを返す。account スコープを持たない
+// トークンには課さない。リクエスト先レルムを解決できなければ、照合先が無いので満たさない。
+func accountScopedTokenNamesRealmAPI(c *echo.Context, res *oauthports.IntrospectionResult) bool {
+	if !slices.ContainsFunc(strings.Fields(res.Scope), spec.IsAccountScope) {
+		return true
+	}
+	realmAPI := RequestIssuer(c, "")
+	return realmAPI != "" && slices.Contains(res.Aud, realmAPI)
 }
 
 // requiredPortalScope は resource path が Bearer に要求する portal scope を返す。

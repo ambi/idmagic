@@ -47,12 +47,6 @@
       "finding": "越境した client_id のバインドは拒否され関連付けも残らないが、応答は status=404 code=client_not_found である。TypeSpec の BindAgentCredential は 204/400/401/403 しか宣言していない。"
     },
     {
-      "id": "EX-OAUTH2-001-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
-      "blocked_by": "wi-570-account-scoped-tokens-name-no-audience",
-      "finding": "account:read に同意したグラントの交換は sub が同意した利用者、scope が account:read のトークンを返し、そのトークンで account リソースサーバーの参照だけが通る (wi-559 が TestAccountScopedGrantIssuesAUserBoundTokenTheAccountApiAccepts で固定した)。食い違うのは audience である。具体例はレルムの IdMagic API と言うが、製品は resource 指定の無いトークンの aud を client_id にし、レルムの API を resource indicator として指す経路を持たず、account リソースサーバーも audience を読んでいない。3 箇所の設計判断が要る (wi-559 が測定)。"
-    },
-    {
       "id": "EX-PLATFORM-003-01",
       "reason": "配信行が発火元の変更と同じトランザクションで作られないため",
       "blocked_by": "wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction",
