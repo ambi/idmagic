@@ -66,7 +66,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, NewOAuthError("invalid_grant", "The refresh token owner does not match.")
 	}
 	if domain.IsRefreshTokenReplay(record) {
-		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+		revokeFamilyAndNotify(ctx, deps.RefreshStore, deps.Emit, record.FamilyID, tenantID, now)
 		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
 		return nil, NewOAuthError("invalid_grant", "The refresh token has already been used.")
 	}
@@ -179,6 +179,20 @@ func evaluateRefreshPolicy(
 		return spec.Evaluate(req), nil
 	}
 	return authorizer.Authorize(ctx, req)
+}
+
+// revokeFamilyAndNotify は再利用検出で発行ファミリーを失効させ、実際に Revoked へ
+// 遷移した token ごとに TokenRevoked を発行する (RFC 9700 §4.10)。認可コード再提示
+// (exchange_code.go の revokeReplayedFamily) と refresh トークン再利用 (このファイル) は
+// 同じ状況を表すので、通知の組み立てを 1 か所にまとめて両者が同じ形で黙らないようにする。
+func revokeFamilyAndNotify(ctx context.Context, store ports.RefreshTokenStore, emitFn func(spec.DomainEvent), familyID, tenantID string, now time.Time) {
+	if store == nil {
+		return
+	}
+	revokedIDs, _ := store.RevokeFamily(ctx, familyID)
+	for _, tokenID := range revokedIDs {
+		emit(emitFn, &domain.TokenRevoked{At: now, TenantID: tenantID, TokenType: "refresh_token", TokenID: tokenID, Reason: "reuse_detected"})
+	}
 }
 
 func authZSenderConstraint(sc *domain.SenderConstraint) *spec.AuthZSenderConstraint {

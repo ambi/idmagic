@@ -8,6 +8,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -153,5 +154,36 @@ func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 		now,
 	); err == nil {
 		t.Fatal("replaying the rotated refresh token must be rejected")
+	}
+}
+
+// refresh トークンの再利用は invalid_grant で拒否され、発行ファミリーの token がすべて
+// 失効し、失効した token ごとに TokenRevoked が発行される。RefreshTokenReuseDetected
+// (検出の通知) と TokenRevoked (失効した token の記録) の両方が揃うことを読む。
+//
+//spec:covers EX-OAUTH2-006-02: ローテーション済みの旧リフレッシュトークンを再使用すると invalid_grant で拒否され、記録が Revoked になり family も失効し、RefreshTokenReuseDetected と TokenRevoked が発行される。
+func TestRefreshTokensReuseRevokesFamilyAndNotifiesTokenRevoked(t *testing.T) {
+	now := time.Now().UTC()
+	f := newRefreshFixture(t, nil, now, time.Hour)
+	var events []spec.DomainEvent
+	f.deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
+	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", "")
+
+	if _, err := RefreshTokens(ctx, f.deps, RefreshInput{ClientID: "client", RefreshToken: f.token}, now); err != nil {
+		t.Fatalf("ローテーションに失敗: %v", err)
+	}
+	events = nil
+	if _, err := RefreshTokens(ctx, f.deps, RefreshInput{ClientID: "client", RefreshToken: f.token}, now); err == nil {
+		t.Fatal("使用済みリフレッシュトークンの再提示が拒否されない")
+	}
+	types := make([]string, 0, len(events))
+	for _, e := range events {
+		types = append(types, e.EventType())
+	}
+	if !slices.Contains(types, "RefreshTokenReuseDetected") {
+		t.Fatalf("再利用の検出で RefreshTokenReuseDetected が発行されていない: %v", types)
+	}
+	if !slices.Contains(types, "TokenRevoked") {
+		t.Fatalf("再利用の検出で TokenRevoked が発行されていない: %v", types)
 	}
 }

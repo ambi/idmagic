@@ -69,6 +69,7 @@ type tiFixture struct {
 	assertionKey  *rsa.PrivateKey
 	tenants       *tenancymemory.TenantRepository
 	refreshTokens *oauth2memory.RefreshTokenStore
+	codes         *oauth2memory.AuthorizationCodeStore
 	events        *eventRecorder
 }
 
@@ -170,6 +171,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	signer := tokensJOSE.NewJWTSigner(tiIssuer, keyStore)
 	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	refreshTokens := oauth2memory.NewRefreshTokenStore()
+	codes := oauth2memory.NewAuthorizationCodeStore()
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -184,7 +186,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: oauth2memory.NewAuthorizationRequestStore(),
-			CodeStore:    oauth2memory.NewAuthorizationCodeStore(),
+			CodeStore:    codes,
 			PARStore:     oauth2memory.NewPARStore(), RefreshStore: refreshTokens,
 			McpResourceServerRepo:      resourceServers,
 			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
@@ -202,7 +204,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	t.Cleanup(server.Close)
 	return &tiFixture{
 		base: server.URL + "/realms/default", assertionKey: assertionKey,
-		tenants: tenants, refreshTokens: refreshTokens, events: events,
+		tenants: tenants, refreshTokens: refreshTokens, codes: codes, events: events,
 	}
 }
 
@@ -320,6 +322,23 @@ func (f *tiFixture) authorizationCode(t *testing.T, extra url.Values) string {
 		t.Fatalf("認可コードが返らなかった: %s", redirect)
 	}
 	return code
+}
+
+// expire は発行済みの認可コードを、発行から 60 秒を超えて期限切れの状態にする。
+// SCL の AuthorizationCodeTtl (60s) を実時間で待つ代わりに、保存層の ExpiresAt を
+// 書き換える (wi-566)。
+func (f *tiFixture) expireCode(t *testing.T, code string) {
+	t.Helper()
+	ctx := context.Background()
+	rec, err := f.codes.Find(ctx, code)
+	if err != nil || rec == nil {
+		t.Fatalf("認可コードが見つからない: %v %+v", err, rec)
+	}
+	rec.IssuedAt = time.Now().Add(-90 * time.Second).UTC()
+	rec.ExpiresAt = time.Now().Add(-30 * time.Second).UTC()
+	if err := f.codes.Save(ctx, rec); err != nil {
+		t.Fatalf("認可コードの期限を書き換えられない: %v", err)
+	}
 }
 
 func (f *tiFixture) codeExchangeForm(code string, extra url.Values) url.Values {
@@ -639,7 +658,8 @@ func TestAccessTokenAudienceIsBoundToTheRequestedResource(t *testing.T) {
 	}
 }
 
-// リフレッシュトークンをローテーションし、再利用を検知したら関連トークンを失効させる。
+// リフレッシュトークンをローテーションし、再利用を検知したら関連トークンを失効させる
+// (REQ-OAUTH2-006)。
 //
 // Statement が 2 つのことを言っているので、観測も 2 つ置く。1 つ目はローテーション
 // （交換のたびに別の値が返り、古い値は使えない）、2 つ目は再利用の検知が「その 1 本」
@@ -648,6 +668,7 @@ func TestAccessTokenAudienceIsBoundToTheRequestedResource(t *testing.T) {
 //
 //spec:covers RFC9700-REFRESH-REPLAY:
 //spec:covers EX-OAUTH2-006-01: ローテーションは新しい access_token と refresh_token を返し、旧記録を Rotated にして RefreshTokenRotated・AccessTokenIssued・RefreshTokenIssued を発行する。
+//spec:covers EX-OAUTH2-006-02: ローテーション済みの旧リフレッシュトークンを再使用すると invalid_grant で拒否され、記録が Revoked になり family も失効し、RefreshTokenReuseDetected と TokenRevoked が発行される。
 func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 	code := fixture.authorizationCode(t, nil)
@@ -695,10 +716,7 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Revoked {
 		t.Fatalf("再使用された記録が Revoked になっていない: %+v", record)
 	}
-	// EX-OAUTH2-006-02 が言う TokenRevoked はまだ出ない。RevokeFamily が失効させた
-	// token を返さないので、TokenID を持つイベントを組み立てられない。この欠落は
-	// wi-566 が持つので、ここでは検知そのものが記録に残ることまでを固定する。
-	fixture.events.assertEmitted(t, "RefreshTokenReuseDetected")
+	fixture.events.assertEmitted(t, "RefreshTokenReuseDetected", "TokenRevoked")
 
 	// 再利用が防いだもの: 検知の時点で family ごと落ちるので、攻撃者が先に
 	// 奪っていた新しい値も、その後は使えない。
@@ -707,6 +725,47 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 		t.Fatalf("再利用を検知した後もローテーション後の値が使えた: %s", body)
 	}
 	assertNoTokenInBody(t, "family の失効", body)
+}
+
+// REQ-OAUTH2-005。
+//
+//spec:covers EX-OAUTH2-005-08: 発行から 60 秒を超えた認可コードを正式な入口 (/token) から交換すると invalid_grant で拒否される。
+func TestExpiredAuthorizationCodeExchangeIsRejectedAtTheRealEntryPoint(t *testing.T) {
+	fixture := newTokenIssuanceFixture(t)
+	code := fixture.authorizationCode(t, nil)
+	fixture.expireCode(t, code)
+
+	status, body := fixture.postToken(t, fixture.codeExchangeForm(code, nil))
+	if status == http.StatusOK {
+		t.Fatalf("期限切れの認可コードが受理された: %s", body)
+	}
+	assertNoTokenInBody(t, "期限切れの認可コード", body)
+	assertOAuthErrorCode(t, "期限切れの認可コード", body, "invalid_grant")
+}
+
+// REQ-OAUTH2-005。
+//
+//spec:covers EX-OAUTH2-005-07: 同じ認可コードを正式な入口 (/token) から 2 回交換すると、2 回目は InvalidGrantError で拒否され、発行ファミリーの refresh token がすべて失効して RefreshTokenReuseDetected と TokenRevoked が発行される。
+func TestAuthorizationCodeReplayAtTheRealEntryPointRevokesAndNotifies(t *testing.T) {
+	fixture := newTokenIssuanceFixture(t)
+	code := fixture.authorizationCode(t, nil)
+	form := fixture.codeExchangeForm(code, nil)
+	first := fixture.mustToken(t, form)
+	if first.RefreshToken == "" {
+		t.Fatal("offline_access を要求したのにリフレッシュトークンが返らない")
+	}
+
+	status, body := fixture.postToken(t, form)
+	if status == http.StatusOK {
+		t.Fatalf("認可コードの再提示が受理された: %s", body)
+	}
+	assertNoTokenInBody(t, "認可コードの再提示", body)
+	assertOAuthErrorCode(t, "認可コードの再提示", body, "invalid_grant")
+
+	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Revoked {
+		t.Fatalf("発行ファミリーの refresh token が失効していない: %+v", record)
+	}
+	fixture.events.assertEmitted(t, "RefreshTokenReuseDetected", "TokenRevoked")
 }
 
 // RFC8693-DELEGATION-DEFAULT / RFC8693-IMPERSONATION (optional) /

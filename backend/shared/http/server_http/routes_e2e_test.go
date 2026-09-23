@@ -441,6 +441,23 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || !bytes.Contains(body, []byte(`"access_token"`)) {
 		t.Fatalf("/token status=%d body=%s", resp.StatusCode, body)
 	}
+
+	// 認可コードの再提示は、正式な入口を通しても拒否される (EX-OAUTH2-005-07, wi-566)。
+	replay, err := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/token", strings.NewReader(tokenForm.Encode()))
+	if err != nil {
+		t.Fatalf("build replay request: %v", err)
+	}
+	replay.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	replay.SetBasicAuth(demoClientID, demoClientSecret)
+	replayResp, err := client.Do(replay)
+	if err != nil {
+		t.Fatalf("POST /token (replay): %v", err)
+	}
+	defer replayResp.Body.Close()
+	replayBody, _ := io.ReadAll(replayResp.Body)
+	if replayResp.StatusCode == http.StatusOK {
+		t.Fatalf("replaying an authorization code must be rejected: %s", replayBody)
+	}
 }
 
 // TestTokenLifecycleRotatesRefreshTokenAndInvalidatesTheUsedOne は、正式な入口だけを

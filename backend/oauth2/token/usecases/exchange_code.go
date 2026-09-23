@@ -78,6 +78,14 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	}
 	now := time.Now().UTC()
 	if rec.State != spec.AuthCodeRecordIssued || !now.Before(rec.ExpiresAt) {
+		// issued のまま期限切れになったコードが提示されたときだけ expired へ遷移させる
+		// (EX-OAUTH2-005-08)。既に redeemed / expired の行は replay であり、状態はもう
+		// 変わらない。一度も提示されなかった期限切れコードはここを通らないので issued の
+		// まま残り、housekeeping の DeleteExpiredBatch が cutoff を超えたときに削除する
+		// (wi-566 Design)。
+		if rec.State == spec.AuthCodeRecordIssued {
+			_, _ = deps.CodeStore.MarkExpired(ctx, in.Code)
+		}
 		revokeReplayedFamily(ctx, deps, rec, now, tenantID)
 		return nil, NewOAuthError("invalid_grant", "The authorization code has been used or has expired.")
 	}
@@ -229,6 +237,10 @@ func optionalValue(value *string) string {
 
 // revokeReplayedFamily は、使用済みまたは期限切れの認可コードが再び提示されたときに
 // 発行ファミリーを失効させ、検出を通知する (RFC 9700 §4.10、REQ-OAUTH2-005)。
+//
+// 通知は refresh トークンの再利用検出と同じ意味を持つので、失効と TokenRevoked の
+// 組み立ては revokeFamilyAndNotify (refresh_tokens.go) を共有する。RefreshTokenReuseDetected
+// はこの経路固有の検出通知としてここで発行する。
 func revokeReplayedFamily(
 	ctx context.Context, deps ExchangeCodeDeps, rec *domain.AuthorizationCodeRecord,
 	now time.Time, tenantID string,
@@ -236,7 +248,7 @@ func revokeReplayedFamily(
 	if rec.IssuedFamilyID == nil || deps.RefreshStore == nil {
 		return
 	}
-	_, _ = deps.RefreshStore.RevokeFamily(ctx, *rec.IssuedFamilyID)
+	revokeFamilyAndNotify(ctx, deps.RefreshStore, deps.Emit, *rec.IssuedFamilyID, tenantID, now)
 	emit(deps.Emit, &domain.RefreshTokenReuseDetected{
 		At: now, TenantID: tenantID, FamilyID: *rec.IssuedFamilyID, ClientID: rec.ClientID,
 	})

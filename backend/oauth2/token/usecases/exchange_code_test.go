@@ -166,11 +166,14 @@ func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 	}
 }
 
-// 認可コードの再交換は invalid_grant で拒否され、発行ファミリーのトークンは失効する。
+// 認可コードの再交換は invalid_grant で拒否され、発行ファミリーのトークンは失効し、
+// 失効した token ごとに TokenRevoked が発行される。
 //
-// 通知のうち TokenRevoked はまだ出ない。RevokeFamily が失効させた token を返さないためで、
-// 台帳の該当行に finding として記録し、wi-566 が引き取る。ここでは失効の記録と
-// RefreshTokenReuseDetected の発行までを固定する。
+// 応答と保存先の状態だけを読むと、失効はするが通知を出さない実装と区別できない。
+// RefreshTokenReuseDetected (検出の通知) と TokenRevoked (失効した token の記録) の
+// 両方が揃うことを読む。
+//
+//spec:covers EX-OAUTH2-005-07: 同じ認可コードを 2 回交換すると 1 回目のレスポンスだけが access_token を含み、2 回目は InvalidGrantError で拒否され、発行ファミリーのトークンがすべて失効して RefreshTokenReuseDetected と TokenRevoked が発行される。
 func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})
 	out, err := ExchangeCodeForToken(
@@ -184,6 +187,7 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	if out.AccessToken == "" || out.RefreshToken == "" {
 		t.Fatalf("1 回目がトークンを返していない: %+v", out)
 	}
+	*f.events = nil
 	_, err = ExchangeCodeForToken(
 		context.Background(),
 		f.deps,
@@ -203,11 +207,16 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	if rec == nil || !rec.Revoked {
 		t.Fatal("refresh family was not revoked")
 	}
-	if emitted := f.emitted(); !slices.Contains(emitted, "RefreshTokenReuseDetected") {
+	emitted := f.emitted()
+	if !slices.Contains(emitted, "RefreshTokenReuseDetected") {
 		t.Fatalf("再交換の検出で RefreshTokenReuseDetected が発行されていない: %v", emitted)
+	}
+	if !slices.Contains(emitted, "TokenRevoked") {
+		t.Fatalf("再交換の検出で TokenRevoked が発行されていない: %v", emitted)
 	}
 }
 
+//spec:covers EX-OAUTH2-005-08: 発行から 60 秒を超えた認可コードの交換は InvalidGrantError で拒否され、記録の状態が Expired になる。
 func TestExchangeCodeRejectsExpiredCode(t *testing.T) {
 	// SCL invariant AuthorizationCodeTtl (60s)。expires_at を過去にしたコードは
 	// invalid_grant で拒否され、family があれば失効する (RFC 9700 §4.10)。
@@ -228,6 +237,15 @@ func TestExchangeCodeRejectsExpiredCode(t *testing.T) {
 	var oe *OAuthError
 	if !errors.As(err, &oe) || oe.Code != "invalid_grant" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	// 応答が拒否になっただけでは、記録の状態を issued のまま放置する実装と区別できない。
+	// 保存層から state を読み、宣言どおり Expired へ遷移したことを確かめる。
+	got, err := f.codeStore.Find(context.Background(), f.code.Code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.State != spec.AuthCodeRecordExpired {
+		t.Fatalf("expired の遷移が実行されていない: %+v", got)
 	}
 }
 
@@ -318,4 +336,57 @@ func TestExchangeCodeIssuesTokensByScope(t *testing.T) {
 	); err == nil {
 		t.Fatal("replaying the authorization code must be rejected")
 	}
+}
+
+// 認可コードの再提示 (revokeReplayedFamily) と refresh トークンの再利用
+// (RefreshTokens の IsRefreshTokenReplay 分岐) は、どちらも「発行ファミリーの盗用を
+// 検知した」という同じ状況を表す。片方だけを直すと、また片方が黙る (wi-566) ので、
+// 検出時に発行するイベントの種別集合が経路をまたいで一致することをここで固定する。
+func TestReplayDetectionEmitsTheSameEventTypesAcrossAuthorizationCodeAndRefreshTokenPaths(t *testing.T) {
+	verifier := "verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	// 認可コード再提示の経路。
+	codeFixture := newExchangeFixture(t, []string{"openid", "offline_access"})
+	if _, err := ExchangeCodeForToken(context.Background(), codeFixture.deps, exchangeInput(verifier)); err != nil {
+		t.Fatalf("初回交換に失敗: %v", err)
+	}
+	*codeFixture.events = nil
+	if _, err := ExchangeCodeForToken(context.Background(), codeFixture.deps, exchangeInput(verifier)); err == nil {
+		t.Fatal("認可コードの再提示が拒否されない")
+	}
+	codeReplayTypes := uniqueEventTypes(codeFixture.emitted())
+
+	// refresh トークン再利用の経路。ローテーション後、使用済みの旧トークンを再提示する。
+	refreshFixture := newExchangeFixture(t, []string{"openid", "offline_access"})
+	out, err := ExchangeCodeForToken(context.Background(), refreshFixture.deps, exchangeInput(verifier))
+	if err != nil {
+		t.Fatalf("初回交換に失敗: %v", err)
+	}
+	refreshDeps := RefreshDeps{
+		ClientRepo:   refreshFixture.deps.ClientRepo,
+		UserRepo:     refreshFixture.deps.UserRepo,
+		RefreshStore: refreshFixture.refreshStore,
+		TokenIssuer:  refreshFixture.issuer,
+		Emit:         refreshFixture.deps.Emit,
+	}
+	now := time.Now().UTC()
+	if _, err := RefreshTokens(context.Background(), refreshDeps, RefreshInput{ClientID: "client", RefreshToken: out.RefreshToken}, now); err != nil {
+		t.Fatalf("ローテーションに失敗: %v", err)
+	}
+	*refreshFixture.events = nil
+	if _, err := RefreshTokens(context.Background(), refreshDeps, RefreshInput{ClientID: "client", RefreshToken: out.RefreshToken}, now); err == nil {
+		t.Fatal("使用済みリフレッシュトークンの再提示が拒否されない")
+	}
+	refreshReplayTypes := uniqueEventTypes(refreshFixture.emitted())
+
+	if !slices.Equal(codeReplayTypes, refreshReplayTypes) {
+		t.Fatalf("再提示検出のイベント種別が経路で異なる: 認可コード=%v, refresh トークン=%v", codeReplayTypes, refreshReplayTypes)
+	}
+}
+
+// uniqueEventTypes は発行順を無視して、重複を除いたイベント種別の集合を返す。
+func uniqueEventTypes(eventTypes []string) []string {
+	types := slices.Clone(eventTypes)
+	slices.Sort(types)
+	return slices.Compact(types)
 }
