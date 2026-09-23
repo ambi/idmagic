@@ -2,11 +2,15 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'bun:test'
 import { LocaleProvider } from '../lib/i18n'
 import { commonDictionary } from '../lib/i18n/common.i18n'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import { LanguageSwitcher } from './LanguageSwitcher'
+
+// 主要ユースケース追跡: REQ-SYSTEM-008。
 
 describe('LanguageSwitcher', () => {
   afterEach(() => {
     window.localStorage.clear()
+    restoreGlobals()
     document.documentElement.lang = ''
   })
 
@@ -63,5 +67,36 @@ describe('LanguageSwitcher', () => {
       'aria-label',
       commonDictionary.en.languageSwitcherLabel,
     )
+  })
+
+  // 認可リクエストはブラウザーの遷移なので、明示選択の後に URL の ui_locales を持つ新しい
+  // ページの寿命が始まる。再描画で同じ木を見るだけの検査は、再解決が起きないので
+  // ヒントを保存済み設定より先に読む実装を通す。そこで木を捨て、URL を差し替えてから描き直す。
+  //
+  //spec:covers EX-SYSTEM-008-02: ja を明示選択済みの利用者へ ui_locales=en の認可リクエストが来ても、画面が ja 辞書で表示されること。
+  it('keeps an explicit Japanese choice when an authorization request hints English', () => {
+    const first = render(
+      <LocaleProvider initialLocale="en">
+        <LanguageSwitcher />
+      </LocaleProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '日本語' }))
+    first.unmount()
+
+    stubGlobal('location', {
+      ...window.location,
+      pathname: '/authorize',
+      search: '?client_id=web-app&ui_locales=en',
+    })
+    render(
+      <LocaleProvider>
+        <LanguageSwitcher />
+      </LocaleProvider>,
+    )
+
+    expect(screen.getByRole('group').getAttribute('aria-label')).toBe(
+      commonDictionary.ja.languageSwitcherLabel,
+    )
+    expect(document.documentElement.lang).toBe('ja')
   })
 })

@@ -119,12 +119,6 @@
       "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
-      "id": "EX-SYSTEM-008-02",
-      "reason": "具体例と実装が食い違っており、テストを書くとどちらか一方を固定してしまうため",
-      "blocked_by": "wi-575-explicit-display-language-outranks-the-ui-locales-hint",
-      "finding": "resolveLocale の解決順は ui_locales ヒント > 保存済み設定であり、明示選択は localStorage の保存済み設定として読み直される。認可リクエストはページの寿命を新しくするので、ja を明示選択済みの利用者へ ui_locales=en が来るとログイン画面は en 辞書で表示される。既存テスト resolveLocale.test.ts の 'uses the first supported ui_locales hint before a saved or browser locale' がこの順序を固定している。"
-    },
-    {
       "id": "EX-SYSTEM-010-03",
       "reason": "具体例が述べる実行時のフォールバックが実装に存在せず、テストを書くと別の機構を具体例の観測として数えてしまうため",
       "blocked_by": "wi-576-missing-translation-key-has-no-runtime-fallback",

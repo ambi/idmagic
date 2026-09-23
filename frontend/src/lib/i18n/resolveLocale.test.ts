@@ -1,20 +1,21 @@
 import { describe, expect, it } from 'bun:test'
 
-// 主要ユースケース追跡: REQ-SYSTEM-010。
+// 主要ユースケース追跡: REQ-SYSTEM-008、REQ-SYSTEM-010。
 import { commonDictionary } from './common.i18n'
 import { configuredDefaultLocale } from './locale'
 import { resolveLocale } from './resolveLocale'
 
 describe('resolveLocale', () => {
   //spec:covers EX-SYSTEM-008-01: 明示選択も保存済み設定も無いとき、認可リクエストの ui_locales ヒントが表示言語を決めること。
-  it('uses the first supported ui_locales hint before a saved or browser locale', () => {
-    expect(
-      resolveLocale({
-        uiLocalesHint: 'fr en ja',
-        saved: 'ja',
-        browserLanguages: ['ja-JP'],
-      }),
-    ).toBe('en')
+  it('uses the first supported ui_locales hint before a browser locale', () => {
+    expect(resolveLocale({ uiLocalesHint: 'fr en ja', browserLanguages: ['ja-JP'] })).toBe('en')
+  })
+
+  // 保存済み設定は言語切り替え UI の明示選択だけから作られるので、RP の推定であるヒントより強い。
+  it('prefers the saved explicit choice over a supported ui_locales hint', () => {
+    expect(resolveLocale({ uiLocalesHint: 'en', saved: 'ja', browserLanguages: ['en-US'] })).toBe(
+      'ja',
+    )
   })
 
   it('uses the saved locale when no supported hint is present', () => {
