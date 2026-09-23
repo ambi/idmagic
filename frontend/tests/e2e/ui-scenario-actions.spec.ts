@@ -146,6 +146,58 @@ test('admin general settings can be updated from the browser', async () => {
   }
 }, 60_000)
 
+// 1x1 の PNG。サーバーは形式を検証するので、署名だけでなく画像として完結したものを送る。
+const logoPNGBase64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+//spec:covers REQ-TENANCY-004, EX-TENANCY-004-03: 管理画面からアップロードしたロゴの realm 配下の logo_url が、開発用ゲートウェイ越しに同じ PNG を返す。
+test('admin logo upload is served back through the gateway under the realm', async () => {
+  const view = await openWebView({ width: 1280, height: 1800 })
+  const logoPreview = `document.querySelector('img[src*="/tenant-branding-assets/logo/"]')?.getAttribute('src') ?? ''`
+  try {
+    await navigateAndLogin(view, '/admin/settings', 'admin-settings')
+    await clickButtonByText(view, 'Branding')
+    await waitForText(view, 'Shown in the header of the login / consent / account portal.')
+
+    // 非表示の file input へ File を渡し、Upload ボタンから選んだときと同じ change を起こす。
+    await view.evaluate(`(() => {
+      const bytes = Uint8Array.from(atob(${JSON.stringify(logoPNGBase64)}), (c) => c.charCodeAt(0))
+      const input = document.querySelector('input[type="file"]')
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([bytes], 'logo.png', { type: 'image/png' }))
+      input.files = transfer.files
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    })()`)
+
+    let logoURL = ''
+    const deadline = Date.now() + 15_000
+    while (logoURL === '' && Date.now() < deadline) {
+      logoURL = String(await view.evaluate(logoPreview))
+      if (logoURL === '') await Bun.sleep(POLL_INTERVAL_MS)
+    }
+    expect(logoURL).toMatch(/^\/realms\/default\/tenant-branding-assets\/logo\/[^/]+$/)
+
+    // ゲートウェイが転送しなければ SPA の index.html が 200 で返るので、状態番号ではなく
+    // Content-Type と本文のバイト列で backend まで届いたことを確かめる。
+    const response = await fetch(`${uiOrigin}${logoURL}`)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('image/png')
+    expect(
+      Buffer.from(await response.arrayBuffer()).equals(Buffer.from(logoPNGBase64, 'base64')),
+    ).toBe(true)
+  } finally {
+    // default テナントの branding を後続のテストへ残さない。
+    if (String(await view.evaluate(logoPreview)) !== '') {
+      await clickButtonByText(view, 'Remove')
+      const deadline = Date.now() + 15_000
+      while (String(await view.evaluate(logoPreview)) !== '' && Date.now() < deadline) {
+        await Bun.sleep(POLL_INTERVAL_MS)
+      }
+    }
+    view.close()
+  }
+}, 60_000)
+
 test('admin can create a shared SAML identity provider profile', async () => {
   const view = await openWebView({ width: 1280, height: 2200 })
   try {

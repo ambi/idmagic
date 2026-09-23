@@ -119,12 +119,6 @@
       "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
-      "id": "EX-TENANCY-004-03",
-      "reason": "具体例が述べる gateway の取得失敗が現行の転送規則では再現しないため",
-      "blocked_by": "wi-579-align-branding-asset-gateway-example",
-      "finding": "frontend/vite.config.ts は realm 配下の転送対象へ tenant-branding-assets を含め、server_http も /realms/:tenant_id/tenant-branding-assets/:kind/:id を登録する。具体例の「gateway で backend に転送されない」は現行構成と一致しない。"
-    },
-    {
       "id": "EX-WSFEDERATION-001-03",
       "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない",
       "blocked_by": "wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets",

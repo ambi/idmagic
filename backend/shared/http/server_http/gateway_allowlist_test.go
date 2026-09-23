@@ -122,6 +122,30 @@ func TestCheckGatewayAllowlistsReportsAMissingRequiredRoute(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-TENANCY-004, EX-TENANCY-004-03: realm 配下の logo_url を転送しない許可リストを、両方の設定について拒否すること
+func TestCheckGatewayAllowlistsReportsAnUnforwardedRealmBrandingAsset(t *testing.T) {
+	t.Parallel()
+
+	caddyfile := repositoryFile(t, "frontend/Caddyfile")
+	viteConfig := repositoryFile(t, "frontend/vite.config.ts")
+
+	// ホスト形式の `/tenant-branding-assets` は残し、realm 配下の転送対象からだけ外す。
+	// アップロード応答の logo_url は realm 配下の形なので、こちらが欠けると画像が届かない。
+	brokenCaddyfile := strings.ReplaceAll(caddyfile, "|tenant-branding-assets)", ")")
+	brokenViteConfig := strings.ReplaceAll(viteConfig, "|tenant-branding-assets)", ")")
+	if brokenCaddyfile == caddyfile || brokenViteConfig == viteConfig {
+		t.Fatal("the fixture did not remove anything; the check would pass vacuously")
+	}
+
+	report := strings.Join(httpadapter.CheckGatewayAllowlists(brokenCaddyfile, brokenViteConfig), "\n")
+	for _, allowlist := range []string{"frontend/Caddyfile", "frontend/vite.config.ts"} {
+		want := allowlist + " does not proxy /realms/sample/tenant-branding-assets/sample/sample"
+		if !strings.Contains(report, want) {
+			t.Errorf("findings do not contain %q:\n%s", want, report)
+		}
+	}
+}
+
 //spec:covers EX-SYSTEM-021-03: 通してはならない経路を通している許可リストを拒否すること
 func TestCheckGatewayAllowlistsRejectsAnExposedMetricsRoute(t *testing.T) {
 	t.Parallel()
