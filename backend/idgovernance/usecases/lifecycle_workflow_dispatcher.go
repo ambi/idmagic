@@ -50,7 +50,10 @@ type LifecycleWorkflowExecutorDeps struct {
 	UserRepo        userports.UserRepository
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
-	AssignmentRepo  appports.AssignmentRepository
+	// AssignmentRepo は事前の評価で現在の直接割り当てを読むためだけに使う。
+	// 割り当ての変更は ApplicationAssignments を通し、Application Context のイベントと通知を伴わせる。
+	AssignmentRepo         appports.AssignmentRepository
+	ApplicationAssignments igports.ApplicationAssignments
 	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
 	// action's TemplateKey is a label rendered into the body, not the body itself.
 	Notifier sharednotification.Notifier
@@ -272,13 +275,27 @@ func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, 
 			if err != nil {
 				return "", "", err
 			}
-			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ID })
+			// assign_application は visibility まで指定どおりの直接割り当てだけを割り当て済みとみなす。
+			// visibility が異なれば、実行時に指定どおりへ更新する。
+			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool {
+				return a.ApplicationID == app.ID &&
+					(action.Kind == igdomain.WorkflowActionUnassignApplication || a.Visibility == workflowAssignmentVisibility(action))
+			})
 		}
 	case igdomain.WorkflowActionSendEmail:
 		state.EmailSendable = deps.Notifier != nil && user.Email != nil && user.EmailVerified
 	}
 	outcome, reason := igdomain.EvaluateWorkflowAction(action, user, state)
 	return outcome, reason, nil
+}
+
+// workflowAssignmentVisibility は assign_application の visibility を割り当ての値へ写す。
+// 省略と hidden 以外の値は visible として扱う。
+func workflowAssignmentVisibility(action igdomain.WorkflowAction) appdomain.AssignmentVisibility {
+	if action.Visibility == string(appdomain.AssignmentHidden) {
+		return appdomain.AssignmentHidden
+	}
+	return appdomain.AssignmentVisible
 }
 
 func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun, action igdomain.WorkflowAction) (igdomain.WorkflowStepOutcome, string) {
@@ -314,15 +331,15 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		ok, e := deps.GroupRepo.RemoveMember(ctx, run.TenantID, action.GroupID, user.ID)
 		return changed(ok, e)
 	case igdomain.WorkflowActionAssignApplication:
-		visibility := appdomain.AssignmentVisible
-		if action.Visibility == "hidden" {
-			visibility = appdomain.AssignmentHidden
+		if deps.ApplicationAssignments == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
 		}
-		e := deps.AssignmentRepo.Save(ctx, &appdomain.ApplicationAssignment{TenantID: run.TenantID, ApplicationID: action.ApplicationID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: visibility, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()})
-		return changed(true, e)
+		return changed(deps.ApplicationAssignments.AssignApplicationDesiredState(ctx, run.TenantID, action.ApplicationID, user.ID, workflowAssignmentVisibility(action), time.Now().UTC()))
 	case igdomain.WorkflowActionUnassignApplication:
-		e := deps.AssignmentRepo.Delete(ctx, run.TenantID, action.ApplicationID, appdomain.AssignmentSubjectUser, user.ID)
-		return changed(true, e)
+		if deps.ApplicationAssignments == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		return changed(deps.ApplicationAssignments.UnassignApplicationDesiredState(ctx, run.TenantID, action.ApplicationID, user.ID, time.Now().UTC()))
 	case igdomain.WorkflowActionSetRequiredAction, igdomain.WorkflowActionClearRequiredAction:
 		updated := *user
 		if action.Kind == igdomain.WorkflowActionSetRequiredAction {

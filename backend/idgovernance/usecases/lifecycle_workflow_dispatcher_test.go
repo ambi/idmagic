@@ -96,6 +96,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	}
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
+		ApplicationAssignments: desiredStateAssignments(applications, assignments, users, groups, nil),
 	})
 	result, err := handler(ctx, claimed[0])
 	if err != nil {
@@ -473,6 +474,65 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	storedSteps, err := runs.ListSteps(ctx, run.TenantID, run.ID)
 	if err != nil || storedSteps[0].Outcome != igdomain.WorkflowStepNoop {
 		t.Fatalf("steps = %#v, %v, want no_op", storedSteps, err)
+	}
+}
+
+// 直接割り当てが指定と異なる visibility で存在するとき、assign_application は事前の評価で
+// no_op と判定せず、実行で指定どおりの visibility へ更新する。
+func TestLifecycleWorkflowRunHandlerAssignApplicationUpdatesADifferentVisibility(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	users := usermemory.NewUserRepository()
+	apps := appmemory.NewApplicationRepository()
+	assignments := appmemory.NewApplicationAssignmentRepository()
+	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
+	if err := users.Save(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	if err := apps.Save(ctx, &appdomain.Application{TenantID: "tenant-a", ID: "app-1", Name: "Payroll", Kind: appdomain.ApplicationWeblink, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	// 別の Application への hidden の直接割り当ては、app-1 の判定に混ざってはならない。
+	for _, seeded := range []appdomain.ApplicationAssignment{
+		{TenantID: "tenant-a", ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: appdomain.AssignmentVisible, CreatedAt: now, UpdatedAt: now},
+		{TenantID: "tenant-a", ApplicationID: "app-2", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: appdomain.AssignmentHidden, CreatedAt: now, UpdatedAt: now},
+	} {
+		if err := assignments.Save(ctx, &seeded); err != nil {
+			t.Fatal(err)
+		}
+	}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAssignApplication, ApplicationID: "app-1", Visibility: "hidden"}
+	evalDeps := usecases.LifecycleActionEvalDeps{ApplicationRepo: apps, AssignmentRepo: assignments}
+	if outcome, _, err := usecases.EvaluateLifecycleAction(ctx, evalDeps, "tenant-a", user, action); err != nil || outcome != igdomain.WorkflowActionWouldChange {
+		t.Fatalf("EvaluateLifecycleAction() = %s, %v; want would_change", outcome, err)
+	}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+		t.Fatal(err)
+	}
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+		RunRepo: runs, UserRepo: users, ApplicationRepo: apps, AssignmentRepo: assignments,
+		ApplicationAssignments: desiredStateAssignments(apps, assignments, users, groupmemory.NewGroupRepository(), nil),
+	})
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler(ctx, &jobsdomain.Job{TenantID: run.TenantID, Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if steps, err := runs.ListSteps(ctx, run.TenantID, run.ID); err != nil || steps[0].Outcome != igdomain.WorkflowStepChanged {
+		t.Fatalf("steps = %#v, %v; want changed", steps, err)
+	}
+	stored, err := assignments.ListBySubjects(ctx, "tenant-a", []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: user.ID}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, assignment := range stored {
+		if assignment.Visibility != appdomain.AssignmentHidden {
+			t.Fatalf("assignment %s visibility = %s, want hidden", assignment.ApplicationID, assignment.Visibility)
+		}
 	}
 }
 

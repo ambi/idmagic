@@ -5,18 +5,6 @@
   ],
   "untested": [
     {
-      "id": "EX-APPLICATION-014-01",
-      "reason": "具体例が名指す操作の実装が存在しないため",
-      "blocked_by": "wi-628-implement-desired-state-application-assignment",
-      "finding": "AssignApplicationDesiredState は docs/domain/application/decisions.md と scenarios.feature.md にしか現れず、backend のどこにも実装が無い。既存の AssignApplication は指定した subject_type の行をそのまま保存するだけで、あるべき状態との差分判定を持たない。"
-    },
-    {
-      "id": "EX-APPLICATION-014-02",
-      "reason": "具体例が名指す操作と `changed=false` の応答が存在しないため",
-      "blocked_by": "wi-628-implement-desired-state-application-assignment",
-      "finding": "UnassignApplicationDesiredState も実装が無い。既存の UnassignApplication は AssignmentRepo.Delete を呼んで常に ApplicationUnassigned を発行し、差分が無いことを呼び出し元へ返す戻り値を持たない。"
-    },
-    {
       "id": "EX-PLATFORM-003-01",
       "reason": "配信行が発火元の変更と同じトランザクションで作られないため",
       "blocked_by": "wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction",

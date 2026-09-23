@@ -13,18 +13,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
 	"github.com/ambi/idmagic/backend/idgovernance/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -155,9 +159,19 @@ func (f *governanceFixture) executor() usecases.LifecycleWorkflowExecutorDeps {
 	return usecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: f.runs, WorkflowRepo: f.workflows, UserRepo: f.users, GroupRepo: f.groups,
 		ApplicationRepo: f.apps, AssignmentRepo: f.assignments,
-		Notifier: &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
-		Emit:     f.events.emit,
+		ApplicationAssignments: desiredStateAssignments(f.apps, f.assignments, f.users, f.groups, f.events.emit),
+		Notifier:               &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
+		Emit:                   f.events.emit,
 	}
+}
+
+// desiredStateAssignments は worker と同じく Application の Module から割り当て操作を組み立てる。
+func desiredStateAssignments(apps appports.ApplicationRepository, assignments appports.AssignmentRepository, users userports.UserRepository, groups groupports.GroupRepository, emit func(spec.DomainEvent) error) igports.ApplicationAssignments {
+	return application.Module{Repo: apps, AssignmentRepo: assignments}.DesiredStateAssignments(users, groups, func(event spec.DomainEvent) {
+		if emit != nil {
+			_ = emit(event)
+		}
+	}, "lifecycle-workflow")
 }
 
 func (f *governanceFixture) seedGroup(t *testing.T, tenantID, id string) {

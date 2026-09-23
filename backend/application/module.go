@@ -9,12 +9,14 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	apphttp "github.com/ambi/idmagic/backend/application/handlers_http"
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
@@ -81,6 +83,24 @@ func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops 
 		ApplicationSignInPolicyRepo: m.SignInPolicyRepo,
 		DefaultSignInPolicyRepo:     m.DefaultSignInPolicyRepo,
 		GateTrustedForwardedHops:    trustedForwardedHops,
+	}
+}
+
+// DesiredStateAssignments は、ほかの Context が User への直接割り当てをあるべき状態として
+// 適用する内部インターフェースを組み立てる。主体の実在は HTTP の割り当てと同じく
+// IdManagement の保存先で確かめる。actorUserID は発行するイベントの actor になる。
+func (m Module) DesiredStateAssignments(
+	userRepo userports.UserRepository, groupRepo groupports.GroupRepository,
+	emit func(spec.DomainEvent), actorUserID string,
+) appusecases.DesiredStateAssignments {
+	return appusecases.DesiredStateAssignments{
+		Deps: appusecases.AssignmentDeps{
+			Repo: m.Repo, AssignmentRepo: m.AssignmentRepo,
+			SubjectDirectory:     idManagementSubjectDirectory{users: userRepo, groups: groupRepo},
+			Emit:                 emit,
+			ProvisioningNotifier: m.ProvisioningNotifier,
+		},
+		ActorUserID: actorUserID,
 	}
 }
 

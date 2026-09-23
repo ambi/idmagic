@@ -336,16 +336,22 @@ func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies, inter
 // lifecycleWorkflowExecutorDeps は WorkflowRun の実行ハンドラーへ渡す依存を組み立てる。
 // WorkflowRepo を渡さないと、無効化されたワークフローの WorkflowRun が次のステップへ進む。
 func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.Logger) igusecases.LifecycleWorkflowExecutorDeps {
+	emit := deps.NewEmitFunc(logger)
 	return igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, WorkflowRepo: deps.IdGovernance.LifecycleWorkflowRepo,
 		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
-		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo, Notifier: deps.Notification.Notifier,
+		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo,
+		ApplicationAssignments: deps.Application.DesiredStateAssignments(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, emit, lifecycleWorkflowActor),
+		Notifier:               deps.Notification.Notifier,
 		Emit: func(event spec.DomainEvent) error {
-			deps.NewEmitFunc(logger)(event)
+			emit(event)
 			return nil
 		},
 	}
 }
+
+// lifecycleWorkflowActor は、ワークフローのステップが変えた割り当ての監査イベントに actor として記録する名前である。
+const lifecycleWorkflowActor = "lifecycle-workflow"
 
 func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {
 	ticker := time.NewTicker(2 * time.Second)
