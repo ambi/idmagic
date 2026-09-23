@@ -74,7 +74,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type"))
 	}
-	if grantType == "client_credentials" && containsAccountScope(c.Request().PostFormValue("scope")) {
+	if grantType == "client_credentials" && slices.ContainsFunc(strings.Fields(c.Request().PostFormValue("scope")), spec.IsAccountScope) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "account scope requires user subject"))
 	}
 
@@ -320,10 +320,6 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		return c.JSON(http.StatusOK, body)
 	}
 	return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "Unsupported grant_type: "+grantType))
-}
-
-func containsAccountScope(value string) bool {
-	return slices.ContainsFunc(strings.Fields(value), func(scope string) bool { return strings.HasPrefix(scope, "account:") })
 }
 
 func (d Deps) handleRevoke(c *echo.Context) error {
