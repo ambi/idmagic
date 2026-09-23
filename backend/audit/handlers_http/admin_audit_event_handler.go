@@ -186,7 +186,7 @@ func auditEventQueryHash(c *echo.Context, scope auditScope) string {
 }
 
 func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
-	actor, err := d.RequireAuditReader(c)
+	actor, err := d.RequireAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -269,7 +269,7 @@ func (d Deps) listAuditEvents(c *echo.Context, actor *userdomain.User, scope aud
 }
 
 func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
-	actor, err := d.RequireAuditReader(c)
+	actor, err := d.RequireAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -306,7 +306,7 @@ func writeAuditEventNotFound(c *echo.Context) error {
 }
 
 func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
-	actor, err := d.RequireAuditReader(c)
+	actor, err := d.RequireAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -368,7 +368,7 @@ var auditDelegationModeChoices = []string{
 // 返す (wi-147)。event_types は auditEventCategoryTypes (category 絞り込みと同じ単一の正) の
 // 和集合から重複除去・ソートして導出し、UI 側の手書きリストとの drift を防ぐ。
 func (d Deps) handleAdminAuditEventSearchOptions(c *echo.Context) error {
-	if _, err := d.RequireAuditReader(c); err != nil {
+	if _, err := d.RequireAdministrator(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	seen := map[string]bool{}

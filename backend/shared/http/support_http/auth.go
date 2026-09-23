@@ -362,9 +362,10 @@ func (a *Authenticator) ResolveAdminActor(c *echo.Context) (*userdomain.User, er
 	return a.WithEffectiveRoles(c.Request().Context(), user), nil
 }
 
-// RequireAuditReader は admin または system_admin ロールを持つ認証済みユーザを要求する。
-// 監査イベントの閲覧と、そこから派生する認証イベントバケット閲覧が共有する。
-func (a *Authenticator) RequireAuditReader(c *echo.Context) (*userdomain.User, error) {
+// RequireAdministrator は admin または system_admin ロールを持つ認証済みユーザを要求する。
+// admin だけを要求する RequireAdmin と違い、テナントの管理者と system_admin の双方に開く
+// 操作が使う。ロールはグループ由来を合成した有効ロールで判定し、合成済みの User を返す。
+func (a *Authenticator) RequireAdministrator(c *echo.Context) (*userdomain.User, error) {
 	authn, err := a.ResolveAuthentication(c)
 	if err != nil {
 		return nil, err

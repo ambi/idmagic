@@ -246,13 +246,13 @@ func TestResolveAdminActor(t *testing.T) {
 	})
 }
 
-func TestRequireAuditReader(t *testing.T) {
-	t.Run("rejects a non-reader", func(t *testing.T) {
+func TestRequireAdministrator(t *testing.T) {
+	t.Run("rejects a user without either role", func(t *testing.T) {
 		users := usermemory.NewUserRepository()
 		seedAdminUser(t, users, "alice", true)
 		a := &Authenticator{UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{}}
 		c := newAdminTestContext("alice")
-		if _, err := a.RequireAuditReader(c); !errors.Is(err, ErrAdminAccessDenied) {
+		if _, err := a.RequireAdministrator(c); !errors.Is(err, ErrAdminAccessDenied) {
 			t.Fatalf("err=%v", err)
 		}
 	})
@@ -262,7 +262,7 @@ func TestRequireAuditReader(t *testing.T) {
 		seedAdminUser(t, users, "bob", true, "system_admin")
 		a := &Authenticator{UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{}}
 		c := newAdminTestContext("bob")
-		actor, err := a.RequireAuditReader(c)
+		actor, err := a.RequireAdministrator(c)
 		if err != nil || actor == nil {
 			t.Fatalf("actor=%+v err=%v", actor, err)
 		}

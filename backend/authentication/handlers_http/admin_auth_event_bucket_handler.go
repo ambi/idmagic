@@ -27,7 +27,7 @@ type authEventBucketResponse struct {
 const listAuthenticationEventBucketsQuery = "ListAuthenticationEventBuckets"
 
 func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
-	actor, err := d.RequireAuditReader(c)
+	actor, err := d.RequireAdministrator(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
