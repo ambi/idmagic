@@ -23,6 +23,14 @@ UPDATE oauth2_authorization_codes
 SET issued_family_id = @issued_family_id, updated_at = now()
 WHERE code = @code AND tenant_id = @tenant_id;
 
+-- name: MarkAuthorizationCodeExpired :one
+-- 単発 expire の CAS。state='issued' の行だけを expired にして 1 行返す。
+-- 既に redeemed または expired の行は対象にしない (0 行)。
+UPDATE oauth2_authorization_codes
+SET state = 'expired', updated_at = now()
+WHERE code = @code AND tenant_id = @tenant_id AND state = 'issued'
+RETURNING payload, state, redeemed_at, issued_family_id;
+
 -- name: DeleteExpiredAuthorizationCodesBatch :execrows
 DELETE FROM oauth2_authorization_codes AS o
 WHERE o.code IN (

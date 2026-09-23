@@ -84,6 +84,9 @@ type Querier interface {
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
 	LockClientForSecretIssuance(ctx context.Context, clientID string) (string, error)
+	// 単発 expire の CAS。state='issued' の行だけを expired にして 1 行返す。
+	// 既に redeemed または expired の行は対象にしない (0 行)。
+	MarkAuthorizationCodeExpired(ctx context.Context, arg MarkAuthorizationCodeExpiredParams) (*MarkAuthorizationCodeExpiredRow, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
 	RecordApprovalRequestPoll(ctx context.Context, arg RecordApprovalRequestPollParams) (*RecordApprovalRequestPollRow, error)
 	// 単発 redeem の CAS。state='issued' の行だけを redeemed にして 1 行返す。既 redeemed は 0 行。
@@ -93,7 +96,9 @@ type Querier interface {
 	// 行が返れば新規予約成功。kind で dpop / client_assertion を名前空間分けする。
 	ReserveOauth2ReplayJTI(ctx context.Context, arg ReserveOauth2ReplayJTIParams) (string, error)
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
-	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
+	// revoked = FALSE の行だけを対象にし、この呼び出しで新たに失効させた id を返す。
+	// 既に revoked だった行を対象から外すことで、繰り返し呼んでも同じ id を返さない。
+	RevokeRefreshTokenFamily(ctx context.Context, familyID string) ([]string, error)
 	RevokeRefreshTokensBySid(ctx context.Context, sid pgtype.UUID) error
 	SaveApprovalRequest(ctx context.Context, arg SaveApprovalRequestParams) error
 	SaveAuthorizationCode(ctx context.Context, arg SaveAuthorizationCodeParams) error

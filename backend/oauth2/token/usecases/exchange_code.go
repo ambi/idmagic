@@ -229,10 +229,6 @@ func optionalValue(value *string) string {
 
 // revokeReplayedFamily は、使用済みまたは期限切れの認可コードが再び提示されたときに
 // 発行ファミリーを失効させ、検出を通知する (RFC 9700 §4.10、REQ-OAUTH2-005)。
-//
-// 通知は refresh トークンの再利用検出と同じ意味を持つ。RefreshToken を再提示する経路は
-// refresh_tokens.go が同じ組で失効と通知を行っており、認可コードを再提示する経路だけが
-// 失効はしても黙っていた。監査から見ると、片方の再利用は記録に残り、もう片方は残らない。
 func revokeReplayedFamily(
 	ctx context.Context, deps ExchangeCodeDeps, rec *domain.AuthorizationCodeRecord,
 	now time.Time, tenantID string,
@@ -240,7 +236,7 @@ func revokeReplayedFamily(
 	if rec.IssuedFamilyID == nil || deps.RefreshStore == nil {
 		return
 	}
-	_ = deps.RefreshStore.RevokeFamily(ctx, *rec.IssuedFamilyID)
+	_, _ = deps.RefreshStore.RevokeFamily(ctx, *rec.IssuedFamilyID)
 	emit(deps.Emit, &domain.RefreshTokenReuseDetected{
 		At: now, TenantID: tenantID, FamilyID: *rec.IssuedFamilyID, ClientID: rec.ClientID,
 	})

@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -115,15 +116,27 @@ func TestRefreshTokenStore(t *testing.T) {
 	})
 
 	t.Run("RevokeFamily", func(t *testing.T) {
-		err := store.RevokeFamily(ctx, "family-1")
+		revokedIDs, err := store.RevokeFamily(ctx, "family-1")
 		if err != nil {
 			t.Fatal(err)
+		}
+		if want := []string{"token-1", "token-2"}; !slices.Equal(revokedIDs, want) {
+			t.Errorf("expected newly revoked ids %v, got %v", want, revokedIDs)
 		}
 
 		t1, _ := store.FindByHash(ctx, "hash-1")
 		t2, _ := store.FindByHash(ctx, "hash-2")
 		if !t1.Revoked || !t2.Revoked {
 			t.Error("expected all tokens in family-1 to be revoked")
+		}
+
+		// 既に Revoked な family を再度失効させても、新たに遷移した id は無い。
+		again, err := store.RevokeFamily(ctx, "family-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(again) != 0 {
+			t.Errorf("expected no newly revoked ids on repeat call, got %v", again)
 		}
 	})
 

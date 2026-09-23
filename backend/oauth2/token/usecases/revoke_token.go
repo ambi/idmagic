@@ -39,10 +39,13 @@ func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, n
 		// RFC 7009 §2.2: 所有者でない要求も 200 OK no-op
 		return nil
 	}
-	if err := deps.RefreshStore.RevokeFamily(ctx, rec.FamilyID); err != nil {
+	revokedIDs, err := deps.RefreshStore.RevokeFamily(ctx, rec.FamilyID)
+	if err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.TokenRevoked{At: now, TenantID: rec.TenantID, TokenType: "refresh_token", TokenID: rec.ID, Reason: "client_initiated"})
+	for _, tokenID := range revokedIDs {
+		emit(deps.Emit, &domain.TokenRevoked{At: now, TenantID: rec.TenantID, TokenType: "refresh_token", TokenID: tokenID, Reason: "client_initiated"})
+	}
 	return nil
 }
 

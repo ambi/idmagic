@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -67,8 +68,14 @@ func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *d
 	return next, nil
 }
 
-func (s *RefreshTokenStore) RevokeFamily(ctx context.Context, familyID string) error {
-	return s.queries().RevokeRefreshTokenFamily(ctx, familyID)
+func (s *RefreshTokenStore) RevokeFamily(ctx context.Context, familyID string) ([]string, error) {
+	revokedIDs, err := s.queries().RevokeRefreshTokenFamily(ctx, familyID)
+	if err != nil {
+		return nil, err
+	}
+	// RETURNING の行順は未規定なので、呼び出し側が順序に依存しないよう揃える。
+	sort.Strings(revokedIDs)
+	return revokedIDs, nil
 }
 
 func (s *RefreshTokenStore) RevokeBySid(ctx context.Context, sid string) error {

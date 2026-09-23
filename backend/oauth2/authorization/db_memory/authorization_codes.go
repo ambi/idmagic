@@ -58,6 +58,21 @@ func (s *AuthorizationCodeStore) Redeem(_ context.Context, code string, now time
 	return cloneAuthorizationCode(rec), nil
 }
 
+func (s *AuthorizationCodeStore) MarkExpired(_ context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rec, ok := s.codes[code]
+	if !ok || rec.State != spec.AuthCodeRecordIssued {
+		return nil, nil
+	}
+	next, err := spec.TransitionAuthorizationCodeRecord(rec.State, spec.RecordEventExpire)
+	if err != nil {
+		return nil, err
+	}
+	rec.State = next
+	return cloneAuthorizationCode(rec), nil
+}
+
 func (s *AuthorizationCodeStore) LinkFamily(_ context.Context, code, familyID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

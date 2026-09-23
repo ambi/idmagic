@@ -20,6 +20,10 @@ type AuthorizationCodeStore interface {
 	Find(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error)
 	// Redeem は code を atomic に redeemed にする。既に redeemed なら nil。
 	Redeem(ctx context.Context, code string, now time.Time) (*domain.AuthorizationCodeRecord, error)
+	// MarkExpired は state='issued' の code を atomic に expired にする。
+	// 既に redeemed または expired なら何もせず nil を返す (再提示の replay 検出は
+	// 呼び出し側が別に行うので、ここでは issued からの遷移だけを扱う)。
+	MarkExpired(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error)
 	// LinkFamily は成功交換時の refresh family を逆引きインデックスに紐付ける。
 	LinkFamily(ctx context.Context, code, familyID string) error
 }

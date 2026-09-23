@@ -29,10 +29,13 @@ UPDATE refresh_tokens
 SET rotated = TRUE, updated_at = now()
 WHERE id = $1;
 
--- name: RevokeRefreshTokenFamily :exec
+-- name: RevokeRefreshTokenFamily :many
+-- revoked = FALSE の行だけを対象にし、この呼び出しで新たに失効させた id を返す。
+-- 既に revoked だった行を対象から外すことで、繰り返し呼んでも同じ id を返さない。
 UPDATE refresh_tokens
 SET revoked = TRUE, updated_at = now()
-WHERE family_id = $1;
+WHERE family_id = $1 AND revoked = FALSE
+RETURNING id::text;
 
 -- name: DeleteRefreshTokensForSub :exec
 DELETE FROM refresh_tokens

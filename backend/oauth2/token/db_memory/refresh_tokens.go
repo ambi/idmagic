@@ -3,6 +3,7 @@ package db_memory
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -60,15 +61,18 @@ func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *d
 	return cloneRefreshToken(stored), nil
 }
 
-func (s *RefreshTokenStore) RevokeFamily(_ context.Context, familyID string) error {
+func (s *RefreshTokenStore) RevokeFamily(_ context.Context, familyID string) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	var revokedIDs []string
 	for _, rec := range s.byID {
-		if rec.FamilyID == familyID {
+		if rec.FamilyID == familyID && !rec.Revoked {
 			rec.Revoked = true
+			revokedIDs = append(revokedIDs, rec.ID)
 		}
 	}
-	return nil
+	sort.Strings(revokedIDs)
+	return revokedIDs, nil
 }
 
 func (s *RefreshTokenStore) RevokeBySid(_ context.Context, sid string) error {

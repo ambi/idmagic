@@ -82,6 +82,39 @@ func (q *Queries) LinkAuthorizationCodeFamily(ctx context.Context, arg LinkAutho
 	return result.RowsAffected(), nil
 }
 
+const markAuthorizationCodeExpired = `-- name: MarkAuthorizationCodeExpired :one
+UPDATE oauth2_authorization_codes
+SET state = 'expired', updated_at = now()
+WHERE code = $1 AND tenant_id = $2 AND state = 'issued'
+RETURNING payload, state, redeemed_at, issued_family_id
+`
+
+type MarkAuthorizationCodeExpiredParams struct {
+	Code     string
+	TenantID string
+}
+
+type MarkAuthorizationCodeExpiredRow struct {
+	Payload        []byte
+	State          string
+	RedeemedAt     pgtype.Timestamptz
+	IssuedFamilyID pgtype.Text
+}
+
+// 単発 expire の CAS。state='issued' の行だけを expired にして 1 行返す。
+// 既に redeemed または expired の行は対象にしない (0 行)。
+func (q *Queries) MarkAuthorizationCodeExpired(ctx context.Context, arg MarkAuthorizationCodeExpiredParams) (*MarkAuthorizationCodeExpiredRow, error) {
+	row := q.db.QueryRow(ctx, markAuthorizationCodeExpired, arg.Code, arg.TenantID)
+	var i MarkAuthorizationCodeExpiredRow
+	err := row.Scan(
+		&i.Payload,
+		&i.State,
+		&i.RedeemedAt,
+		&i.IssuedFamilyID,
+	)
+	return &i, err
+}
+
 const redeemAuthorizationCode = `-- name: RedeemAuthorizationCode :one
 UPDATE oauth2_authorization_codes
 SET state = 'redeemed', redeemed_at = $1, updated_at = now()

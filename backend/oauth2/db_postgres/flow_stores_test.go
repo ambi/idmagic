@@ -164,6 +164,29 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	if err := store.LinkFamily(ctx, "missing", "fam-x"); err == nil {
 		t.Fatal("link family on missing code: want error")
 	}
+
+	// state='issued' の行だけが expired へ遷移する CAS (wi-566, EX-OAUTH2-005-08)。
+	if again, err := store.MarkExpired(ctx, "code-1"); err != nil || again != nil {
+		t.Fatalf("mark expired on redeemed code=%+v err=%v (want nil, not issued)", again, err)
+	}
+	issued := &domain.AuthorizationCodeRecord{
+		Code: "code-2", TenantID: tenant.ID, ClientID: "client-1", UserID: "user-1",
+		Scopes: []string{"openid"}, RedirectURI: "https://c/cb", State: spec.AuthCodeRecordIssued,
+		AuthTime: now.Unix(), IssuedAt: now, ExpiresAt: now.Add(-time.Second),
+	}
+	if err := store.Save(ctx, issued); err != nil {
+		t.Fatalf("save issued: %v", err)
+	}
+	expired, err := store.MarkExpired(ctx, "code-2")
+	if err != nil || expired == nil || expired.State != spec.AuthCodeRecordExpired {
+		t.Fatalf("mark expired: %v %+v (want expired)", err, expired)
+	}
+	if got, err := store.Find(ctx, "code-2"); err != nil || got == nil || got.State != spec.AuthCodeRecordExpired {
+		t.Fatalf("find after mark expired=%+v err=%v (want expired overlay)", got, err)
+	}
+	if again, err := store.MarkExpired(ctx, "code-2"); err != nil || again != nil {
+		t.Fatalf("second mark expired=%+v err=%v (want nil, already expired)", again, err)
+	}
 }
 
 // TestDeviceCodeStore は RFC 8628 device flow の状態遷移 を検証する。

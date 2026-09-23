@@ -90,6 +90,25 @@ func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now ti
 	return rec, nil
 }
 
+func (s *AuthorizationCodeStore) MarkExpired(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+	row, err := New(s.Pool).MarkAuthorizationCodeExpired(ctx, MarkAuthorizationCodeExpiredParams{
+		Code:     code,
+		TenantID: tenancy.TenantID(ctx),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	rec, err := codeFromPayload(row.Payload)
+	if err != nil {
+		return nil, err
+	}
+	overlayCode(rec, row.State, row.RedeemedAt, row.IssuedFamilyID)
+	return rec, nil
+}
+
 func (s *AuthorizationCodeStore) LinkFamily(ctx context.Context, code, familyID string) error {
 	affected, err := New(s.Pool).LinkAuthorizationCodeFamily(ctx, LinkAuthorizationCodeFamilyParams{
 		IssuedFamilyID: pgtype.Text{String: familyID, Valid: true},

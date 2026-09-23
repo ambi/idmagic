@@ -61,12 +61,12 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, NewOAuthError("invalid_grant", "The refresh token is invalid.")
 	}
 	if record.ClientID != client.ClientID {
-		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
 		return nil, NewOAuthError("invalid_grant", "The refresh token owner does not match.")
 	}
 	if domain.IsRefreshTokenReplay(record) {
-		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
 		return nil, NewOAuthError("invalid_grant", "The refresh token has already been used.")
 	}
@@ -78,14 +78,14 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, err
 	}
 	if user == nil {
-		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		return nil, NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if user.TenantID != tenantID {
 		return nil, NewOAuthError("invalid_grant", "The refresh token is invalid.")
 	}
 	if !user.IsActive() {
-		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		return nil, NewOAuthError("invalid_grant", "user is disabled")
 	}
 
@@ -106,7 +106,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, err
 	}
 	if rotated == nil {
-		_ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		return nil, NewOAuthError("invalid_grant", "The refresh token was invalidated by a concurrent refresh.")
 	}
 	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})

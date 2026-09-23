@@ -3,6 +3,8 @@ package db_postgres_test
 import (
 	"context"
 	"errors"
+	"slices"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -391,5 +393,69 @@ func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 	}
 	if afterRotation.Resource == nil || *afterRotation.Resource != resource {
 		t.Fatalf("expected resource to survive rotation round-trip, got %v", afterRotation.Resource)
+	}
+}
+
+// RevokeFamily は新たに Revoked へ遷移した token だけを報告し、呼び出し側が token ごとに
+// TokenRevoked を組み立てられるようにする (wi-566)。EX-OAUTH2-005-07 と EX-OAUTH2-006-02 の
+// 被覆は、この返り値を実際に使って通知を組み立てる usecases 層のテストが持つ。
+func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	store := &oauth2tokenpostgres.RefreshTokenStore{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+
+	first, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	first.Record.TenantID = tenant.ID
+	if err := store.Save(ctx, first.Record); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	rotated, err := domain.RotateRefreshToken(first.Record, now.Add(time.Minute))
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	rotated.Record.TenantID = tenant.ID
+	if _, err := store.Rotate(ctx, first.Record.ID, rotated.Record); err != nil {
+		t.Fatalf("store rotate: %v", err)
+	}
+
+	otherFamily, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now)
+	if err != nil {
+		t.Fatalf("generate other family: %v", err)
+	}
+	otherFamily.Record.TenantID = tenant.ID
+	if err := store.Save(ctx, otherFamily.Record); err != nil {
+		t.Fatalf("save other family: %v", err)
+	}
+
+	revokedIDs, err := store.RevokeFamily(ctx, first.Record.FamilyID)
+	if err != nil {
+		t.Fatalf("revoke family: %v", err)
+	}
+	want := []string{first.Record.ID, rotated.Record.ID}
+	sort.Strings(want)
+	if !slices.Equal(revokedIDs, want) {
+		t.Fatalf("revoked ids = %v, want %v", revokedIDs, want)
+	}
+
+	// 別 family のトークンは対象外のまま。
+	untouched, err := store.FindByHash(ctx, otherFamily.Record.Hash)
+	if err != nil || untouched == nil || untouched.Revoked {
+		t.Fatalf("other family must stay unrevoked: %v %+v", err, untouched)
+	}
+
+	// 既に Revoked な family を再度失効させても、新たに遷移した id は無い (idempotent)。
+	again, err := store.RevokeFamily(ctx, first.Record.FamilyID)
+	if err != nil {
+		t.Fatalf("revoke family again: %v", err)
+	}
+	if len(again) != 0 {
+		t.Fatalf("expected no newly revoked ids on repeat call, got %v", again)
 	}
 }

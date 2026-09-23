@@ -87,6 +87,54 @@ func TestAuthorizationCodeStore(t *testing.T) {
 		}
 	})
 
+	t.Run("MarkExpired", func(t *testing.T) {
+		code := &domain.AuthorizationCodeRecord{
+			Code:  "auth-code-expiring",
+			State: spec.AuthCodeRecordIssued,
+		}
+		_ = store.Save(ctx, code)
+
+		expired, err := store.MarkExpired(ctx, "auth-code-expiring")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if expired == nil || expired.State != spec.AuthCodeRecordExpired {
+			t.Fatalf("expected state to be Expired, got %+v", expired)
+		}
+
+		// すでに Expired なコードを再度 MarkExpired (失敗するべき)
+		again, err := store.MarkExpired(ctx, "auth-code-expiring")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if again != nil {
+			t.Error("expected second MarkExpired to return nil")
+		}
+
+		// すでに Redeemed なコードは expired へ遷移しない (replay は別に検出する)
+		redeemedCode := &domain.AuthorizationCodeRecord{
+			Code:  "auth-code-already-redeemed",
+			State: spec.AuthCodeRecordRedeemed,
+		}
+		_ = store.Save(ctx, redeemedCode)
+		notExpired, err := store.MarkExpired(ctx, "auth-code-already-redeemed")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if notExpired != nil {
+			t.Error("expected MarkExpired on a redeemed code to return nil")
+		}
+
+		// 存在しないコードの MarkExpired
+		noCode, err := store.MarkExpired(ctx, "auth-code-none")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if noCode != nil {
+			t.Error("expected nil for expiring non-existing code")
+		}
+	})
+
 	t.Run("LinkFamily", func(t *testing.T) {
 		code := &domain.AuthorizationCodeRecord{
 			Code:  "auth-code-link",

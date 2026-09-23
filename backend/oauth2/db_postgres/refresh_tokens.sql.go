@@ -149,15 +149,33 @@ func (q *Queries) MarkRefreshTokenRotated(ctx context.Context, id string) error 
 	return err
 }
 
-const revokeRefreshTokenFamily = `-- name: RevokeRefreshTokenFamily :exec
+const revokeRefreshTokenFamily = `-- name: RevokeRefreshTokenFamily :many
 UPDATE refresh_tokens
 SET revoked = TRUE, updated_at = now()
-WHERE family_id = $1
+WHERE family_id = $1 AND revoked = FALSE
+RETURNING id::text
 `
 
-func (q *Queries) RevokeRefreshTokenFamily(ctx context.Context, familyID string) error {
-	_, err := q.db.Exec(ctx, revokeRefreshTokenFamily, familyID)
-	return err
+// revoked = FALSE の行だけを対象にし、この呼び出しで新たに失効させた id を返す。
+// 既に revoked だった行を対象から外すことで、繰り返し呼んでも同じ id を返さない。
+func (q *Queries) RevokeRefreshTokenFamily(ctx context.Context, familyID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, revokeRefreshTokenFamily, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revokeRefreshTokensBySid = `-- name: RevokeRefreshTokensBySid :exec
