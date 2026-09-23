@@ -180,7 +180,9 @@
     },
     {
       "id": "EX-SAML-005-03",
-      "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない。どちらを正とするかは wi-558 が決める"
+      "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない。どちらを正とするかは wi-558 が決める",
+      "blocked_by": "wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets",
+      "finding": "acme レルムで発行した saml:read と saml:write のトークンを default レルムの /api/admin/v1/saml/service-providers へ提示すると、参照も登録も 401 invalid_token になり、保存先には何も残らない。AuthenticateClaims がリクエスト先テナントで jti を照合し、見つからなければ RFC 7662 に従って active: false を返す経路であり、EX-WSFEDERATION-001-03 と同じ食い違いである。"
     },
     {
       "id": "EX-SYSTEM-008-02",

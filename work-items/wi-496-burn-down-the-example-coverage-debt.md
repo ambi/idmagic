@@ -20,6 +20,26 @@ depends_on:
   - wi-555-back-data-keys-examples-with-tests
   - wi-556-back-seeding-examples-with-tests
   - wi-557-back-cross-context-examples-with-tests
+  - wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets
+  - wi-564-name-the-refusal-a-cross-tenant-oauth-admin-token-gets
+  - wi-566-authorization-code-replay-and-expiry-leave-no-record
+  - wi-569-declared-refusals-that-live-at-a-different-boundary
+  - wi-570-account-scoped-tokens-name-no-audience
+  - wi-571-a-state-mismatch-leaves-no-federation-record
+  - wi-572-the-mfa-enforcement-date-never-reaches-the-user
+  - wi-573-agent-admin-api-answers-with-undeclared-statuses
+  - wi-575-explicit-display-language-outranks-the-ui-locales-hint
+  - wi-576-missing-translation-key-has-no-runtime-fallback
+  - wi-578-align-cross-tenant-branding-asset-refusal
+  - wi-579-align-branding-asset-gateway-example
+  - wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction
+  - wi-22987-track-full-resync-completion
+  - wi-37560-return-access-denied-for-cross-tenant-provisioning-api-tokens
+  - wi-85060-publish-provisioning-lifecycle-events
+  - wi-93622-acceptance-test-provisioning-tenant-isolation
+  - wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period
+  - wi-626-align-cross-tenant-application-read-refusals
+  - wi-628-implement-desired-state-application-assignment
 status: in_progress
 authors: [tn]
 risk: low
@@ -187,14 +207,42 @@ initial_context:
 
 本項目はこれ以降、報告ツールの維持と、20 件がすべて完了した後の台帳削除だけを持つ。`depends_on` がその順序を機械で拘束する。
 
+### 20 件完了後の残余（37 件）
+
+20 件の子 work item はすべて完了した。台帳は 598 件から 37 件まで縮んだが、0 にはならなかった。
+残る 37 件はいずれも Scope が定めるとおりの経路で残っている——具体例のとおりに振る舞っていない実装が
+見つかり、本項目では直さず欠陥の work item へ切り出した。子が切り出した 20 件の欠陥 work item は
+いずれも `pending` のままで、`blocked_by` が指す先として台帳に残る。
+
+| 欠陥 work item | 台帳に残る具体例 |
+|---|---:|
+| [[wi-85060-publish-provisioning-lifecycle-events]] | 8 |
+| [[wi-566-authorization-code-replay-and-expiry-leave-no-record]] | 3 |
+| [[wi-569-declared-refusals-that-live-at-a-different-boundary]] | 2 |
+| [[wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period]] | 2 |
+| [[wi-626-align-cross-tenant-application-read-refusals]] | 2 |
+| [[wi-628-implement-desired-state-application-assignment]] | 2 |
+| その他 14 件 | 各 1 |
+
+`blocked_by` を持つ欠陥 work item は、本項目の `depends_on` へ足した。子 work item の完了を待つのと
+同じ理由で、台帳が空になる前に本項目を完了させないことを機械検査で拘束するためである。
+Scope が定めるとおり、これらの欠陥の修正そのものは本項目に含めない。
+
+`EX-SAML-005-03` は `blocked_by` を欠いたまま台帳に残っていた（`reason` は wi-558 を名指すが、
+フィールドとしては未設定だった）。並行する `EX-WSFEDERATION-001-03` は同じ食い違いを正しく
+`blocked_by` と `finding` の双方で記録していたので、`wi-550-back-saml-examples-with-tests` が
+残した実測（`acme` レルムのトークンを `default` レルムの SAML 管理 API へ提示すると 401
+`invalid_token` になる）を転記して揃えた。
+
 ## Plan
 
 1. ~~`claim-mapping` の 3 件を通しで消化し、注記の型と 1 件あたりの所要を記録する。~~ 完了。記録は Design の「測定の結果」節。
 2. ~~`workloadidentity` の 13 件を消化し、`named` の見込みがどれだけ当たるかを測る。~~ 完了。2 Context とも `named` は 0 件で的中率は測れず、代わりに分類そのものが予測力を持たないことが分かった。同節に書いた。
 3. ~~記録をもとに、残る Context を本 work item で続けるか子 work item へ割るかを決め、本節へ書く。~~ 完了。Context ごとに 20 件へ割った。
 4. ~~`report-coverage-debt` に横断シナリオの走査を足し、`(unknown)` を消す。~~ 完了。横断の 4 件は `(cross-context)` として解決する。4 件の消化そのものは [[wi-557-back-cross-context-examples-with-tests]] が持つ。
-5. 20 件の子 work item の完了を待つ。`system` の所有パッケージの決定は [[wi-541-back-system-examples-with-tests]] が、`oauth2` の再分割の判断は [[wi-538-back-oauth2-examples-with-tests]] が持つ。
-6. 598 件が 0 になったら、台帳と具体例側の `debt` 引数を落とす。
+5. ~~20 件の子 work item の完了を待つ。~~ 完了。`system` の所有パッケージの決定は [[wi-541-back-system-examples-with-tests]] が、`oauth2` の再分割の判断は [[wi-538-back-oauth2-examples-with-tests]] が確定させた。
+6. 子が切り出した欠陥 work item のうち `blocked_by` を持つ 20 件が完了するのを待つ。Design の「20 件完了後の残余」節に一覧がある。
+7. 598 件が 0 になったら、台帳と具体例側の `debt` 引数を落とす。
 
 ## Tasks
 
@@ -211,12 +259,18 @@ initial_context:
 - [x] T004 [Tooling] `report-coverage-debt` が `docs/domain/scenarios.feature.md` も走査するようにし、`(unknown)` を消す。
   `scenarioDocuments()` を足し、横断文書を `(cross-context)` として読むようにした。再実行の recipe は
   `mise run report-coverage-debt` と `mise run typecheck-tools`。
-- [ ] T005 [Ledger] 20 件の子 work item の完了を待つ。消化そのものは各子が持つ。
-- [ ] T006 [Defect] 具体例のとおりに振る舞っていない実装が見つかったら、欠陥の work item を切り出す。
-  T001 と T002 では 1 件も見つからなかった。`WorkloadAttestationRejectedError` に対応する Go の型が
-  無い件は、仕様が本体を持たないと宣言しているため欠陥ではないと判断した。
+- [x] T005 [Ledger] 20 件の子 work item の完了を待つ。消化そのものは各子が持つ。
+  20 件とも `status: completed` で `work-items/done/` にある。台帳は 598 → 37 件。
+- [x] T006 [Defect] 具体例のとおりに振る舞っていない実装が見つかったら、欠陥の work item を切り出す。
+  T001 と T002 では 1 件も見つからなかったが、20 件の子は合わせて 37 件で見つけ、Scope のとおり
+  それぞれ個別の欠陥 work item へ切り出した（一覧は Design の「20 件完了後の残余」節）。
+  `WorkloadAttestationRejectedError` に対応する Go の型が無い件は、仕様が本体を持たないと宣言している
+  ため欠陥ではないと判断した。`EX-SAML-005-03` は `blocked_by` の記載漏れを本 work item で埋めた。
 - [ ] T007 [Tooling] 台帳が空になったら、台帳と具体例側の `debt` 引数を落とす。
+  未着手。37 件は `depends_on` へ足した 20 件の欠陥 work item がいずれも `pending` のため空にならない。
 - [ ] T008 [Verify] `mise run verify`。
+  T007 が未完了のため保留。`mise run check-spec` は現時点でも例外つきで通ることを確認済み
+  （`ok normative coverage`）。
 
 ## Verification
 
