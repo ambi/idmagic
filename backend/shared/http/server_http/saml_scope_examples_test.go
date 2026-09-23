@@ -148,6 +148,57 @@ func TestSamlReadScopeCannotChangeServiceProviders(t *testing.T) {
 	}
 }
 
+// テナントの一致しない API アクセストークンは、参照・登録・削除のどれも 401 invalid_token で
+// 拒否する。管理発行トークンの照合はリクエスト先テナントで jti を探し、見つからなければ
+// RFC 7662 の非開示に従って active: false を返す。403 AccessDeniedError にすると、
+// 「このトークン自体は有効だが、このテナントでは使えない」という事実を別テナントの提示者へ
+// 伝えてしまう。参照と登録と削除の 3 通りで確かめないと、片方だけ配線された実装を見分けられない。
+//
+//spec:covers EX-SAML-005-03: トークンのテナントとリクエスト先のテナントが一致しないとき、操作を 401 の InvalidAccessTokenError で拒否する。
+func TestForeignTenantApiTokenCannotOperateSamlServiceProviders(t *testing.T) {
+	stack := newApiTokenStack(t)
+	read, _ := stack.issue(t, apiTokenOtherRealm, "", apitokendomain.ScopeSamlRead)
+	write, _ := stack.issue(t, apiTokenOtherRealm, "", apitokendomain.ScopeSamlWrite)
+
+	// 参照は届かない。
+	assertInvalidToken(t, stack.samlRequest(http.MethodGet, read, "", ""))
+
+	// 登録は届かず、何も保存されない。
+	assertInvalidToken(t, stack.samlRequest(http.MethodPost, write, samlScopeSPBody(), ""))
+	if stored := stack.storedServiceProviders(t); len(stored) != 0 {
+		t.Fatalf("拒否されたのに登録されている: %v", stored)
+	}
+
+	// 削除も届かない。前提は default レルム発行のトークンで用意する。
+	sameRealmWrite, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeSamlWrite)
+	if recorder := stack.samlRequest(http.MethodPost, sameRealmWrite, samlScopeSPBody(), ""); recorder.Code != http.StatusCreated {
+		t.Fatalf("前提の登録 status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	assertInvalidToken(t, stack.samlRequest(http.MethodDelete, write, "", samlScopeDeleteQuery()))
+	if stored := stack.storedServiceProviders(t); len(stored) != 1 || stored[0] != samlScopeSPEntityID {
+		t.Fatalf("拒否されたのに削除されている: %v", stored)
+	}
+}
+
+func assertInvalidToken(t *testing.T, recorder *httptest.ResponseRecorder) {
+	t.Helper()
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s, want 401", recorder.Code, recorder.Body.String())
+	}
+	var problem struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("problem body %s: %v", recorder.Body.String(), err)
+	}
+	if problem.Type != "urn:idmagic:error:invalid_token" {
+		t.Fatalf("problem type=%q, want invalid_token", problem.Type)
+	}
+	if got := recorder.Header().Get("WWW-Authenticate"); !strings.Contains(got, `Bearer error="invalid_token"`) {
+		t.Fatalf("WWW-Authenticate=%q, want invalid_token challenge", got)
+	}
+}
+
 func assertInsufficientScope(t *testing.T, recorder *httptest.ResponseRecorder, required string) {
 	t.Helper()
 	if recorder.Code != http.StatusForbidden {

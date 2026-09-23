@@ -131,10 +131,9 @@ Primary actor: `ManagementApiClient`
 
 ### Example: EX-SAML-005-03 トークンのテナントとリクエスト先のテナントが一致しない
 
-- Given クライアントは対象テナントの有効な API アクセストークンを提示している
-- When クライアントがサービスプロバイダーの参照、登録、または削除をリクエストする
-- But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作を AccessDeniedError で拒否する
+- Given クライアントは発行元テナントでは有効な API アクセストークンを持つ
+- When クライアントがそのトークンを別テナントのサービスプロバイダーの参照、登録、または削除へ提示する
+- Then 操作を 401 の InvalidAccessTokenError で拒否する
 
 ## Rule: REQ-SAML-006 SAML の SP 起点 SSO に成功する
 
