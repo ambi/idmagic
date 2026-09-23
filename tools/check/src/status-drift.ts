@@ -35,7 +35,7 @@ export type Finding = { key: string; operationId: string; message: string }
 
 export type Unresolved = {
   operationId: string
-  reason: 'route-not-found' | 'handler-not-found' | 'handler-ambiguous'
+  reason: 'route-not-found' | 'handler-not-found'
   detail: string
 }
 
@@ -62,9 +62,14 @@ export type Responder = {
   statuses: Set<number>
   problemCodes: Map<number, Set<string>>
   unread: string[]
-  /** How many definitions carry this name. More than one and none is read. */
-  definitions: number
+  /** 呼び出し先を 1 つに決められなかった前提判定。読み飛ばすと帰属が黙って欠ける。 */
+  ambiguous: Ambiguity[]
+  /** この名前を持つ定義の位置。2 つ以上あると、経路からどれを読むかを決められない。 */
+  definitions: string[]
 }
+
+/** 字面から呼び出し先を 1 つに決められなかった呼び出しと、候補の定義位置。 */
+export type Ambiguity = { name: string; candidates: string[] }
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
 
@@ -203,7 +208,16 @@ function bodyBrace(source: string, from: number): number | undefined {
   return undefined
 }
 
-type Definition = { path: string; body: string; parameters: string }
+type Definition = {
+  name: string
+  path: string
+  /** Go ではディレクトリが 1 つのパッケージになるので、同じ名前の定義をこれで区別する。 */
+  directory: string
+  /** メソッドの受け手の変数名。関数と、受け手に名前のないメソッドでは undefined になる。 */
+  receiver?: string
+  body: string
+  parameters: string
+}
 
 /**
  * Context-carrying function definitions, by name. A function that does not hold
@@ -214,8 +228,8 @@ type Definition = { path: string; body: string; parameters: string }
 function collectDefinitions(files: GoFile[]): Map<string, Definition[]> {
   const definitions = new Map<string, Definition[]>()
   for (const file of files) {
-    for (const match of file.source.matchAll(/^func\s+(?:\([^)]*\)\s*)?(\w+)/gm)) {
-      const name = match[1]
+    for (const match of file.source.matchAll(/^func\s+(?:\(([^)]*)\)\s*)?(\w+)/gm)) {
+      const name = match[2]
       if (!name) continue
       const open = bodyBrace(file.source, match.index + match[0].length)
       if (open === undefined) continue
@@ -228,23 +242,59 @@ function collectDefinitions(files: GoFile[]): Map<string, Definition[]> {
         parametersAt === -1 ? '' : (sliceBalanced(signature, parametersAt, '()') ?? '')
       definitions.set(name, [
         ...(definitions.get(name) ?? []),
-        { path: file.path, body, parameters },
+        {
+          name,
+          path: file.path,
+          directory: file.path.slice(0, Math.max(0, file.path.lastIndexOf('/'))),
+          receiver: match[1] === undefined ? undefined : /^\s*(\w+)\s+\*?\w/.exec(match[1])?.[1],
+          body,
+          parameters,
+        },
       ])
     }
   }
   return definitions
 }
 
-/** Calls written in a body, each with its balanced argument text. */
-function callSites(body: string): Array<{ name: string; args: string }> {
-  const sites: Array<{ name: string; args: string }> = []
-  for (const match of body.matchAll(/(?:\.|\b)(\w+)\s*\(/g)) {
-    const name = match[1]
+/**
+ * 本体に書かれた呼び出しと、括弧の対応で切り出した引数。
+ *
+ * `qualifier` は名前の前の `.` までの字面である。`d.Auth.requireAdmin(` なら
+ * `d.Auth`、修飾のない `requireAdmin(` なら空文字、`c.Request().Context(` の
+ * ように式の結果を受け手にする呼び出しなら `.` になる。
+ */
+type CallSite = { name: string; qualifier: string; args: string }
+
+function callSites(body: string): CallSite[] {
+  const sites: CallSite[] = []
+  for (const match of body.matchAll(/([\w.]*\.)?(\w+)\s*\(/g)) {
+    const name = match[2]
     if (!name) continue
     const open = match.index + match[0].length - 1
-    sites.push({ name, args: sliceBalanced(body, open, '()') ?? '' })
+    const qualifier = match[1] === undefined ? '' : match[1].slice(0, -1) || '.'
+    sites.push({ name, qualifier, args: sliceBalanced(body, open, '()') ?? '' })
   }
   return sites
+}
+
+/**
+ * 呼び出しが届きうる定義。
+ *
+ * 修飾のない呼び出しは、同じパッケージの関数にしか届かない。呼び出し側の受け手の
+ * 変数を通した呼び出しは、同じパッケージの定義を優先する。それ以外の修飾
+ * （フィールド、パッケージ名、式の結果）は受け手の型を字面から決められないので、
+ * 同じ名前の定義がすべて候補に残る。
+ */
+function candidatesFor(
+  call: CallSite,
+  caller: Definition,
+  definitions: Map<string, Definition[]>,
+): Definition[] {
+  const named = definitions.get(call.name) ?? []
+  const local = named.filter((definition) => definition.directory === caller.directory)
+  if (call.qualifier === '') return local
+  if (call.qualifier === caller.receiver && local.length > 0) return local
+  return named
 }
 
 function statusesIn(args: string): number[] {
@@ -274,14 +324,11 @@ function problemCodesIn(call: { name: string; args: string }): Array<[number, st
  * one — provisioning's `writeError` switches on `isNotFound(err)` rather than on
  * `errors.Is`, and is a mapper all the same.
  */
-function isGuard(name: string, definitions: Map<string, Definition[]>): boolean {
-  if (FOLLOWED.has(name)) return true
-  const found = definitions.get(name) ?? []
-  if (found.length === 0) return false
-  return found.every(
-    (definition) =>
-      !/(^|[\s,([])error([\s,)]|$)/.test(definition.parameters) &&
-      !/\berrors\.(Is|As|AsType)\b/.test(definition.body),
+function isGuard(definition: Definition): boolean {
+  if (FOLLOWED.has(definition.name)) return true
+  return (
+    !/(^|[\s,([])error([\s,)]|$)/.test(definition.parameters) &&
+    !/\berrors\.(Is|As|AsType)\b/.test(definition.body)
   )
 }
 
@@ -297,37 +344,48 @@ function isGuard(name: string, definitions: Map<string, Definition[]>): boolean 
 export function collectResponders(files: GoFile[]): Map<string, Responder> {
   const definitions = collectDefinitions(files)
 
-  // A name is a writer when it reaches a response write. Seeded with echo's
-  // primitives and grown until it stops changing, so a call to something that
-  // never writes is not mistaken for a silent one that does.
-  const sites = new Map<string, Array<{ name: string; args: string }>>()
-  for (const [name, found] of definitions) {
-    sites.set(
-      name,
-      found.flatMap((definition) => callSites(definition.body)),
-    )
+  // 呼び出しの解決は定義ごとに一度だけ行う。同じ名前でも、呼び出し側の
+  // パッケージと受け手によって届く定義が変わるためである。
+  const sites = new Map<Definition, Array<CallSite & { candidates: Definition[] }>>()
+  for (const found of definitions.values()) {
+    for (const definition of found) {
+      sites.set(
+        definition,
+        callSites(definition.body).map((call) => ({
+          ...call,
+          candidates: candidatesFor(call, definition, definitions),
+        })),
+      )
+    }
   }
-  const writers = new Set(STATUS_ARGUMENT)
+
+  // A definition is a writer when it reaches a response write. Grown from
+  // echo's primitives until it stops changing, so a call to something that
+  // never writes is not mistaken for a silent one that does.
+  const writers = new Set<Definition>()
+  const writes = (call: CallSite & { candidates: Definition[] }) =>
+    STATUS_ARGUMENT.has(call.name) || call.candidates.some((callee) => writers.has(callee))
   for (;;) {
     let grew = false
-    for (const [name, calls] of sites) {
-      if (writers.has(name)) continue
-      if (calls.some((call) => writers.has(call.name))) {
-        writers.add(name)
+    for (const [definition, calls] of sites) {
+      if (writers.has(definition)) continue
+      if (calls.some(writes)) {
+        writers.add(definition)
         grew = true
       }
     }
     if (!grew) break
   }
 
-  const responders = new Map<string, Responder>()
-  const delegates = new Map<string, string[]>()
-  const callers = new Map<string, Set<string>>()
-  for (const [name, calls] of sites) {
+  const read = new Map<Definition, Responder>()
+  const delegates = new Map<Definition, Definition[]>()
+  const callers = new Map<Definition, Set<Definition>>()
+  for (const [definition, calls] of sites) {
     const statuses = new Set<number>()
     const problemCodes = new Map<number, Set<string>>()
     const unread = new Set<string>()
-    const followed = new Set<string>()
+    const ambiguous: Ambiguity[] = []
+    const followed = new Set<Definition>()
     for (const call of calls) {
       for (const [status, code] of problemCodesIn(call)) {
         problemCodes.set(status, (problemCodes.get(status) ?? new Set()).add(code))
@@ -340,47 +398,62 @@ export function collectResponders(files: GoFile[]): Map<string, Responder> {
         unread.add(call.name)
         continue
       }
-      if (!writers.has(call.name)) continue
+      if (!writes(call)) continue
       const constants = statusesIn(call.args)
       if (constants.length > 0) {
         for (const status of constants) statuses.add(status)
         continue
       }
-      if (STATUS_ARGUMENT.has(call.name) || call.name === name || !definitions.has(call.name)) {
-        if (STATUS_ARGUMENT.has(call.name)) unread.add(call.name)
+      if (STATUS_ARGUMENT.has(call.name)) {
+        unread.add(call.name)
         continue
       }
-      // One name, two definitions: reading either would attribute a status to a
-      // handler that may not have it, so neither is read.
-      if ((definitions.get(call.name) ?? []).length > 1) unread.add(call.name)
-      else if (isGuard(call.name, definitions)) followed.add(call.name)
-      else unread.add(call.name)
+      const callees = call.candidates.filter((callee) => callee !== definition)
+      const [callee] = callees
+      if (callee === undefined) continue
+      if (callees.length === 1) {
+        if (isGuard(callee)) followed.add(callee)
+        else unread.add(call.name)
+        continue
+      }
+      // 候補がすべてエラー値で分岐するなら、1 つに決まっても読まないので結果は変わらない。
+      // 前提判定が候補に入るときは、どれを読むかで帰属する状態コードが変わる。
+      if (callees.some(isGuard)) {
+        ambiguous.push({ name: call.name, candidates: callees.map((found) => found.path) })
+      } else {
+        unread.add(call.name)
+      }
     }
-    responders.set(name, {
-      path: (definitions.get(name) ?? [])[0]?.path ?? '',
+    read.set(definition, {
+      path: definition.path,
       statuses,
       problemCodes,
       unread: [...unread],
-      definitions: (definitions.get(name) ?? []).length,
+      ambiguous,
+      definitions: (definitions.get(definition.name) ?? []).map((found) => found.path),
     })
-    delegates.set(name, [...followed])
-    for (const callee of followed) callers.set(callee, (callers.get(callee) ?? new Set()).add(name))
+    delegates.set(definition, [...followed])
+    for (const callee of followed) {
+      callers.set(callee, (callers.get(callee) ?? new Set()).add(definition))
+    }
   }
 
   // A guard's statuses and its own unread writers belong to everything that
   // stands behind it. Iterated to a fixed point so a chain of thin guards —
   // requireWorkflowAdmin to requireAdmin to WriteAdminAccessError — carries all
   // the way through, and so a cycle terminates.
-  const work = [...responders.keys()]
+  const size = (responder: Responder) =>
+    responder.statuses.size +
+    responder.unread.length +
+    responder.ambiguous.length +
+    [...responder.problemCodes.values()].reduce((sum, codes) => sum + codes.size, 0)
+  const work = [...read.keys()]
   while (work.length > 0) {
-    const name = work.pop() as string
-    const responder = responders.get(name) as Responder
-    const before =
-      responder.statuses.size +
-      responder.unread.length +
-      [...responder.problemCodes.values()].reduce((sum, codes) => sum + codes.size, 0)
-    for (const callee of delegates.get(name) ?? []) {
-      const target = responders.get(callee)
+    const definition = work.pop() as Definition
+    const responder = read.get(definition) as Responder
+    const before = size(responder)
+    for (const callee of delegates.get(definition) ?? []) {
+      const target = read.get(callee)
       if (!target) continue
       for (const status of target.statuses) responder.statuses.add(status)
       for (const [status, codes] of target.problemCodes) {
@@ -391,14 +464,34 @@ export function collectResponders(files: GoFile[]): Map<string, Responder> {
       for (const writer of target.unread) {
         if (!responder.unread.includes(writer)) responder.unread.push(writer)
       }
+      for (const entry of target.ambiguous) {
+        if (!responder.ambiguous.some((own) => own.name === entry.name)) {
+          responder.ambiguous.push(entry)
+        }
+      }
     }
-    const after =
-      responder.statuses.size +
-      responder.unread.length +
-      [...responder.problemCodes.values()].reduce((sum, codes) => sum + codes.size, 0)
-    if (after !== before) {
-      for (const caller of callers.get(name) ?? []) work.push(caller)
+    if (size(responder) !== before) {
+      for (const caller of callers.get(definition) ?? []) work.push(caller)
     }
+  }
+
+  // 経路の登録はハンドラーの名前しか持たないので、呼び出し側へは名前で渡す。
+  // 同じ名前の定義が 2 つ以上あれば、どれを読んだ結果も渡さない。
+  const responders = new Map<string, Responder>()
+  for (const [name, found] of definitions) {
+    const [only] = found
+    const responder = found.length === 1 && only ? read.get(only) : undefined
+    responders.set(
+      name,
+      responder ?? {
+        path: '',
+        statuses: new Set(),
+        problemCodes: new Map(),
+        unread: [],
+        ambiguous: [],
+        definitions: found.map((definition) => definition.path),
+      },
+    )
   }
   return responders
 }
@@ -495,10 +588,29 @@ export function diffStatusCodes(document: OpenAPIDocument, goFiles: GoFile[]): S
       }
       // Two functions of one name: the statuses read are the union of both, and
       // attributing another handler's 404 to this operation is exactly the
-      // silent wrong answer this check exists to avoid.
-      if (responder.definitions > 1) {
-        unresolved.push({ operationId, reason: 'handler-ambiguous', detail: handlerName })
+      // silent wrong answer this check exists to avoid. 件数に数えるだけでは
+      // 検査が通ってしまうので、読めなかったことを失敗として報告する。
+      if (responder.definitions.length > 1) {
+        findings.push({
+          key: `A1 ${operationId}`,
+          operationId,
+          message:
+            `A1 ${operationId}: ${handlerName} is defined at ${responder.definitions.join(', ')}; ` +
+            'the reader cannot tell which one the route registers',
+        })
         continue
+      }
+      if (responder.ambiguous.length > 0) {
+        const calls = responder.ambiguous
+          .map((entry) => `${entry.name}, which is defined at ${entry.candidates.join(', ')}`)
+          .join('; ')
+        findings.push({
+          key: `A1 ${operationId}`,
+          operationId,
+          message:
+            `A1 ${operationId}: ${handlerName} calls ${calls}; ` +
+            'the reader cannot tell which one runs',
+        })
       }
 
       const declared = new Set(
@@ -544,6 +656,7 @@ export function diffStatusCodes(document: OpenAPIDocument, goFiles: GoFile[]): S
         unread.push({ operationId, writers: responder.unread })
         continue
       }
+      if (responder.ambiguous.length > 0) continue
 
       const extra = sortNumbers(declared).filter(
         (status) => !written.has(status) && !ERROR_HANDLER.has(status),

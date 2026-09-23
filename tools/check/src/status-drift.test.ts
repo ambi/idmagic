@@ -494,9 +494,9 @@ describe('coverage', () => {
     expect(result.findings).toEqual([])
   })
 
-  it('reads nothing for a handler name two packages both define', () => {
-    // Merging the two bodies would attribute one package's 404 to the other
-    // package's operation, which reads exactly like real drift.
+  it('fails an operation whose handler name two definitions share', () => {
+    // 経路の登録はハンドラーの定義位置を持たないため、どちらを読むかを決められない。
+    // 件数に数えるだけでは検査が通るので、失敗として報告する。
     const result = run(
       document('ListThings', [200]),
       `func (d Deps) handleThings(c *echo.Context) error {
@@ -507,10 +507,9 @@ func (o Other) handleThings(c *echo.Context) error {
 	return support.WriteProblem(c, http.StatusNotFound, "thing_not_found", "x")
 }`,
     )
-    expect(result.findings).toEqual([])
-    expect(result.unresolved).toEqual([
-      { operationId: 'ListThings', reason: 'handler-ambiguous', detail: 'handleThings' },
-    ])
+    expect(result.findings.map((finding) => finding.key)).toEqual(['A1 ListThings'])
+    expect(result.findings[0]?.message).toContain('handleThings')
+    expect(result.unresolved).toEqual([])
   })
 
   it('separates a route it could not find from a writer it could not read', () => {
@@ -530,5 +529,188 @@ func (d Deps) writeError(c *echo.Context, err error) error {
     )
     expect(result.unresolved).toEqual([])
     expect(result.unread).toEqual([{ operationId: 'ListThings', writers: ['writeError'] }])
+  })
+})
+
+describe('same-named guards in different packages', () => {
+  const tokensGuard = `func (d Deps) requireAdmin(c *echo.Context) error {
+	return WriteProblem(c, http.StatusUnauthorized, "authentication_required", "x")
+}`
+  const federationGuard = `func requireAdmin(d Deps, c *echo.Context) error {
+	return WriteProblem(c, http.StatusForbidden, "access_denied", "y")
+}`
+  const twoPackages = (tokensHandler: string, federationHandler: string) => [
+    {
+      path: 'backend/apitokens/routes.go',
+      source: 'g.GET("/api/admin/v1/tokens", d.handleTokens)',
+    },
+    { path: 'backend/apitokens/guard.go', source: tokensGuard },
+    { path: 'backend/apitokens/handler.go', source: tokensHandler },
+    {
+      path: 'backend/federation/routes.go',
+      source: 'g.GET("/api/admin/v1/federation", d.handleFederation)',
+    },
+    { path: 'backend/federation/guard.go', source: federationGuard },
+    { path: 'backend/federation/handler.go', source: federationHandler },
+  ]
+  const contract: OpenAPIDocument = {
+    paths: {
+      '/api/admin/v1/tokens': { get: { operationId: 'ListTokens', responses: { '200': {} } } },
+      '/api/admin/v1/federation': {
+        get: { operationId: 'GetFederation', responses: { '200': {} } },
+      },
+    },
+  }
+
+  it('attributes each guard to the handler in its own package', () => {
+    // wi-551 では ApiTokens と federation の requireAdmin が同名だったため、
+    // どちらの 401 と 403 も読まれず、宣言漏れが検査を通っていた。
+    const found = collectResponders(
+      twoPackages(
+        `func (d Deps) handleTokens(c *echo.Context) error {
+	if err := d.requireAdmin(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+        `func (d Deps) handleFederation(c *echo.Context) error {
+	if err := requireAdmin(d, c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+      ),
+    )
+    expect([...(found.get('handleTokens')?.statuses ?? [])].sort()).toEqual([200, 401])
+    expect([...(found.get('handleFederation')?.statuses ?? [])].sort()).toEqual([200, 403])
+    expect(found.get('handleTokens')?.unread).toEqual([])
+    expect(found.get('handleFederation')?.unread).toEqual([])
+  })
+
+  it('reports the undeclared statuses each package guard writes', () => {
+    const result = diffStatusCodes(
+      contract,
+      twoPackages(
+        `func (d Deps) handleTokens(c *echo.Context) error {
+	if err := d.requireAdmin(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+        `func (d Deps) handleFederation(c *echo.Context) error {
+	if err := requireAdmin(d, c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+      ),
+    )
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'S1 ListTokens: handleTokens writes 401, which the contract does not declare',
+      'S1 GetFederation: handleFederation writes 403, which the contract does not declare',
+    ])
+  })
+
+  it('fails a guard call through a field whose definition it cannot settle', () => {
+    // d.Auth の型は字面から決まらないため、別パッケージの 2 つの定義のどちらも候補に残る。
+    // 読み飛ばすと 401 と 403 の帰属が黙って欠けるので、候補の位置を添えて失敗させる。
+    const result = diffStatusCodes(
+      contract,
+      twoPackages(
+        `func (d Deps) handleTokens(c *echo.Context) error {
+	if err := d.requireAdmin(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+        `func (d Deps) handleFederation(c *echo.Context) error {
+	if err := d.Auth.requireAdmin(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+      ).map((file) =>
+        file.path === 'backend/federation/guard.go'
+          ? { ...file, path: 'backend/shared/guard.go' }
+          : file,
+      ),
+    )
+    expect(result.findings.map((finding) => finding.key)).toEqual([
+      'S1 ListTokens',
+      'A1 GetFederation',
+    ])
+    expect(result.findings[1]?.message).toBe(
+      'A1 GetFederation: handleFederation calls requireAdmin, which is defined at ' +
+        'backend/apitokens/guard.go, backend/shared/guard.go; the reader cannot tell which one runs',
+    )
+  })
+
+  it('reads the one definition a qualified call can reach', () => {
+    // 候補が 1 つしかなければ、受け手の型を決められなくても読み違えない。
+    const found = collectResponders([
+      { path: 'backend/shared/guard.go', source: federationGuard },
+      {
+        path: 'backend/federation/handler.go',
+        source: `func (d Deps) handleFederation(c *echo.Context) error {
+	if err := d.Auth.requireAdmin(d, c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+      },
+    ])
+    expect([...(found.get('handleFederation')?.statuses ?? [])].sort()).toEqual([200, 403])
+    expect(found.get('handleFederation')?.ambiguous).toEqual([])
+  })
+
+  it('keeps an ambiguous error mapper as unread rather than failing', () => {
+    // どちらの定義もエラー値で分岐するなら、解決できても読まない。結果は同じなので失敗にしない。
+    const mapper = (code: string) => `func writeError(c *echo.Context, err error) error {
+	return WriteProblem(c, http.StatusConflict, "${code}", "x")
+}`
+    const found = collectResponders([
+      { path: 'backend/a/errors.go', source: mapper('a_conflict') },
+      { path: 'backend/b/errors.go', source: mapper('b_conflict') },
+      {
+        path: 'backend/c/handler.go',
+        source: `func (d Deps) handleThings(c *echo.Context) error {
+	return d.Errors.writeError(c, err)
+}`,
+      },
+    ])
+    expect(found.get('handleThings')?.unread).toEqual(['writeError'])
+    expect(found.get('handleThings')?.ambiguous).toEqual([])
+  })
+})
+
+describe('an ambiguous call behind a guard', () => {
+  it('fails the operation and reports no over-declaration', () => {
+    // 曖昧な呼び出しは前提判定の連鎖を通じてハンドラーへ届く。どちらの定義が
+    // 400 を書くかは分からないので、400 を宣言過剰とは呼ばない。
+    const check = (code: string) => `func (s Session) checkAdmin(c *echo.Context) error {
+	return WriteProblem(c, http.StatusForbidden, "${code}", "x")
+}`
+    const result = diffStatusCodes(document('ListThings', [200, 400]), [
+      { path: 'backend/things/routes.go', source: 'g.GET("/api/admin/v1/things", d.handleThings)' },
+      { path: 'backend/session/a/check.go', source: check('access_denied') },
+      { path: 'backend/session/b/check.go', source: check('insufficient_scope') },
+      {
+        path: 'backend/things/handler.go',
+        source: `func (d Deps) requireAdmin(c *echo.Context) error {
+	return d.Session.checkAdmin(c)
+}
+
+func (d Deps) handleThings(c *echo.Context) error {
+	if err := d.requireAdmin(c); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
+}`,
+      },
+    ])
+    expect(result.findings.map((finding) => finding.key)).toEqual(['A1 ListThings'])
+    expect(result.findings[0]?.message).toContain(
+      'checkAdmin, which is defined at backend/session/a/check.go, backend/session/b/check.go',
+    )
   })
 })
