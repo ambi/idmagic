@@ -174,6 +174,17 @@ func TestConnectionAndIdentityRepositoriesRoundTrip(t *testing.T) {
 	if found, err := identities.FindBySubject(ctx, tenant.ID, connection.ID, "external"); err != nil || found == nil || found.LocalUserID != userID {
 		t.Fatalf("FindBySubject=(%+v,%v)", found, err)
 	}
+
+	// 削除の拒否はこの問い合わせに依存する。連携がある間は true、解除した後は false に戻る。
+	if exists, err := identities.ExistsForProvider(ctx, tenant.ID, connection.ID); err != nil || !exists {
+		t.Fatalf("ExistsForProvider with a link=(%v,%v), want true", exists, err)
+	}
+	if err := identities.Delete(ctx, tenant.ID, connection.ID, userID); err != nil {
+		t.Fatalf("Delete link: %v", err)
+	}
+	if exists, err := identities.ExistsForProvider(ctx, tenant.ID, connection.ID); err != nil || exists {
+		t.Fatalf("ExistsForProvider after unlinking=(%v,%v), want false", exists, err)
+	}
 }
 
 func TestAttemptStoreConsumesOnceAndScopesTenant(t *testing.T) {

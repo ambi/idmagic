@@ -58,8 +58,147 @@ const response = (status: number, body: unknown = {}) => ({
   json: mock().mockResolvedValue(body),
 })
 
+// openApiTokensTab は発行済みトークンが無い状態でタブを開き、4 つの具体例が共通に言う
+// 「主見出しと一覧の見出しが区別でき、3 つの API の Base URL と用途が表示される」を確かめる。
+// 見出しは階層の違いで区別されるので、文言ではなく見出しの水準で読む。
+async function openApiTokensTab() {
+  const fetchMock = mock().mockResolvedValue(response(200, { tokens: [] }))
+  stubGlobal('fetch', fetchMock)
+  await renderWithRouter(
+    <ApiTokensTab csrfToken="csrf" integrationEndpoints={integrationEndpoints} />,
+  )
+  await screen.findByText(t.noTokensNotice)
+
+  expect(screen.getByRole('heading', { level: 2, name: t.apiTokensHeading })).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { level: 3, name: t.apiTokensListHeading }),
+  ).toBeInTheDocument()
+  for (const [label, url, help] of [
+    [
+      t.managementApiBaseUrlLabel,
+      integrationEndpoints.apis.management_api_base_url,
+      t.managementApiHelp,
+    ],
+    [t.scimBaseUrlLabel, integrationEndpoints.apis.scim_base_url, t.scimConnectorHelp],
+    [t.accountApiBaseUrlLabel, integrationEndpoints.apis.account_api_base_url, t.accountApiHelp],
+  ]) {
+    expect(screen.getByLabelText(label)).toHaveValue(url)
+    expect(screen.getByText(help)).toBeInTheDocument()
+  }
+  return fetchMock
+}
+
+// scopeRows はリソース名から、そのリソースの選択肢を並べた行ごとに、選べるスコープ値を返す。
+// 同じリソース名が複数の API の種類に現れるので、行は画面の並び順で返す。
+function scopeRows(resourceLabel: string): HTMLElement[] {
+  return screen.getAllByText(resourceLabel).map((label) => {
+    const row = label.parentElement?.parentElement
+    if (!row) {
+      throw new Error(`scope row for ${resourceLabel} is missing`)
+    }
+    return row
+  })
+}
+
+function scopeCheckboxes(row: HTMLElement): string[] {
+  return Array.from(row.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).map(
+    (input) => input.value,
+  )
+}
+
 describe('ApiTokensTab', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers EX-APITOKENS-001-01: 見出しの階層と 3 つの Base URL・用途を表示し、スコープを API の種類とリソースでまとめて正式な値と read / write の意味を示し、選んだスコープだけを発行要求へ載せること。
+  it('groups scopes by API and resource and issues only the selected ones', async () => {
+    const fetchMock = await openApiTokensTab()
+    fetchMock
+      .mockResolvedValueOnce(
+        response(201, {
+          token: 'header.payload.signature',
+          meta: {
+            id: 'token-1',
+            description: 'Directory sync',
+            scopes: ['groups:read'],
+            created_at: '2026-07-23T00:00:00Z',
+          },
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { tokens: [] }))
+
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+    for (const heading of [
+      t.managementScopesHeading,
+      t.scimScopesHeading,
+      t.accountScopesHeading,
+    ]) {
+      expect(screen.getByText(heading)).toBeInTheDocument()
+    }
+    expect(scopeRows(t.groupsScopeResourceLabel).map(scopeCheckboxes)).toEqual([
+      ['groups:read', 'groups:write'],
+      ['scim:groups:read', 'scim:groups:write'],
+    ])
+    expect(screen.getByText('groups:read')).toBeInTheDocument()
+    expect(screen.getByText(t.readScopeDescription)).toBeInTheDocument()
+    expect(screen.getByText(t.writeScopeDescription)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(t.tokenDescriptionLabel), {
+      target: { value: 'Directory sync' },
+    })
+    fireEvent.click(screen.getByLabelText('groups:read'))
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+
+    expect(await screen.findByDisplayValue('header.payload.signature')).toBeInTheDocument()
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')
+    expect(JSON.parse(String(post?.[1]?.body)).scopes).toEqual(['groups:read'])
+  })
+
+  //spec:covers EX-APITOKENS-001-02: 共通の見出しと Base URL を表示したうえで、3 つのスコープグループがすべて閉じた状態で始まり、別のグループのスコープを選んでも必要としないグループは閉じたままであること。
+  it('keeps scope groups the administrator does not need collapsed', async () => {
+    await openApiTokensTab()
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+
+    const groups = [t.managementScopesHeading, t.scimScopesHeading, t.accountScopesHeading].map(
+      (heading) => screen.getByText(heading).closest('details'),
+    )
+    for (const group of groups) {
+      expect(group).not.toHaveAttribute('open')
+    }
+
+    fireEvent.click(screen.getByLabelText('scim:users:read'))
+    expect(screen.getByLabelText('scim:users:read').querySelector('input')).toBeChecked()
+    expect(groups[0]).not.toHaveAttribute('open')
+    expect(groups[2]).not.toHaveAttribute('open')
+  })
+
+  //spec:covers EX-APITOKENS-001-03: 共通の見出しと Base URL を表示したうえで、変更系スコープを持たない監査ログのリソースには参照の選択肢だけがあり、存在しない audit:write を選択肢に出さないこと。
+  it('offers no write choice for a resource without a write scope', async () => {
+    await openApiTokensTab()
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+
+    expect(scopeRows(t.auditScopeResourceLabel).map(scopeCheckboxes)).toEqual([['audit:read']])
+    expect(screen.queryByLabelText('audit:write')).not.toBeInTheDocument()
+  })
+
+  //spec:covers EX-APITOKENS-001-04: 共通の見出しと Base URL を表示したうえで、変更系スコープだけを持つ 4 つのアカウントのリソースがどれも参照の選択肢を持たず、その変更系スコープを右の変更列へ置くこと。
+  it('places a write-only scope in the write column and leaves the read column empty', async () => {
+    await openApiTokensTab()
+    fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
+
+    for (const [resourceLabel, scope] of [
+      [t.accountMfaScopeLabel, 'account:mfa:write'],
+      [t.accountSessionsScopeLabel, 'account:sessions:write'],
+      [t.accountConsentsScopeLabel, 'account:consents:write'],
+      [t.accountPasswordScopeLabel, 'account:password:write'],
+    ]) {
+      // セッションと同意は管理 API にも同じリソース名がある。アカウントのグループは最後に並ぶ。
+      const accountRow = scopeRows(resourceLabel).at(-1)
+      expect(accountRow && scopeCheckboxes(accountRow)).toEqual([scope])
+      expect(screen.getByLabelText(scope)).toHaveClass('sm:col-start-2')
+    }
+    // 参照と変更の両方を持つリソースは左の列から並べる。列指定が常に付く実装と区別する。
+    expect(screen.getByLabelText('account:write')).not.toHaveClass('sm:col-start-2')
+  })
 
   it('selects scopes, issues a JWT once, lists scopes, and revokes it', async () => {
     const meta = {

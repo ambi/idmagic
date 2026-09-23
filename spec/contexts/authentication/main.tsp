@@ -1752,6 +1752,7 @@ model ListIdentityProviderConnectionsSuccess_200 {
 }
 
 union ListIdentityProviderConnectionsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1768,7 +1769,7 @@ model ListIdentityProviderConnectionsError403 {
 @get
 op ListIdentityProviderConnections(
 
-): ListIdentityProviderConnectionsSuccess_200 | ListIdentityProviderConnectionsError403;
+): ListIdentityProviderConnectionsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListIdentityProviderConnectionsError403;
 
 model CreateIdentityProviderConnectionSuccess_201 {
   @statusCode statusCode: 201;
@@ -1786,6 +1787,9 @@ model CreateIdentityProviderConnectionError400 {
 }
 
 union CreateIdentityProviderConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1802,7 +1806,7 @@ model CreateIdentityProviderConnectionError403 {
 @post
 op CreateIdentityProviderConnection(
   @body body: IdMagic.Contract.IdentityProviderConnectionRequest
-): CreateIdentityProviderConnectionSuccess_201 | CreateIdentityProviderConnectionError400 | CreateIdentityProviderConnectionError403;
+): CreateIdentityProviderConnectionSuccess_201 | CreateIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateIdentityProviderConnectionError403;
 
 model UpdateIdentityProviderConnectionSuccess_200 {
   @statusCode statusCode: 200;
@@ -1820,6 +1824,9 @@ model UpdateIdentityProviderConnectionError400 {
 }
 
 union UpdateIdentityProviderConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1847,23 +1854,16 @@ model UpdateIdentityProviderConnectionError404 {
 op UpdateIdentityProviderConnection(
   @path provider_id: string,
   @body body: IdMagic.Contract.IdentityProviderConnectionRequest
-): UpdateIdentityProviderConnectionSuccess_200 | UpdateIdentityProviderConnectionError400 | UpdateIdentityProviderConnectionError403 | UpdateIdentityProviderConnectionError404;
+): UpdateIdentityProviderConnectionSuccess_200 | UpdateIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateIdentityProviderConnectionError403 | UpdateIdentityProviderConnectionError404;
 
 model DeleteIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
 }
 
-union DeleteIdentityProviderConnectionError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model DeleteIdentityProviderConnectionError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: DeleteIdentityProviderConnectionError400Body;
-}
-
 union DeleteIdentityProviderConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1873,14 +1873,24 @@ model DeleteIdentityProviderConnectionError403 {
   @body body: DeleteIdentityProviderConnectionError403Body;
 }
 
-@doc("A tenant administrator deletes a connection at any time, whatever its state. When links to it remain, the deletion is refused and an explicit cleanup is required first.")
+union DeleteIdentityProviderConnectionError409Body {
+  IdMagic.Contract.IdentityProviderConnectionInUseError,
+}
+
+model DeleteIdentityProviderConnectionError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: DeleteIdentityProviderConnectionError409Body;
+}
+
+@doc("A tenant administrator deletes a connection at any time, whatever its state. When federated identities are still linked to it, the deletion is refused with IdentityProviderConnectionInUseError and the links must be removed first. Deleting a connection that does not exist succeeds as well.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DeleteIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}")
 @delete
 op DeleteIdentityProviderConnection(
   @path provider_id: string
-): DeleteIdentityProviderConnectionSuccess_204 | DeleteIdentityProviderConnectionError400 | DeleteIdentityProviderConnectionError403;
+): DeleteIdentityProviderConnectionSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteIdentityProviderConnectionError403 | DeleteIdentityProviderConnectionError409;
 
 model ActivateIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1897,6 +1907,9 @@ model ActivateIdentityProviderConnectionError400 {
 }
 
 union ActivateIdentityProviderConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1922,13 +1935,16 @@ model ActivateIdentityProviderConnectionError404 {
 @route("/api/admin/v1/identity-providers/{provider_id}/activate")
 @post
 op ActivateIdentityProviderConnection(
-  @path provider_id: string,): ActivateIdentityProviderConnectionSuccess_204 | ActivateIdentityProviderConnectionError400 | ActivateIdentityProviderConnectionError403 | ActivateIdentityProviderConnectionError404;
+  @path provider_id: string,): ActivateIdentityProviderConnectionSuccess_204 | ActivateIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | ActivateIdentityProviderConnectionError403 | ActivateIdentityProviderConnectionError404;
 
 model DisableIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
 }
 
 union DisableIdentityProviderConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -1964,7 +1980,7 @@ model DisableIdentityProviderConnectionError404 {
 @route("/api/admin/v1/identity-providers/{provider_id}/disable")
 @post
 op DisableIdentityProviderConnection(
-  @path provider_id: string,): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError400 | DisableIdentityProviderConnectionError403 | DisableIdentityProviderConnectionError404;
+  @path provider_id: string,): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableIdentityProviderConnectionError403 | DisableIdentityProviderConnectionError404;
 
 model RefreshIdentityProviderMetadataSuccess_200 {
   @statusCode statusCode: 200;
@@ -1982,6 +1998,9 @@ model RefreshIdentityProviderMetadataError400 {
 }
 
 union RefreshIdentityProviderMetadataError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2007,7 +2026,7 @@ model RefreshIdentityProviderMetadataError404 {
 @route("/api/admin/v1/identity-providers/{provider_id}/refresh")
 @post
 op RefreshIdentityProviderMetadata(
-  @path provider_id: string,): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | RefreshIdentityProviderMetadataError403 | RefreshIdentityProviderMetadataError404;
+  @path provider_id: string,): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | IdMagic.Contract.AuthenticationRequiredResponse | RefreshIdentityProviderMetadataError403 | RefreshIdentityProviderMetadataError404;
 
 model TestIdentityProviderConnectionHttpResponse {
   result: IdMagic.Contract.IdentityProviderConnectionTestResult;
@@ -2018,17 +2037,10 @@ model TestIdentityProviderConnectionSuccess_200 {
   @body body: TestIdentityProviderConnectionHttpResponse;
 }
 
-union TestIdentityProviderConnectionError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model TestIdentityProviderConnectionError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: TestIdentityProviderConnectionError400Body;
-}
-
 union TestIdentityProviderConnectionError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2054,7 +2066,7 @@ model TestIdentityProviderConnectionError404 {
 @route("/api/admin/v1/identity-providers/{provider_id}/test")
 @post
 op TestIdentityProviderConnection(
-  @path provider_id: string,): TestIdentityProviderConnectionSuccess_200 | TestIdentityProviderConnectionError400 | TestIdentityProviderConnectionError403 | TestIdentityProviderConnectionError404;
+  @path provider_id: string,): TestIdentityProviderConnectionSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | TestIdentityProviderConnectionError403 | TestIdentityProviderConnectionError404;
 
 model PreviewIdentityProviderMappingHttpRequest {
   claims: Record<unknown>;
@@ -2080,6 +2092,9 @@ model PreviewIdentityProviderMappingError400 {
 }
 
 union PreviewIdentityProviderMappingError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2107,7 +2122,7 @@ model PreviewIdentityProviderMappingError404 {
 op PreviewIdentityProviderMapping(
   @path provider_id: string,
   @body body: PreviewIdentityProviderMappingHttpRequest
-): PreviewIdentityProviderMappingSuccess_200 | PreviewIdentityProviderMappingError400 | PreviewIdentityProviderMappingError403 | PreviewIdentityProviderMappingError404;
+): PreviewIdentityProviderMappingSuccess_200 | PreviewIdentityProviderMappingError400 | IdMagic.Contract.AuthenticationRequiredResponse | PreviewIdentityProviderMappingError403 | PreviewIdentityProviderMappingError404;
 }
 
 }

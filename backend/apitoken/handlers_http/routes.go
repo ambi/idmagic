@@ -57,15 +57,16 @@ func RegisterRoutes(group *echo.Group, deps Deps) {
 
 type handler struct{ deps Deps }
 
-func (h handler) requireAdmin(c *echo.Context) error {
-	if _, err := h.deps.RequireAdmin(c); err != nil {
+// requireAdministrator は発行、一覧、失効を admin と system_admin の双方に開く。
+func (h handler) requireAdministrator(c *echo.Context) error {
+	if _, err := h.deps.RequireAdministrator(c); err != nil {
 		return h.deps.WriteAdminAccessError(c, err)
 	}
 	return nil
 }
 
 func (h handler) list(c *echo.Context) error {
-	if err := h.requireAdmin(c); err != nil {
+	if err := h.requireAdministrator(c); err != nil {
 		return err
 	}
 	metadata, err := h.deps.Service.List(c.Request().Context(), support.RequestTenantID(c))
@@ -80,7 +81,10 @@ func (h handler) list(c *echo.Context) error {
 }
 
 func (h handler) issue(c *echo.Context) error {
-	actor, err := h.deps.RequireAdmin(c)
+	if err := h.deps.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := h.deps.RequireAdministrator(c)
 	if err != nil {
 		return h.deps.WriteAdminAccessError(c, err)
 	}
@@ -104,7 +108,10 @@ func (h handler) issue(c *echo.Context) error {
 }
 
 func (h handler) revoke(c *echo.Context) error {
-	if err := h.requireAdmin(c); err != nil {
+	if err := h.deps.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	if err := h.requireAdministrator(c); err != nil {
 		return err
 	}
 	if err := h.deps.Service.Revoke(c.Request().Context(), support.RequestTenantID(c), c.Param("id")); err != nil {

@@ -319,6 +319,12 @@ func (r *IdentityRepository) ListByUser(ctx context.Context, tenantID, userID st
 	return out, nil
 }
 
+func (r *IdentityRepository) ExistsForProvider(ctx context.Context, tenantID, providerID string) (bool, error) {
+	return New(r.Pool).FederatedIdentityExistsForProvider(ctx, FederatedIdentityExistsForProviderParams{
+		TenantID: tenantID, ProviderID: providerID,
+	})
+}
+
 func (r *IdentityRepository) Delete(ctx context.Context, tenantID, providerID, userID string) error {
 	return New(r.Pool).DeleteFederatedIdentity(ctx, DeleteFederatedIdentityParams{
 		TenantID:    tenantID,

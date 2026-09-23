@@ -67,11 +67,19 @@ func request(t *testing.T, e *echo.Echo, method, path string, body any, admin bo
 	req := httptest.NewRequest(method, path, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	if admin {
-		req.Header.Set("X-Demo-Sub", "admin")
+		asBrowserAdmin(req)
 	}
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec
+}
+
+// asBrowserAdmin は管理画面と同じく、Origin と CSRF の二重送信を揃えた管理者の要求にする。
+func asBrowserAdmin(req *http.Request) {
+	req.Header.Set("X-Demo-Sub", "admin")
+	req.Header.Set("Origin", "http://idp.test")
+	req.Header.Set(support.CSRFHeader, "csrf")
+	req.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: "csrf"})
 }
 
 // SCL scenario: 管理者はAPIアクセストークンを発行・失効できる。
@@ -161,7 +169,7 @@ func TestIssueApiToken_InvalidRequestIsProblemDetails(t *testing.T) {
 		"malformed json": func() *httptest.ResponseRecorder {
 			req := httptest.NewRequest(http.MethodPost, "/api/admin/v1/api-tokens", bytes.NewBufferString(`{"description":`))
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-Demo-Sub", "admin")
+			asBrowserAdmin(req)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 			return rec

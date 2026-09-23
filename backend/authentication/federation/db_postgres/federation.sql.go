@@ -152,6 +152,24 @@ func (q *Queries) DeleteIdentityProviderConnection(ctx context.Context, arg Dele
 	return err
 }
 
+const federatedIdentityExistsForProvider = `-- name: FederatedIdentityExistsForProvider :one
+SELECT EXISTS (
+  SELECT 1 FROM federated_identities WHERE tenant_id=$1 AND provider_id=$2
+)
+`
+
+type FederatedIdentityExistsForProviderParams struct {
+	TenantID   string
+	ProviderID string
+}
+
+func (q *Queries) FederatedIdentityExistsForProvider(ctx context.Context, arg FederatedIdentityExistsForProviderParams) (bool, error) {
+	row := q.db.QueryRow(ctx, federatedIdentityExistsForProvider, arg.TenantID, arg.ProviderID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const findFederatedIdentityBySubject = `-- name: FindFederatedIdentityBySubject :one
 SELECT tenant_id,provider_id,external_subject,local_user_id,linked_at,last_login_at
 FROM federated_identities WHERE tenant_id=$1 AND provider_id=$2 AND external_subject=$3

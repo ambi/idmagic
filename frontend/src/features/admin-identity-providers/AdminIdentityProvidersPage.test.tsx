@@ -69,6 +69,33 @@ describe('AdminIdentityProvidersPage', () => {
     )
   })
 
+  // 連携が残る接続の削除拒否は、サーバーの英語の detail ではなく表示言語の辞書で伝え、
+  // 一覧から接続を消さない。
+  it('explains a refused deletion of a connection that still has linked users', async () => {
+    stubGlobal(
+      'fetch',
+      mock((_url: string, init?: RequestInit) => {
+        if (init?.method === 'DELETE') {
+          return Promise.resolve(
+            response(409, {
+              type: 'urn:idmagic:error:connection_in_use',
+              detail: 'The identity provider still has linked identities.',
+            }),
+          )
+        }
+        return Promise.resolve(response(200, {}))
+      }),
+    )
+    await renderWithRouter(
+      <AdminIdentityProvidersPage csrfToken="csrf" connections={[connection()]} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: t.delete }))
+
+    expect(await screen.findByText(t.connectionInUse)).toBeInTheDocument()
+    expect(screen.getByText('Google')).toBeInTheDocument()
+    expect(screen.queryByText(t.deleted)).not.toBeInTheDocument()
+  })
+
   // RED: Active な接続の削除はフロントエンドで確認ダイアログを要求し、確認するまで
   // DELETE リクエストは送らない (Design §状態モデルの単純化)。
   it('requires confirmation before deleting an active connection', async () => {

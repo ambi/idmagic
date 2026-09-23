@@ -1,7 +1,6 @@
 import { IconNetwork, IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import {
-  AuthenticationAPIError,
   deleteIdentityProviderConnection,
   runIdentityProviderAction,
   tenantURL,
@@ -19,6 +18,7 @@ import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import { identityProvidersDictionary } from './AdminIdentityProvidersPage.i18n'
 import {
+  connectionErrorMessage,
   DeleteConnectionDialog,
   StatusBadge,
   TestResultBanner,
@@ -50,7 +50,7 @@ export function AdminIdentityProvidersPage({
     try {
       await action()
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.failed)
+      setError(connectionErrorMessage(cause, t))
     } finally {
       setBusyId('')
     }

@@ -1246,6 +1246,10 @@ model IdentityProviderConnectionRequest {
 model IdentityProviderConnectionNotFoundError is ProblemDetails;
 
 
+@doc("The upstream identity provider connection still has federated identities linked to it and cannot be deleted; unlink them first. Returned with HTTP 409. RFC 9457 Problem Details with `type` = `urn:idmagic:error:connection_in_use`.")
+model IdentityProviderConnectionInUseError is ProblemDetails;
+
+
 @doc("Passkey authentication is not configured, so a WebAuthn ceremony can neither be started nor completed. RFC 9457 Problem Details with `type` = `urn:idmagic:error:webauthn_unavailable`.")
 model WebAuthnUnavailableError is ProblemDetails;
 

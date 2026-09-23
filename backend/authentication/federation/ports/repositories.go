@@ -26,6 +26,8 @@ type IdentityRepository interface {
 	FindBySubject(context.Context, string, string, string) (*domain.FederatedIdentity, error)
 	FindByUserProvider(context.Context, string, string, string) (*domain.FederatedIdentity, error)
 	ListByUser(context.Context, string, string) ([]*domain.FederatedIdentity, error)
+	// ExistsForProvider は、テナントの接続に連携した外部アイデンティティが 1 つでも残っているかを返す。
+	ExistsForProvider(ctx context.Context, tenantID, providerID string) (bool, error)
 	Delete(context.Context, string, string, string) error
 }
 

@@ -953,3 +953,23 @@ Primary actor: `EndUser`
 - But 誤った復旧コードを送信する
 - Then エラー "UnauthorizedError"
 - And LoginSession は `authentication_pending` のままで、`amr` に `rc` は加わらず `acr` も上がらない
+
+## Rule: REQ-AUTHENTICATION-037 外部 IdP 接続は、利用者との連携が残っている間は削除できない
+
+Primary actor: `TenantAdministrator`
+
+### Example: EX-AUTHENTICATION-037-01 通常経路
+
+- Given 管理者として認証済みである
+- And テナントに外部 IdP 接続がある
+- When 管理者がその接続を DeleteIdentityProviderConnection で削除する
+- Then 接続は削除され、以後の一覧に現れない
+
+### Example: EX-AUTHENTICATION-037-02 接続に連携した外部アイデンティティが残っている
+
+- Given 管理者として認証済みである
+- And テナントに外部 IdP 接続がある
+- When 管理者がその接続を DeleteIdentityProviderConnection で削除する
+- But 接続に連携した外部アイデンティティが残っている
+- Then エラー "IdentityProviderConnectionInUseError"
+- And 接続と外部アイデンティティの連携はどちらも残る

@@ -1,10 +1,24 @@
 import { IconAlertTriangle, IconCircleCheck, IconX } from '@tabler/icons-react'
-import type { IdentityProviderConnection, IdentityProviderConnectionTestResult } from '../../api'
+import {
+  AuthenticationAPIError,
+  type IdentityProviderConnection,
+  type IdentityProviderConnectionTestResult,
+} from '../../api'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import { identityProvidersDictionary } from './AdminIdentityProvidersPage.i18n'
+
+// connectionErrorMessage は接続の操作が失敗した理由を表示する文言へ変える。
+// 連携が残る接続の削除拒否は、サーバーの英語の detail ではなく表示言語の辞書で伝える。
+export function connectionErrorMessage(
+  cause: unknown,
+  t: { failed: string; connectionInUse: string },
+): string {
+  if (!(cause instanceof AuthenticationAPIError)) return t.failed
+  return cause.code === 'connection_in_use' ? t.connectionInUse : cause.message
+}
 
 const STATUS_BADGE_STYLE: Record<'active' | 'disabled', { badge: string; dot: string }> = {
   active: { badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },

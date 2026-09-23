@@ -124,6 +124,35 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 	}
 }
 
+// 製品の契約はすべての管理 operation に宣言を持つので、宣言の無い operation は契約を
+// 差し替えなければ作れない。全スコープを持つトークンで、宣言が空の operation と契約に無い
+// ルートの双方が拒否されることを見る。空の宣言を素通しにすると、宣言を書き忘れた
+// operation だけが全スコープで通るようになる。
+//
+//spec:covers EX-APITOKENS-004-03: 全スコープを持つ API アクセストークンでも、スコープの宣言が空の operation と契約に無いルートを insufficient_scope (interactive_session) で拒否すること。
+func TestAdminApiTokenScopeRejectsAnOperationWithoutADeclaration(t *testing.T) {
+	var all apitokendomain.Scopes
+	for _, scope := range apitokendomain.AllScopes() {
+		all = append(all, apitokendomain.Scope(scope))
+	}
+	contract := &spec.RuntimeContract{Operations: map[string]spec.Operation{
+		"ListWidgets": {Method: http.MethodGet, Path: "/api/admin/v1/widgets"},
+	}}
+	for _, routePath := range []string{"/api/admin/v1/widgets", "/api/admin/v1/not-in-the-contract"} {
+		t.Run(routePath, func(t *testing.T) {
+			c, _ := adminScopeContext(http.MethodGet, routePath)
+			err := requireAdminApiTokenScope(c, contract, all)
+			var scopeErr *InsufficientScopeError
+			if !errors.As(err, &scopeErr) {
+				t.Fatalf("err = %v, want InsufficientScopeError", err)
+			}
+			if scopeErr.Required != spec.InteractiveSessionScope {
+				t.Fatalf("required scope = %q, want %q", scopeErr.Required, spec.InteractiveSessionScope)
+			}
+		})
+	}
+}
+
 // TestAdminPortalTokenSkipsGranularScopes は、粒度スコープを持たない主体の経路が
 // 変わっていないことを確かめる。ブラウザーのポータルが提示する通常の OAuth アクセス
 // トークンは従来どおり idmagic.admin だけで判定する。

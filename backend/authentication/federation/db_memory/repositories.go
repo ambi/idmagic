@@ -118,6 +118,17 @@ func (r *IdentityRepository) ListByUser(_ context.Context, tenantID, userID stri
 	return out, nil
 }
 
+func (r *IdentityRepository) ExistsForProvider(_ context.Context, tenantID, providerID string) (bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, identity := range r.bySubject {
+		if identity.TenantID == tenantID && identity.ProviderID == providerID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (r *IdentityRepository) Delete(_ context.Context, tenantID, providerID, userID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

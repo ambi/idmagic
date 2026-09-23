@@ -2530,16 +2530,6 @@
           "204": {
             "description": "There is no content to send for this request, but the headers may be useful. "
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiTokens.Operations.RevokeApiTokenError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -9157,16 +9147,6 @@
           "204": {
             "description": "There is no content to send for this request, but the headers may be useful. "
           },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Authentication.Operations.DeleteIdentityProviderConnectionError400Body"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -9459,16 +9439,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.TestIdentityProviderConnectionHttpResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Authentication.Operations.TestIdentityProviderConnectionError400Body"
                 }
               }
             }

@@ -90,6 +90,11 @@ FROM federated_identities WHERE tenant_id=$1 AND provider_id=$2 AND local_user_i
 SELECT tenant_id,provider_id,external_subject,local_user_id,linked_at,last_login_at
 FROM federated_identities WHERE tenant_id=$1 AND local_user_id=$2 ORDER BY provider_id;
 
+-- name: FederatedIdentityExistsForProvider :one
+SELECT EXISTS (
+  SELECT 1 FROM federated_identities WHERE tenant_id=$1 AND provider_id=$2
+);
+
 -- name: DeleteFederatedIdentity :exec
 DELETE FROM federated_identities
 WHERE tenant_id=$1 AND provider_id=$2 AND local_user_id=$3;

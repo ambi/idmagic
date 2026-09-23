@@ -67,6 +67,8 @@ export const identityProvidersDictionary = defineDictionary(
     refreshed: 'メタデータを更新しました。',
     deleted: '接続を削除しました。',
     failed: '接続を更新できませんでした。',
+    connectionInUse:
+      'この接続に連携している利用者がいるため削除できません。先に連携を解除してください。',
     notFound: '指定された接続が見つかりませんでした。',
     statusActive: '有効',
     statusDisabled: '無効',
@@ -138,6 +140,8 @@ export const identityProvidersDictionary = defineDictionary(
     refreshed: 'Refreshed the metadata.',
     deleted: 'Deleted the connection.',
     failed: 'Could not update the connection.',
+    connectionInUse:
+      'Users are still linked to this connection, so it cannot be deleted. Unlink them first.',
     notFound: 'The requested connection was not found.',
     statusActive: 'Active',
     statusDisabled: 'Disabled',

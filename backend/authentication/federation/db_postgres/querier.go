@@ -17,6 +17,7 @@ type Querier interface {
 	DeleteExpiredReplays(ctx context.Context, arg DeleteExpiredReplaysParams) error
 	DeleteFederatedIdentity(ctx context.Context, arg DeleteFederatedIdentityParams) error
 	DeleteIdentityProviderConnection(ctx context.Context, arg DeleteIdentityProviderConnectionParams) error
+	FederatedIdentityExistsForProvider(ctx context.Context, arg FederatedIdentityExistsForProviderParams) (bool, error)
 	FindFederatedIdentityBySubject(ctx context.Context, arg FindFederatedIdentityBySubjectParams) (*FederatedIdentity, error)
 	FindFederatedIdentityByUserProvider(ctx context.Context, arg FindFederatedIdentityByUserProviderParams) (*FederatedIdentity, error)
 	FindIdentityProviderConnection(ctx context.Context, arg FindIdentityProviderConnectionParams) (*FindIdentityProviderConnectionRow, error)

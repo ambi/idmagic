@@ -304,11 +304,11 @@ func (d Deps) deleteAdmin(c *echo.Context) error {
 	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
-	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
-	if err != nil || connection == nil {
-		return c.NoContent(http.StatusNoContent)
+	err := federationusecases.DeleteConnection(c.Request().Context(), d.Broker, support.RequestTenantID(c), c.Param("provider_id"))
+	if errors.Is(err, federationusecases.ErrConnectionInUse) {
+		return support.WriteProblem(c, http.StatusConflict, "connection_in_use", "The identity provider still has linked identities.")
 	}
-	if err := d.Broker.Connections.Delete(c.Request().Context(), connection.TenantID, connection.ID); err != nil {
+	if err != nil {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)

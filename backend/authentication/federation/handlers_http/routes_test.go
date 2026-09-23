@@ -248,6 +248,51 @@ func TestDeleteAdminSucceedsForActiveConnection(t *testing.T) {
 	}
 }
 
+//spec:covers EX-AUTHENTICATION-037-02: 連携が残る接続の削除要求に 409 connection_in_use を返し、接続と連携を保存先に残すこと。連携を解除した後の同じ要求が 204 になることで、拒否が連携によるものだと示す。
+func TestDeleteAdminRefusesAConnectionWithLinkedIdentities(t *testing.T) {
+	e, repos := newAdminServer(t, nil)
+	now := time.Now().UTC()
+	if err := repos.Connections.Save(context.Background(), &federationdomain.IdentityProviderConnection{
+		ID: "google", TenantID: tenancydomain.DefaultTenantID, DisplayName: "Google",
+		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
+		Issuer: "https://accounts.example.com", ClientID: "client-1",
+		AuthorizationEndpoint: "https://accounts.example.com/authorize",
+		TokenEndpoint:         "https://accounts.example.com/token", JWKSURI: "https://accounts.example.com/jwks",
+		ClaimMapping:  federationdomain.ClaimMapping{Subject: "sub", Username: "email"},
+		LinkingPolicy: federationdomain.LinkingNone,
+		CreatedAt:     now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+		TenantID: tenancydomain.DefaultTenantID, ProviderID: "google", ExternalSubject: "external-1",
+		LocalUserID: "user-1", LinkedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	refused := httptest.NewRecorder()
+	e.ServeHTTP(refused, adminRequest(t, http.MethodDelete, "/api/admin/v1/identity-providers/google", nil))
+	if refused.Code != http.StatusConflict || !strings.Contains(refused.Body.String(), "urn:idmagic:error:connection_in_use") {
+		t.Fatalf("status=%d body=%s, want 409 connection_in_use", refused.Code, refused.Body.String())
+	}
+	if connection, err := repos.Connections.Find(context.Background(), tenancydomain.DefaultTenantID, "google"); err != nil || connection == nil {
+		t.Fatalf("the refused connection is gone: connection=%v err=%v", connection, err)
+	}
+	if identity, err := repos.Identities.FindByUserProvider(context.Background(), tenancydomain.DefaultTenantID, "google", "user-1"); err != nil || identity == nil {
+		t.Fatalf("the link is gone: identity=%v err=%v", identity, err)
+	}
+
+	if err := repos.Identities.Delete(context.Background(), tenancydomain.DefaultTenantID, "google", "user-1"); err != nil {
+		t.Fatal(err)
+	}
+	deleted := httptest.NewRecorder()
+	e.ServeHTTP(deleted, adminRequest(t, http.MethodDelete, "/api/admin/v1/identity-providers/google", nil))
+	if deleted.Code != http.StatusNoContent {
+		t.Fatalf("after unlinking status=%d body=%s, want 204", deleted.Code, deleted.Body.String())
+	}
+}
+
 // RED (interface: TestIdentityProviderConnection): the test action returns a
 // structured success/failure result reflecting real reachability, not a canned "valid" string.
 func TestTestAdminReportsStructuredReachabilityResult(t *testing.T) {

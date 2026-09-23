@@ -18,6 +18,7 @@ model ListApiTokensSuccess_200 {
 }
 
 union ListApiTokensError403Body {
+  IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -34,7 +35,7 @@ model ListApiTokensError403 {
 @get
 op ListApiTokens(
   @query tenant_id: string
-): ListApiTokensSuccess_200 | ListApiTokensError403;
+): ListApiTokensSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListApiTokensError403;
 
 @doc("The body issuing an API token. It carries no `client_id`: every API token is issued under the built-in `idmagic-api-token` client, so the caller has nothing to choose and the server never read the field it used to declare.")
 model IssueApiTokenHttpRequest {
@@ -60,7 +61,9 @@ model IssueApiTokenError400 {
 }
 
 union IssueApiTokenError403Body {
+  IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -84,17 +87,10 @@ op IssueApiToken(
   @body body: IssueApiTokenHttpRequest
 ): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApiTokenError403;
 
-union RevokeApiTokenError400Body {
-  IdMagic.Contract.InvalidRequestError,
-}
-
-model RevokeApiTokenError400 {
-  @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: RevokeApiTokenError400Body;
-}
-
 union RevokeApiTokenError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -116,7 +112,7 @@ model RevokeApiTokenSuccess_204 {
 op RevokeApiToken(
   @query tenant_id: string,
   @path id: string
-): RevokeApiTokenSuccess_204 | RevokeApiTokenError400 | RevokeApiTokenError403;
+): RevokeApiTokenSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeApiTokenError403;
 }
 
 }
