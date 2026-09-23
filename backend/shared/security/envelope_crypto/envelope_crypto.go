@@ -20,10 +20,10 @@ import (
 	"github.com/tink-crypto/tink-go/v2/tink"
 )
 
-// ErrDecryptionFailed signals a fail-closed refusal: unwrap
+// ErrDataKeyUnavailable signals a fail-closed refusal: unwrap
 // failure, AAD/tamper mismatch, or any other reason a secret cannot be
 // recovered. Callers must deny access, never fall back to plaintext.
-var ErrDecryptionFailed = errors.New("envelope_crypto: decryption failed (fail-closed)")
+var ErrDataKeyUnavailable = errors.New("envelope_crypto: data key unavailable (fail-closed)")
 
 // MasterKeyProvider is the swappable custody boundary for the key material
 // that wraps per-tenant DataEncryptionKeys. Implementations:
@@ -105,7 +105,7 @@ func (c *TinkEnvelopeCrypto) Wrap(ctx context.Context, tenantID string, plaintex
 func (c *TinkEnvelopeCrypto) Unwrap(ctx context.Context, tenantID string, wrapped []byte, masterKeyID string) ([]byte, error) {
 	plaintextDEK, err := c.masterKey.UnwrapDataKey(ctx, tenantID, wrapped, masterKeyID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: unwrap data key: %w", ErrDecryptionFailed, err)
+		return nil, fmt.Errorf("%w: unwrap data key: %w", ErrDataKeyUnavailable, err)
 	}
 	return plaintextDEK, nil
 }
@@ -129,7 +129,7 @@ func (c *TinkEnvelopeCrypto) Decrypt(_ context.Context, plaintextDEK []byte, aad
 	}
 	plaintext, err := primitive.Decrypt(ciphertext, aad.bytes())
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDecryptionFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrDataKeyUnavailable, err)
 	}
 	return plaintext, nil
 }

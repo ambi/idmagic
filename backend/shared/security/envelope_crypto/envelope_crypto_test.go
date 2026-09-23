@@ -148,8 +148,8 @@ func TestDecryptFailsClosedOnTamperedCiphertext(t *testing.T) {
 
 	if _, err := crypto.Decrypt(ctx, dek, aad, tampered); err == nil {
 		t.Fatal("expected Decrypt to fail-closed on tampered ciphertext")
-	} else if !errors.Is(err, ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 }
 
@@ -173,8 +173,8 @@ func TestDecryptFailsClosedOnAADMismatch(t *testing.T) {
 	wrongTenantAAD.TenantID = "tenant-b"
 	if _, err := crypto.Decrypt(ctx, dek, wrongTenantAAD, ciphertext); err == nil {
 		t.Fatal("expected Decrypt to fail-closed when tenant in AAD differs")
-	} else if !errors.Is(err, ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 
 	wrongFieldAAD := aad

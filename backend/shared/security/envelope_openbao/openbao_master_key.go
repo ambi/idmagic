@@ -44,11 +44,11 @@ func (p *OpenBaoMasterKeyProvider) WrapDataKey(ctx context.Context, tenantID str
 func (p *OpenBaoMasterKeyProvider) UnwrapDataKey(ctx context.Context, tenantID string, wrapped []byte, masterKeyID string) ([]byte, error) {
 	name := p.keyName(tenantID)
 	if masterKeyID != name {
-		return nil, fmt.Errorf("%w: envelope_openbao: master key id %q does not match tenant %q", envelope_crypto.ErrDecryptionFailed, masterKeyID, tenantID)
+		return nil, fmt.Errorf("%w: envelope_openbao: master key id %q does not match tenant %q", envelope_crypto.ErrDataKeyUnavailable, masterKeyID, tenantID)
 	}
 	plaintext, err := p.engine.DecryptDataKey(ctx, name, string(wrapped))
 	if err != nil {
-		return nil, fmt.Errorf("%w: envelope_openbao: decrypt data key: %w", envelope_crypto.ErrDecryptionFailed, err)
+		return nil, fmt.Errorf("%w: envelope_openbao: decrypt data key: %w", envelope_crypto.ErrDataKeyUnavailable, err)
 	}
 	return plaintext, nil
 }

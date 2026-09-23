@@ -45,11 +45,11 @@ func (p *CleartextMasterKeyProvider) WrapDataKey(_ context.Context, tenantID str
 
 func (p *CleartextMasterKeyProvider) UnwrapDataKey(_ context.Context, tenantID string, wrapped []byte, gotMasterKeyID string) ([]byte, error) {
 	if gotMasterKeyID != masterKeyID {
-		return nil, fmt.Errorf("%w: envelope_cleartext: unknown master key id %q", envelope_crypto.ErrDecryptionFailed, gotMasterKeyID)
+		return nil, fmt.Errorf("%w: envelope_cleartext: unknown master key id %q", envelope_crypto.ErrDataKeyUnavailable, gotMasterKeyID)
 	}
 	plaintext, err := p.primitive.Decrypt(wrapped, wrapAAD(tenantID))
 	if err != nil {
-		return nil, fmt.Errorf("%w: envelope_cleartext: unwrap data key: %w", envelope_crypto.ErrDecryptionFailed, err)
+		return nil, fmt.Errorf("%w: envelope_cleartext: unwrap data key: %w", envelope_crypto.ErrDataKeyUnavailable, err)
 	}
 	return plaintext, nil
 }

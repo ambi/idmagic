@@ -102,8 +102,8 @@ func TestUnwrapRejectsMismatchedMasterKeyID(t *testing.T) {
 
 	if _, err := provider.UnwrapDataKey(ctx, "tenant-b", wrapped, "idmagic/datakeys/tenant-a"); err == nil {
 		t.Fatal("expected UnwrapDataKey to fail-closed for a masterKeyID/tenant mismatch")
-	} else if !errors.Is(err, envelope_crypto.ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 }
 

@@ -52,8 +52,8 @@ func TestUnwrapRejectsWrongTenant(t *testing.T) {
 
 	if _, err := provider.UnwrapDataKey(ctx, "tenant-b", wrapped, masterKeyID); err == nil {
 		t.Fatal("expected UnwrapDataKey to fail-closed for the wrong tenant")
-	} else if !errors.Is(err, envelope_crypto.ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 }
 

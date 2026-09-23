@@ -163,7 +163,7 @@ func TestGetByVersionFailsClosedForDestroyedVersion(t *testing.T) {
 	cache := NewDataKeyCache(repo, crypto)
 	if _, err := cache.GetByVersion(ctx, "tenant-a", first.Version); err == nil {
 		t.Fatal("expected GetByVersion to fail-closed for a destroyed version")
-	} else if !errors.Is(err, envelope_crypto.ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 }

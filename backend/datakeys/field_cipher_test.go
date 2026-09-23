@@ -119,8 +119,8 @@ func TestFieldCipherDecryptFailsClosedAcrossRecords(t *testing.T) {
 
 	if _, err := fc.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-2:totp", "secret", version, ciphertext); err == nil {
 		t.Fatal("expected Decrypt to fail-closed for a mismatched record id")
-	} else if !errors.Is(err, envelope_crypto.ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 }
 
@@ -147,8 +147,8 @@ func TestFieldCipherDecryptFailsClosedForWrongKeyVersion(t *testing.T) {
 
 	if _, err := fc.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version+1, ciphertext); err == nil {
 		t.Fatal("expected Decrypt to fail-closed when the claimed key version does not match the one that encrypted the ciphertext")
-	} else if !errors.Is(err, envelope_crypto.ErrDecryptionFailed) {
-		t.Fatalf("expected ErrDecryptionFailed, got %v", err)
+	} else if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
 	}
 }
 

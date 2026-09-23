@@ -82,7 +82,7 @@ func (c *DataKeyCache) GetByVersion(ctx context.Context, tenantID string, versio
 		return nil, err
 	}
 	if key.Status == domain.DataKeyStatusDestroyed {
-		return nil, fmt.Errorf("%w: datakeys: version %d is destroyed", envelope_crypto.ErrDecryptionFailed, version)
+		return nil, fmt.Errorf("%w: datakeys: version %d is destroyed", envelope_crypto.ErrDataKeyUnavailable, version)
 	}
 	plaintextDEK, err := c.crypto.Unwrap(ctx, tenantID, key.WrappedDEK, key.MasterKeyID)
 	if err != nil {
