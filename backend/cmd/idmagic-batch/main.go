@@ -25,7 +25,7 @@ func main() {
 	buildInfo := version.Get()
 	logging.SetDefault(logging.New(os.Stdout, slog.LevelInfo, "idmagic-batch", buildInfo.Version))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	if err := run(ctx, os.Args[1:]); err != nil {
+	if err := run(ctx, os.Args[1:], launch{loader: bootstrap.NewConfigLoader(os.Getenv), assemble: bootstrap.Assemble}); err != nil {
 		stop()
 		logging.Error(context.Background(), "batch failed", "error", err)
 		os.Exit(1)
@@ -33,7 +33,14 @@ func main() {
 	stop()
 }
 
-func run(ctx context.Context, args []string) error {
+// launch は 1 回のバッチ起動が外界から受け取るものである。設定の拒否が依存の組み立てより
+// 前に起きることを、製品と同じ run から観測できるように引数で受ける。
+type launch struct {
+	loader   *bootstrap.ConfigLoader
+	assemble func(context.Context, bootstrap.SharedConfig) (*bootstrap.Dependencies, error)
+}
+
+func run(ctx context.Context, args []string, in launch) error {
 	if len(args) == 0 {
 		return errors.New(usage)
 	}
@@ -42,7 +49,7 @@ func run(ctx context.Context, args []string) error {
 		if len(args) != 1 {
 			return errors.New("retention-sweep accepts no flags")
 		}
-		return withDependencies(ctx, func(deps *bootstrap.Dependencies) error {
+		return withDependencies(ctx, in, func(deps *bootstrap.Dependencies) error {
 			return bootstrap.RunRetentionSweepOnce(ctx, deps, time.Now().UTC())
 		})
 	case "signing-key-lifecycle":
@@ -50,14 +57,14 @@ func run(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		return withDependencies(ctx, func(deps *bootstrap.Dependencies) error {
+		return withDependencies(ctx, in, func(deps *bootstrap.Dependencies) error {
 			return runSigningKeyLifecycle(ctx, deps, cfg, time.Now().UTC())
 		})
 	case "data-key-reencryption-sweep":
 		if len(args) != 1 {
 			return errors.New("data-key-reencryption-sweep accepts no flags")
 		}
-		return withDependencies(ctx, func(deps *bootstrap.Dependencies) error {
+		return withDependencies(ctx, in, func(deps *bootstrap.Dependencies) error {
 			return runDataKeyReencryptionSweep(ctx, deps, time.Now().UTC())
 		})
 	case "restore-consistency-check":
@@ -122,14 +129,13 @@ func runDataKeyReencryptionSweep(ctx context.Context, deps *bootstrap.Dependenci
 	return nil
 }
 
-func withDependencies(ctx context.Context, fn func(*bootstrap.Dependencies) error) error {
-	loader := bootstrap.NewConfigLoader(os.Getenv)
-	shared := bootstrap.LoadSharedConfig(loader)
-	if err := loader.Err(); err != nil {
+func withDependencies(ctx context.Context, in launch, fn func(*bootstrap.Dependencies) error) error {
+	shared := bootstrap.LoadSharedConfig(in.loader)
+	if err := in.loader.Err(); err != nil {
 		return fmt.Errorf("load startup configuration: %w", err)
 	}
 	bootstrap.LogFeatureWarnings(ctx, shared.Features)
-	deps, err := bootstrap.Assemble(ctx, shared)
+	deps, err := in.assemble(ctx, shared)
 	if err != nil {
 		return err
 	}
