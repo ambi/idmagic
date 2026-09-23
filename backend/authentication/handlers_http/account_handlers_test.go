@@ -7,12 +7,16 @@ package handlers_http_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/application"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/audit"
 	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
@@ -45,6 +49,7 @@ type accountHandlerFixture struct {
 	audit    *auditmemory.AuditEventStore
 	webauthn *webauthnmemory.WebAuthnCredentialRepository
 	recovery *recoverymemory.RecoveryCodeRepository
+	policies *appmemory.DefaultSignInPolicyRepository
 }
 
 func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
@@ -55,6 +60,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 	auditStore := auditmemory.NewAuditEventStore(0)
 	webauthnRepo := webauthnmemory.NewWebAuthnCredentialRepository()
 	recoveryRepo := recoverymemory.NewRecoveryCodeRepository()
+	policies := appmemory.NewDefaultSignInPolicyRepository()
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -66,10 +72,11 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 		MfaFactorRepo:          factors,
 		WebAuthnCredentialRepo: webauthnRepo,
 		RecoveryCodeRepo:       recoveryRepo,
+		Application:            application.Module{DefaultSignInPolicyRepo: policies},
 	})
 	return &accountHandlerFixture{
 		e: e, users: users, consents: consents, factors: factors, audit: auditStore,
-		webauthn: webauthnRepo, recovery: recoveryRepo,
+		webauthn: webauthnRepo, recovery: recoveryRepo, policies: policies,
 	}
 }
 
@@ -241,6 +248,63 @@ func TestHandleGetAccountSecurityReturnsEnrolledFactors(t *testing.T) {
 	}
 	if !strings.Contains(body, `"total":2`) || !strings.Contains(body, `"remaining":1`) {
 		t.Fatalf("expected recovery code counts total=2 remaining=1, got body=%s", body)
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-019, EX-AUTHENTICATION-019-01: 強制開始前のテナントデフォルトポリシーの開始日時を、認証要素が未登録の利用者にだけ返すこと
+func TestHandleGetAccountSecurityAnnouncesUpcomingMfaEnforcement(t *testing.T) {
+	f := newAccountHandlerFixture(t)
+	f.seedUser(t, "alice")
+	f.seedUser(t, "bob")
+	f.seedUser(t, "carol")
+	now := time.Now().UTC()
+	start := now.Add(72 * time.Hour).Truncate(time.Second)
+	grace := 3600
+	if err := f.policies.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "default", Name: "Require MFA", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+			MfaEnrollment: &appdomain.MfaEnrollmentPolicy{
+				EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true,
+			},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.factors.Save(context.Background(), &totpdomain.MfaFactor{
+		UserID: "bob", Type: spec.MfaFactorTOTP, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.webauthn.Save(context.Background(), &webauthndomain.WebAuthnCredential{
+		CredentialID: "carol-key", UserID: "carol", PublicKey: "pub", CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	enforcementStart := func(sub string) *time.Time {
+		t.Helper()
+		resp := f.request("/api/account/v1/security", sub)
+		if resp.Code != http.StatusOK {
+			t.Fatalf("%s: status=%d body=%s", sub, resp.Code, resp.Body.String())
+		}
+		var body struct {
+			MfaEnforcementStartAt *time.Time `json:"mfa_enforcement_start_at"`
+		}
+		if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body.MfaEnforcementStartAt
+	}
+	if got := enforcementStart("alice"); got == nil || !got.Equal(start) {
+		t.Fatalf("未登録の利用者への強制開始日時 = %v, want %v", got, start)
+	}
+	if got := enforcementStart("bob"); got != nil {
+		t.Fatalf("TOTP を登録済みの利用者へ強制開始日時 %v を返した", got)
+	}
+	if got := enforcementStart("carol"); got != nil {
+		t.Fatalf("パスキーを登録済みの利用者へ強制開始日時 %v を返した", got)
 	}
 }
 

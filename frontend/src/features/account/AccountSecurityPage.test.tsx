@@ -265,6 +265,67 @@ describe('AccountSecurityPage', () => {
 
   afterEach(() => restoreGlobals())
 
+  describe('MFA enforcement warning', () => {
+    const enforcementStart = '2026-10-01T00:00:00Z'
+    const warningText = t.mfaEnforcementWarning.replace(
+      '{date}',
+      formatAccountSecurityDateTime(enforcementStart, 'en'),
+    )
+
+    it('warns an unenrolled user of the enforcement date and asks them to enroll', async () => {
+      await renderWithRouterBase(
+        <AccountSecurityPage
+          csrfToken="csrf"
+          username="taro"
+          isAdmin={false}
+          security={{ ...security, mfa_enforcement_start_at: enforcementStart }}
+        />,
+      )
+      expect(screen.getByText(t.mfaEnforcementTitle)).toBeInTheDocument()
+      expect(screen.getByText(warningText)).toBeInTheDocument()
+    })
+
+    it('shows no warning when the response carries no enforcement date', async () => {
+      await renderWithRouterBase(
+        <AccountSecurityPage
+          csrfToken="csrf"
+          username="taro"
+          isAdmin={false}
+          security={security}
+        />,
+      )
+      expect(screen.queryByText(t.mfaEnforcementTitle)).not.toBeInTheDocument()
+    })
+
+    it('removes the warning once the user enrolls an authenticator app', async () => {
+      stubGlobal(
+        'fetch',
+        mock((url: string) => {
+          if (url.includes('/mfa/totp/enroll/start'))
+            return Promise.resolve(response(200, enrollment))
+          if (url.includes('/mfa/totp/enroll/confirm')) return Promise.resolve(response(204))
+          throw new Error(`unexpected fetch ${url}`)
+        }),
+      )
+      await renderWithRouterBase(
+        <AccountSecurityPage
+          csrfToken="csrf"
+          username="taro"
+          isAdmin={false}
+          security={{ ...security, mfa_enforcement_start_at: enforcementStart }}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: t.setUpTotp }))
+      fireEvent.change(await screen.findByLabelText(t.totpCode), {
+        target: { value: '123456' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: t.completeEnrollment }))
+
+      expect(await screen.findByText(t.totpEnrolled)).toBeInTheDocument()
+      expect(screen.queryByText(t.mfaEnforcementTitle)).not.toBeInTheDocument()
+    })
+  })
+
   it('enrolls a TOTP factor and shows a success notice', async () => {
     stubGlobal(
       'fetch',

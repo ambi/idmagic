@@ -73,6 +73,9 @@ export const accountSecurityDictionary = defineDictionary(
     revokeAll: 'すべて失効',
     regenerationWarning: '再生成すると既存のコードはすべて無効になります。',
     description: 'パスワードと二段階認証 (認証アプリ) を管理します。',
+    mfaEnforcementTitle: '二段階認証の登録が必要になります',
+    mfaEnforcementWarning:
+      '{date} から、サインインに二段階認証が必須になります。それまでに下の認証アプリまたはパスキーを登録してください。',
     trustedDevices: '記憶済みのデバイス',
     trustedDevicesDescription:
       '二段階目の確認を省略できるブラウザーです。心当たりのない端末があれば取り消してください。パスワードや認証要素を変更すると、すべて自動で取り消されます。',
@@ -183,6 +186,9 @@ export const accountSecurityDictionary = defineDictionary(
     revokeAll: 'Revoke all',
     regenerationWarning: 'Regenerating invalidates all existing codes.',
     description: 'Manage your password and two-factor authentication (authenticator app).',
+    mfaEnforcementTitle: 'Two-factor authentication will be required',
+    mfaEnforcementWarning:
+      'From {date}, signing in will require two-factor authentication. Set up an authenticator app or a passkey below before then.',
     trustedDevices: 'Remembered devices',
     trustedDevicesDescription:
       'Browsers that can skip the second verification step. Revoke anything you do not recognize. Changing your password or authenticators revokes all of them automatically.',

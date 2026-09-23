@@ -1151,6 +1151,7 @@ export type AccountSecurity = {
   factors: AccountMfaFactor[]
   webauthn_credentials: WebAuthnCredentialSummary[]
   recovery_codes: RecoveryCodeStatus
+  mfa_enforcement_start_at?: string
 }
 
 export type TotpEnrollmentStart = {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
@@ -38,11 +39,12 @@ type recoveryCodeStatusResponse struct {
 }
 
 type accountSecurityResponse struct {
-	PasswordChangedAt   *time.Time                          `json:"password_changed_at,omitempty"`
-	TotpEnrolled        bool                                `json:"totp_enrolled"`
-	Factors             []accountMfaFactorResponse          `json:"factors"`
-	WebAuthnCredentials []webAuthnCredentialSummaryResponse `json:"webauthn_credentials"`
-	RecoveryCodes       recoveryCodeStatusResponse          `json:"recovery_codes"`
+	PasswordChangedAt     *time.Time                          `json:"password_changed_at,omitempty"`
+	TotpEnrolled          bool                                `json:"totp_enrolled"`
+	Factors               []accountMfaFactorResponse          `json:"factors"`
+	WebAuthnCredentials   []webAuthnCredentialSummaryResponse `json:"webauthn_credentials"`
+	RecoveryCodes         recoveryCodeStatusResponse          `json:"recovery_codes"`
+	MfaEnforcementStartAt *time.Time                          `json:"mfa_enforcement_start_at,omitempty"`
 }
 
 func handleGetAccountSecurity(d Deps, c *echo.Context) error {
@@ -96,11 +98,29 @@ func handleGetAccountSecurity(d Deps, c *echo.Context) error {
 			GeneratedAt: status.GeneratedAt, Total: status.Total, Remaining: status.Remaining,
 		}
 	}
+	var enforcementStart *time.Time
+	if len(factors) == 0 && len(credentials) == 0 && d.DefaultSignInPolicyRepo != nil {
+		enforcementStart, err = upcomingMfaEnforcementStart(d, c)
+		if err != nil {
+			return err
+		}
+	}
 	return support.NoStoreJSON(c, http.StatusOK, accountSecurityResponse{
-		PasswordChangedAt:   user.Lifecycle.PasswordChangedAt,
-		TotpEnrolled:        totpEnrolled,
-		Factors:             responses,
-		WebAuthnCredentials: credentials,
-		RecoveryCodes:       recovery,
+		PasswordChangedAt:     user.Lifecycle.PasswordChangedAt,
+		TotpEnrolled:          totpEnrolled,
+		Factors:               responses,
+		WebAuthnCredentials:   credentials,
+		RecoveryCodes:         recovery,
+		MfaEnforcementStartAt: enforcementStart,
 	})
+}
+
+// upcomingMfaEnforcementStart は、アカウントポータルに適用されるテナントデフォルトポリシーが
+// これから MFA の強制を始める日時を返す。利用者向けの応答にはルールそのものを出さず、この日時だけを載せる。
+func upcomingMfaEnforcementStart(d Deps, c *echo.Context) (*time.Time, error) {
+	policy, err := d.DefaultSignInPolicyRepo.Get(c.Request().Context(), support.RequestTenantID(c))
+	if err != nil || policy == nil {
+		return nil, err
+	}
+	return appusecases.UpcomingMfaEnforcementStart(policy.Rules, time.Now().UTC()), nil
 }

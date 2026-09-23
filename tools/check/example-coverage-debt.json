@@ -29,12 +29,6 @@
       "finding": "UnassignApplicationDesiredState も実装が無い。既存の UnassignApplication は AssignmentRepo.Delete を呼んで常に ApplicationUnassigned を発行し、差分が無いことを呼び出し元へ返す戻り値を持たない。"
     },
     {
-      "id": "EX-AUTHENTICATION-019-01",
-      "reason": "強制開始日時が利用者向けの API にも UI にも現れず、具体例が要求する警告の表示を観測できない",
-      "blocked_by": "wi-572-the-mfa-enforcement-date-never-reaches-the-user",
-      "finding": "GET /api/account/v1/security は登録済みの認証要素と復旧コードの残数だけを返し、enforcement_start_at を運ばない。UI 側でこの値を読むのは管理者向けの AdminSignInPolicyPage だけである。強制開始前にパスワードだけのセッションが成立することは TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart が固定済み。"
-    },
-    {
       "id": "EX-IDMANAGEMENT-009-04",
       "reason": "実装が具体例の言う InvalidRequestError ではなく 404 client_not_found で拒否するため",
       "blocked_by": "wi-573-agent-admin-api-answers-with-undeclared-statuses",

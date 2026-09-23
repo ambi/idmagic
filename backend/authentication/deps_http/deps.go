@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
@@ -69,6 +70,10 @@ type Deps struct {
 	// NotificationPreferenceRepo は本人によるセキュリティ通知の受信設定 (wi-90)。
 	// nil なら取得は「すべて有効」を返し、更新は保存できないことを明示して失敗する。
 	NotificationPreferenceRepo securitynotificationports.PreferenceRepository
+
+	// DefaultSignInPolicyRepo はアカウントポータルに適用されるテナントデフォルトの sign-in policy。
+	// セキュリティ設定の応答で MFA の強制開始を予告するために読む。nil なら予告しない。
+	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
 }
 
 // NotificationPreferenceDeps はセキュリティ通知の受信設定の use case へ渡す依存。

@@ -290,6 +290,9 @@ model AccountSecurityResponse {
   factors: AccountMfaFactor[];
   webauthn_credentials: WebAuthnCredentialSummary[];
   recovery_codes: RecoveryCodeStatus;
+
+  @doc("When the tenant's default sign-in policy starts requiring MFA. Present only while that start is still in the\nfuture and the user has neither an MFA factor nor a WebAuthn credential, so the portal can warn the user to enroll\nbefore password-only sign-in stops working. The policy's rules themselves are not returned.")
+  mfa_enforcement_start_at?: utcDateTime;
 }
 
 

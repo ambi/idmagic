@@ -514,6 +514,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
 
 		NotificationPreferenceRepo: d.Authentication.NotificationPreferenceRepo,
+		DefaultSignInPolicyRepo:    d.Application.DefaultSignInPolicyRepo,
 	}
 	authhttp.RegisterRoutes(g, authDeps)
 

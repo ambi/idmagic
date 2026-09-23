@@ -61,10 +61,6 @@ func TestEvaluateSignInPolicyMfaSatisfied(t *testing.T) {
 
 // 強制開始前は、MFA を要求するルールでもパスワードだけのセッションを通す。
 //
-// EX-AUTHENTICATION-019-01 はこの分岐に加えて、UI が強制開始日時と事前登録を促す警告を
-// 出すことも要求している。アカウント API はその日時を返しておらず、UI も表示しない。
-// この記録は判定の側だけを固定し、具体例の主張はしない。決着は wi-572 が持つ。
-//
 //spec:covers REQ-AUTHENTICATION-019: 強制開始が将来のルールは MFA を要求せず、強制開始を過ぎると同じルールが要求することを固定する。
 func TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart(t *testing.T) {
 	now := time.Now().UTC()
@@ -91,6 +87,41 @@ func TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart(t *testing.
 	policy.Rules[0].MfaEnrollment.EnforcementStartAt = &past
 	if got := EvaluateSignInPolicy(policy, passwordOnly, "", now); got.Decision != PolicyStepUpRequired {
 		t.Fatalf("decision=%s, want %s (強制開始後)", got.Decision, PolicyStepUpRequired)
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-019: 予告する日時は MFA を要求する有効なルールの強制開始日時で、まだ来ていないときに限ることを固定する。
+func TestUpcomingMfaEnforcementStartReturnsOnlyAFutureStart(t *testing.T) {
+	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
+	grace := 3600
+	rule := func(strength domain.RequiredAuthnStrength, enabled bool, start time.Time) domain.SignInRule {
+		return domain.SignInRule{
+			RuleID: "rule-1", Name: "MFA", Enabled: enabled,
+			RequiredAuthn: domain.RequiredAuthnLevel{Strength: strength},
+			MfaEnrollment: &domain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace},
+		}
+	}
+	future := now.Add(time.Hour)
+
+	got := UpcomingMfaEnforcementStart([]domain.SignInRule{rule(domain.RequiredAuthnMfa, true, future)}, now)
+	if got == nil || !got.Equal(future) {
+		t.Fatalf("強制開始前: got %v, want %v", got, future)
+	}
+
+	for name, rules := range map[string][]domain.SignInRule{
+		"開始時刻ちょうど":   {rule(domain.RequiredAuthnMfa, true, now)},
+		"強制開始後":      {rule(domain.RequiredAuthnMfa, true, now.Add(-time.Hour))},
+		"無効なルール":     {rule(domain.RequiredAuthnMfa, false, future)},
+		"MFA を要求しない": {rule(domain.RequiredAuthnPassword, true, future)},
+		"登録期限の設定なし": {{
+			RuleID: "rule-1", Name: "MFA", Enabled: true,
+			RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+		}},
+		"ルールなし": nil,
+	} {
+		if got := UpcomingMfaEnforcementStart(rules, now); got != nil {
+			t.Errorf("%s: got %v, want nil", name, got)
+		}
 	}
 }
 

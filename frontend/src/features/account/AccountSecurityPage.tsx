@@ -1,4 +1,5 @@
 import {
+  IconAlertTriangle,
   IconArrowRight,
   IconBell,
   IconCircleCheck,
@@ -291,6 +292,10 @@ export function AccountSecurityPage({
       <Toast message={notice} onDismiss={() => setNotice('')} />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
+      {security.mfa_enforcement_start_at && !enrolled && passkeys.length === 0 ? (
+        <MfaEnforcementWarning startAt={security.mfa_enforcement_start_at} />
+      ) : null}
+
       <PasswordCard passwordChangedAt={security.password_changed_at} />
 
       <LinkedIdentitiesCard csrfToken={csrfToken} initialIdentities={linkedIdentities} />
@@ -353,6 +358,25 @@ export function AccountSecurityPage({
       </div>
       {dialog}
     </AccountShell>
+  )
+}
+
+function MfaEnforcementWarning({ startAt }: { startAt: string }) {
+  const t = useDictionary(accountSecurityDictionary)
+  const { locale } = useLocale()
+  return (
+    <Card className="flex items-start gap-3 border-amber-200 bg-amber-50/70 p-4">
+      <IconAlertTriangle className="mt-0.5 shrink-0 text-amber-600" size={20} aria-hidden="true" />
+      <div>
+        <p className="text-sm font-semibold text-amber-900">{t.mfaEnforcementTitle}</p>
+        <p className="mt-1 text-sm text-amber-900">
+          {t.mfaEnforcementWarning.replace(
+            '{date}',
+            formatAccountSecurityDateTime(startAt, locale, t.noRecord),
+          )}
+        </p>
+      </div>
+    </Card>
   )
 }
 

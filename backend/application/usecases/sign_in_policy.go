@@ -341,6 +341,17 @@ func MfaEnrollmentPolicyFromRules(rules []domain.SignInRule) *domain.MfaEnrollme
 	return nil
 }
 
+// UpcomingMfaEnforcementStart は、実効ルールが now より後に MFA の強制を始めるとき、その開始日時を返す。
+// 強制が既に始まっているか予定がなければ nil を返す。
+func UpcomingMfaEnforcementStart(rules []domain.SignInRule, now time.Time) *time.Time {
+	policy := MfaEnrollmentPolicyFromRules(rules)
+	if policy == nil || policy.EnforcementStartAt == nil || !now.Before(*policy.EnforcementStartAt) {
+		return nil
+	}
+	start := *policy.EnforcementStartAt
+	return &start
+}
+
 // normalizeCIDRs は許可 CIDR を検証・正規化する。空要素は無視し、パースできない値は拒否する。
 func normalizeCIDRs(raw []string) ([]string, error) {
 	if len(raw) == 0 {
