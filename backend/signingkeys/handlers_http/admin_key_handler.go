@@ -7,7 +7,11 @@ package handlers_http
 // Rotate は tenantId 付きの SigningKeyRotated を emit する。
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"time"
@@ -15,6 +19,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/signingkeys/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -84,11 +89,16 @@ func (d Deps) handleRotateTenantKey(c *echo.Context) error {
 	if err := d.requireTenantKeyManager(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	usage, err := rotationUsage(c.Request())
+	if err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "usage must be Signing or XmlFederationSigning.")
+	}
 	if d.KeyStore == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "key_store_unavailable", "The signing key store is not configured.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
+	ctx = signingports.WithKeyUsage(ctx, usage)
 	prev, _ := d.KeyStore.GetActiveKey(ctx)
 	next, err := usecases.RotateSigningKey(ctx, usecases.RotateSigningKeyDeps{
 		KeyStore: d.KeyStore,
@@ -121,7 +131,7 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 	key, err := d.KeyStore.Disable(ctx, c.Param("kid"))
 	if err != nil {
 		if errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
-			return support.WriteProblem(c, http.StatusBadRequest, "active_key_cannot_be_disabled", "The active signing key cannot be disabled. Rotate it first.")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The active signing key cannot be disabled. Rotate it first.")
 		}
 		return err
 	}
@@ -188,6 +198,35 @@ func (d Deps) requireTenantKeyManager(c *echo.Context) error {
 	}
 	return nil
 }
+
+// rotationUsage はローテーション要求の任意の本文から、ローテートする鍵の用途を読む。本文も usage も無ければ
+// Signing である。signingports.WithKeyUsage は不正な用途を黙って Signing として扱うため、
+// 契約にない値はここで拒否しないと、要求と違う鍵が回る。
+func rotationUsage(request *http.Request) (signingdomain.KeyUsage, error) {
+	payload, err := io.ReadAll(io.LimitReader(request.Body, maxRotationBodyBytes))
+	if err != nil {
+		return "", err
+	}
+	if len(bytes.TrimSpace(payload)) == 0 {
+		return signingdomain.KeyUsageSigning, nil
+	}
+	var body struct {
+		Usage *signingdomain.KeyUsage `json:"usage"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil {
+		return "", err
+	}
+	if body.Usage == nil {
+		return signingdomain.KeyUsageSigning, nil
+	}
+	if !body.Usage.Valid() {
+		return "", fmt.Errorf("unknown key usage %q", *body.Usage)
+	}
+	return *body.Usage, nil
+}
+
+// maxRotationBodyBytes は usage 1 つだけの本文に十分な上限である。
+const maxRotationBodyBytes = 1 << 10
 
 func toAdminKeyResponse(k *signingdomain.SigningKey) AdminKeyResponse {
 	return AdminKeyResponse{

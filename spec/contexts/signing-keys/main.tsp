@@ -101,6 +101,16 @@ model RotateTenantSigningKeySuccess_200 {
   @body body: IdMagic.Contract.AdminRotateKeyResponse;
 }
 
+union RotateTenantSigningKeyError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model RotateTenantSigningKeyError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: RotateTenantSigningKeyError400Body;
+}
+
 union RotateTenantSigningKeyError403Body {
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
@@ -124,14 +134,14 @@ model RotateTenantSigningKeyError503 {
   @body body: RotateTenantSigningKeyError503Body;
 }
 
-@doc("A tenant administrator generates a new signing key for their tenant and switches the active key to it. The previous\nactive key stays on the JWKS as verifying and is retired after SigningKeyMinJwksOverlap has passed; retiring is a\nseparate operational job. Rotation is per tenant, so its blast radius is confined to that tenant.")
+@doc("A tenant administrator generates a new key of the requested use for their tenant and switches the active key to it.\nThe previous active key stays published as verifying (on the JWKS for Signing, in the SAML and WS-Federation metadata\nfor XmlFederationSigning) and leaves after SigningKeyMinJwksOverlap has passed; archiving is a separate operational job.\nRotation is per tenant and per use, so its blast radius is confined to that tenant's keys of that use. A body whose\n`usage` is not a KeyUsage gives InvalidRequestError and rotates nothing.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("RotateTenantSigningKey")
 @route("/api/admin/v1/keys/rotate")
 @post
 op RotateTenantSigningKey(
-
-): RotateTenantSigningKeySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RotateTenantSigningKeyError403 | RotateTenantSigningKeyError503;
+  @body body?: IdMagic.Contract.AdminRotateKeyRequest
+): RotateTenantSigningKeySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RotateTenantSigningKeyError400 | RotateTenantSigningKeyError403 | RotateTenantSigningKeyError503;
 
 model DisableTenantKeySuccess_200 {
   @statusCode statusCode: 200;

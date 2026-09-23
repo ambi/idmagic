@@ -98,6 +98,13 @@ model AdminKeyListResponse {
 }
 
 
+@doc("Which of the tenant's keys a rotation replaces. The body is optional; without it, or without `usage`, the Signing key\nrotates. XmlFederationSigning rotates the default-scope XML key that WS-Federation and the default SAML IdP profile\nsign with; its previous certificate stays in the SAML and WS-Federation metadata for SigningKeyMinJwksOverlap.")
+model AdminRotateKeyRequest {
+  @doc("The use of the key to rotate. Defaults to Signing.")
+  usage?: KeyUsage;
+}
+
+
 @doc("The result of a key rotation: the kid of the new active key and of the one that just stepped down to verifying.")
 model AdminRotateKeyResponse {
   @doc("The new active signing key.")

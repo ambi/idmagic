@@ -1,11 +1,11 @@
 package keys_vault_test
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -19,6 +19,7 @@ import (
 	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 func tenantCtx() context.Context {
@@ -109,22 +110,31 @@ func TestVaultKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
 	}
 }
 
-// SCL scenario "XML federation署名資格情報は再起動後も同一である"。
+// API プロセスの再起動は、同じ Vault を背にした鍵ストアを作り直すことで表す。
+// 取り込み済みの公開鍵はプロセスの中にしか無いので、作り直した鍵ストアは Vault から
+// 同じ鍵を読み直すしかない。フィンガープリントは、SAML と WS-Federation のメタデータが
+// 公開する証明書の集合（KeyStoreSignerProvider.Certificates）から取る。
+//
+//spec:covers EX-SIGNINGKEYS-007-01: Vault プロバイダーで作成済みのテナントの XmlFederationSigning 鍵について、鍵ストアを作り直した後もメタデータが公開する有効な証明書の SHA-256 フィンガープリントが再起動前と一致する。
 func TestVaultXMLFederationCertificateIsStableAcrossStoreRestart(t *testing.T) {
 	engine := newFakeTransit()
-	ctx := signingports.WithKeyUsage(tenantCtx(), signingdomain.KeyUsageXMLFederationSigning)
-	firstStore := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
-	first, err := firstStore.GetActiveKey(ctx)
-	if err != nil {
-		t.Fatal(err)
+	ctx := tenantCtx()
+	fingerprints := func(store *adaptercrypto.VaultKeyStore) [][32]byte {
+		t.Helper()
+		certificates, err := samltoken.KeyStoreSignerProvider{KeyStore: store}.Certificates(ctx, time.Now().UTC())
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := make([][32]byte, 0, len(certificates))
+		for _, certificate := range certificates {
+			out = append(out, sha256.Sum256(certificate.Raw))
+		}
+		return out
 	}
-	secondStore := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
-	second, err := secondStore.GetActiveKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(first.CertificateDER, second.CertificateDER) {
-		t.Fatal("certificate must be reproducible from the same durable Vault key")
+	before := fingerprints(adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-"))
+	after := fingerprints(adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-"))
+	if len(before) != 1 || len(after) != 1 || before[0] != after[0] {
+		t.Fatalf("published fingerprints before=%x after=%x, want the same single certificate", before, after)
 	}
 }
 
