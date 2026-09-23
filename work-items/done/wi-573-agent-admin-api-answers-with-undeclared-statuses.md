@@ -66,7 +66,7 @@ affected_spec:
 
 ## Motivation
 
-[API ガイドライン](../docs/design/application/api-guidelines.md)の「ステータスコードの宣言」は、ハンドラーと手前のガードが返すステータスコードをすべて TypeSpec に宣言すると定める。
+[API ガイドライン](../../docs/design/application/api-guidelines.md)の「ステータスコードの宣言」は、ハンドラーと手前のガードが返すステータスコードをすべて TypeSpec に宣言すると定める。
 Agent 管理 API はこの規則を満たしていない。
 
 `writeAdminAgentError` (`backend/idmanagement/agent/handlers_http/admin_agent_handler.go`) は、次の拒否を宣言に無い status で書く。
