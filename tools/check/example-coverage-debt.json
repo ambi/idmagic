@@ -53,18 +53,6 @@
       "finding": "account:read に同意したグラントの交換は sub が同意した利用者、scope が account:read のトークンを返し、そのトークンで account リソースサーバーの参照だけが通る (wi-559 が TestAccountScopedGrantIssuesAUserBoundTokenTheAccountApiAccepts で固定した)。食い違うのは audience である。具体例はレルムの IdMagic API と言うが、製品は resource 指定の無いトークンの aud を client_id にし、レルムの API を resource indicator として指す経路を持たず、account リソースサーバーも audience を読んでいない。3 箇所の設計判断が要る (wi-559 が測定)。"
     },
     {
-      "id": "EX-OAUTH2-026-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
-      "blocked_by": "wi-569-declared-refusals-that-live-at-a-different-boundary",
-      "finding": "confidential クライアントの client_credentials は sub=client_id の access_token だけを返し refresh_token を返さず AccessTokenIssued も発行する (wi-559 が観測して固定した)。食い違うのは最後の Then である。具体例は public クライアントを client_credentials 付きで登録する要求を InvalidRequestError で拒否すると言うが、register_client.go は拒否せず、/token が unauthorized_client で拒否する。拒否を置く境界とエラー種別の双方が規範の判断になる (wi-559 が測定)。"
-    },
-    {
-      "id": "EX-OAUTH2-035-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
-      "blocked_by": "wi-569-declared-refusals-that-live-at-a-different-boundary",
-      "finding": "別テナントの管理者が同じ client_id を指定した参照は拒否され、対象のクライアントは動かない。食い違うのはエラー種別で、具体例は InvalidRequestError と言うが製品は 404 Not Found を返す。存在を漏らさない側に倒した実装であり、どちらが正かは規範の判断になる (wi-559 が測定)。"
-    },
-    {
       "id": "EX-PLATFORM-003-01",
       "reason": "配信行が発火元の変更と同じトランザクションで作られないため",
       "blocked_by": "wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction",

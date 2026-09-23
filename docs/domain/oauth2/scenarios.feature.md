@@ -602,8 +602,9 @@ Primary actor: `RegisteredClient`
 - Then レスポンスに access_token が含まれ refresh_token は含まれない
 - Then 発行された access_token の sub は client_id と一致する
 - Then "AccessTokenIssued" が発行される
-- When public クライアント "spa-app" を grant_types に "client_credentials" を含めて登録する
-- Then client_credentials は confidential 限定であるため InvalidRequestError で拒否される
+- Given public クライアント "spa-app" が grant_types に "client_credentials" を含めて登録済みである
+- When "spa-app" として client_credentials でトークンを要求する
+- Then client_credentials は confidential 限定であるため UnauthorizedClientError で拒否され、トークンは発行されない
 
 ## Rule: REQ-OAUTH2-027 デバイス認可フローでアクセストークンを取得できる
 
@@ -792,8 +793,9 @@ Primary actor: `TenantAdministrator`
 - When "operator" がクライアント "portal" を作成する
 - Then client_secret が一度だけ返る
 - When "operator" がクライアント "portal" を取得する
-- But 別テナントの管理者が同じ client_id を指定する
-- Then InvalidRequestError で拒否される
+- But 別テナントの管理者が同じ client_id を指定して取得、更新、削除する
+- Then どの操作も OAuth2ClientNotFoundError で拒否され、応答は存在しない client_id を指定したときと同じである
+- Then "acme" のクライアント "portal" は変更も削除もされない
 
 ## Rule: REQ-OAUTH2-036 管理者は Application から期限付きクライアントシークレットを追加発行し、個別に失効できる
 

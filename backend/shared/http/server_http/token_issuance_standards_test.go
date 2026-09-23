@@ -393,11 +393,11 @@ func (f *tiFixture) refreshRecord(t *testing.T, token string) *tokendomain.Refre
 // 載せて送るのが要点である。誤った資格情報で送ると、グラントを提供している実装でも
 // 同じ拒否になり、提供の有無を区別できない。
 //
-// EX-OAUTH2-026-01 の最後の Then（public クライアントの登録を InvalidRequestError で
-// 拒否する）は、この配線では観測できない。製品は登録では拒否せず、/token で
-// unauthorized_client を返す。どちらが正かは規範の判断なので wi-569 が持つ。
+// public クライアントの制限は登録ではなくグラントの利用に置く。RFC 6749 §4.4 が制限するのは
+// このグラントを使うことであり、登録を受理した public クライアントも /token で
+// unauthorized_client を受ける。
 //
-//spec:covers RFC6749-CLIENT-CREDENTIALS (optional) / RFC6749-PASSWORD-GRANT (excluded):
+//spec:covers RFC6749-CLIENT-CREDENTIALS (optional), RFC6749-PASSWORD-GRANT (excluded), EX-OAUTH2-026-01: confidential クライアントの client_credentials は sub=client_id の access_token だけを返して AccessTokenIssued を発行し、client_credentials を宣言した public クライアントは 400 unauthorized_client でトークンを受け取らず、password グラントは正しい資格情報でも通らない。
 func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
 
@@ -423,9 +423,10 @@ func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *test
 		"grant_type": {"client_credentials"}, "scope": {"read"},
 		"client_id": {tiPublicClientID},
 	}, func(request *http.Request) {})
-	if status == http.StatusOK {
-		t.Fatalf("public クライアントの client_credentials が受理された: %s", body)
+	if status != http.StatusBadRequest {
+		t.Fatalf("public クライアントの client_credentials: status=%d, want 400 body=%s", status, body)
 	}
+	assertOAuthErrorCode(t, "public クライアント", body, "unauthorized_client")
 	assertNoTokenInBody(t, "public クライアント", body)
 
 	// password グラントは、利用者の正しい資格情報を載せても提供されない。

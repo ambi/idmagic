@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -125,10 +126,6 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	}
 }
 
-// EX-OAUTH2-035-02 が名指すエラー種別はここで観測できない。具体例は InvalidRequestError と
-// 言うが、製品は別テナントのクライアントを 404 として扱い、存在そのものを漏らさない。
-// どちらが正かは規範の判断なので wi-569 が持つ。
-//
 //spec:covers EX-OAUTH2-035-01: 管理 API が返すのは所属テナントのクライアントだけで、別テナントに同じ client_id があっても参照できない。
 func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 	e, clients, _ := newAdminOAuth2ClientHandler(t)
@@ -156,6 +153,80 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("non-admin status=%d body=%s", response.Code, response.Body.String())
 	}
+}
+
+// 別テナントのクライアントは存在しないものとして扱う。拒否の状態行だけでなく、応答本文が
+// 存在しない client_id と区別できないことまで読まなければ、id の存在を推測させる実装を
+// 見逃す。
+//
+//spec:covers EX-OAUTH2-035-02: 別テナントの管理者による参照、更新、削除は、存在しない client_id と同じ 404 client_not_found の本文で拒否され、acme の portal は変更も削除もされず、Admin イベントも発行されない。
+func TestAdminOAuth2ClientOfAnotherTenantIsAnsweredAsNonexistent(t *testing.T) {
+	e, clients, events := newAdminOAuth2ClientHandler(t)
+	now := time.Now().UTC()
+	portal := &oauthdomain.OAuth2Client{
+		TenantID: "acme", ClientID: "portal", ClientType: spec.ClientPublic,
+		RedirectURIs:            []string{"https://portal.example/callback"},
+		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
+		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile: oauthdomain.FapiNone, CreatedAt: now, UpdatedAt: now,
+	}
+	clients.Seed(portal)
+	csrf, cookie := adminCSRF(t, e)
+
+	for _, operation := range []struct {
+		method string
+		body   any
+	}{
+		{http.MethodGet, nil},
+		{http.MethodPatch, map[string]any{"redirect_uris": []string{"https://attacker.example/callback"}}},
+		{http.MethodDelete, nil},
+	} {
+		crossTenant := adminJSONRequest(t, e, operation.method, "/api/admin/v1/clients/portal", csrf, cookie, operation.body)
+		nonexistent := adminJSONRequest(t, e, operation.method, "/api/admin/v1/clients/no-such-client", csrf, cookie, operation.body)
+		if crossTenant.Code != http.StatusNotFound || nonexistent.Code != http.StatusNotFound {
+			t.Fatalf("%s: cross-tenant status=%d nonexistent status=%d, want 404 for both body=%s",
+				operation.method, crossTenant.Code, nonexistent.Code, crossTenant.Body.String())
+		}
+		crossTenantProblem := problemWithoutInstance(t, crossTenant.Body.Bytes())
+		if crossTenantProblem["type"] != "urn:idmagic:error:client_not_found" {
+			t.Fatalf("%s: type=%v, want urn:idmagic:error:client_not_found body=%s",
+				operation.method, crossTenantProblem["type"], crossTenant.Body.String())
+		}
+		nonexistentProblem := problemWithoutInstance(t, nonexistent.Body.Bytes())
+		if !reflect.DeepEqual(crossTenantProblem, nonexistentProblem) {
+			t.Fatalf("%s: cross-tenant body=%v differs from nonexistent body=%v",
+				operation.method, crossTenantProblem, nonexistentProblem)
+		}
+		if strings.Contains(crossTenant.Body.String(), "portal.example") {
+			t.Fatalf("%s: 拒否した応答が対象の設定を運んでいる body=%s", operation.method, crossTenant.Body.String())
+		}
+	}
+
+	stored, err := clients.FindByID(context.Background(), "acme", "portal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored == nil {
+		t.Fatal("別テナントの管理者の削除で acme の portal が消えた")
+	}
+	if !reflect.DeepEqual(stored.RedirectURIs, portal.RedirectURIs) {
+		t.Fatalf("redirect_uris=%v, want %v (別テナントの管理者の更新が保存された)", stored.RedirectURIs, portal.RedirectURIs)
+	}
+	if len(*events) != 0 {
+		t.Fatalf("拒否した操作がイベントを発行した: %v", *events)
+	}
+}
+
+// problemWithoutInstance は problem 本文から要求ごとに変わる instance を除いた残りを返す。
+func problemWithoutInstance(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+	var problem map[string]any
+	if err := json.Unmarshal(body, &problem); err != nil {
+		t.Fatalf("problem 本文を JSON として読めない body=%s: %v", body, err)
+	}
+	delete(problem, "instance")
+	return problem
 }
 
 func newAdminOAuth2ClientHandler(

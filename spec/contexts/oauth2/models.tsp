@@ -1887,6 +1887,10 @@ model ClientRegistrationResponse {
 }
 
 
+@doc("No OAuth 2.0 client exists with the `client_id` given in this tenant. A client of another tenant is treated as nonexistent and answered the same way, so an id alone cannot confirm a client in a tenant the caller cannot see. RFC 9457 Problem Details with `type` = `urn:idmagic:error:client_not_found`.")
+model OAuth2ClientNotFoundError is ProblemDetails;
+
+
 @doc("The `authorization_details` type named by the request is not registered in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:type_not_found`.")
 model AuthorizationDetailTypeNotFoundError is ProblemDetails;
 

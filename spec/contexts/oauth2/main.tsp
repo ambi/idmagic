@@ -1045,6 +1045,16 @@ model GetAdminOAuth2ClientError403 {
   @body body: GetAdminOAuth2ClientError403Body;
 }
 
+union GetAdminOAuth2ClientError404Body {
+  IdMagic.Contract.OAuth2ClientNotFoundError,
+}
+
+model GetAdminOAuth2ClientError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminOAuth2ClientError404Body;
+}
+
 @doc("An administrator reads a client of their tenant. A client of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminOAuth2Client")
@@ -1052,7 +1062,7 @@ model GetAdminOAuth2ClientError403 {
 @get
 op GetAdminOAuth2Client(
   @path client_id: string
-): GetAdminOAuth2ClientSuccess_200 | GetAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminOAuth2ClientError403;
+): GetAdminOAuth2ClientSuccess_200 | GetAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminOAuth2ClientError403 | GetAdminOAuth2ClientError404;
 
 model CreateAdminOAuth2ClientSuccess_201 {
   @statusCode statusCode: 201;
@@ -1129,7 +1139,17 @@ model UpdateAdminOAuth2ClientError403 {
   @body body: UpdateAdminOAuth2ClientError403Body;
 }
 
-@doc("An administrator updates the client metadata of their tenant.")
+union UpdateAdminOAuth2ClientError404Body {
+  IdMagic.Contract.OAuth2ClientNotFoundError,
+}
+
+model UpdateAdminOAuth2ClientError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAdminOAuth2ClientError404Body;
+}
+
+@doc("An administrator updates the client metadata of their tenant. A client of another tenant is treated as nonexistent and is left untouched.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
@@ -1137,7 +1157,7 @@ model UpdateAdminOAuth2ClientError403 {
 op UpdateAdminOAuth2Client(
   @path client_id: string,
   @body body: IdMagic.Contract.AdminOAuth2ClientUpdateRequest
-): UpdateAdminOAuth2ClientSuccess_200 | UpdateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminOAuth2ClientError403;
+): UpdateAdminOAuth2ClientSuccess_200 | UpdateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminOAuth2ClientError403 | UpdateAdminOAuth2ClientError404;
 
 model DeleteAdminOAuth2ClientSuccess_204 {
   @statusCode statusCode: 204;
@@ -1166,6 +1186,16 @@ model DeleteAdminOAuth2ClientError403 {
   @body body: DeleteAdminOAuth2ClientError403Body;
 }
 
+union DeleteAdminOAuth2ClientError404Body {
+  IdMagic.Contract.OAuth2ClientNotFoundError,
+}
+
+model DeleteAdminOAuth2ClientError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DeleteAdminOAuth2ClientError404Body;
+}
+
 union DeleteAdminOAuth2ClientError409Body {
   IdMagic.Contract.ApplicationOwnedProtocolError,
 }
@@ -1176,14 +1206,14 @@ model DeleteAdminOAuth2ClientError409 {
   @body body: DeleteAdminOAuth2ClientError409Body;
 }
 
-@doc("An administrator deletes a client of their tenant that sits outside the catalogue. A client whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409) and the caller is directed to delete the Application instead.")
+@doc("An administrator deletes a client of their tenant that sits outside the catalogue. A client whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409) and the caller is directed to delete the Application instead. A client of another tenant is treated as nonexistent and is left untouched.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
 @delete
 op DeleteAdminOAuth2Client(
   @path client_id: string
-): DeleteAdminOAuth2ClientSuccess_204 | DeleteAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminOAuth2ClientError403 | DeleteAdminOAuth2ClientError409;
+): DeleteAdminOAuth2ClientSuccess_204 | DeleteAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminOAuth2ClientError403 | DeleteAdminOAuth2ClientError404 | DeleteAdminOAuth2ClientError409;
 
 model ListAdminMcpResourceServersSuccess_200 {
   @statusCode statusCode: 200;
