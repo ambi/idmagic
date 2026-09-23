@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/datakeys/db_memory"
+	"github.com/ambi/idmagic/backend/datakeys/domain"
 	"github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
@@ -74,6 +75,92 @@ func TestFieldCipherDecryptsExistingCiphertextAfterRotation(t *testing.T) {
 	}
 	if plaintext != "JBSWY3DPEHPK3PXP" {
 		t.Fatalf("plaintext=%q", plaintext)
+	}
+}
+
+//spec:covers EX-DATAKEYS-003-01: retiring の版 1 を disable すると保存先で disabled になり、キャッシュ済みだった版 1 の暗号文の復号が ErrDataKeyUnavailable で拒否される。
+func TestFieldCipherDecryptFailsClosedAfterDisablingTheRetiringVersion(t *testing.T) {
+	fieldCipher, deps := newTestFieldCipher(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatal(err)
+	}
+	version, ciphertext, err := fieldCipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	// disable の前に retiring の版 1 で復号が通ることを確かめ、版 1 の DEK をキャッシュに載せる。
+	if _, err := fieldCipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext); err != nil {
+		t.Fatalf("Decrypt under retiring v1 failed: %v", err)
+	}
+
+	if err := usecases.DisableTenantDataKey(ctx, deps, "tenant-a", version, now.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	disabled, err := deps.Repository.FindByVersion(ctx, "tenant-a", version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disabled.Status != domain.DataKeyStatusDisabled {
+		t.Fatalf("v1 status = %s, want disabled", disabled.Status)
+	}
+	plaintext, err := fieldCipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
+	if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("Decrypt under disabled v1 = (%q, %v), want ErrDataKeyUnavailable", plaintext, err)
+	}
+}
+
+// migratedFieldMigrator は、再暗号化ジョブがすべての参照を active の版へ移し終えた状態を表す。
+type migratedFieldMigrator struct{}
+
+func (migratedFieldMigrator) ReencryptBatch(context.Context, string, int, int) (int, error) {
+	return 0, nil
+}
+
+func (migratedFieldMigrator) PendingCount(context.Context, string, int) (int, error) {
+	return 0, nil
+}
+
+//spec:covers EX-DATAKEYS-005-01: 参照がすべて移行済みなら版 1 は destroyed になって wrapped_dek が消え、キャッシュを作り直しても版 1 の暗号文を復号できない。
+func TestFieldCipherCannotDecryptUnderADestroyedVersion(t *testing.T) {
+	fieldCipher, deps := newTestFieldCipher(t)
+	migrators := usecases.NewMigratorRegistry()
+	migrators.Register("mfa_totp_secret", migratedFieldMigrator{})
+	deps.Migrators = migrators
+	ctx := context.Background()
+	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatal(err)
+	}
+	version, ciphertext, err := fieldCipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := usecases.DestroyTenantDataKey(ctx, deps, "tenant-a", version, now.Add(2*time.Hour)); err != nil {
+		t.Fatalf("DestroyTenantDataKey failed: %v", err)
+	}
+	destroyed, err := deps.Repository.FindByVersion(ctx, "tenant-a", version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if destroyed.Status != domain.DataKeyStatusDestroyed || destroyed.WrappedDEK != nil {
+		t.Fatalf("v1 status=%s wrapped_dek=%d byte(s), want destroyed with no wrapped_dek", destroyed.Status, len(destroyed.WrappedDEK))
+	}
+	// 別のレプリカや再起動後のワーカーのように、版 1 を一度もキャッシュしていない FieldCipher でも同じである。
+	freshCipher := &FieldCipher{Repository: deps.Repository, Cache: usecases.NewDataKeyCache(deps.Repository, deps.Crypto), Crypto: deps.Crypto}
+	for name, cipher := range map[string]*FieldCipher{"same cache": fieldCipher, "fresh cache": freshCipher} {
+		plaintext, err := cipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
+		if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+			t.Fatalf("%s: Decrypt under destroyed v1 = (%q, %v), want ErrDataKeyUnavailable", name, plaintext, err)
+		}
 	}
 }
 

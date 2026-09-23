@@ -3,7 +3,10 @@ package usecases
 // 主要ユースケース追跡: REQ-DATAKEYS-002。
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -29,36 +32,126 @@ func newTestDeps(t *testing.T) Deps {
 	}
 }
 
-// TestBootstrapTenantDataKey covers scenario
-// "テナント初回利用時にDEKがbootstrapされる" (spec/contexts/data-keys.yaml).
-func TestBootstrapTenantDataKey(t *testing.T) {
+// generatedKeyRecorder は、ユースケースの内側で生成された平文 DEK を記録する。
+// 平文がどこにも残らないことは、生成された値そのものを探さなければ確かめられない。
+type generatedKeyRecorder struct {
+	envelope_crypto.EnvelopeCrypto
+	generated [][]byte
+}
+
+func (r *generatedKeyRecorder) GenerateDataKey(ctx context.Context) ([]byte, error) {
+	dek, err := r.EnvelopeCrypto.GenerateDataKey(ctx)
+	if err == nil {
+		r.generated = append(r.generated, append([]byte(nil), dek...))
+	}
+	return dek, err
+}
+
+//spec:covers EX-DATAKEYS-001-01: 保存先を読み直して版 1 が active であり、保存値は生成された平文 DEK を wrap した形だけで、保存値にもイベントにも平文 DEK が現れない。
+func TestBootstrapTenantDataKeyPersistsOnlyTheWrappedVersionOne(t *testing.T) {
 	deps := newTestDeps(t)
+	recorder := &generatedKeyRecorder{EnvelopeCrypto: deps.Crypto}
+	deps.Crypto = recorder
 	var emitted []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
+	ctx := context.Background()
 
-	key, err := BootstrapTenantDataKey(context.Background(), deps, "tenant-a", time.Now().UTC())
-	if err != nil {
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
 	}
-	if key.Version != 1 || key.Status != domain.DataKeyStatusActive {
-		t.Fatalf("expected active version 1, got version=%d status=%s", key.Version, key.Status)
+
+	stored, err := deps.Repository.FindActive(ctx, "tenant-a")
+	if err != nil {
+		t.Fatalf("FindActive failed: %v", err)
 	}
-	if len(key.WrappedDEK) == 0 {
-		t.Fatal("expected wrapped_dek to be populated")
+	if stored.Version != 1 || stored.Status != domain.DataKeyStatusActive {
+		t.Fatalf("stored key version=%d status=%s, want active version 1", stored.Version, stored.Status)
+	}
+	if len(recorder.generated) != 1 {
+		t.Fatalf("generated %d data keys, want 1", len(recorder.generated))
+	}
+	plaintextDEK := recorder.generated[0]
+	unwrapped, err := deps.Crypto.Unwrap(ctx, "tenant-a", stored.WrappedDEK, stored.MasterKeyID)
+	if err != nil {
+		t.Fatalf("Unwrap stored wrapped_dek failed: %v", err)
+	}
+	if !bytes.Equal(unwrapped, plaintextDEK) {
+		t.Fatal("stored wrapped_dek does not wrap the generated data key")
 	}
 
-	if len(emitted) != 1 {
-		t.Fatalf("expected 1 emitted event, got %d", len(emitted))
+	// 平文は生のバイト列としても、JSON が []byte に用いる base64 としても探す。
+	plaintextForms := [][]byte{plaintextDEK, []byte(base64.StdEncoding.EncodeToString(plaintextDEK))}
+	storedJSON, err := json.Marshal(stored)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if emitted[0].EventType() != "DataEncryptionKeyBootstrapped" {
-		t.Fatalf("unexpected event type: %s", emitted[0].EventType())
+	if len(emitted) != 1 || emitted[0].EventType() != "DataEncryptionKeyBootstrapped" {
+		t.Fatalf("expected 1 DataEncryptionKeyBootstrapped event, got %+v", emitted)
+	}
+	eventJSON, err := json.Marshal(emitted[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, form := range plaintextForms {
+		if bytes.Contains(stored.WrappedDEK, form) || bytes.Contains(storedJSON, form) {
+			t.Fatal("the stored data key carries the plaintext DEK")
+		}
+		if bytes.Contains(eventJSON, form) {
+			t.Fatalf("the bootstrap event carries the plaintext DEK: %s", eventJSON)
+		}
 	}
 }
 
-// TestRotateTenantDataKeyThenDecryptStillWorksForOldVersion covers scenario
-// "DEKをrotationしても既存暗号文が復号できる" (spec/contexts/data-keys.yaml): a
-// secret encrypted under the pre-rotation active DEK must still decrypt via
-// its retiring version after rotation.
+// wrapUnavailableMasterKeyProvider は、MasterKey プロバイダーが wrap の時点で到達できない状態を作る。
+type wrapUnavailableMasterKeyProvider struct {
+	envelope_crypto.MasterKeyProvider
+	unreachable bool
+}
+
+func (p *wrapUnavailableMasterKeyProvider) WrapDataKey(ctx context.Context, tenantID string, plaintextDEK []byte) ([]byte, string, error) {
+	if p.unreachable {
+		return nil, "", errors.New("fake: master key provider unreachable")
+	}
+	return p.MasterKeyProvider.WrapDataKey(ctx, tenantID, plaintextDEK)
+}
+
+//spec:covers EX-DATAKEYS-001-02: プロバイダーに到達できないと ErrDataKeyUnavailable で失敗し、保存先に DEK が無くイベントも出ない。到達できれば同じ配線で作成される。
+func TestBootstrapTenantDataKeyFailsClosedWhenMasterKeyProviderIsUnreachable(t *testing.T) {
+	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+	if err != nil {
+		t.Fatalf("NewCleartextMasterKeyProvider failed: %v", err)
+	}
+	provider := &wrapUnavailableMasterKeyProvider{MasterKeyProvider: master, unreachable: true}
+	var emitted []spec.DomainEvent
+	deps := Deps{
+		Repository: db_memory.NewDataKeyRepository(),
+		Crypto:     envelope_crypto.NewTinkEnvelopeCrypto(provider),
+		Emit:       func(e spec.DomainEvent) { emitted = append(emitted, e) },
+	}
+	ctx := context.Background()
+
+	_, err = BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC())
+	if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("BootstrapTenantDataKey error = %v, want ErrDataKeyUnavailable", err)
+	}
+	keys, err := deps.Repository.ListAll(ctx, "tenant-a")
+	if err != nil {
+		t.Fatalf("ListAll failed: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Fatalf("a refused bootstrap stored %d data key(s)", len(keys))
+	}
+	if len(emitted) != 0 {
+		t.Fatalf("a refused bootstrap emitted %+v", emitted)
+	}
+
+	provider.unreachable = false
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+		t.Fatalf("BootstrapTenantDataKey with a reachable provider failed: %v", err)
+	}
+}
+
+//spec:covers EX-DATAKEYS-002-01: 保存先で版 2 が active、版 1 が retiring になり、保存先から取り出した retiring の版 1 で回転前の暗号文を復号できる。
 func TestRotateTenantDataKeyThenDecryptStillWorksForOldVersion(t *testing.T) {
 	deps := newTestDeps(t)
 	ctx := context.Background()
@@ -89,6 +182,13 @@ func TestRotateTenantDataKeyThenDecryptStillWorksForOldVersion(t *testing.T) {
 	}
 	if len(emitted) != 1 || emitted[0].EventType() != "DataEncryptionKeyRotated" {
 		t.Fatalf("expected 1 DataEncryptionKeyRotated event, got %+v", emitted)
+	}
+	active, err := deps.Repository.FindActive(ctx, "tenant-a")
+	if err != nil {
+		t.Fatalf("FindActive failed: %v", err)
+	}
+	if active.Version != 2 {
+		t.Fatalf("stored active version = %d, want 2", active.Version)
 	}
 
 	// version 1 は retiring として保存に残り、そこから取り出した DEK で既存の
@@ -121,18 +221,34 @@ func TestRotateTenantDataKeyFailsWithoutBootstrap(t *testing.T) {
 	}
 }
 
-// TestDisableTenantDataKeyRejectsActiveVersion covers scenario
-// "activeなDEKは直接disableできない" (spec/contexts/data-keys.yaml).
+// InvalidRequestError は、ドメインでは ErrDataKeyIsActive として現れる。
+//
+//spec:covers EX-DATAKEYS-004-01: active の版 2 の disable は ErrDataKeyIsActive で拒否され、保存先で版 2 は active のままで、disable のイベントも出ない。
 func TestDisableTenantDataKeyRejectsActiveVersion(t *testing.T) {
 	deps := newTestDeps(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	key, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", now)
-	if err != nil {
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
 		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
 	}
-	if err := DisableTenantDataKey(ctx, deps, "tenant-a", key.Version, now); !errors.Is(err, domain.ErrDataKeyIsActive) {
+	if _, err := RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatalf("RotateTenantDataKey failed: %v", err)
+	}
+
+	var emitted []spec.DomainEvent
+	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
+	if err := DisableTenantDataKey(ctx, deps, "tenant-a", 2, now.Add(2*time.Hour)); !errors.Is(err, domain.ErrDataKeyIsActive) {
 		t.Fatalf("expected ErrDataKeyIsActive, got %v", err)
+	}
+	key, err := deps.Repository.FindByVersion(ctx, "tenant-a", 2)
+	if err != nil {
+		t.Fatalf("FindByVersion(v2) failed: %v", err)
+	}
+	if key.Status != domain.DataKeyStatusActive || key.DisabledAt != nil {
+		t.Fatalf("v2 status=%s disabled_at=%v after a refused disable, want active", key.Status, key.DisabledAt)
+	}
+	if len(emitted) != 0 {
+		t.Fatalf("a refused disable emitted %+v", emitted)
 	}
 }
 
@@ -221,11 +337,9 @@ func TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators(t *tes
 	}
 }
 
-// TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords covers the
-// new DestroyTenantDataKey destroy gate (spec/contexts/data-keys.yaml
-// DataKeyStillReferencedError, wi-97 T006): crypto-shredding a version while
-// a registered FieldMigrator still has unmigrated rows would make them
-// permanently undecryptable.
+// 登録済みの FieldMigrator に未移行の行が残るうちに版を破棄すると、その行は恒久的に復号できなくなる。
+//
+//spec:covers EX-DATAKEYS-005-02: 未移行の参照が残ると ErrDataKeyStillReferenced で拒否され、保存先で版 1 は retiring のまま wrapped_dek も残り、destroy のイベントも出ない。
 func TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords(t *testing.T) {
 	deps := newTestDeps(t)
 	ctx := context.Background()
@@ -240,6 +354,8 @@ func TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords(t *testing
 	migrators := NewMigratorRegistry()
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{pending: 3})
 	deps.Migrators = migrators
+	var emitted []spec.DomainEvent
+	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 
 	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now.Add(2*time.Hour)); !errors.Is(err, domain.ErrDataKeyStillReferenced) {
 		t.Fatalf("expected ErrDataKeyStillReferenced, got %v", err)
@@ -249,8 +365,14 @@ func TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords(t *testing
 	if err != nil {
 		t.Fatalf("FindByVersion failed: %v", err)
 	}
+	if key.Status != domain.DataKeyStatusRetiring {
+		t.Fatalf("v1 status = %s after a rejected destroy, want retiring", key.Status)
+	}
 	if key.WrappedDEK == nil {
 		t.Fatal("expected wrapped_dek to survive a rejected destroy")
+	}
+	if len(emitted) != 0 {
+		t.Fatalf("a rejected destroy emitted %+v", emitted)
 	}
 }
 

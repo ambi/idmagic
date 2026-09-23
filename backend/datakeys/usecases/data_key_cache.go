@@ -65,10 +65,9 @@ func (c *DataKeyCache) GetActive(ctx context.Context, tenantID string) (version 
 	return key.Version, plaintextDEK, nil
 }
 
-// GetByVersion returns the plaintext DEK for a specific (tenant, version),
-// used to decrypt ciphertext encrypted under a version that has since
-// rotated out to retiring. A destroyed version fails closed rather than
-// returning stale cached material (crypto-shredding).
+// GetByVersion は (テナント, 版) の平文 DEK を返す。回転して retiring になった版の暗号文の復号に使う。
+// disabled（即時ロックアウト）と destroyed（crypto-shredding）の版は、wrapped_dek が残っていても
+// フェイルクローズで拒否する。キャッシュはライフサイクルの操作が無効化するので、ここでは保存先の状態だけを見る。
 func (c *DataKeyCache) GetByVersion(ctx context.Context, tenantID string, version int) ([]byte, error) {
 	c.mu.RLock()
 	if dek, ok := c.byVersion[tenantVersion{tenantID, version}]; ok {
@@ -81,8 +80,8 @@ func (c *DataKeyCache) GetByVersion(ctx context.Context, tenantID string, versio
 	if err != nil {
 		return nil, err
 	}
-	if key.Status == domain.DataKeyStatusDestroyed {
-		return nil, fmt.Errorf("%w: datakeys: version %d is destroyed", envelope_crypto.ErrDataKeyUnavailable, version)
+	if key.Status == domain.DataKeyStatusDisabled || key.Status == domain.DataKeyStatusDestroyed {
+		return nil, fmt.Errorf("%w: datakeys: version %d is %s", envelope_crypto.ErrDataKeyUnavailable, version, key.Status)
 	}
 	plaintextDEK, err := c.crypto.Unwrap(ctx, tenantID, key.WrappedDEK, key.MasterKeyID)
 	if err != nil {

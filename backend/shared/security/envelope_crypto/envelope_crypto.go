@@ -20,9 +20,10 @@ import (
 	"github.com/tink-crypto/tink-go/v2/tink"
 )
 
-// ErrDataKeyUnavailable signals a fail-closed refusal: unwrap
-// failure, AAD/tamper mismatch, or any other reason a secret cannot be
-// recovered. Callers must deny access, never fall back to plaintext.
+// ErrDataKeyUnavailable は契約の DataKeyUnavailableError にあたる、フェイルクローズの拒否である。
+// wrap と unwrap の失敗（プロバイダーに到達できない場合を含む）、AAD の不一致（改ざん）、
+// そのほか DEK を使えないあらゆる理由を含む。
+// 呼び出し側はアクセスを拒否し、平文へ退避してはならない。
 var ErrDataKeyUnavailable = errors.New("envelope_crypto: data key unavailable (fail-closed)")
 
 // MasterKeyProvider is the swappable custody boundary for the key material
@@ -97,7 +98,7 @@ func (c *TinkEnvelopeCrypto) GenerateDataKey(_ context.Context) ([]byte, error) 
 func (c *TinkEnvelopeCrypto) Wrap(ctx context.Context, tenantID string, plaintextDEK []byte) ([]byte, string, error) {
 	wrapped, masterKeyID, err := c.masterKey.WrapDataKey(ctx, tenantID, plaintextDEK)
 	if err != nil {
-		return nil, "", fmt.Errorf("envelope_crypto: wrap data key: %w", err)
+		return nil, "", fmt.Errorf("%w: wrap data key: %w", ErrDataKeyUnavailable, err)
 	}
 	return wrapped, masterKeyID, nil
 }

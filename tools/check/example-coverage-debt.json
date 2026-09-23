@@ -41,46 +41,6 @@
       "finding": "GET /api/account/v1/security は登録済みの認証要素と復旧コードの残数だけを返し、enforcement_start_at を運ばない。UI 側でこの値を読むのは管理者向けの AdminSignInPolicyPage だけである。強制開始前にパスワードだけのセッションが成立することは TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart が固定済み。"
     },
     {
-      "id": "EX-DATAKEYS-001-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-001-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-002-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-003-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-004-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-005-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-005-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-006-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-006-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-DATAKEYS-006-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
       "id": "EX-IDMANAGEMENT-009-04",
       "reason": "実装が具体例の言う InvalidRequestError ではなく 404 client_not_found で拒否するため",
       "blocked_by": "wi-573-agent-admin-api-answers-with-undeclared-statuses",

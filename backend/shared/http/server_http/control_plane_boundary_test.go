@@ -2,6 +2,7 @@ package server_http
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -48,6 +49,7 @@ type controlPlaneBoundaryServer struct {
 	tenants        *observedTenantRepository
 	jobs           *jobsmemory.JobRepository
 	otherJob       *jobdomain.Job
+	dataKeys       *datakeysmemory.DataKeyRepository
 	otherAuditID   string
 	controlAuditID string
 }
@@ -80,7 +82,15 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 		t.Fatal(err)
 	}
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKey)
-	if _, err := datakeysusecases.BootstrapTenantDataKey(t.Context(), datakeysusecases.Deps{Repository: dataKeyStore, Crypto: crypto}, "acme", now); err != nil {
+	// DEK は 2 テナントに置き、acme だけ回転させる。健全性一覧がテナントごとの版を
+	// 取り違えずに返すかを、版の違いで判定できるようにするためである。
+	dataKeyDeps := datakeysusecases.Deps{Repository: dataKeyStore, Crypto: crypto}
+	for _, tenantID := range []string{tenancydomain.DefaultTenantID, "acme"} {
+		if _, err := datakeysusecases.BootstrapTenantDataKey(t.Context(), dataKeyDeps, tenantID, now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := datakeysusecases.RotateTenantDataKey(t.Context(), dataKeyDeps, "acme", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -125,7 +135,7 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 		Audit:       audit.Module{AuditEventRepo: auditStore},
 	})
 	return &controlPlaneBoundaryServer{
-		e: e, tenants: tenants, jobs: jobStore, otherJob: otherJob,
+		e: e, tenants: tenants, jobs: jobStore, otherJob: otherJob, dataKeys: dataKeyStore,
 		otherAuditID: "audit-acme", controlAuditID: "audit-control",
 	}
 }
@@ -149,6 +159,9 @@ func assertHealthRefusal(t *testing.T, rec *httptest.ResponseRecorder, findAllCa
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusForbidden, rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), "access_denied") {
+		t.Errorf("refusal body is not access_denied: %s", rec.Body.String())
+	}
 	for _, leaked := range []string{"tenant_id", "provider_reachable", "active_kid", "acme", "default"} {
 		if strings.Contains(rec.Body.String(), leaked) {
 			t.Errorf("refusal body contains cross-tenant health data %q: %s", leaked, rec.Body.String())
@@ -166,11 +179,69 @@ func TestControlPlaneSigningKeyHealthRejectsSystemAdminOutsideControlPlaneTenant
 	assertHealthRefusal(t, rec, srv.tenants.findAllCalls.Load())
 }
 
-//spec:covers REQ-DATAKEYS-006: 制御面テナント外の system_admin は、DEK ヘルスも横断収集も観測できない。
+//spec:covers REQ-DATAKEYS-006, EX-DATAKEYS-006-03: 制御面テナント外の system_admin は 403 access_denied で拒否され、本文に他テナントの識別子も DEK の状態も無く、横断収集の FindAll も呼ばれない。
 func TestControlPlaneDataKeyHealthRejectsSystemAdminOutsideControlPlaneTenant(t *testing.T) {
 	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("acme-operator", "acme", "system_admin"))
 	rec := getControlPlaneBoundary(srv.e, "/realms/acme/api/admin/v1/data-keys/health")
 	assertHealthRefusal(t, rec, srv.tenants.findAllCalls.Load())
+}
+
+//spec:covers EX-DATAKEYS-006-02: 制御面テナントに所属していても system_admin を持たない主体は 403 access_denied で拒否され、本文に DEK の状態が無く、横断収集の FindAll も呼ばれない。
+func TestControlPlaneDataKeyHealthRejectsControlPlaneMemberWithoutSystemAdmin(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-admin", tenancydomain.DefaultTenantID, "admin"))
+	rec := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/data-keys/health")
+	assertHealthRefusal(t, rec, srv.tenants.findAllCalls.Load())
+}
+
+//spec:covers EX-DATAKEYS-006-01: 制御面テナントの system_admin には、DEK を持つ各テナントの active_version、status、プロバイダーへの到達性が返り、wrapped_dek と master_key_id は応答のどこにも現れない。
+func TestControlPlaneDataKeyHealthListsEveryTenantWithoutKeyMaterial(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
+	rec := getControlPlaneBoundary(srv.e, "/realms/default/api/admin/v1/data-keys/health")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Tenants []map[string]any `json:"tenants"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	wantActiveVersion := map[string]float64{tenancydomain.DefaultTenantID: 1, "acme": 2}
+	disclosed := map[string]bool{"tenant_id": true, "active_version": true, "status": true, "provider": true, "provider_reachable": true, "rotated_at": true}
+	seen := map[string]bool{}
+	for _, entry := range body.Tenants {
+		tenantID, _ := entry["tenant_id"].(string)
+		seen[tenantID] = true
+		if entry["active_version"] != wantActiveVersion[tenantID] || entry["status"] != "active" || entry["provider_reachable"] != true {
+			t.Errorf("tenant %q health = %v, want active_version %v, status active, provider reachable", tenantID, entry, wantActiveVersion[tenantID])
+		}
+		for field := range entry {
+			if !disclosed[field] {
+				t.Errorf("tenant %q health discloses %q: %v", tenantID, field, entry)
+			}
+		}
+	}
+	for tenantID := range wantActiveVersion {
+		if !seen[tenantID] {
+			t.Errorf("health omits tenant %q: %s", tenantID, rec.Body.String())
+		}
+	}
+
+	// 項目名に出なくても、鍵素材の値が他の項目へ紛れ込めば漏洩である。保存値そのものを本文から探す。
+	for tenantID := range wantActiveVersion {
+		keys, err := srv.dataKeys.ListAll(t.Context(), tenantID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range keys {
+			for _, material := range []string{base64.StdEncoding.EncodeToString(key.WrappedDEK), key.MasterKeyID} {
+				if strings.Contains(rec.Body.String(), material) {
+					t.Errorf("health body carries key material of tenant %q version %d", tenantID, key.Version)
+				}
+			}
+		}
+	}
 }
 
 // browserPost はブラウザー経路の変更操作を、CSRF トークンと Origin を揃えて送る。
