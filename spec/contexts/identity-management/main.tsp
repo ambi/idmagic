@@ -2507,6 +2507,16 @@ model GetAgentError403 {
   @body body: GetAgentError403Body;
 }
 
+union GetAgentError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model GetAgentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAgentError404Body;
+}
+
 @doc("An administrator reads one Agent. An Agent of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("GetAgent")
@@ -2514,7 +2524,7 @@ model GetAgentError403 {
 @get
 op GetAgent(
   @path agent_id: string
-): GetAgentSuccess_200 | GetAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAgentError403;
+): GetAgentSuccess_200 | GetAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAgentError403 | GetAgentError404;
 
 model RegisterAgentSuccess_201 {
   @statusCode statusCode: 201;
@@ -2607,8 +2617,19 @@ model UpdateAgentError403 {
   @body body: UpdateAgentError403Body;
 }
 
+union UpdateAgentError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model UpdateAgentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAgentError404Body;
+}
+
 union UpdateAgentError409Body {
   IdMagic.Contract.AgentNameConflictError,
+  IdMagic.Contract.AgentKilledError,
 }
 
 model UpdateAgentError409 {
@@ -2639,7 +2660,7 @@ model UpdateAgentError422 {
 op UpdateAgent(
   @path agent_id: string,
   @body body: IdMagic.Contract.AgentUpdateRequest
-): UpdateAgentSuccess_200 | UpdateAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAgentError403 | UpdateAgentError409 | UpdateAgentError422;
+): UpdateAgentSuccess_200 | UpdateAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAgentError403 | UpdateAgentError404 | UpdateAgentError409 | UpdateAgentError422;
 
 model DisableAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2656,6 +2677,9 @@ model DisableAgentError400 {
 }
 
 union DisableAgentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2665,13 +2689,33 @@ model DisableAgentError403 {
   @body body: DisableAgentError403Body;
 }
 
+union DisableAgentError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model DisableAgentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DisableAgentError404Body;
+}
+
+union DisableAgentError409Body {
+  IdMagic.Contract.AgentKilledError,
+}
+
+model DisableAgentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: DisableAgentError409Body;
+}
+
 @doc("An administrator suspends an Agent reversibly.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DisableAgent")
 @route("/api/admin/v1/agents/{agent_id}/disable")
 @post
 op DisableAgent(
-  @path agent_id: string,): DisableAgentSuccess_204 | DisableAgentError400 | DisableAgentError403;
+  @path agent_id: string,): DisableAgentSuccess_204 | DisableAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableAgentError403 | DisableAgentError404 | DisableAgentError409;
 
 model EnableAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2688,6 +2732,9 @@ model EnableAgentError400 {
 }
 
 union EnableAgentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2697,13 +2744,33 @@ model EnableAgentError403 {
   @body body: EnableAgentError403Body;
 }
 
+union EnableAgentError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model EnableAgentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: EnableAgentError404Body;
+}
+
+union EnableAgentError409Body {
+  IdMagic.Contract.AgentKilledError,
+}
+
+model EnableAgentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: EnableAgentError409Body;
+}
+
 @doc("An administrator returns a suspended Agent to service.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("EnableAgent")
 @route("/api/admin/v1/agents/{agent_id}/enable")
 @post
 op EnableAgent(
-  @path agent_id: string,): EnableAgentSuccess_204 | EnableAgentError400 | EnableAgentError403;
+  @path agent_id: string,): EnableAgentSuccess_204 | EnableAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableAgentError403 | EnableAgentError404 | EnableAgentError409;
 
 model KillAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2720,6 +2787,9 @@ model KillAgentError400 {
 }
 
 union KillAgentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2729,13 +2799,33 @@ model KillAgentError403 {
   @body body: KillAgentError403Body;
 }
 
+union KillAgentError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model KillAgentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: KillAgentError404Body;
+}
+
+union KillAgentError409Body {
+  IdMagic.Contract.AgentKilledError,
+}
+
+model KillAgentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: KillAgentError409Body;
+}
+
 @doc("An administrator kills an Agent. This is one-way and terminal; there is no way back.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("KillAgent")
 @route("/api/admin/v1/agents/{agent_id}/kill")
 @post
 op KillAgent(
-  @path agent_id: string,): KillAgentSuccess_204 | KillAgentError400 | KillAgentError403;
+  @path agent_id: string,): KillAgentSuccess_204 | KillAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | KillAgentError403 | KillAgentError404 | KillAgentError409;
 
 model DeleteAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2752,6 +2842,9 @@ model DeleteAgentError400 {
 }
 
 union DeleteAgentError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
@@ -2761,6 +2854,26 @@ model DeleteAgentError403 {
   @body body: DeleteAgentError403Body;
 }
 
+union DeleteAgentError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model DeleteAgentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DeleteAgentError404Body;
+}
+
+union DeleteAgentError409Body {
+  IdMagic.Contract.AgentKilledError,
+}
+
+model DeleteAgentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: DeleteAgentError409Body;
+}
+
 @doc("An administrator deletes an Agent. Its bindings are released by cascade. A killed Agent cannot be deleted, fail-closed: deleting it would let the OAuth2Client it was bound to fetch tokens again through client_credentials without limit.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAgent")
@@ -2768,7 +2881,7 @@ model DeleteAgentError403 {
 @delete
 op DeleteAgent(
   @path agent_id: string
-): DeleteAgentSuccess_204 | DeleteAgentError400 | DeleteAgentError403;
+): DeleteAgentSuccess_204 | DeleteAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAgentError403 | DeleteAgentError404 | DeleteAgentError409;
 
 model BindAgentCredentialSuccess_204 {
   @statusCode statusCode: 204;
@@ -2797,6 +2910,37 @@ model BindAgentCredentialError403 {
   @body body: BindAgentCredentialError403Body;
 }
 
+union BindAgentCredentialError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model BindAgentCredentialError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: BindAgentCredentialError404Body;
+}
+
+union BindAgentCredentialError409Body {
+  IdMagic.Contract.AgentKilledError,
+  IdMagic.Contract.AgentClientAlreadyBoundError,
+}
+
+model BindAgentCredentialError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: BindAgentCredentialError409Body;
+}
+
+union BindAgentCredentialError422Body {
+  IdMagic.Contract.OAuth2ClientNotFoundError,
+}
+
+model BindAgentCredentialError422 {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: BindAgentCredentialError422Body;
+}
+
 @doc("An administrator binds an OAuth2Client to an Agent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("BindAgentCredential")
@@ -2805,7 +2949,7 @@ model BindAgentCredentialError403 {
 op BindAgentCredential(
   @path agent_id: string,
   @body body: IdMagic.Contract.AgentCredentialBindRequest
-): BindAgentCredentialSuccess_204 | BindAgentCredentialError400 | IdMagic.Contract.AuthenticationRequiredResponse | BindAgentCredentialError403;
+): BindAgentCredentialSuccess_204 | BindAgentCredentialError400 | IdMagic.Contract.AuthenticationRequiredResponse | BindAgentCredentialError403 | BindAgentCredentialError404 | BindAgentCredentialError409 | BindAgentCredentialError422;
 
 model UnbindAgentCredentialSuccess_204 {
   @statusCode statusCode: 204;
@@ -2834,6 +2978,16 @@ model UnbindAgentCredentialError403 {
   @body body: UnbindAgentCredentialError403Body;
 }
 
+union UnbindAgentCredentialError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model UnbindAgentCredentialError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UnbindAgentCredentialError404Body;
+}
+
 @doc("An administrator unbinds an OAuth2Client from an Agent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UnbindAgentCredential")
@@ -2842,7 +2996,7 @@ model UnbindAgentCredentialError403 {
 op UnbindAgentCredential(
   @path agent_id: string,
   @path client_id: string
-): UnbindAgentCredentialSuccess_204 | UnbindAgentCredentialError400 | IdMagic.Contract.AuthenticationRequiredResponse | UnbindAgentCredentialError403;
+): UnbindAgentCredentialSuccess_204 | UnbindAgentCredentialError400 | IdMagic.Contract.AuthenticationRequiredResponse | UnbindAgentCredentialError403 | UnbindAgentCredentialError404;
 }
 
 }

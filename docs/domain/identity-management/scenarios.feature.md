@@ -414,8 +414,10 @@ Primary actor: `TenantAdministrator`
 - Then エージェント "batch-agent" が指定した区分で登録される
 - When 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
 - But 別テナントのクライアント資格情報をバインドする
-- Then テナント "acme" の Agent にテナント "default" の `client_id` を指定する
-- And エラー "InvalidRequestError"
+- And テナント "acme" の Agent にテナント "default" の `client_id` を指定する
+- Then エラー "OAuth2ClientNotFoundError"
+- And 応答は存在しない `client_id` を指定したときと同じである
+- And エージェント "batch-agent" にクライアント資格情報は関連付けられない
 
 ## Rule: REQ-IDMANAGEMENT-010 管理者は無効化したユーザーを再有効化できる
 

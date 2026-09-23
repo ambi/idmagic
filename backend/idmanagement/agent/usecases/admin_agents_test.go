@@ -48,6 +48,10 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 		ID: "user_new", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user-new",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
 	})
+	userRepo.Seed(&userdomain.User{
+		ID: "acme_owner", TenantID: "acme", PreferredUsername: "acme-owner",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	})
 	events := &[]spec.DomainEvent{}
 	deps := agentusecases.AdminAgentDeps{
 		AgentRepo:  agentmemory.NewAgentRepository(),
@@ -471,6 +475,35 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 
 	if !slices.Equal(agentEventTypes(*events), []string{"AgentCredentialBound", "AgentCredentialUnbound"}) {
 		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+// 別テナントの OAuth2Client は存在しないものとして拒否し、関連付けを残さないこと。
+//
+//spec:covers EX-IDMANAGEMENT-009-04: 別テナントの client_id のバインドが ErrAgentClientNotFound で拒否され、Agent に関連付けが残らないこと。
+func TestBindCredentialRejectsClientOfAnotherTenant(t *testing.T) {
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	acme := tenantCtx("acme")
+	agent, err := agentusecases.RegisterAgent(acme, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "batch-agent", OwnerUserID: "acme_owner", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	// svc_client は default テナントのクライアントである。
+	if err := agentusecases.BindCredential(acme, deps, "operator", agent.ID, "svc_client", now); !errors.Is(err, agentusecases.ErrAgentClientNotFound) {
+		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
+	}
+	view, err := agentusecases.GetAgent(acme, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.ClientIDs) != 0 || len(*events) != 0 {
+		t.Fatalf("client_ids = %v, events = %v", view.ClientIDs, agentEventTypes(*events))
 	}
 }
 

@@ -283,7 +283,7 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 	case errors.Is(err, agentusecases.ErrAgentNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "agent_not_found", "The agent does not exist.")
 	case errors.Is(err, agentusecases.ErrAgentClientNotFound):
-		return support.WriteProblem(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "client_not_found", "The client does not exist.")
 	case errors.Is(err, agentusecases.ErrAgentNameConflict):
 		return support.WriteProblem(c, http.StatusConflict, "agent_name_conflict", "The agent name is already in use.")
 	case errors.Is(err, agentusecases.ErrAgentNameEmpty):

@@ -29,12 +29,6 @@
       "finding": "UnassignApplicationDesiredState も実装が無い。既存の UnassignApplication は AssignmentRepo.Delete を呼んで常に ApplicationUnassigned を発行し、差分が無いことを呼び出し元へ返す戻り値を持たない。"
     },
     {
-      "id": "EX-IDMANAGEMENT-009-04",
-      "reason": "実装が具体例の言う InvalidRequestError ではなく 404 client_not_found で拒否するため",
-      "blocked_by": "wi-573-agent-admin-api-answers-with-undeclared-statuses",
-      "finding": "越境した client_id のバインドは拒否され関連付けも残らないが、応答は status=404 code=client_not_found である。TypeSpec の BindAgentCredential は 204/400/401/403 しか宣言していない。"
-    },
-    {
       "id": "EX-PLATFORM-003-01",
       "reason": "配信行が発火元の変更と同じトランザクションで作られないため",
       "blocked_by": "wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction",

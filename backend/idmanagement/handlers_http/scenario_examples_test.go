@@ -11,11 +11,13 @@ package handlers_http_test
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -291,7 +293,7 @@ func agentCredentialIDs(
 // 拒否だけでなく、越境が関連付けを残さないことまで読む。バインドは 204 で終わるので、
 // 「拒否を書いてから関連付ける」実装は応答では見分けられない。
 //
-//spec:covers REQ-IDMANAGEMENT-009: 別テナントの client_id を指定したバインドが拒否され、Agent に関連付けが残らないこと。拒否の形 (EX-IDMANAGEMENT-009-04 が言う InvalidRequestError) は wi-573 が持つ。
+//spec:covers REQ-IDMANAGEMENT-009, EX-IDMANAGEMENT-009-04: 別テナントの client_id を指定したバインドが 422 の client_not_found で拒否され、応答が存在しない client_id のときと同じで、Agent に関連付けが残らないこと。
 func TestBindingAForeignTenantsCredentialLeavesTheAgentUnbound(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	foreignAdmin := fixture.seedSession(
@@ -319,8 +321,20 @@ func TestBindingAForeignTenantsCredentialLeavesTheAgentUnbound(t *testing.T) {
 		sessionID: foreignAdmin, csrf: idmRefusalCSRF,
 		body: map[string]any{"client_id": idmRefusalClient},
 	})
-	if refused.Code == http.StatusNoContent {
-		t.Fatalf("越境した client_id のバインドが受理された: %s", refused.Body.String())
+	if refused.Code != http.StatusUnprocessableEntity || idmProblemCode(t, refused) != "client_not_found" {
+		t.Fatalf("越境した client_id のバインドが status=%d body=%s, want 422 client_not_found",
+			refused.Code, refused.Body.String())
+	}
+	// 越境した client_id と存在しない client_id が同じ応答であること。書き分けると、
+	// 別テナントにその client_id があるかを応答から判定できてしまう。
+	missing := fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, tenantID: idmRefusalOtherTenant,
+		path:      "/api/admin/v1/agents/" + registered.ID + "/credentials",
+		sessionID: foreignAdmin, csrf: idmRefusalCSRF,
+		body: map[string]any{"client_id": "client-that-exists-nowhere"},
+	})
+	if got, want := problemWithoutInstance(t, refused), problemWithoutInstance(t, missing); got != want {
+		t.Fatalf("越境と不在の応答が異なる: foreign=%+v missing=%+v", got, want)
 	}
 	// 拒否が関連付けを残していないこと。
 	ids := agentCredentialIDsIn(t, fixture, idmRefusalOtherTenant, foreignAdmin, registered.ID)
@@ -339,6 +353,17 @@ func TestBindingAForeignTenantsCredentialLeavesTheAgentUnbound(t *testing.T) {
 	if accepted.Code != http.StatusNoContent {
 		t.Fatalf("前提が壊れている: 同テナントのバインドが status=%d body=%s", accepted.Code, accepted.Body.String())
 	}
+}
+
+// problemWithoutInstance は応答の Problem Details から、要求ごとに変わる instance を除いたものを返す。
+func problemWithoutInstance(t *testing.T, recorder *httptest.ResponseRecorder) support.Problem {
+	t.Helper()
+	var problem support.Problem
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v body=%s", err, recorder.Body.String())
+	}
+	problem.Instance = ""
+	return problem
 }
 
 func agentCredentialIDsIn(

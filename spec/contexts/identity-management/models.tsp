@@ -146,6 +146,18 @@ model AgentOwnerRequiredError is ProblemDetails;
 model AgentOwnerNotFoundError is ProblemDetails;
 
 
+@doc("The Agent the request targets does not exist in this tenant. An Agent in another tenant is treated as nonexistent and answered the same way. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_not_found`.")
+model AgentNotFoundError is ProblemDetails;
+
+
+@doc("The Agent has been killed, which is one-way and terminal, so it can no longer be updated, disabled, enabled, killed again, deleted, or given a credential. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_killed`.")
+model AgentKilledError is ProblemDetails;
+
+
+@doc("The OAuth2Client given is already bound to another Agent in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_client_already_bound`.")
+model AgentClientAlreadyBoundError is ProblemDetails;
+
+
 @doc("`kind` is absent from an Agent registration. The kind decides at runtime whether the Agent can obtain a token without human approval, so no default value stands in for it. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_kind_required`.")
 model AgentKindRequiredError is ProblemDetails;
 
