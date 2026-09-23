@@ -211,12 +211,16 @@ func (d Deps) unlink(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) requireAdmin(c *echo.Context, csrf bool) error {
-	if csrf {
-		if err := d.Auth.VerifyBrowserRequest(c); err != nil {
-			return err
-		}
+// requireBrowserAdmin は状態を変える管理操作の前提であり、Origin と CSRF を検証してから
+// requireAdmin と同じ判定をする。
+func (d Deps) requireBrowserAdmin(c *echo.Context) error {
+	if err := d.Auth.VerifyBrowserRequest(c); err != nil {
+		return err
 	}
+	return d.requireAdmin(c)
+}
+
+func (d Deps) requireAdmin(c *echo.Context) error {
 	if _, err := d.Auth.RequireAdmin(c); err != nil {
 		return d.Auth.WriteAdminAccessError(c, err)
 	}
@@ -224,7 +228,7 @@ func (d Deps) requireAdmin(c *echo.Context, csrf bool) error {
 }
 
 func (d Deps) listAdmin(c *echo.Context) error {
-	if err := d.requireAdmin(c, false); err != nil {
+	if err := d.requireAdmin(c); err != nil {
 		return err
 	}
 	connections, err := d.Broker.Connections.List(c.Request().Context(), support.RequestTenantID(c))
@@ -249,7 +253,7 @@ func withSecretPresence(connection *federationdomain.IdentityProviderConnection)
 }
 
 func (d Deps) createAdmin(c *echo.Context) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	var input connectionInput
@@ -271,7 +275,7 @@ func (d Deps) createAdmin(c *echo.Context) error {
 }
 
 func (d Deps) updateAdmin(c *echo.Context) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	existing, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
@@ -297,7 +301,7 @@ func (d Deps) updateAdmin(c *echo.Context) error {
 }
 
 func (d Deps) deleteAdmin(c *echo.Context) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
@@ -319,7 +323,7 @@ func (d Deps) disable(c *echo.Context) error {
 }
 
 func (d Deps) changeStatus(c *echo.Context, activate bool) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
@@ -342,7 +346,7 @@ func (d Deps) changeStatus(c *echo.Context, activate bool) error {
 }
 
 func (d Deps) refresh(c *echo.Context) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
@@ -367,7 +371,7 @@ type connectionTestResult struct {
 }
 
 func (d Deps) test(c *echo.Context) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
@@ -398,7 +402,7 @@ func (d Deps) test(c *echo.Context) error {
 }
 
 func (d Deps) previewMapping(c *echo.Context) error {
-	if err := d.requireAdmin(c, true); err != nil {
+	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
 	connection, err := d.Broker.Connections.Find(
