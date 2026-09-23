@@ -89,20 +89,16 @@
       "finding": "別テナントの管理者が同じ client_id を指定した参照は拒否され、対象のクライアントは動かない。食い違うのはエラー種別で、具体例は InvalidRequestError と言うが製品は 404 Not Found を返す。存在を漏らさない側に倒した実装であり、どちらが正かは規範の判断になる (wi-559 が測定)。"
     },
     {
-      "id": "EX-PLATFORM-001-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-PLATFORM-002-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
       "id": "EX-PLATFORM-003-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "配信行が発火元の変更と同じトランザクションで作られないため",
+      "blocked_by": "wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction",
+      "finding": "管理 API による User の作成、無効化、削除と割り当て解除は、変更をコミットした後で best-effort に CaptureLifecycleEvent を呼ぶ (admin_users.go と assignments.go の notifyProvisioning)。capture が失敗しても変更は確定したままで、エラーはログにしか残らない。配信の作成から succeeded への遷移は、backend/provisioning/e2e_capture_delivery_test.go がユースケースを直接呼ぶ形で観測しているが、同じトランザクションであることは観測できない。"
     },
     {
       "id": "EX-PLATFORM-003-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "変更と配信行が別々にコミットされ、片方だけが確定し得るため",
+      "blocked_by": "wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction",
+      "finding": "変更と capture が別のコミットなので、変更の側がロールバックする経路と capture が失敗する経路のどちらでも、片方だけが残り得る。backend/provisioning/ports/capture.go が、2 つのコミットの間の障害で capture が失われ回復できないことを残余のギャップとして記録している。"
     },
     {
       "id": "EX-PROVISIONING-001-03",

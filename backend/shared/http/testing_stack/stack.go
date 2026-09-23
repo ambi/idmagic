@@ -53,6 +53,7 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
@@ -70,6 +71,8 @@ import (
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/sharedsignals"
+	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
@@ -140,6 +143,14 @@ func (l *EventLog) Types() []string {
 	return types
 }
 
+// All は発行されたイベントを発行順に複製して返す。型だけでは「どの主体について
+// 発行されたか」を読めない具体例のためにある。
+func (l *EventLog) All() []spec.DomainEvent {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.events)
+}
+
 // AssertEmitted は、名指したイベント型がすべて発行されたことを確かめる。
 func (l *EventLog) AssertEmitted(t *testing.T, eventTypes ...string) {
 	t.Helper()
@@ -200,6 +211,9 @@ type Stack struct {
 	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
 	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
 	SessionStore *sessionmemory.SessionStore
+	// Agents と RevocationEpochs は WithAgentRevocation が配る。
+	Agents           *agentmemory.AgentRepository
+	RevocationEpochs *ssmemory.AgentRevocationEpochRepository
 
 	apiTokens *apitokenusecases.Service
 	// owner は New を呼んだテストである。HTTP サーバーの後始末はここへ登録する。
@@ -411,6 +425,21 @@ func WithAccountApi() Option {
 			b.stack.Consents = consentmemory.NewConsentRepository()
 			b.deps.OAuth2.ConsentRepo = b.stack.Consents
 		}
+	}
+}
+
+// WithAgentRevocation は Agent の保存先と、SharedSignals の失効エポックの保存先を配線する。
+//
+// 2 つを 1 つの option にするのは、片方だけでは失効の経路が成立しないためである。
+// 利用者の無効化が Agent の失効へ届くのは、`Register` が組み立てる反応器が所有 Agent を
+// Agent の保存先から引き、エポックを進めるからであり、`/introspect` もこの 2 つを読んで
+// 発行済みトークンを無効と判定する。エポックの保存先が nil だと反応器は何もしない。
+func WithAgentRevocation() Option {
+	return func(b *builder) {
+		b.stack.Agents = agentmemory.NewAgentRepository()
+		b.stack.RevocationEpochs = ssmemory.NewAgentRevocationEpochRepository()
+		b.deps.IdManagement.AgentRepo = b.stack.Agents
+		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs}
 	}
 }
 
@@ -721,6 +750,27 @@ func (b *Browser) Transaction(t *testing.T) map[string]any {
 		t.Fatalf("transaction が JSON ではない body=%s: %v", raw, err)
 	}
 	return transaction
+}
+
+// Get は browser の cookie を載せて realm 配下の path を GET し、状態行と復号した本文を
+// 返す。既存セッションが認証必須 API を通るかどうかは、この経路でしか観測できない。
+func (b *Browser) Get(t *testing.T, path string) (int, map[string]any) {
+	t.Helper()
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, b.base+path, http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := b.client.Do(request)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	raw, _ := io.ReadAll(response.Body)
+	body := map[string]any{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &body)
+	}
+	return response.StatusCode, body
 }
 
 // SignIn はトランザクションの利用者を認証する。
