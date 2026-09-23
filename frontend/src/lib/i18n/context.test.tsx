@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'bun:test'
-import { LocaleProvider, useDictionary, useFormatters } from './index'
+import { defineDictionary, LocaleProvider, useDictionary, useFormatters } from './index'
 import { commonDictionary } from './common.i18n'
+
+// 主要ユースケース追跡: REQ-SYSTEM-010。
 
 // Probe は画面が i18n から受け取るものを 1 か所に並べる。文言と書式の 2 つが同じ選択に
 // 従うことを、同じ木の中で読むためである。
@@ -71,5 +73,36 @@ describe('the selected locale reaches both the dictionary and the formatters', (
     render(<Probe />)
     expect(screen.getByTestId('label').textContent).toBe(commonDictionary.en.languageSwitcherLabel)
     expect(screen.getByTestId('date').textContent).toContain('Sep')
+  })
+})
+
+describe('a key the selected dictionary lacks', () => {
+  // 空文字列は型検査を通る。値を持たないキーは、型を `as` で迂回した辞書を表す。
+  const partial = defineDictionary(
+    { translated: '訳あり', empty: '', missing: undefined as unknown as string },
+    { translated: 'Translated', empty: 'Empty in ja', missing: 'Missing in ja' },
+  )
+
+  function PartialProbe() {
+    const t = useDictionary(partial)
+    return (
+      <div>
+        <span data-testid="translated">{t.translated}</span>
+        <span data-testid="empty">{t.empty}</span>
+        <span data-testid="missing">{t.missing}</span>
+      </div>
+    )
+  }
+
+  //spec:covers EX-SYSTEM-010-03: ja を選んだ画面で ja 辞書に訳が無いキーは、en 辞書の同じキーの文言で表示されること。
+  it('shows the en text for a key the ja dictionary lacks', () => {
+    render(
+      <LocaleProvider initialLocale="ja">
+        <PartialProbe />
+      </LocaleProvider>,
+    )
+    expect(screen.getByTestId('translated').textContent).toBe('訳あり')
+    expect(screen.getByTestId('empty').textContent).toBe('Empty in ja')
+    expect(screen.getByTestId('missing').textContent).toBe('Missing in ja')
   })
 })

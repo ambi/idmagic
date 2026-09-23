@@ -119,12 +119,6 @@
       "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
-      "id": "EX-SYSTEM-010-03",
-      "reason": "具体例が述べる実行時のフォールバックが実装に存在せず、テストを書くと別の機構を具体例の観測として数えてしまうため",
-      "blocked_by": "wi-576-missing-translation-key-has-no-runtime-fallback",
-      "finding": "useDictionary は dictionary[locale] を返すだけで、キー単位のフォールバックを持たない。キーの欠落は defineDictionary が ja をキー集合の正として en に強制する型検査で防いでおり、実行時に FallbackLocale の値へ落ちる経路は無い。FALLBACK_LOCALE が使われるのは未対応ロケールと Provider を持たない木の既定値だけである。"
-    },
-    {
       "id": "EX-TENANCY-004-02",
       "reason": "越境した branding アセットが返らないことは実装済みだが、公開するエラー契約が具体例と一致しないため",
       "blocked_by": "wi-578-align-cross-tenant-branding-asset-refusal",
