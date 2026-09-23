@@ -83,7 +83,7 @@ Primary actor: `SecurityTokenRequester`
 - Given UsernameToken、MessageID、Timestamp、To、Action、RequestType、KeyType、AppliesTo が有効である
 - When WS-Trust Issue の RST を受信する
 - Then UsernameToken の資格情報が不正である
-- Then AccessDeniedError を返しトークンを発行しない
+- Then 401 で拒否しトークンを発行しない
 
 ## Rule: REQ-WSFEDERATION-005 不正なエンベロープの WS-Trust Issue は拒否する
 

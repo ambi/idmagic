@@ -86,7 +86,8 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 }
 
 // newServerWithSigner は組み立て済みサーバーと、RP が応答を検証するための IdP 署名者を返す。
-func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Echo, *[]spec.DomainEvent, *samltoken.Signer) {
+// configure は Register の直前に依存を足す。
+func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext, configure ...func(*httpadapter.Deps)) (*echo.Echo, *[]spec.DomainEvent, *samltoken.Signer) {
 	t.Helper()
 
 	captured := &[]spec.DomainEvent{}
@@ -121,8 +122,7 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext) 
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
 	signer := devSigner(t)
-	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{
+	deps := httpadapter.Deps{
 		Issuer:   "https://idp.example",
 		Contract: spec.CurrentRuntimeContract(),
 
@@ -133,7 +133,12 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext) 
 		OAuth2:               oauth2.Module{ClientAssertionReplayStore: memory.NewClientAssertionReplayStore()},
 		FederationSigner:     signer,
 		AuthnResolver:        stubResolver{ctx: authn},
-	})
+	}
+	for _, apply := range configure {
+		apply(&deps)
+	}
+	e := echo.New()
+	httpadapter.Register(e, deps)
 	return e, captured, signer
 }
 

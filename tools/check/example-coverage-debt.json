@@ -251,48 +251,10 @@
       "finding": "frontend/vite.config.ts は realm 配下の転送対象へ tenant-branding-assets を含め、server_http も /realms/:tenant_id/tenant-branding-assets/:kind/:id を登録する。具体例の「gateway で backend に転送されない」は現行構成と一致しない。"
     },
     {
-      "id": "EX-WSFEDERATION-001-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-001-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
       "id": "EX-WSFEDERATION-001-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-002-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-002-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-002-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-003-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-004-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-004-02",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-004-03",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
-    },
-    {
-      "id": "EX-WSFEDERATION-005-01",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため"
+      "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない",
+      "blocked_by": "wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets",
+      "finding": "acme レルムで発行した wsfed:read と wsfed:write のトークンを default レルムの /api/admin/v1/wsfed/relying-parties（一覧、登録、削除）と /api/admin/v1/wsfed/entra-federation へ提示すると、8 通りすべてが 401 invalid_token（WWW-Authenticate: Bearer error=\"invalid_token\"）になり、保存先の RP は変わらない。EX-SAML-005-03 と同じ経路（apitoken の AuthenticateClaims がリクエスト先テナントで jti を照合し、見つからなければ active: false を返す）である。"
     }
   ]
 }
