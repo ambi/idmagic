@@ -191,7 +191,7 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	e, repo, assetStore, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 
-	uploadResp := uploadBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo", png)
+	uploadResp := uploadBrandingAsset(t, e, png)
 	if uploadResp.Code != http.StatusOK {
 		t.Fatalf("upload status=%d body=%s", uploadResp.Code, uploadResp.Body.String())
 	}
@@ -225,9 +225,50 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	}
 }
 
+//spec:covers EX-TENANCY-004-02: 別 realm で同じ kind と id を取得すると、存在しない id と同じ 404 not_found になり PNG の内容を返さない。
+func TestGetBrandingAssetFromAnotherRealmIsNotFound(t *testing.T) {
+	e, repo, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}),
+		activeTenant("acme", "Acme"), activeTenant("globex", "Globex"))
+	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 'a', 'c', 'm', 'e'}
+
+	uploadResp := uploadBrandingAsset(t, e, png)
+	if uploadResp.Code != http.StatusOK {
+		t.Fatalf("upload status=%d body=%s", uploadResp.Code, uploadResp.Body.String())
+	}
+	saved, err := repo.FindByTenant(context.Background(), "acme")
+	if err != nil || saved == nil || saved.LogoObjectKey == "" {
+		t.Fatalf("logo reference not persisted: %+v err=%v", saved, err)
+	}
+
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, http.NoBody))
+		return rec
+	}
+	// 同じ realm では取得できることを先に確かめ、下の拒否が URL の誤りではないことを示す。
+	if own := get("/realms/acme/tenant-branding-assets/logo/" + saved.LogoObjectKey); own.Code != http.StatusOK || !bytes.Equal(own.Body.Bytes(), png) {
+		t.Fatalf("own realm status=%d body=%q", own.Code, own.Body.Bytes())
+	}
+
+	foreign := get("/realms/globex/tenant-branding-assets/logo/" + saved.LogoObjectKey)
+	missing := get("/realms/globex/tenant-branding-assets/logo/00000000-0000-4000-8000-000000000000")
+	if foreign.Code != http.StatusNotFound {
+		t.Fatalf("foreign realm status=%d body=%s", foreign.Code, foreign.Body.String())
+	}
+	// 別テナントに同じ id があるかを推測させないため、未存在の id と区別できない応答にする。
+	if foreign.Code != missing.Code || foreign.Body.String() != missing.Body.String() ||
+		foreign.Header().Get("Content-Type") != missing.Header().Get("Content-Type") {
+		t.Fatalf("foreign realm response differs from a missing id:\nforeign=%d %s\nmissing=%d %s",
+			foreign.Code, foreign.Body.String(), missing.Code, missing.Body.String())
+	}
+	if bytes.Contains(foreign.Body.Bytes(), png) {
+		t.Fatalf("foreign realm response carries the asset: %q", foreign.Body.Bytes())
+	}
+}
+
 func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 	e, _, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
-	resp := uploadBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo", []byte("<svg onload=alert(1)></svg>"))
+	resp := uploadBrandingAsset(t, e, []byte("<svg onload=alert(1)></svg>"))
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -251,8 +292,9 @@ func patchBranding(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecor
 	return rec
 }
 
-func uploadBrandingAsset(t *testing.T, e *echo.Echo, path string, data []byte) *httptest.ResponseRecorder {
+func uploadBrandingAsset(t *testing.T, e *echo.Echo, data []byte) *httptest.ResponseRecorder {
 	t.Helper()
+	const path = "/realms/acme/api/admin/v1/tenant/branding/assets/logo"
 	csrf, cookie := passwordResetContextCSRF(t, e, tenantPrefix(path)+"/api/auth/password-reset-context")
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)

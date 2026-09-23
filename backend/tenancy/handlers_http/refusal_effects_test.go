@@ -323,8 +323,7 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 	}
 	server.brandingIsSystemDefault(t)
 
-	refusedLogo := uploadBrandingAsset(t, server.e,
-		"/realms/acme/api/admin/v1/tenant/branding/assets/logo", []byte("<svg onload=alert(1)></svg>"))
+	refusedLogo := uploadBrandingAsset(t, server.e, []byte("<svg onload=alert(1)></svg>"))
 	if refusedLogo.Code != http.StatusBadRequest {
 		t.Fatalf("svg status=%d body=%s, want 400", refusedLogo.Code, refusedLogo.Body.String())
 	}

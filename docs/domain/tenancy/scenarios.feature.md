@@ -78,7 +78,8 @@ Primary actor: `TenantAdministrator`
 - Then アップロードレスポンスに logo_url が含まれる
 - When "operator" が logo_url を GET する
 - But 別テナントの id で同じ kind のアセット取得を試みる
-- Then アセットは存在しないものとして扱われ InvalidRequestError で拒否される
+- Then アセットは存在しないものとして扱われ、応答は存在しない id を指定したときと同じ 404 not_found である
+- Then 応答にアップロードした PNG の内容は含まれない
 
 ### Example: EX-TENANCY-004-03 realm 配下の logo_url が gateway で backend に転送されない
 

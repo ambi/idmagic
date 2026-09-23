@@ -119,12 +119,6 @@
       "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
-      "id": "EX-TENANCY-004-02",
-      "reason": "越境した branding アセットが返らないことは実装済みだが、公開するエラー契約が具体例と一致しないため",
-      "blocked_by": "wi-578-align-cross-tenant-branding-asset-refusal",
-      "finding": "別テナントの realm で同じ kind と object id を取得すると、handleGetBrandingAsset は解決済み tenant id を含むキーで検索してアセットを返さない。応答は具体例が定める InvalidRequestError ではなく 404 not_found である。"
-    },
-    {
       "id": "EX-TENANCY-004-03",
       "reason": "具体例が述べる gateway の取得失敗が現行の転送規則では再現しないため",
       "blocked_by": "wi-579-align-branding-asset-gateway-example",

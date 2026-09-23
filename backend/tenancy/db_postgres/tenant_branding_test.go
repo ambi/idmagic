@@ -60,6 +60,34 @@ func TestTenantBrandingRepositorySaveAndFind(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-TENANCY-004, EX-TENANCY-004-02: 別テナントの id で同じ kind と object id を検索しても、保存先はアセットを返さない。
+func TestTenantBrandingAssetStoreFindIsScopedToTenant(t *testing.T) {
+	db := pgtest.Require(t)
+	owner := seedTestTenant(t, db, "22222222-2222-2222-2222-222222222223")
+	other := seedTestTenant(t, db, "22222222-2222-2222-2222-222222222224")
+	store := &TenantBrandingAssetStore{Pool: db}
+	ctx := context.Background()
+
+	now := pgtest.Now()
+	assetID := "33333333-3333-3333-3333-333333333334"
+	if err := store.Save(ctx, &domain.TenantBrandingAsset{
+		TenantID: owner.ID, Kind: domain.TenantBrandingAssetKindLogo, ID: assetID,
+		ContentType: "image/png", SizeBytes: 4, Data: []byte{0x1, 0x2, 0x3, 0x4},
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	// 所有テナントでは見つかることを先に確かめ、下の nil が保存の失敗ではないことを示す。
+	if got, err := store.Find(ctx, owner.ID, domain.TenantBrandingAssetKindLogo, assetID); err != nil || got == nil {
+		t.Fatalf("owner find: %v %+v", err, got)
+	}
+	got, err := store.Find(ctx, other.ID, domain.TenantBrandingAssetKindLogo, assetID)
+	if err != nil || got != nil {
+		t.Fatalf("another tenant found the asset: %v %+v", err, got)
+	}
+}
+
 func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTestTenant(t, db, "22222222-2222-2222-2222-222222222222")
