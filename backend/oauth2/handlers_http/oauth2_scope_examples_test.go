@@ -11,6 +11,7 @@ package handlers_http_test
 // この具体例が要求する配線は option 2 つで足り、保存先は型付きの field から読める。
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -173,6 +174,70 @@ func TestOAuth2AdminOperationsFollowTheGranularScopes(t *testing.T) {
 	}
 	if stored := storedMcpResourceServers(t, s); len(stored) != 0 {
 		t.Fatalf("参照スコープの登録が保存された: %v", stored)
+	}
+}
+
+// テナントの一致しない API アクセストークンは、OAuth2 クライアント・認可詳細タイプ・
+// MCP リソースサーバーのどの管理 API でも 401 invalid_token で拒否する。管理発行トークンの
+// 照合はリクエスト先テナントで jti を探し (`apitoken/usecases` の `AuthenticateClaims`)、
+// 見つからなければ RFC 7662 の非開示に従って active: false を返す。403 AccessDeniedError に
+// すると、「このトークン自体は有効だが、このテナントでは使えない」という事実を別テナントの
+// 提示者へ伝えてしまう。EX-SAML-005-03 (wi-558) と同じ経路、同じ結論である。
+// 3 resource で確かめないと、一部だけ配線された実装を見分けられない。
+//
+//spec:covers EX-OAUTH2-003-04: トークンのテナントとリクエスト先のテナントが一致しないとき、操作を 401 の InvalidAccessTokenError で拒否する。
+func TestForeignTenantApiTokenCannotOperateOAuth2AdminResources(t *testing.T) {
+	s := stack.New(t, stack.WithApiTokens(), stack.WithOAuth2Clients())
+	foreignClientsRead, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeOAuthClientsRead)
+	foreignClientsWrite, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeOAuthClientsWrite)
+	foreignDetailTypesWrite, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeAuthorizationDetailTypesWrite)
+	foreignMcpRead, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeMcpResourceServersRead)
+
+	// OAuth2 クライアント: 参照は届かず、登録も届かず何も保存されない。
+	assertOAuth2InvalidToken(t, oauthAdminRequest(s, http.MethodGet, oauthScopeClientsPath, foreignClientsRead, ""))
+	beforeClients := storedClientNames(t, s)
+	assertOAuth2InvalidToken(t, oauthAdminRequest(s, http.MethodPost, oauthScopeClientsPath, foreignClientsWrite, oauthScopeClientBody()))
+	if after := storedClientNames(t, s); len(after) != len(beforeClients) {
+		t.Fatalf("拒否されたのに OAuth2 クライアントが登録されている: before=%v after=%v", beforeClients, after)
+	}
+
+	// 認可詳細タイプ: 登録は届かず、何も保存されない。
+	assertOAuth2InvalidToken(t, oauthAdminRequest(s, http.MethodPost, oauthScopeDetailTypesPath, foreignDetailTypesWrite, oauthScopeDetailTypeBody()))
+	if stored := storedDetailTypes(t, s); len(stored) != 0 {
+		t.Fatalf("拒否されたのに認可詳細タイプが登録されている: %v", stored)
+	}
+
+	// MCP リソースサーバー: 参照は届かず、登録も届かず何も保存されない。
+	assertOAuth2InvalidToken(t, oauthAdminRequest(s, http.MethodGet, oauthScopeMcpPath, foreignMcpRead, ""))
+	assertOAuth2InvalidToken(t, oauthAdminRequest(s, http.MethodPost, oauthScopeMcpPath, foreignMcpRead, oauthScopeMcpBody()))
+	if stored := storedMcpResourceServers(t, s); len(stored) != 0 {
+		t.Fatalf("拒否されたのに MCP リソースサーバーが登録されている: %v", stored)
+	}
+
+	// 対照: 同じテナントで発行したトークンなら OAuth2 クライアントの参照が通る。
+	// 拒否したのがテナントの食い違いであって、スタックの配線そのものではないと示す。
+	sameRealmRead, _ := s.IssueApiToken(t, tenancydomain.DefaultRealm, apitokendomain.ScopeOAuthClientsRead)
+	if allowed := oauthAdminRequest(s, http.MethodGet, oauthScopeClientsPath, sameRealmRead, ""); allowed.Code != http.StatusOK {
+		t.Fatalf("前提が壊れている: 同一テナントの参照が status=%d body=%s", allowed.Code, allowed.Body.String())
+	}
+}
+
+func assertOAuth2InvalidToken(t *testing.T, recorder *httptest.ResponseRecorder) {
+	t.Helper()
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s, want 401", recorder.Code, recorder.Body.String())
+	}
+	var problem struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("problem body %s: %v", recorder.Body.String(), err)
+	}
+	if problem.Type != "urn:idmagic:error:invalid_token" {
+		t.Fatalf("problem type=%q, want invalid_token", problem.Type)
+	}
+	if got := recorder.Header().Get("WWW-Authenticate"); !strings.Contains(got, `Bearer error="invalid_token"`) {
+		t.Fatalf("WWW-Authenticate=%q, want invalid_token challenge", got)
 	}
 }
 

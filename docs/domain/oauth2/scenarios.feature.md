@@ -84,7 +84,7 @@ Primary actor: `ManagementApiClient`
 - Given クライアントは対象テナントの有効な API access トークンを提示している
 - When クライアントが OAuth2 クライアント、認可詳細タイプ、または MCP リソースサーバーの操作をリクエストする
 - But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作は `AccessDeniedError` で拒否される
+- Then 操作を 401 の InvalidAccessTokenError で拒否する
 
 ## Rule: REQ-OAUTH2-004 管理者は自身に可視なロールポリシーを確認できる
 

@@ -53,12 +53,6 @@
       "finding": "account:read に同意したグラントの交換は sub が同意した利用者、scope が account:read のトークンを返し、そのトークンで account リソースサーバーの参照だけが通る (wi-559 が TestAccountScopedGrantIssuesAUserBoundTokenTheAccountApiAccepts で固定した)。食い違うのは audience である。具体例はレルムの IdMagic API と言うが、製品は resource 指定の無いトークンの aud を client_id にし、レルムの API を resource indicator として指す経路を持たず、account リソースサーバーも audience を読んでいない。3 箇所の設計判断が要る (wi-559 が測定)。"
     },
     {
-      "id": "EX-OAUTH2-003-04",
-      "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
-      "blocked_by": "wi-564-name-the-refusal-a-cross-tenant-oauth-admin-token-gets",
-      "finding": "acme レルムで発行した oauth-clients:read と oauth-clients:write のトークンを default レルムの /api/admin/v1/clients へ提示すると、参照も登録も 401 invalid_token になる。具体例が名指す AccessDeniedError ではない。拒否そのものは効いていて、default テナントのクライアント一覧は動かない。食い違っているのは型だけである (wi-538 が測定)。"
-    },
-    {
       "id": "EX-OAUTH2-005-07",
       "reason": "移行時点で既存テストの入力と観測がこの具体例へ一致することを個別に確認していないため",
       "blocked_by": "wi-566-authorization-code-replay-and-expiry-leave-no-record",
