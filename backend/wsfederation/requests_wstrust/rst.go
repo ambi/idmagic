@@ -193,7 +193,7 @@ func BuildRSTR(signedAssertion *etree.Element, relatesTo, appliesTo, tokenType s
 	rstr.CreateElement("t:RequestType").SetText(RequestIssue)
 	rstr.CreateElement("t:KeyType").SetText(KeyTypeBearer)
 
-	doc.Indent(2)
+	// 整形しない。整形は包んだ署名済み assertion の内部にも空白を足し、署名を壊す。
 	var buf bytes.Buffer
 	if _, err := doc.WriteTo(&buf); err != nil {
 		return nil, fmt.Errorf("wstrust: serialize RSTR: %w", err)
