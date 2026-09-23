@@ -8,6 +8,7 @@ import (
 	"time"
 
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
+	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -93,6 +94,15 @@ func CompleteLogin(
 	tenantID := tenancy.TenantID(ctx)
 	attempt, err := deps.Attempts.Consume(ctx, tenantID, state, normalizedNow(now))
 	if err != nil {
+		// 照合は上流の応答の検証より先に置く。発行していない state で検証を走らせないためである。
+		// attempt が無いので接続は特定できず、ProviderID は空になる。保存層の障害は照合の結果
+		// ではないので記録しない。
+		if errors.Is(err, federationports.ErrAttemptNotFound) || errors.Is(err, federationports.ErrAttemptConsumed) {
+			emit(deps.Emit, &federationdomain.FederatedLoginRejected{
+				At: normalizedNow(now), TenantID: tenantID,
+				Reason: federationdomain.RejectionStateMismatch,
+			})
+		}
 		return nil, err
 	}
 	connection, err := deps.Connections.Find(ctx, tenantID, attempt.ProviderID)

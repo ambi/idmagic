@@ -164,7 +164,8 @@ func (s *AttemptStore) Consume(_ context.Context, tenantID, state string, now ti
 		return nil, federationports.ErrAttemptConsumed
 	}
 	if err := attempt.Consume(now); err != nil {
-		return nil, err
+		// domain が返すのは期限切れだけである。Postgres 実装と同じ sentinel にそろえる。
+		return nil, federationports.ErrAttemptConsumed
 	}
 	cloned := *attempt
 	return &cloned, nil

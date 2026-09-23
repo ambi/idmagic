@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"slices"
 	"testing"
 	"time"
 
@@ -279,50 +278,87 @@ func TestAutoLinkRefusalCreatesNoIdentityAndNoSession(t *testing.T) {
 	}
 }
 
-// 上流の応答が検証に落ちたときの callback。
+// `state` の照合または上流の応答の検証に落ちた callback。
 //
 // 拒否の応答だけを読むと、セッションを発行してから error を返す実装と区別が付かない。
 // 関連付けとセッションの双方を保存層から読み直し、そのうえで記録が残ることを確かめる。
-// 記録が無いと、同じ IdP に対する総当たりが監査から見えない。
+// 記録が無いと、同じ IdP に対する総当たりが監査から見えない。発行していない `state` を
+// 送りつける攻撃は上流の応答を用意する必要がなく、最も総当たりしやすい。
 //
-// EX-AUTHENTICATION-001-03 はこの経路を含むが、同じ `Then` が `state` 不一致でも
-// FederatedLoginRejected を要求している。実装はそちらでは発行しないため、この記録は
-// 具体例を主張しない。決着は wi-571 が持つ。
+// `state` 不一致の driver は検証を通る claims を返す。照合が働かなければログインが
+// 成立してしまう構成で拒否を観測するためである。
 //
-//spec:covers REQ-AUTHENTICATION-001: 上流の応答が検証に落ちた callback は拒否され、LoginSession も関連付けも作られず、FederatedLoginRejected が残ることを固定する。
-func TestProtocolValidationRefusalCreatesNothingAndRecordsTheRejection(t *testing.T) {
-	driver := &claimsDriver{
-		claims:      federationdomain.NormalizedClaims{Subject: autoLinkSubject, Username: autoLinkEmail},
-		completeErr: errors.New("id token signature does not verify"),
-	}
-	fixture := newFederationServer(t, federationdomain.LinkingVerifiedEmail, false, driver)
-
-	refused := fixture.completeLogin(t)
-	if refused.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d body=%s、期待は 401", refused.Code, refused.Body.String())
-	}
-	if identity := fixture.linkedIdentity(t); identity != nil {
-		t.Fatalf("拒否されたのに関連付けが作られた: %+v", identity)
-	}
-	if got := fixture.issuedSessions(t, "user-alice"); got != 0 {
-		t.Fatalf("拒否されたのに LoginSession が %d 件発行された", got)
-	}
-	if cookies := refused.Result().Cookies(); len(cookies) != 0 {
-		t.Fatalf("拒否されたのにセッション Cookie が発行された: %+v", cookies)
-	}
-	if !slices.Contains(fixture.events, "FederatedLoginRejected") {
-		t.Fatalf("FederatedLoginRejected が発行されていない: %v", fixture.events)
+//spec:covers REQ-AUTHENTICATION-001, EX-AUTHENTICATION-001-03: `state` の不一致または上流の応答の検証失敗で拒否した callback は、LoginSession も関連付けも作らず、拒否の種類を区別できる Reason の FederatedLoginRejected を残すことを固定する。
+func TestMismatchedCallbackCreatesNothingAndRecordsTheRejection(t *testing.T) {
+	verified := federationdomain.NormalizedClaims{
+		Subject: autoLinkSubject, Username: autoLinkEmail, Email: autoLinkEmail, EmailVerified: true,
 	}
 
-	// 対照: 同じ往復が、検証を通る応答では成立する。これが無いと、拒否が上流の検証
-	// ではなく環境の不足で起きていた場合を見分けられない。
-	accepted := newFederationServer(t, federationdomain.LinkingVerifiedEmail, false, &claimsDriver{
-		claims: federationdomain.NormalizedClaims{
-			Subject: autoLinkSubject, Username: autoLinkEmail,
-			Email: autoLinkEmail, EmailVerified: true,
+	for _, refusal := range []struct {
+		name       string
+		driver     *claimsDriver
+		state      func(issued string) string
+		reason     string
+		providerID string
+		validated  int
+	}{
+		{
+			name: "上流の応答が検証に落ちる",
+			driver: &claimsDriver{
+				claims:      verified,
+				completeErr: errors.New("id token signature does not verify"),
+			},
+			state:  func(issued string) string { return issued },
+			reason: federationdomain.RejectionProtocolValidationFailed, providerID: autoLinkProviderID,
+			validated: 1,
 		},
-	})
+		{
+			name:   "発行していない state",
+			driver: &claimsDriver{claims: verified},
+			state:  func(string) string { return "state-the-broker-never-issued" },
+			// attempt が見つからない以上、callback から接続は特定できない。
+			reason: federationdomain.RejectionStateMismatch, providerID: "",
+			validated: 0,
+		},
+	} {
+		t.Run(refusal.name, func(t *testing.T) {
+			fixture := newFederationServer(t, federationdomain.LinkingVerifiedEmail, false, refusal.driver)
+
+			refused := fixture.callback(t, refusal.state(fixture.startLogin(t)))
+			if refused.Code != http.StatusUnauthorized {
+				t.Fatalf("status=%d body=%s、期待は 401", refused.Code, refused.Body.String())
+			}
+			if identity := fixture.linkedIdentity(t); identity != nil {
+				t.Fatalf("拒否されたのに関連付けが作られた: %+v", identity)
+			}
+			if got := fixture.issuedSessions(t, "user-alice"); got != 0 {
+				t.Fatalf("拒否されたのに LoginSession が %d 件発行された", got)
+			}
+			if cookies := refused.Result().Cookies(); len(cookies) != 0 {
+				t.Fatalf("拒否されたのにセッション Cookie が発行された: %+v", cookies)
+			}
+			if got := refusal.driver.completed; got != refusal.validated {
+				t.Fatalf("上流の応答の検証が %d 回、期待は %d 回", got, refusal.validated)
+			}
+			if len(fixture.rejections) != 1 {
+				t.Fatalf("FederatedLoginRejected が %d 件、期待は 1 件: events=%v", len(fixture.rejections), fixture.events)
+			}
+			rejected := fixture.rejections[0]
+			if rejected.Reason != refusal.reason || rejected.ProviderID != refusal.providerID ||
+				rejected.TenantID != tenancydomain.DefaultTenantID {
+				t.Fatalf("FederatedLoginRejected=%+v、期待は Reason=%q ProviderID=%q TenantID=%q",
+					rejected, refusal.reason, refusal.providerID, tenancydomain.DefaultTenantID)
+			}
+		})
+	}
+
+	// 対照: 同じ往復が、発行した state と検証を通る応答では成立し、拒否を記録しない。
+	// これが無いと、拒否が照合や検証ではなく環境の不足で起きていた場合を見分けられない。
+	accepted := newFederationServer(t, federationdomain.LinkingVerifiedEmail, false, &claimsDriver{claims: verified})
 	if response := accepted.completeLogin(t); response.Code != http.StatusSeeOther {
 		t.Fatalf("前提が壊れている: 検証を通る応答が status=%d", response.Code)
+	}
+	if len(accepted.rejections) != 0 {
+		t.Fatalf("成立したログインで FederatedLoginRejected が発行された: %+v", accepted.rejections)
 	}
 }

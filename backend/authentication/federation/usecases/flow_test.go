@@ -10,6 +10,7 @@ import (
 	federationusecases "github.com/ambi/idmagic/backend/authentication/federation/usecases"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -102,11 +103,13 @@ func (d *countingDriver) Complete(
 // ある。攻撃者が仕込んだ callback — 発行されていない state — が拒否されること、同じ
 // state の 2 度目が拒否されること、そしてどちらの拒否でもセッションが発行されず upstream
 // の応答が検証にすら到達しないこと (拒否が防いだ効果) を観測する。error の戻り値だけを
-// 見ると、セッションを作ってから error を返す実装と区別が付かない。
+// 見ると、セッションを作ってから error を返す実装と区別が付かない。どちらの拒否も
+// FederatedLoginRejected を 1 件ずつ残す。発行していない state の総当たりが監査から
+// 見えなくなるのを防ぐためである。
 // 正当な state が同じ条件で成立することを最後に置くのは、拒否がすべて別の理由 (設定漏れ
 // など) で起きていた場合にそれを検出するためである。
 //
-//spec:covers OIDC-CORE-CSRF, EX-AUTHENTICATION-001-02: callback が login attempt に束縛された単発の state を照合し、再送された state ではセッションが 1 件も増えず上流の応答が検証にすら到達しないことを固定する。
+//spec:covers REQ-AUTHENTICATION-001, OIDC-CORE-CSRF, EX-AUTHENTICATION-001-02: callback が login attempt に束縛された単発の state を照合し、未発行または再送された state ではセッションが 1 件も増えず上流の応答が検証にすら到達せず、拒否ごとに state_mismatch の FederatedLoginRejected が残ることを固定する。
 func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -119,6 +122,12 @@ func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	driver := &countingDriver{claims: federationdomain.NormalizedClaims{
 		Subject: "external", Username: "existing@example.com",
 	}}
+	var rejections []federationdomain.FederatedLoginRejected
+	deps.Emit = func(event spec.DomainEvent) {
+		if rejected, ok := event.(*federationdomain.FederatedLoginRejected); ok {
+			rejections = append(rejections, *rejected)
+		}
+	}
 	deps.Drivers = map[federationdomain.Protocol]federationusecases.ProtocolDriver{
 		federationdomain.ProtocolOIDC: driver,
 	}
@@ -159,6 +168,9 @@ func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	if got := sessionCount(t); got != 0 {
 		t.Fatalf("sessions=%d after an unknown state; want none", got)
 	}
+	if len(rejections) != 1 || !isStateMismatch(rejections[0]) {
+		t.Fatalf("rejections=%+v after an unknown state; want one %q without a provider", rejections, federationdomain.RejectionStateMismatch)
+	}
 
 	// 正当な state は成立する。ここまでの拒否が state の照合によるものであることの対照。
 	completion, err := federationusecases.CompleteLogin(
@@ -173,6 +185,9 @@ func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	if got := sessionCount(t); got != 1 {
 		t.Fatalf("sessions=%d after the legitimate callback; want 1", got)
 	}
+	if len(rejections) != 1 {
+		t.Fatalf("rejections=%+v after the legitimate callback; want only the earlier one", rejections)
+	}
 
 	// 単発: 同じ state の 2 度目。
 	if _, err := federationusecases.CompleteLogin(
@@ -185,5 +200,49 @@ func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	}
 	if got := sessionCount(t); got != 1 {
 		t.Fatalf("sessions=%d after the replay; want the 1 from the legitimate callback", got)
+	}
+	if len(rejections) != 2 || !isStateMismatch(rejections[1]) {
+		t.Fatalf("rejections=%+v after the replay; want a second %q without a provider", rejections, federationdomain.RejectionStateMismatch)
+	}
+}
+
+// isStateMismatch は state の照合による拒否の記録であるかを返す。attempt が見つからない
+// 以上、記録は接続を名指せない。
+func isStateMismatch(rejected federationdomain.FederatedLoginRejected) bool {
+	return rejected.Reason == federationdomain.RejectionStateMismatch && rejected.ProviderID == "" &&
+		rejected.TenantID == tenancydomain.DefaultTenantID
+}
+
+// failingAttemptStore は保存層の障害を返す。state の照合結果ではない error を区別できるか
+// を観測するためである。
+type failingAttemptStore struct{ err error }
+
+func (s failingAttemptStore) Save(context.Context, *federationdomain.FederatedLoginAttempt) error {
+	return s.err
+}
+
+func (s failingAttemptStore) Consume(
+	context.Context, string, string, time.Time,
+) (*federationdomain.FederatedLoginAttempt, error) {
+	return nil, s.err
+}
+
+// 保存層の障害は state の不一致ではない。これを state_mismatch として残すと、障害の間の
+// 正当な callback が攻撃の記録として監査に積み上がる。
+func TestCompleteLoginDoesNotRecordAStoreFailureAsAStateMismatch(t *testing.T) {
+	storeDown := errors.New("attempt store unavailable")
+	deps, _, _, _ := brokerFixture(t)
+	deps.Attempts = failingAttemptStore{err: storeDown}
+	var events []string
+	deps.Emit = func(event spec.DomainEvent) { events = append(events, event.EventType()) }
+
+	_, err := federationusecases.CompleteLogin(
+		context.Background(), deps, "some-state", "response", "https://broker.example/callback", time.Now(),
+	)
+	if !errors.Is(err, storeDown) {
+		t.Fatalf("err=%v, want the store failure", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("events=%v after a store failure; want none", events)
 	}
 }

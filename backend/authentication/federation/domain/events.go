@@ -37,6 +37,8 @@ func (e *FederatedIdentityUnlinked) OccurredAt() time.Time { return e.At }
 // FederatedLoginRejected の Reason。監査が拒否の種類を区別するための値である。
 const (
 	RejectionProtocolValidationFailed = "protocol_validation_failed"
+	// 未発行、消費済み、期限切れの state を区別しない。どれも生きている attempt と一致しない。
+	RejectionStateMismatch = "state_mismatch"
 )
 
 type FederatedLoginRejected struct {

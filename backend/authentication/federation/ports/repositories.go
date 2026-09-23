@@ -11,6 +11,7 @@ import (
 var (
 	ErrLinkConflict    = errors.New("federated identity link conflicts with an existing link")
 	ErrAttemptNotFound = errors.New("federated login attempt not found")
+	// ErrAttemptConsumed は消費済みの attempt に加えて、期限切れの attempt も表す。
 	ErrAttemptConsumed = errors.New("federated login attempt already consumed")
 )
 

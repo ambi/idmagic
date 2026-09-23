@@ -29,12 +29,6 @@
       "finding": "UnassignApplicationDesiredState も実装が無い。既存の UnassignApplication は AssignmentRepo.Delete を呼んで常に ApplicationUnassigned を発行し、差分が無いことを呼び出し元へ返す戻り値を持たない。"
     },
     {
-      "id": "EX-AUTHENTICATION-001-03",
-      "reason": "`state` が一致しない callback では FederatedLoginRejected が発行されないため、具体例の `Then` を 1 つ満たせない",
-      "blocked_by": "wi-571-a-state-mismatch-leaves-no-federation-record",
-      "finding": "CompleteLogin は Attempts.Consume の失敗で即座に return し、FederatedLoginRejected は上流の応答の検証が落ちたときにしか発行しない (backend/authentication/federation/usecases/flow.go)。拒否とセッション・関連付けの不在は TestProtocolValidationRefusalCreatesNothingAndRecordsTheRejection が固定済み。"
-    },
-    {
       "id": "EX-AUTHENTICATION-019-01",
       "reason": "強制開始日時が利用者向けの API にも UI にも現れず、具体例が要求する警告の表示を観測できない",
       "blocked_by": "wi-572-the-mfa-enforcement-date-never-reaches-the-user",

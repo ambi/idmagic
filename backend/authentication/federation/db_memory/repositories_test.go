@@ -68,3 +68,20 @@ func TestAttemptStoreConsumesAtomically(t *testing.T) {
 		t.Fatalf("second consume err=%v", err)
 	}
 }
+
+// 期限切れの attempt は Postgres 実装と同じく ErrAttemptConsumed で拒否する。呼び出し側は
+// この 2 つの sentinel だけを state の不一致として扱い、それ以外を保存層の障害と見なす。
+func TestAttemptStoreRefusesAnExpiredAttemptAsConsumed(t *testing.T) {
+	ctx := context.Background()
+	repos := NewRepositories()
+	now := time.Now().UTC()
+	if err := repos.Attempts.Save(ctx, &domain.FederatedLoginAttempt{
+		State: "state", TenantID: "tenant-a", ProviderID: "provider", Protocol: domain.ProtocolOIDC,
+		CreatedAt: now, ExpiresAt: now.Add(time.Minute),
+	}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if _, err := repos.Attempts.Consume(ctx, "tenant-a", "state", now.Add(time.Minute)); !errors.Is(err, federationports.ErrAttemptConsumed) {
+		t.Fatalf("expired consume err=%v, want ErrAttemptConsumed", err)
+	}
+}
