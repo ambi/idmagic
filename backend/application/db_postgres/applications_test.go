@@ -102,6 +102,24 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-APPLICATION-007, EX-APPLICATION-007-03: 別テナントの id で同じ Application を検索しても、保存先は Application を返さない。
+func TestApplicationRepositoryFindByIDIsScopedToTenant(t *testing.T) {
+	db := pgtest.Require(t)
+	owner := pgfixtures.SeedTenant(t, db)
+	other := pgfixtures.SeedTenant(t, db)
+	app := seedApplication(t, db, owner.ID)
+	repo := &ApplicationRepository{Pool: db}
+	ctx := context.Background()
+
+	if got, err := repo.FindByID(ctx, owner.ID, app.ID); err != nil || got == nil {
+		t.Fatalf("owner tenant find: %v %+v", err, got)
+	}
+	got, err := repo.FindByID(ctx, other.ID, app.ID)
+	if err != nil || got != nil {
+		t.Fatalf("other tenant find returned %+v err=%v, want nil", got, err)
+	}
+}
+
 func TestApplicationProtocolRelationConstraintsAndCascade(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
@@ -268,6 +286,34 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-APPLICATION-008, EX-APPLICATION-008-03: 別テナントの id で同じ `application_id` と id のアイコンを検索しても、保存先はアイコンを返さない。
+func TestApplicationIconStoreFindIsScopedToTenant(t *testing.T) {
+	db := pgtest.Require(t)
+	owner := pgfixtures.SeedTenant(t, db)
+	other := pgfixtures.SeedTenant(t, db)
+	app := seedApplication(t, db, owner.ID)
+	store := &ApplicationIconStore{Pool: db}
+	ctx := context.Background()
+
+	now := pgfixtures.TestClock()
+	icon := &domain.ApplicationIcon{
+		TenantID: owner.ID, ApplicationID: app.ID, ID: pgfixtures.NewUUID(t),
+		ContentType: "image/png", SizeBytes: 4, Data: []byte{0x1, 0x2, 0x3, 0x4},
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := store.Save(ctx, icon); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	if got, err := store.Find(ctx, owner.ID, app.ID, icon.ID); err != nil || got == nil {
+		t.Fatalf("owner tenant find: %v %+v", err, got)
+	}
+	got, err := store.Find(ctx, other.ID, app.ID, icon.ID)
+	if err != nil || got != nil {
+		t.Fatalf("other tenant find returned %+v err=%v, want nil", got, err)
+	}
+}
+
 func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
@@ -376,6 +422,30 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 	got, err = repo.Get(ctx, tenant.ID, user.ID)
 	if err != nil || got == nil || len(got.ApplicationIDs) != 1 || got.ApplicationIDs[0] != "app-a" {
 		t.Fatalf("upsert not applied: %v %+v", err, got)
+	}
+}
+
+func TestApplicationCategoryRepositoryFindByIDIsScopedToTenant(t *testing.T) {
+	db := pgtest.Require(t)
+	owner := pgfixtures.SeedTenant(t, db)
+	other := pgfixtures.SeedTenant(t, db)
+	repo := &ApplicationCategoryRepository{Pool: db}
+	ctx := context.Background()
+
+	now := pgfixtures.TestClock()
+	category := &domain.ApplicationCategory{
+		TenantID: owner.ID, ID: pgfixtures.NewUUID(t), Name: "Finance", CreatedAt: now, UpdatedAt: now,
+	}
+	if err := repo.Save(ctx, category); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	if got, err := repo.FindByID(ctx, owner.ID, category.ID); err != nil || got == nil {
+		t.Fatalf("owner tenant find: %v %+v", err, got)
+	}
+	got, err := repo.FindByID(ctx, other.ID, category.ID)
+	if err != nil || got != nil {
+		t.Fatalf("other tenant find returned %+v err=%v, want nil", got, err)
 	}
 }
 

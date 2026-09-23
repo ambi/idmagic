@@ -5,18 +5,6 @@
   ],
   "untested": [
     {
-      "id": "EX-APPLICATION-007-03",
-      "reason": "越境した id の参照は拒否されるが、公開するエラー契約が具体例と一致しないため",
-      "blocked_by": "wi-626-align-cross-tenant-application-read-refusals",
-      "finding": "handleGetApplication は解決済みテナントを検索キーに含め、対象を返さない。応答は具体例が定める InvalidRequestError ではなく 404 application_not_found である (backend/application/handlers_http/admin_application_handler.go)。TypeSpec の GetAdminApplication は 200/400/401/403 しか宣言していない。"
-    },
-    {
-      "id": "EX-APPLICATION-008-03",
-      "reason": "越境したアイコンは返らないが、公開するエラー契約が具体例と一致しないため",
-      "blocked_by": "wi-626-align-cross-tenant-application-read-refusals",
-      "finding": "handleGetApplicationIcon は解決済みテナントを含むキーで検索し、内容を返さない。応答は具体例が定める InvalidRequestError ではなく 404 not_found である。TypeSpec の GetApplicationIcon は 404 ApplicationIconNotFoundError を宣言しており、契約と実装は一致している。食い違うのは具体例だけである。"
-    },
-    {
       "id": "EX-APPLICATION-014-01",
       "reason": "具体例が名指す操作の実装が存在しないため",
       "blocked_by": "wi-628-implement-desired-state-application-assignment",

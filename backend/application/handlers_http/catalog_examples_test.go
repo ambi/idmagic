@@ -5,11 +5,32 @@ package handlers_http_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/application"
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/oauth2"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	"github.com/ambi/idmagic/backend/saml"
+	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/wsfederation"
+	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
+
+	"github.com/labstack/echo/v5"
 )
 
 // pngBytes と gifBytes は、アイコンの種別判定が読む先頭バイト列を持つ最小の画像である。
@@ -207,6 +228,62 @@ func TestApplicationIconRejectsANonImageAndKeepsTheExistingOne(t *testing.T) {
 	}
 }
 
+//spec:covers EX-APPLICATION-007-03: 別テナントの管理者が同じ id で GetAdminApplication を呼ぶと、存在しない id と同じ 404 application_not_found になり、名称と OIDC 設定を返さないこと。
+func TestGetAdminApplicationFromAnotherTenantIsNotFound(t *testing.T) {
+	e := newTwoTenantApplicationHandler(t)
+	csrf, cookie := appCSRF(t, e)
+	applicationID := createApplication(t, e, csrf, cookie, map[string]any{
+		"name": "portal", "type": "oidc", "client_type": "confidential",
+		"token_endpoint_auth_method": "client_secret_post",
+		"redirect_uris":              []string{"https://portal.example/callback"},
+	})
+
+	// 同じテナントでは取得できることを先に確かめ、下の拒否が URL の誤りではないことを示す。
+	if own := getAs(e, "admin", "/realms/default/api/admin/v1/applications/"+applicationID); own.Code != http.StatusOK {
+		t.Fatalf("own tenant status=%d body=%s", own.Code, own.Body.String())
+	}
+
+	foreign := getAs(e, "globex-admin", "/realms/globex/api/admin/v1/applications/"+applicationID)
+	missing := getAs(e, "globex-admin", "/realms/globex/api/admin/v1/applications/ffffffff-ffff-4fff-bfff-ffffffffffff")
+	if foreign.Code != http.StatusNotFound || readProblemType(t, foreign) != "urn:idmagic:error:application_not_found" {
+		t.Fatalf("foreign tenant status=%d body=%s, want 404 application_not_found", foreign.Code, foreign.Body.String())
+	}
+	assertIndistinguishableFromMissing(t, foreign, missing)
+	if body := foreign.Body.String(); strings.Contains(body, "portal") || strings.Contains(body, applicationID) {
+		t.Fatalf("foreign tenant response carries the application: %s", body)
+	}
+}
+
+//spec:covers EX-APPLICATION-008-03: 別テナントの realm で同じ `application_id` と id のアイコンを取得すると、存在しない id と同じ 404 not_found になり、画像の内容を返さないこと。
+func TestGetApplicationIconFromAnotherTenantIsNotFound(t *testing.T) {
+	e := newTwoTenantApplicationHandler(t)
+	csrf, cookie := appCSRF(t, e)
+	applicationID := createApplication(t, e, csrf, cookie, map[string]any{
+		"name": "Payroll", "type": "weblink", "launch_url": "https://payroll.example",
+	})
+	uploaded := adminMultipart(t, e, "/api/admin/v1/applications/"+applicationID+"/icon", csrf, cookie, "icon.gif", gifBytes)
+	if uploaded.Code != http.StatusOK {
+		t.Fatalf("upload status=%d body=%s", uploaded.Code, uploaded.Body.String())
+	}
+	objectKey := readIconFields(t, uploaded.Body.Bytes()).Application.IconObjectKey
+
+	// アイコンの配信は認証を要求しないので、要求者ではなく realm だけがテナントを決める。
+	iconPath := "/application-icons/" + applicationID + "/"
+	if own := getAs(e, "", "/realms/default"+iconPath+objectKey); own.Code != http.StatusOK || !bytes.Equal(own.Body.Bytes(), gifBytes) {
+		t.Fatalf("own tenant status=%d body=%v", own.Code, own.Body.Bytes())
+	}
+
+	foreign := getAs(e, "", "/realms/globex"+iconPath+objectKey)
+	missing := getAs(e, "", "/realms/globex"+iconPath+"ffffffff-ffff-4fff-bfff-ffffffffffff")
+	if foreign.Code != http.StatusNotFound || readProblemType(t, foreign) != "urn:idmagic:error:not_found" {
+		t.Fatalf("foreign tenant status=%d body=%s, want 404 not_found", foreign.Code, foreign.Body.String())
+	}
+	assertIndistinguishableFromMissing(t, foreign, missing)
+	if bytes.Contains(foreign.Body.Bytes(), gifBytes) {
+		t.Fatalf("foreign tenant response carries the icon: %v", foreign.Body.Bytes())
+	}
+}
+
 //spec:covers REQ-APPLICATION-013, EX-APPLICATION-013-01: admin ロールを持たない認証済み利用者の ListAdminApplications が 403 access_denied で拒否され、応答がテナントの Application を 1 つも運ばないこと。
 func TestListAdminApplicationsRefusesAUserWithoutTheAdminRole(t *testing.T) {
 	e := newApplicationHandler(t)
@@ -237,5 +314,84 @@ func TestListAdminApplicationsRefusesAUserWithoutTheAdminRole(t *testing.T) {
 	// 拒否が防いだ効果。カタログの中身は応答に現れない。
 	if body := refused.Body.String(); strings.Contains(body, applicationID) || strings.Contains(body, "Payroll") {
 		t.Fatalf("refusal leaked the catalog: %s", body)
+	}
+}
+
+// newTwoTenantApplicationHandler は、既定の fixture に globex テナントとその管理者を足す。
+// テナントの登録先が無いと default 以外の realm は解決されず、越境の拒否を
+// 存在しないテナントの拒否と区別して観測できない。
+func newTwoTenantApplicationHandler(t *testing.T) *echo.Echo {
+	t.Helper()
+	now := time.Now().UTC()
+	tenants := tenancymemory.NewTenantRepository()
+	for _, tenant := range []*tenancydomain.Tenant{
+		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
+		{ID: "globex", Realm: "globex", DisplayName: "Globex", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
+	} {
+		if err := tenants.Save(context.Background(), tenant); err != nil {
+			t.Fatal(err)
+		}
+	}
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{
+		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
+		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
+	})
+	users.Seed(&userdomain.User{
+		ID: "globex-admin", TenantID: "globex", PreferredUsername: "admin",
+		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
+	})
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer:     "http://idp.test",
+		Emit:       func(spec.DomainEvent) {},
+		TenantRepo: tenants, UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(),
+		Application: application.Module{
+			Repo:                    appmemory.NewApplicationRepository(),
+			IconStore:               appmemory.NewApplicationIconStore(),
+			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
+			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
+			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
+			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
+			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
+		},
+		Saml:          saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		OAuth2:        oauth2.Module{ClientRepo: oauth2memory.NewClientRepository()},
+		WsFederation:  wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		AuthnResolver: authusecases.DemoHeaderResolver{},
+	})
+	return e
+}
+
+// getAs は sub として認証した GET を送る。sub が空なら認証しない。
+func getAs(e *echo.Echo, sub, path string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+	if sub != "" {
+		request.Header.Set("X-Demo-Sub", sub)
+	}
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	return response
+}
+
+func readProblemType(t *testing.T, response *httptest.ResponseRecorder) string {
+	t.Helper()
+	var problem struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v; body=%s", err, response.Body.String())
+	}
+	return problem.Type
+}
+
+// assertIndistinguishableFromMissing は、越境の応答が存在しない id の応答と区別できないことを表明する。
+// 区別できれば、別テナントに同じ id があることを推測させる。
+func assertIndistinguishableFromMissing(t *testing.T, foreign, missing *httptest.ResponseRecorder) {
+	t.Helper()
+	if foreign.Code != missing.Code || foreign.Body.String() != missing.Body.String() ||
+		foreign.Header().Get("Content-Type") != missing.Header().Get("Content-Type") {
+		t.Fatalf("foreign tenant response differs from a missing id:\nforeign=%d %s\nmissing=%d %s",
+			foreign.Code, foreign.Body.String(), missing.Code, missing.Body.String())
 	}
 }

@@ -188,7 +188,8 @@ Primary actor: `TenantAdministrator`
 - Then "alice" への割当が保存される
 - When 管理者 "operator" がアプリケーション "portal" を取得する
 - But 別テナントの管理者が同じ ID を指定する
-- Then InvalidRequestError で拒否される
+- Then アプリケーションは存在しないものとして扱われ、応答は存在しない ID を指定したときと同じ 404 application_not_found である
+- Then 応答にアプリケーション "portal" の名称と OIDC 設定は含まれない
 
 ## Rule: REQ-APPLICATION-008 管理者は Application のアイコンをアップロード・削除できる
 
@@ -218,7 +219,8 @@ Primary actor: `TenantAdministrator`
 - Then Application は `icon_object_key` と内部の `icon_url` を持つ
 - When 管理一覧、詳細、利用者ポータルが `icon_url` を取得する
 - But 別テナントの `application_id` と ID で同じアイコンを取得する
-- Then アセットは存在しないものとして扱い、InvalidRequestError で拒否する
+- Then アイコンは存在しないものとして扱われ、応答は存在しない ID を指定したときと同じ 404 not_found である
+- Then 応答にアップロードした画像の内容は含まれない
 
 ## Rule: REQ-APPLICATION-009 管理者はアプリケーション別サインインポリシーを設定できる
 

@@ -724,6 +724,14 @@ model CategoryNameRequiredError is ProblemDetails;
 model UnknownCategoryError is ProblemDetails;
 
 
+@doc("The Application the request targets does not exist in this tenant. An Application in another tenant is treated as nonexistent and answered the same way. RFC 9457 Problem Details with `type` = `urn:idmagic:error:application_not_found`.")
+model ApplicationNotFoundError is ProblemDetails;
+
+
+@doc("The ApplicationCategory the request targets does not exist in this tenant. A category in another tenant is treated as nonexistent and answered the same way. RFC 9457 Problem Details with `type` = `urn:idmagic:error:category_not_found`.")
+model ApplicationCategoryNotFoundError is ProblemDetails;
+
+
 @doc("The icon image named by the request does not exist. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
 model ApplicationIconNotFoundError is ProblemDetails;
 

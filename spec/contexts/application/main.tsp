@@ -70,6 +70,16 @@ model GetAdminApplicationError403 {
   @body body: GetAdminApplicationError403Body;
 }
 
+union GetAdminApplicationError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model GetAdminApplicationError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminApplicationError404Body;
+}
+
 @doc("An administrator reads an Application, including the real settings resolved through its protocol relation. The detail screen of an OIDC or SAML application shows these registered counterpart settings side by side with the IdMagic setup guidance Tenancy.GetAdminIntegrationEndpoints returns, and never shows a client secret again. Another tenant's is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminApplication")
@@ -77,7 +87,7 @@ model GetAdminApplicationError403 {
 @get
 op GetAdminApplication(
   @path id: string
-): GetAdminApplicationSuccess_200 | GetAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminApplicationError403;
+): GetAdminApplicationSuccess_200 | GetAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminApplicationError403 | GetAdminApplicationError404;
 
 model CreateAdminApplicationSuccess_201 {
   @statusCode statusCode: 201;
@@ -154,6 +164,16 @@ model UpdateAdminApplicationError403 {
   @body body: UpdateAdminApplicationError403Body;
 }
 
+union UpdateAdminApplicationError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model UpdateAdminApplicationError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAdminApplicationError404Body;
+}
+
 @doc("An administrator updates the metadata of an Application.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminApplication")
@@ -162,7 +182,7 @@ model UpdateAdminApplicationError403 {
 op UpdateAdminApplication(
   @path id: string,
   @body body: IdMagic.Contract.AdminApplicationUpdateRequest
-): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminApplicationError403;
+): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminApplicationError403 | UpdateAdminApplicationError404;
 
 model UploadApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -192,6 +212,16 @@ model UploadApplicationIconError403 {
   @body body: UploadApplicationIconError403Body;
 }
 
+union UploadApplicationIconError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model UploadApplicationIconError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UploadApplicationIconError404Body;
+}
+
 @doc("An administrator uploads the icon image of an Application as multipart. PNG, JPEG, WebP, and GIF are accepted, up to 256 KiB, and the format is checked against the magic bytes.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UploadApplicationIcon")
@@ -204,7 +234,7 @@ op UploadApplicationIcon(
     @doc("The image to store, under the form field name `file`.")
     file: HttpPart<File>,
   }
-): UploadApplicationIconSuccess_200 | UploadApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | UploadApplicationIconError403;
+): UploadApplicationIconSuccess_200 | UploadApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | UploadApplicationIconError403 | UploadApplicationIconError404;
 
 model DeleteApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -234,6 +264,16 @@ model DeleteApplicationIconError403 {
   @body body: DeleteApplicationIconError403Body;
 }
 
+union DeleteApplicationIconError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model DeleteApplicationIconError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DeleteApplicationIconError404Body;
+}
+
 @doc("An administrator deletes the stored icon of an Application. `icon_url` is no longer returned afterwards.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationIcon")
@@ -241,7 +281,7 @@ model DeleteApplicationIconError403 {
 @delete
 op DeleteApplicationIcon(
   @path id: string
-): DeleteApplicationIconSuccess_200 | DeleteApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteApplicationIconError403;
+): DeleteApplicationIconSuccess_200 | DeleteApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteApplicationIconError403 | DeleteApplicationIconError404;
 
 model GetApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -298,6 +338,16 @@ model DeleteAdminApplicationError403 {
   @body body: DeleteAdminApplicationError403Body;
 }
 
+union DeleteAdminApplicationError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model DeleteAdminApplicationError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DeleteAdminApplicationError404Body;
+}
+
 @doc("An administrator deletes an Application, idempotently. The related protocol rows are cascade-deleted in the same transaction.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminApplication")
@@ -305,7 +355,7 @@ model DeleteAdminApplicationError403 {
 @delete
 op DeleteAdminApplication(
   @path id: string
-): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403;
+): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403 | DeleteAdminApplicationError404;
 
 model UpdateApplicationOidcConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -335,6 +385,7 @@ model UpdateApplicationOidcConfigError403 {
 }
 
 union UpdateApplicationOidcConfigError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
   IdMagic.Contract.ApplicationProtocolTargetNotFoundError,
 }
 
@@ -382,6 +433,16 @@ model RotateApplicationClientSecretError403 {
   @body body: RotateApplicationClientSecretError403Body;
 }
 
+union RotateApplicationClientSecretError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model RotateApplicationClientSecretError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RotateApplicationClientSecretError404Body;
+}
+
 @doc("For compatibility, an administrator rotates the client secret of an Application's OIDC protocol the old way. The previous credential stays valid for the overlap given, and zero days means revoking it at once. The newer administration UI uses IssueApplicationClientSecret and RevokeApplicationClientSecret instead.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RotateApplicationClientSecret")
@@ -390,7 +451,7 @@ model RotateApplicationClientSecretError403 {
 op RotateApplicationClientSecret(
   @path id: string,
   @body body: IdMagic.Contract.RotateApplicationClientSecretRequest
-): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RotateApplicationClientSecretError403;
+): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RotateApplicationClientSecretError403 | RotateApplicationClientSecretError404;
 
 model IssueApplicationClientSecretSuccess_201 {
   @statusCode statusCode: 201;
@@ -420,6 +481,16 @@ model IssueApplicationClientSecretError403 {
   @body body: IssueApplicationClientSecretError403Body;
 }
 
+union IssueApplicationClientSecretError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model IssueApplicationClientSecretError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IssueApplicationClientSecretError404Body;
+}
+
 union IssueApplicationClientSecretError422Body {
   IdMagic.Contract.ClientSecretLimitExceededError,
 }
@@ -438,7 +509,7 @@ model IssueApplicationClientSecretError422 {
 op IssueApplicationClientSecret(
   @path id: string,
   @body body: IdMagic.Contract.IssueApplicationClientSecretRequest
-): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422;
+): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422 | IssueApplicationClientSecretError404;
 
 model RevokeApplicationClientSecretSuccess_200 {
   @statusCode statusCode: 200;
@@ -468,6 +539,16 @@ model RevokeApplicationClientSecretError403 {
   @body body: RevokeApplicationClientSecretError403Body;
 }
 
+union RevokeApplicationClientSecretError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model RevokeApplicationClientSecretError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RevokeApplicationClientSecretError404Body;
+}
+
 @doc("An administrator revokes one named credential of an Application's secret-based OIDC client, at once. Revoking an already-revoked credential succeeds idempotently, and a credential of another client, or one that does not exist, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RevokeApplicationClientSecret")
@@ -476,7 +557,7 @@ model RevokeApplicationClientSecretError403 {
 op RevokeApplicationClientSecret(
   @path id: string,
   @path credential_id: string
-): RevokeApplicationClientSecretSuccess_200 | RevokeApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeApplicationClientSecretError403;
+): RevokeApplicationClientSecretSuccess_200 | RevokeApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeApplicationClientSecretError403 | RevokeApplicationClientSecretError404;
 
 model UpdateApplicationWsFedConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -506,6 +587,7 @@ model UpdateApplicationWsFedConfigError403 {
 }
 
 union UpdateApplicationWsFedConfigError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
   IdMagic.Contract.ApplicationProtocolTargetNotFoundError,
 }
 
@@ -553,6 +635,7 @@ model UpdateApplicationSamlConfigError403 {
 }
 
 union UpdateApplicationSamlConfigError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
   IdMagic.Contract.ApplicationProtocolTargetNotFoundError,
 }
 
@@ -598,6 +681,16 @@ model ListApplicationAssignmentsError403 {
   @body body: ListApplicationAssignmentsError403Body;
 }
 
+union ListApplicationAssignmentsError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model ListApplicationAssignmentsError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: ListApplicationAssignmentsError404Body;
+}
+
 @doc("An administrator lists the assignments of an Application by `subject_type` and `subject_id` ascending, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationAssignments")
@@ -607,7 +700,7 @@ op ListApplicationAssignments(
   @path id: string,
   @query cursor?: string,
   @query limit?: int64
-): ListApplicationAssignmentsSuccess_200 | ListApplicationAssignmentsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListApplicationAssignmentsError403;
+): ListApplicationAssignmentsSuccess_200 | ListApplicationAssignmentsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListApplicationAssignmentsError403 | ListApplicationAssignmentsError404;
 
 model AssignApplicationSuccess_201 {
   @statusCode statusCode: 201;
@@ -637,6 +730,16 @@ model AssignApplicationError403 {
   @body body: AssignApplicationError403Body;
 }
 
+union AssignApplicationError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model AssignApplicationError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: AssignApplicationError404Body;
+}
+
 @doc("An administrator assigns a user or a group to an Application.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("AssignApplication")
@@ -645,7 +748,7 @@ model AssignApplicationError403 {
 op AssignApplication(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationAssignmentRequest
-): AssignApplicationSuccess_201 | AssignApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AssignApplicationError403;
+): AssignApplicationSuccess_201 | AssignApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AssignApplicationError403 | AssignApplicationError404;
 
 model UnassignApplicationSuccess_204 {
   @statusCode statusCode: 204;
@@ -711,6 +814,16 @@ model GetAppSignInPolicyError403 {
   @body body: GetAppSignInPolicyError403Body;
 }
 
+union GetAppSignInPolicyError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model GetAppSignInPolicyError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAppSignInPolicyError404Body;
+}
+
 @doc("An administrator reads the sign-in policy of an Application. It returns the application's own policy, the tenant default, the effective rule sequence that actually applies after the override, and a warning flag for a policy weaker than the default. When nothing is set it returns empty rules.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAppSignInPolicy")
@@ -718,7 +831,7 @@ model GetAppSignInPolicyError403 {
 @get
 op GetAppSignInPolicy(
   @path id: string
-): GetAppSignInPolicySuccess_200 | GetAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAppSignInPolicyError403;
+): GetAppSignInPolicySuccess_200 | GetAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAppSignInPolicyError403 | GetAppSignInPolicyError404;
 
 model UpdateAppSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
@@ -748,6 +861,16 @@ model UpdateAppSignInPolicyError403 {
   @body body: UpdateAppSignInPolicyError403Body;
 }
 
+union UpdateAppSignInPolicyError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model UpdateAppSignInPolicyError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateAppSignInPolicyError404Body;
+}
+
 @doc("An administrator replaces the sign-in policy of an Application. A condition holding an invalid CIDR is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAppSignInPolicy")
@@ -756,7 +879,7 @@ model UpdateAppSignInPolicyError403 {
 op UpdateAppSignInPolicy(
   @path id: string,
   @body body: IdMagic.Contract.AppSignInPolicyRequest
-): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAppSignInPolicyError403;
+): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAppSignInPolicyError403 | UpdateAppSignInPolicyError404;
 
 model GetTenantDefaultSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
@@ -938,6 +1061,16 @@ model UpdateApplicationCategoryError403 {
   @body body: UpdateApplicationCategoryError403Body;
 }
 
+union UpdateApplicationCategoryError404Body {
+  IdMagic.Contract.ApplicationCategoryNotFoundError,
+}
+
+model UpdateApplicationCategoryError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateApplicationCategoryError404Body;
+}
+
 @doc("An administrator updates the name or the position of an ApplicationCategory.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationCategory")
@@ -946,7 +1079,7 @@ model UpdateApplicationCategoryError403 {
 op UpdateApplicationCategory(
   @path id: string,
   @body body: IdMagic.Contract.AdminApplicationCategoryRequest
-): UpdateApplicationCategorySuccess_200 | UpdateApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationCategoryError422 | UpdateApplicationCategoryError403;
+): UpdateApplicationCategorySuccess_200 | UpdateApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationCategoryError422 | UpdateApplicationCategoryError403 | UpdateApplicationCategoryError404;
 
 model DeleteApplicationCategorySuccess_204 {
   @statusCode statusCode: 204;
@@ -975,6 +1108,16 @@ model DeleteApplicationCategoryError403 {
   @body body: DeleteApplicationCategoryError403Body;
 }
 
+union DeleteApplicationCategoryError404Body {
+  IdMagic.Contract.ApplicationCategoryNotFoundError,
+}
+
+model DeleteApplicationCategoryError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DeleteApplicationCategoryError404Body;
+}
+
 @doc("An administrator deletes an ApplicationCategory, idempotently. It is removed from the Applications it was assigned to as well.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationCategory")
@@ -982,7 +1125,7 @@ model DeleteApplicationCategoryError403 {
 @delete
 op DeleteApplicationCategory(
   @path id: string
-): DeleteApplicationCategorySuccess_204 | DeleteApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteApplicationCategoryError403;
+): DeleteApplicationCategorySuccess_204 | DeleteApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteApplicationCategoryError403 | DeleteApplicationCategoryError404;
 
 model SetApplicationCategoriesSuccess_200 {
   @statusCode statusCode: 200;
@@ -1022,6 +1165,16 @@ model SetApplicationCategoriesError403 {
   @body body: SetApplicationCategoriesError403Body;
 }
 
+union SetApplicationCategoriesError404Body {
+  IdMagic.Contract.ApplicationNotFoundError,
+}
+
+model SetApplicationCategoriesError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: SetApplicationCategoriesError404Body;
+}
+
 @doc("An administrator replaces the set of categories assigned to an Application. Only categories that already exist in their tenant are accepted.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("SetApplicationCategories")
@@ -1030,7 +1183,7 @@ model SetApplicationCategoriesError403 {
 op SetApplicationCategories(
   @path id: string,
   @body body: IdMagic.Contract.ApplicationCategoriesRequest
-): SetApplicationCategoriesSuccess_200 | SetApplicationCategoriesError400 | IdMagic.Contract.AuthenticationRequiredResponse | SetApplicationCategoriesError422 | SetApplicationCategoriesError403;
+): SetApplicationCategoriesSuccess_200 | SetApplicationCategoriesError400 | IdMagic.Contract.AuthenticationRequiredResponse | SetApplicationCategoriesError422 | SetApplicationCategoriesError403 | SetApplicationCategoriesError404;
 
 model ListMyApplicationsSuccess_200 {
   @statusCode statusCode: 200;
