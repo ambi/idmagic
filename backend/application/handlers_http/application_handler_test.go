@@ -114,6 +114,21 @@ func adminJSON(t *testing.T, e *echo.Echo, method, path, csrf string, cookie *ht
 
 func adminMultipart(t *testing.T, e *echo.Echo, path, csrf string, cookie *http.Cookie, filename string, data []byte) *httptest.ResponseRecorder {
 	t.Helper()
+	body, contentType := multipartFile(t, filename, data)
+	request := httptest.NewRequest(http.MethodPost, defaultRealmPath(path), body)
+	request.Header.Set("Content-Type", contentType)
+	request.Header.Set("Origin", "http://idp.test")
+	request.Header.Set("X-Csrf-Token", csrf)
+	request.Header.Set("X-Demo-Sub", "admin")
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	return response
+}
+
+// multipartFile は、アイコンのアップロードが読む `file` 欄だけを持つ multipart 本文を作る。
+func multipartFile(t *testing.T, filename string, data []byte) (*bytes.Buffer, string) {
+	t.Helper()
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	part, err := writer.CreateFormFile("file", filename)
@@ -126,15 +141,7 @@ func adminMultipart(t *testing.T, e *echo.Echo, path, csrf string, cookie *http.
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodPost, defaultRealmPath(path), &body)
-	request.Header.Set("Content-Type", writer.FormDataContentType())
-	request.Header.Set("Origin", "http://idp.test")
-	request.Header.Set("X-Csrf-Token", csrf)
-	request.Header.Set("X-Demo-Sub", "admin")
-	request.AddCookie(cookie)
-	response := httptest.NewRecorder()
-	e.ServeHTTP(response, request)
-	return response
+	return &body, writer.FormDataContentType()
 }
 
 func myApplications(t *testing.T, e *echo.Echo, sub string) []map[string]any {
