@@ -124,7 +124,7 @@ func TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser(t *testing.T)
 
 // 行為者を Agent としない。管理者による Agent の登録がその例。
 //
-//spec:covers REQ-AUDIT-005: agentId を持つイベントでも、Agent が操作の対象であるものは
+//spec:covers REQ-AUDIT-005, EX-AUDIT-005-02: agentId を持つイベントでも、Agent が操作の対象であるものは行為者を管理者 (人間) のままにし、agent.id はその Agent を指す識別子としてだけ残ることを固定する。
 func TestExtractSearchAttributesAgentAsTargetKeepsTheHumanActor(t *testing.T) {
 	rec := &ports.AuditEventRecord{
 		Type: "AgentRegistered",

@@ -51,6 +51,8 @@ func (workerImportOwnershipGuard) SourceManagedUserIDs(context.Context, string, 
 // UserCreated を発行したとき、AuditEventRepo にそのイベントが記録されることを
 // 実 Postgres 上で確認する。修正前は Emit が配線されておらず、ユーザーは作成される
 // のに監査イベントだけがサイレントにロストしていた。
+//
+//spec:covers EX-AUDIT-002-01: worker プロセスが実行する CSV インポート apply が発行した UserCreated が、idmagic-api / idmagic-worker のどちらが発行したかにかかわらず同じ AuditEventRepository へ書き込まれ、type=UserCreated の絞り込みで見えることを固定する。
 func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	db := pgtest.Require(t)
 	ctx := context.Background()

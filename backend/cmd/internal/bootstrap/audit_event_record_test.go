@@ -1,9 +1,11 @@
 package bootstrap
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
@@ -87,6 +89,73 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 	}
 	if !attrIs(rec, "workflow_run.id", "run-1") || !attrIs(rec, "workflow_step.id", "2") {
 		t.Fatalf("search attrs = %#v, want workflow_run.id=run-1 workflow_step.id=2", rec.SearchAttributes)
+	}
+}
+
+// LifecycleWorkflowRunPartiallyFailed と LifecycleWorkflowStepFailed が 1 ステップの失敗で
+// 揃って発行されること自体は EX-IDGOVERNANCE-008-01
+// (backend/idgovernance/usecases/scenario_examples_test.go) が固定する。ここで固定するのは
+// Audit 側の主張である。
+//
+//spec:covers EX-AUDIT-003-01: workflow_run.id での絞り込みが run-1 に紐づくイベントだけを返し、別の run のイベントを含めないこと、そして記録された payload に属性値やメール本文が含まれないことを固定する。
+func TestNewAuditEventRecordLifecycleWorkflowSearchExcludesUnrelatedRunsAndSensitiveFields(t *testing.T) {
+	now := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
+	partiallyFailed := &igdomain.LifecycleWorkflowRunPartiallyFailed{
+		At: now, TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-1", TargetUserID: "user-1",
+	}
+	stepFailed := &igdomain.LifecycleWorkflowStepFailed{
+		At: now.Add(time.Second), TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-1",
+		StepIndex: 2, ActionKind: "send_email", ErrorCode: "smtp_unavailable",
+	}
+	unrelated := &igdomain.LifecycleWorkflowRunSucceeded{
+		At: now.Add(2 * time.Second), TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-2", TargetUserID: "user-2",
+	}
+
+	store := auditmemory.NewAuditEventStore(0)
+	ctx := context.Background()
+	var linked []string
+	for _, ev := range []spec.DomainEvent{partiallyFailed, stepFailed, unrelated} {
+		rec, err := NewAuditEventRecord(ev)
+		if err != nil {
+			t.Fatalf("%s: %v", ev.EventType(), err)
+		}
+		if err := store.Append(ctx, rec); err != nil {
+			t.Fatalf("append %s: %v", ev.EventType(), err)
+		}
+		if rec.Payload["runId"] == "run-1" {
+			linked = append(linked, rec.ID)
+		}
+	}
+
+	events, err := store.List(ctx, auditports.AuditEventQuery{
+		TenantID: "acme",
+		Filters:  []auditports.AuditFilterExpression{{Field: "workflow_run.id", Operator: auditports.OpEq, Values: []string{"run-1"}}},
+	})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(events) != len(linked) {
+		t.Fatalf("workflow_run.id=run-1 returned %d event(s), want %d: %#v", len(events), len(linked), events)
+	}
+	got := map[string]bool{}
+	for _, ev := range events {
+		got[ev.ID] = true
+	}
+	for _, id := range linked {
+		if !got[id] {
+			t.Fatalf("missing linked event %s in %#v", id, events)
+		}
+	}
+	// LifecycleWorkflowRunPartiallyFailed / LifecycleWorkflowStepFailed はそもそも
+	// 属性値やメール本文のフィールドを宣言していない。将来どちらかへ追加されたら
+	// このテストが検出する。
+	forbidden := []string{"attributeValue", "attributeValues", "emailBody", "body", "content"}
+	for _, ev := range events {
+		for _, key := range forbidden {
+			if _, ok := ev.Payload[key]; ok {
+				t.Fatalf("%s payload must not carry %q: %#v", ev.Type, key, ev.Payload)
+			}
+		}
 	}
 }
 

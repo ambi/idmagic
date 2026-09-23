@@ -201,6 +201,7 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 	}
 }
 
+//spec:covers EX-AUDIT-004-04: TenantAdministrator ロールを持たない実行者は ListAdminAuditEvents から AccessDeniedError で拒否されることを固定する。
 func TestAdminAuditEventsRequiresAdminRole(t *testing.T) {
 	// 認証はあるが admin/system_admin ロールが無い → 403。
 	user := auditUser("user_alice", "acme", []string{})
@@ -238,6 +239,47 @@ func TestAdminAuditEventsScopesToOwnTenant(t *testing.T) {
 		if ev.TenantID != "acme" {
 			t.Fatalf("cross-tenant leak: %+v", ev)
 		}
+	}
+}
+
+//spec:covers EX-AUDIT-001-01: 直近 24 時間の絞り込みが所属テナントだけを返し、同じ絞り込みでのエクスポートも所属テナントの範囲に閉じることを固定する。
+func TestAdminAuditEventsFiltersRecentWindowAndExportsSameTenantScope(t *testing.T) {
+	user := auditUser("user_admin", "acme", []string{"admin"})
+	now := time.Now().UTC()
+	events := []*auditports.AuditEventRecord{
+		auditEvent("acme", "UserAuthenticated", "alice", now.Add(-time.Hour)),                      // 直近 24h、所属テナント
+		auditEvent("acme", "UserAuthenticated", "bob", now.Add(-48*time.Hour)),                     // 24h より前、所属テナント
+		auditEvent(tenancydomain.DefaultTenantID, "UserAuthenticated", "ops", now.Add(-time.Hour)), // 直近 24h、別テナント
+	}
+	e := newAuditAdminServer(t, user, events)
+	after := url.QueryEscape(now.Add(-24 * time.Hour).Format(time.RFC3339))
+
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?after="+after)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Events) != 1 || body.Events[0].TenantID != "acme" || body.Events[0].Payload["userId"] != "alice" {
+		t.Fatalf("24h window mismatch: %+v", body.Events)
+	}
+
+	export := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events/export?after="+after)
+	if export.Code != http.StatusOK {
+		t.Fatalf("export status=%d body=%s", export.Code, export.Body.String())
+	}
+	var exportBody struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	if err := json.Unmarshal(export.Body.Bytes(), &exportBody); err != nil {
+		t.Fatalf("decode export: %v", err)
+	}
+	if len(exportBody.Events) != 1 || exportBody.Events[0].TenantID != "acme" || exportBody.Events[0].Payload["userId"] != "alice" {
+		t.Fatalf("export must return the same tenant-scoped 24h window: %+v", exportBody.Events)
 	}
 }
 
@@ -570,14 +612,24 @@ func TestAdminAuditEventsFiltersPlaintextUsernameAndIP(t *testing.T) {
 	}
 }
 
+// 許可リストに無い軸を指定すると、解析の段階で拒否され問い合わせは発行されない。
+// wi-392: 拒否の応答 (400 invalid_request) と、拒否が防いだ効果 (許可リスト外の絞り込みで
+// 通せば見えたはずのイベントが応答に含まれないこと) の双方を観測する。
+//
+//spec:covers EX-AUDIT-005-04: 許可リストに無い検索軸はフィルターの解析で拒否され、問い合わせが発行されないので既存のイベントも一切応答に含まれないことを固定する。
 func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
-	e := newAuditAdminServer(t, user, nil)
+	now := time.Now().UTC()
+	events := []*auditports.AuditEventRecord{auditEvent("acme", "UserAuthenticated", "alice", now)}
+	e := newAuditAdminServer(t, user, events)
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?filter=payload.any:eq:value")
 	if rec.Code != http.StatusBadRequest ||
 		rec.Header().Get("Content-Type") != support.ProblemContentType ||
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"type":"urn:idmagic:error:invalid_request"`)) {
 		t.Fatalf("unknown filter must be 400 invalid_request, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if bytes.Contains(rec.Body.Bytes(), []byte("UserAuthenticated")) {
+		t.Fatalf("rejected filter must not leak existing events into the response: %s", rec.Body.String())
 	}
 }
 

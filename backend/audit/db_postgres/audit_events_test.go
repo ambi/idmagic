@@ -112,9 +112,9 @@ func TestAuditEventRepositoryListRejectsMalformedUserIDAsNoMatch(t *testing.T) {
 	}
 }
 
-// 区別して引ける。チェーンの参加者は多値なので、どの段からでも同じイベントに当たる。
+// チェーンの参加者は多値なので、どの段からでも同じイベントに当たる。
 //
-//spec:covers REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸で、エージェントが代行した操作を本人の操作と
+//spec:covers REQ-AUDIT-005 / REQ-AUDIT-006, EX-AUDIT-005-01, EX-AUDIT-005-03, EX-AUDIT-006-01: 委譲の軸でエージェントが代行した操作を本人の操作と区別して引け (actor.type=agent かつ agent.id、および actor.id 単体それぞれで別の結果集合になる)、委譲軸を持たない過去のイベントはどの軸でも一致せず、チェーンの中間参加者 delegation.actor と delegation.mode でも同じイベントへ当たることを固定する。
 func TestAuditEventRepositoryDelegationAxes(t *testing.T) {
 	db := pgtest.Require(t)
 	newUUID := func() string {
@@ -152,8 +152,14 @@ func TestAuditEventRepositoryDelegationAxes(t *testing.T) {
 			"actor.id":   {alice},
 		},
 	}
+	// 委譲の軸を追加する前 (wi-377 より前) の過去のイベント。SearchAttributes を持たず、
+	// どの委譲軸でも一致しないことを他のケースと同じ絞り込みで確かめる。
+	legacy := &ports.AuditEventRecord{
+		ID: newUUID(), TenantID: tenantID, Type: "ClientSecretRotated", OccurredAt: base.Add(2 * time.Minute),
+		Payload: map[string]any{"clientId": "app-legacy"},
+	}
 	// 二重の Append が多値の行を重複させないこと (冪等) も併せて確かめる。
-	for _, ev := range []*ports.AuditEventRecord{delegated, inPerson, delegated} {
+	for _, ev := range []*ports.AuditEventRecord{delegated, inPerson, legacy, delegated} {
 		if err := repo.Append(ctx, ev); err != nil {
 			t.Fatalf("append: %v", err)
 		}
@@ -196,6 +202,13 @@ func TestAuditEventRepositoryDelegationAxes(t *testing.T) {
 		{
 			name:    "the delegation mode comes from the payload of the exchange",
 			filters: []ports.AuditFilterExpression{{Field: "delegation.mode", Operator: ports.OpEq, Values: []string{"on_behalf_of"}}},
+			wantID:  delegated.ID, wantLen: 1,
+		},
+		{
+			// EX-AUDIT-005-03: legacy は actor.type を一切持たない。値を補って埋める実装なら
+			// ここで紛れ込む。
+			name:    "an event predating the delegation axes matches no axis value",
+			filters: []ports.AuditFilterExpression{{Field: "actor.type", Operator: ports.OpEq, Values: []string{ports.ActorTypeAgent}}},
 			wantID:  delegated.ID, wantLen: 1,
 		},
 	}
