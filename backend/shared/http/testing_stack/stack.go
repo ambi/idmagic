@@ -627,6 +627,42 @@ func (s *Stack) IssueApiToken(
 	return literal, metadata
 }
 
+// AdminSessionCookie は realm のテナントに属する管理者のログインセッションを作り、その
+// セッション Cookie を返す。管理コンソールの操作は API トークンではなくこのセッションで
+// 認証されるので、管理者を主語にする具体例は API トークンでは観測できない。
+//
+// セッションは製品と同じ SessionManager で作る。テナントの照合は Resolve が
+// セッションのテナントと要求先テナントを比べて行うので、ここで作ったセッションは
+// 作った realm の要求でだけ管理者として解決される。default 以外の realm には、その
+// テナントに属する管理者を置く。利用者の保存先は id で引くため、id は realm ごとに変える。
+func (s *Stack) AdminSessionCookie(t *testing.T, realm string) *http.Cookie {
+	t.Helper()
+	if s.Sessions == nil {
+		t.Fatal("AdminSessionCookie には WithAuthorizationCodeFlow が要る")
+	}
+	userID := AdminUserID
+	if realm != tenancydomain.DefaultRealm {
+		userID = AdminUserID + "@" + realm
+		now := time.Now().UTC()
+		s.Users.Seed(&userdomain.User{
+			ID: userID, TenantID: s.TenantID(t, realm), PreferredUsername: "admin",
+			PasswordHash: "unused", Roles: []string{"admin"},
+			Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
+			CreatedAt: now, UpdatedAt: now,
+		})
+	}
+	authn, err := s.Sessions.Create(s.RealmContext(t, realm), userID, []string{"pwd"}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("admin session for realm %q: %v", realm, err)
+	}
+	// 要求へ載せるときに送られるのは名前と値だけである。属性は製品が発行する
+	// セッション Cookie にそろえておく。
+	return &http.Cookie{
+		Name: sessionusecases.SessionCookie, Value: authn.SessionID,
+		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+	}
+}
+
 // Introspect は `/introspect` へ 1 回問い合わせ、応答を復号して返す。
 //
 // クライアント認証は WithOAuth2Clients が seed する confidential クライアントで行う。

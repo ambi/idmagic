@@ -41,12 +41,6 @@
       "finding": "StartFullResync の実装コメントが完了追跡とイベント発行を未実装と明記している。"
     },
     {
-      "id": "EX-PROVISIONING-015-01",
-      "reason": "リポジトリの tenant 分離だけが検証され、tenant-b 管理者の HTTP 入口から接続と配信を共に not found とする証拠が無いため",
-      "blocked_by": "wi-93622-acceptance-test-provisioning-tenant-isolation",
-      "finding": "API トークンで tenant-b の管理者を表すと認証段階で 401 となり、この規範の actor を観測できなかった。"
-    },
-    {
       "id": "EX-WSFEDERATION-001-03",
       "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない",
       "blocked_by": "wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets",

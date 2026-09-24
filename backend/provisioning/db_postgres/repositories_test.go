@@ -222,6 +222,31 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 	}
 }
 
+//spec:covers REQ-PROVISIONING-015: 配信の保存先は要求先テナントで検索し、別テナントの配信 id では何も返さない。
+func TestProvisioningDeliveryRepository_Find_ScopesToTenant(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	if err := (&postgres.ProvisioningConnectionRepository{Pool: pool}).Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	user := pgfixtures.SeedUser(t, pool, tenant.ID)
+	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	ctx := context.Background()
+	delivery := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+	if _, err := repo.Save(ctx, delivery); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	if found, err := repo.Find(ctx, tenant.ID, delivery.ID); err != nil || found == nil || found.ID != delivery.ID {
+		t.Fatalf("Find() in the owning tenant = (%+v, %v), want delivery %s", found, err, delivery.ID)
+	}
+	otherTenant := pgfixtures.SeedTenant(t, pool)
+	if found, err := repo.Find(ctx, otherTenant.ID, delivery.ID); err != nil || found != nil {
+		t.Errorf("Find() across tenants = (%+v, %v), want (nil, nil)", found, err)
+	}
+}
+
 func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
