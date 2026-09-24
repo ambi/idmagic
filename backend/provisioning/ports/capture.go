@@ -30,14 +30,9 @@ const (
 	TriggerGroupMembership ProvisioningTrigger = "group_membership_changed"
 )
 
-// ProvisioningCapture is the boundary port IdManagement/Application call after
-// committing a User/assignment mutation (spec/contexts/provisioning.yaml
-// §配送・信頼性, decision 4). This implementation captures in its own,
-// separate transaction right after the caller's commit rather than truly inside
-// it (a scoped simplification recorded in wi-45 T006; the residual gap — a
-// crash between the two commits loses the capture with no recovery — is left
-// for a follow-up that unifies the transaction boundary with IdGovernance's
-// UserMutationCommitter).
+// ProvisioningCapture は、IdManagement と Application が User や割り当ての変更をコミットした後で呼ぶ
+// 書き込み時の捕捉のポートである。捕捉は反映の遅延を短くする近道であり、呼び出し元のコミットとは別に確定する。
+// 捕捉の失敗や、捕捉を呼ばない経路による変更は、定期的な照合（usecases.ReconcileConnections）が回収する。
 type ProvisioningCapture interface {
 	// CaptureLifecycleEvent creates a ProvisioningTask for every active,
 	// in-scope connection reachable from applicationID (assignment triggers) or

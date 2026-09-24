@@ -45,6 +45,9 @@ SELECT credential_secret FROM provisioning_connections WHERE tenant_id=$1 AND ap
 -- name: DeleteProvisioningConnection :exec
 DELETE FROM provisioning_connections WHERE tenant_id=$1 AND application_id=$2;
 
+-- name: ListTenantsWithActiveProvisioningConnections :many
+SELECT DISTINCT tenant_id FROM provisioning_connections WHERE status='active' ORDER BY tenant_id;
+
 -- name: ListProvisioningConnectionsByTenant :many
 SELECT application_id, tenant_id, status, base_url, credential_id, auth_method,
 credential_oauth2_token_url, credential_oauth2_client_id, credential_oauth2_scope,
@@ -55,14 +58,21 @@ last_full_sync_at, quarantined_at, quarantine_reason, created_at, updated_at
 FROM provisioning_connections WHERE tenant_id=$1 ORDER BY application_id;
 
 -- name: FindRemoteResourceLink :one
-SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,last_synced_version,updated_at
+SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,active,last_synced_version,updated_at
 FROM provisioning_remote_links WHERE connection_id=$1 AND source_type=$2 AND source_id=$3;
 
+-- name: ListRemoteResourceLinksByConnection :many
+SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,active,last_synced_version,updated_at
+FROM provisioning_remote_links WHERE tenant_id=$1 AND connection_id=$2 AND source_type=$3 ORDER BY source_id;
+
+-- name: DeleteRemoteResourceLink :exec
+DELETE FROM provisioning_remote_links WHERE connection_id=$1 AND source_type=$2 AND source_id=$3;
+
 -- name: UpsertRemoteResourceLink :exec
-INSERT INTO provisioning_remote_links (connection_id, tenant_id, source_type, source_id, remote_id, external_id, etag, last_synced_version, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+INSERT INTO provisioning_remote_links (connection_id, tenant_id, source_type, source_id, remote_id, external_id, etag, active, last_synced_version, updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 ON CONFLICT (connection_id, source_type, source_id) DO UPDATE SET
-  remote_id=EXCLUDED.remote_id, external_id=EXCLUDED.external_id, etag=EXCLUDED.etag,
+  remote_id=EXCLUDED.remote_id, external_id=EXCLUDED.external_id, etag=EXCLUDED.etag, active=EXCLUDED.active,
   last_synced_version=EXCLUDED.last_synced_version, updated_at=EXCLUDED.updated_at;
 
 -- name: InsertProvisioningTask :one
@@ -157,3 +167,10 @@ WITH materialized AS (
   ON CONFLICT ON CONSTRAINT provisioning_tasks_idempotency_unique DO NOTHING
 )
 SELECT count(*) FROM materialized;
+
+-- name: ListUnsettledProvisioningTasksByConnection :many
+-- 照合が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_tasks
+WHERE tenant_id=$1 AND connection_id=$2 AND source_type=$3 AND status <> 'succeeded'
+ORDER BY source_id, created_at;

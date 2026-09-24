@@ -48,9 +48,8 @@ func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
 // CaptureLifecycleEvent creates a ProvisioningTask for every active,
 // in-scope connection, translating trigger into a domain.ProvisioningOperation
 // via each connection's DeprovisionPolicy and ProvisioningFeatureFlags
-// (spec/contexts/provisioning.yaml §deprovision セマンティクス). It intentionally
-// runs in its own transaction rather than the caller's (wi-45 T006 scoped
-// simplification of decision 4; see ports.ProvisioningCapture doc).
+// (spec/contexts/provisioning.yaml §deprovision セマンティクス). It runs after
+// the caller's commit; see ports.ProvisioningCapture for how a lost capture is recovered.
 //
 // grace_period_days を持つ接続への User の削除（delete に変換されたもの）は、プロビジョニングタスクの代わりに
 // ScheduledDeprovision を保存する。割り当ての追加は、その Application の古い予約を取り消す。
@@ -202,14 +201,9 @@ func groupInScope(conn domain.ProvisioningConnection, groupID string) bool {
 }
 
 func deprovisionOperation(action domain.ProvisioningDeprovisionAction, flags domain.ProvisioningFeatureFlags) (domain.ProvisioningOperation, bool, error) {
-	switch action {
-	case domain.DeprovisionDeactivate:
-		return domain.OperationDeactivate, flags.DeactivateUsers, nil
-	case domain.DeprovisionDelete:
-		return domain.OperationDelete, flags.DeleteUsers, nil
-	case domain.DeprovisionNone:
-		return "", false, nil
-	default:
+	if !action.Valid() {
 		return "", false, fmt.Errorf("provisioning: invalid deprovision action %q", action)
 	}
+	op, enabled := domain.DeprovisionOperation(action, flags)
+	return op, enabled, nil
 }

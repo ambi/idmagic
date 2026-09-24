@@ -214,6 +214,7 @@ func RunWorker() error {
 	memberSource := &identitysource.GroupMemberSource{GroupRepo: deps.IdManagement.GroupRepo}
 	handlers.Register(provisioning.KindProvisioningTask, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger))))
 	go provisioningDispatchLoop(ctx, deps, logger)
+	go provisioningReconcileLoop(ctx, deps, worker.ProvisioningReconcileInterval)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
 	go sharedSignalsDeliveryLoop(ctx, deps, worker.SharedSignalsDeliveryInterval)
 
@@ -386,6 +387,28 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies,
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+		}
+	}
+}
+
+// provisioningReconcileLimit は 1 回の照合で 1 接続に作るプロビジョニングタスクの上限である。
+// 初回や長い停止の後の大きな差分を、一度に Jobs へ流さず周期に分ける。
+const provisioningReconcileLimit = 500
+
+// provisioningReconcileLoop は、書き込み時の捕捉が作らなかった差分を周期ごとにプロビジョニングタスクにする
+// (REQ-PLATFORM-003)。作ったタスクは provisioningDispatchLoop が Jobs へ渡す。
+func provisioningReconcileLoop(ctx context.Context, deps *bootstrap.Dependencies, interval time.Duration) {
+	reconcileDeps := deps.Provisioning.ReconcileDeps(deps.IdManagement.UserRepo, deps.Application.AssignmentRepo)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		if _, err := provisioningusecases.ReconcileConnections(ctx, reconcileDeps, provisioningReconcileLimit, time.Now().UTC()); err != nil {
+			logging.Warn(ctx, "provisioning reconciliation failed", "error", err)
 		}
 	}
 }

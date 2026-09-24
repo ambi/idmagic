@@ -3,6 +3,7 @@ package db_postgres_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -548,5 +549,106 @@ func TestProvisioningTaskRepository_CancelledDeprovisionIsNeverMaterialized(t *t
 	}
 	if stored, err := repo.Find(ctx, tenant.ID, task.ID); err != nil || stored != nil {
 		t.Fatalf("Find(task of a cancelled reservation) = (%+v, %v), want none", stored, err)
+	}
+}
+
+// 照合はリンクの active を User の有効状態と比べ、リンクなしを「下流に何もない」と読む。
+// active が往復しないか、削除がリンクを消さないと、照合が同じ無効化や削除を作り続ける。
+func TestRemoteResourceLinkRepository_ListByConnectionRoundTripsActiveAndDeleteRemoves(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
+	active := pgfixtures.SeedUser(t, pool, tenant.ID)
+	inactive := pgfixtures.SeedUser(t, pool, tenant.ID)
+	repo := &postgres.RemoteResourceLinkRepository{Pool: pool}
+	ctx := context.Background()
+
+	for userID, isActive := range map[string]bool{active.ID: true, inactive.ID: false} {
+		link := domain.NewRemoteResourceLink(app.ID, tenant.ID, domain.SourceTypeUser, userID)
+		_ = link.ApplySync(1, "remote-"+userID, userID, nil, pgtest.Now())
+		link.Active = isActive
+		if err := repo.Upsert(ctx, link); err != nil {
+			t.Fatalf("Upsert() error = %v", err)
+		}
+	}
+	links, err := repo.ListByConnection(ctx, tenant.ID, app.ID, domain.SourceTypeUser)
+	if err != nil || len(links) != 2 {
+		t.Fatalf("ListByConnection() = %+v, err=%v, want 2 links", links, err)
+	}
+	for _, link := range links {
+		if link.Active != (link.SourceID == active.ID) {
+			t.Errorf("link %s active = %v, want %v", link.SourceID, link.Active, link.SourceID == active.ID)
+		}
+	}
+
+	if err := repo.Delete(ctx, app.ID, domain.SourceTypeUser, active.ID); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	if found, err := repo.Find(ctx, app.ID, domain.SourceTypeUser, active.ID); err != nil || found != nil {
+		t.Fatalf("Find() after Delete() = %+v, err=%v, want nil", found, err)
+	}
+	if links, _ := repo.ListByConnection(ctx, tenant.ID, app.ID, domain.SourceTypeUser); len(links) != 1 || links[0].SourceID != inactive.ID {
+		t.Fatalf("ListByConnection() after Delete() = %+v, want only the inactive link", links)
+	}
+}
+
+// 照合は、succeeded 以外のタスクから決着を待つべき User を見分ける。
+func TestProvisioningTaskRepository_ListUnsettledByConnectionExcludesSucceeded(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
+	user := pgfixtures.SeedUser(t, pool, tenant.ID)
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
+	ctx := context.Background()
+
+	statuses := map[int64]domain.ProvisioningTaskStatus{1: domain.TaskPending, 2: domain.TaskSucceeded, 3: domain.TaskDeadLetter}
+	for version, status := range statuses {
+		task := testTask(t, tenant.ID, app.ID, user.ID, version)
+		if _, err := repo.Save(ctx, task); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+		if status != domain.TaskPending {
+			if err := repo.UpdateStatus(ctx, tenant.ID, task.ID, status, nil); err != nil {
+				t.Fatalf("UpdateStatus() error = %v", err)
+			}
+		}
+	}
+
+	got, err := repo.ListUnsettledByConnection(ctx, tenant.ID, app.ID, domain.SourceTypeUser)
+	if err != nil {
+		t.Fatalf("ListUnsettledByConnection() error = %v", err)
+	}
+	versions := map[int64]domain.ProvisioningTaskStatus{}
+	for _, task := range got {
+		versions[task.SourceVersion] = task.Status
+	}
+	want := map[int64]domain.ProvisioningTaskStatus{1: domain.TaskPending, 3: domain.TaskDeadLetter}
+	if len(versions) != len(want) || versions[1] != want[1] || versions[3] != want[3] {
+		t.Fatalf("ListUnsettledByConnection() statuses = %v, want %v", versions, want)
+	}
+}
+
+// 照合がテナントを越えて巡る入口は、有効な接続を持つテナントだけを返す。
+func TestProvisioningConnectionRepository_ListTenantsWithActiveConnections(t *testing.T) {
+	pool := pgtest.Require(t)
+	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	ctx := context.Background()
+	withActive := pgfixtures.SeedTenant(t, pool)
+	_ = repo.Register(ctx, testConnection(t, seedApplication(t, pool, withActive.ID).ID, withActive.ID), "secret")
+	withDisabled := pgfixtures.SeedTenant(t, pool)
+	disabled := testConnection(t, seedApplication(t, pool, withDisabled.ID).ID, withDisabled.ID)
+	disabled.Status = domain.ConnectionDisabled
+	_ = repo.Register(ctx, disabled, "secret")
+
+	tenants, err := repo.ListTenantsWithActiveConnections(ctx)
+	if err != nil {
+		t.Fatalf("ListTenantsWithActiveConnections() error = %v", err)
+	}
+	if !slices.Contains(tenants, withActive.ID) || slices.Contains(tenants, withDisabled.ID) {
+		t.Fatalf("ListTenantsWithActiveConnections() = %v, want %s and not %s", tenants, withActive.ID, withDisabled.ID)
 	}
 }

@@ -1412,6 +1412,8 @@ CREATE TABLE provisioning_remote_links (
     remote_id TEXT NOT NULL,
     external_id TEXT NOT NULL,
     etag TEXT,
+    -- active は下流のリソースを有効として反映したかを表す。照合が User の有効状態と比べる。
+    active BOOLEAN NOT NULL DEFAULT true,
     last_synced_version BIGINT NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (connection_id, source_type, source_id),

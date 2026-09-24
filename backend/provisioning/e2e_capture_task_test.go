@@ -244,6 +244,7 @@ func (h *e2eHarness) executePendingTask(userID string) *domain.ProvisioningTask 
 	return got
 }
 
+//spec:covers EX-PLATFORM-003-01: 管理者による User の作成、更新、無効化、削除は、書き込み時の捕捉でプロビジョニングタスクになり、実行されて succeeded になり、下流へ届く。
 func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	h := newE2EHarness(t)
 	ctx := context.Background()

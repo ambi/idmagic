@@ -4,6 +4,7 @@ package usecases_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -476,4 +477,59 @@ func TestExecuteTask_DeactivateOfAUserGoneDownstreamDoesNotRecreateIt(t *testing
 	if err != nil || event != nil || client.createCalls != 0 {
 		t.Fatalf("ExecuteTask() = %v, %v with createCalls = %d; want no event, no error, no recreate", event, err, client.createCalls)
 	}
+}
+
+// リンクは、下流へ送った active を記録する。照合はこれを User の有効状態と比べるので、無効化の後も
+// true のままだと、照合が同じ無効化を周期ごとに作り続ける。
+func TestExecuteTask_RecordsTheDownstreamActiveStateOnTheLink(t *testing.T) {
+	client := &fakeTargetClient{createUserID: "remote-1"}
+	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	ctx := context.Background()
+
+	created := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	if _, err := usecases.ExecuteTask(ctx, deps, "tenant-a", created.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask(create) error = %v", err)
+	}
+	if link, _ := linkRepo.Find(ctx, "app-1", domain.SourceTypeUser, "user-1"); link == nil || !link.Active {
+		t.Fatalf("link after create = %+v, want active", link)
+	}
+
+	deactivated := saveTask(t, taskRepo, domain.OperationDeactivate, created.SourceVersion+1)
+	if _, err := usecases.ExecuteTask(ctx, deps, "tenant-a", deactivated.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask(deactivate) error = %v", err)
+	}
+	if link, _ := linkRepo.Find(ctx, "app-1", domain.SourceTypeUser, "user-1"); link == nil || link.Active {
+		t.Fatalf("link after deactivate = %+v, want inactive", link)
+	}
+}
+
+// 削除を下流へ送ったら、リンクを消す。リンクなしが「下流に何もない」を表すので、残すと照合が削除を作り続ける。
+func TestExecuteTask_DeleteRemovesTheLink(t *testing.T) {
+	client := &fakeTargetClient{}
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, &fakeAttributeSource{})
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDelete)
+	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
+	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
+	_ = linkRepo.Upsert(context.Background(), link)
+
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
+	}
+	if got, _ := linkRepo.Find(context.Background(), "app-1", domain.SourceTypeUser, "user-1"); got != nil {
+		t.Fatalf("link after delete = %+v, want removed", got)
+	}
+}
+
+// saveTask は setupConnectionAndTask が登録した接続へ、同じ User の次のタスクを足す。
+func saveTask(t *testing.T, taskRepo *memory.ProvisioningTaskRepository, op domain.ProvisioningOperation, version int64) *domain.ProvisioningTask {
+	t.Helper()
+	d := &domain.ProvisioningTask{
+		ID: fmt.Sprintf("task-%d", version), TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
+		SourceVersion: version, Operation: op, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}
+	if _, err := taskRepo.Save(context.Background(), d); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	return d
 }

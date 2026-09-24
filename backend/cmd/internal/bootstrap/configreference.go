@@ -149,6 +149,7 @@ var configFieldDescriptions = map[string]string{
 	"JOB_BACKOFF_CAP":                          "Upper bound on the exponential retry delay.",
 	"EPHEMERAL_SWEEP_INTERVAL":                 "How often expired rows in short-TTL ephemeral stores are reclaimed.",
 	"SHARED_SIGNALS_DELIVERY_INTERVAL":         "How often due outbound Security Event Tokens are delivered.",
+	"PROVISIONING_RECONCILE_INTERVAL":          "How often the worker reconciles every active provisioning connection against the downstream state it has recorded, creating provisioning tasks for the differences.",
 
 	// Seed
 	"SEED_PROFILE":                   "Explicit seed profile applied at startup. Unset means no seeding.",

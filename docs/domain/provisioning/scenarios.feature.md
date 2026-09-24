@@ -59,9 +59,9 @@ Primary actor: `System`
 
 - Given テナント "tenant-a" の Application "app-1" に有効な ProvisioningConnection (scope=assigned_only, create_users=true) が存在する
 - And User "ユーザー-1" は Application "app-1" に割り当て済みである
-- And IdManagement が User "ユーザー-1" の作成を commit し、プロビジョニングタスクを捕捉するポートを同一トランザクションで呼んでいる
+- And IdManagement が User "ユーザー-1" の作成を commit した後で、プロビジョニングタスクを捕捉するポートを呼んでいる
 - When 捕捉した変更を Provisioning が処理する
-- Then `ProvisioningTask`（`operation=create`、`status=pending`）が発火元と同じトランザクションで作成されている
+- Then `ProvisioningTask`（`operation=create`、`status=pending`）が作成されている
 - Then dispatcher が Jobs.Job を関連付け ProvisioningTaskStarted が発行される
 - Then `worker` プロセスが下流へ POST し、`UserProvisioned` が発行され、プロビジョニングタスクのステータスが `succeeded` になる
 
@@ -69,7 +69,7 @@ Primary actor: `System`
 
 - Given テナント "tenant-a" の Application "app-1" に有効な ProvisioningConnection (scope=assigned_only, create_users=true) が存在する
 - And User "ユーザー-1" は Application "app-1" に割り当て済みである
-- And IdManagement が User "ユーザー-1" の作成を commit し、プロビジョニングタスクを捕捉するポートを同一トランザクションで呼んでいる
+- And IdManagement が User "ユーザー-1" の作成を commit した後で、プロビジョニングタスクを捕捉するポートを呼んでいる
 - When 捕捉した変更を Provisioning が処理する
 - Then User がこの Application に割り当て済みでない (scope=assigned_only)
 - Then ProvisioningTask は作成されない
@@ -269,7 +269,7 @@ Primary actor: `System`
 
 ### Example: EX-PROVISIONING-017-01 通常経路
 
-- Given IdManagement のコミットと同じトランザクションで `ProvisioningTask`（`job_id` 未設定、`status=pending`）が確定したが、API プロセスから Jobs への即時投入には失敗した
+- Given 書き込み時の捕捉が `ProvisioningTask`（`job_id` 未設定、`status=pending`）を確定したが、API プロセスから Jobs への即時投入には失敗した
 - When `worker` プロセスの定期ディスパッチャーが、`job_id` を関連付けていない `pending` のプロビジョニングタスクを再走査する
 - Then dispatcher が idempotency key を dedup_key として EnqueueJob を呼び job_id を関連付ける
 - Then `ProvisioningTaskStarted` が発行され、`worker` プロセスがプロビジョニングタスクを実行する
@@ -283,3 +283,37 @@ Primary actor: `System`
 - Given AttributeMappingRule (target_path="emails[type eq \"work\"].value", required=true) を持つが対象 User に email が未設定である
 - When `worker` プロセスがプロビジョニングタスクの実行前に必須属性を解決する
 - Then 解決に失敗し、下流へは送信されず UserProvisioningFailed が発行される (max_attempts を待たず fail-closed)
+
+## Rule: REQ-PROVISIONING-019 照合は、あるべき状態と下流へ反映済みの状態の差分をプロビジョニングタスクにする
+
+Primary actor: `System`
+
+### Example: EX-PROVISIONING-019-01 通常経路
+
+- Given テナント "tenant-a" の Application "app-1" に有効な ProvisioningConnection (scope=assigned_only, create_users=true) が存在する
+- And User "ユーザー-1" は "app-1" に割り当て済みで有効だが、RemoteResourceLink がない
+- When `worker` プロセスの定期的な照合が接続 "app-1" を照合する
+- Then `operation=create` の ProvisioningTask が作成される
+
+### Example: EX-PROVISIONING-019-02 割り当てを解除された User のリンクが残っている
+
+- Given User "ユーザー-1" は下流で有効な RemoteResourceLink を持つ
+- And "ユーザー-1" の "app-1" への割り当ては解除されている
+- And DeprovisionPolicy.on_unassign はデフォルト値 deactivate のままである
+- When `worker` プロセスの定期的な照合が接続 "app-1" を照合する
+- Then `operation=deactivate` の ProvisioningTask が作成される
+
+### Example: EX-PROVISIONING-019-03 未完了のプロビジョニングタスクがある
+
+- Given User "ユーザー-1" は "app-1" に割り当て済みで有効だが、RemoteResourceLink がない
+- And "ユーザー-1" には `pending` の ProvisioningTask が既にある
+- When `worker` プロセスの定期的な照合が接続 "app-1" を照合する
+- Then 新しい ProvisioningTask は作成されない
+
+### Example: EX-PROVISIONING-019-04 猶予期間つきの削除
+
+- Given 接続 "app-1" の DeprovisionPolicy は on_delete=delete、grace_period_days=7 である
+- And User "ユーザー-1" は削除済みで、下流で有効な RemoteResourceLink を持つ
+- When `worker` プロセスの定期的な照合が接続 "app-1" を照合する
+- Then `operation=delete` の ProvisioningTask は作成されない
+- Then 猶予期間の経過後に削除する予約が作成される

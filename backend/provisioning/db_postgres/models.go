@@ -18,6 +18,7 @@ type ProvisioningRemoteLink struct {
 	RemoteID          string
 	ExternalID        string
 	Etag              pgtype.Text
+	Active            bool
 	LastSyncedVersion int64
 	UpdatedAt         time.Time
 }

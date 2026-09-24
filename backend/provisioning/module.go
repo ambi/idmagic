@@ -95,6 +95,14 @@ func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenant
 	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}, Emit: emit}
 }
 
+// ReconcileDeps は照合の依存を組み立てる。User と割り当ては、照合があるべき状態として読む記録の正である。
+func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository) usecases.ReconcileDeps {
+	return usecases.ReconcileDeps{
+		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
+		AssignmentRepo: assignmentRepo, UserRepo: userRepo,
+	}
+}
+
 // JobHandlerDeps builds ProvisioningTaskHandler's dependencies.
 // memberSource is what makes push_groups reach a downstream: without it the
 // Group's own attributes still go out, but its membership does not. emit receives

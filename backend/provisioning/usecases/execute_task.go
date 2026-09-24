@@ -109,6 +109,9 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 		if err := client.DeleteUser(ctx, remoteID); err != nil {
 			return nil, err
 		}
+		if err := deps.LinkRepo.Delete(ctx, conn.ApplicationID, task.SourceType, task.SourceID); err != nil {
+			return nil, err
+		}
 		return deprovisioned(domain.DeprovisionDelete), nil
 	}
 	deactivating := task.Operation == domain.OperationDeactivate
@@ -164,7 +167,7 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 	if deactivating {
 		event = deprovisioned(domain.DeprovisionDeactivate)
 	}
-	if err := upsertLink(ctx, deps, conn, task, link, remoteID, now); err != nil {
+	if err := upsertLink(ctx, deps, conn, task, link, remoteID, sentActive(attrs), now); err != nil {
 		return nil, err
 	}
 	return event, nil
@@ -226,16 +229,17 @@ func executeGroupTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pr
 	if err := pushGroupMembers(ctx, deps, client, conn, task, remoteID); err != nil {
 		return nil, err
 	}
-	if err := upsertLink(ctx, deps, conn, task, link, remoteID, now); err != nil {
+	if err := upsertLink(ctx, deps, conn, task, link, remoteID, true, now); err != nil {
 		return nil, err
 	}
 	return pushed(remoteID), nil
 }
 
-// upsertLink records remoteID as the subject's downstream resource. A task
+// upsertLink records remoteID as the subject's downstream resource, and whether
+// it was sent as active. A task
 // older than the one the link already reflects leaves it unchanged: the
 // downstream call has still happened, so the task settles as succeeded.
-func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *domain.ProvisioningConnection, task *domain.ProvisioningTask, link *domain.RemoteResourceLink, remoteID string, now time.Time) error {
+func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *domain.ProvisioningConnection, task *domain.ProvisioningTask, link *domain.RemoteResourceLink, remoteID string, active bool, now time.Time) error {
 	newLink := domain.NewRemoteResourceLink(conn.ApplicationID, task.TenantID, task.SourceType, task.SourceID)
 	if link != nil {
 		*newLink = *link
@@ -246,6 +250,7 @@ func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *domain.Provisio
 		}
 		return err
 	}
+	newLink.Active = active
 	return deps.LinkRepo.Upsert(ctx, newLink)
 }
 
@@ -255,7 +260,7 @@ func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *domain.Provisio
 //
 // Which attribute that is belongs to the connection, not to the Group, which is
 // why the attribute source resolves the Group's facts and this resolves the
-// choice: ports.AttributeSource is not handed the connection, and the task
+// choice: ports.AttributeSource is not handed the connection, and the provisioning
 // engine already holds it.
 //
 // A Group that has not set the chosen attribute falls back to its name. Sending
@@ -311,4 +316,10 @@ func pushGroupMembers(
 		return nil
 	}
 	return client.PatchGroupMembers(ctx, remoteGroupID, "add", remoteUserIDs)
+}
+
+// sentActive は下流へ送った User の active を返す。対応付けに active がなければ、下流の既定である有効とみなす。
+func sentActive(attrs map[string]any) bool {
+	active, ok := attrs["active"].(bool)
+	return !ok || active
 }

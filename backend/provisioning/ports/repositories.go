@@ -17,7 +17,7 @@ import (
 var ErrConnectionAlreadyExists = errors.New("provisioning: connection already exists for this application")
 
 // ProvisioningConnectionRepository persists ProvisioningConnection aggregates.
-// CredentialSecret is a narrow accessor separate from Find: only the task
+// CredentialSecret is a narrow accessor separate from Find: only the provisioning
 // engine (T006) may call it to authenticate outbound requests, so admin read
 // paths (which use Find) never see the plaintext/opaque secret
 // (spec/contexts/provisioning.yaml credential write-only 契約).
@@ -33,6 +33,8 @@ type ProvisioningConnectionRepository interface {
 	CredentialSecret(ctx context.Context, tenantID, applicationID string) (string, error)
 	Delete(ctx context.Context, tenantID, applicationID string) error
 	ListAll(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error)
+	// ListTenantsWithActiveConnections は有効な接続を持つテナントを返す。照合がテナントを越えて接続を巡る入口である。
+	ListTenantsWithActiveConnections(ctx context.Context) ([]string, error)
 }
 
 // RemoteResourceLinkRepository persists the correlation between an idmagic
@@ -43,6 +45,10 @@ type RemoteResourceLinkRepository interface {
 	// caller applies RemoteResourceLink.ApplySync's monotonicity check before
 	// calling Upsert; Upsert itself does not re-derive ordering.
 	Upsert(ctx context.Context, link *domain.RemoteResourceLink) error
+	// ListByConnection は接続の sourceType のリンクを source_id の順に返す。照合が反映済みの状態として読む。
+	ListByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.RemoteResourceLink, error)
+	// Delete はリンクを消す。下流からリソースを削除したあと、リンクなしが「下流に何もない」を表すようにする。
+	Delete(ctx context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) error
 }
 
 // ProvisioningTaskRepository persists ProvisioningTask records.
@@ -77,6 +83,9 @@ type ProvisioningTaskRepository interface {
 	// job_id so the dispatcher picks it up again. Returns false if the task
 	// is not currently dead_letter.
 	RetryDeadLetter(ctx context.Context, tenantID, taskID string) (bool, error)
+	// ListUnsettledByConnection は接続の sourceType のタスクのうち succeeded 以外を返す。
+	// 照合が、決着を待つべき対象を見分けるために読む。
+	ListUnsettledByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.ProvisioningTask, error)
 
 	// 猶予期間つき削除の予約はプロビジョニングタスクの前段であり、実体化で予約の遷移とプロビジョニングタスクの挿入を
 	// 同時に行うため、プロビジョニングタスクと同じリポジトリが持つ。

@@ -5,18 +5,6 @@
   ],
   "untested": [
     {
-      "id": "EX-PLATFORM-003-01",
-      "reason": "プロビジョニングタスクの行が発火元の変更と同じトランザクションで作られないため",
-      "blocked_by": "wi-92540-guarantee-provisioning-deliveries-by-reconciliation",
-      "finding": "管理 API による User の作成、無効化、削除と割り当て解除は、変更をコミットした後で best-effort に CaptureLifecycleEvent を呼ぶ (admin_users.go と assignments.go の notifyProvisioning)。capture が失敗しても変更は確定したままで、エラーはログにしか残らない。プロビジョニングタスクの作成から succeeded への遷移は、backend/provisioning/e2e_capture_delivery_test.go がユースケースを直接呼ぶ形で観測しているが、同じトランザクションであることは観測できない。"
-    },
-    {
-      "id": "EX-PLATFORM-003-02",
-      "reason": "変更とプロビジョニングタスクの行が別々にコミットされ、片方だけが確定し得るため",
-      "blocked_by": "wi-92540-guarantee-provisioning-deliveries-by-reconciliation",
-      "finding": "変更と capture が別のコミットなので、変更の側がロールバックする経路と capture が失敗する経路のどちらでも、片方だけが残り得る。backend/provisioning/ports/capture.go が、2 つのコミットの間の障害で capture が失われ回復できないことを残余のギャップとして記録している。"
-    },
-    {
       "id": "EX-PROVISIONING-011-01",
       "reason": "隔離と解除のイベントは発行するが、full resync が誤削除ガードの閾値を判定せず、閾値の超過で隔離されないため",
       "blocked_by": "wi-61629-quarantine-connections-on-the-accidental-deletion-guard",

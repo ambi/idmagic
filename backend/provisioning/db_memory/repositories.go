@@ -424,3 +424,55 @@ func (r *ProvisioningTaskRepository) MaterializeDeprovision(_ context.Context, s
 	stored.Status, stored.TaskID, stored.UpdatedAt = domain.ScheduledDeprovisionMaterialized, &taskID, d.CreatedAt
 	return true, nil
 }
+
+func (r *ProvisioningConnectionRepository) ListTenantsWithActiveConnections(_ context.Context) ([]string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	tenants := []string{}
+	for _, c := range r.conns {
+		if c.Status == domain.ConnectionActive && !slices.Contains(tenants, c.TenantID) {
+			tenants = append(tenants, c.TenantID)
+		}
+	}
+	slices.Sort(tenants)
+	return tenants, nil
+}
+
+func (r *RemoteResourceLinkRepository) ListByConnection(_ context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.RemoteResourceLink, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*domain.RemoteResourceLink{}
+	for _, link := range r.links {
+		if link.TenantID == tenantID && link.ConnectionID == connectionID && link.SourceType == sourceType {
+			clone := *link
+			out = append(out, &clone)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SourceID < out[j].SourceID })
+	return out, nil
+}
+
+func (r *RemoteResourceLinkRepository) Delete(_ context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.links, linkKey(connectionID, sourceType, sourceID))
+	return nil
+}
+
+func (r *ProvisioningTaskRepository) ListUnsettledByConnection(_ context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.ProvisioningTask, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*domain.ProvisioningTask{}
+	for _, d := range r.tasks {
+		if d.TenantID == tenantID && d.ConnectionID == connectionID && d.SourceType == sourceType && d.Status != domain.TaskSucceeded {
+			out = append(out, cloneTask(d))
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].SourceID != out[j].SourceID {
+			return out[i].SourceID < out[j].SourceID
+		}
+		return out[i].CreatedAt.Before(out[j].CreatedAt)
+	})
+	return out, nil
+}

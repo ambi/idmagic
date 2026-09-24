@@ -168,13 +168,15 @@ var ErrOutOfOrderSync = errors.New("provisioning: out-of-order or duplicate sync
 // RemoteResourceLink correlates an idmagic User/Group with the downstream SCIM
 // resource it maps to (spec/contexts/provisioning.yaml models.RemoteResourceLink).
 type RemoteResourceLink struct {
-	ConnectionID      string
-	TenantID          string
-	SourceType        ProvisioningSourceType
-	SourceID          string
-	RemoteID          string
-	ExternalID        string
-	ETag              *string
+	ConnectionID string
+	TenantID     string
+	SourceType   ProvisioningSourceType
+	SourceID     string
+	RemoteID     string
+	ExternalID   string
+	ETag         *string
+	// Active は下流のリソースを有効として反映したかを表す。照合は User の有効状態とこれを比べる。
+	Active            bool
 	LastSyncedVersion int64
 	UpdatedAt         time.Time
 }

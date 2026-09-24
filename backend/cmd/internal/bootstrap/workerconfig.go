@@ -34,6 +34,7 @@ type WorkerConfig struct {
 
 	EphemeralSweepInterval        time.Duration
 	SharedSignalsDeliveryInterval time.Duration
+	ProvisioningReconcileInterval time.Duration
 	DrainGracePeriod              time.Duration
 }
 
@@ -66,6 +67,7 @@ func LoadWorkerConfig(l *ConfigLoader) WorkerConfig {
 
 	cfg.EphemeralSweepInterval = l.PositiveDuration("EPHEMERAL_SWEEP_INTERVAL", 60*time.Second)
 	cfg.SharedSignalsDeliveryInterval = l.PositiveDuration("SHARED_SIGNALS_DELIVERY_INTERVAL", 5*time.Second)
+	cfg.ProvisioningReconcileInterval = l.PositiveDuration("PROVISIONING_RECONCILE_INTERVAL", 5*time.Minute)
 	cfg.DrainGracePeriod = time.Duration(l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 5)) * time.Second
 
 	return cfg

@@ -72,6 +72,21 @@ func (q *Queries) DeleteProvisioningConnection(ctx context.Context, arg DeletePr
 	return err
 }
 
+const deleteRemoteResourceLink = `-- name: DeleteRemoteResourceLink :exec
+DELETE FROM provisioning_remote_links WHERE connection_id=$1 AND source_type=$2 AND source_id=$3
+`
+
+type DeleteRemoteResourceLinkParams struct {
+	ConnectionID string
+	SourceType   string
+	SourceID     string
+}
+
+func (q *Queries) DeleteRemoteResourceLink(ctx context.Context, arg DeleteRemoteResourceLinkParams) error {
+	_, err := q.db.Exec(ctx, deleteRemoteResourceLink, arg.ConnectionID, arg.SourceType, arg.SourceID)
+	return err
+}
+
 const findProvisioningConnection = `-- name: FindProvisioningConnection :one
 SELECT application_id, tenant_id, status, base_url, credential_id, auth_method,
 credential_oauth2_token_url, credential_oauth2_client_id, credential_oauth2_scope,
@@ -188,7 +203,7 @@ func (q *Queries) FindProvisioningTask(ctx context.Context, arg FindProvisioning
 }
 
 const findRemoteResourceLink = `-- name: FindRemoteResourceLink :one
-SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,last_synced_version,updated_at
+SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,active,last_synced_version,updated_at
 FROM provisioning_remote_links WHERE connection_id=$1 AND source_type=$2 AND source_id=$3
 `
 
@@ -209,6 +224,7 @@ func (q *Queries) FindRemoteResourceLink(ctx context.Context, arg FindRemoteReso
 		&i.RemoteID,
 		&i.ExternalID,
 		&i.Etag,
+		&i.Active,
 		&i.LastSyncedVersion,
 		&i.UpdatedAt,
 	)
@@ -807,6 +823,72 @@ func (q *Queries) ListProvisioningTasksByConnectionPageBefore(ctx context.Contex
 	return items, nil
 }
 
+const listRemoteResourceLinksByConnection = `-- name: ListRemoteResourceLinksByConnection :many
+SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,active,last_synced_version,updated_at
+FROM provisioning_remote_links WHERE tenant_id=$1 AND connection_id=$2 AND source_type=$3 ORDER BY source_id
+`
+
+type ListRemoteResourceLinksByConnectionParams struct {
+	TenantID     string
+	ConnectionID string
+	SourceType   string
+}
+
+func (q *Queries) ListRemoteResourceLinksByConnection(ctx context.Context, arg ListRemoteResourceLinksByConnectionParams) ([]*ProvisioningRemoteLink, error) {
+	rows, err := q.db.Query(ctx, listRemoteResourceLinksByConnection, arg.TenantID, arg.ConnectionID, arg.SourceType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningRemoteLink
+	for rows.Next() {
+		var i ProvisioningRemoteLink
+		if err := rows.Scan(
+			&i.ConnectionID,
+			&i.TenantID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.RemoteID,
+			&i.ExternalID,
+			&i.Etag,
+			&i.Active,
+			&i.LastSyncedVersion,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantsWithActiveProvisioningConnections = `-- name: ListTenantsWithActiveProvisioningConnections :many
+SELECT DISTINCT tenant_id FROM provisioning_connections WHERE status='active' ORDER BY tenant_id
+`
+
+func (q *Queries) ListTenantsWithActiveProvisioningConnections(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listTenantsWithActiveProvisioningConnections)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var tenant_id string
+		if err := rows.Scan(&tenant_id); err != nil {
+			return nil, err
+		}
+		items = append(items, tenant_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnenqueuedProvisioningTasks = `-- name: ListUnenqueuedProvisioningTasks :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
 FROM provisioning_tasks WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1
@@ -814,6 +896,54 @@ FROM provisioning_tasks WHERE status='pending' AND job_id IS NULL ORDER BY creat
 
 func (q *Queries) ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error) {
 	rows, err := q.db.Query(ctx, listUnenqueuedProvisioningTasks, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningTask
+	for rows.Next() {
+		var i ProvisioningTask
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ConnectionID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceVersion,
+			&i.Operation,
+			&i.Status,
+			&i.JobID,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnsettledProvisioningTasksByConnection = `-- name: ListUnsettledProvisioningTasksByConnection :many
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_tasks
+WHERE tenant_id=$1 AND connection_id=$2 AND source_type=$3 AND status <> 'succeeded'
+ORDER BY source_id, created_at
+`
+
+type ListUnsettledProvisioningTasksByConnectionParams struct {
+	TenantID     string
+	ConnectionID string
+	SourceType   string
+}
+
+// 照合が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
+func (q *Queries) ListUnsettledProvisioningTasksByConnection(ctx context.Context, arg ListUnsettledProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listUnsettledProvisioningTasksByConnection, arg.TenantID, arg.ConnectionID, arg.SourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,10 +1191,10 @@ func (q *Queries) UpdateProvisioningTaskStatus(ctx context.Context, arg UpdatePr
 }
 
 const upsertRemoteResourceLink = `-- name: UpsertRemoteResourceLink :exec
-INSERT INTO provisioning_remote_links (connection_id, tenant_id, source_type, source_id, remote_id, external_id, etag, last_synced_version, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+INSERT INTO provisioning_remote_links (connection_id, tenant_id, source_type, source_id, remote_id, external_id, etag, active, last_synced_version, updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 ON CONFLICT (connection_id, source_type, source_id) DO UPDATE SET
-  remote_id=EXCLUDED.remote_id, external_id=EXCLUDED.external_id, etag=EXCLUDED.etag,
+  remote_id=EXCLUDED.remote_id, external_id=EXCLUDED.external_id, etag=EXCLUDED.etag, active=EXCLUDED.active,
   last_synced_version=EXCLUDED.last_synced_version, updated_at=EXCLUDED.updated_at
 `
 
@@ -1076,6 +1206,7 @@ type UpsertRemoteResourceLinkParams struct {
 	RemoteID          string
 	ExternalID        string
 	Etag              pgtype.Text
+	Active            bool
 	LastSyncedVersion int64
 	UpdatedAt         time.Time
 }
@@ -1089,6 +1220,7 @@ func (q *Queries) UpsertRemoteResourceLink(ctx context.Context, arg UpsertRemote
 		arg.RemoteID,
 		arg.ExternalID,
 		arg.Etag,
+		arg.Active,
 		arg.LastSyncedVersion,
 		arg.UpdatedAt,
 	)

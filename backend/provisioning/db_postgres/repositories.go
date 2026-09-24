@@ -387,6 +387,30 @@ func (r *RemoteResourceLinkRepository) Find(ctx context.Context, connectionID st
 	if err != nil {
 		return nil, err
 	}
+	return mapLink(row), nil
+}
+
+func (r *RemoteResourceLinkRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.RemoteResourceLink, error) {
+	rows, err := New(r.Pool).ListRemoteResourceLinksByConnection(ctx, ListRemoteResourceLinksByConnectionParams{
+		TenantID: tenantID, ConnectionID: connectionID, SourceType: string(sourceType),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.RemoteResourceLink, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, mapLink(row))
+	}
+	return out, nil
+}
+
+func (r *RemoteResourceLinkRepository) Delete(ctx context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) error {
+	return New(r.Pool).DeleteRemoteResourceLink(ctx, DeleteRemoteResourceLinkParams{
+		ConnectionID: connectionID, SourceType: string(sourceType), SourceID: sourceID,
+	})
+}
+
+func mapLink(row *ProvisioningRemoteLink) *domain.RemoteResourceLink {
 	return &domain.RemoteResourceLink{
 		ConnectionID:      row.ConnectionID,
 		TenantID:          row.TenantID,
@@ -395,9 +419,10 @@ func (r *RemoteResourceLinkRepository) Find(ctx context.Context, connectionID st
 		RemoteID:          row.RemoteID,
 		ExternalID:        row.ExternalID,
 		ETag:              fromPgText(row.Etag),
+		Active:            row.Active,
 		LastSyncedVersion: row.LastSyncedVersion,
 		UpdatedAt:         row.UpdatedAt,
-	}, nil
+	}
 }
 
 func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *domain.RemoteResourceLink) error {
@@ -409,6 +434,7 @@ func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *domain.
 		RemoteID:          link.RemoteID,
 		ExternalID:        link.ExternalID,
 		Etag:              pgText(link.ETag),
+		Active:            link.Active,
 		LastSyncedVersion: link.LastSyncedVersion,
 		UpdatedAt:         link.UpdatedAt,
 	})
@@ -680,4 +706,26 @@ func (r *ProvisioningTaskRepository) MaterializeDeprovision(ctx context.Context,
 		ID:       s.ID,
 	})
 	return materialized == 1, err
+}
+
+func (r *ProvisioningConnectionRepository) ListTenantsWithActiveConnections(ctx context.Context) ([]string, error) {
+	return New(r.Pool).ListTenantsWithActiveProvisioningConnections(ctx)
+}
+
+func (r *ProvisioningTaskRepository) ListUnsettledByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.ProvisioningTask, error) {
+	rows, err := New(r.Pool).ListUnsettledProvisioningTasksByConnection(ctx, ListUnsettledProvisioningTasksByConnectionParams{
+		TenantID: tenantID, ConnectionID: connectionID, SourceType: string(sourceType),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.ProvisioningTask, 0, len(rows))
+	for _, row := range rows {
+		d, err := mapTask(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
 }

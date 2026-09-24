@@ -178,7 +178,7 @@ func TestClient_RetryAfter_ParsedFrom429(t *testing.T) {
 	}
 }
 
-//spec:covers RFC7644-OUT-FILTERING: 照合属性で既存リソースを探すときだけ、`<属性> eq "<値>"` を組み立てる。
+//spec:covers RFC7644-OUT-FILTERING: 一致判定の属性で既存リソースを探すときだけ、`<属性> eq "<値>"` を組み立てる。
 func TestClient_SearchUserByAttribute_FindsExisting(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/Users" {

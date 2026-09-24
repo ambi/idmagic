@@ -127,6 +127,7 @@ Durable job queue lanes, runner cadence, and the resident sweep loops.
 | `JOB_BACKOFF_CAP` | duration (> 0) | `30m0s` | no | Upper bound on the exponential retry delay. |
 | `EPHEMERAL_SWEEP_INTERVAL` | duration (> 0) | `1m0s` | no | How often expired rows in short-TTL ephemeral stores are reclaimed. |
 | `SHARED_SIGNALS_DELIVERY_INTERVAL` | duration (> 0) | `5s` | no | How often due outbound Security Event Tokens are delivered. |
+| `PROVISIONING_RECONCILE_INTERVAL` | duration (> 0) | `5m0s` | no | How often the worker reconciles every active provisioning connection against the downstream state it has recorded, creating provisioning tasks for the differences. |
 | `DRAIN_GRACE_PERIOD_SECONDS` | integer (>= 0) | `5` | no | Seconds to keep serving after SIGTERM before shutting the listener down (idmagic), or to let in-flight jobs finish (idmagic-worker). |
 
 ## Seed

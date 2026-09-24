@@ -12,6 +12,7 @@ type Querier interface {
 	AttachProvisioningTaskJob(ctx context.Context, arg AttachProvisioningTaskJobParams) (int64, error)
 	CancelProvisioningScheduledDeprovisions(ctx context.Context, arg CancelProvisioningScheduledDeprovisionsParams) (int64, error)
 	DeleteProvisioningConnection(ctx context.Context, arg DeleteProvisioningConnectionParams) error
+	DeleteRemoteResourceLink(ctx context.Context, arg DeleteRemoteResourceLinkParams) error
 	FindProvisioningConnection(ctx context.Context, arg FindProvisioningConnectionParams) (*FindProvisioningConnectionRow, error)
 	FindProvisioningTask(ctx context.Context, arg FindProvisioningTaskParams) (*ProvisioningTask, error)
 	FindRemoteResourceLink(ctx context.Context, arg FindRemoteResourceLinkParams) (*ProvisioningRemoteLink, error)
@@ -30,7 +31,11 @@ type Querier interface {
 	// the last row the caller saw.
 	ListProvisioningTasksByConnectionPageAfter(ctx context.Context, arg ListProvisioningTasksByConnectionPageAfterParams) ([]*ProvisioningTask, error)
 	ListProvisioningTasksByConnectionPageBefore(ctx context.Context, arg ListProvisioningTasksByConnectionPageBeforeParams) ([]*ProvisioningTask, error)
+	ListRemoteResourceLinksByConnection(ctx context.Context, arg ListRemoteResourceLinksByConnectionParams) ([]*ProvisioningRemoteLink, error)
+	ListTenantsWithActiveProvisioningConnections(ctx context.Context) ([]string, error)
 	ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error)
+	// 照合が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
+	ListUnsettledProvisioningTasksByConnection(ctx context.Context, arg ListUnsettledProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error)
 	// 予約の遷移とプロビジョニングタスクの挿入を一文で行い、取消と競合したときにプロビジョニングタスクだけが残らないようにする。
 	// 結果は遷移した予約の件数（0 または 1）である。
 	MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error)
