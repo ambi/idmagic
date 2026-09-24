@@ -8,6 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // DeliverDeps are ExecuteDelivery's dependencies.
@@ -36,32 +37,32 @@ var ErrConnectionNotFound = errors.New("provisioning: connection not found")
 // Jobs-level attempt/retry loop (spec/contexts/provisioning.yaml
 // states.ProvisioningDeliveryLifecycle), so the caller (the Jobs handler
 // wrapper) decides dead_letter based on the Job's own attempts vs max_attempts.
-func ExecuteDelivery(ctx context.Context, deps DeliverDeps, tenantID, deliveryID string, now time.Time) error {
+func ExecuteDelivery(ctx context.Context, deps DeliverDeps, tenantID, deliveryID string, now time.Time) (spec.DomainEvent, error) {
 	delivery, err := deps.DeliveryRepo.Find(ctx, tenantID, deliveryID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if delivery == nil {
-		return ErrDeliveryNotFound
+		return nil, ErrDeliveryNotFound
 	}
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, delivery.ConnectionID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if conn == nil {
-		return ErrConnectionNotFound
+		return nil, ErrConnectionNotFound
 	}
 	secret, err := deps.ConnectionRepo.CredentialSecret(ctx, tenantID, conn.ApplicationID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	client, err := deps.NewTargetClient(conn, secret)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	link, err := deps.LinkRepo.Find(ctx, conn.ApplicationID, delivery.SourceType, delivery.SourceID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	switch delivery.SourceType {
@@ -73,9 +74,9 @@ func ExecuteDelivery(ctx context.Context, deps DeliverDeps, tenantID, deliveryID
 		err = fmt.Errorf("provisioning: unsupported source_type %q", delivery.SourceType)
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return deps.DeliveryRepo.UpdateStatus(ctx, tenantID, deliveryID, domain.DeliverySucceeded, nil)
+	return nil, deps.DeliveryRepo.UpdateStatus(ctx, tenantID, deliveryID, domain.DeliverySucceeded, nil)
 }
 
 func deliverUser(ctx context.Context, deps DeliverDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, delivery *domain.ProvisioningDelivery, link *domain.RemoteResourceLink, now time.Time) error {

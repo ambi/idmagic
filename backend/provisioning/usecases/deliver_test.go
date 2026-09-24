@@ -130,7 +130,7 @@ func TestExecuteDelivery_Create_NewLinkOnSuccess(t *testing.T) {
 	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
 	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.createCalls != 1 {
@@ -153,7 +153,7 @@ func TestExecuteDelivery_Create_ConflictAdoptsExistingViaSearch(t *testing.T) {
 	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
 	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.searchCalls != 1 {
@@ -174,7 +174,7 @@ func TestExecuteDelivery_Update_UsesExistingLinkRemoteID(t *testing.T) {
 	_ = link.ApplySync(0, "remote-existing", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.updateCalls != 1 {
@@ -192,7 +192,7 @@ func TestExecuteDelivery_Update_RecreatesOn404(t *testing.T) {
 	_ = link.ApplySync(0, "remote-gone", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.createCalls != 1 {
@@ -210,7 +210,7 @@ func TestExecuteDelivery_Delete_NoLinkIsIdempotentSuccess(t *testing.T) {
 	deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
 	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDelete)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.deleteCalls != 0 {
@@ -230,7 +230,7 @@ func TestExecuteDelivery_Delete_CallsDeleteWhenLinkExists(t *testing.T) {
 	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.deleteCalls != 1 {
@@ -247,7 +247,7 @@ func TestExecuteDelivery_Deactivate_UsesUpdatePathWithResolvedAttributes(t *test
 	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
 		t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	if client.updateCalls != 1 {
@@ -265,7 +265,7 @@ func TestExecuteDelivery_RetryableErrorPropagatesWithoutChangingStatus(t *testin
 	deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
 	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
 
-	err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+	_, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
 	if err == nil {
 		t.Fatal("ExecuteDelivery() should propagate a retryable error, got nil")
 	}
@@ -340,7 +340,7 @@ func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 				t.Fatalf("Save() error = %v", err)
 			}
 
-			if err := usecases.ExecuteDelivery(ctx, deps, "tenant-a", delivery.ID, time.Now()); err != nil {
+			if _, err := usecases.ExecuteDelivery(ctx, deps, "tenant-a", delivery.ID, time.Now()); err != nil {
 				t.Fatalf("ExecuteDelivery() error = %v", err)
 			}
 			if got := client.lastCreateGroupAttrs["display_name"]; got != tc.want {

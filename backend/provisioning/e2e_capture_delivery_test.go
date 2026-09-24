@@ -234,7 +234,7 @@ func (h *e2eHarness) executePendingDelivery(userID string) *domain.ProvisioningD
 	if target == nil {
 		h.t.Fatalf("no pending delivery found for user %s", userID)
 	}
-	if err := usecases.ExecuteDelivery(ctx, h.deliverDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
+	if _, err := usecases.ExecuteDelivery(ctx, h.deliverDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
 		h.t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	got, err := h.deliveryRepo.Find(ctx, h.tenantID, target.ID)
@@ -418,11 +418,11 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	// Attempt 1 and 2 fail (503, non-terminal from the caller's perspective —
 	// the Jobs runner would retry); attempt 3 succeeds.
 	for i := range 2 {
-		if err := usecases.ExecuteDelivery(ctx, deliverDeps, tenancydomain.DefaultTenantID, deliveries[0].ID, time.Now().UTC()); err == nil {
+		if _, err := usecases.ExecuteDelivery(ctx, deliverDeps, tenancydomain.DefaultTenantID, deliveries[0].ID, time.Now().UTC()); err == nil {
 			t.Fatalf("ExecuteDelivery() attempt %d: want error (downstream returns 503), got nil", i+1)
 		}
 	}
-	if err := usecases.ExecuteDelivery(ctx, deliverDeps, tenancydomain.DefaultTenantID, deliveries[0].ID, time.Now().UTC()); err != nil {
+	if _, err := usecases.ExecuteDelivery(ctx, deliverDeps, tenancydomain.DefaultTenantID, deliveries[0].ID, time.Now().UTC()); err != nil {
 		t.Fatalf("ExecuteDelivery() attempt 3: want success after transient failures, got %v", err)
 	}
 	got, err := deliveryRepo.Find(ctx, tenancydomain.DefaultTenantID, deliveries[0].ID)
@@ -562,7 +562,7 @@ func (h *e2eHarness) executePendingGroupDelivery(sourceID string) *domain.Provis
 	if target == nil {
 		h.t.Fatalf("no pending %s delivery for %s (deliveries=%d)", sourceType, sourceID, len(deliveries))
 	}
-	if err := usecases.ExecuteDelivery(ctx, h.deliverDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
+	if _, err := usecases.ExecuteDelivery(ctx, h.deliverDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
 		h.t.Fatalf("ExecuteDelivery() error = %v", err)
 	}
 	got, err := h.deliveryRepo.Find(ctx, h.tenantID, target.ID)

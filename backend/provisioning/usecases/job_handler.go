@@ -57,7 +57,7 @@ func ProvisioningDeliveryHandler(deps JobHandlerDeps) jobsusecases.Handler {
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		execErr := ExecuteDelivery(ctx, deps.DeliverDeps, job.TenantID, params.DeliveryID, now())
+		_, execErr := ExecuteDelivery(ctx, deps.DeliverDeps, job.TenantID, params.DeliveryID, now())
 		if execErr == nil {
 			if err := resetConsecutiveFailures(ctx, deps, job.TenantID, params.DeliveryID); err != nil {
 				return nil, err
