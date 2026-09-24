@@ -1,6 +1,6 @@
 package usecases_test
 
-// 主要ユースケース追跡: REQ-PLATFORM-003、REQ-PROVISIONING-003。
+// 主要ユースケース追跡: REQ-PLATFORM-003、REQ-PROVISIONING-003、REQ-PROVISIONING-006。
 
 import (
 	"context"
@@ -233,5 +233,96 @@ func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
 	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
 	if len(deliveries) != 1 {
 		t.Errorf("repeated capture with identical now produced %d deliveries, want 1 (idempotency key dedup)", len(deliveries))
+	}
+}
+
+func deleteWithGracePeriodConnection(applicationID string, days int) *domain.ProvisioningConnection {
+	conn := activeConnection(applicationID, domain.ScopeAllUsers)
+	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn.DeprovisionPolicy.GracePeriodDays = days
+	return conn
+}
+
+//spec:covers EX-PROVISIONING-006-02: 猶予期間つきの削除は配信を作らず接続ごとに予約し、再割り当ては割り当てた Application の予約だけを取り消す。
+func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDeprovision(t *testing.T) {
+	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	ctx := context.Background()
+	for _, app := range []string{"app-1", "app-2"} {
+		if err := connRepo.Register(ctx, deleteWithGracePeriodConnection(app, 7), "secret"); err != nil {
+			t.Fatalf("Register(%s) error = %v", app, err)
+		}
+	}
+	deletedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	dueAt := deletedAt.Add(7 * 24 * time.Hour)
+
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", deletedAt); err != nil {
+		t.Fatalf("CaptureLifecycleEvent(user_deleted) error = %v", err)
+	}
+	for _, app := range []string{"app-1", "app-2"} {
+		if deliveries, _ := deliveryRepo.ListByConnection(ctx, testTenantID, app, nil, 10); len(deliveries) != 0 {
+			t.Fatalf("deliveries on %s after deletion = %+v, want none until the grace period elapses", app, deliveries)
+		}
+	}
+	if due, _ := deliveryRepo.ListDueDeprovisions(ctx, dueAt, 10); len(due) != 2 {
+		t.Fatalf("scheduled deprovisions due at %v = %+v, want one per connection", dueAt, due)
+	}
+
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerAssignmentAdded, "app-1", deletedAt.Add(24*time.Hour)); err != nil {
+		t.Fatalf("CaptureLifecycleEvent(assignment_added) error = %v", err)
+	}
+
+	due, err := deliveryRepo.ListDueDeprovisions(ctx, dueAt, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(due) != 1 || due[0].ConnectionID != "app-2" {
+		t.Fatalf("scheduled deprovisions after reassignment to app-1 = %+v, want only app-2's", due)
+	}
+	// 取消の後も、割り当てによる create の配信は従来どおり作る。
+	if deliveries, _ := deliveryRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10); len(deliveries) != 1 || deliveries[0].Operation != domain.OperationCreate {
+		t.Errorf("deliveries on app-1 after reassignment = %+v, want one create", deliveries)
+	}
+}
+
+func TestCaptureLifecycleEvent_ReassignmentKeepsADeprovisionScheduledAfterIt(t *testing.T) {
+	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	ctx := context.Background()
+	if err := connRepo.Register(ctx, deleteWithGracePeriodConnection("app-1", 7), "secret"); err != nil {
+		t.Fatal(err)
+	}
+	assignedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	deletedAt := assignedAt.Add(time.Hour)
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", deletedAt); err != nil {
+		t.Fatal(err)
+	}
+
+	// 削除より古い割り当ての通知が遅れて届いても、後の削除の予約は取り消さない。
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerAssignmentAdded, "app-1", assignedAt); err != nil {
+		t.Fatal(err)
+	}
+
+	if due, _ := deliveryRepo.ListDueDeprovisions(ctx, deletedAt.Add(7*24*time.Hour), 10); len(due) != 1 {
+		t.Fatalf("scheduled deprovisions = %+v, want the deletion's reservation kept", due)
+	}
+}
+
+func TestCaptureLifecycleEvent_UserDeletedWithoutGracePeriodDeliversImmediately(t *testing.T) {
+	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	ctx := context.Background()
+	if err := connRepo.Register(ctx, deleteWithGracePeriodConnection("app-1", 0), "secret"); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", now); err != nil {
+		t.Fatal(err)
+	}
+
+	deliveries, _ := deliveryRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10)
+	if len(deliveries) != 1 || deliveries[0].Operation != domain.OperationDelete {
+		t.Fatalf("deliveries = %+v, want one immediate delete", deliveries)
+	}
+	if due, _ := deliveryRepo.ListDueDeprovisions(ctx, now.Add(365*24*time.Hour), 10); len(due) != 0 {
+		t.Errorf("scheduled deprovisions = %+v, want none without a grace period", due)
 	}
 }

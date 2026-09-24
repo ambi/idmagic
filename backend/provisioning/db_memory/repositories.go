@@ -171,12 +171,17 @@ type ProvisioningDeliveryRepository struct {
 	mu          sync.RWMutex
 	deliveries  map[string]*domain.ProvisioningDelivery // key: tenantKey(tenant_id, id)
 	idempotency map[string]string                       // idempotency key -> delivery id
+	// reservations は猶予期間つき削除の予約。key: tenantKey(tenant_id, id)
+	reservations map[string]*domain.ScheduledDeprovision
 }
 
 var _ ports.ProvisioningDeliveryRepository = (*ProvisioningDeliveryRepository)(nil)
 
 func NewProvisioningDeliveryRepository() *ProvisioningDeliveryRepository {
-	return &ProvisioningDeliveryRepository{deliveries: map[string]*domain.ProvisioningDelivery{}, idempotency: map[string]string{}}
+	return &ProvisioningDeliveryRepository{
+		deliveries: map[string]*domain.ProvisioningDelivery{}, idempotency: map[string]string{},
+		reservations: map[string]*domain.ScheduledDeprovision{},
+	}
 }
 
 func deliveryKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
@@ -344,5 +349,78 @@ func (r *ProvisioningDeliveryRepository) RetryDeadLetter(_ context.Context, tena
 		return false, nil
 	}
 	d.Status, d.JobID, d.LastError = domain.DeliveryPending, nil, nil
+	return true, nil
+}
+
+func cloneScheduledDeprovision(s *domain.ScheduledDeprovision) *domain.ScheduledDeprovision {
+	clone := *s
+	if s.DeliveryID != nil {
+		v := *s.DeliveryID
+		clone.DeliveryID = &v
+	}
+	return &clone
+}
+
+func (r *ProvisioningDeliveryRepository) ScheduleDeprovision(_ context.Context, s *domain.ScheduledDeprovision) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, existing := range r.reservations {
+		if existing.Status == domain.ScheduledDeprovisionScheduled && existing.TenantID == s.TenantID &&
+			existing.ConnectionID == s.ConnectionID && existing.UserID == s.UserID {
+			return false, nil
+		}
+	}
+	r.reservations[deliveryKey(s.TenantID, s.ID)] = cloneScheduledDeprovision(s)
+	return true, nil
+}
+
+func (r *ProvisioningDeliveryRepository) CancelScheduledDeprovisions(_ context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cancelled := 0
+	for _, s := range r.reservations {
+		if s.Status != domain.ScheduledDeprovisionScheduled || s.TenantID != tenantID ||
+			s.ConnectionID != connectionID || s.UserID != userID || s.SourceVersion >= beforeVersion {
+			continue
+		}
+		s.Status, s.UpdatedAt = domain.ScheduledDeprovisionCancelled, now
+		cancelled++
+	}
+	return cancelled, nil
+}
+
+func (r *ProvisioningDeliveryRepository) ListDueDeprovisions(_ context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*domain.ScheduledDeprovision{}
+	for _, s := range r.reservations {
+		if s.IsDue(now) {
+			out = append(out, cloneScheduledDeprovision(s))
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].DueAt.Before(out[j].DueAt) })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (r *ProvisioningDeliveryRepository) MaterializeDeprovision(_ context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningDelivery) (bool, error) {
+	if err := d.Validate(); err != nil {
+		return false, err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	stored := r.reservations[deliveryKey(s.TenantID, s.ID)]
+	if stored == nil || stored.Status != domain.ScheduledDeprovisionScheduled {
+		return false, nil
+	}
+	idKey := d.IdempotencyKey()
+	if _, ok := r.idempotency[idKey]; !ok {
+		r.deliveries[deliveryKey(d.TenantID, d.ID)] = cloneDelivery(d)
+		r.idempotency[idKey] = d.ID
+	}
+	deliveryID := r.idempotency[idKey]
+	stored.Status, stored.DeliveryID, stored.UpdatedAt = domain.ScheduledDeprovisionMaterialized, &deliveryID, d.CreatedAt
 	return true, nil
 }

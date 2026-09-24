@@ -51,12 +51,22 @@ func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
 // (spec/contexts/provisioning.yaml §deprovision セマンティクス). It intentionally
 // runs in its own transaction rather than the caller's (wi-45 T006 scoped
 // simplification of decision 4; see ports.ProvisioningCapture doc).
+//
+// grace_period_days を持つ接続への User の削除（delete に変換されたもの）は、配信の代わりに
+// ScheduledDeprovision を保存する。割り当ての追加は、その Application の古い予約を取り消す。
 func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error {
 	connections, err := deps.ConnectionRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}
 	version := now.UnixNano()
+	if trigger == ports.TriggerAssignmentAdded {
+		// 猶予期間中に適用範囲へ戻った User の削除予約を取り消す。接続の状態や create の
+		// 可否に関係なく取り消すのは、戻った User を下流から消す理由が残らないためである。
+		if _, err := deps.DeliveryRepo.CancelScheduledDeprovisions(ctx, tenantID, applicationID, subjectID, version, now); err != nil {
+			return err
+		}
+	}
 	for _, conn := range connections {
 		if conn.Status != domain.ConnectionActive || conn.Health == domain.HealthQuarantined {
 			continue
@@ -88,6 +98,13 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 		id, err := spec.NewUUIDv4()
 		if err != nil {
 			return err
+		}
+		if graceDays := conn.DeprovisionPolicy.GracePeriodDays; trigger == ports.TriggerUserDeleted && op == domain.OperationDelete && graceDays > 0 {
+			reservation := domain.NewScheduledDeprovision(id, tenantID, conn.ApplicationID, subjectID, version, now, graceDays)
+			if _, err := deps.DeliveryRepo.ScheduleDeprovision(ctx, reservation); err != nil {
+				return err
+			}
+			continue
 		}
 		delivery := &domain.ProvisioningDelivery{
 			ID: id, TenantID: tenantID, ConnectionID: conn.ApplicationID, SourceType: sourceType, SourceID: subjectID,

@@ -31,7 +31,13 @@ type DispatcherDeps struct {
 // re-scan). It is safe to call repeatedly and from multiple worker processes:
 // AttachJob only succeeds once per delivery (job_id IS NULL guard), so only the
 // worker that attached emits ProvisioningDeliveryStarted.
+//
+// 関連付けの前に、now の時点で期限に達した ScheduledDeprovision を pending の delete
+// 配信へ変える。猶予期間つきの削除も、ほかの配信と同じ経路で下流へ届く。
 func DispatchPendingDeliveries(ctx context.Context, deps DispatcherDeps, limit int, now time.Time) (dispatched int, err error) {
+	if err := materializeDueDeprovisions(ctx, deps.DeliveryRepo, limit, now); err != nil {
+		return 0, err
+	}
 	deliveries, err := deps.DeliveryRepo.ListUnenqueued(ctx, limit)
 	if err != nil {
 		return 0, err
@@ -53,4 +59,23 @@ func DispatchPendingDeliveries(ctx context.Context, deps DispatcherDeps, limit i
 		}
 	}
 	return dispatched, nil
+}
+
+// materializeDueDeprovisions は期限に達した予約を配信へ変える。取消と競合した予約は
+// MaterializeDeprovision が false を返すので、配信を作らずに読み飛ばす。
+func materializeDueDeprovisions(ctx context.Context, repo ports.ProvisioningDeliveryRepository, limit int, now time.Time) error {
+	due, err := repo.ListDueDeprovisions(ctx, now, limit)
+	if err != nil {
+		return err
+	}
+	for _, reservation := range due {
+		id, err := spec.NewUUIDv4()
+		if err != nil {
+			return err
+		}
+		if _, err := repo.MaterializeDeprovision(ctx, reservation, reservation.Delivery(id, now)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

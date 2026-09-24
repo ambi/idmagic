@@ -126,3 +126,34 @@ WHERE tenant_id=$1 AND id=$2;
 -- name: RetryDeadLetterProvisioningDelivery :execrows
 UPDATE provisioning_deliveries SET status='pending', job_id=NULL, last_error=NULL, updated_at=now()
 WHERE tenant_id=$1 AND id=$2 AND status='dead_letter';
+
+-- name: InsertProvisioningScheduledDeprovision :execrows
+INSERT INTO provisioning_scheduled_deprovisions (id, tenant_id, connection_id, user_id, source_version, due_at, status, delivery_id, created_at, updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,'scheduled',NULL,$7,$8)
+ON CONFLICT (tenant_id, connection_id, user_id) WHERE status = 'scheduled' DO NOTHING;
+
+-- name: CancelProvisioningScheduledDeprovisions :execrows
+UPDATE provisioning_scheduled_deprovisions SET status='cancelled', updated_at=sqlc.arg(now)
+WHERE tenant_id=sqlc.arg(tenant_id) AND connection_id=sqlc.arg(connection_id) AND user_id=sqlc.arg(user_id)
+  AND status='scheduled' AND source_version < sqlc.arg(before_version);
+
+-- name: ListDueProvisioningScheduledDeprovisions :many
+SELECT id, tenant_id, connection_id, user_id, source_version, due_at, status, delivery_id, created_at, updated_at
+FROM provisioning_scheduled_deprovisions
+WHERE status='scheduled' AND due_at <= sqlc.arg(now)
+ORDER BY due_at LIMIT sqlc.arg(page_limit);
+
+-- name: MaterializeProvisioningScheduledDeprovision :one
+-- 予約の遷移と配信の挿入を一文で行い、取消と競合したときに配信だけが残らないようにする。
+-- 結果は遷移した予約の件数（0 または 1）である。
+WITH materialized AS (
+  UPDATE provisioning_scheduled_deprovisions AS s SET status='materialized', delivery_id=sqlc.arg(delivery_id), updated_at=sqlc.arg(now)
+  WHERE s.tenant_id=sqlc.arg(tenant_id) AND s.id=sqlc.arg(id) AND s.status='scheduled'
+  RETURNING s.tenant_id, s.connection_id, s.user_id, s.source_version
+), inserted AS (
+  INSERT INTO provisioning_deliveries (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
+  SELECT sqlc.arg(delivery_id), m.tenant_id, m.connection_id, 'user', m.user_id, m.source_version, 'delete', 'pending', sqlc.arg(now), sqlc.arg(now)
+  FROM materialized m
+  ON CONFLICT ON CONSTRAINT provisioning_deliveries_idempotency_unique DO NOTHING
+)
+SELECT count(*) FROM materialized;

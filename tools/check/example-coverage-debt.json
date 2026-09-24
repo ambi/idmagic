@@ -17,18 +17,6 @@
       "finding": "変更と capture が別のコミットなので、変更の側がロールバックする経路と capture が失敗する経路のどちらでも、片方だけが残り得る。backend/provisioning/ports/capture.go が、2 つのコミットの間の障害で capture が失われ回復できないことを残余のギャップとして記録している。"
     },
     {
-      "id": "EX-PROVISIONING-006-01",
-      "reason": "削除捕捉が grace_period_days を待たず delete 配信を直ちに作るため",
-      "blocked_by": "wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period",
-      "finding": "TriggerUserDeleted は deprovision policy から直ちに OperationDelete へ変換される。"
-    },
-    {
-      "id": "EX-PROVISIONING-006-02",
-      "reason": "猶予配信の予約状態がなく、再割り当てで取り消す対象が存在しないため",
-      "blocked_by": "wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period",
-      "finding": "削除後の配信は即時作成され、予約と取消を表す状態が無い。"
-    },
-    {
       "id": "EX-PROVISIONING-011-01",
       "reason": "隔離と解除のイベントは発行するが、full resync が誤削除ガードの閾値を判定せず、閾値の超過で隔離されないため",
       "blocked_by": "wi-61629-quarantine-connections-on-the-accidental-deletion-guard",

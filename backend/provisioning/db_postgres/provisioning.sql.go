@@ -30,6 +30,34 @@ func (q *Queries) AttachProvisioningDeliveryJob(ctx context.Context, arg AttachP
 	return result.RowsAffected(), nil
 }
 
+const cancelProvisioningScheduledDeprovisions = `-- name: CancelProvisioningScheduledDeprovisions :execrows
+UPDATE provisioning_scheduled_deprovisions SET status='cancelled', updated_at=$1
+WHERE tenant_id=$2 AND connection_id=$3 AND user_id=$4
+  AND status='scheduled' AND source_version < $5
+`
+
+type CancelProvisioningScheduledDeprovisionsParams struct {
+	Now           time.Time
+	TenantID      string
+	ConnectionID  string
+	UserID        string
+	BeforeVersion int64
+}
+
+func (q *Queries) CancelProvisioningScheduledDeprovisions(ctx context.Context, arg CancelProvisioningScheduledDeprovisionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelProvisioningScheduledDeprovisions,
+		arg.Now,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.UserID,
+		arg.BeforeVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteProvisioningConnection = `-- name: DeleteProvisioningConnection :exec
 DELETE FROM provisioning_connections WHERE tenant_id=$1 AND application_id=$2
 `
@@ -329,6 +357,83 @@ func (q *Queries) InsertProvisioningDelivery(ctx context.Context, arg InsertProv
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertProvisioningScheduledDeprovision = `-- name: InsertProvisioningScheduledDeprovision :execrows
+INSERT INTO provisioning_scheduled_deprovisions (id, tenant_id, connection_id, user_id, source_version, due_at, status, delivery_id, created_at, updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,'scheduled',NULL,$7,$8)
+ON CONFLICT (tenant_id, connection_id, user_id) WHERE status = 'scheduled' DO NOTHING
+`
+
+type InsertProvisioningScheduledDeprovisionParams struct {
+	ID            string
+	TenantID      string
+	ConnectionID  string
+	UserID        string
+	SourceVersion int64
+	DueAt         time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) InsertProvisioningScheduledDeprovision(ctx context.Context, arg InsertProvisioningScheduledDeprovisionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertProvisioningScheduledDeprovision,
+		arg.ID,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.UserID,
+		arg.SourceVersion,
+		arg.DueAt,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const listDueProvisioningScheduledDeprovisions = `-- name: ListDueProvisioningScheduledDeprovisions :many
+SELECT id, tenant_id, connection_id, user_id, source_version, due_at, status, delivery_id, created_at, updated_at
+FROM provisioning_scheduled_deprovisions
+WHERE status='scheduled' AND due_at <= $1
+ORDER BY due_at LIMIT $2
+`
+
+type ListDueProvisioningScheduledDeprovisionsParams struct {
+	Now       time.Time
+	PageLimit int32
+}
+
+func (q *Queries) ListDueProvisioningScheduledDeprovisions(ctx context.Context, arg ListDueProvisioningScheduledDeprovisionsParams) ([]*ProvisioningScheduledDeprovision, error) {
+	rows, err := q.db.Query(ctx, listDueProvisioningScheduledDeprovisions, arg.Now, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningScheduledDeprovision
+	for rows.Next() {
+		var i ProvisioningScheduledDeprovision
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ConnectionID,
+			&i.UserID,
+			&i.SourceVersion,
+			&i.DueAt,
+			&i.Status,
+			&i.DeliveryID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listProvisioningConnectionsByTenant = `-- name: ListProvisioningConnectionsByTenant :many
@@ -739,6 +844,41 @@ func (q *Queries) ListUnenqueuedProvisioningDeliveries(ctx context.Context, limi
 		return nil, err
 	}
 	return items, nil
+}
+
+const materializeProvisioningScheduledDeprovision = `-- name: MaterializeProvisioningScheduledDeprovision :one
+WITH materialized AS (
+  UPDATE provisioning_scheduled_deprovisions AS s SET status='materialized', delivery_id=$1, updated_at=$2
+  WHERE s.tenant_id=$3 AND s.id=$4 AND s.status='scheduled'
+  RETURNING s.tenant_id, s.connection_id, s.user_id, s.source_version
+), inserted AS (
+  INSERT INTO provisioning_deliveries (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
+  SELECT $1, m.tenant_id, m.connection_id, 'user', m.user_id, m.source_version, 'delete', 'pending', $2, $2
+  FROM materialized m
+  ON CONFLICT ON CONSTRAINT provisioning_deliveries_idempotency_unique DO NOTHING
+)
+SELECT count(*) FROM materialized
+`
+
+type MaterializeProvisioningScheduledDeprovisionParams struct {
+	DeliveryID pgtype.UUID
+	Now        time.Time
+	TenantID   string
+	ID         string
+}
+
+// 予約の遷移と配信の挿入を一文で行い、取消と競合したときに配信だけが残らないようにする。
+// 結果は遷移した予約の件数（0 または 1）である。
+func (q *Queries) MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error) {
+	row := q.db.QueryRow(ctx, materializeProvisioningScheduledDeprovision,
+		arg.DeliveryID,
+		arg.Now,
+		arg.TenantID,
+		arg.ID,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const retryDeadLetterProvisioningDelivery = `-- name: RetryDeadLetterProvisioningDelivery :execrows

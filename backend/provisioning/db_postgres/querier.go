@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AttachProvisioningDeliveryJob(ctx context.Context, arg AttachProvisioningDeliveryJobParams) (int64, error)
+	CancelProvisioningScheduledDeprovisions(ctx context.Context, arg CancelProvisioningScheduledDeprovisionsParams) (int64, error)
 	DeleteProvisioningConnection(ctx context.Context, arg DeleteProvisioningConnectionParams) error
 	FindProvisioningConnection(ctx context.Context, arg FindProvisioningConnectionParams) (*FindProvisioningConnectionRow, error)
 	FindProvisioningDelivery(ctx context.Context, arg FindProvisioningDeliveryParams) (*ProvisioningDelivery, error)
@@ -17,6 +18,8 @@ type Querier interface {
 	GetProvisioningConnectionSecret(ctx context.Context, arg GetProvisioningConnectionSecretParams) (string, error)
 	InsertProvisioningConnection(ctx context.Context, arg InsertProvisioningConnectionParams) (string, error)
 	InsertProvisioningDelivery(ctx context.Context, arg InsertProvisioningDeliveryParams) (string, error)
+	InsertProvisioningScheduledDeprovision(ctx context.Context, arg InsertProvisioningScheduledDeprovisionParams) (int64, error)
+	ListDueProvisioningScheduledDeprovisions(ctx context.Context, arg ListDueProvisioningScheduledDeprovisionsParams) ([]*ProvisioningScheduledDeprovision, error)
 	ListProvisioningConnectionsByTenant(ctx context.Context, tenantID string) ([]*ListProvisioningConnectionsByTenantRow, error)
 	ListProvisioningDeliveriesByConnection(ctx context.Context, arg ListProvisioningDeliveriesByConnectionParams) ([]*ProvisioningDelivery, error)
 	ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusParams) ([]*ProvisioningDelivery, error)
@@ -28,6 +31,9 @@ type Querier interface {
 	ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageAfterParams) ([]*ProvisioningDelivery, error)
 	ListProvisioningDeliveriesByConnectionPageBefore(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageBeforeParams) ([]*ProvisioningDelivery, error)
 	ListUnenqueuedProvisioningDeliveries(ctx context.Context, limit int32) ([]*ProvisioningDelivery, error)
+	// 予約の遷移と配信の挿入を一文で行い、取消と競合したときに配信だけが残らないようにする。
+	// 結果は遷移した予約の件数（0 または 1）である。
+	MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error)
 	RetryDeadLetterProvisioningDelivery(ctx context.Context, arg RetryDeadLetterProvisioningDeliveryParams) (int64, error)
 	UpdateProvisioningConnection(ctx context.Context, arg UpdateProvisioningConnectionParams) error
 	UpdateProvisioningConnectionWithSecret(ctx context.Context, arg UpdateProvisioningConnectionWithSecretParams) error

@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-PROVISIONING-006。
+
 import (
 	"context"
 	"testing"
@@ -113,4 +115,53 @@ type racingEnqueuer struct{ attach func() }
 func (r racingEnqueuer) EnqueueProvisioningDelivery(context.Context, string, string, string) (string, error) {
 	r.attach()
 	return "job-1", nil
+}
+
+//spec:covers EX-PROVISIONING-006-01: 予約は期限の直前には配信へ変わらず、期限に達した周期処理で delete の配信になってジョブへ関連付けられ、以後の周期処理では重複しない。
+func TestDispatchPendingDeliveries_MaterializesAScheduledDeprovisionOnlyOnceDue(t *testing.T) {
+	deliveryRepo := memory.NewProvisioningDeliveryRepository()
+	ctx := context.Background()
+	deletedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	reservation := domain.NewScheduledDeprovision("reservation-1", "tenant-a", "app-1", "user-1", 42, deletedAt, 7)
+	if _, err := deliveryRepo.ScheduleDeprovision(ctx, reservation); err != nil {
+		t.Fatalf("ScheduleDeprovision() error = %v", err)
+	}
+	other := domain.NewScheduledDeprovision("reservation-2", "tenant-a", "app-2", "user-1", 42, deletedAt, 7)
+	if _, err := deliveryRepo.ScheduleDeprovision(ctx, other); err != nil {
+		t.Fatalf("ScheduleDeprovision(other) error = %v", err)
+	}
+	enqueuer := &fakeEnqueuer{nextJob: "job-1"}
+	deps := usecases.DispatcherDeps{DeliveryRepo: deliveryRepo, Enqueuer: enqueuer}
+
+	if _, err := usecases.DispatchPendingDeliveries(ctx, deps, 10, reservation.DueAt.Add(-time.Second)); err != nil {
+		t.Fatalf("DispatchPendingDeliveries(before due) error = %v", err)
+	}
+	if deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10); len(deliveries) != 0 || len(enqueuer.calls) != 0 {
+		t.Fatalf("before due: deliveries = %+v, enqueues = %+v; want neither", deliveries, enqueuer.calls)
+	}
+
+	if _, err := usecases.DispatchPendingDeliveries(ctx, deps, 10, reservation.DueAt); err != nil {
+		t.Fatalf("DispatchPendingDeliveries(at due) error = %v", err)
+	}
+	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(deliveries) != 1 {
+		t.Fatalf("at due: deliveries = %+v, want one", deliveries)
+	}
+	d := deliveries[0]
+	if d.Operation != domain.OperationDelete || d.SourceID != "user-1" || d.SourceVersion != 42 || d.Status != domain.DeliveryInFlight {
+		t.Errorf("materialized delivery = %+v, want an in-flight delete of user-1 at version 42", d)
+	}
+	if others, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-2", nil, 10); len(others) != 1 {
+		t.Errorf("at due: deliveries on app-2 = %+v, want every due reservation materialized in one pass", others)
+	}
+	if len(enqueuer.calls) != 2 {
+		t.Errorf("enqueuer.calls = %+v, want one call per materialized delivery", enqueuer.calls)
+	}
+
+	if _, err := usecases.DispatchPendingDeliveries(ctx, deps, 10, reservation.DueAt.Add(time.Hour)); err != nil {
+		t.Fatalf("DispatchPendingDeliveries(after due) error = %v", err)
+	}
+	if deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10); len(deliveries) != 1 || len(enqueuer.calls) != 2 {
+		t.Errorf("after due: deliveries = %d, enqueues = %d; want the one delivery only", len(deliveries), len(enqueuer.calls))
+	}
 }

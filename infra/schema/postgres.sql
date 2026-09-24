@@ -1444,6 +1444,30 @@ CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (
 -- (wi-159): created_at alone isn't unique enough for a stable cursor.
 CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC, id DESC);
 
+-- 猶予期間つき User 削除の予約。期限が来るまで配信行を作らず、再割り当てで取り消せる。
+CREATE TABLE provisioning_scheduled_deprovisions (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    connection_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    source_version BIGINT NOT NULL CHECK (source_version >= 1),
+    due_at TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('scheduled', 'materialized', 'cancelled')),
+    delivery_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT provisioning_scheduled_deprovisions_connection_fkey
+        FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
+    CONSTRAINT provisioning_scheduled_deprovisions_delivery_consistent
+        CHECK ((status = 'materialized') = (delivery_id IS NOT NULL))
+);
+
+-- 同じ接続と User に有効な予約を一つだけ置き、再度の削除通知が期限を延ばさないようにする。
+CREATE UNIQUE INDEX provisioning_scheduled_deprovisions_active_unique
+    ON provisioning_scheduled_deprovisions (tenant_id, connection_id, user_id) WHERE status = 'scheduled';
+CREATE INDEX provisioning_scheduled_deprovisions_due_idx
+    ON provisioning_scheduled_deprovisions (due_at) WHERE status = 'scheduled';
+
 CREATE UNLOGGED TABLE oauth2_authorization_requests (
     id TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,

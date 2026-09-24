@@ -1,6 +1,6 @@
 package provisioning_test
 
-// 主要ユースケース追跡: REQ-PROVISIONING-003、REQ-PROVISIONING-005、REQ-PROVISIONING-010、REQ-PROVISIONING-018。
+// 主要ユースケース追跡: REQ-PROVISIONING-003、REQ-PROVISIONING-005、REQ-PROVISIONING-006、REQ-PROVISIONING-010、REQ-PROVISIONING-018。
 
 import (
 	"context"
@@ -56,8 +56,37 @@ func (r *lifecycleRun) types() []string {
 
 func (r *lifecycleRun) dispatch() {
 	r.h.t.Helper()
-	if _, err := usecases.DispatchPendingDeliveries(context.Background(), r.module.DispatcherDeps(r.jobs, nil, r.emit), 100, time.Now().UTC()); err != nil {
+	r.dispatchAt(time.Now().UTC())
+}
+
+// dispatchAt は worker の周期処理を now の時点として 1 回実行する。
+func (r *lifecycleRun) dispatchAt(now time.Time) {
+	r.h.t.Helper()
+	if _, err := usecases.DispatchPendingDeliveries(context.Background(), r.module.DispatcherDeps(r.jobs, nil, r.emit), 100, now); err != nil {
 		r.h.t.Fatalf("DispatchPendingDeliveries() error = %v", err)
+	}
+}
+
+// drainAt は now の時点で周期処理を実行し、投入されたジョブをすべて処理する。
+func (r *lifecycleRun) drainAt(now time.Time) {
+	r.h.t.Helper()
+	r.dispatchAt(now)
+	for {
+		jobs, err := r.jobs.ClaimBatch(context.Background(), "worker-e2e", jobsdomain.LaneDefault, 10, time.Minute, time.Now().UTC())
+		if err != nil {
+			r.h.t.Fatalf("ClaimBatch() error = %v", err)
+		}
+		if len(jobs) == 0 {
+			return
+		}
+		for _, job := range jobs {
+			if err := r.handle(job); err != nil {
+				r.h.t.Fatalf("handle(%s) error = %v", job.ID, err)
+			}
+			if _, err := r.jobs.Complete(context.Background(), job.ID, "worker-e2e", nil, time.Now().UTC()); err != nil {
+				r.h.t.Fatalf("Complete(%s) error = %v", job.ID, err)
+			}
+		}
 	}
 }
 
@@ -321,5 +350,75 @@ func TestE2E_DisablingAUserSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	}
 	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserDeprovisioned"}) {
 		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserDeprovisioned]", got)
+	}
+}
+
+// useDeleteWithGracePeriod は接続を on_delete=delete、grace_period_days=days にする。
+func (h *e2eHarness) useDeleteWithGracePeriod(days int) {
+	h.t.Helper()
+	conn := h.connection()
+	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn.DeprovisionPolicy.GracePeriodDays = days
+	h.saveConnection(conn)
+}
+
+func (h *e2eHarness) softDeleteUser(userID string, now time.Time) {
+	h.t.Helper()
+	if err := userusecases.SoftDeleteUser(context.Background(), h.adminUserDeps, userusecases.SoftDeleteUserInput{
+		ActorUserID: "actor", Sub: userID, Now: now,
+	}); err != nil {
+		h.t.Fatalf("SoftDeleteUser() error = %v", err)
+	}
+}
+
+//spec:covers EX-PROVISIONING-006-01: 猶予期間 7 日の削除は、7 日目の直前まで下流へ DELETE を送らず、経過後の周期処理で delete の配信を作って DELETE を送り、UserDeprovisioned（action=delete）を発行する。
+func TestE2E_DeletionWithAGracePeriodSendsDELETEOnlyAfterItElapses(t *testing.T) {
+	h := newE2EHarness(t)
+	h.useDeleteWithGracePeriod(7)
+	run := newLifecycleRun(h)
+	userID := h.provisionUser("frank-grace")
+	remoteID := h.remoteUserID(userID)
+	deletedAt := time.Now().UTC()
+
+	h.softDeleteUser(userID, deletedAt)
+	run.drainAt(deletedAt.Add(7*24*time.Hour - time.Second))
+	if got := h.downstream.find(http.MethodDelete, "/Users/"+remoteID); got != nil {
+		t.Fatalf("downstream received DELETE %s before the grace period elapsed", got.path)
+	}
+	run.events = nil
+
+	run.drainAt(deletedAt.Add(7 * 24 * time.Hour))
+	if got := h.downstream.find(http.MethodDelete, "/Users/"+remoteID); got == nil {
+		t.Fatalf("downstream requests = %v, want DELETE /Users/%s once the grace period elapsed", h.downstream.snapshot(), remoteID)
+	}
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserDeprovisioned"}) {
+		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserDeprovisioned]", got)
+	}
+	if deprovisioned := wire(t, run.events[1]); deprovisioned["userId"] != userID || deprovisioned["action"] != "delete" {
+		t.Errorf("UserDeprovisioned = %v, want user %s with action delete", deprovisioned, userID)
+	}
+}
+
+//spec:covers EX-PROVISIONING-006-02: 猶予期間内に同じ Application へ再び割り当てると、予約していた delete は取り消され、期限の経過後も下流へ DELETE を送らない。
+func TestE2E_ReassignmentWithinTheGracePeriodCancelsTheDELETE(t *testing.T) {
+	h := newE2EHarness(t)
+	h.useDeleteWithGracePeriod(7)
+	run := newLifecycleRun(h)
+	userID := h.provisionUser("grace-reassigned")
+	remoteID := h.remoteUserID(userID)
+	deletedAt := time.Now().UTC()
+
+	h.softDeleteUser(userID, deletedAt)
+	notifier := run.module.AssignmentNotifier(nil)
+	if err := notifier.NotifyAssignmentMutation(context.Background(), h.tenantID, h.connectionID, userID, appports.ProvisioningAssignmentAdded, deletedAt.Add(24*time.Hour)); err != nil {
+		t.Fatalf("NotifyAssignmentMutation() error = %v", err)
+	}
+	run.drainAt(deletedAt.Add(8 * 24 * time.Hour))
+
+	if got := h.downstream.find(http.MethodDelete, "/Users/"+remoteID); got != nil {
+		t.Fatalf("downstream received DELETE %s after the reassignment cancelled it", got.path)
+	}
+	if got := run.types(); slices.Contains(got, "UserDeprovisioned") {
+		t.Errorf("events = %v, want no UserDeprovisioned after the reassignment", got)
 	}
 }

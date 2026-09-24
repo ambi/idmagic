@@ -37,3 +37,16 @@ type ProvisioningRemoteLink struct {
 	LastSyncedVersion int64
 	UpdatedAt         time.Time
 }
+
+type ProvisioningScheduledDeprovision struct {
+	ID            string
+	TenantID      string
+	ConnectionID  string
+	UserID        string
+	SourceVersion int64
+	DueAt         time.Time
+	Status        string
+	DeliveryID    pgtype.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}

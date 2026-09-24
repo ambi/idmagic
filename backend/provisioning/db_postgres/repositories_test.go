@@ -457,3 +457,96 @@ func TestProvisioningConnectionRepository_RejectsActiveOAuth2WithoutTokenURL(t *
 		t.Fatalf("Find() after the refused Register() = (%+v, %v), want (nil, nil)", found, err)
 	}
 }
+
+func findReservation(due []*domain.ScheduledDeprovision, id string) *domain.ScheduledDeprovision {
+	for _, s := range due {
+		if s.ID == id {
+			return s
+		}
+	}
+	return nil
+}
+
+func TestProvisioningDeliveryRepository_ScheduledDeprovisionLifecycle(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	if err := connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
+		t.Fatal(err)
+	}
+	user := pgfixtures.SeedUser(t, pool, tenant.ID)
+	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	ctx := context.Background()
+	deletedAt := pgtest.Now()
+
+	first := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
+	if created, err := repo.ScheduleDeprovision(ctx, first); err != nil || !created {
+		t.Fatalf("ScheduleDeprovision() = (%v, %v), want (true, nil)", created, err)
+	}
+	// 同じ接続と User への二度目の削除通知は、先の予約の期限を保つ。
+	second := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 20, deletedAt.Add(time.Hour), 7)
+	if created, err := repo.ScheduleDeprovision(ctx, second); err != nil || created {
+		t.Fatalf("second ScheduleDeprovision() = (%v, %v), want (false, nil)", created, err)
+	}
+
+	due, err := repo.ListDueDeprovisions(ctx, first.DueAt.Add(-time.Second), 1000)
+	if err != nil || findReservation(due, first.ID) != nil {
+		t.Fatalf("ListDueDeprovisions(before due) = (%+v, %v), want %s absent", due, err, first.ID)
+	}
+	due, err = repo.ListDueDeprovisions(ctx, first.DueAt, 1000)
+	got := findReservation(due, first.ID)
+	if err != nil || got == nil || got.SourceVersion != 10 || got.Status != domain.ScheduledDeprovisionScheduled {
+		t.Fatalf("ListDueDeprovisions(at due) = (%+v, %v), want %s scheduled at version 10", due, err, first.ID)
+	}
+
+	now := first.DueAt.Add(time.Minute)
+	delivery := got.Delivery(pgfixtures.NewUUID(t), now)
+	if ok, err := repo.MaterializeDeprovision(ctx, got, delivery); err != nil || !ok {
+		t.Fatalf("MaterializeDeprovision() = (%v, %v), want (true, nil)", ok, err)
+	}
+	stored, err := repo.Find(ctx, tenant.ID, delivery.ID)
+	if err != nil || stored == nil || stored.Operation != domain.OperationDelete || stored.SourceID != user.ID || stored.SourceVersion != 10 || stored.Status != domain.DeliveryPending {
+		t.Fatalf("Find(materialized delivery) = (%+v, %v), want a pending delete of the user at version 10", stored, err)
+	}
+	if ok, err := repo.MaterializeDeprovision(ctx, got, got.Delivery(pgfixtures.NewUUID(t), now)); err != nil || ok {
+		t.Fatalf("second MaterializeDeprovision() = (%v, %v), want (false, nil)", ok, err)
+	}
+	if due, _ := repo.ListDueDeprovisions(ctx, now, 1000); findReservation(due, first.ID) != nil {
+		t.Errorf("ListDueDeprovisions() after materializing still returns %s", first.ID)
+	}
+}
+
+func TestProvisioningDeliveryRepository_CancelledDeprovisionIsNeverMaterialized(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	if err := connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
+		t.Fatal(err)
+	}
+	user := pgfixtures.SeedUser(t, pool, tenant.ID)
+	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	ctx := context.Background()
+	deletedAt := pgtest.Now()
+	reservation := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
+	if _, err := repo.ScheduleDeprovision(ctx, reservation); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, err := repo.CancelScheduledDeprovisions(ctx, tenant.ID, app.ID, user.ID, 10, deletedAt); err != nil || n != 0 {
+		t.Fatalf("CancelScheduledDeprovisions(beforeVersion=10) = (%d, %v), want (0, nil) for a reservation that is not older", n, err)
+	}
+	if n, err := repo.CancelScheduledDeprovisions(ctx, tenant.ID, app.ID, user.ID, 11, deletedAt); err != nil || n != 1 {
+		t.Fatalf("CancelScheduledDeprovisions(beforeVersion=11) = (%d, %v), want (1, nil)", n, err)
+	}
+
+	// 取消の前に読んだ予約で実体化しても、配信は作られない。
+	delivery := reservation.Delivery(pgfixtures.NewUUID(t), reservation.DueAt)
+	if ok, err := repo.MaterializeDeprovision(ctx, reservation, delivery); err != nil || ok {
+		t.Fatalf("MaterializeDeprovision(cancelled) = (%v, %v), want (false, nil)", ok, err)
+	}
+	if stored, err := repo.Find(ctx, tenant.ID, delivery.ID); err != nil || stored != nil {
+		t.Fatalf("Find(delivery of a cancelled reservation) = (%+v, %v), want none", stored, err)
+	}
+}

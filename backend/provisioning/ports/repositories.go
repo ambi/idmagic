@@ -77,4 +77,19 @@ type ProvisioningDeliveryRepository interface {
 	// job_id so the dispatcher picks it up again. Returns false if the delivery
 	// is not currently dead_letter.
 	RetryDeadLetter(ctx context.Context, tenantID, deliveryID string) (bool, error)
+
+	// 猶予期間つき削除の予約は配信の前段であり、実体化で予約の遷移と配信の挿入を
+	// 同時に行うため、配信と同じリポジトリが持つ。
+
+	// ScheduleDeprovision は予約を保存する。同じ (tenant, connection, user) に scheduled の
+	// 予約があれば、その期限を保つために作らず created=false を返す。
+	ScheduleDeprovision(ctx context.Context, s *domain.ScheduledDeprovision) (created bool, err error)
+	// CancelScheduledDeprovisions は (tenant, connection, user) の scheduled の予約のうち、
+	// SourceVersion が beforeVersion より小さいものを cancelled にし、その件数を返す。
+	CancelScheduledDeprovisions(ctx context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error)
+	// ListDueDeprovisions は全テナントから、now の時点で期限に達した scheduled の予約を期限の古い順に返す。
+	ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error)
+	// MaterializeDeprovision は予約がまだ scheduled のときだけ materialized にし、d を挿入する。
+	// 取消と競合して予約が scheduled でなくなっていれば、何も変えず false を返す。
+	MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningDelivery) (bool, error)
 }

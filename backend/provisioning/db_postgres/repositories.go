@@ -622,3 +622,62 @@ func (r *ProvisioningDeliveryRepository) RetryDeadLetter(ctx context.Context, te
 	})
 	return affected == 1, err
 }
+
+func (r *ProvisioningDeliveryRepository) ScheduleDeprovision(ctx context.Context, s *domain.ScheduledDeprovision) (bool, error) {
+	affected, err := New(r.Pool).InsertProvisioningScheduledDeprovision(ctx, InsertProvisioningScheduledDeprovisionParams{
+		ID:            s.ID,
+		TenantID:      s.TenantID,
+		ConnectionID:  s.ConnectionID,
+		UserID:        s.UserID,
+		SourceVersion: s.SourceVersion,
+		DueAt:         s.DueAt,
+		CreatedAt:     s.CreatedAt,
+		UpdatedAt:     s.UpdatedAt,
+	})
+	return affected == 1, err
+}
+
+func (r *ProvisioningDeliveryRepository) CancelScheduledDeprovisions(ctx context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error) {
+	affected, err := New(r.Pool).CancelProvisioningScheduledDeprovisions(ctx, CancelProvisioningScheduledDeprovisionsParams{
+		Now:           now,
+		TenantID:      tenantID,
+		ConnectionID:  connectionID,
+		UserID:        userID,
+		BeforeVersion: beforeVersion,
+	})
+	return int(affected), err
+}
+
+func (r *ProvisioningDeliveryRepository) ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
+	rows, err := New(r.Pool).ListDueProvisioningScheduledDeprovisions(ctx, ListDueProvisioningScheduledDeprovisionsParams{
+		Now:       now,
+		PageLimit: int32(limit), //nolint:gosec // safe downcast
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.ScheduledDeprovision, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &domain.ScheduledDeprovision{
+			ID: row.ID, TenantID: row.TenantID, ConnectionID: row.ConnectionID, UserID: row.UserID,
+			SourceVersion: row.SourceVersion, DueAt: row.DueAt, Status: domain.ScheduledDeprovisionStatus(row.Status),
+			DeliveryID: fromPgUUID(row.DeliveryID), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		})
+	}
+	return out, nil
+}
+
+// MaterializeDeprovision は予約の遷移と配信の挿入を一文で行う。配信の内容は予約の行から
+// 組み立てるため、d からは識別子と作成時刻だけを使う。
+func (r *ProvisioningDeliveryRepository) MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningDelivery) (bool, error) {
+	if err := d.Validate(); err != nil {
+		return false, err
+	}
+	materialized, err := New(r.Pool).MaterializeProvisioningScheduledDeprovision(ctx, MaterializeProvisioningScheduledDeprovisionParams{
+		DeliveryID: pgUUIDVal(d.ID),
+		Now:        d.CreatedAt,
+		TenantID:   s.TenantID,
+		ID:         s.ID,
+	})
+	return materialized == 1, err
+}

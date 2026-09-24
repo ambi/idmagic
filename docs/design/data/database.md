@@ -340,6 +340,8 @@ erDiagram
     }
     provisioning_deliveries {
     }
+    provisioning_scheduled_deprovisions {
+    }
     tenants ||--o{ scim_user_refs : SCIM利用者を持つ
     users ||--o| scim_user_refs : SCIM利用者に対応する
     tenants ||--o{ scim_group_refs : SCIMグループを持つ
@@ -357,6 +359,7 @@ erDiagram
     tenants ||--o{ provisioning_connections : 接続を分離する
     provisioning_connections ||--o{ provisioning_remote_links : 遠隔主体を結ぶ
     provisioning_connections ||--o{ provisioning_deliveries : 配送する
+    provisioning_connections ||--o{ provisioning_scheduled_deprovisions : 削除を予約する
 ```
 
 | テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` 列 |
@@ -374,6 +377,7 @@ erDiagram
 | `provisioning_connections` | アプリケーションへ利用者とグループを送り出す SCIM 接続の設定と健全性 | Provisioning | `LOGGED` | 非キー列 |
 | `provisioning_remote_links` | 送り出した利用者やグループと、接続先での ID の対応 | Provisioning | `LOGGED` | 非キー列 |
 | `provisioning_deliveries` | 接続先への一件ごとの配送と、その状態 | Provisioning | `LOGGED` | 非キー列 |
+| `provisioning_scheduled_deprovisions` | 猶予期間を置く利用者の削除の予約。期限が来ると配送へ変わり、猶予期間中の再割り当てで取り消される | Provisioning | `LOGGED` | 非キー列 |
 
 ### 再生成可能な認証状態と流量制御
 
