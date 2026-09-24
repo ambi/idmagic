@@ -34,7 +34,7 @@ depends_on:
   - wi-579-align-branding-asset-gateway-example
   - wi-92540-guarantee-provisioning-deliveries-by-reconciliation
   - wi-22987-track-full-resync-completion
-  - wi-37560-return-access-denied-for-cross-tenant-provisioning-api-tokens
+  - wi-37560-align-cross-tenant-provisioning-api-token-refusals
   - wi-85060-publish-provisioning-lifecycle-events
   - wi-93622-acceptance-test-provisioning-tenant-isolation
   - wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period

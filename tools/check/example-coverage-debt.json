@@ -17,12 +17,6 @@
       "finding": "変更と capture が別のコミットなので、変更の側がロールバックする経路と capture が失敗する経路のどちらでも、片方だけが残り得る。backend/provisioning/ports/capture.go が、2 つのコミットの間の障害で capture が失われ回復できないことを残余のギャップとして記録している。"
     },
     {
-      "id": "EX-PROVISIONING-001-03",
-      "reason": "他テナントの有効な provisioning:write トークンは接続を作らないが、AccessDeniedError ではなく 401 invalid_token を返すため",
-      "blocked_by": "wi-37560-return-access-denied-for-cross-tenant-provisioning-api-tokens",
-      "finding": "default realm の接続登録へ acme realm 発行トークンを提示すると 401 invalid_token となる。"
-    },
-    {
       "id": "EX-PROVISIONING-003-01",
       "reason": "配信の状態遷移はあるが、宣言された ProvisioningDeliveryStarted と UserProvisioned を本番が発行しないため",
       "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",

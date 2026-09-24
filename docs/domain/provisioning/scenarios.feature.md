@@ -23,7 +23,7 @@ Primary actor: `ManagementApiClient`
 - Given クライアントは対象テナントの有効な API アクセストークンを提示している
 - When クライアントがアプリケーションの接続、テナントの接続、または配信操作を要求する
 - But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作は `AccessDeniedError` で拒否される
+- Then 操作は 401 の `InvalidAccessTokenError` で拒否される
 
 ## Rule: REQ-PROVISIONING-002 管理者は接続を登録し、接続テストで下流の対応機能を取得できる
 
