@@ -212,8 +212,8 @@ func RunWorker() error {
 		Group: &identitysource.GroupAttributeSource{GroupRepo: deps.IdManagement.GroupRepo},
 	}
 	memberSource := &identitysource.GroupMemberSource{GroupRepo: deps.IdManagement.GroupRepo}
-	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient)))
-	go provisioningDispatchLoop(ctx, deps)
+	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger))))
+	go provisioningDispatchLoop(ctx, deps, logger)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
 	go sharedSignalsDeliveryLoop(ctx, deps, worker.SharedSignalsDeliveryInterval)
 
@@ -372,11 +372,14 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 // rows with a Jobs.Job (LifecycleWorkflowRunLifecycle's dispatcher precedent):
 // it recovers deliveries whose same-Tx-adjacent capture succeeded but whose
 // immediate enqueue call failed (wi-45 T006, decision 4).
-func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {
+func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger) {
+	// NewEmitFunc は監査の書き込みに自前の context を使う。停止中の tick でも
+	// ProvisioningDeliveryStarted を落とさないため (sharedSignalsDeliveryLoop と同じ)。
+	dispatcherDeps := deps.Provisioning.DispatcherDeps(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger)) //nolint:contextcheck // see comment above
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if _, err := provisioningusecases.DispatchPendingDeliveries(ctx, deps.Provisioning.DispatcherDeps(deps.Jobs.Repo, deps.Tenancy.QuotaRepo), 100); err != nil {
+		if _, err := provisioningusecases.DispatchPendingDeliveries(ctx, dispatcherDeps, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "provisioning delivery dispatch failed", "error", err)
 		}
 		select {

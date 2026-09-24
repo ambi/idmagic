@@ -12,9 +12,9 @@ import "time"
 // ProvisioningConnectionRegistered is emitted when an admin registers a new
 // ProvisioningConnection for an Application.
 type ProvisioningConnectionRegistered struct {
-	At            time.Time
-	TenantID      string
-	ApplicationID string
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
 }
 
 func (e *ProvisioningConnectionRegistered) EventType() string {
@@ -25,9 +25,9 @@ func (e *ProvisioningConnectionRegistered) OccurredAt() time.Time { return e.At 
 // ProvisioningConnectionUpdated is emitted when an admin updates connection
 // settings other than credential and status=disabled.
 type ProvisioningConnectionUpdated struct {
-	At            time.Time
-	TenantID      string
-	ApplicationID string
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
 }
 
 func (e *ProvisioningConnectionUpdated) EventType() string     { return "ProvisioningConnectionUpdated" }
@@ -36,9 +36,9 @@ func (e *ProvisioningConnectionUpdated) OccurredAt() time.Time { return e.At }
 // ProvisioningConnectionDisabled is emitted when an admin sets
 // ProvisioningConnection.status to disabled.
 type ProvisioningConnectionDisabled struct {
-	At            time.Time
-	TenantID      string
-	ApplicationID string
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
 }
 
 func (e *ProvisioningConnectionDisabled) EventType() string     { return "ProvisioningConnectionDisabled" }
@@ -47,9 +47,9 @@ func (e *ProvisioningConnectionDisabled) OccurredAt() time.Time { return e.At }
 // ProvisioningConnectionDeleted is emitted when an admin deletes a
 // ProvisioningConnection (hard delete, Application precedent).
 type ProvisioningConnectionDeleted struct {
-	At            time.Time
-	TenantID      string
-	ApplicationID string
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
 }
 
 func (e *ProvisioningConnectionDeleted) EventType() string     { return "ProvisioningConnectionDeleted" }
@@ -58,10 +58,10 @@ func (e *ProvisioningConnectionDeleted) OccurredAt() time.Time { return e.At }
 // ProvisioningCredentialRotated is emitted when an admin updates a connection's
 // credential.
 type ProvisioningCredentialRotated struct {
-	At            time.Time
-	TenantID      string
-	ApplicationID string
-	CredentialID  string
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
+	CredentialID  string    `json:"credentialId"`
 }
 
 func (e *ProvisioningCredentialRotated) EventType() string     { return "ProvisioningCredentialRotated" }
@@ -73,11 +73,11 @@ func (e *ProvisioningCredentialRotated) OccurredAt() time.Time { return e.At }
 // does not collide with the ProvisioningDeliveryLifecycleEvent constant
 // EventProvisioningDeliveryStarted, which is a different identifier.
 type ProvisioningDeliveryStarted struct {
-	At           time.Time
-	TenantID     string
-	ConnectionID string
-	DeliveryID   string
-	JobID        string
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ConnectionID string    `json:"connectionId"`
+	DeliveryID   string    `json:"deliveryId"`
+	JobID        string    `json:"jobId"`
 }
 
 func (e *ProvisioningDeliveryStarted) EventType() string     { return "ProvisioningDeliveryStarted" }
@@ -85,12 +85,12 @@ func (e *ProvisioningDeliveryStarted) OccurredAt() time.Time { return e.At }
 
 // UserProvisioned is emitted when a user create/update delivery reaches succeeded.
 type UserProvisioned struct {
-	At           time.Time
-	TenantID     string
-	ConnectionID string
-	DeliveryID   string
-	UserID       string
-	RemoteID     string
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ConnectionID string    `json:"connectionId"`
+	DeliveryID   string    `json:"deliveryId"`
+	UserID       string    `json:"userId"`
+	RemoteID     string    `json:"remoteId"`
 }
 
 func (e *UserProvisioned) EventType() string     { return "UserProvisioned" }
@@ -99,12 +99,12 @@ func (e *UserProvisioned) OccurredAt() time.Time { return e.At }
 // UserDeprovisioned is emitted when a user deactivate/delete delivery reaches
 // succeeded.
 type UserDeprovisioned struct {
-	At           time.Time
-	TenantID     string
-	ConnectionID string
-	DeliveryID   string
-	UserID       string
-	Action       ProvisioningDeprovisionAction
+	At           time.Time                     `json:"-"`
+	TenantID     string                        `json:"tenantId"`
+	ConnectionID string                        `json:"connectionId"`
+	DeliveryID   string                        `json:"deliveryId"`
+	UserID       string                        `json:"userId"`
+	Action       ProvisioningDeprovisionAction `json:"action"`
 }
 
 func (e *UserDeprovisioned) EventType() string     { return "UserDeprovisioned" }
@@ -113,13 +113,13 @@ func (e *UserDeprovisioned) OccurredAt() time.Time { return e.At }
 // UserProvisioningFailed is emitted once, when a delivery (user or group)
 // exhausts max_attempts and reaches dead_letter (not emitted per attempt).
 type UserProvisioningFailed struct {
-	At           time.Time
-	TenantID     string
-	ConnectionID string
-	DeliveryID   string
-	SourceType   ProvisioningSourceType
-	SourceID     string
-	Error        string
+	At           time.Time              `json:"-"`
+	TenantID     string                 `json:"tenantId"`
+	ConnectionID string                 `json:"connectionId"`
+	DeliveryID   string                 `json:"deliveryId"`
+	SourceType   ProvisioningSourceType `json:"sourceType"`
+	SourceID     string                 `json:"sourceId"`
+	Error        string                 `json:"error"`
 }
 
 func (e *UserProvisioningFailed) EventType() string     { return "UserProvisioningFailed" }
@@ -128,12 +128,12 @@ func (e *UserProvisioningFailed) OccurredAt() time.Time { return e.At }
 // GroupPushed is emitted when a group create/update/deactivate/delete delivery
 // reaches succeeded.
 type GroupPushed struct {
-	At           time.Time
-	TenantID     string
-	ConnectionID string
-	DeliveryID   string
-	GroupID      string
-	RemoteID     string
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ConnectionID string    `json:"connectionId"`
+	DeliveryID   string    `json:"deliveryId"`
+	GroupID      string    `json:"groupId"`
+	RemoteID     string    `json:"remoteId"`
 }
 
 func (e *GroupPushed) EventType() string     { return "GroupPushed" }
@@ -142,11 +142,11 @@ func (e *GroupPushed) OccurredAt() time.Time { return e.At }
 // GroupMembershipPushed is emitted when a group membership PATCH delivery reaches
 // succeeded.
 type GroupMembershipPushed struct {
-	At           time.Time
-	TenantID     string
-	ConnectionID string
-	DeliveryID   string
-	GroupID      string
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ConnectionID string    `json:"connectionId"`
+	DeliveryID   string    `json:"deliveryId"`
+	GroupID      string    `json:"groupId"`
 }
 
 func (e *GroupMembershipPushed) EventType() string     { return "GroupMembershipPushed" }
@@ -155,11 +155,11 @@ func (e *GroupMembershipPushed) OccurredAt() time.Time { return e.At }
 // ConnectionQuarantined is emitted when a connection's health becomes quarantined
 // (consecutive failures or accidental deletion guard exceeded).
 type ConnectionQuarantined struct {
-	At                  time.Time
-	TenantID            string
-	ApplicationID       string
-	Reason              string
-	ConsecutiveFailures int
+	At                  time.Time `json:"-"`
+	TenantID            string    `json:"tenantId"`
+	ApplicationID       string    `json:"applicationId"`
+	Reason              string    `json:"reason"`
+	ConsecutiveFailures int       `json:"consecutiveFailures"`
 }
 
 func (e *ConnectionQuarantined) EventType() string     { return "ConnectionQuarantined" }
@@ -169,9 +169,9 @@ func (e *ConnectionQuarantined) OccurredAt() time.Time { return e.At }
 // quarantined connection (added to the wi-45 event catalog at SCL time: without it
 // quarantine would be unrecoverable).
 type ProvisioningConnectionQuarantineCleared struct {
-	At            time.Time
-	TenantID      string
-	ApplicationID string
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ApplicationID string    `json:"applicationId"`
 }
 
 func (e *ProvisioningConnectionQuarantineCleared) EventType() string {
@@ -182,12 +182,12 @@ func (e *ProvisioningConnectionQuarantineCleared) OccurredAt() time.Time { retur
 // FullResyncCompleted is emitted when a StartFullResync run converges every
 // subject in scope.
 type FullResyncCompleted struct {
-	At             time.Time
-	TenantID       string
-	ApplicationID  string
-	TotalSubjects  int
-	SucceededCount int
-	FailedCount    int
+	At             time.Time `json:"-"`
+	TenantID       string    `json:"tenantId"`
+	ApplicationID  string    `json:"applicationId"`
+	TotalSubjects  int       `json:"totalSubjects"`
+	SucceededCount int       `json:"succeededCount"`
+	FailedCount    int       `json:"failedCount"`
 }
 
 func (e *FullResyncCompleted) EventType() string     { return "FullResyncCompleted" }

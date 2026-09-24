@@ -13,7 +13,7 @@ import (
 )
 
 const attachProvisioningDeliveryJob = `-- name: AttachProvisioningDeliveryJob :execrows
-UPDATE provisioning_deliveries SET job_id=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL
+UPDATE provisioning_deliveries SET job_id=$3,status='in_flight',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL AND status='pending'
 `
 
 type AttachProvisioningDeliveryJobParams struct {

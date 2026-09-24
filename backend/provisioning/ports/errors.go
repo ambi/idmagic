@@ -45,3 +45,8 @@ func (e *RetryableError) Error() string {
 
 // AsRetryableError reports whether err is a *RetryableError, assigning it to target.
 func AsRetryableError(err error, target **RetryableError) bool { return errors.As(err, target) }
+
+// ErrRequiredAttributeUnresolved は、必須の属性マッピングを解決できず、下流へ何も
+// 送らなかったことを表す。値が無いまま再試行しても結果は変わらないため、配信を
+// 待たずに失敗させる（フェイルクローズ）。
+var ErrRequiredAttributeUnresolved = errors.New("provisioning: required attribute mapping could not be resolved")

@@ -1,5 +1,7 @@
 package usecases_test
 
+// 主要ユースケース追跡: REQ-PROVISIONING-005。
+
 import (
 	"context"
 	"testing"
@@ -347,5 +349,131 @@ func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 				t.Errorf("display_name = %v, want %v (attrs=%+v)", got, tc.want, client.lastCreateGroupAttrs)
 			}
 		})
+	}
+}
+
+// 割り当て解除の deactivate は、User 自体は有効なまま作られる。下流へ送る active は
+// User の状態ではなく、配信の操作が決める。
+//
+//spec:covers EX-PROVISIONING-005-01: 割り当て解除の deactivate 配信は、有効な User でも下流へ active=false を送り UserDeprovisioned を返す。
+func TestExecuteDelivery_DeactivateSendsInactiveEvenWhenTheUserIsActive(t *testing.T) {
+	client := &fakeTargetClient{}
+	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
+	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
+	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
+	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
+	_ = linkRepo.Upsert(context.Background(), link)
+	now := time.Date(2026, 9, 24, 9, 0, 0, 0, time.UTC)
+
+	event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
+	if err != nil {
+		t.Fatalf("ExecuteDelivery() error = %v", err)
+	}
+	if client.updateCalls != 1 || client.lastUpdateAttrs["active"] != false {
+		t.Fatalf("updateCalls = %d, active sent = %v; want one update with active=false", client.updateCalls, client.lastUpdateAttrs["active"])
+	}
+	want := &domain.UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, UserID: "user-1", Action: domain.DeprovisionDeactivate}
+	if got, ok := event.(*domain.UserDeprovisioned); !ok || *got != *want {
+		t.Fatalf("event = %+v, want %+v", event, want)
+	}
+}
+
+// 下流にまだ無い User の無効化は、作成してから無効にするのではなく何も送らない。
+func TestExecuteDelivery_DeactivateWithoutARemoteUserSendsNothing(t *testing.T) {
+	client := &fakeTargetClient{createUserID: "remote-1"}
+	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
+	deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
+	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+
+	event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+	if err != nil {
+		t.Fatalf("ExecuteDelivery() error = %v", err)
+	}
+	got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
+	if client.createCalls+client.updateCalls != 0 || event != nil || got.Status != domain.DeliverySucceeded {
+		t.Fatalf("create=%d update=%d event=%v status=%v; want nothing sent, no event, succeeded",
+			client.createCalls, client.updateCalls, event, got.Status)
+	}
+}
+
+//spec:covers EX-PROVISIONING-003-01: 作成の配信が下流へ届くと、作成した remote_id を持つ UserProvisioned を返す。
+func TestExecuteDelivery_ReturnsTheTransitionEventOfTheSucceededOperation(t *testing.T) {
+	now := time.Date(2026, 9, 24, 9, 0, 0, 0, time.UTC)
+	t.Run("user create", func(t *testing.T) {
+		client := &fakeTargetClient{createUserID: "remote-1"}
+		deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true})
+		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
+		want := &domain.UserProvisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, UserID: "user-1", RemoteID: "remote-1"}
+		if got, ok := event.(*domain.UserProvisioned); err != nil || !ok || *got != *want {
+			t.Fatalf("ExecuteDelivery() = %+v, %v; want %+v", event, err, want)
+		}
+	})
+	t.Run("user delete", func(t *testing.T) {
+		client := &fakeTargetClient{}
+		deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, &fakeAttributeSource{})
+		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDelete)
+		link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
+		_ = link.ApplySync(0, "remote-1", "user-1", nil, now)
+		_ = linkRepo.Upsert(context.Background(), link)
+		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
+		want := &domain.UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, UserID: "user-1", Action: domain.DeprovisionDelete}
+		if got, ok := event.(*domain.UserDeprovisioned); err != nil || !ok || *got != *want {
+			t.Fatalf("ExecuteDelivery() = %+v, %v; want %+v", event, err, want)
+		}
+	})
+	t.Run("group create", func(t *testing.T) {
+		client := &fakeTargetClient{createGroupID: "remote-group-1"}
+		deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: map[string]any{"name": "engineers"}, exists: true})
+		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+		d.SourceType, d.SourceID = domain.SourceTypeGroup, "group-1"
+		if _, err := deliveryRepo.Save(context.Background(), d); err != nil {
+			t.Fatal(err)
+		}
+		conn, _ := connRepo.Find(context.Background(), "tenant-a", "app-1")
+		conn.GroupPush = &domain.GroupPushConfig{}
+		_ = connRepo.Update(context.Background(), conn, nil)
+		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
+		want := &domain.GroupPushed{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, GroupID: "group-1", RemoteID: "remote-group-1"}
+		if got, ok := event.(*domain.GroupPushed); err != nil || !ok || *got != *want {
+			t.Fatalf("ExecuteDelivery() = %+v, %v; want %+v", event, err, want)
+		}
+	})
+}
+
+// Jobs は同じジョブを再実行し得る（リースの喪失、成功後の後処理の失敗）。終端状態の
+// 配信は下流へ再送せず、遷移イベントも返さない。
+func TestExecuteDelivery_TerminalDeliveryIsNotSentAgain(t *testing.T) {
+	for _, status := range []domain.ProvisioningDeliveryStatus{domain.DeliverySucceeded, domain.DeliveryDeadLetter} {
+		client := &fakeTargetClient{createUserID: "remote-1"}
+		deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true})
+		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+		if err := deliveryRepo.UpdateStatus(context.Background(), "tenant-a", d.ID, status, nil); err != nil {
+			t.Fatal(err)
+		}
+		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+		got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
+		if err != nil || event != nil || client.createCalls != 0 || got.Status != status {
+			t.Errorf("%s delivery: err=%v event=%v createCalls=%d status=%v; want nothing sent and status kept",
+				status, err, event, client.createCalls, got.Status)
+		}
+	}
+}
+
+// 無効化しようとした User が下流から消えていれば、無効化のために作り直さない。
+// 更新の 404 で再作成するのは、下流に存在させたい作成と更新の配信だけである。
+func TestExecuteDelivery_DeactivateOfAUserGoneDownstreamDoesNotRecreateIt(t *testing.T) {
+	client := &fakeTargetClient{updateErr: &ports.NotFoundError{}, createUserID: "remote-new"}
+	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
+	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
+	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
+	_ = link.ApplySync(0, "remote-gone", "user-1", nil, time.Now())
+	_ = linkRepo.Upsert(context.Background(), link)
+
+	event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+	if err != nil || event != nil || client.createCalls != 0 {
+		t.Fatalf("ExecuteDelivery() = %v, %v with createCalls = %d; want no event, no error, no recreate", event, err, client.createCalls)
 	}
 }

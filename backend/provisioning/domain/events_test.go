@@ -1,6 +1,9 @@
 package domain
 
 import (
+	"encoding/json"
+	"maps"
+	"slices"
 	"testing"
 	"time"
 )
@@ -46,6 +49,47 @@ func TestProvisioningEvents_ImplementDomainEvent(t *testing.T) {
 		}
 		if !e.OccurredAt().Equal(now) {
 			t.Errorf("events[%d].OccurredAt() = %v, want %v", i, e.OccurredAt(), now)
+		}
+	}
+}
+
+// 監査はイベントを JSON にして保存し、テナントを `tenantId` から取り出す。項目名が
+// TypeSpec の宣言と異なると、購読側が値を読めず、監査のテナント絞り込みからも漏れる。
+// `occurredAt` は spec.MarshalDomainEvent が加えるので、構造体からは出さない。
+func TestProvisioningEvents_MarshalWithTheContractFieldNames(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		event any
+		want  []string
+	}{
+		{&ProvisioningConnectionRegistered{At: now}, []string{"tenantId", "applicationId"}},
+		{&ProvisioningConnectionUpdated{At: now}, []string{"tenantId", "applicationId"}},
+		{&ProvisioningConnectionDisabled{At: now}, []string{"tenantId", "applicationId"}},
+		{&ProvisioningConnectionDeleted{At: now}, []string{"tenantId", "applicationId"}},
+		{&ProvisioningCredentialRotated{At: now}, []string{"tenantId", "applicationId", "credentialId"}},
+		{&ProvisioningDeliveryStarted{At: now}, []string{"tenantId", "connectionId", "deliveryId", "jobId"}},
+		{&UserProvisioned{At: now}, []string{"tenantId", "connectionId", "deliveryId", "userId", "remoteId"}},
+		{&UserDeprovisioned{At: now}, []string{"tenantId", "connectionId", "deliveryId", "userId", "action"}},
+		{&UserProvisioningFailed{At: now}, []string{"tenantId", "connectionId", "deliveryId", "sourceType", "sourceId", "error"}},
+		{&GroupPushed{At: now}, []string{"tenantId", "connectionId", "deliveryId", "groupId", "remoteId"}},
+		{&GroupMembershipPushed{At: now}, []string{"tenantId", "connectionId", "deliveryId", "groupId"}},
+		{&ConnectionQuarantined{At: now}, []string{"tenantId", "applicationId", "reason", "consecutiveFailures"}},
+		{&ProvisioningConnectionQuarantineCleared{At: now}, []string{"tenantId", "applicationId"}},
+		{&FullResyncCompleted{At: now}, []string{"tenantId", "applicationId", "totalSubjects", "succeededCount", "failedCount"}},
+	}
+	for _, c := range cases {
+		wire, err := json.Marshal(c.event)
+		if err != nil {
+			t.Fatalf("json.Marshal(%T) error = %v", c.event, err)
+		}
+		var fields map[string]any
+		if err := json.Unmarshal(wire, &fields); err != nil {
+			t.Fatalf("json.Unmarshal(%T) error = %v", c.event, err)
+		}
+		got := slices.Sorted(maps.Keys(fields))
+		want := slices.Sorted(slices.Values(c.want))
+		if !slices.Equal(got, want) {
+			t.Errorf("%T fields = %v, want %v", c.event, got, want)
 		}
 	}
 }

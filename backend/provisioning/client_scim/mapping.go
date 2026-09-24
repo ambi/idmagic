@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ambi/idmagic/backend/provisioning/domain"
+	"github.com/ambi/idmagic/backend/provisioning/ports"
 )
 
 // MappingOperation distinguishes create from update for AttributeMappingRule's
@@ -41,7 +42,7 @@ func BuildResource(rules []domain.AttributeMappingRule, resolve AttributeResolve
 		value, resolved := resolveRuleValue(rule, resolve)
 		if !resolved {
 			if rule.Required {
-				return nil, fmt.Errorf("provisioning/scim: required attribute mapping %q could not be resolved", rule.TargetPath)
+				return nil, fmt.Errorf("provisioning/scim: target_path %q: %w", rule.TargetPath, ports.ErrRequiredAttributeUnresolved)
 			}
 			continue
 		}

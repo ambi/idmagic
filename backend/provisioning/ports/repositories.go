@@ -65,7 +65,9 @@ type ProvisioningDeliveryRepository interface {
 	// ListUnenqueued returns pending deliveries with no Jobs.Job associated yet
 	// (dispatcher recovery, LifecycleWorkflowRunLifecycle precedent).
 	ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningDelivery, error)
-	// AttachJob associates a Jobs.Job with a pending, unattached delivery.
+	// AttachJob associates a Jobs.Job with a pending, unattached delivery and
+	// moves it to in_flight (ProvisioningDeliveryLifecycle の pending → in_flight).
+	// attached is false when the delivery is no longer pending or already has a job.
 	AttachJob(ctx context.Context, tenantID, deliveryID, jobID string) (attached bool, err error)
 	// UpdateStatus transitions a delivery's status and records the last error
 	// (nil clears it). Callers are responsible for using a

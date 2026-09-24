@@ -17,24 +17,6 @@
       "finding": "変更と capture が別のコミットなので、変更の側がロールバックする経路と capture が失敗する経路のどちらでも、片方だけが残り得る。backend/provisioning/ports/capture.go が、2 つのコミットの間の障害で capture が失われ回復できないことを残余のギャップとして記録している。"
     },
     {
-      "id": "EX-PROVISIONING-003-01",
-      "reason": "配信の状態遷移はあるが、宣言された ProvisioningDeliveryStarted と UserProvisioned を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
-    },
-    {
-      "id": "EX-PROVISIONING-004-01",
-      "reason": "下流への deactivate は実行するが、UserDeprovisioned を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
-    },
-    {
-      "id": "EX-PROVISIONING-005-01",
-      "reason": "割り当て解除の deactivate 配信に必要な UserDeprovisioned を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
-    },
-    {
       "id": "EX-PROVISIONING-006-01",
       "reason": "削除捕捉が grace_period_days を待たず delete 配信を直ちに作るため",
       "blocked_by": "wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period",
@@ -47,16 +29,10 @@
       "finding": "削除後の配信は即時作成され、予約と取消を表す状態が無い。"
     },
     {
-      "id": "EX-PROVISIONING-010-01",
-      "reason": "dead_letter と retry 状態遷移はあるが、UserProvisioningFailed を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
-    },
-    {
       "id": "EX-PROVISIONING-011-01",
-      "reason": "隔離と解除の状態遷移はあるが、ConnectionQuarantined と ProvisioningConnectionQuarantineCleared を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
+      "reason": "隔離と解除のイベントは発行するが、full resync が誤削除ガードの閾値を判定せず、閾値の超過で隔離されないため",
+      "blocked_by": "wi-61629-quarantine-connections-on-the-accidental-deletion-guard",
+      "finding": "DeprovisionPolicy は閾値を保存するが、StartFullResync は deprovision の件数を数えず、閾値を読む処理が無い。"
     },
     {
       "id": "EX-PROVISIONING-013-01",
@@ -65,28 +41,10 @@
       "finding": "StartFullResync の実装コメントが完了追跡とイベント発行を未実装と明記している。"
     },
     {
-      "id": "EX-PROVISIONING-014-01",
-      "reason": "資格情報は更新するが、ProvisioningCredentialRotated を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
-    },
-    {
       "id": "EX-PROVISIONING-015-01",
       "reason": "リポジトリの tenant 分離だけが検証され、tenant-b 管理者の HTTP 入口から接続と配信を共に not found とする証拠が無いため",
       "blocked_by": "wi-93622-acceptance-test-provisioning-tenant-isolation",
       "finding": "API トークンで tenant-b の管理者を表すと認証段階で 401 となり、この規範の actor を観測できなかった。"
-    },
-    {
-      "id": "EX-PROVISIONING-017-01",
-      "reason": "未関連付け配信の回収はあるが、ProvisioningDeliveryStarted を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
-    },
-    {
-      "id": "EX-PROVISIONING-018-01",
-      "reason": "required 属性対応付けの fail-closed 判定はあるが、UserProvisioningFailed を本番が発行しないため",
-      "blocked_by": "wi-85060-publish-provisioning-lifecycle-events",
-      "finding": "イベント型は domain にあるが、本番コードには発行箇所が無い。"
     },
     {
       "id": "EX-WSFEDERATION-001-03",

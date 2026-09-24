@@ -1,10 +1,12 @@
 package client_scim
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/provisioning/domain"
+	"github.com/ambi/idmagic/backend/provisioning/ports"
 )
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: 単純パスは同名の属性になる。
@@ -93,8 +95,9 @@ func TestBuildResource_RequiredMissingFailsClosed(t *testing.T) {
 		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", Required: true, ApplyOn: domain.ApplyCreateAndUpdate},
 	}
 	_, err := BuildResource(rules, resolverFromMap(nil), ApplyOnCreate)
-	if err == nil {
-		t.Error("BuildResource() with a required unresolved attribute should return an error")
+	// 配信エンジンはこの種類を見分けて、再試行せずに配信を失敗させる。
+	if !errors.Is(err, ports.ErrRequiredAttributeUnresolved) {
+		t.Errorf("BuildResource() error = %v, want ports.ErrRequiredAttributeUnresolved", err)
 	}
 }
 

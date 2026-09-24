@@ -31,7 +31,11 @@ var ErrDeliveryNotFound = errors.New("provisioning: delivery not found")
 var ErrConnectionNotFound = errors.New("provisioning: connection not found")
 
 // ExecuteDelivery performs one ProvisioningDelivery's downstream operation and
-// updates RemoteResourceLink/ProvisioningDelivery on success. It returns the
+// updates RemoteResourceLink/ProvisioningDelivery on success. On success it
+// returns the ProvisioningDeliveryLifecycle event of the in_flight → succeeded
+// transition for the caller to emit once the rest of its bookkeeping is saved,
+// or nil when nothing reached the downstream (the subject is absent there or at
+// the source, or the delivery had already settled). It returns the
 // error unchanged (without touching delivery status) when the downstream call
 // fails: ProvisioningDeliveryLifecycle keeps status=in_flight for the whole
 // Jobs-level attempt/retry loop (spec/contexts/provisioning.yaml
@@ -44,6 +48,10 @@ func ExecuteDelivery(ctx context.Context, deps DeliverDeps, tenantID, deliveryID
 	}
 	if delivery == nil {
 		return nil, ErrDeliveryNotFound
+	}
+	if domain.IsProvisioningDeliveryTerminal(delivery.Status) {
+		// Jobs が同じジョブを再実行しても、確定した配信を下流へ送り直さない。
+		return nil, nil //nolint:nilnil // 送らなかった配信に遷移イベントは無い
 	}
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, delivery.ConnectionID)
 	if err != nil {
@@ -65,43 +73,63 @@ func ExecuteDelivery(ctx context.Context, deps DeliverDeps, tenantID, deliveryID
 		return nil, err
 	}
 
+	var event spec.DomainEvent
 	switch delivery.SourceType {
 	case domain.SourceTypeUser:
-		err = deliverUser(ctx, deps, client, conn, delivery, link, now)
+		event, err = deliverUser(ctx, deps, client, conn, delivery, link, now)
 	case domain.SourceTypeGroup:
-		err = deliverGroup(ctx, deps, client, conn, delivery, link, now)
+		event, err = deliverGroup(ctx, deps, client, conn, delivery, link, now)
 	default:
 		err = fmt.Errorf("provisioning: unsupported source_type %q", delivery.SourceType)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return nil, deps.DeliveryRepo.UpdateStatus(ctx, tenantID, deliveryID, domain.DeliverySucceeded, nil)
+	if err := deps.DeliveryRepo.UpdateStatus(ctx, tenantID, deliveryID, domain.DeliverySucceeded, nil); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
-func deliverUser(ctx context.Context, deps DeliverDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, delivery *domain.ProvisioningDelivery, link *domain.RemoteResourceLink, now time.Time) error {
-	if delivery.Operation == domain.OperationDelete {
-		if link == nil {
-			return nil // already absent downstream: idempotent success
-		}
-		if err := client.DeleteUser(ctx, link.RemoteID); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	attrs, exists, err := deps.AttributeSource.ResolveAttributes(ctx, delivery.TenantID, delivery.SourceType, delivery.SourceID)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil // source aggregate is gone; nothing to provision
-	}
-
+func deliverUser(ctx context.Context, deps DeliverDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, delivery *domain.ProvisioningDelivery, link *domain.RemoteResourceLink, now time.Time) (spec.DomainEvent, error) {
 	remoteID := ""
 	if link != nil {
 		remoteID = link.RemoteID
 	}
+	deprovisioned := func(action domain.ProvisioningDeprovisionAction) spec.DomainEvent {
+		return &domain.UserDeprovisioned{
+			At: now, TenantID: delivery.TenantID, ConnectionID: delivery.ConnectionID, DeliveryID: delivery.ID,
+			UserID: delivery.SourceID, Action: action,
+		}
+	}
+	if delivery.Operation == domain.OperationDelete {
+		if remoteID == "" {
+			return nil, nil //nolint:nilnil // 下流に既に無いので冪等に成功し、遷移イベントは無い
+		}
+		if err := client.DeleteUser(ctx, remoteID); err != nil {
+			return nil, err
+		}
+		return deprovisioned(domain.DeprovisionDelete), nil
+	}
+	deactivating := delivery.Operation == domain.OperationDeactivate
+	if deactivating && remoteID == "" {
+		// 下流に無い User を無効化するために作成はしない。
+		return nil, nil //nolint:nilnil // 送らなかった配信に遷移イベントは無い
+	}
+
+	attrs, exists, err := deps.AttributeSource.ResolveAttributes(ctx, delivery.TenantID, delivery.SourceType, delivery.SourceID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, nil //nolint:nilnil // source aggregate is gone; nothing to provision
+	}
+	if deactivating {
+		// 割り当て解除の無効化では User 自身は有効なままなので、属性源の active は
+		// true を返す。下流での有効性は User の状態ではなく配信の操作が決める。
+		attrs["active"] = false
+	}
+
 	if remoteID == "" {
 		newID, _, err := client.CreateUser(ctx, conn.AttributeMappings, attrs)
 		var conflict *ports.ConflictError
@@ -109,34 +137,37 @@ func deliverUser(ctx context.Context, deps DeliverDeps, client ports.Provisionin
 			newID, err = adoptExistingUser(ctx, client, conn.Matching, attrs)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		remoteID = newID
 	} else {
 		_, err := client.UpdateUser(ctx, remoteID, conn.AttributeMappings, attrs, conn.Capabilities != nil && conn.Capabilities.SupportsPatch)
 		var notFound *ports.NotFoundError
-		if ports.AsNotFoundError(err, &notFound) {
+		switch {
+		case ports.AsNotFoundError(err, &notFound) && deactivating:
+			return nil, nil //nolint:nilnil // 無効化する対象が下流から消えている
+		case ports.AsNotFoundError(err, &notFound):
 			newID, _, createErr := client.CreateUser(ctx, conn.AttributeMappings, attrs)
 			if createErr != nil {
-				return createErr
+				return nil, createErr
 			}
 			remoteID = newID
-		} else if err != nil {
-			return err
+		case err != nil:
+			return nil, err
 		}
 	}
 
-	newLink := domain.NewRemoteResourceLink(conn.ApplicationID, delivery.TenantID, delivery.SourceType, delivery.SourceID)
-	if link != nil {
-		*newLink = *link
+	var event spec.DomainEvent = &domain.UserProvisioned{
+		At: now, TenantID: delivery.TenantID, ConnectionID: delivery.ConnectionID, DeliveryID: delivery.ID,
+		UserID: delivery.SourceID, RemoteID: remoteID,
 	}
-	if err := newLink.ApplySync(delivery.SourceVersion, remoteID, delivery.SourceID, nil, now); err != nil {
-		if !errors.Is(err, domain.ErrOutOfOrderSync) {
-			return err
-		}
-		return nil // an even newer delivery already applied; this one is stale, treat as success
+	if deactivating {
+		event = deprovisioned(domain.DeprovisionDeactivate)
 	}
-	return deps.LinkRepo.Upsert(ctx, newLink)
+	if err := upsertLink(ctx, deps, conn, delivery, link, remoteID, now); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 func adoptExistingUser(ctx context.Context, client ports.ProvisioningTargetClient, matching domain.MatchingRule, attrs map[string]any) (string, error) {
@@ -155,19 +186,28 @@ func adoptExistingUser(ctx context.Context, client ports.ProvisioningTargetClien
 	return remoteID, nil
 }
 
-func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, delivery *domain.ProvisioningDelivery, link *domain.RemoteResourceLink, now time.Time) error {
+func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, delivery *domain.ProvisioningDelivery, link *domain.RemoteResourceLink, now time.Time) (spec.DomainEvent, error) {
+	pushed := func(remoteID string) spec.DomainEvent {
+		return &domain.GroupPushed{
+			At: now, TenantID: delivery.TenantID, ConnectionID: delivery.ConnectionID, DeliveryID: delivery.ID,
+			GroupID: delivery.SourceID, RemoteID: remoteID,
+		}
+	}
 	if delivery.Operation == domain.OperationDelete {
 		if link == nil {
-			return nil
+			return nil, nil //nolint:nilnil // 送らなかった配信に遷移イベントは無い
 		}
-		return client.DeleteGroup(ctx, link.RemoteID)
+		if err := client.DeleteGroup(ctx, link.RemoteID); err != nil {
+			return nil, err
+		}
+		return pushed(link.RemoteID), nil
 	}
 	attrs, exists, err := deps.AttributeSource.ResolveAttributes(ctx, delivery.TenantID, delivery.SourceType, delivery.SourceID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !exists {
-		return nil
+		return nil, nil //nolint:nilnil // 送らなかった配信に遷移イベントは無い
 	}
 	attrs["display_name"] = groupDisplayName(attrs, conn.GroupPush)
 	remoteID := ""
@@ -177,24 +217,34 @@ func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.Provisioni
 	if remoteID == "" {
 		newID, _, err := client.CreateGroup(ctx, conn.AttributeMappings, attrs)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		remoteID = newID
 	} else if _, err := client.UpdateGroup(ctx, remoteID, conn.AttributeMappings, attrs, conn.Capabilities != nil && conn.Capabilities.SupportsPatch); err != nil {
-		return err
+		return nil, err
 	}
 	if err := pushGroupMembers(ctx, deps, client, conn, delivery, remoteID); err != nil {
-		return err
+		return nil, err
 	}
+	if err := upsertLink(ctx, deps, conn, delivery, link, remoteID, now); err != nil {
+		return nil, err
+	}
+	return pushed(remoteID), nil
+}
+
+// upsertLink records remoteID as the subject's downstream resource. A delivery
+// older than the one the link already reflects leaves it unchanged: the
+// downstream call has still happened, so the delivery settles as succeeded.
+func upsertLink(ctx context.Context, deps DeliverDeps, conn *domain.ProvisioningConnection, delivery *domain.ProvisioningDelivery, link *domain.RemoteResourceLink, remoteID string, now time.Time) error {
 	newLink := domain.NewRemoteResourceLink(conn.ApplicationID, delivery.TenantID, delivery.SourceType, delivery.SourceID)
 	if link != nil {
 		*newLink = *link
 	}
 	if err := newLink.ApplySync(delivery.SourceVersion, remoteID, delivery.SourceID, nil, now); err != nil {
-		if !errors.Is(err, domain.ErrOutOfOrderSync) {
-			return err
+		if errors.Is(err, domain.ErrOutOfOrderSync) {
+			return nil
 		}
-		return nil
+		return err
 	}
 	return deps.LinkRepo.Upsert(ctx, newLink)
 }

@@ -26,6 +26,8 @@ type AdminDeps struct {
 	// its groups explicitly still resyncs them, because that list needs no lookup.
 	GroupRepo       groupports.GroupRepository
 	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
+	// Emit は接続の保存に成功した管理操作のイベントを発行する。nil なら発行しない。
+	Emit func(spec.DomainEvent)
 }
 
 func (d AdminDeps) captureDeps() CaptureDeps {
@@ -93,6 +95,7 @@ func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnecti
 	if err := deps.ConnectionRepo.Register(ctx, conn, in.Credential.Secret()); err != nil {
 		return nil, err
 	}
+	emit(deps.Emit, &domain.ProvisioningConnectionRegistered{At: now, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
 	return conn, nil
 }
 
@@ -185,6 +188,11 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	}
 	if err := deps.ConnectionRepo.Update(ctx, conn, secret); err != nil {
 		return nil, err
+	}
+	if secret != nil {
+		emit(deps.Emit, &domain.ProvisioningCredentialRotated{
+			At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID, CredentialID: conn.Credential.CredentialID,
+		})
 	}
 	return conn, nil
 }
@@ -437,6 +445,7 @@ func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, application
 	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
 		return nil, err
 	}
+	emit(deps.Emit, &domain.ProvisioningConnectionQuarantineCleared{At: now.UTC(), TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
 	return conn, nil
 }
 

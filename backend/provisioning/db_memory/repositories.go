@@ -316,10 +316,11 @@ func (r *ProvisioningDeliveryRepository) AttachJob(_ context.Context, tenantID, 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	d := r.deliveries[deliveryKey(tenantID, deliveryID)]
-	if d == nil || d.JobID != nil {
+	if d == nil || d.JobID != nil || d.Status != domain.DeliveryPending {
 		return false, nil
 	}
 	d.JobID = &jobID
+	d.Status = domain.DeliveryInFlight
 	return true, nil
 }
 

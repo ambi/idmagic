@@ -21,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -87,25 +88,29 @@ func (e jobEnqueuer) EnqueueProvisioningDelivery(ctx context.Context, tenantID, 
 	return job.ID, nil
 }
 
-// DispatcherDeps builds DispatchPendingDeliveries's dependencies.
-func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenantports.QuotaRepository) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{DeliveryRepo: m.DeliveryRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}}
+// DispatcherDeps builds DispatchPendingDeliveries's dependencies. emit receives
+// ProvisioningDeliveryStarted; it is a parameter rather than an optional field so
+// that the worker cannot build the dispatcher without deciding where it goes.
+func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenantports.QuotaRepository, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
+	return usecases.DispatcherDeps{DeliveryRepo: m.DeliveryRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}, Emit: emit}
 }
 
 // JobHandlerDeps builds ProvisioningDeliveryHandler's dependencies.
 // memberSource is what makes push_groups reach a downstream: without it the
-// Group's own attributes still go out, but its membership does not.
+// Group's own attributes still go out, but its membership does not. emit receives
+// the delivery's terminal transition and the connection's quarantine.
 func (m Module) JobHandlerDeps(
 	attrSource ports.AttributeSource,
 	memberSource ports.GroupMemberSource,
 	newTargetClient func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error),
+	emit func(spec.DomainEvent),
 ) usecases.JobHandlerDeps {
 	return usecases.JobHandlerDeps{
 		DeliverDeps: usecases.DeliverDeps{
 			ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, LinkRepo: m.RemoteLinkRepo,
 			AttributeSource: attrSource, GroupMemberSource: memberSource, NewTargetClient: newTargetClient,
 		},
-		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo,
+		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, Emit: emit,
 	}
 }
 

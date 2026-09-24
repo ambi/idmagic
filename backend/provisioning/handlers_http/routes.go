@@ -37,7 +37,7 @@ func (d Deps) adminDeps() usecases.AdminDeps {
 	return usecases.AdminDeps{
 		ConnectionRepo: d.ConnectionRepo, DeliveryRepo: d.DeliveryRepo,
 		AssignmentRepo: d.AssignmentRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
-		NewTargetClient: d.NewTargetClient,
+		NewTargetClient: d.NewTargetClient, Emit: d.Emit,
 	}
 }
 
