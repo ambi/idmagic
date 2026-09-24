@@ -1902,6 +1902,16 @@
               }
             }
           },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.RegisterAgentError409Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -1985,6 +1995,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.GetAgentError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2048,6 +2068,26 @@
               }
             }
           },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.UpdateAgentError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.UpdateAgentError409Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -2103,12 +2143,42 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.DeleteAgentError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.DeleteAgentError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.DeleteAgentError409Body"
                 }
               }
             }
@@ -2166,6 +2236,36 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.BindAgentCredentialError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.BindAgentCredentialError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.BindAgentCredentialError409Body"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Client error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.BindAgentCredentialError422Body"
                 }
               }
             }
@@ -2244,6 +2344,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.UnbindAgentCredentialError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2282,12 +2392,42 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.DisableAgentError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.DisableAgentError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.DisableAgentError409Body"
                 }
               }
             }
@@ -2329,12 +2469,42 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.EnableAgentError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.EnableAgentError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.EnableAgentError409Body"
                 }
               }
             }
@@ -2376,12 +2546,42 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.KillAgentError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.KillAgentError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.KillAgentError409Body"
                 }
               }
             }
@@ -2417,6 +2617,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiTokens.Operations.ListApiTokensHttpResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
                 }
               }
             }
@@ -2529,6 +2739,16 @@
         "responses": {
           "204": {
             "description": "There is no content to send for this request, but the headers may be useful. "
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
           },
           "403": {
             "description": "Access is forbidden.",
@@ -2722,6 +2942,16 @@
               }
             }
           },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.UpdateApplicationCategoryError404Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -2793,6 +3023,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.DeleteApplicationCategoryError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.DeleteApplicationCategoryError404Body"
                 }
               }
             }
@@ -3008,6 +3248,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.GetAdminApplicationError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -3067,6 +3317,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.UpdateAdminApplicationError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.UpdateAdminApplicationError404Body"
                 }
               }
             }
@@ -3132,6 +3392,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.DeleteAdminApplicationError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.DeleteAdminApplicationError404Body"
                 }
               }
             }
@@ -3218,6 +3488,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.ListApplicationAssignmentsError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -3277,6 +3557,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.AssignApplicationError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.AssignApplicationError404Body"
                 }
               }
             }
@@ -3428,6 +3718,16 @@
               }
             }
           },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.SetApplicationCategoriesError404Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -3508,6 +3808,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.UploadApplicationIconError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.UploadApplicationIconError404Body"
                 }
               }
             }
@@ -3593,6 +3903,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.DeleteApplicationIconError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.DeleteApplicationIconError404Body"
                 }
               }
             }
@@ -3738,6 +4058,16 @@
               }
             }
           },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.IssueApplicationClientSecretError404Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -3829,6 +4159,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.RevokeApplicationClientSecretError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -3890,6 +4230,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.RotateApplicationClientSecretError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.RotateApplicationClientSecretError404Body"
                 }
               }
             }
@@ -4142,7 +4492,7 @@
       },
       "delete": {
         "operationId": "DeleteProvisioningConnection",
-        "description": "An administrator deletes a ProvisioningConnection outright. The RemoteResourceLinks and ProvisioningDeliveries already recorded are kept as history.",
+        "description": "An administrator deletes a ProvisioningConnection outright. The RemoteResourceLinks and ProvisioningTasks already recorded are kept as history.",
         "parameters": [
           {
             "name": "id",
@@ -4183,261 +4533,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Provisioning.Operations.DeleteProvisioningConnectionError404Body"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Provisioning"
-        ],
-        "x-api-token-scopes": [
-          "provisioning:write"
-        ]
-      }
-    },
-    "/api/admin/v1/applications/{id}/provisioning/deliveries": {
-      "get": {
-        "operationId": "ListProvisioningDeliveries",
-        "description": "An administrator lists the delivery state of a connection, newest `created_at` first with the id breaking ties, through\nbidirectional keyset pagination. `status` and `source_type` narrow the list. The cursor comes from the Link response header\nof the response (`rel=\"prev\"` and `rel=\"next\"`).",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/Contract.ProvisioningDeliveryStatus"
-            },
-            "explode": false
-          },
-          {
-            "name": "source_type",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/Contract.ProvisioningSourceType"
-            },
-            "explode": false
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "explode": false
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "explode": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.ListProvisioningDeliveriesHttpResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The server could not understand the request due to invalid syntax.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.ListProvisioningDeliveriesError400Body"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Access is forbidden.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.ListProvisioningDeliveriesError403Body"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Provisioning"
-        ],
-        "x-api-token-scopes": [
-          "provisioning:read"
-        ]
-      }
-    },
-    "/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}": {
-      "get": {
-        "operationId": "GetProvisioningDelivery",
-        "description": "An administrator reads one delivery in detail.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "delivery_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ProvisioningDelivery"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Access is forbidden.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.GetProvisioningDeliveryError403Body"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The server cannot find the requested resource.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.GetProvisioningDeliveryError404Body"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Provisioning"
-        ],
-        "x-api-token-scopes": [
-          "provisioning:read"
-        ]
-      }
-    },
-    "/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry": {
-      "post": {
-        "operationId": "RetryProvisioningDelivery",
-        "description": "An administrator retries a dead-lettered delivery by hand. It returns to pending and the dispatcher picks it up again.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "delivery_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.ProvisioningDelivery"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Access is forbidden.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.RetryProvisioningDeliveryError403Body"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The server cannot find the requested resource.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.RetryProvisioningDeliveryError404Body"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The request conflicts with the current state of the server.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provisioning.Operations.RetryProvisioningDeliveryError409Body"
                 }
               }
             }
@@ -4518,7 +4613,7 @@
     "/api/admin/v1/applications/{id}/provisioning/on-demand": {
       "post": {
         "operationId": "ProvisionOnDemand",
-        "description": "An administrator creates a ProvisioningDelivery that delivers one named subject immediately, as a trial.",
+        "description": "An administrator creates a ProvisioningTask that provisions one named subject immediately, as a trial.",
         "parameters": [
           {
             "name": "id",
@@ -4535,7 +4630,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Contract.ProvisioningDelivery"
+                  "$ref": "#/components/schemas/Contract.ProvisioningTask"
                 }
               }
             }
@@ -4612,7 +4707,7 @@
     "/api/admin/v1/applications/{id}/provisioning/resume": {
       "post": {
         "operationId": "ResumeProvisioningConnection",
-        "description": "An administrator lifts the quarantine on a ProvisioningConnection and lets delivery resume. The interface exists because the operational runbook had no documented way out of quarantine.",
+        "description": "An administrator lifts the quarantine on a ProvisioningConnection and lets provisioning resume. The interface exists because the operational runbook had no documented way out of quarantine.",
         "parameters": [
           {
             "name": "id",
@@ -4660,6 +4755,261 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Provisioning.Operations.ResumeProvisioningConnectionError404Body"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Provisioning"
+        ],
+        "x-api-token-scopes": [
+          "provisioning:write"
+        ]
+      }
+    },
+    "/api/admin/v1/applications/{id}/provisioning/tasks": {
+      "get": {
+        "operationId": "ListProvisioningTasks",
+        "description": "An administrator lists the task state of a connection, newest `created_at` first with the id breaking ties, through\nbidirectional keyset pagination. `status` and `source_type` narrow the list. The cursor comes from the Link response header\nof the response (`rel=\"prev\"` and `rel=\"next\"`).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Contract.ProvisioningTaskStatus"
+            },
+            "explode": false
+          },
+          {
+            "name": "source_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Contract.ProvisioningSourceType"
+            },
+            "explode": false
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.ListProvisioningTasksHttpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.ListProvisioningTasksError400Body"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.ListProvisioningTasksError403Body"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Provisioning"
+        ],
+        "x-api-token-scopes": [
+          "provisioning:read"
+        ]
+      }
+    },
+    "/api/admin/v1/applications/{id}/provisioning/tasks/{task_id}": {
+      "get": {
+        "operationId": "GetProvisioningTask",
+        "description": "An administrator reads one task in detail.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.ProvisioningTask"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.GetProvisioningTaskError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.GetProvisioningTaskError404Body"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Provisioning"
+        ],
+        "x-api-token-scopes": [
+          "provisioning:read"
+        ]
+      }
+    },
+    "/api/admin/v1/applications/{id}/provisioning/tasks/{task_id}/retry": {
+      "post": {
+        "operationId": "RetryProvisioningTask",
+        "description": "An administrator retries a dead-lettered task by hand. It returns to pending and the dispatcher picks it up again.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.ProvisioningTask"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.RetryProvisioningTaskError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.RetryProvisioningTaskError404Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provisioning.Operations.RetryProvisioningTaskError409Body"
                 }
               }
             }
@@ -4868,6 +5218,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.GetAppSignInPolicyError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -4927,6 +5287,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application.Operations.UpdateAppSignInPolicyError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application.Operations.UpdateAppSignInPolicyError404Body"
                 }
               }
             }
@@ -6345,6 +6715,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2.Operations.GetAdminOAuth2ClientError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -6356,7 +6736,7 @@
       },
       "patch": {
         "operationId": "UpdateAdminOAuth2Client",
-        "description": "An administrator updates the client metadata of their tenant.",
+        "description": "An administrator updates the client metadata of their tenant. A client of another tenant is treated as nonexistent and is left untouched.",
         "parameters": [
           {
             "name": "client_id",
@@ -6407,6 +6787,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2.Operations.UpdateAdminOAuth2ClientError404Body"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -6428,7 +6818,7 @@
       },
       "delete": {
         "operationId": "DeleteAdminOAuth2Client",
-        "description": "An administrator deletes a client of their tenant that sits outside the catalogue. A client whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409) and the caller is directed to delete the Application instead.",
+        "description": "An administrator deletes a client of their tenant that sits outside the catalogue. A client whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409) and the caller is directed to delete the Application instead. A client of another tenant is treated as nonexistent and is left untouched.",
         "parameters": [
           {
             "name": "client_id",
@@ -6469,6 +6859,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/OAuth2.Operations.DeleteAdminOAuth2ClientError403Body"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The server cannot find the requested resource.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2.Operations.DeleteAdminOAuth2ClientError404Body"
                 }
               }
             }
@@ -6970,6 +7370,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.CreateGroupError403Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.CreateGroupError409Body"
                 }
               }
             }
@@ -7748,6 +8158,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.UpdateGroupError403Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.UpdateGroupError409Body"
                 }
               }
             }
@@ -8985,6 +9405,16 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -9024,6 +9454,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.CreateIdentityProviderConnectionError400Body"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
                 }
               }
             }
@@ -9092,6 +9532,16 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -9132,7 +9582,7 @@
       },
       "delete": {
         "operationId": "DeleteIdentityProviderConnection",
-        "description": "A tenant administrator deletes a connection at any time, whatever its state. When links to it remain, the deletion is refused and an explicit cleanup is required first.",
+        "description": "A tenant administrator deletes a connection at any time, whatever its state. When federated identities are still linked to it, the deletion is refused with IdentityProviderConnectionInUseError and the links must be removed first. Deleting a connection that does not exist succeeds as well.",
         "parameters": [
           {
             "name": "provider_id",
@@ -9147,12 +9597,32 @@
           "204": {
             "description": "There is no content to send for this request, but the headers may be useful. "
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.DeleteIdentityProviderConnectionError403Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Authentication.Operations.DeleteIdentityProviderConnectionError409Body"
                 }
               }
             }
@@ -9190,6 +9660,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.ActivateIdentityProviderConnectionError400Body"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
                 }
               }
             }
@@ -9247,6 +9727,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.DisableIdentityProviderConnectionError400Body"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
                 }
               }
             }
@@ -9311,6 +9801,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.PreviewIdentityProviderMappingError400Body"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
                 }
               }
             }
@@ -9389,6 +9889,16 @@
               }
             }
           },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Access is forbidden.",
             "content": {
@@ -9439,6 +9949,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Authentication.Operations.TestIdentityProviderConnectionHttpResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract.AuthenticationRequiredResponseBody"
                 }
               }
             }
@@ -9864,7 +10384,7 @@
     "/api/admin/v1/keys/rotate": {
       "post": {
         "operationId": "RotateTenantSigningKey",
-        "description": "A tenant administrator generates a new signing key for their tenant and switches the active key to it. The previous\nactive key stays on the JWKS as verifying and is retired after SigningKeyMinJwksOverlap has passed; retiring is a\nseparate operational job. Rotation is per tenant, so its blast radius is confined to that tenant.",
+        "description": "A tenant administrator generates a new key of the requested use for their tenant and switches the active key to it.\nThe previous active key stays published as verifying (on the JWKS for Signing, in the SAML and WS-Federation metadata\nfor XmlFederationSigning) and leaves after SigningKeyMinJwksOverlap has passed; archiving is a separate operational job.\nRotation is per tenant and per use, so its blast radius is confined to that tenant's keys of that use. A body whose\n`usage` is not a KeyUsage gives InvalidRequestError and rotates nothing.",
         "parameters": [],
         "responses": {
           "200": {
@@ -9873,6 +10393,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Contract.AdminRotateKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The server could not understand the request due to invalid syntax.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SigningKeys.Operations.RotateTenantSigningKeyError400Body"
                 }
               }
             }
@@ -9911,6 +10441,16 @@
         "tags": [
           "Signing Keys"
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Contract.AdminRotateKeyRequest"
+              }
+            }
+          }
+        },
         "x-api-token-scopes": [
           "signing-keys:write"
         ]
@@ -10277,6 +10817,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdGovernance.Operations.CreateLifecycleWorkflowError403Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdGovernance.Operations.CreateLifecycleWorkflowError409Body"
                 }
               }
             }
@@ -14244,6 +14794,16 @@
               }
             }
           },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.CreateAdminUserError409Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -15018,6 +15578,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IdManagement.Operations.UpdateAdminUserError403Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdManagement.Operations.UpdateAdminUserError409Body"
                 }
               }
             }
@@ -16227,6 +16797,16 @@
               }
             }
           },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadIdentity.Operations.RegisterWorkloadTrustBundleError409Body"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Client error",
             "content": {
@@ -16369,6 +16949,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkloadIdentity.Operations.UpdateWorkloadTrustBundleError403Body"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current state of the server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadIdentity.Operations.UpdateWorkloadTrustBundleError409Body"
                 }
               }
             }
@@ -21214,7 +21804,13 @@
       "ApiTokens.Operations.IssueApiTokenError403Body": {
         "anyOf": [
           {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
             "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
           },
           {
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
@@ -21264,7 +21860,14 @@
         }
       },
       "ApiTokens.Operations.ListApiTokensError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "ApiTokens.Operations.ListApiTokensHttpResponse": {
         "type": "object",
@@ -21280,11 +21883,21 @@
           }
         }
       },
-      "ApiTokens.Operations.RevokeApiTokenError400Body": {
-        "$ref": "#/components/schemas/Contract.InvalidRequestError"
-      },
       "ApiTokens.Operations.RevokeApiTokenError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Application.Operations.AssignApplicationError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21304,6 +21917,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.AssignApplicationError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
       },
       "Application.Operations.CreateAdminApplicationError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21379,6 +21995,9 @@
           }
         ]
       },
+      "Application.Operations.DeleteAdminApplicationError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.DeleteApplicationCategoryError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21397,6 +22016,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.DeleteApplicationCategoryError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationCategoryNotFoundError"
       },
       "Application.Operations.DeleteApplicationIconError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21417,6 +22039,9 @@
           }
         ]
       },
+      "Application.Operations.DeleteApplicationIconError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.GetAdminApplicationError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21430,6 +22055,9 @@
           }
         ]
       },
+      "Application.Operations.GetAdminApplicationError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.GetAppSignInPolicyError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21442,6 +22070,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.GetAppSignInPolicyError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
       },
       "Application.Operations.GetApplicationIconError404Body": {
         "$ref": "#/components/schemas/Contract.ApplicationIconNotFoundError"
@@ -21478,6 +22109,9 @@
           }
         ]
       },
+      "Application.Operations.IssueApplicationClientSecretError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.IssueApplicationClientSecretError422Body": {
         "$ref": "#/components/schemas/Contract.ClientSecretLimitExceededError"
       },
@@ -21506,6 +22140,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.ListApplicationAssignmentsError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
       },
       "Application.Operations.ListApplicationCategoriesError403Body": {
         "anyOf": [
@@ -21555,6 +22192,9 @@
           }
         ]
       },
+      "Application.Operations.RevokeApplicationClientSecretError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.RotateApplicationClientSecretError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21574,6 +22214,9 @@
           }
         ]
       },
+      "Application.Operations.RotateApplicationClientSecretError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.SetApplicationCategoriesError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21592,6 +22235,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.SetApplicationCategoriesError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
       },
       "Application.Operations.SetApplicationCategoriesError422Body": {
         "$ref": "#/components/schemas/Contract.UnknownCategoryError"
@@ -21634,6 +22280,9 @@
           }
         ]
       },
+      "Application.Operations.UpdateAdminApplicationError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.UpdateAppSignInPolicyError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21653,6 +22302,9 @@
           }
         ]
       },
+      "Application.Operations.UpdateAppSignInPolicyError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+      },
       "Application.Operations.UpdateApplicationCategoryError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -21671,6 +22323,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.UpdateApplicationCategoryError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationCategoryNotFoundError"
       },
       "Application.Operations.UpdateApplicationCategoryError422Body": {
         "$ref": "#/components/schemas/Contract.CategoryNameRequiredError"
@@ -21706,7 +22361,14 @@
         ]
       },
       "Application.Operations.UpdateApplicationOidcConfigError404Body": {
-        "$ref": "#/components/schemas/Contract.ApplicationProtocolTargetNotFoundError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.ApplicationProtocolTargetNotFoundError"
+          }
+        ]
       },
       "Application.Operations.UpdateApplicationSamlConfigError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21728,7 +22390,14 @@
         ]
       },
       "Application.Operations.UpdateApplicationSamlConfigError404Body": {
-        "$ref": "#/components/schemas/Contract.ApplicationProtocolTargetNotFoundError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.ApplicationProtocolTargetNotFoundError"
+          }
+        ]
       },
       "Application.Operations.UpdateApplicationWsFedConfigError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21750,7 +22419,14 @@
         ]
       },
       "Application.Operations.UpdateApplicationWsFedConfigError404Body": {
-        "$ref": "#/components/schemas/Contract.ApplicationProtocolTargetNotFoundError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.ApplicationProtocolTargetNotFoundError"
+          }
+        ]
       },
       "Application.Operations.UpdateTenantDefaultSignInPolicyError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21789,6 +22465,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "Application.Operations.UploadApplicationIconError404Body": {
+        "$ref": "#/components/schemas/Contract.ApplicationNotFoundError"
       },
       "Audit.Operations.ExportAdminAuditEventsError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -21882,7 +22561,20 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "Authentication.Operations.ActivateIdentityProviderConnectionError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.ActivateIdentityProviderConnectionError404Body": {
         "$ref": "#/components/schemas/Contract.IdentityProviderConnectionNotFoundError"
@@ -21985,19 +22677,58 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "Authentication.Operations.CreateIdentityProviderConnectionError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
-      },
-      "Authentication.Operations.DeleteIdentityProviderConnectionError400Body": {
-        "$ref": "#/components/schemas/Contract.InvalidRequestError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.DeleteIdentityProviderConnectionError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "Authentication.Operations.DeleteIdentityProviderConnectionError409Body": {
+        "$ref": "#/components/schemas/Contract.IdentityProviderConnectionInUseError"
       },
       "Authentication.Operations.DisableIdentityProviderConnectionError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "Authentication.Operations.DisableIdentityProviderConnectionError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.DisableIdentityProviderConnectionError404Body": {
         "$ref": "#/components/schemas/Contract.IdentityProviderConnectionNotFoundError"
@@ -22119,7 +22850,14 @@
         ]
       },
       "Authentication.Operations.ListIdentityProviderConnectionsError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.ListIdentityProviderConnectionsHttpResponse": {
         "type": "object",
@@ -22188,7 +22926,20 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "Authentication.Operations.PreviewIdentityProviderMappingError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.PreviewIdentityProviderMappingError404Body": {
         "$ref": "#/components/schemas/Contract.IdentityProviderConnectionNotFoundError"
@@ -22220,7 +22971,20 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "Authentication.Operations.RefreshIdentityProviderMetadataError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.RefreshIdentityProviderMetadataError404Body": {
         "$ref": "#/components/schemas/Contract.IdentityProviderConnectionNotFoundError"
@@ -22682,11 +23446,21 @@
       "Authentication.Operations.SubmitBrowserWebAuthnError503Body": {
         "$ref": "#/components/schemas/Contract.WebAuthnUnavailableError"
       },
-      "Authentication.Operations.TestIdentityProviderConnectionError400Body": {
-        "$ref": "#/components/schemas/Contract.InvalidRequestError"
-      },
       "Authentication.Operations.TestIdentityProviderConnectionError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.TestIdentityProviderConnectionError404Body": {
         "$ref": "#/components/schemas/Contract.IdentityProviderConnectionNotFoundError"
@@ -22725,7 +23499,20 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "Authentication.Operations.UpdateIdentityProviderConnectionError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
       },
       "Authentication.Operations.UpdateIdentityProviderConnectionError404Body": {
         "$ref": "#/components/schemas/Contract.IdentityProviderConnectionNotFoundError"
@@ -23646,6 +24433,11 @@
           },
           "recovery_codes": {
             "$ref": "#/components/schemas/Contract.RecoveryCodeStatus"
+          },
+          "mfa_enforcement_start_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the tenant's default sign-in policy starts requiring MFA. Present only while that start is still in the\nfuture and the user has neither an MFA factor nor a WebAuthn credential, so the portal can warn the user to enroll\nbefore password-only sign-in stops working. The policy's rules themselves are not returned."
           }
         },
         "description": "What `/api/account/security` returns, the security overview of the end-user account portal.\nIt gathers the password change time, whether MFA (TOTP and WebAuthn) is enrolled, and how many backup recovery codes\nremain."
@@ -25010,6 +25802,16 @@
         },
         "description": "One administrative role and the permissions it carries, as ListAdminRolePolicies reports them. The catalogue is derived from the compiled contract, so it always matches the operations the server actually exposes."
       },
+      "Contract.AdminRotateKeyRequest": {
+        "type": "object",
+        "properties": {
+          "usage": {
+            "$ref": "#/components/schemas/Contract.KeyUsage",
+            "description": "The use of the key to rotate. Defaults to Signing."
+          }
+        },
+        "description": "Which of the tenant's keys a rotation replaces. The body is optional; without it, or without `usage`, the Signing key\nrotates. XmlFederationSigning rotates the default-scope XML key that WS-Federation and the default SAML IdP profile\nsign with; its previous certificate stays in the SAML and WS-Federation metadata for SigningKeyMinJwksOverlap."
+      },
       "Contract.AdminRotateKeyResponse": {
         "type": "object",
         "required": [
@@ -25497,6 +26299,38 @@
         },
         "description": "Issuance was refused fail-closed because the Agent's kind requires a human approval that this path does not record (REQ-OAUTH2-050). It covers `client_credentials`, token exchange, and the workload identity federation exchange; the approval-bearing path is CIBA, whose outcome is expressed by BackchannelAuthApproved instead. Carrying the kind that was read makes the decision reproducible from the audit event alone, without resolving the Agent again."
       },
+      "Contract.AgentClientAlreadyBoundError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The OAuth2Client given is already bound to another Agent in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_client_already_bound`."
+      },
       "Contract.AgentCredentialBindRequest": {
         "type": "object",
         "required": [
@@ -25695,6 +26529,38 @@
         },
         "description": "An administrator killed an Agent. This is one-way and terminal; there is no way back."
       },
+      "Contract.AgentKilledError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The Agent has been killed, which is one-way and terminal, so it can no longer be updated, disabled, enabled, killed again, deleted, or given a credential. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_killed`."
+      },
       "Contract.AgentKind": {
         "type": "string",
         "enum": [
@@ -25750,6 +26616,38 @@
         },
         "description": "The Agent list of the administration API."
       },
+      "Contract.AgentNameConflictError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The requested Agent `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_name_conflict`."
+      },
       "Contract.AgentNameRequiredError": {
         "type": "object",
         "required": [
@@ -25781,6 +26679,38 @@
           }
         },
         "description": "The `name` of an Agent is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_name_required`."
+      },
+      "Contract.AgentNotFoundError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The Agent the request targets does not exist in this tenant. An Agent in another tenant is treated as nonexistent and answered the same way. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_not_found`."
       },
       "Contract.AgentOwnerChanged": {
         "type": "object",
@@ -27041,6 +27971,38 @@
         },
         "description": "An ApplicationCategory was deleted. It was removed from the Applications it was assigned to as well."
       },
+      "Contract.ApplicationCategoryNotFoundError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The ApplicationCategory the request targets does not exist in this tenant. A category in another tenant is treated as nonexistent and answered the same way. RFC 9457 Problem Details with `type` = `urn:idmagic:error:category_not_found`."
+      },
       "Contract.ApplicationCategoryUpdated": {
         "type": "object",
         "required": [
@@ -27255,6 +28217,38 @@
           "service"
         ],
         "description": "The kind of an Application. `federated` is a business application tied together by SSO federation, `weblink` is an external link with no SSO, and `service` is a machine-to-machine client_credentials API client -- Okta's API Services, with neither a portal tile nor user assignments."
+      },
+      "Contract.ApplicationNotFoundError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The Application the request targets does not exist in this tenant. An Application in another tenant is treated as nonexistent and answered the same way. RFC 9457 Problem Details with `type` = `urn:idmagic:error:application_not_found`."
       },
       "Contract.ApplicationOidcConfig": {
         "type": "object",
@@ -27950,7 +28944,7 @@
           },
           "required": {
             "type": "boolean",
-            "description": "When true, a value that cannot be resolved fails the delivery, fail-closed.",
+            "description": "When true, a value that cannot be resolved fails the task, fail-closed.",
             "default": false
           },
           "default_value": {
@@ -30837,7 +31831,7 @@
             "format": "int64"
           }
         },
-        "description": "`ProvisioningConnection.health` became quarantined, either from consecutive failures or from crossing the accidental-deletion guard. No further delivery is created."
+        "description": "`ProvisioningConnection.health` became quarantined, either from consecutive failures or from crossing the accidental-deletion guard. No further task is created."
       },
       "Contract.Consent": {
         "type": "object",
@@ -34560,7 +35554,7 @@
           "occurredAt",
           "tenantId",
           "connectionId",
-          "deliveryId",
+          "taskId",
           "groupId"
         ],
         "properties": {
@@ -34574,14 +35568,14 @@
           "connectionId": {
             "type": "string"
           },
-          "deliveryId": {
+          "taskId": {
             "type": "string"
           },
           "groupId": {
             "type": "string"
           }
         },
-        "description": "A group membership change reached the downstream as a PATCH on members and the delivery settled as succeeded."
+        "description": "A group membership change reached the downstream as a PATCH on members and the task settled as succeeded."
       },
       "Contract.GroupMembershipSource": {
         "type": "string",
@@ -34598,6 +35592,38 @@
           "dynamic"
         ],
         "description": "How a Group's membership is managed. It cannot be changed after creation."
+      },
+      "Contract.GroupNameConflictError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The requested Group `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_name_conflict`."
       },
       "Contract.GroupNameRequiredError": {
         "type": "object",
@@ -34663,7 +35689,7 @@
           "occurredAt",
           "tenantId",
           "connectionId",
-          "deliveryId",
+          "taskId",
           "groupId",
           "remoteId"
         ],
@@ -34678,7 +35704,7 @@
           "connectionId": {
             "type": "string"
           },
-          "deliveryId": {
+          "taskId": {
             "type": "string"
           },
           "groupId": {
@@ -34688,7 +35714,7 @@
             "type": "string"
           }
         },
-        "description": "A group create, update, deactivate, or delete reached the downstream and the delivery settled as succeeded."
+        "description": "A group create, update, deactivate, or delete reached the downstream and the task settled as succeeded."
       },
       "Contract.GroupSummaryResponse": {
         "type": "object",
@@ -35090,6 +36116,38 @@
           }
         },
         "description": "A connection was taken out of login routing."
+      },
+      "Contract.IdentityProviderConnectionInUseError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The upstream identity provider connection still has federated identities linked to it and cannot be deleted; unlink them first. Returned with HTTP 409. RFC 9457 Problem Details with `type` = `urn:idmagic:error:connection_in_use`."
       },
       "Contract.IdentityProviderConnectionNotFoundError": {
         "type": "object",
@@ -36329,7 +37387,7 @@
           "dynamic_group_reconcile",
           "lifecycle_workflow_run",
           "backchannel_logout_delivery",
-          "provisioning_delivery",
+          "provisioning_task",
           "data_key_reencryption"
         ],
         "description": "The allow list of job kinds registered in the worker's handler registry. A consumer feature that adds a new job kind\nadds its kind to this enum, and declares its ExecutionLane at the same time, before writing the implementation\n(specification first). The core runtime contributes only `noop_echo`, for connectivity checks.\n`backchannel_logout_delivery` is declared ahead of the feature that will use it, and `data_key_reencryption` is added\nby DataKeys for the re-encryption job of envelope encryption."
@@ -38879,6 +39937,38 @@
         },
         "description": "A client under RFC 7591 with the FAPI 2.0 extensions. A client outside the catalogue, whose `application_id` is null, is allowed; when it is not null it names an `oidc` Application of the same tenant, and at most one client is bound to one Application."
       },
+      "Contract.OAuth2ClientNotFoundError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "No OAuth 2.0 client exists with the `client_id` given in this tenant. A client of another tenant is treated as nonexistent and answered the same way, so an id alone cannot confirm a client in a tenant the caller cannot see. RFC 9457 Problem Details with `type` = `urn:idmagic:error:client_not_found`."
+      },
       "Contract.OAuthAccessDeniedError": {
         "type": "object",
         "required": [
@@ -39543,7 +40633,7 @@
           "consecutive_failure_count": {
             "type": "integer",
             "format": "int64",
-            "description": "The internal counter that decides quarantine. A successful delivery resets it to zero.",
+            "description": "The internal counter that decides quarantine. A successful task resets it to zero.",
             "default": 0
           },
           "last_full_sync_at": {
@@ -39677,7 +40767,7 @@
             "type": "string"
           }
         },
-        "description": "An administrator set `ProvisioningConnection.status` to disabled. No new delivery is created."
+        "description": "An administrator set `ProvisioningConnection.status` to disabled. No new task is created."
       },
       "Contract.ProvisioningConnectionNotFoundError": {
         "type": "object",
@@ -39837,174 +40927,6 @@
         },
         "description": "An administrator updated the credential of a connection."
       },
-      "Contract.ProvisioningDelivery": {
-        "type": "object",
-        "required": [
-          "id",
-          "tenant_id",
-          "connection_id",
-          "source_type",
-          "source_id",
-          "source_version",
-          "operation",
-          "status",
-          "created_at",
-          "updated_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "connection_id": {
-            "type": "string"
-          },
-          "source_type": {
-            "$ref": "#/components/schemas/Contract.ProvisioningSourceType"
-          },
-          "source_id": {
-            "type": "string"
-          },
-          "source_version": {
-            "type": "integer",
-            "format": "int64",
-            "description": "A monotonically rising counter the same-transaction capture emits. It is what resolves an out-of-order delivery."
-          },
-          "operation": {
-            "$ref": "#/components/schemas/Contract.ProvisioningOperation"
-          },
-          "status": {
-            "$ref": "#/components/schemas/Contract.ProvisioningDeliveryStatus",
-            "default": "pending"
-          },
-          "job_id": {
-            "type": "string",
-            "description": "The `Jobs.JobRef.id` the dispatcher attaches after enqueueing."
-          },
-          "last_error": {
-            "type": "string",
-            "description": "The sanitized error of the most recent failure. It carries no secret and no attribute value."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "completed_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "description": "One delivery unit for one internal lifecycle event. The idempotency key\n`(tenant_id, connection_id, source_type, source_id, source_version)` is a uniqueness constraint, and enqueueing the same\nkey again is a no-op on the existing row. The dispatcher attaches `job_id` after enqueueing to Jobs, and it is unset\nuntil then."
-      },
-      "Contract.ProvisioningDeliveryNotFoundError": {
-        "type": "object",
-        "required": [
-          "type",
-          "title",
-          "status"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
-          },
-          "title": {
-            "type": "string",
-            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
-          },
-          "status": {
-            "type": "integer",
-            "format": "int32",
-            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
-          },
-          "detail": {
-            "type": "string",
-            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
-          },
-          "instance": {
-            "type": "string",
-            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
-          }
-        },
-        "description": "No ProvisioningDelivery exists with the `delivery_id` given, or it does not belong to the connection given. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_not_found`."
-      },
-      "Contract.ProvisioningDeliveryNotRetryableError": {
-        "type": "object",
-        "required": [
-          "type",
-          "title",
-          "status"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
-          },
-          "title": {
-            "type": "string",
-            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
-          },
-          "status": {
-            "type": "integer",
-            "format": "int32",
-            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
-          },
-          "detail": {
-            "type": "string",
-            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
-          },
-          "instance": {
-            "type": "string",
-            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
-          }
-        },
-        "description": "RetryProvisioningDelivery was called on a ProvisioningDelivery whose state is not `dead_letter`. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_conflict`."
-      },
-      "Contract.ProvisioningDeliveryStarted": {
-        "type": "object",
-        "required": [
-          "occurredAt",
-          "tenantId",
-          "connectionId",
-          "deliveryId",
-          "jobId"
-        ],
-        "properties": {
-          "occurredAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "connectionId": {
-            "type": "string"
-          },
-          "deliveryId": {
-            "type": "string"
-          },
-          "jobId": {
-            "type": "string"
-          }
-        },
-        "description": "The dispatcher attached a Jobs.Job to a ProvisioningDelivery and delivery began, the same shape as LifecycleWorkflowRunStarted."
-      },
-      "Contract.ProvisioningDeliveryStatus": {
-        "type": "string",
-        "enum": [
-          "pending",
-          "in_flight",
-          "succeeded",
-          "dead_letter"
-        ],
-        "description": "The value set of `ProvisioningDelivery.status`. `in_flight` covers everything from the moment the dispatcher attaches a\nJobs.Job until a terminal state is reached, and it stays `in_flight` through attempt retries at the Jobs level -- as with\nWorkflowRunLifecycle, a retry loop one layer down is not reflected in the state at this layer.\nThere is no non-terminal intermediate state called `failed`: `dead_letter` is a terminal state reached exactly once, when\nthe Job has used up `max_attempts`."
-      },
       "Contract.ProvisioningDeprovisionAction": {
         "type": "string",
         "enum": [
@@ -40054,7 +40976,7 @@
           "description",
           "email"
         ],
-        "description": "下流の `displayName` へ射影する IdMagic 側の Group 属性。Group が値を持たない属性を選んだ配信は、名前へ落ちる —— 表示名は fail-closed の判断ではない。"
+        "description": "下流の `displayName` へ射影する IdMagic 側の Group 属性。Group が値を持たない属性を選んだプロビジョニングタスクは、名前へ落ちる —— 表示名は fail-closed の判断ではない。"
       },
       "Contract.ProvisioningGroupSelection": {
         "type": "string",
@@ -40071,7 +40993,7 @@
           "degraded",
           "quarantined"
         ],
-        "description": "How healthy the connection looks to the delivery engine. `quarantined` stops delivery until ResumeProvisioningConnection."
+        "description": "How healthy the connection looks to the provisioning engine. `quarantined` stops provisioning until ResumeProvisioningConnection."
       },
       "Contract.ProvisioningOperation": {
         "type": "string",
@@ -40083,7 +41005,7 @@
           "membership_add",
           "membership_remove"
         ],
-        "description": "The operation a ProvisioningDelivery applies downstream."
+        "description": "The operation a ProvisioningTask applies downstream."
       },
       "Contract.ProvisioningScope": {
         "type": "string",
@@ -40091,7 +41013,7 @@
           "assigned_only",
           "all_users"
         ],
-        "description": "How the subjects to deliver are chosen. `assigned_only` reads the ApplicationAssignments; `all_users` is an advanced option covering every User of the tenant."
+        "description": "How the subjects to provision are chosen. `assigned_only` reads the ApplicationAssignments; `all_users` is an advanced option covering every User of the tenant."
       },
       "Contract.ProvisioningSourceType": {
         "type": "string",
@@ -40099,7 +41021,7 @@
           "user",
           "group"
         ],
-        "description": "Which internal aggregate a ProvisioningDelivery or RemoteResourceLink refers to."
+        "description": "Which internal aggregate a ProvisioningTask or RemoteResourceLink refers to."
       },
       "Contract.ProvisioningSubjectNotInScopeError": {
         "type": "object",
@@ -40132,6 +41054,174 @@
           }
         },
         "description": "The subject ProvisionOnDemand names is outside the scope of the connection; under `assigned_only` that means the subject is not assigned. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_conflict`."
+      },
+      "Contract.ProvisioningTask": {
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "connection_id",
+          "source_type",
+          "source_id",
+          "source_version",
+          "operation",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "connection_id": {
+            "type": "string"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/Contract.ProvisioningSourceType"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "source_version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "A monotonically rising counter the same-transaction capture emits. It is what resolves an out-of-order task."
+          },
+          "operation": {
+            "$ref": "#/components/schemas/Contract.ProvisioningOperation"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Contract.ProvisioningTaskStatus",
+            "default": "pending"
+          },
+          "job_id": {
+            "type": "string",
+            "description": "The `Jobs.JobRef.id` the dispatcher attaches after enqueueing."
+          },
+          "last_error": {
+            "type": "string",
+            "description": "The sanitized error of the most recent failure. It carries no secret and no attribute value."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "One provisioning task for one internal lifecycle event. The idempotency key\n`(tenant_id, connection_id, source_type, source_id, source_version)` is a uniqueness constraint, and enqueueing the same\nkey again is a no-op on the existing row. The dispatcher attaches `job_id` after enqueueing to Jobs, and it is unset\nuntil then."
+      },
+      "Contract.ProvisioningTaskNotFoundError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "No ProvisioningTask exists with the `task_id` given, or it does not belong to the connection given. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_not_found`."
+      },
+      "Contract.ProvisioningTaskNotRetryableError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "RetryProvisioningTask was called on a ProvisioningTask whose state is not `dead_letter`. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_conflict`."
+      },
+      "Contract.ProvisioningTaskStarted": {
+        "type": "object",
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "connectionId",
+          "taskId",
+          "jobId"
+        ],
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "connectionId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          }
+        },
+        "description": "The dispatcher attached a Jobs.Job to a ProvisioningTask and task began, the same shape as LifecycleWorkflowRunStarted."
+      },
+      "Contract.ProvisioningTaskStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "in_flight",
+          "succeeded",
+          "dead_letter"
+        ],
+        "description": "The value set of `ProvisioningTask.status`. `in_flight` covers everything from the moment the dispatcher attaches a\nJobs.Job until a terminal state is reached, and it stays `in_flight` through attempt retries at the Jobs level -- as with\nWorkflowRunLifecycle, a retry loop one layer down is not reflected in the state at this layer.\nThere is no non-terminal intermediate state called `failed`: `dead_letter` is a terminal state reached exactly once, when\nthe Job has used up `max_attempts`."
       },
       "Contract.QuotaExceededError": {
         "type": "object",
@@ -40872,7 +41962,7 @@
           "last_synced_version": {
             "type": "integer",
             "format": "int64",
-            "description": "The `source_version` most recently applied. It is what resolves an out-of-order delivery."
+            "description": "The `source_version` most recently applied. It is what resolves an out-of-order task."
           },
           "updated_at": {
             "type": "string",
@@ -42363,7 +43453,7 @@
             "format": "int64"
           }
         },
-        "description": "A SecurityEventDelivery failed and a retry was scheduled."
+        "description": "A SecurityEventDelivery attempt failed. Every failed attempt emits this event: a retry is scheduled, or, once `max_delivery_attempts` is used up, SecurityEventDeliveryDeadLettered follows."
       },
       "Contract.SecurityEventDeliveryRetried": {
         "type": "object",
@@ -46230,7 +47320,7 @@
           "occurredAt",
           "tenantId",
           "connectionId",
-          "deliveryId",
+          "taskId",
           "userId",
           "action"
         ],
@@ -46245,7 +47335,7 @@
           "connectionId": {
             "type": "string"
           },
-          "deliveryId": {
+          "taskId": {
             "type": "string"
           },
           "userId": {
@@ -46255,7 +47345,7 @@
             "$ref": "#/components/schemas/Contract.ProvisioningDeprovisionAction"
           }
         },
-        "description": "A user deactivate or delete reached the downstream and the delivery settled as succeeded."
+        "description": "A user deactivate or delete reached the downstream and the task settled as succeeded."
       },
       "Contract.UserDisabled": {
         "type": "object",
@@ -46676,7 +47766,7 @@
           "occurredAt",
           "tenantId",
           "connectionId",
-          "deliveryId",
+          "taskId",
           "userId",
           "remoteId"
         ],
@@ -46691,7 +47781,7 @@
           "connectionId": {
             "type": "string"
           },
-          "deliveryId": {
+          "taskId": {
             "type": "string"
           },
           "userId": {
@@ -46701,7 +47791,7 @@
             "type": "string"
           }
         },
-        "description": "A user create or update reached the downstream and the delivery settled as succeeded."
+        "description": "A user create or update reached the downstream and the task settled as succeeded."
       },
       "Contract.UserProvisioningFailed": {
         "type": "object",
@@ -46709,7 +47799,7 @@
           "occurredAt",
           "tenantId",
           "connectionId",
-          "deliveryId",
+          "taskId",
           "sourceType",
           "sourceId",
           "error"
@@ -46725,7 +47815,7 @@
           "connectionId": {
             "type": "string"
           },
-          "deliveryId": {
+          "taskId": {
             "type": "string"
           },
           "sourceType": {
@@ -46738,7 +47828,7 @@
             "type": "string"
           }
         },
-        "description": "A user delivery used up `max_attempts` and settled as dead_letter. It is not emitted per attempt. A group delivery that dead-letters uses the same event."
+        "description": "A user task used up `max_attempts` and settled as dead_letter. It is not emitted per attempt. A group task that dead-letters uses the same event."
       },
       "Contract.UserRequiredActionCleared": {
         "type": "object",
@@ -46929,6 +48019,38 @@
           }
         },
         "description": "An administrator updated a user's profile or roles."
+      },
+      "Contract.UsernameConflictError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The requested `preferred_username` is already used by a User in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:username_conflict`."
       },
       "Contract.Validate": {
         "type": "object",
@@ -47296,6 +48418,38 @@
           "exists"
         ],
         "description": "The comparison operators a WorkflowFilter may use. `eq` and `not_eq` are exact match and mismatch, `in` matches any member of a value set, and `exists` tests whether a value is present at all."
+      },
+      "Contract.WorkflowNameConflictError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The requested LifecycleWorkflow `name` is already used by a non-deleted workflow in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workflow_name_conflict`."
       },
       "Contract.WorkflowRevisionConflictError": {
         "type": "object",
@@ -47969,6 +49123,38 @@
         },
         "description": "`max_subject_token_ttl_seconds` is not a positive value. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_invalid_ttl`."
       },
+      "Contract.WorkloadTrustBundleIssuerConflictError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The requested WorkloadTrustBundle `issuer` is already registered in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_issuer_conflict`."
+      },
       "Contract.WorkloadTrustBundleIssuerRequiredError": {
         "type": "object",
         "required": [
@@ -48072,6 +49258,38 @@
           }
         },
         "description": "The WorkloadTrustBundle list of the administration API."
+      },
+      "Contract.WorkloadTrustBundleNameConflictError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "The requested WorkloadTrustBundle `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_name_conflict`."
       },
       "Contract.WorkloadTrustBundleNameRequiredError": {
         "type": "object",
@@ -48674,6 +49892,9 @@
           }
         ]
       },
+      "IdGovernance.Operations.CreateLifecycleWorkflowError409Body": {
+        "$ref": "#/components/schemas/Contract.WorkflowNameConflictError"
+      },
       "IdGovernance.Operations.DeleteLifecycleWorkflowError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -48969,6 +50190,22 @@
           }
         ]
       },
+      "IdManagement.Operations.BindAgentCredentialError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
+      "IdManagement.Operations.BindAgentCredentialError409Body": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.AgentKilledError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AgentClientAlreadyBoundError"
+          }
+        ]
+      },
+      "IdManagement.Operations.BindAgentCredentialError422Body": {
+        "$ref": "#/components/schemas/Contract.OAuth2ClientNotFoundError"
+      },
       "IdManagement.Operations.CancelGroupExportError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -49101,6 +50338,9 @@
           }
         ]
       },
+      "IdManagement.Operations.CreateAdminUserError409Body": {
+        "$ref": "#/components/schemas/Contract.UsernameConflictError"
+      },
       "IdManagement.Operations.CreateAdminUserError422Body": {
         "anyOf": [
           {
@@ -49129,6 +50369,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "IdManagement.Operations.CreateGroupError409Body": {
+        "$ref": "#/components/schemas/Contract.GroupNameConflictError"
       },
       "IdManagement.Operations.CreateGroupError422Body": {
         "anyOf": [
@@ -49191,7 +50434,26 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "IdManagement.Operations.DeleteAgentError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "IdManagement.Operations.DeleteAgentError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
+      "IdManagement.Operations.DeleteAgentError409Body": {
+        "$ref": "#/components/schemas/Contract.AgentKilledError"
       },
       "IdManagement.Operations.DeleteGroupError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -49238,7 +50500,26 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "IdManagement.Operations.DisableAgentError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "IdManagement.Operations.DisableAgentError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
+      "IdManagement.Operations.DisableAgentError409Body": {
+        "$ref": "#/components/schemas/Contract.AgentKilledError"
       },
       "IdManagement.Operations.DisableDynamicGroupRuleError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -49330,7 +50611,26 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "IdManagement.Operations.EnableAgentError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "IdManagement.Operations.EnableAgentError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
+      "IdManagement.Operations.EnableAgentError409Body": {
+        "$ref": "#/components/schemas/Contract.AgentKilledError"
       },
       "IdManagement.Operations.EnableDynamicGroupRuleError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -49439,6 +50739,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "IdManagement.Operations.GetAgentError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
       },
       "IdManagement.Operations.GetEmailVerificationContextHttpResponse": {
         "type": "object",
@@ -49603,7 +50906,26 @@
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "IdManagement.Operations.KillAgentError403Body": {
-        "$ref": "#/components/schemas/Contract.AccessDeniedError"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.CsrfFailedError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InsufficientScopeError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidOriginError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "IdManagement.Operations.KillAgentError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
+      "IdManagement.Operations.KillAgentError409Body": {
+        "$ref": "#/components/schemas/Contract.AgentKilledError"
       },
       "IdManagement.Operations.ListAdminUsersError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
@@ -49792,6 +51114,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "IdManagement.Operations.RegisterAgentError409Body": {
+        "$ref": "#/components/schemas/Contract.AgentNameConflictError"
       },
       "IdManagement.Operations.RegisterAgentError422Body": {
         "anyOf": [
@@ -50047,6 +51372,9 @@
           }
         ]
       },
+      "IdManagement.Operations.UnbindAgentCredentialError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
       "IdManagement.Operations.UpdateAdminUserError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -50065,6 +51393,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "IdManagement.Operations.UpdateAdminUserError409Body": {
+        "$ref": "#/components/schemas/Contract.UsernameConflictError"
       },
       "IdManagement.Operations.UpdateAdminUserError422Body": {
         "anyOf": [
@@ -50092,6 +51423,19 @@
           },
           {
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "IdManagement.Operations.UpdateAgentError404Body": {
+        "$ref": "#/components/schemas/Contract.AgentNotFoundError"
+      },
+      "IdManagement.Operations.UpdateAgentError409Body": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.AgentNameConflictError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.AgentKilledError"
           }
         ]
       },
@@ -50154,6 +51498,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "IdManagement.Operations.UpdateGroupError409Body": {
+        "$ref": "#/components/schemas/Contract.GroupNameConflictError"
       },
       "IdManagement.Operations.UpdateGroupError422Body": {
         "anyOf": [
@@ -50466,6 +51813,9 @@
           }
         ]
       },
+      "OAuth2.Operations.DeleteAdminOAuth2ClientError404Body": {
+        "$ref": "#/components/schemas/Contract.OAuth2ClientNotFoundError"
+      },
       "OAuth2.Operations.DeleteAdminOAuth2ClientError409Body": {
         "$ref": "#/components/schemas/Contract.ApplicationOwnedProtocolError"
       },
@@ -50538,6 +51888,9 @@
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
           }
         ]
+      },
+      "OAuth2.Operations.GetAdminOAuth2ClientError404Body": {
+        "$ref": "#/components/schemas/Contract.OAuth2ClientNotFoundError"
       },
       "OAuth2.Operations.GetAuthorizationDetailTypeError403Body": {
         "anyOf": [
@@ -50893,6 +52246,9 @@
           }
         ]
       },
+      "OAuth2.Operations.UpdateAdminOAuth2ClientError404Body": {
+        "$ref": "#/components/schemas/Contract.OAuth2ClientNotFoundError"
+      },
       "OAuth2.Operations.UpdateAuthorizationDetailTypeError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
@@ -50959,7 +52315,7 @@
       "Provisioning.Operations.GetProvisioningConnectionError404Body": {
         "$ref": "#/components/schemas/Contract.ProvisioningConnectionNotFoundError"
       },
-      "Provisioning.Operations.GetProvisioningDeliveryError403Body": {
+      "Provisioning.Operations.GetProvisioningTaskError403Body": {
         "anyOf": [
           {
             "$ref": "#/components/schemas/Contract.InsufficientScopeError"
@@ -50969,13 +52325,13 @@
           }
         ]
       },
-      "Provisioning.Operations.GetProvisioningDeliveryError404Body": {
-        "$ref": "#/components/schemas/Contract.ProvisioningDeliveryNotFoundError"
+      "Provisioning.Operations.GetProvisioningTaskError404Body": {
+        "$ref": "#/components/schemas/Contract.ProvisioningTaskNotFoundError"
       },
-      "Provisioning.Operations.ListProvisioningDeliveriesError400Body": {
+      "Provisioning.Operations.ListProvisioningTasksError400Body": {
         "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
-      "Provisioning.Operations.ListProvisioningDeliveriesError403Body": {
+      "Provisioning.Operations.ListProvisioningTasksError403Body": {
         "anyOf": [
           {
             "$ref": "#/components/schemas/Contract.InsufficientScopeError"
@@ -50985,16 +52341,16 @@
           }
         ]
       },
-      "Provisioning.Operations.ListProvisioningDeliveriesHttpResponse": {
+      "Provisioning.Operations.ListProvisioningTasksHttpResponse": {
         "type": "object",
         "required": [
-          "deliveries"
+          "tasks"
         ],
         "properties": {
-          "deliveries": {
+          "tasks": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Contract.ProvisioningDelivery"
+              "$ref": "#/components/schemas/Contract.ProvisioningTask"
             }
           }
         }
@@ -51120,7 +52476,7 @@
       "Provisioning.Operations.ResumeProvisioningConnectionError404Body": {
         "$ref": "#/components/schemas/Contract.ProvisioningConnectionNotFoundError"
       },
-      "Provisioning.Operations.RetryProvisioningDeliveryError403Body": {
+      "Provisioning.Operations.RetryProvisioningTaskError403Body": {
         "anyOf": [
           {
             "$ref": "#/components/schemas/Contract.CsrfFailedError"
@@ -51136,11 +52492,11 @@
           }
         ]
       },
-      "Provisioning.Operations.RetryProvisioningDeliveryError404Body": {
-        "$ref": "#/components/schemas/Contract.ProvisioningDeliveryNotFoundError"
+      "Provisioning.Operations.RetryProvisioningTaskError404Body": {
+        "$ref": "#/components/schemas/Contract.ProvisioningTaskNotFoundError"
       },
-      "Provisioning.Operations.RetryProvisioningDeliveryError409Body": {
-        "$ref": "#/components/schemas/Contract.ProvisioningDeliveryNotRetryableError"
+      "Provisioning.Operations.RetryProvisioningTaskError409Body": {
+        "$ref": "#/components/schemas/Contract.ProvisioningTaskNotRetryableError"
       },
       "Provisioning.Operations.StartFullResyncError403Body": {
         "anyOf": [
@@ -51812,6 +53168,9 @@
             }
           }
         }
+      },
+      "SigningKeys.Operations.RotateTenantSigningKeyError400Body": {
+        "$ref": "#/components/schemas/Contract.InvalidRequestError"
       },
       "SigningKeys.Operations.RotateTenantSigningKeyError403Body": {
         "anyOf": [
@@ -52504,6 +53863,16 @@
           }
         ]
       },
+      "WorkloadIdentity.Operations.RegisterWorkloadTrustBundleError409Body": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.WorkloadTrustBundleNameConflictError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.WorkloadTrustBundleIssuerConflictError"
+          }
+        ]
+      },
       "WorkloadIdentity.Operations.RegisterWorkloadTrustBundleError422Body": {
         "anyOf": [
           {
@@ -52539,6 +53908,16 @@
           },
           {
             "$ref": "#/components/schemas/Contract.AccessDeniedError"
+          }
+        ]
+      },
+      "WorkloadIdentity.Operations.UpdateWorkloadTrustBundleError409Body": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Contract.WorkloadTrustBundleNameConflictError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.WorkloadTrustBundleIssuerConflictError"
           }
         ]
       },

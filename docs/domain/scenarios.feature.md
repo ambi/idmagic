@@ -39,10 +39,10 @@ Primary actor: `TenantAdministrator`
 - Then "alice" のステータスは Active に戻る
 - Then "alice" はログインできる
 
-## Rule: REQ-PLATFORM-003 記録の正の変更は、有効な接続を持つ下流へ配信される
+## Rule: REQ-PLATFORM-003 記録の正の変更は、有効な接続を持つ下流へプロビジョニングされる
 
 参加する Context: IdManagement、Application、Provisioning、Jobs
-**配信行は発火元の変更と同時にコミットまたはロールバックする。** 記録の正が変わったのに配信が作られない状態、およびその逆は、いずれもこの保証に違反する。個々の変更がどの下流操作へ対応するかは Provisioning の `scenarios.feature.md` で定める。
+**プロビジョニングタスクの行は発火元の変更と同時にコミットまたはロールバックする。** 記録の正が変わったのにプロビジョニングタスクが作られない状態、およびその逆は、いずれもこの保証に違反する。個々の変更がどの下流操作へ対応するかは Provisioning の `scenarios.feature.md` で定める。
 
 Primary actor: `TenantAdministrator`
 
@@ -51,8 +51,8 @@ Primary actor: `TenantAdministrator`
 - Given Application "app-1" に有効な ProvisioningConnection が存在する
 - And User "ユーザー-1" は "app-1" に割り当て済みである
 - When 管理者が "ユーザー-1" を作成、無効化、削除、または "app-1" への割り当てを解除する
-- Then 変更と同じトランザクションで `ProvisioningDelivery` が作成される
-- Then `worker` が下流へ反映し、配信のステータスが `succeeded` になる
+- Then 変更と同じトランザクションで `ProvisioningTask` が作成される
+- Then `worker` が下流へ反映し、プロビジョニングタスクのステータスが `succeeded` になる
 
 ### Example: EX-PLATFORM-003-02 変更のトランザクションがロールバックする
 
@@ -60,7 +60,7 @@ Primary actor: `TenantAdministrator`
 - And User "ユーザー-1" は "app-1" に割り当て済みである
 - When 管理者が "ユーザー-1" を作成、無効化、削除、または "app-1" への割り当てを解除する
 - Then 変更のトランザクションがロールバックする
-- Then `ProvisioningDelivery` も作成されない
+- Then `ProvisioningTask` も作成されない
 
 ## Rule: REQ-PLATFORM-004 周囲資格情報による状態変更は同一オリジンと CSRF トークンを必要とする
 

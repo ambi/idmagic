@@ -200,7 +200,7 @@ type Stack struct {
 	ApplicationCategories   *appmemory.ApplicationCategoryRepository
 	ApplicationIcons        *appmemory.ApplicationIconStore
 	ProvisioningConnections *provisioningmemory.ProvisioningConnectionRepository
-	ProvisioningDeliveries  *provisioningmemory.ProvisioningDeliveryRepository
+	ProvisioningTasks       *provisioningmemory.ProvisioningTaskRepository
 	// AppSignInPolicies と DefaultSignInPolicy は、サインインポリシーの具体例が
 	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
 	AppSignInPolicies   *appmemory.SignInPolicyRepository
@@ -465,17 +465,17 @@ func WithApplicationApi() Option {
 	}
 }
 
-// WithProvisioning は Provisioning の管理 API と、接続・配信を読み直す保存先を配線する。
+// WithProvisioning は Provisioning の管理 API と、接続・プロビジョニングタスクを読み直す保存先を配線する。
 func WithProvisioning() Option {
 	return func(b *builder) {
 		if b.stack.ApplicationAssignments == nil {
 			WithApplicationApi()(b)
 		}
 		b.stack.ProvisioningConnections = provisioningmemory.NewProvisioningConnectionRepository()
-		b.stack.ProvisioningDeliveries = provisioningmemory.NewProvisioningDeliveryRepository()
+		b.stack.ProvisioningTasks = provisioningmemory.NewProvisioningTaskRepository()
 		b.deps.Provisioning = provisioning.Module{
 			ConnectionRepo: b.stack.ProvisioningConnections,
-			DeliveryRepo:   b.stack.ProvisioningDeliveries,
+			TaskRepo:       b.stack.ProvisioningTasks,
 			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
 		}
 	}

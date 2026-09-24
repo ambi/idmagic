@@ -338,7 +338,7 @@ erDiagram
     }
     provisioning_remote_links {
     }
-    provisioning_deliveries {
+    provisioning_tasks {
     }
     provisioning_scheduled_deprovisions {
     }
@@ -358,7 +358,7 @@ erDiagram
     applications ||--o| provisioning_connections : 接続を持つ
     tenants ||--o{ provisioning_connections : 接続を分離する
     provisioning_connections ||--o{ provisioning_remote_links : 遠隔主体を結ぶ
-    provisioning_connections ||--o{ provisioning_deliveries : 配送する
+    provisioning_connections ||--o{ provisioning_tasks : 作る
     provisioning_connections ||--o{ provisioning_scheduled_deprovisions : 削除を予約する
 ```
 
@@ -376,8 +376,8 @@ erDiagram
 | `lifecycle_workflow_steps` | 実行の各手順の結果 | IdGovernance | `LOGGED` | なし |
 | `provisioning_connections` | アプリケーションへ利用者とグループを送り出す SCIM 接続の設定と健全性 | Provisioning | `LOGGED` | 非キー列 |
 | `provisioning_remote_links` | 送り出した利用者やグループと、接続先での ID の対応 | Provisioning | `LOGGED` | 非キー列 |
-| `provisioning_deliveries` | 接続先への一件ごとの配送と、その状態 | Provisioning | `LOGGED` | 非キー列 |
-| `provisioning_scheduled_deprovisions` | 猶予期間を置く利用者の削除の予約。期限が来ると配送へ変わり、猶予期間中の再割り当てで取り消される | Provisioning | `LOGGED` | 非キー列 |
+| `provisioning_tasks` | 接続先への一件ごとのプロビジョニングタスクと、その状態 | Provisioning | `LOGGED` | 非キー列 |
+| `provisioning_scheduled_deprovisions` | 猶予期間を置く利用者の削除の予約。期限が来るとプロビジョニングタスクへ変わり、猶予期間中の再割り当てで取り消される | Provisioning | `LOGGED` | 非キー列 |
 
 ### 再生成可能な認証状態と流量制御
 

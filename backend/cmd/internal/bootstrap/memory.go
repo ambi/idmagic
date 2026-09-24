@@ -104,7 +104,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	provisioningModule := provisioning.Module{
 		ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
 		RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
-		DeliveryRepo:   provisioningmemory.NewProvisioningDeliveryRepository(),
+		TaskRepo:       provisioningmemory.NewProvisioningTaskRepository(),
 	}
 	federationRepos := federationmemory.NewRepositories()
 	return &Dependencies{

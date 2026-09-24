@@ -67,28 +67,28 @@ type ProvisioningCredentialRotated struct {
 func (e *ProvisioningCredentialRotated) EventType() string     { return "ProvisioningCredentialRotated" }
 func (e *ProvisioningCredentialRotated) OccurredAt() time.Time { return e.At }
 
-// ProvisioningDeliveryStarted is emitted when the dispatcher associates a Jobs.Job
-// with a ProvisioningDelivery (LifecycleWorkflowRunStarted precedent). The struct
+// ProvisioningTaskStarted is emitted when the dispatcher associates a Jobs.Job
+// with a ProvisioningTask (LifecycleWorkflowRunStarted precedent). The struct
 // name matches the SCL event model name exactly (Jobs/IdGovernance precedent); it
-// does not collide with the ProvisioningDeliveryLifecycleEvent constant
-// EventProvisioningDeliveryStarted, which is a different identifier.
-type ProvisioningDeliveryStarted struct {
+// does not collide with the ProvisioningTaskLifecycleEvent constant
+// EventProvisioningTaskStarted, which is a different identifier.
+type ProvisioningTaskStarted struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`
 	ConnectionID string    `json:"connectionId"`
-	DeliveryID   string    `json:"deliveryId"`
+	TaskID       string    `json:"taskId"`
 	JobID        string    `json:"jobId"`
 }
 
-func (e *ProvisioningDeliveryStarted) EventType() string     { return "ProvisioningDeliveryStarted" }
-func (e *ProvisioningDeliveryStarted) OccurredAt() time.Time { return e.At }
+func (e *ProvisioningTaskStarted) EventType() string     { return "ProvisioningTaskStarted" }
+func (e *ProvisioningTaskStarted) OccurredAt() time.Time { return e.At }
 
-// UserProvisioned is emitted when a user create/update delivery reaches succeeded.
+// UserProvisioned is emitted when a user create/update task reaches succeeded.
 type UserProvisioned struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`
 	ConnectionID string    `json:"connectionId"`
-	DeliveryID   string    `json:"deliveryId"`
+	TaskID       string    `json:"taskId"`
 	UserID       string    `json:"userId"`
 	RemoteID     string    `json:"remoteId"`
 }
@@ -96,13 +96,13 @@ type UserProvisioned struct {
 func (e *UserProvisioned) EventType() string     { return "UserProvisioned" }
 func (e *UserProvisioned) OccurredAt() time.Time { return e.At }
 
-// UserDeprovisioned is emitted when a user deactivate/delete delivery reaches
+// UserDeprovisioned is emitted when a user deactivate/delete task reaches
 // succeeded.
 type UserDeprovisioned struct {
 	At           time.Time                     `json:"-"`
 	TenantID     string                        `json:"tenantId"`
 	ConnectionID string                        `json:"connectionId"`
-	DeliveryID   string                        `json:"deliveryId"`
+	TaskID       string                        `json:"taskId"`
 	UserID       string                        `json:"userId"`
 	Action       ProvisioningDeprovisionAction `json:"action"`
 }
@@ -110,13 +110,13 @@ type UserDeprovisioned struct {
 func (e *UserDeprovisioned) EventType() string     { return "UserDeprovisioned" }
 func (e *UserDeprovisioned) OccurredAt() time.Time { return e.At }
 
-// UserProvisioningFailed is emitted once, when a delivery (user or group)
+// UserProvisioningFailed is emitted once, when a task (user or group)
 // exhausts max_attempts and reaches dead_letter (not emitted per attempt).
 type UserProvisioningFailed struct {
 	At           time.Time              `json:"-"`
 	TenantID     string                 `json:"tenantId"`
 	ConnectionID string                 `json:"connectionId"`
-	DeliveryID   string                 `json:"deliveryId"`
+	TaskID       string                 `json:"taskId"`
 	SourceType   ProvisioningSourceType `json:"sourceType"`
 	SourceID     string                 `json:"sourceId"`
 	Error        string                 `json:"error"`
@@ -125,13 +125,13 @@ type UserProvisioningFailed struct {
 func (e *UserProvisioningFailed) EventType() string     { return "UserProvisioningFailed" }
 func (e *UserProvisioningFailed) OccurredAt() time.Time { return e.At }
 
-// GroupPushed is emitted when a group create/update/deactivate/delete delivery
+// GroupPushed is emitted when a group create/update/deactivate/delete task
 // reaches succeeded.
 type GroupPushed struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`
 	ConnectionID string    `json:"connectionId"`
-	DeliveryID   string    `json:"deliveryId"`
+	TaskID       string    `json:"taskId"`
 	GroupID      string    `json:"groupId"`
 	RemoteID     string    `json:"remoteId"`
 }
@@ -139,13 +139,13 @@ type GroupPushed struct {
 func (e *GroupPushed) EventType() string     { return "GroupPushed" }
 func (e *GroupPushed) OccurredAt() time.Time { return e.At }
 
-// GroupMembershipPushed is emitted when a group membership PATCH delivery reaches
+// GroupMembershipPushed is emitted when a group membership PATCH task reaches
 // succeeded.
 type GroupMembershipPushed struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`
 	ConnectionID string    `json:"connectionId"`
-	DeliveryID   string    `json:"deliveryId"`
+	TaskID       string    `json:"taskId"`
 	GroupID      string    `json:"groupId"`
 }
 

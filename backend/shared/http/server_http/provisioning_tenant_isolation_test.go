@@ -15,12 +15,12 @@ import (
 
 const (
 	isolatedApplicationID = "app-1"
-	isolatedDeliveryID    = "delivery-1"
+	isolatedTaskID        = "task-1"
 	isolatedBaseURL       = "https://downstream.example/scim/v2"
 )
 
-// seedDefaultTenantProvisioning は default テナントに接続を 1 件と、その接続に属する配信を
-// 1 件置く。越境した参照が漏らしうる値は接続先 URL と配信 id である。
+// seedDefaultTenantProvisioning は default テナントに接続を 1 件と、その接続に属するプロビジョニングタスクを
+// 1 件置く。越境した参照が漏らしうる値は接続先 URL とプロビジョニングタスク id である。
 func seedDefaultTenantProvisioning(t *testing.T, s *stack.Stack) {
 	t.Helper()
 	ctx := context.Background()
@@ -42,13 +42,13 @@ func seedDefaultTenantProvisioning(t *testing.T, s *stack.Stack) {
 	}, "secret"); err != nil {
 		t.Fatalf("seed connection: %v", err)
 	}
-	if _, err := s.ProvisioningDeliveries.Save(ctx, &domain.ProvisioningDelivery{
-		ID: isolatedDeliveryID, TenantID: tenantID, ConnectionID: isolatedApplicationID,
+	if _, err := s.ProvisioningTasks.Save(ctx, &domain.ProvisioningTask{
+		ID: isolatedTaskID, TenantID: tenantID, ConnectionID: isolatedApplicationID,
 		SourceType: domain.SourceTypeUser, SourceID: stack.UserID, SourceVersion: 1,
-		Operation: domain.OperationCreate, Status: domain.DeliveryPending,
+		Operation: domain.OperationCreate, Status: domain.TaskPending,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
-		t.Fatalf("seed delivery: %v", err)
+		t.Fatalf("seed task: %v", err)
 	}
 }
 
@@ -77,14 +77,14 @@ func decodeProvisioningProblem(t *testing.T, recorder *httptest.ResponseRecorder
 	return problem
 }
 
-// 別テナントの管理者が同じ application id と delivery id を指定しても、接続と配信は
+// 別テナントの管理者が同じ application id と task id を指定しても、接続とプロビジョニングタスクは
 // どちらも存在しない id を指定したときと同じ 404 になる。状態コードと problem の
 // type、title、detail まで一致させ、別テナントに同じ id があることを推測させない。
-// 接続と配信を別々に観測し、一方の参照だけが要求先テナントで絞り込む実装を見分ける。
+// 接続とプロビジョニングタスクを別々に観測し、一方の参照だけが要求先テナントで絞り込む実装を見分ける。
 // 同じ URL を default の管理者が参照できることを先に確かめ、拒否が URL や配線の誤り
 // ではないことを示す。
 //
-//spec:covers REQ-PROVISIONING-015, EX-PROVISIONING-015-01: 他テナントの管理者が同じ id で接続と配信を参照すると、存在しない id と同じ 404 provisioning_not_found になり、接続先 URL と配信 id を返さない。
+//spec:covers REQ-PROVISIONING-015, EX-PROVISIONING-015-01: 他テナントの管理者が同じ id で接続とプロビジョニングタスクを参照すると、存在しない id と同じ 404 provisioning_not_found になり、接続先 URL とプロビジョニングタスク id を返さない。
 func TestForeignTenantAdminSeesProvisioningAsMissing(t *testing.T) {
 	s := stack.New(t, stack.WithAuthorizationCodeFlow(), stack.WithProvisioning())
 	seedDefaultTenantProvisioning(t, s)
@@ -104,10 +104,10 @@ func TestForeignTenantAdminSeesProvisioningAsMissing(t *testing.T) {
 			leaked:      isolatedBaseURL,
 		},
 		{
-			name:        "配信",
-			path:        "/api/admin/v1/applications/" + isolatedApplicationID + "/provisioning/deliveries/" + isolatedDeliveryID,
-			missingPath: "/api/admin/v1/applications/" + isolatedApplicationID + "/provisioning/deliveries/delivery-missing",
-			leaked:      isolatedDeliveryID,
+			name:        "プロビジョニングタスク",
+			path:        "/api/admin/v1/applications/" + isolatedApplicationID + "/provisioning/tasks/" + isolatedTaskID,
+			missingPath: "/api/admin/v1/applications/" + isolatedApplicationID + "/provisioning/tasks/task-missing",
+			leaked:      isolatedTaskID,
 		},
 	}
 	for _, tc := range cases {

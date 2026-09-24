@@ -191,7 +191,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 | ID | 分類 | 脅威 | Context | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-068 | Information disclosure | 配信が誤った接続先へ個人データを送る | Provisioning | REQ-PROVISIONING-002、REQ-PROVISIONING-015、REQ-PROVISIONING-018 | `covered` |
+| THREAT-068 | Information disclosure | プロビジョニングタスクが誤った接続先へ個人データを送る | Provisioning | REQ-PROVISIONING-002、REQ-PROVISIONING-015、REQ-PROVISIONING-018 | `covered` |
 | THREAT-069 | Tampering | ログアウトトークンを再生し、任意のセッションを落とす | OAuth2 | OIDC-BACKCHANNEL-REPLAY、OIDC-BACKCHANNEL-LOGOUT-TOKEN、REQ-OAUTH2-025 | `covered` |
 | THREAT-070 | Tampering | 署名の無い、または検証されないセキュリティイベントが受信側で信じられる | SharedSignals | RFC8417-SET-SIGNED、RFC8417-SET-VERIFY | `covered` |
 | THREAT-071 | Information disclosure | ジョブの入出力に混ざった個人データやシークレットが管理 API から出る | Jobs | REQ-JOBS-014、contexts/jobs/decisions.md | `covered` |

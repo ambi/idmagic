@@ -18,7 +18,7 @@ import (
 // usecases' dependencies (spec/contexts/provisioning.yaml interfaces).
 type AdminDeps struct {
 	ConnectionRepo ports.ProvisioningConnectionRepository
-	DeliveryRepo   ports.ProvisioningDeliveryRepository
+	TaskRepo       ports.ProvisioningTaskRepository
 	AssignmentRepo appports.AssignmentRepository
 	UserRepo       userports.UserRepository
 	// GroupRepo lets a full resync cover the Groups a push_groups connection
@@ -31,7 +31,7 @@ type AdminDeps struct {
 }
 
 func (d AdminDeps) captureDeps() CaptureDeps {
-	return CaptureDeps{ConnectionRepo: d.ConnectionRepo, DeliveryRepo: d.DeliveryRepo, AssignmentRepo: d.AssignmentRepo}
+	return CaptureDeps{ConnectionRepo: d.ConnectionRepo, TaskRepo: d.TaskRepo, AssignmentRepo: d.AssignmentRepo}
 }
 
 // defaultSCIMUserMapping seeds the SCIM core User mapping table
@@ -268,9 +268,9 @@ func TestConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID
 
 var ErrSubjectNotInScope = errors.New("provisioning: subject is not in this connection's scope")
 
-// ProvisionOnDemand creates an immediate pending delivery for a single subject
+// ProvisionOnDemand creates an immediate pending task for a single subject
 // (spec/contexts/provisioning.yaml interfaces.ProvisionOnDemand).
-func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicationID string, sourceType domain.ProvisioningSourceType, sourceID string, now time.Time) (*domain.ProvisioningDelivery, error) {
+func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicationID string, sourceType domain.ProvisioningSourceType, sourceID string, now time.Time) (*domain.ProvisioningTask, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {
 		return nil, err
@@ -291,21 +291,21 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 	if err != nil {
 		return nil, err
 	}
-	delivery := &domain.ProvisioningDelivery{
+	task := &domain.ProvisioningTask{
 		ID: id, TenantID: tenantID, ConnectionID: applicationID, SourceType: sourceType, SourceID: sourceID,
-		SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.DeliveryPending,
+		SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.TaskPending,
 		CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 	}
-	if _, err := deps.DeliveryRepo.Save(ctx, delivery); err != nil {
+	if _, err := deps.TaskRepo.Save(ctx, task); err != nil {
 		return nil, err
 	}
-	return delivery, nil
+	return task, nil
 }
 
-// StartFullResync enqueues an update delivery for every subject in the
+// StartFullResync enqueues an update task for every subject in the
 // connection's scope (spec/contexts/provisioning.yaml interfaces.StartFullResync).
 // FullResyncCompleted is not emitted by this scoped implementation: tracking a
-// resync batch's completion across many asynchronous deliveries is left for a
+// resync batch's completion across many asynchronous tasks is left for a
 // follow-up (wi-45 T007 known gap).
 func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (int, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
@@ -350,12 +350,12 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 			if err != nil {
 				return err
 			}
-			delivery := &domain.ProvisioningDelivery{
+			task := &domain.ProvisioningTask{
 				ID: id, TenantID: tenantID, ConnectionID: applicationID, SourceType: sourceType, SourceID: sourceID,
-				SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.DeliveryPending,
+				SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.TaskPending,
 				CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 			}
-			created, err := deps.DeliveryRepo.Save(ctx, delivery)
+			created, err := deps.TaskRepo.Save(ctx, task)
 			if err != nil {
 				return err
 			}
@@ -378,55 +378,55 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 	return enqueued, nil
 }
 
-// ListDeliveries lists a connection's deliveries, most recent first.
+// ListTasks lists a connection's tasks, most recent first.
 // afterCreatedAt/afterID are the keyset continuation cursor (wi-159)
 // ; zero/"" for the first page.
-func ListDeliveries(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func ListTasks(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	return deps.DeliveryRepo.ListPageByConnection(ctx, tenantID, applicationID, status, sourceType, afterCreatedAt, afterID, limit)
+	return deps.TaskRepo.ListPageByConnection(ctx, tenantID, applicationID, status, sourceType, afterCreatedAt, afterID, limit)
 }
 
-func ListDeliveriesBefore(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func ListTasksBefore(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	return deps.DeliveryRepo.ListPageBeforeByConnection(ctx, tenantID, applicationID, status, sourceType, beforeCreatedAt, beforeID, limit)
+	return deps.TaskRepo.ListPageBeforeByConnection(ctx, tenantID, applicationID, status, sourceType, beforeCreatedAt, beforeID, limit)
 }
 
-// GetDelivery returns one delivery, verifying it belongs to applicationID.
-func GetDelivery(ctx context.Context, deps AdminDeps, tenantID, applicationID, deliveryID string) (*domain.ProvisioningDelivery, error) {
-	d, err := deps.DeliveryRepo.Find(ctx, tenantID, deliveryID)
+// GetTask returns one task, verifying it belongs to applicationID.
+func GetTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*domain.ProvisioningTask, error) {
+	d, err := deps.TaskRepo.Find(ctx, tenantID, taskID)
 	if err != nil {
 		return nil, err
 	}
 	if d == nil || d.ConnectionID != applicationID {
-		return nil, ErrDeliveryNotFound
+		return nil, ErrTaskNotFound
 	}
 	return d, nil
 }
 
-var ErrDeliveryNotRetryable = errors.New("provisioning: delivery is not dead_letter")
+var ErrTaskNotRetryable = errors.New("provisioning: task is not dead_letter")
 
-// RetryDelivery resets a dead_letter delivery to pending
-// (spec/contexts/provisioning.yaml interfaces.RetryProvisioningDelivery).
-func RetryDelivery(ctx context.Context, deps AdminDeps, tenantID, applicationID, deliveryID string) (*domain.ProvisioningDelivery, error) {
-	d, err := GetDelivery(ctx, deps, tenantID, applicationID, deliveryID)
+// RetryTask resets a dead_letter task to pending
+// (spec/contexts/provisioning.yaml interfaces.RetryProvisioningTask).
+func RetryTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*domain.ProvisioningTask, error) {
+	d, err := GetTask(ctx, deps, tenantID, applicationID, taskID)
 	if err != nil {
 		return nil, err
 	}
-	if d.Status != domain.DeliveryDeadLetter {
-		return nil, ErrDeliveryNotRetryable
+	if d.Status != domain.TaskDeadLetter {
+		return nil, ErrTaskNotRetryable
 	}
-	retried, err := deps.DeliveryRepo.RetryDeadLetter(ctx, tenantID, deliveryID)
+	retried, err := deps.TaskRepo.RetryDeadLetter(ctx, tenantID, taskID)
 	if err != nil {
 		return nil, err
 	}
 	if !retried {
-		return nil, ErrDeliveryNotRetryable
+		return nil, ErrTaskNotRetryable
 	}
-	return deps.DeliveryRepo.Find(ctx, tenantID, deliveryID)
+	return deps.TaskRepo.Find(ctx, tenantID, taskID)
 }
 
 // ResumeConnection clears quarantine (spec/contexts/provisioning.yaml

@@ -8,7 +8,7 @@ import (
 
 // ConflictError, NotFoundError and RetryableError are the protocol-agnostic
 // error taxonomy ProvisioningTargetClient implementations must return (wrapped
-// via errors.As-compatible chains) so the delivery engine usecase can classify
+// via errors.As-compatible chains) so the provisioning engine usecase can classify
 // downstream responses without depending on a concrete protocol package
 // (decision 2).
 
@@ -47,6 +47,6 @@ func (e *RetryableError) Error() string {
 func AsRetryableError(err error, target **RetryableError) bool { return errors.As(err, target) }
 
 // ErrRequiredAttributeUnresolved は、必須の属性マッピングを解決できず、下流へ何も
-// 送らなかったことを表す。値が無いまま再試行しても結果は変わらないため、配信を
+// 送らなかったことを表す。値が無いまま再試行しても結果は変わらないため、プロビジョニングタスクを
 // 待たずに失敗させる（フェイルクローズ）。
 var ErrRequiredAttributeUnresolved = errors.New("provisioning: required attribute mapping could not be resolved")

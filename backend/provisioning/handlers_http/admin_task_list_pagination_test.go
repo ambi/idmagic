@@ -25,11 +25,11 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// newAdminDeliveryPaginationHandler は provisioning/handlers_http 配下に他の admin
-// ハンドラのような共有 test helper が存在しないため新規に用意する。GetDelivery/RetryDelivery
+// newAdminTaskPaginationHandler は provisioning/handlers_http 配下に他の admin
+// ハンドラのような共有 test helper が存在しないため新規に用意する。GetTask/RetryTask
 // は connection_id (= application id) の文字列一致しか見ないため、実在する Application/
 // ProvisioningConnection レコードは不要 (usecases/admin_test.go と同じ前提)。
-func newAdminDeliveryPaginationHandler(t *testing.T) (*echo.Echo, *provisioningmemory.ProvisioningDeliveryRepository) {
+func newAdminTaskPaginationHandler(t *testing.T) (*echo.Echo, *provisioningmemory.ProvisioningTaskRepository) {
 	t.Helper()
 	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
@@ -37,7 +37,7 @@ func newAdminDeliveryPaginationHandler(t *testing.T) (*echo.Echo, *provisioningm
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	deliveryRepo := provisioningmemory.NewProvisioningDeliveryRepository()
+	taskRepo := provisioningmemory.NewProvisioningTaskRepository()
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          "http://idp.test",
@@ -56,11 +56,11 @@ func newAdminDeliveryPaginationHandler(t *testing.T) (*echo.Echo, *provisioningm
 		Provisioning: provisioning.Module{
 			ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
 			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
-			DeliveryRepo:   deliveryRepo,
+			TaskRepo:       taskRepo,
 		},
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})
-	return e, deliveryRepo
+	return e, taskRepo
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
@@ -73,7 +73,7 @@ func defaultRealmPath(path string) string {
 	return "/realms/default" + path
 }
 
-func adminDeliveryListRequest(e interface {
+func adminTaskListRequest(e interface {
 	ServeHTTP(http.ResponseWriter, *http.Request)
 }, path string,
 ) *httptest.ResponseRecorder {
@@ -84,40 +84,40 @@ func adminDeliveryListRequest(e interface {
 	return response
 }
 
-func seedDelivery(t *testing.T, repo *provisioningmemory.ProvisioningDeliveryRepository, id string, now time.Time) {
+func seedTask(t *testing.T, repo *provisioningmemory.ProvisioningTaskRepository, id string, now time.Time) {
 	t.Helper()
 	// SourceID を id ごとに変える: Save の idempotency key は
 	// (TenantID, ConnectionID, SourceType, SourceID, SourceVersion) なので、同一 SourceID/
 	// SourceVersion で複数件シードすると 2件目以降が無視される (IdempotencyKey 参照)。
-	if _, err := repo.Save(context.Background(), &provisioningdomain.ProvisioningDelivery{
+	if _, err := repo.Save(context.Background(), &provisioningdomain.ProvisioningTask{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, ConnectionID: "app-1",
 		SourceType: provisioningdomain.SourceTypeUser, SourceID: id, SourceVersion: 1,
-		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.DeliveryPending,
+		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
-		t.Fatalf("seed delivery: %v", err)
+		t.Fatalf("seed task: %v", err)
 	}
 }
 
-func decodeDeliveryListBody(t *testing.T, body []byte) []map[string]any {
+func decodeTaskListBody(t *testing.T, body []byte) []map[string]any {
 	t.Helper()
 	var parsed struct {
-		Deliveries []map[string]any `json:"deliveries"`
+		Tasks []map[string]any `json:"tasks"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		t.Fatalf("unmarshal deliveries body: %v (body=%s)", err, body)
+		t.Fatalf("unmarshal tasks body: %v (body=%s)", err, body)
 	}
-	return parsed.Deliveries
+	return parsed.Tasks
 }
 
-func TestAdminDeliveryListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
-	e, repo := newAdminDeliveryPaginationHandler(t)
+func TestAdminTaskListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
+	e, repo := newAdminTaskPaginationHandler(t)
 	base := time.Now().UTC().Add(-time.Hour)
 	for i, id := range []string{"charlie", "delta", "echo"} {
-		seedDelivery(t, repo, id, base.Add(time.Duration(i)*time.Minute))
+		seedTask(t, repo, id, base.Add(time.Duration(i)*time.Minute))
 	}
 
-	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?limit=2")
+	resp := adminTaskListRequest(e, "/api/admin/v1/applications/app-1/provisioning/tasks?limit=2")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -127,11 +127,11 @@ func TestAdminDeliveryListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 	}
 }
 
-func TestAdminDeliveryListOmitsLinkHeaderOnLastPage(t *testing.T) {
-	e, repo := newAdminDeliveryPaginationHandler(t)
-	seedDelivery(t, repo, "solo", time.Now().UTC())
+func TestAdminTaskListOmitsLinkHeaderOnLastPage(t *testing.T) {
+	e, repo := newAdminTaskPaginationHandler(t)
+	seedTask(t, repo, "solo", time.Now().UTC())
 
-	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?limit=200")
+	resp := adminTaskListRequest(e, "/api/admin/v1/applications/app-1/provisioning/tasks?limit=200")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -140,14 +140,14 @@ func TestAdminDeliveryListOmitsLinkHeaderOnLastPage(t *testing.T) {
 	}
 }
 
-func TestAdminDeliveryListNextPageContinuesWithoutOverlap(t *testing.T) {
-	e, repo := newAdminDeliveryPaginationHandler(t)
+func TestAdminTaskListNextPageContinuesWithoutOverlap(t *testing.T) {
+	e, repo := newAdminTaskPaginationHandler(t)
 	base := time.Now().UTC().Add(-time.Hour)
 	for i, id := range []string{"charlie", "delta", "echo"} {
-		seedDelivery(t, repo, id, base.Add(time.Duration(i)*time.Minute))
+		seedTask(t, repo, id, base.Add(time.Duration(i)*time.Minute))
 	}
 
-	first := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?limit=2")
+	first := adminTaskListRequest(e, "/api/admin/v1/applications/app-1/provisioning/tasks?limit=2")
 	link := first.Header().Get("Link")
 	if link == "" {
 		t.Fatal("expected a Link header on the first page")
@@ -155,15 +155,15 @@ func TestAdminDeliveryListNextPageContinuesWithoutOverlap(t *testing.T) {
 	nextPath := link[strings.Index(link, "<")+1 : strings.Index(link, ">")]
 	nextPath = strings.TrimPrefix(nextPath, "http://idp.test")
 
-	second := adminDeliveryListRequest(e, nextPath)
+	second := adminTaskListRequest(e, nextPath)
 	if second.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", second.Code, second.Body.String())
 	}
 	if !strings.Contains(second.Header().Get("Link"), `rel="prev"`) {
 		t.Fatalf("second page missing rel=prev: %q", second.Header().Get("Link"))
 	}
-	firstBody := decodeDeliveryListBody(t, first.Body.Bytes())
-	secondBody := decodeDeliveryListBody(t, second.Body.Bytes())
+	firstBody := decodeTaskListBody(t, first.Body.Bytes())
+	secondBody := decodeTaskListBody(t, second.Body.Bytes())
 	seen := map[string]bool{}
 	for _, d := range firstBody {
 		seen[d["id"].(string)] = true
@@ -171,40 +171,40 @@ func TestAdminDeliveryListNextPageContinuesWithoutOverlap(t *testing.T) {
 	for _, d := range secondBody {
 		id := d["id"].(string)
 		if seen[id] {
-			t.Fatalf("delivery id %q appeared on both pages", id)
+			t.Fatalf("task id %q appeared on both pages", id)
 		}
 	}
 	if len(secondBody) == 0 {
-		t.Fatal("expected the second page to return at least one delivery")
+		t.Fatal("expected the second page to return at least one task")
 	}
 }
 
-func TestAdminDeliveryListFiltersBySourceType(t *testing.T) {
-	e, repo := newAdminDeliveryPaginationHandler(t)
+func TestAdminTaskListFiltersBySourceType(t *testing.T) {
+	e, repo := newAdminTaskPaginationHandler(t)
 	now := time.Now().UTC()
-	seedDelivery(t, repo, "user-delivery", now)
-	if _, err := repo.Save(context.Background(), &provisioningdomain.ProvisioningDelivery{
-		ID: "group-delivery", TenantID: tenancydomain.DefaultTenantID, ConnectionID: "app-1",
+	seedTask(t, repo, "user-task", now)
+	if _, err := repo.Save(context.Background(), &provisioningdomain.ProvisioningTask{
+		ID: "group-task", TenantID: tenancydomain.DefaultTenantID, ConnectionID: "app-1",
 		SourceType: provisioningdomain.SourceTypeGroup, SourceID: "group-1", SourceVersion: 1,
-		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.DeliveryPending,
+		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending,
 		CreatedAt: now.Add(time.Minute), UpdatedAt: now.Add(time.Minute),
 	}); err != nil {
-		t.Fatalf("seed group delivery: %v", err)
+		t.Fatalf("seed group task: %v", err)
 	}
 
-	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?source_type=group")
+	resp := adminTaskListRequest(e, "/api/admin/v1/applications/app-1/provisioning/tasks?source_type=group")
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
-	deliveries := decodeDeliveryListBody(t, resp.Body.Bytes())
-	if len(deliveries) != 1 || deliveries[0]["id"] != "group-delivery" {
-		t.Fatalf("unexpected source_type result: %+v", deliveries)
+	tasks := decodeTaskListBody(t, resp.Body.Bytes())
+	if len(tasks) != 1 || tasks[0]["id"] != "group-task" {
+		t.Fatalf("unexpected source_type result: %+v", tasks)
 	}
 }
 
-func TestAdminDeliveryListRejectsInvalidCursor(t *testing.T) {
-	e, _ := newAdminDeliveryPaginationHandler(t)
-	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?cursor=not-a-real-cursor")
+func TestAdminTaskListRejectsInvalidCursor(t *testing.T) {
+	e, _ := newAdminTaskPaginationHandler(t)
+	resp := adminTaskListRequest(e, "/api/admin/v1/applications/app-1/provisioning/tasks?cursor=not-a-real-cursor")
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -216,10 +216,11 @@ func TestAdminDeliveryListRejectsInvalidCursor(t *testing.T) {
 	}
 }
 
-func TestAdminDeliveryListRejectsCursorFromAnotherTenant(t *testing.T) {
-	e, _ := newAdminDeliveryPaginationHandler(t)
+//spec:covers REQ-PROVISIONING-015: 別テナントで発行したカーソルでプロビジョニングタスクの一覧を読むと、400 で拒否される。
+func TestAdminTaskListRejectsCursorFromAnotherTenant(t *testing.T) {
+	e, _ := newAdminTaskPaginationHandler(t)
 	codec := support.NewCursorCodec([]byte("test-pagination-secret"))
-	// provisioningDeliveriesQueryHash はフィルタ無しのリクエスト (?limit=... のみ) では
+	// provisioningTasksQueryHash はフィルタ無しのリクエスト (?limit=... のみ) では
 	// 空文字列になる (cursor/limit を除いた残りの query をそのまま hash にするため)。
 	foreignCursor, err := codec.Encode(support.Cursor{
 		TenantID: "some-other-tenant", QueryHash: "",
@@ -228,7 +229,7 @@ func TestAdminDeliveryListRejectsCursorFromAnotherTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode foreign cursor: %v", err)
 	}
-	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?cursor="+foreignCursor)
+	resp := adminTaskListRequest(e, "/api/admin/v1/applications/app-1/provisioning/tasks?cursor="+foreignCursor)
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}

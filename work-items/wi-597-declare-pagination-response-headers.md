@@ -11,7 +11,7 @@ affected_spec:
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListAgents }
   - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListAdminApplications }
   - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListApplicationAssignments }
-  - { path: spec/contexts/provisioning/main.tsp, symbol: IdMagic.Provisioning.Operations.ListProvisioningDeliveries }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: IdMagic.Provisioning.Operations.ListProvisioningTasks }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.ListAuthenticationEventBuckets }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminOAuth2Clients }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminConsents }

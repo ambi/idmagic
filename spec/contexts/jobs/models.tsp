@@ -62,7 +62,7 @@ enum JobKind {
   dynamic_group_reconcile: "dynamic_group_reconcile",
   lifecycle_workflow_run: "lifecycle_workflow_run",
   backchannel_logout_delivery: "backchannel_logout_delivery",
-  provisioning_delivery: "provisioning_delivery",
+  provisioning_task: "provisioning_task",
   data_key_reencryption: "data_key_reencryption",
 }
 

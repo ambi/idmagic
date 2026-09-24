@@ -166,27 +166,27 @@ func (r *RemoteResourceLinkRepository) Upsert(_ context.Context, link *domain.Re
 	return nil
 }
 
-// ProvisioningDeliveryRepository is the in-memory ports.ProvisioningDeliveryRepository.
-type ProvisioningDeliveryRepository struct {
+// ProvisioningTaskRepository is the in-memory ports.ProvisioningTaskRepository.
+type ProvisioningTaskRepository struct {
 	mu          sync.RWMutex
-	deliveries  map[string]*domain.ProvisioningDelivery // key: tenantKey(tenant_id, id)
-	idempotency map[string]string                       // idempotency key -> delivery id
+	tasks       map[string]*domain.ProvisioningTask // key: tenantKey(tenant_id, id)
+	idempotency map[string]string                   // idempotency key -> task id
 	// reservations は猶予期間つき削除の予約。key: tenantKey(tenant_id, id)
 	reservations map[string]*domain.ScheduledDeprovision
 }
 
-var _ ports.ProvisioningDeliveryRepository = (*ProvisioningDeliveryRepository)(nil)
+var _ ports.ProvisioningTaskRepository = (*ProvisioningTaskRepository)(nil)
 
-func NewProvisioningDeliveryRepository() *ProvisioningDeliveryRepository {
-	return &ProvisioningDeliveryRepository{
-		deliveries: map[string]*domain.ProvisioningDelivery{}, idempotency: map[string]string{},
+func NewProvisioningTaskRepository() *ProvisioningTaskRepository {
+	return &ProvisioningTaskRepository{
+		tasks: map[string]*domain.ProvisioningTask{}, idempotency: map[string]string{},
 		reservations: map[string]*domain.ScheduledDeprovision{},
 	}
 }
 
-func deliveryKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
+func taskKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
 
-func cloneDelivery(d *domain.ProvisioningDelivery) *domain.ProvisioningDelivery {
+func cloneTask(d *domain.ProvisioningTask) *domain.ProvisioningTask {
 	if d == nil {
 		return nil
 	}
@@ -206,7 +206,7 @@ func cloneDelivery(d *domain.ProvisioningDelivery) *domain.ProvisioningDelivery 
 	return &clone
 }
 
-func (r *ProvisioningDeliveryRepository) Save(_ context.Context, d *domain.ProvisioningDelivery) (bool, error) {
+func (r *ProvisioningTaskRepository) Save(_ context.Context, d *domain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
@@ -216,29 +216,29 @@ func (r *ProvisioningDeliveryRepository) Save(_ context.Context, d *domain.Provi
 	if _, ok := r.idempotency[idKey]; ok {
 		return false, nil
 	}
-	r.deliveries[deliveryKey(d.TenantID, d.ID)] = cloneDelivery(d)
+	r.tasks[taskKey(d.TenantID, d.ID)] = cloneTask(d)
 	r.idempotency[idKey] = d.ID
 	return true, nil
 }
 
-func (r *ProvisioningDeliveryRepository) Find(_ context.Context, tenantID, deliveryID string) (*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) Find(_ context.Context, tenantID, taskID string) (*domain.ProvisioningTask, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return cloneDelivery(r.deliveries[deliveryKey(tenantID, deliveryID)]), nil
+	return cloneTask(r.tasks[taskKey(tenantID, taskID)]), nil
 }
 
-func (r *ProvisioningDeliveryRepository) ListByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) ListByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, limit int) ([]*domain.ProvisioningTask, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*domain.ProvisioningDelivery{}
-	for _, d := range r.deliveries {
+	out := []*domain.ProvisioningTask{}
+	for _, d := range r.tasks {
 		if d.TenantID != tenantID || d.ConnectionID != connectionID {
 			continue
 		}
 		if status != nil && d.Status != *status {
 			continue
 		}
-		out = append(out, cloneDelivery(d))
+		out = append(out, cloneTask(d))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
 	if limit > 0 && len(out) > limit {
@@ -247,14 +247,14 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(_ context.Context, ten
 	return out, nil
 }
 
-// ListPageByConnection implements ports.ProvisioningDeliveryRepository.ListPageByConnection
+// ListPageByConnection implements ports.ProvisioningTaskRepository.ListPageByConnection
 // (wi-159): keyset pagination ordered by (CreatedAt, ID) descending
 // — matching ListByConnection's pre-existing "most recent first" order.
-func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) ListPageByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*domain.ProvisioningDelivery{}
-	for _, d := range r.deliveries {
+	out := []*domain.ProvisioningTask{}
+	for _, d := range r.tasks {
 		if d.TenantID != tenantID || d.ConnectionID != connectionID {
 			continue
 		}
@@ -264,9 +264,9 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context,
 		if sourceType != nil && d.SourceType != *sourceType {
 			continue
 		}
-		out = append(out, cloneDelivery(d))
+		out = append(out, cloneTask(d))
 	}
-	key := func(d *domain.ProvisioningDelivery) (string, string) {
+	key := func(d *domain.ProvisioningTask) (string, string) {
 		return d.CreatedAt.UTC().Format(time.RFC3339Nano), d.ID
 	}
 	afterPrimary := ""
@@ -276,11 +276,11 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context,
 	return sharedmem.KeysetPage(out, key, true, afterPrimary, afterID, limit), nil
 }
 
-func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*domain.ProvisioningDelivery{}
-	for _, d := range r.deliveries {
+	out := []*domain.ProvisioningTask{}
+	for _, d := range r.tasks {
 		if d.TenantID != tenantID || d.ConnectionID != connectionID {
 			continue
 		}
@@ -290,9 +290,9 @@ func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(_ context.Co
 		if sourceType != nil && d.SourceType != *sourceType {
 			continue
 		}
-		out = append(out, cloneDelivery(d))
+		out = append(out, cloneTask(d))
 	}
-	key := func(d *domain.ProvisioningDelivery) (string, string) {
+	key := func(d *domain.ProvisioningTask) (string, string) {
 		return d.CreatedAt.UTC().Format(time.RFC3339Nano), d.ID
 	}
 	beforePrimary := ""
@@ -302,13 +302,13 @@ func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(_ context.Co
 	return sharedmem.KeysetPageBefore(out, key, true, beforePrimary, beforeID, limit), nil
 }
 
-func (r *ProvisioningDeliveryRepository) ListUnenqueued(_ context.Context, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) ListUnenqueued(_ context.Context, limit int) ([]*domain.ProvisioningTask, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*domain.ProvisioningDelivery{}
-	for _, d := range r.deliveries {
-		if d.Status == domain.DeliveryPending && d.JobID == nil {
-			out = append(out, cloneDelivery(d))
+	out := []*domain.ProvisioningTask{}
+	for _, d := range r.tasks {
+		if d.Status == domain.TaskPending && d.JobID == nil {
+			out = append(out, cloneTask(d))
 			if limit > 0 && len(out) >= limit {
 				break
 			}
@@ -317,22 +317,22 @@ func (r *ProvisioningDeliveryRepository) ListUnenqueued(_ context.Context, limit
 	return out, nil
 }
 
-func (r *ProvisioningDeliveryRepository) AttachJob(_ context.Context, tenantID, deliveryID, jobID string) (bool, error) {
+func (r *ProvisioningTaskRepository) AttachJob(_ context.Context, tenantID, taskID, jobID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	d := r.deliveries[deliveryKey(tenantID, deliveryID)]
-	if d == nil || d.JobID != nil || d.Status != domain.DeliveryPending {
+	d := r.tasks[taskKey(tenantID, taskID)]
+	if d == nil || d.JobID != nil || d.Status != domain.TaskPending {
 		return false, nil
 	}
 	d.JobID = &jobID
-	d.Status = domain.DeliveryInFlight
+	d.Status = domain.TaskInFlight
 	return true, nil
 }
 
-func (r *ProvisioningDeliveryRepository) UpdateStatus(_ context.Context, tenantID, deliveryID string, status domain.ProvisioningDeliveryStatus, lastError *string) error {
+func (r *ProvisioningTaskRepository) UpdateStatus(_ context.Context, tenantID, taskID string, status domain.ProvisioningTaskStatus, lastError *string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	d := r.deliveries[deliveryKey(tenantID, deliveryID)]
+	d := r.tasks[taskKey(tenantID, taskID)]
 	if d == nil {
 		return nil
 	}
@@ -341,27 +341,27 @@ func (r *ProvisioningDeliveryRepository) UpdateStatus(_ context.Context, tenantI
 	return nil
 }
 
-func (r *ProvisioningDeliveryRepository) RetryDeadLetter(_ context.Context, tenantID, deliveryID string) (bool, error) {
+func (r *ProvisioningTaskRepository) RetryDeadLetter(_ context.Context, tenantID, taskID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	d := r.deliveries[deliveryKey(tenantID, deliveryID)]
-	if d == nil || d.Status != domain.DeliveryDeadLetter {
+	d := r.tasks[taskKey(tenantID, taskID)]
+	if d == nil || d.Status != domain.TaskDeadLetter {
 		return false, nil
 	}
-	d.Status, d.JobID, d.LastError = domain.DeliveryPending, nil, nil
+	d.Status, d.JobID, d.LastError = domain.TaskPending, nil, nil
 	return true, nil
 }
 
 func cloneScheduledDeprovision(s *domain.ScheduledDeprovision) *domain.ScheduledDeprovision {
 	clone := *s
-	if s.DeliveryID != nil {
-		v := *s.DeliveryID
-		clone.DeliveryID = &v
+	if s.TaskID != nil {
+		v := *s.TaskID
+		clone.TaskID = &v
 	}
 	return &clone
 }
 
-func (r *ProvisioningDeliveryRepository) ScheduleDeprovision(_ context.Context, s *domain.ScheduledDeprovision) (bool, error) {
+func (r *ProvisioningTaskRepository) ScheduleDeprovision(_ context.Context, s *domain.ScheduledDeprovision) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, existing := range r.reservations {
@@ -370,11 +370,11 @@ func (r *ProvisioningDeliveryRepository) ScheduleDeprovision(_ context.Context, 
 			return false, nil
 		}
 	}
-	r.reservations[deliveryKey(s.TenantID, s.ID)] = cloneScheduledDeprovision(s)
+	r.reservations[taskKey(s.TenantID, s.ID)] = cloneScheduledDeprovision(s)
 	return true, nil
 }
 
-func (r *ProvisioningDeliveryRepository) CancelScheduledDeprovisions(_ context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error) {
+func (r *ProvisioningTaskRepository) CancelScheduledDeprovisions(_ context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cancelled := 0
@@ -389,7 +389,7 @@ func (r *ProvisioningDeliveryRepository) CancelScheduledDeprovisions(_ context.C
 	return cancelled, nil
 }
 
-func (r *ProvisioningDeliveryRepository) ListDueDeprovisions(_ context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
+func (r *ProvisioningTaskRepository) ListDueDeprovisions(_ context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := []*domain.ScheduledDeprovision{}
@@ -405,22 +405,22 @@ func (r *ProvisioningDeliveryRepository) ListDueDeprovisions(_ context.Context, 
 	return out, nil
 }
 
-func (r *ProvisioningDeliveryRepository) MaterializeDeprovision(_ context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningDelivery) (bool, error) {
+func (r *ProvisioningTaskRepository) MaterializeDeprovision(_ context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	stored := r.reservations[deliveryKey(s.TenantID, s.ID)]
+	stored := r.reservations[taskKey(s.TenantID, s.ID)]
 	if stored == nil || stored.Status != domain.ScheduledDeprovisionScheduled {
 		return false, nil
 	}
 	idKey := d.IdempotencyKey()
 	if _, ok := r.idempotency[idKey]; !ok {
-		r.deliveries[deliveryKey(d.TenantID, d.ID)] = cloneDelivery(d)
+		r.tasks[taskKey(d.TenantID, d.ID)] = cloneTask(d)
 		r.idempotency[idKey] = d.ID
 	}
-	deliveryID := r.idempotency[idKey]
-	stored.Status, stored.DeliveryID, stored.UpdatedAt = domain.ScheduledDeprovisionMaterialized, &deliveryID, d.CreatedAt
+	taskID := r.idempotency[idKey]
+	stored.Status, stored.TaskID, stored.UpdatedAt = domain.ScheduledDeprovisionMaterialized, &taskID, d.CreatedAt
 	return true, nil
 }

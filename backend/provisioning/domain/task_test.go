@@ -5,16 +5,16 @@ import (
 	"time"
 )
 
-// allDeliveryStatuses and allDeliveryEvents enumerate the ProvisioningDeliveryLifecycle
-// alphabet (spec/contexts/provisioning.yaml states.ProvisioningDeliveryLifecycle) so the
+// allTaskStatuses and allTaskEvents enumerate the ProvisioningTaskLifecycle
+// alphabet (spec/contexts/provisioning.yaml states.ProvisioningTaskLifecycle) so the
 // invariant tests below can exhaustively check every (status, event) pair, mirroring
 // backend/jobs/domain/job_test.go.
 var (
-	allDeliveryStatuses = []ProvisioningDeliveryStatus{
-		DeliveryPending, DeliveryInFlight, DeliverySucceeded, DeliveryDeadLetter,
+	allTaskStatuses = []ProvisioningTaskStatus{
+		TaskPending, TaskInFlight, TaskSucceeded, TaskDeadLetter,
 	}
-	allDeliveryEvents = []ProvisioningDeliveryLifecycleEvent{
-		EventProvisioningDeliveryStarted,
+	allTaskEvents = []ProvisioningTaskLifecycleEvent{
+		EventProvisioningTaskStarted,
 		EventUserProvisioned,
 		EventUserDeprovisioned,
 		EventGroupPushed,
@@ -23,78 +23,78 @@ var (
 	}
 )
 
-func TestTransitionProvisioningDeliveryLifecycle_DeclaredTransitions(t *testing.T) {
+func TestTransitionProvisioningTaskLifecycle_DeclaredTransitions(t *testing.T) {
 	tests := []struct {
-		from  ProvisioningDeliveryStatus
-		event ProvisioningDeliveryLifecycleEvent
-		want  ProvisioningDeliveryStatus
+		from  ProvisioningTaskStatus
+		event ProvisioningTaskLifecycleEvent
+		want  ProvisioningTaskStatus
 	}{
-		{DeliveryPending, EventProvisioningDeliveryStarted, DeliveryInFlight},
-		{DeliveryInFlight, EventUserProvisioned, DeliverySucceeded},
-		{DeliveryInFlight, EventUserDeprovisioned, DeliverySucceeded},
-		{DeliveryInFlight, EventGroupPushed, DeliverySucceeded},
-		{DeliveryInFlight, EventGroupMembershipPushed, DeliverySucceeded},
-		{DeliveryInFlight, EventUserProvisioningFailed, DeliveryDeadLetter},
+		{TaskPending, EventProvisioningTaskStarted, TaskInFlight},
+		{TaskInFlight, EventUserProvisioned, TaskSucceeded},
+		{TaskInFlight, EventUserDeprovisioned, TaskSucceeded},
+		{TaskInFlight, EventGroupPushed, TaskSucceeded},
+		{TaskInFlight, EventGroupMembershipPushed, TaskSucceeded},
+		{TaskInFlight, EventUserProvisioningFailed, TaskDeadLetter},
 	}
 	for _, tt := range tests {
-		got, err := TransitionProvisioningDeliveryLifecycle(tt.from, tt.event)
+		got, err := TransitionProvisioningTaskLifecycle(tt.from, tt.event)
 		if err != nil {
-			t.Errorf("TransitionProvisioningDeliveryLifecycle(%q, %q) unexpected error: %v", tt.from, tt.event, err)
+			t.Errorf("TransitionProvisioningTaskLifecycle(%q, %q) unexpected error: %v", tt.from, tt.event, err)
 			continue
 		}
 		if got != tt.want {
-			t.Errorf("TransitionProvisioningDeliveryLifecycle(%q, %q) = %q, want %q", tt.from, tt.event, got, tt.want)
+			t.Errorf("TransitionProvisioningTaskLifecycle(%q, %q) = %q, want %q", tt.from, tt.event, got, tt.want)
 		}
 	}
 }
 
-func TestTransitionProvisioningDeliveryLifecycle_InvariantOnlyDeclaredTransitionsSucceed(t *testing.T) {
+func TestTransitionProvisioningTaskLifecycle_InvariantOnlyDeclaredTransitionsSucceed(t *testing.T) {
 	declared := map[[2]string]bool{}
-	for _, tr := range provisioningDeliveryTransitions {
+	for _, tr := range provisioningTaskTransitions {
 		declared[[2]string{string(tr.From), string(tr.Event)}] = true
 	}
-	for _, from := range allDeliveryStatuses {
-		for _, event := range allDeliveryEvents {
-			_, err := TransitionProvisioningDeliveryLifecycle(from, event)
+	for _, from := range allTaskStatuses {
+		for _, event := range allTaskEvents {
+			_, err := TransitionProvisioningTaskLifecycle(from, event)
 			ok := declared[[2]string{string(from), string(event)}]
 			if ok && err != nil {
-				t.Errorf("TransitionProvisioningDeliveryLifecycle(%q, %q) should succeed (declared) but got error: %v", from, event, err)
+				t.Errorf("TransitionProvisioningTaskLifecycle(%q, %q) should succeed (declared) but got error: %v", from, event, err)
 			}
 			if !ok && err == nil {
-				t.Errorf("TransitionProvisioningDeliveryLifecycle(%q, %q) should fail (undeclared) but succeeded", from, event)
+				t.Errorf("TransitionProvisioningTaskLifecycle(%q, %q) should fail (undeclared) but succeeded", from, event)
 			}
 		}
 	}
 }
 
-func TestTransitionProvisioningDeliveryLifecycle_InvariantTerminalStatesHaveNoOutgoingTransitions(t *testing.T) {
-	for _, tr := range provisioningDeliveryTransitions {
-		if IsProvisioningDeliveryTerminal(tr.From) {
+func TestTransitionProvisioningTaskLifecycle_InvariantTerminalStatesHaveNoOutgoingTransitions(t *testing.T) {
+	for _, tr := range provisioningTaskTransitions {
+		if IsProvisioningTaskTerminal(tr.From) {
 			t.Errorf("terminal status %q has outgoing transition on event %q", tr.From, tr.Event)
 		}
 	}
 }
 
-func TestIsProvisioningDeliveryTerminal(t *testing.T) {
-	terminal := map[ProvisioningDeliveryStatus]bool{DeliverySucceeded: true, DeliveryDeadLetter: true}
-	for _, s := range allDeliveryStatuses {
-		if got, want := IsProvisioningDeliveryTerminal(s), terminal[s]; got != want {
-			t.Errorf("IsProvisioningDeliveryTerminal(%q) = %v, want %v", s, got, want)
+func TestIsProvisioningTaskTerminal(t *testing.T) {
+	terminal := map[ProvisioningTaskStatus]bool{TaskSucceeded: true, TaskDeadLetter: true}
+	for _, s := range allTaskStatuses {
+		if got, want := IsProvisioningTaskTerminal(s), terminal[s]; got != want {
+			t.Errorf("IsProvisioningTaskTerminal(%q) = %v, want %v", s, got, want)
 		}
 	}
 }
 
-func TestProvisioningDelivery_IdempotencyKey_StableForSameInputs(t *testing.T) {
-	d1 := ProvisioningDelivery{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3}
-	d2 := ProvisioningDelivery{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3}
+func TestProvisioningTask_IdempotencyKey_StableForSameInputs(t *testing.T) {
+	d1 := ProvisioningTask{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3}
+	d2 := ProvisioningTask{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3}
 	if d1.IdempotencyKey() != d2.IdempotencyKey() {
 		t.Errorf("IdempotencyKey() not stable for identical inputs: %q != %q", d1.IdempotencyKey(), d2.IdempotencyKey())
 	}
 }
 
-func TestProvisioningDelivery_IdempotencyKey_DiffersOnAnyComponent(t *testing.T) {
-	base := ProvisioningDelivery{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3}
-	variants := []ProvisioningDelivery{
+func TestProvisioningTask_IdempotencyKey_DiffersOnAnyComponent(t *testing.T) {
+	base := ProvisioningTask{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3}
+	variants := []ProvisioningTask{
 		{TenantID: "tenant-b", ConnectionID: "conn-1", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3},
 		{TenantID: "tenant-a", ConnectionID: "conn-2", SourceType: SourceTypeUser, SourceID: "user-1", SourceVersion: 3},
 		{TenantID: "tenant-a", ConnectionID: "conn-1", SourceType: SourceTypeGroup, SourceID: "user-1", SourceVersion: 3},
@@ -165,13 +165,13 @@ func TestProvisioningSourceType_Valid(t *testing.T) {
 	}
 }
 
-func TestProvisioningDeliveryStatus_Valid(t *testing.T) {
-	for _, s := range allDeliveryStatuses {
+func TestProvisioningTaskStatus_Valid(t *testing.T) {
+	for _, s := range allTaskStatuses {
 		if !s.Valid() {
-			t.Errorf("ProvisioningDeliveryStatus(%q).Valid() = false, want true", s)
+			t.Errorf("ProvisioningTaskStatus(%q).Valid() = false, want true", s)
 		}
 	}
-	if ProvisioningDeliveryStatus("bogus").Valid() {
-		t.Error(`ProvisioningDeliveryStatus("bogus").Valid() = true, want false`)
+	if ProvisioningTaskStatus("bogus").Valid() {
+		t.Error(`ProvisioningTaskStatus("bogus").Valid() = true, want false`)
 	}
 }

@@ -90,7 +90,7 @@ func (a ProvisioningDeprovisionAction) Valid() bool {
 // DeprovisionPolicy translates internal deprovision triggers to downstream actions
 // (spec/contexts/provisioning.yaml models.DeprovisionPolicy). user disable and group
 // membership removal have no configurable field: they are fixed to deactivate and
-// PATCH members remove respectively, enforced by the delivery engine rather than
+// PATCH members remove respectively, enforced by the provisioning engine rather than
 // this policy.
 type DeprovisionPolicy struct {
 	OnUnassign                         ProvisioningDeprovisionAction `json:"on_unassign"`

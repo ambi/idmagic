@@ -10,22 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ProvisioningDelivery struct {
-	ID            string
-	TenantID      string
-	ConnectionID  string
-	SourceType    string
-	SourceID      string
-	SourceVersion int64
-	Operation     string
-	Status        string
-	JobID         pgtype.UUID
-	LastError     pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	CompletedAt   pgtype.Timestamptz
-}
-
 type ProvisioningRemoteLink struct {
 	ConnectionID      string
 	TenantID          string
@@ -46,7 +30,23 @@ type ProvisioningScheduledDeprovision struct {
 	SourceVersion int64
 	DueAt         time.Time
 	Status        string
-	DeliveryID    pgtype.UUID
+	TaskID        pgtype.UUID
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+type ProvisioningTask struct {
+	ID            string
+	TenantID      string
+	ConnectionID  string
+	SourceType    string
+	SourceID      string
+	SourceVersion int64
+	Operation     string
+	Status        string
+	JobID         pgtype.UUID
+	LastError     pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	CompletedAt   pgtype.Timestamptz
 }

@@ -61,7 +61,7 @@ push される」汎用 outbound hook を導入する。
     EventHookSuspended event を追加する。
   - `objectives` に配送捕捉レイテンシ (イベント発生から delivery 行の作成まで) の目標を追加する
     (`docs/domain/provisioning/decisions.md` の
-    ProvisioningDeliveryCaptureLatency と同じ考え方)。
+    ProvisioningTaskCaptureLatency と同じ考え方)。
   - `authorization` に hook 管理を `audit:write` 相当の scope / tenant admin に限定する規則を追加する。
   - `scenarios`: 正常配送 / 4xx で再試行せず失敗記録 / 5xx で指数バックオフ再試行 /
     連続失敗で自動 Suspend / private IP 宛先の登録拒否 / 他テナントの delivery が見えない。

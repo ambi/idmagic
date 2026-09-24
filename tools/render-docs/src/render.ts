@@ -1003,7 +1003,7 @@ const commonPropertyDescriptions: Record<string, string> = {
   runId: 'ワークフロー実行の識別子。',
   jobId: '対象ジョブの識別子。',
   connectionId: '対象接続の識別子。',
-  deliveryId: '対象配送の識別子。',
+  taskId: '対象プロビジョニングタスクの識別子。',
   exportId: '対象エクスポートの識別子。',
   id: 'このデータを一意に識別する値。',
   name: '利用者に表示する名前。',

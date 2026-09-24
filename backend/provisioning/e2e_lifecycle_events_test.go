@@ -25,7 +25,7 @@ import (
 )
 
 // lifecycleRun は worker と同じ組み立て（Module のディスパッチャーとジョブハンドラー、
-// Jobs の保存先）で配信を進め、発行ポートへ渡ったイベントを残す。Runner のポーリング
+// Jobs の保存先）でプロビジョニングタスクを進め、発行ポートへ渡ったイベントを残す。Runner のポーリング
 // だけは省き、確保したジョブを直接ハンドラーへ渡す。
 type lifecycleRun struct {
 	h      *e2eHarness
@@ -38,7 +38,7 @@ type lifecycleRun struct {
 func newLifecycleRun(h *e2eHarness) *lifecycleRun {
 	return &lifecycleRun{
 		h:      h,
-		module: provisioning.Module{ConnectionRepo: h.connRepo, RemoteLinkRepo: h.linkRepo, DeliveryRepo: h.deliveryRepo},
+		module: provisioning.Module{ConnectionRepo: h.connRepo, RemoteLinkRepo: h.linkRepo, TaskRepo: h.taskRepo},
 		jobs:   jobsmemory.NewJobRepository(),
 		target: h.server.URL,
 	}
@@ -62,8 +62,8 @@ func (r *lifecycleRun) dispatch() {
 // dispatchAt は worker の周期処理を now の時点として 1 回実行する。
 func (r *lifecycleRun) dispatchAt(now time.Time) {
 	r.h.t.Helper()
-	if _, err := usecases.DispatchPendingDeliveries(context.Background(), r.module.DispatcherDeps(r.jobs, nil, r.emit), 100, now); err != nil {
-		r.h.t.Fatalf("DispatchPendingDeliveries() error = %v", err)
+	if _, err := usecases.DispatchPendingTasks(context.Background(), r.module.DispatcherDeps(r.jobs, nil, r.emit), 100, now); err != nil {
+		r.h.t.Fatalf("DispatchPendingTasks() error = %v", err)
 	}
 }
 
@@ -113,9 +113,9 @@ func (r *lifecycleRun) handle(job *jobsdomain.Job) error {
 	return err
 }
 
-func (r *lifecycleRun) delivery(id string) *domain.ProvisioningDelivery {
+func (r *lifecycleRun) task(id string) *domain.ProvisioningTask {
 	r.h.t.Helper()
-	d, err := r.h.deliveryRepo.Find(context.Background(), r.h.tenantID, id)
+	d, err := r.h.taskRepo.Find(context.Background(), r.h.tenantID, id)
 	if err != nil || d == nil {
 		r.h.t.Fatalf("Find(%s) = %v, %v", id, d, err)
 	}
@@ -147,8 +147,8 @@ func (h *e2eHarness) createUser(username string) string {
 	return user.ID
 }
 
-//spec:covers EX-PROVISIONING-003-01: User の作成から worker の組み立てで配信すると、ProvisioningDeliveryStarted で in_flight になり、下流へ POST して UserProvisioned で succeeded になる。
-func TestE2E_DispatchAndDeliveryEmitStartedThenProvisioned(t *testing.T) {
+//spec:covers EX-PROVISIONING-003-01: User の作成から worker の組み立てでプロビジョニングすると、ProvisioningTaskStarted で in_flight になり、下流へ POST して UserProvisioned で succeeded になる。
+func TestE2E_DispatchAndTaskEmitStartedThenProvisioned(t *testing.T) {
 	h := newE2EHarness(t)
 	run := newLifecycleRun(h)
 	userID := h.createUser("alice-events")
@@ -156,13 +156,13 @@ func TestE2E_DispatchAndDeliveryEmitStartedThenProvisioned(t *testing.T) {
 	run.dispatch()
 	job := run.claim()
 	var params struct {
-		DeliveryID string `json:"delivery_id"`
+		TaskID string `json:"task_id"`
 	}
 	if err := json.Unmarshal(job.Params, &params); err != nil {
 		t.Fatal(err)
 	}
-	if got := run.delivery(params.DeliveryID); got.Status != domain.DeliveryInFlight || got.JobID == nil || *got.JobID != job.ID {
-		t.Fatalf("delivery after dispatch = %+v, want in_flight with job %s", got, job.ID)
+	if got := run.task(params.TaskID); got.Status != domain.TaskInFlight || got.JobID == nil || *got.JobID != job.ID {
+		t.Fatalf("task after dispatch = %+v, want in_flight with job %s", got, job.ID)
 	}
 	if err := run.handle(job); err != nil {
 		t.Fatalf("handle() error = %v", err)
@@ -172,15 +172,15 @@ func TestE2E_DispatchAndDeliveryEmitStartedThenProvisioned(t *testing.T) {
 		t.Fatalf("handle() rerun error = %v", err)
 	}
 
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserProvisioned"}) {
-		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserProvisioned]", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserProvisioned"}) {
+		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserProvisioned]", got)
 	}
-	if got := run.delivery(params.DeliveryID); got.Status != domain.DeliverySucceeded || h.downstream.count() != 1 {
+	if got := run.task(params.TaskID); got.Status != domain.TaskSucceeded || h.downstream.count() != 1 {
 		t.Fatalf("status = %v, downstream requests = %d; want succeeded after one POST", got.Status, h.downstream.count())
 	}
 	started, provisioned := wire(t, run.events[0]), wire(t, run.events[1])
-	if started["tenantId"] != h.tenantID || started["deliveryId"] != params.DeliveryID || started["jobId"] != job.ID {
-		t.Errorf("ProvisioningDeliveryStarted = %v, want tenant %s, delivery %s, job %s", started, h.tenantID, params.DeliveryID, job.ID)
+	if started["tenantId"] != h.tenantID || started["taskId"] != params.TaskID || started["jobId"] != job.ID {
+		t.Errorf("ProvisioningTaskStarted = %v, want tenant %s, task %s, job %s", started, h.tenantID, params.TaskID, job.ID)
 	}
 	if provisioned["userId"] != userID || provisioned["remoteId"] != "remote-user-1" || provisioned["connectionId"] != h.connectionID {
 		t.Errorf("UserProvisioned = %v, want user %s provisioned as remote-user-1 on %s", provisioned, userID, h.connectionID)
@@ -219,8 +219,8 @@ func TestE2E_UnassignmentSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	if last.path != "/Users/"+remoteID || (last.method != http.MethodPatch && last.method != http.MethodPut) || !sendsInactive(last.body) {
 		t.Fatalf("downstream last request = %s %s %v, want an update of %s with active=false", last.method, last.path, last.body, remoteID)
 	}
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserDeprovisioned"}) {
-		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserDeprovisioned]", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserDeprovisioned"}) {
+		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserDeprovisioned]", got)
 	}
 	if deprovisioned := wire(t, run.events[1]); deprovisioned["userId"] != userID || deprovisioned["action"] != "deactivate" {
 		t.Errorf("UserDeprovisioned = %v, want user %s with action deactivate", deprovisioned, userID)
@@ -246,7 +246,7 @@ func sendsInactive(body map[string]any) bool {
 }
 
 //spec:covers EX-PROVISIONING-010-01: 下流が失敗し続けると、最後の試行で dead_letter になって UserProvisioningFailed を発行し、連続失敗の閾値で ConnectionQuarantined を発行する。
-func TestE2E_ExhaustedDeliveryEmitsFailedAndQuarantined(t *testing.T) {
+func TestE2E_ExhaustedTaskEmitsFailedAndQuarantined(t *testing.T) {
 	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -264,16 +264,16 @@ func TestE2E_ExhaustedDeliveryEmitsFailedAndQuarantined(t *testing.T) {
 	if err := run.handle(job); err == nil {
 		t.Fatal("handle() non-terminal attempt: want the downstream error so Jobs retries")
 	}
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted"}) {
-		t.Fatalf("events after a non-terminal failure = %v, want only ProvisioningDeliveryStarted", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted"}) {
+		t.Fatalf("events after a non-terminal failure = %v, want only ProvisioningTaskStarted", got)
 	}
 	job.Attempts = job.MaxAttempts
 	if err := run.handle(job); err == nil {
 		t.Fatal("handle() terminal attempt: want the downstream error")
 	}
 
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserProvisioningFailed", "ConnectionQuarantined"}) {
-		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserProvisioningFailed ConnectionQuarantined]", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserProvisioningFailed", "ConnectionQuarantined"}) {
+		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserProvisioningFailed ConnectionQuarantined]", got)
 	}
 	if h.connection().Health != domain.HealthQuarantined {
 		t.Errorf("connection health = %v, want quarantined", h.connection().Health)
@@ -283,7 +283,7 @@ func TestE2E_ExhaustedDeliveryEmitsFailedAndQuarantined(t *testing.T) {
 	}
 }
 
-//spec:covers EX-PROVISIONING-018-01: 必須の属性マッピングを解決できない配信は、下流へ送らず、試行が残っていても UserProvisioningFailed を発行して終わる。
+//spec:covers EX-PROVISIONING-018-01: 必須の属性マッピングを解決できないプロビジョニングタスクは、下流へ送らず、試行が残っていても UserProvisioningFailed を発行して終わる。
 func TestE2E_MissingRequiredAttributeFailsClosedWithoutRetry(t *testing.T) {
 	h := newE2EHarness(t)
 	conn := h.connection()
@@ -304,8 +304,8 @@ func TestE2E_MissingRequiredAttributeFailsClosedWithoutRetry(t *testing.T) {
 		t.Fatalf("handle() error = %v, want nil so Jobs does not retry", err)
 	}
 
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserProvisioningFailed"}) {
-		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserProvisioningFailed]", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserProvisioningFailed"}) {
+		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserProvisioningFailed]", got)
 	}
 	if h.downstream.count() != 0 {
 		t.Errorf("downstream requests = %d, want 0", h.downstream.count())
@@ -348,8 +348,8 @@ func TestE2E_DisablingAUserSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	if last.path != "/Users/"+remoteID || !sendsInactive(last.body) {
 		t.Fatalf("downstream last request = %s %s %v, want an update of %s with active=false", last.method, last.path, last.body, remoteID)
 	}
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserDeprovisioned"}) {
-		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserDeprovisioned]", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserDeprovisioned"}) {
+		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserDeprovisioned]", got)
 	}
 }
 
@@ -371,7 +371,7 @@ func (h *e2eHarness) softDeleteUser(userID string, now time.Time) {
 	}
 }
 
-//spec:covers EX-PROVISIONING-006-01: 猶予期間 7 日の削除は、7 日目の直前まで下流へ DELETE を送らず、経過後の周期処理で delete の配信を作って DELETE を送り、UserDeprovisioned（action=delete）を発行する。
+//spec:covers EX-PROVISIONING-006-01: 猶予期間 7 日の削除は、7 日目の直前まで下流へ DELETE を送らず、経過後の周期処理で delete のプロビジョニングタスクを作って DELETE を送り、UserDeprovisioned（action=delete）を発行する。
 func TestE2E_DeletionWithAGracePeriodSendsDELETEOnlyAfterItElapses(t *testing.T) {
 	h := newE2EHarness(t)
 	h.useDeleteWithGracePeriod(7)
@@ -391,8 +391,8 @@ func TestE2E_DeletionWithAGracePeriodSendsDELETEOnlyAfterItElapses(t *testing.T)
 	if got := h.downstream.find(http.MethodDelete, "/Users/"+remoteID); got == nil {
 		t.Fatalf("downstream requests = %v, want DELETE /Users/%s once the grace period elapsed", h.downstream.snapshot(), remoteID)
 	}
-	if got := run.types(); !slices.Equal(got, []string{"ProvisioningDeliveryStarted", "UserDeprovisioned"}) {
-		t.Fatalf("events = %v, want [ProvisioningDeliveryStarted UserDeprovisioned]", got)
+	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserDeprovisioned"}) {
+		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserDeprovisioned]", got)
 	}
 	if deprovisioned := wire(t, run.events[1]); deprovisioned["userId"] != userID || deprovisioned["action"] != "delete" {
 		t.Errorf("UserDeprovisioned = %v, want user %s with action delete", deprovisioned, userID)

@@ -61,8 +61,8 @@ import type {
   ProvisioningAuthMethod,
   ProvisioningConnection,
   ProvisioningConnectionStatus,
-  ProvisioningDelivery,
-  ProvisioningDeliveryStatus,
+  ProvisioningTask,
+  ProvisioningTaskStatus,
   ProvisioningFeatureFlags,
   ProvisioningScope,
   ProvisioningSourceType,
@@ -2111,7 +2111,7 @@ export async function provisionOnDemand(
   applicationID: string,
   subjectType: ProvisioningSourceType,
   subjectID: string,
-): Promise<ProvisioningDelivery> {
+): Promise<ProvisioningTask> {
   return request(
     `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/on-demand`,
     adminRequest(csrfToken, 'POST', { subject_type: subjectType, subject_id: subjectID }),
@@ -2138,37 +2138,37 @@ export async function resumeAdminApplicationProvisioning(
   )
 }
 
-// Deliveries 一覧はまだ「さらに読み込む」UI に移行しておらず (T007 follow-up)、当面は
+// タスクの一覧はまだ「さらに読み込む」UI に移行しておらず (T007 follow-up)、当面は
 // PICKER_LIST_LIMIT で切り詰めた1ページのみを表示する。
-export async function listAdminApplicationProvisioningDeliveries(
+export async function listAdminApplicationProvisioningTasks(
   applicationID: string,
-  status?: ProvisioningDeliveryStatus,
-): Promise<ProvisioningDelivery[]> {
+  status?: ProvisioningTaskStatus,
+): Promise<ProvisioningTask[]> {
   const params = new URLSearchParams({ limit: String(PICKER_LIST_LIMIT) })
   if (status) params.set('status', status)
   return (
-    await request<{ deliveries: ProvisioningDelivery[] }>(
-      `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries?${params.toString()}`,
+    await request<{ tasks: ProvisioningTask[] }>(
+      `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/tasks?${params.toString()}`,
     )
-  ).deliveries
+  ).tasks
 }
 
-export async function getAdminApplicationProvisioningDelivery(
+export async function getAdminApplicationProvisioningTask(
   applicationID: string,
-  deliveryID: string,
-): Promise<ProvisioningDelivery> {
+  taskID: string,
+): Promise<ProvisioningTask> {
   return request(
-    `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries/${encodeURIComponent(deliveryID)}`,
+    `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/tasks/${encodeURIComponent(taskID)}`,
   )
 }
 
-export async function retryAdminApplicationProvisioningDelivery(
+export async function retryAdminApplicationProvisioningTask(
   csrfToken: string,
   applicationID: string,
-  deliveryID: string,
-): Promise<ProvisioningDelivery> {
+  taskID: string,
+): Promise<ProvisioningTask> {
   return request(
-    `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries/${encodeURIComponent(deliveryID)}/retry`,
+    `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/tasks/${encodeURIComponent(taskID)}/retry`,
     adminRequest(csrfToken, 'POST'),
   )
 }

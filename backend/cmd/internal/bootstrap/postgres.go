@@ -139,7 +139,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	provisioningModule := provisioning.Module{
 		ConnectionRepo: &provisioningpostgres.ProvisioningConnectionRepository{Pool: resilientDB},
 		RemoteLinkRepo: &provisioningpostgres.RemoteResourceLinkRepository{Pool: resilientDB},
-		DeliveryRepo:   &provisioningpostgres.ProvisioningDeliveryRepository{Pool: resilientDB},
+		TaskRepo:       &provisioningpostgres.ProvisioningTaskRepository{Pool: resilientDB},
 	}
 
 	return &Dependencies{

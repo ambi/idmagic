@@ -80,7 +80,7 @@ func TestUserAttributeSource_ResolveAttributes_DisabledUserIsInactive(t *testing
 }
 
 // TestUserAttributeSource_ResolveAttributes_DeletedUserStillResolvesAsInactive
-// pins wi-45 T008's E2E finding: a deactivate/delete delivery created for
+// pins wi-45 T008's E2E finding: a deactivate/delete task created for
 // TriggerUserDeleted must still resolve attributes for the now-tombstoned
 // user, or DeprovisionPolicy.OnDelete=deactivate (the default) would silently
 // never reach the downstream (FindBySub excludes deleted users; the fix uses
@@ -102,7 +102,7 @@ func TestUserAttributeSource_ResolveAttributes_DeletedUserStillResolvesAsInactiv
 		t.Fatalf("ResolveAttributes() error = %v", err)
 	}
 	if !exists {
-		t.Fatal("ResolveAttributes() exists = false for a tombstoned user, want true (needed to deliver deactivate)")
+		t.Fatal("ResolveAttributes() exists = false for a tombstoned user, want true (needed to execute deactivate)")
 	}
 	if attrs["active"] != false {
 		t.Errorf("attrs[active] = %v, want false for a deleted user", attrs["active"])

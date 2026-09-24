@@ -70,7 +70,7 @@ func (s ProvisioningConnectionStatus) Valid() bool {
 	return s == ConnectionActive || s == ConnectionDisabled
 }
 
-// ProvisioningHealth is the delivery engine's view of connection health
+// ProvisioningHealth is the provisioning engine's view of connection health
 // (spec/contexts/provisioning.yaml models.ProvisioningHealth).
 type ProvisioningHealth string
 
@@ -101,7 +101,7 @@ func (s ProvisioningGroupSelection) Valid() bool {
 // downstream `displayName` (spec/contexts/provisioning/models.tsp
 // models.ProvisioningGroupDisplayNameSource). The set is closed because these are
 // the attributes an IdMagic Group has; an open string would let a typo save,
-// deliver successfully, and change nothing downstream.
+// succeed, and change nothing downstream.
 type ProvisioningGroupDisplayNameSource string
 
 const (
@@ -188,7 +188,7 @@ type GroupPushConfig struct {
 // DisplayNameSourceKey is the resolved-attribute key the downstream `displayName`
 // is taken from. An unset config and an unknown source both fall back to the
 // Group's name: a display name is not a fail-closed decision, and refusing the
-// delivery would let one mistyped setting stop a Group from being pushed at all.
+// task would let one mistyped setting stop a Group from being pushed at all.
 // The nil receiver is the connection that has no GroupPushConfig yet, so callers
 // do not each repeat that check.
 func (c *GroupPushConfig) DisplayNameSourceKey() string {
@@ -248,7 +248,7 @@ func (c ProvisioningConnection) Validate() error {
 	}
 	// An empty display_name_source means unset, which resolves to the Group's
 	// name. A value outside the set is refused here rather than falling back at
-	// delivery time: a setting that saves and then changes nothing downstream is
+	// task time: a setting that saves and then changes nothing downstream is
 	// indistinguishable from one that works.
 	if c.GroupPush != nil && c.GroupPush.DisplayNameSource != "" && !c.GroupPush.DisplayNameSource.Valid() {
 		return errors.New("provisioning: invalid group push display_name_source")
@@ -273,7 +273,7 @@ var ErrConnectionAlreadyQuarantined = errors.New("provisioning: connection is al
 // "quarantined", spec/contexts/provisioning.yaml interfaces.ResumeProvisioningConnection).
 var ErrConnectionNotQuarantined = errors.New("provisioning: connection is not quarantined")
 
-// Quarantine stops delivery generation for the connection: consecutive failures
+// Quarantine stops task generation for the connection: consecutive failures
 // or the accidental deletion guard exceeded a threshold
 // (spec/contexts/provisioning.yaml events.ConnectionQuarantined).
 func (c *ProvisioningConnection) Quarantine(reason string, now time.Time) error {

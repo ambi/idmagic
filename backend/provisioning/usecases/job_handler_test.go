@@ -18,37 +18,37 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newJobHandlerDeps(client *fakeTargetClient, attrSource *fakeAttributeSource) (usecases.JobHandlerDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningDeliveryRepository) {
-	deliverDeps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
+func newJobHandlerDeps(client *fakeTargetClient, attrSource *fakeAttributeSource) (usecases.JobHandlerDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
+	executeTaskDeps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, attrSource)
 	return usecases.JobHandlerDeps{
-		DeliverDeps:    deliverDeps,
-		ConnectionRepo: connRepo,
-		DeliveryRepo:   deliveryRepo,
-		Now:            func() time.Time { return time.Now().UTC() },
-	}, connRepo, deliveryRepo
+		ExecuteTaskDeps: executeTaskDeps,
+		ConnectionRepo:  connRepo,
+		TaskRepo:        taskRepo,
+		Now:             func() time.Time { return time.Now().UTC() },
+	}, connRepo, taskRepo
 }
 
 const testJobMaxAttempts = 8
 
-func newTestJob(t *testing.T, deliveryID string, attempts int) *jobsdomain.Job {
+func newTestJob(t *testing.T, taskID string, attempts int) *jobsdomain.Job {
 	t.Helper()
-	params, err := json.Marshal(map[string]string{"delivery_id": deliveryID})
+	params, err := json.Marshal(map[string]string{"task_id": taskID})
 	if err != nil {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
-	return &jobsdomain.Job{ID: "job-1", TenantID: testTenantID, Kind: usecases.KindProvisioningDelivery, Params: params, Attempts: attempts, MaxAttempts: testJobMaxAttempts}
+	return &jobsdomain.Job{ID: "job-1", TenantID: testTenantID, Kind: usecases.KindProvisioningTask, Params: params, Attempts: attempts, MaxAttempts: testJobMaxAttempts}
 }
 
-func TestProvisioningDeliveryHandler_SuccessReturnsNilAndResetsFailureCount(t *testing.T) {
+func TestProvisioningTaskHandler_SuccessReturnsNilAndResetsFailureCount(t *testing.T) {
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 	conn, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
 	conn.ConsecutiveFailureCount = 3
 	_ = connRepo.Update(context.Background(), conn, nil)
 
-	handler := usecases.ProvisioningDeliveryHandler(deps)
+	handler := usecases.ProvisioningTaskHandler(deps)
 	_, err := handler(context.Background(), newTestJob(t, d.ID, 1))
 	if err != nil {
 		t.Fatalf("handler() error = %v", err)
@@ -59,57 +59,57 @@ func TestProvisioningDeliveryHandler_SuccessReturnsNilAndResetsFailureCount(t *t
 	}
 }
 
-func TestProvisioningDeliveryHandler_NonTerminalFailureLeavesDeliveryInFlight(t *testing.T) {
+func TestProvisioningTaskHandler_NonTerminalFailureLeavesTaskInFlight(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 
-	handler := usecases.ProvisioningDeliveryHandler(deps)
+	handler := usecases.ProvisioningTaskHandler(deps)
 	_, err := handler(context.Background(), newTestJob(t, d.ID, 1))
 	if err == nil {
 		t.Fatal("handler() should return the downstream error so Jobs retries")
 	}
-	got, _ := deliveryRepo.Find(context.Background(), testTenantID, d.ID)
-	if got.Status != domain.DeliveryInFlight {
-		t.Errorf("delivery.Status = %v, want in_flight (non-terminal attempt)", got.Status)
+	got, _ := taskRepo.Find(context.Background(), testTenantID, d.ID)
+	if got.Status != domain.TaskInFlight {
+		t.Errorf("task.Status = %v, want in_flight (non-terminal attempt)", got.Status)
 	}
 }
 
-func TestProvisioningDeliveryHandler_TerminalFailureMarksDeadLetter(t *testing.T) {
+func TestProvisioningTaskHandler_TerminalFailureMarksDeadLetter(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 
-	handler := usecases.ProvisioningDeliveryHandler(deps)
+	handler := usecases.ProvisioningTaskHandler(deps)
 	_, err := handler(context.Background(), newTestJob(t, d.ID, 8)) // attempts == max_attempts: terminal
 	if err == nil {
 		t.Fatal("handler() should still return the error (Jobs itself records JobFailed terminal)")
 	}
-	got, _ := deliveryRepo.Find(context.Background(), testTenantID, d.ID)
-	if got.Status != domain.DeliveryDeadLetter {
-		t.Errorf("delivery.Status = %v, want dead_letter (terminal attempt)", got.Status)
+	got, _ := taskRepo.Find(context.Background(), testTenantID, d.ID)
+	if got.Status != domain.TaskDeadLetter {
+		t.Errorf("task.Status = %v, want dead_letter (terminal attempt)", got.Status)
 	}
 }
 
-func TestProvisioningDeliveryHandler_QuarantinesConnectionAfterConsecutiveFailureThreshold(t *testing.T) {
+func TestProvisioningTaskHandler_QuarantinesConnectionAfterConsecutiveFailureThreshold(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	conn.QuarantineAfterConsecutiveFailure = 2
 	if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	handler := usecases.ProvisioningDeliveryHandler(deps)
+	handler := usecases.ProvisioningTaskHandler(deps)
 
 	for i := range 2 {
-		d := &domain.ProvisioningDelivery{
+		d := &domain.ProvisioningTask{
 			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.DeliveryInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		}
-		if _, err := deliveryRepo.Save(context.Background(), d); err != nil {
+		if _, err := taskRepo.Save(context.Background(), d); err != nil {
 			t.Fatalf("Save() error = %v", err)
 		}
 		if _, err := handler(context.Background(), newTestJob(t, d.ID, 8)); err == nil {
@@ -126,7 +126,7 @@ func TestProvisioningDeliveryHandler_QuarantinesConnectionAfterConsecutiveFailur
 }
 
 func idFor(i int) string {
-	return []string{"delivery-a", "delivery-b", "delivery-c"}[i]
+	return []string{"task-a", "task-b", "task-c"}[i]
 }
 
 func someRetryableErr() error { return &retryableTestErr{} }
@@ -138,25 +138,25 @@ func (*retryableTestErr) Error() string { return "downstream unavailable" }
 // emittedWith は発行の時点で保存先から読める状態を、イベントと対にして残す。
 // 発行が保存より先に動けば、ここに保存前の状態が残る。
 type emittedWith struct {
-	event          spec.DomainEvent
-	deliveryStatus domain.ProvisioningDeliveryStatus
-	health         domain.ProvisioningHealth
+	event      spec.DomainEvent
+	taskStatus domain.ProvisioningTaskStatus
+	health     domain.ProvisioningHealth
 }
 
-func recordEmissions(deps *usecases.JobHandlerDeps, connRepo *memory.ProvisioningConnectionRepository, deliveryRepo *memory.ProvisioningDeliveryRepository) *[]emittedWith {
+func recordEmissions(deps *usecases.JobHandlerDeps, connRepo *memory.ProvisioningConnectionRepository, taskRepo *memory.ProvisioningTaskRepository) *[]emittedWith {
 	var emitted []emittedWith
 	deps.Emit = func(event spec.DomainEvent) {
 		record := emittedWith{event: event}
-		var deliveryID string
+		var taskID string
 		switch e := event.(type) {
 		case *domain.UserProvisioned:
-			deliveryID = e.DeliveryID
+			taskID = e.TaskID
 		case *domain.UserProvisioningFailed:
-			deliveryID = e.DeliveryID
+			taskID = e.TaskID
 		}
-		if deliveryID != "" {
-			d, _ := deliveryRepo.Find(context.Background(), testTenantID, deliveryID)
-			record.deliveryStatus = d.Status
+		if taskID != "" {
+			d, _ := taskRepo.Find(context.Background(), testTenantID, taskID)
+			record.taskStatus = d.Status
 		}
 		conn, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
 		record.health = conn.Health
@@ -165,14 +165,14 @@ func recordEmissions(deps *usecases.JobHandlerDeps, connRepo *memory.Provisionin
 	return &emitted
 }
 
-//spec:covers EX-PROVISIONING-003-01: ジョブが下流への作成に成功すると、配信を succeeded に保存した後で UserProvisioned を一度だけ発行する。
-func TestProvisioningDeliveryHandler_EmitsTheTransitionEventOnceAfterSucceeding(t *testing.T) {
+//spec:covers EX-PROVISIONING-003-01: ジョブが下流への作成に成功すると、プロビジョニングタスクを succeeded に保存した後で UserProvisioned を一度だけ発行する。
+func TestProvisioningTaskHandler_EmitsTheTransitionEventOnceAfterSucceeding(t *testing.T) {
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
-	emitted := recordEmissions(&deps, connRepo, deliveryRepo)
-	handler := usecases.ProvisioningDeliveryHandler(deps)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	emitted := recordEmissions(&deps, connRepo, taskRepo)
+	handler := usecases.ProvisioningTaskHandler(deps)
 
 	// Jobs はリースを失ったジョブを別の worker で再実行し得る。
 	for range 2 {
@@ -185,30 +185,30 @@ func TestProvisioningDeliveryHandler_EmitsTheTransitionEventOnceAfterSucceeding(
 	}
 	got := (*emitted)[0]
 	provisioned, ok := got.event.(*domain.UserProvisioned)
-	if !ok || provisioned.RemoteID != "remote-1" || provisioned.DeliveryID != d.ID || got.deliveryStatus != domain.DeliverySucceeded {
-		t.Fatalf("emitted %+v with delivery status %v, want UserProvisioned for %s/remote-1 after succeeded", got.event, got.deliveryStatus, d.ID)
+	if !ok || provisioned.RemoteID != "remote-1" || provisioned.TaskID != d.ID || got.taskStatus != domain.TaskSucceeded {
+		t.Fatalf("emitted %+v with task status %v, want UserProvisioned for %s/remote-1 after succeeded", got.event, got.taskStatus, d.ID)
 	}
 }
 
 //spec:covers EX-PROVISIONING-010-01: 最後の試行が失敗すると dead_letter を保存した後で UserProvisioningFailed を発行し、非終端の失敗では発行しない。
-func TestProvisioningDeliveryHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t *testing.T) {
+func TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	conn.QuarantineAfterConsecutiveFailure = 2
 	if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	emitted := recordEmissions(&deps, connRepo, deliveryRepo)
-	handler := usecases.ProvisioningDeliveryHandler(deps)
+	emitted := recordEmissions(&deps, connRepo, taskRepo)
+	handler := usecases.ProvisioningTaskHandler(deps)
 
 	for i := range 3 {
-		d := &domain.ProvisioningDelivery{
+		d := &domain.ProvisioningTask{
 			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.DeliveryInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		}
-		if _, err := deliveryRepo.Save(context.Background(), d); err != nil {
+		if _, err := taskRepo.Save(context.Background(), d); err != nil {
 			t.Fatalf("Save() error = %v", err)
 		}
 		if _, err := handler(context.Background(), newTestJob(t, d.ID, 1)); err == nil {
@@ -228,9 +228,9 @@ func TestProvisioningDeliveryHandler_TerminalFailureEmitsFailedThenQuarantinedOn
 		t.Fatalf("emitted = %v, want %v", gotTypes, wantTypes)
 	}
 	failed := (*emitted)[0]
-	if e := failed.event.(*domain.UserProvisioningFailed); e.DeliveryID != idFor(0) || e.SourceType != domain.SourceTypeUser ||
-		e.SourceID != "user-1" || e.Error != "downstream unavailable" || failed.deliveryStatus != domain.DeliveryDeadLetter {
-		t.Errorf("first failure = %+v with delivery status %v, want delivery-a/user-1 after dead_letter", e, failed.deliveryStatus)
+	if e := failed.event.(*domain.UserProvisioningFailed); e.TaskID != idFor(0) || e.SourceType != domain.SourceTypeUser ||
+		e.SourceID != "user-1" || e.Error != "downstream unavailable" || failed.taskStatus != domain.TaskDeadLetter {
+		t.Errorf("first failure = %+v with task status %v, want task-a/user-1 after dead_letter", e, failed.taskStatus)
 	}
 	quarantined := (*emitted)[2]
 	if e := quarantined.event.(*domain.ConnectionQuarantined); e.ApplicationID != "app-1" || e.ConsecutiveFailures != 2 ||
@@ -239,20 +239,20 @@ func TestProvisioningDeliveryHandler_TerminalFailureEmitsFailedThenQuarantinedOn
 	}
 }
 
-//spec:covers EX-PROVISIONING-018-01: 必須属性を解決できない配信は、試行回数が残っていても dead_letter になり UserProvisioningFailed を発行する。
-func TestProvisioningDeliveryHandler_UnresolvedRequiredMappingDeadLettersOnFirstAttempt(t *testing.T) {
+//spec:covers EX-PROVISIONING-018-01: 必須属性を解決できないプロビジョニングタスクは、試行回数が残っていても dead_letter になり UserProvisioningFailed を発行する。
+func TestProvisioningTaskHandler_UnresolvedRequiredMappingDeadLettersOnFirstAttempt(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: fmt.Errorf("mapping emails: %w", ports.ErrRequiredAttributeUnresolved)}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
-	emitted := recordEmissions(&deps, connRepo, deliveryRepo)
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	emitted := recordEmissions(&deps, connRepo, taskRepo)
 
-	if _, err := usecases.ProvisioningDeliveryHandler(deps)(context.Background(), newTestJob(t, d.ID, 1)); err != nil {
-		t.Fatalf("handler() error = %v, want nil so Jobs does not retry a settled delivery", err)
+	if _, err := usecases.ProvisioningTaskHandler(deps)(context.Background(), newTestJob(t, d.ID, 1)); err != nil {
+		t.Fatalf("handler() error = %v, want nil so Jobs does not retry a settled task", err)
 	}
-	got, _ := deliveryRepo.Find(context.Background(), testTenantID, d.ID)
+	got, _ := taskRepo.Find(context.Background(), testTenantID, d.ID)
 	conn, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
-	if got.Status != domain.DeliveryDeadLetter || len(*emitted) != 1 || (*emitted)[0].event.EventType() != "UserProvisioningFailed" {
+	if got.Status != domain.TaskDeadLetter || len(*emitted) != 1 || (*emitted)[0].event.EventType() != "UserProvisioningFailed" {
 		t.Fatalf("status = %v, emitted = %+v; want dead_letter and one UserProvisioningFailed on the first attempt", got.Status, *emitted)
 	}
 	// 属性の欠落は 1 人の User の問題であり、下流の健全性を表さない。

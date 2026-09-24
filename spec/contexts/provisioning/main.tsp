@@ -187,7 +187,7 @@ model DeleteProvisioningConnectionSuccess_204 {
   @statusCode statusCode: 204;
 }
 
-@doc("An administrator deletes a ProvisioningConnection outright. The RemoteResourceLinks and ProvisioningDeliveries already recorded are kept as history.")
+@doc("An administrator deletes a ProvisioningConnection outright. The RemoteResourceLinks and ProvisioningTasks already recorded are kept as history.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("DeleteProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
@@ -278,7 +278,7 @@ model ProvisionOnDemandError403 {
 
 model ProvisionOnDemandSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: IdMagic.Contract.ProvisioningDelivery;
+  @body body: IdMagic.Contract.ProvisioningTask;
 }
 
 union ProvisionOnDemandError400Body {
@@ -291,7 +291,7 @@ model ProvisionOnDemandError400 {
   @body body: ProvisionOnDemandError400Body;
 }
 
-@doc("An administrator creates a ProvisioningDelivery that delivers one named subject immediately, as a trial.")
+@doc("An administrator creates a ProvisioningTask that provisions one named subject immediately, as a trial.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ProvisionOnDemand")
 @route("/api/admin/v1/applications/{id}/provisioning/on-demand")
@@ -341,131 +341,131 @@ model StartFullResyncError403 {
 op StartFullResync(
   @path id: string,): StartFullResyncSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | StartFullResyncError404 | StartFullResyncError403;
 
-model ListProvisioningDeliveriesHttpResponse {
-  deliveries: IdMagic.Contract.ProvisioningDelivery[];
+model ListProvisioningTasksHttpResponse {
+  tasks: IdMagic.Contract.ProvisioningTask[];
 }
 
-model ListProvisioningDeliveriesSuccess_200 {
+model ListProvisioningTasksSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListProvisioningDeliveriesHttpResponse;
+  @body body: ListProvisioningTasksHttpResponse;
 }
 
-union ListProvisioningDeliveriesError403Body {
+union ListProvisioningTasksError403Body {
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
-model ListProvisioningDeliveriesError403 {
+model ListProvisioningTasksError403 {
   @statusCode statusCode: 403;
   @header contentType: "application/problem+json";
-  @body body: ListProvisioningDeliveriesError403Body;
+  @body body: ListProvisioningTasksError403Body;
 }
 
-union ListProvisioningDeliveriesError400Body {
+union ListProvisioningTasksError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
 
-model ListProvisioningDeliveriesError400 {
+model ListProvisioningTasksError400 {
   @statusCode statusCode: 400;
   @header contentType: "application/problem+json";
-  @body body: ListProvisioningDeliveriesError400Body;
+  @body body: ListProvisioningTasksError400Body;
 }
 
-@doc("An administrator lists the delivery state of a connection, newest `created_at` first with the id breaking ties, through\nbidirectional keyset pagination. `status` and `source_type` narrow the list. The cursor comes from the Link response header\nof the response (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("An administrator lists the task state of a connection, newest `created_at` first with the id breaking ties, through\nbidirectional keyset pagination. `status` and `source_type` narrow the list. The cursor comes from the Link response header\nof the response (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
-@TypeSpec.OpenAPI.operationId("ListProvisioningDeliveries")
-@route("/api/admin/v1/applications/{id}/provisioning/deliveries")
+@TypeSpec.OpenAPI.operationId("ListProvisioningTasks")
+@route("/api/admin/v1/applications/{id}/provisioning/tasks")
 @get
-op ListProvisioningDeliveries(
+op ListProvisioningTasks(
   @path id: string,
-  @query status?: IdMagic.Contract.ProvisioningDeliveryStatus,
+  @query status?: IdMagic.Contract.ProvisioningTaskStatus,
   @query source_type?: IdMagic.Contract.ProvisioningSourceType,
   @query cursor?: string,
   @query limit?: int64
-): ListProvisioningDeliveriesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListProvisioningDeliveriesError403 | ListProvisioningDeliveriesError400;
+): ListProvisioningTasksSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListProvisioningTasksError403 | ListProvisioningTasksError400;
 
-model GetProvisioningDeliverySuccess_200 {
+model GetProvisioningTaskSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.ProvisioningDelivery;
+  @body body: IdMagic.Contract.ProvisioningTask;
 }
 
-union GetProvisioningDeliveryError404Body {
-  IdMagic.Contract.ProvisioningDeliveryNotFoundError,
+union GetProvisioningTaskError404Body {
+  IdMagic.Contract.ProvisioningTaskNotFoundError,
 }
 
-model GetProvisioningDeliveryError404 {
+model GetProvisioningTaskError404 {
   @statusCode statusCode: 404;
   @header contentType: "application/problem+json";
-  @body body: GetProvisioningDeliveryError404Body;
+  @body body: GetProvisioningTaskError404Body;
 }
 
-union GetProvisioningDeliveryError403Body {
+union GetProvisioningTaskError403Body {
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
 
-model GetProvisioningDeliveryError403 {
+model GetProvisioningTaskError403 {
   @statusCode statusCode: 403;
   @header contentType: "application/problem+json";
-  @body body: GetProvisioningDeliveryError403Body;
+  @body body: GetProvisioningTaskError403Body;
 }
 
-@doc("An administrator reads one delivery in detail.")
+@doc("An administrator reads one task in detail.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
-@TypeSpec.OpenAPI.operationId("GetProvisioningDelivery")
-@route("/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}")
+@TypeSpec.OpenAPI.operationId("GetProvisioningTask")
+@route("/api/admin/v1/applications/{id}/provisioning/tasks/{task_id}")
 @get
-op GetProvisioningDelivery(
+op GetProvisioningTask(
   @path id: string,
-  @path delivery_id: string
-): GetProvisioningDeliverySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetProvisioningDeliveryError404 | GetProvisioningDeliveryError403;
+  @path task_id: string
+): GetProvisioningTaskSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetProvisioningTaskError404 | GetProvisioningTaskError403;
 
-model RetryProvisioningDeliverySuccess_200 {
+model RetryProvisioningTaskSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.ProvisioningDelivery;
+  @body body: IdMagic.Contract.ProvisioningTask;
 }
 
-union RetryProvisioningDeliveryError404Body {
-  IdMagic.Contract.ProvisioningDeliveryNotFoundError,
+union RetryProvisioningTaskError404Body {
+  IdMagic.Contract.ProvisioningTaskNotFoundError,
 }
 
-model RetryProvisioningDeliveryError404 {
+model RetryProvisioningTaskError404 {
   @statusCode statusCode: 404;
   @header contentType: "application/problem+json";
-  @body body: RetryProvisioningDeliveryError404Body;
+  @body body: RetryProvisioningTaskError404Body;
 }
 
-union RetryProvisioningDeliveryError409Body {
-  IdMagic.Contract.ProvisioningDeliveryNotRetryableError,
+union RetryProvisioningTaskError409Body {
+  IdMagic.Contract.ProvisioningTaskNotRetryableError,
 }
 
-model RetryProvisioningDeliveryError409 {
+model RetryProvisioningTaskError409 {
   @statusCode statusCode: 409;
   @header contentType: "application/problem+json";
-  @body body: RetryProvisioningDeliveryError409Body;
+  @body body: RetryProvisioningTaskError409Body;
 }
 
-union RetryProvisioningDeliveryError403Body {
+union RetryProvisioningTaskError403Body {
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
-model RetryProvisioningDeliveryError403 {
+model RetryProvisioningTaskError403 {
   @statusCode statusCode: 403;
   @header contentType: "application/problem+json";
-  @body body: RetryProvisioningDeliveryError403Body;
+  @body body: RetryProvisioningTaskError403Body;
 }
 
-@doc("An administrator retries a dead-lettered delivery by hand. It returns to pending and the dispatcher picks it up again.")
+@doc("An administrator retries a dead-lettered task by hand. It returns to pending and the dispatcher picks it up again.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
-@TypeSpec.OpenAPI.operationId("RetryProvisioningDelivery")
-@route("/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry")
+@TypeSpec.OpenAPI.operationId("RetryProvisioningTask")
+@route("/api/admin/v1/applications/{id}/provisioning/tasks/{task_id}/retry")
 @post
-op RetryProvisioningDelivery(
+op RetryProvisioningTask(
   @path id: string,
-  @path delivery_id: string,): RetryProvisioningDeliverySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RetryProvisioningDeliveryError404 | RetryProvisioningDeliveryError409 | RetryProvisioningDeliveryError403;
+  @path task_id: string,): RetryProvisioningTaskSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RetryProvisioningTaskError404 | RetryProvisioningTaskError409 | RetryProvisioningTaskError403;
 
 model ResumeProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
@@ -495,7 +495,7 @@ model ResumeProvisioningConnectionError403 {
   @body body: ResumeProvisioningConnectionError403Body;
 }
 
-@doc("An administrator lifts the quarantine on a ProvisioningConnection and lets delivery resume. The interface exists because the operational runbook had no documented way out of quarantine.")
+@doc("An administrator lifts the quarantine on a ProvisioningConnection and lets provisioning resume. The interface exists because the operational runbook had no documented way out of quarantine.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ResumeProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning/resume")

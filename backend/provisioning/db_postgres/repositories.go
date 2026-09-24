@@ -414,13 +414,13 @@ func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *domain.
 	})
 }
 
-// ProvisioningDeliveryRepository is the PostgreSQL ports.ProvisioningDeliveryRepository.
-type ProvisioningDeliveryRepository struct{ Pool sharedpg.DB }
+// ProvisioningTaskRepository is the PostgreSQL ports.ProvisioningTaskRepository.
+type ProvisioningTaskRepository struct{ Pool sharedpg.DB }
 
-var _ ports.ProvisioningDeliveryRepository = (*ProvisioningDeliveryRepository)(nil)
+var _ ports.ProvisioningTaskRepository = (*ProvisioningTaskRepository)(nil)
 
-func mapDelivery(row *ProvisioningDelivery) (*domain.ProvisioningDelivery, error) {
-	d := &domain.ProvisioningDelivery{
+func mapTask(row *ProvisioningTask) (*domain.ProvisioningTask, error) {
+	d := &domain.ProvisioningTask{
 		ID:            row.ID,
 		TenantID:      row.TenantID,
 		ConnectionID:  row.ConnectionID,
@@ -428,7 +428,7 @@ func mapDelivery(row *ProvisioningDelivery) (*domain.ProvisioningDelivery, error
 		SourceID:      row.SourceID,
 		SourceVersion: row.SourceVersion,
 		Operation:     domain.ProvisioningOperation(row.Operation),
-		Status:        domain.ProvisioningDeliveryStatus(row.Status),
+		Status:        domain.ProvisioningTaskStatus(row.Status),
 		JobID:         fromPgUUID(row.JobID),
 		LastError:     fromPgText(row.LastError),
 		CreatedAt:     row.CreatedAt,
@@ -438,11 +438,11 @@ func mapDelivery(row *ProvisioningDelivery) (*domain.ProvisioningDelivery, error
 	return d, d.Validate()
 }
 
-func (r *ProvisioningDeliveryRepository) Save(ctx context.Context, d *domain.ProvisioningDelivery) (bool, error) {
+func (r *ProvisioningTaskRepository) Save(ctx context.Context, d *domain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
-	_, err := New(r.Pool).InsertProvisioningDelivery(ctx, InsertProvisioningDeliveryParams{
+	_, err := New(r.Pool).InsertProvisioningTask(ctx, InsertProvisioningTaskParams{
 		ID:            d.ID,
 		TenantID:      d.TenantID,
 		ConnectionID:  d.ConnectionID,
@@ -466,10 +466,10 @@ func (r *ProvisioningDeliveryRepository) Save(ctx context.Context, d *domain.Pro
 	return true, nil
 }
 
-func (r *ProvisioningDeliveryRepository) Find(ctx context.Context, tenantID, deliveryID string) (*domain.ProvisioningDelivery, error) {
-	row, err := New(r.Pool).FindProvisioningDelivery(ctx, FindProvisioningDeliveryParams{
+func (r *ProvisioningTaskRepository) Find(ctx context.Context, tenantID, taskID string) (*domain.ProvisioningTask, error) {
+	row, err := New(r.Pool).FindProvisioningTask(ctx, FindProvisioningTaskParams{
 		TenantID: tenantID,
-		ID:       deliveryID,
+		ID:       taskID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -477,21 +477,21 @@ func (r *ProvisioningDeliveryRepository) Find(ctx context.Context, tenantID, del
 	if err != nil {
 		return nil, err
 	}
-	return mapDelivery(row)
+	return mapTask(row)
 }
 
-func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, limit int) ([]*domain.ProvisioningDelivery, error) {
-	var rows []*ProvisioningDelivery
+func (r *ProvisioningTaskRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, limit int) ([]*domain.ProvisioningTask, error) {
+	var rows []*ProvisioningTask
 	var err error
 	if status != nil {
-		rows, err = New(r.Pool).ListProvisioningDeliveriesByConnectionAndStatus(ctx, ListProvisioningDeliveriesByConnectionAndStatusParams{
+		rows, err = New(r.Pool).ListProvisioningTasksByConnectionAndStatus(ctx, ListProvisioningTasksByConnectionAndStatusParams{
 			TenantID:     tenantID,
 			ConnectionID: connectionID,
 			Status:       string(*status),
 			Limit:        int32(limit), //nolint:gosec // safe downcast
 		})
 	} else {
-		rows, err = New(r.Pool).ListProvisioningDeliveriesByConnection(ctx, ListProvisioningDeliveriesByConnectionParams{
+		rows, err = New(r.Pool).ListProvisioningTasksByConnection(ctx, ListProvisioningTasksByConnectionParams{
 			TenantID:     tenantID,
 			ConnectionID: connectionID,
 			Limit:        int32(limit), //nolint:gosec // safe downcast
@@ -500,9 +500,9 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, t
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	out := make([]*domain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
-		d, err := mapDelivery(row)
+		d, err := mapTask(row)
 		if err != nil {
 			return nil, err
 		}
@@ -512,10 +512,10 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, t
 }
 
 // ListPageByConnection implements
-// ports.ProvisioningDeliveryRepository.ListPageByConnection (wi-159)
+// ports.ProvisioningTaskRepository.ListPageByConnection (wi-159)
 // : keyset pagination ordered by (created_at, id) descending —
 // matching ListByConnection's pre-existing "most recent first" order.
-func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
 	q := New(r.Pool)
 	filterStatus, filterSourceType := "", ""
 	if status != nil {
@@ -524,16 +524,16 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Contex
 	if sourceType != nil {
 		filterSourceType = string(*sourceType)
 	}
-	var rows []*ProvisioningDelivery
+	var rows []*ProvisioningTask
 	var err error
 	first := afterCreatedAt.IsZero() && afterID == ""
 	if first {
-		rows, err = q.ListProvisioningDeliveriesByConnectionPage(ctx, ListProvisioningDeliveriesByConnectionPageParams{
+		rows, err = q.ListProvisioningTasksByConnectionPage(ctx, ListProvisioningTasksByConnectionPageParams{
 			TenantID: tenantID, ConnectionID: connectionID, FilterStatus: filterStatus, FilterSourceType: filterSourceType,
 			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
 		})
 	} else {
-		rows, err = q.ListProvisioningDeliveriesByConnectionPageAfter(ctx, ListProvisioningDeliveriesByConnectionPageAfterParams{
+		rows, err = q.ListProvisioningTasksByConnectionPageAfter(ctx, ListProvisioningTasksByConnectionPageAfterParams{
 			TenantID: tenantID, ConnectionID: connectionID, FilterStatus: filterStatus, FilterSourceType: filterSourceType,
 			AfterCreatedAt: afterCreatedAt, AfterID: afterID,
 			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
@@ -542,9 +542,9 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	out := make([]*domain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
-		d, err := mapDelivery(row)
+		d, err := mapTask(row)
 		if err != nil {
 			return nil, err
 		}
@@ -553,7 +553,7 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Contex
 	return out, nil
 }
 
-func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error) {
 	filterStatus, filterSourceType := "", ""
 	if status != nil {
 		filterStatus = string(*status)
@@ -561,7 +561,7 @@ func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(ctx context.
 	if sourceType != nil {
 		filterSourceType = string(*sourceType)
 	}
-	rows, err := New(r.Pool).ListProvisioningDeliveriesByConnectionPageBefore(ctx, ListProvisioningDeliveriesByConnectionPageBeforeParams{
+	rows, err := New(r.Pool).ListProvisioningTasksByConnectionPageBefore(ctx, ListProvisioningTasksByConnectionPageBeforeParams{
 		TenantID: tenantID, ConnectionID: connectionID, FilterStatus: filterStatus, FilterSourceType: filterSourceType,
 		BeforeCreatedAt: beforeCreatedAt, BeforeID: beforeID,
 		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
@@ -570,25 +570,25 @@ func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(ctx context.
 		return nil, err
 	}
 	slices.Reverse(rows)
-	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	out := make([]*domain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
-		delivery, err := mapDelivery(row)
+		task, err := mapTask(row)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, delivery)
+		out = append(out, task)
 	}
 	return out, nil
 }
 
-func (r *ProvisioningDeliveryRepository) ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningDelivery, error) {
-	rows, err := New(r.Pool).ListUnenqueuedProvisioningDeliveries(ctx, int32(limit)) //nolint:gosec // safe downcast
+func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningTask, error) {
+	rows, err := New(r.Pool).ListUnenqueuedProvisioningTasks(ctx, int32(limit)) //nolint:gosec // safe downcast
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	out := make([]*domain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
-		d, err := mapDelivery(row)
+		d, err := mapTask(row)
 		if err != nil {
 			return nil, err
 		}
@@ -597,33 +597,33 @@ func (r *ProvisioningDeliveryRepository) ListUnenqueued(ctx context.Context, lim
 	return out, nil
 }
 
-func (r *ProvisioningDeliveryRepository) AttachJob(ctx context.Context, tenantID, deliveryID, jobID string) (bool, error) {
-	affected, err := New(r.Pool).AttachProvisioningDeliveryJob(ctx, AttachProvisioningDeliveryJobParams{
+func (r *ProvisioningTaskRepository) AttachJob(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
+	affected, err := New(r.Pool).AttachProvisioningTaskJob(ctx, AttachProvisioningTaskJobParams{
 		TenantID: tenantID,
-		ID:       deliveryID,
+		ID:       taskID,
 		JobID:    pgUUIDVal(jobID),
 	})
 	return affected == 1, err
 }
 
-func (r *ProvisioningDeliveryRepository) UpdateStatus(ctx context.Context, tenantID, deliveryID string, status domain.ProvisioningDeliveryStatus, lastError *string) error {
-	return New(r.Pool).UpdateProvisioningDeliveryStatus(ctx, UpdateProvisioningDeliveryStatusParams{
+func (r *ProvisioningTaskRepository) UpdateStatus(ctx context.Context, tenantID, taskID string, status domain.ProvisioningTaskStatus, lastError *string) error {
+	return New(r.Pool).UpdateProvisioningTaskStatus(ctx, UpdateProvisioningTaskStatusParams{
 		TenantID:  tenantID,
-		ID:        deliveryID,
+		ID:        taskID,
 		Status:    string(status),
 		LastError: pgText(lastError),
 	})
 }
 
-func (r *ProvisioningDeliveryRepository) RetryDeadLetter(ctx context.Context, tenantID, deliveryID string) (bool, error) {
-	affected, err := New(r.Pool).RetryDeadLetterProvisioningDelivery(ctx, RetryDeadLetterProvisioningDeliveryParams{
+func (r *ProvisioningTaskRepository) RetryDeadLetter(ctx context.Context, tenantID, taskID string) (bool, error) {
+	affected, err := New(r.Pool).RetryDeadLetterProvisioningTask(ctx, RetryDeadLetterProvisioningTaskParams{
 		TenantID: tenantID,
-		ID:       deliveryID,
+		ID:       taskID,
 	})
 	return affected == 1, err
 }
 
-func (r *ProvisioningDeliveryRepository) ScheduleDeprovision(ctx context.Context, s *domain.ScheduledDeprovision) (bool, error) {
+func (r *ProvisioningTaskRepository) ScheduleDeprovision(ctx context.Context, s *domain.ScheduledDeprovision) (bool, error) {
 	affected, err := New(r.Pool).InsertProvisioningScheduledDeprovision(ctx, InsertProvisioningScheduledDeprovisionParams{
 		ID:            s.ID,
 		TenantID:      s.TenantID,
@@ -637,7 +637,7 @@ func (r *ProvisioningDeliveryRepository) ScheduleDeprovision(ctx context.Context
 	return affected == 1, err
 }
 
-func (r *ProvisioningDeliveryRepository) CancelScheduledDeprovisions(ctx context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error) {
+func (r *ProvisioningTaskRepository) CancelScheduledDeprovisions(ctx context.Context, tenantID, connectionID, userID string, beforeVersion int64, now time.Time) (int, error) {
 	affected, err := New(r.Pool).CancelProvisioningScheduledDeprovisions(ctx, CancelProvisioningScheduledDeprovisionsParams{
 		Now:           now,
 		TenantID:      tenantID,
@@ -648,7 +648,7 @@ func (r *ProvisioningDeliveryRepository) CancelScheduledDeprovisions(ctx context
 	return int(affected), err
 }
 
-func (r *ProvisioningDeliveryRepository) ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
+func (r *ProvisioningTaskRepository) ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
 	rows, err := New(r.Pool).ListDueProvisioningScheduledDeprovisions(ctx, ListDueProvisioningScheduledDeprovisionsParams{
 		Now:       now,
 		PageLimit: int32(limit), //nolint:gosec // safe downcast
@@ -661,23 +661,23 @@ func (r *ProvisioningDeliveryRepository) ListDueDeprovisions(ctx context.Context
 		out = append(out, &domain.ScheduledDeprovision{
 			ID: row.ID, TenantID: row.TenantID, ConnectionID: row.ConnectionID, UserID: row.UserID,
 			SourceVersion: row.SourceVersion, DueAt: row.DueAt, Status: domain.ScheduledDeprovisionStatus(row.Status),
-			DeliveryID: fromPgUUID(row.DeliveryID), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			TaskID: fromPgUUID(row.TaskID), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		})
 	}
 	return out, nil
 }
 
-// MaterializeDeprovision は予約の遷移と配信の挿入を一文で行う。配信の内容は予約の行から
+// MaterializeDeprovision は予約の遷移とプロビジョニングタスクの挿入を一文で行う。プロビジョニングタスクの内容は予約の行から
 // 組み立てるため、d からは識別子と作成時刻だけを使う。
-func (r *ProvisioningDeliveryRepository) MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningDelivery) (bool, error) {
+func (r *ProvisioningTaskRepository) MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
 	materialized, err := New(r.Pool).MaterializeProvisioningScheduledDeprovision(ctx, MaterializeProvisioningScheduledDeprovisionParams{
-		DeliveryID: pgUUIDVal(d.ID),
-		Now:        d.CreatedAt,
-		TenantID:   s.TenantID,
-		ID:         s.ID,
+		TaskID:   pgUUIDVal(d.ID),
+		Now:      d.CreatedAt,
+		TenantID: s.TenantID,
+		ID:       s.ID,
 	})
 	return materialized == 1, err
 }

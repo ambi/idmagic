@@ -119,11 +119,11 @@ both forms carry the same class.
 | `/api/admin/v1/applications/{id}/oidc/client-secrets/{credential_id}` | DELETE |
 | `/api/admin/v1/applications/{id}/oidc/rotate-secret` | POST |
 | `/api/admin/v1/applications/{id}/provisioning` | DELETE, GET, PATCH, POST |
-| `/api/admin/v1/applications/{id}/provisioning/deliveries` | GET |
-| `/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}` | GET |
-| `/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry` | POST |
 | `/api/admin/v1/applications/{id}/provisioning/on-demand` | POST |
 | `/api/admin/v1/applications/{id}/provisioning/resume` | POST |
+| `/api/admin/v1/applications/{id}/provisioning/tasks` | GET |
+| `/api/admin/v1/applications/{id}/provisioning/tasks/{task_id}` | GET |
+| `/api/admin/v1/applications/{id}/provisioning/tasks/{task_id}/retry` | POST |
 | `/api/admin/v1/applications/{id}/provisioning/test` | POST |
 | `/api/admin/v1/applications/{id}/saml` | PATCH |
 | `/api/admin/v1/applications/{id}/sign-in-policy` | GET, PUT |

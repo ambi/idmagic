@@ -42,8 +42,8 @@ primary_use_cases:
   - id: group-display-name-follows-the-connection
     requirement: RFC7643-OUT-GROUP-RESOURCES
     observable_result: 取得元に `email` を選んだ接続では、下流が受け取る Group の `displayName` が Group のメールアドレスになる。取得元を変えていない接続では Group の名前のままである。
-    unit_test: { path: backend/provisioning/usecases/deliver_test.go, name: TestDeliverGroup_DisplayNameFollowsTheConfiguredSource, task: test-go-race }
-    e2e_test: { path: backend/provisioning/e2e_capture_delivery_test.go, name: TestE2E_GroupChange_DisplayNameFollowsTheConfiguredSource, task: test-go-race }
+    unit_test: { path: backend/provisioning/usecases/execute_task_test.go, name: TestExecuteGroupTask_DisplayNameFollowsTheConfiguredSource, task: test-go-race }
+    e2e_test: { path: backend/provisioning/e2e_capture_task_test.go, name: TestE2E_GroupChange_DisplayNameFollowsTheConfiguredSource, task: test-go-race }
     unit_fault_model: 取得元を読まず、`display_name` を常に Group の名前から解決する（現状の欠陥そのもの）。
     e2e_fault_model: 選んだ属性を Group が持たないときに配信を失敗させる。表示名を fail-closed の判断として扱い、設定の打ち間違いで Group の送出全体が止まる。
 ---

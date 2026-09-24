@@ -76,28 +76,28 @@ primary_use_cases:
   - id: delivery-lifecycle-events
     requirement: REQ-PROVISIONING-003
     observable_result: ディスパッチャーが配信にジョブを関連付けると配信が in_flight になって ProvisioningDeliveryStarted が発行され、ジョブの実行で下流への反映が成功すると配信が succeeded になって UserProvisioned が発行される。同じ配信のジョブが再実行されても下流へ再送せず、イベントも増えない。
-    unit_test: { path: backend/provisioning/usecases/job_handler_test.go, name: TestProvisioningDeliveryHandler_EmitsTheTransitionEventOnceAfterSucceeding, task: test-go-race }
-    e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_DispatchAndDeliveryEmitStartedThenProvisioned, task: test-go-race }
+    unit_test: { path: backend/provisioning/usecases/job_handler_test.go, name: TestProvisioningTaskHandler_EmitsTheTransitionEventOnceAfterSucceeding, task: test-go-race }
+    e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_DispatchAndTaskEmitStartedThenProvisioned, task: test-go-race }
     unit_fault_model: 状態を succeeded にする前にイベントを発行する、または終端状態の配信を再実行して同じイベントを二度発行する。
     e2e_fault_model: Module がディスパッチャーとジョブハンドラーへ発行ポートを渡さないか、関連付けで配信が pending のまま残る。
   - id: unassignment-deprovisions-downstream
     requirement: REQ-PROVISIONING-005
     observable_result: 有効なままの User の割り当てを解除した deactivate 配信は、下流へ active=false を送り、UserDeprovisioned（action=deactivate）を発行する。
-    unit_test: { path: backend/provisioning/usecases/deliver_test.go, name: TestExecuteDelivery_DeactivateSendsInactiveEvenWhenTheUserIsActive, task: test-go-race }
+    unit_test: { path: backend/provisioning/usecases/execute_task_test.go, name: TestExecuteTask_DeactivateSendsInactiveEvenWhenTheUserIsActive, task: test-go-race }
     e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_UnassignmentSendsActiveFalseAndEmitsDeprovisioned, task: test-go-race }
     unit_fault_model: deactivate 配信が User の現在の active 属性をそのまま送る。
     e2e_fault_model: 割り当て解除から作られた配信が下流へ active=true を送り、UserDeprovisioned だけが残る。
   - id: dead-letter-and-quarantine-events
     requirement: REQ-PROVISIONING-010
     observable_result: 最後の試行が失敗すると配信が dead_letter になって UserProvisioningFailed が一度発行され、その失敗で連続失敗数が閾値に達すると接続が隔離されて ConnectionQuarantined が一度発行される。
-    unit_test: { path: backend/provisioning/usecases/job_handler_test.go, name: TestProvisioningDeliveryHandler_TerminalFailureEmitsFailedThenQuarantinedOnce, task: test-go-race }
-    e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_ExhaustedDeliveryEmitsFailedAndQuarantined, task: test-go-race }
+    unit_test: { path: backend/provisioning/usecases/job_handler_test.go, name: TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce, task: test-go-race }
+    e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_ExhaustedTaskEmitsFailedAndQuarantined, task: test-go-race }
     unit_fault_model: 非終端の失敗でも UserProvisioningFailed を発行する、または隔離済みの接続で ConnectionQuarantined を再発行する。
     e2e_fault_model: 下流が失敗し続けても、監査に配信の失敗と接続の隔離が残らない。
   - id: required-mapping-fails-closed
     requirement: REQ-PROVISIONING-018
     observable_result: 必須の属性マッピングを解決できない配信は、下流へ何も送らず、試行回数が残っていても dead_letter になって UserProvisioningFailed を発行する。
-    unit_test: { path: backend/provisioning/usecases/job_handler_test.go, name: TestProvisioningDeliveryHandler_UnresolvedRequiredMappingDeadLettersOnFirstAttempt, task: test-go-race }
+    unit_test: { path: backend/provisioning/usecases/job_handler_test.go, name: TestProvisioningTaskHandler_UnresolvedRequiredMappingDeadLettersOnFirstAttempt, task: test-go-race }
     e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_MissingRequiredAttributeFailsClosedWithoutRetry, task: test-go-race }
     unit_fault_model: 必須属性の解決失敗を一時的な失敗として扱い、max_attempts まで再試行する。
     e2e_fault_model: SCIM クライアントの解決失敗が型付きのエラーとして伝わらず、ジョブハンドラーが終端と判定できない。

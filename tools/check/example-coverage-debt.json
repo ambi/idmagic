@@ -6,13 +6,13 @@
   "untested": [
     {
       "id": "EX-PLATFORM-003-01",
-      "reason": "配信行が発火元の変更と同じトランザクションで作られないため",
+      "reason": "プロビジョニングタスクの行が発火元の変更と同じトランザクションで作られないため",
       "blocked_by": "wi-92540-guarantee-provisioning-deliveries-by-reconciliation",
-      "finding": "管理 API による User の作成、無効化、削除と割り当て解除は、変更をコミットした後で best-effort に CaptureLifecycleEvent を呼ぶ (admin_users.go と assignments.go の notifyProvisioning)。capture が失敗しても変更は確定したままで、エラーはログにしか残らない。配信の作成から succeeded への遷移は、backend/provisioning/e2e_capture_delivery_test.go がユースケースを直接呼ぶ形で観測しているが、同じトランザクションであることは観測できない。"
+      "finding": "管理 API による User の作成、無効化、削除と割り当て解除は、変更をコミットした後で best-effort に CaptureLifecycleEvent を呼ぶ (admin_users.go と assignments.go の notifyProvisioning)。capture が失敗しても変更は確定したままで、エラーはログにしか残らない。プロビジョニングタスクの作成から succeeded への遷移は、backend/provisioning/e2e_capture_delivery_test.go がユースケースを直接呼ぶ形で観測しているが、同じトランザクションであることは観測できない。"
     },
     {
       "id": "EX-PLATFORM-003-02",
-      "reason": "変更と配信行が別々にコミットされ、片方だけが確定し得るため",
+      "reason": "変更とプロビジョニングタスクの行が別々にコミットされ、片方だけが確定し得るため",
       "blocked_by": "wi-92540-guarantee-provisioning-deliveries-by-reconciliation",
       "finding": "変更と capture が別のコミットなので、変更の側がロールバックする経路と capture が失敗する経路のどちらでも、片方だけが残り得る。backend/provisioning/ports/capture.go が、2 つのコミットの間の障害で capture が失われ回復できないことを残余のギャップとして記録している。"
     },
@@ -24,7 +24,7 @@
     },
     {
       "id": "EX-PROVISIONING-013-01",
-      "reason": "Full Resync の対象配信を追跡せず、FullResyncCompleted を発行しないため",
+      "reason": "Full Resync の対象プロビジョニングタスクを追跡せず、FullResyncCompleted を発行しないため",
       "blocked_by": "wi-22987-track-full-resync-completion",
       "finding": "StartFullResync の実装コメントが完了追跡とイベント発行を未実装と明記している。"
     },

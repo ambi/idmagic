@@ -1398,7 +1398,7 @@ CREATE TABLE provisioning_connections (
         CHECK (quarantine_reason IS NULL OR char_length(quarantine_reason) <= 500),
     -- oauth2_client_credentials はトークン取得に token URL と client_id を要する。
     -- 揃わない接続は active になれない —— 有効なまま置くと、動かない設定が
-    -- 「配信の失敗」としてしか現れず、原因が自分を名乗らないまま残る。
+    -- 「プロビジョニングタスクの失敗」としてしか現れず、原因が自分を名乗らないまま残る。
     CONSTRAINT provisioning_connections_oauth2_credential_check
         CHECK (auth_method <> 'oauth2_client_credentials' OR status <> 'active'
                OR (credential_oauth2_token_url <> '' AND credential_oauth2_client_id <> ''))
@@ -1419,7 +1419,7 @@ CREATE TABLE provisioning_remote_links (
         FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE
 );
 
-CREATE TABLE provisioning_deliveries (
+CREATE TABLE provisioning_tasks (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     connection_id UUID NOT NULL,
@@ -1433,18 +1433,18 @@ CREATE TABLE provisioning_deliveries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     completed_at TIMESTAMPTZ,
-    CONSTRAINT provisioning_deliveries_connection_fkey
+    CONSTRAINT provisioning_tasks_connection_fkey
         FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
-    CONSTRAINT provisioning_deliveries_idempotency_unique
+    CONSTRAINT provisioning_tasks_idempotency_unique
         UNIQUE (tenant_id, connection_id, source_type, source_id, source_version)
 );
 
-CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
--- id DESC tie-break backs ListProvisioningDeliveries keyset pagination
+CREATE INDEX provisioning_tasks_unenqueued_idx ON provisioning_tasks (created_at) WHERE status = 'pending' AND job_id IS NULL;
+-- id DESC tie-break backs ListProvisioningTasks keyset pagination
 -- (wi-159): created_at alone isn't unique enough for a stable cursor.
-CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC, id DESC);
+CREATE INDEX provisioning_tasks_connection_idx ON provisioning_tasks (connection_id, created_at DESC, id DESC);
 
--- 猶予期間つき User 削除の予約。期限が来るまで配信行を作らず、再割り当てで取り消せる。
+-- 猶予期間つき User 削除の予約。期限が来るまでプロビジョニングタスクを作らず、再割り当てで取り消せる。
 CREATE TABLE provisioning_scheduled_deprovisions (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1453,13 +1453,13 @@ CREATE TABLE provisioning_scheduled_deprovisions (
     source_version BIGINT NOT NULL CHECK (source_version >= 1),
     due_at TIMESTAMPTZ NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('scheduled', 'materialized', 'cancelled')),
-    delivery_id UUID,
+    task_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT provisioning_scheduled_deprovisions_connection_fkey
         FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
-    CONSTRAINT provisioning_scheduled_deprovisions_delivery_consistent
-        CHECK ((status = 'materialized') = (delivery_id IS NOT NULL))
+    CONSTRAINT provisioning_scheduled_deprovisions_task_consistent
+        CHECK ((status = 'materialized') = (task_id IS NOT NULL))
 );
 
 -- 同じ接続と User に有効な予約を一つだけ置き、再度の削除通知が期限を延ばさないようにする。

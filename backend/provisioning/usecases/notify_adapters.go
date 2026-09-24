@@ -36,7 +36,7 @@ var userTriggerMap = map[userports.ProvisioningTrigger]ports.ProvisioningTrigger
 
 // GroupMutationNotifier implements groupports.ProvisioningNotifier by
 // translating IdManagement's Group trigger vocabulary to CaptureLifecycleEvent.
-// Whether a delivery is actually created is decided downstream of here, by the
+// Whether a task is actually created is decided downstream of here, by the
 // connection's push_groups flag and its GroupPushConfig selection.
 type GroupMutationNotifier struct{ CaptureDeps CaptureDeps }
 

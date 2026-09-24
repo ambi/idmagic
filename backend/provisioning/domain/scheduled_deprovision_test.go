@@ -26,21 +26,21 @@ func TestScheduledDeprovision_IsDueExactlyWhenTheGracePeriodElapses(t *testing.T
 	}
 }
 
-func TestScheduledDeprovision_DeliveryDeletesTheUserAtTheDeletionVersion(t *testing.T) {
+func TestScheduledDeprovision_TaskDeletesTheUserAtTheDeletionVersion(t *testing.T) {
 	deletedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	s := NewScheduledDeprovision("r-1", "tenant-1", "app-1", "user-1", 42, deletedAt, 7)
 	now := s.DueAt.Add(time.Minute)
 
-	d := s.Delivery("d-1", now)
+	d := s.Task("d-1", now)
 
-	want := ProvisioningDelivery{
+	want := ProvisioningTask{
 		ID: "d-1", TenantID: "tenant-1", ConnectionID: "app-1", SourceType: SourceTypeUser, SourceID: "user-1",
-		SourceVersion: 42, Operation: OperationDelete, Status: DeliveryPending, CreatedAt: now, UpdatedAt: now,
+		SourceVersion: 42, Operation: OperationDelete, Status: TaskPending, CreatedAt: now, UpdatedAt: now,
 	}
 	if *d != want {
-		t.Fatalf("Delivery() = %+v, want %+v", *d, want)
+		t.Fatalf("Task() = %+v, want %+v", *d, want)
 	}
 	if err := d.Validate(); err != nil {
-		t.Fatalf("Delivery().Validate() error = %v", err)
+		t.Fatalf("Task().Validate() error = %v", err)
 	}
 }

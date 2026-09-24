@@ -94,46 +94,46 @@ type memberPatch struct {
 
 var _ ports.ProvisioningTargetClient = (*fakeTargetClient)(nil)
 
-func newDeliverDeps(client ports.ProvisioningTargetClient, attrSource ports.AttributeSource) (usecases.DeliverDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningDeliveryRepository, *memory.RemoteResourceLinkRepository) {
+func newExecuteTaskDeps(client ports.ProvisioningTargetClient, attrSource ports.AttributeSource) (usecases.ExecuteTaskDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, *memory.RemoteResourceLinkRepository) {
 	connRepo := memory.NewProvisioningConnectionRepository()
-	deliveryRepo := memory.NewProvisioningDeliveryRepository()
+	taskRepo := memory.NewProvisioningTaskRepository()
 	linkRepo := memory.NewRemoteResourceLinkRepository()
-	return usecases.DeliverDeps{
+	return usecases.ExecuteTaskDeps{
 		ConnectionRepo:  connRepo,
-		DeliveryRepo:    deliveryRepo,
+		TaskRepo:        taskRepo,
 		LinkRepo:        linkRepo,
 		AttributeSource: attrSource,
 		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
 			return client, nil
 		},
-	}, connRepo, deliveryRepo, linkRepo
+	}, connRepo, taskRepo, linkRepo
 }
 
-func setupConnectionAndDelivery(t *testing.T, connRepo *memory.ProvisioningConnectionRepository, deliveryRepo *memory.ProvisioningDeliveryRepository, op domain.ProvisioningOperation) *domain.ProvisioningDelivery {
+func setupConnectionAndTask(t *testing.T, connRepo *memory.ProvisioningConnectionRepository, taskRepo *memory.ProvisioningTaskRepository, op domain.ProvisioningOperation) *domain.ProvisioningTask {
 	t.Helper()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	if err := connRepo.Register(ctx, conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	d := &domain.ProvisioningDelivery{
-		ID: "delivery-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-		SourceVersion: 1, Operation: op, Status: domain.DeliveryInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	d := &domain.ProvisioningTask{
+		ID: "task-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
+		SourceVersion: 1, Operation: op, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
-	if _, err := deliveryRepo.Save(ctx, d); err != nil {
+	if _, err := taskRepo.Save(ctx, d); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
 	return d
 }
 
-func TestExecuteDelivery_Create_NewLinkOnSuccess(t *testing.T) {
+func TestExecuteTask_Create_NewLinkOnSuccess(t *testing.T) {
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.createCalls != 1 {
 		t.Errorf("createCalls = %d, want 1", client.createCalls)
@@ -142,21 +142,21 @@ func TestExecuteDelivery_Create_NewLinkOnSuccess(t *testing.T) {
 	if err != nil || link == nil || link.RemoteID != "remote-1" {
 		t.Fatalf("Find() link = %+v, err=%v, want remote_id=remote-1", link, err)
 	}
-	got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
-	if got.Status != domain.DeliverySucceeded {
-		t.Errorf("delivery.Status = %v, want succeeded", got.Status)
+	got, _ := taskRepo.Find(context.Background(), "tenant-a", d.ID)
+	if got.Status != domain.TaskSucceeded {
+		t.Errorf("task.Status = %v, want succeeded", got.Status)
 	}
 }
 
 //spec:covers EX-PROVISIONING-007-01: 下流の create が 409 のとき、既存 resource を検索して RemoteResourceLink を作成する。
-func TestExecuteDelivery_Create_ConflictAdoptsExistingViaSearch(t *testing.T) {
+func TestExecuteTask_Create_ConflictAdoptsExistingViaSearch(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: &ports.ConflictError{Detail: "exists"}, searchRemoteID: "remote-existing", searchFound: true}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.searchCalls != 1 {
 		t.Errorf("searchCalls = %d, want 1 (409 should trigger adoption search)", client.searchCalls)
@@ -167,17 +167,17 @@ func TestExecuteDelivery_Create_ConflictAdoptsExistingViaSearch(t *testing.T) {
 	}
 }
 
-func TestExecuteDelivery_Update_UsesExistingLinkRemoteID(t *testing.T) {
+func TestExecuteTask_Update_UsesExistingLinkRemoteID(t *testing.T) {
 	client := &fakeTargetClient{}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationUpdate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationUpdate)
 	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 	_ = link.ApplySync(0, "remote-existing", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.updateCalls != 1 {
 		t.Errorf("updateCalls = %d, want 1", client.updateCalls)
@@ -185,17 +185,17 @@ func TestExecuteDelivery_Update_UsesExistingLinkRemoteID(t *testing.T) {
 }
 
 //spec:covers EX-PROVISIONING-008-01: 下流の update が 404 のとき、新しい resource を create して RemoteResourceLink を更新する。
-func TestExecuteDelivery_Update_RecreatesOn404(t *testing.T) {
+func TestExecuteTask_Update_RecreatesOn404(t *testing.T) {
 	client := &fakeTargetClient{updateErr: &ports.NotFoundError{}, createUserID: "remote-new"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationUpdate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationUpdate)
 	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 	_ = link.ApplySync(0, "remote-gone", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.createCalls != 1 {
 		t.Errorf("createCalls = %d, want 1 (404 on update should recreate)", client.createCalls)
@@ -206,51 +206,51 @@ func TestExecuteDelivery_Update_RecreatesOn404(t *testing.T) {
 	}
 }
 
-func TestExecuteDelivery_Delete_NoLinkIsIdempotentSuccess(t *testing.T) {
+func TestExecuteTask_Delete_NoLinkIsIdempotentSuccess(t *testing.T) {
 	client := &fakeTargetClient{}
 	attrSource := &fakeAttributeSource{exists: false}
-	deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDelete)
+	deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDelete)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.deleteCalls != 0 {
 		t.Errorf("deleteCalls = %d, want 0 (nothing to delete, no link)", client.deleteCalls)
 	}
-	got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
-	if got.Status != domain.DeliverySucceeded {
-		t.Errorf("delivery.Status = %v, want succeeded", got.Status)
+	got, _ := taskRepo.Find(context.Background(), "tenant-a", d.ID)
+	if got.Status != domain.TaskSucceeded {
+		t.Errorf("task.Status = %v, want succeeded", got.Status)
 	}
 }
 
-func TestExecuteDelivery_Delete_CallsDeleteWhenLinkExists(t *testing.T) {
+func TestExecuteTask_Delete_CallsDeleteWhenLinkExists(t *testing.T) {
 	client := &fakeTargetClient{}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, &fakeAttributeSource{})
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDelete)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, &fakeAttributeSource{})
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDelete)
 	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.deleteCalls != 1 {
 		t.Errorf("deleteCalls = %d, want 1", client.deleteCalls)
 	}
 }
 
-func TestExecuteDelivery_Deactivate_UsesUpdatePathWithResolvedAttributes(t *testing.T) {
+func TestExecuteTask_Deactivate_UsesUpdatePathWithResolvedAttributes(t *testing.T) {
 	client := &fakeTargetClient{}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"active": false}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDeactivate)
 	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	if _, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+	if _, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now()); err != nil {
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.updateCalls != 1 {
 		t.Errorf("updateCalls = %d, want 1 (deactivate reuses the update path, mapping already reflects active=false)", client.updateCalls)
@@ -260,31 +260,31 @@ func TestExecuteDelivery_Deactivate_UsesUpdatePathWithResolvedAttributes(t *test
 	}
 }
 
-//spec:covers EX-PROVISIONING-009-01: 一時的な下流エラーでは配信を in_flight のまま残し、再試行できるようにする。
-func TestExecuteDelivery_RetryableErrorPropagatesWithoutChangingStatus(t *testing.T) {
+//spec:covers EX-PROVISIONING-009-01: 一時的な下流エラーではプロビジョニングタスクを in_flight のまま残し、再試行できるようにする。
+func TestExecuteTask_RetryableErrorPropagatesWithoutChangingStatus(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: &ports.RetryableError{StatusCode: 503}}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
-	deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+	deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 
-	_, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+	_, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now())
 	if err == nil {
-		t.Fatal("ExecuteDelivery() should propagate a retryable error, got nil")
+		t.Fatal("ExecuteTask() should propagate a retryable error, got nil")
 	}
-	got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
-	if got.Status != domain.DeliveryInFlight {
-		t.Errorf("delivery.Status = %v, want in_flight (unchanged; Jobs owns retry state)", got.Status)
+	got, _ := taskRepo.Find(context.Background(), "tenant-a", d.ID)
+	if got.Status != domain.TaskInFlight {
+		t.Errorf("task.Status = %v, want in_flight (unchanged; Jobs owns retry state)", got.Status)
 	}
 }
 
 // `GroupPushConfig.display_name_source` が選ぶ。既定は Group の名前で、選んだ属性を
 // Group が持たないときもそこへ落ちる。
 //
-// 配送エンジンが接続を読んで `display_name` を組み立てる。属性源は Group の事実
+// プロビジョニングエンジンが接続を読んで `display_name` を組み立てる。属性源は Group の事実
 // (`name`、`description`、`email`) だけを解決し、どれを表示名にするかは知らない。
 //
 //spec:covers RFC7643-OUT-GROUP-RESOURCES: `displayName` の取得元は
-func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
+func TestExecuteGroupTask_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 	groupAttrs := func() map[string]any {
 		return map[string]any{
 			"id":          "group-eng",
@@ -321,7 +321,7 @@ func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			client := &fakeTargetClient{createGroupID: "remote-group-1"}
-			deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: tc.attrs, exists: true})
+			deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, &fakeAttributeSource{attrs: tc.attrs, exists: true})
 			ctx := context.Background()
 
 			conn := activeConnection("app-1", domain.ScopeAllUsers)
@@ -332,18 +332,18 @@ func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 			if err := connRepo.Register(ctx, conn, "secret"); err != nil {
 				t.Fatalf("Register() error = %v", err)
 			}
-			delivery := &domain.ProvisioningDelivery{
-				ID: "delivery-group-1", TenantID: "tenant-a", ConnectionID: "app-1",
+			task := &domain.ProvisioningTask{
+				ID: "task-group-1", TenantID: "tenant-a", ConnectionID: "app-1",
 				SourceType: domain.SourceTypeGroup, SourceID: "group-eng", SourceVersion: 1,
-				Operation: domain.OperationCreate, Status: domain.DeliveryInFlight,
+				Operation: domain.OperationCreate, Status: domain.TaskInFlight,
 				CreatedAt: time.Now(), UpdatedAt: time.Now(),
 			}
-			if _, err := deliveryRepo.Save(ctx, delivery); err != nil {
+			if _, err := taskRepo.Save(ctx, task); err != nil {
 				t.Fatalf("Save() error = %v", err)
 			}
 
-			if _, err := usecases.ExecuteDelivery(ctx, deps, "tenant-a", delivery.ID, time.Now()); err != nil {
-				t.Fatalf("ExecuteDelivery() error = %v", err)
+			if _, err := usecases.ExecuteTask(ctx, deps, "tenant-a", task.ID, time.Now()); err != nil {
+				t.Fatalf("ExecuteTask() error = %v", err)
 			}
 			if got := client.lastCreateGroupAttrs["display_name"]; got != tc.want {
 				t.Errorf("display_name = %v, want %v (attrs=%+v)", got, tc.want, client.lastCreateGroupAttrs)
@@ -353,127 +353,127 @@ func TestDeliverGroup_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 }
 
 // 割り当て解除の deactivate は、User 自体は有効なまま作られる。下流へ送る active は
-// User の状態ではなく、配信の操作が決める。
+// User の状態ではなく、プロビジョニングタスクの操作が決める。
 //
-//spec:covers EX-PROVISIONING-005-01: 割り当て解除の deactivate 配信は、有効な User でも下流へ active=false を送り UserDeprovisioned を返す。
-func TestExecuteDelivery_DeactivateSendsInactiveEvenWhenTheUserIsActive(t *testing.T) {
+//spec:covers EX-PROVISIONING-005-01: 割り当て解除の deactivate プロビジョニングタスクは、有効な User でも下流へ active=false を送り UserDeprovisioned を返す。
+func TestExecuteTask_DeactivateSendsInactiveEvenWhenTheUserIsActive(t *testing.T) {
 	client := &fakeTargetClient{}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDeactivate)
 	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 	_ = link.ApplySync(0, "remote-1", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 	now := time.Date(2026, 9, 24, 9, 0, 0, 0, time.UTC)
 
-	event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
+	event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, now)
 	if err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	if client.updateCalls != 1 || client.lastUpdateAttrs["active"] != false {
 		t.Fatalf("updateCalls = %d, active sent = %v; want one update with active=false", client.updateCalls, client.lastUpdateAttrs["active"])
 	}
-	want := &domain.UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, UserID: "user-1", Action: domain.DeprovisionDeactivate}
+	want := &domain.UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: d.ID, UserID: "user-1", Action: domain.DeprovisionDeactivate}
 	if got, ok := event.(*domain.UserDeprovisioned); !ok || *got != *want {
 		t.Fatalf("event = %+v, want %+v", event, want)
 	}
 }
 
 // 下流にまだ無い User の無効化は、作成してから無効にするのではなく何も送らない。
-func TestExecuteDelivery_DeactivateWithoutARemoteUserSendsNothing(t *testing.T) {
+func TestExecuteTask_DeactivateWithoutARemoteUserSendsNothing(t *testing.T) {
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
-	deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+	deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDeactivate)
 
-	event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+	event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now())
 	if err != nil {
-		t.Fatalf("ExecuteDelivery() error = %v", err)
+		t.Fatalf("ExecuteTask() error = %v", err)
 	}
-	got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
-	if client.createCalls+client.updateCalls != 0 || event != nil || got.Status != domain.DeliverySucceeded {
+	got, _ := taskRepo.Find(context.Background(), "tenant-a", d.ID)
+	if client.createCalls+client.updateCalls != 0 || event != nil || got.Status != domain.TaskSucceeded {
 		t.Fatalf("create=%d update=%d event=%v status=%v; want nothing sent, no event, succeeded",
 			client.createCalls, client.updateCalls, event, got.Status)
 	}
 }
 
-//spec:covers EX-PROVISIONING-003-01: 作成の配信が下流へ届くと、作成した remote_id を持つ UserProvisioned を返す。
-func TestExecuteDelivery_ReturnsTheTransitionEventOfTheSucceededOperation(t *testing.T) {
+//spec:covers EX-PROVISIONING-003-01: 作成のプロビジョニングタスクが下流へ届くと、作成した remote_id を持つ UserProvisioned を返す。
+func TestExecuteTask_ReturnsTheTransitionEventOfTheSucceededOperation(t *testing.T) {
 	now := time.Date(2026, 9, 24, 9, 0, 0, 0, time.UTC)
 	t.Run("user create", func(t *testing.T) {
 		client := &fakeTargetClient{createUserID: "remote-1"}
-		deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true})
-		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
-		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
-		want := &domain.UserProvisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, UserID: "user-1", RemoteID: "remote-1"}
+		deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true})
+		d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+		event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, now)
+		want := &domain.UserProvisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: d.ID, UserID: "user-1", RemoteID: "remote-1"}
 		if got, ok := event.(*domain.UserProvisioned); err != nil || !ok || *got != *want {
-			t.Fatalf("ExecuteDelivery() = %+v, %v; want %+v", event, err, want)
+			t.Fatalf("ExecuteTask() = %+v, %v; want %+v", event, err, want)
 		}
 	})
 	t.Run("user delete", func(t *testing.T) {
 		client := &fakeTargetClient{}
-		deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, &fakeAttributeSource{})
-		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDelete)
+		deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, &fakeAttributeSource{})
+		d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDelete)
 		link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 		_ = link.ApplySync(0, "remote-1", "user-1", nil, now)
 		_ = linkRepo.Upsert(context.Background(), link)
-		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
-		want := &domain.UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, UserID: "user-1", Action: domain.DeprovisionDelete}
+		event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, now)
+		want := &domain.UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: d.ID, UserID: "user-1", Action: domain.DeprovisionDelete}
 		if got, ok := event.(*domain.UserDeprovisioned); err != nil || !ok || *got != *want {
-			t.Fatalf("ExecuteDelivery() = %+v, %v; want %+v", event, err, want)
+			t.Fatalf("ExecuteTask() = %+v, %v; want %+v", event, err, want)
 		}
 	})
 	t.Run("group create", func(t *testing.T) {
 		client := &fakeTargetClient{createGroupID: "remote-group-1"}
-		deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: map[string]any{"name": "engineers"}, exists: true})
-		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
+		deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, &fakeAttributeSource{attrs: map[string]any{"name": "engineers"}, exists: true})
+		d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
 		d.SourceType, d.SourceID = domain.SourceTypeGroup, "group-1"
-		if _, err := deliveryRepo.Save(context.Background(), d); err != nil {
+		if _, err := taskRepo.Save(context.Background(), d); err != nil {
 			t.Fatal(err)
 		}
 		conn, _ := connRepo.Find(context.Background(), "tenant-a", "app-1")
 		conn.GroupPush = &domain.GroupPushConfig{}
 		_ = connRepo.Update(context.Background(), conn, nil)
-		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, now)
-		want := &domain.GroupPushed{At: now, TenantID: "tenant-a", ConnectionID: "app-1", DeliveryID: d.ID, GroupID: "group-1", RemoteID: "remote-group-1"}
+		event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, now)
+		want := &domain.GroupPushed{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: d.ID, GroupID: "group-1", RemoteID: "remote-group-1"}
 		if got, ok := event.(*domain.GroupPushed); err != nil || !ok || *got != *want {
-			t.Fatalf("ExecuteDelivery() = %+v, %v; want %+v", event, err, want)
+			t.Fatalf("ExecuteTask() = %+v, %v; want %+v", event, err, want)
 		}
 	})
 }
 
 // Jobs は同じジョブを再実行し得る（リースの喪失、成功後の後処理の失敗）。終端状態の
-// 配信は下流へ再送せず、遷移イベントも返さない。
-func TestExecuteDelivery_TerminalDeliveryIsNotSentAgain(t *testing.T) {
-	for _, status := range []domain.ProvisioningDeliveryStatus{domain.DeliverySucceeded, domain.DeliveryDeadLetter} {
+// プロビジョニングタスクは下流へ再送せず、遷移イベントも返さない。
+func TestExecuteTask_TerminalTaskIsNotSentAgain(t *testing.T) {
+	for _, status := range []domain.ProvisioningTaskStatus{domain.TaskSucceeded, domain.TaskDeadLetter} {
 		client := &fakeTargetClient{createUserID: "remote-1"}
-		deps, connRepo, deliveryRepo, _ := newDeliverDeps(client, &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true})
-		d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationCreate)
-		if err := deliveryRepo.UpdateStatus(context.Background(), "tenant-a", d.ID, status, nil); err != nil {
+		deps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true})
+		d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+		if err := taskRepo.UpdateStatus(context.Background(), "tenant-a", d.ID, status, nil); err != nil {
 			t.Fatal(err)
 		}
-		event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
-		got, _ := deliveryRepo.Find(context.Background(), "tenant-a", d.ID)
+		event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now())
+		got, _ := taskRepo.Find(context.Background(), "tenant-a", d.ID)
 		if err != nil || event != nil || client.createCalls != 0 || got.Status != status {
-			t.Errorf("%s delivery: err=%v event=%v createCalls=%d status=%v; want nothing sent and status kept",
+			t.Errorf("%s task: err=%v event=%v createCalls=%d status=%v; want nothing sent and status kept",
 				status, err, event, client.createCalls, got.Status)
 		}
 	}
 }
 
 // 無効化しようとした User が下流から消えていれば、無効化のために作り直さない。
-// 更新の 404 で再作成するのは、下流に存在させたい作成と更新の配信だけである。
-func TestExecuteDelivery_DeactivateOfAUserGoneDownstreamDoesNotRecreateIt(t *testing.T) {
+// 更新の 404 で再作成するのは、下流に存在させたい作成と更新のプロビジョニングタスクだけである。
+func TestExecuteTask_DeactivateOfAUserGoneDownstreamDoesNotRecreateIt(t *testing.T) {
 	client := &fakeTargetClient{updateErr: &ports.NotFoundError{}, createUserID: "remote-new"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
-	deps, connRepo, deliveryRepo, linkRepo := newDeliverDeps(client, attrSource)
-	d := setupConnectionAndDelivery(t, connRepo, deliveryRepo, domain.OperationDeactivate)
+	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, attrSource)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationDeactivate)
 	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
 	_ = link.ApplySync(0, "remote-gone", "user-1", nil, time.Now())
 	_ = linkRepo.Upsert(context.Background(), link)
 
-	event, err := usecases.ExecuteDelivery(context.Background(), deps, "tenant-a", d.ID, time.Now())
+	event, err := usecases.ExecuteTask(context.Background(), deps, "tenant-a", d.ID, time.Now())
 	if err != nil || event != nil || client.createCalls != 0 {
-		t.Fatalf("ExecuteDelivery() = %v, %v with createCalls = %d; want no event, no error, no recreate", event, err, client.createCalls)
+		t.Fatalf("ExecuteTask() = %v, %v with createCalls = %d; want no event, no error, no recreate", event, err, client.createCalls)
 	}
 }

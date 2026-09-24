@@ -39,7 +39,7 @@ primary_use_cases:
   - id: deprovision-after-grace-period
     requirement: REQ-PROVISIONING-006
     observable_result: on_delete=delete、grace_period_days=7 の接続で User を削除すると、7 日が経つまでディスパッチャーは delete の配信を作らず下流へ何も送らない。7 日の経過後にディスパッチャーが delete の配信を作り、worker が下流へ DELETE を送って UserDeprovisioned（action=delete）を発行する。
-    unit_test: { path: backend/provisioning/usecases/dispatcher_test.go, name: TestDispatchPendingDeliveries_MaterializesAScheduledDeprovisionOnlyOnceDue, task: test-go-race }
+    unit_test: { path: backend/provisioning/usecases/dispatcher_test.go, name: TestDispatchPendingTasks_MaterializesAScheduledDeprovisionOnlyOnceDue, task: test-go-race }
     e2e_test: { path: backend/provisioning/e2e_lifecycle_events_test.go, name: TestE2E_DeletionWithAGracePeriodSendsDELETEOnlyAfterItElapses, task: test-go-race }
     unit_fault_model: 期限の比較を誤り、期限の前に予約を配信へ変える、または期限に達しても変えない。
     e2e_fault_model: 捕捉が猶予期間を無視して削除の直後に delete の配信を作る、またはディスパッチャーが予約を配信へ変えないため下流へ DELETE が届かない。

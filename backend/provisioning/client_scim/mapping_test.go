@@ -89,13 +89,13 @@ func TestBuildResource_DefaultValueWhenSourceEmpty(t *testing.T) {
 	}
 }
 
-//spec:covers RFC7643-OUT-CORE-RESOURCES: required の対応付けが解決できない配信は、部分的な本文を送らずに失敗する。
+//spec:covers RFC7643-OUT-CORE-RESOURCES: required の対応付けが解決できないプロビジョニングタスクは、部分的な本文を送らずに失敗する。
 func TestBuildResource_RequiredMissingFailsClosed(t *testing.T) {
 	rules := []domain.AttributeMappingRule{
 		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", Required: true, ApplyOn: domain.ApplyCreateAndUpdate},
 	}
 	_, err := BuildResource(rules, resolverFromMap(nil), ApplyOnCreate)
-	// 配信エンジンはこの種類を見分けて、再試行せずに配信を失敗させる。
+	// プロビジョニングエンジンはこの種類を見分けて、再試行せずにプロビジョニングタスクを失敗させる。
 	if !errors.Is(err, ports.ErrRequiredAttributeUnresolved) {
 		t.Errorf("BuildResource() error = %v, want ports.ErrRequiredAttributeUnresolved", err)
 	}

@@ -15,10 +15,10 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 )
 
-func newAdminDeps() (usecases.AdminDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningDeliveryRepository) {
+func newAdminDeps() (usecases.AdminDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
 	connRepo := memory.NewProvisioningConnectionRepository()
-	deliveryRepo := memory.NewProvisioningDeliveryRepository()
-	return usecases.AdminDeps{ConnectionRepo: connRepo, DeliveryRepo: deliveryRepo}, connRepo, deliveryRepo
+	taskRepo := memory.NewProvisioningTaskRepository()
+	return usecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}, connRepo, taskRepo
 }
 
 //spec:covers EX-PROVISIONING-002-02: https ではない base_url の接続登録を拒否し、接続を作らない。
@@ -129,14 +129,14 @@ func TestResumeConnection_RequiresQuarantined(t *testing.T) {
 	}
 }
 
-// TestResumeConnection_ClearsQuarantineAndAllowsNextDelivery covers the
+// TestResumeConnection_ClearsQuarantineAndAllowsNextTask covers the
 // positive path TestResumeConnection_RequiresQuarantined leaves untested
 // (wi-45 T008): a quarantined connection is resumed (health back to ok,
 // consecutive failure count reset), and capture immediately resumes creating
-// deliveries for it again (a still-quarantined connection is skipped by
+// tasks for it again (a still-quarantined connection is skipped by
 // CaptureLifecycleEvent, per TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections).
-func TestResumeConnection_ClearsQuarantineAndAllowsNextDelivery(t *testing.T) {
-	deps, connRepo, deliveryRepo := newAdminDeps()
+func TestResumeConnection_ClearsQuarantineAndAllowsNextTask(t *testing.T) {
+	deps, connRepo, taskRepo := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now().UTC()
 	conn, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
@@ -167,19 +167,19 @@ func TestResumeConnection_ClearsQuarantineAndAllowsNextDelivery(t *testing.T) {
 		t.Errorf("resumed.ConsecutiveFailureCount = %d, want 0", resumed.ConsecutiveFailureCount)
 	}
 
-	captureDeps := usecases.CaptureDeps{ConnectionRepo: connRepo, DeliveryRepo: deliveryRepo}
+	captureDeps := usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
 	if err := usecases.CaptureLifecycleEvent(ctx, captureDeps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", now); err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, err := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if err != nil || len(deliveries) != 1 {
-		t.Fatalf("ListByConnection() = %+v, err=%v, want 1 delivery after resume", deliveries, err)
+	tasks, err := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if err != nil || len(tasks) != 1 {
+		t.Fatalf("ListByConnection() = %+v, err=%v, want 1 task after resume", tasks, err)
 	}
 }
 
-//spec:covers EX-PROVISIONING-010-02: dead_letter 以外の配信を pending へ戻さず、再試行を拒否する。
-func TestRetryDelivery_RequiresDeadLetter(t *testing.T) {
-	deps, connRepo, deliveryRepo := newAdminDeps()
+//spec:covers EX-PROVISIONING-010-02: dead_letter 以外のプロビジョニングタスクを pending へ戻さず、再試行を拒否する。
+func TestRetryTask_RequiresDeadLetter(t *testing.T) {
+	deps, connRepo, taskRepo := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
 	_, _ = usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
@@ -188,19 +188,19 @@ func TestRetryDelivery_RequiresDeadLetter(t *testing.T) {
 		Now:        now,
 	})
 	_ = connRepo
-	d := &domain.ProvisioningDelivery{
-		ID: "delivery-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-		SourceVersion: 1, Operation: domain.OperationCreate, Status: domain.DeliveryPending, CreatedAt: now, UpdatedAt: now,
+	d := &domain.ProvisioningTask{
+		ID: "task-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
+		SourceVersion: 1, Operation: domain.OperationCreate, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
 	}
-	if _, err := deliveryRepo.Save(ctx, d); err != nil {
+	if _, err := taskRepo.Save(ctx, d); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
-	if _, err := usecases.RetryDelivery(ctx, deps, "tenant-a", "app-1", "delivery-1"); !errors.Is(err, usecases.ErrDeliveryNotRetryable) {
-		t.Errorf("RetryDelivery() on a pending delivery error = %v, want ErrDeliveryNotRetryable", err)
+	if _, err := usecases.RetryTask(ctx, deps, "tenant-a", "app-1", "task-1"); !errors.Is(err, usecases.ErrTaskNotRetryable) {
+		t.Errorf("RetryTask() on a pending task error = %v, want ErrTaskNotRetryable", err)
 	}
 }
 
-//spec:covers EX-PROVISIONING-012-02: assigned_only の範囲外の subject に pending 配信を作らず、要求を拒否する。
+//spec:covers EX-PROVISIONING-012-02: assigned_only の範囲外の subject に pending プロビジョニングタスクを作らず、要求を拒否する。
 func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	ctx := context.Background()
@@ -216,9 +216,9 @@ func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	}
 }
 
-//spec:covers EX-PROVISIONING-012-01: scope 内の subject を On-Demand Provision すると、pending 配信をただちに作成する。
-func TestProvisionOnDemand_CreatesPendingDeliveryForSubjectInScope(t *testing.T) {
-	deps, _, deliveryRepo := newAdminDeps()
+//spec:covers EX-PROVISIONING-012-01: scope 内の subject を On-Demand Provision すると、pending プロビジョニングタスクをただちに作成する。
+func TestProvisionOnDemand_CreatesPendingTaskForSubjectInScope(t *testing.T) {
+	deps, _, taskRepo := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
 	conn, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
@@ -234,16 +234,16 @@ func TestProvisionOnDemand_CreatesPendingDeliveryForSubjectInScope(t *testing.T)
 		t.Fatalf("ConnectionRepo.Update() error = %v", err)
 	}
 
-	delivery, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
+	task, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
 	if err != nil {
 		t.Fatalf("ProvisionOnDemand() error = %v", err)
 	}
-	if delivery.Status != domain.DeliveryPending {
-		t.Fatalf("delivery.Status = %q, want pending", delivery.Status)
+	if task.Status != domain.TaskPending {
+		t.Fatalf("task.Status = %q, want pending", task.Status)
 	}
-	stored, err := deliveryRepo.Find(ctx, "tenant-a", delivery.ID)
-	if err != nil || stored == nil || stored.Status != domain.DeliveryPending {
-		t.Fatalf("stored delivery = (%+v, %v), want pending delivery", stored, err)
+	stored, err := taskRepo.Find(ctx, "tenant-a", task.ID)
+	if err != nil || stored == nil || stored.Status != domain.TaskPending {
+		t.Fatalf("stored task = (%+v, %v), want pending task", stored, err)
 	}
 }
 
@@ -292,9 +292,9 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 	now := time.Now().UTC()
 
 	// 明示指定は一覧の引き当てを要さないので、GroupRepo が無くても再同期できる。
-	setup := func(t *testing.T, flags domain.ProvisioningFeatureFlags, push *domain.GroupPushConfig) (usecases.AdminDeps, *memory.ProvisioningDeliveryRepository) {
+	setup := func(t *testing.T, flags domain.ProvisioningFeatureFlags, push *domain.GroupPushConfig) (usecases.AdminDeps, *memory.ProvisioningTaskRepository) {
 		t.Helper()
-		deps, connRepo, deliveryRepo := newAdminDeps()
+		deps, connRepo, taskRepo := newAdminDeps()
 		conn := &domain.ProvisioningConnection{
 			ApplicationID: "app-1", TenantID: "tenant-a", Status: domain.ConnectionActive,
 			BaseURL:      "https://downstream.example.com/scim/v2",
@@ -309,17 +309,17 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 		if err := connRepo.Register(ctx, conn, "tok"); err != nil {
 			t.Fatal(err)
 		}
-		return deps, deliveryRepo
+		return deps, taskRepo
 	}
 
-	groupDeliveries := func(t *testing.T, repo *memory.ProvisioningDeliveryRepository) []string {
+	groupTasks := func(t *testing.T, repo *memory.ProvisioningTaskRepository) []string {
 		t.Helper()
-		deliveries, err := repo.ListByConnection(ctx, "tenant-a", "app-1", nil, 50)
+		tasks, err := repo.ListByConnection(ctx, "tenant-a", "app-1", nil, 50)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var ids []string
-		for _, d := range deliveries {
+		for _, d := range tasks {
 			if d.SourceType == domain.SourceTypeGroup {
 				ids = append(ids, d.SourceID)
 			}
@@ -328,36 +328,36 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 	}
 
 	t.Run("明示指定の Group を再同期する", func(t *testing.T) {
-		deps, deliveryRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true},
+		deps, taskRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true},
 			&domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1", "g2"}})
 		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
 			t.Fatalf("StartFullResync() error = %v", err)
 		}
-		if got := groupDeliveries(t, deliveryRepo); len(got) != 2 {
-			t.Fatalf("Group の配信 = %v, want g1 と g2", got)
+		if got := groupTasks(t, taskRepo); len(got) != 2 {
+			t.Fatalf("Group のプロビジョニングタスク = %v, want g1 と g2", got)
 		}
 	})
 
 	t.Run("push_groups が無効なら Group は再同期しない", func(t *testing.T) {
 		// 対象の設定は残したまま機能フラグだけを落とす。2 つの番人を分ける。
-		deps, deliveryRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: false},
+		deps, taskRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: false},
 			&domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1"}})
 		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
 			t.Fatalf("StartFullResync() error = %v", err)
 		}
-		if got := groupDeliveries(t, deliveryRepo); len(got) != 0 {
-			t.Fatalf("Group の配信 = %v, want none", got)
+		if got := groupTasks(t, taskRepo); len(got) != 0 {
+			t.Fatalf("Group のプロビジョニングタスク = %v, want none", got)
 		}
 	})
 
 	t.Run("対象の設定が無いなら Group は再同期しない", func(t *testing.T) {
 		// 機能フラグは有効のまま、対象の設定だけを落とす。fail-closed。
-		deps, deliveryRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true}, nil)
+		deps, taskRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true}, nil)
 		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
 			t.Fatalf("StartFullResync() error = %v", err)
 		}
-		if got := groupDeliveries(t, deliveryRepo); len(got) != 0 {
-			t.Fatalf("Group の配信 = %v, want none", got)
+		if got := groupTasks(t, taskRepo); len(got) != 0 {
+			t.Fatalf("Group のプロビジョニングタスク = %v, want none", got)
 		}
 	})
 }

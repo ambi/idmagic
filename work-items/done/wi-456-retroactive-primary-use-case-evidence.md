@@ -108,7 +108,7 @@ primary_use_cases:
     requirement: REQ-PLATFORM-003
     observable_result: "上流の正の変更が接続済み下流の状態へ収束する。"
     unit_test: { path: backend/provisioning/usecases/capture_test.go, name: TestCaptureLifecycleEvent_UserAttributesChanged_TranslatesToUpdate, task: test-go-race }
-    e2e_test: { path: backend/provisioning/e2e_capture_delivery_test.go, name: TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream, task: test-go-race }
+    e2e_test: { path: backend/provisioning/e2e_capture_task_test.go, name: TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream, task: test-go-race }
     unit_fault_model: "属性変更を update 配信へ投影しない。"
     e2e_fault_model: "捕捉した配信を実下流クライアントへ渡さない。"
   - id: saml-federation
@@ -332,7 +332,7 @@ primary_use_cases:
     requirement: REQ-PROVISIONING-003
     observable_result: "IdManagement の対象 User 変更が下流状態へ収束する。"
     unit_test: { path: backend/provisioning/usecases/capture_test.go, name: TestCaptureLifecycleEvent_UserCreated_AllUsersScope, task: test-go-race }
-    e2e_test: { path: backend/provisioning/e2e_capture_delivery_test.go, name: TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream, task: test-go-race }
+    e2e_test: { path: backend/provisioning/e2e_capture_task_test.go, name: TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream, task: test-go-race }
     unit_fault_model: "UserCreated を下流 create 配送へ射影しない。"
     e2e_fault_model: "IdManagement event subscriber と delivery worker の接続を外す。"
   - id: tenant-resolution

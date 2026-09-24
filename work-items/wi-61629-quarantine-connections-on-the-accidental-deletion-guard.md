@@ -20,7 +20,7 @@ affected_spec:
 `REQ-PROVISIONING-011` は、1 回の full resync で deactivate または delete の対象が `accidental_deletion_count_threshold` を超えたら、deprovision を実行せず `ConnectionQuarantined` を発行して接続を隔離し、`notification_email` へ通知すると宣言する。
 
 `DeprovisionPolicy` は `accidental_deletion_count_threshold` と `accidental_deletion_percent_threshold` を保存し検証するが、それを読む処理は無い。
-`StartFullResync` は対象範囲の User と Group へ `update` の配信を作るだけで、deprovision の件数を数えない。
+`StartFullResync` は対象範囲の User と Group へ `update` のプロビジョニングタスクを作るだけで、deprovision の件数を数えない。
 そのため、閾値を設定しても誤った一括の無効化や削除は止まらず、下流のアカウントがそのまま無効化または削除され得る。
 
 隔離の状態遷移と `ConnectionQuarantined` の発行は、連続失敗の経路で [[wi-85060-publish-provisioning-lifecycle-events]] が実装した。
@@ -34,7 +34,7 @@ affected_spec:
 ## 対象外
 
 - 隔離の解除（`ResumeProvisioningConnection`）。既に実装されている。
-- 照合による配信の保証。[[wi-92540-guarantee-provisioning-deliveries-by-reconciliation]] が扱う。照合が大量の deprovision を作るときにこのガードを効かせるかは、その記録の未解決の問いである。
+- 照合によるプロビジョニングタスクの保証。[[wi-92540-guarantee-provisioning-deliveries-by-reconciliation]] が扱う。照合が大量の deprovision を作るときにこのガードを効かせるかは、その記録の未解決の問いである。
 
 ## 検証
 

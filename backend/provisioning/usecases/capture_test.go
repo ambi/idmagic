@@ -15,11 +15,11 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 )
 
-func newCaptureDeps() (usecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningDeliveryRepository, *appmemory.ApplicationAssignmentRepository) {
+func newCaptureDeps() (usecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, *appmemory.ApplicationAssignmentRepository) {
 	connRepo := memory.NewProvisioningConnectionRepository()
-	deliveryRepo := memory.NewProvisioningDeliveryRepository()
+	taskRepo := memory.NewProvisioningTaskRepository()
 	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
-	return usecases.CaptureDeps{ConnectionRepo: connRepo, DeliveryRepo: deliveryRepo, AssignmentRepo: assignmentRepo}, connRepo, deliveryRepo, assignmentRepo
+	return usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, AssignmentRepo: assignmentRepo}, connRepo, taskRepo, assignmentRepo
 }
 
 const testTenantID = "tenant-a"
@@ -46,7 +46,7 @@ func activeConnection(applicationID string, scope domain.ProvisioningScope) *dom
 }
 
 func TestCaptureLifecycleEvent_UserCreated_AllUsersScope(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	if err := connRepo.Register(ctx, conn, "secret"); err != nil {
@@ -56,18 +56,18 @@ func TestCaptureLifecycleEvent_UserCreated_AllUsersScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, err := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if err != nil || len(deliveries) != 1 {
-		t.Fatalf("ListByConnection() = %+v, err=%v, want 1 delivery", deliveries, err)
+	tasks, err := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if err != nil || len(tasks) != 1 {
+		t.Fatalf("ListByConnection() = %+v, err=%v, want 1 task", tasks, err)
 	}
-	if deliveries[0].Operation != domain.OperationCreate {
-		t.Errorf("delivery.Operation = %v, want create", deliveries[0].Operation)
+	if tasks[0].Operation != domain.OperationCreate {
+		t.Errorf("task.Operation = %v, want create", tasks[0].Operation)
 	}
 }
 
-//spec:covers EX-PROVISIONING-003-02: assigned_only 接続では未割り当て User の作成から配信を作らない。
+//spec:covers EX-PROVISIONING-003-02: assigned_only 接続では未割り当て User の作成からプロビジョニングタスクを作らない。
 func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeSkipsUnassignedUser(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAssignedOnly)
 	_ = connRepo.Register(ctx, conn, "secret")
@@ -75,14 +75,14 @@ func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeSkipsUnassignedUser(
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 0 {
-		t.Errorf("ListByConnection() = %+v, want 0 deliveries for unassigned user under assigned_only scope", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 0 {
+		t.Errorf("ListByConnection() = %+v, want 0 tasks for unassigned user under assigned_only scope", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeIncludesAssignedUser(t *testing.T) {
-	deps, connRepo, deliveryRepo, assignmentRepo := newCaptureDeps()
+	deps, connRepo, taskRepo, assignmentRepo := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAssignedOnly)
 	_ = connRepo.Register(ctx, conn, "secret")
@@ -91,14 +91,14 @@ func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeIncludesAssignedUser
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 1 {
-		t.Fatalf("ListByConnection() = %+v, want 1 delivery for assigned user", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 1 {
+		t.Fatalf("ListByConnection() = %+v, want 1 task for assigned user", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_UserDisabled_TranslatesToFixedDeactivate(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
@@ -106,14 +106,14 @@ func TestCaptureLifecycleEvent_UserDisabled_TranslatesToFixedDeactivate(t *testi
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 1 || deliveries[0].Operation != domain.OperationDeactivate {
-		t.Fatalf("deliveries = %+v, want 1 delivery with operation=deactivate", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 1 || tasks[0].Operation != domain.OperationDeactivate {
+		t.Fatalf("tasks = %+v, want 1 task with operation=deactivate", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_UserAttributesChanged_TranslatesToUpdate(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
@@ -121,14 +121,14 @@ func TestCaptureLifecycleEvent_UserAttributesChanged_TranslatesToUpdate(t *testi
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 1 || deliveries[0].Operation != domain.OperationUpdate {
-		t.Fatalf("deliveries = %+v, want 1 delivery with operation=update", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 1 || tasks[0].Operation != domain.OperationUpdate {
+		t.Fatalf("tasks = %+v, want 1 task with operation=update", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_UserEnabled_TranslatesToUpdate(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
@@ -136,14 +136,14 @@ func TestCaptureLifecycleEvent_UserEnabled_TranslatesToUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 1 || deliveries[0].Operation != domain.OperationUpdate {
-		t.Fatalf("deliveries = %+v, want 1 delivery with operation=update", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 1 || tasks[0].Operation != domain.OperationUpdate {
+		t.Fatalf("tasks = %+v, want 1 task with operation=update", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_UserDeleted_UsesConnectionDeprovisionPolicy(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
@@ -152,14 +152,14 @@ func TestCaptureLifecycleEvent_UserDeleted_UsesConnectionDeprovisionPolicy(t *te
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 1 || deliveries[0].Operation != domain.OperationDelete {
-		t.Fatalf("deliveries = %+v, want 1 delivery with operation=delete", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 1 || tasks[0].Operation != domain.OperationDelete {
+		t.Fatalf("tasks = %+v, want 1 task with operation=delete", tasks)
 	}
 }
 
-func TestCaptureLifecycleEvent_UserDeleted_PolicyNoneSkipsDelivery(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+func TestCaptureLifecycleEvent_UserDeleted_PolicyNoneSkipsTask(t *testing.T) {
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionNone
@@ -168,14 +168,14 @@ func TestCaptureLifecycleEvent_UserDeleted_PolicyNoneSkipsDelivery(t *testing.T)
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 0 {
-		t.Errorf("deliveries = %+v, want 0 (policy=none)", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 0 {
+		t.Errorf("tasks = %+v, want 0 (policy=none)", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_AssignmentRemoved_OnlyTargetsAssignedApplication(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	connA := activeConnection("app-1", domain.ScopeAllUsers)
 	connB := activeConnection("app-2", domain.ScopeAllUsers)
@@ -185,18 +185,18 @@ func TestCaptureLifecycleEvent_AssignmentRemoved_OnlyTargetsAssignedApplication(
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	deliveriesA, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	deliveriesB, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-2", nil, 10)
-	if len(deliveriesA) != 1 {
-		t.Errorf("deliveries for app-1 = %+v, want 1", deliveriesA)
+	tasksA, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	tasksB, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-2", nil, 10)
+	if len(tasksA) != 1 {
+		t.Errorf("tasks for app-1 = %+v, want 1", tasksA)
 	}
-	if len(deliveriesB) != 0 {
-		t.Errorf("deliveries for app-2 = %+v, want 0 (unassign only targets app-1)", deliveriesB)
+	if len(tasksB) != 0 {
+		t.Errorf("tasks for app-2 = %+v, want 0 (unassign only targets app-1)", tasksB)
 	}
 }
 
 func TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	disabled := activeConnection("app-1", domain.ScopeAllUsers)
 	disabled.Status = domain.ConnectionDisabled
@@ -210,16 +210,16 @@ func TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections(t *testing
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
-	d1, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	d2, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-2", nil, 10)
+	d1, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	d2, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-2", nil, 10)
 	if len(d1) != 0 || len(d2) != 0 {
-		t.Errorf("deliveries = app-1:%+v app-2:%+v, want none (disabled/quarantined)", d1, d2)
+		t.Errorf("tasks = app-1:%+v app-2:%+v, want none (disabled/quarantined)", d1, d2)
 	}
 }
 
-//spec:covers EX-PROVISIONING-016-01: 同じライフサイクルイベントを繰り返し捕捉しても、同じ idempotency key の配信を一件に収束させる。
+//spec:covers EX-PROVISIONING-016-01: 同じライフサイクルイベントを繰り返し捕捉しても、同じ idempotency key のプロビジョニングタスクを一件に収束させる。
 func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	conn := activeConnection("app-1", domain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
@@ -230,9 +230,9 @@ func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
 	if err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", now); err != nil {
 		t.Fatalf("second CaptureLifecycleEvent() (same now) error = %v", err)
 	}
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(deliveries) != 1 {
-		t.Errorf("repeated capture with identical now produced %d deliveries, want 1 (idempotency key dedup)", len(deliveries))
+	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
+	if len(tasks) != 1 {
+		t.Errorf("repeated capture with identical now produced %d tasks, want 1 (idempotency key dedup)", len(tasks))
 	}
 }
 
@@ -243,9 +243,9 @@ func deleteWithGracePeriodConnection(applicationID string, days int) *domain.Pro
 	return conn
 }
 
-//spec:covers EX-PROVISIONING-006-02: 猶予期間つきの削除は配信を作らず接続ごとに予約し、再割り当ては割り当てた Application の予約だけを取り消す。
+//spec:covers EX-PROVISIONING-006-02: 猶予期間つきの削除はプロビジョニングタスクを作らず接続ごとに予約し、再割り当ては割り当てた Application の予約だけを取り消す。
 func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDeprovision(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	for _, app := range []string{"app-1", "app-2"} {
 		if err := connRepo.Register(ctx, deleteWithGracePeriodConnection(app, 7), "secret"); err != nil {
@@ -259,11 +259,11 @@ func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDe
 		t.Fatalf("CaptureLifecycleEvent(user_deleted) error = %v", err)
 	}
 	for _, app := range []string{"app-1", "app-2"} {
-		if deliveries, _ := deliveryRepo.ListByConnection(ctx, testTenantID, app, nil, 10); len(deliveries) != 0 {
-			t.Fatalf("deliveries on %s after deletion = %+v, want none until the grace period elapses", app, deliveries)
+		if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, app, nil, 10); len(tasks) != 0 {
+			t.Fatalf("tasks on %s after deletion = %+v, want none until the grace period elapses", app, tasks)
 		}
 	}
-	if due, _ := deliveryRepo.ListDueDeprovisions(ctx, dueAt, 10); len(due) != 2 {
+	if due, _ := taskRepo.ListDueDeprovisions(ctx, dueAt, 10); len(due) != 2 {
 		t.Fatalf("scheduled deprovisions due at %v = %+v, want one per connection", dueAt, due)
 	}
 
@@ -271,21 +271,21 @@ func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDe
 		t.Fatalf("CaptureLifecycleEvent(assignment_added) error = %v", err)
 	}
 
-	due, err := deliveryRepo.ListDueDeprovisions(ctx, dueAt, 10)
+	due, err := taskRepo.ListDueDeprovisions(ctx, dueAt, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(due) != 1 || due[0].ConnectionID != "app-2" {
 		t.Fatalf("scheduled deprovisions after reassignment to app-1 = %+v, want only app-2's", due)
 	}
-	// 取消の後も、割り当てによる create の配信は従来どおり作る。
-	if deliveries, _ := deliveryRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10); len(deliveries) != 1 || deliveries[0].Operation != domain.OperationCreate {
-		t.Errorf("deliveries on app-1 after reassignment = %+v, want one create", deliveries)
+	// 取消の後も、割り当てによる create のプロビジョニングタスクは従来どおり作る。
+	if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10); len(tasks) != 1 || tasks[0].Operation != domain.OperationCreate {
+		t.Errorf("tasks on app-1 after reassignment = %+v, want one create", tasks)
 	}
 }
 
 func TestCaptureLifecycleEvent_ReassignmentKeepsADeprovisionScheduledAfterIt(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	if err := connRepo.Register(ctx, deleteWithGracePeriodConnection("app-1", 7), "secret"); err != nil {
 		t.Fatal(err)
@@ -301,13 +301,13 @@ func TestCaptureLifecycleEvent_ReassignmentKeepsADeprovisionScheduledAfterIt(t *
 		t.Fatal(err)
 	}
 
-	if due, _ := deliveryRepo.ListDueDeprovisions(ctx, deletedAt.Add(7*24*time.Hour), 10); len(due) != 1 {
+	if due, _ := taskRepo.ListDueDeprovisions(ctx, deletedAt.Add(7*24*time.Hour), 10); len(due) != 1 {
 		t.Fatalf("scheduled deprovisions = %+v, want the deletion's reservation kept", due)
 	}
 }
 
-func TestCaptureLifecycleEvent_UserDeletedWithoutGracePeriodDeliversImmediately(t *testing.T) {
-	deps, connRepo, deliveryRepo, _ := newCaptureDeps()
+func TestCaptureLifecycleEvent_UserDeletedWithoutGracePeriodCreatesTaskImmediately(t *testing.T) {
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
 	if err := connRepo.Register(ctx, deleteWithGracePeriodConnection("app-1", 0), "secret"); err != nil {
 		t.Fatal(err)
@@ -318,11 +318,11 @@ func TestCaptureLifecycleEvent_UserDeletedWithoutGracePeriodDeliversImmediately(
 		t.Fatal(err)
 	}
 
-	deliveries, _ := deliveryRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10)
-	if len(deliveries) != 1 || deliveries[0].Operation != domain.OperationDelete {
-		t.Fatalf("deliveries = %+v, want one immediate delete", deliveries)
+	tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10)
+	if len(tasks) != 1 || tasks[0].Operation != domain.OperationDelete {
+		t.Fatalf("tasks = %+v, want one immediate delete", tasks)
 	}
-	if due, _ := deliveryRepo.ListDueDeprovisions(ctx, now.Add(365*24*time.Hour), 10); len(due) != 0 {
+	if due, _ := taskRepo.ListDueDeprovisions(ctx, now.Add(365*24*time.Hour), 10); len(due) != 0 {
 		t.Errorf("scheduled deprovisions = %+v, want none without a grace period", due)
 	}
 }

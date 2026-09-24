@@ -8,7 +8,7 @@ import (
 )
 
 // ProvisioningTrigger is the internal lifecycle event that may generate
-// ProvisioningDelivery rows (spec/contexts/provisioning.yaml §deprovision セマンティクス
+// ProvisioningTask rows (spec/contexts/provisioning.yaml §deprovision セマンティクス
 // trigger 列). It intentionally does not distinguish per-connection
 // DeprovisionPolicy outcomes: CaptureLifecycleEvent applies each matching
 // connection's own policy to translate trigger into domain.ProvisioningOperation.
@@ -22,7 +22,7 @@ const (
 	TriggerUserDeleted       ProvisioningTrigger = "user_deleted"
 	TriggerAssignmentAdded   ProvisioningTrigger = "assignment_added"
 	TriggerAssignmentRemoved ProvisioningTrigger = "assignment_removed"
-	// Group 側の引き金。push_groups が無効な接続では配信を生まない
+	// Group 側の引き金。push_groups が無効な接続ではプロビジョニングタスクを生まない
 	// (translateTrigger が機能フラグで落とす)。
 	TriggerGroupCreated    ProvisioningTrigger = "group_created"
 	TriggerGroupAttributes ProvisioningTrigger = "group_attributes_changed"
@@ -39,7 +39,7 @@ const (
 // for a follow-up that unifies the transaction boundary with IdGovernance's
 // UserMutationCommitter).
 type ProvisioningCapture interface {
-	// CaptureLifecycleEvent creates a ProvisioningDelivery for every active,
+	// CaptureLifecycleEvent creates a ProvisioningTask for every active,
 	// in-scope connection reachable from applicationID (assignment triggers) or
 	// from every connection in the tenant (user triggers, scope-checked per
 	// connection). now.UnixNano() is used as the monotonic source_version.

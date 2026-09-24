@@ -40,7 +40,7 @@ primary_use_cases:
   - id: foreign-tenant-provisioning-read-is-not-found
     requirement: REQ-PROVISIONING-015
     observable_result: default テナントの接続と配信を acme の管理者が acme の realm で GetProvisioningConnection と GetProvisioningDelivery により参照すると、どちらも存在しない id と同じ 404 provisioning_not_found になり、接続先 URL と配信の内容は返らない。
-    unit_test: { path: backend/provisioning/db_postgres/repositories_test.go, name: TestProvisioningDeliveryRepository_Find_ScopesToTenant, task: test-go-race }
+    unit_test: { path: backend/provisioning/db_postgres/repositories_test.go, name: TestProvisioningTaskRepository_Find_ScopesToTenant, task: test-go-race }
     e2e_test: { path: backend/shared/http/server_http/provisioning_tenant_isolation_test.go, name: TestForeignTenantAdminSeesProvisioningAsMissing, task: test-go-race }
     unit_fault_model: 配信の保存先の検索がテナント条件を落とし、配信 id だけで別テナントの配信を返す。
     e2e_fault_model: ハンドラーが要求先テナントではなく固定のテナントで検索して別テナントの接続または配信を返すか、越境を存在しない id と区別できる応答で拒否する。接続と配信の一方だけが境界を守る実装も含む。

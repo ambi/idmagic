@@ -153,30 +153,30 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 }
 
 const (
-	testDeliveryTenantID     = "tenant-a"
-	testDeliveryConnectionID = "app-1"
+	testTaskTenantID     = "tenant-a"
+	testTaskConnectionID = "app-1"
 )
 
-func testDelivery(sourceID string, version int64) *domain.ProvisioningDelivery {
+func testTask(sourceID string, version int64) *domain.ProvisioningTask {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	return &domain.ProvisioningDelivery{
-		ID:            "delivery-" + sourceID + "-" + testDeliveryTenantID,
-		TenantID:      testDeliveryTenantID,
-		ConnectionID:  testDeliveryConnectionID,
+	return &domain.ProvisioningTask{
+		ID:            "task-" + sourceID + "-" + testTaskTenantID,
+		TenantID:      testTaskTenantID,
+		ConnectionID:  testTaskConnectionID,
 		SourceType:    domain.SourceTypeUser,
 		SourceID:      sourceID,
 		SourceVersion: version,
 		Operation:     domain.OperationCreate,
-		Status:        domain.DeliveryPending,
+		Status:        domain.TaskPending,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 }
 
-func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_Save_IdempotentOnDuplicateKey(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	d1 := testDelivery("user-1", 1)
+	d1 := testTask("user-1", 1)
 	created, err := repo.Save(ctx, d1)
 	if err != nil {
 		t.Fatalf("first Save() error = %v", err)
@@ -184,8 +184,8 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 	if !created {
 		t.Error("first Save() created = false, want true")
 	}
-	d2 := testDelivery("user-1", 1)
-	d2.ID = "delivery-different-id"
+	d2 := testTask("user-1", 1)
+	d2.ID = "task-different-id"
 	created, err = repo.Save(ctx, d2)
 	if err != nil {
 		t.Fatalf("second Save() error = %v", err)
@@ -195,35 +195,35 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 	}
 }
 
-func TestProvisioningDeliveryRepository_Save_DifferentVersionCreatesNewDelivery(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_Save_DifferentVersionCreatesNewTask(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	d1 := testDelivery("user-1", 1)
+	d1 := testTask("user-1", 1)
 	if _, err := repo.Save(ctx, d1); err != nil {
 		t.Fatalf("Save(v1) error = %v", err)
 	}
-	d2 := testDelivery("user-1", 2)
+	d2 := testTask("user-1", 2)
 	created, err := repo.Save(ctx, d2)
 	if err != nil {
 		t.Fatalf("Save(v2) error = %v", err)
 	}
 	if !created {
-		t.Error("Save() with a new source_version should create a new delivery")
+		t.Error("Save() with a new source_version should create a new task")
 	}
 }
 
-func TestProvisioningDeliveryRepository_ListUnenqueued_OnlyPendingWithoutJob(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_ListUnenqueued_OnlyPendingWithoutJob(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	pending := testDelivery("user-1", 1)
+	pending := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, pending)
-	withJob := testDelivery("user-2", 1)
+	withJob := testTask("user-2", 1)
 	_, _ = repo.Save(ctx, withJob)
 	if _, err := repo.AttachJob(ctx, "tenant-a", withJob.ID, "job-1"); err != nil {
 		t.Fatalf("AttachJob() error = %v", err)
 	}
-	succeeded := testDelivery("user-3", 1)
-	succeeded.Status = domain.DeliverySucceeded
+	succeeded := testTask("user-3", 1)
+	succeeded.Status = domain.TaskSucceeded
 	_, _ = repo.Save(ctx, succeeded)
 
 	unenqueued, err := repo.ListUnenqueued(ctx, 10)
@@ -235,10 +235,10 @@ func TestProvisioningDeliveryRepository_ListUnenqueued_OnlyPendingWithoutJob(t *
 	}
 }
 
-func TestProvisioningDeliveryRepository_AttachJob_RejectsAlreadyAttached(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_AttachJob_RejectsAlreadyAttached(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	d := testDelivery("user-1", 1)
+	d := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, d)
 	attached, err := repo.AttachJob(ctx, "tenant-a", d.ID, "job-1")
 	if err != nil || !attached {
@@ -249,32 +249,32 @@ func TestProvisioningDeliveryRepository_AttachJob_RejectsAlreadyAttached(t *test
 		t.Fatalf("second AttachJob() error = %v", err)
 	}
 	if attached {
-		t.Error("second AttachJob() on an already-attached delivery should return attached=false")
+		t.Error("second AttachJob() on an already-attached task should return attached=false")
 	}
 }
 
-func TestProvisioningDeliveryRepository_UpdateStatus_PersistsStatusAndError(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_UpdateStatus_PersistsStatusAndError(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	d := testDelivery("user-1", 1)
+	d := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, d)
 	msg := "downstream 503"
-	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, domain.DeliveryDeadLetter, &msg); err != nil {
+	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, domain.TaskDeadLetter, &msg); err != nil {
 		t.Fatalf("UpdateStatus() error = %v", err)
 	}
 	found, err := repo.Find(ctx, "tenant-a", d.ID)
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
-	if found.Status != domain.DeliveryDeadLetter || found.LastError == nil || *found.LastError != msg {
+	if found.Status != domain.TaskDeadLetter || found.LastError == nil || *found.LastError != msg {
 		t.Errorf("UpdateStatus() did not persist: %+v", found)
 	}
 }
 
-func TestProvisioningDeliveryRepository_RetryDeadLetter_OnlyFromDeadLetter(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_RetryDeadLetter_OnlyFromDeadLetter(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	d := testDelivery("user-1", 1)
+	d := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, d)
 	if _, err := repo.AttachJob(ctx, "tenant-a", d.ID, "job-1"); err != nil {
 		t.Fatalf("AttachJob() error = %v", err)
@@ -282,47 +282,47 @@ func TestProvisioningDeliveryRepository_RetryDeadLetter_OnlyFromDeadLetter(t *te
 
 	retried, err := repo.RetryDeadLetter(ctx, "tenant-a", d.ID)
 	if err != nil {
-		t.Fatalf("RetryDeadLetter() on pending delivery error = %v", err)
+		t.Fatalf("RetryDeadLetter() on pending task error = %v", err)
 	}
 	if retried {
-		t.Error("RetryDeadLetter() on a non-dead_letter delivery should return false")
+		t.Error("RetryDeadLetter() on a non-dead_letter task should return false")
 	}
 
-	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, domain.DeliveryDeadLetter, nil); err != nil {
+	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, domain.TaskDeadLetter, nil); err != nil {
 		t.Fatalf("UpdateStatus() error = %v", err)
 	}
 	retried, err = repo.RetryDeadLetter(ctx, "tenant-a", d.ID)
 	if err != nil || !retried {
-		t.Fatalf("RetryDeadLetter() on dead_letter delivery = (%v, %v), want (true, nil)", retried, err)
+		t.Fatalf("RetryDeadLetter() on dead_letter task = (%v, %v), want (true, nil)", retried, err)
 	}
 	found, _ := repo.Find(ctx, "tenant-a", d.ID)
-	if found.Status != domain.DeliveryPending || found.JobID != nil {
-		t.Errorf("RetryDeadLetter() did not reset delivery: %+v", found)
+	if found.Status != domain.TaskPending || found.JobID != nil {
+		t.Errorf("RetryDeadLetter() did not reset task: %+v", found)
 	}
 }
 
-// TestProvisioningDeliveryRepository_TenantIsolation closes a wi-45 T008 gap:
+// TestProvisioningTaskRepository_TenantIsolation closes a wi-45 T008 gap:
 // only the connection repository had an explicit cross-tenant test before.
-func TestProvisioningDeliveryRepository_TenantIsolation(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_TenantIsolation(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
-	d := testDelivery("user-1", 1)
+	d := testTask("user-1", 1)
 	if _, err := repo.Save(ctx, d); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
 	if found, err := repo.Find(ctx, "tenant-other", d.ID); err != nil || found != nil {
 		t.Errorf("Find() across tenants = (%+v, %v), want (nil, nil)", found, err)
 	}
-	deliveries, err := repo.ListByConnection(ctx, "tenant-other", testDeliveryConnectionID, nil, 10)
-	if err != nil || len(deliveries) != 0 {
-		t.Errorf("ListByConnection() across tenants = (%+v, %v), want (empty, nil)", deliveries, err)
+	tasks, err := repo.ListByConnection(ctx, "tenant-other", testTaskConnectionID, nil, 10)
+	if err != nil || len(tasks) != 0 {
+		t.Errorf("ListByConnection() across tenants = (%+v, %v), want (empty, nil)", tasks, err)
 	}
-	if err := repo.UpdateStatus(ctx, "tenant-other", d.ID, domain.DeliveryDeadLetter, nil); err != nil {
+	if err := repo.UpdateStatus(ctx, "tenant-other", d.ID, domain.TaskDeadLetter, nil); err != nil {
 		t.Fatalf("UpdateStatus() across tenants unexpected error = %v", err)
 	}
-	found, err := repo.Find(ctx, testDeliveryTenantID, d.ID)
-	if err != nil || found == nil || found.Status != domain.DeliveryPending {
-		t.Errorf("UpdateStatus() from another tenant must not mutate the delivery, got %+v, err=%v", found, err)
+	found, err := repo.Find(ctx, testTaskTenantID, d.ID)
+	if err != nil || found == nil || found.Status != domain.TaskPending {
+		t.Errorf("UpdateStatus() from another tenant must not mutate the task, got %+v, err=%v", found, err)
 	}
 }
 
@@ -367,16 +367,16 @@ func TestRemoteResourceLinkRepository_Find_NotFoundReturnsNil(t *testing.T) {
 	}
 }
 
-func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
-	repo := NewProvisioningDeliveryRepository()
+func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
+	repo := NewProvisioningTaskRepository()
 	ctx := context.Background()
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for i, sourceID := range []string{"user-1", "user-2", "user-3", "user-4", "user-5"} {
-		d := testDelivery(sourceID, 1)
+		d := testTask(sourceID, 1)
 		if sourceID == "user-3" {
 			d.SourceType = domain.SourceTypeGroup
 		}
-		d.ID = "delivery-" + sourceID
+		d.ID = "task-" + sourceID
 		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
 		if _, err := repo.Save(ctx, d); err != nil {
 			t.Fatalf("save %s: %v", sourceID, err)
@@ -384,7 +384,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 
 	// created_at DESC: user-5 (newest) first.
-	first, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, nil, time.Time{}, "", 2)
+	first, err := repo.ListPageByConnection(ctx, testTaskTenantID, testTaskConnectionID, nil, nil, time.Time{}, "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +393,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 
 	last := first[len(first)-1]
-	next, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, nil, last.CreatedAt, last.ID, 2)
+	next, err := repo.ListPageByConnection(ctx, testTaskTenantID, testTaskConnectionID, nil, nil, last.CreatedAt, last.ID, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +401,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 		t.Fatalf("unexpected continuation page: %+v", next)
 	}
 
-	all, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, nil, time.Time{}, "", 100)
+	all, err := repo.ListPageByConnection(ctx, testTaskTenantID, testTaskConnectionID, nil, nil, time.Time{}, "", 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +409,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 		t.Fatalf("expected 5, got %d", len(all))
 	}
 	group := domain.SourceTypeGroup
-	groups, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, &group, time.Time{}, "", 100)
+	groups, err := repo.ListPageByConnection(ctx, testTaskTenantID, testTaskConnectionID, nil, &group, time.Time{}, "", 100)
 	if err != nil || len(groups) != 1 || groups[0].SourceID != "user-3" {
 		t.Fatalf("source_type filter=%+v err=%v", groups, err)
 	}

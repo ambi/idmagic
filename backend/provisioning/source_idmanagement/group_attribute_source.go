@@ -16,11 +16,11 @@ import (
 // What it resolves is what the Group is, not what any one connection wants sent.
 // `display_name`, the key a downstream `displayName` maps from, is therefore not
 // resolved here: which attribute it takes is the connection's
-// GroupPushConfig.DisplayNameSource, and the delivery engine holds the connection.
+// GroupPushConfig.DisplayNameSource, and the provisioning engine holds the connection.
 type GroupAttributeSource struct {
 	GroupRepo groupports.GroupRepository
 	// UserRepo is unused for attribute resolution; membership is pushed by the
-	// delivery engine through its own PATCH, not as a mapped attribute.
+	// provisioning engine through its own PATCH, not as a mapped attribute.
 	UserRepo any
 }
 
@@ -51,7 +51,7 @@ func (s *GroupAttributeSource) ResolveAttributes(ctx context.Context, tenantID s
 }
 
 // CombinedAttributeSource dispatches to the source that owns each source type.
-// The delivery engine holds one ports.AttributeSource, so a connection that
+// The provisioning engine holds one ports.AttributeSource, so a connection that
 // pushes both Users and Groups needs the two adapters behind a single value.
 type CombinedAttributeSource struct {
 	User  ports.AttributeSource

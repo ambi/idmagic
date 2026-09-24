@@ -26,7 +26,7 @@ type Deps struct {
 	*support.Authenticator
 
 	ConnectionRepo  ports.ProvisioningConnectionRepository
-	DeliveryRepo    ports.ProvisioningDeliveryRepository
+	TaskRepo        ports.ProvisioningTaskRepository
 	AssignmentRepo  appports.AssignmentRepository
 	UserRepo        userports.UserRepository
 	GroupRepo       groupports.GroupRepository
@@ -35,7 +35,7 @@ type Deps struct {
 
 func (d Deps) adminDeps() usecases.AdminDeps {
 	return usecases.AdminDeps{
-		ConnectionRepo: d.ConnectionRepo, DeliveryRepo: d.DeliveryRepo,
+		ConnectionRepo: d.ConnectionRepo, TaskRepo: d.TaskRepo,
 		AssignmentRepo: d.AssignmentRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
 		NewTargetClient: d.NewTargetClient, Emit: d.Emit,
 	}
@@ -53,9 +53,9 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/applications/:id/provisioning/on-demand", d.handleProvisionOnDemand)
 	g.POST("/api/admin/v1/applications/:id/provisioning/full-resync", d.handleStartFullResync)
 	g.POST("/api/admin/v1/applications/:id/provisioning/resume", d.handleResumeConnection)
-	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries", d.handleListProvisioningDeliveries)
-	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries/:delivery_id", d.handleGetDelivery)
-	g.POST("/api/admin/v1/applications/:id/provisioning/deliveries/:delivery_id/retry", d.handleRetryDelivery)
+	g.GET("/api/admin/v1/applications/:id/provisioning/tasks", d.handleListProvisioningTasks)
+	g.GET("/api/admin/v1/applications/:id/provisioning/tasks/:task_id", d.handleGetTask)
+	g.POST("/api/admin/v1/applications/:id/provisioning/tasks/:task_id/retry", d.handleRetryTask)
 	g.GET("/api/admin/v1/provisioning/connections", d.handleListTenantConnections)
 }
 

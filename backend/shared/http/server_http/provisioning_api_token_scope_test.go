@@ -67,20 +67,20 @@ func TestProvisioningReadScopeCannotRegisterAConnection(t *testing.T) {
 }
 
 // テナントの一致しない API アクセストークンは、アプリケーションの接続、テナントの接続、
-// 配信操作のどれでも 401 invalid_token で拒否する。管理発行トークンはリクエスト先テナントで
+// プロビジョニングタスクの操作のどれでも 401 invalid_token で拒否する。管理発行トークンはリクエスト先テナントで
 // 照合され、見つからなければ RFC 7662 の非開示に従って無効として扱う。403 にすると
 // 「このトークン自体は有効だが、このテナントでは使えない」ことを提示者へ伝えてしまう。
-// 参照と変更、接続と配信の組を並べ、一部の経路だけが配線された実装を見分ける。
+// 参照と変更、接続とプロビジョニングタスクの組を並べ、一部の経路だけが配線された実装を見分ける。
 //
-//spec:covers EX-PROVISIONING-001-03: トークンのテナントとリクエスト先のテナントが一致しないとき、接続と配信の操作を 401 の InvalidAccessTokenError で拒否し、接続を作らない。
+//spec:covers EX-PROVISIONING-001-03: トークンのテナントとリクエスト先のテナントが一致しないとき、接続とプロビジョニングタスクの操作を 401 の InvalidAccessTokenError で拒否し、接続を作らない。
 func TestForeignTenantProvisioningTokenIsRejectedAsInvalid(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithProvisioning())
 	foreignRead, _ := s.IssueApiToken(t, stack.OtherRealm, domain.ScopeProvisioningRead)
 	foreignWrite, _ := s.IssueApiToken(t, stack.OtherRealm, domain.ScopeProvisioningWrite)
 
-	// テナントの接続一覧と配信一覧の参照は届かない。
+	// テナントの接続一覧とプロビジョニングタスク一覧の参照は届かない。
 	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodGet, "/api/admin/v1/provisioning/connections", foreignRead, ""))
-	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodGet, "/api/admin/v1/applications/app-1/provisioning/deliveries", foreignRead, ""))
+	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodGet, "/api/admin/v1/applications/app-1/provisioning/tasks", foreignRead, ""))
 
 	// アプリケーションの接続の登録と全件再同期は届かず、接続は作られない。
 	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodPost, "/api/admin/v1/applications/app-1/provisioning", foreignWrite,

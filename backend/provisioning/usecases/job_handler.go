@@ -13,65 +13,65 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// KindProvisioningDelivery is the Jobs.JobKind for one ProvisioningDelivery
+// KindProvisioningTask is the Jobs.JobKind for one ProvisioningTask
 // execution attempt (spec/contexts/provisioning.yaml §配送・信頼性). Registered
 // via jobsdomain.RegisterKind (caller-owned kind, §5 direction) rather
-// than a hardcoded Jobs constant. Lane is default: SCIM delivery
+// than a hardcoded Jobs constant. Lane is default: a SCIM task
 // does not carry the low-latency requirement backchannel_logout_delivery has.
-const KindProvisioningDelivery jobsdomain.JobKind = "provisioning_delivery"
+const KindProvisioningTask jobsdomain.JobKind = "provisioning_task"
 
 func init() {
-	jobsdomain.RegisterKind(KindProvisioningDelivery, jobsdomain.LaneDefault)
+	jobsdomain.RegisterKind(KindProvisioningTask, jobsdomain.LaneDefault)
 }
 
-// JobHandlerDeps are ProvisioningDeliveryHandler's dependencies.
+// JobHandlerDeps are ProvisioningTaskHandler's dependencies.
 type JobHandlerDeps struct {
-	DeliverDeps    DeliverDeps
-	ConnectionRepo ports.ProvisioningConnectionRepository
-	DeliveryRepo   ports.ProvisioningDeliveryRepository
+	ExecuteTaskDeps ExecuteTaskDeps
+	ConnectionRepo  ports.ProvisioningConnectionRepository
+	TaskRepo        ports.ProvisioningTaskRepository
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	Now func() time.Time
-	// Emit は配信の終端遷移と接続の隔離を、それぞれの保存の後に発行する。
+	// Emit はプロビジョニングタスクの終端遷移と接続の隔離を、それぞれの保存の後に発行する。
 	Emit func(spec.DomainEvent)
 }
 
-type provisioningDeliveryParams struct {
-	DeliveryID string `json:"delivery_id"`
+type provisioningTaskParams struct {
+	TaskID string `json:"task_id"`
 }
 
-// ProvisioningDeliveryHandler adapts ExecuteDelivery to the Jobs handler
+// ProvisioningTaskHandler adapts ExecuteTask to the Jobs handler
 // signature. On success it resets the connection's consecutive failure streak
-// and then emits the delivery's transition event, so a reset that fails and is
+// and then emits the task's transition event, so a reset that fails and is
 // retried by Jobs emits on the retry instead of twice.
 // On failure it inspects job.Attempts vs job.MaxAttempts (mirroring
 // backend/jobs/usecases.Runner.fail's own terminal check, since the handler
 // itself is not otherwise told terminality): a non-terminal failure leaves
-// ProvisioningDelivery.status untouched (in_flight, per
-// states.ProvisioningDeliveryLifecycle — Jobs owns the retry loop); a terminal
-// failure marks the delivery dead_letter, emits UserProvisioningFailed, and
+// ProvisioningTask.status untouched (in_flight, per
+// states.ProvisioningTaskLifecycle — Jobs owns the retry loop); a terminal
+// failure marks the task dead_letter, emits UserProvisioningFailed, and
 // increments the connection's consecutive failure count, quarantining the
 // connection once it reaches QuarantineAfterConsecutiveFailure. The handler
 // returns the original error on a downstream failure so Jobs' own Runner records
 // JobFailed/JobRetried.
 //
 // A required attribute mapping that cannot be resolved is terminal on any
-// attempt (fail-closed): retrying cannot produce the missing value. The delivery
+// attempt (fail-closed): retrying cannot produce the missing value. The task
 // is settled as dead_letter and the handler returns nil so Jobs does not retry
 // it. It does not count toward quarantine, which measures the downstream's
 // health, not one User's missing attribute.
-func ProvisioningDeliveryHandler(deps JobHandlerDeps) jobsusecases.Handler {
+func ProvisioningTaskHandler(deps JobHandlerDeps) jobsusecases.Handler {
 	now := deps.Now
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
-		var params provisioningDeliveryParams
+		var params provisioningTaskParams
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		event, execErr := ExecuteDelivery(ctx, deps.DeliverDeps, job.TenantID, params.DeliveryID, now())
+		event, execErr := ExecuteTask(ctx, deps.ExecuteTaskDeps, job.TenantID, params.TaskID, now())
 		if execErr == nil {
-			if err := resetConsecutiveFailures(ctx, deps, job.TenantID, params.DeliveryID); err != nil {
+			if err := resetConsecutiveFailures(ctx, deps, job.TenantID, params.TaskID); err != nil {
 				return nil, err
 			}
 			if event != nil {
@@ -81,48 +81,48 @@ func ProvisioningDeliveryHandler(deps JobHandlerDeps) jobsusecases.Handler {
 		}
 		failsClosed := errors.Is(execErr, ports.ErrRequiredAttributeUnresolved)
 		if !failsClosed && job.Attempts < job.MaxAttempts {
-			return nil, execErr // non-terminal: Jobs will retry, delivery stays in_flight
+			return nil, execErr // non-terminal: Jobs will retry, task stays in_flight
 		}
-		delivery, err := deadLetter(ctx, deps, job.TenantID, params.DeliveryID, execErr.Error(), now())
+		task, err := deadLetter(ctx, deps, job.TenantID, params.TaskID, execErr.Error(), now())
 		if err != nil {
 			return nil, err
 		}
 		if failsClosed {
 			return nil, nil
 		}
-		if err := recordConsecutiveFailure(ctx, deps, job.TenantID, delivery.ConnectionID, execErr.Error(), now()); err != nil {
+		if err := recordConsecutiveFailure(ctx, deps, job.TenantID, task.ConnectionID, execErr.Error(), now()); err != nil {
 			return nil, err
 		}
 		return nil, execErr
 	}
 }
 
-// deadLetter settles the delivery as dead_letter and emits UserProvisioningFailed
+// deadLetter settles the task as dead_letter and emits UserProvisioningFailed
 // once that status is saved.
-func deadLetter(ctx context.Context, deps JobHandlerDeps, tenantID, deliveryID, reason string, now time.Time) (*domain.ProvisioningDelivery, error) {
-	delivery, err := deps.DeliveryRepo.Find(ctx, tenantID, deliveryID)
+func deadLetter(ctx context.Context, deps JobHandlerDeps, tenantID, taskID, reason string, now time.Time) (*domain.ProvisioningTask, error) {
+	task, err := deps.TaskRepo.Find(ctx, tenantID, taskID)
 	if err != nil {
 		return nil, err
 	}
-	if delivery == nil {
-		return nil, ErrDeliveryNotFound
+	if task == nil {
+		return nil, ErrTaskNotFound
 	}
-	if err := deps.DeliveryRepo.UpdateStatus(ctx, tenantID, deliveryID, domain.DeliveryDeadLetter, &reason); err != nil {
+	if err := deps.TaskRepo.UpdateStatus(ctx, tenantID, taskID, domain.TaskDeadLetter, &reason); err != nil {
 		return nil, err
 	}
 	emit(deps.Emit, &domain.UserProvisioningFailed{
-		At: now, TenantID: tenantID, ConnectionID: delivery.ConnectionID, DeliveryID: deliveryID,
-		SourceType: delivery.SourceType, SourceID: delivery.SourceID, Error: reason,
+		At: now, TenantID: tenantID, ConnectionID: task.ConnectionID, TaskID: taskID,
+		SourceType: task.SourceType, SourceID: task.SourceID, Error: reason,
 	})
-	return delivery, nil
+	return task, nil
 }
 
-func resetConsecutiveFailures(ctx context.Context, deps JobHandlerDeps, tenantID, deliveryID string) error {
-	delivery, err := deps.DeliveryRepo.Find(ctx, tenantID, deliveryID)
-	if err != nil || delivery == nil {
+func resetConsecutiveFailures(ctx context.Context, deps JobHandlerDeps, tenantID, taskID string) error {
+	task, err := deps.TaskRepo.Find(ctx, tenantID, taskID)
+	if err != nil || task == nil {
 		return err
 	}
-	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, delivery.ConnectionID)
+	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, task.ConnectionID)
 	if err != nil || conn == nil {
 		return err
 	}

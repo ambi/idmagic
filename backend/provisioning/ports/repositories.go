@@ -17,7 +17,7 @@ import (
 var ErrConnectionAlreadyExists = errors.New("provisioning: connection already exists for this application")
 
 // ProvisioningConnectionRepository persists ProvisioningConnection aggregates.
-// CredentialSecret is a narrow accessor separate from Find: only the delivery
+// CredentialSecret is a narrow accessor separate from Find: only the task
 // engine (T006) may call it to authenticate outbound requests, so admin read
 // paths (which use Find) never see the plaintext/opaque secret
 // (spec/contexts/provisioning.yaml credential write-only 契約).
@@ -45,41 +45,41 @@ type RemoteResourceLinkRepository interface {
 	Upsert(ctx context.Context, link *domain.RemoteResourceLink) error
 }
 
-// ProvisioningDeliveryRepository persists ProvisioningDelivery records.
-type ProvisioningDeliveryRepository interface {
-	// Save inserts a new delivery. It returns created=false without error when
-	// an existing delivery already has the same idempotency key
+// ProvisioningTaskRepository persists ProvisioningTask records.
+type ProvisioningTaskRepository interface {
+	// Save inserts a new task. It returns created=false without error when
+	// an existing task already has the same idempotency key
 	// (tenant_id, connection_id, source_type, source_id, source_version).
-	Save(ctx context.Context, d *domain.ProvisioningDelivery) (created bool, err error)
-	Find(ctx context.Context, tenantID, deliveryID string) (*domain.ProvisioningDelivery, error)
-	// ListByConnection lists deliveries for a connection, most recent first.
+	Save(ctx context.Context, d *domain.ProvisioningTask) (created bool, err error)
+	Find(ctx context.Context, tenantID, taskID string) (*domain.ProvisioningTask, error)
+	// ListByConnection lists tasks for a connection, most recent first.
 	// status filters to a single status when non-nil.
-	ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, limit int) ([]*domain.ProvisioningDelivery, error)
-	// ListPageByConnection returns up to limit deliveries for a connection
+	ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, limit int) ([]*domain.ProvisioningTask, error)
+	// ListPageByConnection returns up to limit tasks for a connection
 	// ordered by (created_at, id) descending — matching ListByConnection's
 	// pre-existing "most recent first" order, with id as tie-break — status
 	// filters to a single status when non-nil. afterCreatedAt/afterID are the
 	// keyset continuation cursor (wi-159); zero/"" for the first page.
-	ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error)
-	ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error)
-	// ListUnenqueued returns pending deliveries with no Jobs.Job associated yet
+	ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error)
+	ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error)
+	// ListUnenqueued returns pending tasks with no Jobs.Job associated yet
 	// (dispatcher recovery, LifecycleWorkflowRunLifecycle precedent).
-	ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningDelivery, error)
-	// AttachJob associates a Jobs.Job with a pending, unattached delivery and
-	// moves it to in_flight (ProvisioningDeliveryLifecycle の pending → in_flight).
-	// attached is false when the delivery is no longer pending or already has a job.
-	AttachJob(ctx context.Context, tenantID, deliveryID, jobID string) (attached bool, err error)
-	// UpdateStatus transitions a delivery's status and records the last error
+	ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningTask, error)
+	// AttachJob associates a Jobs.Job with a pending, unattached task and
+	// moves it to in_flight (ProvisioningTaskLifecycle の pending → in_flight).
+	// attached is false when the task is no longer pending or already has a job.
+	AttachJob(ctx context.Context, tenantID, taskID, jobID string) (attached bool, err error)
+	// UpdateStatus transitions a task's status and records the last error
 	// (nil clears it). Callers are responsible for using a
-	// domain.TransitionProvisioningDeliveryLifecycle-valid target status.
-	UpdateStatus(ctx context.Context, tenantID, deliveryID string, status domain.ProvisioningDeliveryStatus, lastError *string) error
-	// RetryDeadLetter resets a dead_letter delivery to pending and clears its
-	// job_id so the dispatcher picks it up again. Returns false if the delivery
+	// domain.TransitionProvisioningTaskLifecycle-valid target status.
+	UpdateStatus(ctx context.Context, tenantID, taskID string, status domain.ProvisioningTaskStatus, lastError *string) error
+	// RetryDeadLetter resets a dead_letter task to pending and clears its
+	// job_id so the dispatcher picks it up again. Returns false if the task
 	// is not currently dead_letter.
-	RetryDeadLetter(ctx context.Context, tenantID, deliveryID string) (bool, error)
+	RetryDeadLetter(ctx context.Context, tenantID, taskID string) (bool, error)
 
-	// 猶予期間つき削除の予約は配信の前段であり、実体化で予約の遷移と配信の挿入を
-	// 同時に行うため、配信と同じリポジトリが持つ。
+	// 猶予期間つき削除の予約はプロビジョニングタスクの前段であり、実体化で予約の遷移とプロビジョニングタスクの挿入を
+	// 同時に行うため、プロビジョニングタスクと同じリポジトリが持つ。
 
 	// ScheduleDeprovision は予約を保存する。同じ (tenant, connection, user) に scheduled の
 	// 予約があれば、その期限を保つために作らず created=false を返す。
@@ -91,5 +91,5 @@ type ProvisioningDeliveryRepository interface {
 	ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error)
 	// MaterializeDeprovision は予約がまだ scheduled のときだけ materialized にし、d を挿入する。
 	// 取消と競合して予約が scheduled でなくなっていれば、何も変えず false を返す。
-	MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningDelivery) (bool, error)
+	MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningTask) (bool, error)
 }

@@ -14,11 +14,11 @@ import (
 )
 
 func isNotFound(err error) bool {
-	return errors.Is(err, usecases.ErrConnectionNotFound) || errors.Is(err, usecases.ErrDeliveryNotFound)
+	return errors.Is(err, usecases.ErrConnectionNotFound) || errors.Is(err, usecases.ErrTaskNotFound)
 }
 
 func isConflict(err error) bool {
-	return errors.Is(err, ports.ErrConnectionAlreadyExists) || errors.Is(err, usecases.ErrDeliveryNotRetryable) || errors.Is(err, usecases.ErrSubjectNotInScope)
+	return errors.Is(err, ports.ErrConnectionAlreadyExists) || errors.Is(err, usecases.ErrTaskNotRetryable) || errors.Is(err, usecases.ErrSubjectNotInScope)
 }
 
 type credentialRequest struct {
@@ -167,11 +167,11 @@ func (d Deps) handleProvisionOnDemand(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	delivery, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), req.SubjectType, req.SubjectID, time.Now().UTC())
+	task, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), req.SubjectType, req.SubjectID, time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusCreated, delivery)
+	return support.NoStoreJSON(c, http.StatusCreated, task)
 }
 
 func (d Deps) handleStartFullResync(c *echo.Context) error {
@@ -203,29 +203,29 @@ func (d Deps) handleResumeConnection(c *echo.Context) error {
 }
 
 const (
-	listProvisioningDeliveriesQuery        = "ListProvisioningDeliveries"
-	listProvisioningDeliveriesDefaultLimit = 50
-	listProvisioningDeliveriesMaxLimit     = 200
+	listProvisioningTasksQuery        = "ListProvisioningTasks"
+	listProvisioningTasksDefaultLimit = 50
+	listProvisioningTasksMaxLimit     = 200
 )
 
-// provisioningDeliveriesQueryHash fingerprints every filter/sort query param
+// provisioningTasksQueryHash fingerprints every filter/sort query param
 // (everything except cursor/limit, which are pagination controls, not filter
 // identity) so a cursor issued for one filter combination (e.g. status) is
 // rejected if the caller changes it before following it (wi-159).
-func provisioningDeliveriesQueryHash(c *echo.Context) string {
+func provisioningTasksQueryHash(c *echo.Context) string {
 	q := c.Request().URL.Query()
 	q.Del("cursor")
 	q.Del("limit")
 	return q.Encode()
 }
 
-func (d Deps) handleListProvisioningDeliveries(c *echo.Context) error {
+func (d Deps) handleListProvisioningTasks(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var status *domain.ProvisioningDeliveryStatus
+	var status *domain.ProvisioningTaskStatus
 	if raw := c.QueryParam("status"); raw != "" {
-		s := domain.ProvisioningDeliveryStatus(raw)
+		s := domain.ProvisioningTaskStatus(raw)
 		if !s.Valid() {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "status is invalid")
 		}
@@ -240,7 +240,7 @@ func (d Deps) handleListProvisioningDeliveries(c *echo.Context) error {
 		sourceType = &s
 	}
 	tenantID := support.RequestTenantID(c)
-	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, provisioningDeliveriesQueryHash(c), listProvisioningDeliveriesDefaultLimit, listProvisioningDeliveriesMaxLimit)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, provisioningTasksQueryHash(c), listProvisioningTasksDefaultLimit, listProvisioningTasksMaxLimit)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -251,51 +251,51 @@ func (d Deps) handleListProvisioningDeliveries(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
 		}
 	}
-	var deliveries []*domain.ProvisioningDelivery
+	var tasks []*domain.ProvisioningTask
 	if page.Direction == support.PageBackward {
-		deliveries, err = usecases.ListDeliveriesBefore(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
+		tasks, err = usecases.ListTasksBefore(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
 	} else {
-		deliveries, err = usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
+		tasks, err = usecases.ListTasks(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
 	}
 	if err != nil {
 		return d.writeError(c, err)
 	}
-	deliveries, hasPrevious, hasNext := support.TrimPage(deliveries, page)
-	if len(deliveries) > 0 {
-		first := deliveries[0]
-		last := deliveries[len(deliveries)-1]
-		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, provisioningDeliveriesQueryHash(c),
+	tasks, hasPrevious, hasNext := support.TrimPage(tasks, page)
+	if len(tasks) > 0 {
+		first := tasks[0]
+		last := tasks[len(tasks)-1]
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, provisioningTasksQueryHash(c),
 			first.CreatedAt.UTC().Format(time.RFC3339Nano), first.ID,
 			last.CreatedAt.UTC().Format(time.RFC3339Nano), last.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"deliveries": deliveries})
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tasks": tasks})
 }
 
-func (d Deps) handleGetDelivery(c *echo.Context) error {
+func (d Deps) handleGetTask(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	delivery, err := usecases.GetDelivery(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("delivery_id"))
+	task, err := usecases.GetTask(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("task_id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, delivery)
+	return support.NoStoreJSON(c, http.StatusOK, task)
 }
 
-func (d Deps) handleRetryDelivery(c *echo.Context) error {
+func (d Deps) handleRetryTask(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	delivery, err := usecases.RetryDelivery(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("delivery_id"))
+	task, err := usecases.RetryTask(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("task_id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, delivery)
+	return support.NoStoreJSON(c, http.StatusOK, task)
 }
 
 func (d Deps) handleListTenantConnections(c *echo.Context) error {

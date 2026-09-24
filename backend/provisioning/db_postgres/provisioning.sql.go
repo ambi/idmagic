@@ -12,18 +12,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const attachProvisioningDeliveryJob = `-- name: AttachProvisioningDeliveryJob :execrows
-UPDATE provisioning_deliveries SET job_id=$3,status='in_flight',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL AND status='pending'
+const attachProvisioningTaskJob = `-- name: AttachProvisioningTaskJob :execrows
+UPDATE provisioning_tasks SET job_id=$3,status='in_flight',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL AND status='pending'
 `
 
-type AttachProvisioningDeliveryJobParams struct {
+type AttachProvisioningTaskJobParams struct {
 	TenantID string
 	ID       string
 	JobID    pgtype.UUID
 }
 
-func (q *Queries) AttachProvisioningDeliveryJob(ctx context.Context, arg AttachProvisioningDeliveryJobParams) (int64, error) {
-	result, err := q.db.Exec(ctx, attachProvisioningDeliveryJob, arg.TenantID, arg.ID, arg.JobID)
+func (q *Queries) AttachProvisioningTaskJob(ctx context.Context, arg AttachProvisioningTaskJobParams) (int64, error) {
+	result, err := q.db.Exec(ctx, attachProvisioningTaskJob, arg.TenantID, arg.ID, arg.JobID)
 	if err != nil {
 		return 0, err
 	}
@@ -156,19 +156,19 @@ func (q *Queries) FindProvisioningConnection(ctx context.Context, arg FindProvis
 	return &i, err
 }
 
-const findProvisioningDelivery = `-- name: FindProvisioningDelivery :one
+const findProvisioningTask = `-- name: FindProvisioningTask :one
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND id=$2
+FROM provisioning_tasks WHERE tenant_id=$1 AND id=$2
 `
 
-type FindProvisioningDeliveryParams struct {
+type FindProvisioningTaskParams struct {
 	TenantID string
 	ID       string
 }
 
-func (q *Queries) FindProvisioningDelivery(ctx context.Context, arg FindProvisioningDeliveryParams) (*ProvisioningDelivery, error) {
-	row := q.db.QueryRow(ctx, findProvisioningDelivery, arg.TenantID, arg.ID)
-	var i ProvisioningDelivery
+func (q *Queries) FindProvisioningTask(ctx context.Context, arg FindProvisioningTaskParams) (*ProvisioningTask, error) {
+	row := q.db.QueryRow(ctx, findProvisioningTask, arg.TenantID, arg.ID)
+	var i ProvisioningTask
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -315,52 +315,8 @@ func (q *Queries) InsertProvisioningConnection(ctx context.Context, arg InsertPr
 	return application_id, err
 }
 
-const insertProvisioningDelivery = `-- name: InsertProvisioningDelivery :one
-INSERT INTO provisioning_deliveries (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-ON CONFLICT (tenant_id, connection_id, source_type, source_id, source_version) DO NOTHING
-RETURNING id
-`
-
-type InsertProvisioningDeliveryParams struct {
-	ID            string
-	TenantID      string
-	ConnectionID  string
-	SourceType    string
-	SourceID      string
-	SourceVersion int64
-	Operation     string
-	Status        string
-	JobID         pgtype.UUID
-	LastError     pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	CompletedAt   pgtype.Timestamptz
-}
-
-func (q *Queries) InsertProvisioningDelivery(ctx context.Context, arg InsertProvisioningDeliveryParams) (string, error) {
-	row := q.db.QueryRow(ctx, insertProvisioningDelivery,
-		arg.ID,
-		arg.TenantID,
-		arg.ConnectionID,
-		arg.SourceType,
-		arg.SourceID,
-		arg.SourceVersion,
-		arg.Operation,
-		arg.Status,
-		arg.JobID,
-		arg.LastError,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.CompletedAt,
-	)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
 const insertProvisioningScheduledDeprovision = `-- name: InsertProvisioningScheduledDeprovision :execrows
-INSERT INTO provisioning_scheduled_deprovisions (id, tenant_id, connection_id, user_id, source_version, due_at, status, delivery_id, created_at, updated_at)
+INSERT INTO provisioning_scheduled_deprovisions (id, tenant_id, connection_id, user_id, source_version, due_at, status, task_id, created_at, updated_at)
 VALUES ($1,$2,$3,$4,$5,$6,'scheduled',NULL,$7,$8)
 ON CONFLICT (tenant_id, connection_id, user_id) WHERE status = 'scheduled' DO NOTHING
 `
@@ -393,8 +349,52 @@ func (q *Queries) InsertProvisioningScheduledDeprovision(ctx context.Context, ar
 	return result.RowsAffected(), nil
 }
 
+const insertProvisioningTask = `-- name: InsertProvisioningTask :one
+INSERT INTO provisioning_tasks (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+ON CONFLICT (tenant_id, connection_id, source_type, source_id, source_version) DO NOTHING
+RETURNING id
+`
+
+type InsertProvisioningTaskParams struct {
+	ID            string
+	TenantID      string
+	ConnectionID  string
+	SourceType    string
+	SourceID      string
+	SourceVersion int64
+	Operation     string
+	Status        string
+	JobID         pgtype.UUID
+	LastError     pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	CompletedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) InsertProvisioningTask(ctx context.Context, arg InsertProvisioningTaskParams) (string, error) {
+	row := q.db.QueryRow(ctx, insertProvisioningTask,
+		arg.ID,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.SourceType,
+		arg.SourceID,
+		arg.SourceVersion,
+		arg.Operation,
+		arg.Status,
+		arg.JobID,
+		arg.LastError,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.CompletedAt,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listDueProvisioningScheduledDeprovisions = `-- name: ListDueProvisioningScheduledDeprovisions :many
-SELECT id, tenant_id, connection_id, user_id, source_version, due_at, status, delivery_id, created_at, updated_at
+SELECT id, tenant_id, connection_id, user_id, source_version, due_at, status, task_id, created_at, updated_at
 FROM provisioning_scheduled_deprovisions
 WHERE status='scheduled' AND due_at <= $1
 ORDER BY due_at LIMIT $2
@@ -422,7 +422,7 @@ func (q *Queries) ListDueProvisioningScheduledDeprovisions(ctx context.Context, 
 			&i.SourceVersion,
 			&i.DueAt,
 			&i.Status,
-			&i.DeliveryID,
+			&i.TaskID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -528,26 +528,26 @@ func (q *Queries) ListProvisioningConnectionsByTenant(ctx context.Context, tenan
 	return items, nil
 }
 
-const listProvisioningDeliveriesByConnection = `-- name: ListProvisioningDeliveriesByConnection :many
+const listProvisioningTasksByConnection = `-- name: ListProvisioningTasksByConnection :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC LIMIT $3
+FROM provisioning_tasks WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC LIMIT $3
 `
 
-type ListProvisioningDeliveriesByConnectionParams struct {
+type ListProvisioningTasksByConnectionParams struct {
 	TenantID     string
 	ConnectionID string
 	Limit        int32
 }
 
-func (q *Queries) ListProvisioningDeliveriesByConnection(ctx context.Context, arg ListProvisioningDeliveriesByConnectionParams) ([]*ProvisioningDelivery, error) {
-	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnection, arg.TenantID, arg.ConnectionID, arg.Limit)
+func (q *Queries) ListProvisioningTasksByConnection(ctx context.Context, arg ListProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listProvisioningTasksByConnection, arg.TenantID, arg.ConnectionID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ProvisioningDelivery
+	var items []*ProvisioningTask
 	for rows.Next() {
-		var i ProvisioningDelivery
+		var i ProvisioningTask
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -573,20 +573,20 @@ func (q *Queries) ListProvisioningDeliveriesByConnection(ctx context.Context, ar
 	return items, nil
 }
 
-const listProvisioningDeliveriesByConnectionAndStatus = `-- name: ListProvisioningDeliveriesByConnectionAndStatus :many
+const listProvisioningTasksByConnectionAndStatus = `-- name: ListProvisioningTasksByConnectionAndStatus :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=$3 ORDER BY created_at DESC LIMIT $4
+FROM provisioning_tasks WHERE tenant_id=$1 AND connection_id=$2 AND status=$3 ORDER BY created_at DESC LIMIT $4
 `
 
-type ListProvisioningDeliveriesByConnectionAndStatusParams struct {
+type ListProvisioningTasksByConnectionAndStatusParams struct {
 	TenantID     string
 	ConnectionID string
 	Status       string
 	Limit        int32
 }
 
-func (q *Queries) ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusParams) ([]*ProvisioningDelivery, error) {
-	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionAndStatus,
+func (q *Queries) ListProvisioningTasksByConnectionAndStatus(ctx context.Context, arg ListProvisioningTasksByConnectionAndStatusParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listProvisioningTasksByConnectionAndStatus,
 		arg.TenantID,
 		arg.ConnectionID,
 		arg.Status,
@@ -596,9 +596,9 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Co
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ProvisioningDelivery
+	var items []*ProvisioningTask
 	for rows.Next() {
-		var i ProvisioningDelivery
+		var i ProvisioningTask
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -624,16 +624,16 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Co
 	return items, nil
 }
 
-const listProvisioningDeliveriesByConnectionPage = `-- name: ListProvisioningDeliveriesByConnectionPage :many
+const listProvisioningTasksByConnectionPage = `-- name: ListProvisioningTasksByConnectionPage :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries
+FROM provisioning_tasks
 WHERE tenant_id=$1 AND connection_id=$2
   AND ($3::text = '' OR status=$3::text)
   AND ($4::text = '' OR source_type=$4::text)
 ORDER BY created_at DESC, id DESC LIMIT $5
 `
 
-type ListProvisioningDeliveriesByConnectionPageParams struct {
+type ListProvisioningTasksByConnectionPageParams struct {
 	TenantID         string
 	ConnectionID     string
 	FilterStatus     string
@@ -641,10 +641,10 @@ type ListProvisioningDeliveriesByConnectionPageParams struct {
 	PageLimit        int32
 }
 
-// First page of ListProvisioningDeliveries keyset pagination (wi-159).
+// First page of ListProvisioningTasks keyset pagination (wi-159).
 // Empty status/source_type arguments disable that filter.
-func (q *Queries) ListProvisioningDeliveriesByConnectionPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageParams) ([]*ProvisioningDelivery, error) {
-	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionPage,
+func (q *Queries) ListProvisioningTasksByConnectionPage(ctx context.Context, arg ListProvisioningTasksByConnectionPageParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listProvisioningTasksByConnectionPage,
 		arg.TenantID,
 		arg.ConnectionID,
 		arg.FilterStatus,
@@ -655,9 +655,9 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionPage(ctx context.Context
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ProvisioningDelivery
+	var items []*ProvisioningTask
 	for rows.Next() {
-		var i ProvisioningDelivery
+		var i ProvisioningTask
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -683,16 +683,16 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionPage(ctx context.Context
 	return items, nil
 }
 
-const listProvisioningDeliveriesByConnectionPageAfter = `-- name: ListProvisioningDeliveriesByConnectionPageAfter :many
+const listProvisioningTasksByConnectionPageAfter = `-- name: ListProvisioningTasksByConnectionPageAfter :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2
+FROM provisioning_tasks WHERE tenant_id=$1 AND connection_id=$2
   AND ($3::text = '' OR status=$3::text)
   AND ($4::text = '' OR source_type=$4::text)
   AND (created_at, id) < ($5::timestamptz, $6::uuid)
 ORDER BY created_at DESC, id DESC LIMIT $7
 `
 
-type ListProvisioningDeliveriesByConnectionPageAfterParams struct {
+type ListProvisioningTasksByConnectionPageAfterParams struct {
 	TenantID         string
 	ConnectionID     string
 	FilterStatus     string
@@ -704,8 +704,8 @@ type ListProvisioningDeliveriesByConnectionPageAfterParams struct {
 
 // Continuation page: resumes strictly after the (created_at, id) keyset of
 // the last row the caller saw.
-func (q *Queries) ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageAfterParams) ([]*ProvisioningDelivery, error) {
-	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionPageAfter,
+func (q *Queries) ListProvisioningTasksByConnectionPageAfter(ctx context.Context, arg ListProvisioningTasksByConnectionPageAfterParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listProvisioningTasksByConnectionPageAfter,
 		arg.TenantID,
 		arg.ConnectionID,
 		arg.FilterStatus,
@@ -718,9 +718,9 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Co
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ProvisioningDelivery
+	var items []*ProvisioningTask
 	for rows.Next() {
-		var i ProvisioningDelivery
+		var i ProvisioningTask
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -746,16 +746,16 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Co
 	return items, nil
 }
 
-const listProvisioningDeliveriesByConnectionPageBefore = `-- name: ListProvisioningDeliveriesByConnectionPageBefore :many
+const listProvisioningTasksByConnectionPageBefore = `-- name: ListProvisioningTasksByConnectionPageBefore :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2
+FROM provisioning_tasks WHERE tenant_id=$1 AND connection_id=$2
   AND ($3::text = '' OR status=$3::text)
   AND ($4::text = '' OR source_type=$4::text)
   AND (created_at, id) > ($5::timestamptz, $6::uuid)
 ORDER BY created_at ASC, id ASC LIMIT $7
 `
 
-type ListProvisioningDeliveriesByConnectionPageBeforeParams struct {
+type ListProvisioningTasksByConnectionPageBeforeParams struct {
 	TenantID         string
 	ConnectionID     string
 	FilterStatus     string
@@ -765,8 +765,8 @@ type ListProvisioningDeliveriesByConnectionPageBeforeParams struct {
 	PageLimit        int32
 }
 
-func (q *Queries) ListProvisioningDeliveriesByConnectionPageBefore(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageBeforeParams) ([]*ProvisioningDelivery, error) {
-	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionPageBefore,
+func (q *Queries) ListProvisioningTasksByConnectionPageBefore(ctx context.Context, arg ListProvisioningTasksByConnectionPageBeforeParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listProvisioningTasksByConnectionPageBefore,
 		arg.TenantID,
 		arg.ConnectionID,
 		arg.FilterStatus,
@@ -779,9 +779,9 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionPageBefore(ctx context.C
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ProvisioningDelivery
+	var items []*ProvisioningTask
 	for rows.Next() {
-		var i ProvisioningDelivery
+		var i ProvisioningTask
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -807,20 +807,20 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionPageBefore(ctx context.C
 	return items, nil
 }
 
-const listUnenqueuedProvisioningDeliveries = `-- name: ListUnenqueuedProvisioningDeliveries :many
+const listUnenqueuedProvisioningTasks = `-- name: ListUnenqueuedProvisioningTasks :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1
+FROM provisioning_tasks WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1
 `
 
-func (q *Queries) ListUnenqueuedProvisioningDeliveries(ctx context.Context, limit int32) ([]*ProvisioningDelivery, error) {
-	rows, err := q.db.Query(ctx, listUnenqueuedProvisioningDeliveries, limit)
+func (q *Queries) ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listUnenqueuedProvisioningTasks, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ProvisioningDelivery
+	var items []*ProvisioningTask
 	for rows.Next() {
-		var i ProvisioningDelivery
+		var i ProvisioningTask
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -848,30 +848,30 @@ func (q *Queries) ListUnenqueuedProvisioningDeliveries(ctx context.Context, limi
 
 const materializeProvisioningScheduledDeprovision = `-- name: MaterializeProvisioningScheduledDeprovision :one
 WITH materialized AS (
-  UPDATE provisioning_scheduled_deprovisions AS s SET status='materialized', delivery_id=$1, updated_at=$2
+  UPDATE provisioning_scheduled_deprovisions AS s SET status='materialized', task_id=$1, updated_at=$2
   WHERE s.tenant_id=$3 AND s.id=$4 AND s.status='scheduled'
   RETURNING s.tenant_id, s.connection_id, s.user_id, s.source_version
 ), inserted AS (
-  INSERT INTO provisioning_deliveries (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
+  INSERT INTO provisioning_tasks (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
   SELECT $1, m.tenant_id, m.connection_id, 'user', m.user_id, m.source_version, 'delete', 'pending', $2, $2
   FROM materialized m
-  ON CONFLICT ON CONSTRAINT provisioning_deliveries_idempotency_unique DO NOTHING
+  ON CONFLICT ON CONSTRAINT provisioning_tasks_idempotency_unique DO NOTHING
 )
 SELECT count(*) FROM materialized
 `
 
 type MaterializeProvisioningScheduledDeprovisionParams struct {
-	DeliveryID pgtype.UUID
-	Now        time.Time
-	TenantID   string
-	ID         string
+	TaskID   pgtype.UUID
+	Now      time.Time
+	TenantID string
+	ID       string
 }
 
-// 予約の遷移と配信の挿入を一文で行い、取消と競合したときに配信だけが残らないようにする。
+// 予約の遷移とプロビジョニングタスクの挿入を一文で行い、取消と競合したときにプロビジョニングタスクだけが残らないようにする。
 // 結果は遷移した予約の件数（0 または 1）である。
 func (q *Queries) MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error) {
 	row := q.db.QueryRow(ctx, materializeProvisioningScheduledDeprovision,
-		arg.DeliveryID,
+		arg.TaskID,
 		arg.Now,
 		arg.TenantID,
 		arg.ID,
@@ -881,18 +881,18 @@ func (q *Queries) MaterializeProvisioningScheduledDeprovision(ctx context.Contex
 	return count, err
 }
 
-const retryDeadLetterProvisioningDelivery = `-- name: RetryDeadLetterProvisioningDelivery :execrows
-UPDATE provisioning_deliveries SET status='pending', job_id=NULL, last_error=NULL, updated_at=now()
+const retryDeadLetterProvisioningTask = `-- name: RetryDeadLetterProvisioningTask :execrows
+UPDATE provisioning_tasks SET status='pending', job_id=NULL, last_error=NULL, updated_at=now()
 WHERE tenant_id=$1 AND id=$2 AND status='dead_letter'
 `
 
-type RetryDeadLetterProvisioningDeliveryParams struct {
+type RetryDeadLetterProvisioningTaskParams struct {
 	TenantID string
 	ID       string
 }
 
-func (q *Queries) RetryDeadLetterProvisioningDelivery(ctx context.Context, arg RetryDeadLetterProvisioningDeliveryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, retryDeadLetterProvisioningDelivery, arg.TenantID, arg.ID)
+func (q *Queries) RetryDeadLetterProvisioningTask(ctx context.Context, arg RetryDeadLetterProvisioningTaskParams) (int64, error) {
+	result, err := q.db.Exec(ctx, retryDeadLetterProvisioningTask, arg.TenantID, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -1037,21 +1037,21 @@ func (q *Queries) UpdateProvisioningConnectionWithSecret(ctx context.Context, ar
 	return err
 }
 
-const updateProvisioningDeliveryStatus = `-- name: UpdateProvisioningDeliveryStatus :exec
-UPDATE provisioning_deliveries SET status=$3, last_error=$4, updated_at=now(),
+const updateProvisioningTaskStatus = `-- name: UpdateProvisioningTaskStatus :exec
+UPDATE provisioning_tasks SET status=$3, last_error=$4, updated_at=now(),
   completed_at = CASE WHEN $3 IN ('succeeded','dead_letter') THEN now() ELSE completed_at END
 WHERE tenant_id=$1 AND id=$2
 `
 
-type UpdateProvisioningDeliveryStatusParams struct {
+type UpdateProvisioningTaskStatusParams struct {
 	TenantID  string
 	ID        string
 	Status    string
 	LastError pgtype.Text
 }
 
-func (q *Queries) UpdateProvisioningDeliveryStatus(ctx context.Context, arg UpdateProvisioningDeliveryStatusParams) error {
-	_, err := q.db.Exec(ctx, updateProvisioningDeliveryStatus,
+func (q *Queries) UpdateProvisioningTaskStatus(ctx context.Context, arg UpdateProvisioningTaskStatusParams) error {
+	_, err := q.db.Exec(ctx, updateProvisioningTaskStatus,
 		arg.TenantID,
 		arg.ID,
 		arg.Status,

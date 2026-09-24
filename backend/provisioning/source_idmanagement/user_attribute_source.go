@@ -1,5 +1,5 @@
 // Package identitysource adapts IdManagement's User aggregate to
-// ports.AttributeSource for the Provisioning delivery engine (
+// ports.AttributeSource for the Provisioning provisioning engine (
 // decision 4: Provisioning legitimately depends on IdManagement per
 // context_map, so this adapter may import idmanagement/domain and ports).
 package source_idmanagement
@@ -25,13 +25,13 @@ func (s *UserAttributeSource) ResolveAttributes(ctx context.Context, tenantID st
 	if sourceType != domain.SourceTypeUser {
 		return nil, false, nil
 	}
-	// FindBySubIncludingDeleted (not FindBySub): a deactivate/delete delivery
+	// FindBySubIncludingDeleted (not FindBySub): a deactivate/delete task
 	// created for TriggerUserDeleted must still resolve attributes for the
 	// now-tombstoned user (its Lifecycle.Status is no longer Active, so
 	// "active" resolves to false) so the downstream deactivate/update call
 	// actually goes out. Using FindBySub here would make OnDelete=deactivate
 	// (the default DeprovisionPolicy) silently no-op forever, since the User
-	// row is already gone-per-FindBySub by the time the delivery executes.
+	// row is already gone-per-FindBySub by the time the task executes.
 	user, err := s.UserRepo.FindBySubIncludingDeleted(ctx, sourceID)
 	if err != nil {
 		return nil, false, err

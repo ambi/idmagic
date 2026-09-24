@@ -1,9 +1,9 @@
 import { IconRefresh } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  getAdminApplicationProvisioningDelivery,
-  listAdminApplicationProvisioningDeliveries,
-  retryAdminApplicationProvisioningDelivery,
+  getAdminApplicationProvisioningTask,
+  listAdminApplicationProvisioningTasks,
+  retryAdminApplicationProvisioningTask,
 } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -16,19 +16,19 @@ import {
   type ProvisioningDictionary,
 } from './AdminApplicationProvisioning.i18n'
 import { formatDate } from './AdminApplicationProvisioningShared'
-import type { ProvisioningDelivery, ProvisioningDeliveryStatus } from '../../types'
+import type { ProvisioningTask, ProvisioningTaskStatus } from '../../types'
 
-function deliveryStatusOptions(t: ProvisioningDictionary) {
+function taskStatusOptions(t: ProvisioningDictionary) {
   return [
-    { value: '', label: t.deliveryStatusAll },
-    { value: 'pending', label: t.deliveryStatusPending },
-    { value: 'in_flight', label: t.deliveryStatusInFlight },
-    { value: 'succeeded', label: t.deliveryStatusSucceeded },
-    { value: 'dead_letter', label: t.deliveryStatusDeadLetter },
+    { value: '', label: t.taskStatusAll },
+    { value: 'pending', label: t.taskStatusPending },
+    { value: 'in_flight', label: t.taskStatusInFlight },
+    { value: 'succeeded', label: t.taskStatusSucceeded },
+    { value: 'dead_letter', label: t.taskStatusDeadLetter },
   ]
 }
 
-function operationLabel(op: ProvisioningDelivery['operation'], t: ProvisioningDictionary): string {
+function operationLabel(op: ProvisioningTask['operation'], t: ProvisioningDictionary): string {
   switch (op) {
     case 'create':
       return t.operationCreate
@@ -45,7 +45,7 @@ function operationLabel(op: ProvisioningDelivery['operation'], t: ProvisioningDi
   }
 }
 
-function deliveryStatusBadge(status: ProvisioningDeliveryStatus): string {
+function taskStatusBadge(status: ProvisioningTaskStatus): string {
   switch (status) {
     case 'succeeded':
       return 'bg-emerald-50 text-emerald-700'
@@ -58,7 +58,7 @@ function deliveryStatusBadge(status: ProvisioningDeliveryStatus): string {
   }
 }
 
-export function DeliveriesPanel({
+export function TasksPanel({
   csrfToken,
   applicationID,
 }: {
@@ -68,8 +68,8 @@ export function DeliveriesPanel({
   const t = useDictionary(provisioningDictionary)
   const { locale } = useLocale()
   const [statusFilter, setStatusFilter] = useState('')
-  const [deliveries, setDeliveries] = useState<ProvisioningDelivery[]>([])
-  const [selected, setSelected] = useState<ProvisioningDelivery | null>(null)
+  const [tasks, setTasks] = useState<ProvisioningTask[]>([])
+  const [selected, setSelected] = useState<ProvisioningTask | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [retrying, setRetrying] = useState(false)
@@ -78,24 +78,24 @@ export function DeliveriesPanel({
     setLoading(true)
     setError('')
     try {
-      const status = statusFilter === '' ? undefined : (statusFilter as ProvisioningDeliveryStatus)
-      const list = await listAdminApplicationProvisioningDeliveries(applicationID, status)
-      setDeliveries(list)
+      const status = statusFilter === '' ? undefined : (statusFilter as ProvisioningTaskStatus)
+      const list = await listAdminApplicationProvisioningTasks(applicationID, status)
+      setTasks(list)
     } catch (cause) {
-      setError(messageOf(cause, t.deliveriesLoadFailedError))
+      setError(messageOf(cause, t.tasksLoadFailedError))
     } finally {
       setLoading(false)
     }
-  }, [applicationID, statusFilter, t.deliveriesLoadFailedError])
+  }, [applicationID, statusFilter, t.tasksLoadFailedError])
 
   useEffect(() => {
     void reload()
   }, [reload])
 
-  async function selectDelivery(d: ProvisioningDelivery) {
+  async function selectTask(d: ProvisioningTask) {
     setSelected(d)
     try {
-      setSelected(await getAdminApplicationProvisioningDelivery(applicationID, d.id))
+      setSelected(await getAdminApplicationProvisioningTask(applicationID, d.id))
     } catch {
       // 一覧の値のまま表示を継続する
     }
@@ -106,7 +106,7 @@ export function DeliveriesPanel({
     setRetrying(true)
     setError('')
     try {
-      const updated = await retryAdminApplicationProvisioningDelivery(
+      const updated = await retryAdminApplicationProvisioningTask(
         csrfToken,
         applicationID,
         selected.id,
@@ -123,18 +123,18 @@ export function DeliveriesPanel({
   return (
     <Card className="grid gap-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionTitle>{t.deliveriesHeading}</SectionTitle>
+        <SectionTitle>{t.tasksHeading}</SectionTitle>
         <div className="flex items-center gap-2">
           <Select
             value={statusFilter}
             onValueChange={setStatusFilter}
-            options={deliveryStatusOptions(t)}
-            aria-label={t.deliveryStatusFilterLabel}
+            options={taskStatusOptions(t)}
+            aria-label={t.taskStatusFilterLabel}
           />
           <Button
             type="button"
             variant="ghost"
-            aria-label={t.deliveriesReloadAria}
+            aria-label={t.tasksReloadAria}
             onClick={() => void reload()}
           >
             <IconRefresh size={16} aria-hidden="true" />
@@ -143,15 +143,15 @@ export function DeliveriesPanel({
       </div>
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <DeliveriesTable
-          deliveries={deliveries}
+        <TasksTable
+          tasks={tasks}
           loading={loading}
           selected={selected}
-          onSelect={(d) => void selectDelivery(d)}
+          onSelect={(d) => void selectTask(d)}
           locale={locale}
           t={t}
         />
-        <DeliveryDetailCard
+        <TaskDetailCard
           selected={selected}
           retrying={retrying}
           onRetry={() => void retry()}
@@ -163,18 +163,18 @@ export function DeliveriesPanel({
   )
 }
 
-function DeliveriesTable({
-  deliveries,
+function TasksTable({
+  tasks,
   loading,
   selected,
   onSelect,
   locale,
   t,
 }: {
-  deliveries: ProvisioningDelivery[]
+  tasks: ProvisioningTask[]
   loading: boolean
-  selected: ProvisioningDelivery | null
-  onSelect: (d: ProvisioningDelivery) => void
+  selected: ProvisioningTask | null
+  onSelect: (d: ProvisioningTask) => void
   locale: string
   t: ProvisioningDictionary
 }) {
@@ -190,14 +190,14 @@ function DeliveriesTable({
           </tr>
         </thead>
         <tbody>
-          {!loading && deliveries.length === 0 ? (
+          {!loading && tasks.length === 0 ? (
             <tr>
               <td colSpan={4} className="px-3 py-8 text-center text-xs text-slate-500">
-                {t.deliveriesEmptyNotice}
+                {t.tasksEmptyNotice}
               </td>
             </tr>
           ) : null}
-          {deliveries.map((d) => (
+          {tasks.map((d) => (
             <tr
               key={d.id}
               onClick={() => onSelect(d)}
@@ -214,9 +214,9 @@ function DeliveriesTable({
               <td className="px-3 py-2 text-xs">{operationLabel(d.operation, t)}</td>
               <td className="px-3 py-2">
                 <span
-                  className={`rounded px-2 py-0.5 text-xs font-medium ${deliveryStatusBadge(d.status)}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium ${taskStatusBadge(d.status)}`}
                 >
-                  {deliveryStatusOptions(t).find((o) => o.value === d.status)?.label ?? d.status}
+                  {taskStatusOptions(t).find((o) => o.value === d.status)?.label ?? d.status}
                 </span>
               </td>
             </tr>
@@ -227,14 +227,14 @@ function DeliveriesTable({
   )
 }
 
-function DeliveryDetailCard({
+function TaskDetailCard({
   selected,
   retrying,
   onRetry,
   locale,
   t,
 }: {
-  selected: ProvisioningDelivery | null
+  selected: ProvisioningTask | null
   retrying: boolean
   onRetry: () => void
   locale: string
@@ -242,36 +242,36 @@ function DeliveryDetailCard({
 }) {
   return (
     <Card className="p-4">
-      <h3 className="text-sm font-semibold text-slate-700">{t.deliveryDetailHeading}</h3>
+      <h3 className="text-sm font-semibold text-slate-700">{t.taskDetailHeading}</h3>
       {selected ? (
         <dl className="mt-3 grid grid-cols-[110px_minmax(0,1fr)] gap-y-2 text-xs">
-          <dt className="text-slate-500">{t.deliveryIdLabel}</dt>
+          <dt className="text-slate-500">{t.taskIdLabel}</dt>
           <dd className="break-all font-mono">{selected.id}</dd>
           <dt className="text-slate-500">{t.tableHeaderStatus}</dt>
-          <dd>{deliveryStatusOptions(t).find((o) => o.value === selected.status)?.label}</dd>
-          <dt className="text-slate-500">{t.deliverySourceVersionLabel}</dt>
+          <dd>{taskStatusOptions(t).find((o) => o.value === selected.status)?.label}</dd>
+          <dt className="text-slate-500">{t.taskSourceVersionLabel}</dt>
           <dd className="font-mono">{selected.source_version}</dd>
           {selected.job_id ? (
             <>
-              <dt className="text-slate-500">{t.deliveryJobIdLabel}</dt>
+              <dt className="text-slate-500">{t.taskJobIdLabel}</dt>
               <dd className="break-all font-mono">{selected.job_id}</dd>
             </>
           ) : null}
           {selected.last_error ? (
             <>
-              <dt className="text-slate-500">{t.deliveryLastErrorLabel}</dt>
+              <dt className="text-slate-500">{t.taskLastErrorLabel}</dt>
               <dd className="break-all text-red-700">{selected.last_error}</dd>
             </>
           ) : null}
           {selected.completed_at ? (
             <>
-              <dt className="text-slate-500">{t.deliveryCompletedAtLabel}</dt>
+              <dt className="text-slate-500">{t.taskCompletedAtLabel}</dt>
               <dd>{formatDate(selected.completed_at, locale, t.unknownDate)}</dd>
             </>
           ) : null}
         </dl>
       ) : (
-        <p className="mt-3 text-xs text-slate-500">{t.selectDeliveryPrompt}</p>
+        <p className="mt-3 text-xs text-slate-500">{t.selectTaskPrompt}</p>
       )}
       {selected && selected.status === 'dead_letter' ? (
         <Button

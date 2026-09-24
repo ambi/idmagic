@@ -391,7 +391,7 @@ SCIM の `filter` は、RFC 7644 の文法を許可リストの範囲で受け�
 
 ### 非同期処理の冪等性
 
-内部の非同期処理は、冪等キーによって同一の作用を二重に実行しない（Jobs の `dedup_key`、プロビジョニング配信の `(tenant_id, connection_id, source_type, source_id, source_version)`）。
+内部の非同期処理は、冪等キーによって同一の作用を二重に実行しない（Jobs の `dedup_key`、プロビジョニングタスクの `(tenant_id, connection_id, source_type, source_id, source_version)`）。
 
 - **目的**：At-least-once 配送のもとで、作用が一度だけ観測されるようにする。
 - **担保手段**：PostgreSQL の一意制約。

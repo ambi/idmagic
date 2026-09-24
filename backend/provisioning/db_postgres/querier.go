@@ -9,35 +9,35 @@ import (
 )
 
 type Querier interface {
-	AttachProvisioningDeliveryJob(ctx context.Context, arg AttachProvisioningDeliveryJobParams) (int64, error)
+	AttachProvisioningTaskJob(ctx context.Context, arg AttachProvisioningTaskJobParams) (int64, error)
 	CancelProvisioningScheduledDeprovisions(ctx context.Context, arg CancelProvisioningScheduledDeprovisionsParams) (int64, error)
 	DeleteProvisioningConnection(ctx context.Context, arg DeleteProvisioningConnectionParams) error
 	FindProvisioningConnection(ctx context.Context, arg FindProvisioningConnectionParams) (*FindProvisioningConnectionRow, error)
-	FindProvisioningDelivery(ctx context.Context, arg FindProvisioningDeliveryParams) (*ProvisioningDelivery, error)
+	FindProvisioningTask(ctx context.Context, arg FindProvisioningTaskParams) (*ProvisioningTask, error)
 	FindRemoteResourceLink(ctx context.Context, arg FindRemoteResourceLinkParams) (*ProvisioningRemoteLink, error)
 	GetProvisioningConnectionSecret(ctx context.Context, arg GetProvisioningConnectionSecretParams) (string, error)
 	InsertProvisioningConnection(ctx context.Context, arg InsertProvisioningConnectionParams) (string, error)
-	InsertProvisioningDelivery(ctx context.Context, arg InsertProvisioningDeliveryParams) (string, error)
 	InsertProvisioningScheduledDeprovision(ctx context.Context, arg InsertProvisioningScheduledDeprovisionParams) (int64, error)
+	InsertProvisioningTask(ctx context.Context, arg InsertProvisioningTaskParams) (string, error)
 	ListDueProvisioningScheduledDeprovisions(ctx context.Context, arg ListDueProvisioningScheduledDeprovisionsParams) ([]*ProvisioningScheduledDeprovision, error)
 	ListProvisioningConnectionsByTenant(ctx context.Context, tenantID string) ([]*ListProvisioningConnectionsByTenantRow, error)
-	ListProvisioningDeliveriesByConnection(ctx context.Context, arg ListProvisioningDeliveriesByConnectionParams) ([]*ProvisioningDelivery, error)
-	ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusParams) ([]*ProvisioningDelivery, error)
-	// First page of ListProvisioningDeliveries keyset pagination (wi-159).
+	ListProvisioningTasksByConnection(ctx context.Context, arg ListProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error)
+	ListProvisioningTasksByConnectionAndStatus(ctx context.Context, arg ListProvisioningTasksByConnectionAndStatusParams) ([]*ProvisioningTask, error)
+	// First page of ListProvisioningTasks keyset pagination (wi-159).
 	// Empty status/source_type arguments disable that filter.
-	ListProvisioningDeliveriesByConnectionPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageParams) ([]*ProvisioningDelivery, error)
+	ListProvisioningTasksByConnectionPage(ctx context.Context, arg ListProvisioningTasksByConnectionPageParams) ([]*ProvisioningTask, error)
 	// Continuation page: resumes strictly after the (created_at, id) keyset of
 	// the last row the caller saw.
-	ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageAfterParams) ([]*ProvisioningDelivery, error)
-	ListProvisioningDeliveriesByConnectionPageBefore(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageBeforeParams) ([]*ProvisioningDelivery, error)
-	ListUnenqueuedProvisioningDeliveries(ctx context.Context, limit int32) ([]*ProvisioningDelivery, error)
-	// 予約の遷移と配信の挿入を一文で行い、取消と競合したときに配信だけが残らないようにする。
+	ListProvisioningTasksByConnectionPageAfter(ctx context.Context, arg ListProvisioningTasksByConnectionPageAfterParams) ([]*ProvisioningTask, error)
+	ListProvisioningTasksByConnectionPageBefore(ctx context.Context, arg ListProvisioningTasksByConnectionPageBeforeParams) ([]*ProvisioningTask, error)
+	ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error)
+	// 予約の遷移とプロビジョニングタスクの挿入を一文で行い、取消と競合したときにプロビジョニングタスクだけが残らないようにする。
 	// 結果は遷移した予約の件数（0 または 1）である。
 	MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error)
-	RetryDeadLetterProvisioningDelivery(ctx context.Context, arg RetryDeadLetterProvisioningDeliveryParams) (int64, error)
+	RetryDeadLetterProvisioningTask(ctx context.Context, arg RetryDeadLetterProvisioningTaskParams) (int64, error)
 	UpdateProvisioningConnection(ctx context.Context, arg UpdateProvisioningConnectionParams) error
 	UpdateProvisioningConnectionWithSecret(ctx context.Context, arg UpdateProvisioningConnectionWithSecretParams) error
-	UpdateProvisioningDeliveryStatus(ctx context.Context, arg UpdateProvisioningDeliveryStatusParams) error
+	UpdateProvisioningTaskStatus(ctx context.Context, arg UpdateProvisioningTaskStatusParams) error
 	UpsertRemoteResourceLink(ctx context.Context, arg UpsertRemoteResourceLinkParams) error
 }
 

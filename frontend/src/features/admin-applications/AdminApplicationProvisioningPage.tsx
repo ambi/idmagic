@@ -6,7 +6,7 @@ import { detailURL } from './AdminApplicationsShared'
 import { provisioningDictionary } from './AdminApplicationProvisioning.i18n'
 import { ConnectForm } from './AdminApplicationProvisioningConnect'
 import { DangerZone } from './AdminApplicationProvisioningDanger'
-import { DeliveriesPanel } from './AdminApplicationProvisioningDeliveries'
+import { TasksPanel } from './AdminApplicationProvisioningTasks'
 import { OnDemandAndResyncPanel } from './AdminApplicationProvisioningOnDemand'
 import { ConnectionSettingsForm } from './AdminApplicationProvisioningSettings'
 import { ConnectionStatusPanel, TestConnectionPanel } from './AdminApplicationProvisioningStatus'
@@ -75,7 +75,7 @@ export function AdminApplicationProvisioningPage({
               onChanged={setConnection}
             />
             <OnDemandAndResyncPanel csrfToken={csrfToken} applicationID={applicationID} />
-            <DeliveriesPanel csrfToken={csrfToken} applicationID={applicationID} />
+            <TasksPanel csrfToken={csrfToken} applicationID={applicationID} />
             <DangerZone
               csrfToken={csrfToken}
               applicationID={applicationID}

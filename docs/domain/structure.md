@@ -101,7 +101,7 @@ backend/idmanagement/
 
 [論理アーキテクチャ](../design/architecture/logical.md#context-map) の Context Map に属するドメインイベントの関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
 
-**ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、上流の IdManagement が語彙とポートを宣言し、下流の Context がそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションで配信対象を捕捉する。上流が公開言語を持ち下流が従う形なので、これらは公開イベントによる関係ではなく Open Host Service である。
+**ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、上流の IdManagement が語彙とポートを宣言し、下流の Context がそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションでプロビジョニングタスクを作る。上流が公開言語を持ち下流が従う形なので、これらは公開イベントによる関係ではなく Open Host Service である。
 
 **監査の事実は、組み立て地点に 1 つだけある配信点を通る。** `backend/cmd/internal/bootstrap` が組み立てる発行の閉包が、`EventSink` への出力、アカウントのセキュリティ通知のディスパッチ、監査記録の追記を順に行う。ドメインイベントを発行する Context はこの閉包だけを関数として受け取り、監査にも通知にも依存しない。逆に消費する側も発行元の Go の型を知らず、後述のワイヤ表現の上だけで動く。したがってこの関係に import は存在せず、依存の向きはどちらの側にも生じない。
 

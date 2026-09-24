@@ -16,7 +16,7 @@ type AttributeSource interface {
 
 // ProvisioningTargetClient is the protocol seam (decision 2): each
 // protocol feature slice (backend/provisioning/client_scim, a future .../entraid)
-// implements this against its own wire format. The delivery engine usecase
+// implements this against its own wire format. The provisioning engine usecase
 // depends only on this port, never on a concrete protocol package.
 type ProvisioningTargetClient interface {
 	Discover(ctx context.Context) (domain.ProvisioningCapabilities, error)
@@ -39,7 +39,7 @@ type ProvisioningTargetClient interface {
 
 // GroupMemberSource reads a Group's current direct members. Membership is not a
 // mapped attribute — the mapping engine produces a resource document, while
-// membership is pushed as its own PATCH — so the delivery engine reads it
+// membership is pushed as its own PATCH — so the provisioning engine reads it
 // through this port rather than through AttributeSource.
 type GroupMemberSource interface {
 	ListMemberUserIDs(ctx context.Context, tenantID, groupID string) ([]string, error)

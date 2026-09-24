@@ -468,7 +468,7 @@ export type ProvisioningOperation =
   | 'delete'
   | 'membership_add'
   | 'membership_remove'
-export type ProvisioningDeliveryStatus = 'pending' | 'in_flight' | 'succeeded' | 'dead_letter'
+export type ProvisioningTaskStatus = 'pending' | 'in_flight' | 'succeeded' | 'dead_letter'
 
 export type ProvisioningFeatureFlags = {
   create_users: boolean
@@ -549,7 +549,7 @@ export type ProvisioningConnection = {
   updated_at: string
 }
 
-export type ProvisioningDelivery = {
+export type ProvisioningTask = {
   id: string
   tenant_id: string
   connection_id: string
@@ -557,7 +557,7 @@ export type ProvisioningDelivery = {
   source_id: string
   source_version: number
   operation: ProvisioningOperation
-  status: ProvisioningDeliveryStatus
+  status: ProvisioningTaskStatus
   job_id?: string | null
   last_error?: string | null
   created_at: string

@@ -102,7 +102,7 @@ func (c *Client) send(ctx context.Context, method, path string, body any, refres
 	if c.tokenSource != nil {
 		// The token is resolved per request. For bearer_token this is the stored
 		// value; for oauth2_client_credentials it may trigger a fetch. Failing to
-		// obtain one fails the delivery rather than sending it unauthenticated.
+		// obtain one fails the task rather than sending it unauthenticated.
 		token, tokenErr := c.tokenSource.token(ctx, refreshToken)
 		if tokenErr != nil {
 			return nil, nil, tokenErr
@@ -125,7 +125,7 @@ func (c *Client) send(ctx context.Context, method, path string, body any, refres
 
 // classify maps a non-2xx SCIM response to the protocol-agnostic error
 // taxonomy ports.ConflictError/ports.NotFoundError/ports.RetryableError
-// declares (decision 2: the delivery engine usecase must not depend
+// declares (decision 2: the provisioning engine usecase must not depend
 // on this package).
 func classify(resp *http.Response, data []byte) error {
 	switch {

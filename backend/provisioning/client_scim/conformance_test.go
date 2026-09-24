@@ -108,7 +108,7 @@ func fullLifecycleRequests(t *testing.T) []recordedRequest {
 	return *recorded
 }
 
-// 配信 1 件につき 1 リソースの要求を送る。
+// プロビジョニングタスク 1 件につき 1 リソースの要求を送る。
 //
 //spec:covers RFC7644-OUT-BULK: /Bulk を使わない。下流が bulk.supported を広告していても、
 func TestClient_SendsNoBulkRequest(t *testing.T) {

@@ -206,13 +206,13 @@ func RunWorker() error {
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
 	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
-	// 配信は「対象が無い」として何も送らずに成功で終わる (wi-441 が直した形)。
+	// プロビジョニングタスクは「対象が無い」として何も送らずに成功で終わる (wi-441 が直した形)。
 	attrSource := identitysource.CombinedAttributeSource{
 		User:  &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo},
 		Group: &identitysource.GroupAttributeSource{GroupRepo: deps.IdManagement.GroupRepo},
 	}
 	memberSource := &identitysource.GroupMemberSource{GroupRepo: deps.IdManagement.GroupRepo}
-	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger))))
+	handlers.Register(provisioning.KindProvisioningTask, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger))))
 	go provisioningDispatchLoop(ctx, deps, logger)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
 	go sharedSignalsDeliveryLoop(ctx, deps, worker.SharedSignalsDeliveryInterval)
@@ -368,19 +368,19 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	}
 }
 
-// provisioningDispatchLoop periodically associates pending ProvisioningDelivery
+// provisioningDispatchLoop periodically associates pending ProvisioningTask
 // rows with a Jobs.Job (LifecycleWorkflowRunLifecycle's dispatcher precedent):
-// it recovers deliveries whose same-Tx-adjacent capture succeeded but whose
+// it recovers tasks whose same-Tx-adjacent capture succeeded but whose
 // immediate enqueue call failed (wi-45 T006, decision 4).
 func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger) {
 	// NewEmitFunc は監査の書き込みに自前の context を使う。停止中の tick でも
-	// ProvisioningDeliveryStarted を落とさないため (sharedSignalsDeliveryLoop と同じ)。
+	// ProvisioningTaskStarted を落とさないため (sharedSignalsDeliveryLoop と同じ)。
 	dispatcherDeps := deps.Provisioning.DispatcherDeps(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger)) //nolint:contextcheck // see comment above
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if _, err := provisioningusecases.DispatchPendingDeliveries(ctx, dispatcherDeps, 100, time.Now().UTC()); err != nil {
-			logging.Warn(ctx, "provisioning delivery dispatch failed", "error", err)
+		if _, err := provisioningusecases.DispatchPendingTasks(ctx, dispatcherDeps, 100, time.Now().UTC()); err != nil {
+			logging.Warn(ctx, "provisioning task dispatch failed", "error", err)
 		}
 		select {
 		case <-ctx.Done():

@@ -174,10 +174,10 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 	}
 }
 
-func testDelivery(tb testing.TB, tenantID, connectionID, sourceID string, version int64) *domain.ProvisioningDelivery {
+func testTask(tb testing.TB, tenantID, connectionID, sourceID string, version int64) *domain.ProvisioningTask {
 	tb.Helper()
 	now := pgtest.Now()
-	return &domain.ProvisioningDelivery{
+	return &domain.ProvisioningTask{
 		ID:            pgfixtures.NewUUID(tb),
 		TenantID:      tenantID,
 		ConnectionID:  connectionID,
@@ -185,28 +185,28 @@ func testDelivery(tb testing.TB, tenantID, connectionID, sourceID string, versio
 		SourceID:      sourceID,
 		SourceVersion: version,
 		Operation:     domain.OperationCreate,
-		Status:        domain.DeliveryPending,
+		Status:        domain.TaskPending,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 }
 
-func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing.T) {
+func TestProvisioningTaskRepository_Save_IdempotentOnDuplicateKey(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
-	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 
-	d1 := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+	d1 := testTask(t, tenant.ID, app.ID, user.ID, 1)
 	created, err := repo.Save(ctx, d1)
 	if err != nil || !created {
 		t.Fatalf("first Save() = (%v, %v), want (true, nil)", created, err)
 	}
-	d2 := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+	d2 := testTask(t, tenant.ID, app.ID, user.ID, 1)
 	created, err = repo.Save(ctx, d2)
 	if err != nil {
 		t.Fatalf("second Save() error = %v", err)
@@ -215,15 +215,15 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 		t.Error("second Save() with same idempotency key created = true, want false (dedup)")
 	}
 
-	d3 := testDelivery(t, tenant.ID, app.ID, user.ID, 2)
+	d3 := testTask(t, tenant.ID, app.ID, user.ID, 2)
 	created, err = repo.Save(ctx, d3)
 	if err != nil || !created {
 		t.Fatalf("Save() with a new source_version = (%v, %v), want (true, nil)", created, err)
 	}
 }
 
-//spec:covers REQ-PROVISIONING-015: 配信の保存先は要求先テナントで検索し、別テナントの配信 id では何も返さない。
-func TestProvisioningDeliveryRepository_Find_ScopesToTenant(t *testing.T) {
+//spec:covers REQ-PROVISIONING-015: プロビジョニングタスクの保存先は要求先テナントで検索し、別テナントのプロビジョニングタスク id では何も返さない。
+func TestProvisioningTaskRepository_Find_ScopesToTenant(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
@@ -231,36 +231,36 @@ func TestProvisioningDeliveryRepository_Find_ScopesToTenant(t *testing.T) {
 		t.Fatalf("Register() error = %v", err)
 	}
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
-	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
-	delivery := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
-	if _, err := repo.Save(ctx, delivery); err != nil {
+	task := testTask(t, tenant.ID, app.ID, user.ID, 1)
+	if _, err := repo.Save(ctx, task); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	if found, err := repo.Find(ctx, tenant.ID, delivery.ID); err != nil || found == nil || found.ID != delivery.ID {
-		t.Fatalf("Find() in the owning tenant = (%+v, %v), want delivery %s", found, err, delivery.ID)
+	if found, err := repo.Find(ctx, tenant.ID, task.ID); err != nil || found == nil || found.ID != task.ID {
+		t.Fatalf("Find() in the owning tenant = (%+v, %v), want task %s", found, err, task.ID)
 	}
 	otherTenant := pgfixtures.SeedTenant(t, pool)
-	if found, err := repo.Find(ctx, otherTenant.ID, delivery.ID); err != nil || found != nil {
+	if found, err := repo.Find(ctx, otherTenant.ID, task.ID); err != nil || found != nil {
 		t.Errorf("Find() across tenants = (%+v, %v), want (nil, nil)", found, err)
 	}
 }
 
-func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
+func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
-	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	base := pgtest.Now()
 
 	ids := make([]string, 5)
 	for i := range ids {
 		user := pgfixtures.SeedUser(t, pool, tenant.ID)
-		d := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+		d := testTask(t, tenant.ID, app.ID, user.ID, 1)
 		if i == 2 {
 			d.SourceType = domain.SourceTypeGroup
 		}
@@ -303,17 +303,17 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 }
 
-func TestProvisioningDeliveryRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
+func TestProvisioningTaskRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
-	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 
-	d := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+	d := testTask(t, tenant.ID, app.ID, user.ID, 1)
 	if _, err := repo.Save(ctx, d); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
@@ -342,11 +342,11 @@ func TestProvisioningDeliveryRepository_ListUnenqueuedAttachJobRetry(t *testing.
 	}
 
 	msg := "downstream 503"
-	if err := repo.UpdateStatus(ctx, tenant.ID, d.ID, domain.DeliveryDeadLetter, &msg); err != nil {
+	if err := repo.UpdateStatus(ctx, tenant.ID, d.ID, domain.TaskDeadLetter, &msg); err != nil {
 		t.Fatalf("UpdateStatus() error = %v", err)
 	}
 	got, err := repo.Find(ctx, tenant.ID, d.ID)
-	if err != nil || got.Status != domain.DeliveryDeadLetter || got.LastError == nil || *got.LastError != msg {
+	if err != nil || got.Status != domain.TaskDeadLetter || got.LastError == nil || *got.LastError != msg {
 		t.Fatalf("Find() after UpdateStatus() = %+v, err=%v", got, err)
 	}
 
@@ -355,7 +355,7 @@ func TestProvisioningDeliveryRepository_ListUnenqueuedAttachJobRetry(t *testing.
 		t.Fatalf("RetryDeadLetter() = (%v, %v), want (true, nil)", retried, err)
 	}
 	got, err = repo.Find(ctx, tenant.ID, d.ID)
-	if err != nil || got.Status != domain.DeliveryPending || got.JobID != nil {
+	if err != nil || got.Status != domain.TaskPending || got.JobID != nil {
 		t.Errorf("Find() after RetryDeadLetter() = %+v, err=%v, want status=pending job_id=nil", got, err)
 	}
 }
@@ -437,7 +437,7 @@ func TestProvisioningConnectionRepository_RoundTripsOAuth2CredentialMetadata(t *
 }
 
 // active な oauth2 接続は token URL と client_id を欠いたまま保存できない。
-// 動かない設定を有効なまま置くと、原因が「配信の失敗」としてしか現れない。
+// 動かない設定を有効なまま置くと、原因が「プロビジョニングタスクの失敗」としてしか現れない。
 func TestProvisioningConnectionRepository_RejectsActiveOAuth2WithoutTokenURL(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
@@ -467,7 +467,7 @@ func findReservation(due []*domain.ScheduledDeprovision, id string) *domain.Sche
 	return nil
 }
 
-func TestProvisioningDeliveryRepository_ScheduledDeprovisionLifecycle(t *testing.T) {
+func TestProvisioningTaskRepository_ScheduledDeprovisionLifecycle(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
@@ -476,7 +476,7 @@ func TestProvisioningDeliveryRepository_ScheduledDeprovisionLifecycle(t *testing
 		t.Fatal(err)
 	}
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
-	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	deletedAt := pgtest.Now()
 
@@ -501,15 +501,15 @@ func TestProvisioningDeliveryRepository_ScheduledDeprovisionLifecycle(t *testing
 	}
 
 	now := first.DueAt.Add(time.Minute)
-	delivery := got.Delivery(pgfixtures.NewUUID(t), now)
-	if ok, err := repo.MaterializeDeprovision(ctx, got, delivery); err != nil || !ok {
+	task := got.Task(pgfixtures.NewUUID(t), now)
+	if ok, err := repo.MaterializeDeprovision(ctx, got, task); err != nil || !ok {
 		t.Fatalf("MaterializeDeprovision() = (%v, %v), want (true, nil)", ok, err)
 	}
-	stored, err := repo.Find(ctx, tenant.ID, delivery.ID)
-	if err != nil || stored == nil || stored.Operation != domain.OperationDelete || stored.SourceID != user.ID || stored.SourceVersion != 10 || stored.Status != domain.DeliveryPending {
-		t.Fatalf("Find(materialized delivery) = (%+v, %v), want a pending delete of the user at version 10", stored, err)
+	stored, err := repo.Find(ctx, tenant.ID, task.ID)
+	if err != nil || stored == nil || stored.Operation != domain.OperationDelete || stored.SourceID != user.ID || stored.SourceVersion != 10 || stored.Status != domain.TaskPending {
+		t.Fatalf("Find(materialized task) = (%+v, %v), want a pending delete of the user at version 10", stored, err)
 	}
-	if ok, err := repo.MaterializeDeprovision(ctx, got, got.Delivery(pgfixtures.NewUUID(t), now)); err != nil || ok {
+	if ok, err := repo.MaterializeDeprovision(ctx, got, got.Task(pgfixtures.NewUUID(t), now)); err != nil || ok {
 		t.Fatalf("second MaterializeDeprovision() = (%v, %v), want (false, nil)", ok, err)
 	}
 	if due, _ := repo.ListDueDeprovisions(ctx, now, 1000); findReservation(due, first.ID) != nil {
@@ -517,7 +517,7 @@ func TestProvisioningDeliveryRepository_ScheduledDeprovisionLifecycle(t *testing
 	}
 }
 
-func TestProvisioningDeliveryRepository_CancelledDeprovisionIsNeverMaterialized(t *testing.T) {
+func TestProvisioningTaskRepository_CancelledDeprovisionIsNeverMaterialized(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
@@ -526,7 +526,7 @@ func TestProvisioningDeliveryRepository_CancelledDeprovisionIsNeverMaterialized(
 		t.Fatal(err)
 	}
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
-	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	deletedAt := pgtest.Now()
 	reservation := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
@@ -541,12 +541,12 @@ func TestProvisioningDeliveryRepository_CancelledDeprovisionIsNeverMaterialized(
 		t.Fatalf("CancelScheduledDeprovisions(beforeVersion=11) = (%d, %v), want (1, nil)", n, err)
 	}
 
-	// 取消の前に読んだ予約で実体化しても、配信は作られない。
-	delivery := reservation.Delivery(pgfixtures.NewUUID(t), reservation.DueAt)
-	if ok, err := repo.MaterializeDeprovision(ctx, reservation, delivery); err != nil || ok {
+	// 取消の前に読んだ予約で実体化しても、プロビジョニングタスクは作られない。
+	task := reservation.Task(pgfixtures.NewUUID(t), reservation.DueAt)
+	if ok, err := repo.MaterializeDeprovision(ctx, reservation, task); err != nil || ok {
 		t.Fatalf("MaterializeDeprovision(cancelled) = (%v, %v), want (false, nil)", ok, err)
 	}
-	if stored, err := repo.Find(ctx, tenant.ID, delivery.ID); err != nil || stored != nil {
-		t.Fatalf("Find(delivery of a cancelled reservation) = (%+v, %v), want none", stored, err)
+	if stored, err := repo.Find(ctx, tenant.ID, task.ID); err != nil || stored != nil {
+		t.Fatalf("Find(task of a cancelled reservation) = (%+v, %v), want none", stored, err)
 	}
 }

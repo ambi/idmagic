@@ -40,11 +40,11 @@ func NewTargetClient(conn *domain.ProvisioningConnection, secret string) (ports.
 type Module struct {
 	ConnectionRepo ports.ProvisioningConnectionRepository
 	RemoteLinkRepo ports.RemoteResourceLinkRepository
-	DeliveryRepo   ports.ProvisioningDeliveryRepository
+	TaskRepo       ports.ProvisioningTaskRepository
 }
 
 func (m Module) captureDeps(assignmentRepo appports.AssignmentRepository) usecases.CaptureDeps {
-	return usecases.CaptureDeps{ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, AssignmentRepo: assignmentRepo}
+	return usecases.CaptureDeps{ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, AssignmentRepo: assignmentRepo}
 }
 
 // UserNotifier builds the userports.ProvisioningNotifier IdManagement calls
@@ -54,7 +54,7 @@ func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) userp
 }
 
 // GroupNotifier builds the groupports.ProvisioningNotifier IdManagement calls
-// after committing a Group mutation. Group deliveries are gated by the
+// after committing a Group mutation. Group tasks are gated by the
 // connection's push_groups flag inside capture, so wiring this unconditionally
 // does not start writing downstream for connections that have it off.
 func (m Module) GroupNotifier(assignmentRepo appports.AssignmentRepository) groupports.ProvisioningNotifier {
@@ -73,14 +73,14 @@ type jobEnqueuer struct {
 	QuotaRepo tenantports.QuotaRepository
 }
 
-func (e jobEnqueuer) EnqueueProvisioningDelivery(ctx context.Context, tenantID, dedupKey, deliveryID string) (string, error) {
-	params, err := json.Marshal(map[string]string{"delivery_id": deliveryID})
+func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedupKey, taskID string) (string, error) {
+	params, err := json.Marshal(map[string]string{"task_id": taskID})
 	if err != nil {
 		return "", err
 	}
 	now := time.Now().UTC()
 	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: e.Repo, QuotaRepo: e.QuotaRepo}, jobsports.EnqueueInput{
-		TenantID: tenantID, Kind: usecases.KindProvisioningDelivery, Params: params, DedupKey: &dedupKey, Now: now,
+		TenantID: tenantID, Kind: usecases.KindProvisioningTask, Params: params, DedupKey: &dedupKey, Now: now,
 	}, now)
 	if err != nil {
 		return "", err
@@ -88,17 +88,17 @@ func (e jobEnqueuer) EnqueueProvisioningDelivery(ctx context.Context, tenantID, 
 	return job.ID, nil
 }
 
-// DispatcherDeps builds DispatchPendingDeliveries's dependencies. emit receives
-// ProvisioningDeliveryStarted; it is a parameter rather than an optional field so
+// DispatcherDeps builds DispatchPendingTasks's dependencies. emit receives
+// ProvisioningTaskStarted; it is a parameter rather than an optional field so
 // that the worker cannot build the dispatcher without deciding where it goes.
 func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenantports.QuotaRepository, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{DeliveryRepo: m.DeliveryRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}, Emit: emit}
+	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}, Emit: emit}
 }
 
-// JobHandlerDeps builds ProvisioningDeliveryHandler's dependencies.
+// JobHandlerDeps builds ProvisioningTaskHandler's dependencies.
 // memberSource is what makes push_groups reach a downstream: without it the
 // Group's own attributes still go out, but its membership does not. emit receives
-// the delivery's terminal transition and the connection's quarantine.
+// the task's terminal transition and the connection's quarantine.
 func (m Module) JobHandlerDeps(
 	attrSource ports.AttributeSource,
 	memberSource ports.GroupMemberSource,
@@ -106,11 +106,11 @@ func (m Module) JobHandlerDeps(
 	emit func(spec.DomainEvent),
 ) usecases.JobHandlerDeps {
 	return usecases.JobHandlerDeps{
-		DeliverDeps: usecases.DeliverDeps{
-			ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, LinkRepo: m.RemoteLinkRepo,
+		ExecuteTaskDeps: usecases.ExecuteTaskDeps{
+			ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
 			AttributeSource: attrSource, GroupMemberSource: memberSource, NewTargetClient: newTargetClient,
 		},
-		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, Emit: emit,
+		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, Emit: emit,
 	}
 }
 
@@ -119,18 +119,18 @@ func (m Module) JobHandlerDeps(
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository, groupRepo groupports.GroupRepository) {
 	provisioninghttp.RegisterRoutes(g, provisioninghttp.Deps{
 		Deps: deps, Authenticator: authenticator,
-		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo,
+		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo,
 		AssignmentRepo: assignmentRepo, UserRepo: userRepo, GroupRepo: groupRepo,
 		NewTargetClient: NewTargetClient,
 	})
 }
 
-// KindProvisioningDelivery re-exports usecases.KindProvisioningDelivery so
+// KindProvisioningTask re-exports usecases.KindProvisioningTask so
 // bootstrap/worker code doesn't need to import backend/provisioning/usecases
 // directly just for the Jobs handler registry key.
-const KindProvisioningDelivery = usecases.KindProvisioningDelivery
+const KindProvisioningTask = usecases.KindProvisioningTask
 
-// Handler re-exports usecases.ProvisioningDeliveryHandler for worker wiring.
+// Handler re-exports usecases.ProvisioningTaskHandler for worker wiring.
 func Handler(deps usecases.JobHandlerDeps) jobsusecases.Handler {
-	return usecases.ProvisioningDeliveryHandler(deps)
+	return usecases.ProvisioningTaskHandler(deps)
 }
