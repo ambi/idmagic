@@ -32,7 +32,7 @@ depends_on:
   - wi-576-missing-translation-key-has-no-runtime-fallback
   - wi-578-align-cross-tenant-branding-asset-refusal
   - wi-579-align-branding-asset-gateway-example
-  - wi-22350-capture-provisioning-deliveries-in-the-mutation-transaction
+  - wi-92540-guarantee-provisioning-deliveries-by-reconciliation
   - wi-22987-track-full-resync-completion
   - wi-37560-return-access-denied-for-cross-tenant-provisioning-api-tokens
   - wi-85060-publish-provisioning-lifecycle-events
