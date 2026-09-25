@@ -23,6 +23,8 @@ type ReconcileDeps struct {
 	// AssignmentRepo は assigned_only の接続のスコープを決める。nil なら、どの User も割り当てられていないとみなす。
 	AssignmentRepo appports.AssignmentRepository
 	UserRepo       userports.UserRepository
+	// Emit は誤削除ガードで接続を隔離したときの ConnectionQuarantined を、保存の後に発行する。nil なら発行しない。
+	Emit func(spec.DomainEvent)
 }
 
 // ReconcileConnections は全テナントの有効な接続を照合し、作ったプロビジョニングタスクと予約の数を返す。
@@ -60,8 +62,17 @@ func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn domain.Pr
 		return 0, err
 	}
 	in.Limit = limit
+	plan := domain.PlanReconciliation(in)
+	if plan.QuarantineReason != "" {
+		// 照合の開始時に読んだ接続ではなく最新の接続を隔離し、その間の管理操作を上書きしない。
+		current, err := deps.ConnectionRepo.Find(ctx, conn.TenantID, conn.ApplicationID)
+		if err != nil || current == nil || current.Health == domain.HealthQuarantined {
+			return 0, err
+		}
+		return 0, quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, current, plan.QuarantineReason, now)
+	}
 	created := 0
-	for _, action := range domain.PlanReconciliation(in).Actions {
+	for _, action := range plan.Actions {
 		ok, err := saveReconcileAction(ctx, deps, conn, action, now)
 		if err != nil {
 			return created, err

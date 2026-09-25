@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 
@@ -234,4 +235,105 @@ func TestPlanReconciliation_StopsAtTheLimitInUserIDOrder(t *testing.T) {
 		domain.ReconcileAction{UserID: "u1", Operation: domain.OperationCreate},
 		domain.ReconcileAction{UserID: "u2", Operation: domain.OperationCreate},
 	)
+}
+
+// guardedConnection は誤削除ガードの閾値を設定した接続を返す。nil はその閾値を設定しないことを表す。
+func guardedConnection(count, percent *int) domain.ProvisioningConnection {
+	conn := reconcileConnection()
+	conn.DeprovisionPolicy.AccidentalDeletionCountThreshold = count
+	conn.DeprovisionPolicy.AccidentalDeletionPercentThreshold = percent
+	return conn
+}
+
+// linkedUsers は反映済みのリンクを持つ n 人の User と、そのリンクを返す。inScope が false なら、全員がスコープ外になっている。
+func linkedUsers(n int, inScope bool) ([]domain.ReconcileUser, map[string]domain.RemoteResourceLink) {
+	users := make([]domain.ReconcileUser, 0, n)
+	links := make(map[string]domain.RemoteResourceLink, n)
+	for i := range n {
+		id := fmt.Sprintf("u%02d", i)
+		users = append(users, domain.ReconcileUser{ID: id, Active: true, InScope: inScope, Version: linkVersion})
+		links[id] = activeLink()
+	}
+	return users, links
+}
+
+func wantQuarantine(t *testing.T, plan domain.ReconcilePlan) {
+	t.Helper()
+	if plan.QuarantineReason == "" || len(plan.Actions) != 0 {
+		t.Fatalf("PlanReconciliation() = %+v, want no action and a quarantine reason", plan)
+	}
+}
+
+func wantNoQuarantine(t *testing.T, plan domain.ReconcilePlan, actions int) {
+	t.Helper()
+	if plan.QuarantineReason != "" || len(plan.Actions) != actions {
+		t.Fatalf("PlanReconciliation() = %+v, want %d actions and no quarantine", plan, actions)
+	}
+}
+
+//spec:covers REQ-PROVISIONING-011: 計画した deprovision が件数の閾値を超えたら、照合は何も作らず隔離の理由を返す。1 回あたりの上限で打ち切る前の件数を比べるので、上限より多い deprovision も見逃さない。
+func TestPlanReconciliation_QuarantinesInsteadOfDeprovisioningOverTheGuard(t *testing.T) {
+	users, links := linkedUsers(3, false)
+	plan := domain.PlanReconciliation(domain.ReconcileInput{
+		Connection: guardedConnection(new(2), nil), Users: users, Links: links, Limit: 1,
+	})
+	wantQuarantine(t, plan)
+}
+
+// 閾値と等しい件数は超過ではない。ここを誤ると、正当な一括の deprovision が止まる。
+func TestPlanReconciliation_DeprovisionsAtTheCountThreshold(t *testing.T) {
+	users, links := linkedUsers(2, false)
+	plan := domain.PlanReconciliation(domain.ReconcileInput{
+		Connection: guardedConnection(new(2), nil), Users: users, Links: links, Limit: 100,
+	})
+	wantNoQuarantine(t, plan, 2)
+}
+
+//spec:covers EX-PROVISIONING-011-03: 件数の閾値が無くても、反映済みの 10 人のうち 6 人の deprovision は割合の閾値 50 を超えるので、照合は何も作らず隔離の理由を返す。5 人なら超えない。
+func TestPlanReconciliation_QuarantinesOverThePercentThreshold(t *testing.T) {
+	inScope, inScopeLinks := linkedUsers(10, true)
+	for _, deprovisioned := range []struct {
+		count      int
+		quarantine bool
+	}{{6, true}, {5, false}} {
+		users := slices.Clone(inScope)
+		for i := range deprovisioned.count {
+			users[i].InScope = false
+		}
+		plan := domain.PlanReconciliation(domain.ReconcileInput{
+			Connection: guardedConnection(nil, new(50)), Users: users, Links: inScopeLinks, Limit: 100,
+		})
+		if deprovisioned.quarantine {
+			wantQuarantine(t, plan)
+		} else {
+			wantNoQuarantine(t, plan, deprovisioned.count)
+		}
+	}
+}
+
+// 猶予期間つき削除の予約も、いずれ下流の削除になるので数える。
+func TestPlanReconciliation_CountsScheduledDeletionsTowardTheGuard(t *testing.T) {
+	conn := guardedConnection(new(1), nil)
+	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn.DeprovisionPolicy.GracePeriodDays = 7
+	users, links := linkedUsers(2, true)
+	for i := range users {
+		users[i].Deleted = true
+	}
+	plan := domain.PlanReconciliation(domain.ReconcileInput{Connection: conn, Users: users, Links: links, Limit: 100})
+	wantQuarantine(t, plan)
+}
+
+// 作成と更新は deprovision ではないので、閾値を超える数を作っても隔離しない。
+func TestPlanReconciliation_DoesNotCountProvisioningTowardTheGuard(t *testing.T) {
+	users := []domain.ReconcileUser{
+		{ID: "u1", Active: true, InScope: true, Version: 10},
+		{ID: "u2", Active: true, InScope: true, Version: 10},
+		{ID: "u3", Active: true, InScope: true, Version: linkVersion + 1},
+	}
+	links := map[string]domain.RemoteResourceLink{"u3": activeLink()}
+	plan := domain.PlanReconciliation(domain.ReconcileInput{
+		Connection: guardedConnection(new(0), nil), Users: users, Links: links, Limit: 100,
+	})
+	wantNoQuarantine(t, plan, 3)
 }

@@ -96,10 +96,11 @@ func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenant
 }
 
 // ReconcileDeps は照合の依存を組み立てる。User と割り当ては、照合があるべき状態として読む記録の正である。
-func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository) usecases.ReconcileDeps {
+// emit は誤削除ガードによる ConnectionQuarantined を受け取る。worker が発行先を決めずに組み立てられないよう引数にする。
+func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository, emit func(spec.DomainEvent)) usecases.ReconcileDeps {
 	return usecases.ReconcileDeps{
 		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
-		AssignmentRepo: assignmentRepo, UserRepo: userRepo,
+		AssignmentRepo: assignmentRepo, UserRepo: userRepo, Emit: emit,
 	}
 }
 

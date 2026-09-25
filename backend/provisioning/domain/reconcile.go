@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -44,6 +45,9 @@ type ReconcileAction struct {
 // ReconcilePlan は 1 接続の照合が作るものである。
 type ReconcilePlan struct {
 	Actions []ReconcileAction
+	// QuarantineReason が空でなければ、計画した deprovision が誤削除ガードの閾値を超えている。
+	// そのとき Actions は空であり、呼び出し側は何も作らずに接続を隔離する。
+	QuarantineReason string
 }
 
 // PlanReconciliation は、あるべき状態と下流へ反映済みの状態の差分から、作るべきものを返す。
@@ -53,10 +57,9 @@ func PlanReconciliation(in ReconcileInput) ReconcilePlan {
 	slices.SortFunc(users, func(a, b ReconcileUser) int { return strings.Compare(a.ID, b.ID) })
 
 	var actions []ReconcileAction
+	// 誤削除ガードは上限で打ち切る前の件数で判定するので、上限に達した後も deprovision だけは数え続ける。
+	deprovisions := 0
 	for _, user := range users {
-		if len(actions) >= in.Limit {
-			break
-		}
 		if awaitsSettledTask(user, in.Tasks[user.ID]) {
 			continue
 		}
@@ -64,11 +67,31 @@ func PlanReconciliation(in ReconcileInput) ReconcilePlan {
 		if l, ok := in.Links[user.ID]; ok {
 			link = &l
 		}
-		if action, ok := planUser(in.Connection, user, link); ok {
+		action, ok := planUser(in.Connection, user, link)
+		if !ok {
+			continue
+		}
+		if action.Operation == OperationDeactivate || action.Operation == OperationDelete {
+			deprovisions++
+		}
+		if len(actions) < in.Limit {
 			actions = append(actions, action)
 		}
 	}
+	if in.Connection.DeprovisionPolicy.exceedsAccidentalDeletionGuard(deprovisions, len(in.Links)) {
+		return ReconcilePlan{QuarantineReason: fmt.Sprintf(
+			"accidental deletion guard: %d deprovisions of %d linked users exceed the threshold", deprovisions, len(in.Links))}
+	}
 	return ReconcilePlan{Actions: actions}
+}
+
+// exceedsAccidentalDeletionGuard は、1 回の照合の deprovision が件数または割合の閾値を超えるかを返す。
+// 割合の分母は下流へ反映済みの User のリンク数である。等しい値は超過ではない。
+func (p DeprovisionPolicy) exceedsAccidentalDeletionGuard(deprovisions, linkedUsers int) bool {
+	if p.AccidentalDeletionCountThreshold != nil && deprovisions > *p.AccidentalDeletionCountThreshold {
+		return true
+	}
+	return p.AccidentalDeletionPercentThreshold != nil && deprovisions*100 > *p.AccidentalDeletionPercentThreshold*linkedUsers
 }
 
 // awaitsSettledTask は、既存のプロビジョニングタスクの決着を待つべき User かを返す。

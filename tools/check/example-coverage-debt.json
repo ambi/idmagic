@@ -6,9 +6,9 @@
   "untested": [
     {
       "id": "EX-PROVISIONING-011-01",
-      "reason": "隔離と解除のイベントは発行するが、full resync が誤削除ガードの閾値を判定せず、閾値の超過で隔離されないため",
-      "blocked_by": "wi-61629-quarantine-connections-on-the-accidental-deletion-guard",
-      "finding": "DeprovisionPolicy は閾値を保存するが、StartFullResync は deprovision の件数を数えず、閾値を読む処理が無い。"
+      "reason": "誤削除ガードの閾値判定と隔離は照合で動くが、隔離を notification_email へ通知する処理がどの経路にも無いため",
+      "blocked_by": "wi-33641-notify-quarantine-to-the-notification-email",
+      "finding": "照合が閾値を超える deprovision を計画すると、何も作らずに接続を隔離して ConnectionQuarantined を発行する（TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning）。ProvisioningConnection.notification_email を読んでメールを送る処理は、連続失敗と誤削除ガードのどちらの隔離にも無い。"
     },
     {
       "id": "EX-WSFEDERATION-001-03",

@@ -3,14 +3,17 @@ package provisioning_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
+	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // 照合の E2E は、User の変更を IdManagement の実際のユースケースで起こし、書き込み時の捕捉を
@@ -144,5 +147,131 @@ func TestE2E_ReconcileCreatesNothingWhenCaptureAlreadyConverged(t *testing.T) {
 	}
 	if got := h.downstream.count(); got != before {
 		t.Fatalf("downstream requests = %d, want %d", got, before)
+	}
+}
+
+// guardRun は照合を worker と同じ Module.ReconcileDeps の組み立てで走らせ、発行ポートへ渡ったイベントを残す。
+type guardRun struct {
+	h      *e2eHarness
+	events []spec.DomainEvent
+}
+
+func (g *guardRun) reconcile() int {
+	g.h.t.Helper()
+	module := provisioning.Module{ConnectionRepo: g.h.connRepo, RemoteLinkRepo: g.h.linkRepo, TaskRepo: g.h.taskRepo}
+	emit := func(event spec.DomainEvent) { g.events = append(g.events, event) }
+	created, err := usecases.ReconcileConnections(context.Background(), module.ReconcileDeps(g.h.userRepo, nil, emit), 100, time.Now().UTC())
+	if err != nil {
+		g.h.t.Fatalf("ReconcileConnections() error = %v", err)
+	}
+	return created
+}
+
+func (g *guardRun) quarantines() []*domain.ConnectionQuarantined {
+	var quarantined []*domain.ConnectionQuarantined
+	for _, event := range g.events {
+		if q, ok := event.(*domain.ConnectionQuarantined); ok {
+			quarantined = append(quarantined, q)
+		}
+	}
+	return quarantined
+}
+
+// setAccidentalDeletionGuard は接続の誤削除ガードの閾値を設定する。nil はその閾値を設定しないことを表す。
+func (h *e2eHarness) setAccidentalDeletionGuard(count, percent *int) {
+	h.t.Helper()
+	conn := h.connection()
+	conn.DeprovisionPolicy.AccidentalDeletionCountThreshold = count
+	conn.DeprovisionPolicy.AccidentalDeletionPercentThreshold = percent
+	h.saveConnection(conn)
+}
+
+// narrowScopeToAssignments は接続を assigned_only へ変え、割り当ての無い反映済みの User を
+// 捕捉を通さずにスコープ外にする。スコープの設定を誤った状況を表す。
+func (h *e2eHarness) narrowScopeToAssignments() {
+	h.t.Helper()
+	conn := h.connection()
+	conn.Scope = domain.ScopeAssignedOnly
+	h.saveConnection(conn)
+}
+
+func (h *e2eHarness) taskCount() int {
+	h.t.Helper()
+	tasks, err := h.taskRepo.ListByConnection(context.Background(), h.tenantID, h.connectionID, nil, 1000)
+	if err != nil {
+		h.t.Fatalf("ListByConnection() error = %v", err)
+	}
+	return len(tasks)
+}
+
+func (h *e2eHarness) health() domain.ProvisioningHealth {
+	h.t.Helper()
+	return h.connection().Health
+}
+
+//spec:covers REQ-PROVISIONING-011: 反映済みの 6 人が捕捉を通らずにスコープ外になり、件数の閾値 5 を超えると、照合はプロビジョニングタスクを 1 件も作らず、接続を隔離して ConnectionQuarantined を一度発行する。
+func TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning(t *testing.T) {
+	h := newE2EHarness(t)
+	for i := range 6 {
+		h.provisionActiveUser(fmt.Sprintf("guard-reconcile-%d", i))
+	}
+	h.setAccidentalDeletionGuard(new(5), nil)
+	h.narrowScopeToAssignments()
+	tasksBefore, requestsBefore := h.taskCount(), h.downstream.count()
+	run := &guardRun{h: h}
+
+	if created := run.reconcile(); created != 0 {
+		t.Fatalf("ReconcileConnections() created = %d, want 0 over the guard", created)
+	}
+	if got := h.taskCount(); got != tasksBefore {
+		t.Fatalf("tasks after reconcile = %d, want %d: no deprovision is created over the guard", got, tasksBefore)
+	}
+	if got := h.downstream.count(); got != requestsBefore {
+		t.Fatalf("downstream requests = %d, want %d", got, requestsBefore)
+	}
+	if got := h.health(); got != domain.HealthQuarantined {
+		t.Fatalf("connection health = %q, want quarantined", got)
+	}
+	quarantined := run.quarantines()
+	if len(quarantined) != 1 || quarantined[0].ApplicationID != h.connectionID || quarantined[0].TenantID != h.tenantID {
+		t.Fatalf("ConnectionQuarantined = %+v, want exactly one for %s", quarantined, h.connectionID)
+	}
+	// 隔離した接続を次の照合は読まないので、同じ差分から二度目の隔離もタスクも生まれない。
+	if created := run.reconcile(); created != 0 || len(run.quarantines()) != 1 {
+		t.Fatalf("second reconcile created = %d, quarantines = %d; want 0 and still 1", created, len(run.quarantines()))
+	}
+}
+
+//spec:covers EX-PROVISIONING-011-04: スコープ外になった反映済みの User が件数の閾値 5 と等しい 5 人なら、照合は 5 人の deactivate を作り、接続は ok のままで ConnectionQuarantined を発行しない。
+func TestE2E_ReconcileAtTheGuardStillDeprovisions(t *testing.T) {
+	h := newE2EHarness(t)
+	for i := range 5 {
+		h.provisionActiveUser(fmt.Sprintf("guard-at-%d", i))
+	}
+	h.setAccidentalDeletionGuard(new(5), nil)
+	h.narrowScopeToAssignments()
+	run := &guardRun{h: h}
+
+	if created := run.reconcile(); created != 5 {
+		t.Fatalf("ReconcileConnections() created = %d, want 5 deactivations at the threshold", created)
+	}
+	tasks, err := h.taskRepo.ListByConnection(context.Background(), h.tenantID, h.connectionID, nil, 100)
+	if err != nil {
+		t.Fatalf("ListByConnection() error = %v", err)
+	}
+	deactivations := 0
+	for _, task := range tasks {
+		if task.Status == domain.TaskPending && task.Operation == domain.OperationDeactivate {
+			deactivations++
+		}
+	}
+	if deactivations != 5 {
+		t.Fatalf("pending deactivations = %d, want 5 (tasks %+v)", deactivations, tasks)
+	}
+	if got := h.health(); got != domain.HealthOK {
+		t.Fatalf("connection health = %q, want ok at the threshold", got)
+	}
+	if got := run.quarantines(); len(got) != 0 {
+		t.Fatalf("ConnectionQuarantined = %+v, want none at the threshold", got)
 	}
 }

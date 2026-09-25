@@ -186,8 +186,8 @@ Primary actor: `TenantAdministrator`
 ### Example: EX-PROVISIONING-011-01 通常経路
 
 - Given accidental_deletion_count_threshold=5 が設定されている
-- And 1 回の resync で deactivate/delete 対象が 5 件を超える
-- When full resync が閾値を超える deprovision アクションを検出する
+- And 1 回の照合で deactivate/delete 対象が 5 件を超える
+- When 照合が閾値を超える deprovision アクションを計画する
 - Then deprovision アクションを実行せず ConnectionQuarantined が発行される
 - Then connection.health が quarantined になり notification_email へ通知される
 - When 管理者が原因を確認したうえで ResumeProvisioningConnection を呼ぶ
@@ -196,13 +196,29 @@ Primary actor: `TenantAdministrator`
 ### Example: EX-PROVISIONING-011-02 connection.health が quarantined でない状態で ResumeProvisioningConnection を呼ぶ
 
 - Given accidental_deletion_count_threshold=5 が設定されている
-- And 1 回の resync で deactivate/delete 対象が 5 件を超える
-- When full resync が閾値を超える deprovision アクションを検出する
+- And 1 回の照合で deactivate/delete 対象が 5 件を超える
+- When 照合が閾値を超える deprovision アクションを計画する
 - Then deprovision アクションを実行せず ConnectionQuarantined が発行される
 - Then connection.health が quarantined になり notification_email へ通知される
 - When 管理者が原因を確認したうえで ResumeProvisioningConnection を呼ぶ
 - But connection.health が quarantined でない状態で ResumeProvisioningConnection を呼ぶ
 - Then InvalidRequestError相当の拒否として動作せず対象が無いため何も変化しない (requires が resource.health=quarantined を要求し拒否する)
+
+### Example: EX-PROVISIONING-011-03 割合の閾値を超える
+
+- Given accidental_deletion_percent_threshold=50 が設定され、件数の閾値は設定されていない
+- And 下流へ反映済みの User 10 人のうち 6 人が、書き込み時の捕捉を通らずにスコープ外になっている
+- When 定期の照合が接続を照合する
+- Then 照合はプロビジョニングタスクを 1 件も作らず、下流へは何も送られない
+- Then ConnectionQuarantined が発行され connection.health が quarantined になる
+
+### Example: EX-PROVISIONING-011-04 閾値ちょうどの deprovision は通常どおり実行する
+
+- Given accidental_deletion_count_threshold=5 が設定されている
+- And 下流へ反映済みの User のうち 5 人が、書き込み時の捕捉を通らずにスコープ外になっている
+- When 定期の照合が接続を照合する
+- Then 照合は 5 人の deactivate のプロビジョニングタスクを作る
+- Then connection.health は ok のままで、ConnectionQuarantined は発行されない
 
 ## Rule: REQ-PROVISIONING-012 管理者は On-Demand Provision で 1 人のユーザーを試験的にプロビジョニングできる
 
