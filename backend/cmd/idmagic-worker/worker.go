@@ -212,7 +212,7 @@ func RunWorker() error {
 		Group: &identitysource.GroupAttributeSource{GroupRepo: deps.IdManagement.GroupRepo},
 	}
 	memberSource := &identitysource.GroupMemberSource{GroupRepo: deps.IdManagement.GroupRepo}
-	handlers.Register(provisioning.KindProvisioningTask, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger))))
+	handlers.Register(provisioning.KindProvisioningTask, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger), deps.Notification.Notifier)))
 	go provisioningDispatchLoop(ctx, deps, logger)
 	go provisioningReconcileLoop(ctx, deps, logger, worker.ProvisioningReconcileInterval)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
@@ -399,7 +399,7 @@ const provisioningReconcileLimit = 500
 // (REQ-PLATFORM-003)。作ったタスクは provisioningDispatchLoop が Jobs へ渡す。
 func provisioningReconcileLoop(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger, interval time.Duration) {
 	// 誤削除ガードによる隔離の ConnectionQuarantined を、provisioningDispatchLoop と同じ理由で自前の context で発行する。
-	reconcileDeps := deps.Provisioning.ReconcileDeps(deps.IdManagement.UserRepo, deps.Application.AssignmentRepo, deps.NewEmitFunc(logger)) //nolint:contextcheck // see comment above
+	reconcileDeps := deps.Provisioning.ReconcileDeps(deps.IdManagement.UserRepo, deps.Application.AssignmentRepo, deps.NewEmitFunc(logger), deps.Notification.Notifier) //nolint:contextcheck // see comment above
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {

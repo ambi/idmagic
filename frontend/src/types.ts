@@ -944,6 +944,7 @@ export type NotificationTemplateKey =
   | 'account_security_alert'
   | 'agent_action_approval_request'
   | 'lifecycle_workflow_notification'
+  | 'provisioning_connection_quarantined'
 
 export type NotificationTemplateSummary = {
   template_key: NotificationTemplateKey

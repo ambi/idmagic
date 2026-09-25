@@ -17,6 +17,8 @@ const (
 	TemplateKeyAccountSecurityAlert          TemplateKey = "account_security_alert"
 	TemplateKeyAgentActionApprovalRequest    TemplateKey = "agent_action_approval_request"
 	TemplateKeyLifecycleWorkflowNotification TemplateKey = "lifecycle_workflow_notification"
+	// TemplateKeyProvisioningConnectionQuarantined の宛先は User ではなく接続の notification_email である。
+	TemplateKeyProvisioningConnectionQuarantined TemplateKey = "provisioning_connection_quarantined"
 )
 
 // TemplateKeys はカタログが持つ全 key を安定した並びで返す。管理 API の一覧と
@@ -29,6 +31,7 @@ func TemplateKeys() []TemplateKey {
 		TemplateKeyAccountSecurityAlert,
 		TemplateKeyAgentActionApprovalRequest,
 		TemplateKeyLifecycleWorkflowNotification,
+		TemplateKeyProvisioningConnectionQuarantined,
 	}
 }
 

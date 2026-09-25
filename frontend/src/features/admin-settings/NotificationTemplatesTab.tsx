@@ -44,6 +44,8 @@ function templateKeyLabel(key: NotificationTemplateKey, t: NotificationTemplates
       return t.templateAgentActionApprovalRequest
     case 'lifecycle_workflow_notification':
       return t.templateLifecycleWorkflowNotification
+    case 'provisioning_connection_quarantined':
+      return t.templateProvisioningConnectionQuarantined
     default:
       return key
   }

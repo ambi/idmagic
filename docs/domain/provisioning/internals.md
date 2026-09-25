@@ -86,6 +86,21 @@ deprovision 以外も作らないのは、隔離が接続のプロビジョニ�
 イベント同期と猶予期間つき削除の実体化は 1 件ずつ作るので、数える単位を持たない。
 フル同期は管理者が明示的に起動する操作であり、ガードの対象にしない。
 
+## 隔離の通知
+
+連続失敗と誤削除ガードのどちらで接続を隔離した場合も、隔離を保存して `ConnectionQuarantined` を発行した後、接続の `notification_email` へ通知テンプレート `provisioning_connection_quarantined` のメールを送る。
+`notification_email` が未設定または空白だけなら送らない。
+隔離はプロビジョニングを止める状態なので、管理者が気付かなければ下流の反映は止まったままになるためである。
+
+| 差し込み変数 | 値 |
+| --- | --- |
+| `application_id` | 接続が属する Application の ID |
+| `quarantine_reason` | 接続に保存した隔離の理由 |
+| `quarantined_at` | 隔離した時刻（UTC） |
+
+送信は共有の `Notifier` を通り、配送の失敗は隔離を取り消さず、再送もしない。
+隔離は既に隔離された接続には再び起きないので、同じ隔離について通知は一度だけ送られる。
+
 ## フル同期の完了追跡
 
 `StartFullResync` は、接続のスコープ内の User と、`push_groups` の対象となる Group を列挙し、重複を除いた件数を対象数とする `FullResync` を保存する。

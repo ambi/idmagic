@@ -121,3 +121,22 @@ lifecycle_workflow_notification:
     <p>Hello {{user_display_name}},</p>
     <p>This is the "{{notification_key}}" notification configured by an administrator of {{tenant_display_name}}. Contact your administrator for details.</p>
     <p style="color:#475569;font-size:13px;">{{product_name}}</p>
+
+provisioning_connection_quarantined:
+  subject: "[{{product_name}}] A provisioning connection was quarantined"
+  body_text: |
+    {{product_name}} quarantined a provisioning connection of {{tenant_display_name}}.
+    No changes reach the downstream system until an administrator resumes the connection.
+
+    Application ID: {{application_id}}
+    Reason: {{quarantine_reason}}
+    When: {{quarantined_at}}
+
+    Check the cause in the admin console, then resume the connection from the application's provisioning settings.
+
+    {{product_name}}
+  body_html: |
+    <p>{{product_name}} quarantined a provisioning connection of {{tenant_display_name}}. No changes reach the downstream system until an administrator resumes the connection.</p>
+    <p>Application ID: {{application_id}}<br>Reason: {{quarantine_reason}}<br>When: {{quarantined_at}}</p>
+    <p>Check the cause in the admin console, then resume the connection from the application's provisioning settings.</p>
+    <p style="color:#475569;font-size:13px;">{{product_name}}</p>

@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -33,6 +35,8 @@ type JobHandlerDeps struct {
 	Now func() time.Time
 	// Emit はプロビジョニングタスクの終端遷移と接続の隔離を、それぞれの保存の後に発行する。
 	Emit func(spec.DomainEvent)
+	// Notifier は接続を隔離したときに notification_email へメールを送る。nil なら送らない。
+	Notifier notificationports.Notifier
 }
 
 type provisioningTaskParams struct {
@@ -149,14 +153,14 @@ func recordConsecutiveFailure(ctx context.Context, deps JobHandlerDeps, tenantID
 	}
 	conn.ConsecutiveFailureCount++
 	if conn.ConsecutiveFailureCount >= conn.QuarantineAfterConsecutiveFailure && conn.Health != domain.HealthQuarantined {
-		return quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, conn, reason, now)
+		return quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, deps.Notifier, conn, reason, now)
 	}
 	return deps.ConnectionRepo.Update(ctx, conn, nil)
 }
 
-// quarantineConnection は接続を隔離して保存し、保存に成功した後で ConnectionQuarantined を発行する。
-// 連続失敗と誤削除ガードの両方の経路が使う。
-func quarantineConnection(ctx context.Context, repo ports.ProvisioningConnectionRepository, emitFn func(spec.DomainEvent), conn *domain.ProvisioningConnection, reason string, now time.Time) error {
+// quarantineConnection は接続を隔離して保存し、保存に成功した後で ConnectionQuarantined を発行して notification_email へ知らせる。
+// 連続失敗と誤削除ガードの両方の経路が使う。Notifier は fail-open なので、送信の失敗は隔離を取り消さない。
+func quarantineConnection(ctx context.Context, repo ports.ProvisioningConnectionRepository, emitFn func(spec.DomainEvent), notifier notificationports.Notifier, conn *domain.ProvisioningConnection, reason string, now time.Time) error {
 	if err := conn.Quarantine(reason, now); err != nil {
 		return err
 	}
@@ -166,5 +170,31 @@ func quarantineConnection(ctx context.Context, repo ports.ProvisioningConnection
 	emit(emitFn, &domain.ConnectionQuarantined{
 		At: now, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID, Reason: reason, ConsecutiveFailures: conn.ConsecutiveFailureCount,
 	})
+	if notification, ok := quarantineNotification(conn); ok && notifier != nil {
+		notifier.Notify(ctx, notification)
+	}
 	return nil
+}
+
+// quarantinedAtLayout は本文に載せる隔離の時刻の書式。受信者のタイムゾーンを知らないので UTC に固定する。
+const quarantinedAtLayout = "2006-01-02 15:04 UTC"
+
+// quarantineNotification は隔離した接続の通知を組み立てる。notification_email が未設定か空白だけなら false を返す。
+// 宛先は User ではないので受信者の言語は空のままテナントの既定言語に任せ、全キー共通の user_display_name は空にする。
+// 渡さないと、それを参照するテナントの上書きが描画に失敗し、通知が届かなくなる。
+func quarantineNotification(conn *domain.ProvisioningConnection) (notificationports.Notification, bool) {
+	if conn.NotificationEmail == nil || strings.TrimSpace(*conn.NotificationEmail) == "" {
+		return notificationports.Notification{}, false
+	}
+	return notificationports.Notification{
+		TenantID: conn.TenantID,
+		To:       strings.TrimSpace(*conn.NotificationEmail),
+		Key:      notificationports.TemplateKeyProvisioningConnectionQuarantined,
+		Vars: map[string]string{
+			"user_display_name": "",
+			"application_id":    conn.ApplicationID,
+			"quarantine_reason": *conn.QuarantineReason,
+			"quarantined_at":    conn.QuarantinedAt.UTC().Format(quarantinedAtLayout),
+		},
+	}, true
 }

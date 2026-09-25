@@ -21,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -96,30 +97,33 @@ func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenant
 }
 
 // ReconcileDeps はインクリメンタル同期の依存を組み立てる。User と割り当ては、インクリメンタル同期があるべき状態として読む記録の正である。
-// emit は誤削除ガードによる ConnectionQuarantined を受け取る。worker が発行先を決めずに組み立てられないよう引数にする。
-func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository, emit func(spec.DomainEvent)) usecases.ReconcileDeps {
+// emit は誤削除ガードによる ConnectionQuarantined を、notifier はその隔離を notification_email へ知らせるメールを受け取る。
+// worker が発行先と送信手段を決めずに組み立てられないよう引数にする。
+func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository, emit func(spec.DomainEvent), notifier notificationports.Notifier) usecases.ReconcileDeps {
 	return usecases.ReconcileDeps{
 		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
-		AssignmentRepo: assignmentRepo, UserRepo: userRepo, Emit: emit,
+		AssignmentRepo: assignmentRepo, UserRepo: userRepo, Emit: emit, Notifier: notifier,
 	}
 }
 
 // JobHandlerDeps builds ProvisioningTaskHandler's dependencies.
 // memberSource is what makes push_groups reach a downstream: without it the
 // Group's own attributes still go out, but its membership does not. emit receives
-// the task's terminal transition and the connection's quarantine.
+// the task's terminal transition and the connection's quarantine, and notifier
+// receives the mail that tells notification_email about the quarantine.
 func (m Module) JobHandlerDeps(
 	attrSource ports.AttributeSource,
 	memberSource ports.GroupMemberSource,
 	newTargetClient func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error),
 	emit func(spec.DomainEvent),
+	notifier notificationports.Notifier,
 ) usecases.JobHandlerDeps {
 	return usecases.JobHandlerDeps{
 		ExecuteTaskDeps: usecases.ExecuteTaskDeps{
 			ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
 			AttributeSource: attrSource, GroupMemberSource: memberSource, NewTargetClient: newTargetClient,
 		},
-		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, Emit: emit,
+		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, Emit: emit, Notifier: notifier,
 	}
 }
 

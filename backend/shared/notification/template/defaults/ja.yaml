@@ -120,3 +120,22 @@ lifecycle_workflow_notification:
     <p>{{user_display_name}} さん</p>
     <p>{{tenant_display_name}} の管理者が設定した通知「{{notification_key}}」をお送りします。詳しい内容は管理者にお問い合わせください。</p>
     <p style="color:#475569;font-size:13px;">{{product_name}}</p>
+
+provisioning_connection_quarantined:
+  subject: "[{{product_name}}] プロビジョニング接続を隔離しました"
+  body_text: |
+    {{product_name}} は {{tenant_display_name}} のプロビジョニング接続を隔離しました。
+    管理者が隔離を解除するまで、変更は下流のシステムへ反映されません。
+
+    アプリケーション ID: {{application_id}}
+    理由: {{quarantine_reason}}
+    日時: {{quarantined_at}}
+
+    管理画面で原因を確認してから、アプリケーションのプロビジョニング設定で隔離を解除してください。
+
+    {{product_name}}
+  body_html: |
+    <p>{{product_name}} は {{tenant_display_name}} のプロビジョニング接続を隔離しました。管理者が隔離を解除するまで、変更は下流のシステムへ反映されません。</p>
+    <p>アプリケーション ID: {{application_id}}<br>理由: {{quarantine_reason}}<br>日時: {{quarantined_at}}</p>
+    <p>管理画面で原因を確認してから、アプリケーションのプロビジョニング設定で隔離を解除してください。</p>
+    <p style="color:#475569;font-size:13px;">{{product_name}}</p>

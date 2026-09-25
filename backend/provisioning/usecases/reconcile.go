@@ -12,6 +12,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -25,6 +26,8 @@ type ReconcileDeps struct {
 	UserRepo       userports.UserRepository
 	// Emit は誤削除ガードで接続を隔離したときの ConnectionQuarantined を、保存の後に発行する。nil なら発行しない。
 	Emit func(spec.DomainEvent)
+	// Notifier は誤削除ガードで接続を隔離したときに notification_email へメールを送る。nil なら送らない。
+	Notifier notificationports.Notifier
 }
 
 // ReconcileConnections は全テナントの有効な接続をインクリメンタル同期で処理し、作ったプロビジョニングタスクと予約の数を返す。
@@ -69,7 +72,7 @@ func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn domain.Pr
 		if err != nil || current == nil || current.Health == domain.HealthQuarantined {
 			return 0, err
 		}
-		return 0, quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, current, plan.QuarantineReason, now)
+		return 0, quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, deps.Notifier, current, plan.QuarantineReason, now)
 	}
 	created := 0
 	for _, action := range plan.Actions {

@@ -5,12 +5,6 @@
   ],
   "untested": [
     {
-      "id": "EX-PROVISIONING-011-01",
-      "reason": "誤削除ガードの閾値判定と隔離は照合で動くが、隔離を notification_email へ通知する処理がどの経路にも無いため",
-      "blocked_by": "wi-33641-notify-quarantine-to-the-notification-email",
-      "finding": "照合が閾値を超える deprovision を計画すると、何も作らずに接続を隔離して ConnectionQuarantined を発行する（TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning）。ProvisioningConnection.notification_email を読んでメールを送る処理は、連続失敗と誤削除ガードのどちらの隔離にも無い。"
-    },
-    {
       "id": "EX-WSFEDERATION-001-03",
       "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない",
       "blocked_by": "wi-39759-name-the-refusal-a-cross-tenant-wsfed-api-token-gets",

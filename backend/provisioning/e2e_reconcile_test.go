@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationtemplate "github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -150,17 +153,30 @@ func TestE2E_ReconcileCreatesNothingWhenCaptureAlreadyConverged(t *testing.T) {
 	}
 }
 
-// guardRun はインクリメンタル同期を worker と同じ Module.ReconcileDeps の組み立てで走らせ、発行ポートへ渡ったイベントを残す。
+// guardRun はインクリメンタル同期を worker と同じ Module.ReconcileDeps の組み立てで走らせ、発行ポートへ渡ったイベントと、
+// 本物の Notifier が描画して送信境界へ渡したメールを残す。
 type guardRun struct {
 	h      *e2eHarness
 	events []spec.DomainEvent
+	mails  recordingEmailSender
+}
+
+// recordingEmailSender は送信境界へ渡ったメールを残す。
+type recordingEmailSender struct {
+	sent []notificationports.EmailMessage
+}
+
+func (s *recordingEmailSender) SendEmail(_ context.Context, message notificationports.EmailMessage) bool {
+	s.sent = append(s.sent, message)
+	return true
 }
 
 func (g *guardRun) reconcile() int {
 	g.h.t.Helper()
 	module := provisioning.Module{ConnectionRepo: g.h.connRepo, RemoteLinkRepo: g.h.linkRepo, TaskRepo: g.h.taskRepo}
 	emit := func(event spec.DomainEvent) { g.events = append(g.events, event) }
-	created, err := usecases.ReconcileConnections(context.Background(), module.ReconcileDeps(g.h.userRepo, nil, emit), 100, time.Now().UTC())
+	notifier := &notificationtemplate.Notifier{Sender: &g.mails, SystemDefaultLocale: "en"}
+	created, err := usecases.ReconcileConnections(context.Background(), module.ReconcileDeps(g.h.userRepo, nil, emit, notifier), 100, time.Now().UTC())
 	if err != nil {
 		g.h.t.Fatalf("ReconcileConnections() error = %v", err)
 	}
@@ -239,6 +255,58 @@ func TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning(t *testing.T)
 	// 隔離した接続を次のインクリメンタル同期は読まないので、同じ差分から二度目の隔離もタスクも生まれない。
 	if created := run.reconcile(); created != 0 || len(run.quarantines()) != 1 {
 		t.Fatalf("second reconcile created = %d, quarantines = %d; want 0 and still 1", created, len(run.quarantines()))
+	}
+}
+
+//spec:covers EX-PROVISIONING-011-01: 件数の閾値 5 を超えるとインクリメンタル同期は deprovision を作らずに接続を隔離して ConnectionQuarantined を発行し、notification_email へ隔離の理由を載せたメールを一通送る。解除すると ProvisioningConnectionQuarantineCleared が発行され health が ok に戻る。
+func TestE2E_ReconcileOverTheGuardNotifiesAndIsResumed(t *testing.T) {
+	h := newE2EHarness(t)
+	for i := range 6 {
+		h.provisionActiveUser(fmt.Sprintf("guard-notify-%d", i))
+	}
+	h.setAccidentalDeletionGuard(new(5), nil)
+	conn := h.connection()
+	conn.NotificationEmail = new("provisioning-alerts@example.test")
+	h.saveConnection(conn)
+	h.narrowScopeToAssignments()
+	tasksBefore := h.taskCount()
+	run := &guardRun{h: h}
+
+	if created := run.reconcile(); created != 0 || h.taskCount() != tasksBefore {
+		t.Fatalf("ReconcileConnections() created = %d, tasks = %d; want 0 and %d over the guard", created, h.taskCount(), tasksBefore)
+	}
+	if got := h.health(); got != domain.HealthQuarantined || len(run.quarantines()) != 1 {
+		t.Fatalf("health = %q, ConnectionQuarantined = %d; want quarantined and 1", got, len(run.quarantines()))
+	}
+	if len(run.mails.sent) != 1 {
+		t.Fatalf("mails sent = %d, want exactly one quarantine notice: %+v", len(run.mails.sent), run.mails.sent)
+	}
+	mail := run.mails.sent[0]
+	if mail.To != "provisioning-alerts@example.test" {
+		t.Fatalf("mail To = %q, want the connection's notification_email", mail.To)
+	}
+	reason := *h.connection().QuarantineReason
+	for _, want := range []string{h.connectionID, reason} {
+		if !strings.Contains(mail.Text, want) || !strings.Contains(mail.HTML, want) {
+			t.Fatalf("mail body does not carry %q:\ntext=%s\nhtml=%s", want, mail.Text, mail.HTML)
+		}
+	}
+	// 隔離した接続を次のインクリメンタル同期は読まないので、同じ隔離を二度知らせない。
+	run.reconcile()
+	if len(run.mails.sent) != 1 {
+		t.Fatalf("mails sent after the second reconcile = %d, want still 1", len(run.mails.sent))
+	}
+
+	var cleared []spec.DomainEvent
+	adminDeps := usecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo, Emit: func(event spec.DomainEvent) { cleared = append(cleared, event) }}
+	if _, err := usecases.ResumeConnection(context.Background(), adminDeps, h.tenantID, h.connectionID, time.Now().UTC()); err != nil {
+		t.Fatalf("ResumeConnection() error = %v", err)
+	}
+	if len(cleared) != 1 || cleared[0].EventType() != "ProvisioningConnectionQuarantineCleared" {
+		t.Fatalf("events after resume = %+v, want one ProvisioningConnectionQuarantineCleared", cleared)
+	}
+	if got := h.health(); got != domain.HealthOK {
+		t.Fatalf("health after resume = %q, want ok", got)
 	}
 }
 

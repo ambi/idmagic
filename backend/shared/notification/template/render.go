@@ -24,12 +24,13 @@ var sharedPlaceholders = []string{"product_name", "tenant_display_name", "user_d
 // keyPlaceholders は key 固有の差し込み変数。資格情報・単発トークン単体・生 IP は
 // 意図的に含めない。
 var keyPlaceholders = map[notificationports.TemplateKey][]string{
-	notificationports.TemplateKeyPasswordReset:                 {"reset_url", "expires_in_minutes"},
-	notificationports.TemplateKeyEmailVerification:             {"verification_url", "expires_in_minutes"},
-	notificationports.TemplateKeyEmailChangeConfirmation:       {"confirmation_url", "expires_in_minutes", "new_email"},
-	notificationports.TemplateKeyAccountSecurityAlert:          {"event_description", "occurred_at", "device_summary", "security_review_url"},
-	notificationports.TemplateKeyAgentActionApprovalRequest:    {"approval_url", "client_name", "agent_name", "binding_message", "expires_in_minutes"},
-	notificationports.TemplateKeyLifecycleWorkflowNotification: {"notification_key"},
+	notificationports.TemplateKeyPasswordReset:                     {"reset_url", "expires_in_minutes"},
+	notificationports.TemplateKeyEmailVerification:                 {"verification_url", "expires_in_minutes"},
+	notificationports.TemplateKeyEmailChangeConfirmation:           {"confirmation_url", "expires_in_minutes", "new_email"},
+	notificationports.TemplateKeyAccountSecurityAlert:              {"event_description", "occurred_at", "device_summary", "security_review_url"},
+	notificationports.TemplateKeyAgentActionApprovalRequest:        {"approval_url", "client_name", "agent_name", "binding_message", "expires_in_minutes"},
+	notificationports.TemplateKeyLifecycleWorkflowNotification:     {"notification_key"},
+	notificationports.TemplateKeyProvisioningConnectionQuarantined: {"application_id", "quarantine_reason", "quarantined_at"},
 }
 
 // sampleValues はプレビュー用の固定値。実在の利用者名やトークンをプレビュー経路に
@@ -52,6 +53,9 @@ var sampleValues = map[string]string{
 	"agent_name":          "Travel Assistant",
 	"binding_message":     "Trip W-123",
 	"notification_key":    "welcome",
+	"application_id":      "a1b2c3d4-0000-4000-8000-000000000001",
+	"quarantine_reason":   "accidental deletion guard: 12 deprovisions of 20 linked users exceed the threshold",
+	"quarantined_at":      "2026-01-01 12:00 UTC",
 }
 
 // Placeholders は template_key ごとの差し込み変数の許可集合を返す。管理 API がこの

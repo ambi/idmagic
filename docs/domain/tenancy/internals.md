@@ -61,6 +61,10 @@ OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返
 | `EmailChangeConfirmation` (additional) | `new_email` |
 | `LifecycleWorkflowNotification` (additional) | `notification_key` |
 | `AccountSecurityAlert` (additional) | `event_description`, `occurred_at`, `device_summary`, `security_review_url` |
+| `ProvisioningConnectionQuarantined` (additional) | `application_id`, `quarantine_reason`, `quarantined_at` |
+
+`ProvisioningConnectionQuarantined` の宛先は User ではなく接続の `notification_email` である。
+そのため受信者の言語はなく、テナントのデフォルト言語から解決し、`user_display_name` は空文字列で描画する。
 
 資格情報、ダイジェスト値、TOTP シークレット、API トークン、生の IP アドレスは決して差し込みにしない。メールは受信者によって転送され、引用され、無期限に保持されるため、これらの情報を差し込むと、後に受信箱が侵害された際に露出する。
 

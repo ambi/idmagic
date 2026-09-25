@@ -100,7 +100,7 @@ CREATE TABLE notification_templates (
     tenant_id UUID NOT NULL,
     template_key TEXT NOT NULL CHECK (template_key IN (
         'account_security_alert', 'email_change_confirmation', 'email_verification',
-        'lifecycle_workflow_notification', 'password_reset'
+        'lifecycle_workflow_notification', 'password_reset', 'provisioning_connection_quarantined'
     )),
     locale TEXT NOT NULL,
     subject TEXT NOT NULL,

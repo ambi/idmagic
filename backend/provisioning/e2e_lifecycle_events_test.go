@@ -108,7 +108,7 @@ func (r *lifecycleRun) handle(job *jobsdomain.Job) error {
 	newClient := func(_ *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
 		return scim.NewBearerTokenClient(http.DefaultClient, r.target, secret), nil
 	}
-	handler := provisioning.Handler(r.module.JobHandlerDeps(attrSource, nil, newClient, r.emit))
+	handler := provisioning.Handler(r.module.JobHandlerDeps(attrSource, nil, newClient, r.emit, nil))
 	_, err := handler(context.Background(), job)
 	return err
 }

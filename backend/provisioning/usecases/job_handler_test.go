@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -122,6 +124,94 @@ func TestProvisioningTaskHandler_QuarantinesConnectionAfterConsecutiveFailureThr
 	}
 	if got.Health != domain.HealthQuarantined {
 		t.Errorf("connection.Health = %v, want quarantined after %d consecutive terminal failures", got.Health, conn.QuarantineAfterConsecutiveFailure)
+	}
+}
+
+// recordingNotifier は Notifier へ渡った送信要求を残す。
+type recordingNotifier struct {
+	sent []notificationports.Notification
+}
+
+func (n *recordingNotifier) Notify(_ context.Context, notification notificationports.Notification) bool {
+	n.sent = append(n.sent, notification)
+	return true
+}
+
+// failTerminally は接続 app-1 のプロビジョニングタスクを count 回、最終試行で失敗させる。
+func failTerminally(t *testing.T, deps usecases.JobHandlerDeps, taskRepo *memory.ProvisioningTaskRepository, count int) {
+	t.Helper()
+	handler := usecases.ProvisioningTaskHandler(deps)
+	for i := range count {
+		task := &domain.ProvisioningTask{
+			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
+			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		}
+		if _, err := taskRepo.Save(context.Background(), task); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+		if _, err := handler(context.Background(), newTestJob(t, task.ID, testJobMaxAttempts)); err == nil {
+			t.Fatal("handler() should return the downstream error")
+		}
+	}
+}
+
+//spec:covers REQ-PROVISIONING-011: 連続失敗で接続を隔離すると、notification_email を宛先に、アプリケーション ID、保存した隔離の理由、隔離の時刻を差し込んだ隔離の通知を一度だけ Notifier へ渡し、隔離後の失敗では送らない。
+func TestProvisioningTaskHandler_QuarantineNotifiesTheNotificationEmailOnce(t *testing.T) {
+	client := &fakeTargetClient{createUserErr: someRetryableErr()}
+	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
+	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+	notifier := &recordingNotifier{}
+	deps.Notifier = notifier
+	quarantinedAt := time.Date(2026, 9, 26, 3, 4, 59, 0, time.UTC)
+	deps.Now = func() time.Time { return quarantinedAt }
+	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn.QuarantineAfterConsecutiveFailure = 2
+	conn.NotificationEmail = new("provisioning-alerts@example.test")
+	if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+
+	failTerminally(t, deps, taskRepo, 3)
+
+	want := []notificationports.Notification{{
+		TenantID: testTenantID,
+		To:       "provisioning-alerts@example.test",
+		Key:      notificationports.TemplateKeyProvisioningConnectionQuarantined,
+		Vars: map[string]string{
+			"user_display_name": "",
+			"application_id":    "app-1",
+			"quarantine_reason": someRetryableErr().Error(),
+			"quarantined_at":    "2026-09-26 03:04 UTC",
+		},
+	}}
+	if !reflect.DeepEqual(notifier.sent, want) {
+		t.Fatalf("notifications = %+v, want exactly %+v", notifier.sent, want)
+	}
+}
+
+func TestProvisioningTaskHandler_QuarantineSendsNothingWithoutANotificationEmail(t *testing.T) {
+	for _, email := range []*string{nil, new(" \t")} {
+		client := &fakeTargetClient{createUserErr: someRetryableErr()}
+		attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
+		deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
+		notifier := &recordingNotifier{}
+		deps.Notifier = notifier
+		conn := activeConnection("app-1", domain.ScopeAllUsers)
+		conn.QuarantineAfterConsecutiveFailure = 1
+		conn.NotificationEmail = email
+		if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
+			t.Fatalf("Register() error = %v", err)
+		}
+
+		failTerminally(t, deps, taskRepo, 1)
+
+		got, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
+		if got.Health != domain.HealthQuarantined {
+			t.Fatalf("connection.Health = %v, want quarantined", got.Health)
+		}
+		if len(notifier.sent) != 0 {
+			t.Fatalf("notification_email=%v: notifications = %+v, want none", email, notifier.sent)
+		}
 	}
 }
 

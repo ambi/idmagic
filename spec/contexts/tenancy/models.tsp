@@ -364,7 +364,7 @@ model TenantBrandingUpdated {
 }
 
 
-@doc("The fixed identifier naming what a notification is for. The catalogue holds a built-in default template in Japanese and English for every one of these keys, and a tenant cannot add a key. AccountSecurityAlert covers every kind of security notification under one key, and what happened is expressed through the `event_description` and `device_summary` substitutions.")
+@doc("The fixed identifier naming what a notification is for. The catalogue holds a built-in default template in Japanese and English for every one of these keys, and a tenant cannot add a key. AccountSecurityAlert covers every kind of security notification under one key, and what happened is expressed through the `event_description` and `device_summary` substitutions. ProvisioningConnectionQuarantined goes to a provisioning connection's `notification_email` rather than to a User, so its recipient locale is always left to the tenant default.")
 enum NotificationTemplateKey {
   PasswordReset: "password_reset",
   EmailVerification: "email_verification",
@@ -372,6 +372,7 @@ enum NotificationTemplateKey {
   AccountSecurityAlert: "account_security_alert",
   AgentActionApprovalRequest: "agent_action_approval_request",
   LifecycleWorkflowNotification: "lifecycle_workflow_notification",
+  ProvisioningConnectionQuarantined: "provisioning_connection_quarantined",
 }
 
 
