@@ -20,10 +20,9 @@ Primary actor: `ManagementApiClient`
 
 ### Example: EX-WSFEDERATION-001-03 トークンのテナントとリクエスト先のテナントが一致しない
 
-- Given クライアントは対象テナントの有効な API アクセストークンを提示している
-- When クライアントが RP または Entra フェデレーションの操作をリクエストする
-- But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作を AccessDeniedError で拒否する
+- Given クライアントは発行元テナントでは有効な API アクセストークンを持つ
+- When クライアントがそのトークンを別テナントの RP の参照、登録、削除、または Entra フェデレーションの構成へ提示する
+- Then 操作を 401 の InvalidAccessTokenError で拒否する
 
 ## Rule: REQ-WSFEDERATION-002 登録済みの RP へのパッシブサインインはトークンを発行する
 

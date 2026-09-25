@@ -181,3 +181,61 @@ func TestWsFedReadScopeCannotChangeTrustSettings(t *testing.T) {
 		t.Fatalf("対照の削除が保存先に反映されていない: %v", stored)
 	}
 }
+
+// 管理発行トークンの照合はリクエスト先テナントで jti を探し、見つからなければ RFC 7662 の非開示に
+// 従って active: false を返す。403 AccessDeniedError にすると、「このトークン自体は有効だが、この
+// テナントでは使えない」という事実を別テナントの提示者へ伝えてしまうので、拒否は 401 invalid_token になる。
+// read と write の双方を 4 つの操作すべてへ提示する。スコープの判定より先にテナントで落ちることを
+// 確かめるには、スコープ上は通るはずの組み合わせ（read の一覧、write の変更）が要る。
+//
+//spec:covers EX-WSFEDERATION-001-03: acme で発行した wsfed:read と wsfed:write のトークンを default の RP の一覧、登録、削除と Entra フェデレーションの構成へ提示した 8 通りすべてが 401 の InvalidAccessTokenError で拒否され、保存先の RP が増えも減りもしないこと。同じ削除が default 発行の wsfed:write なら通ることを対照にする。
+func TestForeignTenantApiTokenCannotOperateWsFedTrustSettings(t *testing.T) {
+	s := newWsFedScopeStack(t)
+	read, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeWsFedRead)
+	write, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeWsFedWrite)
+	operations := []struct {
+		name, method, path, body string
+	}{
+		{"RP の一覧", http.MethodGet, wsfedScopeRPPath, ""},
+		{"RP の登録", http.MethodPost, wsfedScopeRPPath, wsfedScopeRPBody()},
+		{"RP の削除", http.MethodDelete, wsfedScopeRPPath + "?wtrealm=" + stack.WsFedRealm, ""},
+		{"Entra フェデレーションの構成", http.MethodPost, wsfedScopeEntraPath, wsfedScopeEntraBody()},
+	}
+	before := storedWtrealms(t, s)
+
+	for _, token := range []struct{ scope, value string }{{"wsfed:read", read}, {"wsfed:write", write}} {
+		for _, op := range operations {
+			recorder := wsfedAdminRequest(s, op.method, op.path, token.value, op.body)
+			assertWsFedInvalidToken(t, recorder, token.scope+" の "+op.name)
+		}
+	}
+	if after := storedWtrealms(t, s); !slices.Equal(after, before) {
+		t.Fatalf("拒否されたのに保存先が変わった: before=%v after=%v", before, after)
+	}
+
+	// 対照: 同じ削除でも default 発行の wsfed:write なら通る。これが無いと、削除を配線していない
+	// スタックでも上の拒否はそのまま緑になる。
+	sameRealmWrite, _ := s.IssueApiToken(t, tenancydomain.DefaultRealm, apitokendomain.ScopeWsFedWrite)
+	if recorder := wsfedAdminRequest(s, http.MethodDelete, wsfedScopeRPPath+"?wtrealm="+stack.WsFedRealm, sameRealmWrite, ""); recorder.Code != http.StatusNoContent {
+		t.Fatalf("対照の削除 status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func assertWsFedInvalidToken(t *testing.T, recorder *httptest.ResponseRecorder, attempt string) {
+	t.Helper()
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("%s: status=%d body=%s, want 401", attempt, recorder.Code, recorder.Body.String())
+	}
+	var problem struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("%s: problem body %s: %v", attempt, recorder.Body.String(), err)
+	}
+	if problem.Type != "urn:idmagic:error:invalid_token" {
+		t.Fatalf("%s: problem type=%q, want invalid_token", attempt, problem.Type)
+	}
+	if got := recorder.Header().Get("WWW-Authenticate"); !strings.Contains(got, `Bearer error="invalid_token"`) {
+		t.Fatalf("%s: WWW-Authenticate=%q, want invalid_token challenge", attempt, got)
+	}
+}
