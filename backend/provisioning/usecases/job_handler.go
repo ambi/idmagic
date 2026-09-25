@@ -148,19 +148,23 @@ func recordConsecutiveFailure(ctx context.Context, deps JobHandlerDeps, tenantID
 		return err
 	}
 	conn.ConsecutiveFailureCount++
-	quarantining := conn.ConsecutiveFailureCount >= conn.QuarantineAfterConsecutiveFailure && conn.Health != domain.HealthQuarantined
-	if quarantining {
-		if err := conn.Quarantine(reason, now); err != nil {
-			return err
-		}
+	if conn.ConsecutiveFailureCount >= conn.QuarantineAfterConsecutiveFailure && conn.Health != domain.HealthQuarantined {
+		return quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, conn, reason, now)
 	}
-	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
+	return deps.ConnectionRepo.Update(ctx, conn, nil)
+}
+
+// quarantineConnection は接続を隔離して保存し、保存に成功した後で ConnectionQuarantined を発行する。
+// 連続失敗と誤削除ガードの両方の経路が使う。
+func quarantineConnection(ctx context.Context, repo ports.ProvisioningConnectionRepository, emitFn func(spec.DomainEvent), conn *domain.ProvisioningConnection, reason string, now time.Time) error {
+	if err := conn.Quarantine(reason, now); err != nil {
 		return err
 	}
-	if quarantining {
-		emit(deps.Emit, &domain.ConnectionQuarantined{
-			At: now, TenantID: tenantID, ApplicationID: conn.ApplicationID, Reason: reason, ConsecutiveFailures: conn.ConsecutiveFailureCount,
-		})
+	if err := repo.Update(ctx, conn, nil); err != nil {
+		return err
 	}
+	emit(emitFn, &domain.ConnectionQuarantined{
+		At: now, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID, Reason: reason, ConsecutiveFailures: conn.ConsecutiveFailureCount,
+	})
 	return nil
 }

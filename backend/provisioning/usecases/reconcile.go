@@ -61,7 +61,7 @@ func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn domain.Pr
 	}
 	in.Limit = limit
 	created := 0
-	for _, action := range domain.PlanReconciliation(in) {
+	for _, action := range domain.PlanReconciliation(in).Actions {
 		ok, err := saveReconcileAction(ctx, deps, conn, action, now)
 		if err != nil {
 			return created, err

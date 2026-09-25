@@ -41,9 +41,14 @@ type ReconcileAction struct {
 	Schedule  bool
 }
 
+// ReconcilePlan は 1 接続の照合が作るものである。
+type ReconcilePlan struct {
+	Actions []ReconcileAction
+}
+
 // PlanReconciliation は、あるべき状態と下流へ反映済みの状態の差分から、作るべきものを返す。
 // 結果は User の ID の順に並べて Limit 件で打ち切るので、残りは次の照合が拾う。
-func PlanReconciliation(in ReconcileInput) []ReconcileAction {
+func PlanReconciliation(in ReconcileInput) ReconcilePlan {
 	users := slices.Clone(in.Users)
 	slices.SortFunc(users, func(a, b ReconcileUser) int { return strings.Compare(a.ID, b.ID) })
 
@@ -63,7 +68,7 @@ func PlanReconciliation(in ReconcileInput) []ReconcileAction {
 			actions = append(actions, action)
 		}
 	}
-	return actions
+	return ReconcilePlan{Actions: actions}
 }
 
 // awaitsSettledTask は、既存のプロビジョニングタスクの決着を待つべき User かを返す。

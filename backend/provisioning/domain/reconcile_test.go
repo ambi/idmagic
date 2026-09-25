@@ -35,7 +35,7 @@ func planOne(t *testing.T, in domain.ReconcileInput) []domain.ReconcileAction {
 	if in.Limit == 0 {
 		in.Limit = 100
 	}
-	return domain.PlanReconciliation(in)
+	return domain.PlanReconciliation(in).Actions
 }
 
 func wantActions(t *testing.T, got []domain.ReconcileAction, want ...domain.ReconcileAction) {
@@ -229,7 +229,7 @@ func TestPlanReconciliation_StopsAtTheLimitInUserIDOrder(t *testing.T) {
 			{ID: "u2", Active: true, InScope: true, Version: 10},
 		},
 		Limit: 2,
-	})
+	}).Actions
 	wantActions(t, got,
 		domain.ReconcileAction{UserID: "u1", Operation: domain.OperationCreate},
 		domain.ReconcileAction{UserID: "u2", Operation: domain.OperationCreate},
