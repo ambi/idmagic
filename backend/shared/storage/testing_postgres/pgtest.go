@@ -2,7 +2,12 @@
 // embedded-postgres ハーネスを提供する (wi-172)。各 context の postgres
 // テストパッケージは自身の TestMain から Main を呼び、DB 依存テストは
 // Require で利用可否を確認する。embedded-postgres を起動できない環境
-// (ネットワーク遮断された CI 等) ではテストをスキップしグリーンを維持する。
+// (ネットワーク遮断された CI、SysV 共有メモリを扱えない macOS のサンドボックス等) では
+// テストをスキップしグリーンを維持する。スキップは警告を出すだけなので、DB テストを
+// 実行したことを確かめるにはその警告が出ていないことを見る。
+//
+// 強制終了されたテストバイナリが残した postgres と共有メモリは、次の起動が
+// reclaimAbandonedInstances で回収する。
 package testing_postgres
 
 import (
@@ -12,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -28,6 +34,11 @@ var Pool *pgxpool.Pool
 // Main は embedded-postgres を起動し infra/schema/postgres.sql を投入した上で
 // m.Run() を実行する。呼び出し側の TestMain から os.Exit(pgtest.Main(m)) の形で使う。
 func Main(m *testing.M) int {
+	if err := sysvUnavailable(); err != nil {
+		warn("SysV shared memory is not available here (sandboxed?)", err)
+		return m.Run()
+	}
+	reclaimAbandonedInstances(os.TempDir())
 	pool, cleanup := start()
 	Pool = pool
 	defer cleanup()
@@ -36,15 +47,24 @@ func Main(m *testing.M) int {
 
 func start() (*pgxpool.Pool, func()) {
 	noop := func() {}
-	runtimePath, err := os.MkdirTemp("", "idmagic-pgtest-*")
+	instanceDir, err := os.MkdirTemp("", runtimeDirPattern)
 	if err != nil {
 		warn("cannot create isolated runtime directory", err)
 		return nil, noop
 	}
+	runtimePath := filepath.Join(instanceDir, runtimeSubdir)
 	removeRuntimePath := func() {
-		if err := os.RemoveAll(runtimePath); err != nil {
-			fmt.Fprintf(os.Stderr, "pgtest: cannot remove runtime directory %s: %v\n", runtimePath, err)
+		if err := os.RemoveAll(instanceDir); err != nil {
+			fmt.Fprintf(os.Stderr, "pgtest: cannot remove runtime directory %s: %v\n", instanceDir, err)
 		}
+	}
+	// 強制終了で後始末が飛んだとき、次の起動がこのディレクトリを回収できるように
+	// 持ち主を残す (reclaimAbandonedInstances)。embedded-postgres は起動時に
+	// RuntimePath を消して作り直すので、持ち主はその外に置く。
+	if err := os.WriteFile(filepath.Join(instanceDir, ownerFile), []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+		warn("cannot record runtime directory owner", err)
+		removeRuntimePath()
+		return nil, noop
 	}
 
 	port, err := freePort(context.Background())
@@ -73,7 +93,7 @@ func start() (*pgxpool.Pool, func()) {
 	}
 	stopAndRemove := func() {
 		if err := pg.Stop(); err != nil {
-			fmt.Fprintf(os.Stderr, "pgtest: cannot stop embedded-postgres: %v; preserving runtime directory %s\n", err, runtimePath)
+			fmt.Fprintf(os.Stderr, "pgtest: cannot stop embedded-postgres: %v; preserving runtime directory %s\n", err, instanceDir)
 			return
 		}
 		removeRuntimePath()
