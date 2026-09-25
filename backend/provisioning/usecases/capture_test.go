@@ -217,7 +217,7 @@ func TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections(t *testing
 	}
 }
 
-//spec:covers EX-PROVISIONING-016-01: 同じライフサイクルイベントを繰り返し捕捉しても、同じ idempotency key のプロビジョニングタスクを一件に収束させる。
+//spec:covers EX-PROVISIONING-016-01: 同じライフサイクルイベントを繰り返しイベント同期へ渡しても、同じ idempotency key のプロビジョニングタスクを一件に収束させる。
 func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()

@@ -27,8 +27,8 @@ type ReconcileDeps struct {
 	Emit func(spec.DomainEvent)
 }
 
-// ReconcileConnections は全テナントの有効な接続を照合し、作ったプロビジョニングタスクと予約の数を返す。
-// 1 接続の失敗はほかの接続の照合を止めず、まとめて返す。limit は 1 接続につき 1 回で作る数の上限である。
+// ReconcileConnections は全テナントの有効な接続をインクリメンタル同期で処理し、作ったプロビジョニングタスクと予約の数を返す。
+// 1 接続の失敗はほかの接続のインクリメンタル同期を止めず、まとめて返す。limit は 1 接続につき 1 回で作る数の上限である。
 func ReconcileConnections(ctx context.Context, deps ReconcileDeps, limit int, now time.Time) (int, error) {
 	tenants, err := deps.ConnectionRepo.ListTenantsWithActiveConnections(ctx)
 	if err != nil {
@@ -64,7 +64,7 @@ func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn domain.Pr
 	in.Limit = limit
 	plan := domain.PlanReconciliation(in)
 	if plan.QuarantineReason != "" {
-		// 照合の開始時に読んだ接続ではなく最新の接続を隔離し、その間の管理操作を上書きしない。
+		// インクリメンタル同期の開始時に読んだ接続ではなく最新の接続を隔離し、その間の管理操作を上書きしない。
 		current, err := deps.ConnectionRepo.Find(ctx, conn.TenantID, conn.ApplicationID)
 		if err != nil || current == nil || current.Health == domain.HealthQuarantined {
 			return 0, err
@@ -163,7 +163,7 @@ func deletedVersion(user *userdomain.User) int64 {
 	return user.UpdatedAt.UnixNano()
 }
 
-// saveReconcileAction は照合の結果 1 件を保存し、新しく作ったかを返す。
+// saveReconcileAction はインクリメンタル同期の結果 1 件を保存し、新しく作ったかを返す。
 func saveReconcileAction(ctx context.Context, deps ReconcileDeps, conn domain.ProvisioningConnection, action domain.ReconcileAction, now time.Time) (bool, error) {
 	id, err := spec.NewUUIDv4()
 	if err != nil {

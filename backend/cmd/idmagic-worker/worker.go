@@ -391,11 +391,11 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies,
 	}
 }
 
-// provisioningReconcileLimit は 1 回の照合で 1 接続に作るプロビジョニングタスクの上限である。
+// provisioningReconcileLimit は 1 回のインクリメンタル同期で 1 接続に作るプロビジョニングタスクの上限である。
 // 初回や長い停止の後の大きな差分を、一度に Jobs へ流さず周期に分ける。
 const provisioningReconcileLimit = 500
 
-// provisioningReconcileLoop は、書き込み時の捕捉が作らなかった差分を周期ごとにプロビジョニングタスクにする
+// provisioningReconcileLoop は、イベント同期が作らなかった差分を周期ごとにプロビジョニングタスクにする
 // (REQ-PLATFORM-003)。作ったタスクは provisioningDispatchLoop が Jobs へ渡す。
 func provisioningReconcileLoop(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger, interval time.Duration) {
 	// 誤削除ガードによる隔離の ConnectionQuarantined を、provisioningDispatchLoop と同じ理由で自前の context で発行する。

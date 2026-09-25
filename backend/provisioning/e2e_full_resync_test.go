@@ -19,7 +19,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// startFullResyncOverHTTP は本番と同じ Module.Register の経路で管理 API の Full Resync を呼ぶ。
+// startFullResyncOverHTTP は本番と同じ Module.Register の経路で管理 API のフル同期を呼ぶ。
 func (r *lifecycleRun) startFullResyncOverHTTP() {
 	r.h.t.Helper()
 	now := time.Now().UTC()
@@ -56,13 +56,13 @@ func (r *lifecycleRun) completedResyncs() []*domain.FullResyncCompleted {
 	return completed
 }
 
-//spec:covers EX-PROVISIONING-013-01: 管理 API の Full Resync は scope 内の全 subject にプロビジョニングタスクを作り、worker がすべてを終端にしたときだけ FullResyncCompleted を一度発行する。
+//spec:covers EX-PROVISIONING-013-01: 管理 API のフル同期は scope 内の全 subject にプロビジョニングタスクを作り、worker がすべてを終端にしたときだけ FullResyncCompleted を一度発行する。
 func TestE2E_FullResyncEmitsCompletedOnceAllTasksSettle(t *testing.T) {
 	h := newE2EHarness(t)
 	run := newLifecycleRun(h)
 	h.createUser("alice-resync")
 	run.drainAt(time.Now().UTC())
-	// 捕捉を通らない User は下流と乖離している。
+	// イベント同期を通らない User は下流と乖離している。
 	now := time.Now().UTC()
 	h.userRepo.Seed(&userdomain.User{
 		ID: "carol-resync", TenantID: h.tenantID, PreferredUsername: "carol-resync", PasswordHash: "unused",

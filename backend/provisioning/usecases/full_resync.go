@@ -31,7 +31,7 @@ func settleFullResync(ctx context.Context, repo ports.ProvisioningTaskRepository
 	return nil
 }
 
-// settleFullResyncOfTask は終端になったプロビジョニングタスクが Full Resync に属していれば、その完了を判定する。
+// settleFullResyncOfTask は終端になったプロビジョニングタスクがフル同期に属していれば、その完了を判定する。
 func settleFullResyncOfTask(ctx context.Context, deps JobHandlerDeps, tenantID, taskID string, now time.Time) error {
 	resync, err := deps.TaskRepo.FindFullResyncByTask(ctx, tenantID, taskID)
 	if err != nil {

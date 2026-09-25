@@ -46,7 +46,7 @@ func wantActions(t *testing.T, got []domain.ReconcileAction, want ...domain.Reco
 	}
 }
 
-//spec:covers EX-PROVISIONING-019-01: スコープ内で有効な User にリンクがなければ、照合は create を作る。
+//spec:covers EX-PROVISIONING-019-01: スコープ内で有効な User にリンクがなければ、インクリメンタル同期は create を作る。
 func TestPlanReconciliation_CreatesAnInScopeActiveUserWithoutALink(t *testing.T) {
 	got := planOne(t, domain.ReconcileInput{
 		Connection: reconcileConnection(),
@@ -220,7 +220,7 @@ func TestPlanReconciliation_RetriesADeadLetteredUserOnlyAfterTheUserChanges(t *t
 	wantActions(t, changed, domain.ReconcileAction{UserID: "u1", Operation: domain.OperationCreate})
 }
 
-// 上限を超えた分は次の照合が拾う。User の ID の順に並べるので、打ち切られる User は入力の順に依存しない。
+// 上限を超えた分は次のインクリメンタル同期が拾う。User の ID の順に並べるので、打ち切られる User は入力の順に依存しない。
 func TestPlanReconciliation_StopsAtTheLimitInUserIDOrder(t *testing.T) {
 	got := domain.PlanReconciliation(domain.ReconcileInput{
 		Connection: reconcileConnection(),
@@ -271,7 +271,7 @@ func wantNoQuarantine(t *testing.T, plan domain.ReconcilePlan, actions int) {
 	}
 }
 
-//spec:covers REQ-PROVISIONING-011: 計画した deprovision が件数の閾値を超えたら、照合は何も作らず隔離の理由を返す。1 回あたりの上限で打ち切る前の件数を比べるので、上限より多い deprovision も見逃さない。
+//spec:covers REQ-PROVISIONING-011: 計画した deprovision が件数の閾値を超えたら、インクリメンタル同期は何も作らず隔離の理由を返す。1 回あたりの上限で打ち切る前の件数を比べるので、上限より多い deprovision も見逃さない。
 func TestPlanReconciliation_QuarantinesInsteadOfDeprovisioningOverTheGuard(t *testing.T) {
 	users, links := linkedUsers(3, false)
 	plan := domain.PlanReconciliation(domain.ReconcileInput{
@@ -289,7 +289,7 @@ func TestPlanReconciliation_DeprovisionsAtTheCountThreshold(t *testing.T) {
 	wantNoQuarantine(t, plan, 2)
 }
 
-//spec:covers EX-PROVISIONING-011-03: 件数の閾値が無くても、反映済みの 10 人のうち 6 人の deprovision は割合の閾値 50 を超えるので、照合は何も作らず隔離の理由を返す。5 人なら超えない。
+//spec:covers EX-PROVISIONING-011-03: 件数の閾値が無くても、反映済みの 10 人のうち 6 人の deprovision は割合の閾値 50 を超えるので、インクリメンタル同期は何も作らず隔離の理由を返す。5 人なら超えない。
 func TestPlanReconciliation_QuarantinesOverThePercentThreshold(t *testing.T) {
 	inScope, inScopeLinks := linkedUsers(10, true)
 	for _, deprovisioned := range []struct {

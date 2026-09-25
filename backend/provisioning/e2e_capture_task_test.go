@@ -244,7 +244,7 @@ func (h *e2eHarness) executePendingTask(userID string) *domain.ProvisioningTask 
 	return got
 }
 
-//spec:covers EX-PLATFORM-003-01: 管理者による User の作成、更新、無効化、削除は、書き込み時の捕捉でプロビジョニングタスクになり、実行されて succeeded になり、下流へ届く。
+//spec:covers EX-PLATFORM-003-01: 管理者による User の作成、更新、無効化、削除は、イベント同期でプロビジョニングタスクになり、実行されて succeeded になり、下流へ届く。
 func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	h := newE2EHarness(t)
 	ctx := context.Background()
@@ -436,7 +436,7 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 }
 
 // wi-441: `push_groups` を有効にした接続で、Group の変更が下流への書き込みまで
-// 届くこと。正本文書は Push Groups を能力として宣言しているのに、捕捉からプロビジョニングタスク
+// 届くこと。正本文書は Push Groups を能力として宣言しているのに、イベント同期からプロビジョニングタスク
 // までの経路がどこにも配線されておらず、設定は保存され画面は有効と表示しながら
 // プロビジョニングタスクは 1 件も生まれていなかった。失敗として現れないぶん、気付く手掛かりが無い。
 // Group リソースとして送る。`displayName` の既定の取得元は Group の名前である。
@@ -450,7 +450,7 @@ func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 
 	group := h.seedGroup()
 
-	// 変更を捕捉させる。IdManagement の Group 側から呼ばれる通知先である。
+	// 変更をイベント同期へ渡す。IdManagement の Group 側から呼ばれる通知先である。
 	if err := h.groupNotifier.NotifyGroupMutation(
 		ctx, h.tenantID, group.ID, groupports.ProvisioningGroupCreated, now,
 	); err != nil {

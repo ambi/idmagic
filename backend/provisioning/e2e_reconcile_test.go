@@ -16,10 +16,10 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// 照合の E2E は、User の変更を IdManagement の実際のユースケースで起こし、書き込み時の捕捉を
-// 通さずに、照合 → 実行 → SCIM クライアント → 下流の HTTP までを本物の部品でつなぐ。
+// インクリメンタル同期の E2E は、User の変更を IdManagement の実際のユースケースで起こし、イベント同期を
+// 通さずに、インクリメンタル同期 → 実行 → SCIM クライアント → 下流の HTTP までを本物の部品でつなぐ。
 
-// failingNotifier は、書き込み時の捕捉が失敗した状況を表す。
+// failingNotifier は、イベント同期が失敗した状況を表す。
 type failingNotifier struct{}
 
 func (failingNotifier) NotifyUserMutation(context.Context, string, string, userports.ProvisioningTrigger, time.Time) error {
@@ -43,7 +43,7 @@ func (h *e2eHarness) reconcileDeps() usecases.ReconcileDeps {
 	}
 }
 
-// provisionActiveUser は書き込み時の捕捉で User を作り、下流へ作成を反映する。
+// provisionActiveUser はイベント同期で User を作り、下流へ作成を反映する。
 func (h *e2eHarness) provisionActiveUser(username string) string {
 	h.t.Helper()
 	user, err := userusecases.CreateUser(context.Background(), h.adminUserDeps, userusecases.CreateUserInput{
@@ -71,7 +71,7 @@ func (h *e2eHarness) assertNoPendingTask(userID string) {
 	}
 }
 
-// reconcileAndExecuteDeactivation は照合を 1 回走らせ、作られた無効化を下流へ反映する。
+// reconcileAndExecuteDeactivation はインクリメンタル同期を 1 回走らせ、作られた無効化を下流へ反映する。
 func (h *e2eHarness) reconcileAndExecuteDeactivation(userID string) {
 	h.t.Helper()
 	remoteID := h.remoteUserID(userID)
@@ -95,7 +95,7 @@ func (h *e2eHarness) reconcileAndExecuteDeactivation(userID string) {
 	}
 }
 
-//spec:covers REQ-PLATFORM-003, EX-PLATFORM-003-03: 書き込み時の捕捉を呼ばない経路で無効化した User は、次の照合で deactivate のプロビジョニングタスクになり、下流へ active=false が届く。
+//spec:covers REQ-PLATFORM-003, EX-PLATFORM-003-03: イベント同期を呼ばない経路で無効化した User は、次のインクリメンタル同期で deactivate のプロビジョニングタスクになり、下流へ active=false が届く。
 func TestE2E_ReconcileDeactivatesAUserDisabledWithoutCapture(t *testing.T) {
 	h := newE2EHarness(t)
 	h.mapActive()
@@ -111,7 +111,7 @@ func TestE2E_ReconcileDeactivatesAUserDisabledWithoutCapture(t *testing.T) {
 	h.reconcileAndExecuteDeactivation(userID)
 }
 
-//spec:covers REQ-PLATFORM-003, EX-PLATFORM-003-02: 書き込み時の捕捉が失敗しても User の無効化はコミットされたままで、次の照合が deactivate のプロビジョニングタスクを作り、下流へ反映する。
+//spec:covers REQ-PLATFORM-003, EX-PLATFORM-003-02: イベント同期が失敗しても User の無効化はコミットされたままで、次のインクリメンタル同期が deactivate のプロビジョニングタスクを作り、下流へ反映する。
 func TestE2E_ReconcileRecoversAFailedCapture(t *testing.T) {
 	h := newE2EHarness(t)
 	h.mapActive()
@@ -131,7 +131,7 @@ func TestE2E_ReconcileRecoversAFailedCapture(t *testing.T) {
 	h.reconcileAndExecuteDeactivation(userID)
 }
 
-// 照合は、書き込み時の捕捉が反映済みの状態には何も作らない。これがないと、照合が周期ごとに
+// インクリメンタル同期は、イベント同期が反映済みの状態には何も作らない。これがないと、インクリメンタル同期が周期ごとに
 // 同じ更新を作り続ける実装を見分けられない。
 func TestE2E_ReconcileCreatesNothingWhenCaptureAlreadyConverged(t *testing.T) {
 	h := newE2EHarness(t)
@@ -150,7 +150,7 @@ func TestE2E_ReconcileCreatesNothingWhenCaptureAlreadyConverged(t *testing.T) {
 	}
 }
 
-// guardRun は照合を worker と同じ Module.ReconcileDeps の組み立てで走らせ、発行ポートへ渡ったイベントを残す。
+// guardRun はインクリメンタル同期を worker と同じ Module.ReconcileDeps の組み立てで走らせ、発行ポートへ渡ったイベントを残す。
 type guardRun struct {
 	h      *e2eHarness
 	events []spec.DomainEvent
@@ -187,7 +187,7 @@ func (h *e2eHarness) setAccidentalDeletionGuard(count, percent *int) {
 }
 
 // narrowScopeToAssignments は接続を assigned_only へ変え、割り当ての無い反映済みの User を
-// 捕捉を通さずにスコープ外にする。スコープの設定を誤った状況を表す。
+// イベント同期を通さずにスコープ外にする。スコープの設定を誤った状況を表す。
 func (h *e2eHarness) narrowScopeToAssignments() {
 	h.t.Helper()
 	conn := h.connection()
@@ -209,7 +209,7 @@ func (h *e2eHarness) health() domain.ProvisioningHealth {
 	return h.connection().Health
 }
 
-//spec:covers REQ-PROVISIONING-011: 反映済みの 6 人が捕捉を通らずにスコープ外になり、件数の閾値 5 を超えると、照合はプロビジョニングタスクを 1 件も作らず、接続を隔離して ConnectionQuarantined を一度発行する。
+//spec:covers REQ-PROVISIONING-011: 反映済みの 6 人がイベント同期を通らずにスコープ外になり、件数の閾値 5 を超えると、インクリメンタル同期はプロビジョニングタスクを 1 件も作らず、接続を隔離して ConnectionQuarantined を一度発行する。
 func TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning(t *testing.T) {
 	h := newE2EHarness(t)
 	for i := range 6 {
@@ -236,13 +236,13 @@ func TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning(t *testing.T)
 	if len(quarantined) != 1 || quarantined[0].ApplicationID != h.connectionID || quarantined[0].TenantID != h.tenantID {
 		t.Fatalf("ConnectionQuarantined = %+v, want exactly one for %s", quarantined, h.connectionID)
 	}
-	// 隔離した接続を次の照合は読まないので、同じ差分から二度目の隔離もタスクも生まれない。
+	// 隔離した接続を次のインクリメンタル同期は読まないので、同じ差分から二度目の隔離もタスクも生まれない。
 	if created := run.reconcile(); created != 0 || len(run.quarantines()) != 1 {
 		t.Fatalf("second reconcile created = %d, quarantines = %d; want 0 and still 1", created, len(run.quarantines()))
 	}
 }
 
-//spec:covers EX-PROVISIONING-011-04: スコープ外になった反映済みの User が件数の閾値 5 と等しい 5 人なら、照合は 5 人の deactivate を作り、接続は ok のままで ConnectionQuarantined を発行しない。
+//spec:covers EX-PROVISIONING-011-04: スコープ外になった反映済みの User が件数の閾値 5 と等しい 5 人なら、インクリメンタル同期は 5 人の deactivate を作り、接続は ok のままで ConnectionQuarantined を発行しない。
 func TestE2E_ReconcileAtTheGuardStillDeprovisions(t *testing.T) {
 	h := newE2EHarness(t)
 	for i := range 5 {

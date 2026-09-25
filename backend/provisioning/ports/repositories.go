@@ -33,7 +33,7 @@ type ProvisioningConnectionRepository interface {
 	CredentialSecret(ctx context.Context, tenantID, applicationID string) (string, error)
 	Delete(ctx context.Context, tenantID, applicationID string) error
 	ListAll(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error)
-	// ListTenantsWithActiveConnections は有効な接続を持つテナントを返す。照合がテナントを越えて接続を巡る入口である。
+	// ListTenantsWithActiveConnections は有効な接続を持つテナントを返す。インクリメンタル同期がテナントを越えて接続を巡る入口である。
 	ListTenantsWithActiveConnections(ctx context.Context) ([]string, error)
 }
 
@@ -45,7 +45,7 @@ type RemoteResourceLinkRepository interface {
 	// caller applies RemoteResourceLink.ApplySync's monotonicity check before
 	// calling Upsert; Upsert itself does not re-derive ordering.
 	Upsert(ctx context.Context, link *domain.RemoteResourceLink) error
-	// ListByConnection は接続の sourceType のリンクを source_id の順に返す。照合が反映済みの状態として読む。
+	// ListByConnection は接続の sourceType のリンクを source_id の順に返す。インクリメンタル同期が反映済みの状態として読む。
 	ListByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.RemoteResourceLink, error)
 	// Delete はリンクを消す。下流からリソースを削除したあと、リンクなしが「下流に何もない」を表すようにする。
 	Delete(ctx context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) error
@@ -84,7 +84,7 @@ type ProvisioningTaskRepository interface {
 	// is not currently dead_letter.
 	RetryDeadLetter(ctx context.Context, tenantID, taskID string) (bool, error)
 	// ListUnsettledByConnection は接続の sourceType のタスクのうち succeeded 以外を返す。
-	// 照合が、決着を待つべき対象を見分けるために読む。
+	// インクリメンタル同期が、決着を待つべき対象を見分けるために読む。
 	ListUnsettledByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.ProvisioningTask, error)
 
 	// 猶予期間つき削除の予約はプロビジョニングタスクの前段であり、実体化で予約の遷移とプロビジョニングタスクの挿入を
@@ -102,18 +102,18 @@ type ProvisioningTaskRepository interface {
 	// 取消と競合して予約が scheduled でなくなっていれば、何も変えず false を返す。
 	MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningTask) (bool, error)
 
-	// Full Resync は対象のプロビジョニングタスクを数えて完了を判定するため、プロビジョニングタスクと同じリポジトリが持つ。
+	// フル同期は対象のプロビジョニングタスクを数えて完了を判定するため、プロビジョニングタスクと同じリポジトリが持つ。
 
-	// SaveFullResync は running の Full Resync を保存する。
+	// SaveFullResync は running のフル同期を保存する。
 	SaveFullResync(ctx context.Context, r *domain.FullResync) error
-	// SaveFullResyncTask は d を挿入し、同じ文で Full Resync へ関連付ける。
+	// SaveFullResyncTask は d を挿入し、同じ文でフル同期へ関連付ける。
 	// 同じ冪等キーのプロビジョニングタスクがあれば、どちらもせず created=false を返す。
 	SaveFullResyncTask(ctx context.Context, fullResyncID string, d *domain.ProvisioningTask) (created bool, err error)
-	// FindFullResyncByTask はプロビジョニングタスクが属する Full Resync を返す。属さなければ nil を返す。
+	// FindFullResyncByTask はプロビジョニングタスクが属するフル同期を返す。属さなければ nil を返す。
 	FindFullResyncByTask(ctx context.Context, tenantID, taskID string) (*domain.FullResync, error)
-	// TallyFullResync は Full Resync へ関連付いたプロビジョニングタスクを状態ごとに数える。
+	// TallyFullResync はフル同期へ関連付いたプロビジョニングタスクを状態ごとに数える。
 	TallyFullResync(ctx context.Context, tenantID, fullResyncID string) (domain.FullResyncTally, error)
-	// CompleteFullResync は保存済みの Full Resync が running のときだけ r の完了を書き込む。
+	// CompleteFullResync は保存済みのフル同期が running のときだけ r の完了を書き込む。
 	// 別の呼び出しがすでに完了させていれば、何も変えず false を返す。
 	CompleteFullResync(ctx context.Context, r *domain.FullResync) (bool, error)
 }

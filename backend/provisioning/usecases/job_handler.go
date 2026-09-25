@@ -60,7 +60,7 @@ type provisioningTaskParams struct {
 // it. It does not count toward quarantine, which measures the downstream's
 // health, not one User's missing attribute.
 //
-// プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属する Full Resync の完了を判定する。
+// プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属するフル同期の完了を判定する。
 func ProvisioningTaskHandler(deps JobHandlerDeps) jobsusecases.Handler {
 	now := deps.Now
 	if now == nil {

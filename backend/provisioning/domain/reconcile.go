@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// ReconcileUser は照合が 1 人の User について読む事実である。
+// ReconcileUser はインクリメンタル同期が 1 人の User について読む事実である。
 type ReconcileUser struct {
 	ID string
 	// Deleted は User が削除済みであることを表す。削除済みの User は、リンクを持つものだけが現れる。
@@ -19,13 +19,13 @@ type ReconcileUser struct {
 	Version int64
 }
 
-// ReconcileTask は照合が User ごとに読む、確定していないか失敗したプロビジョニングタスクである。
+// ReconcileTask はインクリメンタル同期が User ごとに読む、確定していないか失敗したプロビジョニングタスクである。
 type ReconcileTask struct {
 	Status        ProvisioningTaskStatus
 	SourceVersion int64
 }
 
-// ReconcileInput は 1 接続の照合の入力である。Links と Tasks は User の ID をキーとする。
+// ReconcileInput は 1 接続のインクリメンタル同期の入力である。Links と Tasks は User の ID をキーとする。
 type ReconcileInput struct {
 	Connection ProvisioningConnection
 	Users      []ReconcileUser
@@ -34,7 +34,7 @@ type ReconcileInput struct {
 	Limit      int
 }
 
-// ReconcileAction は照合が作るもの 1 件である。Schedule が true なら、プロビジョニングタスクではなく
+// ReconcileAction はインクリメンタル同期が作るもの 1 件である。Schedule が true なら、プロビジョニングタスクではなく
 // 猶予期間つき削除の予約を作る。
 type ReconcileAction struct {
 	UserID    string
@@ -42,7 +42,7 @@ type ReconcileAction struct {
 	Schedule  bool
 }
 
-// ReconcilePlan は 1 接続の照合が作るものである。
+// ReconcilePlan は 1 接続のインクリメンタル同期が作るものである。
 type ReconcilePlan struct {
 	Actions []ReconcileAction
 	// QuarantineReason が空でなければ、計画した deprovision が誤削除ガードの閾値を超えている。
@@ -51,7 +51,7 @@ type ReconcilePlan struct {
 }
 
 // PlanReconciliation は、あるべき状態と下流へ反映済みの状態の差分から、作るべきものを返す。
-// 結果は User の ID の順に並べて Limit 件で打ち切るので、残りは次の照合が拾う。
+// 結果は User の ID の順に並べて Limit 件で打ち切るので、残りは次のインクリメンタル同期が拾う。
 func PlanReconciliation(in ReconcileInput) ReconcilePlan {
 	users := slices.Clone(in.Users)
 	slices.SortFunc(users, func(a, b ReconcileUser) int { return strings.Compare(a.ID, b.ID) })
@@ -85,7 +85,7 @@ func PlanReconciliation(in ReconcileInput) ReconcilePlan {
 	return ReconcilePlan{Actions: actions}
 }
 
-// exceedsAccidentalDeletionGuard は、1 回の照合の deprovision が件数または割合の閾値を超えるかを返す。
+// exceedsAccidentalDeletionGuard は、1 回のインクリメンタル同期の deprovision が件数または割合の閾値を超えるかを返す。
 // 割合の分母は下流へ反映済みの User のリンク数である。等しい値は超過ではない。
 func (p DeprovisionPolicy) exceedsAccidentalDeletionGuard(deprovisions, linkedUsers int) bool {
 	if p.AccidentalDeletionCountThreshold != nil && deprovisions > *p.AccidentalDeletionCountThreshold {
@@ -95,7 +95,7 @@ func (p DeprovisionPolicy) exceedsAccidentalDeletionGuard(deprovisions, linkedUs
 }
 
 // awaitsSettledTask は、既存のプロビジョニングタスクの決着を待つべき User かを返す。
-// 未確定のタスクは、書き込み時の捕捉や前回の照合が同じ変更をすでに扱っている。
+// 未確定のタスクは、イベント同期や前回のインクリメンタル同期が同じ変更をすでに扱っている。
 // dead_letter のタスクより User が新しくなければ、作り直しても同じく失敗する。
 func awaitsSettledTask(user ReconcileUser, tasks []ReconcileTask) bool {
 	for _, task := range tasks {

@@ -159,7 +159,7 @@ func TestFullResyncCountsADuplicatedSubjectOnce(t *testing.T) {
 	}
 }
 
-// staleFullResyncRepo は、別のジョブが完了させる前に読んだ running の Full Resync を返し続ける。
+// staleFullResyncRepo は、別のジョブが完了させる前に読んだ running のフル同期を返し続ける。
 // 最後の二件を同時に終えた二つのジョブが、どちらも running を読んで完了を判定する場面を決定的に再現する。
 type staleFullResyncRepo struct {
 	*memory.ProvisioningTaskRepository
@@ -203,7 +203,7 @@ func TestStartFullResyncCompletesAnEmptyScopeImmediately(t *testing.T) {
 	}
 }
 
-//spec:covers EX-PROVISIONING-013-01: Full Resync に属さないプロビジョニングタスクの終端化は完了イベントを発行しない。
+//spec:covers EX-PROVISIONING-013-01: フル同期に属さないプロビジョニングタスクの終端化は完了イベントを発行しない。
 func TestTaskOutsideAFullResyncDoesNotComplete(t *testing.T) {
 	f := newFullResyncFixture(t, "u1")
 	task := saveTask(t, f.taskRepo, domain.OperationCreate, 1)

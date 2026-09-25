@@ -175,7 +175,7 @@ type RemoteResourceLink struct {
 	RemoteID     string
 	ExternalID   string
 	ETag         *string
-	// Active は下流のリソースを有効として反映したかを表す。照合は User の有効状態とこれを比べる。
+	// Active は下流のリソースを有効として反映したかを表す。インクリメンタル同期は User の有効状態とこれを比べる。
 	Active            bool
 	LastSyncedVersion int64
 	UpdatedAt         time.Time

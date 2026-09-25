@@ -446,7 +446,7 @@ type InsertProvisioningFullResyncTaskParams struct {
 	UpdatedAt     time.Time
 }
 
-// プロビジョニングタスクの挿入と Full Resync への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
+// プロビジョニングタスクの挿入とフル同期への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
 func (q *Queries) InsertProvisioningFullResyncTask(ctx context.Context, arg InsertProvisioningFullResyncTaskParams) (int64, error) {
 	result, err := q.db.Exec(ctx, insertProvisioningFullResyncTask,
 		arg.FullResyncID,
@@ -1077,7 +1077,7 @@ type ListUnsettledProvisioningTasksByConnectionParams struct {
 	SourceType   string
 }
 
-// 照合が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
+// インクリメンタル同期が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
 func (q *Queries) ListUnsettledProvisioningTasksByConnection(ctx context.Context, arg ListUnsettledProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error) {
 	rows, err := q.db.Query(ctx, listUnsettledProvisioningTasksByConnection, arg.TenantID, arg.ConnectionID, arg.SourceType)
 	if err != nil {

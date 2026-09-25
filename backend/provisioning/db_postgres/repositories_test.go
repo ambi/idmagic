@@ -552,8 +552,8 @@ func TestProvisioningTaskRepository_CancelledDeprovisionIsNeverMaterialized(t *t
 	}
 }
 
-// 照合はリンクの active を User の有効状態と比べ、リンクなしを「下流に何もない」と読む。
-// active が往復しないか、削除がリンクを消さないと、照合が同じ無効化や削除を作り続ける。
+// インクリメンタル同期はリンクの active を User の有効状態と比べ、リンクなしを「下流に何もない」と読む。
+// active が往復しないか、削除がリンクを消さないと、インクリメンタル同期が同じ無効化や削除を作り続ける。
 func TestRemoteResourceLinkRepository_ListByConnectionRoundTripsActiveAndDeleteRemoves(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
@@ -594,7 +594,7 @@ func TestRemoteResourceLinkRepository_ListByConnectionRoundTripsActiveAndDeleteR
 	}
 }
 
-// 照合は、succeeded 以外のタスクから決着を待つべき User を見分ける。
+// インクリメンタル同期は、succeeded 以外のタスクから決着を待つべき User を見分ける。
 func TestProvisioningTaskRepository_ListUnsettledByConnectionExcludesSucceeded(t *testing.T) {
 	pool := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, pool)
@@ -632,7 +632,7 @@ func TestProvisioningTaskRepository_ListUnsettledByConnectionExcludesSucceeded(t
 	}
 }
 
-// Full Resync の完了判定は、関連付けたプロビジョニングタスクの数え直しと、running のときだけ成立する完了の書き込みに依る。
+// フル同期の完了判定は、関連付けたプロビジョニングタスクの数え直しと、running のときだけ成立する完了の書き込みに依る。
 // 関連付けが冪等キーの重複で二重にならないこと、他テナントから引けないこと、完了が一度だけ成立することを固定する。
 func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing.T) {
 	pool := pgtest.Require(t)
@@ -712,7 +712,7 @@ func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing
 	}
 }
 
-// 照合がテナントを越えて巡る入口は、有効な接続を持つテナントだけを返す。
+// インクリメンタル同期がテナントを越えて巡る入口は、有効な接続を持つテナントだけを返す。
 func TestProvisioningConnectionRepository_ListTenantsWithActiveConnections(t *testing.T) {
 	pool := pgtest.Require(t)
 	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}

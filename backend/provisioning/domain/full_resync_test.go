@@ -33,7 +33,7 @@ func TestFullResyncSettleCompletesWhenEveryTaskIsTerminal(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-PROVISIONING-013: 終端の件数が対象数に満たないとき、および完了済みの Full Resync では完了しない。
+//spec:covers REQ-PROVISIONING-013: 終端の件数が対象数に満たないとき、および完了済みのフル同期では完了しない。
 func TestFullResyncSettleRefusesEarlyOrRepeatedCompletion(t *testing.T) {
 	started := time.Date(2026, 9, 25, 9, 0, 0, 0, time.UTC)
 	now := started.Add(time.Minute)
@@ -61,7 +61,7 @@ func TestFullResyncSettleRefusesEarlyOrRepeatedCompletion(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-PROVISIONING-013: 対象が 0 件の Full Resync は開始と同時に完了できる。
+//spec:covers REQ-PROVISIONING-013: 対象が 0 件のフル同期は開始と同時に完了できる。
 func TestFullResyncSettleCompletesAnEmptyScope(t *testing.T) {
 	now := time.Date(2026, 9, 25, 9, 0, 0, 0, time.UTC)
 	completed, ok := domain.NewFullResync("resync-1", "tenant-1", "app-1", 0, now).Settle(domain.FullResyncTally{}, now)

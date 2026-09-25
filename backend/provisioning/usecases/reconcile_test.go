@@ -137,7 +137,7 @@ func TestReconcileConnections_ScopesAnAssignedOnlyConnectionByAssignments(t *tes
 	}
 }
 
-// 隔離中と無効の接続は照合しない。照合が隔離を迂回して下流へ書き込むと、隔離の意味がなくなる。
+// 隔離中と無効の接続にはインクリメンタル同期を実行しない。インクリメンタル同期が隔離を迂回して下流へ書き込むと、隔離の意味がなくなる。
 func TestReconcileConnections_SkipsQuarantinedAndDisabledConnections(t *testing.T) {
 	quarantined := activeConnection("app-q", domain.ScopeAllUsers)
 	quarantined.Health = domain.HealthQuarantined

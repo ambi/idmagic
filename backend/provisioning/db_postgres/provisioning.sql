@@ -169,7 +169,7 @@ WITH materialized AS (
 SELECT count(*) FROM materialized;
 
 -- name: ListUnsettledProvisioningTasksByConnection :many
--- 照合が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
+-- インクリメンタル同期が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
 FROM provisioning_tasks
 WHERE tenant_id=$1 AND connection_id=$2 AND source_type=$3 AND status <> 'succeeded'
@@ -180,7 +180,7 @@ INSERT INTO provisioning_full_resyncs (id, tenant_id, connection_id, status, tot
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);
 
 -- name: InsertProvisioningFullResyncTask :execrows
--- プロビジョニングタスクの挿入と Full Resync への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
+-- プロビジョニングタスクの挿入とフル同期への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
 WITH inserted AS (
   INSERT INTO provisioning_tasks (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
   VALUES (sqlc.arg(id), sqlc.arg(tenant_id), sqlc.arg(connection_id), sqlc.arg(source_type), sqlc.arg(source_id), sqlc.arg(source_version),

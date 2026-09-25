@@ -13,13 +13,13 @@ affected_spec:
   - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-011 }
 ---
 
-# 隔離した接続では、作成済みのプロビジョニングタスクを下流へ送らず、Full Resync も始めない
+# 隔離した接続では、作成済みのプロビジョニングタスクを下流へ送らず、フル同期も始めない
 
 ## 動機
 
 用語集は Quarantine を「管理者が `ResumeProvisioningConnection` で解除するまで再開しない」状態と定め、TypeSpec の `ConnectionQuarantined` は「No further task is created.」と説明する。
 
-実装では、隔離を見ているのは書き込み時の捕捉（`capture.go`）と照合（`ReconcileConnections`）だけである。
+実装では、隔離を見ているのはイベント同期（`capture.go`）とインクリメンタル同期（`ReconcileConnections`）だけである。
 
 | 経路 | 隔離した接続での動作 |
 | --- | --- |

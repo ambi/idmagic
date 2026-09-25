@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// FullResyncStatus は FullResync の状態である（docs/domain/provisioning/internals.md §Full Resync の完了追跡）。
+// FullResyncStatus は FullResync の状態である（docs/domain/provisioning/internals.md §フル同期の完了追跡）。
 type FullResyncStatus string
 
 const (

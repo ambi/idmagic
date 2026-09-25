@@ -22,7 +22,7 @@ type Querier interface {
 	GetProvisioningConnectionSecret(ctx context.Context, arg GetProvisioningConnectionSecretParams) (string, error)
 	InsertProvisioningConnection(ctx context.Context, arg InsertProvisioningConnectionParams) (string, error)
 	InsertProvisioningFullResync(ctx context.Context, arg InsertProvisioningFullResyncParams) error
-	// プロビジョニングタスクの挿入と Full Resync への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
+	// プロビジョニングタスクの挿入とフル同期への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
 	InsertProvisioningFullResyncTask(ctx context.Context, arg InsertProvisioningFullResyncTaskParams) (int64, error)
 	InsertProvisioningScheduledDeprovision(ctx context.Context, arg InsertProvisioningScheduledDeprovisionParams) (int64, error)
 	InsertProvisioningTask(ctx context.Context, arg InsertProvisioningTaskParams) (string, error)
@@ -40,7 +40,7 @@ type Querier interface {
 	ListRemoteResourceLinksByConnection(ctx context.Context, arg ListRemoteResourceLinksByConnectionParams) ([]*ProvisioningRemoteLink, error)
 	ListTenantsWithActiveProvisioningConnections(ctx context.Context) ([]string, error)
 	ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error)
-	// 照合が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
+	// インクリメンタル同期が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
 	ListUnsettledProvisioningTasksByConnection(ctx context.Context, arg ListUnsettledProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error)
 	// 予約の遷移とプロビジョニングタスクの挿入を一文で行い、取消と競合したときにプロビジョニングタスクだけが残らないようにする。
 	// 結果は遷移した予約の件数（0 または 1）である。

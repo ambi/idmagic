@@ -173,9 +173,9 @@ type ProvisioningTaskRepository struct {
 	idempotency map[string]string                   // idempotency key -> task id
 	// reservations は猶予期間つき削除の予約。key: tenantKey(tenant_id, id)
 	reservations map[string]*domain.ScheduledDeprovision
-	// fullResyncs は Full Resync。key: tenantKey(tenant_id, id)
+	// fullResyncs はフル同期。key: tenantKey(tenant_id, id)
 	fullResyncs map[string]*domain.FullResync
-	// fullResyncTasks はプロビジョニングタスクの id から、それが属する Full Resync の id を引く。
+	// fullResyncTasks はプロビジョニングタスクの id から、それが属するフル同期の id を引く。
 	fullResyncTasks map[string]string
 }
 

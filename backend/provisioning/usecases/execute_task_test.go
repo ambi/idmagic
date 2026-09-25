@@ -479,8 +479,8 @@ func TestExecuteTask_DeactivateOfAUserGoneDownstreamDoesNotRecreateIt(t *testing
 	}
 }
 
-// リンクは、下流へ送った active を記録する。照合はこれを User の有効状態と比べるので、無効化の後も
-// true のままだと、照合が同じ無効化を周期ごとに作り続ける。
+// リンクは、下流へ送った active を記録する。インクリメンタル同期はこれを User の有効状態と比べるので、無効化の後も
+// true のままだと、インクリメンタル同期が同じ無効化を周期ごとに作り続ける。
 func TestExecuteTask_RecordsTheDownstreamActiveStateOnTheLink(t *testing.T) {
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice", "active": true}, exists: true}
@@ -504,7 +504,7 @@ func TestExecuteTask_RecordsTheDownstreamActiveStateOnTheLink(t *testing.T) {
 	}
 }
 
-// 削除を下流へ送ったら、リンクを消す。リンクなしが「下流に何もない」を表すので、残すと照合が削除を作り続ける。
+// 削除を下流へ送ったら、リンクを消す。リンクなしが「下流に何もない」を表すので、残すとインクリメンタル同期が削除を作り続ける。
 func TestExecuteTask_DeleteRemovesTheLink(t *testing.T) {
 	client := &fakeTargetClient{}
 	deps, connRepo, taskRepo, linkRepo := newExecuteTaskDeps(client, &fakeAttributeSource{})
