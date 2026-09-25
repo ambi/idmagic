@@ -40,6 +40,8 @@ depends_on:
   - wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period
   - wi-626-align-cross-tenant-application-read-refusals
   - wi-628-implement-desired-state-application-assignment
+  - wi-61629-quarantine-connections-on-the-accidental-deletion-guard
+  - wi-39759-name-the-refusal-a-cross-tenant-wsfed-api-token-gets
 status: in_progress
 authors: [tn]
 risk: low
@@ -234,6 +236,22 @@ Scope が定めるとおり、これらの欠陥の修正そのものは本項�
 残した実測（`acme` レルムのトークンを `default` レルムの SAML 管理 API へ提示すると 401
 `invalid_token` になる）を転記して揃えた。
 
+### 欠陥 work item 完了後の残余（2 件）
+
+`depends_on` の欠陥 work item はすべて完了し、台帳は 37 件から 2 件まで縮んだ。残る 2 件は
+どちらも、`depends_on` から前提が漏れていたために完了を拘束できていなかった。
+
+| 具体例 | 台帳の `blocked_by` | 漏れていた理由 |
+|---|---|---|
+| `EX-PROVISIONING-011-01` | [[wi-61629-quarantine-connections-on-the-accidental-deletion-guard]] | 残余を `depends_on` へ足した後に切り出された欠陥で、`pending` のまま `depends_on` に入っていなかった |
+| `EX-WSFEDERATION-001-03` | [[wi-39759-name-the-refusal-a-cross-tenant-wsfed-api-token-gets]] | 台帳は完了済みの wi-558 を指していた。wi-558 は SAML だけを直し、この具体例を「個別の記録で扱う」としたが、その記録が起票されていなかった |
+
+後者は本項目で wi-39759 として起票し、台帳の `blocked_by` をそちらへ向け直した。2 件とも
+`depends_on` へ足した。直すのは具体例の書き換えと欠陥の修正であり、Out of Scope のとおり本項目には
+含めない。
+
+`blocked_by` が完了済みの work item を指したまま台帳に残る状態は、今回のように機械では検出されない。
+
 ## Plan
 
 1. ~~`claim-mapping` の 3 件を通しで消化し、注記の型と 1 件あたりの所要を記録する。~~ 完了。記録は Design の「測定の結果」節。
@@ -267,7 +285,8 @@ Scope が定めるとおり、これらの欠陥の修正そのものは本項�
   `WorkloadAttestationRejectedError` に対応する Go の型が無い件は、仕様が本体を持たないと宣言している
   ため欠陥ではないと判断した。`EX-SAML-005-03` は `blocked_by` の記載漏れを本 work item で埋めた。
 - [ ] T007 [Tooling] 台帳が空になったら、台帳と具体例側の `debt` 引数を落とす。
-  未着手。37 件は `depends_on` へ足した 20 件の欠陥 work item がいずれも `pending` のため空にならない。
+  未着手。2026-09-25 時点で台帳は 2 件。wi-61629 と wi-39759 がいずれも `pending` のため空にならない
+  （Design の「欠陥 work item 完了後の残余」節）。
 - [ ] T008 [Verify] `mise run verify`。
   T007 が未完了のため保留。`mise run check-spec` は現時点でも例外つきで通ることを確認済み
   （`ok normative coverage`）。
