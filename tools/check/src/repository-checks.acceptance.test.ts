@@ -146,40 +146,6 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
   return { code, output: `${stdout}${stderr}` }
 }
 
-/** Git 基準と作業ツリーの台帳を比較する検査を、最小の repository で起動する。 */
-async function checkCoverageDebtRatchet(
-  root: string,
-  baseRevision: string,
-): Promise<{ code: number; output: string }> {
-  const proc = Bun.spawn(
-    [
-      'bun',
-      'run',
-      resolve(TOOLS_DIR, 'check/src/runner.ts'),
-      'coverage-debt-ratchet',
-      '--base-revision',
-      baseRevision,
-    ],
-    {
-      cwd: TOOLS_DIR,
-      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  )
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
-  return { code, output: `${stdout}${stderr}` }
-}
-
-function git(root: string, ...args: string[]): void {
-  const result = Bun.spawnSync(['git', ...args], { cwd: root })
-  expect(result.exitCode).toBe(0)
-}
-
 describe('文書検査', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
@@ -299,6 +265,36 @@ describe('文書検査', () => {
     expect(result.output).not.toContain('standards-coverage-debt.json')
   })
 
+  // 具体例の台帳も wi-496 が空にして消し、免除の仕組みはリポジトリから無くなった。
+  // 同じ名前のファイルを置き直して通るなら、台帳の削除は 1 ファイルで元に戻せる。
+  it('admits no example through a recreated debt ledger', async () => {
+    const root = await workspace()
+    await writeFile(
+      join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
+      [
+        '# Feature: Demo Scenarios',
+        '',
+        '## Rule: REQ-DEMO-001 A valid request succeeds',
+        '',
+        '### Example: EX-DEMO-001-01 valid request',
+        '',
+        '- When the user submits a request',
+        '- Then the request succeeds',
+        '',
+      ].join('\n'),
+    )
+    await mkdir(join(root, 'tools', 'check'), { recursive: true })
+    await writeFile(
+      join(root, 'tools', 'check', 'example-coverage-debt.json'),
+      JSON.stringify({ untested: [{ id: 'EX-DEMO-001-01', reason: 'ここへ書けば通ると思った' }] }),
+    )
+
+    const result = await checkDocuments(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
+    expect(result.output).not.toContain('example-coverage-debt.json')
+  })
+
   it('leaves a retired scenario out of the coverage gate', async () => {
     const root = await workspace()
     await writeFile(
@@ -341,49 +337,6 @@ describe('文書配置図の整合検査', () => {
 
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('docs/domain/<context>/standards.md')
-  })
-})
-
-describe('coverage debt ratchet', () => {
-  it('rejects additions to the example ledger beyond the named Git revision', async () => {
-    const root = await workspace()
-    await mkdir(join(root, 'tools', 'check'), { recursive: true })
-    const baseDebt = JSON.stringify({ untested: [{ id: 'EX-DEMO-001-01', reason: 'base debt' }] })
-    await writeFile(join(root, 'tools', 'check', 'example-coverage-debt.json'), baseDebt)
-    // 標準の台帳は wi-495 で消えた。ratchet が見に行く台帳はもう 1 つだけなので、
-    // 同じ名前のファイルを置き直しても検査は読まない。
-    await writeFile(
-      join(root, 'tools', 'check', 'standards-coverage-debt.json'),
-      JSON.stringify({ untested: [{ id: 'RFC-DEMO-001', reason: 'base debt' }] }),
-    )
-    git(root, 'init')
-    git(root, 'add', '.')
-    git(root, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'base')
-    const base = Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { cwd: root }).stdout.toString().trim()
-    await writeFile(
-      join(root, 'tools', 'check', 'example-coverage-debt.json'),
-      JSON.stringify({
-        untested: [
-          { id: 'EX-DEMO-001-01', reason: 'revised reason' },
-          { id: 'EX-DEMO-002-01', reason: 'reintroduced debt' },
-        ],
-      }),
-    )
-    await writeFile(
-      join(root, 'tools', 'check', 'standards-coverage-debt.json'),
-      JSON.stringify({
-        untested: [
-          { id: 'RFC-DEMO-001', reason: 'revised reason' },
-          { id: 'RFC-DEMO-002', reason: 'new debt' },
-        ],
-      }),
-    )
-
-    const result = await checkCoverageDebtRatchet(root, base)
-
-    expect(result.code).toBe(1)
-    expect(result.output).toContain('EX-DEMO-002-01 is absent from')
-    expect(result.output).not.toContain('RFC-DEMO-002')
   })
 })
 

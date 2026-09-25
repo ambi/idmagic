@@ -1,7 +1,0 @@
-{
-  "comment": [
-    "Each entry is an example introduced by wi-491 whose exact test correspondence was not asserted without evidence.",
-    "Remove an entry when a product test names the EX id. New examples are not admitted to this migration baseline."
-  ],
-  "untested": []
-}

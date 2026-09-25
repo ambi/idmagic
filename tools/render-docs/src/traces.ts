@@ -25,7 +25,6 @@ const SKIPPED_DIRECTORIES = new Set([
   'coverage',
 ])
 const TEXT_EXTENSIONS = /\.(?:go|ts|tsx|js|jsx|sql|sh|py|rb|java|kt|rs|md|yaml|yml|json|tsp|toml)$/
-const DEBT_LEDGER = 'tools/check/example-coverage-debt.json'
 
 /** Whether a repository-relative path names a test rather than implementation. */
 export function isTestPath(path: string): boolean {
@@ -35,10 +34,6 @@ export function isTestPath(path: string): boolean {
 export async function collectTraces(root: string): Promise<ScenarioTrace[]> {
   const sources = new Map<string, Set<string>>()
   const workItems = new Map<string, Set<string>>()
-  const debtSource = JSON.parse(await readFile(resolve(root, DEBT_LEDGER), 'utf8')) as {
-    untested: Array<{ id: string; reason: string }>
-  }
-  const debt = new Map(debtSource.untested.map((entry) => [entry.id, entry.reason]))
   const walk = async (directory: string): Promise<void> => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (entry.name.startsWith('.') || SKIPPED_DIRECTORIES.has(entry.name)) continue
@@ -51,7 +46,6 @@ export async function collectTraces(root: string): Promise<ScenarioTrace[]> {
       // The specification declares the scenarios; only what points at them counts.
       if (path.startsWith('docs/') || path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path))
         continue
-      if (path === DEBT_LEDGER) continue
       const target = path.startsWith('work-items/') ? workItems : sources
       for (const match of (await readFile(absolute, 'utf8')).matchAll(SCENARIO_IDENTIFIER)) {
         if (match[0].startsWith('EX-') && target === sources && !isTestPath(path)) continue
@@ -62,11 +56,10 @@ export async function collectTraces(root: string): Promise<ScenarioTrace[]> {
     }
   }
   await walk(root)
-  const ids = new Set([...sources.keys(), ...workItems.keys(), ...debt.keys()])
+  const ids = new Set([...sources.keys(), ...workItems.keys()])
   return [...ids].map((id) => ({
     id,
     sources: [...(sources.get(id) ?? [])].sort(),
     workItems: [...(workItems.get(id) ?? [])].sort(),
-    debt: debt.get(id),
   }))
 }

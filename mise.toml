@@ -670,7 +670,7 @@ mise run -c \
 [tasks.check-repository]
 description = "Run every registered TypeScript repository check in one process"
 dir = "tools"
-run = "bun run check/src/runner.ts all --base-revision \"${1:-main}\""
+run = "bun run check/src/runner.ts all"
 
 [tasks.check-rendered-docs]
 description = "Check the rendered documentation site"
@@ -701,11 +701,6 @@ run = "bun run check/src/runner.ts security-controls"
 description = "List refused state changes no test proves were left untouched"
 dir = "tools"
 run = "bun run security-test-gap-report/src/main.ts"
-
-[tasks.report-coverage-debt]
-description = "Order the normative ids no test names, weighted by the refusals the contract promises"
-dir = "tools"
-run = "bun run coverage-debt-report/src/main.ts"
 
 [tasks.spec-route]
 description = "Show where one normative id would be observed: rule, candidate operations, tests already naming it"
@@ -768,16 +763,6 @@ run = [
   "cd tools && bun run check/src/runner.ts documents document-layout",
   "mise run check-rendered-docs",
 ]
-
-[tasks.check-coverage-debt-ratchet]
-description = "Reject coverage debt IDs added beyond a Git revision"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 1 || { echo "usage: mise run check-coverage-debt-ratchet -- [base-revision]" >&2; exit 2; }
-bun run check/src/runner.ts coverage-debt-ratchet --base-revision "${1:-main}"
-'''
 
 [tasks.check-work-items]
 description = "Validate work-item records"

@@ -6,7 +6,6 @@ import { checkCommandMap } from './check-command-map.ts'
 import { checkDocsWorkItemLinks } from './check-docs-work-item-links.ts'
 import { checkDocumentLayout } from './check-document-layout.ts'
 import { checkContractDrift } from './check-contract-drift.ts'
-import { checkCoverageDebtRatchet } from './coverage-debt-ratchet.ts'
 import { checkDocuments } from './check-documents.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
@@ -22,7 +21,6 @@ import type { RepositoryCheck } from './runner.ts'
 export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'documents', groups: ['all'], run: checkDocuments },
   { name: 'document-layout', groups: ['all'], run: checkDocumentLayout },
-  { name: 'coverage-debt-ratchet', groups: ['all'], run: checkCoverageDebtRatchet },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
   { name: 'links', groups: ['all'], run: checkLinks },
   { name: 'terminology', groups: ['all'], run: checkTerminology },

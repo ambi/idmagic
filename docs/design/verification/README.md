@@ -40,7 +40,7 @@
 | --- | --- | --- | --- | --- |
 | 一次情報文書と TypeSpec の規範の形式、ID、参照、生成物 | 静的解析 | `mise run check-spec`、`mise run verify-spec` | 形式、ID の一意性、参照の解決、再生成した成果物との一致がすべて成立する | リポジトリ内 |
 | Context の規範シナリオ `REQ-*` | 単体、アダプター統合、受け入れ | `mise run test-go-race`、`mise run test-ui-unit` | 当該 ID を `//spec:covers` で名指すテストが通る | リポジトリ内 |
-| [全体の標準仕様](../../domain/standards.md)と Context の標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-coverage-debt-ratchet`、`mise run report-coverage-debt` | 対応するテストがない規範 ID を新たに増やさない | リポジトリ内 |
+| [全体の標準仕様](../../domain/standards.md)と Context の標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-spec` | 宣言したすべての規範 ID を、いずれかのテストが名指す | リポジトリ内 |
 | 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査 | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run check-api-compat` | 宣言と実装に差が無く、公開済みの契約を壊す変更が無い | リポジトリ内 |
 | 利用者経路とブラウザー固有の振る舞い | E2E | `mise run test-ui-e2e` | 正式な入口から最終効果までが実配線で成立する | リポジトリ内 |
 | WCAG 2.2 のアクセシビリティ規範 | 単体、E2E | `mise run test-ui-unit`、`mise run test-ui-e2e` | 当該規範 ID を名指すテストが通る | リポジトリ内 |

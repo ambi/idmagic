@@ -7,13 +7,7 @@ import {
 } from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
-import {
-  checkNormativeCoverage,
-  citedNormativeIds,
-  type DebtEntry,
-  type DeclaredId,
-  type SourceFile,
-} from './normative-coverage.ts'
+import { checkNormativeCoverage, citedNormativeIds, type DeclaredId } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { validateDocument } from './specification-doc.ts'
 import { verifySubdomainClassification } from './subdomain-classification.ts'
@@ -45,46 +39,6 @@ async function canonicalDirectories(snapshot: WorkspaceSnapshot): Promise<Direct
     }
   }
   return listings
-}
-
-type DebtFile = { untested: DebtEntry[] }
-
-async function readDebt(snapshot: WorkspaceSnapshot, path: string): Promise<DebtEntry[]> {
-  if (!snapshot.exists(path)) return []
-  const parsed = JSON.parse(await snapshot.read(path)) as DebtFile
-  if (!Array.isArray(parsed.untested)) throw new Error(`${path}: untested must be an array`)
-  return parsed.untested.map((entry) => {
-    if (typeof entry?.id !== 'string' || typeof entry?.reason !== 'string') {
-      throw new Error(`${path}: every untested entry needs an id and a reason`)
-    }
-    return entry
-  })
-}
-
-/**
- * The work item names a ledger row's `blocked_by` may resolve to.
- *
- * `work-items/done/` counts: a decision that has already been taken is still
- * the record a blocked row points at, and dropping it the moment the item
- * completes would turn every settled pointer into a failure.
- *
- * A workspace with no `work-items/` returns undefined rather than an empty set,
- * which switches the existence rule off instead of failing every row. Minimal
- * fixtures have no records to resolve against.
- */
-async function knownWorkItemNames(
-  snapshot: WorkspaceSnapshot,
-): Promise<ReadonlySet<string> | undefined> {
-  try {
-    const paths = await snapshot.files('work-items', EXCLUDED_DIRECTORIES)
-    const names = paths
-      .filter((path) => path.endsWith('.md'))
-      .map((path) => (path.split('/').pop() ?? '').replace(/\.md$/, ''))
-      .filter((name) => name.startsWith('wi-'))
-    return names.length === 0 ? undefined : new Set(names)
-  } catch {
-    return undefined
-  }
 }
 
 export async function checkDocuments(
@@ -171,17 +125,13 @@ export async function checkDocuments(
     }
   }
 
-  // path を一緒に運ぶのは、指摘が「どこが名指しているか」を言えるようにするため
-  // である。読み手が rg で探し直すところから始めなくて済む。
-  const sources: SourceFile[] = []
+  const sources: string[] = []
   for (const tree of PRODUCT_TREES) {
     try {
       const paths = await snapshot.files(tree, EXCLUDED_DIRECTORIES)
       sources.push(
         ...(await Promise.all(
-          paths
-            .filter((path) => TEST_FILE.test(path))
-            .map(async (path) => ({ path, source: await snapshot.read(path) })),
+          paths.filter((path) => TEST_FILE.test(path)).map((path) => snapshot.read(path)),
         )),
       )
     } catch {
@@ -192,18 +142,7 @@ export async function checkDocuments(
     sources,
     [...standards, ...examples].map((declaration) => declaration.id),
   )
-  const examplesDebt = 'tools/check/example-coverage-debt.json'
-  const coverage = [
-    // 標準の側は台帳を持たない (wi-495)。宣言した行は、その id を名指すテストを
-    // 持つか、検査に落ちるかのどちらかである。
-    ...checkNormativeCoverage({ declared: standards, cited }),
-    ...checkNormativeCoverage({
-      declared: examples,
-      cited,
-      ledger: { entries: await readDebt(snapshot, examplesDebt), path: examplesDebt },
-      knownWorkItems: await knownWorkItemNames(snapshot),
-    }),
-  ]
+  const coverage = checkNormativeCoverage({ declared: [...standards, ...examples], cited })
   failed ||= coverage.length > 0
   lines.push(...coverage.map((finding) => `${finding.path}: ${finding.message}`))
   if (failed) return { ok: false, lines }

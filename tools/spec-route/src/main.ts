@@ -20,12 +20,11 @@
  * It is deliberately not stored. An index in the repository would be a second
  * answer that goes stale against the first, which is the mistake
  * `security-refusal-debt.json` made before wi-490 replaced it with a
- * derivation. The ledger keeps only what cannot be derived: the `blocked_by`
- * and `finding` fields in normative-coverage.ts.
+ * derivation.
  *
  * It reports; it is not evidence. A candidate operation is a place to look, not
- * proof that a test exists or that one is unnecessary. Removing an id from the
- * ledger still means reading the test. See wi-565.
+ * proof that a test exists or that one is unnecessary. Citing an id from a test
+ * still means reading what the test observes. See wi-565.
  */
 
 import { readdir, readFile } from 'node:fs/promises'

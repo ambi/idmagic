@@ -266,12 +266,7 @@ const site = () =>
     traces: [
       { id: 'REQ-DEMO-001', sources: [], workItems: ['work-items/wi-demo.md'] },
       { id: 'EX-DEMO-001-01', sources: ['backend/demo/demo_test.go'], workItems: [] },
-      {
-        id: 'EX-DEMO-001-02',
-        sources: [],
-        workItems: [],
-        debt: '対応する拒否テストを確認していないため',
-      },
+      { id: 'EX-DEMO-001-02', sources: [], workItems: [] },
     ],
   })
 
@@ -363,9 +358,8 @@ describe('renderDocumentationSite', () => {
     expect(result.files['traceability/index.html']).toContain('作業項目')
     expect(result.files['traceability/index.html']).not.toContain('Rule / Example')
     expect(result.files['traceability/index.html']).not.toContain('work item')
-    expect(result.files['traceability/index.html']).toContain(
-      '負債: 対応する拒否テストを確認していないため',
-    )
+    expect(result.files['traceability/index.html']).toContain('テスト参照なし')
+    expect(result.files['traceability/index.html']).not.toContain('負債')
     expect(result.files['index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')

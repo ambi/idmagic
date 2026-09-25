@@ -8,81 +8,27 @@
  * `GDPR-CONSENT-WITHDRAWAL` appeared nowhere in `backend/` or `frontend/`, and
  * 191 of 306 live scenarios were named by no test at all.
  *
- * Declared ids, the ids a test names, and an allowed debt list, compared three
- * ways. Each debt entry carries a reason: a list this size stops being read the
- * moment its entries are indistinguishable from one another, and then it stops
- * shrinking.
+ * Declared ids against the ids a test names, and nothing else. There is no
+ * list of ids allowed to go untested. The standards ledger was emptied and
+ * deleted by wi-495 and the examples ledger by wi-496, and with them went the
+ * exemption itself: an id is named by a test or the check fails, so recreating
+ * a ledger file under its old name admits nothing.
  *
  * This is the only implementation of the comparison. A second one lived in
- * security-controls.ts as R3, over the ids a prose classifier read as refusals,
- * and the split cost two debt files plus an invariant keeping them disjoint. It
- * bought nothing: the rule on both sides was this one. Whether an id declares a
- * refusal is a fact worth reporting, so report-coverage-debt derives it from
- * the contract; it is not a reason to check the id differently.
+ * security-controls.ts as R3, over the ids a prose classifier read as refusals.
+ * It bought nothing: the rule on both sides was this one. Whether an id
+ * declares a refusal is a fact worth reporting, not a reason to check the id
+ * differently. See wi-490.
  */
 
 export type DeclaredId = { id: string; path: string }
 
-/**
- * A ledger row.
- *
- * `reason` says why the id has no test yet, and every row has one. The two
- * optional fields carry something else: what a reader established by actually
- * measuring the implementation, which nothing can derive.
- *
- * `blocked_by` names the work item that has to settle before the id can be
- * consumed at all — the usual case is a scenario and an implementation that
- * disagree, where writing a test would only freeze whichever one is wrong.
- * `finding` says what the implementation actually does. Without it a blocked
- * row says only "waiting", and the next reader repeats the measurement.
- *
- * Nothing derivable belongs here. The route, the package, and whether the
- * example states a refusal are all computed by `spec-route` and
- * `report-coverage-debt`; storing them would create a second answer that goes
- * stale. See wi-565.
- */
-export type DebtEntry = {
-  id: string
-  reason: string
-  blocked_by?: string
-  finding?: string
-}
-
 export type CoverageFinding = { path: string; message: string }
-
-/**
- * The ids allowed to have no test yet, and the file they are listed in. The
- * entries and the path are one value because neither is usable alone: entries
- * with no path leave the reader nowhere to be sent, and the rules that keep the
- * list honest — one entry per id, id order, a reason, no entry a test has since
- * covered — are all rules about that file.
- */
-export type DebtLedger = { entries: readonly DebtEntry[]; path: string }
-
-/** Where a test cited an id. */
-export type CitationSite = { path: string; line: number }
-
-/** One test source, with the path a reader would be sent to. */
-export type SourceFile = { path: string; source: string }
 
 export type CoverageInput = {
   declared: readonly DeclaredId[]
-  /** The ids some test names, and where each was named. */
-  cited: ReadonlyMap<string, CitationSite>
-  /**
-   * Omitted by a caller that has no ledger, which is the end state: the
-   * standards side reached it in wi-495, and the check now refuses a row no
-   * test names outright, with no escape to offer.
-   */
-  ledger?: DebtLedger
-  /**
-   * The work item names a `blocked_by` may point at, without the extension and
-   * without the directory: `work-items/` and `work-items/done/` both count,
-   * because a blocking decision stays a valid pointer after it is settled.
-   * Omitted by a caller with no work items to resolve against, which skips the
-   * existence rule rather than failing every row.
-   */
-  knownWorkItems?: ReadonlySet<string>
+  /** The ids some test names. */
+  cited: ReadonlySet<string>
 }
 
 function escapeForPattern(value: string): string {
@@ -124,10 +70,10 @@ function escapeForPattern(value: string): string {
  * and neither end of a match may sit against another id character.
  */
 export function citedNormativeIds(
-  sources: Iterable<SourceFile>,
+  sources: Iterable<string>,
   declared: Iterable<string>,
-): Map<string, CitationSite> {
-  const cited = new Map<string, CitationSite>()
+): Set<string> {
+  const cited = new Set<string>()
   const ids = [...new Set(declared)].sort((left, right) => right.length - left.length)
   if (ids.length === 0) return cited
 
@@ -142,14 +88,11 @@ export function citedNormativeIds(
   const directive = /^\s*\/\/spec:covers\s+(.*)$/
   const commentBody = /^\s*\/\/\s*(.*)$/
 
-  const record = (id: string, path: string, line: number) => {
-    if (!cited.has(id)) cited.set(id, { path, line })
-  }
-  for (const { path, source } of sources) {
+  for (const source of sources) {
     const lines = source.split('\n')
     for (const [index, text] of lines.entries()) {
       for (const match of text.matchAll(wholeLiteral)) {
-        if (match[1]) record(match[1], path, index + 1)
+        if (match[1]) cited.add(match[1])
       }
       const declaredHere = text.match(directive)?.[1]
       if (declaredHere === undefined) continue
@@ -162,122 +105,20 @@ export function citedNormativeIds(
       }
       // コロンから先は人へ向けた説明であり、id は前半にしか置けない。
       const head = list.split(/[:：]/)[0] ?? ''
-      for (const match of head.matchAll(idOnly)) record(match[0], path, index + 1)
+      for (const match of head.matchAll(idOnly)) cited.add(match[0])
     }
   }
   return cited
 }
 
-/**
- * The rules over a row's measured judgement.
- *
- * They exist because the failure this ledger keeps having is a row that looks
- * worked on and is not. `reason` already guards the plain case; these guard the
- * case where somebody measured something and left the result where the next
- * reader cannot find it.
- */
-function checkJudgement(
-  entry: DebtEntry,
-  debtPath: string,
-  knownWorkItems: ReadonlySet<string> | undefined,
-): CoverageFinding[] {
-  const findings: CoverageFinding[] = []
-  if (entry.finding !== undefined && entry.finding.trim().length === 0) {
-    findings.push({
-      path: debtPath,
-      message: `${entry.id} has an empty finding. State what the implementation actually does.`,
-    })
-  }
-  if (entry.blocked_by === undefined) return findings
-  if (knownWorkItems !== undefined && !knownWorkItems.has(entry.blocked_by)) {
-    findings.push({
-      path: debtPath,
-      message:
-        `${entry.id} is blocked by ${entry.blocked_by}, which is not a work item. ` +
-        'Name the record that has to settle first.',
-    })
-  }
-  if (entry.finding === undefined) {
-    findings.push({
-      path: debtPath,
-      message:
-        `${entry.id} is blocked by a record without saying what was found. ` +
-        'State what the implementation actually does.',
-    })
-  }
-  return findings
-}
-
 export function checkNormativeCoverage(input: CoverageInput): CoverageFinding[] {
-  const { declared, cited, ledger } = input
-  const findings: CoverageFinding[] = []
-  const listed = new Set((ledger?.entries ?? []).map((entry) => entry.id))
-
-  for (const declaration of declared) {
-    if (cited.has(declaration.id)) continue
-    if (listed.has(declaration.id)) continue
-    findings.push({
+  const { declared, cited } = input
+  return declared
+    .filter((declaration) => !cited.has(declaration.id))
+    .map((declaration) => ({
       path: declaration.path,
       message:
         `${declaration.id} is declared, but no test names it. ` +
-        (ledger === undefined
-          ? 'Cite the id from the test that exercises it.'
-          : `Cite the id from the test that exercises it, or list it in ${ledger.path} with a reason.`),
-    })
-  }
-
-  // 台帳そのものの検査は、台帳がある呼び出しにしか無い。無い側では上の 1 つの
-  // 規則だけが残り、それが「例外を持たない検査」の中身である。
-  if (ledger === undefined) return findings
-  const { entries: debt, path: debtPath } = ledger
-
-  const declaredIds = new Set(declared.map((declaration) => declaration.id))
-  const seen = new Set<string>()
-  let previous: string | undefined
-  for (const entry of debt) {
-    if (seen.has(entry.id)) {
-      findings.push({
-        path: debtPath,
-        message: `${entry.id} is listed twice. Keep one entry per id.`,
-      })
-      continue
-    }
-    seen.add(entry.id)
-    if (previous !== undefined && entry.id < previous) {
-      findings.push({
-        path: debtPath,
-        message:
-          `${entry.id} is listed after ${previous}. ` +
-          'Keep the list in id order so its diffs stay readable.',
-      })
-    }
-    previous = entry.id
-    if (entry.reason.trim().length === 0) {
-      findings.push({
-        path: debtPath,
-        message: `${entry.id} is listed without a reason. State why it has no test yet.`,
-      })
-    }
-    findings.push(...checkJudgement(entry, debtPath, input.knownWorkItems))
-    if (!declaredIds.has(entry.id)) {
-      findings.push({
-        path: debtPath,
-        message: `${entry.id} is listed as untested but nothing declares it any more. Remove it.`,
-      })
-      continue
-    }
-    const site = cited.get(entry.id)
-    if (site) {
-      // 場所を出すのは、次に読む人が「どのテストか」を探すところから始めないため
-      // である。正典を定めたあとも、台帳から外す作業ではこれを毎回引くことになる。
-      findings.push({
-        path: debtPath,
-        message:
-          `${entry.id} now has a test that names it, at ${site.path}:${site.line}. ` +
-          'Remove it from the list; the list only shrinks. ' +
-          'If that line only mentions the id in prose, reword it instead.',
-      })
-    }
-  }
-  return findings
+        'Cite the id from the test that exercises it.',
+    }))
 }

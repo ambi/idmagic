@@ -43,7 +43,7 @@ depends_on:
   - wi-61629-quarantine-connections-on-the-accidental-deletion-guard
   - wi-39759-name-the-refusal-a-cross-tenant-wsfed-api-token-gets
   - wi-33641-notify-quarantine-to-the-notification-email
-status: in_progress
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -52,32 +52,27 @@ priority: p2
 change_kind: tooling
 evidence_policy: risk-based-v3
 documentation_impact:
-  level: release_note
-  reason: 規範シナリオの具体例をテストで検証できる状態へ進める継続的な品質改善であり、リリースの読み手が追跡できるようにする。
-  references:
-    - { kind: release_note, path: docs/releases/changes/wi-496-burn-down-the-example-coverage-debt.md }
+  level: none
+  reason: 台帳と被覆の検査はリポジトリの内側の仕組みであり、シナリオも製品の振る舞いも変わらないので、リリースの読み手に見えるものが無い。
+  references: []
 spec_impact: { kind: none, reason: "宣言済みの具体例に、その id を名指しするテストを対応付ける作業である。シナリオも製品の振る舞いも変えない。テストが書けない具体例が見つかった場合、それは実装が具体例のとおりに振る舞っていないということなので、欠陥として個別の work item に切り出す。" }
 initial_context:
-  specification:
-    - docs/domain/claim-mapping/scenarios.feature.md
-    - docs/domain/workloadidentity/scenarios.feature.md
+  specification: []
   typespec: []
   source:
     - tools/check/src/normative-coverage.ts
-    - tools/check/example-coverage-debt.json
-    - backend/claimmapping/usecases/floor.go
-    - backend/claimmapping/usecases/projection.go
+    - tools/check/src/check-documents.ts
+    - tools/render-docs/src/traces.ts
+    - tools/check/README.md
+    - mise.toml
+    - .github/workflows/idmagic-ci.yaml
   tests:
-    - backend/claimmapping/usecases/floor_test.go
-    - backend/workloadidentity/usecases/verify_workload_attestation_test.go
-    - backend/workloadidentity/usecases/admin_trust_bundles_test.go
-    - backend/workloadidentity/usecases/admin_bindings_test.go
-    - backend/workloadidentity/handlers_http/routes_test.go
-    - backend/oauth2/handlers_http/token_exchange_handler_test.go
+    - tools/check/src/normative-coverage.test.ts
+    - tools/check/src/repository-checks.acceptance.test.ts
   stop_before_reading:
-    - docs/domain/oauth2/scenarios.feature.md
-    - docs/domain/authentication/scenarios.feature.md
+    - backend
     - frontend
+    - docs/domain
 ---
 
 # 具体例の被覆負債 614 件を Context 単位で消化し、`example-coverage-debt.json` を空にする
@@ -253,6 +248,35 @@ Scope が定めるとおり、これらの欠陥の修正そのものは本項�
 
 `blocked_by` が完了済みの work item を指したまま台帳に残る状態は、今回のように機械では検出されない。
 
+### 台帳の撤去（T007）
+
+wi-61629 と wi-39759 の完了で、台帳の `untested` は空になった。標準の側の台帳は
+[[wi-495-burn-down-the-standards-coverage-debt]] が先に消しているので、具体例の台帳を消すと
+免除の一覧はリポジトリに 1 つも残らない。wi-495 は `ledger` 引数を任意にして標準の側だけ省いたが、
+その形を具体例の側へ当てはめると、どの呼び出しも渡さない引数と、それを前提にした規則だけが残る。
+免除の仕組みを残せば、ファイルと呼び出しを 1 行ずつ書き戻すだけで例外が復活する。
+
+そこで台帳に仕える機構を丸ごと消す。
+
+| 対象 | 台帳が消えた後の状態 | 扱い |
+|---|---|---|
+| `tools/check/example-coverage-debt.json` | 空 | 削除 |
+| `checkNormativeCoverage` の `ledger` と `knownWorkItems`、`DebtEntry`、`DebtLedger`、`checkJudgement` | どの呼び出しも渡さない | 削除。検査は「宣言した id をテストが名指さなければ落とす」1 規則だけにする |
+| `check-documents.ts` の `readDebt` と `knownWorkItemNames` | 読む台帳が無い | 削除 |
+| `coverage-debt-ratchet`（検査、`mise` タスク、CI の手順） | 基準 revision と比べる台帳が無い | 削除。流入を拒否するのは被覆の検査そのものになる |
+| `report-coverage-debt`（`tools/coverage-debt-report`、`mise` タスク） | 台帳の行だけを並べるので常に 0 件 | 削除 |
+| Traceability ページの「負債」表示（`traces.ts`、`render.ts`） | 表示する理由が無い | 削除 |
+
+操作の署名は次のとおりになる。
+
+```ts
+type CoverageInput = { declared: readonly DeclaredId[]; cited: ReadonlyMap<string, CitationSite> }
+function checkNormativeCoverage(input: CoverageInput): CoverageFinding[]
+```
+
+免除の仕組みが消えたことは、具体例の台帳を同じ名前で置き直しても具体例が通らないことを受け入れ
+検査で固定する。wi-495 が標準の側について置いた検査と同じ形である。
+
 ## Plan
 
 1. ~~`claim-mapping` の 3 件を通しで消化し、注記の型と 1 件あたりの所要を記録する。~~ 完了。記録は Design の「測定の結果」節。
@@ -260,8 +284,8 @@ Scope が定めるとおり、これらの欠陥の修正そのものは本項�
 3. ~~記録をもとに、残る Context を本 work item で続けるか子 work item へ割るかを決め、本節へ書く。~~ 完了。Context ごとに 20 件へ割った。
 4. ~~`report-coverage-debt` に横断シナリオの走査を足し、`(unknown)` を消す。~~ 完了。横断の 4 件は `(cross-context)` として解決する。4 件の消化そのものは [[wi-557-back-cross-context-examples-with-tests]] が持つ。
 5. ~~20 件の子 work item の完了を待つ。~~ 完了。`system` の所有パッケージの決定は [[wi-541-back-system-examples-with-tests]] が、`oauth2` の再分割の判断は [[wi-538-back-oauth2-examples-with-tests]] が確定させた。
-6. 子が切り出した欠陥 work item のうち `blocked_by` を持つ 20 件が完了するのを待つ。Design の「20 件完了後の残余」節に一覧がある。
-7. 598 件が 0 になったら、台帳と具体例側の `debt` 引数を落とす。
+6. ~~子が切り出した欠陥 work item のうち `blocked_by` を持つ 20 件が完了するのを待つ。~~ 完了。Design の「20 件完了後の残余」節と「欠陥 work item 完了後の残余」節に一覧がある。
+7. ~~598 件が 0 になったら、台帳と具体例側の `debt` 引数を落とす。~~ 完了。範囲は Design の「台帳の撤去」節。
 
 ## Tasks
 
@@ -285,17 +309,18 @@ Scope が定めるとおり、これらの欠陥の修正そのものは本項�
   それぞれ個別の欠陥 work item へ切り出した（一覧は Design の「20 件完了後の残余」節）。
   `WorkloadAttestationRejectedError` に対応する Go の型が無い件は、仕様が本体を持たないと宣言している
   ため欠陥ではないと判断した。`EX-SAML-005-03` は `blocked_by` の記載漏れを本 work item で埋めた。
-- [ ] T007 [Tooling] 台帳が空になったら、台帳と具体例側の `debt` 引数を落とす。
-  未着手。2026-09-25 時点で台帳は 2 件。wi-61629 と wi-39759 がいずれも `pending` のため空にならない
-  （Design の「欠陥 work item 完了後の残余」節）。
-- [ ] T008 [Verify] `mise run verify`。
-  T007 が未完了のため保留。`mise run check-spec` は現時点でも例外つきで通ることを確認済み
-  （`ok normative coverage`）。
+- [x] T007 [Tooling] 台帳が空になったら、台帳と具体例側の `debt` 引数を落とす。
+  範囲は Design の「台帳の撤去」節。Acceptance RED は
+  `repository-checks.acceptance.test.ts` の `admits no example through a recreated debt ledger`。
+  名指しの場所（`CitationSite`）も、読んでいたのが台帳の指摘だけだったので外した。
+  recipe は `mise run test-tools-file -- <file>`、`mise run test-tools`、`mise run typecheck-tools`、
+  `mise run lint-tools`、`mise run check-spec`。
+- [x] T008 [Verify] `mise run verify`。成功。
 
 ## Verification
 
 - `mise run check-spec` が具体例の被覆について例外を持たずに通る。
-- `mise run report-coverage-debt` が `(unknown)` の行を出さない。
+- `mise run report-coverage-debt` が `(unknown)` の行を出さない。T004 で満たした後、T007 で報告ツールごと廃止した。
 - `mise run verify`
 
 ## Risk Notes
@@ -303,4 +328,31 @@ Scope が定めるとおり、これらの欠陥の修正そのものは本項�
 - **注記だけを足して終わる。** 名指しの文字列があれば検査は通るので、読まずに id を貼れば 614 件は速く減る。減った件数は何も意味しない。注記に「何を固定しているか」を書かせること、および `named` と `nearby` を削除の根拠にしないことを Scope に明記して区別する。
 - **件数が大きく、着手が広がったまま止まる。** T003 で分割を判断するまで、T001 と T002 の 2 Context 以外に着手しない。分割した場合、親である本 work item は報告ツールの修正と最後の台帳削除だけを持つ。
 - **拒否である具体例のテストが、応答の字面だけを見て書かれる。** 新しく書く拒否テストには wi-392 の規範が効く。本 work item の側では、拒否の具体例に対して「効果の不在を何で観測したか」を注記へ書かせることで、後から区別できるようにする。
-- **消化中に具体例が増える。** Git ratchet が基準 revision にない id の追加を拒否する。増えるのは台帳ではなくテストの側なので、消化と流入の競争にはならない。
+- **消化中に具体例が増える。** 消化中は Git ratchet が基準 revision にない id の追加を拒否した。台帳の撤去後は、被覆の検査そのものが未検査の具体例を拒否する。増えるのは台帳ではなくテストの側なので、消化と流入の競争にはならない。
+
+## Completion
+
+- **Completed At**: 2026-09-26
+- **Summary**:
+  `mise run spec-diff` は規範仕様の差分を報告しない（`no normative specification change against main`）。
+  変更はリポジトリの検査に閉じる。20 件の子 work item と、それらが切り出した欠陥 work item の完了で、
+  具体例の被覆負債は 614 件から 0 件になった。空になった `tools/check/example-coverage-debt.json` を削除し、
+  `checkNormativeCoverage` は宣言した id をどのテストも名指さなければ落とす 1 規則だけを持つ。
+  台帳に仕えていた `coverage-debt-ratchet`（検査、`mise` タスク、CI の手順、runner の `--base-revision`）、
+  `report-coverage-debt`、`blocked_by` と `finding` の検査、Traceability ページの負債表示、
+  名指しの場所（`CitationSite`）も合わせて削除した。`SPECIFICATION_FORMAT.md` から免除の一覧の規則を外した。
+- **Acceptance RED Evidence**:
+  - **Test**: `tools/check/src/repository-checks.acceptance.test.ts` の `admits no example through a recreated debt ledger`
+  - **Requirement**: N/A: 製品の振る舞いを変えない検査ツールの変更である。
+  - **Observed Failure**: `Expected: not 0`。同じ名前で置き直した台帳が `EX-DEMO-001-01` を免除し、`checkDocuments` が 0 で終了した。
+  - **Detection Reason**: 台帳を読む配線が 1 行でも残っていれば、置き直したファイルが具体例を免除して検査が通る。免除の仕組みそのものが消えたことを、ファイルの有無ではなく振る舞いで区別する。
+- **Unit RED Evidence**:
+  - **Test**: `tools/check/src/normative-coverage.test.ts` の `rejects a declaration no test names, offering no list to escape into`
+  - **Requirement**: N/A: 製品の振る舞いを変えない検査ツールの変更である。
+  - **Observed Failure**: 実装前の RED は観測していない。台帳を渡さない呼び出しでは旧実装も同じ指摘を返すため、この単体テストは実装前から通る。代わりに下記のフォールト注入で失敗を観測した。
+  - **Detection Reason**: 指摘の本文と場所を完全一致で見るので、免除の案内を足す誤りと、一部の id を黙って通す誤りの双方で落ちる。
+- **Change-Resistance Results**:
+  - `checkNormativeCoverage` の絞り込みへ `&& declaration.id.startsWith("RFC")` を足し、標準の行以外を黙って通す誤実装を注入した。`rejects a declaration no test names, offering no list to escape into` が失敗した（21 pass、1 fail）。注入後は元へ戻した。
+  - 変更は TypeScript の検査ツールに閉じ、Go の変異試験は該当しない。
+- **Verification Results**:
+  - `mise run verify` - 成功
