@@ -42,6 +42,7 @@ depends_on:
   - wi-628-implement-desired-state-application-assignment
   - wi-61629-quarantine-connections-on-the-accidental-deletion-guard
   - wi-39759-name-the-refusal-a-cross-tenant-wsfed-api-token-gets
+  - wi-33641-notify-quarantine-to-the-notification-email
 status: in_progress
 authors: [tn]
 risk: low
