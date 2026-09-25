@@ -10,6 +10,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ProvisioningFullResync struct {
+	ID             string
+	TenantID       string
+	ConnectionID   string
+	Status         string
+	TotalTasks     int32
+	SucceededCount int32
+	FailedCount    int32
+	StartedAt      time.Time
+	CompletedAt    pgtype.Timestamptz
+}
+
 type ProvisioningRemoteLink struct {
 	ConnectionID      string
 	TenantID          string

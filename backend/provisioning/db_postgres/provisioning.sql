@@ -174,3 +174,37 @@ SELECT id, tenant_id, connection_id, source_type, source_id, source_version, ope
 FROM provisioning_tasks
 WHERE tenant_id=$1 AND connection_id=$2 AND source_type=$3 AND status <> 'succeeded'
 ORDER BY source_id, created_at;
+
+-- name: InsertProvisioningFullResync :exec
+INSERT INTO provisioning_full_resyncs (id, tenant_id, connection_id, status, total_tasks, succeeded_count, failed_count, started_at, completed_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);
+
+-- name: InsertProvisioningFullResyncTask :execrows
+-- プロビジョニングタスクの挿入と Full Resync への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
+WITH inserted AS (
+  INSERT INTO provisioning_tasks (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
+  VALUES (sqlc.arg(id), sqlc.arg(tenant_id), sqlc.arg(connection_id), sqlc.arg(source_type), sqlc.arg(source_id), sqlc.arg(source_version),
+          sqlc.arg(operation), sqlc.arg(status), sqlc.arg(created_at), sqlc.arg(updated_at))
+  ON CONFLICT ON CONSTRAINT provisioning_tasks_idempotency_unique DO NOTHING
+  RETURNING id
+)
+INSERT INTO provisioning_full_resync_tasks (task_id, full_resync_id)
+SELECT inserted.id, sqlc.arg(full_resync_id) FROM inserted;
+
+-- name: FindProvisioningFullResyncByTask :one
+SELECT r.id, r.tenant_id, r.connection_id, r.status, r.total_tasks, r.succeeded_count, r.failed_count, r.started_at, r.completed_at
+FROM provisioning_full_resyncs r
+JOIN provisioning_full_resync_tasks m ON m.full_resync_id = r.id
+WHERE r.tenant_id=$1 AND m.task_id=$2;
+
+-- name: TallyProvisioningFullResync :one
+SELECT count(*) FILTER (WHERE t.status='succeeded')::int AS succeeded,
+       count(*) FILTER (WHERE t.status='dead_letter')::int AS failed
+FROM provisioning_full_resync_tasks m
+JOIN provisioning_tasks t ON t.id = m.task_id
+WHERE t.tenant_id=$1 AND m.full_resync_id=$2;
+
+-- name: CompleteProvisioningFullResync :execrows
+-- running のときだけ成立させ、同時に完了を判定した呼び出しのうち一つだけが発行する。
+UPDATE provisioning_full_resyncs SET status='completed', succeeded_count=$3, failed_count=$4, completed_at=$5
+WHERE tenant_id=$1 AND id=$2 AND status='running';

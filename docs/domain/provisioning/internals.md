@@ -64,3 +64,26 @@ User の `delete` を下流へ送ったら、リンクを消す。
 
 予約は削除時点の接続設定で判断する。
 期限の到来時に接続の状態や `on_delete` を再評価せず、接続を削除した場合だけ外部キーの連鎖で予約も消える。
+
+## Full Resync の完了追跡
+
+`StartFullResync` は、接続のスコープ内の User と、`push_groups` の対象となる Group を列挙し、重複を除いた件数を対象数とする `FullResync` を保存する。
+続いて対象ごとに `update` の `ProvisioningTask` を作り、`FullResync` へ関連付ける。
+プロビジョニングタスクの挿入と関連付けは一つの SQL 文で行う。
+
+| 状態 | 意味 | 遷移の契機 |
+| --- | --- | --- |
+| `running` | 対象のプロビジョニングタスクの決着を待っている | `StartFullResync` |
+| `completed` | 対象のプロビジョニングタスクがすべて `succeeded` または `dead_letter` になった | 最後のプロビジョニングタスクを終端にしたジョブ、または対象が 0 件の `StartFullResync` |
+
+完了判定は、関連付いたプロビジョニングタスクのうち `succeeded` と `dead_letter` を数え直して行い、その合計が対象数に達したときだけ完了とする。
+関連付けは一件ずつで対象数を超えないので、合計が対象数に達したことは、全件が作られて終端になったことを表す。
+このため、`StartFullResync` がプロビジョニングタスクを作り終える前に先のプロビジョニングタスクが終わっても完了しない。
+
+ジョブハンドラーは、プロビジョニングタスクを `succeeded` または `dead_letter` として保存した後に完了判定を行う。
+`completed` への更新は `running` のときだけ成立する条件付き更新であり、成立した呼び出しだけが `FullResyncCompleted` を発行する。
+同じジョブの再実行や、最後の二件を同時に終えた二つのジョブがあっても、イベントは一度だけ発行される。
+完了判定が失敗したジョブは Jobs が再実行し、終端済みのプロビジョニングタスクについて判定だけをやり直す。
+
+`FullResyncCompleted` の `totalSubjects` は対象数、`succeededCount` と `failedCount` は完了時点の `succeeded` と `dead_letter` の件数である。
+完了後に管理者が `dead_letter` のプロビジョニングタスクを再試行しても、完了済みの `FullResync` は変わらない。

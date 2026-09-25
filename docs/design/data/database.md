@@ -342,6 +342,10 @@ erDiagram
     }
     provisioning_scheduled_deprovisions {
     }
+    provisioning_full_resyncs {
+    }
+    provisioning_full_resync_tasks {
+    }
     tenants ||--o{ scim_user_refs : SCIM利用者を持つ
     users ||--o| scim_user_refs : SCIM利用者に対応する
     tenants ||--o{ scim_group_refs : SCIMグループを持つ
@@ -360,6 +364,9 @@ erDiagram
     provisioning_connections ||--o{ provisioning_remote_links : 遠隔主体を結ぶ
     provisioning_connections ||--o{ provisioning_tasks : 作る
     provisioning_connections ||--o{ provisioning_scheduled_deprovisions : 削除を予約する
+    provisioning_connections ||--o{ provisioning_full_resyncs : 全件を再同期する
+    provisioning_full_resyncs ||--o{ provisioning_full_resync_tasks : 対象を持つ
+    provisioning_tasks ||--o| provisioning_full_resync_tasks : 再同期に属する
 ```
 
 | テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` 列 |
@@ -378,6 +385,8 @@ erDiagram
 | `provisioning_remote_links` | 送り出した利用者やグループと、接続先での ID の対応 | Provisioning | `LOGGED` | 非キー列 |
 | `provisioning_tasks` | 接続先への一件ごとのプロビジョニングタスクと、その状態 | Provisioning | `LOGGED` | 非キー列 |
 | `provisioning_scheduled_deprovisions` | 猶予期間を置く利用者の削除の予約。期限が来るとプロビジョニングタスクへ変わり、猶予期間中の再割り当てで取り消される | Provisioning | `LOGGED` | 非キー列 |
+| `provisioning_full_resyncs` | Full Resync の一回分。開始時の対象数と、完了時の成功数と失敗数 | Provisioning | `LOGGED` | 非キー列 |
+| `provisioning_full_resync_tasks` | Full Resync と、それが作ったプロビジョニングタスクの対応 | Provisioning | `LOGGED` | なし |
 
 ### 再生成可能な認証状態と流量制御
 

@@ -11,13 +11,19 @@ import (
 type Querier interface {
 	AttachProvisioningTaskJob(ctx context.Context, arg AttachProvisioningTaskJobParams) (int64, error)
 	CancelProvisioningScheduledDeprovisions(ctx context.Context, arg CancelProvisioningScheduledDeprovisionsParams) (int64, error)
+	// running のときだけ成立させ、同時に完了を判定した呼び出しのうち一つだけが発行する。
+	CompleteProvisioningFullResync(ctx context.Context, arg CompleteProvisioningFullResyncParams) (int64, error)
 	DeleteProvisioningConnection(ctx context.Context, arg DeleteProvisioningConnectionParams) error
 	DeleteRemoteResourceLink(ctx context.Context, arg DeleteRemoteResourceLinkParams) error
 	FindProvisioningConnection(ctx context.Context, arg FindProvisioningConnectionParams) (*FindProvisioningConnectionRow, error)
+	FindProvisioningFullResyncByTask(ctx context.Context, arg FindProvisioningFullResyncByTaskParams) (*ProvisioningFullResync, error)
 	FindProvisioningTask(ctx context.Context, arg FindProvisioningTaskParams) (*ProvisioningTask, error)
 	FindRemoteResourceLink(ctx context.Context, arg FindRemoteResourceLinkParams) (*ProvisioningRemoteLink, error)
 	GetProvisioningConnectionSecret(ctx context.Context, arg GetProvisioningConnectionSecretParams) (string, error)
 	InsertProvisioningConnection(ctx context.Context, arg InsertProvisioningConnectionParams) (string, error)
+	InsertProvisioningFullResync(ctx context.Context, arg InsertProvisioningFullResyncParams) error
+	// プロビジョニングタスクの挿入と Full Resync への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
+	InsertProvisioningFullResyncTask(ctx context.Context, arg InsertProvisioningFullResyncTaskParams) (int64, error)
 	InsertProvisioningScheduledDeprovision(ctx context.Context, arg InsertProvisioningScheduledDeprovisionParams) (int64, error)
 	InsertProvisioningTask(ctx context.Context, arg InsertProvisioningTaskParams) (string, error)
 	ListDueProvisioningScheduledDeprovisions(ctx context.Context, arg ListDueProvisioningScheduledDeprovisionsParams) ([]*ProvisioningScheduledDeprovision, error)
@@ -40,6 +46,7 @@ type Querier interface {
 	// 結果は遷移した予約の件数（0 または 1）である。
 	MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error)
 	RetryDeadLetterProvisioningTask(ctx context.Context, arg RetryDeadLetterProvisioningTaskParams) (int64, error)
+	TallyProvisioningFullResync(ctx context.Context, arg TallyProvisioningFullResyncParams) (*TallyProvisioningFullResyncRow, error)
 	UpdateProvisioningConnection(ctx context.Context, arg UpdateProvisioningConnectionParams) error
 	UpdateProvisioningConnectionWithSecret(ctx context.Context, arg UpdateProvisioningConnectionWithSecretParams) error
 	UpdateProvisioningTaskStatus(ctx context.Context, arg UpdateProvisioningTaskStatusParams) error

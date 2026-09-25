@@ -173,6 +173,10 @@ type ProvisioningTaskRepository struct {
 	idempotency map[string]string                   // idempotency key -> task id
 	// reservations は猶予期間つき削除の予約。key: tenantKey(tenant_id, id)
 	reservations map[string]*domain.ScheduledDeprovision
+	// fullResyncs は Full Resync。key: tenantKey(tenant_id, id)
+	fullResyncs map[string]*domain.FullResync
+	// fullResyncTasks はプロビジョニングタスクの id から、それが属する Full Resync の id を引く。
+	fullResyncTasks map[string]string
 }
 
 var _ ports.ProvisioningTaskRepository = (*ProvisioningTaskRepository)(nil)
@@ -181,6 +185,7 @@ func NewProvisioningTaskRepository() *ProvisioningTaskRepository {
 	return &ProvisioningTaskRepository{
 		tasks: map[string]*domain.ProvisioningTask{}, idempotency: map[string]string{},
 		reservations: map[string]*domain.ScheduledDeprovision{},
+		fullResyncs:  map[string]*domain.FullResync{}, fullResyncTasks: map[string]string{},
 	}
 }
 
@@ -475,4 +480,79 @@ func (r *ProvisioningTaskRepository) ListUnsettledByConnection(_ context.Context
 		return out[i].CreatedAt.Before(out[j].CreatedAt)
 	})
 	return out, nil
+}
+
+func cloneFullResync(fr *domain.FullResync) *domain.FullResync {
+	if fr == nil {
+		return nil
+	}
+	clone := *fr
+	if fr.CompletedAt != nil {
+		v := *fr.CompletedAt
+		clone.CompletedAt = &v
+	}
+	return &clone
+}
+
+func (r *ProvisioningTaskRepository) SaveFullResync(_ context.Context, fr *domain.FullResync) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.fullResyncs[taskKey(fr.TenantID, fr.ID)] = cloneFullResync(fr)
+	return nil
+}
+
+func (r *ProvisioningTaskRepository) SaveFullResyncTask(_ context.Context, fullResyncID string, d *domain.ProvisioningTask) (bool, error) {
+	if err := d.Validate(); err != nil {
+		return false, err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	idKey := d.IdempotencyKey()
+	if _, ok := r.idempotency[idKey]; ok {
+		return false, nil
+	}
+	r.tasks[taskKey(d.TenantID, d.ID)] = cloneTask(d)
+	r.idempotency[idKey] = d.ID
+	r.fullResyncTasks[taskKey(d.TenantID, d.ID)] = fullResyncID
+	return true, nil
+}
+
+func (r *ProvisioningTaskRepository) FindFullResyncByTask(_ context.Context, tenantID, taskID string) (*domain.FullResync, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	fullResyncID, ok := r.fullResyncTasks[taskKey(tenantID, taskID)]
+	if !ok {
+		return nil, nil
+	}
+	return cloneFullResync(r.fullResyncs[taskKey(tenantID, fullResyncID)]), nil
+}
+
+func (r *ProvisioningTaskRepository) TallyFullResync(_ context.Context, tenantID, fullResyncID string) (domain.FullResyncTally, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var tally domain.FullResyncTally
+	for key, id := range r.fullResyncTasks {
+		d := r.tasks[key]
+		if id != fullResyncID || d == nil || d.TenantID != tenantID {
+			continue
+		}
+		switch d.Status {
+		case domain.TaskSucceeded:
+			tally.Succeeded++
+		case domain.TaskDeadLetter:
+			tally.Failed++
+		}
+	}
+	return tally, nil
+}
+
+func (r *ProvisioningTaskRepository) CompleteFullResync(_ context.Context, fr *domain.FullResync) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	stored := r.fullResyncs[taskKey(fr.TenantID, fr.ID)]
+	if stored == nil || stored.Status != domain.FullResyncStatusRunning {
+		return false, nil
+	}
+	r.fullResyncs[taskKey(fr.TenantID, fr.ID)] = cloneFullResync(fr)
+	return true, nil
 }

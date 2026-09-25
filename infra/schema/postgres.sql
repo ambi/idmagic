@@ -1470,6 +1470,35 @@ CREATE UNIQUE INDEX provisioning_scheduled_deprovisions_active_unique
 CREATE INDEX provisioning_scheduled_deprovisions_due_idx
     ON provisioning_scheduled_deprovisions (due_at) WHERE status = 'scheduled';
 
+-- Full Resync の一回分。開始時に対象数を確定し、対象のプロビジョニングタスクがすべて終端になると完了する。
+CREATE TABLE provisioning_full_resyncs (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    connection_id UUID NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('running', 'completed')),
+    total_tasks INTEGER NOT NULL CHECK (total_tasks >= 0),
+    succeeded_count INTEGER NOT NULL DEFAULT 0 CHECK (succeeded_count >= 0),
+    failed_count INTEGER NOT NULL DEFAULT 0 CHECK (failed_count >= 0),
+    started_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT provisioning_full_resyncs_connection_fkey
+        FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
+    CONSTRAINT provisioning_full_resyncs_completed_consistent
+        CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+);
+
+-- Full Resync が作ったプロビジョニングタスクの関連付け。一つのプロビジョニングタスクは高々一つの Full Resync に属する。
+CREATE TABLE provisioning_full_resync_tasks (
+    task_id UUID PRIMARY KEY,
+    full_resync_id UUID NOT NULL,
+    CONSTRAINT provisioning_full_resync_tasks_task_fkey
+        FOREIGN KEY (task_id) REFERENCES provisioning_tasks(id) ON DELETE CASCADE,
+    CONSTRAINT provisioning_full_resync_tasks_resync_fkey
+        FOREIGN KEY (full_resync_id) REFERENCES provisioning_full_resyncs(id) ON DELETE CASCADE
+);
+
+CREATE INDEX provisioning_full_resync_tasks_resync_idx ON provisioning_full_resync_tasks (full_resync_id);
+
 CREATE UNLOGGED TABLE oauth2_authorization_requests (
     id TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,

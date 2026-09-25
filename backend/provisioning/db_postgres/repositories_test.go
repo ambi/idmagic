@@ -632,6 +632,86 @@ func TestProvisioningTaskRepository_ListUnsettledByConnectionExcludesSucceeded(t
 	}
 }
 
+// Full Resync の完了判定は、関連付けたプロビジョニングタスクの数え直しと、running のときだけ成立する完了の書き込みに依る。
+// 関連付けが冪等キーの重複で二重にならないこと、他テナントから引けないこと、完了が一度だけ成立することを固定する。
+func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	if err := (&postgres.ProvisioningConnectionRepository{Pool: pool}).Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
+		t.Fatal(err)
+	}
+	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
+	ctx := context.Background()
+	now := pgtest.Now()
+	resync := domain.NewFullResync(pgfixtures.NewUUID(t), tenant.ID, app.ID, 2, now)
+	if err := repo.SaveFullResync(ctx, resync); err != nil {
+		t.Fatalf("SaveFullResync() error = %v", err)
+	}
+	newTask := func(sourceID string) *domain.ProvisioningTask {
+		return &domain.ProvisioningTask{
+			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, ConnectionID: app.ID, SourceType: domain.SourceTypeUser, SourceID: sourceID,
+			SourceVersion: 7, Operation: domain.OperationUpdate, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+		}
+	}
+	first, second := newTask(pgfixtures.NewUUID(t)), newTask(pgfixtures.NewUUID(t))
+	for _, task := range []*domain.ProvisioningTask{first, second} {
+		if created, err := repo.SaveFullResyncTask(ctx, resync.ID, task); err != nil || !created {
+			t.Fatalf("SaveFullResyncTask() = (%v, %v), want (true, nil)", created, err)
+		}
+	}
+	duplicate := newTask(first.SourceID)
+	if created, err := repo.SaveFullResyncTask(ctx, resync.ID, duplicate); err != nil || created {
+		t.Fatalf("SaveFullResyncTask(duplicate key) = (%v, %v), want (false, nil)", created, err)
+	}
+	if stored, err := repo.Find(ctx, tenant.ID, first.ID); err != nil || stored == nil || stored.Status != domain.TaskPending {
+		t.Fatalf("Find(resync task) = (%+v, %v), want the pending task", stored, err)
+	}
+
+	found, err := repo.FindFullResyncByTask(ctx, tenant.ID, second.ID)
+	if err != nil || found == nil || found.ID != resync.ID || found.Status != domain.FullResyncStatusRunning || found.TotalTasks != 2 {
+		t.Fatalf("FindFullResyncByTask() = (%+v, %v), want running %s with 2 tasks", found, err, resync.ID)
+	}
+	other := pgfixtures.SeedTenant(t, pool)
+	if found, err := repo.FindFullResyncByTask(ctx, other.ID, second.ID); err != nil || found != nil {
+		t.Fatalf("FindFullResyncByTask(other tenant) = (%+v, %v), want none", found, err)
+	}
+	if found, err := repo.FindFullResyncByTask(ctx, tenant.ID, pgfixtures.NewUUID(t)); err != nil || found != nil {
+		t.Fatalf("FindFullResyncByTask(unrelated task) = (%+v, %v), want none", found, err)
+	}
+
+	if err := repo.UpdateStatus(ctx, tenant.ID, first.ID, domain.TaskDeadLetter, nil); err != nil {
+		t.Fatal(err)
+	}
+	tally, err := repo.TallyFullResync(ctx, tenant.ID, resync.ID)
+	if err != nil || tally != (domain.FullResyncTally{Failed: 1}) {
+		t.Fatalf("TallyFullResync() = (%+v, %v), want 1 failed and the pending task uncounted", tally, err)
+	}
+	if err := repo.UpdateStatus(ctx, tenant.ID, second.ID, domain.TaskSucceeded, nil); err != nil {
+		t.Fatal(err)
+	}
+	tally, err = repo.TallyFullResync(ctx, tenant.ID, resync.ID)
+	if err != nil || tally != (domain.FullResyncTally{Succeeded: 1, Failed: 1}) {
+		t.Fatalf("TallyFullResync() = (%+v, %v), want 1 succeeded and 1 failed", tally, err)
+	}
+
+	completed, ok := found.Settle(tally, now.Add(time.Minute))
+	if !ok {
+		t.Fatal("Settle() = not completed")
+	}
+	if won, err := repo.CompleteFullResync(ctx, &completed); err != nil || !won {
+		t.Fatalf("CompleteFullResync() = (%v, %v), want (true, nil)", won, err)
+	}
+	if won, err := repo.CompleteFullResync(ctx, &completed); err != nil || won {
+		t.Fatalf("second CompleteFullResync() = (%v, %v), want (false, nil)", won, err)
+	}
+	stored, err := repo.FindFullResyncByTask(ctx, tenant.ID, first.ID)
+	if err != nil || stored == nil || stored.Status != domain.FullResyncStatusCompleted ||
+		stored.SucceededCount != 1 || stored.FailedCount != 1 || stored.CompletedAt == nil || !stored.CompletedAt.Equal(*completed.CompletedAt) {
+		t.Fatalf("FindFullResyncByTask(after complete) = (%+v, %v), want completed with 1 succeeded and 1 failed", stored, err)
+	}
+}
+
 // 照合がテナントを越えて巡る入口は、有効な接続を持つテナントだけを返す。
 func TestProvisioningConnectionRepository_ListTenantsWithActiveConnections(t *testing.T) {
 	pool := pgtest.Require(t)

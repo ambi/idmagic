@@ -11,12 +11,6 @@
       "finding": "DeprovisionPolicy は閾値を保存するが、StartFullResync は deprovision の件数を数えず、閾値を読む処理が無い。"
     },
     {
-      "id": "EX-PROVISIONING-013-01",
-      "reason": "Full Resync の対象プロビジョニングタスクを追跡せず、FullResyncCompleted を発行しないため",
-      "blocked_by": "wi-22987-track-full-resync-completion",
-      "finding": "StartFullResync の実装コメントが完了追跡とイベント発行を未実装と明記している。"
-    },
-    {
       "id": "EX-WSFEDERATION-001-03",
       "reason": "実装は 401 invalid_token を返し、具体例が名指す AccessDeniedError と型が食い違うため。拒否そのものは効いていて保存先も変わらない",
       "blocked_by": "wi-558-name-the-refusal-a-cross-tenant-api-token-actually-gets",

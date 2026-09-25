@@ -712,6 +712,67 @@ func (r *ProvisioningConnectionRepository) ListTenantsWithActiveConnections(ctx 
 	return New(r.Pool).ListTenantsWithActiveProvisioningConnections(ctx)
 }
 
+func mapFullResync(row *ProvisioningFullResync) *domain.FullResync {
+	return &domain.FullResync{
+		ID: row.ID, TenantID: row.TenantID, ConnectionID: row.ConnectionID, Status: domain.FullResyncStatus(row.Status),
+		TotalTasks: int(row.TotalTasks), SucceededCount: int(row.SucceededCount), FailedCount: int(row.FailedCount),
+		StartedAt: row.StartedAt, CompletedAt: fromPgTimestamptz(row.CompletedAt),
+	}
+}
+
+func (r *ProvisioningTaskRepository) SaveFullResync(ctx context.Context, fr *domain.FullResync) error {
+	return New(r.Pool).InsertProvisioningFullResync(ctx, InsertProvisioningFullResyncParams{
+		ID: fr.ID, TenantID: fr.TenantID, ConnectionID: fr.ConnectionID, Status: string(fr.Status),
+		TotalTasks:     int32(fr.TotalTasks),     //nolint:gosec // safe downcast
+		SucceededCount: int32(fr.SucceededCount), //nolint:gosec // safe downcast
+		FailedCount:    int32(fr.FailedCount),    //nolint:gosec // safe downcast
+		StartedAt:      fr.StartedAt, CompletedAt: pgTimestamptz(fr.CompletedAt),
+	})
+}
+
+// SaveFullResyncTask はプロビジョニングタスクの挿入と関連付けを一文で行う。d の job_id、last_error、completed_at は
+// 作成直後のプロビジョニングタスクには無いので書き込まない。
+func (r *ProvisioningTaskRepository) SaveFullResyncTask(ctx context.Context, fullResyncID string, d *domain.ProvisioningTask) (bool, error) {
+	if err := d.Validate(); err != nil {
+		return false, err
+	}
+	linked, err := New(r.Pool).InsertProvisioningFullResyncTask(ctx, InsertProvisioningFullResyncTaskParams{
+		FullResyncID: fullResyncID, ID: d.ID, TenantID: d.TenantID, ConnectionID: d.ConnectionID,
+		SourceType: string(d.SourceType), SourceID: d.SourceID, SourceVersion: d.SourceVersion,
+		Operation: string(d.Operation), Status: string(d.Status), CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
+	})
+	return linked == 1, err
+}
+
+func (r *ProvisioningTaskRepository) FindFullResyncByTask(ctx context.Context, tenantID, taskID string) (*domain.FullResync, error) {
+	row, err := New(r.Pool).FindProvisioningFullResyncByTask(ctx, FindProvisioningFullResyncByTaskParams{TenantID: tenantID, TaskID: taskID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return mapFullResync(row), nil
+}
+
+func (r *ProvisioningTaskRepository) TallyFullResync(ctx context.Context, tenantID, fullResyncID string) (domain.FullResyncTally, error) {
+	row, err := New(r.Pool).TallyProvisioningFullResync(ctx, TallyProvisioningFullResyncParams{TenantID: tenantID, FullResyncID: fullResyncID})
+	if err != nil {
+		return domain.FullResyncTally{}, err
+	}
+	return domain.FullResyncTally{Succeeded: int(row.Succeeded), Failed: int(row.Failed)}, nil
+}
+
+func (r *ProvisioningTaskRepository) CompleteFullResync(ctx context.Context, fr *domain.FullResync) (bool, error) {
+	completed, err := New(r.Pool).CompleteProvisioningFullResync(ctx, CompleteProvisioningFullResyncParams{
+		TenantID: fr.TenantID, ID: fr.ID,
+		SucceededCount: int32(fr.SucceededCount), //nolint:gosec // safe downcast
+		FailedCount:    int32(fr.FailedCount),    //nolint:gosec // safe downcast
+		CompletedAt:    pgTimestamptz(fr.CompletedAt),
+	})
+	return completed == 1, err
+}
+
 func (r *ProvisioningTaskRepository) ListUnsettledByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.ProvisioningTask, error) {
 	rows, err := New(r.Pool).ListUnsettledProvisioningTasksByConnection(ctx, ListUnsettledProvisioningTasksByConnectionParams{
 		TenantID: tenantID, ConnectionID: connectionID, SourceType: string(sourceType),

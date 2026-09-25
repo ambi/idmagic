@@ -101,4 +101,19 @@ type ProvisioningTaskRepository interface {
 	// MaterializeDeprovision は予約がまだ scheduled のときだけ materialized にし、d を挿入する。
 	// 取消と競合して予約が scheduled でなくなっていれば、何も変えず false を返す。
 	MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningTask) (bool, error)
+
+	// Full Resync は対象のプロビジョニングタスクを数えて完了を判定するため、プロビジョニングタスクと同じリポジトリが持つ。
+
+	// SaveFullResync は running の Full Resync を保存する。
+	SaveFullResync(ctx context.Context, r *domain.FullResync) error
+	// SaveFullResyncTask は d を挿入し、同じ文で Full Resync へ関連付ける。
+	// 同じ冪等キーのプロビジョニングタスクがあれば、どちらもせず created=false を返す。
+	SaveFullResyncTask(ctx context.Context, fullResyncID string, d *domain.ProvisioningTask) (created bool, err error)
+	// FindFullResyncByTask はプロビジョニングタスクが属する Full Resync を返す。属さなければ nil を返す。
+	FindFullResyncByTask(ctx context.Context, tenantID, taskID string) (*domain.FullResync, error)
+	// TallyFullResync は Full Resync へ関連付いたプロビジョニングタスクを状態ごとに数える。
+	TallyFullResync(ctx context.Context, tenantID, fullResyncID string) (domain.FullResyncTally, error)
+	// CompleteFullResync は保存済みの Full Resync が running のときだけ r の完了を書き込む。
+	// 別の呼び出しがすでに完了させていれば、何も変えず false を返す。
+	CompleteFullResync(ctx context.Context, r *domain.FullResync) (bool, error)
 }

@@ -59,6 +59,8 @@ type provisioningTaskParams struct {
 // is settled as dead_letter and the handler returns nil so Jobs does not retry
 // it. It does not count toward quarantine, which measures the downstream's
 // health, not one User's missing attribute.
+//
+// プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属する Full Resync の完了を判定する。
 func ProvisioningTaskHandler(deps JobHandlerDeps) jobsusecases.Handler {
 	now := deps.Now
 	if now == nil {
@@ -77,7 +79,8 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsusecases.Handler {
 			if event != nil {
 				emit(deps.Emit, event)
 			}
-			return nil, nil
+			// 終端済みのプロビジョニングタスクを再実行したときも判定するので、前回の判定の失敗はここで回収される。
+			return nil, settleFullResyncOfTask(ctx, deps, job.TenantID, params.TaskID, now())
 		}
 		failsClosed := errors.Is(execErr, ports.ErrRequiredAttributeUnresolved)
 		if !failsClosed && job.Attempts < job.MaxAttempts {
@@ -85,6 +88,9 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsusecases.Handler {
 		}
 		task, err := deadLetter(ctx, deps, job.TenantID, params.TaskID, execErr.Error(), now())
 		if err != nil {
+			return nil, err
+		}
+		if err := settleFullResyncOfTask(ctx, deps, job.TenantID, params.TaskID, now()); err != nil {
 			return nil, err
 		}
 		if failsClosed {

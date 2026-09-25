@@ -304,9 +304,9 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 
 // StartFullResync enqueues an update task for every subject in the
 // connection's scope (spec/contexts/provisioning.yaml interfaces.StartFullResync).
-// FullResyncCompleted is not emitted by this scoped implementation: tracking a
-// resync batch's completion across many asynchronous tasks is left for a
-// follow-up (wi-45 T007 known gap).
+// 対象数を確定した FullResync を先に保存し、各プロビジョニングタスクをそれへ関連付ける。
+// FullResyncCompleted は最後のプロビジョニングタスクを終端にしたジョブが発行し、対象が 0 件ならここで発行する
+// (docs/domain/provisioning/internals.md §Full Resync の完了追跡)。
 func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (int, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {
@@ -342,6 +342,19 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 	if err != nil {
 		return 0, err
 	}
+	// 同じ subject を二度数えると、冪等キーで作られないプロビジョニングタスクの分だけ対象数に届かず完了しなくなる。
+	slices.Sort(subjectIDs)
+	subjectIDs = slices.Compact(subjectIDs)
+	slices.Sort(groupIDs)
+	groupIDs = slices.Compact(groupIDs)
+	resyncID, err := spec.NewUUIDv4()
+	if err != nil {
+		return 0, err
+	}
+	resync := domain.NewFullResync(resyncID, tenantID, applicationID, len(subjectIDs)+len(groupIDs), now)
+	if err := deps.TaskRepo.SaveFullResync(ctx, resync); err != nil {
+		return 0, err
+	}
 
 	enqueued := 0
 	enqueue := func(sourceType domain.ProvisioningSourceType, ids []string) error {
@@ -355,7 +368,7 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 				SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.TaskPending,
 				CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 			}
-			created, err := deps.TaskRepo.Save(ctx, task)
+			created, err := deps.TaskRepo.SaveFullResyncTask(ctx, resync.ID, task)
 			if err != nil {
 				return err
 			}
@@ -373,6 +386,10 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 	}
 	conn.LastFullSyncAt = new(now.UTC())
 	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
+		return enqueued, err
+	}
+	// 対象が 0 件のとき、または作り終える前にすべて終端になったときは、ここで完了する。
+	if err := settleFullResync(ctx, deps.TaskRepo, deps.Emit, resync, now); err != nil {
 		return enqueued, err
 	}
 	return enqueued, nil

@@ -58,6 +58,34 @@ func (q *Queries) CancelProvisioningScheduledDeprovisions(ctx context.Context, a
 	return result.RowsAffected(), nil
 }
 
+const completeProvisioningFullResync = `-- name: CompleteProvisioningFullResync :execrows
+UPDATE provisioning_full_resyncs SET status='completed', succeeded_count=$3, failed_count=$4, completed_at=$5
+WHERE tenant_id=$1 AND id=$2 AND status='running'
+`
+
+type CompleteProvisioningFullResyncParams struct {
+	TenantID       string
+	ID             string
+	SucceededCount int32
+	FailedCount    int32
+	CompletedAt    pgtype.Timestamptz
+}
+
+// running のときだけ成立させ、同時に完了を判定した呼び出しのうち一つだけが発行する。
+func (q *Queries) CompleteProvisioningFullResync(ctx context.Context, arg CompleteProvisioningFullResyncParams) (int64, error) {
+	result, err := q.db.Exec(ctx, completeProvisioningFullResync,
+		arg.TenantID,
+		arg.ID,
+		arg.SucceededCount,
+		arg.FailedCount,
+		arg.CompletedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteProvisioningConnection = `-- name: DeleteProvisioningConnection :exec
 DELETE FROM provisioning_connections WHERE tenant_id=$1 AND application_id=$2
 `
@@ -167,6 +195,35 @@ func (q *Queries) FindProvisioningConnection(ctx context.Context, arg FindProvis
 		&i.QuarantineReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const findProvisioningFullResyncByTask = `-- name: FindProvisioningFullResyncByTask :one
+SELECT r.id, r.tenant_id, r.connection_id, r.status, r.total_tasks, r.succeeded_count, r.failed_count, r.started_at, r.completed_at
+FROM provisioning_full_resyncs r
+JOIN provisioning_full_resync_tasks m ON m.full_resync_id = r.id
+WHERE r.tenant_id=$1 AND m.task_id=$2
+`
+
+type FindProvisioningFullResyncByTaskParams struct {
+	TenantID string
+	TaskID   string
+}
+
+func (q *Queries) FindProvisioningFullResyncByTask(ctx context.Context, arg FindProvisioningFullResyncByTaskParams) (*ProvisioningFullResync, error) {
+	row := q.db.QueryRow(ctx, findProvisioningFullResyncByTask, arg.TenantID, arg.TaskID)
+	var i ProvisioningFullResync
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.ConnectionID,
+		&i.Status,
+		&i.TotalTasks,
+		&i.SucceededCount,
+		&i.FailedCount,
+		&i.StartedAt,
+		&i.CompletedAt,
 	)
 	return &i, err
 }
@@ -329,6 +386,85 @@ func (q *Queries) InsertProvisioningConnection(ctx context.Context, arg InsertPr
 	var application_id string
 	err := row.Scan(&application_id)
 	return application_id, err
+}
+
+const insertProvisioningFullResync = `-- name: InsertProvisioningFullResync :exec
+INSERT INTO provisioning_full_resyncs (id, tenant_id, connection_id, status, total_tasks, succeeded_count, failed_count, started_at, completed_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+`
+
+type InsertProvisioningFullResyncParams struct {
+	ID             string
+	TenantID       string
+	ConnectionID   string
+	Status         string
+	TotalTasks     int32
+	SucceededCount int32
+	FailedCount    int32
+	StartedAt      time.Time
+	CompletedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) InsertProvisioningFullResync(ctx context.Context, arg InsertProvisioningFullResyncParams) error {
+	_, err := q.db.Exec(ctx, insertProvisioningFullResync,
+		arg.ID,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.Status,
+		arg.TotalTasks,
+		arg.SucceededCount,
+		arg.FailedCount,
+		arg.StartedAt,
+		arg.CompletedAt,
+	)
+	return err
+}
+
+const insertProvisioningFullResyncTask = `-- name: InsertProvisioningFullResyncTask :execrows
+WITH inserted AS (
+  INSERT INTO provisioning_tasks (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, created_at, updated_at)
+  VALUES ($2, $3, $4, $5, $6, $7,
+          $8, $9, $10, $11)
+  ON CONFLICT ON CONSTRAINT provisioning_tasks_idempotency_unique DO NOTHING
+  RETURNING id
+)
+INSERT INTO provisioning_full_resync_tasks (task_id, full_resync_id)
+SELECT inserted.id, $1 FROM inserted
+`
+
+type InsertProvisioningFullResyncTaskParams struct {
+	FullResyncID  string
+	ID            string
+	TenantID      string
+	ConnectionID  string
+	SourceType    string
+	SourceID      string
+	SourceVersion int64
+	Operation     string
+	Status        string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// プロビジョニングタスクの挿入と Full Resync への関連付けを一文で行う。冪等キーで挿入しなかったときは関連付けもしない。
+func (q *Queries) InsertProvisioningFullResyncTask(ctx context.Context, arg InsertProvisioningFullResyncTaskParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertProvisioningFullResyncTask,
+		arg.FullResyncID,
+		arg.ID,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.SourceType,
+		arg.SourceID,
+		arg.SourceVersion,
+		arg.Operation,
+		arg.Status,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertProvisioningScheduledDeprovision = `-- name: InsertProvisioningScheduledDeprovision :execrows
@@ -1027,6 +1163,31 @@ func (q *Queries) RetryDeadLetterProvisioningTask(ctx context.Context, arg Retry
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const tallyProvisioningFullResync = `-- name: TallyProvisioningFullResync :one
+SELECT count(*) FILTER (WHERE t.status='succeeded')::int AS succeeded,
+       count(*) FILTER (WHERE t.status='dead_letter')::int AS failed
+FROM provisioning_full_resync_tasks m
+JOIN provisioning_tasks t ON t.id = m.task_id
+WHERE t.tenant_id=$1 AND m.full_resync_id=$2
+`
+
+type TallyProvisioningFullResyncParams struct {
+	TenantID     string
+	FullResyncID string
+}
+
+type TallyProvisioningFullResyncRow struct {
+	Succeeded int32
+	Failed    int32
+}
+
+func (q *Queries) TallyProvisioningFullResync(ctx context.Context, arg TallyProvisioningFullResyncParams) (*TallyProvisioningFullResyncRow, error) {
+	row := q.db.QueryRow(ctx, tallyProvisioningFullResync, arg.TenantID, arg.FullResyncID)
+	var i TallyProvisioningFullResyncRow
+	err := row.Scan(&i.Succeeded, &i.Failed)
+	return &i, err
 }
 
 const updateProvisioningConnection = `-- name: UpdateProvisioningConnection :exec
