@@ -40,6 +40,10 @@ type Querier interface {
 	// surface their own JobKind's rows to admins (DataExport). Newest first.
 	// NULLIF($3, 0) makes a zero limit mean "no cap".
 	ListJobsByTenantAndKinds(ctx context.Context, arg ListJobsByTenantAndKindsParams) ([]*Job, error)
+	// 絞り込みはすべて省略でき、NULL の引数はその条件を外す。管理コンソールの一覧は頻度が低いので、
+	// 条件の組み合わせごとに文を分けず 1 文にする。id を継続の組に含めるのは、同じ瞬間に投入された
+	// 2 件がページの境目で落ちたり重複したりしないようにするためである。
+	ListJobsForAdmin(ctx context.Context, arg ListJobsForAdminParams) ([]*Job, error)
 }
 
 var _ Querier = (*Queries)(nil)

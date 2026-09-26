@@ -461,3 +461,75 @@ func (q *Queries) ListJobsByTenantAndKinds(ctx context.Context, arg ListJobsByTe
 	}
 	return items, nil
 }
+
+const listJobsForAdmin = `-- name: ListJobsForAdmin :many
+SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key,
+  lease_owner, lease_expires_at, run_at, created_at, updated_at
+FROM jobs
+WHERE ($1::text IS NULL OR tenant_id = $1::text::uuid)
+  AND ($2::text[] IS NULL OR status = ANY($2::text[]))
+  AND ($3::text[] IS NULL OR kind = ANY($3::text[]))
+  AND ($4::text IS NULL OR lane = $4::text)
+  AND ($5::timestamptz IS NULL
+    OR (created_at, id) < ($5::timestamptz, $6::text::uuid))
+ORDER BY created_at DESC, id DESC
+LIMIT $7
+`
+
+type ListJobsForAdminParams struct {
+	TenantID        pgtype.Text
+	Statuses        []string
+	Kinds           []string
+	Lane            pgtype.Text
+	BeforeCreatedAt pgtype.Timestamptz
+	BeforeID        pgtype.Text
+	PageLimit       int32
+}
+
+// 絞り込みはすべて省略でき、NULL の引数はその条件を外す。管理コンソールの一覧は頻度が低いので、
+// 条件の組み合わせごとに文を分けず 1 文にする。id を継続の組に含めるのは、同じ瞬間に投入された
+// 2 件がページの境目で落ちたり重複したりしないようにするためである。
+func (q *Queries) ListJobsForAdmin(ctx context.Context, arg ListJobsForAdminParams) ([]*Job, error) {
+	rows, err := q.db.Query(ctx, listJobsForAdmin,
+		arg.TenantID,
+		arg.Statuses,
+		arg.Kinds,
+		arg.Lane,
+		arg.BeforeCreatedAt,
+		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Job
+	for rows.Next() {
+		var i Job
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Kind,
+			&i.Lane,
+			&i.Status,
+			&i.Params,
+			&i.Result,
+			&i.Error,
+			&i.Attempts,
+			&i.MaxAttempts,
+			&i.DedupKey,
+			&i.LeaseOwner,
+			&i.LeaseExpiresAt,
+			&i.RunAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

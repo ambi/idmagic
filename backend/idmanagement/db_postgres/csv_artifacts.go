@@ -7,6 +7,7 @@ import (
 	"errors"
 	"hash"
 	"io"
+	"math"
 	"os"
 
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
@@ -63,15 +64,16 @@ func (s *CSVArtifactStore) PutCSVArtifact(ctx context.Context, tenantID string, 
 		return idmports.CSVArtifact{}, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
-	if _, err := tx.Exec(ctx, `INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4)`, ref, tenantID, metadata.SHA256, metadata.ByteSize); err != nil {
+	queries := New(tx)
+	if err := queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize}); err != nil {
 		_ = temporary.Close()
 		return idmports.CSVArtifact{}, err
 	}
 	buffer := make([]byte, csvArtifactChunkBytes)
-	for chunkNumber := 0; ; chunkNumber++ {
+	for chunkNumber := int32(0); ; chunkNumber++ {
 		n, readErr := io.ReadFull(temporary, buffer)
 		if n > 0 {
-			if _, err := tx.Exec(ctx, `INSERT INTO csv_artifact_chunks (artifact_id, chunk_number, payload) VALUES ($1, $2, $3)`, ref, chunkNumber, buffer[:n]); err != nil {
+			if err := queries.InsertCSVArtifactChunk(ctx, InsertCSVArtifactChunkParams{ArtifactID: ref, ChunkNumber: chunkNumber, Payload: buffer[:n]}); err != nil {
 				_ = temporary.Close()
 				return idmports.CSVArtifact{}, err
 			}
@@ -96,16 +98,16 @@ func (s *CSVArtifactStore) PutCSVArtifact(ctx context.Context, tenantID string, 
 func (s *CSVArtifactStore) OpenCSVArtifact(ctx context.Context, tenantID, ref string) (io.ReadCloser, idmports.CSVArtifact, error) {
 	var metadata idmports.CSVArtifact
 	metadata.Ref, metadata.TenantID = ref, tenantID
-	if err := s.Pool.QueryRow(ctx, `SELECT sha256, byte_size FROM csv_artifacts WHERE tenant_id = $1 AND id = $2`, tenantID, ref).Scan(&metadata.SHA256, &metadata.ByteSize); errors.Is(err, pgx.ErrNoRows) {
+	queries := New(s.Pool)
+	row, err := queries.FindCSVArtifact(ctx, FindCSVArtifactParams{TenantID: tenantID, ID: ref})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, idmports.CSVArtifact{}, idmports.ErrCSVArtifactNotFound
-	} else if err != nil {
-		return nil, idmports.CSVArtifact{}, err
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT payload FROM csv_artifact_chunks WHERE artifact_id = $1 ORDER BY chunk_number`, ref)
 	if err != nil {
 		return nil, idmports.CSVArtifact{}, err
 	}
-	return &csvChunkReader{rows: rows}, metadata, nil
+	metadata.SHA256, metadata.ByteSize = row.Sha256, row.ByteSize
+	return &csvChunkReader{ctx: ctx, queries: queries, ref: ref}, metadata, nil
 }
 
 func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID string, write func(emit func([]byte) error) error) (idmports.CSVArtifact, error) {
@@ -118,18 +120,19 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID str
 		return idmports.CSVArtifact{}, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
+	queries := New(tx)
 	placeholder := "0000000000000000000000000000000000000000000000000000000000000000"
-	if _, err := tx.Exec(ctx, `INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, 0)`, ref, tenantID, placeholder); err != nil {
+	if err := queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: placeholder}); err != nil {
 		return idmports.CSVArtifact{}, err
 	}
 	digest := sha256.New()
 	var size int64
-	page := 0
+	var page int32
 	emit := func(payload []byte) error {
 		if len(payload) > csvArtifactChunkBytes {
 			return errors.New("CSV artifact page exceeds chunk size")
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO csv_artifact_chunks (artifact_id, chunk_number, payload) VALUES ($1, $2, $3)`, ref, page, payload); err != nil {
+		if err := queries.InsertCSVArtifactChunk(ctx, InsertCSVArtifactChunkParams{ArtifactID: ref, ChunkNumber: page, Payload: payload}); err != nil {
 			return err
 		}
 		page++
@@ -141,7 +144,7 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID str
 		return idmports.CSVArtifact{}, err
 	}
 	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size}
-	if _, err := tx.Exec(ctx, `UPDATE csv_artifacts SET sha256 = $2, byte_size = $3 WHERE id = $1`, ref, metadata.SHA256, metadata.ByteSize); err != nil {
+	if err := queries.UpdateCSVArtifactDigest(ctx, UpdateCSVArtifactDigestParams{ID: ref, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize}); err != nil {
 		return idmports.CSVArtifact{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -153,33 +156,50 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID str
 func (s *CSVArtifactStore) ReadCSVArtifactPage(ctx context.Context, tenantID, ref string, page int) ([]byte, idmports.CSVArtifact, error) {
 	var metadata idmports.CSVArtifact
 	metadata.Ref, metadata.TenantID = ref, tenantID
-	var payload []byte
-	err := s.Pool.QueryRow(ctx, `SELECT a.sha256, a.byte_size, c.payload FROM csv_artifacts a
-        JOIN csv_artifact_chunks c ON c.artifact_id = a.id
-        WHERE a.tenant_id = $1 AND a.id = $2 AND c.chunk_number = $3`, tenantID, ref, page).Scan(&metadata.SHA256, &metadata.ByteSize, &payload)
+	if page < 0 || page > math.MaxInt32 {
+		return nil, idmports.CSVArtifact{}, idmports.ErrCSVArtifactNotFound
+	}
+	row, err := New(s.Pool).FindCSVArtifactPage(ctx, FindCSVArtifactPageParams{
+		TenantID: tenantID, ID: ref, ChunkNumber: int32(page),
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, idmports.CSVArtifact{}, idmports.ErrCSVArtifactNotFound
 	}
-	return payload, metadata, err
+	if err != nil {
+		return nil, idmports.CSVArtifact{}, err
+	}
+	metadata.SHA256, metadata.ByteSize = row.Sha256, row.ByteSize
+	return row.Payload, metadata, nil
 }
 
+// csvChunkReadBatch は一度の問い合わせで読むチャンク数である。成果物全体をメモリへ
+// 載せず、読み取りの間も接続を占有しないよう、チャンク番号を起点に少しずつ読む。
+const csvChunkReadBatch = 16
+
 type csvChunkReader struct {
-	rows    pgx.Rows
+	// io.Reader の Read は ctx を受け取れないので、開いた時点の ctx で読む。
+	ctx     context.Context
+	queries *Queries
+	ref     string
+	next    int32
+	pending [][]byte
+	done    bool
 	current []byte
 	offset  int
 }
 
 func (r *csvChunkReader) Read(p []byte) (int, error) {
 	for r.offset >= len(r.current) {
-		if !r.rows.Next() {
-			if err := r.rows.Err(); err != nil {
+		if len(r.pending) == 0 {
+			if r.done {
+				return 0, io.EOF
+			}
+			if err := r.fetch(); err != nil {
 				return 0, err
 			}
-			return 0, io.EOF
+			continue
 		}
-		if err := r.rows.Scan(&r.current); err != nil {
-			return 0, err
-		}
+		r.current, r.pending = r.pending[0], r.pending[1:]
 		r.offset = 0
 	}
 	n := copy(p, r.current[r.offset:])
@@ -187,8 +207,20 @@ func (r *csvChunkReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+func (r *csvChunkReader) fetch() error {
+	payloads, err := r.queries.ListCSVArtifactChunkPayloadsFrom(r.ctx, ListCSVArtifactChunkPayloadsFromParams{
+		ArtifactID: r.ref, FromChunkNumber: r.next, PageLimit: csvChunkReadBatch,
+	})
+	if err != nil {
+		return err
+	}
+	r.pending = payloads
+	r.next += int32(len(payloads)) //nolint:gosec // len is bounded by csvChunkReadBatch
+	r.done = len(payloads) < csvChunkReadBatch
+	return nil
+}
+
 func (r *csvChunkReader) Close() error {
-	r.rows.Close()
 	return nil
 }
 

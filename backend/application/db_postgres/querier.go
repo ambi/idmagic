@@ -37,6 +37,9 @@ type Querier interface {
 	// keyset of the last row the caller saw.
 	ListApplicationAssignmentsByApplicationPageAfter(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageAfterParams) ([]*ListApplicationAssignmentsByApplicationPageAfterRow, error)
 	ListApplicationAssignmentsByApplicationPageBefore(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageBeforeParams) ([]*ListApplicationAssignmentsByApplicationPageBeforeRow, error)
+	// sqlc は引数が 2 つの UNNEST を解決できないので、1 次元の UNNEST を序数で突き合わせて組にする。
+	// subject_id は UUID 列なので、パラメーターは text[] のまま列側を text にして比べる。
+	ListApplicationAssignmentsBySubjects(ctx context.Context, arg ListApplicationAssignmentsBySubjectsParams) ([]*ListApplicationAssignmentsBySubjectsRow, error)
 	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error)
 	ListApplicationCategoriesByTenant(ctx context.Context, tenantID string) ([]*ApplicationCategory, error)
 	ListApplicationsByTenant(ctx context.Context, tenantID string) ([]*Application, error)

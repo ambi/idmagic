@@ -9,8 +9,20 @@ import (
 )
 
 type Querier interface {
+	DecrementTenantUsageActiveJobs(ctx context.Context, arg DecrementTenantUsageActiveJobsParams) error
+	DecrementTenantUsageActiveSessions(ctx context.Context, arg DecrementTenantUsageActiveSessionsParams) error
+	DecrementTenantUsageAgents(ctx context.Context, arg DecrementTenantUsageAgentsParams) error
+	DecrementTenantUsageApplications(ctx context.Context, arg DecrementTenantUsageApplicationsParams) error
+	DecrementTenantUsageAuditEventsRetained(ctx context.Context, arg DecrementTenantUsageAuditEventsRetainedParams) error
+	DecrementTenantUsageConsents(ctx context.Context, arg DecrementTenantUsageConsentsParams) error
+	DecrementTenantUsageExportArtifactsBytes(ctx context.Context, arg DecrementTenantUsageExportArtifactsBytesParams) error
+	DecrementTenantUsageGroups(ctx context.Context, arg DecrementTenantUsageGroupsParams) error
+	DecrementTenantUsageOAuth2Clients(ctx context.Context, arg DecrementTenantUsageOAuth2ClientsParams) error
+	DecrementTenantUsageSsfStreams(ctx context.Context, arg DecrementTenantUsageSsfStreamsParams) error
+	DecrementTenantUsageUsers(ctx context.Context, arg DecrementTenantUsageUsersParams) error
 	DeleteNotificationTemplate(ctx context.Context, arg DeleteNotificationTemplateParams) (int64, error)
 	DeleteTenantBrandingAssetsByKind(ctx context.Context, arg DeleteTenantBrandingAssetsByKindParams) error
+	EnsureTenantUsage(ctx context.Context, tenantID string) error
 	FindAllTenants(ctx context.Context) ([]*Tenant, error)
 	FindNotificationTemplate(ctx context.Context, arg FindNotificationTemplateParams) (*NotificationTemplate, error)
 	FindTenantBrandingByTenant(ctx context.Context, tenantID string) (*TenantBranding, error)
@@ -19,6 +31,17 @@ type Querier interface {
 	GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*GetTenantBrandingAssetRow, error)
 	GetTenantQuota(ctx context.Context, tenantID string) (*TenantQuota, error)
 	GetTenantUsage(ctx context.Context, tenantID string) (*TenantUsage, error)
+	IncrementTenantUsageActiveJobs(ctx context.Context, arg IncrementTenantUsageActiveJobsParams) (int32, error)
+	IncrementTenantUsageActiveSessions(ctx context.Context, arg IncrementTenantUsageActiveSessionsParams) (int32, error)
+	IncrementTenantUsageAgents(ctx context.Context, arg IncrementTenantUsageAgentsParams) (int32, error)
+	IncrementTenantUsageApplications(ctx context.Context, arg IncrementTenantUsageApplicationsParams) (int32, error)
+	IncrementTenantUsageAuditEventsRetained(ctx context.Context, arg IncrementTenantUsageAuditEventsRetainedParams) (int32, error)
+	IncrementTenantUsageConsents(ctx context.Context, arg IncrementTenantUsageConsentsParams) (int32, error)
+	IncrementTenantUsageExportArtifactsBytes(ctx context.Context, arg IncrementTenantUsageExportArtifactsBytesParams) (int32, error)
+	IncrementTenantUsageGroups(ctx context.Context, arg IncrementTenantUsageGroupsParams) (int32, error)
+	IncrementTenantUsageOAuth2Clients(ctx context.Context, arg IncrementTenantUsageOAuth2ClientsParams) (int32, error)
+	IncrementTenantUsageSsfStreams(ctx context.Context, arg IncrementTenantUsageSsfStreamsParams) (int32, error)
+	IncrementTenantUsageUsers(ctx context.Context, arg IncrementTenantUsageUsersParams) (int32, error)
 	ListNotificationTemplatesByTenant(ctx context.Context, tenantID string) ([]*NotificationTemplate, error)
 	SaveNotificationTemplate(ctx context.Context, arg SaveNotificationTemplateParams) error
 	SaveTenant(ctx context.Context, arg SaveTenantParams) error

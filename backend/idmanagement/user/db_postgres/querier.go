@@ -20,6 +20,9 @@ type Querier interface {
 	FindUserBySubIncludingDeleted(ctx context.Context, id string) (*User, error)
 	FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
+	// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+	InsertImportedPasswordHistory(ctx context.Context, arg InsertImportedPasswordHistoryParams) error
+	InsertUserImportAuditEvent(ctx context.Context, arg InsertUserImportAuditEventParams) error
 	ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error)
 	// First page of ListAdminUsers keyset pagination (wi-159): stable
 	// sort by (preferred_username, id) so admins see the pre-existing alphabetical

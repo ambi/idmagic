@@ -145,6 +145,7 @@ func loadSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	// pgx は引数なしの Exec を simple query protocol で送るため、
 	// セミコロン区切りの複数ステートメントをまとめて実行できる。
+	//sql:raw infra/schema/postgres.sql の DDL を適用する。
 	_, err = pool.Exec(ctx, string(sql))
 	return err
 }

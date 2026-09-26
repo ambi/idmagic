@@ -67,10 +67,10 @@ func writeGroupMembershipImportAudit(
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO audit_events (id, tenant_id, type, user_id, occurred_at, payload)
-        VALUES ($1, $2, $3, $4, $5, $6)`,
-		auditID, mutation.TenantID, mutation.AuditEventType, mutation.ActorUserID, mutation.Now, payload)
-	return err
+	return New(tx).InsertGroupImportAuditEvent(ctx, InsertGroupImportAuditEventParams{
+		ID: auditID, TenantID: mutation.TenantID, Type: mutation.AuditEventType, UserID: mutation.ActorUserID,
+		OccurredAt: mutation.Now, Payload: payload,
+	})
 }
 
 var _ groupports.GroupMembershipImportRowCommitter = GroupMembershipImportRowCommitter{}

@@ -17,77 +17,99 @@ type LifecycleWorkflowRepository struct{ Pool sharedpg.DB }
 
 var _ igports.LifecycleWorkflowRepository = (*LifecycleWorkflowRepository)(nil)
 
-const lifecycleWorkflowColumns = `id,tenant_id,name,description,status,current_revision,enabled_revision,created_at,updated_at`
-
-func scanLifecycleWorkflow(row sharedpg.RowScanner) (*igdomain.LifecycleWorkflow, error) {
-	workflow := &igdomain.LifecycleWorkflow{}
-	var enabled pgtype.Int8
-	var description pgtype.Text
-	if err := row.Scan(&workflow.ID, &workflow.TenantID, &workflow.Name, &description, &workflow.Status, &workflow.CurrentRevision, &enabled, &workflow.CreatedAt, &workflow.UpdatedAt); err != nil {
-		return nil, err
+func lifecycleWorkflowFromRow(row *LifecycleWorkflow) (*igdomain.LifecycleWorkflow, error) {
+	workflow := &igdomain.LifecycleWorkflow{
+		ID:              row.ID,
+		TenantID:        row.TenantID,
+		Name:            row.Name,
+		Status:          igdomain.LifecycleWorkflowStatus(row.Status),
+		CurrentRevision: row.CurrentRevision,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
 	}
-	if description.Valid {
-		value := description.String
+	if row.Description.Valid {
+		value := row.Description.String
 		workflow.Description = &value
 	}
-	if enabled.Valid {
-		value := enabled.Int64
+	if row.EnabledRevision.Valid {
+		value := row.EnabledRevision.Int64
 		workflow.EnabledRevision = &value
 	}
 	return workflow, workflow.Validate()
 }
 
 func (r *LifecycleWorkflowRepository) List(ctx context.Context, tenantID string) ([]*igdomain.LifecycleWorkflow, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT `+lifecycleWorkflowColumns+` FROM lifecycle_workflows WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err := New(r.Pool).ListLifecycleWorkflowsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*igdomain.LifecycleWorkflow{}
-	for rows.Next() {
-		workflow, scanErr := scanLifecycleWorkflow(rows)
-		if scanErr != nil {
-			return nil, scanErr
+	out := make([]*igdomain.LifecycleWorkflow, 0, len(rows))
+	for _, row := range rows {
+		workflow, err := lifecycleWorkflowFromRow(row)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, workflow)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *LifecycleWorkflowRepository) Find(ctx context.Context, tenantID, workflowID string) (*igdomain.LifecycleWorkflow, error) {
-	workflow, err := scanLifecycleWorkflow(r.Pool.QueryRow(ctx, `SELECT `+lifecycleWorkflowColumns+` FROM lifecycle_workflows WHERE tenant_id=$1 AND id=$2`, tenantID, workflowID))
+	row, err := New(r.Pool).FindLifecycleWorkflow(ctx, FindLifecycleWorkflowParams{TenantID: tenantID, ID: workflowID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
-	return workflow, err
+	if err != nil {
+		return nil, err
+	}
+	return lifecycleWorkflowFromRow(row)
 }
 
 func (r *LifecycleWorkflowRepository) Save(ctx context.Context, workflow *igdomain.LifecycleWorkflow) error {
 	if err := workflow.Validate(); err != nil {
 		return err
 	}
+	var description pgtype.Text
+	if workflow.Description != nil {
+		description = pgtype.Text{String: *workflow.Description, Valid: true}
+	}
 	var enabled pgtype.Int8
 	if workflow.EnabledRevision != nil {
 		enabled = pgtype.Int8{Int64: *workflow.EnabledRevision, Valid: true}
 	}
-	_, err := r.Pool.Exec(ctx, `INSERT INTO lifecycle_workflows (id,tenant_id,name,description,status,current_revision,enabled_revision,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,status=EXCLUDED.status,current_revision=EXCLUDED.current_revision,enabled_revision=EXCLUDED.enabled_revision,updated_at=EXCLUDED.updated_at WHERE lifecycle_workflows.tenant_id=EXCLUDED.tenant_id`, workflow.ID, workflow.TenantID, workflow.Name, workflow.Description, workflow.Status, workflow.CurrentRevision, enabled, workflow.CreatedAt, workflow.UpdatedAt)
-	return err
+	return New(r.Pool).SaveLifecycleWorkflow(ctx, SaveLifecycleWorkflowParams{
+		ID:              workflow.ID,
+		TenantID:        workflow.TenantID,
+		Name:            workflow.Name,
+		Description:     description,
+		Status:          string(workflow.Status),
+		CurrentRevision: workflow.CurrentRevision,
+		EnabledRevision: enabled,
+		CreatedAt:       workflow.CreatedAt,
+		UpdatedAt:       workflow.UpdatedAt,
+	})
 }
 
 func (r *LifecycleWorkflowRepository) FindRevision(ctx context.Context, tenantID, workflowID string, number int64) (*igdomain.LifecycleWorkflowRevision, error) {
-	revision := &igdomain.LifecycleWorkflowRevision{}
-	var trigger, actions []byte
-	err := r.Pool.QueryRow(ctx, `SELECT workflow_id,tenant_id,revision,trigger,actions,created_at FROM lifecycle_workflow_revisions WHERE tenant_id=$1 AND workflow_id=$2 AND revision=$3`, tenantID, workflowID, number).Scan(&revision.WorkflowID, &revision.TenantID, &revision.Revision, &trigger, &actions, &revision.CreatedAt)
+	row, err := New(r.Pool).FindLifecycleWorkflowRevision(ctx, FindLifecycleWorkflowRevisionParams{
+		TenantID: tenantID, WorkflowID: workflowID, Revision: number,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(trigger, &revision.Trigger); err != nil {
+	revision := &igdomain.LifecycleWorkflowRevision{
+		WorkflowID: row.WorkflowID,
+		TenantID:   row.TenantID,
+		Revision:   row.Revision,
+		CreatedAt:  row.CreatedAt,
+	}
+	if err := json.Unmarshal(row.Trigger, &revision.Trigger); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(actions, &revision.Actions); err != nil {
+	if err := json.Unmarshal(row.Actions, &revision.Actions); err != nil {
 		return nil, err
 	}
 	return revision, revision.Validate()
@@ -105,6 +127,12 @@ func (r *LifecycleWorkflowRepository) SaveRevision(ctx context.Context, revision
 	if err != nil {
 		return err
 	}
-	_, err = r.Pool.Exec(ctx, `INSERT INTO lifecycle_workflow_revisions (workflow_id,tenant_id,revision,trigger,actions,created_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (workflow_id,revision) DO NOTHING`, revision.WorkflowID, revision.TenantID, revision.Revision, trigger, actions, revision.CreatedAt)
-	return err
+	return New(r.Pool).SaveLifecycleWorkflowRevision(ctx, SaveLifecycleWorkflowRevisionParams{
+		WorkflowID: revision.WorkflowID,
+		TenantID:   revision.TenantID,
+		Revision:   revision.Revision,
+		Trigger:    trigger,
+		Actions:    actions,
+		CreatedAt:  revision.CreatedAt,
+	})
 }

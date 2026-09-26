@@ -52,7 +52,9 @@ func (c UserImportRowCommitter) CommitUserImportRow(ctx context.Context, mutatio
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO password_history (id, user_id, encoded, created_at) VALUES ($1, $2, $3, $4)`, historyID, mutation.After.ID, mutation.PasswordHistoryHash, mutation.Now); err != nil {
+		if err := New(tx).InsertImportedPasswordHistory(ctx, InsertImportedPasswordHistoryParams{
+			ID: historyID, UserID: mutation.After.ID, Encoded: mutation.PasswordHistoryHash, CreatedAt: mutation.Now,
+		}); err != nil {
 			return err
 		}
 	}
@@ -66,8 +68,10 @@ func (c UserImportRowCommitter) CommitUserImportRow(ctx context.Context, mutatio
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO audit_events (id, tenant_id, type, user_id, occurred_at, payload)
-        VALUES ($1, $2, $3, $4, $5, $6)`, auditID, mutation.After.TenantID, mutation.AuditEventType, mutation.After.ID, mutation.Now, payload); err != nil {
+	if err := New(tx).InsertUserImportAuditEvent(ctx, InsertUserImportAuditEventParams{
+		ID: auditID, TenantID: mutation.After.TenantID, Type: mutation.AuditEventType, UserID: mutation.After.ID,
+		OccurredAt: mutation.Now, Payload: payload,
+	}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

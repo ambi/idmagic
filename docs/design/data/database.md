@@ -523,7 +523,16 @@ erDiagram
 
 永続化ポートと Repository の実装は、対応する Context に属する。Context 固有のメモリと PostgreSQL のアダプターは `backend/<context>/{db_memory,db_postgres}` に置き、共有のデータベース接続プール、行の読み取り、トランザクションのヘルパーは `backend/shared/storage/db_postgres` に置く。一時的な状態も PostgreSQL に統合するため、2 種類目のデータストアは運用しない。
 
-`db_postgres` の静的な SQL 文はすべて `sqlc` の入力とし、型安全な Go コードを生成しなければならない。SQL 文字列を直接渡す `Pool.Query` と `Pool.Exec` は、問い合わせの構造が実行時まで決まらず、`sqlc` の型生成を利用できない場合に限って許される。
+`db_postgres` の静的な SQL 文はすべて `sqlc` の入力とし、型安全な Go コードを生成しなければならない。省略できる絞り込みは `sqlc.narg` で、閉じた集合から列を選ぶ文は列ごとの問い合わせで表す。SQL 文字列を直接渡す `Exec`、`Query`、`QueryRow` は、`sqlc` で表せない次の場合に限って許される。
+
+| 場合 | 例 |
+| --- | --- |
+| 条件の数や演算子が要求ごとに変わる | 監査イベントの検索で、絞り込み式の数だけ `EXISTS` を連言でつなぐ |
+| DDL を適用する | テストと開発環境で `infra/schema/postgres.sql` を投入する |
+| `sqlc` の生成コードから受け取った SQL を中継する | `DBTX` を実装する `ResilientDB` |
+| 接続ごとのセッションを設定する | 接続の確立時に `statement_timeout` を設定する |
+
+例外とする呼び出しは、その直前の行に `//sql:raw <理由>` を書く。`mise run check-repository` の `raw-sql` 検査は、`backend/` のテスト以外の Go コードから、第 1 引数に context を取るこれらの呼び出しを探し、理由のある印がないものを拒否する。
 
 PostgreSQL の構造をどう変え、どう適用するかは[スキーマ管理](schema-management.md)が定める。
 

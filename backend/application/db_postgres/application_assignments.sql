@@ -56,3 +56,14 @@ WHERE aa.application_id = $2 AND aa.subject_type = $3 AND aa.subject_id = $4
 -- name: DeleteApplicationAssignmentsByApplication :exec
 DELETE FROM application_assignments aa WHERE aa.application_id = $2
   AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.id = $2);
+
+-- name: ListApplicationAssignmentsBySubjects :many
+-- sqlc は引数が 2 つの UNNEST を解決できないので、1 次元の UNNEST を序数で突き合わせて組にする。
+-- subject_id は UUID 列なので、パラメーターは text[] のまま列側を text にして比べる。
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = sqlc.arg(tenant_id) AND (aa.subject_type, aa.subject_id::text) IN (
+  SELECT t.subject_type, s.subject_id
+  FROM UNNEST(sqlc.arg(subject_types)::text[]) WITH ORDINALITY AS t(subject_type, n)
+  JOIN UNNEST(sqlc.arg(subject_ids)::text[]) WITH ORDINALITY AS s(subject_id, n) ON s.n = t.n
+);

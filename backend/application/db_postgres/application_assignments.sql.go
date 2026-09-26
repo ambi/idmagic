@@ -277,6 +277,62 @@ func (q *Queries) ListApplicationAssignmentsByApplicationPageBefore(ctx context.
 	return items, nil
 }
 
+const listApplicationAssignmentsBySubjects = `-- name: ListApplicationAssignmentsBySubjects :many
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND (aa.subject_type, aa.subject_id::text) IN (
+  SELECT t.subject_type, s.subject_id
+  FROM UNNEST($2::text[]) WITH ORDINALITY AS t(subject_type, n)
+  JOIN UNNEST($3::text[]) WITH ORDINALITY AS s(subject_id, n) ON s.n = t.n
+)
+`
+
+type ListApplicationAssignmentsBySubjectsParams struct {
+	TenantID     string
+	SubjectTypes []string
+	SubjectIds   []string
+}
+
+type ListApplicationAssignmentsBySubjectsRow struct {
+	TenantID      string
+	ApplicationID string
+	SubjectType   string
+	SubjectID     string
+	Visibility    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// sqlc は引数が 2 つの UNNEST を解決できないので、1 次元の UNNEST を序数で突き合わせて組にする。
+// subject_id は UUID 列なので、パラメーターは text[] のまま列側を text にして比べる。
+func (q *Queries) ListApplicationAssignmentsBySubjects(ctx context.Context, arg ListApplicationAssignmentsBySubjectsParams) ([]*ListApplicationAssignmentsBySubjectsRow, error) {
+	rows, err := q.db.Query(ctx, listApplicationAssignmentsBySubjects, arg.TenantID, arg.SubjectTypes, arg.SubjectIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListApplicationAssignmentsBySubjectsRow
+	for rows.Next() {
+		var i ListApplicationAssignmentsBySubjectsRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ApplicationID,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listApplicationAssignmentsByTenant = `-- name: ListApplicationAssignmentsByTenant :many
 SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
 FROM application_assignments aa JOIN applications a ON a.id = aa.application_id

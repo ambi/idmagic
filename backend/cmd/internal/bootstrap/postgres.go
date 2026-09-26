@@ -54,6 +54,7 @@ import (
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
+	saltspostgres "github.com/ambi/idmagic/backend/shared/security/salts_postgres"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalspostgres "github.com/ambi/idmagic/backend/sharedsignals/db_postgres"
@@ -221,7 +222,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
 		Audit: audit.Module{
 			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},
-			TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),
+			TenantSaltStore: saltspostgres.NewTenantSaltStore(resilientDB),
 		},
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml: saml.Module{

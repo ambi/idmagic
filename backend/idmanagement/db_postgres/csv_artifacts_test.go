@@ -42,6 +42,42 @@ func TestCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {
 	}
 }
 
+// 読み取りはチャンクを csvChunkReadBatch 個ずつ問い合わせる。一度の問い合わせで
+// 足りる大きさでは、続きを読む経路と、ちょうど読み切った後の空の問い合わせを通らない。
+func TestCSVArtifactStoreReadsAcrossChunkBatches(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	store := &CSVArtifactStore{Pool: db}
+	batchBytes := csvArtifactChunkBytes * csvChunkReadBatch
+	for name, size := range map[string]int{
+		"exact multiple of a batch": 2 * batchBytes,
+		"one byte past two batches": 2*batchBytes + 1,
+	} {
+		t.Run(name, func(t *testing.T) {
+			want := make([]byte, size)
+			for i := range want {
+				want[i] = byte(i % 251)
+			}
+			metadata, err := store.PutCSVArtifact(context.Background(), tenant.ID, func(output io.Writer) error {
+				_, err := output.Write(want)
+				return err
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader, _, err := store.OpenCSVArtifact(context.Background(), tenant.ID, metadata.Ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := io.ReadAll(reader)
+			_ = reader.Close()
+			if err != nil || !bytes.Equal(got, want) {
+				t.Fatalf("read %d bytes, want %d; err=%v", len(got), len(want), err)
+			}
+		})
+	}
+}
+
 func TestCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
@@ -57,8 +93,15 @@ func TestCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	first, _, err := store.ReadCSVArtifactPage(context.Background(), tenant.ID, metadata.Ref, 0)
+	if err != nil || string(first) != `[{"row":2,"code":"invalid_email"}]` {
+		t.Fatalf("first page=%s err=%v", first, err)
+	}
 	page, opened, err := store.ReadCSVArtifactPage(context.Background(), tenant.ID, metadata.Ref, 1)
 	if err != nil || string(page) != `[{"row":202,"code":"source_managed"}]` || opened.SHA256 != metadata.SHA256 {
 		t.Fatalf("page=%s metadata=%+v err=%v", page, opened, err)
+	}
+	if _, _, err := store.ReadCSVArtifactPage(context.Background(), tenant.ID, metadata.Ref, -1); !errors.Is(err, idmports.ErrCSVArtifactNotFound) {
+		t.Fatalf("negative page err=%v, want ErrCSVArtifactNotFound", err)
 	}
 }

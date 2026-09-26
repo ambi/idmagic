@@ -122,6 +122,7 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 }
 
 func resetSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	//sql:raw スキーマを作り直す DDL であり、問い合わせではない。
 	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public"); err != nil {
 		return fmt.Errorf("reset PostgreSQL schema: %w", err)
 	}
@@ -133,6 +134,7 @@ func applySchema(ctx context.Context, pool *pgxpool.Pool, path string) error {
 	if err != nil {
 		return fmt.Errorf("read PostgreSQL schema: %w", err)
 	}
+	//sql:raw infra/schema/postgres.sql の DDL を適用する。
 	if _, err := pool.Exec(ctx, string(schema)); err != nil {
 		return fmt.Errorf("apply PostgreSQL schema: %w", err)
 	}

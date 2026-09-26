@@ -70,6 +70,7 @@ func (db *ResilientDB) Query(ctx context.Context, sql string, args ...any) (pgx.
 		return nil, err
 	}
 	qctx, cancel := db.withTimeout(ctx)
+	//sql:raw sqlc の DBTX を実装する中継であり、SQL は生成コードから渡される。
 	rows, err := db.pool.Query(qctx, sql, args...)
 	if err != nil {
 		complete(err)
@@ -86,6 +87,7 @@ func (db *ResilientDB) QueryRow(ctx context.Context, sql string, args ...any) pg
 	}
 	qctx, cancel := db.withTimeout(ctx)
 	return &resilientRow{
+		//sql:raw sqlc の DBTX を実装する中継であり、SQL は生成コードから渡される。
 		row:      db.pool.QueryRow(qctx, sql, args...),
 		cancel:   cancel,
 		complete: complete,
@@ -99,6 +101,7 @@ func (db *ResilientDB) Exec(ctx context.Context, sql string, args ...any) (pgcon
 		defer cancel()
 
 		var qerr error
+		//sql:raw sqlc の DBTX を実装する中継であり、SQL は生成コードから渡される。
 		tag, qerr = db.pool.Exec(qctx, sql, args...)
 		return qerr
 	})
@@ -195,6 +198,7 @@ func Open(ctx context.Context, databaseURL string, cfg DBConfig) (*pgxpool.Pool,
 
 	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		RegisterUUIDAsText(conn)
+		//sql:raw 接続ごとのセッション設定である。起動パラメーターにすると、許可したもの以外を拒否する PgBouncer などの前段で接続できなくなる。
 		_, err := conn.Exec(ctx, "SET statement_timeout = '5s'; SET idle_in_transaction_session_timeout = '30s'")
 		return err
 	}

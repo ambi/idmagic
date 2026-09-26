@@ -137,14 +137,14 @@ func writeGroupImportAudit(ctx context.Context, tx pgx.Tx, mutation groupports.G
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO audit_events (id, tenant_id, type, user_id, occurred_at, payload)
-        VALUES ($1, $2, $3, $4, $5, $6)`, auditID, tenantID, mutation.AuditEventType, mutation.ActorUserID, mutation.Now, payload)
-	return err
+	return New(tx).InsertGroupImportAuditEvent(ctx, InsertGroupImportAuditEventParams{
+		ID: auditID, TenantID: tenantID, Type: mutation.AuditEventType, UserID: mutation.ActorUserID,
+		OccurredAt: mutation.Now, Payload: payload,
+	})
 }
 
 // enqueueGroupReconcileInTx は再評価ジョブを行と同じトランザクションへ入れる。
-// Jobs のリポジトリは接続プールを要求するため、ここでは投入だけを同じ SQL 形で
-// 直接行う。dedup key は Jobs の部分一意索引がそのまま効く。
+// Jobs のリポジトリは接続プールを要求するため、ここでは投入だけを同じ形の SQL で行う。
 func enqueueGroupReconcileInTx(ctx context.Context, tx pgx.Tx, mutation groupports.GroupImportRowMutation) error {
 	params, err := json.Marshal(map[string]any{
 		"group_id": mutation.ReconcileGroupID, "rule_version": mutation.ReconcileVersion,
@@ -157,13 +157,11 @@ func enqueueGroupReconcileInTx(ctx context.Context, tx pgx.Tx, mutation grouppor
 		return err
 	}
 	dedupKey := fmt.Sprintf("dynamic-group:%s:v%d", mutation.ReconcileGroupID, mutation.ReconcileVersion)
-	_, err = tx.Exec(ctx, `INSERT INTO jobs (id, tenant_id, kind, lane, status, params, attempts, max_attempts, dedup_key, run_at, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, 'queued', $5, 0, $6, $7, $8, $8, $8)
-        ON CONFLICT (tenant_id, dedup_key) WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running')
-        DO NOTHING`,
-		id, mutation.After.TenantID, string(jobsdomain.KindDynamicGroupReconcile), string(jobsdomain.LaneBulk),
-		params, jobsdomain.DefaultMaxAttempts, dedupKey, mutation.Now)
-	return err
+	return New(tx).EnqueueGroupReconcileJob(ctx, EnqueueGroupReconcileJobParams{
+		ID: id, TenantID: mutation.After.TenantID, Kind: string(jobsdomain.KindDynamicGroupReconcile),
+		Lane: string(jobsdomain.LaneBulk), Params: params, MaxAttempts: jobsdomain.DefaultMaxAttempts,
+		DedupKey: dedupKey, Now: mutation.Now,
+	})
 }
 
 var _ groupports.GroupImportRowCommitter = GroupImportRowCommitter{}

@@ -94,3 +94,19 @@ SELECT
 FROM jobs
 WHERE status IN ('queued', 'running')
 GROUP BY lane;
+
+-- name: ListJobsForAdmin :many
+-- 絞り込みはすべて省略でき、NULL の引数はその条件を外す。管理コンソールの一覧は頻度が低いので、
+-- 条件の組み合わせごとに文を分けず 1 文にする。id を継続の組に含めるのは、同じ瞬間に投入された
+-- 2 件がページの境目で落ちたり重複したりしないようにするためである。
+SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key,
+  lease_owner, lease_expires_at, run_at, created_at, updated_at
+FROM jobs
+WHERE (sqlc.narg(tenant_id)::text IS NULL OR tenant_id = sqlc.narg(tenant_id)::text::uuid)
+  AND (sqlc.narg(statuses)::text[] IS NULL OR status = ANY(sqlc.narg(statuses)::text[]))
+  AND (sqlc.narg(kinds)::text[] IS NULL OR kind = ANY(sqlc.narg(kinds)::text[]))
+  AND (sqlc.narg(lane)::text IS NULL OR lane = sqlc.narg(lane)::text)
+  AND (sqlc.narg(before_created_at)::timestamptz IS NULL
+    OR (created_at, id) < (sqlc.narg(before_created_at)::timestamptz, sqlc.narg(before_id)::text::uuid))
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg(page_limit);

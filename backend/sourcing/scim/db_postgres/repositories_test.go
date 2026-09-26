@@ -128,3 +128,44 @@ func TestScimRepositoryRefs(t *testing.T) {
 		t.Fatalf("delete group ref: %v", err)
 	}
 }
+
+func TestScimRepositoryResolvesRefsInBulkWithinTheTenant(t *testing.T) {
+	db := pgtest.Require(t)
+	ctx := context.Background()
+	tenant := seedTenant(t, db)
+	other := seedTenant(t, db)
+	repo := &ScimRepository{Pool: db}
+	owned, unowned, foreign := seedUser(t, db, tenant.ID), seedUser(t, db, tenant.ID), seedUser(t, db, other.ID)
+	ownedGroup, foreignGroup := seedGroup(t, db, tenant.ID), seedGroup(t, db, other.ID)
+	for _, ref := range []*ports.ScimUserRef{
+		{TenantID: tenant.ID, ScimID: "scim-" + newUUID(t), UserID: owned.ID},
+		{TenantID: other.ID, ScimID: "scim-" + newUUID(t), UserID: foreign.ID},
+	} {
+		if err := repo.SaveUserRef(ctx, ref); err != nil {
+			t.Fatalf("save user ref: %v", err)
+		}
+	}
+	for _, ref := range []*ports.ScimGroupRef{
+		{TenantID: tenant.ID, ScimID: "scim-" + newUUID(t), GroupID: ownedGroup.ID},
+		{TenantID: other.ID, ScimID: "scim-" + newUUID(t), GroupID: foreignGroup.ID},
+	} {
+		if err := repo.SaveGroupRef(ctx, ref); err != nil {
+			t.Fatalf("save group ref: %v", err)
+		}
+	}
+
+	userRefs, err := repo.FindUserRefsByUserIDs(ctx, tenant.ID, []string{owned.ID, unowned.ID, foreign.ID})
+	if err != nil {
+		t.Fatalf("FindUserRefsByUserIDs: %v", err)
+	}
+	if len(userRefs) != 1 || userRefs[0].UserID != owned.ID || userRefs[0].TenantID != tenant.ID {
+		t.Fatalf("user refs = %+v, want only the ref of %s", userRefs, owned.ID)
+	}
+	groupRefs, err := repo.FindGroupRefsByGroupIDs(ctx, tenant.ID, []string{ownedGroup.ID, foreignGroup.ID})
+	if err != nil {
+		t.Fatalf("FindGroupRefsByGroupIDs: %v", err)
+	}
+	if len(groupRefs) != 1 || groupRefs[0].GroupID != ownedGroup.ID || groupRefs[0].TenantID != tenant.ID {
+		t.Fatalf("group refs = %+v, want only the ref of %s", groupRefs, ownedGroup.ID)
+	}
+}

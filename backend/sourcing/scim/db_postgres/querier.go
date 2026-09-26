@@ -15,6 +15,12 @@ type Querier interface {
 	FindScimGroupRefByScimID(ctx context.Context, arg FindScimGroupRefByScimIDParams) (*FindScimGroupRefByScimIDRow, error)
 	FindScimUserRefByScimID(ctx context.Context, arg FindScimUserRefByScimIDParams) (*FindScimUserRefByScimIDRow, error)
 	FindScimUserRefByUserID(ctx context.Context, arg FindScimUserRefByUserIDParams) (*FindScimUserRefByUserIDRow, error)
+	// 接続は uuid を text として登録しているが、uuid[] の要素はバイナリで符号化されるため、
+	// 配列は text[] で受け取ってから uuid[] にする。
+	ListScimGroupRefsByGroupIDs(ctx context.Context, arg ListScimGroupRefsByGroupIDsParams) ([]*ListScimGroupRefsByGroupIDsRow, error)
+	// 接続は uuid を text として登録しているが、uuid[] の要素はバイナリで符号化されるため、
+	// 配列は text[] で受け取ってから uuid[] にする。
+	ListScimUserRefsByUserIDs(ctx context.Context, arg ListScimUserRefsByUserIDsParams) ([]*ListScimUserRefsByUserIDsRow, error)
 	SaveScimGroupRef(ctx context.Context, arg SaveScimGroupRefParams) error
 	SaveScimUserRef(ctx context.Context, arg SaveScimUserRefParams) error
 }

@@ -15,10 +15,3 @@ import (
 func TestMain(m *testing.M) {
 	os.Exit(pgtest.Main(m))
 }
-
-// requireDB は DB を利用できない環境でテストをスキップし、利用できる場合は
-// 共有プールを DB として返す。
-func requireDB(t *testing.T) DB {
-	t.Helper()
-	return pgtest.Require(t)
-}

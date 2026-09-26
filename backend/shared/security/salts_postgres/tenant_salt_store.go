@@ -1,4 +1,4 @@
-package db_postgres
+package salts_postgres
 
 import (
 	"context"
@@ -14,10 +14,10 @@ const tenantSaltBytes = 32
 
 // TenantSaltStore は相関 salt の PostgreSQL 実装 (wi-145)。
 // tenant scope は ctx (tenancy.TenantID) から解決し、初回取得時に generate-on-first-use する。
-type TenantSaltStore struct{ Pool DB }
+type TenantSaltStore struct{ Pool DBTX }
 
 // NewTenantSaltStore は salt ストアを構築する。テーブルは infra/schema/postgres.sql で用意する。
-func NewTenantSaltStore(pool DB) *TenantSaltStore {
+func NewTenantSaltStore(pool DBTX) *TenantSaltStore {
 	return &TenantSaltStore{Pool: pool}
 }
 
@@ -26,7 +26,8 @@ func NewTenantSaltStore(pool DB) *TenantSaltStore {
 func (s *TenantSaltStore) GetSalt(ctx context.Context) ([]byte, error) {
 	tenantID := tenancy.TenantID(ctx)
 
-	salt, err := s.selectSalt(ctx, tenantID)
+	queries := New(s.Pool)
+	salt, err := queries.FindTenantCorrelationSalt(ctx, tenantID)
 	if err == nil {
 		return salt, nil
 	}
@@ -38,20 +39,9 @@ func (s *TenantSaltStore) GetSalt(ctx context.Context) ([]byte, error) {
 	if _, err := rand.Read(fresh); err != nil {
 		return nil, err
 	}
-	if _, err := s.Pool.Exec(ctx,
-		"INSERT INTO tenant_correlation_salts (tenant_id, salt) VALUES ($1, $2) ON CONFLICT (tenant_id) DO NOTHING",
-		tenantID, fresh); err != nil {
+	if err := queries.InsertTenantCorrelationSalt(ctx, InsertTenantCorrelationSaltParams{TenantID: tenantID, Salt: fresh}); err != nil {
 		return nil, err
 	}
 	// 別プロセスが先に生成していればその値を、そうでなければ今入れた値を読む。
-	return s.selectSalt(ctx, tenantID)
-}
-
-func (s *TenantSaltStore) selectSalt(ctx context.Context, tenantID string) ([]byte, error) {
-	var salt []byte
-	if err := s.Pool.QueryRow(ctx,
-		"SELECT salt FROM tenant_correlation_salts WHERE tenant_id=$1", tenantID).Scan(&salt); err != nil {
-		return nil, err
-	}
-	return salt, nil
+	return queries.FindTenantCorrelationSalt(ctx, tenantID)
 }

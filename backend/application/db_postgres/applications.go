@@ -508,9 +508,6 @@ func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(ctx contex
 	return out, nil
 }
 
-// ListBySubjects は (subject_type, subject_id) ペア配列との UNNEST 突き合わせが必要で、
-// sqlc の静的解析が UNNEST の引数型を解決できないため手書き pgx のままとする
-// (動的クエリのエスケープハッチ)。
 func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, tenantID string, subjects []appports.SubjectRef) ([]*domain.ApplicationAssignment, error) {
 	if len(subjects) == 0 {
 		return []*domain.ApplicationAssignment{}, nil
@@ -521,26 +518,17 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 		types[i] = string(s.Type)
 		ids[i] = s.ID
 	}
-	// (subject_type, subject_id) のペアを UNNEST で突き合わせる。subject_id は UUID 列の
-	// ため、パラメータは text[] のまま列側を text にキャストして比較する。
-	const assignmentSelect = `SELECT a.tenant_id,aa.application_id,aa.subject_type,aa.subject_id,aa.visibility,aa.created_at,aa.updated_at FROM application_assignments aa JOIN applications a ON a.id=aa.application_id`
-	rows, err := r.Pool.Query(ctx, assignmentSelect+`
- WHERE a.tenant_id=$1 AND (aa.subject_type,aa.subject_id::text) IN (
-   SELECT subject_type, subject_id FROM UNNEST($2::text[], $3::text[]) AS s(subject_type, subject_id)
- )`, tenantID, types, ids)
+	rows, err := New(r.Pool).ListApplicationAssignmentsBySubjects(ctx, ListApplicationAssignmentsBySubjectsParams{
+		TenantID: tenantID, SubjectTypes: types, SubjectIds: ids,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*domain.ApplicationAssignment{}
-	for rows.Next() {
-		var a domain.ApplicationAssignment
-		if err := rows.Scan(&a.TenantID, &a.ApplicationID, &a.SubjectType, &a.SubjectID, &a.Visibility, &a.CreatedAt, &a.UpdatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, &a)
+	out := make([]*domain.ApplicationAssignment, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *ApplicationAssignmentRepository) Save(ctx context.Context, a *domain.ApplicationAssignment) error {

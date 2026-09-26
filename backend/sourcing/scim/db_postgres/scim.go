@@ -45,21 +45,15 @@ func (r *ScimRepository) FindUserRefsByUserIDs(ctx context.Context, tenantID str
 	if len(userIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := r.Pool.Query(ctx, `SELECT tenant_id, scim_id, user_id FROM scim_user_refs
-        WHERE tenant_id = $1 AND user_id = ANY($2::uuid[])`, tenantID, userIDs)
+	rows, err := New(r.Pool).ListScimUserRefsByUserIDs(ctx, ListScimUserRefsByUserIDsParams{TenantID: tenantID, UserIds: userIDs})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	result := make([]*ports.ScimUserRef, 0, len(userIDs))
-	for rows.Next() {
-		ref := &ports.ScimUserRef{}
-		if err := rows.Scan(&ref.TenantID, &ref.ScimID, &ref.UserID); err != nil {
-			return nil, err
-		}
-		result = append(result, ref)
+	result := make([]*ports.ScimUserRef, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &ports.ScimUserRef{TenantID: row.TenantID, ScimID: row.ScimID, UserID: row.UserID})
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 func (r *ScimRepository) DeleteUserRef(ctx context.Context, tenantID, scimID string) error {
@@ -104,19 +98,13 @@ func (r *ScimRepository) FindGroupRefsByGroupIDs(ctx context.Context, tenantID s
 	if len(groupIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := r.Pool.Query(ctx, `SELECT tenant_id, scim_id, group_id FROM scim_group_refs
-        WHERE tenant_id = $1 AND group_id = ANY($2::uuid[])`, tenantID, groupIDs)
+	rows, err := New(r.Pool).ListScimGroupRefsByGroupIDs(ctx, ListScimGroupRefsByGroupIDsParams{TenantID: tenantID, GroupIds: groupIDs})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	result := make([]*ports.ScimGroupRef, 0, len(groupIDs))
-	for rows.Next() {
-		ref := &ports.ScimGroupRef{}
-		if err := rows.Scan(&ref.TenantID, &ref.ScimID, &ref.GroupID); err != nil {
-			return nil, err
-		}
-		result = append(result, ref)
+	result := make([]*ports.ScimGroupRef, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &ports.ScimGroupRef{TenantID: row.TenantID, ScimID: row.ScimID, GroupID: row.GroupID})
 	}
-	return result, rows.Err()
+	return result, nil
 }

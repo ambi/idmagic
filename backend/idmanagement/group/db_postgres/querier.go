@@ -14,9 +14,13 @@ type Querier interface {
 	CountGroupsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error
 	DeleteTenantGroupAttributeSchema(ctx context.Context, tenantID string) error
+	// dedup_key は Jobs の部分一意索引がそのまま効く。
+	EnqueueGroupReconcileJob(ctx context.Context, arg EnqueueGroupReconcileJobParams) error
 	FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
 	FindTenantGroupAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantGroupAttributeSchema, error)
+	// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+	InsertGroupImportAuditEvent(ctx context.Context, arg InsertGroupImportAuditEventParams) error
 	ListDynamicGroupRules(ctx context.Context, tenantID string) ([]string, error)
 	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)
 	ListGroupsByTenant(ctx context.Context, tenantID string) ([]*Group, error)

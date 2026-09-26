@@ -9,6 +9,7 @@ import { checkContractDrift } from './check-contract-drift.ts'
 import { checkDocuments } from './check-documents.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
+import { checkRawSql } from './check-raw-sql.ts'
 import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
 import { checkSloReferences } from './check-slo-references.ts'
@@ -26,6 +27,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'terminology', groups: ['all'], run: checkTerminology },
   { name: 'work-item-references', groups: ['all'], run: checkDocsWorkItemLinks },
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
+  { name: 'raw-sql', groups: ['all'], run: checkRawSql },
   { name: 'command-map', groups: ['all'], run: checkCommandMap },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },
   { name: 'admin-scopes', groups: ['all'], run: checkAdminScopes },

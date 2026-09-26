@@ -132,6 +132,7 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		order = " ORDER BY occurred_at ASC, id ASC"
 	}
 	query := auditEventSelect + where + order + fmt.Sprintf(" LIMIT $%d", len(args))
+	//sql:raw 絞り込み式の数と演算子が要求ごとに変わり、式の数だけ EXISTS を連言でつなぐ。
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return handleAuditListError(err)
@@ -229,6 +230,7 @@ func (r *AuditEventRepository) Count(ctx context.Context, q ports.AuditEventQuer
 		where = " WHERE " + strings.Join(conds, " AND ")
 	}
 	var count int64
+	//sql:raw List と同じ絞り込み式から WHERE 句を組み立てる。
 	if err := r.Pool.QueryRow(ctx, "SELECT count(*) FROM audit_events"+where, args...).Scan(&count); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgInvalidTextRepresentation {

@@ -1,10 +1,12 @@
-package db_postgres
+package salts_postgres
 
 import (
 	"bytes"
 	"context"
 	"testing"
 
+	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
+	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -15,9 +17,9 @@ func saltTenantCtx(id string) context.Context {
 }
 
 func TestTenantSaltStoreGeneratesAndIsStable(t *testing.T) {
-	db := requireDB(t)
+	db := pgtest.Require(t)
 	store := NewTenantSaltStore(db)
-	ctx := saltTenantCtx(newUUID(t))
+	ctx := saltTenantCtx(pgfixtures.NewUUID(t))
 
 	first, err := store.GetSalt(ctx)
 	if err != nil {
@@ -36,13 +38,13 @@ func TestTenantSaltStoreGeneratesAndIsStable(t *testing.T) {
 }
 
 func TestTenantSaltStoreSeparatesTenants(t *testing.T) {
-	db := requireDB(t)
+	db := pgtest.Require(t)
 	store := NewTenantSaltStore(db)
-	a, err := store.GetSalt(saltTenantCtx(newUUID(t)))
+	a, err := store.GetSalt(saltTenantCtx(pgfixtures.NewUUID(t)))
 	if err != nil {
 		t.Fatalf("GetSalt a: %v", err)
 	}
-	b, err := store.GetSalt(saltTenantCtx(newUUID(t)))
+	b, err := store.GetSalt(saltTenantCtx(pgfixtures.NewUUID(t)))
 	if err != nil {
 		t.Fatalf("GetSalt b: %v", err)
 	}

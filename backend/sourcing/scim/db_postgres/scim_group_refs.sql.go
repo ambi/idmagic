@@ -67,6 +67,44 @@ func (q *Queries) FindScimGroupRefByScimID(ctx context.Context, arg FindScimGrou
 	return &i, err
 }
 
+const listScimGroupRefsByGroupIDs = `-- name: ListScimGroupRefsByGroupIDs :many
+SELECT tenant_id, scim_id, group_id FROM scim_group_refs
+WHERE tenant_id = $1 AND group_id = ANY($2::text[]::uuid[])
+`
+
+type ListScimGroupRefsByGroupIDsParams struct {
+	TenantID string
+	GroupIds []string
+}
+
+type ListScimGroupRefsByGroupIDsRow struct {
+	TenantID string
+	ScimID   string
+	GroupID  string
+}
+
+// 接続は uuid を text として登録しているが、uuid[] の要素はバイナリで符号化されるため、
+// 配列は text[] で受け取ってから uuid[] にする。
+func (q *Queries) ListScimGroupRefsByGroupIDs(ctx context.Context, arg ListScimGroupRefsByGroupIDsParams) ([]*ListScimGroupRefsByGroupIDsRow, error) {
+	rows, err := q.db.Query(ctx, listScimGroupRefsByGroupIDs, arg.TenantID, arg.GroupIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListScimGroupRefsByGroupIDsRow
+	for rows.Next() {
+		var i ListScimGroupRefsByGroupIDsRow
+		if err := rows.Scan(&i.TenantID, &i.ScimID, &i.GroupID); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveScimGroupRef = `-- name: SaveScimGroupRef :exec
 INSERT INTO scim_group_refs (tenant_id, scim_id, group_id)
 VALUES ($1, $2, $3)
