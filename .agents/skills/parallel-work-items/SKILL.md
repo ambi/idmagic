@@ -18,8 +18,11 @@ the `spec-render` Skill.
 2. Open the target work items and read their ids and status. Create anything missing with the
    `new-work-item` Skill first.
 3. Decide the base branch. Without direction, use the current branch.
-4. Decide where worktrees live. Without direction, create them next to the repository as
-   `<repo>-<short-id>`.
+4. Put worktrees under `.worktrees/` at the repository root. The sandbox can write there, the OS does
+   not clean it up the way it cleans `/tmp` or `$TMPDIR`, and `.gitignore` and the repository-root scans
+   (`check-links`, `check-boundaries`, `betterleaks`) already exclude it. A sibling directory such as
+   `../<repo>-<id>` lies outside what the sandbox may write, so an agent falls back to a temporary
+   directory and loses the worktree, with its uncommitted work, when the OS clears it.
 
 ## 1. Create branches and worktrees
 
@@ -27,26 +30,26 @@ Create a branch per work item. A branch is the unit of implementation, review, a
 not settle for a worktree alone.
 
 - branch: `work-item/<work-item-id>`
-- worktree: `../<repo>-<work-item-id>`, or shortened to `../<repo>-wi-<nn>`
+- worktree: `.worktrees/<work-item-id>`, for example `.worktrees/wi-42`
 
 A new branch:
 
 ```sh
 git fetch --all --prune
-git worktree add -b work-item/wi-42-example ../idmagic-wi-42 <base-branch>
+git worktree add -b work-item/wi-42-example .worktrees/wi-42 <base-branch>
 ```
 
 An existing branch checked out into another worktree:
 
 ```sh
-git worktree add ../idmagic-wi-42 work-item/wi-42-example
+git worktree add .worktrees/wi-42 work-item/wi-42-example
 ```
 
 When setting up several work items, confirm each worktree after creating it:
 
 ```sh
 git worktree list
-git -C ../idmagic-wi-42 status --short --branch
+git -C .worktrees/wi-42 status --short --branch
 ```
 
 ## 2. Implement in each worktree
@@ -55,7 +58,7 @@ Assign each worktree to its own agent or terminal. Keep the instruction short an
 item and the worktree path.
 
 ```text
-Use the implement-work-item Skill in /path/to/idmagic-wi-42.
+Use the implement-work-item Skill in /path/to/idmagic/.worktrees/wi-42.
 Implement work-items/wi-42-example.md end to end, verify it, update completion,
 move it to done, and commit the branch. Do not push.
 ```
@@ -83,8 +86,8 @@ Prepare an integration branch and worktree, then take in the completed branches.
 name the branch `integration/work-items`.
 
 ```sh
-git worktree add -b integration/work-items ../idmagic-integration <base-branch>
-cd ../idmagic-integration
+git worktree add -b integration/work-items .worktrees/integration <base-branch>
+cd .worktrees/integration
 git merge --no-ff work-item/wi-42-example
 git merge --no-ff work-item/wi-43-example
 ```
@@ -105,8 +108,8 @@ Remove merged worktrees only after the user confirms. Removal deletes working fi
 nothing is uncommitted first.
 
 ```sh
-git -C ../idmagic-wi-42 status --short
-git worktree remove ../idmagic-wi-42
+git -C .worktrees/wi-42 status --short
+git worktree remove .worktrees/wi-42
 ```
 
 Delete branches, and push or delete remote refs, only when the user explicitly asks.

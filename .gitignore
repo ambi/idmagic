@@ -32,3 +32,6 @@ spec/idmagic.full.html
 
 # Local dev state (persistent embedded PostgreSQL cluster for `mise run dev`)
 /.dev/
+
+# work item 実装用の worktree。parallel-work-items と implement-work-item が作る
+/.worktrees/

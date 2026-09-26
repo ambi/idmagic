@@ -16,7 +16,7 @@ function excluded(path: string): boolean {
 export async function checkLinks(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const documents = new Map<string, string>()
   const existingPaths = new Set<string>()
-  for (const path of await snapshot.files('', ['.git', 'node_modules'])) {
+  for (const path of await snapshot.files('', ['.git', 'node_modules', '.worktrees'])) {
     if (excluded(path)) continue
     existingPaths.add(path)
     let parent = posix.dirname(path)

@@ -21,6 +21,10 @@ paths = [
 ]
 
 [[allowlists]]
+description = "work item 実装用の worktree。中身は別の作業ツリーのファイルであり、それぞれの worktree で走らせる lint-repo が走査する。root 起点で書いた許可がこの下のパスには当たらないので、丸ごと外す。"
+paths = ['''^\.worktrees/''']
+
+[[allowlists]]
 description = "ローカル開発スタックの固定資格情報。dev.sh、docker-compose.dev.yaml、バックアップ訓練が起動する使い捨ての PostgreSQL とデモ利用者のもので、リポジトリの外に対して何の権限も持たない。本番で別の値を要求することは CONFIGURATION.md が定める。"
 paths = [
   '''^dev\.sh$''',

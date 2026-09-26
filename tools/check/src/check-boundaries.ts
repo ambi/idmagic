@@ -10,6 +10,7 @@ export async function checkBoundaries(snapshot: WorkspaceSnapshot): Promise<Chec
   const files = await snapshot.files('', [
     '.git',
     'node_modules',
+    '.worktrees',
     'vendor',
     'dist',
     'build',

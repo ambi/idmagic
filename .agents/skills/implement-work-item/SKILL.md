@@ -5,7 +5,9 @@ description: "Implement a chosen work item end to end: specification first, sepa
 
 # Implementing a work item
 
-1. Begin from a working tree carrying no other work item's changes. One record owns one independently
+1. Begin from a working tree carrying no other work item's changes. When that needs a separate worktree,
+   create it under `.worktrees/<work-item-id>` as `parallel-work-items` describes, never under `/tmp` or
+   `$TMPDIR`. One record owns one independently
    acceptable outcome, while that record may use multiple commits to keep structural and behavioral changes
    separate as `docs/development/coding-style.md` requires. Then run
    `mise run brief -- <work-item>` and make a **readiness pass** before editing frontmatter. Read what the brief
@@ -53,6 +55,13 @@ description: "Implement a chosen work item end to end: specification first, sepa
    a comment that another record owns one. When the work moves between structural and behavioral changes,
    leave each category GREEN and commit it separately; when they share a pull request, put the structural
    commit first.
+   Each time a task in the record reaches GREEN, stage everything and make a checkpoint commit titled
+   `checkpoint(<work-item-id>): <task-id> <what is now GREEN>` without asking first. A lost or cleaned-up
+   working tree then costs one task, not the whole record. Checkpoints are never pushed and never survive
+   into a reviewed commit: before making a real commit — the structural one before behavioral work
+   starts, or the final one in step 11 — fold them. Run `git log --oneline <last real commit>..HEAD`,
+   confirm every listed commit is a checkpoint, then `git reset --soft <last real commit>` and commit the
+   staged result. Interactive rebase is unavailable here, so do not fold with it.
    Retain both failing checks, test names, and applicable normative scenario ids in the task. For tooling,
    documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate
    check that actually failed instead of inventing a product requirement or test boundary.
@@ -88,7 +97,8 @@ description: "Implement a chosen work item end to end: specification first, sepa
     every evidence field required by `WORK_ITEM_FORMAT.md`, reading the completion summary out of
     `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items`, and move the file to `work-items/done/`.
-11. Create any remaining Conventional Commit with `commit`. A record may have multiple commits only where
+11. Fold the remaining checkpoints as step 7 describes, then create any remaining Conventional Commit
+    with `commit`. `git log --oneline <base>..HEAD` must show no `checkpoint(` subject afterwards. A record may have multiple commits only where
     separately reviewable structural and behavioral changes require that boundary. Keep all free-form prose in
     the Completion section in the language used by the work item's prose; do not change that section to English
     for the commit. For the final commit only, translate or summarize the Completion Summary into English and
