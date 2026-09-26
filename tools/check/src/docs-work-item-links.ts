@@ -22,8 +22,8 @@ export type WorkItemLinkFinding = {
   reference: string
 }
 
-/** 変更単位で書く文書と、手順の例として番号を使う文書は対象外にする。 */
-const EXCLUDED_DIRECTORIES: readonly string[] = ['docs/releases/', 'docs/development/']
+/** 変更単位で書くリリース文書は、ファイル名にも work item 名を使うので対象外にする。 */
+const EXCLUDED_DIRECTORIES: readonly string[] = ['docs/releases/']
 
 export function isCurrentStateDocument(path: string): boolean {
   if (!path.startsWith('docs/') || !path.endsWith('.md')) return false

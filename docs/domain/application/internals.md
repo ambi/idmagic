@@ -24,15 +24,15 @@ ApplicationCatalog は、テナントとアプリケーションごとに順序�
 
 デフォルトポリシーとアプリケーションごとのポリシーは合成せず、後者で上書きする。アプリケーションが有効な規則を 1 つでも定義していれば、その規則がテナントのデフォルトを完全に置き換える。定義がなければデフォルトをそのまま適用する。`EffectiveSignInRules(default, app)` がどちらか一方を選び、共通のフェイルクローズ評価器に渡すため、各アプリケーションに実際に適用されるポリシーを 1 つの形で確認できる。
 
-上書きによってアプリケーションはテナントのデフォルトより弱いポリシーを設定できるため、`AppSignInPolicyResponse` は `weaker_than_default` フラグを持つ。要求する認証強度を下げる、再認証の時間制限を緩めるか外す、許可ネットワークを広げる、デフォルトが禁じている信頼済みデバイスによる充足を許す場合に、`AppPolicyWeakerThanDefault(default, app)` がこの値を算出する。保存を禁止するのではなく、UI に警告を表示する。新しいテナントは規則が空の、すべてを許可するデフォルトから始める。デフォルトは通常のテーブル行として保存するので、規則を空にするか行を削除すれば、スキーマを変更せずにすべてを許可する状態へ戻せる。
+上書きによってアプリケーションはテナントのデフォルトより弱いポリシーを設定できるため、`AppSignInPolicyResponse` は `weaker_than_default` フラグを持つ。要求する認証強度を下げる、再認証の時間制限を緩めるか外す、許可ネットワークを広げる、デフォルトが禁じている信頼済みデバイスによる充足を許す場合に、`AppPolicyWeakerThanDefault(default, app)` がこの値を算出する。保存を禁止するのではなく、UI に警告を表示する。新しいテナントは規則が空の、すべてを許可するデフォルトから始める。デフォルトは通常のテーブルのレコードとして保存するので、規則を空にするかレコードを削除すれば、スキーマを変更せずにすべてを許可する状態へ戻せる。
 
 ## アプリケーションとプロトコルの関係
 
 Application に関連付けるプロトコル設定は最大 1 つとし、作成時に固定する。`weblink` アプリケーションにはプロトコル設定を関連付けず、`federated` と `service` のアプリケーションには、OAuth2 クライアント、SAML SP、WS-Federation RP のいずれか 1 つだけを関連付ける。作成後の再接続、切り離し、プロトコル種別の変更には対応しない。
 
-各プロトコルのテーブル（`oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties`）は、`NULL` を許容する一意な `application_id` を持つ。`application_id` が `NULL` でない場合は、テナントと固定のプロトコル判別子も含む複合外部キーで参照する。これにより、2 つのプロトコル行が同じ Application を参照すること、テーブルをまたいで重複して参照すること、テナントや種別が食い違うことをデータベース自身が拒否する。`NULL` は、Dynamic Client Registration や信頼管理 API で作成され、Application カタログには表示しない正当なレコードを表す。そのため、すべてのプロトコル設定に Application を必須とはしない。
+各プロトコルのテーブル（`oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties`）は、`NULL` を許容する一意な `application_id` を持つ。`application_id` が `NULL` でない場合は、テナントと固定のプロトコル判別子も含む複合外部キーで参照する。これにより、2 つのプロトコル設定のレコードが同じ Application を参照すること、テーブルをまたいで重複して参照すること、テナントや種別が食い違うことをデータベース自身が拒否する。`NULL` は、Dynamic Client Registration や信頼管理 API で作成され、Application カタログには表示しない正当なレコードを表す。そのため、すべてのプロトコル設定に Application を必須とはしない。
 
-カタログへの作成では、Application 行の作成とプロトコル行への `application_id` の設定を 1 つのトランザクションで確定する。後半が失敗しても、カタログにだけ表示される孤立した Application は残らない。Application を削除すると、それに紐づくプロトコル設定も連鎖して削除する。一方、Application に属するプロトコル設定を各プロトコルの管理 API から直接削除しようとした場合は、競合として拒否する。削除は必ず関連元の Application を経由する。
+カタログへの作成では、Application のレコードの作成とプロトコル設定のレコードへの `application_id` の設定を 1 つのトランザクションで確定する。後半が失敗しても、カタログにだけ表示される孤立した Application は残らない。Application を削除すると、それに紐づくプロトコル設定も連鎖して削除する。一方、Application に属するプロトコル設定を各プロトコルの管理 API から直接削除しようとした場合は、競合として拒否する。削除は必ず関連元の Application を経由する。
 
 OAuth2 のプロトコルテーブルは `oauth2_clients` とする。SAML と WS-Fed のテーブル（`saml_service_providers`、`wsfed_relying_parties`）と同様に、プロトコル固有の標準用語を使う。
 

@@ -78,7 +78,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 
 判断を保持するレコードは CIBA 固有の形にしない。OpenID AuthZEN の Access Request and Approval Profile が定義する、認可判断の前提条件を要求、追跡、充足、再評価するモデルに合わせ、Aggregate は UUID をキーとする `ApprovalRequest` とする。`auth_req_id` は SHA-256 の照合用ダイジェストだけを保存する 32 バイトのベアラーシークレットであり、`interval_seconds` と `last_polled_at` は転送方式に固有のフィールドである。判断と同時ポーリングを 1 つのストア境界で直列化するため、これらを同じ永続化レコードに置く。アカウントポータルは UUID で承認リクエストを指すため、人間向けインターフェースへベアラーシークレットは渡らない。
 
-`Pending → Approved | Denied | Expired` と `Approved → Consumed` は一方向である。発行ではデバイスグラントの `Exchange` と同じ比較交換をストア上で行い、まだ `approved` の行だけを変更する。そのため、同時に行われた 2 回のポーリングが両方ともトークンを発行することはない。`/token` は未承認のすべての状態をフェイルクローズに扱う。`pending` のポーリングは `authorization_pending`、`interval` より速いポーリングは `slow_down`（`interval` に 5 秒を加算）、拒否は `access_denied`、期限切れは `expired_token`、消費済みリクエストの 2 回目の交換は `invalid_grant` を返す。
+`Pending → Approved | Denied | Expired` と `Approved → Consumed` は一方向である。発行ではデバイスグラントの `Exchange` と同じ比較交換をストア上で行い、まだ `approved` のレコードだけを変更する。そのため、同時に行われた 2 回のポーリングが両方ともトークンを発行することはない。`/token` は未承認のすべての状態をフェイルクローズに扱う。`pending` のポーリングは `authorization_pending`、`interval` より速いポーリングは `slow_down`（`interval` に 5 秒を加算）、拒否は `access_denied`、期限切れは `expired_token`、消費済みリクエストの 2 回目の交換は `invalid_grant` を返す。
 
 実装し、メタデータで広告する配信モードは `poll` だけである。`ping` は接続せず拡張点として残し、通知基盤が必要になる `push` は対象外とする。`user_code` は未対応として広告する。承認画面はすでに User の認証済みセッションとステップアップ認証の背後にあるため、その前へ 2 つ目の弱い共有シークレットを追加しても利点がない。リクエストの有効期間はデフォルトで 300 秒とし、正の `requested_expiry` は 600 秒以下だけを受け入れ、それを超える値または 0 以下の値は拒否する。ポーリング間隔には別の規約を導入せず、デバイスグラントの 5 秒および 5 秒ずつ増加する設定を再利用する。帯域外通知は、テンプレートキーを 1 個追加した既存のテナント上書き可能な通知カタログを再利用し、パスワードリセットやセキュリティ警告と同じ方法で人間へ承認リクエストを届ける。
 

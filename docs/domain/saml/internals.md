@@ -24,7 +24,7 @@ SSO と SLO では、リクエスト先のルートからプロファイルを�
 
 ## AuthnRequest のリプレイ記録
 
-`saml_authnrequest_replays` は、AuthnRequest の ID を初めて受信したときだけ記録する。`RecordIfNew` は `INSERT ... ON CONFLICT DO NOTHING` を実行し、挿入された行数によって初回のリクエストか再送かを判定する。
+`saml_authnrequest_replays` は、AuthnRequest の ID を初めて受信したときだけ記録する。`RecordIfNew` は `INSERT ... ON CONFLICT DO NOTHING` を実行し、挿入されたレコード数によって初回のリクエストか再送かを判定する。
 
 ## パース境界のファズテスト
 

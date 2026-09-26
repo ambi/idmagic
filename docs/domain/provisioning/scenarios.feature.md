@@ -269,7 +269,7 @@ Primary actor: `System`
 - When テナント "tenant-b" の管理者が GetProvisioningConnection または GetProvisioningTask を同じ id/task_id で呼ぶ
 - Then ProvisioningConnectionNotFoundError または ProvisioningTaskNotFoundError が返る
 
-## Rule: REQ-PROVISIONING-016 同じ冪等キーの重複したプロビジョニングタスクは既存行に収束する
+## Rule: REQ-PROVISIONING-016 同じ冪等キーの重複したプロビジョニングタスクは既存のレコードに収束する
 
 Primary actor: `System`
 
@@ -277,7 +277,7 @@ Primary actor: `System`
 
 - Given (tenant_id, connection_id, source_type, source_id, source_version) が一致する ProvisioningTask が既に存在する
 - When 同じライフサイクルイベントが at-least-once の配送によって再びイベント同期へ渡される（ディスパッチャーの重複実行または再送を模す）
-- Then 新規 ProvisioningTask は作成されず既存行がそのまま使われる
+- Then 新規 ProvisioningTask は作成されず既存のレコードがそのまま使われる
 
 ## Rule: REQ-PROVISIONING-017 イベント同期直後のキュー投入に失敗しても、定期ディスパッチャーが未関連付けのプロビジョニングタスクを回収する
 

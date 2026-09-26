@@ -116,7 +116,7 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 
 ## 空のデータベースの初期化
 
-新しい PostgreSQL データベースには、同じ `--apply` コマンドで `postgres.sql` を直接適用する。参照データはこのファイルに含めない。デフォルトテナントなどの必須行は、アプリケーションが起動時に収束させる。
+新しい PostgreSQL データベースには、同じ `--apply` コマンドで `postgres.sql` を直接適用する。参照データはこのファイルに含めない。デフォルトテナントなどの必須のレコードは、アプリケーションが起動時に収束させる。
 
 ## 規則
 
@@ -125,11 +125,11 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 
 - データ移行、バックフィル、改名は `data-migrations/` に `YYYY-MM-DD-<変更内容>.sql` として置き、スキーマ適用の前後どちらで実行するかと、後退できるかをファイル冒頭に書く。
 - `postgres.sql` に SQL コメント (`--`) を書かない。設計上の根拠は `docs/design/data/` に置き、DDL の中で言い直さない。`psqldef` の依存順序の解決へコメントが影響しないようにする目的もある。
-- テーブルを追加、削除するとき、テーブル種別（`LOGGED` / `UNLOGGED`）や `tenant_id` 列の区分を変えるときは、`docs/design/data/database.md` の ER 図とテーブル一覧を同じ変更で更新する。`mise run check-schema-tables` が食い違いを検出する。
+- テーブルを追加、削除するとき、テーブル種別（`LOGGED` / `UNLOGGED`）や `tenant_id` カラムの区分を変えるときは、`docs/design/data/database.md` の ER 図とテーブル一覧を同じ変更で更新する。`mise run check-schema-tables` が食い違いを検出する。
 - 次の規約は設計ではなく SQL の書き方に関するため、このファイルで維持する。これを超える内容は `docs/design/data/database.md` を参照する:
-  - テーブル自身の識別子は `id` とする。別のテーブルから `User` を参照する列は `user_id` とし、所有者の参照は `owner_user_id` とする。
-  - すべてのテーブルが `created_at` を持つ。作成後に行を更新できるテーブルは `updated_at` も持つが、挿入専用または削除専用の行は持たない。Domain のタイムスタンプ (`issued_at`、`granted_at`、`occurred_at`、`expires_at`、`revoked_at`、`first_seen`、`last_seen`) はそれぞれの意味を維持し、`created_at` の代わりにはしない。
+  - テーブル自身の識別子は `id` とする。別のテーブルから `User` を参照するカラムは `user_id` とし、所有者の参照は `owner_user_id` とする。
+  - すべてのテーブルが `created_at` を持つ。作成後にレコードを更新できるテーブルは `updated_at` も持つが、挿入専用または削除専用のレコードは持たない。Domain のタイムスタンプ (`issued_at`、`granted_at`、`occurred_at`、`expires_at`、`revoked_at`、`first_seen`、`last_seen`) はそれぞれの意味を維持し、`created_at` の代わりにはしない。
   - 秒精度への丸めは外部プロトコル境界 (SCIM、SAML、WS-Fed の書式化) でのみ行い、スキーマでは行わない。
-  - Go では UUID 列を文字列として保持し、`base.go` が UUID の OID にテキストコーデックを登録する。
-  - 外部キーではない `tenant_id` 列 (`audit_events`、`authentication_event_buckets`) は `TEXT` のままとし、UUID を文字列で保持する。`audit_events` はテナントなしを表す番兵値 `''` も保持する。
+  - Go では UUID カラムを文字列として保持し、`base.go` が UUID の OID にテキストコーデックを登録する。
+  - 外部キーではない `tenant_id` カラム (`audit_events`、`authentication_event_buckets`) は `TEXT` のままとし、UUID を文字列で保持する。`audit_events` はテナントなしを表す番兵値 `''` も保持する。
   - `users.lifecycle` は JSONB 正規化の候補として印を付けている。

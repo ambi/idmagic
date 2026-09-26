@@ -99,6 +99,24 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     term: '資材',
     adopt: '「構成ファイル」。Kubernetes に限るなら「マニフェスト」',
   },
+  // 単独の「行」「列」は CSV、表、ログにも使う一般語なので規則にできない。
+  // データベースの意味にしか読めない複合語だけを固定する。
+  { term: '非キー列', adopt: '「非キーカラム」' },
+  {
+    term: '列型',
+    adopt: '「カラム型」',
+    allow: [{ literal: '配列型', reason: 'array 型であってカラムの型ではない' }],
+  },
+  { term: 'ランブック', adopt: '「運用手順書」' },
+  {
+    term: 'runbook',
+    adopt: '「運用手順書」',
+    allow: [
+      { literal: 'runbooks/', reason: '運用手順書を置くディレクトリのパス' },
+      { literal: 'runbook_url', reason: 'Prometheus のアラートが持つアノテーション名' },
+    ],
+  },
+  { term: 'Runbook', adopt: '「運用手順書」' },
 ]
 
 /** 用語を固定する文書のうち、リポジトリ root 直下にあるもの。 */

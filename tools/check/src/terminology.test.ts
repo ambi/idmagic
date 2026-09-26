@@ -85,6 +85,35 @@ describe('用語検査', () => {
     expect(findings.map((finding) => finding.term)).toEqual(['既定', 'コンピュート', '資材'])
   })
 
+  it('データベースのカラムを列と書いた複合語と、runbook を採用語へ寄せる', () => {
+    const findings = verifyTerminology([
+      {
+        file: 'docs/design/data/database.md',
+        source: '非キー列の列型は、ランブック、runbook、Runbook に書く。\n',
+      },
+    ])
+
+    expect(findings.map((finding) => finding.term)).toEqual([
+      '非キー列',
+      '列型',
+      'ランブック',
+      'runbook',
+      'Runbook',
+    ])
+  })
+
+  // 配列型は列型を含むが別概念であり、runbooks/ と runbook_url はパスとアノテーション名である。
+  it('配列型、運用手順書のパス、アノテーション名は通す', () => {
+    expect(
+      verifyTerminology([
+        {
+          file: 'docs/design/observability/monitoring.md',
+          source: 'JSON の配列型。[手順](../../runbooks/async-jobs.md) を `runbook_url` に置く。\n',
+        },
+      ]),
+    ).toEqual([])
+  })
+
   // 「コンピューティング」は「コンピュート」を含まないので、許可の literal は要らない。
   it('採用語のコンピューティングを落とさない', () => {
     expect(

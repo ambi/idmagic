@@ -2,7 +2,7 @@
 
 ## Transactional Outbox によるトリガーの記録
 
-`IdManagement` は User のライフサイクルイベント (`UserCreated`、`UserAttributesChanged`、`UserStatusChanged`) を、ユーザーの変更と同じトランザクションで Transactional Outbox へ書く。`IdGovernance` はそのイベントを消費し、`WorkflowRun` と `WorkflowStep` の行を作る。これにより、Context をまたぐ単一トランザクションを要求せずに、User だけが更新されて対応する実行が作られない事態を防ぐ。イベントは少なくとも 1 回配信されるため、`(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` の一意制約を使って、同じ発火事象の重複配信を 1 つの実行へ収束させる。
+`IdManagement` は User のライフサイクルイベント (`UserCreated`、`UserAttributesChanged`、`UserStatusChanged`) を、ユーザーの変更と同じトランザクションで Transactional Outbox へ書く。`IdGovernance` はそのイベントを消費し、`WorkflowRun` と `WorkflowStep` のレコードを作る。これにより、Context をまたぐ単一トランザクションを要求せずに、User だけが更新されて対応する実行が作られない事態を防ぐ。イベントは少なくとも 1 回配信されるため、`(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` の一意制約を使って、同じ発火事象の重複配信を 1 つの実行へ収束させる。
 
 ## 公開コマンドによるアクション実行
 

@@ -2,7 +2,7 @@
 
 ## 着手条件
 
-段階的な展開中または展開後に、次のいずれかが成立したらこの runbook を開始する。
+段階的な展開中または展開後に、次のいずれかが成立したらこの運用手順書を開始する。
 
 - 新しいレプリカの `/startupz` または `/readyz` が 5 分間成功しない。
 - `TokenErrorRateBudgetBurn`、`TokenLatencyBudgetBurn`、`LoginErrorRateBudgetBurn`、`LoginLatencyBudgetBurn`、`JobsFailureRatioBudgetBurn` のいずれかが新しいリリース後に発火する。

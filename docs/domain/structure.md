@@ -47,11 +47,13 @@
 
 ## 技術構成
 
-- **バックエンド**：Go。
-- **フロントエンド**：React/TypeScript、Bun。
-- **データベース**：PostgreSQL。
-- **インフラ基盤**：Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Grafana Alloy、k6。
-- **開発ツール管理**：mise。Go、Bun、golangci-lint、sqlc、psqldef、PostgreSQL クライアントのバージョンとリポジトリタスクを `mise.toml` に集約する。
+| 領域 | 採用する技術 |
+| --- | --- |
+| バックエンド | Go |
+| フロントエンド | React/TypeScript、Bun |
+| データベース | PostgreSQL |
+| インフラ基盤 | Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Grafana Alloy、k6 |
+| 開発ツール管理 | mise。Go、Bun、golangci-lint、sqlc、psqldef、PostgreSQL クライアントのバージョンとリポジトリタスクを `mise.toml` に集約する |
 
 ## Context の内部構造
 
@@ -118,7 +120,7 @@ backend/idmanagement/
 
 ### 公開イベントの互換性
 
-公開したイベント種別名と公開項目の名前は、削除も改名もしない。監査記録は追記のみで 7 年保持するので、名前を変えても既存の行は書き換えられず、古い行だけが新しい軸から見えなくなる。項目の追加と、まだ誰も読んでいない内部項目の変更は、この規則の対象ではない。
+公開したイベント種別名と公開項目の名前は、削除も改名もしない。監査記録は追記のみで 7 年保持するので、名前を変えても既存のレコードは書き換えられず、古いレコードだけが新しい軸から見えなくなる。項目の追加と、まだ誰も読んでいない内部項目の変更は、この規則の対象ではない。
 
 リリース済みベースラインとの互換性は判定しない。公開イベントの消費者はこのリポジトリの中にしかおらず、外部の消費者がいない契約にベースラインを敷いても守る相手がいないためである。この判断は、外部に配信する Security Event Token には及ばない。あちらは RFC 8417 が別の契約を定めている。
 

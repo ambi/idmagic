@@ -36,7 +36,7 @@
 
 ## 永続化
 
-`authorization_models` はモデルの版を追記のみで保持し、定義は JSONB に置く。定義は外部から与えられる構造であり、結合や絞り込みの対象にならないためである。`authorization_relation_tuples` はタプルそのものを列に展開し、`(tenant_id, resource_type, resource_id, relation, subject_type, subject_id, subject_relation)` を主キーとする。同じ組の再書き込みが冪等になり、判定の絞り込みが主キーの先頭から効く。主体側からの走査のために `(tenant_id, subject_type, subject_id, subject_relation, resource_type)` の索引を持つ。`authorization_write_versions` はテナントごとの書き込み版を 1 行で保持する。
+`authorization_models` はモデルの版を追記のみで保持し、定義は JSONB に置く。定義は外部から与えられる構造であり、結合や絞り込みの対象にならないためである。`authorization_relation_tuples` はタプルそのものをカラムに展開し、`(tenant_id, resource_type, resource_id, relation, subject_type, subject_id, subject_relation)` を主キーとする。同じ組の再書き込みが冪等になり、判定の絞り込みが主キーの先頭から効く。主体側からの走査のために `(tenant_id, subject_type, subject_id, subject_relation, resource_type)` の索引を持つ。`authorization_write_versions` はテナントごとの書き込み版を 1 レコードで保持する。
 
 メモリアダプターは同じ契約テストを共有し、テストとローカルデモの参照実装として PostgreSQL 版と同じ振る舞いを持つ。
 

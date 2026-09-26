@@ -10,7 +10,7 @@
 
 削除は物理的な除去ではなく匿名化である。`User.lifecycle.status` は `Deleted` へ遷移する。これはどの状態からも到達でき、戻る遷移がない終端状態である。Aggregate は破棄せず、その場で書き換える。`AdminAuditEvent` をはじめとする追記専用の記録が `sub` を参照しており、物理削除はその参照を壊すうえ、「削除済み」と単なる「停止中」の運用上の区別も消してしまうからである。`sub` は永久に保持し、再利用しない。
 
-墓標への置き換えは、ユーザーを再識別または再認証しうるすべての項目を不可分に消す。`preferred_username` は `deleted:<sub>` になり、`name` / `given_name` / `family_name` / `email` は空になり、`email_verified` と `mfa_enrolled` は `false` に戻り、`password_hash` は空になり、`roles` は空になり、疎な `attributes` の対応表は丸ごと消え、`lifecycle.status` は `Deleted` になる。`preferred_username` は墓標を立てた時点で再利用のために解放される。削除されていない行に範囲を限った部分的な一意インデックスにより、墓標の値は将来のユーザーと衝突せず、解放された名前は再び使える。
+墓標への置き換えは、ユーザーを再識別または再認証しうるすべての項目を不可分に消す。`preferred_username` は `deleted:<sub>` になり、`name` / `given_name` / `family_name` / `email` は空になり、`email_verified` と `mfa_enrolled` は `false` に戻り、`password_hash` は空になり、`roles` は空になり、疎な `attributes` の対応表は丸ごと消え、`lifecycle.status` は `Deleted` になる。`preferred_username` は墓標を立てた時点で再利用のために解放される。削除されていないレコードに範囲を限った部分的な一意インデックスにより、墓標の値は将来のユーザーと衝突せず、解放された名前は再び使える。
 
 削除は、削除したユーザーから以後たどれてはならないすべての Aggregate へ同期的にカスケードする。その `sub` に対する `Consent`、`RefreshTokenRecord`、`LoginSession`、`PasswordHistory`、`MfaFactor`、有効な `DeviceAuthorization` の記録をすべて取り除く。PostgreSQL を使うカスケード処理は 1 つのトランザクション内で行う。Valkey に置くセッションやデバイスコードの状態はストアごとに削除する。これらの状態は本来揮発的であり、短い不整合期間はトランザクションを複雑にしないこととのトレードオフとして許容できるためである。
 

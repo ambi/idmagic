@@ -16,7 +16,7 @@
 
 ## AgentWorkloadBindingLifecycle
 
-作成時は `enabled` とする。無効化すると `disabled` に遷移し、それ以降の交換には使えない。再有効化すれば `enabled` に戻せる。削除は状態遷移ではなく行そのものを取り除く終端操作である。
+作成時は `enabled` とする。無効化すると `disabled` に遷移し、それ以降の交換には使えない。再有効化すれば `enabled` に戻せる。削除は状態遷移ではなくレコードそのものを取り除く終端操作である。
 
 | State | Kind | Meaning |
 |---|---|---|

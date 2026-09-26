@@ -329,7 +329,7 @@ Primary actor: `TenantAdministrator`
 - Given "alice" は動的グループを介して "portal" へのグループ割り当て（`subject_type=group`）をすでに持つ
 - When IdManagement の LifecycleWorkflow が "alice" に対して AssignApplicationDesiredState を呼び出す
 - Then "alice" 個人への直接ユーザー割り当て（`subject_type=user`）が作成される
-- Then グループ割り当て（`subject_type=group`）の行は変更されない
+- Then グループ割り当て（`subject_type=group`）のレコードは変更されない
 - When LifecycleWorkflow が後から UnassignApplicationDesiredState を呼び出す
 - Then 直接ユーザー割り当てだけが削除され、グループ割り当ては残る
 - Then フェデレーションは引き続き許可される

@@ -198,14 +198,14 @@ Go はビルド構成ごとに別のテストキャッシュを使うため、`-
 ### レスポンスだけでは副作用を証明できない場合
 
 大半の正常経路では、レスポンスを表明すれば十分である。
-作成した行をボディとして返す、発行したトークンを次の呼び出しで使えるなど、レスポンスを作用から導出しているため、レスポンスを読むテストが作用も間接的に読んでいる。
+作成したレコードをボディとして返す、発行したトークンを次の呼び出しで使えるなど、レスポンスを作用から導出しているため、レスポンスを読むテストが作用も間接的に読んでいる。
 
 この関係が成り立たない処理もある。
 観測可能な応答を作用から導出せず、作用と並ぶ別の分岐で生成する場合は、レスポンスが正しくても作用を誤り得る。
 そのような処理は、一つではなく二つの表明で検査する。
 
 1. **呼び出し元が観測する内容。** ステータスとエラーの種類、または呼び出し元へ返す正常結果。
-2. **実際に起きた内容。** 状態を読み戻し、行を作成していないこと、値が以前のままであること、イベントを発行したことまたは発行していないことを表明する。
+2. **実際に起きた内容。** 状態を読み戻し、レコードを作成していないこと、値が以前のままであること、イベントを発行したことまたは発行していないことを表明する。
 
 重要でありながら抜け落ちやすいのは、二つ目の表明である。
 
@@ -378,7 +378,6 @@ IdMagic の証拠契約は、このリポジトリ向けに調整したもので
 - **OpenSpec：** Fission AI の [OpenSpec](https://github.com/Fission-AI/OpenSpec/blob/f1b521dffac38ed6638689cd28b0c204b1eef0f1/README.md)から、変更単位で提案、仕様、設計、タスク、適用と保管を進めるサイクルを参照した。
   IdMagic は独自の形式を維持し、OpenSpec CLI は採用しない。
 - **エージェントを使う開発の規律：** Robert C. Martin と Justin Martin の [Clean AI: Agentic Engineering](https://learning.oreilly.com/course/clean-ai-agentic/9780135968819/)を、規律あるエージェント支援開発の包括的な参考資料とした。
-  この調整で用いた証拠境界と公開例は `wi-409` に記録している。
 - **ドメイン駆動設計：** Eric Evans の [Domain-Driven Design Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)から、境界づけられたコンテキストと一貫したドメイン語彙を参照した。
 - **クリーンアーキテクチャ：** Robert C. Martin の [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)から、内側へ向く依存関係を参照した。
 - **ヘキサゴナルアーキテクチャ（Ports and Adapters）：** Alistair Cockburn の [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)から、明示的なアプリケーションポートと技術固有のアダプターを参照した。

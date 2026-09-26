@@ -17,6 +17,81 @@
 API は複数の Bounded Context を一つのプロセスに組み立てる。
 Worker と Batch は、長時間処理や再試行を HTTP リクエストから分離する。
 
+## 実行単位が実装する機能
+
+この節は、各実行単位が実装する機能の一覧と、詳細を定める文書を示す。
+機能の振る舞いは所有する Context の文書が定め、ここには種類と参照先だけを置く。
+
+### API
+
+API は、API リファレンスに載るすべてのエンドポイントを、[API ガイドライン](../application/api-guidelines.md)に従って実装する。
+API リファレンスは `spec/` の TypeSpec から生成し、`mise run render-docs` で生成する文書サイトの「API リファレンス」で読む。
+各エンドポイントの振る舞いは、TypeSpec の操作が属する Context の[シナリオ](../../domain/README.md)が定める。
+
+### Worker
+
+Worker は、ジョブのハンドラーと、プロセス内で周期的に動く処理の二種類を実行する。
+ハンドラーは `backend/cmd/idmagic-worker/worker.go` で `JobKind` ごとに登録する。
+ジョブの取得、再試行、レーン、配信不能の扱いは [Jobs](../../domain/jobs/README.md) が定める。
+
+| `JobKind` | 投入する Context | 処理 | 詳細 |
+| --- | --- | --- | --- |
+| `user_import_preview`、`user_import_apply` | IdManagement | 利用者の CSV インポートを検証し、確定する | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
+| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
+| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
+| `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
+| `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
+| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各 Context の秘密情報を新しいバージョンの DEK で再暗号化する | [DataKeys の内部設計](../../domain/data-keys/internals.md) |
+| `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../domain/identity-governance/README.md) |
+| `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../domain/provisioning/internals.md) |
+| `backchannel_logout_delivery` | OAuth2 | OpenID Connect Back-Channel Logout の通知をクライアントへ送る | [OAuth2 のシナリオ](../../domain/oauth2/scenarios.feature.md) |
+| `noop_echo` | Jobs | 入力をそのまま返す。Worker の起動と配線を確かめるためのジョブである | [Jobs のシナリオ](../../domain/jobs/scenarios.feature.md) |
+
+周期的な処理は、ジョブのキューを通らずに Worker のプロセス内で動く。
+
+| 処理 | 内容 | 詳細 |
+| --- | --- | --- |
+| ライフサイクルワークフローのディスパッチ | ジョブへ関連付けられていないワークフロー実行を探し、`lifecycle_workflow_run` のジョブを投入する | [IdGovernance](../../domain/identity-governance/README.md) |
+| プロビジョニングのディスパッチ | 保留中のプロビジョニングタスクを `provisioning_task` のジョブへ関連付ける | [Provisioning の内部設計](../../domain/provisioning/internals.md) |
+| プロビジョニングの照合 | イベント同期が作らなかった差分を探し、プロビジョニングタスクにする | [Provisioning の内部設計](../../domain/provisioning/internals.md) |
+| 短命な状態の掃除 | 認可リクエスト、認可コード、デバイスコード、リプレイ防止、WebAuthn のセッション、流量制御など、期限を過ぎた短命な状態のレコードを削除して領域を回収する。有効期限は読み取り時に判定するので、掃除が遅れても期限は延びない | [データのライフサイクル](../data/lifecycle.md) |
+| セキュリティイベントの配信 | Shared Signals の送信ストリームへ、配信期限が来たセキュリティイベントを送り、再試行と配信不能を管理する | [SharedSignals の状態遷移](../../domain/sharedsignals/states.md) |
+| キューの滞留数の記録 | レーンごとの待機中と実行中のジョブ数をメトリクスへ記録する | [監視設計](../observability/monitoring.md) |
+
+### Batch
+
+Batch は、`idmagic-batch <サブコマンド>` として一回ずつ起動する保守処理である。
+定期実行の間隔は `infra/k8s/base/batch-cronjobs.yaml` の CronJob が一次情報である。
+
+| サブコマンド | 処理 | 実行の契機 | 詳細 |
+| --- | --- | --- | --- |
+| `retention-sweep` | 保持期間を過ぎた監査イベント、認証イベントの集計、認証セッション、既知のサインイン端末を削除する | CronJob（毎時） | [データのライフサイクル](../data/lifecycle.md) |
+| `signing-key-lifecycle` | 署名鍵の世代交代と、JWKS に古い鍵を残す猶予期間を管理する | CronJob（毎日） | [SigningKeys](../../domain/signing-keys/README.md) |
+| `data-key-reencryption-sweep` | テナントと再暗号化の対象ごとに `data_key_reencryption` のジョブを投入する | 運用者が手で起動する。CronJob は宣言していない | [シークレット管理](../security/secrets.md) |
+| `restore-consistency-check` | バックアップから復元したデータベースの件数、署名鍵、ジョブの重複を検査する | 復元手順の最後 | [バックアップ、復元、災害復旧の運用手順書](../../runbooks/backup-restore-dr.md) |
+
+### Seed
+
+Seed は、環境ごとの初期データを宣言したマニフェストを読み、計画して適用する。
+`--mode dry_run` は計画だけを返し、`--mode apply` は各 Context が公開するコマンドを呼んで適用する。
+開発環境では `mise run seed -- <環境> <プロファイル>` で、Kubernetes では Job として起動する。
+
+投入する初期データは、プロファイルごとに `seed/manifests/<プロファイル>.yaml` のマニフェストが宣言する。
+
+| プロファイル | 投入する初期データ | 許される環境 |
+| --- | --- | --- |
+| `bootstrap` | 管理コンソールとマイページが使うファーストパーティーの OAuth クライアント | すべての環境。本番で許されるのはこのプロファイルだけである |
+| `development` | `bootstrap` の内容に加え、デモ用の利用者（`alice`、`root`）、グループ、WS-Federation と SAML のデモ用アプリケーション | 本番以外 |
+| `test` | `development` と同じ内容 | `test` 環境だけ |
+| `performance` | `bootstrap` の内容に加え、負荷試験に使う大量の利用者。件数は `--count` で与える | 本番以外 |
+
+マニフェストの文法、シークレットの参照、環境ごとの制限は [Seeding](../../domain/seeding/README.md) が定める。
+
+### フロントエンドゲートウェイ
+
+フロントエンドゲートウェイが配信する画面は、ログインと認証フロー、マイページ、管理コンソール、システム管理の四つに分かれる。
+画面の一覧は[フロントエンド設計](../application/frontend.md#画面の一覧)が示す。
+
 ## 通信
 
 ブラウザーはフロントエンドゲートウェイと通信し、フロントエンドゲートウェイが API へ HTTP リクエストを中継する。

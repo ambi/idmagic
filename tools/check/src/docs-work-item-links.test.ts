@@ -37,7 +37,7 @@ describe('現在状態の文書からの work item 参照', () => {
     ).toEqual([])
   })
 
-  // 変更単位で書くリリースノートと、手順の例を持つ開発文書は対象にしない。
+  // 変更単位で書くリリースノートは対象にしない。
   it('現在状態を書く文書だけを対象にする', () => {
     expect(isCurrentStateDocument('docs/design/infrastructure/network.md')).toBe(true)
     expect(isCurrentStateDocument('docs/design/architecture/deployment.md')).toBe(true)
@@ -46,7 +46,7 @@ describe('現在状態の文書からの work item 参照', () => {
     expect(isCurrentStateDocument('docs/runbooks/async-jobs.md')).toBe(true)
     expect(isCurrentStateDocument('docs/README.md')).toBe(true)
     expect(isCurrentStateDocument('docs/releases/changes/wi-532.md')).toBe(false)
-    expect(isCurrentStateDocument('docs/development/local-development.md')).toBe(false)
+    expect(isCurrentStateDocument('docs/development/local-development.md')).toBe(true)
     expect(isCurrentStateDocument('docs/design/infrastructure/network.yaml')).toBe(false)
     expect(isCurrentStateDocument('work-items/wi-584-example.md')).toBe(false)
   })

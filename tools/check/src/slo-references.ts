@@ -1,6 +1,6 @@
 /**
  * 監視資材が名指しするサービス目標の ID が実在し、page 級のアラートが到達
- * できる runbook を持つことを確かめる。
+ * できる運用手順書を持つことを確かめる。
  *
  * しきい値の数値そのものは照合しない。アラートが判定するのは error budget の
  * 消費速度であり、目標は 30 日の移動窓で評価する別のものだからである。同じ数を
@@ -13,7 +13,7 @@ export interface Objective {
   id: string
 }
 
-/** 監視資材の中で見つかった、目標 ID への言及または runbook への参照。 */
+/** 監視資材の中で見つかった、目標 ID への言及または運用手順書への参照。 */
 export interface AlertReference {
   alert: string
   severity: string
@@ -64,7 +64,7 @@ export function alertReferences(source: string): AlertReference[] {
 }
 
 /**
- * 名指しした ID が実在すること、`page` のアラートが runbook を持つことを求める。
+ * 名指しした ID が実在すること、`page` のアラートが運用手順書を持つことを求める。
  * 目標に由来しないアラート（スロットルの発動率、ジョブの滞留）は ID を名乗らない
  * ので、名乗ることは求めない。
  */

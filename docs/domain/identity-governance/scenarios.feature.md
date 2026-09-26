@@ -93,7 +93,7 @@ Primary actor: `TenantAdministrator`
 - And 有効化済みのワークフローは "alice" の `department` 変更をトリガーとし、`add_group_member` アクションを定義している
 - When ワークフローが "alice" の `add_group_member` ステップを実行する
 - Then ステップの結果は `no_op` である
-- Then メンバーシップの重複行は作成されない
+- Then メンバーシップの重複レコードは作成されない
 - Then WorkflowRun のステータスは `succeeded` である
 
 ## Rule: REQ-IDGOVERNANCE-006 値が変わらない属性更新と動的グループのアクション指定は境界条件として扱われる

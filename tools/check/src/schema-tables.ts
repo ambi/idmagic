@@ -1,8 +1,8 @@
 /**
  * データベース設計のテーブル一覧が、物理スキーマの宣言と一致することを確かめる。
  *
- * 照合するのは SQL から機械的に決まるもの（テーブル名、テーブル種別、`tenant_id` 列の
- * 区分）に限る。役割と所有 Context は判断を書いた列であり、SQL からは決まらない。
+ * 照合するのは SQL から機械的に決まるもの（テーブル名、テーブル種別、`tenant_id` カラムの
+ * 区分）に限る。役割と所有 Context は判断を書いた表の列であり、SQL からは決まらない。
  */
 
 export type TenantIdPlacement = 'primary-key' | 'primary-key-part' | 'column' | 'absent'
@@ -29,12 +29,12 @@ export interface Finding {
 const LOGGED_KIND = '`LOGGED`'
 const UNLOGGED_KIND = '`UNLOGGED`'
 const KIND_HEADER = 'テーブル種別'
-const TENANT_ID_HEADER = '`tenant_id` 列'
+const TENANT_ID_HEADER = '`tenant_id` カラム'
 
 const TENANT_ID_LABELS: Record<TenantIdPlacement, string> = {
   'primary-key': '単独主キー',
   'primary-key-part': '複合主キーの一部',
-  column: '非キー列',
+  column: '非キーカラム',
   absent: 'なし',
 }
 

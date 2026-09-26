@@ -227,7 +227,7 @@ Primary actor: `Operator`
 ### Example: EX-SYSTEM-012-01 通常経路
 
 - Given PostgreSQL の永続化とクエリタイムアウトが設定されている
-- When System が共通の永続化アダプターで単一行または複数行のクエリを開始する
+- When System が共通の永続化アダプターで単一レコードまたは複数レコードを返すクエリを開始する
 - Then クエリが `Row` または `Rows` を返す
 - When 呼び出し側が期限内に `Scan` または反復処理を完了する
 - Then 結果が `context canceled` にならず返され、接続が解放される
@@ -235,20 +235,20 @@ Primary actor: `Operator`
 ### Example: EX-SYSTEM-012-02 結果の読み取り中にクエリタイムアウトの期限へ到達する
 
 - Given PostgreSQL の永続化とクエリタイムアウトが設定されている
-- When System が共通の永続化アダプターで単一行または複数行のクエリを開始する
+- When System が共通の永続化アダプターで単一レコードまたは複数レコードを返すクエリを開始する
 - Then クエリが `Row` または `Rows` を返す
 - When 呼び出し側が期限内に `Scan` または反復処理を完了する
 - But 結果の読み取り中にクエリタイムアウトの期限へ到達する
 - Then 読み取りは `deadline exceeded` で中断される
 - And 結果を閉じると接続とタイムアウトのリソースが解放される
 
-### Example: EX-SYSTEM-012-03 単一行クエリに該当する行が存在しない
+### Example: EX-SYSTEM-012-03 単一レコードを返すクエリに該当するレコードが存在しない
 
 - Given PostgreSQL の永続化とクエリタイムアウトが設定されている
-- When System が共通の永続化アダプターで単一行または複数行のクエリを開始する
+- When System が共通の永続化アダプターで単一レコードまたは複数レコードを返すクエリを開始する
 - Then クエリが `Row` または `Rows` を返す
 - When 呼び出し側が期限内に `Scan` または反復処理を完了する
-- But 単一行クエリに該当する行が存在しない
+- But 単一レコードを返すクエリに該当するレコードが存在しない
 - Then `Scan` は `no rows` を返す
 - And `no rows` は正常なクエリ結果として扱われ、サーキットブレーカーの失敗率を増加させない
 

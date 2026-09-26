@@ -138,13 +138,13 @@ Primary actor: `Developer`
 - But 同一 JobKind に複数の異なるレーンが重複登録されようとした
 - Then `worker` の起動処理が重複登録を検出して起動を失敗させる
 
-## Rule: REQ-JOBS-011 レーン列を省略した行は `default` レーンで補完され取得対象になる
+## Rule: REQ-JOBS-011 レーンのカラムを省略したレコードは `default` レーンで補完され取得対象になる
 
 Primary actor: `System`
 
 ### Example: EX-JOBS-011-01 通常経路
 
-- Given `lane` 列を省略して作成された `queued` Job "job-default" が存在する
+- Given `lane` カラムを省略して作成された `queued` Job "job-default" が存在する
 - When スキーマの `DEFAULT 'default'` により "job-default" の `lane` が補完される
 - Then `default` レーンから取得する `worker` が "job-default" を取得できる
 

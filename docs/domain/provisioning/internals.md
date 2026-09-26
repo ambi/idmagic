@@ -4,7 +4,7 @@
 
 `Provisioning` はイベント同期の公開ポートを提供する。
 `IdManagement` のユーザー変更処理と `Application` の割り当て変更処理は、自身の変更をコミットした後でこのポートを呼び出す。
-ポートは一致する有効な接続ごとに `pending` の `ProvisioningTask` 行を 1 件挿入する。
+ポートは一致する有効な接続ごとに `pending` の `ProvisioningTask` のレコードを 1 件挿入する。
 イベント同期は反映の遅延を短くする近道であり、失敗しても発火元の変更は確定したまま残る。
 イベント同期の失敗や、イベント同期を呼ばない経路による変更は、次のインクリメンタル同期が回収する。
 プロビジョニングタスクの冪等性には `(tenant, connection, source_type, source_id, source_version)` をキーとして使う。
@@ -49,7 +49,7 @@ User の `delete` を下流へ送ったら、リンクを消す。
 
 `DeprovisionPolicy.grace_period_days` が 1 以上の接続では、`on_delete=delete` へ変換された User の削除から `ProvisioningTask` を作らず、`ScheduledDeprovision` を保存する。
 予約は接続、User、削除イベントのバージョン、期限（削除時刻に猶予日数を足した時刻）を持つ。
-プロビジョニングタスクの行を作らないため、worker が期限前に下流へ DELETE を送ることはない。
+プロビジョニングタスクのレコードを作らないため、worker が期限前に下流へ DELETE を送ることはない。
 
 | 状態 | 意味 | 遷移の契機 |
 | --- | --- | --- |

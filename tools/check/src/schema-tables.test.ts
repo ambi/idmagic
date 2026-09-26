@@ -40,11 +40,11 @@ const SQL = [
 const DOC = [
   '# データベース設計',
   '',
-  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` 列 |',
+  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |',
   '| --- | --- | --- | --- | --- |',
   '| `tenants` | テナントそのもの | Tenancy | `LOGGED` | なし |',
   '| `tenant_quotas` | 上限 | Tenancy | `LOGGED` | 単独主キー |',
-  '| `users` | 利用者 | IdManagement | `LOGGED` | 非キー列 |',
+  '| `users` | 利用者 | IdManagement | `LOGGED` | 非キーカラム |',
   '',
   '本文の表は対象にしない。',
   '',
@@ -52,7 +52,7 @@ const DOC = [
   '| --- | --- |',
   '| `not_a_table` | 見出しが「テーブル」ではない |',
   '',
-  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` 列 |',
+  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |',
   '| --- | --- | --- | --- | --- |',
   '| `scim_user_refs` | 外部 ID の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |',
   '| `group_members` | 所属 | IdManagement | `LOGGED` | なし |',
@@ -127,7 +127,7 @@ describe('compareTables', () => {
 
   it('reports a table described twice', () => {
     const described = describedTables(
-      `${DOC}\n| \`users\` | 重複 | IdManagement | \`LOGGED\` | 非キー列 |`,
+      `${DOC}\n| \`users\` | 重複 | IdManagement | \`LOGGED\` | 非キーカラム |`,
     )
     expect(compareTables(declared, described).map((finding) => finding.message)).toEqual([
       'line 20: users is described more than once',
@@ -149,14 +149,14 @@ describe('compareTables', () => {
 
   it('reports a tenant_id classification that disagrees with the schema', () => {
     const described = describedTables(
-      DOC.replace('| `LOGGED` | 非キー列 |', '| `LOGGED` | なし |').replace(
+      DOC.replace('| `LOGGED` | 非キーカラム |', '| `LOGGED` | なし |').replace(
         '| Sourcing | `LOGGED` | 複合主キーの一部 |',
-        '| Sourcing | `LOGGED` | 非キー列 |',
+        '| Sourcing | `LOGGED` | 非キーカラム |',
       ),
     )
     expect(compareTables(declared, described).map((finding) => finding.message)).toEqual([
-      'line 7: users has tenant_id as 非キー列 but is described as なし',
-      'line 17: scim_user_refs has tenant_id as 複合主キーの一部 but is described as 非キー列',
+      'line 7: users has tenant_id as 非キーカラム but is described as なし',
+      'line 17: scim_user_refs has tenant_id as 複合主キーの一部 but is described as 非キーカラム',
     ])
   })
 
