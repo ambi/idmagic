@@ -518,7 +518,7 @@ function markdownRenderer(
     if (token?.info.trim() !== 'mermaid') return defaultFence(tokens, index, options, env, self)
     const source = token.content.trim()
     mermaidSources.push(source)
-    return `<div class="diagram-shell"><pre class="mermaid">${escapeHtml(source)}</pre></div>\n`
+    return `<div class="diagram-shell"><button type="button" class="diagram-zoom" data-diagram-zoom>拡大表示</button><pre class="mermaid">${escapeHtml(source)}</pre></div>\n`
   }
 
   const defaultTableOpen =
@@ -598,7 +598,7 @@ function inGroup(documents: RenderedDocument[], category: DocumentCategory): Ren
  */
 function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): string {
   // 「運用手順」の枝の下では、題名の末尾の種類名は枝の名札と同じことを言う。
-  if (entry.category === 'runbook') return entry.title.replace(/のランブック$/, '')
+  if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
   if (entry.category !== 'context-child') return entry.title
   if (entry.path.endsWith('scenarios.feature.md')) return 'シナリオ'
@@ -1113,9 +1113,9 @@ function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]
   const scenarios = scenarioIndex(documents)
   const examples = scenarios.filter((scenario) => scenario.kind === 'example')
   const covered = examples.filter((scenario) => (byId.get(scenario.id)?.sources.length ?? 0) > 0)
-  const paths = (label: string, entries: string[]) =>
+  const testReferences = (entries: string[]) =>
     entries.length === 0
-      ? `<span class="trace-empty">${escapeHtml(label)}なし</span>`
+      ? '<span class="trace-empty">テスト参照なし</span>'
       : `<ul class="trace-paths">${entries
           .map((entry) => `<li><code>${escapeHtml(entry)}</code></li>`)
           .join('')}</ul>`
@@ -1123,10 +1123,10 @@ function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]
     .map((scenario) => {
       const trace = byId.get(scenario.id)
       const href = `${pageHref(page, scenario.document.outputPath)}#${scenario.anchor}`
-      return `<tr class="trace-${scenario.kind}"><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span>${scenario.parentId ? `<span class="trace-parent">${escapeHtml(scenario.parentId)}</span>` : ''}</th><td>${paths('テスト参照', trace?.sources ?? [])}</td><td>${paths('作業項目', trace?.workItems ?? [])}</td></tr>`
+      return `<tr class="trace-${scenario.kind}"><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span>${scenario.parentId ? `<span class="trace-parent">${escapeHtml(scenario.parentId)}</span>` : ''}</th><td>${testReferences(trace?.sources ?? [])}</td></tr>`
     })
     .join('')
-  const body = `<header class="reference-header"><p class="eyebrow">リポジトリから生成</p><h1>トレーサビリティ</h1><p>すべての規範的な規則と実行可能な例を示す。例へのテスト対応は EX 識別子を名指しするプロダクトテストだけから算出する。${examples.length} 件中 ${covered.length} 件の例がテスト参照を持つ。</p></header><table class="trace-table"><thead><tr><th scope="col">規則／例</th><th scope="col">テスト参照</th><th scope="col">作業項目</th></tr></thead><tbody>${rows}</tbody></table>`
+  const body = `<header class="reference-header"><p class="eyebrow">リポジトリから生成</p><h1>トレーサビリティ</h1><p>すべての規範的な規則と実行可能な例を示す。例へのテスト対応は EX 識別子を名指しするプロダクトテストだけから算出する。${examples.length} 件中 ${covered.length} 件の例がテスト参照を持つ。</p></header><table class="trace-table"><thead><tr><th scope="col">規則／例</th><th scope="col">テスト参照</th></tr></thead><tbody>${rows}</tbody></table>`
   return shell({ page, title: 'トレーサビリティ', current: 'トレーサビリティ', body, documents })
 }
 
@@ -1284,7 +1284,7 @@ function validateSiteLinks(files: Record<string, string>): void {
 }
 
 const styles = `
-:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--diagram-line:#294cba;--measure:760px;--sidebar:290px;--toc:216px}
+:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--diagram-line:#294cba;--measure:960px;--wide:1400px;--sidebar:290px;--toc:216px}
 @media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--diagram-line:#b9c8ff}}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:16px/1.75 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--bg);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}
 .sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);overflow:auto;padding:26px 14px 64px;border-right:1px solid var(--line);background:var(--bg-soft)}.site-title{margin:0 10px 22px;font-size:16px;font-weight:700;letter-spacing:-.01em}.site-title a{color:inherit;text-decoration:none}
@@ -1292,7 +1292,7 @@ const styles = `
 .nav-tree{margin:0 0 10px;padding:0;list-style:none}.nav-tree ul{margin:0;padding:0 0 0 18px;list-style:none}.nav-item,.nav-branch{margin:0}.nav-link,.nav-label{display:block;padding:4px 10px;border-left:2px solid transparent;color:var(--text);font-size:13.5px;line-height:1.5;text-decoration:none}.nav-label{cursor:pointer}.nav-link:hover{background:var(--accent-soft)}.nav-link[aria-current=page]{border-left-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:700}
 .nav-directory>summary{display:flex;align-items:flex-start;cursor:pointer;list-style:none}.nav-directory>summary::-webkit-details-marker{display:none}.nav-directory>summary::before{content:"▸";flex:none;width:16px;padding:4px 0;color:var(--line-strong);font-size:10px;line-height:1.9;text-align:center}.nav-directory[open]>summary::before{content:"▾"}.nav-directory>summary>.nav-link,.nav-directory>summary>.nav-label{flex:1;min-width:0}.nav-item>.nav-link{padding-left:26px}
 main{margin-left:var(--sidebar);padding:34px 40px 140px}main:has(.swagger-shell){max-width:none;padding-inline:26px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 26px;color:var(--muted);font-size:13px}.mobile-header{display:none}
-.page{display:grid;grid-template-columns:minmax(0,var(--measure)) minmax(0,var(--toc));gap:56px;align-items:start}.landing{max-width:880px}
+.page{display:grid;grid-template-columns:minmax(0,var(--wide)) minmax(0,var(--toc));gap:56px;align-items:start}.document>:is(p,ul,ol,blockquote,dl,h1,h2,h3,h4){max-width:var(--measure)}.landing{max-width:880px}
 .page-toc{position:sticky;top:34px;max-height:calc(100vh - 80px);overflow:auto;padding-left:16px;border-left:1px solid var(--line);font-size:13px;line-height:1.5}.page-toc-title{margin:0 0 8px;color:var(--muted);font-weight:700}.page-toc ul{margin:0;padding:0;list-style:none}.page-toc a{display:block;padding:4px 0;color:var(--muted);text-decoration:none}.page-toc a:hover{color:var(--text)}.page-toc a[aria-current=location]{color:var(--accent)}.page-toc-h3 a{padding-left:14px;font-size:12.5px}
 h1,h2,h3,h4{line-height:1.35;letter-spacing:-.012em;scroll-margin-top:26px}h1{margin:0 0 .7em;font-size:30px}h2{margin:2.4em 0 .7em;font-size:21px}h3{margin:1.9em 0 .5em;font-size:17px}h4{margin:1.6em 0 .4em;font-size:15px}p,ul,ol{margin:0 0 1.1em}
 a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
@@ -1300,7 +1300,9 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 .hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
 .context-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
 .table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
-.diagram-shell{max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}
+.diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}
+.diagram-zoom,.diagram-viewer-toolbar button{padding:4px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;font:inherit;font-size:13px;cursor:pointer}.diagram-zoom:hover,.diagram-viewer-toolbar button:hover{background:var(--accent-soft)}.diagram-zoom:focus-visible,.diagram-viewer-toolbar button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.diagram-zoom{display:block;width:fit-content;margin:-6px -6px 6px auto}
+.diagram-viewer{width:100vw;max-width:none;height:100vh;max-height:none;margin:0;padding:0;border:0;color:var(--text);background:var(--bg)}.diagram-viewer::backdrop{background:rgba(20,23,28,.6)}.diagram-viewer-toolbar{position:absolute;z-index:1;top:12px;right:12px;display:flex;gap:8px}.diagram-viewport{width:100%;height:100%;overflow:hidden;cursor:grab;touch-action:none}.diagram-viewport.dragging{cursor:grabbing}.diagram-canvas{transform-origin:0 0}.diagram-canvas svg{display:block;max-width:none}
 .scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
 .reference-header{margin-bottom:26px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px 0 0;padding:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}
 .model-group{margin-top:34px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.model-search{display:grid;max-width:520px;gap:6px;margin-top:22px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:8px;font:inherit}
@@ -1312,12 +1314,127 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 `
 
 const siteScript = `
+// 図は複製せず、表示している間だけダイアログへ移す。複製すると Mermaid が SVG に振った id が
+// 重複し、マーカーを指す url(#...) が元の図の要素へ解決されてしまう。
+function createDiagramViewer(){
+  var dialog=document.createElement('dialog');
+  dialog.className='diagram-viewer';
+  dialog.setAttribute('aria-label','図の拡大表示');
+  dialog.innerHTML='<div class="diagram-viewer-toolbar"><button type="button" data-zoom-in>拡大</button><button type="button" data-zoom-out>縮小</button><button type="button" data-zoom-fit>全体表示</button><button type="button" data-zoom-close>閉じる</button></div><div class="diagram-viewport"><div class="diagram-canvas"></div></div>';
+  document.body.appendChild(dialog);
+  var viewport=dialog.querySelector('.diagram-viewport');
+  var canvas=dialog.querySelector('.diagram-canvas');
+  var view={scale:1,x:0,y:0,width:1,height:1};
+  var shown=null;
+  var pointers={};
+  var apply=function(){canvas.style.transform='translate('+view.x+'px,'+view.y+'px) scale('+view.scale+')';};
+  var viewportSize=function(){return{width:viewport.clientWidth||window.innerWidth,height:viewport.clientHeight||window.innerHeight};};
+  var fit=function(){
+    var size=viewportSize();
+    view.scale=Math.min(size.width/view.width,size.height/view.height)*0.95;
+    view.x=(size.width-view.width*view.scale)/2;
+    view.y=(size.height-view.height*view.scale)/2;
+    apply();
+  };
+  var zoomAt=function(factor,x,y){
+    var next=Math.min(Math.max(view.scale*factor,0.05),20);
+    view.x=x-(x-view.x)*(next/view.scale);
+    view.y=y-(y-view.y)*(next/view.scale);
+    view.scale=next;
+    apply();
+  };
+  var zoomAtCenter=function(factor){var size=viewportSize();zoomAt(factor,size.width/2,size.height/2);};
+  var pan=function(dx,dy){view.x+=dx;view.y+=dy;apply();};
+  dialog.querySelector('[data-zoom-in]').addEventListener('click',function(){zoomAtCenter(1.25);});
+  dialog.querySelector('[data-zoom-out]').addEventListener('click',function(){zoomAtCenter(0.8);});
+  dialog.querySelector('[data-zoom-fit]').addEventListener('click',fit);
+  dialog.querySelector('[data-zoom-close]').addEventListener('click',function(){dialog.close();});
+  dialog.addEventListener('keydown',function(event){
+    var step={ArrowLeft:[40,0],ArrowRight:[-40,0],ArrowUp:[0,40],ArrowDown:[0,-40]}[event.key];
+    if(event.key==='+'||event.key==='=')zoomAtCenter(1.25);
+    else if(event.key==='-')zoomAtCenter(0.8);
+    else if(event.key==='0')fit();
+    else if(step)pan(step[0],step[1]);
+    else return;
+    event.preventDefault();
+  });
+  viewport.addEventListener('wheel',function(event){
+    event.preventDefault();
+    var box=viewport.getBoundingClientRect();
+    zoomAt(Math.exp(-event.deltaY*0.0015),event.clientX-box.left,event.clientY-box.top);
+  },{passive:false});
+  // ポインターが一つならドラッグで移動し、二つならその距離の比で拡大率を変える。
+  var pinch=function(){
+    var points=Object.keys(pointers).map(function(id){return pointers[id];});
+    return points.length===2?{distance:Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y),x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2}:null;
+  };
+  viewport.addEventListener('pointerdown',function(event){
+    viewport.setPointerCapture(event.pointerId);
+    pointers[event.pointerId]={x:event.clientX,y:event.clientY};
+    viewport.classList.add('dragging');
+  });
+  viewport.addEventListener('pointermove',function(event){
+    var previous=pointers[event.pointerId];
+    if(!previous)return;
+    var before=pinch();
+    pointers[event.pointerId]={x:event.clientX,y:event.clientY};
+    var after=pinch();
+    if(before&&after){
+      var box=viewport.getBoundingClientRect();
+      zoomAt(after.distance/before.distance,after.x-box.left,after.y-box.top);
+      pan(after.x-before.x,after.y-before.y);
+    }else if(!after){
+      pan(event.clientX-previous.x,event.clientY-previous.y);
+    }
+  });
+  var release=function(event){
+    delete pointers[event.pointerId];
+    if(Object.keys(pointers).length===0)viewport.classList.remove('dragging');
+  };
+  viewport.addEventListener('pointerup',release);
+  viewport.addEventListener('pointercancel',release);
+  dialog.addEventListener('close',function(){
+    if(!shown)return;
+    shown.parent.insertBefore(shown.svg,shown.next);
+    ['width','height','style'].forEach(function(name){
+      if(shown.attributes[name]===null)shown.svg.removeAttribute(name);
+      else shown.svg.setAttribute(name,shown.attributes[name]);
+    });
+    shown.button.focus();
+    shown=null;
+    pointers={};
+  });
+  return{open:function(svg,button){
+    var box=(svg.getAttribute('viewBox')||'').split(/[\\s,]+/).map(Number);
+    var rendered=svg.getBoundingClientRect();
+    view.width=box[2]||rendered.width||1;
+    view.height=box[3]||rendered.height||1;
+    shown={svg:svg,button:button,parent:svg.parentNode,next:svg.nextSibling,attributes:{}};
+    ['width','height','style'].forEach(function(name){shown.attributes[name]=svg.getAttribute(name);});
+    // Mermaid は本文の幅へ縮める max-width を属性で与えるので、表示中だけ元の大きさに戻す。
+    svg.removeAttribute('style');
+    svg.setAttribute('width',String(view.width));
+    svg.setAttribute('height',String(view.height));
+    canvas.appendChild(svg);
+    dialog.showModal();
+    fit();
+  }};
+}
 window.addEventListener('DOMContentLoaded',function(){
   if(window.mermaid&&document.querySelector('.mermaid')){
     var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
     window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',layout:'dagre',look:'classic',theme:'base',themeVariables:dark?{background:'#1a1e25',primaryColor:'#1e2740',primaryTextColor:'#e7ebf1',primaryBorderColor:'#b9c8ff',lineColor:'#b9c8ff',textColor:'#e7ebf1',edgeLabelBackground:'#14171c',tertiaryColor:'#1a1e25'}:{background:'#f6f7f9',primaryColor:'#eef2ff',primaryTextColor:'#1c2024',primaryBorderColor:'#294cba',lineColor:'#294cba',textColor:'#1c2024',edgeLabelBackground:'#fff',tertiaryColor:'#f6f7f9'}});
     window.mermaid.run({querySelector:'.mermaid'});
   }
+  var viewer=null;
+  document.querySelectorAll('[data-diagram-zoom]').forEach(function(button){
+    button.addEventListener('click',function(){
+      var svg=button.parentNode.querySelector('svg');
+      if(!svg)return;
+      if(!viewer)viewer=createDiagramViewer();
+      viewer.open(svg,button);
+    });
+  });
   var search=document.querySelector('[data-model-search]');
   if(search){search.addEventListener('input',function(){
     var query=search.value.trim().toLowerCase();

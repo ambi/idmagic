@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import { type HTMLButtonElement, type HTMLDialogElement, type HTMLElement, Window } from 'happy-dom'
 import { renderDocumentationSite } from './render.ts'
 import type { CatalogSymbol } from './typespec-catalog.ts'
 
@@ -166,7 +167,7 @@ const serviceManagementDocument = {
 
 const runbookDocument = {
   path: 'docs/runbooks/async-jobs.md',
-  source: '# 非同期ジョブのランブック\n\n停滞したときの手順。\n',
+  source: '# 非同期ジョブの運用手順書\n\n停滞したときの手順。\n',
 }
 
 const documentationGuideDocument = {
@@ -355,7 +356,9 @@ describe('renderDocumentationSite', () => {
     expect(result.files['traceability/index.html']).toContain('EX-DEMO-001-01')
     expect(result.files['traceability/index.html']).toContain('backend/demo/demo_test.go')
     expect(result.files['traceability/index.html']).toContain('規則／例')
-    expect(result.files['traceability/index.html']).toContain('作業項目')
+    // 静的な文書サイトから、完了すると更新されない変更記録を指さない。
+    expect(result.files['traceability/index.html']).not.toContain('作業項目')
+    expect(result.files['traceability/index.html']).not.toContain('wi-demo')
     expect(result.files['traceability/index.html']).not.toContain('Rule / Example')
     expect(result.files['traceability/index.html']).not.toContain('work item')
     expect(result.files['traceability/index.html']).toContain('テスト参照なし')
@@ -506,7 +509,7 @@ describe('renderDocumentationSite', () => {
     expect(page).toContain('<summary><span class="nav-label">運用手順</span></summary>')
     // 枝の名札が種類を言うので、子の名札は題名の末尾の種類名を繰り返さない。
     expect(page).toContain('>非同期ジョブ</a>')
-    expect(page).not.toContain('>非同期ジョブのランブック</a>')
+    expect(page).not.toContain('>非同期ジョブの運用手順書</a>')
     expect(result.files['docs/operations/index.html']).toBeUndefined()
   })
 
@@ -853,5 +856,87 @@ describe('renderDocumentationSite', () => {
     expect(result.files['models/example-demo-escaped.html']).toContain(
       '&lt;img src=x onerror=bad()&gt;',
     )
+  })
+})
+
+describe('site layout and diagram viewer', () => {
+  // 段落は読みやすい行長に留め、表と図とコードブロックだけが広い画面の幅を使う。
+  it('lets tables, diagrams and code use a wider column than prose', () => {
+    const css = site().assets['site.css'] ?? ''
+
+    expect(css).toMatch(/--measure:960px/)
+    expect(css).toMatch(/--wide:1400px/)
+    expect(css).toMatch(
+      /\.page\{[^}]*grid-template-columns:minmax\(0,var\(--wide\)\) minmax\(0,var\(--toc\)\)/,
+    )
+    expect(css).toMatch(/\.document>:is\([^)]*\bp\b[^)]*\)\{max-width:var\(--measure\)\}/)
+    expect(css).not.toMatch(
+      /\.document>:is\([^)]*(?:table|pre|diagram-shell)[^)]*\)\{max-width:var\(--measure\)\}/,
+    )
+  })
+
+  it('puts an enlarge button on every diagram', () => {
+    const html = site().files['index.html'] ?? ''
+
+    expect(html).toContain(
+      '<div class="diagram-shell"><button type="button" class="diagram-zoom" data-diagram-zoom>拡大表示</button><pre class="mermaid">',
+    )
+  })
+
+  /** Mermaid が描いた後の DOM を用意し、site.js を読み込ませる。 */
+  const loadDiagramPage = () => {
+    const window = new Window({ url: 'https://docs.example/index.html' })
+    const document = window.document
+    document.body.innerHTML =
+      '<main><div class="diagram-shell"><button type="button" class="diagram-zoom" data-diagram-zoom>拡大表示</button>' +
+      '<pre class="mermaid"><svg id="mermaid-0" viewBox="0 0 800 400" style="max-width: 800px;" width="100%"><marker id="mermaid-0_arrow"></marker><path marker-end="url(#mermaid-0_arrow)"></path></svg></pre></div></main>'
+    new Function('window', 'document', site().assets['site.js'] ?? '')(window, document)
+    window.dispatchEvent(new window.Event('DOMContentLoaded'))
+    /** 存在しなければテストの前提が崩れているので、その場で失敗させる。 */
+    const element = <T>(
+      root: { querySelector: (selector: string) => unknown },
+      selector: string,
+    ) => {
+      const found = root.querySelector(selector)
+      if (!found) throw new Error(`missing ${selector}`)
+      return found as T
+    }
+    return { document, element }
+  }
+
+  it('opens the rendered diagram in a full-screen dialog without duplicating its ids', () => {
+    const { document, element } = loadDiagramPage()
+
+    element<HTMLButtonElement>(document, '[data-diagram-zoom]').click()
+
+    const dialog = element<HTMLDialogElement>(document, 'dialog.diagram-viewer')
+    expect(dialog.hasAttribute('open')).toBe(true)
+    expect(dialog.querySelector('svg#mermaid-0')).not.toBeNull()
+    // 図を複製すると、マーカーを指す url(#...) が元の図の要素へ解決されてしまう。
+    expect(document.querySelectorAll('[id="mermaid-0"]')).toHaveLength(1)
+    expect(document.querySelectorAll('[id="mermaid-0_arrow"]')).toHaveLength(1)
+    expect(dialog.textContent).toContain('拡大')
+    expect(dialog.textContent).toContain('縮小')
+    expect(dialog.textContent).toContain('全体表示')
+    expect(dialog.textContent).toContain('閉じる')
+  })
+
+  it('zooms with the toolbar and returns the diagram and focus on close', () => {
+    const { document, element } = loadDiagramPage()
+    const button = element<HTMLButtonElement>(document, '[data-diagram-zoom]')
+    button.click()
+    const dialog = element<HTMLDialogElement>(document, 'dialog.diagram-viewer')
+    const canvas = element<HTMLElement>(dialog, '.diagram-canvas')
+    const before = canvas.style.transform
+
+    element<HTMLButtonElement>(dialog, '[data-zoom-in]').click()
+    expect(canvas.style.transform).not.toBe(before)
+
+    element<HTMLButtonElement>(dialog, '[data-zoom-close]').click()
+
+    expect(dialog.hasAttribute('open')).toBe(false)
+    expect(document.querySelector('.diagram-shell svg#mermaid-0')).not.toBeNull()
+    expect(document.querySelector('.diagram-shell svg')?.getAttribute('width')).toBe('100%')
+    expect(document.activeElement).toBe(button as unknown as typeof document.activeElement)
   })
 })
