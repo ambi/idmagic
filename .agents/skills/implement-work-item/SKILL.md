@@ -16,8 +16,10 @@ description: "Implement a chosen work item end to end: specification first, sepa
    standards-coverage item, resolve every scoped standard id to its declaration, debt entry, named tests,
    smallest production entry point, and any active work item that owns missing behavior. If completion needs
    out-of-scope implementation, record the prerequisite or defect and stop before broad checks or implementation.
-   Read nothing else until something you have read sends you there. Run `mise run lint-go` once while you read:
-   the cold run is the expensive one, and paying it here leaves every run in step 8 at a few seconds.
+   Read nothing else until something you have read sends you there. While you read, pay the workspace setup
+   once: `mise run setup` (embedded tools including Mermaid, and UI dependencies) and then `mise run lint-go`.
+   A fresh worktree lacks both, and the gap otherwise surfaces as a first failure of the final gate. The cold
+   lint run is the expensive one, and paying it here leaves every run in step 8 at a few seconds.
 2. When the work changes a specification, change it first with `spec-change` and pass `mise run check-spec`.
    When `spec_impact: none` is still correct after the readiness pass, do not invent a specification edit or run
    specification-only baseline gates; use the first check that can actually go RED for the work.
@@ -72,7 +74,10 @@ description: "Implement a chosen work item end to end: specification first, sepa
    `update-design`. Keep the feedback loop tight: use `mise run test-go-test -- <package> <test>` or
    `mise run test-ui-unit-file -- <file>` for each RED, GREEN, and fault injection; run the containing package
    once after a coherent behavior is GREEN; use `mise run test-go-changed` after the change crosses package
-   boundaries. Run the check that owns the layer you just touched while that layer is still what you are looking
+   boundaries. When several narrow checks are due at once, run them in parallel with
+   `mise run -c test-go-package <package> ::: test-go-package <package>`. Drop the `--`: with
+   `mise run <task> -- <args> ::: ...` every task after `:::` silently does not run. `-c` lets each task report
+   even when another fails. Run the check that owns the layer you just touched while that layer is still what you are looking
    at, rather than saving it for final verification:
 
    | Just touched | Run next |
