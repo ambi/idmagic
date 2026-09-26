@@ -46,7 +46,7 @@ initial_context:
 
 ## 動機
 
-[データベース設計](../docs/design/data/database.md#ポートとアダプター)は、`db_postgres` の静的な SQL 文をすべて `sqlc` の入力とし、SQL 文字列を直接渡す `Pool.Query` と `Pool.Exec` は問い合わせの構造が実行時まで決まらない場合に限ると定める。
+[データベース設計](../../docs/design/data/database.md#ポートとアダプター)は、`db_postgres` の静的な SQL 文をすべて `sqlc` の入力とし、SQL 文字列を直接渡す `Pool.Query` と `Pool.Exec` は問い合わせの構造が実行時まで決まらない場合に限ると定める。
 しかし、この規則を機械的に確かめる仕組みはない。
 2026-09-26 に `backend/` の `_test.go` 以外を調べたところ、sqlc の生成コードを通さずに SQL 文字列を渡す呼び出しが 15 ファイルにあり、そのうち 11 ファイルの文は構造が固定された静的な文だった。
 `idgovernance` の `lifecycle_workflows.go` のように、同じ文が `lifecycle_workflows.sql` に sqlc の問い合わせとして宣言済みで、生成された関数を使わずに手書きの文字列を重複させている箇所もある。
@@ -95,7 +95,7 @@ initial_context:
 - 移行によって PostgreSQL のテストが一つも通らなくなるメソッドへ、移行前のコードでも通る特性テストを足す。
 - 特性テストで見つかった SCIM の一括取得の不具合（下の「設計」）を直す。
 - 直接の SQL 文字列を検出するリポジトリ検査を追加し、`mise run check-repository` から実行する。
-- [データベース設計](../docs/design/data/database.md#ポートとアダプター)の規則に、例外の書き方と検査の存在を追記する。
+- [データベース設計](../../docs/design/data/database.md#ポートとアダプター)の規則に、例外の書き方と検査の存在を追記する。
 
 ## 対象外
 
@@ -152,7 +152,7 @@ initial_context:
 3. 移行が単純なもの（`lifecycle_workflows`、`scim`、`applications`、`csv_artifacts`、インポートの確定処理、`tenant_salt_store`）を移し、移行前後で同じテストが通ることを確かめる。
 4. クォータ、ジョブ一覧、復元検査を移す。クォータは 11 資源すべての加算と上限超過を、ジョブ一覧は各絞り込みの有無の組み合わせとキーセットの継続をテストで固定する。
 5. 例外の 4 ファイルへ `//sql:raw` を置き、検査を GREEN にする。`jobs` の `ListForAdmin` の古いコメントは削除する。
-6. [データベース設計](../docs/design/data/database.md#ポートとアダプター)へ例外の書き方と検査を追記する。
+6. [データベース設計](../../docs/design/data/database.md#ポートとアダプター)へ例外の書き方と検査を追記する。
 
 未解決の問いはない。
 
