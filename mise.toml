@@ -658,10 +658,14 @@ fi
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
 depends = ["compile-spec"]
 run = '''
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check -- [base-revision]" >&2; exit 2; }
+base_revision=${1:-main}
+if test "$#" -eq 1; then shift; fi
 mise run -c \
   check-generated-contract ::: \
   check-rendered-docs ::: \
-  check-repository ::: \
+  check-repository "$base_revision" ::: \
   check-config-reference ::: \
   check-route-reference ::: \
   check-gateway-routes
@@ -670,7 +674,13 @@ mise run -c \
 [tasks.check-repository]
 description = "Run every registered TypeScript repository check in one process"
 dir = "tools"
-run = "bun run check/src/runner.ts all"
+run = '''
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check-repository -- [base-revision]" >&2; exit 2; }
+base_revision=${1:-main}
+if test "$#" -eq 1; then shift; fi
+bun run check/src/runner.ts all --base-revision "$base_revision"
+'''
 
 [tasks.check-rendered-docs]
 description = "Check the rendered documentation site"
@@ -773,7 +783,18 @@ run = "bun run check/src/runner.ts work-items \"$@\""
 [tasks.check-boundaries]
 description = "Reject forbidden source dependencies"
 dir = "tools"
-run = "bun run check/src/runner.ts boundaries"
+run = "bun run check/src/runner.ts boundaries \"$@\""
+
+[tasks.check-boundary-debt-ratchet]
+description = "Reject boundary violations added beyond a Git revision"
+dir = "tools"
+run = '''
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check-boundary-debt-ratchet -- [base-revision]" >&2; exit 2; }
+base_revision=${1:-main}
+if test "$#" -eq 1; then shift; fi
+bun run check/src/runner.ts boundary-debt-ratchet --base-revision "$base_revision"
+'''
 
 [tasks.generate-config-reference]
 description = "Generate the operator configuration reference"

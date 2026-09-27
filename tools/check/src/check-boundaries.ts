@@ -1,12 +1,39 @@
 import { extname } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import type { CheckOutcome } from './runner.ts'
+import {
+  findBoundaryViolations,
+  groupBoundaryViolations,
+  parseBoundaryDebt,
+  parseLogicalArchitecture,
+  reconcileBoundaryDebt,
+  type BoundaryDebtGroup,
+  type GoSource,
+} from './boundary-fitness.ts'
+import type { CheckOptions, CheckOutcome } from './runner.ts'
 
-export async function checkBoundaries(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
+const DEFAULT_OPTIONS: CheckOptions = { verbose: false, listUnresolved: false }
+
+function proposedDebtEntry(group: BoundaryDebtGroup): string {
+  return JSON.stringify({
+    id: group.id,
+    sourceContext: group.sourceContext,
+    ...(group.targetContext ? { targetContext: group.targetContext } : {}),
+    violations: group.violationIds,
+    reason:
+      `${group.paths[0]} remains coupled across ${group.violationIds.length} observed path(s) ` +
+      'until its owning Context exposes or consumes the required published language.',
+  })
+}
+
+export async function checkBoundaries(
+  snapshot: WorkspaceSnapshot,
+  options: CheckOptions = DEFAULT_OPTIONS,
+): Promise<CheckOutcome> {
   const goModule = (await snapshot.read('go.mod')).match(/^module\s+(\S+)$/m)?.[1]
   if (!goModule) throw new Error('go.mod must declare a module path')
   const backendImportPrefix = `${goModule}/backend/`
   const lines: string[] = []
+  const goSources: GoSource[] = []
   const files = await snapshot.files('', [
     '.git',
     'node_modules',
@@ -26,6 +53,7 @@ export async function checkBoundaries(snapshot: WorkspaceSnapshot): Promise<Chec
     const extension = extname(rel)
     if (extension === '.go' && rel.startsWith('backend/') && !rel.endsWith('_test.go')) {
       const source = await snapshot.read(rel)
+      goSources.push({ path: rel, source })
       // 起動設定は `backend/cmd/internal/bootstrap` だけが環境から読み、検証する。
       // `*_env` adapter は起動設定ではなく、実行時 locator を解決するので対象外とする。
       const ownsEnvAccess =
@@ -61,6 +89,37 @@ export async function checkBoundaries(snapshot: WorkspaceSnapshot): Promise<Chec
       if (/from\s+['"](?:\.\.\/)+(?:backend|tools)\//.test(source)) {
         lines.push(`${rel}: frontend source must not import backend or repository tooling`)
       }
+    }
+  }
+  if (goSources.length > 0) {
+    const logicalArchitecturePath = 'docs/design/architecture/logical.md'
+    const debtPath = 'tools/check/boundary-debt.json'
+    if (!snapshot.exists(logicalArchitecturePath)) {
+      throw new Error(`${logicalArchitecturePath} is required to check Context boundaries`)
+    }
+    if (!snapshot.exists(debtPath))
+      throw new Error(`${debtPath} is required to ratchet boundary debt`)
+    const violations = findBoundaryViolations({
+      modulePath: goModule,
+      architecture: parseLogicalArchitecture(await snapshot.read(logicalArchitecturePath)),
+      sources: goSources,
+    })
+    const debtFindings = reconcileBoundaryDebt(
+      violations,
+      parseBoundaryDebt(await snapshot.read(debtPath)),
+    )
+    lines.push(...debtFindings.map((finding) => `${debtPath}: ${finding.message}`))
+    if (options.listUnresolved) {
+      const unrecordedGroupIds = new Set(
+        debtFindings
+          .filter((finding) => finding.kind === 'unrecorded-violation')
+          .map((finding) => finding.id.split('#')[0] ?? finding.id),
+      )
+      lines.push(
+        ...groupBoundaryViolations(violations)
+          .filter((group) => unrecordedGroupIds.has(group.id))
+          .map((group) => `boundary-debt-entry ${proposedDebtEntry(group)}`),
+      )
     }
   }
   return {

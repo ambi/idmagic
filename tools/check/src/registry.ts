@@ -2,6 +2,7 @@ import { checkAdminScopes } from './check-admin-scopes.ts'
 import { checkAgentGuidance } from './check-agent-guidance.ts'
 import { checkApiCompat } from './check-api-compat.ts'
 import { checkBoundaries } from './check-boundaries.ts'
+import { checkBoundaryDebtRatchet } from './boundary-debt-ratchet.ts'
 import { checkCommandMap } from './check-command-map.ts'
 import { checkDocsWorkItemLinks } from './check-docs-work-item-links.ts'
 import { checkDocumentLayout } from './check-document-layout.ts'
@@ -21,6 +22,7 @@ import type { RepositoryCheck } from './runner.ts'
 
 export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'documents', groups: ['all'], run: checkDocuments },
+  { name: 'boundary-debt-ratchet', groups: ['all'], run: checkBoundaryDebtRatchet },
   { name: 'document-layout', groups: ['all'], run: checkDocumentLayout },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
   { name: 'links', groups: ['all'], run: checkLinks },

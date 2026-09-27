@@ -38,7 +38,7 @@
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |
 | 変更の記録 | `work-items/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録。 |
 | ドメインモデル | `backend/<context>/(<feature>/)domain` | フレームワークに依存しないドメインモデル。 |
-| アプリケーションロジック | `backend/<context>/(<feature>/)usecase` | フレームワークに依存しないユースケース。 |
+| アプリケーションロジック | `backend/<context>/(<feature>/)usecases` | フレームワークに依存しないユースケース。 |
 | ポート | `backend/<context>/(<feature>/)ports` | HTTP、永続化、通知などのポート。 |
 | アダプター | `backend/<context>/(<feature>/){handlers_http,db_postgres,...}` | HTTP、永続化、通知などのアダプター。 |
 | ランタイム | `backend/cmd/`, `backend/cmd/internal/bootstrap` | 起動、依存注入。 |
@@ -62,7 +62,7 @@ Bounded Context は通常、次の 4 層で構成する。
 ```text
 backend/<context>/
   domain/            # エンティティ、値オブジェクト、状態遷移、純粋な検証
-  usecase/           # 仕様で定めた操作を行うアプリケーションロジック
+  usecases/          # 仕様で定めた操作を行うアプリケーションロジック
   ports/             # Repository、ストア、外部サービスの抽象
   handlers_http/     # 受信 HTTP アダプター
   db_memory/         # メモリ実装の Repository アダプター
@@ -77,27 +77,37 @@ backend/<context>/
 
 翻訳する語彙の差が無ければ、専用のパッケージも置かない。`WorkloadIdentity` から `OAuth2` への関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、`backend/workloadidentity/usecases` で実装して、組み立て地点で結ぶ。越えるのが WorkloadIdentity の公開言語に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
 
-`backend/shared/` は、複数の Context が実際に共有する技術的な能力のための場所である。
+`backend/shared/` は、複数の Context が実際に共有する技術的な能力のための場所である。Context 間の依存規則を迂回する中継点にはしない。ある Context から `shared` を経由して別の Context へ到達する依存にも、直接 import する場合と同じ公開言語と Context Map の規則を適用する。
 
 起動時設定と実行時に選択可能な機能の定義も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。`FeatureRegistry` は実行時選択と更新影響だけを持ち、各 Context の API、標準対応、テナント設定を複製しない。読み取り点や選択規則が散らばると、あるプロセスだけが検証されない値または異なる機能集合を持つ状態が作れてしまうためである。運用者向けの設定リファレンスと機能メタデータはこれらの定義から生成し、手書きの一覧を併存させない。
 
 具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` にはイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを置く。イベントが Context の境界を越えるときに何が契約になるかは [Context 間イベント](#context-間イベント) で定める。
 
-2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<context>/<feature>/{domain,ports,usecase,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
+2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
 
 ```text
 backend/idmanagement/
   module.go                 # Context ごとに 1 つ置く DI の組み立て
   domain/                   # 機能間で共有する型と計算だけ（列挙、DomainEvent、CSV 基盤）
   ports/                    # 機能間で共有するポートだけ（CSV 成果物ストア）
-  usecase/                  # 機能をまたぐユースケース補助とエラー値だけ
+  usecases/                 # 機能をまたぐユースケース補助とエラー値だけ
   db_memory/  db_postgres/  # 機能間で共有するポートのアダプター
   deps_http/                # Deps 型を定義する末端パッケージ
   handlers_http/            # ルート登録と機能をまたぐ統合テスト
-  user/  group/  agent/     # 各機能の domain、ports、usecase、アダプター
+  user/  group/  agent/     # 各機能の domain、ports、usecases、アダプター
 ```
 
 機能をまたぐ層に置いてよいのは、複数の機能が同じ意味で使う語彙と機構に限る。CSV の転送ポリシー、解析器、可逆なセル変換、不変な成果物ストアは `User` と `Group` が同じ意味で共有するためここに置き、列の語彙と計画器は Aggregate ごとの不変条件なので機能側に残す。
+
+### Context 境界の依存規則
+
+Context の外へ公開する Go の言語は `domain` と `ports` のパッケージだけである。別の Context は `usecases`、`handlers_*`、`db_*`、`module.go` などの内部実装を import しない。機能で垂直分割した場合も、公開範囲はその機能配下の `domain` と `ports` に限る。
+
+[Context Map](../design/architecture/logical.md#context-map) の矢印は Supplier から Customer へ向く。Go の依存はその逆向きであり、Customer が Supplier の公開言語を import する。公開パッケージであっても、Context Map に Supplier と Customer の関係が無い向きへ依存してはならない。また、Context 間の Go 依存が循環してはならない。ドメインイベントを送受信する関係は、それだけでは Go の import を許可しない。
+
+`domain` は決定論的な計算と状態遷移だけを持つ。時刻の型を保持するための `time` は利用できるが、現在時刻を得る `time.Now`、乱数を得る `crypto/rand` と `math/rand`、OS、ネットワーク、データベースへの直接アクセスは行わない。必要な値と作用は `usecases` から引数または `ports` として注入する。
+
+これらの規則は `mise run check-boundaries` が検査する。移行中の既存違反は `tools/check/boundary-debt.json` に具体的な違反 ID と理由を記録し、CI の ratchet は基準 revision より違反 ID を増やす変更を拒否する。解消した違反は ledger から同時に削除する。
 
 ## Context 間イベント
 
