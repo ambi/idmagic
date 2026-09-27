@@ -5,9 +5,23 @@ description: "Implement a chosen work item end to end: specification first, sepa
 
 # Implementing a work item
 
-1. Begin from a working tree carrying no other work item's changes. When that needs a separate worktree,
-   create it under `.worktrees/<work-item-id>` as `parallel-work-items` describes, never under `/tmp` or
-   `$TMPDIR`. One record owns one independently
+1. Implement one work item in its own `work-item/<work-item-id>` branch and
+   `.worktrees/<work-item-id>` worktree. If the current worktree is already dedicated to that branch, use it.
+   Otherwise inspect the repository root with `git status --short`, preserve the user's existing changes, and
+   create the branch and worktree from the user-named base branch or the current branch:
+
+   ```sh
+   git worktree add -b work-item/wi-42 .worktrees/wi-42 <base-branch>
+   ```
+
+   If the branch already exists and is not checked out elsewhere, attach it instead:
+
+   ```sh
+   git worktree add .worktrees/wi-42 work-item/wi-42
+   ```
+
+   Confirm the selected branch and a clean item workspace with `git status --short --branch`, then continue
+   inside that worktree. Keep worktrees under `.worktrees/`, never `/tmp` or `$TMPDIR`. One record owns one independently
    acceptable outcome, while that record may use multiple commits to keep structural and behavioral changes
    separate as `docs/development/coding-style.md` requires. Then run
    `mise run brief -- <work-item>` and make a **readiness pass** before editing frontmatter. Read what the brief
@@ -107,7 +121,9 @@ description: "Implement a chosen work item end to end: specification first, sepa
     separately reviewable structural and behavioral changes require that boundary. Keep all free-form prose in
     the Completion section in the language used by the work item's prose; do not change that section to English
     for the commit. For the final commit only, translate or summarize the Completion Summary into English and
-    use it as the commit body rather than writing the diff back out. Do not push until explicitly told to.
+    use it as the commit body rather than writing the diff back out. Report the final branch and commit so the
+    verified tree can be handed to `integrate-work-item` without rediscovery. Do not push until explicitly told
+    to.
 
 State the Out of Scope items and anything left undone in the final report.
 
