@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -10,6 +11,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
+
+var errPreferredUsernameExists = errors.New("preferred username already exists")
 
 // =====================================================================
 // UserRepository (IdManagement)
@@ -32,13 +35,18 @@ func (r *UserRepository) Seed(u *userdomain.User) {
 func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	sharedmem.DefaultTenant(&u.TenantID)
+	usernameKey := sharedmem.TenantKey(u.TenantID, u.PreferredUsername)
+	if conflicting := r.byUser[usernameKey]; conflicting != nil &&
+		conflicting.ID != u.ID && !conflicting.IsDeleted() {
+		return errPreferredUsernameExists
+	}
 	if existing := r.bySub[u.ID]; existing != nil &&
 		existing.PreferredUsername != u.PreferredUsername {
 		delete(r.byUser, sharedmem.TenantKey(existing.TenantID, existing.PreferredUsername))
 	}
-	sharedmem.DefaultTenant(&u.TenantID)
 	r.bySub[u.ID] = u
-	r.byUser[sharedmem.TenantKey(u.TenantID, u.PreferredUsername)] = u
+	r.byUser[usernameKey] = u
 	return nil
 }
 

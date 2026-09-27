@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -28,31 +29,35 @@ func NewWebAuthnSessionStore() *WebAuthnSessionStore {
 }
 
 func (s *WebAuthnSessionStore) Save(
-	_ context.Context,
+	ctx context.Context,
 	key string,
 	data gowebauthn.SessionData,
 	expiresAt time.Time,
 ) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.sessions[key] = webAuthnSessionEntry{data: data, expiresAt: expiresAt}
+	s.sessions[sessionKey(ctx, key)] = webAuthnSessionEntry{data: data, expiresAt: expiresAt}
 	return nil
 }
 
 func (s *WebAuthnSessionStore) Take(
-	_ context.Context,
+	ctx context.Context,
 	key string,
 ) (*gowebauthn.SessionData, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.sessions[key]
+	entry, ok := s.sessions[sessionKey(ctx, key)]
 	if !ok {
 		return nil, nil
 	}
-	delete(s.sessions, key)
+	delete(s.sessions, sessionKey(ctx, key))
 	if !time.Now().Before(entry.expiresAt) {
 		return nil, nil
 	}
 	data := entry.data
 	return &data, nil
+}
+
+func sessionKey(ctx context.Context, key string) string {
+	return tenancy.TenantID(ctx) + "\x00" + key
 }

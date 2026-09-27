@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -9,6 +10,8 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
+
+var errDuplicateTrustBundleIssuer = errors.New("workload trust bundle issuer already registered in this tenant")
 
 type WorkloadTrustBundleRepository struct {
 	mu      sync.RWMutex
@@ -62,6 +65,11 @@ func (r *WorkloadTrustBundleRepository) FindByIssuer(_ context.Context, tenantID
 func (r *WorkloadTrustBundleRepository) Save(_ context.Context, b *workloaddomain.WorkloadTrustBundle) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	for _, stored := range r.bundles {
+		if stored.TenantID == b.TenantID && stored.Issuer == b.Issuer && stored.ID != b.ID {
+			return errDuplicateTrustBundleIssuer
+		}
+	}
 	r.bundles[sharedmem.TenantKey(b.TenantID, b.ID)] = cloneTrustBundle(b)
 	return nil
 }
