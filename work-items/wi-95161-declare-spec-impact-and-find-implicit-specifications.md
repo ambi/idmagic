@@ -5,7 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-09-30
 priority: p1
-depends_on: []
+depends_on: [wi-51360-organize-specifications-as-a-tree-of-rules]
 change_kind: tooling
 spec_impact: { kind: none, reason: "本番コード変更に仕様影響の宣言を求める検査、宣言と仕様差分の整合を確かめる検査、既存コードから仕様漏れの候補を報告するタスクを追加するだけで、製品の API、永続状態、外向きの呼び出し、イベント、配備構成はどれも変わらない。" }
 ---
@@ -87,6 +87,7 @@ spec_impact: { kind: none, reason: "本番コード変更に仕様影響の宣�
 - `WORK_ITEM_FORMAT.md` とスキーマに `impact` と理由の規則を追加する。
 - `AGENTS.md` に、本番コードの変更では仕様影響を必ず判断し、work item かトレーラーで宣言することを一行で追加する。
 - 導入時点の結果から、コンテキストごとの書き起こしの work item を起票する。
+  書き起こした規則は、`wi-51360` が定める仕様の木の機能ノードへ、同じ work item が定める規則の書式で書く。
 
 ## 対象外
 
