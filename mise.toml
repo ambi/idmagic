@@ -19,16 +19,14 @@ bun = "1.4.2"
 "go:github.com/szhekpisov/gomutants" = "0.6.1"
 
 [tasks.setup]
-description = "Install repository dependencies and link agent skills"
+description = "Install repository dependencies"
 depends = ["setup-tools", "install-ui"]
 
 [tasks.setup-tools]
-description = "Install embedded tooling dependencies and link agent skills"
+description = "Install embedded tooling dependencies"
 run = [
   "cd tools && bun install --frozen-lockfile",
   "ln -sfn tools/node_modules node_modules",
-  "mkdir -p .agents/skills .claude",
-  "ln -sfn ../.agents/skills .claude/skills",
 ]
 
 [tasks.update-tools-lockfile]
