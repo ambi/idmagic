@@ -106,7 +106,7 @@ func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
 	}
 	jwk := authTestJWK(&key.PublicKey)
 	const (
-		path        = "/api/account/v1/profile"
+		path        = "/realms/acme/api/account/v1/profile"
 		accessToken = "AT1"
 		otherToken  = "AT2"
 	)
@@ -124,7 +124,7 @@ func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 			req.Header.Set("Authorization", "DPoP "+accessToken)
-			req.Header.Set("DPoP", authTestDPoPProof(t, key, jwk, http.MethodGet, path, tc.name, tc.ath, now))
+			req.Header.Set("DPoP", authTestDPoPProof(t, key, jwk, http.MethodGet, "https://idp.test"+path, tc.name, tc.ath, now))
 			req = withAuthTestRealm(req)
 			c := e.NewContext(req, httptest.NewRecorder())
 			a := Authenticator{

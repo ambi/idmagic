@@ -321,11 +321,52 @@ func TestTenantRouteCookiePathAndName(t *testing.T) {
 	})
 }
 
-func TestRequestHTUAndTenantURL(t *testing.T) {
-	c, _ := newTenantMiddlewareContext("http://idp.test/realms/acme/token?foo=bar")
-	if got := RequestHTU(c, "https://idp.test/realms/acme"); got != "https://idp.test/realms/acme/realms/acme/token" {
-		t.Fatalf("RequestHTU = %q", got)
+// htu の期待値は、クライアントがリクエストを送った絶対 URL である。path style の issuer は
+// すでに /realms/{realm} を含むので、issuer 全体にパスを継ぐと prefix が二重になる。基底の
+// issuer を前置すると subdomain style の host が落ちる。どちらの誤りもここで区別する。
+//
+//spec:covers RFC9449-API-TOKEN-DPOP: htu の期待値を、テナントの正規ロケーションの origin とリクエストのパスから、クエリを除いて組む。
+func TestRequestHTUIsTheTargetURIAtTheCanonicalLocation(t *testing.T) {
+	pathTenant := &tenancydomain.Tenant{ID: "acme", Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStylePath}
+	subTenant := &tenancydomain.Tenant{ID: "globex", Realm: "globex", EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain}
+	for _, tc := range []struct {
+		name, target     string
+		tenant           *tenancydomain.Tenant
+		issuer, fallback string
+		want             string
+	}{
+		{
+			name: "path style", target: "http://internal:8080/realms/acme/api/admin/v1/users?limit=1",
+			tenant: pathTenant, issuer: "https://idp.test/realms/acme",
+			want: "https://idp.test/realms/acme/api/admin/v1/users",
+		},
+		{
+			name: "subdomain style", target: "http://internal:8080/token",
+			tenant: subTenant, issuer: "https://globex.idp.test:8443", fallback: "https://idp.test",
+			want: "https://globex.idp.test:8443/token",
+		},
+		{
+			name: "no tenant falls back", target: "http://internal/realms/default/token",
+			fallback: "https://idp.test/",
+			want:     "https://idp.test/realms/default/token",
+		},
+		{name: "no issuer at all", target: "http://internal/realms/default/token", want: ""},
+		{name: "issuer without a host", target: "http://internal/token", fallback: "idp.test", want: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := newTenantMiddlewareContext(tc.target)
+			if tc.tenant != nil {
+				c.SetRequest(c.Request().WithContext(tenancy.WithTenant(c.Request().Context(), tc.tenant, tc.issuer, "")))
+			}
+			if got := RequestHTU(c, tc.fallback); got != tc.want {
+				t.Fatalf("RequestHTU = %q, want %q", got, tc.want)
+			}
+		})
 	}
+}
+
+func TestTenantURLFallsBackWithoutATenant(t *testing.T) {
+	c, _ := newTenantMiddlewareContext("http://idp.test/realms/acme/token?foo=bar")
 	if got := TenantURL(c, "/x", "https://fallback.test"); got != "https://fallback.test/x" {
 		t.Fatalf("TenantURL = %q", got)
 	}

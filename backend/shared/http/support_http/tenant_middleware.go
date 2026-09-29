@@ -2,6 +2,7 @@ package support_http
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -169,11 +170,22 @@ func RequestIssuer(c *echo.Context, fallback string) string {
 	return tenancy.Issuer(c.Request().Context(), fallback)
 }
 
-// RequestHTU は DPoP proof の htu (RFC 9449 §4.2) として用いる、
-// クエリ・フラグメント無しの絶対 URL を返す。
-// テナント prefix `/realms/{id}` を含むパスでもクライアントが送ったままに復元する。
-func RequestHTU(c *echo.Context, base string) string {
-	return strings.TrimRight(base, "/") + c.Request().URL.Path
+// RequestHTU は DPoP proof の htu (RFC 9449 §4.2) として照合する、クエリとフラグメントを
+// 含まない絶対 URL を返す。文脈にテナントが無いときは fallback を issuer として使う。
+//
+// issuer 全体ではなく origin にリクエストのパスを継ぐ。path style の issuer は既に
+// /realms/{realm} を含み、パスにも同じ prefix があるので、issuer 全体へ継ぐと二重になる。
+// Host ヘッダーからは組まない。正規ロケーションは discovery が広告する URL と同じ出所なので、
+// プロキシ配下でもクライアントの URL と一致し、ヘッダーの偽装で期待値を動かせない。
+//
+// origin を決められなければ "" を返す。DPoP の検証は空の htu を一致とみなさないので、
+// その場合の証明は拒否される。
+func RequestHTU(c *echo.Context, fallback string) string {
+	issuer, err := url.Parse(RequestIssuer(c, fallback))
+	if err != nil || issuer.Scheme == "" || issuer.Host == "" {
+		return ""
+	}
+	return issuer.Scheme + "://" + issuer.Host + c.Request().URL.Path
 }
 
 // TenantURL はテナントの正規ロケーション配下の絶対 URL を組み立てる。

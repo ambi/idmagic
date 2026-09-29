@@ -126,7 +126,9 @@ func verifyDPoP(
 	if htm, _ := payload["htm"].(string); htm != expectedHTM {
 		return nil, fmt.Errorf("dpop: htm mismatch (got %q, want %q)", htm, expectedHTM)
 	}
-	if htu, _ := payload["htu"].(string); htu != expectedHTU {
+	// 期待値を決められなかった呼び出し元は "" を渡す。htu の無い証明も "" と読めるので、
+	// 空どうしを一致とみなさない。
+	if htu, _ := payload["htu"].(string); htu == "" || htu != expectedHTU {
 		return nil, fmt.Errorf("dpop: htu mismatch (got %q, want %q)", htu, expectedHTU)
 	}
 	if accessToken != "" {

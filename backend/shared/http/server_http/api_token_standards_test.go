@@ -56,6 +56,12 @@ const (
 	apiTokenRSClientID = "resource-server"
 	apiTokenRSSecret   = "resource-server-secret"
 	apiTokenOtherRealm = "acme"
+	// apiTokenHostRealm は subdomain style のテナントである。正規ロケーションが path style と
+	// 違う形になるので、URL を組む規則が 2 形のどちらでも成り立つかをここで読む。
+	apiTokenHostRealm     = "globex"
+	apiTokenBaseDomain    = "idp.example"
+	apiTokenHostAdminSub  = "admin-globex"
+	apiTokenHostTargetSub = "target-globex"
 
 	apiTokenListPath      = "/realms/default/api/admin/v1/users"
 	apiTokenOtherListPath = "/realms/acme/api/admin/v1/users"
@@ -85,6 +91,10 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: created},
 		{ID: apiTokenOtherRealm, Realm: apiTokenOtherRealm, DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: created},
+		{
+			ID: apiTokenHostRealm, Realm: apiTokenHostRealm, DisplayName: "Globex", Status: tenancydomain.TenantStatusActive,
+			EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain, CreatedAt: created,
+		},
 	} {
 		if err := tenants.Save(context.Background(), tenant); err != nil {
 			t.Fatal(err)
@@ -98,6 +108,14 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	})
 	users.Seed(&userdomain.User{
 		ID: apiTokenTargetSub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "target",
+		PasswordHash: "unused", Roles: []string{"user"}, CreatedAt: created, UpdatedAt: created,
+	})
+	users.Seed(&userdomain.User{
+		ID: apiTokenHostAdminSub, TenantID: apiTokenHostRealm, PreferredUsername: "admin",
+		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: created, UpdatedAt: created,
+	})
+	users.Seed(&userdomain.User{
+		ID: apiTokenHostTargetSub, TenantID: apiTokenHostRealm, PreferredUsername: "target",
 		PasswordHash: "unused", Roles: []string{"user"}, CreatedAt: created, UpdatedAt: created,
 	})
 
@@ -136,7 +154,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	e := echo.New()
 	Register(e, Deps{
 		Issuer: apiTokenIssuer, Contract: spec.CurrentRuntimeContract(),
-		TenantRepo: tenants, UserRepo: users,
+		TenantRepo: tenants, TenantBaseDomain: apiTokenBaseDomain, UserRepo: users,
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: managedIntrospector,
@@ -163,6 +181,9 @@ func (s *apiTokenStack) realmContext(t *testing.T, realm string) context.Context
 	tenant, err := s.tenants.FindByRealm(context.Background(), realm)
 	if err != nil || tenant == nil {
 		t.Fatalf("realm %q: tenant=%v err=%v", realm, tenant, err)
+	}
+	if tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain {
+		return tenancy.WithTenant(context.Background(), tenant, "https://"+realm+"."+apiTokenBaseDomain, "")
 	}
 	prefix := "/realms/" + realm
 	return tenancy.WithTenant(context.Background(), tenant, apiTokenIssuer+prefix, prefix)
@@ -618,7 +639,7 @@ func TestApiTokenSenderConstraintIsChosenAtIssuance(t *testing.T) {
 	}
 	// 制約ありのトークンは、鍵の所持を証明すれば通る。
 	proof := apiTokenDPoPProof(t, key, jwk, dpopProofInput{
-		htm: http.MethodGet, htu: apiTokenListPath, jti: "sender-constraint-1",
+		htm: http.MethodGet, htu: apiTokenIssuer + apiTokenListPath, jti: "sender-constraint-1",
 		ath: tokensjose.AccessTokenHash(constrained), iat: time.Now().UTC(),
 	})
 	if !reachedTheAdminAPI(stack.listUsers(apiTokenListPath, "DPoP "+constrained, http.Header{"DPoP": {proof}})) {
@@ -675,7 +696,10 @@ func apiTokenDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, in
 	if err != nil {
 		t.Fatal(err)
 	}
-	claims := map[string]any{"htm": in.htm, "htu": in.htu, "jti": in.jti, "iat": in.iat.Unix()}
+	claims := map[string]any{"htm": in.htm, "jti": in.jti, "iat": in.iat.Unix()}
+	if in.htu != "" {
+		claims["htu"] = in.htu
+	}
 	if in.ath != "" {
 		claims["ath"] = in.ath
 	}
@@ -709,11 +733,8 @@ func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 	present := func(proof string) *httptest.ResponseRecorder {
 		return stack.listUsers(apiTokenListPath, "DPoP "+literal, http.Header{"DPoP": {proof}})
 	}
-	// 無傷の証明が持つ htu は、絶対 URL ではなくパスである。保護リソースの検証がそちらを
-	// 期待しているからであり、その形が正しいという判断ではない。絶対 URL を送る適合クライアントが
-	// 通らないことは [[wi-511-dpop-proof-htu-at-protected-resources-is-not-the-target-uri]] が扱う。ここで読んでいるのは、htu が照合されること自体である。
 	intact := func(jti string) dpopProofInput {
-		return dpopProofInput{htm: http.MethodGet, htu: apiTokenListPath, jti: jti, ath: ath, iat: now}
+		return dpopProofInput{htm: http.MethodGet, htu: apiTokenIssuer + apiTokenListPath, jti: jti, ath: ath, iat: now}
 	}
 
 	if !reachedTheAdminAPI(present(apiTokenDPoPProof(t, key, jwk, intact("intact-1")))) {
@@ -749,7 +770,12 @@ func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 		}},
 		{name: "htu of another resource", proof: func() string {
 			in := intact("bad-htu")
-			in.htu = apiTokenDisablePath
+			in.htu = apiTokenIssuer + apiTokenDisablePath
+			return apiTokenDPoPProof(t, key, jwk, in)
+		}},
+		{name: "no htu", proof: func() string {
+			in := intact("no-htu")
+			in.htu = ""
 			return apiTokenDPoPProof(t, key, jwk, in)
 		}},
 		{name: "iat outside the clock skew", proof: func() string {
@@ -775,6 +801,70 @@ func TestDPoPBoundApiTokenVerifiesEveryProofElement(t *testing.T) {
 			}
 			if recorder.Code != http.StatusUnauthorized {
 				t.Fatalf("status = %d, want 401 (body=%s)", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
+// 適合クライアントは `htu` にリクエストの絶対 URL を入れる（RFC 9449 §4.2）。テナントの正規
+// ロケーションは path style と subdomain style の 2 形があり、URL を組む規則はどちらでも
+// クライアントが送った URL を復元しなければならない。path style だけを読むと、issuer に
+// パスを継いで `/realms/{realm}` が二重になる実装や、基底の issuer を前置して subdomain を
+// 落とす実装を見分けられない。
+//
+// 同じ 1 本のトークンに対して、`htu` だけを変えた証明を並べる。通るのは絶対 URL だけで、
+// パスだけの `htu` と、同じテナントの別リソースの絶対 URL は通らない。
+//
+//spec:covers RFC9449-API-TOKEN-DPOP: 保護リソースは `htu` をリクエストの絶対 URL と照合し、テナントの正規ロケーションの 2 形のどちらでも適合クライアントの証明を受理する。
+func TestDPoPBoundApiTokenAcceptsTheAbsoluteTargetURIAtEitherTenantStyle(t *testing.T) {
+	for _, tc := range []struct {
+		name, realm, origin, prefix, adminSub, targetSub string
+	}{
+		{
+			name: "path style", realm: tenancydomain.DefaultRealm, origin: apiTokenIssuer,
+			prefix: "/realms/" + tenancydomain.DefaultRealm, adminSub: apiTokenAdminSub, targetSub: apiTokenTargetSub,
+		},
+		{
+			name: "subdomain style", realm: apiTokenHostRealm, origin: "https://" + apiTokenHostRealm + "." + apiTokenBaseDomain,
+			adminSub: apiTokenHostAdminSub, targetSub: apiTokenHostTargetSub,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stack := newApiTokenStack(t)
+			key, jwk, jkt := newApiTokenDPoPKey(t)
+			literal, _, err := stack.tokens.Issue(
+				stack.realmContext(t, tc.realm), stack.tenantID(t, tc.realm), tc.adminSub, "standards test",
+				apitokendomain.Scopes{apitokendomain.ScopeUsersRead}.Strings(), 1, jkt,
+			)
+			if err != nil {
+				t.Fatalf("issue: %v", err)
+			}
+			listPath := tc.prefix + "/api/admin/v1/users"
+			listURL := tc.origin + listPath
+			present := func(htu, jti string) *httptest.ResponseRecorder {
+				proof := apiTokenDPoPProof(t, key, jwk, dpopProofInput{
+					htm: http.MethodGet, htu: htu, jti: jti,
+					ath: tokensjose.AccessTokenHash(literal), iat: time.Now().UTC(),
+				})
+				request := httptest.NewRequest(http.MethodGet, listURL, http.NoBody)
+				request.Header.Set("Authorization", "DPoP "+literal)
+				request.Header.Set("DPoP", proof)
+				return stack.do(request)
+			}
+
+			if recorder := present(listURL, "absolute"); recorder.Code != http.StatusOK ||
+				!strings.Contains(recorder.Body.String(), tc.targetSub) {
+				t.Fatalf("絶対 URL の htu を持つ証明で管理 API へ到達しない: status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+			for _, refused := range []struct{ name, htu string }{
+				{name: "path only", htu: listPath},
+				{name: "another resource", htu: tc.origin + tc.prefix + "/api/admin/v1/users/" + tc.targetSub + "/disable"},
+			} {
+				recorder := present(refused.htu, refused.name)
+				if recorder.Code != http.StatusUnauthorized || strings.Contains(recorder.Body.String(), tc.targetSub) {
+					t.Errorf("%s: htu=%q の証明が拒否されない: status=%d body=%s",
+						refused.name, refused.htu, recorder.Code, recorder.Body.String())
+				}
 			}
 		})
 	}

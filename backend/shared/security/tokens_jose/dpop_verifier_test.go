@@ -196,6 +196,21 @@ func TestVerifyDPoPRejectsFailureCases(t *testing.T) {
 	}
 }
 
+// 期待値を決められなかった呼び出し元は "" を渡す。htu を持たない証明も "" と読めるので、
+// 文字列の一致だけで照合すると、期待値が無いことと証明に htu が無いことが一致してしまう。
+func TestVerifyDPoPRejectsAMissingHTUEvenWhenNoTargetIsExpected(t *testing.T) {
+	key, jwk := dpopTestKey(t)
+	now := time.Now().UTC()
+	proof := encodeDPoPProof(t, key,
+		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
+		map[string]any{"htm": "GET", "jti": "no-htu", "iat": now.Unix()},
+	)
+	if _, err := VerifyDPoPForToken(context.Background(), proof, "GET", "", memory.NewDpopReplayStore(), now); err == nil ||
+		!strings.Contains(err.Error(), "htu") {
+		t.Fatalf("err = %v, want an htu rejection", err)
+	}
+}
+
 func TestVerifyDPoPDetectsReplay(t *testing.T) {
 	// 同一 jti の再使用は ReplayWindow 内で拒否される (DpopJtiUniquenessWithinWindow)。
 	key, jwk := dpopTestKey(t)
