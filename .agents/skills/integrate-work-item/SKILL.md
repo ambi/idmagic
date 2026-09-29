@@ -1,6 +1,6 @@
 ---
 name: integrate-work-item
-description: Integrate a completed work-item branch into main or another target branch by fast-forward, rebase, or merge, and verify only when integration produces a tree that was not already verified.
+description: Integrate a completed work-item branch into main or another target branch by fast-forward, rebase, or merge, and verify only when integration produces a tree that was not already verified, then remove the source worktree and branch.
 ---
 
 # Integrating a completed work item
@@ -34,6 +34,17 @@ description: Integrate a completed work-item branch into main or another target 
 
    Tree identity, not commit identity, controls this decision. A merge or rebase may change commit metadata
    without changing files.
-5. Report the integration method, target commit, tree comparison, and any verification performed. Leave
-   `spec/generated/` and `site/` uncommitted. Remove worktrees, delete branches, update remote refs, or push only
-   when the user explicitly asks.
+5. Clean up the integrated source from the target worktree, once the target contains it and any required
+   verification has passed:
+
+   ```sh
+   git worktree remove .worktrees/wi-42
+   git branch -d work-item/wi-42
+   ```
+
+   `git branch -d` refuses a branch the target does not contain, which guards against deleting unintegrated work.
+   If `git worktree remove` fails partway, confirm the worktree's `git status --porcelain` lists only ` D` lines
+   before retrying with `--force`.
+6. Report the integration method, target commit, tree comparison, verification performed, and the removed
+   worktree and branch. Leave `spec/generated/` and `site/` uncommitted. Update remote refs or push only when the
+   user explicitly asks.
