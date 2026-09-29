@@ -16,7 +16,7 @@ spec_impact:
 
 ## Motivation
 
-`.claude/rules/japanese-writing.md` は、リポジトリ内で人が読む文章を日本語とし、英語を API エラーメッセージ、ログメッセージ、CLI ヘルプ、コミットメッセージ、`en` UI 文言に限定する。
+`docs/development/writing-language.md` は、リポジトリ内で人が読む文章を日本語とし、英語を API エラーメッセージ、ログメッセージ、CLI ヘルプ、コミットメッセージ、`en` UI 文言に限定する。
 しかし、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md`、生成される設定資料、既存 TypeSpec の doc comment には英語が残っている。
 TypeSpec の説明文は OpenAPI と仕様 HTML に流入するため、生成器の固定 UI だけを日本語化しても API リファレンス全体の言語は統一されない。
 
