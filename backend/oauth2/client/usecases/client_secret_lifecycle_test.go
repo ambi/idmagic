@@ -182,4 +182,14 @@ func TestRevokeClientSecretIsScopedAndIdempotent(t *testing.T) {
 	if !errors.Is(err, ErrClientSecretCredentialNotFound) {
 		t.Fatalf("error=%v, want ErrClientSecretCredentialNotFound", err)
 	}
+	credentials, err := repo.ListClientSecretCredentials(ctx, client.ClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(credentials) != 1 || credentials[0].RevokedAt == nil || !credentials[0].RevokedAt.Equal(now) {
+		t.Fatalf("missing-credential refusal changed credentials: %#v", credentials)
+	}
+	if len(events) != 1 {
+		t.Fatalf("missing-credential refusal emitted events: %#v", events)
+	}
 }

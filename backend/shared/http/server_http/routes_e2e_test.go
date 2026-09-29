@@ -783,9 +783,7 @@ func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApprova
 		t.Fatalf("enrollment status=%d, want 403; body=%s", enrollment.StatusCode, body)
 	}
 	// 登録が始まっていないので、シークレットは応答に現れない。
-	if !strings.Contains(string(body), "mfa_enrollment_not_allowed") || strings.Contains(string(body), "secret") {
-		t.Fatalf("enrollment body=%s, want an mfa_enrollment_not_allowed refusal carrying no secret", body)
-	}
+	assertBodyHasNoEnrollmentSecret(t, body)
 }
 
 func TestBrowserAuthorizationFlowRejectsExpiredEnrollmentApproval(t *testing.T) {
@@ -824,6 +822,7 @@ func TestBrowserAPIPostRejectsMissingCSRF(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d, want 403; body=%s", resp.StatusCode, body)
 	}
+	assertClientNotAuthenticated(t, client, srv.URL)
 }
 
 func TestDirectAdminLoginReturnsToRequestedPage(t *testing.T) {
@@ -1049,6 +1048,7 @@ func TestBrowserAPIPostRejectsForeignOrigin(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("status=%d, want 403", resp.StatusCode)
 	}
+	assertClientNotAuthenticated(t, client, srv.URL)
 }
 
 //spec:covers REQ-AUTHENTICATION-010, EX-AUTHENTICATION-010-03: 直近の履歴に一致する新しいパスワードが password_reuse で拒否されることを HTTP の境界で固定する。変更そのものが成立することは対照として先に置く。
@@ -1124,6 +1124,7 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 	if !bytes.Contains(body, []byte(`"type":"urn:idmagic:error:password_reuse"`)) {
 		t.Fatalf("unexpected body=%s", body)
 	}
+	assertPasswordUnchangedAfterRefusal(t, client, srv.URL, transaction.CSRFToken, "fresh-pass-9182")
 }
 
 func TestAccountContextRequiresAuthenticatedSession(t *testing.T) {
@@ -1273,19 +1274,44 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 
 	// 拒否が変えなかったもの: もとのパスワードで依然としてログインできる。
 	// 400 を書いたうえで保存も続ける実装は、応答だけを読むテストを素通りする。
-	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": demoPassword})
-	loginReq, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
-	loginReq.Header.Set("Content-Type", "application/json")
-	loginReq.Header.Set("Origin", "http://test")
-	loginReq.Header.Set("X-Csrf-Token", transaction.CSRFToken)
-	loginResp, err := client.Do(loginReq)
-	if err != nil {
-		t.Fatalf("POST /api/auth/login with the original password: %v", err)
+	assertPasswordUnchangedAfterRefusal(t, client, srv.URL, transaction.CSRFToken, demoPassword)
+}
+
+func assertBodyHasNoEnrollmentSecret(t *testing.T, body []byte) {
+	t.Helper()
+	if !strings.Contains(string(body), "mfa_enrollment_not_allowed") || strings.Contains(string(body), "secret") {
+		t.Fatalf("enrollment body=%s, want an mfa_enrollment_not_allowed refusal carrying no secret", body)
 	}
-	defer loginResp.Body.Close()
-	if loginResp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(loginResp.Body)
-		t.Fatalf("拒否されたのにもとのパスワードが使えない: status=%d body=%s", loginResp.StatusCode, raw)
+}
+
+func assertClientNotAuthenticated(t *testing.T, client *http.Client, serverURL string) {
+	t.Helper()
+	resp, err := client.Get(serverURL + "/realms/default/api/auth/account")
+	if err != nil {
+		t.Fatalf("GET /api/auth/account after refused login: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("refused login authenticated the client: status=%d body=%s", resp.StatusCode, body)
+	}
+}
+
+func assertPasswordUnchangedAfterRefusal(t *testing.T, client *http.Client, serverURL, csrfToken, password string) {
+	t.Helper()
+	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": password})
+	req, _ := http.NewRequest(http.MethodPost, serverURL+"/realms/default/api/auth/login", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://test")
+	req.Header.Set("X-Csrf-Token", csrfToken)
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/auth/login after refused password change: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("refused password change altered credentials: status=%d body=%s", resp.StatusCode, body)
 	}
 }
 

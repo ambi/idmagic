@@ -267,7 +267,7 @@ func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
 }
 
 func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
-	e, _ := newAdminUserHandler(t)
+	e, repo := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 	resp := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/admin", csrf, cookie, nil)
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -275,6 +275,13 @@ func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
 	}
 	if !strings.Contains(resp.Body.String(), "urn:idmagic:error:self_delete_forbidden") {
 		t.Fatalf("unexpected body=%s", resp.Body.String())
+	}
+	admin, err := repo.FindBySubIncludingDeleted(context.Background(), "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if admin == nil || admin.IsDeleted() || admin.PreferredUsername != "admin" {
+		t.Fatalf("self-delete refusal changed the administrator: %+v", admin)
 	}
 }
 

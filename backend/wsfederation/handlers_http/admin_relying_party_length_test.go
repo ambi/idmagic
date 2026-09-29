@@ -34,16 +34,25 @@ func TestAdminRelyingParty_RejectsWtrealmOverTheCeiling(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "field_length_exceeded") || !strings.Contains(rec.Body.String(), "wtrealm") {
 		t.Fatalf("problem details must name the field and the ceiling: %s", rec.Body.String())
 	}
+	list := get(e, relyingPartiesPath)
+	if strings.Contains(list.Body.String(), wtrealm) {
+		t.Fatalf("rejected relying party was stored: %s", list.Body.String())
+	}
 }
 
 // 契約の上限の内側でも UTF-8 では btree の索引行に収まらない値を、資源の上限が止める。
 func TestAdminRelyingParty_RejectsMultibyteWtrealmOverTheByteCeiling(t *testing.T) {
 	e := newAdminServer(t)
-	rec := doJSON(e, http.MethodPost, relyingPartiesPath, relyingPartyBody(strings.Repeat("あ", 1024)))
+	wtrealm := strings.Repeat("あ", 1024)
+	rec := doJSON(e, http.MethodPost, relyingPartiesPath, relyingPartyBody(wtrealm))
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d, want 422; body=%s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), "bytes") {
 		t.Fatalf("resource ceiling must be reported in bytes: %s", rec.Body.String())
+	}
+	list := get(e, relyingPartiesPath)
+	if strings.Contains(list.Body.String(), wtrealm) {
+		t.Fatalf("rejected relying party was stored: %s", list.Body.String())
 	}
 }

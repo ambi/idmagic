@@ -11,6 +11,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -202,6 +203,10 @@ func TestTenancyStateChangingAdminRoutesVerifyBrowserRequests(t *testing.T) {
 		TenantRepo: tenants, UserRepo: users, AuthnResolver: &fixedAuthnResolver{sub: "ops"},
 		Tenancy: tenancy.Module{TenantRepo: tenants},
 	})
+	beforeTenants, err := tenants.FindAll(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	const prefix = "/realms/" + tenancydomain.DefaultRealm
 	for _, route := range []struct{ method, path string }{
@@ -230,6 +235,18 @@ func TestTenancyStateChangingAdminRoutesVerifyBrowserRequests(t *testing.T) {
 			if rec.Code != http.StatusForbidden {
 				t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusForbidden, rec.Body.String())
 			}
+			assertTenantsUnchanged(t, tenants, beforeTenants)
 		})
+	}
+}
+
+func assertTenantsUnchanged(t *testing.T, tenants *tenancymemory.TenantRepository, before []*tenancydomain.Tenant) {
+	t.Helper()
+	after, err := tenants.FindAll(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(after, before) {
+		t.Fatalf("refused route changed tenants: before=%#v after=%#v", before, after)
 	}
 }

@@ -163,12 +163,26 @@ func TestHandleListAccountConsentsReturnsGrantedConsentsOnly(t *testing.T) {
 func TestHandleRevokeAccountConsentRequiresBrowserVerification(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
+	now := time.Now().UTC()
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+		UserID: "alice", ClientID: "some-client", Scopes: []string{"openid"},
+		State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
 	request := httptest.NewRequest(http.MethodPost, defaultRealmPath("/api/account/v1/consents/some-client/revoke"), http.NoBody)
 	request.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	f.e.ServeHTTP(response, request)
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "some-client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored == nil || stored.State != consentdomain.ConsentGranted {
+		t.Fatalf("refused revocation changed consent: %#v", stored)
 	}
 }
 

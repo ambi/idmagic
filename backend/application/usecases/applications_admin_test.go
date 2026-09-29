@@ -149,6 +149,13 @@ func TestUpdateApplicationNotFound(t *testing.T) {
 	}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
 	}
+	applications, err := deps.Repo.ListAll(ctx, "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(applications) != 0 {
+		t.Fatalf("missing-application refusal changed state: %+v", applications)
+	}
 }
 
 func TestDeleteApplicationRemovesAssignmentsAndPolicy(t *testing.T) {
@@ -211,6 +218,13 @@ func TestUploadAndDeleteApplicationIcon(t *testing.T) {
 		ActorUserID: "admin", ApplicationID: "ghost", Data: png,
 	}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
+	}
+	afterRefusals, err := deps.Repo.FindByID(ctx, "acme", app.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterRefusals == nil || afterRefusals.IconObjectKey != updated.IconObjectKey || afterRefusals.IconURL != updated.IconURL {
+		t.Fatalf("rejected icon uploads changed the application: %+v", afterRefusals)
 	}
 
 	cleared, err := appusecases.DeleteApplicationIcon(ctx, deps, "admin", app.ID, time.Time{})
@@ -339,6 +353,13 @@ func TestDeleteApplicationErrors(t *testing.T) {
 	err := appusecases.DeleteApplication(ctx, deps, "admin", "ghost", time.Time{})
 	if !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
+	}
+	applications, listErr := deps.Repo.ListAll(ctx, "acme")
+	if listErr != nil {
+		t.Fatal(listErr)
+	}
+	if len(applications) != 0 {
+		t.Fatalf("missing-application delete changed state: %+v", applications)
 	}
 }
 

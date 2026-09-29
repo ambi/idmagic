@@ -181,7 +181,7 @@ func TestListGetUpdateAndRemoveGroupMember(t *testing.T) {
 
 func TestUpdateGroupValidationErrors(t *testing.T) {
 	ctx := context.Background()
-	deps, _ := newGroupDeps(t)
+	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
 		ActorUserID: "operator", Name: "engineering", Now: now,
@@ -194,6 +194,7 @@ func TestUpdateGroupValidationErrors(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	eventCount := len(*events)
 
 	blank := " "
 	if _, err := groupusecases.UpdateGroup(ctx, deps, groupusecases.UpdateGroupInput{
@@ -217,6 +218,16 @@ func TestUpdateGroupValidationErrors(t *testing.T) {
 		ActorUserID: "operator", ID: "ghost", Name: &dupe,
 	}); !errors.Is(err, groupusecases.ErrGroupNotFound) {
 		t.Fatalf("expected ErrGroupNotFound, got %v", err)
+	}
+	after, err := deps.GroupRepo.FindByID(ctx, tenancydomain.DefaultTenantID, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == nil || after.Name != "engineering" || len(after.Roles) != 0 {
+		t.Fatalf("rejected updates changed the group: %+v", after)
+	}
+	if len(*events) != eventCount {
+		t.Fatalf("rejected updates emitted %d events, want %d", len(*events), eventCount)
 	}
 }
 
@@ -286,6 +297,13 @@ func TestAddMemberRejectsCrossTenantUser(t *testing.T) {
 	}
 	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_other", now); !errors.Is(err, idmusecases.ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound for cross-tenant user, got %v", err)
+	}
+	members, err := deps.GroupRepo.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(members) != 0 {
+		t.Fatalf("cross-tenant refusal saved memberships: %+v", members)
 	}
 }
 

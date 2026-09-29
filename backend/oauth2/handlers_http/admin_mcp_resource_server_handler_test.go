@@ -99,6 +99,22 @@ func TestAdminRejectsDuplicateResource(t *testing.T) {
 	if second.Code != http.StatusConflict {
 		t.Fatalf("expected 409 for duplicate resource, got %d body=%s", second.Code, second.Body.String())
 	}
+	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers", http.NoBody)
+	listReq.Header.Set("X-Demo-Sub", "admin")
+	listRes := httptest.NewRecorder()
+	e.ServeHTTP(listRes, listReq)
+	var list struct {
+		ResourceServers []map[string]any `json:"resource_servers"`
+	}
+	if listRes.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listRes.Code, listRes.Body.String())
+	}
+	if err := json.Unmarshal(listRes.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.ResourceServers) != 1 {
+		t.Fatalf("duplicate refusal saved another resource server: %+v", list.ResourceServers)
+	}
 }
 
 func TestAdminUpdatesMcpResourceServerNameScopesState(t *testing.T) {
@@ -149,6 +165,11 @@ func TestAdminDeletesMcpResourceServer(t *testing.T) {
 		t.Fatalf("delete status=%d body=%s", deleteRes.Code, deleteRes.Body.String())
 	}
 
+	assertMcpResourceServerAbsent(t, e, id)
+}
+
+func assertMcpResourceServerAbsent(t *testing.T, e *echo.Echo, id string) {
+	t.Helper()
 	getReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers/"+id, http.NoBody)
 	getReq.Header.Set("X-Demo-Sub", "admin")
 	getRes := httptest.NewRecorder()

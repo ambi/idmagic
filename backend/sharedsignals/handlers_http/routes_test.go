@@ -7,6 +7,7 @@ package handlers_http_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,11 +23,32 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+	sharedsignalsdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 
 	"github.com/labstack/echo/v5"
 )
 
+type recordingReceivedEventRepository struct {
+	delegate *sharedsignalsmemory.ReceivedSecurityEventRepository
+	Saved    []sharedsignalsdomain.ReceivedSecurityEvent
+}
+
+func (r *recordingReceivedEventRepository) ExistsByJTI(ctx context.Context, tenantID, streamID, setJTI string) (bool, error) {
+	return r.delegate.ExistsByJTI(ctx, tenantID, streamID, setJTI)
+}
+
+func (r *recordingReceivedEventRepository) Save(ctx context.Context, event *sharedsignalsdomain.ReceivedSecurityEvent) error {
+	r.Saved = append(r.Saved, *event)
+	return r.delegate.Save(ctx, event)
+}
+
 func newSharedSignalsHandler(t *testing.T) *echo.Echo {
+	t.Helper()
+	e, _ := newSharedSignalsHandlerWithReceivedEvents(t)
+	return e
+}
+
+func newSharedSignalsHandlerWithReceivedEvents(t *testing.T) (*echo.Echo, *recordingReceivedEventRepository) {
 	t.Helper()
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()
@@ -40,6 +62,7 @@ func newSharedSignalsHandler(t *testing.T) *echo.Echo {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
+	receivedEvents := &recordingReceivedEventRepository{delegate: sharedsignalsmemory.NewReceivedSecurityEventRepository()}
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
 		AuthnResolver: authusecases.DemoHeaderResolver{},
@@ -49,11 +72,11 @@ func newSharedSignalsHandler(t *testing.T) *echo.Echo {
 			TransmitterConfigRepo: sharedsignalsmemory.NewSsfTransmitterConfigRepository(),
 			ReceiverConfigRepo:    sharedsignalsmemory.NewSsfReceiverConfigRepository(),
 			DeliveryRepo:          sharedsignalsmemory.NewSecurityEventDeliveryRepository(),
-			ReceivedEventRepo:     sharedsignalsmemory.NewReceivedSecurityEventRepository(),
+			ReceivedEventRepo:     receivedEvents,
 			RevocationEpochRepo:   sharedsignalsmemory.NewAgentRevocationEpochRepository(),
 		},
 	})
-	return e
+	return e, receivedEvents
 }
 
 func sharedSignalsAdminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
@@ -187,7 +210,7 @@ func TestReceiveSecurityEventDoesNotUseProblemDetails(t *testing.T) {
 // Problem Details の外に置いている理由がその標準なので、標準の形そのものになって
 // いなければ理由が成り立たない。
 func TestReceiveSecurityEventUsesRFC8935ErrorShape(t *testing.T) {
-	e := newSharedSignalsHandler(t)
+	e, receivedEvents := newSharedSignalsHandlerWithReceivedEvents(t)
 
 	// RFC 8935 §2.3 の形。`err` は登録済みのエラーコード、`description` は人間向けの説明。
 	type rfc8935Error struct {
@@ -244,4 +267,7 @@ func TestReceiveSecurityEventUsesRFC8935ErrorShape(t *testing.T) {
 			t.Fatalf("err=%q, want security_event_token_too_large", body.Err)
 		}
 	})
+	if len(receivedEvents.Saved) != 0 {
+		t.Fatalf("rejected security events were recorded as received: %+v", receivedEvents.Saved)
+	}
 }

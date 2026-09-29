@@ -64,6 +64,9 @@ func TestAdminGroupAPIRejectsOverlongNameWith422(t *testing.T) {
 				!strings.Contains(problem.Detail, "at most 100 characters") {
 				t.Fatalf("detail does not name the field and the limit: %q", problem.Detail)
 			}
+			if count := adminGroupCount(t, e); count != 0 {
+				t.Fatalf("overlong name created %d groups, want none", count)
+			}
 		})
 	}
 }
@@ -84,5 +87,8 @@ func TestAdminGroupAPIDescriptionBoundary(t *testing.T) {
 		map[string]any{"name": "over-limit", "description": strings.Repeat("あ", descriptionLimit+1)})
 	if over.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("one over the limit: status=%d body=%s", over.Code, over.Body.String())
+	}
+	if count := adminGroupCount(t, e); count != 1 {
+		t.Fatalf("rejected description left %d groups, want only the at-limit group", count)
 	}
 }

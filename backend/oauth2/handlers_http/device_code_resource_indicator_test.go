@@ -112,6 +112,7 @@ func TestTokenDeviceCode_unregisteredResource_rejectedAsInvalidTarget(t *testing
 	if resp["error"] != "invalid_target" {
 		t.Fatalf("expected invalid_target, got %v", resp["error"])
 	}
+	assertNoAccessToken(t, rec)
 }
 
 func TestTokenDeviceCode_registeredResource_boundAudience(t *testing.T) {

@@ -1,13 +1,53 @@
 ---
 depends_on: [wi-490-fold-refusal-coverage-into-one-normative-coverage-rule, wi-491-adopt-markdown-with-gherkin-scenarios]
-status: pending
+status: completed
 authors: [tn]
-risk: low
+risk: medium
 reversibility: reversible
 created_at: 2026-08-22
 priority: p1
 change_kind: tooling
 spec_impact: { kind: none, reason: "既存の拒否テストへ無作用のアサーションを足す作業であり、製品の振る舞いと公開契約を変えない。検証中に実装の欠陥が見つかった場合は、規範参照を持つ個別の bugfix work item に分ける。" }
+evidence_policy: risk-based-v3
+documentation_impact: { level: none, reason: "製品の利用者向け文書と運用手順は変わらず、変更対象は既存テストの検出能力と開発者向け報告に限られる。", references: [] }
+completion:
+  completed_at: 2026-09-30
+  summary: "規範仕様の変更なし。拒否テストの無作用観測を補い、報告器が既存の実効的な観測も認識するようにした。開始時147件だった未確認候補は0件になった。"
+  acceptance_red_evidence:
+    test: "mise run report-security-test-gaps -- --list"
+    requirement: "N/A: 既存拒否テストの検出能力を改善する tooling work であり、製品規範シナリオは変更しない。"
+    observed_failure: "開始時、状態変更を拒否する228件のうち147件に拒否後の無作用観測がない候補として報告された。"
+    detection_reason: "拒否応答だけでなく、防いだ状態変更・発行物・送出・保護表現を読んでいるかを横断して検出する入口である。"
+  unit_red_evidence:
+    test: "mise run test-tools-file -- security-test-gap-report/src/report.test.ts"
+    requirement: "N/A: 同上。"
+    observed_failure: "未実装の純粋関数exportと判定を参照する試験を先に置いたため、報告器分離前はimportまたは期待するEffectEvidenceが不足して失敗した。"
+    detection_reason: "状態比較、記録型テストダブル、保護表現の不在、専用アサーションを拒否応答だけと区別する純粋判定を直接固定する。"
+  change_resistance: "EFFECT_ASSERTIONを一時的にneverMatchAnEffectAssertionへ置換すると、専用アサーションを認識するreport.test.tsが1件失敗した。直後に復元し、18件すべて緑を確認した。"
+  verification:
+    - { cmd: "mise run report-security-test-gaps", result: "217 candidates, 0 gaps" }
+    - { cmd: "mise run test-tools-file -- security-test-gap-report/src/report.test.ts", result: "18 pass" }
+    - { cmd: "mise run test-go-changed", result: "passed" }
+    - { cmd: "mise run lint-go", result: "0 issues" }
+    - { cmd: "mise run check-security-controls", result: "passed" }
+    - { cmd: "mise run check-spec", result: "passed" }
+    - { cmd: "mise run test-go-race", result: "passed" }
+    - { cmd: "mise run verify", result: "passed" }
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - tools/security-test-gap-report/src/main.ts
+    - mise.toml
+  tests:
+    - backend/idmanagement/handlers_http/refusal_effects_test.go
+    - backend/tenancy/handlers_http/refusal_effects_test.go
+    - backend/application/handlers_http/catalog_examples_test.go
+    - backend/shared/http/support_http/auth_admin_test.go
+  stop_before_reading:
+    - spec/
+    - frontend/
+    - infra/
 ---
 
 # 被覆済みとして数えられている拒否テスト 147 件に、拒否が防いだ効果の観測を足す
@@ -72,6 +112,12 @@ spec_impact: { kind: none, reason: "既存の拒否テストへ無作用のア�
 
 `report-security-test-gaps` は既存テストの構文から候補を挙げる報告であり、検証の意味を保証しない。147 件という数は読む対象の数であって、直す対象の数ではない。読んだ結果、既に無作用を観測していると判断した件は、なぜ報告に挙がったかを本項目へ記録して残す。報告の側を直せるならそうする。
 
+報告器の中核は、`GoTest { path, name, body }` から拒否する状態変更かを判定し、`EffectEvidence` を見つけられないものを `Gap` として返す決定的な計算とする。ファイル列挙と読み取りは `loadGoTests(root) -> GoTest[]` の作用境界へ、標準出力は `renderReport(report) -> string` の外へ分ける。これにより、製品テストの本文を fixture として与え、拒否応答だけのテストと、状態・発行物・配送・保護対象の表現を実際に観測するテストを単体で区別できる。
+
+外部への送出を読み戻せない境界では、記録型テストダブルに残った送出件数と宛先・方式・本文のうち防護対象を表す値を比較する。読み取り操作の拒否では、拒否応答の本文へ保護対象の識別子または表現が含まれないことを観測する。HTTP status、エラー型、テスト名、コメントだけは `EffectEvidence` に数えない。
+
+readiness pass では、報告された専用の `refusal_effects_test.go` にも、`fixture.user`、`fixture.groupNames`、`server.templateDetail`、`sender.Sent`、拒否応答本文の機密表現不在といった有効な観測が既にあることを確認した。現行の `READBACK` が `Get|Find|List|Load|Count|Lookup|Resolve` という呼出名だけを見るための過剰報告である。報告器の改善は、表明を意味なく足すのではなく、この既存証拠を判定可能にする範囲に限る。
+
 **台帳の消化を本項目から外した理由。** 当初は「既存テストの無作用確認」と「テストのない拒否例への検証追加」を一つの負債として扱っていた。完了条件が同じだからである。しかし対象の決め方が違う。前者は既存テストの集合から報告が挙げるものであり、後者は台帳に載る 614 件のうち「拒否である」ものである。後者の「拒否である」を機械的に決める基準は安定しない。結果ステップが `*Error` 型を名指しするもので数えると 164 件だが、型を名指しせずに拒否の語で結果を書いている具体例が 133 件あり、そこには拒否ではないものも混ざる。境界がぶれる基準で所有を分ければ、どちらの work item にも入らない具体例が生まれる。台帳の所有者は wi-496 の 1 つにし、本項目は拒否テストの書き方という規範だけを提供する。
 
 ## Plan
@@ -81,15 +127,16 @@ spec_impact: { kind: none, reason: "既存の拒否テストへ無作用のア�
 3. パッケージ単位で、拒否後の無作用を読み戻すアサーションを追加する。
 4. 拒否処理を一時的に外すか、拒否前に効果を起こす故障を注入し、追加したアサーションが失敗することを確認する。
 5. 製品欠陥は個別の bugfix work item へ移し、本項目のテスト整理と混ぜない。
+6. Acceptance RED は `mise run report-security-test-gaps -- --list` が 147 件を報告する状態、Unit RED は報告器の抽出と判定を import する `tools/security-test-gap-report/src/report.test.ts` が未実装の export または不足した判定で失敗する状態とする。GREEN には `mise run test-tools-file -- security-test-gap-report/src/report.test.ts`、報告、変更した Go package の `mise run test-go-package`、`mise run lint-go` を使う。
 
 ## Tasks
 
-- [ ] T001 [Inventory] 147 件を一覧にし、入口、防いだ効果、現在のアサーションを記録する。
-- [ ] T002 [Design] 外部への送出と読み取り操作の拒否について、無作用の観測を決める。
-- [ ] T003 [Test] 既存の拒否テストへ、拒否後の無作用を読み戻すアサーションを追加する。
-- [ ] T004 [Triage] 検出した製品欠陥を個別の bugfix work item へ分ける。
-- [ ] T005 [Report] 報告に挙がったが既に無作用を観測していた件を記録し、可能なら報告の側を直す。
-- [ ] T006 [Verify] 故障注入で検出能力を確かめ、報告と標準検証を通す。
+- [x] T001 [Inventory] 147 件を一覧にし、入口、防いだ効果、現在のアサーションを記録する。
+- [x] T002 [Design] 外部への送出と読み取り操作の拒否について、無作用の観測を決める。
+- [x] T003 [Test] 既存の拒否テストへ、拒否後の無作用を読み戻すアサーションを追加する。
+- [x] T004 [Triage] 検出した製品欠陥を個別の bugfix work item へ分ける。
+- [x] T005 [Report] 報告に挙がったが既に無作用を観測していた件を記録し、可能なら報告の側を直す。
+- [x] T006 [Verify] 故障注入で検出能力を確かめ、報告と標準検証を通す。
 
 ## Verification
 

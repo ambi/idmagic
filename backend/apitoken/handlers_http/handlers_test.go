@@ -159,6 +159,19 @@ func TestIssueApiTokenRejectsInvalidRequest(t *testing.T) {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
 	}
+	listed := request(t, e, http.MethodGet, "/api/admin/v1/api-tokens", nil, true)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	var after struct {
+		Tokens []json.RawMessage `json:"tokens"`
+	}
+	if err := json.Unmarshal(listed.Body.Bytes(), &after); err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Tokens) != 0 {
+		t.Fatalf("invalid requests issued tokens: %s", listed.Body.String())
+	}
 }
 
 // Both invalid_request paths (malformed JSON body and

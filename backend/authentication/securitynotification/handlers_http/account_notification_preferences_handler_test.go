@@ -132,6 +132,19 @@ func decodeCategories(t *testing.T, rec *httptest.ResponseRecorder) categoriesBo
 	return body
 }
 
+func assertNoNotificationCategoryDisabled(t *testing.T, e *echo.Echo, sessionID string) {
+	t.Helper()
+	listed := preferencesRequest(t, e, http.MethodGet, sessionID, nil)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	for _, category := range decodeCategories(t, listed).Categories {
+		if !category.Enabled {
+			t.Fatalf("refused update disabled %s", category.Category)
+		}
+	}
+}
+
 //spec:covers REQ-AUTHENTICATION-033, EX-AUTHENTICATION-033-01: 通知設定の取得で全種別が返り、資格情報・認証要素・連絡先・なりすましの各種別に mandatory が付くことを固定する。
 func TestGetNotificationPreferencesReturnsTheWholeCatalog(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
@@ -204,11 +217,7 @@ func TestUpdateNotificationPreferencesRejectsMandatoryCategories(t *testing.T) {
 		t.Errorf("type=%q, want urn:idmagic:error:mandatory_notification_category", problem.Type)
 	}
 
-	for _, category := range decodeCategories(t, preferencesRequest(t, e, http.MethodGet, sessionID, nil)).Categories {
-		if !category.Enabled {
-			t.Errorf("%s was disabled by a request that must have been rejected whole", category.Category)
-		}
-	}
+	assertNoNotificationCategoryDisabled(t, e, sessionID)
 }
 
 // 未知の種別は保存せず拒否する。
@@ -220,6 +229,7 @@ func TestUpdateNotificationPreferencesRejectsUnknownCategories(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400", rec.Code, rec.Body.String())
 	}
+	assertNoNotificationCategoryDisabled(t, e, sessionID)
 }
 
 // ステップアップを成立させていないセッションからの更新は、再認証を要求される。
@@ -240,15 +250,7 @@ func TestUpdateNotificationPreferencesWithoutStepUpChangesNothing(t *testing.T) 
 	}
 
 	// 設定は取得側からしか読めない。すべての種別が有効のままであることを確かめる。
-	listed := preferencesRequest(t, e, http.MethodGet, fresh, nil)
-	if listed.Code != http.StatusOK {
-		t.Fatalf("取得 status=%d body=%s", listed.Code, listed.Body.String())
-	}
-	for _, category := range decodeCategories(t, listed).Categories {
-		if !category.Enabled {
-			t.Fatalf("拒否されたのに %s が無効になった", category.Category)
-		}
-	}
+	assertNoNotificationCategoryDisabled(t, e, fresh)
 
 	// 対照: ステップアップを満たすセッションでは同じ更新が通る。拒否の理由が
 	// 直近性であって、要求の中身でも CSRF でもないと示す。

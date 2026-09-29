@@ -48,6 +48,10 @@ func TestAdminServiceProvider_RejectsEntityIDOverTheCeiling(t *testing.T) {
 	if !strings.Contains(body, "field_length_exceeded") || !strings.Contains(body, "entity_id") {
 		t.Fatalf("problem details must name the field and the ceiling: %s", body)
 	}
+	list := get(e, serviceProvidersPath)
+	if strings.Contains(list.Body.String(), entityID) {
+		t.Fatalf("rejected service provider was stored: %s", list.Body.String())
+	}
 }
 
 // btree の索引行上限に達する前に止まること。契約の上限 (コードポイント) の内側でも
@@ -61,5 +65,9 @@ func TestAdminServiceProvider_RejectsMultibyteEntityIDOverTheByteCeiling(t *test
 	}
 	if !strings.Contains(rec.Body.String(), "bytes") {
 		t.Fatalf("resource ceiling must be reported in bytes: %s", rec.Body.String())
+	}
+	list := get(e, serviceProvidersPath)
+	if strings.Contains(list.Body.String(), entityID) {
+		t.Fatalf("rejected service provider was stored: %s", list.Body.String())
 	}
 }

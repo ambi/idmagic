@@ -182,6 +182,9 @@ func TestUpdateUserNotFound(t *testing.T) {
 	if _, err := u.UpdateUser(ctx, scimTenant, "no-such-id", map[string]any{"userName": "x@example.com"}); !errors.Is(err, usecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
+	if _, err := u.GetUser(ctx, scimTenant, "no-such-id"); !errors.Is(err, usecases.ErrNotFound) {
+		t.Fatalf("re-read err=%v, want the missing user to remain absent", err)
+	}
 }
 
 func TestUpdateUserRejectsRenameToExistingUsername(t *testing.T) {

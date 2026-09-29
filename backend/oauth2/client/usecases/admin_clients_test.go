@@ -181,6 +181,16 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if _, err := UpdateAdminOAuth2Client(otherTenant, deps, upIn); !errors.Is(err, ErrClientNotFound) {
 			t.Fatalf("cross-tenant update err=%v, want ErrClientNotFound", err)
 		}
+		afterCrossTenant, err := clientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, clientID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if afterCrossTenant == nil || afterCrossTenant.ClientName == nil || *afterCrossTenant.ClientName != "Client Updated Name" {
+			t.Fatalf("cross-tenant refusal changed the client: %+v", afterCrossTenant)
+		}
+		if len(emitted) != 1 {
+			t.Fatalf("cross-tenant refusal emitted events: %+v", emitted)
+		}
 
 		// 値が同じ場合（no-op）
 		emitted = nil
@@ -206,6 +216,16 @@ func TestAdminOAuth2Client(t *testing.T) {
 		_, err = UpdateAdminOAuth2Client(ctx, deps, upIn)
 		if err == nil {
 			t.Error("expected validation error, got nil")
+		}
+		afterRefusals, err := clientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, clientID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if afterRefusals == nil || afterRefusals.ClientName == nil || *afterRefusals.ClientName != "Client Updated Name" {
+			t.Fatalf("rejected updates changed the client: %+v", afterRefusals)
+		}
+		if len(emitted) != 0 {
+			t.Fatalf("rejected updates emitted events: %+v", emitted)
 		}
 	})
 
@@ -249,6 +269,13 @@ func TestAdminOAuth2Client(t *testing.T) {
 		err = DeleteAdminOAuth2Client(ctx, deps, "admin-3", clientID, now)
 		if !errors.Is(err, ErrClientNotFound) {
 			t.Errorf("expected ErrClientNotFound, got %v", err)
+		}
+		deleted, findErr := clientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, clientID)
+		if findErr != nil {
+			t.Fatal(findErr)
+		}
+		if deleted != nil || len(emitted) != 1 {
+			t.Fatalf("duplicate delete changed state: client=%+v events=%+v", deleted, emitted)
 		}
 	})
 

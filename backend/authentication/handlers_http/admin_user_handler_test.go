@@ -97,4 +97,11 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 	if !strings.Contains(response.Body.String(), `"urn:idmagic:error:invalid_credentials"`) {
 		t.Fatalf("unexpected body=%s", response.Body.String())
 	}
+	stored, err := requestStore.Find(context.Background(), "transaction")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored == nil || stored.State != spec.AuthFlowReceived {
+		t.Fatalf("disabled login advanced authorization transaction: %#v", stored)
+	}
 }

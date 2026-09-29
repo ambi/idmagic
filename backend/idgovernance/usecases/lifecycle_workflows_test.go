@@ -96,6 +96,9 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin", time.Time{}); !errors.Is(err, usecases.ErrWorkflowRevisionConflict) {
 		t.Fatalf("stale enable error = %v", err)
 	}
+	if stored, err := deps.Repo.Find(workflowContext(), "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != igdomain.LifecycleWorkflowDraft || stored.CurrentRevision != 2 {
+		t.Fatalf("stale enable changed workflow = %#v, %v", stored, err)
+	}
 	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin", time.Time{}); err != nil {
 		t.Fatalf("EnableLifecycleWorkflow: %v", err)
 	}
@@ -109,6 +112,9 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 	}
 	if _, err := usecases.UpdateLifecycleWorkflow(workflowContext(), deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("update deleted workflow error = %v", err)
+	}
+	if stored, err := deps.Repo.Find(workflowContext(), "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != igdomain.LifecycleWorkflowArchived {
+		t.Fatalf("rejected update changed archived workflow = %#v, %v", stored, err)
 	}
 	if _, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner v2", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}}); err != nil {
 		t.Fatalf("reuse deleted workflow name: %v", err)
@@ -189,6 +195,9 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 	other := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, "admin", time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("cross-tenant access error = %v", err)
+	}
+	if stored, err := deps.Repo.Find(workflowContext(), "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != workflow.Status {
+		t.Fatalf("cross-tenant refusal changed workflow = %#v, %v", stored, err)
 	}
 }
 
@@ -318,6 +327,9 @@ func TestDryRunLifecycleWorkflowTargetUserNotFound(t *testing.T) {
 	}
 	if _, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, "missing-user", now); !errors.Is(err, usecases.ErrLifecycleWorkflowTargetUserNotFound) {
 		t.Fatalf("error = %v, want ErrLifecycleWorkflowTargetUserNotFound", err)
+	}
+	if stored, err := workflowRepo.Find(ctx, "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != workflow.Status || stored.CurrentRevision != workflow.CurrentRevision {
+		t.Fatalf("failed dry-run changed workflow = %#v, %v", stored, err)
 	}
 }
 

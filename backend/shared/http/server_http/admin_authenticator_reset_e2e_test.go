@@ -426,6 +426,33 @@ func TestAdminResetUserAuthenticatorsRejectsNonAdmin(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d, want 403; body=%s", resp.StatusCode, body)
 	}
+	assertAliceTOTPNotReset(t, srv)
+}
+
+func assertAliceTOTPNotReset(t *testing.T, srv *httptest.Server) {
+	t.Helper()
+	client := browserClient(t)
+	const returnTo = "/realms/default/admin"
+	transaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+returnTo)
+	login := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
+		"username": demoUsername, "password": demoPassword, "return_to": returnTo,
+	})
+	if !strings.HasPrefix(login["next"], "/realms/default/totp") {
+		t.Fatalf("login next=%q, want TOTP because the factor must remain", login["next"])
+	}
+	totpTransaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+returnTo)
+	code, err := totpusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/totp", totpTransaction.CSRFToken, map[string]string{"code": code, "return_to": returnTo})
+	if result["redirect_to"] != returnTo {
+		t.Fatalf("TOTP factor was changed by refused reset: redirect_to=%q", result["redirect_to"])
+	}
 }
 
 // 管理者の MFA 操作のうち、要求は解析できるが実行が許されないもの

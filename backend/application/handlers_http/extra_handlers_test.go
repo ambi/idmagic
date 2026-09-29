@@ -320,6 +320,22 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	if rec5.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rec5.Code)
 	}
+	orderResponse := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/applications/order", http.NoBody)
+	orderResponse.Header.Set("X-Demo-Sub", "admin")
+	order := httptest.NewRecorder()
+	e.ServeHTTP(order, orderResponse)
+	if order.Code != http.StatusOK {
+		t.Fatalf("order after refusals status=%d body=%s", order.Code, order.Body.String())
+	}
+	var after struct {
+		ApplicationIDs []string `json:"application_ids"`
+	}
+	if err := json.Unmarshal(order.Body.Bytes(), &after); err != nil {
+		t.Fatal(err)
+	}
+	if len(after.ApplicationIDs) != 0 {
+		t.Fatalf("refused order updates saved an order: %+v", after.ApplicationIDs)
+	}
 }
 
 func TestAdminProtocolConfigLifecycle(t *testing.T) {

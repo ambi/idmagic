@@ -294,8 +294,9 @@ func TestScimCreateUserEnterpriseExtension(t *testing.T) {
 //
 //spec:covers REQ-SOURCING-007: PATCH は bare 名と URN 修飾済みパスの両方で enterprise
 func TestScimPatchUserEnterpriseExtension(t *testing.T) {
-	e, _, apiTokens := newScimTestHarness()
-	tokenStr := issueAllScimToken(t, apiTokens)
+	h := newScimHarness()
+	e := h.echo
+	tokenStr := issueAllScimToken(t, h.apiTokens)
 	const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
 
 	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{"userName": "patchee@example.com"})
@@ -357,10 +358,12 @@ func TestScimPatchUserEnterpriseExtension(t *testing.T) {
 	})
 
 	t.Run("manager referencing an unknown scim id is invalidValue", func(t *testing.T) {
+		_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
 		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("replace", "manager", "does-not-exist"))
 		if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
 			t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
 		}
+		assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 	})
 }
 
@@ -464,8 +467,9 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 
 // interfaces.PatchScimUser: RFC7644-PATCH allowlist と mutability/invalidPath/invalidValue。
 func TestScimPatchUserResourceContract(t *testing.T) {
-	e, _, apiTokens := newScimTestHarness()
-	tokenStr := issueAllScimToken(t, apiTokens)
+	h := newScimHarness()
+	e := h.echo
+	tokenStr := issueAllScimToken(t, h.apiTokens)
 	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
 		"userName": "carlos@example.com",
 	})
@@ -486,6 +490,7 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 	})
 
 	t.Run("unknown path is invalidPath", func(t *testing.T) {
+		_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
 		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("replace", "nickName", "x"))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d body=%v", rec.Code, body)
@@ -493,9 +498,11 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 		if body["scimType"] != "invalidPath" {
 			t.Errorf("scimType = %v, want invalidPath", body["scimType"])
 		}
+		assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 	})
 
 	t.Run("readOnly path is mutability error", func(t *testing.T) {
+		_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
 		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("replace", "id", "new-id"))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d body=%v", rec.Code, body)
@@ -503,9 +510,11 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 		if body["scimType"] != "mutability" {
 			t.Errorf("scimType = %v, want mutability", body["scimType"])
 		}
+		assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 	})
 
 	t.Run("unsupported op is invalidValue", func(t *testing.T) {
+		_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
 		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("delete", "active", true))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d body=%v", rec.Code, body)
@@ -513,6 +522,7 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 		if body["scimType"] != "invalidValue" {
 			t.Errorf("scimType = %v, want invalidValue", body["scimType"])
 		}
+		assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 	})
 
 	t.Run("emails project by work fallback", func(t *testing.T) {
@@ -544,11 +554,13 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 
 	for _, path := range []string{"phoneNumbers", "addresses"} {
 		t.Run("unsupported "+path+" path is invalidPath", func(t *testing.T) {
+			_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
 			rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
 				patchOp("replace", path, []any{}))
 			if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidPath" {
 				t.Fatalf("expected 400 invalidPath, got %d body=%v", rec.Code, body)
 			}
+			assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 		})
 	}
 }

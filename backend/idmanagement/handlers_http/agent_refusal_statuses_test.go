@@ -3,6 +3,7 @@ package handlers_http_test
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -34,14 +35,26 @@ func agentOperationsOn(agentID string, status int, code string) []agentRefusalCa
 	}
 }
 
-func (f *idmRefusalFixture) expectAgentRefusal(t *testing.T, tenantID, sessionID string, tc agentRefusalCase) {
+func (f *idmRefusalFixture) assertAgentRefusalLeavesStateUnchanged(t *testing.T, tenantID, sessionID string, tc agentRefusalCase) {
 	t.Helper()
+	beforeAgents, err := f.agents.ListAll(context.Background(), tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeEvents := len(*f.events)
 	response := f.send(t, idmRefusalRequest{
 		method: tc.method, tenantID: tenantID, path: tc.path, body: tc.body,
 		sessionID: sessionID, csrf: idmRefusalCSRF,
 	})
 	if response.Code != tc.status || idmProblemCode(t, response) != tc.code {
 		t.Fatalf("%s: status=%d body=%s, want %d %s", tc.name, response.Code, response.Body.String(), tc.status, tc.code)
+	}
+	afterAgents, err := f.agents.ListAll(context.Background(), tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(afterAgents, beforeAgents) || len(*f.events) != beforeEvents {
+		t.Fatalf("%s: refusal changed agents or emitted events: agents=%+v events=%+v", tc.name, afterAgents, *f.events)
 	}
 }
 
@@ -60,14 +73,14 @@ func TestAgentRefusalsUseDeclaredStatuses(t *testing.T) {
 			agentRefusalCase{name: "UnbindAgentCredential", method: http.MethodDelete, path: "/api/admin/v1/agents/agent-that-exists-nowhere/credentials/" + idmRefusalClient, status: http.StatusNotFound, code: "agent_not_found"},
 		)
 		for _, tc := range missing {
-			fixture.expectAgentRefusal(t, tenancydomain.DefaultTenantID, admin, tc)
+			fixture.assertAgentRefusalLeavesStateUnchanged(t, tenancydomain.DefaultTenantID, admin, tc)
 		}
 		// acme の管理者から default の Agent を指すと、存在しない Agent と区別できないこと。
 		foreign := append(agentOperationsOn(idmRefusalAgent, http.StatusNotFound, "agent_not_found"),
 			agentRefusalCase{name: "GetAgent", method: http.MethodGet, path: "/api/admin/v1/agents/" + idmRefusalAgent, status: http.StatusNotFound, code: "agent_not_found"},
 		)
 		for _, tc := range foreign {
-			fixture.expectAgentRefusal(t, idmRefusalOtherTenant, foreignAdmin, tc)
+			fixture.assertAgentRefusalLeavesStateUnchanged(t, idmRefusalOtherTenant, foreignAdmin, tc)
 		}
 	})
 
@@ -83,7 +96,7 @@ func TestAgentRefusalsUseDeclaredStatuses(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, tc := range agentOperationsOn("agent-killed", http.StatusConflict, "agent_killed") {
-			fixture.expectAgentRefusal(t, tenancydomain.DefaultTenantID, admin, tc)
+			fixture.assertAgentRefusalLeavesStateUnchanged(t, tenancydomain.DefaultTenantID, admin, tc)
 		}
 	})
 
@@ -104,7 +117,7 @@ func TestAgentRefusalsUseDeclaredStatuses(t *testing.T) {
 		}); response.Code != http.StatusNoContent {
 			t.Fatalf("前提が壊れている: 最初のバインドが status=%d body=%s", response.Code, response.Body.String())
 		}
-		fixture.expectAgentRefusal(t, tenancydomain.DefaultTenantID, admin, agentRefusalCase{
+		fixture.assertAgentRefusalLeavesStateUnchanged(t, tenancydomain.DefaultTenantID, admin, agentRefusalCase{
 			name: "BindAgentCredential", method: http.MethodPost,
 			path:   "/api/admin/v1/agents/agent-second/credentials",
 			body:   map[string]any{"client_id": idmRefusalClient},
@@ -115,7 +128,7 @@ func TestAgentRefusalsUseDeclaredStatuses(t *testing.T) {
 	t.Run("セッションの無い状態変更は 401 authentication_required", func(t *testing.T) {
 		fixture := newIdmRefusalServer(t)
 		for _, tc := range agentOperationsOn(idmRefusalAgent, http.StatusUnauthorized, "authentication_required") {
-			fixture.expectAgentRefusal(t, tenancydomain.DefaultTenantID, "", tc)
+			fixture.assertAgentRefusalLeavesStateUnchanged(t, tenancydomain.DefaultTenantID, "", tc)
 		}
 	})
 }

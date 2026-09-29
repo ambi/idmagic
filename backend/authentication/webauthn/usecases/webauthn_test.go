@@ -129,9 +129,17 @@ func TestRemoveLastWebAuthnCredentialClearsMfa(t *testing.T) {
 func TestRemoveUnknownWebAuthnCredential(t *testing.T) {
 	ctx := context.Background()
 	deps, _, _ := newWebAuthnDeps(t, nil)
+	seedCredential(t, deps, "existing")
 	err := usecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", "nonexistent", time.Now())
 	if !errors.Is(err, usecases.ErrWebAuthnCredentialNotFound) {
 		t.Fatalf("err=%v, want ErrWebAuthnCredentialNotFound", err)
+	}
+	remaining, err := usecases.ListWebAuthnCredentials(ctx, deps, "user-alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(remaining) != 1 {
+		t.Fatalf("unknown removal changed credentials: %#v", remaining)
 	}
 }
 

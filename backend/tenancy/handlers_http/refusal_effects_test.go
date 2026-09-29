@@ -269,10 +269,10 @@ func TestListTenantsRefusesTenantAdminAndReturnsNoOtherTenant(t *testing.T) {
 	}
 }
 
-// brandingIsSystemDefault は公開 branding が未設定のままであることを確かめる。
+// assertNoBrandingStoredAndSystemDefault は公開 branding が未設定のままであることを確かめる。
 // ログイン画面はこの応答を読んで組込みデフォルトへ落ちるので、「保存されていない」の
 // 効果は保存層ではなく利用者が見る側の応答で読む。
-func (s *refusalServer) brandingIsSystemDefault(t *testing.T) {
+func (s *refusalServer) assertNoBrandingStoredAndSystemDefault(t *testing.T) {
 	t.Helper()
 	recorder := s.get(t, "/realms/acme/api/branding")
 	if recorder.Code != http.StatusOK {
@@ -310,7 +310,7 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 	const path = "/realms/acme/api/admin/v1/tenant/branding"
 
 	// 未設定のテナントは組込みデフォルトを使う。拒否の後もここへ戻ることを確かめる。
-	server.brandingIsSystemDefault(t)
+	server.assertNoBrandingStoredAndSystemDefault(t)
 
 	refusedLink := server.send(t, http.MethodPut, path, map[string]any{
 		"footer_link_1": map[string]any{"label": "ヘルプ", "url": "javascript:alert(1)"},
@@ -321,13 +321,13 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 	if !bytes.Contains(refusedLink.Body.Bytes(), []byte("invalid_branding")) {
 		t.Fatalf("body=%s, want invalid_branding", refusedLink.Body.String())
 	}
-	server.brandingIsSystemDefault(t)
+	server.assertNoBrandingStoredAndSystemDefault(t)
 
 	refusedLogo := uploadBrandingAsset(t, server.e, []byte("<svg onload=alert(1)></svg>"))
 	if refusedLogo.Code != http.StatusBadRequest {
 		t.Fatalf("svg status=%d body=%s, want 400", refusedLogo.Code, refusedLogo.Body.String())
 	}
-	server.brandingIsSystemDefault(t)
+	server.assertNoBrandingStoredAndSystemDefault(t)
 	if stored, err := server.branding.FindByTenant(context.Background(), "acme"); err != nil || stored != nil {
 		t.Fatalf("拒否されたのに branding が保存されている: %+v, %v", stored, err)
 	}
@@ -361,7 +361,7 @@ func TestUpdateBrandingRefusesIncompleteFooterLinkAndSavesNothing(t *testing.T) 
 	if refused.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400", refused.Code, refused.Body.String())
 	}
-	server.brandingIsSystemDefault(t)
+	server.assertNoBrandingStoredAndSystemDefault(t)
 
 	// 対照: label と url が揃えば同じ入口で保存され、公開 branding にも出る。
 	accepted := server.send(t, http.MethodPut, path, map[string]any{

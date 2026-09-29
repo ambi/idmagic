@@ -290,6 +290,9 @@ func TestScimListUsersFilterAndPagination(t *testing.T) {
 		if body["scimType"] != "invalidFilter" {
 			t.Errorf("scimType = %v, want invalidFilter", body["scimType"])
 		}
+		if strings.Contains(rec.Body.String(), "alice@example.com") {
+			t.Fatalf("invalid filter response leaked the protected user: %s", rec.Body.String())
+		}
 	})
 
 	t.Run("malformed filter syntax is invalidFilter 400", func(t *testing.T) {

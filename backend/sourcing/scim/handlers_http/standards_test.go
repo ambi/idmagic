@@ -447,6 +447,7 @@ func TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset(t *testing.T) {
 			t.Fatalf("setup create failed: %d body=%v", createRec.Code, created)
 		}
 		scimID := created["id"].(string)
+		_, before := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+scimID)
 
 		for _, attr := range unadopted {
 			for _, path := range []string{attr, enterpriseSchemaURN + ":" + attr} {
@@ -457,6 +458,7 @@ func TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset(t *testing.T) {
 				}
 			}
 		}
+		assertScimResourceUnchanged(t, h, tokenStr, "/scim/v2/Users/"+scimID, before)
 	})
 
 	t.Run("Discovery advertises exactly the adopted attributes", func(t *testing.T) {

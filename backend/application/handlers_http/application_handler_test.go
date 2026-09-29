@@ -493,6 +493,13 @@ func TestApplicationCreateRejectsNonAdmin(t *testing.T) {
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("non-admin create status=%d body=%s", response.Code, response.Body.String())
 	}
+	listed := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications", csrf, cookie, nil)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("admin list status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	if strings.Contains(listed.Body.String(), `"name":"X"`) {
+		t.Fatalf("non-admin refusal created an application: %s", listed.Body.String())
+	}
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。

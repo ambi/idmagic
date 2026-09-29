@@ -472,7 +472,8 @@ func TestAccountDataExport(t *testing.T) {
 }
 
 func TestAccountProfileHTTPExtra(t *testing.T) {
-	e := newIdentityTestHandler(t).echo
+	h := newIdentityTestHandler(t)
+	e := h.echo
 	csrf, cookie := adminCSRF(t, e)
 
 	summary := adminJSONRequest(t, e, http.MethodGet, "/api/account/v1/summary", csrf, cookie, nil)
@@ -492,6 +493,10 @@ func TestAccountProfileHTTPExtra(t *testing.T) {
 	if update.Code != http.StatusOK {
 		t.Fatalf("profile update status=%d body=%s", update.Code, update.Body.String())
 	}
+	beforeInvalid := adminJSONRequest(t, e, http.MethodGet, "/api/account/v1/profile", csrf, cookie, nil)
+	if beforeInvalid.Code != http.StatusOK {
+		t.Fatalf("profile before invalid updates status=%d body=%s", beforeInvalid.Code, beforeInvalid.Body.String())
+	}
 
 	attrs := map[string]userdomain.AttributeValue{
 		"not_a_real_attribute": {Type: idmdomain.AttributeTypeString, String: new("x")},
@@ -508,6 +513,13 @@ func TestAccountProfileHTTPExtra(t *testing.T) {
 	invalidJSON := adminJSONRequest(t, e, http.MethodPatch, "/api/account/v1/profile", csrf, cookie, "invalid-json")
 	if invalidJSON.Code != http.StatusBadRequest {
 		t.Fatalf("invalid json status=%d body=%s", invalidJSON.Code, invalidJSON.Body.String())
+	}
+	afterInvalid := adminJSONRequest(t, e, http.MethodGet, "/api/account/v1/profile", csrf, cookie, nil)
+	if afterInvalid.Code != http.StatusOK {
+		t.Fatalf("profile after invalid updates status=%d body=%s", afterInvalid.Code, afterInvalid.Body.String())
+	}
+	if !bytes.Equal(afterInvalid.Body.Bytes(), beforeInvalid.Body.Bytes()) {
+		t.Fatalf("rejected profile updates changed the profile: before=%s after=%s", beforeInvalid.Body.String(), afterInvalid.Body.String())
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/profile", http.NoBody)

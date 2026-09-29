@@ -117,6 +117,13 @@ func newTokenServer(t *testing.T) tokenFixture {
 	}
 }
 
+func assertNoAccessToken(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+	if strings.Contains(response.Body.String(), `"access_token"`) {
+		t.Fatalf("refused token request returned an access token: %s", response.Body.String())
+	}
+}
+
 func TestTokenAPI(t *testing.T) {
 	fix := newTokenServer(t)
 
@@ -139,6 +146,7 @@ func TestTokenAPI(t *testing.T) {
 		if resp["error"] != "invalid_request" {
 			t.Errorf("expected error invalid_request, got %v", resp["error"])
 		}
+		assertNoAccessToken(t, rec)
 	})
 
 	t.Run("Token_UnsupportedGrantType", func(t *testing.T) {
@@ -161,6 +169,7 @@ func TestTokenAPI(t *testing.T) {
 		if resp["error"] != "unsupported_grant_type" {
 			t.Errorf("expected error unsupported_grant_type, got %v", resp["error"])
 		}
+		assertNoAccessToken(t, rec)
 	})
 
 	t.Run("Token_UnauthorizedClient", func(t *testing.T) {
@@ -183,6 +192,7 @@ func TestTokenAPI(t *testing.T) {
 		if resp["error"] != "unauthorized_client" {
 			t.Errorf("expected error unauthorized_client, got %v", resp["error"])
 		}
+		assertNoAccessToken(t, rec)
 	})
 
 	t.Run("Token_ClientCredentials_Succeeds", func(t *testing.T) {
@@ -230,6 +240,7 @@ func TestTokenAPI(t *testing.T) {
 		if resp["error"] != "unauthorized_client" {
 			t.Errorf("expected error unauthorized_client, got %v", resp["error"])
 		}
+		assertNoAccessToken(t, rec)
 	})
 
 	t.Run("Token_ClientCredentials_InvalidScope", func(t *testing.T) {
@@ -253,6 +264,7 @@ func TestTokenAPI(t *testing.T) {
 		if resp["error"] != "invalid_scope" {
 			t.Errorf("expected error invalid_scope, got %v", resp["error"])
 		}
+		assertNoAccessToken(t, rec)
 	})
 
 	t.Run("Token_ClientCredentials_RejectsAccountScopeWithoutUser", func(t *testing.T) {
@@ -266,6 +278,7 @@ func TestTokenAPI(t *testing.T) {
 		if rec.Code != http.StatusBadRequest || resp["error"] != "invalid_scope" {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
+		assertNoAccessToken(t, rec)
 	})
 
 	t.Run("Revoke_Succeeds", func(t *testing.T) {

@@ -45,6 +45,24 @@ func newAdminGroupHandler(t *testing.T) (*echo.Echo, *groupmemory.GroupRepositor
 	return e, groupRepo
 }
 
+func adminGroupCount(t *testing.T, e *echo.Echo) int {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/groups", http.NoBody)
+	request.Header.Set("X-Demo-Sub", "admin")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("group list status=%d body=%s", response.Code, response.Body.String())
+	}
+	var view struct {
+		Groups []json.RawMessage `json:"groups"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	return len(view.Groups)
+}
+
 func TestAdminGroupAPIRequiresAdminRole(t *testing.T) {
 	e, _ := newAdminGroupHandler(t)
 	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/groups", http.NoBody)
@@ -77,6 +95,9 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 	conflict := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups", csrf, cookie, map[string]any{"name": "engineering"})
 	if conflict.Code != http.StatusConflict {
 		t.Fatalf("conflict status=%d body=%s", conflict.Code, conflict.Body.String())
+	}
+	if count := adminGroupCount(t, e); count != 1 {
+		t.Fatalf("conflicting create left %d groups, want the original one", count)
 	}
 
 	add := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/members/alice", csrf, cookie, nil)
@@ -167,6 +188,16 @@ func TestDynamicGroupRulePreviewEnableAndManualMembershipRejection(t *testing.T)
 	manual := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/members/admin", csrf, cookie, nil)
 	if manual.Code != http.StatusConflict {
 		t.Fatalf("manual membership status=%d body=%s", manual.Code, manual.Body.String())
+	}
+	afterRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/groups/"+created.ID, http.NoBody)
+	afterRequest.Header.Set("X-Demo-Sub", "admin")
+	after := httptest.NewRecorder()
+	e.ServeHTTP(after, afterRequest)
+	if after.Code != http.StatusOK {
+		t.Fatalf("detail after refusal status=%d body=%s", after.Code, after.Body.String())
+	}
+	if strings.Contains(after.Body.String(), `"preferred_username":"admin"`) {
+		t.Fatalf("manual membership was saved despite the refusal: %s", after.Body.String())
 	}
 }
 

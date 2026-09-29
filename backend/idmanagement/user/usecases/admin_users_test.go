@@ -576,6 +576,13 @@ func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 	if !errors.Is(err, userusecases.ErrSelfDeleteForbidden) {
 		t.Fatalf("error=%v, want ErrSelfDeleteForbidden", err)
 	}
+	admin, err := userRepo.FindBySubIncludingDeleted(ctx, "admin-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if admin == nil || admin.IsDeleted() || admin.PreferredUsername != "admin" {
+		t.Fatalf("self-delete refusal changed the administrator: %+v", admin)
+	}
 }
 
 func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {

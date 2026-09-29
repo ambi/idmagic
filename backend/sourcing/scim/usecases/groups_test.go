@@ -119,6 +119,9 @@ func TestUpdateGroupNotFound(t *testing.T) {
 	if _, err := u.UpdateGroup(ctx, scimTenant, "no-such-id", map[string]any{"displayName": "X"}); !errors.Is(err, usecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
+	if _, err := u.GetGroup(ctx, scimTenant, "no-such-id"); !errors.Is(err, usecases.ErrNotFound) {
+		t.Fatalf("re-read err=%v, want the missing group to remain absent", err)
+	}
 }
 
 func TestUpdateGroupRejectsRenameToExistingDisplayName(t *testing.T) {

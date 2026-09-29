@@ -104,6 +104,17 @@ func (h exportTestHandler) runExportJob(t *testing.T, exportID string) {
 	}
 }
 
+func (h exportTestHandler) assertNoRunnableExportJobs(t *testing.T) {
+	t.Helper()
+	jobsList, err := h.jobRepo.ClaimBatch(context.Background(), "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobsList) != 0 {
+		t.Fatalf("refused export left %d runnable job(s): %+v", len(jobsList), jobsList)
+	}
+}
+
 func TestDataExportHTTP_UserFullFlow(t *testing.T) {
 	h := newExportTestHandler(t)
 	e := h.echo
@@ -192,6 +203,9 @@ func TestDataExportHTTP_GroupMemberFlow(t *testing.T) {
 	if cross.Code != http.StatusNotFound {
 		t.Fatalf("cross-group member get status=%d, want 404", cross.Code)
 	}
+	if strings.Contains(cross.Body.String(), started.ID) {
+		t.Fatalf("cross-group refusal leaked export %q: %s", started.ID, cross.Body.String())
+	}
 
 	h.runExportJob(t, started.ID)
 	dl := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/groups/g1/members/exports/"+started.ID+"/file", csrf, cookie, nil)
@@ -211,6 +225,7 @@ func TestDataExportHTTP_RejectsInvalidColumns(t *testing.T) {
 		!strings.Contains(resp.Body.String(), "urn:idmagic:error:invalid_columns") {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
+	h.assertNoRunnableExportJobs(t)
 }
 
 // 実行中ジョブ数の上限と、テナント資源クォータは別の概念である。前者は待てば通る
@@ -251,13 +266,7 @@ func TestDataExportHTTP_ActiveJobCeilingHasItsOwnCode(t *testing.T) {
 		t.Fatalf("active job ceiling must not reuse the tenant resource quota code: %s", resp.Body.String())
 	}
 	// 拒否が何も通していないこと。実行待ちの export ジョブは 1 件も残っていない。
-	jobsList, err := h.jobRepo.ClaimBatch(context.Background(), "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(jobsList) != 0 {
-		t.Fatalf("refused export left %d runnable job(s): %+v", len(jobsList), jobsList)
-	}
+	h.assertNoRunnableExportJobs(t)
 }
 
 func TestDataExportHTTP_NotFoundForUnknownID(t *testing.T) {

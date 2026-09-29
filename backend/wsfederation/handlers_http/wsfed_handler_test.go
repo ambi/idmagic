@@ -928,6 +928,10 @@ func TestAdminConfigureEntraFederation_RejectsMissingSourceAnchor(t *testing.T) 
 	if !strings.Contains(rec.Body.String(), "sourceAnchor validation failed") {
 		t.Fatalf("missing sourceAnchor error not returned: %s", rec.Body.String())
 	}
+	list := get(e, "/api/admin/v1/wsfed/relying-parties")
+	if strings.Contains(list.Body.String(), "contoso.com") || strings.Contains(list.Body.String(), "entra_profile") {
+		t.Fatalf("refused federation configuration was stored: %s", list.Body.String())
+	}
 }
 
 func mustUnescape(t *testing.T, s string) string {

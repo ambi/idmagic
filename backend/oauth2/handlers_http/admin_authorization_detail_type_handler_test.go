@@ -98,6 +98,22 @@ func TestAdminRejectsInvalidTypeSchema(t *testing.T) {
 	if !strings.Contains(res.Body.String(), "urn:idmagic:error:invalid_type") {
 		t.Fatalf("unexpected body=%s", res.Body.String())
 	}
+	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/authorization-detail-types", http.NoBody)
+	listReq.Header.Set("X-Demo-Sub", "admin")
+	listRes := httptest.NewRecorder()
+	e.ServeHTTP(listRes, listReq)
+	var list struct {
+		Types []map[string]any `json:"types"`
+	}
+	if listRes.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listRes.Code, listRes.Body.String())
+	}
+	if err := json.Unmarshal(listRes.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Types) != 0 {
+		t.Fatalf("rejected type schema was saved: %+v", list.Types)
+	}
 }
 
 func TestAdminAuthorizationDetailTypeRequiresAdmin(t *testing.T) {

@@ -86,6 +86,9 @@ func TestAdminGroupAPICreateRejectsInvalidEmail(t *testing.T) {
 	if create.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", create.Code, create.Body.String())
 	}
+	if count := adminGroupCount(t, e); count != 0 {
+		t.Fatalf("invalid email created %d groups, want none", count)
+	}
 }
 
 func TestAdminGroupAPICreateRejectsUndefinedAttribute(t *testing.T) {
@@ -97,5 +100,8 @@ func TestAdminGroupAPICreateRejectsUndefinedAttribute(t *testing.T) {
 	})
 	if create.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", create.Code, create.Body.String())
+	}
+	if count := adminGroupCount(t, e); count != 0 {
+		t.Fatalf("undefined attribute created %d groups, want none", count)
 	}
 }

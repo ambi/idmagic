@@ -212,7 +212,7 @@ func TestNotificationTemplateUpdateRejectsUnknownPlaceholder(t *testing.T) {
 }
 
 func TestNotificationTemplateUpdateRejectsUnknownKeyAndLocale(t *testing.T) {
-	e, _, _ := newNotificationTemplateServer(t, notificationAdmin())
+	e, _, events := newNotificationTemplateServer(t, notificationAdmin())
 	body := map[string]any{"subject": "件名", "body_text": "本文", "body_html": "<p>本文</p>"}
 
 	for _, path := range []string{
@@ -223,6 +223,9 @@ func TestNotificationTemplateUpdateRejectsUnknownKeyAndLocale(t *testing.T) {
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("%s status=%d body=%s", path, rec.Code, rec.Body.String())
 		}
+	}
+	if len(*events) != 0 {
+		t.Fatalf("rejected updates emitted %d events", len(*events))
 	}
 }
 

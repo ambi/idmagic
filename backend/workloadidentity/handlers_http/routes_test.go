@@ -146,6 +146,22 @@ func TestRegisterTrustBundleReportsUniquenessConflict(t *testing.T) {
 	if problem.Type != "urn:idmagic:error:workload_trust_bundle_name_conflict" {
 		t.Fatalf("type=%q, want workload_trust_bundle_name_conflict", problem.Type)
 	}
+	listed := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/workload-identity/trust-bundles", http.NoBody)
+	listed.Header.Set("X-Demo-Sub", "admin")
+	listing := httptest.NewRecorder()
+	e.ServeHTTP(listing, listed)
+	var view struct {
+		TrustBundles []json.RawMessage `json:"trust_bundles"`
+	}
+	if listing.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listing.Code, listing.Body.String())
+	}
+	if err := json.Unmarshal(listing.Body.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.TrustBundles) != 1 {
+		t.Fatalf("trust bundles = %d, want the original one only", len(view.TrustBundles))
+	}
 }
 
 // 拒否され、信頼設定は作成されない。拒否応答と、拒否が防いだ効果（一覧が空のまま）の双方を
@@ -308,16 +324,16 @@ func TestWorkloadIdentityAdminOperationsRejectNonAdmin(t *testing.T) {
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
 	}
-	var bundle struct {
+	var beforeBundle struct {
 		ID     string `json:"id"`
 		Name   string `json:"name"`
 		Status string `json:"status"`
 	}
-	if err := json.Unmarshal(created.Body.Bytes(), &bundle); err != nil {
+	if err := json.Unmarshal(created.Body.Bytes(), &beforeBundle); err != nil {
 		t.Fatal(err)
 	}
 
-	bundles := "/realms/default/api/admin/v1/workload-identity/trust-bundles/" + bundle.ID
+	bundles := "/realms/default/api/admin/v1/workload-identity/trust-bundles/" + beforeBundle.ID
 	bindings := "/realms/default/api/admin/v1/workload-identity/bindings/binding-that-does-not-exist"
 	rename, err := json.Marshal(map[string]any{"name": "renamed-by-alice"})
 	if err != nil {
@@ -357,14 +373,14 @@ func TestWorkloadIdentityAdminOperationsRejectNonAdmin(t *testing.T) {
 	if after.Code != http.StatusOK {
 		t.Fatalf("get status=%d body=%s", after.Code, after.Body.String())
 	}
-	var current struct {
+	var afterBundle struct {
 		Name   string `json:"name"`
 		Status string `json:"status"`
 	}
-	if err := json.Unmarshal(after.Body.Bytes(), &current); err != nil {
+	if err := json.Unmarshal(after.Body.Bytes(), &afterBundle); err != nil {
 		t.Fatal(err)
 	}
-	if current.Name != bundle.Name || current.Status != bundle.Status {
-		t.Fatalf("信頼設定が変わった: %+v -> %+v", bundle, current)
+	if afterBundle.Name != beforeBundle.Name || afterBundle.Status != beforeBundle.Status {
+		t.Fatalf("信頼設定が変わった: %+v -> %+v", beforeBundle, afterBundle)
 	}
 }

@@ -6,6 +6,23 @@ import (
 	"testing"
 )
 
+func assertNoClaimRules(t *testing.T, responseBody []byte, protocol string) {
+	t.Helper()
+	var detail map[string]json.RawMessage
+	if err := json.Unmarshal(responseBody, &detail); err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		Rules []json.RawMessage `json:"rules"`
+	}
+	if err := json.Unmarshal(detail[protocol], &config); err != nil {
+		t.Fatal(err)
+	}
+	if len(config.Rules) != 0 {
+		t.Fatalf("rejected %s rule was saved: %+v", protocol, config.Rules)
+	}
+}
+
 // TestUpdateApplicationOidcConfig_RulesRoundtrip covers wi-73: an admin can add a
 // per-application claim release rule to an OIDC client and read it back.
 func TestUpdateApplicationOidcConfig_RulesRoundtrip(t *testing.T) {
@@ -89,6 +106,11 @@ func TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource(t *testing.
 	if update.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for undefined attribute source, got status=%d body=%s", update.Code, update.Body.String())
 	}
+	after := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+appID, csrf, cookie, nil)
+	if after.Code != http.StatusOK {
+		t.Fatalf("get oidc after refusal status=%d body=%s", after.Code, after.Body.String())
+	}
+	assertNoClaimRules(t, after.Body.Bytes(), "oidc")
 }
 
 // TestUpdateApplicationWsFedConfig_RejectsReservedClaimType verifies the WS-Fed claim
@@ -121,6 +143,11 @@ func TestUpdateApplicationWsFedConfig_RejectsReservedClaimType(t *testing.T) {
 	if update.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for reserved claim_type, got status=%d body=%s", update.Code, update.Body.String())
 	}
+	after := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+appID, csrf, cookie, nil)
+	if after.Code != http.StatusOK {
+		t.Fatalf("get wsfed after refusal status=%d body=%s", after.Code, after.Body.String())
+	}
+	assertNoClaimRules(t, after.Body.Bytes(), "wsfed")
 }
 
 // TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource verifies the SAML
@@ -153,4 +180,9 @@ func TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource(t *testing.
 	if update.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for undefined attribute source, got status=%d body=%s", update.Code, update.Body.String())
 	}
+	after := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+appID, csrf, cookie, nil)
+	if after.Code != http.StatusOK {
+		t.Fatalf("get saml after refusal status=%d body=%s", after.Code, after.Body.String())
+	}
+	assertNoClaimRules(t, after.Body.Bytes(), "saml")
 }

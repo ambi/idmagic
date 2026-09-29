@@ -119,6 +119,13 @@ func TestUpdateCategory(t *testing.T) {
 	}); !errors.Is(err, appusecases.ErrCategoryNameRequired) {
 		t.Fatalf("expected ErrCategoryNameRequired, got %v", err)
 	}
+	afterRefusals, err := deps.Repo.FindByID(ctx, "acme", cat.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterRefusals == nil || afterRefusals.Name != "Work Updated" || afterRefusals.Position != 5 {
+		t.Fatalf("rejected updates changed the category: %+v", afterRefusals)
+	}
 }
 
 func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
@@ -159,6 +166,13 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 		ActorUserID: "admin", ApplicationID: "ghost", CategoryIDs: []string{work.ID},
 	}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
+	}
+	afterRefusals, err := appDeps.Repo.FindByID(ctx, "acme", app.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterRefusals == nil || len(afterRefusals.CategoryIDs) != 1 || afterRefusals.CategoryIDs[0] != work.ID {
+		t.Fatalf("rejected category assignments changed the application: %+v", afterRefusals)
 	}
 }
 

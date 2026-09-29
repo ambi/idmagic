@@ -35,6 +35,7 @@ func TestTokenClientCredentials_unregisteredResource_rejectedAsInvalidTarget(t *
 	if resp["error"] != "invalid_target" {
 		t.Fatalf("expected invalid_target, got %v", resp["error"])
 	}
+	assertNoAccessToken(t, rec)
 }
 
 func TestTokenClientCredentials_registeredResource_boundAudience(t *testing.T) {

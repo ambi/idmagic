@@ -237,7 +237,7 @@ func TestListAgentsAndUpdateDetails(t *testing.T) {
 
 func TestAgentInputValidationErrors(t *testing.T) {
 	ctx := defaultTenantCtx()
-	deps, _ := newAgentDeps(t)
+	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
@@ -282,6 +282,16 @@ func TestAgentInputValidationErrors(t *testing.T) {
 		ActorUserID: "operator", ID: "ghost", Name: &blankName,
 	}); !errors.Is(err, agentusecases.ErrAgentNotFound) {
 		t.Fatalf("expected ErrAgentNotFound, got %v", err)
+	}
+	after, err := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == nil || after.Name != "deploy-bot" || after.OwnerUserID != "operator" || len(after.Roles) != 0 {
+		t.Fatalf("rejected updates changed the agent: %+v", after)
+	}
+	if len(*events) != 1 {
+		t.Fatalf("rejected operations emitted events: %+v", *events)
 	}
 }
 
@@ -399,13 +409,20 @@ func TestUpdateAgentOwnerChangeEmitsOwnerChanged(t *testing.T) {
 
 func TestRegisterAndUpdateAgentRejectUnknownOwner(t *testing.T) {
 	ctx := defaultTenantCtx()
-	deps, _ := newAgentDeps(t)
+	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
 		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", OwnerUserID: "ghost", Now: now,
 	}); !errors.Is(err, agentusecases.ErrAgentOwnerNotFound) {
 		t.Fatalf("expected ErrAgentOwnerNotFound on register, got %v", err)
+	}
+	agents, err := deps.AgentRepo.ListAll(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(agents) != 0 || len(*events) != 0 {
+		t.Fatalf("rejected registration left agents=%+v events=%+v", agents, *events)
 	}
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
 		Kind:        idmdomain.AgentKindAutonomous,
@@ -418,6 +435,16 @@ func TestRegisterAndUpdateAgentRejectUnknownOwner(t *testing.T) {
 		ActorUserID: "operator", ID: agent.ID, OwnerUserID: new("ghost"), Now: now,
 	}); !errors.Is(err, agentusecases.ErrAgentOwnerNotFound) {
 		t.Fatalf("expected ErrAgentOwnerNotFound on update, got %v", err)
+	}
+	after, err := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == nil || after.OwnerUserID != "operator" {
+		t.Fatalf("rejected owner update changed the agent: %+v", after)
+	}
+	if len(*events) != 1 {
+		t.Fatalf("rejected owner update emitted events: %+v", *events)
 	}
 }
 
