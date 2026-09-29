@@ -14,7 +14,7 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-572-the-mfa-enforcement-date-never-reaches-the-user.md }
 initial_context:
-  specification: [docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-019]
+  specification: [docs/domain/authentication/mfa/scenarios.feature.md#REQ-AUTHENTICATION-019]
   typespec: [IdMagic.Contract.AccountSecurityResponse]
   source:
     - backend/authentication/handlers_http/account_security_handler.go
@@ -39,7 +39,7 @@ primary_use_cases:
     unit_fault_model: 強制開始を過ぎた日時、または MFA を要求しないルールの日時を予告として返す。
     e2e_fault_model: ルーティングがテナントデフォルトポリシーのリポジトリをアカウント API へ渡さない、またはハンドラーが登録済みの利用者にも日時を返す。
 affected_spec:
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-019 }
+  - { path: docs/domain/authentication/mfa/scenarios.feature.md, requirement: REQ-AUTHENTICATION-019 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.AccountSecurityResponse }
 ---
 

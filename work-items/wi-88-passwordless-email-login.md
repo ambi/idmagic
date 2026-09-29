@@ -8,7 +8,7 @@ priority: p2
 change_kind: feature
 affected_spec:
   - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
 # パスワードレスの email ログイン (magic link / email OTP) を導入する

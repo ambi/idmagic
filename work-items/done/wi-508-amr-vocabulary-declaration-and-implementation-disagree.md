@@ -15,13 +15,13 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-508.md }
 affected_spec:
   - { path: docs/domain/authentication/standards.md, requirement: RFC8176-AMR-VOCABULARY }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-036 }
+  - { path: docs/domain/authentication/recovery/scenarios.feature.md, requirement: REQ-AUTHENTICATION-036 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.LoginSession }
 initial_context:
   specification:
     - docs/domain/authentication/standards.md#RFC8176-AMR-VOCABULARY
-    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-001
-    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-036
+    - docs/domain/authentication/federation/scenarios.feature.md#REQ-AUTHENTICATION-001
+    - docs/domain/authentication/recovery/scenarios.feature.md#REQ-AUTHENTICATION-036
     - docs/domain/authentication/internals.md
   typespec:
     - IdMagic.Contract.LoginSession

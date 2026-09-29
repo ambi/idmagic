@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,6 +7,41 @@ created_at: 2026-09-30
 priority: p1
 depends_on: []
 change_kind: tooling
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: 仕様文書の配置と、それを読む開発用の検査だけを変える。製品の API、設定、振る舞いは変わらず、リリースの読者へ知らせる内容がない。
+  references: []
+initial_context:
+  specification:
+    - SPECIFICATION_FORMAT.md
+    - docs/development/specification-first-workflow.md
+    - docs/domain/authentication/README.md
+    - docs/domain/authentication/scenarios.feature.md
+    - docs/domain/authentication/federation/states.md
+    - docs/domain/authentication/trusted-device/states.md
+    - docs/domain/authentication/decisions.md
+    - docs/domain/authentication/internals.md
+    - docs/domain/authentication/glossary.md
+  typespec: []
+  source:
+    - tools/check/src/specification-doc.ts
+    - tools/check/src/spec-diff.ts
+    - tools/check/src/gherkin-scenarios.ts
+    - tools/check/src/check-documents.ts
+    - tools/check/src/canonical-document-set.ts
+    - tools/check/src/check-security-controls.ts
+    - tools/check/src/registry.ts
+    - tools/workspace/src/document-layout.ts
+    - tools/workspace/src/workspace.ts
+    - tools/check/schemas/work-item.schema.json
+  tests:
+    - tools/check/src/specification-doc.test.ts
+    - tools/check/src/spec-diff.test.ts
+  stop_before_reading:
+    - frontend
+    - docs/domain/oauth2
+    - backend/authentication
 spec_impact: { kind: none, reason: "仕様文書の配置、規則一件の書式、それを読む検査を変え、authentication の既存の規範要素を ID を変えずに機能ごとのノードへ移すだけで、どの規範要素の意味も変えない。製品の API、永続状態、外向きの呼び出し、イベント、配備構成も変わらない。" }
 ---
 
@@ -188,6 +223,88 @@ ID は `REQ-<CONTEXT>-NNN` のまま、コンテキスト単位の通し番号�
 判断の基準は、ライフサイクル順の節を表せるかと、既存の検査の再利用の量である。
 公式の Markdown with Gherkin の構文解析が `Rule` の間の見出しを許すなら A、許さないなら B とする。
 
+**決定：方式 A を採る。**
+`@cucumber/gherkin` の `GherkinInMarkdownTokenMatcher` で、`# Feature:`、`## 有効性`、`### Rule:`、`#### Example:` の順に見出しを置いた文書を試作して解析した。
+キーワードを持たない `## 有効性` は構文エラーにならず読み飛ばされ、`Rule` と `Example` の親子関係も保たれた。
+したがって、ライフサイクル順の節は方式 A で表せる。
+一方、`Rule` の説明文のうち箇条書きの行は AST に残らない（試作では表の本文の行だけが `description` に残った）。
+そのため、規則の欄と規則文は AST からではなく、`Rule` の見出しの次の行から次の見出しの直前までのソース行として読む。
+方式 B が要する新しいファイルの種類、構文解析、Example と規則の結び付けの規則は、どれも不要になる。
+
+### 機能ノードの配置
+
+| 判断 | 内容 | 理由 |
+| --- | --- | --- |
+| 機能ノードに置けるファイル | `README.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md` | 既存の「コンテキスト内の分割」の規則が、境界の宣言と索引、共有語彙、採用した外部標準をコンテキストのルートに残すと定めている。`glossary.md` と `standards.md` を機能ノードに置くと、同じ語や標準の行が二か所に書ける |
+| `glossary.md` の扱い | 機能ごとに分けず、コンテキストのルートに残す | 計画の 6 は用語集も分けるとしていたが、上の規則と衝突する。Aggregate root の一覧と語は機能をまたいで使われる |
+| 機能ノードの下の階層 | 置かない | 木を三階層に固定する。四階層目を許すと、パッケージのパスから仕様ノードが一つに決まらない |
+| 見出しの階層 | 機能ノードの `scenarios.feature.md` は `# Feature:`、`## <節>`、`### Rule:`、`#### Example:` とする | 節の見出しを `##` に置くため |
+| 節の語彙 | ライフサイクル（生成、有効性、利用、効果の範囲、失効と変更、保持と削除）か、API（対象の操作、入力、結果、拒否、作用）のどちらか一方を、この順で使う。同じ節は一度だけ置き、すべての `Rule` をいずれかの節の下に置く *(checked)* | 並びを検査できる形にするため |
+| コンテキストのルートの `scenarios.feature.md` | 節を要求しない | 機能をまたぐ規則は一つの概念のライフサイクルに並ばない |
+| 名前の対応 | 機能ノードの名前からハイフンを除いた名前が、コードの機能スライスの名前と一致する（`trusted-device` と `trusteddevice`） | 文書はケバブケース、Go のパッケージは小文字の連結という、それぞれの既存の命名規則を変えずに対応させるため |
+| コンテキストの名前の対応 | 同じ規則で対応させ、一致しないもの（`idmanagement` と `identity-management`）は検査の設定に別名として書く | 既存のディレクトリ名を変えないため |
+| 機能スライスの判定 | `backend/<context>/<name>/` の直下に `domain/` または `usecases/` があるもの | `docs/domain/structure.md` の「機能ごとの垂直分割」の形 |
+| スライスのない機能 | 機能ノードを置いてよい（サインイン履歴の `sign-in-activity`）。検査はスライスから機能ノードの向きだけを問う | コードの配置は仕様の境界の判断材料の一つにすぎない |
+| 対応のないスライスの基準 | `tools/check/feature-node-debt.json` に導入時点の一覧を置き、一覧にないスライスが対応を欠く場合と、対応を得たスライスが一覧に残る場合の両方を拒否する | 既存の `boundary-debt.json` と同じ、減る方向にしか動かない基準 |
+
+### 担保手段のシンボルの形
+
+担保手段の欄のバッククォートで囲んだ各値を、`backend/` の Go のテスト以外のソースで宣言された名前と照合する。
+
+| 形 | 一致とみなす宣言 |
+| --- | --- |
+| `<型>.<メソッド>` | その型をレシーバーとするメソッド |
+| `<パッケージ名>.<名前>` | そのパッケージ名のパッケージで宣言された関数、型、定数、変数 |
+| `<名前>` | どこかで宣言された関数、型、メソッド |
+
+パッケージ名は `package` 句の名前とし、import の別名は使わない。
+設計の例に書いた `authusecases` は別名であり、実際に書くときは `usecases.ListSignInActivity` とする。
+
+### 検査の型と操作
+
+検査はすべて純粋な関数とし、ファイルの読み取りは `check-*.ts` の側に置く。
+
+```ts
+type RuleBody = { id: string; line: number; lines: Array<{ line: number; text: string }> }
+type RuleFields = {
+  statements: Array<{ line: number; text: string }>
+  guarantees: Array<{ line: number; symbol: string }>
+  parents: Array<{ line: number; target: string }>
+  openQuestions: Array<{ line: number; text: string }>
+}
+type GoDeclarations = { names: Set<string>; qualified: Set<string> }
+type FeatureSlice = { context: string; name: string; path: string }
+
+function ruleBodies(source: string): RuleBody[]
+function ruleFields(body: RuleBody): RuleFields
+function goDeclarations(files: Array<{ path: string; source: string }>): GoDeclarations
+function verifyRuleFields(path: string, source: string, declarations: GoDeclarations, resolveLink: (from: string, target: string) => boolean): Finding[]
+function verifySectionOrder(path: string, source: string): Finding[]
+function verifyFeatureNodes(slices: FeatureSlice[], nodes: Set<string>, debt: FeatureNodeDebt): Finding[]
+```
+
+`spec-diff` は、規則の事実に `ruleBodies` の行を加える。
+状態機械は、置いたファイルではなくコンテキスト（`docs/domain/<context>`）で同定する。
+そうしないと、状態機械をコンテキストのルートから機能ノードへ移しただけで変更として報告される。
+
+### authentication の割り当て
+
+| ノード | 規則 | 節 |
+| --- | --- | --- |
+| ルート | 004、005、007、009 | なし |
+| `federation` | 002、025（生成）、001（利用）、003（失効と変更）、037（保持と削除） | ライフサイクル |
+| `password` | 024（有効性）、008、010、016（失効と変更） | ライフサイクル |
+| `totp` | 011（生成）、017（利用）、012（失効と変更） | ライフサイクル |
+| `mfa` | 018、019（生成）、015（利用）、020（効果の範囲）、022、023（失効と変更） | ライフサイクル |
+| `webauthn` | 006（利用） | ライフサイクル |
+| `recovery` | 036（利用） | ライフサイクル |
+| `session` | 013、021、035（失効と変更） | ライフサイクル |
+| `trusted-device` | 026（生成）、027（有効性）、029（効果の範囲）、028（失効と変更） | ライフサイクル |
+| `security-notification` | 030、031、032、034（生成）、033（失効と変更） | ライフサイクル |
+| `sign-in-activity` | 014（結果） | API |
+
+ルートに残す 4 件は、ログイン、アカウントの API、無効なユーザーの拒否のように、複数の機能スライスをまたぐ。
+
 ### 試行の対象を authentication にする理由
 
 authentication は、機能スライスが最も多く（9 個）、`scenarios.feature.md` に機能が最も混在し、`internals.md` に紛れた規範の実例（信頼済みデバイスの有効期間）と、上位の規則からの逸脱の実例（サインイン履歴のページサイズ）の両方を含む。
@@ -214,6 +331,32 @@ authentication は、機能スライスが最も多く（9 個）、`scenarios.f
 | EARS の英語のキーワードをそのまま使う | 日本語の文書に英語の構文を混ぜることになる。条件の種類は規則文の中の表現と表で十分に表せる |
 | すべての規則を Gherkin の Example で書く | 規則全体を読むために多数の例を読む必要があり、読み手の負担が大きい |
 
+### 書き起こしと是正への入力
+
+authentication の再編で見つけた項目を、書き起こしの work item（`wi-95161` と同じ単位）と是正の work item の入力として記録する。
+この work item では、どれも規範へ昇格させず、是正もしない。
+
+`internals.md` の文章に紛れた、製品が守る値と条件は次のとおりである。
+
+| 置き場所 | 値または条件 |
+| --- | --- |
+| `trusted-device/internals.md` | 絶対期限の上限 90 日、idle 期限 `last_used_at + min(30 日, max_age)` |
+| `session/internals.md` | セッションの有効期限は作成時から固定 1 時間で延長しない、`last_seen_at` の更新は最短 5 分間隔、期限切れのレコードの保持 90 日 |
+| `password/internals.md` | `min_length=12`、`max_length=128`、4 文字未満の識別子は照合しない、`history_depth=5`、`max_age_days` は 30〜3,650 日、リセットのトークンの `ttl=1800s` |
+| `internals.md`（ルート） | ログインの流量制限（アカウント単位 900 秒に 10 回、IP 単位 900 秒に 30 回、拒否 900 秒）、集計の閾値（5 分、アカウント 10 回、IP 50 回、テナント 1000 回）、保持期間（成功 365 日、失敗 30 日、集計 90 日）、ステップアップの直近性 5 分、TOTP のパラメーター、WebAuthn の `challenge_bytes=32` と `timeout_seconds=120`、復旧コード 10 文字 10 個 |
+| `security-notification/internals.md` | SMTP の待ち時間の上限 10 秒、既知の端末のレコードを `last_seen_at` から 365 日で消す |
+
+文書と実装の食い違いは次のとおりである。
+
+| 文書 | 実装 | 食い違い |
+| --- | --- | --- |
+| `trusted-device/states.md` の「同じ理由での再失効は安全な no-op」 | `TrustedDevice.Revoke`（`backend/authentication/trusteddevice/domain/trusted_device.go`） | 実装は失効済みなら理由を問わず何もせず、最初の理由を保つ |
+| `docs/design/application/api-guidelines.md` のページサイズの規則（不正な `limit` はエラー、適用状況は全面適用） | サインイン履歴の `parseLimitParam`（`backend/authentication/handlers_http/account_activity_handler.go`） | `ParseLimit` を使わず、0 以下または整数でない `limit` を黙って既定値にする |
+
+文書の中の重複も見つけた。
+ルートの `decisions.md` は、セルフサービス API の境界と機微な自己操作のステップアップを二つの項目で重ねて書き、`mfa/decisions.md` は登録専用フローへの到達条件を二つの項目で重ねて書いている。
+再編では規範の意味を変えないため、項目を移しただけで統合していない。
+
 ## 計画
 
 1. 方式 A と B を、信頼済みデバイスの規則で試作して比べ、方式を決める。
@@ -233,16 +376,22 @@ authentication は、機能スライスが最も多く（9 個）、`scenarios.f
 
 ## タスク
 
-- [ ] T001 [Spec] 方式 A と B を信頼済みデバイスで試作し、方式を決めて「設計」に記録する。
-- [ ] T002 [Spec] `SPECIFICATION_FORMAT.md` と `DOCUMENTATION_GUIDE.md` に、木、継承、並び、規則の書式を書く。
-- [ ] T003 [Acceptance] 機能ノードに置いた規則の本文を変えた作業ツリーで、`mise run spec-diff` がその規則の変更を報告しないことを観測する。
-- [ ] T004 [App] `specification-doc.ts` と関連する検査を機能ノードへ拡張する。単体 RED を確認し、GREEN にしてからリファクタリングする。
-- [ ] T005 [App] `spec-diff` を規則の本文の変更へ拡張する。
-- [ ] T006 [App] 担保手段、上位の規則、機能ノードの対応、曖昧な語の検査を `check-spec` に加える。
-- [ ] T007 [Docs] authentication を機能ノードへ再編し、再編の前後で規範の差分がないことを確かめる。
-- [ ] T008 [Plan] 見つけた規範と食い違いを一覧にし、書き起こしと是正の work item の入力として記録する。
-- [ ] T009 [Docs] `spec-change` と `update-design` の skills を更新する。
-- [ ] T010 [Verify] 変更を検証する。
+- [x] T001 [Spec] 方式 A と B を信頼済みデバイスで試作し、方式を決めて「設計」に記録する。
+- [x] T002 [Spec] `SPECIFICATION_FORMAT.md` と `DOCUMENTATION_GUIDE.md` に、木、継承、並び、規則の書式を書く。
+- [x] T003 [Acceptance] 機能ノードに置いた規則の本文を変えた作業ツリーで、`mise run spec-diff` がその規則の変更を報告しないことを観測する。
+  規範要素は N/A（`spec_impact: none` の検査の変更）。
+  予定する RED：`REQ-AUTHENTICATION-026` を `trusted-device/scenarios.feature.md` へ移して本文を一行変え、`mise run spec-diff` が変更ではなく削除として報告する（機能ノードの文書を読まない）。
+- [x] T004 [App] `specification-doc.ts` と関連する検査を機能ノードへ拡張する。単体 RED を確認し、GREEN にしてからリファクタリングする。
+  予定する RED：`specification-doc.test.ts` に、`docs/domain/<context>/<feature>/scenarios.feature.md` の `documentKind` が `scenarios` になり、`glossary.md` は機能ノードでは一次情報文書にならない例を加える。
+  反復の検査：`mise run test-tools-file -- check/src/<file>.test.ts`、振る舞いが GREEN になったら `mise run test-tools`。
+- [x] T005 [App] `spec-diff` を規則の本文の変更へ拡張する。
+  予定する RED：`spec-diff.test.ts` に、規則の本文の表の一行だけを変えた版で `changedScenarios` に ID が入る例と、状態機械をルートから機能ノードへ移しても `changedTransitions` が空の例を加える。
+- [x] T006 [App] 担保手段、上位の規則、機能ノードの対応、曖昧な語、節の並びの検査を `check-spec` に加える。
+  予定する RED：`specification-rules.test.ts` に、存在しないシンボル、存在しない上位の規則、対応のないスライスの追加、曖昧な語、逆順の節の各例を加える。
+- [x] T007 [Docs] authentication を機能ノードへ再編し、再編の前後で規範の差分がないことを確かめる。
+- [x] T008 [Plan] 見つけた規範と食い違いを一覧にし、書き起こしと是正の work item の入力として記録する。
+- [x] T009 [Docs] `spec-change` と `update-design` の skills を更新する。
+- [x] T010 [Verify] 変更を検証する。
 
 ## 検証
 
@@ -275,3 +424,43 @@ authentication は、機能スライスが最も多く（9 個）、`scenarios.f
   この work item の書式の規則は汎用の方法論として書き、IdMagic 固有の値（`backend/` のパス、`mise` のタスク名）は差し込み点として扱える形にする。
 - 検査を機能ノードへ広げると、これまで認識されていなかった文書が検査にかかり、既存の違反が表面化する。
   authentication の再編と同時に解消する。
+
+## 完了
+
+- **Completed At**: 2026-09-30
+- **Summary**:
+  `mise run spec-diff` は再編の後も「no normative specification change against main」を報告し、規範要素の追加、削除、変更はない。
+  仕様をシステム、コンテキスト、機能の三階層の木に置く規則、機能ノードとコードの機能スライスの対応、継承の規則、機能ノードの中の節の並び、規則一件の書式を `SPECIFICATION_FORMAT.md` に定め、`DOCUMENTATION_GUIDE.md` と開発ワークフローから参照した。
+  `documentNames` を配置の唯一の判定として導入し、`documentKind`、文書検査、ファイル集合の検査、作業ツリーの文書探索、文書サイト、`spec-route`、`brief`、セキュリティ統制の検査、work item のスキーマが機能ノードの文書を一次情報として扱うようにした。
+  `spec-diff` は規則の本文（規則文、欄、表）を規則の事実に含め、状態機械をコンテキストで同定する。
+  `check-spec` に `specification-rules` の検査を加え、担保手段のシンボル、上位の規則のリンク、曖昧な語、機能ノードの節の並び、機能スライスと機能ノードの対応（`tools/check/feature-node-debt.json` を基準とする）を確かめる。
+  authentication の 37 件の規則のうち 33 件を 10 の機能ノードへ ID を変えずに移し、`states.md`、`decisions.md`、`internals.md` を機能ごとに分けた。
+  移した規則を指す work item と文書の参照を移動先へ書き換えた。
+  `glossary.md` は既存の分割の規則に従いコンテキストのルートに残し、計画の 6 から外した。
+- **Acceptance RED Evidence**:
+  - **Test**: `REQ-AUTHENTICATION-026` を `docs/domain/authentication/trusted-device/scenarios.feature.md` へ移して本文を一行変えた作業ツリーでの `mise run spec-diff`。
+  - **Requirement**: N/A: 仕様の配置と検査の変更であり、製品の規範要素を変えない。
+  - **Observed Failure**: `removed scenarios: REQ-AUTHENTICATION-026` を報告した。機能ノードの文書を読まず、移した規則が消えたと扱った。実装後は同じ作業ツリーで `changed scenarios: REQ-AUTHENTICATION-026` を報告し、本文を戻すと差分なしを報告した。
+  - **Detection Reason**: 移動だけなら差分なし、本文の変更なら変更という二つの観測で、機能ノードを読まない実装と本文を比べない実装の両方を区別できる。
+- **Unit RED Evidence**:
+  - **Test**: `tools/check/src/specification-doc.test.ts` の `reads a feature node one level below its context with the grammar its name gives`、`spec-diff.test.ts` の `reports a rule whose body changed even when its title and steps did not` と `reports nothing when a rule and its state machine move into a feature node`、`specification-rules.test.ts` の 9 件（空の実装に対して）、`brief.test.ts` の `returns a rule under a lifecycle section and stops at the next section`、`render.test.ts` の `nests a feature node and its documents under the context that owns it`、`repository-checks.acceptance.test.ts` の `reads the scenarios of a feature node as normative`。
+  - **Requirement**: N/A: 仕様の配置と検査の変更であり、製品の規範要素を変えない。
+  - **Observed Failure**: `documentKind` が `undefined` を返した。`spec-diff` が本文だけの変更を報告せず、状態機械の移動を `docs/domain/demo#Lifecycle` と `docs/domain/demo/task#Lifecycle` の変更として報告した。空の検査はどの違反も報告しなかった。`brief` は `### Rule:` の規則を抽出できなかった。文書サイトは機能ノードの題名から所有の接頭辞を外さなかった。文書検査は機能ノードを「not a canonical specification document」とし、さらにコンテキストの索引表に載っていないと報告した。
+  - **Detection Reason**: 各テストは機能ノードの経路と規則の本文を入力にし、読まない実装、比べない実装、拒否しない実装のそれぞれで失敗する。
+- **Change-Resistance Results**:
+  次の誤実装を手で注入し、すべて検出された。変異ツールは Go だけを対象とするため、TypeScript の検査には手書きの障害を使った。
+  - 機能ノードの段に空の名前集合を返す：`specification-doc.test.ts` と受け入れテストの 2 件が失敗し、実リポジトリの文書検査は 36 件の「not a canonical」を報告した。
+  - `spec-diff` の事実から本文を落とす：`spec-diff.test.ts` の 1 件が失敗した。
+  - 担保手段をすべて受理する：単体 3 件と受け入れ 1 件が失敗した。
+  - 上位の規則のリンク解決を無視する：単体と受け入れの 2 件が失敗した。
+  - 対応のない機能スライスを報告しない：単体と受け入れの 2 件が失敗した。
+  - 節の順序の判定を外す、曖昧な語の判定を外す、節の下にない規則の判定を外す：それぞれ単体 1 件が失敗した。
+  - セキュリティ統制の検査が機能ノードのシナリオを読まない（配線の除去）：実リポジトリで `ChangePassword` と `UnlinkExternalIdentity` の拒否が宣言されていないという R4 の失敗が出た。
+  - work item のスキーマから機能ノードのパスを外す：実リポジトリの `mise run check-work-items` がスキーマ違反で失敗した。
+  注入の途中で、受け入れテストのファイル全体が一度だけ短時間で一斉に失敗したが、同じ注入で再実行すると再現しなかった。環境による一過性の失敗として扱い、判定には使っていない。
+- **Verification Results**:
+  - `mise run test-tools` - 成功（663 件）
+  - `mise run check-spec` - 成功
+  - `mise run check-work-items` - 成功
+  - `mise run spec-diff` - 規範の変更なし
+  - `mise run verify` - 成功（初回は `SPECIFICATION_FORMAT.md` の「既定」の表記で用語検査が失敗し、「デフォルト」に直して再実行した）

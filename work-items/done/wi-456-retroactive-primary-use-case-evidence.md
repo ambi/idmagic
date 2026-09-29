@@ -48,13 +48,13 @@ affected_spec:
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-011 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-016 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
+  - { path: docs/domain/authentication/federation/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
   - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-013 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-026 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-030 }
+  - { path: docs/domain/authentication/totp/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }
+  - { path: docs/domain/authentication/session/scenarios.feature.md, requirement: REQ-AUTHENTICATION-013 }
+  - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/domain/authentication/trusted-device/scenarios.feature.md, requirement: REQ-AUTHENTICATION-026 }
+  - { path: docs/domain/authentication/security-notification/scenarios.feature.md, requirement: REQ-AUTHENTICATION-030 }
   - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-002 }
   - { path: docs/domain/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-001 }
   - { path: docs/domain/authorization/scenarios.feature.md, requirement: REQ-AUTHORIZATION-001 }

@@ -16,7 +16,7 @@ documentation_impact:
 initial_context:
   specification:
     - docs/design/application/api-guidelines.md
-    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-010
+    - docs/domain/authentication/password/scenarios.feature.md#REQ-AUTHENTICATION-010
   typespec:
     - IdMagic.Authentication.Operations.ChangePassword
     - IdMagic.IdManagement.Operations.ClearUserRequiredAction
@@ -91,7 +91,7 @@ primary_use_cases:
     unit_fault_model: 生成した操作メタデータにスネークケースの静的パスセグメントが残る。
     e2e_fault_model: HTTP ルート登録だけを旧パスのまま残し、新しいパスがハンドラーへ到達しない。
 affected_spec:
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-010 }
+  - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-010 }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.ChangePassword }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ClearUserRequiredAction }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CompleteStepUpAuthentication }

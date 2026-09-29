@@ -14,7 +14,7 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-551.md }
 affected_spec:
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-037 }
+  - { path: docs/domain/authentication/federation/scenarios.feature.md, requirement: REQ-AUTHENTICATION-037 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.IdentityProviderConnectionInUseError }
   - { path: spec/contexts/api-tokens/main.tsp, symbol: IdMagic.ApiTokens.Operations.IssueApiToken }
   - { path: spec/contexts/api-tokens/main.tsp, symbol: IdMagic.ApiTokens.Operations.ListApiTokens }

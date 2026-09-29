@@ -31,7 +31,7 @@ affected_spec:
   - { path: spec/contexts/api-tokens/models.tsp, symbol: IdMagic.Contract.ApiTokenScope }
   - { path: docs/domain/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-004 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-025 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-025 }
+  - { path: docs/domain/authentication/federation/scenarios.feature.md, requirement: REQ-AUTHENTICATION-025 }
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-003 }
   - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-005 }
   - { path: docs/domain/ws-federation/scenarios.feature.md, requirement: REQ-WSFEDERATION-001 }

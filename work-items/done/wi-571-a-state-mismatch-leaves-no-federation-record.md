@@ -14,7 +14,7 @@ documentation_impact:
   reason: 宣言済みの EX-AUTHENTICATION-001-03 へ実装を合わせる。FederatedLoginRejected は宣言済みのイベント種別であり、公開契約も運用手順も変わらない。
   references: []
 initial_context:
-  specification: [docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-001]
+  specification: [docs/domain/authentication/federation/scenarios.feature.md#REQ-AUTHENTICATION-001]
   typespec: [spec/contexts/authentication/models.tsp#FederatedLoginRejected]
   source:
     - backend/authentication/federation/usecases/flow.go
@@ -33,7 +33,7 @@ initial_context:
     - backend/authentication/federation/protocol_saml
     - frontend
 affected_spec:
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
+  - { path: docs/domain/authentication/federation/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
 primary_use_cases:
   - id: state-mismatch-records-rejection
     requirement: REQ-AUTHENTICATION-001

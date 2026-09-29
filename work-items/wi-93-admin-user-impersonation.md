@@ -8,7 +8,7 @@ priority: p2
 change_kind: feature
 affected_spec:
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-021 }
+  - { path: docs/domain/authentication/session/scenarios.feature.md, requirement: REQ-AUTHENTICATION-021 }
 ---
 
 # 管理者による代理ログイン (impersonation) を監査付きで導入する

@@ -33,11 +33,11 @@ initial_context:
     - backend/provisioning
     - backend/sharedsignals
 affected_spec:
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-030 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-031 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-032 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-033 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-034 }
+  - { path: docs/domain/authentication/security-notification/scenarios.feature.md, requirement: REQ-AUTHENTICATION-030 }
+  - { path: docs/domain/authentication/security-notification/scenarios.feature.md, requirement: REQ-AUTHENTICATION-031 }
+  - { path: docs/domain/authentication/security-notification/scenarios.feature.md, requirement: REQ-AUTHENTICATION-032 }
+  - { path: docs/domain/authentication/security-notification/scenarios.feature.md, requirement: REQ-AUTHENTICATION-033 }
+  - { path: docs/domain/authentication/security-notification/scenarios.feature.md, requirement: REQ-AUTHENTICATION-034 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.SecurityNotificationCategory }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.NotificationPreference }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.KnownSignInDevice }

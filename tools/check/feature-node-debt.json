@@ -3,15 +3,6 @@
     "idmanagement": "identity-management"
   },
   "unmappedSlices": [
-    "backend/authentication/federation",
-    "backend/authentication/mfa",
-    "backend/authentication/password",
-    "backend/authentication/recovery",
-    "backend/authentication/securitynotification",
-    "backend/authentication/session",
-    "backend/authentication/totp",
-    "backend/authentication/trusteddevice",
-    "backend/authentication/webauthn",
     "backend/idmanagement/agent",
     "backend/idmanagement/group",
     "backend/idmanagement/user",

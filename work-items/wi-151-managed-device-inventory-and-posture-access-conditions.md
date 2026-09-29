@@ -8,7 +8,7 @@ priority: p3
 change_kind: feature
 affected_spec:
   - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-009 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-026 }
+  - { path: docs/domain/authentication/trusted-device/scenarios.feature.md, requirement: REQ-AUTHENTICATION-026 }
 ---
 
 # 管理デバイス台帳とデバイスポスチャ条件を導入する

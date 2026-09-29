@@ -7,8 +7,8 @@ created_at: 2026-07-09
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }
-  - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-022 }
+  - { path: docs/domain/authentication/totp/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }
+  - { path: docs/domain/authentication/mfa/scenarios.feature.md, requirement: REQ-AUTHENTICATION-022 }
 ---
 
 # 復旧目的の 2 個目認証器登録を推奨し手段冗長化でロックアウトを予防する

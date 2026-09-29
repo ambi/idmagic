@@ -10,7 +10,7 @@ change_kind: docs
 evidence_policy: risk-based-v2
 initial_context:
   specification:
-    - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-016
+    - docs/domain/authentication/password/scenarios.feature.md#REQ-AUTHENTICATION-016
     - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-017
     - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-001
     - docs/domain/system/scenarios.feature.md#REQ-SYSTEM-002

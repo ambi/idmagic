@@ -135,11 +135,11 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ID | 分類 | 脅威 | Context | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-033 | Spoofing | 資格情報の総当たりでアカウントへ到達する | Authentication | REQ-AUTHENTICATION-008、design/reliability/availability.md: 共有状態 | `covered` |
-| THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、contexts/authentication/decisions.md | `accepted` |
+| THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、domain/authentication/password/decisions.md | `accepted` |
 | THREAT-035 | Information disclosure | データベースの流出からパスワードが復元される | Authentication | NIST63B4-PASSWORD-STORAGE | `covered` |
 | THREAT-036 | Spoofing | 端末の記憶を悪用して第二要素を省略する | Authentication | REQ-AUTHENTICATION-027、REQ-AUTHENTICATION-028、REQ-AUTHENTICATION-029 | `covered` |
 | THREAT-037 | Spoofing | パスワード再設定の導線を使ってアカウントを乗っ取る | Authentication | REQ-AUTHENTICATION-016、REQ-AUTHENTICATION-008 | `covered` |
-| THREAT-038 | Information disclosure | 認証と復旧のレスポンス差から、利用者名の存在を暴く | Authentication | REQ-AUTHENTICATION-016、contexts/authentication/decisions.md | `covered` |
+| THREAT-038 | Information disclosure | 認証と復旧のレスポンス差から、利用者名の存在を暴く | Authentication | REQ-AUTHENTICATION-016、domain/authentication/password/decisions.md | `covered` |
 | THREAT-039 | Spoofing | 外部 IdP が主張するメールアドレスを信じ、既存アカウントへ結び付ける | Authentication | REQ-AUTHENTICATION-001、REQ-AUTHENTICATION-002 | `covered` |
 | THREAT-040 | Repudiation | 資格情報の変更が本人に知られないまま行われる | Authentication | REQ-AUTHENTICATION-030、REQ-AUTHENTICATION-031、REQ-AUTHENTICATION-032、REQ-AUTHENTICATION-033 | `covered` |
 | THREAT-041 | Spoofing | 承認リクエストを繰り返し送り、利用者が誤って承認する | OAuth2 | CIBA-CORE-BINDING-MESSAGE、REQ-OAUTH2-043、REQ-OAUTH2-040 | `covered` |

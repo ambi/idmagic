@@ -11,4 +11,4 @@ WI-572 は、テナントデフォルトのサインインポリシーが将来�
 アカウントのセキュリティ画面は、この日時と、認証アプリまたはパスキーの事前登録を促す警告を表示する。
 画面上で登録を終えると警告は消える。
 
-規範上の条件は [REQ-AUTHENTICATION-019](../../domain/authentication/scenarios.feature.md#rule-req-authentication-019-mfa-の強制開始前は未登録のユーザーもログインできるが登録を促される) が定める。
+規範上の条件は [REQ-AUTHENTICATION-019](../../domain/authentication/mfa/scenarios.feature.md#rule-req-authentication-019-mfa-の強制開始前は未登録のユーザーもログインできるが登録を促される) が定める。
