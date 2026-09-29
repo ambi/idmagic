@@ -42,6 +42,40 @@ const RULE_ID = /^(REQ-[A-Z0-9-]+)(?::)?(?:\s+|$)/
 const EXAMPLE_ID = /^(EX-[A-Z0-9-]+-\d+)(?:\s+|$)/
 const SUPERSEDED = /\(superseded by (REQ-[A-Z0-9-]+)\)$/
 
+export type RuleBody = {
+  id: string
+  line: number
+  lines: Array<{ line: number; text: string }>
+}
+
+const RULE_HEADING = /^#{2,6} Rule: (REQ-[A-Z0-9-]+)(?::)?(?:\s|$)/
+const ANY_HEADING = /^#{1,6} /
+
+/**
+ * 各 `Rule` の見出しから次の見出しまでの行。規則文、欄、表はここに書く。
+ *
+ * 公式の構文解析は、`Rule` の説明のうち箇条書きの行を AST に残さない。規則の本文を AST
+ * から読むと、箇条書きで書いた規則文と欄が黙って消えるので、ソースの行から切り出す。
+ */
+export function ruleBodies(source: string): RuleBody[] {
+  const bodies: RuleBody[] = []
+  let current: RuleBody | undefined
+  for (const [index, text] of source.split('\n').entries()) {
+    const heading = text.match(RULE_HEADING)
+    if (heading?.[1]) {
+      current = { id: heading[1], line: index + 1, lines: [] }
+      bodies.push(current)
+      continue
+    }
+    if (ANY_HEADING.test(text)) {
+      current = undefined
+      continue
+    }
+    if (current && text.trim() !== '') current.lines.push({ line: index + 1, text })
+  }
+  return bodies
+}
+
 function expectedExamplePrefix(ruleId: string): string {
   return `${ruleId.replace(/^REQ-/, 'EX-')}-`
 }

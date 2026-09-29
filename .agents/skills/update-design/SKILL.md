@@ -14,7 +14,10 @@ whose name owns that kind of content.
    `docs/design/architecture/deployment.md`, and trust boundaries in `docs/design/security/threat-model.md`; use the
    other matching whole-system file when it owns the changed concern.
 3. Update a context boundary and sibling index in `docs/domain/<context>/README.md`. Put durable rationale in
-   its `decisions.md`, and mechanism that cannot be recovered from code in `internals.md`.
+   its `decisions.md`, and mechanism that cannot be recovered from code in `internals.md`. When the change
+   adds, renames, or removes a feature slice `backend/<context>/<feature>/`, do the same to the feature node
+   `docs/domain/<context>/<feature>/` and its entry in the context index; `check-spec` rejects a slice
+   without a node beyond `tools/check/feature-node-debt.json`, which only shrinks.
 4. Revisit `docs/design/security/threat-model.md` when the change adds a trust boundary, a principal kind, an external
    integration, or a new kind of secret, personal data, or record that must later be proven. Move a row to
    `covered` only when a normative id names the control; a row citing a work item is not yet covered.

@@ -1,7 +1,6 @@
 import type { Dirent } from 'node:fs'
 import {
-  canonicalDocumentNames,
-  CONTEXT_DOCUMENTS,
+  documentNames,
   FREELY_NAMED_DOCUMENT_DIRECTORIES,
   type DirectoryListing,
 } from '../../workspace/src/document-layout.ts'
@@ -50,8 +49,9 @@ export async function checkDocuments(
     (finding) => `fail  ${finding.path}: ${finding.message}`,
   )
   let failed = lines.length > 0
+  // 機能ノードは Context の一段下にあり、Context の索引表には載らない。
   const contextDirectories = listings
-    .filter((listing) => listing.directory.startsWith('docs/domain/'))
+    .filter((listing) => /^docs\/domain\/[^/]+$/.test(listing.directory))
     .map((listing) => listing.directory.slice('docs/domain/'.length))
   if (snapshot.exists('docs/design/architecture/logical.md')) {
     const classifications = verifySubdomainClassification(
@@ -69,7 +69,7 @@ export async function checkDocuments(
 
   const paths = listings
     .flatMap((listing) => {
-      const allowed = new Set(canonicalDocumentNames(listing.directory) ?? CONTEXT_DOCUMENTS)
+      const allowed = new Set(documentNames(listing.directory))
       return listing.files
         .filter((name) => allowed.has(name))
         .map((name) => `${listing.directory}/${name}`)

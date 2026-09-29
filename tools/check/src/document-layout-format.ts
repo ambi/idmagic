@@ -1,5 +1,6 @@
 import {
   CONTEXT_DOCUMENTS,
+  FEATURE_DOCUMENTS,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
 
@@ -21,7 +22,10 @@ function requiredDocumentPaths(): string[] {
     names.map((name) => `${directory}/${name}`),
   )
   const contextDocuments = CONTEXT_DOCUMENTS.map((name) => `docs/domain/<context>/${name}`)
-  return [...systemDocuments, ...contextDocuments]
+  const featureDocuments = FEATURE_DOCUMENTS.map(
+    (name) => `docs/domain/<context>/<feature>/${name}`,
+  )
+  return [...systemDocuments, ...contextDocuments, ...featureDocuments]
 }
 
 function documentedPaths(source: string): Set<string> {

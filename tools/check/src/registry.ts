@@ -13,6 +13,7 @@ import { checkLinks } from './check-links.ts'
 import { checkRawSql } from './check-raw-sql.ts'
 import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
+import { checkSpecificationRules } from './check-specification-rules.ts'
 import { checkSloReferences } from './check-slo-references.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
 import { checkTerminology } from './check-terminology.ts'
@@ -22,6 +23,7 @@ import type { RepositoryCheck } from './runner.ts'
 
 export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'documents', groups: ['all'], run: checkDocuments },
+  { name: 'specification-rules', groups: ['all'], run: checkSpecificationRules },
   { name: 'boundary-debt-ratchet', groups: ['all'], run: checkBoundaryDebtRatchet },
   { name: 'document-layout', groups: ['all'], run: checkDocumentLayout },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },

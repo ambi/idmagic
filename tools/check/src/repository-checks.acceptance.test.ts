@@ -232,6 +232,35 @@ describe('文書検査', () => {
     expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
   })
 
+  // 機能ノードの文書が一次情報として読まれなければ、そこへ移した規則は宣言ごと検査から
+  // 消える。被覆の拒否が出ることが、読まれていることの観測になる。
+  it('reads the scenarios of a feature node as normative', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'docs', 'domain', 'demo', 'user'), { recursive: true })
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'user', 'README.md'), '# User\n')
+    await writeFile(
+      join(root, 'docs', 'domain', 'demo', 'user', 'scenarios.feature.md'),
+      [
+        '# Feature: User',
+        '',
+        '## 生成',
+        '',
+        '### Rule: REQ-DEMO-002 A user is created on request',
+        '',
+        '#### Example: EX-DEMO-002-01 valid request',
+        '',
+        '- When the user submits a request',
+        '- Then the user exists',
+        '',
+      ].join('\n'),
+    )
+
+    const result = await checkDocuments(root)
+    expect(result.output).not.toContain('not a canonical specification document')
+    expect(result.output).not.toContain('docs/domain/demo/user/ is not listed')
+    expect(result.output).toContain('EX-DEMO-002-01 is declared, but no test names it')
+  })
+
   // 標準の側の台帳は wi-495 が空にして消した。消えたのは一覧だけでなく免除の
   // 仕組みそのものなので、同じ名前のファイルを置き直しても行は通らない。これが
   // 成り立たなければ、台帳の削除は誰でも元に戻せる。
@@ -646,5 +675,102 @@ describe('現在状態の文書からの work item 参照の検査', () => {
 
     expect(result.code).toBe(0)
     expect(result.output).toContain('ok  work-item-references')
+  })
+})
+
+/** 規則の書式と仕様の木の検査を仮の作業ツリーに対して起動する。 */
+async function checkSpecificationRules(root: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(
+    ['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'specification-rules'],
+    {
+      cwd: TOOLS_DIR,
+      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  )
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
+describe('規則の書式と仕様の木の検査', () => {
+  /** 機能スライス `backend/demo/task` と、それに対応する機能ノードを持つ作業ツリー。 */
+  async function featureWorkspace(guarantee: string, parent: string): Promise<string> {
+    const root = await workspace()
+    await mkdir(join(root, 'backend', 'demo', 'task', 'domain'), { recursive: true })
+    await writeFile(
+      join(root, 'backend', 'demo', 'task', 'domain', 'task.go'),
+      'package domain\n\ntype Task struct{}\n\nfunc (t Task) Open() bool { return true }\n',
+    )
+    await mkdir(join(root, 'docs', 'design', 'application'), { recursive: true })
+    await writeFile(
+      join(root, 'docs', 'design', 'application', 'api-guidelines.md'),
+      '# API ガイドライン\n\n## ページサイズ\n\n既定は 50 件とする。\n',
+    )
+    await mkdir(join(root, 'docs', 'domain', 'demo', 'task'), { recursive: true })
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'task', 'README.md'), '# Task\n')
+    await writeFile(
+      join(root, 'docs', 'domain', 'demo', 'task', 'scenarios.feature.md'),
+      [
+        '# Feature: Task',
+        '',
+        '## 利用',
+        '',
+        '### Rule: REQ-DEMO-002 開いたタスクだけを一覧する',
+        '',
+        `- 上位の規則：${parent}`,
+        '- 既定値は 10 件とする。',
+        `- 担保手段：\`${guarantee}\``,
+        '',
+        '#### Example: EX-DEMO-002-01 開いたタスク',
+        '',
+        '- When 一覧を要求する',
+        '- Then 開いたタスクを返す',
+        '',
+      ].join('\n'),
+    )
+    return root
+  }
+  const parentLink = '[ページサイズ](../../../design/application/api-guidelines.md#ページサイズ)'
+
+  it('accepts a feature node whose guarantee and parent rule both resolve', async () => {
+    const result = await checkSpecificationRules(await featureWorkspace('Task.Open', parentLink))
+    expect(result.output).toContain('ok  specification rules')
+    expect(result.code).toBe(0)
+  })
+
+  it('rejects a guarantee the code does not declare', async () => {
+    const result = await checkSpecificationRules(await featureWorkspace('Task.Close', parentLink))
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain(
+      'REQ-DEMO-002 guarantee `Task.Close` is not declared in backend/',
+    )
+  })
+
+  it('rejects a parent rule whose heading does not exist', async () => {
+    const result = await checkSpecificationRules(
+      await featureWorkspace(
+        'Task.Open',
+        '[ページサイズ](../../../design/application/api-guidelines.md#上限)',
+      ),
+    )
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-002 parent rule does not resolve')
+  })
+
+  it('rejects a feature slice with no feature node', async () => {
+    const root = await featureWorkspace('Task.Open', parentLink)
+    await mkdir(join(root, 'backend', 'demo', 'note', 'usecases'), { recursive: true })
+    await writeFile(
+      join(root, 'backend', 'demo', 'note', 'usecases', 'note.go'),
+      'package usecases\n',
+    )
+    const result = await checkSpecificationRules(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('backend/demo/note has no feature node under docs/domain/demo/')
   })
 })

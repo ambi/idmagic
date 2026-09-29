@@ -73,10 +73,21 @@ let located:
       rule: ReturnType<typeof parseScenarioDocument>['rules'][number]
     }
   | undefined
-for (const contextDir of [...contextDirs, '']) {
-  const docPath = contextDir
-    ? `docs/domain/${contextDir}/scenarios.feature.md`
-    : 'docs/domain/scenarios.feature.md'
+// Context のルートに加えて、その一段下の機能ノードも宣言の置き場所になる。
+const candidates: Array<{ contextDir: string; docPath: string }> = [
+  { contextDir: '', docPath: 'docs/domain/scenarios.feature.md' },
+]
+for (const contextDir of contextDirs) {
+  candidates.push({ contextDir, docPath: `docs/domain/${contextDir}/scenarios.feature.md` })
+  const features = await readdir(resolve(root, 'docs/domain', contextDir), { withFileTypes: true })
+  for (const feature of features.filter((entry) => entry.isDirectory())) {
+    candidates.push({
+      contextDir,
+      docPath: `docs/domain/${contextDir}/${feature.name}/scenarios.feature.md`,
+    })
+  }
+}
+for (const { contextDir, docPath } of candidates) {
   const source = await readFile(resolve(root, docPath), 'utf8').catch(() => undefined)
   if (source === undefined) continue
   const rule = parseScenarioDocument(source).rules.find((candidate) => candidate.id === wantedRule)

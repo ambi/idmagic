@@ -31,19 +31,23 @@ export function partitionSources(paths: readonly string[]): SourcePartition {
 /**
  * The block of a canonical document that declares one normative identifier.
  *
- * A scenario is declared by a `## Rule:` heading and runs to the next heading
- * of the same level. A standards requirement is declared by a table row, which
+ * A scenario is declared by a `Rule:` heading and runs to the next heading of
+ * the same or a higher level: `##` at a context, `###` under a section of a
+ * feature node. A standards requirement is declared by a table row, which
  * means nothing on its own, so it comes back with the section heading and the
  * column names that say what its cells are.
  */
 export function extractDeclaration(source: string, id: string): string | undefined {
   const lines = source.split('\n')
 
-  const ruleStart = lines.findIndex((line) => new RegExp(`^##\\s+Rule:\\s+${id}\\b`).test(line))
+  const rulePattern = new RegExp(`^(#{2,6})\\s+Rule:\\s+${id}\\b`)
+  const ruleStart = lines.findIndex((line) => rulePattern.test(line))
   if (ruleStart >= 0) {
+    const level = lines[ruleStart]?.match(rulePattern)?.[1]?.length ?? 2
+    const closing = new RegExp(`^#{1,${level}}\\s`)
     let end = lines.length
     for (let index = ruleStart + 1; index < lines.length; index++) {
-      if (/^##\s/.test(lines[index] ?? '')) {
+      if (closing.test(lines[index] ?? '')) {
         end = index
         break
       }

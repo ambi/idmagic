@@ -80,6 +80,12 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 [Specification Format §3–§6](SPECIFICATION_FORMAT.md#3-一次情報文書) が定める。
 この文書は、同じテンプレート、表、規範 ID の文法を再掲しない。
 
+仕様は、システム、コンテキスト、機能の三つの階層からなる木に置く。
+システムの規則は`docs/design/`と`docs/domain/scenarios.feature.md`に、コンテキストの複数の機能にまたがる規則は`docs/domain/<context>/`に、一つの機能の規則は機能ノード`docs/domain/<context>/<feature>/`に書く。
+機能ノードはコードの機能スライスと同じ名前で対応させ、読み手とエージェントがパッケージのパスから仕様のノードを一つに決められるようにする。
+規則は一か所に書き、下位のノードは上位の規則からの例外だけを、上位の規則へのリンクとともに宣言する。
+階層の定義、機能ノードとコードの対応、規則一件の欄、機能ノードの中の規則の並びは[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)と[規則一件の書式](SPECIFICATION_FORMAT.md#規則一件の書式)が定める。
+
 ## 4. システム要求と設計
 
 システム文書は、外部から見た目的と環境を入口にし、要求、アーキテクチャ、領域別設計、検証へ分解する。コンテキストはアプリケーションの論理構造の一部であり、インフラ基盤、ネットワーク、観測基盤、運用者との責任分界も同じシステムの構成として扱う。

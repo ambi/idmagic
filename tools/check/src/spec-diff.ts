@@ -16,7 +16,7 @@
 import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
-import { parseScenarioDocument } from './gherkin-scenarios.ts'
+import { parseScenarioDocument, ruleBodies } from './gherkin-scenarios.ts'
 import { parseFrontmatterAndMarkdown } from './work-item-markdown.ts'
 import { documentKind } from './specification-doc.ts'
 
@@ -148,14 +148,31 @@ function legacyScenarioFacts(source: string): Map<string, string> {
   return facts
 }
 
+/**
+ * 規則の本文の一行を、書式の揺れを除いた形にする。表の区切り行は内容を持たないので落とし、
+ * 表のセルは前後の空白を除く。
+ */
+function normalizedBodyLine(text: string): string | undefined {
+  const line = text.trim().replaceAll(/\s+/g, ' ')
+  if (/^\|[\s|:-]+\|$/.test(line)) return undefined
+  if (!line.startsWith('|')) return line
+  return line
+    .split('|')
+    .map((cell) => cell.trim())
+    .join('|')
+}
+
 function gherkinScenarioFacts(source: string): Map<string, string> {
   const facts = new Map<string, string>()
+  const bodies = new Map(ruleBodies(source).map((body) => [body.id, body.lines]))
   for (const rule of parseScenarioDocument(source).rules) {
     const fragments = new Set(
       rule.examples.flatMap((example) => example.steps.map((step) => step.text)),
     )
     const title = rule.name.replace(new RegExp(`^${rule.id}(?::)?\\s*`), '')
-    facts.set(rule.id, ['gherkin', title, ...[...fragments].sort()].join('\n'))
+    // 本文は書いた順序に意味があるので、手順の断片と違って並べ替えない。
+    const body = (bodies.get(rule.id) ?? []).flatMap(({ text }) => normalizedBodyLine(text) ?? [])
+    facts.set(rule.id, ['gherkin', title, ...[...fragments].sort(), '--', ...body].join('\n'))
   }
   return facts
 }
@@ -198,8 +215,11 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     }
 
     // A machine belongs to the context that owns it, not to the file that
-    // happens to hold it, so moving it between files is not a change.
-    const owner = currentPath(path.slice(0, Math.max(0, path.length - name.length - 1)) || path)
+    // happens to hold it, so moving it between files is not a change. 機能ノードへ
+    // 移すことも同じで、機能ノードの段を落として Context で同定する。
+    const owner = currentPath(
+      path.slice(0, Math.max(0, path.length - name.length - 1)) || path,
+    ).replace(/^(docs\/domain\/[^/]+)\/[^/]+$/, '$1')
     const split = name === 'states.md'
     const transitions = split ? source : section(source, 'State Transitions')
     const machineHeading = split ? /^## (?!#)(.+)$/ : /^### (.+)$/

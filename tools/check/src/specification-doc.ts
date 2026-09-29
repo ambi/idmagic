@@ -6,7 +6,7 @@ export {
   SYSTEM_DOCUMENT_DIRECTORIES,
   SYSTEM_DOCUMENT_PATHS,
 } from '../../workspace/src/document-layout.ts'
-import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from '../../workspace/src/document-layout.ts'
+import { canonicalDocumentNames, documentNames } from '../../workspace/src/document-layout.ts'
 
 export type SpecificationFinding = {
   line: number
@@ -36,21 +36,20 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
 ])
 
 /**
- * Bounded Context の文書が入る段。`docs/contexts/` は `docs/domain/` へ改名する前の名前で、
- * 履歴を読む道具（`spec-diff`）がその時点のリビジョンを規範文書として認識し続けるために残す。
- * 現在の配置へ書き込むものは `docs/domain/` だけを使う。
- */
-const CONTEXT_DIRECTORIES = /^docs\/(?:domain|contexts)\/[^/]+\/[^/]+$/
-
-/**
  * The kind of a canonical document, or undefined when the path is not one.
  * `path` is repository-relative and uses forward slashes.
+ *
+ * `docs/contexts/` は `docs/domain/` へ改名する前の名前で、履歴を読む道具（`spec-diff`）が
+ * その時点のリビジョンを規範文書として認識し続けるために読み替える。
  */
 export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
-  const allowed = CONTEXT_DIRECTORIES.test(path)
-    ? (CONTEXT_DOCUMENTS as readonly string[])
-    : canonicalDocumentNames(path.slice(0, path.lastIndexOf('/')))
+  const directory = path
+    .slice(0, path.lastIndexOf('/'))
+    .replace(/^docs\/contexts\//, 'docs/domain/')
+  const allowed = directory.startsWith('docs/domain/')
+    ? documentNames(directory)
+    : canonicalDocumentNames(directory)
   if (!allowed?.includes(name)) return undefined
   return KIND_BY_NAME.get(name) ?? 'prose'
 }
@@ -322,7 +321,7 @@ export function validateDocument(path: string, source: string): SpecificationVal
       local.add(scenario.id)
     }
   } else {
-    for (const match of source.matchAll(/^## Rule: (REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
+    for (const match of source.matchAll(/^#{2,6} Rule: (REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
       findings.push({
         line: lineAt(source, match.index ?? 0),
         message: `${match[1]} must be declared in scenarios.feature.md`,

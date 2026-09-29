@@ -83,6 +83,11 @@ function anchors(tokens: Token[]): Set<string> {
   return result
 }
 
+/** 文書の中でリンクの `#` が指せる名前。見出しの slug と、明示した `id` と `name`。 */
+export function markdownAnchors(source: string): Set<string> {
+  return anchors(markdown.parse(source, {}))
+}
+
 function links(tokens: Token[], environment: MarkdownEnvironment): MarkdownLink[] {
   const result: MarkdownLink[] = []
   const usedTargets = new Set<string>()

@@ -13,6 +13,18 @@ export const CONTEXT_DOCUMENTS = [
   'scenarios.feature.md',
 ] as const
 
+/**
+ * Context の一段下に置く機能ノードの文書。共有語彙（`glossary.md`）と採用した外部標準
+ * （`standards.md`）は機能をまたいで使うので Context に残し、ここには置かせない。
+ */
+export const FEATURE_DOCUMENTS = [
+  'README.md',
+  'states.md',
+  'decisions.md',
+  'internals.md',
+  'scenarios.feature.md',
+] as const
+
 export const ROOT_DOCUMENTS = ['README.md'] as const
 
 /** ドメイン全体を対象とし、Bounded Context のディレクトリより上に置く文書。 */
@@ -109,4 +121,18 @@ export const FREELY_NAMED_DOCUMENT_DIRECTORIES = new Set([
 
 export function canonicalDocumentNames(directory: string): readonly string[] | undefined {
   return SYSTEM_DOCUMENTS_BY_DIRECTORY.get(directory)
+}
+
+/**
+ * その段に置ける一次情報文書の名前。仕様の木はシステム、Context、機能の三段で止まるので、
+ * 機能ノードより下の段には何も置けない。固定の一覧に無い段は Context と同じ集合を持つ。
+ */
+export function documentNames(directory: string): readonly string[] {
+  const system = SYSTEM_DOCUMENTS_BY_DIRECTORY.get(directory)
+  if (system) return system
+  if (!directory.startsWith('docs/domain/')) return CONTEXT_DOCUMENTS
+  const depth = directory.slice('docs/domain/'.length).split('/').length
+  if (depth === 1) return CONTEXT_DOCUMENTS
+  if (depth === 2) return FEATURE_DOCUMENTS
+  return []
 }

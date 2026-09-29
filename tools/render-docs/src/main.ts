@@ -6,6 +6,7 @@ import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
 import {
   CONTEXT_DOCUMENTS,
+  FEATURE_DOCUMENTS,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
@@ -57,6 +58,13 @@ const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .sort()
 for (const name of contextDirectories) {
   paths.push(...(await canonicalDocuments(`docs/domain/${name}`, CONTEXT_DOCUMENTS)))
+  const featureDirectories = (await readdir(resolve(contextRoot, name), { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+  for (const feature of featureDirectories) {
+    paths.push(...(await canonicalDocuments(`docs/domain/${name}/${feature}`, FEATURE_DOCUMENTS)))
+  }
 }
 
 // The order the canonical layout defines is the order the site lists, so the

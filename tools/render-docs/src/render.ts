@@ -4,6 +4,7 @@ import { parseScenarioDocument } from '../../check/src/gherkin-scenarios.ts'
 import {
   CONTEXT_DOCUMENTS,
   DOMAIN_DOCUMENTS,
+  FEATURE_DOCUMENTS,
   SYSTEM_DOCUMENT_PATHS,
 } from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
@@ -50,6 +51,8 @@ type RenderedDocument = SourceDocument & {
   order: number
   /** For a context document and its children, the context slug they belong to. */
   context?: string
+  /** 機能ノードの文書だけが持つ、所属する機能ノードのディレクトリ名。 */
+  feature?: string
 }
 
 type NavigationDirectory = {
@@ -72,6 +75,8 @@ type DocumentCategory =
   | 'whole-system-child'
   | 'context'
   | 'context-child'
+  | 'feature'
+  | 'feature-child'
 
 export type RenderedDocumentationSite = {
   files: Record<string, string>
@@ -281,6 +286,35 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           outputPath: `development/${slug(stem)}.html`,
           category: 'development-child',
           order: index,
+        }
+  }
+  const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/([^/]+)\/([^/]+)$/)
+  if (featureDocument) {
+    const [, context = '', feature = '', featureFile = ''] = featureDocument
+    const stem =
+      featureFile === 'scenarios.feature.md' ? 'scenarios' : featureFile.replace(/\.md$/, '')
+    return featureFile === 'README.md'
+      ? {
+          ...document,
+          id: `context-${context}-${slug(feature)}`,
+          title,
+          sections,
+          outputPath: `domain/${context}/${slug(feature)}/index.html`,
+          category: 'feature',
+          order: index,
+          context,
+          feature,
+        }
+      : {
+          ...document,
+          id: `context-${context}-${slug(feature)}-${slug(stem)}`,
+          title,
+          sections,
+          outputPath: `domain/${context}/${slug(feature)}/${slug(stem)}.html`,
+          category: 'feature-child',
+          order: canonicalOrder(FEATURE_DOCUMENTS, featureFile, index),
+          context,
+          feature,
         }
   }
   const contextDocument = document.path.match(/^docs\/domain\/([^/]+)\/([^/]+)$/)
@@ -600,15 +634,21 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   // 「運用手順」の枝の下では、題名の末尾の種類名は枝の名札と同じことを言う。
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
-  if (entry.category !== 'context-child') return entry.title
+  if (entry.category !== 'context-child' && entry.category !== 'feature-child') return entry.title
   if (entry.path.endsWith('scenarios.feature.md')) return 'シナリオ'
-  const owner = documents.find(
-    (document) => document.category === 'context' && document.context === entry.context,
+  const owner = documents.find((document) =>
+    entry.category === 'feature-child'
+      ? document.category === 'feature' &&
+        document.context === entry.context &&
+        document.feature === entry.feature
+      : document.category === 'context' && document.context === entry.context,
   )
   if (!owner) return entry.title
-  const japanesePossessive = `${owner.title} の`
-  if (entry.title.startsWith(japanesePossessive))
-    return entry.title.slice(japanesePossessive.length)
+  // 英字の名前には空白を挟んで「の」を続け、日本語の名前には直接続ける。
+  for (const japanesePossessive of [`${owner.title} の`, `${owner.title}の`]) {
+    if (entry.title.startsWith(japanesePossessive))
+      return entry.title.slice(japanesePossessive.length)
+  }
   const spacedPrefix = `${owner.title} `
   return entry.title.startsWith(spacedPrefix) ? entry.title.slice(spacedPrefix.length) : entry.title
 }
@@ -655,7 +695,9 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     `<li class="nav-item">${link(
       entry,
       childLabel(entry, documents),
-      entry.category === 'context-child' ? ' nav-context-child' : '',
+      entry.category === 'context-child' || entry.category === 'feature-child'
+        ? ' nav-context-child'
+        : '',
     )}</li>`
   const containsCurrent = (node: NavigationDirectory): boolean =>
     node.document?.outputPath === page ||
@@ -705,7 +747,17 @@ function navigation(page: string, documents: RenderedDocument[]): string {
         documents: inGroup(documents, 'context-child').filter(
           (document) => document.context === entry.context,
         ),
-        directories: [],
+        directories: inGroup(documents, 'feature')
+          .filter((feature) => feature.context === entry.context)
+          .map((feature) => ({
+            name: feature.title,
+            document: feature,
+            documents: inGroup(documents, 'feature-child').filter(
+              (document) =>
+                document.context === feature.context && document.feature === feature.feature,
+            ),
+            directories: [],
+          })),
       }),
     ),
   ].join('')

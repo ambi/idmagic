@@ -404,6 +404,48 @@ describe('renderDocumentationSite', () => {
     expect(page).not.toContain('>glossary.md<')
   })
 
+  it('nests a feature node and its documents under the context that owns it', () => {
+    const result = renderDocumentationSite({
+      documents: [
+        rootDocument,
+        contextDocument,
+        { path: 'docs/domain/demo/user/README.md', source: '# ユーザー\n\nユーザーを扱う。\n' },
+        {
+          path: 'docs/domain/demo/user/scenarios.feature.md',
+          source: [
+            '# Feature: ユーザーのシナリオ',
+            '',
+            '## 生成',
+            '',
+            '### Rule: REQ-DEMO-002 a user is created',
+            '',
+            '#### Example: EX-DEMO-002-01 a request creates a user',
+            '',
+            '- When the developer creates a user',
+            '- Then the user exists',
+            '',
+          ].join('\n'),
+        },
+        {
+          path: 'docs/domain/demo/user/decisions.md',
+          source: '# ユーザーの設計判断\n\n- 判断。\n',
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+    const page = result.files['domain/demo/user/scenarios.html']
+
+    expect(page).toContain('REQ-DEMO-002')
+    expect(result.files['domain/demo/user/index.html']).toBeDefined()
+    expect(childLabels(page)).toEqual(['設計判断', 'シナリオ'])
+    const contextBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
+    expect(contextBranch).toContain('>ユーザー</a>')
+  })
+
   it('keeps a parent page distinct from its children and removes Japanese possession', () => {
     const result = renderDocumentationSite({
       documents: [

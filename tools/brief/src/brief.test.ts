@@ -57,6 +57,30 @@ describe('extractDeclaration', () => {
     expect(extractDeclaration(SCENARIOS, 'REQ-DEMO-002')).toContain('- Then the task stops')
   })
 
+  // 機能ノードでは規則が節の見出しの一段下に置かれ、次の節の見出しが規則の終わりになる。
+  it('returns a rule under a lifecycle section and stops at the next section', () => {
+    const source = [
+      '# Feature: Task',
+      '',
+      '## 生成',
+      '',
+      '### Rule: REQ-DEMO-003 A task is created',
+      '',
+      '#### Example: EX-DEMO-003-01 created',
+      '',
+      '- When the user creates a task',
+      '- Then the task exists',
+      '',
+      '## 失効と変更',
+      '',
+      '### Rule: REQ-DEMO-004 A task is cancelled',
+      '',
+    ].join('\n')
+    const declaration = extractDeclaration(source, 'REQ-DEMO-003')
+    expect(declaration).toContain('- Then the task exists')
+    expect(declaration).not.toContain('失効と変更')
+  })
+
   /**
    * A standards requirement is a table row, not a heading. Returning the row
    * without its header would hand back four unlabelled cells.

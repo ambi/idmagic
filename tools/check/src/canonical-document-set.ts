@@ -11,11 +11,7 @@
  * 近い許可名を示して、書いた人が何を間違えたかに到達させる。
  */
 
-import {
-  canonicalDocumentNames,
-  CONTEXT_DOCUMENTS,
-  type DirectoryListing,
-} from '../../workspace/src/document-layout.ts'
+import { documentNames, type DirectoryListing } from '../../workspace/src/document-layout.ts'
 
 /** 一段のディレクトリと、その直下にあるファイル名。 */
 export type { DirectoryListing } from '../../workspace/src/document-layout.ts'
@@ -27,11 +23,6 @@ export interface Finding {
 
 /** 打ち間違いとみなす編集距離の上限。これを超える名前には候補を示さない。 */
 const SUGGESTION_DISTANCE = 2
-
-/** その段が許す名前。`docs/` 直下と Context 直下は別の集合を持つ。 */
-function allowedNames(directory: string): readonly string[] {
-  return canonicalDocumentNames(directory) ?? CONTEXT_DOCUMENTS
-}
 
 function isMarkdown(name: string): boolean {
   return name.toLowerCase().endsWith('.md')
@@ -79,7 +70,7 @@ function nearestName(name: string, allowed: readonly string[]): string | undefin
 export function verifyCanonicalDocumentSet(listings: DirectoryListing[]): Finding[] {
   const findings: Finding[] = []
   for (const listing of listings) {
-    const allowed = allowedNames(listing.directory)
+    const allowed = documentNames(listing.directory)
     for (const name of listing.files) {
       if (!isMarkdown(name) || allowed.includes(name)) continue
       const nearest = nearestName(name, allowed)
@@ -87,7 +78,9 @@ export function verifyCanonicalDocumentSet(listings: DirectoryListing[]): Findin
         path: `${listing.directory}/${name}`,
         message: nearest
           ? `not a canonical document; did you mean ${nearest}?`
-          : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}`,
+          : allowed.length === 0
+            ? 'not a canonical document; the specification tree stops at the feature node'
+            : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}`,
       })
     }
   }

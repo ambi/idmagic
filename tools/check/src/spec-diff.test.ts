@@ -159,6 +159,90 @@ describe('diffSpecifications', () => {
     })
   })
 
+  it('reports a rule whose body changed even when its title and steps did not', () => {
+    const rule = (limit: string): Snapshot =>
+      new Map([
+        [
+          'docs/domain/demo/scenarios.feature.md',
+          [
+            '# Feature: Demo Scenarios',
+            '',
+            '## Rule: REQ-DEMO-001 A request',
+            '',
+            '- 担保手段：`demo.Limit`',
+            '',
+            '| 入力 | 結果 |',
+            '| --- | --- |',
+            `| limit なし | ${limit} 件 |`,
+            '',
+            '### Example: EX-DEMO-001-01 request succeeds',
+            '',
+            '- When the request is submitted',
+            '- Then it succeeds',
+          ].join('\n'),
+        ],
+      ])
+    expect(diffSpecifications(rule('50'), rule('50')).changedScenarios).toEqual([])
+    expect(diffSpecifications(rule('50'), rule('10')).changedScenarios).toEqual(['REQ-DEMO-001'])
+  })
+
+  it('reports nothing when a rule and its state machine move into a feature node', () => {
+    const lifecycle = [
+      '## Lifecycle',
+      '',
+      '| State | Kind | Meaning |',
+      '|---|---|---|',
+      '| Ready | initial | 受理直後 |',
+      '| Done | terminal | 完了 |',
+      '',
+      machine('emit Done').split('\n').slice(1).join('\n'),
+    ].join('\n')
+    const base: Snapshot = new Map([
+      [
+        'docs/domain/demo/scenarios.feature.md',
+        [
+          '# Feature: Demo Scenarios',
+          '',
+          '## Rule: REQ-DEMO-001 A request',
+          '',
+          '- 規則文の一行',
+          '',
+          '### Example: EX-DEMO-001-01 request succeeds',
+          '',
+          '- When the request is submitted',
+          '- Then it succeeds',
+        ].join('\n'),
+      ],
+      ['docs/domain/demo/states.md', `# Demo State Transitions\n\n${lifecycle}\n`],
+    ])
+    const head: Snapshot = new Map([
+      ['docs/domain/demo/scenarios.feature.md', '# Feature: Demo Scenarios\n'],
+      [
+        'docs/domain/demo/task/scenarios.feature.md',
+        [
+          '# Feature: Task',
+          '',
+          '## 生成',
+          '',
+          '### Rule: REQ-DEMO-001 A request',
+          '',
+          '- 規則文の一行',
+          '',
+          '#### Example: EX-DEMO-001-01 request succeeds',
+          '',
+          '- When the request is submitted',
+          '- Then it succeeds',
+        ].join('\n'),
+      ],
+      ['docs/domain/demo/task/states.md', `# Task State Transitions\n\n${lifecycle}\n`],
+    ])
+    const diff = diffSpecifications(base, head)
+    expect(diff.addedScenarios).toEqual([])
+    expect(diff.removedScenarios).toEqual([])
+    expect(diff.changedScenarios).toEqual([])
+    expect(diff.changedTransitions).toEqual([])
+  })
+
   it('tracks TypeSpec declarations coming and going', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')), 'model Task {}')
     const head = snapshot(

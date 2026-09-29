@@ -16,8 +16,16 @@ current document kinds and grammar.
    `standards.md`, state machines in `states.md`, durable rationale in `decisions.md`, and durable mechanism
    that cannot be recovered from code in `internals.md`. Use the matching file under `docs/requirements/`,
    `docs/architecture/`, `docs/design/`, `docs/verification/`, or `docs/operations/` for a whole-system fact.
+   A rule, state machine, decision, or mechanism of one feature goes in the feature node
+   `docs/domain/<context>/<feature>/` that matches the code slice `backend/<context>/<feature>/` (drop the
+   hyphens to compare names); keep `glossary.md` and `standards.md` at the context. Place the rule under the
+   lifecycle or API section it answers, in the order `SPECIFICATION_FORMAT.md` fixes.
 3. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`. Retire a referenced behavior
-   with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id.
+   with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id. Write its
+   body in the rule format: one obligation per bullet, a table when conditions combine, and the
+   `**担保手段**` field naming the code symbol. Put a value the product keeps (a limit, a period, a formula)
+   in the rule, never only in `internals.md`. A rule that departs from a higher rule states only the
+   departure and links it from `**上位の規則**`; do not copy the higher rule down.
 4. Keep behavior that only several contexts can satisfy in `docs/scenarios.feature.md`, name the participating
    contexts, and keep context-local fragments out of their individual scenario files.
 5. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.

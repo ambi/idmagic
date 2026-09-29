@@ -43,9 +43,24 @@ describe('documentKind', () => {
     expect(documentKind('docs/domain/demo/notes.md')).toBeUndefined()
     expect(documentKind('docs/states.md')).toBeUndefined()
     expect(documentKind('docs/authorization.md')).toBeUndefined()
-    expect(documentKind('docs/domain/demo/user/scenarios.feature.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
     expect(documentKind('docs/design/security/network.md')).toBeUndefined()
+  })
+
+  it('reads a feature node one level below its context with the grammar its name gives', () => {
+    expect(documentKind('docs/domain/demo/user/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/domain/demo/user/states.md')).toBe('states')
+    expect(documentKind('docs/domain/demo/user/README.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/user/internals.md')).toBe('prose')
+  })
+
+  it('keeps shared vocabulary and adopted standards at the context, not in a feature node', () => {
+    expect(documentKind('docs/domain/demo/user/glossary.md')).toBeUndefined()
+    expect(documentKind('docs/domain/demo/user/standards.md')).toBeUndefined()
+  })
+
+  it('stops the tree at the feature node', () => {
+    expect(documentKind('docs/domain/demo/user/profile/scenarios.feature.md')).toBeUndefined()
   })
 
   it('no longer recognizes the single canonical document', () => {

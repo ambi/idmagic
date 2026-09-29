@@ -1,0 +1,27 @@
+{
+  "contextAliases": {
+    "idmanagement": "identity-management"
+  },
+  "unmappedSlices": [
+    "backend/authentication/federation",
+    "backend/authentication/mfa",
+    "backend/authentication/password",
+    "backend/authentication/recovery",
+    "backend/authentication/securitynotification",
+    "backend/authentication/session",
+    "backend/authentication/totp",
+    "backend/authentication/trusteddevice",
+    "backend/authentication/webauthn",
+    "backend/idmanagement/agent",
+    "backend/idmanagement/group",
+    "backend/idmanagement/user",
+    "backend/oauth2/approval",
+    "backend/oauth2/authorization",
+    "backend/oauth2/client",
+    "backend/oauth2/consent",
+    "backend/oauth2/device",
+    "backend/oauth2/logout",
+    "backend/oauth2/token",
+    "backend/sourcing/scim"
+  ]
+}

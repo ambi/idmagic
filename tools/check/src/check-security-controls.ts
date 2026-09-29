@@ -26,14 +26,9 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
   let promised = 0
   for (const entry of await snapshot.list(contextsDirectory)) {
     if (!entry.isDirectory()) continue
-    const scenarioPath = `${contextsDirectory}/${entry.name}/scenarios.feature.md`
-    let source: string
-    try {
-      source = await snapshot.read(scenarioPath)
-    } catch {
-      continue
-    }
-    const local = errorTypesNamedByScenarios(source)
+    const sources = await contextScenarioSources(snapshot, `${contextsDirectory}/${entry.name}`)
+    if (sources.length === 0) continue
+    const local = new Set(sources.flatMap((source) => [...errorTypesNamedByScenarios(source)]))
     const named = new Set([...local, ...sharedRefusals])
     declared += local.size
     const contract = new Map<string, string[]>()
@@ -65,4 +60,23 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
               `${declared} error type(s) named by the scenarios)`,
           ],
   }
+}
+
+/**
+ * Context のルートと、その一段下の機能ノードにあるシナリオ。拒否の宣言は Context 単位で
+ * 判定するので、規則をどの機能ノードへ置いても同じ Context の宣言として数える。
+ */
+async function contextScenarioSources(
+  snapshot: WorkspaceSnapshot,
+  context: string,
+): Promise<string[]> {
+  const paths = [`${context}/scenarios.feature.md`]
+  for (const entry of await snapshot.list(context)) {
+    if (entry.isDirectory()) paths.push(`${context}/${entry.name}/scenarios.feature.md`)
+  }
+  const sources: string[] = []
+  for (const path of paths) {
+    if (snapshot.exists(path)) sources.push(await snapshot.read(path))
+  }
+  return sources
 }

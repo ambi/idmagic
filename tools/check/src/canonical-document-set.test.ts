@@ -14,6 +14,22 @@ describe('verifyCanonicalDocumentSet', () => {
     ).toEqual([])
   })
 
+  it('keeps shared vocabulary out of a feature node', () => {
+    const findings = verifyCanonicalDocumentSet([
+      { directory: 'docs/domain/demo/user', files: ['README.md', 'glossary.md'] },
+    ])
+    expect(findings.map((finding) => finding.path)).toEqual(['docs/domain/demo/user/glossary.md'])
+  })
+
+  it('rejects any document below a feature node', () => {
+    const findings = verifyCanonicalDocumentSet([
+      { directory: 'docs/domain/demo/user/profile', files: ['scenarios.feature.md'] },
+    ])
+    expect(findings[0]?.message).toBe(
+      'not a canonical document; the specification tree stops at the feature node',
+    )
+  })
+
   it('rejects a Markdown file the closed set does not name', () => {
     const findings = verifyCanonicalDocumentSet([
       { directory: 'docs', files: ['README.md', 'notes.md'] },
