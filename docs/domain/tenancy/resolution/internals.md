@@ -10,9 +10,9 @@
 2. パスが `/realms/{realm}/...` に一致するなら realm を対応付ける。見つかったテナントの `endpoint_style` が `Path` でなければ不在として扱う。
 3. どちらにも一致しないリクエストは、テナントが存在しないものとして扱う。任意の Host や接頭辞のないパスをデフォルトテナントへフォールバックさせない。
 
-ミドルウェアは `^/realms/([a-z0-9][a-z0-9-]{0,62})(/|$)` で realm の区間を取り出し、解決した `Tenant` と発行者の文字列をリクエストコンテキストに付ける。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもこの正規ロケーションから組み立てる。`Path` では発行者が `{base}/realms/{realm}`、`Subdomain` では `{scheme}://{realm}.{tenant_base_domain}` になる。
+ミドルウェアはパスの `/realms/{realm}` の区間を realm として取り出し、解決した `Tenant` と発行者の文字列をリクエストコンテキストに付ける。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもこの正規ロケーションから組み立てる。`Path` では発行者が `{base}/realms/{realm}`、`Subdomain` では `{scheme}://{realm}.{tenant_base_domain}` になる。
 
-存在しないテナントには `404 tenant_not_found`、無効なテナントには OAuth / OIDC のプロトコルルートで `400 invalid_request` を返す。レスポンスの形が場合ごとに変わらないため、解決器のレスポンスだけからテナントを列挙することはできない。
+応答の状態コードと本文は [REQ-TENANCY-023](scenarios.feature.md) が定める。存在しない realm と、正規ロケーション以外からの到達とで応答を変えないため、解決器の応答だけからテナントを列挙することはできない。
 
 プロトコルと管理のルートはすべて `/realms/{realm}/...` の下に置き、テナントをまたぐ制御面のテナント管理だけを `/realms/default/admin/tenants/...` に置く。こうすると、デフォルトテナントのセッション Cookie のパスだけで対象を覆えるので、Cookie のスコープをルートパスまで広げずに済む。
 

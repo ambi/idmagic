@@ -172,16 +172,25 @@ func TestWithoutTenantBaseDomainOnlyPathRoutingApplies(t *testing.T) {
 	}
 }
 
-// Host は port と trailing dot を除き lowercase に正規化して照合する (SCL ResolveTenant)。
+// Host は port と trailing dot を除き lowercase に正規化して照合する。
+//
+//spec:covers EX-TENANCY-022-01: 大文字、ポート、末尾のドットを含む Host は、単独でも組み合わせても acme に解決する。
 func TestHostIsNormalizedBeforeMatching(t *testing.T) {
 	e := hostRoutingFixture(t, "idp.example")
 
-	for _, host := range []string{"ACME.idp.example", "acme.idp.example:8443", "acme.idp.example."} {
+	for _, host := range []string{"ACME.idp.example", "acme.idp.example:8443", "acme.idp.example.", "ACME.IDP.EXAMPLE.:8443"} {
 		t.Run(host, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, requestWithHost(host, "/.well-known/openid-configuration"))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+			var doc map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &doc); err != nil {
+				t.Fatal(err)
+			}
+			if got := doc["issuer"]; got != "https://acme.idp.example" {
+				t.Fatalf("issuer = %v, want the acme tenant", got)
 			}
 		})
 	}

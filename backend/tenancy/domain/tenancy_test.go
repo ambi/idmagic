@@ -151,3 +151,26 @@ func TestTenantValidateDoesNotReapplyNewRealmRules(t *testing.T) {
 		t.Fatal("ValidateNewRealm() on the same realm = nil, want an error")
 	}
 }
+
+//spec:covers EX-TENANCY-028-04: 保存済みの信頼済みデバイスの有効期間が範囲の外なら、未設定と同じく 0 (無効) として読み、上限ちょうどは 90 日として読む。
+func TestEffectiveTrustedDeviceMaxAgeTreatsOutOfRangeAsDisabled(t *testing.T) {
+	seconds := func(v int) *int { return &v }
+	for _, tc := range []struct {
+		name   string
+		stored *int
+		want   time.Duration
+	}{
+		{"unset", nil, 0},
+		{"zero", seconds(0), 0},
+		{"negative", seconds(-1), 0},
+		{"above the ceiling", seconds(TrustedDeviceMaxAgeCeilingSeconds + 1), 0},
+		{"at the ceiling", seconds(TrustedDeviceMaxAgeCeilingSeconds), 90 * 24 * time.Hour},
+		{"one second", seconds(1), time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := (Tenant{TrustedDeviceMaxAgeSeconds: tc.stored}).EffectiveTrustedDeviceMaxAge(); got != tc.want {
+				t.Fatalf("EffectiveTrustedDeviceMaxAge() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

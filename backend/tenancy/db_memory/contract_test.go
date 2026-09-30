@@ -17,3 +17,10 @@ func TestPersistenceContract(t *testing.T) {
 		}
 	})
 }
+
+//spec:covers EX-TENANCY-036-01, EX-TENANCY-036-02, EX-TENANCY-036-03, EX-TENANCY-036-04, EX-TENANCY-037-01, EX-TENANCY-037-02: メモリーの実装が、上書きとデフォルトの実効値、拒否した加算の使用量、未知のリソース、0 で止まる減算、全置換の更新、使用量を下回る上限を共通の契約どおりに扱う。
+func TestQuotaContract(t *testing.T) {
+	testing_contract.RunQuota(t, func(*testing.T) testing_contract.QuotaFixture {
+		return testing_contract.QuotaFixture{Repository: NewQuotaRepository(), TenantID: "tenant-quota"}
+	})
+}

@@ -76,6 +76,38 @@ Primary actor: `TenantAdministrator`
 - But 上書きが存在しないテンプレートに ResetNotificationTemplate を実行する
 - Then 冪等に成功し、組込みデフォルトのままとなる
 
+### Rule: REQ-TENANCY-038 プレビューは、空の項目を現在有効な文面で補う
+
+- 空白だけの項目は、現在有効な文面で補う。上書きがあれば上書き、なければ組み込みの文面が現在有効な文面である。
+- 差し込み値には固定のサンプル値を使う。`product_name` と `tenant_display_name` だけは、テナントの値を使う。
+- **担保手段**：`PreviewNotificationTemplate`
+
+#### Example: EX-TENANCY-038-01 件名だけを指定する
+
+- Given admin ロールを持つ "operator" が認証済みである
+- When "operator" が件名だけを指定して PasswordReset / ja のプレビューを呼び出す
+- Then 件名は指定した文面で、テキスト本文と HTML 本文は組み込みの ja の文面で描画される
+
+#### Example: EX-TENANCY-038-02 プロダクト名を設定済みのテナント
+
+- Given テナントのブランド設定の `product_name` は "Acme ID" である
+- When "operator" が `{{product_name}}` を含む件名でプレビューを呼び出す
+- Then 描画された件名は "Acme ID" を含む
+
+### Rule: REQ-TENANCY-039 リセットは、上書きの有無にかかわらず NotificationTemplateReset を発行する
+
+- リセットは上書きを削除し、組み込みの文面を返す。
+- 上書きがないテンプレートのリセットも成功し、`NotificationTemplateReset` を発行する。
+- **担保手段**：`ResetNotificationTemplate`
+- **要判断**：何も削除しなかったリセットもイベントを発行する。上書きを削除したときだけにするかを決める。
+
+#### Example: EX-TENANCY-039-01 上書きがないテンプレートをリセットする
+
+- Given admin ロールを持つ "operator" が認証済みである
+- And テナントは通知テンプレートを一度も上書きしていない
+- When "operator" が PasswordReset / ja に ResetNotificationTemplate を実行する
+- Then 200 と組み込みの文面が返り、"NotificationTemplateReset" が発行される
+
 ## 拒否
 
 ### Rule: REQ-TENANCY-017 許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される
@@ -151,3 +183,24 @@ Primary actor: `TenantAdministrator`
 - When "operator" が SendTestNotification を呼び出す
 - But 操作者が検証済みメールアドレスを持たない
 - Then InvalidRequestError で拒否され、メールは送信されない
+
+### Rule: REQ-TENANCY-040 試し送りは編集中の言語の文面を送り、配送の成否を応答で返す
+
+- 文面の言語は、要求が指定した言語とする。操作者の言語とテナントのデフォルト言語へは変えない。
+- `user_display_name` には操作者の表示名を使い、表示名がなければメールアドレスを使う。
+- 応答は、宛先（`to`）と配送の成否（`delivered`）を返す。
+- 送信に失敗した場合も 200 を返し、`delivered` を `false` にする。
+- **担保手段**：`SendTestNotification`
+
+#### Example: EX-TENANCY-040-01 操作者の言語と異なる言語を試し送りする
+
+- Given locale 属性が "en" の "operator" が検証済みメールアドレスを持ち認証済みである
+- When "operator" が PasswordReset / ja に SendTestNotification を呼び出す
+- Then 送られるメールは ja の文面である
+
+#### Example: EX-TENANCY-040-02 送信に失敗する
+
+- Given "operator" が検証済みメールアドレスを持ち認証済みである
+- And メールの送信が失敗する
+- When "operator" が SendTestNotification を呼び出す
+- Then 200 が返り、`delivered` は false で、`to` は "operator" のアドレスである
