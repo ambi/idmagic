@@ -15,6 +15,7 @@ import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
 import { checkSpecificationRules } from './check-specification-rules.ts'
 import { checkSloReferences } from './check-slo-references.ts'
+import { checkSpecImpact } from './check-spec-impact.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
 import { checkTerminology } from './check-terminology.ts'
 import { checkVulnerabilitySuppressions } from './check-vulnerability-suppressions.ts'
@@ -27,6 +28,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'boundary-debt-ratchet', groups: ['all'], run: checkBoundaryDebtRatchet },
   { name: 'document-layout', groups: ['all'], run: checkDocumentLayout },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
+  { name: 'spec-impact', groups: ['all'], run: checkSpecImpact },
   { name: 'links', groups: ['all'], run: checkLinks },
   { name: 'terminology', groups: ['all'], run: checkTerminology },
   { name: 'work-item-references', groups: ['all'], run: checkDocsWorkItemLinks },

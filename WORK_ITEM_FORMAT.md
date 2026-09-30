@@ -120,6 +120,30 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 spec_impact: { kind: none, reason: "具体的な理由。" }
 ```
 
+`affected_spec` の各項目には、規範要素との関係を `impact` で示す。
+
+| `impact` | 意味 | 機械検査が求めるもの |
+| --- | --- | --- |
+| `modifies`（省略時の値） | 規範要素を追加、変更、廃止する | 作業範囲の仕様差分に、その規範要素が現れる |
+| `conforms` | 規範要素を変えず、実装をそれに合わせる | 作業範囲の仕様差分にその規範要素が現れず、それを引くテストを同じ作業範囲で追加または変更している |
+
+```yaml
+affected_spec:
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-002, impact: conforms }
+```
+
+`conforms` の項目を引くテストとは、規則またはその子の例を `//spec:covers` で引くテストである。
+TypeSpec のシンボルには引く ID がないため、宣言名を含むテストファイルの追加または変更を求める。
+作業範囲は、その作業項目の `status` が `pending` でなくなったコミットの親から作業ツリーまでである。
+`impact` は、導入後に着手または完了する記録に書く。
+完了済みの記録へ遡って書き加えない。
+
+`spec_impact.reason` には、何が変わらないかを名指して書く。
+「リファクタリングのみ」「振る舞いは変えない」のように、維持する結果、永続状態、イベント、外向きの呼び出しを一つも名指さない理由は、機械検査が拒否する。
+`spec_impact: none` を宣言した作業範囲に規範仕様の差分があれば、同じく拒否する。
+これらの検査は `mise run check` が行い、仕様影響の判断とコミットのトレーラーは[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#仕様影響の宣言)が定める。
+
 `initial_context` は、一人のエージェントが最初に読む対象の一覧である。
 起票時ではなく、作業項目を `in_progress` にするときに書く。
 バックログにある間に書いた一覧は着手前に古くなり、移動または削除されたファイルを指す一覧は、一覧がない状態より作業を誤らせる。

@@ -656,6 +656,7 @@ fi
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
 depends = ["compile-spec"]
 run = '''
+#!/usr/bin/env sh
 set -eu
 test "$#" -le 1 || { echo "usage: mise run check -- [base-revision]" >&2; exit 2; }
 base_revision=${1:-main}
@@ -673,6 +674,7 @@ mise run -c \
 description = "Run every registered TypeScript repository check in one process"
 dir = "tools"
 run = '''
+#!/usr/bin/env sh
 set -eu
 test "$#" -le 1 || { echo "usage: mise run check-repository -- [base-revision]" >&2; exit 2; }
 base_revision=${1:-main}
@@ -787,11 +789,24 @@ run = "bun run check/src/runner.ts boundaries \"$@\""
 description = "Reject boundary violations added beyond a Git revision"
 dir = "tools"
 run = '''
+#!/usr/bin/env sh
 set -eu
 test "$#" -le 1 || { echo "usage: mise run check-boundary-debt-ratchet -- [base-revision]" >&2; exit 2; }
 base_revision=${1:-main}
 if test "$#" -eq 1; then shift; fi
 bun run check/src/runner.ts boundary-debt-ratchet --base-revision "$base_revision"
+'''
+
+[tasks.check-spec-impact]
+description = "Check declared specification impact against the specification diff since a Git revision"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check-spec-impact -- [base-revision]" >&2; exit 2; }
+base_revision=${1:-main}
+if test "$#" -eq 1; then shift; fi
+bun run check/src/runner.ts spec-impact --base-revision "$base_revision"
 '''
 
 [tasks.generate-config-reference]
@@ -867,6 +882,17 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 bun run spec-diff/src/main.ts "${1:-main}"
+'''
+
+[tasks.spec-review-candidates]
+description = "List production Go code that no specification-citing test executes, as candidates to review"
+# 仕様漏れの判定ではなく、既存コードを書き起こすときの着手点を報告する。ゲートにはしない。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run spec-review-candidates -- <package-directory>" >&2; exit 2; }
+bun run spec-review-candidates/src/main.ts "$1"
 '''
 
 [tasks.render-docs]

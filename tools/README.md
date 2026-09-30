@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 検査 | `check/` | registry に登録した規則を共有 snapshot に対して実行し、所見を返す |
 | 生成 | `generate-contract/`、`render-docs/` | 正準入力から派生成果物を作る |
-| 照会 | `brief/`、`changed-packages/`、`task-timing/`、`spec-diff/`、`security-test-gap-report/` | 作業対象、差分、時間、未検査の拒否を人へ報告する |
+| 照会 | `brief/`、`changed-packages/`、`task-timing/`、`spec-diff/`、`spec-review-candidates/`、`security-test-gap-report/` | 作業対象、差分、時間、未検査の拒否、仕様漏れの候補を人へ報告する |
 | 共有 | `workspace/` | リポジトリを発見して一度だけ読み、上のモジュールへ渡す |
 
 `mise run check` は TypeScript の検査群を一つのランナーで実行する。

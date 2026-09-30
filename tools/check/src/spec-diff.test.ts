@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import {
-  type Snapshot,
-  diffSpecifications,
-  formatSpecificationDiff,
-  unreferencedStandardChanges,
-} from './spec-diff.ts'
+import { type Snapshot, diffSpecifications, formatSpecificationDiff } from './spec-diff.ts'
 
 const document = (scenarios: string, transitions = ''): string =>
   [
@@ -75,6 +70,7 @@ describe('diffSpecifications', () => {
       changedStandards: [],
       addedDeclarations: [],
       removedDeclarations: [],
+      changedDeclarations: [],
       addedDeprecations: [],
       removedDeprecations: [],
     })
@@ -154,6 +150,7 @@ describe('diffSpecifications', () => {
       changedStandards: [],
       addedDeclarations: [],
       removedDeclarations: [],
+      changedDeclarations: [],
       addedDeprecations: [],
       removedDeprecations: [],
     })
@@ -350,17 +347,33 @@ describe('diffSpecifications', () => {
     expect(text).not.toContain('removed scenarios')
   })
 
-  it('reports added and changed standards rows absent from affected_spec', () => {
-    const diff = {
-      ...diffSpecifications(new Map(), new Map()),
-      addedStandards: ['docs/domain/standards.md#RFC-ONE'],
-      changedStandards: ['docs/domain/demo/standards.md#RFC-TWO'],
-      removedStandards: ['docs/domain/standards.md#RFC-OLD'],
-    }
-    expect(
-      unreferencedStandardChanges(diff, [
-        { path: 'docs/domain/demo/standards.md', requirement: 'RFC-TWO' },
-      ]),
-    ).toEqual(['docs/domain/standards.md#RFC-ONE'])
+  it('reports an existing TypeSpec declaration whose body changed', () => {
+    const base = snapshot(
+      document(scenario('REQ-DEMO-001', 'it succeeds')),
+      'model Task { id: string; }\nop StartTask(): Task;',
+    )
+    const head = snapshot(
+      document(scenario('REQ-DEMO-001', 'it succeeds')),
+      'model Task {\n  id: string;\n  name: string;\n}\n\nop StartTask():   Task;',
+    )
+    const diff = diffSpecifications(base, head)
+    expect(diff.changedDeclarations).toEqual(['spec/contexts/demo/main.tsp:Task'])
+    expect(diff.addedDeclarations).toEqual([])
+    expect(formatSpecificationDiff(diff, 'main')).toContain(
+      'changed TypeSpec declarations:\n  spec/contexts/demo/main.tsp:Task',
+    )
+  })
+
+  it('reports a changed transport wrapper as a change to the operation that owns it', () => {
+    const operation = (members: string): string =>
+      ['union StartTaskError400Body {', members, '}', 'op StartTask(): void;'].join('\n')
+    const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')), operation('Invalid,'))
+    const head = snapshot(
+      document(scenario('REQ-DEMO-001', 'it succeeds')),
+      operation('Invalid,\nConflict,'),
+    )
+    expect(diffSpecifications(base, head).changedDeclarations).toEqual([
+      'spec/contexts/demo/main.tsp:StartTask',
+    ])
   })
 })

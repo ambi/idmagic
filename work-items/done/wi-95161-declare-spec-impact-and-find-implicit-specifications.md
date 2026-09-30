@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,6 +7,37 @@ created_at: 2026-09-30
 priority: p1
 depends_on: [wi-51360-organize-specifications-as-a-tree-of-rules]
 change_kind: tooling
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: リポジトリの検査と開発手順だけを変え、製品の利用者が読むリリース文書に載せる振る舞いの変化がない。
+  references: []
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - SPECIFICATION_FORMAT.md
+    - WORK_ITEM_FORMAT.md
+    - docs/development/specification-first-workflow.md
+    - docs/development/coding-style.md
+    - mise.toml
+    - tools/check/schemas/work-item.schema.json
+    - tools/check/src/spec-diff.ts
+    - tools/spec-diff/src/main.ts
+    - tools/check/src/runner.ts
+    - tools/check/src/registry.ts
+    - tools/check/src/boundary-debt-ratchet.ts
+    - tools/check/src/check-work-items.ts
+    - tools/check/src/check-documents.ts
+    - tools/check/src/documentation-impact.ts
+    - tools/check/src/normative-coverage.ts
+    - tools/check/src/work-item-references.ts
+    - tools/workspace/src/workspace.ts
+  tests:
+    - tools/check/src/spec-diff.test.ts
+    - tools/check/src/repository-checks.acceptance.test.ts
+    - tools/check/src/registry.test.ts
+  stop_before_reading: [backend, frontend, docs/domain, spec]
 spec_impact: { kind: none, reason: "本番コード変更に仕様影響の宣言を求める検査、宣言と仕様差分の整合を確かめる検査、既存コードから仕様漏れの候補を報告するタスクを追加するだけで、製品の API、永続状態、外向きの呼び出し、イベント、配備構成はどれも変わらない。" }
 ---
 
@@ -252,6 +283,69 @@ work item を伴わないコミットの作業範囲は、そのコミット自�
 整合の検査と `spec-diff` の出力は、同じ差分計算を使う。
 二つ目の実装を作らない。
 
+### 着手時に確定した細部
+
+着手時の読解で、上の設計だけでは検査の結果が定まらない点を次のとおり確定した。
+
+| 事項 | 確定した内容 | 理由 |
+| --- | --- | --- |
+| 差分の起点 | 基準リビジョンそのものではなく、基準リビジョンと `HEAD` の merge-base から作業ツリーまでを比べる | 基準が先へ進んだブランチでは、基準側の仕様変更が逆向きの差分として現れ、申告漏れと誤って報告される |
+| 検査する work item | 基準から作業ツリーまでにファイルが変わり、状態が `in_progress` であるか、基準では `completed` でなかった `completed` の記録 | 完了済みの記録の `affected_spec` は、仕様ファイルの移動に合わせて参照先を書き換えることがある。その書き換えで過去の作業を再検査しない |
+| 作業範囲の起点 | work item のファイルの履歴で、状態が初めて `pending` でなくなったコミットの親。その遷移が作業ツリーにしかない場合は `HEAD` | checkpoint を畳んだ後の履歴には `in_progress` のコミットが残らず、`pending` の次が `completed` になる |
+| checkpoint コミット | 件名が `checkpoint(<work-item-id>):` のコミットは、名指した work item の宣言を使う | checkpoint は work item のファイルを毎回変更するとは限らず、畳む前に `mise run verify` を実行する |
+| 他の work item の差分 | `conforms` と `spec_impact: none` の矛盾は、作業範囲の差分のうち、同じ範囲で変更された別の work item が `modifies` として挙げた規範要素を除いて判定する | 長く `in_progress` にある記録の作業範囲には、並行して完了した別の作業の仕様変更が入る |
+| 申告を求める差分 | 追加と変更だけを対象にし、削除は対象にしない。状態遷移と `@deprecated` の増減は、非影響の矛盾の判定にだけ使う | 削除した規範要素は `affected_spec` から解決できない。状態遷移と非推奨の指定は `affected_spec` で名指す形がない |
+| TypeSpec シンボルの `conforms` | 宣言名を含むテストファイルが作業範囲で追加または変更されていることを求める | シンボルには `//spec:covers` で引く ID がない |
+| 操作ごとの転送用の宣言 | `<Op>Error400Body` のような宣言の変更は、所有する操作 `<Op>` の変更として報告する | 既存の `spec-diff` は、これらを操作に従属するものとして一覧から除いている |
+| 宣言の本文 | 先行するデコレーターから宣言の終わりまでを、コメントを除き、空白を正規化して比べる | `@route` や `@doc` も契約の一部であり、宣言の直前に書かれる |
+| 理由の形の検査 | スキーマではなく整合の検査に置き、検査する work item とトレーラーだけに適用する | スキーマに置くと完了済みの記録すべてに遡って適用される |
+| 本番のエントリーポイント | `backend/cmd/` 配下の `package main` すべて | テスト専用の支援パッケージは、どの実行ファイルからも import されない |
+| パッケージ直下の表 | 関数の外に置いた文字列リテラルの ID は、どのテスト関数の引用にも数えない | どのテストが表を使うかをソースの字面から決められない。数えると、仕様を引かないテストを対象に含めてしまう |
+
+### 主要な型と操作
+
+検査の判断は、Git とファイルシステムから集めた値を受け取る純粋な計算に置く。
+Git の呼び出し、作業ツリーの読み取り、`go test` の起動は、その計算へ値を渡す境界に置く。
+
+```ts
+// tools/check/src/typespec-declarations.ts
+type TypeSpecDeclaration = { name: string; text: string }
+function typeSpecDeclarations(source: string): TypeSpecDeclaration[]
+
+// tools/check/src/production-code.ts
+function productionGoPackages(sources: ReadonlyMap<string, string>): Set<string>
+function isProductionCode(path: string, productionPackages: ReadonlySet<string>): boolean
+
+// tools/check/src/spec-impact.ts
+type SpecReference = { path: string; requirement?: string; symbol?: string; impact: 'modifies' | 'conforms' }
+type Declaration =
+  | { kind: 'affected'; references: SpecReference[] }
+  | { kind: 'none'; reason: string }
+type WorkRange = {
+  diff: SpecificationDiff          // 作業範囲の仕様差分
+  claimedByOthers: SpecReference[] // 同じ範囲で変更された別の work item の modifies
+  changedTests: string[]           // 作業範囲で追加または変更されたテストの本文
+}
+type CheckedWorkItem = { path: string; declaration: Declaration; range: WorkRange }
+type CheckedCommit = {
+  sha: string
+  subject: string
+  productionPaths: string[]
+  workItemDeclared: boolean
+  trailer?: string
+  diff: SpecificationDiff
+}
+function parseSpecImpactTrailer(value: string): { reason: string } | { error: string }
+function isBoilerplateReason(reason: string): boolean
+function workRangeStart(history: Array<{ sha: string; status: string }>, head: string, current: string): string | undefined
+function verifySpecImpact(input: { items: CheckedWorkItem[]; commits: CheckedCommit[]; diff: SpecificationDiff }): string[]
+
+// tools/spec-review-candidates/src/candidates.ts
+function specCitingTests(source: string, declaredIds: readonly string[]): string[]
+function parseCoverProfile(profile: string): CoverBlock[]
+function unexecutedRanges(blocks: readonly CoverBlock[]): Map<string, LineRange[]>
+```
+
 ### 機械検査の限界
 
 この仕組みは、`spec_impact: none` という判断自体が正しいことを機械的には証明しない。
@@ -378,23 +472,30 @@ work item を伴わないコミットの作業範囲は、そのコミット自�
 未解決の問いはない。
 work item を伴わないコミットの宣言の置き場所は、起票時に利用者がトレーラーに決めた。
 
+着手時に `in_progress` の work item はこの記録だけだったので、計画の 6 で `impact` を追記する記録はなかった。
+
+実装中に、ゲートの前提を崩す既存の不具合を一つ見つけ、この work item で直した。
+`check`、`check-repository`、`check-boundary-debt-ratchet` は shebang のない複数行のスクリプトで、現在の mise は引数をスクリプトへ渡さない。
+そのため `mise run check -- <基準の SHA>` は基準を常に `main` として実行していた。
+三つのタスクと新しい `check-spec-impact` に shebang を加え、基準リビジョンが届くようにした。
+
 ## タスク
 
-- [ ] T001 [Spec] `SPECIFICATION_FORMAT.md` §6 に、仕様と実装詳細を区別する規則を追加する。
-- [ ] T002 [Spec] `docs/development/specification-first-workflow.md` に、仕様影響の判断、トレーラー、既存コードの書き起こしの手順、観点表を追加する。
-- [ ] T003 [Spec] `WORK_ITEM_FORMAT.md` とスキーマに `impact` と理由の規則を追加する。
-- [ ] T004 [Acceptance] 本番コードを変更し、仕様影響を宣言しないコミットを含む範囲で `mise run check` が失敗することを確認する。
-- [ ] T005 [Acceptance] `impact: modifies` の規範要素を変更していない場合に `mise run check` が失敗することを確認する。
-- [ ] T006 [Acceptance] `impact: conforms` の規範要素を引くテストがない場合に `mise run check` が失敗することを確認する。
-- [ ] T007 [Acceptance] `spec_impact: none` または `Spec-Impact: none` と規範仕様の変更が同じ範囲にある場合に `mise run check` が失敗することを確認する。
-- [ ] T008 [App] `spec-diff` へ TypeSpec 宣言の変更を追加する。単体 RED を確認し、GREEN にしてからリファクタリングする。
-- [ ] T009 [App] 本番コードの範囲と作業範囲を求める処理を実装する。
-- [ ] T010 [App] 宣言と仕様差分の整合の検査を実装し、既存の標準の照合を統合する。
-- [ ] T011 [App] 仕様を引くテストを特定し、それだけで Go の被覆を取得する処理を実装する。
-- [ ] T012 [App] `mise run spec-review-candidates -- <package-directory>` を追加し、`oauth2` で試行した結果を記録する。
-- [ ] T013 [Docs] `AGENTS.md` に一行を追加する。
-- [ ] T014 [Plan] 導入時点の結果から、コンテキストごとの書き起こしの work item を起票する。
-- [ ] T015 [Verify] 変更を検証する。
+- [x] T001 [Spec] `SPECIFICATION_FORMAT.md` §6 に、仕様と実装詳細を区別する規則を追加する。検査は `mise run check`。
+- [x] T002 [Spec] `docs/development/specification-first-workflow.md` に、仕様影響の判断、トレーラー、既存コードの書き起こしの手順、観点表を追加する。
+- [x] T003 [Spec] `WORK_ITEM_FORMAT.md` とスキーマに `impact` と理由の規則を追加する。
+- [x] T004 [Acceptance] 本番コードを変更し、仕様影響を宣言しないコミットを含む範囲で `mise run check` が失敗することを確認する。`tools/check/src/spec-impact.acceptance.test.ts` を `mise run test-tools-file -- check/src/spec-impact.acceptance.test.ts` で実行する。規範シナリオ ID は N/A: 開発ツールの検査であり、製品の規範要件がない。
+- [x] T005 [Acceptance] `impact: modifies` の規範要素を変更していない場合に `mise run check` が失敗することを確認する。`tools/check/src/spec-impact.acceptance.test.ts` を `mise run test-tools-file -- check/src/spec-impact.acceptance.test.ts` で実行する。規範シナリオ ID は N/A: 開発ツールの検査であり、製品の規範要件がない。
+- [x] T006 [Acceptance] `impact: conforms` の規範要素を引くテストがない場合に `mise run check` が失敗することを確認する。`tools/check/src/spec-impact.acceptance.test.ts` を `mise run test-tools-file -- check/src/spec-impact.acceptance.test.ts` で実行する。規範シナリオ ID は N/A: 開発ツールの検査であり、製品の規範要件がない。
+- [x] T007 [Acceptance] `spec_impact: none` または `Spec-Impact: none` と規範仕様の変更が同じ範囲にある場合に `mise run check` が失敗することを確認する。`tools/check/src/spec-impact.acceptance.test.ts` を `mise run test-tools-file -- check/src/spec-impact.acceptance.test.ts` で実行する。規範シナリオ ID は N/A: 開発ツールの検査であり、製品の規範要件がない。
+- [x] T008 [App] `spec-diff` へ TypeSpec 宣言の変更を追加する。単体 RED を確認し、GREEN にしてからリファクタリングする。`check/src/spec-diff.test.ts` と `check/src/typespec-declarations.test.ts`。
+- [x] T009 [App] 本番コードの範囲と作業範囲を求める処理を実装する。`check/src/production-code.test.ts` と `check/src/spec-impact.test.ts` の `workRangeStart`。
+- [x] T010 [App] 宣言と仕様差分の整合の検査を実装し、既存の標準の照合を統合する。`check/src/spec-impact.test.ts`。層の検査は `mise run -c typecheck-tools ::: lint-tools`。
+- [x] T011 [App] 仕様を引くテストを特定し、それだけで Go の被覆を取得する処理を実装する。`spec-review-candidates/src/candidates.test.ts`。
+- [x] T012 [App] `mise run spec-review-candidates -- <package-directory>` を追加し、`oauth2` で試行した結果を記録する。結果は「完了」に記す。
+- [x] T013 [Docs] `AGENTS.md` に一行を追加する。
+- [x] T014 [Plan] 導入時点の結果から、コンテキストごとの書き起こしの work item を起票する。21 コンテキストの `wi-*-transcribe-implicit-specifications-of-<context>.md` を起票した。
+- [x] T015 [Verify] 変更を検証する。
 
 ## 検証
 
@@ -453,3 +554,79 @@ work item を伴わないコミットの宣言の置き場所は、起票時に�
 - [Characterization Tests Are How Agents Enter Legacy Code](https://dev.to/tmfrisinger/characterization-tests-are-how-agents-enter-legacy-code-2e48)：現在の挙動を観測した後に意図を分類する考え方。
 - [Hyrum's Law](https://lawsofsoftwareengineering.com/laws/hyrums-law/)：観測可能な挙動は依存され得ることへの注意。
 - Cyrille Martraire, [Living Documentation](https://hilton.org.uk/blog/martraire-documentation-principles)：再構成できる情報と、文書化すべき知識の区別。
+
+## 完了
+
+- **Completed At**: 2026-10-01
+- **Summary**:
+  `mise run spec-diff` は `no normative specification change against main` を返す。
+  製品の規範仕様は変えず、開発の検査と手順を変えた。
+  `check-repository` に `spec-impact` を登録し、`mise run check` が基準リビジョンから作業ツリーまでについて、本番コードを変更したコミットの宣言の有無、`impact: modifies` の実在、`impact: conforms` の根拠、差分の申告漏れ、`spec_impact: none` と `Spec-Impact: none` の矛盾、理由の形を検査するようにした。
+  `affected_spec` の各項目に `impact`（`modifies` または `conforms`、省略時は `modifies`）を追加した。
+  `spec-diff` は既存の TypeSpec 宣言の変更を `changed TypeSpec declarations` として報告し、操作ごとの転送用の宣言の変更を、所有する操作の変更として数える。
+  標準の行と `affected_spec` の照合は `spec-impact` へ移し、`spec-diff` は何も失敗させない読み取り専用のタスクになった。
+  `mise run spec-review-candidates -- <package-directory>` を追加し、仕様 ID を引くテストだけが実行しない本番コードを、レビューの候補として報告する。
+  `SPECIFICATION_FORMAT.md` §6、`WORK_ITEM_FORMAT.md`、`docs/development/specification-first-workflow.md`、`AGENTS.md` に、仕様と実装詳細の境界、`impact`、トレーラー、書き起こしの手順と観点表を書いた。
+  導入時点の結果から、21 コンテキストの書き起こしの work item を起票した。
+  `check`、`check-repository`、`check-boundary-debt-ratchet` が基準リビジョンの引数を受け取れていなかった不具合を、shebang を加えて直した。
+  仕様のリビジョンの読み取りを `git cat-file --batch` にまとめ、一つのリビジョンあたり数百回だった git の起動を二回にした。
+- **Acceptance RED Evidence**:
+  - **Test**: `tools/check/src/spec-impact.acceptance.test.ts`（`mise run test-tools-file -- check/src/spec-impact.acceptance.test.ts`）
+  - **Requirement**: N/A: 開発ツールの検査であり、製品の規範要件がない。
+  - **Observed Failure**: 検査を登録する前は 16 件すべてが失敗し、実行した `runner.ts` は `unknown check selector(s): spec-impact` を返した。
+  - **Detection Reason**: 仮の Git リポジトリに対して `runner.ts spec-impact --base-revision` を起動し、終了コードと出力の所見を表明する。検査が登録されていない、宣言を求めない、差分と照合しないのいずれでも、終了コードか所見の文言が一致しない。
+- **Unit RED Evidence**:
+  - **Test**: `tools/check/src/spec-diff.test.ts` の `reports an existing TypeSpec declaration whose body changed` と `reports a changed transport wrapper as a change to the operation that owns it`、および `tools/spec-review-candidates/src/candidates.test.ts`
+  - **Requirement**: N/A: 開発ツールの検査であり、製品の規範要件がない。
+  - **Observed Failure**: `spec-diff.test.ts` は、`changedDeclarations` が未定義のため 2 件が `expect(received).toEqual(expected)` で失敗した。`candidates.test.ts` は `Cannot find module './candidates.ts'` で失敗した。
+  - **Detection Reason**: モデルの項目を足した宣言と、転送用の宣言の要素を足した操作が、差分の `changedDeclarations` に現れることを表明する。追加と削除だけを数える実装では空のままになる。`typespec-declarations.test.ts`、`production-code.test.ts`、`spec-impact.test.ts` は実装と続けて書き、先に失敗を観測していない。これらの検出能力は、下のフォールト注入で確かめた。
+- **Change-Resistance Results**:
+  変更は TypeScript の検査ツールで、`mise run test-go-mutation` の対象ではない。
+  次の誤実装を一つずつ注入し、どれもテストが失敗することを確認した。
+
+  | 注入した誤実装 | 失敗したテスト |
+  | --- | --- |
+  | 本番コードを変更したコミットに宣言を求めない | 受け入れ 2 件、単体 1 件 |
+  | 変更していない規範要素を `modifies` に書くと通る | 受け入れ 1 件、単体 1 件 |
+  | 引くテストがない規範要素を `conforms` に書くと通る | 受け入れ 1 件、単体 1 件 |
+  | 散文で ID に言及しただけのテストを `conforms` の根拠に数える | 単体 1 件 |
+  | 差分に現れた規範要素を `affected_spec` に挙げなくても通る | 受け入れ 1 件、単体 2 件 |
+  | `spec_impact: none` のまま規範シナリオを変更すると通る | 受け入れ 1 件、単体 8 件 |
+  | `Spec-Impact: none` のコミットが規範シナリオを変更しても通る（判定を外す、差分の配線を外す） | 受け入れ 1 件、判定では単体 1 件も |
+  | TypeSpec の宣言の変更を差分に出さない | 受け入れ 1 件、単体 2 件 |
+  | 転送用の宣言の変更を操作へ寄せない | 単体 1 件 |
+  | 宣言の本文の空白を正規化しない | 単体 3 件 |
+  | 作業範囲の差分を基準リビジョンから数える | 受け入れ 1 件（着手後、基準より前に入れた仕様の変更） |
+  | merge-base ではなく基準そのものと比べる | 受け入れ 1 件 |
+  | 別の work item が挙げた差分を集めない | 受け入れ 1 件 |
+  | 未追跡のファイルを変更に数えない | 受け入れ 5 件 |
+  | 理由が空、または定型句だけでも通る | 受け入れ 1 件、単体 11 件 |
+  | checkpoint の件名が名指す記録を確かめずに通す | 受け入れ 1 件 |
+  | 基準の時点で完了していた記録を再検査する | 受け入れ 1 件 |
+  | テスト専用の支援パッケージを本番コードに数える、テストの import をたどる | 単体 各 1 件 |
+  | `spec-review-candidates` が `-run` を外して全テストを実行する | 単体 1 件 |
+  | 仕様を引かないテストを引くテストに数える | 単体 4 件 |
+  | `spec-review-candidates` から `-coverpkg` を外す | 単体 1 件 |
+  | テストの import から対象へ到達するパッケージを実行しない | 単体 1 件 |
+  | 別のプロファイルで実行されたブロックを候補に残す | 単体 1 件 |
+
+  手法の限界は三つある。
+  `spec-review-candidates` の `main.ts` は `go` の起動とファイルの読み取りだけを担い、自動テストがない。`go test` の引数は `goTestArguments` に取り出して単体テストで固定し、全体は下の試行で確かめた。
+  定型句の判定は語の一覧によるもので、一覧にない定型句は通る。理由が具体的かどうかはレビューで判断する。
+  `typeSpecDeclarations` は手書きの走査である。現在の `spec/` の 43 ファイル、3,176 宣言で、従来の正規表現と同じ宣言名の集合を返すことを一度だけ照合した。
+
+  `spec-review-candidates -- backend/oauth2` の試行結果は次のとおりである。
+
+  | 項目 | 値 |
+  | --- | --- |
+  | 候補の位置 | 960 箇所（33 パッケージ） |
+  | 実行した仕様を引くテスト | 770 件（61 パッケージ） |
+  | 実行時間（サンドボックス内、ビルドキャッシュなし） | 41.5 秒。`backend/shared/http/server_http` のテストがサンドボックスの制限で失敗した |
+  | 実行時間（サンドボックス外、ビルドキャッシュあり） | 17.5 秒。失敗したパッケージなし |
+
+  出力は候補を「candidates to review」「not a finding about what is specified」と表示し、仕様に書かれていないとは断定しない。
+  `mise run check-spec-impact -- HEAD~40` を導入前の履歴に対して実行すると 41 件の所見が出た。宣言のないコミット、変更していない `modifies`、申告のない差分であり、導入前の履歴に宣言がないことと整合する。
+- **Verification Results**:
+  - `mise run check-work-items` - 成功
+  - `mise run check` - 成功
+  - `mise run verify` - 成功（サンドボックス外で実行）

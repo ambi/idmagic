@@ -269,7 +269,8 @@
                 "type": "string",
                 "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|domain/[^/]+/[^/]+/[^/]+|domain/[^/]+/[^/]+|domain/[^/]+)\\.md$"
               },
-              "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" }
+              "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" },
+              "impact": { "$ref": "#/$defs/specImpact" }
             }
           },
           {
@@ -278,7 +279,8 @@
             "additionalProperties": false,
             "properties": {
               "path": { "type": "string", "pattern": "^spec/.+\\.tsp$" },
-              "symbol": { "type": "string", "minLength": 1 }
+              "symbol": { "type": "string", "minLength": 1 },
+              "impact": { "$ref": "#/$defs/specImpact" }
             }
           },
           { "$ref": "#/$defs/sclElementReference" }
@@ -460,6 +462,11 @@
     }
   },
   "$defs": {
+    "specImpact": {
+      "description": "規範要素を変更するか (modifies)、変更せずに実装を合わせるか (conforms)。省略時は modifies。",
+      "type": "string",
+      "enum": ["modifies", "conforms"]
+    },
     "documentationReference": {
       "type": "object",
       "required": ["kind", "path"],

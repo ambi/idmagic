@@ -10,6 +10,7 @@
 | --- | --- |
 | 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、work item の形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md)、文書体系は [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) |
 | 文書、コメント、UI 文言の執筆または推敲 | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
+| 本番コード（`backend/`、`frontend/src/`）の変更 | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)。仕様を変えるかを必ず判断し、work item の `affected_spec` か `spec_impact`、またはコミットの `Spec-Impact: none` トレーラーで宣言する |
 | コードの編集またはレビュー | [コーディングスタイル](docs/development/coding-style.md)。七つの視点を実装とレビューの判断に用いる |
 | テスト水準、実行境界、テストダブルの選択 | [テスト方針](docs/development/testing.md) |
 | モジュール、型、依存、作用、エラーの設計 | [設計ガイドライン](docs/design/application/design-guidelines.md) |
