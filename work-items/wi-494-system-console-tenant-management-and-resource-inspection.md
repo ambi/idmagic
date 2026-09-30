@@ -12,10 +12,10 @@ depends_on:
   - wi-471-align-the-tenant-quota-update-route-with-the-admin-api-conventions
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-003 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-012 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/domain/tenancy/lifecycle/scenarios.feature.md, requirement: REQ-TENANCY-003 }
+  - { path: docs/domain/tenancy/resolution/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/domain/tenancy/quota/scenarios.feature.md, requirement: REQ-TENANCY-012 }
+  - { path: docs/domain/tenancy/lifecycle/scenarios.feature.md, requirement: REQ-TENANCY-014 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }

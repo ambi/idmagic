@@ -14,7 +14,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-004
+    - docs/domain/tenancy/branding/scenarios.feature.md#REQ-TENANCY-004
     - docs/design/security/authorization.md
   typespec:
     - IdMagic.Tenancy.Operations.GetTenantBrandingAsset
@@ -30,7 +30,7 @@ initial_context:
     - frontend
     - backend/tenancy/usecases
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/domain/tenancy/branding/scenarios.feature.md, requirement: REQ-TENANCY-004 }
 primary_use_cases:
   - id: foreign-tenant-branding-asset-is-not-found
     requirement: REQ-TENANCY-004

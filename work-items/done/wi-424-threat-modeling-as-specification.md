@@ -24,7 +24,7 @@ initial_context:
     - docs/domain/scenarios.feature.md#REQ-PLATFORM-001
     - docs/domain/authentication/scenarios.feature.md#REQ-AUTHENTICATION-009
     - docs/domain/authorization/scenarios.feature.md#REQ-AUTHORIZATION-005
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-009
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-009
     - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-015
     - docs/domain/data-keys/scenarios.feature.md#REQ-DATAKEYS-005
     - docs/domain/workloadidentity/scenarios.feature.md#REQ-WORKLOADIDENTITY-002

@@ -6,7 +6,7 @@ created_at: 2026-07-12
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/domain/tenancy/branding/scenarios.feature.md, requirement: REQ-TENANCY-004 }
   - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-009 }
 depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-tenant-branding-color-validation]
 ---

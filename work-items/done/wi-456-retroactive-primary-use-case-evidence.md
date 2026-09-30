@@ -73,9 +73,9 @@ affected_spec:
   - { path: docs/domain/workloadidentity/scenarios.feature.md, requirement: REQ-WORKLOADIDENTITY-008 }
   - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-002 }
   - { path: docs/domain/provisioning/scenarios.feature.md, requirement: REQ-PROVISIONING-003 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-006 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/domain/tenancy/branding/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/domain/tenancy/resolution/scenarios.feature.md, requirement: REQ-TENANCY-006 }
+  - { path: docs/domain/tenancy/resolution/scenarios.feature.md, requirement: REQ-TENANCY-011 }
   - { path: docs/domain/claim-mapping/scenarios.feature.md, requirement: REQ-CLAIMMAPPING-001 }
   - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-001 }
   - { path: docs/domain/api-tokens/scenarios.feature.md, requirement: REQ-APITOKENS-003 }

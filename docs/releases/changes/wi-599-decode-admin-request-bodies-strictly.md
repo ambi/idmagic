@@ -9,4 +9,4 @@
 SAML サービスプロバイダーの登録、WS-Federation の証明書利用者の登録、Entra フェデレーションの設定、テナントクォータの更新では、JSON リクエストボディを 64 KiB までに制限する。
 上限を超えた要求は 400 の `invalid_request` となり、設定は変更されない。
 
-規範上の振る舞いは [REQ-PLATFORM-005](../../domain/scenarios.feature.md) と [REQ-TENANCY-017](../../domain/tenancy/scenarios.feature.md) が定める。
+規範上の振る舞いは [REQ-PLATFORM-005](../../domain/scenarios.feature.md) と [REQ-TENANCY-017](../../domain/tenancy/notification-template/scenarios.feature.md) が定める。

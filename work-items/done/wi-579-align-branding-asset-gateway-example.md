@@ -14,7 +14,7 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-004
+    - docs/domain/tenancy/branding/scenarios.feature.md#REQ-TENANCY-004
   typespec:
     - IdMagic.Tenancy.Operations.GetTenantBrandingAsset
   source:
@@ -32,7 +32,7 @@ initial_context:
     - backend/tenancy/usecases
     - backend/tenancy/db_postgres
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-004 }
+  - { path: docs/domain/tenancy/branding/scenarios.feature.md, requirement: REQ-TENANCY-004 }
 primary_use_cases:
   - id: realm-logo-url-is-served-through-gateway
     requirement: REQ-TENANCY-004

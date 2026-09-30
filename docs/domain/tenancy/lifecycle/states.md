@@ -1,4 +1,4 @@
-# Tenancy の状態遷移
+# テナントのライフサイクルの状態遷移
 
 ## TenantLifecycle
 

@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-95161-declare-spec-impact-and-find-implicit-specifications]
 change_kind: docs
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-001 }
+  - { path: docs/domain/tenancy/integration-endpoints/scenarios.feature.md, requirement: REQ-TENANCY-001 }
 ---
 
 # Tenancy の既存コードにある暗黙の仕様を書き起こす

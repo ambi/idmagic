@@ -16,7 +16,7 @@ documentation_impact:
 initial_context:
   specification:
     - docs/domain/scenarios.feature.md#REQ-PLATFORM-005
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-017
+    - docs/domain/tenancy/notification-template/scenarios.feature.md#REQ-TENANCY-017
     - docs/design/application/api-guidelines.md
   typespec:
     - IdMagic.Saml.Operations.RegisterSamlServiceProvider
@@ -41,7 +41,7 @@ initial_context:
   stop_before_reading: [infra, load, frontend/src/features]
 affected_spec:
   - { path: docs/domain/scenarios.feature.md, requirement: REQ-PLATFORM-005 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-017 }
+  - { path: docs/domain/tenancy/notification-template/scenarios.feature.md, requirement: REQ-TENANCY-017 }
   - { path: spec/contexts/saml/main.tsp, symbol: IdMagic.Saml.Operations.RegisterSamlServiceProvider }
   - { path: spec/contexts/ws-federation/main.tsp, symbol: IdMagic.WsFederation.Operations.RegisterWsFedRelyingParty }
   - { path: spec/contexts/ws-federation/main.tsp, symbol: IdMagic.WsFederation.Operations.ConfigureEntraFederation }

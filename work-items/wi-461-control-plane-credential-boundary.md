@@ -8,7 +8,7 @@ change_kind: feature
 priority: p2
 depends_on: []
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/domain/tenancy/resolution/scenarios.feature.md, requirement: REQ-TENANCY-011 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.EnableTenant }

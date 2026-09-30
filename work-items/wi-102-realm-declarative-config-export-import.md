@@ -7,7 +7,7 @@ created_at: 2026-07-04
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-001 }
+  - { path: docs/domain/tenancy/integration-endpoints/scenarios.feature.md, requirement: REQ-TENANCY-001 }
   - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-007 }
 ---
 

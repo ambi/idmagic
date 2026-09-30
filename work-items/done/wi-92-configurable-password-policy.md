@@ -46,7 +46,7 @@ initial_context:
 affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyOverride }
   - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyDefaults }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-019 }
+  - { path: docs/domain/tenancy/settings/scenarios.feature.md, requirement: REQ-TENANCY-019 }
   - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-024 }
 ---
 

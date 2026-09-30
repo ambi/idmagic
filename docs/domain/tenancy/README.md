@@ -9,7 +9,18 @@ Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストか�
 | 文書 | 内容 |
 |---|---|
 | [Tenancy の用語集](glossary.md) | この Context での語義 |
-| [Tenancy の状態遷移](states.md) | 状態と遷移 |
-| [Tenancy の設計判断](decisions.md) | 設計判断 |
-| [Tenancy の内部設計](internals.md) | 機構の説明 |
-| [Tenancy のシナリオ](scenarios.feature.md) | 受け入れシナリオ |
+| [Tenancy の設計判断](decisions.md) | 複数の機能にまたがる設計判断 |
+| [Tenancy の内部設計](internals.md) | 複数の機能にまたがる機構の説明 |
+
+一つの機能だけの規則、状態遷移、設計判断、機構の説明は、次の機能ノードに置く。
+
+| 機能ノード | 内容 |
+|---|---|
+| [テナントの解決](resolution/README.md) | Host とパスからのテナントの解決、正規ロケーション、発行者 |
+| [テナントのライフサイクル](lifecycle/README.md) | テナントの作成、無効化と再開、制御面の一覧 |
+| [テナント設定](settings/README.md) | 表示名、セキュリティポリシーの上書き、通知のデフォルト言語 |
+| [ブランド設定](branding/README.md) | ホステッド UI のロゴ、配色、フッターと、その公開配信 |
+| [属性スキーマ](attribute-schema/README.md) | ユーザー属性とグループ属性のカスタム定義 |
+| [リソース上限](quota/README.md) | 上限のデフォルト値、上書き、超過時の拒否 |
+| [通知テンプレート](notification-template/README.md) | 通知メールの文面の上書き、プレビュー、試し送り |
+| [連携エンドポイント](integration-endpoints/README.md) | 管理者へ示すプロトコルと API の URL の一覧 |

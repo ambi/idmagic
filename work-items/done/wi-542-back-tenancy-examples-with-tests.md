@@ -15,23 +15,23 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-001
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-002
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-003
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-004
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-006
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-007
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-008
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-009
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-010
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-011
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-012
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-015
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-016
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-018
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-019
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-020
-    - docs/domain/tenancy/scenarios.feature.md#REQ-TENANCY-021
+    - docs/domain/tenancy/integration-endpoints/scenarios.feature.md#REQ-TENANCY-001
+    - docs/domain/tenancy/attribute-schema/scenarios.feature.md#REQ-TENANCY-002
+    - docs/domain/tenancy/lifecycle/scenarios.feature.md#REQ-TENANCY-003
+    - docs/domain/tenancy/branding/scenarios.feature.md#REQ-TENANCY-004
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-006
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-007
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-008
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-009
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-010
+    - docs/domain/tenancy/resolution/scenarios.feature.md#REQ-TENANCY-011
+    - docs/domain/tenancy/quota/scenarios.feature.md#REQ-TENANCY-012
+    - docs/domain/tenancy/notification-template/scenarios.feature.md#REQ-TENANCY-015
+    - docs/domain/tenancy/notification-template/scenarios.feature.md#REQ-TENANCY-016
+    - docs/domain/tenancy/notification-template/scenarios.feature.md#REQ-TENANCY-018
+    - docs/domain/tenancy/settings/scenarios.feature.md#REQ-TENANCY-019
+    - docs/domain/tenancy/attribute-schema/scenarios.feature.md#REQ-TENANCY-020
+    - docs/domain/tenancy/settings/scenarios.feature.md#REQ-TENANCY-021
   typespec: []
   source:
     - backend/tenancy/handlers_http/branding_handler.go

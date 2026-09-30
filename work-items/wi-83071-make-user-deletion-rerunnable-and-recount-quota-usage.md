@@ -9,7 +9,7 @@ depends_on: []
 change_kind: bugfix
 affected_spec:
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-013 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-013 }
+  - { path: docs/domain/tenancy/quota/scenarios.feature.md, requirement: REQ-TENANCY-013 }
 ---
 
 # User の完全削除を再実行で完了できるようにし、クォータの使用量を再集計で補正する

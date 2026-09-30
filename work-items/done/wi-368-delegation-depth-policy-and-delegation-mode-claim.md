@@ -63,7 +63,7 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.TokenExchanged }
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-048 }
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-049 }
-  - { path: docs/domain/tenancy/scenarios.feature.md, requirement: REQ-TENANCY-021 }
+  - { path: docs/domain/tenancy/settings/scenarios.feature.md, requirement: REQ-TENANCY-021 }
 ---
 
 # 委譲深さの上限をテナントポリシーにし、トークンが自律実行か代理実行かを判別可能にする
