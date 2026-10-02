@@ -54,7 +54,7 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 ## Plan
 - 既存の trigger evaluator / run planner の構造 (kind 別の trigger 定義 + filter) を再利用し、
   `date_attribute_offset` を 4 つ目の kind として追加する。
-- 日次スキャンは DynamicGroupRule の全件再評価 job (`docs/domain/identity-management/decisions.md` の CEL 動的グループ規則) のパターンを参考にする。
+- 日次スキャンは DynamicGroupRule の全件再評価 job (`docs/domain/identity-management/dynamic-group/` の CEL 動的グループ規則) のパターンを参考にする。
 - 重複排除は「同一 User × workflow × revision × 評価日」を一意制約にする。
 
 ## Tasks

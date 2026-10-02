@@ -37,9 +37,9 @@ Worker は、ジョブのハンドラーと、プロセス内で周期的に動�
 | `JobKind` | 投入する Context | 処理 | 詳細 |
 | --- | --- | --- | --- |
 | `user_import_preview`、`user_import_apply` | IdManagement | 利用者の CSV インポートを検証し、確定する | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
-| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
-| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
-| `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
+| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [グループ CSV の内部設計](../../domain/identity-management/group-csv/internals.md) |
+| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の内部設計](../../domain/identity-management/group-csv/internals.md) |
+| `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [動的グループ](../../domain/identity-management/dynamic-group/README.md) |
 | `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [IdManagement の内部設計](../../domain/identity-management/internals.md) |
 | `data_key_reencryption` | DataKeys | DEK のローテーション後に、各 Context の秘密情報を新しいバージョンの DEK で再暗号化する | [DataKeys の内部設計](../../domain/data-keys/internals.md) |
 | `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../domain/identity-governance/README.md) |

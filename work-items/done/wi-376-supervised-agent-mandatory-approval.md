@@ -11,7 +11,7 @@ initial_context:
     - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-041
     - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-042
     - docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-046
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-009
+    - docs/domain/identity-management/agent/scenarios.feature.md#REQ-IDMANAGEMENT-009
   typespec:
     - IdMagic.Contract.AgentKind
     - IdMagic.Contract.AgentRegisterRequest
@@ -32,7 +32,7 @@ initial_context:
 affected_spec:
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-050 }
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-041 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/agent/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKind }
   - { path: spec/contexts/identity-management/models.tsp, symbol: Agent }
   - { path: spec/contexts/oauth2/models.tsp, symbol: AccessTokenClaims }

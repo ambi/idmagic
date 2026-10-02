@@ -13,7 +13,7 @@ priority: p1
 change_kind: docs
 affected_spec:
   - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-009 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-012 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-012 }
   - { path: docs/domain/sharedsignals/scenarios.feature.md, requirement: REQ-SHAREDSIGNALS-002 }
 ---
 

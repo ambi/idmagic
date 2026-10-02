@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/agent/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-046 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: BindAgentCredential }
 ---

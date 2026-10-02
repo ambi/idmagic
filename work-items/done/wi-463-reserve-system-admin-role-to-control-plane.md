@@ -16,10 +16,10 @@ documentation_impact:
     - { kind: upgrade_note, path: docs/releases/upgrades/wi-463.md }
 initial_context:
   specification:
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-004
+    - docs/domain/identity-management/user-csv/scenarios.feature.md#REQ-IDMANAGEMENT-004
     - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-014
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-015
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-026
+    - docs/domain/identity-management/group/scenarios.feature.md#REQ-IDMANAGEMENT-015
+    - docs/domain/identity-management/group-csv/scenarios.feature.md#REQ-IDMANAGEMENT-026
     - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-032
     - docs/domain/identity-management/decisions.md
     - docs/domain/identity-management/glossary.md
@@ -70,11 +70,11 @@ primary_use_cases:
     unit_fault_model: 予約ロール検査が対象の所属テナントを見ず、制御面テナントの Group への `system_admin` まで拒否する。
     e2e_fault_model: Group の作成経路が共通検査へ対象種別を `RoleTargetAgent` として渡し、制御面 Group の作成が 422 になって所属 User の有効ロールへ何も乗らない。
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/domain/identity-management/user-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-032 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-026 }
+  - { path: docs/domain/identity-management/group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-026 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.CreateAdminUser }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.UpdateAdminUser }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.CreateGroup }

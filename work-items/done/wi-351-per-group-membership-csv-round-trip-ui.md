@@ -15,9 +15,9 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-351.md }
 initial_context:
   specification:
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-026
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-027
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-028
+    - docs/domain/identity-management/group-csv/scenarios.feature.md#REQ-IDMANAGEMENT-026
+    - docs/domain/identity-management/group-csv/scenarios.feature.md#REQ-IDMANAGEMENT-027
+    - docs/domain/identity-management/group-csv/scenarios.feature.md#REQ-IDMANAGEMENT-028
     - docs/domain/identity-management/internals.md
   typespec:
     - IdMagic.Contract.GroupMember
@@ -59,9 +59,9 @@ initial_context:
     - backend/sourcing
     - backend/idmanagement/user/usecases/user_import_apply.go
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-029 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-030 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-031 }
+  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-029 }
+  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-030 }
+  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-031 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMembershipCsvState }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMembershipImportResult }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMember }

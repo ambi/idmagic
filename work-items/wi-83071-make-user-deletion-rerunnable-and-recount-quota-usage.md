@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-013 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-013 }
   - { path: docs/domain/tenancy/quota/scenarios.feature.md, requirement: REQ-TENANCY-013 }
 ---
 
@@ -28,13 +28,13 @@ affected_spec:
 | User の完全削除 | `admin_users.go` の `DeleteUser` が、匿名化した User を保存してから、Consent、RefreshToken、セッション、パスワード履歴、MFA 要素、信頼済み端末、WebAuthn の資格情報、復旧コードを 1 つずつ削除し、最後にクォータを減らす | 削除済みの User に紐づく記録が残る。`DeleteUser` は削除済みの User を見て何もせずに返るため、再実行してもカスケードが走らない |
 | クォータの加算 | `CreateUser` と `ProvisionFederatedUser` が、User の保存より先に使用量を加算して確定する | User が存在しないのに使用量だけが増えたまま残り、テナントが上限に早く達する。再集計の仕組みはない |
 
-さらに `docs/domain/identity-management/internals.md` は「PostgreSQL を使うカスケード処理は 1 つのトランザクション内で行う」と書いており、実装と食い違っている。
+さらに `docs/domain/identity-management/user/internals.md` は「PostgreSQL を使うカスケード処理は 1 つのトランザクション内で行う」と書いており、実装と食い違っている。
 
 ## 対象範囲
 
 - `DeleteUser` を、User がすでに削除済みでもカスケードとクォータの補正を再実行する形にする。各カスケードの削除は冪等なので、再実行しても結果は変わらない。監査イベント `UserDeleted` は最初の削除でだけ発行する。
 - クォータの使用量を実数から数え直して補正する再集計を実装し、定期ジョブとして走らせる。
-- `docs/domain/identity-management/internals.md` のカスケードの記述を、トランザクションではなく再実行で完了させる設計へ改める。
+- `docs/domain/identity-management/user/internals.md` のカスケードの記述を、トランザクションではなく再実行で完了させる設計へ改める。
 
 ## 対象外
 

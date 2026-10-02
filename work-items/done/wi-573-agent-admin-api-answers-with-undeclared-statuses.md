@@ -15,7 +15,7 @@ documentation_impact:
     - { kind: release_note, path: docs/releases/changes/wi-573-agent-admin-api-answers-with-undeclared-statuses.md }
 initial_context:
   specification:
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-009
+    - docs/domain/identity-management/agent/scenarios.feature.md#REQ-IDMANAGEMENT-009
     - docs/design/application/api-guidelines.md
   typespec:
     - IdMagic.IdManagement.Operations.GetAgent
@@ -51,7 +51,7 @@ primary_use_cases:
     unit_fault_model: ユースケースが停止済み Agent への変更を拒否しない。
     e2e_fault_model: HTTP ハンドラーがユースケースのエラーを宣言と異なる status へ写す。
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/agent/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAgent }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.UpdateAgent }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.DisableAgent }

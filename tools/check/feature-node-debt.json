@@ -3,9 +3,6 @@
     "idmanagement": "identity-management"
   },
   "unmappedSlices": [
-    "backend/idmanagement/agent",
-    "backend/idmanagement/group",
-    "backend/idmanagement/user",
     "backend/oauth2/approval",
     "backend/oauth2/authorization",
     "backend/oauth2/client",

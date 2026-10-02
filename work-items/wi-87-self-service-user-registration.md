@@ -8,7 +8,7 @@ priority: p2
 change_kind: feature
 affected_spec:
   - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # セルフサービスのユーザ登録 (self-service sign-up) を導入する

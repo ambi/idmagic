@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-95161-declare-spec-impact-and-find-implicit-specifications]
 change_kind: docs
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # IdManagement の既存コードにある暗黙の仕様を書き起こす

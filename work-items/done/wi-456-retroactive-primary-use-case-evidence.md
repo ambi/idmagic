@@ -43,11 +43,11 @@ affected_spec:
   - { path: docs/domain/scenarios.feature.md, requirement: REQ-PLATFORM-003 }
   - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-004 }
   - { path: docs/domain/saml/scenarios.feature.md, requirement: REQ-SAML-006 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-011 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-016 }
+  - { path: docs/domain/identity-management/user-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/domain/identity-management/agent/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-011 }
+  - { path: docs/domain/identity-management/group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-016 }
   - { path: docs/domain/authentication/federation/scenarios.feature.md, requirement: REQ-AUTHENTICATION-001 }
   - { path: docs/domain/authentication/scenarios.feature.md, requirement: REQ-AUTHENTICATION-007 }
   - { path: docs/domain/authentication/totp/scenarios.feature.md, requirement: REQ-AUTHENTICATION-011 }

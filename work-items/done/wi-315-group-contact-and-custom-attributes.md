@@ -5,7 +5,7 @@ risk: medium
 created_at: 2026-08-01
 depends_on: []
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-024 }
+  - { path: docs/domain/identity-management/group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-024 }
   - { path: docs/domain/tenancy/attribute-schema/scenarios.feature.md, requirement: REQ-TENANCY-020 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupAttributeDef }

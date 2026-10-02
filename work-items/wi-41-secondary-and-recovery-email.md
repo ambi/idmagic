@@ -7,7 +7,7 @@ created_at: 2026-06-21
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
   - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
@@ -29,11 +29,11 @@ affected_spec:
 (`user_emails`) を一旦ドロップした (thin-core / sparse attribute 方針)。
 本 WI ではまず「単数の recovery_email / recovery_phone を属性として持つ」
 最小形から入り、複数 secondary email が必要になった段階で companion table を
-足すか attribute の string_array で表すかを `docs/domain/identity-management/decisions.md` で決める。
+足すか attribute の string_array で表すかを `docs/domain/identity-management/user/decisions.md` で決める。
 
 ## Scope
 - **decision**:
-  - `docs/domain/identity-management/decisions.md` へ記録する決定: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (`docs/domain/identity-management/decisions.md` の疎な属性) として持つか、 専用 companion table を切るかを決める。検証は `docs/domain/authentication/decisions.md` のワンタイムトークンと同じ方針 (hash 保存・単発消費・期限付き) にする。
+  - `docs/domain/identity-management/user/decisions.md` へ記録する決定: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (`docs/domain/identity-management/user/decisions.md` の疎な属性) として持つか、 専用 companion table を切るかを決める。検証は `docs/domain/authentication/decisions.md` のワンタイムトークンと同じ方針 (hash 保存・単発消費・期限付き) にする。
 - **specification**:
   - 新規 interface: UpdateRecoveryEmail / UpdateRecoveryPhone / AddSecondaryEmail / VerifySecondaryEmail / RemoveSecondaryEmail (self)。 対応 model と検証イベント (RecoveryContactUpdated 等) を追加する。
 - **go**:
@@ -72,6 +72,6 @@ affected_spec:
 
 ## Risk Notes
 multi-valued contacts は wi-19 で一旦ドロップした経緯があるため、モデルの
-作り方 (attribute か companion table か) を `docs/domain/identity-management/decisions.md` で明示してから実装する。
+作り方 (attribute か companion table か) を `docs/domain/identity-management/user/decisions.md` で明示してから実装する。
 検証トークンの単発消費・期限の取り違えが最大のリスクで、email change と同じ
 テスト観点 (期限切れ・再利用拒否) を必ず置く。

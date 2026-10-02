@@ -16,7 +16,7 @@ documentation_impact:
 initial_context:
   specification:
     - docs/domain/authentication/password/scenarios.feature.md#REQ-AUTHENTICATION-016
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-017
+    - docs/domain/identity-management/account/scenarios.feature.md#REQ-IDMANAGEMENT-017
   typespec: []
   source:
     - backend/authentication/password
@@ -34,7 +34,7 @@ initial_context:
     - backend/sourcing
 affected_spec:
   - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-017 }
 primary_use_cases:
   - id: password-reset-action-token
     requirement: REQ-AUTHENTICATION-016

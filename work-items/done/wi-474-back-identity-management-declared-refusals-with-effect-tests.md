@@ -14,14 +14,14 @@ documentation_impact:
   references: []
 initial_context:
   specification:
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-002
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-003
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-005
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-006
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-008
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-013
+    - docs/domain/identity-management/account/scenarios.feature.md#REQ-IDMANAGEMENT-002
+    - docs/domain/identity-management/account/scenarios.feature.md#REQ-IDMANAGEMENT-003
+    - docs/domain/identity-management/user/scenarios.feature.md#REQ-IDMANAGEMENT-005
+    - docs/domain/identity-management/user-csv/scenarios.feature.md#REQ-IDMANAGEMENT-006
+    - docs/domain/identity-management/group-csv/scenarios.feature.md#REQ-IDMANAGEMENT-008
+    - docs/domain/identity-management/user/scenarios.feature.md#REQ-IDMANAGEMENT-013
     - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-014
-    - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-022
+    - docs/domain/identity-management/dynamic-group/scenarios.feature.md#REQ-IDMANAGEMENT-022
     - docs/domain/identity-management/scenarios.feature.md#REQ-IDMANAGEMENT-025
   typespec:
     - IdMagic.IdManagement.Operations.ListAdminUsers
@@ -39,14 +39,14 @@ initial_context:
     - backend/shared/http/server_http
     - tools/check/src
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-002 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-003 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-006 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-008 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-013 }
+  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-002 }
+  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-003 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/domain/identity-management/user-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-006 }
+  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-008 }
+  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-013 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-022 }
+  - { path: docs/domain/identity-management/dynamic-group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-022 }
   - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
