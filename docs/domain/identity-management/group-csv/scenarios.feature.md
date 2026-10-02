@@ -221,6 +221,25 @@ Primary actor: `TenantAdministrator`
 - Then 1 行のメンバーシップ確定または監査記録が途中で失敗する
 - Then その行のメンバーシップも監査記録も一部すら残らず、他の有効な行は適用を続ける
 
+### Rule: REQ-IDMANAGEMENT-072 Group の CSV のセルの読み方
+
+- `name` による対象の照合と行の重複の判定は、前後の空白を除き、大文字と小文字を区別しない。
+- `email` のセルはアドレスだけを受け付け、小文字にして保存する。表示名付きの形式は `invalid_email` で拒否する。
+- `dynamic_rule_expression` のセルは前後の空白を除いて読む。
+- 空の `dynamic_rule_enabled` のセルは、現在の有効か無効かを変えない。
+- **担保手段**：`usecases.PlanGroupImport`
+
+#### Example: EX-IDMANAGEMENT-072-01 大文字の名前による照合
+
+- Given テナントに名前 "engineering" の Group がある
+- When 管理者が `name` に "ENGINEERING" だけを書いた行を事前検証へ投入する
+- Then 行は既存の "engineering" を対象とする
+
+#### Example: EX-IDMANAGEMENT-072-02 表示名付きの連絡先
+
+- When 管理者が `email` のセルに "Sales <sales@example.test>" を書いて事前検証へ投入する
+- Then 行は `invalid_email` で `rejected` となる
+
 ## 結果
 
 ### Rule: REQ-IDMANAGEMENT-008 管理者は特定グループのメンバー一覧を CSV にエクスポートできる

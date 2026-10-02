@@ -50,6 +50,34 @@ Primary actor: `AuthenticatedSelf`
 - Then 更新後のプロフィールに新しい表示名が反映される
 - Then `editable_by_user=false` の属性は更新できない
 
+### Rule: REQ-IDMANAGEMENT-051 本人によるプロフィールの更新は、属性をキーごとに併合する
+
+- 名前、名、姓は、指定した値をそのまま保存する。前後の空白を除かない。
+- 属性は、指定したキーの値だけを上書きし、指定しなかったキーの値を残す。本人は属性を消せない。
+- `editable_by_user` が `false` の属性を含む更新は、403 と `attribute_not_editable` で拒否し、どの項目も変えない。
+- 定義されていない属性、または型の合わない値を含む更新は、422 と `invalid_attribute` で拒否し、どの項目も変えない。
+- `attributes` を含む更新は、値が変わらなくても `UserUpdated` の `changed_fields` に `attributes` を載せ、`updated_at` を進める。
+- 名前、名、姓のどれも変わらず `attributes` も含まない更新は、`UserUpdated` を発行しない。
+- **担保手段**：`usecases.UpdateUserProfile`
+- **要判断**：本人の更新は値の変わらない属性も変更として記録する。管理者の更新は変わったキーだけを記録する。本人の更新も変わったキーだけを記録するかを決める。
+
+#### Example: EX-IDMANAGEMENT-051-01 一部の属性だけを送る更新
+
+- Given ユーザー "alice" は本人が編集できる属性 `nickname` と、管理者が管理する属性 `employee_number` を持つ
+- When "alice" が `nickname` だけを送って更新する
+- Then `nickname` は新しい値になり、`employee_number` は元の値のまま残る
+
+#### Example: EX-IDMANAGEMENT-051-02 本人が編集できない属性を含む更新
+
+- When ユーザー "alice" が `employee_number` を含めて更新する
+- Then 更新は `attribute_not_editable` で拒否され、どの項目も変わらない
+
+#### Example: EX-IDMANAGEMENT-051-03 値の変わらない属性を送る更新
+
+- Given ユーザー "alice" の `nickname` は "ally" である
+- When "alice" が `nickname` を "ally" のまま送って更新する
+- Then `UserUpdated` の `changed_fields` は ["attributes"] である
+
 ## 結果
 
 ### Rule: REQ-IDMANAGEMENT-018 ユーザーは自分のアカウントデータをエクスポートできる
@@ -61,6 +89,20 @@ Primary actor: `AuthenticatedSelf`
 - Given ユーザー "alice" が認証済みでデータとプライバシー画面を開いている
 - When ユーザー "alice" がアカウントデータをエクスポートする
 - Then レスポンスに自分のプロフィールと同意の一覧が含まれる
+
+### Rule: REQ-IDMANAGEMENT-052 本人に開示する属性は、本人が読める公開範囲のものだけである
+
+- プロフィールの参照とアカウントデータのエクスポートは、公開範囲が `self_readable` または `claim_exposed` の属性の値だけを返す。
+- 公開範囲が `admin_readable` または `private` の属性の値は、本人の要求には返さない。
+- アカウントデータのエクスポートのプロフィールは、プロフィールの参照と同じ内容である。
+- **担保手段**：`usecases.SelfReadableAttributes`、`handlers_http.HandleExportAccountData`
+- **要判断**：本人によるデータのエクスポートは個人データの開示の求めに応える経路だが、`admin_readable` と `private` の属性の値を含めない。エクスポートでは含めるかを決める。
+
+#### Example: EX-IDMANAGEMENT-052-01 管理者だけが読める属性
+
+- Given ユーザー "alice" は公開範囲 `admin_readable` の属性 `employee_number` と、`self_readable` の属性 `nickname` を持つ
+- When "alice" がアカウントデータをエクスポートする
+- Then プロフィールの属性は `nickname` だけを含む
 
 ## 拒否
 
@@ -134,3 +176,50 @@ Primary actor: `AuthenticatedSelf`
 - When ユーザー "alice" がそのトークンで変更を確定する
 - Then エラー "ConflictError"
 - And プライマリメールアドレスは変わらず、トークンは未使用のまま残る
+
+### Rule: REQ-IDMANAGEMENT-053 メールアドレスの変更の起票
+
+- 起票には、有効期限内のステップアップ認証を求める。満たさない起票は 403 と `step_up_required` で拒否する。
+- 新しいアドレスは、表示名付きの形式から取り出したアドレスを小文字にして扱う。アドレスとして読めない値は 422 と `invalid_email` で拒否する。
+- 確認済みの現在のアドレスと大文字と小文字を区別せずに同じアドレスは、422 と `email_unchanged` で拒否する。未確認の現在のアドレスと同じアドレスは受け付ける。
+- 同じテナントのほかの User のアドレスは、409 と `email_taken` で拒否する。
+- 確認のリンクは `<発行者>/account/email/verify?token=<トークン>` であり、30 分で期限が切れる。
+- 確認のメールの送信に失敗しても、起票は 204 を返す。
+- **担保手段**：`usecases.RequestEmailChange`、`handlers_http.HandleRequestEmailChange`
+- **要判断**：確認のメールが届かなかったことを、起票した本人は知ることができない。送信の失敗を応答で伝えるかを決める。
+
+#### Example: EX-IDMANAGEMENT-053-01 表示名付きの新しいアドレス
+
+- When ユーザー "alice" が新しいアドレス "Alice <Alice.New@Example.TEST>" で起票する
+- Then 確認のメールは "alice.new@example.test" へ送られる
+
+#### Example: EX-IDMANAGEMENT-053-02 確認済みの現在のアドレスと同じアドレス
+
+- Given ユーザー "alice" の確認済みのアドレスは "alice@example.test" である
+- When "alice" が新しいアドレス "ALICE@example.test" で起票する
+- Then 起票は `email_unchanged` で拒否される
+
+#### Example: EX-IDMANAGEMENT-053-03 確認のメールの送信の失敗
+
+- Given メールの送信は失敗する
+- When ユーザー "alice" が新しいアドレスで起票する
+- Then 起票は 204 を返す
+
+### Rule: REQ-IDMANAGEMENT-054 メールアドレスの変更の確定は、アドレスを確認済みにする
+
+- 確定したアドレスは `email_verified` を `true` にする。
+- 確定は、その User の必須操作 `verify_email` を外し、`UserRequiredActionCleared` を発行する。
+- 確定は `EmailChanged` を発行し、`UserUpdated` を発行しない。
+- 用途の違い、期限切れ、確定済み、存在しないトークンのどれでも、確定は 410 と `invalid_email_change_token` で拒否する。
+- **担保手段**：`usecases.ConfirmEmailChange`
+
+#### Example: EX-IDMANAGEMENT-054-01 必須操作 `verify_email` を持つ User の確定
+
+- Given ユーザー "alice" には必須操作 `verify_email` が付いており、有効な確認トークンが発行されている
+- When "alice" がそのトークンで確定する
+- Then `email_verified` は `true` になり、`verify_email` は外れ、`EmailChanged` と `UserRequiredActionCleared` が発行される
+
+#### Example: EX-IDMANAGEMENT-054-02 存在しないトークン
+
+- When ブラウザーが存在しないトークンで確定を送る
+- Then 確定は 410 と `invalid_email_change_token` で拒否される

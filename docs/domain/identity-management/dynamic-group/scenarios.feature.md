@@ -14,6 +14,35 @@ Primary actor: `TenantAdministrator`
 - Then 全件の再評価後、Engineering の有効な User だけが動的規則を由来として所属する
 - Then 実効ロールと Application の割り当ては、その所属を参照する
 
+## 入力
+
+### Rule: REQ-IDMANAGEMENT-065 動的グループの規則の式の制約
+
+- 式は 1 バイト以上 4,096 バイト以下とする。
+- 式の開き括弧は 20 個以下、空白で区切った語は 200 個以下とする。
+- 呼び出せる関数は `startsWith`、`endsWith`、`contains`、`matches`、`lowerAscii`、`size`、`exists`、`all`、`timestamp` だけとする。
+- `matches` の正規表現は文字列の定数で、256 文字以下とする。
+- 式は `user.<属性>` で User の属性を一つ以上、100 個以下参照する。参照できるのは `id`、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`email_verified` と、組み込みとテナント定義の属性だけである。`roles` は参照できない。
+- 式の結果は真偽値とする。
+- 評価の計算量の上限は 10,000 とする。
+- 制約に違反する規則の保存とプレビューは、422 と `invalid_dynamic_group_rule` で拒否し、規則を変えない。
+- **担保手段**：`domain.CompileDynamicGroupRule`
+
+#### Example: EX-IDMANAGEMENT-065-01 ロールを参照する式
+
+- When 管理者が `"admin" in user.roles` を保存する
+- Then 保存は `invalid_dynamic_group_rule` で拒否される
+
+#### Example: EX-IDMANAGEMENT-065-02 真偽値を返さない式
+
+- When 管理者が `user.preferred_username` を保存する
+- Then 保存は `invalid_dynamic_group_rule` で拒否される
+
+#### Example: EX-IDMANAGEMENT-065-03 定数でない正規表現
+
+- When 管理者が `user.email.matches(user.preferred_username)` を保存する
+- Then 保存は `invalid_dynamic_group_rule` で拒否される
+
 ## 結果
 
 ### Rule: REQ-IDMANAGEMENT-021 CEL の規則は保存前に選んだユーザーでプレビューできる
@@ -37,6 +66,18 @@ Primary actor: `TenantAdministrator`
 - Then 旧バージョンのメンバーシップは直ちに実効ロールから除外される
 - Then 再評価に失敗した User は、新しいバージョンのメンバーシップを得ない
 
+### Rule: REQ-IDMANAGEMENT-067 動的グループの規則に一致するのは `Active` の User だけである
+
+- `Active` でない User は、式の値によらず規則に一致しない。
+- 評価に失敗した User は一致しないものとして扱い、再評価の結果の誤りの件数に数える。
+- **担保手段**：`CompiledDynamicGroupRule.Evaluate`、`usecases.ReconcileDynamicGroup`
+
+#### Example: EX-IDMANAGEMENT-067-01 無効化された User
+
+- Given ユーザー "alice" の `department` は "Engineering" で、"alice" は `Disabled` である
+- When 規則 `user.department == "Engineering"` で "alice" を評価する
+- Then "alice" は一致しない
+
 ## 拒否
 
 ### Rule: REQ-IDMANAGEMENT-022 不正な CEL の規則と動的グループの手動操作は拒否される
@@ -49,3 +90,79 @@ Primary actor: `TenantAdministrator`
 - Then 保存は拒否される
 - When 管理者が動的グループに対して `AddGroupMember` または `RemoveGroupMember` を手動で呼ぶ
 - Then メンバーシップの変更は拒否される
+
+### Rule: REQ-IDMANAGEMENT-071 規則のプレビューは 100 件以下の、同じテナントの User だけを受け付ける
+
+- 101 件以上の User を指定したプレビューは、422 と `invalid_dynamic_group_rule` で拒否する。
+- 存在しない User または別のテナントの User を一つでも含むプレビューは、結果を返さず 404 と `user_not_found` で拒否する。
+- **担保手段**：`usecases.PreviewDynamicGroupRule`
+
+#### Example: EX-IDMANAGEMENT-071-01 101 件の User
+
+- When 管理者が 101 件の User を指定してプレビューする
+- Then プレビューは `invalid_dynamic_group_rule` で拒否される
+
+#### Example: EX-IDMANAGEMENT-071-02 存在しない User を含むプレビュー
+
+- When 管理者がユーザー "alice" と存在しない User を指定してプレビューする
+- Then プレビューは結果を返さず `user_not_found` で拒否される
+
+## 作用
+
+### Rule: REQ-IDMANAGEMENT-066 動的グループの規則の版と有効化
+
+- 初めて保存した規則は無効であり、版は 1 である。
+- 式の保存のたびに版を一つ進め、有効か無効かは保存前の状態を引き継ぐ。
+- 有効化と無効化は、それぞれ版を一つ進める。すでにその状態にある規則の有効化と無効化は、版を進めずイベントを発行しない。
+- 有効な規則の式の保存と、規則の有効化は、全件の再評価を予約する。
+- `membership_type=manual` の Group への規則の保存は、409 と `dynamic_membership_managed_by_rule` で拒否する。
+- 規則を持たない Group の有効化と無効化は、422 と `invalid_dynamic_group_rule` で拒否する。
+- **担保手段**：`usecases.UpdateDynamicGroupRule`、`usecases.SetDynamicGroupRuleEnabled`
+
+#### Example: EX-IDMANAGEMENT-066-01 初めての保存と有効化
+
+- When 管理者が動的グループに初めて規則を保存し、続けて有効化する
+- Then 保存した規則は無効で版 1 であり、有効化した規則は版 2 である
+- And 全件の再評価が予約される
+
+#### Example: EX-IDMANAGEMENT-066-02 有効な規則の式の保存
+
+- Given 動的グループの規則は有効で版 2 である
+- When 管理者が式を保存する
+- Then 規則は有効のまま版 3 になり、全件の再評価が予約される
+
+### Rule: REQ-IDMANAGEMENT-068 規則の無効化は、動的グループの所属をすべて直ちに外す
+
+- 規則の無効化は、再評価を予約せず、その場で動的グループのメンバーシップをすべて外す。
+- **担保手段**：`usecases.SetDynamicGroupRuleEnabled`、`usecases.ReconcileDynamicGroup`
+
+#### Example: EX-IDMANAGEMENT-068-01 所属を持つ規則の無効化
+
+- Given 有効な規則によりユーザー "alice" と "bob" が動的グループに所属している
+- When 管理者が規則を無効化する
+- Then 応答を返す時点で、動的グループのメンバーシップは空である
+
+### Rule: REQ-IDMANAGEMENT-069 古い版の再評価のジョブは、所属を変えずに成功する
+
+- 再評価のジョブは、予約した時点の規則の版を持つ。
+- 実行時に規則がない、無効である、または版が異なるジョブは、メンバーシップを変えずに成功として終わる。
+- **担保手段**：`usecases.DynamicGroupReconcileHandler`
+
+#### Example: EX-IDMANAGEMENT-069-01 規則が更新された後の古いジョブ
+
+- Given 版 2 の再評価のジョブが予約され、その後に規則は版 3 になった
+- When 版 2 のジョブが実行される
+- Then ジョブは成功し、メンバーシップは変わらない
+
+### Rule: REQ-IDMANAGEMENT-070 動的な所属の変化は、メンバーごとのイベントを発行しない
+
+- 規則の再評価と、User の変更に伴う再評価で所属が増減しても、`GroupMemberAdded` と `GroupMemberRemoved` を発行しない。
+- 全件の再評価は、追加、除外、変化なし、誤りの件数を載せた `DynamicMembershipEvaluated` を一つ発行する。
+- **担保手段**：`usecases.ReconcileDynamicGroup`、`usecases.SyncDynamicGroupsForUser`
+- **要判断**：動的グループのロールは所属した User の実効ロールに加わるが、誰がいつ加わったかは監査の記録に残らない。メンバーごとのイベントを発行するかを決める。
+
+#### Example: EX-IDMANAGEMENT-070-01 全件の再評価による追加
+
+- Given ユーザー "alice" は有効な規則に一致し、まだ所属していない
+- When 全件の再評価を実行する
+- Then "alice" は所属し、`GroupMemberAdded` は発行されず、追加の件数 1 を持つ `DynamicMembershipEvaluated` が発行される

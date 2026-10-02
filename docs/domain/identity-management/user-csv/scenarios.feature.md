@@ -80,6 +80,72 @@ Primary actor: `TenantAdministrator`
 - Then 1 行の検証、保存、監査処理が途中で失敗する
 - Then その行のプロフィール、ロール、必須操作、カスタム属性は一部も保存されず、他の有効な行は適用を続ける
 
+### Rule: REQ-IDMANAGEMENT-055 User の CSV の属性の列は、組み込みの属性を `attr:`、テナント定義の属性を `custom:` で表す
+
+- 組み込みの拡張属性は `attr:<key>` の列で読み書きする。
+- テナント定義の属性は `custom:<key>` の列で読み書きする。
+- 組み込みの拡張属性を `custom:<key>` の列で指定したファイルは、`invalid_header` で拒否する。
+- **担保手段**：`domain.NewUserCSVSchema`
+
+#### Example: EX-IDMANAGEMENT-055-01 組み込みの拡張属性の列
+
+- When 管理者が見出し [preferred_username, attr:phone_number] を持つファイルを事前検証へ投入する
+- Then 見出しは受け付けられ、`phone_number` の値を計画する
+
+#### Example: EX-IDMANAGEMENT-055-02 組み込みの拡張属性を `custom:` で指定する
+
+- When 管理者が見出し [preferred_username, custom:phone_number] を持つファイルを事前検証へ投入する
+- Then ファイルは `invalid_header` で拒否される
+
+### Rule: REQ-IDMANAGEMENT-056 User の CSV の行は `id` を優先して対象を決め、先に現れた行を採る
+
+- `id` を持つ行は `id` で対象を決める。テナントにない `id` の行は `target_not_found` で `rejected` とし、User を作らない。
+- `id` を持たず `preferred_username` だけを持つ行は、そのユーザー名の User を対象とし、いなければ作成として計画する。
+- 前の行と同じ `id` を持つ行は `duplicate_target`、前の行と同じ `preferred_username` を持つ行は `duplicate_username` で `rejected` とし、前の行を計画に残す。
+- ユーザー名の重複は大文字と小文字を区別して判定する。
+- **担保手段**：`usecases.PlanUserImport`
+
+#### Example: EX-IDMANAGEMENT-056-01 テナントにない `id`
+
+- When 管理者が `id` だけを持つ行の `id` に存在しない値を書いて事前検証へ投入する
+- Then 行は `target_not_found` で `rejected` となり、作成として計画されない
+
+#### Example: EX-IDMANAGEMENT-056-02 同じユーザー名の二つの行
+
+- When 管理者が 2 行目と 3 行目にユーザー名 "dave" を書いて事前検証へ投入する
+- Then 2 行目は作成として計画され、3 行目は `duplicate_username` で `rejected` となる
+
+### Rule: REQ-IDMANAGEMENT-057 User の CSV の組み込み列のセルの字句形
+
+- `roles` と `required_actions` のセルは、`|` で区切った値の並びである。各値の前後の空白を除く。
+- 空のセルは空の並びとし、空の値を含むセルは、`roles` では `invalid_roles`、`required_actions` では `invalid_required_actions` で拒否する。
+- `required_actions` は重複を除いて昇順に保存する。
+- `email_verified` のセルは `true` または `false` だけを受け付け、それ以外は `invalid_boolean` で拒否する。
+- `name`、`given_name`、`family_name`、`email` の空のセルは、その項目を消す。
+- `preferred_username` の空のセルは `required` で拒否する。
+- **担保手段**：`usecases.PlanUserImport`
+
+#### Example: EX-IDMANAGEMENT-057-01 区切りの前後に空白を含むロール
+
+- When 管理者が `roles` のセルに "support | audit" を書いて事前検証へ投入する
+- Then 行のロールは ["audit", "support"] として計画される
+
+#### Example: EX-IDMANAGEMENT-057-02 空の値を含むロール
+
+- When 管理者が `roles` のセルに "support||audit" を書いて事前検証へ投入する
+- Then 行は `invalid_roles` で `rejected` となる
+
+#### Example: EX-IDMANAGEMENT-057-03 大文字の真偽値
+
+- When 管理者が `email_verified` のセルに "TRUE" を書いて事前検証へ投入する
+- Then 行は `invalid_boolean` で `rejected` となる
+
+#### Example: EX-IDMANAGEMENT-057-04 空の名前のセル
+
+- Given ユーザー "alice" は名前を持つ
+- When 管理者が "alice" の行の `name` のセルを空にして適用する
+- Then "alice" の名前は消える
+
 ## 結果
 
 ### Rule: REQ-IDMANAGEMENT-006 管理者はユーザー一覧を CSV に安全にエクスポートできる
@@ -222,3 +288,31 @@ Primary actor: `TenantAdministrator`
 - When 管理者が 1 行の `email` と `custom:department` だけを編集して再びプレビューする
 - But カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のいずれかが不正である
 - Then 対象行は安定したエラーコードで `rejected` となり、値はジョブの表示にも監査イベントにも含めない
+
+## 拒否
+
+### Rule: REQ-IDMANAGEMENT-059 取り込み元の所有を判定できないとき、既存の User の行をすべて拒否する
+
+- 取り込み元による所有を判定できないとき、既存の User を対象とする行はすべて `source_managed` で `rejected` とする。
+- 同じとき、新しい User を作る行は受け付ける。
+- **担保手段**：`usecases.PlanUserImport`
+
+#### Example: EX-IDMANAGEMENT-059-01 所有の判定の失敗
+
+- Given 取り込み元による所有の判定が失敗する
+- When 管理者が既存の User "alice" の行と、新しいユーザー名 "dave" の行を事前検証へ投入する
+- Then "alice" の行は `source_managed` で `rejected` となり、"dave" の行は作成として計画される
+
+## 作用
+
+### Rule: REQ-IDMANAGEMENT-058 CSV で作成する User は、パスワードの設定を求められる
+
+- CSV で作成する User には、誰にも知らされない無作為なパスワードを設定する。
+- CSV で作成する User には、必須操作 `update_password` を付ける。
+- CSV で作成する User は `Active` であり、テナントの User の使用量を一つ増やす。
+- **担保手段**：`usecases.ApplyUserImport`
+
+#### Example: EX-IDMANAGEMENT-058-01 CSV で作成した User
+
+- When 管理者が新しいユーザー名の行を含むプレビューを適用する
+- Then 作成した User は `Active` であり、必須操作 `update_password` を持ち、空でないパスワードの記録を持つ
