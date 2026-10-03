@@ -529,7 +529,7 @@ func TestAdminApiWithoutAdminRoleListsNothingAndCreatesNothing(t *testing.T) {
 // 014-02 と同じ防護だが、こちらが名指すのは一覧の総件数とページングのメタデータまで
 // 漏れないことである。件数だけを返す実装は「一覧は返していない」と言えてしまう。
 //
-//spec:covers EX-IDMANAGEMENT-005-05: TenantAdministrator ロールを持たない実行者の
+//spec:covers REQ-IDMANAGEMENT-005: TenantAdministrator ロールを持たない実行者の
 func TestListAdminUsersWithoutAdminRoleReturnsNoUsersAndNoCounts(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	plain := fixture.seedSession(t, "sess-bob-list", tenancydomain.DefaultTenantID, idmRefusalBob)
@@ -569,7 +569,7 @@ func TestListAdminUsersWithoutAdminRoleReturnsNoUsersAndNoCounts(t *testing.T) {
 // カーソルはテナントと絞り込みを HMAC の付随データとして束ねる。したがって
 // 「拒否が変えなかったもの」は、越境したページの中身が応答に出ないことである。
 //
-//spec:covers EX-IDMANAGEMENT-005-06: 別テナントで発行された、改ざんされた、または発行時と
+//spec:covers REQ-IDMANAGEMENT-005: 別テナントで発行された、改ざんされた、または発行時と
 func TestListAdminUsersRejectsForeignTamperedAndRefilteredCursors(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-cursor", tenancydomain.DefaultTenantID, idmRefusalAdmin)

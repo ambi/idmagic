@@ -31,8 +31,9 @@ export type SpecificationValidation = {
  *
  * 新しい形式の機能ノードは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
  * 例の付録（`examples.feature.md`）を持つ。Context の `design/` は話題ごとの設計で、`README.md` は
- * 話題の索引、`decisions.md` は判断の記録の骨格を持つ。機能の `design.md` とシステムの
- * `docs/design/README.md` も、設計の入口として話題の索引を持つ。
+ * 話題の索引、`decisions.md` は判断の記録の骨格を持つ。システムの `docs/design/README.md` も、
+ * 設計の入口として話題の索引を持つ。機能の `design.md` は任意であり、コードから読み取れない
+ * 仕組みだけを書くので、話題の索引を求めない。
  */
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind =
@@ -83,8 +84,7 @@ export function documentKind(path: string): DocumentKind | undefined {
     const named = KIND_BY_NAME.get(name)
     if (named) return named
     if (name === 'examples.feature.md') return 'examples'
-    if (name === 'design.md') return 'design-index'
-    if (['decisions.md', 'internals.md'].includes(name)) return 'prose'
+    if (['design.md', 'decisions.md', 'internals.md'].includes(name)) return 'prose'
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
   // Context に割り当てた品質要件。旧形式の Context に置けるかは、段の集合を見る検査が決める。
@@ -421,7 +421,7 @@ const DECISION_RECORD_SECTIONS = [
   '決定',
   '検討した代替案',
   '結果と再検討の条件',
-  '関連する規則',
+  '関連する要件',
 ] as const
 
 /** `design/decisions.md` の各判断（H2）が、記録の各部（H3）をこの順で一度ずつ持つことを確かめる。 */
@@ -477,7 +477,7 @@ const TOPIC_INDEX_HEADER = '| 話題 | 記述した場所 |'
 const TOPIC_PLACE = /\[[^\]]+\]\([^)\s]+\)|^該当なし：\S/
 
 /**
- * 設計の入口（`docs/design/README.md`、Context の `design/README.md`、機能の `design.md`）が、
+ * 設計の入口（`docs/design/README.md` と Context の `design/README.md`）が、
  * すべての話題を行とする索引を、話題の語彙の順で持つことを確かめる。
  */
 function validateTopicIndex(source: string, findings: SpecificationFinding[]): void {

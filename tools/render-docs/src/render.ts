@@ -1137,14 +1137,14 @@ function propertyDescription(property: CatalogProperty): string {
   return `このモデルで \`${property.name}\` が表す値。`
 }
 
-/** 機能仕様が見出しで宣言した規則。生成する一覧とトレーサビリティが読む。 */
+/** 機能仕様が見出しで宣言した要件。生成する一覧とトレーサビリティが読む。 */
 type DeclaredRule = {
   id: string
   title: string
   document: RenderedDocument
   anchor: string
   openQuestions: string[]
-  /** 規則が属する操作。操作の見出しより前に宣言した規則にはない。 */
+  /** 要件が属する操作。操作の見出しより前に宣言した要件にはない。 */
   operation?: SpecificationOperation
 }
 
@@ -1206,8 +1206,8 @@ function declaredRules(documents: RenderedDocument[]): DeclaredRule[] {
 }
 
 /**
- * 機能仕様の操作の一覧。操作ごとに、その下で宣言した規則と未決事項の数を並べる。
- * 手で書いた一覧は、操作や規則を加えたときに更新が漏れても検出されないので、見出しから作る。
+ * 機能仕様の操作の一覧。操作ごとに、その下で宣言した要件と未決事項の数を並べる。
+ * 手で書いた一覧は、操作や要件を加えたときに更新が漏れても検出されないので、見出しから作る。
  * 一覧は機能仕様の本体（README）にだけ置き、章の操作も同じ一覧に並べる。
  */
 function featureOperationIndex(
@@ -1242,7 +1242,7 @@ function featureOperationIndex(
       return `<tr><th scope="row">${siteLink(page, operation.document.outputPath, operation.title, operation.anchor)}</th><td>${ruleLinks || '—'}</td><td>${questions}</td><td>${escapeHtml(operation.document === document ? 'このページ' : operation.document.title)}</td></tr>`
     })
     .join('')
-  return `<p class="muted">操作の一覧：操作の見出しと、その下で宣言した規則から生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">操作</th><th scope="col">規則</th><th scope="col">未決事項</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
+  return `<p class="muted">操作の一覧：操作の見出しと、その下で宣言した要件から生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">操作</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
 }
 
 /** 生成した HTML を、ページの中の見出しの直後に差し込む。見出しがなければページを変えない。 */
@@ -1257,8 +1257,8 @@ function insertAfterHeading(page: string, id: string, html: string): string {
 }
 
 /**
- * 機能ノードの規則一覧と未決事項。手で書いた一覧は、規則を加えたときに更新が漏れても
- * どの検査にも見つからないので、規則の見出しと要判断の欄から作る。
+ * 機能ノードの要件一覧と未決事項。手で書いた一覧は、要件を加えたときに更新が漏れても
+ * どの検査にも見つからないので、要件の見出しと要判断の欄から作る。
  */
 function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): string {
   const own = rules.filter(
@@ -1279,14 +1279,14 @@ function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): st
         `<li>${siteLink(page, rule.document.outputPath, rule.id, rule.anchor)}：${inlineMarkdown.renderInline(question)}</li>`,
     ),
   )
-  const index = `<h2 id="${document.id}-規則一覧">規則一覧</h2><p class="muted">この機能の仕様が宣言する規則の見出しから生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">規則</th><th scope="col">題名</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
+  const index = `<h2 id="${document.id}-要件一覧">要件一覧</h2><p class="muted">この機能の仕様が宣言する要件の見出しから生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">要件</th><th scope="col">題名</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
   const open = questions.length
-    ? `<h2 id="${document.id}-未決事項">未決事項</h2><p class="muted">規則の要判断の欄から生成した。決着したら規則の欄を消す。</p><ul>${questions.join('')}</ul>`
+    ? `<h2 id="${document.id}-未決事項">未決事項</h2><p class="muted">要件の要判断の欄から生成した。新しい形式では要判断を work item として起票し、この一覧から消す。</p><ul>${questions.join('')}</ul>`
     : ''
   return `<section class="context-reference">${index}${open}</section>`
 }
 
-/** 新しい形式の Context の機能地図。機能群、機能、規則と未決事項の数を、規則の見出しから作る。 */
+/** 新しい形式の Context の機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
 function featureMap(
   document: RenderedDocument,
   documents: RenderedDocument[],
@@ -1337,7 +1337,7 @@ function featureMap(
       return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
     })
     .join('')
-  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能ノード、規則、配置と Context 名の対応から生成した探索用の候補であり、被覆の証明ではない。内部設計は機能の入口から必要な話題だけを読む。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">規則</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能ノード、要件、配置と Context 名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
 function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {

@@ -1,6 +1,6 @@
 ---
 name: implement-work-item
-description: "選択した work item を、仕様先行、故障に応じた検証境界、発見の還元、検証、完了記録、コミットまで実装する。"
+description: "選択した work item を、仕様先行、故障に応じた検証境界、発見の反映、検証、完了記録、コミットまで実装する。"
 ---
 
 # Implementing a work item
@@ -69,8 +69,12 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    最も単純で完全な実装で GREEN にし、GREEN のまま refactor する。
    具体例をデータにすると短くなる場合は、`SPECIFICATION_FORMAT.md` の実行可能な具体例を使う。
    操作列が複雑ならコードのままにし、独立した期待結果と境界固有の表明を共有する。
-   実装とテストで詳細が分かったときは、ワークフローの「実装とテストから仕様への還元」に従い、
-   規則と理由、具体例、生成できる参照、未決定の挙動をそれぞれの一次情報へ戻す。
+   仕様にない分岐、エラー、イベント、副作用を書くことになったら、そこで止め、ワークフローの
+   「仕様にない振る舞いの分類」に従って (a) 要件にする、(b) 書かない、(c) 実装を直す、のどれかに分け、
+   結果を work item の設計に記録する。利用者が観測する結果を変える分類は、実装を進める前に利用者へ確認する。
+   (c) は実装方針を切り替える合図であり、仕様を書き足して既存の実装を説明しない。
+   分類の後は「実装とテストで見つけた振る舞いの反映」に従って、要件と理由、具体例、生成できる参照を
+   それぞれの一次情報へ移す。
    A test claims a declared id with a `//spec:covers <id>[, <id>]: <what it fixes>` directive above the test
    function, and only that shape counts — see Citing a normative id from a test in
    `docs/development/specification-first-workflow.md`. Naming an id in prose claims nothing, so say freely in
@@ -113,7 +117,8 @@ description: "選択した work item を、仕様先行、故障に応じた検�
 9. Collect the risk-selected change-resistance evidence. Run `mise run test-go-mutation -- <package directory>`
    for changed Go rather than hand-writing the syntactic mutations; hand-write only the faults its operators
    cannot express — wiring removed, a `switch` default replaced, an effect redirected. Read the survivors and
-   do not score them; Mutation testing in `docs/development/specification-first-workflow.md` says why.
+   do not score them; Mutation testing in `docs/development/specification-first-workflow.md` says why. A
+   survivor that exposes behavior no requirement states goes through the same (a)/(b)/(c) classification.
 10. After every scoped behavior and its evidence can be completed, review the changed code with the seven
     perspectives in `docs/development/coding-style.md`. Then pass `mise run verify` once, and
     `mise run test-ui-e2e` as well when the change can reach the browser: the standard suite no longer starts

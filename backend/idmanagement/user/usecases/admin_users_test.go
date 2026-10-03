@@ -32,7 +32,7 @@ import (
 // 010-01 が言うのは再有効化の 2 つの `Then` である。戻り値は use case が組み立てるので、
 // 状態は保存層から読み直す。
 //
-//spec:covers EX-IDMANAGEMENT-010-01: 無効化した User の再有効化で、保存された状態が Active に戻り UserEnabled が発行されること。
+//spec:covers REQ-IDMANAGEMENT-010: 無効化した User の再有効化で、保存された状態が Active に戻り UserEnabled が発行されること。
 func TestCreateUpdateAndDisableUser(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()
@@ -139,7 +139,7 @@ func federatedProvisioningDeps(
 // 状態を見て、発行されたイベントの種類と対象 User まで突き合わせる。任意の名前・
 // メールアドレス・属性がそのまま保存されることも、同じ読み直しで固定する。
 //
-//spec:covers EX-IDMANAGEMENT-001-01: 上流の検証を終えた JIT が password_hash の空な Active User を作り、UserCreated を発行すること。
+//spec:covers REQ-IDMANAGEMENT-001: 上流の検証を終えた JIT が password_hash の空な Active User を作り、UserCreated を発行すること。
 func TestProvisionFederatedUserCreatesCredentiallessActiveUser(t *testing.T) {
 	ctx := context.Background()
 	deps, userRepo, events := federatedProvisioningDeps(ctx, t, 0)
@@ -189,7 +189,7 @@ func TestProvisionFederatedUserCreatesCredentiallessActiveUser(t *testing.T) {
 // 落とすため、4 つの経路それぞれで保存層の対象が増えていないことと、`UserCreated` が
 // 1 件も出ていないことを確かめる。
 //
-//spec:covers EX-IDMANAGEMENT-001-02: 一意性・リソース上限・属性スキーマのいずれかに反する JIT が、User を作らずエラーを返すこと。
+//spec:covers REQ-IDMANAGEMENT-001: 一意性・リソース上限・属性スキーマのいずれかに反する JIT が、User を作らずエラーを返すこと。
 func TestProvisionFederatedUserRejectsWithoutCreatingTheUser(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
@@ -691,7 +691,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 // 具体例は削除の予約と復元の 2 段で、段ごとに状態とイベントの 2 つを言う。
 // 4 つの `Then` に 4 つの観測を置き、状態はいずれも保存層から読み直す。
 //
-//spec:covers EX-IDMANAGEMENT-011-01, EX-IDMANAGEMENT-049-04: 削除の予約で PendingDeletion と UserSoftDeleted、復元で Active と UserRestored になること。
+//spec:covers REQ-IDMANAGEMENT-011, REQ-IDMANAGEMENT-049: 削除の予約で PendingDeletion と UserSoftDeleted、復元で Active と UserRestored になること。
 func TestRestoreUserReturnsToActive(t *testing.T) {
 	ctx := context.Background()
 	var events []spec.DomainEvent
@@ -734,7 +734,7 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 // 具体例の `Given` は PendingDeletion である。有効な User をそのまま完全削除する経路とは
 // 別で、既存のテストが押さえているのは後者と自動 purge だった。
 //
-//spec:covers EX-IDMANAGEMENT-050-03: PendingDeletion の User を管理者が完全削除すると、状態が Deleted になり UserDeleted が発行されること。
+//spec:covers REQ-IDMANAGEMENT-050: PendingDeletion の User を管理者が完全削除すると、状態が Deleted になり UserDeleted が発行されること。
 func TestPurgePendingDeletionUserTombstonesAndEmitsUserDeleted(t *testing.T) {
 	ctx := context.Background()
 	var events []spec.DomainEvent

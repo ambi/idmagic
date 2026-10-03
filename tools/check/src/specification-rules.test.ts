@@ -82,11 +82,11 @@ describe('verifyRuleFields', () => {
     ])
   })
 
-  it('requires a parent rule to be a link that resolves', () => {
+  it('requires a parent requirement to be a link that resolves', () => {
     const resolveOnly = (target: string) => (from: string, link: string) =>
       from.endsWith('scenarios.feature.md') && link === target
     const parent =
-      '- 上位の規則：[ページサイズ](../../../design/application/api-guidelines.md#ページサイズ)'
+      '- 上位の要件：[ページサイズ](../../../design/application/api-guidelines.md#ページサイズ)'
     expect(
       messages(
         scenario(parent, '- 既定値は 10 件とする。'),
@@ -94,10 +94,10 @@ describe('verifyRuleFields', () => {
       ),
     ).toEqual([])
     expect(messages(scenario(parent, '- 既定値は 10 件とする。'))).toEqual([
-      'REQ-DEMO-001 parent rule does not resolve: ../../../design/application/api-guidelines.md#ページサイズ',
+      'REQ-DEMO-001 parent requirement does not resolve: ../../../design/application/api-guidelines.md#ページサイズ',
     ])
-    expect(messages(scenario('- 上位の規則：ページサイズ', '- 既定値は 10 件とする。'))).toEqual([
-      'REQ-DEMO-001 parent rule must be a Markdown link to the rule it departs from',
+    expect(messages(scenario('- 上位の要件：ページサイズ', '- 既定値は 10 件とする。'))).toEqual([
+      'REQ-DEMO-001 parent requirement must be a Markdown link to the requirement it departs from',
     ])
   })
 

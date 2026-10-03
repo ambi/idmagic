@@ -1,11 +1,10 @@
 /**
- * 規則一件の書式と、仕様の木の形を確かめる。
+ * 要件一件の書式と、仕様の木の形を確かめる。
  *
  * どの関数もファイルを読まない。読み取りは `check-specification-rules.ts` が受け持ち、
  * ここは渡された文字列と一覧だけから判定する。
  */
 
-import { specificationRules } from './feature-specification.ts'
 import { ruleBodies, type RuleBody } from './gherkin-scenarios.ts'
 
 export type Finding = { path: string; line: number; message: string }
@@ -23,12 +22,14 @@ export type FeatureNodeDebt = {
   unmappedSlices: string[]
 }
 
-const FIELD = /^- (?:\*\*)?(理由|判断|担保手段|上位の規則|例|要判断)(?:\*\*)?[：:]\s*(.*)$/
+const FIELD =
+  /^- (?:\*\*)?(理由|判断|担保手段|上位の要件|上位の規則|例|要判断)(?:\*\*)?[：:]\s*(.*)$/
 
 /**
- * 機能仕様の節。SCIM の RFC がリソースのモデル、操作、エラー、セキュリティの考慮の順に
- * 並べるのに倣い、読み手が「その機能の何についての記述か」で探せるようにする。品質は、
- * Context の `quality.md` からこの機能に割り当てた品質要件を書く。
+ * 機能仕様の節。SCIM の RFC がリソースのモデル、操作、セキュリティの考慮の順に並べるのに
+ * 倣い、読み手が「その機能の何についての記述か」で探せるようにする。品質は、Context の
+ * `quality.md` からこの機能に割り当てた品質要件を書く。エラーの形と意味は TypeSpec と
+ * 要件文が定めるので、節を設けない。
  */
 export const SPECIFICATION_SECTIONS = [
   '概要',
@@ -36,7 +37,6 @@ export const SPECIFICATION_SECTIONS = [
   '状態遷移',
   '操作',
   '品質',
-  'エラー',
   'セキュリティ上の考慮',
 ] as const
 
@@ -58,6 +58,7 @@ type RuleFields = {
   parents: Array<{ line: number; value: string }>
   openQuestions: Array<{ line: number; text: string }>
   legacyReasons: number[]
+  legacyParents: number[]
 }
 
 /** 規則の本文を、欄と規則文に分ける。箇条書きでも表でもない行は、どちらにも数えない。 */
@@ -68,6 +69,7 @@ function ruleFields(body: RuleBody): RuleFields {
     parents: [],
     openQuestions: [],
     legacyReasons: [],
+    legacyParents: [],
   }
   for (const { line, text } of body.lines) {
     const field = text.match(FIELD)
@@ -78,7 +80,8 @@ function ruleFields(body: RuleBody): RuleFields {
           fields.guarantees.push({ line, symbol: symbol[1] ?? '' })
         }
       } else if (name === '理由') fields.legacyReasons.push(line)
-      else if (name === '上位の規則') fields.parents.push({ line, value })
+      else if (name === '上位の規則') fields.legacyParents.push(line)
+      else if (name === '上位の要件') fields.parents.push({ line, value })
       else if (name === '要判断') fields.openQuestions.push({ line, text: value })
       continue
     }
@@ -88,7 +91,7 @@ function ruleFields(body: RuleBody): RuleFields {
 }
 
 /**
- * 担保手段、上位の規則、曖昧な語を確かめる。`resolveLink` は、`from` の文書から見た
+ * 担保手段、上位の要件、曖昧な語を確かめる。`resolveLink` は、`from` の文書から見た
  * リンク先（アンカーを含む）が存在するかを答える。
  */
 export function verifyRuleFields(
@@ -115,10 +118,14 @@ export function verifyRuleFields(
         findings.push({
           path,
           line,
-          message: `${body.id} parent rule must be a Markdown link to the rule it departs from`,
+          message: `${body.id} parent requirement must be a Markdown link to the requirement it departs from`,
         })
       } else if (!resolveLink(path, target)) {
-        findings.push({ path, line, message: `${body.id} parent rule does not resolve: ${target}` })
+        findings.push({
+          path,
+          line,
+          message: `${body.id} parent requirement does not resolve: ${target}`,
+        })
       }
     }
     for (const { line, text } of [...fields.statements, ...fields.openQuestions]) {
@@ -142,27 +149,21 @@ function isDeclared(symbol: string, declarations: GoDeclarations): boolean {
 }
 
 /**
- * 機能仕様の規則だけに課す欄の規則。旧形式の規則は担保手段を欠いたまま書かれたものが
- * 残っているので、書き起こしで補うまで求めない。新しい形式へ移す時点で、規則からコードへ
- * たどる手段を必ず置く。理由は判断の注記として書き、旧い欄の名前を残さない。
+ * 機能仕様の要件だけに課す欄の規則。理由は判断の注記として書き、旧い欄の名前を残さない。
+ * 要件からコードへの追跡はテストの `//spec:covers` が担うので、担保手段の欄は求めない。
  */
 export function verifySpecificationRuleFields(path: string, source: string): Finding[] {
-  const superseded = new Set(
-    specificationRules(source)
-      .filter((rule) => rule.supersededBy)
-      .map((rule) => rule.id),
-  )
   const findings: Finding[] = []
   for (const body of ruleBodies(source)) {
     const fields = ruleFields(body)
     for (const line of fields.legacyReasons) {
       findings.push({ path, line, message: `${body.id} uses 理由; write the reason as 判断` })
     }
-    if (!superseded.has(body.id) && fields.guarantees.length === 0) {
+    for (const line of fields.legacyParents) {
       findings.push({
         path,
-        line: body.line,
-        message: `${body.id} must name its guarantee in a 担保手段 field`,
+        line,
+        message: `${body.id} uses 上位の規則; write the link as 上位の要件`,
       })
     }
   }

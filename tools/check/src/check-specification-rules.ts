@@ -106,7 +106,7 @@ function decoded(value: string): string | undefined {
   }
 }
 
-/** 上位の規則のリンクが指し得る文書。アンカーを読むのはリンク先の Markdown だけでよい。 */
+/** 上位の要件のリンクが指し得る文書。アンカーを読むのはリンク先の Markdown だけでよい。 */
 async function markdownTargets(snapshot: WorkspaceSnapshot, from: string[]): Promise<string[]> {
   const targets = new Set<string>()
   for (const path of from) {

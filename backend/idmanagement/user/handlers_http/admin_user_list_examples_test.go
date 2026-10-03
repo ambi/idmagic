@@ -204,7 +204,7 @@ func (r countFailingUserRepository) CountFiltered(
 // 一覧そのものは返せてしまう。空の一覧を 200 で返す実装は、管理者に「このテナントに
 // 利用者は居ない」と伝えることになる。
 //
-//spec:covers EX-IDMANAGEMENT-005-04: 正確な件数の取得が失敗したとき、0 件として成功させずリクエスト全体をサーバーエラーで失敗させること。
+//spec:covers REQ-IDMANAGEMENT-005: 正確な件数の取得が失敗したとき、0 件として成功させずリクエスト全体をサーバーエラーで失敗させること。
 func TestAdminUserListFailsTheRequestWhenTheCountCannotBeRead(t *testing.T) {
 	var repo *usermemory.UserRepository
 	e, seeded := newAdminUserHandler(t, func(deps *httpadapter.Deps) {

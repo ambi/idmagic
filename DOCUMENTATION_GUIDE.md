@@ -88,17 +88,9 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 この文書は、同じテンプレート、表、規範 ID の文法を再掲しない。
 
 仕様は、システム、コンテキスト、機能群、機能の四つの階層からなる木に置く。
-システムの規則は`docs/design/`と`docs/domain/scenarios.feature.md`に、一つの機能の規則は機能ノード`docs/domain/<context>/<group>/<feature>/`の機能仕様に書く。
-各段には、外へ約束することを書く仕様と、その実現方法を書く設計を分けて置く。
-コンテキストの仕様は、境界、モデルの全体図、公開する契約、機能の索引を書く`README.md`と、割り当てられた品質要件の`quality.md`、用語、採用標準である。
-設計は、どの段でも`docs/design/`と同じ話題の語彙（アーキテクチャ、設計判断、データ、セキュリティ、信頼性、性能、リスクなど）で構成し、システムではディレクトリ、コンテキストでは`design/<topic>.md`、機能では`design.md`の節として置く。
-各段の設計の入口には、全話題について記述した場所か該当しない理由を書く話題の索引を置く。
-話題の集合は arc42 の 12 章の内容を覆う。
-機能仕様は SCIM の RFC に倣い、モデル、状態遷移、操作ごとの規則、品質、エラー、セキュリティ上の考慮を一つの文書にまとめ、例は付録`examples.feature.md`に置く。
-操作の節では、一つの H3 に一つの操作を置き、冒頭の要約表の後に規則を正常、状態による分岐、拒否の順で並べる。
-機能ノードはコードの機能スライスと同じ名前で対応させ、読み手とエージェントがパッケージのパスから仕様のノードを一つに決められるようにする。
-規則は一か所に書き、下位のノードは上位の規則からの例外だけを、上位の規則へのリンクとともに宣言する。
-階層の定義、機能ノードとコードの対応、機能仕様の節、規則一件の欄は[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)、[機能仕様](SPECIFICATION_FORMAT.md#機能仕様--一つの機能について知るべきこと)、[規則一件の書式](SPECIFICATION_FORMAT.md#規則一件の書式)が定める。
+仕様には外部から観測できる振る舞いだけを書き、一つの事実を一か所にだけ手で書く。
+一つの機能の要件は、機能ノード`docs/domain/<context>/<group>/<feature>/`の機能仕様に EARS 形式で書く。
+階層の定義、機能ノードとコードの対応、機能仕様の節、要件一件の欄は[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)、[機能仕様](SPECIFICATION_FORMAT.md#機能仕様--一つの機能について知るべきこと)、[要件一件の書式](SPECIFICATION_FORMAT.md#要件一件の書式)が定める。
 
 ## 4. システム要求と設計
 
@@ -599,7 +591,8 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 | [Specification Format §5](SPECIFICATION_FORMAT.md#5-標準仕様) | [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) | `Strength`列の語彙 |
 | [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
 | [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
-| [Specification Format §6](SPECIFICATION_FORMAT.md#6-規則と例) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
+| [Specification Format §6](SPECIFICATION_FORMAT.md#6-要件と例) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
+| [Specification Format §6](SPECIFICATION_FORMAT.md#ears-形式) | [EARS](https://alistairmavin.com/ears/) | 要件文を五つの型で書く |
 | §4.2 | [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) | portとadapterによる隔離 |
 | §4.2 | [C4 model](https://c4model.com/) | System Context、Containerの語彙 |
 | §4.3 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) | メソッドの安全・冪等、条件付きリクエスト、ステータスコードの意味 |

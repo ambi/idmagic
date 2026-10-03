@@ -144,7 +144,7 @@ func TestCreateUserTrimsTheUsernameAndComparesItCaseSensitively(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-042-03: テナントのパスワードポリシーに違反する作成を拒否し、User を作らないこと。
+//spec:covers REQ-IDMANAGEMENT-042: テナントのパスワードポリシーに違反する作成を拒否し、User を作らないこと。
 func TestCreateUserAppliesTheTenantPasswordPolicy(t *testing.T) {
 	f := newUserRulesFixture(t)
 	twenty := 20
@@ -174,7 +174,7 @@ func TestCreateUserAcceptsAnEmailAnotherUserAlreadyHas(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-043-01, EX-IDMANAGEMENT-043-02: JIT が大文字と小文字を区別せずにメールアドレスの衝突を拒否し、空白だけのメールアドレスを未設定として扱い、identity-broker を操作者とすること。
+//spec:covers EX-IDMANAGEMENT-043-01, REQ-IDMANAGEMENT-043: JIT が大文字と小文字を区別せずにメールアドレスの衝突を拒否し、空白だけのメールアドレスを未設定として扱い、identity-broker を操作者とすること。
 func TestProvisionFederatedUserNormalizesTheEmailAndRejectsACaseInsensitiveConflict(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
@@ -295,7 +295,7 @@ func TestPurgeExpiredSoftDeletedKeepsUsersAtTheExactBoundary(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-045-01, EX-IDMANAGEMENT-045-02: 更新が値の変わった属性のキーだけを昇順で changed_fields に載せ、何も変わらない更新は updated_at を進めず UserUpdated を発行しないこと。
+//spec:covers EX-IDMANAGEMENT-045-01, REQ-IDMANAGEMENT-045: 更新が値の変わった属性のキーだけを昇順で changed_fields に載せ、何も変わらない更新は updated_at を進めず UserUpdated を発行しないこと。
 func TestUpdateUserRecordsOnlyChangedFields(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.deps.AttrSchemaRepo = departmentAndTitleSchema(t)
@@ -363,7 +363,7 @@ func TestUpdateUserKeepsEmailVerifiedWhenTheAddressChanges(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-046-01: すでに Disabled の User の無効化と Active の User の再有効化が、時刻を進めずイベントを発行しないこと。
+//spec:covers REQ-IDMANAGEMENT-046: すでに Disabled の User の無効化と Active の User の再有効化が、時刻を進めずイベントを発行しないこと。
 func TestSetUserDisabledDoesNothingWhenAlreadyInThatState(t *testing.T) {
 	f := newUserRulesFixture(t)
 	changedAt := userRulesNow.Add(-time.Hour)
@@ -390,7 +390,7 @@ func TestSetUserDisabledDoesNothingWhenAlreadyInThatState(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-046-02: admin を持つ管理者が自分自身を無効化する操作を self_disable_forbidden で拒否し、自分自身の再有効化は拒否しないこと。
+//spec:covers REQ-IDMANAGEMENT-046: admin を持つ管理者が自分自身を無効化する操作を self_disable_forbidden で拒否し、自分自身の再有効化は拒否しないこと。
 func TestSetUserDisabledRefusesAnAdministratorDisablingThemselves(t *testing.T) {
 	f := newUserRulesFixture(t)
 	operator := f.seed("operator", func(user *userdomain.User) { user.Roles = []string{"admin"} })
@@ -408,7 +408,7 @@ func TestSetUserDisabledRefusesAnAdministratorDisablingThemselves(t *testing.T) 
 
 // REQ-IDMANAGEMENT-046 の主要な使い方：削除予約中の User は無効化も再有効化もできない。
 //
-//spec:covers EX-IDMANAGEMENT-046-04: 削除予約中の User の無効化と再有効化を user_pending_deletion で拒否し、User を PendingDeletion のまま残しイベントを発行しないこと。
+//spec:covers REQ-IDMANAGEMENT-046: 削除予約中の User の無効化と再有効化を user_pending_deletion で拒否し、User を PendingDeletion のまま残しイベントを発行しないこと。
 func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
 	f := newUserRulesFixture(t)
 	scheduledAt := userRulesNow.Add(-time.Hour)
@@ -431,7 +431,7 @@ func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-010-02: 無効化がその User の記憶済みの端末を失効させること。
+//spec:covers REQ-IDMANAGEMENT-010: 無効化がその User の記憶済みの端末を失効させること。
 func TestSetUserDisabledRevokesTrustedDevices(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
@@ -455,7 +455,7 @@ func TestSetUserDisabledRevokesTrustedDevices(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-047-01, EX-IDMANAGEMENT-047-02: 付与済みの必須操作の付与と未付与の必須操作の解除がイベントを発行せず、定義されていない必須操作を拒否すること。
+//spec:covers REQ-IDMANAGEMENT-047: 付与済みの必須操作の付与と未付与の必須操作の解除がイベントを発行せず、定義されていない必須操作を拒否すること。
 func TestRequiredActionsAreIdempotentAndClosed(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", func(user *userdomain.User) {
@@ -476,7 +476,7 @@ func TestRequiredActionsAreIdempotentAndClosed(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-011-02, EX-IDMANAGEMENT-013-03: 削除予約済みの User の削除の予約が成功してイベントを発行せず、管理者自身の予約は削除予約済みでも self_delete_forbidden で拒否すること。
+//spec:covers REQ-IDMANAGEMENT-011, EX-IDMANAGEMENT-013-03: 削除予約済みの User の削除の予約が成功してイベントを発行せず、管理者自身の予約は削除予約済みでも self_delete_forbidden で拒否すること。
 func TestSoftDeleteUserIsIdempotentButChecksSelfDeletionFirst(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", pendingSince(userRulesNow.Add(-time.Hour)))
@@ -496,7 +496,7 @@ func TestSoftDeleteUserIsIdempotentButChecksSelfDeletionFirst(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-048-02: 削除の予約が理由を UserSoftDeleted に記録し、下流のプロビジョニングへ User の削除として通知すること。
+//spec:covers REQ-IDMANAGEMENT-048: 削除の予約が理由を UserSoftDeleted に記録し、下流のプロビジョニングへ User の削除として通知すること。
 func TestSoftDeleteUserRecordsTheReasonAndNotifiesProvisioning(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
@@ -594,7 +594,7 @@ func TestDeleteUserAnonymizesAnActiveUserAndReleasesItsQuota(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-050-02: 削除済みの User の完全削除が成功し、UserDeleted を再発行しないこと。
+//spec:covers REQ-IDMANAGEMENT-050: 削除済みの User の完全削除が成功し、UserDeleted を再発行しないこと。
 func TestDeleteUserDoesNothingForAnAlreadyDeletedUser(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)

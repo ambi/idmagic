@@ -1,9 +1,9 @@
 /**
  * 新しい形式の機能ノードで、ファイルをまたいで成り立つべきことを確かめる。
  *
- * 規則は機能仕様（`README.md` と章）で宣言し、例は同じ段の `examples.feature.md` に置く。
- * 一つのファイルだけを読む検証では、付録が宣言のない規則を参照していることも、宣言した
- * 規則に例がないことも分からない。ここは段ごとに両方を集めてから照合する。
+ * 要件は機能仕様（`README.md` と章）で宣言し、例は同じ機能ノードの `examples.feature.md` に置く。
+ * 一つのファイルだけを読む検証では、付録が宣言のない要件を参照していることが分からない。
+ * ここは機能ノードごとに宣言と参照を集めてから照合する。例は任意なので、例のない要件は拒否しない。
  */
 
 import type { DocumentSetView } from '../../workspace/src/document-layout.ts'
@@ -12,13 +12,12 @@ import type { SpecificationValidation } from './specification-doc.ts'
 /** 旧形式のまま残る Context の一覧。減る方向にしか変えない。 */
 export const LEGACY_SPEC_LAYOUT = 'tools/check/legacy-spec-layout.json'
 
-type Declaration = { id: string; title: string; where: string; superseded: boolean }
+type Declaration = { id: string; title: string; where: string }
 type Reference = { id: string; title: string; where: string }
 
 export class FeatureNodeDeclarations {
   private readonly declarations = new Map<string, Declaration[]>()
   private readonly references = new Map<string, Reference[]>()
-  private readonly exampleParents = new Map<string, Set<string>>()
 
   add(path: string, result: SpecificationValidation): void {
     const directory = path.slice(0, path.lastIndexOf('/'))
@@ -32,9 +31,6 @@ export class FeatureNodeDeclarations {
         })),
       )
       this.references.set(directory, references)
-      const parents = this.exampleParents.get(directory) ?? new Set<string>()
-      for (const example of result.exampleIds) parents.add(example.parentId)
-      this.exampleParents.set(directory, parents)
       return
     }
     // 旧形式の規則は Gherkin の中で宣言と例がそろうので、ここで照合するのは見出しの宣言だけである。
@@ -47,7 +43,6 @@ export class FeatureNodeDeclarations {
         id: scenario.id,
         title: scenario.title ?? '',
         where: `${path}:${scenario.line}`,
-        superseded: scenario.supersededBy !== undefined,
       })),
     )
     this.declarations.set(directory, declarations)
@@ -58,15 +53,7 @@ export class FeatureNodeDeclarations {
     for (const [directory, declarations] of this.declarations) {
       const placement = placementProblem(directory, view)
       for (const declaration of declarations) {
-        if (placement) {
-          findings.push(`${declaration.where}: ${declaration.id} ${placement}`)
-          continue
-        }
-        if (!declaration.superseded && !this.exampleParents.get(directory)?.has(declaration.id)) {
-          findings.push(
-            `${declaration.where}: ${declaration.id} must have at least one example in ${directory}/examples.feature.md`,
-          )
-        }
+        if (placement) findings.push(`${declaration.where}: ${declaration.id} ${placement}`)
       }
     }
     for (const [directory, references] of this.references) {
@@ -93,7 +80,7 @@ export class FeatureNodeDeclarations {
   }
 }
 
-/** 規則を宣言できない段なら、その理由を返す。 */
+/** 要件を宣言できない階層なら、その理由を返す。 */
 function placementProblem(directory: string, view: DocumentSetView): string | undefined {
   const [, , context = '', ...rest] = directory.split('/')
   if (!view.featureContexts.has(context)) return 'must be declared in scenarios.feature.md'

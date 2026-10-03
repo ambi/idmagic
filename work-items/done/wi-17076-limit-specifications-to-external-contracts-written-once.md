@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,6 +7,25 @@ created_at: 2026-10-03
 priority: p1
 depends_on: []
 change_kind: docs
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: 仕様と設計の書き方と、IdManagement の User の機能仕様の記述だけを変え、製品の振る舞い、公開 API、設定、運用手順は変えないので、リリースの読者へ知らせる差分がない。
+  references: []
+initial_context:
+  specification:
+    - SPECIFICATION_FORMAT.md
+    - docs/domain/identity-management/principals/user/README.md#REQ-IDMANAGEMENT-042
+    - docs/domain/identity-management/principals/user/lifecycle.md#REQ-IDMANAGEMENT-010
+  typespec: []
+  source:
+    - tools/check/src/specification-rules.ts
+    - tools/check/src/feature-nodes.ts
+    - tools/check/src/specification-doc.ts
+    - tools/render-docs/src/render.ts
+  tests:
+    - tools/check/src/feature-layout.acceptance.test.ts
+  stop_before_reading: [frontend, backend]
 affected_spec:
   - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-001 }
   - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
@@ -36,7 +55,7 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 | 文書の総行数 | 約 4,900 行（`REQ-*` は 87 件） | 1 件あたり約 56 行 |
 | 手書きの Gherkin の例 | 約 2,050 行（総行数の約 42%） | 多くは規則文の言い換えであり、新しい情報を加えていない |
 | 話題の索引の「該当なし：」の行 | 103 行 | 内容のない記入欄になっている |
-| 同じ事実を書く場所 | ユースケースごとの要約表、規則文、エラー表、例、`design.md` | 一つの事実を変えるたびに複数箇所を同期させる |
+| 同じ事実を書く場所 | 操作ごとの要約表、規則文、エラー表、例、`design.md` | 一つの事実を変えるたびに複数箇所を同期させる |
 | 書式を定める文書 | 約 2,000 行（`SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`specification-first-workflow.md`） | エージェントが毎回読む量が大きく、規則と理由の説明が混在している |
 | 要判断 | 15 件 | 未決の点が現在の仕様の中に散在している |
 
@@ -48,8 +67,8 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 
 | 漏れの種類 | 件数 | 例 |
 | --- | --- | --- |
-| 同じ種類のユースケースが経路や Aggregate ごとに異なる | 9 | ユーザー名の大文字と小文字の扱いが User と Agent、Group で異なる。メールアドレスの重複を JIT は拒否し、管理者の作成は拒否しない。削除の予約は下流へ通知し、復元は通知しない |
-| 状態とユースケースの組の結果が決まっていない | 1 | 停止した Agent を削除できない |
+| 同じ種類の操作が経路や Aggregate ごとに異なる | 9 | ユーザー名の大文字と小文字の扱いが User と Agent、Group で異なる。メールアドレスの重複を JIT は拒否し、管理者の作成は拒否しない。削除の予約は下流へ通知し、復元は通知しない |
+| 状態と操作の組の結果が決まっていない | 1 | 停止した Agent を削除できない |
 | 時間で起きる遷移の起点が決まっていない | 1 | 完全削除が一覧の取得のときにしか起きない |
 | 項目の間の不変条件が決まっていない | 1 | メールアドレスを変えても `email_verified` が残る |
 | 失敗や記録が観測できない | 2 | 確認メールの送信失敗を本人が知る手段がない。動的グループによるロールの付与が監査に残らない |
@@ -71,10 +90,10 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 | 要件 | `REQ-*` の ID が付いた一件の約束。今の書式文書が「規則」と呼ぶもの | REQ-IDMANAGEMENT-042 |
 | EARS 形式 | 要件の文を、EARS（Easy Approach to Requirements Syntax）の五つの型のどれかで書く書き方 | 「User が `Disabled` のとき、サインインを拒否する」 |
 | 外部から観測できる振る舞い | API の応答、保存されて後から読める状態、発行するイベントと監査記録、外部への通知として、製品の外から確かめられる結果 | 409 を返す。`UserDeleted` を発行する |
-| ユースケース | 行為者が起こす一つの操作の単位。API の一つの操作か、別の Context から呼ばれる一つのコマンドに当たる | 管理者による User の作成。User の無効化 |
-| 横断的要件 | 複数のユースケースや Aggregate に同じ内容で適用される要件。上位の文書で一度だけ書き、各機能は例外だけを書く | 状態を変えるユースケースは、すでにその状態なら成功を返しイベントを発行しない |
+| 操作 | 行為者が製品に一回要求し、製品が結果を返すまでの単位。HTTP の operation と一対一とは限らず、別の Context からの呼び出しや、時間を契機とする処理も含む | 管理者による User の作成。User の無効化。猶予期間の経過による完全削除 |
+| 横断的要件 | 複数の操作や Aggregate に同じ内容で適用される要件。上位の文書で一度だけ書き、各機能は例外だけを書く | 状態を変える操作は、すでにその状態なら成功を返しイベントを発行しない |
 | 値オブジェクト | ドメイン駆動設計の Value Object。値の正規化、比較、妥当性の判定を一か所で定義する型 | ユーザー名（前後の空白を除き、大文字と小文字を区別しない、など） |
-| 状態遷移表（マトリクス形式） | 行に状態、列にユースケースを並べ、すべてのセルに結果（遷移先、何もしない、拒否とその理由）を書く表 | `PendingDeletion` の行の「無効化」の列に「拒否（409 `user_pending_deletion`）」と書く |
+| 状態遷移表（マトリクス形式） | 行に状態、列に操作を並べ、すべてのセルに結果（遷移先、何もしない、拒否とその理由）を書く表 | `PendingDeletion` の行の「無効化」の列に「拒否（409 `user_pending_deletion`）」と書く |
 
 - 「規則」という語を、書式文書、skills、検査の出力で「要件」に置き換える。
 
@@ -92,14 +111,14 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 | (c) 実装を直す | 偶然の振る舞いであり、なくすべきである | 実装方針を切り替える work item を起票する |
 
 - 「仕様を短く書けない設計は直す」を設計の判断基準として設計ガイドラインに加える。
-  仕様に書けない振る舞いを生まない実装の指針（状態を変えるユースケースを冪等にする、読み取りのユースケースに副作用を加えない、順序と時刻への暗黙の依存を作らない、横断的要件を一か所で実装する）も加える。
+  仕様に書けない振る舞いを生まない実装の指針（状態を変える操作を冪等にする、読み取りの操作に副作用を加えない、順序と時刻への暗黙の依存を作らない、横断的要件を一か所で実装する）も加える。
 
 ### 一つの事実を一か所に書く
 
 - 要件を EARS 形式で書く。
   一文に一つの義務を書く。
   型は、常に成り立つもの（Ubiquitous）、イベントを契機とするもの（Event-driven）、特定の状態の間に成り立つもの（State-driven）、望まない入力や状況への応答（Unwanted behavior）、特定の構成でだけ成り立つもの（Optional feature）の五つとする。
-- ユースケースごとの要約表とエラー表を廃止する。
+- 操作ごとの要約表とエラー表を廃止する。
   要約が要る場合は、要件と TypeSpec から生成サイトで作る。
 - 担保手段の欄を廃止する。
   要件からコードへの追跡は、テストの `//spec:covers` と `spec-route` で行う。
@@ -113,12 +132,12 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 ### 漏れを作成時に見つける仕組み
 
 - 横断的要件を上位の階層で一度だけ定義し、機能の仕様には例外だけを書く。
-  対象は、識別子の正規化と比較、状態を変えるユースケースの冪等性、拒否が作用を起こさないこと、下流への通知とその失敗の扱い、監査を残す範囲とする。
+  対象は、識別子の正規化と比較、状態を変える操作の冪等性、拒否が作用を起こさないこと、下流への通知とその失敗の扱い、監査を残す範囲とする。
 - 値オブジェクト（ユーザー名、メールアドレスなど）の正規化、比較、一意性の範囲を、モデルの節で一度だけ定義する。
 - 状態遷移の節に状態遷移表（マトリクス形式）を置き、すべての組に結果（遷移、何もしない、拒否とその理由）を書く。
   時間で起きる遷移は、その起点も表に書く。
-- ユースケースごとに答える問いの一覧を `spec-change` スキルに置く。
-  問いは、不正な入力、上限、失敗の観測者、記録、他の項目と Aggregate への波及、同じ種類のユースケースの別経路との一致である。
+- 操作ごとに答える問いの一覧を `spec-change` スキルに置く。
+  問いは、不正な入力、上限、失敗の観測者、記録、他の項目と Aggregate への波及、同じ種類の操作の別経路との一致である。
 
 ### 漏れを実装時とテスト時に見つけて反映する手順
 
@@ -166,9 +185,45 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 
 ### 横断的要件の置き場所
 
-横断的要件は、既存の「上位の規則」の仕組み（`docs/design/application/api-guidelines.md` のような上位文書の見出しへリンクし、機能の要件は例外だけを書く）を使う。
-システム全体の規約は `docs/design/application/api-guidelines.md`、Context に固有の規約は Context の `README.md` のモデルの節に置く案を第一とする。
-新しい ID の種類は設けない。
+要件は機能ノードでだけ宣言できるので（検査済みの規則）、Context の `README.md` には要件を置かない。
+次のように置き、新しい ID の種類は設けない。
+
+| 範囲 | 置き場所 |
+| --- | --- |
+| 一つの機能の複数の操作 | 不変条件が最も直接に関わる操作の H3 に一つの要件として置き、ほかの操作は「上位の要件」の欄で参照する |
+| 複数の機能 | その振る舞いを実装する共有の仕組みの機能ノード |
+| システム全体 | `docs/design/application/api-guidelines.md` などのシステム文書 |
+| 複数の機能が使う値 | Context の `README.md` のモデルの節に、値オブジェクトとして定義する |
+
+`principals/user` の試行では、値オブジェクトを機能のモデルの節に置いた。
+User、Group、Agent の名前をそろえる wi-83020 で、Context の `README.md` へ移す。
+
+### 用語の決定
+
+| 対象 | 決定 | 退けた候補と理由 |
+| --- | --- | --- |
+| `REQ-*` の一件 | 要件 | 規則：検査の規則、Gherkin の `Rule`、ガイドラインの規則と区別できない |
+| 機能仕様の H3 の単位 | 操作 | ユースケース：要求工学では複数手順のシナリオを指す。システム操作：「システム」が誤解を招く。処理、振る舞い、機能、コマンド：既存の語とぶつかるか、読み取りを含まない |
+
+### 未記載の振る舞いの分類（principals/user）
+
+| # | 今の挙動 | 分類 | 扱い |
+| --- | --- | --- | --- |
+| 1 | ユーザー名は大文字と小文字を区別する（Agent と Group は区別しない） | (c) | wi-83020。Okta、Entra ID、Google Workspace、Keycloak、SCIM に合わせ、User、Group、Agent の名前を、表記を保ったまま大文字と小文字を区別せずに比較する |
+| 2 | 管理者による作成だけがメールアドレスの重複を拒否しない | (c) | wi-83020 |
+| 3 | フェデレーションの JIT だけが動的グループを評価しない | (c) | wi-83020 |
+| 4 | 期限切れの完全削除が一覧の取得のときにしか起きない | (c) | wi-92312 |
+| 5 | 管理者がメールアドレスを変えても `email_verified` が残る | (c) | wi-93929 |
+| 6 | 削除の予約は下流へ通知するが、復元は通知しない | (c) | wi-93929 |
+| 7 | 途中で失敗した完全削除は、再実行しても回収できない | (c) | wi-92312 |
+| 8 | `Deleted` の User への無効化、再有効化、削除の予約、復元は 404 `user_not_found` で拒否される | (a) | 状態遷移表（マトリクス形式）に書いた。表を作る過程で見つかった |
+
+(c) の各項目は、仕様には現在の挙動を要件として残し、変更はそれぞれの work item で行う。
+
+### 書き起こしの work item の削除
+
+コンテキスト全体の暗黙の仕様を一括で書き起こす 19 件の work item（`wi-*-transcribe-implicit-specifications-of-*`）は、この方式と相いれないので削除した。
+書き起こしは、機能に触れる変更の作業で、触れる範囲だけを行う。
 
 ### 採らない案
 
@@ -189,24 +244,22 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
 5. `principals/user` の要判断 6 件の分類案を利用者に示し、判断を受けて反映する。
 6. `SPECIFICATION_FORMAT.md` をテンプレートと理由の説明に分ける。
 
-未解決の問い（着手時に決める）：
+着手時に決めたこと：
 
-- 横断的要件の置き場所。
-  上の第一案で足りるか、Context の規約に専用の文書が要るかを、`principals/user` の書き直しで確かめて決める。
-- EARS 形式の日本語の型の表記。
-  `principals/user` の要件で型を試し、書式文書へ載せる表記を決める。
-- 担保手段の欄を既存の全文書から一括で消すか、新しい方式へ書き直すときに消すか。
+- 横断的要件の置き場所は、上の「横断的要件の置き場所」の表のとおりとした。
+- EARS 形式の日本語の型は、常時「〈対象〉は、〈結果〉。」、契機「〈契機〉とき、〈結果〉。」、状態「〈状態〉の間は、〈結果〉。」、望まない入力「〈条件〉場合は、〈結果〉。」、構成「〈構成〉では、〈結果〉。」とした。
+- 担保手段の欄と要判断の欄は、その機能を書き直すときに消す。残っている担保手段の値は、引き続き宣言の存在を検査する。
 
 ## タスク
 
-- [ ] T001 [Docs] 書式文書と仕様先行の開発ワークフローを改訂する。
-- [ ] T002 [Tooling] 廃止した形式を必須とする検査を外す。
-- [ ] T003 [Docs] `spec-change` と `implement-work-item` のスキルに問いの一覧と分類の手順を加える。
-- [ ] T004 [Docs] 設計ガイドラインに判断基準と実装の指針を加える。
-- [ ] T005 [Spec] `principals/user` を新しい方式で書き直し、前後の行数を測る。
-- [ ] T006 [Spec] `principals/user` の要判断を分類し、利用者の判断を反映し、(c) を起票する。
-- [ ] T007 [Docs] `SPECIFICATION_FORMAT.md` をテンプレートと理由の説明に分ける。
-- [ ] T008 [Verify] 変更を検証する。
+- [x] T001 [Docs] 書式文書と仕様先行の開発ワークフローを改訂する。代替検査：`mise run check-links`、`mise run check-agent-guidance`。
+- [x] T002 [Tooling] 廃止した形式を必須とする検査を外す。RED：`feature-layout.acceptance.test.ts` の、例のない要件、担保手段のない要件、機能の話題の索引、エラーの節の各テストが、検査を変える前の期待と食い違って失敗した。
+- [x] T003 [Docs] `spec-change` と `implement-work-item` のスキルに問いの一覧と分類の手順を加える。
+- [x] T004 [Docs] 設計ガイドラインに判断基準と実装の指針を加える。
+- [x] T005 [Spec] `principals/user` を新しい方式で書き直し、前後の行数を測る。
+- [x] T006 [Spec] `principals/user` の要判断を分類し、利用者の判断を反映し、(c) を起票する。
+- [x] T007 [Docs] `SPECIFICATION_FORMAT.md` をテンプレートと理由の説明に分ける。
+- [x] T008 [Verify] 変更を検証する。
 
 ## 検証
 
@@ -226,3 +279,28 @@ IdManagement の仕様と設計は、内部仕様の不足を補う追加を重�
   本項目を先に完了させ、wi-99632 は改訂後の文書を移す。
 - wi-87813 が先に完了すると、`affected_spec` のパスが変わる。
   着手時にパスを更新する。
+
+## 完了
+- **Completed At**: 2026-10-04
+- **Summary**:
+  `mise run spec-diff -- main` の結果、規範の差分は REQ-IDMANAGEMENT-001、005、010、011、013、042、043、044、045、046、047、048、049、050 の本文の書き直しと、UserLifecycle の状態遷移の変更（状態遷移表（マトリクス形式）の追加）だけであり、要件の追加と削除はない。
+  仕様フォーマットを規範だけの文書に改め、理由を `docs/development/specification-format-rationale.md` へ分けた（847 行から 593 行と 135 行）。
+  `principals/user` の 4 文書は 719 行から 393 行になり、例は 38 件から 15 件になった。
+  状態遷移表を作る過程で、`Deleted` の User に対する無効化、再有効化、削除の予約、復元の結果（404 `user_not_found`）という未記載の振る舞いが見つかり、表に書いた。
+  (c) に分類した 7 件を wi-83020、wi-93929、wi-92312 として起票し、一括の書き起こしの work item 19 件を削除した。
+- **Acceptance RED Evidence**:
+  - **Test**: `tools/check/src/feature-layout.acceptance.test.ts`
+  - **Requirement**: N/A: 文書の書式と検査の変更であり、製品の要件を変えない。
+  - **Observed Failure**: 検査を変える前の期待のままでは、例のない要件、担保手段のない要件、機能の話題の索引、エラーの節を扱う 4 件のテストが失敗した。修正後の `mise run check-spec` は、エラーの節が残る `user/README.md` を `section エラー is not a section of a feature specification` で拒否した。
+  - **Detection Reason**: 廃止した形式を必須とし続ける検査と、廃止した節を受け付け続ける検査の両方を、実際のワークスペースを組み立てて区別する。
+- **Unit RED Evidence**:
+  - **Test**: `tools/check/src/specification-rules.test.ts`、`tools/check/src/specification-doc.test.ts`
+  - **Requirement**: N/A: 文書の書式と検査の変更であり、製品の要件を変えない。
+  - **Observed Failure**: 上位の要件の欄の名前の変更と、機能の `design.md` の文書種別の変更で、それぞれのテストが旧い期待のまま失敗した。
+  - **Detection Reason**: 欄の名前と文書種別の判定を、文字列だけから確かめる。
+- **Change-Resistance Results**:
+  エラーの節を語彙へ戻す誤実装は、`rejects an errors section` のテストが検出する。
+  旧い欄の名前「上位の規則」を欄として読まない誤実装は、黙って要件文として扱われるので、`rejects the retired parent field name` のテストを加えて検出するようにした。このテストは修正と同時に加えたので、修正前の失敗は観測していない。
+  例のない要件を再び拒否する誤実装は、`accepts a requirement that has no example in the appendix` が検出する。
+- **Verification Results**:
+  - `mise run verify` - 成功

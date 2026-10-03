@@ -82,7 +82,7 @@ const DECISIONS = [
   '',
   '監査記録がタスクを参照しなくなったら再検討する。',
   '',
-  '### 関連する規則',
+  '### 関連する要件',
   '',
   'REQ-DEMO-002',
   '',
@@ -197,16 +197,16 @@ describe('新しい形式の文書検査', () => {
     expect(result.output).toContain('docs/domain/demo/work/task/decisions.md')
   })
 
-  it('rejects a rule that has no example in the appendix', async () => {
+  it('accepts a requirement that has no example in the appendix', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/domain/demo/work/task/README.md',
-      `${SPECIFICATION}\n#### REQ-DEMO-003 閉じたタスクを隠す\n\n- 閉じたタスクは返さない。\n- **担保手段**：\`Task.Open\`\n`,
+      `${SPECIFICATION}\n#### REQ-DEMO-003 閉じたタスクを隠す\n\n- 閉じたタスクは返さない。\n`,
     )
     const result = await runCheck(root, 'documents')
-    expect(result.code).not.toBe(0)
-    expect(result.output).toContain('REQ-DEMO-003 must have at least one example')
+    expect(result.output).not.toContain('REQ-DEMO-003')
+    expect(result.code).toBe(0)
   })
 
   it('rejects an appendix rule the specification does not declare', async () => {
@@ -273,12 +273,24 @@ describe('新しい形式の文書検査', () => {
     expect(result.output).toContain('must have a topic index')
   })
 
-  it('rejects a topic index that leaves out a topic or names an unknown one', async () => {
+  it('accepts a feature design without a topic index', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/domain/demo/work/task/design.md',
-      topicIndex('タスクの設計', '[アーキテクチャ](#アーキテクチャ)')
+      '# タスクの設計\n\n## 信頼性\n\n削除が途中で失敗したら、削除を再実行する。\n',
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.output).not.toContain('docs/domain/demo/work/task/design.md')
+    expect(result.code).toBe(0)
+  })
+
+  it('rejects a topic index that leaves out a topic or names an unknown one', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/design/README.md',
+      topicIndex('Demo の設計', '[アーキテクチャ](architecture.md)')
         .replace(/\| 性能 \|.*\n/, '')
         .replace('| リスク |', '| 運用 |'),
     )
@@ -335,7 +347,7 @@ describe('新しい形式の規則の書式', () => {
     expect(result.code).toBe(0)
   })
 
-  it('rejects a rule without a guarantee', async () => {
+  it('accepts a requirement without a guarantee', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
@@ -343,8 +355,8 @@ describe('新しい形式の規則の書式', () => {
       SPECIFICATION.replace('- **担保手段**：`Task.Open`\n', ''),
     )
     const result = await runCheck(root, 'specification-rules')
-    expect(result.code).not.toBe(0)
-    expect(result.output).toContain('REQ-DEMO-002 must name its guarantee')
+    expect(result.output).toContain('ok  specification rules')
+    expect(result.code).toBe(0)
   })
 
   it('rejects the legacy reason field', async () => {
@@ -357,6 +369,21 @@ describe('新しい形式の規則の書式', () => {
     const result = await runCheck(root, 'specification-rules')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('REQ-DEMO-002 uses 理由; write the reason as 判断')
+  })
+
+  it('rejects the retired parent field name', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      SPECIFICATION.replace(
+        '- **担保手段**：`Task.Open`\n',
+        '- **上位の規則**：[ページサイズ](#一覧)\n',
+      ),
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-002 uses 上位の規則; write the link as 上位の要件')
   })
 
   it('rejects specification sections out of order', async () => {
@@ -373,16 +400,28 @@ describe('新しい形式の規則の書式', () => {
     expect(result.output).toContain('section 概要 must come before 操作')
   })
 
-  it('accepts a quality section between operations and errors', async () => {
+  it('accepts a quality section after operations', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/domain/demo/work/task/README.md',
-      `${SPECIFICATION}\n## 品質\n\n一覧は 1 秒以内に返す。\n\n## エラー\n\n共通のエラーはない。\n`,
+      `${SPECIFICATION}\n## 品質\n\n一覧は 1 秒以内に返す。\n`,
     )
     const result = await runCheck(root, 'specification-rules')
     expect(result.output).toContain('ok  specification rules')
     expect(result.code).toBe(0)
+  })
+
+  it('rejects an errors section, which TypeSpec and the requirements already state', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      `${SPECIFICATION}\n## エラー\n\n共通のエラーはない。\n`,
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('section エラー is not a section of a feature specification')
   })
 
   it('maps a feature slice to a feature node inside a group', async () => {

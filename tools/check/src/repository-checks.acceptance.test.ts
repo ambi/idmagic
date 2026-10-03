@@ -722,7 +722,7 @@ describe('規則の書式と仕様の木の検査', () => {
         '',
         '### Rule: REQ-DEMO-002 開いたタスクだけを一覧する',
         '',
-        `- 上位の規則：${parent}`,
+        `- 上位の要件：${parent}`,
         '- 既定値は 10 件とする。',
         `- 担保手段：\`${guarantee}\``,
         '',
@@ -737,7 +737,7 @@ describe('規則の書式と仕様の木の検査', () => {
   }
   const parentLink = '[ページサイズ](../../../design/application/api-guidelines.md#ページサイズ)'
 
-  it('accepts a feature node whose guarantee and parent rule both resolve', async () => {
+  it('accepts a feature node whose guarantee and parent requirement both resolve', async () => {
     const result = await checkSpecificationRules(await featureWorkspace('Task.Open', parentLink))
     expect(result.output).toContain('ok  specification rules')
     expect(result.code).toBe(0)
@@ -751,7 +751,7 @@ describe('規則の書式と仕様の木の検査', () => {
     )
   })
 
-  it('rejects a parent rule whose heading does not exist', async () => {
+  it('rejects a parent requirement whose heading does not exist', async () => {
     const result = await checkSpecificationRules(
       await featureWorkspace(
         'Task.Open',
@@ -759,7 +759,7 @@ describe('規則の書式と仕様の木の検査', () => {
       ),
     )
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('REQ-DEMO-002 parent rule does not resolve')
+    expect(result.output).toContain('REQ-DEMO-002 parent requirement does not resolve')
   })
 
   it('rejects a feature slice with no feature node', async () => {

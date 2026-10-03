@@ -25,7 +25,7 @@ import (
 // 読み直すほかに知る方法がない。完全削除は取り返しがつかないので、拒否が
 // 「応答を書いてから cascade も走る」形になっていないことまで確かめる。
 //
-//spec:covers EX-IDMANAGEMENT-013-02: 対象が操作者自身であり `admin` または `system_admin` を
+//spec:covers REQ-IDMANAGEMENT-013: 対象が操作者自身であり `admin` または `system_admin` を
 func TestSelfDeleteRefusalKeepsTheAdministratorActive(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-self", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -206,7 +206,7 @@ func (f *idmRefusalFixture) dynamicRule(t *testing.T, groupID string) *groupdoma
 
 // REQ-IDMANAGEMENT-046 の主要な使い方を、管理 API の経路で固定する。
 //
-//spec:covers EX-IDMANAGEMENT-046-04: 管理 API で削除を予約した User の無効化と再有効化が 409 user_pending_deletion で拒否され、削除の予約がそのまま残ること。
+//spec:covers REQ-IDMANAGEMENT-046: 管理 API で削除を予約した User の無効化と再有効化が 409 user_pending_deletion で拒否され、削除の予約がそのまま残ること。
 func TestDisableAndEnableRefuseAPendingDeletionUser(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-pending", tenancydomain.DefaultTenantID, idmRefusalAdmin)

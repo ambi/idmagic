@@ -537,7 +537,7 @@ describe('renderDocumentationSite', () => {
       expect(result.files[page]).toBeDefined()
     }
     expect(task).toContain('stateDiagram')
-    expect(task).toContain('規則一覧')
+    expect(task).toContain('要件一覧')
     expect(task).toContain('href="lifecycle.html#')
     expect(task).toContain('未決事項')
     expect(task).toContain('上限を設けるかを決める。')
