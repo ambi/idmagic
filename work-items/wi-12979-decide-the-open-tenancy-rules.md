@@ -8,12 +8,12 @@ priority: p2
 depends_on: [wi-78471-transcribe-implicit-specifications-of-tenancy]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/tenancy/lifecycle/scenarios.feature.md, requirement: REQ-TENANCY-026 }
-  - { path: docs/domain/tenancy/lifecycle/scenarios.feature.md, requirement: REQ-TENANCY-027 }
-  - { path: docs/domain/tenancy/settings/scenarios.feature.md, requirement: REQ-TENANCY-031 }
-  - { path: docs/domain/tenancy/branding/scenarios.feature.md, requirement: REQ-TENANCY-032 }
-  - { path: docs/domain/tenancy/quota/scenarios.feature.md, requirement: REQ-TENANCY-037 }
-  - { path: docs/domain/tenancy/notification-template/scenarios.feature.md, requirement: REQ-TENANCY-039 }
+  - { path: docs/domain/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-026 }
+  - { path: docs/domain/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-027 }
+  - { path: docs/domain/tenancy/settings/README.md, requirement: REQ-TENANCY-031 }
+  - { path: docs/domain/tenancy/branding/README.md, requirement: REQ-TENANCY-032 }
+  - { path: docs/domain/tenancy/quota/README.md, requirement: REQ-TENANCY-037 }
+  - { path: docs/domain/tenancy/notification-template/README.md, requirement: REQ-TENANCY-039 }
 ---
 
 # Tenancy の規則に残した要判断を決める

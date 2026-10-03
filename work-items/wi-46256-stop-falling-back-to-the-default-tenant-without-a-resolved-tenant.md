@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/tenancy/resolution/scenarios.feature.md, requirement: REQ-TENANCY-006 }
+  - { path: docs/domain/tenancy/resolution/README.md, requirement: REQ-TENANCY-006 }
 ---
 
 # テナントを解決していない文脈で default テナントへ落ちない

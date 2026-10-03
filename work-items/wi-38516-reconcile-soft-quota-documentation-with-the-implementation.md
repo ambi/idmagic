@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/tenancy/quota/scenarios.feature.md, requirement: REQ-TENANCY-036 }
+  - { path: docs/domain/tenancy/quota/README.md, requirement: REQ-TENANCY-036 }
 ---
 
 # Soft Quota の文書と実装の食い違いを解消する

@@ -7,7 +7,7 @@ priority: p3
 change_kind: feature
 affected_spec:
   - { path: docs/domain/identity-governance/scenarios.feature.md, requirement: REQ-IDGOVERNANCE-008 }
-  - { path: docs/domain/tenancy/notification-template/scenarios.feature.md, requirement: REQ-TENANCY-016 }
+  - { path: docs/domain/tenancy/notification-template/README.md, requirement: REQ-TENANCY-016 }
 depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-email-sender-adapter]
 ---
 
@@ -21,7 +21,7 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 リンクを含めたい」といった要求が高頻度で発生する。固定テンプレートのままでは実運用に耐えない。
 
 ## Scope
-- `docs/domain/tenancy/internals.md` の通知テンプレートカタログに
+- `docs/domain/tenancy/notification-template/design.md` の通知テンプレートカタログに
   `NotificationTemplate` (tenant-scoped、locale 別の件名・本文、許可された変数の集合) を追加する。
 - `send_email` action の `template_key` を、テナント定義の `NotificationTemplate` または製品固定
   template のいずれかを参照できるようにする。

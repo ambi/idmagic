@@ -58,7 +58,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
   - `docs/domain/standards.md` と `docs/domain/system/decisions.md` へ記録する決定 (アクセシビリティ適合の範囲と検証方法): 準拠レベル (WCAG 2.2 AA)、
     必達対象画面の段階、自動検査で担保する範囲と手動確認に残す範囲
     (axe-core は全項目を検出できないため、境界を明記する)、
-    `docs/domain/tenancy/decisions.md` のブランド配色のコントラスト検査 との整合
+    `docs/domain/tenancy/design/decisions.md` のブランド配色のコントラスト検査 との整合
     (テナントブランディングのコントラストは advisory のままで、既定テーマは AA を満たす)、
     違反を CI で落とす閾値を記録する。
 - **frontend**:
@@ -89,7 +89,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 - 管理コンソール全画面の AA 準拠 (第 3 段として範囲に入れるが、本 WI の必達は認証 UI と
   アカウントポータル)。
 - テナントが設定したブランディング色のコントラスト強制。
-  → `docs/domain/tenancy/decisions.md` のブランド配色のコントラスト検査 の advisory 方針を維持する。
+  → `docs/domain/tenancy/design/decisions.md` のブランド配色のコントラスト検査 の advisory 方針を維持する。
 - 実ユーザー (支援技術利用者) を招いたユーザビリティテスト。
 - 正式な VPAT / ACR の第三者監査。本 WI は自己試験結果を書ける状態を作るところまで。
 - メール本文のアクセシビリティ。→ [[wi-288-localized-notification-template-catalog-and-tenant-customization]]

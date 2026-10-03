@@ -17,7 +17,6 @@
     "signing-keys",
     "sourcing",
     "system",
-    "tenancy",
     "workloadidentity",
     "ws-federation"
   ]

@@ -39,7 +39,7 @@ Bounded Context の境界とは別の概念である。
 
 ## Aggregate 境界と Repository
 
-Aggregate は一貫性の境界である（語の定義は [用語集](../../domain/glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[Tenancy Context の判断](../../domain/tenancy/decisions.md)）は、この基準を適用した結果である。
+Aggregate は一貫性の境界である（語の定義は [用語集](../../domain/glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[Tenancy の重要な設計判断](../../domain/tenancy/design/decisions.md)）は、この基準を適用した結果である。
 
 1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断と理由は、その規則の判断の欄か、その Context の設計（`design/decisions.md` と話題ごとの設計）に記録する。現在ある類型は 2 つである。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[ユーザーの設計](../../domain/identity-management/user/design.md)）。もう 1 つは、アクショントークンの使用済み化と、そのトークンが認可した用途別作用である（[Authentication Context のパスワードの判断](../../domain/authentication/password/decisions.md)、[メールアドレスの変更の規則](../../domain/identity-management/account/README.md#メールアドレスの変更の確定)）。片方だけが残る状態は、同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失うかのどちらかになる。
 

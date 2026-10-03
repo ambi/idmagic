@@ -1,42 +1,31 @@
-# Feature: テナントの解決のシナリオ
+# Feature: テナントの解決の例
 
-## 入力
+## Rule: REQ-TENANCY-022 Host は大文字と小文字、ポート、末尾のドットを区別せず、単一のラベルだけを realm として読む
 
-### Rule: REQ-TENANCY-022 Host は大文字と小文字、ポート、末尾のドットを区別せず、単一のラベルだけを realm として読む
-
-- Host は、前後の空白、ポート番号、末尾のドットを除き、小文字にしてから `{label}.{tenant_base_domain}` と照合する。
-- `{label}` が空の Host と、`{label}` にドットを含む Host は、どのテナントにも解決しない。
-- `tenant_base_domain` を設定していないデプロイでは、Host からテナントを解決しない。
-- **担保手段**：`Deps.ResolveHostTenant`
-
-#### Example: EX-TENANCY-022-01 大文字、ポート、末尾のドットを含む Host
+### Example: EX-TENANCY-022-01 大文字、ポート、末尾のドットを含む Host
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
 - When Host "ACME.{TENANT_BASE_DOMAIN}.:8443" の "/authorize" にリクエストを送る
 - Then 解決されたテナントは "acme" である
 
-#### Example: EX-TENANCY-022-02 realm の左にラベルを重ねた Host
+### Example: EX-TENANCY-022-02 realm の左にラベルを重ねた Host
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
 - When Host "evil.acme.{tenant_base_domain}" の "/authorize" にリクエストを送る
 - Then 404 tenant_not_found になり、テナント "acme" には到達しない
 
-## 結果
+## Rule: REQ-TENANCY-006 path style のテナントは realm prefix から解決される
 
-### Rule: REQ-TENANCY-006 path style のテナントは realm prefix から解決される
-
-Primary actor: `OAuth2Client`
-
-#### Example: EX-TENANCY-006-01 通常経路
+### Example: EX-TENANCY-006-01 通常経路
 
 - Given テナント "default" の endpoint_style は Path である
 - When "/realms/default/authorize" にリクエストを送る
 - Then 解決されたテナントは "default"
 - Then iss claim はベースURL + /realms/default
 
-#### Example: EX-TENANCY-006-02 対象テナントが無効化されている
+### Example: EX-TENANCY-006-02 対象テナントが無効化されている
 
 - Given テナント "default" の endpoint_style は Path である
 - When "/realms/default/authorize" にリクエストを送る
@@ -45,7 +34,7 @@ Primary actor: `OAuth2Client`
 - And  無効化済みテナントの "/realms/acme/authorize" にリクエストを送る
 - And  テナントの存在を漏らさずエラー "InvalidRequestError"
 
-#### Example: EX-TENANCY-006-03 realm prefix を持たない "/authorize" にリクエストを送る
+### Example: EX-TENANCY-006-03 realm prefix を持たない "/authorize" にリクエストを送る
 
 - Given テナント "default" の endpoint_style は Path である
 - When "/realms/default/authorize" にリクエストを送る
@@ -53,11 +42,9 @@ Primary actor: `OAuth2Client`
 - Then テナントは解決されず 404 tenant_not_found になる
 - And 任意のリクエストが default テナントへ落ちることはない
 
-### Rule: REQ-TENANCY-007 subdomain style のテナントは Host から解決される
+## Rule: REQ-TENANCY-007 subdomain style のテナントは Host から解決される
 
-Primary actor: `EndUser`
-
-#### Example: EX-TENANCY-007-01 通常経路
+### Example: EX-TENANCY-007-01 通常経路
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
@@ -66,11 +53,9 @@ Primary actor: `EndUser`
 - Then セッション cookie は __Host- prefix と Path=/ を持ち Domain 属性を持たない
 - Then WebAuthn RP ID は "acme.{tenant_base_domain}" である
 
-### Rule: REQ-TENANCY-010 Discovery Metadata の `issuer` は取得元 URL と一致する
+## Rule: REQ-TENANCY-010 Discovery Metadata の `issuer` は取得元 URL と一致する
 
-Primary actor: `OAuth2Client`
-
-#### Example: EX-TENANCY-010-01 通常経路
+### Example: EX-TENANCY-010-01 通常経路
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "default" の endpoint_style は Path、テナント "acme" の endpoint_style は Subdomain である
@@ -80,44 +65,33 @@ Primary actor: `OAuth2Client`
 - Then issuer は "https://acme.{tenant_base_domain}" であり、取得元 URL の prefix と一致する
 - Then どちらのレスポンスもエンドポイントURLを自分の正規ロケーション配下だけで組み立てる
 
-### Rule: REQ-TENANCY-024 解決したテナントの応答は Host への依存を示し、発行者はデプロイの発行者から導出する
+## Rule: REQ-TENANCY-024 解決したテナントの応答は Host への依存を示し、発行者はデプロイの発行者から導出する
 
-- 解決に成功したすべての応答に `Vary: Host` を付ける。
-- `Path` のテナントの発行者は `{base}/realms/{realm}` とする。`{base}` はデプロイに設定した発行者の URL である。
-- `Subdomain` のテナントの発行者は `{scheme}://{realm}.{tenant_base_domain}{:port}` とする。`{scheme}` と `{:port}` は `{base}` のものを引き継ぐ。
-- **担保手段**：`Deps.CanonicalLocation`
-
-#### Example: EX-TENANCY-024-01 解決に成功した応答
+### Example: EX-TENANCY-024-01 解決に成功した応答
 
 - Given テナント "default" の endpoint_style は Path である
 - When "/realms/default/.well-known/openid-configuration" を取得する
 - Then 応答は `Vary: Host` を持つ
 
-#### Example: EX-TENANCY-024-02 ポートを持つ発行者のデプロイ
+### Example: EX-TENANCY-024-02 ポートを持つ発行者のデプロイ
 
 - Given デプロイの発行者は "http://localhost:5173" で、`tenant_base_domain` は "idp.test" である
 - And テナント "acme" の endpoint_style は Subdomain である
 - When テナント "acme" の正規ロケーションを導出する
 - Then 発行者は "http://acme.idp.test:5173" である
 
-## 拒否
+## Rule: REQ-TENANCY-008 未知のサブドメインは default テナントに解決されない
 
-### Rule: REQ-TENANCY-008 未知のサブドメインは default テナントに解決されない
-
-Primary actor: `OAuth2Client`
-
-#### Example: EX-TENANCY-008-01 通常経路
+### Example: EX-TENANCY-008-01 通常経路
 
 - Given `tenant_base_domain` が設定されている
 - And realm "unknown" のテナントは存在しない
 - When Host "unknown.{tenant_base_domain}" の "/authorize" にリクエストを送る
 - Then 404 tenant_not_found になり、default テナントにも他のどのテナントにも到達しない
 
-### Rule: REQ-TENANCY-009 テナントは自分の正規ロケーション以外からは到達できない
+## Rule: REQ-TENANCY-009 テナントは自分の正規ロケーション以外からは到達できない
 
-Primary actor: `OAuth2Client`
-
-#### Example: EX-TENANCY-009-01 通常経路
+### Example: EX-TENANCY-009-01 通常経路
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
@@ -125,7 +99,7 @@ Primary actor: `OAuth2Client`
 - When "/realms/acme/authorize" にリクエストを送る
 - Then acme は Subdomain なので path prefix 経路では不在として扱われ 404 になる
 
-#### Example: EX-TENANCY-009-02 Host "beta.{tenant_base_domain}" の "/authorize" にリクエストを送る
+### Example: EX-TENANCY-009-02 Host "beta.{tenant_base_domain}" の "/authorize" にリクエストを送る
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
@@ -134,7 +108,7 @@ Primary actor: `OAuth2Client`
 - But Host "beta.{tenant_base_domain}" の "/authorize" にリクエストを送る
 - Then beta は Path なのでサブドメイン経路では不在として扱われ 404 になる
 
-#### Example: EX-TENANCY-009-03 Host "acme.{tenant_base_domain}" の "/realms/beta/authorize" にリクエストを送る
+### Example: EX-TENANCY-009-03 Host "acme.{tenant_base_domain}" の "/realms/beta/authorize" にリクエストを送る
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
@@ -143,35 +117,25 @@ Primary actor: `OAuth2Client`
 - But Host "acme.{tenant_base_domain}" の "/realms/beta/authorize" にリクエストを送る
 - Then acme の origin から beta へ到達することはできず 404 になる
 
-### Rule: REQ-TENANCY-023 解決の拒否は、テナントの存在と状態を正規ロケーションの外へ漏らさない
+## Rule: REQ-TENANCY-023 解決の拒否は、テナントの存在と状態を正規ロケーションの外へ漏らさない
 
-- 解決できないリクエストには、状態コード 404 と本文 `{"error":"tenant_not_found"}` を返す。
-- realm が存在しない場合と、テナントは存在するが到達経路が `endpoint_style` と一致しない場合とで、応答を変えない。
-- 無効化されたテナントへ正規ロケーション以外から到達したリクエストにも、同じ 404 を返す。
-- 無効化されたテナントへ正規ロケーションから到達したリクエストには、プロトコルの経路か管理 API の経路かを問わず、状態コード 400 と `error` が `invalid_request` の本文を返す。
-- **担保手段**：`Deps.ResolvePathTenant`、`Deps.ResolveHostTenant`
-
-#### Example: EX-TENANCY-023-01 無効化されたテナントへ正規ロケーション以外から到達する
+### Example: EX-TENANCY-023-01 無効化されたテナントへ正規ロケーション以外から到達する
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain で、無効化されている
 - When "/realms/acme/authorize" にリクエストを送る
 - Then 存在しない realm を指定したときと同じ 404 tenant_not_found になる
 
-#### Example: EX-TENANCY-023-02 無効化されたテナントの管理 API へ正規ロケーションから到達する
+### Example: EX-TENANCY-023-02 無効化されたテナントの管理 API へ正規ロケーションから到達する
 
 - Given テナント "acme" の endpoint_style は Path で、無効化されている
 - When "/realms/acme/api/branding" にリクエストを送る
 - Then 状態コード 400 と `error` が `invalid_request` の本文が返る
 - And ブランド設定は返らない
 
-## 作用
+## Rule: REQ-TENANCY-011 System管理者はテナントの正規ロケーションを切り替えられる
 
-### Rule: REQ-TENANCY-011 System管理者はテナントの正規ロケーションを切り替えられる
-
-Primary actor: `SystemAdministrator`
-
-#### Example: EX-TENANCY-011-01 通常経路
+### Example: EX-TENANCY-011-01 通常経路
 
 - Given system_admin ロールを持つ "sysadmin" が認証済みである
 - And `tenant_base_domain` が設定されている
@@ -181,7 +145,7 @@ Primary actor: `SystemAdministrator`
 - Then "{base}/realms/acme/..." は 404 になる
 - Then issuer と WebAuthn RP ID が新しい正規ロケーション由来の値に変わる
 
-#### Example: EX-TENANCY-011-02 `tenant_base_domain` が設定されていない環境で `Subdomain` を指定する
+### Example: EX-TENANCY-011-02 `tenant_base_domain` が設定されていない環境で `Subdomain` を指定する
 
 - Given system_admin ロールを持つ "sysadmin" が認証済みである
 - And `tenant_base_domain` が設定されている

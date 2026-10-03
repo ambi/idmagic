@@ -8,7 +8,7 @@ change_kind: feature
 priority: p2
 depends_on: [wi-462-control-plane-console-single-entry]
 affected_spec:
-  - { path: docs/domain/tenancy/lifecycle/scenarios.feature.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/domain/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-014 }
   - { path: docs/domain/signing-keys/scenarios.feature.md, requirement: REQ-SIGNINGKEYS-008 }
   - { path: docs/domain/data-keys/scenarios.feature.md, requirement: REQ-DATAKEYS-006 }
   - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }

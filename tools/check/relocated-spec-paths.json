@@ -62,5 +62,21 @@
   ],
   "docs/domain/identity-management/common/roles/README.md": [
     "docs/domain/identity-management/roles/README.md"
+  ],
+  "docs/domain/tenancy/lifecycle/scenarios.feature.md": ["docs/domain/tenancy/lifecycle/README.md"],
+  "docs/domain/tenancy/resolution/scenarios.feature.md": [
+    "docs/domain/tenancy/resolution/README.md"
+  ],
+  "docs/domain/tenancy/settings/scenarios.feature.md": ["docs/domain/tenancy/settings/README.md"],
+  "docs/domain/tenancy/branding/scenarios.feature.md": ["docs/domain/tenancy/branding/README.md"],
+  "docs/domain/tenancy/attribute-schema/scenarios.feature.md": [
+    "docs/domain/tenancy/attribute-schema/README.md"
+  ],
+  "docs/domain/tenancy/quota/scenarios.feature.md": ["docs/domain/tenancy/quota/README.md"],
+  "docs/domain/tenancy/integration-endpoints/scenarios.feature.md": [
+    "docs/domain/tenancy/integration-endpoints/README.md"
+  ],
+  "docs/domain/tenancy/notification-template/scenarios.feature.md": [
+    "docs/domain/tenancy/notification-template/README.md"
   ]
 }

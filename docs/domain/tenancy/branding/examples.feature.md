@@ -1,22 +1,8 @@
-# Feature: ブランド設定のシナリオ
+# Feature: ブランド設定の例
 
-## 入力
+## Rule: REQ-TENANCY-032 ブランド設定の文字列は空白を除いて保存し、空文字列は未設定に戻す
 
-### Rule: REQ-TENANCY-032 ブランド設定の文字列は空白を除いて保存し、空文字列は未設定に戻す
-
-- 文字列の項目は、前後の空白を除いて保存する。
-- 省略した項目は保存済みの値を変えず、空文字列は項目を未設定に戻す。
-- `product_name` とフッターリンクのラベルは 80 文字以下、`footer_text` は 280 文字以下、フッターリンクの URL は 2,048 文字以下とする。
-- フッターリンクのラベルは、UTF-8 で 80 バイト以下とする。
-- 色は `#` と 16 進 6 桁で書き、16 進の大文字と小文字を区別しない。
-- フッターリンクの URL は、小文字の `https://` で始まる。
-- フッターリンクは、ラベルと URL の両方を指定するか、両方を空にする。
-- 反する入力は `invalid_branding` の 400 で拒否し、何も保存しない。
-- **理由**：[ブランド設定の設計判断](decisions.md)
-- **担保手段**：`TenantBranding.Validate`、`UpdateBranding`
-- **要判断**：ラベルのバイト数の上限は、日本語のラベルを 26 文字までに制限する。文字数の上限だけにそろえるかを決める。
-
-#### Example: EX-TENANCY-032-01 空白を含む値と空文字列
+### Example: EX-TENANCY-032-01 空白を含む値と空文字列
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が `product_name` に " Acme ID " を保存する
@@ -24,54 +10,42 @@
 - When "operator" が `product_name` に空文字列を保存する
 - Then 取得したブランド設定は `product_name` を持たない
 
-#### Example: EX-TENANCY-032-02 27 文字の日本語のラベル
+### Example: EX-TENANCY-032-02 27 文字の日本語のラベル
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が 27 文字の日本語のラベルと HTTPS の URL を `footer_link_1` に保存する
 - Then `invalid_branding` の 400 で拒否され、何も保存されない
 
-#### Example: EX-TENANCY-032-03 大文字のスキームで始まる URL
+### Example: EX-TENANCY-032-03 大文字のスキームで始まる URL
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が `footer_link_1` の URL に "HTTPS://help.example.test" を保存する
 - Then `invalid_branding` の 400 で拒否され、何も保存されない
 
-### Rule: REQ-TENANCY-033 ロゴとファビコンは 256 KiB 以下の PNG、JPEG、WebP、GIF だけを受け付ける
+## Rule: REQ-TENANCY-033 ロゴとファビコンは 256 KiB 以下の PNG、JPEG、WebP、GIF だけを受け付ける
 
-- 種別は `logo` と `favicon` だけを受け付け、ほかの種別は `invalid_request` の 400 で拒否する。
-- 形式は先頭のバイト列で判定し、PNG、JPEG、WebP、GIF 以外は `invalid_request` の 400 で拒否する。
-- 大きさは 262,144 バイト以下とし、超える画像は `invalid_request` の 400 で拒否する。
-- アップロードは画像を新しい ID で保存し、`logo_url` または `favicon_url` をその ID の配信 URL に置き換える。
-- 削除は、保存済みの画像と URL を消す。ブランド設定が未設定のテナントでも成功する。
-- アップロードと削除は、成功した場合に `TenantBrandingUpdated` を発行し、`changed_fields` に種別を載せる。
-- **担保手段**：`UploadBrandingAsset`、`DeleteBrandingAsset`、`DetectImageContentType`
-
-#### Example: EX-TENANCY-033-01 ちょうど 262,144 バイトの PNG
+### Example: EX-TENANCY-033-01 ちょうど 262,144 バイトの PNG
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が 262,144 バイトの PNG をロゴとしてアップロードする
 - Then アップロードは成功し、レスポンスに `logo_url` が含まれる
 
-#### Example: EX-TENANCY-033-02 262,145 バイトの PNG
+### Example: EX-TENANCY-033-02 262,145 バイトの PNG
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が 262,145 バイトの PNG をロゴとしてアップロードする
 - Then `invalid_request` の 400 で拒否され、ブランド設定は `logo_url` を持たない
 
-#### Example: EX-TENANCY-033-03 ブランド設定が未設定のテナントで削除する
+### Example: EX-TENANCY-033-03 ブランド設定が未設定のテナントで削除する
 
 - Given admin ロールを持つ "operator" が認証済みである
 - And テナントはブランド設定を一度も保存していない
 - When "operator" がロゴを削除する
 - Then 200 と空のブランド設定が返る
 
-## 結果
+## Rule: REQ-TENANCY-004 管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に反映される
 
-### Rule: REQ-TENANCY-004 管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に反映される
-
-Primary actor: `TenantAdministrator`
-
-#### Example: EX-TENANCY-004-01 通常経路
+### Example: EX-TENANCY-004-01 通常経路
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PNG ロゴをアップロードする
@@ -86,7 +60,7 @@ Primary actor: `TenantAdministrator`
 - When 未認証の利用者が login 画面を開く
 - Then login / 同意 / account portal に設定したロゴが表示され、login 画面にはプライマリカラーのシステムデフォルト・設定済みアクセントカラー・指定ラベルの footer リンク・フッターテキストも表示される
 
-#### Example: EX-TENANCY-004-02 別テナントの id で同じ kind のアセット取得を試みる
+### Example: EX-TENANCY-004-02 別テナントの id で同じ kind のアセット取得を試みる
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PNG ロゴをアップロードする
@@ -96,7 +70,7 @@ Primary actor: `TenantAdministrator`
 - Then アセットは存在しないものとして扱われ、応答は存在しない id を指定したときと同じ 404 not_found である
 - Then 応答にアップロードした PNG の内容は含まれない
 
-#### Example: EX-TENANCY-004-03 realm 配下の logo_url をゲートウェイ越しに取得する
+### Example: EX-TENANCY-004-03 realm 配下の logo_url をゲートウェイ越しに取得する
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が管理画面からゲートウェイ越しに PNG ロゴをアップロードする
@@ -104,56 +78,40 @@ Primary actor: `TenantAdministrator`
 - When logo_url をゲートウェイ越しに GET する
 - Then ゲートウェイは要求を backend へ転送し、アップロードした PNG と同じバイト列が image/png で返る
 
-### Rule: REQ-TENANCY-034 公開のブランド設定は、版を表す ETag とともに返す
+## Rule: REQ-TENANCY-034 公開のブランド設定は、版を表す ETag とともに返す
 
-- ブランド設定の取得は認証を求めず、未設定の項目を省いて返す。
-- ブランド設定が未設定のテナントでは、ETag を `"branding-default"` とする。
-- ブランド設定を保存済みのテナントでは、ETag を最終更新時刻から導出し、更新のたびに変える。
-- `If-None-Match` が ETag と完全に一致する要求には、本文のない 304 を返す。
-- 応答に `Cache-Control: public, max-age=60` を付ける。
-- **担保手段**：`Deps.handleGetBranding`
-
-#### Example: EX-TENANCY-034-01 ブランド設定が未設定のテナント
+### Example: EX-TENANCY-034-01 ブランド設定が未設定のテナント
 
 - When 未認証の利用者がブランド設定を取得する
 - Then 200 と空のブランド設定が返り、ETag は `"branding-default"`、Cache-Control は `public, max-age=60` である
 
-#### Example: EX-TENANCY-034-02 取得済みの ETag を If-None-Match に指定する
+### Example: EX-TENANCY-034-02 取得済みの ETag を If-None-Match に指定する
 
 - When 未認証の利用者が、直前の応答の ETag を `If-None-Match` に指定してブランド設定を取得する
 - Then 本文のない 304 が返る
 
-#### Example: EX-TENANCY-034-03 ブランド設定を更新した後
+### Example: EX-TENANCY-034-03 ブランド設定を更新した後
 
 - Given 未認証の利用者がブランド設定の ETag を取得済みである
 - When 管理者がブランド設定を更新する
 - Then 次の取得の ETag は、取得済みの ETag と異なる
 
-### Rule: REQ-TENANCY-035 ブランドアセットは、検証済みの形式と nosniff を付けて配信する
+## Rule: REQ-TENANCY-035 ブランドアセットは、検証済みの形式と nosniff を付けて配信する
 
-- `Content-Type` は、保存時に先頭のバイト列から判定した形式とする。
-- 応答に `X-Content-Type-Options: nosniff` と `Cache-Control: private, max-age=3600` を付ける。
-- 種別が `logo` でも `favicon` でもない要求と、存在しない ID の要求には、`not_found` の 404 を返す。
-- **担保手段**：`Deps.handleGetBrandingAsset`
-
-#### Example: EX-TENANCY-035-01 アップロードしたロゴを取得する
+### Example: EX-TENANCY-035-01 アップロードしたロゴを取得する
 
 - Given 管理者が PNG のロゴをアップロード済みである
 - When 未認証の利用者が `logo_url` を取得する
 - Then Content-Type は `image/png` で、応答は `X-Content-Type-Options: nosniff` と `Cache-Control: private, max-age=3600` を持つ
 
-#### Example: EX-TENANCY-035-02 未知の種別を指定する
+### Example: EX-TENANCY-035-02 未知の種別を指定する
 
 - When 未認証の利用者が種別 "banner" のアセットを取得する
 - Then `not_found` の 404 が返る
 
-## 拒否
+## Rule: REQ-TENANCY-005 不正な branding 入力は拒否されシステムデフォルトにフォールバックする
 
-### Rule: REQ-TENANCY-005 不正な branding 入力は拒否されシステムデフォルトにフォールバックする
-
-Primary actor: `TenantAdministrator`
-
-#### Example: EX-TENANCY-005-01 通常経路
+### Example: EX-TENANCY-005-01 通常経路
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が branding を一度も設定していないテナントで login 画面を開く
@@ -165,7 +123,7 @@ Primary actor: `TenantAdministrator`
 - When 管理者が SVG ファイルをロゴとしてアップロードする
 - Then InvalidRequestError で拒否され保存されない
 
-#### Example: EX-TENANCY-005-02 footer_link_1 に label だけを指定する
+### Example: EX-TENANCY-005-02 footer_link_1 に label だけを指定する
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が branding を一度も設定していないテナントで login 画面を開く
