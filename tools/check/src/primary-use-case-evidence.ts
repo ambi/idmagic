@@ -39,7 +39,7 @@ function affectedRequirements(record: RecordValue): Set<string> {
 
 function verifyTestReference(
   useCaseId: string,
-  role: 'Unit' | 'E2E',
+  role: string,
   value: unknown,
   requirement: string,
   environment: PrimaryUseCaseEnvironment,
@@ -89,11 +89,14 @@ function sameTest(left: unknown, right: unknown): boolean {
 function verifyCompletionEvidence(
   plans: RecordValue[],
   completion: RecordValue | undefined,
+  selectedBoundaries: boolean,
 ): string[] {
   const rawEvidence = completion?.primary_use_case_evidence
   const evidence = objects(rawEvidence)
   if (!Array.isArray(rawEvidence) || evidence.length === 0) {
-    return ['completion.primary_use_case_evidence is required for applicable risk-based-v3 work']
+    return [
+      `completion.primary_use_case_evidence is required for applicable risk-based-v${selectedBoundaries ? 4 : 3} work`,
+    ]
   }
 
   const findings: string[] = []
@@ -108,12 +111,17 @@ function verifyCompletionEvidence(
     byId.set(id, result)
   }
 
-  const requiredResults: Array<[keyof RecordValue, string]> = [
-    ['unit_red', 'Unit RED'],
-    ['e2e_red', 'E2E RED'],
-    ['unit_fault_injection', 'Unit fault-injection'],
-    ['e2e_fault_injection', 'E2E fault-injection'],
-  ]
+  const requiredResults: Array<[keyof RecordValue, string]> = selectedBoundaries
+    ? [
+        ['red', 'RED'],
+        ['fault_injection', 'fault-injection'],
+      ]
+    : [
+        ['unit_red', 'Unit RED'],
+        ['e2e_red', 'E2E RED'],
+        ['unit_fault_injection', 'Unit fault-injection'],
+        ['e2e_fault_injection', 'E2E fault-injection'],
+      ]
   const planIds = new Set<string>()
   for (const plan of plans) {
     const id = text(plan.id)
@@ -143,7 +151,9 @@ export function verifyPrimaryUseCaseEvidence(
   environment: PrimaryUseCaseEnvironment,
 ): string[] {
   const active = record.status === 'in_progress' || record.status === 'completed'
-  if (!active || record.evidence_policy !== 'risk-based-v3') return []
+  if (!active || !['risk-based-v3', 'risk-based-v4'].includes(String(record.evidence_policy)))
+    return []
+  const selectedBoundaries = record.evidence_policy === 'risk-based-v4'
 
   const completion = object(record.completion)
   if (!applicable(record)) {
@@ -151,12 +161,12 @@ export function verifyPrimaryUseCaseEvidence(
     const findings: string[] = []
     if (!object(completion?.acceptance_red_evidence)) {
       findings.push(
-        'completion.acceptance_red_evidence is required for non-applicable risk-based-v3 work',
+        `completion.acceptance_red_evidence is required for non-applicable ${record.evidence_policy} work`,
       )
     }
     if (!object(completion?.unit_red_evidence)) {
       findings.push(
-        'completion.unit_red_evidence is required for non-applicable risk-based-v3 work',
+        `completion.unit_red_evidence is required for non-applicable ${record.evidence_policy} work`,
       )
     }
     return findings
@@ -190,10 +200,17 @@ export function verifyPrimaryUseCaseEvidence(
         `primary_use_cases ${id} requirement is not declared in affected_spec: ${requirement}`,
       )
     }
-    if (sameTest(plan.unit_test, plan.e2e_test)) {
+    if (selectedBoundaries) {
+      if (plan.boundary === 'e2e' && !text(plan.reason)?.trim())
+        findings.push(`primary_use_cases ${id} E2E requires a narrower-boundary reason`)
+      if (record.status === 'completed')
+        findings.push(
+          ...verifyTestReference(id, String(plan.boundary), plan.test, requirement, environment),
+        )
+    } else if (sameTest(plan.unit_test, plan.e2e_test)) {
       findings.push(`primary_use_cases ${id} uses the same test for Unit and E2E evidence`)
     }
-    if (record.status === 'completed') {
+    if (record.status === 'completed' && !selectedBoundaries) {
       findings.push(
         ...verifyTestReference(id, 'Unit', plan.unit_test, requirement, environment),
         ...verifyTestReference(id, 'E2E', plan.e2e_test, requirement, environment),
@@ -202,7 +219,7 @@ export function verifyPrimaryUseCaseEvidence(
   }
 
   if (record.status === 'completed') {
-    findings.push(...verifyCompletionEvidence(plans, completion))
+    findings.push(...verifyCompletionEvidence(plans, completion, selectedBoundaries))
   }
   return findings
 }

@@ -54,6 +54,86 @@ const snapshot = (documentSource: string, tsp = 'op StartTask(): void;'): Snapsh
   ])
 
 describe('diffSpecifications', () => {
+  it('DocString の本文だけの変更を検出する', () => {
+    const document = (content: string): Snapshot =>
+      new Map([
+        [
+          'docs/domain/demo/scenarios.feature.md',
+          `${gherkinScenario('REQ-DEMO-001', '次の本文になる')}\n\n  \`\`\`json\n  ${content}\n  \`\`\`\n`,
+        ],
+      ])
+    expect(
+      diffSpecifications(document('{"name":"before"}'), document('{"name":"after"}'))
+        .changedScenarios,
+    ).toEqual(['REQ-DEMO-001'])
+    expect(
+      diffSpecifications(document('{"name":"before"}'), document('{"name":"before"}'))
+        .changedScenarios,
+    ).toEqual([])
+  })
+
+  it('同じ手順の集合でも操作順の変更を検出する', () => {
+    const document = (actions: string): Snapshot =>
+      new Map([
+        [
+          'docs/domain/demo/scenarios.feature.md',
+          gherkinScenario('REQ-DEMO-001', '結果を返す').replace(
+            '- When the request is submitted',
+            actions,
+          ),
+        ],
+      ])
+    expect(
+      diffSpecifications(
+        document('- When 最初の操作を実行する\n- And 次の操作を実行する'),
+        document('- When 次の操作を実行する\n- And 最初の操作を実行する'),
+      ).changedScenarios,
+    ).toEqual(['REQ-DEMO-001'])
+  })
+
+  it('決定表の値だけの変更を検出し、列の掲載順は比較しない', () => {
+    const path = 'docs/domain/demo/scenarios.feature.md'
+    const document = (columns: string[], values: string[]): Snapshot =>
+      new Map([
+        [
+          path,
+          [
+            '# Feature: Demo',
+            '',
+            '## Rule: REQ-DEMO-001 条件から結果を決める',
+            '',
+            '### Scenario Outline: 条件ごとの結果',
+            '',
+            '- Given 条件は <condition> である',
+            '- When 利用者が要求を送る',
+            '- Then 結果は <outcome> である',
+            '',
+            '#### Examples: Decision table (Unique)',
+            '',
+            `  | ${columns.join(' | ')} |`,
+            `  | ${columns.map(() => '---').join(' | ')} |`,
+            `  | ${values.join(' | ')} |`,
+          ].join('\n'),
+        ],
+      ])
+    const before = document(
+      ['example_id', 'condition', 'outcome'],
+      ['EX-DEMO-001-01', 'allowed', 'success'],
+    )
+    expect(
+      diffSpecifications(
+        before,
+        document(['example_id', 'condition', 'outcome'], ['EX-DEMO-001-01', 'allowed', 'refusal']),
+      ).changedScenarios,
+    ).toEqual(['REQ-DEMO-001'])
+    expect(
+      diffSpecifications(
+        before,
+        document(['outcome', 'example_id', 'condition'], ['success', 'EX-DEMO-001-01', 'allowed']),
+      ).changedScenarios,
+    ).toEqual([])
+  })
+
   it('reports nothing when the normative content is unchanged', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
     const diff = diffSpecifications(

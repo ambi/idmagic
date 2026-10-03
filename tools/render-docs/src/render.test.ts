@@ -514,6 +514,15 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
       traces: [{ id: 'EX-DEMO-002-01', sources: ['backend/demo/task_test.go'], workItems: [] }],
+      sourcePaths: [
+        'backend/demoimpl/task/usecases/task.go',
+        'backend/demoimpl/task/usecases/task_test.go',
+        'backend/demoimpl/task/usecases/testdata/task.examples.json',
+        'backend/demoimpl/task/testing_contract/contract.go',
+        'backend/demoimpl/other/usecases/other_test.go',
+        'spec/contexts/demo/main.tsp',
+      ],
+      contextAliases: { demoimpl: 'demo' },
     })
     const task = result.files['domain/demo/work/task/index.html'] ?? ''
 
@@ -545,6 +554,16 @@ describe('renderDocumentationSite', () => {
     expect(result.files['domain/demo/work/task/lifecycle.html']).not.toContain('操作の一覧')
     expect(result.files['domain/demo/index.html']).toContain('機能地図')
     expect(result.files['domain/demo/index.html']).toContain('href="work/task/index.html"')
+    const featureMap =
+      (result.files['domain/demo/index.html'] ?? '')
+        .split('機能地図</h2>')[1]
+        ?.split('</section>')[0] ?? ''
+    expect(featureMap).toContain('backend/demoimpl/task/usecases/task.go')
+    expect(featureMap).toContain('backend/demoimpl/task/usecases/task_test.go')
+    expect(featureMap).toContain('backend/demoimpl/task/usecases/testdata/task.examples.json')
+    expect(featureMap).toContain('backend/demoimpl/task/testing_contract/contract.go')
+    expect(featureMap).toContain('spec/contexts/demo/main.tsp')
+    expect(featureMap).not.toContain('other_test.go')
     expect(result.files['domain/demo/work/task/examples.html']).toContain('scenario-keyword when')
     expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '内部設計', '例'])
     const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))

@@ -392,7 +392,7 @@ describe('validateAgainstSchema — work-item', () => {
     expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
   })
 
-  it('requires risk-based-v3 whenever work starts', () => {
+  it('新規の v4 と着手済みの v3 を受理し、より古い契約での着手を拒否する', () => {
     const started = {
       ...validWorkItem,
       id: 'wi-1-demo',
@@ -407,6 +407,64 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v3' }, ''),
     ).toEqual([])
+    expect(
+      validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v4' }, ''),
+    ).toEqual([])
+  })
+
+  it('v4 の故障、境界と実測結果を保持し、v3 の対とは混在させない', () => {
+    const plan = {
+      id: 'demo-success',
+      requirement: 'REQ-DEMO-001',
+      observable_result: '保存値を読める。',
+      boundary: 'acceptance',
+      test: { path: 'backend/demo/demo_test.go', name: 'TestDemo', task: 'test-go-race' },
+      fault_model: '保存を外す。',
+    }
+    const completed = {
+      ...validWorkItem,
+      evidence_policy: 'risk-based-v4',
+      status: 'completed',
+      risk: 'medium',
+      primary_use_cases: [plan],
+      completion: {
+        ...validCompletion,
+        change_resistance: '保存を外すと失敗した。',
+        primary_use_case_evidence: [
+          { id: plan.id, red: '保存されず失敗した。', fault_injection: '保存を外すと失敗した。' },
+        ],
+      },
+    }
+    expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
+    for (const altered of [
+      { ...plan, boundary: 'e2e' },
+      { ...plan, fault_model: '' },
+      { ...plan, test: undefined },
+      { ...plan, boundary: 'unknown' },
+    ])
+      expect(
+        validateAgainstSchema('work-item', { ...completed, primary_use_cases: [altered] }, ''),
+      ).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...completed,
+          primary_use_cases: [{ ...plan, boundary: 'e2e', reason: '正式な入口の配線を観測する。' }],
+        },
+        '',
+      ),
+    ).toEqual([])
+    expect(
+      validateAgainstSchema('work-item', { ...completed, evidence_policy: 'risk-based-v3' }, ''),
+    ).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        { ...completed, completion: { ...completed.completion, change_resistance: undefined } },
+        '',
+      ),
+    ).not.toEqual([])
   })
 
   it('requires risk-based-v2 when wi-412 and later work completes', () => {

@@ -27,21 +27,197 @@
 
 ## Rule: REQ-IDMANAGEMENT-060 Group の作成と更新は、名前、説明、連絡先を正規化して保存する
 
+一次情報は [実行可能な具体例](../../../../../backend/idmanagement/group/usecases/testdata/normalization.examples.json) である。
+同じ表を作成と更新の両方へ実行する。
+成功時は保存値を読み戻し、拒否時は状態、イベント、通知が変わらないことを確かめる。
+`null` は未設定、空の `error` は成功を表す。
+
+<!-- spec:examples backend/idmanagement/group/usecases/testdata/normalization.examples.json -->
+
 ### Example: EX-IDMANAGEMENT-060-01 大文字と小文字だけが異なる名前
 
-- Given テナントに名前 "engineering" の Group がある
-- When 管理者が名前 "Engineering" の Group を作成する
-- Then 作成は `group_name_conflict` で拒否される
+- Given 次の前提を満たす
+
+  | 項目 | 値 |
+  | --- | --- |
+  | existing_name | "engineering" |
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "Engineering" |
+  | email | null |
+  | description | null |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "group_name_conflict" |
+  | name | null |
+  | email | null |
+  | description | null |
 
 ### Example: EX-IDMANAGEMENT-060-02 表示名付きの連絡先
 
-- When 管理者が連絡先 " Sales Team <Sales@Example.TEST> " で Group を作成する
-- Then 連絡先は "sales@example.test" で保存される
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "sales" |
+  | email | " Sales Team <Sales@Example.TEST> " |
+  | description | null |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "" |
+  | name | "sales" |
+  | email | "sales@example.test" |
+  | description | null |
 
 ### Example: EX-IDMANAGEMENT-060-03 空白だけの説明
 
-- When 管理者が説明 "   " で Group を作成する
-- Then Group は説明を持たない
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "sales" |
+  | email | null |
+  | description | "   " |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "" |
+  | name | "sales" |
+  | email | null |
+  | description | null |
+
+### Example: EX-IDMANAGEMENT-060-04 空の名前
+
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "" |
+  | email | null |
+  | description | null |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "group_name_required" |
+  | name | null |
+  | email | null |
+  | description | null |
+
+### Example: EX-IDMANAGEMENT-060-05 Unicode の空白だけの名前
+
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "　\\t " |
+  | email | null |
+  | description | null |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "group_name_required" |
+  | name | null |
+  | email | null |
+  | description | null |
+
+### Example: EX-IDMANAGEMENT-060-06 名前と説明と連絡先の前後の空白
+
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | " engineering " |
+  | email | " Sales@Example.TEST " |
+  | description | " Sales team " |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "" |
+  | name | "engineering" |
+  | email | "sales@example.test" |
+  | description | "Sales team" |
+
+### Example: EX-IDMANAGEMENT-060-07 空白だけの連絡先と空の説明
+
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "sales" |
+  | email | "   " |
+  | description | "" |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "" |
+  | name | "sales" |
+  | email | null |
+  | description | null |
+
+### Example: EX-IDMANAGEMENT-060-08 形式を満たさない連絡先
+
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | "sales" |
+  | email | "not-an-email" |
+  | description | null |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "invalid_email" |
+  | name | null |
+  | email | null |
+  | description | null |
+
+### Example: EX-IDMANAGEMENT-060-09 名前の内部の空白と区切りは保持する
+
+- Given 追加の前提はない
+
+- When 次の入力で規則の対象操作を実行する
+
+  | 項目 | 値 |
+  | --- | --- |
+  | name | " 開発 \| Team\\n" |
+  | email | null |
+  | description | " 開発部\\n内製 " |
+- Then 次の結果になる
+
+  | 項目 | 値 |
+  | --- | --- |
+  | error | "" |
+  | name | "開発 \| Team" |
+  | email | null |
+  | description | "開発部\\n内製" |
+
+<!-- /spec:examples -->
 
 ## Rule: REQ-IDMANAGEMENT-061 テナントに Group 属性スキーマがなければ、Group の作成と更新は属性を拒否する
 

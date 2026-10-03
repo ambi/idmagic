@@ -1291,6 +1291,8 @@ function featureMap(
   document: RenderedDocument,
   documents: RenderedDocument[],
   rules: DeclaredRule[],
+  sourcePaths: readonly string[],
+  contextAliases: Record<string, string>,
 ): string {
   const context = document.context
   if (!documents.some((entry) => entry.path === `docs/domain/${context}/design/README.md`))
@@ -1312,10 +1314,30 @@ function featureMap(
         (rule) => rule.document.context === context && rule.document.feature === leaf.feature,
       )
       const questions = own.reduce((count, rule) => count + rule.openQuestions.length, 0)
-      return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td></tr>`
+      const flatten = (value: string) => value.replaceAll('-', '')
+      const feature = leaf.feature?.split('/').at(-1) ?? ''
+      const paths = sourcePaths.filter((path) => {
+        const [root, owner = '', name = ''] = path.split('/')
+        if (root === 'spec')
+          return path.startsWith(`spec/contexts/${context}/`) && path.endsWith('.tsp')
+        return (
+          root === 'backend' &&
+          flatten(contextAliases[owner] ?? owner) === flatten(context ?? '') &&
+          flatten(name) === flatten(feature)
+        )
+      })
+      const pathList = (entries: string[]) =>
+        entries.length
+          ? `<ul>${entries.map((path) => `<li><code>${escapeHtml(path)}</code></li>`).join('')}</ul>`
+          : '該当なし'
+      const testPath = (path: string) =>
+        path.endsWith('_test.go') ||
+        path.includes('/testing_contract/') ||
+        path.endsWith('.examples.json')
+      return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
     })
     .join('')
-  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能ノードと、その仕様が宣言する規則から生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">規則</th><th scope="col">未決事項</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能ノード、規則、配置と Context 名の対応から生成した探索用の候補であり、被覆の証明ではない。内部設計は機能の入口から必要な話題だけを読む。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">規則</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
 function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
@@ -1772,6 +1794,8 @@ export function renderDocumentationSite(args: {
   models: CatalogSymbol[]
   traces?: ScenarioTrace[]
   contextTags?: Record<string, string[]>
+  sourcePaths?: string[]
+  contextAliases?: Record<string, string>
 }): RenderedDocumentationSite {
   const documents = args.documents.map(documentMetadata)
   const openapi = inspectOpenApi(args.openapi)
@@ -1835,7 +1859,13 @@ export function renderDocumentationSite(args: {
     const tags = (document.context ? args.contextTags?.[document.context] : undefined) ?? []
     const reference =
       document.category === 'context'
-        ? featureMap(document, documents, rules) +
+        ? featureMap(
+            document,
+            documents,
+            rules,
+            args.sourcePaths ?? [],
+            args.contextAliases ?? {},
+          ) +
           contextReference({
             document,
             tags,

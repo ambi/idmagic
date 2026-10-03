@@ -1,0 +1,11 @@
+[
+  { "id": "EX-IDMANAGEMENT-060-01", "title": "大文字と小文字だけが異なる名前", "given": { "existing_name": "engineering" }, "input": { "name": "Engineering", "email": null, "description": null }, "expected": { "error": "group_name_conflict", "name": null, "email": null, "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-02", "title": "表示名付きの連絡先", "given": {}, "input": { "name": "sales", "email": " Sales Team <Sales@Example.TEST> ", "description": null }, "expected": { "error": "", "name": "sales", "email": "sales@example.test", "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-03", "title": "空白だけの説明", "given": {}, "input": { "name": "sales", "email": null, "description": "   " }, "expected": { "error": "", "name": "sales", "email": null, "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-04", "title": "空の名前", "given": {}, "input": { "name": "", "email": null, "description": null }, "expected": { "error": "group_name_required", "name": null, "email": null, "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-05", "title": "Unicode の空白だけの名前", "given": {}, "input": { "name": "\u3000\t ", "email": null, "description": null }, "expected": { "error": "group_name_required", "name": null, "email": null, "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-06", "title": "名前と説明と連絡先の前後の空白", "given": {}, "input": { "name": " engineering ", "email": " Sales@Example.TEST ", "description": " Sales team " }, "expected": { "error": "", "name": "engineering", "email": "sales@example.test", "description": "Sales team" } },
+  { "id": "EX-IDMANAGEMENT-060-07", "title": "空白だけの連絡先と空の説明", "given": {}, "input": { "name": "sales", "email": "   ", "description": "" }, "expected": { "error": "", "name": "sales", "email": null, "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-08", "title": "形式を満たさない連絡先", "given": {}, "input": { "name": "sales", "email": "not-an-email", "description": null }, "expected": { "error": "invalid_email", "name": null, "email": null, "description": null } },
+  { "id": "EX-IDMANAGEMENT-060-09", "title": "名前の内部の空白と区切りは保持する", "given": {}, "input": { "name": " 開発 | Team\n", "email": null, "description": " 開発部\n内製 " }, "expected": { "error": "", "name": "開発 | Team", "email": null, "description": "開発部\n内製" } }
+]

@@ -18,7 +18,7 @@ import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { specificationRules } from './feature-specification.ts'
-import { parseScenarioDocument, ruleBodies } from './gherkin-scenarios.ts'
+import { type ScenarioExample, parseScenarioDocument, ruleBodies } from './gherkin-scenarios.ts'
 import { documentKind } from './specification-doc.ts'
 import { typeSpecDeclarations } from './typespec-declarations.ts'
 
@@ -183,15 +183,23 @@ function normalizedBodyLine(text: string): string | undefined {
     .join('|')
 }
 
+/** 入力と期待結果の対応と操作順を保ち、例の掲載順と行番号は比較しない。 */
+function exampleFact(example: ScenarioExample): string {
+  return JSON.stringify([
+    example.id,
+    example.steps.map(({ kind, text, argument }) => ({ kind, text, argument })),
+    example.parameters &&
+      Object.entries(example.parameters).sort(([left], [right]) => left.localeCompare(right)),
+  ])
+}
+
 function gherkinScenarioFacts(source: string): Map<string, string> {
   const facts = new Map<string, string>()
   const bodies = new Map(ruleBodies(source).map((body) => [body.id, body.lines]))
   for (const rule of parseScenarioDocument(source).rules) {
-    const fragments = new Set(
-      rule.examples.flatMap((example) => example.steps.map((step) => step.text)),
-    )
+    const fragments = new Set(rule.examples.map(exampleFact))
     const title = rule.name.replace(new RegExp(`^${rule.id}(?::)?\\s*`), '')
-    // 本文は書いた順序に意味があるので、手順の断片と違って並べ替えない。
+    // 規則の本文と例の内部は順序を保ち、独立した例の掲載順だけを比較から外す。
     const body = (bodies.get(rule.id) ?? []).flatMap(({ text }) => normalizedBodyLine(text) ?? [])
     facts.set(rule.id, ['gherkin', title, ...[...fragments].sort(), '--', ...body].join('\n'))
   }
@@ -224,8 +232,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     } else if (kind === 'examples') {
       for (const rule of parseScenarioDocument(source).rules) {
         const fragments = steps.get(rule.id) ?? new Set<string>()
-        for (const example of rule.examples)
-          for (const step of example.steps) fragments.add(step.text)
+        for (const example of rule.examples) fragments.add(exampleFact(example))
         steps.set(rule.id, fragments)
       }
     }

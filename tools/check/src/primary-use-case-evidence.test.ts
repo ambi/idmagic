@@ -42,6 +42,57 @@ const applicable = {
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
+  it('v4 は最小境界を一つ選び、Unit/E2E の対を要求しない', () => {
+    const selected = {
+      id: plan.id,
+      requirement,
+      observable_result: '保存された結果を読み戻せる。',
+      boundary: 'acceptance',
+      test: plan.unit_test,
+      fault_model: '保存を行わない。',
+    }
+    const record = {
+      ...applicable,
+      evidence_policy: 'risk-based-v4',
+      primary_use_cases: [selected],
+    }
+    expect(verifyPrimaryUseCaseEvidence(record, environment)).toEqual([])
+    expect(
+      verifyPrimaryUseCaseEvidence({ ...record, primary_use_cases: [] }, environment),
+    ).not.toEqual([])
+    expect(
+      verifyPrimaryUseCaseEvidence(
+        { ...record, primary_use_cases: [{ ...selected, boundary: 'e2e' }] },
+        environment,
+      ),
+    ).not.toEqual([])
+    const completed = {
+      ...record,
+      status: 'completed',
+      completion: {
+        primary_use_case_evidence: [
+          { id: plan.id, red: '保存されず失敗した。', fault_injection: '保存を外すと失敗した。' },
+        ],
+      },
+    }
+    expect(verifyPrimaryUseCaseEvidence(completed, environment)).toEqual([])
+    expect(verifyPrimaryUseCaseEvidence({ ...completed, completion: {} }, environment)).not.toEqual(
+      [],
+    )
+    expect(
+      verifyPrimaryUseCaseEvidence(completed, { ...environment, read: () => undefined }),
+    ).not.toEqual([])
+    expect(
+      verifyPrimaryUseCaseEvidence(
+        {
+          ...completed,
+          completion: { primary_use_case_evidence: [{ id: plan.id, red: '失敗した。' }] },
+        },
+        environment,
+      ),
+    ).not.toEqual([])
+  })
+
   it('requires a plan for feature, bugfix, and standards work after implementation starts', () => {
     for (const record of [
       applicable,

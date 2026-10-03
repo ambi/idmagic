@@ -35,32 +35,6 @@ func storedGroupByID(t *testing.T, deps groupusecases.AdminGroupDeps, id string)
 	return group
 }
 
-//spec:covers EX-IDMANAGEMENT-060-01, EX-IDMANAGEMENT-060-02, EX-IDMANAGEMENT-060-03: 名前を大文字と小文字を区別せずに照合して衝突を拒否し、表示名付きの連絡先からアドレスだけを小文字で保存し、空白だけの説明を設定しないこと。
-func TestGroupNameEmailAndDescriptionAreNormalized(t *testing.T) {
-	deps, _ := newGroupDeps(t)
-	ctx := context.Background()
-	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: " engineering ", Now: groupRulesNow}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: "Engineering", Now: groupRulesNow}); !errors.Is(err, groupusecases.ErrGroupNameConflict) {
-		t.Fatalf("err=%v, want ErrGroupNameConflict", err)
-	}
-	email, description := " Sales Team <Sales@Example.TEST> ", "   "
-	sales, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
-		ActorUserID: "operator", Name: "sales", Email: &email, Description: &description, Now: groupRulesNow,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	stored := storedGroupByID(t, deps, sales.ID)
-	if stored.Email == nil || *stored.Email != "sales@example.test" || stored.Description != nil {
-		t.Fatalf("email=%v description=%v, want sales@example.test and no description", stored.Email, stored.Description)
-	}
-	if names := tenantGroupNames(t, deps); !slices.Equal(names, []string{"engineering", "sales"}) {
-		t.Fatalf("names=%v, want [engineering sales]", names)
-	}
-}
-
 func tenantGroupNames(t *testing.T, deps groupusecases.AdminGroupDeps) []string {
 	t.Helper()
 	groups, err := deps.GroupRepo.ListAll(context.Background(), tenancydomain.DefaultTenantID)

@@ -11,6 +11,8 @@ export type ScenarioStep = {
   keyword: string
   kind: 'context' | 'action' | 'outcome'
   text: string
+  /** 公式解析器が返す表または DocString の比較用表現。行番号を含めない。 */
+  argument?: string
   line: number
 }
 
@@ -19,6 +21,8 @@ export type ScenarioExample = {
   name: string
   line: number
   steps: ScenarioStep[]
+  /** Outline の行の値。手順のプレースホルダーだけでは条件と結果を復元できない。 */
+  parameters?: Record<string, string>
   outline: boolean
   decisionTable: boolean
 }
@@ -97,6 +101,20 @@ function stepsOf(scenario: Scenario): ScenarioStep[] {
       keyword: step.keyword.trim(),
       kind,
       text: step.text,
+      ...(step.dataTable
+        ? {
+            argument: JSON.stringify(
+              step.dataTable.rows.map((row) => row.cells.map((cell) => cell.value)),
+            ),
+          }
+        : step.docString
+          ? {
+              argument: JSON.stringify({
+                content: step.docString.content,
+                mediaType: step.docString.mediaType,
+              }),
+            }
+          : {}),
       line: step.location.line,
     }
   })
@@ -294,6 +312,11 @@ export function parseScenarioDocument(source: string): ParsedScenarioDocument {
               name: scenario.name,
               line: row?.location.line ?? examples.location.line,
               steps,
+              parameters: Object.fromEntries(
+                headers
+                  .map((header, index) => [header, values[index] ?? ''] as const)
+                  .filter(([header]) => header !== 'example_id'),
+              ),
               outline: true,
               decisionTable,
             })

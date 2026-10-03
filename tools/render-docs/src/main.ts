@@ -15,7 +15,7 @@ import {
   FEATURE_LAYOUT_MARKER,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
-import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
+import { createWorkspaceSnapshot, discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { renderDocumentationSite, type SourceDocument } from './render.ts'
 import { collectTraces } from './traces.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
@@ -138,6 +138,12 @@ if (program.hasError()) {
 }
 const apiSchemas = new Set<string>(Object.keys(openapi.components?.schemas ?? {}))
 const catalog = extractTypeSpecCatalog(program, apiSchemas, root)
+const snapshot = createWorkspaceSnapshot(root)
+const { contextAliases } = JSON.parse(await snapshot.read('tools/check/feature-node-debt.json'))
+const sourcePaths = [
+  ...(await snapshot.files('backend')),
+  ...(await snapshot.files('spec/contexts')),
+].sort()
 const result = renderDocumentationSite({
   documents,
   openapi,
@@ -147,6 +153,8 @@ const result = renderDocumentationSite({
   models: catalog.symbols,
   contextTags: catalog.contextTags,
   traces,
+  sourcePaths,
+  contextAliases,
 })
 
 const validationWindow = new Window()

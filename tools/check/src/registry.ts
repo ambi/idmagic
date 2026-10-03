@@ -8,6 +8,7 @@ import { checkDocsWorkItemLinks } from './check-docs-work-item-links.ts'
 import { checkDocumentLayout } from './check-document-layout.ts'
 import { checkContractDrift } from './check-contract-drift.ts'
 import { checkDocuments } from './check-documents.ts'
+import { checkExecutableExamples } from './check-executable-examples.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
 import { checkRawSql } from './check-raw-sql.ts'
@@ -23,6 +24,7 @@ import { checkWorkItems } from './check-work-items.ts'
 import type { RepositoryCheck } from './runner.ts'
 
 export const repositoryChecks: readonly RepositoryCheck[] = [
+  { name: 'executable-examples', groups: ['all', 'spec'], run: checkExecutableExamples },
   { name: 'documents', groups: ['all'], run: checkDocuments },
   { name: 'specification-rules', groups: ['all'], run: checkSpecificationRules },
   { name: 'boundary-debt-ratchet', groups: ['all'], run: checkBoundaryDebtRatchet },

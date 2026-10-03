@@ -414,10 +414,13 @@ run = "go test -race ./..."
 
 [tasks.test-go-cover]
 description = "Run Go tests with coverage"
-run = [
-  "go test -coverprofile=coverage.out -covermode=atomic ./...",
-  "go tool cover -func=coverage.out",
-]
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 2 || { echo "usage: mise run test-go-cover -- [package] [skip-pattern]" >&2; exit 2; }
+go test -coverprofile=coverage.out -covermode=atomic -skip "${2:-^$}" "${1:-./...}"
+go tool cover -func=coverage.out
+'''
 
 [tasks.test-go-fuzz]
 description = "Run one Go fuzz target"
@@ -770,7 +773,7 @@ description = "Compile TypeSpec and validate canonical specification documents"
 depends = ["compile-spec"]
 run = [
   "mise run check-generated-contract",
-  "cd tools && bun run check/src/runner.ts documents specification-rules document-layout",
+  "cd tools && bun run check/src/runner.ts documents specification-rules document-layout executable-examples",
   "mise run check-rendered-docs",
 ]
 
@@ -899,6 +902,11 @@ bun run spec-review-candidates/src/main.ts "$1"
 description = "Render the browsable documentation and API reference site"
 dir = "tools"
 run = "bun run render-docs/src/main.ts"
+
+[tasks.generate-spec-examples]
+description = "Regenerate documented examples from executable test data"
+dir = "tools"
+run = "bun run check/src/generate-spec-examples.ts"
 
 # Swagger UI は OpenAPI を fetch で読む。file:// で開くとブラウザーがその取得を拒むので、
 # API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。

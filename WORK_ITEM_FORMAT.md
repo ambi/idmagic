@@ -22,7 +22,7 @@ created_at: 2026-01-01
 priority: p1
 depends_on: []
 change_kind: feature
-evidence_policy: risk-based-v3 # 着手後は必須
+evidence_policy: risk-based-v4 # 着手後は必須
 documentation_impact: # 着手後は必須
   level: release_note
   reason: 新たにサポートする機能をリリースの読者へ知らせる必要がある。
@@ -41,10 +41,9 @@ primary_use_cases: # feature、bugfix、standards.md の変更では着手後に
   - id: start-task
     requirement: REQ-SYSTEM-001
     observable_result: 呼び出し元がタスクの実行開始を観測できる。
-    unit_test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
-    e2e_test: { path: backend/system/e2e_test.go, name: TestE2E_StartTask_REQ_SYSTEM_001, task: test-go-race }
-    unit_fault_model: ユースケースが開始コマンドを発行しない。
-    e2e_fault_model: 構成済みの経路がハンドラーとユースケースを接続しない。
+    boundary: acceptance
+    test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
+    fault_model: ユースケースが開始コマンドを発行しない。
 maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必須
   - feature: start-task-v1
     from: preview
@@ -105,7 +104,7 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 `reversible` としても `risk` が求める証拠は緩和しない。
 このフィールドは導入前の記録を有効に保つため任意であり、未記入は可逆を意味せず、評価していないことを意味する。
 
-項目を `in_progress` にするときは `evidence_policy: risk-based-v3` を追加する。
+新しく項目を `in_progress` にするときは `evidence_policy: risk-based-v4` を追加する。
 リスクは完了までに必要な証拠を決めるが、push、merge、本番操作、外部システムの変更を許可するものではない。
 作業の権限は項目の起票によって与えられるため、別の承認記録は設けない。
 プロダクトの振る舞い、公開契約、採用する設計境界、タスク分割を変え得る問いは実装前に解決する。
@@ -181,19 +180,23 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 機能レジストリの差分で `experimental` から `preview`、または `preview` から `supported` へ昇格する場合は、完了時に昇格した機能ごとの `maturity_evidence` も記録する。
 各項目には、正確な遷移、セキュリティ検査の結果、互換性情報または移行情報、新しい成熟度を示すリリース文書のパスを書く。
 該当する作業項目には引き続き `primary_use_cases` が必要である。
-成熟度の証拠は、Unit RED、E2E RED、フォールト注入の結果を置き換えない。
+成熟度の証拠は、選択した境界の RED とフォールト注入の結果を置き換えない。
 この契約より前に書かれた完了記録は履歴であり、再解釈しない。
 
 `feature`、`bugfix`、および `affected_spec` から `standards.md` の要件を参照する作業項目では、実装前に `primary_use_cases` を追加する。
-各項目では、中心となる一つの正常経路について、安定したケバブケースの `id`、正確な `REQ-*` または標準要件、最終的な `observable_result`、Unit テストと E2E テストへの参照、各テストが検出すべき互いに異なる現実的な障害を宣言する。
+`risk-based-v4` の各項目は、安定したケバブケースの `id`、正確な `REQ-*` または標準要件、最終的な `observable_result`、`boundary`、一つの `test`、現実的な `fault_model` を持つ。
+境界は `unit`、`adapter`、`acceptance`、`contract`、`property`、`e2e` から、故障を検出できる最も狭いものを選ぶ。
+同じ利用経路の内部判断と外部配線が別の故障なら、同じ要件を引く別の項目にする。
+`e2e` を選ぶ項目には、下位境界では検出できない理由を `reason` に書く。
+認可、テナント隔離、永続化、正式な入口の配線など、変更が触れる独立した故障は省略しない。
 テストへの参照には、リポジトリ相対の `path`、安定した `name`、必要な `mise` または CI の `task` を含める。
 作業項目が `in_progress` の間は、予定したテストがまだ存在しなくてもよい。
 完了時には、ファイルと識別子が存在し、テストソースが要件を参照し、宣言した標準タスクから到達できることを検査する。
 本番がより外側の入口と構成経路を使う場合は、入力の受理、列挙値の検証、行カバレッジ、直接構築した下位コンポーネントを E2E の結果にしない。
 
-`risk-based-v3` は、新しく着手する作業にこの契約を適用する。
-完了済みの `risk-based-v1` と `risk-based-v2` の記録は、有効な履歴として残す。
-導入時点ですでに `in_progress` だった該当項目は v3 へ移行して計画を追加するが、完了済みの記録は書き換えない。
+旧バージョンの記録は再解釈しない。
+着手済みの `risk-based-v3` は引き続き有効であり、各項目に `unit_test`、`e2e_test`、`unit_fault_model`、`e2e_fault_model` を持つ従来の契約で検査する。
+新形式への移行は、その作業の故障モデルと境界を選び直すときに行う。
 
 作業が完了したら `status` を `completed` にし、次の節を追加して、ファイルを `work-items/done/` へ移す。
 
@@ -224,18 +227,17 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 ```
 
 上の Acceptance RED と Unit RED のフィールドは、主要ユースケースの要件がない作業で使う完了形式である。
-該当する `risk-based-v3` の作業項目では、代わりに次のフィールドを使う。
+該当する `risk-based-v4` の作業項目では、代わりに次のフィールドを使う。
 主要でない振る舞いの Acceptance 証拠または Unit 証拠を追加で残してもよいが、次の証拠の代わりにはならない。
 
 ```markdown
 - **Primary Use Case Evidence**:
   - id: start-task
-    unit_red: 開始コマンドを発行しないため、TestStartTask_REQ_SYSTEM_001 が失敗した。
-    e2e_red: 構成済みの経路から実行中のタスクが生成されないため、TestE2E_StartTask_REQ_SYSTEM_001 が失敗した。
-    unit_fault_injection: コマンドの発行を削除すると、TestStartTask_REQ_SYSTEM_001 が失敗した。
-    e2e_fault_injection: 経路の接続を外すと、TestE2E_StartTask_REQ_SYSTEM_001 が失敗した。
+    red: 開始コマンドを発行しないため、TestStartTask_REQ_SYSTEM_001 が失敗した。
+    fault_injection: コマンドの発行を削除すると、TestStartTask_REQ_SYSTEM_001 が失敗した。
 ```
 
 `id` は、`primary_use_cases` の計画項目と一致させる。
 計画した各項目には、完了項目がちょうど一つ必要である。
 RED とフォールト注入の各結果には、将来の指示ではなく、実際に観測した内容を書く。
+旧バージョン v3 では、各結果に `unit_red`、`e2e_red`、`unit_fault_injection`、`e2e_fault_injection` を残す。

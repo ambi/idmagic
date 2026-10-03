@@ -32,6 +32,15 @@ const record = {
 }
 
 describe('verifyDocumentationImpact', () => {
+  it('v4 もリリース文書の影響検査を迂回できない', () => {
+    const result = verifyDocumentationImpact(
+      { ...record, evidence_policy: 'risk-based-v4' },
+      environment({
+        specificationDiff: { ...noSpecificationChange, addedScenarios: ['REQ-SYSTEM-018'] },
+      }),
+    )
+    expect(result).toContain('documentation_impact none is weaker than inferred release_note')
+  })
   it('attributes the workspace specification diff only to the records that change', () => {
     // The specification diff is one workspace-wide difference and carries no
     // record of its own. Without this scoping, adding a scenario made every

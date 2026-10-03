@@ -27,10 +27,10 @@ const requiredMarkers = new Map<string, string[]>([
   [
     '.agents/skills/implement-work-item/SKILL.md',
     [
-      'risk-based-v3',
+      'risk-based-v4',
       'Acceptance RED',
       'Unit RED',
-      'E2E RED',
+      'fault_model',
       'GREEN',
       'refactor',
       'N/A:',
@@ -43,10 +43,7 @@ const requiredMarkers = new Map<string, string[]>([
 ])
 
 const requiredOrderedMarkers = new Map<string, string[][]>([
-  [
-    '.agents/skills/implement-work-item/SKILL.md',
-    [['Acceptance RED', 'Unit RED', 'GREEN', 'refactor']],
-  ],
+  ['.agents/skills/implement-work-item/SKILL.md', [['RED', 'GREEN', 'refactor']]],
 ])
 
 export const agentGuidanceFiles = [...requiredMarkers.keys()]

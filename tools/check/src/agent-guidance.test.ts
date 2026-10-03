@@ -18,7 +18,7 @@ const currentGuidance = [
   {
     file: '.agents/skills/implement-work-item/SKILL.md',
     source:
-      'Before the first source or test edit, read docs/development/coding-style.md.\nrisk-based-v3\nAcceptance RED\nUnit RED\nE2E RED\nGREEN\nrefactor\nN/A:\nactually failed\nreview the changed code',
+      'Before the first source or test edit, read docs/development/coding-style.md.\nrisk-based-v4\nfault_model\nAcceptance RED\nUnit RED\nGREEN\nrefactor\nN/A:\nactually failed\nreview the changed code',
   },
 ]
 
@@ -97,13 +97,11 @@ describe('verifyAgentGuidance', () => {
     const guidance = currentGuidance.map((document) => ({ ...document }))
     guidance[implementationGuidanceIndex] = {
       file: currentGuidance[implementationGuidanceIndex]!.file,
-      source:
-        'risk-based-v3\nUnit RED\nAcceptance RED\nE2E RED\nrefactor\nGREEN\nN/A:\nactually failed',
+      source: 'risk-based-v4\nfault_model\nRED\nrefactor\nGREEN\nN/A:\nactually failed',
     }
     expect(verifyAgentGuidance(guidance)).toContainEqual({
       file: '.agents/skills/implement-work-item/SKILL.md',
-      message:
-        'does not preserve required sequence: Acceptance RED -> Unit RED -> GREEN -> refactor',
+      message: 'does not preserve required sequence: RED -> GREEN -> refactor',
     })
   })
 })

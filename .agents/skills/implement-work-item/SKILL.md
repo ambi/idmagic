@@ -1,6 +1,6 @@
 ---
 name: implement-work-item
-description: "Implement a chosen work item end to end: specification first, separate acceptance and unit evidence, typed effect boundaries, refactoring, verification, completion, move to done, and commit."
+description: "選択した work item を、仕様先行、故障に応じた検証境界、発見の還元、検証、完了記録、コミットまで実装する。"
 ---
 
 # Implementing a work item
@@ -51,20 +51,26 @@ description: "Implement a chosen work item end to end: specification first, sepa
    scheduling costume.
 4. Rewrite `initial_context` to the smallest slice actually read during readiness — the brief's draft is a
    starting point, not the answer, and `stop_before_reading` is always yours to decide. It is an audit trail,
-   not a reason to read more: leave a category empty instead of opening files only to populate it. Set
-   `evidence_policy: risk-based-v3`, and apply the risk contract in
-   `docs/development/specification-first-workflow.md`. For an applicable feature, bugfix, or standards change,
-   name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models; otherwise name the
-   intended Acceptance RED and Unit RED checks before you start.
+   not a reason to read more: leave a category empty instead of opening files only to populate it.
+   新規着手では `evidence_policy: risk-based-v4` とし、証拠の契約は
+   `docs/development/specification-first-workflow.md`、記入形式は `WORK_ITEM_FORMAT.md` を参照する。
+   該当する feature、bugfix、標準対応では、主要ユースケースの観測結果、`fault_model`、
+   その故障を検出できる最小の境界とテストを決める。
+   それ以外では Acceptance RED と Unit RED、または理由を伴う代替検査を決める。
+   着手済みの v3 は既存の契約を維持し、移行するときだけ境界を選び直す。
 5. Set the status to `in_progress` and pass `mise run check-work-items`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
-7. Before the first source or test edit, read `docs/development/coding-style.md`. Run the named
-   observable-boundary check and confirm Acceptance RED or the applicable E2E RED. Then implement
-   Domain → Use Cases → Adapters → Infrastructure / UI one behavior at a time: confirm Unit RED, reach GREEN with the simplest
-   complete behavior, refactor while GREEN, and widen through the adapters until the acceptance check passes.
+7. Before the first source or test edit, read `docs/development/coding-style.md`.
+   選択した境界の検査で RED を確認する。
+   Domain → Use Cases → Adapters → Infrastructure / UI の必要な範囲を、一つの振る舞いずつ
+   最も単純で完全な実装で GREEN にし、GREEN のまま refactor する。
+   具体例をデータにすると短くなる場合は、`SPECIFICATION_FORMAT.md` の実行可能な具体例を使う。
+   操作列が複雑ならコードのままにし、独立した期待結果と境界固有の表明を共有する。
+   実装とテストで詳細が分かったときは、ワークフローの「実装とテストから仕様への還元」に従い、
+   規則と理由、具体例、生成できる参照、未決定の挙動をそれぞれの一次情報へ戻す。
    A test claims a declared id with a `//spec:covers <id>[, <id>]: <what it fixes>` directive above the test
    function, and only that shape counts — see Citing a normative id from a test in
    `docs/development/specification-first-workflow.md`. Naming an id in prose claims nothing, so say freely in
@@ -78,7 +84,7 @@ description: "Implement a chosen work item end to end: specification first, sepa
    starts, or the final one in step 11 — fold them. Run `git log --oneline <last real commit>..HEAD`,
    confirm every listed commit is a checkpoint, then `git reset --soft <last real commit>` and commit the
    staged result. Interactive rebase is unavailable here, so do not fold with it.
-   Retain both failing checks, test names, and applicable normative scenario ids in the task. For tooling,
+   選択した検査の失敗、テスト名、該当する規範 ID をタスクに残す。For tooling,
    documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate
    check that actually failed instead of inventing a product requirement or test boundary.
    Where the change parses, decodes, splits, normalizes, or compares untrusted input by hand, add a fuzz target

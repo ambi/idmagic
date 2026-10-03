@@ -20,6 +20,40 @@
   "allOf": [
     {
       "if": {
+        "properties": { "evidence_policy": { "const": "risk-based-v4" } },
+        "required": ["evidence_policy"]
+      },
+      "then": {
+        "properties": {
+          "primary_use_cases": { "items": { "$ref": "#/$defs/selectedBoundaryPlan" } },
+          "completion": {
+            "properties": {
+              "primary_use_case_evidence": {
+                "items": { "$ref": "#/$defs/selectedBoundaryEvidence" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "evidence_policy": { "const": "risk-based-v3" } },
+        "required": ["evidence_policy"]
+      },
+      "then": {
+        "properties": {
+          "primary_use_cases": { "items": { "$ref": "#/$defs/primaryUseCasePlan" } },
+          "completion": {
+            "properties": {
+              "primary_use_case_evidence": { "items": { "$ref": "#/$defs/primaryUseCaseEvidence" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
         "properties": { "status": { "enum": ["pending", "in_progress"] } },
         "required": ["status"]
       },
@@ -102,7 +136,7 @@
       },
       "then": {
         "properties": {
-          "evidence_policy": { "const": "risk-based-v3" }
+          "evidence_policy": { "enum": ["risk-based-v3", "risk-based-v4"] }
         },
         "required": ["evidence_policy"]
       }
@@ -119,7 +153,7 @@
       },
       "then": {
         "properties": {
-          "evidence_policy": { "enum": ["risk-based-v2", "risk-based-v3"] }
+          "evidence_policy": { "enum": ["risk-based-v2", "risk-based-v3", "risk-based-v4"] }
         },
         "required": ["evidence_policy"]
       }
@@ -127,7 +161,9 @@
     {
       "if": {
         "properties": {
-          "evidence_policy": { "enum": ["risk-based-v1", "risk-based-v2", "risk-based-v3"] },
+          "evidence_policy": {
+            "enum": ["risk-based-v1", "risk-based-v2", "risk-based-v3", "risk-based-v4"]
+          },
           "risk": { "enum": ["medium", "high", "critical"] },
           "status": { "const": "completed" }
         },
@@ -288,10 +324,15 @@
       }
     },
     "primary_use_cases": {
-      "description": "risk-based-v3 で機能または標準対応を着手する前に宣言する主要ユースケース。",
+      "description": "機能または標準対応の観測結果、故障と検証境界。",
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/primaryUseCasePlan" }
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/primaryUseCasePlan" },
+          { "$ref": "#/$defs/selectedBoundaryPlan" }
+        ]
+      }
     },
     "documentation_impact": {
       "description": "着手時から完了時まで保持する利用者向けリリース文書の影響。",
@@ -357,7 +398,7 @@
     "evidence_policy": {
       "description": "The risk-based evidence contract applied after work starts.",
       "type": "string",
-      "enum": ["risk-based-v1", "risk-based-v2", "risk-based-v3"]
+      "enum": ["risk-based-v1", "risk-based-v2", "risk-based-v3", "risk-based-v4"]
     },
     "risk_notes": {
       "type": "string",
@@ -428,7 +469,12 @@
           "description": "risk-based-v3 の主要ユースケースごとの RED と故障注入結果。",
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/primaryUseCaseEvidence" }
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/primaryUseCaseEvidence" },
+              { "$ref": "#/$defs/selectedBoundaryEvidence" }
+            ]
+          }
         },
         "independent_verification": {
           "description": "Optional. Results from a verifier independent of the implementer. Completed records written while this was required still carry it.",
@@ -462,6 +508,32 @@
     }
   },
   "$defs": {
+    "selectedBoundaryPlan": {
+      "type": "object",
+      "required": ["id", "requirement", "observable_result", "boundary", "test", "fault_model"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" },
+        "observable_result": { "type": "string", "minLength": 1 },
+        "boundary": { "enum": ["unit", "adapter", "acceptance", "contract", "property", "e2e"] },
+        "test": { "$ref": "#/$defs/testReference" },
+        "fault_model": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "if": { "properties": { "boundary": { "const": "e2e" } } },
+      "then": { "required": ["reason"] }
+    },
+    "selectedBoundaryEvidence": {
+      "type": "object",
+      "required": ["id", "red", "fault_injection"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "red": { "type": "string", "minLength": 1 },
+        "fault_injection": { "type": "string", "minLength": 1 }
+      }
+    },
     "specImpact": {
       "description": "規範要素を変更するか (modifies)、変更せずに実装を合わせるか (conforms)。省略時は modifies。",
       "type": "string",

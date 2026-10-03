@@ -106,7 +106,8 @@ function nonEmpty(value: unknown): value is string {
 }
 
 function activeUnderDocumentationContract(record: WorkItemRecord): boolean {
-  if (record.evidence_policy !== 'risk-based-v3') return false
+  if (record.evidence_policy !== 'risk-based-v3' && record.evidence_policy !== 'risk-based-v4')
+    return false
   if (record.status === 'in_progress') return true
   if (record.status !== 'completed' || typeof record.id !== 'string') return false
   const sequence = Number(record.id.match(/^wi-(\d+)-/)?.[1] ?? 0)
