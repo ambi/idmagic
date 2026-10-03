@@ -263,6 +263,41 @@ describe('diffSpecifications', () => {
     expect(diffSpecifications(rule('50'), rule('10')).changedScenarios).toEqual(['REQ-DEMO-001'])
   })
 
+  it('compares a link in a rule body by its label, not by its relative target', () => {
+    const rule = (path: string, link: string): Snapshot =>
+      new Map([
+        [
+          path,
+          [
+            '# Feature: Demo Scenarios',
+            '',
+            '## Rule: REQ-DEMO-001 A request',
+            '',
+            `| 認可 | 規則は${link}が定める |`,
+            '',
+            '### Example: EX-DEMO-001-01 request succeeds',
+            '',
+            '- When the request is submitted',
+            '- Then it succeeds',
+          ].join('\n'),
+        ],
+      ])
+    const base = rule(
+      'docs/domain/demo/group/task/scenarios.feature.md',
+      '[管理 API の認可](../../common/access/README.md#認可)',
+    )
+    const moved = rule(
+      'docs/domain/demo/task/scenarios.feature.md',
+      '[管理 API の認可](../access/README.md#認可)',
+    )
+    const relabeled = rule(
+      'docs/domain/demo/task/scenarios.feature.md',
+      '[ロール](../access/README.md#認可)',
+    )
+    expect(diffSpecifications(base, moved).changedScenarios).toEqual([])
+    expect(diffSpecifications(base, relabeled).changedScenarios).toEqual(['REQ-DEMO-001'])
+  })
+
   it('reports nothing when a rule and its state machine move into a feature node', () => {
     const lifecycle = [
       '## Lifecycle',

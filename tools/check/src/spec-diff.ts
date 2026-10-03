@@ -171,10 +171,14 @@ function legacyScenarioFacts(source: string): Map<string, string> {
 
 /**
  * 規則の本文の一行を、書式の揺れを除いた形にする。表の区切り行は内容を持たないので落とし、
- * 表のセルは前後の空白を除く。
+ * 表のセルは前後の空白を除く。リンクはラベルだけを比べる。リンク先の相対パスは文書を
+ * 移すだけで変わり、規則の内容を表さない。
  */
 function normalizedBodyLine(text: string): string | undefined {
-  const line = text.trim().replaceAll(/\s+/g, ' ')
+  const line = text
+    .trim()
+    .replaceAll(/\s+/g, ' ')
+    .replaceAll(/\[([^\]]*)\]\([^)]*\)/g, '[$1]')
   if (/^\|[\s|:-]+\|$/.test(line)) return undefined
   if (!line.startsWith('|')) return line
   return line
