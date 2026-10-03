@@ -7,7 +7,21 @@ package db_postgres
 
 import (
 	"context"
+	"time"
 )
+
+const deleteCSVArtifactsCreatedBefore = `-- name: DeleteCSVArtifactsCreatedBefore :execrows
+DELETE FROM csv_artifacts WHERE created_at < $1
+`
+
+// 保持期限の削除。テナントをまたいで消し、分割片は外部キーの連鎖で消える。
+func (q *Queries) DeleteCSVArtifactsCreatedBefore(ctx context.Context, createdAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCSVArtifactsCreatedBefore, createdAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
 
 const findCSVArtifact = `-- name: FindCSVArtifact :one
 SELECT sha256, byte_size FROM csv_artifacts WHERE tenant_id = $1 AND id = $2

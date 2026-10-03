@@ -363,7 +363,9 @@ func loadScopedExport(ctx context.Context, deps DataExportDeps, scope ExportScop
 func exportViewFromJob(job *jobsdomain.Job, now time.Time) *DataExportView {
 	var p DataExportParams
 	_ = json.Unmarshal(job.Params, &p)
-	expiresAt := job.CreatedAt.Add(DataExportTTL)
+	// 保持期限は完了の時刻から数える。完了していないエクスポートには期限がない。
+	completedAt := job.UpdatedAt
+	expiresAt := completedAt.Add(DataExportTTL)
 	status := mapExportStatus(job.Status, expiresAt, now)
 	view := &DataExportView{
 		ID:               job.ID,
@@ -373,7 +375,9 @@ func exportViewFromJob(job *jobsdomain.Job, now time.Time) *DataExportView {
 		RequestedColumns: p.Columns,
 		RequestedBy:      p.ActorUserID,
 		CreatedAt:        job.CreatedAt,
-		ExpiresAt:        &expiresAt,
+	}
+	if job.Status == jobsdomain.StatusSucceeded {
+		view.ExpiresAt = &expiresAt
 	}
 	if job.Status == jobsdomain.StatusFailed && job.Error != nil {
 		view.ErrorCode = *job.Error
@@ -386,8 +390,7 @@ func exportViewFromJob(job *jobsdomain.Job, now time.Time) *DataExportView {
 			view.Filename = result.Filename
 			view.TotalRows = &totalRows
 			view.ByteSize = &byteSize
-			completed := job.UpdatedAt
-			view.CompletedAt = &completed
+			view.CompletedAt = &completedAt
 			view.Downloadable = status == idmdomain.ExportStatusSucceeded && result.ArtifactRef != ""
 		}
 	}

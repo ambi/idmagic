@@ -203,3 +203,38 @@ func (f *idmRefusalFixture) dynamicRule(t *testing.T, groupID string) *groupdoma
 	}
 	return rule
 }
+
+// REQ-IDMANAGEMENT-046 の主要な使い方を、管理 API の経路で固定する。
+//
+//spec:covers EX-IDMANAGEMENT-046-04: 管理 API で削除を予約した User の無効化と再有効化が 409 user_pending_deletion で拒否され、削除の予約がそのまま残ること。
+func TestDisableAndEnableRefuseAPendingDeletionUser(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-pending", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	if scheduled := fixture.send(t, idmRefusalRequest{
+		method: http.MethodDelete, path: "/api/admin/v1/users/" + idmRefusalAlice,
+		sessionID: admin, csrf: idmRefusalCSRF,
+	}); scheduled.Code >= http.StatusBadRequest {
+		t.Fatalf("前提が壊れている: 削除の予約が status=%d body=%s", scheduled.Code, scheduled.Body.String())
+	}
+	before := fixture.user(t, idmRefusalAlice).Lifecycle
+
+	for _, operation := range []string{"disable", "enable"} {
+		t.Run(operation, func(t *testing.T) {
+			refused := fixture.send(t, idmRefusalRequest{
+				method: http.MethodPost, path: "/api/admin/v1/users/" + idmRefusalAlice + "/" + operation,
+				sessionID: admin, csrf: idmRefusalCSRF,
+			})
+			if refused.Code != http.StatusConflict {
+				t.Fatalf("status=%d body=%s, want 409", refused.Code, refused.Body.String())
+			}
+			if code := idmProblemCode(t, refused); code != "user_pending_deletion" {
+				t.Fatalf("error code=%q, want user_pending_deletion", code)
+			}
+			after := fixture.user(t, idmRefusalAlice).Lifecycle
+			if after.EffectiveStatus() != idmdomain.UserStatusPendingDeletion ||
+				!after.StatusChangedAt.Equal(*before.StatusChangedAt) {
+				t.Fatalf("拒否されたのに削除の予約が変わった: before=%+v after=%+v", before, after)
+			}
+		})
+	}
+}

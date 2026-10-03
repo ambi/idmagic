@@ -17,6 +17,16 @@
 - When 管理者が絞り込み `{"status": " Active "}` で User のエクスポートを開始する
 - Then 開始は受け付けられる
 
+## Rule: REQ-IDMANAGEMENT-079 エクスポートの保持期限は、完了の時刻から 30 日である
+
+### Example: EX-IDMANAGEMENT-079-01 作成の 1 日後に完了したエクスポート
+
+- Given 管理者は 1 月 1 日に User のエクスポートを開始し、エクスポートは 1 月 2 日に完了した
+- When 管理者が 1 月 31 日にエクスポートを参照する
+- Then `expires_at` は 2 月 1 日であり、エクスポートは `succeeded` のままダウンロードできる
+- When 管理者が 2 月 1 日にエクスポートを参照する
+- Then エクスポートは `expired` であり、ダウンロードできない
+
 ## Rule: REQ-IDMANAGEMENT-040 エクスポートの一覧は新しい順に、テナントの直近 200 件から返す
 
 ### Example: EX-IDMANAGEMENT-040-01 新しい順

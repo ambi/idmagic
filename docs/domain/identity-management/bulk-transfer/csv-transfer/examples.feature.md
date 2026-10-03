@@ -71,3 +71,11 @@
 - Given 属性 `nickname` は任意である
 - When インポートが空のセルを読む
 - Then その属性を消す
+
+## Rule: REQ-IDMANAGEMENT-080 CSV の成果物は、作成から 30 日を過ぎると消す
+
+### Example: EX-IDMANAGEMENT-080-01 保持期限の境界の前後の成果物
+
+- Given 成果物 A は 31 日前、成果物 B はちょうど 30 日前、成果物 C は 1 日前に作られた
+- When 保持期限の削除を実行する
+- Then 成果物 A は分割したペイロードごと消え、成果物 B と C は残る

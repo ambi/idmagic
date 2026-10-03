@@ -365,6 +365,8 @@ func writeAdminUserError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "self_delete_forbidden", "Administrators cannot delete themselves.")
 	case errors.Is(err, userusecases.ErrSelfDisableForbidden):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "self_disable_forbidden", "Administrators cannot disable themselves.")
+	case errors.Is(err, userusecases.ErrUserPendingDeletion):
+		return support.WriteProblem(c, http.StatusConflict, "user_pending_deletion", "The user is scheduled for deletion; restore the user instead.")
 	case errors.Is(err, userusecases.ErrUserNotPendingDeletion):
 		return support.WriteProblem(c, http.StatusConflict, "not_pending_deletion", "The user is not scheduled for deletion.")
 	case errors.Is(err, userusecases.ErrRestoreGracePeriodExpired):

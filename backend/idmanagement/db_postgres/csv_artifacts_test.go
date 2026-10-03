@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
@@ -103,5 +104,58 @@ func TestCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
 	}
 	if _, _, err := store.ReadCSVArtifactPage(context.Background(), tenant.ID, metadata.Ref, -1); !errors.Is(err, idmports.ErrCSVArtifactNotFound) {
 		t.Fatalf("negative page err=%v, want ErrCSVArtifactNotFound", err)
+	}
+}
+
+// REQ-IDMANAGEMENT-080 の主要な使い方を、PostgreSQL の成果物ストアで固定する。
+//
+//spec:covers EX-IDMANAGEMENT-080-01: 境界の時刻より前に作った成果物を分割片ごと消し、境界の時刻ちょうどとそれより後の成果物を残すこと。
+func TestCSVArtifactStoreDeletesArtifactsCreatedBeforeTheCutoff(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	store := &CSVArtifactStore{Pool: db}
+	ctx := context.Background()
+	cutoff := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	put := func(createdAt time.Time) string {
+		t.Helper()
+		metadata, err := store.PutCSVArtifact(ctx, tenant.ID, func(output io.Writer) error {
+			_, err := io.WriteString(output, "preferred_username\nalice\n")
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(ctx, `UPDATE csv_artifacts SET created_at = $2 WHERE id = $1`, metadata.Ref, createdAt); err != nil {
+			t.Fatal(err)
+		}
+		return metadata.Ref
+	}
+	expired := put(cutoff.Add(-time.Second))
+	boundary := put(cutoff)
+	fresh := put(cutoff.Add(time.Hour))
+
+	deleted, err := store.DeleteCSVArtifactsCreatedBefore(ctx, cutoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 1 {
+		t.Fatalf("deleted=%d, want 1", deleted)
+	}
+	if _, _, err := store.OpenCSVArtifact(ctx, tenant.ID, expired); !errors.Is(err, idmports.ErrCSVArtifactNotFound) {
+		t.Fatalf("期限を過ぎた成果物を開けた: err=%v", err)
+	}
+	var chunks int
+	if err := db.QueryRow(ctx, `SELECT count(*) FROM csv_artifact_chunks WHERE artifact_id = $1`, expired).Scan(&chunks); err != nil {
+		t.Fatal(err)
+	}
+	if chunks != 0 {
+		t.Fatalf("消した成果物の分割片が %d 件残った", chunks)
+	}
+	for _, ref := range []string{boundary, fresh} {
+		reader, _, err := store.OpenCSVArtifact(ctx, tenant.ID, ref)
+		if err != nil {
+			t.Fatalf("成果物 %s が消えた: %v", ref, err)
+		}
+		_ = reader.Close()
 	}
 }

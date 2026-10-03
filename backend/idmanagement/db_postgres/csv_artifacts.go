@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"time"
 
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -225,3 +226,9 @@ func (r *csvChunkReader) Close() error {
 }
 
 var _ idmports.CSVArtifactStore = (*CSVArtifactStore)(nil)
+
+// DeleteCSVArtifactsCreatedBefore は cutoff より前に作った成果物を、テナントをまたいで消す。
+// 分割片は外部キーの連鎖で消える。
+func (s *CSVArtifactStore) DeleteCSVArtifactsCreatedBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	return New(s.Pool).DeleteCSVArtifactsCreatedBefore(ctx, cutoff)
+}

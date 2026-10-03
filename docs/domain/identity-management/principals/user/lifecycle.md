@@ -10,7 +10,7 @@
 | 行為者 | 管理者 |
 | 入力 | 対象の User と、無効にするか有効にするか |
 | 成功時の作用 | 無効化は `Disabled` にし、`UserDisabled` を発行し、記憶済みの端末をすべて失効させる。再有効化は `Active` に戻し、`UserEnabled` を発行する |
-| 拒否 | `admin` または `system_admin` を持つ管理者が自分自身を無効化する操作（422 `self_disable_forbidden`）。User を変えない |
+| 拒否 | `PendingDeletion` の User の無効化と再有効化（409 `user_pending_deletion`）。`admin` または `system_admin` を持つ管理者が自分自身を無効化する操作（422 `self_disable_forbidden`）。どの拒否も User を変えない |
 | 冪等性 | すでにその状態なら、成功を返し、時刻を進めず、イベントを発行しない |
 
 ### REQ-IDMANAGEMENT-010 管理者は無効化したユーザーを再有効化できる
@@ -25,6 +25,8 @@
 - `Disabled` の User の無効化と、`Active` の User の再有効化は成功を返し、`status_changed_at` と `updated_at` を進めず、イベントを発行しない。
 - `admin` または `system_admin` を持つ管理者が自分自身を無効化する操作は、422 と `self_disable_forbidden` で拒否し、User を変えない。自分自身の再有効化は拒否しない。
 - 無効化は、その User の記憶済みの端末をすべて失効させる。
+- `PendingDeletion` の User の無効化と再有効化は、409 と `user_pending_deletion` で拒否し、User を変えず、イベントを発行しない。
+- **判断**：削除の予約を取り消す経路を、猶予期間を確かめて `UserRestored` を発行する復元だけにする。無効化と再有効化を許すと、状態遷移表にない遷移で猶予期間の判定を迂回できる。
 - **担保手段**：`usecases.SetUserDisabled`
 
 ## 削除の予約

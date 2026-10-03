@@ -1697,13 +1697,23 @@ model DisableAdminUserError422 {
   @body body: DisableAdminUserError422Body;
 }
 
-@doc("An administrator disables a user, refusing both new sign-ins and the use of existing sessions.")
+union DisableAdminUserError409Body {
+  IdMagic.Contract.UserPendingDeletionError,
+}
+
+model DisableAdminUserError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: DisableAdminUserError409Body;
+}
+
+@doc("An administrator disables a user, refusing both new sign-ins and the use of existing sessions. A user scheduled for deletion is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DisableAdminUser")
 @route("/api/admin/v1/users/{user_id}/disable")
 @post
 op DisableAdminUser(
-  @path user_id: string,): DisableAdminUserSuccess_204 | DisableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableAdminUserError403 | DisableAdminUserError422;
+  @path user_id: string,): DisableAdminUserSuccess_204 | DisableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableAdminUserError403 | DisableAdminUserError409 | DisableAdminUserError422;
 
 model EnableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -1732,13 +1742,23 @@ model EnableAdminUserError403 {
   @body body: EnableAdminUserError403Body;
 }
 
-@doc("An administrator re-enables a disabled user.")
+union EnableAdminUserError409Body {
+  IdMagic.Contract.UserPendingDeletionError,
+}
+
+model EnableAdminUserError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: EnableAdminUserError409Body;
+}
+
+@doc("An administrator re-enables a disabled user. A user scheduled for deletion is refused; RestoreAdminUser cancels the schedule.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("EnableAdminUser")
 @route("/api/admin/v1/users/{user_id}/enable")
 @post
 op EnableAdminUser(
-  @path user_id: string,): EnableAdminUserSuccess_204 | EnableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableAdminUserError403;
+  @path user_id: string,): EnableAdminUserSuccess_204 | EnableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableAdminUserError403 | EnableAdminUserError409;
 
 model DeleteAdminUserHttpRequest {
   @doc("Same meaning as `?purge=true`: skip the soft delete and anonymize immediately. Omitted means a soft delete.")

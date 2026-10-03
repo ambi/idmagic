@@ -79,3 +79,20 @@
 - User の CSV と Group の CSV は同じ字句形を使う。
 - **担保手段**：`domain.ParseAttributeCell`、`domain.FormatAttributeCell`
 
+### 成果物の保持
+
+| 項目 | 内容 |
+| --- | --- |
+| 行為者 | Batch の保持期限の削除（`retention-sweep`） |
+| 入力 | Batch の起動時刻 |
+| 成功時の作用 | 作成から 30 日を過ぎた CSV の成果物を、分割したペイロードごと消す |
+| 冪等性 | 何度実行しても、消すのは境界の時刻より前に作った成果物だけである |
+
+#### REQ-IDMANAGEMENT-080 CSV の成果物は、作成から 30 日を過ぎると消す
+
+- 保持期限の削除は、作成の時刻が実行の時刻の 30 日前より前の CSV の成果物を消す。対象は、エクスポートのファイル、インポートのペイロード、行のエラーのページである。
+- 成果物を消すときは、分割したペイロードもすべて消す。
+- 作成の時刻が実行の時刻の 30 日前ちょうどか、それより後の成果物は消さない。
+- **判断**：エクスポートの成果物は完了の時点で作るので、作成から 30 日で消すと、エクスポートの保持期限（REQ-IDMANAGEMENT-079）と同じ時点で消える。インポートのペイロードは、プレビューのジョブの記録と同じ期間だけ残る。
+- **担保手段**：`usecases.PurgeExpiredCSVArtifacts`、`CSVArtifactStore.DeleteCSVArtifactsCreatedBefore`
+- **例**：EX-IDMANAGEMENT-080-01

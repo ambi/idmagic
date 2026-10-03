@@ -28,7 +28,14 @@ import (
 
 // runExport は queued のエクスポートを worker と同じ手順で succeeded まで進める。
 // ダウンロードの経路を live worker なしで通すためのもので、拒否の判定には触れない。
+// 完了の時刻は、ジョブの作成と同じだけ jobClock が遡らせた時刻にする。
 func (f *idmRefusalFixture) runExport(t *testing.T, exportID string) {
+	t.Helper()
+	f.runExportCompletedAt(t, exportID, time.Now().UTC().Add(-f.jobClock.backdate))
+}
+
+// runExportCompletedAt は runExport と同じ手順で、completedAt の時刻にエクスポートを完了させる。
+func (f *idmRefusalFixture) runExportCompletedAt(t *testing.T, exportID string, completedAt time.Time) {
 	t.Helper()
 	ctx := context.Background()
 	job, err := f.jobs.Get(ctx, exportID)
@@ -57,10 +64,10 @@ func (f *idmRefusalFixture) runExport(t *testing.T, exportID string) {
 	if err != nil {
 		t.Fatalf("run export job: %v", err)
 	}
-	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC()); err != nil {
+	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, completedAt); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.jobs.Complete(ctx, exportID, "w1", raw, time.Now().UTC()); err != nil {
+	if _, err := f.jobs.Complete(ctx, exportID, "w1", raw, completedAt); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -445,5 +452,49 @@ func TestGroupMemberExportUnderAnotherGroupReturnsNoMembers(t *testing.T) {
 	})
 	if accepted.Code != http.StatusOK || !strings.Contains(accepted.Body.String(), idmRefusalAlice) {
 		t.Fatalf("前提が壊れている: 発行元のダウンロードが status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+}
+
+// REQ-IDMANAGEMENT-079 の主要な使い方を、管理 API の経路で固定する。
+//
+//spec:covers EX-IDMANAGEMENT-079-01: 作成から保持期限より長く経っても、完了から保持期限が経っていないエクスポートはダウンロードでき、expires_at が完了の時刻に保持期限を加えた時刻であること。
+func TestExportStaysDownloadableUntilThirtyDaysAfterCompletion(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-retention", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+
+	// 作成は保持期限より 1 日前、完了は保持期限の 1 時間後まで残る時刻にする。
+	fixture.jobClock.backdate = idmusecases.DataExportTTL + 24*time.Hour
+	exportID := startedExportID(t, fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "email"}},
+	}))
+	completedAt := time.Now().UTC().Add(-idmusecases.DataExportTTL + time.Hour).Truncate(time.Second)
+	fixture.runExportCompletedAt(t, exportID, completedAt)
+
+	view := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID, sessionID: admin,
+	})
+	if view.Code != http.StatusOK {
+		t.Fatalf("参照が status=%d body=%s", view.Code, view.Body.String())
+	}
+	var state struct {
+		Status       string    `json:"status"`
+		Downloadable bool      `json:"downloadable"`
+		ExpiresAt    time.Time `json:"expires_at"`
+	}
+	if err := json.Unmarshal(view.Body.Bytes(), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != string(idmdomain.ExportStatusSucceeded) || !state.Downloadable {
+		t.Fatalf("status=%q downloadable=%v, want succeeded / true", state.Status, state.Downloadable)
+	}
+	if want := completedAt.Add(idmusecases.DataExportTTL); !state.ExpiresAt.Equal(want) {
+		t.Fatalf("expires_at=%v, want %v", state.ExpiresAt, want)
+	}
+	downloaded := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID + "/file", sessionID: admin,
+	})
+	if downloaded.Code != http.StatusOK || !strings.Contains(downloaded.Body.String(), idmRefusalAlice) {
+		t.Fatalf("期限内のダウンロードが status=%d body=%s", downloaded.Code, downloaded.Body.String())
 	}
 }

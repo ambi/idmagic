@@ -110,6 +110,10 @@ model SelfDisableForbiddenError is ProblemDetails;
 model UserNotPendingDeletionError is ProblemDetails;
 
 
+@doc("DisableAdminUser or EnableAdminUser targets a User in the `pending_deletion` state; only RestoreAdminUser cancels a scheduled deletion. RFC 9457 Problem Details with `type` = `urn:idmagic:error:user_pending_deletion`.")
+model UserPendingDeletionError is ProblemDetails;
+
+
 @doc("RestoreAdminUser was called after the deletion grace period had elapsed. RFC 9457 Problem Details with `type` = `urn:idmagic:error:restore_grace_expired`.")
 model RestoreGracePeriodExpiredError is ProblemDetails;
 

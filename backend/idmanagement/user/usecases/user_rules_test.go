@@ -401,6 +401,31 @@ func TestSetUserDisabledRefusesAnAdministratorDisablingThemselves(t *testing.T) 
 	}
 }
 
+// REQ-IDMANAGEMENT-046 の主要な使い方：削除予約中の User は無効化も再有効化もできない。
+//
+//spec:covers EX-IDMANAGEMENT-046-04: 削除予約中の User の無効化と再有効化を user_pending_deletion で拒否し、User を PendingDeletion のまま残しイベントを発行しないこと。
+func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
+	f := newUserRulesFixture(t)
+	scheduledAt := userRulesNow.Add(-time.Hour)
+	alice := f.seed("alice", func(user *userdomain.User) {
+		user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
+		user.Lifecycle.StatusChangedAt = &scheduledAt
+	})
+	ctx := context.Background()
+	for _, disabled := range []bool{true, false} {
+		if _, err := userusecases.SetUserDisabled(ctx, f.deps, "admin", alice.ID, disabled, userRulesNow); !errors.Is(err, userusecases.ErrUserPendingDeletion) {
+			t.Fatalf("disabled=%v: err=%v, want ErrUserPendingDeletion", disabled, err)
+		}
+		stored := f.stored(t, alice.ID)
+		if stored.Lifecycle.Status != idmdomain.UserStatusPendingDeletion || !stored.Lifecycle.StatusChangedAt.Equal(scheduledAt) {
+			t.Fatalf("disabled=%v: 削除予約が変わった: %+v", disabled, stored.Lifecycle)
+		}
+	}
+	if len(*f.events) != 0 {
+		t.Fatalf("イベントが発行された: %v", eventTypes(*f.events))
+	}
+}
+
 //spec:covers EX-IDMANAGEMENT-046-03: 無効化がその User の記憶済みの端末を失効させること。
 func TestSetUserDisabledRevokesTrustedDevices(t *testing.T) {
 	f := newUserRulesFixture(t)

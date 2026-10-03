@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"io"
 	"sync"
+	"time"
 
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -15,12 +16,36 @@ import (
 type CSVArtifactStore struct {
 	mu      sync.RWMutex
 	byScope map[string]storedCSVArtifact
+	// Now は保存の時刻を返す。nil なら現在の時刻を使う。テストが作成の時刻を決めるために差し替える。
+	Now func() time.Time
 }
 
 type storedCSVArtifact struct {
-	metadata idmports.CSVArtifact
-	content  []byte
-	pages    [][]byte
+	metadata  idmports.CSVArtifact
+	content   []byte
+	pages     [][]byte
+	createdAt time.Time
+}
+
+func (s *CSVArtifactStore) clock() time.Time {
+	if s.Now != nil {
+		return s.Now()
+	}
+	return time.Now().UTC()
+}
+
+// DeleteCSVArtifactsCreatedBefore は cutoff より前に保存した成果物を、テナントをまたいで消す。
+func (s *CSVArtifactStore) DeleteCSVArtifactsCreatedBefore(_ context.Context, cutoff time.Time) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var deleted int64
+	for key, stored := range s.byScope {
+		if stored.createdAt.Before(cutoff) {
+			delete(s.byScope, key)
+			deleted++
+		}
+	}
+	return deleted, nil
 }
 
 func (s *CSVArtifactStore) PutCSVArtifactPages(_ context.Context, tenantID string, write func(emit func([]byte) error) error) (idmports.CSVArtifact, error) {
@@ -43,7 +68,7 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(_ context.Context, tenantID strin
 	}
 	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size}
 	s.mu.Lock()
-	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, pages: pages}
+	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, pages: pages, createdAt: s.clock()}
 	s.mu.Unlock()
 	return metadata, nil
 }
@@ -76,7 +101,7 @@ func (s *CSVArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, wr
 		Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(content.Len()),
 	}
 	s.mu.Lock()
-	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, content: append([]byte(nil), content.Bytes()...)}
+	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, content: append([]byte(nil), content.Bytes()...), createdAt: s.clock()}
 	s.mu.Unlock()
 	return metadata, nil
 }

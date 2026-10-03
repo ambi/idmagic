@@ -181,6 +181,14 @@
 - When 管理者がユーザー "alice" を無効化する
 - Then その端末は失効している
 
+### Example: EX-IDMANAGEMENT-046-04 削除予約中の User の無効化と再有効化
+
+- Given ユーザー "alice" は `PendingDeletion` である
+- When 管理者がユーザー "alice" を無効化する
+- Then 操作は `user_pending_deletion` で拒否され、"alice" は `PendingDeletion` のままである
+- When 管理者がユーザー "alice" を再有効化する
+- Then 操作は `user_pending_deletion` で拒否され、"alice" は `PendingDeletion` のままである
+
 ## Rule: REQ-IDMANAGEMENT-047 必須操作の付与と解除は、すでにその状態なら何もしない
 
 ### Example: EX-IDMANAGEMENT-047-01 付与済みの必須操作をもう一度付与する

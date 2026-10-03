@@ -20,3 +20,7 @@ LIMIT sqlc.arg(page_limit);
 SELECT a.sha256, a.byte_size, c.payload FROM csv_artifacts a
 JOIN csv_artifact_chunks c ON c.artifact_id = a.id
 WHERE a.tenant_id = $1 AND a.id = $2 AND c.chunk_number = $3;
+
+-- name: DeleteCSVArtifactsCreatedBefore :execrows
+-- 保持期限の削除。テナントをまたいで消し、分割片は外部キーの連鎖で消える。
+DELETE FROM csv_artifacts WHERE created_at < $1;

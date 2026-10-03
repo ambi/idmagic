@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 )
 
 var ErrCSVArtifactNotFound = errors.New("CSV artifact not found")
@@ -24,6 +25,13 @@ type CSVArtifact struct {
 
 // CSVArtifactStore は write が nil を返したときにだけ成果物を確定する。
 // 実装はペイロードを流しながらダイジェストとサイズを算出する。
+// CSVArtifactPurger は保持期限を過ぎた成果物を消す。cutoff より前に作った成果物を、
+// 分割したペイロードごと消し、消した件数を返す。テナントをまたいで消すので、Batch の
+// 保持期限の削除だけが使う。
+type CSVArtifactPurger interface {
+	DeleteCSVArtifactsCreatedBefore(ctx context.Context, cutoff time.Time) (int64, error)
+}
+
 type CSVArtifactStore interface {
 	PutCSVArtifact(ctx context.Context, tenantID string, write func(io.Writer) error) (CSVArtifact, error)
 	OpenCSVArtifact(ctx context.Context, tenantID, ref string) (io.ReadCloser, CSVArtifact, error)

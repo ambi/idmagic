@@ -6,9 +6,12 @@ package db_postgres
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
+	// 保持期限の削除。テナントをまたいで消し、分割片は外部キーの連鎖で消える。
+	DeleteCSVArtifactsCreatedBefore(ctx context.Context, createdAt time.Time) (int64, error)
 	FindCSVArtifact(ctx context.Context, arg FindCSVArtifactParams) (*FindCSVArtifactRow, error)
 	FindCSVArtifactPage(ctx context.Context, arg FindCSVArtifactPageParams) (*FindCSVArtifactPageRow, error)
 	InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactParams) error

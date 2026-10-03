@@ -54,4 +54,5 @@
 | 管理 API とセルフサービス API | HTTP の要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能の設計 |
 | CSV のプレビューと適用 | 管理者の要求で `Jobs` のジョブを作る | `worker` | [CSV の往復変換](csv-transfer.md) |
 | データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](../bulk-transfer/data-export/README.md) |
-| ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | 各機能の設計 |
+| ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](audit-events.md) |
+| CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](../bulk-transfer/csv-transfer/README.md#成果物の保持) |

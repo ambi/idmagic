@@ -338,6 +338,9 @@ func SetUserDisabled(
 	if user.TenantID != tenancy.TenantID(ctx) {
 		return nil, idmusecases.ErrUserNotFound
 	}
+	if user.Lifecycle.Status == idmdomain.UserStatusPendingDeletion {
+		return nil, ErrUserPendingDeletion
+	}
 	if disabled && actorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return nil, ErrSelfDisableForbidden
 	}
@@ -604,6 +607,9 @@ const (
 )
 
 var (
+	// ErrUserPendingDeletion は削除予約中の User の無効化と再有効化で返る。削除予約を
+	// 取り消せるのは、猶予期間を確かめる RestoreUser だけである。
+	ErrUserPendingDeletion = errors.New("user is pending deletion")
 	// ErrUserNotPendingDeletion は Restore 対象が PendingDeletion でない場合に返る。
 	ErrUserNotPendingDeletion = errors.New("user is not pending deletion")
 	// ErrRestoreGracePeriodExpired は猶予期間を過ぎた user の Restore で返る。

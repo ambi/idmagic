@@ -9,6 +9,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 )
 
 func exportCount(t *testing.T, deps idmusecases.DataExportDeps, target idmdomain.DataExportTargetKind) int {
@@ -115,6 +116,64 @@ func TestListDataExportsReadsOnlyTheNewestTwoHundredBeforeFilteringByTarget(t *t
 	}
 	if count := exportCount(t, deps, idmdomain.ExportTargetGroup); count != 200 {
 		t.Fatalf("Group のエクスポートが %d 件, want 200", count)
+	}
+}
+
+// REQ-IDMANAGEMENT-079 の主要な使い方：保持期限は完了の時刻から数える。
+//
+//spec:covers EX-IDMANAGEMENT-079-01: 作成の 1 日後に完了したエクスポートの expires_at が完了の 30 日後であり、その直前までダウンロードでき、その時刻以降は expired になること。
+func TestDataExportExpiresThirtyDaysAfterCompletion(t *testing.T) {
+	deps, _ := seededExportDeps(t)
+	ctx := exportTestCtx()
+	created := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	completed := created.Add(24 * time.Hour)
+	started, err := idmusecases.StartDataExport(ctx, deps, "admin", "user", []string{"email"}, nil, created)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if started.ExpiresAt != nil {
+		t.Fatalf("queued のエクスポートが expires_at=%v を返した", started.ExpiresAt)
+	}
+	completeExport(t, deps, started.ID, created, completed)
+	scope := idmusecases.ExportScope{Target: idmdomain.ExportTargetUser}
+
+	wantExpiry := completed.Add(30 * 24 * time.Hour)
+	deps.Now = func() time.Time { return wantExpiry.Add(-time.Second) }
+	view, err := idmusecases.GetDataExport(ctx, deps, scope, started.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.ExpiresAt == nil || !view.ExpiresAt.Equal(wantExpiry) {
+		t.Fatalf("expires_at=%v, want %v", view.ExpiresAt, wantExpiry)
+	}
+	if view.Status != idmdomain.ExportStatusSucceeded || !view.Downloadable {
+		t.Fatalf("期限の直前に status=%s downloadable=%v", view.Status, view.Downloadable)
+	}
+
+	deps.Now = func() time.Time { return wantExpiry }
+	view, err = idmusecases.GetDataExport(ctx, deps, scope, started.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Status != idmdomain.ExportStatusExpired || view.Downloadable {
+		t.Fatalf("期限の時刻に status=%s downloadable=%v, want expired", view.Status, view.Downloadable)
+	}
+}
+
+// completeExport は、エクスポートのジョブを claimed の時刻に取得し、completed の時刻に生成を終える。
+func completeExport(t *testing.T, deps idmusecases.DataExportDeps, exportID string, claimed, completed time.Time) {
+	t.Helper()
+	ctx := exportTestCtx()
+	jobs, err := deps.JobRepo.ClaimBatch(ctx, "worker-1", jobsdomain.LaneBulk, 10, 48*time.Hour, claimed)
+	if err != nil || len(jobs) != 1 || jobs[0].ID != exportID {
+		t.Fatalf("claim: jobs=%v err=%v", jobs, err)
+	}
+	result, err := idmusecases.DataExportHandler(deps)(ctx, jobs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.JobRepo.Complete(ctx, exportID, "worker-1", result, completed); err != nil {
+		t.Fatal(err)
 	}
 }
 
