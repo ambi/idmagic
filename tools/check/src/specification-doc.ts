@@ -97,7 +97,7 @@ export function documentKind(path: string): DocumentKind | undefined {
 }
 
 const STATE_HEADER = '| State | Kind | Meaning |'
-const TRANSITION_HEADER = '| From | Event | Guard | To | Effects |'
+export const TRANSITION_HEADER = '| From | Event | Guard | To | Effects |'
 
 /** Whether a state starts the machine, ends it, or does neither. */
 const STATE_KINDS = new Set(['initial', 'terminal', '—'])
@@ -224,6 +224,7 @@ function validateStateMachines(
         message: `state machine must declare exactly one initial state, found ${initial}`,
       })
     }
+    const transitions = new Set<string>()
     for (const row of tableRows(block, TRANSITION_HEADER)) {
       for (const column of [0, 3]) {
         const name = cellValue(row.cells[column])
@@ -234,8 +235,99 @@ function validateStateMachines(
           })
         }
       }
+      transitions.add(transitionKey(cellValue(row.cells[0]), cellValue(row.cells[3])))
+    }
+    findings.push(
+      ...validateStateMatrix(block, states, transitions).map((finding) => ({
+        line: at(finding.index),
+        message: finding.message,
+      })),
+    )
+  }
+}
+
+/** 状態遷移表（マトリクス形式）の見出し行。状態の表と同じく `State` で始まり、`Kind` の列を持たない。 */
+const MATRIX_HEADER = /^\| State \|(?! Kind \|).*\|$/m
+
+/** 一つのセルの一つの結果。`<br>` で区切った各結果の末尾に、括弧の条件を添えてよい。 */
+const MATRIX_OUTCOME = /^(?:→ ([^\s（]+)|何もしない|拒否：\S.*?)(?:（[^（）]+）)?$/
+
+function transitionKey(from: string, to: string): string {
+  return `${from}\u0000${to}`
+}
+
+/**
+ * 状態遷移表（マトリクス形式）は、すべての状態と操作の組に結果を書く。空のセルは、
+ * 誰も決めていない振る舞いがそこにあることを示す。`→` の結果は遷移の表と同じ遷移を
+ * 述べなければならず、片方にしかない遷移は、どちらかの表の漏れである。
+ * 表を持たない状態機械は対象にしない。
+ */
+function validateStateMatrix(
+  block: string,
+  states: ReadonlySet<string>,
+  transitions: ReadonlySet<string>,
+): Array<{ index: number; message: string }> {
+  const header = block.match(MATRIX_HEADER)
+  if (!header) return []
+  const operations = tableRowCells(header[0]).slice(1)
+  const findings: Array<{ index: number; message: string }> = []
+  const rows = new Set<string>()
+  const reached = new Set<string>()
+  for (const row of tableRows(block, header[0])) {
+    const state = cellValue(row.cells[0])
+    const report = (message: string) => findings.push({ index: row.index, message })
+    if (!states.has(state)) {
+      report(`state matrix names ${state}, which the state table does not declare`)
+      continue
+    }
+    rows.add(state)
+    for (const [column, operation] of operations.entries()) {
+      const cell = (row.cells[column + 1] ?? '').trim()
+      if (!cell) {
+        report(`state matrix gives no outcome for ${state} × ${operation}`)
+        continue
+      }
+      for (const outcome of cell.split('<br>').map((part) => part.trim())) {
+        const match = outcome.match(MATRIX_OUTCOME)
+        if (!match) {
+          report(
+            `state matrix outcome "${outcome}" for ${state} × ${operation} must be ` +
+              '→ <State>, 何もしない, or 拒否：<response>',
+          )
+          continue
+        }
+        const target = match[1]
+        if (target === undefined) continue
+        if (!states.has(target)) {
+          report(`state matrix names ${target}, which the state table does not declare`)
+          continue
+        }
+        const key = transitionKey(state, target)
+        if (!transitions.has(key) && !reached.has(key)) {
+          report(
+            `state matrix moves ${state} to ${target}, which the transition table does not list`,
+          )
+        }
+        reached.add(key)
+      }
     }
   }
+  const headerIndex = block.indexOf(header[0])
+  for (const state of states) {
+    if (!rows.has(state)) {
+      findings.push({ index: headerIndex, message: `state matrix has no row for state ${state}` })
+    }
+  }
+  for (const key of transitions) {
+    if (reached.has(key)) continue
+    const [from, to] = key.split('\u0000')
+    if (!rows.has(from ?? '')) continue
+    findings.push({
+      index: headerIndex,
+      message: `transition ${from} to ${to} has no operation in the state matrix`,
+    })
+  }
+  return findings
 }
 
 /**

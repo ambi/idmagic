@@ -19,6 +19,7 @@ import { checkSloReferences } from './check-slo-references.ts'
 import { checkSpecImpact } from './check-spec-impact.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
 import { checkTerminology } from './check-terminology.ts'
+import { checkUnspecifiedVocabulary } from './check-unspecified-vocabulary.ts'
 import { checkVulnerabilitySuppressions } from './check-vulnerability-suppressions.ts'
 import { checkWorkItems } from './check-work-items.ts'
 import type { RepositoryCheck } from './runner.ts'
@@ -43,6 +44,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'status-drift', groups: ['all'], run: checkStatusDrift },
   { name: 'event-contract', groups: ['all'], run: checkEventContract },
   { name: 'security-controls', groups: ['all'], run: checkSecurityControls },
+  { name: 'unspecified-vocabulary', groups: ['all'], run: checkUnspecifiedVocabulary },
   { name: 'slo-references', groups: ['all'], run: checkSloReferences },
   { name: 'schema-tables', groups: ['all'], run: checkSchemaTables },
   {

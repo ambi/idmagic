@@ -318,6 +318,104 @@ describe('states.md', () => {
   })
 })
 
+const matrixMachine = (matrix: string) => `# Demo State Transitions
+
+## Lifecycle
+
+| State | Kind | Meaning |
+|---|---|---|
+| Ready | initial | 受理直後 |
+| Done | terminal | 完了 |
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Ready | Run | — | Done | Completed |
+
+${matrix}
+`
+
+const completeMatrix = [
+  '| State | 実行 | 取り消し |',
+  '|---|---|---|',
+  '| Ready | → Done | 何もしない（期限内）<br>拒否：409 expired（期限後） |',
+  '| Done | 何もしない | 拒否：404 not_found |',
+].join('\n')
+
+describe('state matrix', () => {
+  it('accepts a matrix that gives every state and operation an outcome', () => {
+    expect(validateDocument(STATES, matrixMachine(completeMatrix)).findings).toEqual([])
+  })
+
+  it('reads the condition after a target state apart from the state name', () => {
+    const source = matrixMachine(
+      completeMatrix.replace(
+        '| Ready | → Done |',
+        '| Ready | → Done（期限内）<br>何もしない（期限後） |',
+      ),
+    )
+    expect(validateDocument(STATES, source).findings).toEqual([])
+  })
+
+  it('accepts a machine without a matrix', () => {
+    expect(validateDocument(STATES, states).findings).toEqual([])
+  })
+
+  it('rejects an empty cell and a row with fewer cells than operations', () => {
+    const source = matrixMachine(
+      completeMatrix.replace('| Done | 何もしない | 拒否：404 not_found |', '| Done |  |'),
+    )
+    expect(messages(STATES, source)).toEqual([
+      'state matrix gives no outcome for Done × 実行',
+      'state matrix gives no outcome for Done × 取り消し',
+    ])
+  })
+
+  it('rejects an outcome outside the vocabulary', () => {
+    const source = matrixMachine(completeMatrix.replace('| Done | 何もしない |', '| Done | 未定 |'))
+    expect(messages(STATES, source)).toEqual([
+      'state matrix outcome "未定" for Done × 実行 must be → <State>, 何もしない, or 拒否：<response>',
+    ])
+  })
+
+  it('rejects a row or a target that the state table does not declare', () => {
+    const source = matrixMachine(
+      `${completeMatrix}\n| Gone | → Ready | 何もしない |`.replace(
+        '| Done | 何もしない |',
+        '| Done | → Lost |',
+      ),
+    )
+    expect(messages(STATES, source)).toEqual([
+      'state matrix names Lost, which the state table does not declare',
+      'state matrix names Gone, which the state table does not declare',
+    ])
+  })
+
+  it('rejects a declared state the matrix has no row for', () => {
+    const source = matrixMachine(
+      completeMatrix.replace('\n| Done | 何もしない | 拒否：404 not_found |', ''),
+    )
+    expect(messages(STATES, source)).toEqual(['state matrix has no row for state Done'])
+  })
+
+  it('rejects a matrix transition that the transition table does not list', () => {
+    const source = matrixMachine(
+      completeMatrix.replace('| Done | 何もしない |', '| Done | → Ready |'),
+    )
+    expect(messages(STATES, source)).toEqual([
+      'state matrix moves Done to Ready, which the transition table does not list',
+    ])
+  })
+
+  it('rejects a listed transition that no matrix cell reaches', () => {
+    const source = matrixMachine(
+      completeMatrix.replace('| Ready | → Done |', '| Ready | 何もしない |'),
+    )
+    expect(messages(STATES, source)).toEqual([
+      'transition Ready to Done has no operation in the state matrix',
+    ])
+  })
+})
+
 const withStandards = (rows: string) => `# Demo Standards
 
 ## Demo Protocol

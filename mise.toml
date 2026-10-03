@@ -748,6 +748,11 @@ description = "Check the published domain event payload vocabulary against the c
 dir = "tools"
 run = "bun run check/src/runner.ts event-contract"
 
+[tasks.check-unspecified-vocabulary]
+description = "Check that every declared error code and domain event appears in a requirement"
+dir = "tools"
+run = "bun run check/src/runner.ts unspecified-vocabulary"
+
 [tasks.check-slo-references]
 description = "Check that monitoring assets name declared service level objectives"
 dir = "tools"
