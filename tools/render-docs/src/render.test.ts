@@ -446,6 +446,103 @@ describe('renderDocumentationSite', () => {
     expect(contextBranch).toContain('>ユーザー</a>')
   })
 
+  it('renders a context in the feature layout with generated rule indexes', () => {
+    const result = renderDocumentationSite({
+      documents: [
+        rootDocument,
+        { path: 'docs/domain/demo/README.md', source: '# Demo\n\nデモを扱う。\n' },
+        { path: 'docs/domain/demo/design/README.md', source: '# Demo の内部設計\n\n構成。\n' },
+        {
+          path: 'docs/domain/demo/design/decisions.md',
+          source: '# Demo の重要な設計判断\n\n## 物理削除しない\n\n### 背景\n\n参照がある。\n',
+        },
+        { path: 'docs/domain/demo/work/README.md', source: '# 作業\n\n作業の機能群。\n' },
+        {
+          path: 'docs/domain/demo/work/task/README.md',
+          source: [
+            '# タスク',
+            '',
+            '## 状態遷移',
+            '',
+            '### TaskLifecycle',
+            '',
+            '| State | Kind | Meaning |',
+            '|---|---|---|',
+            '| open | initial | 開いている |',
+            '| closed | terminal | 閉じた |',
+            '',
+            '| From | Event | Guard | To | Effects |',
+            '|---|---|---|---|---|',
+            '| open | TaskClosed | — | closed |  |',
+            '',
+            '## 操作',
+            '',
+            '### 一覧',
+            '',
+            '#### REQ-DEMO-002 開いたタスクだけを一覧する',
+            '',
+            '- 既定値は 10 件とする。',
+            '- **担保手段**：`Task.Open`',
+            '- **要判断**：上限を設けるかを決める。',
+            '',
+          ].join('\n'),
+        },
+        {
+          path: 'docs/domain/demo/work/task/lifecycle.md',
+          source:
+            '# タスクのライフサイクル\n\n## 削除\n\n#### REQ-DEMO-003 閉じたタスクを消す\n\n- 閉じたタスクだけを消す。\n',
+        },
+        { path: 'docs/domain/demo/work/task/design.md', source: '# タスクの内部設計\n\n構成。\n' },
+        {
+          path: 'docs/domain/demo/work/task/examples.feature.md',
+          source: [
+            '# Feature: タスクの例',
+            '',
+            '## Rule: REQ-DEMO-002 開いたタスクだけを一覧する',
+            '',
+            '### Example: EX-DEMO-002-01 開いたタスク',
+            '',
+            '- When 一覧を要求する',
+            '- Then 開いたタスクを返す',
+            '',
+          ].join('\n'),
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+      traces: [{ id: 'EX-DEMO-002-01', sources: ['backend/demo/task_test.go'], workItems: [] }],
+    })
+    const task = result.files['domain/demo/work/task/index.html'] ?? ''
+
+    for (const page of [
+      'domain/demo/design/index.html',
+      'domain/demo/design/decisions.html',
+      'domain/demo/work/index.html',
+      'domain/demo/work/task/lifecycle.html',
+      'domain/demo/work/task/design.html',
+      'domain/demo/work/task/examples.html',
+    ]) {
+      expect(result.files[page]).toBeDefined()
+    }
+    expect(task).toContain('stateDiagram')
+    expect(task).toContain('規則一覧')
+    expect(task).toContain('href="lifecycle.html#')
+    expect(task).toContain('未決事項')
+    expect(task).toContain('上限を設けるかを決める。')
+    expect(result.files['domain/demo/index.html']).toContain('機能地図')
+    expect(result.files['domain/demo/index.html']).toContain('href="work/task/index.html"')
+    expect(result.files['domain/demo/work/task/examples.html']).toContain('scenario-keyword when')
+    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '内部設計', '例'])
+    const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))
+    expect(groupBranch).toContain('>タスク</a>')
+    const trace = result.files['traceability/index.html'] ?? ''
+    expect(trace).toContain('REQ-DEMO-002')
+    expect(trace).toContain('backend/demo/task_test.go')
+  })
+
   it('keeps a parent page distinct from its children and removes Japanese possession', () => {
     const result = renderDocumentationSite({
       documents: [

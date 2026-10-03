@@ -14,7 +14,11 @@ const requiredMarkers = new Map<string, string[]>([
   ['AGENTS.md', ['コードの編集またはレビュー', 'docs/development/coding-style.md']],
   [
     '.agents/skills/spec-change/SKILL.md',
-    ['spec/contexts/<context>/{models,main}.tsp', 'docs/domain/<context>/scenarios.feature.md'],
+    [
+      'spec/contexts/<context>/{models,main}.tsp',
+      'docs/domain/<context>/<group>/<feature>/README.md',
+      'examples.feature.md',
+    ],
   ],
   [
     '.agents/skills/update-design/SKILL.md',

@@ -23,7 +23,7 @@ import {
   verifyWorkItemIdentifiers,
 } from './work-item-dependencies.ts'
 import type { ReferenceEnvironment } from './work-item-references.ts'
-import { verifyWorkItemReferences } from './work-item-references.ts'
+import { RELOCATED_SPEC_PATHS, verifyWorkItemReferences } from './work-item-references.ts'
 
 export type ParsedWorkItem = {
   id: string
@@ -185,9 +185,13 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       (finding) => `${record.path}:${finding.line}:${finding.column}: ${finding.message}`,
     ),
   )
+  const relocations: Record<string, string[]> = snapshot.exists(RELOCATED_SPEC_PATHS)
+    ? JSON.parse(snapshot.readSync(RELOCATED_SPEC_PATHS))
+    : {}
   const repository: ReferenceEnvironment = {
     exists: (path) => snapshot.exists(path),
     read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
+    relocated: (path) => relocations[path],
   }
   const primaryEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,

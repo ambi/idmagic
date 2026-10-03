@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,6 +7,31 @@ created_at: 2026-10-03
 priority: p1
 depends_on: []
 change_kind: tooling
+evidence_policy: risk-based-v3
+documentation_impact:
+  level: none
+  reason: 仕様文書の書き方と、それを検査し描画する開発用の道具だけを変える。製品の利用者が観測する振る舞い、API、設定は変わらない。
+  references: []
+initial_context:
+  specification: [SPECIFICATION_FORMAT.md]
+  typespec: []
+  source:
+    - tools/workspace/src/document-layout.ts
+    - tools/workspace/src/workspace.ts
+    - tools/check/src/specification-doc.ts
+    - tools/check/src/gherkin-scenarios.ts
+    - tools/check/src/specification-rules.ts
+    - tools/check/src/check-specification-rules.ts
+    - tools/check/src/check-documents.ts
+    - tools/check/src/canonical-document-set.ts
+    - tools/check/src/spec-diff.ts
+    - tools/check/src/work-item-references.ts
+    - tools/brief/src/brief.ts
+    - tools/spec-route/src/main.ts
+    - tools/render-docs/src/main.ts
+    - tools/render-docs/src/render.ts
+  tests: [tools/check/src, tools/workspace/src, tools/render-docs/src]
+  stop_before_reading: [backend, frontend, spec]
 spec_impact:
   kind: none
   reason: "仕様文書の配置と書式を定める規約、検査、生成器だけを変える。既存の REQ と EX の ID、規則文、例のステップ、状態遷移の表、TypeSpec の契約は変えない。旧形式の Context は従来どおり検査に通る。"
@@ -151,7 +176,37 @@ render-docs が規則の見出しと **要判断** の欄から生成して、�
 
 ### 移行中の共存
 
-検査と生成器は、Context が `legacy-spec-layout.json` に載っているかで形式を切り替える。
+Context が新しい形式かどうかは、`docs/domain/<context>/design/README.md` があるかで決める。
+道具の多くは、履歴のリビジョンや一つのファイルだけを読む。
+そうした道具でも、設定ファイルを読まずに同じ判定ができるようにするためである。
+`legacy-spec-layout.json` は、この判定に対する歯止めとして使う。
+`design/README.md` を持たない Context は、この一覧に載っていなければならない。
+`design/README.md` を持つ Context は、この一覧から外さなければならない。
+どちらも `mise run check` で検査する。
+
+新しい形式の Context では、ファイルを次のように判定する。
+
+| 置き場所 | 置けるファイル | 種別 |
+| --- | --- | --- |
+| Context の直下 | `README.md`、`glossary.md`、`standards.md` | 現行どおり |
+| `design/` | `README.md`、`decisions.md`、任意の名前の横断的概念 | 内部設計。`decisions.md` だけは判断の骨格を検査する |
+| 機能群（子のディレクトリを持つ段） | `README.md` | 境界と索引。規則を宣言できない |
+| 機能ノード（Context から 1 段か 2 段下の、子のディレクトリを持たない段） | `README.md`、`design.md`、`examples.feature.md`、任意の名前の章 | `README.md` と章は機能仕様、`examples.feature.md` は付録 |
+
+旧形式の名前（`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md`）は、新しい形式の機能ノードと機能群には置けない。
+
+機能仕様の検査は次のとおりである。
+
+- 規則の宣言は `### REQ-…` または `#### REQ-…` の見出しとする。
+  廃止した規則は、見出しの末尾に `(superseded by REQ-…)` を付ける。
+- 有効な規則には **担保手段** の欄が必要である。
+  **理由** の欄は使えず、**判断** を使う。
+- 機能ノードの `README.md` の H2 は、設計の節の表の語彙をその順で使い、同じ節を二度置かない。
+- 付録の `## Rule:` の題名は、仕様本文の見出しの題名と一致しなければならない。
+
+spec-diff は、新しい形式の規則の事実を `'spec'`、題名、付録の例のステップ、`--`、本文の順に並べて作る。
+旧形式の `'gherkin'` とは形式の印が異なるので、移行のコミットでは題名だけを比べる。
+移行で題名を変えなければ、規則は変更として報告されない。
 spec-diff は新形式の規則に別の形式の印 `'spec'` を与える。
 形式の印が異なる二つの版では、題名だけを比べる既存の分岐を使う。
 これにより、移行のコミットで規則が変更や削除として報告されないようにする。
@@ -180,12 +235,17 @@ spec-diff は新形式の規則に別の形式の印 `'spec'` を与える。
 
 ## タスク
 
-- [ ] T001 [Spec] `SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`WORK_ITEM_FORMAT.md`、関連 skills を改める。
-- [ ] T002 [App] 文書の種別の一覧と、旧形式の切り替えを実装する。
-- [ ] T003 [App] 規則の宣言、付録、欄、節の骨格の検査を新形式に対応させる。
-- [ ] T004 [App] spec-diff と ID の解決を新形式に対応させ、`relocated-spec-paths.json` を設ける。
-- [ ] T005 [App] render-docs に新しいページと生成する一覧を加える。
-- [ ] T006 [Verify] 新形式の fixture でテストし、既存の文書がすべて検査に通ることを確かめる。
+- [x] T001 [Spec] `SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`WORK_ITEM_FORMAT.md`、関連 skills を改める。
+  N/A: 製品の規範 ID はない。配置図の整合検査（`document-layout-format.test.ts` の新しい段の表明）と `mise run check` のリンク検査が、旧いアンカーへのリンクを RED として検出した。
+- [x] T002 [App] 文書の種別の一覧と、旧形式の切り替えを実装する。
+- [x] T003 [App] 規則の宣言、付録、欄、節の骨格の検査を新形式に対応させる。
+  Acceptance RED：`check/src/feature-layout.acceptance.test.ts` の 13 件中 12 件が失敗することを確かめてから実装した。
+- [x] T004 [App] spec-diff と ID の解決を新形式に対応させ、`relocated-spec-paths.json` を設ける。
+  `spec-diff.test.ts` に、旧形式から機能仕様と付録へ題名を変えずに移すと規則の差分が出ず、本文か例を変えると差分が出ることを固定した。
+- [x] T005 [App] render-docs に新しいページと生成する一覧を加える。
+  Unit RED：`render.test.ts` の新しい形式の描画テストが失敗することを確かめてから実装した。一時的な Context で `render-docs/src/main.ts` が新しい形式の文書を集めることも確かめ、その Context は削除した。
+- [x] T006 [Verify] 新形式の fixture でテストし、既存の文書がすべて検査に通ることを確かめる。
+  `mise run test-tools`（801 件）、`mise run typecheck-tools`、`mise run lint-tools`、`mise run check`、`mise run verify` が通る。既存の Context の検査結果（260 件の文書、387 件の規則、934 件の例）は改定の前後で変わらない。
 
 ## 検証
 
@@ -197,3 +257,31 @@ spec-diff は新形式の規則に別の形式の印 `'spec'` を与える。
 
 検査の切り替えを誤ると、旧形式の Context の検査が黙って緩む。
 既存の文書に対する検査の結果が変わらないことを、改定の前後で比べて確かめる。
+
+## 完了
+
+- **Completed At**: 2026-10-03
+- **Summary**:
+  `mise run spec-diff` は、規範仕様の差分を報告しない。
+  仕様文書の構造を、機能仕様と内部設計を軸にした形式へ改める規約と道具を整えた。
+  新しい形式の Context は `design/README.md` の有無で判定し、旧形式の Context は `tools/check/legacy-spec-layout.json` に列挙した（現時点は全 21 件）。
+  検査は、機能仕様の `#### REQ-…` 見出しを規則の宣言として読み、付録 `examples.feature.md` の例と照合し、担保手段の欄を必須とし、理由の欄を判断の欄へ改め、機能仕様の節の順序と `design/decisions.md` の判断の骨格を確かめる。
+  spec-diff、work item の参照の解決、brief、spec-route、セキュリティ統制の検査、render-docs も新しい形式を読む。
+  render-docs は、機能仕様に規則一覧と未決事項を、Context の README に機能地図を生成して差し込む。
+  完了した work item の旧パスは `tools/check/relocated-spec-paths.json` で読み替える。現時点では空である。
+  セキュリティ統制の検査が固定のパスで読む `api-tokens/scenarios.feature.md` の扱いは、wi-26063 の対象範囲に加えた。
+- **Acceptance RED Evidence**:
+  - **Test**: `tools/check/src/feature-layout.acceptance.test.ts`（`check/src/runner.ts` の `documents` と `specification-rules` を、新しい形式の作業ツリーに対して起動する）
+  - **Requirement**: N/A: 開発用の道具の変更であり、製品の規範 ID はない。
+  - **Observed Failure**: 実装前に 13 件中 12 件が失敗した。新しい形式の作業ツリーは `docs/domain/demo/design/README.md: not a canonical specification document` で拒否され、付録のない規則、宣言のない付録の参照、題名の不一致、機能群での宣言、判断の記録の欠けた節、旧形式の一覧との食い違い、担保手段の欠落、理由の欄、節の順序のいずれも検出されなかった。
+  - **Detection Reason**: 文書の種別、ファイルをまたぐ照合、欄と節の検査のどれかを外すと、対応する表明が失敗する。
+- **Unit RED Evidence**:
+  - **Test**: `tools/render-docs/src/render.test.ts` の `renders a context in the feature layout with generated rule indexes`、`tools/check/src/spec-diff.test.ts` の `reports nothing when a rule moves into a feature specification with an appendix`
+  - **Requirement**: N/A: 開発用の道具の変更であり、製品の規範 ID はない。
+  - **Observed Failure**: render のテストは、実装前に `domain/demo/design/index.html` が生成されないため `expect(received).toBeDefined()` で失敗した。spec-diff のテストは実装と同時に書いたため、RED を観測していない。
+  - **Detection Reason**: 段の割り当て、入れ子の案内、生成する一覧、状態図、付録の装飾、トレーサビリティのどれかを外すと render のテストが失敗する。spec-diff のテストは、本文と例のステップのどちらの変更も差分として報告することを固定する。
+- **Change-Resistance Results**:
+  変更は TypeScript の道具であり、`mise run test-go-mutation` の対象外なので、誤実装を手で二つ注入した。
+  付録の例のない規則を見逃す誤実装（`feature-nodes.ts` の例の有無の判定を無効にする）は、`rejects a rule that has no example in the appendix` が検出した。
+  新しい形式の規則に旧形式と同じ形式の印を与える誤実装（`spec-diff.ts` の `'spec'` を `'gherkin'` にする）は、移行で本文が比べられて変更と報告されるため、`reports nothing when a rule moves into a feature specification with an appendix` が検出した。
+  どちらも検出を確かめた後に元へ戻した。

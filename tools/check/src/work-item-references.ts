@@ -9,6 +9,7 @@
  * that moment.
  */
 
+import { specificationRules } from './feature-specification.ts'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 
 export type WorkItemRecord = {
@@ -22,13 +23,19 @@ export type ReferenceEnvironment = {
   exists: (path: string) => boolean
   /** Contents of a repository-relative file, or undefined when unreadable. */
   read: (path: string) => string | undefined
+  /** 移した仕様文書の行き先。`tools/check/relocated-spec-paths.json` が定める。 */
+  relocated?: (path: string) => string[] | undefined
 }
+
+/** 移した仕様文書の旧パスから、規則を宣言する新しいパスへの対応。 */
+export const RELOCATED_SPEC_PATHS = 'tools/check/relocated-spec-paths.json'
 
 /** Reading-list keys whose entries are repository paths. */
 const PATH_KEYS = ['source', 'tests', 'stop_before_reading'] as const
 
 function declaresScenario(source: string, id: string): boolean {
   if (new RegExp(`^### ${id}: `, 'm').test(source)) return true
+  if (specificationRules(source).some((rule) => rule.id === id)) return true
   return parseScenarioDocument(source).rules.some((rule) => rule.id === id)
 }
 
@@ -56,7 +63,21 @@ function verifyAffectedSpec(record: WorkItemRecord, environment: ReferenceEnviro
     }
     const source = environment.exists(reference.path) ? environment.read(reference.path) : undefined
     if (source === undefined) {
-      findings.push(`affected_spec path does not exist: ${reference.path}`)
+      // 完了した記録は書き換えず、移した文書の行き先で解決する。未完了の記録は現在のパスへ直す。
+      const relocated = active ? undefined : environment.relocated?.(reference.path)
+      if (relocated === undefined) {
+        findings.push(`affected_spec path does not exist: ${reference.path}`)
+        continue
+      }
+      const sources = relocated.flatMap((path) => environment.read(path) ?? [])
+      if (
+        typeof reference.requirement === 'string' &&
+        !sources.some((moved) => resolvesRequirement(moved, reference.requirement as string))
+      ) {
+        findings.push(
+          `requirement does not resolve where ${reference.path} moved: ${reference.requirement}`,
+        )
+      }
       continue
     }
     if (

@@ -1,0 +1,294 @@
+/**
+ * 機能仕様と内部設計を軸にした形式の Context を、検査が受け入れ、崩れを拒否することを確かめる。
+ *
+ * 新しい形式は `design/README.md` の有無で判定するので、この作業ツリーは旧形式の文書を
+ * 一つも持たない Context `demo` だけで組む。
+ */
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { afterAll, describe, expect, it } from 'bun:test'
+import { TOOLS_DIR } from '../../workspace/src/workspace.ts'
+
+const cleanup: string[] = []
+afterAll(async () => {
+  for (const path of cleanup) await rm(path, { recursive: true, force: true })
+})
+
+const SPECIFICATION = [
+  '# タスク',
+  '',
+  '## 概要',
+  '',
+  'タスクを扱う。',
+  '',
+  '## 状態遷移',
+  '',
+  '### TaskLifecycle',
+  '',
+  '| State | Kind | Meaning |',
+  '|---|---|---|',
+  '| open | initial | 開いている |',
+  '| closed | terminal | 閉じた |',
+  '',
+  '| From | Event | Guard | To | Effects |',
+  '|---|---|---|---|---|',
+  '| open | TaskClosed | — | closed |  |',
+  '',
+  '## 操作',
+  '',
+  '### タスクの一覧',
+  '',
+  '#### REQ-DEMO-002 開いたタスクだけを一覧する',
+  '',
+  '- 既定値は 10 件とする。',
+  '- **判断**：閉じたタスクは利用者の作業対象ではない。',
+  '- **担保手段**：`Task.Open`',
+  '',
+].join('\n')
+
+const EXAMPLES = [
+  '# Feature: タスクの例',
+  '',
+  '## Rule: REQ-DEMO-002 開いたタスクだけを一覧する',
+  '',
+  '### Example: EX-DEMO-002-01 開いたタスク',
+  '',
+  '- When 一覧を要求する',
+  '- Then 開いたタスクを返す',
+  '',
+].join('\n')
+
+const DECISIONS = [
+  '# Demo の重要な設計判断',
+  '',
+  '## タスクを物理削除しない',
+  '',
+  '### 背景',
+  '',
+  '監査記録がタスクを参照する。',
+  '',
+  '### 決定',
+  '',
+  '閉じた状態として残す。',
+  '',
+  '### 検討した代替案',
+  '',
+  '| 案 | 利点 | 欠点 | 採らない理由 |',
+  '| --- | --- | --- | --- |',
+  '| 物理削除 | 領域を使わない | 参照が壊れる | 監査記録を壊す |',
+  '',
+  '### 結果と再検討の条件',
+  '',
+  '監査記録がタスクを参照しなくなったら再検討する。',
+  '',
+  '### 関連する規則',
+  '',
+  'REQ-DEMO-002',
+  '',
+].join('\n')
+
+/** 新しい形式の Context を一つだけ持ち、どの検査にも通る作業ツリー。 */
+async function featureLayoutWorkspace(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'check-feature-layout-test-'))
+  cleanup.push(root)
+  const files: Record<string, string> = {
+    'docs/README.md': '# Specification\n',
+    'docs/design/architecture/logical.md': [
+      '# 論理アーキテクチャ',
+      '',
+      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
+      '| --- | --- | --- | --- |',
+      '| [Demo](../../domain/demo/README.md) | Core | `demo` | Demo. |',
+      '',
+    ].join('\n'),
+    'docs/domain/demo/README.md': '# Demo\n',
+    'docs/domain/demo/glossary.md': '# Demo の用語集\n',
+    'docs/domain/demo/design/README.md': '# Demo の内部設計\n',
+    'docs/domain/demo/design/decisions.md': DECISIONS,
+    'docs/domain/demo/design/audit.md': '# 監査\n',
+    'docs/domain/demo/work/README.md': '# 作業\n',
+    'docs/domain/demo/work/task/README.md': SPECIFICATION,
+    'docs/domain/demo/work/task/design.md': '# タスクの内部設計\n',
+    'docs/domain/demo/work/task/examples.feature.md': EXAMPLES,
+    'backend/demo/task/domain/task.go':
+      'package domain\n\ntype Task struct{}\n\nfunc (t Task) Open() bool { return true }\n',
+    'backend/demo/task/domain/task_test.go': [
+      'package domain',
+      '',
+      '//spec:covers EX-DEMO-002-01: 開いたタスクを一覧に含める',
+      'func TestTaskOpen(t *testing.T) {}',
+      '',
+    ].join('\n'),
+  }
+  for (const [path, content] of Object.entries(files)) {
+    await mkdir(dirname(join(root, path)), { recursive: true })
+    await writeFile(join(root, path), content)
+  }
+  return root
+}
+
+async function write(root: string, path: string, content: string): Promise<void> {
+  await mkdir(dirname(join(root, path)), { recursive: true })
+  await writeFile(join(root, path), content)
+}
+
+async function runCheck(root: string, name: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), name], {
+    cwd: TOOLS_DIR,
+    env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
+describe('新しい形式の文書検査', () => {
+  it('accepts a context with feature specifications, an examples appendix, and design', async () => {
+    const result = await runCheck(await featureLayoutWorkspace(), 'documents')
+    expect(result.output).toContain('1 rule(s), 1 example(s)')
+    expect(result.code).toBe(0)
+  })
+
+  it('rejects the per-kind files of the legacy layout inside a feature node', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'docs/domain/demo/work/task/decisions.md', '# 判断\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/domain/demo/work/task/decisions.md')
+  })
+
+  it('rejects a rule that has no example in the appendix', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      `${SPECIFICATION}\n#### REQ-DEMO-003 閉じたタスクを隠す\n\n- 閉じたタスクは返さない。\n- **担保手段**：\`Task.Open\`\n`,
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-003 must have at least one example')
+  })
+
+  it('rejects an appendix rule the specification does not declare', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/examples.feature.md',
+      EXAMPLES.replaceAll('REQ-DEMO-002', 'REQ-DEMO-009').replaceAll('EX-DEMO-002', 'EX-DEMO-009'),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-009 is not declared by the feature specification')
+  })
+
+  it('rejects an appendix rule whose title differs from the declaration', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/examples.feature.md',
+      EXAMPLES.replace('開いたタスクだけを一覧する', 'タスクを一覧する'),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-002 title differs from the feature specification')
+  })
+
+  it('rejects a rule declared in a group of features', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/README.md',
+      '# 作業\n\n#### REQ-DEMO-004 作業を数える\n\n- 作業を数える。\n',
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-004 must be declared in a feature node')
+  })
+
+  it('rejects a decision that leaves out a part of the decision record', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/design/decisions.md',
+      DECISIONS.replace('### 検討した代替案', '### 比較'),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('タスクを物理削除しない must have the section 検討した代替案')
+  })
+
+  it('requires a context without design/README.md to be listed as legacy', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'tools/check/legacy-spec-layout.json', '{ "contexts": ["demo"] }\n')
+    const listed = await runCheck(root, 'documents')
+    expect(listed.code).not.toBe(0)
+    expect(listed.output).toContain('demo uses the feature layout now')
+
+    await write(root, 'tools/check/legacy-spec-layout.json', '{ "contexts": [] }\n')
+    await write(root, 'docs/domain/other/README.md', '# Other\n')
+    const unlisted = await runCheck(root, 'documents')
+    expect(unlisted.code).not.toBe(0)
+    expect(unlisted.output).toContain('other has no design/README.md')
+  })
+})
+
+describe('新しい形式の規則の書式', () => {
+  it('accepts a rule with a guarantee and a decision note', async () => {
+    const result = await runCheck(await featureLayoutWorkspace(), 'specification-rules')
+    expect(result.output).toContain('ok  specification rules')
+    expect(result.code).toBe(0)
+  })
+
+  it('rejects a rule without a guarantee', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      SPECIFICATION.replace('- **担保手段**：`Task.Open`\n', ''),
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-002 must name its guarantee')
+  })
+
+  it('rejects the legacy reason field', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      SPECIFICATION.replace('**判断**', '**理由**'),
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-DEMO-002 uses 理由; write the reason as 判断')
+  })
+
+  it('rejects specification sections out of order', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      SPECIFICATION.replace('## 概要\n\nタスクを扱う。\n', '').concat(
+        '\n## 概要\n\nタスクを扱う。\n',
+      ),
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('section 概要 must come before 操作')
+  })
+
+  it('maps a feature slice to a feature node inside a group', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'backend/demo/note/usecases/note.go', 'package usecases\n')
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('backend/demo/note has no feature node under docs/domain/demo/')
+    expect(result.output).not.toContain('backend/demo/task has no feature node')
+  })
+})

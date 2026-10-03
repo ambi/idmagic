@@ -25,6 +25,7 @@ IdManagement（wi-21670）と Tenancy（wi-39141）を移した後も、19 の C
 
 - `legacy-spec-layout.json` に残る Context を、wi-21670 と wi-39141 で確定した手順で移す。
 - すべての Context を移した後、旧形式の経路を検査と生成器から取り除き、`legacy-spec-layout.json` を削除する。
+- セキュリティ統制の検査（`tools/check/src/check-security-controls.ts`）が固定のパスで読む `docs/domain/api-tokens/scenarios.feature.md` を、api-tokens を移すときに新しい置き場所へ改める。
 
 ## 対象外
 

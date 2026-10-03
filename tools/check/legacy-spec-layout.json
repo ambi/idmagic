@@ -1,0 +1,25 @@
+{
+  "contexts": [
+    "api-tokens",
+    "application",
+    "audit",
+    "authentication",
+    "authorization",
+    "claim-mapping",
+    "data-keys",
+    "identity-governance",
+    "identity-management",
+    "jobs",
+    "oauth2",
+    "provisioning",
+    "saml",
+    "seeding",
+    "sharedsignals",
+    "signing-keys",
+    "sourcing",
+    "system",
+    "tenancy",
+    "workloadidentity",
+    "ws-federation"
+  ]
+}

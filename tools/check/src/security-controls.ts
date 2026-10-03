@@ -368,7 +368,8 @@ export function checkContractRefusalsAreDeclared(
   for (const [type, operations] of contract) {
     if (declared.has(type)) continue
     findings.push({
-      path: `docs/domain/${context}/scenarios.feature.md`,
+      // 拒否を宣言する場所は Context の形式と機能によって異なるので、Context を名指す。
+      path: `docs/domain/${context}/`,
       rule: 'R4',
       message:
         `${operations.join(', ')} answer 403 with ${type}, but no scenario declares that refusal. ` +

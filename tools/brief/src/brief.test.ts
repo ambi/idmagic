@@ -53,6 +53,27 @@ describe('extractDeclaration', () => {
     expect(declaration).not.toContain('REQ-DEMO-002')
   })
 
+  it('returns a rule a feature specification declares and stops at the next operation', () => {
+    const source = [
+      '# Task',
+      '',
+      '## 操作',
+      '',
+      '### 作成',
+      '',
+      '#### REQ-DEMO-004 A task is created',
+      '',
+      '- 作成したタスクは開いている。',
+      '',
+      '### 削除',
+      '',
+      '#### REQ-DEMO-005 A task is deleted',
+    ].join('\n')
+    const declaration = extractDeclaration(source, 'REQ-DEMO-004')
+    expect(declaration).toContain('- 作成したタスクは開いている。')
+    expect(declaration).not.toContain('削除')
+  })
+
   it('returns the last rule of a document', () => {
     expect(extractDeclaration(SCENARIOS, 'REQ-DEMO-002')).toContain('- Then the task stops')
   })

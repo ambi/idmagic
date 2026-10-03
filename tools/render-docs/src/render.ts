@@ -1,6 +1,8 @@
 import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
-import { parseScenarioDocument } from '../../check/src/gherkin-scenarios.ts'
+import { specificationRules } from '../../check/src/feature-specification.ts'
+import { parseScenarioDocument, ruleBodies } from '../../check/src/gherkin-scenarios.ts'
+import { documentKind } from '../../check/src/specification-doc.ts'
 import {
   CONTEXT_DOCUMENTS,
   DOMAIN_DOCUMENTS,
@@ -162,6 +164,19 @@ function plainTitle(value: string): string {
     .replaceAll('&amp;', '&')
 }
 
+/**
+ * 機能ノードの子の並び。旧形式は配置が定める順に、新しい形式は機能仕様の章を先に、
+ * 内部設計と例の付録を後に置く。章は仕様の続きなので、仕様の直後に読めるようにする。
+ */
+function featureChildOrder(name: string, fallback: number): number {
+  if ((FEATURE_DOCUMENTS as readonly string[]).includes(name)) {
+    return canonicalOrder(FEATURE_DOCUMENTS, name, fallback)
+  }
+  if (name === 'design.md') return Number.MAX_SAFE_INTEGER - 1
+  if (name === 'examples.feature.md') return Number.MAX_SAFE_INTEGER
+  return fallback
+}
+
 function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
   const declaredTitle = plainTitle(document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path)
   const title =
@@ -288,18 +303,25 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           order: index,
         }
   }
-  const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/([^/]+)\/([^/]+)$/)
+  // Context より下の段。旧形式の機能ノードは一段下、新しい形式では内部設計、機能群、
+  // 機能群の下の機能ノードがある。`feature` はその段の Context からの相対パスである。
+  const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/(.+)\/([^/]+)$/)
   if (featureDocument) {
     const [, context = '', feature = '', featureFile = ''] = featureDocument
     const stem =
-      featureFile === 'scenarios.feature.md' ? 'scenarios' : featureFile.replace(/\.md$/, '')
+      featureFile === 'scenarios.feature.md'
+        ? 'scenarios'
+        : featureFile === 'examples.feature.md'
+          ? 'examples'
+          : featureFile.replace(/\.md$/, '')
+    const node = feature.split('/').map(slug)
     return featureFile === 'README.md'
       ? {
           ...document,
-          id: `context-${context}-${slug(feature)}`,
+          id: `context-${context}-${node.join('-')}`,
           title,
           sections,
-          outputPath: `domain/${context}/${slug(feature)}/index.html`,
+          outputPath: `domain/${context}/${node.join('/')}/index.html`,
           category: 'feature',
           order: index,
           context,
@@ -307,12 +329,12 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
         }
       : {
           ...document,
-          id: `context-${context}-${slug(feature)}-${slug(stem)}`,
+          id: `context-${context}-${node.join('-')}-${slug(stem)}`,
           title,
           sections,
-          outputPath: `domain/${context}/${slug(feature)}/${slug(stem)}.html`,
+          outputPath: `domain/${context}/${node.join('/')}/${slug(stem)}.html`,
           category: 'feature-child',
-          order: canonicalOrder(FEATURE_DOCUMENTS, featureFile, index),
+          order: featureChildOrder(featureFile, index),
           context,
           feature,
         }
@@ -442,7 +464,8 @@ function stateDiagram(machine: string, rows: string[][]): string {
 
 /**
  * `standalone` is a states.md, where every H2 is a machine. In the single
- * canonical document the machines are the H3s under `## State Transitions`.
+ * canonical document the machines are the H3s under `## State Transitions`,
+ * and in a feature specification the H3s under `## 状態遷移`.
  */
 export function addDerivedStateDiagrams(source: string, standalone = false): string {
   const lines = source.split('\n')
@@ -451,7 +474,8 @@ export function addDerivedStateDiagrams(source: string, standalone = false): str
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index] ?? ''
     if (!standalone) {
-      if (line === '## State Transitions') {
+      // 機能仕様は状態遷移を `## 状態遷移` の節に置く。
+      if (line === '## State Transitions' || line === '## 状態遷移') {
         inStates = true
         continue
       }
@@ -527,7 +551,9 @@ function markdownRenderer(
     const content = tokens[index]?.content ?? ''
     const leading =
       index === 0 &&
-      (env as { document: RenderedDocument }).document.path.endsWith('scenarios.feature.md')
+      /(?:scenarios|examples)\.feature\.md$/.test(
+        (env as { document: RenderedDocument }).document.path,
+      )
     // ステップの残りが `applications:read` のようなコード片から始まると、この
     // テキストトークンはキーワードだけで終わる。残りを必須にすると、そういう
     // ステップだけ印が消える。
@@ -636,6 +662,7 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
   if (entry.category !== 'context-child' && entry.category !== 'feature-child') return entry.title
   if (entry.path.endsWith('scenarios.feature.md')) return 'シナリオ'
+  if (entry.path.endsWith('examples.feature.md')) return '例'
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
       ? document.category === 'feature' &&
@@ -644,13 +671,18 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
       : document.category === 'context' && document.context === entry.context,
   )
   if (!owner) return entry.title
-  // 英字の名前には空白を挟んで「の」を続け、日本語の名前には直接続ける。
-  for (const japanesePossessive of [`${owner.title} の`, `${owner.title}の`]) {
-    if (entry.title.startsWith(japanesePossessive))
-      return entry.title.slice(japanesePossessive.length)
+  // 内部設計の文書は「Demo の重要な設計判断」のように、段ではなく Context の名前を冠する。
+  const context = documents.find(
+    (document) => document.category === 'context' && document.context === entry.context,
+  )
+  for (const prefix of [owner.title, context?.title]) {
+    if (!prefix) continue
+    // 英字の名前には空白を挟んで「の」を続け、日本語の名前には直接続ける。
+    for (const possessive of [`${prefix} の`, `${prefix}の`, `${prefix} `]) {
+      if (entry.title.startsWith(possessive)) return entry.title.slice(possessive.length)
+    }
   }
-  const spacedPrefix = `${owner.title} `
-  return entry.title.startsWith(spacedPrefix) ? entry.title.slice(spacedPrefix.length) : entry.title
+  return entry.title
 }
 
 /**
@@ -738,6 +770,23 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const areas = tree.directories.flatMap((node) =>
     node.name === 'design' ? node.directories.map(directory) : [directory(node)],
   )
+  // 段は入れ子にする。新しい形式では、機能ノードが機能群の下に、内部設計の文書が
+  // `design` の下に並ぶ。親の段は、その段の相対パスを接頭辞に持つ段を子に持つ。
+  const node = (feature: RenderedDocument): NavigationDirectory => ({
+    name: feature.title,
+    document: feature,
+    documents: inGroup(documents, 'feature-child').filter(
+      (document) => document.context === feature.context && document.feature === feature.feature,
+    ),
+    directories: inGroup(documents, 'feature')
+      .filter(
+        (child) =>
+          child.context === feature.context &&
+          child.feature?.startsWith(`${feature.feature}/`) &&
+          !child.feature.slice((feature.feature?.length ?? 0) + 1).includes('/'),
+      )
+      .map(node),
+  })
   const domainBody = [
     ...inGroup(documents, 'domain-child').map(leaf),
     ...contexts.map((entry) =>
@@ -748,16 +797,8 @@ function navigation(page: string, documents: RenderedDocument[]): string {
           (document) => document.context === entry.context,
         ),
         directories: inGroup(documents, 'feature')
-          .filter((feature) => feature.context === entry.context)
-          .map((feature) => ({
-            name: feature.title,
-            document: feature,
-            documents: inGroup(documents, 'feature-child').filter(
-              (document) =>
-                document.context === feature.context && document.feature === feature.feature,
-            ),
-            directories: [],
-          })),
+          .filter((feature) => feature.context === entry.context && !feature.feature?.includes('/'))
+          .map(node),
       }),
     ),
   ].join('')
@@ -1096,9 +1137,127 @@ function propertyDescription(property: CatalogProperty): string {
   return `このモデルで \`${property.name}\` が表す値。`
 }
 
+/** 機能仕様が見出しで宣言した規則。生成する一覧とトレーサビリティが読む。 */
+type DeclaredRule = {
+  id: string
+  title: string
+  document: RenderedDocument
+  anchor: string
+  openQuestions: string[]
+}
+
+const OPEN_QUESTION = /^- (?:\*\*)?要判断(?:\*\*)?[：:]\s*(.*)$/
+
+function declaredRules(documents: RenderedDocument[]): DeclaredRule[] {
+  const rules: DeclaredRule[] = []
+  for (const document of documents) {
+    if (documentKind(document.path) !== 'specification') continue
+    const bodies = new Map(ruleBodies(document.source).map((body) => [body.id, body.lines]))
+    for (const rule of specificationRules(document.source)) {
+      rules.push({
+        id: rule.id,
+        title: rule.title,
+        document,
+        anchor: `${document.id}-${slug(`${rule.id} ${rule.title}`)}`,
+        openQuestions: (bodies.get(rule.id) ?? []).flatMap(
+          ({ text }) => text.match(OPEN_QUESTION)?.[1] ?? [],
+        ),
+      })
+    }
+  }
+  return rules
+}
+
+/**
+ * 機能ノードの規則一覧と未決事項。手で書いた一覧は、規則を加えたときに更新が漏れても
+ * どの検査にも見つからないので、規則の見出しと要判断の欄から作る。
+ */
+function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): string {
+  const own = rules.filter(
+    (rule) =>
+      rule.document.context === document.context && rule.document.feature === document.feature,
+  )
+  if (own.length === 0) return ''
+  const page = document.outputPath
+  const rows = own
+    .map(
+      (rule) =>
+        `<tr><th scope="row">${siteLink(page, rule.document.outputPath, rule.id, rule.anchor)}</th><td>${escapeHtml(rule.title)}</td><td>${escapeHtml(rule.document === document ? 'このページ' : rule.document.title)}</td></tr>`,
+    )
+    .join('')
+  const questions = own.flatMap((rule) =>
+    rule.openQuestions.map(
+      (question) =>
+        `<li>${siteLink(page, rule.document.outputPath, rule.id, rule.anchor)}：${inlineMarkdown.renderInline(question)}</li>`,
+    ),
+  )
+  const index = `<h2 id="${document.id}-規則一覧">規則一覧</h2><p class="muted">この機能の仕様が宣言する規則の見出しから生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">規則</th><th scope="col">題名</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
+  const open = questions.length
+    ? `<h2 id="${document.id}-未決事項">未決事項</h2><p class="muted">規則の要判断の欄から生成した。決着したら規則の欄を消す。</p><ul>${questions.join('')}</ul>`
+    : ''
+  return `<section class="context-reference">${index}${open}</section>`
+}
+
+/** 新しい形式の Context の機能地図。機能群、機能、規則と未決事項の数を、規則の見出しから作る。 */
+function featureMap(
+  document: RenderedDocument,
+  documents: RenderedDocument[],
+  rules: DeclaredRule[],
+): string {
+  const context = document.context
+  if (!documents.some((entry) => entry.path === `docs/domain/${context}/design/README.md`))
+    return ''
+  const nodes = inGroup(documents, 'feature').filter(
+    (entry) => entry.context === context && entry.feature !== 'design',
+  )
+  const leaves = nodes.filter(
+    (entry) => !nodes.some((other) => other.feature?.startsWith(`${entry.feature}/`)),
+  )
+  if (leaves.length === 0) return ''
+  const page = document.outputPath
+  const rows = leaves
+    .map((leaf) => {
+      const group = nodes.find(
+        (entry) => entry !== leaf && leaf.feature?.startsWith(`${entry.feature}/`),
+      )
+      const own = rules.filter(
+        (rule) => rule.document.context === context && rule.document.feature === leaf.feature,
+      )
+      const questions = own.reduce((count, rule) => count + rule.openQuestions.length, 0)
+      return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td></tr>`
+    })
+    .join('')
+  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能ノードと、その仕様が宣言する規則から生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">規則</th><th scope="col">未決事項</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+}
+
 function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
   const entries: ScenarioEntry[] = []
+  for (const rule of declaredRules(documents)) {
+    entries.push({
+      id: rule.id,
+      title: rule.title,
+      document: rule.document,
+      anchor: rule.anchor,
+      kind: 'rule',
+    })
+  }
   for (const document of documents) {
+    if (document.path.endsWith('examples.feature.md')) {
+      // 付録の Rule は仕様本文の宣言を参照するだけなので、例だけを索引する。
+      for (const rule of parseScenarioDocument(document.source).rules) {
+        for (const example of rule.examples) {
+          entries.push({
+            id: example.id,
+            title: example.name.replace(new RegExp(`^${example.id}\\s*`), ''),
+            document,
+            anchor: `${document.id}-${slug(`${example.outline ? 'Scenario Outline' : 'Example'}: ${example.name}`)}`,
+            kind: 'example',
+            parentId: rule.id,
+          })
+        }
+      }
+      continue
+    }
     if (!document.path.endsWith('scenarios.feature.md')) continue
     for (const rule of parseScenarioDocument(document.source).rules) {
       entries.push({
@@ -1583,11 +1742,13 @@ export function renderDocumentationSite(args: {
       documents,
     }),
   }
+  const rules = declaredRules(documents)
   for (const document of documents) {
     const tags = (document.context ? args.contextTags?.[document.context] : undefined) ?? []
     const reference =
       document.category === 'context'
-        ? contextReference({
+        ? featureMap(document, documents, rules) +
+          contextReference({
             document,
             tags,
             operations: openapi.operations.filter((operation) =>
@@ -1595,7 +1756,9 @@ export function renderDocumentationSite(args: {
             ),
             models: args.models.filter((model) => model.context === document.context),
           })
-        : ''
+        : document.category === 'feature'
+          ? featureRuleIndex(document, rules)
+          : ''
     files[document.outputPath] = documentPage(document, documents, markdown, reference)
   }
   for (const model of args.models) files[modelPath(model)] = modelPage(model, symbols, documents)

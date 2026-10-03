@@ -11,16 +11,27 @@ import {
   verifyFeatureNodes,
   verifyRuleFields,
   verifySectionOrder,
+  verifySpecificationOutline,
+  verifySpecificationRuleFields,
 } from './specification-rules.ts'
+import { documentKind } from './specification-doc.ts'
 
 /** 対応のない機能スライスの基準。導入時点の一覧で、減る方向にしか動かさない。 */
 const FEATURE_NODE_DEBT = 'tools/check/feature-node-debt.json'
 
 export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const domainFiles = await snapshot.files('docs/domain', [])
-  // システム、Context、機能ノードの三段にある `scenarios.feature.md`。
+  // 規則を宣言する文書。システム、Context、機能ノードの三段にある `scenarios.feature.md` と、
+  // 新しい形式の機能仕様である。
+  const specificationPaths = new Set(
+    domainFiles.filter((path) => documentKind(path) === 'specification'),
+  )
   const scenarioPaths = domainFiles
-    .filter((path) => /^docs\/domain\/(?:[^/]+\/){0,2}scenarios\.feature\.md$/.test(path))
+    .filter(
+      (path) =>
+        /^docs\/domain\/(?:[^/]+\/){0,2}scenarios\.feature\.md$/.test(path) ||
+        specificationPaths.has(path),
+    )
     .sort()
   const declarations = goDeclarations(await repositoryGoFiles(snapshot))
   const anchors = new Map<string, Set<string>>()
@@ -36,11 +47,26 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
     anchors.set(path, markdownAnchors(await snapshot.read(path)))
   }
 
+  const featureContexts = new Set(
+    domainFiles.flatMap(
+      (path) => path.match(/^docs\/domain\/([^/]+)\/design\/README\.md$/)?.[1] ?? [],
+    ),
+  )
+  const parents = new Set(domainFiles.map((path) => posix.dirname(posix.dirname(path))))
+  const inFeatureContext = (path: string) => featureContexts.has(path.split('/')[2] ?? '')
+
   const findings: Finding[] = []
   for (const path of scenarioPaths) {
     const source = await snapshot.read(path)
     findings.push(...verifyRuleFields(path, source, declarations, resolveLink))
     findings.push(...verifySectionOrder(path, source))
+    if (specificationPaths.has(path) && inFeatureContext(path)) {
+      findings.push(...verifySpecificationRuleFields(path, source))
+      const directory = posix.dirname(path)
+      if (path.endsWith('/README.md') && !parents.has(directory)) {
+        findings.push(...verifySpecificationOutline(path, source))
+      }
+    }
   }
 
   const debt: FeatureNodeDebt = snapshot.exists(FEATURE_NODE_DEBT)
@@ -52,7 +78,13 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   const nodes = new Set(
     domainFiles.flatMap((path) => {
       const node = posix.dirname(path)
-      return /^docs\/domain\/[^/]+\/[^/]+$/.test(node) ? [node] : []
+      if (/^docs\/domain\/[^/]+\/[^/]+$/.test(node)) return [node]
+      // 新しい形式では、機能群の一段下も機能ノードになる。内部設計の段は機能ではない。
+      return inFeatureContext(path) &&
+        /^docs\/domain\/[^/]+\/[^/]+\/[^/]+$/.test(node) &&
+        node.split('/')[3] !== 'design'
+        ? [node]
+        : []
     }),
   )
   findings.push(...verifyFeatureNodes(featureSlices([...new Set(backendDirectories)]), nodes, debt))

@@ -80,11 +80,13 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 [Specification Format §3–§6](SPECIFICATION_FORMAT.md#3-一次情報文書) が定める。
 この文書は、同じテンプレート、表、規範 ID の文法を再掲しない。
 
-仕様は、システム、コンテキスト、機能の三つの階層からなる木に置く。
-システムの規則は`docs/design/`と`docs/domain/scenarios.feature.md`に、コンテキストの複数の機能にまたがる規則は`docs/domain/<context>/`に、一つの機能の規則は機能ノード`docs/domain/<context>/<feature>/`に書く。
+仕様は、システム、コンテキスト、機能群、機能の四つの階層からなる木に置く。
+システムの規則は`docs/design/`と`docs/domain/scenarios.feature.md`に、一つの機能の規則は機能ノード`docs/domain/<context>/<group>/<feature>/`の機能仕様に書く。
+コンテキストには、境界、モデルの全体図、用語、採用標準と、内部設計`design/`（構成要素、実行時の流れ、データ、横断的概念、重要な設計判断）を置く。
+機能仕様は SCIM の RFC に倣い、モデル、状態遷移、操作ごとの規則、エラー、セキュリティ上の考慮を一つの文書にまとめ、例は付録`examples.feature.md`に置く。
 機能ノードはコードの機能スライスと同じ名前で対応させ、読み手とエージェントがパッケージのパスから仕様のノードを一つに決められるようにする。
 規則は一か所に書き、下位のノードは上位の規則からの例外だけを、上位の規則へのリンクとともに宣言する。
-階層の定義、機能ノードとコードの対応、規則一件の欄、機能ノードの中の規則の並びは[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)と[規則一件の書式](SPECIFICATION_FORMAT.md#規則一件の書式)が定める。
+階層の定義、機能ノードとコードの対応、機能仕様の節、規則一件の欄は[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)、[機能仕様](SPECIFICATION_FORMAT.md#機能仕様--一つの機能について知るべきこと)、[規則一件の書式](SPECIFICATION_FORMAT.md#規則一件の書式)が定める。
 
 ## 4. システム要求と設計
 
@@ -227,7 +229,7 @@ SLOの目標値は`requirements/quality.md`で定め、ここには測定の仕�
 | テーブルの存在と外部キーの関係 | `database.md`のカラムを省いたER図 |
 | テーブルの役割、担当するコンテキスト | `database.md`のER図に添えたテーブル一覧 |
 | 概念とその関係 | TypeSpecのモデル |
-| 保持期間 | `standards.md`の該当行と、担当するコンテキストの`decisions.md` |
+| 保持期間 | `standards.md`の該当行と、担当する機能の規則とその判断の欄 |
 | 型の選び方、制約の置き方 | `database.md` |
 | スキーマの変え方と適用の仕方 | `schema-management.md` |
 | データが消えるまでの横断的な扱い | `lifecycle.md` |
@@ -262,7 +264,7 @@ DDLと宣言的な差分適用ツールの組み合わせ、ORMやスキーマ�
 
 **この文書には権限の割り当て表を書かない。** どの操作にどのスコープが要るかは契約データであり、TypeSpecの注釈で定める。散文へ写すと同じ対応表が二つになり、検査されない側が古くなる。網羅した割り当て表が必要なら注釈から生成する。ここに書くのは、操作名からスコープが自明でないものだけを理由とともに挙げた表である。
 
-「最後の管理者は停止できない」のような業務上の判断は、認可の割り当てではなく、そのコンテキストの`decisions.md`に判断として置く。
+「最後の管理者は停止できない」のような業務上の判断は、認可の割り当てではなく、その機能の規則として置き、理由を判断の欄に書く。
 
 ### 4.11 design/security/threat-model.md
 
@@ -374,7 +376,7 @@ CHANGELOGには利用者に影響するリリース済み変更だけを記録�
 
 開発環境の用意、ビルド、コード生成、成果物の作り方を書く。ツールのバージョンは固定し、手元とCIで同じバージョンを使う。外部依存にはローカル代替を用意し、本番の資格情報を手元へ置かない。
 
-生成の関係——インターフェース定義言語から契約と型定義へ、仕様のMarkdownから仕様サイトへ、設定スキーマからリファレンスへ、データベースのスキーマから一覧へ、`states.md`の表から状態遷移図へ——を一枚の図にする。**生成物を編集しない。** 手元で再生成し、差分をコミットに含める。
+生成の関係——インターフェース定義言語から契約と型定義へ、仕様のMarkdownから仕様サイトへ、設定スキーマからリファレンスへ、データベースのスキーマから一覧へ、状態遷移の表から状態遷移図へ——を一枚の図にする。**生成物を編集しない。** 手元で再生成し、差分をコミットに含める。
 
 ### 8.2 CIが走らせるもの
 
@@ -534,7 +536,7 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 
 一つの変更のために仕様の全文を読ませない。読み始める資料はwork itemの`initial_context`に列挙し、**何を読まないか**も明示する。残りは要求IDや用語から場所を引く仕組みで到達する。
 
-ファイルを種類ごとに分けているため、必要な種類だけを読める。設計判断を確かめたいなら`decisions.md`だけ、規範なら`standards.md`だけを開く。
+機能ごとに仕様を一つの文書へまとめているため、変更する機能の仕様だけを読めばよい。複数の機能にまたがる仕組みはコンテキストの`design/`、代替案を比べた判断は`design/decisions.md`、規範は`standards.md`を開く。
 
 ### 10.2 AIに任せやすい作業
 
@@ -559,8 +561,8 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 - `Statement`がプロダクトの側から書かれているか。テストがあるか
 - `Guard`が評価できる式で書かれているか
 - シナリオが一つの振る舞いだけを述べているか
-- `decisions.md`の各項目に理由があるか。見出しが観点名になっていないか。不変条件を列挙していないか
-- `internals.md`の内容が、コードを読んでも復元できないものに限られているか
+- 判断の理由が、それが正当化する規則やモデルのそばに書かれているか。`design/decisions.md`の判断が代替案と再検討の条件を持ち、見出しが観点名になっていないか
+- 内部設計の設計視点の網羅表に、書き漏らした視点がないか。内部設計がファイルの列挙になっていないか
 - 権限の割り当てを、TypeSpecの注釈と散文の両方に定義していないか
 - 実装から読み取れる情報を図や表に描き直していないか
 - 変更時点の比較検討が仕様側へ流れ込んでいないか
@@ -580,7 +582,7 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 | [Specification Format §5](SPECIFICATION_FORMAT.md#5-標準仕様) | [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) | `Strength`列の語彙 |
 | [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
 | [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
-| [Specification Format §6](SPECIFICATION_FORMAT.md#6-シナリオと規範-id) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
+| [Specification Format §6](SPECIFICATION_FORMAT.md#6-規則と例) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
 | §4.2 | [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) | portとadapterによる隔離 |
 | §4.2 | [C4 model](https://c4model.com/) | System Context、Containerの語彙 |
 | §4.3 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) | メソッドの安全・冪等、条件付きリクエスト、ステータスコードの意味 |
@@ -617,7 +619,7 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 
 1. README、product overview、開発環境とCIの最小構成
 2. `docs/README.md`のContext Mapと構成
-3. 主要コンテキストの`README.md`、TypeSpec、`states.md`、`scenarios.feature.md`
+3. 主要コンテキストの`README.md`、TypeSpec、機能仕様と例の付録
 4. work itemの形式と、仕様の文法検査
 5. `docs/design/application/api-guidelines.md`、`docs/design/security/authorization.md`
 6. 各コンテキストの`standards.md`——プロトコル、アクセシビリティ、法令

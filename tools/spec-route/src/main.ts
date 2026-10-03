@@ -73,18 +73,17 @@ let located:
       rule: ReturnType<typeof parseScenarioDocument>['rules'][number]
     }
   | undefined
-// Context のルートに加えて、その一段下の機能ノードも宣言の置き場所になる。
+// Context のルートと、その下の機能ノードが例の置き場所になる。新しい形式の機能ノードは
+// 機能群の一段下にもあり、例は付録 `examples.feature.md` に置く。
 const candidates: Array<{ contextDir: string; docPath: string }> = [
   { contextDir: '', docPath: 'docs/domain/scenarios.feature.md' },
 ]
 for (const contextDir of contextDirs) {
-  candidates.push({ contextDir, docPath: `docs/domain/${contextDir}/scenarios.feature.md` })
-  const features = await readdir(resolve(root, 'docs/domain', contextDir), { withFileTypes: true })
-  for (const feature of features.filter((entry) => entry.isDirectory())) {
-    candidates.push({
-      contextDir,
-      docPath: `docs/domain/${contextDir}/${feature.name}/scenarios.feature.md`,
-    })
+  for (const path of (await walk(resolve(root, 'docs/domain', contextDir))).sort()) {
+    const docPath = relative(root, path)
+    if (/(?:^|\/)(?:scenarios|examples)\.feature\.md$/.test(docPath)) {
+      candidates.push({ contextDir, docPath })
+    }
   }
 }
 for (const { contextDir, docPath } of candidates) {

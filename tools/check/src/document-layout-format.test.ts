@@ -34,4 +34,13 @@ docs/
       message: '配置図に定義済み文書のパスがない: docs/domain/<context>/standards.md',
     })
   })
+
+  it('機能仕様と内部設計の形式の段を配置図に求め、旧形式の種別は求めない', () => {
+    const paths = verifyDocumentLayout('# 仕様フォーマット\n').map((finding) => finding.path)
+
+    expect(paths).toContain('docs/domain/<context>/design/decisions.md')
+    expect(paths).toContain('docs/domain/<context>/<group>/README.md')
+    expect(paths).toContain('docs/domain/<context>/<group>/<feature>/examples.feature.md')
+    expect(paths).not.toContain('docs/domain/<context>/internals.md')
+  })
 })

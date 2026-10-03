@@ -5,6 +5,7 @@
  * ここは渡された文字列と一覧だけから判定する。
  */
 
+import { specificationRules } from './feature-specification.ts'
 import { ruleBodies, type RuleBody } from './gherkin-scenarios.ts'
 
 export type Finding = { path: string; line: number; message: string }
@@ -22,7 +23,20 @@ export type FeatureNodeDebt = {
   unmappedSlices: string[]
 }
 
-const FIELD = /^- (?:\*\*)?(理由|担保手段|上位の規則|例|要判断)(?:\*\*)?[：:]\s*(.*)$/
+const FIELD = /^- (?:\*\*)?(理由|判断|担保手段|上位の規則|例|要判断)(?:\*\*)?[：:]\s*(.*)$/
+
+/**
+ * 機能仕様の節。SCIM の RFC がリソースのモデル、操作、エラー、セキュリティの考慮の順に
+ * 並べるのに倣い、読み手が「その機能の何についての記述か」で探せるようにする。
+ */
+export const SPECIFICATION_SECTIONS = [
+  '概要',
+  'モデル',
+  '状態遷移',
+  '操作',
+  'エラー',
+  'セキュリティ上の考慮',
+] as const
 
 /**
  * 規則文から外す語。どれも、書き手が決めていない条件を読み手に委ねる。
@@ -41,11 +55,18 @@ type RuleFields = {
   guarantees: Array<{ line: number; symbol: string }>
   parents: Array<{ line: number; value: string }>
   openQuestions: Array<{ line: number; text: string }>
+  legacyReasons: number[]
 }
 
 /** 規則の本文を、欄と規則文に分ける。箇条書きでも表でもない行は、どちらにも数えない。 */
 function ruleFields(body: RuleBody): RuleFields {
-  const fields: RuleFields = { statements: [], guarantees: [], parents: [], openQuestions: [] }
+  const fields: RuleFields = {
+    statements: [],
+    guarantees: [],
+    parents: [],
+    openQuestions: [],
+    legacyReasons: [],
+  }
   for (const { line, text } of body.lines) {
     const field = text.match(FIELD)
     if (field) {
@@ -54,7 +75,8 @@ function ruleFields(body: RuleBody): RuleFields {
         for (const symbol of value.matchAll(/`([^`]+)`/g)) {
           fields.guarantees.push({ line, symbol: symbol[1] ?? '' })
         }
-      } else if (name === '上位の規則') fields.parents.push({ line, value })
+      } else if (name === '理由') fields.legacyReasons.push(line)
+      else if (name === '上位の規則') fields.parents.push({ line, value })
       else if (name === '要判断') fields.openQuestions.push({ line, text: value })
       continue
     }
@@ -115,6 +137,83 @@ export function verifyRuleFields(
 
 function isDeclared(symbol: string, declarations: GoDeclarations): boolean {
   return symbol.includes('.') ? declarations.qualified.has(symbol) : declarations.names.has(symbol)
+}
+
+/**
+ * 機能仕様の規則だけに課す欄の規則。旧形式の規則は担保手段を欠いたまま書かれたものが
+ * 残っているので、書き起こしで補うまで求めない。新しい形式へ移す時点で、規則からコードへ
+ * たどる手段を必ず置く。理由は判断の注記として書き、旧い欄の名前を残さない。
+ */
+export function verifySpecificationRuleFields(path: string, source: string): Finding[] {
+  const superseded = new Set(
+    specificationRules(source)
+      .filter((rule) => rule.supersededBy)
+      .map((rule) => rule.id),
+  )
+  const findings: Finding[] = []
+  for (const body of ruleBodies(source)) {
+    const fields = ruleFields(body)
+    for (const line of fields.legacyReasons) {
+      findings.push({ path, line, message: `${body.id} uses 理由; write the reason as 判断` })
+    }
+    if (!superseded.has(body.id) && fields.guarantees.length === 0) {
+      findings.push({
+        path,
+        line: body.line,
+        message: `${body.id} must name its guarantee in a 担保手段 field`,
+      })
+    }
+  }
+  return findings
+}
+
+/**
+ * 機能ノードの `README.md` で、節が `SPECIFICATION_SECTIONS` の語彙をその順で使い、
+ * 規則が操作の節の下にあることを確かめる。章のページは操作の節を分けたものなので、
+ * 節の名前を問わない。
+ */
+export function verifySpecificationOutline(path: string, source: string): Finding[] {
+  const sections: readonly string[] = SPECIFICATION_SECTIONS
+  const findings: Finding[] = []
+  let position = -1
+  let previous = ''
+  let current = ''
+  for (const [index, text] of source.split('\n').entries()) {
+    const line = index + 1
+    const rule = text.match(/^#{3,4} (REQ-[A-Z0-9-]+)/)?.[1]
+    if (rule) {
+      if (current !== '操作') {
+        findings.push({ path, line, message: `${rule} must sit under the 操作 section` })
+      }
+      continue
+    }
+    const heading = text.match(/^## (.+)$/)?.[1]?.trim()
+    if (heading === undefined) continue
+    current = heading
+    const order = sections.indexOf(heading)
+    if (order < 0) {
+      findings.push({
+        path,
+        line,
+        message: `section ${heading} is not a section of a feature specification (${sections.join(', ')})`,
+      })
+      continue
+    }
+    if (order <= position) {
+      findings.push({
+        path,
+        line,
+        message:
+          order === position
+            ? `section ${heading} appears twice`
+            : `section ${heading} must come before ${previous}`,
+      })
+      continue
+    }
+    position = order
+    previous = heading
+  }
+  return findings
 }
 
 /**
@@ -256,10 +355,11 @@ export function verifyFeatureNodes(
   debt: FeatureNodeDebt,
 ): Finding[] {
   const flatten = (name: string) => name.replaceAll('-', '')
+  // 新しい形式では機能ノードが機能群の下にもあるので、最後の段の名前で対応させる。
   const nodeKeys = new Set(
     [...nodes].map((node) => {
-      const [, , context = '', feature = ''] = node.split('/')
-      return `${flatten(context)}/${flatten(feature)}`
+      const [, , context = '', ...below] = node.split('/')
+      return `${flatten(context)}/${flatten(below.at(-1) ?? '')}`
     }),
   )
   const unmapped = new Set(debt.unmappedSlices)

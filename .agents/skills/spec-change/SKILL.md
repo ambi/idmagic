@@ -11,21 +11,24 @@ current document kinds and grammar.
 1. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
    deprecation metadata, and authentication mechanisms in
    `spec/contexts/<context>/{models,main}.tsp`.
-2. Put context boundaries in `docs/domain/<context>/README.md`, observable behavior in
-   `docs/domain/<context>/scenarios.feature.md`, vocabulary in `glossary.md`, adopted protocol rules in
-   `standards.md`, state machines in `states.md`, durable rationale in `decisions.md`, and durable mechanism
-   that cannot be recovered from code in `internals.md`. Use the matching file under `docs/requirements/`,
-   `docs/architecture/`, `docs/design/`, `docs/verification/`, or `docs/operations/` for a whole-system fact.
-   A rule, state machine, decision, or mechanism of one feature goes in the feature node
-   `docs/domain/<context>/<feature>/` that matches the code slice `backend/<context>/<feature>/` (drop the
-   hyphens to compare names); keep `glossary.md` and `standards.md` at the context. Place the rule under the
-   lifecycle or API section it answers, in the order `SPECIFICATION_FORMAT.md` fixes.
-3. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`. Retire a referenced behavior
+2. Put context boundaries in `docs/domain/<context>/README.md`, vocabulary in `glossary.md`, and adopted
+   protocol rules in `standards.md`. Put one feature's model, state machines, rules, errors, and security
+   considerations in its feature specification `docs/domain/<context>/<group>/<feature>/README.md` (or a
+   chapter beside it), and its examples in `examples.feature.md` in the same directory. The feature node
+   matches the code slice `backend/<context>/<feature>/` by name (drop the hyphens to compare names). Put a
+   mechanism shared by features in `docs/domain/<context>/design/`, and a decision that weighed alternatives
+   in `design/decisions.md`. Use the matching file under `docs/requirements/`, `docs/architecture/`,
+   `docs/design/`, `docs/verification/`, or `docs/operations/` for a whole-system fact. A context still listed
+   in `tools/check/legacy-spec-layout.json` keeps its per-kind files (`scenarios.feature.md`, `states.md`,
+   `decisions.md`, `internals.md`) until it moves.
+3. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`, declared as a
+   `#### REQ-<CONTEXT>-NNN <title>` heading under the operation it governs. Retire a referenced behavior
    with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id. Write its
-   body in the rule format: one obligation per bullet, a table when conditions combine, and the
-   `**担保手段**` field naming the code symbol. Put a value the product keeps (a limit, a period, a formula)
-   in the rule, never only in `internals.md`. A rule that departs from a higher rule states only the
-   departure and links it from `**上位の規則**`; do not copy the higher rule down.
+   body in the rule format: one obligation per bullet, a table when conditions combine, the `**担保手段**`
+   field naming the code symbol, and the `**判断**` field for the reason. Add at least one example under a
+   `## Rule:` heading with the same id and title in `examples.feature.md`. Put a value the product keeps (a
+   limit, a period, a formula) in the rule, never only in the design. A rule that departs from a higher rule
+   states only the departure and links it from `**上位の規則**`; do not copy the higher rule down.
 4. Keep behavior that only several contexts can satisfy in `docs/scenarios.feature.md`, name the participating
    contexts, and keep context-local fragments out of their individual scenario files.
 5. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.

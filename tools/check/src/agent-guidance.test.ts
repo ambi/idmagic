@@ -8,7 +8,8 @@ const currentGuidance = [
   },
   {
     file: '.agents/skills/spec-change/SKILL.md',
-    source: 'spec/contexts/<context>/{models,main}.tsp\ndocs/domain/<context>/scenarios.feature.md',
+    source:
+      'spec/contexts/<context>/{models,main}.tsp\ndocs/domain/<context>/<group>/<feature>/README.md\nexamples.feature.md',
   },
   {
     file: '.agents/skills/update-design/SKILL.md',

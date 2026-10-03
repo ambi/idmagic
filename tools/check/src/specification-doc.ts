@@ -1,3 +1,4 @@
+import { specificationRules, validateSpecificationDeclarations } from './feature-specification.ts'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 export {
   canonicalDocumentNames,
@@ -15,9 +16,11 @@ export type SpecificationFinding = {
 
 export type SpecificationValidation = {
   findings: SpecificationFinding[]
-  scenarioIds: Array<{ id: string; line: number; supersededBy?: string }>
+  scenarioIds: Array<{ id: string; line: number; supersededBy?: string; title?: string }>
   exampleIds: Array<{ id: string; line: number; parentId: string }>
   standardIds: Array<{ id: string; line: number }>
+  /** 付録の `Rule` が参照する規則。宣言ではないので、ID の重複には数えない。 */
+  ruleReferences: Array<{ id: string; line: number; title: string }>
 }
 
 /**
@@ -25,9 +28,20 @@ export type SpecificationValidation = {
  * file name replaces the section-set and section-order checks the single
  * canonical document needed. A directory takes the split layout as soon as it
  * holds a README.md.
+ *
+ * 新しい形式の機能ノードは、機能仕様（`README.md` と任意の名前の章）、内部設計
+ * （`design.md`）、例の付録（`examples.feature.md`）を持つ。Context の `design/` は内部設計で、
+ * そのうち `decisions.md` だけが判断の記録の骨格を持つ。
  */
 /** What a file's name says about the grammar its body must follow. */
-export type DocumentKind = 'standards' | 'states' | 'scenarios' | 'prose'
+export type DocumentKind =
+  | 'standards'
+  | 'states'
+  | 'scenarios'
+  | 'specification'
+  | 'examples'
+  | 'decision-records'
+  | 'prose'
 
 const KIND_BY_NAME = new Map<string, DocumentKind>([
   ['standards.md', 'standards'],
@@ -35,18 +49,39 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
   ['scenarios.feature.md', 'scenarios'],
 ])
 
+/** Context より下の段で、任意の名前の章として読む名前。 */
+const CHAPTER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
+
 /**
  * The kind of a canonical document, or undefined when the path is not one.
  * `path` is repository-relative and uses forward slashes.
  *
  * `docs/contexts/` は `docs/domain/` へ改名する前の名前で、履歴を読む道具（`spec-diff`）が
  * その時点のリビジョンを規範文書として認識し続けるために読み替える。
+ *
+ * Context より下の段の種別は、Context の形式を問わずパスだけから決める。履歴や一つの
+ * ファイルだけを読む道具が、隣のファイルを見ずに同じ答えを得られるようにするためである。
+ * その段にそのファイルを置いてよいかは、段の集合を見る `verifyCanonicalDocumentSet` が決める。
  */
 export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
   const directory = path
     .slice(0, path.lastIndexOf('/'))
     .replace(/^docs\/contexts\//, 'docs/domain/')
+  const below = directory.match(/^docs\/domain\/[^/]+\/(.+)$/)?.[1]?.split('/')
+  if (below) {
+    if (below[0] === 'design') {
+      if (below.length !== 1 || !(name === 'README.md' || CHAPTER_NAME.test(name))) return undefined
+      return name === 'decisions.md' ? 'decision-records' : 'prose'
+    }
+    // 共有語彙と採用した標準は機能をまたいで使うので、Context の直下にだけ置く。
+    if (below.length > 2 || name === 'glossary.md' || name === 'standards.md') return undefined
+    const named = KIND_BY_NAME.get(name)
+    if (named) return named
+    if (name === 'examples.feature.md') return 'examples'
+    if (['decisions.md', 'internals.md', 'design.md'].includes(name)) return 'prose'
+    return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
+  }
   const allowed = directory.startsWith('docs/domain/')
     ? documentNames(directory)
     : canonicalDocumentNames(directory)
@@ -286,6 +321,7 @@ export function validateDocument(path: string, source: string): SpecificationVal
       scenarioIds: [],
       exampleIds: [],
       standardIds: [],
+      ruleReferences: [],
     }
   }
 
@@ -295,10 +331,46 @@ export function validateDocument(path: string, source: string): SpecificationVal
   const standardIds =
     kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
   if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, findings)
+  if (kind === 'decision-records') validateDecisionRecords(source, findings)
 
   let scenarioIds: SpecificationValidation['scenarioIds'] = []
   let exampleIds: SpecificationValidation['exampleIds'] = []
-  if (kind === 'scenarios') {
+  let ruleReferences: SpecificationValidation['ruleReferences'] = []
+  if (kind === 'specification') {
+    findings.push(...validateSpecificationDeclarations(source))
+    scenarioIds = specificationRules(source).map((rule) => ({
+      id: rule.id,
+      line: rule.line,
+      supersededBy: rule.supersededBy,
+      title: rule.title,
+    }))
+    const transitions = source.match(/^## 状態遷移[ \t]*$/m)
+    if (transitions?.index !== undefined) {
+      const start = transitions.index + transitions[0].length
+      const rest = source.slice(start)
+      const end = rest.match(/^## /m)?.index ?? rest.length
+      validateStateMachines(rest.slice(0, end), start, source, /^### .+$/gm, findings)
+    }
+  } else if (kind === 'examples') {
+    const parsed = parseScenarioDocument(source)
+    findings.push(...parsed.findings)
+    for (const rule of parsed.rules) {
+      if (rule.supersededBy) {
+        findings.push({
+          line: rule.line,
+          message: `${rule.id} is superseded and must leave the examples appendix`,
+        })
+      }
+    }
+    ruleReferences = parsed.rules.map((rule) => ({
+      id: rule.id,
+      line: rule.line,
+      title: rule.name.replace(new RegExp(`^${rule.id}(?::)?\\s*`), ''),
+    }))
+    exampleIds = parsed.rules.flatMap((rule) =>
+      rule.examples.map((example) => ({ id: example.id, line: example.line, parentId: rule.id })),
+    )
+  } else if (kind === 'scenarios') {
     const parsed = parseScenarioDocument(source)
     findings.push(...parsed.findings)
     scenarioIds = parsed.rules.map((rule) => ({
@@ -321,13 +393,54 @@ export function validateDocument(path: string, source: string): SpecificationVal
       local.add(scenario.id)
     }
   } else {
-    for (const match of source.matchAll(/^#{2,6} Rule: (REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
+    for (const match of source.matchAll(/^#{2,6} (?:Rule: )?(REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
       findings.push({
         line: lineAt(source, match.index ?? 0),
-        message: `${match[1]} must be declared in scenarios.feature.md`,
+        message: `${match[1]} must be declared in scenarios.feature.md or in a feature specification`,
       })
     }
   }
 
-  return { findings, scenarioIds, exampleIds, standardIds }
+  return { findings, scenarioIds, exampleIds, standardIds, ruleReferences }
+}
+
+/**
+ * 判断の記録の各部。背景と代替案のない判断は規則の言い換えと区別できず、再検討の条件の
+ * ない判断は、いつ見直すべきかを読み手に残さない。
+ */
+const DECISION_RECORD_SECTIONS = [
+  '背景',
+  '決定',
+  '検討した代替案',
+  '結果と再検討の条件',
+  '関連する規則',
+] as const
+
+/** `design/decisions.md` の各判断（H2）が、記録の各部（H3）をこの順で一度ずつ持つことを確かめる。 */
+function validateDecisionRecords(source: string, findings: SpecificationFinding[]): void {
+  const decisions = [...source.matchAll(/^## (?!#)(.+)$/gm)]
+  for (const [index, decision] of decisions.entries()) {
+    const title = decision[1]?.trim() ?? ''
+    const start = (decision.index ?? 0) + decision[0].length
+    const end = decisions[index + 1]?.index ?? source.length
+    const sections = [...source.slice(start, end).matchAll(/^### (.+)$/gm)].map(
+      (match) => match[1]?.trim() ?? '',
+    )
+    const line = lineAt(source, decision.index ?? 0)
+    for (const expected of DECISION_RECORD_SECTIONS) {
+      if (!sections.includes(expected)) {
+        findings.push({ line, message: `${title} must have the section ${expected}` })
+      }
+    }
+    const known = sections.filter((section) =>
+      (DECISION_RECORD_SECTIONS as readonly string[]).includes(section),
+    )
+    const ordered = DECISION_RECORD_SECTIONS.filter((section) => known.includes(section))
+    if (known.join('\n') !== ordered.join('\n')) {
+      findings.push({
+        line,
+        message: `${title} must order its sections as ${DECISION_RECORD_SECTIONS.join(', ')}`,
+      })
+    }
+  }
 }

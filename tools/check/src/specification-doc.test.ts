@@ -50,8 +50,19 @@ describe('documentKind', () => {
   it('reads a feature node one level below its context with the grammar its name gives', () => {
     expect(documentKind('docs/domain/demo/user/scenarios.feature.md')).toBe('scenarios')
     expect(documentKind('docs/domain/demo/user/states.md')).toBe('states')
-    expect(documentKind('docs/domain/demo/user/README.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/user/README.md')).toBe('specification')
     expect(documentKind('docs/domain/demo/user/internals.md')).toBe('prose')
+  })
+
+  it('reads the feature layout: specifications, chapters, appendix, and design', () => {
+    expect(documentKind('docs/domain/demo/people/user/README.md')).toBe('specification')
+    expect(documentKind('docs/domain/demo/people/user/lifecycle.md')).toBe('specification')
+    expect(documentKind('docs/domain/demo/people/user/design.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/people/user/examples.feature.md')).toBe('examples')
+    expect(documentKind('docs/domain/demo/design/README.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/design/csv-transfer.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/design/decisions.md')).toBe('decision-records')
+    expect(documentKind('docs/domain/demo/design/csv/notes.md')).toBeUndefined()
   })
 
   it('keeps shared vocabulary and adopted standards at the context, not in a feature node', () => {
@@ -59,8 +70,9 @@ describe('documentKind', () => {
     expect(documentKind('docs/domain/demo/user/standards.md')).toBeUndefined()
   })
 
+  // 新しい形式では機能群の一段下まで機能ノードを置けるので、その下で木が止まる。
   it('stops the tree at the feature node', () => {
-    expect(documentKind('docs/domain/demo/user/profile/scenarios.feature.md')).toBeUndefined()
+    expect(documentKind('docs/domain/demo/people/user/profile/README.md')).toBeUndefined()
   })
 
   it('no longer recognizes the single canonical document', () => {
@@ -145,9 +157,95 @@ Replaced by the valid request scenario.
 `
     const result = validateDocument('docs/domain/demo/decisions.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
-      'REQ-DEMO-002 must be declared in scenarios.feature.md',
+      'REQ-DEMO-002 must be declared in scenarios.feature.md or in a feature specification',
     ])
     expect(result.scenarioIds).toEqual([])
+  })
+})
+
+describe('feature specification', () => {
+  const path = 'docs/domain/demo/work/task/README.md'
+
+  it('declares rules with headings and reads their titles and supersession', () => {
+    const result = validateDocument(
+      path,
+      [
+        '# Task',
+        '',
+        '## 操作',
+        '',
+        '#### REQ-DEMO-002 開いたタスクだけを一覧する',
+        '',
+        '#### REQ-DEMO-001 旧い一覧 (superseded by REQ-DEMO-002)',
+        '',
+      ].join('\n'),
+    )
+    expect(result.findings).toEqual([])
+    expect(result.scenarioIds).toEqual([
+      { id: 'REQ-DEMO-002', line: 5, supersededBy: undefined, title: '開いたタスクだけを一覧する' },
+      {
+        id: 'REQ-DEMO-001',
+        line: 7,
+        supersededBy: 'REQ-DEMO-002',
+        title: '旧い一覧 (superseded by REQ-DEMO-002)',
+      },
+    ])
+  })
+
+  it('rejects the Gherkin keyword and declarations at the wrong heading level', () => {
+    const result = validateDocument(
+      path,
+      '# Task\n\n### Rule: REQ-DEMO-002 一覧\n\n## REQ-DEMO-003 数える\n',
+    )
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'REQ-DEMO-002 must be declared as a "#### REQ-DEMO-002 <title>" heading, without "Rule:"',
+      'REQ-DEMO-003 must be declared at heading level 3 or 4',
+    ])
+  })
+
+  it('checks the state machines under its state transition section', () => {
+    const result = validateDocument(
+      path,
+      [
+        '# Task',
+        '',
+        '## 状態遷移',
+        '',
+        '### TaskLifecycle',
+        '',
+        '| From | Event | Guard | To | Effects |',
+        '|---|---|---|---|---|',
+        '| open | TaskClosed | — | closed |  |',
+        '',
+      ].join('\n'),
+    )
+    expect(result.findings.map((finding) => finding.message)).toContain(
+      'state machine must declare its states with | State | Kind | Meaning |',
+    )
+  })
+})
+
+describe('examples appendix', () => {
+  it('reads rule references and examples without declaring the rules', () => {
+    const result = validateDocument(
+      'docs/domain/demo/work/task/examples.feature.md',
+      [
+        '# Feature: タスクの例',
+        '',
+        '## Rule: REQ-DEMO-002 開いたタスクだけを一覧する',
+        '',
+        '### Example: EX-DEMO-002-01 開いたタスク',
+        '',
+        '- When 一覧を要求する',
+        '- Then 開いたタスクを返す',
+      ].join('\n'),
+    )
+    expect(result.findings).toEqual([])
+    expect(result.scenarioIds).toEqual([])
+    expect(result.ruleReferences).toEqual([
+      { id: 'REQ-DEMO-002', line: 3, title: '開いたタスクだけを一覧する' },
+    ])
+    expect(result.exampleIds).toEqual([{ id: 'EX-DEMO-002-01', line: 5, parentId: 'REQ-DEMO-002' }])
   })
 })
 

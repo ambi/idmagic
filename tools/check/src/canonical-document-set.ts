@@ -11,7 +11,12 @@
  * 近い許可名を示して、書いた人が何を間違えたかに到達させる。
  */
 
-import { documentNames, type DirectoryListing } from '../../workspace/src/document-layout.ts'
+import {
+  allowsDocument,
+  describeDocumentSet,
+  documentAllowance,
+  type DirectoryListing,
+} from '../../workspace/src/document-layout.ts'
 
 /** 一段のディレクトリと、その直下にあるファイル名。 */
 export type { DirectoryListing } from '../../workspace/src/document-layout.ts'
@@ -69,10 +74,12 @@ function nearestName(name: string, allowed: readonly string[]): string | undefin
  */
 export function verifyCanonicalDocumentSet(listings: DirectoryListing[]): Finding[] {
   const findings: Finding[] = []
+  const view = describeDocumentSet(listings)
   for (const listing of listings) {
-    const allowed = documentNames(listing.directory)
+    const allowance = documentAllowance(listing.directory, view)
+    const allowed = allowance.names
     for (const name of listing.files) {
-      if (!isMarkdown(name) || allowed.includes(name)) continue
+      if (!isMarkdown(name) || allowsDocument(allowance, name)) continue
       const nearest = nearestName(name, allowed)
       findings.push({
         path: `${listing.directory}/${name}`,
@@ -80,7 +87,9 @@ export function verifyCanonicalDocumentSet(listings: DirectoryListing[]): Findin
           ? `not a canonical document; did you mean ${nearest}?`
           : allowed.length === 0
             ? 'not a canonical document; the specification tree stops at the feature node'
-            : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}`,
+            : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}${
+                allowance.freeNames ? ', and chapters named in kebab-case' : ''
+              }`,
       })
     }
   }

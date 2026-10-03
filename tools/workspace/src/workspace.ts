@@ -3,7 +3,9 @@ import { readdir, stat } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  documentNames,
+  allowsDocument,
+  describeDocumentSet,
+  documentAllowance,
   FREELY_NAMED_DOCUMENT_DIRECTORIES,
   type DirectoryListing,
 } from './document-layout.ts'
@@ -231,10 +233,12 @@ export async function listCanonicalDirectories(root = WORKSPACE_ROOT): Promise<D
  */
 async function discoverSpecificationDocuments(root: string): Promise<string[]> {
   const documents: string[] = []
-  for (const listing of await listCanonicalDirectories(root)) {
-    const names = new Set<string>(documentNames(listing.directory))
+  const listings = await listCanonicalDirectories(root)
+  const view = describeDocumentSet(listings)
+  for (const listing of listings) {
+    const allowance = documentAllowance(listing.directory, view)
     for (const name of listing.files) {
-      if (names.has(name)) documents.push(`${listing.directory}/${name}`)
+      if (allowsDocument(allowance, name)) documents.push(`${listing.directory}/${name}`)
     }
   }
   return documents.sort()

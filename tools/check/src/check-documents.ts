@@ -1,11 +1,18 @@
 import type { Dirent } from 'node:fs'
 import {
-  documentNames,
+  allowsDocument,
+  describeDocumentSet,
+  documentAllowance,
   FREELY_NAMED_DOCUMENT_DIRECTORIES,
   type DirectoryListing,
 } from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
+import {
+  FeatureNodeDeclarations,
+  LEGACY_SPEC_LAYOUT,
+  verifyLegacyLayoutList,
+} from './feature-nodes.ts'
 import { checkNormativeCoverage, citedNormativeIds, type DeclaredId } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { validateDocument } from './specification-doc.ts'
@@ -67,11 +74,19 @@ export async function checkDocuments(
     )
   }
 
+  const view = describeDocumentSet(listings)
+  const legacy = snapshot.exists(LEGACY_SPEC_LAYOUT)
+    ? (JSON.parse(await snapshot.read(LEGACY_SPEC_LAYOUT)) as { contexts: string[] }).contexts
+    : undefined
+  const layout = verifyLegacyLayoutList(legacy, contextDirectories, view)
+  failed ||= layout.length > 0
+  lines.push(...layout)
+
   const paths = listings
     .flatMap((listing) => {
-      const allowed = new Set(documentNames(listing.directory))
+      const allowance = documentAllowance(listing.directory, view)
       return listing.files
-        .filter((name) => allowed.has(name))
+        .filter((name) => allowsDocument(allowance, name))
         .map((name) => `${listing.directory}/${name}`)
     })
     .sort()
@@ -80,10 +95,12 @@ export async function checkDocuments(
   const scenarios: DeclaredId[] = []
   const examples: DeclaredId[] = []
   const standards: DeclaredId[] = []
+  const nodes = new FeatureNodeDeclarations()
   for (const path of paths) {
     const result = validateDocument(path, await snapshot.read(path))
     failed ||= result.findings.length > 0
     lines.push(...result.findings.map((finding) => `${path}:${finding.line}: ${finding.message}`))
+    nodes.add(path, result)
     for (const declaration of [...result.scenarioIds, ...result.exampleIds]) {
       const previous = seen.get(declaration.id)
       if (previous) {
@@ -124,6 +141,9 @@ export async function checkDocuments(
       lines.push(`${supersession.where}: superseding ${supersession.target} does not exist`)
     }
   }
+  const nodeFindings = nodes.verify(view)
+  failed ||= nodeFindings.length > 0
+  lines.push(...nodeFindings)
 
   const sources: string[] = []
   for (const tree of PRODUCT_TREES) {

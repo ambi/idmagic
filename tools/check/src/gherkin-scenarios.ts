@@ -48,7 +48,7 @@ export type RuleBody = {
   lines: Array<{ line: number; text: string }>
 }
 
-const RULE_HEADING = /^#{2,6} Rule: (REQ-[A-Z0-9-]+)(?::)?(?:\s|$)/
+const RULE_HEADING = /^#{2,6} (?:Rule: )?(REQ-[A-Z0-9-]+)(?::)?(?:\s|$)/
 const ANY_HEADING = /^#{1,6} /
 
 /**
@@ -56,6 +56,7 @@ const ANY_HEADING = /^#{1,6} /
  *
  * 公式の構文解析は、`Rule` の説明のうち箇条書きの行を AST に残さない。規則の本文を AST
  * から読むと、箇条書きで書いた規則文と欄が黙って消えるので、ソースの行から切り出す。
+ * 機能仕様の規則は `Rule:` を付けない見出しで宣言するので、同じ読み方で両方を読む。
  */
 export function ruleBodies(source: string): RuleBody[] {
   const bodies: RuleBody[] = []

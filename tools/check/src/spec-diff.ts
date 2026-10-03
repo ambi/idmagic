@@ -17,6 +17,7 @@
 import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
+import { specificationRules } from './feature-specification.ts'
 import { parseScenarioDocument, ruleBodies } from './gherkin-scenarios.ts'
 import { documentKind } from './specification-doc.ts'
 import { typeSpecDeclarations } from './typespec-declarations.ts'
@@ -206,7 +207,28 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     deprecatedDeclarations: new Set(),
   }
 
+  // 機能仕様の規則は、宣言と本文が仕様本文に、例が付録にある。両方を読んでから一つの事実にする。
+  const declared = new Map<string, { title: string; body: string[] }>()
+  const steps = new Map<string, Set<string>>()
+
   for (const [path, source] of snapshot) {
+    const kind = documentKind(path)
+    if (kind === 'specification') {
+      const bodies = new Map(ruleBodies(source).map((body) => [body.id, body.lines]))
+      for (const rule of specificationRules(source)) {
+        const body = (bodies.get(rule.id) ?? []).flatMap(
+          ({ text }) => normalizedBodyLine(text) ?? [],
+        )
+        declared.set(rule.id, { title: rule.title, body })
+      }
+    } else if (kind === 'examples') {
+      for (const rule of parseScenarioDocument(source).rules) {
+        const fragments = steps.get(rule.id) ?? new Set<string>()
+        for (const example of rule.examples)
+          for (const step of example.steps) fragments.add(step.text)
+        steps.set(rule.id, fragments)
+      }
+    }
     if (path.endsWith('.tsp')) {
       for (const [name, text] of declarationTexts(source)) {
         facts.declarations.set(`${path}:${name}`, text)
@@ -238,9 +260,13 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     // 移すことも同じで、機能ノードの段を落として Context で同定する。
     const owner = currentPath(
       path.slice(0, Math.max(0, path.length - name.length - 1)) || path,
-    ).replace(/^(docs\/domain\/[^/]+)\/[^/]+$/, '$1')
+    ).replace(/^(docs\/domain\/[^/]+)(?:\/[^/]+)+$/, '$1')
     const split = name === 'states.md'
-    const transitions = split ? source : section(source, 'State Transitions')
+    const transitions = split
+      ? source
+      : kind === 'specification'
+        ? section(source, '状態遷移')
+        : section(source, 'State Transitions')
     const machineHeading = split ? /^## (?!#)(.+)$/ : /^### (.+)$/
     let machine = ''
     // Only the rows under the transition header are transitions. A states.md
@@ -267,6 +293,12 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
       rows.add(row)
       facts.transitions.set(machine, rows)
     }
+  }
+
+  // 形式の印を旧形式の `gherkin` と分けるので、移行のコミットでは題名だけが比べられる。
+  for (const [id, { title, body }] of declared) {
+    const fragments = [...(steps.get(id) ?? [])].sort()
+    facts.scenarios.set(id, ['spec', title, ...fragments, '--', ...body].join('\n'))
   }
 
   return facts

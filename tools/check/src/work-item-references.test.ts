@@ -23,6 +23,64 @@ const environment: ReferenceEnvironment = {
   read: (path) => files[path],
 }
 
+describe('verifyWorkItemReferences with the feature layout', () => {
+  const moved: ReferenceEnvironment = {
+    exists: (path) => path === 'docs/domain/demo/work/task/README.md',
+    read: (path) =>
+      path === 'docs/domain/demo/work/task/README.md'
+        ? '# Task\n\n## 操作\n\n#### REQ-DEMO-001 A valid request succeeds\n'
+        : undefined,
+    relocated: (path) =>
+      path === 'docs/domain/demo/scenarios.feature.md'
+        ? ['docs/domain/demo/work/task/README.md']
+        : undefined,
+  }
+
+  it('resolves a rule declared by a feature specification heading', () => {
+    const findings = verifyWorkItemReferences(
+      {
+        status: 'pending',
+        affected_spec: [
+          { path: 'docs/domain/demo/work/task/README.md', requirement: 'REQ-DEMO-001' },
+        ],
+      },
+      moved,
+    )
+    expect(findings).toEqual([])
+  })
+
+  it('resolves a completed record through the relocation table', () => {
+    const findings = verifyWorkItemReferences(
+      {
+        status: 'completed',
+        affected_spec: [
+          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-002' },
+        ],
+      },
+      moved,
+    )
+    expect(findings).toEqual([
+      'requirement does not resolve where docs/domain/demo/scenarios.feature.md moved: REQ-DEMO-002',
+    ])
+  })
+
+  it('keeps an active record on the current path', () => {
+    const findings = verifyWorkItemReferences(
+      {
+        status: 'pending',
+        affected_spec: [
+          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+        ],
+      },
+      moved,
+    )
+    expect(findings).toEqual([
+      'affected_spec path does not exist: docs/domain/demo/scenarios.feature.md',
+    ])
+  })
+})
+
 describe('verifyWorkItemReferences', () => {
   it('accepts scenario, standard, and symbol references that resolve', () => {
     const findings = verifyWorkItemReferences(

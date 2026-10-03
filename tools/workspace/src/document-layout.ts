@@ -124,8 +124,9 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
 }
 
 /**
- * その段に置ける一次情報文書の名前。仕様の木はシステム、Context、機能の三段で止まるので、
- * 機能ノードより下の段には何も置けない。固定の一覧に無い段は Context と同じ集合を持つ。
+ * その段に置ける一次情報文書の名前。旧形式の仕様の木はシステム、Context、機能の三段で
+ * 止まるので、機能ノードより下の段には何も置けない。固定の一覧に無い段は Context と同じ
+ * 集合を持つ。新しい形式の Context の段は `documentAllowance` が決める。
  */
 export function documentNames(directory: string): readonly string[] {
   const system = SYSTEM_DOCUMENTS_BY_DIRECTORY.get(directory)
@@ -135,4 +136,93 @@ export function documentNames(directory: string): readonly string[] {
   if (depth === 1) return CONTEXT_DOCUMENTS
   if (depth === 2) return FEATURE_DOCUMENTS
   return []
+}
+
+/**
+ * 新しい形式（機能仕様と内部設計を軸にした形式）の Context が持つ印。履歴のリビジョンや
+ * 一つのファイルだけを読む道具も、設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
+ */
+export const FEATURE_LAYOUT_MARKER = 'design/README.md'
+
+/** 新しい形式の Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能ノードへ移る。 */
+export const FEATURE_LAYOUT_CONTEXT_DOCUMENTS = [
+  'README.md',
+  'glossary.md',
+  'standards.md',
+] as const
+
+/** Context の内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
+export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
+
+/** 機能ノードの固定の文書。長くなった機能仕様の章は任意の名前で並べる。 */
+export const FEATURE_NODE_DOCUMENTS = ['README.md', 'design.md', 'examples.feature.md'] as const
+
+/**
+ * 任意の名前を許す段でも使えない名前。旧形式のファイル種別を新しい形式に持ち込むと、
+ * 一つの機能を種別ごとのファイルに散らす構造へ戻ってしまう。用語と標準は Context の直下に置く。
+ */
+const RESERVED_FREE_NAMES = new Set([
+  'states.md',
+  'decisions.md',
+  'internals.md',
+  'scenarios.feature.md',
+  'glossary.md',
+  'standards.md',
+])
+
+/** 任意の名前の文書は、ケバブケースの Markdown に限る。`Readme.md` のような打ち間違いを通さない。 */
+const FREE_DOCUMENT_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
+
+/** ある段に置ける文書。`freeNames` が真なら、固定の名前に加えて任意の名前の章も置ける。 */
+export interface DocumentAllowance {
+  names: readonly string[]
+  freeNames: boolean
+}
+
+/** 段の集合から読み取った、名前の判定に要る事実。 */
+export interface DocumentSetView {
+  /** `design/README.md` を持つ Context の名前。 */
+  featureContexts: ReadonlySet<string>
+  /** 子のディレクトリを持つ段。新しい形式では、これが機能群と機能ノードを分ける。 */
+  parents: ReadonlySet<string>
+}
+
+export function describeDocumentSet(listings: readonly DirectoryListing[]): DocumentSetView {
+  const featureContexts = new Set<string>()
+  const parents = new Set<string>()
+  for (const listing of listings) {
+    const design = listing.directory.match(/^docs\/domain\/([^/]+)\/design$/)?.[1]
+    if (design && listing.files.includes('README.md')) featureContexts.add(design)
+    const parent = listing.directory.slice(0, Math.max(0, listing.directory.lastIndexOf('/')))
+    if (parent) parents.add(parent)
+  }
+  return { featureContexts, parents }
+}
+
+/**
+ * その段に置ける文書。新しい形式の Context は、Context、内部設計、機能群、機能ノードの段を
+ * 持つ。機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能ノードは Context から
+ * 一段か二段下の、子を持たない段である。それより下には何も置けない。
+ */
+export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {
+  const match = directory.match(/^docs\/domain\/([^/]+)(?:\/(.+))?$/)
+  const context = match?.[1]
+  if (!context || !view.featureContexts.has(context)) {
+    return { names: documentNames(directory), freeNames: false }
+  }
+  const rest = match[2]?.split('/') ?? []
+  if (rest.length === 0) return { names: FEATURE_LAYOUT_CONTEXT_DOCUMENTS, freeNames: false }
+  if (rest[0] === 'design') {
+    return rest.length === 1
+      ? { names: DESIGN_DOCUMENTS, freeNames: true }
+      : { names: [], freeNames: false }
+  }
+  if (rest.length > 2) return { names: [], freeNames: false }
+  if (view.parents.has(directory)) return { names: ['README.md'], freeNames: false }
+  return { names: FEATURE_NODE_DOCUMENTS, freeNames: true }
+}
+
+export function allowsDocument(allowance: DocumentAllowance, name: string): boolean {
+  if (allowance.names.includes(name)) return true
+  return allowance.freeNames && FREE_DOCUMENT_NAME.test(name) && !RESERVED_FREE_NAMES.has(name)
 }

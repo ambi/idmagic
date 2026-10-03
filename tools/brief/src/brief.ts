@@ -40,7 +40,8 @@ export function partitionSources(paths: readonly string[]): SourcePartition {
 export function extractDeclaration(source: string, id: string): string | undefined {
   const lines = source.split('\n')
 
-  const rulePattern = new RegExp(`^(#{2,6})\\s+Rule:\\s+${id}\\b`)
+  // 機能仕様は `Rule:` を付けない見出しで規則を宣言する。
+  const rulePattern = new RegExp(`^(#{2,6})\\s+(?:Rule:\\s+)?${id}\\b`)
   const ruleStart = lines.findIndex((line) => rulePattern.test(line))
   if (ruleStart >= 0) {
     const level = lines[ruleStart]?.match(rulePattern)?.[1]?.length ?? 2

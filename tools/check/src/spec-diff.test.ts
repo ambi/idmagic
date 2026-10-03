@@ -240,6 +240,74 @@ describe('diffSpecifications', () => {
     expect(diff.changedTransitions).toEqual([])
   })
 
+  it('reports nothing when a rule moves into a feature specification with an appendix', () => {
+    const base: Snapshot = new Map([
+      [
+        'docs/domain/demo/task/scenarios.feature.md',
+        [
+          '# Feature: Task',
+          '',
+          '## 生成',
+          '',
+          '### Rule: REQ-DEMO-001 A request',
+          '',
+          '- 規則文の一行',
+          '',
+          '#### Example: EX-DEMO-001-01 request succeeds',
+          '',
+          '- When the request is submitted',
+          '- Then it succeeds',
+        ].join('\n'),
+      ],
+    ])
+    const specification = (statement: string) =>
+      [
+        '# Task',
+        '',
+        '## 状態遷移',
+        '',
+        machine('emit Done'),
+        '',
+        '## 操作',
+        '',
+        '### Submit',
+        '',
+        '#### REQ-DEMO-001 A request',
+        '',
+        `- ${statement}`,
+        '- **担保手段**：`Task.Open`',
+      ].join('\n')
+    const appendix = (result: string) =>
+      [
+        '# Feature: Task の例',
+        '',
+        '## Rule: REQ-DEMO-001 A request',
+        '',
+        '### Example: EX-DEMO-001-01 request succeeds',
+        '',
+        '- When the request is submitted',
+        `- Then ${result}`,
+      ].join('\n')
+    const head = (statement: string, result: string): Snapshot =>
+      new Map([
+        ['docs/domain/demo/work/task/README.md', specification(statement)],
+        ['docs/domain/demo/work/task/examples.feature.md', appendix(result)],
+      ])
+    const migrated = diffSpecifications(base, head('規則文の一行', 'it succeeds'))
+    expect(migrated.removedScenarios).toEqual([])
+    expect(migrated.changedScenarios).toEqual([])
+    expect(migrated.changedTransitions).toEqual(['docs/domain/demo#Lifecycle'])
+
+    const settled = head('規則文の一行', 'it succeeds')
+    expect(
+      diffSpecifications(settled, head('規則文の二行', 'it succeeds')).changedScenarios,
+    ).toEqual(['REQ-DEMO-001'])
+    expect(diffSpecifications(settled, head('規則文の一行', 'it fails')).changedScenarios).toEqual([
+      'REQ-DEMO-001',
+    ])
+    expect(diffSpecifications(settled, settled).changedTransitions).toEqual([])
+  })
+
   it('tracks TypeSpec declarations coming and going', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')), 'model Task {}')
     const head = snapshot(
