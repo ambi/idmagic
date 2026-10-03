@@ -8,20 +8,20 @@ priority: p2
 depends_on: [wi-96676-transcribe-implicit-specifications-of-identity-management]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-040 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-042 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-043 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-044 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-045 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-049 }
-  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-051 }
-  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-052 }
-  - { path: docs/domain/identity-management/account/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-053 }
-  - { path: docs/domain/identity-management/group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-060 }
-  - { path: docs/domain/identity-management/group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-064 }
-  - { path: docs/domain/identity-management/dynamic-group/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-070 }
-  - { path: docs/domain/identity-management/agent/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-076 }
-  - { path: docs/domain/identity-management/agent/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-078 }
+  - { path: docs/domain/identity-management/bulk-transfer/data-export/README.md, requirement: REQ-IDMANAGEMENT-040 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-042 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-043 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-044 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-045 }
+  - { path: docs/domain/identity-management/principals/user/lifecycle.md, requirement: REQ-IDMANAGEMENT-049 }
+  - { path: docs/domain/identity-management/principals/account/README.md, requirement: REQ-IDMANAGEMENT-051 }
+  - { path: docs/domain/identity-management/principals/account/README.md, requirement: REQ-IDMANAGEMENT-052 }
+  - { path: docs/domain/identity-management/principals/account/README.md, requirement: REQ-IDMANAGEMENT-053 }
+  - { path: docs/domain/identity-management/groups/group/README.md, requirement: REQ-IDMANAGEMENT-060 }
+  - { path: docs/domain/identity-management/groups/group/README.md, requirement: REQ-IDMANAGEMENT-064 }
+  - { path: docs/domain/identity-management/groups/dynamic-group/README.md, requirement: REQ-IDMANAGEMENT-070 }
+  - { path: docs/domain/identity-management/principals/agent/README.md, requirement: REQ-IDMANAGEMENT-076 }
+  - { path: docs/domain/identity-management/principals/agent/README.md, requirement: REQ-IDMANAGEMENT-078 }
 ---
 
 # IdManagement の規則に残した要判断を決める

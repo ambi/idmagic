@@ -1,27 +1,56 @@
 # IdManagement
 
-テナント単位のプリンシパル台帳 — 人間の `User`、`Group`、非人間の `Agent` — と、そのプロフィール、ロール、ライフサイクル、管理 API、セルフサービス API を担う。
+## 責務と境界
 
-資格情報の検証、MFA、ログインセッションは `Authentication` が、OAuth2 クライアントの資格情報とトークン発行は `OAuth2` が担う。この Context では、それらが認証とトークン発行の対象にするプリンシパルの記録を扱う。
+テナント単位のプリンシパルの台帳を扱う。
+台帳に載るのは、人間の `User`、`User` を束ねる `Group`、非人間の `Agent` であり、そのプロフィール、ロール、ライフサイクル、管理 API、セルフサービス API を扱う。
 
-ライフサイクルワークフローによる自動化そのものは `IdGovernance` が担う。この Context は、そこから呼ばれる冪等なコマンドの側であり、誰がいつ変更したかの記録はここに残る。
+| 扱わないもの | 担当 |
+| --- | --- |
+| 資格情報の検証、多要素認証、ログインセッション | `Authentication` |
+| OAuth2 クライアントの資格情報とトークンの発行 | `OAuth2` |
+| ライフサイクルワークフローによる自動化 | `IdGovernance`。この Context は、そこから呼ばれる冪等なコマンドの側であり、誰がいつ変更したかの記録はこの Context に残る |
+| 外部の権威からの取り込み（SCIM など） | `Sourcing` |
+| 外部の宛先への送り出し | `Provisioning` |
+
+## モデル
+
+Aggregate root は `User`、`Group`、`Agent` の三つである。
+
+| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
+| --- | --- | --- |
+| `User` | 属性（`attributes`）、必須操作 | `Group` のメンバーになる。`Agent` の所有者になる |
+| `Group` | `GroupMembership`、`DynamicGroupRule` | メンバーの `User` を ID で参照する |
+| `Agent` | `AgentCredentialBinding` | 所有者の `User` または `Group` と、バインドする `OAuth2Client` を ID で参照する |
+
+境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
+`User` の実効ロールは、直接付与したロールと、所属する `Group` のロールの和集合である。
+
+## 公開する契約
+
+HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグが定める。
+次の表は、それ以外にほかの Context と結ぶ契約である。
+
+| 契約 | 相手 | 向き | 内容 |
+| --- | --- | --- | --- |
+| `UserMutationCommitter` | `IdGovernance` が実装する | この Context が呼ぶ | User の変更と、その変更から生まれるワークフローの実行を同時に確定する |
+| `ProvisioningNotifier`（User と Group） | `Provisioning` が実装する | この Context が呼ぶ | User と Group の変更を下流の宛先へ通知する |
+| `UserSourceOwnershipGuard`、`GroupSourceOwnershipGuard` | `Sourcing` が実装する | この Context が呼ぶ | 外部の権威が管理する User と Group を、CSV が上書きしないように判定する |
+| `ProvisionFederatedUser` | `Authentication` が呼ぶ | この Context が提供する | フェデレーションのログインで User を作る |
+| `UserRepository`、`GroupRepository` の読み取り | `Authentication`、`OAuth2`、`Authorization` などが呼ぶ | この Context が提供する | プリンシパルと実効ロールを読む |
+| ドメインイベント | 監査と下流が購読する | この Context が発行する | `User…`、`Group…`、`DynamicGroupRule…`、`Agent…`、`DataExport…`、`EmailChange…` |
+
+## 機能
+
+| 機能群 | 機能 |
+| --- | --- |
+| [プリンシパル](principals/README.md) | [ユーザー](principals/user/README.md)、[アカウントのセルフサービス](principals/account/README.md)、[エージェント](principals/agent/README.md) |
+| [グループ](groups/README.md) | [グループ](groups/group/README.md)、[動的グループ](groups/dynamic-group/README.md) |
+| [一括転送](bulk-transfer/README.md) | [CSV の転送](bulk-transfer/csv-transfer/README.md)、[ユーザー CSV](bulk-transfer/user-csv/README.md)、[グループ CSV](bulk-transfer/group-csv/README.md)、[データエクスポート](bulk-transfer/data-export/README.md) |
+| [共通](common/README.md) | [管理 API の認可](common/admin-access/README.md)、[ロール](common/roles/README.md) |
 
 | 文書 | 内容 |
-|---|---|
+| --- | --- |
 | [IdManagement の用語集](glossary.md) | この Context での語義 |
-| [IdManagement の状態遷移](states.md) | 複数の機能が共有するエクスポートの状態と遷移 |
-| [IdManagement の設計判断](decisions.md) | 複数の機能にまたがる設計判断 |
-| [IdManagement の内部設計](internals.md) | 複数の機能にまたがる機構の説明 |
-| [IdManagement のシナリオ](scenarios.feature.md) | 管理 API の認可と予約ロールのように、複数の機能にまたがる受け入れシナリオ |
-
-一つの機能だけの規則、状態遷移、設計判断、機構の説明は、次の機能ノードに置く。
-
-| 機能ノード | 内容 |
-|---|---|
-| [ユーザー](user/README.md) | `User` の作成、一覧、無効化、削除、属性 |
-| [アカウントのセルフサービス](account/README.md) | 本人によるプロフィール、メールアドレス、データエクスポートの操作 |
-| [ユーザー CSV](user-csv/README.md) | `User` の CSV インポートとエクスポート |
-| [グループ](group/README.md) | `Group` の作成と更新、手動のメンバーシップ、実効ロール |
-| [動的グループ](dynamic-group/README.md) | CEL の規則によるメンバーシップの評価 |
-| [グループ CSV](group-csv/README.md) | `Group` とメンバーシップの CSV インポートとエクスポート |
-| [エージェント](agent/README.md) | `Agent` の登録、資格情報のバインド、ライフサイクル |
+| [IdManagement の品質要件](quality.md) | この Context に割り当てた品質要件 |
+| [IdManagement の設計](design/README.md) | 話題ごとの設計と重要な判断 |

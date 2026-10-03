@@ -7,7 +7,7 @@ created_at: 2026-07-10
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
   - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
 ---
 

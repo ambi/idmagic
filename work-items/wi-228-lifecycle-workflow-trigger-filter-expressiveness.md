@@ -32,7 +32,7 @@ field/operator/value の AND 結合のみで (`filters` は最大 20 項の AND�
   更新する。
 
 ## Out of Scope
-- 任意の expression 言語 (CEL 等) への全面移行。`docs/domain/identity-management/dynamic-group/` の `DynamicGroupRule` とは異なる制約付き
+- 任意の expression 言語 (CEL 等) への全面移行。`docs/domain/identity-management/groups/dynamic-group/` の `DynamicGroupRule` とは異なる制約付き
   モデルを維持する方針を継続する (wi-153 の Plan が明示する「任意 expression engine は採らない」を
   踏襲する)。
 - action 側の条件分岐 (per-action condition) や DAG/loop。これは別途検討する。

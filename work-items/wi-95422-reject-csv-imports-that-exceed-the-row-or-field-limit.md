@@ -8,9 +8,9 @@ priority: p1
 depends_on: [wi-96676-transcribe-implicit-specifications-of-identity-management]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/user-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-004, impact: conforms }
-  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-026, impact: conforms }
-  - { path: docs/domain/identity-management/group-csv/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-029, impact: conforms }
+  - { path: docs/domain/identity-management/bulk-transfer/user-csv/README.md, requirement: REQ-IDMANAGEMENT-004, impact: conforms }
+  - { path: docs/domain/identity-management/bulk-transfer/group-csv/README.md, requirement: REQ-IDMANAGEMENT-026, impact: conforms }
+  - { path: docs/domain/identity-management/bulk-transfer/group-csv/README.md, requirement: REQ-IDMANAGEMENT-029, impact: conforms }
 ---
 
 # 行数または項目の上限を超える CSV のインポートを、一部も適用せずに拒否する

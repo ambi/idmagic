@@ -11,7 +11,7 @@
 | UserDeletion | User の Tombstone 化と関連 Aggregate のカスケード削除。`status` を `Deleted` に遷移させて個人識別情報のフィールドを匿名化し、監査のため `id` だけを保持する。`Deleted` は終端状態であり復元できない。 | delete ユーザー, anonymize ユーザー, アカウント削除 |
 | Deleted | User の終端状態。個人識別情報は匿名化済みで、ログイン、トークン発行、UserInfo のいずれも無効なプリンシパルとして扱う。 | deleted |
 | Delete | User を Deleted に遷移させる管理操作。Tombstone 化と関連 Aggregate のカスケード削除を 1 回の操作で行う。 | delete |
-| PendingDeletion | User の削除予約状態。`status == PendingDeletion` では個人識別情報を保持するが、`Disabled` と同様に認証を拒否する。猶予期間（`states.UserLifecycle` の `PendingDeletion` → `Deleted` 遷移のガード）内であれば Restore で `Active` に戻せる。猶予期間を過ぎると Purge により `Deleted` へ遷移し、匿名化する。 | pending_deletion, 削除予約中 |
+| PendingDeletion | User の削除予約状態。`status == PendingDeletion` では個人識別情報を保持するが、`Disabled` と同様に認証を拒否する。猶予期間（[ユーザー](principals/user/README.md#userlifecycle)の `UserLifecycle` の `PendingDeletion` から `Deleted` への遷移のガード）内であれば Restore で `Active` に戻せる。猶予期間を過ぎると Purge により `Deleted` へ遷移し、匿名化する。 | pending_deletion, 削除予約中 |
 | SoftDelete | User を `Active` / `Disabled` から `PendingDeletion` へ遷移させる管理操作。個人識別情報、同意、リフレッシュトークン、セッションを残したまま削除を予約するため、誤操作を猶予期間内に取り消せる。 | soft_delete, soft-delete |
 | Restore | `PendingDeletion` の User を `Active` に戻す管理操作。猶予期間内だけ実行でき、個人識別情報と資格情報は保持しているため通常どおりログインを再開できる。 | restore |
 | Purge | User を `Active` / `Disabled` / `PendingDeletion` から `Deleted` に遷移させる確定削除操作。匿名化をカスケードし、猶予期間経過後の自動消去と、管理者による明示的な完全削除の双方から呼び出す。 | purge |

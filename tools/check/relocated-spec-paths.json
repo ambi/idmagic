@@ -1,1 +1,30 @@
-{}
+{
+  "docs/domain/identity-management/scenarios.feature.md": [
+    "docs/domain/identity-management/common/admin-access/README.md",
+    "docs/domain/identity-management/common/roles/README.md",
+    "docs/domain/identity-management/bulk-transfer/csv-transfer/README.md",
+    "docs/domain/identity-management/bulk-transfer/data-export/README.md"
+  ],
+  "docs/domain/identity-management/user/scenarios.feature.md": [
+    "docs/domain/identity-management/principals/user/README.md",
+    "docs/domain/identity-management/principals/user/lifecycle.md"
+  ],
+  "docs/domain/identity-management/account/scenarios.feature.md": [
+    "docs/domain/identity-management/principals/account/README.md"
+  ],
+  "docs/domain/identity-management/agent/scenarios.feature.md": [
+    "docs/domain/identity-management/principals/agent/README.md"
+  ],
+  "docs/domain/identity-management/group/scenarios.feature.md": [
+    "docs/domain/identity-management/groups/group/README.md"
+  ],
+  "docs/domain/identity-management/dynamic-group/scenarios.feature.md": [
+    "docs/domain/identity-management/groups/dynamic-group/README.md"
+  ],
+  "docs/domain/identity-management/user-csv/scenarios.feature.md": [
+    "docs/domain/identity-management/bulk-transfer/user-csv/README.md"
+  ],
+  "docs/domain/identity-management/group-csv/scenarios.feature.md": [
+    "docs/domain/identity-management/bulk-transfer/group-csv/README.md"
+  ]
+}

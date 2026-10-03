@@ -8,7 +8,7 @@ priority: p3
 change_kind: feature
 affected_spec:
   - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-002 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # LDAP / Active Directory 閉域コネクタでユーザーをプロビジョニングする

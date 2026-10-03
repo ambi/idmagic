@@ -8,7 +8,7 @@ priority: p1
 change_kind: feature
 affected_spec:
   - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-004 }
-  - { path: docs/domain/identity-management/user/scenarios.feature.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # 上流の権威が書き込む属性が、実効ロールへ波及する経路を制限する
@@ -30,7 +30,7 @@ affected_spec:
 - 上流由来の属性と、IdMagic 内で決まる属性を区別できるようにするかを判断する。
 - 上流が同期したグループ所属が、動的規則を経ずに実効ロールを直接動かす経路を扱う。`REQ-SOURCING-005` は「`GroupMembership` が同期され User の有効ロールが更新される」と定めており、こちらは属性を介さない分だけ直接的である。
 - ロールを付与するグループの動的規則が、上流由来の属性を参照できるかどうかの方針を決める。
-- 方針を `docs/domain/identity-management/decisions.md` または `docs/design/security/authorization.md` の判断として書く。どちらが owner かを決める。
+- 方針を `docs/domain/identity-management/design/decisions.md` または `docs/design/security/authorization.md` の判断として書く。どちらが owner かを決める。
 - 管理者が動的規則を保存するときに、その規則が権限へ波及することを認識できるようにする。
 - 対応する規範シナリオを足す。
 
