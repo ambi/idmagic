@@ -12,11 +12,16 @@ whose name owns that kind of content.
    `docs/README.md`, and directory structure, dependency direction, and layers in `docs/domain/structure.md`.
 2. Update runtime units in `docs/design/architecture/runtime.md`, deployment topology in
    `docs/design/architecture/deployment.md`, and trust boundaries in `docs/design/security/threat-model.md`; use the
-   other matching whole-system file when it owns the changed concern.
-3. Update a context boundary and group index in `docs/domain/<context>/README.md`. Put the component table,
-   runtime flows, data, cross-cutting concepts, and the design-viewpoint coverage table in
-   `docs/domain/<context>/design/`, and a decision that weighed alternatives in `design/decisions.md`; give
-   a smaller reason to the rule it justifies as its `**判断**` field. When the change adds, renames, or
+   other matching whole-system file when it owns the changed concern. Constraints, the solution strategy, and
+   known risks and technical debt live in `docs/design/architecture/{constraints,strategy,risks}.md`.
+3. Update a context boundary, published contracts, and feature index in `docs/domain/<context>/README.md`,
+   and its allocated quality requirements in `quality.md`. Put the design in `docs/domain/<context>/design/`
+   under the same topic vocabulary as `docs/design/`: `architecture.md` (context, strategy, components,
+   runtime flows), `data.md`, `security.md`, `reliability.md`, `performance.md`, `risks.md`, a
+   cross-cutting concept as its own file, and a decision that weighed alternatives in `design/decisions.md`;
+   give a smaller reason to the rule it justifies as its `**判断**` field. Keep the topic index in
+   `design/README.md` (and in a feature's `design.md`) listing every topic with a link or `該当なし：<reason>`;
+   `check-spec` rejects an index that leaves a topic out. When the change adds, renames, or
    removes a feature slice `backend/<context>/<feature>/`, do the same to the feature node
    `docs/domain/<context>/<group>/<feature>/` and its entry in the group index; `check-spec` rejects a slice
    without a node beyond `tools/check/feature-node-debt.json`, which only shrinks.

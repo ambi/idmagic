@@ -88,6 +88,36 @@ const DECISIONS = [
   '',
 ].join('\n')
 
+const TOPICS = [
+  'アーキテクチャ',
+  '設計判断',
+  'アプリケーション',
+  'データ',
+  'セキュリティ',
+  '信頼性',
+  '性能',
+  'オブザーバビリティ',
+  '検証',
+  'インフラストラクチャ',
+  'リスク',
+]
+
+/** 話題の索引。アーキテクチャだけを記述し、ほかの話題は該当しない理由を書く。 */
+function topicIndex(title: string, architecture: string): string {
+  return [
+    `# ${title}`,
+    '',
+    '| 話題 | 記述した場所 |',
+    '| --- | --- |',
+    ...TOPICS.map((topic) =>
+      topic === 'アーキテクチャ'
+        ? `| ${topic} | ${architecture} |`
+        : `| ${topic} | 該当なし：Demo は小さく、固有の設計がない |`,
+    ),
+    '',
+  ].join('\n')
+}
+
 /** 新しい形式の Context を一つだけ持ち、どの検査にも通る作業ツリー。 */
 async function featureLayoutWorkspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-feature-layout-test-'))
@@ -104,12 +134,16 @@ async function featureLayoutWorkspace(): Promise<string> {
     ].join('\n'),
     'docs/domain/demo/README.md': '# Demo\n',
     'docs/domain/demo/glossary.md': '# Demo の用語集\n',
-    'docs/domain/demo/design/README.md': '# Demo の内部設計\n',
+    'docs/domain/demo/design/README.md': topicIndex(
+      'Demo の設計',
+      '[アーキテクチャ](architecture.md)',
+    ),
+    'docs/domain/demo/design/architecture.md': '# Demo のアーキテクチャ\n',
     'docs/domain/demo/design/decisions.md': DECISIONS,
     'docs/domain/demo/design/audit.md': '# 監査\n',
     'docs/domain/demo/work/README.md': '# 作業\n',
     'docs/domain/demo/work/task/README.md': SPECIFICATION,
-    'docs/domain/demo/work/task/design.md': '# タスクの内部設計\n',
+    'docs/domain/demo/work/task/design.md': `${topicIndex('タスクの設計', '[アーキテクチャ](#アーキテクチャ)')}\n## アーキテクチャ\n\nタスクを保存する。\n`,
     'docs/domain/demo/work/task/examples.feature.md': EXAMPLES,
     'backend/demo/task/domain/task.go':
       'package domain\n\ntype Task struct{}\n\nfunc (t Task) Open() bool { return true }\n',
@@ -223,6 +257,62 @@ describe('新しい形式の文書検査', () => {
     expect(result.output).toContain('タスクを物理削除しない must have the section 検討した代替案')
   })
 
+  it('accepts the quality requirements allocated to a context', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'docs/domain/demo/quality.md', '# Demo の品質要件\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.output).not.toContain('docs/domain/demo/quality.md')
+    expect(result.code).toBe(0)
+  })
+
+  it('rejects a design entry point without a topic index', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'docs/domain/demo/design/README.md', '# Demo の設計\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('must have a topic index')
+  })
+
+  it('rejects a topic index that leaves out a topic or names an unknown one', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/design.md',
+      topicIndex('タスクの設計', '[アーキテクチャ](#アーキテクチャ)')
+        .replace(/\| 性能 \|.*\n/, '')
+        .replace('| リスク |', '| 運用 |'),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('topic index must list 性能')
+    expect(result.output).toContain('topic index names an unknown topic 運用')
+  })
+
+  it('rejects a topic that neither links to its design nor says why it does not apply', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/design/README.md',
+      topicIndex('Demo の設計', 'architecture.md に書いた').replace(
+        '| データ | 該当なし：Demo は小さく、固有の設計がない |',
+        '| データ | 該当なし： |',
+      ),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('topic アーキテクチャ must link to its design')
+    expect(result.output).toContain('topic データ must link to its design')
+  })
+
+  it('applies the topic index to the system design', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'docs/design/README.md', '# 設計文書\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/design/README.md')
+    expect(result.output).toContain('must have a topic index')
+  })
+
   it('requires a context without design/README.md to be listed as legacy', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'tools/check/legacy-spec-layout.json', '{ "contexts": ["demo"] }\n')
@@ -281,6 +371,18 @@ describe('新しい形式の規則の書式', () => {
     const result = await runCheck(root, 'specification-rules')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('section 概要 must come before 操作')
+  })
+
+  it('accepts a quality section between operations and errors', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/domain/demo/work/task/README.md',
+      `${SPECIFICATION}\n## 品質\n\n一覧は 1 秒以内に返す。\n\n## エラー\n\n共通のエラーはない。\n`,
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.output).toContain('ok  specification rules')
+    expect(result.code).toBe(0)
   })
 
   it('maps a feature slice to a feature node inside a group', async () => {

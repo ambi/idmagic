@@ -3,17 +3,22 @@
 このディレクトリには、IdMagic が要求を実現する構造と仕組みを記載する。
 製品の目的と要求は[要求文書](../requirements/README.md)を参照する。
 
-| 文書 | 内容 |
+設計は次の話題で構成する。
+Context と機能の設計も同じ話題の語彙を使い、この文書からの割り当てと例外だけを書く。
+
+| 話題 | 記述した場所 |
 | --- | --- |
-| [アーキテクチャ](architecture/README.md) | システム境界、論理構成、実行構成、配置、全体に関わる判断 |
-| [アプリケーション設計](application/README.md) | 機能、API、UI、モジュールの実装方針 |
-| [データ設計](data/README.md) | データの正、整合性、保存、移行、廃棄 |
-| [インフラストラクチャ設計](infrastructure/README.md) | コンピューティング、ストレージ、ネットワーク |
-| [セキュリティ設計](security/README.md) | 資産、信頼境界、セキュリティ制御 |
-| [信頼性設計](reliability/README.md) | 障害、冗長性、縮退、復元 |
-| [性能設計](performance/README.md) | 負荷、資源、待ち行列、拡張 |
-| [オブザーバビリティ設計](observability/README.md) | メトリクス、ログ、トレース、検知 |
-| [検証設計](verification/README.md) | 要求を受け入れるための証拠 |
+| アーキテクチャ | [アーキテクチャ](architecture/README.md)：システム境界、制約、解決戦略、論理構成、実行構成、配置 |
+| 設計判断 | [アーキテクチャ上の判断](architecture/decisions.md) |
+| アプリケーション | [アプリケーション設計](application/README.md)：API、UI、モジュールの実装方針 |
+| データ | [データ設計](data/README.md)：データの正、整合性、保存、移行、廃棄 |
+| セキュリティ | [セキュリティ設計](security/README.md)：資産、信頼境界、セキュリティ制御、脅威モデル |
+| 信頼性 | [信頼性設計](reliability/README.md)：障害、冗長性、縮退、復元 |
+| 性能 | [性能設計](performance/README.md)：負荷、資源、待ち行列、拡張 |
+| オブザーバビリティ | [オブザーバビリティ設計](observability/README.md)：メトリクス、ログ、トレース、検知 |
+| 検証 | [検証設計](verification/README.md)：要求を受け入れるための証拠 |
+| インフラストラクチャ | [インフラストラクチャ設計](infrastructure/README.md)：コンピューティング、ストレージ、ネットワーク |
+| リスク | [リスクと技術的負債](architecture/risks.md)。脅威は[脅威モデル](security/threat-model.md) |
 
 ## 用語
 

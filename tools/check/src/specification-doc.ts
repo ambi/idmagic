@@ -29,9 +29,10 @@ export type SpecificationValidation = {
  * canonical document needed. A directory takes the split layout as soon as it
  * holds a README.md.
  *
- * 新しい形式の機能ノードは、機能仕様（`README.md` と任意の名前の章）、内部設計
- * （`design.md`）、例の付録（`examples.feature.md`）を持つ。Context の `design/` は内部設計で、
- * そのうち `decisions.md` だけが判断の記録の骨格を持つ。
+ * 新しい形式の機能ノードは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
+ * 例の付録（`examples.feature.md`）を持つ。Context の `design/` は話題ごとの設計で、`README.md` は
+ * 話題の索引、`decisions.md` は判断の記録の骨格を持つ。機能の `design.md` とシステムの
+ * `docs/design/README.md` も、設計の入口として話題の索引を持つ。
  */
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind =
@@ -41,6 +42,7 @@ export type DocumentKind =
   | 'specification'
   | 'examples'
   | 'decision-records'
+  | 'design-index'
   | 'prose'
 
 const KIND_BY_NAME = new Map<string, DocumentKind>([
@@ -68,10 +70,12 @@ export function documentKind(path: string): DocumentKind | undefined {
   const directory = path
     .slice(0, path.lastIndexOf('/'))
     .replace(/^docs\/contexts\//, 'docs/domain/')
+  if (directory === 'docs/design' && name === 'README.md') return 'design-index'
   const below = directory.match(/^docs\/domain\/[^/]+\/(.+)$/)?.[1]?.split('/')
   if (below) {
     if (below[0] === 'design') {
       if (below.length !== 1 || !(name === 'README.md' || CHAPTER_NAME.test(name))) return undefined
+      if (name === 'README.md') return 'design-index'
       return name === 'decisions.md' ? 'decision-records' : 'prose'
     }
     // 共有語彙と採用した標準は機能をまたいで使うので、Context の直下にだけ置く。
@@ -79,9 +83,12 @@ export function documentKind(path: string): DocumentKind | undefined {
     const named = KIND_BY_NAME.get(name)
     if (named) return named
     if (name === 'examples.feature.md') return 'examples'
-    if (['decisions.md', 'internals.md', 'design.md'].includes(name)) return 'prose'
+    if (name === 'design.md') return 'design-index'
+    if (['decisions.md', 'internals.md'].includes(name)) return 'prose'
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
+  // Context に割り当てた品質要件。旧形式の Context に置けるかは、段の集合を見る検査が決める。
+  if (/^docs\/domain\/[^/]+$/.test(directory) && name === 'quality.md') return 'prose'
   const allowed = directory.startsWith('docs/domain/')
     ? documentNames(directory)
     : canonicalDocumentNames(directory)
@@ -332,6 +339,7 @@ export function validateDocument(path: string, source: string): SpecificationVal
     kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
   if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, findings)
   if (kind === 'decision-records') validateDecisionRecords(source, findings)
+  if (kind === 'design-index') validateTopicIndex(source, findings)
 
   let scenarioIds: SpecificationValidation['scenarioIds'] = []
   let exampleIds: SpecificationValidation['exampleIds'] = []
@@ -442,5 +450,68 @@ function validateDecisionRecords(source: string, findings: SpecificationFinding[
         message: `${title} must order its sections as ${DECISION_RECORD_SECTIONS.join(', ')}`,
       })
     }
+  }
+}
+
+/**
+ * 設計の話題。システムの `docs/design/` の構成に合わせ、どの段の設計もこの語彙で探せるようにする。
+ * 集合は arc42 の 12 章の内容を覆う。対応は `SPECIFICATION_FORMAT.md` の話題の語彙が定める。
+ */
+export const DESIGN_TOPICS = [
+  'アーキテクチャ',
+  '設計判断',
+  'アプリケーション',
+  'データ',
+  'セキュリティ',
+  '信頼性',
+  '性能',
+  'オブザーバビリティ',
+  '検証',
+  'インフラストラクチャ',
+  'リスク',
+] as const
+
+const TOPIC_INDEX_HEADER = '| 話題 | 記述した場所 |'
+
+/** 記述した場所へのリンクか、該当しない理由。どちらでもないセルは、話題を書き漏らしたのか判断したのかを区別できない。 */
+const TOPIC_PLACE = /\[[^\]]+\]\([^)\s]+\)|^該当なし：\S/
+
+/**
+ * 設計の入口（`docs/design/README.md`、Context の `design/README.md`、機能の `design.md`）が、
+ * すべての話題を行とする索引を、話題の語彙の順で持つことを確かめる。
+ */
+function validateTopicIndex(source: string, findings: SpecificationFinding[]): void {
+  const rows = tableRows(source, TOPIC_INDEX_HEADER)
+  if (rows.length === 0) {
+    findings.push({
+      line: 1,
+      message: `design entry point must have a topic index (${TOPIC_INDEX_HEADER})`,
+    })
+    return
+  }
+  const topics: readonly string[] = DESIGN_TOPICS
+  const listed: string[] = []
+  for (const { cells, index } of rows) {
+    const [topic = '', place = ''] = cells
+    const line = lineAt(source, index)
+    if (!topics.includes(topic)) {
+      findings.push({ line, message: `topic index names an unknown topic ${topic}` })
+      continue
+    }
+    listed.push(topic)
+    if (!TOPIC_PLACE.test(place)) {
+      findings.push({
+        line,
+        message: `topic ${topic} must link to its design or state 該当なし：<reason>`,
+      })
+    }
+  }
+  const line = lineAt(source, rows[0]?.index ?? 0)
+  for (const topic of topics) {
+    if (!listed.includes(topic)) findings.push({ line, message: `topic index must list ${topic}` })
+  }
+  const ordered = topics.filter((topic) => listed.includes(topic))
+  if (listed.join('\n') !== ordered.join('\n')) {
+    findings.push({ line, message: `topic index must order its topics as ${topics.join(', ')}` })
   }
 }

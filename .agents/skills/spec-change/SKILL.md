@@ -14,7 +14,10 @@ current document kinds and grammar.
 2. Put context boundaries in `docs/domain/<context>/README.md`, vocabulary in `glossary.md`, and adopted
    protocol rules in `standards.md`. Put one feature's model, state machines, rules, errors, and security
    considerations in its feature specification `docs/domain/<context>/<group>/<feature>/README.md` (or a
-   chapter beside it), and its examples in `examples.feature.md` in the same directory. The feature node
+   chapter beside it), and its examples in `examples.feature.md` in the same directory. Give each operation
+   its own H3 under `## 操作`, open it with the summary table (行為者, 入力, 成功時の作用, 拒否, 冪等性), and
+   order its rules normal path, state-dependent branches, then refusals. Put a context's allocated quality
+   requirements in `docs/domain/<context>/quality.md` and a feature's share under its `## 品質` section. The feature node
    matches the code slice `backend/<context>/<feature>/` by name (drop the hyphens to compare names). Put a
    mechanism shared by features in `docs/domain/<context>/design/`, and a decision that weighed alternatives
    in `design/decisions.md`. Use the matching file under `docs/requirements/`, `docs/architecture/`,

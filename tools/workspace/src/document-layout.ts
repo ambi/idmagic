@@ -49,10 +49,13 @@ export const SYSTEM_DOCUMENT_DIRECTORIES = [
     names: [
       'README.md',
       'system-boundary.md',
+      'constraints.md',
+      'strategy.md',
       'logical.md',
       'runtime.md',
       'deployment.md',
       'decisions.md',
+      'risks.md',
     ],
   },
   { directory: 'docs/design', names: ['README.md'] },
@@ -144,11 +147,15 @@ export function documentNames(directory: string): readonly string[] {
  */
 export const FEATURE_LAYOUT_MARKER = 'design/README.md'
 
-/** 新しい形式の Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能ノードへ移る。 */
+/**
+ * 新しい形式の Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能ノードへ移る。
+ * `quality.md` は、システムの品質要求のうちこの Context に割り当てた分を書く仕様である。
+ */
 export const FEATURE_LAYOUT_CONTEXT_DOCUMENTS = [
   'README.md',
   'glossary.md',
   'standards.md',
+  'quality.md',
 ] as const
 
 /** Context の内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */

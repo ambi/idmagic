@@ -57,9 +57,11 @@ describe('documentKind', () => {
   it('reads the feature layout: specifications, chapters, appendix, and design', () => {
     expect(documentKind('docs/domain/demo/people/user/README.md')).toBe('specification')
     expect(documentKind('docs/domain/demo/people/user/lifecycle.md')).toBe('specification')
-    expect(documentKind('docs/domain/demo/people/user/design.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/people/user/design.md')).toBe('design-index')
     expect(documentKind('docs/domain/demo/people/user/examples.feature.md')).toBe('examples')
-    expect(documentKind('docs/domain/demo/design/README.md')).toBe('prose')
+    expect(documentKind('docs/domain/demo/design/README.md')).toBe('design-index')
+    expect(documentKind('docs/design/README.md')).toBe('design-index')
+    expect(documentKind('docs/domain/demo/quality.md')).toBe('prose')
     expect(documentKind('docs/domain/demo/design/csv-transfer.md')).toBe('prose')
     expect(documentKind('docs/domain/demo/design/decisions.md')).toBe('decision-records')
     expect(documentKind('docs/domain/demo/design/csv/notes.md')).toBeUndefined()

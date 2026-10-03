@@ -1144,15 +1144,51 @@ type DeclaredRule = {
   document: RenderedDocument
   anchor: string
   openQuestions: string[]
+  /** 規則が属する操作。操作の見出しより前に宣言した規則にはない。 */
+  operation?: SpecificationOperation
+}
+
+/** 機能仕様の操作。README では「操作」の節の H3、章では H2 が一つの操作である。 */
+type SpecificationOperation = {
+  title: string
+  line: number
+  document: RenderedDocument
+  anchor: string
 }
 
 const OPEN_QUESTION = /^- (?:\*\*)?要判断(?:\*\*)?[：:]\s*(.*)$/
+
+/**
+ * 機能仕様の操作の見出し。章のページは操作の節を分けたものなので、その H2 が操作になる。
+ * README では「操作」の節の下の H3 だけを操作とし、モデルや状態遷移の H3 と区別する。
+ */
+function specificationOperations(document: RenderedDocument): SpecificationOperation[] {
+  const chapter = !document.path.endsWith('/README.md')
+  const operations: SpecificationOperation[] = []
+  let section = ''
+  let fenced = false
+  for (const [index, text] of document.source.split('\n').entries()) {
+    if (text.startsWith('```')) fenced = !fenced
+    if (fenced) continue
+    const h2 = text.match(/^## (.+)$/)?.[1]?.trim()
+    if (h2 !== undefined) section = h2
+    const title = chapter
+      ? h2
+      : section === '操作'
+        ? text.match(/^### (.+)$/)?.[1]?.trim()
+        : undefined
+    if (title === undefined || title.startsWith('REQ-')) continue
+    operations.push({ title, line: index + 1, document, anchor: `${document.id}-${slug(title)}` })
+  }
+  return operations
+}
 
 function declaredRules(documents: RenderedDocument[]): DeclaredRule[] {
   const rules: DeclaredRule[] = []
   for (const document of documents) {
     if (documentKind(document.path) !== 'specification') continue
     const bodies = new Map(ruleBodies(document.source).map((body) => [body.id, body.lines]))
+    const operations = specificationOperations(document)
     for (const rule of specificationRules(document.source)) {
       rules.push({
         id: rule.id,
@@ -1162,10 +1198,62 @@ function declaredRules(documents: RenderedDocument[]): DeclaredRule[] {
         openQuestions: (bodies.get(rule.id) ?? []).flatMap(
           ({ text }) => text.match(OPEN_QUESTION)?.[1] ?? [],
         ),
+        operation: operations.findLast((operation) => operation.line < rule.line),
       })
     }
   }
   return rules
+}
+
+/**
+ * 機能仕様の操作の一覧。操作ごとに、その下で宣言した規則と未決事項の数を並べる。
+ * 手で書いた一覧は、操作や規則を加えたときに更新が漏れても検出されないので、見出しから作る。
+ * 一覧は機能仕様の本体（README）にだけ置き、章の操作も同じ一覧に並べる。
+ */
+function featureOperationIndex(
+  document: RenderedDocument,
+  documents: RenderedDocument[],
+  rules: DeclaredRule[],
+): string {
+  if (documentKind(document.path) !== 'specification' || !document.path.endsWith('/README.md'))
+    return ''
+  const pages = documents.filter(
+    (entry) =>
+      entry.context === document.context &&
+      entry.feature === document.feature &&
+      documentKind(entry.path) === 'specification',
+  )
+  const operations = [
+    ...pages.filter((entry) => entry === document),
+    ...pages.filter((entry) => entry !== document),
+  ].flatMap(specificationOperations)
+  if (operations.length === 0) return ''
+  const page = document.outputPath
+  const rows = operations
+    .map((operation) => {
+      const own = rules.filter(
+        (rule) =>
+          rule.operation?.document === operation.document && rule.operation.line === operation.line,
+      )
+      const ruleLinks = own
+        .map((rule) => siteLink(page, rule.document.outputPath, rule.id, rule.anchor))
+        .join('、')
+      const questions = own.reduce((count, rule) => count + rule.openQuestions.length, 0)
+      return `<tr><th scope="row">${siteLink(page, operation.document.outputPath, operation.title, operation.anchor)}</th><td>${ruleLinks || '—'}</td><td>${questions}</td><td>${escapeHtml(operation.document === document ? 'このページ' : operation.document.title)}</td></tr>`
+    })
+    .join('')
+  return `<p class="muted">操作の一覧：操作の見出しと、その下で宣言した規則から生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">操作</th><th scope="col">規則</th><th scope="col">未決事項</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
+}
+
+/** 生成した HTML を、ページの中の見出しの直後に差し込む。見出しがなければページを変えない。 */
+function insertAfterHeading(page: string, id: string, html: string): string {
+  if (!html) return page
+  const open = page.indexOf(`id="${id}"`)
+  if (open < 0) return page
+  const close = page.indexOf('</h2>', open)
+  if (close < 0) return page
+  const at = close + '</h2>'.length
+  return `${page.slice(0, at)}${html}${page.slice(at)}`
 }
 
 /**
@@ -1759,7 +1847,11 @@ export function renderDocumentationSite(args: {
         : document.category === 'feature'
           ? featureRuleIndex(document, rules)
           : ''
-    files[document.outputPath] = documentPage(document, documents, markdown, reference)
+    files[document.outputPath] = insertAfterHeading(
+      documentPage(document, documents, markdown, reference),
+      `${document.id}-${slug('操作')}`,
+      document.category === 'feature' ? featureOperationIndex(document, documents, rules) : '',
+    )
   }
   for (const model of args.models) files[modelPath(model)] = modelPage(model, symbols, documents)
   validateSiteLinks(files)
