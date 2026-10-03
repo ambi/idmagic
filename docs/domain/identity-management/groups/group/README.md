@@ -45,16 +45,15 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 | 成功時の作用 | Group を作り、`GroupCreated` を発行し、下流のプロビジョニングへ通知する |
 | 拒否 | 空の名前、同名の Group、メールアドレスとして読めない連絡先、スキーマに合わない属性。どの拒否も Group を作らない |
 
-#### REQ-IDMANAGEMENT-024 管理者はグループの連絡先メールとカスタム属性を、テナント定義のスキーマに従って設定できる
+#### REQ-IDMANAGEMENT-024 Group の作成は、連絡先と属性をテナントのスキーマで検証して保存し、`GroupCreated` を発行する
 
-- 管理者は、連絡先のメールアドレスと、テナントの Group 属性スキーマで定義した属性を指定して Group を作成し、更新できる。
-- 作成は `GroupCreated` を発行する。連絡先と属性を変える更新は、`changed_fields` に `email` と `attributes` を含む `GroupUpdated` を発行する。
+- 連絡先のメールアドレスと、テナントの Group 属性スキーマで定義した属性を指定した作成は、その値で Group を作り、`GroupCreated` を発行する。
 - メールアドレスの形式を満たさない連絡先の作成は、InvalidEmailError で拒否する。
 - 定義していないキーの属性と、定義した型と一致しない値の属性の作成は、InvalidGroupAttributeError で拒否する。
-- **担保手段**：`usecases.CreateGroup`、`usecases.UpdateGroup`
+- **担保手段**：`usecases.CreateGroup`
 - **例**：EX-IDMANAGEMENT-024-01、EX-IDMANAGEMENT-024-03
 
-#### REQ-IDMANAGEMENT-060 Group の名前、説明、連絡先の正規化
+#### REQ-IDMANAGEMENT-060 Group の作成と更新は、名前、説明、連絡先を正規化して保存する
 
 - 名前は前後の空白を除いて保存する。空白を除いて空になる名前は、422 と `group_name_required` で拒否する。
 - 同じテナントのほかの Group と大文字と小文字を区別せずに同じ名前は、409 と `group_name_conflict` で拒否する。
@@ -63,11 +62,10 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 - **担保手段**：`usecases.CreateGroup`、`usecases.UpdateGroup`
 - **要判断**：管理 API は表示名付きのメールアドレスを受け付けてアドレスだけを保存するが、Group の CSV は同じ値を `invalid_email` で拒否する。どちらかに揃えるかを決める。
 
-#### REQ-IDMANAGEMENT-061 Group の属性は、テナントの Group 属性スキーマがなければ持てない
+#### REQ-IDMANAGEMENT-061 テナントに Group 属性スキーマがなければ、Group の作成と更新は属性を拒否する
 
 - テナントが Group 属性スキーマを定義していないとき、属性を一つでも含む作成と更新は、422 と `invalid_attribute` で拒否する。
 - 作成は、属性を指定しなくても必須の属性の欠落を拒否する。
-- 更新は、`attributes` を指定したときだけ属性を検証し、指定した対応表で属性の全体を置き換える。
 - **担保手段**：`usecases.CreateGroup`、`usecases.UpdateGroup`
 
 ### 更新
@@ -77,14 +75,16 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 | 行為者 | 管理者 |
 | 入力 | 名前、説明、連絡先、ロール、属性。`attributes` を指定すると属性の全体を置き換える |
 | 成功時の作用 | 値が変わった項目だけを保存し、`GroupUpdated` を発行し、下流のプロビジョニングへ通知する |
-| 拒否 | 作成と同じ検証の違反 |
-| 冪等性 | 同じ値での更新は、`updated_at` を進めず、イベントを発行せず、通知しない |
+| 拒否 | 作成と同じ検証の違反（REQ-IDMANAGEMENT-060、REQ-IDMANAGEMENT-061） |
+| 冪等性 | 同じ値での更新は、`updated_at` を進めず、イベントを発行せず、通知しない（REQ-IDMANAGEMENT-062） |
 
 #### REQ-IDMANAGEMENT-062 Group の更新は、値が変わった項目だけを記録する
 
+- `attributes` を指定した更新だけが属性を検証し、指定した対応表で属性の全体を置き換える。
 - `GroupUpdated` の `changed_fields` には、`name`、`description`、`email`、`attributes`、`roles` のうち値が変わった項目だけを載せる。
 - どの項目の値も変わらない更新は成功を返し、`updated_at` を進めず、`GroupUpdated` を発行せず、下流のプロビジョニングへ通知しない。
 - **担保手段**：`usecases.UpdateGroup`
+- **例**：EX-IDMANAGEMENT-062-01、EX-IDMANAGEMENT-062-02
 
 ### メンバーの追加と除外
 
@@ -93,15 +93,14 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 | 行為者 | 管理者 |
 | 入力 | 手動の Group と、User |
 | 成功時の作用 | メンバーシップを作るか消し、`GroupMemberAdded` または `GroupMemberRemoved` を発行し、下流のプロビジョニングへ通知する。メンバーの実効ロールに Group のロールが加わる |
-| 拒否 | 存在しない User、`Deleted` の User、別のテナントの User（404 `user_not_found`）。メンバーシップを作らない |
+| 拒否 | 存在しない User、`Deleted` の User、別のテナントの User（404 `user_not_found`）。動的グループへの追加と除外（409 `dynamic_membership_managed_by_rule`、REQ-IDMANAGEMENT-085）。どの拒否もメンバーシップを変えない |
 | 冪等性 | すでにメンバーである User の追加と、メンバーでない User の除外は、成功を返しイベントを発行しない |
 
-#### REQ-IDMANAGEMENT-015 管理者はグループを作成しユーザーを所属させると有効ロールにグループ由来ロールが乗る
+#### REQ-IDMANAGEMENT-015 User のメンバーへの追加は `GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える
 
-- 管理者が User を Group に所属させると、`GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える。
-- User の所属グループの参照は、実効ロールに加えて、Group 由来のロール（`group_roles`）と直接付与したロール（`direct_roles`）を分けて返す。
+- User を Group に所属させると、`GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える。
 - 同じ User を同じ Group へもう一度所属させる操作は、`GroupMemberAdded` を再発行しない。
-- **担保手段**：`usecases.AddMember`、`usecases.UserGroups`、`domain.EffectiveRoles`
+- **担保手段**：`usecases.AddMember`、`domain.EffectiveRoles`
 - **例**：EX-IDMANAGEMENT-015-01、EX-IDMANAGEMENT-015-02
 
 #### REQ-IDMANAGEMENT-063 手動のメンバーの追加は、削除されていない同じテナントの User を受け付ける
@@ -111,12 +110,36 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 - すでにメンバーである User の追加と、メンバーでない User の除外は成功を返し、イベントを発行しない。
 - **担保手段**：`usecases.AddMember`、`usecases.RemoveMember`
 
+#### REQ-IDMANAGEMENT-085 動的グループへの手動のメンバーの追加と除外は拒否する
+
+- `membership_type=dynamic` の Group への `AddGroupMember` と `RemoveGroupMember` の呼び出しは、409 と `dynamic_membership_managed_by_rule` で拒否し、メンバーシップを変えない。
+- **判断**：動的グループの所属は規則の評価だけが決める。手動の操作を許すと、所属がどの経路で付いたのかを区別できなくなる。
+- **担保手段**：`usecases.AddMember`、`usecases.RemoveMember`
+- **例**：EX-IDMANAGEMENT-085-01
+
 #### REQ-IDMANAGEMENT-064 下流への通知に失敗した Group の変更は、確定したままエラーを返す
 
 - Group の作成、更新、削除、手動のメンバーの追加と除外は、変更を確定してから下流のプロビジョニングへ通知する。
 - 通知に失敗した操作はエラーを返すが、確定した変更と発行したイベントは取り消さない。
 - **担保手段**：`usecases.AddMember`、`usecases.CreateGroup`
 - **要判断**：管理者には失敗が返るが変更は残るため、再試行が重複した操作になり得る。User の変更は通知の失敗を記録して成功を返す。Group も同じにするかを決める。
+
+### 所属グループの参照
+
+| 項目 | 内容 |
+| --- | --- |
+| 行為者 | 管理者 |
+| 入力 | User |
+| 成功時の作用 | User が所属する Group と、実効ロール、Group 由来のロール、直接付与したロールを返す。状態は変えない |
+| 拒否 | 存在しない User と別のテナントの User（404 `user_not_found`） |
+
+#### REQ-IDMANAGEMENT-084 User の所属グループの参照は、実効ロールと、Group 由来のロールと直接付与したロールを分けて返す
+
+- 応答は、所属する Group と、実効ロール、Group 由来のロール（`group_roles`）、直接付与したロール（`direct_roles`）を返す。
+- 実効ロールは、Group 由来のロールと直接付与したロールの和集合である。
+- 存在しない User と別のテナントの User の参照は、404 と `user_not_found` で拒否する。
+- **担保手段**：`usecases.UserGroups`、`domain.EffectiveRoles`
+- **例**：EX-IDMANAGEMENT-084-01
 
 ## セキュリティ上の考慮
 

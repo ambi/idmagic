@@ -26,7 +26,7 @@
 - When 管理者がそのファイルを事前検証へ投入する
 - Then 2 行目は `invalid_column_count` で `rejected` となり、1 行目と 3 行目は計画される
 
-## Rule: REQ-IDMANAGEMENT-037 CSV の転送ポリシーのデフォルト値と上限の境界
+## Rule: REQ-IDMANAGEMENT-037 CSV の転送ポリシーの上限は、上限と等しい値を受け付け、超えた値を拒否する
 
 ### Example: EX-IDMANAGEMENT-037-01 上限と等しい行の数
 

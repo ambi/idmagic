@@ -44,7 +44,7 @@ func (f *idmRefusalFixture) exportState(t *testing.T, session, path string) expo
 // ヘッダーと機械可読キーの並びまで読む。取り消しは別のエクスポートで見る。同じ 1 件を
 // 取り消してから成功させることはできない。
 //
-//spec:covers EX-IDMANAGEMENT-006-01: エクスポートの開始が 202 と queued を返し、取り消しが canceled と DataExportCanceled、生成が DataExportStarted と succeeded / downloadable / total_rows / byte_size と DataExportSucceeded、ダウンロードが機械可読ヘッダーの CSV を attachment で返し DataExportDownloaded を発行すること。
+//spec:covers EX-IDMANAGEMENT-039-04, EX-IDMANAGEMENT-041-02, EX-IDMANAGEMENT-086-01, EX-IDMANAGEMENT-087-01: エクスポートの開始が 202 と queued を返し、取り消しが canceled と DataExportCanceled、生成が DataExportStarted と succeeded / downloadable / total_rows / byte_size と DataExportSucceeded、ダウンロードが機械可読ヘッダーの CSV を attachment で返し DataExportDownloaded を発行すること。
 func TestUserExportRunsFromQueuedToDownloadEmittingEachStep(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-export-life", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -118,7 +118,7 @@ func TestUserExportRunsFromQueuedToDownloadEmittingEachStep(t *testing.T) {
 // ダウンロードできない」まで言う。**後者が本題である。** 途中まで書いた内容を
 // 成果物として残す実装は、上限を超えた CSV をそのまま持ち出させてしまう。
 //
-//spec:covers EX-IDMANAGEMENT-006-03: 生成が失敗したエクスポートが failed / downloadable=false になって error_code を記録し、DataExportFailed を発行し、不完全なファイルをダウンロードさせないこと。
+//spec:covers EX-IDMANAGEMENT-086-02: 生成が失敗したエクスポートが failed / downloadable=false になって error_code を記録し、DataExportFailed を発行し、不完全なファイルをダウンロードさせないこと。
 func TestFailedUserExportRecordsTheErrorAndServesNoFile(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-export-fail", tenancydomain.DefaultTenantID, idmRefusalAdmin)

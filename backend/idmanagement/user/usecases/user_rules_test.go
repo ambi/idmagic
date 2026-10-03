@@ -431,7 +431,7 @@ func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-046-03: 無効化がその User の記憶済みの端末を失効させること。
+//spec:covers EX-IDMANAGEMENT-010-02: 無効化がその User の記憶済みの端末を失効させること。
 func TestSetUserDisabledRevokesTrustedDevices(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
@@ -476,7 +476,7 @@ func TestRequiredActionsAreIdempotentAndClosed(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-048-01: 削除予約済みの User の削除の予約が成功してイベントを発行せず、管理者自身の予約は削除予約済みでも self_delete_forbidden で拒否すること。
+//spec:covers EX-IDMANAGEMENT-011-02, EX-IDMANAGEMENT-013-03: 削除予約済みの User の削除の予約が成功してイベントを発行せず、管理者自身の予約は削除予約済みでも self_delete_forbidden で拒否すること。
 func TestSoftDeleteUserIsIdempotentButChecksSelfDeletionFirst(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", pendingSince(userRulesNow.Add(-time.Hour)))

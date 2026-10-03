@@ -1,5 +1,7 @@
 package handlers_http_test
 
+// 主要ユースケース追跡: REQ-IDMANAGEMENT-009。
+
 // IdManagement が宣言する具体例のうち、通常経路を HTTP 境界で観測するもの。
 // 拒否の側は refusal_effects_test.go とその兄弟が持つ。組み立てとヘルパーは
 // refusal_effects_test.go の `idmRefusalFixture` を共有する。
@@ -208,7 +210,7 @@ func emittedTypes(fixture *idmRefusalFixture) []string {
 // 「登録した Agent にバインドし、無効化し、再有効化して一覧に戻る」という
 // 連なり自体が誰の持ち物でもなくなる。各段は応答ではなく、その後の参照で読む。
 //
-//spec:covers EX-IDMANAGEMENT-009-01: 区分を指定した Agent の登録、資格情報のバインド、無効化、再有効化と一覧への再出現。
+//spec:covers EX-IDMANAGEMENT-009-01, EX-IDMANAGEMENT-074-04, EX-IDMANAGEMENT-076-02: 区分を指定した Agent の登録、資格情報のバインド、無効化、再有効化と一覧への再出現。
 func TestAgentRegistrationBindingDisableAndEnableRoundTrip(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-agent", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -293,7 +295,7 @@ func agentCredentialIDs(
 // 拒否だけでなく、越境が関連付けを残さないことまで読む。バインドは 204 で終わるので、
 // 「拒否を書いてから関連付ける」実装は応答では見分けられない。
 //
-//spec:covers REQ-IDMANAGEMENT-009, EX-IDMANAGEMENT-009-04: 別テナントの client_id を指定したバインドが 422 の client_not_found で拒否され、応答が存在しない client_id のときと同じで、Agent に関連付けが残らないこと。
+//spec:covers EX-IDMANAGEMENT-074-05: 別テナントの client_id を指定したバインドが 422 の client_not_found で拒否され、応答が存在しない client_id のときと同じで、Agent に関連付けが残らないこと。
 func TestBindingAForeignTenantsCredentialLeavesTheAgentUnbound(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	foreignAdmin := fixture.seedSession(

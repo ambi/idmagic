@@ -1,6 +1,6 @@
 # Feature: アカウントのセルフサービスの例
 
-## Rule: REQ-IDMANAGEMENT-002 API トークンの発行者は account スコープで自身の情報だけを操作できる
+## Rule: REQ-IDMANAGEMENT-002 account スコープの API トークンは、発行者本人の情報への操作だけを許可する
 
 ### Example: EX-IDMANAGEMENT-002-01 通常経路
 
@@ -23,7 +23,7 @@
 - But トークンのテナントまたは `user_id` が操作対象と一致しない
 - Then 操作は AccessDeniedError で拒否される
 
-## Rule: REQ-IDMANAGEMENT-019 アカウント API は他人のリソースを返さない
+## Rule: REQ-IDMANAGEMENT-019 アカウントの概要は、認証済みの本人のデータだけを、ロールを含めずに返す
 
 ### Example: EX-IDMANAGEMENT-019-01 通常経路
 
@@ -31,7 +31,7 @@
 - When ユーザー "alice" のアカウント概要を取得する
 - Then レスポンスは "alice" 自身のデータだけを含み、ロールは含まない
 
-## Rule: REQ-IDMANAGEMENT-016 ユーザーは自分のプロフィール表示名を更新できる
+## Rule: REQ-IDMANAGEMENT-016 本人によるプロフィールの更新は表示名を変え、本人が編集できない属性を拒否する
 
 ### Example: EX-IDMANAGEMENT-016-01 通常経路
 
@@ -59,7 +59,7 @@
 - When "alice" が `nickname` を "ally" のまま送って更新する
 - Then `UserUpdated` の `changed_fields` は ["attributes"] である
 
-## Rule: REQ-IDMANAGEMENT-018 ユーザーは自分のアカウントデータをエクスポートできる
+## Rule: REQ-IDMANAGEMENT-018 アカウントデータのエクスポートは、本人のプロフィールと同意の一覧を返す
 
 ### Example: EX-IDMANAGEMENT-018-01 通常経路
 
@@ -75,13 +75,11 @@
 - When "alice" がアカウントデータをエクスポートする
 - Then プロフィールの属性は `nickname` だけを含む
 
-## Rule: REQ-IDMANAGEMENT-017 ユーザーはメールアドレス変更を起票し確認リンクで確定できる
+## Rule: REQ-IDMANAGEMENT-017 メールアドレスの変更の確定は、未使用で期限内のトークンだけでプライマリメールアドレスを置き換える
 
 ### Example: EX-IDMANAGEMENT-017-01 通常経路
 
-- Given ユーザー "alice" が認証済みでメールアドレス画面を開いている
-- When ユーザー "alice" が新しいメールアドレスへの変更を起票する
-- Then 新アドレスへ確認リンクが送られる
+- Given ユーザー "alice" が新しいメールアドレスへの変更を起票し、確認リンクを受け取っている
 - When ユーザー "alice" が確認リンクのトークンで変更を確定する
 - Then プライマリメールアドレスが新しいアドレスへ更新される
 
@@ -123,7 +121,7 @@
 - Then エラー "ConflictError"
 - And プライマリメールアドレスは変わらず、トークンは未使用のまま残る
 
-## Rule: REQ-IDMANAGEMENT-053 メールアドレスの変更の起票
+## Rule: REQ-IDMANAGEMENT-053 メールアドレスの変更の起票は、ステップアップ認証の後に新しいアドレスへ確認のリンクを送る
 
 ### Example: EX-IDMANAGEMENT-053-01 表示名付きの新しいアドレス
 
@@ -142,7 +140,13 @@
 - When ユーザー "alice" が新しいアドレスで起票する
 - Then 起票は 204 を返す
 
-## Rule: REQ-IDMANAGEMENT-054 メールアドレスの変更の確定は、アドレスを確認済みにする
+### Example: EX-IDMANAGEMENT-053-04 通常経路
+
+- Given ユーザー "alice" が認証済みでメールアドレス画面を開いている
+- When ユーザー "alice" が新しいメールアドレスへの変更を起票する
+- Then 新アドレスへ確認リンクが送られる
+
+## Rule: REQ-IDMANAGEMENT-054 メールアドレスの変更の確定は、アドレスを確認済みにして `EmailChanged` を発行する
 
 ### Example: EX-IDMANAGEMENT-054-01 必須操作 `verify_email` を持つ User の確定
 
@@ -155,7 +159,7 @@
 - When ブラウザーが存在しないトークンで確定を送る
 - Then 確定は 410 と `invalid_email_change_token` で拒否される
 
-## Rule: REQ-IDMANAGEMENT-003 メールアドレス確認画面は未認証でも CSRF 境界を確立できる
+## Rule: REQ-IDMANAGEMENT-003 メールアドレスの確認画面は、未認証でも CSRF 境界を確立し、一致しない確定を拒否する
 
 ### Example: EX-IDMANAGEMENT-003-01 通常経路
 

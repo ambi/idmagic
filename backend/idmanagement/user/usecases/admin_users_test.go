@@ -691,7 +691,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 // 具体例は削除の予約と復元の 2 段で、段ごとに状態とイベントの 2 つを言う。
 // 4 つの `Then` に 4 つの観測を置き、状態はいずれも保存層から読み直す。
 //
-//spec:covers EX-IDMANAGEMENT-011-01: 削除の予約で PendingDeletion と UserSoftDeleted、復元で Active と UserRestored になること。
+//spec:covers EX-IDMANAGEMENT-011-01, EX-IDMANAGEMENT-049-04: 削除の予約で PendingDeletion と UserSoftDeleted、復元で Active と UserRestored になること。
 func TestRestoreUserReturnsToActive(t *testing.T) {
 	ctx := context.Background()
 	var events []spec.DomainEvent
@@ -734,7 +734,7 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 // 具体例の `Given` は PendingDeletion である。有効な User をそのまま完全削除する経路とは
 // 別で、既存のテストが押さえているのは後者と自動 purge だった。
 //
-//spec:covers EX-IDMANAGEMENT-013-01: PendingDeletion の User を管理者が完全削除すると、状態が Deleted になり UserDeleted が発行されること。
+//spec:covers EX-IDMANAGEMENT-050-03: PendingDeletion の User を管理者が完全削除すると、状態が Deleted になり UserDeleted が発行されること。
 func TestPurgePendingDeletionUserTombstonesAndEmitsUserDeleted(t *testing.T) {
 	ctx := context.Background()
 	var events []spec.DomainEvent

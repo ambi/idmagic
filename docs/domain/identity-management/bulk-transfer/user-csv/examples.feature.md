@@ -1,6 +1,6 @@
 # Feature: ユーザー CSV の例
 
-## Rule: REQ-IDMANAGEMENT-004 管理者は CSV を検証して有効な行だけをインポートできる
+## Rule: REQ-IDMANAGEMENT-004 User の CSV のインポートは、プレビューで全行を判定し、適用で有効な行だけを保存する
 
 ### Example: EX-IDMANAGEMENT-004-01 通常経路
 
@@ -100,7 +100,7 @@
 - When 管理者が 2 行目と 3 行目にユーザー名 "dave" を書いて事前検証へ投入する
 - Then 2 行目は作成として計画され、3 行目は `duplicate_username` で `rejected` となる
 
-## Rule: REQ-IDMANAGEMENT-057 User の CSV の組み込み列のセルの字句形
+## Rule: REQ-IDMANAGEMENT-057 User の CSV の組み込み列は、決まった字句形のセルだけを受け付ける
 
 ### Example: EX-IDMANAGEMENT-057-01 区切りの前後に空白を含むロール
 
@@ -123,7 +123,7 @@
 - When 管理者が "alice" の行の `name` のセルを空にして適用する
 - Then "alice" の名前は消える
 
-## Rule: REQ-IDMANAGEMENT-058 CSV で作成する User は、パスワードの設定を求められる
+## Rule: REQ-IDMANAGEMENT-058 CSV で作成する User には、無作為なパスワードと必須操作 `update_password` を付ける
 
 ### Example: EX-IDMANAGEMENT-058-01 CSV で作成した User
 
@@ -138,22 +138,7 @@
 - When 管理者が既存の User "alice" の行と、新しいユーザー名 "dave" の行を事前検証へ投入する
 - Then "alice" の行は `source_managed` で `rejected` となり、"dave" の行は作成として計画される
 
-## Rule: REQ-IDMANAGEMENT-006 管理者はユーザー一覧を CSV に安全にエクスポートできる
-
-### Example: EX-IDMANAGEMENT-006-01 通常経路
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- And 一覧には自テナントのユーザーが存在する
-- When 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
-- Then エクスポートは 202 とエクスポート ID を返し、ジョブは `queued` である
-- When 終端前に管理者がエクスポートを取り消す
-- Then ステータスは `canceled` となり、`DataExportCanceled` が発行される
-- Then `worker` プロセスが生成を開始し、`DataExportStarted` が発行される
-- Then 生成が完了してステータスは `succeeded`、`downloadable` は `true` となり、`total_rows` と `byte_size` が記録される
-- Then DataExportSucceeded が発行される
-- When 管理者がファイルをダウンロードする
-- Then 選択した機械可読キーと一致するヘッダーを持つ RFC 4180 CSV が、`Content-Disposition: attachment` で返る
-- Then DataExportDownloaded が発行される
+## Rule: REQ-IDMANAGEMENT-006 User のエクスポートは、許可リストの列だけを受け付け、危険な先頭文字のセルに接頭辞を付けて書き出す
 
 ### Example: EX-IDMANAGEMENT-006-02 選択列に `User` の許可一覧にないキー（例: `password_hash`）が含まれる
 
@@ -164,67 +149,14 @@
 - Then エクスポート開始は `InvalidRequestError` で拒否される
 - And エラー `invalid_columns`
 
-### Example: EX-IDMANAGEMENT-006-03 生成が失敗する
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- And 一覧には自テナントのユーザーが存在する
-- When 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
-- Then エクスポートは 202 とエクスポート ID を返し、ジョブは `queued` である
-- When 終端前に管理者がエクスポートを取り消す
-- Then ステータスは `canceled` となり、`DataExportCanceled` が発行される
-- Then `worker` プロセスが生成を開始し、`DataExportStarted` が発行される
-- Then 生成が失敗する
-- Then ステータスは `failed`、`downloadable` は `false` となり、`error_code` が記録される
-- And `DataExportFailed` が発行される
-- And 不完全なファイルはダウンロードできない
-
 ### Example: EX-IDMANAGEMENT-006-04 セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- And 一覧には自テナントのユーザーが存在する
-- When 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
-- Then エクスポートは 202 とエクスポート ID を返し、ジョブは `queued` である
-- When 終端前に管理者がエクスポートを取り消す
-- Then ステータスは `canceled` となり、`DataExportCanceled` が発行される
-- Then `worker` プロセスが生成を開始し、`DataExportStarted` が発行される
-- Then 生成が完了してステータスは `succeeded`、`downloadable` は `true` となり、`total_rows` と `byte_size` が記録される
-- Then DataExportSucceeded が発行される
+- Given User の値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる
+- And その列を含む User のエクスポートが `succeeded` である
 - When 管理者がファイルをダウンロードする
-- But セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる
 - Then 数式の注入を避ける可逆な接頭辞を付けて出力し、インポート側の変換器は規定どおり接頭辞 1 文字だけを取り除く
 
-### Example: EX-IDMANAGEMENT-006-05 保持期限を経過している
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- And 一覧には自テナントのユーザーが存在する
-- When 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
-- Then エクスポートは 202 とエクスポート ID を返し、ジョブは `queued` である
-- When 終端前に管理者がエクスポートを取り消す
-- Then ステータスは `canceled` となり、`DataExportCanceled` が発行される
-- Then `worker` プロセスが生成を開始し、`DataExportStarted` が発行される
-- Then 生成が完了してステータスは `succeeded`、`downloadable` は `true` となり、`total_rows` と `byte_size` が記録される
-- Then DataExportSucceeded が発行される
-- When 管理者がファイルをダウンロードする
-- But 保持期限を経過している
-- Then ステータスは `expired`、`downloadable` は `false` となる
-- And ファイル本体は完全削除され、ダウンロードは `InvalidRequestError` で拒否される
-
-### Example: EX-IDMANAGEMENT-006-06 `User` エクスポートの ID を `/groups/exports` または別テナントで指定する
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- And 一覧には自テナントのユーザーが存在する
-- When 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
-- Then エクスポートは 202 とエクスポート ID を返し、ジョブは `queued` である
-- When 終端前に管理者がエクスポートを取り消す
-- Then ステータスは `canceled` となり、`DataExportCanceled` が発行される
-- Then `worker` プロセスが生成を開始し、`DataExportStarted` が発行される
-- Then 生成が完了してステータスは `succeeded`、`downloadable` は `true` となり、`total_rows` と `byte_size` が記録される
-- Then DataExportSucceeded が発行される
-- When 管理者がファイルをダウンロードする
-- But `User` エクスポートの ID を `/groups/exports` または別テナントで指定する
-- Then 種類とテナントの境界により、取得、ダウンロード、取り消しは `AccessDeniedError` または `InvalidRequestError` で拒否される
-
-## Rule: REQ-IDMANAGEMENT-007 管理者はエクスポートしたユーザー CSV を安全に再適用できる
+## Rule: REQ-IDMANAGEMENT-007 User のエクスポートは、そのまま再インポートすると変化なしになり、書き込める列の編集だけを反映する
 
 ### Example: EX-IDMANAGEMENT-007-01 通常経路
 

@@ -1,6 +1,6 @@
 # Feature: 管理 API の認可の例
 
-## Rule: REQ-IDMANAGEMENT-014 管理 API のアクセスはロールに応じて制御される
+## Rule: REQ-IDMANAGEMENT-014 管理 API は、要求先のテナントで実効ロールに `admin` を持つ User の要求だけを受け付ける
 
 ### Example: EX-IDMANAGEMENT-014-01 通常経路
 
@@ -21,7 +21,7 @@
 - And ユーザー "alice" がユーザー一覧を取得する
 - And エラー "AccessDeniedError"
 
-## Rule: REQ-IDMANAGEMENT-025 管理 API クライアントはプリンシパルの種類と操作の粒度でだけ User / Group / Agent を操作できる
+## Rule: REQ-IDMANAGEMENT-025 管理 API のスコープは、プリンシパルの種類と読み書きの別ごとに操作を許可する
 
 ### Example: EX-IDMANAGEMENT-025-01 通常経路
 

@@ -35,7 +35,7 @@
 | 拒否 | ファイル全体の拒否（上限の超過、不正な見出し）、行の拒否（識別子の矛盾、重複、不正なセル、`membership_type` の変更、不正な動的規則、外部の権威が管理する Group、不正な削除）、使えないプレビューを指定した適用 |
 | 冪等性 | 編集していないエクスポートの再適用は、全行が `unchanged` になる |
 
-#### REQ-IDMANAGEMENT-026 管理者は Group CSV を検証して有効な行だけをインポートできる
+#### REQ-IDMANAGEMENT-026 Group の CSV のインポートは、プレビューで全行を判定し、適用で有効な行だけを保存する
 
 - 管理者は、機械可読な列名の見出しを任意の順で持つ CSV を、事前検証（プレビュー）に投入できる。
 - プレビューのジョブは、行ごとの `created`、`updated`、`unchanged`、`deleted`、`rejected` の判定、行番号、安定したエラーコードを返し、Group を変えない。
@@ -56,7 +56,7 @@
 - **担保手段**：`usecases.StartGroupImportPreview`、`usecases.StartGroupImportApply`、`usecases.PlanGroupImport`、`usecases.ApplyGroupImport`
 - **例**：EX-IDMANAGEMENT-026-01、EX-IDMANAGEMENT-026-11
 
-#### REQ-IDMANAGEMENT-072 Group の CSV のセルの読み方
+#### REQ-IDMANAGEMENT-072 Group の CSV は、名前を大文字と小文字を区別せずに照合し、連絡先をアドレスだけで受け付ける
 
 - `name` による対象の照合と行の重複の判定は、前後の空白を除き、大文字と小文字を区別しない。
 - `email` のセルはアドレスだけを受け付け、小文字にして保存する。表示名付きの形式は `invalid_email` で拒否する。
@@ -64,7 +64,7 @@
 - 空の `dynamic_rule_enabled` のセルは、現在の有効か無効かを変えない。
 - **担保手段**：`usecases.PlanGroupImport`
 
-#### REQ-IDMANAGEMENT-028 管理者は CSV の明示的な行操作でグループを削除できる
+#### REQ-IDMANAGEMENT-028 Group の CSV のインポートは、`lifecycle_action=delete` の行の Group だけを削除する
 
 - `lifecycle_action` に `delete` を書いた行の Group だけを削除の対象とする。CSV に現れない Group は削除の対象に含めない。
 - プレビューは、削除する Group の件数と、巻き込むメンバーシップの件数を、ほかの操作と分けて返し、Group もメンバーシップも変えない。
@@ -89,7 +89,7 @@
 | 拒否 | ファイル全体の拒否（上限の超過、不正な見出し、`membership_state` 列の欠落、動的な Group、外部の権威が管理する Group、存在しない Group）、行の拒否（不正な `membership_state`、識別子の矛盾、重複、別の Group を示す行、動的な所属、外部の権威が管理する User）、使えないプレビューを指定した適用 |
 | 冪等性 | すでに望みどおりの状態の行は、何もしない。編集していないエクスポートの再適用は、全行が `unchanged` になる |
 
-#### REQ-IDMANAGEMENT-029 管理者は 1 つのグループのメンバーシップ CSV を検証し、行ごとに宣言した所属状態だけを適用できる
+#### REQ-IDMANAGEMENT-029 メンバーシップの CSV のインポートは、行ごとに宣言した所属の状態だけを適用する
 
 - 管理者は、機械可読な列名の見出しを任意の順で持つ CSV を、一つの Group の事前検証に投入できる。
 - プレビューのジョブは、行ごとの `added`、`removed`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、メンバーシップを変えない。解除の件数は、ほかの操作と分けて返す。
@@ -130,7 +130,7 @@
 | 成功時の作用 | 選んだ列の CSV を生成する。`lifecycle_action` は全行で空にする |
 | 拒否 | 生成が上限を超えたときは、成功の成果物を作らずに失敗する |
 
-#### REQ-IDMANAGEMENT-027 管理者はエクスポートしたグループ CSV を安全に再適用できる
+#### REQ-IDMANAGEMENT-027 Group のエクスポートは、そのまま再インポートすると変化なしになり、書き込める列の編集だけを反映する
 
 - `worker` は CSV を不変の成果物ストアへ書き出し、ジョブの結果にテナント単位のペイロードの参照、サーバーが計算した SHA-256、サイズ、行数を記録する。
 - エクスポートは `lifecycle_action` の列を全行で空として書き出す。
@@ -152,7 +152,7 @@
 | 成功時の作用 | その Group のメンバーだけの CSV を生成する。`membership_state` は全行で `present` にする |
 | 拒否 | `group_id` のない開始。別の Group のパスで指定したエクスポートの取得とダウンロード |
 
-#### REQ-IDMANAGEMENT-008 管理者は特定グループのメンバー一覧を CSV にエクスポートできる
+#### REQ-IDMANAGEMENT-008 メンバーシップのエクスポートは、パスの Group のメンバーだけを書き出す
 
 - メンバーシップのエクスポートの対象は、パスの `group_id` の Group に閉じ、そのメンバーだけを含む。
 - `group_id` を指定しない開始は、InvalidRequestError で拒否する。
@@ -160,7 +160,7 @@
 - **担保手段**：`usecases.StartDataExport`、`usecases.ExportGroupMembershipCSV`
 - **例**：EX-IDMANAGEMENT-008-01、EX-IDMANAGEMENT-008-03
 
-#### REQ-IDMANAGEMENT-030 管理者はエクスポートしたメンバーシップ CSV を、分割しても大量解除にならない形で再適用できる
+#### REQ-IDMANAGEMENT-030 メンバーシップのエクスポートは、分けて再適用しても、ほかのファイルにしかないメンバーを外さない
 
 - `worker` は CSV を不変の成果物ストアへ書き出し、ジョブの結果にテナント単位のペイロードの参照、サーバーが計算した SHA-256、サイズ、行数を記録する。
 - エクスポートは `membership_state` の列を全行で `present` として書き出す。

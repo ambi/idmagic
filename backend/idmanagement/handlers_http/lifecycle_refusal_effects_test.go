@@ -98,7 +98,7 @@ func TestSelfDeleteRefusalKeepsTheAdministratorActive(t *testing.T) {
 // 見逃す。手動操作の側は 409 の本文を持つが、拒否したうえで追加も行う実装は
 // 応答からは見分けられないので、メンバーの集合を読み直す。
 //
-//spec:covers EX-IDMANAGEMENT-022-01: 未定義の属性または許可外の関数を参照する CEL 式の保存は
+//spec:covers EX-IDMANAGEMENT-022-01, EX-IDMANAGEMENT-085-01: 未定義の属性または許可外の関数を参照する CEL 式の保存は
 func TestDynamicGroupRefusalsSaveNoRuleAndChangeNoMembership(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-dynamic", tenancydomain.DefaultTenantID, idmRefusalAdmin)

@@ -1,6 +1,6 @@
 # Feature: グループ CSV の例
 
-## Rule: REQ-IDMANAGEMENT-026 管理者は Group CSV を検証して有効な行だけをインポートできる
+## Rule: REQ-IDMANAGEMENT-026 Group の CSV のインポートは、プレビューで全行を判定し、適用で有効な行だけを保存する
 
 ### Example: EX-IDMANAGEMENT-026-01 通常経路
 
@@ -120,7 +120,7 @@
 - Then 1 行の検証、保存、監査処理が途中で失敗する
 - Then その行の名前、説明、連絡先、ロール、カスタム属性、動的規則は一部も保存されず、他の有効な行は適用を続ける
 
-## Rule: REQ-IDMANAGEMENT-072 Group の CSV のセルの読み方
+## Rule: REQ-IDMANAGEMENT-072 Group の CSV は、名前を大文字と小文字を区別せずに照合し、連絡先をアドレスだけで受け付ける
 
 ### Example: EX-IDMANAGEMENT-072-01 大文字の名前による照合
 
@@ -133,7 +133,7 @@
 - When 管理者が `email` のセルに "Sales <sales@example.test>" を書いて事前検証へ投入する
 - Then 行は `invalid_email` で `rejected` となる
 
-## Rule: REQ-IDMANAGEMENT-028 管理者は CSV の明示的な行操作でグループを削除できる
+## Rule: REQ-IDMANAGEMENT-028 Group の CSV のインポートは、`lifecycle_action=delete` の行の Group だけを削除する
 
 ### Example: EX-IDMANAGEMENT-028-01 通常経路
 
@@ -179,7 +179,7 @@
 - But 対象 `Group` が外部の取り込み元に管理されている、または所有権を判定できない
 - Then 対象行は安定したエラーコード `source_managed` で `rejected` となり、`Group` は削除されない
 
-## Rule: REQ-IDMANAGEMENT-029 管理者は 1 つのグループのメンバーシップ CSV を検証し、行ごとに宣言した所属状態だけを適用できる
+## Rule: REQ-IDMANAGEMENT-029 メンバーシップの CSV のインポートは、行ごとに宣言した所属の状態だけを適用する
 
 ### Example: EX-IDMANAGEMENT-029-01 通常経路
 
@@ -311,7 +311,7 @@
 - But 対象グループがテナントに存在しない、または適用の直前に削除されている
 - Then ファイル全体が安定したエラーコード `target_not_found` で拒否され、グループは作成されず、メンバーシップも作られない
 
-## Rule: REQ-IDMANAGEMENT-027 管理者はエクスポートしたグループ CSV を安全に再適用できる
+## Rule: REQ-IDMANAGEMENT-027 Group のエクスポートは、そのまま再インポートすると変化なしになり、書き込める列の編集だけを反映する
 
 ### Example: EX-IDMANAGEMENT-027-01 通常経路
 
@@ -365,7 +365,7 @@
 - But `roles`、`membership_type`、`email`、または `custom:<key>` の値が不正である
 - Then 対象行は安定したエラーコードで `rejected` となり、値はジョブの表示にも監査イベントにも含めない
 
-## Rule: REQ-IDMANAGEMENT-008 管理者は特定グループのメンバー一覧を CSV にエクスポートできる
+## Rule: REQ-IDMANAGEMENT-008 メンバーシップのエクスポートは、パスの Group のメンバーだけを書き出す
 
 ### Example: EX-IDMANAGEMENT-008-01 通常経路
 
@@ -391,7 +391,7 @@
 - But 別グループのパスでそのエクスポート ID を指定する
 - Then グループごとに分離しているため、取得とダウンロードは InvalidRequestError で拒否される
 
-## Rule: REQ-IDMANAGEMENT-030 管理者はエクスポートしたメンバーシップ CSV を、分割しても大量解除にならない形で再適用できる
+## Rule: REQ-IDMANAGEMENT-030 メンバーシップのエクスポートは、分けて再適用しても、ほかのファイルにしかないメンバーを外さない
 
 ### Example: EX-IDMANAGEMENT-030-01 通常経路
 

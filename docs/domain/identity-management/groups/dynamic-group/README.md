@@ -52,28 +52,20 @@
 | 行為者 | 管理者 |
 | 入力 | 式、または有効化の指示 |
 | 成功時の作用 | 規則を保存して版を進め、`DynamicGroupRuleUpdated` または `DynamicGroupRuleEnabled` を発行する。有効な規則の保存と有効化は、全件の再評価を予約する |
-| 拒否 | 式の制約の違反（422 `invalid_dynamic_group_rule`）、手動の Group への保存（409 `dynamic_membership_managed_by_rule`）、規則のない Group の有効化。動的グループへの手動のメンバー操作。どの拒否も規則と所属を変えない |
+| 拒否 | 式の制約の違反（422 `invalid_dynamic_group_rule`）、手動の Group への保存（409 `dynamic_membership_managed_by_rule`）、規則のない Group の有効化。どの拒否も規則と所属を変えない |
 | 冪等性 | すでに有効な規則の有効化は、版を進めずイベントを発行しない |
 
-#### REQ-IDMANAGEMENT-020 管理者は CEL の規則で動的グループの所属を管理できる
-
-- 管理者は、動的グループに CEL の規則を保存して有効化できる。
-- 有効化した規則の全件の再評価の後、規則に一致する有効な User だけが、規則を由来として所属する。
-- 実効ロールと Application の割り当ては、その所属を参照する。
-- **担保手段**：`usecases.UpdateDynamicGroupRule`、`usecases.SetDynamicGroupRuleEnabled`、`usecases.ReconcileDynamicGroup`
-- **例**：EX-IDMANAGEMENT-020-01
-
-#### REQ-IDMANAGEMENT-066 動的グループの規則の版と有効化
+#### REQ-IDMANAGEMENT-066 規則の保存と有効化は版を一つ進め、有効な規則の保存と有効化は全件の再評価を予約する
 
 - 初めて保存した規則は無効であり、版は 1 である。
 - 式の保存のたびに版を一つ進め、有効か無効かは保存前の状態を引き継ぐ。
-- 有効化と無効化は、それぞれ版を一つ進める。すでにその状態にある規則の有効化と無効化は、版を進めずイベントを発行しない。
+- 有効化は版を一つ進める。すでに有効な規則の有効化は、版を進めずイベントを発行しない。
 - 有効な規則の式の保存と、規則の有効化は、全件の再評価を予約する。
 - `membership_type=manual` の Group への規則の保存は、409 と `dynamic_membership_managed_by_rule` で拒否する。
-- 規則を持たない Group の有効化と無効化は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 規則を持たない Group の有効化は、422 と `invalid_dynamic_group_rule` で拒否する。
 - **担保手段**：`usecases.UpdateDynamicGroupRule`、`usecases.SetDynamicGroupRuleEnabled`
 
-#### REQ-IDMANAGEMENT-065 動的グループの規則の式の制約
+#### REQ-IDMANAGEMENT-065 規則の保存とプレビューは、式の制約に違反する規則を拒否する
 
 - 式は 1 バイト以上 4,096 バイト以下とする。
 - 式の開き括弧は 20 個以下、空白で区切った語は 200 個以下とする。
@@ -85,12 +77,10 @@
 - 制約に違反する規則の保存とプレビューは、422 と `invalid_dynamic_group_rule` で拒否し、規則を変えない。
 - **担保手段**：`domain.CompileDynamicGroupRule`
 
-#### REQ-IDMANAGEMENT-022 不正な CEL の規則と動的グループの手動操作は拒否される
+#### REQ-IDMANAGEMENT-022 未定義の属性または許可していない関数を参照する規則の保存は拒否する
 
-- 定義していない属性、または許可していない関数を参照する式の保存は拒否する。
-- 動的グループへの `AddGroupMember` と `RemoveGroupMember` の手動の呼び出しは拒否し、メンバーシップを変えない。
-- **判断**：動的グループの所属は規則の評価だけが決める。手動の操作を許すと、所属がどの経路で付いたのかを区別できなくなる。
-- **担保手段**：`domain.CompileDynamicGroupRule`、`usecases.AddMember`、`usecases.RemoveMember`
+- 定義していない属性、または許可していない関数を参照する式の保存は拒否し、規則を変えない。
+- **担保手段**：`domain.CompileDynamicGroupRule`
 - **例**：EX-IDMANAGEMENT-022-01
 
 ### 規則の無効化
@@ -99,11 +89,14 @@
 | --- | --- |
 | 行為者 | 管理者 |
 | 成功時の作用 | 規則を無効にして版を進め、`DynamicGroupRuleDisabled` を発行し、再評価を待たずに動的な所属をすべて外す |
+| 拒否 | 規則のない Group の無効化（422 `invalid_dynamic_group_rule`） |
 | 冪等性 | すでに無効な規則の無効化は、版を進めずイベントを発行しない |
 
-#### REQ-IDMANAGEMENT-068 規則の無効化は、動的グループの所属をすべて直ちに外す
+#### REQ-IDMANAGEMENT-068 規則の無効化は版を一つ進め、動的グループの所属をすべて直ちに外す
 
+- 無効化は版を一つ進める。すでに無効な規則の無効化は、版を進めずイベントを発行しない。
 - 規則の無効化は、再評価を予約せず、その場で動的グループのメンバーシップをすべて外す。
+- 規則を持たない Group の無効化は、422 と `invalid_dynamic_group_rule` で拒否する。
 - **担保手段**：`usecases.SetDynamicGroupRuleEnabled`、`usecases.ReconcileDynamicGroup`
 
 ### 全件の再評価
@@ -114,6 +107,13 @@
 | 入力 | 予約した時点の規則の版 |
 | 成功時の作用 | 規則に一致する User を所属させ、一致しない User を外し、件数を載せた `DynamicMembershipEvaluated` を一つ発行する |
 | 冪等性 | 規則がない、無効である、または版が異なるジョブは、所属を変えずに成功する |
+
+#### REQ-IDMANAGEMENT-020 有効な規則の全件の再評価は、規則に一致する User だけを規則由来のメンバーにする
+
+- 有効化した規則の全件の再評価の後、規則に一致する有効な User だけが、規則を由来として所属する。
+- 実効ロールと Application の割り当ては、その所属を参照する。
+- **担保手段**：`usecases.ReconcileDynamicGroup`
+- **例**：EX-IDMANAGEMENT-020-01
 
 #### REQ-IDMANAGEMENT-067 動的グループの規則に一致するのは `Active` の User だけである
 
@@ -150,7 +150,7 @@
 | 成功時の作用 | User ごとに一致の有無と、追加、除外、変化なしの判定を返す。所属を変えない |
 | 拒否 | 101 件以上の User、存在しない User と別のテナントの User を含む指定、式の制約の違反 |
 
-#### REQ-IDMANAGEMENT-021 CEL の規則は保存前に選んだユーザーでプレビューできる
+#### REQ-IDMANAGEMENT-021 規則のプレビューは、選んだ User ごとに一致の有無を返し、属性の値を返さない
 
 - 管理者は、選んだ 100 件以下の User で、保存していない式を評価できる。
 - プレビューの応答は、User ごとの一致の有無と、追加、除外、変化なしの判定を返し、属性の値そのものは返さない。

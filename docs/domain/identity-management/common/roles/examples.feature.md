@@ -17,7 +17,7 @@
 - When 管理者がロール ["Admin", "admin"] を指定する
 - Then 保存するロールは ["Admin", "admin"] の二つである
 
-## Rule: REQ-IDMANAGEMENT-032 `system_admin` は制御面テナントの User と Group にだけ割り当てられる
+## Rule: REQ-IDMANAGEMENT-032 `system_admin` を新しく割り当てられるのは、制御面テナントの User と Group だけである
 
 ### Example: EX-IDMANAGEMENT-032-01 通常経路
 

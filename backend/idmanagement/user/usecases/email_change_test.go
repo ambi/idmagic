@@ -24,7 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-//spec:covers EX-IDMANAGEMENT-017-01: 通常経路のうち、新アドレスへ確認リンクが送られる部分。
+//spec:covers EX-IDMANAGEMENT-053-04: 起票が新アドレスへ確認リンクを送ること。
 func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()

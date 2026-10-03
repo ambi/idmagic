@@ -38,7 +38,7 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 | 拒否 | ファイル全体の拒否（上限の超過、不正な見出し）、行の拒否（識別子の矛盾、重複、不正なセル、外部の権威が管理する User）、使えないプレビューを指定した適用 |
 | 冪等性 | 編集していないエクスポートの再適用は、全行が `unchanged` になる |
 
-#### REQ-IDMANAGEMENT-004 管理者は CSV を検証して有効な行だけをインポートできる
+#### REQ-IDMANAGEMENT-004 User の CSV のインポートは、プレビューで全行を判定し、適用で有効な行だけを保存する
 
 - 管理者は、機械可読な列名の見出しを任意の順で持つ CSV を、事前検証（プレビュー）に投入できる。
 - プレビューのジョブは、行ごとの `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、User を変えない。
@@ -71,7 +71,7 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - ユーザー名の重複は大文字と小文字を区別して判定する。
 - **担保手段**：`usecases.PlanUserImport`
 
-#### REQ-IDMANAGEMENT-057 User の CSV の組み込み列のセルの字句形
+#### REQ-IDMANAGEMENT-057 User の CSV の組み込み列は、決まった字句形のセルだけを受け付ける
 
 - `roles` と `required_actions` のセルは、`|` で区切った値の並びである。各値の前後の空白を除く。
 - 空のセルは空の並びとし、空の値を含むセルは、`roles` では `invalid_roles`、`required_actions` では `invalid_required_actions` で拒否する。
@@ -81,7 +81,7 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - `preferred_username` の空のセルは `required` で拒否する。
 - **担保手段**：`usecases.PlanUserImport`
 
-#### REQ-IDMANAGEMENT-058 CSV で作成する User は、パスワードの設定を求められる
+#### REQ-IDMANAGEMENT-058 CSV で作成する User には、無作為なパスワードと必須操作 `update_password` を付ける
 
 - CSV で作成する User には、誰にも知らされない無作為なパスワードを設定する。
 - CSV で作成する User には、必須操作 `update_password` を付ける。
@@ -100,24 +100,17 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 | --- | --- |
 | 行為者 | 管理者が開始し、`worker` が生成する |
 | 入力 | 列と、`status` の絞り込み |
-| 成功時の作用 | 選んだ列の RFC 4180 の CSV を生成し、ダウンロードで返す |
+| 成功時の作用 | 選んだ列の RFC 4180 の CSV を生成し、ダウンロードで返す。開始、生成、ダウンロード、取り消しの流れは[データエクスポート](../data-export/README.md)が定める |
 | 拒否 | 許可リストにない列（`invalid_columns`）。生成が上限を超えたときは成功の成果物を作らずに失敗する |
 
-#### REQ-IDMANAGEMENT-006 管理者はユーザー一覧を CSV に安全にエクスポートできる
+#### REQ-IDMANAGEMENT-006 User のエクスポートは、許可リストの列だけを受け付け、危険な先頭文字のセルに接頭辞を付けて書き出す
 
-- 管理者は、列と `status` の絞り込みを指定して User のエクスポートを開始できる。開始は 202 とエクスポートの ID を返し、ジョブは `queued` である。
-- 終わる前のエクスポートの取り消しは `canceled` にし、`DataExportCanceled` を発行する。
-- `worker` が生成を始めると `DataExportStarted` を発行する。生成が完了すると `succeeded` にし、`downloadable` を `true` にし、行数とバイト数を記録して、`DataExportSucceeded` を発行する。
-- 生成が失敗すると `failed` にし、`downloadable` を `false` にし、`error_code` を記録して、`DataExportFailed` を発行する。不完全なファイルはダウンロードできない。
-- ダウンロードは、選んだ機械キーと一致する見出しの RFC 4180 の CSV を `Content-Disposition: attachment` で返し、`DataExportDownloaded` を発行する。
-- `=`、`+`、`-`、`@`、タブ、CR、LF で始まるセルは、数式の注入を避ける可逆な接頭辞を付けて書き出す。インポートは、その接頭辞の一文字だけを取り除く。
 - User の許可リストにない列（例：`password_hash`）を含む開始は、InvalidRequestError と `invalid_columns` で拒否する。
-- 保持期限を過ぎたエクスポートは `expired` で `downloadable` が `false` であり、ダウンロードを InvalidRequestError で拒否する。
-- User のエクスポートの ID を `/groups/exports` または別のテナントで指定した取得、ダウンロード、取り消しは、AccessDeniedError または InvalidRequestError で拒否する。
-- **担保手段**：`usecases.StartDataExport`、`usecases.DataExportHandler`、`usecases.DownloadDataExport`、`usecases.CancelDataExport`、`usecases.ExportUserCSV`
-- **例**：EX-IDMANAGEMENT-006-01、EX-IDMANAGEMENT-006-06
+- `=`、`+`、`-`、`@`、タブ、CR、LF で始まるセルは、数式の注入を避ける可逆な接頭辞を付けて書き出す。インポートは、その接頭辞の一文字だけを取り除く。
+- **担保手段**：`usecases.StartDataExport`、`usecases.ExportUserCSV`
+- **例**：EX-IDMANAGEMENT-006-02、EX-IDMANAGEMENT-006-04
 
-#### REQ-IDMANAGEMENT-007 管理者はエクスポートしたユーザー CSV を安全に再適用できる
+#### REQ-IDMANAGEMENT-007 User のエクスポートは、そのまま再インポートすると変化なしになり、書き込める列の編集だけを反映する
 
 - インポートできる組み込み列、`required_actions`、`custom:` の列でエクスポートした CSV を、編集せずにプレビューすると、全行が `unchanged` になり、User を変えない。
 - 一部の行の書き込める列だけを編集してプレビューすると、その行だけが `updated`、残りの行は `unchanged` と計画される。適用は、指定した書き込める列だけを更新し、指定しなかった列を保つ。

@@ -55,8 +55,9 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | 成功時の作用 | `queued` のジョブを作り、`DataExportRequested` を発行する |
 | 拒否 | 不正な列（`invalid_columns`）、許可していない絞り込み（`invalid_filter`）、実行中のジョブの上限の超過（429 `active_job_quota_exceeded`）。拒否した開始はジョブを作らず、イベントを発行しない |
 
-#### REQ-IDMANAGEMENT-039 エクスポートの開始は、許可した列と絞り込みだけを受け付ける
+#### REQ-IDMANAGEMENT-039 エクスポートの開始は `queued` のジョブを作り、許可した列と絞り込みだけを受け付ける
 
+- 開始は、202 とエクスポートの ID を返し、`queued` のジョブを作り、`DataExportRequested` を発行する。
 - 列は一つ以上を指定し、同じ列を二度含めない。違反する開始は `invalid_columns` で拒否する。
 - 絞り込みのキーは、User のエクスポートでは `status` だけ、Group のエクスポートでは受け付けない。それ以外のキーを含む開始は `invalid_filter` で拒否する。
 - `status` の値は前後の空白と大文字と小文字を区別せず、User の状態のどれでもない値を `invalid_filter` で拒否する。
@@ -64,6 +65,24 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 - 拒否した開始はジョブを作らず、`DataExportRequested` を発行しない。
 - 実行中のジョブの上限を超える開始は、429 と `active_job_quota_exceeded` で拒否する。
 - **担保手段**：`usecases.StartDataExport`、`handlers_http.HandleStartUserExport`
+- **例**：EX-IDMANAGEMENT-039-01、EX-IDMANAGEMENT-039-04
+
+### エクスポートの生成
+
+| 項目 | 内容 |
+| --- | --- |
+| 行為者 | `worker` の実行するジョブ |
+| 入力 | `queued` のエクスポート |
+| 成功時の作用 | `running` にして `DataExportStarted` を発行する。生成が終わると `succeeded` にして行数とバイト数を記録し、`DataExportSucceeded` を発行する |
+| 拒否 | 生成の失敗。`failed` にして `error_code` を記録し、`DataExportFailed` を発行する。不完全なファイルはダウンロードできない |
+
+#### REQ-IDMANAGEMENT-086 エクスポートの生成は、成功すると `succeeded` に、失敗すると `failed` にして、それぞれイベントを発行する
+
+- 生成を始めると `DataExportStarted` を発行する。
+- 生成が完了すると `succeeded` にし、`downloadable` を `true` にし、行数とバイト数を記録して、`DataExportSucceeded` を発行する。
+- 生成が失敗すると `failed` にし、`downloadable` を `false` にし、`error_code` を記録して、`DataExportFailed` を発行する。不完全なファイルはダウンロードできない。
+- **担保手段**：`usecases.DataExportHandler`
+- **例**：EX-IDMANAGEMENT-086-01、EX-IDMANAGEMENT-086-02
 
 ### エクスポートの一覧
 
@@ -87,7 +106,20 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | 行為者 | 管理者 |
 | 入力 | エクスポートの ID |
 | 成功時の作用 | 状態、行数、バイト数、保持期限を返す。ダウンロードは成果物の SHA-256 とバイト数を照合してから CSV を返し、`DataExportDownloaded` を発行する |
-| 拒否 | `succeeded` でないエクスポートと、保持期限を過ぎたエクスポートのダウンロード |
+| 拒否 | `succeeded` でないエクスポートと、保持期限を過ぎたエクスポートのダウンロード（REQ-IDMANAGEMENT-087）。種類またはテナントの異なるパスで指定した ID（REQ-IDMANAGEMENT-088） |
+
+#### REQ-IDMANAGEMENT-087 エクスポートのダウンロードは、選んだ列の見出しを持つ CSV を添付として返し、`DataExportDownloaded` を発行する
+
+- `succeeded` のエクスポートのダウンロードは、選んだ機械キーと一致する見出しの RFC 4180 の CSV を `Content-Disposition: attachment` で返し、`DataExportDownloaded` を発行する。
+- `expired` のエクスポートのダウンロードは、InvalidRequestError で拒否し、CSV を返さない。
+- **担保手段**：`usecases.DownloadDataExport`
+- **例**：EX-IDMANAGEMENT-087-01、EX-IDMANAGEMENT-087-02
+
+#### REQ-IDMANAGEMENT-088 エクスポートの参照、ダウンロード、取り消しは、種類またはテナントの異なるパスで指定した ID を拒否する
+
+- エクスポートの ID を、別の種類のパス（例：User のエクスポートを `/groups/exports`）または別のテナントで指定した参照、ダウンロード、取り消しは、AccessDeniedError または InvalidRequestError で拒否し、CSV を返さず、状態を変えない。
+- **担保手段**：`usecases.GetDataExport`、`usecases.DownloadDataExport`、`usecases.CancelDataExport`
+- **例**：EX-IDMANAGEMENT-088-01
 
 #### REQ-IDMANAGEMENT-079 エクスポートの保持期限は、完了の時刻から 30 日である
 
@@ -108,8 +140,9 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | 成功時の作用 | `canceled` にし、`DataExportCanceled` を発行する |
 | 拒否 | 終了したエクスポート（409 `data_export_not_cancelable`）。状態を変えず、イベントを発行しない |
 
-#### REQ-IDMANAGEMENT-041 終了したエクスポートは取り消せない
+#### REQ-IDMANAGEMENT-041 エクスポートの取り消しは、終了前のエクスポートを `canceled` にし、終了したエクスポートを拒否する
 
+- `queued` または `running` のエクスポートの取り消しは、`canceled` にし、`DataExportCanceled` を発行する。
 - `succeeded`、`failed`、`canceled`、`expired` のエクスポートの取り消しは、409 と `data_export_not_cancelable` で拒否する。
 - 拒否した取り消しは状態を変えず、`DataExportCanceled` を発行しない。
 - **担保手段**：`usecases.CancelDataExport`

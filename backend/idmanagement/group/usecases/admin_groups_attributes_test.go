@@ -181,7 +181,7 @@ func TestCreateGroupRejectsMissingRequiredAttribute(t *testing.T) {
 // 加えて「`GroupUpdated` の `changed_fields` に email と attributes が含まれる」まで
 // 言っており、種類だけを数えるテストでは後半が観測できない。
 //
-//spec:covers EX-IDMANAGEMENT-024-01: email と attributes を指定した作成と更新が保存され、GroupUpdated の changed_fields に両方が並ぶこと。
+//spec:covers EX-IDMANAGEMENT-024-01, EX-IDMANAGEMENT-062-02: email と attributes を指定した作成と更新が保存され、GroupUpdated の changed_fields に両方が並ぶこと。
 func TestUpdateGroupEmailAndAttributes(t *testing.T) {
 	ctx := context.Background()
 	deps, events := newGroupDeps(t)

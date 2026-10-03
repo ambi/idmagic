@@ -39,7 +39,7 @@
 - ロールの照合は大文字と小文字を区別する。`Admin` と `admin` は別のロールである。
 - **担保手段**：`usecases.NormalizeRoles`
 
-#### REQ-IDMANAGEMENT-032 `system_admin` は制御面テナントの User と Group にだけ割り当てられる
+#### REQ-IDMANAGEMENT-032 `system_admin` を新しく割り当てられるのは、制御面テナントの User と Group だけである
 
 - `system_admin` を新しく割り当てられるのは、制御面テナントの User と Group だけである。直接の付与と Group 経由のどちらでもよく、Group 経由で割り当てた `system_admin` は User の実効ロールに現れる。
 - 制御面テナント以外の User と Group、およびどのテナントの Agent へも、`system_admin` を新しく割り当てる管理 API の書き込みは、InvalidRequestError と `invalid_role` で拒否する。同じ要求のほかの項目も変えず、`updated_at` を進めず、イベントを発行しない。

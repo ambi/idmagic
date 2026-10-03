@@ -16,7 +16,7 @@
 - Then ユーザー名またはメールアドレスが衝突する、リソース上限を超える、属性スキーマに違反する
 - Then User を作成せずエラーを返す
 
-## Rule: REQ-IDMANAGEMENT-042 管理者が作成する User のユーザー名とパスワード
+## Rule: REQ-IDMANAGEMENT-042 管理者による User の作成は、ユーザー名の一意性とパスワードポリシーを検証し、`Active` の User を作る
 
 ### Example: EX-IDMANAGEMENT-042-01 前後に空白を含むユーザー名
 
@@ -35,7 +35,7 @@
 - When 管理者が 12 文字のパスワードで User を作成する
 - Then 作成は拒否され、User は作られない
 
-## Rule: REQ-IDMANAGEMENT-043 フェデレーションの JIT が作る User の項目
+## Rule: REQ-IDMANAGEMENT-043 フェデレーションの JIT が作る User は、ロールを持たず、メールアドレスの重複を拒否する
 
 ### Example: EX-IDMANAGEMENT-043-01 大文字と小文字だけが異なるメールアドレス
 
@@ -54,7 +54,7 @@
 - When Authentication Context が `department` を "Engineering" とする User を ProvisionFederatedUser で作る
 - Then 作成した User は、その動的グループに所属しない
 
-## Rule: REQ-IDMANAGEMENT-005 管理者はユーザー一覧をページングしながら安定して閲覧できる
+## Rule: REQ-IDMANAGEMENT-005 管理者のユーザー一覧は、正確な件数とカーソルで、重複も欠落もなくページを返す
 
 ### Example: EX-IDMANAGEMENT-005-01 通常経路
 
@@ -133,7 +133,7 @@
 - When 一覧の取得がその時刻に期限切れの User を完全削除する
 - Then ユーザー "alice" は `PendingDeletion` のまま残る
 
-## Rule: REQ-IDMANAGEMENT-010 管理者は無効化したユーザーを再有効化できる
+## Rule: REQ-IDMANAGEMENT-010 User の無効化は `Disabled` に、再有効化は `Active` にして、それぞれイベントを発行する
 
 ### Example: EX-IDMANAGEMENT-010-01 通常経路
 
@@ -141,6 +141,12 @@
 - When 管理者がユーザー "alice" を再有効化する
 - Then ユーザー `alice` のステータスは `Active` である
 - Then "UserEnabled" が発行される
+
+### Example: EX-IDMANAGEMENT-010-02 記憶済みの端末を持つ User の無効化
+
+- Given ユーザー "alice" には記憶済みの端末がある
+- When 管理者がユーザー "alice" を無効化する
+- Then その端末は失効している
 
 ## Rule: REQ-IDMANAGEMENT-045 管理者による User の更新は、値が変わった項目だけを記録する
 
@@ -161,7 +167,7 @@
 - When 管理者がメールアドレスだけを "alice@new.example.test" へ変える
 - Then `email_verified` は `true` のままである
 
-## Rule: REQ-IDMANAGEMENT-046 User の無効化と再有効化は、すでにその状態なら何もしない
+## Rule: REQ-IDMANAGEMENT-046 User の無効化と再有効化は、すでにその状態なら何もせず、管理者自身の無効化と削除予約中の User を拒否する
 
 ### Example: EX-IDMANAGEMENT-046-01 無効化済みの User の無効化
 
@@ -174,12 +180,6 @@
 - Given 管理者 "operator" はロール `admin` を持つ
 - When 管理者 "operator" が自分自身を無効化する
 - Then 操作は `self_disable_forbidden` で拒否され、"operator" は `Active` のままである
-
-### Example: EX-IDMANAGEMENT-046-03 記憶済みの端末を持つ User の無効化
-
-- Given ユーザー "alice" には記憶済みの端末がある
-- When 管理者がユーザー "alice" を無効化する
-- Then その端末は失効している
 
 ### Example: EX-IDMANAGEMENT-046-04 削除予約中の User の無効化と再有効化
 
@@ -202,7 +202,7 @@
 - When 管理者がユーザー "alice" に必須操作 `reboot` を付与する
 - Then 操作は `invalid_required_action` で拒否される
 
-## Rule: REQ-IDMANAGEMENT-011 管理者はユーザーの削除を予約し、猶予期間内に復元できる
+## Rule: REQ-IDMANAGEMENT-011 User の削除の予約は `PendingDeletion` にして `UserSoftDeleted` を発行し、予約済みの User には何もしない
 
 ### Example: EX-IDMANAGEMENT-011-01 通常経路
 
@@ -211,18 +211,14 @@
 - When 管理者 "operator" がユーザー "alice" を削除する
 - Then ユーザー `alice` のステータスは `PendingDeletion` である
 - Then "UserSoftDeleted" が発行される
-- When 管理者 "operator" がユーザー "alice" を復元する
-- Then ユーザー `alice` のステータスは `Active` である
-- Then "UserRestored" が発行される
 
-## Rule: REQ-IDMANAGEMENT-013 管理者はユーザーを完全削除できる
+### Example: EX-IDMANAGEMENT-011-02 削除予約済みの User の削除の予約
 
-### Example: EX-IDMANAGEMENT-013-01 通常経路
+- Given ユーザー "alice" は `PendingDeletion` である
+- When 管理者がユーザー "alice" の削除を予約する
+- Then 操作は成功し、`UserSoftDeleted` は再発行されない
 
-- Given ユーザー "alice" は PendingDeletion である
-- When 管理者がユーザー "alice" を完全削除する
-- Then ユーザー `alice` のステータスは `Deleted` である
-- Then "UserDeleted" が発行される
+## Rule: REQ-IDMANAGEMENT-013 特権を持つ管理者自身を対象にする削除の予約、復元、完全削除は拒否する
 
 ### Example: EX-IDMANAGEMENT-013-02 対象が操作者自身であり、`admin` または `system_admin` を持つ
 
@@ -232,13 +228,13 @@
 - Then 削除の予約、復元、完全削除のいずれも拒否される
 - And エラー "self_delete_forbidden"
 
-## Rule: REQ-IDMANAGEMENT-048 User の削除の予約
+### Example: EX-IDMANAGEMENT-013-03 削除予約済みの管理者自身の削除の予約
 
-### Example: EX-IDMANAGEMENT-048-01 削除予約済みの User の削除の予約
+- Given 管理者 "operator" はロール `admin` を持ち、`PendingDeletion` である
+- When 管理者 "operator" が自分自身の削除を予約する
+- Then 操作は `self_delete_forbidden` で拒否される
 
-- Given ユーザー "alice" は `PendingDeletion` である
-- When 管理者がユーザー "alice" の削除を予約する
-- Then 操作は成功し、`UserSoftDeleted` は再発行されない
+## Rule: REQ-IDMANAGEMENT-048 User の削除の予約は記録を残し、理由とともに下流へ削除として通知する
 
 ### Example: EX-IDMANAGEMENT-048-02 下流への通知
 
@@ -246,7 +242,14 @@
 - Then `UserSoftDeleted` の理由は "left the company" である
 - And 下流のプロビジョニングへ User の削除として通知する
 
-## Rule: REQ-IDMANAGEMENT-049 削除を予約した User は、猶予期間の終わりの時刻まで復元できる
+## Rule: REQ-IDMANAGEMENT-049 削除を予約した User の復元は、猶予期間の終わりの時刻まで `Active` に戻す
+
+### Example: EX-IDMANAGEMENT-049-04 削除を予約した User の復元
+
+- Given ユーザー "alice" は `PendingDeletion` である
+- When 管理者 "operator" がユーザー "alice" を復元する
+- Then ユーザー `alice` のステータスは `Active` である
+- Then "UserRestored" が発行される
 
 ### Example: EX-IDMANAGEMENT-049-01 猶予期間の終わりちょうどの復元
 
@@ -266,7 +269,14 @@
 - When 管理者がユーザー "alice" を復元する
 - Then 下流のプロビジョニングへの通知はない
 
-## Rule: REQ-IDMANAGEMENT-050 User の完全削除は匿名化であり、削除済みの User には何もしない
+## Rule: REQ-IDMANAGEMENT-050 User の完全削除は User を匿名化して `Deleted` にし、削除済みの User には何もしない
+
+### Example: EX-IDMANAGEMENT-050-03 削除予約中の User の完全削除
+
+- Given ユーザー "alice" は PendingDeletion である
+- When 管理者がユーザー "alice" を完全削除する
+- Then ユーザー `alice` のステータスは `Deleted` である
+- Then "UserDeleted" が発行される
 
 ### Example: EX-IDMANAGEMENT-050-01 有効な User の完全削除
 

@@ -1,18 +1,12 @@
 # Feature: エージェントの例
 
-## Rule: REQ-IDMANAGEMENT-009 管理者はエージェントを登録しクライアント資格情報をバインドできる
+## Rule: REQ-IDMANAGEMENT-009 Agent の登録は、指定した `kind` で Agent を作り、`kind` の欠落と未知の値を拒否する
 
 ### Example: EX-IDMANAGEMENT-009-01 通常経路
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面のエージェント一覧を開いている
 - When 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
 - Then エージェント "batch-agent" が指定した区分で登録される
-- When 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
-- Then クライアント資格情報がバインドされる
-- When 管理者 "operator" がエージェント "batch-agent" を無効化する
-- Then エージェントは無効状態になる
-- When 管理者 "operator" がエージェント "batch-agent" を再有効化する
-- Then エージェント一覧に "batch-agent" が表示される
 
 ### Example: EX-IDMANAGEMENT-009-02 `kind` を指定しない
 
@@ -30,19 +24,7 @@
 - Then エラー "InvalidAgentKindError"
 - And 既知の値へ丸めない
 
-### Example: EX-IDMANAGEMENT-009-04 別テナントのクライアント資格情報をバインドする
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面のエージェント一覧を開いている
-- When 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
-- Then エージェント "batch-agent" が指定した区分で登録される
-- When 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
-- But 別テナントのクライアント資格情報をバインドする
-- And テナント "acme" の Agent にテナント "default" の `client_id` を指定する
-- Then エラー "OAuth2ClientNotFoundError"
-- And 応答は存在しない `client_id` を指定したときと同じである
-- And エージェント "batch-agent" にクライアント資格情報は関連付けられない
-
-## Rule: REQ-IDMANAGEMENT-073 Agent の登録の名前と所有者
+## Rule: REQ-IDMANAGEMENT-073 Agent の登録は、名前を正規化し、同じテナントの `Active` の User だけを所有者に受け付ける
 
 ### Example: EX-IDMANAGEMENT-073-01 所有者を省いた登録
 
@@ -61,7 +43,7 @@
 - When 管理者が名前 "Deploy-Bot" の Agent を登録する
 - Then 登録は `agent_name_conflict` で拒否される
 
-## Rule: REQ-IDMANAGEMENT-074 Agent の資格情報の束縛は一つの Agent に限り、同じ束縛には何もしない
+## Rule: REQ-IDMANAGEMENT-074 Agent の資格情報の束縛は、同じテナントの OAuth2Client を一つの Agent にだけ結び、同じ束縛には何もしない
 
 ### Example: EX-IDMANAGEMENT-074-01 ほかの Agent に束縛済みの OAuth2Client
 
@@ -81,6 +63,21 @@
 - When 管理者が "svc_client" の束縛を解除する
 - Then 束縛は解除され、`AgentCredentialUnbound` が発行される
 
+### Example: EX-IDMANAGEMENT-074-04 通常経路
+
+- Given ロール=["admin"] のユーザー "operator" がエージェント "batch-agent" を登録している
+- When 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
+- Then クライアント資格情報がバインドされる
+
+### Example: EX-IDMANAGEMENT-074-05 別テナントのクライアント資格情報をバインドする
+
+- Given ロール=["admin"] のユーザー "operator" がテナント "acme" にエージェント "batch-agent" を登録している
+- When 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
+- But テナント "default" の `client_id` を指定する
+- Then エラー "OAuth2ClientNotFoundError"
+- And 応答は存在しない `client_id` を指定したときと同じである
+- And エージェント "batch-agent" にクライアント資格情報は関連付けられない
+
 ## Rule: REQ-IDMANAGEMENT-075 Agent の更新は値が変わった項目だけを記録し、所有者の変更を別に記録する
 
 ### Example: EX-IDMANAGEMENT-075-01 所有者の変更
@@ -94,7 +91,7 @@
 - When 管理者が Agent "deploy-bot" の現在と同じ名前を指定して更新する
 - Then 更新は成功し、`updated_at` は変わらず、イベントは発行されない
 
-## Rule: REQ-IDMANAGEMENT-076 Agent の無効化と再有効化は、すでにその状態でも記録し直す
+## Rule: REQ-IDMANAGEMENT-076 Agent の無効化は `Disabled` に、再有効化は `Active` にし、すでにその状態でも記録し直す
 
 ### Example: EX-IDMANAGEMENT-076-01 無効化済みの Agent の無効化
 
@@ -102,7 +99,15 @@
 - When 管理者が後の時刻に "deploy-bot" を無効化する
 - Then `disabled_at` はその時刻へ進み、`AgentDisabled` がもう一度発行される
 
-## Rule: REQ-IDMANAGEMENT-077 停止した Agent は変更できない
+### Example: EX-IDMANAGEMENT-076-02 通常経路
+
+- Given ロール=["admin"] のユーザー "operator" がエージェント "batch-agent" を登録している
+- When 管理者 "operator" がエージェント "batch-agent" を無効化する
+- Then エージェントは無効状態になる
+- When 管理者 "operator" がエージェント "batch-agent" を再有効化する
+- Then エージェント一覧に "batch-agent" が表示される
+
+## Rule: REQ-IDMANAGEMENT-077 停止した Agent の更新、無効化、再有効化、停止、束縛は拒否する
 
 ### Example: EX-IDMANAGEMENT-077-01 停止した Agent の再有効化
 
@@ -116,7 +121,7 @@
 - When 管理者が "deploy-bot" を停止する
 - Then 操作は `agent_killed` で拒否され、`AgentKilled` は再発行されない
 
-## Rule: REQ-IDMANAGEMENT-078 Agent の削除は束縛ごと記録を消し、停止した Agent は削除できない
+## Rule: REQ-IDMANAGEMENT-078 Agent の削除は束縛ごと記録を消し、停止した Agent の削除は拒否する
 
 ### Example: EX-IDMANAGEMENT-078-01 束縛を持つ Agent の削除
 
@@ -130,7 +135,7 @@
 - When 管理者が "deploy-bot" を削除する
 - Then 削除は `agent_killed` で拒否され、"deploy-bot" は残る
 
-## Rule: REQ-IDMANAGEMENT-082 所有者の User が止まっている Agent は再有効化できない
+## Rule: REQ-IDMANAGEMENT-082 所有者の User が `Active` でない Agent の再有効化は拒否する
 
 ### Example: EX-IDMANAGEMENT-082-01 所有者が無効化された Agent の再有効化
 

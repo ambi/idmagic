@@ -60,19 +60,16 @@
 | 成功時の作用 | `Active` の Agent を作り、テナントの Agent の使用量を一つ増やし、`AgentRegistered` を発行する |
 | 拒否 | 区分の欠落と未知の区分、空の名前、同名の Agent、`Active` でない所有者。どの拒否も Agent を作らず、使用量を変えない |
 
-#### REQ-IDMANAGEMENT-009 管理者はエージェントを登録しクライアント資格情報をバインドできる
+#### REQ-IDMANAGEMENT-009 Agent の登録は、指定した `kind` で Agent を作り、`kind` の欠落と未知の値を拒否する
 
-- 管理者は、区分 `kind` を指定して Agent を登録でき、Agent はその区分で登録される。
-- 管理者は、Agent に同じテナントの `OAuth2Client` の資格情報を束縛できる。
-- 管理者は、Agent を無効化し、再有効化できる。再有効化した Agent は一覧に現れる。
+- 区分 `kind` を指定した登録は、その区分で Agent を作る。
 - `kind` を指定しない登録は AgentKindRequiredError で拒否し、デフォルト値で補わない。
 - 既知のどの値でもない `kind` の登録は InvalidAgentKindError で拒否し、既知の値へ丸めない。
-- 別のテナントの `client_id` の束縛は、存在しない `client_id` と同じ OAuth2ClientNotFoundError で拒否し、束縛を作らない。
 - **判断**：区分は、実行時にトークンを発行するかを決める（REQ-OAUTH2-050）。補ったり丸めたりすると、管理者が意図しない区分でトークンが発行される。
-- **担保手段**：`usecases.RegisterAgent`、`usecases.BindCredential`、`usecases.SetAgentDisabled`
-- **例**：EX-IDMANAGEMENT-009-01、EX-IDMANAGEMENT-009-04
+- **担保手段**：`usecases.RegisterAgent`
+- **例**：EX-IDMANAGEMENT-009-01、EX-IDMANAGEMENT-009-03
 
-#### REQ-IDMANAGEMENT-073 Agent の登録の名前と所有者
+#### REQ-IDMANAGEMENT-073 Agent の登録は、名前を正規化し、同じテナントの `Active` の User だけを所有者に受け付ける
 
 - 名前は前後の空白を除いて保存する。空白を除いて空になる名前は、422 と `agent_name_required` で拒否する。
 - 同じテナントのほかの Agent と大文字と小文字を区別せずに同じ名前は、409 と `agent_name_conflict` で拒否する。
@@ -91,13 +88,16 @@
 | 拒否 | 見つからない `client_id`、ほかの Agent に束縛済みの `OAuth2Client`、`Killed` の Agent への束縛 |
 | 冪等性 | 同じ束縛の繰り返しと、束縛していない `OAuth2Client` の解除は、成功を返しイベントを発行しない |
 
-#### REQ-IDMANAGEMENT-074 Agent の資格情報の束縛は一つの Agent に限り、同じ束縛には何もしない
+#### REQ-IDMANAGEMENT-074 Agent の資格情報の束縛は、同じテナントの OAuth2Client を一つの Agent にだけ結び、同じ束縛には何もしない
 
+- 束縛は、Agent に同じテナントの `OAuth2Client` の資格情報を結び、`AgentCredentialBound` を発行する。
 - 束縛する `client_id` は、前後の空白を除いて同じテナントの OAuth2Client から探す。空の値と見つからない値は、422 と `client_not_found` で拒否する。
-- ほかの Agent に束縛済みの OAuth2Client の束縛は、409 と `agent_client_already_bound` で拒否する。
 - 同じ Agent に束縛済みの OAuth2Client の束縛と、束縛していない OAuth2Client の解除は成功を返し、イベントを発行しない。
 - 束縛の解除は、`Killed` の Agent にもできる。
+- 別のテナントの `client_id` の束縛は、存在しない `client_id` と同じ OAuth2ClientNotFoundError で拒否し、束縛を作らない。
+- ほかの Agent に束縛済みの OAuth2Client の束縛は、409 と `agent_client_already_bound` で拒否する。
 - **担保手段**：`usecases.BindCredential`、`usecases.UnbindCredential`
+- **例**：EX-IDMANAGEMENT-074-04、EX-IDMANAGEMENT-074-05
 
 ### 更新
 
@@ -125,14 +125,17 @@
 | 拒否 | `Killed` の Agent（409 `agent_killed`）。所有者の User が `Active` でない Agent の再有効化（409 `agent_owner_inactive`） |
 | 冪等性 | なし。すでにその状態でも時刻を進め、イベントを発行する |
 
-#### REQ-IDMANAGEMENT-076 Agent の無効化と再有効化は、すでにその状態でも記録し直す
+#### REQ-IDMANAGEMENT-076 Agent の無効化は `Disabled` に、再有効化は `Active` にし、すでにその状態でも記録し直す
 
+- 無効化は Agent を `Disabled` にし、`AgentDisabled` を発行する。
+- 再有効化は Agent を `Active` に戻し、`AgentEnabled` を発行する。再有効化した Agent は一覧に現れる。
 - `Disabled` の Agent の無効化は成功を返し、`disabled_at` と `updated_at` を操作の時刻に進め、`AgentDisabled` を発行する。
 - `Active` の Agent の再有効化は成功を返し、`updated_at` を進め、`AgentEnabled` を発行する。
 - **担保手段**：`usecases.SetAgentDisabled`
+- **例**：EX-IDMANAGEMENT-076-01、EX-IDMANAGEMENT-076-02
 - **要判断**：User の無効化と再有効化は、すでにその状態なら何もしない。Agent では時刻を進めてイベントを重ねて発行するため、`disabled_at` は最初に止めた時刻を示さない。User と同じにするかを決める。
 
-#### REQ-IDMANAGEMENT-082 所有者の User が止まっている Agent は再有効化できない
+#### REQ-IDMANAGEMENT-082 所有者の User が `Active` でない Agent の再有効化は拒否する
 
 - 所有者の User が同じテナントの `Active` でない Agent の再有効化は、409 と `agent_owner_inactive` で拒否し、Agent を変えず、イベントを発行しない。
 - **判断**：所有者の停止に伴う無効化（REQ-IDMANAGEMENT-081）を、再有効化ですぐに打ち消せないようにする。所有者を `Active` に戻すか、`Active` の別の User へ所有者を変えてから再有効化する。
@@ -157,8 +160,8 @@
 - 所有者の User を再有効化または復元しても、Agent は `Disabled` のまま残る。
 - **判断**：すべての Agent に所有者を求めるのは、誰も責任を持たない非人間のアイデンティティを残さないためである。所有者が組織を去った後も Agent が動き続けると、その判断が成り立たない。
 - **判断**：所有者の再開で Agent を自動で再開しない。所有者の停止より前から止めていた Agent まで再開してしまうからである。
-- **担保手段**：`usecases.DisableAgentsOwnedBy`、`usecases.SetUserDisabled`、`usecases.SoftDeleteUser`、`usecases.DeleteUser`
 - **判断**：伝播は User の確定とは別に行う。途中で失敗したときは、同じ操作の再実行で残った Agent を回収する。
+- **担保手段**：`usecases.DisableAgentsOwnedBy`、`usecases.SetUserDisabled`、`usecases.SoftDeleteUser`、`usecases.DeleteUser`
 - **例**：EX-IDMANAGEMENT-081-01、EX-IDMANAGEMENT-081-02、EX-IDMANAGEMENT-081-03、EX-IDMANAGEMENT-081-04、EX-IDMANAGEMENT-081-05
 
 ### 停止
@@ -169,7 +172,7 @@
 | 成功時の作用 | `Killed` にし、`AgentKilled` を発行する。以後、新しいトークンを発行しない |
 | 拒否 | `Killed` の Agent の停止と、`Killed` の Agent への更新、無効化、再有効化、束縛（409 `agent_killed`）。Agent を変えず、イベントを発行しない |
 
-#### REQ-IDMANAGEMENT-077 停止した Agent は変更できない
+#### REQ-IDMANAGEMENT-077 停止した Agent の更新、無効化、再有効化、停止、束縛は拒否する
 
 - `Killed` の Agent の更新、無効化、再有効化、停止、資格情報の束縛は、409 と `agent_killed` で拒否し、Agent を変えず、イベントを発行しない。
 - **担保手段**：`usecases.UpdateAgent`、`usecases.SetAgentDisabled`、`usecases.KillAgent`、`usecases.BindCredential`
@@ -182,7 +185,7 @@
 | 成功時の作用 | Agent の記録と束縛を消し、テナントの Agent の使用量を一つ減らし、`AgentDeleted` を発行する |
 | 拒否 | `Killed` の Agent（409 `agent_killed`）。記録を残す |
 
-#### REQ-IDMANAGEMENT-078 Agent の削除は束縛ごと記録を消し、停止した Agent は削除できない
+#### REQ-IDMANAGEMENT-078 Agent の削除は束縛ごと記録を消し、停止した Agent の削除は拒否する
 
 - 削除は Agent の記録と、その Agent の資格情報の束縛を消す。
 - 削除は、テナントの Agent の使用量を一つ減らし、`AgentDeleted` を発行する。

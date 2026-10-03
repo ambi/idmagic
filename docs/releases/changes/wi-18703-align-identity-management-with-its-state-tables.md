@@ -7,7 +7,7 @@ WI-18703 は、IdManagement の実装を、`UserLifecycle` と `DataExportLifecy
 管理者は、削除を予約した User を無効化も再有効化もできなくなる。
 `POST /api/admin/v1/users/{user_id}/disable` と `POST /api/admin/v1/users/{user_id}/enable` は、対象が削除予約中なら 409 と `user_pending_deletion` を返し、User を変えない。
 削除の予約を取り消すには、猶予期間を確かめる復元を使う。
-規範上の条件は [REQ-IDMANAGEMENT-046](../../domain/identity-management/principals/user/lifecycle.md#req-idmanagement-046-user-の無効化と再有効化はすでにその状態なら何もしない) が定める。
+規範上の条件は [REQ-IDMANAGEMENT-046](../../domain/identity-management/principals/user/lifecycle.md) が定める。
 
 データエクスポートの保持期限は、作成の時刻ではなく完了の時刻から 30 日になる。
 エクスポートの参照の応答は、`succeeded` のエクスポートにだけ `expires_at` を返す。

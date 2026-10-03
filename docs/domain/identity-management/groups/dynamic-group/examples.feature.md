@@ -1,6 +1,6 @@
 # Feature: 動的グループの例
 
-## Rule: REQ-IDMANAGEMENT-020 管理者は CEL の規則で動的グループの所属を管理できる
+## Rule: REQ-IDMANAGEMENT-020 有効な規則の全件の再評価は、規則に一致する User だけを規則由来のメンバーにする
 
 ### Example: EX-IDMANAGEMENT-020-01 通常経路
 
@@ -10,7 +10,7 @@
 - Then 全件の再評価後、Engineering の有効な User だけが動的規則を由来として所属する
 - Then 実効ロールと Application の割り当ては、その所属を参照する
 
-## Rule: REQ-IDMANAGEMENT-066 動的グループの規則の版と有効化
+## Rule: REQ-IDMANAGEMENT-066 規則の保存と有効化は版を一つ進め、有効な規則の保存と有効化は全件の再評価を予約する
 
 ### Example: EX-IDMANAGEMENT-066-01 初めての保存と有効化
 
@@ -24,7 +24,7 @@
 - When 管理者が式を保存する
 - Then 規則は有効のまま版 3 になり、全件の再評価が予約される
 
-## Rule: REQ-IDMANAGEMENT-065 動的グループの規則の式の制約
+## Rule: REQ-IDMANAGEMENT-065 規則の保存とプレビューは、式の制約に違反する規則を拒否する
 
 ### Example: EX-IDMANAGEMENT-065-01 ロールを参照する式
 
@@ -41,16 +41,14 @@
 - When 管理者が `user.email.matches(user.preferred_username)` を保存する
 - Then 保存は `invalid_dynamic_group_rule` で拒否される
 
-## Rule: REQ-IDMANAGEMENT-022 不正な CEL の規則と動的グループの手動操作は拒否される
+## Rule: REQ-IDMANAGEMENT-022 未定義の属性または許可していない関数を参照する規則の保存は拒否する
 
 ### Example: EX-IDMANAGEMENT-022-01 通常経路
 
 - When 管理者が、未定義の属性または許可外の関数を参照する CEL 式を保存する
 - Then 保存は拒否される
-- When 管理者が動的グループに対して `AddGroupMember` または `RemoveGroupMember` を手動で呼ぶ
-- Then メンバーシップの変更は拒否される
 
-## Rule: REQ-IDMANAGEMENT-068 規則の無効化は、動的グループの所属をすべて直ちに外す
+## Rule: REQ-IDMANAGEMENT-068 規則の無効化は版を一つ進め、動的グループの所属をすべて直ちに外す
 
 ### Example: EX-IDMANAGEMENT-068-01 所属を持つ規則の無効化
 
@@ -91,7 +89,7 @@
 - When 全件の再評価を実行する
 - Then "alice" は所属し、`GroupMemberAdded` は発行されず、追加の件数 1 を持つ `DynamicMembershipEvaluated` が発行される
 
-## Rule: REQ-IDMANAGEMENT-021 CEL の規則は保存前に選んだユーザーでプレビューできる
+## Rule: REQ-IDMANAGEMENT-021 規則のプレビューは、選んだ User ごとに一致の有無を返し、属性の値を返さない
 
 ### Example: EX-IDMANAGEMENT-021-01 通常経路
 

@@ -507,7 +507,7 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 
 // 別テナントの OAuth2Client は存在しないものとして拒否し、関連付けを残さないこと。
 //
-//spec:covers EX-IDMANAGEMENT-009-04: 別テナントの client_id のバインドが ErrAgentClientNotFound で拒否され、Agent に関連付けが残らないこと。
+//spec:covers EX-IDMANAGEMENT-074-05: 別テナントの client_id のバインドが ErrAgentClientNotFound で拒否され、Agent に関連付けが残らないこと。
 func TestBindCredentialRejectsClientOfAnotherTenant(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)

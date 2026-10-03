@@ -221,7 +221,7 @@ func TestUserExportWithDisallowedColumnCreatesNoExport(t *testing.T) {
 // 「拒否が変えなかったもの」は CSV の中身である。期限切れを応答に書きながら本体を
 // 返す実装は、ステータスだけを読むテストでは成功と区別できない。
 //
-//spec:covers EX-IDMANAGEMENT-006-05: 保持期限を過ぎたエクスポートは `expired` となり
+//spec:covers EX-IDMANAGEMENT-087-02: 保持期限を過ぎたエクスポートは `expired` となり
 func TestExpiredUserExportRefusesDownloadAndReturnsNoCSV(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-expiry", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -286,7 +286,7 @@ func TestExpiredUserExportRefusesDownloadAndReturnsNoCSV(t *testing.T) {
 // 取り消しは種別の境界を越えた側から見ると成功と区別しにくい。拒否のあとに正しい
 // 経路から読み直し、エクスポートが `succeeded` のままであることを確かめる。
 //
-//spec:covers EX-IDMANAGEMENT-006-06: `User` エクスポートの ID を `/groups/exports` または別テナントで
+//spec:covers EX-IDMANAGEMENT-088-01: `User` エクスポートの ID を `/groups/exports` または別テナントで
 func TestUserExportAcrossTypeAndTenantReturnsNoCSVAndCancelsNothing(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-boundary", tenancydomain.DefaultTenantID, idmRefusalAdmin)
