@@ -1,14 +1,14 @@
-min_version = "2026.9.6"
+min_version = "2026.10.0"
 
 [tools]
 go = "1.27.1"
 bun = "1.4.2"
-"aqua:golangci/golangci-lint" = "2.13.2"
+"aqua:golangci/golangci-lint" = "2.14.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
-"aqua:sqldef/sqldef/psqldef" = "3.11.23"
+"aqua:sqldef/sqldef/psqldef" = "3.11.26"
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:zizmorcore/zizmor" = "1.30.1"
-"aqua:betterleaks/betterleaks" = "1.8.1"
+"aqua:betterleaks/betterleaks" = "1.9.0"
 "aqua:google/osv-scanner" = "2.6.0"
 # govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
 # 宣言する言語バージョンでビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
@@ -1033,9 +1033,9 @@ kubectl rollout undo "deployment/${1:-idmagic-api}"
 [tasks.check-monitoring]
 description = "Validate Prometheus, Alloy, Grafana, and Kubernetes monitoring assets"
 run = [
-  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.14.0 check rules /workspace/infra/docker/prometheus-rules.yml",
-  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.19.2 validate /workspace/infra/docker/alloy-config.alloy",
-  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.19.2 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
+  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.15.0 check rules /workspace/infra/docker/prometheus-rules.yml",
+  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.20.1 validate /workspace/infra/docker/alloy-config.alloy",
+  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.20.1 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
   "jq empty infra/docker/grafana-dashboard.json",
   "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring > /dev/null",
   "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring/operator > /dev/null",
@@ -1057,12 +1057,12 @@ run = '''
 set -eu
 base_url=${1:-http://host.docker.internal:8080/realms/default}
 browser_origin=${2:-http://localhost:8080}
-docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.2.0 run /scripts/oauth-smoke.js
+docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.3.0 run /scripts/oauth-smoke.js
 '''
 
 [tasks.check-k6]
 description = "Parse and inspect the k6 module"
-run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.2.0 inspect /scripts/oauth-smoke.js"
+run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.3.0 inspect /scripts/oauth-smoke.js"
 
 [tasks.demo]
 description = "Run the OAuth2/OIDC demo"

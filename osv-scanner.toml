@@ -13,3 +13,8 @@ reason = "golang.org/x/crypto/openpgp is unmaintained and has no fixed version. 
 id = "GO-2026-6443"
 ignoreUntil = 2026-11-28
 reason = "google.golang.org/grpc is required transitively by the OpenTelemetry exporter stack, but govulncheck finds no vulnerable call in IdMagic. OSV reports only a development pseudo-version as fixed, so this suppression is revisited when a stable fixed release is available."
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-11-28
+reason = "braces 3.0.3 is the latest release and OSV lists no fixed version. It reaches frontend/bun.lock only through the shadcn development CLI (shadcn, @shadcn/registry, ts-morph -> fast-glob -> micromatch -> braces), which expands glob patterns written by repository developers, never input from IdMagic users. Revisit when braces publishes a fixed release or shadcn drops fast-glob."

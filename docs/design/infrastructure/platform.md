@@ -103,7 +103,7 @@ Google Cloud ではプロジェクトが IAM、課金、API の有効化の単�
 
 | 項目 | 内容 |
 | --- | --- |
-| バックエンドのベースイメージ | `gcr.io/distroless/static-debian12:nonroot`。CGO を使わない静的リンクの実行ファイルを置くため、シェルとパッケージ管理を含まないイメージで足りる |
+| バックエンドのベースイメージ | `gcr.io/distroless/static-debian13:nonroot`。CGO を使わない静的リンクの実行ファイルを置くため、シェルとパッケージ管理を含まないイメージで足りる |
 | バックエンドのイメージに入る実行ファイル | `idmagic`、`idmagic-worker`、`idmagic-batch` の三つ。`idmagic-seed` は入っていない |
 | フロントエンドのイメージ | Caddy のイメージに、ビルドした静的アセットを入れる |
 | レジストリ | Kubernetes のマニフェストは `ghcr.io` を参照する。Google Cloud では Artifact Registry を使う（仮） |

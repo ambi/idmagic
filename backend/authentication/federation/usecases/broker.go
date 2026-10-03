@@ -214,11 +214,11 @@ func emailDomainAllowed(email string, allowed []string) bool {
 	if len(allowed) == 0 {
 		return true
 	}
-	at := strings.LastIndex(email, "@")
-	if at < 0 {
+	_, after, found := strings.CutLast(email, "@")
+	if !found {
 		return false
 	}
-	domain := strings.ToLower(strings.TrimSpace(email[at+1:]))
+	domain := strings.ToLower(strings.TrimSpace(after))
 	for _, candidate := range allowed {
 		if domain == strings.ToLower(strings.TrimSpace(candidate)) {
 			return true

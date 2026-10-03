@@ -7,7 +7,7 @@ RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
-FROM caddy:2.11.4-alpine
+FROM caddy:2.11.6-alpine
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/dist /srv
 EXPOSE 8080

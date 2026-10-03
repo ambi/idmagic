@@ -215,8 +215,8 @@ func addSAML11Subject(parent *etree.Element, in AssertionInput) {
 // splitClaimType は claim 型 URI を AD FS 流の (namespace, name) に分割する。
 // 最後の '/' で分け、namespace は手前まで、name は後ろ。'/' が無ければ namespace は空。
 func splitClaimType(claimType string) (namespace, name string) {
-	if i := strings.LastIndex(claimType, "/"); i >= 0 {
-		return claimType[:i], claimType[i+1:]
+	if before, after, found := strings.CutLast(claimType, "/"); found {
+		return before, after
 	}
 	return "", claimType
 }

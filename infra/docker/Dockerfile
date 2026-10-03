@@ -12,7 +12,7 @@ RUN mkdir -p /out && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic-worker ./backend/cmd/idmagic-worker && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X idmagic/backend/shared/version.Version=${VERSION} -X idmagic/backend/shared/version.GitCommit=${GIT_COMMIT} -X idmagic/backend/shared/version.BuildDate=${BUILD_DATE}" -o /out/idmagic-batch ./backend/cmd/idmagic-batch
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 WORKDIR /app
 COPY --from=build /out/idmagic /app/idmagic
 
