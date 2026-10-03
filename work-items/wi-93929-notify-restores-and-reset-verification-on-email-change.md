@@ -8,8 +8,8 @@ priority: p1
 depends_on: [wi-17076-limit-specifications-to-external-contracts-written-once]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/principals/user/lifecycle.md, requirement: REQ-IDMANAGEMENT-049 }
-  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-045 }
+  - { path: docs/domain/identity-management/user/lifecycle.md, requirement: REQ-IDMANAGEMENT-049 }
+  - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-045 }
 ---
 
 # User の復元を下流へ通知し、管理者がメールアドレスを変えたら確認済みの状態を戻す

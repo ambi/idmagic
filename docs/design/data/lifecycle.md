@@ -39,7 +39,7 @@ CSV の成果物（エクスポートのファイル、インポートのペイ�
 
 利用者を物理的に削除しないのは、監査イベントの `sub` が指す先を失うと「誰が何をいつ行ったか」を再構成できなくなり、「削除済み」と「停止中」の区別も消えるからである。
 グループは監査イベントから参照されても、指す先のレコードが消えるだけで個人の情報は残らないので、匿名化を必要としない。
-利用者の削除は、猶予期間のある `PendingDeletion` を経て `Deleted` へ進む（[ユーザー](../../domain/identity-management/principals/user/README.md#userlifecycle)の状態遷移）。
+利用者の削除は、猶予期間のある `PendingDeletion` を経て `Deleted` へ進む（[ユーザー](../../domain/identity-management/user/README.md#userlifecycle)の状態遷移）。
 消去が満たすべき規範は [`GDPR-ERASURE`](../../domain/standards.md) が定める。
 
 ## テナントの退去

@@ -16,9 +16,9 @@ affected_spec:
   - { path: docs/domain/tenancy/resolution/scenarios.feature.md, requirement: REQ-TENANCY-011 }
   - { path: docs/domain/tenancy/quota/scenarios.feature.md, requirement: REQ-TENANCY-012 }
   - { path: docs/domain/tenancy/lifecycle/scenarios.feature.md, requirement: REQ-TENANCY-014 }
-  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/domain/identity-management/principals/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/domain/identity-management/groups/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/domain/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/domain/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
   - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-001 }
   - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-035 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }

@@ -8,8 +8,8 @@ priority: p1
 depends_on: [wi-17076-limit-specifications-to-external-contracts-written-once]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-044 }
-  - { path: docs/domain/identity-management/principals/user/lifecycle.md, requirement: REQ-IDMANAGEMENT-050 }
+  - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-044 }
+  - { path: docs/domain/identity-management/user/lifecycle.md, requirement: REQ-IDMANAGEMENT-050 }
 ---
 
 # 猶予期間を過ぎた User を定期ジョブで完全削除し、途中で失敗した完全削除を再実行で完了できるようにする

@@ -51,7 +51,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
     (グループ / ロール / アプリ割当の既定 deny)、招待の有効期限と再送、
     受諾時の JIT provisioning と [[wi-30-inbound-federation-and-identity-broker]] の
     account linking との関係、ゲストのアクセス期限 (expiration) と失効時の挙動
-    (無効化か削除か。`docs/domain/identity-management/principals/user/README.md` の `UserLifecycle` と整合)、
+    (無効化か削除か。`docs/domain/identity-management/user/README.md` の `UserLifecycle` と整合)、
     ゲストに見せない情報 (テナント内ディレクトリの閲覧制限) を記録する。
 - **specification**:
   - `IdManagement.models.User` に `user_kind` (Member / Guest) と、ゲスト固有の

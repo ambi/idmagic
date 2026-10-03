@@ -7,7 +7,7 @@ created_at: 2026-06-21
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-management/principals/account/README.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: docs/domain/identity-management/account/README.md, requirement: REQ-IDMANAGEMENT-017 }
   - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 

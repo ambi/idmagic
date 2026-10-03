@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-management/common/admin-access/README.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: docs/domain/identity-management/common/admin-access/README.md, requirement: REQ-IDMANAGEMENT-025 }
+  - { path: docs/domain/identity-management/admin-access/README.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: docs/domain/identity-management/admin-access/README.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
 # 委任管理 (スコープ付き admin ロール) を導入する

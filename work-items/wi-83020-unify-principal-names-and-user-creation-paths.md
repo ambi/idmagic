@@ -8,10 +8,10 @@ priority: p1
 depends_on: [wi-17076-limit-specifications-to-external-contracts-written-once]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-042 }
-  - { path: docs/domain/identity-management/principals/user/README.md, requirement: REQ-IDMANAGEMENT-043 }
-  - { path: docs/domain/identity-management/principals/agent/README.md, requirement: REQ-IDMANAGEMENT-073 }
-  - { path: docs/domain/identity-management/groups/group/README.md, requirement: REQ-IDMANAGEMENT-060 }
+  - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-042 }
+  - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-043 }
+  - { path: docs/domain/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-073 }
+  - { path: docs/domain/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-060 }
 ---
 
 # User、Group、Agent の名前を一つの値オブジェクトで比較し、User を作るすべての経路で同じ検証と動的グループの評価を行う

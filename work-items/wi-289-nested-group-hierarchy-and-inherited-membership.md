@@ -37,7 +37,7 @@ affected_spec:
 - **Entra ID**: nested group をサポート (ただしアプリ割当への継承には既知の制約がある)。
 - **Okta**: グループ階層を持たない (Okta は代わりに group rule で解く) — つまり
   「階層が無い」設計もあり得るが、Okta は強力な rule エンジンと push group で補っている。
-  IdMagic は動的グループ (`docs/domain/identity-management/groups/dynamic-group/` の CEL 動的グループ規則) を持つが、
+  IdMagic は動的グループ (`docs/domain/identity-management/dynamic-group/` の CEL 動的グループ規則) を持つが、
   LDAP/AD 取り込みの構造保持には rule では代替できない。
 
 本 WI は Group に単一親の階層を導入し、「継承メンバーシップ」と「継承ロール」を
@@ -49,7 +49,7 @@ affected_spec:
   - `docs/domain/identity-management/design/decisions.md` へ記録する決定 (グループ階層と継承の意味): 単一親 (森構造) に限定する理由、循環禁止と最大深さ、
     継承の方向 (子グループのメンバーは親グループの継承メンバーである、の向きを 1 つに固定する)、
     `effective_roles` の再定義 (直接ロール ∪ 所属グループとその祖先のロール)、
-    dynamic group (`docs/domain/identity-management/groups/dynamic-group/` の CEL 動的グループ規則) と階層の併用可否、
+    dynamic group (`docs/domain/identity-management/dynamic-group/` の CEL 動的グループ規則) と階層の併用可否、
     ApplicationAssignment の解決に継承メンバーシップを含めるか
     (`docs/domain/application/decisions.md` の fail-closed 割当と整合)、
     親削除時の子の扱い (拒否 / 昇格 / カスケード) を記録する。

@@ -8,7 +8,7 @@ priority: p3
 change_kind: feature
 affected_spec:
   - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-011 }
-  - { path: docs/domain/identity-management/groups/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/domain/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
 ---
 
 # アプリ権限台帳と SoD 競合ルールを導入する

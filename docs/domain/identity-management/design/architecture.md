@@ -33,10 +33,10 @@
 
 | スライス | 責務 | 機能仕様 | 依存先 |
 | --- | --- | --- | --- |
-| `user` | `User` の作成、変更、ライフサイクル、属性、メールアドレスの変更、User の CSV | [ユーザー](../principals/user/README.md)、[アカウントのセルフサービス](../principals/account/README.md)、[ユーザー CSV](../bulk-transfer/user-csv/README.md) | ルート、`group`、`Tenancy`、`Jobs`、`Audit`、`OAuth2` と `Authentication` |
-| `group` | `Group` の作成と変更、手動と動的のメンバーシップ、Group とメンバーシップの CSV | [グループ](../groups/group/README.md)、[動的グループ](../groups/dynamic-group/README.md)、[グループ CSV](../bulk-transfer/group-csv/README.md) | ルート、`user`、`Tenancy`、`Jobs` |
-| `agent` | `Agent` の登録、資格情報のバインド、ライフサイクル | [エージェント](../principals/agent/README.md) | ルート、`user`、`Tenancy`、`OAuth2` |
-| ルート | CSV の転送ポリシーと解析器、成果物ストア、データエクスポート、ロールの割り当ての判定、ドメインイベント | [データエクスポート](../bulk-transfer/data-export/README.md)、[ロール](../common/roles/README.md) | `Jobs` |
+| `user` | `User` の作成、変更、ライフサイクル、属性、メールアドレスの変更、User の CSV | [ユーザー](../user/README.md)、[アカウントのセルフサービス](../account/README.md)、[ユーザー CSV](../user-csv/README.md) | ルート、`group`、`Tenancy`、`Jobs`、`Audit`、`OAuth2` と `Authentication` |
+| `group` | `Group` の作成と変更、手動と動的のメンバーシップ、Group とメンバーシップの CSV | [グループ](../group/README.md)、[動的グループ](../dynamic-group/README.md)、[グループ CSV](../group-csv/README.md) | ルート、`user`、`Tenancy`、`Jobs` |
+| `agent` | `Agent` の登録、資格情報のバインド、ライフサイクル | [エージェント](../agent/README.md) | ルート、`user`、`Tenancy`、`OAuth2` |
+| ルート | CSV の転送ポリシーと解析器、成果物ストア、データエクスポート、ロールの割り当ての判定、ドメインイベント | [データエクスポート](../data-export/README.md)、[ロール](../roles/README.md) | `Jobs` |
 
 各スライスとルートは、同じ層で構成する。
 
@@ -54,9 +54,9 @@
 | --- | --- | --- | --- |
 | 管理 API とセルフサービス API | HTTP の要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能の設計 |
 | CSV のプレビューと適用 | 管理者の要求で `Jobs` のジョブを作る | `worker` | [CSV の往復変換](csv-transfer.md) |
-| データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](../bulk-transfer/data-export/README.md) |
+| データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](../data-export/README.md) |
 | ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](audit-events.md) |
-| CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](../bulk-transfer/csv-transfer/README.md#成果物の保持) |
+| CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](../csv-transfer/README.md#成果物の保持) |
 | ほかの Context からの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかの Context からの User の停止](#ほかの-context-からの-user-の停止) |
 
 ### ほかの Context からの User の停止

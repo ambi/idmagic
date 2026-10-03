@@ -89,7 +89,7 @@ CSV 以外の一括変更の窓口（API の一括操作など）を設けて、
 
 | 規則 | 機能仕様 |
 | --- | --- |
-| CSV のプレビューと適用の規則 | [ユーザー CSV](../bulk-transfer/user-csv/README.md)、[グループ CSV](../bulk-transfer/group-csv/README.md) |
+| CSV のプレビューと適用の規則 | [ユーザー CSV](../user-csv/README.md)、[グループ CSV](../group-csv/README.md) |
 
 ## CSV に現れない Group とメンバーシップを変えない
 
@@ -120,7 +120,7 @@ CSV のインポートは、行ごとに宣言した意図だけを実行する�
 
 | 規則 | 機能仕様 |
 | --- | --- |
-| REQ-IDMANAGEMENT-028、REQ-IDMANAGEMENT-030 | [グループ CSV](../bulk-transfer/group-csv/README.md) |
+| REQ-IDMANAGEMENT-028、REQ-IDMANAGEMENT-030 | [グループ CSV](../group-csv/README.md) |
 
 ## 予約ロールを書き込みが新しく加える分だけで判定する
 
@@ -153,7 +153,7 @@ CSV には、無編集のエクスポートを再適用すると全行が `uncha
 
 | 規則 | 機能仕様 |
 | --- | --- |
-| REQ-IDMANAGEMENT-032 `system_admin` は制御面テナントの User と Group にだけ割り当てられる | [ロール](../common/roles/README.md) |
+| REQ-IDMANAGEMENT-032 `system_admin` は制御面テナントの User と Group にだけ割り当てられる | [ロール](../roles/README.md) |
 
 ## Agent を OAuth2Client に束縛する第 3 のプリンシパルとする
 
@@ -185,7 +185,7 @@ Agent に `OAuth2Client` では表せない資格情報（ワークロードの�
 
 | 規則 | 機能仕様 |
 | --- | --- |
-| REQ-IDMANAGEMENT-009、REQ-IDMANAGEMENT-074 | [エージェント](../principals/agent/README.md) |
+| REQ-IDMANAGEMENT-009、REQ-IDMANAGEMENT-074 | [エージェント](../agent/README.md) |
 
 ## User の削除を物理削除ではなく Tombstone で行う
 
@@ -216,5 +216,5 @@ User の完全削除は、レコードを消さずに、再識別と再認証に
 
 | 規則 | 機能仕様 |
 | --- | --- |
-| REQ-IDMANAGEMENT-013 管理者はユーザーを完全削除できる | [ユーザーのライフサイクルの操作](../principals/user/lifecycle.md) |
-| REQ-IDMANAGEMENT-050 User の完全削除は匿名化であり、削除済みの User には何もしない | [ユーザーのライフサイクルの操作](../principals/user/lifecycle.md) |
+| REQ-IDMANAGEMENT-013 管理者はユーザーを完全削除できる | [ユーザーのライフサイクルの操作](../user/lifecycle.md) |
+| REQ-IDMANAGEMENT-050 User の完全削除は匿名化であり、削除済みの User には何もしない | [ユーザーのライフサイクルの操作](../user/lifecycle.md) |
