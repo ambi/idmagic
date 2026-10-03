@@ -335,6 +335,7 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AttrSchemaRepo: d.AttrSchemaRepo,
 		UserMutationCommitter: d.UserMutationCommitter,
 		ProvisioningNotifier:  d.ProvisioningNotifier,
+		AgentRepo:             d.AgentRepo,
 		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, ApprovalRequestStore: d.ApprovalRequestStore, MfaFactorRepo: d.MfaFactorRepo,
 		TrustedDeviceRepo:      d.TrustedDeviceRepo,

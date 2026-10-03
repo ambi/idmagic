@@ -128,7 +128,7 @@ Primary actor: `TenantAdministrator`
 
 - Given 有効化済みの退職者ワークフローが `disable_user`、`remove_group_member`、`send_email` を定義順に持つ
 - And 対象 User に検証済みのプライマリメールアドレスがない
-- When 対象 User に退職相当のステータス変更が発生する
+- When 対象 User の属性が退職を表す値に変わる
 - Then WorkflowRun が作成される
 - Then `disable_user` と `remove_group_member` のステップは `changed` になる
 - Then `send_email` のステップはブロックされた失敗になる

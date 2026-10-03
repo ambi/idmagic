@@ -79,7 +79,7 @@ func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
-	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService()
 
 	e := echo.New()
@@ -176,7 +176,7 @@ func newScimHarness(tokenOptions ...apitokenusecases.Option) scimHarness {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService(tokenOptions...)
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
@@ -489,7 +489,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), Emit: func(spec.DomainEvent) {}}
@@ -667,7 +667,7 @@ func TestScimGroupSync(t *testing.T) {
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
 
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}

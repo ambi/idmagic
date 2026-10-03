@@ -17,6 +17,8 @@ import (
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_memory"
 	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -54,6 +56,7 @@ type userRulesFixture struct {
 	quota    *tenancymemory.QuotaRepository
 	notifier *recordingProvisioningNotifier
 	events   *[]spec.DomainEvent
+	agents   *agentmemory.AgentRepository
 }
 
 func newUserRulesFixture(t *testing.T) *userRulesFixture {
@@ -62,9 +65,11 @@ func newUserRulesFixture(t *testing.T) *userRulesFixture {
 		users: usermemory.NewUserRepository(), sessions: sessionmemory.NewSessionStore(),
 		devices: trusteddevicememory.NewTrustedDeviceRepository(), quota: tenancymemory.NewQuotaRepository(),
 		notifier: &recordingProvisioningNotifier{}, events: &[]spec.DomainEvent{},
+		agents: agentmemory.NewAgentRepository(),
 	}
 	f.deps = userusecases.AdminUserDeps{
 		UserRepo: f.users, SessionStore: f.sessions, TrustedDeviceRepo: f.devices, QuotaRepo: f.quota,
+		AgentRepo:      f.agents,
 		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		ProvisioningNotifier: f.notifier,
 		Emit:                 func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
@@ -602,4 +607,160 @@ func TestDeleteUserDoesNothingForAnAlreadyDeletedUser(t *testing.T) {
 	if deleted := f.eventsOf("UserDeleted"); len(deleted) != 1 {
 		t.Fatalf("UserDeleted=%d, want 1", len(deleted))
 	}
+}
+
+// REQ-IDMANAGEMENT-081 の主要な使い方：所有者の User を止める 3 つの操作のどれでも、所有する Agent が止まる。
+//
+//spec:covers EX-IDMANAGEMENT-081-01: 所有者の無効化、削除の予約、完全削除が、所有する Active の Agent を Disabled にして AgentDisabled を発行し、Killed の Agent と他人の Agent を変えないこと。
+func TestStoppingAUserDisablesTheAgentsTheyOwn(t *testing.T) {
+	stops := map[string]func(*userRulesFixture, string) error{
+		"無効化": func(f *userRulesFixture, id string) error {
+			_, err := userusecases.SetUserDisabled(context.Background(), f.deps, "admin", id, true, userRulesNow)
+			return err
+		},
+		"削除の予約": func(f *userRulesFixture, id string) error {
+			return userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+		},
+		"完全削除": func(f *userRulesFixture, id string) error {
+			return userusecases.DeleteUser(context.Background(), f.deps, userusecases.DeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+		},
+	}
+	for name, stop := range stops {
+		t.Run(name, func(t *testing.T) {
+			f := newUserRulesFixture(t)
+			alice := f.seed("alice", nil)
+			f.seed("bob", nil)
+			f.seedAgent("deploy-bot", alice.ID, idmdomain.AgentStatusActive)
+			f.seedAgent("old-bot", alice.ID, idmdomain.AgentStatusKilled)
+			f.seedAgent("bob-bot", "bob", idmdomain.AgentStatusActive)
+
+			if err := stop(f, alice.ID); err != nil {
+				t.Fatal(err)
+			}
+			for id, want := range map[string]idmdomain.AgentStatus{
+				"deploy-bot": idmdomain.AgentStatusDisabled,
+				"old-bot":    idmdomain.AgentStatusKilled,
+				"bob-bot":    idmdomain.AgentStatusActive,
+			} {
+				if got := f.agentStatus(t, id); got != want {
+					t.Fatalf("Agent %s の状態=%s, want %s", id, got, want)
+				}
+			}
+			var disabled []string
+			for _, event := range *f.events {
+				if e, ok := event.(*idmdomain.AgentDisabled); ok {
+					disabled = append(disabled, e.AgentID)
+				}
+			}
+			if len(disabled) != 1 || disabled[0] != "deploy-bot" {
+				t.Fatalf("AgentDisabled=%v, want [deploy-bot]", disabled)
+			}
+		})
+	}
+}
+
+//spec:covers EX-IDMANAGEMENT-081-04: 削除の予約で止めた Agent が、所有者の復元の後も Disabled のまま残ること。
+func TestRestoringTheOwnerLeavesTheirAgentsDisabled(t *testing.T) {
+	f := newUserRulesFixture(t)
+	alice := f.seed("alice", nil)
+	f.seedAgent("deploy-bot", alice.ID, idmdomain.AgentStatusActive)
+
+	if err := userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: alice.ID, Now: userRulesNow}); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.agentStatus(t, "deploy-bot"); got != idmdomain.AgentStatusDisabled {
+		t.Fatalf("削除の予約の後の Agent の状態=%s, want disabled", got)
+	}
+	restored, err := userusecases.RestoreUser(context.Background(), f.deps, "admin", alice.ID, userRulesNow.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Lifecycle.Status != idmdomain.UserStatusActive {
+		t.Fatalf("復元の後の User の状態=%s, want active", restored.Lifecycle.Status)
+	}
+	if got := f.agentStatus(t, "deploy-bot"); got != idmdomain.AgentStatusDisabled {
+		t.Fatalf("復元の後の Agent の状態=%s, want disabled", got)
+	}
+}
+
+//spec:covers EX-IDMANAGEMENT-081-05: 止まっている所有者への無効化と削除の予約の再実行が、User とそのイベントを変えずに、残っている Active の Agent だけを Disabled にすること。
+func TestStoppingAStoppedUserAgainDisablesTheAgentsLeftActive(t *testing.T) {
+	stops := map[string]struct {
+		status idmdomain.UserStatus
+		stop   func(*userRulesFixture, string) error
+	}{
+		"無効化": {idmdomain.UserStatusDisabled, func(f *userRulesFixture, id string) error {
+			_, err := userusecases.SetUserDisabled(context.Background(), f.deps, "admin", id, true, userRulesNow)
+			return err
+		}},
+		"削除の予約": {idmdomain.UserStatusPendingDeletion, func(f *userRulesFixture, id string) error {
+			return userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+		}},
+	}
+	for name, tc := range stops {
+		t.Run(name, func(t *testing.T) {
+			f := newUserRulesFixture(t)
+			alice := f.seed("alice", func(u *userdomain.User) { u.Lifecycle.Status = tc.status })
+			f.seedAgent("deploy-bot", alice.ID, idmdomain.AgentStatusActive)
+			f.seedAgent("old-bot", alice.ID, idmdomain.AgentStatusDisabled)
+
+			if err := tc.stop(f, alice.ID); err != nil {
+				t.Fatal(err)
+			}
+			if got := f.agentStatus(t, "deploy-bot"); got != idmdomain.AgentStatusDisabled {
+				t.Fatalf("deploy-bot の状態=%s, want disabled", got)
+			}
+			user, _ := f.users.FindBySub(context.Background(), alice.ID)
+			if user.Lifecycle.Status != tc.status {
+				t.Fatalf("User の状態=%s, want %s", user.Lifecycle.Status, tc.status)
+			}
+			var types []string
+			for _, event := range *f.events {
+				types = append(types, event.EventType())
+			}
+			if len(types) != 1 || types[0] != "AgentDisabled" {
+				t.Fatalf("events=%v, want [AgentDisabled]", types)
+			}
+		})
+	}
+}
+
+// unreadableAgents は Agent の一覧の読み取りだけを失敗させる。
+type unreadableAgents struct {
+	*agentmemory.AgentRepository
+}
+
+var errAgentsUnavailable = errors.New("agents unavailable")
+
+func (unreadableAgents) ListAll(context.Context, string) ([]*agentdomain.Agent, error) {
+	return nil, errAgentsUnavailable
+}
+
+// 伝播が失敗したことを、止まっている User への再実行でも呼び出し側へ返す。成功として返すと、回収したと誤認する。
+func TestStoppingAStoppedUserAgainReportsAPropagationFailure(t *testing.T) {
+	f := newUserRulesFixture(t)
+	alice := f.seed("alice", func(u *userdomain.User) { u.Lifecycle.Status = idmdomain.UserStatusDisabled })
+	f.deps.AgentRepo = unreadableAgents{f.agents}
+	if _, err := userusecases.SetUserDisabled(context.Background(), f.deps, "admin", alice.ID, true, userRulesNow); !errors.Is(err, errAgentsUnavailable) {
+		t.Fatalf("err=%v, want %v", err, errAgentsUnavailable)
+	}
+}
+
+func (f *userRulesFixture) seedAgent(id, ownerUserID string, status idmdomain.AgentStatus) {
+	if err := f.agents.Save(context.Background(), &agentdomain.Agent{
+		ID: id, TenantID: tenancydomain.DefaultTenantID, Name: id, Kind: idmdomain.AgentKindAutonomous,
+		OwnerUserID: ownerUserID, Status: status, Roles: []string{},
+		CreatedAt: userRulesNow.Add(-time.Hour), UpdatedAt: userRulesNow.Add(-time.Hour),
+	}); err != nil {
+		panic(err)
+	}
+}
+
+func (f *userRulesFixture) agentStatus(t *testing.T, id string) idmdomain.AgentStatus {
+	t.Helper()
+	agent, err := f.agents.FindByID(context.Background(), tenancydomain.DefaultTenantID, id)
+	if err != nil || agent == nil {
+		t.Fatalf("FindByID(%s)=(%v,%v)", id, agent, err)
+	}
+	return agent.Status
 }

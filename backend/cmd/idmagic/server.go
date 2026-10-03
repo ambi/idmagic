@@ -26,6 +26,7 @@ import (
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
+	"github.com/ambi/idmagic/backend/sourcing"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
@@ -217,7 +218,7 @@ func Run() error {
 		JWKResolver:      jwkResolver,
 		WsFederation:     deps.WsFederation,
 		Saml:             deps.Saml,
-		Sourcing:         deps.Sourcing,
+		Sourcing:         sourcingModule(deps, emit),
 		FederationSigner: federationSigner,
 		Application:      deps.Application,
 		ApiTokens:        deps.ApiTokens,
@@ -310,3 +311,14 @@ func healthFeatureMetadata(metadata bootstrap.FeatureRuntimeMetadata) httpsuppor
 	}
 	return httpsupport.FeatureRuntimeMetadata{SchemaVersion: metadata.SchemaVersion, Enabled: enabled}
 }
+
+// sourcingModule は、SCIM の取り込みが User を止めるときに通す IdManagement の操作を、Sourcing へ渡す。
+// イベントの出力先は NewEmitFunc の後でしか決まらないので、ここで組み立てる。
+func sourcingModule(deps *bootstrap.Dependencies, emit func(spec.DomainEvent)) sourcing.Module {
+	module := deps.Sourcing
+	module.UserLifecycle = deps.UserLifecycleCommands(emit, scimActor)
+	return module
+}
+
+// scimActor は、SCIM の取り込みが止めた User と Agent の監査イベントに actor として記録する名前である。
+const scimActor = "scim"

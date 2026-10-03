@@ -33,13 +33,13 @@ func (r *AgentRevocationEpochRepository) FindByAgent(_ context.Context, tenantID
 	return cloneRevocationEpoch(e), nil
 }
 
-// Advance は epoch を fail-closed に前進させる: 既存 epoch が存在し、新しい epoch が
-// それ以降でなければ ErrEpochNotAdvancing を返し既存値を保持する (単調増加保証)。
+// Advance は epoch を fail-closed に前進させる: 既存 epoch が存在し、新しい epoch が既存より
+// 後でなければ ErrEpochNotAdvancing を返し既存値を保持する (単調増加保証)。
 func (r *AgentRevocationEpochRepository) Advance(_ context.Context, epoch ssdomain.AgentRevocationEpoch) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := sharedmem.TenantKey(epoch.TenantID, epoch.AgentID)
-	if existing := r.epochs[key]; existing != nil && epoch.Epoch.Before(existing.Epoch) {
+	if existing := r.epochs[key]; existing != nil && !epoch.Epoch.After(existing.Epoch) {
 		return ssdomain.ErrEpochNotAdvancing
 	}
 	r.epochs[key] = cloneRevocationEpoch(&epoch)

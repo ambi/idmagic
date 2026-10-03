@@ -12,7 +12,7 @@ import (
 // Agent が未失効の場合 FindByAgent は (nil, nil) を返す。
 type AgentRevocationEpochRepository interface {
 	FindByAgent(ctx context.Context, tenantID, agentID string) (*ssdomain.AgentRevocationEpoch, error)
-	// Advance は epoch を fail-closed に前進させる。既存 epoch が存在し、それ以降の
+	// Advance は epoch を fail-closed に前進させる。既存 epoch が存在し、それより後の
 	// 時刻でなければ ErrEpochNotAdvancing を返し既存値を保持する (単調増加保証)。
 	Advance(ctx context.Context, epoch ssdomain.AgentRevocationEpoch) error
 }

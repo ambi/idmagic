@@ -10,4 +10,4 @@
 
 ## エポックを進める操作
 
-KillAgent、DisableAgent、UnbindAgentCredential、所有者（`owner_user_id`）の無効化または削除、受理済みの SecurityEvent のいずれかを契機として、対象 Agent 群の失効エポックを進める。所有者のオフボーディングでは、対象テナント内で `owner_user_id` が一致するすべての Agent を一括して進める。失効エポックは単調にしか進まない。既存値より前の時刻へ戻す経路が無いことが、遅れて到着した SET や再送によって一度失効させたトークンが再び有効にならないことを保証する。
+KillAgent、DisableAgent、UnbindAgentCredential、所有者（`owner_user_id`）の無効化または削除、受理済みの SecurityEvent のいずれかを契機として、対象 Agent 群の失効エポックを進める。所有者のオフボーディングでは、対象テナント内で `owner_user_id` が一致するすべての Agent を一括して進める。失効エポックは単調にしか進まない。既存値と同じ時刻への前進も進めず、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行しない。所有者の停止と、それに伴う Agent の無効化（IdManagement の `AgentDisabled`）は同じ時刻を持つので、Agent ごとの失効は一度だけ記録され、理由は先に届いた所有者の停止になる。既存値より前の時刻へ戻す経路が無いことが、遅れて到着した SET や再送によって一度失効させたトークンが再び有効にならないことを保証する。

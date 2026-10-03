@@ -18,6 +18,9 @@ import (
 
 type Module struct {
 	ScimRepo ports.ScimRepository
+	// UserLifecycle は、SCIM が User を止める、削除を予約するときに通す IdManagement の操作である。
+	// イベントの出力先が決まった後で、組み立ての地点が設定する。
+	UserLifecycle ports.UserLifecycle
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
@@ -26,7 +29,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 ) {
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{
 		Deps: deps, Authenticator: authenticator,
-		Usecases:              scimusecases.NewUsecases(m.ScimRepo, userRepo, groupRepo, emit),
+		Usecases:              scimusecases.NewUsecases(m.ScimRepo, userRepo, groupRepo, m.UserLifecycle, emit),
 		ApiTokenAuthenticator: apiTokenAuthenticator,
 	})
 }

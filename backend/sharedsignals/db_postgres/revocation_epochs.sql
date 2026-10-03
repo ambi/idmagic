@@ -8,5 +8,5 @@ VALUES ($1,$2,$3,$4,$5,$6)
 ON CONFLICT (agent_id) DO UPDATE SET
  epoch=EXCLUDED.epoch,reason=EXCLUDED.reason,advanced_at=EXCLUDED.advanced_at,
  source_event_id=EXCLUDED.source_event_id
- WHERE EXCLUDED.epoch >= agent_revocation_epochs.epoch
+ WHERE EXCLUDED.epoch > agent_revocation_epochs.epoch
 RETURNING agent_id,tenant_id,epoch,reason,advanced_at,source_event_id;

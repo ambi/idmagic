@@ -2776,6 +2776,7 @@ model EnableAgentError404 {
 
 union EnableAgentError409Body {
   IdMagic.Contract.AgentKilledError,
+  IdMagic.Contract.AgentOwnerInactiveError,
 }
 
 model EnableAgentError409 {

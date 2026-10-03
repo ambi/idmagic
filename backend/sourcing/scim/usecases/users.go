@@ -125,13 +125,16 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	user.FamilyName = &w.FamilyName
 	user.Name = &w.Formatted
 	user.Email = &w.Email
-	u.setUserActive(user, w.Active)
 	if err := u.applyEnterpriseExtension(ctx, tenantID, user, w); err != nil {
 		return nil, err
 	}
 	user.UpdatedAt = time.Now()
 
 	if err := u.UserRepo.Save(ctx, user); err != nil {
+		return nil, err
+	}
+	user, err = u.applyActive(ctx, tenantID, user, w.Active)
+	if err != nil {
 		return nil, err
 	}
 
@@ -154,7 +157,12 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 		return nil, err
 	}
 
+	active := user.Lifecycle.Status == idmdomain.UserStatusActive
 	for _, op := range ops {
+		if op.Attr == domain.UserAttrActive {
+			active = patchActiveValue(op)
+			continue
+		}
 		if err := u.applyUserPatchOp(ctx, tenantID, user, op); err != nil {
 			return nil, err
 		}
@@ -162,6 +170,10 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 
 	user.UpdatedAt = time.Now()
 	if err := u.UserRepo.Save(ctx, user); err != nil {
+		return nil, err
+	}
+	user, err = u.applyActive(ctx, tenantID, user, active)
+	if err != nil {
 		return nil, err
 	}
 
@@ -218,13 +230,6 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 		}
 		email, _ := op.Value.(string)
 		user.Email = &email
-	case domain.UserAttrActive:
-		if isRemoveOp {
-			u.setUserActive(user, true)
-			return nil
-		}
-		active, _ := op.Value.(bool)
-		u.setUserActive(user, active)
 	case domain.UserAttrEmployeeNumber:
 		ensureAttributes(user)
 		if isRemoveOp {
@@ -336,15 +341,33 @@ func patchStringField(op domain.UserPatchOp) *string {
 	return &s
 }
 
-func (u *Usecases) setUserActive(user *userdomain.User, active bool) {
-	now := time.Now()
-	if active && user.Lifecycle.Status != idmdomain.UserStatusActive {
-		user.Lifecycle.Status = idmdomain.UserStatusActive
-		user.Lifecycle.StatusChangedAt = &now
-	} else if !active && user.Lifecycle.Status == idmdomain.UserStatusActive {
-		user.Lifecycle.Status = idmdomain.UserStatusDisabled
-		user.Lifecycle.StatusChangedAt = &now
+// patchActiveValue は active への PATCH の操作が求める値を返す。remove は既定値の true に戻す。
+func patchActiveValue(op domain.UserPatchOp) bool {
+	if op.Op == "remove" {
+		return true
 	}
+	active, _ := op.Value.(bool)
+	return active
+}
+
+// applyActive は、保存済みの User の active を求める値へ合わせ、応答へ射影する User を返す。
+// 無効化と再有効化は IdManagement の操作へ渡し、User の状態を直接保存しない。止めることに伴う
+// イベント、端末の失効、所有する Agent の無効化を、管理 API で止めたときと揃えるためである。
+func (u *Usecases) applyActive(ctx context.Context, tenantID string, user *userdomain.User, active bool) (*userdomain.User, error) {
+	if active == (user.Lifecycle.Status == idmdomain.UserStatusActive) {
+		return user, nil
+	}
+	if _, err := u.UserLifecycle.SetUserDisabled(ctx, tenantID, user.ID, !active, time.Now()); err != nil {
+		return nil, err
+	}
+	updated, err := u.UserRepo.FindBySub(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, ErrNotFound
+	}
+	return updated, nil
 }
 
 func (u *Usecases) DeleteUser(ctx context.Context, tenantID, scimID string) error {
@@ -354,13 +377,8 @@ func (u *Usecases) DeleteUser(ctx context.Context, tenantID, scimID string) erro
 		return err
 	}
 
-	// Soft Delete: status = PendingDeletion
-	now := time.Now()
-	user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
-	user.Lifecycle.StatusChangedAt = &now
-	user.UpdatedAt = now
-
-	return u.UserRepo.Save(ctx, user)
+	// 削除は予約にとどめ、IdManagement の操作へ渡す。User は PendingDeletion になる。
+	return u.UserLifecycle.ScheduleUserDeletion(ctx, tenantID, user.ID, time.Now())
 }
 
 func (u *Usecases) ListUsers(ctx context.Context, tenantID string, query ListQuery) (ListResult, error) {

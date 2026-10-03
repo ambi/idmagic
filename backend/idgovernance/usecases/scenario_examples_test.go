@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -124,6 +125,9 @@ type governanceFixture struct {
 	jobs        *jobsmemory.JobRepository
 	sender      *email_memory.NoopEmailSender
 	events      *eventLog
+	// lifecycle は disable_user と enable_user の手順が呼ぶ操作である。nil なら worker と同じく
+	// IdManagement へのアダプターを使う。
+	lifecycle igports.UserLifecycle
 }
 
 func newGovernanceFixture(t *testing.T) *governanceFixture {
@@ -160,9 +164,30 @@ func (f *governanceFixture) executor() usecases.LifecycleWorkflowExecutorDeps {
 		RunRepo: f.runs, WorkflowRepo: f.workflows, UserRepo: f.users, GroupRepo: f.groups,
 		ApplicationRepo: f.apps, AssignmentRepo: f.assignments,
 		ApplicationAssignments: desiredStateAssignments(f.apps, f.assignments, f.users, f.groups, f.events.emit),
+		UserLifecycle:          f.userLifecycle(),
 		Notifier:               &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
 		Emit:                   f.events.emit,
 	}
+}
+
+func (f *governanceFixture) userLifecycle() igports.UserLifecycle {
+	if f.lifecycle != nil {
+		return f.lifecycle
+	}
+	return userusecases.UserLifecycleCommands{
+		Deps:  userusecases.AdminUserDeps{UserRepo: f.users, Emit: f.events.emit},
+		Actor: "lifecycle-workflow",
+	}
+}
+
+// recordingUserLifecycle は手順が呼んだ User の操作を記録し、User を変えない。
+type recordingUserLifecycle struct {
+	calls []string
+}
+
+func (r *recordingUserLifecycle) SetUserDisabled(_ context.Context, tenantID, userID string, disabled bool, _ time.Time) (bool, error) {
+	r.calls = append(r.calls, fmt.Sprintf("%s/%s disabled=%v", tenantID, userID, disabled))
+	return true, nil
 }
 
 // desiredStateAssignments は worker と同じく Application の Module から割り当て操作を組み立てる。
@@ -405,7 +430,7 @@ func TestUnchangedAttributeValueDoesNotTriggerTheWorkflow(t *testing.T) {
 	onlyRun(t, f.runsOf(t, workflow.ID))
 }
 
-//spec:covers EX-IDGOVERNANCE-008-01: 退職相当のステータス変更で作られた WorkflowRun は、検証済みメールアドレスが無くても disable_user と remove_group_member を changed にして実際にアクセスを剥奪し、send_email はブロックされた失敗、WorkflowRun は partially_failed になり、LifecycleWorkflowRunPartiallyFailed と LifecycleWorkflowStepFailed が発行されることを固定する。
+//spec:covers EX-IDGOVERNANCE-008-01: 退職を表す属性の変化で作られた WorkflowRun は、検証済みメールアドレスが無くても disable_user と remove_group_member を changed にして実際にアクセスを剥奪し、send_email はブロックされた失敗、WorkflowRun は partially_failed になり、LifecycleWorkflowRunPartiallyFailed と LifecycleWorkflowStepFailed が発行されることを固定する。
 func TestLeaverWorkflowRevokesAccessEvenWhenTheNotificationIsBlocked(t *testing.T) {
 	f := newGovernanceFixture(t)
 	f.seedGroup(t, "tenant-a", "payroll")
@@ -413,17 +438,16 @@ func TestLeaverWorkflowRevokesAccessEvenWhenTheNotificationIsBlocked(t *testing.
 	if ok, err := f.groups.AddMember(f.ctx, &groupdomain.GroupMember{GroupID: "payroll", UserID: alice.ID, CreatedAt: f.now}); err != nil || !ok {
 		t.Fatalf("seed membership = %v, %v", ok, err)
 	}
-	active, leaving := idmdomain.UserStatusActive, idmdomain.UserStatusPendingDeletion
+	// 退職は属性の変化で表す。User を Active のまま残す状態の変化はないので、状態の変化を契機にすると
+	// disable_user が止める User がいない。
 	workflow := f.enabledWorkflow(t,
-		igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserStatusChanged, FromStatus: &active, ToStatus: &leaving},
+		igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserAttributesChanged, WatchedAttributes: []string{"department"}},
 		igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser},
 		igdomain.WorkflowAction{Kind: igdomain.WorkflowActionRemoveGroupMember, GroupID: "payroll"},
 		igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSendEmail, TemplateKey: "farewell"},
 	)
 
-	if err := userusecases.SoftDeleteUser(f.ctx, f.userDeps(), userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: alice.ID, Now: f.now}); err != nil {
-		t.Fatal(err)
-	}
+	f.setDepartment(t, alice.ID, "Leavers")
 	run := onlyRun(t, f.runsOf(t, workflow.ID))
 	f.runWorker(t, run)
 
@@ -801,5 +825,26 @@ func TestSavingValidatesReferencesInTheWorkflowsTenant(t *testing.T) {
 		if _, err := usecases.CreateLifecycleWorkflow(f.ctx, unwired, usecases.CreateLifecycleWorkflowInput{Name: "unwired-" + string(action.Kind), Trigger: filter("email"), Actions: []igdomain.WorkflowAction{action}, Now: f.now}); !errors.Is(err, usecases.ErrLifecycleWorkflowInvalidReference) {
 			t.Fatalf("create without a %s repository = %v, want it refused", action.Kind, err)
 		}
+	}
+}
+
+// REQ-IDMANAGEMENT-081 の主要な使い方のうち、ワークフローの経路。disable_user の手順が User を直接保存すると、
+// IdManagement のイベントと所有する Agent の無効化を迂回する。
+//
+//spec:covers EX-IDMANAGEMENT-081-02: disable_user の手順が User を直接保存せず、IdManagement の操作として無効化を要求すること。
+func TestDisableUserActionGoesThroughTheUserLifecyclePort(t *testing.T) {
+	f := newGovernanceFixture(t)
+	recorder := &recordingUserLifecycle{}
+	f.lifecycle = recorder
+	workflow := f.enabledWorkflow(t, igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser})
+	alice := f.createUser(t, "alice")
+	f.runWorker(t, onlyRun(t, f.runsOf(t, workflow.ID)))
+
+	if want := []string{"tenant-a/" + alice.ID + " disabled=true"}; !slices.Equal(recorder.calls, want) {
+		t.Fatalf("calls=%v, want %v", recorder.calls, want)
+	}
+	stored, err := f.users.FindBySub(f.ctx, alice.ID)
+	if err != nil || stored.Lifecycle.EffectiveStatus() != idmdomain.UserStatusActive {
+		t.Fatalf("手順が User を直接保存した: %+v, %v", stored, err)
 	}
 }

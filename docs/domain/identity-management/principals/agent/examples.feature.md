@@ -129,3 +129,49 @@
 - Given Agent "deploy-bot" は `Killed` である
 - When 管理者が "deploy-bot" を削除する
 - Then 削除は `agent_killed` で拒否され、"deploy-bot" は残る
+
+## Rule: REQ-IDMANAGEMENT-082 所有者の User が止まっている Agent は再有効化できない
+
+### Example: EX-IDMANAGEMENT-082-01 所有者が無効化された Agent の再有効化
+
+- Given Agent "deploy-bot" の所有者 "alice" は `Disabled` であり、"deploy-bot" は `Disabled` である
+- When 管理者が "deploy-bot" を再有効化する
+- Then 操作は `agent_owner_inactive` で拒否され、"deploy-bot" は `Disabled` のままである
+
+## Rule: REQ-IDMANAGEMENT-081 所有者の User が止まると、その User が所有する Agent を無効化する
+
+### Example: EX-IDMANAGEMENT-081-01 管理者による所有者の無効化
+
+- Given ユーザー "alice" は `Active` の Agent "deploy-bot" と `Killed` の Agent "old-bot" を所有する
+- When 管理者が "alice" を無効化する
+- Then "deploy-bot" は `Disabled` になり、`AgentDisabled` が発行される
+- And "old-bot" は `Killed` のままである
+
+### Example: EX-IDMANAGEMENT-081-02 ライフサイクルワークフローによる所有者の無効化
+
+- Given ユーザー "alice" は `Active` の Agent "deploy-bot" を所有する
+- When ライフサイクルワークフローの `disable_user` の手順が "alice" を無効化する
+- Then "alice" は `Disabled` になり、`UserDisabled` が発行される
+- And "deploy-bot" は `Disabled` になる
+
+### Example: EX-IDMANAGEMENT-081-03 SCIM による所有者の無効化
+
+- Given ユーザー "alice" は `Active` の Agent "deploy-bot" を所有する
+- When SCIM の取り込みが "alice" を `active=false` にする
+- Then "alice" は `Disabled` になり、`UserDisabled` が発行される
+- And "deploy-bot" は `Disabled` になる
+
+### Example: EX-IDMANAGEMENT-081-04 所有者の削除の予約と再開
+
+- Given ユーザー "alice" は `Active` の Agent "deploy-bot" を所有する
+- When 管理者が "alice" の削除を予約する
+- Then "deploy-bot" は `Disabled` になる
+- When 管理者が "alice" を復元する
+- Then "deploy-bot" は `Disabled` のままである
+
+### Example: EX-IDMANAGEMENT-081-05 止まっている所有者への再実行
+
+- Given ユーザー "alice" は `Disabled` であり、`Active` の Agent "deploy-bot" と `Disabled` の Agent "old-bot" を所有する
+- When 管理者が "alice" を無効化する
+- Then "alice" は `Disabled` のままで、`UserDisabled` は発行されない
+- And "deploy-bot" は `Disabled` になり、`AgentDisabled` が "deploy-bot" についてだけ発行される

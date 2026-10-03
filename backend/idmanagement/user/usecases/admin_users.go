@@ -20,6 +20,8 @@ import (
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
@@ -81,6 +83,9 @@ type AdminUserDeps struct {
 	// SoftDeleteGraceSeconds は soft-delete の猶予期間 (秒)。0 のとき
 	// UserSoftDeleteGracePeriodSeconds を既定として使う。テストで短縮するために注入する。
 	SoftDeleteGraceSeconds int
+	// AgentRepo は、User を止めたときにその User が所有する Agent を無効化するために使う。
+	// nil なら未配線として何もしない。
+	AgentRepo agentports.AgentRepository
 	// ProvisioningNotifier は User mutation を outbound Provisioning (wi-45)
 	// へ通知する境界 port。nil のとき outbound provisioning は未配線として
 	// 何もしない。
@@ -348,6 +353,10 @@ func SetUserDisabled(
 	now = idmusecases.NormalizedNow(now)
 	if disabled {
 		if updated.Lifecycle.Status == idmdomain.UserStatusDisabled {
+			// 前回の伝播が途中で失敗していても、無効化の再実行で残った Agent を止める。
+			if err := disableOwnedAgents(ctx, deps, updated.TenantID, updated.ID, actorUserID, now); err != nil {
+				return nil, err
+			}
 			return &updated, nil
 		}
 		updated.Lifecycle.Status = idmdomain.UserStatusDisabled
@@ -385,7 +394,21 @@ func SetUserDisabled(
 		return nil, emitErr
 	}
 	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, trigger, now)
+	if disabled {
+		if err := disableOwnedAgents(ctx, deps, updated.TenantID, updated.ID, actorUserID, now); err != nil {
+			return nil, err
+		}
+	}
 	return &updated, nil
+}
+
+// disableOwnedAgents は、止めた User が所有する Active の Agent を無効化する。
+// 所有者が組織を去った後も Agent が動き続けないようにする (REQ-IDMANAGEMENT-081)。
+func disableOwnedAgents(ctx context.Context, deps AdminUserDeps, tenantID, userID, actorUserID string, now time.Time) error {
+	if deps.AgentRepo == nil {
+		return nil
+	}
+	return agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{AgentRepo: deps.AgentRepo, Emit: deps.Emit}, tenantID, userID, actorUserID, now)
 }
 
 // revokeTrustedDevicesOnDisable は無効化に伴い記憶済みの端末をすべて失効させる (wi-91)。
@@ -571,6 +594,10 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := tombstone.Validate(); err != nil {
 		return err
 	}
+	// Agent の無効化を Tombstone より先に行う。途中で失敗しても User は残り、完全削除の再実行で回収できる。
+	if err := disableOwnedAgents(ctx, deps, user.TenantID, user.ID, in.ActorUserID, now); err != nil {
+		return err
+	}
 	if err := deps.UserRepo.Save(ctx, tombstone); err != nil {
 		return err
 	}
@@ -636,10 +663,11 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if in.ActorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return ErrSelfDeleteForbidden
 	}
-	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
-		return nil
-	}
 	now := idmusecases.NormalizedNow(in.Now)
+	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
+		// 前回の伝播が途中で失敗していても、削除の予約の再実行で残った Agent を止める。
+		return disableOwnedAgents(ctx, deps, user.TenantID, user.ID, in.ActorUserID, now)
+	}
 	updated := *user
 	updated.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
 	updated.Lifecycle.StatusChangedAt = &now
@@ -661,7 +689,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 		return err
 	}
 	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, userports.ProvisioningUserDeleted, now)
-	return nil
+	return disableOwnedAgents(ctx, deps, updated.TenantID, updated.ID, in.ActorUserID, now)
 }
 
 // RestoreUser は PendingDeletion の user を Active に戻し UserRestored を emit する。

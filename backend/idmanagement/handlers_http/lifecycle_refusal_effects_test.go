@@ -238,3 +238,30 @@ func TestDisableAndEnableRefuseAPendingDeletionUser(t *testing.T) {
 		})
 	}
 }
+
+// REQ-IDMANAGEMENT-081 の主要な使い方を、管理 API の経路で固定する。組み立てが User のユースケースへ
+// Agent のリポジトリを渡さないと、伝播は黙って止まる。
+//
+//spec:covers EX-IDMANAGEMENT-081-01: 管理 API で所有者の User を無効化すると、その User が所有する Active の Agent が Disabled になること。
+func TestDisablingTheOwnerDisablesTheirAgents(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-owner", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	agent := fixture.agent(t, idmRefusalAgent)
+	agent.OwnerUserID = idmRefusalAlice
+	if err := fixture.agents.Save(context.Background(), agent); err != nil {
+		t.Fatal(err)
+	}
+	if status := fixture.agent(t, idmRefusalAgent).Status; status != idmdomain.AgentStatusActive {
+		t.Fatalf("前提が壊れている: Agent の状態が %s", status)
+	}
+
+	if disabled := fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/" + idmRefusalAlice + "/disable",
+		sessionID: admin, csrf: idmRefusalCSRF,
+	}); disabled.Code != http.StatusNoContent {
+		t.Fatalf("所有者の無効化が status=%d body=%s", disabled.Code, disabled.Body.String())
+	}
+	if status := fixture.agent(t, idmRefusalAgent).Status; status != idmdomain.AgentStatusDisabled {
+		t.Fatalf("所有者を無効化したのに Agent の状態が %s のまま", status)
+	}
+}

@@ -336,18 +336,21 @@ func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies, inter
 
 // lifecycleWorkflowExecutorDeps は WorkflowRun の実行ハンドラーへ渡す依存を組み立てる。
 // WorkflowRepo を渡さないと、無効化されたワークフローの WorkflowRun が次のステップへ進む。
+// UserLifecycle を渡さないと、disable_user と enable_user の手順が dependency_unavailable で失敗する。
 func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.Logger) igusecases.LifecycleWorkflowExecutorDeps {
 	emit := deps.NewEmitFunc(logger)
+	emitErr := func(event spec.DomainEvent) error {
+		emit(event)
+		return nil
+	}
 	return igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, WorkflowRepo: deps.IdGovernance.LifecycleWorkflowRepo,
 		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo,
 		ApplicationAssignments: deps.Application.DesiredStateAssignments(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, emit, lifecycleWorkflowActor),
+		UserLifecycle:          deps.UserLifecycleCommands(emit, lifecycleWorkflowActor),
 		Notifier:               deps.Notification.Notifier,
-		Emit: func(event spec.DomainEvent) error {
-			emit(event)
-			return nil
-		},
+		Emit:                   emitErr,
 	}
 }
 

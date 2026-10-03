@@ -11,6 +11,7 @@
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
 | `IdGovernance`、`Provisioning`、`Sourcing` | この Context が定めるポートを、相手が実装する | アプリケーションの組み立てで実装を注入する。この Context は相手のパッケージを参照しない |
+| `IdGovernance`、`Sourcing` | 相手が定めるポートを、この Context の User の操作が満たす | 組み立ての地点が、`UserLifecycleCommands` を相手のポートへ渡す。詳細は[ほかの Context からの User の停止](#ほかの-context-からの-user-の停止) |
 | `Authentication`、`OAuth2`、`Authorization` | 相手がこの Context のポートを呼ぶ | 相手がこの Context の `ports` を参照する |
 | `Tenancy` | この Context が相手のポートを呼ぶ | 属性スキーマとリソース上限を読む |
 | `Jobs` | この Context が相手のポートを呼ぶ | CSV とデータエクスポートの非同期の実行を任せる |
@@ -56,3 +57,21 @@
 | データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](../bulk-transfer/data-export/README.md) |
 | ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](audit-events.md) |
 | CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](../bulk-transfer/csv-transfer/README.md#成果物の保持) |
+| ほかの Context からの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかの Context からの User の停止](#ほかの-context-からの-user-の停止) |
+
+### ほかの Context からの User の停止
+
+User の無効化、再有効化、削除の予約は、管理 API の外からも起きる。
+どの経路でも User のユースケースを通し、User の状態を直接保存させない。
+止めることに伴うイベント、記憶済みの端末の失効、動的グループの再評価、下流への通知、所有する Agent の無効化、削除予約中の User の拒否を、管理 API と揃えるためである。
+
+| 経路 | 呼ぶ側のポート | 操作 | 監査イベントの actor |
+| --- | --- | --- | --- |
+| ライフサイクルワークフローの `disable_user` と `enable_user` | `IdGovernance` の `UserLifecycle` | 無効化と再有効化 | `lifecycle-workflow` |
+| SCIM の `active` の切り替え | `Sourcing` の `UserLifecycle` | 無効化と再有効化 | `scim` |
+| SCIM の `DELETE` | `Sourcing` の `UserLifecycle` | 削除の予約 | `scim` |
+
+`user` スライスの `UserLifecycleCommands` が両方のポートを満たし、組み立ての地点（`worker` と `api` の起動）が依存を管理 API と同じ集合で組み立てて渡す。
+`UserLifecycleCommands` は、User の変更からライフサイクルワークフローの実行を作る仕組みを渡さない。
+ワークフローの手順による User の変更から、さらにワークフローの実行が連鎖しないようにするためである。
+削除予約中の User への無効化と再有効化は、ワークフローの手順にとっては変更なしとして扱う。

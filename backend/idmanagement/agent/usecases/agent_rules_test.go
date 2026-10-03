@@ -294,3 +294,37 @@ func TestUpdateAgentRecordsAKindChange(t *testing.T) {
 		t.Fatalf("events=%+v, want AgentUpdated with changed_fields [kind]", *events)
 	}
 }
+
+// REQ-IDMANAGEMENT-082 の主要な使い方：所有者が止まっている Agent は再有効化できない。
+//
+//spec:covers EX-IDMANAGEMENT-082-01: 所有者の User が Disabled の Agent の再有効化を ErrAgentOwnerInactive で拒否し、Agent を Disabled のまま残しイベントを発行しないこと。
+func TestEnablingAnAgentWhoseOwnerIsInactiveIsRefused(t *testing.T) {
+	deps, events := newAgentDeps(t)
+	ctx := defaultTenantCtx()
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user_new", Now: agentRulesNow,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := agentusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, true, agentRulesNow); err != nil {
+		t.Fatal(err)
+	}
+	owner, err := deps.UserRepo.FindBySub(ctx, "user_new")
+	if err != nil || owner == nil {
+		t.Fatalf("owner=%v err=%v", owner, err)
+	}
+	owner.Lifecycle.Status = idmdomain.UserStatusDisabled
+	if err := deps.UserRepo.Save(ctx, owner); err != nil {
+		t.Fatal(err)
+	}
+	*events = nil
+
+	if _, err := agentusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, false, agentRulesNow); !errors.Is(err, agentusecases.ErrAgentOwnerInactive) {
+		t.Fatalf("err=%v, want ErrAgentOwnerInactive", err)
+	}
+	stored, _ := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
+	if stored.Status != idmdomain.AgentStatusDisabled || len(*events) != 0 {
+		t.Fatalf("status=%s events=%v, want disabled and none", stored.Status, agentEventTypes(*events))
+	}
+}

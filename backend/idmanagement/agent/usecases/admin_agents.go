@@ -305,6 +305,13 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 	if agent.Status == idmdomain.AgentStatusKilled {
 		return nil, ErrAgentKilled
 	}
+	if !disabled {
+		if err := ensureAgentOwner(ctx, deps, tenantID, agent.OwnerUserID); errors.Is(err, ErrAgentOwnerNotFound) {
+			return nil, ErrAgentOwnerInactive
+		} else if err != nil {
+			return nil, err
+		}
+	}
 	now = idmusecases.NormalizedNow(now)
 	updated := *agent
 	updated.UpdatedAt = now

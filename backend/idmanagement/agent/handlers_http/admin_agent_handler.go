@@ -298,6 +298,8 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_agent_kind", "The agent kind is invalid.")
 	case errors.Is(err, agentusecases.ErrAgentKilled):
 		return support.WriteProblem(c, http.StatusConflict, "agent_killed", "A stopped agent cannot be modified.")
+	case errors.Is(err, agentusecases.ErrAgentOwnerInactive):
+		return support.WriteProblem(c, http.StatusConflict, "agent_owner_inactive", "The agent owner is not active.")
 	case errors.Is(err, agentusecases.ErrAgentClientBound):
 		return support.WriteProblem(c, http.StatusConflict, "agent_client_already_bound", "The client is already bound to another agent.")
 	case errors.Is(err, idmusecases.ErrReservedRole):

@@ -158,6 +158,10 @@ model AgentNotFoundError is ProblemDetails;
 model AgentKilledError is ProblemDetails;
 
 
+@doc("EnableAgent targets an Agent whose owner User is not active; return the owner to service or hand the Agent to an active owner first. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_owner_inactive`.")
+model AgentOwnerInactiveError is ProblemDetails;
+
+
 @doc("The OAuth2Client given is already bound to another Agent in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_client_already_bound`.")
 model AgentClientAlreadyBoundError is ProblemDetails;
 

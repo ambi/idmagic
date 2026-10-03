@@ -22,7 +22,7 @@ func newScimUsecases() (*usecases.Usecases, *usermemory.UserRepository) {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
-	return usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}), userRepo
+	return usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}), userRepo
 }
 
 const scimTenant = tenancydomain.DefaultTenantID

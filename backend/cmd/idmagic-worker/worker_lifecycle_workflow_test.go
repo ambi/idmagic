@@ -17,6 +17,8 @@ import (
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -191,5 +193,54 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 	decision, err := deps.Application.Gate(groups, 0).EvaluateApplicationAccess(ctx, "tenant-a", appdomain.ApplicationProtocolOIDC, "portal-client", "alice", nil, "")
 	if err != nil || !decision.Allowed {
 		t.Fatalf("federation decision = %+v, %v; want allowed through the group assignment", decision, err)
+	}
+}
+
+// REQ-IDMANAGEMENT-081 の主要な使い方のうち、worker の組み立ての経路。UserLifecycle を渡し忘れると
+// disable_user が失敗し、IdManagement の依存を渡し忘れると所有する Agent の無効化が黙って止まる。
+//
+//spec:covers EX-IDMANAGEMENT-081-02: worker が組み立てた disable_user の手順が User を Disabled にして UserDisabled を発行し、所有する Agent を Disabled にすること。
+func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
+	workflows := igmemory.NewLifecycleWorkflowRepository()
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	agents := agentmemory.NewAgentRepository()
+	if err := agents.Save(ctx, &agentdomain.Agent{ID: "deploy-bot", TenantID: "tenant-a", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "alice", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+	if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+		t.Fatal(err)
+	}
+	sink := &recordingSink{}
+	deps := &bootstrap.Dependencies{
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(), AgentRepo: agents},
+		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs},
+		OAuth2:       oauth2.Module{EventSink: sink},
+	}
+	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger))(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+		t.Fatal(err)
+	}
+
+	if user, err := users.FindBySub(ctx, "alice"); err != nil || user.Lifecycle.Status != idmdomain.UserStatusDisabled {
+		t.Fatalf("user = %+v, %v; want disabled", user, err)
+	}
+	if agent, err := agents.FindByID(ctx, "tenant-a", "deploy-bot"); err != nil || agent.Status != idmdomain.AgentStatusDisabled {
+		t.Fatalf("agent = %+v, %v; want disabled", agent, err)
+	}
+	if sink.count("UserDisabled") != 1 || sink.count("AgentDisabled") != 1 {
+		t.Fatalf("UserDisabled=%d AgentDisabled=%d, want 1 each", sink.count("UserDisabled"), sink.count("AgentDisabled"))
 	}
 }

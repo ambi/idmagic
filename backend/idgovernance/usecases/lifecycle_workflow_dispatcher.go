@@ -54,6 +54,10 @@ type LifecycleWorkflowExecutorDeps struct {
 	// 割り当ての変更は ApplicationAssignments を通し、Application Context のイベントと通知を伴わせる。
 	AssignmentRepo         appports.AssignmentRepository
 	ApplicationAssignments igports.ApplicationAssignments
+	// UserLifecycle は disable_user と enable_user の手順を IdManagement の操作として行う。
+	// User の状態を直接保存すると、イベント、端末の失効、下流への通知、所有する Agent の
+	// 無効化が伴わない。nil なら手順を dependency_unavailable で失敗させる。
+	UserLifecycle igports.UserLifecycle
 	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
 	// action's TemplateKey is a label rendered into the body, not the body itself.
 	Notifier sharednotification.Notifier
@@ -350,15 +354,11 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		updated.UpdatedAt = time.Now().UTC()
 		return changed(true, deps.UserRepo.Save(ctx, &updated))
 	case igdomain.WorkflowActionEnableUser, igdomain.WorkflowActionDisableUser:
-		want := idmdomain.UserStatusActive
-		if action.Kind == igdomain.WorkflowActionDisableUser {
-			want = idmdomain.UserStatusDisabled
+		if deps.UserLifecycle == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
 		}
-		updated := *user
-		updated.Lifecycle.Status = want
-		now := time.Now().UTC()
-		updated.Lifecycle.StatusChangedAt, updated.UpdatedAt = &now, now
-		return changed(true, deps.UserRepo.Save(ctx, &updated))
+		disabled := action.Kind == igdomain.WorkflowActionDisableUser
+		return changed(deps.UserLifecycle.SetUserDisabled(ctx, run.TenantID, user.ID, disabled, time.Now().UTC()))
 	case igdomain.WorkflowActionSendEmail:
 		if deps.Notifier.Notify(ctx, sharednotification.Notification{
 			TenantID:        run.TenantID,

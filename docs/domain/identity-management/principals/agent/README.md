@@ -122,7 +122,7 @@
 | --- | --- |
 | 行為者 | 管理者 |
 | 成功時の作用 | `Disabled` または `Active` にし、`AgentDisabled` または `AgentEnabled` を発行する |
-| 拒否 | `Killed` の Agent（409 `agent_killed`） |
+| 拒否 | `Killed` の Agent（409 `agent_killed`）。所有者の User が `Active` でない Agent の再有効化（409 `agent_owner_inactive`） |
 | 冪等性 | なし。すでにその状態でも時刻を進め、イベントを発行する |
 
 #### REQ-IDMANAGEMENT-076 Agent の無効化と再有効化は、すでにその状態でも記録し直す
@@ -131,6 +131,35 @@
 - `Active` の Agent の再有効化は成功を返し、`updated_at` を進め、`AgentEnabled` を発行する。
 - **担保手段**：`usecases.SetAgentDisabled`
 - **要判断**：User の無効化と再有効化は、すでにその状態なら何もしない。Agent では時刻を進めてイベントを重ねて発行するため、`disabled_at` は最初に止めた時刻を示さない。User と同じにするかを決める。
+
+#### REQ-IDMANAGEMENT-082 所有者の User が止まっている Agent は再有効化できない
+
+- 所有者の User が同じテナントの `Active` でない Agent の再有効化は、409 と `agent_owner_inactive` で拒否し、Agent を変えず、イベントを発行しない。
+- **判断**：所有者の停止に伴う無効化（REQ-IDMANAGEMENT-081）を、再有効化ですぐに打ち消せないようにする。所有者を `Active` に戻すか、`Active` の別の User へ所有者を変えてから再有効化する。
+- **担保手段**：`usecases.SetAgentDisabled`
+- **例**：EX-IDMANAGEMENT-082-01
+
+### 所有者の停止に伴う無効化
+
+| 項目 | 内容 |
+| --- | --- |
+| 行為者 | 所有者の User を止めた操作（管理 API、ライフサイクルワークフロー、SCIM の取り込み） |
+| 入力 | 止めた User |
+| 成功時の作用 | その User が所有する `Active` の Agent を `Disabled` にし、Agent ごとに `AgentDisabled` を発行する |
+| 冪等性 | `Disabled` と `Killed` の Agent は変えない。止まっている User への再実行は、残っている `Active` の Agent だけを無効化する |
+
+#### REQ-IDMANAGEMENT-081 所有者の User が止まると、その User が所有する Agent を無効化する
+
+- 所有者の User を無効化する、削除を予約する、完全削除すると、その User が所有する `Active` の Agent をすべて `Disabled` にし、Agent ごとに `AgentDisabled` を発行する。
+- 管理 API、ライフサイクルワークフロー、SCIM の取り込みのどの経路で User を止めても、同じように無効化する。期限切れの削除予約の自動の完全削除も含む。
+- `Disabled` と `Killed` の Agent は変えない。
+- すでに `Disabled` の User をもう一度無効化する、またはすでに削除予約中の User の削除をもう一度予約すると、User は変えず、残っている `Active` の Agent を無効化する。
+- 所有者の User を再有効化または復元しても、Agent は `Disabled` のまま残る。
+- **判断**：すべての Agent に所有者を求めるのは、誰も責任を持たない非人間のアイデンティティを残さないためである。所有者が組織を去った後も Agent が動き続けると、その判断が成り立たない。
+- **判断**：所有者の再開で Agent を自動で再開しない。所有者の停止より前から止めていた Agent まで再開してしまうからである。
+- **担保手段**：`usecases.DisableAgentsOwnedBy`、`usecases.SetUserDisabled`、`usecases.SoftDeleteUser`、`usecases.DeleteUser`
+- **判断**：伝播は User の確定とは別に行う。途中で失敗したときは、同じ操作の再実行で残った Agent を回収する。
+- **例**：EX-IDMANAGEMENT-081-01、EX-IDMANAGEMENT-081-02、EX-IDMANAGEMENT-081-03、EX-IDMANAGEMENT-081-04、EX-IDMANAGEMENT-081-05
 
 ### 停止
 

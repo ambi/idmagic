@@ -9,7 +9,7 @@
 | --- | --- |
 | 行為者 | 管理者 |
 | 入力 | 対象の User と、無効にするか有効にするか |
-| 成功時の作用 | 無効化は `Disabled` にし、`UserDisabled` を発行し、記憶済みの端末をすべて失効させる。再有効化は `Active` に戻し、`UserEnabled` を発行する |
+| 成功時の作用 | 無効化は `Disabled` にし、`UserDisabled` を発行し、記憶済みの端末をすべて失効させ、所有する `Active` の Agent を無効化する（REQ-IDMANAGEMENT-081）。再有効化は `Active` に戻し、`UserEnabled` を発行する |
 | 拒否 | `PendingDeletion` の User の無効化と再有効化（409 `user_pending_deletion`）。`admin` または `system_admin` を持つ管理者が自分自身を無効化する操作（422 `self_disable_forbidden`）。どの拒否も User を変えない |
 | 冪等性 | すでにその状態なら、成功を返し、時刻を進めず、イベントを発行しない |
 
@@ -35,7 +35,7 @@
 | --- | --- |
 | 行為者 | 管理者 |
 | 入力 | 対象の User と、任意の理由 |
-| 成功時の作用 | `PendingDeletion` にし、理由を載せた `UserSoftDeleted` を発行し、下流のプロビジョニングへ User の削除として通知する。個人情報、同意、リフレッシュトークン、セッションは残す |
+| 成功時の作用 | `PendingDeletion` にし、理由を載せた `UserSoftDeleted` を発行し、下流のプロビジョニングへ User の削除として通知し、所有する `Active` の Agent を無効化する（REQ-IDMANAGEMENT-081）。個人情報、同意、リフレッシュトークン、セッションは残す |
 | 拒否 | `admin` または `system_admin` を持つ管理者が自分自身を対象にする操作（`self_delete_forbidden`） |
 | 冪等性 | すでに `PendingDeletion` なら、成功を返しイベントを発行しない |
 
@@ -87,7 +87,7 @@
 | --- | --- |
 | 行為者 | 管理者。猶予期間を過ぎた削除予約の User は、一覧の取得のときに `system` が完全削除する（REQ-IDMANAGEMENT-044） |
 | 入力 | 対象の User と、`purge=true` |
-| 成功時の作用 | Tombstone へ置き換えて `Deleted` にし、関連する記録を消し、テナントの User の使用量を一つ減らし、`UserDeleted` を発行する |
+| 成功時の作用 | Tombstone へ置き換えて `Deleted` にし、関連する記録を消し、テナントの User の使用量を一つ減らし、`UserDeleted` を発行し、所有する `Active` の Agent を無効化する（REQ-IDMANAGEMENT-081） |
 | 拒否 | `admin` または `system_admin` を持つ管理者が自分自身を対象にする操作（`self_delete_forbidden`） |
 | 冪等性 | すでに `Deleted` なら、成功を返し `UserDeleted` を発行しない |
 

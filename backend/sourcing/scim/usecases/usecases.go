@@ -32,23 +32,26 @@ func scimDeleted(user *userdomain.User) bool {
 }
 
 type Usecases struct {
-	ScimRepo  ports.ScimRepository
-	UserRepo  userports.UserRepository
-	GroupRepo groupports.GroupRepository
-	Emit      func(spec.DomainEvent)
+	ScimRepo      ports.ScimRepository
+	UserRepo      userports.UserRepository
+	GroupRepo     groupports.GroupRepository
+	UserLifecycle ports.UserLifecycle
+	Emit          func(spec.DomainEvent)
 }
 
 func NewUsecases(
 	scimRepo ports.ScimRepository,
 	userRepo userports.UserRepository,
 	groupRepo groupports.GroupRepository,
+	userLifecycle ports.UserLifecycle,
 	emit func(spec.DomainEvent),
 ) *Usecases {
 	return &Usecases{
-		ScimRepo:  scimRepo,
-		UserRepo:  userRepo,
-		GroupRepo: groupRepo,
-		Emit:      emit,
+		ScimRepo:      scimRepo,
+		UserRepo:      userRepo,
+		GroupRepo:     groupRepo,
+		UserLifecycle: userLifecycle,
+		Emit:          emit,
 	}
 }
 

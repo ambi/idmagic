@@ -21,6 +21,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -95,7 +96,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 		t.Fatalf("ClaimBatch = %#v, %v", claimed, err)
 	}
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: runs, UserRepo: users, GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
+		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
 		ApplicationAssignments: desiredStateAssignments(applications, assignments, users, groups, nil),
 	})
 	result, err := handler(ctx, claimed[0])
@@ -169,7 +170,7 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	}
 
 	handlers := jobsusecases.NewHandlerRegistry()
-	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users}))
+	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)}))
 	runner := jobsusecases.NewRunner(
 		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
 		jobsusecases.RunnerDeps{Repo: jobRepo, Handlers: handlers},
@@ -248,7 +249,7 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users})
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -286,7 +287,7 @@ func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T)
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
 	var events []spec.DomainEvent
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -335,7 +336,7 @@ func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 	}
 	// GroupRepo left nil so the step fails with dependency_unavailable.
 	var events []spec.DomainEvent
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -379,7 +380,7 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users})
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -420,7 +421,7 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, GroupRepo: groups})
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -463,7 +464,7 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, ApplicationRepo: apps, AssignmentRepo: assignments})
+	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), ApplicationRepo: apps, AssignmentRepo: assignments})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -512,7 +513,7 @@ func TestLifecycleWorkflowRunHandlerAssignApplicationUpdatesADifferentVisibility
 		t.Fatal(err)
 	}
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: runs, UserRepo: users, ApplicationRepo: apps, AssignmentRepo: assignments,
+		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), ApplicationRepo: apps, AssignmentRepo: assignments,
 		ApplicationAssignments: desiredStateAssignments(apps, assignments, users, groupmemory.NewGroupRepository(), nil),
 	})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
@@ -564,7 +565,7 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 	}
 	sender := &email_memory.NoopEmailSender{}
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: runs, UserRepo: users,
+		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users),
 		Notifier: &template.Notifier{Sender: sender, SystemDefaultLocale: "en"},
 	})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
@@ -591,4 +592,9 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 	if !strings.Contains(sent.Text, "alice") {
 		t.Errorf("text body has no recipient display name: %q", sent.Text)
 	}
+}
+
+// workflowUserLifecycle は worker と同じく、disable_user と enable_user を IdManagement の操作として行う。
+func workflowUserLifecycle(users userports.UserRepository) igports.UserLifecycle {
+	return userusecases.UserLifecycleCommands{Deps: userusecases.AdminUserDeps{UserRepo: users}, Actor: "lifecycle-workflow"}
 }
