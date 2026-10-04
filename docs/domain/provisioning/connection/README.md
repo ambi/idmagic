@@ -30,7 +30,10 @@
 - 管理者がアプリケーションに接続を登録したとき、Provisioning は、接続を作り、201 と接続を返し、`ProvisioningConnectionRegistered` を発行する。
 - 管理者が接続をテストしたとき、Provisioning は、下流の `/ServiceProviderConfig` への到達性を確かめ、対応機能を接続に保存し、200 と結果を返す。
 - 管理者が接続を取得または更新したとき、Provisioning は、200 と接続を返す。
-- 管理者が接続を削除したとき、Provisioning は、接続を消して 204 を返す。
+- 管理者が資格情報と `status` 以外の設定を指定して接続を更新したとき、Provisioning は、保存の後に `ProvisioningConnectionUpdated` を発行する。
+- 管理者が `status` を `disabled` から `active` へ戻したとき、Provisioning は、保存の後に `ProvisioningConnectionUpdated` を発行する。
+- 管理者が `status` を `disabled` にして接続を更新したとき、Provisioning は、保存の後に `ProvisioningConnectionDisabled` を発行する。
+- 管理者が接続を削除したとき、Provisioning は、接続を消して 204 を返し、`ProvisioningConnectionDeleted` を発行する。
 - 管理者がテナントの接続を一覧したとき、Provisioning は、テナントのすべての接続を 200 で返す。
 - HTTPS でないか、内部のアドレスかリンクローカルのアドレスを指す下流の URL を指定された場合、Provisioning は、400 と `invalid_request` で拒否し、接続を作らない。
 - アプリケーションにすでに接続がある場合、Provisioning は、登録を 409 と `provisioning_conflict` で拒否する。

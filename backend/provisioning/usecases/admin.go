@@ -130,6 +130,7 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	if conn == nil {
 		return nil, ErrConnectionNotFound
 	}
+	wasDisabled := conn.Status == domain.ConnectionDisabled
 	if in.BaseURL != nil {
 		if err := domain.ValidateOutboundBaseURL(*in.BaseURL); err != nil {
 			return nil, err
@@ -189,12 +190,28 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	if err := deps.ConnectionRepo.Update(ctx, conn, secret); err != nil {
 		return nil, err
 	}
+	isDisabled := conn.Status == domain.ConnectionDisabled
+	if in.changesSettings() || (wasDisabled && !isDisabled) {
+		emit(deps.Emit, &domain.ProvisioningConnectionUpdated{At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
+	}
+	if !wasDisabled && isDisabled {
+		emit(deps.Emit, &domain.ProvisioningConnectionDisabled{At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
+	}
 	if secret != nil {
 		emit(deps.Emit, &domain.ProvisioningCredentialRotated{
 			At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID, CredentialID: conn.Credential.CredentialID,
 		})
 	}
 	return conn, nil
+}
+
+// changesSettings は、資格情報と status 以外の設定を指定しているかを返す。
+// 値が保存済みと同じでも、指定したこと自体を管理者の変更として記録する。
+func (in UpdateConnectionInput) changesSettings() bool {
+	return in.BaseURL != nil || in.FeatureFlags != nil || in.Scope != nil || in.GroupPush != nil ||
+		in.AttributeMappings != nil || in.Matching != nil || in.DeprovisionPolicy != nil ||
+		in.RateLimitPerMinute != nil || in.MaxAttempts != nil || in.NotificationEmail != nil ||
+		in.QuarantineAfterConsecutiveFailure != nil
 }
 
 func validateCredential(c domain.ProvisioningCredentialInput) error {
@@ -216,7 +233,7 @@ func GetConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID 
 }
 
 // DeleteConnection removes the connection (hard delete, Application precedent).
-func DeleteConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string) error {
+func DeleteConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) error {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {
 		return err
@@ -224,7 +241,11 @@ func DeleteConnection(ctx context.Context, deps AdminDeps, tenantID, application
 	if conn == nil {
 		return ErrConnectionNotFound
 	}
-	return deps.ConnectionRepo.Delete(ctx, tenantID, applicationID)
+	if err := deps.ConnectionRepo.Delete(ctx, tenantID, applicationID); err != nil {
+		return err
+	}
+	emit(deps.Emit, &domain.ProvisioningConnectionDeleted{At: now.UTC(), TenantID: tenantID, ApplicationID: applicationID})
+	return nil
 }
 
 // TestConnectionResult is TestConnection's output.

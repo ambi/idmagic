@@ -22,20 +22,22 @@ import (
 // =====================================================================
 
 type AuthorizeRequestInput struct {
-	ClientID             string
-	RedirectURI          string
-	ResponseType         string
-	Scope                string
-	StateParam           string
-	Nonce                string
-	CodeChallenge        string
-	CodeChallengeMethod  string
-	Prompt               string
-	MaxAge               *int
-	ACRValues            string
-	ParUsed              bool
-	ParRequestURI        string
-	AuthorizationDetails []spec.AuthorizationDetail
+	ClientID            string
+	RedirectURI         string
+	ResponseType        string
+	Scope               string
+	StateParam          string
+	Nonce               string
+	CodeChallenge       string
+	CodeChallengeMethod string
+	Prompt              string
+	MaxAge              *int
+	ACRValues           string
+	ParUsed             bool
+	ParRequestURI       string
+	// AuthorizationDetailsRaw は RFC 9396 の authorization_details の JSON 文字列。
+	// 拒否を登録済みのクライアントの名で記録するため、クライアントを確かめた後で解析する。
+	AuthorizationDetailsRaw string
 	// Resource は RFC 8707 resource indicator。form/query の resource は複数
 	// 指定され得るため slice で受ける (単一値以外は invalid_target)。
 	Resource []string
@@ -107,7 +109,10 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	}
 
 	// RFC 9396 authorization_details: 登録済み type に対し fail-closed 検証。
-	if err := ValidateAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, in.AuthorizationDetails); err != nil {
+	details, err := acceptAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, deps.Emit, detailsRequest{
+		ClientID: in.ClientID, Raw: in.AuthorizationDetailsRaw, Now: time.Now(),
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -143,7 +148,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		MaxAge:               in.MaxAge,
 		ACRValues:            optional(in.ACRValues),
 		ParRequestURI:        optional(in.ParRequestURI),
-		AuthorizationDetails: in.AuthorizationDetails,
+		AuthorizationDetails: details,
 		Resource:             resource,
 		CreatedAt:            now,
 		ExpiresAt:            now.Add(10 * time.Minute),

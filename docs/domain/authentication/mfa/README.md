@@ -61,6 +61,7 @@
 
 - 実効のサインインポリシーが MFA を求めない間、MFA を登録した User がユーザー名とパスワードを送ったとき、Authentication は、`authentication_pending=false` のログインセッションを作り、第二要素の画面へ進めずに同意か認可コードの発行へ進ませる。
 - 対象の Application の実効のサインインポリシーが `Mfa` の場合、Authentication は、ログインセッションを `authentication_pending=true` にし、第二要素の画面へ進ませる。
+- ログインセッションを第二要素の照合の待ちにしたとき、Authentication は、User が使える第二要素の種類を `factorTypes` に載せた `MfaChallengeIssued` を発行する。
 - **例**：EX-AUTHENTICATION-015-01、EX-AUTHENTICATION-015-02
 
 ### 管理者による認証器のリセット

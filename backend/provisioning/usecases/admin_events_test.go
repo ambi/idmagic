@@ -4,6 +4,7 @@ package usecases_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -57,8 +58,8 @@ func TestAdminConnectionOperationsEmitTheirEventAfterSaving(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpdateConnection() without credential error = %v", err)
 	}
-	if got := recorder.types(); len(got) != 1 {
-		t.Fatalf("events after a refused registration and a settings update = %v, want only the first registration", got)
+	if got := recorder.types(); !slices.Equal(got, []string{"ProvisioningConnectionRegistered", "ProvisioningConnectionUpdated"}) {
+		t.Fatalf("events after a refused registration and a settings update = %v, want the first registration and one update", got)
 	}
 
 	recorder.events = nil
@@ -77,6 +78,74 @@ func TestAdminConnectionOperationsEmitTheirEventAfterSaving(t *testing.T) {
 	rotated, ok := onlyEvent[*domain.ProvisioningCredentialRotated](t, recorder)
 	if !ok || rotated.CredentialID != saved.Credential.CredentialID || rotated.ApplicationID != "app-1" || !rotated.At.Equal(rotatedAt) {
 		t.Fatalf("rotation event = %+v, want credential %q saved at %v", rotated, saved.Credential.CredentialID, rotatedAt)
+	}
+}
+
+//spec:covers REQ-PROVISIONING-002: 設定の更新、無効化、有効化への復帰、削除が、保存の後にそれぞれの接続のイベントを発行し、資格情報だけの更新と拒否された操作は何も発行しないことを固定する。
+func TestConnectionChangesEmitTheirEventAfterSaving(t *testing.T) {
+	ctx := context.Background()
+	deps, _, _ := newAdminDeps()
+	now := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	if _, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
+		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Now:        now,
+	}); err != nil {
+		t.Fatalf("RegisterConnection() error = %v", err)
+	}
+	recorder := &eventRecorder{}
+	deps.Emit = recorder.emit
+	update := func(in usecases.UpdateConnectionInput) []string {
+		t.Helper()
+		recorder.events = nil
+		in.TenantID, in.ApplicationID, in.Now = "tenant-a", "app-1", now
+		if _, err := usecases.UpdateConnection(ctx, deps, in); err != nil {
+			t.Fatalf("UpdateConnection(%+v) error = %v", in, err)
+		}
+		return recorder.types()
+	}
+	disabled, active := domain.ConnectionDisabled, domain.ConnectionActive
+	maxAttempts := 5
+
+	if got := update(usecases.UpdateConnectionInput{MaxAttempts: &maxAttempts}); !slices.Equal(got, []string{"ProvisioningConnectionUpdated"}) {
+		t.Fatalf("settings update events = %v, want [ProvisioningConnectionUpdated]", got)
+	}
+	updated, ok := onlyEvent[*domain.ProvisioningConnectionUpdated](t, recorder)
+	if !ok || updated.TenantID != "tenant-a" || updated.ApplicationID != "app-1" || !updated.At.Equal(now) {
+		t.Fatalf("updated event = %+v, want tenant-a/app-1 at %v", updated, now)
+	}
+	if got := update(usecases.UpdateConnectionInput{
+		Credential: &domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok-2"},
+	}); !slices.Equal(got, []string{"ProvisioningCredentialRotated"}) {
+		t.Fatalf("credential-only update events = %v, want [ProvisioningCredentialRotated]", got)
+	}
+	if got := update(usecases.UpdateConnectionInput{Status: &disabled}); !slices.Equal(got, []string{"ProvisioningConnectionDisabled"}) {
+		t.Fatalf("disabling events = %v, want [ProvisioningConnectionDisabled]", got)
+	}
+	// すでに無効な接続を無効にし直しても、状態は変わらない。
+	if got := update(usecases.UpdateConnectionInput{Status: &disabled}); len(got) != 0 {
+		t.Fatalf("re-disabling events = %v, want none", got)
+	}
+	if got := update(usecases.UpdateConnectionInput{Status: &active}); !slices.Equal(got, []string{"ProvisioningConnectionUpdated"}) {
+		t.Fatalf("re-enabling events = %v, want [ProvisioningConnectionUpdated]", got)
+	}
+	if got := update(usecases.UpdateConnectionInput{Status: &disabled, MaxAttempts: &maxAttempts}); !slices.Equal(got, []string{"ProvisioningConnectionUpdated", "ProvisioningConnectionDisabled"}) {
+		t.Fatalf("disabling with a settings change events = %v, want Updated then Disabled", got)
+	}
+
+	recorder.events = nil
+	if err := usecases.DeleteConnection(ctx, deps, "tenant-a", "app-missing", now); err == nil {
+		t.Fatal("DeleteConnection() of a missing connection: want error")
+	}
+	if len(recorder.events) != 0 {
+		t.Fatalf("events after a refused delete = %v, want none", recorder.types())
+	}
+	if err := usecases.DeleteConnection(ctx, deps, "tenant-a", "app-1", now); err != nil {
+		t.Fatalf("DeleteConnection() error = %v", err)
+	}
+	deleted, ok := onlyEvent[*domain.ProvisioningConnectionDeleted](t, recorder)
+	if !ok || deleted.TenantID != "tenant-a" || deleted.ApplicationID != "app-1" {
+		t.Fatalf("deleted event = %+v, want tenant-a/app-1", deleted)
 	}
 }
 

@@ -31,8 +31,8 @@ TOTP は RFC 6238 の標準のパラメーター（SHA1、30 秒のステップ�
 
 #### REQ-AUTHENTICATION-017 TOTP が必須のユーザーは正しいコードで認証を継続できる
 
-- 第二要素の照合を待つログインセッションの間、正しい TOTP のコードをブラウザーの TOTP の API に受けたとき、Authentication は、`amr` に `otp` を加えて認証を成立させ、`UserAuthenticated` を発行し、認可を続けさせる。
-- 誤った TOTP のコードを受けた場合、Authentication は、401 と `invalid_totp` で拒否し、`AuthenticationFailed` を発行し、認証を成立させない。
+- 第二要素の照合を待つログインセッションの間、正しい TOTP のコードをブラウザーの TOTP の API に受けたとき、Authentication は、`amr` に `otp` を加えて認証を成立させ、`factorType=totp` の `MfaChallengeSucceeded` と `UserAuthenticated` を発行し、認可を続けさせる。
+- 誤った TOTP のコードを受けた場合、Authentication は、401 と `invalid_totp` で拒否し、`factorType=totp` の `MfaChallengeFailed` を発行し、認証を成立させない。
 - 照合を待つログインセッションがない場合、Authentication は、401 と `authentication_required` で拒否する。
 - TOTP をすでに照合したセッションで要求を受けた場合、Authentication は、403 と `access_denied` で拒否する。
 - 要素の保管先へ到達できない場合、Authentication は、503 と `mfa_unavailable` で拒否する。

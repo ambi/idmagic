@@ -110,20 +110,13 @@ function auditFilterFields(
   ]
 }
 
-const FAIL_TYPES = new Set([
-  'AuthenticationFailed',
-  'AuthenticationStepFailed',
-  'MfaChallengeFailed',
-])
+const FAIL_TYPES = new Set(['AuthenticationFailed', 'MfaChallengeFailed'])
 const AGGREGATED_TYPES = new Set(['AuthenticationEventAggregated', 'LoginThrottled'])
 const AUTH_TYPES = new Set([
   'UserAuthenticated',
-  'AuthenticationStepCompleted',
   'MfaChallengeIssued',
   'MfaChallengeSucceeded',
   'BackupCodeConsumed',
-  'SessionStarted',
-  'SessionRefreshed',
   'SessionEnded',
   'FederatedAuthenticated',
   'FederationLinked',

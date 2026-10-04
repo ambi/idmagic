@@ -812,32 +812,13 @@ model AuthenticationEventAggregated {
 }
 
 
-@doc("One step of a multi-step authentication flow -- password, totp, webauthn, and so on -- succeeded. It is an input to settling the acr.")
-model AuthenticationStepCompleted {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  userId: string;
-  @doc("`password`, `totp`, `webauthn`, `recovery_code`, and the like.")
-  step: string;
-  sessionId?: string;
-}
-
-
-@doc("One step of a multi-step authentication flow failed.")
-model AuthenticationStepFailed {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  step: string;
-  reason?: string;
-}
-
-
-@doc("An MFA challenge was presented: TOTP, WebAuthn, or another.")
+@doc("The password was correct and the LoginSession now waits for a second factor. The user has not chosen a factor yet, so the event carries the kinds offered.")
 model MfaChallengeIssued {
   occurredAt: utcDateTime;
   tenantId: string;
   userId: string;
-  factorType: MfaFactorType;
+  @doc("The second-factor kinds the user can present. Recovery codes are not an MfaFactorType and are not listed.")
+  factorTypes: MfaFactorType[];
   sessionId?: string;
 }
 
@@ -951,30 +932,6 @@ model BackupCodeConsumed {
   tenantId: string;
   userId: string;
   remainingCount?: int64;
-}
-
-
-@doc("A LoginSession began. It is the starting point of the session list and of an investigation.")
-model SessionStarted {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  userId: string;
-  sessionId: string;
-  amr?: string[];
-  acr?: string;
-  @doc("The client IP at the start of the session. It is stored in plaintext for as long as the audit event is retained.")
-  ip?: string;
-  @doc("The User-Agent at the start of the session. It is stored in plaintext for as long as the audit event is retained.")
-  userAgent?: string;
-}
-
-
-@doc("The validity of a LoginSession was extended, because it stayed active.")
-model SessionRefreshed {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  userId: string;
-  sessionId: string;
 }
 
 

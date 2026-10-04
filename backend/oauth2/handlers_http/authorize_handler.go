@@ -61,18 +61,14 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	} else if blocked {
 		return nil
 	}
-	details, err := authorizationusecases.ParseAuthorizationDetails(q.Get("authorization_details"))
-	if err != nil {
-		return writeOAuthError(c, err)
-	}
 	in := authorizationusecases.AuthorizeRequestInput{
 		ClientID: request.ClientID, RedirectURI: request.RedirectURI,
 		ResponseType: request.ResponseType, Scope: request.Scope,
 		StateParam: request.StateParam, Nonce: request.Nonce,
 		CodeChallenge: request.CodeChallenge, CodeChallengeMethod: request.CodeChallengeMethod,
 		Prompt: request.Prompt, MaxAge: request.MaxAge, ACRValues: request.AcrValues, ParUsed: parUsed,
-		AuthorizationDetails: details,
-		Resource:             q["resource"],
+		AuthorizationDetailsRaw: q.Get("authorization_details"),
+		Resource:                q["resource"],
 	}
 	if requestURI := c.QueryParam("request_uri"); requestURI != "" {
 		in.ParRequestURI = requestURI
@@ -87,10 +83,10 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	if len(details) > 0 && d.Emit != nil {
+	if len(out.Request.AuthorizationDetails) > 0 && d.Emit != nil {
 		d.Emit(&oauthdomain.AuthorizationDetailsRequested{
 			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), ClientID: out.Request.ClientID,
-			DetailTypes: oauthdomain.DetailTypes(details),
+			DetailTypes: oauthdomain.DetailTypes(out.Request.AuthorizationDetails),
 		})
 	}
 
@@ -114,7 +110,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 					return d.redirectAuthorizationError(c, out.Request, "login_required", "The existing session does not satisfy the authentication requirements.")
 				}
 				if needsStepUp && d.canUseTOTP(c, authn.UserID) {
-					pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+					pending, err := d.requireSecondFactor(c.Request().Context(), c, authn.SessionID)
 					if err != nil {
 						return err
 					}

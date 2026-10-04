@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -40,7 +41,7 @@ func paymentDetail(amount float64, actions ...string) spec.AuthorizationDetail {
 func TestAuthorizeStoresValidAuthorizationDetails(t *testing.T) {
 	deps := authorizeDepsWithTypes()
 	in := validAuthorizeInput()
-	in.AuthorizationDetails = []spec.AuthorizationDetail{paymentDetail(100, "initiate")}
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{paymentDetail(100, "initiate")})
 	out, err := Authorize(context.Background(), deps, in)
 	if err != nil {
 		t.Fatalf("expected valid details accepted, got %v", err)
@@ -53,7 +54,7 @@ func TestAuthorizeStoresValidAuthorizationDetails(t *testing.T) {
 func TestAuthorizeRejectsUnregisteredDetailType(t *testing.T) {
 	deps := authorizeDepsWithTypes()
 	in := validAuthorizeInput()
-	in.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "data_access"}}
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{{Type: "data_access"}})
 	if _, err := Authorize(context.Background(), deps, in); err == nil {
 		t.Fatal("expected rejection for unregistered type")
 	}
@@ -63,7 +64,7 @@ func TestAuthorizeRejectsSchemaViolation(t *testing.T) {
 	deps := authorizeDepsWithTypes()
 	in := validAuthorizeInput()
 	// instructedAmount (required) を欠く → fail-closed。
-	in.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "payment_initiation", Actions: []string{"initiate"}}}
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{{Type: "payment_initiation", Actions: []string{"initiate"}}})
 	if _, err := Authorize(context.Background(), deps, in); err == nil {
 		t.Fatal("expected rejection for schema violation")
 	}
@@ -73,7 +74,7 @@ func TestAuthorizeRejectsDetailsWhenRegistryAbsent(t *testing.T) {
 	// レジストリ未配線で details を要求したら受理しない (fail-closed)。
 	deps := newAuthorizeDeps(false)
 	in := validAuthorizeInput()
-	in.AuthorizationDetails = []spec.AuthorizationDetail{paymentDetail(100, "initiate")}
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{paymentDetail(100, "initiate")})
 	if _, err := Authorize(context.Background(), deps, in); err == nil {
 		t.Fatal("expected rejection when registry is absent")
 	}
@@ -87,4 +88,14 @@ func TestParseAuthorizationDetailsRejectsMalformedJSON(t *testing.T) {
 	if err != nil || got != nil {
 		t.Fatalf("expected empty input to yield nil, nil; got %v %v", got, err)
 	}
+}
+
+// rawDetails は details を /authorize が受け取る authorization_details の JSON にする。
+func rawDetails(t *testing.T, details []spec.AuthorizationDetail) string {
+	t.Helper()
+	raw, err := json.Marshal(details)
+	if err != nil {
+		t.Fatalf("json.Marshal(%v) error = %v", details, err)
+	}
+	return string(raw)
 }

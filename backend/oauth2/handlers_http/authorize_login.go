@@ -198,7 +198,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 						RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "The application's sign-in policy requirements were not met."),
 					})
 				}
-				pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+				pending, err := d.requireSecondFactor(c.Request().Context(), c, authn.SessionID)
 				if err != nil {
 					return err
 				}
@@ -290,7 +290,7 @@ func (d Deps) enforceDefaultSignInPolicy(
 			return false, refusedBySignInPolicy(support.WriteProblem(
 				c, http.StatusForbidden, "access_denied", "MFA is required, but no second factor is available."))
 		}
-		pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+		pending, err := d.requireSecondFactor(c.Request().Context(), c, authn.SessionID)
 		if err != nil {
 			return false, err
 		}

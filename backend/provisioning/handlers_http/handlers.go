@@ -131,7 +131,7 @@ func (d Deps) handleDeleteConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := usecases.DeleteConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id")); err != nil {
+	if err := usecases.DeleteConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC()); err != nil {
 		return d.writeError(c, err)
 	}
 	return c.NoContent(http.StatusNoContent)

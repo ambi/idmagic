@@ -59,8 +59,8 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	seedAudit(t, store, "ok-364", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 364))
 	seedAudit(t, store, "ok-366", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 366))
 	// セッション / bucket 90 日: 89 日前は残り 91 日前は消える。
-	seedAudit(t, store, "sess-89", (&authdomain.SessionStarted{}).EventType(), daysAgo(now, 89))
-	seedAudit(t, store, "sess-91", (&authdomain.SessionStarted{}).EventType(), daysAgo(now, 91))
+	seedAudit(t, store, "sess-89", (&authdomain.SessionEnded{}).EventType(), daysAgo(now, 89))
+	seedAudit(t, store, "sess-91", (&authdomain.SessionEnded{}).EventType(), daysAgo(now, 91))
 	seedAudit(t, store, "agg-91", (&authdomain.AuthenticationEventAggregated{}).EventType(), daysAgo(now, 91))
 	// impersonation: cap 未設定なら無期限保持 (400 日前でも残る)。
 	seedAudit(t, store, "imp-400", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400))

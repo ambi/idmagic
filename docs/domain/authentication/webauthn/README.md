@@ -29,6 +29,16 @@ WebAuthn は、パスワードと組み合わせるフィッシング耐性の�
 
 ## 操作
 
+### 利用者によるログインの第二要素
+
+#### REQ-AUTHENTICATION-040 WebAuthn の資格情報を登録したユーザーはアサーションで認証を継続できる
+
+- 第二要素の照合を待つログインセッションの間、WebAuthn の資格情報を登録した User がチャレンジを要求したとき、Authentication は、200 と、そのログインセッションに束縛した `PublicKeyCredentialRequestOptions` を返す。
+- 第二要素の照合を待つログインセッションの間、そのチャレンジへのアサーションの検証に成功したとき、Authentication は、`amr` に `webauthn` を加えて認証を成立させ、`factorType=webauthn` の `MfaChallengeSucceeded` と `UserAuthenticated` を発行し、認可を続けさせる。
+- WebAuthn の資格情報を登録していない User がチャレンジを要求した場合、Authentication は、404 と `webauthn_not_enrolled` で拒否する。
+- アサーションを検証できない場合、Authentication は、401 と `invalid_webauthn` で拒否し、`factorType=webauthn` の `MfaChallengeFailed` を発行し、認証を成立させない。
+- 照合を待つログインセッションがない場合、Authentication は、401 と `authentication_required` で拒否する。
+
 ### 本人によるステップアップ認証のチャレンジ
 
 #### REQ-AUTHENTICATION-006 ユーザーは WebAuthn でステップアップ認証のチャレンジを開始できる

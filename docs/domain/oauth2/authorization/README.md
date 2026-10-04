@@ -165,6 +165,7 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 - `authorization_details` を含む認可を受けたとき、OAuth2 は、過去のスコープの同意で同意の画面を省かずに、明示の同意を求める。
 - 利用者が `authorization_details` を含む要求に同意したとき、OAuth2 は、同意した内容を認可コードとアクセストークンへ引き継ぎ、`AuthorizationDetailsConsented` を発行する。
 - `type` のない要素、登録していない種類、種類の規則を満たさない要素を含む `authorization_details` を受けた場合、OAuth2 は、400 と `invalid_authorization_details` で拒否する。
+- 登録済みのクライアントからの認可か PAR の要求の `authorization_details` を拒否したとき、OAuth2 は、理由 `invalid_authorization_details` の `AuthorizationDetailsRejected` を発行する。
 
 ### クライアントによるリソースの指定
 

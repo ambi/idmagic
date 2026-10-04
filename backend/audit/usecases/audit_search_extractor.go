@@ -22,19 +22,16 @@ import (
 // failureEventTypes / successAuthEventTypes は outcome 属性の分類 (認証系のみ)。
 // spec の EventType 文字列と一致させ、handler の category マップとドリフトしないようにする。
 var failureEventTypes = map[string]bool{
-	"AuthenticationFailed":     true,
-	"AuthenticationStepFailed": true,
-	"MfaChallengeFailed":       true,
+	"AuthenticationFailed": true,
+	"MfaChallengeFailed":   true,
 }
 
 var successAuthEventTypes = map[string]bool{
 	"UserAuthenticated":           true,
-	"AuthenticationStepCompleted": true,
 	"MfaChallengeSucceeded":       true,
 	"MfaEnrollmentRequired":       true,
 	"MfaEnrollmentCompleted":      true,
 	"MfaEnrollmentBypassConsumed": true,
-	"SessionStarted":              true,
 }
 
 // agentActorEventTypes は payload の agentId が「行為者」を指すイベント (wi-377)。

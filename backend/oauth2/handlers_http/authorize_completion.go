@@ -126,7 +126,7 @@ func (d Deps) issueCodeURL(
 				})
 			}
 			if len(d.secondFactorMethods(c, authn.UserID)) > 0 { //nolint:contextcheck // HTTP request context is required for factor lookup.
-				pending, err := d.SessionManager.RequireFactor(ctx, authn.SessionID)
+				pending, err := d.requireSecondFactor(ctx, c, authn.SessionID)
 				if err != nil {
 					return "", err
 				}

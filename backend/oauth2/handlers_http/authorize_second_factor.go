@@ -4,6 +4,7 @@
 package handlers_http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
@@ -94,6 +97,63 @@ func (d Deps) secondFactorMethods(c *echo.Context, sub string) []string {
 	return methods
 }
 
+// requireSecondFactor はログインセッションを第二要素の照合の待ちにし、提示できる要素の種類を
+// MfaChallengeIssued で記録する。パスワードが正しかったことを残すのはこのイベントだけである。
+func (d Deps) requireSecondFactor(
+	ctx context.Context,
+	c *echo.Context,
+	sessionID string,
+) (*authdomain.AuthenticationContext, error) {
+	pending, err := d.SessionManager.RequireFactor(ctx, sessionID)
+	if err != nil || pending == nil {
+		return pending, err
+	}
+	if d.Emit != nil {
+		d.Emit(&authdomain.MfaChallengeIssued{
+			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), UserID: pending.UserID,
+			FactorTypes: mfaFactorTypes(d.secondFactorMethods(c, pending.UserID)), SessionID: pending.SessionID, //nolint:contextcheck // HTTP request context is required for factor lookup.
+		})
+	}
+	return pending, nil
+}
+
+// emitMfaChallengeFailed は第二要素の照合の失敗を記録する。
+func (d Deps) emitMfaChallengeFailed(c *echo.Context, authn *authdomain.AuthenticationContext, factor spec.MfaFactorType) {
+	if d.Emit != nil {
+		d.Emit(&authdomain.MfaChallengeFailed{
+			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), UserID: authn.UserID,
+			FactorType: factor, SessionID: authn.SessionID,
+		})
+	}
+}
+
+// mfaFactorTypes は第二要素の method を MfaFactorType へ写す。復旧コードは要素の種類ではないので除く。
+func mfaFactorTypes(methods []string) []spec.MfaFactorType {
+	types := make([]spec.MfaFactorType, 0, len(methods))
+	for _, method := range methods {
+		switch method {
+		case "totp":
+			types = append(types, spec.MfaFactorTOTP)
+		case "webauthn":
+			types = append(types, spec.MfaFactorWebAuthn)
+		}
+	}
+	return types
+}
+
+// mfaFactorForAMR は第二要素として加わった amr の値に対応する MfaFactorType を返す。
+// 復旧コード (rc) は要素の種類ではないので false を返す。
+func mfaFactorForAMR(amr string) (spec.MfaFactorType, bool) {
+	switch amr {
+	case "otp":
+		return spec.MfaFactorTOTP, true
+	case "webauthn":
+		return spec.MfaFactorWebAuthn, true
+	default:
+		return "", false
+	}
+}
+
 // handleWebAuthnChallengeAPI は login の WebAuthn assertion challenge を発行する。
 func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) == nil {
@@ -151,7 +211,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 		c.Request().Context(), d.webAuthnLoginDeps(c), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
 	); err != nil {
 		d.recordLoginOutcome("failure", "webauthn_invalid", "webauthn")
-		d.emitAuthenticationFailure(c, authn.UserID, "webauthn_invalid")
+		d.emitMfaChallengeFailed(c, authn, spec.MfaFactorWebAuthn)
 		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_webauthn", "Passkey authentication failed.")
 	}
 	return d.finishSecondFactor(c, authn.SessionID, req, "webauthn", directAdminLogin, input.ReturnTo, input.RememberDevice)
@@ -239,7 +299,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	}
 	if !result.OK {
 		d.recordLoginOutcome("failure", result.Reason, "otp")
-		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
+		d.emitMfaChallengeFailed(c, authn, spec.MfaFactorTOTP)
 		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_totp", "Check the TOTP code.")
 	}
 	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo, input.RememberDevice)
@@ -264,6 +324,12 @@ func (d Deps) finishSecondFactor(
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
 	}
 	d.setSessionCookie(c, completed.SessionID)
+	if factor, ok := mfaFactorForAMR(amr); ok && d.Emit != nil {
+		d.Emit(&authdomain.MfaChallengeSucceeded{
+			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), UserID: completed.UserID,
+			FactorType: factor, SessionID: completed.SessionID,
+		})
+	}
 	// 本物の第二要素が成立した直後だけがデバイスを記憶できる契機である (wi-91)。
 	if err := d.rememberDeviceIfRequested(c, completed.UserID, amr, rememberDevice); err != nil {
 		return err

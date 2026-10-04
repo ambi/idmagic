@@ -40,15 +40,12 @@ type AdminAuditEventResponse struct {
 var auditEventCategoryTypes = map[string][]string{
 	"success": {
 		"UserAuthenticated",
-		"AuthenticationStepCompleted",
 		"MfaChallengeIssued",
 		"MfaChallengeSucceeded",
 		"MfaEnrollmentRequired",
 		"MfaEnrollmentCompleted",
 		"MfaEnrollmentBypassConsumed",
 		"BackupCodeConsumed",
-		"SessionStarted",
-		"SessionRefreshed",
 		"SessionEnded",
 		"FederatedAuthenticated",
 		"FederationLinked",
@@ -58,7 +55,6 @@ var auditEventCategoryTypes = map[string][]string{
 	},
 	"fail": {
 		"AuthenticationFailed",
-		"AuthenticationStepFailed",
 		"MfaChallengeFailed",
 	},
 	"aggregated": {

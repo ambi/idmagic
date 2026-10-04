@@ -49,7 +49,6 @@ func DefaultRetentionPolicy() RetentionPolicy {
 var (
 	retentionFailTypes = []string{
 		(&authdomain.AuthenticationFailed{}).EventType(),
-		(&authdomain.AuthenticationStepFailed{}).EventType(),
 	}
 	retentionAggregatedTypes = []string{
 		(&authdomain.AuthenticationEventAggregated{}).EventType(),
@@ -67,8 +66,6 @@ var (
 		(&authdomain.MfaEnrollmentBypassExpired{}).EventType(),
 	}
 	retentionSessionTypes = []string{
-		(&authdomain.SessionStarted{}).EventType(),
-		(&authdomain.SessionRefreshed{}).EventType(),
 		(&authdomain.SessionEnded{}).EventType(),
 	}
 	retentionImpersonationTypes = []string{

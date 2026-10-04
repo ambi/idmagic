@@ -46,14 +46,10 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
 	// RFC 9396 — authorization_details があれば push 時点で fail-closed 検証する。
-	if raw := in.Parameters["authorization_details"]; raw != "" {
-		details, err := ParseAuthorizationDetails(raw)
-		if err != nil {
-			return nil, err
-		}
-		if err := ValidateAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, details); err != nil {
-			return nil, err
-		}
+	if _, err := acceptAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, deps.Emit, detailsRequest{
+		ClientID: in.ClientID, Raw: in.Parameters["authorization_details"], Now: now,
+	}); err != nil {
+		return nil, err
 	}
 	// RFC 8707 resource indicator — push 時点で早期に fail-closed 検証する。
 	// 確定検証は /authorize 消費時・/token 発行時にも再度行う (registry 状態変化への防御)。

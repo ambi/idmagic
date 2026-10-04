@@ -70,33 +70,12 @@ type AuthenticationEventAggregated struct {
 func (e *AuthenticationEventAggregated) EventType() string     { return "AuthenticationEventAggregated" }
 func (e *AuthenticationEventAggregated) OccurredAt() time.Time { return e.At }
 
-type AuthenticationStepCompleted struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	UserID    string    `json:"userId"`
-	Step      string    `json:"step"`
-	SessionID string    `json:"sessionId,omitempty"`
-}
-
-func (e *AuthenticationStepCompleted) EventType() string     { return "AuthenticationStepCompleted" }
-func (e *AuthenticationStepCompleted) OccurredAt() time.Time { return e.At }
-
-type AuthenticationStepFailed struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	Step     string    `json:"step"`
-	Reason   string    `json:"reason,omitempty"`
-}
-
-func (e *AuthenticationStepFailed) EventType() string     { return "AuthenticationStepFailed" }
-func (e *AuthenticationStepFailed) OccurredAt() time.Time { return e.At }
-
 type MfaChallengeIssued struct {
-	At         time.Time          `json:"-"`
-	TenantID   string             `json:"tenantId"`
-	UserID     string             `json:"userId"`
-	FactorType spec.MfaFactorType `json:"factorType"`
-	SessionID  string             `json:"sessionId,omitempty"`
+	At          time.Time            `json:"-"`
+	TenantID    string               `json:"tenantId"`
+	UserID      string               `json:"userId"`
+	FactorTypes []spec.MfaFactorType `json:"factorTypes"`
+	SessionID   string               `json:"sessionId,omitempty"`
 }
 
 func (e *MfaChallengeIssued) EventType() string     { return "MfaChallengeIssued" }
@@ -133,30 +112,6 @@ type BackupCodeConsumed struct {
 
 func (e *BackupCodeConsumed) EventType() string     { return "BackupCodeConsumed" }
 func (e *BackupCodeConsumed) OccurredAt() time.Time { return e.At }
-
-type SessionStarted struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	UserID    string    `json:"userId"`
-	SessionID string    `json:"sessionId"`
-	AMR       []string  `json:"amr,omitempty"`
-	ACR       string    `json:"acr,omitempty"`
-	IP        string    `json:"ip,omitempty"`
-	UserAgent string    `json:"userAgent,omitempty"`
-}
-
-func (e *SessionStarted) EventType() string     { return "SessionStarted" }
-func (e *SessionStarted) OccurredAt() time.Time { return e.At }
-
-type SessionRefreshed struct {
-	At        time.Time `json:"-"`
-	TenantID  string    `json:"tenantId"`
-	UserID    string    `json:"userId"`
-	SessionID string    `json:"sessionId"`
-}
-
-func (e *SessionRefreshed) EventType() string     { return "SessionRefreshed" }
-func (e *SessionRefreshed) OccurredAt() time.Time { return e.At }
 
 type FederatedAuthenticated struct {
 	At        time.Time `json:"-"`

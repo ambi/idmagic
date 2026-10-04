@@ -17,11 +17,8 @@ func TestAuthenticationEventPIIFieldsMatchPlaintextContract(t *testing.T) {
 		"tenantId", "username", "reason", "sessionId", "clientId", "ip", "userAgent",
 		"countryCode", "deviceFingerprint", "riskScore",
 	})
-	assertJSONFields(t, SessionStarted{}, []string{
-		"tenantId", "userId", "sessionId", "amr", "acr", "ip", "userAgent",
-	})
-	assertJSONFields(t, AuthenticationStepFailed{}, []string{
-		"tenantId", "step", "reason",
+	assertJSONFields(t, MfaChallengeIssued{}, []string{
+		"tenantId", "userId", "factorTypes", "sessionId",
 	})
 }
 

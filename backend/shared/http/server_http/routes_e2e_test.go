@@ -28,6 +28,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/authentication"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/db_memory"
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
@@ -36,6 +37,8 @@ import (
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_memory"
+	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -158,6 +161,8 @@ type totpServerOptions struct {
 	// 0 のときは 1 時間。登録期限を過ぎた確定を観測する具体例は、ログインの時点では
 	// 期限内で、確定の時点では期限外という状態を必要とする (EX-AUTHENTICATION-018-03)。
 	enrollmentDeadlineIn time.Duration
+	// webAuthn は WebAuthn の RP を構成し、ログインの第二要素の WebAuthn の API を使えるようにする。
+	webAuthn bool
 }
 
 func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, enrollment ...bool) *httptest.Server {
@@ -296,22 +301,34 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
+	authenticationModule := authentication.Module{
+		MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo,
+		TrustedDeviceRepo:       trusteddevicememory.NewTrustedDeviceRepository(),
+	}
+	if opts.webAuthn {
+		rp, err := webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
+			RPID: "localhost", RPDisplayName: "idmagic", RPOrigins: []string{"http://localhost"},
+		})
+		if err != nil {
+			t.Fatalf("webauthn rp: %v", err)
+		}
+		authenticationModule.WebAuthnRP = rp
+		authenticationModule.WebAuthnSessionStore = webauthnmemory.NewWebAuthnSessionStore()
+	}
 	e := echo.New()
 	events := &[]spec.DomainEvent{}
 	httpadapter.Register(e, httpadapter.Deps{
-		Issuer:          "http://test",
-		Emit:            func(event spec.DomainEvent) { *events = append(*events, event) },
-		TenantRepo:      seedTrustedDeviceTenant(t, opts.trustedDeviceMaxAgeSeconds),
-		StartupComplete: startupComplete, ShuttingDown: shuttingDown, OAuth2: oauth2.Module{
+		Issuer:                 "http://test",
+		Emit:                   func(event spec.DomainEvent) { *events = append(*events, event) },
+		WebAuthnCredentialRepo: webauthnmemory.NewWebAuthnCredentialRepository(),
+		TenantRepo:             seedTrustedDeviceTenant(t, opts.trustedDeviceMaxAgeSeconds),
+		StartupComplete:        startupComplete, ShuttingDown: shuttingDown, OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
 			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
 		}, UserRepo: userRepo,
-		Authentication: authentication.Module{
-			MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo,
-			TrustedDeviceRepo:       trusteddevicememory.NewTrustedDeviceRepository(),
-		},
-		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
+		Authentication: authenticationModule,
+		MfaFactorRepo:  mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		Application: application.Module{
@@ -334,6 +351,17 @@ func assertEmitted(t *testing.T, events *[]spec.DomainEvent, wanted ...string) {
 			t.Fatalf("%s が発行されていない: %v", want, emitted)
 		}
 	}
+}
+
+// emittedOf は発行されたイベントのうち型 E のものを発行順に返す。
+func emittedOf[E spec.DomainEvent](events *[]spec.DomainEvent) []E {
+	var found []E
+	for _, event := range *events {
+		if typed, ok := event.(E); ok {
+			found = append(found, typed)
+		}
+	}
+	return found
 }
 
 // seedTrustedDeviceTenant は既定テナントを 1 件だけ持つリポジトリを返す。
@@ -637,6 +665,12 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 			t.Fatalf("第二要素の前に UserAuthenticated が発行された: %#v", event)
 		}
 	}
+	// 一方で、パスワードが正しく第二要素を求めたという事実は記録される。
+	issued := emittedOf[*authdomain.MfaChallengeIssued](events)
+	if len(issued) != 1 || issued[0].UserID != "user_alice" || issued[0].SessionID == "" ||
+		!slices.Equal(issued[0].FactorTypes, []spec.MfaFactorType{spec.MfaFactorTOTP}) {
+		t.Fatalf("MfaChallengeIssued = %+v, want one for user_alice offering [totp]", issued)
+	}
 
 	totpTransaction := getJSON[struct {
 		Kind      string `json:"kind"`
@@ -688,6 +722,87 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 		t.Fatalf("authorization did not resume into a code: %s", consentResult["redirect_to"])
 	}
 	assertEmitted(t, events, "UserAuthenticated")
+}
+
+// loginUntilSecondFactor はパスワードでログインし、第二要素の照合を待つトランザクションの CSRF トークンを返す。
+func loginUntilSecondFactor(t *testing.T, client *http.Client, baseURL, verifier string) string {
+	t.Helper()
+	resp := startAuthorization(t, client, baseURL, verifier, "state")
+	resp.Body.Close()
+	login := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, baseURL+"/api/auth/transaction")
+	result := postJSON[map[string]string](t, client, baseURL+"/api/auth/login", login.CSRFToken, map[string]string{
+		"username": demoUsername,
+		"password": demoPassword,
+	})
+	if result["next"] != "/realms/default/totp" {
+		t.Fatalf("login next=%q, want /realms/default/totp", result["next"])
+	}
+	pending := getJSON[struct {
+		Kind      string `json:"kind"`
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, baseURL+"/api/auth/transaction")
+	if pending.Kind != "totp" || pending.CSRFToken == "" {
+		t.Fatalf("second-factor transaction = %+v, want kind totp", pending)
+	}
+	return pending.CSRFToken
+}
+
+//spec:covers REQ-AUTHENTICATION-017: 誤った TOTP のコードが AuthenticationFailed ではなく factorType=totp の MfaChallengeFailed を残し、続く正しいコードが MfaChallengeSucceeded と UserAuthenticated を残すことを固定する。
+func TestTOTPSecondFactorRecordsChallengeOutcome(t *testing.T) {
+	secret := totpTestSecret
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{totpSecret: secret, requireMFA: true})
+	defer srv.Close()
+	client := browserClient(t)
+	baseURL := srv.URL + "/realms/default"
+	csrf := loginUntilSecondFactor(t, client, baseURL, "verifier-for-totp-outcome-test-123456789012345")
+
+	wrong := postAuthJSON(t, client, baseURL+"/api/auth/totp", csrf, map[string]string{"code": "000000"})
+	wrong.Body.Close()
+	if wrong.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("wrong TOTP status=%d, want 401", wrong.StatusCode)
+	}
+	if failed := emittedOf[*authdomain.AuthenticationFailed](events); len(failed) != 0 {
+		t.Fatalf("AuthenticationFailed = %+v, want none for a second-factor failure", failed)
+	}
+	failed := emittedOf[*authdomain.MfaChallengeFailed](events)
+	if len(failed) != 1 || failed[0].UserID != "user_alice" || failed[0].FactorType != spec.MfaFactorTOTP || failed[0].SessionID == "" {
+		t.Fatalf("MfaChallengeFailed = %+v, want one totp failure for user_alice", failed)
+	}
+
+	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatalf("generate totp: %v", err)
+	}
+	postJSON[map[string]string](t, client, baseURL+"/api/auth/totp", csrf, map[string]string{"code": code})
+	succeeded := emittedOf[*authdomain.MfaChallengeSucceeded](events)
+	if len(succeeded) != 1 || succeeded[0].UserID != "user_alice" || succeeded[0].FactorType != spec.MfaFactorTOTP {
+		t.Fatalf("MfaChallengeSucceeded = %+v, want one totp success for user_alice", succeeded)
+	}
+	assertEmitted(t, events, "UserAuthenticated")
+}
+
+//spec:covers REQ-AUTHENTICATION-040: 検証できない WebAuthn のアサーションが 401 で拒否され、AuthenticationFailed ではなく factorType=webauthn の MfaChallengeFailed を残すことを固定する。
+func TestWebAuthnSecondFactorFailureRecordsChallengeFailed(t *testing.T) {
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{totpSecret: totpTestSecret, requireMFA: true, webAuthn: true})
+	defer srv.Close()
+	client := browserClient(t)
+	baseURL := srv.URL + "/realms/default"
+	csrf := loginUntilSecondFactor(t, client, baseURL, "verifier-for-webauthn-failure-test-1234567890")
+
+	forged := postAuthJSON(t, client, baseURL+"/api/auth/webauthn", csrf, map[string]any{"assertion": map[string]string{"id": "forged"}})
+	forged.Body.Close()
+	if forged.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("forged assertion status=%d, want 401", forged.StatusCode)
+	}
+	if failed := emittedOf[*authdomain.AuthenticationFailed](events); len(failed) != 0 {
+		t.Fatalf("AuthenticationFailed = %+v, want none for a second-factor failure", failed)
+	}
+	failed := emittedOf[*authdomain.MfaChallengeFailed](events)
+	if len(failed) != 1 || failed[0].UserID != "user_alice" || failed[0].FactorType != spec.MfaFactorWebAuthn {
+		t.Fatalf("MfaChallengeFailed = %+v, want one webauthn failure for user_alice", failed)
+	}
 }
 
 //spec:covers REQ-AUTHENTICATION-018, EX-AUTHENTICATION-018-01: バイパスを消費して同じ LoginSession が Enrollment の保留になり、MfaEnrollmentRequired と MfaEnrollmentBypassConsumed が残ること、確定で amr に otp が加わって保留が解け、MfaEnrollmentCompleted と UserAuthenticated が残って元の認可が継続することを固定する。

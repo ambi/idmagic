@@ -21,18 +21,8 @@
     "events": []
   },
   "authentication": {
-    "errors": ["webauthn_not_enrolled"],
-    "events": [
-      "AuthenticationStepCompleted",
-      "AuthenticationStepFailed",
-      "MfaChallengeIssued",
-      "MfaChallengeSucceeded",
-      "MfaChallengeFailed",
-      "SessionStarted",
-      "SessionRefreshed",
-      "SessionImpersonationStarted",
-      "SessionImpersonationEnded"
-    ]
+    "errors": [],
+    "events": ["SessionImpersonationStarted", "SessionImpersonationEnded"]
   },
   "authorization": {
     "errors": [],
@@ -52,15 +42,11 @@
   },
   "oauth2": {
     "errors": [],
-    "events": ["AuthorizationDetailsRejected"]
+    "events": []
   },
   "provisioning": {
     "errors": [],
-    "events": [
-      "ProvisioningConnectionUpdated",
-      "ProvisioningConnectionDisabled",
-      "ProvisioningConnectionDeleted"
-    ]
+    "events": []
   },
   "saml": {
     "errors": [],
