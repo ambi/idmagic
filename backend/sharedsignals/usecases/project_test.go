@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
@@ -170,4 +172,48 @@ func TestProjectAgentAccessRevoked_FansOutToMultipleStreams(t *testing.T) {
 			t.Fatalf("%s: expected 1 delivery, got %d", streamID, len(deliveries))
 		}
 	}
+}
+
+// NewAgentRevocationReactor は、派生イベントを記録し、AgentAccessRevoked だけを外部への伝播へ投影する。
+// 投影の失敗はローカルの失効を失敗させない。
+//
+//spec:covers REQ-SHAREDSIGNALS-007: 組み立てた反応器が AgentKilled で失効エポックを進め、RevocationEpochAdvanced と AgentAccessRevoked を記録し、購読する Transmit ストリームへ pending の配送を 1 件作ること、投影が失敗しても React が成功しエポックが進むことを固定する。
+func TestNewAgentRevocationReactor_RecordsAndProjectsTheRevocation(t *testing.T) {
+	event := &idmdomain.AgentKilled{At: time.Now().UTC(), TenantID: projectTestTenantID, AgentID: "agent_1"}
+
+	t.Run("Projects", func(t *testing.T) {
+		projector, streamRepo, configRepo, deliveryRepo := newProjectorDeps(t)
+		seedTransmitStream(t, streamRepo, configRepo, "stream_1", ssdomain.SsfStreamStatusEnabled, []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked})
+		var recorded []string
+		reactor := ssusecases.NewAgentRevocationReactor(ssusecases.RevocationReactorDeps{
+			EpochRepo: ssmemory.NewAgentRevocationEpochRepository(), Projector: projector,
+			Emit: func(e spec.DomainEvent) { recorded = append(recorded, e.EventType()) },
+		})
+		ctx := context.Background()
+		if err := reactor.React(ctx, event); err != nil {
+			t.Fatalf("React: %v", err)
+		}
+		if len(recorded) != 2 || recorded[0] != "RevocationEpochAdvanced" || recorded[1] != "AgentAccessRevoked" {
+			t.Fatalf("recorded = %v, want [RevocationEpochAdvanced AgentAccessRevoked]", recorded)
+		}
+		deliveries, err := deliveryRepo.ListByStream(ctx, projectTestTenantID, "stream_1")
+		if err != nil || len(deliveries) != 1 {
+			t.Fatalf("deliveries = %+v, %v; want exactly one for AgentAccessRevoked", deliveries, err)
+		}
+	})
+
+	t.Run("ProjectionFailureDoesNotFailTheRevocation", func(t *testing.T) {
+		projector, streamRepo, configRepo, _ := newProjectorDeps(t)
+		seedTransmitStream(t, streamRepo, configRepo, "stream_1", ssdomain.SsfStreamStatusEnabled, []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked})
+		projector.Issuer = ""
+		epochs := ssmemory.NewAgentRevocationEpochRepository()
+		reactor := ssusecases.NewAgentRevocationReactor(ssusecases.RevocationReactorDeps{EpochRepo: epochs, Projector: projector})
+		ctx := context.Background()
+		if err := reactor.React(ctx, event); err != nil {
+			t.Fatalf("React: %v, want the local revocation to succeed despite the projection failure", err)
+		}
+		if epoch, err := epochs.FindByAgent(ctx, projectTestTenantID, "agent_1"); err != nil || epoch == nil {
+			t.Fatalf("epoch = %+v, %v; want advanced", epoch, err)
+		}
+	})
 }

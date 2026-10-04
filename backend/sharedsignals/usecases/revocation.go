@@ -11,6 +11,7 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -88,6 +89,38 @@ type AgentRevocationReactor struct {
 	// events (best-effort audit trail is the caller's concern to compose;
 	// see AdvanceRevocationEpoch's doc for its own error propagation).
 	Emit func(spec.DomainEvent) error
+}
+
+// RevocationReactorDeps は、組み立ての地点が NewAgentRevocationReactor へ渡す依存である。
+type RevocationReactorDeps struct {
+	EpochRepo ssports.AgentRevocationEpochRepository
+	AgentRepo agentports.AgentRepository
+	Projector ProjectorDeps
+	// Emit は派生イベント (RevocationEpochAdvanced、AgentAccessRevoked) を記録する配信点である。
+	Emit func(spec.DomainEvent)
+}
+
+// NewAgentRevocationReactor は、IdManagement のイベントを発行するすべての経路が使う反応器を組み立てる。
+// 派生イベントを記録した後、AgentAccessRevoked を外部への伝播へ投影する。投影はローカルの失効を
+// 遅らせも失敗させもしない (REQ-SHAREDSIGNALS-007) ので、自前の 5 秒の期限で走らせ、失敗は記録して続ける。
+func NewAgentRevocationReactor(deps RevocationReactorDeps) *AgentRevocationReactor {
+	return &AgentRevocationReactor{
+		EpochRepo: deps.EpochRepo,
+		AgentRepo: deps.AgentRepo,
+		Emit: func(event spec.DomainEvent) error {
+			if deps.Emit != nil {
+				deps.Emit(event)
+			}
+			if revoked, ok := event.(*ssdomain.AgentAccessRevoked); ok {
+				projectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := ProjectAgentAccessRevoked(projectCtx, deps.Projector, revoked); err != nil {
+					logging.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "agent_id", revoked.AgentID, "tenant_id", revoked.TenantID)
+				}
+			}
+			return nil
+		},
+	}
 }
 
 // React implements the deps_http.EventReactor shape structurally

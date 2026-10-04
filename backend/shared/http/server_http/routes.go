@@ -47,13 +47,11 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/logging"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	sharedsignalshttp "github.com/ambi/idmagic/backend/sharedsignals/handlers_http"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
@@ -319,40 +317,17 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 
-	// revocationReactor fail-closed reacts to already-emitted IdManagement
-	// events (AgentKilled/AgentDisabled/AgentCredentialUnbound/UserDisabled/
-	// UserSoftDeleted/UserDeleted) by advancing SharedSignals' Agent
-	// revocation epoch (wi-58). Composed into idmhttp.Deps.Reactor,
-	// which ReactiveEmit calls after every Emit.
-	//
-	// Its own Emit records the derived RevocationEpochAdvanced/
-	// AgentAccessRevoked events, and best-effort fans AgentAccessRevoked out
-	// to registered SSF Transmit streams (EcosystemPropagation, wi-58 T004).
-	// This projection step is deliberately non-propagating: ecosystem
-	// propagation must never block or delay the local revocation that just
-	// succeeded (decision 6), so a projection failure is logged, not
-	// returned.
-	projectorDeps := sharedsignalsusecases.ProjectorDeps{
-		StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
-		DeliveryRepo: d.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: d.SigningKeys.KeyStore}, Issuer: d.Issuer,
-	}
-	revocationReactor := &sharedsignalsusecases.AgentRevocationReactor{
+	// 管理 API の User と Agent の操作は、idmhttp.Deps.ReactiveEmit が発行の後にこの反応器を呼ぶ。
+	// 管理 API の外から User を止める経路は、組み立ての地点の UserLifecycleCommands が同じ反応器を使う。
+	revocationReactor := sharedsignalsusecases.NewAgentRevocationReactor(sharedsignalsusecases.RevocationReactorDeps{
 		EpochRepo: d.SharedSignals.RevocationEpochRepo,
 		AgentRepo: d.IdManagement.AgentRepo,
-		Emit: func(event spec.DomainEvent) error {
-			if d.Emit != nil {
-				d.Emit(event)
-			}
-			if revoked, ok := event.(*ssdomain.AgentAccessRevoked); ok {
-				projectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				if err := sharedsignalsusecases.ProjectAgentAccessRevoked(projectCtx, projectorDeps, revoked); err != nil {
-					logging.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "agent_id", revoked.AgentID, "tenant_id", revoked.TenantID)
-				}
-			}
-			return nil
+		Projector: sharedsignalsusecases.ProjectorDeps{
+			StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
+			DeliveryRepo: d.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: d.SigningKeys.KeyStore}, Issuer: d.Issuer,
 		},
-	}
+		Emit: d.Emit,
+	})
 
 	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
 	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (基盤の
