@@ -27,6 +27,18 @@
 
 #### REQ-SYSTEM-018 飽和した API プロセスは優先度の低い要求から拒否する
 
+- 優先度のクラスの実行中の要求の数が入場の上限に達している間、そのクラスの要求を受けたとき、System は、ハンドラーへ渡さず、`Retry-After` と `urn:idmagic:error:service_overloaded` の Problem Details を伴う 503 で拒否し、永続状態もドメインイベントも変えない。
+- System は、`management_bulk` の上限を `management` の上限以下、`management` の上限をプロセス全体の上限以下に保ち、`management_bulk`、`management`、`interactive_auth` の順に拒否を始める。
+- 要求を拒否するとき、System は、下位のクラスほど長い `Retry-After` を返す。
+- System は、`infrastructure` のクラス（生存確認、受付可否、起動完了、指標）の要求を拒否しない。
+- 分類のない経路の要求を受けたとき、System は、`interactive_auth` と同じ上限を適用する。
+- 実行中の要求の数が上限に達していない間、要求を受けたとき、System は、ハンドラーへ渡して通常どおり処理する。
+- **例**：EX-SYSTEM-018-01、EX-SYSTEM-018-02、EX-SYSTEM-018-03
+
 ### 運用者による経路の優先度の参照文書の生成
 
 #### REQ-SYSTEM-019 RoutePriorityReference は分類の定義から生成され乖離を検出できる
+
+- 運用者が経路の優先度の参照文書を生成したとき、System は、組み立て済みの各経路の経路のパターン、メソッド、優先度のクラスと、クラスごとの縮退のステージと上限を与える起動時設定のキーを書き出す。
+- 生成物が定義と一致しない場合、System は、突き合わせを失敗させ、再生成すべきことを報告する。
+- **例**：EX-SYSTEM-019-01、EX-SYSTEM-019-02

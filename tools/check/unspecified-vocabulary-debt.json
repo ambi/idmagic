@@ -11,5 +11,86 @@
   "tenancy": {
     "errors": [],
     "events": ["TenantQuotaUpdated"]
+  },
+  "application": {
+    "errors": [],
+    "events": []
+  },
+  "audit": {
+    "errors": [],
+    "events": []
+  },
+  "authentication": {
+    "errors": ["webauthn_not_enrolled"],
+    "events": [
+      "AuthenticationStepCompleted",
+      "AuthenticationStepFailed",
+      "MfaChallengeIssued",
+      "MfaChallengeSucceeded",
+      "MfaChallengeFailed",
+      "SessionStarted",
+      "SessionRefreshed",
+      "SessionImpersonationStarted",
+      "SessionImpersonationEnded"
+    ]
+  },
+  "authorization": {
+    "errors": [],
+    "events": []
+  },
+  "data-keys": {
+    "errors": [],
+    "events": []
+  },
+  "identity-governance": {
+    "errors": [],
+    "events": []
+  },
+  "jobs": {
+    "errors": ["jobs_unavailable"],
+    "events": []
+  },
+  "oauth2": {
+    "errors": [],
+    "events": ["AuthorizationDetailsRejected"]
+  },
+  "provisioning": {
+    "errors": [],
+    "events": [
+      "ProvisioningConnectionUpdated",
+      "ProvisioningConnectionDisabled",
+      "ProvisioningConnectionDeleted"
+    ]
+  },
+  "saml": {
+    "errors": [],
+    "events": []
+  },
+  "sharedsignals": {
+    "errors": [
+      "invalid_request",
+      "insufficient_scope",
+      "invalid_origin",
+      "csrf_failed",
+      "step_up_required",
+      "unlink_denied"
+    ],
+    "events": []
+  },
+  "signing-keys": {
+    "errors": [],
+    "events": []
+  },
+  "system": {
+    "errors": [],
+    "events": ["EmailSent"]
+  },
+  "workloadidentity": {
+    "errors": [],
+    "events": []
+  },
+  "ws-federation": {
+    "errors": [],
+    "events": []
   }
 }

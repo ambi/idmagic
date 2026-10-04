@@ -13,14 +13,14 @@
 - Given スコープ集合と将来の有効期限を持つ API アクセストークンが発行済みである
 - When 呼び出し元が JWT アクセストークンを AuthenticateApiToken に提示する
 - But トークンの JWT 形式、署名、発行者、audience、`exp` のいずれかが不正である
-- Then AccessDeniedError で拒否する
+- Then 主体を返さずに拒否する
 
 ### Example: EX-APITOKENS-002-03 トークンが未知、失効済み、期限切れ、またはスコープ集合が空である
 
 - Given スコープ集合と将来の有効期限を持つ API アクセストークンが発行済みである
 - When 呼び出し元が JWT アクセストークンを AuthenticateApiToken に提示する
 - But トークンが未知、失効済み、期限切れ、またはスコープ集合が空である
-- Then AccessDeniedError で拒否する
+- Then 主体を返さずに拒否する
 
 ## Rule: REQ-APITOKENS-004 管理 API は API アクセストークンの粒度スコープでフェイルクローズに認可する
 

@@ -149,6 +149,9 @@ describe('verifyEarsStatements', () => {
       earsMessages(
         '- Demo は、ユーザー名を前後の空白を除いて保存する。',
         '- User が `Active` 以外の間、Demo は、その User の新規のサインインを拒否する。',
+        '- 発行者がロールを持つ間、要求されたとき、Demo は、操作を実行する。',
+        '- User がロックされている間、Demo は、サインインを拒否する。',
+        '- 規則が評価できない間、Demo は、所属を与えない。',
         '- 管理者が User を無効化したとき、Demo は、`UserDisabled` を発行する。',
         '- `a`、`b`、`c` のいずれかが空の場合、Demo は、422 と `invalid_request` で拒否し、User を変えない。',
         '- 再利用を禁止するテナントでは、Demo は、履歴にあるパスワードへの変更を拒否する。',
@@ -176,6 +179,12 @@ describe('verifyEarsStatements', () => {
   it('rejects a responder written twice', () => {
     expect(earsMessages('- 無効化したとき、Demo は、記録し、Demo は、通知する。')).toEqual([
       'REQ-DEMO-001 statement names the responder 「Demo は、」 more than once',
+    ])
+  })
+
+  it('does not read 間 after a kanji noun as a state marker', () => {
+    expect(earsMessages('- 猶予期間、Demo は、記録する。')).toEqual([
+      'REQ-DEMO-001 preamble 「猶予期間」 ends with no marker; end it with では、の間、とき、or 場合、',
     ])
   })
 
@@ -208,11 +217,13 @@ describe('verifyEarsStatements', () => {
       earsMessages(
         '- 要求されたとき、Demo は、スコープを含む場合だけ実行する。',
         '- 要求されたとき、Demo は、有効な限り実行する。',
+        '- 要求されたとき、Demo は、ロールを持つ間だけ実行する。',
         '- 起動したとき、Demo は、テナントがなければ作る。',
       ),
     ).toEqual([
       'REQ-DEMO-001 response contains the condition 「場合」; move it into the preamble',
       'REQ-DEMO-001 response contains the condition 「限り」; move it into the preamble',
+      'REQ-DEMO-001 response contains the condition 「の間」; move it into the preamble',
       'REQ-DEMO-001 response contains the condition 「〜ば」; move it into the preamble',
     ])
   })

@@ -27,7 +27,17 @@
 
 #### REQ-AUTHORIZATION-001 管理者は認可モデルを版として登録でき、整合しないモデルは拒否される
 
+- 管理者が認可モデルを登録したとき、Authorization は、テナントの中で単調に増える新しい版を作り、以前の版を書き換えず、整合トークンを返し、`AuthorizationModelPublished` を発行する。
+- 管理者が認可モデルを取得したとき、Authorization は、最新の版を返す。
+- 宣言していない型か関係を参照する定義、循環する書き換えの規則、`^[a-z][a-z0-9_]*$` の形でないか 65 文字以上の型名か関係名を指定された場合、Authorization は、422 と `authorization_model_invalid` で拒否し、版を作らない。
+- テナントに認可モデルを登録していない間、管理者が認可モデルを取得したとき、Authorization は、404 と `authorization_model_not_found` で拒否する。
+- **例**：EX-AUTHORIZATION-001-01、EX-AUTHORIZATION-001-02、EX-AUTHORIZATION-001-03、EX-AUTHORIZATION-001-04
+
 #### REQ-AUTHORIZATION-010 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる
+
+- `admin` のロールを持たない利用者が認可モデルの登録と取得、関係タプルの書き込みと一覧、判定、列挙を要求した場合、Authorization は、403 と `access_denied` で拒否し、版もタプルも作らない。
+- API アクセストークンでこの Context の管理 API を要求された場合、Authorization は、トークンのスコープによらず 403 と `insufficient_scope` で拒否する。
+- **例**：EX-AUTHORIZATION-010-01、EX-AUTHORIZATION-010-02
 
 ## セキュリティ上の考慮
 

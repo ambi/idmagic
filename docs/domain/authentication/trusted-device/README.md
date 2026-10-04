@@ -47,7 +47,11 @@
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Active | TrustedDeviceRevoked | — | Revoked | revoked_at と revoke_reason を設定する |
-| Revoked | TrustedDeviceRevoked | — | Revoked |  |
+
+| State | 記憶した端末でのログイン | 信頼済みデバイスの失効 | 資格情報の変更 |
+|---|---|---|---|
+| Active | 何もしない（期限内）<br>拒否：第二要素を求める（期限切れ） | → Revoked | → Revoked |
+| Revoked | 拒否：第二要素を求める | 何もしない | 何もしない |
 
 ## 操作
 
@@ -55,15 +59,40 @@
 
 #### REQ-AUTHENTICATION-026 第二要素の成立時に本人が同意した端末は次回以降の第二要素を省略できる
 
+- テナントの `trusted_device_max_age_seconds` が正の値の間、TOTP か WebAuthn の第二要素でログインを完了した User が端末の記憶に同意したとき、Authentication は、realm のスコープの HttpOnly の Cookie として信頼済みデバイスの資格情報を発行し、`Active` の信頼済みデバイスを記録し、`TrustedDeviceRegistered` を発行する。
+- テナントの `trusted_device_max_age_seconds` が 0 の間、第二要素でログインを完了したとき、Authentication は、記憶の同意の導線を出さず、送られた `remember_device` を無視する。
+- 復旧コードで第二要素を満たしたか、パスワードだけか登録の専用の流れでログインを完了したとき、Authentication は、端末を記憶しない。
+- **例**：EX-AUTHENTICATION-026-01、EX-AUTHENTICATION-026-02、EX-AUTHENTICATION-026-03、EX-AUTHENTICATION-026-04
+
+### 利用者による記憶した端末でのログイン
+
 #### REQ-AUTHENTICATION-027 期限切れ・盗難・別テナントの信頼済みデバイス cookie は第二要素を省略できない
 
-### 本人による機微な操作
+- 実効のサインインポリシーが `Mfa` で `allow_trusted_device=true` の間、`Active` で期限内の信頼済みデバイスの Cookie とともに正しいパスワードを受けたとき、Authentication は、第二要素の画面へ進めずにログインを完了させ、`amr` に `tdev` を加えて `acr` を `urn:idmagic:acr:mfa` にし、verifier を回転させて `last_used_at` を進め、Cookie を再発行する。
+- 実効のサインインの規則が `allow_trusted_device=false` の間、信頼済みデバイスの Cookie とともに正しいパスワードを受けたとき、Authentication は、`tdev` を MFA の充足と認めずに第二要素の画面へ進ませる。
+- 絶対期限か idle 期限を過ぎた Cookie、回転の前の古い Cookie、別のテナントの realm で発行された Cookie、verifier の一致しない Cookie、`Revoked` のデバイスの Cookie を受けた場合、Authentication は、第二要素を省略せずにログインセッションを `authentication_pending=true` にし、`amr` に `tdev` を加えない。
+- **例**：EX-AUTHENTICATION-027-01、EX-AUTHENTICATION-027-02、EX-AUTHENTICATION-027-03、EX-AUTHENTICATION-027-04、EX-AUTHENTICATION-027-05
+
+### 本人による信頼済みデバイスの失効
 
 #### REQ-AUTHENTICATION-029 信頼済みデバイスは機微操作の再認証を肩代わりしない
 
-### 本人による資格情報の変更
+- 信頼済みデバイスで第二要素を省略したとき、Authentication は、`step_up_at` を進めない。
+- ステップアップ認証を経ていないセッションでパスワードの変更、認証の要素の解除、他のセッションの一括の失効を受けた場合、Authentication は、403 と `step_up_required` で拒否し、パスワード、認証の要素、セッションを変えない。
+- 本人が信頼済みデバイスを一覧したとき、Authentication は、selector と verifier を含めずに最終利用の時刻の降順で返し、現在の端末を current として示す。
+- 本人がステップアップ認証を経て一つの信頼済みデバイスを失効させたとき、Authentication は、204 を返し、そのデバイスを `Revoked` にし、`TrustedDeviceRevoked` を発行する。
+- 本人がステップアップ認証を経て信頼済みデバイスを一括で失効させたとき、Authentication は、204 を返し、本人のすべての `Active` のデバイスを `Revoked` にし、デバイスごとに `TrustedDeviceRevoked` を発行する。
+- 本人が `Revoked` のデバイスの失効を要求したとき、Authentication は、204 を返し、最初の失効の時刻を保持し、イベントを発行しない。
+- ステップアップ認証を経ていないセッションで信頼済みデバイスの失効を受けた場合、Authentication は、403 と `step_up_required` で拒否する。
+- 本人のものでないか存在しないデバイスの失効を受けた場合、Authentication は、404 と `trusted_device_not_found` で拒否する。
+- **例**：EX-AUTHENTICATION-029-01、EX-AUTHENTICATION-029-02、EX-AUTHENTICATION-029-03
+
+### 本人と管理者による資格情報の変更
 
 #### REQ-AUTHENTICATION-028 資格情報が変わると信頼済みデバイスはすべて失効する
+
+- 本人がパスワードを変更かリセットしたか、認証の要素を登録か解除したか、管理者が認証器をリセットしたか、User を無効化したか、本人か管理者が全セッションを失効させたとき、Authentication は、その User のすべての `Active` の信頼済みデバイスを `Revoked` にし、デバイスごとに `TrustedDeviceRevoked` を発行する。
+- **例**：EX-AUTHENTICATION-028-01、EX-AUTHENTICATION-028-02、EX-AUTHENTICATION-028-03、EX-AUTHENTICATION-028-04、EX-AUTHENTICATION-028-05、EX-AUTHENTICATION-028-06
 
 ## セキュリティ上の考慮
 

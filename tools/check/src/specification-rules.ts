@@ -174,18 +174,23 @@ export function verifySpecificationRuleFields(path: string, source: string): Fin
 const PREAMBLE_MARKERS = new Map([
   ['では', { name: 'configuration', rank: 0 }],
   ['の間', { name: 'state', rank: 1 }],
+  ['間', { name: 'state', rank: 1 }],
   ['とき', { name: 'trigger', rank: 2 }],
   ['場合', { name: 'trigger', rank: 2 }],
 ])
 
-/** 前置きの節を一つずつ取り出す。最初に現れる「標識、」までを一つの節とする。 */
-const PREAMBLE_CLAUSE = /(.*?)(では|の間|とき|場合)、/y
+/**
+ * 前置きの節を一つずつ取り出す。最初に現れる「標識、」までを一つの節とする。
+ * 状態の「間」は、名詞に続く「の間」と、動詞の終止形に続く「持つ間」「している間」を読む。
+ * 漢字に続く「期間」「時間」は標識ではない。
+ */
+const PREAMBLE_CLAUSE = /(.*?)(では|の間|(?<=[うくすつぬむるぐぶい])間|とき|場合)、/y
 
 /** 応答の中に置けない条件の語。置くと、どれが契機でどれが前提かが文の形から読めなくなる。 */
 const RESPONSE_CONDITIONS: Array<[string, RegExp]> = [
   ['とき', /とき/],
   ['場合', /場合/],
-  ['の間', /の間/],
+  ['の間', /の間|(?<=[うくすつぬむるぐぶい])間/],
   ['なら', /なら(?!な)/],
   ['限り', /限り/],
   ['〜ば', /(?:けれ|れ)ば/],

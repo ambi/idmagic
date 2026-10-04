@@ -16,14 +16,14 @@
 - Given ユーザー "alice" が認証済みセッション、またはファーストパーティーのポータルのアクセストークンを持つ
 - When ブラウザーまたは API クライアントがアカウントコンテキストをリクエストする
 - But セッションが未認証または認証途中である
-- Then アカウントコンテキストの取得を AccessDeniedError で拒否する
+- Then アカウントコンテキストの取得を 401 と `authentication_required` で拒否する
 
 ### Example: EX-AUTHENTICATION-005-03 Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない
 
 - Given ユーザー "alice" が認証済みセッション、またはファーストパーティーのポータルのアクセストークンを持つ
 - When ブラウザーまたは API クライアントがアカウントコンテキストをリクエストする
 - But Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない
-- Then アカウントコンテキストの取得を AccessDeniedError で拒否する
+- Then アカウントコンテキストの取得を 401 と `authentication_required` で拒否する
 
 ## Rule: REQ-AUTHENTICATION-007 ResourceOwner はブラウザーでパスワード認証し、認可を継続する
 
@@ -66,6 +66,6 @@
 
 - Given ユーザー "alice" は無効状態であり、無効化の前に取得した認証済みセッションを持つ
 - When ユーザー "alice" が既存セッションで認証必須 API を呼ぶ
-- Then エラー "AccessDeniedError"
+- Then 401 と `authentication_required` で拒否される
 - When ユーザー "alice" が正しいパスワードで新規ログインを試みる
-- Then エラー "AccessDeniedError"
+- Then 401 と `authentication_required` で拒否される

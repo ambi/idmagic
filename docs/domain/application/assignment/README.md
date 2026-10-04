@@ -27,11 +27,28 @@
 
 #### REQ-APPLICATION-011 割り当てのない主体はプロトコル経由でアプリケーションへフェデレーションできない
 
+- 利用者がアプリケーションに関連付けたプロトコル設定へフェデレーションするとき、Application は、利用者本人かその所属する Group の割り当てがあるかを、どのプロトコルでも同じ関門で確かめる。
+- 利用者にもその Group にも割り当てがない場合、Application は、フェデレーションを拒否する。
+- 無効なアプリケーションへのフェデレーションを要求された場合、Application は、フェデレーションを拒否する。
+- アプリケーションに関連付けていないプロトコル設定へのフェデレーションでは、Application は、割り当てを求めない。
+- **例**：EX-APPLICATION-011-01、EX-APPLICATION-011-02
+
 #### REQ-APPLICATION-012 hidden の割り当てはポータル一覧から除外するがプロトコルの利用は許可する
+
+- 割り当てが `hidden` の間、利用者が自分のアプリケーションを一覧したとき、Application は、そのアプリケーションを返さない。
+- 割り当てが `hidden` の間、利用者がそのアプリケーションへフェデレーションするとき、Application は、割り当てがあるものとして扱う。
+- **例**：EX-APPLICATION-012-01
 
 ### ほかの Context によるあるべき状態の割り当て
 
 #### REQ-APPLICATION-014 あるべき状態を指定した割り当てはグループ割り当てを変更しない
+
+- ほかの Context があるべき状態の割り当てを要求したとき、Application は、User への直接の割り当てだけを作成または更新し、`changed=true` を返し、`ApplicationAssigned` を発行する。
+- ほかの Context があるべき状態の割り当ての解除を要求したとき、Application は、User への直接の割り当てだけを消し、`changed=true` を返し、`ApplicationUnassigned` を発行し、Group の割り当てを残す。
+- 指定どおりの `visibility` の直接の割り当てがすでにある間、あるべき状態の割り当てを要求されたとき、Application は、変えずに `changed=false` を返し、イベントを発行しない。
+- 直接の割り当てがない間、あるべき状態の割り当ての解除を要求されたとき、Application は、正常に終わり、`changed=false` を返す。
+- あるべき状態の割り当てを要求されたとき、Application は、呼び出し元のテナントの識別子だけを受け付け、別のテナントの主体を割り当てない。
+- **例**：EX-APPLICATION-014-01、EX-APPLICATION-014-02
 
 ## セキュリティ上の考慮
 

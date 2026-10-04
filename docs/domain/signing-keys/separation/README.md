@@ -24,17 +24,33 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 
 #### REQ-SIGNINGKEYS-004 テナントごとの JWKS は互いに分離される
 
+- クライアントがテナントの JWKS を取得したとき、SigningKeys は、認証を求めず、そのテナントの `kid` だけを返し、ほかのテナントの `kid` を返さない。
+- **例**：EX-SIGNINGKEYS-004-01
+
 ### テナントによる XML の署名
 
 #### REQ-SIGNINGKEYS-005 XML フェデレーション署名資格情報はテナントと用途で分離される
+
+- テナントが SAML の Assertion または WS-Federation のメッセージに署名するとき、SigningKeys は、そのテナントとスコープ（SAML のプロファイル）の有効な `XmlFederationSigning` の鍵を使い、JWT の署名用の鍵とほかのテナントの鍵を使わない。
+- XML フェデレーションの鍵を作るとき、SigningKeys は、その公開鍵を含む自己署名の X.509 証明書を対応付ける。
+- 一つの SAML のプロファイルの鍵をローテーションしたとき、SigningKeys は、ほかのプロファイルと JWT の署名用の鍵を変えない。
+- **例**：EX-SIGNINGKEYS-005-01
 
 ### 管理者による XML フェデレーションの鍵のローテーション
 
 #### REQ-SIGNINGKEYS-006 XML フェデレーション鍵のローテーション中も既存の信頼関係を検証できる
 
+- 管理者が `XmlFederationSigning` の鍵をローテーションしたとき、SigningKeys は、新しい XML のメッセージに新しい鍵で署名させる。
+- 重複期間の間、SAML と WS-Federation のメタデータを取得されたとき、SigningKeys は、新旧の鍵の証明書を返す。
+- 重複期間を過ぎた後、メタデータを取得されたとき、SigningKeys は、古い鍵の証明書を返さない。
+- **例**：EX-SIGNINGKEYS-006-01
+
 ### プロセスの再起動
 
 #### REQ-SIGNINGKEYS-007 XML フェデレーション署名資格情報は再起動後も同一である
+
+- PostgreSQL または Vault の提供元の構成では、API のプロセスを再起動したとき、SigningKeys は、再起動の前と同じ有効な証明書とフィンガープリントを返す。
+- **例**：EX-SIGNINGKEYS-007-01
 
 ## セキュリティ上の考慮
 

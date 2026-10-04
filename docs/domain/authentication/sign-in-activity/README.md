@@ -15,3 +15,8 @@
 ### 本人によるサインイン履歴の参照
 
 #### REQ-AUTHENTICATION-014 ユーザーは自分のサインイン履歴を確認できる
+
+- 本人がサインインの履歴を取得したとき、Authentication は、本人のサインインのイベントだけを返す。
+- 第二要素を使ったサインインを返すとき、Authentication は、`pwd` と第二要素の `amr` を持つ完了の後の `UserAuthenticated` として返す。
+- 認証の手段に WebAuthn を含むサインインを表示するとき、Authentication は、`webauthn` という技術の名前ではなく「パスキー」と表示する。
+- **例**：EX-AUTHENTICATION-014-01、EX-AUTHENTICATION-014-02

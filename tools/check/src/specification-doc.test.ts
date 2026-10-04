@@ -268,6 +268,11 @@ const states = `# Demo State Transitions
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Ready | Run | — | Done | Completed |
+
+| State | 実行 |
+|---|---|
+| Ready | → Done |
+| Done | 何もしない |
 `
 
 describe('states.md', () => {
@@ -296,6 +301,8 @@ describe('states.md', () => {
     const source = states.replace('| Ready | Run | — | Done |', '| Ready | Run | — | Gone |')
     expect(messages(STATES, source)).toEqual([
       'transition names Gone, which the state table does not declare',
+      'state matrix moves Ready to Done, which the transition table does not list',
+      'transition Ready to Gone has no operation in the state matrix',
     ])
   })
 
@@ -361,8 +368,33 @@ describe('state matrix', () => {
     expect(validateDocument(STATES, source).findings).toEqual([])
   })
 
-  it('accepts a machine without a matrix', () => {
-    expect(validateDocument(STATES, states).findings).toEqual([])
+  it('reads a target state with an underscore the same way as the state table', () => {
+    const source = `# Demo State Transitions
+
+## Lifecycle
+
+| State | Kind | Meaning |
+|---|---|---|
+| pending | initial | 待ち |
+| dead_letter | terminal | 配送をあきらめた |
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| pending | DeadLettered | — | dead_letter |  |
+
+| State | 配送 |
+|---|---|
+| pending | → dead_letter（上限） |
+| dead_letter | 何もしない |
+`
+    expect(validateDocument(STATES, source).findings).toEqual([])
+  })
+
+  it('rejects a machine without a matrix', () => {
+    const source = states.slice(0, states.indexOf('| State | 実行 |'))
+    expect(messages(STATES, source)).toEqual([
+      'state machine must give its state matrix as | State | <operation> | rows',
+    ])
   })
 
   it('rejects an empty cell and a row with fewer cells than operations', () => {

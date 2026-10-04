@@ -39,15 +39,42 @@
 
 #### REQ-AUTHENTICATION-024 有効期限を過ぎたパスワードのユーザーは次回ログイン後にパスワード変更を強制される
 
+- テナントが `max_age_days` を設定している間、`password_changed_at` とテナントのポリシーの更新時刻の遅い方から `max_age_days` を過ぎたパスワードの資格情報を持つ User が正しいパスワードでログインしたとき、Authentication は、ログインを成功させ、必須操作 `update_password` を付け、`UserRequiredActionSet` を発行し、変更を終えるまで認可を続けさせずにパスワードの変更の画面へ進ませる。
+- `update_password` を持つ User がポリシーを満たす新しいパスワードへ変更またはリセットしたとき、Authentication は、`update_password` を外す。
+- `max_age_days` を設定していないか、期限の前か、パスワードの資格情報を持たない User のログインでは、Authentication は、`update_password` を付けない。
+- **例**：EX-AUTHENTICATION-024-01、EX-AUTHENTICATION-024-02、EX-AUTHENTICATION-024-03、EX-AUTHENTICATION-024-04、EX-AUTHENTICATION-024-05
+
 ### 本人によるパスワードの変更
 
 #### REQ-AUTHENTICATION-010 ユーザーは現在のパスワードを確認して新しいパスワードへ変更できる
+
+- ステップアップ認証が有効な間、本人が正しい現在のパスワードとポリシーを満たす新しいパスワードを送ったとき、Authentication は、パスワードを変え、`password_changed_at` を更新し、パスワードの履歴に加え、本人の信頼済みデバイスをすべて失効させ、204 を返し、`PasswordChanged` を発行する。
+- パスワードを検証するとき、Authentication は、テナントの上書きを解決したポリシー（長さ 12 文字以上 128 文字以下、4 文字以上のユーザー名、メールアドレス、その local part を大文字と小文字を区別せずに含まない、同梱の辞書にない）を評価し、文字種の構成の規則と定期の変更を求めない。
+- ポリシーに反する新しいパスワードを受けた場合、Authentication は、400 と `password_policy` で、違反した規則とともに拒否し、パスワードを変えない。
+- 直近 5 件（テナントの `history_depth`）の履歴に一致する新しいパスワードを受けた場合、Authentication は、422 と `password_reuse` で拒否し、パスワードを変えない。
+- 現在のパスワードが一致しない場合、Authentication は、403 と `access_denied` で拒否する。
+- ステップアップ認証が有効でない場合、Authentication は、403 と `step_up_required` で拒否する。
+- 認証済みのセッションがない場合、Authentication は、401 と `authentication_required` で拒否する。
+- **例**：EX-AUTHENTICATION-010-01、EX-AUTHENTICATION-010-02、EX-AUTHENTICATION-010-03
 
 ### 利用者によるパスワードのリセット
 
 #### REQ-AUTHENTICATION-016 ユーザーはメールのリセットリンクでパスワードを再設定する
 
+- 利用者が登録済みのメールアドレスでリセットを要求したとき、Authentication は、30 分で期限の切れるトークンのリセットのリンクをそのアドレスへ送る。
+- 利用者が未登録のメールアドレスでリセットを要求したとき、Authentication は、登録済みのアドレスと区別できない応答を返し、メールを送らない。
+- リセットのリンクを `GET` か `HEAD` で読まれたとき、Authentication は、トークンを消費せず、パスワードを変えない。
+- 利用者が有効なトークンとポリシーを満たす新しいパスワードを送ったとき、Authentication は、パスワードを変え、トークンを使用済みにし、200 を返し、`PasswordChanged` を発行し、以後の新しいパスワードのログインを成功させる。
+- 期限切れか、不正か、確定済みか、別の用途で発行したトークンを受けた場合、Authentication は、410 と `invalid_reset_token` で拒否し、パスワードを変えない。
+- ポリシーに反する新しいパスワードを受けた場合、Authentication は、400 と `password_policy` で違反した規則とともに拒否し、トークンを未使用のまま残す。
+- 履歴に一致する新しいパスワードを受けた場合、Authentication は、422 と `password_reuse` で拒否する。
+- **例**：EX-AUTHENTICATION-016-01、EX-AUTHENTICATION-016-02、EX-AUTHENTICATION-016-03、EX-AUTHENTICATION-016-04、EX-AUTHENTICATION-016-05、EX-AUTHENTICATION-016-06
+
 #### REQ-AUTHENTICATION-008 パスワードリセットの要求は識別子と IP の組で流量制限される
+
+- 利用者がパスワードのリセットを要求したとき、Authentication は、User が存在するかによらず 204 を返し、`PasswordResetRequested` を発行する。
+- 同じ識別子と IP の組で、流量の時間枠の上限に達している場合、Authentication は、429 と `rate_limited` を `Retry-After` とともに返し、リセットのリンクを送らない。
+- **例**：EX-AUTHENTICATION-008-01、EX-AUTHENTICATION-008-02
 
 ## セキュリティ上の考慮
 

@@ -56,13 +56,22 @@ func (discoveryTarget) SearchGroupByAttribute(context.Context, string, string) (
 
 func (discoveryTarget) PatchGroupMembers(context.Context, string, string, []string) error { return nil }
 
-//spec:covers REQ-PROVISIONING-002, EX-PROVISIONING-002-01: 管理 API で登録した下流接続をテストし、検出した能力を同じ接続の管理状態から読み直す。
-func TestAdminProvisioningConnectionLifecycle(t *testing.T) {
+// provisioningRequest は sub の利用者として管理 API へ要求を送る。
+type provisioningRequest func(sub, method, path string, body any) *httptest.ResponseRecorder
+
+// newProvisioningAdminServer は、admin のロールを持つ "admin" と持たない "member" がいる
+// テナントに、Provisioning の管理 API を組み立てる。
+func newProvisioningAdminServer(t *testing.T) provisioningRequest {
+	t.Helper()
 	now := time.Now().UTC()
 	users := usermemory.NewUserRepository()
 	users.Seed(&userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
+	})
+	users.Seed(&userdomain.User{
+		ID: "member", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "member", PasswordHash: "unused",
+		CreatedAt: now, UpdatedAt: now,
 	})
 	connections := provisioningmemory.NewProvisioningConnectionRepository()
 	e := echo.New()
@@ -79,7 +88,7 @@ func TestAdminProvisioningConnectionLifecycle(t *testing.T) {
 	})
 
 	csrf := "csrf-token"
-	request := func(method, path string, body any) *httptest.ResponseRecorder {
+	return func(sub, method, path string, body any) *httptest.ResponseRecorder {
 		t.Helper()
 		var payload []byte
 		if body != nil {
@@ -91,7 +100,7 @@ func TestAdminProvisioningConnectionLifecycle(t *testing.T) {
 		}
 		req := httptest.NewRequest(method, path, bytes.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Demo-Sub", "admin")
+		req.Header.Set("X-Demo-Sub", sub)
 		if method != http.MethodGet {
 			req.Header.Set("Origin", "http://idp.test")
 			req.Header.Set("X-Csrf-Token", csrf)
@@ -101,20 +110,48 @@ func TestAdminProvisioningConnectionLifecycle(t *testing.T) {
 		e.ServeHTTP(response, req)
 		return response
 	}
+}
 
-	created := request(http.MethodPost, "/api/admin/v1/applications/app-1/provisioning", map[string]any{
+const provisioningConnectionPath = "/api/admin/v1/applications/app-1/provisioning"
+
+func registerProvisioningConnection(t *testing.T, request provisioningRequest) {
+	t.Helper()
+	created := request("admin", http.MethodPost, provisioningConnectionPath, map[string]any{
 		"base_url":   "https://downstream.example/scim/v2",
 		"credential": map[string]any{"auth_method": "bearer_token", "bearer_token": "secret"},
 	})
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
 	}
-	tested := request(http.MethodPost, "/api/admin/v1/applications/app-1/provisioning/test", nil)
+}
+
+//spec:covers REQ-PROVISIONING-002, EX-PROVISIONING-002-01: 管理 API で登録した下流接続をテストし、検出した能力を同じ接続の管理状態から読み直す。
+func TestAdminProvisioningConnectionLifecycle(t *testing.T) {
+	request := newProvisioningAdminServer(t)
+	registerProvisioningConnection(t, request)
+	tested := request("admin", http.MethodPost, provisioningConnectionPath+"/test", nil)
 	if tested.Code != http.StatusOK || !bytes.Contains(tested.Body.Bytes(), []byte(`"reachable":true`)) {
 		t.Fatalf("test status=%d body=%s", tested.Code, tested.Body.String())
 	}
-	got := request(http.MethodGet, "/api/admin/v1/applications/app-1/provisioning", nil)
+	got := request("admin", http.MethodGet, provisioningConnectionPath, nil)
 	if got.Code != http.StatusOK || !bytes.Contains(got.Body.Bytes(), []byte(`"supports_patch":true`)) {
 		t.Fatalf("get status=%d body=%s", got.Code, got.Body.String())
+	}
+}
+
+// 参照も削除も access_denied で拒否し、拒否した削除は接続を消さない。
+//
+//spec:covers EX-PROVISIONING-001-04: admin のロールを持たない利用者の接続の管理は 403 の access_denied で拒否され、接続は残る
+func TestAdminProvisioningConnectionRefusesNonAdmin(t *testing.T) {
+	request := newProvisioningAdminServer(t)
+	registerProvisioningConnection(t, request)
+	for _, method := range []string{http.MethodGet, http.MethodDelete} {
+		refused := request("member", method, provisioningConnectionPath, nil)
+		if refused.Code != http.StatusForbidden || !bytes.Contains(refused.Body.Bytes(), []byte("urn:idmagic:error:access_denied")) {
+			t.Fatalf("%s status=%d body=%s, want 403 access_denied", method, refused.Code, refused.Body.String())
+		}
+	}
+	if kept := request("admin", http.MethodGet, provisioningConnectionPath, nil); kept.Code != http.StatusOK {
+		t.Fatalf("拒否した削除で接続が消えた: status=%d body=%s", kept.Code, kept.Body.String())
 	}
 }

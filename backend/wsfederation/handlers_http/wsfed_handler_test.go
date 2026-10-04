@@ -886,10 +886,24 @@ func TestAdminRelyingParty_RejectsInvalid(t *testing.T) {
 	}
 }
 
+// 参照も削除も access_denied で拒否し、拒否した削除は RP を消さない。
+//
+//spec:covers EX-WSFEDERATION-001-04: admin のロールを持たない利用者の RP の管理は 403 の access_denied で拒否され、RP は残る
 func TestAdminRelyingParty_ForbiddenForNonAdmin(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
-	if rec := get(e, "/api/admin/v1/wsfed/relying-parties"); rec.Code != http.StatusForbidden {
-		t.Fatalf("status=%d, want 403", rec.Code)
+	var deps httpadapter.Deps
+	e, _, _ := newServerWithSigner(t, &authdomain.AuthenticationContext{UserID: "user-1"}, // 非 admin
+		func(d *httpadapter.Deps) { deps = *d })
+	if rec := get(e, "/api/admin/v1/wsfed/relying-parties"); rec.Code != http.StatusForbidden ||
+		!strings.Contains(rec.Body.String(), "urn:idmagic:error:access_denied") {
+		t.Fatalf("list status=%d body=%s, want 403 access_denied", rec.Code, rec.Body.String())
+	}
+	deleted := doJSON(e, http.MethodDelete, "/api/admin/v1/wsfed/relying-parties?wtrealm=urn:idmagic:demo-rp", "")
+	if deleted.Code != http.StatusForbidden || !strings.Contains(deleted.Body.String(), "urn:idmagic:error:access_denied") {
+		t.Fatalf("delete status=%d body=%s, want 403 access_denied", deleted.Code, deleted.Body.String())
+	}
+	rp, err := deps.WsFederation.RPRepo.FindByWtrealm(context.Background(), tenancydomain.DefaultTenantID, "urn:idmagic:demo-rp")
+	if err != nil || rp == nil {
+		t.Fatalf("拒否した削除で RP が消えた: rp=%v err=%v", rp, err)
 	}
 }
 

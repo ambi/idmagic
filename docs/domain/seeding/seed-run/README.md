@@ -35,25 +35,66 @@
 
 #### REQ-SEEDING-001 環境別の明示プロファイルが選択される
 
+- `SeedOperator` が環境とプロファイルを明示して `dry_run` で `SeedData` を呼んだとき、Seeding は、環境ポリシーが許すマニフェストだけを計画し、シークレットの値を除いた `SeedPlan` を返し、永続状態を変えない。
+- `development`、`test`、`staging`、`production` 以外の環境、`bootstrap`、`development`、`test`、`performance` 以外のプロファイル、`dry_run` と `apply` 以外のモードを指定された場合、Seeding は、`SeedRejectedError` で拒否する。
+- `test` 以外の環境で `test` のプロファイルを指定された場合、Seeding は、`SeedRejectedError` で拒否する。
+- `performance` のプロファイルで件数を指定しないか、100,000 件を超える件数か、`allow-large` なしで 10,000 件を超える件数を指定された場合、Seeding は、`SeedRejectedError` で拒否する。
+- `performance` 以外のプロファイルで件数を指定されたか、0 未満か 1,000 を超えるバッチの大きさを指定された場合、Seeding は、`SeedRejectedError` で拒否する。
+- **例**：EX-SEEDING-001-01
+
 #### REQ-SEEDING-002 明示したマニフェストまたはプロファイルのデフォルトマニフェストを選択する
+
+- `SeedOperator` がマニフェストのパスを明示して `SeedData` を呼んだとき、Seeding は、そのマニフェストと、その配下に収まる `include` を厳密にデコードし、記載した型付きの望ましいリソースを計画する。
+- `SeedOperator` がマニフェストのパスを指定せずに `SeedData` を呼んだとき、Seeding は、プロファイルごとのデフォルトのマニフェストを選ぶ。
+- **例**：EX-SEEDING-002-01、EX-SEEDING-002-02
 
 #### REQ-SEEDING-003 マニフェストと指定プロファイルの不一致を拒否する
 
+- 要求と異なるプロファイルのマニフェストを指定された場合、Seeding は、シークレットの解決と書き込みの前に `SeedRejectedError` で拒否する。
+- **例**：EX-SEEDING-003-01
+
 #### REQ-SEEDING-004 不正なマニフェストは書き込み前に拒否する
+
+- マニフェストに未知のキー、重複する論理キー、未対応のスキーマバージョン、`include` の循環、ルートの外のパスがある場合、Seeding は、シークレットの解決と書き込みの前に `SeedRejectedError` で拒否する。
+- マニフェストを拒否するとき、Seeding は、診断にシークレットの値を含めない。
+- **例**：EX-SEEDING-004-01
 
 #### REQ-SEEDING-005 本番では env シークレットプロバイダーを拒否する
 
+- ステージングまたは本番の環境で、マニフェストが `env` のシークレットの提供元を参照している場合、Seeding は、`dry_run` と `apply` のどちらでも、シークレットの解決と書き込みの前に `SeedRejectedError` で拒否し、永続状態を変えない。
+- `SeedOperator` が `dry_run` で `SeedData` を呼んだとき、Seeding は、シークレットの参照を解決できることを確かめ、取得した値を計画、診断、ログ、エラーのどこにも含めない。
+- **例**：EX-SEEDING-005-01
+
 #### REQ-SEEDING-007 本番では development または performance プロファイルを拒否する
+
+- 本番の環境で `bootstrap` 以外のプロファイルを指定された場合、Seeding は、書き込みの前に `SeedRejectedError` で拒否し、既知のデモの資格情報を作らない。
+- **例**：EX-SEEDING-007-01
 
 ### 運用者による seed の適用
 
 #### REQ-SEEDING-006 同じ seed を再適用しても何も変更しない
 
+- `SeedOperator` が `apply` で `SeedData` を呼んだとき、Seeding は、計画を作り直してから適用し、適用の後にもう一度計画して、作成と更新と競合の操作が残らないことを確かめてから成功を返す。
+- 同じマニフェスト、生成の seed、シークレットのバージョンで適用済みの間、`SeedOperator` が同じ `SeedRequest` を `apply` したとき、Seeding は、すべての操作を `noop` とし、パスワードの履歴、`created_at`、`updated_at` を変えない。
+- 適用の後の計画に作成、更新、競合の操作が残る場合、Seeding は、適用を収束しなかった失敗として返す。
+- 同じプロセスの中で、同じ環境、プロファイル、テナントの適用を同時に要求されたとき、Seeding は、適用を一つずつ実行する。
+- **例**：EX-SEEDING-006-01
+
 #### REQ-SEEDING-010 部分失敗後に同じリクエストを再実行すると目的の状態へ収束する
+
+- 一部の操作を完了した後に失敗した適用の後、`SeedOperator` が同じ `SeedRequest` を `apply` したとき、Seeding は、完了済みの論理キーを `noop` とし、未完了の論理キーだけを適用して、重複なく目的の状態にする。
+- **例**：EX-SEEDING-010-01
 
 #### REQ-SEEDING-009 手動変更によるドリフトは上書きせず競合とする
 
+- seed が管理する論理キーが手動で変更されている場合、Seeding は、計画にその論理キーの `conflict` を載せ、`apply` を `SeedConflictError` で失敗させ、手動の変更を残す。
+- **例**：EX-SEEDING-009-01
+
 #### REQ-SEEDING-008 本番の bootstrap には明示的なリダイレクト URI が必要である
+
+- 本番の環境で `bootstrap` のプロファイルを `first_party_redirect_uris` を指定して適用したとき、Seeding は、ファーストパーティーのクライアントのリダイレクト URI を指定した URI だけにする。
+- 本番の環境の `bootstrap` で、リダイレクト URI を指定しないか、HTTPS でないか、ホストのないか、ホストが `localhost` の URI を指定された場合、Seeding は、書き込みの前に `SeedRejectedError` で拒否する。
+- **例**：EX-SEEDING-008-01、EX-SEEDING-008-02
 
 ## セキュリティ上の考慮
 

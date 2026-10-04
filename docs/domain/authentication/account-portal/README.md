@@ -32,6 +32,25 @@
 
 #### REQ-AUTHENTICATION-004 API トークンの発行者は機密操作のスコープで自身の認証情報だけを操作できる
 
+- 本人の User に固定した API アクセストークンでアカウントの操作を要求されたとき、Authentication は、`account:read` で本人のアカウントの情報、セキュリティの設定、サインイン履歴、セッションの参照を、`account:mfa:write` で本人の認証の要素と復旧コードの変更を、`account:sessions:write` で本人のセッションの失効を、`account:password:write` と現在のパスワードの提示で本人のパスワードの変更を許可する。
+- 本人がセルフサービス API を呼び出したとき、Authentication は、URL、本文、クエリ文字列の `sub` や `tenant_id` ではなく、認証した主体の `sub` に対してだけ作用する。
+- 操作に対応しないスコープのトークンで変更を要求された場合、Authentication は、403 と `insufficient_scope` で拒否する。
+- 別のテナントで発行したトークンを受けた場合、Authentication は、401 と `invalid_token` で拒否する。
+- 他の User の資源を名指しした要求を受けた場合、Authentication は、本人の資源として見つからないものとして拒否し、他の User の資源を変えない。
+- API アクセストークンでステップアップ認証のエンドポイントを要求された場合、Authentication は、403 と `insufficient_scope` で拒否し、必要な資格として対話のセッションを `WWW-Authenticate` で示す。
+- **例**：EX-AUTHENTICATION-004-01、EX-AUTHENTICATION-004-02、EX-AUTHENTICATION-004-03、EX-AUTHENTICATION-004-04
+
+### 本人によるステップアップ認証
+
+#### REQ-AUTHENTICATION-039 本人は利用できる手段で再認証し、セッションをステップアップ認証済みにできる
+
+- 本人が認証済みのセッションでステップアップ認証を始めたとき、Authentication は、200 と、パスワードと、登録済みの TOTP、WebAuthn、未消費の復旧コードのうち使える手段を返し、`StepUpRequested` を発行する。
+- 本人が使える手段の正しい資格情報でステップアップ認証を完了したとき、Authentication は、セッションの `step_up_at` を現在の時刻にし、`StepUpCompleted` を発行する。
+- `max(auth_time, step_up_at)` が 5 分の内にあるセッションで機微な自己操作を受けたとき、Authentication は、ステップアップ認証を済ませたものとして操作を受け付ける。
+- 誤った資格情報でステップアップ認証の完了を受けた場合、Authentication は、403 と `step_up_failed` で拒否し、`step_up_at` を変えない。
+- 本人が使えない手段でステップアップ認証の完了を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
+- `max(auth_time, step_up_at)` が 5 分を過ぎたセッションで機微な自己操作を受けた場合、Authentication は、403 と `step_up_required` で拒否する。
+
 ## セキュリティ上の考慮
 
 セルフサービス API（`/api/account/*`）は、認証済みのセッション自身の `actor.sub` に対してだけ作用する。

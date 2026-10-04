@@ -32,3 +32,24 @@ WebAuthn は、パスワードと組み合わせるフィッシング耐性の�
 ### 本人によるステップアップ認証のチャレンジ
 
 #### REQ-AUTHENTICATION-006 ユーザーは WebAuthn でステップアップ認証のチャレンジを開始できる
+
+- 本人が WebAuthn の資格情報を登録した認証済みのセッションで、正しい CSRF トークンとともにステップアップ認証のチャレンジを要求したとき、Authentication は、200 と、現在のセッションに束縛した 120 秒の challenge の `PublicKeyCredentialRequestOptions` を返す。
+- 本人がそのチャレンジへのアサーションの検証に成功したとき、Authentication は、`amr` に `webauthn` を加え、`acr` を `urn:idmagic:acr:mfa` にし、`step_up_at` を進める。
+- 保存値以下の `sign_count`（0 から 0 を除く）のアサーションを受けた場合、Authentication は、認証器の複製の証拠としてアサーションを拒否する。
+- WebAuthn を構成していない場合、Authentication は、503 と `webauthn_unavailable` で拒否し、チャレンジを発行しない。
+- CSRF トークンが一致しない場合、Authentication は、403 と `csrf_failed` で拒否し、チャレンジを発行しない。
+- セッションが未認証か認証の途中の場合、Authentication は、401 と `authentication_required` で拒否する。
+- **例**：EX-AUTHENTICATION-006-01、EX-AUTHENTICATION-006-02
+
+### 本人による WebAuthn の資格情報の登録と解除
+
+#### REQ-AUTHENTICATION-038 本人は WebAuthn の資格情報を登録し、ステップアップ認証のうえで解除できる
+
+- 本人が認証済みのセッションで登録を始めたとき、Authentication は、200 と、アテステーション `none`、ユーザーの検証 `preferred`、常駐の鍵 `discouraged` の `PublicKeyCredentialCreationOptions` を返す。
+- 本人が登録の challenge へのアテステーションの検証に成功したとき、Authentication は、204 を返し、資格情報を保存し、`mfa_enrolled` を計算し直し、本人のすべての信頼済みデバイスを失効させ、`WebAuthnCredentialRegistered` を発行する。
+- 本人がステップアップ認証を経たセッションで自分の資格情報の解除を要求したとき、Authentication は、204 を返し、資格情報を消し、`mfa_enrolled` を計算し直し、本人のすべての信頼済みデバイスを失効させ、`WebAuthnCredentialRemoved` を発行する。
+- 登録の challenge がないか期限を過ぎた確定を受けた場合、Authentication は、400 と `webauthn_challenge_expired` で拒否する。
+- アテステーションを検証できない場合、Authentication は、400 と `invalid_webauthn` で拒否し、資格情報を保存しない。
+- 本人のものでないか存在しない資格情報の解除を受けた場合、Authentication は、404 と `webauthn_not_found` で拒否する。
+- ステップアップ認証を経ていないセッションで解除を受けた場合、Authentication は、403 と `step_up_required` で拒否し、資格情報を残す。
+- WebAuthn を構成していない場合、Authentication は、503 と `webauthn_unavailable` で拒否する。

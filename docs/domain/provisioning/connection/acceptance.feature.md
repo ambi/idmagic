@@ -14,7 +14,7 @@
 - Given クライアントは対象テナントの有効な API アクセストークンを提示している
 - When クライアントがアプリケーションの接続、テナントの接続、またはプロビジョニングタスクの操作を要求する
 - But `provisioning:read` だけで接続の変更またはプロビジョニングタスクの操作を要求する
-- Then 操作は `AccessDeniedError` で拒否される
+- Then 操作は 403 と `insufficient_scope` で拒否される
 
 ### Example: EX-PROVISIONING-001-03 トークンのテナントとリクエスト先のテナントが一致しない
 
@@ -22,6 +22,13 @@
 - When クライアントがアプリケーションの接続、テナントの接続、またはプロビジョニングタスクの操作を要求する
 - But トークンのテナントとリクエスト先のテナントが一致しない
 - Then 操作は 401 の `InvalidAccessTokenError` で拒否される
+
+### Example: EX-PROVISIONING-001-04 `admin` のロールを持たない利用者が変更の操作を要求する
+
+- Given クライアントは対象テナントの有効な API アクセストークンを提示している
+- When クライアントがアプリケーションの接続、テナントの接続、またはプロビジョニングタスクの操作を要求する
+- But `admin` のロールを持たない利用者が変更の操作を要求する
+- Then 操作は 403 の AccessDeniedError（`access_denied`）で拒否され、接続とプロビジョニングタスクは変わらない
 
 ## Rule: REQ-PROVISIONING-002 管理者は接続を登録し、接続テストで下流の対応機能を取得できる
 
@@ -45,7 +52,7 @@
 - Given Application "app-1" は存在し ProvisioningConnection を持たない
 - When 管理者が RegisterProvisioningConnection を https の base_url と bearer_token で実行する
 - But Application "app-1" に既に ProvisioningConnection が存在する
-- Then ProvisioningConnectionAlreadyExistsError が返る
+- Then 409 と `provisioning_conflict` で拒否される
 
 ## Rule: REQ-PROVISIONING-012 管理者は On-Demand Provision で 1 人のユーザーを試験的にプロビジョニングできる
 
@@ -60,7 +67,7 @@
 - Given User "ユーザー-1" は connection の scope 内である
 - When 管理者が ProvisionOnDemand を実行する
 - But 指定した subject が scope 外である (scope=assigned_only で未割り当て)
-- Then ProvisioningSubjectNotInScopeError が返る
+- Then 409 と `provisioning_conflict` で拒否される
 
 ## Rule: REQ-PROVISIONING-013 管理者はフル同期で適用範囲の全対象を収束できる
 

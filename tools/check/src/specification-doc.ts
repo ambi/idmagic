@@ -264,7 +264,7 @@ function transitionKey(from: string, to: string): string {
  * 状態遷移表（マトリクス形式）は、すべての状態と操作の組に結果を書く。空のセルは、
  * 誰も決めていない振る舞いがそこにあることを示す。`→` の結果は遷移の表と同じ遷移を
  * 述べなければならず、片方にしかない遷移は、どちらかの表の漏れである。
- * 表を持たない状態機械は対象にしない。
+ * 表を持たない状態機械は、どの組の結果も決めていないので拒否する。
  */
 function validateStateMatrix(
   block: string,
@@ -272,7 +272,14 @@ function validateStateMatrix(
   transitions: ReadonlySet<string>,
 ): Array<{ index: number; message: string }> {
   const header = block.match(MATRIX_HEADER)
-  if (!header) return []
+  if (!header) {
+    return [
+      {
+        index: 0,
+        message: 'state machine must give its state matrix as | State | <operation> | rows',
+      },
+    ]
+  }
   const operations = tableRowCells(header[0]).slice(1)
   const findings: Array<{ index: number; message: string }> = []
   const rows = new Set<string>()
@@ -300,8 +307,9 @@ function validateStateMatrix(
           )
           continue
         }
-        const target = match[1]
-        if (target === undefined) continue
+        if (match[1] === undefined) continue
+        // 状態の表と遷移の表と同じく、Markdown の記号を除いた名前で照合する。
+        const target = cellValue(match[1])
         if (!states.has(target)) {
           report(`state matrix names ${target}, which the state table does not declare`)
           continue

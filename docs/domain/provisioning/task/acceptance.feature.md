@@ -48,7 +48,7 @@
 - Then UserProvisioningFailed が発行されプロビジョニングタスクが dead_letter になる
 - When 管理者が RetryProvisioningTask を呼ぶ
 - But プロビジョニングタスクが dead_letter でない (pending/in_flight/succeeded)
-- Then ProvisioningTaskNotRetryableError が返る
+- Then 409 と `provisioning_conflict` で拒否される
 
 ## Rule: REQ-PROVISIONING-018 必須の属性マッピングを解決できないプロビジョニングタスクはフェイルクローズで失敗する
 

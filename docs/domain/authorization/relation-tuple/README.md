@@ -23,9 +23,22 @@
 
 #### REQ-AUTHORIZATION-002 関係タプルの書き込みは登録済みモデルに適合するものだけを一括で適用する
 
+- 管理者が追加と削除の差分を書き込んだとき、Authorization は、差分を一つのトランザクションで適用し、書き込み後の整合トークンを返す。
+- 1 件以上の組を追加する差分を書き込んだとき、Authorization は、件数と整合トークンを載せた `RelationTupleWritten` を発行する。
+- 1 件以上の組を削除する差分を書き込んだとき、Authorization は、件数と整合トークンを載せた `RelationTupleDeleted` を発行する。
+- 既に存在する組の追加を受けたとき、Authorization は、その組を重複させずに成功を返す。
+- 管理者が関係タプルを書き込むか一覧したとき、Authorization は、要求の本文の識別子によらず、呼び出し元のテナントで解決した `tenant_id` のタプルだけを読み書きする。
+- 登録した認可モデルが宣言していない型か関係、`direct` の規則が許していない主体の形かワイルドカード、追加と削除の両方に現れる組を含む差分を受けた場合、Authorization は、422 と `relation_tuple_invalid` で拒否し、1 件も適用しない。
+- テナントに認可モデルを登録していない間、関係タプルの書き込みを要求されたとき、Authorization は、404 と `authorization_model_not_found` で拒否する。
+- **例**：EX-AUTHORIZATION-002-01、EX-AUTHORIZATION-002-02、EX-AUTHORIZATION-002-03、EX-AUTHORIZATION-002-04、EX-AUTHORIZATION-002-05
+
 ### 管理者によるオブジェクトの削除
 
 #### REQ-AUTHORIZATION-008 オブジェクトの削除はその両側の関係タプルを取り除く
+
+- 管理者がオブジェクトを削除の対象として書き込んだとき、Authorization は、そのオブジェクトをリソースまたは主体として参照するタプルをすべて消し、整合トークンを進め、`RelationTupleDeleted` を発行する。
+- 削除の対象に型か識別子のないオブジェクトを指定された場合、Authorization は、422 と `relation_tuple_invalid` で拒否し、1 件も適用しない。
+- **例**：EX-AUTHORIZATION-008-01
 
 ## セキュリティ上の考慮
 

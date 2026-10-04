@@ -28,11 +28,23 @@ JWKS は、提供元に到達できない間も、取得できる範囲で返す
 
 #### REQ-SIGNINGKEYS-012 鍵素材を平文で永続化する構成は明示の選択を要する
 
+- `PERSISTENCE=postgres` で `KEY_PROVIDER` を指定せずにプロセスを起動した場合、SigningKeys は、`KEY_PROVIDER` の明示を求める設定エラーで起動を拒否し、鍵の保管先を作らず、署名鍵も作らない。
+- `PERSISTENCE=memory` でプロセスを起動したとき、SigningKeys は、`KEY_PROVIDER` の指定を求めない。
+- **例**：EX-SIGNINGKEYS-012-01
+
 ### System 管理者による健全性の一覧
 
 #### REQ-SIGNINGKEYS-008 KeyProvider の障害時は健全性を観測でき、JWKS は取得可能な範囲で返る
 
+- 制御面主体が制御面テナントの経路で署名鍵の健全性を一覧したとき、SigningKeys は、テナントと用途ごとに、提供元、`active_kid`、JWKS の鍵の数、`provider_healthy` を 200 で返す。
+- 提供元に到達できない間、健全性を一覧したとき、SigningKeys は、そのテナントの `provider_healthy` を `false` として返す。
+- 提供元に到達できない間、クライアントが JWKS を取得したとき、SigningKeys は、取得できる範囲の鍵を返す。
+- **例**：EX-SIGNINGKEYS-008-01
+
 #### REQ-SIGNINGKEYS-009 制御面主体ではない管理者はシステムコンソールの署名鍵ヘルスにアクセスできない
+
+- `system_admin` を持たないか、制御面テナントに所属しないか、要求先が制御面テナントでない利用者が健全性の一覧を要求した場合、SigningKeys は、403 と `access_denied` で拒否し、ほかのテナントの識別子、提供元、`active_kid`、鍵の数、到達性を返さず、テナント横断の収集を実行しない。
+- **例**：EX-SIGNINGKEYS-009-01
 
 ## セキュリティ上の考慮
 

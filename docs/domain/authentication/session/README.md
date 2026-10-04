@@ -26,10 +26,30 @@
 
 #### REQ-AUTHENTICATION-013 ユーザーは自分の有効なセッションを一覧して失効できる
 
+- 本人がセッションを一覧したとき、Authentication は、本人の有効なセッションを、プロセスの再起動を挟んでも返す。
+- 本人が現在以外のセッションを失効させたとき、Authentication は、そのセッションを失効させ、204 を返し、`SessionEnded` を発行し、以後の一覧に返さない。
+- 本人が現在以外のすべてのセッションを失効させたとき、Authentication は、現在のセッションだけを残す。
+- 失効済みのセッションの失効を再び要求されたとき、Authentication は、204 を返し、失効の時刻を変えない。
+- 本人のものでないか存在しないセッションを指定された場合、Authentication は、404 と `session_not_found` で拒否する。
+- Authentication は、セッションの有効期限を作成の時刻から 1 時間に固定し、利用によって延ばさない。
+- **例**：EX-AUTHENTICATION-013-01、EX-AUTHENTICATION-013-02、EX-AUTHENTICATION-013-03
+
 ### 管理者によるセッションの一覧と失効
 
 #### REQ-AUTHENTICATION-021 管理者は対象ユーザーのセッションを一覧・個別失効・全失効できる
 
+- 管理者が User のセッションを一覧したとき、Authentication は、有効なセッションを開始の時刻の降順で返す。
+- 管理者がセッションを 1 件失効させたとき、Authentication は、`revoke_reason=admin_revoke` で失効させ、204 を返し、`SessionEnded` を発行する。
+- 管理者が User のすべてのセッションを失効させたとき、Authentication は、残りのすべてのセッションを失効させ、204 を返す。
+- 失効済みのセッションの失効を再び要求されたとき、Authentication は、204 を返し、`revoked_at` を最初の値のまま残す。
+- 別のテナントの管理者か `admin` のロールを持たない利用者が要求した場合、Authentication は、403 と `access_denied` で拒否する。
+- **例**：EX-AUTHENTICATION-021-01、EX-AUTHENTICATION-021-02、EX-AUTHENTICATION-021-03
+
 ### 利用者によるサインアウト
 
 #### REQ-AUTHENTICATION-035 サインアウトはテナントのエンドポイント形式によらずサーバー側のセッションを失効させる
+
+- 利用者が OIDC、SAML のシングルログアウト、WS-Federation のサインアウトでサインアウトしたとき、Authentication は、サーバーの側のセッションを失効させ、以後の認証の解決で未認証として扱う。
+- 失効させたセッションの ID を Cookie で再び提示されたとき、Authentication は、認証しない。
+- パスの形式のテナントで接頭辞のない Cookie を受けたとき、Authentication は、同じセッションとして読んで失効させる。
+- **例**：EX-AUTHENTICATION-035-01、EX-AUTHENTICATION-035-02、EX-AUTHENTICATION-035-03

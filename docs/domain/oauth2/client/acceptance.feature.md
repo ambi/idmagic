@@ -27,7 +27,7 @@
 - When confidential クライアント "web-app" を redirect_uri "https://app.example.com/callback" で登録する
 - But redirect_uri を持たない登録要求である
 - Then confidential クライアント "web-app" を redirect_uri "" で登録する
-- And エラー "InvalidRequestError"
+- And エラー `invalid_client_metadata`
 
 ## Rule: REQ-OAUTH2-017 クライアントメタデータの取得では公開 IP へ直接接続する
 

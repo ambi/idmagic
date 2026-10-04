@@ -41,17 +41,44 @@
 
 #### REQ-AUTHENTICATION-030 既知でない端末からのサインインだけがセキュリティ通知を生む
 
+- User が既知でない端末で認証に成功したとき、Authentication は、その端末を既知の端末として記録し、User の検証済みのメールアドレスへ `new_device_sign_in` の通知を送り、`AccountSecurityNotificationSent` を発行する。
+- User が既知の端末で認証に成功したとき、Authentication は、通知を送らずに、その端末の最終利用の時刻を進める。
+- 検証済みのメールアドレスを持たない User への通知の契機が起きたとき、Authentication は、通知を送らずに、元の操作を成功させたままにする。
+- **例**：EX-AUTHENTICATION-030-01、EX-AUTHENTICATION-030-02
+
 ### 本人による資格情報と連絡先の変更
 
 #### REQ-AUTHENTICATION-031 資格情報の変更は本人へ通知され、通知の失敗は変更を巻き戻さない
 
+- User のパスワード、認証の要素、復旧コード、信頼済みデバイスが増減したとき、Authentication は、契機のイベントの時点で User に保存された検証済みのメールアドレスへ、モデルの表の種別の通知を送る。
+- 管理者が User になりすますセッションを始めたとき、Authentication は、操作した管理者ではなく、なりすまされた User へ `impersonation` の通知を送る。
+- 本人か管理者が理由 `self_revoke` か `admin_revoke` でセッションを終えたとき、Authentication は、User へ `session_revoked` の通知を送る。
+- 通知を送るとき、Authentication は、本文に `event_description`、`occurred_at`、`device_summary`、`security_review_url` だけを載せ、生の IP、生の User-Agent、トークン、資格情報を載せない。
+- メールの配送に失敗した場合、Authentication は、元の変更を成立させたままにし、配送の失敗を呼び出し元へ伝えない。
+- **例**：EX-AUTHENTICATION-031-01、EX-AUTHENTICATION-031-02
+
 #### REQ-AUTHENTICATION-032 メールアドレスの変更は変更前のアドレスへ通知される
+
+- User がメールアドレスの変更を要求したとき、Authentication は、変更の前の検証済みのアドレスへ `contact_change` の通知を送る。
+- メールアドレスの変更が確定したとき、Authentication は、新しいアドレスへ `contact_change` の通知を送る。
+- **例**：EX-AUTHENTICATION-032-01
 
 ### 本人による受信の設定
 
 #### REQ-AUTHENTICATION-034 停止した種別の通知は送られない
 
+- 本人が任意の種別の受信を停止している間、その種別の契機が起きたとき、Authentication は、通知を送らない。
+- 本人が任意の種別の受信を停止している間、必須の種別の契機が起きたとき、Authentication は、通知を送る。
+- **例**：EX-AUTHENTICATION-034-01
+
 #### REQ-AUTHENTICATION-033 必須の種別の通知は本人が止められない
+
+- 本人が受信の設定を取得したとき、Authentication は、200 とすべての種別を返し、`credential_change`、`mfa_change`、`contact_change`、`impersonation` を必須として示す。
+- 本人がステップアップ認証を経て任意の種別の受信の設定を更新したとき、Authentication は、無効にした種別の集合を保存し、200 と更新した設定を返す。
+- 必須の種別の停止を含む更新を受けた場合、Authentication は、400 と `mandatory_notification_category` で拒否し、どの種別の設定も変えない。
+- JSON として読めない本文か未知の種別を含む更新を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
+- ステップアップ認証を経ていないセッションで更新を受けた場合、Authentication は、403 と `step_up_required` で拒否する。
+- **例**：EX-AUTHENTICATION-033-01、EX-AUTHENTICATION-033-02
 
 ## セキュリティ上の考慮
 

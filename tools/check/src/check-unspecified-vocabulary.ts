@@ -19,6 +19,25 @@ import {
 const CONTEXTS = [
   { context: 'identity-management', backend: 'backend/idmanagement' },
   { context: 'tenancy', backend: 'backend/tenancy' },
+  { context: 'api-tokens', backend: 'backend/apitoken' },
+  { context: 'application', backend: 'backend/application' },
+  { context: 'audit', backend: 'backend/audit' },
+  { context: 'authentication', backend: 'backend/authentication' },
+  { context: 'authorization', backend: 'backend/authorization' },
+  { context: 'claim-mapping', backend: 'backend/claimmapping' },
+  { context: 'data-keys', backend: 'backend/datakeys' },
+  { context: 'identity-governance', backend: 'backend/idgovernance' },
+  { context: 'jobs', backend: 'backend/jobs' },
+  { context: 'oauth2', backend: 'backend/oauth2' },
+  { context: 'provisioning', backend: 'backend/provisioning' },
+  { context: 'saml', backend: 'backend/saml' },
+  { context: 'seeding', backend: 'backend/seeding' },
+  { context: 'sharedsignals', backend: 'backend/sharedsignals' },
+  { context: 'signing-keys', backend: 'backend/signingkeys' },
+  { context: 'sourcing', backend: 'backend/sourcing' },
+  { context: 'system', backend: 'backend/shared/spec' },
+  { context: 'workloadidentity', backend: 'backend/workloadidentity' },
+  { context: 'ws-federation', backend: 'backend/wsfederation' },
 ]
 
 /** 導入時点の違反の一覧。Context ごとに持ち、減る方向にしか動かさない。 */

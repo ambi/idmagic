@@ -24,3 +24,12 @@
 ### 利用者による復旧コードの利用
 
 #### REQ-AUTHENTICATION-036 復旧コードで成立した第二要素は MFA の要求を満たす
+
+- 第二要素の照合を待つログインセッションの間、未使用の正しい復旧コードを受けたとき、Authentication は、そのコードを使用済みにし、`amr` に `rc` を加えて `acr` を `urn:idmagic:acr:mfa` にし、`BackupCodeConsumed` を発行し、認可を続けさせる。
+- 復旧コードで第二要素を成立させた後、同じセッションの次の認可の要求を受けたとき、Authentication は、第二要素を再び求めない。
+- 本人がステップアップ認証を経て復旧コードを生成または再生成したとき、Authentication は、紛らわしい文字を除いた 10 文字のコードを 10 個返し、以前の一式を置き換え、`RecoveryCodesGenerated` を発行する。
+- 本人がステップアップ認証を経て復旧コードを失効させたとき、Authentication は、一式を消し、`RecoveryCodesRevoked` を発行する。
+- Authentication は、復旧コードを `mfa_enrolled` に数えない。
+- 誤った復旧コードか使用済みの復旧コードを受けた場合、Authentication は、401 と `invalid_recovery_code` で拒否し、`AuthenticationFailed` を発行する。
+- 復旧コードの保管先へ到達できない場合、Authentication は、503 と `recovery_unavailable` で拒否する。
+- **例**：EX-AUTHENTICATION-036-01、EX-AUTHENTICATION-036-02

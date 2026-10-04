@@ -14,10 +14,17 @@
 - Given クライアントは対象テナントの有効な API アクセストークンを提示している
 - When クライアントがサービスプロバイダーの参照、登録、または削除をリクエストする
 - But `saml:read` だけで変更操作をリクエストする
-- Then 操作を AccessDeniedError で拒否する
+- Then 操作を 403 と `insufficient_scope` で拒否する
 
 ### Example: EX-SAML-005-03 トークンのテナントとリクエスト先のテナントが一致しない
 
 - Given クライアントは発行元テナントでは有効な API アクセストークンを持つ
 - When クライアントがそのトークンを別テナントのサービスプロバイダーの参照、登録、または削除へ提示する
 - Then 操作を 401 の InvalidAccessTokenError で拒否する
+
+### Example: EX-SAML-005-04 `admin` のロールを持たない利用者が変更の操作を要求する
+
+- Given クライアントは対象テナントの有効な API アクセストークンを提示している
+- When クライアントがサービスプロバイダーの参照、登録、または削除をリクエストする
+- But `admin` のロールを持たない利用者が変更の操作を要求する
+- Then 操作は 403 の AccessDeniedError（`access_denied`）で拒否され、SPは変わらない

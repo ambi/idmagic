@@ -44,17 +44,44 @@
 
 #### REQ-AUTHORIZATION-003 判定は継承・グループ・親子関係をたどって関係の成否を決める
 
+- 呼び出し元が主体、リソース、関係で判定を要求したとき、Authorization は、直接のタプル、`computed_userset`、`tuple_to_userset`、subject set の成員をたどって関係が成り立つかを決め、許可か不許可と、たどった関係名だけの経路を返す。
+- 判定の結果を返すとき、Authorization は、経路にオブジェクトの識別子と主体の識別子を含めない。
+- どの経路でも関係に到達しない場合、Authorization は、許可しない。
+- **例**：EX-AUTHORIZATION-003-01、EX-AUTHORIZATION-003-02、EX-AUTHORIZATION-003-03、EX-AUTHORIZATION-003-04
+
 #### REQ-AUTHORIZATION-004 代行するエージェントは主体と自身の双方が関係を持つときだけ許可される
+
+- 主体と代行チェーンのすべての actor が同じ関係を持ち、すべての actor が有効で、要求した関係に対応するスコープがトークンのスコープの集合に含まれ、主体とリソースのテナントが一致する間、代行チェーンを伴う判定を要求されたとき、Authorization は、許可する。
+- 主体と代行チェーンの actor のどれかが関係を持たないか、actor が有効でないか、actor の状態を解決できないか、スコープが足りないか、テナントが一致しない場合、Authorization は、許可しない。
+- **例**：EX-AUTHORIZATION-004-01、EX-AUTHORIZATION-004-02、EX-AUTHORIZATION-004-03、EX-AUTHORIZATION-004-04
 
 #### REQ-AUTHORIZATION-009 判定の監査は非個人識別情報の要約だけを残す
 
+- 判定を下したとき、Authorization は、リソースの型、関係、許可か不許可、モデルの版、関係名だけの経路、拒否の理由、代行チェーンの段数を持つ `FgaCheckEvaluated` を発行する。
+- `FgaCheckEvaluated` を発行するとき、Authorization は、リソースの識別子をテナントと型を混ぜた SHA-256 の先頭 16 桁のダイジェストにし、主体の識別子とタプルの内容を含めない。
+- **例**：EX-AUTHORIZATION-009-01
+
 #### REQ-AUTHORIZATION-006 他テナントの関係タプルは判定に寄与しない
 
+- 呼び出し元が判定を要求したとき、Authorization は、呼び出し元のテナントのタプルだけを読み、要求の本文が別のテナントの識別子を含んでも対象のテナントを変えない。
+- 別のテナントで発行したか、壊れているか、ストアがまだ追いついていない整合トークンを提示された場合、Authorization は、422 と `consistency_not_satisfied` で拒否する。
+- **例**：EX-AUTHORIZATION-006-01、EX-AUTHORIZATION-006-02、EX-AUTHORIZATION-006-03
+
 #### REQ-AUTHORIZATION-005 判定不能はフェイルクローズで不許可になる
+
+- 探索の深さが上限（8）を超えるか、登録したモデルが宣言していない型か関係を指定された場合、Authorization は、許可へ退避せず、拒否の理由を添えて不許可を返す。
+- 関係の事実を組み立てないまま評価器へ要求が届いた場合、Authorization は、規則 `relationship_facts_present` の名前を残して不許可を返す。
+- タプルのストアへ到達できない場合、Authorization は、エラーを返し、許可しない。
+- **例**：EX-AUTHORIZATION-005-01、EX-AUTHORIZATION-005-02、EX-AUTHORIZATION-005-03、EX-AUTHORIZATION-005-04、EX-AUTHORIZATION-005-05
 
 ### 呼び出し元によるリソースの列挙
 
 #### REQ-AUTHORIZATION-007 リソースの列挙は許可されたものだけを返し、打ち切りを隠さない
+
+- 呼び出し元が主体、リソースの型、関係で列挙を要求したとき、Authorization は、そのテナントとその型に現れる識別子を上限（デフォルト 500 件）まで走査し、判定と同じ合成で許可されたものだけを、モデルの版と整合トークンとともに返す。
+- 呼び出し元が列挙を要求したとき、Authorization は、候補の数、許可した数、打ち切りの有無、モデルの版、代行チェーンの段数をまとめた `FgaResourcesEnumerated` を 1 件だけ発行し、1 件ごとの `FgaCheckEvaluated` を発行しない。
+- 走査が上限に達した場合、Authorization は、打ち切りを示して返し、結果を完全な一覧として返さない。
+- **例**：EX-AUTHORIZATION-007-01、EX-AUTHORIZATION-007-02
 
 ## セキュリティ上の考慮
 

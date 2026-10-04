@@ -27,9 +27,27 @@
 
 #### REQ-CLAIMMAPPING-001 対応付け規則のないカスタム属性はクレームとして発行されない
 
+- プロトコルの Context がクレームを解決したとき、ClaimMapping は、ポリシーの規則が生成するクレームだけを返し、どの規則のソースでもない属性をクレームとして返さない。
+- `user_attribute` の規則を解決するとき、ClaimMapping は、`source_key` の属性の空白だけでない値をすべて、そのクレームの値として返す。
+- `fixed` の規則を解決するとき、ClaimMapping は、`fixed_value` をそのクレームの値として返す。
+- `nameid` の規則を解決するとき、ClaimMapping は、NameID の値をそのクレームの値として返す。
+- 必須でない規則の値が空の場合、ClaimMapping は、そのクレームを省き、ほかのクレームを返す。
+- NameID を解決するとき、ClaimMapping は、`source_attribute` の属性の値のうち、空白だけでない最初の値を返す。
+- **例**：EX-CLAIMMAPPING-001-01
+
 #### REQ-CLAIMMAPPING-002 公開できない属性をソースとする規則は発行を拒否する
 
+- 規則の `source_key` または NameID の `source_attribute` が、テナントの属性定義にないキー、または `Private` の属性である場合、ClaimMapping は、クレームを一つも返さずに解決を拒否する。
+- ClaimMapping は、User の基本項目（`user_id`、`preferred_username`、`email`、`email_verified`、`name`、`given_name`、`family_name`、`roles`）を、属性定義によらず公開できる属性として扱う。
+- 規則の `claim_type` が、前後の空白と大文字小文字を除いて、プロトコルが制御するクレーム型の固定の集合にある場合、ClaimMapping は、クレームを一つも返さずに解決を拒否する。
+- **例**：EX-CLAIMMAPPING-002-01
+
 #### REQ-CLAIMMAPPING-003 必須規則のソース属性が欠けていれば部分的な発行をしない
+
+- 必須の規則の値が空の場合、ClaimMapping は、残りの規則のクレームも返さずに解決を拒否する。
+- NameID の `source_attribute` の属性に空白だけでない値がない場合、ClaimMapping は、クレームを一つも返さずに解決を拒否する。
+- NameID の `format` または `source_attribute` が空か、`claim_type` が空の規則か、`source_key` のない `user_attribute` の規則がある場合、ClaimMapping は、クレームを一つも返さずに解決を拒否する。
+- **例**：EX-CLAIMMAPPING-003-01
 
 ## セキュリティ上の考慮
 

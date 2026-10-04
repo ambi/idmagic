@@ -33,7 +33,18 @@
 
 #### REQ-SHAREDSIGNALS-001 キルスイッチは発行済みトークンをイントロスペクションで即時無効化する
 
+- 管理者が Agent を強制終了、無効化するか、資格情報の束縛を解除したとき、SharedSignals は、その Agent の失効エポックを現在時刻へ進め、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行する。
+- 所有者の User を無効化または削除したとき、SharedSignals は、テナントの中で所有者が一致するすべての Agent の失効エポックを進める。
+- 発行時刻が Agent の失効エポックより前のアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
+- 発行時刻が失効エポック以後のトークンのイントロスペクションを受けたとき、SharedSignals は、そのトークンを失効の対象にしない。
+- 失効エポックを既存の値と同じかそれより前の時刻へ進める要求を受けた場合、SharedSignals は、エポックを変えず、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行しない。
+- 失効エポックを判定できない場合、SharedSignals は、トークンを無効とみなさせる。
+- **例**：EX-SHAREDSIGNALS-001-01、EX-SHAREDSIGNALS-001-02
+
 #### REQ-SHAREDSIGNALS-007 受信側の障害はローカル失効を遅らせない
+
+- 送信側のストリームの受信側へ到達できない間、Agent を失効させたとき、SharedSignals は、配送の成否を待たずに失効エポックを進めてイントロスペクションへ反映し、そのストリームの配送を `pending` のまま再試行の対象にする。
+- **例**：EX-SHAREDSIGNALS-007-01
 
 ### 所有者のオフボーディング
 

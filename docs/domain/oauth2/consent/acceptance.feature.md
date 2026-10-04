@@ -14,14 +14,14 @@
 - Given クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
 - When クライアントが自身の active 同意の参照または撤回を要求する
 - But account:read だけで同意 revoke を要求する
-- Then 操作は AccessDeniedError で拒否される
+- Then 操作は拒否される
 
 ### Example: EX-OAUTH2-002-03 トークンのテナントまたは user_id が操作対象と一致しない
 
 - Given クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
 - When クライアントが自身の active 同意の参照または撤回を要求する
 - But トークンのテナントまたは user_id が操作対象と一致しない
-- Then 操作は AccessDeniedError で拒否される
+- Then 操作は拒否される
 
 ## Rule: REQ-OAUTH2-008 既存同意の有無に応じて同意画面を出し分ける
 
@@ -70,4 +70,4 @@
 
 - Given tenant_id "acme" のユーザーとクライアントの Consent が存在する
 - When `tenant_id=default` の管理者が同じ `user_id` と `client_id` の Consent を取得する
-- Then エラー "InvalidRequestError"
+- Then 404 と `consent_not_found` で拒否される

@@ -90,7 +90,7 @@
 - Given ResourceOwner は対象テナントの有効な User である
 - When 直近 5 分以内にステップアップ認証を済ませたセッションで、外部プロバイダーの認証を完了する
 - But ステップアップ認証が古い、または行われていない
-- Then リンクと解除を AccessDeniedError で拒否する
+- Then リンクと解除を 403 と `step_up_required` で拒否する
 
 ### Example: EX-AUTHENTICATION-003-03 パスワード資格情報も他の外部アイデンティティのリンクも残らなくなる
 

@@ -37,11 +37,31 @@ RFC 9493 の形式は自身のテナントを名乗らないので、テナン�
 
 #### REQ-SHAREDSIGNALS-010 RFC 9493 の Subject Identifier で送られた SET も主体を解決する
 
+- 受信側のストリームが SET を受理したとき、SharedSignals は、主体の Agent の失効エポックを進め、受理の記録を残し、202 を返し、`SecurityEventReceived` を発行する。
+- `iss` が受信側のストリームの `trusted_issuer` と一致する間、`format=iss_sub` の主体を受けたとき、SharedSignals は、`sub` をストリームのテナントの識別子として解決する。
+- `format=opaque` の主体を受けたとき、SharedSignals は、`id` をストリームのテナントの識別子として解決する。
+- 主体の識別子を解決するとき、SharedSignals は、まず Agent の識別子として、次に Agent に束縛した `OAuth2Client` の識別子として探し、失効を Agent の識別子で記録する。
+- `iss_sub` と `opaque` 以外の `format`、`trusted_issuer` と一致しない `iss`、どの Agent にも束縛先のクライアントにも一致しない識別子、ほかのテナントを名乗る主体を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、`verification_result=rejected_subject_unresolved` の `SecurityEventRejected` を発行し、失効を反映しない。
+- 64 KiB を超える SET を受けた場合、SharedSignals は、413 と `security_event_token_too_large` で拒否する。
+- SET の受信を拒否するとき、SharedSignals は、RFC 8935 の `err` と `description` を持つ本文を返す。
+- **例**：EX-SHAREDSIGNALS-010-01、EX-SHAREDSIGNALS-010-02、EX-SHAREDSIGNALS-010-03、EX-SHAREDSIGNALS-010-04、EX-SHAREDSIGNALS-010-05、EX-SHAREDSIGNALS-010-06
+
 #### REQ-SHAREDSIGNALS-003 署名が不正な SET は反映せずに拒否する
+
+- 署名を登録した鍵で検証できないか、未知の鍵の SET か、改ざんした SET を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、`verification_result=rejected_signature` の `SecurityEventRejected` を発行し、失効エポックを変えない。
+- 発行者が `trusted_issuer` と一致しないか、audience が受理する audience に含まれない SET を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、失効エポックを変えない。
+- 存在しないストリーム、送信側のストリーム、受信側の設定のないストリームへ SET を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、失効エポックを変えない。
+- **例**：EX-SHAREDSIGNALS-003-01
 
 #### REQ-SHAREDSIGNALS-004 同じ jti の SET は一度だけ反映する
 
+- 同じストリームで受理済みの `jti` の SET を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、`verification_result=rejected_replay` の `SecurityEventRejected` を発行し、失効エポックを変えない。
+- **例**：EX-SHAREDSIGNALS-004-01
+
 #### REQ-SHAREDSIGNALS-005 発行者が一致しても他テナントのストリームでは受理しない
+
+- SET の主体を解決するとき、SharedSignals は、受信側のストリームが属するテナントの中だけを探し、ほかのテナントのプリンシパルに作用しない。
+- **例**：EX-SHAREDSIGNALS-005-01
 
 ## セキュリティ上の考慮
 

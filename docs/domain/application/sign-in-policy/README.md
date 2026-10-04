@@ -38,9 +38,28 @@
 
 #### REQ-APPLICATION-009 管理者はアプリケーション別サインインポリシーを設定できる
 
+- 管理者がアプリケーションのサインインポリシーを保存したとき、Application は、規則を保存し、`AppSignInPolicyUpdated` を発行する。
+- 管理者が規則を保存したとき、Application は、必須の認証強度の省略を `Password` として、`allow_trusted_device` の省略を `true` として扱い、許可する CIDR を正規化して保存する。
+- 名前のない規則、重複する規則の ID、`Password` と `Mfa` 以外の認証強度、CIDR として読めない値、0 以下の `reauth_max_age_seconds` を含むポリシーを保存しようとした場合、Application は、400 と `invalid_sign_in_policy` で拒否し、保存済みのポリシーを変えない。
+- MFA の登録の猶予を、`Mfa` 以外の規則に指定するか、適用の開始日時か正の猶予期間を伴わずに指定するか、過去の適用の開始日時で指定した場合、Application は、400 と `invalid_sign_in_policy` で拒否する。
+- 利用者がアプリケーションへフェデレーションするとき、Application は、トークンまたは Assertion の発行の前に、実効のポリシーの有効な規則を評価する。
+- 空でない CIDR の許可リストにクライアントの IP が含まれないか、クライアントの IP を特定できない場合、Application は、ステップアップ認証の機会を与えずにフェデレーションを拒否し、`AppAccessDeniedByPolicy` を発行する。
+- 認証強度が規則の要求に届かないか、ステップアップ認証から `reauth_max_age_seconds` を過ぎた場合、Application は、ステップアップ認証を要求し、`AppStepUpRequired` と `AppAccessDeniedByPolicy` を発行し、認証強度を上げた後にフェデレーションを完了させる。
+- 認証の文脈を得られない場合、Application は、フェデレーションを拒否する。
+- **例**：EX-APPLICATION-009-01、EX-APPLICATION-009-02、EX-APPLICATION-009-03
+
 ### 管理者によるテナントのデフォルトのポリシーの設定
 
 #### REQ-APPLICATION-010 管理者はテナントデフォルトサインインポリシーを設定し全アプリに適用できる
+
+- 管理者がテナントのデフォルトのサインインポリシーを保存したとき、Application は、規則を保存し、`TenantDefaultSignInPolicyUpdated` を発行する。
+- 有効な規則を一つ以上持つアプリケーションでは、Application は、そのアプリケーションの規則だけを評価し、テナントのデフォルトを合成しない。
+- 有効な規則を持たないアプリケーションでは、Application は、テナントのデフォルトの規則を評価する。
+- 新しいテナントでは、Application は、規則が空のデフォルトを使い、フェデレーションに追加の要件を課さない。
+- 管理者がデフォルトより弱いアプリケーションのポリシーを保存したとき、Application は、警告を返して保存を受け付け、そのアプリケーションだけに弱いポリシーを適用する。
+- 管理者がアプリケーションの編集画面を開いたとき、Application は、テナントのデフォルト、そのアプリケーションの上書き、実効のポリシーを分けて返す。
+- 管理者がデフォルトのポリシーの画面を開いたとき、Application は、有効な User のうち MFA を登録していない人数と、適用の開始日時の後に利用できなくなる User への影響を表示する。
+- **例**：EX-APPLICATION-010-01、EX-APPLICATION-010-02
 
 ## セキュリティ上の考慮
 

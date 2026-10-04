@@ -33,7 +33,7 @@
 - Given テナント "tenant-a" に WorkloadTrustBundle "prod-cluster" が登録済みである
 - And Agent "other-tenant-agent" はテナント "tenant-b" に属する
 - When "prod-cluster" 配下に `agent_id="other-tenant-agent"` を指定して CreateAgentWorkloadBinding を呼ぶ
-- Then CreateAgentWorkloadBinding が InvalidRequestError で拒否され、関連付けは作成されない
+- Then CreateAgentWorkloadBinding が AgentWorkloadBindingAgentNotFoundError で拒否され、関連付けは作成されない
 
 ## Rule: REQ-WORKLOADIDENTITY-010 信頼設定と関連付けの管理は管理者に限られる
 

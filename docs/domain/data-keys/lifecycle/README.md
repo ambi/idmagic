@@ -41,25 +41,60 @@
 | retiring | DataEncryptionKeyDestroyed | — | destroyed |  |
 | disabled | DataEncryptionKeyDestroyed | — | destroyed |  |
 
+行は鍵のバージョンの状態、列はそのバージョンへの操作である。
+ローテーションはテナントの `active` のバージョンだけを退役させ、ほかのバージョンを変えない。
+
+| State | ローテーション | 無効化 | 破棄 | 暗号文の復号 |
+|---|---|---|---|---|
+| active | → retiring | 拒否：InvalidRequestError | 拒否：InvalidRequestError | 何もしない |
+| retiring | 何もしない | → disabled | → destroyed（参照の移行が完了）<br>拒否：DataKeyStillReferencedError（未移行の参照が残る） | 何もしない |
+| disabled | 何もしない | 拒否：InvalidRequestError | → destroyed（参照の移行が完了）<br>拒否：DataKeyStillReferencedError（未移行の参照が残る） | 拒否：DataKeyUnavailableError |
+| destroyed | 何もしない | 拒否：InvalidRequestError | 拒否：InvalidRequestError | 拒否：DataKeyUnavailableError |
+
 ## 操作
 
 ### テナントの初回の暗号化による DEK の生成
 
 #### REQ-DATAKEYS-001 テナントの初回利用時に DEK を生成する
 
+- テナントに DEK がない間、そのテナントの項目を初めて暗号化するとき、DataKeys は、新しい DEK を `MasterKey` のプロバイダーでラップし、バージョン 1 の `active` の DEK として `wrapped_dek` だけを保存し、`DataEncryptionKeyBootstrapped` を発行する。
+- DEK を生成するとき、DataKeys は、平文の DEK を保存せず、イベントにも含めない。
+- `MasterKey` のプロバイダーに到達できないか、ラップに失敗した場合、DataKeys は、DataKeyUnavailableError で失敗し、DEK を作らず、イベントを発行しない。
+- **例**：EX-DATAKEYS-001-01、EX-DATAKEYS-001-02
+
 ### System による DEK のローテーション
 
 #### REQ-DATAKEYS-002 DEK をローテーションしても既存の暗号文を復号できる
+
+- System がテナントの DEK をローテーションしたとき、DataKeys は、次のバージョンの DEK を `active` にし、それまでの `active` のバージョンを `retiring` にし、`DataEncryptionKeyRotated` を発行する。
+- System がテナントの DEK をローテーションしたとき、DataKeys は、登録したすべての `FieldMigrator` について、そのテナントの再暗号化のジョブを `Jobs` に予約する。
+- 再暗号化のジョブの予約に失敗した場合、DataKeys は、ローテーションを取り消さず、定期の再暗号化で後から回収する。
+- バージョンが `retiring` の間、そのバージョンで暗号化した値を復号するとき、DataKeys は、そのバージョンで復号する。
+- DataKeys は、`active` のバージョンだけを新しい暗号化に使う。
+- **例**：EX-DATAKEYS-002-01
 
 ### System による DEK の無効化
 
 #### REQ-DATAKEYS-003 retiring の DEK を即時にロックアウトできる
 
+- バージョンが `retiring` の間、System がそのバージョンを無効化したとき、DataKeys は、バージョンを `disabled` にし、キャッシュした DEK を捨て、`DataEncryptionKeyDisabled` を発行する。
+- バージョンが `disabled` または `destroyed` の間、そのバージョンで暗号化した値の復号を要求されたとき、DataKeys は、DataKeyUnavailableError で拒否する。
+- **例**：EX-DATAKEYS-003-01
+
 #### REQ-DATAKEYS-004 active の DEK は直接 disable できない
+
+- `active` のバージョンの無効化または破棄を要求された場合、DataKeys は、InvalidRequestError で拒否し、バージョンを `active` のまま残し、イベントを発行しない。
+- `retiring` でないバージョンの無効化を要求された場合、DataKeys は、InvalidRequestError で拒否し、バージョンを変えない。
+- **例**：EX-DATAKEYS-004-01
 
 ### System による DEK の破棄
 
 #### REQ-DATAKEYS-005 すべての参照を再暗号化した後に DEK を destroy できる
+
+- 登録したすべての `FieldMigrator` が `active` のバージョンへの未移行の参照を持たない間、System が `retiring` または `disabled` のバージョンを破棄したとき、DataKeys は、バージョンを `destroyed` にし、`wrapped_dek` を消し、記録を残し、キャッシュした DEK を捨て、`DataEncryptionKeyDestroyed` を発行する。
+- 未移行の参照が一件でも残る場合、DataKeys は、DataKeyStillReferencedError で拒否し、バージョンと `wrapped_dek` を残し、イベントを発行しない。
+- `destroyed` のバージョンの破棄を要求された場合、DataKeys は、InvalidRequestError で拒否する。
+- **例**：EX-DATAKEYS-005-01、EX-DATAKEYS-005-02
 
 ## セキュリティ上の考慮
 

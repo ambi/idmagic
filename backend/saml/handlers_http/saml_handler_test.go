@@ -748,10 +748,21 @@ func TestAdminServiceProvider_RejectsUnsupportedSignedAuthnRequests(t *testing.T
 	}
 }
 
+// 参照も削除も access_denied で拒否し、拒否した削除は SP を消さない。
+//
+//spec:covers EX-SAML-005-04: admin のロールを持たない利用者の SP の管理は 403 の access_denied で拒否され、SP は残る
 func TestAdminServiceProvider_ForbiddenForNonAdmin(t *testing.T) {
-	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
-	if rec := get(e, "/api/admin/v1/saml/service-providers"); rec.Code != http.StatusForbidden {
-		t.Fatalf("status=%d, want 403", rec.Code)
+	e, _, spRepo := newServerWithRepository(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
+	if rec := get(e, "/api/admin/v1/saml/service-providers"); rec.Code != http.StatusForbidden ||
+		!strings.Contains(rec.Body.String(), "urn:idmagic:error:access_denied") {
+		t.Fatalf("list status=%d body=%s, want 403 access_denied", rec.Code, rec.Body.String())
+	}
+	deleted := doAdminJSON(e, http.MethodDelete, "/api/admin/v1/saml/service-providers?entity_id=https://sp.example.com", "")
+	if deleted.Code != http.StatusForbidden || !strings.Contains(deleted.Body.String(), "urn:idmagic:error:access_denied") {
+		t.Fatalf("delete status=%d body=%s, want 403 access_denied", deleted.Code, deleted.Body.String())
+	}
+	if sp, err := spRepo.FindByEntityID(context.Background(), tenancydomain.DefaultTenantID, "https://sp.example.com"); err != nil || sp == nil {
+		t.Fatalf("拒否した削除で SP が消えた: sp=%v err=%v", sp, err)
 	}
 }
 

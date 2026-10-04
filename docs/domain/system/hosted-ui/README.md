@@ -29,13 +29,26 @@ Vite の開発サーバーではデフォルトで表示し、それ以外のビ
 
 #### REQ-SYSTEM-006 起動時設定により Vite 開発サーバー以外でも DemoLoginAffordance が表示される
 
+- Vite の開発サーバー以外のビルドでは、`VITE_DEMO_LOGIN_ENABLED=true` の間、利用者が HomePage を開いたとき、System は、`DemoLoginAffordance` を表示する。
+- Vite の開発サーバー以外のビルドでは、`VITE_DEMO_LOGIN_ENABLED` が未設定か `true` 以外の間、利用者が HomePage を開いたとき、System は、`DemoLoginAffordance` を表示しない。
+- 利用者が `DemoLoginAffordance` を使ったとき、System は、`development` のプロファイルが作ったデモの資格情報で `authorization_code` の流れを進め、プロファイルの適用の状態を表示の時に検査しない。
+- `development` のプロファイルを適用していない場合、System は、デモの資格情報がないので認可を失敗させる。
+- **例**：EX-SYSTEM-006-01、EX-SYSTEM-006-02、EX-SYSTEM-006-03
+
 ### 利用者による開発サーバーでのデモのログイン
 
 #### REQ-SYSTEM-007 Vite 開発サーバーでの実行時は設定なしで DemoLoginAffordance が表示される
 
+- Vite の開発サーバーでは、利用者が HomePage を開いたとき、System は、`VITE_DEMO_LOGIN_ENABLED` によらず `DemoLoginAffordance` を表示する。
+- **例**：EX-SYSTEM-007-01
+
 ### 管理者によるポータルの再読み込み
 
 #### REQ-SYSTEM-015 管理コンソールとアカウントポータルは失効セッションから同一画面に復帰する
+
+- 管理コンソールまたはアカウントポータルの API が 401 を返したとき、System は、保持していたアクセストークン、リフレッシュトークン、OIDC のコールバックの `state` を捨て、直前の画面への同一オリジンの相対の `return_to` を保って再認可を 1 回だけ始め、再ログインの後に元の画面へ戻す。
+- 再認可から復旧できない場合、System は、再ログインの導線を表示する。
+- **例**：EX-SYSTEM-015-01、EX-SYSTEM-015-02
 
 ## セキュリティ上の考慮
 

@@ -5,8 +5,8 @@
 ### Example: EX-OAUTH2-005-01 通常経路
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - When クライアントが発行された認可コードを正しい PKCE verifier で交換する
 - Then レスポンスに `access_token`、`id_token`、`refresh_token` が含まれ、`token_type` は `Bearer`
 - Then "UserAuthenticated" が発行される
@@ -18,8 +18,8 @@
 ### Example: EX-OAUTH2-005-02 認可リクエストの redirect_uri が未登録である
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - But 認可リクエストの redirect_uri が未登録である
 - Then リダイレクトは行われず IdP がエラーページを表示する
 - And エラー "InvalidRequestError"
@@ -27,8 +27,8 @@
 ### Example: EX-OAUTH2-005-03 単一値の認可パラメーターが重複する、`prompt` に重複または未対応のトークンがある、または `none` がほかの `prompt` トークンと併用される
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - But 単一値の認可パラメーターが重複する、`prompt` に重複または未対応のトークンがある、または `none` がほかの `prompt` トークンと併用される
 - Then 認可コードは発行されない
 - And 安全に確定した登録済みの `redirect_uri` があれば `state` と発行者の識別子を含む `invalid_request` を返す
@@ -37,8 +37,8 @@
 ### Example: EX-OAUTH2-005-04 `request_uri` と、併用を許可しないフロントチャネル認可パラメーターが混在する
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - But `request_uri` と、併用を許可しないフロントチャネル認可パラメーターが混在する
 - Then 認可コードは発行されない
 - And エラー "InvalidRequestError"
@@ -46,8 +46,8 @@
 ### Example: EX-OAUTH2-005-05 `prompt=none` で既存セッションまたは必要な同意がない
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - But `prompt=none` で既存セッションまたは必要な同意がない
 - Then UI とログインへのリダイレクトは発生しない
 - And 既存セッションがなければ `state` と発行者識別子を含む `login_required` を登録済みの `redirect_uri` へ返す
@@ -56,8 +56,8 @@
 ### Example: EX-OAUTH2-005-06 PKCE verifier が一致しない
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - When クライアントが発行された認可コードを正しい PKCE verifier で交換する
 - But PKCE verifier が一致しない
 - Then 認可コードを誤った code_verifier で交換する
@@ -67,8 +67,8 @@
 ### Example: EX-OAUTH2-005-07 同じ認可コードを 2 回交換する
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - When クライアントが発行された認可コードを正しい PKCE verifier で交換する
 - But 同じ認可コードを 2 回交換する
 - Then 1 回目のレスポンスには access_token が含まれる
@@ -80,8 +80,8 @@
 ### Example: EX-OAUTH2-005-08 認可コードが発行から 60 秒を超えている
 
 - Given "web-app" は confidential クライアントで redirect_uri "https://app.example.com/callback" を登録済みである
-- And ユーザー "alice" は "web-app" に scope "openid プロファイル" を同意済みである
-- When "web-app" として scope "openid プロファイル" で認可リクエストを送る
+- And ユーザー "alice" は "web-app" に scope "openid プロファイル offline_access" を同意済みである
+- When "web-app" として scope "openid プロファイル offline_access" で認可リクエストを送る
 - When クライアントが発行された認可コードを正しい PKCE verifier で交換する
 - But 認可コードが発行から 60 秒を超えている
 - Then 認可コードの交換はエラー "InvalidGrantError"

@@ -64,7 +64,7 @@
 - Given クライアントは対象テナントの有効な API アクセストークンを提示している
 - When クライアントが Application、カテゴリ、割り当て、またはテナントのデフォルトサインインポリシーに対する操作をリクエストする
 - But `applications:read` だけで Application の変更をリクエストする
-- Then 操作を AccessDeniedError で拒否する
+- Then 操作を 403 と `insufficient_scope` で拒否する
 
 ### Example: EX-APPLICATION-004-03 トークンのテナントとリクエスト先のテナントが一致しない
 
@@ -169,7 +169,7 @@
 - Given 管理者が Application 編集画面を開いている
 - When 管理者が PNG / JPEG / WebP / GIF の 256KiB 以下の画像をアップロードする
 - But 非画像または上限超過ファイルをアップロードする
-- Then InvalidRequestError で拒否され、既存アイコンは置き換わらない
+- Then 400 と `invalid_icon` で拒否され、既存アイコンは置き換わらない
 
 ### Example: EX-APPLICATION-008-03 別テナントの `application_id` と ID で同じアイコンを取得する
 

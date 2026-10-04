@@ -26,7 +26,29 @@ const SYSTEM_SCENARIOS = 'docs/domain/scenarios.feature.md'
  * 要件文の EARS の構文を確かめる Context。要件文を書き直した Context から加え、
  * 減らす方向には動かさない。
  */
-const EARS_CONTEXTS = new Set<string>(['tenancy', 'identity-management'])
+const EARS_CONTEXTS = new Set<string>([
+  'tenancy',
+  'identity-management',
+  'claim-mapping',
+  'api-tokens',
+  'ws-federation',
+  'data-keys',
+  'audit',
+  'sourcing',
+  'saml',
+  'seeding',
+  'authorization',
+  'workloadidentity',
+  'sharedsignals',
+  'signing-keys',
+  'application',
+  'identity-governance',
+  'jobs',
+  'provisioning',
+  'system',
+  'authentication',
+  'oauth2',
+])
 
 export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const domainFiles = await snapshot.files('docs/domain', [])

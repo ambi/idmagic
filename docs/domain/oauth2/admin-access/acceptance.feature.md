@@ -15,21 +15,21 @@
 - Given クライアントは対象テナントの有効な API access トークンを提示している
 - When クライアントが OAuth2 クライアント、認可詳細タイプ、または MCP リソースサーバーの操作をリクエストする
 - But oauth-clients:read だけで OAuth2 クライアントの変更を要求する
-- Then 操作は AccessDeniedError で拒否される
+- Then 操作は 403 と `insufficient_scope` で拒否される
 
 ### Example: EX-OAUTH2-003-03 別 resource の scope で操作を要求する
 
 - Given クライアントは対象テナントの有効な API access トークンを提示している
 - When クライアントが OAuth2 クライアント、認可詳細タイプ、または MCP リソースサーバーの操作をリクエストする
 - But 別 resource の scope で操作を要求する
-- Then 操作は AccessDeniedError で拒否される
+- Then 操作は 403 と `insufficient_scope` で拒否される
 
 ### Example: EX-OAUTH2-003-04 トークンのテナントとリクエスト先のテナントが一致しない
 
 - Given クライアントは対象テナントの有効な API access トークンを提示している
 - When クライアントが OAuth2 クライアント、認可詳細タイプ、または MCP リソースサーバーの操作をリクエストする
 - But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作を 401 の InvalidAccessTokenError で拒否する
+- Then 操作を 401 と `invalid_token` で拒否する
 
 ## Rule: REQ-OAUTH2-004 管理者は自身に可視なロールポリシーを確認できる
 
@@ -44,4 +44,4 @@
 - Given ロール=["admin"] の管理者が認証済みである
 - When 管理者がロールポリシー一覧を取得する
 - But プリンシパルが `admin` または `system_admin` ではない
-- Then ロールポリシー一覧を AccessDeniedError で拒否する
+- Then ロールポリシー一覧を 403 と `access_denied` で拒否する

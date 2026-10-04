@@ -23,4 +23,4 @@
 - Then クライアント自身のアプリケーションと保存済みの順序だけが返る
 - When クライアントが `account:write` スコープで、自分のアプリケーション順序の保存をリクエストする
 - But クライアントが `account:read` スコープだけを持つ
-- Then 操作を AccessDeniedError で拒否する
+- Then 操作を 403 と `insufficient_scope` で拒否する

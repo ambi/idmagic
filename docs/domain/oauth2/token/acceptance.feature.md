@@ -44,7 +44,6 @@
 - Then "RT1" の状態は "Rotated"
 - Then "RefreshTokenRotated" が発行される
 - Then "AccessTokenIssued" が発行される
-- Then "RefreshTokenIssued" が発行される
 
 ### Example: EX-OAUTH2-006-02 ローテーション済みの旧 refresh トークンを再使用する
 
