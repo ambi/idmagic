@@ -6,7 +6,6 @@ import { documentKind } from '../../check/src/specification-doc.ts'
 import {
   CONTEXT_DOCUMENTS,
   DOMAIN_DOCUMENTS,
-  FEATURE_DOCUMENTS,
   SYSTEM_DOCUMENT_PATHS,
 } from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
@@ -165,13 +164,10 @@ function plainTitle(value: string): string {
 }
 
 /**
- * 機能ノードの子の並び。旧形式は配置が定める順に、新しい形式は機能仕様の章を先に、
- * 内部設計と例の付録を後に置く。章は仕様の続きなので、仕様の直後に読めるようにする。
+ * 機能ノードの子の並び。機能仕様の章を先に、内部設計と例の付録を後に置く。
+ * 章は仕様の続きなので、仕様の直後に読めるようにする。
  */
 function featureChildOrder(name: string, fallback: number): number {
-  if ((FEATURE_DOCUMENTS as readonly string[]).includes(name)) {
-    return canonicalOrder(FEATURE_DOCUMENTS, name, fallback)
-  }
   if (name === 'design.md') return Number.MAX_SAFE_INTEGER - 1
   if (name === 'examples.feature.md') return Number.MAX_SAFE_INTEGER
   return fallback
@@ -252,7 +248,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   ) {
     const segments = systemDocument.split('/')
     const file = segments.at(-1) ?? systemDocument
-    const stem = file === 'scenarios.feature.md' ? 'scenarios' : file.replace(/\.md$/, '')
+    const stem = file.replace(/\.md$/, '')
     const directory = segments.slice(0, -1).map(slug).join('/')
     const outputPath =
       file === 'README.md'
@@ -303,17 +299,13 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           order: index,
         }
   }
-  // Context より下の段。旧形式の機能ノードは一段下、新しい形式では内部設計、機能群、
-  // 機能群の下の機能ノードがある。`feature` はその段の Context からの相対パスである。
+  // Context より下の段。内部設計、機能群、機能群の下の機能ノードがある。
+  // `feature` はその段の Context からの相対パスである。
   const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/(.+)\/([^/]+)$/)
   if (featureDocument) {
     const [, context = '', feature = '', featureFile = ''] = featureDocument
     const stem =
-      featureFile === 'scenarios.feature.md'
-        ? 'scenarios'
-        : featureFile === 'examples.feature.md'
-          ? 'examples'
-          : featureFile.replace(/\.md$/, '')
+      featureFile === 'examples.feature.md' ? 'examples' : featureFile.replace(/\.md$/, '')
     const node = feature.split('/').map(slug)
     return featureFile === 'README.md'
       ? {
@@ -343,8 +335,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   const context = contextDocument?.[1]
   const contextFile = contextDocument?.[2]
   if (context && contextFile) {
-    const stem =
-      contextFile === 'scenarios.feature.md' ? 'scenarios' : contextFile.replace(/\.md$/, '')
+    const stem = contextFile.replace(/\.md$/, '')
     return contextFile === 'README.md'
       ? {
           ...document,
@@ -462,30 +453,20 @@ function stateDiagram(machine: string, rows: string[][]): string {
   return lines.join('\n')
 }
 
-/**
- * `standalone` is a states.md, where every H2 is a machine. In the single
- * canonical document the machines are the H3s under `## State Transitions`,
- * and in a feature specification the H3s under `## 状態遷移`.
- */
-export function addDerivedStateDiagrams(source: string, standalone = false): string {
+/** 機能仕様の状態機械は、`## 状態遷移` の節の下の H3 である。 */
+export function addDerivedStateDiagrams(source: string): string {
   const lines = source.split('\n')
   const insertions = new Map<number, string[]>()
-  let inStates = standalone
+  let inStates = false
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index] ?? ''
-    if (!standalone) {
-      // 機能仕様は状態遷移を `## 状態遷移` の節に置く。
-      if (line === '## State Transitions' || line === '## 状態遷移') {
-        inStates = true
-        continue
-      }
-      if (line.startsWith('## ')) inStates = false
+    if (line === '## 状態遷移') {
+      inStates = true
+      continue
     }
-    const isMachine = standalone
-      ? line.startsWith('## ') && !line.startsWith('### ')
-      : line.startsWith('### ')
-    if (!inStates || !isMachine) continue
-    const machine = line.slice(standalone ? 3 : 4).trim()
+    if (line.startsWith('## ')) inStates = false
+    if (!inStates || !line.startsWith('### ')) continue
+    const machine = line.slice(4).trim()
     let table = index + 1
     while (
       table < lines.length &&
@@ -661,7 +642,6 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
   if (entry.category !== 'context-child' && entry.category !== 'feature-child') return entry.title
-  if (entry.path.endsWith('scenarios.feature.md')) return 'シナリオ'
   if (entry.path.endsWith('examples.feature.md')) return '例'
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
@@ -770,7 +750,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const areas = tree.directories.flatMap((node) =>
     node.name === 'design' ? node.directories.map(directory) : [directory(node)],
   )
-  // 段は入れ子にする。新しい形式では、機能ノードが機能群の下に、内部設計の文書が
+  // 段は入れ子にする。機能ノードが機能群の下に、内部設計の文書が
   // `design` の下に並ぶ。親の段は、その段の相対パスを接頭辞に持つ段を子に持つ。
   const node = (feature: RenderedDocument): NavigationDirectory => ({
     name: feature.title,
@@ -911,10 +891,7 @@ function documentPage(
   markdown: MarkdownItInstance,
   reference: string,
 ): string {
-  const source = addDerivedStateDiagrams(
-    stripFrontmatter(document.source),
-    document.path.endsWith('/states.md'),
-  )
+  const source = addDerivedStateDiagrams(stripFrontmatter(document.source))
   const article = `<article class="document">${markdown.render(source, { document })}${reference}</article>`
   const body = `<div class="page">${article}${pageOutline(article)}</div>`
   const scripts = `<script src="${escapeHtml(assetHref(document.outputPath, 'mermaid.min.js'))}"></script><script src="${escapeHtml(assetHref(document.outputPath, 'site.js'))}"></script>`
@@ -1281,12 +1258,12 @@ function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): st
   )
   const index = `<h2 id="${document.id}-要件一覧">要件一覧</h2><p class="muted">この機能の仕様が宣言する要件の見出しから生成した。</p><div class="table-wrap"><table><thead><tr><th scope="col">要件</th><th scope="col">題名</th><th scope="col">記載</th></tr></thead><tbody>${rows}</tbody></table></div>`
   const open = questions.length
-    ? `<h2 id="${document.id}-未決事項">未決事項</h2><p class="muted">要件の要判断の欄から生成した。新しい形式では要判断を work item として起票し、この一覧から消す。</p><ul>${questions.join('')}</ul>`
+    ? `<h2 id="${document.id}-未決事項">未決事項</h2><p class="muted">要件の要判断の欄から生成した。要判断は work item として起票し、この一覧から消す。</p><ul>${questions.join('')}</ul>`
     : ''
   return `<section class="context-reference">${index}${open}</section>`
 }
 
-/** 新しい形式の Context の機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
+/** Context の機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
 function featureMap(
   document: RenderedDocument,
   documents: RenderedDocument[],
@@ -1295,8 +1272,6 @@ function featureMap(
   contextAliases: Record<string, string>,
 ): string {
   const context = document.context
-  if (!documents.some((entry) => entry.path === `docs/domain/${context}/design/README.md`))
-    return ''
   const nodes = inGroup(documents, 'feature').filter(
     (entry) => entry.context === context && entry.feature !== 'design',
   )
@@ -1368,7 +1343,7 @@ function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
       }
       continue
     }
-    if (!document.path.endsWith('scenarios.feature.md')) continue
+    if (document.path !== 'docs/domain/scenarios.feature.md') continue
     for (const rule of parseScenarioDocument(document.source).rules) {
       entries.push({
         id: rule.id,

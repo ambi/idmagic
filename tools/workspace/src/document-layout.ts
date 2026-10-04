@@ -3,28 +3,6 @@ export interface DirectoryListing {
   files: string[]
 }
 
-export const CONTEXT_DOCUMENTS = [
-  'README.md',
-  'glossary.md',
-  'standards.md',
-  'states.md',
-  'decisions.md',
-  'internals.md',
-  'scenarios.feature.md',
-] as const
-
-/**
- * Context の一段下に置く機能ノードの文書。共有語彙（`glossary.md`）と採用した外部標準
- * （`standards.md`）は機能をまたいで使うので Context に残し、ここには置かせない。
- */
-export const FEATURE_DOCUMENTS = [
-  'README.md',
-  'states.md',
-  'decisions.md',
-  'internals.md',
-  'scenarios.feature.md',
-] as const
-
 export const ROOT_DOCUMENTS = ['README.md'] as const
 
 /** ドメイン全体を対象とし、Bounded Context のディレクトリより上に置く文書。 */
@@ -114,7 +92,7 @@ export const SYSTEM_DOCUMENT_PATHS = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ dire
 /**
  * 内容に応じた任意名を許し、閉じたファイル集合の対象にしない段。`docs/domain` は
  * 直下のファイル集合が閉じており、配下のディレクトリ名だけが自由なので、ここには載せない。
- * 配下は `canonicalDocumentNames` が名前を持たないため `CONTEXT_DOCUMENTS` で判定される。
+ * 配下の Context の段は `documentAllowance` が判定する。
  */
 export const FREELY_NAMED_DOCUMENT_DIRECTORIES = new Set([
   'docs/development',
@@ -127,36 +105,10 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
 }
 
 /**
- * その段に置ける一次情報文書の名前。旧形式の仕様の木はシステム、Context、機能の三段で
- * 止まるので、機能ノードより下の段には何も置けない。固定の一覧に無い段は Context と同じ
- * 集合を持つ。新しい形式の Context の段は `documentAllowance` が決める。
- */
-export function documentNames(directory: string): readonly string[] {
-  const system = SYSTEM_DOCUMENTS_BY_DIRECTORY.get(directory)
-  if (system) return system
-  if (!directory.startsWith('docs/domain/')) return CONTEXT_DOCUMENTS
-  const depth = directory.slice('docs/domain/'.length).split('/').length
-  if (depth === 1) return CONTEXT_DOCUMENTS
-  if (depth === 2) return FEATURE_DOCUMENTS
-  return []
-}
-
-/**
- * 新しい形式（機能仕様と内部設計を軸にした形式）の Context が持つ印。履歴のリビジョンや
- * 一つのファイルだけを読む道具も、設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
- */
-export const FEATURE_LAYOUT_MARKER = 'design/README.md'
-
-/**
- * 新しい形式の Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能ノードへ移る。
+ * Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能ノードへ置く。
  * `quality.md` は、システムの品質要求のうちこの Context に割り当てた分を書く仕様である。
  */
-export const FEATURE_LAYOUT_CONTEXT_DOCUMENTS = [
-  'README.md',
-  'glossary.md',
-  'standards.md',
-  'quality.md',
-] as const
+export const CONTEXT_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
 
 /** Context の内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
 export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
@@ -165,7 +117,7 @@ export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
 export const FEATURE_NODE_DOCUMENTS = ['README.md', 'design.md', 'examples.feature.md'] as const
 
 /**
- * 任意の名前を許す段でも使えない名前。旧形式のファイル種別を新しい形式に持ち込むと、
+ * 任意の名前を許す段でも使えない名前。ファイル種別ごとの文書を章として置くと、
  * 一つの機能を種別ごとのファイルに散らす構造へ戻ってしまう。用語と標準は Context の直下に置く。
  */
 const RESERVED_FREE_NAMES = new Set([
@@ -188,9 +140,12 @@ export interface DocumentAllowance {
 
 /** 段の集合から読み取った、名前の判定に要る事実。 */
 export interface DocumentSetView {
-  /** `design/README.md` を持つ Context の名前。 */
+  /**
+   * `design/README.md` を持つ Context の名前。この印のない Context の段には、どの文書も置けない。
+   * 設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
+   */
   featureContexts: ReadonlySet<string>
-  /** 子のディレクトリを持つ段。新しい形式では、これが機能群と機能ノードを分ける。 */
+  /** 子のディレクトリを持つ段。これが機能群と機能ノードを分ける。 */
   parents: ReadonlySet<string>
 }
 
@@ -207,18 +162,18 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
 }
 
 /**
- * その段に置ける文書。新しい形式の Context は、Context、内部設計、機能群、機能ノードの段を
- * 持つ。機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能ノードは Context から
- * 一段か二段下の、子を持たない段である。それより下には何も置けない。
+ * その段に置ける文書。Context は、Context、内部設計、機能群、機能ノードの段を持つ。
+ * 機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能ノードは Context から
+ * 一段か二段下の、子を持たない段である。それより下と、印を持たない Context の段と、
+ * 固定の一覧にないシステムの段には何も置けない。
  */
 export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {
   const match = directory.match(/^docs\/domain\/([^/]+)(?:\/(.+))?$/)
   const context = match?.[1]
-  if (!context || !view.featureContexts.has(context)) {
-    return { names: documentNames(directory), freeNames: false }
-  }
+  if (!context) return { names: canonicalDocumentNames(directory) ?? [], freeNames: false }
+  if (!view.featureContexts.has(context)) return { names: [], freeNames: false }
   const rest = match[2]?.split('/') ?? []
-  if (rest.length === 0) return { names: FEATURE_LAYOUT_CONTEXT_DOCUMENTS, freeNames: false }
+  if (rest.length === 0) return { names: CONTEXT_DOCUMENTS, freeNames: false }
   if (rest[0] === 'design') {
     return rest.length === 1
       ? { names: DESIGN_DOCUMENTS, freeNames: true }

@@ -92,16 +92,23 @@ The demo context.
 
 | File | Content |
 |---|---|
-| [states.md](states.md) | 状態と遷移 |
-| [scenarios.feature.md](scenarios.feature.md) | 受け入れシナリオ |
+| [用語集](glossary.md) | 用語 |
+| [実行](run/README.md) | 機能 |
 `,
 }
 
-const statesDocument = {
-  path: 'docs/domain/demo/states.md',
-  source: `# Demo State Transitions
+const contextDesignDocument = {
+  path: 'docs/domain/demo/design/README.md',
+  source: '# Demo の内部設計\n\n構成。\n',
+}
 
-## DemoLifecycle
+const runDocument = {
+  path: 'docs/domain/demo/run/README.md',
+  source: `# 実行
+
+## 状態遷移
+
+### DemoLifecycle
 
 | State | Kind | Meaning |
 |---|---|---|
@@ -114,12 +121,20 @@ const statesDocument = {
 | Ready | Start | allowed \\| privileged | Running | emit Started |
 | Running | Finish | complete | Done | emit Completed |
 | Done | Reset | "" | Ready | emit Reset |
+
+## 操作
+
+### 開始
+
+#### REQ-DEMO-001 a demo runs
+
+- 準備のできたデモだけを開始する。
 `,
 }
 
-const scenariosDocument = {
-  path: 'docs/domain/demo/scenarios.feature.md',
-  source: `# Feature: Demo
+const examplesDocument = {
+  path: 'docs/domain/demo/run/examples.feature.md',
+  source: `# Feature: 実行の例
 
 ## Rule: REQ-DEMO-001 a demo runs
 
@@ -148,6 +163,16 @@ const glossaryDocument = {
 |---|---|
 | DemoRun | 1 回の実行。 |
 `,
+}
+
+const contextStandardsDocument = {
+  path: 'docs/domain/demo/standards.md',
+  source: '# Demo Standards\n\n採用する標準仕様。\n',
+}
+
+const contextQualityDocument = {
+  path: 'docs/domain/demo/quality.md',
+  source: '# Demo Quality\n\n割り当てた品質要求。\n',
 }
 
 const domainIndexDocument = {
@@ -225,7 +250,7 @@ const models: CatalogSymbol[] = [
   },
 ]
 
-/** The canonical order is glossary before states before scenarios, not the alphabet. */
+/** The canonical order is glossary before standards before quality, not the alphabet. */
 const site = () =>
   renderDocumentationSite({
     documents: [
@@ -245,9 +270,12 @@ const site = () =>
       developmentDocument,
       releaseDocument,
       contextDocument,
-      statesDocument,
+      contextQualityDocument,
+      contextStandardsDocument,
       glossaryDocument,
-      scenariosDocument,
+      contextDesignDocument,
+      runDocument,
+      examplesDocument,
       documentationGuideDocument,
       guideDocument,
     ],
@@ -319,10 +347,13 @@ describe('renderDocumentationSite', () => {
       'docs/requirements/index.html',
       'docs/requirements/product-overview.html',
       'docs/requirements/quality.html',
+      'domain/demo/design/index.html',
       'domain/demo/glossary.html',
       'domain/demo/index.html',
-      'domain/demo/scenarios.html',
-      'domain/demo/states.html',
+      'domain/demo/quality.html',
+      'domain/demo/run/examples.html',
+      'domain/demo/run/index.html',
+      'domain/demo/standards.html',
       'domain/glossary.html',
       'domain/index.html',
       'domain/scenarios.html',
@@ -347,12 +378,12 @@ describe('renderDocumentationSite', () => {
     expect(result.files['index.html']).not.toContain('目的から探す')
     expect(result.files['index.html']).not.toContain('class="card"')
     expect(sidebar(result.files['index.html'])).toContain('href="domain/demo/index.html"')
-    expect(result.files['domain/demo/index.html']).toContain('href="states.html"')
-    expect(result.files['domain/demo/states.html']).toContain('stateDiagram-v2')
-    expect(result.files['domain/demo/states.html']).toContain('state_3 --&gt; state_1: Reset')
-    expect(result.files['domain/demo/states.html']).not.toContain('Reset [')
-    expect(result.files['domain/demo/scenarios.html']).toContain('class="scenario-keyword when"')
-    expect(result.files['domain/demo/scenarios.html']).toContain('class="scenario-keyword but"')
+    expect(result.files['domain/demo/index.html']).toContain('href="run/index.html"')
+    expect(result.files['domain/demo/run/index.html']).toContain('stateDiagram-v2')
+    expect(result.files['domain/demo/run/index.html']).toContain('state_3 --&gt; state_1: Reset')
+    expect(result.files['domain/demo/run/index.html']).not.toContain('Reset [')
+    expect(result.files['domain/demo/run/examples.html']).toContain('class="scenario-keyword when"')
+    expect(result.files['domain/demo/run/examples.html']).toContain('class="scenario-keyword but"')
     expect(result.files['traceability/index.html']).toContain('EX-DEMO-001-01')
     expect(result.files['traceability/index.html']).toContain('backend/demo/demo_test.go')
     expect(result.files['traceability/index.html']).toContain('規則／例')
@@ -384,7 +415,7 @@ describe('renderDocumentationSite', () => {
 
   // 印は文書と位置で絞る。方法論文書の英語本文にも Gherkin と同じ語が現れる。
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
-    const scenarios = site().files['domain/demo/scenarios.html'] ?? ''
+    const scenarios = site().files['domain/demo/run/examples.html'] ?? ''
 
     // 残りがコード片から始まるステップでも印が付く。
     expect(scenarios).toContain(
@@ -400,7 +431,8 @@ describe('renderDocumentationSite', () => {
   it('names context children by content and lists them in canonical order', () => {
     const page = site().files['domain/demo/index.html']
 
-    expect(childLabels(page)).toEqual(['Glossary', 'State Transitions', 'シナリオ'])
+    // 最後の「例」は、Context の下に入れ子になった機能ノード（実行）の子である。
+    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例'])
     expect(page).not.toContain('>glossary.md<')
   })
 
@@ -409,17 +441,19 @@ describe('renderDocumentationSite', () => {
       documents: [
         rootDocument,
         contextDocument,
-        { path: 'docs/domain/demo/user/README.md', source: '# ユーザー\n\nユーザーを扱う。\n' },
+        contextDesignDocument,
         {
-          path: 'docs/domain/demo/user/scenarios.feature.md',
+          path: 'docs/domain/demo/user/README.md',
+          source: '# ユーザー\n\n#### REQ-DEMO-002 a user is created\n\n- 要求でユーザーを作る。\n',
+        },
+        {
+          path: 'docs/domain/demo/user/examples.feature.md',
           source: [
-            '# Feature: ユーザーのシナリオ',
+            '# Feature: ユーザーの例',
             '',
-            '## 生成',
+            '## Rule: REQ-DEMO-002 a user is created',
             '',
-            '### Rule: REQ-DEMO-002 a user is created',
-            '',
-            '#### Example: EX-DEMO-002-01 a request creates a user',
+            '### Example: EX-DEMO-002-01 a request creates a user',
             '',
             '- When the developer creates a user',
             '- Then the user exists',
@@ -427,8 +461,8 @@ describe('renderDocumentationSite', () => {
           ].join('\n'),
         },
         {
-          path: 'docs/domain/demo/user/decisions.md',
-          source: '# ユーザーの設計判断\n\n- 判断。\n',
+          path: 'docs/domain/demo/user/design.md',
+          source: '# ユーザーの内部設計\n\n- 構成。\n',
         },
       ],
       repositoryRoot: '/repo',
@@ -437,11 +471,11 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['domain/demo/user/scenarios.html']
+    const page = result.files['domain/demo/user/examples.html']
 
     expect(page).toContain('REQ-DEMO-002')
     expect(result.files['domain/demo/user/index.html']).toBeDefined()
-    expect(childLabels(page)).toEqual(['設計判断', 'シナリオ'])
+    expect(childLabels(page)).toEqual(['内部設計', '例'])
     const contextBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
     expect(contextBranch).toContain('>ユーザー</a>')
   })
@@ -710,12 +744,12 @@ describe('renderDocumentationSite', () => {
   })
 
   it('lists a document own headings beside its body', () => {
-    const page = site().files['domain/demo/scenarios.html'] ?? ''
+    const page = site().files['domain/demo/run/examples.html'] ?? ''
 
     expect(page).toContain('<nav class="page-toc" aria-label="このページの内容">')
-    expect(page).toContain('href="#context-demo-scenarios-rule-req-demo-001-a-demo-runs"')
+    expect(page).toContain('href="#context-demo-run-examples-rule-req-demo-001-a-demo-runs"')
     expect(page).toContain(
-      'class="page-toc-h3"><a data-site-link href="#context-demo-scenarios-example-ex-demo-001-01-a-ready-demo-starts"',
+      'class="page-toc-h3"><a data-site-link href="#context-demo-run-examples-example-ex-demo-001-01-a-ready-demo-starts"',
     )
     // 見出しが一つしかないページに目次を出しても、本文を繰り返すだけである。
     expect(site().files['docs/requirements/product-overview.html']).not.toContain('page-toc')

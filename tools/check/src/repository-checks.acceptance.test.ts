@@ -15,10 +15,16 @@ afterAll(async () => {
  * ことは、そのファイルが検証の対象にすら入っていないということである。
  */
 const INVALID_BODY = '# One\n\n# Two\n'
-const DEMO_SCENARIO = [
-  '# Feature: Demo Scenarios',
+/** 機能ノード `run` の機能仕様。work item が参照する要件を一つ宣言する。 */
+const DEMO_SPECIFICATION = '# 実行\n\n#### REQ-DEMO-001 Demo succeeds\n\n- 要求を受け付ける。\n'
+
+/** 正常な要求が成功するという要件と、その例。どのテストも例を名指さない。 */
+const VALID_REQUEST_SPECIFICATION =
+  '# 実行\n\n#### REQ-DEMO-001 A valid request succeeds\n\n- 正常な要求は成功する。\n'
+const VALID_REQUEST_EXAMPLES = [
+  '# Feature: 実行の例',
   '',
-  '## Rule: REQ-DEMO-001 Demo succeeds',
+  '## Rule: REQ-DEMO-001 A valid request succeeds',
   '',
   '### Example: EX-DEMO-001-01 valid request',
   '',
@@ -27,11 +33,49 @@ const DEMO_SCENARIO = [
   '',
 ].join('\n')
 
+/** 設計の入口。どの話題にも固有の設計がないことを、理由とともに書く。 */
+const DESIGN_INDEX = [
+  '# Demo の設計',
+  '',
+  '| 話題 | 記述した場所 |',
+  '| --- | --- |',
+  ...[
+    'アーキテクチャ',
+    '設計判断',
+    'アプリケーション',
+    'データ',
+    'セキュリティ',
+    '信頼性',
+    '性能',
+    'オブザーバビリティ',
+    '検証',
+    'インフラストラクチャ',
+    'リスク',
+  ].map((topic) => `| ${topic} | 該当なし：Demo は小さく、固有の設計がない |`),
+  '',
+].join('\n')
+
+/**
+ * 機能ノードに、要件を宣言する機能仕様と例の付録を置く。`node` は Context からの相対パスで、
+ * 機能群の下の機能ノードも指せる。
+ */
+async function writeFeature(
+  root: string,
+  node: string,
+  specification: string,
+  examples: string,
+): Promise<void> {
+  const directory = join(root, 'docs', 'domain', 'demo', ...node.split('/'))
+  await mkdir(directory, { recursive: true })
+  await writeFile(join(directory, 'README.md'), specification)
+  await writeFile(join(directory, 'examples.feature.md'), examples)
+}
+
 /** 仮の作業ツリー。一次情報文書の集合が閉じているかどうかだけを見る最小の形。 */
 async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
-  await mkdir(join(root, 'docs', 'domain', 'demo'), { recursive: true })
+  await mkdir(join(root, 'docs', 'domain', 'demo', 'design'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'architecture'), { recursive: true })
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
   // Context を 1 つでも持つ作業ツリーは、索引表でその区分を宣言しなければならない。
@@ -47,10 +91,7 @@ async function workspace(): Promise<string> {
     ].join('\n'),
   )
   await writeFile(join(root, 'docs', 'domain', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(
-    join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
-    '# Feature: Demo Scenarios\n',
-  )
+  await writeFile(join(root, 'docs', 'domain', 'demo', 'design', 'README.md'), DESIGN_INDEX)
   return root
 }
 
@@ -159,9 +200,9 @@ describe('文書検査', () => {
    */
   it('lists every passing document only when asked', async () => {
     const root = await workspace()
-    expect((await checkDocuments(root)).output).not.toContain('scenarios.feature.md')
+    expect((await checkDocuments(root)).output).not.toContain('docs/domain/demo/design/README.md')
     const verbose = await checkDocuments(root, '--verbose')
-    expect(verbose.output).toContain('docs/domain/demo/scenarios.feature.md')
+    expect(verbose.output).toContain('docs/domain/demo/design/README.md')
     expect(verbose.code).toBe(0)
   })
 
@@ -176,11 +217,11 @@ describe('文書検査', () => {
 
   it('names the canonical document a misspelled file was meant to be', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'scenario.md'), INVALID_BODY)
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'glosary.md'), INVALID_BODY)
 
     const result = await checkDocuments(root)
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('scenarios.feature.md')
+    expect(result.output).toContain('did you mean glossary.md?')
   })
 
   // 名前を全部打ち間違えた作業ツリー。集めた文書が 0 件になるという形で現れるので、
@@ -212,42 +253,29 @@ describe('文書検査', () => {
   // 台帳を消すだけでゲートが外れる。
   it('rejects a scenario no test names when no debt list admits it', async () => {
     const root = await workspace()
-    await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
-      [
-        '# Feature: Demo Scenarios',
-        '',
-        '## Rule: REQ-DEMO-001 A valid request succeeds',
-        '',
-        '### Example: EX-DEMO-001-01 valid request',
-        '',
-        '- When the user submits a request',
-        '- Then the request succeeds',
-        '',
-      ].join('\n'),
-    )
+    await writeFeature(root, 'run', VALID_REQUEST_SPECIFICATION, VALID_REQUEST_EXAMPLES)
 
     const result = await checkDocuments(root)
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
   })
 
-  // 機能ノードの文書が一次情報として読まれなければ、そこへ移した規則は宣言ごと検査から
-  // 消える。被覆の拒否が出ることが、読まれていることの観測になる。
-  it('reads the scenarios of a feature node as normative', async () => {
+  // 機能群の下の機能ノードの文書が一次情報として読まれなければ、そこへ置いた要件は宣言ごと
+  // 検査から消える。被覆の拒否が出ることが、読まれていることの観測になる。
+  it('reads the examples of a feature node inside a group as normative', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'docs', 'domain', 'demo', 'user'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'user', 'README.md'), '# User\n')
-    await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'user', 'scenarios.feature.md'),
+    await mkdir(join(root, 'docs', 'domain', 'demo', 'people'), { recursive: true })
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'people', 'README.md'), '# People\n')
+    await writeFeature(
+      root,
+      'people/user',
+      '# User\n\n#### REQ-DEMO-002 A user is created on request\n\n- 要求でユーザーを作る。\n',
       [
         '# Feature: User',
         '',
-        '## 生成',
+        '## Rule: REQ-DEMO-002 A user is created on request',
         '',
-        '### Rule: REQ-DEMO-002 A user is created on request',
-        '',
-        '#### Example: EX-DEMO-002-01 valid request',
+        '### Example: EX-DEMO-002-01 valid request',
         '',
         '- When the user submits a request',
         '- Then the user exists',
@@ -257,7 +285,7 @@ describe('文書検査', () => {
 
     const result = await checkDocuments(root)
     expect(result.output).not.toContain('not a canonical specification document')
-    expect(result.output).not.toContain('docs/domain/demo/user/ is not listed')
+    expect(result.output).not.toContain('docs/domain/demo/people/user/ is not listed')
     expect(result.output).toContain('EX-DEMO-002-01 is declared, but no test names it')
   })
 
@@ -298,20 +326,7 @@ describe('文書検査', () => {
   // 同じ名前のファイルを置き直して通るなら、台帳の削除は 1 ファイルで元に戻せる。
   it('admits no example through a recreated debt ledger', async () => {
     const root = await workspace()
-    await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
-      [
-        '# Feature: Demo Scenarios',
-        '',
-        '## Rule: REQ-DEMO-001 A valid request succeeds',
-        '',
-        '### Example: EX-DEMO-001-01 valid request',
-        '',
-        '- When the user submits a request',
-        '- Then the request succeeds',
-        '',
-      ].join('\n'),
-    )
+    await writeFeature(root, 'run', VALID_REQUEST_SPECIFICATION, VALID_REQUEST_EXAMPLES)
     await mkdir(join(root, 'tools', 'check'), { recursive: true })
     await writeFile(
       join(root, 'tools', 'check', 'example-coverage-debt.json'),
@@ -326,22 +341,22 @@ describe('文書検査', () => {
 
   it('leaves a retired scenario out of the coverage gate', async () => {
     const root = await workspace()
-    await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
+    await writeFeature(
+      root,
+      'run',
       [
-        '# Feature: Demo Scenarios',
+        '# 実行',
         '',
-        '## Rule: REQ-DEMO-001 A valid request succeeds (superseded by REQ-DEMO-002)',
-        'Replaced by the request-scoped route.',
+        '#### REQ-DEMO-001 A valid request succeeds (superseded by REQ-DEMO-002)',
         '',
-        '## Rule: REQ-DEMO-002 A valid request succeeds',
+        '- 要求ごとの経路へ置き換えた。',
         '',
-        '### Example: EX-DEMO-002-01 valid request',
+        '#### REQ-DEMO-002 A valid request succeeds',
         '',
-        '- When the user submits a request',
-        '- Then the request succeeds',
+        '- 正常な要求は成功する。',
         '',
       ].join('\n'),
+      VALID_REQUEST_EXAMPLES.replaceAll('DEMO-001', 'DEMO-002'),
     )
     await mkdir(join(root, 'backend'), { recursive: true })
     await writeFile(
@@ -486,7 +501,8 @@ The gate must reject an absent document.
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
+    await mkdir(join(root, 'docs', 'domain', 'demo', 'run'), { recursive: true })
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
     await writeFile(
       join(root, 'work-items', 'wi-439-missing-primary-use-case.md'),
       `---
@@ -503,9 +519,9 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
-  source: [docs/domain/demo/scenarios.feature.md]
+  source: [docs/domain/demo/run/README.md]
 affected_spec:
-  - { path: docs/domain/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
+  - { path: docs/domain/demo/run/README.md, requirement: REQ-DEMO-001 }
 ---
 
 # Feature without a primary use case
@@ -541,7 +557,8 @@ The feature could remain disconnected.
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'), DEMO_SCENARIO)
+    await mkdir(join(root, 'docs', 'domain', 'demo', 'run'), { recursive: true })
+    await writeFile(join(root, 'docs', 'domain', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
     await writeFile(
       join(root, 'mise.toml'),
       '[tasks.verify]\ndepends = ["test-go-race"]\n\n[tasks.test-go-race]\nrun = "go test -race ./..."\n',
@@ -562,7 +579,7 @@ created_at: 2026-08-30
 change_kind: feature
 evidence_policy: risk-based-v3
 affected_spec:
-  - { path: docs/domain/demo/scenarios.feature.md, requirement: REQ-DEMO-001 }
+  - { path: docs/domain/demo/run/README.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
   - id: demo-success
     requirement: REQ-DEMO-001
@@ -712,24 +729,20 @@ describe('規則の書式と仕様の木の検査', () => {
       '# API ガイドライン\n\n## ページサイズ\n\n既定は 50 件とする。\n',
     )
     await mkdir(join(root, 'docs', 'domain', 'demo', 'task'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'task', 'README.md'), '# Task\n')
     await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'task', 'scenarios.feature.md'),
+      join(root, 'docs', 'domain', 'demo', 'task', 'README.md'),
       [
-        '# Feature: Task',
+        '# タスク',
         '',
-        '## 利用',
+        '## 操作',
         '',
-        '### Rule: REQ-DEMO-002 開いたタスクだけを一覧する',
+        '### タスクの一覧',
         '',
-        `- 上位の要件：${parent}`,
+        '#### REQ-DEMO-002 開いたタスクだけを一覧する',
+        '',
         '- 既定値は 10 件とする。',
-        `- 担保手段：\`${guarantee}\``,
-        '',
-        '#### Example: EX-DEMO-002-01 開いたタスク',
-        '',
-        '- When 一覧を要求する',
-        '- Then 開いたタスクを返す',
+        `- **上位の要件**：${parent}`,
+        `- **担保手段**：\`${guarantee}\``,
         '',
       ].join('\n'),
     )

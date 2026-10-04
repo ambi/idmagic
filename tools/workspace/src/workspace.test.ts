@@ -60,7 +60,7 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'spec-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'spec', 'domain', 'demo'), { recursive: true })
-  await mkdir(join(root, 'docs', 'domain', 'demo'), { recursive: true })
+  await mkdir(join(root, 'docs', 'domain', 'demo', 'design'), { recursive: true })
   await mkdir(join(root, 'docs', 'requirements'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'security'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
@@ -71,10 +71,7 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, 'docs', 'design', 'security', 'README.md'), '# Security Design\n')
   await writeFile(join(root, 'docs', 'design', 'security', 'authorization.md'), '# Authorization\n')
   await writeFile(join(root, 'docs', 'domain', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(
-    join(root, 'docs', 'domain', 'demo', 'scenarios.feature.md'),
-    '# Demo Scenarios\n',
-  )
+  await writeFile(join(root, 'docs', 'domain', 'demo', 'design', 'README.md'), '# Demo Design\n')
   return root
 }
 
@@ -88,7 +85,7 @@ describe('discoverWorkspaceConfig', () => {
       'docs/design/security/README.md',
       'docs/design/security/authorization.md',
       'docs/domain/demo/README.md',
-      'docs/domain/demo/scenarios.feature.md',
+      'docs/domain/demo/design/README.md',
       'docs/requirements/README.md',
       'docs/requirements/quality.md',
     ])

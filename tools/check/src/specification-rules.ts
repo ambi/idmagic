@@ -47,9 +47,6 @@ export const SPECIFICATION_SECTIONS = [
  */
 const VAGUE_WORDS = ['適切に', '適宜', 'など', '必要に応じて', '可能な限り', '十分に']
 
-const LIFECYCLE_SECTIONS = ['生成', '有効性', '利用', '効果の範囲', '失効と変更', '保持と削除']
-const API_SECTIONS = ['対象の操作', '入力', '結果', '拒否', '作用']
-
 const LAYER_DIRECTORIES = new Set(['domain', 'usecases'])
 
 type RuleFields = {
@@ -261,77 +258,6 @@ export function goDeclarations(files: Array<{ path: string; source: string }>): 
 }
 
 /**
- * 機能ノードの `scenarios.feature.md` で、節の見出しがライフサイクルか API のどちらか一方の
- * 語彙を、その順で使い、すべての規則がいずれかの節の下にあることを確かめる。
- * Context のルートの規則は機能をまたぐので、節を求めない。
- */
-export function verifySectionOrder(path: string, source: string): Finding[] {
-  if (!/^docs\/domain\/[^/]+\/[^/]+\/scenarios\.feature\.md$/.test(path)) return []
-  const findings: Finding[] = []
-  let vocabulary: string[] | undefined
-  let position = -1
-  let previous = ''
-  let inSection = false
-  for (const [index, text] of source.split('\n').entries()) {
-    const line = index + 1
-    const rule = text.match(/^#{2,6} Rule: (REQ-[A-Z0-9-]+)/)
-    if (rule) {
-      if (!inSection || text.startsWith('## ')) {
-        findings.push({
-          path,
-          line,
-          message: `${rule[1]} must sit under a section of the feature node`,
-        })
-      }
-      continue
-    }
-    const heading = text.match(/^## (.+)$/)?.[1]?.trim()
-    if (heading === undefined) continue
-    inSection = true
-    const lifecycle = LIFECYCLE_SECTIONS.indexOf(heading)
-    const api = API_SECTIONS.indexOf(heading)
-    if (lifecycle < 0 && api < 0) {
-      findings.push({
-        path,
-        line,
-        message:
-          `section ${heading} is neither a lifecycle section (${LIFECYCLE_SECTIONS.join(', ')}) ` +
-          `nor an API section (${API_SECTIONS.join(', ')})`,
-      })
-      continue
-    }
-    const own = lifecycle >= 0 ? LIFECYCLE_SECTIONS : API_SECTIONS
-    vocabulary ??= own
-    if (own !== vocabulary) {
-      findings.push({
-        path,
-        line,
-        message:
-          own === API_SECTIONS
-            ? `section ${heading} mixes the API sections into the lifecycle sections`
-            : `section ${heading} mixes the lifecycle sections into the API sections`,
-      })
-      continue
-    }
-    const current = own.indexOf(heading)
-    if (current <= position) {
-      findings.push({
-        path,
-        line,
-        message:
-          current === position
-            ? `section ${heading} appears twice`
-            : `section ${heading} must come before ${previous}`,
-      })
-      continue
-    }
-    position = current
-    previous = heading
-  }
-  return findings
-}
-
-/**
  * `backend/` の下のディレクトリ一覧から機能スライスを取り出す。`directories` は
  * リポジトリ相対のパスで、層のディレクトリ（`domain`、`usecases`）まで含む。
  */
@@ -358,7 +284,7 @@ export function verifyFeatureNodes(
   debt: FeatureNodeDebt,
 ): Finding[] {
   const flatten = (name: string) => name.replaceAll('-', '')
-  // 新しい形式では機能ノードが機能群の下にもあるので、最後の段の名前で対応させる。
+  // 機能ノードは機能群の下にもあるので、最後の段の名前で対応させる。
   const nodeKeys = new Set(
     [...nodes].map((node) => {
       const [, , context = '', ...below] = node.split('/')

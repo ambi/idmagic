@@ -63,25 +63,21 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
 }
 
 /**
- * Context のルートと、その下の機能ノードにあるシナリオ。拒否の宣言は Context 単位で
- * 判定するので、規則をどの機能ノードへ置いても同じ Context の宣言として数える。
- * 新しい形式の機能ノードは機能群の一段下にもあり、例は付録 `examples.feature.md` に置く。
+ * Context の機能ノードにある例の付録。拒否の宣言は Context 単位で判定するので、
+ * 例をどの機能ノードへ置いても同じ Context の宣言として数える。
+ * 機能ノードは Context の一段下か、機能群の一段下にある。
  */
 async function contextScenarioSources(
   snapshot: WorkspaceSnapshot,
   context: string,
 ): Promise<string[]> {
-  const scenarioFiles = (directory: string) => [
-    `${directory}/scenarios.feature.md`,
-    `${directory}/examples.feature.md`,
-  ]
-  const paths = scenarioFiles(context)
+  const paths: string[] = []
   for (const entry of await snapshot.list(context)) {
     if (!entry.isDirectory()) continue
     const feature = `${context}/${entry.name}`
-    paths.push(...scenarioFiles(feature))
+    paths.push(`${feature}/examples.feature.md`)
     for (const child of await snapshot.list(feature)) {
-      if (child.isDirectory()) paths.push(...scenarioFiles(`${feature}/${child.name}`))
+      if (child.isDirectory()) paths.push(`${feature}/${child.name}/examples.feature.md`)
     }
   }
   const sources: string[] = []

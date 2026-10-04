@@ -150,7 +150,7 @@ TypeSpec のシンボルには引く ID がないため、宣言名を含むテ�
 
 作業項目を `in_progress` にすると、`mise run check-work-items` が一覧を解決する。
 すべてのパスが存在し、`<文書>#REQ-<CONTEXT>-NNN` の項目が、その文書で宣言された規則を指さなければならない。
-規則を宣言する文書は、機能仕様（`docs/domain/<context>/<group>/<feature>/README.md` とその章）、または旧形式のコンテキストの `scenarios.feature.md` である。
+規則を宣言する文書は、機能仕様（`docs/domain/<context>/<group>/<feature>/README.md` とその章）、またはコンテキストをまたぐ要件を宣言するシステムの `docs/domain/scenarios.feature.md` である。
 
 `affected_spec` は、完了済みを含むすべての記録で解決する。
 これは当時読んだものではなく、変更が触れた規範要素の索引だからである。

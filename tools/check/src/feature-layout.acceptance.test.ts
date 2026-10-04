@@ -1,8 +1,7 @@
 /**
  * 機能仕様と内部設計を軸にした形式の Context を、検査が受け入れ、崩れを拒否することを確かめる。
  *
- * 新しい形式は `design/README.md` の有無で判定するので、この作業ツリーは旧形式の文書を
- * 一つも持たない Context `demo` だけで組む。
+ * Context の印は `design/README.md` であり、この作業ツリーはそれを持つ Context `demo` だけで組む。
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -118,7 +117,7 @@ function topicIndex(title: string, architecture: string): string {
   ].join('\n')
 }
 
-/** 新しい形式の Context を一つだけ持ち、どの検査にも通る作業ツリー。 */
+/** Context を一つだけ持ち、どの検査にも通る作業ツリー。 */
 async function featureLayoutWorkspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-feature-layout-test-'))
   cleanup.push(root)
@@ -182,7 +181,7 @@ async function runCheck(root: string, name: string): Promise<{ code: number; out
   return { code, output: `${stdout}${stderr}` }
 }
 
-describe('新しい形式の文書検査', () => {
+describe('機能仕様と内部設計の形式の文書検査', () => {
   it('accepts a context with feature specifications, an examples appendix, and design', async () => {
     const result = await runCheck(await featureLayoutWorkspace(), 'documents')
     expect(result.output).toContain('1 rule(s), 1 example(s)')
@@ -325,22 +324,26 @@ describe('新しい形式の文書検査', () => {
     expect(result.output).toContain('must have a topic index')
   })
 
-  it('requires a context without design/README.md to be listed as legacy', async () => {
+  it('requires every context to have design/README.md', async () => {
     const root = await featureLayoutWorkspace()
-    await write(root, 'tools/check/legacy-spec-layout.json', '{ "contexts": ["demo"] }\n')
-    const listed = await runCheck(root, 'documents')
-    expect(listed.code).not.toBe(0)
-    expect(listed.output).toContain('demo uses the feature layout now')
-
-    await write(root, 'tools/check/legacy-spec-layout.json', '{ "contexts": [] }\n')
     await write(root, 'docs/domain/other/README.md', '# Other\n')
-    const unlisted = await runCheck(root, 'documents')
-    expect(unlisted.code).not.toBe(0)
-    expect(unlisted.output).toContain('other has no design/README.md')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('other has no design/README.md')
+  })
+
+  it('rejects the per-kind files of the former layout directly under a context', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'docs/domain/demo/scenarios.feature.md', '# Feature: Demo\n')
+    await write(root, 'docs/domain/demo/states.md', '# Demo の状態\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/domain/demo/scenarios.feature.md')
+    expect(result.output).toContain('docs/domain/demo/states.md')
   })
 })
 
-describe('新しい形式の規則の書式', () => {
+describe('機能仕様の規則の書式', () => {
   it('accepts a rule with a guarantee and a decision note', async () => {
     const result = await runCheck(await featureLayoutWorkspace(), 'specification-rules')
     expect(result.output).toContain('ok  specification rules')

@@ -1,13 +1,6 @@
 import { specificationRules, validateSpecificationDeclarations } from './feature-specification.ts'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
-export {
-  canonicalDocumentNames,
-  CONTEXT_DOCUMENTS,
-  ROOT_DOCUMENTS,
-  SYSTEM_DOCUMENT_DIRECTORIES,
-  SYSTEM_DOCUMENT_PATHS,
-} from '../../workspace/src/document-layout.ts'
-import { canonicalDocumentNames, documentNames } from '../../workspace/src/document-layout.ts'
+import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from '../../workspace/src/document-layout.ts'
 
 export type SpecificationFinding = {
   line: number
@@ -29,7 +22,7 @@ export type SpecificationValidation = {
  * canonical document needed. A directory takes the split layout as soon as it
  * holds a README.md.
  *
- * 新しい形式の機能ノードは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
+ * 機能ノードは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
  * 例の付録（`examples.feature.md`）を持つ。Context の `design/` は話題ごとの設計で、`README.md` は
  * 話題の索引、`decisions.md` は判断の記録の骨格を持つ。システムの `docs/design/README.md` も、
  * 設計の入口として話題の索引を持つ。機能の `design.md` は任意であり、コードから読み取れない
@@ -50,6 +43,18 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
   ['standards.md', 'standards'],
   ['states.md', 'states'],
   ['scenarios.feature.md', 'scenarios'],
+])
+
+/**
+ * Context の直下で種別を返す名前。履歴のリビジョンを読む `spec-diff` のために、ファイル種別で
+ * 文書を分けていた頃の名前も含める。今の作業ツリーに置いてよいかは段の集合を見る検査が決める。
+ */
+const CONTEXT_LEVEL_NAMES = new Set<string>([
+  ...CONTEXT_DOCUMENTS,
+  'states.md',
+  'decisions.md',
+  'internals.md',
+  'scenarios.feature.md',
 ])
 
 /** Context より下の段で、任意の名前の章として読む名前。 */
@@ -87,12 +92,10 @@ export function documentKind(path: string): DocumentKind | undefined {
     if (['design.md', 'decisions.md', 'internals.md'].includes(name)) return 'prose'
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
-  // Context に割り当てた品質要件。旧形式の Context に置けるかは、段の集合を見る検査が決める。
-  if (/^docs\/domain\/[^/]+$/.test(directory) && name === 'quality.md') return 'prose'
-  const allowed = directory.startsWith('docs/domain/')
-    ? documentNames(directory)
-    : canonicalDocumentNames(directory)
-  if (!allowed?.includes(name)) return undefined
+  if (/^docs\/domain\/[^/]+$/.test(directory)) {
+    return CONTEXT_LEVEL_NAMES.has(name) ? (KIND_BY_NAME.get(name) ?? 'prose') : undefined
+  }
+  if (!canonicalDocumentNames(directory)?.includes(name)) return undefined
   return KIND_BY_NAME.get(name) ?? 'prose'
 }
 

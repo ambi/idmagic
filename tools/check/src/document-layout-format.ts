@@ -1,6 +1,6 @@
 import {
   DESIGN_DOCUMENTS,
-  FEATURE_LAYOUT_CONTEXT_DOCUMENTS,
+  CONTEXT_DOCUMENTS,
   FEATURE_NODE_DOCUMENTS,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
@@ -18,17 +18,11 @@ export function verifyDocumentLayout(source: string): DocumentLayoutFinding[] {
     .map((path) => ({ path, message: `配置図に定義済み文書のパスがない: ${path}` }))
 }
 
-/**
- * 配置図は新しい形式を描く。旧形式は移行が終われば消えるので、配置図ではなく移行中の
- * 共存を説明する節で扱う。
- */
 function requiredDocumentPaths(): string[] {
   const systemDocuments = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ directory, names }) =>
     names.map((name) => `${directory}/${name}`),
   )
-  const contextDocuments = FEATURE_LAYOUT_CONTEXT_DOCUMENTS.map(
-    (name) => `docs/domain/<context>/${name}`,
-  )
+  const contextDocuments = CONTEXT_DOCUMENTS.map((name) => `docs/domain/<context>/${name}`)
   const designDocuments = DESIGN_DOCUMENTS.map((name) => `docs/domain/<context>/design/${name}`)
   const groupDocuments = ['docs/domain/<context>/<group>/README.md']
   const featureDocuments = FEATURE_NODE_DOCUMENTS.map(

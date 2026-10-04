@@ -72,7 +72,7 @@ describe('documentKind', () => {
     expect(documentKind('docs/domain/demo/user/standards.md')).toBeUndefined()
   })
 
-  // 新しい形式では機能群の一段下まで機能ノードを置けるので、その下で木が止まる。
+  // 機能群の一段下まで機能ノードを置けるので、その下で木が止まる。
   it('stops the tree at the feature node', () => {
     expect(documentKind('docs/domain/demo/people/user/profile/README.md')).toBeUndefined()
   })

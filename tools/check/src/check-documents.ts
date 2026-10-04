@@ -8,11 +8,7 @@ import {
 } from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
-import {
-  FeatureNodeDeclarations,
-  LEGACY_SPEC_LAYOUT,
-  verifyLegacyLayoutList,
-} from './feature-nodes.ts'
+import { FeatureNodeDeclarations, verifyFeatureLayout } from './feature-nodes.ts'
 import { checkNormativeCoverage, citedNormativeIds, type DeclaredId } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { validateDocument } from './specification-doc.ts'
@@ -75,10 +71,7 @@ export async function checkDocuments(
   }
 
   const view = describeDocumentSet(listings)
-  const legacy = snapshot.exists(LEGACY_SPEC_LAYOUT)
-    ? (JSON.parse(await snapshot.read(LEGACY_SPEC_LAYOUT)) as { contexts: string[] }).contexts
-    : undefined
-  const layout = verifyLegacyLayoutList(legacy, contextDirectories, view)
+  const layout = verifyFeatureLayout(contextDirectories, view)
   failed ||= layout.length > 0
   lines.push(...layout)
 

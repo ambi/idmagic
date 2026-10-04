@@ -2,17 +2,13 @@
 
 import { compile, formatDiagnostic, NodeHost } from '@typespec/compiler'
 import { Window } from 'happy-dom'
-import { existsSync } from 'node:fs'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
 import {
   allowsDocument,
-  CONTEXT_DOCUMENTS,
   describeDocumentSet,
   type DirectoryListing,
   documentAllowance,
-  FEATURE_DOCUMENTS,
-  FEATURE_LAYOUT_MARKER,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
 import { createWorkspaceSnapshot, discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
@@ -63,10 +59,10 @@ const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .map((entry) => entry.name)
   .sort()
 /**
- * 新しい形式の Context の文書。Context の直下、内部設計、機能群と機能ノードの順に、各段では
+ * Context の文書。Context の直下、内部設計、機能群と機能ノードの順に、各段では
  * `README.md` を先に置いて集める。置いてよいかは検査と同じ判定（`documentAllowance`）で決める。
  */
-async function featureLayoutDocuments(context: string): Promise<string[]> {
+async function contextDocuments(context: string): Promise<string[]> {
   const listings: DirectoryListing[] = []
   const pending = [context]
   while (pending.length > 0) {
@@ -108,18 +104,7 @@ async function featureLayoutDocuments(context: string): Promise<string[]> {
 }
 
 for (const name of contextDirectories) {
-  if (existsSync(resolve(contextRoot, name, FEATURE_LAYOUT_MARKER))) {
-    paths.push(...(await featureLayoutDocuments(`docs/domain/${name}`)))
-    continue
-  }
-  paths.push(...(await canonicalDocuments(`docs/domain/${name}`, CONTEXT_DOCUMENTS)))
-  const featureDirectories = (await readdir(resolve(contextRoot, name), { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort()
-  for (const feature of featureDirectories) {
-    paths.push(...(await canonicalDocuments(`docs/domain/${name}/${feature}`, FEATURE_DOCUMENTS)))
-  }
+  paths.push(...(await contextDocuments(`docs/domain/${name}`)))
 }
 
 // The order the canonical layout defines is the order the site lists, so the

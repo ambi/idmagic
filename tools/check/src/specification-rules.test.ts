@@ -4,7 +4,6 @@ import {
   goDeclarations,
   verifyFeatureNodes,
   verifyRuleFields,
-  verifySectionOrder,
 } from './specification-rules.ts'
 
 const scenario = (...body: string[]): string =>
@@ -125,88 +124,6 @@ describe('verifyRuleFields', () => {
         scenario('- `など` という識別子を拒否する。', '- 理由：必要に応じて変える判断である。'),
       ),
     ).toEqual([])
-  })
-})
-
-describe('verifySectionOrder', () => {
-  const featureNode = 'docs/domain/demo/trusted-device/scenarios.feature.md'
-  const rule = (id: string) => [
-    `### Rule: ${id} 規則`,
-    '',
-    `#### Example: ${id.replace('REQ', 'EX')}-01 例`,
-    '',
-    '- When 操作する',
-    '- Then 結果になる',
-    '',
-  ]
-  const document = (...sections: Array<[string, string]>) =>
-    [
-      '# Feature: 機能',
-      '',
-      ...sections.flatMap(([heading, id]) => [`## ${heading}`, '', ...rule(id)]),
-    ].join('\n')
-
-  it('accepts lifecycle sections in lifecycle order', () => {
-    expect(
-      verifySectionOrder(
-        featureNode,
-        document(['生成', 'REQ-DEMO-001'], ['失効と変更', 'REQ-DEMO-002']),
-      ),
-    ).toEqual([])
-  })
-
-  it('accepts API sections in API order', () => {
-    expect(
-      verifySectionOrder(featureNode, document(['入力', 'REQ-DEMO-001'], ['拒否', 'REQ-DEMO-002'])),
-    ).toEqual([])
-  })
-
-  it('rejects sections out of order', () => {
-    expect(
-      verifySectionOrder(
-        featureNode,
-        document(['失効と変更', 'REQ-DEMO-001'], ['生成', 'REQ-DEMO-002']),
-      ).map((finding) => finding.message),
-    ).toEqual(['section 生成 must come before 失効と変更'])
-  })
-
-  it('rejects a section outside the two vocabularies and a mixture of both', () => {
-    expect(
-      verifySectionOrder(
-        featureNode,
-        document(['生成', 'REQ-DEMO-001'], ['拒否', 'REQ-DEMO-002']),
-      ).map((finding) => finding.message),
-    ).toEqual(['section 拒否 mixes the API sections into the lifecycle sections'])
-    expect(
-      verifySectionOrder(featureNode, document(['その他', 'REQ-DEMO-001'])).map(
-        (finding) => finding.message,
-      ),
-    ).toEqual([
-      'section その他 is neither a lifecycle section (生成, 有効性, 利用, 効果の範囲, 失効と変更, 保持と削除) ' +
-        'nor an API section (対象の操作, 入力, 結果, 拒否, 作用)',
-    ])
-  })
-
-  it('rejects a rule that sits under no section in a feature node', () => {
-    const source = [
-      '# Feature: 機能',
-      '',
-      '## Rule: REQ-DEMO-001 規則',
-      '',
-      '### Example: EX-DEMO-001-01 例',
-      '',
-      '- When 操作する',
-      '- Then 結果になる',
-      '',
-    ].join('\n')
-    expect(verifySectionOrder(featureNode, source).map((finding) => finding.message)).toEqual([
-      'REQ-DEMO-001 must sit under a section of the feature node',
-    ])
-  })
-
-  it('does not ask a context root for sections', () => {
-    const source = ['# Feature: 機能', '', '## Rule: REQ-DEMO-001 規則', ''].join('\n')
-    expect(verifySectionOrder('docs/domain/demo/scenarios.feature.md', source)).toEqual([])
   })
 })
 

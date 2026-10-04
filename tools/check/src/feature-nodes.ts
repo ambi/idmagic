@@ -1,5 +1,5 @@
 /**
- * 新しい形式の機能ノードで、ファイルをまたいで成り立つべきことを確かめる。
+ * 機能ノードで、ファイルをまたいで成り立つべきことを確かめる。
  *
  * 要件は機能仕様（`README.md` と章）で宣言し、例は同じ機能ノードの `examples.feature.md` に置く。
  * 一つのファイルだけを読む検証では、付録が宣言のない要件を参照していることが分からない。
@@ -8,9 +8,6 @@
 
 import type { DocumentSetView } from '../../workspace/src/document-layout.ts'
 import type { SpecificationValidation } from './specification-doc.ts'
-
-/** 旧形式のまま残る Context の一覧。減る方向にしか変えない。 */
-export const LEGACY_SPEC_LAYOUT = 'tools/check/legacy-spec-layout.json'
 
 type Declaration = { id: string; title: string; where: string }
 type Reference = { id: string; title: string; where: string }
@@ -33,8 +30,6 @@ export class FeatureNodeDeclarations {
       this.references.set(directory, references)
       return
     }
-    // 旧形式の規則は Gherkin の中で宣言と例がそろうので、ここで照合するのは見出しの宣言だけである。
-    if (path.endsWith('/scenarios.feature.md')) return
     const declared = result.scenarioIds.filter((scenario) => scenario.title !== undefined)
     if (declared.length === 0) return
     const declarations = this.declarations.get(directory) ?? []
@@ -82,8 +77,7 @@ export class FeatureNodeDeclarations {
 
 /** 要件を宣言できない階層なら、その理由を返す。 */
 function placementProblem(directory: string, view: DocumentSetView): string | undefined {
-  const [, , context = '', ...rest] = directory.split('/')
-  if (!view.featureContexts.has(context)) return 'must be declared in scenarios.feature.md'
+  const [, , , ...rest] = directory.split('/')
   if (rest.length === 0 || rest[0] === 'design' || view.parents.has(directory)) {
     return 'must be declared in a feature node'
   }
@@ -91,36 +85,14 @@ function placementProblem(directory: string, view: DocumentSetView): string | un
 }
 
 /**
- * 旧形式の一覧と、実際の形式が食い違っていないことを確かめる。一覧が無い作業ツリーでは
- * 何も求めない。新しい Context を旧形式で作ることは、一覧へ載せない限り拒否される。
+ * すべての Context が印（`design/README.md`）を持つことを確かめる。印のない Context の段には
+ * どの文書も置けず、文書ごとの拒否だけでは原因が伝わらないので、Context ごとに一件報告する。
  */
-export function verifyLegacyLayoutList(
-  listed: readonly string[] | undefined,
-  contexts: readonly string[],
-  view: DocumentSetView,
-): string[] {
-  if (listed === undefined) return []
-  const legacy = new Set(listed)
-  const findings: string[] = []
-  for (const context of contexts) {
-    const feature = view.featureContexts.has(context)
-    if (feature && legacy.has(context)) {
-      findings.push(
-        `fail  ${LEGACY_SPEC_LAYOUT}: ${context} uses the feature layout now; remove it from the list`,
-      )
-    } else if (!feature && !legacy.has(context)) {
-      findings.push(
-        `fail  docs/domain/${context}: ${context} has no design/README.md; a context outside ${LEGACY_SPEC_LAYOUT} must use the feature layout`,
-      )
-    }
-  }
-  const existing = new Set(contexts)
-  for (const context of legacy) {
-    if (!existing.has(context)) {
-      findings.push(
-        `fail  ${LEGACY_SPEC_LAYOUT}: ${context} is no longer a context; remove it from the list`,
-      )
-    }
-  }
-  return findings
+export function verifyFeatureLayout(contexts: readonly string[], view: DocumentSetView): string[] {
+  return contexts
+    .filter((context) => !view.featureContexts.has(context))
+    .map(
+      (context) =>
+        `fail  docs/domain/${context}: ${context} has no design/README.md; every context must use the feature layout`,
+    )
 }
