@@ -16,22 +16,22 @@
 
 #### REQ-IDMANAGEMENT-014 管理 API は、要求先のテナントで実効ロールに `admin` を持つ User の要求だけを受け付ける
 
-- 管理 API は、要求先のテナントに属する有効な認証済みの User で、実効ロールに `admin` を含むものからの要求だけを受け付ける。
-- 実効ロールは、User に直接付与したロールと、所属する Group のロールの和集合である。
-- 実効ロールに `admin` を含まない User の要求を受けた場合は、AccessDeniedError で拒否し、対象を変えない。
+- 管理 API の要求を受けたとき、IdManagement は、要求先のテナントに属する有効な認証済みの User で、実効ロールに `admin` を含むものからの要求だけを受け付ける。
+- 管理 API の要求を受けたとき、IdManagement は、User に直接付与したロールと所属する Group のロールの和集合を、実効ロールとして判定する。
+- 実効ロールに `admin` を含まない User の要求を受けた場合、IdManagement は、AccessDeniedError で拒否し、対象を変えない。
 - **例**：EX-IDMANAGEMENT-014-01、EX-IDMANAGEMENT-014-02
 
 ### API アクセストークンによる呼び出し
 
 #### REQ-IDMANAGEMENT-025 管理 API のスコープは、プリンシパルの種類と読み書きの別ごとに操作を許可する
 
-- `users:*`、`groups:*`、`agents:*` のスコープは、それぞれ User、Group、Agent の操作だけを許可する。種類をまたいで使えない。
-- `read` のスコープは対象を変更しない操作を、`write` のスコープは対象を変更する操作を許可する。
-- `users:read` は、User の参照と、User の CSV エクスポートの開始、参照、ダウンロード、取り消しを許可する。
-- `groups:read` は、Group の参照、動的グループの規則のプレビュー、Group の CSV エクスポートを許可する。
-- `groups:write` は、Group の変更と、Group の CSV インポートのプレビューと適用を許可する。
-- `agents:write` は、Agent のキルと削除の両方を許可する。
-- 操作が要求するスコープを持たないトークンの要求を受けた場合は、AccessDeniedError で拒否し、対象を作成、更新、削除しない。
+- `users:*`、`groups:*`、`agents:*` のスコープのトークンで呼び出されたとき、IdManagement は、それぞれ User、Group、Agent の操作だけを許可し、ほかの種類の操作を許可しない。
+- `read` または `write` のスコープのトークンで呼び出されたとき、IdManagement は、`read` には対象を変更しない操作を、`write` には対象を変更する操作を許可する。
+- `users:read` のスコープのトークンで呼び出されたとき、IdManagement は、User の参照と、User の CSV エクスポートの開始、参照、ダウンロード、取り消しを許可する。
+- `groups:read` のスコープのトークンで呼び出されたとき、IdManagement は、Group の参照、動的グループの規則のプレビュー、Group の CSV エクスポートを許可する。
+- `groups:write` のスコープのトークンで呼び出されたとき、IdManagement は、Group の変更と、Group の CSV インポートのプレビューと適用を許可する。
+- `agents:write` のスコープのトークンで呼び出されたとき、IdManagement は、Agent のキルと削除の両方を許可する。
+- 操作が要求するスコープを持たないトークンの要求を受けた場合、IdManagement は、AccessDeniedError で拒否し、対象を作成、更新、削除しない。
 - **判断**：読み書きの境目は HTTP メソッドではなく、操作が対象を変更するかで決める。CSV エクスポートの開始、参照、ダウンロード、取り消しと、動的グループの規則のプレビューは、対象のデータを読むだけなので参照のスコープに置く。データを読むだけのために変更の権限を渡さずに済むからである。
 - **判断**：Agent のキルを `agents:write` に含める。同じスコープにある Agent の削除はキルより破壊的なので、キルだけを外しても防御にならない。
 - **例**：EX-IDMANAGEMENT-025-01、EX-IDMANAGEMENT-025-05

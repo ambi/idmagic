@@ -24,17 +24,19 @@
 
 #### REQ-IDMANAGEMENT-033 ロールは前後の空白を除き、重複を除いて昇順に保存する
 
-- User、Group、Agent のロールは、管理 API と CSV のどちらから書いても同じ正規化を通す。
-- ロールを書き込むとき、各ロールの前後の空白を除き、重複を一つにまとめ、文字列の昇順に並べて保存する。
-- ロールの照合は大文字と小文字を区別する。`Admin` と `admin` は別のロールである。
-- 前後の空白を除くと空になるロールを一つでも含む書き込みを要求された場合は、`invalid_role` で拒否し、同じ要求のほかの項目を含めて対象を変えない。
+- User、Group、Agent のロールを管理 API と CSV のどちらから書き込んだとき、IdManagement は、同じ正規化を通す。
+- ロールを書き込むとき、IdManagement は、各ロールの前後の空白を除き、重複を一つにまとめ、文字列の昇順に並べて保存する。
+- ロールを照合するとき、IdManagement は、大文字と小文字を区別し、`Admin` と `admin` を別のロールとして扱う。
+- 前後の空白を除くと空になるロールを一つでも含む書き込みを要求された場合、IdManagement は、`invalid_role` で拒否し、同じ要求のほかの項目を含めて対象を変えない。
 
 #### REQ-IDMANAGEMENT-032 `system_admin` を新しく割り当てられるのは、制御面テナントの User と Group だけである
 
-- `system_admin` を新しく割り当てられるのは、制御面テナントの User と Group だけである。直接の付与と Group 経由のどちらでもよく、Group 経由で割り当てた `system_admin` は User の実効ロールに現れる。
-- 予約ロールの判定は、その書き込みが新しく加えるロールだけを見る。すでに `system_admin` を持つ対象に同じ値を書き込む要求は拒否しない。
-- 制御面テナント以外の User と Group、およびどのテナントの Agent へも、`system_admin` を新しく割り当てる管理 API の書き込みを要求された場合は、InvalidRequestError と `invalid_role` で拒否し、同じ要求のほかの項目も変えず、`updated_at` を進めず、イベントを発行しない。
-- 同じ対象への CSV の行を読んだ場合は、`roles` 列を指す `invalid_roles` で `rejected` にし、対象を変えない。
+- 制御面テナントの User または Group に `system_admin` を新しく割り当てたとき、IdManagement は、直接の付与と Group 経由のどちらも受け付ける。
+- 制御面テナントの Group に `system_admin` を割り当てたとき、IdManagement は、その Group のメンバーの User の実効ロールに `system_admin` を含める。
+- ロールを書き込むとき、IdManagement は、その書き込みが新しく加えるロールだけを予約ロールとして判定する。
+- すでに `system_admin` を持つ対象に同じ値を書き込んだとき、IdManagement は、その書き込みを拒否しない。
+- 制御面テナント以外の User と Group、およびどのテナントの Agent へも、`system_admin` を新しく割り当てる管理 API の書き込みを要求された場合、IdManagement は、InvalidRequestError と `invalid_role` で拒否し、同じ要求のほかの項目も変えず、`updated_at` を進めず、イベントを発行しない。
+- 同じ対象への CSV の行を読んだ場合、IdManagement は、`roles` 列を指す `invalid_roles` で `rejected` にし、対象を変えない。
 - **判断**：Agent にはどのテナントでも割り当てない。[認可設計](../../../design/security/authorization.md)は Agent をシステム運用者とは別の主体として定義しており、制御面の管理 API が受け入れるのは User と ApiToken だけだからである。
 - **判断**：新しく加える分だけを見る理由は、[予約ロールを書き込みが新しく加える分だけで判定する](../design/decisions.md#予約ロールを書き込みが新しく加える分だけで判定する)。
 - **判断**：制御面テナントの外にすでに保存した `system_admin` は、移行で自動的に消さない。テナント固有の文字列として使っている環境から値を無断で失わせないためである。テナントをまたぐ能力は、所属テナントを要求する制御面の判定で先に無効になっている。

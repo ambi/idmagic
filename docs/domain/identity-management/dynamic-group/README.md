@@ -58,81 +58,83 @@
 
 #### REQ-IDMANAGEMENT-066 規則の保存と有効化は版を一つ進め、有効な規則の保存と有効化は全件の再評価を予約する
 
-- 管理者が初めて規則を保存したとき、版を 1 とする無効な規則を作り、`DynamicGroupRuleUpdated` を発行する。
-- 管理者が式を保存したとき、版を一つ進め、有効か無効かは保存前の状態を引き継ぎ、`DynamicGroupRuleUpdated` を発行する。
-- 管理者が無効な規則を有効化したとき、版を一つ進め、`DynamicGroupRuleEnabled` を発行する。
-- 管理者が有効な規則の式を保存したとき、または規則を有効化したとき、全件の再評価を予約する。
-- 管理者がすでに有効な規則を有効化した場合は、成功を返し、版を進めず、イベントを発行しない。
-- `membership_type=manual` の Group への規則の保存を要求された場合は、409 と `dynamic_membership_managed_by_rule` で拒否する。
-- 規則を持たない Group の有効化を要求された場合は、422 と `invalid_dynamic_group_rule` で拒否する。
-- 保存または有効化を拒否した場合は、規則と所属を変えない。
+- 管理者が初めて規則を保存したとき、IdManagement は、版を 1 とする無効な規則を作り、`DynamicGroupRuleUpdated` を発行する。
+- 管理者が式を保存したとき、IdManagement は、版を一つ進め、保存前の有効か無効かを引き継ぎ、`DynamicGroupRuleUpdated` を発行する。
+- 管理者が無効な規則を有効化したとき、IdManagement は、版を一つ進め、`DynamicGroupRuleEnabled` を発行する。
+- 規則が有効な間、管理者が式を保存したとき、IdManagement は、全件の再評価を予約する。
+- 管理者が無効な規則を有効化したとき、IdManagement は、全件の再評価を予約する。
+- 管理者がすでに有効な規則を有効化した場合、IdManagement は、成功を返し、版を進めず、イベントを発行しない。
+- `membership_type=manual` の Group への規則の保存を要求された場合、IdManagement は、409 と `dynamic_membership_managed_by_rule` で拒否する。
+- 規則を持たない Group の有効化を要求された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 保存または有効化を拒否した場合、IdManagement は、規則と所属を変えない。
 
 #### REQ-IDMANAGEMENT-065 規則の保存とプレビューは、式の制約に違反する規則を拒否する
 
-- 式は 1 バイト以上 4,096 バイト以下とする。
-- 式の開き括弧は 20 個以下、空白で区切った語は 200 個以下とする。
-- 呼び出せる関数は `startsWith`、`endsWith`、`contains`、`matches`、`lowerAscii`、`size`、`exists`、`all`、`timestamp` だけとする。
-- `matches` の正規表現は文字列の定数で、256 文字以下とする。
-- 式は `user.<属性>` で User の属性を一つ以上、100 個以下参照する。参照できるのは `id`、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`email_verified` と、組み込みとテナント定義の属性だけである。`roles` は参照できない。
-- 式の結果は真偽値とする。
-- 評価の計算量の上限は 10,000 とする。
-- 制約に違反する規則の保存とプレビューを要求された場合は、422 と `invalid_dynamic_group_rule` で拒否し、規則を変えない。
+- 空、または 4,097 バイト以上の式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 開き括弧が 21 個以上、または空白で区切った語が 201 個以上の式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- `startsWith`、`endsWith`、`contains`、`matches`、`lowerAscii`、`size`、`exists`、`all`、`timestamp` 以外の関数を呼ぶ式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- `matches` の正規表現が文字列の定数でないか、257 文字以上の式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- `user.<属性>` で User の属性を一つも参照しないか、101 個以上参照する式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- `id`、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`email_verified`、組み込みの属性、テナント定義の属性のどれでもない属性（`roles` を含む）を参照する式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 結果が真偽値でない式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 評価の計算量が 10,000 を超える式を指定された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 制約に違反する規則の保存とプレビューを要求された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否し、規則を変えない。
 
 #### REQ-IDMANAGEMENT-022 未定義の属性または許可していない関数を参照する規則の保存は拒否する
 
-- 定義していない属性、または許可していない関数を参照する式の保存を要求された場合は、拒否し、規則を変えない。
+- 定義していない属性、または許可していない関数を参照する式の保存を要求された場合、IdManagement は、拒否し、規則を変えない。
 - **例**：EX-IDMANAGEMENT-022-01
 
 ### 規則の無効化
 
 #### REQ-IDMANAGEMENT-068 規則の無効化は版を一つ進め、動的グループの所属をすべて直ちに外す
 
-- 管理者が有効な規則を無効化したとき、版を一つ進め、`DynamicGroupRuleDisabled` を発行する。
-- 管理者が有効な規則を無効化したとき、全件の再評価を予約せず、その場で動的グループのメンバーシップをすべて外す。
-- 管理者がすでに無効な規則を無効化した場合は、成功を返し、版を進めず、イベントを発行しない。
-- 規則を持たない Group の無効化を要求された場合は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 管理者が有効な規則を無効化したとき、IdManagement は、版を一つ進め、`DynamicGroupRuleDisabled` を発行する。
+- 管理者が有効な規則を無効化したとき、IdManagement は、全件の再評価を予約せず、その場で動的グループのメンバーシップをすべて外す。
+- 管理者がすでに無効な規則を無効化した場合、IdManagement は、成功を返し、版を進めず、イベントを発行しない。
+- 規則を持たない Group の無効化を要求された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
 
 ### 全件の再評価
 
 #### REQ-IDMANAGEMENT-020 有効な規則の全件の再評価は、規則に一致する User だけを規則由来のメンバーにする
 
-- 有効な規則の全件の再評価を終えたとき、規則に一致する有効な User だけが、規則を由来として所属する。
-- 実効ロールと Application の割り当ては、その所属を参照する。
+- 有効な規則の全件の再評価を終えたとき、IdManagement は、規則に一致する有効な User だけを、規則を由来として所属させる。
+- 全件の再評価を終えたとき、IdManagement は、実効ロールと Application の割り当ての判定に、その所属を使う。
 - **例**：EX-IDMANAGEMENT-020-01
 
 #### REQ-IDMANAGEMENT-067 動的グループの規則に一致するのは `Active` の User だけである
 
-- `Active` でない User は、式の値によらず規則に一致しない。
-- 評価に失敗した User は、一致しないものとして扱い、再評価の結果の誤りの件数に数える。
+- User が `Active` でない間、規則を評価するとき、IdManagement は、式の値によらずその User を規則に一致させない。
+- User の評価に失敗した場合、IdManagement は、その User を規則に一致しないものとして扱い、再評価の結果の誤りの件数に数える。
 
 #### REQ-IDMANAGEMENT-023 評価できない規則は権限を付与しない
 
-- 規則の版が進んだとき、古い版の所属は、再評価を待たずに実効ロールに数えない。
-- 再評価で評価に失敗した User は、新しい版の所属を得ない。
+- 規則の版が進んだとき、IdManagement は、古い版の所属を、再評価を待たずに実効ロールから外す。
+- 再評価で User の評価に失敗した場合、IdManagement は、その User に新しい版の所属を与えない。
 - **例**：EX-IDMANAGEMENT-023-01
 
 #### REQ-IDMANAGEMENT-069 古い版の再評価のジョブは、所属を変えずに成功する
 
-- 再評価のジョブは、予約した時点の規則の版を持つ。
-- 実行時に規則がない、無効である、または版が異なる場合は、メンバーシップを変えず、イベントを発行せずに成功として終わる。
+- 全件の再評価を予約したとき、IdManagement は、予約した時点の規則の版をジョブに記録する。
+- 再評価のジョブの実行時に規則がないか、無効であるか、版が異なる場合、IdManagement は、メンバーシップを変えず、イベントを発行せずに成功として終わる。
 
 #### REQ-IDMANAGEMENT-070 動的な所属の変化は、メンバーごとのイベントを発行しない
 
-- 全件の再評価を終えたとき、追加、除外、変化なし、誤りの件数を載せた `DynamicMembershipEvaluated` を一つ発行する。
-- 規則の再評価と、User の変更に伴う再評価で所属が増減したとき、`GroupMemberAdded` と `GroupMemberRemoved` を発行しない。
+- 全件の再評価を終えたとき、IdManagement は、追加、除外、変化なし、誤りの件数を載せた `DynamicMembershipEvaluated` を一つ発行する。
+- 規則の再評価と、User の変更に伴う再評価で所属が増減したとき、IdManagement は、`GroupMemberAdded` と `GroupMemberRemoved` を発行しない。
 
 ### プレビュー
 
 #### REQ-IDMANAGEMENT-021 規則のプレビューは、選んだ User ごとに一致の有無を返し、属性の値を返さない
 
-- 管理者が 100 件以下の User を選んで保存していない式をプレビューしたとき、User ごとの一致の有無と、追加、除外、変化なしの判定を返し、所属を変えない。
-- プレビューの応答は、属性の値そのものを返さない。
+- 管理者が 100 件以下の User を選んで保存していない式をプレビューしたとき、IdManagement は、User ごとの一致の有無と、追加、除外、変化なしの判定を返し、所属を変えない。
+- 管理者が式をプレビューしたとき、IdManagement は、属性の値そのものを返さない。
 - **例**：EX-IDMANAGEMENT-021-01
 
 #### REQ-IDMANAGEMENT-071 規則のプレビューは 100 件以下の、同じテナントの User だけを受け付ける
 
-- 101 件以上の User を指定したプレビューを要求された場合は、422 と `invalid_dynamic_group_rule` で拒否する。
-- 存在しない User または別のテナントの User を一つでも含むプレビューを要求された場合は、結果を返さず、404 と `user_not_found` で拒否する。
+- 101 件以上の User を指定したプレビューを要求された場合、IdManagement は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 存在しない User または別のテナントの User を一つでも含むプレビューを要求された場合、IdManagement は、結果を返さず、404 と `user_not_found` で拒否する。
 
 ## セキュリティ上の考慮
 

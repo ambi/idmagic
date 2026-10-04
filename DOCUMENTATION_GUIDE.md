@@ -592,7 +592,7 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 | [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
 | [Specification Format §4](SPECIFICATION_FORMAT.md#4-状態遷移) | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
 | [Specification Format §6](SPECIFICATION_FORMAT.md#6-要件と例) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
-| [Specification Format §6](SPECIFICATION_FORMAT.md#ears-形式) | [EARS](https://alistairmavin.com/ears/) | 要件文を五つの型で書く |
+| [Specification Format §6](SPECIFICATION_FORMAT.md#ears-形式) | [EARS](https://alistairmavin.com/ears/) | 要件文を前置き、主体、応答の順に、型ごとの標識で書く |
 | §4.2 | [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) | portとadapterによる隔離 |
 | §4.2 | [C4 model](https://c4model.com/) | System Context、Containerの語彙 |
 | §4.3 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) | メソッドの安全・冪等、条件付きリクエスト、ステータスコードの意味 |

@@ -32,71 +32,77 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 
 #### REQ-IDMANAGEMENT-004 User の CSV のインポートは、プレビューで全行を判定し、適用で有効な行だけを保存する
 
-- 管理者が機械可読な列名の見出しを任意の順で持つ CSV をプレビューに投入したとき、行ごとの `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返すプレビューのジョブを作り、User を変えない。
-- 管理者が同じテナントの成功したプレビューのジョブの ID を指定して適用を始めたとき、CSV を受け取り直さず、保存したプレビューのペイロードを SHA-256 で検証し、現在の状態に対して同じ計画器で計画し直す。
-- プレビューの後に対象の User が変わっていた場合は、適用は現在の状態から `updated`、`unchanged`、`rejected` を判定し直す。
-- 適用は、有効な行を作成または更新し、無効な行を `rejected` として残す。各行のプロフィール、ロール、必須操作、カスタム属性は不可分に保存する。
-- 一行の検証、保存、監査の途中で失敗した場合は、その行を一部も保存せず、ほかの有効な行の適用を続ける。
-- 実効の転送ポリシーの `max_bytes`、`max_rows`、`max_field_bytes` のどれかを超える CSV を投入された場合は、`csv_too_large`、`too_many_rows`、`field_too_large` で拒否する。
-- 見出しに未知の列、重複した列、`password` または `password_hash` を含む CSV を投入された場合は、`invalid_header` で拒否する。
-- `id` と `preferred_username` が別の User を示す行、識別子のない行、同じ対象または同じ最終のユーザー名を示す複数の行を読んだ場合は、安定したエラーコードで `rejected` とする。
-- 存在しないジョブ、または別のテナントのジョブを指定した適用とジョブの参照を要求された場合は、404 と `user_import_not_found` で拒否し、User を変えない。
-- `queued` または `failed` のプレビューのジョブを指定した適用を要求された場合は、409 と `preview_not_ready` で拒否し、User を変えない。
-- 保存したペイロードとダイジェストが一致しないプレビューのジョブを指定した適用を要求された場合は、409 と `preview_digest_mismatch` で拒否し、User を変えない。
-- 外部の取り込み元が管理する User の行を読んだ場合は、`source_managed` で `rejected` とし、User を変えない。
+- 管理者が機械可読な列名の見出しを任意の順で持つ CSV をプレビューに投入したとき、IdManagement は、行ごとの `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返すプレビューのジョブを作り、User を変えない。
+- 管理者が同じテナントの成功したプレビューのジョブの ID を指定して適用を始めたとき、IdManagement は、CSV を受け取り直さず、保存したプレビューのペイロードを SHA-256 で検証し、現在の状態に対して同じ計画器で計画し直す。
+- プレビューの後に対象の User が変わっていた場合、IdManagement は、適用の時点の状態から `updated`、`unchanged`、`rejected` を判定し直す。
+- 管理者が User の CSV を適用したとき、IdManagement は、有効な行の User を作成または更新し、無効な行を `rejected` として残す。
+- 管理者が User の CSV を適用したとき、IdManagement は、各行のプロフィール、ロール、必須操作、カスタム属性を不可分に保存する。
+- 一行の検証、保存、監査の途中で失敗した場合、IdManagement は、その行を一部も保存せず、ほかの有効な行の適用を続ける。
+- 実効の転送ポリシーの `max_bytes`、`max_rows`、`max_field_bytes` のどれかを超える CSV を投入された場合、IdManagement は、`csv_too_large`、`too_many_rows`、`field_too_large` で拒否する。
+- 見出しに未知の列、重複した列、`password` または `password_hash` を含む CSV を投入された場合、IdManagement は、`invalid_header` で拒否する。
+- `id` と `preferred_username` が別の User を示す行、識別子のない行、同じ対象または同じ最終のユーザー名を示す複数の行を読んだ場合、IdManagement は、その行を安定したエラーコードで `rejected` にする。
+- 存在しないジョブ、または別のテナントのジョブを指定した適用とジョブの参照を要求された場合、IdManagement は、404 と `user_import_not_found` で拒否し、User を変えない。
+- `queued` または `failed` のプレビューのジョブを指定した適用を要求された場合、IdManagement は、409 と `preview_not_ready` で拒否し、User を変えない。
+- 保存したペイロードとダイジェストが一致しないプレビューのジョブを指定した適用を要求された場合、IdManagement は、409 と `preview_digest_mismatch` で拒否し、User を変えない。
+- 外部の取り込み元が管理する User の行を読んだ場合、IdManagement は、`source_managed` で `rejected` とし、User を変えない。
 - **判断**：適用をプレビューのペイロードに束縛する理由は、[CSV の適用をプレビューで保存したペイロードに束縛する](../design/decisions.md#csv-の適用をプレビューで保存したペイロードに束縛する)。
 - **判断**：CSV のインポートは、より強い上流の権威を上書きしない。取り込み元が管理する User を拒否するのはそのためである。
 - **例**：EX-IDMANAGEMENT-004-01、EX-IDMANAGEMENT-004-08
 
 #### REQ-IDMANAGEMENT-055 User の CSV の属性の列は、組み込みの属性を `attr:`、テナント定義の属性を `custom:` で表す
 
-- 組み込みの拡張属性は、`attr:<key>` の列で読み書きする。
-- テナント定義の属性は、`custom:<key>` の列で読み書きする。
-- 組み込みの拡張属性を `custom:<key>` の列で指定したファイルを受けた場合は、`invalid_header` で拒否する。
+- User の CSV を読み書きするとき、IdManagement は、組み込みの拡張属性を `attr:<key>` の列で扱う。
+- User の CSV を読み書きするとき、IdManagement は、テナント定義の属性を `custom:<key>` の列で扱う。
+- 組み込みの拡張属性を `custom:<key>` の列で指定したファイルを受けた場合、IdManagement は、`invalid_header` で拒否する。
 
 #### REQ-IDMANAGEMENT-056 User の CSV の行は `id` を優先して対象を決め、先に現れた行を採る
 
-- `id` を持つ行を読んだとき、`id` で対象を決める。
-- `id` を持たず `preferred_username` だけを持つ行を読んだとき、そのユーザー名の User を対象とし、いなければ作成として計画する。
-- ユーザー名の重複は、大文字と小文字を区別して判定する。
-- テナントにない `id` の行を読んだ場合は、`target_not_found` で `rejected` とし、User を作らない。
-- 前の行と同じ `id` を持つ行は `duplicate_target`、前の行と同じ `preferred_username` を持つ行は `duplicate_username` で `rejected` とし、前の行を計画に残す。
+- `id` を持つ行を読んだとき、IdManagement は、`id` で対象を決める。
+- `id` を持たず `preferred_username` だけを持つ行を読んだとき、IdManagement は、そのユーザー名の User を対象にする。
+- `id` を持たず、`preferred_username` の User がテナントにない行を読んだとき、IdManagement は、作成として計画する。
+- 行のユーザー名の重複を判定するとき、IdManagement は、大文字と小文字を区別する。
+- テナントにない `id` の行を読んだ場合、IdManagement は、`target_not_found` で `rejected` とし、User を作らない。
+- 前の行と同じ `id` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_target` で `rejected` にし、前の行を計画に残す。
+- 前の行と同じ `preferred_username` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_username` で `rejected` にし、前の行を計画に残す。
 
 #### REQ-IDMANAGEMENT-057 User の CSV の組み込み列は、決まった字句形のセルだけを受け付ける
 
-- `roles` と `required_actions` のセルは、`|` で区切った値の並びとして読み、各値の前後の空白を除く。空のセルは空の並びとする。
-- `required_actions` は、重複を除いて昇順に保存する。
-- `name`、`given_name`、`family_name`、`email` の空のセルを読んだとき、その項目を消す。
-- 空の値を含む `roles` のセルを読んだ場合は `invalid_roles`、空の値を含む `required_actions` のセルを読んだ場合は `invalid_required_actions` で拒否する。
-- `true` と `false` のどちらでもない `email_verified` のセルを読んだ場合は、`invalid_boolean` で拒否する。
-- 空の `preferred_username` のセルを読んだ場合は、`required` で拒否する。
+- `roles` と `required_actions` のセルを読んだとき、IdManagement は、`|` で区切った値の並びとして読み、各値の前後の空白を除き、空のセルを空の並びとして扱う。
+- `required_actions` のセルを読んだとき、IdManagement は、重複を除いて昇順に保存する。
+- `name`、`given_name`、`family_name`、`email` の空のセルを読んだとき、IdManagement は、その項目を消す。
+- 空の値を含む `roles` のセルを読んだ場合、IdManagement は、`invalid_roles` で拒否する。
+- 空の値を含む `required_actions` のセルを読んだ場合、IdManagement は、`invalid_required_actions` で拒否する。
+- `true` と `false` のどちらでもない `email_verified` のセルを読んだ場合、IdManagement は、`invalid_boolean` で拒否する。
+- 空の `preferred_username` のセルを読んだ場合、IdManagement は、`required` で拒否する。
 
 #### REQ-IDMANAGEMENT-058 CSV で作成する User には、無作為なパスワードと必須操作 `update_password` を付ける
 
-- CSV の適用で User を作成したとき、誰にも知らされない無作為なパスワードと、必須操作 `update_password` を設定した `Active` の User を作り、テナントの User の使用量を一つ増やす。
+- CSV の適用で User を作成したとき、IdManagement は、誰にも知らされない無作為なパスワードと、必須操作 `update_password` を設定した `Active` の User を作り、テナントの User の使用量を一つ増やす。
 
 #### REQ-IDMANAGEMENT-059 取り込み元の所有を判定できないとき、既存の User の行をすべて拒否する
 
-- 取り込み元による所有を判定できない間は、既存の User を対象とする行をすべて `source_managed` で `rejected` とする。
-- 取り込み元による所有を判定できない間も、新しい User を作る行は受け付ける。
+- 取り込み元による所有を判定できない間、既存の User を対象とする行を読んだとき、IdManagement は、その行を `source_managed` で `rejected` にする。
+- 取り込み元による所有を判定できない間、新しい User を作る行を読んだとき、IdManagement は、その行を受け付ける。
 
 ### エクスポート
 
 #### REQ-IDMANAGEMENT-006 User のエクスポートは、許可リストの列だけを受け付け、危険な先頭文字のセルに接頭辞を付けて書き出す
 
-- `worker` が User のエクスポートを生成したとき、選んだ列の RFC 4180 の CSV を書き出す。開始、生成、ダウンロード、取り消しの流れは[データエクスポート](../data-export/README.md)が定める。
-- `=`、`+`、`-`、`@`、タブ、CR、LF で始まるセルは、数式の注入を避ける可逆な接頭辞を付けて書き出す。インポートは、その接頭辞の一文字だけを取り除く。
-- User の許可リストにない列（例：`password_hash`）を含む開始を要求された場合は、422 と `invalid_columns` で拒否し、ジョブを作らない。
+- `worker` が User のエクスポートを生成したとき、IdManagement は、[データエクスポート](../data-export/README.md)の流れで、選んだ列の RFC 4180 の CSV を書き出す。
+- `=`、`+`、`-`、`@`、タブ、CR、LF で始まるセルを書き出すとき、IdManagement は、数式の注入を避ける可逆な接頭辞を付ける。
+- 接頭辞を付けたセルをインポートで読んだとき、IdManagement は、その接頭辞の一文字だけを取り除く。
+- User の許可リストにない列（例：`password_hash`）を含む開始を要求された場合、IdManagement は、422 と `invalid_columns` で拒否し、ジョブを作らない。
 - **例**：EX-IDMANAGEMENT-006-02、EX-IDMANAGEMENT-006-04
 
 #### REQ-IDMANAGEMENT-007 User のエクスポートは、そのまま再インポートすると変化なしになり、書き込める列の編集だけを反映する
 
-- インポートできる組み込み列、`required_actions`、`custom:` の列でエクスポートした CSV を編集せずにプレビューしたとき、全行が `unchanged` になり、User を変えない。
-- 一部の行の書き込める列だけを編集してプレビューしたとき、その行だけが `updated`、残りの行は `unchanged` と計画される。適用は、指定した書き込める列だけを更新し、指定しなかった列を保つ。
-- 危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む値は、書き出して読み戻すと元の値と一致する。
-- 読み取り専用の列（`status`、`mfa_enrolled`、`created_at`、`updated_at`、`id`）の値だけを編集した行を読んだとき、列を受け付けたうえで無視し、書き込める列に差分がなければ `unchanged` とする。
-- 生成結果が実効の転送ポリシーのどれかの上限を超える場合は、`csv_transfer_limit_exceeded` で失敗し、再インポートできない成功の成果物を作らない。
-- カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のどれかが不正な行を読んだ場合は、安定したエラーコードで `rejected` とし、値をジョブの表示にも監査イベントにも含めない。
+- インポートできる組み込み列、`required_actions`、`custom:` の列でエクスポートした CSV を編集せずにプレビューしたとき、IdManagement は、全行が `unchanged` になり、User を変えない。
+- 一部の行の書き込める列だけを編集してプレビューしたとき、IdManagement は、その行だけを `updated`、残りの行を `unchanged` と計画する。
+- 一部の行の書き込める列だけを編集して適用したとき、IdManagement は、指定した書き込める列だけを更新し、指定しなかった列を保つ。
+- 危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む値を書き出して読み戻したとき、IdManagement は、元の値と一致する値を読む。
+- 読み取り専用の列（`status`、`mfa_enrolled`、`created_at`、`updated_at`、`id`）の値だけを編集した行を読んだとき、IdManagement は、列を受け付けたうえで無視し、その行を `unchanged` にする。
+- 生成結果が実効の転送ポリシーのどれかの上限を超える場合、IdManagement は、`csv_transfer_limit_exceeded` で失敗し、再インポートできない成功の成果物を作らない。
+- カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のどれかが不正な行を読んだ場合、IdManagement は、その行を安定したエラーコードで `rejected` にし、値をジョブの表示にも監査イベントにも含めない。
 - **例**：EX-IDMANAGEMENT-007-01、EX-IDMANAGEMENT-007-04
 
 ## セキュリティ上の考慮

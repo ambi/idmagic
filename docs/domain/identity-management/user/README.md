@@ -100,70 +100,73 @@
 
 #### REQ-IDMANAGEMENT-042 管理者による User の作成は、ユーザー名の一意性とパスワードポリシーを検証し、`Active` の User を作る
 
-- 管理者が User を作成したとき、`Active` の User を作り、設定したパスワードをパスワードの履歴に加える。
-- ユーザー名は、[値オブジェクト](#値オブジェクト)の定義で正規化して保存し、比較する。
-- 同じテナントの削除されていない User と同じユーザー名を指定された場合は、409 と `username_conflict` で拒否し、User を作らない。
-- 前後の空白を除くと空になるユーザー名を指定された場合は、拒否し、User を作らない。
-- テナントのパスワードポリシーに違反するパスワードを指定された場合は、拒否し、User を作らない。
-- ほかの User と同じメールアドレスを指定された場合は、拒否しない。
+- 管理者が User を作成したとき、IdManagement は、`Active` の User を作り、設定したパスワードをパスワードの履歴に加える。
+- 管理者が User を作成したとき、IdManagement は、ユーザー名を[値オブジェクト](#値オブジェクト)の定義で正規化して保存し、比較する。
+- 同じテナントの削除されていない User と同じユーザー名を指定された場合、IdManagement は、409 と `username_conflict` で拒否し、User を作らない。
+- 前後の空白を除くと空になるユーザー名を指定された場合、IdManagement は、拒否し、User を作らない。
+- テナントのパスワードポリシーに違反するパスワードを指定された場合、IdManagement は、拒否し、User を作らない。
+- ほかの User と同じメールアドレスを指定された場合、IdManagement は、拒否しない。
 - **例**：EX-IDMANAGEMENT-042-01、EX-IDMANAGEMENT-042-02
 
 ### フェデレーションによる作成
 
 #### REQ-IDMANAGEMENT-001 フェデレーションの JIT はパスワード資格情報を作らず有効な User を作成する
 
-- `Authentication` が上流のトークンまたは Assertion とテナントの JIT ポリシーを検証した後に `ProvisionFederatedUser` を呼んだとき、対応付けたユーザー名と、任意の名前、メールアドレス、属性で、`password_hash` が空の `Active` の User を作り、`UserCreated` を発行する。
-- テナントのリソース上限を超える場合、ユーザー名またはメールアドレスが衝突する場合、属性スキーマに違反する場合は、User を作らずにエラーを返す。
+- `Authentication` が上流のトークンまたは Assertion とテナントの JIT ポリシーを検証した後に `ProvisionFederatedUser` を呼んだとき、IdManagement は、対応付けたユーザー名と、任意の名前、メールアドレス、属性で、`password_hash` が空の `Active` の User を作り、`UserCreated` を発行する。
+- テナントのリソース上限を超えるか、ユーザー名またはメールアドレスが衝突するか、属性スキーマに違反する場合、IdManagement は、User を作らずにエラーを返す。
 - **判断**：上流が認証の権威なので、ローカルの資格情報を設定しない。設定すると、上流で無効にした後もローカルのパスワードでサインインできる経路が残る。リソース上限、一意性、属性スキーマの検証は通常の作成と共通であり、この経路だけの近道はない。
 
 #### REQ-IDMANAGEMENT-043 フェデレーションの JIT が作る User は、ロールを持たず、メールアドレスの重複を拒否する
 
-- フェデレーションの JIT が作る User は、ロールが空であり、パスワードの履歴を持たない。
-- メールアドレスは、[値オブジェクト](#値オブジェクト)の定義で正規化して保存する。
-- フェデレーションの JIT が User を作ったとき、`UserCreated` の操作者を `identity-broker` とする。
-- フェデレーションの JIT が User を作ったとき、動的グループの規則を評価しない。
-- 同じテナントの削除されていない User と、大文字と小文字を区別せずに同じメールアドレスを指定された場合は、User を作らずに拒否する。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、ロールを空にし、パスワードの履歴を作らない。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、メールアドレスを[値オブジェクト](#値オブジェクト)の定義で正規化して保存する。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、`UserCreated` の操作者に `identity-broker` を記録する。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、動的グループの規則を評価しない。
+- 同じテナントの削除されていない User と、大文字と小文字を区別せずに同じメールアドレスを指定された場合、IdManagement は、User を作らずに拒否する。
 - **例**：EX-IDMANAGEMENT-043-01、EX-IDMANAGEMENT-043-03
 
 ### 一覧
 
 #### REQ-IDMANAGEMENT-005 管理者のユーザー一覧は、正確な件数とカーソルで、重複も欠落もなくページを返す
 
-- 管理者がユーザー一覧を取得したとき、絞り込みに一致する User の正確な総件数、総ページ数、現在のページ、ページサイズと、絞り込みに依存しない `total_users` を返す。
-- ユーザー一覧の応答は、前後のページへ移る `first`、`prev`、`next`、`last` のカーソルを `Link` ヘッダーで返す。
-- 一覧の途中で削除した User は、以後のページに含めない。カーソルで次のページを取得したとき、返却済みの User を重複して返さない。
-- `query` または `status` を指定されたとき、テナント全体から条件に一致する User だけを返し、`pagination.total_items` を条件に一致する件数、`total_users` を削除済みを除く絞り込みに依存しない件数とする。
-- 条件に一致する User がない場合は、空の一覧と、総項目数、総ページ数、現在のページ番号 `0 / 0 / 0` を返し、`Link` を一つも返さない。
-- 正確な件数を取得できない場合は、0 件として成功させずに、リクエスト全体をサーバーエラーで失敗させる。
-- 別テナントで発行されたカーソル、改ざんされたカーソル、発行時と `query` または `status` が異なるカーソルを受け取った場合は、InvalidRequestError で拒否する。
-- `admin` ロールを持たない呼び出し元が一覧を要求した場合は、AccessDeniedError で拒否する。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、絞り込みに一致する User の正確な総件数、総ページ数、現在のページ、ページサイズと、絞り込みに依存しない `total_users` を返す。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、前後のページへ移る `first`、`prev`、`next`、`last` のカーソルを `Link` ヘッダーで返す。
+- 一覧の途中で User を削除したとき、IdManagement は、その User を以後のページに含めない。
+- カーソルで次のページを取得したとき、IdManagement は、返却済みの User を重複して返さない。
+- `query` または `status` を指定されたとき、IdManagement は、テナント全体から条件に一致する User だけを返し、`pagination.total_items` に条件に一致する件数を、`total_users` に削除済みを除く絞り込みに依存しない件数を返す。
+- 条件に一致する User がない場合、IdManagement は、空の一覧と、総項目数、総ページ数、現在のページ番号 `0 / 0 / 0` を返し、`Link` を一つも返さない。
+- 正確な件数を取得できない場合、IdManagement は、0 件として成功させずに、リクエスト全体をサーバーエラーで失敗させる。
+- 別テナントで発行されたカーソル、改ざんされたカーソル、発行時と `query` または `status` が異なるカーソルを受け取った場合、IdManagement は、InvalidRequestError で拒否する。
+- `admin` ロールを持たない呼び出し元が一覧を要求した場合、IdManagement は、AccessDeniedError で拒否する。
 - **例**：EX-IDMANAGEMENT-005-01、EX-IDMANAGEMENT-005-03
 
 #### REQ-IDMANAGEMENT-044 管理者のユーザー一覧の取得は、猶予期間を過ぎた削除予約の User を先に完全削除する
 
-- 管理者がユーザー一覧を取得したとき、同じテナントで `PendingDeletion` になってから猶予期間の 30 日を過ぎた User を完全削除してから一覧を作る。
-- 猶予期間の終わりの時刻ちょうどの User と、`PendingDeletion` になった時刻を記録していない User は、完全削除しない。
-- 一覧の取得が User を完全削除したとき、`UserDeleted` の操作者を `system`、理由を `auto_purge` とする。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、同じテナントで `PendingDeletion` になってから猶予期間の 30 日を過ぎた User を完全削除してから一覧を作る。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、猶予期間の終わりの時刻ちょうどの User と、`PendingDeletion` になった時刻を記録していない User を完全削除しない。
+- 一覧の取得が User を完全削除したとき、IdManagement は、`UserDeleted` の操作者に `system`、理由に `auto_purge` を記録する。
 - **例**：EX-IDMANAGEMENT-044-01、EX-IDMANAGEMENT-044-02
 
 ### 更新
 
 #### REQ-IDMANAGEMENT-045 管理者による User の更新は、値が変わった項目だけを記録する
 
-- 管理者が User を更新したとき、値が変わった項目だけを保存し、それだけを `changed_fields` に載せた `UserUpdated` を発行する。属性は、値が変わったキーごとに、キーの昇順で載せる。
-- 管理者がどの項目の値も変えない更新を要求した場合は、成功を返し、`updated_at` を進めず、`UserUpdated` を発行しない。
-- 管理者が `attributes` を指定したとき、属性の対応表の全体を置き換える。指定しなかったキーは消える。
-- 管理者がメールアドレスだけを変えたとき、`email_verified` を変えない。
+- 管理者が User を更新したとき、IdManagement は、値が変わった項目だけを保存し、それだけを `changed_fields` に載せた `UserUpdated` を発行する。
+- 管理者が User の属性を更新したとき、IdManagement は、値が変わった属性のキーごとに、キーの昇順で `changed_fields` に載せる。
+- 管理者がどの項目の値も変えない更新を要求した場合、IdManagement は、成功を返し、`updated_at` を進めず、`UserUpdated` を発行しない。
+- 管理者が `attributes` を指定して User を更新したとき、IdManagement は、属性の対応表の全体を置き換え、指定しなかったキーを消す。
+- 管理者がメールアドレスだけを変えたとき、IdManagement は、`email_verified` を変えない。
 - **例**：EX-IDMANAGEMENT-045-01、EX-IDMANAGEMENT-045-03
 
 ### 必須操作の付与と解除
 
 #### REQ-IDMANAGEMENT-047 必須操作の付与と解除は、すでにその状態なら何もしない
 
-- 管理者が必須操作を付与したとき、User に必須操作を加え、`UserRequiredActionSet` を発行する。
-- 管理者が必須操作を解除したとき、User から必須操作を外し、`UserRequiredActionCleared` を発行する。
-- 管理者がすでに付いている必須操作を付与した場合、または付いていない必須操作を解除した場合は、成功を返し、イベントを発行しない。
-- 定義されていない必須操作を指定された場合は、422 と `invalid_required_action` で拒否する。
+- 管理者が必須操作を付与したとき、IdManagement は、User に必須操作を加え、`UserRequiredActionSet` を発行する。
+- 管理者が必須操作を解除したとき、IdManagement は、User から必須操作を外し、`UserRequiredActionCleared` を発行する。
+- 管理者がすでに付いている必須操作を付与したとき、IdManagement は、成功を返し、イベントを発行しない。
+- 管理者が付いていない必須操作を解除したとき、IdManagement は、成功を返し、イベントを発行しない。
+- 定義されていない必須操作を指定された場合、IdManagement は、422 と `invalid_required_action` で拒否する。
 
 ## セキュリティ上の考慮
 

@@ -34,8 +34,9 @@ current document kinds and grammar; read it, not its rationale document.
    (c) an implementation to change, as that document's 仕様にない振る舞いの分類 defines, and record the
    classification in the work item. Ask the user when a classification changes what users observe.
 5. Give each new externally observable behavior an unused `REQ-<CONTEXT>-NNN`, declared as a
-   `#### REQ-<CONTEXT>-NNN <title>` heading under the operation it governs. Write one obligation per bullet
-   in one of the five EARS forms, a table when conditions combine, and the `**判断**` field only when the
+   `#### REQ-<CONTEXT>-NNN <title>` heading under the operation it governs. Write one sentence per bullet
+   in the Japanese EARS form of `SPECIFICATION_FORMAT.md` (preamble, the context name as responder,
+   response), a table when conditions combine, and the `**判断**` field only when the
    reason is not evident. Do not write `**担保手段**` or `**要判断**`; tests trace requirements through
    `//spec:covers`, and an open question becomes a work item. Retire a referenced behavior with
    `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id. Put a value the

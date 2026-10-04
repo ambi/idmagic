@@ -8,6 +8,7 @@ import {
   goDeclarations,
   type FeatureSliceDebt,
   type Finding,
+  verifyEarsStatements,
   verifyFeatureSliceSpecifications,
   verifyRuleFields,
   verifySpecificationOutline,
@@ -20,6 +21,12 @@ const FEATURE_SLICE_DEBT = 'tools/check/feature-slice-debt.json'
 
 /** Context をまたぐ要件を宣言する文書。 */
 const SYSTEM_SCENARIOS = 'docs/domain/scenarios.feature.md'
+
+/**
+ * 要件文の EARS の構文を確かめる Context。要件文を書き直した Context から加え、
+ * 減らす方向には動かさない。
+ */
+const EARS_CONTEXTS = new Set<string>(['tenancy', 'identity-management'])
 
 export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const domainFiles = await snapshot.files('docs/domain', [])
@@ -58,6 +65,10 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
     findings.push(...verifyRuleFields(path, source, declarations, resolveLink))
     if (specificationPaths.has(path) && inFeatureContext(path)) {
       findings.push(...verifySpecificationRuleFields(path, source))
+      const context = path.split('/')[2] ?? ''
+      if (EARS_CONTEXTS.has(context)) {
+        findings.push(...verifyEarsStatements(path, source, await responder(snapshot, context)))
+      }
       const directory = posix.dirname(path)
       if (path.endsWith('/README.md') && !parents.has(directory)) {
         findings.push(...verifySpecificationOutline(path, source))
@@ -98,6 +109,12 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
         ? findings.map((finding) => `${finding.path}:${finding.line}: ${finding.message}`)
         : [`ok  specification rules (${scenarioPaths.length} scenario document(s))`],
   }
+}
+
+/** 要件文の主体。Context の `README.md` の H1 を使う。 */
+async function responder(snapshot: WorkspaceSnapshot, context: string): Promise<string> {
+  const readme = await snapshot.read(`docs/domain/${context}/README.md`)
+  return readme.match(/^# (.+)$/m)?.[1]?.trim() ?? context
 }
 
 function decoded(value: string): string | undefined {

@@ -168,6 +168,125 @@ export function verifySpecificationRuleFields(path: string, source: string): Fin
 }
 
 /**
+ * 前置きの節の標識。EARS の While、When、Where、If…then を、日本語の文末で書き分ける。
+ * `rank` は節を並べる順で、契機と望まない入力は同じ位置に高々一つだけ置ける。
+ */
+const PREAMBLE_MARKERS = new Map([
+  ['では', { name: 'configuration', rank: 0 }],
+  ['の間', { name: 'state', rank: 1 }],
+  ['とき', { name: 'trigger', rank: 2 }],
+  ['場合', { name: 'trigger', rank: 2 }],
+])
+
+/** 前置きの節を一つずつ取り出す。最初に現れる「標識、」までを一つの節とする。 */
+const PREAMBLE_CLAUSE = /(.*?)(では|の間|とき|場合)、/y
+
+/** 応答の中に置けない条件の語。置くと、どれが契機でどれが前提かが文の形から読めなくなる。 */
+const RESPONSE_CONDITIONS: Array<[string, RegExp]> = [
+  ['とき', /とき/],
+  ['場合', /場合/],
+  ['の間', /の間/],
+  ['なら', /なら(?!な)/],
+  ['限り', /限り/],
+  ['〜ば', /(?:けれ|れ)ば/],
+]
+
+/** 能力、許可、推奨、定義の文末。どれも応答の主体が何をするかを述べない。 */
+const NON_RESPONSE_ENDINGS = ['できる', 'てもよい', 'でもよい', '望ましい', 'とする', 'である']
+
+/**
+ * 要件文が、前置き、主体、応答の順の日本語の EARS で書かれていることを確かめる。
+ * `responder` は、その機能仕様が属するコンテキストの `README.md` の H1 である。
+ * 表の行、欄、廃止した要件、バッククォートの中は確かめない。
+ */
+export function verifyEarsStatements(path: string, source: string, responder: string): Finding[] {
+  const headings = source.split('\n')
+  const findings: Finding[] = []
+  for (const body of ruleBodies(source)) {
+    if (headings[body.line - 1]?.includes('(superseded by ')) continue
+    for (const { line, text } of ruleFields(body).statements) {
+      if (!text.startsWith('- ')) continue
+      const report = (message: string) =>
+        findings.push({ path, line, message: `${body.id} ${message}` })
+      for (const message of earsViolations(text, responder)) report(message)
+    }
+  }
+  return findings
+}
+
+function earsViolations(text: string, responder: string): string[] {
+  const statement = text
+    .slice(2)
+    .replaceAll(/`[^`]*`/g, '〔code〕')
+    .replace(/。$/, '')
+  if (statement.replaceAll(/（[^）]*）/g, '').includes('。')) {
+    return ['statement holds more than one sentence; write one requirement per line']
+  }
+  const marks = [...statement.matchAll(new RegExp(`(?:^|、)${escapeRegExp(responder)} ?は、`, 'g'))]
+  const [mark] = marks
+  if (mark === undefined) {
+    return [`statement names no responder; write 「${responder} は、」 after the preamble`]
+  }
+  if (marks.length > 1)
+    return [`statement names the responder 「${responder} は、」 more than once`]
+  const preamble = statement.slice(0, mark.index)
+  const response = statement.slice(mark.index + mark[0].length)
+  return [...preambleViolations(preamble), ...responseViolations(response)]
+}
+
+function preambleViolations(preamble: string): string[] {
+  if (preamble === '') return []
+  const violations: string[] = []
+  const text = `${preamble}、`
+  let previous = { name: '', rank: -1 }
+  let triggers = 0
+  PREAMBLE_CLAUSE.lastIndex = 0
+  while (PREAMBLE_CLAUSE.lastIndex < text.length) {
+    const start = PREAMBLE_CLAUSE.lastIndex
+    const clause = PREAMBLE_CLAUSE.exec(text)
+    if (clause === null) {
+      return [
+        ...violations,
+        `preamble 「${text.slice(start, -1)}」 ends with no marker; end it with では、の間、とき、or 場合、`,
+      ]
+    }
+    const [, content = '', marker = ''] = clause
+    const kind = PREAMBLE_MARKERS.get(marker) ?? previous
+    if (content.includes('場合')) {
+      violations.push('uses 「場合」 outside the unwanted-behaviour marker')
+    }
+    if (kind.rank < previous.rank) {
+      violations.push(
+        `preamble puts a ${kind.name} (${marker}) after a ${previous.name}; order them 構成、状態、契機 or 場合`,
+      )
+    }
+    if (kind.rank === 2 && ++triggers === 2) {
+      violations.push('preamble has more than one trigger (とき or 場合)')
+    }
+    previous = kind
+  }
+  return violations
+}
+
+function responseViolations(response: string): string[] {
+  const violations: string[] = []
+  for (const [word, pattern] of RESPONSE_CONDITIONS) {
+    if (pattern.test(response)) {
+      violations.push(`response contains the condition 「${word}」; move it into the preamble`)
+    }
+  }
+  const ending = NON_RESPONSE_ENDINGS.find((word) => response.endsWith(word))
+  if (ending !== undefined) {
+    violations.push(`response ends with 「${ending}」; state what the responder does`)
+  }
+  return violations
+}
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
  * 機能スライスの `README.md` で、節が `SPECIFICATION_SECTIONS` の語彙をその順で使い、
  * 規則が操作の節の下にあることを確かめる。章のページは操作の節を分けたものなので、
  * 節の名前を問わない。

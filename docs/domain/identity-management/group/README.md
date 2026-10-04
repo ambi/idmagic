@@ -40,66 +40,67 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 
 #### REQ-IDMANAGEMENT-024 Group の作成は、連絡先と属性をテナントのスキーマで検証して保存し、`GroupCreated` を発行する
 
-- 管理者が Group を作成したとき、指定した名前、説明、連絡先、ロール、所属の種類、属性で Group を作り、`GroupCreated` を発行し、下流のプロビジョニングへ通知する。
-- メールアドレスの形式を満たさない連絡先を指定された場合は、InvalidEmailError で拒否し、Group を作らない。
-- 定義していないキーの属性、または定義した型と一致しない値の属性を指定された場合は、InvalidGroupAttributeError で拒否し、Group を作らない。
+- 管理者が Group を作成したとき、IdManagement は、指定した名前、説明、連絡先、ロール、所属の種類、属性で Group を作り、`GroupCreated` を発行し、下流のプロビジョニングへ通知する。
+- メールアドレスの形式を満たさない連絡先を指定された場合、IdManagement は、InvalidEmailError で拒否し、Group を作らない。
+- 定義していないキーの属性、または定義した型と一致しない値の属性を指定された場合、IdManagement は、InvalidGroupAttributeError で拒否し、Group を作らない。
 - **例**：EX-IDMANAGEMENT-024-01、EX-IDMANAGEMENT-024-03
 
 #### REQ-IDMANAGEMENT-060 Group の作成と更新は、名前、説明、連絡先を正規化して保存する
 
-- Group の名前は、前後の空白を除いて保存する。
-- Group の説明は、前後の空白を除いて保存する。空になる説明は設定しない。
-- Group の連絡先のメールアドレスは、前後の空白を除き、表示名付きの形式からはアドレスだけを取り出し、小文字にして保存する。空になる値は設定しない。
-- 前後の空白を除くと空になる名前を指定された場合は、422 と `group_name_required` で拒否し、Group を作成も更新もしない。
-- 同じテナントのほかの Group と大文字と小文字を区別せずに同じ名前を指定された場合は、409 と `group_name_conflict` で拒否し、Group を作成も更新もしない。
+- 管理者が Group を作成または更新したとき、IdManagement は、名前を前後の空白を除いて保存する。
+- 管理者が Group を作成または更新したとき、IdManagement は、説明を前後の空白を除いて保存し、空になる説明を設定しない。
+- 管理者が Group を作成または更新したとき、IdManagement は、連絡先のメールアドレスの前後の空白を除き、表示名付きの形式からアドレスだけを取り出し、小文字にして保存し、空になる値を設定しない。
+- 前後の空白を除くと空になる名前を指定された場合、IdManagement は、422 と `group_name_required` で拒否し、Group を作成も更新もしない。
+- 同じテナントのほかの Group と大文字と小文字を区別せずに同じ名前を指定された場合、IdManagement は、409 と `group_name_conflict` で拒否し、Group を作成も更新もしない。
 
 #### REQ-IDMANAGEMENT-061 テナントに Group 属性スキーマがなければ、Group の作成と更新は属性を拒否する
 
-- テナントが Group 属性スキーマを定義していない間は、属性を一つでも含む作成と更新を 422 と `invalid_attribute` で拒否する。
-- 属性を指定しない作成を要求された場合も、必須の属性の欠落を拒否する。
+- テナントが Group 属性スキーマを定義していない間、属性を一つでも含む作成と更新を要求されたとき、IdManagement は、422 と `invalid_attribute` で拒否する。
+- 必須の属性を指定しない作成を要求された場合、IdManagement は、必須の属性の欠落として拒否する。
 
 ### 更新
 
 #### REQ-IDMANAGEMENT-062 Group の更新は、値が変わった項目だけを記録する
 
-- 管理者が Group を更新したとき、値が変わった項目だけを保存し、`name`、`description`、`email`、`attributes`、`roles` のうち値が変わった項目だけを `changed_fields` に載せた `GroupUpdated` を発行し、下流のプロビジョニングへ通知する。
-- 管理者が `attributes` を指定したとき、属性を検証し、指定した対応表で属性の全体を置き換える。`attributes` を指定しない更新は、属性を検証しない。
-- 管理者がどの項目の値も変えない更新を要求した場合は、成功を返し、`updated_at` を進めず、`GroupUpdated` を発行せず、下流のプロビジョニングへ通知しない。
+- 管理者が Group を更新したとき、IdManagement は、値が変わった項目だけを保存し、`name`、`description`、`email`、`attributes`、`roles` のうち値が変わった項目だけを `changed_fields` に載せた `GroupUpdated` を発行し、下流のプロビジョニングへ通知する。
+- 管理者が `attributes` を指定して Group を更新したとき、IdManagement は、属性を検証し、指定した対応表で属性の全体を置き換える。
+- 管理者が `attributes` を指定せずに Group を更新したとき、IdManagement は、属性を検証しない。
+- 管理者がどの項目の値も変えない更新を要求した場合、IdManagement は、成功を返し、`updated_at` を進めず、`GroupUpdated` を発行せず、下流のプロビジョニングへ通知しない。
 - **例**：EX-IDMANAGEMENT-062-01、EX-IDMANAGEMENT-062-02
 
 ### メンバーの追加と除外
 
 #### REQ-IDMANAGEMENT-015 User のメンバーへの追加は `GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える
 
-- 管理者が User を Group に所属させたとき、メンバーシップを作り、`GroupMemberAdded` を発行し、下流のプロビジョニングへ通知し、User の実効ロールに Group のロールを加える。
-- 管理者が User を Group から外したとき、メンバーシップを消し、`GroupMemberRemoved` を発行し、下流のプロビジョニングへ通知する。
-- 管理者が同じ User を同じ Group へもう一度所属させた場合は、成功を返し、`GroupMemberAdded` を再発行しない。
+- 管理者が User を Group に所属させたとき、IdManagement は、メンバーシップを作り、`GroupMemberAdded` を発行し、下流のプロビジョニングへ通知し、User の実効ロールに Group のロールを加える。
+- 管理者が User を Group から外したとき、IdManagement は、メンバーシップを消し、`GroupMemberRemoved` を発行し、下流のプロビジョニングへ通知する。
+- 管理者が同じ User を同じ Group へもう一度所属させた場合、IdManagement は、成功を返し、`GroupMemberAdded` を再発行しない。
 - **例**：EX-IDMANAGEMENT-015-01、EX-IDMANAGEMENT-015-02
 
 #### REQ-IDMANAGEMENT-063 手動のメンバーの追加は、削除されていない同じテナントの User を受け付ける
 
-- 追加の対象は、同じテナントの `Deleted` でない User である。`Disabled` と `PendingDeletion` の User も追加できる。
-- 管理者がメンバーでない User を除外した場合は、成功を返し、イベントを発行しない。
-- 存在しない User、`Deleted` の User、別のテナントの User の追加を要求された場合は、404 と `user_not_found` で拒否し、メンバーシップを作らない。
+- 管理者が同じテナントの `Deleted` でない User（`Disabled` と `PendingDeletion` を含む）を追加したとき、IdManagement は、メンバーシップを作る。
+- 管理者がメンバーでない User を除外した場合、IdManagement は、成功を返し、イベントを発行しない。
+- 存在しない User、`Deleted` の User、別のテナントの User の追加を要求された場合、IdManagement は、404 と `user_not_found` で拒否し、メンバーシップを作らない。
 
 #### REQ-IDMANAGEMENT-085 動的グループへの手動のメンバーの追加と除外は拒否する
 
-- `membership_type=dynamic` の Group へのメンバーの追加と除外を要求された場合は、409 と `dynamic_membership_managed_by_rule` で拒否し、メンバーシップを変えない。
+- `membership_type=dynamic` の Group へのメンバーの追加と除外を要求された場合、IdManagement は、409 と `dynamic_membership_managed_by_rule` で拒否し、メンバーシップを変えない。
 - **判断**：動的グループの所属は規則の評価だけが決める。手動の操作を許すと、所属がどの経路で付いたのかを区別できなくなる。
 - **例**：EX-IDMANAGEMENT-085-01
 
 #### REQ-IDMANAGEMENT-064 下流への通知に失敗した Group の変更は、確定したままエラーを返す
 
-- Group の作成、更新、削除、手動のメンバーの追加と除外は、変更を確定してから下流のプロビジョニングへ通知する。
-- 下流のプロビジョニングへの通知に失敗した場合は、エラーを返し、確定した変更と発行したイベントを取り消さない。
+- 管理者が Group の作成、更新、削除、手動のメンバーの追加と除外をしたとき、IdManagement は、変更を確定してから下流のプロビジョニングへ通知する。
+- 下流のプロビジョニングへの通知に失敗した場合、IdManagement は、エラーを返し、確定した変更と発行したイベントを取り消さない。
 
 ### 所属グループの参照
 
 #### REQ-IDMANAGEMENT-084 User の所属グループの参照は、実効ロールと、Group 由来のロールと直接付与したロールを分けて返す
 
-- 管理者が User の所属グループを参照したとき、所属する Group と、実効ロール、Group 由来のロール（`group_roles`）、直接付与したロール（`direct_roles`）を返し、状態を変えない。
-- 実効ロールは、Group 由来のロールと直接付与したロールの和集合である。
-- 存在しない User と別のテナントの User の参照を要求された場合は、404 と `user_not_found` で拒否する。
+- 管理者が User の所属グループを参照したとき、IdManagement は、所属する Group と、実効ロール、Group 由来のロール（`group_roles`）、直接付与したロール（`direct_roles`）を返し、状態を変えない。
+- 管理者が User の所属グループを参照したとき、IdManagement は、Group 由来のロールと直接付与したロールの和集合を実効ロールとして返す。
+- 存在しない User と別のテナントの User の参照を要求された場合、IdManagement は、404 と `user_not_found` で拒否する。
 - **例**：EX-IDMANAGEMENT-084-01
 
 ## セキュリティ上の考慮
