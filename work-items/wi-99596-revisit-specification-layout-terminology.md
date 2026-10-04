@@ -32,6 +32,7 @@ spec_impact:
 
 - 「機能ノード」の言い換えを決め、規約の文書（`SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`docs/development/specification-first-workflow.md`、`docs/development/specification-format-rationale.md`）、検査と生成器の診断と識別子、work item のスキーマ、文書の本文の言及をそろえる。
 - 例の付録のファイルの名前を決め、変えるなら、すべての機能の付録、検査、生成器、`generate-spec-examples`、テストの準備データ、文書のリンクをそろえる。
+- `docs/domain/scenarios.feature.md` の前書きの、旧形式のファイルへの言及を改める。
 - 名前を変える場合は、完了した work item の旧パスを `tools/check/relocated-spec-paths.json` で解決する。
 
 ## 対象外
@@ -64,7 +65,10 @@ spec_impact:
 | 文書の側を「機能仕様のディレクトリ」または「機能」と呼ぶ | 木の比喩をやめつつ、コードのスライスと区別できる | 語が長くなる |
 | 現状の「機能ノード」を保つ | 変更が要らない | 外部の方法論の語と結び付かない |
 
-着手時に、上の対応の扱いと合わせて一つに決める。
+決定：文書の側も「機能スライス」と呼び、「機能ノード」を廃止する。
+コードと文書の語を一つにし、読み手が仕様と実装を行き来しやすくすることを優先する。
+スライスのない文書のディレクトリも同じ語で呼び、その理由は上の表のとおり Context の設計の構成要素の表に書く。
+検査と生成器の識別子（`featureNode` など）も同じ語へそろえる。
 
 ### 例の付録の名前
 
@@ -74,7 +78,10 @@ spec_impact:
 | `scenarios.feature.md` に戻し、システムの階層の文書を改名する | 旧形式からの読み手に馴染みがある | 規範の文書であるシステムの側の名前を変えることになる |
 | 現状の `examples.feature.md` を保つ | 変更が要らない。Gherkin の `Example` と `EX-` に合う | サンプルのファイルの印象を与える |
 
-着手時に一つに決める。
+決定：`acceptance.feature.md` にする。
+システムの `docs/domain/scenarios.feature.md` は Context をまたぐ要件を宣言する正本であり、機能の付録は機能の仕様本文が宣言した要件へ受け入れの具体例を付けるだけである。
+`acceptance` は後者の役割を名前で示し、前者と衝突しない。
+あわせて、`docs/domain/scenarios.feature.md` の前書きが旧形式の Context ごとの `scenarios.feature.md` を指している記述を改める。
 
 ## 計画
 
@@ -85,7 +92,7 @@ spec_impact:
 
 ## タスク
 
-- [ ] T001 [Docs] 用語とファイルの名前を決める。
+- [x] T001 [Docs] 用語とファイルの名前を決める。
 - [ ] T002 [Docs] 規約の文書を改める。
 - [ ] T003 [Tooling] 検査、生成器、スキーマ、テストの準備データを改める。
 - [ ] T004 [Docs] 文書の木のファイルの名前と言及を改める。
