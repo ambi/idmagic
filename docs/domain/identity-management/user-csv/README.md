@@ -37,6 +37,8 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - プレビューの後に対象の User が変わっていた場合、IdManagement は、適用の時点の状態から `updated`、`unchanged`、`rejected` を判定し直す。
 - 管理者が User の CSV を適用したとき、IdManagement は、有効な行の User を作成または更新し、無効な行を `rejected` として残す。
 - 管理者が User の CSV を適用したとき、IdManagement は、各行のプロフィール、ロール、必須操作、カスタム属性を不可分に保存する。
+- 管理者が User の CSV を適用したとき、IdManagement は、作成、更新、変更なしと判定した各行の User を、保存した後に有効な動的グループの規則で評価する。
+- 動的グループの規則の評価に失敗した場合、IdManagement は、確定した行を残したまま適用を失敗として終える。
 - 一行の検証、保存、監査の途中で失敗した場合、IdManagement は、その行を一部も保存せず、ほかの有効な行の適用を続ける。
 - 実効の転送ポリシーの `max_bytes`、`max_rows`、`max_field_bytes` のどれかを超える CSV を投入された場合、IdManagement は、`csv_too_large`、`too_many_rows`、`field_too_large` で拒否する。
 - 見出しに未知の列、重複した列、`password` または `password_hash` を含む CSV を投入された場合、IdManagement は、`invalid_header` で拒否する。
@@ -45,7 +47,9 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - `queued` または `failed` のプレビューのジョブを指定した適用を要求された場合、IdManagement は、409 と `preview_not_ready` で拒否し、User を変えない。
 - 保存したペイロードとダイジェストが一致しないプレビューのジョブを指定した適用を要求された場合、IdManagement は、409 と `preview_digest_mismatch` で拒否し、User を変えない。
 - 外部の取り込み元が管理する User の行を読んだ場合、IdManagement は、`source_managed` で `rejected` とし、User を変えない。
+- **上位の要件**：[REQ-IDMANAGEMENT-089](../user/README.md#作成の経路に共通する規則)
 - **判断**：適用をプレビューのペイロードに束縛する理由は、[CSV の適用をプレビューで保存したペイロードに束縛する](../design/decisions.md#csv-の適用をプレビューで保存したペイロードに束縛する)。
+- **判断**：変更なしの行も評価するのは、評価に失敗した適用を、同じ CSV の再適用で回収できるようにするためである。再適用では確定済みの行が変更なしになる。
 - **判断**：CSV のインポートは、より強い上流の権威を上書きしない。取り込み元が管理する User を拒否するのはそのためである。
 - **例**：EX-IDMANAGEMENT-004-01、EX-IDMANAGEMENT-004-08
 
@@ -60,10 +64,12 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - `id` を持つ行を読んだとき、IdManagement は、`id` で対象を決める。
 - `id` を持たず `preferred_username` だけを持つ行を読んだとき、IdManagement は、そのユーザー名の User を対象にする。
 - `id` を持たず、`preferred_username` の User がテナントにない行を読んだとき、IdManagement は、作成として計画する。
-- 行のユーザー名の重複を判定するとき、IdManagement は、大文字と小文字を区別する。
+- `preferred_username` で対象を照合し、行のユーザー名の重複を判定するとき、IdManagement は、[名前](../README.md#値オブジェクト)の定義で比較する。
 - テナントにない `id` の行を読んだ場合、IdManagement は、`target_not_found` で `rejected` とし、User を作らない。
 - 前の行と同じ `id` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_target` で `rejected` にし、前の行を計画に残す。
 - 前の行と同じ `preferred_username` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_username` で `rejected` にし、前の行を計画に残す。
+- 行の対象でない、同じテナントの削除されていない User と[メールアドレス](../README.md#値オブジェクト)が同じ `email` の行を読んだ場合、IdManagement は、その行を `email_taken` で `rejected` にする。
+- 前の行とメールアドレスが同じ `email` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_email` で `rejected` にし、前の行を計画に残す。
 
 #### REQ-IDMANAGEMENT-057 User の CSV の組み込み列は、決まった字句形のセルだけを受け付ける
 

@@ -510,7 +510,7 @@ func ensureAgentNameAvailable(ctx context.Context, deps AdminAgentDeps, tenantID
 		return err
 	}
 	for _, agent := range agents {
-		if agent.ID != excludeID && strings.EqualFold(agent.Name, name) {
+		if agent.ID != excludeID && idmdomain.NameKey(agent.Name) == idmdomain.NameKey(name) {
 			return ErrAgentNameConflict
 		}
 	}

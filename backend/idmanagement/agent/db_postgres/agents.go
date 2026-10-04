@@ -170,6 +170,7 @@ func (r *AgentRepository) Save(ctx context.Context, agent *agentdomain.Agent) er
 		ID:          agent.ID,
 		TenantID:    agent.TenantID,
 		Name:        agent.Name,
+		NameKey:     idmdomain.NameKey(agent.Name),
 		Description: textOrNil(agent.Description),
 		Kind:        string(agent.Kind),
 		OwnerUserID: agent.OwnerUserID,

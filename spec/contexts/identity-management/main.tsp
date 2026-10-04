@@ -350,6 +350,7 @@ model CreateAdminUserError403 {
 
 union CreateAdminUserError409Body {
   IdMagic.Contract.UsernameConflictError,
+  IdMagic.Contract.EmailTakenError,
 }
 
 model CreateAdminUserError409 {
@@ -1631,6 +1632,7 @@ model UpdateAdminUserError403 {
 
 union UpdateAdminUserError409Body {
   IdMagic.Contract.UsernameConflictError,
+  IdMagic.Contract.EmailTakenError,
 }
 
 model UpdateAdminUserError409 {

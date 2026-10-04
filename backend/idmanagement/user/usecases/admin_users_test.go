@@ -221,7 +221,7 @@ func TestProvisionFederatedUserRejectsWithoutCreatingTheUser(t *testing.T) {
 			input: userusecases.ProvisionFederatedUserInput{
 				PreferredUsername: "second", Email: &takenEmail, Now: now,
 			},
-			wantErr: userusecases.ErrEmailConflict,
+			wantErr: userusecases.ErrEmailTaken,
 		},
 		{
 			name:      "リソース上限を超える",

@@ -32,6 +32,7 @@ type Group struct {
 	MembershipType string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	NameKey        string
 }
 
 type TenantGroupAttributeSchema struct {

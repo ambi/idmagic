@@ -18,20 +18,22 @@ type TenantUserAttributeSchema struct {
 }
 
 type User struct {
-	ID                string
-	TenantID          string
-	PreferredUsername string
-	PasswordHash      string
-	Name              pgtype.Text
-	GivenName         pgtype.Text
-	FamilyName        pgtype.Text
-	Email             pgtype.Text
-	EmailVerified     bool
-	MfaEnrolled       bool
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	Roles             []byte
-	Lifecycle         []byte
-	Attributes        []byte
-	SearchText        pgtype.Text
+	ID                   string
+	TenantID             string
+	PreferredUsername    string
+	PasswordHash         string
+	Name                 pgtype.Text
+	GivenName            pgtype.Text
+	FamilyName           pgtype.Text
+	Email                pgtype.Text
+	EmailVerified        bool
+	MfaEnrolled          bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	Roles                []byte
+	Lifecycle            []byte
+	Attributes           []byte
+	SearchText           pgtype.Text
+	PreferredUsernameKey string
+	EmailKey             pgtype.Text
 }

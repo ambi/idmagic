@@ -497,7 +497,7 @@ func ensureGroupNameAvailable(ctx context.Context, deps AdminGroupDeps, tenantID
 		return err
 	}
 	for _, group := range groups {
-		if group.ID != excludeID && strings.EqualFold(group.Name, name) {
+		if group.ID != excludeID && idmdomain.NameKey(group.Name) == idmdomain.NameKey(name) {
 			return ErrGroupNameConflict
 		}
 	}

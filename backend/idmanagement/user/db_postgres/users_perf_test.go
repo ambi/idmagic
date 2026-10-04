@@ -19,8 +19,8 @@ func TestUserSearchQueryPlanUsesTenantAndTrigramIndex(t *testing.T) {
 	ctx := context.Background()
 	batch := &pgx.Batch{}
 	const insert = `INSERT INTO users
-		(id, tenant_id, preferred_username, password_hash, name, email, roles)
-		VALUES ($1, $2, $3, 'hash', $4, $5, $6)`
+		(id, tenant_id, preferred_username, preferred_username_key, password_hash, name, email, email_key, roles)
+		VALUES ($1, $2, $3, $3, 'hash', $4, $5, $5, $6)`
 	const userCount = 15000
 	for i := range userCount {
 		username := fmt.Sprintf("user-%04d", i)

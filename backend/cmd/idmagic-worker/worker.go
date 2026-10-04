@@ -116,6 +116,9 @@ func RunWorker() error {
 		Apply: userusecases.UserImportApplyDeps{
 			Plan: importPlanDeps, Committer: deps.IdManagement.UserImportCommitter,
 			PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+			DynamicGroups: groupusecases.DynamicGroupDeps{
+				GroupRepo: deps.IdManagement.GroupRepo, UserRepo: deps.IdManagement.UserRepo, SchemaRepo: deps.Tenancy.AttrSchemaRepo,
+			},
 		},
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}

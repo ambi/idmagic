@@ -47,6 +47,7 @@ func assertPostgresImport(t *testing.T, db sharedpg.DB, mutation userports.UserI
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-042: PostgreSQL のリポジトリが、ユーザー名とメールアドレスを比較キーの列で引き、大文字と小文字だけが異なるユーザー名の二人目の User の保存を一意索引で拒否すること。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, newContractFixture)
 }

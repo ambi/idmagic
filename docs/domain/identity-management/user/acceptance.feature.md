@@ -1,6 +1,20 @@
 # Feature: ユーザーの例
 
-## Rule: REQ-IDMANAGEMENT-042 管理者による User の作成は、ユーザー名の一意性とパスワードポリシーを検証し、`Active` の User を作る
+## Rule: REQ-IDMANAGEMENT-089 User の作成は、経路によらず名前とメールアドレスの一意性を守り、作った User を動的グループの規則で評価する
+
+### Example: EX-IDMANAGEMENT-089-01 大文字と小文字だけが異なるメールアドレス
+
+- Given テナントにメールアドレス "alice@example.test" の User がいる
+- When Authentication Context がメールアドレス "ALICE@example.test" で ProvisionFederatedUser を呼ぶ
+- Then User は作られず、メールアドレスの衝突として拒否される
+
+### Example: EX-IDMANAGEMENT-089-02 規則に一致する属性を持つ JIT の User
+
+- Given 有効な動的グループの規則は `user.department == "Engineering"` である
+- When Authentication Context が `department` を "Engineering" とする User を ProvisionFederatedUser で作る
+- Then 作成した User は、その動的グループに所属する
+
+## Rule: REQ-IDMANAGEMENT-042 管理者による User の作成は、ユーザー名とメールアドレスの一意性とパスワードポリシーを検証し、`Active` の User を作る
 
 ### Example: EX-IDMANAGEMENT-042-01 前後に空白を含むユーザー名
 
@@ -11,21 +25,7 @@
 
 - Given テナントにユーザー名 "alice" の User がいる
 - When 管理者がユーザー名 "Alice" の User を作成する
-- Then 作成は成功し、二つの User が並ぶ
-
-## Rule: REQ-IDMANAGEMENT-043 フェデレーションの JIT が作る User は、ロールを持たず、メールアドレスの重複を拒否する
-
-### Example: EX-IDMANAGEMENT-043-01 大文字と小文字だけが異なるメールアドレス
-
-- Given テナントにメールアドレス "alice@example.test" の User がいる
-- When Authentication Context がメールアドレス "ALICE@example.test" で ProvisionFederatedUser を呼ぶ
-- Then User は作られず、メールアドレスの衝突として拒否される
-
-### Example: EX-IDMANAGEMENT-043-03 規則に一致する属性を持つ JIT の User
-
-- Given 有効な動的グループの規則は `user.department == "Engineering"` である
-- When Authentication Context が `department` を "Engineering" とする User を ProvisionFederatedUser で作る
-- Then 作成した User は、その動的グループに所属しない
+- Then 作成は `username_conflict` で拒否され、User は増えない
 
 ## Rule: REQ-IDMANAGEMENT-005 管理者のユーザー一覧は、正確な件数とカーソルで、重複も欠落もなくページを返す
 

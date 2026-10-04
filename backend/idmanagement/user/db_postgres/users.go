@@ -92,7 +92,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(ctx context.Context, sub stri
 
 func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username string) (*userdomain.User, error) {
 	row, err := New(r.Pool).FindUserByUsername(ctx, FindUserByUsernameParams{
-		TenantID: tenantID, PreferredUsername: username,
+		TenantID: tenantID, PreferredUsernameKey: idmdomain.NameKey(username),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -104,8 +104,12 @@ func (r *UserRepository) FindByUsername(ctx context.Context, tenantID, username 
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, tenantID, email string) (*userdomain.User, error) {
+	key := idmdomain.EmailKey(email)
+	if key == "" {
+		return nil, nil
+	}
 	row, err := New(r.Pool).FindUserByEmail(ctx, FindUserByEmailParams{
-		TenantID: tenantID, Lower: email,
+		TenantID: tenantID, EmailKey: pgtype.Text{String: key, Valid: true},
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -314,5 +318,15 @@ func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {
 		Attributes:        attributes,
 		CreatedAt:         u.CreatedAt,
 		UpdatedAt:         u.UpdatedAt,
+		// 一意索引と検索が使う比較キーは、アプリケーションの判定と同じ関数で作る。
+		PreferredUsernameKey: idmdomain.NameKey(u.PreferredUsername),
+		EmailKey:             emailKeyOrNil(u.Email),
 	})
+}
+
+func emailKeyOrNil(email *string) pgtype.Text {
+	if email == nil || idmdomain.EmailKey(*email) == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: idmdomain.EmailKey(*email), Valid: true}
 }

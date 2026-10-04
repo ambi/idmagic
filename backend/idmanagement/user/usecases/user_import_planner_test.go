@@ -115,6 +115,52 @@ func TestPlanUserImportCreateUpdateUnchangedAndFieldPresence(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-056: 計画器がユーザー名を大文字と小文字を区別せずに照合して重複を判定し、行の対象でない User と同じメールアドレスの行を email_taken、前の行と同じメールアドレスの行を duplicate_email で rejected にすること。
+func TestPlanUserImportRejectsDuplicateEmails(t *testing.T) {
+	repo := usermemory.NewUserRepository()
+	repo.Seed(importPlannerUser("user-alice", "alice"))
+	repo.Seed(importPlannerUser("user-bob", "bob"))
+	csv := "preferred_username,email\n" +
+		"carol,ALICE@example.com\n" + // ほかの User のメールアドレス
+		"dave,dave@example.com\n" +
+		"erin,Dave@Example.com\n" + // 前の行のメールアドレス
+		"alice,Alice@Example.com\n" + // 自分のメールアドレスの表記だけを変える
+		"Bob,bob@example.com\n" + // 既存の bob を大文字と小文字を区別せずに対象にする
+		"DAVE,dave2@example.com\n" // 前の行のユーザー名
+
+	plan, err := planUserImportForTest(importPlannerContext(), importPlannerDeps(repo, perUserImportOwnershipGuard{}), csv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []struct {
+		action userdomain.UserImportAction
+		code   idmdomain.CSVErrorCode
+	}{
+		{userdomain.UserImportRejected, "email_taken"},
+		{userdomain.UserImportCreate, ""},
+		{userdomain.UserImportRejected, "duplicate_email"},
+		{userdomain.UserImportUpdate, ""},
+		{userdomain.UserImportUpdate, ""},
+		{userdomain.UserImportRejected, "duplicate_username"},
+	}
+	if len(plan.Rows) != len(want) {
+		t.Fatalf("rows=%+v", plan.Rows)
+	}
+	for i, w := range want {
+		row := plan.Rows[i]
+		code := idmdomain.CSVErrorCode("")
+		if row.Error != nil {
+			code = row.Error.Code
+		}
+		if row.Action != w.action || code != w.code {
+			t.Fatalf("row[%d] action=%s code=%q, want %s %q", i, row.Action, code, w.action, w.code)
+		}
+	}
+	if bob := plan.Rows[4]; bob.Before == nil || bob.Before.ID != "user-bob" || bob.User.PreferredUsername != "Bob" {
+		t.Fatalf("Bob row=%+v, want an update of user-bob to the new spelling", bob)
+	}
+}
+
 // 004-04 が並べる識別子の誤りのうち、食い違いと欠落をここが持つ。重複は
 // TestPlanUserImportRefusesDuplicateTargetsAndFinalUsernames が持つ。
 //

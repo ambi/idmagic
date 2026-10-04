@@ -60,7 +60,7 @@ func TestUserCSVRejectsABuiltinAttributeUnderTheCustomPrefix(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-056-01, EX-IDMANAGEMENT-056-02: テナントにない id の行を作成にせず target_not_found とし、同じユーザー名の後の行を duplicate_username として前の行を残し、大文字と小文字だけが異なるユーザー名は別の行として扱うこと。
+//spec:covers EX-IDMANAGEMENT-056-01, EX-IDMANAGEMENT-056-02: テナントにない id の行を作成にせず target_not_found とし、同じユーザー名の後の行と、大文字と小文字だけが異なるユーザー名の後の行を duplicate_username として前の行を残すこと。
 func TestUserCSVResolvesByIDFirstAndKeepsTheEarlierDuplicate(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	plan, err := planUserImportForTest(importPlannerContext(), userCSVRulesDeps(repo, perUserImportOwnershipGuard{}),
@@ -68,7 +68,7 @@ func TestUserCSVResolvesByIDFirstAndKeepsTheEarlierDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"rejected:target_not_found", "created", "rejected:duplicate_username", "created"}
+	want := []string{"rejected:target_not_found", "created", "rejected:duplicate_username", "rejected:duplicate_username"}
 	if got := rowCodes(plan); !slices.Equal(got, want) {
 		t.Fatalf("rows=%v, want %v", got, want)
 	}
@@ -110,7 +110,7 @@ func TestUserCSVEmptyNameCellClearsTheName(t *testing.T) {
 	repo.Seed(alice)
 	committer := &importRowCommitter{}
 	_, rows, err := applyUserImportForTest(importPlannerContext(), UserImportApplyDeps{
-		Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer, PasswordHasher: importTestHasher{},
+		Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer, PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
 	}, "id,name\nuser-alice,\n")
 	if err != nil {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestApplyUserImportCreatesAUserThatMustSetAPassword(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	committer := &importRowCommitter{}
 	if _, _, err := applyUserImportForTest(importPlannerContext(), UserImportApplyDeps{
-		Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer, PasswordHasher: importTestHasher{},
+		Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer, PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
 	}, "preferred_username\ndave\n"); err != nil {
 		t.Fatal(err)
 	}

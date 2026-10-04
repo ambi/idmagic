@@ -95,9 +95,9 @@
 - When 管理者が `id` だけを持つ行の `id` に存在しない値を書いて事前検証へ投入する
 - Then 行は `target_not_found` で `rejected` となり、作成として計画されない
 
-### Example: EX-IDMANAGEMENT-056-02 同じユーザー名の二つの行
+### Example: EX-IDMANAGEMENT-056-02 大文字と小文字だけが異なるユーザー名の二つの行
 
-- When 管理者が 2 行目と 3 行目にユーザー名 "dave" を書いて事前検証へ投入する
+- When 管理者が 2 行目にユーザー名 "dave"、3 行目にユーザー名 "Dave" を書いて事前検証へ投入する
 - Then 2 行目は作成として計画され、3 行目は `duplicate_username` で `rejected` となる
 
 ## Rule: REQ-IDMANAGEMENT-057 User の CSV の組み込み列は、決まった字句形のセルだけを受け付ける

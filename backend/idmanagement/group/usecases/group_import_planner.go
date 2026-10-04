@@ -144,7 +144,7 @@ func loadGroupImportIndex(ctx context.Context, deps GroupImportPlanDeps, tenantI
 
 // groupNameKey は name の一意性判定のキー。Group の名前一意性は大文字小文字を
 // 区別しない (ensureGroupNameAvailable) ため、CSV の解決も同じ規則に従う。
-func groupNameKey(name string) string { return strings.ToLower(strings.TrimSpace(name)) }
+func groupNameKey(name string) string { return idmdomain.NameKey(name) }
 
 // PlanGroupImport は 1 個の決定的な計画器で行を流す。emit は行計画とエラーを
 // 逐次書き出せる。返す要約は行数に依らず上限付きである。

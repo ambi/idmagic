@@ -69,7 +69,29 @@ func TestRegisterAgentDefaultsTheOwnerAndComparesNamesCaseInsensitively(t *testi
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-073-02: Active でない所有者と別のテナントの所有者の登録を agent_owner_not_found で拒否し、Agent も使用量も増やさないこと。
+//spec:covers REQ-IDMANAGEMENT-073, REQ-IDMANAGEMENT-075: 登録と更新が、case folding で一致する名前をほかの Agent と同じ名前として agent_name_conflict で拒否し、自分の名前の表記だけを変える更新を受け付けること。
+func TestAgentNamesConflictUnderCaseFolding(t *testing.T) {
+	deps, _ := newAgentDeps(t)
+	ctx := defaultTenantCtx()
+	registerAgent(t, deps, "straße-bot")
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "STRASSE-BOT", Kind: idmdomain.AgentKindAutonomous, Now: agentRulesNow,
+	}); !errors.Is(err, agentusecases.ErrAgentNameConflict) {
+		t.Fatalf("register: err=%v, want ErrAgentNameConflict", err)
+	}
+	other := registerAgent(t, deps, "deploy-bot")
+	taken := "Strasse-Bot"
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{ActorUserID: "operator", ID: other, Name: &taken, Now: agentRulesNow}); !errors.Is(err, agentusecases.ErrAgentNameConflict) {
+		t.Fatalf("update: err=%v, want ErrAgentNameConflict", err)
+	}
+	recased := "Deploy-Bot"
+	updated, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{ActorUserID: "operator", ID: other, Name: &recased, Now: agentRulesNow})
+	if err != nil || updated.Name != "Deploy-Bot" {
+		t.Fatalf("agent=%+v err=%v, want the new spelling", updated, err)
+	}
+}
+
+//spec:covers EX-IDMANAGEMENT-073-02:Active でない所有者と別のテナントの所有者の登録を agent_owner_not_found で拒否し、Agent も使用量も増やさないこと。
 func TestRegisterAgentRequiresAnActiveOwnerInTheTenant(t *testing.T) {
 	deps, _ := newAgentDeps(t)
 	users := deps.UserRepo.(*usermemory.UserRepository)

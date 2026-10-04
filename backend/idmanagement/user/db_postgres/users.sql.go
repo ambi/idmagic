@@ -46,18 +46,18 @@ func (q *Queries) CountUsersByTenantFiltered(ctx context.Context, arg CountUsers
 
 const findUserByEmail = `-- name: FindUserByEmail :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
-WHERE tenant_id=$1 AND lower(email)=lower($2) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
+WHERE tenant_id=$1 AND email_key=$2 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 LIMIT 1
 `
 
 type FindUserByEmailParams struct {
 	TenantID string
-	Lower    string
+	EmailKey pgtype.Text
 }
 
 func (q *Queries) FindUserByEmail(ctx context.Context, arg FindUserByEmailParams) (*User, error) {
-	row := q.db.QueryRow(ctx, findUserByEmail, arg.TenantID, arg.Lower)
+	row := q.db.QueryRow(ctx, findUserByEmail, arg.TenantID, arg.EmailKey)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -76,13 +76,15 @@ func (q *Queries) FindUserByEmail(ctx context.Context, arg FindUserByEmailParams
 		&i.Lifecycle,
 		&i.Attributes,
 		&i.SearchText,
+		&i.PreferredUsernameKey,
+		&i.EmailKey,
 	)
 	return &i, err
 }
 
 const findUserBySub = `-- name: FindUserBySub :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 `
 
@@ -106,13 +108,15 @@ func (q *Queries) FindUserBySub(ctx context.Context, id string) (*User, error) {
 		&i.Lifecycle,
 		&i.Attributes,
 		&i.SearchText,
+		&i.PreferredUsernameKey,
+		&i.EmailKey,
 	)
 	return &i, err
 }
 
 const findUserBySubIncludingDeleted = `-- name: FindUserBySubIncludingDeleted :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE id=$1
 `
 
@@ -136,23 +140,25 @@ func (q *Queries) FindUserBySubIncludingDeleted(ctx context.Context, id string) 
 		&i.Lifecycle,
 		&i.Attributes,
 		&i.SearchText,
+		&i.PreferredUsernameKey,
+		&i.EmailKey,
 	)
 	return &i, err
 }
 
 const findUserByUsername = `-- name: FindUserByUsername :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
-WHERE tenant_id=$1 AND preferred_username=$2 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
+WHERE tenant_id=$1 AND preferred_username_key=$2 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 `
 
 type FindUserByUsernameParams struct {
-	TenantID          string
-	PreferredUsername string
+	TenantID             string
+	PreferredUsernameKey string
 }
 
 func (q *Queries) FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error) {
-	row := q.db.QueryRow(ctx, findUserByUsername, arg.TenantID, arg.PreferredUsername)
+	row := q.db.QueryRow(ctx, findUserByUsername, arg.TenantID, arg.PreferredUsernameKey)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -171,13 +177,15 @@ func (q *Queries) FindUserByUsername(ctx context.Context, arg FindUserByUsername
 		&i.Lifecycle,
 		&i.Attributes,
 		&i.SearchText,
+		&i.PreferredUsernameKey,
+		&i.EmailKey,
 	)
 	return &i, err
 }
 
 const listUsersByTenant = `-- name: ListUsersByTenant :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 ORDER BY preferred_username
 `
@@ -208,6 +216,8 @@ func (q *Queries) ListUsersByTenant(ctx context.Context, tenantID string) ([]*Us
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -221,7 +231,7 @@ func (q *Queries) ListUsersByTenant(ctx context.Context, tenantID string) ([]*Us
 
 const listUsersByTenantPage = `-- name: ListUsersByTenantPage :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 ORDER BY preferred_username, id
 LIMIT $2
@@ -261,6 +271,8 @@ func (q *Queries) ListUsersByTenantPage(ctx context.Context, arg ListUsersByTena
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -274,7 +286,7 @@ func (q *Queries) ListUsersByTenantPage(ctx context.Context, arg ListUsersByTena
 
 const listUsersByTenantPageAfter = `-- name: ListUsersByTenantPageAfter :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (preferred_username, id) > ($2::text, $3::uuid)
 ORDER BY preferred_username, id
@@ -321,6 +333,8 @@ func (q *Queries) ListUsersByTenantPageAfter(ctx context.Context, arg ListUsersB
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -334,7 +348,7 @@ func (q *Queries) ListUsersByTenantPageAfter(ctx context.Context, arg ListUsersB
 
 const listUsersByTenantPageAfterFiltered = `-- name: ListUsersByTenantPageAfterFiltered :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
   AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
@@ -385,6 +399,8 @@ func (q *Queries) ListUsersByTenantPageAfterFiltered(ctx context.Context, arg Li
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -398,7 +414,7 @@ func (q *Queries) ListUsersByTenantPageAfterFiltered(ctx context.Context, arg Li
 
 const listUsersByTenantPageBefore = `-- name: ListUsersByTenantPageBefore :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (preferred_username, id) < ($2::text, $3::uuid)
 ORDER BY preferred_username DESC, id DESC
@@ -443,6 +459,8 @@ func (q *Queries) ListUsersByTenantPageBefore(ctx context.Context, arg ListUsers
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -456,7 +474,7 @@ func (q *Queries) ListUsersByTenantPageBefore(ctx context.Context, arg ListUsers
 
 const listUsersByTenantPageBeforeFiltered = `-- name: ListUsersByTenantPageBeforeFiltered :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
   AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
@@ -507,6 +525,8 @@ func (q *Queries) ListUsersByTenantPageBeforeFiltered(ctx context.Context, arg L
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -520,7 +540,7 @@ func (q *Queries) ListUsersByTenantPageBeforeFiltered(ctx context.Context, arg L
 
 const listUsersByTenantPageEnd = `-- name: ListUsersByTenantPageEnd :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 ORDER BY preferred_username DESC, id DESC
 LIMIT $2
@@ -557,6 +577,8 @@ func (q *Queries) ListUsersByTenantPageEnd(ctx context.Context, arg ListUsersByT
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -570,7 +592,7 @@ func (q *Queries) ListUsersByTenantPageEnd(ctx context.Context, arg ListUsersByT
 
 const listUsersByTenantPageEndFiltered = `-- name: ListUsersByTenantPageEndFiltered :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
   AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
@@ -616,6 +638,8 @@ func (q *Queries) ListUsersByTenantPageEndFiltered(ctx context.Context, arg List
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -629,7 +653,7 @@ func (q *Queries) ListUsersByTenantPageEndFiltered(ctx context.Context, arg List
 
 const listUsersByTenantPageFiltered = `-- name: ListUsersByTenantPageFiltered :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
   AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
@@ -675,6 +699,8 @@ func (q *Queries) ListUsersByTenantPageFiltered(ctx context.Context, arg ListUse
 			&i.Lifecycle,
 			&i.Attributes,
 			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
 		); err != nil {
 			return nil, err
 		}
@@ -688,9 +714,10 @@ func (q *Queries) ListUsersByTenantPageFiltered(ctx context.Context, arg ListUse
 
 const saveUser = `-- name: SaveUser :exec
 INSERT INTO users (id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
- email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+ email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,preferred_username_key,email_key)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 ON CONFLICT (id) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
+ preferred_username_key=EXCLUDED.preferred_username_key,email_key=EXCLUDED.email_key,
  password_hash=EXCLUDED.password_hash,name=EXCLUDED.name,given_name=EXCLUDED.given_name,
  family_name=EXCLUDED.family_name,email=EXCLUDED.email,email_verified=EXCLUDED.email_verified,
  mfa_enrolled=EXCLUDED.mfa_enrolled,roles=EXCLUDED.roles,lifecycle=EXCLUDED.lifecycle,
@@ -698,21 +725,23 @@ ON CONFLICT (id) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
 `
 
 type SaveUserParams struct {
-	ID                string
-	TenantID          string
-	PreferredUsername string
-	PasswordHash      string
-	Name              pgtype.Text
-	GivenName         pgtype.Text
-	FamilyName        pgtype.Text
-	Email             pgtype.Text
-	EmailVerified     bool
-	MfaEnrolled       bool
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	Roles             []byte
-	Lifecycle         []byte
-	Attributes        []byte
+	ID                   string
+	TenantID             string
+	PreferredUsername    string
+	PasswordHash         string
+	Name                 pgtype.Text
+	GivenName            pgtype.Text
+	FamilyName           pgtype.Text
+	Email                pgtype.Text
+	EmailVerified        bool
+	MfaEnrolled          bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	Roles                []byte
+	Lifecycle            []byte
+	Attributes           []byte
+	PreferredUsernameKey string
+	EmailKey             pgtype.Text
 }
 
 func (q *Queries) SaveUser(ctx context.Context, arg SaveUserParams) error {
@@ -732,6 +761,8 @@ func (q *Queries) SaveUser(ctx context.Context, arg SaveUserParams) error {
 		arg.Roles,
 		arg.Lifecycle,
 		arg.Attributes,
+		arg.PreferredUsernameKey,
+		arg.EmailKey,
 	)
 	return err
 }

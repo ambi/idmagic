@@ -143,11 +143,12 @@ func ValidateUserCSVTargets(rows []idmdomain.CSVRow) []idmdomain.CSVError {
 			seenIDs[identifier.ID] = struct{}{}
 		}
 		if identifier.PreferredUsername != "" {
-			if _, duplicate := seenUsernames[identifier.PreferredUsername]; duplicate {
+			key := idmdomain.NameKey(identifier.PreferredUsername)
+			if _, duplicate := seenUsernames[key]; duplicate {
 				out = append(out, idmdomain.CSVError{Row: row.Number, Column: "preferred_username", Code: "duplicate_username"})
 				continue
 			}
-			seenUsernames[identifier.PreferredUsername] = struct{}{}
+			seenUsernames[key] = struct{}{}
 		}
 	}
 	return out

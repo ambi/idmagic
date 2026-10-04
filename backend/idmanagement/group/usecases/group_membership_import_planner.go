@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"strings"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -300,7 +299,7 @@ func resolveGroupMembershipTargetUser(
 		if user == nil {
 			return nil, "user_id", "target_not_found"
 		}
-		if identifier.PreferredUsername != "" && !strings.EqualFold(user.PreferredUsername, identifier.PreferredUsername) {
+		if identifier.PreferredUsername != "" && idmdomain.NameKey(user.PreferredUsername) != idmdomain.NameKey(identifier.PreferredUsername) {
 			named := index.usersByUsername[identifier.PreferredUsername]
 			if named == nil || named.ID != user.ID {
 				return nil, "preferred_username", "identifier_mismatch"

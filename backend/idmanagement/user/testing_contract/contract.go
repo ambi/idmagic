@@ -149,6 +149,39 @@ func runUserRepository(t *testing.T, newFixture NewFixture) {
 			t.Fatal("second Save accepted a duplicate preferred_username")
 		}
 	})
+
+	// ユーザー名とメールアドレスは比較キーで引き、ユーザー名の一意性も比較キーで守る
+	// (REQ-IDMANAGEMENT-042)。表記は入力のまま保存する。
+	t.Run("names and emails compare by their case-folded keys", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		stored := user(t, f.TenantA, "Straße", f.Now)
+		mixedEmail := "Straße@Example.com"
+		stored.Email = &mixedEmail
+		if err := f.Users.Save(ctx, stored); err != nil {
+			t.Fatalf("first Save: %v", err)
+		}
+		if got, err := f.Users.FindByUsername(ctx, f.TenantA, " STRASSE "); err != nil || got == nil || got.ID != stored.ID || got.PreferredUsername != "Straße" {
+			t.Fatalf("FindByUsername(STRASSE) = (%+v, %v), want the stored user with its own spelling", got, err)
+		}
+		if got, err := f.Users.FindByEmail(ctx, f.TenantA, "strasse@example.COM"); err != nil || got == nil || got.ID != stored.ID {
+			t.Fatalf("FindByEmail = (%+v, %v), want the stored user", got, err)
+		}
+		if got, err := f.Users.FindByEmail(ctx, f.TenantA, "  "); err != nil || got != nil {
+			t.Fatalf("FindByEmail(blank) = (%+v, %v), want (nil, nil)", got, err)
+		}
+		if err := f.Users.Save(ctx, user(t, f.TenantA, "strasse", f.Now)); err == nil {
+			t.Fatal("Save accepted a username that differs only by case folding")
+		}
+		renamed := *stored
+		renamed.PreferredUsername = "STRASSE"
+		if err := f.Users.Save(ctx, &renamed); err != nil {
+			t.Fatalf("Save of the same user under a new spelling: %v", err)
+		}
+		if got, err := f.Users.FindByUsername(ctx, f.TenantA, "straße"); err != nil || got == nil || got.PreferredUsername != "STRASSE" {
+			t.Fatalf("FindByUsername after rename = (%+v, %v), want STRASSE", got, err)
+		}
+	})
 }
 
 func envelope(t *testing.T, subject, email string, now time.Time) actiontoken.Envelope {

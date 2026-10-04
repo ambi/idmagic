@@ -24,8 +24,10 @@ type UserImportPlanDeps struct {
 }
 
 type userImportIndex struct {
-	byID                 map[string]*userdomain.User
+	byID map[string]*userdomain.User
+	// byUsername と byEmail は、名前とメールアドレスの比較キーで User を引く。
 	byUsername           map[string]*userdomain.User
+	byEmail              map[string]*userdomain.User
 	sourceManaged        map[string]bool
 	ownershipUnavailable bool
 }
@@ -41,6 +43,7 @@ func loadUserImportIndex(ctx context.Context, deps UserImportPlanDeps, tenantID 
 	index := userImportIndex{
 		byID:          map[string]*userdomain.User{},
 		byUsername:    map[string]*userdomain.User{},
+		byEmail:       map[string]*userdomain.User{},
 		sourceManaged: map[string]bool{},
 	}
 	afterUsername, afterID := "", ""
@@ -58,7 +61,10 @@ func loadUserImportIndex(ctx context.Context, deps UserImportPlanDeps, tenantID 
 				continue
 			}
 			index.byID[user.ID] = user
-			index.byUsername[user.PreferredUsername] = user
+			index.byUsername[idmdomain.NameKey(user.PreferredUsername)] = user
+			if user.Email != nil && idmdomain.EmailKey(*user.Email) != "" {
+				index.byEmail[idmdomain.EmailKey(*user.Email)] = user
+			}
 			ids = append(ids, user.ID)
 		}
 		if deps.OwnershipGuard == nil {
@@ -115,7 +121,7 @@ func PlanUserImport(
 		return summary, err
 	}
 	seenIDs := map[string]struct{}{}
-	seenUsernames := map[string]struct{}{}
+	seenUsernames, seenEmails := map[string]struct{}{}, map[string]struct{}{}
 	for {
 		record, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -128,7 +134,7 @@ func PlanUserImport(
 		if record.Error != nil {
 			planned = rejectedUserImportRow(record.Error.Row, record.Error.Column, record.Error.Code)
 		} else {
-			planned = planUserImportRow(*record.Row, schema, defs, index, tenantID, seenIDs, seenUsernames)
+			planned = planUserImportRow(*record.Row, schema, defs, index, tenantID, seenIDs, seenUsernames, seenEmails)
 		}
 		summary.Observe(planned)
 		if emit != nil {
@@ -152,7 +158,7 @@ func planUserImportRow(
 	defs []userdomain.UserAttributeDef,
 	index userImportIndex,
 	tenantID string,
-	seenIDs, seenUsernames map[string]struct{},
+	seenIDs, seenUsernames, seenEmails map[string]struct{},
 ) userdomain.UserImportRowPlan {
 	identifier, code := userdomain.UserCSVIdentifierOf(row)
 	if code != "" {
@@ -165,10 +171,11 @@ func planUserImportRow(
 		seenIDs[identifier.ID] = struct{}{}
 	}
 	if identifier.PreferredUsername != "" {
-		if _, duplicate := seenUsernames[identifier.PreferredUsername]; duplicate {
+		key := idmdomain.NameKey(identifier.PreferredUsername)
+		if _, duplicate := seenUsernames[key]; duplicate {
 			return rejectedUserImportRow(row.Number, "preferred_username", "duplicate_username")
 		}
-		seenUsernames[identifier.PreferredUsername] = struct{}{}
+		seenUsernames[key] = struct{}{}
 	}
 
 	existing, resolveCode := resolveUserImportTarget(identifier, index)
@@ -182,6 +189,9 @@ func planUserImportRow(
 	column, applyCode := applyUserImportCells(&candidate, row, schema, defs)
 	if applyCode != "" {
 		return rejectedUserImportRow(row.Number, column, applyCode)
+	}
+	if emailCode := claimImportEmail(candidate.Email, existing, index, seenEmails); emailCode != "" {
+		return rejectedUserImportRow(row.Number, "email", emailCode)
 	}
 	if existing == nil {
 		candidate.ID = ""
@@ -204,13 +214,30 @@ func resolveUserImportTarget(identifier userdomain.UserCSVIdentifier, index user
 			return nil, "target_not_found"
 		}
 		if identifier.PreferredUsername != "" {
-			if named := index.byUsername[identifier.PreferredUsername]; named != nil && named.ID != user.ID {
+			if named := index.byUsername[idmdomain.NameKey(identifier.PreferredUsername)]; named != nil && named.ID != user.ID {
 				return nil, "identifier_mismatch"
 			}
 		}
 		return user, ""
 	}
-	return index.byUsername[identifier.PreferredUsername], ""
+	return index.byUsername[idmdomain.NameKey(identifier.PreferredUsername)], ""
+}
+
+// claimImportEmail は、行の User のメールアドレスが、行の対象でない User と前の行のどちらとも
+// 比較キーで一致しないことを確かめ、一致しなければ以後の行のために記録する。
+func claimImportEmail(email *string, target *userdomain.User, index userImportIndex, seenEmails map[string]struct{}) idmdomain.CSVErrorCode {
+	if email == nil || idmdomain.EmailKey(*email) == "" {
+		return ""
+	}
+	key := idmdomain.EmailKey(*email)
+	if owner := index.byEmail[key]; owner != nil && (target == nil || owner.ID != target.ID) {
+		return "email_taken"
+	}
+	if _, duplicate := seenEmails[key]; duplicate {
+		return "duplicate_email"
+	}
+	seenEmails[key] = struct{}{}
+	return ""
 }
 
 func newUserImportCandidate(existing *userdomain.User, tenantID, username string) userdomain.User {

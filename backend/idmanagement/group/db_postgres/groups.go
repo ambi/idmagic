@@ -6,6 +6,7 @@ import (
 	"errors"
 	"slices"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -168,6 +169,7 @@ func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) er
 		ID:             group.ID,
 		TenantID:       group.TenantID,
 		Name:           group.Name,
+		NameKey:        idmdomain.NameKey(group.Name),
 		Description:    textOrNil(group.Description),
 		Email:          textOrNil(group.Email),
 		Attributes:     attributesJSON,

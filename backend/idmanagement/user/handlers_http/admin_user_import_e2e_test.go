@@ -13,6 +13,8 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
@@ -114,7 +116,10 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	}
 	jobDeps := userusecases.UserImportJobDeps{
 		Artifacts: artifacts, Jobs: jobRepo, Plan: planDeps,
-		Apply: userusecases.UserImportApplyDeps{Plan: planDeps, Committer: committer, PasswordHasher: hasher},
+		Apply: userusecases.UserImportApplyDeps{
+			Plan: planDeps, Committer: committer, PasswordHasher: hasher,
+			DynamicGroups: groupusecases.DynamicGroupDeps{GroupRepo: groupmemory.NewGroupRepository(), UserRepo: users},
+		},
 	}
 	jobResult := func(id string) userusecases.UserImportResult {
 		t.Helper()

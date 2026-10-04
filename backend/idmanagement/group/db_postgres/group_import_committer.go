@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -115,7 +116,7 @@ func saveGroupInTx(ctx context.Context, tx pgx.Tx, group *groupdomain.Group) err
 		return err
 	}
 	return New(tx).SaveGroup(ctx, SaveGroupParams{
-		ID: group.ID, TenantID: group.TenantID, Name: group.Name,
+		ID: group.ID, TenantID: group.TenantID, Name: group.Name, NameKey: idmdomain.NameKey(group.Name),
 		Description: textOrNil(group.Description), Email: textOrNil(group.Email),
 		Attributes: attributesJSON, Roles: rolesJSON,
 		MembershipType: string(group.MembershipType.Effective()),

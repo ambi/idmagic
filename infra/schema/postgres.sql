@@ -156,6 +156,10 @@ CREATE TABLE users (
         lower(preferred_username || ' ' || coalesce(name, '') || ' ' ||
               coalesce(email, '') || ' ' || id::text || ' ' || roles::text)
     ) STORED,
+    -- 比較キーは Go の idmdomain.NameKey と EmailKey が作る。lower() はロケールで結果が変わり、
+    -- アプリケーションの判定と食い違うので、一意性と検索はこの列で行う。
+    preferred_username_key TEXT NOT NULL,
+    email_key TEXT,
     CONSTRAINT users_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT users_tenant_id_unique UNIQUE (tenant_id, id),
@@ -169,9 +173,13 @@ CREATE TABLE users (
     CONSTRAINT users_email_length CHECK (email IS NULL OR char_length(email) <= 254)
 );
 
-CREATE UNIQUE INDEX users_preferred_username_active_idx
-    ON users (tenant_id, preferred_username)
-    WHERE lifecycle->>'status' <> 'deleted';
+CREATE UNIQUE INDEX users_preferred_username_key_active_idx
+    ON users (tenant_id, preferred_username_key)
+    WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
+
+CREATE INDEX users_email_key_active_idx
+    ON users (tenant_id, email_key)
+    WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
 -- Backs ListAdminUsers keyset pagination (wi-159): tenant_id equality +
 -- (preferred_username, id) range scan matching ListUsersByTenantPage/-PageAfter's
@@ -533,10 +541,12 @@ CREATE TABLE groups (
     membership_type TEXT NOT NULL DEFAULT 'manual' CHECK (membership_type IN ('manual','dynamic')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Go の idmdomain.NameKey が作る比較キー。
+    name_key TEXT NOT NULL,
     CONSTRAINT groups_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT groups_tenant_id_id_unique UNIQUE (tenant_id, id),
-    CONSTRAINT groups_tenant_name_key UNIQUE (tenant_id, name),
+    CONSTRAINT groups_tenant_name_key UNIQUE (tenant_id, name_key),
     CONSTRAINT groups_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
     CONSTRAINT groups_description_length
         CHECK (description IS NULL OR char_length(description) <= 500),
@@ -684,13 +694,15 @@ CREATE TABLE agents (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
     killed_at TIMESTAMPTZ,
+    -- Go の idmdomain.NameKey が作る比較キー。
+    name_key TEXT NOT NULL,
     CONSTRAINT agents_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT agents_owner_fkey
         FOREIGN KEY (owner_user_id)
         REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT agents_tenant_id_id_unique UNIQUE (tenant_id, id),
-    CONSTRAINT agents_tenant_name_key UNIQUE (tenant_id, name),
+    CONSTRAINT agents_tenant_name_key UNIQUE (tenant_id, name_key),
     CONSTRAINT agents_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
     CONSTRAINT agents_description_length
         CHECK (description IS NULL OR char_length(description) <= 500)

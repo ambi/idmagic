@@ -20,6 +20,8 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/db_postgres"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	grouppostgres "github.com/ambi/idmagic/backend/idmanagement/group/db_postgres"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -81,6 +83,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	}
 	result, err := userusecases.ApplyUserImport(tenancy.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
 		Plan: planDeps, Committer: userpostgres.UserImportRowCommitter{Pool: db}, PasswordHasher: testing_passwords.NewHasher(),
+		DynamicGroups: groupusecases.DynamicGroupDeps{GroupRepo: &grouppostgres.GroupRepository{Pool: db}, UserRepo: userRepo},
 	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), idmdomain.DefaultCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {
 		t.Fatalf("run user import apply: %v", err)

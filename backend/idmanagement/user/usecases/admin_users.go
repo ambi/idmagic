@@ -24,7 +24,6 @@ import (
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -138,13 +137,6 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 		return nil, errors.New("preferred username is required")
 	}
 	tenantID := tenancy.TenantID(ctx)
-	existing, err := deps.UserRepo.FindByUsername(ctx, tenantID, username)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil {
-		return nil, ErrUsernameConflict
-	}
 	// An admin-issued password goes through the same tenant-resolved policy as
 	// change-password and reset-password; otherwise a tenant that raised
 	// min_length would still get baseline-strength passwords from this path.
@@ -160,43 +152,18 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetUser, tenantID, nil, roles); err != nil {
 		return nil, err
 	}
-	now := idmusecases.NormalizedNow(in.Now)
-	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceUsers, now); err != nil {
-		return nil, err
-	}
 	passwordHash, err := deps.PasswordHasher.Hash(in.Password)
 	if err != nil {
 		return nil, err
 	}
-	id, err := spec.NewUUIDv4()
-	if err != nil {
-		return nil, err
-	}
-	user := &userdomain.User{
-		ID: id, TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
-		Name: in.Name, Email: in.Email, EmailVerified: in.EmailVerified, Roles: roles,
-		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
-		CreatedAt: now, UpdatedAt: now,
-	}
-	if err := user.Validate(); err != nil {
-		return nil, err
-	}
-	if err := captureUserMutation(ctx, deps, nil, user, nil, now); err != nil {
-		return nil, err
-	}
-	if deps.GroupRepo != nil {
-		if err := groupusecases.SyncDynamicGroupsForUser(ctx, groupusecases.DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, user, now); err != nil {
-			return nil, err
-		}
-	}
-	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, passwordHash, now); err != nil {
-		return nil, err
-	}
-	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserCreated{At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID}); err != nil {
-		return nil, err
-	}
-	notifyProvisioning(ctx, deps, user.TenantID, user.ID, userports.ProvisioningUserCreated, now)
-	return user, nil
+	return createUser(ctx, deps, newUser{
+		User: userdomain.User{
+			TenantID: tenantID, PreferredUsername: username, PasswordHash: passwordHash,
+			Name: in.Name, Email: normalizeEmail(in.Email), EmailVerified: in.EmailVerified, Roles: roles,
+		},
+		ActorUserID:         in.ActorUserID,
+		PasswordHistoryHash: passwordHash,
+	}, idmusecases.NormalizedNow(in.Now))
 }
 
 // captureUserMutation persists the mutated user and any governance side effects
@@ -244,12 +211,8 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 			return nil, errors.New("preferred username must not be empty")
 		}
 		if username != user.PreferredUsername {
-			existing, err := deps.UserRepo.FindByUsername(ctx, user.TenantID, username)
-			if err != nil {
+			if err := ensureUserIdentityAvailable(ctx, deps.UserRepo, user.TenantID, user.ID, username, nil); err != nil {
 				return nil, err
-			}
-			if existing != nil && existing.ID != user.ID {
-				return nil, ErrUsernameConflict
 			}
 			updated.PreferredUsername = username
 			changed = append(changed, "preferred_username")
@@ -279,6 +242,9 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 		changed = append(changed, changedAttributeFields(user.Attributes, updated.Attributes)...)
 	}
 	if in.Email != nil && !idmusecases.EqualOptionalString(user.Email, in.Email) {
+		if err := ensureUserIdentityAvailable(ctx, deps.UserRepo, user.TenantID, user.ID, "", in.Email); err != nil {
+			return nil, err
+		}
 		updated.Email = in.Email
 		changed = append(changed, "email")
 	}
@@ -312,10 +278,8 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 	if err := captureUserMutation(ctx, deps, user, &updated, changed, now); err != nil {
 		return nil, err
 	}
-	if deps.GroupRepo != nil {
-		if err := groupusecases.SyncDynamicGroupsForUser(ctx, groupusecases.DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
-			return nil, err
-		}
+	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {
+		return nil, err
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, ChangedFields: changed,
@@ -372,10 +336,8 @@ func SetUserDisabled(
 	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
 		return nil, err
 	}
-	if deps.GroupRepo != nil {
-		if err := groupusecases.SyncDynamicGroupsForUser(ctx, groupusecases.DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
-			return nil, err
-		}
+	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {
+		return nil, err
 	}
 	var emitErr error
 	trigger := userports.ProvisioningUserEnabled
@@ -678,10 +640,8 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
 		return err
 	}
-	if deps.GroupRepo != nil {
-		if err := groupusecases.SyncDynamicGroupsForUser(ctx, groupusecases.DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
-			return err
-		}
+	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {
+		return err
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserSoftDeleted{
 		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
@@ -720,10 +680,8 @@ func RestoreUser(
 	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
 		return nil, err
 	}
-	if deps.GroupRepo != nil {
-		if err := groupusecases.SyncDynamicGroupsForUser(ctx, groupusecases.DynamicGroupDeps{GroupRepo: deps.GroupRepo, UserRepo: deps.UserRepo, SchemaRepo: deps.AttrSchemaRepo}, &updated, now); err != nil {
-			return nil, err
-		}
+	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {
+		return nil, err
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserRestored{
 		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: updated.ID,

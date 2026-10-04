@@ -120,27 +120,27 @@ func pendingSince(at time.Time) func(*userdomain.User) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-042-01, EX-IDMANAGEMENT-042-02: 作成がユーザー名の前後の空白を除き、大文字と小文字だけが異なるユーザー名を別の User として受け付け、完全に同じユーザー名を username_conflict で拒否すること。
-func TestCreateUserTrimsTheUsernameAndComparesItCaseSensitively(t *testing.T) {
+//spec:covers EX-IDMANAGEMENT-042-01, EX-IDMANAGEMENT-042-02: 作成がユーザー名の前後の空白を除いて表記のまま保存し、大文字と小文字だけが異なるユーザー名を username_conflict で拒否して User を増やさないこと。
+func TestCreateUserTrimsTheUsernameAndComparesItCaseInsensitively(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
 	ctx := context.Background()
 	carol, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
-		ActorUserID: "admin", PreferredUsername: " carol ", Password: "initial-password-9182", Now: userRulesNow,
+		ActorUserID: "admin", PreferredUsername: " Carol ", Password: "initial-password-9182", Now: userRulesNow,
 	})
-	if err != nil || carol.PreferredUsername != "carol" {
-		t.Fatalf("user=%+v err=%v, want username carol", carol, err)
+	if err != nil || carol.PreferredUsername != "Carol" {
+		t.Fatalf("user=%+v err=%v, want username Carol", carol, err)
 	}
-	upper, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
-		ActorUserID: "admin", PreferredUsername: "Alice", Password: "initial-password-9182", Now: userRulesNow,
-	})
-	if err != nil || upper.ID == "alice" {
-		t.Fatalf("Alice: user=%+v err=%v, want a second user", upper, err)
+	for _, username := range []string{"alice", "Alice", " ALICE "} {
+		if _, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
+			ActorUserID: "admin", PreferredUsername: username, Password: "initial-password-9182", Now: userRulesNow,
+		}); !errors.Is(err, userusecases.ErrUsernameConflict) {
+			t.Fatalf("%q: err=%v, want ErrUsernameConflict", username, err)
+		}
 	}
-	if _, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
-		ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182", Now: userRulesNow,
-	}); !errors.Is(err, userusecases.ErrUsernameConflict) {
-		t.Fatalf("同じユーザー名: err=%v, want ErrUsernameConflict", err)
+	all, err := f.users.FindAll(ctx, tenancydomain.DefaultTenantID)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("users=%d err=%v, want alice and Carol only", len(all), err)
 	}
 }
 
@@ -162,19 +162,50 @@ func TestCreateUserAppliesTheTenantPasswordPolicy(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-IDMANAGEMENT-042: 管理者の作成がほかの User と同じメールアドレスを拒否しないこと。
-func TestCreateUserAcceptsAnEmailAnotherUserAlreadyHas(t *testing.T) {
+//spec:covers REQ-IDMANAGEMENT-042, REQ-IDMANAGEMENT-089: 管理者の作成が、ほかの User と大文字と小文字だけが異なるメールアドレスを拒否し、User も使用量も増やさないこと。
+func TestCreateUserRejectsAnEmailAnotherUserHas(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
-	email := "alice@example.test"
-	if _, err := userusecases.CreateUser(context.Background(), f.deps, userusecases.CreateUserInput{
+	ctx := context.Background()
+	email := " ALICE@example.test "
+	if _, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
 		ActorUserID: "admin", PreferredUsername: "carol", Password: "initial-password-9182", Email: &email, Now: userRulesNow,
-	}); err != nil {
-		t.Fatalf("err=%v, want accepted", err)
+	}); !errors.Is(err, userusecases.ErrEmailTaken) {
+		t.Fatalf("err=%v, want ErrEmailTaken", err)
+	}
+	if user, _ := f.users.FindByUsername(ctx, tenancydomain.DefaultTenantID, "carol"); user != nil {
+		t.Fatalf("拒否した作成が User を作った: %+v", user)
+	}
+	if usage, _ := f.quota.GetUsage(ctx, tenancydomain.DefaultTenantID); usage.Users != 0 {
+		t.Fatalf("usage=%d, want 0", usage.Users)
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-043-01, REQ-IDMANAGEMENT-043: JIT が大文字と小文字を区別せずにメールアドレスの衝突を拒否し、空白だけのメールアドレスを未設定として扱い、identity-broker を操作者とすること。
+//spec:covers REQ-IDMANAGEMENT-090: 管理者の更新が、自分のユーザー名の表記だけを変える更新を受け付け、ほかの User と名前またはメールアドレスが同じ値への更新を拒否して User を変えないこと。
+func TestUpdateUserRejectsAUsernameOrEmailAnotherUserHas(t *testing.T) {
+	f := newUserRulesFixture(t)
+	f.seed("alice", nil)
+	f.seed("bob", nil)
+	ctx := context.Background()
+	recased := "Bob"
+	updated, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{ActorUserID: "admin", Sub: "bob", PreferredUsername: &recased, Now: userRulesNow})
+	if err != nil || updated.PreferredUsername != "Bob" {
+		t.Fatalf("user=%+v err=%v, want username Bob", updated, err)
+	}
+	taken := "ALICE"
+	if _, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{ActorUserID: "admin", Sub: "bob", PreferredUsername: &taken, Now: userRulesNow}); !errors.Is(err, userusecases.ErrUsernameConflict) {
+		t.Fatalf("username: err=%v, want ErrUsernameConflict", err)
+	}
+	email := "Alice@Example.test"
+	if _, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{ActorUserID: "admin", Sub: "bob", Email: &email, Now: userRulesNow}); !errors.Is(err, userusecases.ErrEmailTaken) {
+		t.Fatalf("email: err=%v, want ErrEmailTaken", err)
+	}
+	if stored := f.stored(t, "bob"); stored.PreferredUsername != "Bob" || *stored.Email != "bob@example.test" {
+		t.Fatalf("stored=%+v, want the rejected updates not stored", stored)
+	}
+}
+
+//spec:covers EX-IDMANAGEMENT-089-01, REQ-IDMANAGEMENT-043: JIT が大文字と小文字を区別せずにメールアドレスの衝突を拒否し、空白だけのメールアドレスを未設定として扱い、identity-broker を操作者とすること。
 func TestProvisionFederatedUserNormalizesTheEmailAndRejectsACaseInsensitiveConflict(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
@@ -182,8 +213,8 @@ func TestProvisionFederatedUserNormalizesTheEmailAndRejectsACaseInsensitiveConfl
 	conflict := "ALICE@example.test"
 	if _, err := userusecases.ProvisionFederatedUser(ctx, f.deps, userusecases.ProvisionFederatedUserInput{
 		PreferredUsername: "alice-federated", Email: &conflict, Now: userRulesNow,
-	}); !errors.Is(err, userusecases.ErrEmailConflict) {
-		t.Fatalf("衝突: err=%v, want ErrEmailConflict", err)
+	}); !errors.Is(err, userusecases.ErrEmailTaken) {
+		t.Fatalf("衝突: err=%v, want ErrEmailTaken", err)
 	}
 	if user, _ := f.users.FindByUsername(ctx, tenancydomain.DefaultTenantID, "alice-federated"); user != nil {
 		t.Fatalf("衝突した JIT が User を作った: %+v", user)
@@ -201,42 +232,32 @@ func TestProvisionFederatedUserNormalizesTheEmailAndRejectsACaseInsensitiveConfl
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-043-03: JIT が作成の時点で動的グループの規則を評価せず、規則に一致する User も所属させないこと。
-func TestProvisionFederatedUserDoesNotEvaluateDynamicGroups(t *testing.T) {
+//spec:covers EX-IDMANAGEMENT-089-02: JIT が作った User を作成の時点で動的グループの規則で評価し、規則に一致する User だけを所属させること。
+func TestProvisionFederatedUserEvaluatesDynamicGroups(t *testing.T) {
 	f := newUserRulesFixture(t)
 	ctx := context.Background()
 	groups, schemas := dynamicDepartmentGroup(t)
 	f.deps.GroupRepo, f.deps.AttrSchemaRepo = groups, schemas
-	engineering := "Engineering"
-	user, err := userusecases.ProvisionFederatedUser(ctx, f.deps, userusecases.ProvisionFederatedUserInput{
+	engineering, sales := "Engineering", "Sales"
+	eve, err := userusecases.ProvisionFederatedUser(ctx, f.deps, userusecases.ProvisionFederatedUserInput{
 		PreferredUsername: "eve", Now: userRulesNow,
 		Attributes: map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &engineering}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := userusecases.ProvisionFederatedUser(ctx, f.deps, userusecases.ProvisionFederatedUserInput{
+		PreferredUsername: "sam", Now: userRulesNow,
+		Attributes: map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &sales}},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	members, err := groups.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, "dyn-eng")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(members) != 0 {
-		t.Fatalf("JIT の User %s が動的グループに所属した: %+v", user.ID, members)
-	}
-
-	// 対照: 管理者の作成は同じ属性の User を所属させる。
-	admin, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
-		ActorUserID: "admin", PreferredUsername: "frank", Password: "initial-password-9182", Now: userRulesNow,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	attrs := map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &engineering}}
-	if _, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{ActorUserID: "admin", Sub: admin.ID, Attributes: &attrs, Now: userRulesNow}); err != nil {
-		t.Fatal(err)
-	}
-	members, _ = groups.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, "dyn-eng")
-	if len(members) != 1 || members[0].UserID != admin.ID {
-		t.Fatalf("members=%+v, want the admin-created user only", members)
+	if len(members) != 1 || members[0].UserID != eve.ID {
+		t.Fatalf("members=%+v, want only the JIT user %s whose department matches", members, eve.ID)
 	}
 }
 

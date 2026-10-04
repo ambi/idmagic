@@ -86,15 +86,19 @@ enum AgentKind {
 model InvalidRoleError is ProblemDetails;
 
 
-@doc("The requested `preferred_username` is already used by a User in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:username_conflict`.")
+@doc("The requested `preferred_username` is already used by another User in the tenant. Names are compared after trimming and Unicode case folding, so a name differing only in letter case conflicts. RFC 9457 Problem Details with `type` = `urn:idmagic:error:username_conflict`.")
 model UsernameConflictError is ProblemDetails;
 
 
-@doc("The requested Group `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_name_conflict`.")
+@doc("The requested `email` is already used by another User in the tenant that is not deleted. Addresses are compared after trimming and Unicode case folding. RFC 9457 Problem Details with `type` = `urn:idmagic:error:email_taken`.")
+model EmailTakenError is ProblemDetails;
+
+
+@doc("The requested Group `name` is already used by another Group in the tenant. Names are compared after trimming and Unicode case folding. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_name_conflict`.")
 model GroupNameConflictError is ProblemDetails;
 
 
-@doc("The requested Agent `name` is already used in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_name_conflict`.")
+@doc("The requested Agent `name` is already used by another Agent in the tenant. Names are compared after trimming and Unicode case folding. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_name_conflict`.")
 model AgentNameConflictError is ProblemDetails;
 
 

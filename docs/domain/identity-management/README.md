@@ -27,6 +27,17 @@ Aggregate root は `User`、`Group`、`Agent` の三つである。
 境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
 `User` の実効ロールは、直接付与したロールと、所属する `Group` のロールの和集合である。
 
+### 値オブジェクト
+
+| 値 | 使う項目 | 正規化 | 比較 | 一意性の範囲 |
+| --- | --- | --- | --- | --- |
+| 名前 | `User` の `preferred_username`、`Group` の `name`、`Agent` の `name` | 前後の空白を除き、残りを入力された表記のまま保存し、表示する | Unicode の case folding をした値どうしで比較し、大文字と小文字を区別しない | 同じテナントの、削除されていない同じ種類の Aggregate |
+| メールアドレス | `User` の `email` | 前後の空白を除き、残りを表記のまま保存する。空になる値は設定しない | 名前と同じく、case folding をした値どうしで比較する | 同じテナントの削除されていない `User` |
+
+- **判断**：名前を大文字と小文字を区別せずに比較するのは、主要な IdP（Okta、Entra ID、Google Workspace、AWS IAM）と SCIM の `userName`（`caseExact: false`）に合わせるためである。表記を保つのは、Okta と Entra ID と同じく、利用者が入力した表記を表示するためである。
+- **判断**：比較には小文字への変換ではなく case folding（Unicode のデフォルトの caseless matching）を使う。小文字への変換では、`ß` と `SS`、語末の `ς` と `Σ` のように、大文字と小文字だけが異なる表記が一致しない。
+- **判断**：メールアドレスをテナントの中で一意にするのは、Google Workspace、Keycloak、Auth0 と同じく、メールアドレスで User を一人に決められるようにするためである。
+
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグが定める。

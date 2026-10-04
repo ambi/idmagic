@@ -36,14 +36,15 @@ func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	sharedmem.DefaultTenant(&u.TenantID)
-	usernameKey := sharedmem.TenantKey(u.TenantID, u.PreferredUsername)
+	usernameKey := sharedmem.TenantKey(u.TenantID, idmdomain.NameKey(u.PreferredUsername))
 	if conflicting := r.byUser[usernameKey]; conflicting != nil &&
 		conflicting.ID != u.ID && !conflicting.IsDeleted() {
 		return errPreferredUsernameExists
 	}
-	if existing := r.bySub[u.ID]; existing != nil &&
-		existing.PreferredUsername != u.PreferredUsername {
-		delete(r.byUser, sharedmem.TenantKey(existing.TenantID, existing.PreferredUsername))
+	if existing := r.bySub[u.ID]; existing != nil {
+		if previousKey := sharedmem.TenantKey(existing.TenantID, idmdomain.NameKey(existing.PreferredUsername)); previousKey != usernameKey {
+			delete(r.byUser, previousKey)
+		}
 	}
 	r.bySub[u.ID] = u
 	r.byUser[usernameKey] = u
@@ -69,7 +70,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(_ context.Context, sub string
 func (r *UserRepository) FindByUsername(_ context.Context, tenantID, username string) (*userdomain.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	user := r.byUser[sharedmem.TenantKey(tenantID, username)]
+	user := r.byUser[sharedmem.TenantKey(tenantID, idmdomain.NameKey(username))]
 	if user == nil || user.IsDeleted() {
 		return nil, nil
 	}
@@ -77,13 +78,16 @@ func (r *UserRepository) FindByUsername(_ context.Context, tenantID, username st
 }
 
 func (r *UserRepository) FindByEmail(_ context.Context, tenantID, email string) (*userdomain.User, error) {
+	if idmdomain.EmailKey(email) == "" {
+		return nil, nil
+	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, user := range r.bySub {
 		if user.IsDeleted() {
 			continue
 		}
-		if user.TenantID == tenantID && user.Email != nil && strings.EqualFold(*user.Email, email) {
+		if user.TenantID == tenantID && user.Email != nil && idmdomain.EmailKey(*user.Email) == idmdomain.EmailKey(email) {
 			return user, nil
 		}
 	}

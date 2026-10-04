@@ -49,9 +49,9 @@
 - **判断**：適用をプレビューのペイロードに束縛する理由は、[CSV の適用をプレビューで保存したペイロードに束縛する](../design/decisions.md#csv-の適用をプレビューで保存したペイロードに束縛する)。
 - **例**：EX-IDMANAGEMENT-026-01、EX-IDMANAGEMENT-026-11
 
-#### REQ-IDMANAGEMENT-072 Group の CSV は、名前を大文字と小文字を区別せずに照合し、連絡先をアドレスだけで受け付ける
+#### REQ-IDMANAGEMENT-072 Group の CSV は、名前を値オブジェクトの定義で照合し、連絡先をアドレスだけで受け付ける
 
-- `name` で対象を照合し、行の重複を判定するとき、IdManagement は、前後の空白を除き、大文字と小文字を区別しない。
+- `name` で対象を照合し、行の重複を判定するとき、IdManagement は、[名前](../README.md#値オブジェクト)の定義で比較する。
 - `email` のセルを読んだとき、IdManagement は、アドレスを小文字にして保存する。
 - `dynamic_rule_expression` のセルを読んだとき、IdManagement は、前後の空白を除いて読む。
 - 空の `dynamic_rule_enabled` のセルを読んだとき、IdManagement は、現在の有効か無効かを変えない。

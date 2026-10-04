@@ -9,6 +9,9 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -58,7 +61,7 @@ func TestApplyUserImportCommitsEachRowAtomicallyAndContinuesAfterFailure(t *test
 	deps := UserImportApplyDeps{
 		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
 		Committer:      committer,
-		PasswordHasher: importTestHasher{},
+		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
 	}
 	csv := "id,email,roles,required_actions,attr:department\n" +
 		"user-alice,new-alice@example.com,admin|support,verify_email,Engineering\n" +
@@ -116,7 +119,7 @@ func TestApplyUserImportCreateIncludesCredentialHistoryRequiredActionAndQuotaInO
 	deps := UserImportApplyDeps{
 		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
 		Committer:      committer,
-		PasswordHasher: importTestHasher{},
+		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
 	}
 
 	summary, rows, err := applyUserImportForTest(importPlannerContext(), deps, "preferred_username,email\nalice,alice@example.com\n")
@@ -141,6 +144,70 @@ func TestApplyUserImportCreateIncludesCredentialHistoryRequiredActionAndQuotaInO
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-004, REQ-IDMANAGEMENT-089: CSV の適用が、作成、更新、変更なしの各行の User を確定後に動的グループの規則で評価し、規則に一致する User だけを所属させること。
+func TestApplyUserImportEvaluatesDynamicGroups(t *testing.T) {
+	ctx := importPlannerContext()
+	repo := usermemory.NewUserRepository()
+	unchanged := importPlannerUser("user-uma", "uma")
+	engineering := "Engineering"
+	unchanged.Attributes["department"] = userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: &engineering}
+	repo.Seed(unchanged)
+	repo.Seed(importPlannerUser("user-alice", "alice"))
+	groups := groupmemory.NewGroupRepository()
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	if err := groups.Save(ctx, &groupdomain.Group{
+		ID: "dyn-eng", TenantID: "acme", Name: "dyn-eng", MembershipType: groupdomain.GroupMembershipDynamic, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := groups.SaveDynamicRule(ctx, &groupdomain.DynamicGroupRule{
+		GroupID: "dyn-eng", TenantID: "acme", Expression: `user.department == "Engineering"`,
+		Enabled: true, Version: 1, ReferencedAttributes: []string{"department"}, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	committer := &importRowCommitter{}
+	deps := UserImportApplyDeps{
+		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
+		Committer:      committer,
+		PasswordHasher: importTestHasher{},
+		DynamicGroups:  groupusecases.DynamicGroupDeps{GroupRepo: groups, UserRepo: repo},
+	}
+	csv := "preferred_username,attr:department\n" +
+		"carol,Engineering\n" + // 作成
+		"alice,Engineering\n" + // 更新
+		"uma,Engineering\n" + // 変更なし
+		"dave,Sales\n" // 作成するが規則に一致しない
+
+	summary, _, err := applyUserImportForTest(ctx, deps, csv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.CreatedRows != 2 || summary.UpdatedRows != 1 || summary.UnchangedRows != 1 {
+		t.Fatalf("summary=%+v", summary)
+	}
+	members, err := groups.ListMembersByGroup(ctx, "acme", "dyn-eng")
+	if err != nil {
+		t.Fatal(err)
+	}
+	carolID := committer.mutations[0].After.ID
+	got := make([]string, 0, len(members))
+	for _, member := range members {
+		got = append(got, member.UserID)
+	}
+	slices.Sort(got)
+	want := []string{carolID, "user-alice", "user-uma"}
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("members=%v, want %v", got, want)
+	}
+}
+
 func containsRequiredAction(actions []idmdomain.RequiredAction, want idmdomain.RequiredAction) bool {
 	return slices.Contains(actions, want)
+}
+
+// importDynamicGroups は動的グループの規則を持たないテナントの評価の依存を返す。
+func importDynamicGroups(repo *usermemory.UserRepository) groupusecases.DynamicGroupDeps {
+	return groupusecases.DynamicGroupDeps{GroupRepo: groupmemory.NewGroupRepository(), UserRepo: repo}
 }

@@ -26,25 +26,7 @@ func (c UserImportRowCommitter) CommitUserImportRow(ctx context.Context, mutatio
 			return err
 		}
 	}
-	roles, err := json.Marshal(mutation.After.Roles)
-	if err != nil {
-		return err
-	}
-	lifecycle, err := json.Marshal(mutation.After.Lifecycle)
-	if err != nil {
-		return err
-	}
-	attributes, err := json.Marshal(mutation.After.Attributes)
-	if err != nil {
-		return err
-	}
-	if err := New(tx).SaveUser(ctx, SaveUserParams{
-		ID: mutation.After.ID, TenantID: mutation.After.TenantID, PreferredUsername: mutation.After.PreferredUsername,
-		PasswordHash: mutation.After.PasswordHash, Name: textOrNil(mutation.After.Name), GivenName: textOrNil(mutation.After.GivenName),
-		FamilyName: textOrNil(mutation.After.FamilyName), Email: textOrNil(mutation.After.Email), EmailVerified: mutation.After.EmailVerified,
-		MfaEnrolled: mutation.After.MfaEnrolled, CreatedAt: mutation.After.CreatedAt, UpdatedAt: mutation.After.UpdatedAt,
-		Roles: roles, Lifecycle: lifecycle, Attributes: attributes,
-	}); err != nil {
+	if err := internalSaveUser(ctx, tx, mutation.After); err != nil {
 		return err
 	}
 	if mutation.PasswordHistoryHash != "" {

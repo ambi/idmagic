@@ -355,6 +355,8 @@ func writeAdminUserError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, userusecases.ErrUsernameConflict):
 		return support.WriteProblem(c, http.StatusConflict, "username_conflict", "The username is already in use.")
+	case errors.Is(err, userusecases.ErrEmailTaken):
+		return support.WriteProblem(c, http.StatusConflict, "email_taken", "This email address is already in use.")
 	case errors.Is(err, idmusecases.ErrReservedRole):
 		return support.WriteProblem(
 			c, http.StatusUnprocessableEntity, "invalid_role",

@@ -10,6 +10,7 @@ import (
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -19,6 +20,9 @@ type UserImportApplyDeps struct {
 	Plan           UserImportPlanDeps
 	Committer      userports.UserImportRowCommitter
 	PasswordHasher passwordports.PasswordHasher
+	// DynamicGroups は確定した行の User を動的グループの規則で評価する依存。GroupRepo は必須であり、
+	// 未配線を評価の省略として黙って通さない。
+	DynamicGroups groupusecases.DynamicGroupDeps
 }
 
 // ApplyUserImport replans the immutable preview payload against current state,
@@ -33,12 +37,13 @@ func ApplyUserImport(
 	emit func(userdomain.UserImportRowPlan) error,
 ) (userdomain.UserImportPlanSummary, error) {
 	var applied userdomain.UserImportPlanSummary
-	if deps.Committer == nil || deps.PasswordHasher == nil {
+	if deps.Committer == nil || deps.PasswordHasher == nil || deps.DynamicGroups.GroupRepo == nil {
 		return applied, errors.New("user import apply dependencies are incomplete")
 	}
 	now = now.UTC()
 	_, err := PlanUserImport(ctx, deps.Plan, input, policy, func(row userdomain.UserImportRowPlan) error {
 		final := row
+		evaluated := row.Before
 		if row.Action == userdomain.UserImportCreate || row.Action == userdomain.UserImportUpdate {
 			mutation, err := prepareUserImportMutation(deps, row, actorUserID, now)
 			if err == nil {
@@ -46,6 +51,15 @@ func ApplyUserImport(
 			}
 			if err != nil {
 				final = rejectedUserImportRow(row.Row, "", "apply_failed")
+				evaluated = nil
+			} else {
+				evaluated = mutation.After
+			}
+		}
+		// 変更なしの行も評価するので、評価に失敗した適用は同じ CSV の再適用で回収できる。
+		if evaluated != nil {
+			if err := groupusecases.SyncDynamicGroupsForUser(ctx, deps.DynamicGroups, evaluated, now); err != nil {
+				return err
 			}
 		}
 		applied.Observe(final)

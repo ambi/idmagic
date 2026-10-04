@@ -23,6 +23,7 @@ type Agent struct {
 	UpdatedAt   time.Time
 	DisabledAt  pgtype.Timestamptz
 	KilledAt    pgtype.Timestamptz
+	NameKey     string
 }
 
 type AgentCredentialBinding struct {

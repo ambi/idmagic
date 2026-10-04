@@ -27,6 +27,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -99,6 +100,27 @@ func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("disabled session status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-042: 管理 API の作成が、ほかの User と大文字と小文字だけが異なるメールアドレスを 409 と email_taken で拒否し、User を作らないこと。
+func TestCreateAdminUserRejectsAnEmailAnotherUserHas(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+	first := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "bob", "password": "initial-password-9182", "email": "bob@example.com",
+	})
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+	}
+	second := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "robert", "password": "initial-password-9182", "email": "Bob@Example.com",
+	})
+	if second.Code != http.StatusConflict || !strings.Contains(second.Body.String(), "urn:idmagic:error:email_taken") {
+		t.Fatalf("second status=%d body=%s, want 409 email_taken", second.Code, second.Body.String())
+	}
+	if user, _ := repo.FindByUsername(context.Background(), tenancydomain.DefaultTenantID, "robert"); user != nil {
+		t.Fatalf("拒否した作成が User を作った: %+v", user)
 	}
 }
 

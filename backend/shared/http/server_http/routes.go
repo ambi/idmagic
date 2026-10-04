@@ -36,6 +36,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmhttp "github.com/ambi/idmagic/backend/idmanagement/handlers_http"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userhttp "github.com/ambi/idmagic/backend/idmanagement/user/handlers_http"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -493,46 +494,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	}
 	authhttp.RegisterRoutes(g, authDeps)
 
-	oidcClient := oidcprotocol.Client{SecretResolver: d.Authentication.FederationSecretResolver}
-	brokerDeps := federationusecases.BrokerDeps{
-		Connections: d.Authentication.FederationConnectionRepo,
-		Identities:  d.Authentication.FederationIdentityRepo,
-		Attempts:    d.Authentication.FederationAttemptStore,
-		Users:       d.IdManagement.UserRepo,
-		Sessions:    d.Authentication.SessionManager,
-		Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
-			federationdomain.ProtocolOIDC: federationhttp.OIDCDriver{Client: oidcClient},
-			federationdomain.ProtocolSAML: federationhttp.SAMLDriver{Replay: d.Authentication.FederationReplayStore},
-		},
-		ProvisionUser: func(ctx context.Context, claims federationdomain.NormalizedClaims, now time.Time) (*userdomain.User, error) {
-			var email, name *string
-			if claims.Email != "" {
-				email = &claims.Email
-			}
-			if claims.Name != "" {
-				name = &claims.Name
-			}
-			return userusecases.ProvisionFederatedUser(ctx, userusecases.AdminUserDeps{
-				UserRepo: d.IdManagement.UserRepo, AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-				UserMutationCommitter: d.IdManagement.UserMutationCommitter,
-				ProvisioningNotifier:  d.IdManagement.ProvisioningNotifier,
-				QuotaRepo:             d.Tenancy.QuotaRepo,
-				Emit: func(event spec.DomainEvent) error {
-					if d.Emit != nil {
-						d.Emit(event)
-					}
-					return nil
-				},
-			}, userusecases.ProvisionFederatedUserInput{
-				PreferredUsername: claims.Username, Name: name, Email: email,
-				EmailVerified: claims.EmailVerified, Now: now,
-			})
-		},
-		Emit: d.Emit,
-	}
-	federationhttp.RegisterRoutes(g, federationhttp.Deps{Broker: brokerDeps, Auth: authDeps, OIDC: &oidcClient})
-
-	idmhttp.RegisterRoutes(g, idmhttp.Deps{
+	idmDeps := idmhttp.Deps{
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
 		UserRepo:                  d.IdManagement.UserRepo,
@@ -562,7 +524,38 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Notifier:                  d.Notification.Notifier,
 		JobRepo:                   d.Jobs.Repo,
 		QuotaRepo:                 d.Tenancy.QuotaRepo,
-	})
+	}
+	provisionFederatedUser := userhttp.FederatedUserProvisioner(idmDeps)
+
+	oidcClient := oidcprotocol.Client{SecretResolver: d.Authentication.FederationSecretResolver}
+	brokerDeps := federationusecases.BrokerDeps{
+		Connections: d.Authentication.FederationConnectionRepo,
+		Identities:  d.Authentication.FederationIdentityRepo,
+		Attempts:    d.Authentication.FederationAttemptStore,
+		Users:       d.IdManagement.UserRepo,
+		Sessions:    d.Authentication.SessionManager,
+		Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
+			federationdomain.ProtocolOIDC: federationhttp.OIDCDriver{Client: oidcClient},
+			federationdomain.ProtocolSAML: federationhttp.SAMLDriver{Replay: d.Authentication.FederationReplayStore},
+		},
+		ProvisionUser: func(ctx context.Context, claims federationdomain.NormalizedClaims, now time.Time) (*userdomain.User, error) {
+			var email, name *string
+			if claims.Email != "" {
+				email = &claims.Email
+			}
+			if claims.Name != "" {
+				name = &claims.Name
+			}
+			return provisionFederatedUser(ctx, userusecases.ProvisionFederatedUserInput{
+				PreferredUsername: claims.Username, Name: name, Email: email,
+				EmailVerified: claims.EmailVerified, Now: now,
+			})
+		},
+		Emit: d.Emit,
+	}
+	federationhttp.RegisterRoutes(g, federationhttp.Deps{Broker: brokerDeps, Auth: authDeps, OIDC: &oidcClient})
+
+	idmhttp.RegisterRoutes(g, idmDeps)
 
 	ighttp.RegisterRoutes(g, ighttp.Deps{
 		Deps: d.Deps, Authenticator: authenticator,

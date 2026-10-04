@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
@@ -142,7 +141,7 @@ func GroupMembershipCSVIdentifierOf(row idmdomain.CSVRow) (GroupMembershipCSVIde
 
 // GroupMembershipNameKey は `group_name` の照合キー。Group の名前一意性が
 // 大文字小文字を区別しないため、照合も同じ規則に従う。
-func GroupMembershipNameKey(name string) string { return strings.ToLower(strings.TrimSpace(name)) }
+func GroupMembershipNameKey(name string) string { return idmdomain.NameKey(name) }
 
 type GroupMembershipImportAction string
 
