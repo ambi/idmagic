@@ -31,38 +31,63 @@
 
 #### REQ-TENANCY-019 管理者はパスワードポリシー設定を参照・更新できる
 
+- テナント管理者が設定を取得したとき、パスワードポリシーの上書き（`password_policy_override`）と、プロダクトのデフォルト値（`password_policy_defaults`）を別々に返す。上書きのないテナントでは `password_policy_override` を省く。
+- プロダクトのデフォルト値は、最小長 12、最大長 128、履歴件数 5、有効期限の日数 0（有効期限なし）とする。
+- テナント管理者がパスワードポリシーの上書きを保存したとき、上書きを保存し、200 と更新後の設定を返す。保存した上書きは、パスワードの検証と有効期限の判定に使われる。
+- 最小長が 12 未満、最大長が 128 を超える、または履歴件数が 5 未満の上書きを指定された場合は、422 と `policy_override_weaker` で拒否し、保存済みの値を変えない。
+- 有効期限の日数（`max_age_days`）が 30 未満または 3,650 を超える上書きを指定された場合は、422 と `policy_override_weaker` で拒否し、保存済みの値を変えない。
+- **判断**：有効期限の日数は、短いほど安全とはいえない。極端に短い周期は予測しやすいパスワードを招き、極端に長い周期は設定の意味を失わせるので、デフォルト値からの方向ではなく固定の範囲で検証する。
+- **例**：EX-TENANCY-019-01、EX-TENANCY-019-02、EX-TENANCY-019-03
+
 #### REQ-TENANCY-021 委譲深さの上書きは厳しい方向にのみ働く
+
+- テナント管理者が `max_delegation_depth` に 1 以上 3 以下の値を保存したとき、その値を Token Exchange の委譲の深さの上限として保存する。
+- `max_delegation_depth` に `0` を指定したとき、上書きを消し、システムデフォルトの 3 を継承する状態に戻す。
+- 負の値と 3 を超える値を指定された場合は、422 と `policy_override_weaker` で拒否し、保存済みの値を変えない。
+- `max_delegation_depth` を省略した更新は、保存済みの値を変えない。
+- 設定の取得は、現在の上書き（`max_delegation_depth`）とシステムデフォルト（`max_delegation_depth_default`）を別々に返す。上書きのないテナントでは `max_delegation_depth` を省く。
+- **例**：EX-TENANCY-021-01、EX-TENANCY-021-02、EX-TENANCY-021-03、EX-TENANCY-021-04、EX-TENANCY-021-05
 
 #### REQ-TENANCY-028 信頼済みデバイスの有効期間は 0 で無効にし、90 日を超える値を拒否する
 
 - `trusted_device_max_age_seconds` を省略した更新は、保存済みの値を変えない。
-- `0` は信頼済みデバイスを無効にし、設定の取得ではこの項目を省いて返す。
+- `trusted_device_max_age_seconds` に `0` を指定したとき、信頼済みデバイスを無効にし、設定の取得ではこの項目を省いて返す。
 - 1 以上 7,776,000（90 日）以下の値を保存する。
-- 負の値と 7,776,000 を超える値は `policy_override_weaker` の 422 で拒否し、保存済みの値を変えない。
+- 負の値と 7,776,000 を超える値を指定された場合は、422 と `policy_override_weaker` で拒否し、保存済みの値を変えない。
 - 設定の取得は、上限の 7,776,000 を `trusted_device_max_age_seconds_ceiling` として常に返す。
 - 保存済みの値が範囲の外にあるテナントでは、信頼済みデバイスを無効として扱う。
 - **判断**：ほかの上書きと違い、緩める方向の値を保存できる。この設定のデフォルトが、最も厳しい状態そのものだからである。システムの上限を超える値だけを拒否する。
-- **担保手段**：`usecases.Update`、`Tenant.EffectiveTrustedDeviceMaxAge`
+- **例**：EX-TENANCY-028-01、EX-TENANCY-028-02、EX-TENANCY-028-03、EX-TENANCY-028-04
 
 #### REQ-TENANCY-029 通知のデフォルト言語は、同梱翻訳のある言語だけを受け付ける
 
-- `default_locale` は、前後の空白を除いてから検証する。
-- 空文字列は設定を消し、システムのデフォルト言語を使う状態に戻す。
-- 同梱翻訳のない言語は `invalid_request` の 400 で拒否し、保存済みの値を変えない。
+- `default_locale` は、前後の空白を除いてから検証し、保存する。
+- `default_locale` に空文字列を指定したとき、設定を消し、システムのデフォルト言語を使う状態に戻す。設定の取得ではこの項目を省いて返す。
+- 同梱翻訳のない言語を指定された場合は、400 と `invalid_request` で拒否し、保存済みの値を変えない。
 - 設定の取得は、同梱翻訳のある言語の一覧を `supported_locales` として返す。
-- **担保手段**：`usecases.Update`、`LocaleSupported`
+- **例**：EX-TENANCY-029-01、EX-TENANCY-029-02、EX-TENANCY-029-03
 
 #### REQ-TENANCY-030 パスワードポリシーの上書きは 0 以下の項目を継承として読み、上書きを含む更新だけが基準時刻を進める
 
 - 上書きの各項目は、省略または 0 以下の値を、プロダクトのデフォルト値の継承として読む。
-- すべての項目が継承である上書きは、上書きそのものを消す。
+- すべての項目が継承である上書きを保存したとき、上書きそのものを消す。
 - 要求が `password_policy_override` を含む場合は、値が保存済みと同じでも `password_policy_updated_at` を要求の時刻に進める。
 - 要求が `password_policy_override` を含まない場合は、`password_policy_updated_at` を変えない。
-- **担保手段**：`usecases.Update`
+- **判断**：パスワードの有効期限は `password_policy_updated_at` から測る。表示名だけの更新で進めると、有効期限の猶予が際限なく延びる。
+- **例**：EX-TENANCY-030-01、EX-TENANCY-030-02、EX-TENANCY-030-03
 
 #### REQ-TENANCY-031 設定の更新は、要求に含まれた項目を TenantUpdated に記録する
 
-- 更新に成功した場合だけ `TenantUpdated` を発行する。
-- `changed_fields` には、値が変わったかにかかわらず、要求に含まれた項目の名前を載せる。
-- **担保手段**：`Deps.handleUpdateAdminSettings`
-- **要判断**：値が変わらない項目も `changed_fields` に載る。実際に変わった項目だけにするかを決める。
+- テナント管理者が設定を更新したとき、200 と更新後の設定を返し、`TenantUpdated` を発行する。
+- `TenantUpdated` の `changed_fields` には、値が変わったかにかかわらず、要求に含まれた項目の名前を載せる。
+- 表示名は、前後の空白を除いて保存する。前後の空白を除くと空になる表示名を指定された場合は、400 と `invalid_request` で拒否する。
+- 要求のどれか一つの項目を拒否した場合は、どの項目も保存せず、イベントを発行しない。
+- **例**：EX-TENANCY-031-01、EX-TENANCY-031-02
+
+### System 管理者によるテナントの設定の更新
+
+#### REQ-TENANCY-044 System 管理者によるテナントの設定の更新は、テナント管理者の更新と同じ規則で検証する
+
+- System 管理者が realm を指定してテナントの設定を更新したとき、そのテナントの表示名、パスワードポリシーの上書き、`max_delegation_depth`、`trusted_device_max_age_seconds` を保存し、200 と更新後のテナントを返し、要求に含まれた項目の名前を `changed_fields` に載せた `TenantUpdated` を発行する。
+- 各項目の検証と拒否は、テナント管理者による更新と同じとする。拒否した場合は、どの項目も保存せず、イベントを発行しない。
+- 存在しない realm を指定された場合は、404 と `tenant_not_found` で拒否する。

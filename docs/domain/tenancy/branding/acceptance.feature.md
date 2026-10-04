@@ -117,11 +117,11 @@
 - When "operator" が branding を一度も設定していないテナントで login 画面を開く
 - Then login 画面はシステムデフォルト (IdMagic) のブランディングを表示する
 - When "operator" が footer_link_1.url に javascript: スキームを指定して保存する
-- Then InvalidRequestError で拒否され保存されない
+- Then `invalid_branding` の 400 で拒否され保存されない
 - When "operator" が低コントラストの `#eeeeee` を primary_color に指定して保存する
 - Then 保存に成功し、取得した branding と login 画面に `#eeeeee` が反映される
 - When 管理者が SVG ファイルをロゴとしてアップロードする
-- Then InvalidRequestError で拒否され保存されない
+- Then `invalid_request` の 400 で拒否され保存されない
 
 ### Example: EX-TENANCY-005-02 footer_link_1 に label だけを指定する
 
@@ -130,4 +130,4 @@
 - Then login 画面はシステムデフォルト (IdMagic) のブランディングを表示する
 - When "operator" が footer_link_1.url に javascript: スキームを指定して保存する
 - But footer_link_1 に label だけを指定する
-- Then InvalidRequestError で拒否され保存されない
+- Then `invalid_branding` の 400 で拒否され保存されない

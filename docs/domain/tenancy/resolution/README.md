@@ -30,39 +30,66 @@
 
 #### REQ-TENANCY-006 path style のテナントは realm prefix から解決される
 
+- パスが `/realms/{realm}/` で始まる要求を受けたとき、realm が `{realm}` で `endpoint_style` が `Path` のテナントに解決する。
+- realm の接頭辞を持たないパスの要求は、Host がテナントに解決しない限り、どのテナントにも解決せず、404 と `tenant_not_found` で拒否する。default テナントにも解決しない。
+- **例**：EX-TENANCY-006-01、EX-TENANCY-006-02、EX-TENANCY-006-03
+
 #### REQ-TENANCY-007 subdomain style のテナントは Host から解決される
+
+- `tenant_base_domain` を設定したデプロイで、Host が `{realm}.{tenant_base_domain}` の要求を受けたとき、realm が `{realm}` で `endpoint_style` が `Subdomain` のテナントに解決する。
+- `Subdomain` のテナントのセッション Cookie は、名前に `__Host-` 接頭辞を付け、`Path=/` とし、`Domain` 属性を付けない。
+- `Subdomain` のテナントの WebAuthn の RP ID は、そのテナントのホスト名 `{realm}.{tenant_base_domain}` とする。
+- **例**：EX-TENANCY-007-01
 
 #### REQ-TENANCY-022 Host は大文字と小文字、ポート、末尾のドットを区別せず、単一のラベルだけを realm として読む
 
 - Host は、前後の空白、ポート番号、末尾のドットを除き、小文字にしてから `{label}.{tenant_base_domain}` と照合する。
 - `{label}` が空の Host と、`{label}` にドットを含む Host は、どのテナントにも解決しない。
 - `tenant_base_domain` を設定していないデプロイでは、Host からテナントを解決しない。
-- **担保手段**：`Deps.ResolveHostTenant`
+- **例**：EX-TENANCY-022-01、EX-TENANCY-022-02
 
 #### REQ-TENANCY-024 解決したテナントの応答は Host への依存を示し、発行者はデプロイの発行者から導出する
 
-- 解決に成功したすべての応答に `Vary: Host` を付ける。
+- テナントの解決に成功したとき、応答に `Vary: Host` を付ける。
 - `Path` のテナントの発行者は `{base}/realms/{realm}` とする。`{base}` はデプロイに設定した発行者の URL である。
 - `Subdomain` のテナントの発行者は `{scheme}://{realm}.{tenant_base_domain}{:port}` とする。`{scheme}` と `{:port}` は `{base}` のものを引き継ぐ。
-- **担保手段**：`Deps.CanonicalLocation`
+- **例**：EX-TENANCY-024-01、EX-TENANCY-024-02
 
 #### REQ-TENANCY-010 Discovery Metadata の `issuer` は取得元 URL と一致する
 
+- テナントの Discovery Metadata を取得したとき、`issuer` にそのテナントの発行者を返す。発行者は、Discovery Metadata の取得元 URL から `/.well-known/openid-configuration` を除いた URL と一致する。
+- Discovery Metadata が示すエンドポイントの URL は、すべてそのテナントの正規ロケーションの下に置く。
+- **例**：EX-TENANCY-010-01
+
 #### REQ-TENANCY-008 未知のサブドメインは default テナントに解決されない
+
+- `tenant_base_domain` を設定したデプロイで、存在しない realm のサブドメインへの要求を受けた場合は、404 と `tenant_not_found` で拒否し、default テナントにもほかのどのテナントにも解決しない。
+- **例**：EX-TENANCY-008-01
 
 #### REQ-TENANCY-009 テナントは自分の正規ロケーション以外からは到達できない
 
+- `Subdomain` のテナントへパスの接頭辞 `/realms/{realm}/` で到達した要求は、404 と `tenant_not_found` で拒否する。
+- `Path` のテナントへ Host `{realm}.{tenant_base_domain}` で到達した要求は、404 と `tenant_not_found` で拒否する。
+- Host がテナントに解決する要求のパスが `/realms/{realm}/` で始まる場合は、404 と `tenant_not_found` で拒否し、パスの realm のテナントにも Host のテナントにも解決しない。
+- **例**：EX-TENANCY-009-01、EX-TENANCY-009-02、EX-TENANCY-009-03
+
 #### REQ-TENANCY-023 解決の拒否は、テナントの存在と状態を正規ロケーションの外へ漏らさない
 
-- 解決できないリクエストには、状態コード 404 と本文 `{"error":"tenant_not_found"}` を返す。
+- テナントに解決できない要求には、状態コード 404 と本文 `{"error":"tenant_not_found"}` を返す。
 - realm が存在しない場合と、テナントは存在するが到達経路が `endpoint_style` と一致しない場合とで、応答を変えない。
-- 無効化されたテナントへ正規ロケーション以外から到達したリクエストにも、同じ 404 を返す。
-- 無効化されたテナントへ正規ロケーションから到達したリクエストには、プロトコルの経路か管理 API の経路かを問わず、状態コード 400 と `error` が `invalid_request` の本文を返す。
-- **担保手段**：`Deps.ResolvePathTenant`、`Deps.ResolveHostTenant`
+- 無効化されたテナントへ正規ロケーション以外から到達した要求にも、同じ 404 を返す。
+- 無効化されたテナントへ正規ロケーションから到達した要求には、プロトコルの経路か管理 API の経路かを問わず、状態コード 400 と `error` が `invalid_request` の本文を返し、要求を処理しない。
+- **例**：EX-TENANCY-023-01、EX-TENANCY-023-02
 
 ### System 管理者による正規ロケーションの切り替え
 
 #### REQ-TENANCY-011 System管理者はテナントの正規ロケーションを切り替えられる
+
+- System 管理者がテナントの `endpoint_style` を切り替えたとき、テナントの `endpoint_style` を指定した値にし、204 を返す。以後、テナントには新しい正規ロケーションからだけ到達でき、発行者と WebAuthn の RP ID は新しい正規ロケーションから導出する。
+- `endpoint_style` に `path` と `subdomain` のどちらでもない値を指定された場合は、400 と `invalid_request` で拒否する。
+- `tenant_base_domain` を設定していないデプロイで `subdomain` を指定された場合は、400 と `invalid_request` で拒否し、`endpoint_style` を変えない。
+- 存在しない realm を指定された場合は、404 と `tenant_not_found` で拒否する。
+- **例**：EX-TENANCY-011-01、EX-TENANCY-011-02
 
 ## セキュリティ上の考慮
 

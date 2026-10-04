@@ -13,10 +13,13 @@ import {
 } from './unspecified-vocabulary.ts'
 
 /**
- * 検査する Context。誤検出の割合を確かめてから広げるので、最初は IdManagement だけとする。
+ * 検査する Context。誤検出の割合を確かめてから広げるので、要件の書き直しを終えた Context だけとする。
  * `backend` は、その Context のドメインイベントを宣言する Go の木である。
  */
-const CONTEXTS = [{ context: 'identity-management', backend: 'backend/idmanagement' }]
+const CONTEXTS = [
+  { context: 'identity-management', backend: 'backend/idmanagement' },
+  { context: 'tenancy', backend: 'backend/tenancy' },
+]
 
 /** 導入時点の違反の一覧。Context ごとに持ち、減る方向にしか動かさない。 */
 const DEBT = 'tools/check/unspecified-vocabulary-debt.json'

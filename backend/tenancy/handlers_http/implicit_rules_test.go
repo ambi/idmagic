@@ -371,6 +371,61 @@ func TestListTenantsOmitsQuotaItCannotRead(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-TENANCY-045: realm で指定したテナントを上限と使用量とともに返し、読めない上限は省き、存在しない realm は 404 にする。
+func TestGetTenantReturnsTheRealmWithQuotaAndUsage(t *testing.T) {
+	s := newRulesServer(t, systemAdmin(), rulesOptions{})
+	found := s.get(t, tenantsPath+"/acme")
+	requireStatus(t, found, http.StatusOK)
+	body := decodeJSON(t, found)
+	if body["realm"] != "acme" {
+		t.Fatalf("realm = %v, want acme", body["realm"])
+	}
+	for _, field := range []string{"quota", "usage"} {
+		if _, ok := body[field]; !ok {
+			t.Fatalf("tenant has no %s: %v", field, body)
+		}
+	}
+	requireProblem(t, s.get(t, tenantsPath+"/ghost"), http.StatusNotFound, "tenant_not_found")
+
+	unreadable := newRulesServer(t, systemAdmin(), rulesOptions{quotas: failingQuotaRepository{memory.NewQuotaRepository()}})
+	omitted := unreadable.get(t, tenantsPath+"/acme")
+	requireStatus(t, omitted, http.StatusOK)
+	for _, field := range []string{"quota", "usage"} {
+		if _, ok := decodeJSON(t, omitted)[field]; ok {
+			t.Fatalf("tenant carries %s it could not read: %s", field, omitted.Body.String())
+		}
+	}
+}
+
+//spec:covers REQ-TENANCY-044: System 管理者の更新は要求の項目を TenantUpdated に記録し、一つの項目の拒否で何も保存せず、存在しない realm は 404 にする。
+func TestSystemAdminUpdatesATenantUnderTheTenantAdminRules(t *testing.T) {
+	s := newRulesServer(t, systemAdmin(), rulesOptions{})
+
+	updated := s.send(t, http.MethodPatch, tenantsPath+"/acme", map[string]any{"display_name": " Acme Corp "})
+	requireStatus(t, updated, http.StatusOK)
+	if name := decodeJSON(t, updated)["display_name"]; name != "Acme Corp" {
+		t.Fatalf("display_name = %v, want the trimmed Acme Corp", name)
+	}
+	events := s.eventsOfType("TenantUpdated")
+	if len(events) != 1 || !slices.Equal(events[0].(*domain.TenantUpdated).ChangedFields, []string{"display_name"}) {
+		t.Fatalf("TenantUpdated = %+v, want one naming display_name", events)
+	}
+
+	refused := s.send(t, http.MethodPatch, tenantsPath+"/acme", map[string]any{
+		"display_name": "Other", "max_delegation_depth": domain.DefaultMaxDelegationDepth + 1,
+	})
+	requireProblem(t, refused, http.StatusUnprocessableEntity, "policy_override_weaker")
+	if tenant, err := s.tenants.FindByRealm(context.Background(), "acme"); err != nil || tenant.DisplayName != "Acme Corp" {
+		t.Fatalf("after the refusal: %+v, %v; want display_name kept at Acme Corp", tenant, err)
+	}
+	if got := len(s.eventsOfType("TenantUpdated")); got != 1 {
+		t.Fatalf("TenantUpdated events = %d after the refusal, want 1", got)
+	}
+
+	requireProblem(t, s.send(t, http.MethodPatch, tenantsPath+"/ghost", map[string]any{"display_name": "X"}),
+		http.StatusNotFound, "tenant_not_found")
+}
+
 //spec:covers EX-TENANCY-027-01: 無効なテナントの無効化も 204 で成功し、disabled_at を後の時刻で上書きし、TenantDisabled をもう一度発行する。
 func TestDisablingADisabledTenantSucceedsAgain(t *testing.T) {
 	s := newRulesServer(t, systemAdmin(), rulesOptions{})

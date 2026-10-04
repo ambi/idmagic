@@ -99,7 +99,7 @@
 
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PasswordReset の本文に許可集合外の変数 `{{password}}` を書いて保存を試みる
-- Then InvalidRequestError で拒否され、上書きは保存されない
+- Then `invalid_notification_template` の 400 で拒否され、上書きは保存されない
 - Then 以後も利用者には組込みデフォルトのリセットメールが届き、リンクが欠けたメールは配られない
 
 ### Example: EX-TENANCY-017-02 "operator" が HTML 本文を空にしてテキスト本文だけを保存しようとする
@@ -107,7 +107,7 @@
 - Given admin ロールを持つ "operator" が認証済みである
 - When "operator" が PasswordReset の本文に許可集合外の変数 `{{password}}` を書いて保存を試みる
 - But "operator" が HTML 本文を空にしてテキスト本文だけを保存しようとする
-- Then InvalidRequestError で拒否され、片方だけの上書きは作られない
+- Then `invalid_notification_template` の 400 で拒否され、片方だけの上書きは作られない
 
 ### Example: EX-TENANCY-017-03 "operator" がカタログに無い locale を指定して保存を試みる
 

@@ -297,7 +297,7 @@ func (s *refusalServer) assertNoBrandingStoredAndSystemDefault(t *testing.T) {
 	}
 }
 
-// `InvalidRequestError` で拒否され、保存されない。branding は組込みデフォルトのままになる。
+// `invalid_branding` と `invalid_request` で拒否され、保存されない。branding は組込みデフォルトのままになる。
 //
 // 保存されてしまえば、ログイン画面のフッターが `javascript:` を実行するリンクになる。
 // ログイン画面は資格情報を入力する画面なので、そこでの任意スクリプト実行は
@@ -327,6 +327,9 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 	if refusedLogo.Code != http.StatusBadRequest {
 		t.Fatalf("svg status=%d body=%s, want 400", refusedLogo.Code, refusedLogo.Body.String())
 	}
+	if !bytes.Contains(refusedLogo.Body.Bytes(), []byte("invalid_request")) {
+		t.Fatalf("svg body=%s, want invalid_request", refusedLogo.Body.String())
+	}
 	server.assertNoBrandingStoredAndSystemDefault(t)
 	if stored, err := server.branding.FindByTenant(context.Background(), "acme"); err != nil || stored != nil {
 		t.Fatalf("拒否されたのに branding が保存されている: %+v, %v", stored, err)
@@ -350,7 +353,7 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 // どこへも行かない。フッターは問い合わせ先を出す場所なので、押せない問い合わせ先は
 // 利用者を締め出す。
 //
-//spec:covers EX-TENANCY-005-02: label だけを指定した footer リンクは `InvalidRequestError` で拒否され、
+//spec:covers EX-TENANCY-005-02: label だけを指定した footer リンクは `invalid_branding` で拒否され、
 func TestUpdateBrandingRefusesIncompleteFooterLinkAndSavesNothing(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	const path = "/realms/acme/api/admin/v1/tenant/branding"
@@ -360,6 +363,9 @@ func TestUpdateBrandingRefusesIncompleteFooterLinkAndSavesNothing(t *testing.T) 
 	})
 	if refused.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400", refused.Code, refused.Body.String())
+	}
+	if !bytes.Contains(refused.Body.Bytes(), []byte("invalid_branding")) {
+		t.Fatalf("body=%s, want invalid_branding", refused.Body.String())
 	}
 	server.assertNoBrandingStoredAndSystemDefault(t)
 
@@ -596,6 +602,9 @@ func TestNotificationTemplateRefusesPartialBodyAndCreatesNoOverride(t *testing.T
 		refused := server.send(t, http.MethodPut, refusalTemplatePath+"/password_reset/ja", body)
 		if refused.Code != http.StatusBadRequest {
 			t.Fatalf("%v: status=%d body=%s, want 400", body, refused.Code, refused.Body.String())
+		}
+		if !strings.Contains(refused.Body.String(), "invalid_notification_template") {
+			t.Fatalf("%v: body=%s, want invalid_notification_template", body, refused.Body.String())
 		}
 		if after := server.templateDetail(t); after.Customized || after != before {
 			t.Fatalf("%v: 片方だけの上書きが残った: %+v", body, after)
