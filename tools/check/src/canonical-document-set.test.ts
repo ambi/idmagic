@@ -18,7 +18,7 @@ describe('verifyCanonicalDocumentSet', () => {
     ).toEqual([])
   })
 
-  it('keeps shared vocabulary out of a feature node', () => {
+  it('keeps shared vocabulary out of a feature slice', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
       { directory: 'docs/domain/demo/user', files: ['README.md', 'glossary.md'] },
@@ -26,13 +26,13 @@ describe('verifyCanonicalDocumentSet', () => {
     expect(findings.map((finding) => finding.path)).toEqual(['docs/domain/demo/user/glossary.md'])
   })
 
-  it('rejects any document below a feature node', () => {
+  it('rejects any document below a feature slice', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
       { directory: 'docs/domain/demo/user/profile/extra', files: ['README.md'] },
     ])
     expect(findings[0]?.message).toBe(
-      'not a canonical document; the specification tree stops at the feature node',
+      'not a canonical document; the specification tree stops at the feature slice',
     )
   })
 
@@ -57,6 +57,16 @@ describe('verifyCanonicalDocumentSet', () => {
       },
     ])
     expect(findings).toHaveLength(4)
+  })
+
+  it('rejects the appendix under its former name examples.feature.md', () => {
+    const findings = verifyCanonicalDocumentSet([
+      marker,
+      { directory: 'docs/domain/demo/user', files: ['README.md', 'examples.feature.md'] },
+    ])
+    expect(findings.map((finding) => finding.path)).toEqual([
+      'docs/domain/demo/user/examples.feature.md',
+    ])
   })
 
   it('rejects a Markdown file the closed set does not name', () => {

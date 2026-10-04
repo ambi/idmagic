@@ -143,7 +143,7 @@ async function featureLayoutWorkspace(): Promise<string> {
     'docs/domain/demo/work/README.md': '# 作業\n',
     'docs/domain/demo/work/task/README.md': SPECIFICATION,
     'docs/domain/demo/work/task/design.md': `${topicIndex('タスクの設計', '[アーキテクチャ](#アーキテクチャ)')}\n## アーキテクチャ\n\nタスクを保存する。\n`,
-    'docs/domain/demo/work/task/examples.feature.md': EXAMPLES,
+    'docs/domain/demo/work/task/acceptance.feature.md': EXAMPLES,
     'backend/demo/task/domain/task.go':
       'package domain\n\ntype Task struct{}\n\nfunc (t Task) Open() bool { return true }\n',
     'backend/demo/task/domain/task_test.go': [
@@ -188,7 +188,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.code).toBe(0)
   })
 
-  it('rejects the per-kind files of the legacy layout inside a feature node', async () => {
+  it('rejects the per-kind files of the legacy layout inside a feature slice', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'docs/domain/demo/work/task/decisions.md', '# 判断\n')
     const result = await runCheck(root, 'documents')
@@ -212,7 +212,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/domain/demo/work/task/examples.feature.md',
+      'docs/domain/demo/work/task/acceptance.feature.md',
       EXAMPLES.replaceAll('REQ-DEMO-002', 'REQ-DEMO-009').replaceAll('EX-DEMO-002', 'EX-DEMO-009'),
     )
     const result = await runCheck(root, 'documents')
@@ -224,7 +224,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/domain/demo/work/task/examples.feature.md',
+      'docs/domain/demo/work/task/acceptance.feature.md',
       EXAMPLES.replace('開いたタスクだけを一覧する', 'タスクを一覧する'),
     )
     const result = await runCheck(root, 'documents')
@@ -241,7 +241,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('REQ-DEMO-004 must be declared in a feature node')
+    expect(result.output).toContain('REQ-DEMO-004 must be declared in a feature slice')
   })
 
   it('rejects a decision that leaves out a part of the decision record', async () => {
@@ -427,12 +427,14 @@ describe('機能仕様の規則の書式', () => {
     expect(result.output).toContain('section エラー is not a section of a feature specification')
   })
 
-  it('maps a feature slice to a feature node inside a group', async () => {
+  it('maps a code slice to a feature slice specification inside a group', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'backend/demo/note/usecases/note.go', 'package usecases\n')
     const result = await runCheck(root, 'specification-rules')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('backend/demo/note has no feature node under docs/domain/demo/')
-    expect(result.output).not.toContain('backend/demo/task has no feature node')
+    expect(result.output).toContain(
+      'backend/demo/note has no feature slice specification under docs/domain/demo/',
+    )
+    expect(result.output).not.toContain('backend/demo/task has no feature slice specification')
   })
 })

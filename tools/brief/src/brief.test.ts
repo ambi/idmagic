@@ -78,7 +78,7 @@ describe('extractDeclaration', () => {
     expect(extractDeclaration(SCENARIOS, 'REQ-DEMO-002')).toContain('- Then the task stops')
   })
 
-  // 機能ノードでは規則が節の見出しの一段下に置かれ、次の節の見出しが規則の終わりになる。
+  // 機能スライスでは規則が節の見出しの一段下に置かれ、次の節の見出しが規則の終わりになる。
   it('returns a rule under a lifecycle section and stops at the next section', () => {
     const source = [
       '# Feature: Task',

@@ -33,7 +33,7 @@ export function partitionSources(paths: readonly string[]): SourcePartition {
  *
  * A scenario is declared by a `Rule:` heading and runs to the next heading of
  * the same or a higher level: `##` at a context, `###` under a section of a
- * feature node. A standards requirement is declared by a table row, which
+ * feature slice. A standards requirement is declared by a table row, which
  * means nothing on its own, so it comes back with the section heading and the
  * column names that say what its cells are.
  */

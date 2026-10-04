@@ -5,7 +5,7 @@ import { updateExampleBlocks } from './executable-examples.ts'
 
 const snapshot = createWorkspaceSnapshot()
 for (const path of (await snapshot.files('docs')).filter((path) =>
-  path.endsWith('examples.feature.md'),
+  path.endsWith('acceptance.feature.md'),
 )) {
   const source = await snapshot.read(path)
   const generated = updateExampleBlocks(source, (path) =>

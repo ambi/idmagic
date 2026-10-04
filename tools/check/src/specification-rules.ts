@@ -12,13 +12,13 @@ export type Finding = { path: string; line: number; message: string }
 /** `backend/` の Go で宣言された名前。`qualified` は `型.メソッド` と `パッケージ名.名前`。 */
 export type GoDeclarations = { names: Set<string>; qualified: Set<string> }
 
-/** `backend/<context>/<name>/` の直下に層のディレクトリを持つ機能スライス。 */
-export type FeatureSlice = { context: string; name: string; path: string }
+/** 機能スライスのコードのディレクトリ。`backend/<context>/<name>/` の直下に層のディレクトリを持つ。 */
+export type CodeSlice = { context: string; name: string; path: string }
 
-export type FeatureNodeDebt = {
+export type FeatureSliceDebt = {
   /** コードの Context 名から、ハイフンを除いても一致しない文書の Context 名への対応。 */
   contextAliases: Record<string, string>
-  /** 導入時点で機能ノードを持たなかったスライス。増やさない。 */
+  /** 導入時点で仕様のディレクトリを持たなかったコードのディレクトリ。増やさない。 */
   unmappedSlices: string[]
 }
 
@@ -168,7 +168,7 @@ export function verifySpecificationRuleFields(path: string, source: string): Fin
 }
 
 /**
- * 機能ノードの `README.md` で、節が `SPECIFICATION_SECTIONS` の語彙をその順で使い、
+ * 機能スライスの `README.md` で、節が `SPECIFICATION_SECTIONS` の語彙をその順で使い、
  * 規則が操作の節の下にあることを確かめる。章のページは操作の節を分けたものなので、
  * 節の名前を問わない。
  */
@@ -258,11 +258,11 @@ export function goDeclarations(files: Array<{ path: string; source: string }>): 
 }
 
 /**
- * `backend/` の下のディレクトリ一覧から機能スライスを取り出す。`directories` は
- * リポジトリ相対のパスで、層のディレクトリ（`domain`、`usecases`）まで含む。
+ * `backend/` の下のディレクトリ一覧から機能スライスのコードのディレクトリを取り出す。
+ * `directories` はリポジトリ相対のパスで、層のディレクトリ（`domain`、`usecases`）まで含む。
  */
-export function featureSlices(directories: string[]): FeatureSlice[] {
-  const slices = new Map<string, FeatureSlice>()
+export function codeSlices(directories: string[]): CodeSlice[] {
+  const slices = new Map<string, CodeSlice>()
   for (const directory of directories) {
     const [root, context, name, layer] = directory.split('/')
     if (root !== 'backend' || !context || !name || !layer || !LAYER_DIRECTORIES.has(layer)) continue
@@ -274,20 +274,21 @@ export function featureSlices(directories: string[]): FeatureSlice[] {
 }
 
 /**
- * 各機能スライスに、名前が対応する機能ノードがあることを確かめる。機能ノードの名前から
- * ハイフンを除いた名前がスライスの名前と一致すれば対応とみなす。Context の名前も同じ規則で
- * 対応させ、一致しないものだけを `contextAliases` で引く。
+ * 機能スライスのコードのディレクトリごとに、名前が対応する仕様のディレクトリがあることを
+ * 確かめる。仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と
+ * 一致すれば対応とみなす。Context の名前も同じ規則で対応させ、一致しないものだけを
+ * `contextAliases` で引く。
  */
-export function verifyFeatureNodes(
-  slices: FeatureSlice[],
-  nodes: Set<string>,
-  debt: FeatureNodeDebt,
+export function verifyFeatureSliceSpecifications(
+  slices: CodeSlice[],
+  specifications: Set<string>,
+  debt: FeatureSliceDebt,
 ): Finding[] {
   const flatten = (name: string) => name.replaceAll('-', '')
-  // 機能ノードは機能群の下にもあるので、最後の段の名前で対応させる。
-  const nodeKeys = new Set(
-    [...nodes].map((node) => {
-      const [, , context = '', ...below] = node.split('/')
+  // 仕様のディレクトリは機能群の下にもあるので、最後の段の名前で対応させる。
+  const specificationKeys = new Set(
+    [...specifications].map((specification) => {
+      const [, , context = '', ...below] = specification.split('/')
       return `${flatten(context)}/${flatten(below.at(-1) ?? '')}`
     }),
   )
@@ -295,18 +296,18 @@ export function verifyFeatureNodes(
   const findings: Finding[] = []
   for (const slice of slices) {
     const context = debt.contextAliases[slice.context] ?? slice.context
-    const mapped = nodeKeys.has(`${flatten(context)}/${slice.name}`)
+    const mapped = specificationKeys.has(`${flatten(context)}/${slice.name}`)
     if (mapped && unmapped.has(slice.path)) {
       findings.push({
         path: slice.path,
         line: 1,
-        message: `${slice.path} has a feature node now; remove it from tools/check/feature-node-debt.json`,
+        message: `${slice.path} has a feature slice specification now; remove it from tools/check/feature-slice-debt.json`,
       })
     } else if (!mapped && !unmapped.has(slice.path)) {
       findings.push({
         path: slice.path,
         line: 1,
-        message: `${slice.path} has no feature node under docs/domain/${context}/`,
+        message: `${slice.path} has no feature slice specification under docs/domain/${context}/`,
       })
     }
   }
@@ -316,7 +317,7 @@ export function verifyFeatureNodes(
       findings.push({
         path,
         line: 1,
-        message: `${path} is no longer a feature slice; remove it from tools/check/feature-node-debt.json`,
+        message: `${path} is no longer a code slice; remove it from tools/check/feature-slice-debt.json`,
       })
     }
   }

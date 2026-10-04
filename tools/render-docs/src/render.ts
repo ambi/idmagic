@@ -52,7 +52,7 @@ type RenderedDocument = SourceDocument & {
   order: number
   /** For a context document and its children, the context slug they belong to. */
   context?: string
-  /** 機能ノードの文書だけが持つ、所属する機能ノードのディレクトリ名。 */
+  /** 機能スライスの文書だけが持つ、所属する機能スライスのディレクトリ名。 */
   feature?: string
 }
 
@@ -164,12 +164,12 @@ function plainTitle(value: string): string {
 }
 
 /**
- * 機能ノードの子の並び。機能仕様の章を先に、内部設計と例の付録を後に置く。
+ * 機能スライスの子の並び。機能仕様の章を先に、内部設計と例の付録を後に置く。
  * 章は仕様の続きなので、仕様の直後に読めるようにする。
  */
 function featureChildOrder(name: string, fallback: number): number {
   if (name === 'design.md') return Number.MAX_SAFE_INTEGER - 1
-  if (name === 'examples.feature.md') return Number.MAX_SAFE_INTEGER
+  if (name === 'acceptance.feature.md') return Number.MAX_SAFE_INTEGER
   return fallback
 }
 
@@ -299,13 +299,13 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           order: index,
         }
   }
-  // Context より下の段。内部設計、機能群、機能群の下の機能ノードがある。
+  // Context より下の段。内部設計、機能群、機能群の下の機能スライスがある。
   // `feature` はその段の Context からの相対パスである。
   const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/(.+)\/([^/]+)$/)
   if (featureDocument) {
     const [, context = '', feature = '', featureFile = ''] = featureDocument
     const stem =
-      featureFile === 'examples.feature.md' ? 'examples' : featureFile.replace(/\.md$/, '')
+      featureFile === 'acceptance.feature.md' ? 'acceptance' : featureFile.replace(/\.md$/, '')
     const node = feature.split('/').map(slug)
     return featureFile === 'README.md'
       ? {
@@ -532,7 +532,7 @@ function markdownRenderer(
     const content = tokens[index]?.content ?? ''
     const leading =
       index === 0 &&
-      /(?:scenarios|examples)\.feature\.md$/.test(
+      /(?:scenarios|acceptance)\.feature\.md$/.test(
         (env as { document: RenderedDocument }).document.path,
       )
     // ステップの残りが `applications:read` のようなコード片から始まると、この
@@ -642,7 +642,7 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
   if (entry.category !== 'context-child' && entry.category !== 'feature-child') return entry.title
-  if (entry.path.endsWith('examples.feature.md')) return '例'
+  if (entry.path.endsWith('acceptance.feature.md')) return '例'
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
       ? document.category === 'feature' &&
@@ -750,7 +750,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const areas = tree.directories.flatMap((node) =>
     node.name === 'design' ? node.directories.map(directory) : [directory(node)],
   )
-  // 段は入れ子にする。機能ノードが機能群の下に、内部設計の文書が
+  // 段は入れ子にする。機能スライスが機能群の下に、内部設計の文書が
   // `design` の下に並ぶ。親の段は、その段の相対パスを接頭辞に持つ段を子に持つ。
   const node = (feature: RenderedDocument): NavigationDirectory => ({
     name: feature.title,
@@ -1234,7 +1234,7 @@ function insertAfterHeading(page: string, id: string, html: string): string {
 }
 
 /**
- * 機能ノードの要件一覧と未決事項。手で書いた一覧は、要件を加えたときに更新が漏れても
+ * 機能スライスの要件一覧と未決事項。手で書いた一覧は、要件を加えたときに更新が漏れても
  * どの検査にも見つからないので、要件の見出しと要判断の欄から作る。
  */
 function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): string {
@@ -1312,7 +1312,7 @@ function featureMap(
       return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
     })
     .join('')
-  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能ノード、要件、配置と Context 名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置と Context 名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
 function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
@@ -1327,7 +1327,7 @@ function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
     })
   }
   for (const document of documents) {
-    if (document.path.endsWith('examples.feature.md')) {
+    if (document.path.endsWith('acceptance.feature.md')) {
       // 付録の Rule は仕様本文の宣言を参照するだけなので、例だけを索引する。
       for (const rule of parseScenarioDocument(document.source).rules) {
         for (const example of rule.examples) {

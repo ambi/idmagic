@@ -1,7 +1,7 @@
 # Feature: Cross-Context Scenarios
 
-複数の Bounded Context が協調して初めて成り立つ振る舞いを置く。1 つの Context が単独で満たし検証できるものは、その Context の `scenarios.feature.md` にある。
-**ここに置く基準は「その Context だけでは `WHEN` を起こせないこと」である。** 引き金を持つ Context と結果を観測する Context が違う振る舞いは、どちらの `scenarios.feature.md` に書いても片側の話にしかならず、保証の全体がどこにも書かれない状態になる。各シナリオは参加する Context を名指す。
+複数の Bounded Context が協調して初めて成り立つ振る舞いを置く。1 つの Context が単独で満たし検証できるものは、その Context の機能スライスの機能仕様で要件として宣言する。
+**ここに置く基準は「その Context だけでは `WHEN` を起こせないこと」である。** 引き金を持つ Context と結果を観測する Context が違う振る舞いは、どちらの機能仕様に書いても片側の話にしかならず、保証の全体がどこにも書かれない状態になる。各シナリオは参加する Context を名指す。
 
 ## Rule: REQ-PLATFORM-001 主体の無効化は、その主体へ到達するすべての経路を閉じる
 

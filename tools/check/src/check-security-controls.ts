@@ -19,7 +19,7 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
     await snapshot.read('docs/domain/scenarios.feature.md'),
   )
   const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(
-    await snapshot.read(`${contextsDirectory}/api-tokens/authentication/examples.feature.md`),
+    await snapshot.read(`${contextsDirectory}/api-tokens/authentication/acceptance.feature.md`),
   )
   const sharedRefusals = new Set([...platformRefusals, ...apiTokenRefusals])
   let declared = sharedRefusals.size
@@ -63,9 +63,9 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
 }
 
 /**
- * Context の機能ノードにある例の付録。拒否の宣言は Context 単位で判定するので、
- * 例をどの機能ノードへ置いても同じ Context の宣言として数える。
- * 機能ノードは Context の一段下か、機能群の一段下にある。
+ * Context の機能スライスにある例の付録。拒否の宣言は Context 単位で判定するので、
+ * 例をどの機能スライスへ置いても同じ Context の宣言として数える。
+ * 機能スライスは Context の一段下か、機能群の一段下にある。
  */
 async function contextScenarioSources(
   snapshot: WorkspaceSnapshot,
@@ -75,9 +75,9 @@ async function contextScenarioSources(
   for (const entry of await snapshot.list(context)) {
     if (!entry.isDirectory()) continue
     const feature = `${context}/${entry.name}`
-    paths.push(`${feature}/examples.feature.md`)
+    paths.push(`${feature}/acceptance.feature.md`)
     for (const child of await snapshot.list(feature)) {
-      if (child.isDirectory()) paths.push(`${feature}/${child.name}/examples.feature.md`)
+      if (child.isDirectory()) paths.push(`${feature}/${child.name}/acceptance.feature.md`)
     }
   }
   const sources: string[] = []

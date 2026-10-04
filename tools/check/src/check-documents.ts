@@ -8,7 +8,7 @@ import {
 } from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
-import { FeatureNodeDeclarations, verifyFeatureLayout } from './feature-nodes.ts'
+import { FeatureSliceDeclarations, verifyFeatureLayout } from './feature-slices.ts'
 import { checkNormativeCoverage, citedNormativeIds, type DeclaredId } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { validateDocument } from './specification-doc.ts'
@@ -52,7 +52,7 @@ export async function checkDocuments(
     (finding) => `fail  ${finding.path}: ${finding.message}`,
   )
   let failed = lines.length > 0
-  // 機能ノードは Context の一段下にあり、Context の索引表には載らない。
+  // 機能スライスは Context の一段下にあり、Context の索引表には載らない。
   const contextDirectories = listings
     .filter((listing) => /^docs\/domain\/[^/]+$/.test(listing.directory))
     .map((listing) => listing.directory.slice('docs/domain/'.length))
@@ -88,7 +88,7 @@ export async function checkDocuments(
   const scenarios: DeclaredId[] = []
   const examples: DeclaredId[] = []
   const standards: DeclaredId[] = []
-  const nodes = new FeatureNodeDeclarations()
+  const nodes = new FeatureSliceDeclarations()
   for (const path of paths) {
     const result = validateDocument(path, await snapshot.read(path))
     failed ||= result.findings.length > 0

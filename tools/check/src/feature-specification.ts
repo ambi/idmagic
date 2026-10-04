@@ -1,9 +1,9 @@
 /**
- * 機能仕様（機能ノードの `README.md` と章）が宣言する規則を読む。
+ * 機能仕様（機能スライスの `README.md` と章）が宣言する規則を読む。
  *
  * 規則は `### REQ-…` または `#### REQ-…` の見出しで宣言し、題名は ID に続けて書く。
- * 廃止した規則は、題名の末尾に `(superseded by REQ-…)` を付ける。例は同じ機能ノードの
- * `examples.feature.md` に置くので、ここで読むのは宣言と本文だけである。
+ * 廃止した規則は、題名の末尾に `(superseded by REQ-…)` を付ける。例は同じ機能スライスの
+ * `acceptance.feature.md` に置くので、ここで読むのは宣言と本文だけである。
  */
 
 import type { SpecificationFinding } from './specification-doc.ts'

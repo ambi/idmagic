@@ -42,7 +42,7 @@ current document kinds and grammar; read it, not its rationale document.
    product keeps (a limit, a period, a formula) in the requirement, never only in the design. State a
    requirement shared by several operations once, under the operation it governs most directly; the others
    link it from `**上位の要件**` and state only their departure.
-6. Add an example in `examples.feature.md` only when a boundary or a surprising behavior is hard to read from
+6. Add an example in `acceptance.feature.md` only when a boundary or a surprising behavior is hard to read from
    the requirement sentences. Prefer generating it from `testdata/*.examples.json`. Never add an example that
    restates a requirement.
 7. Keep behavior that only several contexts can satisfy in `docs/domain/scenarios.feature.md`, name the

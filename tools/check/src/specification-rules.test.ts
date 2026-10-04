@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import {
-  featureSlices,
+  codeSlices,
   goDeclarations,
-  verifyFeatureNodes,
+  verifyFeatureSliceSpecifications,
   verifyRuleFields,
 } from './specification-rules.ts'
 
@@ -127,8 +127,8 @@ describe('verifyRuleFields', () => {
   })
 })
 
-describe('verifyFeatureNodes', () => {
-  const slices = featureSlices([
+describe('verifyFeatureSliceSpecifications', () => {
+  const slices = codeSlices([
     'backend/demo/trusteddevice/domain',
     'backend/demo/trusteddevice/usecases',
     'backend/demo/session/usecases',
@@ -147,7 +147,7 @@ describe('verifyFeatureNodes', () => {
 
   it('matches a kebab-case node to the slice named without hyphens, through a context alias', () => {
     expect(
-      verifyFeatureNodes(
+      verifyFeatureSliceSpecifications(
         slices,
         new Set([
           'docs/domain/demo/trusted-device',
@@ -161,7 +161,7 @@ describe('verifyFeatureNodes', () => {
 
   it('rejects a new slice without a node, and a debt entry that no longer holds', () => {
     expect(
-      verifyFeatureNodes(
+      verifyFeatureSliceSpecifications(
         slices,
         new Set(['docs/domain/demo/trusted-device', 'docs/domain/demo/session']),
         {
@@ -170,8 +170,8 @@ describe('verifyFeatureNodes', () => {
         },
       ).map((finding) => finding.message),
     ).toEqual([
-      'backend/demo/session has a feature node now; remove it from tools/check/feature-node-debt.json',
-      'backend/idmgmt/user has no feature node under docs/domain/idmgmt/',
+      'backend/demo/session has a feature slice specification now; remove it from tools/check/feature-slice-debt.json',
+      'backend/idmgmt/user has no feature slice specification under docs/domain/idmgmt/',
     ])
   })
 })

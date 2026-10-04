@@ -105,7 +105,7 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
 }
 
 /**
- * Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能ノードへ置く。
+ * Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能スライスへ置く。
  * `quality.md` は、システムの品質要求のうちこの Context に割り当てた分を書く仕様である。
  */
 export const CONTEXT_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
@@ -113,8 +113,8 @@ export const CONTEXT_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'q
 /** Context の内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
 export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
 
-/** 機能ノードの固定の文書。長くなった機能仕様の章は任意の名前で並べる。 */
-export const FEATURE_NODE_DOCUMENTS = ['README.md', 'design.md', 'examples.feature.md'] as const
+/** 機能スライスの固定の文書。長くなった機能仕様の章は任意の名前で並べる。 */
+export const FEATURE_SLICE_DOCUMENTS = ['README.md', 'design.md', 'acceptance.feature.md'] as const
 
 /**
  * 任意の名前を許す段でも使えない名前。ファイル種別ごとの文書を章として置くと、
@@ -145,7 +145,7 @@ export interface DocumentSetView {
    * 設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
    */
   featureContexts: ReadonlySet<string>
-  /** 子のディレクトリを持つ段。これが機能群と機能ノードを分ける。 */
+  /** 子のディレクトリを持つ段。これが機能群と機能スライスを分ける。 */
   parents: ReadonlySet<string>
 }
 
@@ -162,8 +162,8 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
 }
 
 /**
- * その段に置ける文書。Context は、Context、内部設計、機能群、機能ノードの段を持つ。
- * 機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能ノードは Context から
+ * その段に置ける文書。Context は、Context、内部設計、機能群、機能スライスの段を持つ。
+ * 機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能スライスは Context から
  * 一段か二段下の、子を持たない段である。それより下と、印を持たない Context の段と、
  * 固定の一覧にないシステムの段には何も置けない。
  */
@@ -181,7 +181,7 @@ export function documentAllowance(directory: string, view: DocumentSetView): Doc
   }
   if (rest.length > 2) return { names: [], freeNames: false }
   if (view.parents.has(directory)) return { names: ['README.md'], freeNames: false }
-  return { names: FEATURE_NODE_DOCUMENTS, freeNames: true }
+  return { names: FEATURE_SLICE_DOCUMENTS, freeNames: true }
 }
 
 export function allowsDocument(allowance: DocumentAllowance, name: string): boolean {

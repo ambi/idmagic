@@ -22,8 +22,8 @@ export type SpecificationValidation = {
  * canonical document needed. A directory takes the split layout as soon as it
  * holds a README.md.
  *
- * 機能ノードは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
- * 例の付録（`examples.feature.md`）を持つ。Context の `design/` は話題ごとの設計で、`README.md` は
+ * 機能スライスは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
+ * 例の付録（`acceptance.feature.md`）を持つ。Context の `design/` は話題ごとの設計で、`README.md` は
  * 話題の索引、`decisions.md` は判断の記録の骨格を持つ。システムの `docs/design/README.md` も、
  * 設計の入口として話題の索引を持つ。機能の `design.md` は任意であり、コードから読み取れない
  * 仕組みだけを書くので、話題の索引を求めない。
@@ -88,7 +88,8 @@ export function documentKind(path: string): DocumentKind | undefined {
     if (below.length > 2 || name === 'glossary.md' || name === 'standards.md') return undefined
     const named = KIND_BY_NAME.get(name)
     if (named) return named
-    if (name === 'examples.feature.md') return 'examples'
+    // `examples.feature.md` は付録を改名する前の名前で、`spec-diff` が基準のリビジョンを読むために残す。
+    if (name === 'acceptance.feature.md' || name === 'examples.feature.md') return 'examples'
     if (['design.md', 'decisions.md', 'internals.md'].includes(name)) return 'prose'
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }

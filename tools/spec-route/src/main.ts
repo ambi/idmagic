@@ -73,15 +73,15 @@ let located:
       rule: ReturnType<typeof parseScenarioDocument>['rules'][number]
     }
   | undefined
-// システムの `scenarios.feature.md` と、機能ノードの付録 `examples.feature.md` が例の置き場所になる。
-// 機能ノードは Context の一段下か、機能群の一段下にある。
+// システムの `scenarios.feature.md` と、機能スライスの付録 `acceptance.feature.md` が例の置き場所になる。
+// 機能スライスは Context の一段下か、機能群の一段下にある。
 const candidates: Array<{ contextDir: string; docPath: string }> = [
   { contextDir: '', docPath: 'docs/domain/scenarios.feature.md' },
 ]
 for (const contextDir of contextDirs) {
   for (const path of (await walk(resolve(root, 'docs/domain', contextDir))).sort()) {
     const docPath = relative(root, path)
-    if (docPath.endsWith('/examples.feature.md')) {
+    if (docPath.endsWith('/acceptance.feature.md')) {
       candidates.push({ contextDir, docPath })
     }
   }

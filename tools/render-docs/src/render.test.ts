@@ -133,7 +133,7 @@ const runDocument = {
 }
 
 const examplesDocument = {
-  path: 'docs/domain/demo/run/examples.feature.md',
+  path: 'docs/domain/demo/run/acceptance.feature.md',
   source: `# Feature: 実行の例
 
 ## Rule: REQ-DEMO-001 a demo runs
@@ -351,7 +351,7 @@ describe('renderDocumentationSite', () => {
       'domain/demo/glossary.html',
       'domain/demo/index.html',
       'domain/demo/quality.html',
-      'domain/demo/run/examples.html',
+      'domain/demo/run/acceptance.html',
       'domain/demo/run/index.html',
       'domain/demo/standards.html',
       'domain/glossary.html',
@@ -382,8 +382,12 @@ describe('renderDocumentationSite', () => {
     expect(result.files['domain/demo/run/index.html']).toContain('stateDiagram-v2')
     expect(result.files['domain/demo/run/index.html']).toContain('state_3 --&gt; state_1: Reset')
     expect(result.files['domain/demo/run/index.html']).not.toContain('Reset [')
-    expect(result.files['domain/demo/run/examples.html']).toContain('class="scenario-keyword when"')
-    expect(result.files['domain/demo/run/examples.html']).toContain('class="scenario-keyword but"')
+    expect(result.files['domain/demo/run/acceptance.html']).toContain(
+      'class="scenario-keyword when"',
+    )
+    expect(result.files['domain/demo/run/acceptance.html']).toContain(
+      'class="scenario-keyword but"',
+    )
     expect(result.files['traceability/index.html']).toContain('EX-DEMO-001-01')
     expect(result.files['traceability/index.html']).toContain('backend/demo/demo_test.go')
     expect(result.files['traceability/index.html']).toContain('規則／例')
@@ -415,7 +419,7 @@ describe('renderDocumentationSite', () => {
 
   // 印は文書と位置で絞る。方法論文書の英語本文にも Gherkin と同じ語が現れる。
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
-    const scenarios = site().files['domain/demo/run/examples.html'] ?? ''
+    const scenarios = site().files['domain/demo/run/acceptance.html'] ?? ''
 
     // 残りがコード片から始まるステップでも印が付く。
     expect(scenarios).toContain(
@@ -431,12 +435,12 @@ describe('renderDocumentationSite', () => {
   it('names context children by content and lists them in canonical order', () => {
     const page = site().files['domain/demo/index.html']
 
-    // 最後の「例」は、Context の下に入れ子になった機能ノード（実行）の子である。
+    // 最後の「例」は、Context の下に入れ子になった機能スライス（実行）の子である。
     expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例'])
     expect(page).not.toContain('>glossary.md<')
   })
 
-  it('nests a feature node and its documents under the context that owns it', () => {
+  it('nests a feature slice and its documents under the context that owns it', () => {
     const result = renderDocumentationSite({
       documents: [
         rootDocument,
@@ -447,7 +451,7 @@ describe('renderDocumentationSite', () => {
           source: '# ユーザー\n\n#### REQ-DEMO-002 a user is created\n\n- 要求でユーザーを作る。\n',
         },
         {
-          path: 'docs/domain/demo/user/examples.feature.md',
+          path: 'docs/domain/demo/user/acceptance.feature.md',
           source: [
             '# Feature: ユーザーの例',
             '',
@@ -471,7 +475,7 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['domain/demo/user/examples.html']
+    const page = result.files['domain/demo/user/acceptance.html']
 
     expect(page).toContain('REQ-DEMO-002')
     expect(result.files['domain/demo/user/index.html']).toBeDefined()
@@ -528,7 +532,7 @@ describe('renderDocumentationSite', () => {
         },
         { path: 'docs/domain/demo/work/task/design.md', source: '# タスクの内部設計\n\n構成。\n' },
         {
-          path: 'docs/domain/demo/work/task/examples.feature.md',
+          path: 'docs/domain/demo/work/task/acceptance.feature.md',
           source: [
             '# Feature: タスクの例',
             '',
@@ -566,7 +570,7 @@ describe('renderDocumentationSite', () => {
       'domain/demo/work/index.html',
       'domain/demo/work/task/lifecycle.html',
       'domain/demo/work/task/design.html',
-      'domain/demo/work/task/examples.html',
+      'domain/demo/work/task/acceptance.html',
     ]) {
       expect(result.files[page]).toBeDefined()
     }
@@ -598,7 +602,7 @@ describe('renderDocumentationSite', () => {
     expect(featureMap).toContain('backend/demoimpl/task/testing_contract/contract.go')
     expect(featureMap).toContain('spec/contexts/demo/main.tsp')
     expect(featureMap).not.toContain('other_test.go')
-    expect(result.files['domain/demo/work/task/examples.html']).toContain('scenario-keyword when')
+    expect(result.files['domain/demo/work/task/acceptance.html']).toContain('scenario-keyword when')
     expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '内部設計', '例'])
     const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))
     expect(groupBranch).toContain('>タスク</a>')
@@ -744,12 +748,12 @@ describe('renderDocumentationSite', () => {
   })
 
   it('lists a document own headings beside its body', () => {
-    const page = site().files['domain/demo/run/examples.html'] ?? ''
+    const page = site().files['domain/demo/run/acceptance.html'] ?? ''
 
     expect(page).toContain('<nav class="page-toc" aria-label="このページの内容">')
-    expect(page).toContain('href="#context-demo-run-examples-rule-req-demo-001-a-demo-runs"')
+    expect(page).toContain('href="#context-demo-run-acceptance-rule-req-demo-001-a-demo-runs"')
     expect(page).toContain(
-      'class="page-toc-h3"><a data-site-link href="#context-demo-run-examples-example-ex-demo-001-01-a-ready-demo-starts"',
+      'class="page-toc-h3"><a data-site-link href="#context-demo-run-acceptance-example-ex-demo-001-01-a-ready-demo-starts"',
     )
     // 見出しが一つしかないページに目次を出しても、本文を繰り返すだけである。
     expect(site().files['docs/requirements/product-overview.html']).not.toContain('page-toc')

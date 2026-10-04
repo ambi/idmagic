@@ -17,7 +17,7 @@ const requiredMarkers = new Map<string, string[]>([
     [
       'spec/contexts/<context>/{models,main}.tsp',
       'docs/domain/<context>/<group>/<feature>/README.md',
-      'examples.feature.md',
+      'acceptance.feature.md',
     ],
   ],
   [

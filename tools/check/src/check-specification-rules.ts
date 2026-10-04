@@ -4,19 +4,19 @@ import { markdownAnchors } from './markdown-links.ts'
 import { repositoryGoFiles } from './repository-inputs.ts'
 import type { CheckOutcome } from './runner.ts'
 import {
-  featureSlices,
+  codeSlices,
   goDeclarations,
-  type FeatureNodeDebt,
+  type FeatureSliceDebt,
   type Finding,
-  verifyFeatureNodes,
+  verifyFeatureSliceSpecifications,
   verifyRuleFields,
   verifySpecificationOutline,
   verifySpecificationRuleFields,
 } from './specification-rules.ts'
 import { documentKind } from './specification-doc.ts'
 
-/** 対応のない機能スライスの基準。導入時点の一覧で、減る方向にしか動かさない。 */
-const FEATURE_NODE_DEBT = 'tools/check/feature-node-debt.json'
+/** 仕様のディレクトリと対応しないコードのディレクトリの基準。導入時点の一覧で、減る方向にしか動かさない。 */
+const FEATURE_SLICE_DEBT = 'tools/check/feature-slice-debt.json'
 
 /** Context をまたぐ要件を宣言する文書。 */
 const SYSTEM_SCENARIOS = 'docs/domain/scenarios.feature.md'
@@ -65,25 +65,31 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
     }
   }
 
-  const debt: FeatureNodeDebt = snapshot.exists(FEATURE_NODE_DEBT)
-    ? JSON.parse(await snapshot.read(FEATURE_NODE_DEBT))
+  const debt: FeatureSliceDebt = snapshot.exists(FEATURE_SLICE_DEBT)
+    ? JSON.parse(await snapshot.read(FEATURE_SLICE_DEBT))
     : { contextAliases: {}, unmappedSlices: [] }
   const backendDirectories = (await snapshot.files('backend', ['vendor', 'dist', 'build'])).map(
     (path) => posix.dirname(path),
   )
-  const nodes = new Set(
+  const specifications = new Set(
     domainFiles.flatMap((path) => {
-      const node = posix.dirname(path)
-      if (/^docs\/domain\/[^/]+\/[^/]+$/.test(node)) return [node]
-      // 機能群の一段下も機能ノードになる。内部設計の段は機能ではない。
+      const directory = posix.dirname(path)
+      if (/^docs\/domain\/[^/]+\/[^/]+$/.test(directory)) return [directory]
+      // 機能群の一段下も機能スライスの仕様になる。内部設計の段は機能ではない。
       return inFeatureContext(path) &&
-        /^docs\/domain\/[^/]+\/[^/]+\/[^/]+$/.test(node) &&
-        node.split('/')[3] !== 'design'
-        ? [node]
+        /^docs\/domain\/[^/]+\/[^/]+\/[^/]+$/.test(directory) &&
+        directory.split('/')[3] !== 'design'
+        ? [directory]
         : []
     }),
   )
-  findings.push(...verifyFeatureNodes(featureSlices([...new Set(backendDirectories)]), nodes, debt))
+  findings.push(
+    ...verifyFeatureSliceSpecifications(
+      codeSlices([...new Set(backendDirectories)]),
+      specifications,
+      debt,
+    ),
+  )
 
   return {
     ok: findings.length === 0,

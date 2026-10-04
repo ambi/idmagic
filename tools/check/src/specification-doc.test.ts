@@ -47,18 +47,23 @@ describe('documentKind', () => {
     expect(documentKind('docs/design/security/network.md')).toBeUndefined()
   })
 
-  it('reads a feature node one level below its context with the grammar its name gives', () => {
+  it('reads a feature slice one level below its context with the grammar its name gives', () => {
     expect(documentKind('docs/domain/demo/user/scenarios.feature.md')).toBe('scenarios')
     expect(documentKind('docs/domain/demo/user/states.md')).toBe('states')
     expect(documentKind('docs/domain/demo/user/README.md')).toBe('specification')
     expect(documentKind('docs/domain/demo/user/internals.md')).toBe('prose')
   })
 
+  // 基準のリビジョンには改名前の付録が残るので、spec-diff はそれも付録として読む。
+  it('reads the appendix under its former name examples.feature.md', () => {
+    expect(documentKind('docs/domain/demo/people/user/examples.feature.md')).toBe('examples')
+  })
+
   it('reads the feature layout: specifications, chapters, appendix, and design', () => {
     expect(documentKind('docs/domain/demo/people/user/README.md')).toBe('specification')
     expect(documentKind('docs/domain/demo/people/user/lifecycle.md')).toBe('specification')
     expect(documentKind('docs/domain/demo/people/user/design.md')).toBe('prose')
-    expect(documentKind('docs/domain/demo/people/user/examples.feature.md')).toBe('examples')
+    expect(documentKind('docs/domain/demo/people/user/acceptance.feature.md')).toBe('examples')
     expect(documentKind('docs/domain/demo/design/README.md')).toBe('design-index')
     expect(documentKind('docs/design/README.md')).toBe('design-index')
     expect(documentKind('docs/domain/demo/quality.md')).toBe('prose')
@@ -67,13 +72,13 @@ describe('documentKind', () => {
     expect(documentKind('docs/domain/demo/design/csv/notes.md')).toBeUndefined()
   })
 
-  it('keeps shared vocabulary and adopted standards at the context, not in a feature node', () => {
+  it('keeps shared vocabulary and adopted standards at the context, not in a feature slice', () => {
     expect(documentKind('docs/domain/demo/user/glossary.md')).toBeUndefined()
     expect(documentKind('docs/domain/demo/user/standards.md')).toBeUndefined()
   })
 
-  // 機能群の一段下まで機能ノードを置けるので、その下で木が止まる。
-  it('stops the tree at the feature node', () => {
+  // 機能群の一段下まで機能スライスを置けるので、その下で木が止まる。
+  it('stops the tree at the feature slice', () => {
     expect(documentKind('docs/domain/demo/people/user/profile/README.md')).toBeUndefined()
   })
 
@@ -230,7 +235,7 @@ describe('feature specification', () => {
 describe('examples appendix', () => {
   it('reads rule references and examples without declaring the rules', () => {
     const result = validateDocument(
-      'docs/domain/demo/work/task/examples.feature.md',
+      'docs/domain/demo/work/task/acceptance.feature.md',
       [
         '# Feature: タスクの例',
         '',

@@ -26,7 +26,7 @@ const specification = [
 
 describe('実行可能な具体例', () => {
   it('期待値だけの変更も親規則の仕様差分へ返す', () => {
-    const path = 'docs/domain/demo/feature/examples.feature.md'
+    const path = 'docs/domain/demo/feature/acceptance.feature.md'
     const document = (expected: string) =>
       '# Feature: Demo\n\n' +
       updateExampleBlocks(source, () =>
@@ -39,7 +39,7 @@ describe('実行可能な具体例', () => {
     expect(changed.changedScenarios).toEqual(['REQ-DEMO-001'])
   })
   it('期待値の集合が同じでも、入力との対応の変更を検出する', () => {
-    const path = 'docs/domain/demo/feature/examples.feature.md'
+    const path = 'docs/domain/demo/feature/acceptance.feature.md'
     const data = ['first', 'second'].map((name, index) => ({
       ...cases[0],
       id: `EX-DEMO-001-0${index + 1}`,
@@ -125,7 +125,7 @@ describe('実行可能な具体例', () => {
 
   it('標準検査は文書の改変、一次情報の変更と欠落を検出し、自身では書き換えない', async () => {
     const root = await mkdtemp(join(tmpdir(), 'idmagic-examples-'))
-    const doc = 'docs/domain/demo/feature/examples.feature.md'
+    const doc = 'docs/domain/demo/feature/acceptance.feature.md'
     try {
       await mkdir(dirname(join(root, doc)), { recursive: true })
       await mkdir(dirname(join(root, fixture)), { recursive: true })

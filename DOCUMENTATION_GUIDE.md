@@ -89,8 +89,8 @@ tree with `tools/workspace/src/document-layout.ts`, so this guide does not repro
 
 仕様は、システム、コンテキスト、機能群、機能の四つの階層からなる木に置く。
 仕様には外部から観測できる振る舞いだけを書き、一つの事実を一か所にだけ手で書く。
-一つの機能の要件は、機能ノード`docs/domain/<context>/<group>/<feature>/`の機能仕様に EARS 形式で書く。
-階層の定義、機能ノードとコードの対応、機能仕様の節、要件一件の欄は[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)、[機能仕様](SPECIFICATION_FORMAT.md#機能仕様--一つの機能について知るべきこと)、[要件一件の書式](SPECIFICATION_FORMAT.md#要件一件の書式)が定める。
+一つの機能の要件は、機能スライスの仕様のディレクトリ`docs/domain/<context>/<group>/<feature>/`の機能仕様に EARS 形式で書く。
+階層の定義、機能スライスの仕様とコードの対応、機能仕様の節、要件一件の欄は[Specification Format の仕様の木](SPECIFICATION_FORMAT.md#仕様の木)、[機能仕様](SPECIFICATION_FORMAT.md#機能仕様--一つの機能について知るべきこと)、[要件一件の書式](SPECIFICATION_FORMAT.md#要件一件の書式)が定める。
 
 ## 4. システム要求と設計
 

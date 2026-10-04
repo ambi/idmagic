@@ -1,9 +1,9 @@
 /**
- * 機能ノードで、ファイルをまたいで成り立つべきことを確かめる。
+ * 機能スライスで、ファイルをまたいで成り立つべきことを確かめる。
  *
- * 要件は機能仕様（`README.md` と章）で宣言し、例は同じ機能ノードの `examples.feature.md` に置く。
+ * 要件は機能仕様（`README.md` と章）で宣言し、例は同じ機能スライスの `acceptance.feature.md` に置く。
  * 一つのファイルだけを読む検証では、付録が宣言のない要件を参照していることが分からない。
- * ここは機能ノードごとに宣言と参照を集めてから照合する。例は任意なので、例のない要件は拒否しない。
+ * ここは機能スライスごとに宣言と参照を集めてから照合する。例は任意なので、例のない要件は拒否しない。
  */
 
 import type { DocumentSetView } from '../../workspace/src/document-layout.ts'
@@ -12,13 +12,13 @@ import type { SpecificationValidation } from './specification-doc.ts'
 type Declaration = { id: string; title: string; where: string }
 type Reference = { id: string; title: string; where: string }
 
-export class FeatureNodeDeclarations {
+export class FeatureSliceDeclarations {
   private readonly declarations = new Map<string, Declaration[]>()
   private readonly references = new Map<string, Reference[]>()
 
   add(path: string, result: SpecificationValidation): void {
     const directory = path.slice(0, path.lastIndexOf('/'))
-    if (path.endsWith('/examples.feature.md')) {
+    if (path.endsWith('/acceptance.feature.md')) {
       const references = this.references.get(directory) ?? []
       references.push(
         ...result.ruleReferences.map((reference) => ({
@@ -79,7 +79,7 @@ export class FeatureNodeDeclarations {
 function placementProblem(directory: string, view: DocumentSetView): string | undefined {
   const [, , , ...rest] = directory.split('/')
   if (rest.length === 0 || rest[0] === 'design' || view.parents.has(directory)) {
-    return 'must be declared in a feature node'
+    return 'must be declared in a feature slice'
   }
   return undefined
 }

@@ -59,7 +59,7 @@ const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .map((entry) => entry.name)
   .sort()
 /**
- * Context の文書。Context の直下、内部設計、機能群と機能ノードの順に、各段では
+ * Context の文書。Context の直下、内部設計、機能群と機能スライスの順に、各段では
  * `README.md` を先に置いて集める。置いてよいかは検査と同じ判定（`documentAllowance`）で決める。
  */
 async function contextDocuments(context: string): Promise<string[]> {
@@ -124,7 +124,7 @@ if (program.hasError()) {
 const apiSchemas = new Set<string>(Object.keys(openapi.components?.schemas ?? {}))
 const catalog = extractTypeSpecCatalog(program, apiSchemas, root)
 const snapshot = createWorkspaceSnapshot(root)
-const { contextAliases } = JSON.parse(await snapshot.read('tools/check/feature-node-debt.json'))
+const { contextAliases } = JSON.parse(await snapshot.read('tools/check/feature-slice-debt.json'))
 const sourcePaths = [
   ...(await snapshot.files('backend')),
   ...(await snapshot.files('spec/contexts')),

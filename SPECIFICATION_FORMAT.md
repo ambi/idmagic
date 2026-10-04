@@ -17,7 +17,7 @@
 | 横断的要件 | 複数の操作や Aggregate に同じ内容で適用される要件。一か所で宣言し、ほかの箇所は例外だけを書く | 状態を変える操作は、すでにその状態なら成功を返しイベントを発行しない |
 | 値オブジェクト | ドメイン駆動設計の Value Object。値の正規化、比較、妥当性の判定を一か所で定義する型 | ユーザー名 |
 | 状態遷移表（マトリクス形式） | 行に状態、列に操作を並べ、すべてのセルに結果を書く表 | [状態遷移](#4-状態遷移)の三つ目の表 |
-| 機能ノード | 一つの機能の仕様を置くディレクトリ。コードの機能スライスに対応する | `docs/domain/identity-management/user/` |
+| 機能スライス | 一つの機能の単位。仕様のディレクトリと、対応するコードのディレクトリ `backend/<context>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/domain/identity-management/user/` と `backend/idmanagement/user/` |
 
 ## 1. 配置
 
@@ -48,10 +48,10 @@ docs/
         <concept>.md            # 横断的概念
       <group>/                  # 機能群
         README.md               # 境界と機能の索引
-        <feature>/              # 機能ノード
+        <feature>/              # 機能スライスの仕様
           README.md             # 仕様：機能仕様
           <chapter>.md          # 長くなった機能仕様の章
-          examples.feature.md   # 例の付録（任意）
+          acceptance.feature.md # 受け入れの例の付録（任意）
           design.md             # 設計（任意）：コードから読み取れない仕組みと直し方
   requirements/
     README.md
@@ -128,7 +128,7 @@ spec/
 - 内容のないファイルは作らず、該当しない事項とその理由を親の索引へ記録する。
 - 固定された各ディレクトリでは、ファイル名を検査する *(checked)*。許可された名前に近い誤記には意図した名前を、その他の名前には許可される名前の集合を報告する。
 - 機能仕様の章と内部設計の横断的概念は、ケバブケースの任意の名前で置ける。
-- 小さなコンテキストでは、機能群を置かず、コンテキストの直下に機能ノードを置いてよい。
+- 小さなコンテキストでは、機能群を置かず、コンテキストの直下に機能スライスの仕様を置いてよい。
 - `main.tsp` は TypeSpec プログラムを構成する。モデル宣言は `models.tsp`、操作はコンテキストの `main.tsp` に置く。
 - 生成した OpenAPI は追跡しない `spec/generated/`、生成した文書サイトは追跡しない `site/` に置き、`docs/` には置かない。
 
@@ -202,7 +202,7 @@ X のライフサイクルと付随するメタデータを扱う。
 
 ### 機能仕様 — 一つの機能について知るべきこと
 
-機能ノードの `README.md` は、その機能の仕様である。
+機能スライスの `README.md` は、その機能の仕様である。
 SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一度ずつ置く *(checked)*。
 内容のない節は置かない。
 
@@ -304,20 +304,20 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 | システム | `docs/requirements/`、`docs/domain/`、`docs/design/` | `requirements/`（目的と範囲、機能、品質）、`domain/glossary.md`、`domain/standards.md`、`domain/scenarios.feature.md` | `docs/design/` |
 | コンテキスト | `docs/domain/<context>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | `design/` |
 | 機能群 | `docs/domain/<context>/<group>/` | `README.md`（関係の深い機能の境界と索引）。要件は宣言しない *(checked)* | なし |
-| 機能 | `docs/domain/<context>/<group>/<feature>/` | `README.md` と章、任意の `examples.feature.md` | 任意の `design.md` |
+| 機能 | `docs/domain/<context>/<group>/<feature>/` | `README.md` と章、任意の `acceptance.feature.md` | 任意の `design.md` |
 
-- 要件は機能ノードでだけ宣言する *(checked)*。複数の機能にまたがって見える要件も、その要件を実装するコードが属する機能へ置く。実装が共有の仕組みであれば、その仕組みを一つの機能（例：管理 API の認可、CSV の転送）として機能ノードを設ける。
+- 要件は機能スライスの仕様でだけ宣言する *(checked)*。複数の機能にまたがって見える要件も、その要件を実装するコードが属する機能へ置く。実装が共有の仕組みであれば、その仕組みを一つの機能（例：管理 API の認可、CSV の転送）として機能スライスを設ける。
 - 機能群に置けるのは `README.md` だけである *(checked)*。
-- 機能ノードに置けるのは `README.md`、`design.md`、`examples.feature.md` と任意の名前の章である *(checked)*。その下にディレクトリを置かない *(checked)*。
+- 機能スライスの仕様のディレクトリに置けるのは `README.md`、`design.md`、`acceptance.feature.md` と任意の名前の章である *(checked)*。その下にディレクトリを置かない *(checked)*。
 - `glossary.md` と `standards.md` は、コンテキストのルートに置く。
 - 親の設計が並べる構成要素は、子の仕様へリンクする。
 
-**機能ノードとコード。**
+**機能スライスの仕様とコード。**
 
-- 機能ノードは、コードの機能スライス `backend/<context>/<feature>/`（直下に `domain/` または `usecases/` を置くディレクトリ）に対応させる。
-- 機能ノードの名前からハイフンを除いた名前がスライスの名前と一致すれば、対応とみなす（`trusted-device` と `trusteddevice`）。一致しないコンテキスト名は検査の設定に別名として書く。
-- すべての機能スライスに、対応する機能ノードを置く *(checked)*。導入時点で対応のなかったスライスは `tools/check/feature-node-debt.json` に列挙し、減る方向にだけ変える。
-- コードに機能スライスのない機能にも、要件のまとまりがあれば機能ノードを置いてよい。
+- 機能スライスの仕様のディレクトリは、コードのディレクトリ `backend/<context>/<feature>/`（直下に `domain/` または `usecases/` を置くディレクトリ）に対応させる。
+- 仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と一致すれば、対応とみなす（`trusted-device` と `trusteddevice`）。一致しないコンテキスト名は検査の設定に別名として書く。
+- コードのディレクトリには、対応する仕様のディレクトリを必ず置く *(checked)*。導入時点で対応のなかったコードのディレクトリは `tools/check/feature-slice-debt.json` に列挙し、減る方向にだけ変える。
+- コードのディレクトリのない機能スライスにも、要件のまとまりがあれば仕様のディレクトリを置いてよい。その場合は、コンテキストの設計の構成要素の表に、どのコードが実装するかを書く。
 
 **継承。**
 
@@ -508,7 +508,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 ### 横断的要件と値オブジェクト
 
 - 一つの機能の複数の操作にかかる要件は、その不変条件が最も直接に関わる操作の H3 に一つの要件として置く。ほかの操作は、その要件の見出しへの「上位の要件」の欄だけで参照し、例外があれば要件として書く。
-- 複数の機能にかかる要件は、その振る舞いを実装する共有の仕組みの機能ノードで宣言する。
+- 複数の機能にかかる要件は、その振る舞いを実装する共有の仕組みの機能スライスで宣言する。
 - システム全体にかかる要件は、`docs/design/application/api-guidelines.md` などのシステム文書に置く。
 - 複数の機能が使う値（ユーザー名、メールアドレスなど）は、コンテキストの `README.md` のモデルの節で、値オブジェクトとして正規化、比較、一意性の範囲を定義する。各機能の要件は、その定義と異なる点だけを書く。
 
@@ -532,10 +532,10 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 置くのは、代表例、境界値、意外な挙動を要件文だけでは読み取りにくい場合に限る。
 要件文の言い換えになる例は置かない。
 
-- 例は同じ機能ノードの付録 `examples.feature.md` に [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) で書く。
+- 例は同じ機能スライスの付録 `acceptance.feature.md` に [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) で書く。
 - すべてのファイルを公式の JavaScript Gherkin パーサーが受理する *(checked)*。
 - 一ファイルに一つの `Feature`、要件ごとに一つの `Rule`、一つの `Example` に分岐のない一経路を書く。
-- 付録の `Rule` は、同じ機能ノードの仕様本文が宣言した要件だけを参照でき、タイトルは宣言と一致させる *(checked)*。
+- 付録の `Rule` は、同じ機能スライスの仕様本文が宣言した要件だけを参照でき、タイトルは宣言と一致させる *(checked)*。
 - 付録に置いた `Rule` には、一つ以上の例を置く *(checked)*。
 - `Example` の名前は `EX-<CONTEXT>-<REQ-NNN>-<sequence>` で始める。`Scenario Outline` では、各 `Examples` 行の `example_id` 列に置く。
 - 例の ID は変更せず、全体で一意にし、親の要件に所属させる *(checked)*。
@@ -549,7 +549,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 ### 実行可能な具体例と派生表示
 
 - 例は、実装に隣接する `testdata/*.examples.json` を一次情報にして生成することを優先する。一次情報は各例の `id`、`title`、`given`、`input`、`expected` からなる JSON 配列である。
-- `examples.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<context>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
+- `acceptance.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<context>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
 - `mise run check-spec` は一次情報との差を拒否する *(checked)*。
 - 生成した EX にも通常の検査を適用し、データを実行して期待結果を表明するテストを要する。テストの `//spec:covers` にその EX の ID を追加する。
 - 実装から得た出力を期待結果として自動採用しない。

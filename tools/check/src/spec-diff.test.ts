@@ -298,7 +298,7 @@ describe('diffSpecifications', () => {
     expect(diffSpecifications(base, relabeled).changedScenarios).toEqual(['REQ-DEMO-001'])
   })
 
-  it('reports nothing when a rule and its state machine move into a feature node', () => {
+  it('reports nothing when a rule and its state machine move into a feature slice', () => {
     const lifecycle = [
       '## Lifecycle',
       '',
@@ -406,7 +406,7 @@ describe('diffSpecifications', () => {
     const head = (statement: string, result: string): Snapshot =>
       new Map([
         ['docs/domain/demo/work/task/README.md', specification(statement)],
-        ['docs/domain/demo/work/task/examples.feature.md', appendix(result)],
+        ['docs/domain/demo/work/task/acceptance.feature.md', appendix(result)],
       ])
     const migrated = diffSpecifications(base, head('規則文の一行', 'it succeeds'))
     expect(migrated.removedScenarios).toEqual([])

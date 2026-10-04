@@ -1,7 +1,7 @@
 import {
   DESIGN_DOCUMENTS,
   CONTEXT_DOCUMENTS,
-  FEATURE_NODE_DOCUMENTS,
+  FEATURE_SLICE_DOCUMENTS,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
 
@@ -25,7 +25,7 @@ function requiredDocumentPaths(): string[] {
   const contextDocuments = CONTEXT_DOCUMENTS.map((name) => `docs/domain/<context>/${name}`)
   const designDocuments = DESIGN_DOCUMENTS.map((name) => `docs/domain/<context>/design/${name}`)
   const groupDocuments = ['docs/domain/<context>/<group>/README.md']
-  const featureDocuments = FEATURE_NODE_DOCUMENTS.map(
+  const featureDocuments = FEATURE_SLICE_DOCUMENTS.map(
     (name) => `docs/domain/<context>/<group>/<feature>/${name}`,
   )
   return [

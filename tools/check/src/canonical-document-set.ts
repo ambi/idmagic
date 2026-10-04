@@ -86,7 +86,7 @@ export function verifyCanonicalDocumentSet(listings: DirectoryListing[]): Findin
         message: nearest
           ? `not a canonical document; did you mean ${nearest}?`
           : allowed.length === 0
-            ? 'not a canonical document; the specification tree stops at the feature node'
+            ? 'not a canonical document; the specification tree stops at the feature slice'
             : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}${
                 allowance.freeNames ? ', and chapters named in kebab-case' : ''
               }`,

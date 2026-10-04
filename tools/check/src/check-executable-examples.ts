@@ -6,7 +6,7 @@ export async function checkExecutableExamples(snapshot: WorkspaceSnapshot): Prom
   const lines: string[] = []
   let count = 0
   for (const path of (await snapshot.files('docs')).filter((path) =>
-    path.endsWith('examples.feature.md'),
+    path.endsWith('acceptance.feature.md'),
   )) {
     const source = await snapshot.read(path)
     if (!source.includes('spec:examples')) continue

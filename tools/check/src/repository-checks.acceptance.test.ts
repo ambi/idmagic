@@ -15,7 +15,7 @@ afterAll(async () => {
  * ことは、そのファイルが検証の対象にすら入っていないということである。
  */
 const INVALID_BODY = '# One\n\n# Two\n'
-/** 機能ノード `run` の機能仕様。work item が参照する要件を一つ宣言する。 */
+/** 機能スライス `run` の機能仕様。work item が参照する要件を一つ宣言する。 */
 const DEMO_SPECIFICATION = '# 実行\n\n#### REQ-DEMO-001 Demo succeeds\n\n- 要求を受け付ける。\n'
 
 /** 正常な要求が成功するという要件と、その例。どのテストも例を名指さない。 */
@@ -56,8 +56,8 @@ const DESIGN_INDEX = [
 ].join('\n')
 
 /**
- * 機能ノードに、要件を宣言する機能仕様と例の付録を置く。`node` は Context からの相対パスで、
- * 機能群の下の機能ノードも指せる。
+ * 機能スライスに、要件を宣言する機能仕様と例の付録を置く。`node` は Context からの相対パスで、
+ * 機能群の下の機能スライスも指せる。
  */
 async function writeFeature(
   root: string,
@@ -68,7 +68,7 @@ async function writeFeature(
   const directory = join(root, 'docs', 'domain', 'demo', ...node.split('/'))
   await mkdir(directory, { recursive: true })
   await writeFile(join(directory, 'README.md'), specification)
-  await writeFile(join(directory, 'examples.feature.md'), examples)
+  await writeFile(join(directory, 'acceptance.feature.md'), examples)
 }
 
 /** 仮の作業ツリー。一次情報文書の集合が閉じているかどうかだけを見る最小の形。 */
@@ -260,9 +260,9 @@ describe('文書検査', () => {
     expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
   })
 
-  // 機能群の下の機能ノードの文書が一次情報として読まれなければ、そこへ置いた要件は宣言ごと
+  // 機能群の下の機能スライスの文書が一次情報として読まれなければ、そこへ置いた要件は宣言ごと
   // 検査から消える。被覆の拒否が出ることが、読まれていることの観測になる。
-  it('reads the examples of a feature node inside a group as normative', async () => {
+  it('reads the examples of a feature slice inside a group as normative', async () => {
     const root = await workspace()
     await mkdir(join(root, 'docs', 'domain', 'demo', 'people'), { recursive: true })
     await writeFile(join(root, 'docs', 'domain', 'demo', 'people', 'README.md'), '# People\n')
@@ -715,7 +715,7 @@ async function checkSpecificationRules(root: string): Promise<{ code: number; ou
 }
 
 describe('規則の書式と仕様の木の検査', () => {
-  /** 機能スライス `backend/demo/task` と、それに対応する機能ノードを持つ作業ツリー。 */
+  /** 機能スライス `demo/task` の、コードのディレクトリと仕様のディレクトリを持つ作業ツリー。 */
   async function featureWorkspace(guarantee: string, parent: string): Promise<string> {
     const root = await workspace()
     await mkdir(join(root, 'backend', 'demo', 'task', 'domain'), { recursive: true })
@@ -750,7 +750,7 @@ describe('規則の書式と仕様の木の検査', () => {
   }
   const parentLink = '[ページサイズ](../../../design/application/api-guidelines.md#ページサイズ)'
 
-  it('accepts a feature node whose guarantee and parent requirement both resolve', async () => {
+  it('accepts a feature slice whose guarantee and parent requirement both resolve', async () => {
     const result = await checkSpecificationRules(await featureWorkspace('Task.Open', parentLink))
     expect(result.output).toContain('ok  specification rules')
     expect(result.code).toBe(0)
@@ -775,7 +775,7 @@ describe('規則の書式と仕様の木の検査', () => {
     expect(result.output).toContain('REQ-DEMO-002 parent requirement does not resolve')
   })
 
-  it('rejects a feature slice with no feature node', async () => {
+  it('rejects a code slice with no feature slice specification', async () => {
     const root = await featureWorkspace('Task.Open', parentLink)
     await mkdir(join(root, 'backend', 'demo', 'note', 'usecases'), { recursive: true })
     await writeFile(
@@ -784,6 +784,8 @@ describe('規則の書式と仕様の木の検査', () => {
     )
     const result = await checkSpecificationRules(root)
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('backend/demo/note has no feature node under docs/domain/demo/')
+    expect(result.output).toContain(
+      'backend/demo/note has no feature slice specification under docs/domain/demo/',
+    )
   })
 })

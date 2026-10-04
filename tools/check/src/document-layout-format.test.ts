@@ -40,7 +40,7 @@ docs/
 
     expect(paths).toContain('docs/domain/<context>/design/decisions.md')
     expect(paths).toContain('docs/domain/<context>/<group>/README.md')
-    expect(paths).toContain('docs/domain/<context>/<group>/<feature>/examples.feature.md')
+    expect(paths).toContain('docs/domain/<context>/<group>/<feature>/acceptance.feature.md')
     expect(paths).not.toContain('docs/domain/<context>/internals.md')
   })
 })
