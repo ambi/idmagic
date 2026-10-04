@@ -38,107 +38,68 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 
 ### 作成
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 名前、説明、連絡先、ロール、所属の種類、属性 |
-| 成功時の作用 | Group を作り、`GroupCreated` を発行し、下流のプロビジョニングへ通知する |
-| 拒否 | 空の名前、同名の Group、メールアドレスとして読めない連絡先、スキーマに合わない属性。どの拒否も Group を作らない |
-
 #### REQ-IDMANAGEMENT-024 Group の作成は、連絡先と属性をテナントのスキーマで検証して保存し、`GroupCreated` を発行する
 
-- 連絡先のメールアドレスと、テナントの Group 属性スキーマで定義した属性を指定した作成は、その値で Group を作り、`GroupCreated` を発行する。
-- メールアドレスの形式を満たさない連絡先の作成は、InvalidEmailError で拒否する。
-- 定義していないキーの属性と、定義した型と一致しない値の属性の作成は、InvalidGroupAttributeError で拒否する。
-- **担保手段**：`usecases.CreateGroup`
+- 管理者が Group を作成したとき、指定した名前、説明、連絡先、ロール、所属の種類、属性で Group を作り、`GroupCreated` を発行し、下流のプロビジョニングへ通知する。
+- メールアドレスの形式を満たさない連絡先を指定された場合は、InvalidEmailError で拒否し、Group を作らない。
+- 定義していないキーの属性、または定義した型と一致しない値の属性を指定された場合は、InvalidGroupAttributeError で拒否し、Group を作らない。
 - **例**：EX-IDMANAGEMENT-024-01、EX-IDMANAGEMENT-024-03
 
 #### REQ-IDMANAGEMENT-060 Group の作成と更新は、名前、説明、連絡先を正規化して保存する
 
-- 名前は前後の空白を除いて保存する。空白を除いて空になる名前は、422 と `group_name_required` で拒否する。
-- 同じテナントのほかの Group と大文字と小文字を区別せずに同じ名前は、409 と `group_name_conflict` で拒否する。
-- 説明は前後の空白を除き、空になる説明は設定しない。
-- 連絡先のメールアドレスは前後の空白を除き、表示名付きの形式からはアドレスだけを取り出し、小文字にして保存する。空になる値は設定しない。
-- **担保手段**：`usecases.CreateGroup`、`usecases.UpdateGroup`
-- **要判断**：管理 API は表示名付きのメールアドレスを受け付けてアドレスだけを保存するが、Group の CSV は同じ値を `invalid_email` で拒否する。どちらかに揃えるかを決める。
+- Group の名前は、前後の空白を除いて保存する。
+- Group の説明は、前後の空白を除いて保存する。空になる説明は設定しない。
+- Group の連絡先のメールアドレスは、前後の空白を除き、表示名付きの形式からはアドレスだけを取り出し、小文字にして保存する。空になる値は設定しない。
+- 前後の空白を除くと空になる名前を指定された場合は、422 と `group_name_required` で拒否し、Group を作成も更新もしない。
+- 同じテナントのほかの Group と大文字と小文字を区別せずに同じ名前を指定された場合は、409 と `group_name_conflict` で拒否し、Group を作成も更新もしない。
 
 #### REQ-IDMANAGEMENT-061 テナントに Group 属性スキーマがなければ、Group の作成と更新は属性を拒否する
 
-- テナントが Group 属性スキーマを定義していないとき、属性を一つでも含む作成と更新は、422 と `invalid_attribute` で拒否する。
-- 作成は、属性を指定しなくても必須の属性の欠落を拒否する。
-- **担保手段**：`usecases.CreateGroup`、`usecases.UpdateGroup`
+- テナントが Group 属性スキーマを定義していない間は、属性を一つでも含む作成と更新を 422 と `invalid_attribute` で拒否する。
+- 属性を指定しない作成を要求された場合も、必須の属性の欠落を拒否する。
 
 ### 更新
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 名前、説明、連絡先、ロール、属性。`attributes` を指定すると属性の全体を置き換える |
-| 成功時の作用 | 値が変わった項目だけを保存し、`GroupUpdated` を発行し、下流のプロビジョニングへ通知する |
-| 拒否 | 作成と同じ検証の違反（REQ-IDMANAGEMENT-060、REQ-IDMANAGEMENT-061） |
-| 冪等性 | 同じ値での更新は、`updated_at` を進めず、イベントを発行せず、通知しない（REQ-IDMANAGEMENT-062） |
-
 #### REQ-IDMANAGEMENT-062 Group の更新は、値が変わった項目だけを記録する
 
-- `attributes` を指定した更新だけが属性を検証し、指定した対応表で属性の全体を置き換える。
-- `GroupUpdated` の `changed_fields` には、`name`、`description`、`email`、`attributes`、`roles` のうち値が変わった項目だけを載せる。
-- どの項目の値も変わらない更新は成功を返し、`updated_at` を進めず、`GroupUpdated` を発行せず、下流のプロビジョニングへ通知しない。
-- **担保手段**：`usecases.UpdateGroup`
+- 管理者が Group を更新したとき、値が変わった項目だけを保存し、`name`、`description`、`email`、`attributes`、`roles` のうち値が変わった項目だけを `changed_fields` に載せた `GroupUpdated` を発行し、下流のプロビジョニングへ通知する。
+- 管理者が `attributes` を指定したとき、属性を検証し、指定した対応表で属性の全体を置き換える。`attributes` を指定しない更新は、属性を検証しない。
+- 管理者がどの項目の値も変えない更新を要求した場合は、成功を返し、`updated_at` を進めず、`GroupUpdated` を発行せず、下流のプロビジョニングへ通知しない。
 - **例**：EX-IDMANAGEMENT-062-01、EX-IDMANAGEMENT-062-02
 
 ### メンバーの追加と除外
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 手動の Group と、User |
-| 成功時の作用 | メンバーシップを作るか消し、`GroupMemberAdded` または `GroupMemberRemoved` を発行し、下流のプロビジョニングへ通知する。メンバーの実効ロールに Group のロールが加わる |
-| 拒否 | 存在しない User、`Deleted` の User、別のテナントの User（404 `user_not_found`）。動的グループへの追加と除外（409 `dynamic_membership_managed_by_rule`、REQ-IDMANAGEMENT-085）。どの拒否もメンバーシップを変えない |
-| 冪等性 | すでにメンバーである User の追加と、メンバーでない User の除外は、成功を返しイベントを発行しない |
-
 #### REQ-IDMANAGEMENT-015 User のメンバーへの追加は `GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える
 
-- User を Group に所属させると、`GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える。
-- 同じ User を同じ Group へもう一度所属させる操作は、`GroupMemberAdded` を再発行しない。
-- **担保手段**：`usecases.AddMember`、`domain.EffectiveRoles`
+- 管理者が User を Group に所属させたとき、メンバーシップを作り、`GroupMemberAdded` を発行し、下流のプロビジョニングへ通知し、User の実効ロールに Group のロールを加える。
+- 管理者が User を Group から外したとき、メンバーシップを消し、`GroupMemberRemoved` を発行し、下流のプロビジョニングへ通知する。
+- 管理者が同じ User を同じ Group へもう一度所属させた場合は、成功を返し、`GroupMemberAdded` を再発行しない。
 - **例**：EX-IDMANAGEMENT-015-01、EX-IDMANAGEMENT-015-02
 
 #### REQ-IDMANAGEMENT-063 手動のメンバーの追加は、削除されていない同じテナントの User を受け付ける
 
 - 追加の対象は、同じテナントの `Deleted` でない User である。`Disabled` と `PendingDeletion` の User も追加できる。
-- 存在しない User、`Deleted` の User、別のテナントの User の追加は、404 と `user_not_found` で拒否し、メンバーシップを作らない。
-- すでにメンバーである User の追加と、メンバーでない User の除外は成功を返し、イベントを発行しない。
-- **担保手段**：`usecases.AddMember`、`usecases.RemoveMember`
+- 管理者がメンバーでない User を除外した場合は、成功を返し、イベントを発行しない。
+- 存在しない User、`Deleted` の User、別のテナントの User の追加を要求された場合は、404 と `user_not_found` で拒否し、メンバーシップを作らない。
 
 #### REQ-IDMANAGEMENT-085 動的グループへの手動のメンバーの追加と除外は拒否する
 
-- `membership_type=dynamic` の Group への `AddGroupMember` と `RemoveGroupMember` の呼び出しは、409 と `dynamic_membership_managed_by_rule` で拒否し、メンバーシップを変えない。
+- `membership_type=dynamic` の Group へのメンバーの追加と除外を要求された場合は、409 と `dynamic_membership_managed_by_rule` で拒否し、メンバーシップを変えない。
 - **判断**：動的グループの所属は規則の評価だけが決める。手動の操作を許すと、所属がどの経路で付いたのかを区別できなくなる。
-- **担保手段**：`usecases.AddMember`、`usecases.RemoveMember`
 - **例**：EX-IDMANAGEMENT-085-01
 
 #### REQ-IDMANAGEMENT-064 下流への通知に失敗した Group の変更は、確定したままエラーを返す
 
 - Group の作成、更新、削除、手動のメンバーの追加と除外は、変更を確定してから下流のプロビジョニングへ通知する。
-- 通知に失敗した操作はエラーを返すが、確定した変更と発行したイベントは取り消さない。
-- **担保手段**：`usecases.AddMember`、`usecases.CreateGroup`
-- **要判断**：管理者には失敗が返るが変更は残るため、再試行が重複した操作になり得る。User の変更は通知の失敗を記録して成功を返す。Group も同じにするかを決める。
+- 下流のプロビジョニングへの通知に失敗した場合は、エラーを返し、確定した変更と発行したイベントを取り消さない。
 
 ### 所属グループの参照
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | User |
-| 成功時の作用 | User が所属する Group と、実効ロール、Group 由来のロール、直接付与したロールを返す。状態は変えない |
-| 拒否 | 存在しない User と別のテナントの User（404 `user_not_found`） |
-
 #### REQ-IDMANAGEMENT-084 User の所属グループの参照は、実効ロールと、Group 由来のロールと直接付与したロールを分けて返す
 
-- 応答は、所属する Group と、実効ロール、Group 由来のロール（`group_roles`）、直接付与したロール（`direct_roles`）を返す。
+- 管理者が User の所属グループを参照したとき、所属する Group と、実効ロール、Group 由来のロール（`group_roles`）、直接付与したロール（`direct_roles`）を返し、状態を変えない。
 - 実効ロールは、Group 由来のロールと直接付与したロールの和集合である。
-- 存在しない User と別のテナントの User の参照は、404 と `user_not_found` で拒否する。
-- **担保手段**：`usecases.UserGroups`、`domain.EffectiveRoles`
+- 存在しない User と別のテナントの User の参照を要求された場合は、404 と `user_not_found` で拒否する。
 - **例**：EX-IDMANAGEMENT-084-01
 
 ## セキュリティ上の考慮

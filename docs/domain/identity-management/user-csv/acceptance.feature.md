@@ -42,7 +42,7 @@
 - Then プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
 - When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
 - But プレビュージョブが存在しない、`queued` または `failed` である、別テナントに属する、保存済みのペイロードとダイジェストが一致しない
-- Then 適用は `User` を変更せず `InvalidRequestError` または `AccessDeniedError` で拒否される
+- Then 適用は `User` を変更せず、存在しないジョブと別テナントのジョブは 404 と `user_import_not_found`、`queued` または `failed` のジョブは 409 と `preview_not_ready`、ダイジェストが一致しないジョブは 409 と `preview_digest_mismatch` で拒否される
 
 ### Example: EX-IDMANAGEMENT-004-06 プレビュー後に対象 `User` の状態が別の操作で変更されている
 
@@ -146,7 +146,7 @@
 - And 一覧には自テナントのユーザーが存在する
 - When 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
 - But 選択列に `User` の許可一覧にないキー（例: `password_hash`）が含まれる
-- Then エクスポート開始は `InvalidRequestError` で拒否される
+- Then エクスポート開始は 422 で拒否される
 - And エラー `invalid_columns`
 
 ### Example: EX-IDMANAGEMENT-006-04 セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる

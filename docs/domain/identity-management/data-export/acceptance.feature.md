@@ -93,7 +93,7 @@
 - Given User のエクスポートは `succeeded` で、保持期限を経過している
 - When 管理者がファイルをダウンロードする
 - Then ステータスは `expired`、`downloadable` は `false` となる
-- And ファイル本体は完全削除され、ダウンロードは `InvalidRequestError` で拒否される
+- And ファイル本体は完全削除され、ダウンロードは 409 と `data_export_not_downloadable` で拒否される
 
 ## Rule: REQ-IDMANAGEMENT-088 エクスポートの参照、ダウンロード、取り消しは、種類またはテナントの異なるパスで指定した ID を拒否する
 
@@ -101,4 +101,4 @@
 
 - Given User のエクスポートが `succeeded` である
 - When 管理者がその ID を `/groups/exports` または別テナントで指定して取得、ダウンロード、取り消しを行う
-- Then 種類とテナントの境界により、取得、ダウンロード、取り消しは `AccessDeniedError` または `InvalidRequestError` で拒否される
+- Then 種類とテナントの境界により、取得、ダウンロード、取り消しは 404 と `data_export_not_found` で拒否される

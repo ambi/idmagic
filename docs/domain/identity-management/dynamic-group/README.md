@@ -9,7 +9,7 @@
 | 責務 | 規則の保存、有効化と無効化、プレビュー、全件の再評価、User の変更に伴う再評価 |
 | 行為者 | 管理者、再評価のジョブ |
 | コードの機能スライス | `backend/idmanagement/group` |
-| 扱わないもの | Group そのものと手動の所属は[グループ](../group/README.md)が、評価に使う User の属性の定義は[ユーザー](../user/README.md#属性の定義)が扱う |
+| 扱わないもの | Group そのものと手動の所属は[グループ](../group/README.md)が、評価に使う User の属性の定義は[ユーザー](../user/README.md#属性の定義)が、ジョブの実行と再試行は `Jobs` が扱う |
 
 ## モデル
 
@@ -29,6 +29,7 @@
 ### DynamicMembershipEvaluationLifecycle
 
 全件の再評価は、`queued` から `running` を経て、`succeeded` または `failed` で終わる。
+失敗した再評価は、`Jobs` の試行の上限まで `queued` に戻してやり直す。
 
 | State | Kind | Meaning |
 |---|---|---|
@@ -40,30 +41,31 @@
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | queued | DynamicMembershipEvaluationStarted | — | running |  |
-| running | DynamicMembershipEvaluated | — | succeeded |  |
-| running | DynamicMembershipEvaluationFailed | — | failed |  |
+| running | DynamicMembershipEvaluated | — | succeeded | DynamicMembershipEvaluated |
+| running | JobRetried | job.attempts < job.max_attempts | queued |  |
+| running | DynamicMembershipEvaluationFailed | job.attempts >= job.max_attempts | failed |  |
+
+| State | 実行の開始 | 全件の再評価の終了 |
+|---|---|---|
+| queued | → running | 何もしない |
+| running | 何もしない | → succeeded（評価を終えた、または規則がない、無効である、版が異なる）<br>→ queued（失敗し、試行が上限に達していない）<br>→ failed（失敗し、試行が上限に達した） |
+| succeeded | 何もしない | 何もしない |
+| failed | 何もしない | 何もしない |
 
 ## 操作
 
 ### 規則の保存と有効化
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 式、または有効化の指示 |
-| 成功時の作用 | 規則を保存して版を進め、`DynamicGroupRuleUpdated` または `DynamicGroupRuleEnabled` を発行する。有効な規則の保存と有効化は、全件の再評価を予約する |
-| 拒否 | 式の制約の違反（422 `invalid_dynamic_group_rule`）、手動の Group への保存（409 `dynamic_membership_managed_by_rule`）、規則のない Group の有効化。どの拒否も規則と所属を変えない |
-| 冪等性 | すでに有効な規則の有効化は、版を進めずイベントを発行しない |
-
 #### REQ-IDMANAGEMENT-066 規則の保存と有効化は版を一つ進め、有効な規則の保存と有効化は全件の再評価を予約する
 
-- 初めて保存した規則は無効であり、版は 1 である。
-- 式の保存のたびに版を一つ進め、有効か無効かは保存前の状態を引き継ぐ。
-- 有効化は版を一つ進める。すでに有効な規則の有効化は、版を進めずイベントを発行しない。
-- 有効な規則の式の保存と、規則の有効化は、全件の再評価を予約する。
-- `membership_type=manual` の Group への規則の保存は、409 と `dynamic_membership_managed_by_rule` で拒否する。
-- 規則を持たない Group の有効化は、422 と `invalid_dynamic_group_rule` で拒否する。
-- **担保手段**：`usecases.UpdateDynamicGroupRule`、`usecases.SetDynamicGroupRuleEnabled`
+- 管理者が初めて規則を保存したとき、版を 1 とする無効な規則を作り、`DynamicGroupRuleUpdated` を発行する。
+- 管理者が式を保存したとき、版を一つ進め、有効か無効かは保存前の状態を引き継ぎ、`DynamicGroupRuleUpdated` を発行する。
+- 管理者が無効な規則を有効化したとき、版を一つ進め、`DynamicGroupRuleEnabled` を発行する。
+- 管理者が有効な規則の式を保存したとき、または規則を有効化したとき、全件の再評価を予約する。
+- 管理者がすでに有効な規則を有効化した場合は、成功を返し、版を進めず、イベントを発行しない。
+- `membership_type=manual` の Group への規則の保存を要求された場合は、409 と `dynamic_membership_managed_by_rule` で拒否する。
+- 規則を持たない Group の有効化を要求された場合は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 保存または有効化を拒否した場合は、規則と所属を変えない。
 
 #### REQ-IDMANAGEMENT-065 規則の保存とプレビューは、式の制約に違反する規則を拒否する
 
@@ -74,94 +76,63 @@
 - 式は `user.<属性>` で User の属性を一つ以上、100 個以下参照する。参照できるのは `id`、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`email_verified` と、組み込みとテナント定義の属性だけである。`roles` は参照できない。
 - 式の結果は真偽値とする。
 - 評価の計算量の上限は 10,000 とする。
-- 制約に違反する規則の保存とプレビューは、422 と `invalid_dynamic_group_rule` で拒否し、規則を変えない。
-- **担保手段**：`domain.CompileDynamicGroupRule`
+- 制約に違反する規則の保存とプレビューを要求された場合は、422 と `invalid_dynamic_group_rule` で拒否し、規則を変えない。
 
 #### REQ-IDMANAGEMENT-022 未定義の属性または許可していない関数を参照する規則の保存は拒否する
 
-- 定義していない属性、または許可していない関数を参照する式の保存は拒否し、規則を変えない。
-- **担保手段**：`domain.CompileDynamicGroupRule`
+- 定義していない属性、または許可していない関数を参照する式の保存を要求された場合は、拒否し、規則を変えない。
 - **例**：EX-IDMANAGEMENT-022-01
 
 ### 規則の無効化
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 成功時の作用 | 規則を無効にして版を進め、`DynamicGroupRuleDisabled` を発行し、再評価を待たずに動的な所属をすべて外す |
-| 拒否 | 規則のない Group の無効化（422 `invalid_dynamic_group_rule`） |
-| 冪等性 | すでに無効な規則の無効化は、版を進めずイベントを発行しない |
-
 #### REQ-IDMANAGEMENT-068 規則の無効化は版を一つ進め、動的グループの所属をすべて直ちに外す
 
-- 無効化は版を一つ進める。すでに無効な規則の無効化は、版を進めずイベントを発行しない。
-- 規則の無効化は、再評価を予約せず、その場で動的グループのメンバーシップをすべて外す。
-- 規則を持たない Group の無効化は、422 と `invalid_dynamic_group_rule` で拒否する。
-- **担保手段**：`usecases.SetDynamicGroupRuleEnabled`、`usecases.ReconcileDynamicGroup`
+- 管理者が有効な規則を無効化したとき、版を一つ進め、`DynamicGroupRuleDisabled` を発行する。
+- 管理者が有効な規則を無効化したとき、全件の再評価を予約せず、その場で動的グループのメンバーシップをすべて外す。
+- 管理者がすでに無効な規則を無効化した場合は、成功を返し、版を進めず、イベントを発行しない。
+- 規則を持たない Group の無効化を要求された場合は、422 と `invalid_dynamic_group_rule` で拒否する。
 
 ### 全件の再評価
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 再評価のジョブ。User の変更に伴う再評価は、User を変えた操作 |
-| 入力 | 予約した時点の規則の版 |
-| 成功時の作用 | 規則に一致する User を所属させ、一致しない User を外し、件数を載せた `DynamicMembershipEvaluated` を一つ発行する |
-| 冪等性 | 規則がない、無効である、または版が異なるジョブは、所属を変えずに成功する |
-
 #### REQ-IDMANAGEMENT-020 有効な規則の全件の再評価は、規則に一致する User だけを規則由来のメンバーにする
 
-- 有効化した規則の全件の再評価の後、規則に一致する有効な User だけが、規則を由来として所属する。
+- 有効な規則の全件の再評価を終えたとき、規則に一致する有効な User だけが、規則を由来として所属する。
 - 実効ロールと Application の割り当ては、その所属を参照する。
-- **担保手段**：`usecases.ReconcileDynamicGroup`
 - **例**：EX-IDMANAGEMENT-020-01
 
 #### REQ-IDMANAGEMENT-067 動的グループの規則に一致するのは `Active` の User だけである
 
 - `Active` でない User は、式の値によらず規則に一致しない。
-- 評価に失敗した User は一致しないものとして扱い、再評価の結果の誤りの件数に数える。
-- **担保手段**：`CompiledDynamicGroupRule.Evaluate`、`usecases.ReconcileDynamicGroup`
+- 評価に失敗した User は、一致しないものとして扱い、再評価の結果の誤りの件数に数える。
 
 #### REQ-IDMANAGEMENT-023 評価できない規則は権限を付与しない
 
-- 規則の版が進むと、古い版の所属は、再評価を待たずに実効ロールに数えない。
+- 規則の版が進んだとき、古い版の所属は、再評価を待たずに実効ロールに数えない。
 - 再評価で評価に失敗した User は、新しい版の所属を得ない。
-- **担保手段**：`usecases.ReconcileDynamicGroup`、`usecases.SyncDynamicGroupsForUser`
 - **例**：EX-IDMANAGEMENT-023-01
 
 #### REQ-IDMANAGEMENT-069 古い版の再評価のジョブは、所属を変えずに成功する
 
 - 再評価のジョブは、予約した時点の規則の版を持つ。
-- 実行時に規則がない、無効である、または版が異なるジョブは、メンバーシップを変えずに成功として終わる。
-- **担保手段**：`usecases.DynamicGroupReconcileHandler`
+- 実行時に規則がない、無効である、または版が異なる場合は、メンバーシップを変えず、イベントを発行せずに成功として終わる。
 
 #### REQ-IDMANAGEMENT-070 動的な所属の変化は、メンバーごとのイベントを発行しない
 
-- 規則の再評価と、User の変更に伴う再評価で所属が増減しても、`GroupMemberAdded` と `GroupMemberRemoved` を発行しない。
-- 全件の再評価は、追加、除外、変化なし、誤りの件数を載せた `DynamicMembershipEvaluated` を一つ発行する。
-- **担保手段**：`usecases.ReconcileDynamicGroup`、`usecases.SyncDynamicGroupsForUser`
-- **要判断**：動的グループのロールは所属した User の実効ロールに加わるが、誰がいつ加わったかは監査の記録に残らない。メンバーごとのイベントを発行するかを決める。
+- 全件の再評価を終えたとき、追加、除外、変化なし、誤りの件数を載せた `DynamicMembershipEvaluated` を一つ発行する。
+- 規則の再評価と、User の変更に伴う再評価で所属が増減したとき、`GroupMemberAdded` と `GroupMemberRemoved` を発行しない。
 
 ### プレビュー
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 未保存の式と、100 件以下の User |
-| 成功時の作用 | User ごとに一致の有無と、追加、除外、変化なしの判定を返す。所属を変えない |
-| 拒否 | 101 件以上の User、存在しない User と別のテナントの User を含む指定、式の制約の違反 |
-
 #### REQ-IDMANAGEMENT-021 規則のプレビューは、選んだ User ごとに一致の有無を返し、属性の値を返さない
 
-- 管理者は、選んだ 100 件以下の User で、保存していない式を評価できる。
-- プレビューの応答は、User ごとの一致の有無と、追加、除外、変化なしの判定を返し、属性の値そのものは返さない。
-- **担保手段**：`usecases.PreviewDynamicGroupRule`
+- 管理者が 100 件以下の User を選んで保存していない式をプレビューしたとき、User ごとの一致の有無と、追加、除外、変化なしの判定を返し、所属を変えない。
+- プレビューの応答は、属性の値そのものを返さない。
 - **例**：EX-IDMANAGEMENT-021-01
 
 #### REQ-IDMANAGEMENT-071 規則のプレビューは 100 件以下の、同じテナントの User だけを受け付ける
 
-- 101 件以上の User を指定したプレビューは、422 と `invalid_dynamic_group_rule` で拒否する。
-- 存在しない User または別のテナントの User を一つでも含むプレビューは、結果を返さず 404 と `user_not_found` で拒否する。
-- **担保手段**：`usecases.PreviewDynamicGroupRule`
+- 101 件以上の User を指定したプレビューを要求された場合は、422 と `invalid_dynamic_group_rule` で拒否する。
+- 存在しない User または別のテナントの User を一つでも含むプレビューを要求された場合は、結果を返さず、404 と `user_not_found` で拒否する。
 
 ## セキュリティ上の考慮
 

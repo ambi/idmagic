@@ -35,163 +35,129 @@
 
 `Active` は通常の稼働、`Disabled` は元に戻せる運用停止、`Killed` は一方向の緊急停止である。
 `Active` 以外の Agent には、新しいトークンを発行しない。
+`Deleted` は記録を消した後の状態であり、以後の操作は存在しない Agent と同じに扱う。
 
 | State | Kind | Meaning |
 |---|---|---|
 | Active | initial | 通常稼働。新しいトークンを発行できる唯一の状態である |
 | Disabled | — | 復元可能な運用停止 |
 | Killed | terminal | 一方向の緊急停止。復元できない |
+| Deleted | terminal | 記録と束縛を消した |
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
+| Active | AgentUpdated | — | Active |  |
+| Disabled | AgentUpdated | — | Disabled |  |
 | Active | AgentDisabled | — | Disabled |  |
-| Disabled | AgentEnabled | — | Active |  |
+| Disabled | AgentDisabled | — | Disabled |  |
+| Disabled | AgentEnabled | owner.status == 'Active' | Active |  |
+| Active | AgentEnabled | owner.status == 'Active' | Active |  |
 | Active | AgentKilled | — | Killed |  |
 | Disabled | AgentKilled | — | Killed |  |
+| Active | AgentDeleted | — | Deleted |  |
+| Disabled | AgentDeleted | — | Deleted |  |
+| Active | AgentCredentialBound | — | Active |  |
+| Disabled | AgentCredentialBound | — | Disabled |  |
+| Active | AgentCredentialUnbound | — | Active |  |
+| Disabled | AgentCredentialUnbound | — | Disabled |  |
+| Killed | AgentCredentialUnbound | — | Killed |  |
+
+| State | 更新 | 無効化 | 再有効化 | 停止 | 削除 | 資格情報の束縛 | 束縛の解除 | 所有者の停止に伴う無効化 |
+|---|---|---|---|---|---|---|---|---|
+| Active | → Active（値が変わる）<br>何もしない（値が変わらない） | → Disabled | → Active（所有者が Active）<br>拒否：409 agent_owner_inactive（所有者が Active でない） | → Killed | → Deleted | → Active（束縛していない）<br>何もしない（同じ Agent に束縛済み） | → Active（束縛している）<br>何もしない（束縛していない） | → Disabled |
+| Disabled | → Disabled（値が変わる）<br>何もしない（値が変わらない） | → Disabled | → Active（所有者が Active）<br>拒否：409 agent_owner_inactive（所有者が Active でない） | → Killed | → Deleted | → Disabled（束縛していない）<br>何もしない（同じ Agent に束縛済み） | → Disabled（束縛している）<br>何もしない（束縛していない） | 何もしない |
+| Killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | → Killed（束縛している）<br>何もしない（束縛していない） | 何もしない |
+| Deleted | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 何もしない |
 
 ## 操作
 
 ### 登録
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 名前、説明、区分、任意の所有者、ロール |
-| 成功時の作用 | `Active` の Agent を作り、テナントの Agent の使用量を一つ増やし、`AgentRegistered` を発行する |
-| 拒否 | 区分の欠落と未知の区分、空の名前、同名の Agent、`Active` でない所有者。どの拒否も Agent を作らず、使用量を変えない |
-
 #### REQ-IDMANAGEMENT-009 Agent の登録は、指定した `kind` で Agent を作り、`kind` の欠落と未知の値を拒否する
 
-- 区分 `kind` を指定した登録は、その区分で Agent を作る。
-- `kind` を指定しない登録は AgentKindRequiredError で拒否し、デフォルト値で補わない。
-- 既知のどの値でもない `kind` の登録は InvalidAgentKindError で拒否し、既知の値へ丸めない。
+- 管理者が区分 `kind` を指定して Agent を登録したとき、その区分で Agent を作る。
+- `kind` を指定しない登録を要求された場合は、AgentKindRequiredError で拒否し、デフォルト値で補わない。
+- 既知のどの値でもない `kind` の登録を要求された場合は、InvalidAgentKindError で拒否し、既知の値へ丸めない。
 - **判断**：区分は、実行時にトークンを発行するかを決める（REQ-OAUTH2-050）。補ったり丸めたりすると、管理者が意図しない区分でトークンが発行される。
-- **担保手段**：`usecases.RegisterAgent`
 - **例**：EX-IDMANAGEMENT-009-01、EX-IDMANAGEMENT-009-03
 
 #### REQ-IDMANAGEMENT-073 Agent の登録は、名前を正規化し、同じテナントの `Active` の User だけを所有者に受け付ける
 
-- 名前は前後の空白を除いて保存する。空白を除いて空になる名前は、422 と `agent_name_required` で拒否する。
-- 同じテナントのほかの Agent と大文字と小文字を区別せずに同じ名前は、409 と `agent_name_conflict` で拒否する。
-- 所有者を指定しない登録は、登録した管理者を所有者とする。
-- 所有者は、同じテナントの `Active` の User でなければならない。それ以外の所有者は、422 と `agent_owner_not_found` で拒否する。
-- 拒否した登録は Agent を作らず、テナントの Agent の使用量を変えない。
-- **担保手段**：`usecases.RegisterAgent`
+- 管理者が Agent を登録したとき、`Active` の Agent を作り、テナントの Agent の使用量を一つ増やし、`AgentRegistered` を発行する。
+- Agent の名前は、前後の空白を除いて保存する。
+- 管理者が所有者を指定せずに登録したとき、登録した管理者を所有者とする。
+- 前後の空白を除くと空になる名前を指定された場合は、422 と `agent_name_required` で拒否する。
+- 同じテナントのほかの Agent と大文字と小文字を区別せずに同じ名前を指定された場合は、409 と `agent_name_conflict` で拒否する。
+- 同じテナントの `Active` の User でない所有者を指定された場合は、422 と `agent_owner_not_found` で拒否する。
+- 登録を拒否した場合は、Agent を作らず、テナントの Agent の使用量を変えない。
 
 ### 資格情報の束縛と解除
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | `client_id` |
-| 成功時の作用 | 束縛を作るか外し、`AgentCredentialBound` または `AgentCredentialUnbound` を発行する |
-| 拒否 | 見つからない `client_id`、ほかの Agent に束縛済みの `OAuth2Client`、`Killed` の Agent への束縛 |
-| 冪等性 | 同じ束縛の繰り返しと、束縛していない `OAuth2Client` の解除は、成功を返しイベントを発行しない |
-
 #### REQ-IDMANAGEMENT-074 Agent の資格情報の束縛は、同じテナントの OAuth2Client を一つの Agent にだけ結び、同じ束縛には何もしない
 
-- 束縛は、Agent に同じテナントの `OAuth2Client` の資格情報を結び、`AgentCredentialBound` を発行する。
-- 束縛する `client_id` は、前後の空白を除いて同じテナントの OAuth2Client から探す。空の値と見つからない値は、422 と `client_not_found` で拒否する。
-- 同じ Agent に束縛済みの OAuth2Client の束縛と、束縛していない OAuth2Client の解除は成功を返し、イベントを発行しない。
-- 束縛の解除は、`Killed` の Agent にもできる。
-- 別のテナントの `client_id` の束縛は、存在しない `client_id` と同じ OAuth2ClientNotFoundError で拒否し、束縛を作らない。
-- ほかの Agent に束縛済みの OAuth2Client の束縛は、409 と `agent_client_already_bound` で拒否する。
-- **担保手段**：`usecases.BindCredential`、`usecases.UnbindCredential`
+- 管理者が束縛したとき、Agent に同じテナントの `OAuth2Client` の資格情報を結び、`AgentCredentialBound` を発行する。
+- 管理者が束縛を解除したとき、束縛を消し、`AgentCredentialUnbound` を発行する。
+- 束縛する `client_id` は、前後の空白を除いて同じテナントの OAuth2Client から探す。
+- 管理者が同じ Agent に束縛済みの OAuth2Client を束縛した場合、または束縛していない OAuth2Client の束縛を解除した場合は、成功を返し、イベントを発行しない。
+- `Killed` の間も、束縛を解除できる。
+- 空の `client_id` と、見つからない `client_id` を指定された場合は、422 と `client_not_found` で拒否する。
+- 別のテナントの `client_id` を指定された場合は、存在しない `client_id` と同じ OAuth2ClientNotFoundError で拒否し、束縛を作らない。
+- ほかの Agent に束縛済みの OAuth2Client を指定された場合は、409 と `agent_client_already_bound` で拒否する。
 - **例**：EX-IDMANAGEMENT-074-04、EX-IDMANAGEMENT-074-05
 
 ### 更新
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 名前、説明、区分、所有者、ロール |
-| 成功時の作用 | 値が変わった項目だけを保存し、`AgentUpdated` を発行する。所有者を変えたときは、続けて `AgentOwnerChanged` を発行する |
-| 拒否 | `Killed` の Agent（409 `agent_killed`） |
-| 冪等性 | 同じ値での更新は、`updated_at` を進めず、イベントを発行しない |
-
 #### REQ-IDMANAGEMENT-075 Agent の更新は値が変わった項目だけを記録し、所有者の変更を別に記録する
 
-- `AgentUpdated` の `changed_fields` には、`name`、`description`、`kind`、`owner_sub`、`roles` のうち値が変わった項目だけを載せる。
-- どの項目の値も変わらない更新は成功を返し、`updated_at` を進めず、イベントを発行しない。
-- 所有者を変える更新は、`AgentUpdated` に続けて、変更前と変更後の所有者を載せた `AgentOwnerChanged` を発行する。
-- **担保手段**：`usecases.UpdateAgent`
+- 管理者が Agent を更新したとき、値が変わった項目だけを保存し、`name`、`description`、`kind`、`owner_sub`、`roles` のうち値が変わった項目だけを `changed_fields` に載せた `AgentUpdated` を発行する。
+- 管理者が所有者を変えたとき、`AgentUpdated` に続けて、変更前と変更後の所有者を載せた `AgentOwnerChanged` を発行する。
+- 管理者がどの項目の値も変えない更新を要求した場合は、成功を返し、`updated_at` を進めず、イベントを発行しない。
+- 前後の空白を除くと空になる所有者を指定された場合は、422 と `agent_owner_required` で拒否し、Agent を変えない。
 
 ### 無効化と再有効化
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 成功時の作用 | `Disabled` または `Active` にし、`AgentDisabled` または `AgentEnabled` を発行する |
-| 拒否 | `Killed` の Agent（409 `agent_killed`）。所有者の User が `Active` でない Agent の再有効化（409 `agent_owner_inactive`） |
-| 冪等性 | なし。すでにその状態でも時刻を進め、イベントを発行する |
-
 #### REQ-IDMANAGEMENT-076 Agent の無効化は `Disabled` に、再有効化は `Active` にし、すでにその状態でも記録し直す
 
-- 無効化は Agent を `Disabled` にし、`AgentDisabled` を発行する。
-- 再有効化は Agent を `Active` に戻し、`AgentEnabled` を発行する。再有効化した Agent は一覧に現れる。
-- `Disabled` の Agent の無効化は成功を返し、`disabled_at` と `updated_at` を操作の時刻に進め、`AgentDisabled` を発行する。
-- `Active` の Agent の再有効化は成功を返し、`updated_at` を進め、`AgentEnabled` を発行する。
-- **担保手段**：`usecases.SetAgentDisabled`
+- 管理者が Agent を無効化したとき、Agent を `Disabled` にし、`AgentDisabled` を発行する。
+- 管理者が Agent を再有効化したとき、Agent を `Active` に戻し、`AgentEnabled` を発行する。再有効化した Agent は一覧に現れる。
+- 管理者が `Disabled` の Agent を無効化したとき、成功を返し、`disabled_at` と `updated_at` を操作の時刻に進め、`AgentDisabled` を発行する。
+- 管理者が `Active` の Agent を再有効化したとき、成功を返し、`updated_at` を進め、`AgentEnabled` を発行する。
 - **例**：EX-IDMANAGEMENT-076-01、EX-IDMANAGEMENT-076-02
-- **要判断**：User の無効化と再有効化は、すでにその状態なら何もしない。Agent では時刻を進めてイベントを重ねて発行するため、`disabled_at` は最初に止めた時刻を示さない。User と同じにするかを決める。
 
 #### REQ-IDMANAGEMENT-082 所有者の User が `Active` でない Agent の再有効化は拒否する
 
-- 所有者の User が同じテナントの `Active` でない Agent の再有効化は、409 と `agent_owner_inactive` で拒否し、Agent を変えず、イベントを発行しない。
+- 所有者の User が同じテナントの `Active` でない Agent の再有効化を要求された場合は、409 と `agent_owner_inactive` で拒否し、Agent を変えず、イベントを発行しない。
 - **判断**：所有者の停止に伴う無効化（REQ-IDMANAGEMENT-081）を、再有効化ですぐに打ち消せないようにする。所有者を `Active` に戻すか、`Active` の別の User へ所有者を変えてから再有効化する。
-- **担保手段**：`usecases.SetAgentDisabled`
 - **例**：EX-IDMANAGEMENT-082-01
 
 ### 所有者の停止に伴う無効化
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 所有者の User を止めた操作（管理 API、ライフサイクルワークフロー、SCIM の取り込み） |
-| 入力 | 止めた User |
-| 成功時の作用 | その User が所有する `Active` の Agent を `Disabled` にし、Agent ごとに `AgentDisabled` を発行する |
-| 冪等性 | `Disabled` と `Killed` の Agent は変えない。止まっている User への再実行は、残っている `Active` の Agent だけを無効化する |
-
 #### REQ-IDMANAGEMENT-081 所有者の User が止まると、その User が所有する Agent を無効化する
 
-- 所有者の User を無効化する、削除を予約する、完全削除すると、その User が所有する `Active` の Agent をすべて `Disabled` にし、Agent ごとに `AgentDisabled` を発行する。
-- 管理 API、ライフサイクルワークフロー、SCIM の取り込みのどの経路で User を止めても、同じように無効化する。期限切れの削除予約の自動の完全削除も含む。
-- `Disabled` と `Killed` の Agent は変えない。
-- すでに `Disabled` の User をもう一度無効化する、またはすでに削除予約中の User の削除をもう一度予約すると、User は変えず、残っている `Active` の Agent を無効化する。
-- 所有者の User を再有効化または復元しても、Agent は `Disabled` のまま残る。
+- 所有者の User を無効化する、削除を予約する、または完全削除したとき、その User が所有する `Active` の Agent をすべて `Disabled` にし、Agent ごとに `AgentDisabled` を発行する。
+- 管理 API、ライフサイクルワークフロー、SCIM の取り込みのどの経路で User を止めたときも、同じように無効化する。期限切れの削除予約の自動の完全削除も含む。
+- 所有者の User を止めたとき、`Disabled` と `Killed` の Agent は変えない。
+- すでに `Disabled` の User をもう一度無効化したとき、またはすでに削除予約中の User の削除をもう一度予約したとき、User は変えず、残っている `Active` の Agent を無効化する。
+- 所有者の User を再有効化または復元したとき、Agent は `Disabled` のまま残す。
 - **判断**：すべての Agent に所有者を求めるのは、誰も責任を持たない非人間のアイデンティティを残さないためである。所有者が組織を去った後も Agent が動き続けると、その判断が成り立たない。
 - **判断**：所有者の再開で Agent を自動で再開しない。所有者の停止より前から止めていた Agent まで再開してしまうからである。
 - **判断**：伝播は User の確定とは別に行う。途中で失敗したときは、同じ操作の再実行で残った Agent を回収する。
-- **担保手段**：`usecases.DisableAgentsOwnedBy`、`usecases.SetUserDisabled`、`usecases.SoftDeleteUser`、`usecases.DeleteUser`
 - **例**：EX-IDMANAGEMENT-081-01、EX-IDMANAGEMENT-081-02、EX-IDMANAGEMENT-081-03、EX-IDMANAGEMENT-081-04、EX-IDMANAGEMENT-081-05
 
 ### 停止
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 成功時の作用 | `Killed` にし、`AgentKilled` を発行する。以後、新しいトークンを発行しない |
-| 拒否 | `Killed` の Agent の停止と、`Killed` の Agent への更新、無効化、再有効化、束縛（409 `agent_killed`）。Agent を変えず、イベントを発行しない |
-
 #### REQ-IDMANAGEMENT-077 停止した Agent の更新、無効化、再有効化、停止、束縛は拒否する
 
-- `Killed` の Agent の更新、無効化、再有効化、停止、資格情報の束縛は、409 と `agent_killed` で拒否し、Agent を変えず、イベントを発行しない。
-- **担保手段**：`usecases.UpdateAgent`、`usecases.SetAgentDisabled`、`usecases.KillAgent`、`usecases.BindCredential`
+- 管理者が `Active` または `Disabled` の Agent を停止したとき、Agent を `Killed` にし、`AgentKilled` を発行する。
+- `Killed` の間は、更新、無効化、再有効化、停止、資格情報の束縛を 409 と `agent_killed` で拒否し、Agent を変えず、イベントを発行しない。
 
 ### 削除
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 成功時の作用 | Agent の記録と束縛を消し、テナントの Agent の使用量を一つ減らし、`AgentDeleted` を発行する |
-| 拒否 | `Killed` の Agent（409 `agent_killed`）。記録を残す |
-
 #### REQ-IDMANAGEMENT-078 Agent の削除は束縛ごと記録を消し、停止した Agent の削除は拒否する
 
-- 削除は Agent の記録と、その Agent の資格情報の束縛を消す。
-- 削除は、テナントの Agent の使用量を一つ減らし、`AgentDeleted` を発行する。
-- `Killed` の Agent の削除は、409 と `agent_killed` で拒否し、記録を残す。
-- **担保手段**：`usecases.DeleteAgent`
-- **要判断**：停止した Agent は削除できないため、緊急停止した Agent の記録と使用量は残り続ける。停止した Agent の削除を許すかを決める。
+- 管理者が Agent を削除したとき、Agent の記録と、その Agent の資格情報の束縛を消し、テナントの Agent の使用量を一つ減らし、`AgentDeleted` を発行する。
+- `Killed` の Agent の削除を要求された場合は、409 と `agent_killed` で拒否し、記録を残す。
+- 削除した Agent、存在しない Agent、別のテナントの Agent を対象とする参照、更新、無効化、再有効化、停止、削除、束縛、束縛の解除を要求された場合は、404 と `agent_not_found` で拒否する。
 
 ## セキュリティ上の考慮
 

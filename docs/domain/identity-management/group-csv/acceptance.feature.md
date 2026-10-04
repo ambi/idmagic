@@ -47,7 +47,7 @@
 - Then プレビュージョブは `created`、`updated`、`unchanged`、`deleted`、`rejected` の判定、行番号、安定したエラーコードを返し、`Group` は変更されない
 - When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
 - But プレビュージョブが存在しない、`queued` または `failed` である、別テナントに属する、保存済みのペイロードとダイジェストが一致しない
-- Then 適用は `Group` を変更せず `InvalidRequestError` または `AccessDeniedError` で拒否される
+- Then 適用は `Group` を変更せず、存在しないジョブと別テナントのジョブは 404 と `group_import_not_found`、`queued` または `failed` のジョブは 409 と `preview_not_ready`、ダイジェストが一致しないジョブは 409 と `preview_digest_mismatch` で拒否される
 
 ### Example: EX-IDMANAGEMENT-026-06 プレビュー後に対象 `Group` の状態が別の操作で変更されている
 
@@ -252,7 +252,7 @@
 - Then プレビュージョブは `added`、`removed`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、メンバーシップは変更されない
 - When 管理者が解除を含むことを確認したうえで、同じテナントかつ同じグループの成功済みプレビュージョブの ID を指定して適用する
 - But プレビュージョブが存在しない、`queued` または `failed` である、別テナントまたは別グループに属する、保存済みのペイロードとダイジェストが一致しない
-- Then 適用はメンバーシップを変更せず `InvalidRequestError`、`AccessDeniedError`、または `GroupMembershipImportNotFoundError` で拒否される
+- Then 適用はメンバーシップを変更せず、存在しないジョブと別テナントまたは別グループのジョブは 404 と `group_membership_import_not_found`、`queued` または `failed` のジョブは 409 と `preview_not_ready`、ダイジェストが一致しないジョブは 409 と `preview_digest_mismatch` で拒否される
 
 ### Example: EX-IDMANAGEMENT-029-09 プレビュー後にメンバーシップが別の操作で変更されている
 
@@ -389,7 +389,7 @@
 - Then エクスポートの対象は `group_id` に閉じ、そのグループのメンバーだけを含む
 - When 生成完了後、管理者がメンバーの CSV をダウンロードする
 - But 別グループのパスでそのエクスポート ID を指定する
-- Then グループごとに分離しているため、取得とダウンロードは InvalidRequestError で拒否される
+- Then グループごとに分離しているため、取得とダウンロードは 404 と `data_export_not_found` で拒否される
 
 ## Rule: REQ-IDMANAGEMENT-030 メンバーシップのエクスポートは、分けて再適用しても、ほかのファイルにしかないメンバーを外さない
 

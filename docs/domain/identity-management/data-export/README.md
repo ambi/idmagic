@@ -6,9 +6,9 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 責務 | エクスポートの開始、一覧、参照、ダウンロード、取り消し、保持期限 |
-| 行為者 | 管理者 |
-| 扱わないもの | 各種別の列とセルの書き方は[ユーザー CSV](../user-csv/README.md)、[グループ CSV](../group-csv/README.md)、[CSV の転送](../csv-transfer/README.md)が、ジョブの実行は `Jobs` が、本人によるデータエクスポートは[アカウントのセルフサービス](../account/README.md)が扱う |
+| 責務 | エクスポートの開始、生成、一覧、参照、ダウンロード、取り消し、保持期限 |
+| 行為者 | 管理者、エクスポートを生成する `worker` |
+| 扱わないもの | 各種別の列とセルの書き方は[ユーザー CSV](../user-csv/README.md)、[グループ CSV](../group-csv/README.md)、[CSV の転送](../csv-transfer/README.md)が、ジョブの実行と再試行は `Jobs` が、本人によるデータエクスポートは[アカウントのセルフサービス](../account/README.md)が扱う |
 
 ## モデル
 
@@ -21,7 +21,8 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 ### DataExportLifecycle
 
 `queued` で受理され、`worker` が `running` で CSV を生成する。
-成功するとダウンロードできる `succeeded`、失敗すると不完全なファイルをダウンロードできない `failed` で終わる。
+成功するとダウンロードできる `succeeded` になる。
+失敗すると、`Jobs` の試行の上限まで `queued` に戻して生成をやり直し、上限に達すると不完全なファイルをダウンロードできない `failed` で終わる。
 終わる前は `canceled` で取り消せる。
 `succeeded` は保持期限を過ぎると `expired` になる。
 保持期限の 30 日は、Jobs のデフォルトの記録の保持期間に合わせた。
@@ -37,115 +38,91 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| queued | DataExportStarted | — | running |  |
-| running | DataExportSucceeded | — | succeeded |  |
-| running | DataExportFailed | — | failed |  |
-| queued | DataExportCanceled | — | canceled |  |
-| running | DataExportCanceled | — | canceled |  |
+| queued | DataExportStarted | — | running | DataExportStarted |
+| running | DataExportSucceeded | — | succeeded | DataExportSucceeded |
+| running | JobRetried | job.attempts < job.max_attempts | queued | DataExportFailed |
+| running | DataExportFailed | job.attempts >= job.max_attempts | failed | DataExportFailed |
+| queued | DataExportCanceled | — | canceled | DataExportCanceled |
+| running | DataExportCanceled | — | canceled | DataExportCanceled |
+| canceled | DataExportSucceeded | — | canceled | DataExportSucceeded |
+| canceled | DataExportFailed | — | canceled | DataExportFailed |
+| succeeded | DataExportDownloaded | — | succeeded | DataExportDownloaded |
 | succeeded | DataExportExpired | duration_since(completed_at) >= duration('2592000s') | expired |  |
+
+| State | 生成の開始 | 生成の終了 | ダウンロード | 取り消し | 保持期限の経過 |
+|---|---|---|---|---|---|
+| queued | → running | 何もしない | 拒否：409 data_export_not_downloadable | → canceled | 何もしない |
+| running | 何もしない | → succeeded（生成が成功した）<br>→ queued（生成が失敗し、試行が上限に達していない）<br>→ failed（生成が失敗し、試行が上限に達した） | 拒否：409 data_export_not_downloadable | → canceled | 何もしない |
+| succeeded | 何もしない | 何もしない | → succeeded | 拒否：409 data_export_not_cancelable | → expired |
+| failed | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
+| canceled | 何もしない | → canceled（取り消す前に始めた生成が終わった） | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
+| expired | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
 
 ## 操作
 
 ### エクスポートの開始
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 対象、列、絞り込み。メンバーシップのエクスポートでは、パスの `group_id` |
-| 成功時の作用 | `queued` のジョブを作り、`DataExportRequested` を発行する |
-| 拒否 | 不正な列（`invalid_columns`）、許可していない絞り込み（`invalid_filter`）、実行中のジョブの上限の超過（429 `active_job_quota_exceeded`）。拒否した開始はジョブを作らず、イベントを発行しない |
-
 #### REQ-IDMANAGEMENT-039 エクスポートの開始は `queued` のジョブを作り、許可した列と絞り込みだけを受け付ける
 
-- 開始は、202 とエクスポートの ID を返し、`queued` のジョブを作り、`DataExportRequested` を発行する。
-- 列は一つ以上を指定し、同じ列を二度含めない。違反する開始は `invalid_columns` で拒否する。
-- 絞り込みのキーは、User のエクスポートでは `status` だけ、Group のエクスポートでは受け付けない。それ以外のキーを含む開始は `invalid_filter` で拒否する。
-- `status` の値は前後の空白と大文字と小文字を区別せず、User の状態のどれでもない値を `invalid_filter` で拒否する。
+- 管理者がエクスポートを開始したとき、202 とエクスポートの ID を返し、`queued` のジョブを作り、`DataExportRequested` を発行する。
 - メンバーシップのエクスポートの対象 Group は、パスの `group_id` だけで決める。本文の絞り込みは対象を変えない。
-- 拒否した開始はジョブを作らず、`DataExportRequested` を発行しない。
-- 実行中のジョブの上限を超える開始は、429 と `active_job_quota_exceeded` で拒否する。
-- **担保手段**：`usecases.StartDataExport`、`handlers_http.HandleStartUserExport`
+- `status` の絞り込みの値は、前後の空白と大文字と小文字を区別せずに読む。
+- 列を一つも指定しない開始、または同じ列を二度含む開始を要求された場合は、422 と `invalid_columns` で拒否する。
+- User のエクスポートで `status` 以外の絞り込みのキーを指定された場合、または Group のエクスポートで絞り込みを指定された場合は、422 と `invalid_filter` で拒否する。
+- User の状態のどれでもない `status` の値を指定された場合は、422 と `invalid_filter` で拒否する。
+- 実行中のジョブの上限を超える開始を要求された場合は、429 と `active_job_quota_exceeded` で拒否する。
+- 開始を拒否した場合は、ジョブを作らず、`DataExportRequested` を発行しない。
 - **例**：EX-IDMANAGEMENT-039-01、EX-IDMANAGEMENT-039-04
 
 ### エクスポートの生成
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | `worker` の実行するジョブ |
-| 入力 | `queued` のエクスポート |
-| 成功時の作用 | `running` にして `DataExportStarted` を発行する。生成が終わると `succeeded` にして行数とバイト数を記録し、`DataExportSucceeded` を発行する |
-| 拒否 | 生成の失敗。`failed` にして `error_code` を記録し、`DataExportFailed` を発行する。不完全なファイルはダウンロードできない |
-
 #### REQ-IDMANAGEMENT-086 エクスポートの生成は、成功すると `succeeded` に、失敗すると `failed` にして、それぞれイベントを発行する
 
-- 生成を始めると `DataExportStarted` を発行する。
-- 生成が完了すると `succeeded` にし、`downloadable` を `true` にし、行数とバイト数を記録して、`DataExportSucceeded` を発行する。
-- 生成が失敗すると `failed` にし、`downloadable` を `false` にし、`error_code` を記録して、`DataExportFailed` を発行する。不完全なファイルはダウンロードできない。
-- **担保手段**：`usecases.DataExportHandler`
+- `worker` が生成を始めたとき、`DataExportStarted` を発行する。
+- 生成が完了したとき、`succeeded` にし、`downloadable` を `true` にし、行数とバイト数を記録して、`DataExportSucceeded` を発行する。
+- 生成が失敗したとき、`DataExportFailed` を発行する。
+- 生成が失敗し、試行の回数が `Jobs` の上限に達していない場合は、`queued` に戻し、生成をやり直す。
+- 生成が失敗し、試行の回数が `Jobs` の上限に達した場合は、`failed` にし、`downloadable` を `false` にし、`error_code` を記録する。不完全なファイルはダウンロードできない。
+- 取り消した後に、取り消す前に始めた生成が終わった場合は、`canceled` のまま変えず、生成の結果に応じて `DataExportSucceeded` または `DataExportFailed` を発行する。
 - **例**：EX-IDMANAGEMENT-086-01、EX-IDMANAGEMENT-086-02
 
 ### エクスポートの一覧
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | 対象の種類。メンバーシップでは対象の Group |
-| 成功時の作用 | テナントの直近 200 件のうち、要求した種類と Group のエクスポートを新しい順に返す |
-
 #### REQ-IDMANAGEMENT-040 エクスポートの一覧は新しい順に、テナントの直近 200 件から返す
 
-- 一覧は、テナントのエクスポートを作成の新しい順に並べる。
-- 一覧は、テナントのすべての種類のエクスポートのうち新しい 200 件を読み、そこから要求した種類と Group に属するものだけを返す。
-- **担保手段**：`usecases.ListDataExports`
-- **要判断**：別の種類のエクスポートが新しい 200 件を占めると、要求した種類の古いエクスポートは、保持期限内でも一覧に現れない。種類ごとに 200 件を返すか、ページングにするかを決める。
+- 管理者がエクスポートの一覧を取得したとき、テナントのエクスポートを作成の新しい順に並べて返す。
+- 管理者がエクスポートの一覧を取得したとき、テナントのすべての種類のエクスポートのうち新しい 200 件を読み、そこから要求した種類と Group に属するものだけを返す。
 
 ### エクスポートの参照とダウンロード
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | エクスポートの ID |
-| 成功時の作用 | 状態、行数、バイト数、保持期限を返す。ダウンロードは成果物の SHA-256 とバイト数を照合してから CSV を返し、`DataExportDownloaded` を発行する |
-| 拒否 | `succeeded` でないエクスポートと、保持期限を過ぎたエクスポートのダウンロード（REQ-IDMANAGEMENT-087）。種類またはテナントの異なるパスで指定した ID（REQ-IDMANAGEMENT-088） |
+#### REQ-IDMANAGEMENT-079 エクスポートの保持期限は、完了の時刻から 30 日である
+
+- 管理者がエクスポートを参照したとき、状態、行数、バイト数、保持期限を返す。CSV の本体は返さない。
+- `succeeded` のエクスポートの `expires_at` は、完了の時刻（`completed_at`）に 30 日を加えた時刻である。
+- `succeeded` でないエクスポートは、`expires_at` を返さない。
+- `succeeded` のエクスポートは、`expires_at` の直前の時刻まで `downloadable` が `true` であり、ダウンロードできる。
+- `expires_at` 以降に参照した `succeeded` のエクスポートは `expired` であり、`downloadable` は `false` である。
+- **判断**：保持期限を作成の時刻から数えると、生成に時間のかかったエクスポートほど、ダウンロードできる期間が短くなる。
+- **例**：EX-IDMANAGEMENT-079-01
 
 #### REQ-IDMANAGEMENT-087 エクスポートのダウンロードは、選んだ列の見出しを持つ CSV を添付として返し、`DataExportDownloaded` を発行する
 
-- `succeeded` のエクスポートのダウンロードは、選んだ機械キーと一致する見出しの RFC 4180 の CSV を `Content-Disposition: attachment` で返し、`DataExportDownloaded` を発行する。
-- `expired` のエクスポートのダウンロードは、InvalidRequestError で拒否し、CSV を返さない。
-- **担保手段**：`usecases.DownloadDataExport`
+- 管理者が `succeeded` のエクスポートをダウンロードしたとき、成果物の SHA-256 とバイト数を照合してから、選んだ機械キーと一致する見出しの RFC 4180 の CSV を `Content-Disposition: attachment` で返し、`DataExportDownloaded` を発行する。
+- `succeeded` でないエクスポートと `expired` のエクスポートのダウンロードを要求された場合は、409 と `data_export_not_downloadable` で拒否し、CSV を返さない。
+- 成果物の SHA-256 またはバイト数がジョブの結果と一致しない場合は、409 と `data_export_not_downloadable` で拒否し、CSV を返さない。
 - **例**：EX-IDMANAGEMENT-087-01、EX-IDMANAGEMENT-087-02
 
 #### REQ-IDMANAGEMENT-088 エクスポートの参照、ダウンロード、取り消しは、種類またはテナントの異なるパスで指定した ID を拒否する
 
-- エクスポートの ID を、別の種類のパス（例：User のエクスポートを `/groups/exports`）または別のテナントで指定した参照、ダウンロード、取り消しは、AccessDeniedError または InvalidRequestError で拒否し、CSV を返さず、状態を変えない。
-- **担保手段**：`usecases.GetDataExport`、`usecases.DownloadDataExport`、`usecases.CancelDataExport`
+- エクスポートの ID を、別の種類のパス（例：User のエクスポートを `/groups/exports`）、別の Group のパス、または別のテナントで指定した参照、ダウンロード、取り消しを要求された場合は、存在しない ID と同じく 404 と `data_export_not_found` で拒否し、CSV を返さず、状態を変えない。
 - **例**：EX-IDMANAGEMENT-088-01
-
-#### REQ-IDMANAGEMENT-079 エクスポートの保持期限は、完了の時刻から 30 日である
-
-- `succeeded` のエクスポートの `expires_at` は、完了の時刻（`completed_at`）に 30 日を加えた時刻である。
-- `succeeded` でないエクスポートは `expires_at` を返さない。
-- `succeeded` のエクスポートは、`expires_at` の直前の時刻まで `downloadable` が `true` であり、ダウンロードできる。
-- `expires_at` 以降に参照した `succeeded` のエクスポートは `expired` であり、`downloadable` は `false` である。
-- **判断**：保持期限を作成の時刻から数えると、生成に時間のかかったエクスポートほど、ダウンロードできる期間が短くなる。
-- **担保手段**：`usecases.GetDataExport`、`usecases.DownloadDataExport`
-- **例**：EX-IDMANAGEMENT-079-01
 
 ### エクスポートの取り消し
 
-| 項目 | 内容 |
-| --- | --- |
-| 行為者 | 管理者 |
-| 入力 | エクスポートの ID |
-| 成功時の作用 | `canceled` にし、`DataExportCanceled` を発行する |
-| 拒否 | 終了したエクスポート（409 `data_export_not_cancelable`）。状態を変えず、イベントを発行しない |
-
 #### REQ-IDMANAGEMENT-041 エクスポートの取り消しは、終了前のエクスポートを `canceled` にし、終了したエクスポートを拒否する
 
-- `queued` または `running` のエクスポートの取り消しは、`canceled` にし、`DataExportCanceled` を発行する。
-- `succeeded`、`failed`、`canceled`、`expired` のエクスポートの取り消しは、409 と `data_export_not_cancelable` で拒否する。
-- 拒否した取り消しは状態を変えず、`DataExportCanceled` を発行しない。
-- **担保手段**：`usecases.CancelDataExport`
+- 管理者が `queued` または `running` のエクスポートを取り消したとき、`canceled` にし、`DataExportCanceled` を発行する。
+- `succeeded`、`failed`、`canceled`、`expired` のエクスポートの取り消しを要求された場合は、409 と `data_export_not_cancelable` で拒否し、状態を変えず、`DataExportCanceled` を発行しない。
 
 ## セキュリティ上の考慮
 

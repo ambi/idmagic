@@ -1,25 +1,11 @@
 {
   "identity-management": {
     "errors": [
-      "agent_owner_required",
-      "agent_not_found",
       "invalid_target",
-      "user_import_not_found",
       "user_import_unavailable",
-      "group_import_not_found",
       "group_import_unavailable",
       "group_membership_import_unavailable"
     ],
-    "events": [
-      "FederationLinked",
-      "FederationUnlinked",
-      "EmailChangeRequested",
-      "UserRequiredActionSet",
-      "AgentRegistered",
-      "AgentCredentialUnbound",
-      "DynamicGroupRuleUpdated",
-      "DynamicGroupRuleEnabled",
-      "DynamicGroupRuleDisabled"
-    ]
+    "events": ["FederationLinked", "FederationUnlinked"]
   }
 }
