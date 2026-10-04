@@ -126,6 +126,8 @@ services:
     # per lane (infra/k8s/base/worker.yaml) so latency_sensitive gets a
     # reserved execution slot independent of the bulk backlog.
     environment:
+      # 失効を外部へ伝える SET の iss に使うので、api と同じ値にする。
+      ISSUER: http://localhost:8080
       PERSISTENCE: postgres
       KEY_PROVIDER: local
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable

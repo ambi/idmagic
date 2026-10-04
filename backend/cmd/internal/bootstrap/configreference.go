@@ -93,7 +93,7 @@ var configFieldDescriptions = map[string]string{
 	"BREACHED_PASSWORD_CHECKER":    "Breached-password check performed on password changes. `hibp` calls the Have I Been Pwned range API.",
 
 	// API
-	"ISSUER":                     "Public base URL this deployment issues tokens under. It must match what relying parties resolve.",
+	"ISSUER":                     "Public base URL this deployment issues tokens and Security Event Tokens under. It must match what relying parties and SSF receivers resolve.",
 	"ADDR":                       "Listen address of the HTTP server.",
 	"OTEL_SERVICE_NAME":          "service.name reported on logs, metrics, and traces.",
 	"LOG_LEVEL":                  "Minimum severity written to stdout.",

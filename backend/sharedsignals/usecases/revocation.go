@@ -74,8 +74,10 @@ func CheckRevocationEpoch(ctx context.Context, deps RevocationDeps, tenantID, ag
 // already emits unconditionally for audit (KillAgent/SetAgentDisabled/
 // UnbindCredential/SetUserDisabled/SoftDeleteUser/DeleteUser), and
 // fail-closed advances the affected agent(s)' revocation epoch (
-// wi-58). The composition root composes it into the Emit pipeline once
-// (idmanagement/deps_http.Deps.ReactiveEmit); IdManagement's own usecases
+// wi-58). Every path that emits those events builds it with
+// NewAgentRevocationReactor and calls it after each Emit: the admin API through
+// idmanagement/deps_http.Deps.ReactiveEmit, and the paths that stop a User
+// outside the admin API through bootstrap's UserLifecycleCommands. IdManagement's own usecases
 // need no SharedSignals dependency or extra call — the event they already
 // emit is the trigger. This mirrors the shape [[wi-323]] plans to reuse for
 // human User sessions (more event types, same reactor pattern).

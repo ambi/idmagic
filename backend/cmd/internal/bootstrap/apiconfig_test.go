@@ -12,9 +12,6 @@ func TestLoadAPIConfigDefaults(t *testing.T) {
 	if err := l.Err(); err != nil {
 		t.Fatalf("LoadAPIConfig: %v", err)
 	}
-	if cfg.Issuer != "http://localhost:8080" {
-		t.Errorf("Issuer = %q", cfg.Issuer)
-	}
 	if cfg.Addr != ":8080" {
 		t.Errorf("Addr = %q", cfg.Addr)
 	}
@@ -45,15 +42,6 @@ func TestLoadAPIConfigRejectsNegativeTrustedForwardedHops(t *testing.T) {
 	LoadAPIConfig(l)
 	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "TRUSTED_FORWARDED_HOPS") {
 		t.Fatalf("err=%v, want a TRUSTED_FORWARDED_HOPS range error", err)
-	}
-}
-
-func TestLoadAPIConfigRejectsNonAbsoluteIssuer(t *testing.T) {
-	t.Parallel()
-	l := NewConfigLoader(stubEnv(map[string]string{"ISSUER": "not-a-url"}))
-	LoadAPIConfig(l)
-	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "ISSUER") {
-		t.Fatalf("err=%v, want an ISSUER absolute-URL error", err)
 	}
 }
 

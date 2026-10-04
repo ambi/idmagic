@@ -26,9 +26,18 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/sharedsignals"
+	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	"github.com/ambi/idmagic/backend/signingkeys"
+	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // worker が組み立てる実行ハンドラーは、無効化されたワークフローの WorkflowRun を始めずに打ち切る。
@@ -242,5 +251,153 @@ func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 	}
 	if sink.count("UserDisabled") != 1 || sink.count("AgentDisabled") != 1 {
 		t.Fatalf("UserDisabled=%d AgentDisabled=%d, want 1 each", sink.count("UserDisabled"), sink.count("AgentDisabled"))
+	}
+}
+
+// revocationFixture は、Agent を二つ所有する alice を disable_user で止める、worker の組み立ての経路である。
+// 二つの Agent はそれぞれ OAuth2 クライアントに紐づき、SharedSignals の Repository と署名鍵は実物のメモリ実装を使う。
+type revocationFixture struct {
+	deps     *bootstrap.Dependencies
+	sink     *recordingSink
+	epochs   *ssmemory.AgentRevocationEpochRepository
+	streams  *ssmemory.SsfStreamRepository
+	configs  *ssmemory.SsfTransmitterConfigRepository
+	delivery *ssmemory.SecurityEventDeliveryRepository
+	agentIDs []string
+}
+
+func newRevocationFixture(t *testing.T) *revocationFixture {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Now().UTC()
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	agents := agentmemory.NewAgentRepository()
+	f := &revocationFixture{
+		sink:   &recordingSink{},
+		epochs: ssmemory.NewAgentRevocationEpochRepository(), streams: ssmemory.NewSsfStreamRepository(),
+		configs: ssmemory.NewSsfTransmitterConfigRepository(), delivery: ssmemory.NewSecurityEventDeliveryRepository(),
+		agentIDs: []string{"deploy-bot", "report-bot"},
+	}
+	for _, id := range f.agentIDs {
+		if err := agents.Save(ctx, &agentdomain.Agent{ID: id, TenantID: "tenant-a", Name: id, Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := agents.AddBinding(ctx, &agentdomain.AgentCredentialBinding{AgentID: id, ClientID: id + "-client", CreatedAt: now}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	workflows := igmemory.NewLifecycleWorkflowRepository()
+	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.deps = &bootstrap.Dependencies{
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(), AgentRepo: agents},
+		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: igmemory.NewLifecycleWorkflowRunRepository()},
+		OAuth2:       oauth2.Module{EventSink: f.sink},
+		SigningKeys:  signingkeys.Module{KeyStore: keyStore},
+		SharedSignals: sharedsignals.Module{
+			RevocationEpochRepo: f.epochs, StreamRepo: f.streams, TransmitterConfigRepo: f.configs, DeliveryRepo: f.delivery,
+		},
+		Issuer: "https://idp.example",
+	}
+	return f
+}
+
+// disableAlice は disable_user だけを持つ WorkflowRun を、worker が組み立てた実行ハンドラーで実行する。
+func (f *revocationFixture) disableAlice(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser}
+	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "alice", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: time.Now().UTC()}
+	if _, err := f.deps.IdGovernance.LifecycleWorkflowRunRepo.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+		t.Fatal(err)
+	}
+	params, err := json.Marshal(map[string]string{"run_id": run.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
+	if _, err := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(f.deps, logger))(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+		t.Fatal(err)
+	}
+	steps, err := f.deps.IdGovernance.LifecycleWorkflowRunRepo.ListSteps(ctx, "tenant-a", run.ID)
+	if err != nil || len(steps) != 1 || steps[0].Outcome != igdomain.WorkflowStepChanged {
+		t.Fatalf("steps = %+v, %v; want one changed disable_user step", steps, err)
+	}
+}
+
+// 管理 API では閉じていた経路が、worker で実行するワークフローでも閉じることを確かめる。
+// 失効エポックの判定はイントロスペクションと Bearer の検証が共有する AccessTokenIsRevoked で読む。
+//
+//spec:covers REQ-PLATFORM-001: worker が組み立てた disable_user の手順で User を止めると、所有する二つの Agent の失効エポックが同じ時刻へ進み、それより前に発行されたトークンが失効と判定され、AgentAccessRevoked が Agent ごとに 1 件発行されることを固定する。
+func TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns(t *testing.T) {
+	f := newRevocationFixture(t)
+	issuedAt := time.Now().UTC().Add(-time.Minute)
+
+	f.disableAlice(t)
+
+	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	introspect := tokenusecases.IntrospectDeps{AgentRepo: f.deps.IdManagement.AgentRepo, RevocationEpochRepo: f.epochs}
+	var epochs []time.Time
+	for _, id := range f.agentIDs {
+		epoch, err := f.epochs.FindByAgent(ctx, "tenant-a", id)
+		if err != nil || epoch == nil {
+			t.Fatalf("revocation epoch of %s = %+v, %v; want advanced", id, epoch, err)
+		}
+		if epoch.Reason != ssdomain.RevocationReasonOwnerDisabled {
+			t.Fatalf("revocation reason of %s = %s, want %s", id, epoch.Reason, ssdomain.RevocationReasonOwnerDisabled)
+		}
+		epochs = append(epochs, epoch.Epoch)
+		revoked, err := tokenusecases.AccessTokenIsRevoked(ctx, introspect, &oauthports.IntrospectionResult{Active: true, ClientID: id + "-client", Iat: issuedAt.Unix()})
+		if err != nil || !revoked {
+			t.Fatalf("token of %s issued before the disable: revoked = %v, %v; want true", id, revoked, err)
+		}
+	}
+	if !epochs[0].Equal(epochs[1]) {
+		t.Fatalf("revocation epochs = %v, want the same instant for both agents", epochs)
+	}
+	if n := f.sink.count("AgentAccessRevoked"); n != len(f.agentIDs) {
+		t.Fatalf("AgentAccessRevoked emitted %d times, want %d", n, len(f.agentIDs))
+	}
+}
+
+// 外部への伝播は REQ-PLATFORM-001 の保証の外だが、worker で進めた失効も api と同じく受信側へ届ける。
+// 署名に使う鍵と issuer が worker まで届かないと、配送は作られない。
+//
+//spec:covers REQ-SHAREDSIGNALS-007: worker が組み立てた disable_user の手順で User を止めると、session-revoked を購読する有効な Transmit ストリームへ、worker の issuer で署名した SET を載せた pending の配送が Agent ごとに作られることを固定する。
+func TestWorkerDisableUserStepQueuesTheRevocationForTransmitStreams(t *testing.T) {
+	f := newRevocationFixture(t)
+	ctx := context.Background()
+	if err := f.streams.Save(ctx, &ssdomain.SsfStream{
+		ID: "stream-1", TenantID: "tenant-a", Direction: ssdomain.SsfStreamDirectionTransmit,
+		EventTypes: []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked}, Status: ssdomain.SsfStreamStatusEnabled, CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.configs.Save(ctx, "tenant-a", &ssdomain.SsfTransmitterConfig{
+		StreamID: "stream-1", DeliveryEndpoint: "https://receiver.example/events", Audience: "https://receiver.example",
+		MaxDeliveryAttempts: ssdomain.DefaultMaxDeliveryAttempts,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	f.disableAlice(t)
+
+	deliveries, err := f.delivery.ListByStream(ctx, "tenant-a", "stream-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deliveries) != len(f.agentIDs) {
+		t.Fatalf("deliveries = %d, want one per agent (%d)", len(deliveries), len(f.agentIDs))
+	}
+	for _, d := range deliveries {
+		if d.Status != ssdomain.SecurityEventDeliveryStatusPending || d.Set.Issuer != "https://idp.example" {
+			t.Fatalf("delivery = status %s, iss %q; want pending and signed under the worker's issuer", d.Status, d.Set.Issuer)
+		}
 	}
 }

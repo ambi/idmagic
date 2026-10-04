@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -37,6 +38,35 @@ func TestLoadSharedConfigMemoryDoesNotRequireDatabaseURL(t *testing.T) {
 	cfg := loadSharedConfigOrFatal(t, map[string]string{})
 	if cfg.Persistence != "memory" {
 		t.Fatalf("Persistence = %q, want default memory", cfg.Persistence)
+	}
+}
+
+// worker も SET に署名するので、ISSUER は API だけでなく共有の設定として読む。
+func TestLoadSharedConfigReadsIssuer(t *testing.T) {
+	t.Parallel()
+	if cfg := loadSharedConfigOrFatal(t, map[string]string{}); cfg.Issuer != "http://localhost:8080" {
+		t.Errorf("default Issuer = %q, want http://localhost:8080", cfg.Issuer)
+	}
+	if cfg := loadSharedConfigOrFatal(t, map[string]string{"ISSUER": "https://idp.example"}); cfg.Issuer != "https://idp.example" {
+		t.Errorf("Issuer = %q, want https://idp.example", cfg.Issuer)
+	}
+	l := NewConfigLoader(stubEnv(map[string]string{"ISSUER": "not-a-url"}))
+	LoadSharedConfig(l)
+	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "ISSUER") {
+		t.Fatalf("err=%v, want an ISSUER absolute-URL error", err)
+	}
+}
+
+// 失効の反応器は Dependencies.Issuer で SET に署名する。Assemble が写し忘れると、worker は空の iss で署名に失敗する。
+func TestAssembleHandsTheIssuerToTheDependencies(t *testing.T) {
+	cfg := loadSharedConfigOrFatal(t, map[string]string{"ISSUER": "https://idp.example"})
+	deps, err := Assemble(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer deps.Close()
+	if deps.Issuer != "https://idp.example" {
+		t.Fatalf("Dependencies.Issuer = %q, want https://idp.example", deps.Issuer)
 	}
 }
 

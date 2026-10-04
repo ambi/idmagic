@@ -48,7 +48,7 @@ func Run() error {
 	}
 
 	runtime := bootstrap.LoadRuntimeConfig(shared)
-	issuer := api.Issuer
+	issuer := shared.Issuer
 	addr := api.Addr
 
 	shuttingDown := &atomic.Bool{}

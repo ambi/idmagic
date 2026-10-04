@@ -56,8 +56,11 @@ type Dependencies struct {
 	// AssembleNotification が locale と実行方法を埋め、issuer を知るプロセスが
 	// IssuerResolver を差し込む。
 	SecurityNotifications SecurityNotificationConfig
-	Close                 func()
-	DbPing                func(context.Context) error
+	// Issuer はこのデプロイメントの公開 URL で、SET の `iss` に使う。トークンを発行しない
+	// worker も、失効を外部へ伝える SET に署名するので同じ値を持つ。
+	Issuer string
+	Close  func()
+	DbPing func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。
@@ -100,6 +103,7 @@ func Assemble(ctx context.Context, cfg SharedConfig) (*Dependencies, error) {
 		return nil, err
 	}
 	deps.Authentication.WebAuthnRP = rp
+	deps.Issuer = cfg.Issuer
 	// 通知はカタログ解決を含めてここで組み立て、API プロセスと worker プロセスが
 	// 同じ経路 (テナント上書き・locale 解決を含む) で送るようにする (wi-288)。
 	//nolint:contextcheck // 起動時の配線のみ。実際の I/O は送信ごとに呼び出し元の context で走る。

@@ -17,6 +17,7 @@ Persistence, notification, WebAuthn, authorization, and key-custody settings eve
 
 | Variable | Type | Default | Required | Purpose |
 | --- | --- | --- | --- | --- |
+| `ISSUER` | url | `http://localhost:8080` | no | Public base URL this deployment issues tokens and Security Event Tokens under. It must match what relying parties and SSF receivers resolve. |
 | `PERSISTENCE` | enum: `memory`, `postgres` | `memory` | no | Storage backend. `postgres` requires DATABASE_URL. |
 | `OBSERVABILITY` | enum: `noop`, `otel` | `noop` | no | Set to `otel` to export OTLP traces and metrics. Pull-based /metrics is always served regardless of this setting. |
 | `FEATURES_ENABLE` | enum list | — | no | Comma-separated runtime feature IDs to enable explicitly. Available IDs and maturity are generated from the product feature registry. |
@@ -66,7 +67,6 @@ HTTP listener, hardening, security headers, and endpoint rate limits.
 
 | Variable | Type | Default | Required | Purpose |
 | --- | --- | --- | --- | --- |
-| `ISSUER` | url | `http://localhost:8080` | no | Public base URL this deployment issues tokens under. It must match what relying parties resolve. |
 | `ADDR` | string | `:8080` | no | Listen address of the HTTP server. |
 | `OTEL_SERVICE_NAME` | string | `idmagic` | no | service.name reported on logs, metrics, and traces. |
 | `LOG_LEVEL` | enum: `debug`, `info`, `warn`, `warning`, `error` | `info` | no | Minimum severity written to stdout. |

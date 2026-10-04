@@ -12,7 +12,6 @@ import (
 // l.Err() once after both calls sees every problem from the whole startup
 // attempt together (REQ-SYSTEM-016).
 type APIConfig struct {
-	Issuer                string
 	Addr                  string
 	OTelServiceName       string
 	LogLevel              string
@@ -35,7 +34,6 @@ type APIConfig struct {
 func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	var cfg APIConfig
 
-	cfg.Issuer = l.URL("ISSUER", "http://localhost:8080")
 	cfg.Addr = l.String("ADDR", ":8080")
 	cfg.OTelServiceName = l.String("OTEL_SERVICE_NAME", "idmagic")
 	cfg.LogLevel = l.Enum("LOG_LEVEL", "info", "debug", "info", "warn", "warning", "error")

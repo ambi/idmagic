@@ -16,6 +16,9 @@ import (
 // process starts first. It is parsed once via LoadSharedConfig and passed
 // down instead of each adapter re-reading env (wi-103).
 type SharedConfig struct {
+	// Issuer は API がトークンを、worker が失効を伝える SET を発行するときの公開 URL である。
+	Issuer string
+
 	Persistence   string
 	Observability string
 	Features      FeatureResolution
@@ -67,6 +70,7 @@ type SharedConfig struct {
 func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 	var cfg SharedConfig
 
+	cfg.Issuer = l.URL("ISSUER", "http://localhost:8080")
 	cfg.Persistence = l.Enum("PERSISTENCE", "memory", "memory", "postgres")
 	cfg.Observability = l.EnumFold("OBSERVABILITY", "noop", "noop", "otel")
 	cfg.Features = LoadFeatureConfig(l, ProductFeatureRegistry())
