@@ -9,7 +9,7 @@ depends_on: []
 change_kind: feature
 affected_spec:
   - { path: docs/domain/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-046 }
+  - { path: docs/domain/oauth2/token/README.md, requirement: REQ-OAUTH2-046 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: BindAgentCredential }
 ---
 

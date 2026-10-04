@@ -8,7 +8,7 @@ depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-de
 change_kind: feature
 affected_spec:
   - { path: docs/domain/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-046 }
+  - { path: docs/domain/oauth2/token/README.md, requirement: REQ-OAUTH2-046 }
 ---
 
 # エージェントのガードレールと棚卸しを統制層として与える

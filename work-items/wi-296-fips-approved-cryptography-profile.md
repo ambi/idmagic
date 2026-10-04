@@ -42,7 +42,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
 ## Scope
 
 - **decision**:
-  - `docs/domain/standards.md` と `docs/domain/oauth2/decisions.md` へ記録する決定 (FIPS 運転モード): 適用範囲 (署名・トークン・パスワード保存・
+  - `docs/domain/standards.md` と `docs/domain/oauth2/design/decisions.md` へ記録する決定 (FIPS 運転モード): 適用範囲 (署名・トークン・パスワード保存・
     セッショントークン・OTP・XML 署名)、承認アルゴリズムの許可集合、
     FIPS モードでのパスワードハッシュ (PBKDF2-HMAC-SHA256 系) と既存 Argon2id ハッシュの
     **共存・段階移行**方式 (既存ハッシュを検証時に判別し、次回ログインで再ハッシュする)、
@@ -125,7 +125,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
 - [ ] T001 [Survey] 暗号使用箇所を 7 面 (署名 / パスワードハッシュ / 乱数 / KDF /
       XML 署名 / OTP / HIBP) で棚卸しし、各々の FIPS モードでの扱い案を作る。
       結果を `docs/domain/standards.md` の下書きに反映する。
-- [ ] T002 [Spec] FIPS 運転モードの決定を `docs/domain/standards.md` と `docs/domain/oauth2/decisions.md` に記録する (適用範囲・許可集合・パスワードハッシュ
+- [ ] T002 [Spec] FIPS 運転モードの決定を `docs/domain/standards.md` と `docs/domain/oauth2/design/decisions.md` に記録する (適用範囲・許可集合・パスワードハッシュ
       移行・HIBP の扱い・ビルド方法・起動時自己検査・無効化される機能一覧)。
 - [ ] T003 [Spec] SignatureAlgorithm の FIPS 許可集合、client metadata の requires、
       `password_hash_scheme`、System の FIPS 設定と自己検査、guarantee、scenario 4 件を

@@ -51,7 +51,7 @@ affected_spec:
     `effective_roles` の再定義 (直接ロール ∪ 所属グループとその祖先のロール)、
     dynamic group (`docs/domain/identity-management/dynamic-group/` の CEL 動的グループ規則) と階層の併用可否、
     ApplicationAssignment の解決に継承メンバーシップを含めるか
-    (`docs/domain/application/decisions.md` の fail-closed 割当と整合)、
+    (`docs/domain/application/design/decisions.md` の fail-closed 割当と整合)、
     親削除時の子の扱い (拒否 / 昇格 / カスケード) を記録する。
 - **specification**:
   - `IdManagement.models.Group` に `parent_id` (optional) と `depth` を追加する。

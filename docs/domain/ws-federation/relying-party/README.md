@@ -1,0 +1,37 @@
+# RP と Entra フェデレーションの管理
+
+## 概要
+
+この文書は、WS-Fed の RP の登録、参照、削除と、Entra のドメインフェデレーションの定型設定の仕様である。
+
+| 項目 | 内容 |
+| --- | --- |
+| 責務 | RP の登録と更新、一覧、削除。Entra のドメインフェデレーションの定型設定による RP の作成と更新 |
+| 行為者 | テナント管理者、管理 API のクライアント |
+| 扱わないもの | アプリケーションに属する RP の設定は `Application` のプロトコル設定からも行える。クレームのポリシーの意味は `ClaimMapping` が定める |
+
+## モデル
+
+`EntraFederationProfile` は、WS-Fed の RP のための定型設定である。
+ドメイン、IssuerUri、sourceAnchor の属性、受動、能動、MEX の各エンドポイントを受け取り、`wtrealm` と audience に同じ IssuerUri を持つ `WsFedRelyingParty` を作成または更新する。
+
+| 必須のクレーム | 発行のしかた |
+| --- | --- |
+| UPN | `preferred_username` から `http://schemas.xmlsoap.org/claims/UPN` として発行する |
+| ImmutableID | 正規化した sourceAnchor（`entra_immutable_id`）から導き、永続的な NameID と `http://schemas.xmlsoap.org/claims/nameidentifier` の両方に含める |
+
+必須のクレームは定型設定で固定し、フェイルクローズで扱う。
+sourceAnchor は、設定の時点では既存のユーザーの欠落、重複、変換できない値を拒否し、発行の時点では対象のユーザーの ImmutableID を導けなければクレームの発行を拒否する。
+
+- **判断**：定型設定にする理由は、[Entra のドメインフェデレーションを専用の定型設定として扱う](../design/decisions.md#entra-のドメインフェデレーションを専用の定型設定として扱う)。
+
+## 操作
+
+### 管理 API のクライアントによる RP と Entra フェデレーションの操作
+
+#### REQ-WSFEDERATION-001 管理 API クライアントは WS-Fed スコープの信頼設定だけを操作できる
+
+## セキュリティ上の考慮
+
+RP の登録、参照、削除と Entra のドメインフェデレーションの設定は、`AdminFederationTrustsManage` の権限（AuthZEN の action `admin:federation_trusts_manage`）を要する。
+対話のセッションでは、`admin` ロールを持つ、有効かつ認証済みのユーザーが、所属テナントに対して行える。

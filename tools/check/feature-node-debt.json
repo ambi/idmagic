@@ -2,14 +2,5 @@
   "contextAliases": {
     "idmanagement": "identity-management"
   },
-  "unmappedSlices": [
-    "backend/oauth2/approval",
-    "backend/oauth2/authorization",
-    "backend/oauth2/client",
-    "backend/oauth2/consent",
-    "backend/oauth2/device",
-    "backend/oauth2/logout",
-    "backend/oauth2/token",
-    "backend/sourcing/scim"
-  ]
+  "unmappedSlices": []
 }

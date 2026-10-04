@@ -8,7 +8,7 @@ priority: p3
 change_kind: feature
 affected_spec:
   - { path: docs/domain/identity-management/account/README.md, requirement: REQ-IDMANAGEMENT-017 }
-  - { path: docs/domain/authentication/password/scenarios.feature.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/domain/authentication/password/README.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
 # セカンダリ / リカバリ用メール・電話の self-service 管理
@@ -33,7 +33,7 @@ affected_spec:
 
 ## Scope
 - **decision**:
-  - `docs/domain/identity-management/design/decisions.md` へ記録する決定: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (`docs/domain/identity-management/design/decisions.md` の疎な属性) として持つか、 専用 companion table を切るかを決める。検証は `docs/domain/authentication/decisions.md` のワンタイムトークンと同じ方針 (hash 保存・単発消費・期限付き) にする。
+  - `docs/domain/identity-management/design/decisions.md` へ記録する決定: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (`docs/domain/identity-management/design/decisions.md` の疎な属性) として持つか、 専用 companion table を切るかを決める。検証は `docs/domain/authentication/design/decisions.md` のワンタイムトークンと同じ方針 (hash 保存・単発消費・期限付き) にする。
 - **specification**:
   - 新規 interface: UpdateRecoveryEmail / UpdateRecoveryPhone / AddSecondaryEmail / VerifySecondaryEmail / RemoveSecondaryEmail (self)。 対応 model と検証イベント (RecoveryContactUpdated 等) を追加する。
 - **go**:
@@ -51,8 +51,8 @@ affected_spec:
 
 ## Plan
 - `User` の primary email/phone を直接増殖させず、Identity Management 所有の `RecoveryContact`（kind、normalized value、verified_at、status）として1:N管理する。ログイン識別子・通知先・recovery 手段の役割を混同しない。
-- `docs/domain/authentication/decisions.md` のアカウントポータルの範囲 と 同じ文書の CSRF とステップアップ認証 に従い、追加、再送、verify、primary化、削除を account portal の step-up + CSRF 対象にする。最後の利用可能な recovery contact 削除ルールは既存 MFA/recovery code と合成する。
-- verification challenge は contact/action/browser transaction/tenant/user/TTL に束縛した hash のみを保存し、一回消費にする。email は `docs/domain/authentication/decisions.md` の `EmailSender` の EmailSender、電話は provider port だけ定義し、本 WI で vendor 固定しない。
+- `docs/domain/authentication/design/decisions.md` のアカウントポータルの範囲 と 同じ文書の CSRF とステップアップ認証 に従い、追加、再送、verify、primary化、削除を account portal の step-up + CSRF 対象にする。最後の利用可能な recovery contact 削除ルールは既存 MFA/recovery code と合成する。
+- verification challenge は contact/action/browser transaction/tenant/user/TTL に束縛した hash のみを保存し、一回消費にする。email は `docs/domain/authentication/design/decisions.md` の `EmailSender` の EmailSender、電話は provider port だけ定義し、本 WI で vendor 固定しない。
 - verified secondary email の login alias/recovery利用は tenant policy で別々に opt-in し、未検証値はどちらにも使わない。値重複の許否と account enumeration 応答を specification invariant にする。
 
 ## Tasks

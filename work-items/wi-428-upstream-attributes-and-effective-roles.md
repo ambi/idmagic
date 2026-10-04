@@ -7,7 +7,7 @@ created_at: 2026-08-27
 priority: p1
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-004 }
+  - { path: docs/domain/sourcing/scim/README.md, requirement: REQ-SOURCING-004 }
   - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 

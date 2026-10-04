@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/domain/ws-federation/scenarios.feature.md の REQ-WSFEDERATION-001 が宣言する具体例を、
+// docs/domain/ws-federation/relying-party/README.md の REQ-WSFEDERATION-001 が宣言する具体例を、
 // 実際に発行した API アクセストークンで管理 API を叩いて観測する。
 //
 // スコープの判定関数だけを呼ぶテストは、判定が正しくても配線されていない実装を素通りさせる。

@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: operations
 affected_spec:
-  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-002 }
-  - { path: docs/domain/jobs/scenarios.feature.md, requirement: REQ-JOBS-004 }
+  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-002 }
+  - { path: docs/domain/jobs/queue/README.md, requirement: REQ-JOBS-004 }
 ---
 
 # ワーカーと idmagic-frontend の停止を Probe で検知し、再起動させる

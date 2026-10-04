@@ -8,7 +8,7 @@ priority: p2
 change_kind: feature
 affected_spec:
   - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/domain/audit/scenarios.feature.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/domain/audit/event-search/README.md, requirement: REQ-AUDIT-004 }
 ---
 
 # 大規模テナントでも軽快に動く検索・集計・性能保証を整備する

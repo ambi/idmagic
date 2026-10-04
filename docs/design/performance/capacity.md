@@ -201,5 +201,5 @@ PostgreSQL の論理接続予算は、`API のレプリカ数 × API のプー�
 5. `/authorize`、`/token`、`/introspect`、ログインを受け付けられない場合は、状態を部分的に更新せず 429 または 503 で拒否する。
 
 ステージ 1 と 2 はワーカーの実行レーンで、ステージ 3 以降は API のアドミッションコントロールで実現する。
-経路の優先度は [System Context の判断](../../domain/system/decisions.md#load-shedding-by-priority-class)で定める。
+経路の優先度は [System の設計判断](../../domain/system/design/decisions.md#優先度クラスで低い要求から拒否する)で定める。
 高可用性と障害時の切り替えは[可用性設計](../reliability/availability.md)で扱う。

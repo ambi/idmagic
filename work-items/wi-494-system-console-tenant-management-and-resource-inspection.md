@@ -19,8 +19,8 @@ affected_spec:
   - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
   - { path: docs/domain/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: docs/domain/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-001 }
-  - { path: docs/domain/oauth2/scenarios.feature.md, requirement: REQ-OAUTH2-035 }
+  - { path: docs/domain/application/catalog/README.md, requirement: REQ-APPLICATION-001 }
+  - { path: docs/domain/oauth2/client/README.md, requirement: REQ-OAUTH2-035 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.GetTenant }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant }

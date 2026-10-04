@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/domain/ws-federation/scenarios.feature.md の REQ-WSFEDERATION-002 と REQ-WSFEDERATION-003 が
+// docs/domain/ws-federation/passive-sign-in/README.md の REQ-WSFEDERATION-002 と REQ-WSFEDERATION-003 が
 // 宣言する具体例を、パッシブの入口 `/wsfed` から観測する。
 
 import (

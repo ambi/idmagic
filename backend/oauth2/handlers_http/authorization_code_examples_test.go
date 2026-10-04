@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/domain/oauth2/scenarios.feature.md の REQ-OAUTH2-005、008、021、022 が宣言する
+// docs/domain/oauth2/ の認可、同意、トークンの機能仕様の REQ-OAUTH2-005、008、021、022 が宣言する
 // 具体例を、ブラウザー経由の認可からトークンの交換までを 1 本通して観測する。
 //
 // スタックは `testing_stack` が建てる。この具体例群が要求するのは「/authorize から

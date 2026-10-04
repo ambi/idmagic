@@ -19,7 +19,7 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
     await snapshot.read('docs/domain/scenarios.feature.md'),
   )
   const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(
-    await snapshot.read(`${contextsDirectory}/api-tokens/scenarios.feature.md`),
+    await snapshot.read(`${contextsDirectory}/api-tokens/authentication/examples.feature.md`),
   )
   const sharedRefusals = new Set([...platformRefusals, ...apiTokenRefusals])
   let declared = sharedRefusals.size

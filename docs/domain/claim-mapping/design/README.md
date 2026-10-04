@@ -1,0 +1,19 @@
+# ClaimMapping の設計
+
+この文書は、ClaimMapping の設計を話題ごとに索引する。
+この Context が外へ約束することは、仕様の [ClaimMapping](../README.md) と各機能仕様が定める。
+一つの機能だけの仕組みは、その機能の `design.md` に置く。
+
+| 話題 | 記述した場所 |
+| --- | --- |
+| アーキテクチャ | [ClaimMapping のアーキテクチャ](architecture.md) |
+| 設計判断 | [ClaimMapping の重要な設計判断](decisions.md) |
+| アプリケーション | 該当なし：この Context は HTTP の操作と UI を持たない |
+| データ | 該当なし：この Context は永続化を持たない。ポリシーは信頼先の Aggregate の一部として、その Context が保存する |
+| セキュリティ | 該当なし：公開できない属性を拒否する下限は、[クレームの発行](../issuance/README.md)のセキュリティ上の考慮の節が扱う |
+| 信頼性 | 該当なし：作用を持たない純粋な変換であり、障害の経路を持たない |
+| 性能 | 該当なし：システムの[性能設計](../../../design/performance/README.md)に従い、この Context に割り当てた品質要件はない |
+| オブザーバビリティ | 該当なし：システムの[オブザーバビリティ設計](../../../design/observability/README.md)に従い、この Context に固有の信号はない |
+| 検証 | 該当なし：システムの[検証設計](../../../design/verification/README.md)に従う |
+| インフラストラクチャ | 該当なし：実行基盤に固有の要求はない |
+| リスク | 該当なし：この Context に固有の既知の欠陥は見つかっていない |

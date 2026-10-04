@@ -7,7 +7,7 @@ created_at: 2026-07-03
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/sourcing/scenarios.feature.md, requirement: REQ-SOURCING-002 }
+  - { path: docs/domain/sourcing/scim/README.md, requirement: REQ-SOURCING-002 }
   - { path: docs/domain/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
@@ -33,7 +33,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 
 ## Scope
 - **decision**:
-  - `docs/domain/sourcing/decisions.md` へ記録する決定: Connector を DC 上ではなく AD と同じ閉域ネットワーク内の専用ホストに
+  - `docs/domain/sourcing/design/decisions.md` へ記録する決定: Connector を DC 上ではなく AD と同じ閉域ネットワーク内の専用ホストに
     配置し、IdMagic への outbound-only + mTLS 接続とする境界を記録する。Connector
     enrollment、証明書の発行・失効・ローテーション、テナントへの所属、および最小権限の
     AD サービスアカウントの責務を定める。

@@ -85,7 +85,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-001 | Spoofing | 攻撃者のサイトが利用者のセッション Cookie に便乗して状態変更操作を呼ぶ | System, Authentication | docs/design/security/authorization.md: その他の境界の規則、REQ-AUTHENTICATION-005 | `covered` |
 | THREAT-002 | Tampering | ログイン、同意、ポータルの画面を埋め込み、利用者の操作を別の意味に変える | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
 | THREAT-003 | Information disclosure | 注入したスクリプトがセッションとトークンを持ち出す | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
-| THREAT-004 | Information disclosure | 単一ページアプリがブラウザーに保持するアクセストークンが、スクリプト実行の成立時にそのまま持ち出される | System | contexts/system/decisions.md | `accepted` |
+| THREAT-004 | Information disclosure | 単一ページアプリがブラウザーに保持するアクセストークンが、スクリプト実行の成立時にそのまま持ち出される | System | contexts/system/design/decisions.md | `accepted` |
 | THREAT-005 | Information disclosure | 認可コードやトークンを含む URL が Referer で外部へ渡る | System, OAuth2 | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
 | THREAT-006 | Elevation of privilege | アカウントポータルのトークンで管理 API へ到達する | System, ApiTokens | docs/design/security/authorization.md: スコープの語彙、REQ-APITOKENS-004 | `covered` |
 | THREAT-007 | Denial of service | 低速な接続と過大な本体で接続枠とメモリを枯渇させる | System | design/performance/scaling.md: 接続と本体の上限 | `covered` |
@@ -135,11 +135,11 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ID | 分類 | 脅威 | Context | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-033 | Spoofing | 資格情報の総当たりでアカウントへ到達する | Authentication | REQ-AUTHENTICATION-008、design/reliability/availability.md: 共有状態 | `covered` |
-| THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、domain/authentication/password/decisions.md | `accepted` |
+| THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、domain/authentication/password/README.md | `accepted` |
 | THREAT-035 | Information disclosure | データベースの流出からパスワードが復元される | Authentication | NIST63B4-PASSWORD-STORAGE | `covered` |
 | THREAT-036 | Spoofing | 端末の記憶を悪用して第二要素を省略する | Authentication | REQ-AUTHENTICATION-027、REQ-AUTHENTICATION-028、REQ-AUTHENTICATION-029 | `covered` |
 | THREAT-037 | Spoofing | パスワード再設定の導線を使ってアカウントを乗っ取る | Authentication | REQ-AUTHENTICATION-016、REQ-AUTHENTICATION-008 | `covered` |
-| THREAT-038 | Information disclosure | 認証と復旧のレスポンス差から、利用者名の存在を暴く | Authentication | REQ-AUTHENTICATION-016、domain/authentication/password/decisions.md | `covered` |
+| THREAT-038 | Information disclosure | 認証と復旧のレスポンス差から、利用者名の存在を暴く | Authentication | REQ-AUTHENTICATION-016、domain/authentication/password/README.md | `covered` |
 | THREAT-039 | Spoofing | 外部 IdP が主張するメールアドレスを信じ、既存アカウントへ結び付ける | Authentication | REQ-AUTHENTICATION-001、REQ-AUTHENTICATION-002 | `covered` |
 | THREAT-040 | Repudiation | 資格情報の変更が本人に知られないまま行われる | Authentication | REQ-AUTHENTICATION-030、REQ-AUTHENTICATION-031、REQ-AUTHENTICATION-032、REQ-AUTHENTICATION-033 | `covered` |
 | THREAT-041 | Spoofing | 承認リクエストを繰り返し送り、利用者が誤って承認する | OAuth2 | CIBA-CORE-BINDING-MESSAGE、REQ-OAUTH2-043、REQ-OAUTH2-040 | `covered` |
@@ -159,7 +159,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD00-URL-SHAPE、CIMD00-FETCH | `covered` |
 | THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: アドミッションコントロール、design/reliability/availability.md: 縮退 | `covered` |
 | THREAT-052 | Tampering | 署名アルゴリズムの取り違えを突いて署名検証を回避する | OAuth2, SigningKeys | RFC7518-SIGNATURE-ALGORITHMS、RFC9068-ASYMMETRIC-SIGNATURE | `covered` |
-| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/domain/oauth2/internals.md: OIDC session binding and logout propagation、REQ-OAUTH2-025 | `covered` |
+| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/domain/oauth2/logout/design.md: OIDC session binding and logout propagation、REQ-OAUTH2-025 | `covered` |
 | THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
 | THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | contexts/saml/internals.md | `covered` |
 
@@ -174,7 +174,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-059 | Denial of service | 鍵提供元の障害が、発行と検証の両方を止める | SigningKeys, OAuth2 | REQ-OAUTH2-039、REQ-SIGNINGKEYS-008、REQ-SIGNINGKEYS-001 | `covered` |
 | THREAT-060 | Tampering | 攻撃者の鍵を JWKS へ紛れ込ませ、偽造したトークンを信頼させる | SigningKeys | REQ-SIGNINGKEYS-004、REQ-SIGNINGKEYS-010、REQ-SIGNINGKEYS-011 | `covered` |
 | THREAT-061 | Information disclosure | 起動時設定のシークレットが、生成した設定リファレンスやログへ出る | System | REQ-SYSTEM-016、REQ-SYSTEM-017、docs/domain/glossary.md: 外部契約 | `covered` |
-| THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、contexts/signing-keys/decisions.md、runbooks/backup-restore-dr.md | `planned` |
+| THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、contexts/signing-keys/design/decisions.md、runbooks/backup-restore-dr.md | `planned` |
 
 ## 上流の外部権威
 

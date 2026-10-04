@@ -29,13 +29,13 @@ documentation_impact: # 着手後は必須
   references:
     - { kind: release_note, path: docs/releases/changes/wi-48213-start-task.md }
 initial_context: # 起票時ではなく着手時に記入する
-  specification: [docs/domain/system/scenarios.feature.md#REQ-SYSTEM-001]
+  specification: [docs/domain/system/operations/README.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
   tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 primary_use_cases: # feature、bugfix、standards.md の変更では着手後に必須
   - id: start-task
@@ -128,8 +128,8 @@ spec_impact: { kind: none, reason: "具体的な理由。" }
 
 ```yaml
 affected_spec:
-  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/domain/system/scenarios.feature.md, requirement: REQ-SYSTEM-002, impact: conforms }
+  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-002, impact: conforms }
 ```
 
 `conforms` の項目を引くテストとは、規則またはその子の例を `//spec:covers` で引くテストである。

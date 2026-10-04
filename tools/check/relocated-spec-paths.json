@@ -78,5 +78,117 @@
   ],
   "docs/domain/tenancy/notification-template/scenarios.feature.md": [
     "docs/domain/tenancy/notification-template/README.md"
+  ],
+  "docs/domain/claim-mapping/scenarios.feature.md": [
+    "docs/domain/claim-mapping/issuance/README.md"
+  ],
+  "docs/domain/data-keys/scenarios.feature.md": [
+    "docs/domain/data-keys/health/README.md",
+    "docs/domain/data-keys/lifecycle/README.md"
+  ],
+  "docs/domain/seeding/scenarios.feature.md": ["docs/domain/seeding/seed-run/README.md"],
+  "docs/domain/workloadidentity/scenarios.feature.md": [
+    "docs/domain/workloadidentity/trust-configuration/README.md",
+    "docs/domain/workloadidentity/attestation-exchange/README.md"
+  ],
+  "docs/domain/ws-federation/scenarios.feature.md": [
+    "docs/domain/ws-federation/relying-party/README.md",
+    "docs/domain/ws-federation/active-sts/README.md",
+    "docs/domain/ws-federation/passive-sign-in/README.md"
+  ],
+  "docs/domain/audit/scenarios.feature.md": ["docs/domain/audit/event-search/README.md"],
+  "docs/domain/signing-keys/scenarios.feature.md": [
+    "docs/domain/signing-keys/provider/README.md",
+    "docs/domain/signing-keys/separation/README.md",
+    "docs/domain/signing-keys/lifecycle/README.md"
+  ],
+  "docs/domain/api-tokens/scenarios.feature.md": [
+    "docs/domain/api-tokens/authentication/README.md",
+    "docs/domain/api-tokens/token-management/README.md"
+  ],
+  "docs/domain/sharedsignals/scenarios.feature.md": [
+    "docs/domain/sharedsignals/revocation/README.md",
+    "docs/domain/sharedsignals/receiver/README.md",
+    "docs/domain/sharedsignals/stream/README.md",
+    "docs/domain/sharedsignals/transmitter/README.md"
+  ],
+  "docs/domain/identity-governance/scenarios.feature.md": [
+    "docs/domain/identity-governance/workflow-run/README.md",
+    "docs/domain/identity-governance/lifecycle-workflow/README.md"
+  ],
+  "docs/domain/saml/scenarios.feature.md": [
+    "docs/domain/saml/service-provider/README.md",
+    "docs/domain/saml/idp-profile/README.md",
+    "docs/domain/saml/sso/README.md"
+  ],
+  "docs/domain/sourcing/scenarios.feature.md": ["docs/domain/sourcing/scim/README.md"],
+  "docs/domain/authorization/scenarios.feature.md": [
+    "docs/domain/authorization/model/README.md",
+    "docs/domain/authorization/check/README.md"
+  ],
+  "docs/domain/jobs/scenarios.feature.md": [
+    "docs/domain/jobs/queue/README.md",
+    "docs/domain/jobs/admin/README.md"
+  ],
+  "docs/domain/application/scenarios.feature.md": [
+    "docs/domain/application/portal/README.md",
+    "docs/domain/application/catalog/README.md",
+    "docs/domain/application/sign-in-policy/README.md",
+    "docs/domain/application/assignment/README.md"
+  ],
+  "docs/domain/provisioning/scenarios.feature.md": [
+    "docs/domain/provisioning/connection/README.md",
+    "docs/domain/provisioning/synchronization/README.md",
+    "docs/domain/provisioning/task/README.md"
+  ],
+  "docs/domain/system/scenarios.feature.md": [
+    "docs/domain/system/operations/README.md",
+    "docs/domain/system/hosted-ui/README.md",
+    "docs/domain/system/localization/README.md",
+    "docs/domain/system/api-boundary/README.md",
+    "docs/domain/system/startup-configuration/README.md",
+    "docs/domain/system/admission-control/README.md"
+  ],
+  "docs/domain/authentication/federation/scenarios.feature.md": [
+    "docs/domain/authentication/federation/README.md"
+  ],
+  "docs/domain/authentication/mfa/scenarios.feature.md": [
+    "docs/domain/authentication/mfa/README.md"
+  ],
+  "docs/domain/authentication/scenarios.feature.md": [
+    "docs/domain/authentication/sign-in/README.md",
+    "docs/domain/authentication/account-portal/README.md"
+  ],
+  "docs/domain/authentication/security-notification/scenarios.feature.md": [
+    "docs/domain/authentication/security-notification/README.md"
+  ],
+  "docs/domain/authentication/webauthn/scenarios.feature.md": [
+    "docs/domain/authentication/webauthn/README.md"
+  ],
+  "docs/domain/authentication/password/scenarios.feature.md": [
+    "docs/domain/authentication/password/README.md"
+  ],
+  "docs/domain/authentication/totp/scenarios.feature.md": [
+    "docs/domain/authentication/totp/README.md"
+  ],
+  "docs/domain/authentication/session/scenarios.feature.md": [
+    "docs/domain/authentication/session/README.md"
+  ],
+  "docs/domain/authentication/recovery/scenarios.feature.md": [
+    "docs/domain/authentication/recovery/README.md"
+  ],
+  "docs/domain/authentication/trusted-device/scenarios.feature.md": [
+    "docs/domain/authentication/trusted-device/README.md"
+  ],
+  "docs/domain/oauth2/scenarios.feature.md": [
+    "docs/domain/oauth2/token/README.md",
+    "docs/domain/oauth2/consent/README.md",
+    "docs/domain/oauth2/admin-access/README.md",
+    "docs/domain/oauth2/client/README.md",
+    "docs/domain/oauth2/authorization/README.md",
+    "docs/domain/oauth2/logout/README.md",
+    "docs/domain/oauth2/protocol-endpoints/README.md",
+    "docs/domain/oauth2/approval/README.md",
+    "docs/domain/oauth2/device/README.md"
   ]
 }

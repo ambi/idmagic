@@ -7,7 +7,7 @@ created_at: 2026-07-10
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-011 }
+  - { path: docs/domain/application/assignment/README.md, requirement: REQ-APPLICATION-011 }
   - { path: docs/domain/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
 ---
 
@@ -54,7 +54,7 @@ rule を導入し、将来の access request / access review / outbound provisio
 
 ## Tasks
 - [ ] T001 [Spec] Entitlement catalog、assignment、SoD rule、events / scenarios を追加する。
-- [ ] T002 [Decision] entitlement と application assignment の関係、SoD 例外方針を `docs/domain/identity-governance/decisions.md` に記録する。
+- [ ] T002 [Decision] entitlement と application assignment の関係、SoD 例外方針を `docs/domain/identity-governance/design/decisions.md` に記録する。
 - [ ] T003 [App] catalog / assignment / SoD evaluator を実装する。
 - [ ] T004 [HTTP] entitlement と SoD 管理 API を追加する。
 - [ ] T005 [UI] Application detail に entitlement 管理 UI を追加する。

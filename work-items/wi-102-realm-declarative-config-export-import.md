@@ -8,7 +8,7 @@ priority: p2
 change_kind: feature
 affected_spec:
   - { path: docs/domain/tenancy/integration-endpoints/README.md, requirement: REQ-TENANCY-001 }
-  - { path: docs/domain/application/scenarios.feature.md, requirement: REQ-APPLICATION-007 }
+  - { path: docs/domain/application/catalog/README.md, requirement: REQ-APPLICATION-007 }
 ---
 
 # テナント（Realm）設定の宣言的 export/import を提供し GitOps・環境昇格・DR を可能にする
@@ -47,7 +47,7 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 - 双方向リアルタイム同期。
 
 ## Plan
-- `docs/domain/tenancy/design/decisions.md` と `docs/domain/application/decisions.md` の所有境界を保ち、Tenancyが全設定を直接更新せず、context別exporter/importer portをorchestrateする。manifestはtop-level realm identity/versionとcontext sectionから成る。
+- `docs/domain/tenancy/design/decisions.md` と `docs/domain/application/design/decisions.md` の所有境界を保ち、Tenancyが全設定を直接更新せず、context別exporter/importer portをorchestrateする。manifestはtop-level realm identity/versionとcontext sectionから成る。
 - export対象をtenant settings、attribute schema、groups/roles、Applications+protocol bindings/policies、upstream/provisioning metadata等のScope記載集合に固定する。users、consents、sessions、audit/events、secret/private key、generated IDsは除外またはlogical referenceにする。
 - manifest JSON Schema/versionを公開し、stable logical keyでsection間参照を解決する。secretは`${secretRef}`等のopaque referenceだけを許し、export/import response/logに値を出さない。
 - importはparse/schema validate→reference graph/cycle→current snapshotとのredacted semantic diff→plan→explicit applyの二段階にする。context順序はtenant→schema→groups/roles→applications→bindings/policiesで、各commandは既存use case/permission/eventを通す。

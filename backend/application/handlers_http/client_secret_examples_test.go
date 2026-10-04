@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/domain/oauth2/scenarios.feature.md の REQ-OAUTH2-036 と REQ-OAUTH2-037 が宣言する
+// docs/domain/oauth2/client/README.md の REQ-OAUTH2-036 と REQ-OAUTH2-037 が宣言する
 // 通常経路を観測する。
 //
 // この 2 つの具体例が言っているのは「どの資格情報で /token の認証に成功するか」なので、

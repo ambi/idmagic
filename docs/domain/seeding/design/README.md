@@ -1,0 +1,19 @@
+# Seeding の設計
+
+この文書は、Seeding の設計を話題ごとに索引する。
+この Context が外へ約束することは、仕様の [Seeding](../README.md) と各機能仕様が定める。
+一つの機能だけの仕組みは、その機能の `design.md` に置く。
+
+| 話題 | 記述した場所 |
+| --- | --- |
+| アーキテクチャ | [Seeding のアーキテクチャ](architecture.md) |
+| 設計判断 | [Seeding の重要な設計判断](decisions.md) |
+| アプリケーション | 該当なし：この Context は HTTP の操作と UI を持たず、入口はコマンドだけである |
+| データ | 該当なし：この Context は永続化を持たない。投入したデータは記録の正を持つ各 Context が保存する |
+| セキュリティ | 該当なし：環境ポリシーとシークレットの扱いは[seed の計画と適用](../seed-run/README.md)のセキュリティ上の考慮の節が扱う |
+| 信頼性 | 該当なし：部分的な失敗からの回復は[seed の計画と適用の設計](../seed-run/design.md)が扱う |
+| 性能 | 該当なし：システムの[性能設計](../../../design/performance/README.md)に従い、この Context に割り当てた品質要件はない |
+| オブザーバビリティ | 該当なし：システムの[オブザーバビリティ設計](../../../design/observability/README.md)に従い、この Context に固有の信号はない |
+| 検証 | 該当なし：システムの[検証設計](../../../design/verification/README.md)に従う |
+| インフラストラクチャ | 該当なし：コマンドの配置はシステムの[配置の設計](../../../design/architecture/deployment.md)が扱う |
+| リスク | [Seeding のリスク](risks.md) |

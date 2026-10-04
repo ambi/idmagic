@@ -1,6 +1,6 @@
 # wi-96960-defer-and-cancel-user-deprovisioning-after-grace-period
 
-Provisioning が、接続の `DeprovisionPolicy.grace_period_days` に従って User の削除を下流へ遅らせて届けるようになった（[`REQ-PROVISIONING-006`](../../domain/provisioning/scenarios.feature.md)）。
+Provisioning が、接続の `DeprovisionPolicy.grace_period_days` に従って User の削除を下流へ遅らせて届けるようになった（[`REQ-PROVISIONING-006`](../../domain/provisioning/synchronization/README.md)）。
 
 - `on_delete=delete` で `grace_period_days` が 1 以上の接続では、User を削除しても猶予期間が経つまで下流へ DELETE を送らない。これまでは設定値にかかわらず、削除の直後に DELETE を送っていた。
 - 猶予期間が経つと worker が delete の配信を作り、下流へ DELETE を送って `UserDeprovisioned`（`action=delete`）を記録する。

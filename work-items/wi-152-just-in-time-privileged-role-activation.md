@@ -51,7 +51,7 @@ affected_spec:
 
 ## Tasks
 - [ ] T001 [Spec] Eligibility / Activation model、state、events、effective role invariant を追加する。
-- [ ] T002 [Decision] activation 条件、期限上限、承認要否、break-glass 境界を `docs/domain/identity-governance/decisions.md` に記録する。
+- [ ] T002 [Decision] activation 条件、期限上限、承認要否、break-glass 境界を `docs/domain/identity-governance/design/decisions.md` に記録する。
 - [ ] T003 [App] activation usecase と effective roles 評価を実装する。
 - [ ] T004 [HTTP] activation / approval API を追加する。
 - [ ] T005 [UI] activation と承認 queue の UI を追加する。

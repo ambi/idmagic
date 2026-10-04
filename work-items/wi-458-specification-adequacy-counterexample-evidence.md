@@ -68,11 +68,11 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
   - element: REQ-OAUTH2-009
     counterexample: 使用済みの request_uri を二度目に受理して認可コードを再発行する実装も、この scenario に反しない。
     disposition: strengthened
-    resolution: docs/domain/oauth2/scenarios.feature.md#REQ-OAUTH2-009
+    resolution: docs/domain/oauth2/authorization/README.md#REQ-OAUTH2-009
   - element: Product.OAuth2.Operations.PushedAuthorizationRequest
     counterexample: expires_in を 600 ちょうどで返し続ける実装も、TypeSpec の制約に反しない。
     disposition: refuted
-    resolution: docs/domain/oauth2/states.md#par-request-uri
+    resolution: docs/domain/oauth2/authorization/README.md#parrecordlifecycle
 ```
 
 `element` は `affected_spec` が名指しした規範 ID、標準 ID、または TypeSpec シンボルと一致する。`counterexample` は「仕様を満たしたまま誤っている実装」を 1 文で述べる。`disposition` と `resolution` の対応は次のとおり固定する。
@@ -116,7 +116,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 
 **`REQ-JOBS-003`（`refuted` になる例）。** 反例の候補は「`dedup_key` を見ずに毎回通知する実装」だが、これは `THEN ハンドラーは dedup_key を用いて冪等に判定し、重複した通知を送らない` が直接排除している。`resolution` はその `THEN` を持つシナリオ ID 自身になる。反例が立たない要素が存在すること自体は健全であり、契約は反例の存在を強制しない。強制するのは、立たなかったときに根拠を名指しすることである。
 
-**並行性の例（`undetermined` になる例）。** リースの期限切れと完了報告が同時に起きたときの順序は、`docs/domain/jobs/decisions.md` が「停止時の回復は明示的な再投入ではなくリースの自然な期限切れに委ねる」と決めており、その帰結として一部の順序を規定しないままにしている。反例は書けるが、規定しないことが決定である。この形が `undetermined` であり、`decisions.md` に再検討の条件を伴って残る。work item の Out of Scope に書いて完了ファイルへ移動させると、仕様を読む人には二度と見えない。
+**並行性の例（`undetermined` になる例）。** リースの期限切れと完了報告が同時に起きたときの順序は、`docs/domain/jobs/design/decisions.md` が「停止時の回復は明示的な再投入ではなくリースの自然な期限切れに委ねる」と決めており、その帰結として一部の順序を規定しないままにしている。反例は書けるが、規定しないことが決定である。この形が `undetermined` であり、`decisions.md` に再検討の条件を伴って残る。work item の Out of Scope に書いて完了ファイルへ移動させると、仕様を読む人には二度と見えない。
 
 ### 性質と反証
 

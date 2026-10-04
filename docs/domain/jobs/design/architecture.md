@@ -1,0 +1,50 @@
+# Jobs のアーキテクチャ
+
+この文書は、Jobs の文脈、解決戦略、構成要素、実行時の流れを扱う。
+システム全体の構成は[論理アーキテクチャ](../../../design/architecture/logical.md)と[ランタイムアーキテクチャ](../../../design/architecture/runtime.md)に従う。
+
+## 文脈と範囲
+
+この Context がほかの Context と結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
+この Context は利用側の Context の業務の論理に依存せず、ハンドラーは `worker` の起動処理が登録する。
+
+| 相手 | 向き | 実現方式 |
+| --- | --- | --- |
+| ジョブを投入する Context | 相手のユースケースが、この Context の `JobRepository` に投入する | 同じプロセスの中の Go の呼び出し |
+| `Tenancy` | ハンドラーの実行の文脈を、ジョブのテナントに固定する | 相手のリクエストの文脈のテナントを使う |
+
+## 解決戦略
+
+| 方針 | 理由 |
+| --- | --- |
+| 永続キューを PostgreSQL に置き、`FOR UPDATE SKIP LOCKED` でリースする | 運用するデータストアを増やさない。詳細は[判断](decisions.md#永続キューを-postgresql-に置き-for-update-skip-locked-でリースする) |
+| 配送を少なくとも 1 回とする | 詳細は[判断](decisions.md#配送を少なくとも-1-回とし冪等性をハンドラーに任せる) |
+| 投入の HTTP の入口を持たない | 詳細は[判断](decisions.md#投入と取得の-http-のエンドポイントを公開しない) |
+| 全テナントの定期の処理をキューに混ぜない | 詳細は[判断](decisions.md#全テナントを対象とする定期の処理を永続ジョブに混ぜない) |
+
+## 構成要素
+
+コードは機能スライスを持たず、一つの層の構成である。
+
+| 機能仕様 | 主なユースケースとハンドラー |
+| --- | --- |
+| [永続キュー](../queue/README.md) | `usecases/enqueue.go`、`usecases/runner.go`、`usecases/handler_registry.go`、`backend/cmd/idmagic-worker` |
+| [ジョブの管理](../admin/README.md) | `usecases/admin.go`、`handlers_http/admin_job_handler.go` |
+| [標準開発環境](../local-development/README.md) | 開発のコマンドと組み込みの PostgreSQL |
+
+| 層 | 責務 |
+| --- | --- |
+| `domain` | `Job`、`JobKind` とレーンの登録、ドメインイベント |
+| `ports` | `JobRepository` |
+| `usecases` | 投入、`Runner` による取得と実行、ハンドラーの一覧、管理の操作、指標 |
+| `handlers_http` | テナント管理の経路とシステムの経路の管理 API |
+| `db_postgres`、`db_memory` | `ports` の PostgreSQL の実装と、テストとローカルの構成で使うメモリの実装 |
+| `testing_contract` | 二つの実装が同じ契約を満たすことを確かめる共通のテスト |
+
+## 実行時の流れ
+
+| 流れ | 契機 | 実行する場所 | 詳細 |
+| --- | --- | --- | --- |
+| 投入 | 利用側の Context のユースケース | `api` または `worker` のプロセスが、同期的に保存する | [永続キュー](../queue/README.md) |
+| 取得と実行 | 取得の間隔 | `worker` のレーンごとの `Runner` | [永続キューの設計](../queue/design.md) |
+| 管理 API | `/api/admin/v1/jobs...` と `/api/admin/v1/system/jobs...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [ジョブの管理](../admin/README.md) |
