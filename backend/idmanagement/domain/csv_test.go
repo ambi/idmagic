@@ -2,8 +2,10 @@ package domain
 
 import (
 	"errors"
+	"io"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 // 数式安全変換は情報を失うエスケープではなく、可逆な接頭辞でなければならない。
@@ -72,5 +74,86 @@ func TestCSVReaderRefusesForbiddenAndUnknownHeaders(t *testing.T) {
 		if !errors.As(err, &csvErr) || csvErr.Code != CSVErrorInvalidHeader {
 			t.Fatalf("header %q error = %v, want invalid_header", header, err)
 		}
+	}
+}
+
+// 上限の検査は、上限の超過だけをファイル全体の拒否として返す。見出しの語彙と構文の
+// 誤りは行の判定に委ねるので、ここでは拒否しない。
+func TestCheckCSVLimitsReportsOnlyTheLimitTheFileExceeds(t *testing.T) {
+	policy := CSVTransferPolicy{MaxRows: 2, MaxBytes: 64, MaxFieldBytes: 8}
+	for _, tc := range []struct {
+		name     string
+		document string
+		want     *CSVError
+	}{
+		{name: "上限ちょうど", document: "name\nalice\nbob\n"},
+		{name: "行数の超過", document: "name\nalice\nbob\ncarol\n", want: &CSVError{Row: 4, Code: CSVErrorTooManyRows}},
+		{name: "行の項目長の超過", document: "name,role\nalice,administrator\n", want: &CSVError{Row: 2, Column: "role", Code: CSVErrorFieldTooLarge}},
+		{name: "見出しの項目長の超過", document: "department\nsales\n", want: &CSVError{Row: 1, Column: "department", Code: CSVErrorFieldTooLarge}},
+		{name: "byte 数の超過", document: "name\n" + strings.Repeat("a\n", 40), want: &CSVError{Row: 1, Code: CSVErrorCSVTooLarge}},
+		{name: "見出しの語彙は問わない", document: "password,password\nsecret,secret\n"},
+		{name: "構文の誤りの後は読まない", document: "name\na\"b\nbob\ncarol\ndave\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := CheckCSVLimits(strings.NewReader(tc.document), policy)
+			if tc.want == nil {
+				if err != nil {
+					t.Fatalf("err = %v, want nil", err)
+				}
+				return
+			}
+			csvErr, ok := errors.AsType[*CSVError](err)
+			if !ok || *csvErr != *tc.want {
+				t.Fatalf("err = %v, want %v", err, *tc.want)
+			}
+		})
+	}
+}
+
+type failingWriter struct{}
+
+var errFailingWriter = errors.New("the artifact store refused the write")
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errFailingWriter }
+
+// 複製は上限内のファイルを 1 byte も欠かさずに書き、上限を超えるファイルを拒否する。
+// 構文の誤りで検査が読むのをやめても、残りを書き切る。
+func TestCopyCSVWithinPolicyWritesTheWholeFileOrRefusesIt(t *testing.T) {
+	policy := CSVTransferPolicy{MaxRows: 2, MaxBytes: 64, MaxFieldBytes: 8}
+	for _, document := range []string{"name\nalice\nbob\n", "name\na\"b\nbob\ncarol\ndave\n"} {
+		var output strings.Builder
+		if err := CopyCSVWithinPolicy(&output, strings.NewReader(document), policy); err != nil || output.String() != document {
+			t.Fatalf("copy of %q = (%q, %v), want the whole file", document, output.String(), err)
+		}
+	}
+	for document, want := range map[string]CSVErrorCode{
+		"name\nalice\nbob\ncarol\n":          CSVErrorTooManyRows,
+		"name\nadministrator\n":              CSVErrorFieldTooLarge,
+		"name\n\"" + strings.Repeat("a", 70): CSVErrorCSVTooLarge,
+	} {
+		err := CopyCSVWithinPolicy(io.Discard, strings.NewReader(document), policy)
+		if csvErr, ok := errors.AsType[*CSVError](err); !ok || csvErr.Code != want {
+			t.Fatalf("copy of %q err = %v, want %q", document, err, want)
+		}
+	}
+	if err := CopyCSVWithinPolicy(failingWriter{}, strings.NewReader("name\nalice\n"), policy); !errors.Is(err, errFailingWriter) {
+		t.Fatalf("err = %v, want the write error", err)
+	}
+}
+
+// 少しずつ届く入力では、検査が構文の誤りで読むのをやめた時点で、まだ byte 数の上限に
+// 達していないことがある。残りを書いた後の byte 数でも上限を確かめる。
+func TestCopyCSVWithinPolicyCountsTheBytesAfterASyntaxError(t *testing.T) {
+	policy := CSVTransferPolicy{MaxRows: 100, MaxBytes: 64, MaxFieldBytes: 1 << 10}
+	head := "name\na\"b\n"
+	atLimit := head + strings.Repeat("x", policy.MaxBytes-len(head))
+
+	var output strings.Builder
+	if err := CopyCSVWithinPolicy(&output, iotest.OneByteReader(strings.NewReader(atLimit)), policy); err != nil || output.String() != atLimit {
+		t.Fatalf("copy of a file at the limit = (%d bytes, %v), want all %d bytes", output.Len(), err, len(atLimit))
+	}
+	err := CopyCSVWithinPolicy(io.Discard, iotest.OneByteReader(strings.NewReader(atLimit+"x")), policy)
+	if csvErr, ok := errors.AsType[*CSVError](err); !ok || csvErr.Code != CSVErrorCSVTooLarge {
+		t.Fatalf("copy of a file one byte over the limit err = %v, want csv_too_large", err)
 	}
 }

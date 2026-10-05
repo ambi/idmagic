@@ -727,9 +727,101 @@ func membershipArtifactContent(t *testing.T, artifacts *idmmemory.CSVArtifactSto
 	return string(body)
 }
 
+// 行数と項目長の超過も、byte 数と同じく投入の時点で拒否する。
+//
+//spec:covers REQ-IDMANAGEMENT-029, EX-IDMANAGEMENT-029-02: max_rows または max_field_bytes を超えるメンバーシップの CSV の投入が、安定コードで拒否され、プレビューのジョブも成果物も作らないこと。
+func TestStartGroupMembershipImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		policy   idmdomain.CSVTransferPolicy
+		document string
+		want     idmdomain.CSVErrorCode
+	}{
+		{
+			name:     "行数の上限",
+			policy:   idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
+			document: "user_id,membership_state\nuser-bob,present\nuser-dave,present\n",
+			want:     idmdomain.CSVErrorTooManyRows,
+		},
+		{
+			name:     "項目長の上限",
+			policy:   idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: 1 << 20, MaxFieldBytes: 16},
+			document: "user_id,membership_state\nuser-bob,present\n" + strings.Repeat("x", 64) + ",present\n",
+			want:     idmdomain.CSVErrorFieldTooLarge,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
+			artifacts := idmmemory.NewCSVArtifactStore()
+			jobs := jobsmemory.NewJobRepository()
+			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx,
+				groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs, Policy: tc.policy},
+				"user-admin", engineeringID, strings.NewReader(tc.document), time.Now().UTC())
+			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
+				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
+			}
+			queued, err := jobs.ListByTenantAndKinds(f.ctx, membershipTenant, []jobsdomain.JobKind{jobsdomain.KindGroupMembershipImportPreview}, 10)
+			if err != nil || len(queued) != 0 {
+				t.Fatalf("queued=%d err=%v, want no preview job", len(queued), err)
+			}
+			if stored, _ := artifacts.DeleteCSVArtifactsCreatedBefore(f.ctx, time.Now().Add(time.Hour)); stored != 0 {
+				t.Fatalf("the refusal left %d artifacts", stored)
+			}
+		})
+	}
+}
+
+// 適用のジョブは、プレビューの後に上限が下がって保存したファイルが上限を超えたとき、
+// 一行も確定せずに失敗する。
+//
+//spec:covers REQ-IDMANAGEMENT-029, EX-IDMANAGEMENT-029-02: 実効の上限を超えたファイルの適用のジョブが、行を一つも確定せずに失敗すること。
+func TestGroupMembershipImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
+	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
+	artifacts := idmmemory.NewCSVArtifactStore()
+	jobs := jobsmemory.NewJobRepository()
+	startDeps := groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs}
+	preview, err := groupusecases.StartGroupMembershipImportPreview(f.ctx, startDeps, "user-admin", engineeringID,
+		strings.NewReader("user_id,membership_state\nuser-bob,present\nuser-dave,present\n"), time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var params groupusecases.GroupMembershipImportParams
+	if err := json.Unmarshal(preview.Params, &params); err != nil {
+		t.Fatal(err)
+	}
+	if claimed, err := jobs.ClaimBatch(f.ctx, "worker", jobsdomain.LaneBulk, 1, time.Minute, time.Now().UTC()); err != nil || len(claimed) != 1 {
+		t.Fatalf("claim=%+v err=%v", claimed, err)
+	}
+	result, err := json.Marshal(groupusecases.GroupMembershipImportResult{SourceSHA256: params.SourceSHA256, GroupID: engineeringID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := jobs.Complete(f.ctx, preview.ID, "worker", result, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	apply, err := groupusecases.StartGroupMembershipImportApply(f.ctx, startDeps, "user-admin", engineeringID, preview.ID, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = groupusecases.GroupMembershipImportJobHandler(groupusecases.GroupMembershipImportJobDeps{
+		Artifacts: artifacts, Jobs: jobs, Apply: f.applyDeps,
+		Policy: idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
+	}, groupusecases.GroupMembershipImportModeApply)(context.Background(), apply)
+	if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != idmdomain.CSVErrorTooManyRows {
+		t.Fatalf("err=%v, want the apply job failed with too_many_rows", err)
+	}
+	if len(f.committer.mutations) != 0 {
+		t.Fatalf("the failed apply committed %d rows", len(f.committer.mutations))
+	}
+	f.assertMembersUnchanged()
+}
+
 // 投入は max_bytes ちょうどのファイルをそのまま保存し、1 byte 超えるファイルを
 // csv_too_large で拒否してジョブを作らない。
-func TestCharacterizeStartGroupMembershipImportPreviewByteLimit(t *testing.T) {
+//
+//spec:covers REQ-IDMANAGEMENT-029, EX-IDMANAGEMENT-029-02: max_bytes ちょうどのメンバーシップの CSV をすべて保存し、1 byte 超えるファイルの投入を csv_too_large で拒否してジョブを作らないこと。
+func TestStartGroupMembershipImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 	document := "user_id,membership_state\nuser-bob,present\n"
 	for _, tc := range []struct {
 		name     string

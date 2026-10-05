@@ -136,6 +136,12 @@ func NewCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTran
 	if accepts == nil {
 		return nil, errors.New("CSV reader requires a column acceptance rule")
 	}
+	return newCSVReader(input, accepts, policy)
+}
+
+// newCSVReader は accepts が nil のとき見出しの語彙を問わない。その形を使うのは
+// 上限の検査だけであり、上限の規則を NewCSVReader と一つの実装で共有するためにある。
+func newCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTransferPolicy) (*CSVReader, error) {
 	limited := &io.LimitedReader{R: input, N: int64(policy.MaxBytes) + 1}
 	counting := &countingReader{r: limited}
 	r := csv.NewReader(counting)
@@ -152,6 +158,9 @@ func NewCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTran
 	for _, key := range header {
 		if len(key) > policy.MaxFieldBytes {
 			return nil, &CSVError{Row: 1, Column: key, Code: CSVErrorFieldTooLarge}
+		}
+		if accepts == nil {
+			continue
 		}
 		if _, forbidden := forbiddenCSVHeaders[key]; forbidden {
 			return nil, &CSVError{Row: 1, Column: key, Code: CSVErrorInvalidHeader}
@@ -205,6 +214,69 @@ func (r *CSVReader) Next() (CSVRecord, error) {
 		row.cells[key] = CSVCell{Present: true, Raw: DecodeCSVCell(record[i])}
 	}
 	return CSVRecord{Row: row}, nil
+}
+
+// CheckCSVLimits はファイル全体を読み、転送ポリシーの byte 数、行数、項目長のどれかを
+// 超えれば最初の超過を *CSVError で返す。インポートは、行を一つでも計画または確定する前に
+// これで全体を確かめる。見出しの語彙と構文の誤りは行の判定が記録するので拒否せず、構文の
+// 誤りに達したら、行の判定と同じくそこで読むのをやめる。
+func CheckCSVLimits(input io.Reader, policy CSVTransferPolicy) error {
+	if err := policy.Validate(); err != nil {
+		return err
+	}
+	reader, err := newCSVReader(input, nil, policy)
+	for err == nil {
+		_, err = reader.Next()
+	}
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	if csvErr, ok := errors.AsType[*CSVError](err); ok && !csvErr.Code.exceedsTransferPolicy() {
+		return nil
+	}
+	return err
+}
+
+func (c CSVErrorCode) exceedsTransferPolicy() bool {
+	return c == CSVErrorCSVTooLarge || c == CSVErrorTooManyRows || c == CSVErrorFieldTooLarge
+}
+
+// CopyCSVWithinPolicy は input を一度だけ読み、CheckCSVLimits に通しながら output へ書く。
+// 上限を超えれば書きかけのまま *CSVError を返すので、呼び出し側は output を捨てる。
+func CopyCSVWithinPolicy(output io.Writer, input io.Reader, policy CSVTransferPolicy) error {
+	limited := &io.LimitedReader{R: input, N: int64(policy.MaxBytes) + 1}
+	sink := &countingWriter{w: output}
+	checkErr := CheckCSVLimits(io.TeeReader(limited, sink), policy)
+	// 書き込みの失敗は、検査の側では構文の誤りと区別できないので先に見る。
+	if sink.err != nil {
+		return sink.err
+	}
+	if checkErr != nil {
+		return checkErr
+	}
+	// 構文の誤りで検査が読むのをやめた後の残りも、行の判定のために保存する。
+	if _, err := io.Copy(sink, limited); err != nil {
+		return err
+	}
+	if sink.n > int64(policy.MaxBytes) {
+		return &CSVError{Code: CSVErrorCSVTooLarge}
+	}
+	return nil
+}
+
+type countingWriter struct {
+	w   io.Writer
+	n   int64
+	err error
+}
+
+func (w *countingWriter) Write(p []byte) (int, error) {
+	n, err := w.w.Write(p)
+	w.n += int64(n)
+	if err != nil && w.err == nil {
+		w.err = err
+	}
+	return n, err
 }
 
 func isCSVFormulaTrigger(value string) bool {

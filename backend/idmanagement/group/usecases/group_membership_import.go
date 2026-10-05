@@ -16,6 +16,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
@@ -110,15 +111,7 @@ func StartGroupMembershipImportPreview(
 	}
 	tenantID := tenancy.TenantID(ctx)
 	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
-		limited := &io.LimitedReader{R: input, N: int64(policy.MaxBytes) + 1}
-		written, err := io.Copy(output, limited)
-		if err != nil {
-			return err
-		}
-		if written > int64(policy.MaxBytes) {
-			return &idmdomain.CSVError{Code: idmdomain.CSVErrorCSVTooLarge}
-		}
-		return nil
+		return idmdomain.CopyCSVWithinPolicy(output, input, policy)
 	})
 	if err != nil {
 		return nil, err
@@ -218,6 +211,9 @@ func GroupMembershipImportJobHandler(
 			source = bound
 		} else {
 			source = params
+		}
+		if err := idmusecases.CheckStoredCSVLimits(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.policy()); err != nil {
+			return nil, err
 		}
 		reader, artifact, err := deps.Artifacts.OpenCSVArtifact(ctx, job.TenantID, source.ArtifactRef)
 		if err != nil {

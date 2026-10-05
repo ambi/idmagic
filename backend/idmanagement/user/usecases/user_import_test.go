@@ -133,7 +133,9 @@ func TestCharacterizeUserImportPreviewOfMalformedFiles(t *testing.T) {
 
 // 投入は max_bytes ちょうどのファイルをそのまま保存し、1 byte 超えるファイルを
 // csv_too_large で拒否してジョブを作らない。
-func TestCharacterizeStartUserImportPreviewByteLimit(t *testing.T) {
+//
+//spec:covers REQ-IDMANAGEMENT-004, EX-IDMANAGEMENT-004-02: max_bytes ちょうどのUser CSV をすべて保存し、1 byte 超えるファイルの投入を csv_too_large で拒否してジョブを作らないこと。
+func TestStartUserImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 	document := "preferred_username\nalice\n"
 	for _, tc := range []struct {
 		name     string
@@ -164,6 +166,94 @@ func TestCharacterizeStartUserImportPreviewByteLimit(t *testing.T) {
 				t.Fatalf("params=%+v err=%v, want the whole %d bytes stored", params, err, len(document))
 			}
 		})
+	}
+}
+
+// 行数と項目長の超過も、byte 数と同じく投入の時点で拒否する。プレビューのジョブを
+// 作ってから中で気付く実装は、上限の手前までの行を計画し、その適用が先頭の行を取り込む。
+//
+//spec:covers REQ-IDMANAGEMENT-004, EX-IDMANAGEMENT-004-02: max_rows または max_field_bytes を超える User CSV の投入が、安定コードで拒否され、プレビューのジョブも成果物も作らないこと。
+func TestStartUserImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		policy   idmdomain.CSVTransferPolicy
+		document string
+		want     idmdomain.CSVErrorCode
+	}{
+		{
+			name:     "行数の上限",
+			policy:   idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
+			document: "preferred_username\nalice\nbob\n",
+			want:     idmdomain.CSVErrorTooManyRows,
+		},
+		{
+			name:     "項目長の上限",
+			policy:   idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: 1 << 20, MaxFieldBytes: 8},
+			document: "preferred_username\nalice\n" + strings.Repeat("x", 64) + "\n",
+			want:     idmdomain.CSVErrorFieldTooLarge,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := importPlannerContext()
+			artifacts := idmmemory.NewCSVArtifactStore()
+			jobs := jobsmemory.NewJobRepository()
+			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Policy: tc.policy}, "admin", strings.NewReader(tc.document), time.Now().UTC())
+			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
+				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
+			}
+			queued, err := jobs.ListByTenantAndKinds(ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindUserImportPreview}, 10)
+			if err != nil || len(queued) != 0 {
+				t.Fatalf("queued=%d err=%v, want no preview job", len(queued), err)
+			}
+			if stored, _ := artifacts.DeleteCSVArtifactsCreatedBefore(ctx, time.Now().Add(time.Hour)); stored != 0 {
+				t.Fatalf("the refusal left %d artifacts", stored)
+			}
+		})
+	}
+}
+
+// 適用のジョブは、プレビューの後に上限が下がって保存したファイルが上限を超えたとき、
+// 一行も確定せずに失敗する。解析の途中で気付く実装は、上限の手前の行を確定してしまう。
+//
+//spec:covers REQ-IDMANAGEMENT-004, EX-IDMANAGEMENT-004-02: 実効の上限を超えたファイルの適用のジョブが、行を一つも確定せずに失敗すること。
+func TestUserImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
+	ctx := importPlannerContext()
+	artifacts := idmmemory.NewCSVArtifactStore()
+	jobs := jobsmemory.NewJobRepository()
+	preview, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username\nalice\nbob\n"), time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var params UserImportParams
+	if err := json.Unmarshal(preview.Params, &params); err != nil {
+		t.Fatal(err)
+	}
+	if claimed, err := jobs.ClaimBatch(ctx, "worker", jobsdomain.LaneBulk, 1, time.Minute, time.Now().UTC()); err != nil || len(claimed) != 1 {
+		t.Fatalf("claim=%+v err=%v", claimed, err)
+	}
+	if _, err := jobs.Complete(ctx, preview.ID, "worker", mustJSON(t, UserImportResult{SourceSHA256: params.SourceSHA256}), time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	apply, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", preview.ID, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repo := usermemory.NewUserRepository()
+	committer := &importRowCommitter{}
+	_, err = UserImportJobHandler(UserImportJobDeps{
+		Artifacts: artifacts, Jobs: jobs,
+		Apply: UserImportApplyDeps{
+			Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer,
+			PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		},
+		Policy: idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
+	}, UserImportModeApply)(context.Background(), apply)
+	if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != idmdomain.CSVErrorTooManyRows {
+		t.Fatalf("err=%v, want the apply job failed with too_many_rows", err)
+	}
+	if len(committer.mutations) != 0 {
+		t.Fatalf("the failed apply committed %d rows", len(committer.mutations))
 	}
 }
 

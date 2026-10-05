@@ -540,9 +540,99 @@ func succeededGroupImportPreview(
 	return preview.ID
 }
 
+// 行数と項目長の超過も、byte 数と同じく投入の時点で拒否する。
+//
+//spec:covers REQ-IDMANAGEMENT-026, EX-IDMANAGEMENT-026-02: max_rows または max_field_bytes を超える Group CSV の投入が、安定コードで拒否され、プレビューのジョブも成果物も作らないこと。
+func TestStartGroupImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		policy   idmdomain.CSVTransferPolicy
+		document string
+		want     idmdomain.CSVErrorCode
+	}{
+		{
+			name:     "行数の上限",
+			policy:   idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
+			document: "name,roles\nsales,catalog:read\nops,catalog:read\n",
+			want:     idmdomain.CSVErrorTooManyRows,
+		},
+		{
+			name:     "項目長の上限",
+			policy:   idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: 1 << 20, MaxFieldBytes: 16},
+			document: "name,roles\nsales,catalog:read\n" + strings.Repeat("x", 64) + ",catalog:read\n",
+			want:     idmdomain.CSVErrorFieldTooLarge,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := groupImportContext()
+			artifacts := idmmemory.NewCSVArtifactStore()
+			jobs := jobsmemory.NewJobRepository()
+			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Policy: tc.policy}, "operator", strings.NewReader(tc.document), time.Now().UTC())
+			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
+				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
+			}
+			queued, err := jobs.ListByTenantAndKinds(ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupImportPreview}, 10)
+			if err != nil || len(queued) != 0 {
+				t.Fatalf("queued=%d err=%v, want no preview job", len(queued), err)
+			}
+			if stored, _ := artifacts.DeleteCSVArtifactsCreatedBefore(ctx, time.Now().Add(time.Hour)); stored != 0 {
+				t.Fatalf("the refusal left %d artifacts", stored)
+			}
+		})
+	}
+}
+
+// 適用のジョブは、プレビューの後に上限が下がって保存したファイルが上限を超えたとき、
+// 一行も確定せずに失敗する。
+//
+//spec:covers REQ-IDMANAGEMENT-026, EX-IDMANAGEMENT-026-02: 実効の上限を超えたファイルの適用のジョブが、行を一つも確定せずに失敗すること。
+func TestGroupImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
+	f := newGroupImportFixture(t)
+	jobs := jobsmemory.NewJobRepository()
+	startDeps := GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs}
+	preview, err := StartGroupImportPreview(f.ctx, startDeps, "operator",
+		strings.NewReader("name,roles\nsales,catalog:read\nops,catalog:read\n"), time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var params GroupImportParams
+	if err := json.Unmarshal(preview.Params, &params); err != nil {
+		t.Fatal(err)
+	}
+	claimGroupImportJob(t, jobs)
+	result, err := json.Marshal(GroupImportResult{SourceSHA256: params.SourceSHA256})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := jobs.Complete(f.ctx, preview.ID, "worker", result, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	apply, err := StartGroupImportApply(f.ctx, startDeps, "operator", preview.ID, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := f.groupSnapshot(t)
+
+	_, err = GroupImportJobHandler(GroupImportJobDeps{
+		Artifacts: f.artifacts, Jobs: jobs, Apply: f.apply,
+		Policy: idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
+	}, GroupImportModeApply)(context.Background(), apply)
+	if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != idmdomain.CSVErrorTooManyRows {
+		t.Fatalf("err=%v, want the apply job failed with too_many_rows", err)
+	}
+	if len(f.committer.mutations) != 0 {
+		t.Fatalf("the failed apply committed %d rows", len(f.committer.mutations))
+	}
+	if after := f.groupSnapshot(t); !equalGroupSnapshots(before, after) {
+		t.Fatalf("the failed apply changed the repository: before=%v after=%v", before, after)
+	}
+}
+
 // 投入は max_bytes ちょうどのファイルをそのまま保存し、1 byte 超えるファイルを
 // csv_too_large で拒否してジョブを作らない。
-func TestCharacterizeStartGroupImportPreviewByteLimit(t *testing.T) {
+//
+//spec:covers REQ-IDMANAGEMENT-026, EX-IDMANAGEMENT-026-02: max_bytes ちょうどのGroup CSV をすべて保存し、1 byte 超えるファイルの投入を csv_too_large で拒否してジョブを作らないこと。
+func TestStartGroupImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 	document := "name,roles\nsales,catalog:read\n"
 	for _, tc := range []struct {
 		name     string
