@@ -6,6 +6,9 @@ package usecases_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +24,8 @@ import (
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -720,4 +725,102 @@ func membershipArtifactContent(t *testing.T, artifacts *idmmemory.CSVArtifactSto
 		t.Fatal(err)
 	}
 	return string(body)
+}
+
+// 投入は max_bytes ちょうどのファイルをそのまま保存し、1 byte 超えるファイルを
+// csv_too_large で拒否してジョブを作らない。
+func TestCharacterizeStartGroupMembershipImportPreviewByteLimit(t *testing.T) {
+	document := "user_id,membership_state\nuser-bob,present\n"
+	for _, tc := range []struct {
+		name     string
+		maxBytes int
+		wantErr  bool
+	}{
+		{name: "上限ちょうど", maxBytes: len(document)},
+		{name: "上限を 1 byte 超える", maxBytes: len(document) - 1, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
+			jobs := jobsmemory.NewJobRepository()
+			policy := idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: tc.maxBytes, MaxFieldBytes: 1 << 10}
+			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx,
+				groupusecases.GroupMembershipImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Policy: policy},
+				"user-admin", engineeringID, strings.NewReader(document), time.Now().UTC())
+			if tc.wantErr {
+				csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
+				queued, listErr := jobs.ListByTenantAndKinds(f.ctx, membershipTenant, []jobsdomain.JobKind{jobsdomain.KindGroupMembershipImportPreview}, 10)
+				if !ok || csvErr.Code != idmdomain.CSVErrorCSVTooLarge || job != nil || listErr != nil || len(queued) != 0 {
+					t.Fatalf("job=%v err=%v queued=%d, want csv_too_large and no job", job, err, len(queued))
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("StartGroupMembershipImportPreview: %v", err)
+			}
+			var params groupusecases.GroupMembershipImportParams
+			if err := json.Unmarshal(job.Params, &params); err != nil || params.ByteSize != int64(len(document)) {
+				t.Fatalf("params=%+v err=%v, want the whole %d bytes stored", params, err, len(document))
+			}
+		})
+	}
+}
+
+// 上限に触れないファイルの誤りは、投入では問わずにそのまま保存し、プレビューのジョブが
+// 一件のエラーとして記録して成功する。
+func TestCharacterizeGroupMembershipImportPreviewOfMalformedFiles(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		document  string
+		wantError groupusecases.GroupMembershipImportRowError
+		wantAdded int
+	}{
+		{
+			name:      "禁止した見出し",
+			document:  "user_id,membership_state,password\nuser-bob,present,secret\n",
+			wantError: groupusecases.GroupMembershipImportRowError{Row: 1, Column: "password", Code: "invalid_header"},
+		},
+		{
+			name:      "途中の行の構文の誤り",
+			document:  "user_id,membership_state\nuser-bob,present\n\"user-dave\nunterminated",
+			wantError: groupusecases.GroupMembershipImportRowError{Row: 3, Code: "invalid_csv"},
+			wantAdded: 1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
+			artifacts := idmmemory.NewCSVArtifactStore()
+			jobs := jobsmemory.NewJobRepository()
+			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx,
+				groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs},
+				"user-admin", engineeringID, strings.NewReader(tc.document), time.Now().UTC())
+			if err != nil {
+				t.Fatalf("StartGroupMembershipImportPreview: %v", err)
+			}
+			var params groupusecases.GroupMembershipImportParams
+			if err := json.Unmarshal(job.Params, &params); err != nil {
+				t.Fatal(err)
+			}
+			if want := sha256.Sum256([]byte(tc.document)); params.SourceSHA256 != hex.EncodeToString(want[:]) || params.ByteSize != int64(len(tc.document)) {
+				t.Fatalf("stored sha=%s size=%d, want the submitted bytes unchanged", params.SourceSHA256, params.ByteSize)
+			}
+			raw, err := groupusecases.GroupMembershipImportJobHandler(
+				groupusecases.GroupMembershipImportJobDeps{Artifacts: artifacts, Jobs: jobs, Plan: f.planDeps},
+				groupusecases.GroupMembershipImportModePreview)(context.Background(), job)
+			if err != nil {
+				t.Fatalf("preview job failed: %v", err)
+			}
+			var result groupusecases.GroupMembershipImportResult
+			if err := json.Unmarshal(raw, &result); err != nil {
+				t.Fatal(err)
+			}
+			page, err := groupusecases.ReadGroupMembershipImportErrorRange(f.ctx, artifacts, membershipTenant, result, 1, 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.AddedRows != tc.wantAdded || result.RejectedRows != 1 || result.ErrorTotal != 1 || len(page) != 1 || page[0] != tc.wantError {
+				t.Fatalf("result=%+v errors=%+v, want added=%d and the single error %+v", result, page, tc.wantAdded, tc.wantError)
+			}
+			f.assertMembersUnchanged()
+		})
+	}
 }

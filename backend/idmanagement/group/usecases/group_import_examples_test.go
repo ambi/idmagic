@@ -9,6 +9,8 @@ package usecases
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -536,4 +538,94 @@ func succeededGroupImportPreview(
 		t.Fatalf("Complete: %v", err)
 	}
 	return preview.ID
+}
+
+// 投入は max_bytes ちょうどのファイルをそのまま保存し、1 byte 超えるファイルを
+// csv_too_large で拒否してジョブを作らない。
+func TestCharacterizeStartGroupImportPreviewByteLimit(t *testing.T) {
+	document := "name,roles\nsales,catalog:read\n"
+	for _, tc := range []struct {
+		name     string
+		maxBytes int
+		wantErr  bool
+	}{
+		{name: "上限ちょうど", maxBytes: len(document)},
+		{name: "上限を 1 byte 超える", maxBytes: len(document) - 1, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := groupImportContext()
+			jobs := jobsmemory.NewJobRepository()
+			policy := idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: tc.maxBytes, MaxFieldBytes: 1 << 10}
+			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Policy: policy}, "operator", strings.NewReader(document), time.Now().UTC())
+			if tc.wantErr {
+				csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
+				queued, listErr := jobs.ListByTenantAndKinds(ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupImportPreview}, 10)
+				if !ok || csvErr.Code != idmdomain.CSVErrorCSVTooLarge || job != nil || listErr != nil || len(queued) != 0 {
+					t.Fatalf("job=%v err=%v queued=%d, want csv_too_large and no job", job, err, len(queued))
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("StartGroupImportPreview: %v", err)
+			}
+			var params GroupImportParams
+			if err := json.Unmarshal(job.Params, &params); err != nil || params.ByteSize != int64(len(document)) {
+				t.Fatalf("params=%+v err=%v, want the whole %d bytes stored", params, err, len(document))
+			}
+		})
+	}
+}
+
+// 上限に触れないファイルの誤りは、投入では問わずにそのまま保存し、プレビューのジョブが
+// 一件のエラーとして記録して成功する。
+func TestCharacterizeGroupImportPreviewOfMalformedFiles(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		document    string
+		wantError   GroupImportRowError
+		wantCreated int
+	}{
+		{
+			name:      "禁止した見出し",
+			document:  "name,password\nsales,secret\n",
+			wantError: GroupImportRowError{Row: 1, Column: "password", Code: "invalid_header"},
+		},
+		{
+			name:        "途中の行の構文の誤り",
+			document:    "name,roles\nsales,catalog:read\n\"ops\nunterminated",
+			wantError:   GroupImportRowError{Row: 3, Code: "invalid_csv"},
+			wantCreated: 1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newGroupImportFixture(t)
+			jobs := jobsmemory.NewJobRepository()
+			job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs}, "operator", strings.NewReader(tc.document), time.Now().UTC())
+			if err != nil {
+				t.Fatalf("StartGroupImportPreview: %v", err)
+			}
+			var params GroupImportParams
+			if err := json.Unmarshal(job.Params, &params); err != nil {
+				t.Fatal(err)
+			}
+			if want := sha256.Sum256([]byte(tc.document)); params.SourceSHA256 != hex.EncodeToString(want[:]) || params.ByteSize != int64(len(tc.document)) {
+				t.Fatalf("stored sha=%s size=%d, want the submitted bytes unchanged", params.SourceSHA256, params.ByteSize)
+			}
+			raw, err := GroupImportJobHandler(GroupImportJobDeps{Artifacts: f.artifacts, Jobs: jobs, Plan: f.plan}, GroupImportModePreview)(context.Background(), job)
+			if err != nil {
+				t.Fatalf("preview job failed: %v", err)
+			}
+			var result GroupImportResult
+			if err := json.Unmarshal(raw, &result); err != nil {
+				t.Fatal(err)
+			}
+			page, err := ReadGroupImportErrorRange(f.ctx, f.artifacts, "acme", result, 1, 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.CreatedRows != tc.wantCreated || result.RejectedRows != 1 || result.ErrorTotal != 1 || len(page) != 1 || page[0] != tc.wantError {
+				t.Fatalf("result=%+v errors=%+v, want created=%d and the single error %+v", result, page, tc.wantCreated, tc.wantError)
+			}
+		})
+	}
 }
