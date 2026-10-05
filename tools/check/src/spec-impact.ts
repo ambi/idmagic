@@ -29,6 +29,8 @@ export type WorkRange = {
   claimedByOthers: readonly SpecReference[]
   /** 同じ範囲で追加または変更されたテストファイルの本文。 */
   changedTests: readonly string[]
+  /** 起点に存在し、同じ範囲で変わったか消えた特性化テスト。 */
+  changedCharacterizations: readonly string[]
 }
 
 export type CheckedWorkItem = {
@@ -48,6 +50,8 @@ export type CheckedCommit = {
   trailer: string | undefined
   /** このコミット自体の仕様差分。 */
   diff: SpecificationDiff
+  /** 親コミットに存在し、このコミットで変わったか消えた特性化テスト。 */
+  changedCharacterizations: readonly string[]
 }
 
 export type SpecImpactInput = {
@@ -218,6 +222,34 @@ export function parseSpecImpactTrailer(value: string): { reason: string } | { er
   return { reason: (match?.[2] ?? '').trim() }
 }
 
+const CHARACTERIZATION = /^func (TestCharacterize\w*)\(/gm
+
+/**
+ * Go のテストファイルから、特性化テストの関数ごとの本文を読む。
+ *
+ * gofmt 済みのトップレベルの関数は、行頭の `}` で閉じる。テストの意味は解析しない。
+ */
+function characterizations(source: string): Map<string, string> {
+  const bodies = new Map<string, string>()
+  for (const match of source.matchAll(CHARACTERIZATION)) {
+    const end = source.indexOf('\n}', match.index)
+    bodies.set(match[1] ?? '', source.slice(match.index, end < 0 ? undefined : end + 2))
+  }
+  return bodies
+}
+
+/** `before` にあった特性化テストのうち、`after` で本文が変わったか消えたものの名前。 */
+export function changedCharacterizations(
+  before: string | undefined,
+  after: string | undefined,
+): string[] {
+  if (before === undefined) return []
+  const kept = characterizations(after ?? '')
+  return [...characterizations(before)]
+    .filter(([name, body]) => kept.get(name) !== body)
+    .map(([name]) => name)
+}
+
 const STARTED = new Set(['in_progress', 'completed', 'cancelled'])
 
 /**
@@ -266,6 +298,11 @@ function verifyWorkItem(item: CheckedWorkItem): string[] {
         `spec_impact is none, but the work range changes the normative specification: ${changes.join(', ')}`,
       )
     }
+    if (range.changedCharacterizations.length > 0) {
+      findings.push(
+        `spec_impact is none, but the work range changes or removes characterization tests: ${range.changedCharacterizations.join(', ')}`,
+      )
+    }
     return findings
   }
   const touched = touchedElements(range.diff)
@@ -307,6 +344,13 @@ function verifyCommit(commit: CheckedCommit): string[] {
           'or add a "Spec-Impact: none — <what stays the same>" trailer',
       )
     }
+    // 宣言のないコミットで書き換えられると、特性化テストが検出した振る舞いの変化を消せる。
+    if (commit.changedCharacterizations.length > 0 && !commit.workItemDeclared) {
+      findings.push(
+        `changes or removes characterization tests (${commit.changedCharacterizations.join(', ')}) ` +
+          'without a work item that declares affected_spec',
+      )
+    }
     return findings
   }
   const trailer = parseSpecImpactTrailer(commit.trailer)
@@ -320,6 +364,11 @@ function verifyCommit(commit: CheckedCommit): string[] {
   if (changes.length > 0) {
     findings.push(
       `declares Spec-Impact: none, but changes the normative specification: ${changes.join(', ')}`,
+    )
+  }
+  if (commit.changedCharacterizations.length > 0) {
+    findings.push(
+      `declares Spec-Impact: none, but changes or removes characterization tests: ${commit.changedCharacterizations.join(', ')}`,
     )
   }
   return findings

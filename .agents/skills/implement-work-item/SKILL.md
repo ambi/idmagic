@@ -64,6 +64,12 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
 7. Before the first source or test edit, read `docs/development/coding-style.md`.
+   既存の Go コードを変え、触れる範囲の振る舞いを `//spec:covers` を付けたテストが固定していなければ、
+   本番コードより先に `TestCharacterize<対象>` の特性化テストで現在の振る舞いを固定し、
+   `test-go-mutation` で変更する箇所への変異を検出することを確かめ、本番コードを変えない別のコミットにする。
+   手順、検査、変更後の分類はワークフローの「特性化テスト」が定める。
+   既存の `TestCharacterize*` が落ちたら、宣言のない振る舞いの変化である。期待値を書き換えて通さず、
+   変更を戻すか、分類を利用者へ確認する。
    選択した境界の検査で RED を確認する。
    Domain → Use Cases → Adapters → Infrastructure / UI の必要な範囲を、一つの振る舞いずつ
    最も単純で完全な実装で GREEN にし、GREEN のまま refactor する。

@@ -216,6 +216,124 @@ describe('spec-impact: 本番コードを変更するコミットの宣言', () 
   })
 })
 
+const characterization = (expected: string, extra = ''): string =>
+  [
+    'package demo',
+    '',
+    'import "testing"',
+    '',
+    'func TestCharacterizeStart(t *testing.T) {',
+    `\tif got := Start(); got != "${expected}" {`,
+    '\t\tt.Fatalf("Start() = %q", got)',
+    '\t}',
+    '}',
+    extra,
+  ].join('\n')
+
+const ANOTHER_CHARACTERIZATION =
+  '\nfunc TestCharacterizeStartTwice(t *testing.T) {\n\tStart()\n\tStart()\n}\n'
+
+describe('spec-impact: 特性化テストの書き換え', () => {
+  /** 特性化テストを置いた基準。追加するコミット自体には宣言が要らない。 */
+  async function characterized() {
+    const repo = await repository()
+    await repo.write(SERVICE_TEST, characterization('started'))
+    const base = await repo.commit('test(demo): characterize Start')
+    return { repo, base }
+  }
+
+  it('Spec-Impact: none のコミットが既存の特性化テストを変えたら拒否する', async () => {
+    const { repo, base } = await characterized()
+    await repo.write(SERVICE, service('running'))
+    await repo.write(SERVICE_TEST, characterization('running'))
+    await repo.commit(`refactor(demo): rename the result\n\nSpec-Impact: none — ${CONCRETE_REASON}`)
+
+    const result = await repo.check(base)
+    expect(result.output).toContain(
+      `refactor(demo): rename the result: declares Spec-Impact: none, but changes or removes characterization tests: ${SERVICE_TEST} TestCharacterizeStart`,
+    )
+    expect(result.code).toBe(1)
+  })
+
+  it('Spec-Impact: none のコミットが既存の特性化テストを消したら拒否する', async () => {
+    const { repo, base } = await characterized()
+    await repo.write(SERVICE_TEST, 'package demo\n')
+    await repo.write(SERVICE, `${service('started')}\nfunc helper() {}\n`)
+    await repo.commit(`refactor(demo): drop the test\n\nSpec-Impact: none — ${CONCRETE_REASON}`)
+
+    const result = await repo.check(base)
+    expect(result.output).toContain(
+      `changes or removes characterization tests: ${SERVICE_TEST} TestCharacterizeStart`,
+    )
+    expect(result.code).toBe(1)
+  })
+
+  it('宣言のないテストだけのコミットが既存の特性化テストを変えたら拒否する', async () => {
+    const { repo, base } = await characterized()
+    await repo.write(SERVICE_TEST, characterization('running'))
+    await repo.commit('test(demo): adjust the expectation')
+
+    const result = await repo.check(base)
+    expect(result.output).toContain(
+      `test(demo): adjust the expectation: changes or removes characterization tests (${SERVICE_TEST} TestCharacterizeStart) without a work item that declares affected_spec`,
+    )
+    expect(result.code).toBe(1)
+  })
+
+  it('特性化テストを新しく足すだけなら Spec-Impact: none のコミットでも通す', async () => {
+    const { repo, base } = await characterized()
+    await repo.write(SERVICE_TEST, characterization('started', ANOTHER_CHARACTERIZATION))
+    await repo.write(SERVICE, `${service('started')}\nfunc helper() {}\n`)
+    await repo.commit(`refactor(demo): extract helper\n\nSpec-Impact: none — ${CONCRETE_REASON}`)
+
+    const result = await repo.check(base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+
+  it('spec_impact: none の work item の作業範囲で既存の特性化テストが変われば拒否する', async () => {
+    const { repo, base } = await characterized()
+    await repo.write(SERVICE, service('running'))
+    await repo.write(SERVICE_TEST, characterization('running'))
+    await repo.write(ITEM, notAffected('in_progress', CONCRETE_REASON))
+
+    const result = await repo.check(base)
+    expect(result.output).toContain(
+      `${ITEM}: spec_impact is none, but the work range changes or removes characterization tests: ${SERVICE_TEST} TestCharacterizeStart`,
+    )
+    expect(result.code).toBe(1)
+  })
+
+  it('spec_impact: none の work item が作業範囲の中で足した特性化テストは、変えても消しても通す', async () => {
+    const repo = await repository()
+    await repo.write(ITEM, notAffected('in_progress', CONCRETE_REASON))
+    await repo.write(SERVICE_TEST, characterization('started'))
+    await repo.commit('checkpoint(wi-10001): T001 characterize Start')
+    await repo.write(SERVICE_TEST, 'package demo\n')
+    await repo.write(SERVICE, `${service('started')}\nfunc helper() {}\n`)
+
+    const result = await repo.check(repo.base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+
+  it('affected_spec を宣言する work item は既存の特性化テストを書き換えられる', async () => {
+    const { repo, base } = await characterized()
+    await repo.write(SERVICE, service('running'))
+    await repo.write(SERVICE_TEST, characterization('running'))
+    await repo.write(SCENARIOS, scenario('the request is running'))
+    await repo.write(
+      ITEM,
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.commit('feat(demo): report running')
+
+    const result = await repo.check(base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+})
+
 describe('spec-impact: 宣言と仕様差分の整合', () => {
   it('impact: modifies の規範要素を変更していなければ拒否する', async () => {
     const repo = await repository()

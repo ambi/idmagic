@@ -5,6 +5,7 @@ import {
   type CheckedWorkItem,
   type SpecReference,
   type WorkRange,
+  changedCharacterizations,
   isBoilerplateReason,
   parseSpecImpactTrailer,
   referencedElement,
@@ -28,6 +29,7 @@ const range = (changes: Partial<WorkRange> = {}): WorkRange => ({
   diff: diff(),
   claimedByOthers: [],
   changedTests: [],
+  changedCharacterizations: [],
   ...changes,
 })
 
@@ -62,6 +64,7 @@ const commit = (changes: Partial<CheckedCommit> = {}): CheckedCommit => ({
   workItemDeclared: false,
   trailer: undefined,
   diff: diff(),
+  changedCharacterizations: [],
   ...changes,
 })
 
@@ -153,6 +156,43 @@ describe('parseSpecImpactTrailer', () => {
     expect(parseSpecImpactTrailer('modifies — REQ-DEMO-001')).toEqual({
       error: expect.stringContaining('accepts only "none", not "modifies"'),
     })
+  })
+})
+
+describe('changedCharacterizations', () => {
+  const test = (name: string, body: string): string =>
+    `func ${name}(t *testing.T) {\n\t${body}\n}\n`
+  const before = [
+    'package demo\n',
+    test('TestCharacterizeStart', 'check(t, Start(), "started")'),
+    test('TestCharacterizeStop', 'check(t, Stop(), "stopped")'),
+    test('TestStart', 'check(t, Start(), "started")'),
+  ].join('\n')
+
+  it('本文が変わった関数と消えた関数だけを返す', () => {
+    const after = [
+      'package demo\n',
+      test('TestCharacterizeStart', 'check(t, Start(), "running")'),
+      test('TestStart', 'check(t, Start(), "running")'),
+      test('TestCharacterizeRestart', 'check(t, Restart(), "started")'),
+    ].join('\n')
+    expect(changedCharacterizations(before, after)).toEqual([
+      'TestCharacterizeStart',
+      'TestCharacterizeStop',
+    ])
+  })
+
+  it('関数の外の変更と、新しく足した関数は返さない', () => {
+    const after = `${before.replace('package demo\n', 'package demo\n\nimport "testing"\n')}\n${test('TestCharacterizeRestart', 'Restart()')}`
+    expect(changedCharacterizations(before, after)).toEqual([])
+  })
+
+  it('消したファイルではすべてを返し、新しいファイルでは何も返さない', () => {
+    expect(changedCharacterizations(before, undefined)).toEqual([
+      'TestCharacterizeStart',
+      'TestCharacterizeStop',
+    ])
+    expect(changedCharacterizations(undefined, before)).toEqual([])
   })
 })
 

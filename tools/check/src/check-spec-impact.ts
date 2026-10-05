@@ -18,6 +18,7 @@ import {
   type CheckedWorkItem,
   type SpecImpactDeclaration,
   type SpecReference,
+  changedCharacterizations,
   specImpactDeclaration,
   verifySpecImpact,
   workRangeStart,
@@ -26,6 +27,7 @@ import { parseFrontmatterAndMarkdown } from './work-item-markdown.ts'
 
 const WORK_ITEM = /^work-items\/(?:done\/)?(wi-[^/]+)\.md$/
 const TEST_FILE = /^(?:backend|frontend)\/.*(?:_test\.go|\.(?:test|spec)\.tsx?)$/
+const GO_TEST_FILE = /^backend\/.*_test\.go$/
 const CHECKPOINT = /^checkpoint\((wi-\d+)[^)]*\):/
 const GENERATED_DIRECTORIES = ['node_modules', 'vendor', 'dist', 'build', 'generated']
 const NO_DIFF = diffSpecifications(new Map(), new Map())
@@ -41,6 +43,19 @@ function gitIn(root: string): Git {
 
 function lines(output: string | undefined): string[] {
   return (output ?? '').split('\n').filter((line) => line.length > 0)
+}
+
+/** `paths` のうち Go のテストファイルについて、`before` にあり `after` で変わったか消えた特性化テスト。 */
+function characterizationChanges(
+  paths: readonly string[],
+  before: (path: string) => string | undefined,
+  after: (path: string) => string | undefined,
+): string[] {
+  return paths
+    .filter((path) => GO_TEST_FILE.test(path))
+    .flatMap((path) =>
+      changedCharacterizations(before(path), after(path)).map((name) => `${path} ${name}`),
+    )
 }
 
 type WorkItemRecord = {
@@ -202,6 +217,11 @@ async function checkedWorkItem(
       changedTests: changed
         .filter((path) => TEST_FILE.test(path))
         .flatMap((path) => repo.read(path) ?? []),
+      changedCharacterizations: characterizationChanges(
+        changed,
+        (path) => git(['show', `${startSha}:${path}`]),
+        repo.read,
+      ),
     },
   }
 }
@@ -233,6 +253,11 @@ async function checkedCommit(sha: string, git: Git, repo: Repository): Promise<C
     ),
     trailer: trailer ? trailer : undefined,
     diff: trailer ? repo.diffOf(sha, paths) : NO_DIFF,
+    changedCharacterizations: characterizationChanges(
+      paths,
+      (path) => git(['show', `${sha}^:${path}`]),
+      (path) => git(['show', `${sha}:${path}`]),
+    ),
   }
 }
 
