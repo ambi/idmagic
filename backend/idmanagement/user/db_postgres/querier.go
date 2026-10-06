@@ -23,6 +23,9 @@ type Querier interface {
 	// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
 	InsertImportedPasswordHistory(ctx context.Context, arg InsertImportedPasswordHistoryParams) error
 	InsertUserImportAuditEvent(ctx context.Context, arg InsertUserImportAuditEventParams) error
+	// Pending deletions and tombstones whose purge has not finished. The grace
+	// period is decided by the caller.
+	ListUserPurgeCandidates(ctx context.Context, tenantID string) ([]*User, error)
 	ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error)
 	// First page of ListAdminUsers keyset pagination (wi-159): stable
 	// sort by (preferred_username, id) so admins see the pre-existing alphabetical

@@ -68,6 +68,7 @@
 - User を完全削除したとき、IdManagement は、ユーザー名を `deleted:<sub>` に置き換え、名前、メールアドレス、ロール、属性、必須操作を消し、`email_verified` と `mfa_enrolled` を `false` にし、どのパスワードでも認証できない状態にする。
 - User を完全削除したとき、IdManagement は、その User の同意、リフレッシュトークン、セッション、パスワードの履歴、TOTP、記憶済みの端末、WebAuthn の資格情報、復旧コード、デバイス認可、承認要求を消す。
 - User を完全削除したとき、IdManagement は、テナントの User の使用量を一つ減らす。
-- すでに `Deleted` の User の完全削除を要求された場合、IdManagement は、成功を返し、`UserDeleted` を発行しない。
+- 匿名化の後に完全削除が失敗した User の完全削除を再び要求されたとき、IdManagement は、終えていない手順だけを行い、使用量を一度だけ減らし、最初の要求の操作者と理由で `UserDeleted` を発行する。
+- 完全削除を終えた `Deleted` の User の完全削除を要求された場合、IdManagement は、成功を返し、`UserDeleted` を発行しない。
 - **判断**：[User の削除を物理削除ではなく Tombstone で行う](../design/decisions.md#user-の削除を物理削除ではなく-tombstone-で行う)。
-- **例**：EX-IDMANAGEMENT-050-01
+- **例**：EX-IDMANAGEMENT-050-01、EX-IDMANAGEMENT-050-02

@@ -65,7 +65,7 @@ Batch は、`idmagic-batch <サブコマンド>` として一回ずつ起動す�
 
 | サブコマンド | 処理 | 実行の契機 | 詳細 |
 | --- | --- | --- | --- |
-| `retention-sweep` | 保持期間を過ぎた監査イベント、認証イベントの集計、認証セッション、既知のサインイン端末を削除する | CronJob（毎時） | [データのライフサイクル](../data/lifecycle.md) |
+| `retention-sweep` | 保持期間を過ぎた監査イベント、認証イベントの集計、認証セッション、既知のサインイン端末、CSV の成果物を削除し、猶予期間を過ぎた削除予約の User を完全削除する | CronJob（毎時） | [データのライフサイクル](../data/lifecycle.md) |
 | `signing-key-lifecycle` | 署名鍵の世代交代と、JWKS に古い鍵を残す猶予期間を管理する | CronJob（毎日） | [SigningKeys](../../domain/signing-keys/README.md) |
 | `data-key-reencryption-sweep` | テナントと再暗号化の対象ごとに `data_key_reencryption` のジョブを投入する | 運用者が手で起動する。CronJob は宣言していない | [シークレット管理](../security/secrets.md) |
 | `restore-consistency-check` | バックアップから復元したデータベースの件数、署名鍵、ジョブの重複を検査する | 復元手順の最後 | [バックアップ、復元、災害復旧の運用手順書](../../runbooks/backup-restore-dr.md) |

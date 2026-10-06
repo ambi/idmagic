@@ -55,19 +55,18 @@
 - Then ユーザー一覧は空で、総項目数、総ページ数、現在のページ番号は `0 / 0 / 0` を返す
 - And `first`、`prev`、`next`、`last` の `Link` は返さない
 
-## Rule: REQ-IDMANAGEMENT-044 管理者のユーザー一覧の取得は、猶予期間を過ぎた削除予約の User を先に完全削除する
+## Rule: REQ-IDMANAGEMENT-044 猶予期間を過ぎた削除予約の User は、保持期限の削除が完全削除する
 
 ### Example: EX-IDMANAGEMENT-044-01 猶予期間を過ぎた削除予約の User
 
 - Given ユーザー "alice" は 31 日前に `PendingDeletion` になった
-- When 管理者がユーザー一覧を取得する
+- When 保持期限の削除を実行する
 - Then ユーザー "alice" は `Deleted` になり、操作者 `system`、理由 `auto_purge` の `UserDeleted` が発行される
-- And 一覧にユーザー "alice" は含まれない
 
 ### Example: EX-IDMANAGEMENT-044-02 猶予期間ちょうどの削除予約の User
 
 - Given ユーザー "alice" はちょうど 30 日前に `PendingDeletion` になった
-- When 一覧の取得がその時刻に期限切れの User を完全削除する
+- When 保持期限の削除をその時刻に実行する
 - Then ユーザー "alice" は `PendingDeletion` のまま残る
 
 ## Rule: REQ-IDMANAGEMENT-045 管理者による User の更新は、値が変わった項目だけを記録する
@@ -120,3 +119,10 @@
 - When 管理者がユーザー "alice" を完全削除する
 - Then "alice" のユーザー名は `deleted:<sub>` になり、ロールと属性は空になり、セッションは消える
 - And テナントの User の使用量は一つ減る
+
+### Example: EX-IDMANAGEMENT-050-02 匿名化の後に失敗した完全削除の再実行
+
+- Given 管理者によるユーザー "alice" の完全削除が、匿名化と使用量の減算の後、`UserDeleted` の発行で失敗した
+- When 別の管理者がユーザー "alice" をもう一度完全削除する
+- Then テナントの User の使用量は、最初の完全削除で減った一つだけ減っている
+- And 最初の管理者を操作者とする `UserDeleted` が一度だけ発行される

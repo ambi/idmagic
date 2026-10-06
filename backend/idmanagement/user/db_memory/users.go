@@ -109,6 +109,22 @@ func (r *UserRepository) FindAll(_ context.Context, tenantID string) ([]*userdom
 	return out, nil
 }
 
+func (r *UserRepository) ListPurgeCandidates(_ context.Context, tenantID string) ([]*userdomain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*userdomain.User{}
+	for _, user := range r.bySub {
+		if user.TenantID != tenantID {
+			continue
+		}
+		if user.Lifecycle.Status == idmdomain.UserStatusPendingDeletion || user.Lifecycle.PendingPurge != nil {
+			out = append(out, user)
+		}
+	}
+	slices.SortFunc(out, func(a, b *userdomain.User) int { return strings.Compare(a.ID, b.ID) })
+	return out, nil
+}
+
 // ListPage implements ports.UserRepository.ListPage (wi-159): keyset
 // pagination ordered by (PreferredUsername, ID) ascending, strictly after the
 // given keyset.

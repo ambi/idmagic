@@ -64,6 +64,7 @@ func newContractFixture(t *testing.T) testing_contract.Fixture {
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-044: メモリのリポジトリが、保持期限の削除の候補として、テナントの削除予約の User と完全削除を終えていない Tombstone だけを返すこと。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, newContractFixture)
 }

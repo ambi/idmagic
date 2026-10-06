@@ -586,8 +586,9 @@ func TestDeleteUserAnonymizesAnActiveUserAndReleasesItsQuota(t *testing.T) {
 		user.Lifecycle.RequiredActions = []idmdomain.RequiredAction{idmdomain.RequiredActionUpdatePassword}
 	})
 	if err := f.sessions.Save(ctx, &sessiondomain.LoginSession{
+		// メモリのセッションストアは実時計で有効期限を判定する。
 		ID: "session-1", TenantID: tenancydomain.DefaultTenantID, UserID: alice.ID,
-		AuthTime: userRulesNow.Unix(), ExpiresAt: userRulesNow.Add(time.Hour),
+		AuthTime: userRulesNow.Unix(), ExpiresAt: time.Now().Add(24 * time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -627,6 +628,170 @@ func TestDeleteUserDoesNothingForAnAlreadyDeletedUser(t *testing.T) {
 	}
 	if deleted := f.eventsOf("UserDeleted"); len(deleted) != 1 {
 		t.Fatalf("UserDeleted=%d, want 1", len(deleted))
+	}
+}
+
+// failingSessionStore は、failFor の sub についてだけ、関連する記録の削除を失敗させる。
+type failingSessionStore struct {
+	*sessionmemory.SessionStore
+	failFor string
+}
+
+var errInjected = errors.New("injected failure")
+
+func (s *failingSessionStore) DeleteAllForSub(ctx context.Context, sub string) error {
+	if sub == s.failFor {
+		return errInjected
+	}
+	return s.SessionStore.DeleteAllForSub(ctx, sub)
+}
+
+// failUserDeletedOnce は、最初の UserDeleted の発行だけを失敗させる。
+func (f *userRulesFixture) failUserDeletedOnce() {
+	failed := false
+	f.deps.Emit = func(event spec.DomainEvent) error {
+		if _, ok := event.(*idmdomain.UserDeleted); ok && !failed {
+			failed = true
+			return errInjected
+		}
+		*f.events = append(*f.events, event)
+		return nil
+	}
+}
+
+// seedUsersUsage は、テナントの User の使用量を n にする。
+func (f *userRulesFixture) seedUsersUsage(t *testing.T, n int) {
+	t.Helper()
+	if err := f.quota.CheckAndIncrement(context.Background(), tenancydomain.DefaultTenantID, tenancydomain.ResourceUsers, n); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (f *userRulesFixture) usersUsage(t *testing.T) int {
+	t.Helper()
+	usage, err := f.quota.GetUsage(context.Background(), tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return usage.Users
+}
+
+//spec:covers EX-IDMANAGEMENT-050-02, REQ-IDMANAGEMENT-050: 匿名化の後に失敗した完全削除の再実行が、残った記録を消し、使用量を一度だけ減らし、最初の要求の操作者と理由で UserDeleted を一度だけ発行すること。
+func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
+	purge := func(f *userRulesFixture, actor string) error {
+		return userusecases.DeleteUser(context.Background(), f.deps, userusecases.DeleteUserInput{
+			ActorUserID: actor, Sub: "alice", Reason: "offboarding", Now: userRulesNow,
+		})
+	}
+	t.Run("関連する記録の削除で失敗した", func(t *testing.T) {
+		f := newUserRulesFixture(t)
+		f.seed("alice", nil)
+		f.seedUsersUsage(t, 2)
+		sessions := &failingSessionStore{SessionStore: f.sessions, failFor: "alice"}
+		f.deps.SessionStore = sessions
+		if err := f.sessions.Save(context.Background(), &sessiondomain.LoginSession{
+			// メモリのセッションストアは実時計で有効期限を判定する。
+			ID: "session-1", TenantID: tenancydomain.DefaultTenantID, UserID: "alice",
+			AuthTime: userRulesNow.Unix(), ExpiresAt: time.Now().Add(24 * time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := purge(f, "admin"); !errors.Is(err, errInjected) {
+			t.Fatalf("first purge err=%v, want injected failure", err)
+		}
+		remaining, _ := f.sessions.ListBySub(context.Background(), "alice")
+		if !f.stored(t, "alice").IsDeleted() || len(remaining) != 1 || f.usersUsage(t) != 2 || len(f.eventsOf("UserDeleted")) != 0 {
+			t.Fatalf("前提：匿名化の後、関連する記録を消す前に止まっていない")
+		}
+
+		sessions.failFor = ""
+		if err := purge(f, "admin-2"); err != nil {
+			t.Fatal(err)
+		}
+		if remaining, _ := f.sessions.ListBySub(context.Background(), "alice"); len(remaining) != 0 {
+			t.Fatalf("sessions=%+v, want none", remaining)
+		}
+		if usage := f.usersUsage(t); usage != 1 {
+			t.Fatalf("users usage=%d, want 1", usage)
+		}
+		assertSingleUserDeleted(t, f, "admin", "offboarding")
+	})
+	t.Run("UserDeleted の発行で失敗した", func(t *testing.T) {
+		f := newUserRulesFixture(t)
+		f.seed("alice", nil)
+		f.seedUsersUsage(t, 2)
+		f.failUserDeletedOnce()
+		if err := purge(f, "admin"); !errors.Is(err, errInjected) {
+			t.Fatalf("first purge err=%v, want injected failure", err)
+		}
+		if f.usersUsage(t) != 1 {
+			t.Fatalf("前提：使用量の減算の後に止まっていない")
+		}
+
+		if err := purge(f, "admin-2"); err != nil {
+			t.Fatal(err)
+		}
+		if usage := f.usersUsage(t); usage != 1 {
+			t.Fatalf("users usage=%d, want 1 (released only once)", usage)
+		}
+		assertSingleUserDeleted(t, f, "admin", "offboarding")
+		if err := purge(f, "admin-2"); err != nil {
+			t.Fatal(err)
+		}
+		if deleted := f.eventsOf("UserDeleted"); len(deleted) != 1 {
+			t.Fatalf("完全削除を終えた後の再実行が UserDeleted を発行した: %d", len(deleted))
+		}
+	})
+}
+
+func assertSingleUserDeleted(t *testing.T, f *userRulesFixture, actor, reason string) {
+	t.Helper()
+	deleted := f.eventsOf("UserDeleted")
+	if len(deleted) != 1 {
+		t.Fatalf("UserDeleted=%d, want 1", len(deleted))
+	}
+	if event := deleted[0].(*idmdomain.UserDeleted); event.ActorUserID != actor || event.Reason != reason || event.TargetUserID != "alice" {
+		t.Fatalf("UserDeleted=%+v, want actor %s and reason %s for alice", event, actor, reason)
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-044: 保持期限の削除が、匿名化の後に失敗した管理者の完全削除を、最初の要求の操作者と理由で完了させること。
+func TestPurgeExpiredSoftDeletedResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
+	f := newUserRulesFixture(t)
+	f.seed("alice", nil)
+	f.seedUsersUsage(t, 1)
+	f.failUserDeletedOnce()
+	if err := userusecases.DeleteUser(context.Background(), f.deps, userusecases.DeleteUserInput{
+		ActorUserID: "admin", Sub: "alice", Reason: "offboarding", Now: userRulesNow,
+	}); !errors.Is(err, errInjected) {
+		t.Fatalf("admin purge err=%v, want injected failure", err)
+	}
+
+	if err := userusecases.PurgeExpiredSoftDeleted(context.Background(), f.deps, userRulesNow); err != nil {
+		t.Fatal(err)
+	}
+	assertSingleUserDeleted(t, f, "admin", "offboarding")
+	if usage := f.usersUsage(t); usage != 0 {
+		t.Fatalf("users usage=%d, want 0", usage)
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-044: 一人の User の完全削除が失敗しても、保持期限の削除がほかの期限切れの User を完全削除し、失敗を返すこと。
+func TestPurgeExpiredSoftDeletedContinuesPastAFailingUser(t *testing.T) {
+	f := newUserRulesFixture(t)
+	expiredSince := userRulesNow.Add(-time.Duration(userusecases.UserSoftDeleteGracePeriodSeconds)*time.Second - time.Hour)
+	f.seed("broken", pendingSince(expiredSince))
+	f.seed("healthy", pendingSince(expiredSince))
+	f.deps.SessionStore = &failingSessionStore{SessionStore: f.sessions, failFor: "broken"}
+
+	if err := userusecases.PurgeExpiredSoftDeleted(context.Background(), f.deps, userRulesNow); !errors.Is(err, errInjected) {
+		t.Fatalf("err=%v, want the injected failure", err)
+	}
+	if !f.stored(t, "healthy").IsDeleted() {
+		t.Fatalf("失敗した User の後の User が完全削除されていない")
+	}
+	if deleted := f.eventsOf("UserDeleted"); len(deleted) != 1 || deleted[0].(*idmdomain.UserDeleted).TargetUserID != "healthy" {
+		t.Fatalf("UserDeleted=%+v, want only healthy", deleted)
 	}
 }
 

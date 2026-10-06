@@ -43,8 +43,8 @@ func TestCancelingAFinishedExportIsRefusedWithoutAnotherEvent(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-044-01: ユーザー一覧の取得が猶予期間を過ぎた削除予約の User を system と auto_purge で完全削除し、一覧に含めないこと。
-func TestListingUsersPurgesExpiredPendingDeletions(t *testing.T) {
+//spec:covers REQ-IDMANAGEMENT-044: ユーザー一覧の取得が、猶予期間を過ぎた削除予約の User を完全削除せず、PendingDeletion のまま一覧に含め、UserDeleted を発行しないこと。
+func TestListingUsersDoesNotPurgeExpiredPendingDeletions(t *testing.T) {
 	fixture := newIdmRefusalServer(t)
 	admin := fixture.seedSession(t, "sess-admin-lazy-purge", tenancydomain.DefaultTenantID, idmRefusalAdmin)
 	alice := *fixture.user(t, idmRefusalAlice)
@@ -64,23 +64,21 @@ func TestListingUsersPurgesExpiredPendingDeletions(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
+	listed := false
 	for _, user := range body.Users {
-		if user.ID == idmRefusalAlice {
-			t.Fatalf("完全削除した User が一覧に含まれた")
-		}
+		listed = listed || user.ID == idmRefusalAlice
+	}
+	if !listed {
+		t.Fatalf("users=%+v, want the pending deletion user listed", body.Users)
 	}
 	stored, err := fixture.users.FindBySubIncludingDeleted(t.Context(), idmRefusalAlice)
-	if err != nil || stored == nil || !stored.IsDeleted() {
-		t.Fatalf("stored=%+v err=%v, want deleted", stored, err)
+	if err != nil || stored == nil || stored.Lifecycle.Status != idmdomain.UserStatusPendingDeletion {
+		t.Fatalf("stored=%+v err=%v, want pending_deletion", stored, err)
 	}
-	var purged *idmdomain.UserDeleted
 	for _, event := range *fixture.events {
-		if deleted, ok := event.(*idmdomain.UserDeleted); ok && deleted.TargetUserID == idmRefusalAlice {
-			purged = deleted
+		if deleted, ok := event.(*idmdomain.UserDeleted); ok {
+			t.Fatalf("UserDeleted=%+v, want none from listing", deleted)
 		}
-	}
-	if purged == nil || purged.ActorUserID != "system" || purged.Reason != "auto_purge" {
-		t.Fatalf("UserDeleted=%+v, want actor system and reason auto_purge", purged)
 	}
 }
 

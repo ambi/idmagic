@@ -7,6 +7,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -525,15 +526,12 @@ type DeleteUserInput struct {
 	Now         time.Time
 }
 
-// DeleteUser は anonymize cascade を実行する。
-//   - 対象 user の PII フィールドを tombstone 値で置換する (`deleted_at` 設定)。
-//   - 関連 aggregate (Consent / RefreshToken / Session / PasswordHistory /
-//     MfaFactor / DeviceAuthorization) を物理削除する。
-//   - `user.deleted` を 1 度だけ emit する (冪等)。
+// DeleteUser は User を Tombstone へ匿名化し、関連する記録を消し、使用量を減らし、UserDeleted を発行する。
 //
-// 既に削除済の user に対しては no-op で nil を返す (audit event も emit しない)。
-// actor.Sub == target.Sub かつ target が admin / system_admin role を持つ場合は
-// ErrSelfDeleteForbidden を返し、cascade は実施しない。
+// Tombstone は、残りの手順を PendingPurge に記録して先に保存する。匿名化の後に失敗した完全削除は、
+// 再実行が記録された手順から再開し、UserDeleted には最初の要求の操作者と理由を記録する。
+// 完全削除を終えた User には何もせず nil を返す。actor.Sub == target.Sub かつ target が
+// admin / system_admin role を持つ場合は ErrSelfDeleteForbidden を返す。
 func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) error {
 	user, err := deps.UserRepo.FindBySubIncludingDeleted(ctx, in.Sub)
 	if err != nil {
@@ -545,14 +543,20 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if user.TenantID != tenancy.TenantID(ctx) {
 		return idmusecases.ErrUserNotFound
 	}
+	now := idmusecases.NormalizedNow(in.Now)
 	if user.IsDeleted() {
-		return nil
+		if user.Lifecycle.PendingPurge == nil {
+			return nil
+		}
+		return finishPurge(ctx, deps, user, now)
 	}
 	if in.ActorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return ErrSelfDeleteForbidden
 	}
-	now := idmusecases.NormalizedNow(in.Now)
 	tombstone := anonymizeUser(user, now)
+	tombstone.Lifecycle.PendingPurge = &userdomain.PendingPurge{
+		Step: userdomain.PurgeStepReleaseUsage, ActorUserID: in.ActorUserID, Reason: in.Reason,
+	}
 	if err := tombstone.Validate(); err != nil {
 		return err
 	}
@@ -563,21 +567,43 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := deps.UserRepo.Save(ctx, tombstone); err != nil {
 		return err
 	}
-	if err := cascadeDeleteForSub(ctx, deps, user.ID); err != nil {
-		return err
-	}
-	if deps.QuotaRepo != nil {
-		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, user.TenantID, tenancydomain.ResourceUsers, 1); err != nil {
+	return finishPurge(ctx, deps, tombstone, now)
+}
+
+// finishPurge は、Tombstone の PendingPurge が示す手順から完全削除を終える。冪等でない使用量の
+// 減算と UserDeleted の発行は、それぞれ終えるたびに PendingPurge を進めて保存するので、再実行が
+// 繰り返さない。関連する記録の削除は何度行っても同じ結果になる。
+func finishPurge(ctx context.Context, deps AdminUserDeps, tombstone *userdomain.User, now time.Time) error {
+	pending := *tombstone.Lifecycle.PendingPurge
+	if pending.Step == userdomain.PurgeStepReleaseUsage {
+		if err := cascadeDeleteForSub(ctx, deps, tombstone.ID); err != nil {
+			return err
+		}
+		if deps.QuotaRepo != nil {
+			if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tombstone.TenantID, tenancydomain.ResourceUsers, 1); err != nil {
+				return err
+			}
+		}
+		pending.Step = userdomain.PurgeStepAnnounce
+		if err := savePendingPurge(ctx, deps, tombstone, &pending); err != nil {
 			return err
 		}
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserDeleted{
-		At: now, TenantID: user.TenantID, ActorUserID: in.ActorUserID, TargetUserID: user.ID, Reason: in.Reason,
+		At: now, TenantID: tombstone.TenantID, ActorUserID: pending.ActorUserID, TargetUserID: tombstone.ID, Reason: pending.Reason,
 	}); err != nil {
 		return err
 	}
-	notifyProvisioning(ctx, deps, user.TenantID, user.ID, userports.ProvisioningUserDeleted, now)
-	return nil
+	notifyProvisioning(ctx, deps, tombstone.TenantID, tombstone.ID, userports.ProvisioningUserDeleted, now)
+	return savePendingPurge(ctx, deps, tombstone, nil)
+}
+
+// savePendingPurge は Tombstone の PendingPurge だけを置き換えて保存する。保存済みの値を
+// 書き換えないよう複製する。
+func savePendingPurge(ctx context.Context, deps AdminUserDeps, tombstone *userdomain.User, pending *userdomain.PendingPurge) error {
+	updated := *tombstone
+	updated.Lifecycle.PendingPurge = pending
+	return deps.UserRepo.Save(ctx, &updated)
 }
 
 func hasPrivilegedRole(roles []string) bool {
@@ -588,8 +614,8 @@ func hasPrivilegedRole(roles []string) bool {
 // までの既定猶予期間 (秒)。SCL objectives.UserSoftDeleteGracePeriod (30 日) と一致する。
 const UserSoftDeleteGracePeriodSeconds = 30 * 24 * 60 * 60
 
-// 自動 purge の audit 用 actor / reason。lazy-on-access で猶予期間経過後の
-// PendingDeletion user を Purge するときに UserDeleted へ記録する。
+// 保持期限の削除が猶予期間を過ぎた PendingDeletion の User を完全削除するときに、
+// UserDeleted へ記録する操作者と理由。
 const (
 	autoPurgeActor  = "system"
 	autoPurgeReason = "auto_purge"
@@ -691,30 +717,30 @@ func RestoreUser(
 	return &updated, nil
 }
 
-// PurgeExpiredSoftDeleted は猶予期間を過ぎた PendingDeletion user を lazy-on-access で
-// Purge する。admin のユーザー一覧取得時に呼ばれ、対象を DeleteUser (anonymize cascade)
-// にかけて UserDeleted (reason=auto_purge) を emit する。専用スケジューラは別 WI。
+// PurgeExpiredSoftDeleted は、文脈のテナントで猶予期間を過ぎた PendingDeletion の User を
+// 操作者 system、理由 auto_purge で完全削除し、匿名化の後に失敗した完全削除を再開する。
+// Batch の保持期限の削除が呼ぶ。一人の失敗で残りを止めず、失敗をまとめて返す。
 func PurgeExpiredSoftDeleted(ctx context.Context, deps AdminUserDeps, now time.Time) error {
 	now = idmusecases.NormalizedNow(now)
-	users, err := deps.UserRepo.FindAll(ctx, tenancy.TenantID(ctx))
+	candidates, err := deps.UserRepo.ListPurgeCandidates(ctx, tenancy.TenantID(ctx))
 	if err != nil {
 		return err
 	}
 	grace := deps.graceSeconds()
-	for _, user := range users {
-		if user.Lifecycle.EffectiveStatus() != idmdomain.UserStatusPendingDeletion {
-			continue
-		}
-		if !softDeleteExpired(user, now, grace) {
+	var failures []error
+	for _, user := range candidates {
+		resumable := user.IsDeleted() && user.Lifecycle.PendingPurge != nil
+		expired := user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion && softDeleteExpired(user, now, grace)
+		if !resumable && !expired {
 			continue
 		}
 		if err := DeleteUser(ctx, deps, DeleteUserInput{
 			ActorUserID: autoPurgeActor, Sub: user.ID, Reason: autoPurgeReason, Now: now,
 		}); err != nil {
-			return err
+			failures = append(failures, fmt.Errorf("purge user %s: %w", user.ID, err))
 		}
 	}
-	return nil
+	return errors.Join(failures...)
 }
 
 // softDeleteExpired は PendingDeletion の user が猶予期間を過ぎたかを返す。

@@ -98,6 +98,14 @@ WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM '
 ORDER BY preferred_username DESC, id DESC
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListUserPurgeCandidates :many
+-- Pending deletions and tombstones whose purge has not finished. The grace
+-- period is decided by the caller.
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' = 'pending_deletion' OR lifecycle ? 'pending_purge')
+ORDER BY id;
+
 -- name: CountUsersByTenant :one
 SELECT count(*) FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted');

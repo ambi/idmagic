@@ -86,11 +86,6 @@ func HandleListAdminUsers(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	// lazy-on-access: 猶予期間を過ぎた削除予約 user を一覧取得のついでに Purge する。
-	// 専用スケジューラは別 WI に切り出す。
-	if err := userusecases.PurgeExpiredSoftDeleted(c.Request().Context(), adminUserDeps(d), time.Now().UTC()); err != nil {
-		return err
-	}
 	tenantID := support.RequestTenantID(c)
 	query := strings.TrimSpace(c.QueryParam("query"))
 	var status *idmdomain.UserStatus

@@ -122,6 +122,30 @@ type UserLifecycle struct {
 	LastLoginAt       *time.Time                 `json:"last_login_at,omitempty"`
 	PasswordChangedAt *time.Time                 `json:"password_changed_at,omitempty"`
 	RequiredActions   []idmdomain.RequiredAction `json:"required_actions,omitempty"`
+	// PendingPurge は、完全削除を終えていない Tombstone にだけ付く。
+	PendingPurge *PendingPurge `json:"pending_purge,omitempty"`
+}
+
+// PendingPurge は、Tombstone を保存した後の完全削除の手順のうち、次に行うものと、
+// UserDeleted に記録する最初の要求の操作者と理由を持つ。完全削除の再実行は、ここから再開する。
+type PendingPurge struct {
+	Step        PurgeStep `json:"step"`
+	ActorUserID string    `json:"actor_user_id"`
+	Reason      string    `json:"reason,omitempty"`
+}
+
+// PurgeStep は、完全削除の手順のうち冪等でないものの区切りである。
+type PurgeStep string
+
+const (
+	// PurgeStepReleaseUsage は、関連する記録を消し、テナントの User の使用量を一つ減らす。
+	PurgeStepReleaseUsage PurgeStep = "release_usage"
+	// PurgeStepAnnounce は、UserDeleted を発行し、下流のプロビジョニングへ通知する。
+	PurgeStepAnnounce PurgeStep = "announce"
+)
+
+func (s PurgeStep) Valid() bool {
+	return s == PurgeStepReleaseUsage || s == PurgeStepAnnounce
 }
 
 // EffectiveStatus は未設定 (zero-value) を既定の Active として解決する。
@@ -140,6 +164,14 @@ func (l UserLifecycle) Validate() error {
 	for _, a := range l.RequiredActions {
 		if !a.Valid() {
 			return fmt.Errorf("required action %q is not in enum", a)
+		}
+	}
+	if l.PendingPurge != nil {
+		if l.Status != idmdomain.UserStatusDeleted {
+			return fmt.Errorf("pending purge on a user in status %q", l.Status)
+		}
+		if !l.PendingPurge.Step.Valid() {
+			return fmt.Errorf("purge step %q is not in enum", l.PendingPurge.Step)
 		}
 	}
 	return nil

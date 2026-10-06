@@ -139,6 +139,48 @@ func runUserRepository(t *testing.T, newFixture NewFixture) {
 		}
 	})
 
+	// 保持期限の削除は、猶予期間を判定する削除予約の User と、完全削除を終えていない Tombstone を
+	// 候補として引く (REQ-IDMANAGEMENT-044)。
+	t.Run("purge candidates are pending deletions and unfinished tombstones of the tenant", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		saveWith := func(tenantID, username string, lifecycle userdomain.UserLifecycle) *userdomain.User {
+			t.Helper()
+			stored := user(t, tenantID, username, f.Now)
+			stored.Lifecycle = lifecycle
+			if err := f.Users.Save(ctx, stored); err != nil {
+				t.Fatalf("Save(%s): %v", username, err)
+			}
+			return stored
+		}
+		since := f.Now.Add(-time.Hour)
+		pending := userdomain.UserLifecycle{Status: idmdomain.UserStatusPendingDeletion, StatusChangedAt: &since}
+		unfinished := userdomain.UserLifecycle{
+			Status: idmdomain.UserStatusDeleted, StatusChangedAt: &since,
+			PendingPurge: &userdomain.PendingPurge{Step: userdomain.PurgeStepAnnounce, ActorUserID: "admin", Reason: "offboarding"},
+		}
+		wantPending := saveWith(f.TenantA, "pending", pending)
+		wantUnfinished := saveWith(f.TenantA, "unfinished", unfinished)
+		saveWith(f.TenantA, "active", userdomain.UserLifecycle{Status: idmdomain.UserStatusActive})
+		saveWith(f.TenantA, "finished", userdomain.UserLifecycle{Status: idmdomain.UserStatusDeleted, StatusChangedAt: &since})
+		saveWith(f.TenantB, "other-pending", pending)
+
+		candidates, err := f.Users.ListPurgeCandidates(ctx, f.TenantA)
+		if err != nil {
+			t.Fatalf("ListPurgeCandidates: %v", err)
+		}
+		got := map[string]*userdomain.User{}
+		for _, candidate := range candidates {
+			got[candidate.ID] = candidate
+		}
+		if len(got) != 2 || got[wantPending.ID] == nil || got[wantUnfinished.ID] == nil {
+			t.Fatalf("candidates=%+v, want only the pending deletion and the unfinished tombstone of tenant A", candidates)
+		}
+		if marker := got[wantUnfinished.ID].Lifecycle.PendingPurge; marker == nil || *marker != *unfinished.PendingPurge {
+			t.Fatalf("pending purge=%+v, want %+v", marker, unfinished.PendingPurge)
+		}
+	})
+
 	t.Run("same tenant rejects duplicate username", func(t *testing.T) {
 		f := newFixture(t)
 		ctx := context.Background()

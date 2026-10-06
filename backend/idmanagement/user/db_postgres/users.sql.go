@@ -183,6 +183,54 @@ func (q *Queries) FindUserByUsername(ctx context.Context, arg FindUserByUsername
 	return &i, err
 }
 
+const listUserPurgeCandidates = `-- name: ListUserPurgeCandidates :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' = 'pending_deletion' OR lifecycle ? 'pending_purge')
+ORDER BY id
+`
+
+// Pending deletions and tombstones whose purge has not finished. The grace
+// period is decided by the caller.
+func (q *Queries) ListUserPurgeCandidates(ctx context.Context, tenantID string) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUserPurgeCandidates, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
+			&i.PreferredUsernameKey,
+			&i.EmailKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersByTenant = `-- name: ListUsersByTenant :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users

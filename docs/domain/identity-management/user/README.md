@@ -75,11 +75,11 @@
 | Active | UserSoftDeleted | — | PendingDeletion |  |
 | Disabled | UserSoftDeleted | — | PendingDeletion |  |
 | PendingDeletion | UserRestored | — | Active |  |
-| PendingDeletion | UserDeleted | input.purge == true \|\| duration_since(status_changed_at) >= duration('2592000s') | Deleted | UserDeleted |
+| PendingDeletion | UserDeleted | input.purge == true \|\| duration_since(status_changed_at) > duration('2592000s') | Deleted | UserDeleted |
 | Active | UserDeleted | input.purge == true | Deleted | UserDeleted |
 | Disabled | UserDeleted | input.purge == true | Deleted | UserDeleted |
 
-| State | 無効化 | 再有効化 | 削除の予約 | 復元 | 完全削除 | 一覧の取得 |
+| State | 無効化 | 再有効化 | 削除の予約 | 復元 | 完全削除 | 保持期限の削除 |
 |---|---|---|---|---|---|---|
 | Active | → Disabled | 何もしない | → PendingDeletion | 拒否：409 not_pending_deletion | → Deleted | 何もしない |
 | Disabled | 何もしない | → Active | → PendingDeletion | 拒否：409 not_pending_deletion | → Deleted | 何もしない |
@@ -146,11 +146,17 @@
 - `admin` ロールを持たない呼び出し元が一覧を要求した場合、IdManagement は、AccessDeniedError で拒否する。
 - **例**：EX-IDMANAGEMENT-005-01、EX-IDMANAGEMENT-005-03
 
-#### REQ-IDMANAGEMENT-044 管理者のユーザー一覧の取得は、猶予期間を過ぎた削除予約の User を先に完全削除する
+### 保持期限の削除
 
-- 管理者がユーザー一覧を取得したとき、IdManagement は、同じテナントで `PendingDeletion` になってから猶予期間の 30 日を過ぎた User を完全削除してから一覧を作る。
-- 管理者がユーザー一覧を取得したとき、IdManagement は、猶予期間の終わりの時刻ちょうどの User と、`PendingDeletion` になった時刻を記録していない User を完全削除しない。
-- 一覧の取得が User を完全削除したとき、IdManagement は、`UserDeleted` の操作者に `system`、理由に `auto_purge` を記録する。
+#### REQ-IDMANAGEMENT-044 猶予期間を過ぎた削除予約の User は、保持期限の削除が完全削除する
+
+- 保持期限の削除を実行したとき、IdManagement は、すべてのテナントで、`PendingDeletion` になってから猶予期間の 30 日を過ぎた User を完全削除する。
+- 保持期限の削除を実行したとき、IdManagement は、猶予期間の終わりの時刻ちょうどの User と、`PendingDeletion` になった時刻を記録していない User を完全削除しない。
+- 保持期限の削除が User を完全削除したとき、IdManagement は、`UserDeleted` の操作者に `system`、理由に `auto_purge` を記録する。
+- 保持期限の削除を実行したとき、IdManagement は、匿名化の後に完全削除が失敗した User の、残りの手順を行う。
+- ある User の完全削除が失敗した場合、IdManagement は、ほかの User の完全削除を続け、保持期限の削除を失敗として終える。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、User を完全削除しない。
+- **判断**：読み取りの操作に削除を兼ねさせると、一覧を取得しないテナントでは個人情報が残り続ける。保持期限の削除は Batch の `retention-sweep` が行い、デフォルトの配置は毎時実行するので、猶予期間を過ぎた User が残るのは最長で約 1 時間である。
 - **例**：EX-IDMANAGEMENT-044-01、EX-IDMANAGEMENT-044-02
 
 ### 更新

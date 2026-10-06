@@ -194,6 +194,11 @@ CREATE INDEX users_tenant_lifecycle_status_active_idx
     ON users (tenant_id, (coalesce(lifecycle->>'status', 'active')))
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
+-- 保持期限の削除が引く完全削除の候補（ListUserPurgeCandidates）に限る。
+CREATE INDEX users_tenant_purge_candidates_idx
+    ON users (tenant_id, id)
+    WHERE lifecycle->>'status' = 'pending_deletion' OR lifecycle ? 'pending_purge';
+
 CREATE INDEX users_search_text_trgm_idx
     ON users USING gin (search_text gin_trgm_ops)
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';

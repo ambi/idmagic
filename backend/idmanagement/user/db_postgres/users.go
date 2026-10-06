@@ -136,6 +136,10 @@ func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*userd
 	return out, nil
 }
 
+func (r *UserRepository) ListPurgeCandidates(ctx context.Context, tenantID string) ([]*userdomain.User, error) {
+	return usersFromRows(New(r.Pool).ListUserPurgeCandidates(ctx, tenantID))
+}
+
 // ListPage implements ports.UserRepository.ListPage (wi-159): keyset
 // pagination ordered by (preferred_username, id) ascending, strictly after
 // the given keyset ("", "" for the first page).

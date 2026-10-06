@@ -4,14 +4,16 @@ package handlers_http_test
 // 正式な入口で観測した結果と比べる。表は実行時に仕様の文書から読み、ここへ写さない。
 // 表のセルを書き換えれば、このテストの予測もそのまま変わる。
 //
-// テストの側に置くのは、表が書かない三つの対応だけである。操作の列の名前から HTTP 要求、
-// 括弧の条件から `status_changed_at` の設定、状態の名前から UserStatus の値への変換である。
+// テストの側に置くのは、表が書かない三つの対応だけである。操作の列の名前から HTTP 要求
+// （HTTP の入口のない保持期限の削除はユースケースの呼び出し）、括弧の条件から
+// `status_changed_at` の設定、状態の名前から UserStatus の値への変換である。
 // 対応のない名前が表に現れたら、黙って飛ばさずに失敗させる。
 
 import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"slices"
 	"strconv"
@@ -22,6 +24,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/testing_statematrix"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -29,16 +32,42 @@ import (
 
 const userLifecycleSpecification = "../../../docs/domain/identity-management/user/README.md"
 
-// userLifecycleRequests は、状態遷移表の操作の列から、その操作を起こす管理 API の要求を作る。
-var userLifecycleRequests = map[string]func(sub string) (method, path string){
-	"無効化":   func(sub string) (string, string) { return http.MethodPost, "/api/admin/v1/users/" + sub + "/disable" },
-	"再有効化":  func(sub string) (string, string) { return http.MethodPost, "/api/admin/v1/users/" + sub + "/enable" },
-	"削除の予約": func(sub string) (string, string) { return http.MethodDelete, "/api/admin/v1/users/" + sub },
-	"復元":    func(sub string) (string, string) { return http.MethodPost, "/api/admin/v1/users/" + sub + "/restore" },
-	"完全削除": func(sub string) (string, string) {
-		return http.MethodDelete, "/api/admin/v1/users/" + sub + "?purge=true"
-	},
-	"一覧の取得": func(string) (string, string) { return http.MethodGet, "/api/admin/v1/users" },
+// userLifecycleOperations は、状態遷移表の操作の列から、その操作を起こして応答を返す手順を作る。
+var userLifecycleOperations = map[string]func(m *userLifecycleModel) *httptest.ResponseRecorder{
+	"無効化":     adminRequest(http.MethodPost, "/disable"),
+	"再有効化":    adminRequest(http.MethodPost, "/enable"),
+	"削除の予約":   adminRequest(http.MethodDelete, ""),
+	"復元":      adminRequest(http.MethodPost, "/restore"),
+	"完全削除":    adminRequest(http.MethodDelete, "?purge=true"),
+	"保持期限の削除": runRetentionSweep,
+}
+
+// adminRequest は、対象の User の管理 API の要求を管理者のセッションで送る手順を作る。
+func adminRequest(method, suffix string) func(m *userLifecycleModel) *httptest.ResponseRecorder {
+	return func(m *userLifecycleModel) *httptest.ResponseRecorder {
+		admin := m.fixture.seedSession(m.t, "sess-lifecycle-model", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+		return m.fixture.send(m.t, idmRefusalRequest{
+			method: method, path: "/api/admin/v1/users/" + userLifecycleTarget + suffix, sessionID: admin, csrf: idmRefusalCSRF,
+		})
+	}
+}
+
+// runRetentionSweep は、Batch の保持期限の削除が呼ぶユースケースを同じ保存層とイベントへ向けて呼ぶ。
+// 保持期限の削除には HTTP の入口がないので、成否を応答の状態コードへ写す。
+func runRetentionSweep(m *userLifecycleModel) *httptest.ResponseRecorder {
+	deps := userusecases.AdminUserDeps{
+		UserRepo: m.fixture.users,
+		Emit: func(event spec.DomainEvent) error {
+			*m.fixture.events = append(*m.fixture.events, event)
+			return nil
+		},
+	}
+	response := httptest.NewRecorder()
+	if err := userusecases.PurgeExpiredSoftDeleted(m.t.Context(), deps, time.Now().UTC()); err != nil {
+		response.Code = http.StatusInternalServerError
+		_, _ = response.WriteString(err.Error())
+	}
+	return response
 }
 
 // userLifecycleConditions は、括弧の条件から、状態に入った時刻の経過を作る。
@@ -104,7 +133,7 @@ func readUserLifecycle(t *testing.T) testing_statematrix.Machine {
 		t.Fatal(err)
 	}
 	for _, operation := range machine.Operations {
-		if userLifecycleRequests[operation] == nil {
+		if userLifecycleOperations[operation] == nil {
 			t.Fatalf("状態遷移表の操作 %q を起こす要求をテストが知らない", operation)
 		}
 	}
@@ -154,9 +183,7 @@ func (m *userLifecycleModel) apply(state, operation string, outcome testing_stat
 	m.t.Helper()
 	before := m.fixture.user(m.t, userLifecycleTarget).Lifecycle
 	emitted := len(*m.fixture.events)
-	admin := m.fixture.seedSession(m.t, "sess-lifecycle-model", tenancydomain.DefaultTenantID, idmRefusalAdmin)
-	method, path := userLifecycleRequests[operation](userLifecycleTarget)
-	response := m.fixture.send(m.t, idmRefusalRequest{method: method, path: path, sessionID: admin, csrf: idmRefusalCSRF})
+	response := userLifecycleOperations[operation](m)
 	after := m.fixture.user(m.t, userLifecycleTarget).Lifecycle
 	events := m.lifecycleEvents((*m.fixture.events)[emitted:])
 	cell := fmt.Sprintf("%s × %s（%s） 列=%v", state, operation, outcome.Condition, m.trail)

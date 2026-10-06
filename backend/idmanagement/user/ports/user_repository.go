@@ -26,6 +26,9 @@ type UserRepository interface {
 	ListPageBefore(ctx context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error)
 	ListPageFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, afterUsername, afterID string, limit int) ([]*userdomain.User, error)
 	ListPageBeforeFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error)
+	// ListPurgeCandidates は、テナントの PendingDeletion の User と、完全削除を終えていない
+	// (PendingPurge を持つ) Tombstone を返す。猶予期間の判定は呼び出し側が行う。
+	ListPurgeCandidates(ctx context.Context, tenantID string) ([]*userdomain.User, error)
 	Count(ctx context.Context, tenantID string) (int64, error)
 	CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error)
 	Save(ctx context.Context, user *userdomain.User) error
