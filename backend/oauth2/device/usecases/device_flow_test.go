@@ -5,6 +5,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,7 +41,7 @@ func newDeviceFixture() deviceFixture {
 			spec.ResponseTypeCode,
 		},
 		TokenEndpointAuthMethod:  domain.AuthMethodNone,
-		Scope:                    "openid profile",
+		Scope:                    "openid profile offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
@@ -161,6 +162,95 @@ func TestDeviceFlowDeny(t *testing.T) {
 	err = DenyUserCode(ctx, f.verifyDeps, "ABCD-EFGH", "user", time.Time{})
 	if err == nil {
 		t.Error("expected error for non-existent code, got nil")
+	}
+}
+
+// approveDeviceCode は scope でデバイス認可を要求し、時刻 at に承認した device_code を返す。
+func approveDeviceCode(t *testing.T, f deviceFixture, scope string, at time.Time) string {
+	t.Helper()
+	auth, err := RequestDeviceAuthorization(context.Background(), f.requestDeps, DeviceAuthorizationInput{ClientID: "device-client", Scope: scope}, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ApproveUserCode(context.Background(), f.verifyDeps, auth.UserCode, "user", at); err != nil {
+		t.Fatal(err)
+	}
+	return auth.DeviceCode
+}
+
+func TestCharacterizeExchangeDeviceCodeRefreshToken(t *testing.T) {
+	for _, scope := range []string{"openid", "openid offline_access"} {
+		t.Run(scope, func(t *testing.T) {
+			f := newDeviceFixture()
+			var emitted []spec.DomainEvent
+			f.deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
+			now := time.Now().UTC()
+			deviceCode := approveDeviceCode(t, f, scope, now)
+
+			out, err := ExchangeDeviceCode(context.Background(), f.deps, ExchangeDeviceCodeInput{ClientID: "device-client", DeviceCode: deviceCode}, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if out.RefreshToken == "" {
+				t.Fatal("refresh token missing")
+			}
+			stored, err := f.deps.RefreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
+			if err != nil || stored == nil {
+				t.Fatalf("refresh record: %v %v", stored, err)
+			}
+			if stored.ClientID != "device-client" || stored.UserID != "user" || strings.Join(stored.Scopes, " ") != scope {
+				t.Fatalf("refresh record = %+v", stored)
+			}
+			var types []string
+			for _, e := range emitted {
+				types = append(types, e.EventType())
+				if issued, ok := e.(*domain.RefreshTokenIssued); ok && (issued.FamilyID != stored.FamilyID || issued.TokenID != stored.ID) {
+					t.Fatalf("RefreshTokenIssued = %+v, record = %+v", issued, stored)
+				}
+			}
+			if strings.Join(types, ",") != "AccessTokenIssued,RefreshTokenIssued" {
+				t.Fatalf("events = %v", types)
+			}
+			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(context.Background(), domain.HashDeviceCode(deviceCode))
+			if rec.State != spec.DeviceFlowExchanged || rec.IssuedFamilyID == nil || *rec.IssuedFamilyID != stored.FamilyID {
+				t.Fatalf("device record = %+v", rec)
+			}
+		})
+	}
+}
+
+func TestCharacterizeDenyUserCode(t *testing.T) {
+	cases := []struct {
+		name  string
+		after time.Duration
+	}{
+		{"within the lifetime", time.Second},
+		{"after the lifetime", domain.DeviceCodeTTL + time.Second},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newDeviceFixture()
+			ctx := tenantContext(tenancydomain.DefaultTenantID)
+			t0 := time.Now().UTC()
+			auth, err := RequestDeviceAuthorization(ctx, f.requestDeps, DeviceAuthorizationInput{ClientID: "device-client", Scope: "openid"}, t0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var emitted []spec.DomainEvent
+			f.verifyDeps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
+
+			err = DenyUserCode(ctx, f.verifyDeps, auth.UserCode, "user", t0.Add(tc.after))
+			if err != nil {
+				t.Fatal(err)
+			}
+			rec, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(auth.UserCode))
+			if rec.State != spec.DeviceFlowDenied {
+				t.Fatalf("state = %v", rec.State)
+			}
+			if len(emitted) != 1 || emitted[0].EventType() != "DeviceAuthorizationDenied" {
+				t.Fatalf("events = %v", emitted)
+			}
+		})
 	}
 }
 
