@@ -54,7 +54,7 @@ RFC 8628 デバイス認可グラントのライフサイクル。device_code �
 - `scope` のないデバイス認可を受けたとき、OAuth2 は、`openid` を要求したものとして扱う。
 - 認証済みの利用者が有効な `user_code` を承認したとき、OAuth2 は、記録を `Approved` にして利用者と認証の時刻を結び付け、200 を返し、`DeviceAuthorizationApproved` を発行する。
 - 認証済みの利用者が有効な `user_code` を拒否したとき、OAuth2 は、記録を `Denied` にし、200 を返し、`DeviceAuthorizationDenied` を発行する。
-- クライアントが `Approved` の `device_code` を交換したとき、OAuth2 は、記録を `Exchanged` にし、アクセストークン、ID トークン、リフレッシュトークンを返し、`AccessTokenIssued` と `RefreshTokenIssued` を発行する。
+- クライアントが `Approved` の `device_code` を交換したとき、OAuth2 は、記録を `Exchanged` にし、アクセストークンと ID トークンを返し、`offline_access` のスコープにはリフレッシュトークンを返し、`AccessTokenIssued` を発行する。
 - 承認の前の `device_code` の交換を受けたとき、OAuth2 は、400 と `authorization_pending` を返し、ポーリングの時刻を記録する。
 - `interval` より短い間隔の交換を受けた場合、OAuth2 は、400 と `slow_down` で拒否し、`interval` を延ばす。
 - 有効期間を過ぎた `device_code` か `user_code` を受けた場合、OAuth2 は、400 と `expired_token` で拒否する。

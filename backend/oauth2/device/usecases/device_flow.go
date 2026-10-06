@@ -168,6 +168,9 @@ func DenyUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub st
 	if rec.TenantID != tenancy.TenantID(ctx) {
 		return NewOAuthError("invalid_request", "unknown user_code")
 	}
+	if domain.IsDeviceExpired(rec, now) {
+		return NewOAuthError("expired_token", "user_code expired")
+	}
 	if rec.State == spec.DeviceFlowIssued {
 		if next, err := spec.TransitionDeviceCodeFlow(rec.State, spec.DeviceEventEnterUserCode); err == nil {
 			rec.State = next
@@ -337,23 +340,27 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 
-	refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, resource, now)
-	if err != nil {
-		return nil, err
+	var refreshToken string
+	if domain.GrantsRefreshToken(rec.Scopes) {
+		refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, resource, now)
+		if err != nil {
+			return nil, err
+		}
+		refresh.Record.TenantID = tenantID
+		if err := deps.RefreshStore.Save(ctx, refresh.Record); err != nil {
+			return nil, err
+		}
+		emit(deps.Emit, &domain.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: refresh.Record.ID, FamilyID: refresh.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
+		fam := refresh.Record.FamilyID
+		rec.IssuedFamilyID = &fam
+		_ = deps.DeviceCodeStore.Update(ctx, rec)
+		refreshToken = refresh.Token
 	}
-	refresh.Record.TenantID = tenantID
-	if err := deps.RefreshStore.Save(ctx, refresh.Record); err != nil {
-		return nil, err
-	}
-	emit(deps.Emit, &domain.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: refresh.Record.ID, FamilyID: refresh.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
-	fam := refresh.Record.FamilyID
-	rec.IssuedFamilyID = &fam
-	_ = deps.DeviceCodeStore.Update(ctx, rec)
 
 	tokenType := domain.PresentationTokenType(sc)
 	return &ExchangeDeviceCodeResult{
 		AccessToken:  access,
-		RefreshToken: refresh.Token,
+		RefreshToken: refreshToken,
 		IDToken:      idTok,
 		TokenType:    tokenType,
 		ExpiresIn:    deps.TokenIssuer.AccessTokenTTLSeconds(),

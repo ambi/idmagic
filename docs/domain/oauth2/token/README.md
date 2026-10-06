@@ -68,8 +68,8 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 
 #### REQ-OAUTH2-021 リフレッシュトークンは `offline_access` スコープを付与したときだけ発行する
 
-- `offline_access` を含むスコープの認可コードを交換したとき、OAuth2 は、リフレッシュトークンを返し、`RefreshTokenIssued` を発行する。
-- `offline_access` を含まないスコープの認可コードを交換したとき、OAuth2 は、リフレッシュトークンを返さない。
+- `offline_access` を含むスコープの認可コードか `device_code` を交換したとき、OAuth2 は、リフレッシュトークンを返し、`RefreshTokenIssued` を発行する。
+- `offline_access` を含まないスコープの認可コードか `device_code` を交換したとき、OAuth2 は、リフレッシュトークンを返さない。
 - **例**：EX-OAUTH2-021-01、EX-OAUTH2-021-02
 
 #### REQ-OAUTH2-026 client_credentials グラントで M2M トークンが発行される

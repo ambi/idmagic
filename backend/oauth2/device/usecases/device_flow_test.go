@@ -91,7 +91,7 @@ func TestDeviceFlowPollingAndReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.AccessToken == "" || out.IDToken == "" || out.RefreshToken == "" {
+	if out.AccessToken == "" || out.IDToken == "" {
 		t.Fatal("device exchange did not issue tokens")
 	}
 	if _, err := ExchangeDeviceCode(context.Background(), f.deps, input, t0.Add(20*time.Second)); oauthErrorCode(err) != "invalid_grant" {
@@ -178,54 +178,78 @@ func approveDeviceCode(t *testing.T, f deviceFixture, scope string, at time.Time
 	return auth.DeviceCode
 }
 
-func TestCharacterizeExchangeDeviceCodeRefreshToken(t *testing.T) {
-	for _, scope := range []string{"openid", "openid offline_access"} {
-		t.Run(scope, func(t *testing.T) {
+//spec:covers REQ-OAUTH2-021, REQ-OAUTH2-027: device_code の交換は offline_access のスコープのときだけリフレッシュトークンを返して保存し、RefreshTokenIssued を発行する
+func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T) {
+	cases := []struct {
+		scope       string
+		wantRefresh bool
+	}{
+		{"openid", false},
+		{"openid offline_access", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.scope, func(t *testing.T) {
 			f := newDeviceFixture()
 			var emitted []spec.DomainEvent
 			f.deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 			now := time.Now().UTC()
-			deviceCode := approveDeviceCode(t, f, scope, now)
+			deviceCode := approveDeviceCode(t, f, tc.scope, now)
 
 			out, err := ExchangeDeviceCode(context.Background(), f.deps, ExchangeDeviceCodeInput{ClientID: "device-client", DeviceCode: deviceCode}, now)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if out.RefreshToken == "" {
-				t.Fatal("refresh token missing")
+			if out.AccessToken == "" || out.IDToken == "" {
+				t.Fatalf("result = %+v", out)
+			}
+			var types []string
+			for _, e := range emitted {
+				types = append(types, e.EventType())
+			}
+			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(context.Background(), domain.HashDeviceCode(deviceCode))
+			if rec.State != spec.DeviceFlowExchanged {
+				t.Fatalf("state = %v", rec.State)
+			}
+			if !tc.wantRefresh {
+				if out.RefreshToken != "" || rec.IssuedFamilyID != nil {
+					t.Fatalf("refresh token = %q, issued family = %v, want none", out.RefreshToken, rec.IssuedFamilyID)
+				}
+				if strings.Join(types, ",") != "AccessTokenIssued" {
+					t.Fatalf("events = %v", types)
+				}
+				return
 			}
 			stored, err := f.deps.RefreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
 			if err != nil || stored == nil {
 				t.Fatalf("refresh record: %v %v", stored, err)
 			}
-			if stored.ClientID != "device-client" || stored.UserID != "user" || strings.Join(stored.Scopes, " ") != scope {
+			if stored.ClientID != "device-client" || stored.UserID != "user" || strings.Join(stored.Scopes, " ") != tc.scope {
 				t.Fatalf("refresh record = %+v", stored)
-			}
-			var types []string
-			for _, e := range emitted {
-				types = append(types, e.EventType())
-				if issued, ok := e.(*domain.RefreshTokenIssued); ok && (issued.FamilyID != stored.FamilyID || issued.TokenID != stored.ID) {
-					t.Fatalf("RefreshTokenIssued = %+v, record = %+v", issued, stored)
-				}
 			}
 			if strings.Join(types, ",") != "AccessTokenIssued,RefreshTokenIssued" {
 				t.Fatalf("events = %v", types)
 			}
-			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(context.Background(), domain.HashDeviceCode(deviceCode))
-			if rec.State != spec.DeviceFlowExchanged || rec.IssuedFamilyID == nil || *rec.IssuedFamilyID != stored.FamilyID {
-				t.Fatalf("device record = %+v", rec)
+			if issued := emitted[1].(*domain.RefreshTokenIssued); issued.FamilyID != stored.FamilyID || issued.TokenID != stored.ID {
+				t.Fatalf("RefreshTokenIssued = %+v, record = %+v", issued, stored)
+			}
+			if rec.IssuedFamilyID == nil || *rec.IssuedFamilyID != stored.FamilyID {
+				t.Fatalf("issued family = %v, want %s", rec.IssuedFamilyID, stored.FamilyID)
 			}
 		})
 	}
 }
 
-func TestCharacterizeDenyUserCode(t *testing.T) {
+//spec:covers REQ-OAUTH2-027: 有効期間内の user_code の拒否は記録を Denied にし、期間を過ぎた user_code の拒否は expired_token で拒否して記録もイベントも変えない
+func TestDenyUserCodeRefusesAnExpiredUserCode(t *testing.T) {
 	cases := []struct {
-		name  string
-		after time.Duration
+		name      string
+		after     time.Duration
+		wantError string
+		wantState spec.DeviceCodeFlowState
+		wantEvent int
 	}{
-		{"within the lifetime", time.Second},
-		{"after the lifetime", domain.DeviceCodeTTL + time.Second},
+		{"within the lifetime", time.Second, "", spec.DeviceFlowDenied, 1},
+		{"after the lifetime", domain.DeviceCodeTTL + time.Second, "expired_token", spec.DeviceFlowIssued, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -240,14 +264,14 @@ func TestCharacterizeDenyUserCode(t *testing.T) {
 			f.verifyDeps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 
 			err = DenyUserCode(ctx, f.verifyDeps, auth.UserCode, "user", t0.Add(tc.after))
-			if err != nil {
-				t.Fatal(err)
+			if oauthErrorCode(err) != tc.wantError || (tc.wantError == "" && err != nil) {
+				t.Fatalf("err = %v, want %q", err, tc.wantError)
 			}
 			rec, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(auth.UserCode))
-			if rec.State != spec.DeviceFlowDenied {
-				t.Fatalf("state = %v", rec.State)
+			if rec.State != tc.wantState {
+				t.Fatalf("state = %v, want %v", rec.State, tc.wantState)
 			}
-			if len(emitted) != 1 || emitted[0].EventType() != "DeviceAuthorizationDenied" {
+			if len(emitted) != tc.wantEvent {
 				t.Fatalf("events = %v", emitted)
 			}
 		})

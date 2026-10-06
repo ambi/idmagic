@@ -14,7 +14,7 @@ import (
 )
 
 // newApprovedDeviceFixture は device_flow_test.go の newDeviceFixture と同様の
-// client/user を持ち、user_code 承認済みの device_code をあらかじめ用意する。
+// client/user を持ち、offline_access を含めて user_code 承認済みの device_code をあらかじめ用意する。
 func newApprovedDeviceFixture(t *testing.T, mcpResourceServerRepo *oauth2memory.McpResourceServerRepository) (deviceFixture, string) {
 	t.Helper()
 	f := newDeviceFixture()
@@ -22,7 +22,7 @@ func newApprovedDeviceFixture(t *testing.T, mcpResourceServerRepo *oauth2memory.
 
 	now := time.Now().UTC()
 	out, err := RequestDeviceAuthorization(context.Background(), f.requestDeps, DeviceAuthorizationInput{
-		ClientID: "device-client", Scope: "openid",
+		ClientID: "device-client", Scope: "openid offline_access",
 	}, now)
 	if err != nil {
 		t.Fatalf("RequestDeviceAuthorization: %v", err)
@@ -46,7 +46,7 @@ func TestExchangeDeviceCode_registeredResource_boundAudienceAndRefreshRecord(t *
 	repo := oauth2memory.NewMcpResourceServerRepository()
 	repo.Seed(&domain.McpResourceServer{
 		ID: "rs-1", Resource: "https://mcp.example.com/tools",
-		Name: "Tools", Scopes: []string{"openid"}, State: domain.McpResourceServerActive,
+		Name: "Tools", Scopes: []string{"openid", "offline_access"}, State: domain.McpResourceServerActive,
 	})
 	f, deviceCode := newApprovedDeviceFixture(t, repo)
 
