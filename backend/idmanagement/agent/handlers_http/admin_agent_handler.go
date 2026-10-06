@@ -54,8 +54,8 @@ type agentSummaryResponse struct {
 
 const (
 	listAgentsQuery        = "ListAgents"
-	listAgentsDefaultLimit = 50
-	listAgentsMaxLimit     = 200
+	listAgentsDefaultLimit = support.DefaultPageLimit
+	listAgentsMaxLimit     = support.MaxPageLimit
 )
 
 func HandleListAgents(d Deps, c *echo.Context) error {

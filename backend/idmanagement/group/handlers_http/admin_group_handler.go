@@ -77,8 +77,8 @@ type userGroupsResponse struct {
 
 const (
 	listGroupsQuery        = "ListGroups"
-	listGroupsDefaultLimit = 50
-	listGroupsMaxLimit     = 200
+	listGroupsDefaultLimit = support.DefaultPageLimit
+	listGroupsMaxLimit     = support.MaxPageLimit
 )
 
 func HandleListGroups(d Deps, c *echo.Context) error {

@@ -204,8 +204,8 @@ func (d Deps) handleResumeConnection(c *echo.Context) error {
 
 const (
 	listProvisioningTasksQuery        = "ListProvisioningTasks"
-	listProvisioningTasksDefaultLimit = 50
-	listProvisioningTasksMaxLimit     = 200
+	listProvisioningTasksDefaultLimit = support.DefaultPageLimit
+	listProvisioningTasksMaxLimit     = support.MaxPageLimit
 )
 
 // provisioningTasksQueryHash fingerprints every filter/sort query param

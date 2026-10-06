@@ -60,8 +60,8 @@ type adminClientResponse struct {
 
 const (
 	listAdminOAuth2ClientsQuery        = "ListAdminOAuth2Clients"
-	listAdminOAuth2ClientsDefaultLimit = 50
-	listAdminOAuth2ClientsMaxLimit     = 200
+	listAdminOAuth2ClientsDefaultLimit = support.DefaultPageLimit
+	listAdminOAuth2ClientsMaxLimit     = support.MaxPageLimit
 )
 
 func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {

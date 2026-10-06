@@ -20,8 +20,8 @@ import (
 
 const (
 	listAdminUsersQuery        = "ListAdminUsers"
-	listAdminUsersDefaultLimit = 50
-	listAdminUsersMaxLimit     = 200
+	listAdminUsersDefaultLimit = support.DefaultPageLimit
+	listAdminUsersMaxLimit     = support.MaxPageLimit
 )
 
 type adminUserCreateRequest struct {

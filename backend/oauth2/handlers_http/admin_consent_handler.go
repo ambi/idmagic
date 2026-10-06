@@ -28,8 +28,8 @@ type adminConsentResponse struct {
 
 const (
 	listAdminConsentsQuery        = "ListAdminConsents"
-	listAdminConsentsDefaultLimit = 50
-	listAdminConsentsMaxLimit     = 200
+	listAdminConsentsDefaultLimit = support.DefaultPageLimit
+	listAdminConsentsMaxLimit     = support.MaxPageLimit
 )
 
 func (d Deps) handleListAdminConsents(c *echo.Context) error {

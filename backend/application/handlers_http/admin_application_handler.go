@@ -75,8 +75,8 @@ type defaultSignInPolicyRequest struct {
 
 const (
 	listAdminApplicationsQuery        = "ListAdminApplications"
-	listAdminApplicationsDefaultLimit = 50
-	listAdminApplicationsMaxLimit     = 200
+	listAdminApplicationsDefaultLimit = support.DefaultPageLimit
+	listAdminApplicationsMaxLimit     = support.MaxPageLimit
 )
 
 func (d Deps) handleListApplications(c *echo.Context) error {
@@ -381,8 +381,8 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 
 const (
 	listApplicationAssignmentsQuery        = "ListApplicationAssignments"
-	listApplicationAssignmentsDefaultLimit = 50
-	listApplicationAssignmentsMaxLimit     = 200
+	listApplicationAssignmentsDefaultLimit = support.DefaultPageLimit
+	listApplicationAssignmentsMaxLimit     = support.MaxPageLimit
 )
 
 func (d Deps) handleListAssignments(c *echo.Context) error {

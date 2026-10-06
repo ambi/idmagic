@@ -10,6 +10,13 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+// DefaultPageLimit と MaxPageLimit は、例外の件数を要件で宣言していないコレクションの
+// ページサイズである。
+const (
+	DefaultPageLimit = 50
+	MaxPageLimit     = 200
+)
+
 // ParseLimit parses the "limit" query parameter for a keyset-paginated list
 // endpoint: absent falls back to def, present must be a positive
 // integer (else an error the caller maps to InvalidRequestError), clamped to
