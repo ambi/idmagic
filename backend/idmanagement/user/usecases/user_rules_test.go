@@ -368,19 +368,38 @@ func departmentAndTitleSchema(t *testing.T) *usermemory.TenantUserAttributeSchem
 	return schemas
 }
 
-//spec:covers EX-IDMANAGEMENT-045-03: 確認済みのメールアドレスを別のアドレスへ変える更新が email_verified を true のまま残すこと。
-func TestUpdateUserKeepsEmailVerifiedWhenTheAddressChanges(t *testing.T) {
+//spec:covers EX-IDMANAGEMENT-045-03, REQ-IDMANAGEMENT-045: email_verified を指定せずに確認済みのメールアドレスを変える更新が email_verified を false にして changed_fields に載せ、同じ要求で指定した email_verified は保存すること。
+func TestUpdateUserResetsEmailVerifiedWhenTheAddressChanges(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
+	bob := f.seed("bob", nil)
+	ctx := context.Background()
 	email := "alice@new.example.test"
-	if _, err := userusecases.UpdateUser(context.Background(), f.deps, userusecases.UpdateUserInput{
+	if _, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: alice.ID, Email: &email, Now: userRulesNow,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	stored := f.stored(t, alice.ID)
-	if *stored.Email != email || !stored.EmailVerified {
-		t.Fatalf("email=%q verified=%v, want the new address still verified", *stored.Email, stored.EmailVerified)
+	if *stored.Email != email || stored.EmailVerified {
+		t.Fatalf("email=%q verified=%v, want the new address unverified", *stored.Email, stored.EmailVerified)
+	}
+	updates := f.eventsOf("UserUpdated")
+	if len(updates) != 1 || !slices.Equal(updates[0].(*idmdomain.UserUpdated).ChangedFields, []string{"email", "email_verified"}) {
+		t.Fatalf("UserUpdated=%+v, want changed_fields [email email_verified]", updates)
+	}
+
+	bobEmail, verified := "bob@new.example.test", true
+	if _, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{
+		ActorUserID: "admin", Sub: bob.ID, Email: &bobEmail, EmailVerified: &verified, Now: userRulesNow,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if stored := f.stored(t, bob.ID); *stored.Email != bobEmail || !stored.EmailVerified {
+		t.Fatalf("email=%q verified=%v, want the explicitly verified address kept verified", *stored.Email, stored.EmailVerified)
+	}
+	if updates := f.eventsOf("UserUpdated"); len(updates) != 2 || !slices.Equal(updates[1].(*idmdomain.UserUpdated).ChangedFields, []string{"email"}) {
+		t.Fatalf("UserUpdated=%+v, want changed_fields [email] for the explicitly verified update", updates)
 	}
 }
 
@@ -559,15 +578,16 @@ func TestRestoreUserAcceptsTheExactEndOfTheGracePeriod(t *testing.T) {
 	}
 }
 
-//spec:covers EX-IDMANAGEMENT-049-03: 復元が下流のプロビジョニングへ通知しないこと。
-func TestRestoreUserDoesNotNotifyProvisioning(t *testing.T) {
+//spec:covers EX-IDMANAGEMENT-049-03, REQ-IDMANAGEMENT-049: 復元が下流のプロビジョニングへ User の再有効化を一度だけ通知すること。
+func TestRestoreUserNotifiesProvisioningOfTheReEnabledUser(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", pendingSince(userRulesNow.Add(-time.Hour)))
 	if _, err := userusecases.RestoreUser(context.Background(), f.deps, "admin", alice.ID, userRulesNow); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.notifier.calls) != 0 {
-		t.Fatalf("notifications=%+v, want none", f.notifier.calls)
+	want := []recordedNotification{{userID: alice.ID, trigger: userports.ProvisioningUserEnabled}}
+	if !slices.Equal(f.notifier.calls, want) {
+		t.Fatalf("notifications=%+v, want %+v", f.notifier.calls, want)
 	}
 }
 

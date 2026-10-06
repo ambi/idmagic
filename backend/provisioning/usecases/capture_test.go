@@ -284,6 +284,42 @@ func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDe
 	}
 }
 
+//spec:covers EX-PROVISIONING-006-03, REQ-PROVISIONING-006: 猶予期間内に User が再び有効になると、すべての接続の削除の予約を取り消す。
+func TestCaptureLifecycleEvent_ReEnablingCancelsEveryConnectionsScheduledDeprovision(t *testing.T) {
+	deps, connRepo, taskRepo, _ := newCaptureDeps()
+	ctx := context.Background()
+	for _, app := range []string{"app-1", "app-2"} {
+		if err := connRepo.Register(ctx, deleteWithGracePeriodConnection(app, 7), "secret"); err != nil {
+			t.Fatalf("Register(%s) error = %v", app, err)
+		}
+	}
+	deletedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	dueAt := deletedAt.Add(7 * 24 * time.Hour)
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", deletedAt); err != nil {
+		t.Fatalf("CaptureLifecycleEvent(user_deleted) error = %v", err)
+	}
+	if due, _ := taskRepo.ListDueDeprovisions(ctx, dueAt, 10); len(due) != 2 {
+		t.Fatalf("scheduled deprovisions due at %v = %+v, want one per connection", dueAt, due)
+	}
+
+	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserEnabled, "", deletedAt.Add(24*time.Hour)); err != nil {
+		t.Fatalf("CaptureLifecycleEvent(user_enabled) error = %v", err)
+	}
+
+	due, err := taskRepo.ListDueDeprovisions(ctx, dueAt, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(due) != 0 {
+		t.Fatalf("scheduled deprovisions after re-enabling = %+v, want none", due)
+	}
+	for _, app := range []string{"app-1", "app-2"} {
+		if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, app, nil, 10); len(tasks) != 1 || tasks[0].Operation != domain.OperationUpdate {
+			t.Errorf("tasks on %s after re-enabling = %+v, want one update", app, tasks)
+		}
+	}
+}
+
 func TestCaptureLifecycleEvent_ReassignmentKeepsADeprovisionScheduledAfterIt(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()

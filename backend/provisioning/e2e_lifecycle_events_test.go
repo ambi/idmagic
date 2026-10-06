@@ -422,3 +422,26 @@ func TestE2E_ReassignmentWithinTheGracePeriodCancelsTheDELETE(t *testing.T) {
 		t.Errorf("events = %v, want no UserDeprovisioned after the reassignment", got)
 	}
 }
+
+//spec:covers EX-PROVISIONING-006-03, REQ-PROVISIONING-006: 猶予期間内に管理者が User を復元すると、予約していた delete は取り消され、期限の経過後も下流へ DELETE を送らない。
+func TestE2E_RestoreWithinTheGracePeriodCancelsTheDELETE(t *testing.T) {
+	h := newE2EHarness(t)
+	h.useDeleteWithGracePeriod(7)
+	run := newLifecycleRun(h)
+	userID := h.provisionUser("grace-restored")
+	remoteID := h.remoteUserID(userID)
+	deletedAt := time.Now().UTC()
+
+	h.softDeleteUser(userID, deletedAt)
+	if _, err := userusecases.RestoreUser(context.Background(), h.adminUserDeps, "actor", userID, deletedAt.Add(24*time.Hour)); err != nil {
+		t.Fatalf("RestoreUser() error = %v", err)
+	}
+	run.drainAt(deletedAt.Add(8 * 24 * time.Hour))
+
+	if got := h.downstream.find(http.MethodDelete, "/Users/"+remoteID); got != nil {
+		t.Fatalf("downstream received DELETE %s after the restore cancelled it", got.path)
+	}
+	if got := run.types(); slices.Contains(got, "UserDeprovisioned") {
+		t.Errorf("events = %v, want no UserDeprovisioned after the restore", got)
+	}
+}

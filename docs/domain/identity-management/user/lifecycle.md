@@ -55,7 +55,7 @@
 - `PendingDeletion` になった時刻に猶予期間の 30 日を加えた時刻ちょうどまでの間、管理者が User を復元したとき、IdManagement は、User を `Active` に戻す。
 - `PendingDeletion` になった時刻を記録していない User では、管理者が User を復元したとき、IdManagement は、時刻によらず User を `Active` に戻す。
 - 管理 API の応答で `PendingDeletion` の User を返すとき、IdManagement は、`PendingDeletion` になった時刻に猶予期間を加えた時刻を `purge_after` として返す。
-- 管理者が User を復元したとき、IdManagement は、下流のプロビジョニングへ通知しない。
+- 管理者が User を復元したとき、IdManagement は、User の再有効化として下流のプロビジョニングへ通知する。
 - 猶予期間を過ぎた User の復元を要求された場合、IdManagement は、409 と `restore_grace_expired` で拒否する。
 - `PendingDeletion` でない User の復元を要求された場合、IdManagement は、409 と `not_pending_deletion` で拒否する。
 - **例**：EX-IDMANAGEMENT-049-01、EX-IDMANAGEMENT-049-02、EX-IDMANAGEMENT-049-03

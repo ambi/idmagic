@@ -54,7 +54,8 @@
 - `DeprovisionPolicy.on_delete=delete` で `grace_period_days` が 1 以上の接続では、User を削除したとき、Provisioning は、直ちには下流へ削除を送らず、猶予期間の後に `operation=delete` のタスクを作る予約をする。
 - `worker` が削除のタスクを実行したとき、Provisioning は、下流へ DELETE を送り、`action=delete` の `UserDeprovisioned` を発行する。
 - 猶予期間の間に User が同じアプリケーションへ再び割り当てられたとき、Provisioning は、削除の予約を取り消す。
-- **例**：EX-PROVISIONING-006-01、EX-PROVISIONING-006-02
+- 猶予期間の間に User が再び有効になったとき、Provisioning は、すべての接続でその User の削除の予約を取り消す。
+- **例**：EX-PROVISIONING-006-01、EX-PROVISIONING-006-02、EX-PROVISIONING-006-03
 
 #### REQ-PROVISIONING-016 同じ冪等キーの重複したプロビジョニングタスクは既存のレコードに収束する
 

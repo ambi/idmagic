@@ -81,7 +81,7 @@
 
 - Given ユーザー "alice" のメールアドレスは確認済みである
 - When 管理者がメールアドレスだけを "alice@new.example.test" へ変える
-- Then `email_verified` は `true` のままである
+- Then `email_verified` は `false` になり、`UserUpdated` の `changed_fields` は ["email", "email_verified"] である
 
 ## Rule: REQ-IDMANAGEMENT-013 特権を持つ管理者自身を対象にする削除の予約、復元、完全削除は拒否する
 
@@ -105,11 +105,11 @@
 - When 管理者がユーザー "alice" を復元する
 - Then 復元は `restore_grace_expired` で拒否され、"alice" は `PendingDeletion` のままである
 
-### Example: EX-IDMANAGEMENT-049-03 復元は下流へ通知しない
+### Example: EX-IDMANAGEMENT-049-03 復元は下流へ再有効化として通知する
 
 - Given ユーザー "alice" は `PendingDeletion` である
 - When 管理者がユーザー "alice" を復元する
-- Then 下流のプロビジョニングへの通知はない
+- Then 下流のプロビジョニングへ "alice" の再有効化が一度だけ通知される
 
 ## Rule: REQ-IDMANAGEMENT-050 User の完全削除は User を匿名化して `Deleted` にし、削除済みの User には何もしない
 

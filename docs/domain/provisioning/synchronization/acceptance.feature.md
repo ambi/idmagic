@@ -62,6 +62,14 @@
 - Then 猶予期間内に User "ユーザー-1" が Application "app-1" へ再び割り当てられる
 - Then 予約されていた purge の ProvisioningTask は取り消される
 
+### Example: EX-PROVISIONING-006-03 猶予期間内に User "ユーザー-1" が復元される
+
+- Given DeprovisionPolicy.on_delete=delete, grace_period_days=7 の接続 "app-1" と "app-2" がある
+- And User "ユーザー-1" は下流に存在する
+- When User "ユーザー-1" が削除される
+- Then 猶予期間内に User "ユーザー-1" が復元され、再び有効になる
+- Then "app-1" と "app-2" の削除の予約はどちらも取り消され、期限の経過後も下流へ DELETE は送られない
+
 ## Rule: REQ-PROVISIONING-011 誤削除ガードの閾値を超えると接続を隔離し、管理者が解除する
 
 ### Example: EX-PROVISIONING-011-01 通常経路

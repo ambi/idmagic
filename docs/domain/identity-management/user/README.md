@@ -167,7 +167,8 @@
 - 管理者が User の属性を更新したとき、IdManagement は、値が変わった属性のキーごとに、キーの昇順で `changed_fields` に載せる。
 - 管理者がどの項目の値も変えない更新を要求した場合、IdManagement は、成功を返し、`updated_at` を進めず、`UserUpdated` を発行しない。
 - 管理者が `attributes` を指定して User を更新したとき、IdManagement は、属性の対応表の全体を置き換え、指定しなかったキーを消す。
-- 管理者がメールアドレスだけを変えたとき、IdManagement は、`email_verified` を変えない。
+- 管理者が `email_verified` を指定せずにメールアドレスを別の値へ変えたとき、IdManagement は、`email_verified` を `false` にする。
+- 管理者がメールアドレスと `email_verified` を同じ要求で指定したとき、IdManagement は、指定した `email_verified` を保存する。
 - **例**：EX-IDMANAGEMENT-045-01、EX-IDMANAGEMENT-045-03
 
 #### REQ-IDMANAGEMENT-090 管理者による User の更新は、ほかの User と同じユーザー名とメールアドレスへの変更を拒否する

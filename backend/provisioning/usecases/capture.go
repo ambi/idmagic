@@ -52,7 +52,8 @@ func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
 // the caller's commit; see ports.ProvisioningCapture for how a lost capture is recovered.
 //
 // grace_period_days を持つ接続への User の削除（delete に変換されたもの）は、プロビジョニングタスクの代わりに
-// ScheduledDeprovision を保存する。割り当ての追加は、その Application の古い予約を取り消す。
+// ScheduledDeprovision を保存する。割り当ての追加は、その Application の古い予約を取り消し、
+// User の再有効化は、すべての接続の古い予約を取り消す。
 func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error {
 	connections, err := deps.ConnectionRepo.ListAll(ctx, tenantID)
 	if err != nil {
@@ -67,6 +68,13 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 		}
 	}
 	for _, conn := range connections {
+		if trigger == ports.TriggerUserEnabled {
+			// 猶予期間中に復元した User の削除予約を、すべての接続で取り消す。無効化からの再有効化には
+			// 予約がないので何も変わらない。接続の状態によらない理由は、割り当ての追加と同じである。
+			if _, err := deps.TaskRepo.CancelScheduledDeprovisions(ctx, tenantID, conn.ApplicationID, subjectID, version, now); err != nil {
+				return err
+			}
+		}
 		if conn.Status != domain.ConnectionActive || conn.Health == domain.HealthQuarantined {
 			continue
 		}

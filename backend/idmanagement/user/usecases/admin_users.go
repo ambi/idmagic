@@ -248,9 +248,13 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 		}
 		updated.Email = in.Email
 		changed = append(changed, "email")
+		// 所有を確かめていない新しいアドレスを確認済みとして扱わない。管理者が同じ要求で指定した値は下で優先する。
+		updated.EmailVerified = false
 	}
-	if in.EmailVerified != nil && *in.EmailVerified != user.EmailVerified {
+	if in.EmailVerified != nil {
 		updated.EmailVerified = *in.EmailVerified
+	}
+	if updated.EmailVerified != user.EmailVerified {
 		changed = append(changed, "email_verified")
 	}
 	if in.Roles != nil {
@@ -714,6 +718,9 @@ func RestoreUser(
 	}); err != nil {
 		return nil, err
 	}
+	// 下流では、削除の予約を DeprovisionPolicy に従って無効化、削除、予約のどれかにしている。
+	// 再有効化として通知すれば、Provisioning がそのどれからも有効な User へ戻す。
+	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, userports.ProvisioningUserEnabled, now)
 	return &updated, nil
 }
 
