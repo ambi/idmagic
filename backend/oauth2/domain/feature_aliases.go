@@ -100,6 +100,7 @@ var (
 	IsDeviceExpired               = devicedomain.IsDeviceExpired
 	HashRefreshToken              = tokendomain.HashRefreshToken
 	GenerateInitialRefreshToken   = tokendomain.GenerateInitialRefreshToken
+	GrantsRefreshToken            = tokendomain.GrantsRefreshToken
 	RotateRefreshToken            = tokendomain.RotateRefreshToken
 	IsRefreshTokenReplay          = tokendomain.IsRefreshTokenReplay
 	IsRefreshTokenAbsoluteExpired = tokendomain.IsRefreshTokenAbsoluteExpired

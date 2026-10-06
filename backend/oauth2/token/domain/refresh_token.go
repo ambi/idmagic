@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"slices"
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -25,6 +26,12 @@ type GeneratedRefreshToken struct {
 func HashRefreshToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// GrantsRefreshToken は、交換するスコープがリフレッシュトークンの発行を許すかを返す。
+// 認可コードと device_code の交換が共有する条件であり、offline_access を含むときだけ許す。
+func GrantsRefreshToken(scopes []string) bool {
+	return slices.Contains(scopes, "offline_access")
 }
 
 func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, sid, resource *string, now time.Time) (*GeneratedRefreshToken, error) {

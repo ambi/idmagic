@@ -189,7 +189,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	}
 
 	var refreshToken string
-	if deps.RefreshStore != nil && slices.Contains(rec.Scopes, "offline_access") {
+	if deps.RefreshStore != nil && domain.GrantsRefreshToken(rec.Scopes) {
 		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, rec.Sid, rec.Resource, now)
 		if err != nil {
 			return nil, err
