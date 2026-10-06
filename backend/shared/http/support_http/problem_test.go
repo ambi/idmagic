@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+//spec:covers REQ-SYSTEM-022: application/problem+json の本文の 5 項目、エラーコードを続けた type の URN、状態コード、相関 ID の instance。
 func TestWriteProblem_RFC9457Fields(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/probe", http.NoBody)

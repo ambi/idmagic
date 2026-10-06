@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 )
 
+//spec:covers REQ-SYSTEM-027: HTTP_MAX_BODY_BYTES のデフォルトが 1 MiB である。
 func TestLoadHTTPServerHardeningDefaults(t *testing.T) {
 	l := NewConfigLoader(stubEnv(nil))
 	h := LoadHTTPServerHardening(l)
@@ -102,6 +103,8 @@ func TestHTTPServerHardeningApply(t *testing.T) {
 
 // TestBodyLimitEnforcesConfiguredMax は、配線した BodyLimit middleware が
 // 上限超過ボディを 413 で拒否し、上限以下は通すことを確認する (oversize_body_status: 413)。
+//
+//spec:covers REQ-SYSTEM-027: 上限を超えるボディを 413 で拒否し、上限ちょうどのボディは通す。
 func TestBodyLimitEnforcesConfiguredMax(t *testing.T) {
 	const limit = 1024
 	e := echo.New()

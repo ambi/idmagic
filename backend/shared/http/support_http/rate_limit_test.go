@@ -2,9 +2,11 @@ package support_http_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,4 +147,43 @@ func TestCheckRateLimitRecordsMetricOutcome(t *testing.T) {
 			})
 		})
 	}
+}
+
+//spec:covers REQ-SYSTEM-030: 拒否の本文と Retry-After が同じ待機の秒数を示し、拒否と許可のどちらでも残量のヘッダーを付けない。
+func TestRateLimitDisclosesOnlyRetryDelay(t *testing.T) {
+	assertNoQuotaHeaders := func(t *testing.T, h http.Header) {
+		t.Helper()
+		for name := range h {
+			if name == "Ratelimit" || name == "Ratelimit-Policy" || strings.HasPrefix(name, "X-Ratelimit-") {
+				t.Errorf("response carries quota header %s", name)
+			}
+		}
+	}
+	withRateLimitEchoContext(t, func(c *echo.Context, rec *httptest.ResponseRecorder) {
+		limiter := stubRateLimiter{result: rlports.RateLimitResult{Allowed: false, RetryAfterSeconds: 42}}
+		if _, err := support.CheckRateLimit(c, limiter, nil, "token", "key"); err != nil {
+			t.Fatalf("CheckRateLimit: %v", err)
+		}
+		var body map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("unmarshal body: %v (body=%s)", err, rec.Body.String())
+		}
+		if body["error"] != "rate_limited" || body["retry_after_seconds"] != float64(42) || body["message"] == "" {
+			t.Fatalf("body = %v, want rate_limited, 42 seconds, and a message", body)
+		}
+		if len(body) != 3 {
+			t.Fatalf("body = %v, want only error, retry_after_seconds, and message", body)
+		}
+		if got := rec.Header().Get("Retry-After"); got != "42" {
+			t.Fatalf("Retry-After = %q, want 42", got)
+		}
+		assertNoQuotaHeaders(t, rec.Header())
+	})
+	withRateLimitEchoContext(t, func(c *echo.Context, rec *httptest.ResponseRecorder) {
+		limiter := stubRateLimiter{result: rlports.RateLimitResult{Allowed: true}}
+		if _, err := support.CheckRateLimit(c, limiter, nil, "token", "key"); err != nil {
+			t.Fatalf("CheckRateLimit: %v", err)
+		}
+		assertNoQuotaHeaders(t, rec.Header())
+	})
 }

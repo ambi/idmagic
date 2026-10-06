@@ -173,6 +173,7 @@ func TestV3CursorIsAtMostSixtyPercentOfV2Fixture(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-025: 別のテナント、別の絞り込み、改ざんしたペイロードのカーソルを拒否する。
 func TestV3CursorRejectsTamperTenantQueryAndUnknownVersion(t *testing.T) {
 	codec := NewCursorCodec([]byte("test-secret"))
 	token, err := codec.Encode(Cursor{

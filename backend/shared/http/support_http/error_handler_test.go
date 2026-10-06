@@ -5,9 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"unicode"
 
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/labstack/echo/v5"
 )
 
@@ -42,11 +44,12 @@ func TestErrorHandler_FallbackWritesProblemDetailsForHTTPError(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-023: エラーコードのない失敗を 500 と internal_server_error で返し、元のエラーの文を本文へ写さない。
 func TestErrorHandler_FallbackWritesProblemDetailsForPlainError(t *testing.T) {
 	e := echo.New()
 	e.HTTPErrorHandler = ErrorHandler(nil, nil)
 	e.GET("/probe", func(c *echo.Context) error {
-		return errors.New("boom")
+		return errors.New("boom: dial tcp 10.0.0.5:5432")
 	})
 
 	rec := httptest.NewRecorder()
@@ -64,6 +67,38 @@ func TestErrorHandler_FallbackWritesProblemDetailsForPlainError(t *testing.T) {
 	}
 	if body.Detail != http.StatusText(http.StatusInternalServerError) {
 		t.Errorf("detail = %q, want status text %q", body.Detail, http.StatusText(http.StatusInternalServerError))
+	}
+	if body.Type != "urn:idmagic:error:internal_server_error" {
+		t.Errorf("type = %q, want urn:idmagic:error:internal_server_error", body.Type)
+	}
+	if strings.Contains(rec.Body.String(), "10.0.0.5") {
+		t.Errorf("body discloses the original error: %s", rec.Body.String())
+	}
+}
+
+//spec:covers REQ-SYSTEM-028: 文字列長の違反を 422 と field_length_exceeded で返し、detail にフィールド名と上限を示す。
+func TestErrorHandlerWritesFieldLengthViolationAs422(t *testing.T) {
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler(nil, nil)
+	e.POST("/probe", func(c *echo.Context) error {
+		return spec.CheckMaxChars("display_name", strings.Repeat("あ", 201), 200)
+	})
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/probe", http.NoBody))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+	}
+	var body Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal body: %v (body=%s)", err, rec.Body.String())
+	}
+	if body.Type != "urn:idmagic:error:field_length_exceeded" {
+		t.Errorf("type = %q, want urn:idmagic:error:field_length_exceeded", body.Type)
+	}
+	if !strings.Contains(body.Detail, "display_name") || !strings.Contains(body.Detail, "200") {
+		t.Errorf("detail = %q, want the field name and the limit", body.Detail)
 	}
 }
 

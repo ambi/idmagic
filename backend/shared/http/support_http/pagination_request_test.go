@@ -32,6 +32,32 @@ func TestParsePageRequestFirstPage(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-024: 共有のページサイズで、省略した limit は 50 件、200 件を超える limit は 200 件になり、0 以下か整数でない limit は拒否する。
+func TestParsePageRequestAppliesSharedPageSize(t *testing.T) {
+	codec := NewCursorCodec([]byte("secret"))
+	for _, tc := range []struct {
+		query string
+		want  int
+	}{
+		{"", 50},
+		{"limit=200", 200},
+		{"limit=201", 200},
+	} {
+		page, err := ParsePageRequest(newPageCtx(t, tc.query), codec, "tenant-1", "ListThings", DefaultPageLimit, MaxPageLimit)
+		if err != nil {
+			t.Fatalf("%q: unexpected error: %v", tc.query, err)
+		}
+		if page.Limit != tc.want {
+			t.Errorf("%q: limit = %d, want %d", tc.query, page.Limit, tc.want)
+		}
+	}
+	for _, query := range []string{"limit=0", "limit=-1", "limit=1.5", "limit=ten"} {
+		if _, err := ParsePageRequest(newPageCtx(t, query), codec, "tenant-1", "ListThings", DefaultPageLimit, MaxPageLimit); !errors.Is(err, ErrBadPageRequest) {
+			t.Errorf("%q: err = %v, want ErrBadPageRequest", query, err)
+		}
+	}
+}
+
 func TestParsePageRequestRejectsBadLimit(t *testing.T) {
 	codec := NewCursorCodec([]byte("secret"))
 	c := newPageCtx(t, "limit=not-a-number")
@@ -40,6 +66,7 @@ func TestParsePageRequestRejectsBadLimit(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-025: 形式の壊れたカーソルを、ページの要求の誤りとして拒否する。
 func TestParsePageRequestRejectsInvalidCursor(t *testing.T) {
 	codec := NewCursorCodec([]byte("secret"))
 	c := newPageCtx(t, "cursor=not-a-real-cursor")
@@ -71,10 +98,11 @@ func TestParsePageRequestRoundTripsWithSetNextLink(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-025: 異なる絞り込みで発行したカーソルを、ページの要求の誤りとして拒否する。
 func TestParsePageRequestRejectsCursorFromDifferentQuery(t *testing.T) {
 	codec := NewCursorCodec([]byte("secret"))
 	cursor, err := codec.Encode(Cursor{
-		TenantID: "tenant-1", QueryHash: "ListOtherThings", After: "x.y",
+		TenantID: "tenant-1", QueryHash: "ListOtherThings", After: joinKeyset("x", "y"),
 		ExpiresAt: time.Now().Add(time.Hour),
 	})
 	if err != nil {
@@ -215,6 +243,7 @@ func TestParsePageRequestPreservesV3PageAndEndAnchor(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-026: 総件数を返すコレクションの 4 つの Pagination-* ヘッダーの値。
 func TestPaginationMetadataAndHeadersCoverEmptyAndRemainderPage(t *testing.T) {
 	if got := CalculatePaginationMetadata(0, PageRequest{Limit: 50, CurrentPage: 1}); got.TotalItems != 0 || got.TotalPages != 0 || got.CurrentPage != 0 || got.PageSize != 50 {
 		t.Fatalf("empty metadata = %+v", got)
@@ -233,6 +262,7 @@ func TestPaginationMetadataAndHeadersCoverEmptyAndRemainderPage(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-026: 中間のページで first、prev、next、last を返し、first の URL から cursor を除く。
 func TestSetPaginationLinksEmitsFirstPreviousNextLast(t *testing.T) {
 	codec := NewCursorCodec([]byte("secret"))
 	c := newPageCtx(t, "cursor=current&limit=50&status=active")
@@ -250,5 +280,28 @@ func TestSetPaginationLinksEmitsFirstPreviousNextLast(t *testing.T) {
 	firstPart, _, _ := strings.Cut(link, ", ")
 	if strings.Contains(firstPart, "cursor=") {
 		t.Fatalf("first link contains cursor: %q", firstPart)
+	}
+}
+
+//spec:covers REQ-SYSTEM-026: 先頭のページでは first を、末尾のページでは last を返さない。
+func TestSetPaginationLinksOmitsFirstOnFirstPageAndLastOnLastPage(t *testing.T) {
+	codec := NewCursorCodec([]byte("secret"))
+	relations := func(page PageRequest, hasPrevious, hasNext bool) string {
+		t.Helper()
+		c := newPageCtx(t, "limit=50")
+		if err := SetPaginationLinks(c, codec, "http://idp.test", "tenant-1", "ListThings", page,
+			"alpha", "id-1", "bravo", "id-2", hasPrevious, hasNext, 3); err != nil {
+			t.Fatalf("SetPaginationLinks: %v", err)
+		}
+		return c.Response().Header().Get("Link")
+	}
+
+	first := relations(PageRequest{Direction: PageForward, Anchor: PageAnchorKeyset, Limit: 50, CurrentPage: 1}, false, true)
+	if strings.Contains(first, `rel="first"`) || !strings.Contains(first, `rel="last"`) {
+		t.Fatalf("first page Link = %q, want last without first", first)
+	}
+	last := relations(PageRequest{Direction: PageBackward, Anchor: PageAnchorEnd, Limit: 50, CurrentPage: 3}, true, false)
+	if !strings.Contains(last, `rel="first"`) || strings.Contains(last, `rel="last"`) {
+		t.Fatalf("last page Link = %q, want first without last", last)
 	}
 }

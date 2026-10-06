@@ -39,6 +39,7 @@ func TestBuildNextLinkOverridesExistingCursorParam(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-026: prev と next の URL が要求のクエリパラメーターを保ち、cursor だけを置き換える。
 func TestBuildPageLinksIncludesPreviousAndNext(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/users?cursor=current&limit=50&status=active", http.NoBody)

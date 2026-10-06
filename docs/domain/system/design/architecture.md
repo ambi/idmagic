@@ -35,6 +35,7 @@
 | [起動時設定](../startup-configuration/README.md) | 起動時設定の検証、`FeatureRegistry`、`CONFIGURATION.md` の生成 |
 | [アドミッションコントロール](../admission-control/README.md) | 優先度クラスの分類、入場の上限のミドルウェア、`ROUTE_PRIORITY.md` の生成 |
 | [API の境界](../api-boundary/README.md) | 経路の種類ごとの認可、非推奨のヘッダー、ゲートウェイの許可リスト |
+| [HTTP API の共通の振る舞い](../http-api/README.md) | 対応するコードのディレクトリはなく、`backend/shared/http/support_http` の Problem Details とエラーハンドラー、ページングとカーソル、セキュリティヘッダーのミドルウェア、レートリミットの応答、`backend/shared/spec` の文字列長の検証、起動処理のボディ上限のミドルウェアが実装する |
 
 ## 実行時の流れ
 

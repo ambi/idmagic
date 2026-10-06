@@ -19,6 +19,7 @@ func serveWithSecurityHeaders(t *testing.T, cfg SecurityHeadersConfig, h echo.Ha
 	return rec
 }
 
+//spec:covers REQ-SYSTEM-029: デフォルトの構成のセキュリティヘッダーと CSP の方針、HSTS を付けないこと。
 func TestSecurityHeadersMiddleware_DefaultsAreSecure(t *testing.T) {
 	rec := serveWithSecurityHeaders(t, SecurityHeadersConfig{}, func(c *echo.Context) error {
 		return c.NoContent(http.StatusOK)
@@ -57,6 +58,7 @@ func TestSecurityHeadersMiddleware_DefaultsAreSecure(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-029: HSTS とサブドメインへの適用を有効にした構成の Strict-Transport-Security。
 func TestSecurityHeadersMiddleware_HSTSWhenEnabled(t *testing.T) {
 	rec := serveWithSecurityHeaders(t, SecurityHeadersConfig{HSTSEnabled: true, HSTSMaxAgeSeconds: 31536000, HSTSIncludeSubdomains: true}, func(c *echo.Context) error {
 		return c.NoContent(http.StatusOK)
@@ -66,6 +68,7 @@ func TestSecurityHeadersMiddleware_HSTSWhenEnabled(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-029: 報告専用の構成で強制のヘッダーの代わりに Report-Only を付け、report-uri を加える。
 func TestSecurityHeadersMiddleware_ReportOnlyAndReportURI(t *testing.T) {
 	rec := serveWithSecurityHeaders(t, SecurityHeadersConfig{ReportOnly: true, ReportURI: "/csp-report"}, func(c *echo.Context) error {
 		return c.NoContent(http.StatusOK)

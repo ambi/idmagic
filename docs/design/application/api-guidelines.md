@@ -15,6 +15,10 @@
 | 担保手段 | 違反を検出または拒否する仕組み。TypeSpec の型、Go の実装、PostgreSQL の制約、検査タスクのいずれか。仕組みがなければ「なし」と記載する |
 | 適用状況 | 全面適用か否か。未適用の API 操作があれば、その範囲を列挙する |
 
+外部から観測できる振る舞いは、それを実装する機能スライスで要件として宣言する。
+複数の操作に共通する振る舞いは [HTTP API の共通の振る舞い](../../domain/system/http-api/README.md)が宣言する。
+この文書は、その要件へリンクし、目的、担保手段、適用状況と、API 契約の書き方の規則を記載する。
+
 ルールは現時点で有効な決定として記載する。
 実装が追随していない箇所は、ルールを将来の方針として書き換えるのではなく、適用状況に未適用として記載する。
 採用しないと決定した事項も、採用しないというルールとして記載する。
@@ -200,7 +204,7 @@ API 操作は、そのハンドラーと、手前に位置するガードが返�
 Application とカテゴリーの管理 API も、存在しない対象と別テナントの対象に同じ 404 を返すことをその突き合わせで宣言し、HTTP の境界テストで固定する。
 
 次の 3 つは、API 操作のレスポンスではないため宣言しない。
-ミドルウェアが返す 2 つは、TypeSpec ではなくこの文書に記載する。
+それぞれの振る舞いは、[REQ-SYSTEM-023](../../domain/system/http-api/README.md)、[REQ-TENANCY-006](../../domain/tenancy/resolution/README.md)、[REQ-SYSTEM-018](../../domain/system/admission-control/README.md) が定める。
 
 | 宣言しないステータスコード | 返却箇所 | 宣言しない理由 |
 | --- | --- | --- |
@@ -243,8 +247,7 @@ Application とカテゴリーの管理 API も、存在しない対象と別テ
 
 ### エラーレスポンスの形式
 
-汎用 API のエラーは、RFC 9457 Problem Details（`application/problem+json`、`type`、`title`、`status`、`detail`、`instance`）で返す。
-`instance` には、リクエストの相関に用いる `request_id` を格納する。
+汎用 API のエラーを RFC 9457 Problem Details で返すことは、[REQ-SYSTEM-022](../../domain/system/http-api/README.md) が定める。
 個々のエラーは `model <Name>Error is ProblemDetails;` と宣言し、対応する `type` URN の接尾辞（サーバーが返すエラーコード）を `@doc` に記載する。
 
 - **目的**：クライアントが単一のエラー形式のみを処理すればよいようにする。エラーコードから TypeSpec のモデルを特定できるようにする。
@@ -278,11 +281,8 @@ Problem Details と標準のいずれにも該当しない独自形式は、次�
 
 ### エラーメッセージの言語
 
-エラーレスポンスの文字列（`message`、`error_description`、`detail`、プレーンテキストのボディ）は、`DisplayLanguage` にかかわらず英語に固定する。
+エラーレスポンスの文字列を表示言語にかかわらず英語に固定することは [REQ-SYSTEM-013](../../domain/system/localization/README.md)、UI が安定したエラーコードをキーとして翻訳することは [REQ-SYSTEM-011](../../domain/system/localization/README.md) が定める。
 `Accept-Language` による切り替えも行わない。
-翻訳は、安定したエラーコードをキーとして UI が行う。
-Problem Details では、`type` の `urn:idmagic:error:` に続く部分がキーである。
-辞書にないエラーコードを受け取った UI は、`detail` または `title` を英語のまま表示する。
 
 - **目的**：同一の障害がクライアントの設定によって異なる文字列になると、ログの突合と相互運用性が損なわれる。サーバーの文言を変更せずに UI の対応言語を追加できるようにする。
 - **担保手段**：なし。
@@ -304,7 +304,7 @@ Problem Details では、`type` の `urn:idmagic:error:` に続く部分がキ�
 ### カーソル
 
 カーソルは署名とバージョンを持ち、テナント、クエリと並び順の同一性、方向、レコードの境界を束縛する。
-束縛条件に一致しないカーソルは 400 で拒否する。
+束縛条件に一致しないカーソルの拒否は、[REQ-SYSTEM-025](../../domain/system/http-api/README.md) が定める。
 
 - **目的**：カーソルを他のテナントや条件変更後のクエリに流用させない。
 - **担保手段**：Go の `support_http.CursorCodec`。
@@ -312,9 +312,7 @@ Problem Details では、`type` の `urn:idmagic:error:` に続く部分がキ�
 
 ### ページングのレスポンスヘッダー
 
-次ページと前ページは、RFC 8288 の `Link` レスポンスヘッダー（`rel="next"`、`rel="prev"`）で返す。
-リンクは現在のクエリパラメーターを保持し、カーソルのみを置き換える。
-総件数を返すコレクションは、`rel="first"` と `rel="last"` に加えて、`Pagination-Total-Items`、`Pagination-Total-Pages`、`Pagination-Current-Page`、`Pagination-Page-Size` ヘッダーを返す。
+ページ送りの `Link` ヘッダーと `Pagination-*` ヘッダーは、[REQ-SYSTEM-026](../../domain/system/http-api/README.md) が定める。
 これらのレスポンスヘッダーは TypeSpec に宣言する。
 
 - **目的**：クライアントが URL を再構成せずにページを送れるようにする。レスポンスボディの構造を変えずにページング情報を追加できるようにする。
@@ -323,13 +321,11 @@ Problem Details では、`type` の `urn:idmagic:error:` に続く部分がキ�
 
 ### ページサイズ
 
-`limit` は正の整数で受け付ける。
-省略時はデフォルト値を用い、最大値を超える値は最大値に丸める。
-デフォルト値は 50、最大値は 200 とする。
-例外は、監査イベント（デフォルト値 100、最大値 999）、インポートの行エラー（デフォルト値 100、最大値 200）、サインイン履歴（デフォルト値 10、最大値 50）である。
+`limit` のデフォルト値（50）と最大値（200）、範囲外の値の扱いは、[REQ-SYSTEM-024](../../domain/system/http-api/README.md) が定める。
+例外は、監査イベント（デフォルト値 100、最大値 999、[REQ-AUDIT-004](../../domain/audit/event-search/README.md)）、インポートの行エラー（デフォルト値 100、最大値 200）、サインイン履歴（デフォルト値 10、最大値 50）である。
 
 - **目的**：過大な `limit` をエラーとせず、レスポンスのサイズのみを抑制する。
-- **担保手段**：Go の `support_http.ParseLimit`。
+- **担保手段**：Go の `support_http.ParseLimit`、`support_http.DefaultPageLimit`、`support_http.MaxPageLimit`。
 - **適用状況**：全面適用。
 
 ### フィルタリング
@@ -400,7 +396,7 @@ SCIM の `filter` は、RFC 7644 の文法を許可リストの範囲で受け�
 ### 再試行の指示
 
 再試行までの待機時間は、`Retry-After` ヘッダーで秒数として返す。
-レートリミットの 429 とアドミッションコントロールの 503 がこれを返す。
+レートリミットの 429（[REQ-SYSTEM-030](../../domain/system/http-api/README.md)）とアドミッションコントロールの 503（[REQ-SYSTEM-018](../../domain/system/admission-control/README.md)）がこれを返す。
 同時実行ジョブの上限を超えたエクスポートの 429（`active_job_quota_exceeded`）は、待機時間を算出できないため `Retry-After` を返さない。
 
 - **目的**：クライアントに待機時間を推測させない。
@@ -431,7 +427,7 @@ SCIM の `filter` は、RFC 7644 の文法を許可リストの範囲で受け�
 
 ### キャッシュ検証
 
-公開のブランディング（`GET /api/branding`）は、バージョンを `ETag` として返し、`If-None-Match` が一致すれば 304 を返す。
+公開のブランディング（`GET /api/branding`）の `ETag` と 304 は、[REQ-TENANCY-034](../../domain/tenancy/branding/README.md) が定める。
 
 - **目的**：サインイン画面の表示のたびに同一のレスポンスボディを転送しない。
 - **担保手段**：Go の `branding_handler.go`。
@@ -516,7 +512,7 @@ Google AIP-136 の `:verb` 形式は採用しない。
 
 ### リクエストボディのサイズ
 
-すべてのリクエストボディは `HTTP_MAX_BODY_BYTES`（デフォルト値 1 MiB）を上限とし、汎用 API の JSON のリクエストボディはさらに 64 KiB を上限とする。
+すべてのリクエストボディの上限（`HTTP_MAX_BODY_BYTES`）は [REQ-SYSTEM-027](../../domain/system/http-api/README.md)、汎用 API の JSON のリクエストボディの 64 KiB の上限は [REQ-PLATFORM-005](../../domain/scenarios.feature.md) が定める。
 ロードバランサーまたはリバースプロキシにもデプロイメント環境に応じた粗い上限を設けるが、アプリケーションの上限の代替にはしない。
 前段は帯域と接続を入口で保護し、アプリケーションは直接接続や前段の設定差異にかかわらず API 種別ごとの契約を保証する。
 
@@ -534,7 +530,7 @@ Google AIP-136 の `:verb` 形式は採用しない。
 
 ### CSV の一括転送
 
-CSV の一括転送は、1 ファイルあたり 100,000 行、64 MiB、1 フィールドあたり 64 KiB を上限とする。
+CSV の一括転送の上限（1 ファイルあたり 100,000 行、64 MiB、1 フィールドあたり 64 KiB）は、[REQ-IDMANAGEMENT-037](../../domain/identity-management/csv-transfer/README.md) が定める。
 
 - **目的**：単一の転送がジョブの実行時間とストレージを占有しないようにする。
 - **担保手段**：Go の `CSVTransferPolicy`。
@@ -544,6 +540,7 @@ CSV の一括転送は、1 ファイルあたり 100,000 行、64 MiB、1 フィ
 
 レートリミットは、認証とトークン発行の経路に `EndpointRateLimitPolicy` として適用し、超過を 429 と `Retry-After` で通知する。
 対象は、ログイン、トークン、PAR、デバイス認可、バックチャネル認証である。
+閾値と対象の経路は [REQ-OAUTH2-040](../../domain/oauth2/protocol-endpoints/README.md) と [REQ-AUTHENTICATION-007](../../domain/authentication/sign-in/README.md)、拒否の応答の形式は [REQ-SYSTEM-030](../../domain/system/http-api/README.md) が定める。
 
 - **目的**：クレデンシャルの総当たり攻撃と、トークン発行の濫用を抑止する。
 - **担保手段**：Go の `support_http.CheckRateLimit`。
@@ -551,7 +548,7 @@ CSV の一括転送は、1 ファイルあたり 100,000 行、64 MiB、1 フィ
 
 ### レートリミットの残量ヘッダー
 
-レートリミットの残量を示すヘッダー（`RateLimit`、`RateLimit-Policy`、`X-RateLimit-*`）は返さない。
+レートリミットの残量を示すヘッダー（`RateLimit`、`RateLimit-Policy`、`X-RateLimit-*`）を返さないことは、[REQ-SYSTEM-030](../../domain/system/http-api/README.md) が定める。
 
 - **目的**：レートリミットの対象である認証とトークン発行の経路では、制限を受ける相手は攻撃者でもある。残量を返すと、制限に達しない送信間隔を攻撃者に教えることになる。`RateLimit` ヘッダーは IETF で Internet-Draft（`draft-ietf-httpapi-ratelimit-headers`）の段階にあり、標準として確定していない。管理 API には通知すべき API トークン単位のレートリミットが存在しない。
 - **担保手段**：なし。
@@ -564,7 +561,7 @@ CSV の一括転送は、1 ファイルあたり 100,000 行、64 MiB、1 フィ
 
 ### 計数単位
 
-文字列長は Unicode のコードポイント数で数える。
+文字列長を Unicode のコードポイント数で数えることは、[REQ-SYSTEM-028](../../domain/system/http-api/README.md) が定める。
 TypeSpec の `@maxLength`、OpenAPI の `maxLength`、PostgreSQL の `char_length()`、Go の `utf8.RuneCountInString` は、いずれもコードポイント数を数える。
 zog の `String().Max(n)` は UTF-8 のバイト数を数えるため文字列フィールドには用いず、`backend/shared/spec` の `Chars` と `CharsAtMost` を用いる。
 
@@ -689,7 +686,7 @@ UTF-16 のコードユニット数はコードポイント数を下回らない�
 
 ### 上限違反のエラー
 
-上限違反は、解析したリクエストの内容が業務ルールに違反する場合に該当するため、422 で返し、違反したフィールドと上限を `detail` に記載する。
+上限違反は、解析したリクエストの内容が業務ルールに違反する場合に該当するため、汎用 API では 422 で返す（[REQ-SYSTEM-028](../../domain/system/http-api/README.md)）。
 SAML、WS-Federation、OAuth 2.0、SCIM、WebAuthn のように、相手方のプロトコルがレスポンスの形式を定める API 区分では、長さの違反もそのプロトコルのエラーとして返す。
 AuthnRequest を送信した相手に Problem Details を返しても解釈されない。
 リソース上限は書き込み経路にのみ課す。
@@ -714,7 +711,7 @@ AuthnRequest を送信した相手に Problem Details を返しても解釈さ�
 
 ### 共通のセキュリティヘッダー
 
-境界ミドルウェアは、すべてのバックエンドのレスポンスに `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`X-Frame-Options: DENY`、厳格な `Content-Security-Policy`（`default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`）を付与する。
+境界ミドルウェアがすべてのバックエンドのレスポンスに付与するセキュリティヘッダーは、[REQ-SYSTEM-029](../../domain/system/http-api/README.md) が定める。
 
 - **目的**：`frame-ancestors 'none'` と `X-Frame-Options: DENY` によって、ログイン、同意、ポータルの画面の埋め込みとクリックジャッキングを防ぐ。認可コードやトークンを含む URL を、Referer によって外部へ送出しない。
 - **担保手段**：Go の `support_http` のセキュリティヘッダーミドルウェア。
@@ -742,6 +739,7 @@ CSP と `frame-ancestors` は、経路ごとの判断を要するため IdMagic 
 
 HSTS は TLS を終端する側が設定する。
 `Strict-Transport-Security` はデフォルトで無効とし、TLS がこの区間またはその手前で終端される場合にのみ有効にする（`HSTS_ENABLED`、`HSTS_MAX_AGE_SECONDS`、`HSTS_INCLUDE_SUBDOMAINS`）。
+構成ごとのヘッダーは [REQ-SYSTEM-029](../../domain/system/http-api/README.md) が定める。
 
 - **目的**：平文の `http` を用いる開発環境に影響させない。
 - **担保手段**：起動時設定。
@@ -750,6 +748,7 @@ HSTS は TLS を終端する側が設定する。
 ### CSP の段階的な強化
 
 画面を壊さずに CSP を強化する場合は、`CSP_REPORT_ONLY=true` で `Content-Security-Policy-Report-Only` を出力し、`CSP_REPORT_URI=<url>` で違反を収集し、影響を確認してから強制モードに戻す。
+構成ごとのヘッダーは [REQ-SYSTEM-029](../../domain/system/http-api/README.md) が定める。
 
 - **目的**：強制する前に違反を観測する。
 - **担保手段**：起動時設定。
@@ -786,7 +785,7 @@ HSTS は TLS を終端する側が設定する。
 
 ### 未知のプロパティ
 
-クライアントはレスポンスに含まれる未知のプロパティを無視し、サーバーはリクエストに含まれる未知のプロパティを無視する。
+クライアントはレスポンスに含まれる未知のプロパティを無視し、サーバーはリクエストに含まれる未知のプロパティを無視する（[REQ-PLATFORM-005](../../domain/scenarios.feature.md)）。
 既知のプロパティに不正な型または値が指定された場合は拒否する。
 プロトコルエンドポイントでは、適用する標準が未知のフィールドの拒否を要求する構造に限り、その標準を優先する。
 このデフォルトは汎用 API のエンドポイントごとに切り替えず、厳格さが必要な閉じた構造だけを型固有の検証で例外化する。
@@ -812,7 +811,7 @@ HSTS は TLS を終端する側が設定する。
 
 管理 API の各 API 操作は、到達を許可する API アクセストークンのスコープを TypeSpec の `x-api-token-scopes` に宣言する。
 トークンでの到達を許可しない API 操作は `interactive_session` を宣言する。
-スコープを宣言しない API 操作には、API アクセストークンで到達できない。
+スコープを宣言しない API 操作には、API アクセストークンで到達できない（[REQ-APITOKENS-004](../../domain/api-tokens/authentication/README.md)）。
 
 - **目的**：対話セッション専用の API 操作に、API アクセストークンで到達させない。
 - **担保手段**：Go の `support_http` のスコープ判定と `mise run check-admin-scopes`。
@@ -823,8 +822,7 @@ HSTS は TLS を終端する側が設定する。
 ### 非推奨の宣言
 
 非推奨の予定は TypeSpec に記録し、文書側には一覧を設けない。
-`deprecated_since` を設定したインターフェースは、レスポンスに `Deprecation` ヘッダー（RFC 9745）を付与する。
-廃止時期が確定して `sunset_at` を設定した後は、`Sunset` ヘッダー（RFC 8594）も付与する。
+`deprecated_since` と `sunset_at` を設定したインターフェースが返す `Deprecation` ヘッダー（RFC 9745）と `Sunset` ヘッダー（RFC 8594）は、[REQ-SYSTEM-014](../../domain/system/api-boundary/README.md) が定める。
 `sunset_at` は `deprecated_since` から 12 か月以上後とする。
 
 - **目的**：非推奨の一覧の二重管理による不整合を防ぐ。クライアントが実行時に非推奨を検出できるようにする。クライアントに移行期間を保証する。
