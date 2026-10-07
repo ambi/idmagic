@@ -17,6 +17,7 @@ paths = [
   '''^spec/generated/''',
   '''^frontend/dist/''',
   '''^frontend/coverage/''',
+  '''^site/''',
   '''^\.dev/''',
 ]
 
