@@ -10,10 +10,10 @@
 - When "operator" が `product_name` に空文字列を保存する
 - Then 取得したブランド設定は `product_name` を持たない
 
-### Example: EX-TENANCY-032-02 27 文字の日本語のラベル
+### Example: EX-TENANCY-032-02 81 文字の日本語のラベル
 
 - Given admin ロールを持つ "operator" が認証済みである
-- When "operator" が 27 文字の日本語のラベルと HTTPS の URL を `footer_link_1` に保存する
+- When "operator" が 81 文字の日本語のラベルと HTTPS の URL を `footer_link_1` に保存する
 - Then `invalid_branding` の 400 で拒否され、何も保存されない
 
 ### Example: EX-TENANCY-032-03 大文字のスキームで始まる URL

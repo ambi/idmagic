@@ -325,6 +325,9 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		AuditEventsRetained:  req.AuditEventsRetained,
 		ExportArtifactsBytes: req.ExportArtifactsBytes,
 	}
+	if quota.HasNegativeLimit() {
+		return support.WriteProblem(c, 400, "invalid_request", "quota limits must not be negative")
+	}
 
 	if d.QuotaRepo != nil {
 		if err := d.QuotaRepo.SetQuota(ctx, tenantID, quota); err != nil {

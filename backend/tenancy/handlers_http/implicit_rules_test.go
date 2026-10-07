@@ -426,7 +426,7 @@ func TestSystemAdminUpdatesATenantUnderTheTenantAdminRules(t *testing.T) {
 		http.StatusNotFound, "tenant_not_found")
 }
 
-//spec:covers EX-TENANCY-027-01: 無効なテナントの無効化も 204 で成功し、disabled_at を後の時刻で上書きし、TenantDisabled をもう一度発行する。
+//spec:covers REQ-TENANCY-027, EX-TENANCY-027-01: 無効なテナントの無効化も 204 で成功し、disabled_at を一度目の時刻のまま保ち、TenantDisabled をもう一度発行する。
 func TestDisablingADisabledTenantSucceedsAgain(t *testing.T) {
 	s := newRulesServer(t, systemAdmin(), rulesOptions{})
 	path := tenantsPath + "/acme/disable"
@@ -440,8 +440,8 @@ func TestDisablingADisabledTenantSucceedsAgain(t *testing.T) {
 
 	requireStatus(t, s.send(t, http.MethodPost, path, nil), http.StatusNoContent)
 	second, _ := s.tenants.FindByRealm(context.Background(), "acme")
-	if second == nil || second.DisabledAt == nil || second.DisabledAt.Before(firstAt) || second.DisabledAt.Equal(firstAt) {
-		t.Fatalf("disabled_at %v -> %v, want the second request's later time", firstAt, second.DisabledAt)
+	if second == nil || second.Status != domain.TenantStatusDisabled || second.DisabledAt == nil || !second.DisabledAt.Equal(firstAt) {
+		t.Fatalf("disabled_at %v -> %+v, want the first request's time kept", firstAt, second)
 	}
 	if disabled := s.eventsOfType("TenantDisabled"); len(disabled) != 2 {
 		t.Fatalf("TenantDisabled events = %d, want 2", len(disabled))
@@ -462,6 +462,36 @@ func TestDisablingAnUnknownRealmIsNotFound(t *testing.T) {
 	requireProblem(t, s.send(t, http.MethodPost, tenantsPath+"/ghost/disable", nil), http.StatusNotFound, "tenant_not_found")
 	if len(*s.events) != 0 {
 		t.Fatalf("events = %d, want 0", len(*s.events))
+	}
+}
+
+// ---- クォータ ----
+
+//spec:covers REQ-TENANCY-037: 負の上限を含む更新は 400 invalid_request で拒否し、保存済みの上書きを変えない。0 の上限は保存する。
+func TestQuotaUpdateRefusesNegativeLimits(t *testing.T) {
+	quotas := memory.NewQuotaRepository()
+	s := newRulesServer(t, systemAdmin(), rulesOptions{quotas: quotas})
+	path := tenantsPath + "/acme/quota"
+	storedUsers := func() *int {
+		t.Helper()
+		quota, err := quotas.GetQuota(context.Background(), "acme")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return quota.Users
+	}
+
+	requireStatus(t, s.send(t, http.MethodPut, path, map[string]int{"users": 20000}), http.StatusOK)
+
+	requireProblem(t, s.send(t, http.MethodPut, path, map[string]int{"users": 30000, "groups": -1}),
+		http.StatusBadRequest, "invalid_request")
+	if got := storedUsers(); got == nil || *got != 20000 {
+		t.Fatalf("users = %v, want the stored 20000", got)
+	}
+
+	requireStatus(t, s.send(t, http.MethodPut, path, map[string]int{"users": 0}), http.StatusOK)
+	if got := storedUsers(); got == nil || *got != 0 {
+		t.Fatalf("users = %v, want 0", got)
 	}
 }
 
@@ -604,11 +634,11 @@ func TestBrandingTrimsTextAndEmptyStringUnsets(t *testing.T) {
 	}
 }
 
-//spec:covers EX-TENANCY-032-02, EX-TENANCY-032-03: 80 バイトを超える日本語のラベルと、大文字のスキームの URL は 400 invalid_branding になり、何も保存しない。
+//spec:covers REQ-TENANCY-032, EX-TENANCY-032-02, EX-TENANCY-032-03: 81 文字の日本語のラベルと、大文字のスキームの URL は 400 invalid_branding になり、何も保存しない。80 文字の日本語のラベルは受け付ける。
 func TestBrandingRefusesLongMultibyteLabelsAndUppercaseSchemes(t *testing.T) {
 	label := func(n int) string { return strings.Repeat("ヘ", n) }
 	for name, link := range map[string]map[string]string{
-		"27 characters, 81 bytes":  {"label": label(27), "url": "https://help.example.test"},
+		"81 characters":            {"label": label(81), "url": "https://help.example.test"},
 		"uppercase HTTPS scheme":   {"label": "Help", "url": "HTTPS://help.example.test"},
 		"https in the wrong place": {"label": "Help", "url": "javascript:https://help.example.test"},
 	} {
@@ -622,11 +652,16 @@ func TestBrandingRefusesLongMultibyteLabelsAndUppercaseSchemes(t *testing.T) {
 		})
 	}
 
-	// 対照: 26 文字 (78 バイト) のラベルは受け付ける。
+	// 対照: 長さは文字数で数えるので、80 文字 (240 バイト) のラベルと、2,048 文字で 2,048 バイトを
+	// 超える URL は受け付ける。
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
+	url := "https://help.example.test/" + strings.Repeat("ヘ", 2048-len("https://help.example.test/"))
 	requireStatus(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]any{
-		"footer_link_1": map[string]string{"label": label(26), "url": "https://help.example.test"},
+		"footer_link_1": map[string]string{"label": label(80), "url": url},
 	}), http.StatusOK)
+	if saved, _ := s.branding.FindByTenant(context.Background(), "acme"); saved == nil || saved.FooterLink1.Label != label(80) {
+		t.Fatalf("branding = %+v, want the 80-character label saved", saved)
+	}
 }
 
 //spec:covers EX-TENANCY-033-01, EX-TENANCY-033-02: 262,144 バイトの PNG は受け付け、262,145 バイトの PNG は 400 で拒否してロゴを保存しない。

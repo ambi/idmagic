@@ -75,6 +75,7 @@
 - System 管理者がテナントの一覧を取得したとき、Tenancy は、すべてのテナントを `id` の昇順で返す。
 - System 管理者がテナントの一覧を取得したとき、Tenancy は、各テナントに上限の上書き（`quota`）と使用量（`usage`）を添える。
 - 一覧の取得でテナントの上限または使用量を読み取れなかった場合、Tenancy は、そのテナントの項目を省いて返し、一覧の取得を失敗させない。
+- **判断**：上限と使用量は一覧の補助情報である。その読み取りの障害で、テナントの一覧と、一覧から辿る無効化や再開の操作まで失わせない。
 - **例**：EX-TENANCY-026-01、EX-TENANCY-026-02
 
 #### REQ-TENANCY-014 通常のテナント管理者はシステムコンソールのテナント一覧にアクセスできない
@@ -94,11 +95,12 @@
 
 #### REQ-TENANCY-027 無効化と再開は、すでにその状態にあるテナントにも成功する
 
-- System 管理者がテナントを無効化したとき、Tenancy は、テナントを `Disabled` にし、`disabled_at` を要求の時刻にし、204 を返し、`TenantDisabled` を発行する。
+- テナントが `Active` の間、System 管理者がテナントを無効化したとき、Tenancy は、テナントを `Disabled` にし、`disabled_at` を要求の時刻にし、204 を返し、`TenantDisabled` を発行する。
 - System 管理者がテナントを再開したとき、Tenancy は、テナントを `Active` にし、`disabled_at` を消し、204 を返し、`TenantEnabled` を発行する。
-- テナントが `Disabled` の間、System 管理者が無効化を要求したとき、Tenancy は、`disabled_at` を要求の時刻で上書きし、204 を返し、`TenantDisabled` を発行する。
+- テナントが `Disabled` の間、System 管理者が無効化を要求したとき、Tenancy は、`disabled_at` を変えず、204 を返し、`TenantDisabled` を発行する。
 - テナントが `Active` の間、System 管理者が再開を要求したとき、Tenancy は、204 を返し、`TenantEnabled` を発行する。
 - 存在しない realm の無効化または再開を要求された場合、Tenancy は、404 と `tenant_not_found` で拒否し、イベントを発行しない。
+- **判断**：状態が変わらない要求にもイベントを発行するのは、イベントが操作者の操作を監査に残すためである。`disabled_at` は無効化が始まった時刻を表すので、再度の無効化では動かさない。
 - **例**：EX-TENANCY-027-01、EX-TENANCY-027-02
 
 ## セキュリティ上の考慮

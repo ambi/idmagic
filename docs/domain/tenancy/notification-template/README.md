@@ -81,6 +81,7 @@
 - テナント管理者が上書きをリセットしたとき、Tenancy は、上書きを削除し、200 と組み込みの文面を返し、テンプレートキーと言語を載せた `NotificationTemplateReset` を発行する。
 - 上書きがない間、テナント管理者がテンプレートをリセットしたとき、Tenancy は、200 と組み込みの文面を返し、`NotificationTemplateReset` を発行する。
 - カタログにないテンプレートキーまたは言語を指定された場合、Tenancy は、400 と `invalid_request` で拒否する。
+- **判断**：`NotificationTemplateReset` は、操作者が組み込みの文面へ戻すことを求めた記録であり、上書きの有無に依存させない。
 - **例**：EX-TENANCY-039-01
 
 ### テナント管理者によるプレビュー

@@ -35,16 +35,27 @@ model TenantUsage {
 
 @doc("system_admin がテナントの Quota を上書きする JSON のリクエスト。")
 model TenantQuotaUpdateRequest {
+  @minValue(0)
   users?: int64;
+  @minValue(0)
   groups?: int64;
+  @minValue(0)
   agents?: int64;
+  @minValue(0)
   applications?: int64;
+  @minValue(0)
   oauth2_clients?: int64;
+  @minValue(0)
   active_sessions?: int64;
+  @minValue(0)
   consents?: int64;
+  @minValue(0)
   active_jobs?: int64;
+  @minValue(0)
   ssf_streams?: int64;
+  @minValue(0)
   audit_events_retained?: int64;
+  @minValue(0)
   export_artifacts_bytes?: int64;
 }
 

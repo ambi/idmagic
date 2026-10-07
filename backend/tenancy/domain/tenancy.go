@@ -120,6 +120,20 @@ type TenantQuota struct {
 	ExportArtifactsBytes *int `json:"export_artifacts_bytes,omitempty"`
 }
 
+// HasNegativeLimit は上書きのどれかが負かを返す。上限 0 で作成を拒否できるので、負の上限に
+// 固有の意味はなく、保存しない。
+func (q TenantQuota) HasNegativeLimit() bool {
+	for _, limit := range []*int{
+		q.Users, q.Groups, q.Agents, q.Applications, q.OAuth2Clients, q.ActiveSessions,
+		q.Consents, q.ActiveJobs, q.SsfStreams, q.AuditEventsRetained, q.ExportArtifactsBytes,
+	} {
+		if limit != nil && *limit < 0 {
+			return true
+		}
+	}
+	return false
+}
+
 type TenantUsage struct {
 	Users                int `json:"users"`
 	Groups               int `json:"groups"`
@@ -469,7 +483,7 @@ func validTenantFooterLink(link TenantFooterLink) bool {
 	if !link.IsSet() {
 		return true
 	}
-	return len(link.Label) <= 80 && link.Label != "" && len(link.URL) <= 2048 && link.URL != "" && validTenantBrandingLink(link.URL)
+	return link.Label != "" && link.URL != "" && validTenantBrandingLink(link.URL)
 }
 
 // TenantBrandingAsset はテナントの branding ロゴ / favicon の保存済み blob (wi-89)

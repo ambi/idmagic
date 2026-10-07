@@ -260,8 +260,11 @@ func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id stri
 	t := normalizeNow(now)
 	updated.UpdatedAt = t
 	if disabled {
+		// disabled_at は無効化が始まった時刻なので、すでに無効なテナントでは動かさない。
+		if tenant.Status != domain.TenantStatusDisabled {
+			updated.DisabledAt = &t
+		}
 		updated.Status = domain.TenantStatusDisabled
-		updated.DisabledAt = &t
 	} else {
 		updated.Status = domain.TenantStatusActive
 		updated.DisabledAt = nil

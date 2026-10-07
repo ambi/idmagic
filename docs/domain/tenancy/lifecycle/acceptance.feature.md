@@ -84,7 +84,7 @@
 - Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
 - And テナント "acme" は無効化されている
 - When "sysadmin" がテナント "acme" を無効化する
-- Then 204 が返り、`disabled_at` は二度目の要求の時刻になり、"TenantDisabled" がもう一度発行される
+- Then 204 が返り、`disabled_at` は一度目の要求の時刻のまま変わらず、"TenantDisabled" がもう一度発行される
 
 ### Example: EX-TENANCY-027-02 存在しない realm を無効化する
 
