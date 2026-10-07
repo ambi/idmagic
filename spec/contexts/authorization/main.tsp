@@ -39,7 +39,7 @@ model GetAuthorizationModelError404 {
   @body body: GetAuthorizationModelError404Body;
 }
 
-@doc("Reads the latest published authorization model of the tenant. Naming a `version` reads that revision instead.")
+@doc("テナントの最新の公開済みの認可モデルを読む。`version` を指定すると、そのリビジョンを読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("GetAuthorizationModel")
 @route("/api/admin/v1/authorization/model")
@@ -95,7 +95,7 @@ model PutAuthorizationModelError422 {
   @body body: PutAuthorizationModelError422Body;
 }
 
-@doc("Publishes the authorization model of the tenant as a new revision. Existing revisions are appended to, never rewritten. A reference to an unknown relation, or a cycle in the rewrite rules, is rejected with 422.")
+@doc("テナントの認可モデルを新しいリビジョンとして公開する。既存のリビジョンには追記するだけで、書き換えない。未知のリレーションへの参照と、書き換え規則の循環は 422 で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("PutAuthorizationModel")
 @route("/api/admin/v1/authorization/model")
@@ -125,7 +125,7 @@ model ListRelationTuplesError403 {
   @body body: ListRelationTuplesError403Body;
 }
 
-@doc("Lists the RelationTuples of the tenant under a filter. Every filter is optional, and the response stops at the page ceiling.")
+@doc("テナントの RelationTuple を絞り込み条件で一覧する。どの絞り込み条件も任意で、レスポンスはページの上限で止まる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListRelationTuples")
 @route("/api/admin/v1/authorization/relation-tuples")
@@ -184,7 +184,7 @@ model WriteRelationTuplesError422 {
   @body body: WriteRelationTuplesError422Body;
 }
 
-@doc("Adds and removes RelationTuples of the tenant in one transaction. A change that does not fit the registered authorization model is rejected with 422, and nothing is applied. The consistency token in the response can be handed to a later CheckAccess.")
+@doc("テナントの RelationTuple を一つのトランザクションで追加および削除する。登録済みの認可モデルに合わない変更は 422 で拒否し、何も適用しない。レスポンスの一貫性トークンは、後の CheckAccess に渡せる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("WriteRelationTuples")
 @route("/api/admin/v1/authorization/relation-tuples")
@@ -236,7 +236,7 @@ model CheckAccessError422 {
   @body body: CheckAccessError422Body;
 }
 
-@doc("Decides whether a subject, together with its delegation chain, holds a relation on the target resource. Diagnostic and internal: both allow and deny come back as 200. An undecidable check is not allowed either -- it comes back as a deny.")
+@doc("サブジェクトがその委任の連鎖とともに、対象のリソースに対してリレーションを満たすかを判定する。診断と内部向けのもので、許可も拒否も 200 で返す。判定できないチェックも許可せず、拒否として返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("CheckAccess")
 @route("/api/admin/v1/authorization/check")
@@ -256,9 +256,9 @@ model ListAccessibleResourcesHttpRequest {
   subject_id: string;
   actor_chain?: IdMagic.Contract.FgaActor[];
   minimum_consistency?: string;
-  @doc("The scopes the caller's access token carries. The check refuses fail-closed when they do not cover what the operation requires.")
+  @doc("呼び出し元のアクセストークンが含むスコープ。操作が求めるものを満たさないとき、チェックはフェイルクローズで拒否する。")
   granted_scopes?: string[];
-  @doc("The scopes the operation requires.")
+  @doc("操作が求めるスコープ。")
   required_scopes?: string[];
 }
 
@@ -305,7 +305,7 @@ model ListAccessibleResourcesError422 {
   @body body: ListAccessibleResourcesError422Body;
 }
 
-@doc("Enumerates the resource identifiers on which a subject and its delegation chain hold the given relation, under a bounded scan. Reaching the bound sets `truncated`.")
+@doc("サブジェクトとその委任の連鎖が指定したリレーションを満たすリソースの識別子を、上限付きの走査で列挙する。上限に達すると `truncated` を設定する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListAccessibleResources")
 @route("/api/admin/v1/authorization/list-accessible-resources")

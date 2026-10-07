@@ -38,7 +38,7 @@ model SamlSingleSignOn1Error404 {
   @body body: SamlSingleSignOn1Error404Body;
 }
 
-@doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
+@doc("SAML 2.0 の Web Browser SSO のサインイン。SP 起点のリクエストは HTTP-Redirect または HTTP-POST のバインディングで AuthnRequest として届き、Version=2.0、IssueInstant の受理範囲、Issuer、Destination、HTTP-POST のレスポンスの ProtocolBinding、ACS の URL と index の排他と対応可否、NameIDPolicy の形式をすべて検査してから、はじめてサービスプロバイダーを解決する。経路の IdP プロファイル、SP が結び付くプロファイル、Destination が一致しないときは、リクエストをフェイルクローズで拒否する。署名を求める SP では、Redirect バインディングの署名か XML 署名のどちらかを検証する。対応していないリクエストや自己矛盾するリクエストはフェイルクローズで拒否し、SAML のプロトコルエラーを HTTP-POST で返すのは、返信先として検証済みの ACS があるときだけである。ForceAuthn=true は、最近再認証していない限り呼び出し元をサインインへ送る。IsPassive=true のときは、既存のセッションが使えなければ、サインインのページへ移らずに NoPassive のレスポンスを返す。IdP 起点のリクエストは、entityID のクエリで対象の SP を指定する。未認証の呼び出し元はサインインへ送り、リクエストはその往復の後も保たれる。認証後はアプリケーションの割り当てのゲートをフェイルクローズで適用し、割り当てのないサブジェクトには何も発行しない。SP のクレームのポリシーが生成する NameID と属性を bearer の SAML アサーションに収め、割り当てたプロファイルの XML 署名の資格情報で、SP の設定に従ってアサーションとレスポンスに署名し、SAMLResponse を HTTP-POST で ACS へ自動 POST する。テナント、SP、AuthnRequest の ID は、アサーションを発行する直前に、TTL 付きのリプレイのストアへ原子的に一度だけ記録する。InResponseTo、AudienceRestriction、Recipient、Destination は互いに整合させる。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleSignOnDefault")
 @route("/saml/sso")
@@ -80,7 +80,7 @@ model SamlSingleSignOn2Error404 {
   @body body: SamlSingleSignOn2Error404Body;
 }
 
-@doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
+@doc("SAML 2.0 の Web Browser SSO のサインイン。SP 起点のリクエストは HTTP-Redirect または HTTP-POST のバインディングで AuthnRequest として届き、Version=2.0、IssueInstant の受理範囲、Issuer、Destination、HTTP-POST のレスポンスの ProtocolBinding、ACS の URL と index の排他と対応可否、NameIDPolicy の形式をすべて検査してから、はじめてサービスプロバイダーを解決する。経路の IdP プロファイル、SP が結び付くプロファイル、Destination が一致しないときは、リクエストをフェイルクローズで拒否する。署名を求める SP では、Redirect バインディングの署名か XML 署名のどちらかを検証する。対応していないリクエストや自己矛盾するリクエストはフェイルクローズで拒否し、SAML のプロトコルエラーを HTTP-POST で返すのは、返信先として検証済みの ACS があるときだけである。ForceAuthn=true は、最近再認証していない限り呼び出し元をサインインへ送る。IsPassive=true のときは、既存のセッションが使えなければ、サインインのページへ移らずに NoPassive のレスポンスを返す。IdP 起点のリクエストは、entityID のクエリで対象の SP を指定する。未認証の呼び出し元はサインインへ送り、リクエストはその往復の後も保たれる。認証後はアプリケーションの割り当てのゲートをフェイルクローズで適用し、割り当てのないサブジェクトには何も発行しない。SP のクレームのポリシーが生成する NameID と属性を bearer の SAML アサーションに収め、割り当てたプロファイルの XML 署名の資格情報で、SP の設定に従ってアサーションとレスポンスに署名し、SAMLResponse を HTTP-POST で ACS へ自動 POST する。テナント、SP、AuthnRequest の ID は、アサーションを発行する直前に、TTL 付きのリプレイのストアへ原子的に一度だけ記録する。InResponseTo、AudienceRestriction、Recipient、Destination は互いに整合させる。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleSignOn")
 @route("/saml/idp/{profile_id}/sso")
@@ -93,11 +93,11 @@ op SamlSingleSignOn2(
 ): SamlSingleSignOn2Success_200 | SamlSingleSignOn2Success_303 | SamlSingleSignOn2Error400 | SamlSingleSignOn2Error403 | SamlSingleSignOn2Error404;
 
 model SamlSingleSignOn3HttpRequest {
-  @doc("The SP-initiated AuthnRequest, deflate+base64 or base64 depending on the binding. Empty for an IdP-initiated request.")
+  @doc("SP 起点の AuthnRequest。バインディングに応じて deflate+base64 または base64 で表す。IdP 起点のリクエストでは空である。")
   saml_request?: string;
-  @doc("The entityID naming the target SP for an IdP-initiated request.")
+  @doc("IdP 起点のリクエストで、対象の SP を指す entityID。")
   entity_id?: string;
-  @doc("The opaque context the SP round-trips. It comes back unchanged in the SAMLResponse.")
+  @doc("SP が往復させる不透明なコンテキスト。SAMLResponse で変わらずに戻る。")
   relay_state?: string;
 }
 
@@ -131,7 +131,7 @@ model SamlSingleSignOn3Error404 {
   @body body: SamlSingleSignOn3Error404Body;
 }
 
-@doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
+@doc("SAML 2.0 の Web Browser SSO のサインイン。SP 起点のリクエストは HTTP-Redirect または HTTP-POST のバインディングで AuthnRequest として届き、Version=2.0、IssueInstant の受理範囲、Issuer、Destination、HTTP-POST のレスポンスの ProtocolBinding、ACS の URL と index の排他と対応可否、NameIDPolicy の形式をすべて検査してから、はじめてサービスプロバイダーを解決する。経路の IdP プロファイル、SP が結び付くプロファイル、Destination が一致しないときは、リクエストをフェイルクローズで拒否する。署名を求める SP では、Redirect バインディングの署名か XML 署名のどちらかを検証する。対応していないリクエストや自己矛盾するリクエストはフェイルクローズで拒否し、SAML のプロトコルエラーを HTTP-POST で返すのは、返信先として検証済みの ACS があるときだけである。ForceAuthn=true は、最近再認証していない限り呼び出し元をサインインへ送る。IsPassive=true のときは、既存のセッションが使えなければ、サインインのページへ移らずに NoPassive のレスポンスを返す。IdP 起点のリクエストは、entityID のクエリで対象の SP を指定する。未認証の呼び出し元はサインインへ送り、リクエストはその往復の後も保たれる。認証後はアプリケーションの割り当てのゲートをフェイルクローズで適用し、割り当てのないサブジェクトには何も発行しない。SP のクレームのポリシーが生成する NameID と属性を bearer の SAML アサーションに収め、割り当てたプロファイルの XML 署名の資格情報で、SP の設定に従ってアサーションとレスポンスに署名し、SAMLResponse を HTTP-POST で ACS へ自動 POST する。テナント、SP、AuthnRequest の ID は、アサーションを発行する直前に、TTL 付きのリプレイのストアへ原子的に一度だけ記録する。InResponseTo、AudienceRestriction、Recipient、Destination は互いに整合させる。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PostSamlSingleSignOn")
 @route("/saml/idp/{profile_id}/sso")
@@ -142,13 +142,13 @@ op SamlSingleSignOn3(
 ): SamlSingleSignOn3Success_200 | SamlSingleSignOn3Success_303 | SamlSingleSignOn3Error400 | SamlSingleSignOn3Error403 | SamlSingleSignOn3Error404;
 
 model SamlSingleSignOn4HttpRequest {
-  @doc("The SP-initiated AuthnRequest, deflate+base64 or base64 depending on the binding. Empty for an IdP-initiated request.")
+  @doc("SP 起点の AuthnRequest。バインディングに応じて deflate+base64 または base64 で表す。IdP 起点のリクエストでは空である。")
   saml_request?: string;
-  @doc("The entityID naming the target SP for an IdP-initiated request.")
+  @doc("IdP 起点のリクエストで、対象の SP を指す entityID。")
   entity_id?: string;
-  @doc("The opaque context the SP round-trips. It comes back unchanged in the SAMLResponse.")
+  @doc("SP が往復させる不透明なコンテキスト。SAMLResponse で変わらずに戻る。")
   relay_state?: string;
-  @doc("The IdP profile id the request route selected.")
+  @doc("リクエストの経路が選んだ IdP プロファイルの id。")
   profile_id: string = "default";
 }
 
@@ -182,7 +182,7 @@ model SamlSingleSignOn4Error404 {
   @body body: SamlSingleSignOn4Error404Body;
 }
 
-@doc("Sign-in for SAML 2.0 Web Browser SSO. An SP-initiated request arrives as an AuthnRequest over the HTTP-Redirect or HTTP-POST binding, and the service provider is resolved only after Version=2.0, the acceptance window around IssueInstant, Issuer, Destination, the HTTP-POST response ProtocolBinding, the mutual exclusion and the supportability of the ACS URL and index, and the NameIDPolicy format have all been checked. When the IdP profile of the route, the profile the SP is bound to, and Destination do not agree, the request is refused fail-closed. For an SP that requires signatures, either the Redirect binding signature or the XML signature is verified. A request that is unsupported or self-contradictory is refused fail-closed, and a SAML protocol error is HTTP-POSTed back only when there is a verified ACS to reply to. ForceAuthn=true sends the caller to sign in unless they reauthenticated recently. With IsPassive=true, an unusable existing session yields a NoPassive response rather than a move to the sign-in page. An IdP-initiated request names the target SP through the entityID query. An unauthenticated caller is sent to sign in, and the request survives the round trip. Once authenticated, the application assignment gate is applied fail-closed and nothing is issued to an unassigned subject. The NameID and attributes the SP's claim policy produces are carried in a bearer SAML assertion; the assertion and the response are signed with the XML signing credentials of the assigned profile and according to the SP's settings; and the SAMLResponse is auto-posted to the ACS over HTTP-POST. The tenant, the SP, and the AuthnRequest ID are recorded in the TTL replay store atomically and exactly once, immediately before the assertion is issued. InResponseTo, AudienceRestriction, Recipient, and Destination are kept consistent with one another.")
+@doc("SAML 2.0 の Web Browser SSO のサインイン。SP 起点のリクエストは HTTP-Redirect または HTTP-POST のバインディングで AuthnRequest として届き、Version=2.0、IssueInstant の受理範囲、Issuer、Destination、HTTP-POST のレスポンスの ProtocolBinding、ACS の URL と index の排他と対応可否、NameIDPolicy の形式をすべて検査してから、はじめてサービスプロバイダーを解決する。経路の IdP プロファイル、SP が結び付くプロファイル、Destination が一致しないときは、リクエストをフェイルクローズで拒否する。署名を求める SP では、Redirect バインディングの署名か XML 署名のどちらかを検証する。対応していないリクエストや自己矛盾するリクエストはフェイルクローズで拒否し、SAML のプロトコルエラーを HTTP-POST で返すのは、返信先として検証済みの ACS があるときだけである。ForceAuthn=true は、最近再認証していない限り呼び出し元をサインインへ送る。IsPassive=true のときは、既存のセッションが使えなければ、サインインのページへ移らずに NoPassive のレスポンスを返す。IdP 起点のリクエストは、entityID のクエリで対象の SP を指定する。未認証の呼び出し元はサインインへ送り、リクエストはその往復の後も保たれる。認証後はアプリケーションの割り当てのゲートをフェイルクローズで適用し、割り当てのないサブジェクトには何も発行しない。SP のクレームのポリシーが生成する NameID と属性を bearer の SAML アサーションに収め、割り当てたプロファイルの XML 署名の資格情報で、SP の設定に従ってアサーションとレスポンスに署名し、SAMLResponse を HTTP-POST で ACS へ自動 POST する。テナント、SP、AuthnRequest の ID は、アサーションを発行する直前に、TTL 付きのリプレイのストアへ原子的に一度だけ記録する。InResponseTo、AudienceRestriction、Recipient、Destination は互いに整合させる。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PostSamlSingleSignOnDefault")
 @route("/saml/sso")
@@ -215,7 +215,7 @@ model SamlSingleLogout1Error404 {
   @body body: SamlSingleLogout1Error404Body;
 }
 
-@doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
+@doc("SAML の Single Logout。LogoutRequest は HTTP-Redirect または HTTP-POST のバインディングで届き、Issuer から SP を解決し、経路の IdP プロファイルを SP が結び付くプロファイルと照合し、署名を求める SP では署名を検証する。Destination は選んだプロファイルの SLO のエンドポイントでなければならず、返信は登録済みの SingleLogoutService にだけ送る。ローカルのセッションを破棄し、割り当てたプロファイルの鍵で署名した LogoutResponse を、登録済みの SLO の URL へ返す。entityID または sp を指定したローカルのログアウトも受け付けるが、解決できない宛先や登録されていない宛先へリダイレクトすることはないので、オープンリダイレクトにはならない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleLogoutDefault")
 @route("/saml/slo")
@@ -227,10 +227,10 @@ op SamlSingleLogout1(
 ): SamlSingleLogout1Success_200 | SamlSingleLogout1Success_303 | SamlSingleLogout1Error400 | SamlSingleLogout1Error404;
 
 model SamlSingleLogout2HttpRequest {
-  @doc("The entityID of the SP that asked for the logout.")
+  @doc("ログアウトを求めた SP の entityID。")
   entity_id?: string;
   relay_state?: string;
-  @doc("The IdP profile id the request route selected.")
+  @doc("リクエストの経路が選んだ IdP プロファイルの id。")
   profile_id: string = "default";
 }
 
@@ -258,7 +258,7 @@ model SamlSingleLogout2Error404 {
   @body body: SamlSingleLogout2Error404Body;
 }
 
-@doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
+@doc("SAML の Single Logout。LogoutRequest は HTTP-Redirect または HTTP-POST のバインディングで届き、Issuer から SP を解決し、経路の IdP プロファイルを SP が結び付くプロファイルと照合し、署名を求める SP では署名を検証する。Destination は選んだプロファイルの SLO のエンドポイントでなければならず、返信は登録済みの SingleLogoutService にだけ送る。ローカルのセッションを破棄し、割り当てたプロファイルの鍵で署名した LogoutResponse を、登録済みの SLO の URL へ返す。entityID または sp を指定したローカルのログアウトも受け付けるが、解決できない宛先や登録されていない宛先へリダイレクトすることはないので、オープンリダイレクトにはならない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PostSamlSingleLogoutDefault")
 @route("/saml/slo")
@@ -291,7 +291,7 @@ model SamlSingleLogout3Error404 {
   @body body: SamlSingleLogout3Error404Body;
 }
 
-@doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
+@doc("SAML の Single Logout。LogoutRequest は HTTP-Redirect または HTTP-POST のバインディングで届き、Issuer から SP を解決し、経路の IdP プロファイルを SP が結び付くプロファイルと照合し、署名を求める SP では署名を検証する。Destination は選んだプロファイルの SLO のエンドポイントでなければならず、返信は登録済みの SingleLogoutService にだけ送る。ローカルのセッションを破棄し、割り当てたプロファイルの鍵で署名した LogoutResponse を、登録済みの SLO の URL へ返す。entityID または sp を指定したローカルのログアウトも受け付けるが、解決できない宛先や登録されていない宛先へリダイレクトすることはないので、オープンリダイレクトにはならない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SamlSingleLogout")
 @route("/saml/idp/{profile_id}/slo")
@@ -303,7 +303,7 @@ op SamlSingleLogout3(
 ): SamlSingleLogout3Success_200 | SamlSingleLogout3Success_303 | SamlSingleLogout3Error400 | SamlSingleLogout3Error404;
 
 model SamlSingleLogout4HttpRequest {
-  @doc("The entityID of the SP that asked for the logout.")
+  @doc("ログアウトを求めた SP の entityID。")
   entity_id?: string;
   relay_state?: string;
 }
@@ -332,7 +332,7 @@ model SamlSingleLogout4Error404 {
   @body body: SamlSingleLogout4Error404Body;
 }
 
-@doc("SAML Single Logout. A LogoutRequest arrives over the HTTP-Redirect or HTTP-POST binding, the SP is resolved from Issuer, the IdP profile of the route is matched against the profile the SP is bound to, and for an SP that requires signatures the signature is verified. Destination must be the SLO endpoint of the selected profile, and the reply goes only to a registered SingleLogoutService. The local session is destroyed and a LogoutResponse, signed with the key of the assigned profile, is returned to the registered SLO URL. A local logout naming entityID or sp is accepted too, but nothing is ever redirected to a destination that cannot be resolved or is not registered, so this cannot become an open redirect.")
+@doc("SAML の Single Logout。LogoutRequest は HTTP-Redirect または HTTP-POST のバインディングで届き、Issuer から SP を解決し、経路の IdP プロファイルを SP が結び付くプロファイルと照合し、署名を求める SP では署名を検証する。Destination は選んだプロファイルの SLO のエンドポイントでなければならず、返信は登録済みの SingleLogoutService にだけ送る。ローカルのセッションを破棄し、割り当てたプロファイルの鍵で署名した LogoutResponse を、登録済みの SLO の URL へ返す。entityID または sp を指定したローカルのログアウトも受け付けるが、解決できない宛先や登録されていない宛先へリダイレクトすることはないので、オープンリダイレクトにはならない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PostSamlSingleLogout")
 @route("/saml/idp/{profile_id}/slo")
@@ -356,7 +356,7 @@ model PublishSamlMetadata1Error404 {
   @body body: PublishSamlMetadata1Error404Body;
 }
 
-@doc("Publishes the SAML 2.0 IdP metadata. The default route publishes the realm's default profile and a profile route the named one: its entityID, its SSO and SLO endpoints, the NameID formats it supports, and the XmlFederationSigning certificate of the profile scope, as an <EntityDescriptor><IDPSSODescriptor>. Alongside the active certificate it lists any verifying certificate still inside its rotation grace.")
+@doc("SAML 2.0 の IdP のメタデータを公開する。デフォルトの経路はレルムのデフォルトのプロファイルを、プロファイルの経路は指定したプロファイルを公開する。その entityID、SSO と SLO のエンドポイント、対応する NameID の形式、プロファイルのスコープの XmlFederationSigning の証明書を、<EntityDescriptor><IDPSSODescriptor> として返す。有効な証明書に加えて、ローテーションの猶予の内にある verifying の証明書も載せる。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PublishDefaultSamlMetadata")
 @route("/saml/metadata")
@@ -379,7 +379,7 @@ model PublishSamlMetadata2Error404 {
   @body body: PublishSamlMetadata2Error404Body;
 }
 
-@doc("Publishes the SAML 2.0 IdP metadata. The default route publishes the realm's default profile and a profile route the named one: its entityID, its SSO and SLO endpoints, the NameID formats it supports, and the XmlFederationSigning certificate of the profile scope, as an <EntityDescriptor><IDPSSODescriptor>. Alongside the active certificate it lists any verifying certificate still inside its rotation grace.")
+@doc("SAML 2.0 の IdP のメタデータを公開する。デフォルトの経路はレルムのデフォルトのプロファイルを、プロファイルの経路は指定したプロファイルを公開する。その entityID、SSO と SLO のエンドポイント、対応する NameID の形式、プロファイルのスコープの XmlFederationSigning の証明書を、<EntityDescriptor><IDPSSODescriptor> として返す。有効な証明書に加えて、ローテーションの猶予の内にある verifying の証明書も載せる。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PublishSamlMetadata")
 @route("/saml/idp/{profile_id}/metadata")
@@ -402,7 +402,7 @@ model DownloadSamlSigningCertificate1Error404 {
   @body body: DownloadSamlSigningCertificate1Error404Body;
 }
 
-@doc("Publishes the request tenant's active XmlFederationSigning X.509 certificate as PEM, for configuring trust in a SAML SP by hand. PublishSamlMetadata remains the authoritative trust document, verifying certificates inside a rotation overlap included; this endpoint returns only the active certificate, for setting trust up in the first place. No private key is returned.")
+@doc("SAML の SP で信頼を手作業で設定するために、リクエストのテナントの有効な XmlFederationSigning の X.509 証明書を PEM で公開する。ローテーションの重複期間内の verifying の証明書を含む、信頼の基準となる文書は引き続き PublishSamlMetadata であり、このエンドポイントは最初に信頼を設定するための有効な証明書だけを返す。秘密鍵は返さない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("DownloadDefaultSamlSigningCertificate")
 @route("/saml/signing-certificate.pem")
@@ -425,7 +425,7 @@ model DownloadSamlSigningCertificate2Error404 {
   @body body: DownloadSamlSigningCertificate2Error404Body;
 }
 
-@doc("Publishes the request tenant's active XmlFederationSigning X.509 certificate as PEM, for configuring trust in a SAML SP by hand. PublishSamlMetadata remains the authoritative trust document, verifying certificates inside a rotation overlap included; this endpoint returns only the active certificate, for setting trust up in the first place. No private key is returned.")
+@doc("SAML の SP で信頼を手作業で設定するために、リクエストのテナントの有効な XmlFederationSigning の X.509 証明書を PEM で公開する。ローテーションの重複期間内の verifying の証明書を含む、信頼の基準となる文書は引き続き PublishSamlMetadata であり、このエンドポイントは最初に信頼を設定するための有効な証明書だけを返す。秘密鍵は返さない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("DownloadSamlSigningCertificate")
 @route("/saml/idp/{profile_id}/signing-certificate.pem")
@@ -462,7 +462,7 @@ model CreateSamlIdentityProviderProfileError403 {
   @body body: CreateSamlIdentityProviderProfileError403Body;
 }
 
-@doc("A tenant administrator creates an additional shared or dedicated SAML IdP profile. The default profile cannot be created this way.")
+@doc("テナントの管理者が、追加の共有または専用の SAML IdP プロファイルを作成する。デフォルトのプロファイルはこの方法では作成できない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("CreateSamlIdentityProviderProfile")
 @route("/api/admin/v1/saml/idp-profiles")
@@ -491,7 +491,7 @@ model ListSamlIdentityProviderProfilesError403 {
   @body body: ListSamlIdentityProviderProfilesError403Body;
 }
 
-@doc("Lists the SAML IdP profiles of the tenant, the default one first and the rest by name ascending.")
+@doc("テナントの SAML IdP プロファイルを、デフォルトのプロファイルを先頭に、残りを名前の昇順で一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:read"])
 @TypeSpec.OpenAPI.operationId("ListSamlIdentityProviderProfiles")
 @route("/api/admin/v1/saml/idp-profiles")
@@ -548,7 +548,7 @@ model UpdateSamlIdentityProviderProfileError404 {
   @body body: UpdateSamlIdentityProviderProfileError404Body;
 }
 
-@doc("A tenant administrator changes the name or the mode of an additional IdP profile. The default profile cannot be changed, and a change to dedicated is refused while more than one SP refers to the profile.")
+@doc("テナントの管理者が、追加の IdP プロファイルの名前またはモードを変更する。デフォルトのプロファイルは変更できず、複数の SP がプロファイルを参照している間は dedicated への変更を拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("UpdateSamlIdentityProviderProfile")
 @route("/api/admin/v1/saml/idp-profiles/{profile_id}")
@@ -596,7 +596,7 @@ model DeleteSamlIdentityProviderProfileError409 {
   @body body: DeleteSamlIdentityProviderProfileError409Body;
 }
 
-@doc("Deletes an additional IdP profile nothing refers to. The default profile, and a profile an SP still refers to, are both refused.")
+@doc("何からも参照されていない追加の IdP プロファイルを削除する。デフォルトのプロファイルと、SP がまだ参照しているプロファイルは、どちらも拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("DeleteSamlIdentityProviderProfile")
 @route("/api/admin/v1/saml/idp-profiles/{profile_id}")
@@ -636,7 +636,7 @@ model RegisterSamlServiceProviderError403 {
   @body body: RegisterSamlServiceProviderError403Body;
 }
 
-@doc("Registers or updates (upserts) a SAML service provider. It takes the entityID, the permitted ACS URLs, the NameID format, the audience, the signature policy, and the claim policy, and stores them inside the tenant boundary. The entityID and a closed set of ACS URLs are both required.")
+@doc("SAML のサービスプロバイダーを登録または更新（upsert）する。entityID、許可する ACS の URL、NameID の形式、オーディエンス、署名のポリシー、クレームのポリシーを受け取り、テナントの境界の中に保存する。entityID と閉じた ACS の URL の集合はどちらも必須である。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSamlServiceProvider")
 @route("/api/admin/v1/saml/service-providers")
@@ -665,7 +665,7 @@ model ListSamlServiceProvidersError403 {
   @body body: ListSamlServiceProvidersError403Body;
 }
 
-@doc("Lists the SAML service providers of the tenant by entityID ascending.")
+@doc("テナントの SAML のサービスプロバイダーを entityID の昇順で一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:read"])
 @TypeSpec.OpenAPI.operationId("ListSamlServiceProviders")
 @route("/api/admin/v1/saml/service-providers")
@@ -709,7 +709,7 @@ model DeleteSamlServiceProviderError409 {
   @body body: DeleteSamlServiceProviderError409Body;
 }
 
-@doc("Deletes the SAML service provider outside the catalog whose entityID matches, idempotently. An SP whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409).")
+@doc("entityID が一致する、カタログの外の SAML のサービスプロバイダーを冪等に削除する。`application_id` が null でない SP は ApplicationOwnedProtocolError（HTTP 409）で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("DeleteSamlServiceProvider")
 @route("/api/admin/v1/saml/service-providers")

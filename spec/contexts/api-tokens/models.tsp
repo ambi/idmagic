@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("The canonical list of scopes an API access token may carry, written as `<resource>:<action>` (read for queries, write for changes). The `scim:*` scopes belong to the SCIM 2.0 inbound provisioning API alone and split users and groups against read and write. The SCIM discovery endpoints (ServiceProviderConfig, ResourceTypes, Schemas) are readable with any `scim:*` scope. The Application aggregate and its protocol bindings sit under `applications:*`, while the standalone protocol and resource management APIs split into `oauth-clients:*`, `authorization-detail-types:*`, `mcp-resource-servers:*`, `saml:*`, `wsfed:*`, `provisioning:*`, `workload-identity:*`, and `shared-signals:*`. The `account:*` scopes belong to the self-service API of the token's own issuer, separating read from write and carving out the sensitive facets of MFA, sessions, consent, and passwords. Public, protocol, step-up, and email verification endpoints take no scope at all.")
+@doc("API アクセストークンに付与できるスコープの正式な一覧。`<resource>:<action>` の形で書き、参照には read、変更には write を使う。`scim:*` のスコープは SCIM 2.0 の受信プロビジョニング API だけに属し、ユーザーとグループを read と write に分ける。SCIM のディスカバリーエンドポイント（ServiceProviderConfig、ResourceTypes、Schemas）は、どの `scim:*` スコープでも読める。Application 集約とそのプロトコルのバインディングは `applications:*` の下にあり、単独のプロトコルとリソースの管理 API は `oauth-clients:*`、`authorization-detail-types:*`、`mcp-resource-servers:*`、`saml:*`、`wsfed:*`、`provisioning:*`、`workload-identity:*`、`shared-signals:*` に分かれる。`account:*` のスコープはトークンの発行者自身のセルフサービス API に属し、read と write を分けたうえで、MFA、セッション、同意、パスワードという機微な側面を個別のスコープにする。公開、プロトコル、ステップアップ、メール確認のエンドポイントはスコープを求めない。")
 enum ApiTokenScope {
   users_read: "users:read",
   users_write: "users:write",
@@ -54,14 +54,14 @@ enum ApiTokenScope {
 }
 
 
-@doc("The management record of a tenant-scoped JWT access token, which authenticates the administration API, the SCIM API, and the issuer's own account API. A token is not authorized once its scopes are empty, once `expires_at` has passed, or once `revoked_at` is set. The JWT itself is returned once, at issuance, and never stored.")
+@doc("テナントに属する JWT アクセストークンの管理用の記録。このトークンは管理 API、SCIM API、発行者自身のアカウント API の認証に使う。スコープが空になったとき、`expires_at` を過ぎたとき、`revoked_at` が設定されたときは認可しない。JWT そのものは発行時に一度だけ返し、保存しない。")
 model ApiToken {
   tenant_id: string;
-  @doc("The active User that issued the token. An `account:*` operation always acts on this User and no other.")
+  @doc("トークンを発行した有効な User。`account:*` の操作は常にこの User だけに作用する。")
   user_id: string;
   id: string;
   jti: string;
-  @doc("The built-in public client id the realm owns. Issuing a token through the administration API does not require an OAuth client to be registered first.")
+  @doc("レルムが所有する組み込みの公開クライアントの id。管理 API からトークンを発行するときに、OAuth クライアントを先に登録する必要はない。")
   client_id: string;
   scopes: ApiTokenScope[];
   audience: string;
@@ -73,7 +73,7 @@ model ApiToken {
 }
 
 
-@doc("The token metadata returned by the list and issue responses. It never carries the JWT itself.")
+@doc("一覧と発行のレスポンスが返すトークンのメタデータ。JWT そのものは含まない。")
 model ApiTokenMetadata {
   id: string;
   jti: string;
@@ -88,7 +88,7 @@ model ApiTokenMetadata {
 }
 
 
-@doc("The authentication context resolved from a valid API access token: the tenant, the issuer's subject, and the scopes.")
+@doc("有効な API アクセストークンから解決した認証コンテキスト。テナント、発行者のサブジェクト、スコープからなる。")
 model ApiTokenPrincipal {
   tenant_id: string;
   user_id: string;

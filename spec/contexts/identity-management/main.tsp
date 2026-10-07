@@ -17,7 +17,7 @@ model GetEmailVerificationContextSuccess_200 {
   @body body: GetEmailVerificationContextHttpResponse;
 }
 
-@doc("The email verification screen, which opens unauthenticated, reads the CSRF token that protects its confirmation POST.")
+@doc("未認証で開くメールアドレスの確認の画面が、その確認の POST を守る CSRF トークンを読む。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetEmailVerificationContext")
 @route("/api/account/v1/email/verify-context")
@@ -41,7 +41,7 @@ model GetAccountSummaryError403 {
   @body body: GetAccountSummaryError403Body;
 }
 
-@doc("An authenticated user reads their own account summary, the home of the self-service portal.\nThe target is fixed to `subject.id`. It carries no roles, and returns the last sign-in, the password change time,\nthe MFA state, and the required actions still outstanding. It is a separate contract from the AccountContext of the\nadministration shell.")
+@doc("認証済みのユーザーが、セルフサービスのポータルのホームである自身のアカウントの概要を読む。対象は `subject.id` に固定される。ロールは含まず、最後のサインイン、パスワードの変更時刻、MFA の状態、未処理の必須のアクションを返す。管理シェルの AccountContext とは別の契約である。")
 @TypeSpec.OpenAPI.operationId("GetAccountSummary")
 @route("/api/account/v1/summary")
 @get
@@ -64,7 +64,7 @@ model GetUserProfileError403 {
   @body body: GetUserProfileError403Body;
 }
 
-@doc("An authenticated user reads their own profile (self-service). The target is fixed to\n`subject.id`, so a cross-user read cannot arise structurally. `attributes` carries only what the user may read of\ntheir own, and `editable_attributes` carries the definitions they may edit.")
+@doc("認証済みのユーザーが、自身のプロフィールを読む（セルフサービス）。対象は `subject.id` に固定されるので、ユーザーをまたいだ読み取りは構造上起こらない。`attributes` はユーザーが自身について読んでよいものだけを、`editable_attributes` は編集してよい定義を含む。")
 @TypeSpec.OpenAPI.operationId("GetUserProfile")
 @route("/api/account/v1/profile")
 @get
@@ -130,7 +130,7 @@ model UpdateUserProfileError422 {
   @body body: UpdateUserProfileError422Body;
 }
 
-@doc("An authenticated user updates their own display name and the attributes marked `editable_by_user=true`\n(self-service). `subject.id` is fixed equal to `resource.id`. Attributes merge per key, and a key with\n`editable_by_user=false` is refused. Changing status, roles, or organization is for administrators and is not handled here.")
+@doc("認証済みのユーザーが、自身の表示名と、`editable_by_user=true` の印を付けた属性を更新する（セルフサービス）。`subject.id` は `resource.id` と等しく固定される。属性はキーごとにマージし、`editable_by_user=false` のキーは拒否する。状態、ロール、組織の変更は管理者が行うもので、ここでは扱わない。")
 @TypeSpec.OpenAPI.operationId("UpdateUserProfile")
 @route("/api/account/v1/profile")
 @patch
@@ -175,7 +175,7 @@ model RequestEmailChangeSuccess_204 {
   @statusCode statusCode: 204;
 }
 
-@doc("An authenticated user raises a change of their own primary email (self-service). It only sends a one-time link to the\nnew address; `User.email` is left alone. The target is fixed to `subject.id`, and an address already in use inside the\ntenant is refused.\nThe wording of the confirmation message is resolved from the Tenancy notification template catalogue\n(`template_key=EmailChangeConfirmation`), and the locale is decided in the order: the recipient User's locale attribute,\nthe tenant's `default_locale`, the system default locale. A tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the confirmation link is built from the issuer URL of the request.")
+@doc("認証済みのユーザーが、自身の主たるメールアドレスの変更を申し出る（セルフサービス）。新しいアドレスへ一回限りのリンクを送るだけで、`User.email` は変えない。対象は `subject.id` に固定され、テナントの中ですでに使われているアドレスは拒否する。確認のメッセージの文面は Tenancy の通知のテンプレートのカタログ（`template_key=EmailChangeConfirmation`）から解決し、ロケールは、受信者の User のロケールの属性、テナントの `default_locale`、システムのデフォルトのロケールの順に決める。テナントの上書きは組み込みのデフォルトより優先する。プレーンテキストと HTML の本文を常に両方生成し、確認のリンクはリクエストの発行者の URL から組み立てる。")
 @TypeSpec.OpenAPI.operationId("RequestEmailChange")
 @route("/api/account/v1/email/change-request")
 @post
@@ -184,7 +184,7 @@ op RequestEmailChange(
 ): RequestEmailChangeSuccess_204 | RequestEmailChangeError400 | RequestEmailChangeError403 | RequestEmailChangeError422;
 
 model ConfirmEmailChangeHttpResponse {
-  @doc("Always `ok`.")
+  @doc("常に `ok` である。")
   status: string;
 }
 
@@ -215,7 +215,7 @@ model ConfirmEmailChangeError403 {
   @body body: ConfirmEmailChangeError403Body;
 }
 
-@doc("Consumes the one-time link sent to the new address and settles the primary email.\nThe token is itself the proof that the new address is owned, so no authenticated session is required. Possession of the\ntoken is the ground of authorization -- this is token-possession-authenticated rather than a self-service session -- so\nthe AuthenticatedSelf and session-based access classification does not apply. On settling, `email_verified` becomes true\nand a `verify_email` required action, if there is one, is cleared automatically.")
+@doc("新しいアドレスへ送った一回限りのリンクを使い、主たるメールアドレスを確定する。トークンそのものが新しいアドレスの所有の証明なので、認証済みのセッションは不要である。トークンの所持が認可の根拠であり、セルフサービスのセッションではなくトークンの所持による認証なので、AuthenticatedSelf とセッションに基づくアクセスの分類は当てはまらない。確定すると `email_verified` が true になり、`verify_email` の必須のアクションがあれば自動で解除する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ConfirmEmailChange")
 @route("/api/account/v1/email/verify")
@@ -239,7 +239,7 @@ model ExportAccountDataError403 {
   @body body: ExportAccountDataError403Body;
 }
 
-@doc("An authenticated user reads their own personal data as JSON (self-service, GDPR access).\nThe target is fixed to `subject.id`. At this stage it is generated synchronously and carries the profile and the consents.")
+@doc("認証済みのユーザーが、自身の個人データを JSON で読む（セルフサービス、GDPR のアクセス権）。対象は `subject.id` に固定される。現段階では同期的に生成し、プロフィールと同意を含む。")
 @TypeSpec.OpenAPI.operationId("ExportAccountData")
 @route("/api/account/v1/data-export")
 @get
@@ -273,7 +273,7 @@ model ListAdminUsersError400 {
   @body body: ListAdminUsersError400Body;
 }
 
-@doc("An administrator lists the users that have not been deleted by `preferred_username` ascending, with the id breaking ties,\nthrough bidirectional keyset pagination. `query` searches username, name, email, id, and roles case-insensitively as a\nsubstring across the tenant, and narrows together with `status`. The cursor comes from the Link response header of the\nresponse (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、削除されていないユーザーを、`preferred_username` の昇順（同じなら id の順）に、双方向のキーセットページングで一覧する。`query` はテナント全体で、ユーザー名、名前、メールアドレス、id、ロールを大文字と小文字を区別せず部分一致で検索し、`status` とともに絞り込む。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminUsers")
 @route("/api/admin/v1/users")
@@ -311,7 +311,7 @@ model GetAdminUserError404 {
   @body body: GetAdminUserError404Body;
 }
 
-@doc("An administrator reads a user by id.")
+@doc("管理者が、id でユーザーを読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminUser")
 @route("/api/admin/v1/users/{user_id}")
@@ -370,7 +370,7 @@ model CreateAdminUserError422 {
   @body body: CreateAdminUserError422Body;
 }
 
-@doc("An administrator creates a user with an initial password that satisfies the PasswordPolicy of the Authentication context. `roles` may carry the reserved role `system_admin` only in the control-plane tenant; see InvalidRoleError.")
+@doc("管理者が、Authentication の Context の PasswordPolicy を満たす初期パスワードでユーザーを作成する。`roles` に予約済みのロール `system_admin` を含められるのは、制御面テナントだけである。InvalidRoleError を参照する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminUser")
 @route("/api/admin/v1/users")
@@ -417,14 +417,14 @@ model ImportAdminUsersError503 {
   @body body: ImportAdminUsersError503Body;
 }
 
-@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with User export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file.")
+@doc("管理者が、BOM の有無を問わない UTF-8 の CSV のアップロードを、副作用のないプレビューのジョブへストリーミングする。User のエクスポートと共有する設定可能な転送のポリシーのデフォルトは、データ行 100,000 行、ファイルあたり 64 MiB、フィールドあたり 64 KiB である。ペイロードは変更不可の成果物のストアに保持し、ジョブのパラメーターはテナントに限定した参照、サーバーが計算した SHA-256、大きさだけを保持する。ヘッダーは安定した機械用のキーを任意の順序と任意の部分集合で含めてよいが、未知の列、重複する列、パスワードまたはハッシュの列があると、それぞれファイル全体を拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminUsers")
 @route("/api/admin/v1/users/imports")
 @post
 op ImportAdminUsers(
   @header contentType: "text/csv",
-  @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
+  @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
 ): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminUsersError403 | ImportAdminUsersError503;
 
@@ -466,7 +466,7 @@ model ApplyAdminUserImportError503 {
   @body body: ApplyAdminUserImportError503Body;
 }
 
-@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the profile, roles, required actions, and custom attributes of each row settle atomically as a single aggregate mutation.")
+@doc("管理者が、同じテナントの成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器がリポジトリの現在の状態に対して計画し直す。ファイル全体は行単位で成功し、各行のプロフィール、ロール、必須のアクション、カスタム属性は、一つの集約の変更として原子的に確定する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminUserImport")
 @route("/api/admin/v1/users/imports/{preview_job_id}/apply")
@@ -521,7 +521,7 @@ model GetAdminUserImportError503 {
   @body body: GetAdminUserImportError503Body;
 }
 
-@doc("An administrator reads a CSV import job of the same tenant together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the result artifact metadata, and `error_total`.")
+@doc("管理者が、同じテナントの CSV のインポートのジョブを、行ごとの検証と適用の結果とともに読む。行のエラーは、変更不可の結果の成果物に決まった大きさのページの塊として保持し、テナント、ジョブ、エラーの序数に結び付く署名した不透明なカーソルで、双方向に読む。上限のデフォルトは 100、最大は 200 である。ジョブの結果の JSON は、操作ごとの件数、結果の成果物のメタデータ、`error_total` だけを保持する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("GetAdminUserImport")
 @route("/api/admin/v1/users/imports/{job_id}")
@@ -592,7 +592,7 @@ model StartUserCsvExportError503 {
   @body body: StartUserCsvExportError503Body;
 }
 
-@doc("An administrator starts a CSV export of the user list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels. The columns are confined to a subset of the built-in User allow list (13 core columns plus 27 built-in extension attributes as `attr:<key>`) and the `custom:<key>` tenant-defined attributes of the effective TenantUserAttributeSchema, and a status filter can be carried over. The generated payload uses the same UserCsvTransferPolicy and immutable artifact store as import, so a successful User export can be previewed without editing. It returns 202 and the export id.")
+@doc("管理者が、ユーザーの一覧の CSV のエクスポートを非同期のジョブとして開始する。CSV のヘッダーは表示用のラベルではなく、求めた機械用のキーに一致する。列は、組み込みの User の許可リスト（13 のコアの列と、`attr:<key>` の形の 27 の組み込みの拡張属性）と、有効な TenantUserAttributeSchema の `custom:<key>` のテナント定義の属性の部分集合に限り、状態の絞り込みを引き継げる。生成したペイロードはインポートと同じ UserCsvTransferPolicy と変更不可の成果物のストアを使うので、成功した User のエクスポートは編集せずにプレビューできる。202 とエクスポートの id を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("StartUserCsvExport")
 @route("/api/admin/v1/users/exports")
@@ -631,7 +631,7 @@ model ListUserExportsError503 {
   @body body: ListUserExportsError503Body;
 }
 
-@doc("An administrator lists the User exports with their state, counts, expiry, and whether they can be downloaded. Neither the CSV itself nor any PII value is included.")
+@doc("管理者が、User のエクスポートを、状態、件数、有効期限、ダウンロードできるかどうかとともに一覧する。CSV そのものも、個人情報の値も含まない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserExports")
 @route("/api/admin/v1/users/exports")
@@ -676,7 +676,7 @@ model GetUserExportError503 {
   @body body: GetUserExportError503Body;
 }
 
-@doc("An administrator reads the state, progress, failure reason, and expiry of one User export.")
+@doc("管理者が、一つの User のエクスポートの状態、進捗、失敗の理由、有効期限を読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetUserExport")
 @route("/api/admin/v1/users/exports/{export_id}")
@@ -687,11 +687,11 @@ op GetUserExport(
 
 model DownloadUserExportFileSuccess_200 {
   @statusCode statusCode: 200;
-  @doc("The generated export is CSV.")
+  @doc("生成したエクスポートは CSV である。")
   @header contentType: "text/csv; charset=utf-8";
-  @doc("Filename the browser saves the download under: `attachment; filename=\"<name>.csv\"`.")
+  @doc("ブラウザーがダウンロードを保存するファイル名。`attachment; filename=\"<name>.csv\"` である。")
   @header("Content-Disposition") contentDisposition: string;
-  @doc("The CSV bytes.")
+  @doc("CSV のバイト列。")
   @body body: bytes;
 }
 
@@ -726,7 +726,7 @@ model DownloadUserExportFileError503 {
   @body body: DownloadUserExportFileError503Body;
 }
 
-@doc("An administrator downloads a finished User export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
+@doc("管理者が、完了した User のエクスポートを `Content-Disposition: attachment` でダウンロードする。ダウンロードできるのは、成功してまだ期限切れでないジョブだけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("DownloadUserExportFile")
 @route("/api/admin/v1/users/exports/{export_id}/file")
@@ -773,7 +773,7 @@ model CancelUserExportError503 {
   @body body: CancelUserExportError503Body;
 }
 
-@doc("An administrator cancels a User export before it terminates. One that has already terminated is refused.")
+@doc("管理者が、終わる前の User のエクスポートを取り消す。すでに終わったものは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("CancelUserExport")
 @route("/api/admin/v1/users/exports/{export_id}/cancel")
@@ -841,7 +841,7 @@ model StartGroupCsvExportError503 {
   @body body: StartGroupCsvExportError503Body;
 }
 
-@doc("An administrator starts a CSV export of the group list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels, and the columns are confined to a subset of the Group allow list: the built-in import-compatible columns plus the `custom:<key>` tenant-defined attributes of the TenantGroupAttributeSchema. The generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful Group export can be previewed without editing; `lifecycle_action` is written empty on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
+@doc("管理者が、グループの一覧の CSV のエクスポートを非同期のジョブとして開始する。CSV のヘッダーは表示用のラベルではなく、求めた機械用のキーに一致し、列は Group の許可リストの部分集合（インポートと互換の組み込みの列と、TenantGroupAttributeSchema の `custom:<key>` のテナント定義の属性）に限る。生成したペイロードはインポートと同じ CsvTransferPolicy と変更不可の成果物のストアを使うので、成功した Group のエクスポートは編集せずにプレビューできる。`lifecycle_action` はすべての行で空に書き出し、それによって編集しない往復ではすべての行が変更なしのままになる。202 とエクスポートの id を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupCsvExport")
 @route("/api/admin/v1/groups/exports")
@@ -888,14 +888,14 @@ model ImportAdminGroupsError503 {
   @body body: ImportAdminGroupsError503Body;
 }
 
-@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with Group export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file. A row resolves its target by `id` first and by `name` second; `membership_type` may be chosen at creation but never changed afterwards, the two dynamic rule columns are validated as the final state they combine into, a `custom:<key>` cell is parsed in the canonical lexical form its declared type fixes, and a Group an external source owns is refused.")
+@doc("管理者が、BOM の有無を問わない UTF-8 の CSV のアップロードを、副作用のないプレビューのジョブへストリーミングする。Group のエクスポートと共有する設定可能な転送のポリシーのデフォルトは、データ行 100,000 行、ファイルあたり 64 MiB、フィールドあたり 64 KiB である。ペイロードは変更不可の成果物のストアに保持し、ジョブのパラメーターはテナントに限定した参照、サーバーが計算した SHA-256、大きさだけを保持する。ヘッダーは安定した機械用のキーを任意の順序と任意の部分集合で含めてよいが、未知の列、重複する列、パスワードまたはハッシュの列があると、それぞれファイル全体を拒否する。行の対象はまず `id`、次に `name` で解決する。`membership_type` は作成時に選べるが後から変えられず、二つの動的な規則の列は組み合わさった最終の状態として検証し、`custom:<key>` のセルは宣言した型が定める正規の字句の形で解析し、外部の取得元が所有する Group は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminGroups")
 @route("/api/admin/v1/groups/imports")
 @post
 op ImportAdminGroups(
   @header contentType: "text/csv",
-  @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
+  @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
 ): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupsError403 | ImportAdminGroupsError503;
 
@@ -937,7 +937,7 @@ model ApplyAdminGroupImportError503 {
   @body body: ApplyAdminGroupImportError503Body;
 }
 
-@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the name, description, contact address, roles, custom attributes, and dynamic rule of each row settle atomically as a single aggregate mutation. A row that carries `lifecycle_action=delete` deletes the Group, releases every membership in it by cascade, and writes its audit record in that same transaction; the deletion is irreversible, so a Group the CSV does not name is never deleted.")
+@doc("管理者が、同じテナントの成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器がリポジトリの現在の状態に対して計画し直す。ファイル全体は行単位で成功し、各行の名前、説明、連絡先のアドレス、ロール、カスタム属性、動的な規則は、一つの集約の変更として原子的に確定する。`lifecycle_action=delete` を含む行は、Group を削除し、その中のすべてのメンバーシップを連鎖して解除し、同じトランザクションで監査の記録を書く。削除は取り消せないので、CSV が指定しない Group を削除することはない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupImport")
 @route("/api/admin/v1/groups/imports/{preview_job_id}/apply")
@@ -992,7 +992,7 @@ model GetAdminGroupImportError503 {
   @body body: GetAdminGroupImportError503Body;
 }
 
-@doc("An administrator reads a CSV group import job of the same tenant together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the deletion counts kept apart from them, the result artifact metadata, and `error_total`.")
+@doc("管理者が、同じテナントの CSV のグループのインポートのジョブを、行ごとの検証と適用の結果とともに読む。行のエラーは、変更不可の結果の成果物に決まった大きさのページの塊として保持し、テナント、ジョブ、エラーの序数に結び付く署名した不透明なカーソルで、双方向に読む。上限のデフォルトは 100、最大は 200 である。ジョブの結果の JSON は、操作ごとの件数、それとは別に数えた削除の件数、結果の成果物のメタデータ、`error_total` だけを保持する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminGroupImport")
 @route("/api/admin/v1/groups/imports/{job_id}")
@@ -1033,7 +1033,7 @@ model ListGroupExportsError503 {
   @body body: ListGroupExportsError503Body;
 }
 
-@doc("An administrator lists the Group exports with their state, counts, expiry, and whether they can be downloaded.")
+@doc("管理者が、Group のエクスポートを、状態、件数、有効期限、ダウンロードできるかどうかとともに一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupExports")
 @route("/api/admin/v1/groups/exports")
@@ -1078,7 +1078,7 @@ model GetGroupExportError503 {
   @body body: GetGroupExportError503Body;
 }
 
-@doc("An administrator reads the state, progress, failure reason, and expiry of one Group export.")
+@doc("管理者が、一つの Group のエクスポートの状態、進捗、失敗の理由、有効期限を読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}")
@@ -1089,11 +1089,11 @@ op GetGroupExport(
 
 model DownloadGroupExportFileSuccess_200 {
   @statusCode statusCode: 200;
-  @doc("The generated export is CSV.")
+  @doc("生成したエクスポートは CSV である。")
   @header contentType: "text/csv; charset=utf-8";
-  @doc("Filename the browser saves the download under: `attachment; filename=\"<name>.csv\"`.")
+  @doc("ブラウザーがダウンロードを保存するファイル名。`attachment; filename=\"<name>.csv\"` である。")
   @header("Content-Disposition") contentDisposition: string;
-  @doc("The CSV bytes.")
+  @doc("CSV のバイト列。")
   @body body: bytes;
 }
 
@@ -1128,7 +1128,7 @@ model DownloadGroupExportFileError503 {
   @body body: DownloadGroupExportFileError503Body;
 }
 
-@doc("An administrator downloads a finished Group export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
+@doc("管理者が、完了した Group のエクスポートを `Content-Disposition: attachment` でダウンロードする。ダウンロードできるのは、成功してまだ期限切れでないジョブだけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupExportFile")
 @route("/api/admin/v1/groups/exports/{export_id}/file")
@@ -1175,7 +1175,7 @@ model CancelGroupExportError503 {
   @body body: CancelGroupExportError503Body;
 }
 
-@doc("An administrator cancels a Group export before it terminates. One that has already terminated is refused.")
+@doc("管理者が、終わる前の Group のエクスポートを取り消す。すでに終わったものは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}/cancel")
@@ -1243,7 +1243,7 @@ model StartGroupMemberCsvExportError503 {
   @body body: StartGroupMemberCsvExportError503Body;
 }
 
-@doc("An administrator starts a CSV export of the members of one Group. The `group_id` comes from the path and only that group's members are exported, the same per-group shape Entra, Okta, and Google use. The CSV header matches the machine keys that were requested, not display labels, and the generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful export can be previewed without editing; `membership_state` is written `present` on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
+@doc("管理者が、一つの Group のメンバーの CSV のエクスポートを開始する。`group_id` はパスから得て、そのグループのメンバーだけをエクスポートする。Entra、Okta、Google が使うのと同じ、グループごとの形である。CSV のヘッダーは表示用のラベルではなく、求めた機械用のキーに一致し、生成したペイロードはインポートと同じ CsvTransferPolicy と変更不可の成果物のストアを使うので、成功したエクスポートは編集せずにプレビューできる。`membership_state` はすべての行で `present` と書き出し、それによって編集しない往復ではすべての行が変更なしのままになる。202 とエクスポートの id を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupMemberCsvExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
@@ -1283,7 +1283,7 @@ model ListGroupMemberExportsError503 {
   @body body: ListGroupMemberExportsError503Body;
 }
 
-@doc("An administrator lists the member exports of one Group.")
+@doc("管理者が、一つの Group のメンバーのエクスポートを一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupMemberExports")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
@@ -1328,7 +1328,7 @@ model GetGroupMemberExportError503 {
   @body body: GetGroupMemberExportError503Body;
 }
 
-@doc("An administrator reads the state of one member export of a Group. An export id belonging to another group does not resolve.")
+@doc("管理者が、Group のメンバーのエクスポートの一つの状態を読む。別のグループに属するエクスポートの id は解決しない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupMemberExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}")
@@ -1340,11 +1340,11 @@ op GetGroupMemberExport(
 
 model DownloadGroupMemberExportFileSuccess_200 {
   @statusCode statusCode: 200;
-  @doc("The generated export is CSV.")
+  @doc("生成したエクスポートは CSV である。")
   @header contentType: "text/csv; charset=utf-8";
-  @doc("Filename the browser saves the download under: `attachment; filename=\"<name>.csv\"`.")
+  @doc("ブラウザーがダウンロードを保存するファイル名。`attachment; filename=\"<name>.csv\"` である。")
   @header("Content-Disposition") contentDisposition: string;
-  @doc("The CSV bytes.")
+  @doc("CSV のバイト列。")
   @body body: bytes;
 }
 
@@ -1379,7 +1379,7 @@ model DownloadGroupMemberExportFileError503 {
   @body body: DownloadGroupMemberExportFileError503Body;
 }
 
-@doc("An administrator downloads a finished member export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
+@doc("管理者が、完了したメンバーのエクスポートを `Content-Disposition: attachment` でダウンロードする。ダウンロードできるのは、成功してまだ期限切れでないジョブだけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupMemberExportFile")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}/file")
@@ -1427,7 +1427,7 @@ model CancelGroupMemberExportError503 {
   @body body: CancelGroupMemberExportError503Body;
 }
 
-@doc("An administrator cancels a member export before it terminates. One that has already terminated is refused.")
+@doc("管理者が、終わる前のメンバーのエクスポートを取り消す。すでに終わったものは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupMemberExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}/cancel")
@@ -1474,7 +1474,7 @@ model ImportAdminGroupMembersError503 {
   @body body: ImportAdminGroupMembersError503Body;
 }
 
-@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The `group_id` in the path is the one Group every row may touch; the `group_id` and `group_name` columns are read-only verification, and a row naming another Group is refused rather than written elsewhere. The transfer policy, the immutable artifact store, and the metadata-only job params are the ones every CSV shares. The header may carry the stable machine keys in any order and any subset except `membership_state`, which the file must declare because it is the only mutation intent it can express. A row resolves its User by `user_id` first and by `preferred_username` second, `source` and `created_at` are accepted and ignored, and a dynamic Group, a membership a dynamic rule owns, and a Group or User an external source owns are each refused fail-closed.")
+@doc("管理者が、BOM の有無を問わない UTF-8 の CSV のアップロードを、副作用のないプレビューのジョブへストリーミングする。パスの `group_id` が、どの行も触れてよい唯一の Group である。`group_id` と `group_name` の列は読み取り専用の確認用で、別の Group を指定する行は、別の場所へ書くことなく拒否する。転送のポリシー、変更不可の成果物のストア、メタデータだけのジョブのパラメーターは、すべての CSV が共有するものである。ヘッダーは安定した機械用のキーを任意の順序と任意の部分集合で含めてよいが、`membership_state` は例外で、ファイルが表せる唯一の変更の意図なので必ず宣言しなければならない。行の User はまず `user_id`、次に `preferred_username` で解決し、`source` と `created_at` は受け付けて無視する。動的な Group、動的な規則が所有するメンバーシップ、外部の取得元が所有する Group または User は、それぞれフェイルクローズで拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminGroupMembers")
 @route("/api/admin/v1/groups/{group_id}/members/imports")
@@ -1482,7 +1482,7 @@ model ImportAdminGroupMembersError503 {
 op ImportAdminGroupMembers(
   @path group_id: string,
   @header contentType: "text/csv",
-  @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
+  @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
 ): ImportAdminGroupMembersSuccess_202 | ImportAdminGroupMembersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupMembersError403 | ImportAdminGroupMembersError503;
 
@@ -1534,7 +1534,7 @@ model ApplyAdminGroupMemberImportError503 {
   @body body: ApplyAdminGroupMemberImportError503Body;
 }
 
-@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant and the same Group. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current membership, so an add or a release another operation performed after the preview is re-decided rather than replayed. Each accepted row settles its membership and its audit record atomically, and a row that fails leaves the rows already applied in place. Only the rows the file names are touched.")
+@doc("管理者が、同じテナントと同じ Group の成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器が現在のメンバーシップに対して計画し直すので、プレビューの後に別の操作が行った追加や解除は、再生せずに判断し直す。受け付けた各行は、メンバーシップと監査の記録を原子的に確定し、失敗した行は、すでに適用した行をそのまま残す。触れるのはファイルが指定する行だけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupMemberImport")
 @route("/api/admin/v1/groups/{group_id}/members/imports/{preview_job_id}/apply")
@@ -1590,7 +1590,7 @@ model GetAdminGroupMemberImportError503 {
   @body body: GetAdminGroupMemberImportError503Body;
 }
 
-@doc("An administrator reads a CSV group membership import job of the same tenant and the same Group together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the release count kept apart from them, the result artifact metadata, and `error_total`.")
+@doc("管理者が、同じテナントと同じ Group の CSV のグループのメンバーシップのインポートのジョブを、行ごとの検証と適用の結果とともに読む。行のエラーは、変更不可の結果の成果物に決まった大きさのページの塊として保持し、テナント、ジョブ、エラーの序数に結び付く署名した不透明なカーソルで、双方向に読む。上限のデフォルトは 100、最大は 200 である。ジョブの結果の JSON は、操作ごとの件数、それとは別に数えた解除の件数、結果の成果物のメタデータ、`error_total` だけを保持する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminGroupMemberImport")
 @route("/api/admin/v1/groups/{group_id}/members/imports/{job_id}")
@@ -1652,7 +1652,7 @@ model UpdateAdminUserError422 {
   @body body: UpdateAdminUserError422Body;
 }
 
-@doc("An administrator updates a user's profile, `email_verified`, and roles. Adding the reserved role `system_admin` is accepted only in the control-plane tenant, and a refusal leaves the other fields of the same request unwritten; see InvalidRoleError.")
+@doc("管理者が、ユーザーのプロフィール、`email_verified`、ロールを更新する。予約済みのロール `system_admin` の追加は制御面テナントでだけ受け付け、拒否したときは同じリクエストのほかのフィールドも書き込まない。InvalidRoleError を参照する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminUser")
 @route("/api/admin/v1/users/{user_id}")
@@ -1709,7 +1709,7 @@ model DisableAdminUserError409 {
   @body body: DisableAdminUserError409Body;
 }
 
-@doc("An administrator disables a user, refusing both new sign-ins and the use of existing sessions. A user scheduled for deletion is refused.")
+@doc("管理者がユーザーを無効にし、新しいサインインと既存のセッションの利用の両方を拒否する。削除を予定したユーザーは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DisableAdminUser")
 @route("/api/admin/v1/users/{user_id}/disable")
@@ -1754,7 +1754,7 @@ model EnableAdminUserError409 {
   @body body: EnableAdminUserError409Body;
 }
 
-@doc("An administrator re-enables a disabled user. A user scheduled for deletion is refused; RestoreAdminUser cancels the schedule.")
+@doc("管理者が、無効にしたユーザーを再び有効にする。削除を予定したユーザーは拒否する。予定を取り消すのは RestoreAdminUser である。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("EnableAdminUser")
 @route("/api/admin/v1/users/{user_id}/enable")
@@ -1763,9 +1763,9 @@ op EnableAdminUser(
   @path user_id: string,): EnableAdminUserSuccess_204 | EnableAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableAdminUserError403 | EnableAdminUserError409;
 
 model DeleteAdminUserHttpRequest {
-  @doc("Same meaning as `?purge=true`: skip the soft delete and anonymize immediately. Omitted means a soft delete.")
+  @doc("`?purge=true` と同じ意味で、論理削除を飛ばして即座に匿名化する。省くと論理削除になる。")
   force?: boolean;
-  @doc("Free-text note kept for the audit trail.")
+  @doc("監査証跡のために残す自由入力のメモ。")
   reason?: string;
 }
 
@@ -1806,14 +1806,14 @@ model DeleteAdminUserError422 {
   @body body: DeleteAdminUserError422Body;
 }
 
-@doc("An administrator deletes a user. By default this is a soft delete: the status moves to\n`pending_deletion` and the PII, Consents, RefreshTokens, and Sessions are preserved, so a Restore is possible\nwithin the grace period. With `purge=true` the anonymize cascade runs at once and leaves a tombstone. Both are\nidempotent: calling again for a user already in the same end state is a no-op that returns 204. A caller cannot\ndelete themselves, which keeps an admin or system_admin from destroying their own access.")
+@doc("管理者がユーザーを削除する。デフォルトは論理削除で、状態を `pending_deletion` へ移し、個人情報、Consent、RefreshToken、Session を残すので、猶予期間の間は Restore できる。`purge=true` では匿名化の連鎖を直ちに実行し、墓標を残す。どちらも冪等で、すでに同じ最終の状態にあるユーザーに対して再び呼ぶと、何もせずに 204 を返す。呼び出し元は自身を削除できないので、admin や system_admin が自身のアクセスを失うことはない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminUser")
 @route("/api/admin/v1/users/{user_id}")
 @delete
 op DeleteAdminUser(
   @path user_id: string,
-  @doc("`true` skips the soft delete and anonymizes immediately, the same as `force` in the body. The body itself is optional.")
+  @doc("`true` は論理削除を飛ばして即座に匿名化する。ボディの `force` と同じである。ボディ自体は任意である。")
   @query purge?: boolean,
   @body body: DeleteAdminUserHttpRequest
 ): DeleteAdminUserSuccess_204 | DeleteAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminUserError403 | DeleteAdminUserError422;
@@ -1857,7 +1857,7 @@ model RestoreAdminUserError409 {
   @body body: RestoreAdminUserError409Body;
 }
 
-@doc("An administrator restores a user in `pending_deletion`. The status returns to `active`\nand the user is restored with their PII and credentials intact. A user past the grace period, or one not in\n`pending_deletion`, gives InvalidRequestError. It returns the restored user. Acting on oneself is rejected in the\nuse case, mirroring how self-deletion is treated.")
+@doc("管理者が、`pending_deletion` のユーザーを復元する。状態は `active` に戻り、個人情報と資格情報を保ったまま復元する。猶予期間を過ぎたユーザーと `pending_deletion` でないユーザーは InvalidRequestError になる。復元したユーザーを返す。自身に対する操作は、自身の削除の扱いと同じく、ユースケースで拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("RestoreAdminUser")
 @route("/api/admin/v1/users/{user_id}/restore")
@@ -1903,7 +1903,7 @@ model SetUserRequiredActionError422 {
   @body body: SetUserRequiredActionError422Body;
 }
 
-@doc("An administrator gives a target user an action to be forced at their next sign-in (a RequiredAction).\nA user given `update_password` is sent to the change-password screen at their next sign-in, and changing it clears\nthe action automatically. It is idempotent: if the action is already there, the current state is returned. Administrators only.")
+@doc("管理者が、対象のユーザーに次のサインインで強制するアクション（RequiredAction）を与える。`update_password` を与えたユーザーは次のサインインでパスワードの変更の画面へ送られ、変更するとアクションは自動で解除される。冪等で、アクションがすでにあれば現在の状態を返す。管理者だけが行える。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("SetUserRequiredAction")
 @route("/api/admin/v1/users/{user_id}/required-actions")
@@ -1941,7 +1941,7 @@ model ClearUserRequiredActionError403 {
   @body body: ClearUserRequiredActionError403Body;
 }
 
-@doc("An administrator clears a forced action from a target user. It is idempotent: if the action was not there,\nthe current state is returned. Administrators only. The automatic clearing of `update_password` when the user changes\ntheir own password happens in ChangePassword and ResetPasswordWithToken instead.")
+@doc("管理者が、対象のユーザーから強制するアクションを解除する。冪等で、アクションがなければ現在の状態を返す。管理者だけが行える。ユーザーが自身のパスワードを変更したときの `update_password` の自動の解除は、代わりに ChangePassword と ResetPasswordWithToken が行う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ClearUserRequiredAction")
 @route("/api/admin/v1/users/{user_id}/required-actions/{action}")
@@ -1977,7 +1977,7 @@ model ListGroupsError400 {
   @body body: ListGroupsError400Body;
 }
 
-@doc("An administrator lists the groups of their tenant by name ascending, with the id breaking ties, through bidirectional keyset\npagination. Each group carries its `member_count`. The cursor comes from the Link response header of the response\n(`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、自身のテナントのグループを、名前の昇順（同じなら id の順）に、双方向のキーセットページングで一覧する。各グループは `member_count` を含む。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroups")
 @route("/api/admin/v1/groups")
@@ -2018,7 +2018,7 @@ model GetGroupError403 {
   @body body: GetGroupError403Body;
 }
 
-@doc("An administrator reads one group together with its member list. A group of another tenant is treated as nonexistent.")
+@doc("管理者が、グループを一つ、そのメンバーの一覧とともに読む。他のテナントのグループは存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroup")
 @route("/api/admin/v1/groups/{group_id}")
@@ -2080,7 +2080,7 @@ model CreateGroupError422 {
   @body body: CreateGroupError422Body;
 }
 
-@doc("An administrator creates a group in their tenant. The name is unique within the tenant. The email is only checked for its form and carries no uniqueness constraint, and the attributes are validated against the tenant's TenantGroupAttributeSchema. `roles` may carry the reserved role `system_admin` only in the control-plane tenant, where the Group grants it to the effective roles of its member control-plane Users; see InvalidRoleError.")
+@doc("管理者が、自身のテナントにグループを作成する。名前はテナントの中で一意である。メールアドレスは形式だけを検査し一意性の制約はなく、属性はテナントの TenantGroupAttributeSchema に照らして検証する。`roles` に予約済みのロール `system_admin` を含められるのは制御面テナントだけで、そこではグループがメンバーの制御面の User の有効ロールにそれを与える。InvalidRoleError を参照する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("CreateGroup")
 @route("/api/admin/v1/groups")
@@ -2140,7 +2140,7 @@ model UpdateGroupError422 {
   @body body: UpdateGroupError422Body;
 }
 
-@doc("An administrator updates the name, description, email, attributes, or roles of a group. Adding the reserved role `system_admin` is accepted only in the control-plane tenant, and a refusal leaves the other fields of the same request unwritten; see InvalidRoleError.")
+@doc("管理者が、グループの名前、説明、メールアドレス、属性、またはロールを更新する。予約済みのロール `system_admin` の追加は制御面テナントでだけ受け付け、拒否したときは同じリクエストのほかのフィールドも書き込まない。InvalidRoleError を参照する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateGroup")
 @route("/api/admin/v1/groups/{group_id}")
@@ -2177,7 +2177,7 @@ model DeleteGroupError403 {
   @body body: DeleteGroupError403Body;
 }
 
-@doc("An administrator deletes a group. The memberships in it are released by cascade, each as its own GroupMemberRemoved before the final GroupDeleted, and the group quota the group held is released. The deletion is immediate and irreversible; there is no reservation state to restore from. The CSV import path reaches the same deletion through the explicit `lifecycle_action=delete` column and settles the release, the deletion, and the audit record in one transaction per row.")
+@doc("管理者がグループを削除する。その中のメンバーシップは連鎖して解除し、最後の GroupDeleted の前にそれぞれ個別の GroupMemberRemoved を発行し、グループが使っていたグループのクォータを解放する。削除は即時で取り消せず、復元のための予約の状態はない。CSV のインポートの経路は、明示的な `lifecycle_action=delete` の列で同じ削除に至り、解除、削除、監査の記録を行ごとに一つのトランザクションで確定する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DeleteGroup")
 @route("/api/admin/v1/groups/{group_id}")
@@ -2213,7 +2213,7 @@ model AddGroupMemberError403 {
   @body body: AddGroupMemberError403Body;
 }
 
-@doc("An administrator makes a User a member of a group. Only a User of the same tenant is permitted, and an existing membership is a no-op, so the call is idempotent.")
+@doc("管理者が、User をグループのメンバーにする。許すのは同じテナントの User だけで、既存のメンバーシップに対しては何もしないので、呼び出しは冪等である。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("AddGroupMember")
 @route("/api/admin/v1/groups/{group_id}/members/{user_id}")
@@ -2250,7 +2250,7 @@ model RemoveGroupMemberError403 {
   @body body: RemoveGroupMemberError403Body;
 }
 
-@doc("An administrator removes a User from a group. A user who is not a member is a no-op, so the call is idempotent.")
+@doc("管理者が、User をグループから外す。メンバーでないユーザーに対しては何もしないので、呼び出しは冪等である。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("RemoveGroupMember")
 @route("/api/admin/v1/groups/{group_id}/members/{user_id}")
@@ -2298,7 +2298,7 @@ model UpdateDynamicGroupRuleError422 {
   @body body: UpdateDynamicGroupRuleError422Body;
 }
 
-@doc("An administrator validates and saves the restricted CEL rule of a dynamic group. An unknown attribute, a type mismatch, a non-boolean result, syntax outside the permitted subset, and exceeding a ceiling are all refused.")
+@doc("管理者が、動的グループの制限付きの CEL の規則を検証して保存する。未知の属性、型の不一致、真偽値でない結果、許可する部分集合の外の構文、上限の超過は、いずれも拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule")
@@ -2350,7 +2350,7 @@ model PreviewDynamicGroupRuleError422 {
   @body body: PreviewDynamicGroupRuleError422Body;
 }
 
-@doc("Evaluates an unsaved CEL against at most 100 Users without any side effect, and returns only what differs from the current membership.")
+@doc("保存していない CEL を、副作用なしに最大 100 の User に対して評価し、現在のメンバーシップとの差分だけを返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("PreviewDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/preview")
@@ -2388,7 +2388,7 @@ model EnableDynamicGroupRuleError403 {
   @body body: EnableDynamicGroupRuleError403Body;
 }
 
-@doc("Activates a validated rule, invalidates the membership of the old version at once, and schedules a job that re-evaluates everything.")
+@doc("検証済みの規則を有効にし、古いバージョンのメンバーシップを即座に無効にして、すべてを評価し直すジョブを予定する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("EnableDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/enable")
@@ -2424,7 +2424,7 @@ model DisableDynamicGroupRuleError403 {
   @body body: DisableDynamicGroupRuleError403Body;
 }
 
-@doc("Deactivates a rule, so every dynamic membership is excluded from authorization and assignment decisions at once.")
+@doc("規則を無効にし、すべての動的なメンバーシップを即座に認可と割り当ての判断から外す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DisableDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/disable")
@@ -2458,7 +2458,7 @@ model ListUserGroupsError403 {
   @body body: ListUserGroupsError403Body;
 }
 
-@doc("An administrator reads the groups a named User belongs to and the breakdown of their effective roles: direct, inherited from groups, and the union.")
+@doc("管理者が、指定した User が属するグループと、その有効ロールの内訳（直接、グループから継承、和集合）を読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserGroups")
 @route("/api/admin/v1/users/{user_id}/groups")
@@ -2493,7 +2493,7 @@ model ListAgentsError400 {
   @body body: ListAgentsError400Body;
 }
 
-@doc("An administrator lists the Agents of their tenant by name ascending, with the id breaking ties, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、自身のテナントの Agent を、名前の昇順（同じなら id の順）に、双方向のキーセットページングで一覧する。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("ListAgents")
 @route("/api/admin/v1/agents")
@@ -2539,7 +2539,7 @@ model GetAgentError404 {
   @body body: GetAgentError404Body;
 }
 
-@doc("An administrator reads one Agent. An Agent of another tenant is treated as nonexistent.")
+@doc("管理者が Agent を一つ読む。他のテナントの Agent は存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("GetAgent")
 @route("/api/admin/v1/agents/{agent_id}")
@@ -2602,7 +2602,7 @@ model RegisterAgentError422 {
   @body body: RegisterAgentError422Body;
 }
 
-@doc("An administrator registers an Agent in their tenant. The name is unique within the tenant, and leaving out `owner_user_id` makes the caller the owner. `roles` may never carry the reserved role `system_admin`, in any tenant, because an Agent is a different kind of principal from a system operator; see InvalidRoleError.")
+@doc("管理者が、自身のテナントに Agent を登録する。名前はテナントの中で一意で、`owner_user_id` を省くと呼び出し元が所有者になる。Agent はシステムの運用者とは別の種類の主体なので、`roles` には、どのテナントでも予約済みのロール `system_admin` を含められない。InvalidRoleError を参照する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("RegisterAgent")
 @route("/api/admin/v1/agents")
@@ -2674,7 +2674,7 @@ model UpdateAgentError422 {
   @body body: UpdateAgentError422Body;
 }
 
-@doc("An administrator updates the name, description, kind, `owner_user_id`, or roles of an Agent. Changing `owner_user_id` transfers ownership. Adding the reserved role `system_admin` is refused in every tenant, and the refusal leaves the other fields of the same request unwritten; see InvalidRoleError.")
+@doc("管理者が、Agent の名前、説明、種類、`owner_user_id`、またはロールを更新する。`owner_user_id` の変更は所有権の移転である。予約済みのロール `system_admin` の追加はどのテナントでも拒否し、拒否したときは同じリクエストのほかのフィールドも書き込まない。InvalidRoleError を参照する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAgent")
 @route("/api/admin/v1/agents/{agent_id}")
@@ -2731,7 +2731,7 @@ model DisableAgentError409 {
   @body body: DisableAgentError409Body;
 }
 
-@doc("An administrator suspends an Agent reversibly.")
+@doc("管理者が、Agent を元に戻せる形で一時停止する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DisableAgent")
 @route("/api/admin/v1/agents/{agent_id}/disable")
@@ -2787,7 +2787,7 @@ model EnableAgentError409 {
   @body body: EnableAgentError409Body;
 }
 
-@doc("An administrator returns a suspended Agent to service.")
+@doc("管理者が、一時停止した Agent を稼働に戻す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("EnableAgent")
 @route("/api/admin/v1/agents/{agent_id}/enable")
@@ -2842,7 +2842,7 @@ model KillAgentError409 {
   @body body: KillAgentError409Body;
 }
 
-@doc("An administrator kills an Agent. This is one-way and terminal; there is no way back.")
+@doc("管理者が Agent を強制停止する。一方向の終端の操作で、元には戻せない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("KillAgent")
 @route("/api/admin/v1/agents/{agent_id}/kill")
@@ -2897,7 +2897,7 @@ model DeleteAgentError409 {
   @body body: DeleteAgentError409Body;
 }
 
-@doc("An administrator deletes an Agent. Its bindings are released by cascade. A killed Agent cannot be deleted, fail-closed: deleting it would let the OAuth2Client it was bound to fetch tokens again through client_credentials without limit.")
+@doc("管理者が Agent を削除する。そのバインディングは連鎖して解除する。強制停止した Agent はフェイルクローズで削除できない。削除すると、それに結び付いていた OAuth2Client が client_credentials で再び無制限にトークンを取得できてしまうためである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAgent")
 @route("/api/admin/v1/agents/{agent_id}")
@@ -2964,7 +2964,7 @@ model BindAgentCredentialError422 {
   @body body: BindAgentCredentialError422Body;
 }
 
-@doc("An administrator binds an OAuth2Client to an Agent.")
+@doc("管理者が、OAuth2Client を Agent に結び付ける。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("BindAgentCredential")
 @route("/api/admin/v1/agents/{agent_id}/credentials")
@@ -3011,7 +3011,7 @@ model UnbindAgentCredentialError404 {
   @body body: UnbindAgentCredentialError404Body;
 }
 
-@doc("An administrator unbinds an OAuth2Client from an Agent.")
+@doc("管理者が、OAuth2Client と Agent の結び付きを外す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UnbindAgentCredential")
 @route("/api/admin/v1/agents/{agent_id}/credentials/{client_id}")

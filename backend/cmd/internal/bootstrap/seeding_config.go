@@ -32,12 +32,12 @@ func LoadSeedConfig(l *ConfigLoader) SeedConfig {
 	if cfg.Profile != "" {
 		l.Require("SEED_ENVIRONMENT", cfg.Environment != "", "is required when SEED_PROFILE is set")
 	}
-	l.RequiredWhen("SEED_ENVIRONMENT", "SEED_PROFILE is set")
+	l.RequiredWhen("SEED_ENVIRONMENT", `SEED_PROFILE != ""`)
 	cfg.ManifestPath = l.String("SEED_MANIFEST", "")
 	cfg.GeneratorSeed = l.String("SEED_GENERATOR_SEED", "")
 	cfg.SecretRoot = l.String("SEED_SECRET_ROOT", "")
 	cfg.FirstPartyRedirectURIs = l.StringList("SEED_FIRST_PARTY_REDIRECT_URIS", nil)
-	l.RequiredWhen("SEED_FIRST_PARTY_REDIRECT_URIS", "SEED_ENVIRONMENT=production and SEED_PROFILE=bootstrap")
+	l.RequiredWhen("SEED_FIRST_PARTY_REDIRECT_URIS", "SEED_ENVIRONMENT=production && SEED_PROFILE=bootstrap")
 
 	return cfg
 }

@@ -34,7 +34,7 @@ model ListAdminAuditEventsError403 {
   @body body: ListAdminAuditEventsError403Body;
 }
 
-@doc("An administrator reads the audit DomainEvents of their tenant, newest first, through bidirectional keyset pagination.\nBuilt for SOC and compliance work, it offers a time window (`after` / `before`), a page size (`limit`), continuation\n(`cursor`, reached through the `rel=\"prev\"` and `rel=\"next\"` links of the Link response header), and filtering by\n`type`, `user_id`, and `username` (the actor). Authentication events -- login success and failure, MFA, sessions,\naggregates -- live in the same store, so `category` (authentication / success / fail / aggregated / user / group /\nclient / consent / token / tenant / key) narrows the search for a security or an operational investigation. Beyond\nthat, `q` matches raw text as a substring and `filter` takes a structured expression over the field/operator allow\nlist of the registry. Only fields the AuditEventSearchAttribute registry permits may appear in `filter`; arbitrary\nSQL or JSONPath is refused. `user_id` and the `actor.id` of `filter` name the actor, and `username` resolves the\nactor's login name to a user id at search time -- not hashed, and matching nothing when no such user exists.\n`actor.username` in `filter` is a plaintext match reserved for authentication failures, so that an account name\nthat never existed can still be traced. `target.id` in `filter` is a different concept: the user an administrative\noperation acted on (AuditActorVsTarget). The scope is the caller's own tenant, fixed by the route: the query\ntakes no tenant_id input and no input that widens it, so the confinement is structural, and control-plane\ncredentials do not lift it here either -- ListSystemAuditEvents is the only search that spans tenants.")
+@doc("管理者が、自身のテナントの監査の DomainEvent を、新しい順に双方向のキーセットページングで読む。SOC とコンプライアンスの業務のためのもので、時間の範囲（`after` / `before`）、ページの大きさ（`limit`）、続きの取得（`cursor`。Link レスポンスヘッダーの `rel=\"prev\"` と `rel=\"next\"` のリンクからたどる）、`type`、`user_id`、`username`（操作した主体）による絞り込みを提供する。認証のイベント（ログインの成功と失敗、MFA、セッション、集約）も同じストアにあるので、`category`（authentication / success / fail / aggregated / user / group / client / consent / token / tenant / key）でセキュリティまたは運用の調査のための検索を絞り込める。さらに、`q` は生のテキストに部分一致し、`filter` はレジストリのフィールドと演算子の許可リストに対する構造化された式を受け付ける。`filter` に使えるのは AuditEventSearchAttribute のレジストリが許可するフィールドだけで、任意の SQL や JSONPath は拒否する。`user_id` と `filter` の `actor.id` は操作した主体を指し、`username` は検索時に操作した主体のログイン名をユーザー ID へ解決する。ハッシュ化はせず、該当するユーザーが存在しなければ何にも一致しない。`filter` の `actor.username` は認証の失敗に限った平文の一致で、存在しなかったアカウント名も追跡できるようにする。`filter` の `target.id` は別の概念で、管理操作の対象のユーザーを指す（AuditActorVsTarget）。範囲は経路が決める呼び出し元自身のテナントであり、検索は tenant_id の入力も範囲を広げる入力もとらないので、閉じ込めは構造的である。ここでは制御面の資格情報でもこれは解除されず、テナントを横断する検索は ListSystemAuditEvents だけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminAuditEvents")
 @route("/api/admin/v1/audit-events")
@@ -69,7 +69,7 @@ model ExportAdminAuditEventsError403 {
   @body body: ExportAdminAuditEventsError403Body;
 }
 
-@doc("An administrator exports their own tenant's audit events, authentication events included, over a time window and a\nfilter. Streaming to a SIEM belongs to a separate work item; this interface returns one download.\nThe filter is the same AuditEventQuery ListAdminAuditEvents takes (q / filter / category / type / time window),\nand only fields on the registry allow list may appear in `filter`. The scope matches ListAdminAuditEvents\nexactly: the caller's own tenant, fixed by the route, control-plane credentials included.")
+@doc("管理者が、自身のテナントの監査イベントを、認証のイベントも含めて、時間の範囲と絞り込み条件でエクスポートする。SIEM へのストリーミングは別の work item が扱い、このインターフェースは一回のダウンロードを返す。絞り込み条件は ListAdminAuditEvents と同じ AuditEventQuery（q / filter / category / type / 時間の範囲）で、`filter` に使えるのはレジストリの許可リストにあるフィールドだけである。範囲は ListAdminAuditEvents とまったく同じで、制御面の資格情報であっても、経路が決める呼び出し元自身のテナントである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ExportAdminAuditEvents")
 @route("/api/admin/v1/audit-events/export")
@@ -94,7 +94,7 @@ model GetAdminAuditEventSearchOptionsError403 {
   @body body: GetAdminAuditEventSearchOptionsError403Body;
 }
 
-@doc("An administrator reads the choices that turn the `event.type` and `outcome` fields of the audit search form into\npick lists. The values come from the same single source of truth in Go as AuditSearchRegistry and\nauditEventCategoryTypes, so a hard-coded allow list in the UI cannot drift from what the server accepts.")
+@doc("管理者が、監査の検索フォームの `event.type` と `outcome` のフィールドを選択肢の一覧にするための値を読む。値は AuditSearchRegistry や auditEventCategoryTypes と同じ Go の唯一の情報源から得るので、UI に直接書いた許可リストがサーバーの受け付けるものと食い違うことはない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminAuditEventSearchOptions")
 @route("/api/admin/v1/audit-events/search-options")
@@ -129,7 +129,7 @@ model GetAdminAuditEventError404 {
   @body body: GetAdminAuditEventError404Body;
 }
 
-@doc("An administrator reads one audit event of their own tenant by id. An event of another tenant is treated as\nnonexistent, so an id alone reveals nothing about a tenant the caller cannot see, and control-plane credentials\ndo not change that -- GetSystemAuditEvent is the only read that reaches another tenant.")
+@doc("管理者が、自身のテナントの監査イベントを id で一つ読む。他のテナントのイベントは存在しないものとして扱うので、id だけでは呼び出し元が見られないテナントについて何も明かさず、制御面の資格情報でもそれは変わらない。他のテナントに届く読み取りは GetSystemAuditEvent だけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminAuditEvent")
 @route("/api/admin/v1/audit-events/{id}")
@@ -164,7 +164,7 @@ model ListSystemAuditEventsError403 {
   @body body: ListSystemAuditEventsError403Body;
 }
 
-@doc("A control-plane operator searches every tenant's audit DomainEvents, newest first, through the same bidirectional\nkeyset pagination, time window, page size, and filter grammar ListAdminAuditEvents accepts. The scope is every\ntenant, fixed by the route rather than by an input, so a cross-tenant search is never reached by adding a\nparameter to the tenant-facing route. The caller must be an active user who belongs to the control-plane tenant,\ncarries `system_admin` among its effective roles, and calls through the control-plane tenant; such a caller needs\nno `admin` role of its own, and anyone who fails any of the three is refused with AccessDeniedError before any\nevent is read. A cursor issued by ListAdminAuditEvents is rejected rather than continued here, because the scope\nis part of what the cursor is bound to. The search form's pick lists come from\nGetAdminAuditEventSearchOptions, which carries vocabulary rather than any tenant's records (REQ-AUDIT-007).")
+@doc("制御面の運用者が、すべてのテナントの監査の DomainEvent を、ListAdminAuditEvents と同じ双方向のキーセットページング、時間の範囲、ページの大きさ、絞り込みの文法で、新しい順に検索する。範囲は入力ではなく経路が決めるすべてのテナントなので、テナント向けの経路にパラメーターを足してテナント横断の検索に至ることはない。呼び出し元は、制御面テナントに所属し、有効ロールに `system_admin` を含み、制御面テナントの経路から呼び出す有効なユーザーでなければならない。そうした呼び出し元に自身の `admin` ロールは不要で、三つの条件のどれかを満たさない呼び出し元は、イベントを読む前に AccessDeniedError で拒否する。範囲はカーソルが結び付く対象の一部なので、ListAdminAuditEvents が発行したカーソルは、ここでは続きとして扱わず拒否する。検索フォームの選択肢の一覧は GetAdminAuditEventSearchOptions から得る。これはどのテナントの記録でもなく語彙を返す（REQ-AUDIT-007）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListSystemAuditEvents")
 @route("/api/admin/v1/system/audit-events")
@@ -199,7 +199,7 @@ model ExportSystemAuditEventsError403 {
   @body body: ExportSystemAuditEventsError403Body;
 }
 
-@doc("A control-plane operator exports every tenant's audit events over the same time window and filter\nListSystemAuditEvents takes, so that what was found in the search is what the download contains. Streaming to a\nSIEM belongs to a separate work item; this interface returns one download. The caller must satisfy the same\nthree control-plane conditions ListSystemAuditEvents states (REQ-AUDIT-007).")
+@doc("制御面の運用者が、ListSystemAuditEvents と同じ時間の範囲と絞り込み条件で、すべてのテナントの監査イベントをエクスポートする。検索で見つけたものが、そのままダウンロードの内容になる。SIEM へのストリーミングは別の work item が扱い、このインターフェースは一回のダウンロードを返す。呼び出し元は、ListSystemAuditEvents が定める制御面の三つの条件を満たさなければならない（REQ-AUDIT-007）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ExportSystemAuditEvents")
 @route("/api/admin/v1/system/audit-events/export")
@@ -234,7 +234,7 @@ model GetSystemAuditEventError404 {
   @body body: GetSystemAuditEventError404Body;
 }
 
-@doc("A control-plane operator reads one audit event of any tenant by id. The caller must satisfy the same three\ncontrol-plane conditions ListSystemAuditEvents states; anyone who fails one is refused with AccessDeniedError\nrather than told whether the event exists (REQ-AUDIT-007).")
+@doc("制御面の運用者が、任意のテナントの監査イベントを id で一つ読む。呼び出し元は、ListSystemAuditEvents が定める制御面の三つの条件を満たさなければならない。一つでも満たさない呼び出し元には、イベントが存在するかを伝えず、AccessDeniedError で拒否する（REQ-AUDIT-007）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetSystemAuditEvent")
 @route("/api/admin/v1/system/audit-events/{id}")

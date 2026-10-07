@@ -1,4 +1,4 @@
-# WI-453: Return RFC 6750 invalid_token responses from UserInfo
+# WI-453: UserInfo から RFC 6750 の invalid_token の応答を返す
 
 作業項目は `wi-453-userinfo-invalid-token-401` である。
 

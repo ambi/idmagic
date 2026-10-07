@@ -17,7 +17,7 @@ enum FeatureUpdatePolicy {
   recreate_always,
 }
 
-@doc("One runtime-selectable feature enabled for this process. The registry, not configuration or persistence, owns these fields.")
+@doc("このプロセスで有効になっている、実行時に選択できる機能の一つ。これらのフィールドは、設定や永続化ではなく、レジストリが管理する。")
 model RuntimeFeatureMetadata {
   id: string;
   version: string;
@@ -25,23 +25,23 @@ model RuntimeFeatureMetadata {
   update_policy: FeatureUpdatePolicy;
 }
 
-@doc("Versioned operational metadata for the runtime-selectable features enabled for this process.")
+@doc("このプロセスで有効になっている、実行時に選択できる機能の、バージョン付きの運用メタデータ。")
 model FeatureRuntimeMetadata {
   schema_version: "1";
   enabled: RuntimeFeatureMetadata[];
 }
 
-@doc("RFC 9457 Problem Details, the default error body for generic APIs. `support_http.WriteProblem` emits it with `Content-Type: application/problem+json`. Contact points whose shape a standard fixes — OAuth 2.0 and OpenID Connect, Dynamic Client Registration (RFC 7591), SCIM (RFC 7644), and the SharedSignals receive endpoint (RFC 8935) — return that standard's error body instead; see the HTTP error responses section of the root specification. Every `*Error` model declared as `is ProblemDetails` shares this body and is told apart by its `type` URN suffix.")
+@doc("RFC 9457 の Problem Details。汎用の API のデフォルトのエラーボディである。`support_http.WriteProblem` が `Content-Type: application/problem+json` で出力する。形を標準が定める接点、すなわち OAuth 2.0 と OpenID Connect、Dynamic Client Registration（RFC 7591）、SCIM（RFC 7644）、SharedSignals の受信エンドポイント（RFC 8935）は、代わりにその標準のエラーボディを返す。ルートの仕様の HTTP エラーレスポンスの節を参照する。`is ProblemDetails` として宣言したすべての `*Error` モデルはこのボディを共有し、`type` の URN の接尾辞で区別する。")
 model ProblemDetails {
-  @doc("Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it.")
+  @doc("問題の種類を表す URI。IdMagic の問題の種類は `urn:idmagic:error:<code>` であり、`<code>` はサーバーが報告する安定したエラーコードである。この URI は参照解決できない。クライアントは URI を取得せず、URN の接尾辞で分岐する。")
   type: string;
-  @doc("Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`.")
+  @doc("エラーコードから導く、人が読む短い要約。たとえば `invalid_role` は `Invalid role` になる。同じ `type` では変わらない。")
   title: string;
-  @doc("HTTP status code of the response, repeated in the body (RFC 9457 section 3.1).")
+  @doc("レスポンスの HTTP ステータスコード。ボディにも繰り返す（RFC 9457 の 3.1 節）。")
   status: int32;
-  @doc("Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead.")
+  @doc("この発生に固有の説明。常に英語で、ローカライズしない。ローカライズする UI は、代わりに `type` の URN の接尾辞を自身のメッセージへ対応付ける。")
   detail?: string;
-  @doc("Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id.")
+  @doc("リクエストの相関 ID。レスポンスの `X-Request-ID` ヘッダーと同じ値である。リクエストに相関 ID がなかったときは省く。")
   instance?: string;
 }
 
@@ -52,7 +52,7 @@ union AuthenticationRequiredResponseBody {
 }
 
 
-@doc("The 401 an operation answers when the guard in front of it cannot establish an authenticated principal. A request without usable credentials receives AuthenticationRequiredError; a presented access token that fails validation receives InvalidAccessTokenError. It is one shared response because both are authentication failures before operation-specific authorization. See the Declared status codes section of the root specification.")
+@doc("操作の前段のガードが、認証済みの主体を確立できなかったときに返す 401。使える資格情報のないリクエストには AuthenticationRequiredError を、提示したアクセストークンが検証に失敗したリクエストには InvalidAccessTokenError を返す。どちらも操作ごとの認可より前の認証の失敗なので、一つの共有のレスポンスとする。ルートの仕様の、宣言したステータスコードの節を参照する。")
 model AuthenticationRequiredResponse {
   @statusCode statusCode: 401;
   @header contentType: "application/problem+json";
@@ -60,106 +60,106 @@ model AuthenticationRequiredResponse {
 }
 
 
-@doc("Reachability of one configured dependency, as the readiness probe reports it when `verbose` is set.")
+@doc("設定した一つの依存先への到達性。`verbose` を指定したとき readiness プローブが報告する。")
 model DependencyStatus {
-  @doc("`healthy` when the dependency answered, `unavailable` when it did not.")
+  @doc("依存先が応答したときは `healthy`、応答しなかったときは `unavailable`。")
   status: string;
-  @doc("Why the dependency is unavailable. Absent when it is healthy.")
+  @doc("依存先を利用できない理由。健全なときは省く。")
   message?: string;
 }
 
 
 @doc("""
-The wire form every domain event takes. `spec.MarshalDomainEvent` produces it, the audit store records it, the account
-security notification dispatcher subscribes to it, and `AdminAuditEventResponse` publishes it to administrators. It is
-not an HTTP request or response body of its own: no operation accepts or returns it, and it reaches a caller only
-through the audit read model.
+すべてのドメインイベントがとる送受信の形。`spec.MarshalDomainEvent` が作り、監査ストアが記録し、アカウントの
+セキュリティ通知のディスパッチャーが購読し、`AdminAuditEventResponse` が管理者へ公開する。それ自体は HTTP の
+リクエストやレスポンスのボディではない。これを受け付けたり返したりする操作はなく、呼び出し元へは監査の読み取りモデルを
+通じてだけ届く。
 """)
 model DomainEventEnvelope {
-  @doc("The event type name, the value the emitting context's `EventType()` returns. It is the vocabulary `AuditEventQuery.type` filters on.")
+  @doc("イベントの種類の名前。発行する Context の `EventType()` が返す値であり、`AuditEventQuery.type` が絞り込みに使う語彙である。")
   type: string;
 
-  @doc("When the event occurred, as RFC 3339 with nanosecond precision in UTC. It is the emitting context's clock, not the time the record was appended.")
+  @doc("イベントが起きた時刻。UTC、ナノ秒精度の RFC 3339 で表す。記録を追記した時刻ではなく、発行する Context の時計による。")
   occurredAt: utcDateTime;
 
-  @doc("The event body. Only the published fields below are contract; the rest belongs to the emitting context.")
+  @doc("イベントの本体。契約は下の公開フィールドだけで、それ以外は発行する Context に属する。")
   payload: DomainEventPayload;
 }
 
 
 @doc("""
-The published language of domain event payloads: the fields another context reads by name. The audit search attribute
-extractor projects them into search axes and the account security notification dispatcher resolves the recipient and the
-guard from them, so renaming one leaves the emitting context compiling while an audit filter silently returns nothing.
-Every field is optional because no event carries all of them, and an event that omits a field simply does not appear
-under that axis. A payload also carries fields private to the emitting context; those are not contract and are not
-declared here. `mise run check-event-contract` holds this declaration and the reading points to the same set.
+ドメインイベントのペイロードの公表された言語。別の Context が名前で読むフィールドである。監査の検索属性の抽出器は
+これらを検索軸へ射影し、アカウントのセキュリティ通知のディスパッチャーはこれらから受信者とガードを解決する。そのため
+一つを改名すると、発行する Context はコンパイルできたまま、監査の絞り込みが黙って何も返さなくなる。すべてのイベントが
+すべてのフィールドを含むわけではないので、どのフィールドも任意であり、フィールドを省いたイベントはその軸の下に現れない。
+ペイロードは発行する Context に固有のフィールドも含むが、それらは契約ではなく、ここでは宣言しない。
+`mise run check-event-contract` が、この宣言と読み取り箇所を同じ集合に保つ。
 """)
 model DomainEventPayload {
-  @doc("The tenant the event belongs to. Its absence is what leaves an event out of a tenant-scoped audit search.")
+  @doc("イベントが属するテナント。これがないイベントは、テナントに限定した監査の検索から外れる。")
   tenantId?: string;
 
-  @doc("The subject the event is about. It names the actor when `actorUserId` is absent and the event is not one an agent performs.")
+  @doc("イベントの対象となるサブジェクト。`actorUserId` がなく、エージェントが行うイベントでもないときは、操作した主体を表す。")
   userId?: string;
 
-  @doc("The administrator who performed an administrative operation, as distinct from the user it acted on.")
+  @doc("管理操作を行った管理者。操作の対象のユーザーとは区別する。")
   actorUserId?: string;
 
-  @doc("The user an administrative operation acted on. `actor.id` and `target.id` answer different questions and are never collapsed.")
+  @doc("管理操作の対象のユーザー。`actor.id` と `target.id` は別の問いに答えるので、一つにまとめない。")
   targetUserId?: string;
 
-  @doc("The agent. On the token exchange and approval events an agent performs, it names the actor; elsewhere the agent is the target.")
+  @doc("エージェント。エージェントが行うトークン交換と承認のイベントでは操作した主体を表し、それ以外ではエージェントが対象である。")
   agentId?: string;
 
-  @doc("The OAuth 2.0 client.")
+  @doc("OAuth 2.0 のクライアント。")
   clientId?: string;
 
-  @doc("The login session.")
+  @doc("ログインセッション。")
   sessionId?: string;
 
-  @doc("The authorization transaction.")
+  @doc("認可のトランザクション。")
   transactionId?: string;
 
-  @doc("The correlation id shared across the records of one logical operation.")
+  @doc("一つの論理的な操作の記録に共通する相関 ID。")
   correlationId?: string;
 
-  @doc("The request correlation id, the same value the response carries in `X-Request-ID`.")
+  @doc("リクエストの相関 ID。レスポンスの `X-Request-ID` と同じ値である。")
   requestId?: string;
 
-  @doc("The account name as it was submitted. Kept in plaintext and reserved for authentication failures, where an account that never existed still has to be traceable.")
+  @doc("送信されたままのアカウント名。平文で保持し、認証の失敗に限って使う。存在しなかったアカウントであっても追跡できる必要があるためである。")
   username?: string;
 
-  @doc("The client IP, matched in plaintext, neither truncated nor hashed.")
+  @doc("クライアントの IP。平文で照合し、切り詰めもハッシュ化もしない。")
   ip?: string;
 
-  @doc("The country the client IP resolved to, rendered into the account security notification body.")
+  @doc("クライアントの IP から解決した国。アカウントのセキュリティ通知の本文に書き出す。")
   countryCode?: string;
 
-  @doc("The client user agent. The notification dispatcher derives the device label and the per-tenant salted device hash from it.")
+  @doc("クライアントのユーザーエージェント。通知のディスパッチャーは、ここからデバイスのラベルと、テナントごとのソルトを加えたデバイスのハッシュを導く。")
   userAgent?: string;
 
-  @doc("Why the transition happened. Session revocations notify the account holder only for `self_revoke` and `admin_revoke`.")
+  @doc("遷移が起きた理由。セッションの失効をアカウントの保有者へ通知するのは、`self_revoke` と `admin_revoke` のときだけである。")
   reason?: string;
 
-  @doc("The lifecycle workflow.")
+  @doc("ライフサイクルのワークフロー。")
   workflowId?: string;
 
-  @doc("The lifecycle workflow run.")
+  @doc("ライフサイクルのワークフローの実行。")
   runId?: string;
 
-  @doc("The zero-based position of the step within a lifecycle workflow run.")
+  @doc("ライフサイクルのワークフローの実行の中での、ステップの 0 から数えた位置。")
   stepIndex?: int32;
 
-  @doc("The principals appearing in the delegation chain, so an event is reachable from any participant, not only its ends.")
+  @doc("委任の連鎖に現れる主体。両端だけでなく、どの参加者からもイベントにたどり着けるようにする。")
   actorChain?: string[];
 
-  @doc("How many steps of delegation a token exchange carried.")
+  @doc("トークン交換が運んだ委任の段数。")
   delegationDepth?: int32;
 
-  @doc("The same depth under the name an authorization decision records it. Both are projected onto one search axis.")
+  @doc("認可の判断が記録するときの名前で表した、同じ深さ。どちらも一つの検索軸へ射影する。")
   actorChainDepth?: int32;
 
-  @doc("The delegation mode, the value REQ-OAUTH2-049 derives, so introspection and the audit record name the same mode.")
+  @doc("委任のモード。REQ-OAUTH2-049 が導く値であり、イントロスペクションと監査の記録が同じモードを示す。")
   delegationMode?: string;
 
   ...Record<unknown>;

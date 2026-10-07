@@ -1,4 +1,4 @@
-# WI-54453: Split IdManagement rules by operation
+# WI-54453: IdManagement の規則を操作ごとに分ける
 
 作業項目は `wi-54453-split-identity-management-rules-by-operation` である。
 

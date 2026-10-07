@@ -26,7 +26,7 @@ model ListLifecycleWorkflowsError403 {
   @body body: ListLifecycleWorkflowsError403Body;
 }
 
-@doc("An administrator lists the LifecycleWorkflows of their tenant that have not been deleted. Deleted definitions are not returned.")
+@doc("管理者が、自身のテナントの削除されていない LifecycleWorkflow を一覧する。削除済みの定義は返さない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflows")
 @route("/api/admin/v1/lifecycle-workflows")
@@ -73,7 +73,7 @@ model CreateLifecycleWorkflowError409 {
   @body body: CreateLifecycleWorkflowError409Body;
 }
 
-@doc("An administrator creates a LifecycleWorkflow. The workflow itself and the draft of revision 1 are both persisted, and `name` is unique within the tenant among workflows that have not been deleted. The name of a deleted workflow may be used again.")
+@doc("管理者が LifecycleWorkflow を作成する。ワークフロー本体とリビジョン 1 の下書きをどちらも永続化し、`name` はテナントの削除されていないワークフローの中で一意である。削除済みのワークフローの名前は再び使える。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("CreateLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows")
@@ -110,7 +110,7 @@ model GetLifecycleWorkflowError403 {
   @body body: GetLifecycleWorkflowError403Body;
 }
 
-@doc("An administrator reads one LifecycleWorkflow. A workflow of another tenant is treated as nonexistent.")
+@doc("管理者が LifecycleWorkflow を一つ読む。他のテナントのワークフローは存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}")
@@ -157,7 +157,7 @@ model UpdateLifecycleWorkflowError409 {
   @body body: UpdateLifecycleWorkflowError409Body;
 }
 
-@doc("An administrator updates the trigger, the actions, or the display fields of a LifecycleWorkflow. When `expected_revision`\ndoes not match `current_revision` the update is rejected with WorkflowRevisionConflictError, so a lost update cannot happen.\nA change to the trigger or the actions raises `current_revision` by one but leaves `status` and `enabled_revision` alone,\nso the old revision keeps being evaluated until EnableLifecycleWorkflow is called again. An archived workflow is refused.")
+@doc("管理者が、LifecycleWorkflow のトリガー、アクション、または表示用のフィールドを更新する。`expected_revision` が `current_revision` と一致しないときは WorkflowRevisionConflictError で更新を拒否するので、更新の消失は起こらない。トリガーまたはアクションの変更は `current_revision` を 1 増やすが、`status` と `enabled_revision` は変えないので、EnableLifecycleWorkflow を再び呼ぶまでは古いリビジョンを評価し続ける。アーカイブ済みのワークフローは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("UpdateLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}")
@@ -196,7 +196,7 @@ model EnableLifecycleWorkflowError403 {
   @body body: EnableLifecycleWorkflowError403Body;
 }
 
-@doc("An administrator validates `current_revision` and, if it passes, sets it as `enabled_revision` and moves `status` to `enabled`.\nFrom then on it is that revision the trigger evaluates. A failed validation, and an archived workflow, are both refused.")
+@doc("管理者が `current_revision` を検証し、通れば `enabled_revision` に設定して `status` を `enabled` へ移す。以降、トリガーが評価するのはそのリビジョンである。検証の失敗とアーカイブ済みのワークフローは、どちらも拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("EnableLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}/enable")
@@ -235,7 +235,7 @@ model DisableLifecycleWorkflowError403 {
   @body body: DisableLifecycleWorkflowError403Body;
 }
 
-@doc("An administrator disables a LifecycleWorkflow. No new run is triggered, and a queued run that has not started is canceled.\nA running run stops after the checkpoint of its current step and before the next one.")
+@doc("管理者が LifecycleWorkflow を無効にする。新しい実行は起動せず、開始していないキュー上の実行は取り消す。実行中の実行は、現在のステップのチェックポイントの後、次のステップの前で止まる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DisableLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}/disable")
@@ -272,7 +272,7 @@ model DeleteLifecycleWorkflowError403 {
   @body body: DeleteLifecycleWorkflowError403Body;
 }
 
-@doc("An administrator deletes a LifecycleWorkflow whatever its state. Afterwards it is excluded from listing, reading, updating, and the name uniqueness check. If it was enabled, no new run is triggered and queued runs are canceled. Existing runs and audit events are kept.")
+@doc("管理者が、状態にかかわらず LifecycleWorkflow を削除する。以降は一覧、読み取り、更新、名前の一意性の検査から外れる。有効だった場合は、新しい実行を起動せず、キュー上の実行を取り消す。既存の実行と監査イベントは残す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DeleteLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}")
@@ -310,7 +310,7 @@ model DryRunLifecycleWorkflowError403 {
   @body body: DryRunLifecycleWorkflowError403Body;
 }
 
-@doc("An administrator dry-runs `enabled_revision`, or `current_revision` when none is named, against a target user. It uses the same\nvalidator, trigger evaluator, and action planner as a real run, and reads the target User's current group memberships,\napplication assignments, required actions, status, and email verification state to decide per action whether it would_change,\nis a no_op, or is blocked. When the trigger filter does not match the target User, every action comes back blocked with the\nreason `trigger_not_matched`. A target user that does not exist, or belongs to another tenant, gives InvalidRequestError.\nNothing is created or changed: no WorkflowRun, no Job, no membership, assignment, required action, status, or email.")
+@doc("管理者が、`enabled_revision`、または指定がなければ `current_revision` を、対象のユーザーに対してドライランする。実際の実行と同じ検証器、トリガーの評価器、アクションの計画器を使い、対象の User の現在のグループのメンバーシップ、アプリケーションの割り当て、必須のアクション、状態、メールの確認状態を読んで、アクションごとに would_change、no_op、blocked のどれになるかを判断する。トリガーの絞り込み条件が対象の User に一致しないときは、すべてのアクションを理由 `trigger_not_matched` の blocked として返す。存在しない対象のユーザー、または他のテナントに属する対象のユーザーは InvalidRequestError になる。何も作成も変更もしない。WorkflowRun、Job、メンバーシップ、割り当て、必須のアクション、状態、メールのどれも変わらない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("DryRunLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}/dry-run")
@@ -348,7 +348,7 @@ model ListLifecycleWorkflowRunsError403 {
   @body body: ListLifecycleWorkflowRunsError403Body;
 }
 
-@doc("An administrator lists the run history of one LifecycleWorkflow, newest first.")
+@doc("管理者が、一つの LifecycleWorkflow の実行の履歴を新しい順に一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflowRuns")
 @route("/api/admin/v1/lifecycle-workflows/{workflow_id}/runs")
@@ -385,7 +385,7 @@ model GetLifecycleWorkflowRunError403 {
   @body body: GetLifecycleWorkflowRunError403Body;
 }
 
-@doc("An administrator reads one WorkflowRun in detail: its trigger, revision, target user, Job attempts, and each step. A run of another tenant is treated as nonexistent.")
+@doc("管理者が、一つの WorkflowRun の詳細（トリガー、リビジョン、対象のユーザー、Job の試行、各ステップ）を読む。他のテナントの実行は存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflowRun")
 @route("/api/admin/v1/lifecycle-workflow-runs/{run_id}")
@@ -422,7 +422,7 @@ model RetryLifecycleWorkflowRunError403 {
   @body body: RetryLifecycleWorkflowRunError403Body;
 }
 
-@doc("An administrator retries a WorkflowRun that is `partially_failed` or `failed`. A new Job is attached to the failed steps only;\nsteps already `changed` or `no_op` are left alone. When it races a disable, no new step is started.")
+@doc("管理者が、`partially_failed` または `failed` の WorkflowRun を再試行する。新しい Job は失敗したステップだけに付け、すでに `changed` または `no_op` のステップは変えない。無効化と競合したときは、新しいステップを開始しない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("RetryLifecycleWorkflowRun")
 @route("/api/admin/v1/lifecycle-workflow-runs/{run_id}/retry")

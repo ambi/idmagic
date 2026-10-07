@@ -1,4 +1,4 @@
-# WI-92312: Purge expired users by a job and make purge resumable
+# WI-92312: 期限切れの User をジョブで完全削除し、完全削除を再開できるようにする
 
 作業項目は `wi-92312-purge-expired-users-by-a-job-and-make-purge-resumable` である。
 

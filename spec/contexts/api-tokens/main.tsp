@@ -28,7 +28,7 @@ model ListApiTokensError403 {
   @body body: ListApiTokensError403Body;
 }
 
-@doc("Lists the API access tokens of the tenant. The JWT itself is never returned.")
+@doc("テナントの API アクセストークンを一覧する。JWT そのものは返さない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListApiTokens")
 @route("/api/admin/v1/api-tokens")
@@ -37,7 +37,7 @@ op ListApiTokens(
   @query tenant_id: string
 ): ListApiTokensSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListApiTokensError403;
 
-@doc("The body issuing an API token. It carries no `client_id`: every API token is issued under the built-in `idmagic-api-token` client, so the caller has nothing to choose and the server never read the field it used to declare.")
+@doc("API トークンを発行するリクエストのボディ。`client_id` は含まない。すべての API トークンは組み込みの `idmagic-api-token` クライアントで発行するので、呼び出し元が選ぶものはなく、以前宣言していたこのフィールドをサーバーは読んでいなかった。")
 model IssueApiTokenHttpRequest {
   description: string;
   scopes: IdMagic.Contract.ApiTokenScope[];
@@ -78,7 +78,7 @@ model IssueApiTokenSuccess_201 {
   @body body: IssueApiTokenHttpResponse;
 }
 
-@doc("Issues a new API access token for the tenant, with the scope set and the lifetime in days the caller asks for. The response carries the RFC 9068 JWT access token, and it is the only time the token is returned.")
+@doc("呼び出し元が求めたスコープの集合と日数単位の有効期間で、テナントの API アクセストークンを新たに発行する。レスポンスは RFC 9068 の JWT アクセストークンを含み、トークンを返すのはこのときだけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("IssueApiToken")
 @route("/api/admin/v1/api-tokens")
@@ -104,7 +104,7 @@ model RevokeApiTokenSuccess_204 {
   @statusCode statusCode: 204;
 }
 
-@doc("Revokes an API access token of the tenant. Calling it for an id that does not exist succeeds as well, so the operation is idempotent.")
+@doc("テナントの API アクセストークンを失効させる。存在しない id を指定しても成功するので、この操作は冪等である。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RevokeApiToken")
 @route("/api/admin/v1/api-tokens/{id}")

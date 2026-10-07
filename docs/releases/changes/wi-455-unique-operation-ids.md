@@ -1,4 +1,4 @@
-# WI-455: Give every OpenAPI operation a unique operationId
+# WI-455: OpenAPI のすべての操作に一意の operationId を与える
 
 作業項目は `wi-455-one-operation-id-naming-two-operations` である。
 

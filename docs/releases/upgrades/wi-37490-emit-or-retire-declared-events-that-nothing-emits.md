@@ -1,4 +1,4 @@
-# WI-37490: Search second-factor failures under MfaChallengeFailed
+# WI-37490: 第二要素の失敗を MfaChallengeFailed で検索する
 
 作業項目は `wi-37490-emit-or-retire-declared-events-that-nothing-emits` である。
 

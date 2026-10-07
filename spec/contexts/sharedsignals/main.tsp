@@ -28,7 +28,7 @@ model ListSsfStreamsError403 {
   @body body: ListSsfStreamsError403Body;
 }
 
-@doc("An administrator lists the SsfStreams of their tenant.")
+@doc("管理者が、自身のテナントの SsfStream を一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:read"])
 @TypeSpec.OpenAPI.operationId("ListSsfStreams")
 @route("/api/admin/v1/shared-signals/streams")
@@ -63,7 +63,7 @@ model GetSsfStreamError403 {
   @body body: GetSsfStreamError403Body;
 }
 
-@doc("An administrator reads one SsfStream.")
+@doc("管理者が SsfStream を一つ読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:read"])
 @TypeSpec.OpenAPI.operationId("GetSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}")
@@ -114,7 +114,7 @@ model RegisterSsfTransmitterStreamError422 {
   @body body: RegisterSsfTransmitterStreamError422Body;
 }
 
-@doc("An administrator registers an SsfStream with `direction=Transmit` together with its delivery target (SsfTransmitterConfig).")
+@doc("管理者が、`direction=Transmit` の SsfStream を、その配送先（SsfTransmitterConfig）とともに登録する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSsfTransmitterStream")
 @route("/api/admin/v1/shared-signals/streams/transmitter")
@@ -166,7 +166,7 @@ model RegisterSsfReceiverStreamError422 {
   @body body: RegisterSsfReceiverStreamError422Body;
 }
 
-@doc("An administrator registers an SsfStream with `direction=Receive` together with the trust settings for the external transmitter (SsfReceiverConfig).")
+@doc("管理者が、`direction=Receive` の SsfStream を、外部の送信者に対する信頼の設定（SsfReceiverConfig）とともに登録する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSsfReceiverStream")
 @route("/api/admin/v1/shared-signals/streams/receiver")
@@ -214,7 +214,7 @@ model UpdateSsfStreamError422 {
   @body body: UpdateSsfStreamError422Body;
 }
 
-@doc("An administrator updates the metadata of an SsfStream, `event_types` among it.")
+@doc("管理者が、`event_types` を含む SsfStream のメタデータを更新する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("UpdateSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}")
@@ -248,7 +248,7 @@ model DisableSsfStreamError403 {
   @body body: DisableSsfStreamError403Body;
 }
 
-@doc("An administrator disables an SsfStream. It neither delivers nor accepts anything afterwards.")
+@doc("管理者が SsfStream を無効にする。以降は何も配送せず、何も受け付けない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("DisableSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}/disable")
@@ -280,7 +280,7 @@ model EnableSsfStreamError403 {
   @body body: EnableSsfStreamError403Body;
 }
 
-@doc("An administrator re-enables a disabled SsfStream.")
+@doc("管理者が、無効にした SsfStream を再び有効にする。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("EnableSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}/enable")
@@ -312,7 +312,7 @@ model DeleteSsfStreamError403 {
   @body body: DeleteSsfStreamError403Body;
 }
 
-@doc("An administrator deletes an SsfStream. The TransmitterConfig or ReceiverConfig attached to it is deleted with it.")
+@doc("管理者が SsfStream を削除する。それに結び付く TransmitterConfig または ReceiverConfig も一緒に削除する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("DeleteSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}")
@@ -351,7 +351,7 @@ model ListSecurityEventDeliveriesError403 {
   @body body: ListSecurityEventDeliveriesError403Body;
 }
 
-@doc("An administrator lists the delivery state (pending / delivered / failed / dead_letter) of an SsfStream with `direction=Transmit`, to check delivery health in operation.")
+@doc("管理者が、`direction=Transmit` の SsfStream の配送状態（pending / delivered / failed / dead_letter）を一覧し、運用中の配送の健全性を確かめる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:read"])
 @TypeSpec.OpenAPI.operationId("ListSecurityEventDeliveries")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}/deliveries")
@@ -394,16 +394,16 @@ model ReceiveSecurityEventError413 {
   @body body: ReceiveSecurityEventError413Body;
 }
 
-@doc("Accepts a SET pushed by an external transmitter. Signature verification, the match against a registered issuer, duplicate `jti` detection, and subject resolution each reject the event without applying it, fail-closed. An event that passes verification is applied as a local revocation (AdvanceRevocationEpoch).")
+@doc("外部の送信者がプッシュした SET を受け付ける。署名の検証、登録済みの発行者との照合、`jti` の重複の検出、サブジェクトの解決のどれかで失敗すると、イベントを適用せずにフェイルクローズで拒否する。検証を通ったイベントは、ローカルの失効（AdvanceRevocationEpoch）として適用する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ReceiveSecurityEvent")
 @route("/ssf/streams/{stream_id}/events")
 @post
 op ReceiveSecurityEvent(
   @path stream_id: string,
-  @doc("RFC 8935 section 2.1 fixes the media type for the push delivery of a Security Event Token. The server does not reject other media types, but a conforming transmitter sends this one.")
+  @doc("RFC 8935 の 2.1 節が、Security Event Token のプッシュ配送のメディアタイプを定める。サーバーは他のメディアタイプを拒否しないが、仕様に従う送信者はこれを送る。")
   @header contentType: "application/secevent+jwt",
-  @doc("The Security Event Token itself, in JWS compact serialization. The body is the token, not a JSON object wrapping it.")
+  @doc("JWS のコンパクト直列化による Security Event Token そのもの。ボディはトークンそのもので、それを包む JSON オブジェクトではない。")
   @body token: string
 ): ReceiveSecurityEventSuccess_202 | ReceiveSecurityEventError400 | ReceiveSecurityEventError404 | ReceiveSecurityEventError413;
 }

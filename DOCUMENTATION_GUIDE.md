@@ -20,9 +20,7 @@
 
 節ではなくファイルで分ける。ファイル名が内容の種類を表す。**人が読む文書は`docs/`に集める。** 機械が食う契約——インターフェース定義言語のソース——だけを別に置き、そのディレクトリはその契約の名前で呼ぶ。
 
-The canonical `docs/` and `spec/` layout and every fixed document name are defined in
-[Specification Format §1](SPECIFICATION_FORMAT.md#1-配置). The repository check compares that human-readable
-tree with `tools/workspace/src/document-layout.ts`, so this guide does not reproduce the tree.
+`docs/` と `spec/` の正式な配置と、名前を固定した文書の一覧は[仕様フォーマット §1](SPECIFICATION_FORMAT.md#1-配置)が定める。リポジトリの検査が、人が読むそのツリーを `tools/workspace/src/document-layout.ts` と照合するので、この文書はツリーを再掲しない。
 
 `README.md`はディレクトリを開いたときに表示されるため、境界の宣言と索引の置き場所として使う。
 

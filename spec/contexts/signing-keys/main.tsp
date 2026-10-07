@@ -13,7 +13,7 @@ model GetJwksSuccess_200 {
   @body body: IdMagic.Contract.JWKS;
 }
 
-@doc("Public interface returning the JWKS (RFC 7517) of the resolved tenant; a request without a realm prefix resolves to the default tenant.")
+@doc("解決したテナントの JWKS（RFC 7517）を返す公開インターフェース。レルムの接頭辞のないリクエストは、デフォルトのテナントへ解決する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetJwks")
 @route("/jwks")
@@ -27,7 +27,7 @@ model ListTenantJwksSuccess_200 {
   @body body: IdMagic.Contract.JWKS;
 }
 
-@doc("The JWKS (RFC 7517) of a named tenant. It carries only that tenant's active and verifying\n(retired but not expired) keys, so the kid of tenant B never appears in the JWKS of tenant A.\nA relying party verifies the signature of tokens issued by its own tenant against this URL. No authentication is required.")
+@doc("指定したテナントの JWKS（RFC 7517）。そのテナントの active と verifying（retired だが期限切れでない）の鍵だけを含むので、テナント B の kid がテナント A の JWKS に現れることはない。Relying Party は、自身のテナントが発行したトークンの署名をこの URL で検証する。認証は不要である。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ListTenantJwks")
 @route("/realms/{tenant_id}/jwks")
@@ -52,7 +52,7 @@ model ListAdminKeysError403 {
   @body body: ListAdminKeysError403Body;
 }
 
-@doc("A tenant administrator reads the metadata of the signing keys on their tenant's JWKS (active and verifying).\nThe target is fixed to `context.tenant_id`, so a cross-tenant read cannot arise structurally.")
+@doc("テナントの管理者が、自身のテナントの JWKS にある署名鍵（active と verifying）のメタデータを読む。対象は `context.tenant_id` に固定されるので、テナントを横断した読み取りは構造上起こらない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminKeys")
 @route("/api/admin/v1/keys")
@@ -87,7 +87,7 @@ model GetAdminKeyError404 {
   @body body: GetAdminKeyError404Body;
 }
 
-@doc("A tenant administrator reads one signing key of their tenant by kid. A kid of another tenant, and a kid that does not exist, both give InvalidRequestError.")
+@doc("テナントの管理者が、自身のテナントの署名鍵を kid で一つ読む。他のテナントの kid も、存在しない kid も InvalidRequestError になる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminKey")
 @route("/api/admin/v1/keys/{kid}")
@@ -134,7 +134,7 @@ model RotateTenantSigningKeyError503 {
   @body body: RotateTenantSigningKeyError503Body;
 }
 
-@doc("A tenant administrator generates a new key of the requested use for their tenant and switches the active key to it.\nThe previous active key stays published as verifying (on the JWKS for Signing, in the SAML and WS-Federation metadata\nfor XmlFederationSigning) and leaves after SigningKeyMinJwksOverlap has passed; archiving is a separate operational job.\nRotation is per tenant and per use, so its blast radius is confined to that tenant's keys of that use. A body whose\n`usage` is not a KeyUsage gives InvalidRequestError and rotates nothing.")
+@doc("テナントの管理者が、求めた用途の新しい鍵を自身のテナントに生成し、有効な鍵をそれへ切り替える。それまで有効だった鍵は verifying として公開し続け（Signing では JWKS、XmlFederationSigning では SAML と WS-Federation のメタデータ）、SigningKeyMinJwksOverlap を過ぎると外す。アーカイブは別の運用ジョブである。ローテーションはテナントと用途ごとなので、影響範囲はそのテナントのその用途の鍵に限られる。`usage` が KeyUsage でないボディは InvalidRequestError になり、何もローテーションしない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("RotateTenantSigningKey")
 @route("/api/admin/v1/keys/rotate")
@@ -191,7 +191,7 @@ model DisableTenantKeyError503 {
   @body body: DisableTenantKeyError503Body;
 }
 
-@doc("A tenant administrator retires one non-active signing key by kid, immediately, while it is still inside the\npost-rotation overlap. The key leaves the JWKS, and tokens already signed with it can no longer be verified.\nThe current signing key cannot be retired this way.")
+@doc("テナントの管理者が、ローテーション後の重複期間内にある有効でない署名鍵を、kid で一つ即座に退役させる。鍵は JWKS から外れ、その鍵で署名済みのトークンは検証できなくなる。現在の署名鍵はこの方法では退役させられない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("DisableTenantKey")
 @route("/api/admin/v1/keys/{kid}/disable")
@@ -219,7 +219,7 @@ model ListTenantKeyHealthError403 {
   @body body: ListTenantKeyHealthError403Body;
 }
 
-@doc("A control-plane caller lists signing key health across tenants: provider, active kid, key count, and provider\nreachability. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among\nits effective roles, and calls through the control-plane tenant; a `system_admin` of any other tenant is refused with\nAccessDeniedError and observes no identifier or state of another tenant. No private key is returned. Used to judge\nfail-closed conditions and to catch tenants a rotation missed (REQ-SIGNINGKEYS-008, REQ-SIGNINGKEYS-009).")
+@doc("制御面の呼び出し元が、テナントを横断して署名鍵の健全性（プロバイダー、有効な kid、鍵の数、プロバイダーへの到達性）を一覧する。呼び出し元は、制御面テナントに所属し、有効ロールに `system_admin` を含み、制御面テナントの経路から呼び出す有効なユーザーでなければならない。他のテナントの `system_admin` は AccessDeniedError で拒否され、他のテナントの識別子も状態も観測しない。秘密鍵は返さない。フェイルクローズの条件を判断し、ローテーションから漏れたテナントを見つけるために使う（REQ-SIGNINGKEYS-008、REQ-SIGNINGKEYS-009）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("ListTenantKeyHealth")
 @route("/api/admin/v1/keys/health")

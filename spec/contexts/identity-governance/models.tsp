@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("The operational state of a User. Published-language stub for IdManagement.UserStatus, used only to evaluate the `from_status` and `to_status` of a trigger. IdManagement owns the single source of truth for the values.")
+@doc("User の運用上の状態。IdManagement.UserStatus を公表された言語として写したもので、トリガーの `from_status` と `to_status` の評価だけに使う。値の唯一の情報源は IdManagement が管理する。")
 enum UserStatus {
   Active: "active",
   Disabled: "disabled",
@@ -12,7 +12,7 @@ enum UserStatus {
 }
 
 
-@doc("The action forced on a user at their next sign-in. Published-language stub for IdManagement.RequiredAction, used only to name the action of a `set_required_action` or `clear_required_action`.")
+@doc("次のサインインでユーザーに強制するアクション。IdManagement.RequiredAction を公表された言語として写したもので、`set_required_action` または `clear_required_action` のアクションを指定するためだけに使う。")
 enum RequiredAction {
   UpdatePassword: "update_password",
   VerifyEmail: "verify_email",
@@ -22,14 +22,14 @@ enum RequiredAction {
 }
 
 
-@doc("The visibility of an assignment. Published-language stub for a definition the Application context owns, used only for the `visibility` of an `assign_application` action.")
+@doc("割り当ての表示範囲。Application の Context が所有する定義を公表された言語として写したもので、`assign_application` のアクションの `visibility` だけに使う。")
 enum AssignmentVisibility {
   visible: "visible",
   hidden: "hidden",
 }
 
 
-@doc("The lifecycle of a LifecycleWorkflow. `archived` is an implementation state that keeps a deleted definition internally so the run history stays referentially intact; it is exposed neither in the administration console nor in the ordinary API.")
+@doc("LifecycleWorkflow のライフサイクル。`archived` は、削除した定義を内部に残して実行の履歴の参照整合性を保つための実装上の状態で、管理コンソールにも通常の API にも公開しない。")
 enum LifecycleWorkflowStatus {
   draft: "draft",
   enabled: "enabled",
@@ -38,7 +38,7 @@ enum LifecycleWorkflowStatus {
 }
 
 
-@doc("The kinds of condition a WorkflowTrigger fires on. The first version has only the three that start from a User mutation; date, cron, and wait steps are out of scope.")
+@doc("WorkflowTrigger が起動する条件の種類。最初のバージョンには、User の変更を起点とする三つだけがある。日付、cron、待機のステップは範囲外である。")
 enum WorkflowTriggerKind {
   user_created: "user_created",
   user_attributes_changed: "user_attributes_changed",
@@ -46,7 +46,7 @@ enum WorkflowTriggerKind {
 }
 
 
-@doc("The comparison operators a WorkflowFilter may use. `eq` and `not_eq` are exact match and mismatch, `in` matches any member of a value set, and `exists` tests whether a value is present at all.")
+@doc("WorkflowFilter で使える比較演算子。`eq` と `not_eq` は完全一致と不一致、`in` は値の集合のいずれかとの一致、`exists` は値がそもそもあるかどうかの判定である。")
 enum WorkflowFilterOperator {
   eq: "eq",
   not_eq: "not_eq",
@@ -55,7 +55,7 @@ enum WorkflowFilterOperator {
 }
 
 
-@doc("The kinds of WorkflowAction. Every one of them states a desired state, so each is idempotent and becomes a no_op when the state already holds.")
+@doc("WorkflowAction の種類。どれも望ましい状態を示すので冪等であり、状態がすでに成り立っていれば no_op になる。")
 enum WorkflowActionKind {
   add_group_member: "add_group_member",
   remove_group_member: "remove_group_member",
@@ -69,7 +69,7 @@ enum WorkflowActionKind {
 }
 
 
-@doc("The states of WorkflowRunLifecycle. A no-op counts as a success.")
+@doc("WorkflowRunLifecycle の状態。何もしなかった場合も成功とみなす。")
 enum WorkflowRunStatus {
   queued: "queued",
   running: "running",
@@ -80,7 +80,7 @@ enum WorkflowRunStatus {
 }
 
 
-@doc("The outcome of one WorkflowStep. `pending` is the initial value, before anything has been attempted.")
+@doc("一つの WorkflowStep の結果。`pending` は、何も試みる前の初期値である。")
 enum WorkflowStepOutcome {
   pending: "pending",
   changed: "changed",
@@ -90,57 +90,57 @@ enum WorkflowStepOutcome {
 }
 
 
-@doc("UpdateLifecycleWorkflow found that `expected_revision` does not match the current `LifecycleWorkflow.current_revision`, and rejected the lost update. The caller re-reads the latest revision and retries. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workflow_revision_conflict`.")
+@doc("UpdateLifecycleWorkflow が、`expected_revision` が現在の `LifecycleWorkflow.current_revision` と一致しないことを見つけ、更新の消失を拒否した。呼び出し元は最新のリビジョンを読み直して再試行する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workflow_revision_conflict` である。")
 model WorkflowRevisionConflictError is ProblemDetails;
 
 
-@doc("The requested LifecycleWorkflow `name` is already used by a non-deleted workflow in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workflow_name_conflict`.")
+@doc("求めた LifecycleWorkflow の `name` は、テナントの削除されていないワークフローがすでに使っている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workflow_name_conflict` である。")
 model WorkflowNameConflictError is ProblemDetails;
 
 
-@doc("One term of `WorkflowTrigger.filters`. Only a field that exists in the TenantUserAttributeSchema and whose type matches can be\nstored; a free-text regex over PII and an unknown field are both refused at save time. Several filters are ANDed.")
+@doc("`WorkflowTrigger.filters` の一項。保存できるのは、TenantUserAttributeSchema に存在し、型が一致するフィールドだけである。個人情報に対する自由入力の正規表現と未知のフィールドは、どちらも保存時に拒否する。複数の絞り込み条件は AND で結ぶ。")
 model WorkflowFilter {
-  @doc("A `TenantUserAttributeSchema.key`, or a built-in attribute key of User.")
+  @doc("`TenantUserAttributeSchema.key`、または User の組み込みの属性のキー。")
   @minLength(1)
   field: string;
   operator: WorkflowFilterOperator;
-  @doc("Any JSON value, because the type follows the AttributeType of `field`: a string, a number, a boolean, a date string, or an array of strings. The `in` operator takes an array of that type, and `exists` takes no value at all. One TypeSpec type cannot express that dependence, so the contract records the value as unconstrained and the server checks it against the tenant attribute schema.")
+  @doc("型が `field` の AttributeType（文字列、数値、真偽値、日付の文字列、文字列の配列）に従うので、任意の JSON 値とする。`in` 演算子はその型の配列をとり、`exists` は値をとらない。この依存は一つの TypeSpec の型では表せないので、契約は値を制約なしとして記録し、サーバーがテナントの属性のスキーマに照らして検査する。")
   value?: unknown;
 }
 
 
-@doc("The trigger definition a LifecycleWorkflowRevision fixes. Depending on the kind it uses `watched_attributes`\nor `from_status` and `to_status`. `filters` holds 0 to 20 terms, ANDed.")
+@doc("LifecycleWorkflowRevision が固定するトリガーの定義。種類に応じて `watched_attributes`、または `from_status` と `to_status` を使う。`filters` は AND で結ぶ 0 から 20 の項からなる。")
 model WorkflowTriggerDef {
   kind: WorkflowTriggerKind;
-  @doc("Required when `kind` is `user_attributes_changed`. It fires only when one of the listed fields actually changed; a field\nmerely present in the request with an unchanged value does not fire it.")
+  @doc("`kind` が `user_attributes_changed` のとき必須である。載せたフィールドのどれかが実際に変わったときだけ起動し、値の変わらないフィールドがリクエストに含まれているだけでは起動しない。")
   watched_attributes?: string[];
-  @doc("Required when `kind` is `user_status_changed`: the `from` of a permitted UserLifecycle transition.")
+  @doc("`kind` が `user_status_changed` のとき必須である。許された UserLifecycle の遷移の `from` である。")
   from_status?: UserStatus;
-  @doc("Required when `kind` is `user_status_changed`: the `to` of a permitted UserLifecycle transition.")
+  @doc("`kind` が `user_status_changed` のとき必須である。許された UserLifecycle の遷移の `to` である。")
   to_status?: UserStatus;
   filters: WorkflowFilter[];
 }
 
 
-@doc("One action definition a LifecycleWorkflowRevision fixes. Which fields it uses depends on the kind, and the existence of\nwhat it refers to is checked both on create/update and on enable.")
+@doc("LifecycleWorkflowRevision が固定する一つのアクションの定義。どのフィールドを使うかは種類によって決まり、参照先の存在は作成と更新のとき、および有効化のときの両方で検査する。")
 model WorkflowActionDef {
   kind: WorkflowActionKind;
-  @doc("Required when `kind` is `add_group_member` or `remove_group_member`. Naming a dynamic group is a validation error at save time.")
+  @doc("`kind` が `add_group_member` または `remove_group_member` のとき必須である。動的グループを指定すると、保存時の検証エラーになる。")
   group_id?: string;
-  @doc("Required when `kind` is `assign_application` or `unassign_application`.")
+  @doc("`kind` が `assign_application` または `unassign_application` のとき必須である。")
   application_id?: string;
-  @doc("Optional when `kind` is `assign_application`; `visible` when left out. Published-language stub for a definition the Application context owns.")
+  @doc("`kind` が `assign_application` のとき任意で、省くと `visible` になる。Application の Context が所有する定義を公表された言語として写したもの。")
   visibility?: AssignmentVisibility;
-  @doc("Required when `kind` is `set_required_action` or `clear_required_action`.")
+  @doc("`kind` が `set_required_action` または `clear_required_action` のとき必須である。")
   required_action?: RequiredAction;
-  @doc("An optional reason recorded when `kind` is `enable_user` or `disable_user`.")
+  @doc("`kind` が `enable_user` または `disable_user` のときに記録する、任意の理由。")
   reason?: string;
-  @doc("Required when `kind` is `send_email`. A label the workflow author gives the notification. The wording is resolved from LifecycleWorkflowNotification in the Tenancy notification template catalogue, and this value is passed into the body as a substitution variable. Assigning a different template per workflow is outside this context.")
+  @doc("`kind` が `send_email` のとき必須である。ワークフローの作成者が通知に付けるラベル。文面は Tenancy の通知のテンプレートのカタログの LifecycleWorkflowNotification から解決し、この値を置換変数として本文に渡す。ワークフローごとに別のテンプレートを割り当てることは、この Context の範囲外である。")
   template_key?: string;
 }
 
 
-@doc("The immutable snapshot of a LifecycleWorkflow definition. Every update that changes its meaning raises the revision by one,\nand past revisions stay immutable. Only the enabled revision creates new WorkflowRuns.")
+@doc("LifecycleWorkflow の定義の変わらないスナップショット。意味を変える更新のたびにリビジョンを 1 増やし、過去のリビジョンは変わらないまま残る。新しい WorkflowRun を作るのは、有効なリビジョンだけである。")
 model LifecycleWorkflowRevision {
   workflow_id: string;
   tenant_id: string;
@@ -151,55 +151,55 @@ model LifecycleWorkflowRevision {
 }
 
 
-@doc("The workflow definition aggregate, whose `name` is unique within the tenant. Creating one makes revision 1 as a draft.\nOnly an enabled revision is evaluated by the trigger, and an update that changes the meaning raises `current_revision`\nwhile leaving `status` and `enabled_revision` alone. An administrator may delete it whatever its state, and a deleted\ndefinition is excluded from listing, reading, and the name uniqueness check. Existing runs and audit events are kept\nindependently of the definition.")
+@doc("ワークフローの定義の集約で、`name` はテナントの中で一意である。作成するとリビジョン 1 を下書きとして作る。トリガーが評価するのは有効なリビジョンだけで、意味を変える更新は `current_revision` を増やすが、`status` と `enabled_revision` は変えない。管理者は状態にかかわらず削除でき、削除した定義は一覧、読み取り、名前の一意性の検査から外れる。既存の実行と監査イベントは、定義とは独立して残す。")
 model LifecycleWorkflow {
-  @doc("The generated identifier (UUID v4). Immutable.")
+  @doc("生成した識別子（UUID v4）。変わらない。")
   @minLength(1)
   @maxLength(64)
   id: string;
-  @doc("The tenant it belongs to. Cross-tenant references are forbidden.")
+  @doc("属するテナント。テナントをまたぐ参照は禁止する。")
   tenant_id: string = "default";
-  @doc("The display name, unique within the tenant.")
+  @doc("表示名。テナントの中で一意である。")
   @minLength(1)
   @maxLength(100)
   name: string;
   @maxLength(500)
   description?: string;
   status: LifecycleWorkflowStatus = LifecycleWorkflowStatus.draft;
-  @doc("The number of the most recently created revision.")
+  @doc("直近に作成したリビジョンの番号。")
   current_revision: int64;
-  @doc("The revision the trigger currently evaluates. It may be unset while the workflow is draft, disabled, or archived.")
+  @doc("トリガーが現在評価するリビジョン。ワークフローが下書き、無効、またはアーカイブ済みの間は設定されないことがある。")
   enabled_revision?: int64;
   created_at: utcDateTime;
   updated_at?: utcDateTime;
 }
 
 
-@doc("The summary of a trigger firing, fixed when the WorkflowRun is created. The history keeps only the names of the changed\nfields and whether each predicate held; the attribute values themselves are not kept, to protect PII.")
+@doc("トリガーの起動の要約で、WorkflowRun を作成したときに固定する。履歴には変わったフィールドの名前と各述語が成り立ったかどうかだけを残し、個人情報を守るため、属性値そのものは残さない。")
 model WorkflowRunTriggerSnapshot {
   kind: WorkflowTriggerKind;
-  @doc("The id of the User mutation domain event that fired it. Redelivery of the same occurrence converges on the same run, so it is deduplicated.")
+  @doc("起動した User の変更のドメインイベントの id。同じ発生の再配送は同じ実行に収束するので、重複を除く。")
   source_occurrence_id: string;
-  @doc("When `kind` is `user_attributes_changed`, the names of the fields that actually changed. The values are not included.")
+  @doc("`kind` が `user_attributes_changed` のときの、実際に変わったフィールドの名前。値は含まない。")
   changed_fields: string[];
   from_status?: UserStatus;
   to_status?: UserStatus;
 }
 
 
-@doc("The unit of work produced by one firing of a WorkflowTrigger. The workflow_id, the revision, the trigger snapshot, the\ntarget_user_id, and the expanded action list are all fixed at creation, so changing the definition afterwards does not\nchange what an existing run means. The dispatcher attaches `job_id` after enqueueing. Immediately before an action runs,\nthe target user and resource are re-checked inside the tenant, and runs against the same target_user_id are serialized in\n`triggered_at` order.\n`(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` is the uniqueness constraint.")
+@doc("WorkflowTrigger の一回の起動が生む作業の単位。workflow_id、リビジョン、トリガーのスナップショット、target_user_id、展開したアクションの一覧はすべて作成時に固定するので、後で定義を変えても既存の実行の意味は変わらない。ディスパッチャーはキューへ入れた後に `job_id` を付ける。アクションを実行する直前に、対象のユーザーとリソースをテナントの中で検査し直し、同じ target_user_id に対する実行は `triggered_at` の順に直列化する。`(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` が一意性の制約である。")
 model WorkflowRun {
-  @doc("The generated identifier (UUID v4).")
+  @doc("生成した識別子（UUID v4）。")
   id: string;
   tenant_id: string;
   workflow_id: string;
   revision: int64;
   trigger: WorkflowRunTriggerSnapshot;
   target_user_id: string;
-  @doc("The action list, expanded from the revision and fixed here. A later change to the definition does not change what this run means.")
+  @doc("リビジョンから展開し、ここで固定したアクションの一覧。後で定義を変えても、この実行の意味は変わらない。")
   actions: WorkflowActionDef[];
   status: WorkflowRunStatus;
-  @doc("The `Jobs.JobRef.id` the dispatcher attaches after enqueueing. Unset until then.")
+  @doc("ディスパッチャーがキューへ入れた後に付ける `Jobs.JobRef.id`。それまでは設定しない。")
   job_id?: string;
   triggered_at: utcDateTime;
   started_at?: utcDateTime;
@@ -207,21 +207,21 @@ model WorkflowRun {
 }
 
 
-@doc("The execution record of one action inside a WorkflowRun. It holds the index in definition order and checkpoints the\noutcome and a sanitized error code. It keeps no attribute value, email body, or secret.")
+@doc("WorkflowRun の中の一つのアクションの実行の記録。定義の順での位置を保持し、結果と無害化したエラーコードをチェックポイントとして記録する。属性値、メールの本文、シークレットは残さない。")
 model WorkflowStep {
   run_id: string;
   tenant_id: string;
-  @doc("The zero-based position within `WorkflowRun.actions`.")
+  @doc("`WorkflowRun.actions` の中での、0 から数えた位置。")
   step_index: int64;
   action_kind: WorkflowActionKind;
   outcome: WorkflowStepOutcome = WorkflowStepOutcome.pending;
-  @doc("A sanitized error code. It carries no attribute value and no email body.")
+  @doc("無害化したエラーコード。属性値もメールの本文も含まない。")
   error_code?: string;
   attempted_at?: utcDateTime;
 }
 
 
-@doc("The delivery idempotency key of a `send_email` action. It records that exactly one message was sent for a given `(run_id, step_index)`.")
+@doc("`send_email` のアクションの配送の冪等キー。ある `(run_id, step_index)` についてメッセージをちょうど一通送ったことを記録する。")
 model LifecycleNotificationDelivery {
   run_id: string;
   step_index: int64;
@@ -231,23 +231,23 @@ model LifecycleNotificationDelivery {
 }
 
 
-@doc("The input naming the user a dry run targets. The revision used is `enabled_revision`, or `current_revision` when none is named.")
+@doc("ドライランの対象のユーザーを指定する入力。使うリビジョンは `enabled_revision`、指定がなければ `current_revision` である。")
 model LifecycleWorkflowDryRunRequest {
   target_user_id: string;
 }
 
 
-@doc("The verdict for one action of a dry run. It reads the target User's current state -- group memberships, application\nassignments, required actions, status, and email verification state -- and returns the same verdict the real action\nexecutor would reach (would_change, no_op, or blocked), without any side effect. It carries no attribute value and no\nemail address.")
+@doc("ドライランの一つのアクションに対する判定。対象の User の現在の状態（グループのメンバーシップ、アプリケーションの割り当て、必須のアクション、状態、メールの確認状態）を読み、実際のアクションの実行器が下すのと同じ判定（would_change、no_op、blocked）を、副作用なしに返す。属性値もメールアドレスも含まない。")
 model LifecycleWorkflowDryRunStepResult {
   action_kind: WorkflowActionKind;
-  @doc("One of would_change, no_op, or blocked.")
+  @doc("would_change、no_op、blocked のいずれか。")
   would_change: string;
-  @doc("Why it is blocked: resource_not_found, dependency_unavailable, notification_unavailable, trigger_not_matched, and the\nlike. Left out for would_change and no_op.")
+  @doc("blocked になった理由。resource_not_found、dependency_unavailable、notification_unavailable、trigger_not_matched など。would_change と no_op では省く。")
   reason?: string;
 }
 
 
-@doc("The result of a dry run. Nothing is created or changed: no WorkflowRun, Job, membership, assignment, required action,\nstatus, or email. It carries `evaluated_at` and the revision, and is not presented as a guarantee about the real run.")
+@doc("ドライランの結果。何も作成も変更もしない。WorkflowRun、Job、メンバーシップ、割り当て、必須のアクション、状態、メールのどれも変わらない。`evaluated_at` とリビジョンを含み、実際の実行についての保証としては示さない。")
 model LifecycleWorkflowDryRunResponse {
   workflow_id: string;
   revision: int64;
@@ -257,7 +257,7 @@ model LifecycleWorkflowDryRunResponse {
 }
 
 
-@doc("The request to create a workflow. Creating one makes revision 1 as a draft.")
+@doc("ワークフローを作成するリクエスト。作成するとリビジョン 1 を下書きとして作る。")
 model LifecycleWorkflowCreateRequest {
   @minLength(1)
   @maxLength(100)
@@ -269,7 +269,7 @@ model LifecycleWorkflowCreateRequest {
 }
 
 
-@doc("The request to update a workflow. When `expected_revision` does not match the current `current_revision` it is refused\nwith WorkflowRevisionConflictError, so a lost update cannot happen.")
+@doc("ワークフローを更新するリクエスト。`expected_revision` が現在の `current_revision` と一致しないときは WorkflowRevisionConflictError で拒否するので、更新の消失は起こらない。")
 model LifecycleWorkflowUpdateRequest {
   expected_revision: int64;
   @maxLength(100)
@@ -281,7 +281,7 @@ model LifecycleWorkflowUpdateRequest {
 }
 
 
-@doc("How a workflow definition is represented, including the contents of `current_revision`.")
+@doc("`current_revision` の内容を含む、ワークフローの定義の表現。")
 model LifecycleWorkflowResponse {
   id: string;
   name: string;
@@ -296,13 +296,13 @@ model LifecycleWorkflowResponse {
 }
 
 
-@doc("The workflow list response.")
+@doc("ワークフローの一覧のレスポンス。")
 model LifecycleWorkflowListResponse {
   workflows: LifecycleWorkflowResponse[];
 }
 
 
-@doc("How a step is represented inside a run detail. It carries no secret, email body, or attribute value.")
+@doc("実行の詳細の中のステップの表現。シークレット、メールの本文、属性値は含まない。")
 model WorkflowStepResponse {
   step_index: int64;
   action_kind: WorkflowActionKind;
@@ -312,7 +312,7 @@ model WorkflowStepResponse {
 }
 
 
-@doc("The run detail response. It shows the trigger, the fixed revision, the target user, the Job attempts, and the outcome,\nerror code, and timestamps of each step. It carries no secret, email body, or attribute value.")
+@doc("実行の詳細のレスポンス。トリガー、固定したリビジョン、対象のユーザー、Job の試行と、各ステップの結果、エラーコード、タイムスタンプを示す。シークレット、メールの本文、属性値は含まない。")
 model WorkflowRunResponse {
   id: string;
   workflow_id: string;
@@ -328,13 +328,13 @@ model WorkflowRunResponse {
 }
 
 
-@doc("The run list response for a workflow. It is not paginated: the endpoint takes no cursor parameter and returns the most recent runs up to a server-side limit. It declared a `next_after` cursor that nothing produced and that had no parameter to be sent back to, which promised paging the endpoint does not do.")
+@doc("ワークフローの実行の一覧のレスポンス。ページングはしない。エンドポイントはカーソルのパラメーターをとらず、サーバー側の上限までの直近の実行を返す。以前は、何も生成せず送り返すパラメーターもない `next_after` のカーソルを宣言しており、エンドポイントが行わないページングを約束していた。")
 model WorkflowRunListResponse {
   runs: WorkflowRunResponse[];
 }
 
 
-@doc("An administrator created a LifecycleWorkflow, as revision 1 in draft.")
+@doc("管理者が、LifecycleWorkflow をリビジョン 1 の下書きとして作成した。")
 model LifecycleWorkflowCreated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -343,7 +343,7 @@ model LifecycleWorkflowCreated {
 }
 
 
-@doc("An administrator updated a LifecycleWorkflow. When the trigger or the actions changed and the revision rose, `newRevision` is included.")
+@doc("管理者が LifecycleWorkflow を更新した。トリガーまたはアクションが変わってリビジョンが増えたときは、`newRevision` を含む。")
 model LifecycleWorkflowUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -353,7 +353,7 @@ model LifecycleWorkflowUpdated {
 }
 
 
-@doc("An administrator got `current_revision` through validation and enabled it as `enabled_revision`.")
+@doc("管理者が `current_revision` を検証に通し、`enabled_revision` として有効にした。")
 model LifecycleWorkflowEnabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -363,7 +363,7 @@ model LifecycleWorkflowEnabled {
 }
 
 
-@doc("An administrator disabled a LifecycleWorkflow. No new run is triggered, and a queued run that has not started is canceled.")
+@doc("管理者が LifecycleWorkflow を無効にした。新しい実行は起動せず、開始していないキュー上の実行は取り消す。")
 model LifecycleWorkflowDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -372,7 +372,7 @@ model LifecycleWorkflowDisabled {
 }
 
 
-@doc("An administrator deleted a LifecycleWorkflow. It is emitted whatever the state was beforehand, and kept as an audit trail.")
+@doc("管理者が LifecycleWorkflow を削除した。それまでの状態にかかわらず発行し、監査証跡として残す。")
 model LifecycleWorkflowDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -381,7 +381,7 @@ model LifecycleWorkflowDeleted {
 }
 
 
-@doc("The dispatcher handed a WorkflowRun to a worker and the first step began.")
+@doc("ディスパッチャーが WorkflowRun をワーカーへ渡し、最初のステップが始まった。")
 model LifecycleWorkflowRunStarted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -391,7 +391,7 @@ model LifecycleWorkflowRunStarted {
 }
 
 
-@doc("Every step of a WorkflowRun ended as changed or no_op.")
+@doc("WorkflowRun のすべてのステップが changed または no_op で終わった。")
 model LifecycleWorkflowRunSucceeded {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -401,7 +401,7 @@ model LifecycleWorkflowRunSucceeded {
 }
 
 
-@doc("A WorkflowRun reached its attempt ceiling and ended with successes and failures mixed.")
+@doc("WorkflowRun が試行の上限に達し、成功と失敗が混在したまま終わった。")
 model LifecycleWorkflowRunPartiallyFailed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -411,7 +411,7 @@ model LifecycleWorkflowRunPartiallyFailed {
 }
 
 
-@doc("A WorkflowRun reached its attempt ceiling and ended without a single successful step.")
+@doc("WorkflowRun が試行の上限に達し、一つも成功したステップがないまま終わった。")
 model LifecycleWorkflowRunFailed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -421,7 +421,7 @@ model LifecycleWorkflowRunFailed {
 }
 
 
-@doc("A disable stopped a queued run that had not started, or stopped a running one after the checkpoint of its current step.")
+@doc("無効化によって、開始していないキュー上の実行が止まったか、実行中の実行が現在のステップのチェックポイントの後で止まった。")
 model LifecycleWorkflowRunCanceled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -431,7 +431,7 @@ model LifecycleWorkflowRunCanceled {
 }
 
 
-@doc("One WorkflowStep settled with a failed outcome. The workflow_id, run_id, step_id, and error_code are kept so an audit search can find it.")
+@doc("一つの WorkflowStep が失敗の結果で確定した。監査の検索で見つけられるように、workflow_id、run_id、step_id、error_code を残す。")
 model LifecycleWorkflowStepFailed {
   occurredAt: utcDateTime;
   tenantId: string;

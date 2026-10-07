@@ -271,16 +271,16 @@ func TestPriorityClassReferenceNamesEveryClass(t *testing.T) {
 		support.ClassInteractiveAuth: {"5", "`ADMISSION_MAX_CONCURRENT_REQUESTS`"},
 		support.ClassInfrastructure:  {"—", "—"},
 	} {
-		row := referenceRowFor(referenceSection(t, reference, "Classes"), string(class))
+		row := referenceRowFor(referenceSection(t, reference, "クラス"), string(class))
 		if row == "" {
-			t.Errorf("the Classes table has no row for %q", class)
+			t.Errorf("the class table has no row for %q", class)
 			continue
 		}
 		if !strings.Contains(row, "| "+want.stage+" |") {
-			t.Errorf("Classes row for %q = %s, want degradation stage %s", class, row, want.stage)
+			t.Errorf("class row for %q = %s, want degradation stage %s", class, row, want.stage)
 		}
 		if !strings.Contains(row, "| "+want.limitKey+" |") {
-			t.Errorf("Classes row for %q = %s, want the limit key %s", class, row, want.limitKey)
+			t.Errorf("class row for %q = %s, want the limit key %s", class, row, want.limitKey)
 		}
 	}
 }

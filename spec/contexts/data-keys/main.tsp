@@ -28,7 +28,7 @@ model ListTenantDataKeyHealthError403 {
   @body body: ListTenantDataKeyHealthError403Body;
 }
 
-@doc("A control-plane caller lists DEK health across tenants: active version, status, and provider reachability. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among its effective roles, and calls through the control-plane tenant; a `system_admin` of any other tenant is refused with AccessDeniedError and observes no identifier or state of another tenant. No key material is returned. Used to judge fail-closed conditions and to catch tenants a rotation missed (REQ-DATAKEYS-006).")
+@doc("制御面の呼び出し元が、テナントを横断して DEK の健全性（有効なバージョン、状態、プロバイダーへの到達性）を一覧する。呼び出し元は、制御面テナントに所属し、有効ロールに `system_admin` を含み、制御面テナントの経路から呼び出す有効なユーザーでなければならない。他のテナントの `system_admin` は AccessDeniedError で拒否され、他のテナントの識別子も状態も観測しない。暗号鍵は返さない。フェイルクローズの条件を判断し、ローテーションから漏れたテナントを見つけるために使う（REQ-DATAKEYS-006）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListTenantDataKeyHealth")
 @route("/api/admin/v1/data-keys/health")

@@ -24,7 +24,7 @@ model ListWorkloadTrustBundlesError403 {
   @body body: ListWorkloadTrustBundlesError403Body;
 }
 
-@doc("An administrator lists the WorkloadTrustBundles of their tenant.")
+@doc("管理者が、自身のテナントの WorkloadTrustBundle を一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
 @TypeSpec.OpenAPI.operationId("ListWorkloadTrustBundles")
 @route("/api/admin/v1/workload-identity/trust-bundles")
@@ -59,7 +59,7 @@ model GetWorkloadTrustBundleError403 {
   @body body: GetWorkloadTrustBundleError403Body;
 }
 
-@doc("An administrator reads one WorkloadTrustBundle. A bundle of another tenant is treated as nonexistent.")
+@doc("管理者が WorkloadTrustBundle を一つ読む。他のテナントのバンドルは存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
 @TypeSpec.OpenAPI.operationId("GetWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}")
@@ -121,7 +121,7 @@ model RegisterWorkloadTrustBundleError422 {
   @body body: RegisterWorkloadTrustBundleError422Body;
 }
 
-@doc("An administrator registers a WorkloadTrustBundle in their tenant. Both `name` and `issuer` must be unique within the tenant.")
+@doc("管理者が、自身のテナントに WorkloadTrustBundle を登録する。`name` と `issuer` はどちらもテナントの中で一意でなければならない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("RegisterWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles")
@@ -181,7 +181,7 @@ model UpdateWorkloadTrustBundleError422 {
   @body body: UpdateWorkloadTrustBundleError422Body;
 }
 
-@doc("An administrator updates the `name`, `jwks_uri`, `jwks`, `accepted_audiences`, or `max_subject_token_ttl_seconds` of a WorkloadTrustBundle.")
+@doc("管理者が、WorkloadTrustBundle の `name`、`jwks_uri`、`jwks`、`accepted_audiences`、`max_subject_token_ttl_seconds` を更新する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("UpdateWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}")
@@ -215,7 +215,7 @@ model DisableWorkloadTrustBundleError403 {
   @body body: DisableWorkloadTrustBundleError403Body;
 }
 
-@doc("An administrator disables a WorkloadTrustBundle. Every binding under it stops working for token exchange, fail-closed.")
+@doc("管理者が WorkloadTrustBundle を無効にする。その下のすべてのバインディングは、フェイルクローズでトークン交換に使えなくなる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DisableWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/disable")
@@ -247,7 +247,7 @@ model EnableWorkloadTrustBundleError403 {
   @body body: EnableWorkloadTrustBundleError403Body;
 }
 
-@doc("An administrator re-enables a disabled WorkloadTrustBundle.")
+@doc("管理者が、無効にした WorkloadTrustBundle を再び有効にする。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("EnableWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable")
@@ -279,7 +279,7 @@ model DeleteWorkloadTrustBundleError403 {
   @body body: DeleteWorkloadTrustBundleError403Body;
 }
 
-@doc("An administrator deletes a WorkloadTrustBundle. The AgentWorkloadBindings under it are deleted with it.")
+@doc("管理者が WorkloadTrustBundle を削除する。その下の AgentWorkloadBinding も一緒に削除する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DeleteWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}")
@@ -316,7 +316,7 @@ model RefreshWorkloadTrustBundleJWKSError403 {
   @body body: RefreshWorkloadTrustBundleJWKSError403Body;
 }
 
-@doc("An administrator checks right away that the JWKS of a WorkloadTrustBundle is reachable, so a misconfiguration surfaces before it matters. On success `jwks_cached_at` is refreshed.")
+@doc("管理者が、WorkloadTrustBundle の JWKS に到達できることをその場で確かめ、設定の誤りが問題になる前に見つけられるようにする。成功すると `jwks_cached_at` を更新する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("RefreshWorkloadTrustBundleJWKS")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh")
@@ -350,7 +350,7 @@ model ListAgentWorkloadBindingsError403 {
   @body body: ListAgentWorkloadBindingsError403Body;
 }
 
-@doc("An administrator lists the AgentWorkloadBindings under a WorkloadTrustBundle.")
+@doc("管理者が、WorkloadTrustBundle の下の AgentWorkloadBinding を一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
 @TypeSpec.OpenAPI.operationId("ListAgentWorkloadBindings")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings")
@@ -398,7 +398,7 @@ model CreateAgentWorkloadBindingError422 {
   @body body: CreateAgentWorkloadBindingError422Body;
 }
 
-@doc("An administrator creates an AgentWorkloadBinding under a WorkloadTrustBundle. `agent_id` must name an Agent that exists in the same tenant (WorkloadIdentityReferencesStayTenantLocal). Within one `trust_bundle_id`, an exact duplicate of `subject_pattern` is refused.")
+@doc("管理者が、WorkloadTrustBundle の下に AgentWorkloadBinding を作成する。`agent_id` は同じテナントに存在する Agent を指さなければならない（WorkloadIdentityReferencesStayTenantLocal）。一つの `trust_bundle_id` の中で、`subject_pattern` が完全に重複するものは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("CreateAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings")
@@ -432,7 +432,7 @@ model DisableAgentWorkloadBindingError403 {
   @body body: DisableAgentWorkloadBindingError403Body;
 }
 
-@doc("An administrator disables an AgentWorkloadBinding. It stops working for token exchange from then on.")
+@doc("管理者が AgentWorkloadBinding を無効にする。以降はトークン交換に使えない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DisableAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}/disable")
@@ -464,7 +464,7 @@ model EnableAgentWorkloadBindingError403 {
   @body body: EnableAgentWorkloadBindingError403Body;
 }
 
-@doc("An administrator re-enables a disabled AgentWorkloadBinding.")
+@doc("管理者が、無効にした AgentWorkloadBinding を再び有効にする。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("EnableAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}/enable")
@@ -496,7 +496,7 @@ model DeleteAgentWorkloadBindingError403 {
   @body body: DeleteAgentWorkloadBindingError403Body;
 }
 
-@doc("An administrator deletes an AgentWorkloadBinding.")
+@doc("管理者が AgentWorkloadBinding を削除する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}")

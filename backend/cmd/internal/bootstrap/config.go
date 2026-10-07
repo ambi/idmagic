@@ -87,10 +87,10 @@ type ConfigField struct {
 	Constraint string
 	Allowed    []string
 	Required   bool
-	// RequiredWhen names the condition that makes an otherwise optional
-	// field mandatory, for example PERSISTENCE=postgres. It is metadata for
-	// the generated reference; runtime enforcement remains in Required* or
-	// Require calls beside the Config definition.
+	// RequiredWhen は、任意の項目を必須にする条件である。生成する参照文書へ
+	// コードとして埋め込むので、PERSISTENCE=postgres や SEED_PROFILE != "" のように
+	// キーの式で書き、文章にしない。実行時の検証は Config の定義の隣にある
+	// Required* と Require が担い、この値は参照文書のためだけの情報である。
 	RequiredWhen string
 	Secret       bool
 }

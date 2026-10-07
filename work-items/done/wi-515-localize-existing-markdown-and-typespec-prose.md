@@ -1,0 +1,1440 @@
+---
+status: completed
+authors: [tn]
+risk: medium
+reversibility: reversible
+created_at: 2026-09-08
+priority: p2
+depends_on: [wi-512-system-wide-top-down-documentation-architecture]
+change_kind: docs
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: release_note
+  reason: "OpenAPI の description と、そこから生成するクライアントのコメントが日本語になるので、生成物を読む API の利用者へ知らせる。"
+  references:
+    - { kind: release_note, path: docs/releases/changes/wi-515-localize-existing-markdown-and-typespec-prose.md }
+affected_spec:
+  - { path: spec/contexts/api-tokens/main.tsp, symbol: IssueApiToken }
+  - { path: spec/contexts/api-tokens/main.tsp, symbol: ListApiTokens }
+  - { path: spec/contexts/api-tokens/main.tsp, symbol: RevokeApiToken }
+  - { path: spec/contexts/api-tokens/models.tsp, symbol: ApiToken }
+  - { path: spec/contexts/api-tokens/models.tsp, symbol: ApiTokenMetadata }
+  - { path: spec/contexts/api-tokens/models.tsp, symbol: ApiTokenPrincipal }
+  - { path: spec/contexts/api-tokens/models.tsp, symbol: ApiTokenScope }
+  - { path: spec/contexts/application/main.tsp, symbol: AssignApplication }
+  - { path: spec/contexts/application/main.tsp, symbol: CreateAdminApplication }
+  - { path: spec/contexts/application/main.tsp, symbol: CreateApplicationCategory }
+  - { path: spec/contexts/application/main.tsp, symbol: DeleteAdminApplication }
+  - { path: spec/contexts/application/main.tsp, symbol: DeleteApplicationCategory }
+  - { path: spec/contexts/application/main.tsp, symbol: DeleteApplicationIcon }
+  - { path: spec/contexts/application/main.tsp, symbol: GetAdminApplication }
+  - { path: spec/contexts/application/main.tsp, symbol: GetAppSignInPolicy }
+  - { path: spec/contexts/application/main.tsp, symbol: GetApplicationIcon }
+  - { path: spec/contexts/application/main.tsp, symbol: GetMyApplicationOrder }
+  - { path: spec/contexts/application/main.tsp, symbol: GetTenantDefaultSignInPolicy }
+  - { path: spec/contexts/application/main.tsp, symbol: IssueApplicationClientSecret }
+  - { path: spec/contexts/application/main.tsp, symbol: ListAdminApplications }
+  - { path: spec/contexts/application/main.tsp, symbol: ListApplicationAssignments }
+  - { path: spec/contexts/application/main.tsp, symbol: ListApplicationCategories }
+  - { path: spec/contexts/application/main.tsp, symbol: ListMyApplications }
+  - { path: spec/contexts/application/main.tsp, symbol: ReorderMyApplications }
+  - { path: spec/contexts/application/main.tsp, symbol: RevokeApplicationClientSecret }
+  - { path: spec/contexts/application/main.tsp, symbol: RotateApplicationClientSecret }
+  - { path: spec/contexts/application/main.tsp, symbol: SetApplicationCategories }
+  - { path: spec/contexts/application/main.tsp, symbol: UnassignApplication }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateAdminApplication }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateAppSignInPolicy }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateApplicationCategory }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateApplicationOidcConfig }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateApplicationSamlConfig }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateApplicationWsFedConfig }
+  - { path: spec/contexts/application/main.tsp, symbol: UpdateTenantDefaultSignInPolicy }
+  - { path: spec/contexts/application/main.tsp, symbol: UploadApplicationIcon }
+  - { path: spec/contexts/application/models.tsp, symbol: AccessCondition }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationCategoryListResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationCategoryRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationCategoryResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationCreateRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationCreateResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationDetailResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationListResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AdminApplicationUpdateRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: AppAccessDeniedByPolicy }
+  - { path: spec/contexts/application/models.tsp, symbol: AppSignInPolicy }
+  - { path: spec/contexts/application/models.tsp, symbol: AppSignInPolicyRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: AppSignInPolicyResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: AppSignInPolicyUpdated }
+  - { path: spec/contexts/application/models.tsp, symbol: AppStepUpRequired }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationAssigned }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationAssignmentListResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationAssignmentRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationAssignmentResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCategoriesRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCategory }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCategoryCreated }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCategoryDeleted }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCategoryNotFoundError }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCategoryUpdated }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationClaimMappingUpdated }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationClientSecretCredentialMetadata }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationCreated }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationDeleted }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationIconNotFoundError }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationIconUpdated }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationIconUploadResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationKind }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationNotFoundError }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationOidcConfig }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationOidcConfigUpdateRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationOrdering }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationProtocol }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationProtocolTargetNotFoundError }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationProtocolType }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationProvisionType }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationSamlConfig }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationSamlConfigUpdateRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationStatus }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationUnassigned }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationUpdated }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationWsFedConfig }
+  - { path: spec/contexts/application/models.tsp, symbol: ApplicationWsFedConfigUpdateRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: CategoryNameRequiredError }
+  - { path: spec/contexts/application/models.tsp, symbol: ClientSecretCredentialStatus }
+  - { path: spec/contexts/application/models.tsp, symbol: ClientSecretIssued }
+  - { path: spec/contexts/application/models.tsp, symbol: ClientSecretLimitExceededError }
+  - { path: spec/contexts/application/models.tsp, symbol: ClientSecretRevoked }
+  - { path: spec/contexts/application/models.tsp, symbol: ClientType }
+  - { path: spec/contexts/application/models.tsp, symbol: FapiProfile }
+  - { path: spec/contexts/application/models.tsp, symbol: GrantType }
+  - { path: spec/contexts/application/models.tsp, symbol: IssueApplicationClientSecretRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: IssueApplicationClientSecretResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: MfaEnrollmentPolicy }
+  - { path: spec/contexts/application/models.tsp, symbol: MyApplication }
+  - { path: spec/contexts/application/models.tsp, symbol: MyApplicationListResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: MyApplicationOrderResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: PortalApplicationCategory }
+  - { path: spec/contexts/application/models.tsp, symbol: ReorderMyApplicationsRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: RequiredAuthnLevel }
+  - { path: spec/contexts/application/models.tsp, symbol: RequiredAuthnStrength }
+  - { path: spec/contexts/application/models.tsp, symbol: ResponseType }
+  - { path: spec/contexts/application/models.tsp, symbol: RevokeApplicationClientSecretResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: RotateApplicationClientSecretRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: RotateApplicationClientSecretResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: SignInRule }
+  - { path: spec/contexts/application/models.tsp, symbol: TenantDefaultSignInPolicy }
+  - { path: spec/contexts/application/models.tsp, symbol: TenantDefaultSignInPolicyRequest }
+  - { path: spec/contexts/application/models.tsp, symbol: TenantDefaultSignInPolicyResponse }
+  - { path: spec/contexts/application/models.tsp, symbol: TenantDefaultSignInPolicyUpdated }
+  - { path: spec/contexts/application/models.tsp, symbol: TokenEndpointAuthMethod }
+  - { path: spec/contexts/application/models.tsp, symbol: UnknownCategoryError }
+  - { path: spec/contexts/audit/main.tsp, symbol: ExportAdminAuditEvents }
+  - { path: spec/contexts/audit/main.tsp, symbol: ExportSystemAuditEvents }
+  - { path: spec/contexts/audit/main.tsp, symbol: GetAdminAuditEvent }
+  - { path: spec/contexts/audit/main.tsp, symbol: GetAdminAuditEventSearchOptions }
+  - { path: spec/contexts/audit/main.tsp, symbol: GetSystemAuditEvent }
+  - { path: spec/contexts/audit/main.tsp, symbol: ListAdminAuditEvents }
+  - { path: spec/contexts/audit/main.tsp, symbol: ListSystemAuditEvents }
+  - { path: spec/contexts/audit/models.tsp, symbol: AdminAuditEventListResponse }
+  - { path: spec/contexts/audit/models.tsp, symbol: AdminAuditEventResponse }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventFilterExpression }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventFilterOperator }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventNotFoundError }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventQuery }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventSearchAttribute }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventSearchOptionsResponse }
+  - { path: spec/contexts/audit/models.tsp, symbol: AuditEventSearchTransform }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ActivateIdentityProviderConnection }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ChangePassword }
+  - { path: spec/contexts/authentication/main.tsp, symbol: CompleteFederatedLogin1 }
+  - { path: spec/contexts/authentication/main.tsp, symbol: CompleteFederatedLogin2 }
+  - { path: spec/contexts/authentication/main.tsp, symbol: CompleteStepUpAuthentication }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ConfirmBrowserMfaEnrollment }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ConfirmTotpEnrollment }
+  - { path: spec/contexts/authentication/main.tsp, symbol: CreateIdentityProviderConnection }
+  - { path: spec/contexts/authentication/main.tsp, symbol: DeleteIdentityProviderConnection }
+  - { path: spec/contexts/authentication/main.tsp, symbol: DisableIdentityProviderConnection }
+  - { path: spec/contexts/authentication/main.tsp, symbol: DiscoverIdentityProviders }
+  - { path: spec/contexts/authentication/main.tsp, symbol: FinishWebAuthnRegistration }
+  - { path: spec/contexts/authentication/main.tsp, symbol: GenerateRecoveryCodes }
+  - { path: spec/contexts/authentication/main.tsp, symbol: GetAccountContext }
+  - { path: spec/contexts/authentication/main.tsp, symbol: GetAccountSecurity }
+  - { path: spec/contexts/authentication/main.tsp, symbol: GetMyNotificationPreferences }
+  - { path: spec/contexts/authentication/main.tsp, symbol: GetPasswordResetContext }
+  - { path: spec/contexts/authentication/main.tsp, symbol: IssueMfaEnrollmentBypass }
+  - { path: spec/contexts/authentication/main.tsp, symbol: LinkExternalIdentity }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListAuthenticationEventBuckets }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListIdentityProviderConnections }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListLinkedExternalIdentities }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListMySessions }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListMySignInActivity }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListMyTrustedDevices }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListSessions }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ListUserSignInActivity }
+  - { path: spec/contexts/authentication/main.tsp, symbol: PreviewIdentityProviderMapping }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RefreshIdentityProviderMetadata }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RemoveTotpFactor }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RemoveWebAuthnCredential }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RequestPasswordReset }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ResetPasswordWithToken }
+  - { path: spec/contexts/authentication/main.tsp, symbol: ResetUserAuthenticators }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeMfaEnrollmentBypass }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeMyOtherSessions }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeMySession }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeMyTrustedDevice }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeMyTrustedDevices }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeRecoveryCodes }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeSession }
+  - { path: spec/contexts/authentication/main.tsp, symbol: RevokeUserSessions }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartBrowserMfaEnrollment }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartBrowserWebAuthn }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartFederatedLogin }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartStepUpAuthentication }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartStepUpWebAuthnChallenge }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartTotpEnrollment }
+  - { path: spec/contexts/authentication/main.tsp, symbol: StartWebAuthnRegistration }
+  - { path: spec/contexts/authentication/main.tsp, symbol: SubmitBrowserLogin }
+  - { path: spec/contexts/authentication/main.tsp, symbol: SubmitBrowserRecoveryCode }
+  - { path: spec/contexts/authentication/main.tsp, symbol: SubmitBrowserTotp }
+  - { path: spec/contexts/authentication/main.tsp, symbol: SubmitBrowserWebAuthn }
+  - { path: spec/contexts/authentication/main.tsp, symbol: TestIdentityProviderConnection }
+  - { path: spec/contexts/authentication/main.tsp, symbol: UnlinkExternalIdentity }
+  - { path: spec/contexts/authentication/main.tsp, symbol: UpdateIdentityProviderConnection }
+  - { path: spec/contexts/authentication/main.tsp, symbol: UpdateMyNotificationPreferences }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountContextResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountLinkingPolicy }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountMfaFactor }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountNotificationCategoryPreference }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountNotificationPreferences }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountSecurityNotificationSent }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountSecurityResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountSession }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountSessionListResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountTrustedDevice }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AccountTrustedDeviceListResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticationContext }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticationEventAggregated }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticationEventBucket }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticationEventBucketListResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticationFailed }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticationRequiredError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticatorResetCompleted }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticatorResetNotAllowedError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticatorResetRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticatorResetRequested }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticatorResetResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: AuthenticatorResetTarget }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BackupCodeConsumed }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserChangePasswordRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserCsrfContext }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserForgotPasswordRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserMfaEnrollmentConfirmRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserRecoveryCodeRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserResetPasswordRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserTotpRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: BrowserWebAuthnRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: ClaimMapping }
+  - { path: spec/contexts/authentication/models.tsp, symbol: EmailSent }
+  - { path: spec/contexts/authentication/models.tsp, symbol: ExternalIdentityClaimsPreview }
+  - { path: spec/contexts/authentication/models.tsp, symbol: ExternalIdentityProviderSummary }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedAuthenticated }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedIdentity }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedIdentityLinked }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedIdentityUnlinked }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedLoginAttempt }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedLoginCompletion }
+  - { path: spec/contexts/authentication/models.tsp, symbol: FederatedLoginRejected }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnection }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionActivated }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionCreated }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionDisabled }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionInUseError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionNotFoundError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionStatus }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderConnectionTestResult }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdentityProviderProtocol }
+  - { path: spec/contexts/authentication/models.tsp, symbol: InvalidAccessTokenError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: InvalidResetTokenError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: KnownSignInDevice }
+  - { path: spec/contexts/authentication/models.tsp, symbol: LoginPendingPurpose }
+  - { path: spec/contexts/authentication/models.tsp, symbol: LoginSession }
+  - { path: spec/contexts/authentication/models.tsp, symbol: LoginThrottled }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaAlreadyEnrolledError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaChallengeFailed }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaChallengeIssued }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaChallengeSucceeded }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypass }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypassConsumed }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypassExpired }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypassIssueRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypassIssued }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypassResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentBypassRevoked }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentCompleted }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentNotAllowedError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaEnrollmentRequired }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaFactor }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaFactorEnrolled }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaFactorRemoveRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaFactorRemoved }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaFactorType }
+  - { path: spec/contexts/authentication/models.tsp, symbol: MfaUnavailableError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: NotificationPreference }
+  - { path: spec/contexts/authentication/models.tsp, symbol: PasswordChanged }
+  - { path: spec/contexts/authentication/models.tsp, symbol: PasswordResetRequested }
+  - { path: spec/contexts/authentication/models.tsp, symbol: PasswordResetTokenRecord }
+  - { path: spec/contexts/authentication/models.tsp, symbol: PasswordReuseError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: RecoveryCode }
+  - { path: spec/contexts/authentication/models.tsp, symbol: RecoveryCodeStatus }
+  - { path: spec/contexts/authentication/models.tsp, symbol: RecoveryCodesGenerated }
+  - { path: spec/contexts/authentication/models.tsp, symbol: RecoveryCodesResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: RecoveryCodesRevoked }
+  - { path: spec/contexts/authentication/models.tsp, symbol: RecoveryUnavailableError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SecurityNotificationCategory }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionEndReason }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionEnded }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionImpersonationEnded }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionImpersonationStarted }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionNotFoundError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionRecord }
+  - { path: spec/contexts/authentication/models.tsp, symbol: SessionRecordListResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: StepUpCompleteRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: StepUpCompleted }
+  - { path: spec/contexts/authentication/models.tsp, symbol: StepUpMethod }
+  - { path: spec/contexts/authentication/models.tsp, symbol: StepUpRequested }
+  - { path: spec/contexts/authentication/models.tsp, symbol: StepUpStartResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: TOTPEnrollmentConfirmRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: TOTPEnrollmentStart }
+  - { path: spec/contexts/authentication/models.tsp, symbol: TrustedDevice }
+  - { path: spec/contexts/authentication/models.tsp, symbol: TrustedDeviceRegistered }
+  - { path: spec/contexts/authentication/models.tsp, symbol: TrustedDeviceRevokeReason }
+  - { path: spec/contexts/authentication/models.tsp, symbol: TrustedDeviceRevoked }
+  - { path: spec/contexts/authentication/models.tsp, symbol: UpdateNotificationPreferencesRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: UserAuthenticated }
+  - { path: spec/contexts/authentication/models.tsp, symbol: UserSignInActivity }
+  - { path: spec/contexts/authentication/models.tsp, symbol: UserSignInActivityResponse }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnAssertionOptions }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnCredential }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnCredentialRegistered }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnCredentialRemoveRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnCredentialRemoved }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnCredentialSummary }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnNotEnrolledError }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnRegistrationOptions }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnRegistrationRequest }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnTransport }
+  - { path: spec/contexts/authentication/models.tsp, symbol: WebAuthnUnavailableError }
+  - { path: spec/contexts/authorization/main.tsp, symbol: CheckAccess }
+  - { path: spec/contexts/authorization/main.tsp, symbol: GetAuthorizationModel }
+  - { path: spec/contexts/authorization/main.tsp, symbol: ListAccessibleResources }
+  - { path: spec/contexts/authorization/main.tsp, symbol: ListRelationTuples }
+  - { path: spec/contexts/authorization/main.tsp, symbol: PutAuthorizationModel }
+  - { path: spec/contexts/authorization/main.tsp, symbol: WriteRelationTuples }
+  - { path: spec/contexts/authorization/models.tsp, symbol: AuthorizationModel }
+  - { path: spec/contexts/authorization/models.tsp, symbol: AuthorizationModelInvalidError }
+  - { path: spec/contexts/authorization/models.tsp, symbol: AuthorizationModelNotFoundError }
+  - { path: spec/contexts/authorization/models.tsp, symbol: AuthorizationModelPublished }
+  - { path: spec/contexts/authorization/models.tsp, symbol: ConsistencyNotSatisfiedError }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaActor }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaCheckEvaluated }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaCheckRequest }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaCheckResult }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaListAccessibleResourcesResult }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaObjectReference }
+  - { path: spec/contexts/authorization/models.tsp, symbol: FgaResourcesEnumerated }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationDefinition }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationRewrite }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationRewriteKind }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationTuple }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationTupleDeleted }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationTupleInvalidError }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationTupleWriteRequest }
+  - { path: spec/contexts/authorization/models.tsp, symbol: RelationTupleWritten }
+  - { path: spec/contexts/authorization/models.tsp, symbol: ResourceTypeDefinition }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: AttrVisibility }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: ClaimMappingRule }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: ClaimMappingSource }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: ClaimReleaseDeniedError }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: IssuedClaim }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: NameIdConfiguration }
+  - { path: spec/contexts/claim-mapping/models.tsp, symbol: UserAttributeDef }
+  - { path: spec/contexts/data-keys/main.tsp, symbol: ListTenantDataKeyHealth }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataEncryptionKeyBootstrapped }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataEncryptionKeyDestroyed }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataEncryptionKeyDisabled }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataEncryptionKeyRotated }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataKeyStatus }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataKeyStillReferencedError }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: DataKeyUnavailableError }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: EncryptedSecret }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: TenantDataEncryptionKey }
+  - { path: spec/contexts/data-keys/models.tsp, symbol: TenantDataKeyHealth }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: CreateLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: DeleteLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: DisableLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: DryRunLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: EnableLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: GetLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: GetLifecycleWorkflowRun }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: ListLifecycleWorkflowRuns }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: ListLifecycleWorkflows }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: RetryLifecycleWorkflowRun }
+  - { path: spec/contexts/identity-governance/main.tsp, symbol: UpdateLifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: AssignmentVisibility }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleNotificationDelivery }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflow }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowCreateRequest }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowCreated }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowDeleted }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowDisabled }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowDryRunRequest }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowDryRunResponse }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowDryRunStepResult }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowEnabled }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowListResponse }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowResponse }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowRevision }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowRunCanceled }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowRunFailed }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowRunPartiallyFailed }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowRunStarted }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowRunSucceeded }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowStatus }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowStepFailed }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowUpdateRequest }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: LifecycleWorkflowUpdated }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: RequiredAction }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: UserStatus }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowActionDef }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowActionKind }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowFilter }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowFilterOperator }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowNameConflictError }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowRevisionConflictError }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowRun }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowRunListResponse }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowRunResponse }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowRunStatus }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowRunTriggerSnapshot }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowStep }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowStepOutcome }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowStepResponse }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowTriggerDef }
+  - { path: spec/contexts/identity-governance/models.tsp, symbol: WorkflowTriggerKind }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: AddGroupMember }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ApplyAdminGroupImport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ApplyAdminGroupMemberImport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ApplyAdminUserImport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: BindAgentCredential }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: CancelGroupExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: CancelGroupMemberExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: CancelUserExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ClearUserRequiredAction }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ConfirmEmailChange }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: CreateAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: CreateGroup }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DeleteAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DeleteAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DeleteGroup }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DisableAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DisableAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DisableDynamicGroupRule }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DownloadGroupExportFile }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DownloadGroupMemberExportFile }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: DownloadUserExportFile }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: EnableAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: EnableAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: EnableDynamicGroupRule }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ExportAccountData }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetAccountSummary }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetAdminGroupImport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetAdminGroupMemberImport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetAdminUserImport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetEmailVerificationContext }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetGroup }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetGroupExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetGroupMemberExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetUserExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: GetUserProfile }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ImportAdminGroupMembers }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ImportAdminGroups }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ImportAdminUsers }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: KillAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListAdminUsers }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListAgents }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListGroupExports }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListGroupMemberExports }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListGroups }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListUserExports }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: ListUserGroups }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: PreviewDynamicGroupRule }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: RegisterAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: RemoveGroupMember }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: RequestEmailChange }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: RestoreAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: SetUserRequiredAction }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: StartGroupCsvExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: StartGroupMemberCsvExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: StartUserCsvExport }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: UnbindAgentCredential }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: UpdateAdminUser }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: UpdateAgent }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: UpdateDynamicGroupRule }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: UpdateGroup }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: UpdateUserProfile }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AccountDataExport }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AccountEmailChangeConfirm }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AccountEmailChangeRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AccountProfileResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AccountProfileUpdateRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AccountSummary }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: ActiveJobQuotaExceededError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AdminRequiredActionRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AdminUserCreateRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AdminUserListResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AdminUserResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AdminUserUpdateRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: Agent }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentClientAlreadyBoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentCredentialBindRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentCredentialBinding }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentCredentialBound }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentCredentialUnbound }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentDeleted }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentDisabled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentEnabled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKilled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKilledError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKind }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKindRequiredError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentListResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentNameConflictError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentNameRequiredError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentNotFoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentOwnerChanged }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentOwnerInactiveError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentOwnerNotFoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentOwnerRequiredError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentRegisterRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentRegistered }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentStatus }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentSummaryResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentUpdateRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AgentUpdated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AttributeType }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: AttributeValue }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: CsvTransferPolicy }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportCanceled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportColumn }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportDownloaded }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportExpired }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportFailed }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportFile }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportFormat }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportJob }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportRequested }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportStarted }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportStatus }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportSucceeded }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DataExportTargetKind }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupPreviewRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupPreviewResult }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupRule }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupRuleDisabled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupRuleEnabled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupRuleRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicGroupRuleUpdated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicMembershipEvaluated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicMembershipEvaluation }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicMembershipEvaluationFailed }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicMembershipEvaluationStarted }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: DynamicMembershipEvaluationStatus }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: EmailChangeRequested }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: EmailChanged }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: EmailTakenError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: EmailUnchangedError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: FederationLinked }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: FederationUnlinked }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: Group }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupAddMemberRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupAttributeDef }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupCreateRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupCreated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupCsvLifecycleAction }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupDeleted }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportJob }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportJobRef }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportMode }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportNotFoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportResult }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportRowError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupImportUnavailableError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupListResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMember }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMemberAdded }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMemberRemoved }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMemberResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipCsvState }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportJob }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportJobRef }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportMode }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportNotFoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportResult }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportRowError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipImportUnavailableError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipSource }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupMembershipType }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupNameConflictError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupNameRequiredError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupSummaryResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupUpdateRequest }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: GroupUpdated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidAgentKindError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidDynamicGroupRuleError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidEmailError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidExportColumnsError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidExportFilterError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidExportTargetError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidGroupAttributeError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidRequiredActionError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidRoleError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: InvalidUserAttributeError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: RestoreGracePeriodExpiredError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: SelfDeleteForbiddenError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: SelfDisableForbiddenError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: User }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserCreated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserDeleted }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserDisabled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserEnabled }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserGroupsResponse }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportJob }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportJobRef }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportMode }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportNotFoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportResult }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportRowError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserImportUnavailableError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserLifecycle }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserNotFoundError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserNotPendingDeletionError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserPendingDeletionError }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserRequiredActionCleared }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserRequiredActionSet }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserRestored }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserSoftDeleted }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UserUpdated }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: UsernameConflictError }
+  - { path: spec/contexts/jobs/main.tsp, symbol: CancelJob }
+  - { path: spec/contexts/jobs/main.tsp, symbol: CancelSystemJob }
+  - { path: spec/contexts/jobs/main.tsp, symbol: GetJob }
+  - { path: spec/contexts/jobs/main.tsp, symbol: GetSystemJob }
+  - { path: spec/contexts/jobs/main.tsp, symbol: ListJobs }
+  - { path: spec/contexts/jobs/main.tsp, symbol: ListSystemJobs }
+  - { path: spec/contexts/jobs/models.tsp, symbol: AdminJobListResponse }
+  - { path: spec/contexts/jobs/models.tsp, symbol: AdminJobQuery }
+  - { path: spec/contexts/jobs/models.tsp, symbol: AdminJobResponse }
+  - { path: spec/contexts/jobs/models.tsp, symbol: ExecutionLane }
+  - { path: spec/contexts/jobs/models.tsp, symbol: Job }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobCanceled }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobEnqueued }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobFailed }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobKind }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobLeaseLostError }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobNotCancelableError }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobNotFoundError }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobProgress }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobRef }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobRetried }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobStarted }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobStatus }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobSucceeded }
+  - { path: spec/contexts/jobs/models.tsp, symbol: JobsUnavailableError }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: Authorize }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: BackchannelAuthenticate }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: CheckSessionIframe }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: CreateAdminMcpResourceServer }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: CreateAdminOAuth2Client }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: CreateAuthorizationDetailType }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: DecideMyApprovalRequest }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: DeleteAdminMcpResourceServer }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: DeleteAdminOAuth2Client }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: DeleteAuthorizationDetailType }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: DeviceAuthorization }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: EndSession1 }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: EndSession2 }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetAdminConsent }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetAdminMcpResourceServer }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetAdminOAuth2Client }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetAuthorizationDetailType }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetBrowserDeviceContext }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetBrowserTransaction }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetOauthAuthorizationServer }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: GetProtectedResourceMetadata }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: Health }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: Introspect }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListAdminConsents }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListAdminMcpResourceServers }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListAdminOAuth2Clients }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListAdminRolePolicies }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListAuthorizationDetailTypes }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListMyApprovalRequests }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ListMyConsents }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: PostUserInfo }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: PushAuthorizationRequest }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: RegisterClient }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: ResumeFederatedAuthorization }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: Revoke }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: RevokeAdminConsent }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: RevokeMyConsent }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: SubmitBrowserConsent }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: SubmitBrowserDevice }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: Token }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: UpdateAdminMcpResourceServer }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: UpdateAdminOAuth2Client }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: UpdateAuthorizationDetailType }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: UserInfo }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccessTokenClaims }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccessTokenIssued }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccessTokenSenderConstraint }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccountApprovalDecisionRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccountApprovalRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccountApprovalRequestListResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccountConsentListResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AccountConsentResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminConsentListResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminConsentResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientCreateRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientCreateResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientCreated }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientDeleted }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientListResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientUpdateRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminOAuth2ClientUpdated }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminRoleInterface }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminRolePermission }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AdminRolePolicy }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AgentApprovalRequired }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ApprovalRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ApprovalRequestState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Approve }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Audience }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthenticateUser }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationCodeIssued }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationCodeRecord }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationCodeRecordState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationCodeRedeemed }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationCodeState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetail }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailFieldRule }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailFieldSemantics }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailType }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailTypeExistsError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailTypeListResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailTypeNotFoundError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailTypeRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailTypeResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailTypeState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailsConsented }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailsRejected }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailsRequested }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationDetailsSchema }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationPendingError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizationRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: AuthorizeParameters }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BackchannelAuthApproved }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BackchannelAuthDenied }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BackchannelAuthExpired }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BackchannelAuthRequested }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BackchannelAuthenticationRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BackchannelAuthenticationResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BrowserConsentRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BrowserDeviceContextResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BrowserDeviceRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BrowserFlowResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: BrowserTransactionResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientIDMetadataDocument }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientIdMetadataDocumentRejected }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientIdMetadataDocumentResolved }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientRegistered }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientRegistrationRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientRegistrationResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientSecretCredential }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientSecretCredentialMetadata }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientSecretRotated }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ClientSession }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: CodeChallengeMethod }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Consent }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ConsentGranted }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ConsentRevoked }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ConsentState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Consume }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DelegationMode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Deliver }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Deny }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceAuthorization }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceAuthorizationApproved }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceAuthorizationDenied }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceAuthorizationRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceAuthorizationRequested }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceAuthorizationResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DeviceCodeState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DiscoveryDocument }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: DpopProofClaims }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: EndSessionParameters }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: EndpointRateLimitPolicy }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: EnterUserCode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Exchange }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Exhaust }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Expire }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ExpiredTokenError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: FrontChannelLogoutTarget }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: GrantConsent }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdTokenClaims }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IntrospectionRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IntrospectionResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidAuthorizationDetailTypeError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidBindingMessageError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidClientError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidDpopProofError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidGrantError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidScopeError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidTargetError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: InvalidTokenError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IssueClientSecretRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IssueClientSecretResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IssueCode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: LogoutNotification }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: LogoutNotificationState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServer }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServerExistsError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServerListResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServerNotFoundError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServerRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServerResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: McpResourceServerState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuth2Client }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuth2ClientNotFoundError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuthAccessDeniedError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuthError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuthErrorCode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuthInsufficientScopeError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: OAuthInvalidRequestError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: PARRecord }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: PARRecordState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: PARStored }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ParRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ParResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ProtectedResourceMetadata }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ProtectedResourceMetadataServed }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RateLimitedError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RedeemCode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RefreshTokenIssued }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RefreshTokenRecord }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RefreshTokenReuseDetected }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RefreshTokenRotated }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RefreshTokenSenderConstraint }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RefreshTokenState }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Reject }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RequestConsent }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ResourceAudienceRejected }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ResourceIndicator }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ResourceScopedTokenIssued }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ResponseMode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RevokeClientSecretResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RevokeConsent }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RevokeRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RevokeToken }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Rotate }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RotateClientSecretRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: RotateClientSecretResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: SenderConstraintCnf }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: SenderConstraintKind }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: ServerError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: SlowDownError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenExchangeRejected }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenExchanged }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenIntrospected }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenRevoked }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenType }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: UnauthorizedClientError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: UnknownUserIdError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: UnsupportedGrantTypeError }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: UpdateAuthorizationDetailTypeRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Use }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: UserInfoResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: Validate }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: DeleteProvisioningConnection }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: GetProvisioningConnection }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: GetProvisioningTask }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: ListProvisioningTasks }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: ListTenantProvisioningConnections }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: ProvisionOnDemand }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: RegisterProvisioningConnection }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: ResumeProvisioningConnection }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: RetryProvisioningTask }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: StartFullResync }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: TestProvisioningConnection }
+  - { path: spec/contexts/provisioning/main.tsp, symbol: UpdateProvisioningConnection }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: Application }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ApplicationAssignment }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: AssignmentSubjectType }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: AttributeApplyOn }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: AttributeMappingRule }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: AttributeSourceKind }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ConnectionQuarantined }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: DeprovisionPolicy }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: FullResyncCompleted }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: GroupMembershipPushed }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: GroupPushConfig }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: GroupPushed }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: MatchingRule }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningAuthMethod }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningCapabilities }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnection }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionAlreadyExistsError }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionCredentialMetadata }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionDeleted }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionDisabled }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionNotFoundError }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionQuarantineCleared }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionRegistered }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionStatus }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningConnectionUpdated }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningCredentialInput }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningCredentialRotated }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningDeprovisionAction }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningFeatureFlags }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningGroupDisplayNameSource }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningGroupSelection }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningHealth }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningOperation }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningScope }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningSourceType }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningSubjectNotInScopeError }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningTask }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningTaskNotFoundError }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningTaskNotRetryableError }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningTaskStarted }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: ProvisioningTaskStatus }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: RemoteResourceLink }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: UserDeprovisioned }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: UserProvisioned }
+  - { path: spec/contexts/provisioning/models.tsp, symbol: UserProvisioningFailed }
+  - { path: spec/contexts/saml/main.tsp, symbol: CreateSamlIdentityProviderProfile }
+  - { path: spec/contexts/saml/main.tsp, symbol: DeleteSamlIdentityProviderProfile }
+  - { path: spec/contexts/saml/main.tsp, symbol: DeleteSamlServiceProvider }
+  - { path: spec/contexts/saml/main.tsp, symbol: DownloadSamlSigningCertificate1 }
+  - { path: spec/contexts/saml/main.tsp, symbol: DownloadSamlSigningCertificate2 }
+  - { path: spec/contexts/saml/main.tsp, symbol: ListSamlIdentityProviderProfiles }
+  - { path: spec/contexts/saml/main.tsp, symbol: ListSamlServiceProviders }
+  - { path: spec/contexts/saml/main.tsp, symbol: PublishSamlMetadata1 }
+  - { path: spec/contexts/saml/main.tsp, symbol: PublishSamlMetadata2 }
+  - { path: spec/contexts/saml/main.tsp, symbol: RegisterSamlServiceProvider }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleLogout1 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleLogout2 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleLogout3 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleLogout4 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleSignOn1 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleSignOn2 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleSignOn3 }
+  - { path: spec/contexts/saml/main.tsp, symbol: SamlSingleSignOn4 }
+  - { path: spec/contexts/saml/main.tsp, symbol: UpdateSamlIdentityProviderProfile }
+  - { path: spec/contexts/saml/models.tsp, symbol: ApplicationOwnedProtocolError }
+  - { path: spec/contexts/saml/models.tsp, symbol: ClaimMappingPolicy }
+  - { path: spec/contexts/saml/models.tsp, symbol: DefaultIdPProfileError }
+  - { path: spec/contexts/saml/models.tsp, symbol: IdPProfileInUseError }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlAssertion }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlAuthnRequest }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlBinding }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlIdentityProviderProfile }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlIdentityProviderProfileAdminResponse }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlIdentityProviderProfileMode }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlIdentityProviderProfileNotFoundError }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlIdentityProviderProfileRequest }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlLogout }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlNameIDFormat }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlResponse }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlServiceProvider }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlServiceProviderRequest }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlSignInIssued }
+  - { path: spec/contexts/saml/models.tsp, symbol: SamlSignInRejected }
+  - { path: spec/contexts/seeding/models.tsp, symbol: SeedConflictError }
+  - { path: spec/contexts/seeding/models.tsp, symbol: SeedManifest }
+  - { path: spec/contexts/seeding/models.tsp, symbol: SeedPlan }
+  - { path: spec/contexts/seeding/models.tsp, symbol: SeedRejectedError }
+  - { path: spec/contexts/seeding/models.tsp, symbol: SeedRequest }
+  - { path: spec/contexts/seeding/models.tsp, symbol: SeedSecretReference }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: DeleteSsfStream }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: DisableSsfStream }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: EnableSsfStream }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: GetSsfStream }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: ListSecurityEventDeliveries }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: ListSsfStreams }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: ReceiveSecurityEvent }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: RegisterSsfReceiverStream }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: RegisterSsfTransmitterStream }
+  - { path: spec/contexts/sharedsignals/main.tsp, symbol: UpdateSsfStream }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: AccessDeniedError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: AgentAccessRevoked }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: AgentRevocationEpoch }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: CaepEvent }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: CaepEventType }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: CsrfFailedError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: InsufficientScopeError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: InvalidOriginError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: InvalidRequestError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: QuotaExceededError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: ReceivedSecurityEvent }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: RevocationEpochAdvanced }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: RevocationEpochResponse }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: RevocationReason }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventDelivery }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventDeliveryDeadLettered }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventDeliveryFailed }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventDeliveryRetried }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventDeliveryStatus }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventReceived }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventRejected }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventRejectedError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventStreamNotFoundError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventToken }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventTokenTooLargeError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventTransmitted }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SecurityEventVerificationResult }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfReceiverAcceptedAudiencesRequiredError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfReceiverConfig }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfReceiverJwksRequiredError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfReceiverStreamRegisterRequest }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfReceiverTrustedIssuerInvalidError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStream }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamDeleted }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamDirection }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamDisabled }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamEnabled }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamEventTypeInvalidError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamEventTypesRequiredError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamRegistered }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamStatus }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamUpdateRequest }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfStreamUpdated }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfSubject }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfTransmitterAudienceRequiredError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfTransmitterConfig }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfTransmitterDeliveryEndpointInvalidError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: SsfTransmitterStreamRegisterRequest }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: StepUpRequiredError }
+  - { path: spec/contexts/sharedsignals/models.tsp, symbol: UnlinkDeniedError }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: DisableTenantKey }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: GetAdminKey }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: GetJwks }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: ListAdminKeys }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: ListTenantJwks }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: ListTenantKeyHealth }
+  - { path: spec/contexts/signing-keys/main.tsp, symbol: RotateTenantSigningKey }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: AdminKeyListResponse }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: AdminKeyResponse }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: AdminRotateKeyRequest }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: AdminRotateKeyResponse }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: JWK }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: JWKS }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: KeyProvider }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: KeyStoreUnavailableError }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: KeyUsage }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SignatureAlgorithm }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SigningKey }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SigningKeyArchived }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SigningKeyNotFoundError }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SigningKeyRetired }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SigningKeyRotated }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: SigningKeyState }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: TenantSigningKey }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: CreateScimGroup }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: CreateScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: DeleteScimGroup }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: DeleteScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: GetScimGroup }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: GetScimResourceTypes }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: GetScimSchemas }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: GetScimServiceProviderConfig }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: GetScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: ListScimGroups }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: ListScimUsers }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: PatchScimGroup }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: PatchScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: UpdateScimGroup }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: UpdateScimUser }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimAuthenticationScheme }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimBulkConfig }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimFeatureSupport }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimFilterConfig }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimGroupRef }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimListResponse }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimProtocolError }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimResource }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimResourceType }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimSchema }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimSchemaAttribute }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimSchemaExtension }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimServiceProviderConfig }
+  - { path: spec/contexts/sourcing/models.tsp, symbol: ScimUserRef }
+  - { path: spec/contexts/system/main.tsp, symbol: LivenessProbe }
+  - { path: spec/contexts/system/main.tsp, symbol: MetricsExposition }
+  - { path: spec/contexts/system/main.tsp, symbol: ReadinessProbe }
+  - { path: spec/contexts/system/main.tsp, symbol: StartupProbe }
+  - { path: spec/contexts/system/models.tsp, symbol: AuthenticationRequiredResponse }
+  - { path: spec/contexts/system/models.tsp, symbol: DependencyStatus }
+  - { path: spec/contexts/system/models.tsp, symbol: DomainEventEnvelope }
+  - { path: spec/contexts/system/models.tsp, symbol: DomainEventPayload }
+  - { path: spec/contexts/system/models.tsp, symbol: FeatureRuntimeMetadata }
+  - { path: spec/contexts/system/models.tsp, symbol: ProblemDetails }
+  - { path: spec/contexts/system/models.tsp, symbol: RuntimeFeatureMetadata }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: CreateTenant }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: DeleteTenantBrandingAsset }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: DisableTenant }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: EnableTenant }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetAdminIntegrationEndpoints }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetAdminSettings }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetNotificationTemplate }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetTenant }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetTenantBranding }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetTenantBrandingAsset }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetTenantGroupAttributeSchema }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: GetTenantUserAttributeSchema }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: ListNotificationTemplates }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: ListTenants }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: PreviewNotificationTemplate }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: ResetNotificationTemplate }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: SendTestNotification }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: SetTenantEndpointStyle }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateAdminSettings }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateNotificationTemplate }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateTenant }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateTenantBranding }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateTenantGroupAttributeSchema }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateTenantQuota }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UpdateTenantUserAttributeSchema }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: UploadTenantBrandingAsset }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminApiEndpointSet }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminFederationCertificate }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminIntegrationEndpointCatalog }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminOAuthEndpointSet }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminSamlIdentityProviderEndpointSet }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminSettingsResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminSettingsUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AdminWsFederationEndpointSet }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: AttributeReferencedByDynamicGroupError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: FederationCredentialsUnavailableError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: InvalidGroupAttributeSchemaError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: InvalidUserAttributeSchemaError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplate }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateDetail }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateKey }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateListResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplatePreviewRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplatePreviewResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateReset }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateSummary }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateTestSendResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: NotificationTemplateUpdated }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyDefaults }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyOverride }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: PolicyOverrideWeakerError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: Tenant }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBranding }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBrandingAssetKind }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBrandingAssetNotFoundError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBrandingResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBrandingUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBrandingUpdated }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantBrandingUploadResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantCreateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantCreated }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantDisabled }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantEnabled }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantEndpointStyle }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantFooterLink }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantGroupAttributeSchema }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantGroupAttributeSchemaResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantGroupAttributeSchemaUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantGroupAttributeSchemaUpdated }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantListResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantNotFoundError }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantQuota }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantQuotaUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantQuotaUpdated }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantStatus }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantSummaryResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUpdated }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUsage }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUserAttributeSchema }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUserAttributeSchemaResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUserAttributeSchemaUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: TenantUserAttributeSchemaUpdated }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: CreateAgentWorkloadBinding }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: DeleteAgentWorkloadBinding }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: DeleteWorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: DisableAgentWorkloadBinding }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: DisableWorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: EnableAgentWorkloadBinding }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: EnableWorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: GetWorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: ListAgentWorkloadBindings }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: ListWorkloadTrustBundles }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: RefreshWorkloadTrustBundleJWKS }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: RegisterWorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/main.tsp, symbol: UpdateWorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentRef }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBinding }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingAgentNotFoundError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingCreateRequest }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingCreated }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingDeleted }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingDisabled }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingEnabled }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingListResponse }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingPatternRequiredError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingResponse }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: AgentWorkloadBindingStatus }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadAttestation }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadAttestationRejected }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadAttestationRejectedError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadIdentityGrant }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTokenExchanged }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundle }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleAudiencesRequiredError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleConfigured }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleDeleted }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleDisabled }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleEnabled }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleInvalidTtlError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleIssuerConflictError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleIssuerRequiredError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleJWKSRefreshed }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleJwksRequiredError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleListResponse }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleNameConflictError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleNameRequiredError }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleRefreshResponse }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleRegisterRequest }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleResponse }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleStatus }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleUpdateRequest }
+  - { path: spec/contexts/workloadidentity/models.tsp, symbol: WorkloadTrustBundleUpdated }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: ConfigureEntraFederation }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: DeleteWsFedRelyingParty }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: ListWsFedRelyingParties }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: PublishWsFederationMetadata }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: RegisterWsFedRelyingParty }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: WsFederationSignIn }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: WsTrustIssue }
+  - { path: spec/contexts/ws-federation/main.tsp, symbol: WsTrustMetadataExchange }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: EntraFederationConfigured }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: EntraFederationProfile }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: SecurityTokenEndpoint }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsFedRelyingParty }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsFedRelyingPartyRequest }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsFedSignInIssued }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsFedSignInRejected }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsFedSignOut }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsFedTokenType }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsTrustRequestSecurityToken }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsTrustResponse }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsTrustTokenIssued }
+  - { path: spec/contexts/ws-federation/models.tsp, symbol: WsTrustTokenRejected }
+initial_context:
+  specification:
+    - docs/development/writing-language.md
+    - WORK_ITEM_FORMAT.md
+    - docs/domain/system/startup-configuration/README.md#REQ-SYSTEM-017
+    - docs/domain/system/admission-control/README.md#REQ-SYSTEM-019
+  typespec:
+    - spec/contexts/saml/models.tsp
+    - spec/contexts/identity-management/main.tsp
+  source:
+    - tools/check/src/work-item-markdown.ts
+    - tools/check/src/status-drift.ts
+    - tools/render-docs/src/main.ts
+    - tools/render-docs/src/documentation-quality.test.ts
+    - backend/cmd/internal/bootstrap/configreference.go
+    - backend/shared/http/server_http/priority_class_reference.go
+  tests:
+    - backend/cmd/internal/bootstrap/configreference_test.go
+    - backend/shared/http/server_http/priority_class_test.go
+  stop_before_reading: [frontend, .claude/skills, work-items/done]
+---
+
+# 既存の Markdown と TypeSpec の説明文を日本語へ移行する
+
+## Motivation
+
+`docs/development/writing-language.md` は、リポジトリ内で人が読む文章を日本語とし、英語を API エラーメッセージ、ログメッセージ、CLI ヘルプ、コミットメッセージ、`en` UI 文言に限定する。
+しかし、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md`、生成される設定資料、既存 TypeSpec の doc comment には英語が残っている。
+TypeSpec の説明文は OpenAPI と仕様 HTML に流入するため、生成器の固定 UI だけを日本語化しても API リファレンス全体の言語は統一されない。
+
+## Scope
+
+- 既存 Markdown のタイトル、見出し、表見出し、リンクラベル、本文を日本語へ移す。
+- TypeSpec の doc comment と `@doc` を日本語へ移し、生成 OpenAPI と仕様 HTML に反映する。
+- work item の固定節名を日本語へ移せるよう、形式文書、解析器、検査、既存記録の互換性を整える。
+- 生成文書に残る英語を検出する検査を追加し、識別子、規格名、プロトコル名などの許容語を明示する。
+
+## Out of Scope
+
+- API エラーメッセージ、ログメッセージ、CLI ヘルプ、コミットメッセージ、`en` UI 文言の日本語化。
+- 識別子、リテラル、パス、コマンド、製品名、プロトコル名、規格名、頭字語、外部契約上の名前の翻訳。
+- 規範の意味、API 契約、プロダクトの振る舞いの変更。
+- 既存の work item（`work-items/`、`work-items/done/`）の書き換え。履歴として旧表記のまま読む。
+- エージェント向けのスキル文書（`.claude/skills/`、`.agents/skills/`）と、Go と TypeScript のソースコメント。
+- 識別子をそのまま題名にしたリリース文書（`# wi-<番号>-<題名>`）の題名。ファイル名と同じ識別子であり、英文ではない。
+
+## Design
+
+正本を日本語化し、生成 HTML だけを後処理で翻訳しない。
+既存 work item は履歴として読み取れる必要があるため、解析器は旧英語表記と日本語表記の両方を受け入れ、形式文書のテンプレートは日本語だけを示す。
+
+### 棚卸し（T001）
+
+着手時点で、生成サイトの入力と手書きの Markdown に残る英語を次のとおり分類した。
+
+| 対象 | 件数 | 扱い |
+| --- | --- | --- |
+| TypeSpec の `@doc` | 2,231 件（すべて英語） | 日本語へ移す |
+| work item の節見出し | 解析器と形式文書は日英両対応済み | 変更しない |
+| work item の完了節のフィールド名（`Completed At` など） | 形式文書と解析器が英語だけ | 日本語のフィールド名を加え、英語も読む |
+| `CONFIGURATION.md` の見出し、表見出し、説明文 | 約 100 行 | 生成元の Go の文字列を日本語へ移す |
+| `ROUTE_PRIORITY.md` の見出し、表見出し、説明文 | 約 15 行 | 生成元の Go の文字列を日本語へ移す |
+| リリース文書の英文の題名 | 24 件 | 日本語へ移す |
+| `docs/releases/*/README.md` の題名、`DOCUMENTATION_GUIDE.md` の英文 1 段落 | 3 件 | 日本語へ移す |
+| `standards.md` の規格名の見出し、外部文書へのリンクラベル | 約 50 件 | 規格名と文書名なので原表記を保つ |
+| Context 名、状態機械名、`TOTP` などの見出し | 約 40 件 | 識別子なので原表記を保つ |
+
+### 完了節のフィールド名（T002）
+
+| 英語（既存の記録） | 日本語（テンプレート） | 項目 |
+| --- | --- | --- |
+| Completed At | 完了日 | `completed_at` |
+| Summary | 要約 | `summary` |
+| Red Evidence | RED の証拠 | `red_evidence` |
+| Acceptance RED Evidence | 受け入れ RED の証拠 | `acceptance_red_evidence` |
+| Unit RED Evidence | 単体 RED の証拠 | `unit_red_evidence` |
+| Test / Requirement / Observed Failure / Detection Reason | テスト / 要件 / 観測した失敗 / 検出できる理由 | RED の証拠の各項目 |
+| Primary Use Case Evidence | 主要ユースケースの証拠 | `primary_use_case_evidence` |
+| Independent Verification | 独立した検証 | `independent_verification` |
+| Change-Resistance Results | 変更耐性の結果 | `change_resistance` |
+| Verification Results | 検証結果 | `verification` |
+
+解析器は節見出しと同じく、表記から項目への対応表一つで両方の表記を同じ項目へ解決する。
+
+### TypeSpec の翻訳と、意味を変えていないことの検査（T004）
+
+`@doc` の翻訳は、構造を変えずに文字列だけを差し替える。
+翻訳の前後で次の二つが成り立つことを機械で確かめる。
+
+- 説明文の再生成物から `description` を除いた OpenAPI が、翻訳前と一致する。スキーマ、経路、ステータス、`operationId`、拡張を変えていないことを示す。
+- 各 `@doc` の中のバッククォートで囲んだ字句、`urn:idmagic:error:*`、`REQ-*` が、翻訳前と同じ多重集合のまま残る。`status-drift` は description の `urn:idmagic:error:*` を読んで宣言済みのエラーコードを集めるため、この字句が欠けると検査の入力が変わる。
+
+この二つは移行のための一度きりの確認であり、`mise` タスクにはしない。
+
+仕様影響の検査は、TypeSpec の説明文の変更も規範仕様の変更として数える。
+そのため、着手時に宣言した `spec_impact: none` をやめ、説明文を書き換えたすべての宣言（1,238 件）を `affected_spec` に `impact: modifies` で列挙した。
+一覧は `mise run spec-diff` の出力から機械的に作り、説明文だけが変わり意味は変わらないことは、上の二つの照合で確かめる。
+
+### 生成資料（T003）
+
+`CONFIGURATION.md` と `ROUTE_PRIORITY.md` は Go の生成器が書く。
+見出し、表見出し、説明文、列の値（`yes`、`no`、`when ...`）を日本語にする。
+環境変数名、型名（`enum`、`integer`、`secret` など）、クラス名、プロセス名は識別子として原表記を保つ。
+REQ-SYSTEM-017 と REQ-SYSTEM-019 は書き出す項目を定め、言語を定めないので、規範は変わらない。
+生成物の見出しや列の値を照合するテストの期待値は、新しい表記へ合わせる。
+
+### 生成 HTML の言語検査（T005）
+
+`render-docs` が描画したページから、`code`、`pre`、`script`、`style`、`svg` の外にある本文の文字列を取り出し、英文を検出する。
+英文は、ラテン文字の単語が 3 語以上連続し、その中に英語の機能語（`the`、`of`、`and`、`is`、`to`、`when` など）を一つ以上含む並びとする。
+機能語を条件にするのは、`OAuth 2.0 Token Exchange` のような規格名や `Problem Details` のような用語を英文と区別するためである。
+機能語を含む規格名と文書名（`Proof Key for Code Exchange by OAuth Public Clients` など）は、許容理由の分類（規格名、製品名、文書名）を付けた許容語の表に載せる。
+検査は `mise run check-rendered-docs` と `mise run render-docs` の両方で、生成物を書き出す前に走らせ、見つかった英文をページと文字列で報告して失敗させる。
+
+### 採用しない案
+
+- 生成 HTML だけを後処理で翻訳する案は、正本と生成物の言語が食い違い、OpenAPI を直接読む利用者には英語が残るので採用しない。
+- ASCII の有無だけで英語を判定する案は、識別子、規格名、パスを誤検出するので採用しない。
+
+## Plan
+
+1. 生成サイトと Markdown、TypeSpec に残る英語の種類と件数を記録し、許容する原表記を分類する。
+2. work item の節名と解析器を後方互換に保ったまま日本語へ移行する。
+3. 方法論、生成資料、正準文書、TypeSpec の順に正本を日本語化する。
+4. 生成 OpenAPI と仕様 HTML を再生成し、許容語以外の英語 UI と説明文が残らないことを検査する。
+
+## Tasks
+
+- [x] T001 [Design] 許容する原表記と日本語化対象の棚卸しを作る。Design の棚卸しの表に記録した。
+- [x] T002 [Tools] 完了節の日本語フィールド名を形式文書へ示し、旧英語表記も読める解析へ更新する。RED: `tools/check/src/work-item-markdown.test.ts` に日本語フィールド名の完了節を解析するテストを足し、`mise run test-tools-file` で失敗を確かめる。規範 ID: N/A（開発ツール）。
+- [x] T003 [Docs] 生成資料と既存 Markdown の文章を日本語へ移す。代替検査: `mise run test-go-package -- ./backend/cmd/internal/bootstrap` と `./backend/shared/http/server_http` の照合テストを先に新しい表記へ変えて失敗させ、生成器を直して通す。`mise run check-config-reference`、`mise run check-route-reference`。
+- [x] T004 [Spec] TypeSpec の説明文を日本語へ移し、規範の意味が変わっていないことを確認する。代替検査: Design の二つの照合（description を除いた OpenAPI の一致、字句の多重集合の一致）。
+- [x] T005 [Tools] 生成 HTML の言語検査を追加する。RED: `tools/render-docs/src/prose-language.test.ts` で英文を含む HTML を検出させ、翻訳前の TypeSpec に対して `mise run check-rendered-docs` が失敗することを確かめる。
+- [x] T006 [Verify] 仕様サイトを再生成し、文書、仕様、リンク、API 互換性、全体検証を通す。
+
+## Verification
+
+- `mise run spec-diff`
+- `mise run spec-render`
+- `mise run check-api-compat`
+- `mise run check-links`
+- `mise run check-work-items`
+- `mise run test-tools`
+- `mise run verify`
+
+## Risk Notes
+
+単純な単語置換は、要求とリクエスト、応答とレスポンス、標準用語と一般語を混同し、規範の意味を変えるおそれがある。
+規範 ID と TypeSpec シンボルを固定し、文書の所有単位ごとに翻訳して差分を確認する。
+英語検出を ASCII の有無だけで判定すると識別子や規格名を誤検出するため、許容理由を分類した検査にする。
+
+## 完了
+
+- **完了日**: 2026-10-08
+- **要約**:
+  `mise run spec-diff` の結果は、説明文を書き換えた TypeSpec の宣言 1,238 件の一覧だけで、規則と具体例（REQ、EX）の差分はない。
+  TypeSpec の `@doc` 2,231 件を日本語にし、OpenAPI の `description` と仕様サイトの API リファレンスが日本語になった。
+  `description` を除いた OpenAPI は翻訳前と完全に一致し、`description` の件数（4,189 件）と、その中の `urn:idmagic:error:*` の多重集合も一致した。
+  `CONFIGURATION.md` と `ROUTE_PRIORITY.md` を生成する Go の文字列、リリース文書の英文の題名、残っていた Markdown の英文を日本語にした。
+  条件付きで必須の設定は、英文の代わりに `SEED_PROFILE != ""` のようなキーの式で示す。
+  work item の完了節のフィールド名は、日本語の表記でも英語の表記でも同じ項目として読むようにし、形式文書のテンプレートを日本語にした。
+  生成サイトの本文に英文が残ると、`render-docs` と `check-rendered-docs` が失敗するようにした。原表記を保つ語句は、規格名、文書名、製品名、記法、用語のいずれかの分類を付けて許容語の表に載せる。
+- **受け入れ RED の証拠**:
+  - **テスト**: `mise run check-rendered-docs`（`tools/render-docs/src/main.ts` から `findEnglishProse` を呼ぶ）
+  - **要件**: N/A: 文書と開発ツールの変更であり、製品の規範となる要件はない。
+  - **観測した失敗**: 翻訳前の TypeSpec と Markdown に対して、5,044 件の英文をページと文字列で報告して失敗した（うち 4,316 件がモデルのページ）。
+  - **検出できる理由**: 描画したすべてのページの本文を読むので、TypeSpec と Markdown のどちらの原稿に英文が残っても、生成サイトの言語の違反として現れる。翻訳後は 0 件になり成功した。
+- **単体 RED の証拠**:
+  - **テスト**: `tools/check/src/work-item-markdown.test.ts` の「WORK_ITEM_FORMAT.md が示す日本語のフィールド名を英語と同じ項目へ解決する」、`tools/render-docs/src/prose-language.test.ts`、`backend/cmd/internal/bootstrap/configreference_test.go` と `backend/shared/http/server_http/priority_class_test.go` の照合テスト
+  - **要件**: N/A: 開発ツールと生成資料の表記であり、REQ-SYSTEM-017 と REQ-SYSTEM-019 は書き出す項目を定め、言語を定めない。
+  - **観測した失敗**: 解析器のテストは完了節が空（`{}`）になって失敗した。言語検査のテストはモジュールがなく失敗した。生成資料の照合テストは、日本語の見出しと列の値を期待して 4 件失敗した。
+  - **検出できる理由**: 解析器のテストはすべてのフィールドを一度に並べて完全一致で比べるので、どの対応が欠けても値の不一致として現れる。照合テストは見出しと列の値を名指しで探す。
+- **変更耐性の結果**:
+  解析器の対応表から `検証結果` を外すと、日本語のフィールド名のテストが失敗した。
+  言語検査でインライン要素（`a`、`em`）も境界にする誤りを注入すると、最初はどのテストも失敗せずに生き残った。リンクや強調を挟んだ英文を検出するテストを加え、同じ注入で失敗することを確かめた。
+  TypeSpec の翻訳は、一件ごとに、バッククォートの字句、`urn:idmagic:error:*`、`REQ-*` の多重集合が翻訳前と一致しなければ適用しない手順で行った。この照合はコードの字句を訳した 1 件を実際に止めた。
+  Go の変更は文字列のリテラルとテストの期待値だけなので、`test-go-mutation` は走らせていない。生成物の照合は `check-config-reference` と `check-route-reference` が担う。
+- **検証結果**:
+  - `mise run spec-render` - 成功
+  - `mise run check-rendered-docs` - 成功（英文 0 件）
+  - `mise run check-api-compat` - 成功
+  - `mise run check-links` - 成功
+  - `mise run check-work-items` - 成功
+  - `mise run check-repository` - 成功
+  - `mise run verify` - 成功
+  - `mise run test-ui-e2e` - 実行していない。ブラウザーに届く変更は API と文書の説明文だけで、UI の振る舞いは変わらないため。

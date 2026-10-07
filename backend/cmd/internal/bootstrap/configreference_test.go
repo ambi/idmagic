@@ -82,7 +82,7 @@ func TestRenderConfigReferenceRecordsTypeDefaultAndRequirement(t *testing.T) {
 	if row := referenceRow(t, rendered, "ADDR"); !strings.Contains(row, "| `:8080` |") {
 		t.Errorf("row for ADDR = %s, want the :8080 default", row)
 	}
-	if row := referenceRow(t, rendered, "DATABASE_URL"); !strings.Contains(row, "| when `PERSISTENCE=postgres` |") {
+	if row := referenceRow(t, rendered, "DATABASE_URL"); !strings.Contains(row, "| `PERSISTENCE=postgres` のとき |") {
 		t.Errorf("row for DATABASE_URL = %s, want its conditional requirement", row)
 	}
 }
@@ -97,7 +97,7 @@ func TestRenderConfigReferenceKeepsProcessSpecificDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderConfigReference: %v", err)
 	}
-	row := referenceRowInSection(t, rendered, "Worker", "OTEL_SERVICE_NAME")
+	row := referenceRowInSection(t, rendered, "ワーカー", "OTEL_SERVICE_NAME")
 	if !strings.Contains(row, "| `idmagic-worker` |") {
 		t.Errorf("Worker OTEL_SERVICE_NAME row = %s, want the worker-specific default", row)
 	}
@@ -122,10 +122,10 @@ func TestRenderFeatureRegistryReference_REQ_SYSTEM_017(t *testing.T) {
 	}
 
 	empty := RenderFeatureRegistryReference(nil)
-	if strings.Contains(empty, "| Feature ID |") {
+	if strings.Contains(empty, "| 機能 ID |") {
 		t.Errorf("empty registry rendered a table header:\n%s", empty)
 	}
-	if !strings.Contains(empty, "no runtime-selectable features") {
+	if !strings.Contains(empty, "実行時に選択できる機能はない") {
 		t.Errorf("empty registry reference =\n%s\nwant it to state that no feature is selectable", empty)
 	}
 }

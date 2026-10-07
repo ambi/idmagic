@@ -34,7 +34,7 @@ model ListAdminApplicationsError400 {
   @body body: ListAdminApplicationsError400Body;
 }
 
-@doc("An administrator lists the Applications of their tenant by name ascending, with the id breaking ties, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、自身のテナントの Application を、名前の昇順（同じなら id の順）に、双方向のキーセットページングで一覧する。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminApplications")
 @route("/api/admin/v1/applications")
@@ -80,7 +80,7 @@ model GetAdminApplicationError404 {
   @body body: GetAdminApplicationError404Body;
 }
 
-@doc("An administrator reads an Application, including the real settings resolved through its protocol relation. The detail screen of an OIDC or SAML application shows these registered counterpart settings side by side with the IdMagic setup guidance Tenancy.GetAdminIntegrationEndpoints returns, and never shows a client secret again. Another tenant's is treated as nonexistent.")
+@doc("管理者が、プロトコルの関係を通じて解決した実際の設定を含めて Application を読む。OIDC または SAML のアプリケーションの詳細画面は、登録したこれらの相手側の設定を、Tenancy.GetAdminIntegrationEndpoints が返す IdMagic の設定の案内と並べて示し、クライアントシークレットを再び表示することはない。他のテナントのものは存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminApplication")
 @route("/api/admin/v1/applications/{id}")
@@ -127,7 +127,7 @@ model CreateAdminApplicationError422 {
   @body body: CreateAdminApplicationError422Body;
 }
 
-@doc("An administrator creates an Application in one call. The protocol row for its kind is prepared, and the Application together with the `application_id` relation is published to the catalogue in a single transaction. The protocol kind cannot be changed afterwards.")
+@doc("管理者が、一回の呼び出しで Application を作成する。種類に応じたプロトコルの行を用意し、Application と `application_id` の関係を一つのトランザクションでカタログへ公開する。プロトコルの種類は後から変えられない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminApplication")
 @route("/api/admin/v1/applications")
@@ -174,7 +174,7 @@ model UpdateAdminApplicationError404 {
   @body body: UpdateAdminApplicationError404Body;
 }
 
-@doc("An administrator updates the metadata of an Application.")
+@doc("管理者が、Application のメタデータを更新する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminApplication")
 @route("/api/admin/v1/applications/{id}")
@@ -222,7 +222,7 @@ model UploadApplicationIconError404 {
   @body body: UploadApplicationIconError404Body;
 }
 
-@doc("An administrator uploads the icon image of an Application as multipart. PNG, JPEG, WebP, and GIF are accepted, up to 256 KiB, and the format is checked against the magic bytes.")
+@doc("管理者が、Application のアイコンの画像を multipart でアップロードする。PNG、JPEG、WebP、GIF を 256 KiB まで受け付け、形式はマジックバイトで確かめる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UploadApplicationIcon")
 @route("/api/admin/v1/applications/{id}/icon")
@@ -231,7 +231,7 @@ op UploadApplicationIcon(
   @path id: string,
   @header contentType: "multipart/form-data",
   @multipartBody body: {
-    @doc("The image to store, under the form field name `file`.")
+    @doc("保存する画像。フォームのフィールド名は `file` である。")
     file: HttpPart<File>,
   }
 ): UploadApplicationIconSuccess_200 | UploadApplicationIconError400 | IdMagic.Contract.AuthenticationRequiredResponse | UploadApplicationIconError403 | UploadApplicationIconError404;
@@ -274,7 +274,7 @@ model DeleteApplicationIconError404 {
   @body body: DeleteApplicationIconError404Body;
 }
 
-@doc("An administrator deletes the stored icon of an Application. `icon_url` is no longer returned afterwards.")
+@doc("管理者が、保存した Application のアイコンを削除する。以降は `icon_url` を返さない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationIcon")
 @route("/api/admin/v1/applications/{id}/icon")
@@ -285,9 +285,9 @@ op DeleteApplicationIcon(
 
 model GetApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
-  @doc("Fixed to the validated format of the stored icon, and served with `X-Content-Type-Options: nosniff`.")
+  @doc("保存したアイコンの、検証済みの形式に固定する。`X-Content-Type-Options: nosniff` を付けて返す。")
   @header contentType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
-  @doc("The icon bytes.")
+  @doc("アイコンのバイト列。")
   @body body: bytes;
 }
 
@@ -301,7 +301,7 @@ model GetApplicationIconError404 {
   @body body: GetApplicationIconError404Body;
 }
 
-@doc("Public interface serving a stored Application icon. The Content-Type is fixed to the validated format and `X-Content-Type-Options: nosniff` is set. An object of another tenant, and a deleted one, are both treated as nonexistent.")
+@doc("保存した Application のアイコンを返す公開インターフェース。Content-Type は検証済みの形式に固定し、`X-Content-Type-Options: nosniff` を設定する。他のテナントのオブジェクトと削除済みのオブジェクトは、どちらも存在しないものとして扱う。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetApplicationIcon")
 @route("/application-icons/{application_id}/{id}")
@@ -348,7 +348,7 @@ model DeleteAdminApplicationError404 {
   @body body: DeleteAdminApplicationError404Body;
 }
 
-@doc("An administrator deletes an Application, idempotently. The related protocol rows are cascade-deleted in the same transaction.")
+@doc("管理者が、Application を冪等に削除する。関連するプロトコルの行は、同じトランザクションで連鎖して削除する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminApplication")
 @route("/api/admin/v1/applications/{id}")
@@ -395,7 +395,7 @@ model UpdateApplicationOidcConfigError404 {
   @body body: UpdateApplicationOidcConfigError404Body;
 }
 
-@doc("An administrator updates the settings of the OAuth2 client the OIDC protocol of an Application points at. `rules` and\n`sub_source_attribute` override claim release, so a rule referring to an attribute whose visibility is `private`, or to a\nreserved claim type, is refused.")
+@doc("管理者が、Application の OIDC のプロトコルが指す OAuth2 のクライアントの設定を更新する。`rules` と `sub_source_attribute` はクレームの開示を上書きするので、公開範囲が `private` の属性や予約済みのクレームの種類を参照する規則は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationOidcConfig")
 @route("/api/admin/v1/applications/{id}/oidc")
@@ -443,7 +443,7 @@ model RotateApplicationClientSecretError404 {
   @body body: RotateApplicationClientSecretError404Body;
 }
 
-@doc("For compatibility, an administrator rotates the client secret of an Application's OIDC protocol the old way. The previous credential stays valid for the overlap given, and zero days means revoking it at once. The newer administration UI uses IssueApplicationClientSecret and RevokeApplicationClientSecret instead.")
+@doc("互換性のために、管理者が Application の OIDC のプロトコルのクライアントシークレットを従来の方法でローテーションする。それまでの資格情報は指定した重複期間の間有効で、0 日は即座に失効させることを意味する。新しい管理 UI は、代わりに IssueApplicationClientSecret と RevokeApplicationClientSecret を使う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RotateApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/rotate-secret")
@@ -501,7 +501,7 @@ model IssueApplicationClientSecretError422 {
   @body body: IssueApplicationClientSecretError422Body;
 }
 
-@doc("An administrator issues an additional credential with an expiry on the secret-based OIDC client of an Application. Existing credentials are left alone, and when two Active credentials already exist the request is refused atomically. A client that is not secret-based is refused.")
+@doc("管理者が、Application のシークレット方式の OIDC のクライアントに、有効期限付きの追加の資格情報を発行する。既存の資格情報は変えず、すでに Active の資格情報が二つあるときは原子的にリクエストを拒否する。シークレット方式でないクライアントは拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("IssueApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets")
@@ -549,7 +549,7 @@ model RevokeApplicationClientSecretError404 {
   @body body: RevokeApplicationClientSecretError404Body;
 }
 
-@doc("An administrator revokes one named credential of an Application's secret-based OIDC client, at once. Revoking an already-revoked credential succeeds idempotently, and a credential of another client, or one that does not exist, is refused.")
+@doc("管理者が、Application のシークレット方式の OIDC のクライアントの資格情報を一つ指定して、即座に失効させる。失効済みの資格情報の失効は冪等に成功し、別のクライアントの資格情報と存在しない資格情報は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RevokeApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets/{credential_id}")
@@ -597,7 +597,7 @@ model UpdateApplicationWsFedConfigError404 {
   @body body: UpdateApplicationWsFedConfigError404Body;
 }
 
-@doc("An administrator updates the settings of the relying party the WS-Fed protocol of an Application points at. `rules` and\n`name_id_source` override claim release, so a rule referring to an attribute whose visibility is `private`, or to a\nreserved claim type, is refused.")
+@doc("管理者が、Application の WS-Fed のプロトコルが指す Relying Party の設定を更新する。`rules` と `name_id_source` はクレームの開示を上書きするので、公開範囲が `private` の属性や予約済みのクレームの種類を参照する規則は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationWsFedConfig")
 @route("/api/admin/v1/applications/{id}/wsfed")
@@ -645,7 +645,7 @@ model UpdateApplicationSamlConfigError404 {
   @body body: UpdateApplicationSamlConfigError404Body;
 }
 
-@doc("An administrator partially updates the service provider settings and the IdP profile binding the SAML protocol of an Application\npoints at. Turning on the signature requirement makes a verifiable certificate mandatory. `rules` and `name_id_source` override\nclaim release, so a rule referring to an attribute whose visibility is `private`, or to a reserved claim type, is refused.")
+@doc("管理者が、Application の SAML のプロトコルが指すサービスプロバイダーの設定と IdP プロファイルの結び付きを部分的に更新する。署名の要求を有効にすると、検証できる証明書が必須になる。`rules` と `name_id_source` はクレームの開示を上書きするので、公開範囲が `private` の属性や予約済みのクレームの種類を参照する規則は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationSamlConfig")
 @route("/api/admin/v1/applications/{id}/saml")
@@ -691,7 +691,7 @@ model ListApplicationAssignmentsError404 {
   @body body: ListApplicationAssignmentsError404Body;
 }
 
-@doc("An administrator lists the assignments of an Application by `subject_type` and `subject_id` ascending, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、Application の割り当てを、`subject_type` と `subject_id` の昇順に、双方向のキーセットページングで一覧する。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationAssignments")
 @route("/api/admin/v1/applications/{id}/assignments")
@@ -740,7 +740,7 @@ model AssignApplicationError404 {
   @body body: AssignApplicationError404Body;
 }
 
-@doc("An administrator assigns a user or a group to an Application.")
+@doc("管理者が、ユーザーまたはグループを Application に割り当てる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("AssignApplication")
 @route("/api/admin/v1/applications/{id}/assignments")
@@ -777,7 +777,7 @@ model UnassignApplicationError403 {
   @body body: UnassignApplicationError403Body;
 }
 
-@doc("An administrator removes an assignment from an Application, idempotently.")
+@doc("管理者が、Application から割り当てを冪等に外す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UnassignApplication")
 @route("/api/admin/v1/applications/{id}/assignments/{subject_type}/{subject_id}")
@@ -824,7 +824,7 @@ model GetAppSignInPolicyError404 {
   @body body: GetAppSignInPolicyError404Body;
 }
 
-@doc("An administrator reads the sign-in policy of an Application. It returns the application's own policy, the tenant default, the effective rule sequence that actually applies after the override, and a warning flag for a policy weaker than the default. When nothing is set it returns empty rules.")
+@doc("管理者が、Application のサインインのポリシーを読む。アプリケーション自身のポリシー、テナントのデフォルト、上書きの後に実際に適用される規則の並び、デフォルトより弱いポリシーの警告のフラグを返す。何も設定していないときは空の規則を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAppSignInPolicy")
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
@@ -871,7 +871,7 @@ model UpdateAppSignInPolicyError404 {
   @body body: UpdateAppSignInPolicyError404Body;
 }
 
-@doc("An administrator replaces the sign-in policy of an Application. A condition holding an invalid CIDR is refused.")
+@doc("管理者が、Application のサインインのポリシーを置き換える。不正な CIDR を含む条件は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAppSignInPolicy")
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
@@ -897,7 +897,7 @@ model GetTenantDefaultSignInPolicyError403 {
   @body body: GetTenantDefaultSignInPolicyError403Body;
 }
 
-@doc("An administrator reads the tenant default sign-in policy together with the number of active users not enrolled in MFA. When nothing is set it returns a policy with empty rules.")
+@doc("管理者が、テナントのデフォルトのサインインのポリシーを、MFA を登録していない有効なユーザーの数とともに読む。何も設定していないときは、空の規則のポリシーを返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantDefaultSignInPolicy")
 @route("/api/admin/v1/default-sign-in-policy")
@@ -934,7 +934,7 @@ model UpdateTenantDefaultSignInPolicyError403 {
   @body body: UpdateTenantDefaultSignInPolicyError403Body;
 }
 
-@doc("An administrator replaces the tenant default sign-in policy. Making MFA mandatory states the enforcement start time, the grace during which an enrollment bypass may be used, and whether administrator approval is allowed. An invalid CIDR, an enforcement start time in the past, and a non-positive grace are all refused. Saving empty rules returns the default to allow-all.")
+@doc("管理者が、テナントのデフォルトのサインインのポリシーを置き換える。MFA を必須にするときは、強制の開始時刻、登録を回避できる猶予、管理者の承認を許すかどうかを示す。不正な CIDR、過去の強制の開始時刻、正でない猶予は、いずれも拒否する。空の規則を保存すると、デフォルトはすべて許可に戻る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantDefaultSignInPolicy")
 @route("/api/admin/v1/default-sign-in-policy")
@@ -959,7 +959,7 @@ model ListApplicationCategoriesError403 {
   @body body: ListApplicationCategoriesError403Body;
 }
 
-@doc("An administrator lists the ApplicationCategories of their tenant by position ascending.")
+@doc("管理者が、自身のテナントの ApplicationCategory を位置の昇順で一覧する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationCategories")
 @route("/api/admin/v1/application-categories")
@@ -1010,7 +1010,7 @@ model CreateApplicationCategoryError403 {
   @body body: CreateApplicationCategoryError403Body;
 }
 
-@doc("An administrator creates an ApplicationCategory.")
+@doc("管理者が ApplicationCategory を作成する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateApplicationCategory")
 @route("/api/admin/v1/application-categories")
@@ -1071,7 +1071,7 @@ model UpdateApplicationCategoryError404 {
   @body body: UpdateApplicationCategoryError404Body;
 }
 
-@doc("An administrator updates the name or the position of an ApplicationCategory.")
+@doc("管理者が、ApplicationCategory の名前または位置を更新する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationCategory")
 @route("/api/admin/v1/application-categories/{id}")
@@ -1118,7 +1118,7 @@ model DeleteApplicationCategoryError404 {
   @body body: DeleteApplicationCategoryError404Body;
 }
 
-@doc("An administrator deletes an ApplicationCategory, idempotently. It is removed from the Applications it was assigned to as well.")
+@doc("管理者が、ApplicationCategory を冪等に削除する。割り当てていた Application からも外れる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationCategory")
 @route("/api/admin/v1/application-categories/{id}")
@@ -1175,7 +1175,7 @@ model SetApplicationCategoriesError404 {
   @body body: SetApplicationCategoriesError404Body;
 }
 
-@doc("An administrator replaces the set of categories assigned to an Application. Only categories that already exist in their tenant are accepted.")
+@doc("管理者が、Application に割り当てるカテゴリーの集合を置き換える。受け付けるのは、自身のテナントにすでに存在するカテゴリーだけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("SetApplicationCategories")
 @route("/api/admin/v1/applications/{id}/categories")
@@ -1200,7 +1200,7 @@ model ListMyApplicationsError403 {
   @body body: ListMyApplicationsError403Body;
 }
 
-@doc("A user lists the Applications assigned to them and visible; hidden assignments are excluded.\nA manual order (ApplicationOrdering) takes precedence when one is saved, and name ascending is used otherwise. The `categories`\nof the response carry the tenant's category definitions by position ascending, and each app is sorted into a section by its `category_ids`.")
+@doc("ユーザーが、自身に割り当てられ表示される Application を一覧する。非表示の割り当ては除く。手動の並び順（ApplicationOrdering）を保存していればそれを優先し、なければ名前の昇順にする。レスポンスの `categories` はテナントのカテゴリーの定義を位置の昇順で含み、各アプリケーションはその `category_ids` によって節へ振り分ける。")
 @TypeSpec.OpenAPI.operationId("ListMyApplications")
 @route("/api/account/v1/applications")
 @get
@@ -1223,7 +1223,7 @@ model GetMyApplicationOrderError403 {
   @body body: GetMyApplicationOrderError403Body;
 }
 
-@doc("A user reads the manual portal order they saved. When nothing is saved it returns an empty array.")
+@doc("ユーザーが、保存したポータルの手動の並び順を読む。何も保存していないときは空の配列を返す。")
 @TypeSpec.OpenAPI.operationId("GetMyApplicationOrder")
 @route("/api/account/v1/applications/order")
 @get
@@ -1258,7 +1258,7 @@ model ReorderMyApplicationsError403 {
   @body body: ReorderMyApplicationsError403Body;
 }
 
-@doc("A user saves their own manual portal order. `application_ids` may hold only apps assigned to them and visible; anything else is refused.")
+@doc("ユーザーが、自身のポータルの手動の並び順を保存する。`application_ids` に含められるのは、自身に割り当てられ表示されるアプリケーションだけで、それ以外は拒否する。")
 @TypeSpec.OpenAPI.operationId("ReorderMyApplications")
 @route("/api/account/v1/applications/order")
 @put

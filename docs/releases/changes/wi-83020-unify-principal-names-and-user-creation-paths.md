@@ -1,4 +1,4 @@
-# WI-83020: Unify principal names and user creation paths
+# WI-83020: 主体の名前と User の作成経路を統一する
 
 作業項目は `wi-83020-unify-principal-names-and-user-creation-paths` である。
 

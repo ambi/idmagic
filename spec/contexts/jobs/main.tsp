@@ -34,7 +34,7 @@ model ListJobsError403 {
   @body body: ListJobsError403Body;
 }
 
-@doc("An administrator lists the Jobs of the request tenant, newest-created first, narrowed by status, kind, and lane. Another tenant's Jobs are absent from the page and from any count derived from it. The scope is fixed by the route: no input widens it, and a caller holding control-plane credentials crosses no tenant here either -- ListSystemJobs is the only listing that spans tenants. The caller needs the `admin` role in the request tenant. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-012, REQ-JOBS-014).")
+@doc("管理者が、リクエストのテナントの Job を作成の新しい順に、状態、種類、レーンで絞り込んで一覧する。他のテナントの Job は、ページにも、そこから導く件数にも含まれない。範囲は経路が決め、どの入力でも広がらない。制御面の資格情報を持つ呼び出し元であっても、ここではテナントを越えない。テナントを横断する一覧は ListSystemJobs だけである。呼び出し元には、リクエストのテナントでの `admin` ロールが必要である。`params`、`result`、`dedup_key` は返さない（REQ-JOBS-012、REQ-JOBS-014）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:read"])
 @TypeSpec.OpenAPI.operationId("ListJobs")
 @route("/api/admin/v1/jobs")
@@ -73,7 +73,7 @@ model GetJobError404 {
   @body body: GetJobError404Body;
 }
 
-@doc("An administrator reads one Job of the request tenant. A Job of another tenant is treated as nonexistent, so an id alone reveals nothing about a tenant the caller cannot see, and control-plane credentials do not change that here -- GetSystemJob is the only read that reaches another tenant. The caller needs the `admin` role in the request tenant. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-012, REQ-JOBS-014).")
+@doc("管理者が、リクエストのテナントの Job を一つ読む。他のテナントの Job は存在しないものとして扱うので、id だけでは呼び出し元が見られないテナントについて何も明かさず、ここでは制御面の資格情報でもそれは変わらない。他のテナントに届く読み取りは GetSystemJob だけである。呼び出し元には、リクエストのテナントでの `admin` ロールが必要である。`params`、`result`、`dedup_key` は返さない（REQ-JOBS-012、REQ-JOBS-014）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:read"])
 @TypeSpec.OpenAPI.operationId("GetJob")
 @route("/api/admin/v1/jobs/{job_id}")
@@ -120,7 +120,7 @@ model CancelJobError409 {
   @body body: CancelJobError409Body;
 }
 
-@doc("An administrator cancels a Job that has not reached a terminal state, moving it straight to Canceled. A Running Job's handler is not interrupted where it stands: cancelling drops its lease, so its next heartbeat or completion report fails and the handler aborts itself. Side effects already committed are not undone, and the Job is never retried afterwards. A Job already in a terminal state is refused with JobNotCancelableError rather than answered as a no-op success. The Job must belong to the request tenant; another tenant's Job is treated as nonexistent and is left untouched, control-plane credentials included -- CancelSystemJob is the only cancellation that reaches another tenant. The caller needs the `admin` role in the request tenant (REQ-JOBS-013).")
+@doc("管理者が、終端の状態に達していない Job を取り消し、直ちに Canceled へ移す。Running の Job のハンドラーをその場で中断はしない。取り消しはリースを外すので、次のハートビートまたは完了の報告が失敗し、ハンドラーが自ら中止する。すでに確定した副作用は元に戻さず、その後 Job を再試行することもない。すでに終端の状態にある Job は、何もせず成功を返すのではなく、JobNotCancelableError で拒否する。Job はリクエストのテナントに属していなければならない。他のテナントの Job は、制御面の資格情報であっても、存在しないものとして扱い、変更しない。他のテナントに届く取り消しは CancelSystemJob だけである。呼び出し元には、リクエストのテナントでの `admin` ロールが必要である（REQ-JOBS-013）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:cancel"])
 @TypeSpec.OpenAPI.operationId("CancelJob")
 @route("/api/admin/v1/jobs/{job_id}/cancel")
@@ -155,7 +155,7 @@ model ListSystemJobsError403 {
   @body body: ListSystemJobsError403Body;
 }
 
-@doc("A control-plane operator lists every tenant's Jobs, newest-created first, narrowed by status, kind, and lane. The scope is every tenant, fixed by the route rather than by an input, so a listing here is never confused with the request tenant's own. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among its effective roles, and calls through the control-plane tenant; such a caller needs no `admin` role of its own, and anyone who fails any of the three is refused with AccessDeniedError. A cursor issued by ListJobs is rejected rather than continued here. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-015, REQ-JOBS-014).")
+@doc("制御面の運用者が、すべてのテナントの Job を作成の新しい順に、状態、種類、レーンで絞り込んで一覧する。範囲は入力ではなく経路が決めるすべてのテナントなので、ここでの一覧をリクエストのテナント自身の一覧と取り違えることはない。呼び出し元は、制御面テナントに所属し、有効ロールに `system_admin` を含み、制御面テナントの経路から呼び出す有効なユーザーでなければならない。そうした呼び出し元に自身の `admin` ロールは不要で、三つの条件のどれかを満たさない呼び出し元は AccessDeniedError で拒否する。ListJobs が発行したカーソルは、ここでは続きとして扱わず拒否する。`params`、`result`、`dedup_key` は返さない（REQ-JOBS-015、REQ-JOBS-014）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:read"])
 @TypeSpec.OpenAPI.operationId("ListSystemJobs")
 @route("/api/admin/v1/system/jobs")
@@ -194,7 +194,7 @@ model GetSystemJobError404 {
   @body body: GetSystemJobError404Body;
 }
 
-@doc("A control-plane operator reads one Job of any tenant. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among its effective roles, and calls through the control-plane tenant; anyone who fails any of the three is refused with AccessDeniedError rather than answered. `params`, `result`, and `dedup_key` are not returned (REQ-JOBS-015, REQ-JOBS-014).")
+@doc("制御面の運用者が、任意のテナントの Job を一つ読む。呼び出し元は、制御面テナントに所属し、有効ロールに `system_admin` を含み、制御面テナントの経路から呼び出す有効なユーザーでなければならない。三つの条件のどれかを満たさない呼び出し元には応答せず、AccessDeniedError で拒否する。`params`、`result`、`dedup_key` は返さない（REQ-JOBS-015、REQ-JOBS-014）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:read"])
 @TypeSpec.OpenAPI.operationId("GetSystemJob")
 @route("/api/admin/v1/system/jobs/{job_id}")
@@ -241,7 +241,7 @@ model CancelSystemJobError409 {
   @body body: CancelSystemJobError409Body;
 }
 
-@doc("A control-plane operator cancels one Job of any tenant that has not reached a terminal state, with the same semantics CancelJob describes: the Job moves straight to Canceled, a Running handler is not interrupted where it stands but loses its lease and aborts itself at its next report, committed side effects are not undone, and the Job is never retried. A Job already in a terminal state is refused with JobNotCancelableError and left unchanged. The caller must be an active user who belongs to the control-plane tenant, carries `system_admin` among its effective roles, and calls through the control-plane tenant; such a caller needs no `admin` role of its own. Being a browser route that changes state, it also proves the request came from the product's own UI through CSRF and Origin, and a request that cannot leaves every Job untouched (REQ-JOBS-015).")
+@doc("制御面の運用者が、任意のテナントの、終端の状態に達していない Job を一つ取り消す。意味は CancelJob と同じで、Job は直ちに Canceled へ移り、Running のハンドラーはその場で中断されずにリースを失って次の報告で自ら中止し、確定した副作用は元に戻さず、Job は再試行しない。すでに終端の状態にある Job は JobNotCancelableError で拒否し、変更しない。呼び出し元は、制御面テナントに所属し、有効ロールに `system_admin` を含み、制御面テナントの経路から呼び出す有効なユーザーでなければならず、そうした呼び出し元に自身の `admin` ロールは不要である。状態を変えるブラウザーの経路なので、リクエストが製品自身の UI から来たことを CSRF と Origin で示す必要もあり、示せないリクエストはどの Job も変更しない（REQ-JOBS-015）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["jobs:cancel"])
 @TypeSpec.OpenAPI.operationId("CancelSystemJob")
 @route("/api/admin/v1/system/jobs/{job_id}/cancel")

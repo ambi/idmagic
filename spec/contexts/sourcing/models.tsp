@@ -1,19 +1,19 @@
 namespace IdMagic.Contract {
 
-@doc("The SCIM protocol error response of RFC 7644 section 3.12. SCIM is a contact point whose shape the standard fixes, so it does not return Problem Details; the body is `application/json`.")
+@doc("RFC 7644 の 3.12 節の SCIM のプロトコルエラーのレスポンス。SCIM は形を標準が定める接点なので Problem Details を返さず、ボディは `application/json` である。")
 model ScimProtocolError {
-  @doc("Always the single element `urn:ietf:params:scim:api:messages:2.0:Error`.")
+  @doc("常に `urn:ietf:params:scim:api:messages:2.0:Error` の一要素だけである。")
   schemas: string[];
-  @doc("The HTTP status code, as a decimal string.")
+  @doc("HTTP のステータスコード。10 進数の文字列で表す。")
   status: string;
-  @doc("Human-readable explanation of the occurrence. Always English and never localized.")
+  @doc("発生した事象の、人が読む説明。常に英語で、ローカライズしない。")
   detail?: string;
-  @doc("The SCIM detail error keyword of RFC 7644 section 3.12 table 9, such as `invalidFilter`, `invalidValue`, or `uniqueness`. Absent when no keyword applies.")
+  @doc("RFC 7644 の 3.12 節の表 9 にある SCIM の詳細エラーのキーワード。`invalidFilter`、`invalidValue`、`uniqueness` など。当てはまるキーワードがないときは省く。")
   scimType?: string;
 }
 
 
-@doc("Binds a SCIM 2.0 id to the internal User it stands for (the `sub`).")
+@doc("SCIM 2.0 の id を、それが表す内部の User（`sub`）に対応付ける。")
 model ScimUserRef {
   tenant_id: string;
   scim_id: string;
@@ -21,7 +21,7 @@ model ScimUserRef {
 }
 
 
-@doc("Binds a SCIM 2.0 id to the internal Group it stands for (the group id).")
+@doc("SCIM 2.0 の id を、それが表す内部の Group（グループの id）に対応付ける。")
 model ScimGroupRef {
   tenant_id: string;
   scim_id: string;
@@ -29,32 +29,32 @@ model ScimGroupRef {
 }
 
 
-@doc("A SCIM resource, sent to and returned by the /Users and /Groups endpoints (RFC 7643). The attributes present depend on which schemas the resource declares in `schemas`, so the contract records the resource as an open JSON object rather than fixing one attribute set; GetScimSchemas reports the attribute definitions the server honours. IdMagic supports the core User and Group schemas plus the enterprise User extension.")
+@doc("/Users と /Groups のエンドポイントへ送り、そこから返る SCIM のリソース（RFC 7643）。含まれる属性はリソースが `schemas` で宣言するスキーマによって決まるので、契約は一つの属性の集合に固定せず、開いた JSON オブジェクトとして記録する。サーバーが従う属性の定義は GetScimSchemas が報告する。IdMagic は User と Group のコアスキーマと、User の enterprise 拡張に対応する。")
 model ScimResource is Record<unknown>;
 
 
-@doc("The SCIM query result envelope of RFC 7644 section 3.4.2.")
+@doc("RFC 7644 の 3.4.2 節の SCIM の検索結果のエンベロープ。")
 model ScimListResponse {
-  @doc("Always the single element `urn:ietf:params:scim:api:messages:2.0:ListResponse`.")
+  @doc("常に `urn:ietf:params:scim:api:messages:2.0:ListResponse` の一要素だけである。")
   schemas: string[];
-  @doc("How many resources match the query in total, not how many this page carries.")
+  @doc("このページに含まれる数ではなく、検索に一致したリソースの総数。")
   totalResults: int32;
-  @doc("1-based index of the first resource on this page.")
+  @doc("このページの最初のリソースの、1 から数えた位置。")
   startIndex: int32;
-  @doc("How many resources this page carries.")
+  @doc("このページに含まれるリソースの数。")
   itemsPerPage: int32;
-  @doc("The page of matching resources. Capitalized, as RFC 7644 section 3.4.2 spells it.")
+  @doc("一致したリソースのページ。RFC 7644 の 3.4.2 節の綴りに合わせて大文字で始める。")
   Resources: ScimResource[];
 }
 
 
-@doc("Whether one optional SCIM feature is supported (RFC 7643 section 5).")
+@doc("SCIM の任意の機能の一つに対応しているかどうか（RFC 7643 の 5 節）。")
 model ScimFeatureSupport {
   supported: boolean;
 }
 
 
-@doc("Bulk operation support, as ServiceProviderConfig declares it (RFC 7643 section 5).")
+@doc("ServiceProviderConfig が宣言する、一括操作への対応（RFC 7643 の 5 節）。")
 model ScimBulkConfig {
   supported: boolean;
   maxOperations: int32;
@@ -62,29 +62,29 @@ model ScimBulkConfig {
 }
 
 
-@doc("Filter support, as ServiceProviderConfig declares it (RFC 7643 section 5).")
+@doc("ServiceProviderConfig が宣言する、絞り込みへの対応（RFC 7643 の 5 節）。")
 model ScimFilterConfig {
   supported: boolean;
-  @doc("The largest page the server returns, whatever `count` the query asks for.")
+  @doc("検索の `count` にかかわらず、サーバーが返すページの最大の大きさ。")
   maxResults: int32;
 }
 
 
-@doc("One authentication scheme the service provider accepts (RFC 7643 section 5).")
+@doc("サービスプロバイダーが受け付ける認証方式の一つ（RFC 7643 の 5 節）。")
 model ScimAuthenticationScheme {
   name: string;
-  @doc("What the scheme is. Always English and never localized.")
+  @doc("方式の説明。常に英語で、ローカライズしない。")
   description: string;
-  @doc("Where the scheme is specified.")
+  @doc("方式を定める仕様の場所。")
   specUri?: string;
-  @doc("Scheme kind, such as `oauthbearertoken`.")
+  @doc("方式の種類。`oauthbearertoken` など。")
   type: string;
 }
 
 
-@doc("The SCIM service provider configuration of RFC 7643 section 5, reporting which optional features this deployment supports.")
+@doc("RFC 7643 の 5 節の SCIM のサービスプロバイダーの設定。このデプロイメントが対応する任意の機能を報告する。")
 model ScimServiceProviderConfig {
-  @doc("Always the single element `urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig`.")
+  @doc("常に `urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig` の一要素だけである。")
   schemas: string[];
   documentationUri?: string;
   patch: ScimFeatureSupport;
@@ -97,62 +97,62 @@ model ScimServiceProviderConfig {
 }
 
 
-@doc("A schema a resource type extends beyond its core schema (RFC 7643 section 6), such as the enterprise User extension.")
+@doc("リソースタイプがコアスキーマの外に拡張するスキーマ（RFC 7643 の 6 節）。User の enterprise 拡張など。")
 model ScimSchemaExtension {
-  @doc("URN of the extending schema.")
+  @doc("拡張するスキーマの URN。")
   schema: string;
-  @doc("Whether a resource of this type must carry the extension.")
+  @doc("このリソースタイプのリソースがこの拡張を含まなければならないかどうか。")
   required: boolean;
 }
 
 
-@doc("One resource type the service provider exposes (RFC 7643 section 6).")
+@doc("サービスプロバイダーが公開するリソースタイプの一つ（RFC 7643 の 6 節）。")
 model ScimResourceType {
-  @doc("Always the single element `urn:ietf:params:scim:schemas:core:2.0:ResourceType`.")
+  @doc("常に `urn:ietf:params:scim:schemas:core:2.0:ResourceType` の一要素だけである。")
   schemas: string[];
   id: string;
   name: string;
-  @doc("Path the resource type is served under, relative to the SCIM base URL.")
+  @doc("リソースタイプを提供するパス。SCIM のベース URL からの相対パスである。")
   endpoint: string;
-  @doc("What the resource type is. Always English and never localized.")
+  @doc("リソースタイプの説明。常に英語で、ローカライズしない。")
   description?: string;
-  @doc("URN of the core schema for this resource type.")
+  @doc("このリソースタイプのコアスキーマの URN。")
   schema: string;
   schemaExtensions?: ScimSchemaExtension[];
 }
 
 
-@doc("One attribute definition inside a SCIM schema (RFC 7643 section 7).")
+@doc("SCIM のスキーマの中の属性の定義の一つ（RFC 7643 の 7 節）。")
 model ScimSchemaAttribute {
   name: string;
-  @doc("Attribute type, such as `string`, `boolean`, `reference`, or `complex`.")
+  @doc("属性の型。`string`、`boolean`、`reference`、`complex` など。")
   type: string;
   multiValued: boolean;
-  @doc("What the attribute holds. Always English and never localized.")
+  @doc("属性が保持するものの説明。常に英語で、ローカライズしない。")
   description?: string;
   required: boolean;
   caseExact: boolean;
-  @doc("One of `readOnly`, `readWrite`, `immutable`, or `writeOnly`.")
+  @doc("`readOnly`、`readWrite`、`immutable`、`writeOnly` のいずれか。")
   mutability: string;
-  @doc("One of `always`, `never`, `default`, or `request`.")
+  @doc("`always`、`never`、`default`、`request` のいずれか。")
   returned: string;
-  @doc("One of `none`, `server`, or `global`.")
+  @doc("`none`、`server`、`global` のいずれか。")
   uniqueness: string;
-  @doc("For `reference` attributes, which resource types the reference may point at.")
+  @doc("`reference` の属性で、参照が指してよいリソースタイプ。")
   referenceTypes?: string[];
-  @doc("For `complex` attributes, the definitions of the sub-attributes.")
+  @doc("`complex` の属性で、副属性の定義。")
   subAttributes?: ScimSchemaAttribute[];
 }
 
 
-@doc("One schema the service provider honours (RFC 7643 section 7). IdMagic reports the core User schema, the enterprise User extension, and the core Group schema.")
+@doc("サービスプロバイダーが従うスキーマの一つ（RFC 7643 の 7 節）。IdMagic は User のコアスキーマ、User の enterprise 拡張、Group のコアスキーマを報告する。")
 model ScimSchema {
-  @doc("Always the single element `urn:ietf:params:scim:schemas:core:2.0:Schema`.")
+  @doc("常に `urn:ietf:params:scim:schemas:core:2.0:Schema` の一要素だけである。")
   schemas: string[];
-  @doc("URN of the schema this document defines.")
+  @doc("この文書が定義するスキーマの URN。")
   id: string;
   name: string;
-  @doc("What the schema is for. Always English and never localized.")
+  @doc("スキーマの用途の説明。常に英語で、ローカライズしない。")
   description?: string;
   attributes: ScimSchemaAttribute[];
 }

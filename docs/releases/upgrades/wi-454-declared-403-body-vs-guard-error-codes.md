@@ -1,4 +1,4 @@
-# WI-454: Update generated 403 error body types
+# WI-454: 生成した 403 のエラーボディの型を更新する
 
 作業項目は `wi-454-declared-403-body-vs-guard-error-codes` である。
 

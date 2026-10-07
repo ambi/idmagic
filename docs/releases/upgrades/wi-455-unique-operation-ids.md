@@ -1,4 +1,4 @@
-# WI-455: Regenerate clients for unique operationIds
+# WI-455: 一意になった operationId に合わせてクライアントを再生成する
 
 作業項目は `wi-455-one-operation-id-naming-two-operations` である。
 

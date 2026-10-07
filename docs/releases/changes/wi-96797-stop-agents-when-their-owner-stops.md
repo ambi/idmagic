@@ -1,4 +1,4 @@
-# WI-96797: Stop agents when their owner stops
+# WI-96797: 所有者が停止したらエージェントも停止する
 
 作業項目は `wi-96797-stop-agents-when-their-owner-stops` である。
 

@@ -1,4 +1,4 @@
-# WI-572: Announce the upcoming MFA enforcement date on the account security page
+# WI-572: アカウントのセキュリティページで、間近に迫った MFA の強制日を知らせる
 
 作業項目は `wi-572-the-mfa-enforcement-date-never-reaches-the-user` である。
 

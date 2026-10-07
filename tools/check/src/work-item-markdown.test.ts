@@ -215,6 +215,78 @@ status: completed
     })
   })
 
+  // 英語の表記を足し忘れた項目は、その行が黙って読み飛ばされ、必須項目の欠落として
+  // 報告される。すべての項目を一度に並べ、どの対応が欠けても値の不一致として現れるようにする。
+  it('WORK_ITEM_FORMAT.md が示す日本語のフィールド名を英語と同じ項目へ解決する', () => {
+    const source = `---
+status: completed
+---
+
+# 日本語のフィールド名の完了記録
+
+## 完了
+
+- **完了日**: 2026-10-07
+- **要約**: 日本語のフィールド名で完了を記録した。
+- **RED の証拠**:
+  - **テスト**: 検査 A
+  - **要件**: N/A: 開発ツール
+  - **観測した失敗**: 検査 A が失敗した。
+  - **検出できる理由**: 項目が欠けると検査 A が落ちる。
+- **受け入れ RED の証拠**:
+  - **テスト**: 検査 B
+  - **要件**: REQ-SYSTEM-001
+  - **観測した失敗**: 検査 B が失敗した。
+  - **検出できる理由**: 結果を表明する。
+- **単体 RED の証拠**:
+  - **テスト**: 検査 C
+  - **要件**: REQ-SYSTEM-002
+  - **観測した失敗**: 検査 C が失敗した。
+  - **検出できる理由**: 判断を表明する。
+- **主要ユースケースの証拠**:
+  - id: start-task
+    red: 開始しなかった。
+    fault_injection: 発行を削除すると失敗した。
+- **独立した検証**: 別のエージェントが確認した。
+- **変更耐性の結果**: 変異を検出した。
+- **検証結果**:
+  - mise run test-tools - 成功
+`
+
+    expect(parseFrontmatterAndMarkdown('wi-999-japanese-fields.md', source).completion).toEqual({
+      completed_at: '2026-10-07',
+      summary: '日本語のフィールド名で完了を記録した。',
+      red_evidence: {
+        test: '検査 A',
+        requirement: 'N/A: 開発ツール',
+        observed_failure: '検査 A が失敗した。',
+        detection_reason: '項目が欠けると検査 A が落ちる。',
+      },
+      acceptance_red_evidence: {
+        test: '検査 B',
+        requirement: 'REQ-SYSTEM-001',
+        observed_failure: '検査 B が失敗した。',
+        detection_reason: '結果を表明する。',
+      },
+      unit_red_evidence: {
+        test: '検査 C',
+        requirement: 'REQ-SYSTEM-002',
+        observed_failure: '検査 C が失敗した。',
+        detection_reason: '判断を表明する。',
+      },
+      primary_use_case_evidence: [
+        {
+          id: 'start-task',
+          red: '開始しなかった。',
+          fault_injection: '発行を削除すると失敗した。',
+        },
+      ],
+      independent_verification: '別のエージェントが確認した。',
+      change_resistance: '変異を検出した。',
+      verification: ['mise run test-tools - 成功'],
+    })
+  })
+
   it('parses primary-use-case completion evidence as structured YAML', () => {
     const source = `---
 status: completed

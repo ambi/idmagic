@@ -1,4 +1,4 @@
-# WI-18703: Align IdManagement with its state tables
+# WI-18703: IdManagement を状態表にそろえる
 
 作業項目は `wi-18703-align-identity-management-with-its-state-tables` である。
 

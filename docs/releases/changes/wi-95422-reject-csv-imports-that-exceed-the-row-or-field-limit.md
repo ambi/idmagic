@@ -1,4 +1,4 @@
-# WI-95422: Reject CSV imports that exceed the row or field limit
+# WI-95422: 行数またはフィールドの上限を超える CSV のインポートを拒否する
 
 作業項目は `wi-95422-reject-csv-imports-that-exceed-the-row-or-field-limit` である。
 

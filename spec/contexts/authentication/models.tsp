@@ -1,38 +1,38 @@
 namespace IdMagic.Contract {
 
-@doc("A message was sent through the EmailSender port. The port is fail-open, so a send failure does not\npropagate into the use case layer; whether this event exists is how a SIEM observes it.\n`to` is recorded as a SHA-256 hash.")
+@doc("EmailSender のポートでメッセージを送った。ポートはフェイルオープンなので、送信の失敗はユースケースの層へ伝わらず、SIEM はこのイベントがあるかどうかでそれを観測する。`to` は SHA-256 のハッシュとして記録する。")
 model EmailSent {
   occurredAt: utcDateTime;
-  @doc("The SHA-256 of the recipient email, as hex.")
+  @doc("受信者のメールアドレスの SHA-256 の 16 進数。")
   toHash: string;
-  @doc("`password_reset`, `email_change`, `email_verification`, and the like.")
+  @doc("`password_reset`、`email_change`、`email_verification` など。")
   purpose: string;
   delivered: boolean;
 }
 
 
-@doc("The wire protocol of an upstream connection. A social provider preset appears as the initial settings of `oidc`.")
+@doc("上流の接続の送受信のプロトコル。ソーシャルのプロバイダーのプリセットは、`oidc` の初期の設定として現れる。")
 enum IdentityProviderProtocol {
   Oidc: "oidc",
   Saml: "saml",
 }
 
 
-@doc("The lifecycle state of a connection. Only an Active connection may be used for discovery and login routing. A newly created one starts Disabled.")
+@doc("接続のライフサイクルの状態。ディスカバリーとログインの振り分けに使えるのは Active の接続だけである。新たに作成した接続は Disabled で始まる。")
 enum IdentityProviderConnectionStatus {
   Active: "active",
   Disabled: "disabled",
 }
 
 
-@doc("How an external identity is correlated with a local User. The default, `none`, correlates nothing automatically beyond an existing link. `verified_email` permits a unique match on a verified email, and only when the tenant says so explicitly.")
+@doc("外部の ID をローカルの User とどう関連付けるか。デフォルトの `none` は、既存の連携のほかは何も自動で関連付けない。`verified_email` は、確認済みのメールアドレスでの一意な一致を、テナントが明示したときに限って許す。")
 enum AccountLinkingPolicy {
   None: "none",
   VerifiedEmail: "verified_email",
 }
 
 
-@doc("The tenant-managed settings projecting verified upstream claims and attributes onto local identity fields. JIT provisioning requires a mapping for the subject and the username.")
+@doc("検証済みの上流のクレームと属性を、ローカルの ID のフィールドへ射影する、テナントが管理する設定。JIT のプロビジョニングには、サブジェクトとユーザー名の対応付けが必要である。")
 model ClaimMapping {
   subject: string;
   username: string;
@@ -42,7 +42,7 @@ model ClaimMapping {
 }
 
 
-@doc("The tenant-scoped upstream trust settings. No URL supplied during a request is ever fetched; only the last-known-good endpoints, keys, and certificates from metadata validated at configuration time are used. The client secret arrives write-only as a `secret_reference` and is held envelope-encrypted under the per-tenant DEK of DataKeys.")
+@doc("テナントに属する上流の信頼の設定。リクエスト中に与えられた URL を取得することはなく、設定時に検証したメタデータから得た、最後に正常だったエンドポイント、鍵、証明書だけを使う。クライアントシークレットは書き込み専用の `secret_reference` として届き、DataKeys のテナントごとの DEK でエンベロープ暗号化して保持する。")
 model IdentityProviderConnection {
   id: string;
   tenant_id: string;
@@ -51,9 +51,9 @@ model IdentityProviderConnection {
   status: IdentityProviderConnectionStatus;
   issuer: string;
   client_id?: string;
-  @doc("The write-only field carrying the client secret itself. Only the ciphertext, envelope-encrypted under the per-tenant DEK of DataKeys, is stored in the database, and neither the value nor the ciphertext appears in an API response. The field name is carried over from the `env:` reference scheme it replaced.")
+  @doc("クライアントシークレットそのものを運ぶ書き込み専用のフィールド。データベースには DataKeys のテナントごとの DEK でエンベロープ暗号化した暗号文だけを保存し、値も暗号文も API のレスポンスには現れない。フィールド名は、置き換えた `env:` の参照方式から引き継いでいる。")
   secret_reference?: string;
-  @doc("A read-only derived field saying whether `secret_reference` is set. It is never used for a write carrying a value or a ciphertext; the detail view of the administration console uses it to show nothing more than set or unset.")
+  @doc("`secret_reference` を設定しているかどうかを示す、読み取り専用の導出したフィールド。値や暗号文を運ぶ書き込みには使わず、管理コンソールの詳細の表示が、設定済みか未設定かだけを示すのに使う。")
   client_secret_configured: boolean;
   authorization_endpoint?: string;
   token_endpoint?: string;
@@ -72,14 +72,14 @@ model IdentityProviderConnection {
 }
 
 
-@doc("The structured result of a connection test. It checks that OIDC discovery and JWKS are reachable, that the SAML certificate parses, and that `secret_reference` resolves, meaning it decrypts. It carries none of the values themselves: no secret, no token, no certificate body.")
+@doc("接続の試験の構造化された結果。OIDC のディスカバリーと JWKS に到達できること、SAML の証明書が解析できること、`secret_reference` が解決する、すなわち復号できることを確かめる。値そのものは含まず、シークレットもトークンも証明書の本体も含まない。")
 model IdentityProviderConnectionTestResult {
   success: boolean;
   failures: string[];
 }
 
 
-@doc("The link correlating an immutable external subject with a local User. One tenant, provider, and subject map to at most one local user, and one local user and provider to at most one subject.")
+@doc("変わらない外部のサブジェクトをローカルの User と関連付ける連携。一つのテナント、プロバイダー、サブジェクトが対応するローカルのユーザーは一人までで、一人のローカルのユーザーとプロバイダーが対応するサブジェクトも一つまでである。")
 model FederatedIdentity {
   tenant_id: string;
   provider_id: string;
@@ -90,7 +90,7 @@ model FederatedIdentity {
 }
 
 
-@doc("The single-use ephemeral record correlating an upstream browser round trip. It binds the state, nonce, and PKCE verifier, or the RelayState and AuthnRequest ID, to a tenant and a provider, and is consumed once within ten minutes.")
+@doc("上流とのブラウザーの往復を関連付ける、一回限りの一時的な記録。state、nonce、PKCE の検証子、または RelayState と AuthnRequest の ID を、テナントとプロバイダーに結び付け、10 分以内に一度だけ使う。")
 model FederatedLoginAttempt {
   state: string;
   tenant_id: string;
@@ -106,7 +106,7 @@ model FederatedLoginAttempt {
 }
 
 
-@doc("An active upstream provider, in the form fit to expose to the sign-in UI. It carries no secret, no internal endpoint, and no certificate.")
+@doc("サインインの UI に公開してよい形の、有効な上流のプロバイダー。シークレット、内部のエンドポイント、証明書は含まない。")
 model ExternalIdentityProviderSummary {
   id: string;
   display_name: string;
@@ -114,7 +114,7 @@ model ExternalIdentityProviderSummary {
 }
 
 
-@doc("The result of correlating a verified external identity with a local User and a LoginSession.")
+@doc("検証済みの外部の ID を、ローカルの User と LoginSession に関連付けた結果。")
 model FederatedLoginCompletion {
   local_user_id: string;
   provider_id: string;
@@ -123,7 +123,7 @@ model FederatedLoginCompletion {
 }
 
 
-@doc("The normalized result an administrator reads to check a mapping. No token, assertion, or secret is returned.")
+@doc("管理者が対応付けを確かめるために読む、正規化した結果。トークン、アサーション、シークレットは返さない。")
 model ExternalIdentityClaimsPreview {
   subject: string;
   username: string;
@@ -133,23 +133,23 @@ model ExternalIdentityClaimsPreview {
 }
 
 
-@doc("The new password matches an entry in the recent password history. RFC 9457 Problem Details with `type` = `urn:idmagic:error:password_reuse`.")
+@doc("新しいパスワードが最近のパスワードの履歴の項目と一致する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:password_reuse` である。")
 model PasswordReuseError is ProblemDetails;
 
 
-@doc("The target user does not meet the conditions for an MFA enrollment bypass. RFC 9457 Problem Details with `type` = `urn:idmagic:error:mfa_enrollment_not_allowed`.")
+@doc("対象のユーザーが、MFA の登録の回避の条件を満たさない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:mfa_enrollment_not_allowed` である。")
 model MfaEnrollmentNotAllowedError is ProblemDetails;
 
 
-@doc("The user already holds a factor of the requested type, so there is nothing to enroll. RFC 9457 Problem Details with `type` = `urn:idmagic:error:mfa_already_enrolled`. This is a conflict with the current state rather than a decision about the caller, which is what separates it from MfaEnrollmentNotAllowedError: the first asks the user to do nothing, the second asks them to contact an administrator.")
+@doc("ユーザーは求めた種類の要素をすでに保持しているので、登録するものがない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:mfa_already_enrolled` である。これは呼び出し元についての判断ではなく現在の状態との衝突であり、そこが MfaEnrollmentNotAllowedError との違いである。前者はユーザーに何もしなくてよいことを、後者は管理者に連絡することを求める。")
 model MfaAlreadyEnrolledError is ProblemDetails;
 
 
-@doc("The requested combination of reset targets is not valid for the current MFA state of the target user. RFC 9457 Problem Details with `type` = `urn:idmagic:error:authenticator_reset_not_allowed`.")
+@doc("求めたリセットの対象の組み合わせは、対象のユーザーの現在の MFA の状態に対して有効でない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:authenticator_reset_not_allowed` である。")
 model AuthenticatorResetNotAllowedError is ProblemDetails;
 
 
-@doc("The administration shell bootstrap information of an authenticated browser session. It returns the CSRF token, the subject, the current realm, and the effective roles.")
+@doc("認証済みのブラウザーのセッションの、管理シェルの起動情報。CSRF トークン、サブジェクト、現在のレルム、有効ロールを返す。")
 model AccountContextResponse {
   csrf_token: string;
   id: string;
@@ -160,13 +160,13 @@ model AccountContextResponse {
 }
 
 
-@doc("The CSRF token bootstrap information an unauthenticated browser form uses together with a SameSite cookie.")
+@doc("未認証のブラウザーのフォームが SameSite の Cookie とともに使う、CSRF トークンの起動情報。")
 model BrowserCsrfContext {
   csrf_token: string;
 }
 
 
-@doc("The kinds of second factor (MFA), a subset of the RFC 8176 amr values chosen for this application. `totp` is RFC 6238, `webauthn` is WebAuthn Level 3, and `hwk` and `swk` are reserved for later.")
+@doc("第二要素（MFA）の種類。このアプリケーションのために選んだ RFC 8176 の amr の値の部分集合である。`totp` は RFC 6238、`webauthn` は WebAuthn Level 3 で、`hwk` と `swk` は将来のために予約している。")
 enum MfaFactorType {
   Totp: "totp",
   Webauthn: "webauthn",
@@ -175,21 +175,21 @@ enum MfaFactorType {
 }
 
 
-@doc("One second factor (MFA) a user has enrolled. For `totp` the secret is stored as base32 and evaluated at authentication under RFC 6238 (T0=0, STEP=30s, `digits` digits, a window of plus or minus one step). The algorithm is SHA1 and the secret is generated at 20 bytes. `User.mfa_enrolled` being true means exactly that this set is non-empty.")
+@doc("ユーザーが登録した一つの第二要素（MFA）。`totp` では、シークレットを base32 で保存し、認証時に RFC 6238（T0=0、STEP=30s、`digits` 桁、前後一ステップのウィンドウ）で評価する。アルゴリズムは SHA1 で、シークレットは 20 バイトで生成する。`User.mfa_enrolled` が true であることは、この集合が空でないことにちょうど等しい。")
 model MfaFactor {
-  @doc("The `sub` of the owning user.")
+  @doc("所有するユーザーの `sub`。")
   user_id: string;
   type: MfaFactorType;
-  @doc("For `totp`, the base32 secret. It is left open so another factor can put its credential JSON in a field of its own. When persisted it is envelope-encrypted under the per-tenant DEK of DataKeys; the plaintext is never stored.")
+  @doc("`totp` では base32 のシークレット。別の要素が自身の資格情報の JSON を独自のフィールドに入れられるように、開いたままにしている。永続化するときは DataKeys のテナントごとの DEK でエンベロープ暗号化し、平文は保存しない。")
   secret?: string;
-  @doc("The display name the user gives it, `iPhone Authenticator` for instance.")
+  @doc("ユーザーが付ける表示名。たとえば `iPhone Authenticator`。")
   label?: string;
   created_at: utcDateTime;
   last_used_at?: utcDateTime;
 }
 
 
-@doc("Why a LoginSession is not yet complete. `none` is an ordinary authenticated session, `challenge` is waiting on verification of an enrolled factor, and `enrollment` is waiting on the administrator-approved enrollment of a new one.")
+@doc("LoginSession がまだ完了していない理由。`none` は通常の認証済みのセッション、`challenge` は登録済みの要素の検証待ち、`enrollment` は新しい要素の、管理者の承認による登録待ちである。")
 enum LoginPendingPurpose {
   None: "None",
   Challenge: "Challenge",
@@ -197,7 +197,7 @@ enum LoginPendingPurpose {
 }
 
 
-@doc("The short-lived, single-use enrollment approval an administrator issues to a user with no MFA enrolled. It is a trust anchor consumed after a successful password step so the session can move into enrollment pending; it does not exempt anyone from the MFA requirement of signing in. One that has expired, been revoked, or been consumed cannot be used, fail-closed.")
+@doc("MFA を登録していないユーザーに管理者が発行する、短命で一回限りの登録の承認。パスワードのステップが成功した後に使う信頼の起点で、セッションを登録の保留へ移せるようにする。サインインの MFA の要求を誰かに免除するものではない。期限切れ、失効済み、使用済みのものは、フェイルクローズで使えない。")
 model MfaEnrollmentBypass {
   id: string;
   tenant_id: string;
@@ -211,7 +211,7 @@ model MfaEnrollmentBypass {
 }
 
 
-@doc("What an administrator's authenticator reset may target. `totp` and `webauthn` mean deleting every MfaFactor or WebAuthnCredential; `recovery_code` means deleting the whole set of backup recovery codes.")
+@doc("管理者による認証器のリセットの対象。`totp` と `webauthn` はすべての MfaFactor または WebAuthnCredential の削除を、`recovery_code` はバックアップのリカバリーコードの組全体の削除を意味する。")
 enum AuthenticatorResetTarget {
   Totp: "totp",
   Webauthn: "webauthn",
@@ -219,13 +219,13 @@ enum AuthenticatorResetTarget {
 }
 
 
-@doc("The set an administrator names for deletion when resetting a target user's authenticators.")
+@doc("対象のユーザーの認証器をリセットするときに、管理者が削除の対象として指定する集合。")
 model AuthenticatorResetRequest {
   targets: AuthenticatorResetTarget[];
 }
 
 
-@doc("The result of an authenticator reset. `reenrollment_required` says that both TOTP and WebAuthn are now gone and a single-use bypass was issued automatically, so the next sign-in enters the enrollment-only pending flow. The bypass is present only when `reenrollment_required` is true.")
+@doc("認証器のリセットの結果。`reenrollment_required` は、TOTP と WebAuthn がどちらもなくなり、一回限りの回避を自動で発行したので、次のサインインが登録専用の保留のフローに入ることを示す。回避は `reenrollment_required` が true のときだけ含む。")
 model AuthenticatorResetResponse {
   mfa_enrolled: boolean;
   reenrollment_required: boolean;
@@ -233,38 +233,38 @@ model AuthenticatorResetResponse {
 }
 
 
-@doc("The browser login session. PostgreSQL is its single source of truth, so a session stays valid across a\nprocess restart. The cookie carries nothing but an opaque session id, while the `sub` and `auth_time` live in the\nserver-side store. The amr and acr stay here too and decide step-up at a later `/authorize`.\n`authentication_pending=true` is an intermediate state the same LoginSession moves into only when the sign-in policy\nor a step-up demands another factor; the mere fact that an MFA factor is enrolled does not make it pending. Moving\ninto a wait for another factor must never leave a separate, completed `pwd` session behind. The `/authorize`\ncompletion path treats a pending session as unauthenticated and directs it to the matching factor challenge.\nThe cookie is issued `http_only` with `same_site=Lax`. The `tenant_id` is always part of the authentication\nresolution query, so even if a session id were guessed or replayed across tenants the database layer would not return\na row of another tenant -- the isolation is fail-closed. Revocation sets `revoked_at` and `revoke_reason` as a\ntombstone and never deletes the row, so revoking again succeeds idempotently. Authentication resolution treats only\nrows with `revoked_at IS NULL AND expires_at > now` as valid.")
+@doc("ブラウザーのログインセッション。PostgreSQL が唯一の情報源なので、プロセスを再起動してもセッションは有効なままである。Cookie は不透明なセッションの id だけを運び、`sub` と `auth_time` はサーバー側のストアにある。amr と acr もここに残り、後の `/authorize` でステップアップを決める。`authentication_pending=true` は、サインインのポリシーまたはステップアップが別の要素を求めるときにだけ、同じ LoginSession が移る中間の状態である。MFA の要素を登録しているだけでは保留にならない。別の要素の待ちへ移るときに、完了した別の `pwd` のセッションを残してはならない。`/authorize` の完了の経路は、保留中のセッションを未認証として扱い、対応する要素のチャレンジへ向かわせる。Cookie は `http_only` と `same_site=Lax` で発行する。`tenant_id` は常に認証の解決のクエリの一部なので、セッションの id が推測されたりテナントをまたいで再送されたりしても、データベースの層は他のテナントの行を返さない。隔離はフェイルクローズである。失効は `revoked_at` と `revoke_reason` を墓標として設定し、行を削除しないので、再度の失効は冪等に成功する。認証の解決が有効とみなすのは `revoked_at IS NULL AND expires_at > now` の行だけである。")
 model LoginSession {
   id: string;
   tenant_id: string;
   user_id: string;
-  @doc("The Unix second at which authentication succeeded. It is immutable as the session's start time, and the list is sorted by it, newest first.")
+  @doc("認証が成功した Unix 秒。セッションの開始時刻として変わらず、一覧はこれで新しい順に並べる。")
   auth_time: int64;
-  @doc("The methods by which authentication succeeded, drawn from a closed vocabulary: the RFC 8176 registered values pwd, otp, webauthn, hwk and swk, plus this application's non-IANA extensions rc (a recovery code), tdev (a remembered trusted device) and federated (authentication delegated to an upstream IdP). A LoginSession carrying anything else is not stored (RFC8176-AMR-VOCABULARY).")
+  @doc("認証が成功した方式。閉じた語彙から取り、RFC 8176 の登録済みの値の pwd、otp、webauthn、hwk、swk と、このアプリケーションの IANA に登録していない拡張の rc（リカバリーコード）、tdev（記憶した信頼済みデバイス）、federated（上流の IdP に委ねた認証）からなる。それ以外を含む LoginSession は保存しない（RFC8176-AMR-VOCABULARY）。")
   amr: string[];
-  @doc("The authentication context class reference URN: `urn:idmagic:acr:mfa` when amr holds one of otp, webauthn, hwk, swk, rc or tdev, and `urn:idmagic:acr:pwd` otherwise. A federated sign-in stays at pwd because the broker cannot tell what the upstream IdP actually verified (OpenID Connect Core section 2 and RFC 8176).")
+  @doc("認証コンテキストのクラスの参照の URN。amr が otp、webauthn、hwk、swk、rc、tdev のいずれかを含むときは `urn:idmagic:acr:mfa`、それ以外は `urn:idmagic:acr:pwd` である。フェデレーションによるサインインは、上流の IdP が実際に何を検証したかをブローカーが判別できないので、pwd のままにする（OpenID Connect Core の 2 節と RFC 8176）。")
   acr: string;
-  @doc("Whether it is the intermediate state waiting on verification of another factor. False once complete.")
+  @doc("別の要素の検証を待つ中間の状態かどうか。完了すると false になる。")
   authentication_pending: boolean = false;
-  @doc("What `authentication_pending` is for. While it is `enrollment`, the session reaches no account, administration, or application resource, and only the enrollment API is permitted.")
+  @doc("`authentication_pending` の目的。`enrollment` の間、セッションはアカウント、管理、アプリケーションのどのリソースにも届かず、登録の API だけを許す。")
   pending_purpose: LoginPendingPurpose = LoginPendingPurpose.None;
-  @doc("The deadline for completing a `pending_purpose=enrollment`. Settling an enrollment after it is refused, and the session is not promoted to authenticated.")
+  @doc("`pending_purpose=enrollment` を完了する期限。これを過ぎてからの登録の確定は拒否し、セッションを認証済みへ引き上げない。")
   enrollment_deadline?: utcDateTime;
-  @doc("The administrator-issued bypass consumed to move into Enrollment. Kept for audit correlation.")
+  @doc("Enrollment へ移るために使った、管理者が発行した回避。監査での関連付けのために残す。")
   enrollment_bypass_id?: string;
-  @doc("The Unix second at which a step-up reauthentication by password or MFA last succeeded; 0 when none has. It decides recency for high-sensitivity self-service operations.")
+  @doc("パスワードまたは MFA によるステップアップの再認証が最後に成功した Unix 秒。成功したことがなければ 0 である。機微性の高いセルフサービスの操作の新しさを判断する。")
   step_up_at: int64 = 0;
   expires_at: utcDateTime;
-  @doc("When the session was last used, in the sense of standing as an authentication result. It is touched on every authentication resolution, but a re-touch within LoginSessionTouchInterval of the last one is not persisted, so the value is coarse-grained and the idle timeout is approximated at that granularity.")
+  @doc("認証の結果として最後に使われた時刻。認証の解決のたびに更新するが、前回から LoginSessionTouchInterval 以内の更新は永続化しないので、値は粗い粒度になり、アイドルのタイムアウトもその粒度で近似する。")
   last_seen_at: utcDateTime;
-  @doc("When it was revoked; null while it is not. Revocation is a tombstone and never deletes the row.")
+  @doc("失効した時刻。失効していない間は null である。失効は墓標であり、行を削除しない。")
   revoked_at?: utcDateTime;
-  @doc("The revocation reason, set together with `revoked_at`. Null while `revoked_at` is null.")
+  @doc("失効の理由。`revoked_at` と一緒に設定する。`revoked_at` が null の間は null である。")
   revoke_reason?: SessionEndReason;
 }
 
 
-@doc("The authentication result the Authentication bounded context hands to the OAuth 2.0 / OpenID Connect bounded context. The latter never looks at passwords, the UserRepository, or the details of the session cookie.")
+@doc("Authentication の境界づけられたコンテキストが、OAuth 2.0 / OpenID Connect の境界づけられたコンテキストへ渡す認証の結果。後者は、パスワード、UserRepository、セッションの Cookie の詳細を見ない。")
 model AuthenticationContext {
   user_id: string;
   auth_time: int64;
@@ -274,7 +274,7 @@ model AuthenticationContext {
 }
 
 
-@doc("The projection of one MFA factor shown on the self-service security screen. No secret is\nreturned: only the kind, the label, and when it was created and last used. Today, TOTP alone.")
+@doc("セルフサービスのセキュリティの画面に示す、一つの MFA の要素の射影。シークレットは返さず、種類、ラベル、作成と最後の利用の時刻だけを返す。現在は TOTP だけである。")
 model AccountMfaFactor {
   type: MfaFactorType;
   label?: string;
@@ -283,7 +283,7 @@ model AccountMfaFactor {
 }
 
 
-@doc("What `/api/account/security` returns, the security overview of the end-user account portal.\nIt gathers the password change time, whether MFA (TOTP and WebAuthn) is enrolled, and how many backup recovery codes\nremain.")
+@doc("エンドユーザーのアカウントポータルのセキュリティの概要である `/api/account/security` が返すもの。パスワードの変更時刻、MFA（TOTP と WebAuthn）を登録しているかどうか、バックアップのリカバリーコードの残数をまとめる。")
 model AccountSecurityResponse {
   password_changed_at?: utcDateTime;
   totp_enrolled: boolean;
@@ -291,12 +291,12 @@ model AccountSecurityResponse {
   webauthn_credentials: WebAuthnCredentialSummary[];
   recovery_codes: RecoveryCodeStatus;
 
-  @doc("When the tenant's default sign-in policy starts requiring MFA. Present only while that start is still in the\nfuture and the user has neither an MFA factor nor a WebAuthn credential, so the portal can warn the user to enroll\nbefore password-only sign-in stops working. The policy's rules themselves are not returned.")
+  @doc("テナントのデフォルトのサインインのポリシーが MFA を求め始める時刻。その開始がまだ未来で、ユーザーが MFA の要素も WebAuthn の資格情報も保持していない間だけ含み、ポータルが、パスワードだけのサインインが使えなくなる前に登録するようユーザーに警告できるようにする。ポリシーの規則そのものは返さない。")
   mfa_enforcement_start_at?: utcDateTime;
 }
 
 
-@doc("What starting a TOTP enrollment returns (self-service). The client holds the secret until it confirms, and\n`otpauth_uri` is offered for a QR code or manual entry. The secret is not persisted until it comes back with the\nconfirmation (ConfirmTotpEnrollment).")
+@doc("TOTP の登録の開始が返すもの（セルフサービス）。クライアントは確認するまでシークレットを保持し、`otpauth_uri` を QR コードまたは手入力のために提供する。シークレットは確認（ConfirmTotpEnrollment）とともに戻ってくるまで永続化しない。")
 model TOTPEnrollmentStart {
   secret: string;
   otpauth_uri: string;
@@ -305,7 +305,7 @@ model TOTPEnrollmentStart {
 }
 
 
-@doc("Settles a TOTP enrollment inside the administrator-approved login enrollment flow. Neither the secret nor the code reaches the audit trail or a log.")
+@doc("管理者の承認によるログインの登録のフローの中で、TOTP の登録を確定する。シークレットもコードも監査証跡やログに届かない。")
 model BrowserMfaEnrollmentConfirmRequest {
   secret: string;
   code: string;
@@ -313,19 +313,19 @@ model BrowserMfaEnrollmentConfirmRequest {
 }
 
 
-@doc("The input with which an administrator issues a single-use enrollment bypass to a target user.")
+@doc("管理者が対象のユーザーに一回限りの登録の回避を発行する入力。")
 model MfaEnrollmentBypassIssueRequest {
   expires_in_seconds: int64 = 900;
 }
 
 
-@doc("How an enrollment bypass is shown to an administrator. There is no secret: the server consumes it automatically when the target user's password step succeeds.")
+@doc("管理者に示す登録の回避の表現。シークレットはなく、対象のユーザーのパスワードのステップが成功したときにサーバーが自動で使う。")
 model MfaEnrollmentBypassResponse {
   bypass: MfaEnrollmentBypass;
 }
 
 
-@doc("The TOTP enrollment confirmation request (self-service). The secret is the one from the start,\nand the code is the current one generated from it, as proof of possession.")
+@doc("TOTP の登録の確認のリクエスト（セルフサービス）。シークレットは開始時のもので、コードはそこから生成した現在のコードであり、所持の証明である。")
 model TOTPEnrollmentConfirmRequest {
   @minLength(1)
   secret: string;
@@ -334,14 +334,14 @@ model TOTPEnrollmentConfirmRequest {
 }
 
 
-@doc("The MFA factor removal request (self-service). The code is the current TOTP code, as proof of\npossession. Removal requires the user themselves plus that proof.")
+@doc("MFA の要素の削除のリクエスト（セルフサービス）。コードは所持の証明としての現在の TOTP のコードである。削除には、ユーザー本人とその証明が必要である。")
 model MfaFactorRemoveRequest {
   @minLength(1)
   code: string;
 }
 
 
-@doc("Hints about how a WebAuthn authenticator connects (WebAuthn Level 3 section 5.8.4, AuthenticatorTransport).")
+@doc("WebAuthn の認証器の接続の方法についてのヒント（WebAuthn Level 3 の 5.8.4 節、AuthenticatorTransport）。")
 enum WebAuthnTransport {
   Usb: "usb",
   Nfc: "nfc",
@@ -351,32 +351,32 @@ enum WebAuthnTransport {
 }
 
 
-@doc("One WebAuthn or passkey credential a user has enrolled. A user may hold several, so it is a\nseparate set from MfaFactor, uniquely identified by `credential_id`. `public_key` is the COSE public key and\n`sign_count` the signature counter used to detect a clone. It is a possession factor bound to an origin and an RP, and\nis used for phishing-resistant MFA and step-up. The ceremony resolves the RP ID and origin from the deployment\nconfiguration and uses `user_verification=preferred`, `attestation=none` (enterprise attestation is not strictly\nenforced), `resident_key=discouraged` (passwordless is out of scope), a 32-byte challenge, and a 120-second timeout\n(WebAuthn Level 3 sections 5, 7, and 13).")
+@doc("ユーザーが登録した一つの WebAuthn またはパスキーの資格情報。ユーザーは複数を保持できるので、MfaFactor とは別の集合で、`credential_id` で一意に識別する。`public_key` は COSE の公開鍵、`sign_count` は複製の検出に使う署名のカウンターである。オリジンと RP に結び付く所持の要素で、フィッシングに強い MFA とステップアップに使う。セレモニーは、デプロイメントの設定から RP ID とオリジンを解決し、`user_verification=preferred`、`attestation=none`（エンタープライズのアテステーションは厳密には強制しない）、`resident_key=discouraged`（パスワードレスは範囲外）、32 バイトのチャレンジ、120 秒のタイムアウトを使う（WebAuthn Level 3 の 5 節、7 節、13 節）。")
 model WebAuthnCredential {
-  @doc("The credential ID the authenticator returns, base64url-encoded. Unique within the RP.")
+  @doc("認証器が返す資格情報の ID。base64url で符号化する。RP の中で一意である。")
   credential_id: string;
-  @doc("The `sub` of the owning user.")
+  @doc("所有するユーザーの `sub`。")
   user_id: string;
-  @doc("The public key in COSE form, base64url-encoded.")
+  @doc("COSE の形の公開鍵。base64url で符号化する。")
   public_key: string;
-  @doc("The signature counter of the most recent assertion. A counter that goes backwards is refused as a suspected clone (`sign_count_regression=reject`).")
+  @doc("直近のアサーションの署名のカウンター。後退するカウンターは複製の疑いとして拒否する（`sign_count_regression=reject`）。")
   sign_count: int64;
-  @doc("The transport hints the authenticator declared: usb, nfc, ble, internal, or hybrid.")
+  @doc("認証器が宣言したトランスポートのヒント。usb、nfc、ble、internal、hybrid のいずれか。")
   transports: string[];
-  @doc("The AAGUID of the authenticator, base64url-encoded. A hint about the model.")
+  @doc("認証器の AAGUID。base64url で符号化する。機種についてのヒントである。")
   aaguid?: string;
-  @doc("The display name the user gives it, `MacBook Touch ID` for instance.")
+  @doc("ユーザーが付ける表示名。たとえば `MacBook Touch ID`。")
   label?: string;
-  @doc("Whether the credential can be synchronized across devices (the WebAuthn BE flag).")
+  @doc("資格情報をデバイスの間で同期できるかどうか（WebAuthn の BE フラグ）。")
   backup_eligible: boolean;
-  @doc("Whether the credential is currently backed up (the WebAuthn BS flag).")
+  @doc("資格情報が現在バックアップされているかどうか（WebAuthn の BS フラグ）。")
   backup_state: boolean;
   created_at: utcDateTime;
   last_used_at?: utcDateTime;
 }
 
 
-@doc("The projection of one WebAuthn credential shown on the self-service security screen.\nNeither the public key nor `sign_count` is returned: only what identification and display need.")
+@doc("セルフサービスのセキュリティの画面に示す、一つの WebAuthn の資格情報の射影。公開鍵も `sign_count` も返さず、識別と表示に必要なものだけを返す。")
 model WebAuthnCredentialSummary {
   credential_id: string;
   label?: string;
@@ -386,17 +386,17 @@ model WebAuthnCredentialSummary {
 }
 
 
-@doc("One backup recovery code, for when TOTP or WebAuthn is lost. The plaintext is shown once at\ngeneration and only `code_hash` (SHA-256, as hex) is stored. A non-null `consumed_at` means it has been used and\ncannot be reused. A user's valid codes are treated as one set and replaced outright on regeneration\n(`regenerate_replaces_all`). Generation makes `count=10` codes, each `code_length=10` characters, drawn from the\nalphabet 23456789abcdefghijkmnpqrstuvwxyz -- a base32-like alphabet with the confusable characters removed -- and they\nare a backup alone, never a second factor on their own (NIST SP 800-63B section 5.1.2, Look-up Secrets).")
+@doc("TOTP または WebAuthn を失ったときのための、一つのバックアップのリカバリーコード。平文は生成時に一度だけ示し、`code_hash`（SHA-256 の 16 進数）だけを保存する。`consumed_at` が null でないことは使用済みで再利用できないことを意味する。ユーザーの有効なコードは一つの組として扱い、再生成のときは丸ごと置き換える（`regenerate_replaces_all`）。生成は、紛らわしい文字を除いた base32 に似たアルファベット 23456789abcdefghijkmnpqrstuvwxyz から、それぞれ `code_length=10` 文字のコードを `count=10` 個作る。これはバックアップだけのためのもので、単独で第二要素にはならない（NIST SP 800-63B の 5.1.2 節、Look-up Secrets）。")
 model RecoveryCode {
   user_id: string;
-  @doc("The SHA-256 of the recovery code plaintext, as hex. The plaintext is not stored.")
+  @doc("リカバリーコードの平文の SHA-256 の 16 進数。平文は保存しない。")
   code_hash: string;
   generated_at: utcDateTime;
   consumed_at?: utcDateTime;
 }
 
 
-@doc("The state of the recovery codes shown on the self-service security screen. The codes themselves are not\nreturned: only when they were generated and how many there are in total and remaining.")
+@doc("セルフサービスのセキュリティの画面に示す、リカバリーコードの状態。コードそのものは返さず、生成した時刻と、全体の数と残りの数だけを返す。")
 model RecoveryCodeStatus {
   generated_at?: utcDateTime;
   total: int64;
@@ -404,33 +404,33 @@ model RecoveryCodeStatus {
 }
 
 
-@doc("One trusted device, the \"remember this device\" credential. It is issued per user, and only when the user\nexplicitly consents right after a genuine second factor (TOTP or WebAuthn) has succeeded during sign-in. The browser\nreceives `selector.verifier` in a realm-scoped HttpOnly, SameSite=Lax cookie, while the server stores nothing but the\nselector and `verifier_hash` (SHA-256, as hex). The selector fetches one row and the verifier's hash is compared in\nconstant time, so neither the cookie plaintext nor a device fingerprint is ever stored.\nThe verifier rotates on every use, so a stolen old cookie is invalidated by the next legitimate one.\nValidity is cut by both an absolute deadline (`expires_at`) and an idle one (`last_used_at` plus the idle window).")
+@doc("一つの信頼済みデバイス、すなわち「このデバイスを記憶する」の資格情報。ユーザーごとに、サインイン中に本物の第二要素（TOTP または WebAuthn）が成功した直後にユーザーが明示的に同意したときだけ発行する。ブラウザーは `selector.verifier` を、レルムに限定した HttpOnly、SameSite=Lax の Cookie で受け取り、サーバーはセレクターと `verifier_hash`（SHA-256 の 16 進数）だけを保存する。セレクターで一行を取り出し、検証子のハッシュを定数時間で比べるので、Cookie の平文もデバイスのフィンガープリントも保存しない。検証子は使うたびにローテーションするので、盗まれた古い Cookie は次の正当な Cookie で無効になる。有効性は、絶対の期限（`expires_at`）とアイドルの期限（`last_used_at` にアイドルの期間を加えたもの）の両方で区切る。")
 model TrustedDevice {
-  @doc("The device identifier. It is the key for audit and for the user revoking it.")
+  @doc("デバイスの識別子。監査と、ユーザーが失効させるときのキーである。")
   id: string;
-  @doc("The tenant it belongs to. The cookie is realm-scoped, so it never resolves across tenants.")
+  @doc("属するテナント。Cookie はレルムに限定されるので、テナントをまたいで解決することはない。")
   tenant_id: string = "default";
-  @doc("The `sub` of the owning user.")
+  @doc("所有するユーザーの `sub`。")
   user_id: string;
-  @doc("The non-secret lookup key that forms the first half of the cookie, base64url-encoded. It is unique and used for nothing but locating one row.")
+  @doc("Cookie の前半を成す秘密でない検索のキー。base64url で符号化する。一意で、一行を特定するためだけに使う。")
   selector: string;
-  @doc("The SHA-256 of the second half of the cookie, the verifier, as hex. The plaintext is not stored, and it rotates on every use.")
+  @doc("Cookie の後半である検証子の SHA-256 の 16 進数。平文は保存せず、使うたびにローテーションする。")
   verifier_hash: string;
-  @doc("A display label derived from the User-Agent, naming nothing beyond the browser and OS family, `Chrome / macOS` for instance.\nNeither the raw User-Agent nor the IP is stored.")
+  @doc("User-Agent から導く表示用のラベルで、ブラウザーと OS の系統だけを示す。たとえば `Chrome / macOS`。生の User-Agent も IP も保存しない。")
   label?: string;
   created_at: utcDateTime;
-  @doc("When it was last used to skip a second factor. The idle deadline is measured from here.")
+  @doc("第二要素を省くために最後に使った時刻。アイドルの期限はここから測る。")
   last_used_at: utcDateTime;
-  @doc("`created_at` plus the tenant's `trusted_device_max_age_seconds`. The absolute deadline.")
+  @doc("`created_at` にテナントの `trusted_device_max_age_seconds` を加えたもの。絶対の期限である。")
   expires_at: utcDateTime;
-  @doc("When it was revoked; null while it is not. Revocation is a tombstone and never deletes the row.")
+  @doc("失効した時刻。失効していない間は null である。失効は墓標であり、行を削除しない。")
   revoked_at?: utcDateTime;
-  @doc("The revocation reason, set together with `revoked_at`. Null while `revoked_at` is null.")
+  @doc("失効の理由。`revoked_at` と一緒に設定する。`revoked_at` が null の間は null である。")
   revoke_reason?: TrustedDeviceRevokeReason;
 }
 
 
-@doc("Why a trusted device was revoked. `self_revoke` is the user revoking it explicitly; `password_change` and\n`mfa_change` are bulk revocations following a credential change; `admin_revoke` is an administrator's authenticator\nreset; `account_disabled` is the account being disabled; and `session_revoke` is the user or an administrator revoking\nevery session.")
+@doc("信頼済みデバイスを失効させた理由。`self_revoke` はユーザーが明示的に失効させたこと、`password_change` と `mfa_change` は資格情報の変更にともなう一括の失効、`admin_revoke` は管理者による認証器のリセット、`account_disabled` はアカウントの無効化、`session_revoke` はユーザーまたは管理者がすべてのセッションを失効させたことである。")
 enum TrustedDeviceRevokeReason {
   self_revoke: "self_revoke",
   password_change: "password_change",
@@ -441,7 +441,7 @@ enum TrustedDeviceRevokeReason {
 }
 
 
-@doc("The projection of one trusted device shown on the self-service security screen. Neither the selector nor\n`verifier_hash` is returned: only what identification and display need. `current` says whether it is the device\nmatching the cookie the present request offered.")
+@doc("セルフサービスのセキュリティの画面に示す、一つの信頼済みデバイスの射影。セレクターも `verifier_hash` も返さず、識別と表示に必要なものだけを返す。`current` は、現在のリクエストが提示した Cookie に一致するデバイスかどうかを示す。")
 model AccountTrustedDevice {
   id: string;
   current: boolean;
@@ -452,15 +452,15 @@ model AccountTrustedDevice {
 }
 
 
-@doc("What ListMyTrustedDevices returns: the user's own live trusted devices, by last use, newest first.\nIt is always empty when the tenant has trusted devices turned off.")
+@doc("ListMyTrustedDevices が返すもの。ユーザー自身の有効な信頼済みデバイスを、最後に使った新しい順に並べる。テナントが信頼済みデバイスを無効にしているときは常に空である。")
 model AccountTrustedDeviceListResponse {
   devices: AccountTrustedDevice[];
-  @doc("The tenant's `trusted_device_max_age_seconds`. Zero means the feature is off and the UI offers no way to remember a device.")
+  @doc("テナントの `trusted_device_max_age_seconds`。0 は機能が無効であることを意味し、UI はデバイスを記憶する方法を示さない。")
   max_age_seconds: int64;
 }
 
 
-@doc("The kinds of account security notification. Every message belongs to exactly one kind, and each kind\ndecides whether the user may stop receiving it. `new_device_sign_in` is a sign-in from a browser not seen before;\n`credential_change` is a password change; `mfa_change` is an authentication factor, recovery code, or trusted device\nbeing added or removed; `contact_change` is an email address change being requested and settled; `session_revoked` is\nthe user or an administrator explicitly revoking a session; and `impersonation` is an administrator beginning to act\nas the user.")
+@doc("アカウントのセキュリティ通知の種類。どのメッセージもちょうど一つの種類に属し、種類ごとにユーザーが受信を止めてよいかが決まる。`new_device_sign_in` は以前に見たことのないブラウザーからのサインイン、`credential_change` はパスワードの変更、`mfa_change` は認証の要素、リカバリーコード、信頼済みデバイスの追加または削除、`contact_change` はメールアドレスの変更の申し出と確定、`session_revoked` はユーザーまたは管理者による明示的なセッションの失効、`impersonation` は管理者がユーザーとして操作し始めたことである。")
 enum SecurityNotificationCategory {
   new_device_sign_in: "new_device_sign_in",
   credential_change: "credential_change",
@@ -471,120 +471,120 @@ enum SecurityNotificationCategory {
 }
 
 
-@doc("The user's own security notification preferences. Having no row means exactly the same as everything\nbeing on, so no row is created until the first change. Only optional kinds may be listed in `disabled_categories`, and\nan update naming a mandatory kind is refused. The first thing an attacker silences after a takeover is the\nnotifications, and being able to silence them is no different from their not existing.")
+@doc("ユーザー自身のセキュリティ通知の設定。行がないことは、すべてが有効であることとまったく同じ意味なので、最初の変更まで行は作らない。`disabled_categories` に載せられるのは任意の種類だけで、必須の種類を指定した更新は拒否する。乗っ取りの後に攻撃者が最初に止めるのは通知であり、止められるのであれば存在しないのと変わらないためである。")
 model NotificationPreference {
-  @doc("The `sub` of the owning user. There is no `tenant_id`, because `users.id` is globally unique.")
+  @doc("所有するユーザーの `sub`。`users.id` は全体で一意なので、`tenant_id` はない。")
   user_id: string;
-  @doc("The kinds the user has stopped receiving. A mandatory kind cannot be listed.")
+  @doc("ユーザーが受信を止めた種類。必須の種類は載せられない。")
   disabled_categories: SecurityNotificationCategory[];
   updated_at: utcDateTime;
 }
 
 
-@doc("One browser the user has signed in from before. It serves both to decide `new_device_sign_in` and to\ndeduplicate it. Every sign-in upserts on `(user_id, device_hash)`, and only when a row is newly created is the sign-in\nnotified as coming from a new device. `device_hash` is the SHA-256 of the User-Agent, as hex, salted with the tenant's\ncorrelation salt; neither the raw User-Agent nor the IP is stored.")
+@doc("ユーザーが以前にサインインしたことのある一つのブラウザー。`new_device_sign_in` の判断と、その重複の除去の両方に使う。サインインのたびに `(user_id, device_hash)` で作成または更新し、行を新たに作ったときだけ、新しいデバイスからのサインインとして通知する。`device_hash` は、テナントの関連付けのソルトを加えた User-Agent の SHA-256 の 16 進数で、生の User-Agent も IP も保存しない。")
 model KnownSignInDevice {
-  @doc("The `sub` of the owning user.")
+  @doc("所有するユーザーの `sub`。")
   user_id: string;
-  @doc("`SaltedHash(tenant salt, User-Agent)`, as hex. It does not correlate across tenants.")
+  @doc("`SaltedHash(tenant salt, User-Agent)` の 16 進数。テナントをまたいで関連付けることはできない。")
   device_hash: string;
-  @doc("A display label derived from the User-Agent, naming nothing beyond the browser and OS family, `Chrome / macOS` for instance.")
+  @doc("User-Agent から導く表示用のラベルで、ブラウザーと OS の系統だけを示す。たとえば `Chrome / macOS`。")
   label?: string;
   first_seen_at: utcDateTime;
   last_seen_at: utcDateTime;
 }
 
 
-@doc("How one kind of security notification is presented to the user. A kind whose `mandatory` is true always has\n`enabled` true, and an update cannot set it to false.")
+@doc("一つの種類のセキュリティ通知をユーザーにどう示すか。`mandatory` が true の種類は常に `enabled` が true で、更新で false にはできない。")
 model AccountNotificationCategoryPreference {
   category: SecurityNotificationCategory;
-  @doc("Whether it is a kind the user may not turn off.")
+  @doc("ユーザーが無効にできない種類かどうか。")
   mandatory: boolean;
-  @doc("Whether the user currently receives notifications of this kind.")
+  @doc("ユーザーが現在この種類の通知を受け取っているかどうか。")
   enabled: boolean;
 }
 
 
-@doc("What GetMyNotificationPreferences returns. Every kind comes back in the stable order the specification fixes,\nso the UI need not hold the list of kinds in its own code.")
+@doc("GetMyNotificationPreferences が返すもの。すべての種類を仕様が定める安定した順序で返すので、UI は種類の一覧を自身のコードに持つ必要がない。")
 model AccountNotificationPreferences {
   categories: AccountNotificationCategoryPreference[];
 }
 
 
-@doc("The input of UpdateMyNotificationPreferences. It names the kinds to turn off rather than the ones to turn on,\nso a kind added later is inherited as on by an existing setting. A request naming a mandatory kind is refused\nwith 400.")
+@doc("UpdateMyNotificationPreferences の入力。有効にする種類ではなく無効にする種類を指定するので、後から加わった種類は既存の設定で有効として引き継がれる。必須の種類を指定したリクエストは 400 で拒否する。")
 model UpdateNotificationPreferencesRequest {
-  @doc("The kinds to stop receiving. Only optional kinds may be listed.")
+  @doc("受信を止める種類。載せられるのは任意の種類だけである。")
   disabled_categories: SecurityNotificationCategory[];
 }
 
 
-@doc("What StartWebAuthnRegistration returns: the PublicKeyCredentialCreationOptions to hand to\n`navigator.credentials.create`, as JSON and unchanged. The challenge is short-lived and bound to the\nserver-side session.")
+@doc("StartWebAuthnRegistration が返すもの。`navigator.credentials.create` に渡す PublicKeyCredentialCreationOptions を、変えずに JSON で返す。チャレンジは短命で、サーバー側のセッションに結び付く。")
 model WebAuthnRegistrationOptions {
-  @doc("The PublicKeyCredentialCreationOptions (WebAuthn Level 3).")
+  @doc("PublicKeyCredentialCreationOptions（WebAuthn Level 3）。")
   public_key: Record<unknown>;
 }
 
 
-@doc("The input of FinishWebAuthnRegistration: the attestation `navigator.credentials.create` returned,\nsent back as JSON, optionally with a display label.")
+@doc("FinishWebAuthnRegistration の入力。`navigator.credentials.create` が返したアテステーションを、任意の表示用のラベルとともに JSON で送り返す。")
 model WebAuthnRegistrationRequest {
-  @doc("The PublicKeyCredential holding an attestation response (WebAuthn Level 3).")
+  @doc("アテステーションのレスポンスを含む PublicKeyCredential（WebAuthn Level 3）。")
   attestation: Record<unknown>;
   label?: string;
 }
 
 
-@doc("What StartBrowserWebAuthn returns: the PublicKeyCredentialRequestOptions to hand to\n`navigator.credentials.get`, as JSON and unchanged. The challenge is bound to the pending login\nsession.")
+@doc("StartBrowserWebAuthn が返すもの。`navigator.credentials.get` に渡す PublicKeyCredentialRequestOptions を、変えずに JSON で返す。チャレンジは保留中のログインセッションに結び付く。")
 model WebAuthnAssertionOptions {
-  @doc("The PublicKeyCredentialRequestOptions (WebAuthn Level 3).")
+  @doc("PublicKeyCredentialRequestOptions（WebAuthn Level 3）。")
   public_key: Record<unknown>;
 }
 
 
-@doc("The input of SubmitBrowserWebAuthn: the assertion `navigator.credentials.get` returned, sent back as\nJSON. The pending login session cookie resolves the `sub`, and `X-CSRF-Token` resolves CSRF.")
+@doc("SubmitBrowserWebAuthn の入力。`navigator.credentials.get` が返したアサーションを JSON で送り返す。保留中のログインセッションの Cookie が `sub` を、`X-CSRF-Token` が CSRF を解決する。")
 model BrowserWebAuthnRequest {
-  @doc("The PublicKeyCredential holding an assertion response (WebAuthn Level 3).")
+  @doc("アサーションのレスポンスを含む PublicKeyCredential（WebAuthn Level 3）。")
   assertion: Record<unknown>;
   return_to?: string;
-  @doc("The user's explicit consent to remember this device and skip the second factor from now on. It is ignored\nwhen the tenant has trusted devices turned off.")
+  @doc("このデバイスを記憶し、以降は第二要素を省くことへのユーザーの明示的な同意。テナントが信頼済みデバイスを無効にしているときは無視する。")
   remember_device?: boolean;
 }
 
 
-@doc("The input of SubmitBrowserRecoveryCode: it consumes one recovery code as the second factor.\nThe code never reaches the audit trail or a log.")
+@doc("SubmitBrowserRecoveryCode の入力。一つのリカバリーコードを第二要素として使う。コードは監査証跡にもログにも届かない。")
 model BrowserRecoveryCodeRequest {
   code: string;
   return_to?: string;
 }
 
 
-@doc("The input of RemoveWebAuthnCredential: it names the credential to remove by its `credential_id`.")
+@doc("RemoveWebAuthnCredential の入力。削除する資格情報を `credential_id` で指定する。")
 model WebAuthnCredentialRemoveRequest {
   @minLength(1)
   credential_id: string;
 }
 
 
-@doc("What GenerateRecoveryCodes returns: the recovery codes in plaintext, once. Afterwards only the remaining\ncount (RecoveryCodeStatus) can be read; the codes are neither stored nor shown again.")
+@doc("GenerateRecoveryCodes が返すもの。リカバリーコードを平文で一度だけ返す。以降は残数（RecoveryCodeStatus）だけを読め、コードは保存も再表示もしない。")
 model RecoveryCodesResponse {
   codes: string[];
   generated_at: utcDateTime;
 }
 
 
-@doc("The projection of one entry in a user's own sign-in history. This slice derives from the existing audit\nevent store (UserAuthenticated), so the only attributes it holds are when it happened and by what means (amr).\nAdding the IP, UA, sessionId, and clientId comes later, once the event itself has been extended.")
+@doc("ユーザー自身のサインインの履歴の一つの項目の射影。この部分は既存の監査イベントのストア（UserAuthenticated）から導くので、保持する属性は起きた時刻と方式（amr）だけである。IP、UA、sessionId、clientId の追加は、イベント自体を拡張した後に行う。")
 model UserSignInActivity {
   occurred_at: utcDateTime;
-  @doc("The technical values of RFC 8176 (RFC8176-AMR-VOCABULARY). The UI translates them into names meant for users: pwd is a password, otp an authenticator app, webauthn a passkey, rc a recovery code, and so on.")
+  @doc("RFC 8176 の技術的な値（RFC8176-AMR-VOCABULARY）。UI がユーザー向けの名前に訳す。pwd はパスワード、otp は認証アプリ、webauthn はパスキー、rc はリカバリーコードなどである。")
   amr: string[];
 }
 
 
-@doc("What ListMySignInActivity and ListUserSignInActivity return: the most recent N entries, newest first.")
+@doc("ListMySignInActivity と ListUserSignInActivity が返すもの。直近の N 件を新しい順に返す。")
 model UserSignInActivityResponse {
   activities: UserSignInActivity[];
 }
 
 
-@doc("Why a LoginSession ended. `self_revoke` and `admin_revoke` are the user or an administrator revoking it\nexplicitly; `logout`, `idle`, and `absolute` are automatic; and `password_change` and `mfa_change` follow a credential\nchange.")
+@doc("LoginSession が終わった理由。`self_revoke` と `admin_revoke` はユーザーまたは管理者による明示的な失効、`logout`、`idle`、`absolute` は自動の終了、`password_change` と `mfa_change` は資格情報の変更にともなうものである。")
 enum SessionEndReason {
   logout: "logout",
   idle: "idle",
@@ -597,7 +597,7 @@ enum SessionEndReason {
 }
 
 
-@doc("The projection of one entry in the self-service session list. It holds no secret: only the identifiers and\nthe authentication details. `current` says whether it is the caller's present session. `started_at` is the\n`auth_time` of the LoginSession and `expires_at` when it is due to expire.")
+@doc("セルフサービスのセッションの一覧の一つの項目の射影。シークレットは含まず、識別子と認証の詳細だけを含む。`current` は呼び出し元の現在のセッションかどうかを示す。`started_at` は LoginSession の `auth_time`、`expires_at` は期限切れになる予定の時刻である。")
 model AccountSession {
   id: string;
   current: boolean;
@@ -608,13 +608,13 @@ model AccountSession {
 }
 
 
-@doc("What ListMySessions returns: the user's own live sessions, by start time, newest first.")
+@doc("ListMySessions が返すもの。ユーザー自身の有効なセッションを、開始時刻の新しい順に並べる。")
 model AccountSessionListResponse {
   sessions: AccountSession[];
 }
 
 
-@doc("The projection of one entry in the administrative session list. It holds no secret: only what is needed to\nidentify and audit a live session of the target user. Unlike the self-service AccountSession it has no\n`current` marker, because the caller and the target user are different people.")
+@doc("管理用のセッションの一覧の一つの項目の射影。シークレットは含まず、対象のユーザーの有効なセッションの識別と監査に必要なものだけを含む。呼び出し元と対象のユーザーは別人なので、セルフサービスの AccountSession と違い `current` の印はない。")
 model SessionRecord {
   id: string;
   user_id: string;
@@ -626,13 +626,13 @@ model SessionRecord {
 }
 
 
-@doc("What ListSessions (administrative) returns: the live sessions of the target user, by start time, newest first.")
+@doc("ListSessions（管理用）が返すもの。対象のユーザーの有効なセッションを、開始時刻の新しい順に並べる。")
 model SessionRecordListResponse {
   sessions: SessionRecord[];
 }
 
 
-@doc("The projection of one authentication event aggregate (bucket) for administrative display. It is the result of\naggregating individual sign-in failures into 5-minute windows during an attack: `window_start` is when the window\nbegan, `count` is the running total inside it, and `first_seen` and `last_seen` are the first and last times inside it.\n`key_hash` is SHA-256 as hex and holds no plaintext. It stays inside the tenant boundary.")
+@doc("管理用に表示する、一つの認証イベントの集約（バケット）の射影。攻撃の間に個々のサインインの失敗を 5 分のウィンドウへ集約した結果で、`window_start` はウィンドウの開始時刻、`count` はその中の累計、`first_seen` と `last_seen` はその中の最初と最後の時刻である。`key_hash` は SHA-256 の 16 進数で、平文は含まない。テナントの境界の中にとどまる。")
 model AuthenticationEventBucket {
   @doc("failed_login | throttled | mfa_failed")
   kind: string;
@@ -646,13 +646,13 @@ model AuthenticationEventBucket {
 }
 
 
-@doc("What ListAuthenticationEventBuckets returns, by `window_start` descending, newest window first.")
+@doc("ListAuthenticationEventBuckets が返すもの。`window_start` の降順で、新しいウィンドウから並べる。")
 model AuthenticationEventBucketListResponse {
   buckets: AuthenticationEventBucket[];
 }
 
 
-@doc("The factors usable for a step-up reauthentication. `password` always; `totp` and `webauthn` once enrolled;\n`recovery_code` only while valid codes remain.")
+@doc("ステップアップの再認証に使える要素。`password` は常に、`totp` と `webauthn` は登録済みのとき、`recovery_code` は有効なコードが残っている間だけ使える。")
 enum StepUpMethod {
   password: "password",
   totp: "totp",
@@ -661,35 +661,35 @@ enum StepUpMethod {
 }
 
 
-@doc("What StartStepUpAuthentication returns: the reauthentication methods available, which the UI offers as choices in\nits reauthentication modal.")
+@doc("StartStepUpAuthentication が返すもの。使える再認証の方法で、UI は再認証のモーダルで選択肢として示す。")
 model StepUpStartResponse {
   methods: StepUpMethod[];
 }
 
 
-@doc("The input of CompleteStepUpAuthentication. Depending on `method` it uses the password or the code.\nThe material verified never reaches the audit trail or a log.")
+@doc("CompleteStepUpAuthentication の入力。`method` に応じて、パスワードまたはコードを使う。検証した材料は監査証跡にもログにも届かない。")
 model StepUpCompleteRequest {
   method: StepUpMethod;
   password?: string;
-  @doc("The one-time code, for `totp` and `recovery_code`.")
+  @doc("`totp` と `recovery_code` のための一回限りのコード。")
   code?: string;
-  @doc("The WebAuthn assertion, for `method` = `webauthn`. Its shape is the browser's PublicKeyCredential as the WebAuthn specification defines it, so it is carried opaquely rather than restated here.")
+  @doc("`method` が `webauthn` のときの WebAuthn のアサーション。形は WebAuthn の仕様が定めるブラウザーの PublicKeyCredential なので、ここで書き直さず不透明なまま運ぶ。")
   assertion?: Record<unknown>;
 }
 
 
-@doc("The TOTP code a browser client posts to `/api/auth/totp`. The authorization request id is resolved from the HttpOnly transaction cookie and the CSRF from the `X-CSRF-Token` header. Other factors, WebAuthn among them, have a very different HTTP shape and so are defined independently, with their own endpoint and their own value object.")
+@doc("ブラウザーのクライアントが `/api/auth/totp` へ POST する TOTP のコード。認可リクエストの id は HttpOnly のトランザクションの Cookie から、CSRF は `X-CSRF-Token` ヘッダーから解決する。WebAuthn をはじめとするほかの要素は HTTP の形が大きく異なるので、固有のエンドポイントと値オブジェクトで独立に定める。")
 model BrowserTotpRequest {
-  @doc("The numeric code the authenticator app generated: six digits (RFC 6238 section 4 and RFC 4226 section 4).")
+  @doc("認証アプリが生成した数字のコード。6 桁である（RFC 6238 の 4 節と RFC 4226 の 4 節）。")
   code: string;
-  @doc("Where to go inside the same realm when a direct sign-in to the administration console continues.")
+  @doc("管理コンソールへの直接のサインインが続くときの、同じレルムの中の移動先。")
   return_to?: string;
-  @doc("The user's explicit consent to remember this device and skip the second factor from now on. It is ignored\nwhen the tenant has trusted devices turned off.")
+  @doc("このデバイスを記憶し、以降は第二要素を省くことへのユーザーの明示的な同意。テナントが信頼済みデバイスを無効にしているときは無視する。")
   remember_device?: boolean;
 }
 
 
-@doc("The JSON an SPA posts to `/api/auth/change_password`. The authenticated session cookie resolves the `sub`, and CSRF is verified through the `X-CSRF-Token` header.")
+@doc("SPA が `/api/auth/change_password` へ POST する JSON。認証済みのセッションの Cookie が `sub` を解決し、CSRF は `X-CSRF-Token` ヘッダーで検証する。")
 model BrowserChangePasswordRequest {
   current_password: string;
   @minLength(12)
@@ -698,13 +698,13 @@ model BrowserChangePasswordRequest {
 }
 
 
-@doc("The JSON an SPA posts to `/api/auth/forgot_password`, an unauthenticated route. To prevent enumeration it always returns 204, whether or not the email exists.")
+@doc("SPA が未認証の経路 `/api/auth/forgot_password` へ POST する JSON。列挙を防ぐため、メールアドレスが存在するかにかかわらず常に 204 を返す。")
 model BrowserForgotPasswordRequest {
   email: string;
 }
 
 
-@doc("The JSON an SPA posts to `/api/auth/reset_password`. It takes the single-use token from the email link together with the new password.")
+@doc("SPA が `/api/auth/reset_password` へ POST する JSON。メールのリンクの一回限りのトークンと、新しいパスワードを受け取る。")
 model BrowserResetPasswordRequest {
   token: string;
   @minLength(12)
@@ -713,117 +713,117 @@ model BrowserResetPasswordRequest {
 }
 
 
-@doc("The single-use token for a password reset.\nThe token is 32 random bytes as base64url, and only its SHA-256 hash is stored.\nIt lives 1800 seconds (30 minutes) from issuance and is consumed once; once `consumed_at` is set it cannot be reused.\nExpired and consumed rows are garbage-collected, and an INSERT also does a light sweep that invalidates any unconsumed\ntoken of the same `sub`.")
+@doc("パスワードリセットの一回限りのトークン。トークンは 32 バイトの乱数を base64url にしたもので、SHA-256 のハッシュだけを保存する。発行から 1800 秒（30 分）有効で一度だけ使い、`consumed_at` を設定した後は再利用できない。期限切れと使用済みの行はガベージコレクションで回収し、INSERT のときにも、同じ `sub` の未使用のトークンを無効にする軽い掃除を行う。")
 model PasswordResetTokenRecord {
   user_id: string;
   token_hash: string;
   created_at: utcDateTime;
-  @doc("`created_at` plus 1800 seconds (30 minutes).")
+  @doc("`created_at` に 1800 秒（30 分）を加えたもの。")
   expires_at: utcDateTime;
-  @doc("Non-null means it has been used and cannot be reused.")
+  @doc("null でなければ使用済みで、再利用できない。")
   consumed_at?: utcDateTime;
 }
 
 
-@doc("A ResourceOwner authenticated successfully. `amr` lists the means actually used (OpenID Connect Core section 2).")
+@doc("ResourceOwner の認証が成功した。`amr` は実際に使った手段を並べる（OpenID Connect Core の 2 節）。")
 model UserAuthenticated {
   occurredAt: utcDateTime;
-  @doc("The tenant the authentication happened in. The audit view narrows by it.")
+  @doc("認証が行われたテナント。監査の表示はこれで絞り込む。")
   tenantId: string;
   userId: string;
   amr?: string[];
-  @doc("The id of the LoginSession the authentication started.")
+  @doc("認証が開始した LoginSession の id。")
   sessionId?: string;
-  @doc("The OAuth client that started the authentication.")
+  @doc("認証を開始した OAuth のクライアント。")
   clientId?: string;
   acr?: string;
-  @doc("The client IP. It is stored in plaintext for as long as the audit event is retained.")
+  @doc("クライアントの IP。監査イベントを保持する間、平文で保存する。")
   ip?: string;
-  @doc("The client User-Agent. It is stored in plaintext for as long as the audit event is retained.")
+  @doc("クライアントの User-Agent。監査イベントを保持する間、平文で保存する。")
   userAgent?: string;
-  @doc("The country code from GeoIP; empty when GeoIP is not wired up.")
+  @doc("GeoIP による国コード。GeoIP を配線していないときは空である。")
   countryCode?: string;
-  @doc("The device fingerprint. It is stored in plaintext for as long as the audit event is retained.")
+  @doc("デバイスのフィンガープリント。監査イベントを保持する間、平文で保存する。")
   deviceFingerprint?: string;
-  @doc("The risk score. This work item only reserves the field; the value is null.")
+  @doc("リスクのスコア。この work item はフィールドを予約するだけで、値は null である。")
   riskScore?: int64;
 }
 
 
-@doc("A ResourceOwner failed to authenticate. It is an input event for rate limiting and fraud detection.\nAttempts against a username that does not exist are recorded too, so there is no `sub`; the username is kept in\nplaintext as the `actor.username` correlation key for audit search. The username and the other client attributes are\nnot hashed, and are kept for the same retention as the other failure events, 30 days by default.")
+@doc("ResourceOwner の認証が失敗した。レート制限と不正検知の入力のイベントである。存在しないユーザー名に対する試行も記録するので `sub` はなく、ユーザー名は監査の検索のための `actor.username` の関連付けのキーとして平文で保持する。ユーザー名とほかのクライアントの属性はハッシュ化せず、ほかの失敗のイベントと同じ期間、デフォルトでは 30 日保持する。")
 model AuthenticationFailed {
   occurredAt: utcDateTime;
-  @doc("The tenant the authentication was attempted in, taken from the request path.")
+  @doc("認証が試みられたテナント。リクエストのパスから得る。")
   tenantId: string;
   username?: string;
   reason?: string;
   sessionId?: string;
   clientId?: string;
-  @doc("The client IP. It is stored in plaintext for as long as the audit event is retained.")
+  @doc("クライアントの IP。監査イベントを保持する間、平文で保存する。")
   ip?: string;
-  @doc("The client User-Agent. It is stored in plaintext for as long as the audit event is retained.")
+  @doc("クライアントの User-Agent。監査イベントを保持する間、平文で保存する。")
   userAgent?: string;
   countryCode?: string;
-  @doc("The device fingerprint. It is stored in plaintext for as long as the audit event is retained.")
+  @doc("デバイスのフィンガープリント。監査イベントを保持する間、平文で保存する。")
   deviceFingerprint?: string;
   riskScore?: int64;
 }
 
 
-@doc("A ResourceOwner changed their own password at `/api/auth/change_password`. It is the starting point of the change-password audit trail and of the notification.")
+@doc("ResourceOwner が `/api/auth/change_password` で自身のパスワードを変更した。パスワードの変更の監査証跡と通知の起点である。")
 model PasswordChanged {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
 }
 
 
-@doc("A sign-in attempt reached a throttling threshold -- per account (10 attempts in a 900-second window, 900-second\nlockout) or per IP (30 attempts in a 900-second window, 900-second lockout) -- and was locked out.\nIt is an input event for credential stuffing and brute-force detection in a SIEM. `keyHash` is the SHA-256 of the\nusername in lowercase, or of the IP, so no plaintext reaches the audit log.")
+@doc("サインインの試行が抑制の閾値、すなわちアカウントごと（900 秒のウィンドウで 10 回、900 秒のロックアウト）または IP ごと（900 秒のウィンドウで 30 回、900 秒のロックアウト）に達し、ロックアウトした。SIEM でのクレデンシャルスタッフィングと総当たりの検知の入力のイベントである。`keyHash` は小文字にしたユーザー名、または IP の SHA-256 なので、平文が監査ログに届くことはない。")
 model LoginThrottled {
   occurredAt: utcDateTime;
-  @doc("The tenant the throttling happened in, taken from the request path.")
+  @doc("抑制が起きたテナント。リクエストのパスから得る。")
   tenantId: string;
-  @doc("Either `account` or `ip`.")
+  @doc("`account` または `ip` のどちらか。")
   kind: string;
-  @doc("The SHA-256 of the username in lowercase, or of the IP, as hex.")
+  @doc("小文字にしたユーザー名、または IP の SHA-256 の 16 進数。")
   keyHash: string;
   retryAfterSeconds: int64;
 }
 
 
-@doc("Records that, during a flood of credential attempts, individual AuthenticationFailed events were aggregated\ninto a bucket keyed by `(tenantId, kind, keyHash, 5-minute window)` rather than written one row at a time. Only the\nfirst event of a window is emitted, and later ones add to the count in the bucket store. The `count` in this payload\nis therefore the value at emission, and the real number is observed through ListAuthenticationEventBuckets.\n`keyHash` is SHA-256 as hex, so no plaintext reaches the audit log, following LoginThrottled.")
+@doc("資格情報の試行が殺到する間、個々の AuthenticationFailed のイベントを一行ずつ書かずに、`(tenantId, kind, keyHash, 5-minute window)` をキーとするバケットに集約したことを記録する。発行するのはウィンドウの最初のイベントだけで、以降はバケットのストアの件数に加える。そのため、このペイロードの `count` は発行時の値であり、実際の数は ListAuthenticationEventBuckets で観測する。`keyHash` は LoginThrottled と同じく SHA-256 の 16 進数なので、平文が監査ログに届くことはない。")
 model AuthenticationEventAggregated {
   occurredAt: utcDateTime;
-  @doc("The tenant the aggregation happened in.")
+  @doc("集約が行われたテナント。")
   tenantId: string;
   @doc("failed_login | throttled | mfa_failed")
   kind: string;
-  @doc("The composite key `kind:keyHash:windowStartUnix`.")
+  @doc("複合キー `kind:keyHash:windowStartUnix`。")
   bucketKey: string;
-  @doc("The SHA-256 of the username in lowercase, or of the IP, as hex.")
+  @doc("小文字にしたユーザー名、または IP の SHA-256 の 16 進数。")
   keyHash: string;
-  @doc("How many fell in the window at emission; the real number keeps rising in the bucket store.")
+  @doc("発行時にウィンドウに入った数。実際の数はバケットのストアで増え続ける。")
   count: int64;
   firstSeen: utcDateTime;
   lastSeen: utcDateTime;
-  @doc("The `keyHash` values seen most often in the window, at most five.")
+  @doc("ウィンドウで最も多く現れた `keyHash` の値。最大 5 個である。")
   topKeys: string[];
 }
 
 
-@doc("The password was correct and the LoginSession now waits for a second factor. The user has not chosen a factor yet, so the event carries the kinds offered.")
+@doc("パスワードは正しく、LoginSession は第二要素を待っている。ユーザーはまだ要素を選んでいないので、イベントは示した種類を含む。")
 model MfaChallengeIssued {
   occurredAt: utcDateTime;
   tenantId: string;
   userId: string;
-  @doc("The second-factor kinds the user can present. Recovery codes are not an MfaFactorType and are not listed.")
+  @doc("ユーザーが提示できる第二要素の種類。リカバリーコードは MfaFactorType ではないので載せない。")
   factorTypes: MfaFactorType[];
   sessionId?: string;
 }
 
 
-@doc("An MFA challenge succeeded.")
+@doc("MFA のチャレンジが成功した。")
 model MfaChallengeSucceeded {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -833,7 +833,7 @@ model MfaChallengeSucceeded {
 }
 
 
-@doc("An MFA challenge failed. It is also an input to the bucket aggregation with `kind=mfa_failed`.")
+@doc("MFA のチャレンジが失敗した。`kind=mfa_failed` のバケットの集約の入力でもある。")
 model MfaChallengeFailed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -843,7 +843,7 @@ model MfaChallengeFailed {
 }
 
 
-@doc("Under a policy that requires MFA, an unenrolled user consumed a valid administrator approval and entered the enrollment-only pending flow. Password authentication alone does not establish an ordinary session.")
+@doc("MFA を求めるポリシーの下で、登録していないユーザーが有効な管理者の承認を使い、登録専用の保留のフローに入った。パスワードの認証だけでは通常のセッションは確立しない。")
 model MfaEnrollmentRequired {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -854,7 +854,7 @@ model MfaEnrollmentRequired {
 }
 
 
-@doc("Inside the login enrollment flow, a factor was enrolled and proof of possession completed, and the same LoginSession was promoted to MFA-satisfied.")
+@doc("ログインの登録のフローの中で、要素を登録して所持の証明を完了し、同じ LoginSession を MFA を満たした状態へ引き上げた。")
 model MfaEnrollmentCompleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -864,7 +864,7 @@ model MfaEnrollmentCompleted {
 }
 
 
-@doc("An administrator issued a short-lived, single-use enrollment bypass to a user with no MFA enrolled.")
+@doc("管理者が、MFA を登録していないユーザーに短命で一回限りの登録の回避を発行した。")
 model MfaEnrollmentBypassIssued {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -875,7 +875,7 @@ model MfaEnrollmentBypassIssued {
 }
 
 
-@doc("A target user who had authenticated with a password consumed their enrollment bypass, once, and entered the enrollment-only pending flow.")
+@doc("パスワードで認証した対象のユーザーが、登録の回避を一度だけ使い、登録専用の保留のフローに入った。")
 model MfaEnrollmentBypassConsumed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -885,7 +885,7 @@ model MfaEnrollmentBypassConsumed {
 }
 
 
-@doc("An administrator revoked an unconsumed enrollment bypass.")
+@doc("管理者が未使用の登録の回避を失効させた。")
 model MfaEnrollmentBypassRevoked {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -895,7 +895,7 @@ model MfaEnrollmentBypassRevoked {
 }
 
 
-@doc("An unconsumed enrollment bypass was found to be past its deadline and unusable. It is emitted the first time the expiry is observed.")
+@doc("未使用の登録の回避が期限を過ぎて使えないことが分かった。期限切れを最初に観測したときに発行する。")
 model MfaEnrollmentBypassExpired {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -904,7 +904,7 @@ model MfaEnrollmentBypassExpired {
 }
 
 
-@doc("An administrator asked for an authenticator reset on a target user. It is emitted before anything is deleted, so what was targeted at the time of the request stays in the audit trail.")
+@doc("管理者が対象のユーザーの認証器のリセットを求めた。何も削除する前に発行するので、リクエスト時点で何を対象にしたかが監査証跡に残る。")
 model AuthenticatorResetRequested {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -914,7 +914,7 @@ model AuthenticatorResetRequested {
 }
 
 
-@doc("An administrator's authenticator reset completed. It records the factors deleted and the recomputed `mfa_enrolled`. When both TOTP and WebAuthn are gone, `reenrollment_required` is true and a separate MfaEnrollmentBypassIssued is emitted.")
+@doc("管理者による認証器のリセットが完了した。削除した要素と、計算し直した `mfa_enrolled` を記録する。TOTP と WebAuthn がどちらもなくなったときは、`reenrollment_required` が true で、別に MfaEnrollmentBypassIssued を発行する。")
 model AuthenticatorResetCompleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -926,7 +926,7 @@ model AuthenticatorResetCompleted {
 }
 
 
-@doc("A backup recovery code was consumed, recovering access after TOTP or WebAuthn was lost.")
+@doc("バックアップのリカバリーコードを使い、TOTP または WebAuthn を失った後のアクセスを回復した。")
 model BackupCodeConsumed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -935,18 +935,18 @@ model BackupCodeConsumed {
 }
 
 
-@doc("A federated sign-in through an external IdP succeeded.")
+@doc("外部の IdP によるフェデレーションのサインインが成功した。")
 model FederatedAuthenticated {
   occurredAt: utcDateTime;
   tenantId: string;
   userId: string;
-  @doc("The external IdP identifier, `google`, `github`, or `saml:acme` for instance.")
+  @doc("外部の IdP の識別子。たとえば `google`、`github`、`saml:acme`。")
   provider: string;
   sessionId?: string;
 }
 
 
-@doc("A tenant administrator created an upstream connection as a draft. It carries no secret, token, or certificate body.")
+@doc("テナントの管理者が上流の接続を下書きとして作成した。シークレット、トークン、証明書の本体は含まない。")
 model IdentityProviderConnectionCreated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -955,7 +955,7 @@ model IdentityProviderConnectionCreated {
 }
 
 
-@doc("A connection that passed metadata and trust validation became usable for login routing.")
+@doc("メタデータと信頼の検証を通った接続が、ログインの振り分けに使えるようになった。")
 model IdentityProviderConnectionActivated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -963,7 +963,7 @@ model IdentityProviderConnectionActivated {
 }
 
 
-@doc("A connection was taken out of login routing.")
+@doc("接続をログインの振り分けから外した。")
 model IdentityProviderConnectionDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -971,7 +971,7 @@ model IdentityProviderConnectionDisabled {
 }
 
 
-@doc("A link between a verified external subject and a local User was created. It carries no external token or assertion and no PII claim.")
+@doc("検証済みの外部のサブジェクトとローカルの User の連携を作成した。外部のトークンもアサーションも個人情報のクレームも含まない。")
 model FederatedIdentityLinked {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -982,7 +982,7 @@ model FederatedIdentityLinked {
 }
 
 
-@doc("A ResourceOwner who had stepped up unlinked an external identity.")
+@doc("ステップアップした ResourceOwner が外部の ID の連携を外した。")
 model FederatedIdentityUnlinked {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -991,7 +991,7 @@ model FederatedIdentityUnlinked {
 }
 
 
-@doc("The trust, correlation, or policy check of an upstream callback refused it fail-closed. It carries no token, assertion, state, or nonce.")
+@doc("上流のコールバックを、信頼、関連付け、またはポリシーの検査がフェイルクローズで拒否した。トークン、アサーション、state、nonce は含まない。")
 model FederatedLoginRejected {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -1000,19 +1000,19 @@ model FederatedLoginRejected {
 }
 
 
-@doc("An administrator began a session acting as a user (impersonation). It is an audit event that presumes the user is\nnotified, and is not subject to shortened retention.")
+@doc("管理者がユーザーとして操作するセッション（なりすまし）を開始した。ユーザーへの通知を前提とする監査イベントであり、保持期間の短縮の対象にならない。")
 model SessionImpersonationStarted {
   occurredAt: utcDateTime;
   tenantId: string;
-  @doc("The `sub` of the administrator who impersonated.")
+  @doc("なりすました管理者の `sub`。")
   actorUserId: string;
-  @doc("The `sub` of the target user.")
+  @doc("対象のユーザーの `sub`。")
   targetUserId: string;
   sessionId: string;
 }
 
 
-@doc("An impersonation session ended. It is not subject to shortened retention.")
+@doc("なりすましのセッションが終わった。保持期間の短縮の対象にならない。")
 model SessionImpersonationEnded {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -1022,91 +1022,91 @@ model SessionImpersonationEnded {
 }
 
 
-@doc("A password reset link was requested. To prevent enumeration it records only that\nthe request arrived; whether a link was actually issued -- that is, whether a user with a verified\nemail existed -- is observed separately through the EmailSent event.\n`emailHash` is a SHA-256, so no plaintext reaches the audit log.")
+@doc("パスワードリセットのリンクが求められた。列挙を防ぐため、リクエストが届いたことだけを記録する。実際にリンクを発行したかどうか、すなわち確認済みのメールアドレスのユーザーが存在したかどうかは、EmailSent のイベントで別に観測する。`emailHash` は SHA-256 なので、平文が監査ログに届くことはない。")
 model PasswordResetRequested {
   occurredAt: utcDateTime;
-  @doc("The tenant the reset was requested in, taken from the request path.")
+  @doc("リセットが求められたテナント。リクエストのパスから得る。")
   tenantId: string;
-  @doc("The SHA-256 of the submitted email, as hex.")
+  @doc("送信されたメールアドレスの SHA-256 の 16 進数。")
   emailHash: string;
 }
 
 
-@doc("A user enrolled an MFA factor through self-service; today, TOTP. The secret never reaches\nthe audit trail -- only the kind does. It sets `User.mfa_enrolled` to true.")
+@doc("ユーザーがセルフサービスで MFA の要素を登録した。現在は TOTP である。シークレットは監査証跡に届かず、種類だけが届く。`User.mfa_enrolled` を true にする。")
 model MfaFactorEnrolled {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   factorType: MfaFactorType;
 }
 
 
-@doc("A user removed an MFA factor through self-service. Removal is accompanied by proof of\npossession through a valid TOTP code. It returns `User.mfa_enrolled` to false.")
+@doc("ユーザーがセルフサービスで MFA の要素を削除した。削除には、有効な TOTP のコードによる所持の証明をともなう。`User.mfa_enrolled` を false に戻す。")
 model MfaFactorRemoved {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   factorType: MfaFactorType;
 }
 
 
-@doc("A user enrolled a WebAuthn or passkey credential through self-service. Neither the public key nor\nthe `credential_id` reaches the audit trail -- only the kind does. The first one sets `User.mfa_enrolled` to true.")
+@doc("ユーザーがセルフサービスで WebAuthn またはパスキーの資格情報を登録した。公開鍵も `credential_id` も監査証跡に届かず、種類だけが届く。最初の一つで `User.mfa_enrolled` を true にする。")
 model WebAuthnCredentialRegistered {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
 }
 
 
-@doc("A user removed a WebAuthn or passkey credential through self-service, having stepped up.\nWhen no second factor is left, `User.mfa_enrolled` returns to false.")
+@doc("ステップアップしたユーザーが、セルフサービスで WebAuthn またはパスキーの資格情報を削除した。第二要素が残らないときは `User.mfa_enrolled` を false に戻す。")
 model WebAuthnCredentialRemoved {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
 }
 
 
-@doc("A user generated or regenerated backup recovery codes, having stepped up. Neither the plaintext nor a hash\nreaches the audit trail -- only how many were issued. A regeneration replaces the existing set outright.")
+@doc("ステップアップしたユーザーが、バックアップのリカバリーコードを生成または再生成した。平文もハッシュも監査証跡に届かず、発行した数だけが届く。再生成は既存の組を丸ごと置き換える。")
 model RecoveryCodesGenerated {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
-  @doc("How many recovery codes were issued.")
+  @doc("発行したリカバリーコードの数。")
   count: int64;
 }
 
 
-@doc("A user explicitly invalidated their backup recovery codes, having stepped up. No recovery code works as a\nsecond factor afterwards.")
+@doc("ステップアップしたユーザーが、バックアップのリカバリーコードを明示的に無効にした。以降、どのリカバリーコードも第二要素として働かない。")
 model RecoveryCodesRevoked {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
 }
 
 
-@doc("Right after a genuine second factor succeeded during sign-in, the user explicitly consented and the device was\nremembered. Neither the cookie plaintext, nor the User-Agent, nor the IP is in the payload: only the device identifier\nand the timestamps revocation decisions need.")
+@doc("サインイン中に本物の第二要素が成功した直後に、ユーザーが明示的に同意し、デバイスを記憶した。ペイロードには Cookie の平文も User-Agent も IP も含まず、デバイスの識別子と、失効の判断に必要なタイムスタンプだけを含む。")
 model TrustedDeviceRegistered {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   deviceId: string;
-  @doc("The second factor that occasioned the remembering: `otp` or `webauthn`.")
+  @doc("記憶のきっかけになった第二要素。`otp` または `webauthn` である。")
   factor: string;
   expiresAt: utcDateTime;
 }
 
 
-@doc("A trusted device was revoked. Besides the user revoking it explicitly, it is emitted for the bulk revocations\nthat follow a credential change, an administrator's authenticator reset, an account being disabled, and every session\nbeing revoked.")
+@doc("信頼済みデバイスを失効させた。ユーザーが明示的に失効させたときのほか、資格情報の変更、管理者による認証器のリセット、アカウントの無効化、すべてのセッションの失効にともなう一括の失効でも発行する。")
 model TrustedDeviceRevoked {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   deviceId: string;
@@ -1114,48 +1114,48 @@ model TrustedDeviceRevoked {
 }
 
 
-@doc("A LoginSession ended. When the user or an administrator revoked it explicitly, `actorUserId` is whoever acted\nand `reason` is `self_revoke` or `admin_revoke`. The `sessionId` equals the OIDC `sid`, and the OAuth2 bounded context\nuses it as the key to revoke the refresh token families whose `RefreshTokenRecord.sid` matches and to notify the\nregistered relying parties through front-channel and back-channel logout.\nAccess tokens themselves are not revoked immediately by this event; their short TTL takes care of them.")
+@doc("LoginSession が終わった。ユーザーまたは管理者が明示的に失効させたときは、`actorUserId` は操作した者で、`reason` は `self_revoke` または `admin_revoke` である。`sessionId` は OIDC の `sid` に等しく、OAuth2 の境界づけられたコンテキストはこれをキーに、`RefreshTokenRecord.sid` が一致するリフレッシュトークンのファミリーを失効させ、登録済みの Relying Party へフロントチャネルとバックチャネルのログアウトで通知する。アクセストークンそのものはこのイベントでは即座に失効させず、短い TTL に任せる。")
 model SessionEnded {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   sessionId: string;
-  @doc("The `sub` of whoever performed the revocation; the user themselves for a self-revoke.")
+  @doc("失効を行った者の `sub`。自身による失効ではユーザー本人である。")
   actorUserId: string;
   reason: SessionEndReason;
 }
 
 
-@doc("A user began a step-up reauthentication ahead of a high-sensitivity operation.\nIt is the request to be shown the available factors; the reauthentication has not succeeded yet.")
+@doc("ユーザーが、機微性の高い操作の前にステップアップの再認証を始めた。使える要素を示すよう求めたもので、再認証はまだ成功していない。")
 model StepUpRequested {
   occurredAt: utcDateTime;
-  @doc("The tenant the user belongs to.")
+  @doc("ユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   sessionId: string;
 }
 
 
-@doc("One account security notification was sent, or an attempt to send it failed. It exists to keep what the user\nwas told in the audit trail, and carries neither the body nor the recipient address in its payload. The notification\ndispatcher emits it itself, and because this event type is not in the catalogue no further notification cascades from it.")
+@doc("一つのアカウントのセキュリティ通知を送ったか、送信の試行が失敗した。ユーザーに何を伝えたかを監査証跡に残すためのもので、ペイロードには本文も受信者のアドレスも含まない。通知のディスパッチャー自身が発行し、このイベントの種類はカタログにないので、ここからさらに通知が連鎖することはない。")
 model AccountSecurityNotificationSent {
   occurredAt: utcDateTime;
-  @doc("The tenant the target user belongs to.")
+  @doc("対象のユーザーが属するテナント。")
   tenantId: string;
-  @doc("The `sub` of the user receiving the notification. Under impersonation it is the target user, not the administrator who acted.")
+  @doc("通知を受け取るユーザーの `sub`。なりすましの下では、操作した管理者ではなく対象のユーザーである。")
   userId: string;
   category: SecurityNotificationCategory;
-  @doc("The type name of the event that occasioned the notification.")
+  @doc("通知のきっかけになったイベントの種類の名前。")
   triggerEventType: string;
-  @doc("Whether the EmailSender accepted it. Delivery is best-effort, so the original operation stands even when this is false.")
+  @doc("EmailSender が受け付けたかどうか。配送はベストエフォートなので、これが false でも元の操作は成立する。")
   delivered: boolean;
 }
 
 
-@doc("A step-up reauthentication succeeded. `method` is the factor used, `password` or `totp`.\nThe material verified -- the password or the code -- is not in the payload.")
+@doc("ステップアップの再認証が成功した。`method` は使った要素で、`password` または `totp` である。検証した材料（パスワードまたはコード）はペイロードに含まない。")
 model StepUpCompleted {
   occurredAt: utcDateTime;
-  @doc("The tenant the user belongs to.")
+  @doc("ユーザーが属するテナント。")
   tenantId: string;
   userId: string;
   sessionId: string;
@@ -1164,28 +1164,28 @@ model StepUpCompleted {
 }
 
 
-@doc("The request needs an authenticated session and does not have one. RFC 9457 Problem Details with `type` = `urn:idmagic:error:authentication_required`. Distinct from AccessDeniedError, which means the session exists but the policy denies the operation.")
+@doc("リクエストには認証済みのセッションが必要だが、ない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:authentication_required` である。セッションはあるがポリシーが操作を拒否することを意味する AccessDeniedError とは別である。")
 model AuthenticationRequiredError is ProblemDetails;
 
 
-@doc("The presented access token cannot authenticate a principal at this resource server because it is expired, revoked, malformed, tampered with, or has the wrong audience. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_token`; the `WWW-Authenticate` header carries the RFC 6750 `invalid_token` challenge.")
+@doc("提示したアクセストークンは、期限切れ、失効済み、形式の誤り、改ざん、またはオーディエンスの誤りのため、このリソースサーバーで主体を認証できない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_token` であり、`WWW-Authenticate` ヘッダーは RFC 6750 の `invalid_token` のチャレンジを含む。")
 model InvalidAccessTokenError is ProblemDetails;
 
 
-@doc("The login session named by the request does not exist, or has already ended. RFC 9457 Problem Details with `type` = `urn:idmagic:error:session_not_found`.")
+@doc("リクエストが指定したログインセッションが存在しないか、すでに終わっている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:session_not_found` である。")
 model SessionNotFoundError is ProblemDetails;
 
 
-@doc("The JSON request creating or updating an upstream connection. It carries only what the caller may set; the id, the tenant, the status, the timestamps, and `client_secret_configured` all stay with the server, and a new connection starts Disabled.")
+@doc("上流の接続を作成または更新する JSON のリクエスト。呼び出し元が設定してよいものだけを含み、id、テナント、状態、タイムスタンプ、`client_secret_configured` はサーバーが管理する。新しい接続は Disabled で始まる。")
 model IdentityProviderConnectionRequest {
-  @doc("The name shown to the user on the sign-in screen.")
+  @doc("サインインの画面でユーザーに示す名前。")
   display_name: string;
   protocol: IdentityProviderProtocol;
-  @doc("For OIDC, the issuer; validated at configuration time.")
+  @doc("OIDC では発行者。設定時に検証する。")
   issuer?: string;
-  @doc("For OIDC, the client id registered upstream.")
+  @doc("OIDC では上流に登録したクライアントの id。")
   client_id?: string;
-  @doc("The client secret itself, write-only. Only its ciphertext is stored, and no response ever carries it back.")
+  @doc("書き込み専用のクライアントシークレットそのもの。暗号文だけを保存し、どのレスポンスも返さない。")
   secret_reference?: string;
   authorization_endpoint?: url;
   token_endpoint?: url;
@@ -1195,38 +1195,38 @@ model IdentityProviderConnectionRequest {
   saml_signing_certificates?: string[];
   claim_mapping: ClaimMapping;
   linking_policy: AccountLinkingPolicy;
-  @doc("Whether a local User is provisioned just in time when no link exists.")
+  @doc("連携がないときに、ローカルの User をジャストインタイムでプロビジョニングするかどうか。")
   jit_provisioning: boolean;
-  @doc("The email domains permitted to route to this connection. Empty means no restriction.")
+  @doc("この接続へ振り分けてよいメールアドレスのドメイン。空は制限なしを意味する。")
   allowed_email_domains?: string[];
 }
 
 
-@doc("The upstream identity provider connection named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_found`.")
+@doc("リクエストが指定した上流の ID プロバイダーの接続が、このテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:not_found` である。")
 model IdentityProviderConnectionNotFoundError is ProblemDetails;
 
 
-@doc("The upstream identity provider connection still has federated identities linked to it and cannot be deleted; unlink them first. Returned with HTTP 409. RFC 9457 Problem Details with `type` = `urn:idmagic:error:connection_in_use`.")
+@doc("上流の ID プロバイダーの接続には連携した ID がまだ結び付いているので、削除できない。先に連携を外す。HTTP 409 で返す。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:connection_in_use` である。")
 model IdentityProviderConnectionInUseError is ProblemDetails;
 
 
-@doc("Passkey authentication is not configured, so a WebAuthn ceremony can neither be started nor completed. RFC 9457 Problem Details with `type` = `urn:idmagic:error:webauthn_unavailable`.")
+@doc("パスキーの認証が設定されていないので、WebAuthn のセレモニーを開始することも完了することもできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:webauthn_unavailable` である。")
 model WebAuthnUnavailableError is ProblemDetails;
 
 
-@doc("The user has no passkey enrolled, so there is no credential to challenge. RFC 9457 Problem Details with `type` = `urn:idmagic:error:webauthn_not_enrolled`.")
+@doc("ユーザーはパスキーを登録していないので、チャレンジする資格情報がない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:webauthn_not_enrolled` である。")
 model WebAuthnNotEnrolledError is ProblemDetails;
 
 
-@doc("The recovery code store is not configured, so recovery codes can neither be generated nor revoked. RFC 9457 Problem Details with `type` = `urn:idmagic:error:recovery_unavailable`.")
+@doc("リカバリーコードのストアが設定されていないので、リカバリーコードを生成することも失効させることもできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:recovery_unavailable` である。")
 model RecoveryUnavailableError is ProblemDetails;
 
 
-@doc("The MFA factor store is not configured, so a second factor cannot be verified. RFC 9457 Problem Details with `type` = `urn:idmagic:error:mfa_unavailable`.")
+@doc("MFA の要素のストアが設定されていないので、第二要素を検証できない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:mfa_unavailable` である。")
 model MfaUnavailableError is ProblemDetails;
 
 
-@doc("The password reset link is invalid, already used, or expired. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_reset_token`. It is 410 rather than 400 because a link that was once valid is gone rather than malformed.")
+@doc("パスワードリセットのリンクが不正、使用済み、または期限切れである。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_reset_token` である。一度は有効だったリンクが形式の誤りではなく失われたものなので、400 ではなく 410 とする。")
 model InvalidResetTokenError is ProblemDetails;
 
 }

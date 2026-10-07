@@ -24,6 +24,40 @@ const SECTION_KEYS = new Map<string, string>([
   ['完了', 'completion'],
 ])
 
+// 完了節のフィールド名と記録の項目名の対応 (WORK_ITEM_FORMAT.md)。節見出しと同じく、
+// フォーマット文書が示す日本語と既存の記録が使う英語を同じ項目へ解決する。
+const COMPLETION_FIELDS = new Map<string, string>([
+  ['completed at', 'completed_at'],
+  ['完了日', 'completed_at'],
+  ['summary', 'summary'],
+  ['要約', 'summary'],
+  ['verification results', 'verification'],
+  ['検証結果', 'verification'],
+  ['red evidence', 'red_evidence'],
+  ['red の証拠', 'red_evidence'],
+  ['acceptance red evidence', 'acceptance_red_evidence'],
+  ['受け入れ red の証拠', 'acceptance_red_evidence'],
+  ['unit red evidence', 'unit_red_evidence'],
+  ['単体 red の証拠', 'unit_red_evidence'],
+  ['primary use case evidence', 'primary_use_case_evidence'],
+  ['主要ユースケースの証拠', 'primary_use_case_evidence'],
+  ['independent verification', 'independent_verification'],
+  ['独立した検証', 'independent_verification'],
+  ['change-resistance results', 'change_resistance'],
+  ['変更耐性の結果', 'change_resistance'],
+])
+
+const RED_EVIDENCE_FIELDS = new Map<string, string>([
+  ['test', 'test'],
+  ['テスト', 'test'],
+  ['requirement', 'requirement'],
+  ['要件', 'requirement'],
+  ['observed failure', 'observed_failure'],
+  ['観測した失敗', 'observed_failure'],
+  ['detection reason', 'detection_reason'],
+  ['検出できる理由', 'detection_reason'],
+])
+
 export function parseFrontmatterAndMarkdown(path: string, text: string): Record<string, unknown> {
   const match = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n([\s\S]*)$/)
   const data: Record<string, unknown> = {}
@@ -108,15 +142,11 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
               currentField === 'unit_red_evidence'
             ) {
               const redEvidence: Record<string, string> = {}
-              const labels: Record<string, string> = {
-                test: 'test',
-                requirement: 'requirement',
-                'observed failure': 'observed_failure',
-                'detection reason': 'detection_reason',
-              }
               for (const line of currentText) {
                 const field = line.match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)$/)
-                const key = field?.[1] ? labels[field[1].trim().toLowerCase()] : undefined
+                const key = field?.[1]
+                  ? RED_EVIDENCE_FIELDS.get(field[1].trim().toLowerCase())
+                  : undefined
                 if (key && field?.[2]) redEvidence[key] = field[2].trim()
               }
               completion[currentField] = redEvidence
@@ -134,33 +164,12 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
           const m = line.match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)$/)
           if (m?.[1]) {
             flushField()
-            const label = m[1].trim().toLowerCase()
+            const field = COMPLETION_FIELDS.get(m[1].trim().toLowerCase())
             const value = m[2] ? m[2].trim() : ''
-            if (label === 'completed at') {
+            if (field === 'completed_at') {
               completion.completed_at = value
-            } else if (label === 'summary') {
-              currentField = 'summary'
-              if (value) currentText.push(value)
-            } else if (label === 'verification results') {
-              currentField = 'verification'
-              if (value) currentText.push(value)
-            } else if (label === 'red evidence') {
-              currentField = 'red_evidence'
-              if (value) currentText.push(value)
-            } else if (label === 'acceptance red evidence') {
-              currentField = 'acceptance_red_evidence'
-              if (value) currentText.push(value)
-            } else if (label === 'unit red evidence') {
-              currentField = 'unit_red_evidence'
-              if (value) currentText.push(value)
-            } else if (label === 'primary use case evidence') {
-              currentField = 'primary_use_case_evidence'
-              if (value) currentText.push(value)
-            } else if (label === 'independent verification') {
-              currentField = 'independent_verification'
-              if (value) currentText.push(value)
-            } else if (label === 'change-resistance results') {
-              currentField = 'change_resistance'
+            } else if (field) {
+              currentField = field
               if (value) currentText.push(value)
             }
           } else if (currentField) {

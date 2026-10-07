@@ -1,18 +1,18 @@
 namespace IdMagic.Contract {
 
-@doc("The key operation cannot complete because the MasterKey provider is unreachable, a wrap or unwrap failed, or the AAD did not match (tampering). Callers must deny access fail-closed. A domain failure condition, not an HTTP response body: no operation returns it directly, and where it aborts a request the response is the generic 500 Problem Details.")
+@doc("MasterKey のプロバイダーに到達できない、ラップまたはアンラップに失敗した、AAD が一致しない（改ざん）のいずれかの理由で、鍵の操作を完了できない。呼び出し元はフェイルクローズでアクセスを拒否しなければならない。これはドメインの失敗条件であり、HTTP のレスポンスボディではない。どの操作もこれを直接返さず、リクエストを中断した場合のレスポンスは汎用の 500 の Problem Details である。")
 model DataKeyUnavailableError {
 
 }
 
 
-@doc("For the version DestroyTenantDataKey targets, the re-encryption job of the owning context (`data_key_reencryption` through Jobs) has not yet moved every reference onto the active version. Complete the re-encryption before destroying. A domain failure condition, not an HTTP response body.")
+@doc("DestroyTenantDataKey が対象とするバージョンについて、所有する Context の再暗号化ジョブ（Jobs による `data_key_reencryption`）が、まだすべての参照を有効なバージョンへ移し終えていない。破棄する前に再暗号化を完了させる。これはドメインの失敗条件であり、HTTP のレスポンスボディではない。")
 model DataKeyStillReferencedError {
 
 }
 
 
-@doc("The states of DataEncryptionKeyLifecycle.")
+@doc("DataEncryptionKeyLifecycle の状態。")
 enum DataKeyStatus {
   active: "active",
   retiring: "retiring",
@@ -21,19 +21,19 @@ enum DataKeyStatus {
 }
 
 
-@doc("One version of a tenant's DEK. It holds only the key material the MasterKey provider wrapped (`wrapped_dek`); the plaintext DEK is never stored. A tenant has at most one Active version.")
+@doc("テナントの DEK の一つのバージョン。保存するのは MasterKey のプロバイダーがラップした鍵（`wrapped_dek`）だけで、平文の DEK は保存しない。テナントの Active なバージョンは一つまでである。")
 model TenantDataEncryptionKey {
-  @doc("Internal identifier, the value `EncryptedSecret.key_id` refers to.")
+  @doc("内部の識別子。`EncryptedSecret.key_id` が参照する値である。")
   @minLength(1)
   id: string;
-  @doc("The tenant the key belongs to. It names an existing Tenant.")
+  @doc("鍵が属するテナント。既存の Tenant を指す。")
   tenant_id: string;
-  @doc("A version number that rises monotonically within the tenant, by one on every rotation.")
+  @doc("テナントの中で単調に増えるバージョン番号。ローテーションのたびに 1 ずつ増える。")
   version: int64;
   status: DataKeyStatus;
-  @doc("The DEK as the MasterKey provider wrapped it. The plaintext DEK never appears in storage, in a log, or in an event.")
+  @doc("MasterKey のプロバイダーがラップした DEK。平文の DEK は、ストレージ、ログ、イベントのどこにも現れない。")
   wrapped_dek: bytes;
-  @doc("Identifies the MasterKey -- the provider's key and version -- that wrapped this DEK, so that rotation of the MasterKey itself can be traced.")
+  @doc("この DEK をラップした MasterKey（プロバイダーの鍵とそのバージョン）を識別する。MasterKey 自体のローテーションを追跡できるようにするためである。")
   master_key_id: string;
   created_at: utcDateTime;
   activated_at?: utcDateTime;
@@ -42,28 +42,28 @@ model TenantDataEncryptionKey {
 }
 
 
-@doc("An envelope holding a reversible secret encrypted under an Active or Retiring TenantDataEncryptionKey. The owning context (the MFA seed of Authentication, for one) persists this and never the plaintext. The ciphertext is the opaque bytes the Tink AEAD primitive emits as they are; nonce and tag are Tink's own business and get no separate field here, because we never assemble a nonce ourselves.")
+@doc("Active または Retiring の TenantDataEncryptionKey で暗号化した、可逆なシークレットを収めるエンベロープ。所有する Context（たとえば Authentication の MFA のシード）はこれを永続化し、平文は永続化しない。暗号文は Tink の AEAD プリミティブが出力した不透明なバイト列そのままである。ノンスとタグは Tink が扱うもので、ここに個別のフィールドはない。ノンスを自前で組み立てることがないためである。")
 model EncryptedSecret {
-  @doc("The `TenantDataEncryptionKey.version` the secret was encrypted under. It is unique inside the tenant boundary of the owning record, so decryption selects the TenantDataEncryptionKey from the caller's tenant_id together with this version; there is no global key id lookup.")
+  @doc("シークレットを暗号化したときの `TenantDataEncryptionKey.version`。所有する記録のテナント境界の中で一意なので、復号では呼び出し元の tenant_id とこのバージョンから TenantDataEncryptionKey を選ぶ。全体で一意な鍵 ID による検索はない。")
   key_version: int64;
-  @doc("The opaque ciphertext the Tink AEAD primitive emits, nonce and tag included. The caller rebuilds the AAD from `(tenant, context, table, record id, field)` and passes it in.")
+  @doc("Tink の AEAD プリミティブが出力する不透明な暗号文。ノンスとタグを含む。呼び出し元は `(tenant, context, table, record id, field)` から AAD を組み立て直して渡す。")
   ciphertext: bytes;
 }
 
 
-@doc("A key health snapshot for a system_admin. It carries no private key material.")
+@doc("system_admin 向けの鍵の健全性のスナップショット。秘密鍵は含まない。")
 model TenantDataKeyHealth {
   tenant_id: string;
   active_version: int64;
   status: DataKeyStatus;
-  @doc("The MasterKey provider name, such as `openbao` or `tink_cleartext`.")
+  @doc("MasterKey のプロバイダー名。`openbao` や `tink_cleartext` など。")
   provider: string;
   provider_reachable: boolean;
   rotated_at?: utcDateTime;
 }
 
 
-@doc("The tenant's first DataEncryptionKey (version 1, active) was generated.")
+@doc("テナントの最初の DataEncryptionKey（バージョン 1、active）を生成した。")
 model DataEncryptionKeyBootstrapped {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -71,7 +71,7 @@ model DataEncryptionKeyBootstrapped {
 }
 
 
-@doc("A new DataEncryptionKey became active and the previous version moved to retiring.")
+@doc("新しい DataEncryptionKey が有効になり、それまでのバージョンが retiring へ移った。")
 model DataEncryptionKeyRotated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -80,7 +80,7 @@ model DataEncryptionKeyRotated {
 }
 
 
-@doc("A retiring DataEncryptionKey was locked out by hand, immediately.")
+@doc("retiring の DataEncryptionKey を手動で、即座に締め出した。")
 model DataEncryptionKeyDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -89,7 +89,7 @@ model DataEncryptionKeyDisabled {
 }
 
 
-@doc("The `wrapped_dek` was destroyed, so nothing encrypted under that version can ever be decrypted again.")
+@doc("`wrapped_dek` を破棄したので、そのバージョンで暗号化したものは二度と復号できない。")
 model DataEncryptionKeyDestroyed {
   occurredAt: utcDateTime;
   tenantId: string;

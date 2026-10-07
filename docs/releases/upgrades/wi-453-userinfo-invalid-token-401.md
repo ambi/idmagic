@@ -1,4 +1,4 @@
-# WI-453: Accept 401 for UserInfo invalid_token responses
+# WI-453: UserInfo の invalid_token の応答として 401 を受け入れる
 
 作業項目は `wi-453-userinfo-invalid-token-401` である。
 

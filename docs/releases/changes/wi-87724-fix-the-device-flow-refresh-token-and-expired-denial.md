@@ -1,4 +1,4 @@
-# WI-87724: Fix the device flow refresh token and expired denial
+# WI-87724: デバイスフローのリフレッシュトークンと期限切れの拒否を直す
 
 作業項目は `wi-87724-fix-the-device-flow-refresh-token-and-expired-denial` である。
 

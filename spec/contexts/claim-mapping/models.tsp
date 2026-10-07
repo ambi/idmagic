@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("Published-language stub for the attribute visibility the Tenancy context owns. Only `private` is excluded unconditionally by the fail-closed floor of claim issuance.")
+@doc("Tenancy の Context が所有する属性の公開範囲を、公表された言語として写したもの。クレームの発行のフェイルクローズの下限が無条件に除外するのは `private` だけである。")
 enum AttrVisibility {
   Private: "private",
   SelfReadable: "self_readable",
@@ -9,58 +9,58 @@ enum AttrVisibility {
 }
 
 
-@doc("Published-language stub for the attribute definition the Tenancy context owns. Besides deciding attribute visibility during claim issuance, it appears verbatim in both the request and the response body of the tenant's user_attribute_schema.")
+@doc("Tenancy の Context が所有する属性の定義を、公表された言語として写したもの。クレームの発行で属性の公開範囲を判断するほか、テナントの user_attribute_schema のリクエストとレスポンスの両方のボディにそのまま現れる。")
 model UserAttributeDef {
-  @doc("The machine name of the attribute: snake_case starting with a letter, unique across the builtin catalogue and the tenant's custom attributes.")
+  @doc("属性の機械名。英字で始まる snake_case で、組み込みの一覧とテナントのカスタム属性を通じて一意である。")
   @minLength(1)
   key: string;
-  @doc("The label shown in the administration console and in self-service forms. Left out, the key itself is displayed.")
+  @doc("管理コンソールとセルフサービスのフォームに表示するラベル。省略するとキーそのものを表示する。")
   @maxLength(100)
   label?: string;
-  @doc("The type of the attribute value. Validating a value against a definition whose type contradicts `multi_valued` fails.")
+  @doc("属性値の型。型が `multi_valued` と矛盾する定義に対して値を検証すると失敗する。")
   type: AttributeType;
-  @doc("Whether the attribute holds several values. It can be true only when `type` is `string_array`.")
+  @doc("属性が複数の値を保持するかどうか。true にできるのは `type` が `string_array` のときだけである。")
   multi_valued: boolean = false;
-  @doc("Whether a value is required when a User is created or updated.")
+  @doc("User の作成時と更新時に値が必須かどうか。")
   required: boolean = false;
-  @doc("Whether the user may edit this attribute from their own self-service profile.")
+  @doc("ユーザーが自身のセルフサービスのプロフィールからこの属性を編集できるかどうか。")
   editable_by_user: boolean = false;
-  @doc("The claim name to use when the attribute is issued as a claim. Left out, the key itself becomes the claim name.")
+  @doc("属性をクレームとして発行するときのクレーム名。省略するとキーそのものをクレーム名にする。")
   @minLength(1)
   @maxLength(100)
   claim_name?: string;
-  @doc("The OIDC scope that unlocks exposure as a claim. Left out, the `custom_attribute` scope is what unlocks it.")
+  @doc("クレームとしての公開を可能にする OIDC のスコープ。省略すると `custom_attribute` のスコープで公開できる。")
   @minLength(1)
   @maxLength(64)
   oidc_scope?: string;
-  @doc("How far the attribute may be disclosed. There is no default: a definition without a value is refused, and so is a value outside the enum. Only `claim_exposed` may reach a claim.")
+  @doc("属性をどこまで開示してよいか。デフォルトはなく、値のない定義は拒否し、列挙値の外の値も拒否する。クレームに含められるのは `claim_exposed` だけである。")
   visibility: AttrVisibility;
-  @doc("Whether the value holds personal information. Left out it is false, so an attribute that should be treated as PII has to say true explicitly.")
+  @doc("値が個人情報を含むかどうか。省略すると false なので、個人情報として扱うべき属性は明示的に true にしなければならない。")
   pii: boolean = false;
 }
 
 
-@doc("Claim resolution was rejected fail-closed: a required source could not be resolved, an attribute whose visibility is `private` was named as the source of a rule or of the NameID, or a reserved claim type (iss, sub, aud, exp, iat, nbf, jti, azp, nonce, at_hash, c_hash, acr, amr, sid) was named as a `claim_type`. Reaches clients only through the OAuth 2.0 token and UserInfo endpoints, so it carries the OAuthError body rather than Problem Details.")
+@doc("クレームの解決をフェイルクローズで拒否した。必須の取得元を解決できなかった、公開範囲が `private` の属性を規則または NameID の取得元に指定した、または予約済みのクレームの種類（iss、sub、aud、exp、iat、nbf、jti、azp、nonce、at_hash、c_hash、acr、amr、sid）を `claim_type` に指定した。クライアントに届くのは OAuth 2.0 のトークンと UserInfo のエンドポイントを通じてだけなので、Problem Details ではなく OAuthError のボディで返す。")
 model ClaimReleaseDeniedError is OAuthError;
 
 
-@doc("The declarative mapping of one output claim: it builds the output claim type (a URI) from a source.")
+@doc("一つの出力クレームの宣言的な対応付け。取得元から、出力するクレームの種類（URI）を組み立てる。")
 model ClaimMappingRule {
-  @doc("The claim type URI to emit, such as `http://schemas.xmlsoap.org/claims/UPN`.")
+  @doc("出力するクレームの種類の URI。`http://schemas.xmlsoap.org/claims/UPN` など。")
   @minLength(1)
   claim_type: string;
-  @doc("Where the claim value comes from.")
+  @doc("クレームの値の取得元。")
   source: ClaimMappingSource;
-  @doc("The attribute name to read when `source` is `user_attribute`.")
+  @doc("`source` が `user_attribute` のときに読む属性の名前。")
   source_key?: string;
-  @doc("The fixed value to emit when `source` is `fixed`.")
+  @doc("`source` が `fixed` のときに出力する固定値。")
   fixed_value?: string;
-  @doc("When true, issuance is refused if the source cannot be resolved (fail-closed).")
+  @doc("true のとき、取得元を解決できなければ発行を拒否する（フェイルクローズ）。")
   required: boolean = false;
 }
 
 
-@doc("Where a claim value comes from. `user_attribute` reads an attribute of the identity principal, `fixed` emits a static value, and `nameid` carries the NameID that NameIdConfiguration resolved into a claim as well.")
+@doc("クレームの値の取得元。`user_attribute` は ID の主体の属性を読み、`fixed` は静的な値を出力し、`nameid` は NameIdConfiguration が解決した NameID をクレームとしても運ぶ。")
 enum ClaimMappingSource {
   user_attribute: "user_attribute",
   fixed: "fixed",
@@ -68,23 +68,23 @@ enum ClaimMappingSource {
 }
 
 
-@doc("The format of the NameID (the subject identifier) of an issued assertion, and where its value comes from.")
+@doc("発行するアサーションの NameID（サブジェクトの識別子）の形式と、その値の取得元。")
 model NameIdConfiguration {
-  @doc("The NameID format URI, such as `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent`.")
+  @doc("NameID の形式の URI。`urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` など。")
   @minLength(1)
   format: string;
-  @doc("The identity attribute that supplies the NameID value.")
+  @doc("NameID の値を与える ID の属性。")
   @minLength(1)
   source_attribute: string;
 }
 
 
-@doc("The output of the claim issuance engine: one claim type and its values.")
+@doc("クレームの発行エンジンの出力。一つのクレームの種類とその値からなる。")
 model IssuedClaim {
-  @doc("The claim type URI.")
+  @doc("クレームの種類の URI。")
   @minLength(1)
   claim_type: string;
-  @doc("The claim values; a multi-valued attribute yields several.")
+  @doc("クレームの値。複数値の属性からは複数の値が得られる。")
   values: string[];
 }
 

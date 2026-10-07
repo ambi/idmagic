@@ -36,7 +36,7 @@ enum SeedSecretProvider {
 }
 
 
-@doc("An opaque reference used to materialize a secret. `version` identifies an intended rotation of the same secret.")
+@doc("シークレットを具体化するときに使う不透明な参照。`version` は、同じシークレットの意図したローテーションを識別する。")
 model SeedSecretReference {
   provider: SeedSecretProvider;
   @minLength(1)
@@ -46,57 +46,57 @@ model SeedSecretReference {
 }
 
 
-@doc("A versioned manifest holding, per profile, the typed desired resources, the includes, and the deterministic generators. A secret appears only as a SeedSecretReference.")
+@doc("バージョン付きのマニフェスト。プロファイルごとに、型付きの望ましいリソース、取り込むファイル、決定的な生成器を定める。シークレットは SeedSecretReference としてだけ現れる。")
 model SeedManifest {
   @minLength(1)
   schema_version: string;
   profile: SeedProfileKind;
-  @doc("A path relative to the root manifest directory. A cycle, a path outside the root, and a remote URL are all refused.")
+  @doc("ルートのマニフェストのディレクトリからの相対パス。循環、ルートの外を指すパス、リモートの URL はいずれも拒否する。")
   includes?: string[];
-  @doc("The desired resources, keyed by kind, handed to the public command surface of the owning context. Any JSON value, because each kind carries the request shape of its own context and the set of kinds is open; an unknown kind and a duplicate logical key are both rejected. Seeding has no HTTP surface, so this shape is the manifest file rather than a request body.")
+  @doc("種類ごとにまとめた望ましいリソース。所有する Context の公開コマンドへ渡す。種類ごとにその Context のリクエストの形をとり、種類の集合が閉じていないので、任意の JSON 値とする。未知の種類と、論理キーの重複はどちらも拒否する。Seeding には HTTP の入口がないので、この形はリクエストボディではなくマニフェストのファイルである。")
   resources: unknown;
-  @doc("The bounded generators the profile and the explicit seed resolve to. Any JSON value, for the same reason as `resources`: each generator kind carries its own parameters. Generated performance users are login-disabled and hold no secret.")
+  @doc("プロファイルと明示的なシードから解決する、上限付きの生成器。`resources` と同じ理由で任意の JSON 値とし、生成器の種類ごとに固有のパラメーターをとる。生成した性能試験用のユーザーはログインを無効にし、シークレットを保持しない。")
   generators?: unknown;
 }
 
 
-@doc("The input for planning or applying a profile. `profile` and `environment` are required, and raising a count has to be stated explicitly.")
+@doc("プロファイルの計画または適用の入力。`profile` と `environment` は必須で、件数を引き上げるときは明示しなければならない。")
 model SeedRequest {
   environment: SeedEnvironment;
   profile: SeedProfileKind;
-  @doc("An explicit root manifest path. Left out, the repository default for the profile is used.")
+  @doc("明示的に指定するルートのマニフェストのパス。省略すると、そのプロファイルのリポジトリのデフォルトを使う。")
   manifest_path?: string;
   mode: SeedMode;
   tenant_id?: string;
   generator_seed?: string;
-  @doc("The URIs to configure on the first-party client during a production bootstrap. In production a bootstrap run requires at least one, and a localhost URI is not accepted.")
+  @doc("本番の初期構築でファーストパーティのクライアントに設定する URI。本番の初期構築には一つ以上が必要で、localhost の URI は受け付けない。")
   first_party_redirect_uris?: string[];
   count?: int64;
-  @doc("Explicitly allows a count above the usual ceiling of the performance profile. A value above the absolute ceiling is still refused.")
+  @doc("performance プロファイルの通常の上限を超える件数を明示的に許可する。絶対的な上限を超える値は、それでも拒否する。")
   allow_large?: boolean;
-  @doc("How many records one batch applies while keeping the performance profile within bounded memory. Left out, a safe default is used; a value above the ceiling is refused.")
+  @doc("performance プロファイルのメモリ使用量を一定に抑えるため、一つのバッチで適用する記録の数。省略すると安全なデフォルト値を使い、上限を超える値は拒否する。")
   batch_size?: int64;
 }
 
 
-@doc("The plan a seed run produced. It carries no secret and no full PII.")
+@doc("シードの実行が作った計画。シークレットも完全な個人情報も含まない。")
 model SeedPlan {
   creates: int64;
   updates: int64;
   noops: int64;
   conflicts: int64;
-  @doc("A streamable rendering of the planned operations: logical key, operation kind, and a redacted summary. Any JSON value, because the summary shape follows the kind of each operation.")
+  @doc("計画した操作を順に流せる形で表したもの。論理キー、操作の種類、秘匿した要約からなる。要約の形は操作の種類に従うので、任意の JSON 値とする。")
   operations: unknown;
 }
 
 
-@doc("The environment policy, the profile, a count ceiling, or an unknown key broke a safety rule. A seeding-tool domain condition, not an HTTP response body: seeding has no HTTP surface.")
+@doc("環境のポリシー、プロファイル、件数の上限、または未知のキーが安全規則に反した。これはシードツールのドメイン条件であり、HTTP のレスポンスボディではない。Seeding には HTTP の入口がない。")
 model SeedRejectedError {
 
 }
 
 
-@doc("A seed-managed target has manual drift and cannot be overwritten without an explicit reconcile. A seeding-tool domain condition, not an HTTP response body.")
+@doc("シードで管理する対象が手作業で変更されており、明示的な照合なしには上書きできない。これはシードツールのドメイン条件であり、HTTP のレスポンスボディではない。")
 model SeedConflictError {
 
 }

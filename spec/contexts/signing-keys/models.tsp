@@ -1,13 +1,13 @@
 namespace IdMagic.Contract {
 
-@doc("The JWT signing algorithms. Confined to the strong asymmetric ones FAPI 2.0 permits; symmetric algorithms such as HS256 are excluded.")
+@doc("JWT の署名アルゴリズム。FAPI 2.0 が認める強い非対称アルゴリズムに限り、HS256 のような対称アルゴリズムは除く。")
 enum SignatureAlgorithm {
   PS256: "PS256",
   ES256: "ES256",
 }
 
 
-@doc("The internal states of SigningKeyLifecycle. Active is the current signing key, Verifying is a key that only verifies\nalready-issued tokens during the overlap after a rotation, Retired has left the JWKS, and Archived is kept for audit.")
+@doc("SigningKeyLifecycle の内部の状態。Active は現在の署名鍵、Verifying はローテーション後の重複期間に発行済みのトークンの検証だけに使う鍵、Retired は JWKS から外れた鍵、Archived は監査のために保管する鍵である。")
 enum SigningKeyState {
   Active: "Active",
   Verifying: "Verifying",
@@ -16,7 +16,7 @@ enum SigningKeyState {
 }
 
 
-@doc("Where the key material is kept and who performs the signature. Local holds the private key in the process only; Database\nstores it as cleartext in the application database, so it is in that database's backups; VaultTransit never lets the private\nkey leave Vault. Selecting a provider that persists cleartext key material is an explicit choice, never a default. Database\nnames no particular product.")
+@doc("暗号鍵の保管場所と、署名を行う主体。Local は秘密鍵をプロセスの中だけで保持する。Database は秘密鍵を平文のままアプリケーションのデータベースへ保存するので、そのデータベースのバックアップにも含まれる。VaultTransit は秘密鍵を Vault の外へ出さない。平文の暗号鍵を永続化するプロバイダーを選ぶのは明示的な選択であり、デフォルトにはしない。Database は特定の製品を指さない。")
 enum KeyProvider {
   Local: "Local",
   Database: "Database",
@@ -24,44 +24,44 @@ enum KeyProvider {
 }
 
 
-@doc("What the key is for. Signing covers JWT signatures for OAuth 2.0 and OpenID Connect; XmlFederationSigning covers XML\nsignatures for SAML 2.0, WS-Federation, and WS-Trust, and the X.509 metadata published with them. Even inside one tenant,\neach use has its own active key.")
+@doc("鍵の用途。Signing は OAuth 2.0 と OpenID Connect の JWT 署名を、XmlFederationSigning は SAML 2.0、WS-Federation、WS-Trust の XML 署名と、それらとともに公開する X.509 のメタデータを扱う。一つのテナントの中でも、用途ごとに有効な鍵は別である。")
 enum KeyUsage {
   Signing: "Signing",
   XmlFederationSigning: "XmlFederationSigning",
 }
 
 
-@doc("An asymmetric key for signing tokens. Per tenant, use, and scope, one Active key and zero or more Verifying predecessors\nare published (SigningKeyMinJwksOverlap). Listing, searching, rotating, and choosing a signing key all narrow by\n`tenant_id`, `usage`, and `scope_id`. `tenant_id` names an existing Tenant. `scope_id` is `default` normally, and the\nprofile id for an additional SAML IdP profile, so that XML signing credentials stay separate.")
+@doc("トークンに署名する非対称鍵。テナント、用途、スコープごとに、Active の鍵一つと、0 個以上の Verifying の先行する鍵を公開する（SigningKeyMinJwksOverlap）。署名鍵の一覧、検索、ローテーション、選択は、いずれも `tenant_id`、`usage`、`scope_id` で絞り込む。`tenant_id` は既存の Tenant を指す。`scope_id` は通常 `default` で、追加の SAML IdP プロファイルではそのプロファイルの id とし、XML の署名の資格情報を分ける。")
 model SigningKey {
-  @doc("The tenant the key belongs to. It names an existing Tenant, and the kid of tenant B never appears in the JWKS of tenant A.")
+  @doc("鍵が属するテナント。既存の Tenant を指し、テナント B の kid がテナント A の JWKS に現れることはない。")
   tenant_id: string = "default";
   @minLength(1)
   kid: string;
   alg: SignatureAlgorithm;
-  @doc("Where the key material is kept and who performs the signature.")
+  @doc("暗号鍵の保管場所と、署名を行う主体。")
   provider: KeyProvider;
-  @doc("What the key is for.")
+  @doc("鍵の用途。")
   usage: KeyUsage;
-  @doc("An independent key lifecycle inside one tenant and use. Normally `default`; the profile id for an additional SAML IdP profile.")
+  @doc("一つのテナントと用途の中で独立した鍵のライフサイクル。通常は `default` で、追加の SAML IdP プロファイルではそのプロファイルの id である。")
   @minLength(1)
   scope_id: string = "default";
   public_jwk: JWK;
-  @doc("The DER of the self-signed X.509 certificate that goes with an XmlFederationSigning key. Empty for a Signing key, required for XML use. It is public information and holds no private key.")
+  @doc("XmlFederationSigning の鍵に対応する自己署名の X.509 証明書の DER。Signing の鍵では空で、XML の用途では必須である。公開情報であり、秘密鍵は含まない。")
   certificate_der?: bytes;
   state: SigningKeyState;
   created_at: utcDateTime;
   updated_at: utcDateTime;
-  @doc("When the key first became Active.")
+  @doc("鍵が初めて Active になった時刻。")
   activated_at?: utcDateTime;
-  @doc("When the key moved to Retired.")
+  @doc("鍵が Retired へ移った時刻。")
   retired_at?: utcDateTime;
-  @doc("When the grace during which a Verifying key stays published on the JWKS ends. From then on it leaves the JWKS and becomes eligible for archiving.")
+  @doc("Verifying の鍵を JWKS に公開し続ける猶予の終わり。これ以降は JWKS から外れ、アーカイブの対象になる。")
   expires_at?: utcDateTime;
   archived_at?: utcDateTime;
 }
 
 
-@doc("A JSON Web Key (RFC 7517): one public key, identified by its kid.")
+@doc("JSON Web Key（RFC 7517）。kid で識別する一つの公開鍵。")
 model JWK {
   kty: string;
   use?: string;
@@ -71,79 +71,79 @@ model JWK {
 }
 
 
-@doc("A JWK Set (RFC 7517 section 5), the public keys the /jwks endpoint returns. A client fetches it to verify token signatures.")
+@doc("JWK Set（RFC 7517 の 5 節）。/jwks エンドポイントが返す公開鍵の集合である。クライアントはこれを取得してトークンの署名を検証する。")
 model JWKS {
   keys: JWK[];
 }
 
 
-@doc("The signing key metadata exposed to a tenant administrator. It returns neither the private key nor how the key is stored,\nonly the same public JWK the JWKS carries. It is detailed enough to tell the current signing key from a key that merely\nverifies already-issued tokens during the overlap after a rotation.")
+@doc("テナントの管理者に見せる署名鍵のメタデータ。秘密鍵も鍵の保管方法も返さず、JWKS と同じ公開 JWK だけを返す。現在の署名鍵と、ローテーション後の重複期間に発行済みのトークンを検証するだけの鍵を見分けられる程度に詳しい。")
 model AdminKeyResponse {
-  @doc("The JWK key id, the same one the JWKS publishes.")
+  @doc("JWK の鍵 ID。JWKS が公開するものと同じである。")
   kid: string;
-  @doc("The signing algorithm; today PS256 only.")
+  @doc("署名アルゴリズム。現在は PS256 だけである。")
   alg: SignatureAlgorithm;
-  @doc("True for the key that signs new ID tokens and access tokens. False for a key that stays on the JWKS only to verify already-issued tokens during the overlap after a rotation.")
+  @doc("新しい ID トークンとアクセストークンに署名する鍵では true。ローテーション後の重複期間に発行済みのトークンを検証するためだけに JWKS に残る鍵では false。")
   active: boolean;
-  @doc("When the key was generated; SigningKeyMaxAge and SigningKeyMinJwksOverlap are measured from here.")
+  @doc("鍵を生成した時刻。SigningKeyMaxAge と SigningKeyMinJwksOverlap はここから測る。")
   created_at: utcDateTime;
-  @doc("The public JWK, in the same representation the JWKS uses.")
+  @doc("公開 JWK。JWKS と同じ表現である。")
   public_jwk: JWK;
 }
 
 
-@doc("Every signing key. Two keys are never active at once, because rotation deactivates the old one in the same step.")
+@doc("すべての署名鍵。ローテーションは同じ手順で古い鍵を無効にするので、二つの鍵が同時に有効になることはない。")
 model AdminKeyListResponse {
   keys: AdminKeyResponse[];
 }
 
 
-@doc("Which of the tenant's keys a rotation replaces. The body is optional; without it, or without `usage`, the Signing key\nrotates. XmlFederationSigning rotates the default-scope XML key that WS-Federation and the default SAML IdP profile\nsign with; its previous certificate stays in the SAML and WS-Federation metadata for SigningKeyMinJwksOverlap.")
+@doc("ローテーションでテナントのどの鍵を置き換えるか。ボディは任意で、ボディがないとき、または `usage` がないときは Signing の鍵をローテーションする。XmlFederationSigning は、WS-Federation とデフォルトの SAML IdP プロファイルが署名に使う、デフォルトのスコープの XML の鍵をローテーションする。それまでの証明書は SigningKeyMinJwksOverlap の間、SAML と WS-Federation のメタデータに残る。")
 model AdminRotateKeyRequest {
-  @doc("The use of the key to rotate. Defaults to Signing.")
+  @doc("ローテーションする鍵の用途。デフォルトは Signing である。")
   usage?: KeyUsage;
 }
 
 
-@doc("The result of a key rotation: the kid of the new active key and of the one that just stepped down to verifying.")
+@doc("鍵のローテーションの結果。新しく有効になった鍵と、verifying へ退いた鍵の kid からなる。")
 model AdminRotateKeyResponse {
-  @doc("The new active signing key.")
+  @doc("新しく有効になった署名鍵。")
   next: AdminKeyResponse;
-  @doc("The key that was active until now. Absent on the first rotation.")
+  @doc("それまで有効だった鍵。最初のローテーションでは省く。")
   previous?: AdminKeyResponse;
 }
 
 
-@doc("Signing key health for one tenant, returned so a system_admin can survey health across tenants:\nprovider, active kid, key count, and provider reachability.\nNo private key is included.")
+@doc("一つのテナントの署名鍵の健全性。system_admin がテナントを横断して健全性を確認できるように、プロバイダー、有効な kid、鍵の数、プロバイダーへの到達性を返す。秘密鍵は含まない。")
 model TenantSigningKey {
-  @doc("The tenant this row is about.")
+  @doc("この行が対象とするテナント。")
   tenant_id: string;
-  @doc("The KeyProvider this tenant uses.")
+  @doc("このテナントが使う KeyProvider。")
   provider: KeyProvider;
-  @doc("What the keys are for; today Signing.")
+  @doc("鍵の用途。現在は Signing である。")
   usage: KeyUsage;
-  @doc("The kid of the currently active signing key. Absent for a tenant that has no key yet.")
+  @doc("現在有効な署名鍵の kid。まだ鍵のないテナントでは省く。")
   active_kid?: string;
-  @doc("The state of the active key.")
+  @doc("有効な鍵の状態。")
   active_state?: SigningKeyState;
-  @doc("How many keys the JWKS carries (active plus verifying).")
+  @doc("JWKS が含む鍵の数（active と verifying の合計）。")
   jwks_key_count: int64;
-  @doc("Whether the KeyProvider is reachable. When false, new issuance stops fail-closed; the enforcement point is OAuth2.Token.")
+  @doc("KeyProvider に到達できるかどうか。false のときは新たな発行をフェイルクローズで止め、その強制点は OAuth2.Token である。")
   provider_healthy: boolean;
 }
 
 
-@doc("The signing key on the JWKS was rotated, every 90 days by default or as an emergency rotation.")
+@doc("JWKS の署名鍵をローテーションした。デフォルトでは 90 日ごと、または緊急のローテーションとして行う。")
 model SigningKeyRotated {
   occurredAt: utcDateTime;
-  @doc("The tenant the rotated signing key belongs to.")
+  @doc("ローテーションした署名鍵が属するテナント。")
   tenantId: string;
   newKid: string;
   previousKid?: string;
 }
 
 
-@doc("A signing key moved from Verifying to Retired and left the JWKS, either because SigningKeyMinJwksOverlap had passed or\nbecause it was disabled as an emergency.")
+@doc("SigningKeyMinJwksOverlap を過ぎたか、緊急に無効にしたため、署名鍵が Verifying から Retired へ移り、JWKS から外れた。")
 model SigningKeyRetired {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -151,7 +151,7 @@ model SigningKeyRetired {
 }
 
 
-@doc("A signing key moved from Retired to Archived after its grace ended; Archived is terminal and kept for audit.")
+@doc("猶予が終わった署名鍵が Retired から Archived へ移った。Archived は終端の状態で、監査のために保管する。")
 model SigningKeyArchived {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -162,11 +162,11 @@ model SigningKeyArchived {
 }
 
 
-@doc("The signing key named by `kid` does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:key_not_found`.")
+@doc("`kid` が指す署名鍵がこのテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:key_not_found` である。")
 model SigningKeyNotFoundError is ProblemDetails;
 
 
-@doc("The signing key store is not configured, so keys can neither be read nor rotated. RFC 9457 Problem Details with `type` = `urn:idmagic:error:key_store_unavailable`.")
+@doc("署名鍵のストアが設定されていないので、鍵を読むこともローテーションすることもできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:key_store_unavailable` である。")
 model KeyStoreUnavailableError is ProblemDetails;
 
 }

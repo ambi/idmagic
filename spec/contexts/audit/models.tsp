@@ -1,31 +1,31 @@
 namespace IdMagic.Contract {
 
-@doc("The query parameters of ListAdminAuditEvents. `tenant_id` comes from the context, so it is not a field here.\n`type` is a `DomainEventEnvelope.type`, the type name the emitting context gave the event.")
+@doc("ListAdminAuditEvents のクエリパラメーター。`tenant_id` はコンテキストから得るので、ここのフィールドではない。`type` は `DomainEventEnvelope.type`、すなわち発行する Context がイベントに付けた種類の名前である。")
 model AuditEventQuery {
-  @doc("Exact match on `type`, the low-level machine-facing filter. For example, `AccessTokenIssued`.")
+  @doc("`type` の完全一致。機械向けの低水準の絞り込みである。たとえば `AccessTokenIssued`。")
   type?: string;
-  @doc("Narrows by event category: authentication, success, fail, aggregated, user, group, client, consent, token, tenant, or key.")
+  @doc("イベントの分類で絞り込む。authentication、success、fail、aggregated、user、group、client、consent、token、tenant、key のいずれか。")
   category?: string;
-  @doc("Exact match on the actor's user sub. It names the same thing as `actor.id` in `filter` (see AuditActorVsTarget).\nTo narrow by the user an administrative operation acted on, use `target.id` in `filter` instead -- a different concept\nfrom this field. The UI labels it \"user id (actor)\".")
+  @doc("操作した主体のユーザーの sub の完全一致。`filter` の `actor.id` と同じものを指す（AuditActorVsTarget を参照）。管理操作の対象のユーザーで絞り込むときは、このフィールドとは別の概念である `filter` の `target.id` を使う。UI では「ユーザー ID（操作した主体）」と表示する。")
   user_id?: string;
-  @doc("Searches by the actor's login name. Events where the real account is always settled -- UserAuthenticated, the OAuth2\nflow events, and the like -- carry no username in their payload, so the search resolves the name to a user id through\nUserRepo and then narrows exactly as `user_id` does. When no such user exists the result is empty; it never falls back\nto ignoring the filter and returning everything. It cannot be used to search authentication failures, where an account\nname that never existed still has to be traceable -- use `actor.username` in `filter` for that.")
+  @doc("操作した主体のログイン名で検索する。実在のアカウントが常に確定しているイベント（UserAuthenticated、OAuth2 のフローのイベントなど）はペイロードにユーザー名を含まないので、検索は UserRepo で名前をユーザー ID へ解決し、`user_id` と同じく完全一致で絞り込む。該当するユーザーが存在しないときは結果を空にし、絞り込みを無視してすべてを返すことはない。存在しなかったアカウント名も追跡する必要がある認証の失敗の検索には使えないので、それには `filter` の `actor.username` を使う。")
   username?: string;
-  @doc("`occurred_at` at or after this instant.")
+  @doc("`occurred_at` がこの時点以後。")
   after?: utcDateTime;
-  @doc("`occurred_at` at or before this instant.")
+  @doc("`occurred_at` がこの時点以前。")
   before?: utcDateTime;
-  @doc("Pass through the value embedded in the URL of the response's Link header. It is a stateless, versioned, opaque token\nholding the direction, the anchor, the page number it moves to, and the keyset in a compact binary payload, signed with\nthe tenant, the sort, and the filter as associated data. A new v3 token does not expire with time, and legacy v0 and v2\ntokens are still accepted under their existing rules.")
+  @doc("レスポンスの Link ヘッダーの URL に埋め込まれた値をそのまま渡す。方向、基準点、移動先のページ番号、キーセットを小さなバイナリのペイロードに収めた、状態を持たない、バージョン付きの不透明なトークンで、テナント、並び順、絞り込み条件を関連データとして署名する。新しい v3 のトークンは時間で期限切れにならず、従来の v0 と v2 のトークンもそれぞれの既存の規則で受け付ける。")
   cursor?: string;
-  @doc("The page size ceiling (default 100, maximum 1000).")
+  @doc("ページの大きさの上限（デフォルトは 100、最大は 1000）。")
   limit?: int64;
-  @doc("Free text matched as a substring against the text columns stored raw (`type`, `outcome`, and the like). PII columns are excluded.")
+  @doc("生のまま保存したテキストの列（`type`、`outcome` など）に部分一致させる自由入力のテキスト。個人情報の列は対象外である。")
   q?: string;
-  @doc("A conjunction (AND) of structured search terms over the field/operator allow list of the registry. `actor.username` is a\nplaintext match reserved for authentication failures, where an account name that never existed still has to be traceable;\nit is not hashed. To search events where the real account is settled, use the `username` query parameter instead -- a\ndifferent path from this field. `client.ip` is matched in plaintext too, neither truncated nor hashed. `event.type` draws\nfrom the `DomainEventEnvelope.type` names the contexts emit, and `outcome` from the enum\nthe Go `eventOutcome` classification defines (success or failure); both are picked from a list rather than typed freely\n(see AuditActorVsTarget and AuditSearchRegistry). `actor.id` and `actor.username` name the actor while `target.id` names\nthe user an administrative operation acted on -- different meanings. `workflow.id`, `workflow_run.id`, and\n`workflow_step.id` are registry attributes matched with `eq` against the workflowId, runId, and stepIndex of the\nIdGovernance LifecycleWorkflow*, WorkflowRun*, and WorkflowStepFailed events. `actor.type` (`user` or `agent`),\n`agent.id`, `delegation.actor`, `delegation.depth`, and `delegation.mode` are the delegation axes. `delegation.actor`\nnames every principal of the event's `act` chain and matches when any of them matches, so one filter finds the whole chain\nfrom any participant. `delegation.mode` is read from the payload, where the derivation REQ-OAUTH2-049 defines put it;\naudit does not derive it a second time. Events recorded before these axes existed carry none of them and so match no value\non them. Attribute values and email bodies are not in the payload, so they are not searchable either.")
+  @doc("レジストリのフィールドと演算子の許可リストに対する、構造化された検索条件の論理積（AND）。`actor.username` は認証の失敗に限った平文の一致で、存在しなかったアカウント名も追跡できるようにするためのものであり、ハッシュ化しない。実在のアカウントが確定しているイベントを検索するときは、このフィールドとは別の経路である `username` のクエリパラメーターを使う。`client.ip` も平文で照合し、切り詰めもハッシュ化もしない。`event.type` は Context が発行する `DomainEventEnvelope.type` の名前から、`outcome` は Go の `eventOutcome` の分類が定める列挙（success または failure）から選び、どちらも自由入力ではなく一覧から選ぶ（AuditActorVsTarget と AuditSearchRegistry を参照）。`actor.id` と `actor.username` は操作した主体を、`target.id` は管理操作の対象のユーザーを指し、意味が異なる。`workflow.id`、`workflow_run.id`、`workflow_step.id` はレジストリの属性で、IdGovernance の LifecycleWorkflow*、WorkflowRun*、WorkflowStepFailed のイベントの workflowId、runId、stepIndex に `eq` で照合する。`actor.type`（`user` または `agent`）、`agent.id`、`delegation.actor`、`delegation.depth`、`delegation.mode` は委任の軸である。`delegation.actor` はイベントの `act` の連鎖のすべての主体を指し、どれか一つが一致すれば一致するので、一つの絞り込み条件でどの参加者からも連鎖全体を見つけられる。`delegation.mode` は、REQ-OAUTH2-049 が定める導出がペイロードに書いた値を読み、監査が改めて導くことはしない。これらの軸ができる前に記録したイベントはどの軸の値も含まないので、これらの軸のどの値にも一致しない。属性値とメールの本文はペイロードに含まれないので、検索もできない。")
   filter?: AuditEventFilterExpression[];
 }
 
 
-@doc("The comparison operators an audit search filter expression may use. The registry declares which operators each attribute permits. `eq` is an exact match, `in` matches any member of a value set, `contains` is a substring match (used by `q`), and `time_range` bounds `occurred_at`.")
+@doc("監査の検索の絞り込み式で使える比較演算子。各属性で使える演算子はレジストリが宣言する。`eq` は完全一致、`in` は値の集合のいずれかとの一致、`contains` は部分一致（`q` が使う）、`time_range` は `occurred_at` の範囲の指定である。")
 enum AuditEventFilterOperator {
   eq: "eq",
   in: "in",
@@ -34,74 +34,74 @@ enum AuditEventFilterOperator {
 }
 
 
-@doc("The transform applied to a plaintext value before a search attribute is stored in the sidecar or searched. Today only\n`none` exists, meaning the value is stored raw.")
+@doc("検索属性をサイドカーに保存または検索する前に、平文の値へ施す変換。現在は値を生のまま保存する `none` だけである。")
 enum AuditEventSearchTransform {
   none: "none",
 }
 
 
-@doc("A search axis permitted in audit event search, that is, one registry entry. It declares the field/operator allow list and\nso fixes a closed search grammar in place of arbitrary SQL or JSONPath. The Go AuditSearchRegistry is the twin of this\nvalue object. Every attribute, `actor.username` and `client.ip` included, is stored and searched in the sidecar as\nplaintext. `actor.id` and `actor.username` name the actor -- who did it -- while `target.id` names the user an\nadministrative operation acted on -- who it was done to; the same word \"user\" means different things (AuditActorVsTarget).\n`event.type` and `outcome` are picked from a list rather than typed freely: `event.type` from the `DomainEventEnvelope.type` names the contexts emit, and `outcome` from the two values Go's `eventOutcome()` returns, success and failure, with no\nvalue at all for events it does not classify. `actor.type`, `agent.id`, `delegation.actor`, `delegation.depth`, and\n`delegation.mode` are the delegation axes (REQ-AUDIT-005, REQ-AUDIT-006): they separate what an Agent did for a user from\nwhat the user did (AuditDelegationChain).")
+@doc("監査イベントの検索で許可する検索軸、すなわちレジストリの一項目。フィールドと演算子の許可リストを宣言することで、任意の SQL や JSONPath の代わりに閉じた検索の文法を定める。Go の AuditSearchRegistry はこの値オブジェクトと対になる。`actor.username` と `client.ip` を含め、どの属性もサイドカーに平文で保存し、平文で検索する。`actor.id` と `actor.username` は操作した主体（誰がしたか）を、`target.id` は管理操作の対象のユーザー（誰に対してしたか）を指し、同じ「ユーザー」という語が別のものを指す（AuditActorVsTarget）。`event.type` と `outcome` は自由入力ではなく一覧から選ぶ。`event.type` は Context が発行する `DomainEventEnvelope.type` の名前から、`outcome` は Go の `eventOutcome()` が返す success と failure の二値から選び、分類しないイベントには値がない。`actor.type`、`agent.id`、`delegation.actor`、`delegation.depth`、`delegation.mode` は委任の軸であり（REQ-AUDIT-005、REQ-AUDIT-006）、Agent がユーザーのために行ったことと、ユーザー自身が行ったことを区別する（AuditDelegationChain）。")
 model AuditEventSearchAttribute {
-  @doc("The canonical dotted name of the search axis, such as `actor.username`, `client.ip`, or `event.type`.")
+  @doc("検索軸の、ドットで区切った正式な名前。`actor.username`、`client.ip`、`event.type` など。")
   field: string;
-  @doc("Whether the plaintext may be stored in the sidecar as it is. True for every attribute today.")
+  @doc("平文をそのままサイドカーに保存してよいかどうか。現在はすべての属性で true である。")
   raw_storable: boolean;
-  @doc("The transform applied to the plaintext before storing or searching. Only `none` exists today.")
+  @doc("保存または検索の前に平文へ施す変換。現在は `none` だけである。")
   transform: AuditEventSearchTransform;
-  @doc("The allow list of operators this attribute permits.")
+  @doc("この属性で使える演算子の許可リスト。")
   allowed_operators: AuditEventFilterOperator[];
-  @doc("Whether one event may carry several values on this axis. `delegation.actor` is the only multi-valued axis today: one\nevent names every principal of its `act` chain, and a filter matches when any of them matches. Every other axis holds at\nmost one value per event.")
+  @doc("一つのイベントがこの軸に複数の値を含んでよいかどうか。現在、複数値の軸は `delegation.actor` だけで、一つのイベントが `act` の連鎖のすべての主体を指し、どれか一つが一致すれば絞り込みに一致する。それ以外の軸は、一つのイベントにつき値を一つまでしか含まない。")
   multi_valued: boolean;
-  @doc("Whether to offer it as a UI preset in the administrative search builder.")
+  @doc("管理用の検索ビルダーで、UI のプリセットとして示すかどうか。")
   ui_visible: boolean;
 }
 
 
-@doc("One term of `AuditEventQuery.filter`: a field and an operator from the registry allow list together with the values, as one\nelement of the conjunction (AND). Arbitrary SQL is not permitted.")
+@doc("`AuditEventQuery.filter` の一項。レジストリの許可リストにあるフィールドと演算子に値を組み合わせたもので、論理積（AND）の一要素である。任意の SQL は許可しない。")
 model AuditEventFilterExpression {
-  @doc("The `field` of an AuditEventSearchAttribute in the registry.")
+  @doc("レジストリにある AuditEventSearchAttribute の `field`。")
   field: string;
-  @doc("An operator listed in the attribute's `allowed_operators`.")
+  @doc("属性の `allowed_operators` に載っている演算子。")
   operator: AuditEventFilterOperator;
-  @doc("The values, as many as the operator takes: one for `eq`, N for `in`, two for `time_range`. For a PII attribute the server transforms the plaintext input before matching.")
+  @doc("演算子がとる数の値。`eq` では一つ、`in` では N 個、`time_range` では二つである。個人情報の属性では、サーバーが照合の前に平文の入力を変換する。")
   values: string[];
 }
 
 
-@doc("A DomainEvent as it is exposed to administrators. The payload is structured JSON.\nPII fields such as email and IP are assumed to have been redacted by the EventSink before this point.\nThe store is append-only and keeps events for seven years (GDPR Article 30).")
+@doc("管理者に公開する DomainEvent。ペイロードは構造化された JSON である。メールアドレスや IP のような個人情報のフィールドは、この時点までに EventSink が秘匿している前提である。ストアは追記専用で、イベントを 7 年間保持する（GDPR 第 30 条）。")
 model AdminAuditEventResponse {
-  @doc("The event id the store assigned (UUIDv4).")
+  @doc("ストアが割り当てたイベントの id（UUIDv4）。")
   id: string;
-  @doc("The tenant the event belongs to.")
+  @doc("イベントが属するテナント。")
   tenant_id: string;
-  @doc("The wire name of `DomainEvent.type`.")
+  @doc("`DomainEvent.type` の送受信上の名前。")
   type: string;
   occurred_at: utcDateTime;
-  @doc("The event body, shaped as DomainEventPayload: the published fields are contract, and the rest belongs to the emitting context.")
+  @doc("DomainEventPayload の形のイベントの本体。公開フィールドが契約で、それ以外は発行する Context に属する。")
   payload: Record<unknown>;
 }
 
 
-@doc("The result of an audit event search. Pagination navigation lives in the Link response header, not in the body.")
+@doc("監査イベントの検索の結果。ページングの移動先はボディではなく Link レスポンスヘッダーにある。")
 model AdminAuditEventListResponse {
   events: AdminAuditEventResponse[];
 }
 
 
-@doc("The choices that turn the enumerated search axes into pick lists. The UI does not hard-code them; it reads them from the\nsame single source of truth in Go (the category-to-type map, the eventOutcome classification, and the DelegationMode\nderivation REQ-OAUTH2-049 defines).")
+@doc("列挙型の検索軸を選択肢の一覧にするための値。UI はこれを直接書かず、Go の同じ唯一の情報源（分類から種類への対応表、eventOutcome の分類、REQ-OAUTH2-049 が定める DelegationMode の導出）から読む。")
 model AuditEventSearchOptionsResponse {
-  @doc("The `event.type` values that can be picked, that is, `DomainEventEnvelope.type` names. It is the union of the\ncategorized types, the same population the event category picker in the administration UI draws from.")
+  @doc("選べる `event.type` の値、すなわち `DomainEventEnvelope.type` の名前。分類済みの種類の和集合であり、管理 UI のイベントの分類の選択肢と同じ母集団である。")
   event_types: string[];
-  @doc("The `outcome` values that can be picked. Today there are two, success and failure, and only authentication events are classified.")
+  @doc("選べる `outcome` の値。現在は success と failure の二つで、分類するのは認証のイベントだけである。")
   outcomes: string[];
-  @doc("The `actor.type` values that can be picked: `user` and `agent`.")
+  @doc("選べる `actor.type` の値。`user` と `agent` である。")
   actor_types: string[];
-  @doc("The `delegation.mode` values that can be picked. They are the members of DelegationMode, so the audit filter and an\nintrospection response name the same modes.")
+  @doc("選べる `delegation.mode` の値。DelegationMode の要素なので、監査の絞り込みとイントロスペクションのレスポンスが同じモードを指す。")
   delegation_modes: string[];
 }
 
 
-@doc("The audit event named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:event_not_found`.")
+@doc("リクエストが指定した監査イベントがこのテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:event_not_found` である。")
 model AuditEventNotFoundError is ProblemDetails;
 
 }

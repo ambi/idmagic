@@ -1,4 +1,4 @@
-# WI-454: Declare every 403 body written by request guards
+# WI-454: リクエストのガードが書くすべての 403 のボディを宣言する
 
 作業項目は `wi-454-declared-403-body-vs-guard-error-codes` である。
 

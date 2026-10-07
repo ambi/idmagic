@@ -33,7 +33,7 @@ model RegisterClientSuccess_201 {
   @body body: IdMagic.Contract.ClientRegistrationResponse;
 }
 
-@doc("Dynamic Client Registration (RFC 7591)")
+@doc("Dynamic Client Registration（RFC 7591）")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("RegisterClient")
 @route("/register")
@@ -71,7 +71,7 @@ union AuthorizeError403Body {
   IdMagic.Contract.AccessDeniedError,
 }
 
-@doc("The sign-in policy refuses the request before an authorization code exists. This is the one refusal the authorization endpoint reports to the browser directly rather than redirecting to `redirect_uri`, so it carries Problem Details like the browser-facing endpoints rather than the OAuth error body.")
+@doc("認可コードができる前に、サインインのポリシーがリクエストを拒否した。認可エンドポイントが `redirect_uri` へリダイレクトせずにブラウザーへ直接報告する唯一の拒否なので、OAuth のエラーボディではなく、ブラウザー向けのエンドポイントと同じく Problem Details で返す。")
 model AuthorizeError403 {
   @statusCode statusCode: 403;
   @header contentType: "application/problem+json";
@@ -85,7 +85,7 @@ union AuthorizeError429Body {
 model AuthorizeError429 {
   @statusCode statusCode: 429;
   @header contentType: "application/json";
-  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @doc("クライアントが再試行の前に待たなければならない秒数。ボディの `retry_after_seconds` と同じ値である。")
   @header("Retry-After") retryAfter: int32;
   @body body: AuthorizeError429Body;
 }
@@ -94,7 +94,7 @@ model AuthorizeSuccess_303 {
   @statusCode statusCode: 303;
 }
 
-@doc("The authorization endpoint (RFC 6749 section 4.1.1). `client_id` is accepted either as a registered Client or as the URL of a Client ID Metadata Document, resolved on each request.")
+@doc("認可エンドポイント（RFC 6749 の 4.1.1 節）。`client_id` は、登録済みの Client としても、Client ID Metadata Document の URL としても受け付け、リクエストのたびに解決する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("Authorize")
 @route("/authorize")
@@ -131,7 +131,7 @@ model ResumeFederatedAuthorizationSuccess_303 {
   @statusCode statusCode: 303;
 }
 
-@doc("Once the inbound federation callback of the Authentication context has established an authenticated session, the stored authorization transaction resumes and the ordinary application policy, consent, and required-action gates apply.")
+@doc("Authentication の Context の受信フェデレーションのコールバックが認証済みのセッションを確立すると、保存した認可のトランザクションを再開し、通常のアプリケーションのポリシー、同意、必須のアクションのゲートを適用する。")
 @TypeSpec.OpenAPI.operationId("ResumeFederatedAuthorization")
 @route("/authorize/resume")
 @get
@@ -154,7 +154,7 @@ model GetBrowserTransactionError400 {
   @body body: GetBrowserTransactionError400Body;
 }
 
-@doc("The SPA reads the sign-in and consent context that goes with its HttpOnly transaction cookie.")
+@doc("SPA が、HttpOnly のトランザクションの Cookie に対応するサインインと同意のコンテキストを読む。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetBrowserTransaction")
 @route("/api/auth/transaction")
@@ -200,7 +200,7 @@ model SubmitBrowserConsentError422 {
   @body body: SubmitBrowserConsentError422Body;
 }
 
-@doc("The SPA settles the consent or the refusal of an authorization request through the JSON API.")
+@doc("SPA が、認可リクエストに対する同意または拒否を JSON API で確定する。")
 @TypeSpec.OpenAPI.operationId("SubmitBrowserConsent")
 @route("/api/auth/consent")
 @post
@@ -235,7 +235,7 @@ model SubmitBrowserDeviceError403 {
   @body body: SubmitBrowserDeviceError403Body;
 }
 
-@doc("The SPA approves or refuses a device `user_code` through the JSON API.")
+@doc("SPA が、デバイスの `user_code` を JSON API で承認または拒否する。")
 @TypeSpec.OpenAPI.operationId("SubmitBrowserDevice")
 @route("/api/auth/device")
 @post
@@ -248,7 +248,7 @@ model GetBrowserDeviceContextSuccess_200 {
   @body body: IdMagic.Contract.BrowserDeviceContextResponse;
 }
 
-@doc("The SPA reads the device `user_code` and the CSRF token.")
+@doc("SPA が、デバイスの `user_code` と CSRF トークンを読む。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetBrowserDeviceContext")
 @route("/api/auth/device")
@@ -279,7 +279,7 @@ model EndSession1Success_303 {
   @statusCode statusCode: 303;
 }
 
-@doc("The RP-Initiated Logout endpoint (OpenID Connect RP-Initiated Logout 1.0). Redirect validation is done by the\nOAuth 2.0 / OpenID Connect bounded context, and session revocation is delegated to the SessionManager of the\nAuthentication bounded context. When an `id_token_hint` is given, its signature, `iss`, `aud`, `sub`, and `sid` are\nverified and both the target session and the client are resolved from the hint; a hint that contradicts `client_id` is\nrefused. Without an `id_token_hint`, the existing resolution by `client_id` plus the browser cookie is kept as a\nfallback. Once the local revocation is settled, the FrontChannelLogout targets are collected from the ClientSessions\nbound to that `sid` and returned in the response, and BackChannelLogout delivery is started asynchronously.")
+@doc("RP-Initiated Logout のエンドポイント（OpenID Connect RP-Initiated Logout 1.0）。リダイレクトの検証は OAuth 2.0 / OpenID Connect の境界づけられたコンテキストが行い、セッションの失効は Authentication の境界づけられたコンテキストの SessionManager に委ねる。`id_token_hint` を与えると、その署名、`iss`、`aud`、`sub`、`sid` を検証し、対象のセッションとクライアントをどちらもヒントから解決する。`client_id` と矛盾するヒントは拒否する。`id_token_hint` がないときは、従来の `client_id` とブラウザーの Cookie による解決を代わりの手段として残す。ローカルの失効が確定すると、その `sid` に結び付く ClientSession から FrontChannelLogout の対象を集めてレスポンスで返し、BackChannelLogout の配送を非同期に開始する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("EndSession")
 @route("/end_session")
@@ -310,7 +310,7 @@ model EndSession2Success_303 {
   @statusCode statusCode: 303;
 }
 
-@doc("The RP-Initiated Logout endpoint (OpenID Connect RP-Initiated Logout 1.0). Redirect validation is done by the\nOAuth 2.0 / OpenID Connect bounded context, and session revocation is delegated to the SessionManager of the\nAuthentication bounded context. When an `id_token_hint` is given, its signature, `iss`, `aud`, `sub`, and `sid` are\nverified and both the target session and the client are resolved from the hint; a hint that contradicts `client_id` is\nrefused. Without an `id_token_hint`, the existing resolution by `client_id` plus the browser cookie is kept as a\nfallback. Once the local revocation is settled, the FrontChannelLogout targets are collected from the ClientSessions\nbound to that `sid` and returned in the response, and BackChannelLogout delivery is started asynchronously.")
+@doc("RP-Initiated Logout のエンドポイント（OpenID Connect RP-Initiated Logout 1.0）。リダイレクトの検証は OAuth 2.0 / OpenID Connect の境界づけられたコンテキストが行い、セッションの失効は Authentication の境界づけられたコンテキストの SessionManager に委ねる。`id_token_hint` を与えると、その署名、`iss`、`aud`、`sub`、`sid` を検証し、対象のセッションとクライアントをどちらもヒントから解決する。`client_id` と矛盾するヒントは拒否する。`id_token_hint` がないときは、従来の `client_id` とブラウザーの Cookie による解決を代わりの手段として残す。ローカルの失効が確定すると、その `sid` に結び付く ClientSession から FrontChannelLogout の対象を集めてレスポンスで返し、BackChannelLogout の配送を非同期に開始する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PostEndSession")
 @route("/end_session")
@@ -324,7 +324,7 @@ model CheckSessionIframeSuccess_200 {
   @statusCode statusCode: 200;
 }
 
-@doc("The hidden iframe an RP polls for changes to the OP session (OpenID Connect Session Management 1.0; adoption is\noptional, because the specification is still a draft and has never reached Final).\nIt returns static HTML and JavaScript, and answers a `postMessage` from the RP with nothing more than whether the\ncurrent browser cookie resolves to a valid LoginSession. The detailed correlation algorithm of the specification, the\nsalted hash comparison of `session_state` among it, is not implemented.")
+@doc("RP が OP のセッションの変化を問い合わせる非表示の iframe（OpenID Connect Session Management 1.0。仕様がまだドラフトで Final に達していないので、採用は任意である）。静的な HTML と JavaScript を返し、RP からの `postMessage` には、現在のブラウザーの Cookie が有効な LoginSession へ解決するかどうかだけを答える。`session_state` のソルト付きハッシュの比較を含む、仕様の詳細な照合のアルゴリズムは実装していない。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("CheckSessionIframe")
 @route("/session/check")
@@ -361,7 +361,7 @@ union PushAuthorizationRequestError429Body {
 model PushAuthorizationRequestError429 {
   @statusCode statusCode: 429;
   @header contentType: "application/json";
-  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @doc("クライアントが再試行の前に待たなければならない秒数。ボディの `retry_after_seconds` と同じ値である。")
   @header("Retry-After") retryAfter: int32;
   @body body: PushAuthorizationRequestError429Body;
 }
@@ -371,7 +371,7 @@ model PushAuthorizationRequestSuccess_201 {
   @body body: IdMagic.Contract.ParResponse;
 }
 
-@doc("Pushed Authorization Request (RFC 9126). `client_id` is accepted either as a registered Client or as the URL of a Client ID Metadata Document, resolved on each request.")
+@doc("Pushed Authorization Request（RFC 9126）。`client_id` は、登録済みの Client としても、Client ID Metadata Document の URL としても受け付け、リクエストのたびに解決する。")
 @TypeSpec.OpenAPI.operationId("PushAuthorizationRequest")
 @route("/par")
 @post
@@ -431,12 +431,12 @@ union TokenError429Body {
 model TokenError429 {
   @statusCode statusCode: 429;
   @header contentType: "application/json";
-  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @doc("クライアントが再試行の前に待たなければならない秒数。ボディの `retry_after_seconds` と同じ値である。")
   @header("Retry-After") retryAfter: int32;
   @body body: TokenError429Body;
 }
 
-@doc("Token endpoint (RFC 6749 §3.2 + 9068 + 9449)")
+@doc("トークンエンドポイント（RFC 6749 §3.2 + 9068 + 9449）")
 @TypeSpec.OpenAPI.operationId("Token")
 @route("/token")
 @post
@@ -470,7 +470,7 @@ model IntrospectError400 {
   @body body: IntrospectError400Body;
 }
 
-@doc("Token Introspection (RFC 7662) for both ordinary OAuth tokens and administratively issued JWT access tokens. For a token whose principal is an Agent, `issued_at` is compared against the revocation epoch of SharedSignals -- the kill switch, an owner offboarding, or a revocation arriving over CAEP/SSF -- and a token issued before the epoch is reported `active=false`, fail-closed.")
+@doc("通常の OAuth のトークンと、管理用に発行した JWT アクセストークンの両方を対象とする Token Introspection（RFC 7662）。主体が Agent のトークンでは、`issued_at` を SharedSignals の失効のエポック（キルスイッチ、所有者のオフボーディング、CAEP/SSF で届いた失効）と比べ、エポックより前に発行したトークンはフェイルクローズで `active=false` と報告する。")
 @TypeSpec.OpenAPI.operationId("Introspect")
 @route("/introspect")
 @post
@@ -502,7 +502,7 @@ model RevokeError400 {
   @body body: RevokeError400Body;
 }
 
-@doc("Token Revocation (RFC 7009) for both ordinary OAuth tokens and administratively issued JWT access tokens.")
+@doc("通常の OAuth のトークンと、管理用に発行した JWT アクセストークンの両方を対象とする Token Revocation（RFC 7009）。")
 @TypeSpec.OpenAPI.operationId("Revoke")
 @route("/revoke")
 @post
@@ -546,7 +546,7 @@ model UserInfoError422 {
   @body body: UserInfoError422Body;
 }
 
-@doc("UserInfo (OpenID Connect Core section 5.3). `additional_claims` merges the scope-driven ClaimsForScopes with the per-client ClaimMapping claim policy.")
+@doc("UserInfo（OpenID Connect Core の 5.3 節）。`additional_claims` は、スコープから決まる ClaimsForScopes と、クライアントごとの ClaimMapping のクレームのポリシーを合わせたものである。")
 @TypeSpec.OpenAPI.operationId("UserInfo")
 @route("/userinfo")
 @get
@@ -590,7 +590,7 @@ model PostUserInfoError422 {
   @body body: PostUserInfoError422Body;
 }
 
-@doc("The POST binding of UserInfo (OpenID Connect Core section 5.3).")
+@doc("UserInfo の POST バインディング（OpenID Connect Core の 5.3 節）。")
 @TypeSpec.OpenAPI.operationId("PostUserInfo")
 @route("/userinfo")
 @post
@@ -630,12 +630,12 @@ union DeviceAuthorizationError429Body {
 model DeviceAuthorizationError429 {
   @statusCode statusCode: 429;
   @header contentType: "application/json";
-  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @doc("クライアントが再試行の前に待たなければならない秒数。ボディの `retry_after_seconds` と同じ値である。")
   @header("Retry-After") retryAfter: int32;
   @body body: DeviceAuthorizationError429Body;
 }
 
-@doc("Device Authorization Request (RFC 8628 §3.1)")
+@doc("デバイス認可リクエスト（RFC 8628 §3.1）")
 @TypeSpec.OpenAPI.operationId("DeviceAuthorization")
 @route("/device_authorization")
 @post
@@ -679,12 +679,12 @@ union BackchannelAuthenticateError429Body {
 model BackchannelAuthenticateError429 {
   @statusCode statusCode: 429;
   @header contentType: "application/json";
-  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @doc("クライアントが再試行の前に待たなければならない秒数。ボディの `retry_after_seconds` と同じ値である。")
   @header("Retry-After") retryAfter: int32;
   @body body: BackchannelAuthenticateError429Body;
 }
 
-@doc("Backchannel Authentication Request (OpenID CIBA Core section 7.1). It authenticates the client, raises an approval request for a human to act on, and returns an `auth_req_id`. Until the approval is settled the CIBA grant at the token endpoint returns `authorization_pending`, and once settled it is exchanged for tokens exactly once.")
+@doc("Backchannel Authentication Request（OpenID CIBA Core の 7.1 節）。クライアントを認証し、人が対応する承認のリクエストを起こして、`auth_req_id` を返す。承認が確定するまで、トークンエンドポイントの CIBA のグラントは `authorization_pending` を返し、確定した後はちょうど一度だけトークンと交換する。")
 @TypeSpec.OpenAPI.operationId("BackchannelAuthenticate")
 @route("/bc-authorize")
 @post
@@ -711,7 +711,7 @@ model GetOauthAuthorizationServerSuccess_200 {
   @body body: IdMagic.Contract.DiscoveryDocument;
 }
 
-@doc("OAuth 2.0 Authorization Server Metadata (RFC 8414)")
+@doc("OAuth 2.0 Authorization Server Metadata（RFC 8414）")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetOauthAuthorizationServer")
 @route("/.well-known/oauth-authorization-server")
@@ -736,7 +736,7 @@ model GetProtectedResourceMetadataError400 {
   @body body: GetProtectedResourceMetadataError400Body;
 }
 
-@doc("Protected Resource Metadata (RFC 9728). Without a `resource` it returns the realm's IdMagic API and its ApiTokenScopes; with one it returns the metadata of the registered, Active McpResourceServer. A resource that is unregistered or disabled is refused as `invalid_target`.")
+@doc("Protected Resource Metadata（RFC 9728）。`resource` がなければ、レルムの IdMagic API とその ApiTokenScopes を返す。あれば、登録済みで Active の McpResourceServer のメタデータを返す。登録されていないリソースと無効にしたリソースは `invalid_target` として拒否する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetProtectedResourceMetadata")
 @route("/.well-known/oauth-protected-resource")
@@ -746,15 +746,15 @@ op GetProtectedResourceMetadata(
 ): GetProtectedResourceMetadataSuccess_200 | GetProtectedResourceMetadataError400;
 
 model HealthHttpResponse {
-  @doc("Always `ok`.")
+  @doc("常に `ok` である。")
   status: string;
-  @doc("The persistence backend the process started with.")
+  @doc("プロセスが起動したときの永続化のバックエンド。")
   persistence: string;
-  @doc("The observability backend the process started with.")
+  @doc("プロセスが起動したときのオブザーバビリティのバックエンド。")
   observability: string;
-  @doc("The AuthZEN backend the process started with.")
+  @doc("プロセスが起動したときの AuthZEN のバックエンド。")
   authzen: string;
-  @doc("Versioned metadata for the runtime-selectable features enabled for this process.")
+  @doc("このプロセスで有効になっている、実行時に選択できる機能の、バージョン付きのメタデータ。")
   features: IdMagic.Contract.FeatureRuntimeMetadata;
 }
 
@@ -763,7 +763,7 @@ model HealthSuccess_200 {
   @body body: HealthHttpResponse;
 }
 
-@doc("Health check")
+@doc("ヘルスチェック")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("Health")
 @route("/health")
@@ -788,7 +788,7 @@ model ListAuthorizationDetailTypesError403 {
   @body body: ListAuthorizationDetailTypesError403Body;
 }
 
-@doc("An administrator lists the `authorization_details` types of their tenant (RFC 9396).")
+@doc("管理者が、自身のテナントの `authorization_details` の種類を一覧する（RFC 9396）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:read"])
 @TypeSpec.OpenAPI.operationId("ListAuthorizationDetailTypes")
 @route("/api/admin/v1/authorization-detail-types")
@@ -833,7 +833,7 @@ model GetAuthorizationDetailTypeError404 {
   @body body: GetAuthorizationDetailTypeError404Body;
 }
 
-@doc("An administrator reads one type. A type of another tenant is treated as nonexistent.")
+@doc("管理者が、種類を一つ読む。他のテナントの種類は存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:read"])
 @TypeSpec.OpenAPI.operationId("GetAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types/{type}")
@@ -890,7 +890,7 @@ model CreateAuthorizationDetailTypeError409 {
   @body body: CreateAuthorizationDetailTypeError409Body;
 }
 
-@doc("An administrator registers an `authorization_details` type in their tenant.")
+@doc("管理者が、自身のテナントに `authorization_details` の種類を登録する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("CreateAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types")
@@ -947,7 +947,7 @@ model UpdateAuthorizationDetailTypeError404 {
   @body body: UpdateAuthorizationDetailTypeError404Body;
 }
 
-@doc("An administrator updates the schema, display template, description, or state of a type.")
+@doc("管理者が、種類のスキーマ、表示のテンプレート、説明、または状態を更新する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types/{type}")
@@ -974,7 +974,7 @@ model DeleteAuthorizationDetailTypeError403 {
   @body body: DeleteAuthorizationDetailTypeError403Body;
 }
 
-@doc("An administrator deletes a type. Tokens already issued stay valid until they expire.")
+@doc("管理者が、種類を削除する。発行済みのトークンは、期限が切れるまで有効なままである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types/{type}")
@@ -1009,7 +1009,7 @@ model ListAdminOAuth2ClientsError400 {
   @body body: ListAdminOAuth2ClientsError400Body;
 }
 
-@doc("An administrator lists the clients of their tenant by `client_id` ascending, through bidirectional keyset pagination.\nThe cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、自身のテナントのクライアントを、`client_id` の昇順に、双方向のキーセットページングで一覧する。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminOAuth2Clients")
 @route("/api/admin/v1/clients")
@@ -1055,7 +1055,7 @@ model GetAdminOAuth2ClientError404 {
   @body body: GetAdminOAuth2ClientError404Body;
 }
 
-@doc("An administrator reads a client of their tenant. A client of another tenant is treated as nonexistent.")
+@doc("管理者が、自身のテナントのクライアントを読む。他のテナントのクライアントは存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
@@ -1102,7 +1102,7 @@ model CreateAdminOAuth2ClientError422 {
   @body body: CreateAdminOAuth2ClientError422Body;
 }
 
-@doc("An administrator creates a client in their tenant.")
+@doc("管理者が、自身のテナントにクライアントを作成する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminOAuth2Client")
 @route("/api/admin/v1/clients")
@@ -1149,7 +1149,7 @@ model UpdateAdminOAuth2ClientError404 {
   @body body: UpdateAdminOAuth2ClientError404Body;
 }
 
-@doc("An administrator updates the client metadata of their tenant. A client of another tenant is treated as nonexistent and is left untouched.")
+@doc("管理者が、自身のテナントのクライアントのメタデータを更新する。他のテナントのクライアントは存在しないものとして扱い、変更しない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
@@ -1206,7 +1206,7 @@ model DeleteAdminOAuth2ClientError409 {
   @body body: DeleteAdminOAuth2ClientError409Body;
 }
 
-@doc("An administrator deletes a client of their tenant that sits outside the catalogue. A client whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409) and the caller is directed to delete the Application instead. A client of another tenant is treated as nonexistent and is left untouched.")
+@doc("管理者が、自身のテナントの、カタログの外にあるクライアントを削除する。`application_id` が null でないクライアントは ApplicationOwnedProtocolError（HTTP 409）で拒否し、代わりに Application を削除するよう呼び出し元へ案内する。他のテナントのクライアントは存在しないものとして扱い、変更しない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
@@ -1231,7 +1231,7 @@ model ListAdminMcpResourceServersError403 {
   @body body: ListAdminMcpResourceServersError403Body;
 }
 
-@doc("An administrator lists the McpResourceServers of their tenant (AdminMcpResourcesManage).")
+@doc("管理者が、自身のテナントの McpResourceServer を一覧する（AdminMcpResourcesManage）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminMcpResourceServers")
 @route("/api/admin/v1/mcp-resource-servers")
@@ -1266,7 +1266,7 @@ model GetAdminMcpResourceServerError404 {
   @body body: GetAdminMcpResourceServerError404Body;
 }
 
-@doc("An administrator reads an McpResourceServer of their tenant. A registration of another tenant is treated as nonexistent.")
+@doc("管理者が、自身のテナントの McpResourceServer を読む。他のテナントの登録は存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers/{id}")
@@ -1313,7 +1313,7 @@ model CreateAdminMcpResourceServerError409 {
   @body body: CreateAdminMcpResourceServerError409Body;
 }
 
-@doc("An administrator registers an McpResourceServer in their tenant. The `resource` must be unique within the tenant.")
+@doc("管理者が、自身のテナントに McpResourceServer を登録する。`resource` はテナントの中で一意でなければならない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers")
@@ -1360,7 +1360,7 @@ model UpdateAdminMcpResourceServerError404 {
   @body body: UpdateAdminMcpResourceServerError404Body;
 }
 
-@doc("An administrator updates the name, scopes, or state of an McpResourceServer. The `resource`, its canonical URI, is immutable.")
+@doc("管理者が、McpResourceServer の名前、スコープ、または状態を更新する。正規の URI である `resource` は変えられない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers/{id}")
@@ -1387,7 +1387,7 @@ model DeleteAdminMcpResourceServerError403 {
   @body body: DeleteAdminMcpResourceServerError403Body;
 }
 
-@doc("An administrator deletes an McpResourceServer. A new issuance naming that resource is refused with `invalid_target` afterwards; tokens already issued stay valid until they expire.")
+@doc("管理者が McpResourceServer を削除する。以降、そのリソースを指定する新たな発行は `invalid_target` で拒否する。発行済みのトークンは、期限が切れるまで有効なままである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers/{id}")
@@ -1422,7 +1422,7 @@ model ListAdminConsentsError400 {
   @body body: ListAdminConsentsError400Body;
 }
 
-@doc("An administrator lists the Consents of their tenant for audit, by `user_id` and `client_id` ascending, through bidirectional\nkeyset pagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
+@doc("管理者が、監査のために、自身のテナントの Consent を `user_id` と `client_id` の昇順に、双方向のキーセットページングで一覧する。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminConsents")
 @route("/api/admin/v1/consents")
@@ -1458,7 +1458,7 @@ model GetAdminConsentError403 {
   @body body: GetAdminConsentError403Body;
 }
 
-@doc("An administrator reads a Consent of their tenant by subject and `client_id`. A Consent of another tenant is treated as nonexistent.")
+@doc("管理者が、自身のテナントの Consent を、サブジェクトと `client_id` で読む。他のテナントの Consent は存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminConsent")
 @route("/api/admin/v1/consents/{user_id}/{client_id}")
@@ -1495,7 +1495,7 @@ model RevokeAdminConsentError403 {
   @body body: RevokeAdminConsentError403Body;
 }
 
-@doc("An administrator revokes a Consent of their tenant logically. Creating a Consent, or widening its scope, is not permitted to an administrator.")
+@doc("管理者が、自身のテナントの Consent を論理的に失効させる。管理者には、Consent の作成やスコープの拡大は許されない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:write"])
 @TypeSpec.OpenAPI.operationId("RevokeAdminConsent")
 @route("/api/admin/v1/consents/{user_id}/{client_id}")
@@ -1525,7 +1525,7 @@ model ListAdminRolePoliciesError403 {
   @body body: ListAdminRolePoliciesError403Body;
 }
 
-@doc("An administrator reads how the roles, permissions, and HTTP interfaces visible to them line up.")
+@doc("管理者が、自身に見えるロール、権限、HTTP のインターフェースの対応を読む。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminRolePolicies")
 @route("/api/admin/v1/policy/roles")
@@ -1549,7 +1549,7 @@ model ListMyConsentsError403 {
   @body body: ListMyConsentsError403Body;
 }
 
-@doc("An authenticated user reads the list of applications they are connected to, that is, their active Consents (self-service).\nThe target is fixed to `actor.id`, and another person's Consents are never returned.")
+@doc("認証済みのユーザーが、自身が接続しているアプリケーションの一覧、すなわち有効な Consent を読む（セルフサービス）。対象は `actor.id` に固定され、他人の Consent を返すことはない。")
 @TypeSpec.OpenAPI.operationId("ListMyConsents")
 @route("/api/account/v1/consents")
 @get
@@ -1583,7 +1583,7 @@ model RevokeMyConsentError403 {
   @body body: RevokeMyConsentError403Body;
 }
 
-@doc("An authenticated user revokes their own Consent for a named `client_id`, logically (self-service).\n`actor.id` is fixed equal to `target.id`. The next authorization for that client asks for consent again.")
+@doc("認証済みのユーザーが、指定した `client_id` に対する自身の Consent を論理的に失効させる（セルフサービス）。`actor.id` は `target.id` と等しく固定される。そのクライアントの次の認可では、改めて同意を求める。")
 @TypeSpec.OpenAPI.operationId("RevokeMyConsent")
 @route("/api/account/v1/consents/{client_id}/revoke")
 @post
@@ -1605,7 +1605,7 @@ model ListMyApprovalRequestsError403 {
   @body body: ListMyApprovalRequestsError403Body;
 }
 
-@doc("An authenticated user reads the approval requests pending for them (self-service). The target is fixed to `actor.id`, so\nrequests addressed to another person are never returned, and expired requests are not returned either.")
+@doc("認証済みのユーザーが、自身宛ての保留中の承認のリクエストを読む（セルフサービス）。対象は `actor.id` に固定されるので、他人宛てのリクエストを返すことはなく、期限切れのリクエストも返さない。")
 @TypeSpec.OpenAPI.operationId("ListMyApprovalRequests")
 @route("/api/account/v1/approval-requests")
 @get
@@ -1640,7 +1640,7 @@ model DecideMyApprovalRequestError403 {
   @body body: DecideMyApprovalRequestError403Body;
 }
 
-@doc("An authenticated user approves or refuses one approval request addressed to them (self-service). Step-up reauthentication and\nCSRF verification are both required, and `actor.id` is fixed to the User the approval is about. Deciding a request addressed to\nanother person, one in a terminal state, or an expired one is refused.")
+@doc("認証済みのユーザーが、自身宛ての承認のリクエストを一つ承認または拒否する（セルフサービス）。ステップアップの再認証と CSRF の検証がどちらも必要で、`actor.id` は承認の対象の User に固定される。他人宛てのリクエスト、終端の状態のリクエスト、期限切れのリクエストを決定しようとすると拒否する。")
 @TypeSpec.OpenAPI.operationId("DecideMyApprovalRequest")
 @route("/api/account/v1/approval-requests/{id}/decision")
 @post

@@ -84,7 +84,7 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 
 	cfg.WebAuthnRPID = l.String("WEBAUTHN_RP_ID", "")
 	cfg.WebAuthnRPOrigins = l.StringList("WEBAUTHN_RP_ORIGINS", nil)
-	l.RequiredWhen("WEBAUTHN_RP_ORIGINS", "WEBAUTHN_RP_ID is set")
+	l.RequiredWhen("WEBAUTHN_RP_ORIGINS", `WEBAUTHN_RP_ID != ""`)
 	cfg.WebAuthnRPDisplayName = l.String("WEBAUTHN_RP_DISPLAY_NAME", "idmagic")
 	if cfg.WebAuthnRPID != "" {
 		l.Require("WEBAUTHN_RP_ORIGINS", len(cfg.WebAuthnRPOrigins) > 0,

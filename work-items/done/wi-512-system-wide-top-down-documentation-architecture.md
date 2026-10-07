@@ -322,7 +322,7 @@ Unit RED は、`documentKind` が新しい正準パスを文書種別へ解決�
   生成 HTML はサイドバーの不要な一段を除き、コンテキスト別ナビゲーションを既定で閉じ、API リファレンスを全幅化した。
   Swagger UI は OpenAPI を Blob URL から読み込むことで `file://` 表示時の内部参照を解決し、固定 UI 文言を日本語化した。
   日本語の使用範囲は `.claude/rules/japanese-writing.md` に集約し、`AGENTS.md` は mise、ツール、参照先だけに縮小した。
-  既存 Markdown と TypeSpec の大量の英語本文は [wi-515](../wi-515-localize-existing-markdown-and-typespec-prose.md) に分離した。
+  既存 Markdown と TypeSpec の大量の英語本文は [wi-515](wi-515-localize-existing-markdown-and-typespec-prose.md) に分離した。
 - **Acceptance RED Evidence**:
   - **Test**: `discoverWorkspaceConfig > discovers the standard layout without a registry file`（`tools/workspace/src/workspace.test.ts`）
   - **Requirement**: N/A: 製品機能ではなく、正準文書を標準タスクから探索できるというリポジトリ内の文書基盤を検証する。

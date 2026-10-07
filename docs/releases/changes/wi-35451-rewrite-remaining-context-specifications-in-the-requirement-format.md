@@ -1,4 +1,4 @@
-# WI-35451: Rewrite the remaining context specifications in the requirement format
+# WI-35451: 残りの Context の仕様を要件の形式で書き直す
 
 作業項目は `wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format` である。
 

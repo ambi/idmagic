@@ -1,9 +1,9 @@
 namespace IdMagic.Contract {
 
-@doc("One connected application the end-user account portal returns (self-service).\nIt is fixed to the caller's own `sub`, so neither `sub` nor `tenant_id` appears. It returns the client_id, the display\nname, the granted scopes, and when they were granted and expire, for display.")
+@doc("エンドユーザーのアカウントポータルが返す、接続済みのアプリケーションの一つ（セルフサービス）。呼び出し元自身の `sub` に固定されるので、`sub` も `tenant_id` も現れない。表示のために、client_id、表示名、付与したスコープ、付与と期限の時刻を返す。")
 model AccountConsentResponse {
   client_id: string;
-  @doc("The display name the client_id resolved to. It resolves in the order `OAuth2Client.client_name`, then the\nApplication catalogue name, and falls back to the client_id itself when there is neither.")
+  @doc("client_id から解決した表示名。`OAuth2Client.client_name`、Application のカタログの名前の順に解決し、どちらもなければ client_id そのものを使う。")
   client_name: string;
   scopes: string[];
   state: ConsentState;
@@ -12,46 +12,46 @@ model AccountConsentResponse {
 }
 
 
-@doc("The threshold of an EndpointRateLimitPolicy was exceeded. This is the general endpoint rate limit, counted on every arriving request, and it is separate from the login throttle, which counts failures per account and per IP. Fail-closed: the request is rejected even when the shared counter store is unreachable. Written by `support_http.WriteRateLimited` with `Content-Type: application/json`, not as Problem Details, because the body carries `retry_after_seconds`. The response also carries a `Retry-After` header with the same number of seconds.")
+@doc("EndpointRateLimitPolicy の閾値を超えた。これは届いたすべてのリクエストを数える汎用のエンドポイントのレート制限で、アカウントごとと IP ごとに失敗を数えるログインの抑制とは別である。フェイルクローズで、共有のカウンターのストアに到達できないときもリクエストを拒否する。ボディが `retry_after_seconds` を含むので、Problem Details ではなく、`support_http.WriteRateLimited` が `Content-Type: application/json` で書く。レスポンスは同じ秒数の `Retry-After` ヘッダーも含む。")
 model RateLimitedError {
-  @doc("Always `rate_limited`.")
+  @doc("常に `rate_limited` である。")
   error: string;
-  @doc("How many seconds to wait before retrying. Repeated in the `Retry-After` response header.")
+  @doc("再試行の前に待つ秒数。`Retry-After` のレスポンスヘッダーにも繰り返す。")
   retry_after_seconds: int32;
-  @doc("English fallback text for callers that do not localize by code. A UI that localizes maps `rate_limited` to its own message instead.")
+  @doc("コードでローカライズしない呼び出し元のための、英語の代わりのテキスト。ローカライズする UI は、代わりに `rate_limited` を自身のメッセージへ対応付ける。")
   message: string;
 }
 
 
-@doc("The next screen, or the client redirect URI, to show after an SPA authentication step.")
+@doc("SPA の認証のステップの後に示す次の画面、またはクライアントのリダイレクト URI。")
 model BrowserFlowResponse {
   next?: string;
   redirect_to?: url;
 }
 
 
-@doc("How the authorization endpoint delivers the code to the redirect_uri. Wire values follow OAuth 2.0 Multiple Response Type Encoding Practices and OAuth 2.0 Form Post Response Mode.")
+@doc("認可エンドポイントが redirect_uri へコードを届ける方法。送受信の値は OAuth 2.0 Multiple Response Type Encoding Practices と OAuth 2.0 Form Post Response Mode に従う。")
 enum ResponseMode {
   Query: "query",
   FormPost: "form_post",
 }
 
 
-@doc("Token kind carried by `token_type_hint` and by revocation audit events. Wire values follow RFC 7009 section 2.1.")
+@doc("`token_type_hint` と失効の監査イベントが運ぶトークンの種類。送受信の値は RFC 7009 の 2.1 節に従う。")
 enum TokenType {
   AccessToken: "access_token",
   RefreshToken: "refresh_token",
 }
 
 
-@doc("How a token is bound to its holder (RFC 7800). `dpop` is the thumbprint of the DPoP public key, `mtls` the thumbprint of the mTLS client certificate.")
+@doc("トークンを保持者にどう結び付けるか（RFC 7800）。`dpop` は DPoP の公開鍵のサムプリント、`mtls` は mTLS のクライアント証明書のサムプリントである。")
 enum SenderConstraintKind {
   Dpop: "dpop",
   Mtls: "mtls",
 }
 
 
-@doc("The sender constraint applied to an issued access token. `none` means a bearer token.")
+@doc("発行するアクセストークンに適用する送信者の制約。`none` は bearer のトークンを意味する。")
 enum AccessTokenSenderConstraint {
   None: "none",
   Dpop: "dpop",
@@ -59,13 +59,13 @@ enum AccessTokenSenderConstraint {
 }
 
 
-@doc("The hashing method of the PKCE `code_challenge` (RFC 7636). This application permits S256 alone; `plain` is refused as weak.")
+@doc("PKCE の `code_challenge` のハッシュの方式（RFC 7636）。このアプリケーションは S256 だけを許し、`plain` は弱いとして拒否する。")
 enum CodeChallengeMethod {
   S256: "S256",
 }
 
 
-@doc("The states the AuthorizationCodeFlow state machine may take. See the state machine section as well.")
+@doc("AuthorizationCodeFlow の状態機械がとりうる状態。状態機械の節も参照する。")
 enum AuthorizationCodeState {
   Received: "received",
   AuthenticationPending: "authentication_pending",
@@ -79,7 +79,7 @@ enum AuthorizationCodeState {
 }
 
 
-@doc("The states the DeviceCodeFlow state machine (RFC 8628) may take. See the state machine section as well.")
+@doc("DeviceCodeFlow の状態機械（RFC 8628）がとりうる状態。状態機械の節も参照する。")
 enum DeviceCodeState {
   Issued: "issued",
   UserCodeEntered: "user_code_entered",
@@ -90,7 +90,7 @@ enum DeviceCodeState {
 }
 
 
-@doc("The states the ApprovalRequestLifecycle state machine may take. It is held as the general form of \"a precondition is not yet satisfied\" rather than as CIBA transport vocabulary. `consumed` is a terminal state reachable only from `approved`, standing for the single exchange into tokens. See the state machine section as well.")
+@doc("ApprovalRequestLifecycle の状態機械がとりうる状態。CIBA のトランスポートの語彙ではなく、「事前条件がまだ満たされていない」ことの一般的な形として保持する。`consumed` は `approved` からだけ到達できる終端の状態で、トークンへの一度だけの交換を表す。状態機械の節も参照する。")
 enum ApprovalRequestState {
   Pending: "pending",
   Approved: "approved",
@@ -100,7 +100,7 @@ enum ApprovalRequestState {
 }
 
 
-@doc("The states the RefreshTokenLifecycle state machine may take. `rotated` has been consumed into a child token, `revoked` has been revoked, and `expired` has run out.")
+@doc("RefreshTokenLifecycle の状態機械がとりうる状態。`rotated` は子のトークンへ使われたこと、`revoked` は失効したこと、`expired` は期限が切れたことを表す。")
 enum RefreshTokenState {
   Active: "Active",
   Rotated: "Rotated",
@@ -109,7 +109,7 @@ enum RefreshTokenState {
 }
 
 
-@doc("The states the AuthorizationCodeRecordLifecycle state machine may take. It describes the lifecycle of the code itself, along a different axis from AuthorizationCodeFlow.")
+@doc("AuthorizationCodeRecordLifecycle の状態機械がとりうる状態。AuthorizationCodeFlow とは別の軸で、コードそのもののライフサイクルを記述する。")
 enum AuthorizationCodeRecordState {
   Issued: "issued",
   Redeemed: "redeemed",
@@ -117,7 +117,7 @@ enum AuthorizationCodeRecordState {
 }
 
 
-@doc("The states the ConsentLifecycle state machine may take. The right to withdraw under GDPR Article 7(3) makes `granted` to `revoked` possible.")
+@doc("ConsentLifecycle の状態機械がとりうる状態。GDPR 第 7 条 3 項の撤回の権利により、`granted` から `revoked` への遷移がありうる。")
 enum ConsentState {
   Granted: "granted",
   Revoked: "revoked",
@@ -125,7 +125,7 @@ enum ConsentState {
 }
 
 
-@doc("The states the PARRecordLifecycle state machine may take. From `stored` it becomes `used` when `/authorize` reads it, and `expired` when it runs out.")
+@doc("PARRecordLifecycle の状態機械がとりうる状態。`stored` から、`/authorize` が読むと `used` に、期限が切れると `expired` になる。")
 enum PARRecordState {
   Stored: "Stored",
   Used: "Used",
@@ -133,7 +133,7 @@ enum PARRecordState {
 }
 
 
-@doc("The downscoping partial order each field carries in a registered authorization_details schema. `set` is set inclusion (the request is a subset of the consent or the source), `at_most` is monotone decrease (the request is at most the consent or the source), `enum` is an exact match against a permitted list, and `exact` is an exact match on an opaque value. Anything undecidable falls to the refusing side, fail-closed.")
+@doc("登録した authorization_details のスキーマで、各フィールドが持つ絞り込みの半順序。`set` は集合の包含（リクエストが同意または元の部分集合である）、`at_most` は単調な減少（リクエストが同意または元以下である）、`enum` は許可リストとの完全一致、`exact` は不透明な値の完全一致である。判定できないものはフェイルクローズで拒否の側に倒す。")
 enum AuthorizationDetailFieldSemantics {
   set: "set",
   at_most: "at_most",
@@ -142,14 +142,14 @@ enum AuthorizationDetailFieldSemantics {
 }
 
 
-@doc("The operational states of an AuthorizationDetailType. Only `enabled` is accepted; `disabled` refuses new requests, and tokens already issued stay valid until they expire.")
+@doc("AuthorizationDetailType の運用上の状態。受け付けるのは `enabled` だけで、`disabled` は新しいリクエストを拒否し、発行済みのトークンは期限が切れるまで有効なままである。")
 enum AuthorizationDetailTypeState {
   Enabled: "Enabled",
   Disabled: "Disabled",
 }
 
 
-@doc("OAuth 2.0 / OpenID Connect protocol error codes, carried in the `error` member of an OAuthError body. Wire values are registered by RFC 6749 sections 4.1.2.1 and 5.2, RFC 6750 section 3.1 (invalid_token, insufficient_scope), RFC 8628 section 3.5 (authorization_pending, slow_down, expired_token), RFC 8707 section 2 (invalid_target), RFC 9449 section 7.1 (invalid_dpop_proof), RFC 7591 section 3.2.2 (invalid_client_metadata, invalid_redirect_uri), RFC 9126 section 2.2 (invalid_request_uri), RFC 9396 section 5 (invalid_authorization_details), OpenID Connect Core section 3.1.2.6 (login_required), and OpenID Connect CIBA Core section 13 (unknown_user_id, invalid_binding_message).")
+@doc("OAuth 2.0 / OpenID Connect のプロトコルのエラーコード。OAuthError のボディの `error` のメンバーで運ぶ。送受信の値は、RFC 6749 の 4.1.2.1 節と 5.2 節、RFC 6750 の 3.1 節（invalid_token、insufficient_scope）、RFC 8628 の 3.5 節（authorization_pending、slow_down、expired_token）、RFC 8707 の 2 節（invalid_target）、RFC 9449 の 7.1 節（invalid_dpop_proof）、RFC 7591 の 3.2.2 節（invalid_client_metadata、invalid_redirect_uri）、RFC 9126 の 2.2 節（invalid_request_uri）、RFC 9396 の 5 節（invalid_authorization_details）、OpenID Connect Core の 3.1.2.6 節（login_required）、OpenID Connect CIBA Core の 13 節（unknown_user_id、invalid_binding_message）が登録する。")
 enum OAuthErrorCode {
   InvalidRequest: "invalid_request",
   InvalidClient: "invalid_client",
@@ -177,20 +177,20 @@ enum OAuthErrorCode {
 }
 
 
-@doc("A client under RFC 7591 with the FAPI 2.0 extensions. A client outside the catalogue, whose `application_id` is null, is allowed; when it is not null it names an `oidc` Application of the same tenant, and at most one client is bound to one Application.")
+@doc("FAPI 2.0 の拡張を備えた RFC 7591 のクライアント。`application_id` が null のカタログの外のクライアントも許す。null でないときは同じテナントの `oidc` の Application を指し、一つの Application に結び付くクライアントは一つまでである。")
 model OAuth2Client {
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
   @minLength(1)
   @maxLength(128)
   client_id: string;
-  @doc("The Application it corresponds to. Ordinary CRUD leaves it alone; only the bulk creation and deletion of an Application manage the relationship.")
+  @doc("対応する Application。通常の CRUD はこれを変えず、関係を管理するのは Application の一括作成と一括削除だけである。")
   application_id?: string;
   client_secret_hash?: string;
   @maxLength(200)
   client_name?: string;
   client_type: ClientType;
-  @doc("Required for a redirect-based grant (authorization_code). A machine-to-machine client using client_credentials alone has none (RFC 6749 section 3.1.2).")
+  @doc("リダイレクトを使うグラント（authorization_code）では必須である。client_credentials だけを使うマシン間のクライアントにはない（RFC 6749 の 3.1.2 節）。")
   redirect_uris?: url[];
   grant_types: GrantType[];
   response_types: ResponseType[];
@@ -205,36 +205,36 @@ model OAuth2Client {
   dpop_bound_access_tokens: boolean = false;
   fapi_profile: FapiProfile = FapiProfile.None;
   first_party: boolean = false;
-  @doc("Where OpenID Connect Back-Channel Logout 1.0 notifications go. When it is set, every session revocation POSTs a\nsigned logout token to this URI.")
+  @doc("OpenID Connect Back-Channel Logout 1.0 の通知の宛先。設定すると、セッションの失効のたびに、署名したログアウトトークンをこの URI へ POST する。")
   backchannel_logout_uri?: url;
-  @doc("Whether the RP requires a `sid` claim in the logout token. When true, nothing is delivered for a target session without a `sid`, because an issuance with no browser session has no target to notify.")
+  @doc("RP がログアウトトークンに `sid` のクレームを求めるかどうか。true のときは、`sid` のない対象のセッションには何も配送しない。ブラウザーのセッションのない発行には、通知する対象がないためである。")
   backchannel_logout_session_required: boolean = false;
-  @doc("Where OpenID Connect Front-Channel Logout 1.0 notifications go. The `/end_session` response carries an iframe\npointing at this URI.")
+  @doc("OpenID Connect Front-Channel Logout 1.0 の通知の宛先。`/end_session` のレスポンスは、この URI を指す iframe を含む。")
   frontchannel_logout_uri?: url;
-  @doc("Whether to add the `iss` and `sid` query parameters to the iframe URI.")
+  @doc("iframe の URI に `iss` と `sid` のクエリパラメーターを加えるかどうか。")
   frontchannel_logout_session_required: boolean = false;
-  @doc("The claim issuance policy for this client, the per-application release override.\nThe source attribute that plays the part of a NameID is used as the source of `sub`. Whether a ClaimExposed attribute\nmay be disclosed at all, decided by the scope and the consent through the standard scopes openid, profile, email, and\nso on, is applied first and independently of this policy; this policy narrows and remaps within that range, and merges\ninto the ID token and UserInfo.")
+  @doc("このクライアントに対するクレームの発行のポリシーで、アプリケーションごとの開示の上書きである。NameID の役割を果たす取得元の属性を `sub` の取得元に使う。ClaimExposed の属性をそもそも開示してよいかは、標準のスコープ（openid、profile、email など）によるスコープと同意で決まり、このポリシーとは独立に先に適用する。このポリシーはその範囲の中で絞り込みと対応付け直しを行い、ID トークンと UserInfo に合わせる。")
   claim_policy: ClaimMappingPolicy;
   created_at: utcDateTime;
-  @doc("It equals `created_at` at creation and is updated on every administrative operation on the client metadata afterwards.")
+  @doc("作成時は `created_at` と等しく、以降はクライアントのメタデータに対する管理操作のたびに更新する。")
   updated_at: utcDateTime;
 }
 
 
-@doc("The authentication credential of a secret-based OAuth2 client. The plaintext is returned only in the issuance response and appears in no storage, event, or listing. Issuing a new one leaves existing credentials alone, and they keep matching until they are revoked individually or expire. An existing credential with no expiry is tolerated so the migration needs no downtime.")
+@doc("シークレット方式の OAuth2 のクライアントの認証の資格情報。平文は発行のレスポンスでだけ返し、どのストレージ、イベント、一覧にも現れない。新しいものを発行しても既存の資格情報は変えず、個別に失効させるか期限が切れるまで一致し続ける。移行に停止時間が要らないように、有効期限のない既存の資格情報も許す。")
 model ClientSecretCredential {
   id: string;
   client_id: string;
   secret_hash: string;
   created_at: utcDateTime;
-  @doc("When the credential expires. It is required for a newly added credential; null stands for a legacy credential from before the migration, which has no expiry, or for the current credential of a compatibility rotation.")
+  @doc("資格情報が期限切れになる時刻。新たに加える資格情報では必須である。null は、移行前の有効期限のない従来の資格情報、または互換のローテーションの現在の資格情報を表す。")
   expires_at?: utcDateTime;
-  @doc("When it was revoked outright. A credential with a `revoked_at` is not used for authentication whatever its `expires_at`.")
+  @doc("完全に失効させた時刻。`revoked_at` のある資格情報は、`expires_at` にかかわらず認証に使わない。")
   revoked_at?: utcDateTime;
 }
 
 
-@doc("The GDPR consent record. Its state follows the ConsentLifecycle state machine. `user_id` and `client_id` name an existing User and OAuth2Client.")
+@doc("GDPR の同意の記録。状態は ConsentLifecycle の状態機械に従う。`user_id` と `client_id` は既存の User と OAuth2Client を指す。")
 model Consent {
   user_id: string;
   client_id: string;
@@ -243,66 +243,66 @@ model Consent {
   created_at: utcDateTime;
   updated_at: utcDateTime;
   granted_at: utcDateTime;
-  @doc("Normally `granted_at` plus 365 days.")
+  @doc("通常は `granted_at` に 365 日を加えたもの。")
   expires_at: utcDateTime;
-  @doc("When the state became `revoked`, for audit.")
+  @doc("状態が `revoked` になった時刻。監査のためのものである。")
   revoked_at?: utcDateTime;
-  @doc("RFC 9396: the structured details the user consented to. It is the yardstick for the subset check at issuance and exchange.")
+  @doc("RFC 9396：ユーザーが同意した構造化された詳細。発行と交換のときの部分集合の検査の基準である。")
   authorization_details?: AuthorizationDetail[];
 }
 
 
-@doc("One element of RFC 9396 `authorization_details`: a structured, fine-grained permission identified by its `type`. It is handled consistently through the request, the consent, and its reflection into the token, and is validated fail-closed against the registered AuthorizationDetailType.")
+@doc("RFC 9396 の `authorization_details` の一要素。`type` で識別する、構造化された細かい権限である。リクエスト、同意、トークンへの反映を通じて一貫して扱い、登録した AuthorizationDetailType に照らしてフェイルクローズで検証する。")
 model AuthorizationDetail {
-  @doc("The identifier of the registered AuthorizationDetailType, `payment_initiation` for instance.")
+  @doc("登録した AuthorizationDetailType の識別子。たとえば `payment_initiation`。")
   @minLength(1)
   type: string;
-  @doc("RFC 9396: the URIs of the resource servers the detail is aimed at.")
+  @doc("RFC 9396：詳細が対象とするリソースサーバーの URI。")
   locations?: string[];
-  @doc("RFC 9396: the actions permitted against the target.")
+  @doc("RFC 9396：対象に対して許す操作。")
   actions?: string[];
-  @doc("RFC 9396: the kinds of data to be accessed.")
+  @doc("RFC 9396：アクセスするデータの種類。")
   datatypes?: string[];
-  @doc("RFC 9396: the identifier of the target resource.")
+  @doc("RFC 9396：対象のリソースの識別子。")
   identifier?: string;
-  @doc("RFC 9396: the privilege levels against the target.")
+  @doc("RFC 9396：対象に対する権限の水準。")
   privileges?: string[];
-  @doc("The structured fields specific to the type, `instructedAmount` and `creditorAccount` for instance. The registered schema binds their meaning.")
+  @doc("種類に固有の構造化されたフィールド。たとえば `instructedAmount` と `creditorAccount`。登録したスキーマがその意味を定める。")
   fields?: Record<unknown>;
 }
 
 
-@doc("One field rule of an AuthorizationDetailsSchema, defining its downscoping partial order and its permitted values.")
+@doc("AuthorizationDetailsSchema の一つのフィールドの規則。絞り込みの半順序と許可する値を定める。")
 model AuthorizationDetailFieldRule {
-  @doc("The field it governs: a standard field such as `actions`, or a key inside the `fields` map.")
+  @doc("規則が扱うフィールド。`actions` のような標準のフィールド、または `fields` のマップの中のキーである。")
   @minLength(1)
   name: string;
-  @doc("The partial order used for the subset check.")
+  @doc("部分集合の検査に使う半順序。")
   semantics: AuthorizationDetailFieldSemantics;
-  @doc("When true, the detail must carry this field.")
+  @doc("true のとき、詳細はこのフィールドを含まなければならない。")
   required: boolean = false;
-  @doc("The closed set of permitted values when `semantics` is `set` or `enum`; empty means unrestricted.")
+  @doc("`semantics` が `set` または `enum` のときに許可する値の閉じた集合。空は制限なしを意味する。")
   allowed?: string[];
 }
 
 
-@doc("The structural schema of one type. It lists the fields accepted and the downscoping partial order of each. An unregistered field, a mismatch against the schema, and a value outside the permitted set are all refused, fail-closed.")
+@doc("一つの種類の構造のスキーマ。受け付けるフィールドと、それぞれの絞り込みの半順序を並べる。未登録のフィールド、スキーマとの不一致、許可する集合の外の値は、いずれもフェイルクローズで拒否する。")
 model AuthorizationDetailsSchema {
-  @doc("The field rules.")
+  @doc("フィールドの規則。")
   rules: AuthorizationDetailFieldRule[];
 }
 
 
-@doc("An `authorization_details` type definition a tenant registers. It bundles the type identifier, the validation schema, and the display template for the consent UI. Only an `enabled` type is accepted. Management is guarded by AdminAuthorizationDetailTypesManage.")
+@doc("テナントが登録する `authorization_details` の種類の定義。種類の識別子、検証のスキーマ、同意の UI のための表示のテンプレートをまとめる。受け付けるのは `enabled` の種類だけである。管理は AdminAuthorizationDetailTypesManage が守る。")
 model AuthorizationDetailType {
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
-  @doc("The `authorization_details` type identifier.")
+  @doc("`authorization_details` の種類の識別子。")
   @minLength(1)
   type: string;
   description?: string;
   schema: AuthorizationDetailsSchema;
-  @doc("The template presenting a detail to a human in the consent UI, `up to {fields.instructedAmount} to {identifier}` for instance.")
+  @doc("同意の UI で詳細を人に示すテンプレート。たとえば `up to {fields.instructedAmount} to {identifier}`。")
   display_template: string;
   state: AuthorizationDetailTypeState = AuthorizationDetailTypeState.Enabled;
   created_at: utcDateTime;
@@ -310,27 +310,27 @@ model AuthorizationDetailType {
 }
 
 
-@doc("The operational states of an McpResourceServer. Only `active` passes the resource indicator check; `disabled` refuses new issuance, and tokens already issued stay valid until they expire.")
+@doc("McpResourceServer の運用上の状態。リソースインジケーターの検査を通るのは `active` だけで、`disabled` は新たな発行を拒否し、発行済みのトークンは期限が切れるまで有効なままである。")
 enum McpResourceServerState {
   Active: "Active",
   Disabled: "Disabled",
 }
 
 
-@doc("The tenant-scoped registration of an MCP resource server, a tool or a data source. It owns the canonical resource URI and the permitted scopes, and is the yardstick for Protected Resource Metadata (RFC 9728) and for the resource indicator check (RFC 8707). Management is guarded by AdminMcpResourcesManage.")
+@doc("MCP のリソースサーバー（ツールまたはデータソース）の、テナントに属する登録。正規のリソースの URI と許可するスコープを管理し、Protected Resource Metadata（RFC 9728）とリソースインジケーターの検査（RFC 8707）の基準である。管理は AdminMcpResourcesManage が守る。")
 model McpResourceServer {
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
-  @doc("The unique identifier of the registration (a UUID), globally unique across tenants.")
+  @doc("登録の一意な識別子（UUID）。テナントをまたいで全体で一意である。")
   @minLength(1)
   id: string;
-  @doc("The canonical resource URI strictly bound to the `aud` of the tokens issued. Unique within the tenant.")
+  @doc("発行するトークンの `aud` に厳密に結び付く正規のリソースの URI。テナントの中で一意である。")
   resource: ResourceIndicator;
-  @doc("The display name in the administration UI.")
+  @doc("管理 UI での表示名。")
   @minLength(1)
   @maxLength(200)
   name: string;
-  @doc("The allow list of scopes permitted when accessing this resource. The scopes requested alongside a `resource` have to be a subset of it.")
+  @doc("このリソースにアクセスするときに許すスコープの許可リスト。`resource` とともに求めるスコープは、その部分集合でなければならない。")
   scopes: string[];
   state: McpResourceServerState = McpResourceServerState.Active;
   created_at: utcDateTime;
@@ -338,17 +338,17 @@ model McpResourceServer {
 }
 
 
-@doc("The `resource` parameter of RFC 8707: an absolute URI naming the requested audience, with no fragment. Only one is permitted per token, and naming several is refused with `invalid_target`.")
+@doc("RFC 8707 の `resource` パラメーター。求めるオーディエンスを指す、フラグメントのない絶対 URI である。トークンごとに一つだけ許し、複数を指定すると `invalid_target` で拒否する。")
 model ResourceIndicator {
   @minLength(1)
   value: url;
 }
 
 
-@doc("RFC 9728 Protected Resource Metadata. For the realm's IdMagic API it is derived from the ApiTokenScopes, and for an external resource from the McpResourceServer registration.")
+@doc("RFC 9728 の Protected Resource Metadata。レルムの IdMagic API では ApiTokenScopes から、外部のリソースでは McpResourceServer の登録から導く。")
 model ProtectedResourceMetadata {
   resource: url;
-  @doc("The authorization servers protecting this resource, that is, the IdMagic issuer.")
+  @doc("このリソースを守る認可サーバー、すなわち IdMagic の発行者。")
   authorization_servers: url[];
   scopes_supported: string[];
   bearer_methods_supported: string[] = #["header"];
@@ -356,9 +356,9 @@ model ProtectedResourceMetadata {
 }
 
 
-@doc("The JSON request in which an administrator registers or updates an McpResourceServer. `resource` is settable at creation only.")
+@doc("管理者が McpResourceServer を登録または更新する JSON のリクエスト。`resource` は作成時にだけ設定できる。")
 model McpResourceServerRequest {
-  @doc("Required at creation, and immutable on update, because changing it would change what the `aud` of already-issued tokens means.")
+  @doc("作成時は必須で、更新では変えられない。変えると、発行済みのトークンの `aud` の意味が変わってしまうためである。")
   resource?: string;
   @minLength(1)
   @maxLength(200)
@@ -368,7 +368,7 @@ model McpResourceServerRequest {
 }
 
 
-@doc("How an McpResourceServer is represented. The list and the detail views of the administration UI return the same representation.")
+@doc("McpResourceServer の表現。管理 UI の一覧と詳細の表示は同じ表現を返す。")
 model McpResourceServerResponse {
   tenant_id: string;
   id: string;
@@ -381,18 +381,18 @@ model McpResourceServerResponse {
 }
 
 
-@doc("The McpResourceServer list of the administration API.")
+@doc("管理 API の McpResourceServer の一覧。")
 model McpResourceServerListResponse {
   resource_servers: McpResourceServerResponse[];
 }
 
 
-@doc("The store record of a refresh token. The plain value is never stored. Its state follows the RefreshTokenLifecycle state machine. The tenant is derived from the globally identified User and OAuth2Client rather than kept redundantly on the token row, and the use case checks the tenant-local invariant of both.")
+@doc("リフレッシュトークンのストアの記録。平文の値は保存しない。状態は RefreshTokenLifecycle の状態機械に従う。テナントはトークンの行に重複して保持せず、全体で識別される User と OAuth2Client から導き、両者がテナントの中にあるという不変条件はユースケースが確かめる。")
 model RefreshTokenRecord {
   id: string;
-  @doc("The SHA-256 hash.")
+  @doc("SHA-256 のハッシュ。")
   hash: string;
-  @doc("The identifier every token descended from one authorization code exchange shares.")
+  @doc("一回の認可コードの交換から派生したすべてのトークンが共有する識別子。")
   family_id: string;
   parent_id?: string;
   client_id: string;
@@ -403,53 +403,53 @@ model RefreshTokenRecord {
   updated_at: utcDateTime;
   issued_at: utcDateTime;
   expires_at: utcDateTime;
-  @doc("The absolute deadline, which a rotation does not extend.")
+  @doc("絶対の期限。ローテーションでは延びない。")
   absolute_expires_at: utcDateTime;
   sender_constraint?: RefreshTokenSenderConstraint;
-  @doc("The `sid` (OIDC session id) of the AuthorizationCodeRecord it came from. A rotation carries the parent's\nvalue over unchanged. Null means an issuance with no browser session, client_credentials for instance.\nEvery family whose value matches the `sessionId` of Authentication's SessionEnded -- possibly spanning several\nclients -- is resolved through this field, so a session revocation moves them all to RevokeToken at once.")
+  @doc("元の AuthorizationCodeRecord の `sid`（OIDC のセッションの id）。ローテーションは親の値をそのまま引き継ぐ。null は、client_credentials のようなブラウザーのセッションのない発行を意味する。値が Authentication の SessionEnded の `sessionId` と一致するすべてのファミリー（複数のクライアントにまたがることがある）をこのフィールドで解決するので、セッションの失効はそれらをまとめて RevokeToken へ移す。")
   sid?: string;
-  @doc("The resource indicator it came from (`AuthorizationCodeRecord.resource`).\nA rotation carries the parent's value over unchanged, so the audience stays strictly confined to the same\nMcpResourceServer afterwards. Null means an issuance with no `resource`.")
+  @doc("元のリソースインジケーター（`AuthorizationCodeRecord.resource`）。ローテーションは親の値をそのまま引き継ぐので、以降もオーディエンスは同じ McpResourceServer に厳密に限られる。null は `resource` のない発行を意味する。")
   resource?: ResourceIndicator;
 }
 
 
-@doc("The record that a given browser session (`sid`) issued an authentication result to a particular OAuth2Client\n(an RP participation). The `sid` equals Authentication's `LoginSession.id` and is shared across RPs. The session state\nitself is not copied here; this exists only as the index that resolves which RPs to notify by front-channel and\nback-channel logout when a session is revoked.")
+@doc("あるブラウザーのセッション（`sid`）が特定の OAuth2Client に認証の結果を発行したことの記録（RP の参加）。`sid` は Authentication の `LoginSession.id` に等しく、RP の間で共有する。セッションの状態そのものはここに写さず、セッションを失効させたときにフロントチャネルとバックチャネルのログアウトで通知する RP を解決するための索引としてだけ存在する。")
 model ClientSession {
-  @doc("The OIDC session id, equal to `LoginSession.id`.")
+  @doc("OIDC のセッションの id。`LoginSession.id` に等しい。")
   sid: string;
   client_id: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
   first_issued_at: utcDateTime;
-  @doc("It is updated on every re-issuance (re-authorization) to the same RP. It has no effect on resolving where to notify.")
+  @doc("同じ RP への再発行（再認可）のたびに更新する。通知先の解決には影響しない。")
   last_issued_at: utcDateTime;
 }
 
 
-@doc("The record of one back-channel logout delivery attempt. The local session and refresh token revocation is\nalready settled before this record is created, and a failed delivery does not undo it.\nThe delivery itself is delegated to a durable job of the Jobs bounded context\n(`kind=backchannel_logout_delivery`).")
+@doc("一回のバックチャネルログアウトの配送の試行の記録。この記録を作る前に、ローカルのセッションとリフレッシュトークンの失効はすでに確定しており、配送の失敗はそれを元に戻さない。配送そのものは、Jobs の境界づけられたコンテキストの永続ジョブ（`kind=backchannel_logout_delivery`）に委ねる。")
 model LogoutNotification {
   id: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
-  @doc("The OIDC session id to notify about.")
+  @doc("通知の対象の OIDC のセッションの id。")
   sid: string;
-  @doc("The RP to notify.")
+  @doc("通知する RP。")
   client_id: string;
-  @doc("The `jti` of the logout token issued. The RP uses it for replay detection and IdMagic for audit correlation.")
+  @doc("発行したログアウトトークンの `jti`。RP はリプレイの検出に、IdMagic は監査での関連付けに使う。")
   logout_token_jti: string;
-  @doc("Where it is delivered, a snapshot of the client's `backchannel_logout_uri` taken when delivery began.")
+  @doc("配送先。配送を始めた時点の、クライアントの `backchannel_logout_uri` のスナップショットである。")
   target_uri: url;
   state: LogoutNotificationState;
   attempts: int64 = 0;
   last_error?: string;
-  @doc("The `JobRef.id` of the Jobs context, correlating the delivery run.")
+  @doc("配送の実行を関連付ける、Jobs の Context の `JobRef.id`。")
   job_id?: string;
   created_at: utcDateTime;
   delivered_at?: utcDateTime;
 }
 
 
-@doc("The delivery state of a LogoutNotification. It does not map one-to-one onto the JobStatus of Jobs; it states only whether the delivery itself succeeded, while the job's own retries and lease stay with Jobs.")
+@doc("LogoutNotification の配送の状態。Jobs の JobStatus とは一対一に対応せず、配送そのものが成功したかどうかだけを示し、ジョブ自身の再試行とリースは Jobs が扱う。")
 enum LogoutNotificationState {
   Pending: "Pending",
   Delivered: "Delivered",
@@ -457,10 +457,10 @@ enum LogoutNotificationState {
 }
 
 
-@doc("The server-internal intermediate state that tracks the flow.")
+@doc("フローを追跡するサーバー内部の中間の状態。")
 model AuthorizationRequest {
   id: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
   state: AuthorizationCodeState;
   client_id: string;
@@ -476,25 +476,25 @@ model AuthorizationRequest {
   par_request_uri?: string;
   user_id?: string;
   auth_time?: int64;
-  @doc("The methods by which authentication succeeded, propagated from the AuthenticationContext by `advance(authenticate_user)`.")
+  @doc("認証が成功した方式。`advance(authenticate_user)` が AuthenticationContext から伝える。")
   amr?: string[];
-  @doc("The URN derived from the amr according to the AuthenticationContextPolicy.")
+  @doc("AuthenticationContextPolicy に従って amr から導いた URN。")
   acr?: string;
-  @doc("The `acr_values` parameter the client gave to `/authorize` (RFC 8176). It decides step-up.")
+  @doc("クライアントが `/authorize` に与えた `acr_values` パラメーター（RFC 8176）。ステップアップを決める。")
   acr_values?: string;
-  @doc("The OIDC session id propagated from `AuthenticationContext.session_id` by `advance(authenticate_user)`,\nequal to `LoginSession.id` of the Authentication context. It is carried into the AuthorizationCodeRecord,\nthe RefreshTokenRecord, and the IdTokenClaims, and correlates both the family revocation a session revocation starts\nand the front-channel and back-channel logout.")
+  @doc("`advance(authenticate_user)` が `AuthenticationContext.session_id` から伝える OIDC のセッションの id で、Authentication の Context の `LoginSession.id` に等しい。AuthorizationCodeRecord、RefreshTokenRecord、IdTokenClaims へ引き継ぎ、セッションの失効が始めるファミリーの失効と、フロントチャネルとバックチャネルのログアウトの両方を関連付ける。")
   sid?: string;
-  @doc("RFC 9396: the structured details the client requested. Only those already validated and conforming to a registered type are kept.")
+  @doc("RFC 9396：クライアントが求めた構造化された詳細。検証済みで、登録した種類に合うものだけを保持する。")
   authorization_details?: AuthorizationDetail[];
   created_at: utcDateTime;
   expires_at: utcDateTime;
 }
 
 
-@doc("The persistent record of an issued authorization code. The code itself is short-lived. Its state follows AuthorizationCodeRecordLifecycle, which describes the lifecycle of the code itself along a different axis from AuthorizationCodeFlow.")
+@doc("発行した認可コードの永続的な記録。コードそのものは短命である。状態は AuthorizationCodeRecordLifecycle に従い、これは AuthorizationCodeFlow とは別の軸で、コードそのもののライフサイクルを記述する。")
 model AuthorizationCodeRecord {
   code: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
   authorization_request_id: string;
   client_id: string;
@@ -505,28 +505,28 @@ model AuthorizationCodeRecord {
   code_challenge_method: CodeChallengeMethod;
   nonce?: string;
   auth_time: int64;
-  @doc("The authentication methods carried over from the authorization request. They are emitted into the ID token and the access token.")
+  @doc("認可リクエストから引き継いだ認証の方式。ID トークンとアクセストークンに出力する。")
   amr?: string[];
-  @doc("The ACR URN carried over from the authorization request. It is emitted into the ID token and the access token.")
+  @doc("認可リクエストから引き継いだ ACR の URN。ID トークンとアクセストークンに出力する。")
   acr?: string;
-  @doc("The OIDC session id carried over from the authorization request. It propagates into the `sid` claim of the ID token and into the `sid` of the RefreshTokenRecord issued.")
+  @doc("認可リクエストから引き継いだ OIDC のセッションの id。ID トークンの `sid` のクレームと、発行する RefreshTokenRecord の `sid` へ伝わる。")
   sid?: string;
-  @doc("RFC 9396: the structured details consented to. The exchange reflects them into the tokens issued.")
+  @doc("RFC 9396：同意した構造化された詳細。交換はこれを発行するトークンに反映する。")
   authorization_details?: AuthorizationDetail[];
   state: AuthorizationCodeRecordState;
   issued_at: utcDateTime;
   expires_at: utcDateTime;
-  @doc("When the state became `redeemed`, for audit.")
+  @doc("状態が `redeemed` になった時刻。監査のためのものである。")
   redeemed_at?: utcDateTime;
-  @doc("The refresh family issued by a successful exchange, used to revoke the family when a replay is detected.")
+  @doc("成功した交換が発行したリフレッシュのファミリー。リプレイを検出したときにファミリーを失効させるのに使う。")
   issued_family_id?: string;
 }
 
 
-@doc("The stored record of a Pushed Authorization Request. Its state follows PARRecordLifecycle.")
+@doc("Pushed Authorization Request の保存した記録。状態は PARRecordLifecycle に従う。")
 model PARRecord {
   request_uri: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
   client_id: string;
   parameters: Record<string>;
@@ -536,12 +536,12 @@ model PARRecord {
 }
 
 
-@doc("The device authorization record of RFC 8628. The `device_code` is stored as a hash alone.")
+@doc("RFC 8628 のデバイス認可の記録。`device_code` はハッシュだけを保存する。")
 model DeviceAuthorization {
   device_code_hash: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
-  @doc("A short code that avoids confusable characters.")
+  @doc("紛らわしい文字を避けた短いコード。")
   user_code: string;
   client_id: string;
   scopes: string[];
@@ -556,30 +556,30 @@ model DeviceAuthorization {
 }
 
 
-@doc("The approval request that holds a client's request until a human settles it. The state and the content of the\ndecision are kept apart from the transport bookkeeping of CIBA, but they sit in the same record so that a competing\ndecision and a poll serialize inside one store boundary. The `id` is a UUID, and only the SHA-256 hash of the\n`auth_req_id` is stored, as the index.")
+@doc("人が確定するまでクライアントのリクエストを保留する承認のリクエスト。判断の状態と内容は CIBA のトランスポートの管理情報とは分けて保持するが、競合する判断と問い合わせが一つのストアの境界の中で直列化するように、同じ記録に置く。`id` は UUID で、`auth_req_id` は SHA-256 のハッシュだけを索引として保存する。")
 model ApprovalRequest {
   id: string;
-  @doc("The tenant it belongs to.")
+  @doc("属するテナント。")
   tenant_id: string = "default";
-  @doc("The client that raised the approval request.")
+  @doc("承認のリクエストを起こしたクライアント。")
   client_id: string;
-  @doc("The Agent bound to the client, when there is one. It is used on the approval screen and in the `agent_id` claim of the tokens issued.")
+  @doc("クライアントに結び付いた Agent があれば、その Agent。承認の画面と、発行するトークンの `agent_id` のクレームに使う。")
   agent_id?: string;
-  @doc("The `sub` of the User who decides. It is resolved from `login_hint` or `id_token_hint`, and from then on only that User may decide.")
+  @doc("判断する User の `sub`。`login_hint` または `id_token_hint` から解決し、以降はその User だけが判断できる。")
   user_id: string;
-  @doc("The scopes of the token to issue if it is approved.")
+  @doc("承認されたときに発行するトークンのスコープ。")
   scopes: string[];
-  @doc("RFC 9396: the structured permission request being approved. The approval screen renders it for a human to read.")
+  @doc("RFC 9396：承認の対象の構造化された権限のリクエスト。承認の画面は、人が読めるようにこれを描画する。")
   authorization_details?: AuthorizationDetail[];
-  @doc("The short identifying text shown on the approval screen so the wrong request cannot be approved by mistake (CIBA Core section 7.1, `binding_message`).")
+  @doc("誤ったリクエストを取り違えて承認しないように、承認の画面に示す短い識別のテキスト（CIBA Core の 7.1 節、`binding_message`）。")
   @maxLength(64)
   binding_message?: string;
   state: ApprovalRequestState;
-  @doc("The SHA-256 hash of the CIBA `auth_req_id`. It is an index of the transport layer and takes no part in the meaning of the decision.")
+  @doc("CIBA の `auth_req_id` の SHA-256 のハッシュ。トランスポートの層の索引であり、判断の意味には関わらない。")
   auth_req_id_hash: string;
-  @doc("Transport bookkeeping: the minimum polling interval in seconds the client is told to keep. It rises on every `slow_down`.")
+  @doc("トランスポートの管理情報。クライアントに守らせる問い合わせの最小の間隔（秒）である。`slow_down` のたびに増える。")
   interval_seconds: int64;
-  @doc("Transport bookkeeping: when it was last polled. It decides `slow_down`.")
+  @doc("トランスポートの管理情報。最後に問い合わせた時刻である。`slow_down` を決める。")
   last_polled_at?: utcDateTime;
   requested_at: utcDateTime;
   expires_at: utcDateTime;
@@ -588,31 +588,31 @@ model ApprovalRequest {
 }
 
 
-@doc("The sender-constrained proof (RFC 7800).")
+@doc("送信者の制約の証明（RFC 7800）。")
 model SenderConstraintCnf {
-  @doc("The SHA-256 thumbprint of the DPoP key (RFC 9449 section 6.1).")
+  @doc("DPoP の鍵の SHA-256 のサムプリント（RFC 9449 の 6.1 節）。")
   jkt?: string;
-  @doc("The thumbprint of the mTLS client certificate (`x5t#S256`, RFC 8705).")
+  @doc("mTLS のクライアント証明書のサムプリント（`x5t#S256`、RFC 8705）。")
   x5t_s256?: string;
 }
 
 
-@doc("The claims of a DPoP proof JWT (RFC 9449 section 4.2). `typ` is `dpop+jwt`, and the public key is presented in the `jwk` header.")
+@doc("DPoP の証明の JWT のクレーム（RFC 9449 の 4.2 節）。`typ` は `dpop+jwt` で、公開鍵は `jwk` ヘッダーで提示する。")
 model DpopProofClaims {
-  @doc("An identifier unique to each proof. It cannot be reused within the replay window.")
+  @doc("証明ごとに一意な識別子。リプレイのウィンドウの中では再利用できない。")
   jti: string;
-  @doc("The HTTP method of the request it covers.")
+  @doc("対象のリクエストの HTTP のメソッド。")
   htm: string;
-  @doc("The HTTP URI of the request it covers, without the query and the fragment.")
+  @doc("対象のリクエストの、クエリとフラグメントを除いた HTTP の URI。")
   htu: url;
-  @doc("When the proof was issued. Anything outside the permitted clock skew is refused.")
+  @doc("証明を発行した時刻。許容する時計のずれの外のものは拒否する。")
   iat: utcDateTime;
-  @doc("The base64url of the SHA-256 of the access token being presented (RFC 9449 section 4.3). It is required when accessing a protected resource, and absent at the token endpoint, where there is no such token yet.")
+  @doc("提示するアクセストークンの SHA-256 の base64url（RFC 9449 の 4.3 節）。保護されたリソースへのアクセスでは必須で、まだそのトークンのないトークンエンドポイントでは含まない。")
   ath?: string;
 }
 
 
-@doc("The sender constraint attached to a refresh token. It holds what it was bound to at issuance: the DPoP key thumbprint or the mTLS certificate thumbprint.")
+@doc("リフレッシュトークンに付く送信者の制約。発行時に結び付けたもの、すなわち DPoP の鍵のサムプリントまたは mTLS の証明書のサムプリントを保持する。")
 model RefreshTokenSenderConstraint {
   type: SenderConstraintKind;
   jkt?: string;
@@ -620,16 +620,16 @@ model RefreshTokenSenderConstraint {
 }
 
 
-@doc("The claims of a JWT access token (RFC 9068). TTL 600 seconds.")
+@doc("JWT のアクセストークンのクレーム（RFC 9068）。TTL は 600 秒である。")
 model AccessTokenClaims {
   iss: url;
-  @doc("For `client_credentials` it equals the client_id.")
+  @doc("`client_credentials` では client_id に等しい。")
   sub: string;
   aud: Audience;
   client_id: string;
-  @doc("The scopes, space-separated.")
+  @doc("空白で区切ったスコープ。")
   scope: string;
-  @doc("Unix epoch seconds")
+  @doc("Unix エポックからの秒数")
   exp: int64;
   iat: int64;
   nbf?: int64;
@@ -638,18 +638,18 @@ model AccessTokenClaims {
   acr?: string;
   amr?: string[];
   cnf?: SenderConstraintCnf;
-  @doc("The `act` claim of RFC 8693 section 4.1, naming the current actor of the delegation. When the `subject_token` carried an `act`, they nest.")
+  @doc("RFC 8693 の 4.1 節の `act` のクレーム。委任の現在の操作者を示す。`subject_token` が `act` を含んでいたときは入れ子になる。")
   act?: Record<unknown>;
-  @doc("The `may_act` claim of RFC 8693 section 4.4, naming the actors permitted to act on the subject's behalf.")
+  @doc("RFC 8693 の 4.4 節の `may_act` のクレーム。サブジェクトに代わって操作してよい操作者を示す。")
   may_act?: Record<unknown>;
-  @doc("RFC 9396: the structured details bound to the token. It is the resource server's checkpoint. Optional, for backward compatibility.")
+  @doc("RFC 9396：トークンに結び付く構造化された詳細。リソースサーバーの検査点である。後方互換のために任意とする。")
   authorization_details?: AuthorizationDetail[];
-  @doc("The id of the Agent the token was issued for, present only when the issuing client is bound to one. It marks the token as belonging to a non-human principal, which introspection reads to derive the delegation mode (REQ-OAUTH2-049). It says nothing about the Agent's kind: a `supervised` Agent's token carries the same claim, and the approval that permitted it is traceable through the audit trail instead (REQ-OAUTH2-050).")
+  @doc("トークンを発行した対象の Agent の id。発行するクライアントが Agent に結び付いているときだけ含む。トークンが人でない主体のものであることを示し、イントロスペクションはこれを読んで委任のモードを導く（REQ-OAUTH2-049）。Agent の種類については何も示さない。`supervised` の Agent のトークンも同じクレームを含み、それを許した承認は代わりに監査証跡で追跡できる（REQ-OAUTH2-050）。")
   agent_id?: string;
 }
 
 
-@doc("The claims of an OpenID Connect ID token. TTL 3600 seconds.")
+@doc("OpenID Connect の ID トークンのクレーム。TTL は 3600 秒である。")
 model IdTokenClaims {
   iss: url;
   sub: string;
@@ -657,7 +657,7 @@ model IdTokenClaims {
   exp: int64;
   iat: int64;
   auth_time: int64;
-  @doc("The OIDC session id (OpenID Connect Front-Channel and Back-Channel Logout 1.0). It is present only for an\nissuance bound to a browser session. The RP sends it back to `/end_session` as the `id_token_hint`, and it correlates\nfront-channel and back-channel logout.")
+  @doc("OIDC のセッションの id（OpenID Connect Front-Channel Logout 1.0 と Back-Channel Logout 1.0）。ブラウザーのセッションに結び付く発行のときだけ含む。RP はこれを `id_token_hint` として `/end_session` へ送り返し、フロントチャネルとバックチャネルのログアウトを関連付ける。")
   sid?: string;
   nonce?: string;
   acr?: string;
@@ -669,19 +669,19 @@ model IdTokenClaims {
   preferred_username?: string;
   email?: string;
   email_verified?: boolean;
-  @doc("The additional claims formed by merging the scope-driven attribute claims (ClaimsForScopes) with the per-client\nClaimMapping claim policy. When a key collides with a standard claim, the standard claim\nwins.")
+  @doc("スコープから決まる属性のクレーム（ClaimsForScopes）と、クライアントごとの ClaimMapping のクレームのポリシーを合わせた追加のクレーム。キーが標準のクレームと衝突するときは、標準のクレームを優先する。")
   additional_claims?: Record<unknown>;
 }
 
 
-@doc("A string, or an array of one or more strings (JWT, RFC 7519 section 4.1.3).")
+@doc("文字列、または一つ以上の文字列の配列（JWT、RFC 7519 の 4.1.3 節）。")
 model Audience {
-  @doc("A JSON string, or an array of one or more JSON strings.")
+  @doc("JSON の文字列、または一つ以上の JSON の文字列の配列。")
   one_or_many: string | string[];
 }
 
 
-@doc("The metadata of RFC 8414 and OpenID Connect Discovery 1.0.")
+@doc("RFC 8414 と OpenID Connect Discovery 1.0 のメタデータ。")
 model DiscoveryDocument {
   issuer: url;
   authorization_endpoint: url;
@@ -692,11 +692,11 @@ model DiscoveryDocument {
   revocation_endpoint: url;
   pushed_authorization_request_endpoint: url;
   device_authorization_endpoint: url;
-  @doc("CIBA Core section 4: the backchannel authentication endpoint. It is advertised only when CIBA is offered.")
+  @doc("CIBA Core の 4 節：バックチャネル認証のエンドポイント。CIBA を提供するときだけ示す。")
   backchannel_authentication_endpoint?: url;
-  @doc("CIBA Core section 4: the token delivery modes implemented. This implementation offers poll alone and advertises neither ping nor push.")
+  @doc("CIBA Core の 4 節：実装したトークンの配送のモード。この実装は poll だけを提供し、ping も push も示さない。")
   backchannel_token_delivery_modes_supported?: string[] = #["poll"];
-  @doc("CIBA Core section 4: the `user_code` parameter is not supported. The approval screen is protected by the user's own authenticated session and a step-up, so it carries no second shared secret.")
+  @doc("CIBA Core の 4 節：`user_code` のパラメーターには対応しない。承認の画面はユーザー自身の認証済みのセッションとステップアップで守るので、二つ目の共有のシークレットは含めない。")
   backchannel_user_code_parameter_supported?: boolean = false;
   registration_endpoint: url;
   end_session_endpoint?: url;
@@ -719,18 +719,18 @@ model DiscoveryDocument {
   authorization_response_iss_parameter_supported?: boolean;
   dpop_signing_alg_values_supported?: SignatureAlgorithm[];
   tls_client_certificate_bound_access_tokens?: boolean;
-  @doc("Advertises that a client_id may also be resolved on each request as an HTTPS URL, a Client ID Metadata Document.")
+  @doc("client_id を、HTTPS の URL である Client ID Metadata Document として、リクエストのたびに解決してもよいことを示す。")
   client_id_metadata_document_supported: boolean = true;
   subject_types_supported: string[] = #["public"];
   claims_supported?: string[] = #["sub", "iss", "aud", "exp", "iat", "auth_time", "nonce", "acr", "amr", "azp", "name", "given_name", "family_name", "preferred_username", "email", "email_verified", "updated_at"];
   acr_values_supported?: string[] = #["urn:idmagic:acr:pwd", "urn:idmagic:acr:mfa"];
   ui_locales_supported?: string[] = #["en", "ja"];
-  @doc("RFC 9396: the `authorization_details` types this tenant accepts, derived from its enabled AuthorizationDetailTypes.")
+  @doc("RFC 9396：このテナントが受け付ける `authorization_details` の種類。有効な AuthorizationDetailType から導く。")
   authorization_details_types_supported?: string[];
 }
 
 
-@doc("The body of a dynamic client registration request to `/register` (RFC 7591). The OAuth2Client that results is derived from it. It carries only the metadata a registering client may choose: `id_token_signed_response_alg` is not among them, because the server issues PS256 and does not take the client's preference, and `require_pkce` is a server policy rather than a client setting. Declaring either here would advertise a choice the registration does not have.")
+@doc("`/register` への動的クライアント登録のリクエストのボディ（RFC 7591）。結果の OAuth2Client はここから導く。含むのは登録するクライアントが選べるメタデータだけである。サーバーは PS256 で発行しクライアントの希望を受け取らないので `id_token_signed_response_alg` は含まず、`require_pkce` はクライアントの設定ではなくサーバーのポリシーである。どちらかをここで宣言すると、登録にない選択肢を示すことになる。")
 model ClientRegistrationRequest {
   redirect_uris: url[];
   client_name?: string;
@@ -752,9 +752,9 @@ model ClientRegistrationRequest {
 }
 
 
-@doc("The Client ID Metadata Document fetched from an HTTPS URL the client hosts itself. The client_id is that fetch URL, and it has to match the client_id inside the document exactly. A document whose `token_endpoint_auth_method` is absent, or is anything other than `none`, is refused.")
+@doc("クライアントが自らホストする HTTPS の URL から取得する Client ID Metadata Document。client_id はその取得の URL で、文書の中の client_id と完全に一致しなければならない。`token_endpoint_auth_method` がないか、`none` 以外の文書は拒否する。")
 model ClientIDMetadataDocument {
-  @doc("It has to match the URL it was fetched from exactly.")
+  @doc("取得元の URL と完全に一致しなければならない。")
   client_id: url;
   client_name: string;
   client_uri?: url;
@@ -762,16 +762,16 @@ model ClientIDMetadataDocument {
   redirect_uris: url[];
   grant_types?: GrantType[];
   response_types?: ResponseType[];
-  @doc("Absent is read as `none`. A document declaring any other value is refused.")
+  @doc("ないときは `none` と読む。それ以外の値を宣言した文書は拒否する。")
   token_endpoint_auth_method?: TokenEndpointAuthMethod;
-  @doc("Absent permits `openid` alone.")
+  @doc("ないときは `openid` だけを許す。")
   scope?: string;
 }
 
 
-@doc("The JSON request in which an administrator registers or updates an `authorization_details` type (RFC 9396). `type` is settable at creation only.")
+@doc("管理者が `authorization_details` の種類（RFC 9396）を登録または更新する JSON のリクエスト。`type` は作成時にだけ設定できる。")
 model AuthorizationDetailTypeRequest {
-  @doc("The type URN being created. Update does not carry it: there the path names the type, and UpdateAuthorizationDetailTypeRequest omits it so the same name is not declared twice for one request.")
+  @doc("作成する種類の URN。更新では含まない。更新ではパスが種類を指定し、一つのリクエストに同じ名前を二度宣言しないように、UpdateAuthorizationDetailTypeRequest はこれを省く。")
   @maxLength(100)
   type?: string;
   @maxLength(500)
@@ -784,7 +784,7 @@ model AuthorizationDetailTypeRequest {
 }
 
 
-@doc("The body of an update. Identical to AuthorizationDetailTypeRequest except that it does not carry `type`: the path already names which type is being updated, and the handler reads it from there.")
+@doc("更新のボディ。`type` を含まないことを除き、AuthorizationDetailTypeRequest と同じである。どの種類を更新するかはパスがすでに指定しており、ハンドラーはそこから読む。")
 model UpdateAuthorizationDetailTypeRequest {
   @maxLength(500)
   description?: string;
@@ -796,7 +796,7 @@ model UpdateAuthorizationDetailTypeRequest {
 }
 
 
-@doc("How an `authorization_details` type is represented. The list and the detail views of the administration UI return the same representation.")
+@doc("`authorization_details` の種類の表現。管理 UI の一覧と詳細の表示は同じ表現を返す。")
 model AuthorizationDetailTypeResponse {
   tenant_id: string;
   type: string;
@@ -809,13 +809,13 @@ model AuthorizationDetailTypeResponse {
 }
 
 
-@doc("The `authorization_details` type list of the administration API.")
+@doc("管理 API の `authorization_details` の種類の一覧。")
 model AuthorizationDetailTypeListResponse {
   types: AuthorizationDetailTypeResponse[];
 }
 
 
-@doc("An administrator creates an OAuth client in their tenant. The generated `client_secret` is returned once, in the creation response.")
+@doc("管理者が、自身のテナントに OAuth のクライアントを作成する。生成した `client_secret` は作成のレスポンスで一度だけ返す。")
 model AdminOAuth2ClientCreateRequest {
   redirect_uris: url[];
   @maxLength(200)
@@ -838,7 +838,7 @@ model AdminOAuth2ClientCreateRequest {
 }
 
 
-@doc("An administrator updates the client metadata. The client_id, the authentication method, and the secrets are left alone; secret rotation has its own endpoint.")
+@doc("管理者がクライアントのメタデータを更新する。client_id、認証の方式、シークレットは変えない。シークレットのローテーションには専用のエンドポイントがある。")
 model AdminOAuth2ClientUpdateRequest {
   @maxLength(200)
   client_name?: string;
@@ -855,7 +855,7 @@ model AdminOAuth2ClientUpdateRequest {
 }
 
 
-@doc("How the administration API represents a client. `client_secret` and `client_secret_hash` are deliberately not part of the contract.")
+@doc("管理 API でのクライアントの表現。`client_secret` と `client_secret_hash` は意図して契約に含めない。")
 model AdminOAuth2ClientResponse {
   tenant_id: string;
   client_id: string;
@@ -881,20 +881,20 @@ model AdminOAuth2ClientResponse {
 }
 
 
-@doc("The client creation response. The `client_secret` is returned once, and only when one was generated.")
+@doc("クライアントの作成のレスポンス。`client_secret` は、生成したときだけ一度返す。")
 model AdminOAuth2ClientCreateResponse {
   client: AdminOAuth2ClientResponse;
   client_secret?: string;
 }
 
 
-@doc("The clients of the tenant.")
+@doc("テナントのクライアント。")
 model AdminOAuth2ClientListResponse {
   clients: AdminOAuth2ClientResponse[];
 }
 
 
-@doc("The non-sensitive metadata of a secret credential the Application editor shows. The state is derived from `revoked_at`, then `expires_at`, then the time of evaluation.")
+@doc("Application のエディターが示す、シークレットの資格情報の機微でないメタデータ。状態は `revoked_at`、`expires_at`、評価の時刻の順に導く。")
 model ClientSecretCredentialMetadata {
   id: string;
   created_at: utcDateTime;
@@ -904,13 +904,13 @@ model ClientSecretCredentialMetadata {
 }
 
 
-@doc("The request that issues an additional client secret with an expiry, leaving existing credentials alone. `expires_in_days` is 90 when left out, and only 1 to 730 days is accepted.")
+@doc("既存の資格情報を変えずに、有効期限付きの追加のクライアントシークレットを発行するリクエスト。`expires_in_days` は省くと 90 で、受け付けるのは 1 から 730 日だけである。")
 model IssueClientSecretRequest {
   expires_in_days?: int64;
 }
 
 
-@doc("The response returning the additionally issued secret, once. It carries no existing secret, no hash, and no way to read the plaintext again.")
+@doc("追加で発行したシークレットを一度だけ返すレスポンス。既存のシークレットもハッシュも、平文を再び読む方法も含まない。")
 model IssueClientSecretResponse {
   client_secret: string;
   credential: ClientSecretCredentialMetadata;
@@ -918,19 +918,19 @@ model IssueClientSecretResponse {
 }
 
 
-@doc("The non-sensitive credential metadata after one credential has been revoked. Neither the secret nor a hash is included.")
+@doc("資格情報を一つ失効させた後の、機微でない資格情報のメタデータ。シークレットもハッシュも含まない。")
 model RevokeClientSecretResponse {
   credentials: ClientSecretCredentialMetadata[];
 }
 
 
-@doc("The rotation request, naming how many days the existing secret overlaps. 0 revokes it at once, 1 to 30 gives it a grace, and leaving it out means 7 days.")
+@doc("既存のシークレットを何日重ねるかを指定するローテーションのリクエスト。0 は即座に失効させ、1 から 30 は猶予を与え、省くと 7 日である。")
 model RotateClientSecretRequest {
   grace_days?: int64;
 }
 
 
-@doc("The rotation response, returning the new secret once. There is no API to read it afterwards.")
+@doc("新しいシークレットを一度だけ返すローテーションのレスポンス。後から読む API はない。")
 model RotateClientSecretResponse {
   client_secret: string;
   grace_until?: utcDateTime;
@@ -938,13 +938,13 @@ model RotateClientSecretResponse {
 }
 
 
-@doc("How the administration API represents a Consent of the tenant. Because the client_id and user_id are UUIDs, the resolved human-readable names (`client_name` and `preferred_username`) are returned alongside them for display.")
+@doc("管理 API でのテナントの Consent の表現。client_id と user_id は UUID なので、解決した人が読める名前（`client_name` と `preferred_username`）を表示のために並べて返す。")
 model AdminConsentResponse {
   user_id: string;
-  @doc("The display name the user_id resolved to. Left out when no such User is found.")
+  @doc("user_id から解決した表示名。該当する User が見つからないときは省く。")
   preferred_username?: string;
   client_id: string;
-  @doc("The display name the client_id resolved to. It resolves in the order `OAuth2Client.client_name`, then the\nApplication catalogue name, and falls back to the client_id itself when there is neither.")
+  @doc("client_id から解決した表示名。`OAuth2Client.client_name`、Application のカタログの名前の順に解決し、どちらもなければ client_id そのものを使う。")
   client_name: string;
   scopes: string[];
   state: ConsentState;
@@ -954,19 +954,19 @@ model AdminConsentResponse {
 }
 
 
-@doc("The Consents of the tenant.")
+@doc("テナントの Consent。")
 model AdminConsentListResponse {
   consents: AdminConsentResponse[];
 }
 
 
-@doc("The end user's own connected applications, that is, their active Consents (self-service).")
+@doc("エンドユーザー自身の接続済みのアプリケーション、すなわち有効な Consent（セルフサービス）。")
 model AccountConsentListResponse {
   consents: AccountConsentResponse[];
 }
 
 
-@doc("The token endpoint request, sent as `application/x-www-form-urlencoded`.")
+@doc("`application/x-www-form-urlencoded` で送るトークンエンドポイントのリクエスト。")
 model TokenRequest {
   grant_type: GrantType;
   code?: string;
@@ -974,32 +974,32 @@ model TokenRequest {
   code_verifier?: string;
   refresh_token?: string;
   device_code?: string;
-  @doc("The `auth_req_id` of the CIBA grant (`urn:openid:params:grant-type:ciba`). Until the approval is settled it returns `authorization_pending` or `slow_down`, and once settled it is exchanged for tokens exactly once.")
+  @doc("CIBA のグラント（`urn:openid:params:grant-type:ciba`）の `auth_req_id`。承認が確定するまでは `authorization_pending` または `slow_down` を返し、確定した後はちょうど一度だけトークンと交換する。")
   auth_req_id?: string;
   client_id?: string;
   client_secret?: string;
   client_assertion?: string;
   client_assertion_type?: string;
   scope?: string;
-  @doc("The `subject_token` of the RFC 8693 token-exchange grant. It is either a self-issued access token (`urn:ietf:params:oauth:token-type:access_token`) or an external attestation JWT (`urn:ietf:params:oauth:token-type:jwt`) issued by the issuer of a registered WorkloadTrustBundle.")
+  @doc("RFC 8693 のトークン交換のグラントの `subject_token`。自身が発行したアクセストークン（`urn:ietf:params:oauth:token-type:access_token`）か、登録した WorkloadTrustBundle の発行者が発行した外部のアテステーションの JWT（`urn:ietf:params:oauth:token-type:jwt`）のどちらかである。")
   subject_token?: string;
-  @doc("The URN naming the kind of `subject_token`. Left out, it is treated as a self-issued access token.")
+  @doc("`subject_token` の種類を示す URN。省くと自身が発行したアクセストークンとして扱う。")
   subject_token_type?: string;
-  @doc("The optional `actor_token` of the RFC 8693 token-exchange grant. It has to be a self-issued access token.")
+  @doc("RFC 8693 のトークン交換のグラントの任意の `actor_token`。自身が発行したアクセストークンでなければならない。")
   actor_token?: string;
   actor_token_type?: string;
   requested_token_type?: string;
-  @doc("RFC 9396: the JSON string of structured details asking for a downscope during a token exchange. Optional.")
+  @doc("RFC 9396：トークン交換で絞り込みを求める、構造化された詳細の JSON の文字列。任意である。")
   authorization_details?: string;
-  @doc("RFC 8707: the resource indicator for an authorization_code redemption, client_credentials, device_code, or token exchange. Naming the parameter more than once gives `invalid_target`. The refresh_token grant does not name it explicitly; the resource bound at the first issuance is carried automatically across rotations.")
+  @doc("RFC 8707：authorization_code の引き換え、client_credentials、device_code、トークン交換のためのリソースインジケーター。パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントは明示的に指定せず、最初の発行で結び付けたリソースをローテーションを通じて自動で引き継ぐ。")
   resource?: ResourceIndicator;
 }
 
 
-@doc("The response body of a successful `/token` (RFC 6749 section 5.1). It returns the tokens issued and their kind.")
+@doc("成功した `/token` のレスポンスのボディ（RFC 6749 の 5.1 節）。発行したトークンとその種類を返す。")
 model TokenResponse {
   access_token: string;
-  @doc("\"Bearer\" or \"DPoP\"")
+  @doc("\"Bearer\" または \"DPoP\"")
   token_type: string;
   expires_in?: int64;
   refresh_token?: string;
@@ -1008,14 +1008,14 @@ model TokenResponse {
 }
 
 
-@doc("The `/introspect` request (RFC 7662 section 2.1), by which a resource server asks the authorization server whether a token is valid.")
+@doc("リソースサーバーが、トークンが有効かどうかを認可サーバーに問い合わせる `/introspect` のリクエスト（RFC 7662 の 2.1 節）。")
 model IntrospectionRequest {
   token: string;
   token_type_hint?: TokenType;
 }
 
 
-@doc("How the token's subject is currently acting. This derived value comes from the `act` chain and principal type and has no independent persistent state.\n`OnBehalfOf` means another principal acts for the subject (`act` contains an actor different from the subject).\n`Autonomous` means no delegation is present and the subject is a non-human principal (Agent or client).\n`Direct` means no delegation is present and the subject is a human user.")
+@doc("トークンのサブジェクトが現在どう動いているか。この導出した値は `act` の連鎖と主体の種類から決まり、独立した永続的な状態はない。`OnBehalfOf` は別の主体がサブジェクトのために動いていること（`act` がサブジェクトと異なる操作者を含む）を意味する。`Autonomous` は委任がなく、サブジェクトが人でない主体（Agent またはクライアント）であることを意味する。`Direct` は委任がなく、サブジェクトが人のユーザーであることを意味する。")
 enum DelegationMode {
   Direct: "direct",
   Autonomous: "autonomous",
@@ -1023,7 +1023,7 @@ enum DelegationMode {
 }
 
 
-@doc("The `/introspect` response (RFC 7662 section 2.2). It returns whether the token is active and, when it is, its metadata.")
+@doc("`/introspect` のレスポンス（RFC 7662 の 2.2 節）。トークンが有効かどうかと、有効なときはそのメタデータを返す。")
 model IntrospectionResponse {
   active: boolean;
   scope?: string;
@@ -1032,38 +1032,38 @@ model IntrospectionResponse {
   aud?: Audience;
   exp?: int64;
   iat?: int64;
-  @doc("How the introspected access token is presented, as RFC 7662 section 2.2 requires (the type of RFC 6749 section 5.1). `DPoP` is the sender-constrained presentation of RFC 9449 section 5; a certificate-bound token stays `Bearer` per RFC 8705 section 3. It is absent for an inactive token and for a refresh token, which has no presentation type of its own. This vocabulary is distinct from `TokenType`, which names which token a request is talking about.")
+  @doc("RFC 7662 の 2.2 節が求める、イントロスペクションしたアクセストークンの提示の方法（RFC 6749 の 5.1 節の種類）。`DPoP` は RFC 9449 の 5 節の送信者の制約付きの提示で、証明書に結び付いたトークンは RFC 8705 の 3 節に従って `Bearer` のままである。有効でないトークンと、固有の提示の種類のないリフレッシュトークンでは含まない。この語彙は、リクエストがどのトークンについてのものかを示す `TokenType` とは別である。")
   token_type?: "Bearer" | "DPoP";
   jti?: string;
   cnf?: SenderConstraintCnf;
-  @doc("The `act` claim of RFC 8693 section 4.1. For a delegated token it returns the current actor and the actor chain.")
+  @doc("RFC 8693 の 4.1 節の `act` のクレーム。委任したトークンでは、現在の操作者と操作者の連鎖を返す。")
   act?: Record<unknown>;
-  @doc("Whether an active token represents autonomous, on-behalf-of, or direct execution.\nThe authorization server returns the derived value so resource servers do not reimplement the `act` and principal-type rules.\nThe value is produced by the same derivation function used for audit events.")
+  @doc("有効なトークンが、自律的な実行、代理の実行、直接の実行のどれを表すか。リソースサーバーが `act` と主体の種類の規則を実装し直さずに済むように、認可サーバーが導出した値を返す。値は、監査イベントと同じ導出の関数が生成する。")
   delegation_mode?: DelegationMode;
 }
 
 
-@doc("The `/revoke` request (RFC 7009 section 2.1), which revokes the named token.")
+@doc("指定したトークンを失効させる `/revoke` のリクエスト（RFC 7009 の 2.1 節）。")
 model RevokeRequest {
   token: string;
   token_type_hint?: TokenType;
 }
 
 
-@doc("It takes the authorize parameters as a form.")
+@doc("authorize のパラメーターをフォームとして受け取る。")
 model ParRequest {
   parameters: Record<string>;
 }
 
 
-@doc("The `/par` response (RFC 9126 section 2.2). It issues a short-lived `request_uri` that a later `/authorize` refers to.")
+@doc("`/par` のレスポンス（RFC 9126 の 2.2 節）。後の `/authorize` が参照する短命の `request_uri` を発行する。")
 model ParResponse {
   request_uri: string;
   expires_in: int64;
 }
 
 
-@doc("The `/device_authorization` request (RFC 8628 section 3.1), starting the flow from a device with constrained input.")
+@doc("入力の制約されたデバイスからフローを開始する `/device_authorization` のリクエスト（RFC 8628 の 3.1 節）。")
 model DeviceAuthorizationRequest {
   scope?: string;
   client_id?: string;
@@ -1073,7 +1073,7 @@ model DeviceAuthorizationRequest {
 }
 
 
-@doc("The `/device_authorization` response (RFC 8628 section 3.2). It returns the `device_code`, the `user_code`, and the `verification_uri`, and the device moves on to polling.")
+@doc("`/device_authorization` のレスポンス（RFC 8628 の 3.2 節）。`device_code`、`user_code`、`verification_uri` を返し、デバイスは問い合わせへ進む。")
 model DeviceAuthorizationResponse {
   device_code: string;
   user_code: string;
@@ -1084,20 +1084,20 @@ model DeviceAuthorizationResponse {
 }
 
 
-@doc("The `/bc-authorize` request (CIBA Core section 7.1), by which a client raises a request for human approval.\nExactly one of `login_hint` and `id_token_hint` is given, and when neither resolves the request is refused\nfail-closed with `unknown_user_id`. `user_code` is not supported and is not advertised in discovery.")
+@doc("クライアントが人の承認のリクエストを起こす `/bc-authorize` のリクエスト（CIBA Core の 7.1 節）。`login_hint` と `id_token_hint` のちょうど一つを与え、どちらも解決しないときはフェイルクローズで `unknown_user_id` で拒否する。`user_code` には対応せず、ディスカバリーでも示さない。")
 model BackchannelAuthenticationRequest {
-  @doc("The hint naming the User to ask. It resolves as a username or an email address.")
+  @doc("問い合わせる User を指すヒント。ユーザー名またはメールアドレスとして解決する。")
   login_hint?: string;
-  @doc("A valid ID token this OP issued. Its signature, `iss`, `aud`, `sub`, and `exp` are verified to resolve the User to ask.")
+  @doc("この OP が発行した有効な ID トークン。問い合わせる User を解決するために、その署名、`iss`、`aud`、`sub`、`exp` を検証する。")
   id_token_hint?: string;
-  @doc("The scopes of the token to issue if it is approved. It is required, has to hold `openid`, and has to be a subset of the scopes the client declared.")
+  @doc("承認されたときに発行するトークンのスコープ。必須で、`openid` を含み、クライアントが宣言したスコープの部分集合でなければならない。")
   scope: string;
-  @doc("RFC 9396: the structured permission request being approved, as a JSON string. Only registered types are accepted.")
+  @doc("RFC 9396：承認の対象の構造化された権限のリクエスト。JSON の文字列で表す。登録した種類だけを受け付ける。")
   authorization_details?: string;
-  @doc("The short identifying text shown on the approval screen (CIBA Core section 7.1).")
+  @doc("承認の画面に示す短い識別のテキスト（CIBA Core の 7.1 節）。")
   @maxLength(64)
   binding_message?: string;
-  @doc("The lifetime the client asks for, in seconds. A positive integer, at most 600. 300 when left out.")
+  @doc("クライアントが求める有効期間の秒数。600 以下の正の整数で、省くと 300 である。")
   requested_expiry?: int64;
   client_id?: string;
   client_secret?: string;
@@ -1106,22 +1106,22 @@ model BackchannelAuthenticationRequest {
 }
 
 
-@doc("The `/bc-authorize` response (CIBA Core section 7.3). The `auth_req_id` is a bearer secret, and the\nclient presents it to the token endpoint under the CIBA grant while polling.")
+@doc("`/bc-authorize` のレスポンス（CIBA Core の 7.3 節）。`auth_req_id` は bearer のシークレットで、クライアントは問い合わせの間、CIBA のグラントでトークンエンドポイントへ提示する。")
 model BackchannelAuthenticationResponse {
   auth_req_id: string;
   expires_in: int64;
-  @doc("The minimum polling interval, in seconds, the client has to keep.")
+  @doc("クライアントが守らなければならない問い合わせの最小の間隔（秒）。")
   interval?: int64;
 }
 
 
-@doc("One pending approval request the end-user account portal returns (self-service). It is fixed to requests\naddressed to the caller, so no `user_id` appears. It does not let `binding_message` stand in for the content: who\nasked and what they asked for are returned side by side.")
+@doc("エンドユーザーのアカウントポータルが返す、保留中の承認のリクエストの一つ（セルフサービス）。呼び出し元宛てのリクエストに固定されるので、`user_id` は現れない。`binding_message` を内容の代わりにはせず、誰が何を求めたかを並べて返す。")
 model AccountApprovalRequest {
   id: string;
   client_id: string;
-  @doc("The display name the client_id resolved to. It resolves in the order `OAuth2Client.client_name`, then the\nApplication catalogue name, and falls back to the client_id itself when there is neither.")
+  @doc("client_id から解決した表示名。`OAuth2Client.client_name`、Application のカタログの名前の順に解決し、どちらもなければ client_id そのものを使う。")
   client_name: string;
-  @doc("The display name of the Agent bound to the client, when there is one.")
+  @doc("クライアントに結び付いた Agent があれば、その表示名。")
   agent_name?: string;
   scopes: string[];
   authorization_details?: AuthorizationDetail[];
@@ -1131,20 +1131,20 @@ model AccountApprovalRequest {
 }
 
 
-@doc("The approval requests pending for the end user themselves (self-service).")
+@doc("エンドユーザー自身宛ての保留中の承認のリクエスト（セルフサービス）。")
 model AccountApprovalRequestListResponse {
   approval_requests: AccountApprovalRequest[];
 }
 
 
-@doc("The end user's decision on one approval request: approve or deny.")
+@doc("一つの承認のリクエストに対するエンドユーザーの判断。承認または拒否である。")
 model AccountApprovalDecisionRequest {
-  @doc("Either `approve` or `deny`.")
+  @doc("`approve` または `deny` のどちらか。")
   decision: string;
 }
 
 
-@doc("The authorization parameters of `GET /authorize` or of a PAR. Every field is single-valued, and naming a parameter more than once is refused as `invalid_request`. `prompt` is a space-separated set of the unique tokens `login`, `consent`, and `none`, and `none` is never combined with another.")
+@doc("`GET /authorize` または PAR の認可のパラメーター。どのフィールドも単一の値で、パラメーターを複数回指定すると `invalid_request` として拒否する。`prompt` は一意なトークン `login`、`consent`、`none` を空白で区切った集合で、`none` をほかと組み合わせることはない。")
 model AuthorizeParameters {
   response_type: ResponseType;
   client_id: string;
@@ -1160,38 +1160,38 @@ model AuthorizeParameters {
   acr_values?: string;
   request_uri?: string;
   authorization_details?: string;
-  @doc("The RFC 8707 resource indicator. When it matches no registered, active McpResourceServer it is refused with `invalid_target`, and so is naming the parameter more than once.")
+  @doc("RFC 8707 のリソースインジケーター。登録済みで有効な McpResourceServer のどれにも一致しないときは `invalid_target` で拒否し、パラメーターを複数回指定したときも同じである。")
   resource?: ResourceIndicator;
 }
 
 
-@doc("The consent decision an SPA posts to `/api/auth/consent`.")
+@doc("SPA が `/api/auth/consent` へ POST する同意の判断。")
 model BrowserConsentRequest {
-  @doc("Either `allow` or `deny`.")
+  @doc("`allow` または `deny` のどちらか。")
   action: string;
 }
 
 
-@doc("The device `user_code` decision an SPA posts to `/api/auth/device`.")
+@doc("SPA が `/api/auth/device` へ POST する、デバイスの `user_code` に対する判断。")
 model BrowserDeviceRequest {
   user_code: string;
-  @doc("Which way the user answered: `approve` or `deny`. The endpoint exists to record that answer, so a body without it decides nothing.")
+  @doc("ユーザーがどちらで答えたか。`approve` または `deny` である。エンドポイントはその答えを記録するためにあるので、これのないボディは何も決めない。")
   action: string;
 }
 
 
-@doc("The no-store JSON an SPA uses to render the current browser authorization transaction.")
+@doc("SPA が現在のブラウザーの認可のトランザクションを描画するのに使う、no-store の JSON。")
 model BrowserTransactionResponse {
-  @doc("Which screen to render: login, totp, consent, device, and more as factors are added.")
+  @doc("描画する画面。login、totp、consent、device で、要素が加わればさらに増える。")
   kind: string;
   csrf_token: string;
-  @doc("The readable name of the client shown on the consent screen. It resolves in the order `OAuth2Client.client_name`,\nthe Application catalogue name, then the client_id, which is a UUID and is avoided in raw form.")
+  @doc("同意の画面に示すクライアントの読める名前。`OAuth2Client.client_name`、Application のカタログの名前、client_id の順に解決する。client_id は UUID なので、そのままの形では示さないようにする。")
   client_name?: string;
   scopes?: string[];
 }
 
 
-@doc("The no-store JSON an SPA uses to render the device `user_code` screen.")
+@doc("SPA がデバイスの `user_code` の画面を描画するのに使う、no-store の JSON。")
 model BrowserDeviceContextResponse {
   kind: string;
   user_code?: string;
@@ -1199,7 +1199,7 @@ model BrowserDeviceContextResponse {
 }
 
 
-@doc("The query or form parameters of RP-Initiated Logout v1. The `post_logout_redirect_uri` is validated\nagainst the client_id. An `id_token_hint` is accepted only when this OP issued the ID token, and its signature,\n`iss`, `aud` (refused when it contradicts the client_id), `sub`, and `sid` are all verified.\n`exp` is not verified, because sending an ID token that has already expired by the time of the logout is what a\nnormal RP implementation does.")
+@doc("RP-Initiated Logout v1 のクエリまたはフォームのパラメーター。`post_logout_redirect_uri` は client_id に照らして検証する。`id_token_hint` はこの OP が発行した ID トークンのときだけ受け付け、署名、`iss`、`aud`（client_id と矛盾するときは拒否する）、`sub`、`sid` をすべて検証する。ログアウトの時点ですでに期限切れの ID トークンを送るのは通常の RP の実装の振る舞いなので、`exp` は検証しない。")
 model EndSessionParameters {
   client_id?: string;
   id_token_hint?: string;
@@ -1208,160 +1208,160 @@ model EndSessionParameters {
 }
 
 
-@doc("One entry of a FrontChannelLogout result, corresponding to a single iframe the EndSession response embeds.")
+@doc("FrontChannelLogout の結果の一つの項目。EndSession のレスポンスが埋め込む一つの iframe に対応する。")
 model FrontChannelLogoutTarget {
   client_id: string;
-  @doc("The registered `frontchannel_logout_uri`, with `iss` and `sid` added when `frontchannel_logout_session_required` is set.")
+  @doc("登録した `frontchannel_logout_uri`。`frontchannel_logout_session_required` を設定しているときは `iss` と `sid` を加える。")
   iframe_uri: url;
 }
 
 
-@doc("OpenID Connect Core section 5.3. It carries the mutable OIDC claims.")
+@doc("OpenID Connect Core の 5.3 節。変わりうる OIDC のクレームを含む。")
 model UserInfoResponse {
   sub: string;
-  @doc("The additional claims formed by merging the scope-driven attribute claims (ClaimsForScopes) with the per-client\nClaimMapping claim policy. When a key collides with a standard claim, the standard claim wins.")
+  @doc("スコープから決まる属性のクレーム（ClaimsForScopes）と、クライアントごとの ClaimMapping のクレームのポリシーを合わせた追加のクレーム。キーが標準のクレームと衝突するときは、標準のクレームを優先する。")
   claims?: Record<unknown>;
 }
 
 
-@doc("The request is missing a required parameter, repeats one, or carries an invalid value (RFC 6749 section 5.2, invalid_request). The OAuth 2.0 and OpenID Connect endpoints report this condition with the OAuthError body; the generic APIs report the same condition as InvalidRequestError, an RFC 9457 Problem Details body.")
+@doc("リクエストに必須のパラメーターがない、パラメーターが重複している、または不正な値を含む（RFC 6749 の 5.2 節、invalid_request）。OAuth 2.0 と OpenID Connect のエンドポイントは、この条件を OAuthError のボディで報告する。汎用の API は同じ条件を、RFC 9457 の Problem Details のボディである InvalidRequestError として報告する。")
 model OAuthInvalidRequestError is OAuthError;
 
 
-@doc("The resource owner or the authorization server denied the request (RFC 6749 section 5.2, access_denied). RFC 6749 section 5.2 fixes the token endpoint's error status at 400 and allows 401 only for invalid_client, so the denial a user expresses through CIBA or the device flow arrives at `/token` as a 400, never a 403. The generic APIs report the same condition as AccessDeniedError, an RFC 9457 Problem Details body, and so does the one refusal `/authorize` writes to the browser instead of redirecting.")
+@doc("リソースオーナーまたは認可サーバーがリクエストを拒否した（RFC 6749 の 5.2 節、access_denied）。RFC 6749 の 5.2 節はトークンエンドポイントのエラーのステータスを 400 と定め、401 は invalid_client にだけ許すので、ユーザーが CIBA やデバイスフローで示した拒否は、`/token` には 403 ではなく 400 として届く。汎用の API は同じ条件を RFC 9457 の Problem Details のボディである AccessDeniedError として報告し、`/authorize` がリダイレクトせずにブラウザーへ書く唯一の拒否も同じである。")
 model OAuthAccessDeniedError is OAuthError;
 
 
-@doc("The shared OAuth 2.0 / OpenID Connect error response body (RFC 6749 section 5.2), written by `support_http.OAuthErrorBody` with `Content-Type: application/json`. Every endpoint whose error shape a standard fixes returns this body rather than RFC 9457 Problem Details, so that off-the-shelf clients can read it. The named `*Error` models declared as `is OAuthError` share this body and are told apart by the value of `error`.")
+@doc("OAuth 2.0 / OpenID Connect の共有のエラーのレスポンスのボディ（RFC 6749 の 5.2 節）。`support_http.OAuthErrorBody` が `Content-Type: application/json` で書く。エラーの形を標準が定めるすべてのエンドポイントは、既製のクライアントが読めるように、RFC 9457 の Problem Details ではなくこのボディを返す。`is OAuthError` として宣言した名前付きの `*Error` モデルはこのボディを共有し、`error` の値で区別する。")
 model OAuthError {
-  @doc("The protocol error code. Identifies which condition occurred.")
+  @doc("プロトコルのエラーコード。どの条件が起きたかを識別する。")
   error: OAuthErrorCode;
-  @doc("Human-readable explanation of the occurrence. Always English and never localized; the value is empty when the server has nothing safe to disclose, and the member is present either way.")
+  @doc("発生した事象の、人が読む説明。常に英語で、ローカライズしない。サーバーが安全に開示できるものがないときは値を空にし、メンバー自体はどちらの場合も含む。")
   error_description: string;
 }
 
 
-@doc("Client authentication failed, or the client is not registered (RFC 6749 section 5.2, invalid_client). No detail is returned, so the response does not disclose whether the `client_id` exists.")
+@doc("クライアントの認証に失敗したか、クライアントが登録されていない（RFC 6749 の 5.2 節、invalid_client）。詳細は返さないので、レスポンスは `client_id` が存在するかを明かさない。")
 model InvalidClientError is OAuthError;
 
 
-@doc("An authorization code, refresh token, device code, or other grant is invalid, expired, replayed, or does not match the `redirect_uri` or the PKCE verifier (RFC 6749 section 5.2, invalid_grant).")
+@doc("認可コード、リフレッシュトークン、デバイスコード、またはほかのグラントが、不正、期限切れ、再送されたもの、または `redirect_uri` や PKCE の検証子と一致しない（RFC 6749 の 5.2 節、invalid_grant）。")
 model InvalidGrantError is OAuthError;
 
 
-@doc("The client is not authorized to use this `grant_type` (RFC 6749 section 5.2, unauthorized_client).")
+@doc("クライアントはこの `grant_type` を使うことを許されていない（RFC 6749 の 5.2 節、unauthorized_client）。")
 model UnauthorizedClientError is OAuthError;
 
 
-@doc("The authorization server does not support this `grant_type` (RFC 6749 section 5.2, unsupported_grant_type).")
+@doc("認可サーバーはこの `grant_type` に対応しない（RFC 6749 の 5.2 節、unsupported_grant_type）。")
 model UnsupportedGrantTypeError is OAuthError;
 
 
-@doc("The requested scope is malformed, unknown, or not permitted for the client (RFC 6749 section 5.2, invalid_scope).")
+@doc("求めたスコープの形式が誤っている、未知である、またはクライアントに許されていない（RFC 6749 の 5.2 節、invalid_scope）。")
 model InvalidScopeError is OAuthError;
 
 
-@doc("The `resource` parameter is unregistered, disabled, or given more than once (RFC 8707 section 2, invalid_target). Rejected fail-closed.")
+@doc("`resource` パラメーターが、未登録、無効、または複数回指定されている（RFC 8707 の 2 節、invalid_target）。フェイルクローズで拒否する。")
 model InvalidTargetError is OAuthError;
 
 
-@doc("The access token is expired, tampered with, malformed, or revoked (RFC 6750 section 3.1, invalid_token).")
+@doc("アクセストークンが、期限切れ、改ざん、形式の誤り、または失効済みである（RFC 6750 の 3.1 節、invalid_token）。")
 model InvalidTokenError is OAuthError;
 
 
-@doc("Verification of the DPoP proof JWT failed on its signature, `jti`, `htu`/`htm`, nonce, clock skew, or a similar check (RFC 9449 section 7.1, invalid_dpop_proof).")
+@doc("DPoP の証明の JWT の検証が、署名、`jti`、`htu`/`htm`、nonce、時計のずれ、またはそれに類する検査で失敗した（RFC 9449 の 7.1 節、invalid_dpop_proof）。")
 model InvalidDpopProofError is OAuthError;
 
 
-@doc("The scope of the presented token does not cover the requested OAuth 2.0 or OpenID Connect operation (RFC 6750 section 3.1, insufficient_scope). Generic APIs report the same condition as InsufficientScopeError, an RFC 9457 Problem Details body.")
+@doc("提示したトークンのスコープが、求めた OAuth 2.0 または OpenID Connect の操作を満たさない（RFC 6750 の 3.1 節、insufficient_scope）。汎用の API は同じ条件を、RFC 9457 の Problem Details のボディである InsufficientScopeError として報告する。")
 model OAuthInsufficientScopeError is OAuthError;
 
 
-@doc("The schema definition of an AuthorizationDetailType is invalid: it failed validation, or it references an unknown Semantics value. Returned by the administration API, not by the token endpoint. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_type`.")
+@doc("AuthorizationDetailType のスキーマの定義が不正である。検証に失敗したか、未知の Semantics の値を参照している。トークンエンドポイントではなく管理 API が返す。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_type` である。")
 model InvalidAuthorizationDetailTypeError is ProblemDetails;
 
 
-@doc("In the Device Authorization Grant, the `device_code` has passed its expiry (RFC 8628 section 3.5, expired_token).")
+@doc("Device Authorization Grant で、`device_code` が期限を過ぎた（RFC 8628 の 3.5 節、expired_token）。")
 model ExpiredTokenError is OAuthError;
 
 
-@doc("The client is polling the Device Authorization Grant too fast and must add five seconds to its interval (RFC 8628 section 3.5, slow_down).")
+@doc("クライアントが Device Authorization Grant を速すぎる間隔で問い合わせており、間隔に 5 秒を加えなければならない（RFC 8628 の 3.5 節、slow_down）。")
 model SlowDownError is OAuthError;
 
 
-@doc("In the Device Authorization Grant, the user has not approved yet (RFC 8628 section 3.5, authorization_pending). The client waits `interval` seconds and retries.")
+@doc("Device Authorization Grant で、ユーザーがまだ承認していない（RFC 8628 の 3.5 節、authorization_pending）。クライアントは `interval` 秒待って再試行する。")
 model AuthorizationPendingError is OAuthError;
 
 
-@doc("On the CIBA /bc-authorize endpoint, neither `login_hint` nor `id_token_hint` resolves to a User to ask for approval (OpenID Connect CIBA Core section 13, unknown_user_id). A user who is not active, and a user in another tenant, fold into the same error so the difference does not disclose whether the User exists.")
+@doc("CIBA の /bc-authorize のエンドポイントで、`login_hint` も `id_token_hint` も、承認を求める User へ解決しない（OpenID Connect CIBA Core の 13 節、unknown_user_id）。有効でないユーザーと他のテナントのユーザーも同じエラーにまとめ、違いから User の存在が分からないようにする。")
 model UnknownUserIdError is OAuthError;
 
 
-@doc("On the CIBA /bc-authorize endpoint, the `binding_message` is too long or unsuitable for display (OpenID Connect CIBA Core section 13, invalid_binding_message).")
+@doc("CIBA の /bc-authorize のエンドポイントで、`binding_message` が長すぎるか、表示に適さない（OpenID Connect CIBA Core の 13 節、invalid_binding_message）。")
 model InvalidBindingMessageError is OAuthError;
 
 
-@doc("An unexpected internal failure on the authorization server (RFC 6749 section 4.1.2.1, server_error).")
+@doc("認可サーバーの予期しない内部の失敗（RFC 6749 の 4.1.2.1 節、server_error）。")
 model ServerError is OAuthError;
 
 
-@doc("The fixed-window rate limit settings of one route. The operator tunes the threshold and the window through environment variables; this model fixes only the shape and embeds no concrete value in the specification.")
+@doc("一つの経路の固定ウィンドウのレート制限の設定。運用者は閾値とウィンドウを環境変数で調整し、このモデルは形だけを定め、仕様に具体的な値を埋め込まない。")
 model EndpointRateLimitPolicy {
-  @doc("The identifier of the route it covers: `token`, `authorize`, `par`, `device_authorization`, `password_reset`, `login`, and so on.")
+  @doc("対象の経路の識別子。`token`、`authorize`、`par`、`device_authorization`、`password_reset`、`login` など。")
   policy_id: string;
   max_requests: int64;
   window_seconds: int64;
-  @doc("What happens when the shared counter store is unreachable. Fixed at `fail_closed`.")
+  @doc("共有のカウンターのストアに到達できないときの動作。`fail_closed` に固定する。")
   fail_mode: string;
 }
 
 
-@doc("A new client was registered dynamically at `/register` (RFC 7591). It is the starting point of the client registration audit trail.")
+@doc("`/register`（RFC 7591）で新しいクライアントを動的に登録した。クライアントの登録の監査証跡の起点である。")
 model ClientRegistered {
   occurredAt: utcDateTime;
-  @doc("The tenant the client belongs to.")
+  @doc("クライアントが属するテナント。")
   tenantId: string;
   clientId: string;
   clientType?: ClientType;
 }
 
 
-@doc("For a client_id in URL form, the Client ID Metadata Document was fetched and verified, and the authorization request went on. Nothing is registered persistently.")
+@doc("URL の形の client_id について、Client ID Metadata Document を取得して検証し、認可リクエストが先へ進んだ。永続的には何も登録しない。")
 model ClientIdMetadataDocumentResolved {
   occurredAt: utcDateTime;
-  @doc("The tenant the authorization request belongs to.")
+  @doc("認可リクエストが属するテナント。")
   tenantId: string;
-  @doc("The URL it was fetched from.")
+  @doc("取得元の URL。")
   clientId: string;
 }
 
 
-@doc("For a client_id in URL form, fetching or verifying the Client ID Metadata Document failed and the request was refused fail-closed.")
+@doc("URL の形の client_id について、Client ID Metadata Document の取得または検証に失敗し、リクエストをフェイルクローズで拒否した。")
 model ClientIdMetadataDocumentRejected {
   occurredAt: utcDateTime;
-  @doc("The tenant the authorization request belongs to.")
+  @doc("認可リクエストが属するテナント。")
   tenantId: string;
-  @doc("The URL it was fetched from.")
+  @doc("取得元の URL。")
   clientId: string;
-  @doc("How the refusal is classified: a failed fetch, malformed JSON, a client_id mismatch, missing `redirect_uris`, an unsupported `token_endpoint_auth_method`, and so on.")
+  @doc("拒否の分類。取得の失敗、形式の誤った JSON、client_id の不一致、`redirect_uris` の欠如、対応しない `token_endpoint_auth_method` などである。")
   reason: string;
 }
 
 
-@doc("An administrator created an OAuth client in their tenant. It carries no secret.")
+@doc("管理者が、自身のテナントに OAuth のクライアントを作成した。シークレットは含まない。")
 model AdminOAuth2ClientCreated {
   occurredAt: utcDateTime;
-  @doc("The tenant the client belongs to. It matches the actor.")
+  @doc("クライアントが属するテナント。操作した主体と一致する。")
   tenantId: string;
   actorUserId: string;
   clientId: string;
 }
 
 
-@doc("An administrator updated the OAuth client metadata.")
+@doc("管理者が OAuth のクライアントのメタデータを更新した。")
 model AdminOAuth2ClientUpdated {
   occurredAt: utcDateTime;
-  @doc("The tenant the client belongs to. It matches the actor.")
+  @doc("クライアントが属するテナント。操作した主体と一致する。")
   tenantId: string;
   actorUserId: string;
   clientId: string;
@@ -1369,17 +1369,17 @@ model AdminOAuth2ClientUpdated {
 }
 
 
-@doc("An administrator deleted an OAuth client from their tenant.")
+@doc("管理者が、自身のテナントから OAuth のクライアントを削除した。")
 model AdminOAuth2ClientDeleted {
   occurredAt: utcDateTime;
-  @doc("The tenant the client belongs to. It matches the actor.")
+  @doc("クライアントが属するテナント。操作した主体と一致する。")
   tenantId: string;
   actorUserId: string;
   clientId: string;
 }
 
 
-@doc("Through the compatibility interface, an administrator rotated or immediately revoked the credential of a secret-based client. Neither the secret nor a hash is in the payload.")
+@doc("管理者が互換のインターフェースで、シークレット方式のクライアントの資格情報をローテーションしたか、即座に失効させた。ペイロードにはシークレットもハッシュも含まない。")
 model ClientSecretRotated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -1390,10 +1390,10 @@ model ClientSecretRotated {
 }
 
 
-@doc("A ResourceOwner consented to a scope for a client. It is the record of obtaining a legal basis under GDPR Article 6.")
+@doc("ResourceOwner が、クライアントに対するスコープに同意した。GDPR 第 6 条の法的根拠を得たことの記録である。")
 model ConsentGranted {
   occurredAt: utcDateTime;
-  @doc("The tenant the consent was given in.")
+  @doc("同意が行われたテナント。")
   tenantId: string;
   userId: string;
   clientId: string;
@@ -1401,31 +1401,31 @@ model ConsentGranted {
 }
 
 
-@doc("A ResourceOwner, or an Administrator of the tenant, withdrew an existing consent, exercising the right to withdraw under GDPR Article 7(3). Further issuance is blocked from then on.")
+@doc("ResourceOwner またはテナントの Administrator が、GDPR 第 7 条 3 項の撤回の権利を行使して、既存の同意を撤回した。以降の発行を止める。")
 model ConsentRevoked {
   occurredAt: utcDateTime;
-  @doc("The tenant the consent belongs to.")
+  @doc("同意が属するテナント。")
   tenantId: string;
-  @doc("The `sub` of the Administrator, when the withdrawal came through the administration API. It may be left out when the ResourceOwner withdrew it themselves.")
+  @doc("撤回が管理 API を通じて行われたときの、Administrator の `sub`。ResourceOwner が自ら撤回したときは省いてよい。")
   actorUserId?: string;
   userId: string;
   clientId: string;
 }
 
 
-@doc("RFC 9396: a client asked for `authorization_details` at `/authorize`, `/par`, or `/token`, and the request passed validation against the registered type.")
+@doc("RFC 9396：クライアントが `/authorize`、`/par`、`/token` で `authorization_details` を求め、リクエストが登録した種類に照らした検証を通った。")
 model AuthorizationDetailsRequested {
   occurredAt: utcDateTime;
   tenantId: string;
   clientId: string;
-  @doc("The `sub` of the principal, when it was already settled at the time of the request.")
+  @doc("リクエストの時点で主体がすでに確定していたときの、その主体の `sub`。")
   userId?: string;
-  @doc("The types of the details requested.")
+  @doc("求めた詳細の種類。")
   detailTypes: string[];
 }
 
 
-@doc("RFC 9396: a ResourceOwner consented to the `authorization_details` presented. It becomes the yardstick for the subset check at issuance and exchange.")
+@doc("RFC 9396：ResourceOwner が、示された `authorization_details` に同意した。発行と交換のときの部分集合の検査の基準になる。")
 model AuthorizationDetailsConsented {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -1435,20 +1435,20 @@ model AuthorizationDetailsConsented {
 }
 
 
-@doc("RFC 9396: the request was refused fail-closed because the `authorization_details` were malformed, named an unregistered type, did not fit the schema, went beyond the consent, or exceeded the downscope.")
+@doc("RFC 9396：`authorization_details` の形式が誤っている、未登録の種類を指定している、スキーマに合わない、同意を超えている、または絞り込みを超えているので、リクエストをフェイルクローズで拒否した。")
 model AuthorizationDetailsRejected {
   occurredAt: utcDateTime;
   tenantId: string;
   clientId: string;
-  @doc("Why it was refused, `invalid_authorization_details` for instance.")
+  @doc("拒否した理由。たとえば `invalid_authorization_details`。")
   reason: string;
 }
 
 
-@doc("An AuthorizationCode was issued as `/authorize` completed. It has to be exchanged at `/token` within 60 seconds.")
+@doc("`/authorize` の完了とともに AuthorizationCode を発行した。60 秒以内に `/token` で交換しなければならない。")
 model AuthorizationCodeIssued {
   occurredAt: utcDateTime;
-  @doc("The tenant the authorization code was issued in.")
+  @doc("認可コードを発行したテナント。")
   tenantId: string;
   clientId: string;
   userId: string;
@@ -1457,20 +1457,20 @@ model AuthorizationCodeIssued {
 }
 
 
-@doc("An AuthorizationCode was exchanged correctly at `/token`. Reusing the same code revokes the family.")
+@doc("AuthorizationCode を `/token` で正しく交換した。同じコードを再び使うと、ファミリーを失効させる。")
 model AuthorizationCodeRedeemed {
   occurredAt: utcDateTime;
-  @doc("The tenant the exchange happened in.")
+  @doc("交換が行われたテナント。")
   tenantId: string;
   clientId: string;
   userId: string;
 }
 
 
-@doc("An access token (a JWT) was issued. When there is a `senderConstraint`, it is bound to a proof of possession through DPoP or mTLS.")
+@doc("アクセストークン（JWT）を発行した。`senderConstraint` があるときは、DPoP または mTLS による所持の証明に結び付く。")
 model AccessTokenIssued {
   occurredAt: utcDateTime;
-  @doc("The tenant the token was issued in.")
+  @doc("トークンを発行したテナント。")
   tenantId: string;
   jti: string;
   clientId: string;
@@ -1480,10 +1480,10 @@ model AccessTokenIssued {
 }
 
 
-@doc("A refresh token was issued. The `familyId` identifies the family descended from the original authorization code and is inherited across rotations.")
+@doc("リフレッシュトークンを発行した。`familyId` は元の認可コードから派生したファミリーを識別し、ローテーションを通じて引き継ぐ。")
 model RefreshTokenIssued {
   occurredAt: utcDateTime;
-  @doc("The tenant the token was issued in.")
+  @doc("トークンを発行したテナント。")
   tenantId: string;
   tokenId: string;
   familyId: string;
@@ -1493,10 +1493,10 @@ model RefreshTokenIssued {
 }
 
 
-@doc("A refresh token was exchanged at `/token`: a new child token was issued and the parent moved to `rotated`.")
+@doc("リフレッシュトークンを `/token` で交換した。新しい子のトークンを発行し、親は `rotated` へ移った。")
 model RefreshTokenRotated {
   occurredAt: utcDateTime;
-  @doc("The tenant the rotation happened in.")
+  @doc("ローテーションが行われたテナント。")
   tenantId: string;
   oldTokenId: string;
   newTokenId: string;
@@ -1504,10 +1504,10 @@ model RefreshTokenRotated {
 }
 
 
-@doc("A token was revoked, by `/revoke` or by an administrative operation (RFC 7009). It carries an audit and an immediacy requirement.")
+@doc("`/revoke` または管理操作によって、トークンを失効させた（RFC 7009）。監査と即時性の要件をともなう。")
 model TokenRevoked {
   occurredAt: utcDateTime;
-  @doc("The tenant the revocation happened in.")
+  @doc("失効が行われたテナント。")
   tenantId: string;
   tokenType: TokenType;
   tokenId: string;
@@ -1515,10 +1515,10 @@ model TokenRevoked {
 }
 
 
-@doc("`/introspect` was called and returned the token's state (RFC 7662). It is used to analyse how resource servers behave.")
+@doc("`/introspect` を呼び出し、トークンの状態を返した（RFC 7662）。リソースサーバーの振る舞いの分析に使う。")
 model TokenIntrospected {
   occurredAt: utcDateTime;
-  @doc("The tenant the introspection happened in.")
+  @doc("イントロスペクションが行われたテナント。")
   tenantId: string;
   rsClientId: string;
   tokenId: string;
@@ -1526,79 +1526,79 @@ model TokenIntrospected {
 }
 
 
-@doc("RFC 8693: a delegated token was issued through a token exchange. `delegationDepth` is how deeply the `act` claims of the issued token nest.")
+@doc("RFC 8693：トークン交換で、委任したトークンを発行した。`delegationDepth` は、発行したトークンの `act` のクレームの入れ子の深さである。")
 model TokenExchanged {
   occurredAt: utcDateTime;
-  @doc("The tenant the token exchange happened in.")
+  @doc("トークン交換が行われたテナント。")
   tenantId: string;
-  @doc("The current actor of the issued token (`act.sub`).")
+  @doc("発行したトークンの現在の操作者（`act.sub`）。")
   actorUserId: string;
-  @doc("The subject of the issued token (`sub`). It keeps the `sub` of the `subject_token`.")
+  @doc("発行したトークンのサブジェクト（`sub`）。`subject_token` の `sub` を保つ。")
   subjectUserId: string;
-  @doc("The `aud` of the issued token, taken from the `resource` parameter.")
+  @doc("発行したトークンの `aud`。`resource` パラメーターから得る。")
   audience: string;
-  @doc("How deeply the `act` claims of the issued token nest.")
+  @doc("発行したトークンの `act` のクレームの入れ子の深さ。")
   delegationDepth: int64;
-  @doc("Maximum delegation depth applied to this decision. The system default applies when the tenant has no override.\nRecording the applied limit makes the decision reproducible from the audit event.")
+  @doc("この判断に適用した委任の最大の深さ。テナントに上書きがないときはシステムのデフォルトを適用する。適用した上限を記録することで、判断を監査イベントから再現できる。")
   maxDelegationDepth: int64;
-  @doc("Delegation mode of the issued token, produced by the same derivation function used for introspection.")
+  @doc("発行したトークンの委任のモード。イントロスペクションと同じ導出の関数が生成する。")
   delegationMode: DelegationMode;
-  @doc("The Agent the exchanging client is bound to, when one is. It makes the actor's kind readable from the event instead of\ninferred, which is what the `actor.type` and `agent.id` audit axes need (REQ-AUDIT-005).")
+  @doc("交換するクライアントが Agent に結び付いているときの、その Agent。操作者の種類を推測ではなくイベントから読めるようにし、監査の `actor.type` と `agent.id` の軸が必要とする（REQ-AUDIT-005）。")
   agentId?: string;
-  @doc("Every principal of the issued token's `act` chain, the current actor first and the subject last, each named once. The\ndepth alone says how far the delegation went but not through whom, so an intermediate actor cannot be found from it; this\nlist is what the `delegation.actor` audit axis searches (REQ-AUDIT-006). These are token subjects, not Agent ids: only the\ncurrent actor's Agent is resolvable at exchange time, and naming that one alone would misplace where in the chain an Agent\nstood. `agentId` answers the Agent-level question instead. Identifiers only -- never a username, per\nResolvableUserEventPayloadPolicy.")
+  @doc("発行したトークンの `act` の連鎖のすべての主体。現在の操作者を先頭に、サブジェクトを最後に、それぞれ一度ずつ並べる。深さだけでは委任がどこまで及んだかは分かっても誰を経由したかは分からず、途中の操作者を見つけられない。このリストが、監査の `delegation.actor` の軸が検索するものである（REQ-AUDIT-006）。これらは Agent の id ではなくトークンのサブジェクトである。交換の時点で解決できるのは現在の操作者の Agent だけで、それだけを示すと、連鎖のどこに Agent がいたかを取り違える。Agent の単位の問いには、代わりに `agentId` が答える。ResolvableUserEventPayloadPolicy に従い、識別子だけを含め、ユーザー名は含めない。")
   actorChain: string[];
 }
 
 
-@doc("RFC 8693: a token exchange request was refused fail-closed, for a policy violation or a failed check.")
+@doc("RFC 8693：ポリシー違反または検査の失敗により、トークン交換のリクエストをフェイルクローズで拒否した。")
 model TokenExchangeRejected {
   occurredAt: utcDateTime;
-  @doc("The tenant the token exchange was refused in.")
+  @doc("トークン交換を拒否したテナント。")
   tenantId: string;
-  @doc("The current actor, when it was known at the time of the refusal. Empty when it was not.")
+  @doc("拒否の時点で分かっていたときの、現在の操作者。分かっていなかったときは空である。")
   actorUserId?: string;
-  @doc("Why it was refused, an OAuth error code for instance.")
+  @doc("拒否した理由。たとえば OAuth のエラーコード。")
   reason: string;
 }
 
 
-@doc("RFC 9728: `/.well-known/oauth-protected-resource` served the metadata of a registered McpResourceServer.")
+@doc("RFC 9728：`/.well-known/oauth-protected-resource` が、登録済みの McpResourceServer のメタデータを返した。")
 model ProtectedResourceMetadataServed {
   occurredAt: utcDateTime;
-  @doc("The tenant the metadata was served for.")
+  @doc("メタデータを返した対象のテナント。")
   tenantId: string;
-  @doc("The resource URI it was served for.")
+  @doc("メタデータを返した対象のリソースの URI。")
   resource: string;
 }
 
 
-@doc("RFC 8707: an access token was issued whose audience is strictly confined to a single McpResourceServer, following the resource indicator. It covers the authorize, PAR, and token (authorization_code) paths. Issuance confined by a resource through a token exchange is expressed by `TokenExchanged.audience`, and this event is not emitted for it.")
+@doc("RFC 8707：リソースインジケーターに従い、オーディエンスを一つの McpResourceServer に厳密に限ったアクセストークンを発行した。authorize、PAR、token（authorization_code）の経路を対象とする。トークン交換でリソースに限った発行は `TokenExchanged.audience` で表し、このイベントは発行しない。")
 model ResourceScopedTokenIssued {
   occurredAt: utcDateTime;
-  @doc("The tenant the token was issued in.")
+  @doc("トークンを発行したテナント。")
   tenantId: string;
   clientId: string;
-  @doc("The resource URI bound to the `aud` of the issued token.")
+  @doc("発行したトークンの `aud` に結び付くリソースの URI。")
   resource: string;
   scopes: string[];
 }
 
 
-@doc("RFC 8707: the request was refused fail-closed because the resource indicator was unregistered, disabled, or given more than once. It covers the authorize, PAR, and token (authorization_code) paths. A refusal during a token exchange is expressed by `TokenExchangeRejected.reason`, and this event is not emitted for it.")
+@doc("RFC 8707：リソースインジケーターが未登録、無効、または複数回指定されていたので、リクエストをフェイルクローズで拒否した。authorize、PAR、token（authorization_code）の経路を対象とする。トークン交換での拒否は `TokenExchangeRejected.reason` で表し、このイベントは発行しない。")
 model ResourceAudienceRejected {
   occurredAt: utcDateTime;
-  @doc("The tenant the refusal happened in.")
+  @doc("拒否が行われたテナント。")
   tenantId: string;
   clientId: string;
-  @doc("Why it was refused, `invalid_target` for instance.")
+  @doc("拒否した理由。たとえば `invalid_target`。")
   reason: string;
 }
 
 
-@doc("A refresh token already in the `rotated` state was presented again. It triggers revocation of the whole family (RFC 9700 section 4.14).")
+@doc("すでに `rotated` の状態のリフレッシュトークンが再び提示された。ファミリー全体の失効を引き起こす（RFC 9700 の 4.14 節）。")
 model RefreshTokenReuseDetected {
   occurredAt: utcDateTime;
-  @doc("The tenant the reuse was detected in.")
+  @doc("再利用を検出したテナント。")
   tenantId: string;
   familyId: string;
   tokenId: string;
@@ -1606,65 +1606,65 @@ model RefreshTokenReuseDetected {
 }
 
 
-@doc("The authorize parameters that arrived at `/par` were stored server-side and a short-lived `request_uri` was issued (RFC 9126).")
+@doc("`/par` に届いた authorize のパラメーターをサーバー側に保存し、短命の `request_uri` を発行した（RFC 9126）。")
 model PARStored {
   occurredAt: utcDateTime;
-  @doc("The tenant the PAR was accepted in.")
+  @doc("PAR を受け付けたテナント。")
   tenantId: string;
   requestUri: string;
   clientId: string;
 }
 
 
-@doc("RFC 8628 section 3.1: a `device_code` and a `user_code` were issued. The `user_code` does not reach the audit log.")
+@doc("RFC 8628 の 3.1 節：`device_code` と `user_code` を発行した。`user_code` は監査ログに届かない。")
 model DeviceAuthorizationRequested {
   occurredAt: utcDateTime;
-  @doc("The tenant the device authorization was accepted in.")
+  @doc("デバイス認可を受け付けたテナント。")
   tenantId: string;
   clientId: string;
   scopes: string[];
 }
 
 
-@doc("RFC 8628 section 3.3: the user approved.")
+@doc("RFC 8628 の 3.3 節：ユーザーが承認した。")
 model DeviceAuthorizationApproved {
   occurredAt: utcDateTime;
-  @doc("The tenant the approval happened in.")
+  @doc("承認が行われたテナント。")
   tenantId: string;
   clientId: string;
   userId: string;
 }
 
 
-@doc("RFC 8628 section 3.3: the user refused, or kept entering the wrong `user_code`.")
+@doc("RFC 8628 の 3.3 節：ユーザーが拒否したか、誤った `user_code` を入力し続けた。")
 model DeviceAuthorizationDenied {
   occurredAt: utcDateTime;
-  @doc("The tenant the refusal happened in.")
+  @doc("拒否が行われたテナント。")
   tenantId: string;
   clientId: string;
   userId?: string;
 }
 
 
-@doc("Issuance was refused fail-closed because the Agent's kind requires a human approval that this path does not record (REQ-OAUTH2-050). It covers `client_credentials`, token exchange, and the workload identity federation exchange; the approval-bearing path is CIBA, whose outcome is expressed by BackchannelAuthApproved instead. Carrying the kind that was read makes the decision reproducible from the audit event alone, without resolving the Agent again.")
+@doc("Agent の種類が、この経路が記録しない人の承認を求めるので、発行をフェイルクローズで拒否した（REQ-OAUTH2-050）。`client_credentials`、トークン交換、ワークロード ID フェデレーションの交換を対象とする。承認をともなう経路は CIBA で、その結果は代わりに BackchannelAuthApproved で表す。読んだ種類を含めることで、Agent を再び解決せずに、監査イベントだけから判断を再現できる。")
 model AgentApprovalRequired {
   occurredAt: utcDateTime;
-  @doc("The tenant the refusal happened in.")
+  @doc("拒否が行われたテナント。")
   tenantId: string;
   agentId: string;
-  @doc("The client the Agent is bound to and authenticated as.")
+  @doc("Agent が結び付き、認証に使ったクライアント。")
   clientId: string;
-  @doc("The kind the decision was taken on. A value outside AgentKind is recorded as read, since it is exactly the case the fail-closed rule exists for.")
+  @doc("判断に使った種類。AgentKind の外の値も読んだまま記録する。それこそがフェイルクローズの規則が対象とする場合だからである。")
   kind: string;
-  @doc("The grant type the refused request asked for, `client_credentials` for instance.")
+  @doc("拒否したリクエストが求めたグラントの種類。たとえば `client_credentials`。")
   grantType: string;
 }
 
 
-@doc("CIBA Core section 7.3: an approval request was raised for a human to settle. The `auth_req_id` is a bearer secret and does not reach the audit log.")
+@doc("CIBA Core の 7.3 節：人が確定する承認のリクエストを起こした。`auth_req_id` は bearer のシークレットで、監査ログに届かない。")
 model BackchannelAuthRequested {
   occurredAt: utcDateTime;
-  @doc("The tenant the approval request was accepted in.")
+  @doc("承認のリクエストを受け付けたテナント。")
   tenantId: string;
   approvalRequestId: string;
   clientId: string;
@@ -1674,23 +1674,23 @@ model BackchannelAuthRequested {
 }
 
 
-@doc("CIBA Core section 7.3: the User being asked approved the request.")
+@doc("CIBA Core の 7.3 節：問い合わせを受けた User がリクエストを承認した。")
 model BackchannelAuthApproved {
   occurredAt: utcDateTime;
-  @doc("The tenant the approval happened in.")
+  @doc("承認が行われたテナント。")
   tenantId: string;
   approvalRequestId: string;
   clientId: string;
-  @doc("The Agent the approval was raised for, when the requesting client is bound to one. It is what makes a `supervised` Agent's issuance traceable to the human who permitted it (REQ-OAUTH2-050).")
+  @doc("求めたクライアントが Agent に結び付いているときの、承認の対象の Agent。`supervised` の Agent の発行を、それを許した人へたどれるようにする（REQ-OAUTH2-050）。")
   agentId?: string;
   userId: string;
 }
 
 
-@doc("CIBA Core section 7.3: the User being asked refused the request.")
+@doc("CIBA Core の 7.3 節：問い合わせを受けた User がリクエストを拒否した。")
 model BackchannelAuthDenied {
   occurredAt: utcDateTime;
-  @doc("The tenant the refusal happened in.")
+  @doc("拒否が行われたテナント。")
   tenantId: string;
   approvalRequestId: string;
   clientId: string;
@@ -1698,10 +1698,10 @@ model BackchannelAuthDenied {
 }
 
 
-@doc("CIBA Core section 11: an approval request reached its expiry without being decided.")
+@doc("CIBA Core の 11 節：承認のリクエストが判断されないまま期限に達した。")
 model BackchannelAuthExpired {
   occurredAt: utcDateTime;
-  @doc("The tenant the expiry happened in.")
+  @doc("期限切れが起きたテナント。")
   tenantId: string;
   approvalRequestId: string;
   clientId: string;
@@ -1709,159 +1709,159 @@ model BackchannelAuthExpired {
 }
 
 
-@doc("The lifecycle event consuming an approval request, once, into approved tokens.")
+@doc("承認のリクエストを、承認済みのトークンへ一度だけ使うライフサイクルのイベント。")
 model Consume {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event validating an authorization request.")
+@doc("認可リクエストを検証するライフサイクルのイベント。")
 model Validate {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event moving the lifecycle to its refusing terminal state.")
+@doc("ライフサイクルを拒否の終端の状態へ移すイベント。")
 model Reject {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event where resource owner authentication succeeded.")
+@doc("リソースオーナーの認証が成功したイベント。")
 model AuthenticateUser {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event asking the resource owner for consent.")
+@doc("リソースオーナーに同意を求めるイベント。")
 model RequestConsent {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event where the resource owner consented.")
+@doc("リソースオーナーが同意したイベント。")
 model GrantConsent {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event issuing an authorization code.")
+@doc("認可コードを発行するライフサイクルのイベント。")
 model IssueCode {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event redeeming an authorization code, once.")
+@doc("認可コードを一度だけ引き換えるライフサイクルのイベント。")
 model RedeemCode {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event standing for reaching the expiry.")
+@doc("期限に達したことを表すライフサイクルのイベント。")
 model Expire {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event where a device user code was entered.")
+@doc("デバイスのユーザーコードが入力されたイベント。")
 model EnterUserCode {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event where a device authorization was approved.")
+@doc("デバイス認可が承認されたイベント。")
 model Approve {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event where a device authorization was refused.")
+@doc("デバイス認可が拒否されたイベント。")
 model Deny {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event where a device code was exchanged for tokens.")
+@doc("デバイスコードをトークンと交換したイベント。")
 model Exchange {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The event rotating a refresh token into a child token.")
+@doc("リフレッシュトークンを子のトークンへローテーションするイベント。")
 model Rotate {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event revoking a token.")
+@doc("トークンを失効させるライフサイクルのイベント。")
 model RevokeToken {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event withdrawing a consent logically.")
+@doc("同意を論理的に撤回するライフサイクルのイベント。")
 model RevokeConsent {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event consuming a PAR `request_uri`, once.")
+@doc("PAR の `request_uri` を一度だけ使うライフサイクルのイベント。")
 model Use {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event where a LogoutNotification was delivered successfully.")
+@doc("LogoutNotification の配送に成功したライフサイクルのイベント。")
 model Deliver {
   occurredAt: utcDateTime;
 }
 
 
-@doc("The lifecycle event where a LogoutNotification reached `max_attempts` and settled as a dead letter.")
+@doc("LogoutNotification が `max_attempts` に達し、デッドレターとして確定したライフサイクルのイベント。")
 model Exhaust {
   occurredAt: utcDateTime;
 }
 
 
-@doc("One administrative role and the permissions it carries, as ListAdminRolePolicies reports them. The catalogue is derived from the compiled contract, so it always matches the operations the server actually exposes.")
+@doc("ListAdminRolePolicies が報告する、一つの管理用のロールとそれが含む権限。一覧はコンパイルした契約から導くので、サーバーが実際に公開する操作と常に一致する。")
 model AdminRolePolicy {
-  @doc("Role name, the value that appears in a User's `roles`.")
+  @doc("ロールの名前。User の `roles` に現れる値である。")
   name: string;
-  @doc("What the role is for. Always English and never localized.")
+  @doc("ロールの用途。常に英語で、ローカライズしない。")
   description: string;
-  @doc("Other names that resolve to the same role.")
+  @doc("同じロールへ解決する別名。")
   aliases: string[];
   permissions: AdminRolePermission[];
 }
 
 
-@doc("One permission a role carries, together with the HTTP interfaces the permission unlocks.")
+@doc("ロールが含む一つの権限と、その権限が開く HTTP のインターフェース。")
 model AdminRolePermission {
-  @doc("Permission name.")
+  @doc("権限の名前。")
   name: string;
-  @doc("The action the permission allows, such as `read` or `write`.")
+  @doc("権限が許す操作。`read` や `write` など。")
   action: string;
-  @doc("What the permission allows. Always English and never localized.")
+  @doc("権限が許すことの説明。常に英語で、ローカライズしない。")
   description: string;
   interfaces: AdminRoleInterface[];
 }
 
 
-@doc("One HTTP interface a permission unlocks, identified the same way the compiled contract identifies it.")
+@doc("権限が開く一つの HTTP のインターフェース。コンパイルした契約と同じ方法で識別する。")
 model AdminRoleInterface {
-  @doc("Operation id, as declared by `@TypeSpec.OpenAPI.operationId`.")
+  @doc("`@TypeSpec.OpenAPI.operationId` で宣言した操作の id。")
   name: string;
-  @doc("HTTP method.")
+  @doc("HTTP のメソッド。")
   method: string;
-  @doc("Route template.")
+  @doc("経路のテンプレート。")
   path: string;
 }
 
 
-@doc("The client information response of Dynamic Client Registration (RFC 7591 section 3.2.1). It repeats the registered metadata as the server stored it, and carries `client_secret` exactly once, at registration, for a confidential client.")
+@doc("Dynamic Client Registration のクライアント情報のレスポンス（RFC 7591 の 3.2.1 節）。登録したメタデータをサーバーが保存したとおりに繰り返し、confidential のクライアントでは登録時にちょうど一度だけ `client_secret` を含む。")
 model ClientRegistrationResponse {
   client_id: string;
-  @doc("Returned only for a confidential client, and only in this response. It cannot be read back afterwards.")
+  @doc("confidential のクライアントで、このレスポンスでだけ返す。後から読み直すことはできない。")
   client_secret?: string;
   client_type: ClientType;
   redirect_uris: url[];
@@ -1869,16 +1869,16 @@ model ClientRegistrationResponse {
   response_types: ResponseType[];
   token_endpoint_auth_method: TokenEndpointAuthMethod;
   scope: string;
-  @doc("Whether the client must use pushed authorization requests (RFC 9126).")
+  @doc("クライアントがプッシュ型の認可リクエスト（RFC 9126）を使わなければならないかどうか。")
   require_pushed_authorization_requests: boolean;
-  @doc("Whether the access tokens issued to this client are DPoP-bound (RFC 9449).")
+  @doc("このクライアントに発行するアクセストークンを DPoP に結び付けるかどうか（RFC 9449）。")
   dpop_bound_access_tokens: boolean;
   fapi_profile: FapiProfile;
-  @doc("Echoed back only when the registration supplied an inline JWK Set.")
+  @doc("登録がインラインの JWK Set を与えたときだけ繰り返す。")
   jwks?: JWKS;
-  @doc("Echoed back only when the registration supplied a JWKS URL.")
+  @doc("登録が JWKS の URL を与えたときだけ繰り返す。")
   jwks_uri?: url;
-  @doc("Echoed back only for `tls_client_auth` (RFC 8705 section 2.1).")
+  @doc("`tls_client_auth`（RFC 8705 の 2.1 節）のときだけ繰り返す。")
   tls_client_auth_subject_dn?: string;
   backchannel_logout_uri?: url;
   backchannel_logout_session_required: boolean;
@@ -1887,23 +1887,23 @@ model ClientRegistrationResponse {
 }
 
 
-@doc("No OAuth 2.0 client exists with the `client_id` given in this tenant. A client of another tenant is treated as nonexistent and answered the same way, so an id alone cannot confirm a client in a tenant the caller cannot see. RFC 9457 Problem Details with `type` = `urn:idmagic:error:client_not_found`.")
+@doc("このテナントに、指定した `client_id` の OAuth 2.0 のクライアントが存在しない。他のテナントのクライアントは存在しないものとして扱い、同じように答えるので、呼び出し元が見られないテナントのクライアントの存在を id だけで確かめることはできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:client_not_found` である。")
 model OAuth2ClientNotFoundError is ProblemDetails;
 
 
-@doc("The `authorization_details` type named by the request is not registered in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:type_not_found`.")
+@doc("リクエストが指定した `authorization_details` の種類は、このテナントに登録されていない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:type_not_found` である。")
 model AuthorizationDetailTypeNotFoundError is ProblemDetails;
 
 
-@doc("An `authorization_details` type of the same name is already registered in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:type_exists`.")
+@doc("同じ名前の `authorization_details` の種類が、このテナントにすでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:type_exists` である。")
 model AuthorizationDetailTypeExistsError is ProblemDetails;
 
 
-@doc("The MCP resource server named by the request does not exist in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:resource_server_not_found`.")
+@doc("リクエストが指定した MCP のリソースサーバーが、このテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:resource_server_not_found` である。")
 model McpResourceServerNotFoundError is ProblemDetails;
 
 
-@doc("The same `resource` is already registered as an MCP resource server in this tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:resource_exists`.")
+@doc("同じ `resource` が、このテナントの MCP のリソースサーバーとしてすでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:resource_exists` である。")
 model McpResourceServerExistsError is ProblemDetails;
 
 }
