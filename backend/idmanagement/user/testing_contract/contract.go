@@ -224,6 +224,180 @@ func runUserRepository(t *testing.T, newFixture NewFixture) {
 			t.Fatalf("FindByUsername after rename = (%+v, %v), want STRASSE", got, err)
 		}
 	})
+
+	// ユーザー名の一意性は削除済みの User を数えない。Tombstone を保存し直しても、
+	// 同じユーザー名を再利用している有効な User を押しのけない。
+	t.Run("deleted user saves again while an active user reuses its username", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		tombstone := user(t, f.TenantA, "reused", f.Now)
+		tombstone.Lifecycle.Status = idmdomain.UserStatusDeleted
+		if err := f.Users.Save(ctx, tombstone); err != nil {
+			t.Fatalf("Save tombstone: %v", err)
+		}
+		reuser := user(t, f.TenantA, "reused", f.Now)
+		if err := f.Users.Save(ctx, reuser); err != nil {
+			t.Fatalf("Save active user reusing the username: %v", err)
+		}
+		tombstone.UpdatedAt = f.Now.Add(time.Minute)
+		if err := f.Users.Save(ctx, tombstone); err != nil {
+			t.Fatalf("Save tombstone again: %v", err)
+		}
+		if got, err := f.Users.FindByUsername(ctx, f.TenantA, "reused"); err != nil || got == nil || got.ID != reuser.ID {
+			t.Fatalf("FindByUsername = (%+v, %v), want the active user %s", got, err, reuser.ID)
+		}
+	})
+
+	// 保存内容を変えられるのは Save だけである。読み取りの返り値と Save の引数は、
+	// 呼び出し側が後から書き換えても保存内容と共有しない。
+	t.Run("returned and saved users do not alias stored state", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		stored := aliasProbeUser(t, f.TenantA, f.Now)
+		if err := f.Users.Save(ctx, stored); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		mutateUser(stored)
+		assertAliasProbeUnchanged(t, f.Users, stored.ID, "after mutating the Save argument")
+
+		active := idmdomain.UserStatusActive
+		readers := map[string]func() ([]*userdomain.User, error){
+			"FindBySub":                 func() ([]*userdomain.User, error) { return one(f.Users.FindBySub(ctx, stored.ID)) },
+			"FindBySubIncludingDeleted": func() ([]*userdomain.User, error) { return one(f.Users.FindBySubIncludingDeleted(ctx, stored.ID)) },
+			"FindByUsername":            func() ([]*userdomain.User, error) { return one(f.Users.FindByUsername(ctx, f.TenantA, "probe")) },
+			"FindByEmail": func() ([]*userdomain.User, error) {
+				return one(f.Users.FindByEmail(ctx, f.TenantA, "probe@example.com"))
+			},
+			"FindAll":        func() ([]*userdomain.User, error) { return f.Users.FindAll(ctx, f.TenantA) },
+			"ListPage":       func() ([]*userdomain.User, error) { return f.Users.ListPage(ctx, f.TenantA, "", "", 10) },
+			"ListPageBefore": func() ([]*userdomain.User, error) { return f.Users.ListPageBefore(ctx, f.TenantA, "", "", 10) },
+			"ListPageFiltered": func() ([]*userdomain.User, error) {
+				return f.Users.ListPageFiltered(ctx, f.TenantA, "", &active, "", "", 10)
+			},
+			"ListPageBeforeFiltered": func() ([]*userdomain.User, error) {
+				return f.Users.ListPageBeforeFiltered(ctx, f.TenantA, "", &active, "", "", 10)
+			},
+		}
+		for name, read := range readers {
+			got, err := read()
+			if err != nil || len(got) != 1 {
+				t.Fatalf("%s = (%+v, %v), want the stored user", name, got, err)
+			}
+			mutateUser(got[0])
+			assertAliasProbeUnchanged(t, f.Users, stored.ID, "after mutating the result of "+name)
+		}
+	})
+
+	// 既存の User を保存し直しても、作成時刻と所属テナントは最初に保存した値のまま残る。
+	t.Run("resave keeps the first created_at and tenant", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		stored := user(t, f.TenantA, "resaved", f.Now)
+		if err := f.Users.Save(ctx, stored); err != nil {
+			t.Fatalf("first Save: %v", err)
+		}
+		later := f.Now.Add(time.Hour)
+		resaved := *stored
+		resaved.TenantID = f.TenantB
+		resaved.CreatedAt = later
+		resaved.UpdatedAt = later
+		if err := f.Users.Save(ctx, &resaved); err != nil {
+			t.Fatalf("second Save: %v", err)
+		}
+		got, err := f.Users.FindBySub(ctx, stored.ID)
+		if err != nil || got == nil {
+			t.Fatalf("FindBySub = (%+v, %v), want the stored user", got, err)
+		}
+		if got.TenantID != f.TenantA || !got.CreatedAt.Equal(f.Now) || !got.UpdatedAt.Equal(later) {
+			t.Fatalf("resaved user tenant=%s created_at=%s updated_at=%s, want tenant=%s created_at=%s updated_at=%s",
+				got.TenantID, got.CreatedAt, got.UpdatedAt, f.TenantA, f.Now, later)
+		}
+	})
+
+	// 状態が未設定の User は active として扱う (REQ-IDMANAGEMENT-005 の status による絞り込み)。
+	t.Run("unset status filters as active", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		unset := user(t, f.TenantA, "unset", f.Now)
+		unset.Lifecycle.Status = ""
+		if err := f.Users.Save(ctx, unset); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		active := idmdomain.UserStatusActive
+		if page, err := f.Users.ListPageFiltered(ctx, f.TenantA, "", &active, "", "", 10); err != nil || len(page) != 1 || page[0].ID != unset.ID {
+			t.Fatalf("ListPageFiltered(active) = (%+v, %v), want the user without a status", page, err)
+		}
+		if page, err := f.Users.ListPageBeforeFiltered(ctx, f.TenantA, "", &active, "", "", 10); err != nil || len(page) != 1 || page[0].ID != unset.ID {
+			t.Fatalf("ListPageBeforeFiltered(active) = (%+v, %v), want the user without a status", page, err)
+		}
+		if count, err := f.Users.CountFiltered(ctx, f.TenantA, "", &active); err != nil || count != 1 {
+			t.Fatalf("CountFiltered(active) = (%d, %v), want 1", count, err)
+		}
+	})
+
+	// 保存した時刻は、PostgreSQL の TIMESTAMPTZ と同じマイクロ秒に切り捨てて読み戻る。
+	t.Run("timestamps read back truncated to microseconds", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		precise := f.Now.Add(789 * time.Nanosecond)
+		stored := user(t, f.TenantA, "precise", precise)
+		if err := f.Users.Save(ctx, stored); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		got, err := f.Users.FindBySub(ctx, stored.ID)
+		if err != nil || got == nil {
+			t.Fatalf("FindBySub = (%+v, %v), want the stored user", got, err)
+		}
+		if !got.CreatedAt.Equal(f.Now) || !got.UpdatedAt.Equal(f.Now) {
+			t.Fatalf("created_at=%s updated_at=%s, want both %s", got.CreatedAt, got.UpdatedAt, f.Now)
+		}
+	})
+}
+
+func one(u *userdomain.User, err error) ([]*userdomain.User, error) {
+	if u == nil {
+		return nil, err
+	}
+	return []*userdomain.User{u}, err
+}
+
+// aliasProbeUser は、書き換えると共有が観測できる参照型のフィールドをすべて埋めた User を作る。
+func aliasProbeUser(t *testing.T, tenantID string, now time.Time) *userdomain.User {
+	t.Helper()
+	probe := user(t, tenantID, "probe", now)
+	probe.Name = new("Probe")
+	probe.Lifecycle.RequiredActions = []idmdomain.RequiredAction{idmdomain.RequiredActionVerifyEmail}
+	probe.Lifecycle.LastLoginAt = new(now)
+	probe.Attributes = map[string]userdomain.AttributeValue{
+		"teams": {Type: idmdomain.AttributeTypeStringArray, StringArray: []string{"blue"}},
+	}
+	return probe
+}
+
+func mutateUser(u *userdomain.User) {
+	u.PreferredUsername = "mutated"
+	*u.Name = "mutated"
+	*u.Email = "mutated@example.com"
+	u.Roles[0] = "mutated"
+	u.Lifecycle.RequiredActions[0] = idmdomain.RequiredActionUpdatePassword
+	*u.Lifecycle.LastLoginAt = u.Lifecycle.LastLoginAt.Add(time.Hour)
+	u.Attributes["teams"].StringArray[0] = "mutated"
+	u.Attributes["added"] = userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: new("mutated")}
+}
+
+func assertAliasProbeUnchanged(t *testing.T, users userports.UserRepository, id, when string) {
+	t.Helper()
+	got, err := users.FindBySub(context.Background(), id)
+	if err != nil || got == nil {
+		t.Fatalf("FindBySub %s = (%+v, %v), want the stored user", when, got, err)
+	}
+	if got.PreferredUsername != "probe" || got.Name == nil || *got.Name != "Probe" ||
+		got.Email == nil || *got.Email != "probe@example.com" || !slices.Equal(got.Roles, []string{"reader"}) ||
+		!slices.Equal(got.Lifecycle.RequiredActions, []idmdomain.RequiredAction{idmdomain.RequiredActionVerifyEmail}) ||
+		got.Lifecycle.LastLoginAt == nil || !got.Lifecycle.LastLoginAt.Equal(got.CreatedAt) ||
+		len(got.Attributes) != 1 || !slices.Equal(got.Attributes["teams"].StringArray, []string{"blue"}) {
+		t.Fatalf("stored user changed %s: %+v", when, got)
+	}
 }
 
 func envelope(t *testing.T, subject, email string, now time.Time) actiontoken.Envelope {
@@ -312,6 +486,42 @@ func runEmailChangeTokens(t *testing.T, newFixture NewFixture) {
 		stored, err := f.Users.FindBySub(ctx, f.EmailUser.ID)
 		if err != nil || stored == nil || stored.Email == nil || *stored.Email != "new@example.com" {
 			t.Fatalf("committed user = (%+v, %v)", stored, err)
+		}
+	})
+
+	// ペイロードの map は、保存した側と読んだ側のどちらが書き換えても保存内容と共有しない。
+	t.Run("payload does not alias stored token", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		issued := envelope(t, f.EmailUser.ID, "new@example.com", f.Now)
+		if err := f.EmailTokens.Save(ctx, issued); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		issued.Payload[userports.PayloadKeyNewEmail] = "saved-side@example.com"
+		found, err := f.EmailTokens.Find(ctx, issued.Digest)
+		if err != nil || found == nil || found.Payload[userports.PayloadKeyNewEmail] != "new@example.com" {
+			t.Fatalf("Find after mutating the Save argument = (%+v, %v), want new@example.com", found, err)
+		}
+		found.Payload[userports.PayloadKeyNewEmail] = "read-side@example.com"
+		again, err := f.EmailTokens.Find(ctx, issued.Digest)
+		if err != nil || again == nil || again.Payload[userports.PayloadKeyNewEmail] != "new@example.com" {
+			t.Fatalf("Find after mutating a result = (%+v, %v), want new@example.com", again, err)
+		}
+	})
+
+	t.Run("timestamps read back truncated to microseconds", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		issued := envelope(t, f.EmailUser.ID, "new@example.com", f.Now.Add(789*time.Nanosecond))
+		if err := f.EmailTokens.Save(ctx, issued); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		found, err := f.EmailTokens.Find(ctx, issued.Digest)
+		if err != nil || found == nil {
+			t.Fatalf("Find = (%+v, %v), want the stored token", found, err)
+		}
+		if !found.IssuedAt.Equal(f.Now) || !found.ExpiresAt.Equal(f.Now.Add(time.Hour)) {
+			t.Fatalf("issued_at=%s expires_at=%s, want %s and %s", found.IssuedAt, found.ExpiresAt, f.Now, f.Now.Add(time.Hour))
 		}
 	})
 

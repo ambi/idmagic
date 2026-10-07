@@ -28,7 +28,7 @@ const countUsersByTenantFiltered = `-- name: CountUsersByTenantFiltered :one
 SELECT count(*) FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
-  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND ($3::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = $3::text)
 `
 
 type CountUsersByTenantFilteredParams struct {
@@ -399,7 +399,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
-  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND ($3::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = $3::text)
   AND (preferred_username, id) > ($4::text, $5::uuid)
 ORDER BY preferred_username, id
 LIMIT $6
@@ -525,7 +525,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
-  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND ($3::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = $3::text)
   AND (preferred_username, id) < ($4::text, $5::uuid)
 ORDER BY preferred_username DESC, id DESC
 LIMIT $6
@@ -643,7 +643,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
-  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND ($3::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = $3::text)
 ORDER BY preferred_username DESC, id DESC
 LIMIT $4
 `
@@ -704,7 +704,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
-  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND ($3::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = $3::text)
 ORDER BY preferred_username, id
 LIMIT $4
 `

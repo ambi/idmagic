@@ -82,7 +82,7 @@ func TestUserSearchQueryPlanUsesTenantAndTrigramIndex(t *testing.T) {
 		SELECT count(*) FROM users
 		WHERE tenant_id=$1
 		  AND lifecycle->>'status' IS DISTINCT FROM 'deleted'
-		  AND coalesce(lifecycle->>'status', 'active')='disabled'`, tenant.ID)
+		  AND coalesce(nullif(lifecycle->>'status', ''), 'active')='disabled'`, tenant.ID)
 	if err != nil {
 		t.Fatalf("explain exact status count: %v", err)
 	}

@@ -50,7 +50,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (sqlc.arg(filter_query)::text = '' OR search_text ILIKE '%' || lower(sqlc.arg(filter_query)::text) || '%' ESCAPE '\')
-  AND (sqlc.arg(filter_status)::text = '' OR coalesce(lifecycle->>'status', 'active') = sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_status)::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = sqlc.arg(filter_status)::text)
 ORDER BY preferred_username, id
 LIMIT sqlc.arg(page_limit);
 
@@ -59,7 +59,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (sqlc.arg(filter_query)::text = '' OR search_text ILIKE '%' || lower(sqlc.arg(filter_query)::text) || '%' ESCAPE '\')
-  AND (sqlc.arg(filter_status)::text = '' OR coalesce(lifecycle->>'status', 'active') = sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_status)::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = sqlc.arg(filter_status)::text)
   AND (preferred_username, id) > (sqlc.arg(after_username)::text, sqlc.arg(after_id)::uuid)
 ORDER BY preferred_username, id
 LIMIT sqlc.arg(page_limit);
@@ -69,7 +69,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (sqlc.arg(filter_query)::text = '' OR search_text ILIKE '%' || lower(sqlc.arg(filter_query)::text) || '%' ESCAPE '\')
-  AND (sqlc.arg(filter_status)::text = '' OR coalesce(lifecycle->>'status', 'active') = sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_status)::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = sqlc.arg(filter_status)::text)
   AND (preferred_username, id) < (sqlc.arg(before_username)::text, sqlc.arg(before_id)::uuid)
 ORDER BY preferred_username DESC, id DESC
 LIMIT sqlc.arg(page_limit);
@@ -94,7 +94,7 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (sqlc.arg(filter_query)::text = '' OR search_text ILIKE '%' || lower(sqlc.arg(filter_query)::text) || '%' ESCAPE '\')
-  AND (sqlc.arg(filter_status)::text = '' OR coalesce(lifecycle->>'status', 'active') = sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_status)::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = sqlc.arg(filter_status)::text)
 ORDER BY preferred_username DESC, id DESC
 LIMIT sqlc.arg(page_limit);
 
@@ -114,7 +114,7 @@ WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted');
 SELECT count(*) FROM users
 WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (sqlc.arg(filter_query)::text = '' OR search_text ILIKE '%' || lower(sqlc.arg(filter_query)::text) || '%' ESCAPE '\')
-  AND (sqlc.arg(filter_status)::text = '' OR coalesce(lifecycle->>'status', 'active') = sqlc.arg(filter_status)::text);
+  AND (sqlc.arg(filter_status)::text = '' OR coalesce(nullif(lifecycle->>'status', ''), 'active') = sqlc.arg(filter_status)::text);
 
 -- name: SaveUser :exec
 INSERT INTO users (id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -32,23 +33,43 @@ func (r *UserRepository) Seed(u *userdomain.User) {
 	_ = r.Save(context.Background(), u)
 }
 
+// Save は PostgreSQL の SaveUser と同じ結果を保存する。保存するのは引数の複製であり、
+// 時刻の列は TIMESTAMPTZ と同じマイクロ秒に切り捨て、保存し直しでは作成時刻と所属テナントを
+// 最初の値のまま保つ。
 func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
+	sharedmem.DefaultTenant(&u.TenantID)
+	stored := cloneUser(u)
+	stored.CreatedAt = stored.CreatedAt.Truncate(time.Microsecond)
+	stored.UpdatedAt = stored.UpdatedAt.Truncate(time.Microsecond)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	sharedmem.DefaultTenant(&u.TenantID)
-	usernameKey := sharedmem.TenantKey(u.TenantID, idmdomain.NameKey(u.PreferredUsername))
-	if conflicting := r.byUser[usernameKey]; conflicting != nil &&
-		conflicting.ID != u.ID && !conflicting.IsDeleted() {
+	existing := r.bySub[stored.ID]
+	if existing != nil {
+		stored.TenantID = existing.TenantID
+		stored.CreatedAt = existing.CreatedAt
+	}
+	// ユーザー名の一意性は、PostgreSQL の部分一意索引と同じく削除済みの User を数えない。
+	// 削除済みの User は、同じ名前を使う有効な User から索引を奪わない。
+	usernameKey := userNameKey(stored)
+	holder := r.byUser[usernameKey]
+	nameIsFree := holder == nil || holder.ID == stored.ID || holder.IsDeleted()
+	if !nameIsFree && !stored.IsDeleted() {
 		return errPreferredUsernameExists
 	}
-	if existing := r.bySub[u.ID]; existing != nil {
-		if previousKey := sharedmem.TenantKey(existing.TenantID, idmdomain.NameKey(existing.PreferredUsername)); previousKey != usernameKey {
+	if existing != nil {
+		if previousKey := userNameKey(existing); previousKey != usernameKey && r.byUser[previousKey] == existing {
 			delete(r.byUser, previousKey)
 		}
 	}
-	r.bySub[u.ID] = u
-	r.byUser[usernameKey] = u
+	r.bySub[stored.ID] = stored
+	if nameIsFree {
+		r.byUser[usernameKey] = stored
+	}
 	return nil
+}
+
+func userNameKey(u *userdomain.User) string {
+	return sharedmem.TenantKey(u.TenantID, idmdomain.NameKey(u.PreferredUsername))
 }
 
 func (r *UserRepository) FindBySub(_ context.Context, sub string) (*userdomain.User, error) {
@@ -58,13 +79,16 @@ func (r *UserRepository) FindBySub(_ context.Context, sub string) (*userdomain.U
 	if user == nil || user.IsDeleted() {
 		return nil, nil
 	}
-	return user, nil
+	return cloneUser(user), nil
 }
 
 func (r *UserRepository) FindBySubIncludingDeleted(_ context.Context, sub string) (*userdomain.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.bySub[sub], nil
+	if user := r.bySub[sub]; user != nil {
+		return cloneUser(user), nil
+	}
+	return nil, nil
 }
 
 func (r *UserRepository) FindByUsername(_ context.Context, tenantID, username string) (*userdomain.User, error) {
@@ -74,7 +98,7 @@ func (r *UserRepository) FindByUsername(_ context.Context, tenantID, username st
 	if user == nil || user.IsDeleted() {
 		return nil, nil
 	}
-	return user, nil
+	return cloneUser(user), nil
 }
 
 func (r *UserRepository) FindByEmail(_ context.Context, tenantID, email string) (*userdomain.User, error) {
@@ -88,7 +112,7 @@ func (r *UserRepository) FindByEmail(_ context.Context, tenantID, email string) 
 			continue
 		}
 		if user.TenantID == tenantID && user.Email != nil && idmdomain.EmailKey(*user.Email) == idmdomain.EmailKey(email) {
-			return user, nil
+			return cloneUser(user), nil
 		}
 	}
 	return nil, nil
@@ -106,7 +130,7 @@ func (r *UserRepository) FindAll(_ context.Context, tenantID string) ([]*userdom
 	slices.SortFunc(out, func(a, b *userdomain.User) int {
 		return strings.Compare(a.PreferredUsername, b.PreferredUsername)
 	})
-	return out, nil
+	return cloneUsers(out), nil
 }
 
 func (r *UserRepository) ListPurgeCandidates(_ context.Context, tenantID string) ([]*userdomain.User, error) {
@@ -122,7 +146,7 @@ func (r *UserRepository) ListPurgeCandidates(_ context.Context, tenantID string)
 		}
 	}
 	slices.SortFunc(out, func(a, b *userdomain.User) int { return strings.Compare(a.ID, b.ID) })
-	return out, nil
+	return cloneUsers(out), nil
 }
 
 // ListPage implements ports.UserRepository.ListPage (wi-159): keyset
@@ -138,7 +162,7 @@ func (r *UserRepository) ListPage(_ context.Context, tenantID, afterUsername, af
 		}
 	}
 	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
-	return sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit), nil
+	return cloneUsers(sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit)), nil
 }
 
 func (r *UserRepository) ListPageBefore(_ context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
@@ -151,7 +175,7 @@ func (r *UserRepository) ListPageBefore(_ context.Context, tenantID, beforeUsern
 		}
 	}
 	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
-	return sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit), nil
+	return cloneUsers(sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit)), nil
 }
 
 func (r *UserRepository) ListPageFiltered(_ context.Context, tenantID, query string, status *idmdomain.UserStatus, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {
@@ -159,7 +183,7 @@ func (r *UserRepository) ListPageFiltered(_ context.Context, tenantID, query str
 	defer r.mu.RUnlock()
 	out := r.filteredUsers(tenantID, query, status)
 	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
-	return sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit), nil
+	return cloneUsers(sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit)), nil
 }
 
 func (r *UserRepository) ListPageBeforeFiltered(_ context.Context, tenantID, query string, status *idmdomain.UserStatus, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
@@ -167,7 +191,7 @@ func (r *UserRepository) ListPageBeforeFiltered(_ context.Context, tenantID, que
 	defer r.mu.RUnlock()
 	out := r.filteredUsers(tenantID, query, status)
 	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
-	return sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit), nil
+	return cloneUsers(sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit)), nil
 }
 
 func (r *UserRepository) Count(_ context.Context, tenantID string) (int64, error) {
@@ -213,4 +237,46 @@ func (r *UserRepository) filteredUsers(tenantID, query string, status *idmdomain
 		out = append(out, user)
 	}
 	return out
+}
+
+func cloneUsers(users []*userdomain.User) []*userdomain.User {
+	out := make([]*userdomain.User, len(users))
+	for i, user := range users {
+		out[i] = cloneUser(user)
+	}
+	return out
+}
+
+// cloneUser は呼び出し側との共有を断つための深い複製である。
+func cloneUser(u *userdomain.User) *userdomain.User {
+	cloned := *u
+	cloned.Name = clonePointer(u.Name)
+	cloned.GivenName = clonePointer(u.GivenName)
+	cloned.FamilyName = clonePointer(u.FamilyName)
+	cloned.Email = clonePointer(u.Email)
+	cloned.Roles = slices.Clone(u.Roles)
+	cloned.Lifecycle.StatusChangedAt = clonePointer(u.Lifecycle.StatusChangedAt)
+	cloned.Lifecycle.LastLoginAt = clonePointer(u.Lifecycle.LastLoginAt)
+	cloned.Lifecycle.PasswordChangedAt = clonePointer(u.Lifecycle.PasswordChangedAt)
+	cloned.Lifecycle.RequiredActions = slices.Clone(u.Lifecycle.RequiredActions)
+	cloned.Lifecycle.PendingPurge = clonePointer(u.Lifecycle.PendingPurge)
+	if u.Attributes != nil {
+		cloned.Attributes = make(map[string]userdomain.AttributeValue, len(u.Attributes))
+		for key, value := range u.Attributes {
+			value.String = clonePointer(value.String)
+			value.Number = clonePointer(value.Number)
+			value.Boolean = clonePointer(value.Boolean)
+			value.Date = clonePointer(value.Date)
+			value.StringArray = slices.Clone(value.StringArray)
+			cloned.Attributes[key] = value
+		}
+	}
+	return &cloned
+}
+
+func clonePointer[T any](p *T) *T {
+	if p == nil {
+		return nil
+	}
+	return new(*p)
 }

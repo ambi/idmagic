@@ -190,8 +190,9 @@ CREATE INDEX users_tenant_username_id_active_idx
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
 -- Backs exact status-filtered pagination counts (wi-347).
+-- 状態が未設定の User は lifecycle に空文字の status を持つので、空文字も active として扱う。
 CREATE INDEX users_tenant_lifecycle_status_active_idx
-    ON users (tenant_id, (coalesce(lifecycle->>'status', 'active')))
+    ON users (tenant_id, (coalesce(nullif(lifecycle->>'status', ''), 'active')))
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
 -- 保持期限の削除が引く完全削除の候補（ListUserPurgeCandidates）に限る。

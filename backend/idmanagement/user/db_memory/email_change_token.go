@@ -2,7 +2,9 @@ package db_memory
 
 import (
 	"context"
+	"maps"
 	"sync"
+	"time"
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
@@ -47,8 +49,17 @@ func (s *EmailChangeTokenStore) Save(_ context.Context, envelope actiontoken.Env
 			delete(s.records, digest)
 		}
 	}
-	s.records[envelope.Digest] = &consumableEnvelope{envelope: envelope}
+	s.records[envelope.Digest] = &consumableEnvelope{envelope: cloneEnvelope(envelope)}
 	return nil
+}
+
+// cloneEnvelope は、呼び出し側とペイロードの map を共有しない複製を作る。時刻は
+// PostgreSQL の TIMESTAMPTZ と同じマイクロ秒に切り捨てる。
+func cloneEnvelope(envelope actiontoken.Envelope) actiontoken.Envelope {
+	envelope.Payload = maps.Clone(envelope.Payload)
+	envelope.IssuedAt = envelope.IssuedAt.Truncate(time.Microsecond)
+	envelope.ExpiresAt = envelope.ExpiresAt.Truncate(time.Microsecond)
+	return envelope
 }
 
 func (s *EmailChangeTokenStore) Find(
@@ -61,7 +72,7 @@ func (s *EmailChangeTokenStore) Find(
 	if !ok || record.used {
 		return nil, nil
 	}
-	envelope := record.envelope
+	envelope := cloneEnvelope(record.envelope)
 	return &envelope, nil
 }
 
