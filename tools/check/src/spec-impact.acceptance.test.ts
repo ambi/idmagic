@@ -52,7 +52,8 @@ type Repository = {
   write(path: string, content: string): Promise<void>
   /** 作業ツリーのすべての変更をコミットし、そのコミットを返す。 */
   commit(message: string): Promise<string>
-  check(base: string): Promise<{ code: number; output: string }>
+  /** 比較基準を省くと、検査は既定の比較基準を使う。 */
+  check(base?: string): Promise<{ code: number; output: string }>
 }
 
 async function run(cwd: string, command: string[], env: Record<string, string> = {}) {
@@ -122,8 +123,7 @@ async function repository(): Promise<Repository & { base: string }> {
           'run',
           resolve(TOOLS_DIR, 'check/src/runner.ts'),
           'spec-impact',
-          '--base-revision',
-          revision,
+          ...(revision === undefined ? [] : ['--base-revision', revision]),
         ],
         { SPEC_WORKSPACE_ROOT: root },
       ),
@@ -508,5 +508,35 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     const result = await repo.check(completed)
     expect(result.output).toContain('ok  spec impact')
     expect(result.code).toBe(0)
+  })
+})
+
+describe('spec-impact: 比較基準を渡さないときの既定値', () => {
+  it('上流ブランチがあれば、そこからまだ push していないコミットを検査する', async () => {
+    const repo = await repository()
+    await repo.git('remote', 'add', 'origin', repo.root)
+    await repo.git('fetch', '--quiet', 'origin')
+    await repo.git('branch', '--set-upstream-to', 'origin/main', 'main')
+    await repo.write(SERVICE, service('running'))
+    await repo.commit('refactor(demo): rename the result\n\nSpec-Impact: none')
+
+    const result = await repo.check()
+    expect(result.output).toContain(
+      'refactor(demo): rename the result: Spec-Impact reason names nothing that stays the same',
+    )
+    expect(result.code).toBe(1)
+  })
+
+  it('上流ブランチがなければ main を比較基準にする', async () => {
+    const repo = await repository()
+    await repo.git('switch', '--quiet', '--create', 'topic')
+    await repo.write(SERVICE, service('running'))
+    await repo.commit('refactor(demo): rename the result\n\nSpec-Impact: none')
+
+    const result = await repo.check()
+    expect(result.output).toContain(
+      'refactor(demo): rename the result: Spec-Impact reason names nothing that stays the same',
+    )
+    expect(result.code).toBe(1)
   })
 })

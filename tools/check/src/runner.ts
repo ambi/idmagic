@@ -39,24 +39,38 @@ export async function runChecks(
   )
 }
 
+/**
+ * 比較基準を渡されなかったときの既定値。上流ブランチがあればそれを、なければ main を返す。
+ * main の上で直接コミットしても、まだ push していないコミットが検査の範囲に入る。
+ */
+export function defaultBaseRevision(root: string): string {
+  const result = Bun.spawnSync(
+    ['git', 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+    { cwd: root, stderr: 'ignore' },
+  )
+  const upstream = result.exitCode === 0 ? result.stdout.toString().trim() : ''
+  return upstream || 'main'
+}
+
 if (import.meta.main) {
   const args = process.argv.slice(2)
   const baseRevisionIndex = args.indexOf('--base-revision')
-  const baseRevision = baseRevisionIndex === -1 ? undefined : args[baseRevisionIndex + 1]
-  const options: CheckOptions = {
-    verbose: args.includes('--verbose'),
-    listUnresolved: args.includes('--list-unresolved'),
-    baseRevision,
-  }
-  const selectors = args
-    .slice(0, baseRevisionIndex === -1 ? undefined : baseRevisionIndex)
-    .filter((arg) => !arg.startsWith('--'))
   const [{ repositoryChecks, selectChecks }, { createWorkspaceSnapshot }] = await Promise.all([
     import('./registry.ts'),
     import('../../workspace/src/workspace.ts'),
   ])
+  const snapshot = createWorkspaceSnapshot()
+  const options: CheckOptions = {
+    verbose: args.includes('--verbose'),
+    listUnresolved: args.includes('--list-unresolved'),
+    baseRevision:
+      baseRevisionIndex === -1 ? defaultBaseRevision(snapshot.root) : args[baseRevisionIndex + 1],
+  }
+  const selectors = args
+    .slice(0, baseRevisionIndex === -1 ? undefined : baseRevisionIndex)
+    .filter((arg) => !arg.startsWith('--'))
   const checks = selectChecks(selectors)
-  const results = await runChecks(checks, createWorkspaceSnapshot(), options)
+  const results = await runChecks(checks, snapshot, options)
   for (const result of results) {
     for (const line of result.lines) {
       if (result.ok) console.log(line)

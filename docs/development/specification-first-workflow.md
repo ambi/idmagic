@@ -160,6 +160,8 @@ Spec-Impact: none — RevokeFamily returns the tokens it revoked; the revoked se
 テストファイル、生成コード、本番のエントリーポイントから import されないテスト専用の支援パッケージは含めない。
 
 `mise run check -- <基準リビジョン>` は、基準から作業ツリーまでについて次を検査する。
+基準リビジョンを省くと、現在のブランチの上流ブランチ（`@{upstream}`）を基準にし、上流がなければ `main` を基準にする。
+`main` の上で直接コミットしても、まだ push していないコミットが検査の範囲に入り、CI が次の push で検査する範囲と一致する。
 
 | 検査 | 失敗の条件 |
 | --- | --- |
