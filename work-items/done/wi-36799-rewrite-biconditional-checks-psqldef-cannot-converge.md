@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -7,6 +7,17 @@ created_at: 2026-10-08
 priority: p1
 depends_on: []
 change_kind: maintenance
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: 制約の論理も外部から観測できる振る舞いも変えないので、リリースの読者へ知らせることがない。規則表の追記は一次情報文書の更新である。
+  references: []
+initial_context:
+  specification: []
+  typespec: []
+  source: [infra/schema/postgres.sql, docs/design/data/schema-management.md]
+  tests: [infra/schema/check-convergence.sh]
+  stop_before_reading: [backend, frontend, tools]
 spec_impact:
   kind: none
   reason: >-
@@ -66,10 +77,10 @@ spec_impact:
 
 ## タスク
 
-- [ ] T001 [Acceptance] インデックスを外した状態で収束検査の RED を確かめる。
-- [ ] T002 [Schema] 2 つの双条件の `CHECK` を同値な `AND` / `OR` の形へ書き換える。
-- [ ] T003 [Docs] スキーマ管理の規則表へ双条件の書き方を加える。
-- [ ] T004 [Verify] 同値性を網羅的に検証し、`mise run check-schema` と `mise run verify` を通す。
+- [x] T001 [Acceptance] インデックスを外した状態で収束検査の RED を確かめる。
+- [x] T002 [Schema] 2 つの双条件の `CHECK` を同値な `AND` / `OR` の形へ書き換える。
+- [x] T003 [Docs] スキーマ管理の規則表へ双条件の書き方を加える。
+- [x] T004 [Verify] 同値性を網羅的に検証し、`mise run check-schema` と `mise run verify` を通す。
 
 ## 検証
 
@@ -82,3 +93,27 @@ spec_impact:
 リスクは low。
 制約を弱める書き換えをすると、これまで拒否していた行が通る。
 同値性の網羅検証がこの誤りを直接検出する。
+
+## 完了
+
+- **完了日**: 2026-10-08
+- **要約**:
+  `mise run spec-diff` は規範の差分なしを報告する。
+  `provisioning_scheduled_deprovisions_task_consistent` と `provisioning_full_resyncs_completed_consistent` を、同値な `AND` / `OR` の形へ書き換えた。
+  `psqldef` 3.11.26 でも、空のデータベースに対する収束検査が、偶然の合格に頼らず通るようになった。
+  スキーマ管理の規則表に、双条件の `CHECK` の書き方と、検査だけに頼れない理由を加えた。
+- **受け入れ RED の証拠**:
+  - **テスト**: `mise run check-schema`（`users_tenant_purge_candidates_idx` を一時的に外した状態）
+  - **要件**: N/A: 規範上の振る舞いを変えないスキーマ記法の変更であり、対応する REQ がない。
+  - **観測した失敗**: 変更前の `main` では収束検査が合格した。インデックスを外すと、空のデータベースへ適用した直後のプレビューが 2 つの制約の `DROP CONSTRAINT` と `ADD CONSTRAINT` を出して失敗した。CI で 3 回続いた失敗と同じ出力である。
+  - **検出できる理由**: インデックスの `?` 演算子が現在のスキーマの側も代替パーサーへ落とし、比較を偶然一致させていた。インデックスを外すと、両側が別のパーサーで解析される CI の失敗時の状態に戻る。書き換え後は、インデックスの有無のどちらでも合格した。
+- **単体 RED の証拠**:
+  - **テスト**: PostgreSQL 18 上での式の同値検証。
+  - **要件**: N/A: 規範上の振る舞いを変えないスキーマ記法の変更であり、対応する REQ がない。
+  - **観測した失敗**: 該当なし。書き換えの前に失敗する検査がないので、書き換えの後で同値性を網羅的に確かめた。`status` の取りうる値に NULL を加えた値と、相手の列の NULL / 非 NULL の全組み合わせ（8 通りと 6 通り）で、不一致は 0 件だった。
+  - **検出できる理由**: `IS DISTINCT FROM` は両辺が NULL の場合も一致として扱うので、三値論理のずれを見落とさない。定義域が小さいので全数検証になり、標本ではない。
+- **変更耐性の結果**:
+  書き換えた式を持つ表へ実際に行を入れ、`('completed', NULL)` と `('running', now())` が `violates check constraint` で拒否され、整合した 2 行が受理されることを確かめた。弱い制約に書き換えていたら、拒否されるはずの行が通っていた。
+- **検証結果**:
+  - `mise run check-schema` - passed
+  - `mise run verify` - passed

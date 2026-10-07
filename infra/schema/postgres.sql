@@ -1478,7 +1478,7 @@ CREATE TABLE provisioning_scheduled_deprovisions (
     CONSTRAINT provisioning_scheduled_deprovisions_connection_fkey
         FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
     CONSTRAINT provisioning_scheduled_deprovisions_task_consistent
-        CHECK ((status = 'materialized') = (task_id IS NOT NULL))
+        CHECK ((status = 'materialized' AND task_id IS NOT NULL) OR (status <> 'materialized' AND task_id IS NULL))
 );
 
 -- 同じ接続と User に有効な予約を一つだけ置き、再度の削除通知が期限を延ばさないようにする。
@@ -1501,7 +1501,7 @@ CREATE TABLE provisioning_full_resyncs (
     CONSTRAINT provisioning_full_resyncs_connection_fkey
         FOREIGN KEY (connection_id) REFERENCES provisioning_connections(application_id) ON DELETE CASCADE,
     CONSTRAINT provisioning_full_resyncs_completed_consistent
-        CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+        CHECK ((status = 'completed' AND completed_at IS NOT NULL) OR (status <> 'completed' AND completed_at IS NULL))
 );
 
 -- Full Resync が作ったプロビジョニングタスクの関連付け。一つのプロビジョニングタスクは高々一つの Full Resync に属する。
