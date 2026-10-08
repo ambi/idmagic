@@ -35,6 +35,7 @@ import (
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	"github.com/labstack/echo/v5"
 )
 
@@ -61,12 +62,12 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 	clientRepo.Seed(client)
 	sessionStore := sessionmemory.NewSessionStore()
 	sessionManager := sessionusecases.NewSessionManager(sessionStore)
-	authn, err := sessionManager.Create(context.Background(), "alice", []string{"pwd"}, time.Now().UTC())
+	authn, err := sessionManager.Create(testing_tenant.Default(context.Background()), "alice", []string{"pwd"}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	refreshStore := oauth2memory.NewRefreshTokenStore()
-	if err := refreshStore.Save(context.Background(), &oauthdomain.RefreshTokenRecord{
+	if err := refreshStore.Save(testing_tenant.Default(context.Background()), &oauthdomain.RefreshTokenRecord{
 		ID: "logout-e2e-rt", TenantID: tenancydomain.DefaultTenantID, Hash: logoutE2ERefreshHash, FamilyID: "logout-e2e-fam",
 		ClientID: client.ClientID, UserID: "alice", Scopes: []string{"openid", "offline_access"},
 		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour), AbsoluteExpiresAt: time.Now().Add(24 * time.Hour),
@@ -75,7 +76,7 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 		t.Fatal(err)
 	}
 	clientSessions := logoutmemory.NewClientSessionStore()
-	if err := clientSessions.Upsert(context.Background(), &logoutdomain.ClientSession{TenantID: tenancydomain.DefaultTenantID, Sid: authn.SessionID, ClientID: client.ClientID, FirstIssuedAt: time.Now().UTC(), LastIssuedAt: time.Now().UTC()}); err != nil {
+	if err := clientSessions.Upsert(testing_tenant.Default(context.Background()), &logoutdomain.ClientSession{TenantID: tenancydomain.DefaultTenantID, Sid: authn.SessionID, ClientID: client.ClientID, FirstIssuedAt: time.Now().UTC(), LastIssuedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
 	notifications := logoutmemory.NewLogoutNotificationStore()
@@ -97,14 +98,14 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 // この 2 つの効果を読まないと「配信が失敗したので失効もしなかった」実装を通す。
 func (f logoutE2EFixture) assertLocalLogoutSettled(t *testing.T) {
 	t.Helper()
-	session, err := f.sessions.Find(context.Background(), f.sessionID)
+	session, err := f.sessions.Find(testing_tenant.Default(context.Background()), f.sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if session != nil {
 		t.Fatal("LoginSession が失効していない")
 	}
-	record, err := f.refresh.FindByHash(context.Background(), logoutE2ERefreshHash)
+	record, err := f.refresh.FindByHash(testing_tenant.Default(context.Background()), logoutE2ERefreshHash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +154,7 @@ func (f logoutE2EFixture) runDeliveryWorker(t *testing.T, deliver logoutports.Ba
 	registry := jobsusecases.NewHandlerRegistry()
 	oauth2.RegisterJobHandlers(registry, oauth2.JobHandlerDeps{Notifications: f.notifications, TokenSigner: f.signer, BackChannelClient: deliver, Now: time.Now})
 	runner := jobsusecases.NewRunner(jobsusecases.RunnerConfig{WorkerID: "logout-e2e", Lane: jobsdomain.LaneLatencySensitive, PollInterval: time.Millisecond, LeaseDuration: time.Second, BackoffBase: time.Millisecond, BackoffCap: time.Millisecond}, jobsusecases.RunnerDeps{Repo: f.jobs, Handlers: registry, Now: time.Now})
-	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	workerCtx, cancelWorker := context.WithCancel(testing_tenant.Default(context.Background()))
 	runnerDone := make(chan error, 1)
 	go func() { runnerDone <- runner.Run(workerCtx) }()
 	t.Cleanup(func() { cancelWorker(); <-runnerDone })
@@ -164,7 +165,7 @@ func (f logoutE2EFixture) awaitNotification(t *testing.T, accept func(*logoutdom
 	t.Helper()
 	var last *logoutdomain.LogoutNotification
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
-		queued, err := f.jobs.ListByTenantAndKinds(context.Background(), tenancydomain.DefaultTenantID, []jobsdomain.JobKind{logoutdomain.KindBackChannelLogoutDelivery}, 1)
+		queued, err := f.jobs.ListByTenantAndKinds(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, []jobsdomain.JobKind{logoutdomain.KindBackChannelLogoutDelivery}, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -175,7 +176,7 @@ func (f logoutE2EFixture) awaitNotification(t *testing.T, accept func(*logoutdom
 		if err := json.Unmarshal(queued[0].Params, &params); err != nil {
 			t.Fatal(err)
 		}
-		notification, err := f.notifications.FindByID(context.Background(), tenancydomain.DefaultTenantID, params.NotificationID)
+		notification, err := f.notifications.FindByID(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, params.NotificationID)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -11,6 +11,7 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // newApprovedDeviceFixture は device_flow_test.go の newDeviceFixture と同様の
@@ -21,13 +22,13 @@ func newApprovedDeviceFixture(t *testing.T, mcpResourceServerRepo *oauth2memory.
 	f.deps.McpResourceServerRepo = mcpResourceServerRepo
 
 	now := time.Now().UTC()
-	out, err := RequestDeviceAuthorization(context.Background(), f.requestDeps, DeviceAuthorizationInput{
+	out, err := RequestDeviceAuthorization(testing_tenant.Default(context.Background()), f.requestDeps, DeviceAuthorizationInput{
 		ClientID: "device-client", Scope: "openid offline_access",
 	}, now)
 	if err != nil {
 		t.Fatalf("RequestDeviceAuthorization: %v", err)
 	}
-	if err := ApproveUserCode(context.Background(), f.verifyDeps, out.UserCode, "user", now); err != nil {
+	if err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, out.UserCode, "user", now); err != nil {
 		t.Fatalf("ApproveUserCode: %v", err)
 	}
 	return f, out.DeviceCode
@@ -35,7 +36,7 @@ func newApprovedDeviceFixture(t *testing.T, mcpResourceServerRepo *oauth2memory.
 
 func TestExchangeDeviceCode_unregisteredResource_rejectedAsInvalidTarget(t *testing.T) {
 	f, deviceCode := newApprovedDeviceFixture(t, oauth2memory.NewMcpResourceServerRepository())
-	_, err := ExchangeDeviceCode(context.Background(), f.deps, ExchangeDeviceCodeInput{
+	_, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, ExchangeDeviceCodeInput{
 		ClientID: "device-client", DeviceCode: deviceCode,
 		Resource: []string{"https://mcp.example.com/unknown"},
 	}, time.Now().UTC())
@@ -50,7 +51,7 @@ func TestExchangeDeviceCode_registeredResource_boundAudienceAndRefreshRecord(t *
 	})
 	f, deviceCode := newApprovedDeviceFixture(t, repo)
 
-	out, err := ExchangeDeviceCode(context.Background(), f.deps, ExchangeDeviceCodeInput{
+	out, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, ExchangeDeviceCodeInput{
 		ClientID: "device-client", DeviceCode: deviceCode,
 		Resource: []string{"https://mcp.example.com/tools"},
 	}, time.Now().UTC())
@@ -64,7 +65,7 @@ func TestExchangeDeviceCode_registeredResource_boundAudienceAndRefreshRecord(t *
 
 	// 発行された refresh token record にも resource が伝播しているはず (rotation で保持するため)。
 	hash := domain.HashRefreshToken(out.RefreshToken)
-	rec, err := f.deps.RefreshStore.FindByHash(context.Background(), hash)
+	rec, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), hash)
 	if err != nil || rec == nil {
 		t.Fatalf("expected refresh token record to be findable: %v", err)
 	}
@@ -75,7 +76,7 @@ func TestExchangeDeviceCode_registeredResource_boundAudienceAndRefreshRecord(t *
 
 func TestExchangeDeviceCode_noResource_unaffected(t *testing.T) {
 	f, deviceCode := newApprovedDeviceFixture(t, oauth2memory.NewMcpResourceServerRepository())
-	out, err := ExchangeDeviceCode(context.Background(), f.deps, ExchangeDeviceCodeInput{
+	out, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, ExchangeDeviceCodeInput{
 		ClientID: "device-client", DeviceCode: deviceCode,
 	}, time.Now().UTC())
 	if err != nil {

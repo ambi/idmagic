@@ -20,6 +20,7 @@ import (
 
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -72,7 +73,7 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 		},
 		UserRepo: userRepo, KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 	}
-	if err := tenantRepo.Save(t.Context(), &tenancydomain.Tenant{
+	if err := tenantRepo.Save(testing_tenant.Default(t.Context()), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive,
 	}); err != nil {
 		t.Fatal(err)
@@ -80,13 +81,13 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 	httpadapter.Register(e, deps)
 
 	// device_authorization + 承認 (usecase を直接呼び出し、HTTP フォームは token 交換だけに絞る)。
-	authOut, err := usecases.RequestDeviceAuthorization(t.Context(), usecases.DeviceAuthorizationDeps{
+	authOut, err := usecases.RequestDeviceAuthorization(testing_tenant.Default(t.Context()), usecases.DeviceAuthorizationDeps{
 		ClientRepo: clientRepo, DeviceCodeStore: deviceStore, BaseVerification: "http://test/device",
 	}, usecases.DeviceAuthorizationInput{ClientID: "device-client-2", Scope: "openid"}, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("RequestDeviceAuthorization: %v", err)
 	}
-	if err := usecases.ApproveUserCode(t.Context(), usecases.VerifyUserCodeDeps{DeviceCodeStore: deviceStore}, authOut.UserCode, "user-1", time.Now().UTC()); err != nil {
+	if err := usecases.ApproveUserCode(testing_tenant.Default(t.Context()), usecases.VerifyUserCodeDeps{DeviceCodeStore: deviceStore}, authOut.UserCode, "user-1", time.Now().UTC()); err != nil {
 		t.Fatalf("ApproveUserCode: %v", err)
 	}
 	return e, authOut.DeviceCode

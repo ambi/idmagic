@@ -6,6 +6,7 @@ import (
 	"time"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -32,7 +33,7 @@ func TestExchangeTokenPreservesSubjectDetailsByDefault(t *testing.T) {
 	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": subjectWithDetails(100, "initiate", "status"),
 	})
-	res, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	if err != nil {
@@ -49,7 +50,7 @@ func TestExchangeTokenDownscopesDetails(t *testing.T) {
 		"subj": subjectWithDetails(100, "initiate", "status"),
 	})
 	// 金額を下げ操作を絞る → 部分集合、許容。
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 		AuthorizationDetails: []spec.AuthorizationDetail{paymentDetail(40, "initiate")},
 	}, time.Now().UTC())
@@ -68,7 +69,7 @@ func TestExchangeTokenRejectsDetailExpansion(t *testing.T) {
 		"subj": subjectWithDetails(100, "initiate"),
 	})
 	// 金額を上げる要求は subject token の詳細を超える → 拒否 (fail-closed)。
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 		AuthorizationDetails: []spec.AuthorizationDetail{paymentDetail(500, "initiate")},
 	}, time.Now().UTC())

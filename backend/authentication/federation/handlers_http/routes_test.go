@@ -22,6 +22,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -51,7 +52,7 @@ func (driverStub) Complete(
 func TestPublicProviderDiscoveryOmitsTrustAndSecret(t *testing.T) {
 	e, repos := newServer(t)
 	now := time.Now().UTC()
-	if err := repos.Connections.Save(context.Background(), &federationdomain.IdentityProviderConnection{
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), &federationdomain.IdentityProviderConnection{
 		ID: "oidc", TenantID: tenancydomain.DefaultTenantID, DisplayName: "Workforce",
 		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
 		Issuer: "https://idp.example", ClientID: "client", SecretReference: "env:SECRET",
@@ -87,7 +88,7 @@ func TestStartFederatedLoginRedirectsOnlyThroughSavedProvider(t *testing.T) {
 		ClaimMapping:  federationdomain.ClaimMapping{Subject: "sub", Username: "email"},
 		LinkingPolicy: federationdomain.LinkingNone, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := repos.Connections.Save(context.Background(), connection); err != nil {
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), connection); err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodGet, "/api/auth/federation/start?provider_id=oidc", http.NoBody)
@@ -106,14 +107,14 @@ func newAdminServer(t *testing.T, oidcClient *oidcprotocol.Client) (*echo.Echo, 
 	repos := federationmemory.NewRepositories()
 	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
-	if err := users.Save(context.Background(), &userdomain.User{
+	if err := users.Save(testing_tenant.Default(context.Background()), &userdomain.User{
 		ID: "admin-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	e := echo.New()
-	federationhttp.RegisterRoutes(e.Group(""), federationhttp.Deps{
+	federationhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), federationhttp.Deps{
 		Broker: federationusecases.BrokerDeps{
 			Connections: repos.Connections, Identities: repos.Identities, Attempts: repos.Attempts,
 			Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
@@ -194,7 +195,7 @@ func TestUpdateAdminDegradesOnlyOnTrustSourceChange(t *testing.T) {
 		LinkingPolicy: federationdomain.LinkingNone,
 		CreatedAt:     now, UpdatedAt: now,
 	}
-	if err := repos.Connections.Save(context.Background(), connection); err != nil {
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), connection); err != nil {
 		t.Fatal(err)
 	}
 	body := map[string]any{
@@ -229,7 +230,7 @@ func TestUpdateAdminDegradesOnlyOnTrustSourceChange(t *testing.T) {
 func TestDeleteAdminSucceedsForActiveConnection(t *testing.T) {
 	e, repos := newAdminServer(t, nil)
 	now := time.Now().UTC()
-	if err := repos.Connections.Save(context.Background(), &federationdomain.IdentityProviderConnection{
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), &federationdomain.IdentityProviderConnection{
 		ID: "google", TenantID: tenancydomain.DefaultTenantID, DisplayName: "Google",
 		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
 		Issuer: "https://accounts.example.com", ClientID: "client-1",
@@ -252,7 +253,7 @@ func TestDeleteAdminSucceedsForActiveConnection(t *testing.T) {
 func TestDeleteAdminRefusesAConnectionWithLinkedIdentities(t *testing.T) {
 	e, repos := newAdminServer(t, nil)
 	now := time.Now().UTC()
-	if err := repos.Connections.Save(context.Background(), &federationdomain.IdentityProviderConnection{
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), &federationdomain.IdentityProviderConnection{
 		ID: "google", TenantID: tenancydomain.DefaultTenantID, DisplayName: "Google",
 		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
 		Issuer: "https://accounts.example.com", ClientID: "client-1",
@@ -264,7 +265,7 @@ func TestDeleteAdminRefusesAConnectionWithLinkedIdentities(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+	if err := repos.Identities.Create(testing_tenant.Default(context.Background()), &federationdomain.FederatedIdentity{
 		TenantID: tenancydomain.DefaultTenantID, ProviderID: "google", ExternalSubject: "external-1",
 		LocalUserID: "user-1", LinkedAt: now,
 	}); err != nil {
@@ -276,14 +277,14 @@ func TestDeleteAdminRefusesAConnectionWithLinkedIdentities(t *testing.T) {
 	if refused.Code != http.StatusConflict || !strings.Contains(refused.Body.String(), "urn:idmagic:error:connection_in_use") {
 		t.Fatalf("status=%d body=%s, want 409 connection_in_use", refused.Code, refused.Body.String())
 	}
-	if connection, err := repos.Connections.Find(context.Background(), tenancydomain.DefaultTenantID, "google"); err != nil || connection == nil {
+	if connection, err := repos.Connections.Find(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, "google"); err != nil || connection == nil {
 		t.Fatalf("the refused connection is gone: connection=%v err=%v", connection, err)
 	}
-	if identity, err := repos.Identities.FindByUserProvider(context.Background(), tenancydomain.DefaultTenantID, "google", "user-1"); err != nil || identity == nil {
+	if identity, err := repos.Identities.FindByUserProvider(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, "google", "user-1"); err != nil || identity == nil {
 		t.Fatalf("the link is gone: identity=%v err=%v", identity, err)
 	}
 
-	if err := repos.Identities.Delete(context.Background(), tenancydomain.DefaultTenantID, "google", "user-1"); err != nil {
+	if err := repos.Identities.Delete(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, "google", "user-1"); err != nil {
 		t.Fatal(err)
 	}
 	deleted := httptest.NewRecorder()
@@ -304,7 +305,7 @@ func TestTestAdminReportsStructuredReachabilityResult(t *testing.T) {
 	})}}
 	e, repos := newAdminServer(t, &oidcClient)
 	now := time.Now().UTC()
-	if err := repos.Connections.Save(context.Background(), &federationdomain.IdentityProviderConnection{
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), &federationdomain.IdentityProviderConnection{
 		ID: "google", TenantID: tenancydomain.DefaultTenantID, DisplayName: "Google",
 		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionDisabled,
 		Issuer: "https://accounts.example.com", ClientID: "client-1",
@@ -343,7 +344,7 @@ func newServer(t *testing.T) (*echo.Echo, federationmemory.Repositories) {
 	t.Helper()
 	repos := federationmemory.NewRepositories()
 	e := echo.New()
-	federationhttp.RegisterRoutes(e.Group(""), federationhttp.Deps{
+	federationhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), federationhttp.Deps{
 		Broker: federationusecases.BrokerDeps{
 			Connections: repos.Connections, Identities: repos.Identities, Attempts: repos.Attempts,
 			Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -50,7 +51,7 @@ func groupNames(
 }
 
 func TestCreateGroupWithEmailAndValidAttributes(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 	if _, err := tenancyusecases.UpdateGroupAttributeSchema(ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
@@ -92,7 +93,7 @@ func TestCreateGroupWithEmailAndValidAttributes(t *testing.T) {
 //
 //spec:covers EX-IDMANAGEMENT-024-02: メールアドレスの形式を満たさない作成が InvalidEmailError で拒否され、グループを 1 件も残さないこと。
 func TestCreateGroupRejectsMalformedEmail(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -113,7 +114,7 @@ func TestCreateGroupRejectsMalformedEmail(t *testing.T) {
 //
 //spec:covers EX-IDMANAGEMENT-024-03: 未定義のキーと、宣言と型が一致しない値のどちらも InvalidGroupAttributeError で拒否され、グループを 1 件も残さないこと。
 func TestCreateGroupRejectsUndefinedAttributeKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 
 	for _, tc := range []struct {
@@ -162,7 +163,7 @@ func TestCreateGroupRejectsUndefinedAttributeKey(t *testing.T) {
 }
 
 func TestCreateGroupRejectsMissingRequiredAttribute(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _ := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 	if _, err := tenancyusecases.UpdateGroupAttributeSchema(ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
@@ -183,7 +184,7 @@ func TestCreateGroupRejectsMissingRequiredAttribute(t *testing.T) {
 //
 //spec:covers EX-IDMANAGEMENT-024-01, EX-IDMANAGEMENT-062-02: email と attributes を指定した作成と更新が保存され、GroupUpdated の changed_fields に両方が並ぶこと。
 func TestUpdateGroupEmailAndAttributes(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 	if _, err := tenancyusecases.UpdateGroupAttributeSchema(ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
@@ -239,7 +240,7 @@ func TestUpdateGroupEmailAndAttributes(t *testing.T) {
 }
 
 func TestUpdateGroupRejectsMalformedEmail(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _ := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{

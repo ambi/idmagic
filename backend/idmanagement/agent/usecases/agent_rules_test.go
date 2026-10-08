@@ -15,6 +15,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 var agentRulesNow = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -32,7 +33,7 @@ func registerAgent(t *testing.T, deps agentusecases.AdminAgentDeps, name string)
 
 func agentsUsage(t *testing.T, deps agentusecases.AdminAgentDeps) int {
 	t.Helper()
-	usage, err := deps.QuotaRepo.GetUsage(context.Background(), tenancydomain.DefaultTenantID)
+	usage, err := deps.QuotaRepo.GetUsage(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func agentsUsage(t *testing.T, deps agentusecases.AdminAgentDeps) int {
 
 func boundClientIDs(t *testing.T, deps agentusecases.AdminAgentDeps, agentID string) []string {
 	t.Helper()
-	bindings, err := deps.AgentRepo.ListBindings(context.Background(), tenancydomain.DefaultTenantID, agentID)
+	bindings, err := deps.AgentRepo.ListBindings(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, agentID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +107,7 @@ func TestRegisterAgentRequiresAnActiveOwnerInTheTenant(t *testing.T) {
 			t.Fatalf("%s: err=%v, want ErrAgentOwnerNotFound", owner, err)
 		}
 	}
-	if count, _ := deps.AgentRepo.Count(context.Background(), tenancydomain.DefaultTenantID); count != 0 {
+	if count, _ := deps.AgentRepo.Count(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID); count != 0 {
 		t.Fatalf("agents=%d, want 0", count)
 	}
 	if usage := agentsUsage(t, deps); usage != 0 {

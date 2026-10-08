@@ -13,6 +13,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -22,7 +23,7 @@ func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prev, err := keyStore.GetActiveKey(context.Background())
+	prev, err := keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,7 @@ func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
 		KeyStore: keyStore,
 		Emit:     func(e spec.DomainEvent) { emitted = append(emitted, e) },
 	}
-	next, err := RotateSigningKey(context.Background(), deps, time.Now().UTC())
+	next, err := RotateSigningKey(testing_tenant.Default(context.Background()), deps, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
 	}
 
 	// JWKS は旧 kid と新 kid 両方を保持する。
-	all, err := keyStore.GetAllKeys(context.Background())
+	all, err := keyStore.GetAllKeys(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestRotateSigningKeyIfDueSkipsFreshActiveKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	rotated, err := RotateSigningKeyIfDue(context.Background(), RotateSigningKeyDeps{
+	rotated, err := RotateSigningKeyIfDue(testing_tenant.Default(context.Background()), RotateSigningKeyDeps{
 		KeyStore: keyStore,
 		Grace:    7 * 24 * time.Hour,
 	}, now, 90*24*time.Hour)

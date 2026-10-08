@@ -23,6 +23,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -57,10 +58,10 @@ func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 		ClaimMapping: federationdomain.ClaimMapping{Subject: "sub", Username: "email"}, LinkingPolicy: federationdomain.LinkingNone,
 		CreatedAt: now, UpdatedAt: now,
 	}
-	if err := repos.Connections.Save(context.Background(), connection); err != nil {
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), connection); err != nil {
 		t.Fatal(err)
 	}
-	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+	if err := repos.Identities.Create(testing_tenant.Default(context.Background()), &federationdomain.FederatedIdentity{
 		TenantID: tenancydomain.DefaultTenantID, ProviderID: connection.ID, ExternalSubject: "external-user",
 		LocalUserID: "user-alice", LinkedAt: now,
 	}); err != nil {
@@ -69,7 +70,7 @@ func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 	driver := &completingFederationDriver{}
 	sessions := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	e := echo.New()
-	federationhttp.RegisterRoutes(e.Group(""), federationhttp.Deps{
+	federationhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), federationhttp.Deps{
 		Broker: federationusecases.BrokerDeps{
 			Connections: repos.Connections, Identities: repos.Identities, Attempts: repos.Attempts,
 			Users: users, Sessions: sessions,

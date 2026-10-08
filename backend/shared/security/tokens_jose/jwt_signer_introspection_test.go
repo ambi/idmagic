@@ -8,6 +8,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestAccessTokenAndIDTokenTTLSeconds(t *testing.T) {
@@ -30,7 +31,7 @@ func TestSignIDTokenIncludesAtHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, AtHashFor: "the-access-token",
 	})
@@ -49,7 +50,7 @@ func TestSignAccessTokenIncludesAMRACRAndAgentBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(context.Background(), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "agent-client",
 		Scopes: []string{"account:read"}, AMR: []string{"agent"}, ACR: "urn:agent",
 		AgentID: "agent-1",
@@ -76,7 +77,7 @@ func TestSignAccessTokenMultiAudienceAndCnf(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(context.Background(), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 		Audiences:        []string{"https://rs1.example", "https://rs2.example"},
 		SenderConstraint: &oauthdomain.SenderConstraint{Type: oauthdomain.SenderConstraintDPoP, JKT: "jkt-1"},
@@ -94,7 +95,7 @@ func TestSignAccessTokenMultiAudienceAndCnf(t *testing.T) {
 		t.Fatalf("cnf.jkt missing: %#v", claims)
 	}
 
-	result, err := signer.IntrospectAccessToken(context.Background(), token)
+	result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,14 +113,14 @@ func TestSignAccessTokenMTLSCnf(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(context.Background(), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 		SenderConstraint: &oauthdomain.SenderConstraint{Type: oauthdomain.SenderConstraintMTLS, X5TS256: "thumb-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := signer.IntrospectAccessToken(context.Background(), token)
+	result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,14 +135,14 @@ func TestSignAccessTokenActAndAgentIntrospection(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(context.Background(), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "agent-client", Scopes: []string{"account:read"},
 		AgentID: "agent-1", Act: map[string]any{"sub": "human-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := signer.IntrospectAccessToken(context.Background(), token)
+	result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +162,7 @@ func TestIntrospectAccessTokenInactiveCases(t *testing.T) {
 	signer := NewJWTSigner("https://idp.test", ks)
 
 	t.Run("malformed token is inactive, not an error", func(t *testing.T) {
-		result, err := signer.IntrospectAccessToken(context.Background(), "not-a-jwt")
+		result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), "not-a-jwt")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -172,13 +173,13 @@ func TestIntrospectAccessTokenInactiveCases(t *testing.T) {
 
 	t.Run("wrong issuer is inactive", func(t *testing.T) {
 		other := NewJWTSigner("https://other.test", ks)
-		token, _, err := other.SignAccessToken(context.Background(), ports.AccessTokenInput{
+		token, _, err := other.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 			Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		result, err := signer.IntrospectAccessToken(context.Background(), token)
+		result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), token)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -188,14 +189,14 @@ func TestIntrospectAccessTokenInactiveCases(t *testing.T) {
 	})
 
 	t.Run("expired token is inactive", func(t *testing.T) {
-		token, _, err := signer.SignAccessToken(context.Background(), ports.AccessTokenInput{
+		token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 			Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 			ExpiresAt: time.Now().Add(-time.Hour).Unix(),
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		result, err := signer.IntrospectAccessToken(context.Background(), token)
+		result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), token)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -239,7 +240,7 @@ func TestVerifyIDTokenHintReturnsAudienceArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := ks.GetActiveKey(context.Background())
+	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +251,7 @@ func TestVerifyIDTokenHintReturnsAudienceArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claims, err := signer.VerifyIDTokenHint(context.Background(), token)
+	claims, err := signer.VerifyIDTokenHint(testing_tenant.Default(context.Background()), token)
 	if err != nil {
 		t.Fatal(err)
 	}

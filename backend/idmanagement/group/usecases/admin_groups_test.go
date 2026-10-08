@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
@@ -49,7 +50,7 @@ func newGroupDeps(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.DomainEve
 func newGroupDepsWithQuota(t *testing.T, tenantID string, limit int) groupusecases.AdminGroupDeps {
 	t.Helper()
 	deps, _ := newGroupDeps(t)
-	if err := deps.QuotaRepo.SetQuota(context.Background(), tenantID, &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
+	if err := deps.QuotaRepo.SetQuota(testing_tenant.Default(context.Background()), tenantID, &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	return deps
@@ -68,7 +69,7 @@ func eventTypes(events []spec.DomainEvent) []string {
 //
 //spec:covers EX-IDMANAGEMENT-015-01, EX-IDMANAGEMENT-015-02, EX-IDMANAGEMENT-084-01: グループ由来のロールが実効ロールに乗ること、同じ所属の再登録が GroupMemberAdded も所属の行も増やさないこと。
 func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 
@@ -121,7 +122,7 @@ func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
 }
 
 func TestListGetUpdateAndRemoveGroupMember(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	description := "  platform team  "
@@ -180,7 +181,7 @@ func TestListGetUpdateAndRemoveGroupMember(t *testing.T) {
 }
 
 func TestUpdateGroupValidationErrors(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -235,7 +236,7 @@ func TestUpdateGroupValidationErrors(t *testing.T) {
 // the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
 // (spec/contexts/tenancy.yaml).
 func TestCreateGroup_rejectsWhenHardQuotaExceeded(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -266,7 +267,7 @@ func TestCreateGroup_rejectsWhenHardQuotaExceeded(t *testing.T) {
 // group must free its quota slot so a subsequent create at the same limit
 // succeeds.
 func TestDeleteGroup_decrementsQuotaUsage(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -286,7 +287,7 @@ func TestDeleteGroup_decrementsQuotaUsage(t *testing.T) {
 }
 
 func TestAddMemberRejectsCrossTenantUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _ := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -308,7 +309,7 @@ func TestAddMemberRejectsCrossTenantUser(t *testing.T) {
 }
 
 func TestDeleteGroupCascadesMembership(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -345,7 +346,7 @@ func TestDeleteGroupCascadesMembership(t *testing.T) {
 //
 //spec:covers REQ-IDMANAGEMENT-032, EX-IDMANAGEMENT-032-01, EX-IDMANAGEMENT-032-04: 制御面テナントの Group への `system_admin` の付与が受理され、所属 User の実効ロールへ group 由来として現れること。制御面以外のテナントでは同じ付与が ErrReservedRole で拒否され、Group が作られないこと。
 func TestCreateGroupKeepsTheReservedRoleInsideTheControlPlane(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
 

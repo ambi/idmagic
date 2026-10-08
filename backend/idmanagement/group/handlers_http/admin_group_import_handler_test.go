@@ -27,6 +27,7 @@ import (
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -37,7 +38,7 @@ func TestGetAdminGroupImportUsesManagementCursorPaginationForArtifactErrors(t *t
 	tenantID := tenancydomain.DefaultTenantID
 	repo.Seed(&userdomain.User{ID: "admin", TenantID: tenantID, PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now})
 	artifacts := idmmemory.NewCSVArtifactStore()
-	errorArtifact, err := artifacts.PutCSVArtifactPages(context.Background(), tenantID, func(emit func([]byte) error) error {
+	errorArtifact, err := artifacts.PutCSVArtifactPages(testing_tenant.Default(context.Background()), tenantID, func(emit func([]byte) error) error {
 		for pageNumber := range 3 {
 			page := make([]groupusecases.GroupImportRowError, 0, groupusecases.GroupImportErrorArtifactPageSize)
 			for index := range groupusecases.GroupImportErrorArtifactPageSize {
@@ -61,13 +62,13 @@ func TestGetAdminGroupImportUsesManagementCursorPaginationForArtifactErrors(t *t
 		t.Fatal(err)
 	}
 	jobs := jobsmemory.NewJobRepository()
-	job, err := jobsusecases.Enqueue(context.Background(), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+	job, err := jobsusecases.Enqueue(testing_tenant.Default(context.Background()), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindGroupImportPreview, Params: []byte(`{"source_sha256":"source"}`), MaxAttempts: 1,
 	}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	claimed, err := jobs.ClaimBatch(context.Background(), "worker", jobsdomain.LaneBulk, 1, time.Minute, now)
+	claimed, err := jobs.ClaimBatch(testing_tenant.Default(context.Background()), "worker", jobsdomain.LaneBulk, 1, time.Minute, now)
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("claimed=%+v err=%v", claimed, err)
 	}
@@ -78,12 +79,13 @@ func TestGetAdminGroupImportUsesManagementCursorPaginationForArtifactErrors(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := jobs.Complete(context.Background(), job.ID, "worker", result, now); err != nil {
+	if _, err := jobs.Complete(testing_tenant.Default(context.Background()), job.ID, "worker", result, now); err != nil {
 		t.Fatal(err)
 	}
 
 	codec := support.NewCursorCodec([]byte("group-import-pagination-test-secret"))
 	e := echo.New()
+	e.Use(testing_tenant.ResolveDefault)
 	d := httpdeps.Deps{
 		Issuer: "http://idp.test", PaginationCodec: codec,
 		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},
@@ -132,7 +134,7 @@ func TestGetAdminGroupImportRefusesAnotherTenantsJob(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
 	repo.Seed(&userdomain.User{ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now})
 	jobs := jobsmemory.NewJobRepository()
-	foreign, err := jobsusecases.Enqueue(context.Background(), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+	foreign, err := jobsusecases.Enqueue(testing_tenant.Default(context.Background()), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
 		TenantID: "other-tenant", Kind: jobsdomain.KindGroupImportPreview, Params: []byte(`{"source_sha256":"source"}`), MaxAttempts: 1,
 	}, now)
 	if err != nil {
@@ -140,6 +142,7 @@ func TestGetAdminGroupImportRefusesAnotherTenantsJob(t *testing.T) {
 	}
 
 	e := echo.New()
+	e.Use(testing_tenant.ResolveDefault)
 	d := httpdeps.Deps{
 		Issuer: "http://idp.test", PaginationCodec: support.NewCursorCodec([]byte("group-import-tenant-test-secret")),
 		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},

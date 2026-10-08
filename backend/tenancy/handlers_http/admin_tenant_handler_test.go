@@ -26,6 +26,7 @@ import (
 	memory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -85,7 +86,7 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 			Status: domain.TenantStatusActive, CreatedAt: now,
 		},
 	} {
-		if err := tenantRepo.Save(context.Background(), tenant); err != nil {
+		if err := tenantRepo.Save(testing_tenant.Default(context.Background()), tenant); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -99,12 +100,12 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 
 	quotas := &observedQuotaRepository{QuotaRepository: memory.NewQuotaRepository()}
 	seeded := quotaTestSeededUsers
-	if err := quotas.QuotaRepository.SetQuota(context.Background(), quotaTestTenant, &domain.TenantQuota{Users: &seeded}); err != nil {
+	if err := quotas.QuotaRepository.SetQuota(testing_tenant.Default(context.Background()), quotaTestTenant, &domain.TenantQuota{Users: &seeded}); err != nil {
 		t.Fatal(err)
 	}
 
 	e := echo.New()
-	tenancyhttp.RegisterControlPlaneRoutes(e.Group(""), tenancyhttp.Deps{
+	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", testing_tenant.ResolveDefault), tenancyhttp.Deps{
 		Deps: support.Deps{
 			Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(), TenantRepo: tenantRepo,
 		},

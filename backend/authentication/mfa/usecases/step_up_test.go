@@ -13,6 +13,7 @@ import (
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -62,7 +63,7 @@ func TestAvailableStepUpMethods(t *testing.T) {
 
 func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *sessionusecases.SessionManager, *[]spec.DomainEvent) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash("demo-password-1234")
@@ -100,7 +101,7 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *sessionusecases
 
 func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	deps, sm, events := newStepUpFixture(t, now)
 	authn, err := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
@@ -133,7 +134,7 @@ func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 
 func TestCompleteStepUpWrongPasswordFails(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	deps, sm, _ := newStepUpFixture(t, now)
 	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
@@ -153,7 +154,7 @@ func TestCompleteStepUpWrongPasswordFails(t *testing.T) {
 
 func TestCompleteStepUpTOTPSucceeds(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	deps, sm, _ := newStepUpFixture(t, now)
 	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)

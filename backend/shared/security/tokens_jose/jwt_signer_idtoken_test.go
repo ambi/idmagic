@@ -10,6 +10,7 @@ import (
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -60,7 +61,7 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 		return userdomain.BuiltinUserAttributeDefs(), nil
 	}
 
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid", "profile", "phone"}, ResolveAttributeDefs: resolve,
 	})
@@ -86,7 +87,7 @@ func TestSignIDTokenIncludesSidWhenPresent(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
@@ -106,7 +107,7 @@ func TestSignIDTokenOmitsSidWhenAbsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"},
 	})
@@ -129,7 +130,7 @@ func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
 		return userdomain.BuiltinUserAttributeDefs(), nil
 	}
 
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, ResolveAttributeDefs: resolve,
 	})
@@ -165,7 +166,7 @@ func TestSignIDTokenClaimPolicyAddsOverrideClaim(t *testing.T) {
 		},
 	}
 
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: user,
 		Scopes: []string{"openid"}, ResolveAttributeDefs: resolve, ClaimPolicy: &policy,
 	})
@@ -197,7 +198,7 @@ func TestSignIDTokenClaimPolicyRejectsPrivateAttribute(t *testing.T) {
 		},
 	}
 
-	_, err = signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	_, err = signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, ResolveAttributeDefs: resolve, ClaimPolicy: &policy,
 	})

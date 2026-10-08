@@ -10,6 +10,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
@@ -19,7 +20,7 @@ import (
 
 func newRequiredActionFixture(t *testing.T) (context.Context, userusecases.AdminUserDeps, *[]spec.DomainEvent, *userdomain.User) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := testing_passwords.NewHasher()

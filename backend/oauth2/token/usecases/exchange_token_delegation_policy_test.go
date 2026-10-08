@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // stubDelegationPolicy はテナントの委譲深さ上限を固定で返す。err を設定すると
@@ -51,7 +52,7 @@ func exchangeWithPolicy(
 	if events != nil {
 		deps.Emit = func(e spec.DomainEvent) { *events = append(*events, e) }
 	}
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	return issuer, err

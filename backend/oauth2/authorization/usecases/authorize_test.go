@@ -6,6 +6,7 @@ import (
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
@@ -46,19 +47,19 @@ func validAuthorizeInput() AuthorizeRequestInput {
 func TestAuthorizeRejectsUndeclaredScope(t *testing.T) {
 	in := validAuthorizeInput()
 	in.Scope = "openid admin"
-	if _, err := Authorize(context.Background(), newAuthorizeDeps(false), in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newAuthorizeDeps(false), in); err == nil {
 		t.Fatal("expected invalid_scope")
 	}
 }
 
 func TestAuthorizeRequiresPARWhenConfigured(t *testing.T) {
 	in := validAuthorizeInput()
-	if _, err := Authorize(context.Background(), newAuthorizeDeps(true), in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newAuthorizeDeps(true), in); err == nil {
 		t.Fatal("expected PAR requirement rejection")
 	}
 	in.ParUsed = true
 	in.ParRequestURI = "urn:ietf:params:oauth:request_uri:test"
-	if _, err := Authorize(context.Background(), newAuthorizeDeps(true), in); err != nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newAuthorizeDeps(true), in); err != nil {
 		t.Fatalf("PAR request rejected: %v", err)
 	}
 }
@@ -68,7 +69,7 @@ func TestAuthorizePersistsPromptAndMaxAge(t *testing.T) {
 	in.Prompt = "login"
 	maxAge := 30
 	in.MaxAge = &maxAge
-	out, err := Authorize(context.Background(), newAuthorizeDeps(false), in)
+	out, err := Authorize(testing_tenant.Default(context.Background()), newAuthorizeDeps(false), in)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +109,7 @@ func newFapi2AuthorizeDeps(profile domain.FapiProfile) AuthorizeDeps {
 //spec:covers FAPI2-PAR-PKCE: プロファイルを選択しただけのクライアントが、PAR を経由しない
 func TestAuthorizeRequiresPARFromFapi2Clients(t *testing.T) {
 	in := validAuthorizeInput()
-	if _, err := Authorize(context.Background(), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err == nil {
 		t.Fatal("プロファイルを選んだクライアントの PAR 無しリクエストが通った")
 	}
 
@@ -116,14 +117,14 @@ func TestAuthorizeRequiresPARFromFapi2Clients(t *testing.T) {
 	// ごと通さない実装と区別できない。
 	in.ParUsed = true
 	in.ParRequestURI = "urn:ietf:params:oauth:request_uri:test"
-	if _, err := Authorize(context.Background(), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err != nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err != nil {
 		t.Fatalf("PAR 経由の FAPI クライアントが拒否された: %v", err)
 	}
 
 	// 対照: プロファイル以外がすべて同じクライアントは PAR 無しで通る。ここが落ちる
 	// なら、制約は FAPI ではなく全クライアントに掛かっている (FAPI2-PROFILE-SELECTION)。
 	control := validAuthorizeInput()
-	if _, err := Authorize(context.Background(), newFapi2AuthorizeDeps(domain.FapiNone), control); err != nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(domain.FapiNone), control); err != nil {
 		t.Fatalf("プロファイルを選んでいないクライアントまで PAR を求められた: %v", err)
 	}
 }

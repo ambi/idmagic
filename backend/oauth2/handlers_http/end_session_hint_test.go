@@ -23,6 +23,7 @@ import (
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -87,7 +88,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 func (s hintTestServer) seedSession(t *testing.T, sid string) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := s.sessionStore.Save(context.Background(), &sessiondomain.LoginSession{
+	if err := s.sessionStore.Save(testing_tenant.Default(context.Background()), &sessiondomain.LoginSession{
 		ID: sid, TenantID: tenancydomain.DefaultTenantID, UserID: "alice", AuthTime: now.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver", ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
@@ -105,14 +106,14 @@ func (s hintTestServer) seedRefreshToken(t *testing.T, clientID, sid string) {
 		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour), AbsoluteExpiresAt: time.Now().Add(24 * time.Hour),
 		Sid: &sid,
 	}
-	if err := s.refreshStore.Save(context.Background(), rec); err != nil {
+	if err := s.refreshStore.Save(testing_tenant.Default(context.Background()), rec); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func (s hintTestServer) signIDTokenHint(t *testing.T, clientID, sub, sid string) string {
 	t.Helper()
-	token, err := s.signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := s.signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: clientID}, User: &userdomain.User{ID: sub},
 		Scopes: []string{"openid"}, Sid: sid,
 	})
@@ -143,7 +144,7 @@ func (s hintTestServer) signExpiredIDTokenHint(t *testing.T, clientID, sub, sid 
 	expired := time.Now().Add(-2 * time.Hour).Unix()
 	claims["iat"] = expired
 	claims["exp"] = expired + 60
-	key, err := s.keyStore.GetActiveKey(context.Background())
+	key, err := s.keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,14 +172,14 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	if sess, _ := s.sessionStore.Find(context.Background(), sid); sess != nil {
+	if sess, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid); sess != nil {
 		t.Fatal("LoginSession was not revoked")
 	}
-	rec1, _ := s.refreshStore.FindByHash(context.Background(), "hash-"+hintClientID)
+	rec1, _ := s.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-"+hintClientID)
 	if rec1 == nil || !rec1.Revoked {
 		t.Fatal("hint client's refresh token was not revoked")
 	}
-	rec2, _ := s.refreshStore.FindByHash(context.Background(), "hash-other-app")
+	rec2, _ := s.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-other-app")
 	if rec2 == nil || !rec2.Revoked {
 		t.Fatal("other client's refresh token sharing the sid was not revoked")
 	}
@@ -191,10 +192,10 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 // テストは「拒否を返し、そのうえでログアウトも実行する」実装を通してしまう。
 func assertSessionAndTokensSurvived(t *testing.T, s hintTestServer, sid string) {
 	t.Helper()
-	if session, _ := s.sessionStore.Find(context.Background(), sid); session == nil {
+	if session, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid); session == nil {
 		t.Fatal("拒否されたヒントでセッションが失効した")
 	}
-	record, _ := s.refreshStore.FindByHash(context.Background(), "hash-"+hintClientID)
+	record, _ := s.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-"+hintClientID)
 	if record == nil || record.Revoked {
 		t.Fatalf("拒否されたヒントでリフレッシュトークンが失効した: %#v", record)
 	}
@@ -235,7 +236,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	otherSigner := cryptoadapter.NewJWTSigner("http://not-this-idp", otherKS)
-	forged, err := otherSigner.SignIDToken(context.Background(), ports.IDTokenInput{
+	forged, err := otherSigner.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: hintClientID}, User: &userdomain.User{ID: "alice"},
 		Scopes: []string{"openid"}, Sid: sid,
 	})
@@ -270,7 +271,7 @@ func TestEndSessionAcceptsExpiredIDTokenHint(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := s.sessionStore.Find(context.Background(), sid); sess != nil {
+	if sess, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid); sess != nil {
 		t.Fatal("session should be resolved and revoked via sid despite hint being old")
 	}
 }

@@ -9,6 +9,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	"github.com/ambi/idmagic/backend/authentication/session/usecases"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // する。作成 (CreateWithPending) と第二要素の成立 (CompleteFactor) で、語彙の外の値は保存
@@ -18,7 +19,7 @@ import (
 //
 //spec:covers RFC8176-AMR-VOCABULARY: 語彙の強制が、amr を書く 2 か所の両方に掛かっていることを固定
 func TestSessionManagerRefusesAMROutsideTheVocabulary(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 
 	// 作成の側。
 	store := memory.NewSessionStore()

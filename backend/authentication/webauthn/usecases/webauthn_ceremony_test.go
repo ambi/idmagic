@@ -22,6 +22,7 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 const (
@@ -240,7 +241,7 @@ func beginAssertion(ctx context.Context, t *testing.T, deps usecases.WebAuthnDep
 //
 //spec:covers WEBAUTHN3-REGISTRATION: 登録が attestation の challenge / RP ID / origin を検証し、
 func TestWebAuthnRegistrationVerifiesTheCeremonyAndStoresTheCOSEKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
 
 	for name, forge := range map[string]struct {
@@ -305,7 +306,7 @@ func TestWebAuthnRegistrationVerifiesTheCeremonyAndStoresTheCOSEKey(t *testing.T
 //
 //spec:covers WEBAUTHN3-AUTHENTICATION: 認証が、オリジンと Relying Party の範囲に限定された公開鍵
 func TestWebAuthnAuthenticationVerifiesTheOriginAndRelyingPartyScopedCredential(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
 
 	otherKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

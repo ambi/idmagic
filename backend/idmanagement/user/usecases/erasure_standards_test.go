@@ -22,6 +22,7 @@ import (
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // 投入する PII。消去後に 1 つでも読み出せたら行が成り立っていない。
@@ -72,7 +73,7 @@ func newErasureFixture(t *testing.T, now time.Time) *erasureFixture {
 // readablePII は保存されている User を丸ごと読み直し、まだ読み出せる PII を返す。
 func (f *erasureFixture) readablePII(t *testing.T) []string {
 	t.Helper()
-	stored, err := f.users.FindBySubIncludingDeleted(context.Background(), "user-erasure")
+	stored, err := f.users.FindBySubIncludingDeleted(testing_tenant.Default(context.Background()), "user-erasure")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +97,7 @@ func (f *erasureFixture) readablePII(t *testing.T) []string {
 //
 //spec:covers GDPR-ERASURE: Purge 遷移を経た User からは、投入した PII をどの経路でも読み出せない。
 func TestUserPurgeLeavesNoReadablePII(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
 	fixture := newErasureFixture(t, now)
 
@@ -143,7 +144,7 @@ func TestUserPurgeLeavesNoReadablePII(t *testing.T) {
 //
 //spec:covers GDPR-ERASURE: 消去は「定義済み期間内に」起きる。削除予約の猶予期間の内側では PII が
 func TestUserErasureHappensWithinTheDefinedGracePeriod(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
 	fixture := newErasureFixture(t, now)
 	grace := time.Duration(userusecases.UserSoftDeleteGracePeriodSeconds) * time.Second

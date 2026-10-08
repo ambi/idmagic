@@ -23,6 +23,7 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 //spec:covers EX-AUTHENTICATION-035-01, EX-AUTHENTICATION-035-02, EX-AUTHENTICATION-035-03: SAML シングルログアウトと WS-Federation のサインアウトのどちらでも、`__Host-` 接頭辞つきの Cookie でも接頭辞のない Cookie でも、サーバー側のセッションが失効し、同じセッション ID を再提示しても認証されないことを固定する。
@@ -62,7 +63,7 @@ func TestSignOutRevokesTheServerSideSessionForEveryEndpointShape(t *testing.T) {
 				}
 
 				// サーバー側の失効。Cookie を消すだけの実装はここで落ちる。
-				found, err := s.SessionStore.Find(context.Background(), sessionID)
+				found, err := s.SessionStore.Find(testing_tenant.Default(context.Background()), sessionID)
 				if err != nil {
 					t.Fatal(err)
 				}

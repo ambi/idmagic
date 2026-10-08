@@ -22,13 +22,14 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 var groupRulesNow = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 
 func storedGroupByID(t *testing.T, deps groupusecases.AdminGroupDeps, id string) *groupdomain.Group {
 	t.Helper()
-	group, err := deps.GroupRepo.FindByID(context.Background(), tenancydomain.DefaultTenantID, id)
+	group, err := deps.GroupRepo.FindByID(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, id)
 	if err != nil || group == nil {
 		t.Fatalf("FindByID(%s)=(%v,%v)", id, group, err)
 	}
@@ -37,7 +38,7 @@ func storedGroupByID(t *testing.T, deps groupusecases.AdminGroupDeps, id string)
 
 func tenantGroupNames(t *testing.T, deps groupusecases.AdminGroupDeps) []string {
 	t.Helper()
-	groups, err := deps.GroupRepo.ListAll(context.Background(), tenancydomain.DefaultTenantID)
+	groups, err := deps.GroupRepo.ListAll(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func tenantGroupNames(t *testing.T, deps groupusecases.AdminGroupDeps) []string 
 //spec:covers EX-IDMANAGEMENT-061-01, EX-IDMANAGEMENT-061-02: スキーマのないテナントで属性を含む作成を拒否し、必須の属性を省いた作成も拒否して Group を作らないこと。
 func TestGroupAttributesRequireATenantSchema(t *testing.T) {
 	deps, _ := newGroupDeps(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	value := "CC-100"
 	attrs := map[string]userdomain.AttributeValue{"cost_center": {Type: idmdomain.AttributeTypeString, String: &value}}
 	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: "finance", Attributes: attrs, Now: groupRulesNow}); !errors.Is(err, groupusecases.ErrInvalidAttribute) {
@@ -87,7 +88,7 @@ func TestUpdateGroupWithoutChangesHasNoEffect(t *testing.T) {
 	deps, events := newGroupDeps(t)
 	notifier := &recordingGroupNotifier{}
 	deps.ProvisioningNotifier = notifier
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	description := "Builds things"
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: "engineering", Description: &description, Now: groupRulesNow})
 	if err != nil {
@@ -122,7 +123,7 @@ func memberDepsWithUsers(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.Do
 	}
 	users.Seed(&userdomain.User{ID: "foreign", TenantID: "acme", PreferredUsername: "foreign", PasswordHash: "x", CreatedAt: groupRulesNow, UpdatedAt: groupRulesNow})
 	deps.UserRepo = users
-	group, err := groupusecases.CreateGroup(context.Background(), deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: "engineering", Now: groupRulesNow})
+	group, err := groupusecases.CreateGroup(testing_tenant.Default(context.Background()), deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: "engineering", Now: groupRulesNow})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +133,7 @@ func memberDepsWithUsers(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.Do
 
 func memberIDs(t *testing.T, deps groupusecases.AdminGroupDeps, groupID string) []string {
 	t.Helper()
-	members, err := deps.GroupRepo.ListMembersByGroup(context.Background(), tenancydomain.DefaultTenantID, groupID)
+	members, err := deps.GroupRepo.ListMembersByGroup(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, groupID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +148,7 @@ func memberIDs(t *testing.T, deps groupusecases.AdminGroupDeps, groupID string) 
 //spec:covers EX-IDMANAGEMENT-063-01: Disabled と PendingDeletion の User を手動グループへ追加でき、GroupMemberAdded を発行すること。
 func TestAddMemberAcceptsDisabledAndPendingDeletionUsers(t *testing.T) {
 	deps, events, groupID := memberDepsWithUsers(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	for _, id := range []string{"disabled", "pending"} {
 		if err := groupusecases.AddMember(ctx, deps, "operator", groupID, id, groupRulesNow); err != nil {
 			t.Fatalf("%s: err=%v, want added", id, err)
@@ -164,7 +165,7 @@ func TestAddMemberAcceptsDisabledAndPendingDeletionUsers(t *testing.T) {
 //spec:covers EX-IDMANAGEMENT-063-02: Deleted の User、別のテナントの User、存在しない User の追加を user_not_found で拒否し、既存メンバーの追加と非メンバーの除外はイベントを発行しないこと。
 func TestAddMemberRefusesDeletedForeignAndUnknownUsers(t *testing.T) {
 	deps, events, groupID := memberDepsWithUsers(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	for _, id := range []string{"deleted", "foreign", "nobody"} {
 		if err := groupusecases.AddMember(ctx, deps, "operator", groupID, id, groupRulesNow); !errors.Is(err, idmusecases.ErrUserNotFound) {
 			t.Fatalf("%s: err=%v, want ErrUserNotFound", id, err)
@@ -192,7 +193,7 @@ func TestAddMemberRefusesDeletedForeignAndUnknownUsers(t *testing.T) {
 func TestAddMemberKeepsTheCommittedChangeWhenNotificationFails(t *testing.T) {
 	deps, events, groupID := memberDepsWithUsers(t)
 	deps.ProvisioningNotifier = &recordingGroupNotifier{err: errors.New("provisioning outage")}
-	if err := groupusecases.AddMember(context.Background(), deps, "operator", groupID, "active", groupRulesNow); err == nil {
+	if err := groupusecases.AddMember(testing_tenant.Default(context.Background()), deps, "operator", groupID, "active", groupRulesNow); err == nil {
 		t.Fatalf("err=nil, want the notification failure")
 	}
 	if got := memberIDs(t, deps, groupID); !slices.Equal(got, []string{"active"}) {
@@ -223,7 +224,7 @@ func TestDynamicRuleExpressionConstraints(t *testing.T) {
 
 func reconcileJobs(t *testing.T, jobs *jobsmemory.JobRepository) []groupusecases.DynamicGroupReconcileParams {
 	t.Helper()
-	listed, err := jobs.ListByTenantAndKinds(context.Background(), "acme", []jobsdomain.JobKind{jobsdomain.KindDynamicGroupReconcile}, 100)
+	listed, err := jobs.ListByTenantAndKinds(testing_tenant.Default(context.Background()), "acme", []jobsdomain.JobKind{jobsdomain.KindDynamicGroupReconcile}, 100)
 	if err != nil {
 		t.Fatal(err)
 	}

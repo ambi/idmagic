@@ -15,6 +15,7 @@ import (
 	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/ambi/idmagic/backend/authentication/password/usecases"
@@ -39,7 +40,7 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 		Email: &email, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
-	err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
+	err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
 		UserRepo: userRepo, TokenStore: tokenStore, Notifier: newTestNotifier(emailSender),
 		Emit:   func(event spec.DomainEvent) { events = append(events, event) },
 		Issuer: "http://idp.test",
@@ -55,7 +56,7 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 		t.Fatalf("unexpected events: %#v", events)
 	}
 	token := tokenFromMessage(t, emailSender.Sent[0].Text)
-	stored, err := tokenStore.Find(context.Background(), actiontoken.Fingerprint(token))
+	stored, err := tokenStore.Find(testing_tenant.Default(context.Background()), actiontoken.Fingerprint(token))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +75,7 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 	var events []spec.DomainEvent
 	sender := &email_memory.NoopEmailSender{}
-	err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
+	err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
 		UserRepo: usermemory.NewUserRepository(), TokenStore: newResetTokenStore(usermemory.NewUserRepository()),
 		Notifier: newTestNotifier(sender), Emit: func(event spec.DomainEvent) { events = append(events, event) },
 		Issuer: "http://idp.test",
@@ -127,11 +128,11 @@ func newResetFixture(t *testing.T) *resetFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(context.Background(), issued.Envelope); err != nil {
+	if err := store.Save(testing_tenant.Default(context.Background()), issued.Envelope); err != nil {
 		t.Fatal(err)
 	}
 	return &resetFixture{
-		ctx: context.Background(), users: users, history: history, tokenStore: store,
+		ctx: testing_tenant.Default(context.Background()), users: users, history: history, tokenStore: store,
 		hasher: hasher, now: now, rawToken: issued.RawToken,
 	}
 }
@@ -342,7 +343,7 @@ func TestRequestPasswordResetLocalizesToTheRecipientLocale(t *testing.T) {
 	})
 	sender := &email_memory.NoopEmailSender{}
 
-	err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
+	err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
 		UserRepo: userRepo, TokenStore: newResetTokenStore(userRepo),
 		Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
 	}, usecases.RequestPasswordResetInput{Email: email, Now: now})
@@ -381,7 +382,7 @@ func TestRequestPasswordResetFallsBackToSystemDefaultLocale(t *testing.T) {
 	})
 	sender := &email_memory.NoopEmailSender{}
 
-	if err := usecases.RequestPasswordReset(context.Background(), usecases.RequestPasswordResetDeps{
+	if err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
 		UserRepo: userRepo, TokenStore: newResetTokenStore(userRepo),
 		Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
 	}, usecases.RequestPasswordResetInput{Email: email, Now: now}); err != nil {

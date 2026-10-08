@@ -8,6 +8,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestManagedAccessTokenUsesRFC9068ProfileAndExplicitExpiry(t *testing.T) {
@@ -17,7 +18,7 @@ func TestManagedAccessTokenUsesRFC9068ProfileAndExplicitExpiry(t *testing.T) {
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
 	exp := time.Now().Add(24 * time.Hour).Unix()
-	token, jti, err := signer.SignAccessToken(context.Background(), ports.AccessTokenInput{
+	token, jti, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "idmagic-api-token"}, Sub: "user-1", Scopes: []string{"account:read"},
 		Audiences: []string{"https://idp.test/realms/acme"}, ExpiresAt: exp, Managed: true,
 	})
@@ -31,7 +32,7 @@ func TestManagedAccessTokenUsesRFC9068ProfileAndExplicitExpiry(t *testing.T) {
 	if int64(claims["exp"].(float64)) != exp {
 		t.Fatalf("exp=%v", claims["exp"])
 	}
-	result, err := signer.IntrospectAccessToken(context.Background(), token)
+	result, err := signer.IntrospectAccessToken(testing_tenant.Default(context.Background()), token)
 	if err != nil || !result.Active || !result.Managed || result.Sub != "user-1" {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}

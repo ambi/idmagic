@@ -21,6 +21,7 @@ import (
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
@@ -196,7 +197,7 @@ func TestAdminKeysRotateAllowsTenantAdmin(t *testing.T) {
 func TestAdminKeysRotateRejectsNonAdmin(t *testing.T) {
 	plain := keyAdminUser("user_alice", tenancydomain.DefaultTenantID, []string{})
 	e, keyStore, events := newKeyAdminServer(t, plain)
-	before, err := keyStore.GetActiveKey(context.Background())
+	before, err := keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,7 @@ func TestAdminKeysRotateRejectsNonAdmin(t *testing.T) {
 	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), `"type":"urn:idmagic:error:access_denied"`) {
 		t.Fatalf("status=%d body=%s, want 403 access_denied", rec.Code, rec.Body.String())
 	}
-	after, err := keyStore.GetActiveKey(context.Background())
+	after, err := keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +235,7 @@ func TestAdminKeysRotateRejectsSystemAdminOutsideDefaultPath(t *testing.T) {
 func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e, keyStore, events := newKeyAdminServer(t, sysAdmin)
-	prevActive, err := keyStore.GetActiveKey(context.Background())
+	prevActive, err := keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}

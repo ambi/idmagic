@@ -21,6 +21,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -40,7 +41,7 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 	var events []spec.DomainEvent
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
-	provisioninghttp.RegisterRoutes(e.Group(""), provisioninghttp.Deps{
+	provisioninghttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), provisioninghttp.Deps{
 		Issuer: "http://idp.test",
 		Emit:   func(event spec.DomainEvent) { events = append(events, event) },
 		Authenticator: &support.Authenticator{
@@ -63,7 +64,7 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 	if got := request(http.MethodPost, base+"/test", nil); got.Code != http.StatusOK {
 		t.Fatalf("test status=%d body=%s", got.Code, got.Body.String())
 	}
-	saved, _ := connections.Find(context.Background(), tenancydomain.DefaultTenantID, "app-1")
+	saved, _ := connections.Find(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, "app-1")
 	if saved == nil || saved.Capabilities == nil {
 		t.Fatalf("connection after test = %+v, want cached capabilities", saved)
 	}
@@ -72,11 +73,11 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 	}); got.Code != http.StatusOK {
 		t.Fatalf("rotate status=%d body=%s", got.Code, got.Body.String())
 	}
-	saved, _ = connections.Find(context.Background(), tenancydomain.DefaultTenantID, "app-1")
+	saved, _ = connections.Find(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, "app-1")
 	if err := saved.Quarantine("too many failures", now); err != nil {
 		t.Fatal(err)
 	}
-	if err := connections.Update(context.Background(), saved, nil); err != nil {
+	if err := connections.Update(testing_tenant.Default(context.Background()), saved, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := request(http.MethodPost, base+"/resume", nil); got.Code != http.StatusOK {

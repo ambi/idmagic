@@ -17,6 +17,7 @@ import (
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	notificationtemplate "github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // インクリメンタル同期の E2E は、User の変更を IdManagement の実際のユースケースで起こし、イベント同期を
@@ -49,7 +50,7 @@ func (h *e2eHarness) reconcileDeps() usecases.ReconcileDeps {
 // provisionActiveUser はイベント同期で User を作り、下流へ作成を反映する。
 func (h *e2eHarness) provisionActiveUser(username string) string {
 	h.t.Helper()
-	user, err := userusecases.CreateUser(context.Background(), h.adminUserDeps, userusecases.CreateUserInput{
+	user, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.CreateUserInput{
 		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -63,7 +64,7 @@ func (h *e2eHarness) provisionActiveUser(username string) string {
 
 func (h *e2eHarness) assertNoPendingTask(userID string) {
 	h.t.Helper()
-	tasks, err := h.taskRepo.ListByConnection(context.Background(), h.tenantID, h.connectionID, nil, 100)
+	tasks, err := h.taskRepo.ListByConnection(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID, nil, 100)
 	if err != nil {
 		h.t.Fatalf("ListByConnection() error = %v", err)
 	}
@@ -78,7 +79,7 @@ func (h *e2eHarness) assertNoPendingTask(userID string) {
 func (h *e2eHarness) reconcileAndExecuteDeactivation(userID string) {
 	h.t.Helper()
 	remoteID := h.remoteUserID(userID)
-	created, err := usecases.ReconcileConnections(context.Background(), h.reconcileDeps(), 100, time.Now().UTC())
+	created, err := usecases.ReconcileConnections(testing_tenant.Default(context.Background()), h.reconcileDeps(), 100, time.Now().UTC())
 	if err != nil {
 		h.t.Fatalf("ReconcileConnections() error = %v", err)
 	}
@@ -106,7 +107,7 @@ func TestE2E_ReconcileDeactivatesAUserDisabledWithoutCapture(t *testing.T) {
 
 	withoutCapture := h.adminUserDeps
 	withoutCapture.ProvisioningNotifier = nil
-	if _, err := userusecases.SetUserDisabled(context.Background(), withoutCapture, "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), withoutCapture, "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	h.assertNoPendingTask(userID)
@@ -122,10 +123,10 @@ func TestE2E_ReconcileRecoversAFailedCapture(t *testing.T) {
 
 	failingCapture := h.adminUserDeps
 	failingCapture.ProvisioningNotifier = failingNotifier{}
-	if _, err := userusecases.SetUserDisabled(context.Background(), failingCapture, "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), failingCapture, "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v, want the change to commit despite the failed capture", err)
 	}
-	user, err := h.userRepo.FindBySub(context.Background(), userID)
+	user, err := h.userRepo.FindBySub(testing_tenant.Default(context.Background()), userID)
 	if err != nil || user == nil || user.IsActive() {
 		t.Fatalf("user after failed capture = %+v, err=%v, want disabled", user, err)
 	}
@@ -141,7 +142,7 @@ func TestE2E_ReconcileCreatesNothingWhenCaptureAlreadyConverged(t *testing.T) {
 	h.provisionActiveUser("reconcile-converged")
 	before := h.downstream.count()
 
-	created, err := usecases.ReconcileConnections(context.Background(), h.reconcileDeps(), 100, time.Now().UTC())
+	created, err := usecases.ReconcileConnections(testing_tenant.Default(context.Background()), h.reconcileDeps(), 100, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("ReconcileConnections() error = %v", err)
 	}
@@ -176,7 +177,7 @@ func (g *guardRun) reconcile() int {
 	module := provisioning.Module{ConnectionRepo: g.h.connRepo, RemoteLinkRepo: g.h.linkRepo, TaskRepo: g.h.taskRepo}
 	emit := func(event spec.DomainEvent) { g.events = append(g.events, event) }
 	notifier := &notificationtemplate.Notifier{Sender: &g.mails, SystemDefaultLocale: "en"}
-	created, err := usecases.ReconcileConnections(context.Background(), module.ReconcileDeps(g.h.userRepo, nil, emit, notifier), 100, time.Now().UTC())
+	created, err := usecases.ReconcileConnections(testing_tenant.Default(context.Background()), module.ReconcileDeps(g.h.userRepo, nil, emit, notifier), 100, time.Now().UTC())
 	if err != nil {
 		g.h.t.Fatalf("ReconcileConnections() error = %v", err)
 	}
@@ -213,7 +214,7 @@ func (h *e2eHarness) narrowScopeToAssignments() {
 
 func (h *e2eHarness) taskCount() int {
 	h.t.Helper()
-	tasks, err := h.taskRepo.ListByConnection(context.Background(), h.tenantID, h.connectionID, nil, 1000)
+	tasks, err := h.taskRepo.ListByConnection(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID, nil, 1000)
 	if err != nil {
 		h.t.Fatalf("ListByConnection() error = %v", err)
 	}
@@ -299,7 +300,7 @@ func TestE2E_ReconcileOverTheGuardNotifiesAndIsResumed(t *testing.T) {
 
 	var cleared []spec.DomainEvent
 	adminDeps := usecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo, Emit: func(event spec.DomainEvent) { cleared = append(cleared, event) }}
-	if _, err := usecases.ResumeConnection(context.Background(), adminDeps, h.tenantID, h.connectionID, time.Now().UTC()); err != nil {
+	if _, err := usecases.ResumeConnection(testing_tenant.Default(context.Background()), adminDeps, h.tenantID, h.connectionID, time.Now().UTC()); err != nil {
 		t.Fatalf("ResumeConnection() error = %v", err)
 	}
 	if len(cleared) != 1 || cleared[0].EventType() != "ProvisioningConnectionQuarantineCleared" {
@@ -323,7 +324,7 @@ func TestE2E_ReconcileAtTheGuardStillDeprovisions(t *testing.T) {
 	if created := run.reconcile(); created != 5 {
 		t.Fatalf("ReconcileConnections() created = %d, want 5 deactivations at the threshold", created)
 	}
-	tasks, err := h.taskRepo.ListByConnection(context.Background(), h.tenantID, h.connectionID, nil, 100)
+	tasks, err := h.taskRepo.ListByConnection(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID, nil, 100)
 	if err != nil {
 		t.Fatalf("ListByConnection() error = %v", err)
 	}

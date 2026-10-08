@@ -14,11 +14,12 @@ import (
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 //spec:covers REQ-IDMANAGEMENT-089: 管理 API と同じ依存から組み立てた JIT の入口が、規則に一致する属性の User を動的グループに所属させること。
 func TestFederatedUserProvisionerEvaluatesDynamicGroups(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()

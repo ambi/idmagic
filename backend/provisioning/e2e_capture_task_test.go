@@ -39,6 +39,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // fakeSCIMDownstream records every request it receives and issues sequential
@@ -211,7 +212,7 @@ func (h *e2eHarness) registerActiveConnection() {
 		RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10,
 		Health: domain.HealthOK, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := h.connRepo.Register(context.Background(), conn, e2eSecret); err != nil {
+	if err := h.connRepo.Register(testing_tenant.Default(context.Background()), conn, e2eSecret); err != nil {
 		h.t.Fatalf("Register() error = %v", err)
 	}
 }
@@ -220,7 +221,7 @@ func (h *e2eHarness) registerActiveConnection() {
 // created for userID and executes it, returning the resulting task.
 func (h *e2eHarness) executePendingTask(userID string) *domain.ProvisioningTask {
 	h.t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	tasks, err := h.taskRepo.ListByConnection(ctx, h.tenantID, h.connectionID, nil, 10)
 	if err != nil {
 		h.t.Fatalf("ListByConnection() error = %v", err)
@@ -247,7 +248,7 @@ func (h *e2eHarness) executePendingTask(userID string) *domain.ProvisioningTask 
 //spec:covers EX-PLATFORM-003-01: 管理者による User の作成、更新、無効化、削除は、イベント同期でプロビジョニングタスクになり、実行されて succeeded になり、下流へ届く。
 func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	h := newE2EHarness(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 
 	// 1. Create: IdManagement.CreateUser -> real ProvisioningNotifier -> real
 	// CaptureLifecycleEvent -> real ExecuteTask -> real scim.Client POST.
@@ -317,7 +318,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 // downstream (distinct from the default deactivate-on-delete scenario above).
 func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 	h := newE2EHarness(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	conn, err := h.connRepo.Find(ctx, h.tenantID, h.connectionID)
 	if err != nil || conn == nil {
 		t.Fatalf("Find() connection error = %v", err)
@@ -376,7 +377,7 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	connRepo := memoryprov.NewProvisioningConnectionRepository()
 	taskRepo := memoryprov.NewProvisioningTaskRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 	conn := &domain.ProvisioningConnection{
 		ApplicationID: "app-retry", TenantID: tenancydomain.DefaultTenantID, Status: domain.ConnectionActive, BaseURL: server.URL,
@@ -445,7 +446,7 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 
 	group := h.seedGroup()
@@ -480,7 +481,7 @@ func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 // 逆に、無効にしている接続へ書き込みが始まっていないことを固定する。
 func TestE2E_GroupChange_ProducesNothingWhenPushGroupsIsOff(t *testing.T) {
 	h := newE2EHarness(t) // push_groups は既定で false
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	group := h.seedGroup()
 
 	if err := h.groupNotifier.NotifyGroupMutation(
@@ -508,7 +509,7 @@ func TestE2E_GroupChange_ProducesNothingWhenPushGroupsIsOff(t *testing.T) {
 // 対象の選び方は既定の assigned_groups とし、表示名は Group の name から採る。
 func (h *e2eHarness) enablePushGroups() {
 	h.t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	conn, err := h.connRepo.Find(ctx, h.tenantID, h.connectionID)
 	if err != nil || conn == nil {
 		h.t.Fatalf("Find() = (%+v, %v)", conn, err)
@@ -538,7 +539,7 @@ func (h *e2eHarness) seedGroup() *groupdomain.Group {
 		MembershipType: groupdomain.GroupMembershipManual,
 		CreatedAt:      now, UpdatedAt: now,
 	}
-	if err := h.groupRepo.Save(context.Background(), group); err != nil {
+	if err := h.groupRepo.Save(testing_tenant.Default(context.Background()), group); err != nil {
 		h.t.Fatalf("Save() error = %v", err)
 	}
 	return group
@@ -549,7 +550,7 @@ func (h *e2eHarness) seedGroup() *groupdomain.Group {
 func (h *e2eHarness) executePendingGroupTask(sourceID string) *domain.ProvisioningTask {
 	h.t.Helper()
 	const sourceType = domain.SourceTypeGroup
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	tasks, err := h.taskRepo.ListByConnection(ctx, h.tenantID, h.connectionID, nil, 20)
 	if err != nil {
 		h.t.Fatalf("ListByConnection() error = %v", err)
@@ -583,7 +584,7 @@ func TestE2E_GroupMembership_PatchesOnlyProvisionedMembers(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
 	h.executeTaskDeps.GroupMemberSource = &identitysource.GroupMemberSource{GroupRepo: h.groupRepo}
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 
 	group := h.seedGroup()
@@ -662,7 +663,7 @@ func membersOfPatch(t *testing.T, request *recordedRequest) (string, []string) {
 
 func (h *e2eHarness) addMember(groupID, userID string) {
 	h.t.Helper()
-	if _, err := h.groupRepo.AddMember(context.Background(), &groupdomain.GroupMember{
+	if _, err := h.groupRepo.AddMember(testing_tenant.Default(context.Background()), &groupdomain.GroupMember{
 		GroupID: groupID, UserID: userID,
 		Source: groupdomain.MembershipSourceManual, CreatedAt: time.Now().UTC(),
 	}); err != nil {
@@ -674,7 +675,7 @@ func (h *e2eHarness) addMember(groupID, userID string) {
 // よる対象の選択は別々にプロビジョニングタスクを止めるので、片方だけを外した誤実装がもう片方に
 // 隠れないよう、条件を 1 つずつ変えた検査を置く。
 func TestE2E_GroupChange_EachGuardStopsTaskOnItsOwn(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 
 	t.Run("対象の設定はあるが push_groups が無効ならプロビジョニングタスクを作らない", func(t *testing.T) {
 		h := newE2EHarness(t)
@@ -736,7 +737,7 @@ func TestE2E_GroupChange_EachGuardStopsTaskOnItsOwn(t *testing.T) {
 func (h *e2eHarness) notifyGroupCreated(groupID string) {
 	h.t.Helper()
 	if err := h.groupNotifier.NotifyGroupMutation(
-		context.Background(), h.tenantID, groupID, groupports.ProvisioningGroupCreated, time.Now().UTC(),
+		testing_tenant.Default(context.Background()), h.tenantID, groupID, groupports.ProvisioningGroupCreated, time.Now().UTC(),
 	); err != nil {
 		h.t.Fatalf("NotifyGroupMutation() error = %v", err)
 	}
@@ -744,7 +745,7 @@ func (h *e2eHarness) notifyGroupCreated(groupID string) {
 
 func (h *e2eHarness) assertNoGroupTask() {
 	h.t.Helper()
-	tasks, err := h.taskRepo.ListByConnection(context.Background(), h.tenantID, h.connectionID, nil, 20)
+	tasks, err := h.taskRepo.ListByConnection(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID, nil, 20)
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -774,7 +775,7 @@ func (h *e2eHarness) setGroupPush(config *domain.GroupPushConfig) {
 
 func (h *e2eHarness) connection() *domain.ProvisioningConnection {
 	h.t.Helper()
-	conn, err := h.connRepo.Find(context.Background(), h.tenantID, h.connectionID)
+	conn, err := h.connRepo.Find(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID)
 	if err != nil || conn == nil {
 		h.t.Fatalf("Find() = (%+v, %v)", conn, err)
 	}
@@ -783,7 +784,7 @@ func (h *e2eHarness) connection() *domain.ProvisioningConnection {
 
 func (h *e2eHarness) saveConnection(conn *domain.ProvisioningConnection) {
 	h.t.Helper()
-	if err := h.connRepo.Update(context.Background(), conn, nil); err != nil {
+	if err := h.connRepo.Update(testing_tenant.Default(context.Background()), conn, nil); err != nil {
 		h.t.Fatalf("Update() error = %v", err)
 	}
 }
@@ -800,13 +801,13 @@ func TestE2E_GroupDeleted_SendsRealDELETE(t *testing.T) {
 	if got := h.executePendingGroupTask(group.ID); got.Status != domain.TaskSucceeded {
 		t.Fatalf("create task status = %q", got.Status)
 	}
-	link, err := h.linkRepo.Find(context.Background(), h.connectionID, domain.SourceTypeGroup, group.ID)
+	link, err := h.linkRepo.Find(testing_tenant.Default(context.Background()), h.connectionID, domain.SourceTypeGroup, group.ID)
 	if err != nil || link == nil {
 		t.Fatalf("RemoteResourceLink = (%+v, %v)", link, err)
 	}
 
 	if err := h.groupNotifier.NotifyGroupMutation(
-		context.Background(), h.tenantID, group.ID, groupports.ProvisioningGroupDeleted, time.Now().UTC(),
+		testing_tenant.Default(context.Background()), h.tenantID, group.ID, groupports.ProvisioningGroupDeleted, time.Now().UTC(),
 	); err != nil {
 		t.Fatalf("NotifyGroupMutation() error = %v", err)
 	}
@@ -831,7 +832,7 @@ func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
 	h := newE2EHarness(t)
 	h.enablePushGroups()
 	h.executeTaskDeps.GroupMemberSource = &identitysource.GroupMemberSource{GroupRepo: h.groupRepo}
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 
 	group := h.seedGroup()
 	stays := h.provisionUser("alice-stays")
@@ -905,7 +906,7 @@ func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
 // provisionUser は User を 1 人作り、下流へ provision して id を返す。
 func (h *e2eHarness) provisionUser(username string) string {
 	h.t.Helper()
-	created, err := userusecases.CreateUser(context.Background(), h.adminUserDeps, userusecases.CreateUserInput{
+	created, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.CreateUserInput{
 		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -918,7 +919,7 @@ func (h *e2eHarness) provisionUser(username string) string {
 // remoteUserID は provision 済みの User の下流 id を返す。
 func (h *e2eHarness) remoteUserID(userID string) string {
 	h.t.Helper()
-	link, err := h.linkRepo.Find(context.Background(), h.connectionID, domain.SourceTypeUser, userID)
+	link, err := h.linkRepo.Find(testing_tenant.Default(context.Background()), h.connectionID, domain.SourceTypeUser, userID)
 	if err != nil || link == nil || link.RemoteID == "" {
 		h.t.Fatalf("RemoteResourceLink(%s) = (%+v, %v), want a link carrying the downstream id", userID, link, err)
 	}
@@ -928,7 +929,7 @@ func (h *e2eHarness) remoteUserID(userID string) string {
 func (h *e2eHarness) notifyGroupMembershipChanged(groupID string) {
 	h.t.Helper()
 	if err := h.groupNotifier.NotifyGroupMutation(
-		context.Background(), h.tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, time.Now().UTC(),
+		testing_tenant.Default(context.Background()), h.tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, time.Now().UTC(),
 	); err != nil {
 		h.t.Fatalf("NotifyGroupMutation() error = %v", err)
 	}
@@ -1013,7 +1014,7 @@ func TestE2E_GroupChange_DisplayNameFallsBackToTheNameWhenTheSourceIsEmpty(t *te
 // setGroupEmail は Group にメールアドレスを与える。
 func (h *e2eHarness) setGroupEmail(groupID, email string) {
 	h.t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	group, err := h.groupRepo.FindByID(ctx, h.tenantID, groupID)
 	if err != nil || group == nil {
 		h.t.Fatalf("FindByID() = (%+v, %v)", group, err)

@@ -33,6 +33,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 const (
@@ -44,7 +45,7 @@ const (
 //
 //spec:covers GDPR-ERASURE: 削除要求を受けた利用者の資格情報は Authentication 側の保存先から
 func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
 
 	users := usermemory.NewUserRepository()

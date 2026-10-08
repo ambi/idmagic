@@ -18,6 +18,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -76,7 +77,7 @@ func newProvisioningAdminServer(t *testing.T) provisioningRequest {
 	connections := provisioningmemory.NewProvisioningConnectionRepository()
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
-	provisioninghttp.RegisterRoutes(e.Group(""), provisioninghttp.Deps{
+	provisioninghttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), provisioninghttp.Deps{
 		Issuer: "http://idp.test",
 		Authenticator: &support.Authenticator{
 			UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{},

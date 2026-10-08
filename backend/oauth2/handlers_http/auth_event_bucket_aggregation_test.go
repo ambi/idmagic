@@ -17,6 +17,7 @@ import (
 	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -56,6 +57,7 @@ func driveRecordLoginFailure(t *testing.T, d Deps, username string, times int) (
 	var emitted []spec.DomainEvent
 	d.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 	e := echo.New()
+	e.Use(testing_tenant.ResolveDefault)
 	lastAggregated := false
 	e.POST("/x", func(c *echo.Context) error {
 		agg, err := d.recordLoginFailure(c, username, "")

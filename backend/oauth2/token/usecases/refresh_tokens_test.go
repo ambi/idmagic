@@ -15,6 +15,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -60,7 +61,7 @@ func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time,
 	}
 	// 期限を上書きして AbsoluteExpiresAt の境界を意図した値に揃える。
 	gen.Record.AbsoluteExpiresAt = now.Add(ttl)
-	if err := refreshStore.Save(context.Background(), gen.Record); err != nil {
+	if err := refreshStore.Save(testing_tenant.Default(context.Background()), gen.Record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -78,7 +79,7 @@ func TestRefreshTokensRejectsAbsoluteTTLExpired(t *testing.T) {
 	now := time.Now().UTC()
 	// AbsoluteExpiresAt を過去にしてローテーション不可を観測する。
 	f := newRefreshFixture(t, nil, now, -time.Minute)
-	_, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
+	_, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID: "client", RefreshToken: f.token,
 	}, now)
 	if err == nil {
@@ -94,7 +95,7 @@ func TestRefreshTokensRejectsDPoPSenderConstraintMismatch(t *testing.T) {
 	now := time.Now().UTC()
 	sc := &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "expected-jkt"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
-	_, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
+	_, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID:     "client",
 		RefreshToken: f.token,
 		ProofJKT:     "different-jkt",
@@ -112,7 +113,7 @@ func TestRefreshTokensRejectsMTLSSenderConstraintMismatch(t *testing.T) {
 	now := time.Now().UTC()
 	sc := &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
-	_, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
+	_, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID:     "client",
 		RefreshToken: f.token,
 		ProofX5TS256: "attacker-thumbprint",

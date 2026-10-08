@@ -12,6 +12,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -33,7 +34,7 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
-	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
+	_ = clientRepo.Save(testing_tenant.Default(context.Background()), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{"https://app.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
@@ -68,7 +69,7 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 func newAgentDepsWithQuota(t *testing.T, tenantID string, limit int) agentusecases.AdminAgentDeps {
 	t.Helper()
 	deps, _ := newAgentDeps(t)
-	if err := deps.QuotaRepo.SetQuota(context.Background(), tenantID, &tenancydomain.TenantQuota{Agents: &limit}); err != nil {
+	if err := deps.QuotaRepo.SetQuota(testing_tenant.Default(context.Background()), tenantID, &tenancydomain.TenantQuota{Agents: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	return deps
@@ -82,9 +83,9 @@ func agentEventTypes(events []spec.DomainEvent) []string {
 	return out
 }
 
-// defaultTenantCtx は tenancy.TenantID が tenancydomain.DefaultTenantID を返す素の context。
+// defaultTenantCtx は default テナントを解決済みの context を返す。
 func defaultTenantCtx() context.Context {
-	return context.Background()
+	return testing_tenant.Default(context.Background())
 }
 
 func tenantCtx(id string) context.Context {
@@ -617,7 +618,7 @@ func TestDeleteKilledAgentIsRejected(t *testing.T) {
 //
 //spec:covers EX-IDMANAGEMENT-032-05: 制御面テナントの Agent への `system_admin` の付与が登録でも更新でも ErrReservedRole で拒否され、Agent も割当て枠の消費も生じないこと。
 func TestAgentReservedRoleRefusedEvenInsideTheControlPlane(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
 

@@ -10,6 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type staticHintVerifier struct {
@@ -37,7 +38,7 @@ func seedEndSessionClient(t *testing.T, repo *memory.OAuth2ClientRepository, cli
 func TestResolveEndSessionNoRedirectSkipsClientResolution(t *testing.T) {
 	// レガシー互換: post_logout_redirect_uri が無ければ client_id も id_token_hint も
 	// 不要で、即座に "signed-out" 相当 (Client==nil) を返す。
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{}, EndSessionInput{})
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{}, EndSessionInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +51,7 @@ func TestResolveEndSessionValidatesRegisteredRedirectURI(t *testing.T) {
 	repo := memory.NewClientRepository()
 	seedEndSessionClient(t, repo, "web-app", []string{"https://app.example.com/post-logout"})
 
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{ClientRepo: repo}, EndSessionInput{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{ClientRepo: repo}, EndSessionInput{
 		ClientID: "web-app", PostLogoutRedirectURI: "https://app.example.com/post-logout",
 	})
 	if err != nil {
@@ -60,7 +61,7 @@ func TestResolveEndSessionValidatesRegisteredRedirectURI(t *testing.T) {
 		t.Fatalf("unexpected target: %#v", target)
 	}
 
-	_, err = ResolveEndSession(context.Background(), EndSessionDeps{ClientRepo: repo}, EndSessionInput{
+	_, err = ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{ClientRepo: repo}, EndSessionInput{
 		ClientID: "web-app", PostLogoutRedirectURI: "https://evil.example.com/cb",
 	})
 	var oerr *OAuthError
@@ -75,7 +76,7 @@ func TestResolveEndSessionResolvesSidAndClientFromHint(t *testing.T) {
 	repo := memory.NewClientRepository()
 	seedEndSessionClient(t, repo, "web-app", []string{"https://app.example.com/post-logout"})
 
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		ClientRepo:   repo,
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Sid: "session-1", Subject: "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
@@ -92,7 +93,7 @@ func TestResolveEndSessionResolvesSidAndClientFromHint(t *testing.T) {
 }
 
 func TestResolveEndSessionRejectsClientIDMismatchWithHint(t *testing.T) {
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Sid: "session-1"}},
 	}, EndSessionInput{ClientID: "other-app", IDTokenHint: "hint-token"})
 	if target != nil {
@@ -105,7 +106,7 @@ func TestResolveEndSessionRejectsClientIDMismatchWithHint(t *testing.T) {
 }
 
 func TestResolveEndSessionRejectsUnverifiableHint(t *testing.T) {
-	_, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	_, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		HintVerifier: staticHintVerifier{err: errors.New("bad signature")},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	var oerr *OAuthError
@@ -117,7 +118,7 @@ func TestResolveEndSessionRejectsUnverifiableHint(t *testing.T) {
 func TestResolveEndSessionWithoutVerifierRejectsHint(t *testing.T) {
 	// HintVerifier が配線されていない環境で id_token_hint を渡された場合は
 	// fail-closed で拒否する (cookie フォールバックへの黙示的降格をしない)。
-	_, err := ResolveEndSession(context.Background(), EndSessionDeps{}, EndSessionInput{IDTokenHint: "hint-token"})
+	_, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{}, EndSessionInput{IDTokenHint: "hint-token"})
 	var oerr *OAuthError
 	if !errors.As(err, &oerr) || oerr.Code != "invalid_request" {
 		t.Fatalf("expected invalid_request, got %v", err)
@@ -143,7 +144,7 @@ func (s staticSessionOwner) LoginSessionOwner(_ context.Context, sid string) (st
 //
 //spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-05: sid を持たない id_token_hint はログアウト対象を
 func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	if target != nil {
@@ -159,7 +160,7 @@ func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
 //
 //spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-06: sid が示す LoginSession の主体と sub が違うヒントは、
 func TestResolveEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "mallory", Sid: "session-1"}},
 		SessionOwner: staticSessionOwner{owners: map[string]string{"session-1": "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
@@ -174,7 +175,7 @@ func TestResolveEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
 
 // 主体が一致するヒントは従来どおり sid を解決する。
 func TestResolveEndSessionResolvesSidWhenSubjectOwnsTheSession(t *testing.T) {
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-1"}},
 		SessionOwner: staticSessionOwner{owners: map[string]string{"session-1": "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
@@ -189,7 +190,7 @@ func TestResolveEndSessionResolvesSidWhenSubjectOwnsTheSession(t *testing.T) {
 // sid がどの LoginSession も指さないヒントは、失効させる対象を持たない。
 // 照合する相手が無いだけなので拒否はせず、解決結果をそのまま返す。
 func TestResolveEndSessionAcceptsHintWhoseSidHasNoSession(t *testing.T) {
-	target, err := ResolveEndSession(context.Background(), EndSessionDeps{
+	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-gone"}},
 		SessionOwner: staticSessionOwner{owners: map[string]string{}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})

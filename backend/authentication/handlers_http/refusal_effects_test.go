@@ -66,6 +66,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
@@ -158,7 +159,7 @@ type authRefusalFixture struct {
 
 func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *authRefusalFixture {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 
 	hasher := testing_passwords.NewHasher()
@@ -298,7 +299,7 @@ func (f *authRefusalFixture) seedSession(t *testing.T, id, tenantID, userID stri
 	for _, apply := range mutate {
 		apply(session)
 	}
-	if err := f.sessions.Save(context.Background(), session); err != nil {
+	if err := f.sessions.Save(testing_tenant.Default(context.Background()), session); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -331,7 +332,7 @@ func (f *authRefusalFixture) issueApiToken(
 	t.Helper()
 	realm := realmFor(tenantID)
 	ctx := tenancy.WithTenant(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		&tenancydomain.Tenant{ID: tenantID, Realm: realm},
 		authRefusalIssuer+"/realms/"+realm,
 		"/realms/"+realm,
@@ -423,7 +424,7 @@ func (f *authRefusalFixture) seedTotpFactor(t *testing.T, secret string) {
 	t.Helper()
 	userID := authRefusalAlice
 	value := secret
-	if err := f.factors.Save(context.Background(), &totpdomain.MfaFactor{
+	if err := f.factors.Save(testing_tenant.Default(context.Background()), &totpdomain.MfaFactor{
 		UserID: userID, Type: spec.MfaFactorTOTP, Secret: &value, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
@@ -436,7 +437,7 @@ func (f *authRefusalFixture) seedTotpFactor(t *testing.T, secret string) {
 func (f *authRefusalFixture) seedRecoveryCodes(t *testing.T) {
 	t.Helper()
 	userID := authRefusalAlice
-	if err := f.recovery.ReplaceAll(context.Background(), userID, []*recoverydomain.RecoveryCode{
+	if err := f.recovery.ReplaceAll(testing_tenant.Default(context.Background()), userID, []*recoverydomain.RecoveryCode{
 		{UserID: userID, CodeHash: "seeded-recovery-code-hash", GeneratedAt: time.Now().UTC()},
 	}); err != nil {
 		t.Fatal(err)
@@ -450,7 +451,7 @@ func (f *authRefusalFixture) seedWebAuthnCredential(t *testing.T) {
 	t.Helper()
 	userID := authRefusalAlice
 	encode := base64.RawURLEncoding.EncodeToString
-	if err := f.credentials.Save(context.Background(), &webauthndomain.WebAuthnCredential{
+	if err := f.credentials.Save(testing_tenant.Default(context.Background()), &webauthndomain.WebAuthnCredential{
 		CredentialID: encode([]byte("credential-" + userID)), UserID: userID,
 		PublicKey: encode([]byte("public-key")), CreatedAt: time.Now().UTC(),
 	}); err != nil {
@@ -461,7 +462,7 @@ func (f *authRefusalFixture) seedWebAuthnCredential(t *testing.T) {
 // seedFederatedLink は外部アイデンティティのリンクを 1 本置く。
 func (f *authRefusalFixture) seedFederatedLink(t *testing.T, tenantID, providerID, userID, subject string) {
 	t.Helper()
-	if err := f.federation.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+	if err := f.federation.Identities.Create(testing_tenant.Default(context.Background()), &federationdomain.FederatedIdentity{
 		TenantID: tenantID, ProviderID: providerID, ExternalSubject: subject,
 		LocalUserID: userID, LinkedAt: time.Now().UTC(),
 	}); err != nil {
@@ -474,7 +475,7 @@ func (f *authRefusalFixture) seedFederatedLink(t *testing.T, tenantID, providerI
 func (f *authRefusalFixture) linkedProviders(t *testing.T, userID string) []string {
 	t.Helper()
 	identities, err := f.federation.Identities.ListByUser(
-		context.Background(), tenancydomain.DefaultTenantID, userID,
+		testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, userID,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -490,7 +491,7 @@ func (f *authRefusalFixture) linkedProviders(t *testing.T, userID string) []stri
 // Find は失効した行を返さないので、tombstone まで見える FindOwned で読む。
 func (f *authRefusalFixture) sessionRevoked(t *testing.T, id, userID string) bool {
 	t.Helper()
-	session, err := f.sessions.FindOwned(context.Background(), id, userID)
+	session, err := f.sessions.FindOwned(testing_tenant.Default(context.Background()), id, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +610,7 @@ func TestAccountContextWithoutAccountScopeLeaksNoContext(t *testing.T) {
 // 拒否が動かしてはならない対象はどのテストでも alice なので、主体は固定する。
 func (f *authRefusalFixture) recoveryCodeHashes(t *testing.T) []string {
 	t.Helper()
-	codes, err := f.recovery.ListBySub(context.Background(), authRefusalAlice)
+	codes, err := f.recovery.ListBySub(testing_tenant.Default(context.Background()), authRefusalAlice)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -764,7 +765,7 @@ func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 	}
 
 	// 拒否が変えなかったもの: どのセッションのステップアップも成立していない。
-	session, err := fixture.sessions.Find(context.Background(), stale)
+	session, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), stale)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1029,7 +1030,7 @@ func TestAccountApiTokenScopesAllowExactlyTheirOwnOperations(t *testing.T) {
 // passwordMatches は保存されているパスワードハッシュが平文と一致するかを返す。
 func (f *authRefusalFixture) passwordMatches(t *testing.T, userID, plaintext string) bool {
 	t.Helper()
-	user, err := f.users.FindBySub(context.Background(), userID)
+	user, err := f.users.FindBySub(testing_tenant.Default(context.Background()), userID)
 	if err != nil || user == nil {
 		t.Fatalf("user=%v err=%v", user, err)
 	}
@@ -1110,7 +1111,7 @@ func TestAccountContextIsTheSameFromEveryAllowedCredential(t *testing.T) {
 func (f *authRefusalFixture) issuePortalToken(t *testing.T, userID string, scopes ...string) string {
 	t.Helper()
 	ctx := tenancy.WithTenant(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm},
 		authRefusalIssuer+"/realms/"+tenancydomain.DefaultRealm,
 		"/realms/"+tenancydomain.DefaultRealm,
@@ -1255,7 +1256,7 @@ func TestTotpRemovalWithoutStepUpKeepsTheFactor(t *testing.T) {
 	if problem := problemCode(t, refused); problem != "step_up_required" {
 		t.Fatalf("error=%q、期待は step_up_required", problem)
 	}
-	if factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP); factor == nil {
+	if factor, _ := fixture.factors.Find(testing_tenant.Default(context.Background()), authRefusalAlice, spec.MfaFactorTOTP); factor == nil {
 		t.Fatal("ステップアップ無しの要求で認証要素が消えた")
 	}
 
@@ -1272,7 +1273,7 @@ func TestTotpRemovalWithoutStepUpKeepsTheFactor(t *testing.T) {
 	if accepted.Code != http.StatusNoContent {
 		t.Fatalf("前提が壊れている: ステップアップ済みの解除が status=%d body=%s", accepted.Code, accepted.Body.String())
 	}
-	if factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP); factor != nil {
+	if factor, _ := fixture.factors.Find(testing_tenant.Default(context.Background()), authRefusalAlice, spec.MfaFactorTOTP); factor != nil {
 		t.Fatal("前提が壊れている: ステップアップ済みの解除で認証要素が残っている")
 	}
 }
@@ -1322,7 +1323,7 @@ func (f *authRefusalFixture) seedTrustedDevice(t *testing.T, userID string) stri
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.devices.Save(context.Background(), device); err != nil {
+	if err := f.devices.Save(testing_tenant.Default(context.Background()), device); err != nil {
 		t.Fatal(err)
 	}
 	return device.ID
@@ -1331,7 +1332,7 @@ func (f *authRefusalFixture) seedTrustedDevice(t *testing.T, userID string) stri
 // activeTrustedDevices は失効していない端末の台数を返す。
 func (f *authRefusalFixture) activeTrustedDevices(t *testing.T, userID string) int {
 	t.Helper()
-	devices, err := f.devices.ListActiveByUser(context.Background(), tenancydomain.DefaultTenantID, userID, time.Now().UTC())
+	devices, err := f.devices.ListActiveByUser(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, userID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1493,7 +1494,7 @@ func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
 			},
 			unchanged: func(t *testing.T, fixture *authRefusalFixture, _ string) {
 				t.Helper()
-				factor, _ := fixture.factors.Find(context.Background(), authRefusalAlice, spec.MfaFactorTOTP)
+				factor, _ := fixture.factors.Find(testing_tenant.Default(context.Background()), authRefusalAlice, spec.MfaFactorTOTP)
 				if factor == nil {
 					t.Fatal("拒否されたのに認証要素が消えた")
 				}

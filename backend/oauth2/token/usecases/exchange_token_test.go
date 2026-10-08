@@ -7,6 +7,7 @@ import (
 	"time"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
@@ -85,7 +86,7 @@ func TestExchangeTokenBuildsActAndAudience(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
-	res, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	if err != nil {
@@ -118,7 +119,7 @@ func TestExchangeTokenRejectsAccountScopeFromClientSubject(t *testing.T) {
 		TenantID: kernel.DefaultTenantID,
 		ID:       "realm-api", Resource: "https://api.example", Name: "Realm API", Scopes: []string{"account:read"}, State: domain.McpResourceServerActive,
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}}, time.Now().UTC())
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}}, time.Now().UTC())
 	if err == nil {
 		t.Fatal("client subject received account scope")
 	}
@@ -132,7 +133,7 @@ func TestExchangeTokenNestsExistingActChain(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", Act: map[string]any{"sub": "svc-a"}},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	if err != nil {
@@ -155,7 +156,7 @@ func TestExchangeTokenRejectsExceedingMaxDepth(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", Act: deep},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	if err == nil {
@@ -171,7 +172,7 @@ func TestExchangeTokenRejectsInactiveSubject(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: false},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	if err == nil {
@@ -185,7 +186,7 @@ func TestExchangeTokenEnforcesMayAct(t *testing.T) {
 		// may_act.sub != currentActor("client") → 拒否。
 		"subj": {Active: true, Sub: "user-1", Scope: "read", MayAct: map[string]any{"sub": "other"}},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	if err == nil {
@@ -197,7 +198,7 @@ func TestExchangeTokenEnforcesMayAct(t *testing.T) {
 	deps2 := newExchangeTokenDeps(t, issuer2, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", MayAct: map[string]any{"sub": "client"}},
 	})
-	if _, err := ExchangeToken(context.Background(), deps2, ExchangeTokenInput{
+	if _, err := ExchangeToken(testing_tenant.Default(context.Background()), deps2, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC()); err != nil {
 		t.Fatalf("may_act 一致時に拒否されました: %v", err)
@@ -209,7 +210,7 @@ func TestExchangeTokenCannotWidenScope(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Scope: "read write",
 		Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -223,7 +224,7 @@ func TestExchangeTokenDownscopes(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
-	res, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Scope: "read",
 		Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -240,7 +241,7 @@ func TestExchangeTokenRejectsUnregisteredResource(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://unregistered.example"},
 	}, time.Now().UTC())
 	assertOAuthError(t, err, "invalid_target")
@@ -259,7 +260,7 @@ func TestExchangeTokenRejectsDisabledResource(t *testing.T) {
 		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
 		State: domain.McpResourceServerDisabled,
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	assertOAuthError(t, err, "invalid_target")
@@ -275,7 +276,7 @@ func TestExchangeTokenRejectsScopeExceedingResourceAllowlist(t *testing.T) {
 		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
 		State: domain.McpResourceServerActive,
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Scope: "write",
 		Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -293,7 +294,7 @@ func TestExchangeTokenRequiresSingleResource(t *testing.T) {
 			deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 				"subj": {Active: true, Sub: "user-1", Scope: "read"},
 			})
-			_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+			_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 				ClientID: "client", SubjectToken: "subj", Resource: resource,
 			}, time.Now().UTC())
 			if err == nil {
@@ -308,7 +309,7 @@ func TestExchangeTokenRejectsUnsupportedRequestedTokenType(t *testing.T) {
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 		RequestedTokenType: "urn:ietf:params:oauth:token-type:refresh_token",
 	}, time.Now().UTC())
@@ -327,7 +328,7 @@ func TestExchangeTokenUsesAuthorizerPolicyGate(t *testing.T) {
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	deps.Authorizer = authorizer
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}, Scope: "read",
 	}, time.Now().UTC())
 	if err == nil {
@@ -354,7 +355,7 @@ func TestExchangeTokenActorTokenBecomesActor(t *testing.T) {
 		"subj":  {Active: true, Sub: "user-1", Scope: "read"},
 		"actor": {Active: true, Sub: "svc-actor", Scope: "read"},
 	})
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", ActorToken: "actor",
 		Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -396,7 +397,7 @@ func TestExchangeTokenWorkloadFederation(t *testing.T) {
 	var events []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
 
-	res, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "external-svid",
 		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -431,7 +432,7 @@ func TestExchangeTokenWorkloadFederation(t *testing.T) {
 func TestExchangeTokenWorkloadFederationRequiresVerifier(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, nil)
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "external-svid",
 		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -446,7 +447,7 @@ func TestExchangeTokenWorkloadFederationRejectsFailedVerification(t *testing.T) 
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, nil)
 	deps.WorkloadVerifier = fakeWorkloadVerifier{err: errWorkloadVerificationFailedForTest}
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "external-svid",
 		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
 	}, time.Now().UTC())

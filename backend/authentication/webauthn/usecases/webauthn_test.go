@@ -11,6 +11,7 @@ import (
 	authnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
@@ -42,7 +43,7 @@ func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDe
 
 func seedCredential(t *testing.T, deps usecases.WebAuthnDeps, credentialID string) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	err := deps.CredentialRepo.Save(ctx, &domain.WebAuthnCredential{
 		CredentialID: base64.RawURLEncoding.EncodeToString([]byte(credentialID)),
 		UserID:       "user-alice",
@@ -56,7 +57,7 @@ func seedCredential(t *testing.T, deps usecases.WebAuthnDeps, credentialID strin
 }
 
 func TestWebAuthnUseCasesRequireConfiguration(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newWebAuthnDeps(t, nil) // RP=nil → 未設定
 	now := time.Now()
 
@@ -72,7 +73,7 @@ func TestWebAuthnUseCasesRequireConfiguration(t *testing.T) {
 }
 
 func TestListWebAuthnCredentials(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newWebAuthnDeps(t, nil)
 	seedCredential(t, deps, "cred-1")
 	seedCredential(t, deps, "cred-2")
@@ -87,7 +88,7 @@ func TestListWebAuthnCredentials(t *testing.T) {
 }
 
 func TestRemoveWebAuthnCredentialKeepsMfaWhenTotpRemains(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newWebAuthnDeps(t, nil)
 	seedCredential(t, deps, "cred-1")
 	secret := "JBSWY3DPEHPK3PXP"
@@ -112,7 +113,7 @@ func TestRemoveWebAuthnCredentialKeepsMfaWhenTotpRemains(t *testing.T) {
 }
 
 func TestRemoveLastWebAuthnCredentialClearsMfa(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, _ := newWebAuthnDeps(t, nil)
 	seedCredential(t, deps, "cred-only")
 
@@ -127,7 +128,7 @@ func TestRemoveLastWebAuthnCredentialClearsMfa(t *testing.T) {
 }
 
 func TestRemoveUnknownWebAuthnCredential(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newWebAuthnDeps(t, nil)
 	seedCredential(t, deps, "existing")
 	err := usecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", "nonexistent", time.Now())
@@ -144,7 +145,7 @@ func TestRemoveUnknownWebAuthnCredential(t *testing.T) {
 }
 
 func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	rp, err := usecases.NewWebAuthn(usecases.WebAuthnConfig{
 		RPID: "localhost", RPDisplayName: "idmagic", RPOrigins: []string{"http://localhost"},
 	})
@@ -169,7 +170,7 @@ func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
 }
 
 func TestBeginWebAuthnAssertionRequiresCredential(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	rp, err := usecases.NewWebAuthn(usecases.WebAuthnConfig{
 		RPID: "localhost", RPOrigins: []string{"http://localhost"},
 	})

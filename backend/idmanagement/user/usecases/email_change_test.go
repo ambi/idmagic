@@ -16,6 +16,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
@@ -26,7 +27,7 @@ import (
 
 //spec:covers EX-IDMANAGEMENT-053-04: 起票が新アドレスへ確認リンクを送ること。
 func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	tokenStore := usermemory.NewEmailChangeTokenStore(userRepo)
 	sender := &email_memory.NoopEmailSender{}
@@ -72,7 +73,7 @@ func TestRequestEmailChangeSendsLinkToNewAddress(t *testing.T) {
 
 //spec:covers EX-IDMANAGEMENT-017-01, EX-IDMANAGEMENT-017-03: 通常経路と、確定済みのトークンは再利用できない。
 func TestConfirmEmailChangeAppliesEmailAndClearsVerifyAction(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	tokenStore := usermemory.NewEmailChangeTokenStore(userRepo)
 	sender := &email_memory.NoopEmailSender{}
@@ -141,7 +142,7 @@ type emailChangeFixture struct {
 
 func newEmailChangeFixture(t *testing.T) *emailChangeFixture {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	users := usermemory.NewUserRepository()
 	store := usermemory.NewEmailChangeTokenStore(users)
 	sender := &email_memory.NoopEmailSender{}
@@ -313,7 +314,7 @@ func TestConfirmEmailChangeKeepsTheTokenWhenTheAddressWasTaken(t *testing.T) {
 }
 
 func TestRequestEmailChangeRejectsAddressTakenByAnotherUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	mine := "mine@example.com"
@@ -361,7 +362,7 @@ func newTestNotifier(sender *email_memory.NoopEmailSender) *template.Notifier {
 // と同じ locale 解決を、メールアドレス変更の確認メールでも通す。確認先の
 // 新アドレスは本文に出す必要があるため、new_email が差し込まれることも固定する。
 func TestRequestEmailChangeLocalizesToTheRecipientLocale(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	sender := &email_memory.NoopEmailSender{}
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)

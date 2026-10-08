@@ -19,6 +19,7 @@ import (
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
@@ -60,6 +61,7 @@ func clientAuthServer(method domain.TokenEndpointAuthMethod) *echo.Echo {
 	})
 	deps := Deps{Issuer: "https://idp.example", ClientRepo: repo}
 	e := echo.New()
+	e.Use(testing_tenant.ResolveDefault)
 	e.POST("/test", func(c *echo.Context) error {
 		if err := c.Request().ParseForm(); err != nil {
 			return err
@@ -218,7 +220,7 @@ func TestClientAuthenticationUsesAnyActiveCredentialOnly(t *testing.T) {
 		{"revoked", "revoked", &future, &revokedAt, http.StatusUnauthorized},
 	}
 	for _, credential := range credentials {
-		if err := repo.SaveClientSecretCredential(t.Context(), domain.ClientSecretCredential{
+		if err := repo.SaveClientSecretCredential(testing_tenant.Default(t.Context()), domain.ClientSecretCredential{
 			ID: credential.id, ClientID: "client",
 			SecretHash: domain.HashClientSecret(credential.secret), CreatedAt: now.Add(-time.Hour),
 			ExpiresAt: credential.expiresAt, RevokedAt: credential.revokedAt,
@@ -228,6 +230,7 @@ func TestClientAuthenticationUsesAnyActiveCredentialOnly(t *testing.T) {
 	}
 	deps := Deps{Issuer: "https://idp.example", ClientRepo: repo}
 	e := echo.New()
+	e.Use(testing_tenant.ResolveDefault)
 	e.POST("/test", func(c *echo.Context) error {
 		client, err := deps.authenticateTokenClient(c)
 		if err != nil {
@@ -280,6 +283,7 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 	}
 	e := echo.New()
+	e.Use(testing_tenant.ResolveDefault)
 	e.POST("/test", func(c *echo.Context) error {
 		if err := c.Request().ParseForm(); err != nil {
 			return err

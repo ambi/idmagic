@@ -17,6 +17,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func newAuthenticatorResetDeps(t *testing.T) (usecases.AuthenticatorResetDeps, *usermemory.UserRepository, *[]spec.DomainEvent) {
@@ -60,7 +61,7 @@ func containsEventType(events []spec.DomainEvent, eventType string) bool {
 // "管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる"
 // (spec/contexts/authentication.yaml) を固定する。
 func TestResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newAuthenticatorResetDeps(t)
 	now := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
 	secret := "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
@@ -114,7 +115,7 @@ func TestResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 // TestResetUserAuthenticatorsPartialResetKeepsMfaEnrolled は scenario
 // "管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる" を固定する。
 func TestResetUserAuthenticatorsPartialResetKeepsMfaEnrolled(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newAuthenticatorResetDeps(t)
 	now := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
 	secret := "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
@@ -159,7 +160,7 @@ func TestResetUserAuthenticatorsPartialResetKeepsMfaEnrolled(t *testing.T) {
 }
 
 func TestResetUserAuthenticatorsRejectsEmptyTargets(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newAuthenticatorResetDeps(t)
 	now := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
 	if _, err := usecases.ResetUserAuthenticators(ctx, deps, "admin-1", "user-alice", nil, now); !errors.Is(err, usecases.ErrAuthenticatorResetNotAllowed) {
@@ -168,7 +169,7 @@ func TestResetUserAuthenticatorsRejectsEmptyTargets(t *testing.T) {
 }
 
 func TestResetUserAuthenticatorsRejectsCrossTenantTarget(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, _ := newAuthenticatorResetDeps(t)
 	now := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
 	userRepo.Seed(&userdomain.User{

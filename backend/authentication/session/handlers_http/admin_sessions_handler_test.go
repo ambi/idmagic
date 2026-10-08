@@ -21,6 +21,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -68,7 +69,7 @@ func newAdminSessionsFixture(t *testing.T) adminSessionsFixture {
 
 func (f adminSessionsFixture) seedSession(t *testing.T, sid, userID string, authTime time.Time) {
 	t.Helper()
-	if err := f.sessionStore.Save(context.Background(), &authdomain.LoginSession{
+	if err := f.sessionStore.Save(testing_tenant.Default(context.Background()), &authdomain.LoginSession{
 		ID: sid, TenantID: tenancydomain.DefaultTenantID, UserID: userID, AuthTime: authTime.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver", ExpiresAt: authTime.Add(time.Hour),
 	}); err != nil {
@@ -78,7 +79,7 @@ func (f adminSessionsFixture) seedSession(t *testing.T, sid, userID string, auth
 
 func (f adminSessionsFixture) seedRefreshToken(t *testing.T, sid, clientID string) {
 	t.Helper()
-	if err := f.refreshStore.Save(context.Background(), &oauthdomain.RefreshTokenRecord{
+	if err := f.refreshStore.Save(testing_tenant.Default(context.Background()), &oauthdomain.RefreshTokenRecord{
 		ID: clientID + "-rt", Hash: "hash-" + clientID, FamilyID: clientID + "-fam",
 		ClientID: clientID, UserID: "alice", Scopes: []string{"openid", "offline_access"},
 		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour), AbsoluteExpiresAt: time.Now().Add(24 * time.Hour),
@@ -168,10 +169,10 @@ func TestAdminRevokeSessionCascadesToRefreshTokens(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := f.sessionStore.Find(context.Background(), "s1"); sess != nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1"); sess != nil {
 		t.Fatal("session was not revoked")
 	}
-	rt, _ := f.refreshStore.FindByHash(context.Background(), "hash-web-app")
+	rt, _ := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-web-app")
 	if rt == nil || !rt.Revoked {
 		t.Fatal("refresh token sharing the sid was not revoked")
 	}
@@ -188,7 +189,7 @@ func TestAdminRevokeSessionRejectsMismatchedUser(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := f.sessionStore.Find(context.Background(), "s1"); sess == nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1"); sess == nil {
 		t.Fatal("alice's session must not be revoked via mismatched user_id")
 	}
 }
@@ -205,13 +206,13 @@ func TestAdminRevokeAllSessionsRevokesEveryTargetSession(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := f.sessionStore.Find(context.Background(), "s1"); sess != nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1"); sess != nil {
 		t.Fatal("s1 was not revoked")
 	}
-	if sess, _ := f.sessionStore.Find(context.Background(), "s2"); sess != nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s2"); sess != nil {
 		t.Fatal("s2 was not revoked")
 	}
-	if sess, _ := f.sessionStore.Find(context.Background(), "s3"); sess == nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s3"); sess == nil {
 		t.Fatal("bob's session must not be revoked")
 	}
 }
@@ -256,7 +257,7 @@ func TestAdminRevokeSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
 	if first.Code != http.StatusNoContent {
 		t.Fatalf("初回 status=%d body=%s", first.Code, first.Body.String())
 	}
-	revoked, err := f.sessionStore.FindOwned(context.Background(), "s1", "alice")
+	revoked, err := f.sessionStore.FindOwned(testing_tenant.Default(context.Background()), "s1", "alice")
 	if err != nil || revoked == nil || revoked.RevokedAt == nil {
 		t.Fatalf("session=%#v err=%v", revoked, err)
 	}
@@ -267,7 +268,7 @@ func TestAdminRevokeSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
 	if second.Code != http.StatusNoContent {
 		t.Fatalf("再送 status=%d body=%s、期待は 204", second.Code, second.Body.String())
 	}
-	again, err := f.sessionStore.FindOwned(context.Background(), "s1", "alice")
+	again, err := f.sessionStore.FindOwned(testing_tenant.Default(context.Background()), "s1", "alice")
 	if err != nil || again == nil || again.RevokedAt == nil {
 		t.Fatalf("session=%#v err=%v", again, err)
 	}

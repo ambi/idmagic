@@ -31,6 +31,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	"github.com/labstack/echo/v5"
 )
 
@@ -73,7 +74,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 
 	sessionStore := sessionmemory.NewSessionStore()
 	sessionManager := sessionusecases.NewSessionManager(sessionStore)
-	authenticated, err := sessionManager.Create(context.Background(), "alice", []string{"pwd"}, time.Now().UTC())
+	authenticated, err := sessionManager.Create(testing_tenant.Default(context.Background()), "alice", []string{"pwd"}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour), AbsoluteExpiresAt: time.Now().Add(24 * time.Hour),
 		Sid: &sid,
 	}
-	if err := refreshStore.Save(context.Background(), record); err != nil {
+	if err := refreshStore.Save(testing_tenant.Default(context.Background()), record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -116,7 +117,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 // signHint は sub と sid を指定した ID Token を発行する。sid が空なら `sid` claim は付かない。
 func (f hintE2EFixture) signHint(t *testing.T, subject, sid string) string {
 	t.Helper()
-	token, err := f.signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := f.signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: hintE2EClientID}, User: &userdomain.User{ID: subject},
 		Scopes: []string{"openid"}, Sid: sid,
 	})
@@ -157,14 +158,14 @@ func (f hintE2EFixture) endSession(t *testing.T, cookieSid string, query url.Val
 
 func (f hintE2EFixture) assertNothingRevoked(t *testing.T) {
 	t.Helper()
-	session, err := f.sessions.Find(context.Background(), f.sessionID)
+	session, err := f.sessions.Find(testing_tenant.Default(context.Background()), f.sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if session == nil {
 		t.Fatal("拒否されたヒントで LoginSession が失効した")
 	}
-	record, err := f.refresh.FindByHash(context.Background(), hintE2ERefresh)
+	record, err := f.refresh.FindByHash(testing_tenant.Default(context.Background()), hintE2ERefresh)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,14 +184,14 @@ func TestEndSessionAcceptsCompleteIDTokenHint(t *testing.T) {
 	if response.status != http.StatusSeeOther {
 		t.Fatalf("status=%d body=%s, want 303", response.status, response.body)
 	}
-	session, err := fixture.sessions.Find(context.Background(), fixture.sessionID)
+	session, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), fixture.sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if session != nil {
 		t.Fatal("LoginSession が失効していない")
 	}
-	record, err := fixture.refresh.FindByHash(context.Background(), hintE2ERefresh)
+	record, err := fixture.refresh.FindByHash(testing_tenant.Default(context.Background()), hintE2ERefresh)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +207,7 @@ func TestEndSessionAcceptsCompleteIDTokenHint(t *testing.T) {
 //spec:covers OIDC-LOGOUT-ID-TOKEN-HINT: 検証済みヒントの `sid` と `aud` がログアウト対象の
 func TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT(t *testing.T) {
 	fixture := newHintE2EFixture(t)
-	other, err := fixture.manager.Create(context.Background(), "alice", []string{"pwd"}, time.Now().UTC())
+	other, err := fixture.manager.Create(testing_tenant.Default(context.Background()), "alice", []string{"pwd"}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,14 +220,14 @@ func TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT(t *te
 	if response.status != http.StatusFound || response.location != "https://rp.example/callback" {
 		t.Fatalf("status=%d location=%q body=%s", response.status, response.location, response.body)
 	}
-	hinted, err := fixture.sessions.Find(context.Background(), fixture.sessionID)
+	hinted, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), fixture.sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if hinted != nil {
 		t.Fatal("ヒントが指す LoginSession が失効していない")
 	}
-	cookieSession, err := fixture.sessions.Find(context.Background(), other.SessionID)
+	cookieSession, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), other.SessionID)
 	if err != nil {
 		t.Fatal(err)
 	}

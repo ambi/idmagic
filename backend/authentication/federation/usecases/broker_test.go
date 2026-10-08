@@ -18,6 +18,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestCompleteUsesExistingFederatedIdentityAndIssuesSession(t *testing.T) {
@@ -25,14 +26,14 @@ func TestCompleteUsesExistingFederatedIdentityAndIssuesSession(t *testing.T) {
 	now := time.Now().UTC()
 	user := activeUser("user-1", "existing@example.com", now)
 	users.Seed(user)
-	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+	if err := repos.Identities.Create(testing_tenant.Default(context.Background()), &federationdomain.FederatedIdentity{
 		TenantID: tenancydomain.DefaultTenantID, ProviderID: connection.ID,
 		ExternalSubject: "external", LocalUserID: user.ID, LinkedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	completion, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection,
+		testing_tenant.Default(context.Background()), deps, connection,
 		federationdomain.FederatedLoginAttempt{},
 		federationdomain.NormalizedClaims{Subject: "external", Username: "existing@example.com"},
 		now,
@@ -55,13 +56,13 @@ func TestCompleteRequiresExplicitVerifiedEmailPolicyForAutoLink(t *testing.T) {
 		Email: "linked@example.com", EmailVerified: true,
 	}
 	if _, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
+		testing_tenant.Default(context.Background()), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
 	); !errors.Is(err, federationusecases.ErrLinkingDenied) {
 		t.Fatalf("policy none err=%v", err)
 	}
 	connection.LinkingPolicy = federationdomain.LinkingVerifiedEmail
 	completion, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
+		testing_tenant.Default(context.Background()), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
 	)
 	if err != nil {
 		t.Fatalf("verified email completion: %v", err)
@@ -71,7 +72,7 @@ func TestCompleteRequiresExplicitVerifiedEmailPolicyForAutoLink(t *testing.T) {
 	}
 	// 戻り値だけでは、関連付けを保存せずに「リンクした」と名乗る実装を通してしまう。
 	linked, err := repos.Identities.FindBySubject(
-		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "external",
+		testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, connection.ID, "external",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +90,7 @@ func TestCompleteJITRequiresPolicyAndProvisioner(t *testing.T) {
 		Subject: "external", Username: "new-user", Email: "new@example.com", EmailVerified: true,
 	}
 	if _, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
+		testing_tenant.Default(context.Background()), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
 	); !errors.Is(err, federationusecases.ErrLinkingDenied) {
 		t.Fatalf("JIT disabled err=%v", err)
 	}
@@ -98,7 +99,7 @@ func TestCompleteJITRequiresPolicyAndProvisioner(t *testing.T) {
 		return activeUser("jit-user", claims.Email, now), nil
 	}
 	completion, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
+		testing_tenant.Default(context.Background()), deps, connection, federationdomain.FederatedLoginAttempt{}, claims, now,
 	)
 	if err != nil {
 		t.Fatalf("JIT completion: %v", err)
@@ -107,7 +108,7 @@ func TestCompleteJITRequiresPolicyAndProvisioner(t *testing.T) {
 		t.Fatalf("completion=%+v", completion)
 	}
 	linked, err := repos.Identities.FindBySubject(
-		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "external",
+		testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, connection.ID, "external",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +131,7 @@ func TestCompleteLinksAnUnusedSubjectToTheRequestingUser(t *testing.T) {
 	claims := federationdomain.NormalizedClaims{Subject: "unused-external", Username: "self@example.com"}
 
 	completion, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection, attempt, claims, now,
+		testing_tenant.Default(context.Background()), deps, connection, attempt, claims, now,
 	)
 	if err != nil {
 		t.Fatalf("CompleteIdentity: %v", err)
@@ -139,7 +140,7 @@ func TestCompleteLinksAnUnusedSubjectToTheRequestingUser(t *testing.T) {
 		t.Fatalf("linking method=%q", completion.LinkingMethod)
 	}
 	linked, err := repos.Identities.FindBySubject(
-		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "unused-external",
+		testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, connection.ID, "unused-external",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -151,20 +152,20 @@ func TestCompleteLinksAnUnusedSubjectToTheRequestingUser(t *testing.T) {
 	// 未使用であることが条件である。他人が使っている subject は横取りできない。
 	other := activeUser("user-other", "other@example.com", now)
 	users.Seed(other)
-	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+	if err := repos.Identities.Create(testing_tenant.Default(context.Background()), &federationdomain.FederatedIdentity{
 		TenantID: tenancydomain.DefaultTenantID, ProviderID: connection.ID,
 		ExternalSubject: "taken-external", LocalUserID: other.ID, LinkedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := federationusecases.CompleteIdentity(
-		context.Background(), deps, connection, attempt,
+		testing_tenant.Default(context.Background()), deps, connection, attempt,
 		federationdomain.NormalizedClaims{Subject: "taken-external", Username: "self@example.com"}, now,
 	); !errors.Is(err, federationusecases.ErrLinkingDenied) {
 		t.Fatalf("他人が使っている subject のリンク err=%v", err)
 	}
 	taken, err := repos.Identities.FindBySubject(
-		context.Background(), tenancydomain.DefaultTenantID, connection.ID, "taken-external",
+		testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, connection.ID, "taken-external",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -180,23 +181,23 @@ func TestUnlinkRequiresRecentStepUpAndPreservesLastLoginMethod(t *testing.T) {
 	user := activeUser("user-1", "linked@example.com", now)
 	user.PasswordHash = ""
 	users.Seed(user)
-	if err := repos.Identities.Create(context.Background(), &federationdomain.FederatedIdentity{
+	if err := repos.Identities.Create(testing_tenant.Default(context.Background()), &federationdomain.FederatedIdentity{
 		TenantID: tenancydomain.DefaultTenantID, ProviderID: connection.ID,
 		ExternalSubject: "external", LocalUserID: user.ID, LinkedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	stale := &authdomain.AuthenticationContext{UserID: user.ID, AuthTime: now.Add(-time.Hour).Unix()}
-	if err := federationusecases.UnlinkIdentity(context.Background(), deps, stale, connection.ID, now); err == nil {
+	if err := federationusecases.UnlinkIdentity(testing_tenant.Default(context.Background()), deps, stale, connection.ID, now); err == nil {
 		t.Fatal("stale step-up must be rejected")
 	}
 	recent := &authdomain.AuthenticationContext{UserID: user.ID, AuthTime: now.Unix(), StepUpAt: now.Unix()}
-	if err := federationusecases.UnlinkIdentity(context.Background(), deps, recent, connection.ID, now); err == nil {
+	if err := federationusecases.UnlinkIdentity(testing_tenant.Default(context.Background()), deps, recent, connection.ID, now); err == nil {
 		t.Fatal("last login method must not be removed")
 	}
 	user.PasswordHash = "hash"
 	users.Seed(user)
-	if err := federationusecases.UnlinkIdentity(context.Background(), deps, recent, connection.ID, now); err != nil {
+	if err := federationusecases.UnlinkIdentity(testing_tenant.Default(context.Background()), deps, recent, connection.ID, now); err != nil {
 		t.Fatalf("UnlinkIdentity: %v", err)
 	}
 }

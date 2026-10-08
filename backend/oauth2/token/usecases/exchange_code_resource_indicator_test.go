@@ -6,11 +6,12 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestExchangeCodeForToken_noResourceBound_audienceUnaffected(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid"})
-	out, err := ExchangeCodeForToken(context.Background(), f.deps,
+	out, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -27,14 +28,14 @@ func TestExchangeCodeForToken_resourceBoundAtAuthorize_audienceBoundAtRedemption
 	f := newExchangeFixture(t, []string{"openid"})
 	resource := "https://mcp.example.com/tools"
 	f.code.Resource = &resource
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
 
 	var emitted []spec.DomainEvent
 	f.deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 
-	out, err := ExchangeCodeForToken(context.Background(), f.deps,
+	out, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -61,13 +62,13 @@ func TestExchangeCodeForToken_tokenRequestResourceMismatch_rejectedAsInvalidTarg
 	f := newExchangeFixture(t, []string{"openid"})
 	resource := "https://mcp.example.com/tools"
 	f.code.Resource = &resource
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
 
 	in := exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	in.Resource = []string{"https://mcp.example.com/different"}
-	_, err := ExchangeCodeForToken(context.Background(), f.deps, in)
+	_, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps, in)
 	assertOAuthError(t, err, "invalid_target")
 }
 
@@ -76,7 +77,7 @@ func TestExchangeCodeForToken_tokenRequestResourceWithoutAuthorizeBinding_reject
 	// f.code.Resource は nil (authorize 時に resource 指定なし)。
 	in := exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	in.Resource = []string{"https://mcp.example.com/tools"}
-	_, err := ExchangeCodeForToken(context.Background(), f.deps, in)
+	_, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps, in)
 	assertOAuthError(t, err, "invalid_target")
 }
 
@@ -86,10 +87,10 @@ func TestExchangeCodeForToken_resourceBoundAtAuthorize_propagatesToRefreshTokenR
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})
 	resource := "https://mcp.example.com/tools"
 	f.code.Resource = &resource
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
-	out, err := ExchangeCodeForToken(context.Background(), f.deps,
+	out, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -98,7 +99,7 @@ func TestExchangeCodeForToken_resourceBoundAtAuthorize_propagatesToRefreshTokenR
 		t.Fatal("refresh token missing")
 	}
 	hash := domain.HashRefreshToken(out.RefreshToken)
-	rec, err := f.refreshStore.FindByHash(context.Background(), hash)
+	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), hash)
 	if err != nil || rec == nil {
 		t.Fatalf("expected refresh token record to be findable: %v", err)
 	}
@@ -111,12 +112,12 @@ func TestExchangeCodeForToken_tokenRequestResourceMatching_accepted(t *testing.T
 	f := newExchangeFixture(t, []string{"openid"})
 	resource := "https://mcp.example.com/tools"
 	f.code.Resource = &resource
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
 	in := exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	in.Resource = []string{resource}
-	out, err := ExchangeCodeForToken(context.Background(), f.deps, in)
+	out, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps, in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -8,6 +8,7 @@ import (
 	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type staticIntrospector struct {
@@ -29,7 +30,7 @@ func (s staticIntrospector) IntrospectAccessToken(
 }
 
 func TestRevokeAccessTokenAddsOwnedJTIToDenylist(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	denylist := memory.NewAccessTokenDenylist()
 	expiresAt := time.Now().Add(time.Minute)
 	err := RevokeToken(ctx, RevokeDeps{
@@ -53,7 +54,7 @@ func TestRevokeAccessTokenAddsOwnedJTIToDenylist(t *testing.T) {
 
 func TestRevokeManagedAccessTokenUpdatesLifecycleRecord(t *testing.T) {
 	revoker := &recordingManagedRevoker{}
-	err := RevokeToken(context.Background(), RevokeDeps{
+	err := RevokeToken(testing_tenant.Default(context.Background()), RevokeDeps{
 		RefreshStore:        memory.NewRefreshTokenStore(),
 		Introspector:        staticIntrospector{result: &ports.IntrospectionResult{Active: true, Managed: true, JTI: "managed-jti", ClientID: "idmagic-api-token", Exp: time.Now().Add(time.Hour).Unix()}},
 		AccessTokenDenylist: memory.NewAccessTokenDenylist(), ManagedTokenRevoker: revoker,
@@ -69,7 +70,7 @@ func TestRevokeManagedAccessTokenUpdatesLifecycleRecord(t *testing.T) {
 // §3: session revoke は sid を共有する全 family/client の RefreshTokenRecord を
 // 一括で失効させる。
 func TestRevokeTokensBySidRevokesAllFamiliesAndClients(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewRefreshTokenStore()
 	sid := "session-1"
 	otherSid := "session-2"
@@ -129,7 +130,7 @@ func TestRevokeTokensBySidRevokesAllFamiliesAndClients(t *testing.T) {
 }
 
 func TestRevokeAccessTokenIgnoresOtherClient(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	denylist := memory.NewAccessTokenDenylist()
 	err := RevokeToken(ctx, RevokeDeps{
 		RefreshStore: memory.NewRefreshTokenStore(),

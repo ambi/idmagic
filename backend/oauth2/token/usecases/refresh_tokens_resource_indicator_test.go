@@ -13,6 +13,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func newRefreshFixtureWithResource(t *testing.T, resource *string) refreshFixture {
@@ -42,7 +43,7 @@ func newRefreshFixtureWithResource(t *testing.T, resource *string) refreshFixtur
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := refreshStore.Save(context.Background(), gen.Record); err != nil {
+	if err := refreshStore.Save(testing_tenant.Default(context.Background()), gen.Record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -61,7 +62,7 @@ func TestRefreshTokens_preservesResourceBindingAcrossRotation(t *testing.T) {
 	f := newRefreshFixtureWithResource(t, &resource)
 	now := time.Now().UTC()
 
-	res, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
+	res, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID: "client", RefreshToken: f.token,
 	}, now)
 	if err != nil {
@@ -78,7 +79,7 @@ func TestRefreshTokens_preservesResourceBindingAcrossRotation(t *testing.T) {
 
 	// ローテーション後の RefreshTokenRecord も resource を保持しているはず。
 	hash := domain.HashRefreshToken(res.RefreshToken)
-	rotatedRec, err := f.deps.RefreshStore.FindByHash(context.Background(), hash)
+	rotatedRec, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), hash)
 	if err != nil || rotatedRec == nil {
 		t.Fatalf("expected rotated refresh token record to be findable: %v", err)
 	}
@@ -91,7 +92,7 @@ func TestRefreshTokens_noResourceBound_unaffected(t *testing.T) {
 	f := newRefreshFixtureWithResource(t, nil)
 	now := time.Now().UTC()
 
-	res, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
+	res, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID: "client", RefreshToken: f.token,
 	}, now)
 	if err != nil {

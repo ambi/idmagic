@@ -12,6 +12,7 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type protocolDriverStub struct {
@@ -47,11 +48,11 @@ func TestStartAndCompleteFlowConsumesStateBeforeProtocolValidation(t *testing.T)
 	deps.Drivers = map[federationdomain.Protocol]federationusecases.ProtocolDriver{
 		federationdomain.ProtocolOIDC: protocolDriverStub{completeErr: errors.New("invalid token")},
 	}
-	if err := repos.Connections.Save(context.Background(), &connection); err != nil {
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), &connection); err != nil {
 		t.Fatal(err)
 	}
 	start, err := federationusecases.StartLogin(
-		context.Background(), deps, connection.ID, "", "", "https://broker.example/callback", time.Now(),
+		testing_tenant.Default(context.Background()), deps, connection.ID, "", "", "https://broker.example/callback", time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("StartLogin: %v", err)
@@ -60,12 +61,12 @@ func TestStartAndCompleteFlowConsumesStateBeforeProtocolValidation(t *testing.T)
 		t.Fatalf("start=%+v", start)
 	}
 	if _, err := federationusecases.CompleteLogin(
-		context.Background(), deps, start.State, "response", "https://broker.example/callback", time.Now(),
+		testing_tenant.Default(context.Background()), deps, start.State, "response", "https://broker.example/callback", time.Now(),
 	); err == nil {
 		t.Fatal("invalid protocol response must fail")
 	}
 	if _, err := federationusecases.CompleteLogin(
-		context.Background(), deps, start.State, "response", "https://broker.example/callback", time.Now(),
+		testing_tenant.Default(context.Background()), deps, start.State, "response", "https://broker.example/callback", time.Now(),
 	); err == nil {
 		t.Fatal("consumed state must not be reusable")
 	}
@@ -111,7 +112,7 @@ func (d *countingDriver) Complete(
 //
 //spec:covers REQ-AUTHENTICATION-001, OIDC-CORE-CSRF, EX-AUTHENTICATION-001-02: callback が login attempt に束縛された単発の state を照合し、未発行または再送された state ではセッションが 1 件も増えず上流の応答が検証にすら到達せず、拒否ごとに state_mismatch の FederatedLoginRejected が残ることを固定する。
 func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 	deps, connection, users, repos := brokerFixture(t)
 	deps.Connections, deps.Attempts = repos.Connections, repos.Attempts
@@ -237,7 +238,7 @@ func TestCompleteLoginDoesNotRecordAStoreFailureAsAStateMismatch(t *testing.T) {
 	deps.Emit = func(event spec.DomainEvent) { events = append(events, event.EventType()) }
 
 	_, err := federationusecases.CompleteLogin(
-		context.Background(), deps, "some-state", "response", "https://broker.example/callback", time.Now(),
+		testing_tenant.Default(context.Background()), deps, "some-state", "response", "https://broker.example/callback", time.Now(),
 	)
 	if !errors.Is(err, storeDown) {
 		t.Fatalf("err=%v, want the store failure", err)

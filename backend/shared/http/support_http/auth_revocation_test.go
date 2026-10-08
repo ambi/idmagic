@@ -17,6 +17,7 @@ import (
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -32,21 +33,21 @@ func TestResolveAuthnContextAppliesRevocation(t *testing.T) {
 	const clientID = "agent_client"
 
 	agentRepo := agentmemory.NewAgentRepository()
-	if err := agentRepo.Save(context.Background(), &agentdomain.Agent{
+	if err := agentRepo.Save(testing_tenant.Default(context.Background()), &agentdomain.Agent{
 		ID: "agent_1", TenantID: tenancydomain.DefaultTenantID, Name: "agent_1",
 		Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "owner_1", Status: idmdomain.AgentStatusKilled,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed agent: %v", err)
 	}
-	if _, err := agentRepo.AddBinding(context.Background(), &agentdomain.AgentCredentialBinding{
+	if _, err := agentRepo.AddBinding(testing_tenant.Default(context.Background()), &agentdomain.AgentCredentialBinding{
 		AgentID: "agent_1", ClientID: clientID, CreatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed binding: %v", err)
 	}
 
 	epochRepo := ssmemory.NewAgentRevocationEpochRepository()
-	if err := epochRepo.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
+	if err := epochRepo.Advance(testing_tenant.Default(context.Background()), ssdomain.AgentRevocationEpoch{
 		AgentID: "agent_1", TenantID: tenancydomain.DefaultTenantID, Epoch: now,
 		Reason: ssdomain.RevocationReasonAgentKilled, AdvancedAt: now,
 	}); err != nil {
@@ -54,7 +55,7 @@ func TestResolveAuthnContextAppliesRevocation(t *testing.T) {
 	}
 
 	denylist := oauth2memory.NewAccessTokenDenylist()
-	if err := denylist.Add(context.Background(), "jti-denied", now.Add(time.Hour)); err != nil {
+	if err := denylist.Add(testing_tenant.Default(context.Background()), "jti-denied", now.Add(time.Hour)); err != nil {
 		t.Fatalf("seed denylist: %v", err)
 	}
 
@@ -98,6 +99,7 @@ func TestResolveAuthnContextAppliesRevocation(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
 			req.Header.Set("Authorization", "Bearer jwt")
+			req = req.WithContext(testing_tenant.Default(req.Context()))
 			c := e.NewContext(req, httptest.NewRecorder())
 			a := Authenticator{
 				TokenIntrospector: authTestIntrospector{result: tc.result},

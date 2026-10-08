@@ -10,6 +10,7 @@ import (
 	authnmemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -33,7 +34,7 @@ func newRecoveryDeps(t *testing.T) (usecases.RecoveryCodesDeps, *[]spec.DomainEv
 }
 
 func TestGenerateRecoveryCodesReturnsPlaintextOnce(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newRecoveryDeps(t)
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
 
@@ -67,7 +68,7 @@ func TestGenerateRecoveryCodesReturnsPlaintextOnce(t *testing.T) {
 }
 
 func TestConsumeRecoveryCodeSingleUse(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newRecoveryDeps(t)
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
 
@@ -99,7 +100,7 @@ func TestConsumeRecoveryCodeSingleUse(t *testing.T) {
 }
 
 func TestConsumeRecoveryCodeIgnoresFormattingAndCase(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _ := newRecoveryDeps(t)
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
 
@@ -115,7 +116,7 @@ func TestConsumeRecoveryCodeIgnoresFormattingAndCase(t *testing.T) {
 }
 
 func TestRegenerateReplacesExistingSet(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _ := newRecoveryDeps(t)
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
 
@@ -137,7 +138,7 @@ func TestRegenerateReplacesExistingSet(t *testing.T) {
 }
 
 func TestRevokeRecoveryCodes(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, events := newRecoveryDeps(t)
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
 

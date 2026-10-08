@@ -11,6 +11,7 @@ import (
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -35,7 +36,7 @@ func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, *usermemory.UserReposito
 
 //spec:covers REQ-AUTHENTICATION-011, EX-AUTHENTICATION-011-01: 登録の開始がシークレットとアカウント名を返し、そのシークレットに対する正しいコードでの確定が認証要素を保存して MFA 状態を登録済みにし、MfaFactorEnrolled を発行することを固定する。
 func TestTOTPEnrollmentConfirmPersistsFactorAndFlag(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 
@@ -76,7 +77,7 @@ func TestTOTPEnrollmentConfirmPersistsFactorAndFlag(t *testing.T) {
 }
 
 func TestTOTPEnrollmentConfirmRejectsWrongCode(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	start, err := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
@@ -95,7 +96,7 @@ func TestTOTPEnrollmentConfirmRejectsWrongCode(t *testing.T) {
 }
 
 func TestTOTPEnrollmentStartRejectsWhenAlreadyEnrolled(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	start, _ := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
@@ -112,7 +113,7 @@ func TestTOTPEnrollmentStartRejectsWhenAlreadyEnrolled(t *testing.T) {
 
 //spec:covers REQ-AUTHENTICATION-012, EX-AUTHENTICATION-012-01: 現在の TOTP コードでの解除が認証要素を消し、MfaFactorRemoved を発行することを固定する。ステップアップの要求は HTTP の境界にあり、TestTotpRemovalWithoutStepUpKeepsTheFactor が持つ。
 func TestRemoveTOTPFactorRequiresValidCode(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	start, _ := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
@@ -161,7 +162,7 @@ func TestRemoveTOTPFactorRequiresValidCode(t *testing.T) {
 }
 
 func TestRemoveTOTPFactorWhenNoneEnrolled(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	if err := usecases.RemoveTOTPFactor(ctx, deps, usecases.RemoveTOTPFactorInput{

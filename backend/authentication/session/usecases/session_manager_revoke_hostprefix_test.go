@@ -8,6 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/session/usecases"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // TestRevokeHonorsHostPrefixedCookie は REQ-AUTHENTICATION-035 を、返り値ではなく効果で検査する。
@@ -22,7 +23,7 @@ func TestRevokeHonorsHostPrefixedCookie(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := db_memory.NewSessionStore()
-			ctx := context.Background()
+			ctx := testing_tenant.Default(context.Background())
 			now := time.Now().UTC()
 
 			session := &domain.LoginSession{
@@ -65,7 +66,7 @@ func TestSessionEntryPointsResolveTheSameCookie(t *testing.T) {
 	for name, header := range headers {
 		t.Run(name, func(t *testing.T) {
 			store := db_memory.NewSessionStore()
-			ctx := context.Background()
+			ctx := testing_tenant.Default(context.Background())
 			now := time.Now().UTC()
 
 			manager := usecases.NewSessionManager(store)

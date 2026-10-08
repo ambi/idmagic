@@ -12,11 +12,12 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestRegisterClientHashesSecret(t *testing.T) {
 	repo := oauth2memory.NewClientRepository()
-	result, err := RegisterClient(context.Background(), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
+	result, err := RegisterClient(testing_tenant.Default(context.Background()), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
 		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
@@ -41,7 +42,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 // covers both dynamic client registration and admin client creation since
 // CreateAdminOAuth2Client calls RegisterClient internally.
 func TestRegisterClient_rejectsWhenHardQuotaExceeded(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	repo := oauth2memory.NewClientRepository()
 	quotaRepo := tenancymemory.NewQuotaRepository()
 	limit := 1
@@ -69,7 +70,7 @@ func TestRegisterClient_rejectsWhenHardQuotaExceeded(t *testing.T) {
 
 func TestRegisterPrivateKeyJWTRequiresInlineJWKS(t *testing.T) {
 	repo := oauth2memory.NewClientRepository()
-	_, err := RegisterClient(context.Background(), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
+	_, err := RegisterClient(testing_tenant.Default(context.Background()), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
 		TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,

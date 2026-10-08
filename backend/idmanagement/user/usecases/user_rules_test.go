@@ -32,6 +32,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 var userRulesNow = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -96,7 +97,7 @@ func (f *userRulesFixture) seed(id string, mutate func(*userdomain.User)) *userd
 
 func (f *userRulesFixture) stored(t *testing.T, id string) *userdomain.User {
 	t.Helper()
-	user, err := f.users.FindBySubIncludingDeleted(context.Background(), id)
+	user, err := f.users.FindBySubIncludingDeleted(testing_tenant.Default(context.Background()), id)
 	if err != nil || user == nil {
 		t.Fatalf("FindBySubIncludingDeleted(%s)=(%v,%v)", id, user, err)
 	}
@@ -124,7 +125,7 @@ func pendingSince(at time.Time) func(*userdomain.User) {
 func TestCreateUserTrimsTheUsernameAndComparesItCaseInsensitively(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	carol, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
 		ActorUserID: "admin", PreferredUsername: " Carol ", Password: "initial-password-9182", Now: userRulesNow,
 	})
@@ -166,7 +167,7 @@ func TestCreateUserAppliesTheTenantPasswordPolicy(t *testing.T) {
 func TestCreateUserRejectsAnEmailAnotherUserHas(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	email := " ALICE@example.test "
 	if _, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{
 		ActorUserID: "admin", PreferredUsername: "carol", Password: "initial-password-9182", Email: &email, Now: userRulesNow,
@@ -186,7 +187,7 @@ func TestUpdateUserRejectsAUsernameOrEmailAnotherUserHas(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
 	f.seed("bob", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	recased := "Bob"
 	updated, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{ActorUserID: "admin", Sub: "bob", PreferredUsername: &recased, Now: userRulesNow})
 	if err != nil || updated.PreferredUsername != "Bob" {
@@ -209,7 +210,7 @@ func TestUpdateUserRejectsAUsernameOrEmailAnotherUserHas(t *testing.T) {
 func TestProvisionFederatedUserNormalizesTheEmailAndRejectsACaseInsensitiveConflict(t *testing.T) {
 	f := newUserRulesFixture(t)
 	f.seed("alice", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	conflict := "ALICE@example.test"
 	if _, err := userusecases.ProvisionFederatedUser(ctx, f.deps, userusecases.ProvisionFederatedUserInput{
 		PreferredUsername: "alice-federated", Email: &conflict, Now: userRulesNow,
@@ -235,7 +236,7 @@ func TestProvisionFederatedUserNormalizesTheEmailAndRejectsACaseInsensitiveConfl
 //spec:covers EX-IDMANAGEMENT-089-02: JIT が作った User を作成の時点で動的グループの規則で評価し、規則に一致する User だけを所属させること。
 func TestProvisionFederatedUserEvaluatesDynamicGroups(t *testing.T) {
 	f := newUserRulesFixture(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	groups, schemas := dynamicDepartmentGroup(t)
 	f.deps.GroupRepo, f.deps.AttrSchemaRepo = groups, schemas
 	engineering, sales := "Engineering", "Sales"
@@ -265,7 +266,7 @@ func TestProvisionFederatedUserEvaluatesDynamicGroups(t *testing.T) {
 // `dyn-eng` と、`department` を定義した属性スキーマを返す。
 func dynamicDepartmentGroup(t *testing.T) (*groupmemory.GroupRepository, *usermemory.TenantUserAttributeSchemaRepository) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	groups := groupmemory.NewGroupRepository()
 	if err := groups.Save(ctx, &groupdomain.Group{
 		ID: "dyn-eng", TenantID: tenancydomain.DefaultTenantID, Name: "dyn-eng",
@@ -296,7 +297,7 @@ func TestPurgeExpiredSoftDeletedKeepsUsersAtTheExactBoundary(t *testing.T) {
 	f.seed("at-boundary", pendingSince(userRulesNow.Add(-grace)))
 	f.seed("expired", pendingSince(userRulesNow.Add(-grace-time.Second)))
 	f.seed("no-timestamp", func(user *userdomain.User) { user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion })
-	if err := userusecases.PurgeExpiredSoftDeleted(context.Background(), f.deps, userRulesNow); err != nil {
+	if err := userusecases.PurgeExpiredSoftDeleted(testing_tenant.Default(context.Background()), f.deps, userRulesNow); err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []string{"at-boundary", "no-timestamp"} {
@@ -329,7 +330,7 @@ func TestUpdateUserRecordsOnlyChangedFields(t *testing.T) {
 		"title":      {Type: idmdomain.AttributeTypeString, String: &lead},
 		"department": {Type: idmdomain.AttributeTypeString, String: &engineering},
 	}
-	if _, err := userusecases.UpdateUser(context.Background(), f.deps, userusecases.UpdateUserInput{
+	if _, err := userusecases.UpdateUser(testing_tenant.Default(context.Background()), f.deps, userusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: alice.ID, Name: alice.Name, Attributes: &attrs, Now: userRulesNow,
 	}); err != nil {
 		t.Fatal(err)
@@ -340,7 +341,7 @@ func TestUpdateUserRecordsOnlyChangedFields(t *testing.T) {
 	}
 
 	before := f.stored(t, alice.ID).UpdatedAt
-	if _, err := userusecases.UpdateUser(context.Background(), f.deps, userusecases.UpdateUserInput{
+	if _, err := userusecases.UpdateUser(testing_tenant.Default(context.Background()), f.deps, userusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: alice.ID, Name: alice.Name, Now: userRulesNow.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -356,7 +357,7 @@ func TestUpdateUserRecordsOnlyChangedFields(t *testing.T) {
 func departmentAndTitleSchema(t *testing.T) *usermemory.TenantUserAttributeSchemaRepository {
 	t.Helper()
 	schemas := usermemory.NewTenantUserAttributeSchemaRepository()
-	if err := schemas.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
+	if err := schemas.Save(testing_tenant.Default(context.Background()), &userdomain.TenantUserAttributeSchema{
 		TenantID: tenancydomain.DefaultTenantID,
 		Attributes: []userdomain.UserAttributeDef{
 			{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate},
@@ -373,7 +374,7 @@ func TestUpdateUserResetsEmailVerifiedWhenTheAddressChanges(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
 	bob := f.seed("bob", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	email := "alice@new.example.test"
 	if _, err := userusecases.UpdateUser(ctx, f.deps, userusecases.UpdateUserInput{
 		ActorUserID: "admin", Sub: alice.ID, Email: &email, Now: userRulesNow,
@@ -412,7 +413,7 @@ func TestSetUserDisabledDoesNothingWhenAlreadyInThatState(t *testing.T) {
 		user.Lifecycle.StatusChangedAt = &changedAt
 	})
 	active := f.seed("bob", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	if _, err := userusecases.SetUserDisabled(ctx, f.deps, "admin", disabled.ID, true, userRulesNow); err != nil {
 		t.Fatal(err)
 	}
@@ -434,7 +435,7 @@ func TestSetUserDisabledDoesNothingWhenAlreadyInThatState(t *testing.T) {
 func TestSetUserDisabledRefusesAnAdministratorDisablingThemselves(t *testing.T) {
 	f := newUserRulesFixture(t)
 	operator := f.seed("operator", func(user *userdomain.User) { user.Roles = []string{"admin"} })
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	if _, err := userusecases.SetUserDisabled(ctx, f.deps, operator.ID, operator.ID, true, userRulesNow); !errors.Is(err, userusecases.ErrSelfDisableForbidden) {
 		t.Fatalf("err=%v, want ErrSelfDisableForbidden", err)
 	}
@@ -456,7 +457,7 @@ func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
 		user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
 		user.Lifecycle.StatusChangedAt = &scheduledAt
 	})
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	for _, disabled := range []bool{true, false} {
 		if _, err := userusecases.SetUserDisabled(ctx, f.deps, "admin", alice.ID, disabled, userRulesNow); !errors.Is(err, userusecases.ErrUserPendingDeletion) {
 			t.Fatalf("disabled=%v: err=%v, want ErrUserPendingDeletion", disabled, err)
@@ -475,7 +476,7 @@ func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
 func TestSetUserDisabledRevokesTrustedDevices(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	if err := f.devices.Save(ctx, &trusteddevicedomain.TrustedDevice{
 		ID: "device-1", TenantID: tenancydomain.DefaultTenantID, UserID: alice.ID, Selector: "selector-1",
 		VerifierHash: "hash", CreatedAt: userRulesNow.Add(-time.Hour), LastUsedAt: userRulesNow.Add(-time.Hour),
@@ -501,7 +502,7 @@ func TestRequiredActionsAreIdempotentAndClosed(t *testing.T) {
 	alice := f.seed("alice", func(user *userdomain.User) {
 		user.Lifecycle.RequiredActions = []idmdomain.RequiredAction{idmdomain.RequiredActionUpdatePassword}
 	})
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	if _, err := userusecases.SetUserRequiredAction(ctx, f.deps, "admin", alice.ID, idmdomain.RequiredActionUpdatePassword, userRulesNow); err != nil {
 		t.Fatal(err)
 	}
@@ -524,7 +525,7 @@ func TestSoftDeleteUserIsIdempotentButChecksSelfDeletionFirst(t *testing.T) {
 		user.Roles = []string{"admin"}
 		pendingSince(userRulesNow.Add(-time.Hour))(user)
 	})
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	if err := userusecases.SoftDeleteUser(ctx, f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: alice.ID, Now: userRulesNow}); err != nil {
 		t.Fatal(err)
 	}
@@ -540,7 +541,7 @@ func TestSoftDeleteUserIsIdempotentButChecksSelfDeletionFirst(t *testing.T) {
 func TestSoftDeleteUserRecordsTheReasonAndNotifiesProvisioning(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
-	if err := userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{
+	if err := userusecases.SoftDeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.SoftDeleteUserInput{
 		ActorUserID: "admin", Sub: alice.ID, Reason: "left the company", Now: userRulesNow,
 	}); err != nil {
 		t.Fatal(err)
@@ -561,7 +562,7 @@ func TestRestoreUserAcceptsTheExactEndOfTheGracePeriod(t *testing.T) {
 	f.seed("at-boundary", pendingSince(userRulesNow.Add(-grace)))
 	f.seed("expired", pendingSince(userRulesNow.Add(-grace-time.Second)))
 	f.seed("no-timestamp", func(user *userdomain.User) { user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion })
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	for _, id := range []string{"at-boundary", "no-timestamp"} {
 		if _, err := userusecases.RestoreUser(ctx, f.deps, "admin", id, userRulesNow); err != nil {
 			t.Fatalf("%s: err=%v, want restored", id, err)
@@ -582,7 +583,7 @@ func TestRestoreUserAcceptsTheExactEndOfTheGracePeriod(t *testing.T) {
 func TestRestoreUserNotifiesProvisioningOfTheReEnabledUser(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", pendingSince(userRulesNow.Add(-time.Hour)))
-	if _, err := userusecases.RestoreUser(context.Background(), f.deps, "admin", alice.ID, userRulesNow); err != nil {
+	if _, err := userusecases.RestoreUser(testing_tenant.Default(context.Background()), f.deps, "admin", alice.ID, userRulesNow); err != nil {
 		t.Fatal(err)
 	}
 	want := []recordedNotification{{userID: alice.ID, trigger: userports.ProvisioningUserEnabled}}
@@ -594,7 +595,7 @@ func TestRestoreUserNotifiesProvisioningOfTheReEnabledUser(t *testing.T) {
 //spec:covers EX-IDMANAGEMENT-050-01: 有効な User の完全削除が、ユーザー名を deleted:<sub> にしてロール、属性、必須操作、セッションを消し、どのパスワードでも認証できなくし、使用量を一つ減らすこと。
 func TestDeleteUserAnonymizesAnActiveUserAndReleasesItsQuota(t *testing.T) {
 	f := newUserRulesFixture(t)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	if err := f.quota.CheckAndIncrement(ctx, tenancydomain.DefaultTenantID, tenancydomain.ResourceUsers, 1); err != nil {
 		t.Fatal(err)
 	}
@@ -640,7 +641,7 @@ func TestDeleteUserAnonymizesAnActiveUserAndReleasesItsQuota(t *testing.T) {
 func TestDeleteUserDoesNothingForAnAlreadyDeletedUser(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", nil)
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	for range 2 {
 		if err := userusecases.DeleteUser(ctx, f.deps, userusecases.DeleteUserInput{ActorUserID: "admin", Sub: alice.ID, Now: userRulesNow}); err != nil {
 			t.Fatal(err)
@@ -682,14 +683,14 @@ func (f *userRulesFixture) failUserDeletedOnce() {
 // seedUsersUsage は、テナントの User の使用量を n にする。
 func (f *userRulesFixture) seedUsersUsage(t *testing.T, n int) {
 	t.Helper()
-	if err := f.quota.CheckAndIncrement(context.Background(), tenancydomain.DefaultTenantID, tenancydomain.ResourceUsers, n); err != nil {
+	if err := f.quota.CheckAndIncrement(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, tenancydomain.ResourceUsers, n); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func (f *userRulesFixture) usersUsage(t *testing.T) int {
 	t.Helper()
-	usage, err := f.quota.GetUsage(context.Background(), tenancydomain.DefaultTenantID)
+	usage, err := f.quota.GetUsage(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -699,7 +700,7 @@ func (f *userRulesFixture) usersUsage(t *testing.T) int {
 //spec:covers EX-IDMANAGEMENT-050-02, REQ-IDMANAGEMENT-050: 匿名化の後に失敗した完全削除の再実行が、残った記録を消し、使用量を一度だけ減らし、最初の要求の操作者と理由で UserDeleted を一度だけ発行すること。
 func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
 	purge := func(f *userRulesFixture, actor string) error {
-		return userusecases.DeleteUser(context.Background(), f.deps, userusecases.DeleteUserInput{
+		return userusecases.DeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.DeleteUserInput{
 			ActorUserID: actor, Sub: "alice", Reason: "offboarding", Now: userRulesNow,
 		})
 	}
@@ -709,7 +710,7 @@ func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
 		f.seedUsersUsage(t, 2)
 		sessions := &failingSessionStore{SessionStore: f.sessions, failFor: "alice"}
 		f.deps.SessionStore = sessions
-		if err := f.sessions.Save(context.Background(), &sessiondomain.LoginSession{
+		if err := f.sessions.Save(testing_tenant.Default(context.Background()), &sessiondomain.LoginSession{
 			// メモリのセッションストアは実時計で有効期限を判定する。
 			ID: "session-1", TenantID: tenancydomain.DefaultTenantID, UserID: "alice",
 			AuthTime: userRulesNow.Unix(), ExpiresAt: time.Now().Add(24 * time.Hour),
@@ -719,7 +720,7 @@ func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
 		if err := purge(f, "admin"); !errors.Is(err, errInjected) {
 			t.Fatalf("first purge err=%v, want injected failure", err)
 		}
-		remaining, _ := f.sessions.ListBySub(context.Background(), "alice")
+		remaining, _ := f.sessions.ListBySub(testing_tenant.Default(context.Background()), "alice")
 		if !f.stored(t, "alice").IsDeleted() || len(remaining) != 1 || f.usersUsage(t) != 2 || len(f.eventsOf("UserDeleted")) != 0 {
 			t.Fatalf("前提：匿名化の後、関連する記録を消す前に止まっていない")
 		}
@@ -728,7 +729,7 @@ func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
 		if err := purge(f, "admin-2"); err != nil {
 			t.Fatal(err)
 		}
-		if remaining, _ := f.sessions.ListBySub(context.Background(), "alice"); len(remaining) != 0 {
+		if remaining, _ := f.sessions.ListBySub(testing_tenant.Default(context.Background()), "alice"); len(remaining) != 0 {
 			t.Fatalf("sessions=%+v, want none", remaining)
 		}
 		if usage := f.usersUsage(t); usage != 1 {
@@ -781,13 +782,13 @@ func TestPurgeExpiredSoftDeletedResumesAPurgeThatFailedAfterAnonymizing(t *testi
 	f.seed("alice", nil)
 	f.seedUsersUsage(t, 1)
 	f.failUserDeletedOnce()
-	if err := userusecases.DeleteUser(context.Background(), f.deps, userusecases.DeleteUserInput{
+	if err := userusecases.DeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.DeleteUserInput{
 		ActorUserID: "admin", Sub: "alice", Reason: "offboarding", Now: userRulesNow,
 	}); !errors.Is(err, errInjected) {
 		t.Fatalf("admin purge err=%v, want injected failure", err)
 	}
 
-	if err := userusecases.PurgeExpiredSoftDeleted(context.Background(), f.deps, userRulesNow); err != nil {
+	if err := userusecases.PurgeExpiredSoftDeleted(testing_tenant.Default(context.Background()), f.deps, userRulesNow); err != nil {
 		t.Fatal(err)
 	}
 	assertSingleUserDeleted(t, f, "admin", "offboarding")
@@ -804,7 +805,7 @@ func TestPurgeExpiredSoftDeletedContinuesPastAFailingUser(t *testing.T) {
 	f.seed("healthy", pendingSince(expiredSince))
 	f.deps.SessionStore = &failingSessionStore{SessionStore: f.sessions, failFor: "broken"}
 
-	if err := userusecases.PurgeExpiredSoftDeleted(context.Background(), f.deps, userRulesNow); !errors.Is(err, errInjected) {
+	if err := userusecases.PurgeExpiredSoftDeleted(testing_tenant.Default(context.Background()), f.deps, userRulesNow); !errors.Is(err, errInjected) {
 		t.Fatalf("err=%v, want the injected failure", err)
 	}
 	if !f.stored(t, "healthy").IsDeleted() {
@@ -821,14 +822,14 @@ func TestPurgeExpiredSoftDeletedContinuesPastAFailingUser(t *testing.T) {
 func TestStoppingAUserDisablesTheAgentsTheyOwn(t *testing.T) {
 	stops := map[string]func(*userRulesFixture, string) error{
 		"無効化": func(f *userRulesFixture, id string) error {
-			_, err := userusecases.SetUserDisabled(context.Background(), f.deps, "admin", id, true, userRulesNow)
+			_, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), f.deps, "admin", id, true, userRulesNow)
 			return err
 		},
 		"削除の予約": func(f *userRulesFixture, id string) error {
-			return userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+			return userusecases.SoftDeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
 		},
 		"完全削除": func(f *userRulesFixture, id string) error {
-			return userusecases.DeleteUser(context.Background(), f.deps, userusecases.DeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+			return userusecases.DeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.DeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
 		},
 	}
 	for name, stop := range stops {
@@ -871,13 +872,13 @@ func TestRestoringTheOwnerLeavesTheirAgentsDisabled(t *testing.T) {
 	alice := f.seed("alice", nil)
 	f.seedAgent("deploy-bot", alice.ID, idmdomain.AgentStatusActive)
 
-	if err := userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: alice.ID, Now: userRulesNow}); err != nil {
+	if err := userusecases.SoftDeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: alice.ID, Now: userRulesNow}); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.agentStatus(t, "deploy-bot"); got != idmdomain.AgentStatusDisabled {
 		t.Fatalf("削除の予約の後の Agent の状態=%s, want disabled", got)
 	}
-	restored, err := userusecases.RestoreUser(context.Background(), f.deps, "admin", alice.ID, userRulesNow.Add(time.Hour))
+	restored, err := userusecases.RestoreUser(testing_tenant.Default(context.Background()), f.deps, "admin", alice.ID, userRulesNow.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -896,11 +897,11 @@ func TestStoppingAStoppedUserAgainDisablesTheAgentsLeftActive(t *testing.T) {
 		stop   func(*userRulesFixture, string) error
 	}{
 		"無効化": {idmdomain.UserStatusDisabled, func(f *userRulesFixture, id string) error {
-			_, err := userusecases.SetUserDisabled(context.Background(), f.deps, "admin", id, true, userRulesNow)
+			_, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), f.deps, "admin", id, true, userRulesNow)
 			return err
 		}},
 		"削除の予約": {idmdomain.UserStatusPendingDeletion, func(f *userRulesFixture, id string) error {
-			return userusecases.SoftDeleteUser(context.Background(), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+			return userusecases.SoftDeleteUser(testing_tenant.Default(context.Background()), f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
 		}},
 	}
 	for name, tc := range stops {
@@ -916,7 +917,7 @@ func TestStoppingAStoppedUserAgainDisablesTheAgentsLeftActive(t *testing.T) {
 			if got := f.agentStatus(t, "deploy-bot"); got != idmdomain.AgentStatusDisabled {
 				t.Fatalf("deploy-bot の状態=%s, want disabled", got)
 			}
-			user, _ := f.users.FindBySub(context.Background(), alice.ID)
+			user, _ := f.users.FindBySub(testing_tenant.Default(context.Background()), alice.ID)
 			if user.Lifecycle.Status != tc.status {
 				t.Fatalf("User の状態=%s, want %s", user.Lifecycle.Status, tc.status)
 			}
@@ -947,13 +948,13 @@ func TestStoppingAStoppedUserAgainReportsAPropagationFailure(t *testing.T) {
 	f := newUserRulesFixture(t)
 	alice := f.seed("alice", func(u *userdomain.User) { u.Lifecycle.Status = idmdomain.UserStatusDisabled })
 	f.deps.AgentRepo = unreadableAgents{f.agents}
-	if _, err := userusecases.SetUserDisabled(context.Background(), f.deps, "admin", alice.ID, true, userRulesNow); !errors.Is(err, errAgentsUnavailable) {
+	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), f.deps, "admin", alice.ID, true, userRulesNow); !errors.Is(err, errAgentsUnavailable) {
 		t.Fatalf("err=%v, want %v", err, errAgentsUnavailable)
 	}
 }
 
 func (f *userRulesFixture) seedAgent(id, ownerUserID string, status idmdomain.AgentStatus) {
-	if err := f.agents.Save(context.Background(), &agentdomain.Agent{
+	if err := f.agents.Save(testing_tenant.Default(context.Background()), &agentdomain.Agent{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Name: id, Kind: idmdomain.AgentKindAutonomous,
 		OwnerUserID: ownerUserID, Status: status, Roles: []string{},
 		CreatedAt: userRulesNow.Add(-time.Hour), UpdatedAt: userRulesNow.Add(-time.Hour),
@@ -964,7 +965,7 @@ func (f *userRulesFixture) seedAgent(id, ownerUserID string, status idmdomain.Ag
 
 func (f *userRulesFixture) agentStatus(t *testing.T, id string) idmdomain.AgentStatus {
 	t.Helper()
-	agent, err := f.agents.FindByID(context.Background(), tenancydomain.DefaultTenantID, id)
+	agent, err := f.agents.FindByID(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, id)
 	if err != nil || agent == nil {
 		t.Fatalf("FindByID(%s)=(%v,%v)", id, agent, err)
 	}

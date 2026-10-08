@@ -8,6 +8,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
@@ -26,7 +27,7 @@ func daysAgo(now time.Time, d int) time.Time {
 
 func seedAudit(t *testing.T, store *auditmemory.AuditEventStore, id, eventType string, at time.Time) {
 	t.Helper()
-	if err := store.Append(context.Background(), &auditports.AuditEventRecord{
+	if err := store.Append(testing_tenant.Default(context.Background()), &auditports.AuditEventRecord{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Type: eventType, OccurredAt: at,
 		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID},
 	}); err != nil {
@@ -36,7 +37,7 @@ func seedAudit(t *testing.T, store *auditmemory.AuditEventStore, id, eventType s
 
 func remainingAuditIDs(t *testing.T, store *auditmemory.AuditEventStore) map[string]bool {
 	t.Helper()
-	recs, err := store.List(context.Background(), auditports.AuditEventQuery{Limit: 1000})
+	recs, err := store.List(testing_tenant.Default(context.Background()), auditports.AuditEventQuery{Limit: 1000})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func remainingAuditIDs(t *testing.T, store *auditmemory.AuditEventStore) map[str
 }
 
 func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := auditmemory.NewAuditEventStore(0)
 
@@ -90,7 +91,7 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
 	// AuthenticationFailed.username は redact されず、
 	// 他の failure イベントと同じ保持期間 (FailDays) でそのまま保持される。
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := auditmemory.NewAuditEventStore(0)
 	oldFailure := &auditports.AuditEventRecord{
@@ -115,7 +116,7 @@ func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
 }
 
 func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := auditmemory.NewAuditEventStore(0)
 	// global cap 30 日: 成功も impersonation も 31 日前は消える。
@@ -141,7 +142,7 @@ func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 }
 
 func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := authnmemory.NewAuthEventBucketStore()
 	// 91 日前の窓と直近の窓を作る。
@@ -171,7 +172,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 // retention sweep に統合する。SessionDays (既定 90 日) を LoginSession の
 // tombstone/期限切れ行の物理削除 cutoff に転用する。
 func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := sessionmemory.NewSessionStore()
 
@@ -210,7 +211,7 @@ func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
 // TestRetentionSweepDeletesIdleKnownSignInDevices: 既知のサインイン端末はサインイン履歴と
 // 同じ 365 日で掃除する (wi-90)。履歴から消えた端末を「既知」と呼び続けないためである。
 func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 	store := securitynotificationmemory.NewKnownDeviceRepository()
 
@@ -252,7 +253,7 @@ func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
 //
 //spec:covers GDPR-PROCESSING-RECORDS: セキュリティイベントと認可イベントの監査記録は、定義済みの
 func TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
 	store := auditmemory.NewAuditEventStore(0)
 	policy := usecases.DefaultRetentionPolicy()

@@ -19,20 +19,21 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
 func seedSupervisionAgent(t *testing.T, repo *agentmemory.AgentRepository, id, clientID string, kind idmdomain.AgentKind) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := repo.Save(context.Background(), &agentdomain.Agent{
+	if err := repo.Save(testing_tenant.Default(context.Background()), &agentdomain.Agent{
 		ID: id, TenantID: kernel.DefaultTenantID, Name: id, Kind: kind, OwnerUserID: "owner_1",
 		Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed agent: %v", err)
 	}
 	if clientID != "" {
-		if _, err := repo.AddBinding(context.Background(), &agentdomain.AgentCredentialBinding{
+		if _, err := repo.AddBinding(testing_tenant.Default(context.Background()), &agentdomain.AgentCredentialBinding{
 			AgentID: id, ClientID: clientID, CreatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed binding: %v", err)
@@ -76,7 +77,7 @@ func TestExchangeTokenRejectsSupervisedWorkloadAgent(t *testing.T) {
 	var events []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
 
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "external-svid",
 		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
@@ -97,7 +98,7 @@ func TestExchangeTokenRejectsSupervisedSubjectAgent(t *testing.T) {
 	var events []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
 
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "approved", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	assertApprovalRequired(t, issuer, events, err, "agent_1")
@@ -115,7 +116,7 @@ func TestExchangeTokenRejectsSupervisedActingClient(t *testing.T) {
 	var events []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
 
-	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC())
 	assertApprovalRequired(t, issuer, events, err, "agent_2")
@@ -132,7 +133,7 @@ func TestExchangeTokenAllowsAutonomousAgents(t *testing.T) {
 	seedSupervisionAgent(t, agentRepo, "agent_2", "client", idmdomain.AgentKindAutonomous)
 	deps.AgentRepo = agentRepo
 
-	if _, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+	if _, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
 	}, time.Now().UTC()); err != nil {
 		t.Fatalf("expected autonomous agents to be unaffected: %v", err)

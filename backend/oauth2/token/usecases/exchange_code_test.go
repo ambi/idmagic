@@ -12,6 +12,7 @@ import (
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -95,7 +96,7 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 		IssuedAt:               now,
 		ExpiresAt:              now.Add(time.Minute),
 	}
-	if err := codeStore.Save(context.Background(), code); err != nil {
+	if err := codeStore.Save(testing_tenant.Default(context.Background()), code); err != nil {
 		t.Fatal(err)
 	}
 	// 具体例が `Then` にイベントの発行を並べているので、fixture は発行されたイベントを
@@ -138,7 +139,7 @@ func exchangeInput(verifier string) ExchangeCodeInput {
 //spec:covers EX-OAUTH2-005-06: 認可コードを誤った code_verifier で交換すると InvalidGrantError で
 func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid"})
-	refused, err := ExchangeCodeForToken(context.Background(), f.deps, exchangeInput("wrong-verifier"))
+	refused, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), f.deps, exchangeInput("wrong-verifier"))
 	if err == nil {
 		t.Fatal("expected PKCE failure")
 	}
@@ -154,7 +155,7 @@ func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 	}
 
 	out, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -177,7 +178,7 @@ func TestExchangeCodePKCEFailureDoesNotConsumeCode(t *testing.T) {
 func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})
 	out, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -189,7 +190,7 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	}
 	*f.events = nil
 	_, err = ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -200,7 +201,7 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	if !errors.As(err, &oe) || oe.Code != "invalid_grant" {
 		t.Fatalf("再交換の拒否が invalid_grant ではない: %v", err)
 	}
-	rec, err := f.refreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
+	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), domain.HashRefreshToken(out.RefreshToken))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,11 +224,11 @@ func TestExchangeCodeRejectsExpiredCode(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid"})
 	f.code.IssuedAt = time.Now().Add(-90 * time.Second).UTC()
 	f.code.ExpiresAt = time.Now().Add(-30 * time.Second).UTC()
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
 	_, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -240,7 +241,7 @@ func TestExchangeCodeRejectsExpiredCode(t *testing.T) {
 	}
 	// 応答が拒否になっただけでは、記録の状態を issued のまま放置する実装と区別できない。
 	// 保存層から state を読み、宣言どおり Expired へ遷移したことを確かめる。
-	got, err := f.codeStore.Find(context.Background(), f.code.Code)
+	got, err := f.codeStore.Find(testing_tenant.Default(context.Background()), f.code.Code)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,11 +255,11 @@ func TestExchangeCodePropagatesNonceToIDToken(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid"})
 	nonce := "n-12345"
 	f.code.Nonce = &nonce
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
 	out, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -281,11 +282,11 @@ func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
 	f.code.Sid = &sid
 	clientSessions := logoutmemory.NewClientSessionStore()
 	f.deps.ClientSessionStore = clientSessions
-	if err := f.codeStore.Save(context.Background(), f.code); err != nil {
+	if err := f.codeStore.Save(testing_tenant.Default(context.Background()), f.code); err != nil {
 		t.Fatal(err)
 	}
 	out, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -295,14 +296,14 @@ func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
 	if f.issuer.lastIDTokenInput.Sid != sid {
 		t.Fatalf("sid not propagated to id_token: got %q", f.issuer.lastIDTokenInput.Sid)
 	}
-	rec, err := f.refreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
+	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), domain.HashRefreshToken(out.RefreshToken))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if rec == nil || rec.Sid == nil || *rec.Sid != sid {
 		t.Fatalf("sid not propagated to refresh token record: got %v", rec)
 	}
-	participations, err := clientSessions.ListBySid(context.Background(), f.code.TenantID, sid)
+	participations, err := clientSessions.ListBySid(testing_tenant.Default(context.Background()), f.code.TenantID, sid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +315,7 @@ func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
 func TestExchangeCodeIssuesTokensByScope(t *testing.T) {
 	f := newExchangeFixture(t, []string{"profile"})
 	out, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	)
@@ -330,7 +331,7 @@ func TestExchangeCodeIssuesTokensByScope(t *testing.T) {
 	// 認可コードは一度だけ交換できる。再利用が通ると、盗まれたコードから
 	// 何度でもトークンを取れてしまう。
 	if _, err := ExchangeCodeForToken(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.deps,
 		exchangeInput("verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	); err == nil {
@@ -347,18 +348,18 @@ func TestReplayDetectionEmitsTheSameEventTypesAcrossAuthorizationCodeAndRefreshT
 
 	// 認可コード再提示の経路。
 	codeFixture := newExchangeFixture(t, []string{"openid", "offline_access"})
-	if _, err := ExchangeCodeForToken(context.Background(), codeFixture.deps, exchangeInput(verifier)); err != nil {
+	if _, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), codeFixture.deps, exchangeInput(verifier)); err != nil {
 		t.Fatalf("初回交換に失敗: %v", err)
 	}
 	*codeFixture.events = nil
-	if _, err := ExchangeCodeForToken(context.Background(), codeFixture.deps, exchangeInput(verifier)); err == nil {
+	if _, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), codeFixture.deps, exchangeInput(verifier)); err == nil {
 		t.Fatal("認可コードの再提示が拒否されない")
 	}
 	codeReplayTypes := uniqueEventTypes(codeFixture.emitted())
 
 	// refresh トークン再利用の経路。ローテーション後、使用済みの旧トークンを再提示する。
 	refreshFixture := newExchangeFixture(t, []string{"openid", "offline_access"})
-	out, err := ExchangeCodeForToken(context.Background(), refreshFixture.deps, exchangeInput(verifier))
+	out, err := ExchangeCodeForToken(testing_tenant.Default(context.Background()), refreshFixture.deps, exchangeInput(verifier))
 	if err != nil {
 		t.Fatalf("初回交換に失敗: %v", err)
 	}
@@ -370,11 +371,11 @@ func TestReplayDetectionEmitsTheSameEventTypesAcrossAuthorizationCodeAndRefreshT
 		Emit:         refreshFixture.deps.Emit,
 	}
 	now := time.Now().UTC()
-	if _, err := RefreshTokens(context.Background(), refreshDeps, RefreshInput{ClientID: "client", RefreshToken: out.RefreshToken}, now); err != nil {
+	if _, err := RefreshTokens(testing_tenant.Default(context.Background()), refreshDeps, RefreshInput{ClientID: "client", RefreshToken: out.RefreshToken}, now); err != nil {
 		t.Fatalf("ローテーションに失敗: %v", err)
 	}
 	*refreshFixture.events = nil
-	if _, err := RefreshTokens(context.Background(), refreshDeps, RefreshInput{ClientID: "client", RefreshToken: out.RefreshToken}, now); err == nil {
+	if _, err := RefreshTokens(testing_tenant.Default(context.Background()), refreshDeps, RefreshInput{ClientID: "client", RefreshToken: out.RefreshToken}, now); err == nil {
 		t.Fatal("使用済みリフレッシュトークンの再提示が拒否されない")
 	}
 	refreshReplayTypes := uniqueEventTypes(refreshFixture.emitted())

@@ -30,6 +30,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -103,7 +104,7 @@ func newFederationServer(
 	driver *claimsDriver,
 ) *autoLinkFixture {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 
 	users := usermemory.NewUserRepository()
@@ -138,7 +139,7 @@ func newFederationServer(
 	sessions := sessionusecases.NewSessionManager(store)
 	fixture := &autoLinkFixture{repos: repos, sessions: store, driver: driver}
 	e := echo.New()
-	federationhttp.RegisterRoutes(e.Group(""), federationhttp.Deps{
+	federationhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), federationhttp.Deps{
 		Broker: federationusecases.BrokerDeps{
 			Connections: repos.Connections, Identities: repos.Identities, Attempts: repos.Attempts,
 			Users: users, Sessions: sessions,
@@ -191,7 +192,7 @@ func (f *autoLinkFixture) callback(t *testing.T, state string) *httptest.Respons
 // issuedSessions は seed 済みの利用者に対して発行されたセッションの数を返す。
 func (f *autoLinkFixture) issuedSessions(t *testing.T, userID string) int {
 	t.Helper()
-	issued, err := f.sessions.ListBySub(context.Background(), userID)
+	issued, err := f.sessions.ListBySub(testing_tenant.Default(context.Background()), userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +203,7 @@ func (f *autoLinkFixture) issuedSessions(t *testing.T, userID string) int {
 func (f *autoLinkFixture) linkedIdentity(t *testing.T) *federationdomain.FederatedIdentity {
 	t.Helper()
 	identity, err := f.repos.Identities.FindBySubject(
-		context.Background(), tenancydomain.DefaultTenantID, autoLinkProviderID, autoLinkSubject,
+		testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, autoLinkProviderID, autoLinkSubject,
 	)
 	if err != nil {
 		t.Fatal(err)

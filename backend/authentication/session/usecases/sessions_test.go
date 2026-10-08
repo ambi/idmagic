@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -20,7 +21,7 @@ import (
 
 func seedSession(t *testing.T, store *memory.SessionStore, id, sub string, authTime time.Time) {
 	t.Helper()
-	if err := store.Save(context.Background(), &domain.LoginSession{
+	if err := store.Save(testing_tenant.Default(context.Background()), &domain.LoginSession{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, UserID: sub, AuthTime: authTime.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: authTime.Add(time.Hour),
@@ -31,7 +32,7 @@ func seedSession(t *testing.T, store *memory.SessionStore, id, sub string, authT
 
 //spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-01: 自分の有効なセッションだけが新しい順に返り、現在のセッションに current が付くことを固定する。
 func TestListSessionsMarksCurrentAndSortsDesc(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -56,7 +57,7 @@ func TestListSessionsMarksCurrentAndSortsDesc(t *testing.T) {
 
 //spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-01: 自分のセッション 1 件の失効が一覧から消え SessionEnded を残すこと、他人のセッションには届かないことを固定する。
 func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -88,7 +89,7 @@ func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 
 //spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-01: 現在以外のすべてを一括失効させると現在のセッションだけが残ることを固定する。
 func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -120,7 +121,7 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 // (id_token_hint または browser cookie 由来) から直接失効する。既に失効済み/未知の
 // sid は Find が有効セッションのみ返すため自然に no-op (idempotent) になる。
 func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -157,7 +158,7 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 //
 //spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-01: 管理者の一覧が対象ユーザーの有効なセッションだけを開始時刻の降順で返すことを固定する。
 func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -182,7 +183,7 @@ func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
 
 //spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-01: 管理者による 1 件の失効が revoke_reason=admin_revoke でセッションを失効させ、操作者を載せた SessionEnded を発行することを固定する。
 func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -225,7 +226,7 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 
 //spec:covers REQ-AUTHENTICATION-021, EX-AUTHENTICATION-021-01: 管理者の全失効が対象ユーザーの残り全セッションを失効させ、他のユーザーには届かないことを固定する。
 func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
@@ -249,7 +250,7 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 }
 
 func TestEndSessionUnknownSidIsNoop(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	var events []spec.DomainEvent
 	if err := usecases.EndSession(ctx, usecases.SessionDeps{
@@ -269,7 +270,7 @@ func TestEndSessionUnknownSidIsNoop(t *testing.T) {
 //
 //spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-03: 失効済みのセッションへ同じ失効を再送しても成功し、revoked_at が初回の値のまま変わらないことを固定する。
 func TestRevokeOwnSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)

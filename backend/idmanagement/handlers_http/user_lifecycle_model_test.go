@@ -28,6 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/testing_statematrix"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 const userLifecycleSpecification = "../../../docs/domain/identity-management/user/README.md"
@@ -63,7 +64,7 @@ func runRetentionSweep(m *userLifecycleModel) *httptest.ResponseRecorder {
 		},
 	}
 	response := httptest.NewRecorder()
-	if err := userusecases.PurgeExpiredSoftDeleted(m.t.Context(), deps, time.Now().UTC()); err != nil {
+	if err := userusecases.PurgeExpiredSoftDeleted(testing_tenant.Default(m.t.Context()), deps, time.Now().UTC()); err != nil {
 		response.Code = http.StatusInternalServerError
 		_, _ = response.WriteString(err.Error())
 	}

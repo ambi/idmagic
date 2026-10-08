@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -28,7 +29,7 @@ func attrTestDeps(t *testing.T) (context.Context, userusecases.AdminUserDeps, *u
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit:                func(spec.DomainEvent) error { return nil },
 	}
-	return context.Background(), deps, schemaRepo
+	return testing_tenant.Default(context.Background()), deps, schemaRepo
 }
 
 func createAttrUser(ctx context.Context, t *testing.T, deps userusecases.AdminUserDeps) *userdomain.User {

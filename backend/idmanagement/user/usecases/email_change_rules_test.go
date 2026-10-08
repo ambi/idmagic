@@ -15,6 +15,7 @@ import (
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type failingEmailSender struct{ attempts int }
@@ -39,7 +40,7 @@ func TestRequestEmailChangeExtractsAndLowercasesTheAddress(t *testing.T) {
 	users := usermemory.NewUserRepository()
 	emailChangeRulesUser(users, true)
 	sender := &email_memory.NoopEmailSender{}
-	if err := userusecases.RequestEmailChange(context.Background(), userusecases.RequestEmailChangeDeps{
+	if err := userusecases.RequestEmailChange(testing_tenant.Default(context.Background()), userusecases.RequestEmailChangeDeps{
 		UserRepo: users, TokenStore: usermemory.NewEmailChangeTokenStore(users), Notifier: newTestNotifier(sender), Issuer: "http://idp.test/",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: "Alice <Alice.New@Example.TEST>", Now: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
@@ -57,7 +58,7 @@ func TestRequestEmailChangeRejectsTheVerifiedCurrentAddressOnly(t *testing.T) {
 	for _, verified := range []bool{true, false} {
 		users := usermemory.NewUserRepository()
 		emailChangeRulesUser(users, verified)
-		err := userusecases.RequestEmailChange(context.Background(), userusecases.RequestEmailChangeDeps{
+		err := userusecases.RequestEmailChange(testing_tenant.Default(context.Background()), userusecases.RequestEmailChangeDeps{
 			UserRepo: users, TokenStore: usermemory.NewEmailChangeTokenStore(users),
 			Notifier: newTestNotifier(&email_memory.NoopEmailSender{}), Issuer: "http://idp.test",
 		}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: "ALICE@example.test", Now: time.Now().UTC()})
@@ -76,7 +77,7 @@ func TestRequestEmailChangeSucceedsWhenDeliveryFails(t *testing.T) {
 	emailChangeRulesUser(users, true)
 	sender := &failingEmailSender{}
 	var events []spec.DomainEvent
-	err := userusecases.RequestEmailChange(context.Background(), userusecases.RequestEmailChangeDeps{
+	err := userusecases.RequestEmailChange(testing_tenant.Default(context.Background()), userusecases.RequestEmailChangeDeps{
 		UserRepo: users, TokenStore: usermemory.NewEmailChangeTokenStore(users),
 		Notifier: &template.Notifier{Sender: sender, SystemDefaultLocale: "en"}, Issuer: "http://idp.test",
 		Emit: func(event spec.DomainEvent) { events = append(events, event) },
@@ -105,18 +106,18 @@ func TestConfirmEmailChangeVerifiesTheAddressAndClearsVerifyEmail(t *testing.T) 
 	store := usermemory.NewEmailChangeTokenStore(users)
 	sender := &email_memory.NoopEmailSender{}
 	now := time.Now().UTC()
-	if err := userusecases.RequestEmailChange(context.Background(), userusecases.RequestEmailChangeDeps{
+	if err := userusecases.RequestEmailChange(testing_tenant.Default(context.Background()), userusecases.RequestEmailChangeDeps{
 		UserRepo: users, TokenStore: store, Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
 	}, userusecases.RequestEmailChangeInput{Sub: "user-alice", NewEmail: "new@example.test", Now: now}); err != nil {
 		t.Fatal(err)
 	}
 	var events []string
-	if _, err := userusecases.ConfirmEmailChange(context.Background(), userusecases.ConfirmEmailChangeDeps{
+	if _, err := userusecases.ConfirmEmailChange(testing_tenant.Default(context.Background()), userusecases.ConfirmEmailChangeDeps{
 		UserRepo: users, TokenStore: store, Emit: func(event spec.DomainEvent) { events = append(events, event.EventType()) },
 	}, userusecases.ConfirmEmailChangeInput{Token: tokenFromMessage(t, sender.Sent[0].Text), Now: now.Add(time.Minute)}); err != nil {
 		t.Fatal(err)
 	}
-	stored, _ := users.FindBySub(context.Background(), "user-alice")
+	stored, _ := users.FindBySub(testing_tenant.Default(context.Background()), "user-alice")
 	if !stored.EmailVerified || len(stored.Lifecycle.RequiredActions) != 1 || stored.Lifecycle.RequiredActions[0] != idmdomain.RequiredActionUpdatePassword {
 		t.Fatalf("verified=%v actions=%v, want verified and only update_password", stored.EmailVerified, stored.Lifecycle.RequiredActions)
 	}

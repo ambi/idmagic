@@ -12,6 +12,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
@@ -28,7 +29,7 @@ func accountTestDeps(t *testing.T) (context.Context, userusecases.AccountProfile
 		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		Emit: func(spec.DomainEvent) error { return nil },
 	}
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	user, err := userusecases.CreateUser(ctx, adminDeps, userusecases.CreateUserInput{
 		ActorUserID: "admin", PreferredUsername: "dave", Password: "initial-password-9182", Now: time.Now().UTC(),
 	})

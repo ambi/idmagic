@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -20,14 +21,14 @@ func TestVerifyIDTokenHintReturnsClaimsForValidToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &domain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	claims, err := signer.VerifyIDTokenHint(context.Background(), token)
+	claims, err := signer.VerifyIDTokenHint(testing_tenant.Default(context.Background()), token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func TestVerifyIDTokenHintRejectsTamperedSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &domain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
@@ -60,7 +61,7 @@ func TestVerifyIDTokenHintRejectsTamperedSignature(t *testing.T) {
 		t.Fatalf("malformed jwt: %q", token)
 	}
 	tampered := parts[0] + "." + parts[1] + "X." + parts[2]
-	if _, err := signer.VerifyIDTokenHint(context.Background(), tampered); err == nil {
+	if _, err := signer.VerifyIDTokenHint(testing_tenant.Default(context.Background()), tampered); err == nil {
 		t.Fatal("expected signature verification failure")
 	}
 }
@@ -75,7 +76,7 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	otherIssuerSigner := NewJWTSigner("https://other-idp.test", otherKS)
-	token, err := otherIssuerSigner.SignIDToken(context.Background(), ports.IDTokenInput{
+	token, err := otherIssuerSigner.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &domain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
@@ -83,7 +84,7 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	if _, err := signer.VerifyIDTokenHint(context.Background(), token); err == nil {
+	if _, err := signer.VerifyIDTokenHint(testing_tenant.Default(context.Background()), token); err == nil {
 		t.Fatal("expected issuer mismatch to be rejected")
 	}
 }
@@ -92,7 +93,7 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 // かけるため、SignIDToken を経由せず claim 集合を直接指定する。
 func signHintClaims(t *testing.T, signer *JWTSigner, ks *signingcrypto.InMemoryKeyStore, claims map[string]any) string {
 	t.Helper()
-	key, err := ks.GetActiveKey(context.Background())
+	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +122,7 @@ func TestVerifyIDTokenHintRejectsMissingSubjectOrAudience(t *testing.T) {
 		"aud が空配列": {"sub": "user-1", "aud": []any{}, "sid": "session-1"},
 	} {
 		token := signHintClaims(t, signer, ks, claims)
-		if _, err := signer.VerifyIDTokenHint(context.Background(), token); err == nil {
+		if _, err := signer.VerifyIDTokenHint(testing_tenant.Default(context.Background()), token); err == nil {
 			t.Fatalf("%s: 必須 claim を欠く id_token_hint が受理された", name)
 		}
 	}

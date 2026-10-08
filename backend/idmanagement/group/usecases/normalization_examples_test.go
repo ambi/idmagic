@@ -12,6 +12,7 @@ import (
 
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 //go:embed testdata/normalization.examples.json
@@ -50,7 +51,7 @@ func TestGroupNormalizationExamples(t *testing.T) {
 				deps, events := newGroupDeps(t)
 				notifier := &recordingGroupNotifier{}
 				deps.ProvisioningNotifier = notifier
-				ctx := context.Background()
+				ctx := testing_tenant.Default(context.Background())
 				if tc.Given.ExistingName != "" {
 					if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{ActorUserID: "operator", Name: tc.Given.ExistingName, Now: groupRulesNow}); err != nil {
 						t.Fatal(err)

@@ -15,6 +15,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
 )
@@ -29,7 +30,7 @@ func (r *lifecycleRun) startFullResyncOverHTTP() {
 	})
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
-	r.module.Register(e.Group(""), support.Deps{Issuer: "http://idp.test", Emit: r.emit},
+	r.module.Register(e.Group("", testing_tenant.ResolveDefault), support.Deps{Issuer: "http://idp.test", Emit: r.emit},
 		&support.Authenticator{UserRepo: r.h.userRepo, AuthnResolver: authusecases.DemoHeaderResolver{}},
 		appmemory.NewApplicationAssignmentRepository(), r.h.userRepo, r.h.groupRepo)
 
@@ -73,7 +74,7 @@ func TestE2E_FullResyncEmitsCompletedOnceAllTasksSettle(t *testing.T) {
 
 	run.startFullResyncOverHTTP()
 	run.dispatch()
-	jobs, err := run.jobs.ClaimBatch(context.Background(), "worker-e2e", jobsdomain.LaneDefault, 10, time.Minute, time.Now().UTC())
+	jobs, err := run.jobs.ClaimBatch(testing_tenant.Default(context.Background()), "worker-e2e", jobsdomain.LaneDefault, 10, time.Minute, time.Now().UTC())
 	if err != nil || len(jobs) != 3 {
 		t.Fatalf("ClaimBatch() = %d jobs, %v; want one per subject (admin, alice, carol)", len(jobs), err)
 	}

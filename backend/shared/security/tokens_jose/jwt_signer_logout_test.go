@@ -10,6 +10,7 @@ import (
 
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // back-channel logout イベントを運び、nonce を運ばないことを固定する。
@@ -20,7 +21,7 @@ func TestSignLogoutToken_REQ_OAUTH2_025(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := NewJWTSigner("https://unused.example", keyStore).SignLogoutToken(context.Background(), logoutports.LogoutTokenInput{Issuer: "https://idp.example/realms/default", Subject: "alice", Audience: "client-1", Sid: "session-1", JTI: "logout-1", IssuedAt: time.Unix(1_700_000_000, 0).UTC()})
+	token, err := NewJWTSigner("https://unused.example", keyStore).SignLogoutToken(testing_tenant.Default(context.Background()), logoutports.LogoutTokenInput{Issuer: "https://idp.example/realms/default", Subject: "alice", Audience: "client-1", Sid: "session-1", JTI: "logout-1", IssuedAt: time.Unix(1_700_000_000, 0).UTC()})
 	if err != nil {
 		t.Fatal(err)
 	}

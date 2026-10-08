@@ -8,10 +8,11 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestSessionManagerEnrollmentUsesSameSessionAndCompletesMfa(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	store := memory.NewSessionStore()
 	store.Clock = func() time.Time { return now }

@@ -11,6 +11,7 @@ import (
 
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -34,7 +35,7 @@ import (
 //
 //spec:covers REQ-IDMANAGEMENT-010: 無効化した User の再有効化で、保存された状態が Active に戻り UserEnabled が発行されること。
 func TestCreateUpdateAndDisableUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	hasher := testing_passwords.NewHasher()
@@ -141,7 +142,7 @@ func federatedProvisioningDeps(
 //
 //spec:covers REQ-IDMANAGEMENT-001: 上流の検証を終えた JIT が password_hash の空な Active User を作り、UserCreated を発行すること。
 func TestProvisionFederatedUserCreatesCredentiallessActiveUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := federatedProvisioningDeps(ctx, t, 0)
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 	email := "federated@example.com"
@@ -191,7 +192,7 @@ func TestProvisionFederatedUserCreatesCredentiallessActiveUser(t *testing.T) {
 //
 //spec:covers REQ-IDMANAGEMENT-001: 一意性・リソース上限・属性スキーマのいずれかに反する JIT が、User を作らずエラーを返すこと。
 func TestProvisionFederatedUserRejectsWithoutCreatingTheUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 	takenEmail := "taken@example.com"
 
@@ -323,7 +324,7 @@ func eventTypes(events []spec.DomainEvent) []string {
 }
 
 func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	deps := userusecases.AdminUserDeps{
 		UserRepo: userRepo, PasswordHasher: testing_passwords.NewHasher(),
@@ -384,7 +385,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 		ID: "existing", PreferredUsername: "bob", PasswordHash: "hash",
 		CreatedAt: now, UpdatedAt: now,
 	})
-	_, err := userusecases.CreateUser(context.Background(), userusecases.AdminUserDeps{
+	_, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), userusecases.AdminUserDeps{
 		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 	}, userusecases.CreateUserInput{
@@ -399,7 +400,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 // the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
 // (spec/contexts/tenancy.yaml), applied to the users resource.
 func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	repo := usermemory.NewUserRepository()
 	quotaRepo := tenancymemory.NewQuotaRepository()
 	limit := 1
@@ -436,7 +437,7 @@ func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 // deleting a user must free its quota slot so a subsequent create at the same
 // limit succeeds.
 func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	repo := usermemory.NewUserRepository()
 	quotaRepo := tenancymemory.NewQuotaRepository()
 	limit := 1
@@ -468,7 +469,7 @@ func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
 }
 
 func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	historyRepo := authnmemory.NewPasswordHistoryRepository()
 	consentRepo := oauth2memory.NewConsentRepository()
@@ -564,7 +565,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 }
 
 func TestDeleteUserRejectsSelfDelete(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&userdomain.User{
@@ -586,7 +587,7 @@ func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 }
 
 func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&userdomain.User{
@@ -608,7 +609,7 @@ func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
 }
 
 func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&userdomain.User{
@@ -641,7 +642,7 @@ func softDeleteTestDeps(events *[]spec.DomainEvent) (userusecases.AdminUserDeps,
 }
 
 func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	var events []spec.DomainEvent
 	deps, consentRepo, userRepo := softDeleteTestDeps(&events)
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
@@ -693,7 +694,7 @@ func TestSoftDeleteUserSetsPendingDeletionWithoutCascade(t *testing.T) {
 //
 //spec:covers REQ-IDMANAGEMENT-011, REQ-IDMANAGEMENT-049: 削除の予約で PendingDeletion と UserSoftDeleted、復元で Active と UserRestored になること。
 func TestRestoreUserReturnsToActive(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	var events []spec.DomainEvent
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
@@ -736,7 +737,7 @@ func TestRestoreUserReturnsToActive(t *testing.T) {
 //
 //spec:covers REQ-IDMANAGEMENT-050: PendingDeletion の User を管理者が完全削除すると、状態が Deleted になり UserDeleted が発行されること。
 func TestPurgePendingDeletionUserTombstonesAndEmitsUserDeleted(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	var events []spec.DomainEvent
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
@@ -772,7 +773,7 @@ func TestPurgePendingDeletionUserTombstonesAndEmitsUserDeleted(t *testing.T) {
 }
 
 func TestRestoreUserRejectsNonPendingAndExpired(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	var events []spec.DomainEvent
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	deps.SoftDeleteGraceSeconds = 60
@@ -797,7 +798,7 @@ func TestRestoreUserRejectsNonPendingAndExpired(t *testing.T) {
 }
 
 func TestSoftDeleteAndRestoreRejectSelf(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()
 	userRepo.Seed(&userdomain.User{
@@ -816,7 +817,7 @@ func TestSoftDeleteAndRestoreRejectSelf(t *testing.T) {
 }
 
 func TestPurgeExpiredSoftDeletedAnonymizesAfterGrace(t *testing.T) {
-	ctx := context.Background()
+	ctx := testing_tenant.Default(context.Background())
 	var events []spec.DomainEvent
 	deps, _, userRepo := softDeleteTestDeps(&events)
 	deps.SoftDeleteGraceSeconds = 1

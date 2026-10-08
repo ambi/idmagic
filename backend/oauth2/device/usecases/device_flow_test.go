@@ -12,6 +12,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -67,7 +68,7 @@ func TestDeviceFlowPollingAndReplay(t *testing.T) {
 	f := newDeviceFixture()
 	t0 := time.Now().UTC()
 	auth, err := RequestDeviceAuthorization(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.requestDeps,
 		DeviceAuthorizationInput{ClientID: "device-client", Scope: "openid"},
 		t0,
@@ -76,25 +77,25 @@ func TestDeviceFlowPollingAndReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := ExchangeDeviceCodeInput{ClientID: "device-client", DeviceCode: auth.DeviceCode}
-	if _, err := ExchangeDeviceCode(context.Background(), f.deps, input, t0); oauthErrorCode(err) != "authorization_pending" {
+	if _, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, input, t0); oauthErrorCode(err) != "authorization_pending" {
 		t.Fatalf("first poll: %v", err)
 	}
-	if _, err := ExchangeDeviceCode(context.Background(), f.deps, input, t0.Add(time.Second)); oauthErrorCode(err) != "slow_down" {
+	if _, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, input, t0.Add(time.Second)); oauthErrorCode(err) != "slow_down" {
 		t.Fatalf("fast poll: %v", err)
 	}
 	if err := ApproveUserCode(
-		context.Background(), f.verifyDeps, auth.UserCode, "user", t0.Add(2*time.Second),
+		testing_tenant.Default(context.Background()), f.verifyDeps, auth.UserCode, "user", t0.Add(2*time.Second),
 	); err != nil {
 		t.Fatal(err)
 	}
-	out, err := ExchangeDeviceCode(context.Background(), f.deps, input, t0.Add(11*time.Second))
+	out, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, input, t0.Add(11*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if out.AccessToken == "" || out.IDToken == "" {
 		t.Fatal("device exchange did not issue tokens")
 	}
-	if _, err := ExchangeDeviceCode(context.Background(), f.deps, input, t0.Add(20*time.Second)); oauthErrorCode(err) != "invalid_grant" {
+	if _, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, input, t0.Add(20*time.Second)); oauthErrorCode(err) != "invalid_grant" {
 		t.Fatalf("replay: %v", err)
 	}
 }
@@ -102,7 +103,7 @@ func TestDeviceFlowPollingAndReplay(t *testing.T) {
 func TestDeviceAuthorizationRejectsUndeclaredScope(t *testing.T) {
 	f := newDeviceFixture()
 	_, err := RequestDeviceAuthorization(
-		context.Background(),
+		testing_tenant.Default(context.Background()),
 		f.requestDeps,
 		DeviceAuthorizationInput{ClientID: "device-client", Scope: "openid admin"},
 		time.Now(),
@@ -168,11 +169,11 @@ func TestDeviceFlowDeny(t *testing.T) {
 // approveDeviceCode は scope でデバイス認可を要求し、時刻 at に承認した device_code を返す。
 func approveDeviceCode(t *testing.T, f deviceFixture, scope string, at time.Time) string {
 	t.Helper()
-	auth, err := RequestDeviceAuthorization(context.Background(), f.requestDeps, DeviceAuthorizationInput{ClientID: "device-client", Scope: scope}, at)
+	auth, err := RequestDeviceAuthorization(testing_tenant.Default(context.Background()), f.requestDeps, DeviceAuthorizationInput{ClientID: "device-client", Scope: scope}, at)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ApproveUserCode(context.Background(), f.verifyDeps, auth.UserCode, "user", at); err != nil {
+	if err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, auth.UserCode, "user", at); err != nil {
 		t.Fatal(err)
 	}
 	return auth.DeviceCode
@@ -195,7 +196,7 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 			now := time.Now().UTC()
 			deviceCode := approveDeviceCode(t, f, tc.scope, now)
 
-			out, err := ExchangeDeviceCode(context.Background(), f.deps, ExchangeDeviceCodeInput{ClientID: "device-client", DeviceCode: deviceCode}, now)
+			out, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, ExchangeDeviceCodeInput{ClientID: "device-client", DeviceCode: deviceCode}, now)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -206,7 +207,7 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 			for _, e := range emitted {
 				types = append(types, e.EventType())
 			}
-			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(context.Background(), domain.HashDeviceCode(deviceCode))
+			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(testing_tenant.Default(context.Background()), domain.HashDeviceCode(deviceCode))
 			if rec.State != spec.DeviceFlowExchanged {
 				t.Fatalf("state = %v", rec.State)
 			}
@@ -219,7 +220,7 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 				}
 				return
 			}
-			stored, err := f.deps.RefreshStore.FindByHash(context.Background(), domain.HashRefreshToken(out.RefreshToken))
+			stored, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), domain.HashRefreshToken(out.RefreshToken))
 			if err != nil || stored == nil {
 				t.Fatalf("refresh record: %v %v", stored, err)
 			}

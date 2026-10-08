@@ -22,6 +22,7 @@ import (
 	identitysource "github.com/ambi/idmagic/backend/provisioning/source_idmanagement"
 	"github.com/ambi/idmagic/backend/provisioning/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 // lifecycleRun は worker と同じ組み立て（Module のディスパッチャーとジョブハンドラー、
@@ -62,7 +63,7 @@ func (r *lifecycleRun) dispatch() {
 // dispatchAt は worker の周期処理を now の時点として 1 回実行する。
 func (r *lifecycleRun) dispatchAt(now time.Time) {
 	r.h.t.Helper()
-	if _, err := usecases.DispatchPendingTasks(context.Background(), r.module.DispatcherDeps(r.jobs, nil, r.emit), 100, now); err != nil {
+	if _, err := usecases.DispatchPendingTasks(testing_tenant.Default(context.Background()), r.module.DispatcherDeps(r.jobs, nil, r.emit), 100, now); err != nil {
 		r.h.t.Fatalf("DispatchPendingTasks() error = %v", err)
 	}
 }
@@ -72,7 +73,7 @@ func (r *lifecycleRun) drainAt(now time.Time) {
 	r.h.t.Helper()
 	r.dispatchAt(now)
 	for {
-		jobs, err := r.jobs.ClaimBatch(context.Background(), "worker-e2e", jobsdomain.LaneDefault, 10, time.Minute, time.Now().UTC())
+		jobs, err := r.jobs.ClaimBatch(testing_tenant.Default(context.Background()), "worker-e2e", jobsdomain.LaneDefault, 10, time.Minute, time.Now().UTC())
 		if err != nil {
 			r.h.t.Fatalf("ClaimBatch() error = %v", err)
 		}
@@ -83,7 +84,7 @@ func (r *lifecycleRun) drainAt(now time.Time) {
 			if err := r.handle(job); err != nil {
 				r.h.t.Fatalf("handle(%s) error = %v", job.ID, err)
 			}
-			if _, err := r.jobs.Complete(context.Background(), job.ID, "worker-e2e", nil, time.Now().UTC()); err != nil {
+			if _, err := r.jobs.Complete(testing_tenant.Default(context.Background()), job.ID, "worker-e2e", nil, time.Now().UTC()); err != nil {
 				r.h.t.Fatalf("Complete(%s) error = %v", job.ID, err)
 			}
 		}
@@ -93,7 +94,7 @@ func (r *lifecycleRun) drainAt(now time.Time) {
 // claim は投入済みのジョブを 1 件確保する。
 func (r *lifecycleRun) claim() *jobsdomain.Job {
 	r.h.t.Helper()
-	jobs, err := r.jobs.ClaimBatch(context.Background(), "worker-e2e", jobsdomain.LaneDefault, 1, time.Minute, time.Now().UTC())
+	jobs, err := r.jobs.ClaimBatch(testing_tenant.Default(context.Background()), "worker-e2e", jobsdomain.LaneDefault, 1, time.Minute, time.Now().UTC())
 	if err != nil || len(jobs) != 1 {
 		r.h.t.Fatalf("ClaimBatch() = %v, %v; want one job", jobs, err)
 	}
@@ -109,13 +110,13 @@ func (r *lifecycleRun) handle(job *jobsdomain.Job) error {
 		return scim.NewBearerTokenClient(http.DefaultClient, r.target, secret), nil
 	}
 	handler := provisioning.Handler(r.module.JobHandlerDeps(attrSource, nil, newClient, r.emit, nil))
-	_, err := handler(context.Background(), job)
+	_, err := handler(testing_tenant.Default(context.Background()), job)
 	return err
 }
 
 func (r *lifecycleRun) task(id string) *domain.ProvisioningTask {
 	r.h.t.Helper()
-	d, err := r.h.taskRepo.Find(context.Background(), r.h.tenantID, id)
+	d, err := r.h.taskRepo.Find(testing_tenant.Default(context.Background()), r.h.tenantID, id)
 	if err != nil || d == nil {
 		r.h.t.Fatalf("Find(%s) = %v, %v", id, d, err)
 	}
@@ -138,7 +139,7 @@ func wire(t *testing.T, event spec.DomainEvent) map[string]any {
 
 func (h *e2eHarness) createUser(username string) string {
 	h.t.Helper()
-	user, err := userusecases.CreateUser(context.Background(), h.adminUserDeps, userusecases.CreateUserInput{
+	user, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.CreateUserInput{
 		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -207,7 +208,7 @@ func TestE2E_UnassignmentSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	run.events = nil
 
 	notifier := run.module.AssignmentNotifier(nil)
-	if err := notifier.NotifyAssignmentMutation(context.Background(), h.tenantID, h.connectionID, userID, appports.ProvisioningAssignmentRemoved, time.Now().UTC()); err != nil {
+	if err := notifier.NotifyAssignmentMutation(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID, userID, appports.ProvisioningAssignmentRemoved, time.Now().UTC()); err != nil {
 		t.Fatalf("NotifyAssignmentMutation() error = %v", err)
 	}
 	run.dispatch()
@@ -336,7 +337,7 @@ func TestE2E_DisablingAUserSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	remoteID := h.remoteUserID(userID)
 	run.events = nil
 
-	if _, err := userusecases.SetUserDisabled(context.Background(), h.adminUserDeps, "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), h.adminUserDeps, "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	run.dispatch()
@@ -364,7 +365,7 @@ func (h *e2eHarness) useDeleteWithGracePeriod(days int) {
 
 func (h *e2eHarness) softDeleteUser(userID string, now time.Time) {
 	h.t.Helper()
-	if err := userusecases.SoftDeleteUser(context.Background(), h.adminUserDeps, userusecases.SoftDeleteUserInput{
+	if err := userusecases.SoftDeleteUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.SoftDeleteUserInput{
 		ActorUserID: "actor", Sub: userID, Now: now,
 	}); err != nil {
 		h.t.Fatalf("SoftDeleteUser() error = %v", err)
@@ -410,7 +411,7 @@ func TestE2E_ReassignmentWithinTheGracePeriodCancelsTheDELETE(t *testing.T) {
 
 	h.softDeleteUser(userID, deletedAt)
 	notifier := run.module.AssignmentNotifier(nil)
-	if err := notifier.NotifyAssignmentMutation(context.Background(), h.tenantID, h.connectionID, userID, appports.ProvisioningAssignmentAdded, deletedAt.Add(24*time.Hour)); err != nil {
+	if err := notifier.NotifyAssignmentMutation(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID, userID, appports.ProvisioningAssignmentAdded, deletedAt.Add(24*time.Hour)); err != nil {
 		t.Fatalf("NotifyAssignmentMutation() error = %v", err)
 	}
 	run.drainAt(deletedAt.Add(8 * 24 * time.Hour))
@@ -433,7 +434,7 @@ func TestE2E_RestoreWithinTheGracePeriodCancelsTheDELETE(t *testing.T) {
 	deletedAt := time.Now().UTC()
 
 	h.softDeleteUser(userID, deletedAt)
-	if _, err := userusecases.RestoreUser(context.Background(), h.adminUserDeps, "actor", userID, deletedAt.Add(24*time.Hour)); err != nil {
+	if _, err := userusecases.RestoreUser(testing_tenant.Default(context.Background()), h.adminUserDeps, "actor", userID, deletedAt.Add(24*time.Hour)); err != nil {
 		t.Fatalf("RestoreUser() error = %v", err)
 	}
 	run.drainAt(deletedAt.Add(8 * 24 * time.Hour))

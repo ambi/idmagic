@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
@@ -42,7 +43,7 @@ func TestAuthorizeStoresValidAuthorizationDetails(t *testing.T) {
 	deps := authorizeDepsWithTypes()
 	in := validAuthorizeInput()
 	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{paymentDetail(100, "initiate")})
-	out, err := Authorize(context.Background(), deps, in)
+	out, err := Authorize(testing_tenant.Default(context.Background()), deps, in)
 	if err != nil {
 		t.Fatalf("expected valid details accepted, got %v", err)
 	}
@@ -55,7 +56,7 @@ func TestAuthorizeRejectsUnregisteredDetailType(t *testing.T) {
 	deps := authorizeDepsWithTypes()
 	in := validAuthorizeInput()
 	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{{Type: "data_access"}})
-	if _, err := Authorize(context.Background(), deps, in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), deps, in); err == nil {
 		t.Fatal("expected rejection for unregistered type")
 	}
 }
@@ -65,7 +66,7 @@ func TestAuthorizeRejectsSchemaViolation(t *testing.T) {
 	in := validAuthorizeInput()
 	// instructedAmount (required) を欠く → fail-closed。
 	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{{Type: "payment_initiation", Actions: []string{"initiate"}}})
-	if _, err := Authorize(context.Background(), deps, in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), deps, in); err == nil {
 		t.Fatal("expected rejection for schema violation")
 	}
 }
@@ -75,7 +76,7 @@ func TestAuthorizeRejectsDetailsWhenRegistryAbsent(t *testing.T) {
 	deps := newAuthorizeDeps(false)
 	in := validAuthorizeInput()
 	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{paymentDetail(100, "initiate")})
-	if _, err := Authorize(context.Background(), deps, in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), deps, in); err == nil {
 		t.Fatal("expected rejection when registry is absent")
 	}
 }

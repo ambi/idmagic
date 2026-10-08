@@ -34,6 +34,7 @@ import (
 	clientdomain "github.com/ambi/idmagic/backend/oauth2/client/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 const (
@@ -121,7 +122,7 @@ func resolveDocument(t *testing.T, document func(clientIDURL string) string) (*c
 	t.Helper()
 	host := newMetadataHost(t, document)
 	repository, emitted := host.resolution()
-	resolved, err := repository.FindByID(t.Context(), "default", host.clientIDURL())
+	resolved, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
 	if err != nil {
 		t.Fatalf("解決は「未知の client_id」へ畳まれるべきで、err ではない: %v", err)
 	}
@@ -162,7 +163,7 @@ func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T)
 	repository, emitted := host.resolution()
 
 	// 対照: 正しい形の client_id は取得され、文書の内容がクライアントになる。
-	resolved, err := repository.FindByID(t.Context(), "default", host.clientIDURL())
+	resolved, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -208,7 +209,7 @@ func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T)
 	} {
 		t.Run(name, func(t *testing.T) {
 			before := target.host.requests.Load()
-			resolved, err := repository.FindByID(t.Context(), "default", target.clientID)
+			resolved, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", target.clientID)
 			if err != nil {
 				t.Fatalf("解決は「未知の client_id」へ畳まれるべきで、err ではない: %v", err)
 			}
@@ -376,11 +377,11 @@ func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t 
 	host.headers["Pragma"] = "no-cache"
 	repository, _ := host.resolution()
 
-	first, err := repository.FindByID(t.Context(), "default", host.clientIDURL())
+	first, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
 	if err != nil || first == nil {
 		t.Fatalf("1 回目の解決に失敗した: client=%#v err=%v", first, err)
 	}
-	second, err := repository.FindByID(t.Context(), "default", host.clientIDURL())
+	second, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
 	if err != nil || second == nil {
 		t.Fatalf("2 回目の解決に失敗した: client=%#v err=%v", second, err)
 	}
@@ -393,7 +394,7 @@ func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t 
 
 	// キャッシュの単位は client_id である。同じサーバーの別のパスは改めて取得する。
 	// これが無いと、キャッシュではなく「2 回目を取得しない」実装と区別できない。
-	if _, err := repository.FindByID(t.Context(), "default", host.server.URL+"/another.json"); err != nil {
+	if _, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.server.URL+"/another.json"); err != nil {
 		t.Fatalf("解決は「未知の client_id」へ畳まれるべきで、err ではない: %v", err)
 	}
 	if got := host.requests.Load(); got != 2 {
@@ -424,11 +425,11 @@ func TestAuthorizationRequestRedirectURIMustBeListedInTheFetchedDocument(t *test
 	}
 
 	// 対照: 文書に載っている redirect_uri は通り、認可リクエストが保存される。
-	out, err := authorizationusecases.Authorize(t.Context(), deps, request(documentRedirect))
+	out, err := authorizationusecases.Authorize(testing_tenant.Default(t.Context()), deps, request(documentRedirect))
 	if err != nil {
 		t.Fatalf("文書に載っている redirect_uri が拒否された: %v", err)
 	}
-	stored, err := store.Find(t.Context(), out.Request.ID)
+	stored, err := store.Find(testing_tenant.Default(t.Context()), out.Request.ID)
 	if err != nil || stored == nil {
 		t.Fatalf("認可リクエストが保存されていない: %#v err=%v", stored, err)
 	}
@@ -443,7 +444,7 @@ func TestAuthorizationRequestRedirectURIMustBeListedInTheFetchedDocument(t *test
 		"クエリを足した":   documentRedirect + "?next=/",
 	} {
 		t.Run(name, func(t *testing.T) {
-			out, err := authorizationusecases.Authorize(t.Context(), deps, request(redirectURI))
+			out, err := authorizationusecases.Authorize(testing_tenant.Default(t.Context()), deps, request(redirectURI))
 			if err == nil {
 				t.Fatalf("文書の redirect_uris に無い %q が受理された: %#v", redirectURI, out)
 			}

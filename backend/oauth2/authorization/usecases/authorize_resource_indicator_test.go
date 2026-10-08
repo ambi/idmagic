@@ -6,6 +6,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/kernel"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func authorizeDepsWithResourceServer(servers ...*domain.McpResourceServer) AuthorizeDeps {
@@ -16,7 +17,7 @@ func authorizeDepsWithResourceServer(servers ...*domain.McpResourceServer) Autho
 
 func TestAuthorize_noResource_unaffected(t *testing.T) {
 	in := validAuthorizeInput()
-	out, err := Authorize(context.Background(), authorizeDepsWithResourceServer(), in)
+	out, err := Authorize(testing_tenant.Default(context.Background()), authorizeDepsWithResourceServer(), in)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -33,7 +34,7 @@ func TestAuthorize_registeredActiveResource_boundOnRequest(t *testing.T) {
 	}
 	in := validAuthorizeInput()
 	in.Resource = []string{"https://mcp.example.com/tools"}
-	out, err := Authorize(context.Background(), authorizeDepsWithResourceServer(rs), in)
+	out, err := Authorize(testing_tenant.Default(context.Background()), authorizeDepsWithResourceServer(rs), in)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -45,13 +46,13 @@ func TestAuthorize_registeredActiveResource_boundOnRequest(t *testing.T) {
 func TestAuthorize_unregisteredResource_rejectedFailClosed(t *testing.T) {
 	in := validAuthorizeInput()
 	in.Resource = []string{"https://mcp.example.com/unknown"}
-	_, err := Authorize(context.Background(), authorizeDepsWithResourceServer(), in)
+	_, err := Authorize(testing_tenant.Default(context.Background()), authorizeDepsWithResourceServer(), in)
 	assertOAuthError(t, err, "invalid_target")
 }
 
 func TestAuthorize_multipleResources_rejectedFailClosed(t *testing.T) {
 	in := validAuthorizeInput()
 	in.Resource = []string{"https://mcp.example.com/a", "https://mcp.example.com/b"}
-	_, err := Authorize(context.Background(), authorizeDepsWithResourceServer(), in)
+	_, err := Authorize(testing_tenant.Default(context.Background()), authorizeDepsWithResourceServer(), in)
 	assertOAuthError(t, err, "invalid_target")
 }
