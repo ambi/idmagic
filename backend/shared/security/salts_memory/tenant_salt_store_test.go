@@ -43,15 +43,3 @@ func TestInMemoryTenantSaltStoreSeparatesTenants(t *testing.T) {
 		t.Fatal("distinct tenants share the same salt")
 	}
 }
-
-func TestInMemoryTenantSaltStoreEmptyTenantDefaults(t *testing.T) {
-	// tenant 未設定 ctx は DefaultTenantID に解決され panic しない。
-	store := NewInMemoryTenantSaltStore()
-	salt, err := store.GetSalt(context.Background())
-	if err != nil {
-		t.Fatalf("GetSalt on empty ctx: %v", err)
-	}
-	if len(salt) != TenantSaltBytes {
-		t.Fatalf("salt length = %d", len(salt))
-	}
-}

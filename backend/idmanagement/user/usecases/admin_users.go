@@ -141,7 +141,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	// An admin-issued password goes through the same tenant-resolved policy as
 	// change-password and reset-password; otherwise a tenant that raised
 	// min_length would still get baseline-strength passwords from this path.
-	policy := authusecases.ResolveTenantPolicy(ctx, deps.TenantRepo)
+	policy := authusecases.ResolveTenantPolicy(ctx)
 	result := authusecases.ValidatePasswordWith(in.Password, policy)
 	if !result.OK {
 		return nil, &authusecases.PasswordPolicyError{Violations: result.Violations}

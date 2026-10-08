@@ -11,28 +11,15 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// ResolveTenantPolicy returns the global defaults with the request tenant's
-// override applied. Every path that sets or validates a password starts here.
-//
-// The tenant middleware already resolved is used when the context carries it,
-// and the repository is only consulted otherwise. A tenant that cannot be
-// resolved falls back to the global defaults: failing a login or a password
-// change over a policy lookup would be out of proportion, and the defaults are
-// never weaker than an override.
-func ResolveTenantPolicy(ctx context.Context, repo tenantports.TenantRepository) PasswordPolicySnapshot {
-	defaults := DefaultPasswordPolicySnapshot()
-	tenant := tenancy.Tenant(ctx)
-	if tenant == nil && repo != nil {
-		if id := tenancy.TenantID(ctx); id != "" {
-			if found, err := repo.FindByID(ctx, id); err == nil {
-				tenant = found
-			}
-		}
-	}
-	return passworddomain.ResolvePasswordPolicy(tenant, defaults)
+// ResolveTenantPolicy returns the global defaults with the override of the
+// tenant the context carries applied. Every path that sets or validates a
+// password starts here. A context without a tenant gets the global defaults:
+// failing a login or a password change over a policy lookup would be out of
+// proportion, and the defaults are never weaker than an override.
+func ResolveTenantPolicy(ctx context.Context) PasswordPolicySnapshot {
+	return passworddomain.ResolvePasswordPolicy(tenancy.Tenant(ctx), DefaultPasswordPolicySnapshot())
 }
 
 // ResolvePolicyForTenant builds the policy from an already-resolved tenant, for

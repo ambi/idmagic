@@ -363,7 +363,7 @@ func TestRunner_DrivesAQueuedJobThroughRunningToSucceeded(t *testing.T) {
 }
 
 // ハンドラーは実行コンテキストからテナントを読む。Runner が固定しなければ、
-// tenancy.TenantID は既定テナントを返し、ハンドラーは別テナントの範囲で動く。
+// ハンドラーは Job のテナントの範囲で動けない。
 //
 //spec:covers EX-JOBS-006-01: Runner はハンドラーの実行コンテキストのテナントを、取得した Job の tenant_id に固定する。
 func TestRunner_BindsTheHandlerContextToTheJobsTenant(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -97,13 +96,10 @@ func TestResolveTenantPolicy(t *testing.T) {
 		PasswordPolicyUpdatedAt: &updatedAt,
 		CreatedAt:               updatedAt, UpdatedAt: updatedAt,
 	}
-	repo := tenancymemory.NewTenantRepository()
-	if err := repo.Save(context.Background(), tenant); err != nil {
-		t.Fatal(err)
-	}
 
-	assertOverride := func(t *testing.T, snap passworddomain.PasswordPolicySnapshot) {
-		t.Helper()
+	t.Run("tenant resolved by middleware is used as is", func(t *testing.T) {
+		ctx := tenancy.WithTenant(context.Background(), tenant, "https://idmagic.test", "")
+		snap := ResolveTenantPolicy(ctx)
 		if snap.MinLength != 20 || snap.MaxAgeDays != 45 {
 			t.Fatalf("snapshot=%+v, want tenant override applied", snap)
 		}
@@ -113,19 +109,10 @@ func TestResolveTenantPolicy(t *testing.T) {
 		if snap.PolicyUpdatedAt == nil || !snap.PolicyUpdatedAt.Equal(updatedAt) {
 			t.Fatalf("PolicyUpdatedAt=%v, want %v", snap.PolicyUpdatedAt, updatedAt)
 		}
-	}
-
-	t.Run("tenant resolved by middleware is used as is", func(t *testing.T) {
-		ctx := tenancy.WithTenant(context.Background(), tenant, "https://idmagic.test", "")
-		assertOverride(t, ResolveTenantPolicy(ctx, nil))
 	})
 
-	t.Run("without a resolved tenant the repository is consulted", func(t *testing.T) {
-		assertOverride(t, ResolveTenantPolicy(context.Background(), repo))
-	})
-
-	t.Run("no tenant and no repository falls back to the global default", func(t *testing.T) {
-		snap := ResolveTenantPolicy(context.Background(), nil)
+	t.Run("without a tenant the global defaults apply", func(t *testing.T) {
+		snap := ResolveTenantPolicy(context.Background())
 		if snap.MinLength != PasswordPolicyMinLength || snap.MaxAgeDays != 0 {
 			t.Fatalf("snapshot=%+v, want global defaults", snap)
 		}

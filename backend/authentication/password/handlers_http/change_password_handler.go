@@ -43,7 +43,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	snap := resolvePasswordPolicy(ctx, d)
+	snap := authusecases.ResolveTenantPolicy(ctx)
 	changed, err := authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
 		UserRepo:                d.UserRepo,
 		PasswordHasher:          d.PasswordHasher,

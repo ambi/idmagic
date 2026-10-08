@@ -162,8 +162,8 @@ func (rn *Runner) poll(ctx context.Context) {
 
 func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 	// ハンドラーの実行コンテキストは Job のテナントに固定する。worker はすべての
-	// テナントの Job を実行するので、固定しなければ tenancy.TenantID は既定テナントを
-	// 返し、ハンドラーは別テナントの範囲で動く。
+	// テナントの Job を実行するので、Job ごとに固定しなければハンドラーはどのテナントの範囲で
+	// 動くかを決められず、テナントを読んだ時点で tenancy.TenantID が panic する。
 	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
 	execCtx, cancelExecution := context.WithCancelCause(ctx)
 	defer cancelExecution(nil)

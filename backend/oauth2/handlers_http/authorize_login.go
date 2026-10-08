@@ -360,7 +360,7 @@ func (d Deps) recordLoginAndRequiredAction(c *echo.Context, user *userdomain.Use
 	updated := *user
 	updated.Lifecycle.LastLoginAt = &now
 	expired := authusecases.EnforcePasswordExpiry(
-		&updated, authusecases.ResolveTenantPolicy(ctx, d.TenantRepo), now,
+		&updated, authusecases.ResolveTenantPolicy(ctx), now,
 	)
 	if err := d.UserRepo.Save(ctx, &updated); err != nil {
 		return "", err

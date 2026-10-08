@@ -1,7 +1,6 @@
 package handlers_http
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -14,11 +13,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
-
-// resolvePasswordPolicy returns the global defaults merged with the tenant override.
-func resolvePasswordPolicy(ctx context.Context, d httpdeps.Deps) authusecases.PasswordPolicySnapshot {
-	return authusecases.ResolveTenantPolicy(ctx, d.TenantRepo)
-}
 
 type forgotPasswordAPIRequest struct {
 	Email string `json:"email"`
@@ -78,7 +72,7 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	if strings.TrimSpace(input.Token) == "" || input.NewPassword == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A token and a new password are required.")
 	}
-	snap := resolvePasswordPolicy(c.Request().Context(), d)
+	snap := authusecases.ResolveTenantPolicy(c.Request().Context())
 	reset, err := authusecases.ResetPasswordWithToken(
 		c.Request().Context(),
 		authusecases.ResetPasswordWithTokenDeps{

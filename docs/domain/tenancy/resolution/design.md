@@ -14,7 +14,7 @@
 | --- | --- |
 | `backend/shared/http/support_http` のテナント解決ミドルウェア | パスの `/realms/{realm}` の区間または Host から realm を取り出し、`TenantRepository.FindByRealm` で `Tenant` を引き、`endpoint_style` と到達経路を照合する |
 | `Deps.CanonicalLocation` | テナントの正規ロケーションから、発行者と URL の接頭辞を組み立てる |
-| リクエストコンテキスト | 解決した `Tenant`、発行者、URL の接頭辞を運ぶ。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもここから組み立てる |
+| リクエストコンテキスト | 解決した `Tenant`、発行者、URL の接頭辞を運ぶ。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもここから組み立てる。テナントを持たない文脈からテナントの ID を読むと panic し、デフォルトテナントへ退避させない。ジョブ、バッチ、イベントへの反応のように HTTP を経ない処理は、対象のテナントで文脈を作ってから呼ぶ |
 
 プロトコルと管理のルートは、テナントをまたぐ制御面のテナント管理（`/api/admin/v1/tenants/...`）も含めて、すべて解決済みのテナントの下に置く。
 制御面の操作を制御面テナントからの呼び出しに限るのは、ルーティングではなく `RequireControlPlaneUser` の判定である。

@@ -29,19 +29,28 @@ func TestWithTenantAndAccessors(t *testing.T) {
 	}
 }
 
-// テナント未設定の context では TenantID は DefaultTenantID を返す。
-func TestTenantIDDefaults(t *testing.T) {
-	ctx := context.Background()
-	if got := tenancy.TenantID(ctx); got != domain.DefaultTenantID {
-		t.Errorf("TenantID() = %q, want %q", got, domain.DefaultTenantID)
+//spec:covers REQ-TENANCY-006: テナントを解決していない文脈では default テナントの ID を返さず panic する。
+func TestTenantIDPanicsWithoutResolvedTenant(t *testing.T) {
+	for name, ctx := range map[string]context.Context{
+		"テナントがない": context.Background(),
+		"ID が空":   tenancy.WithTenant(context.Background(), &domain.Tenant{ID: ""}, "", ""),
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("TenantID() did not panic")
+				}
+			}()
+			got := tenancy.TenantID(ctx)
+			t.Errorf("TenantID() = %q, want panic", got)
+		})
 	}
-	if got := tenancy.Tenant(ctx); got != nil {
+}
+
+// Tenant はテナントのない文脈で nil を返す。
+func TestTenantNilWithoutResolvedTenant(t *testing.T) {
+	if got := tenancy.Tenant(context.Background()); got != nil {
 		t.Errorf("Tenant() = %v, want nil", got)
-	}
-	// ID が空のテナントも default にフォールバックする。
-	ctx = tenancy.WithTenant(ctx, &domain.Tenant{ID: ""}, "", "")
-	if got := tenancy.TenantID(ctx); got != domain.DefaultTenantID {
-		t.Errorf("TenantID() with empty id = %q, want %q", got, domain.DefaultTenantID)
 	}
 }
 

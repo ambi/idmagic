@@ -26,11 +26,14 @@ func Tenant(ctx context.Context) *domain.Tenant {
 	return tenant
 }
 
+// TenantID は文脈で解決済みのテナントの ID を返す。
+// テナントのない文脈がテナントに属する処理へ届くのは配線の誤りなので、default テナントへ
+// 落とさずに panic する。落とすと、その処理は default テナントのデータを読み書きする。
 func TenantID(ctx context.Context) string {
 	if tenant := Tenant(ctx); tenant != nil && tenant.ID != "" {
 		return tenant.ID
 	}
-	return domain.DefaultTenantID
+	panic("tenancy: no resolved tenant in context")
 }
 
 func Issuer(ctx context.Context, fallback string) string {

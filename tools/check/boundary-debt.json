@@ -2810,7 +2810,6 @@
         "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/domain->backend/tenancy/domain",
         "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/usecases->backend/tenancy",
         "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/usecases->backend/tenancy/ports",
         "undeclared-context-edge:Authentication->Tenancy:backend/authentication/securitynotification/usecases->backend/tenancy",
         "undeclared-context-edge:Authentication->Tenancy:backend/authentication/securitynotification/usecases->backend/tenancy/domain",
         "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/db_memory->backend/tenancy",
