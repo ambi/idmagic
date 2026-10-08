@@ -81,3 +81,51 @@ export function diffEventFieldVocabulary(
     undeclared: sorted([...declared].filter((field) => !consumed.has(field))),
   }
 }
+
+/**
+ * `EventType()` を実装する Go の型。型名と、`EventType()` が返す公開名の組で返す。
+ * 発行は型の値を作ることでしか起きないので、照合には型名を使い、報告には公開名を使う。
+ */
+const EVENT_DECLARATION =
+  /func\s*\(\s*\w+\s+\*?([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*EventType\(\)\s+string\s*\{\s*return\s+"([A-Za-z_][A-Za-z0-9_]*)"/g
+
+/** 合成リテラル `T{` の型名。`&domain.T{` も `T{` の部分で一致する。 */
+const COMPOSITE_LITERAL = /(?<![A-Za-z0-9_])([A-Z][A-Za-z0-9_]*)\{/g
+
+export interface DeclaredEvent {
+  typeName: string
+  eventType: string
+}
+
+/** Go のソースから、`EventType()` を実装するイベント型を集める。 */
+export function collectDeclaredEvents(source: string): DeclaredEvent[] {
+  return [...source.matchAll(EVENT_DECLARATION)].map((match) => ({
+    typeName: match[1] ?? '',
+    eventType: match[2] ?? '',
+  }))
+}
+
+/** Go のソースから、合成リテラルで値を作っている型名を集める。 */
+export function collectConstructedTypes(source: string): Set<string> {
+  const names = new Set<string>()
+  for (const match of source.matchAll(COMPOSITE_LITERAL)) {
+    if (match[1]) names.add(match[1])
+  }
+  return names
+}
+
+/**
+ * 宣言だけがあり、本番コードのどこも値を作らないイベントの公開名を、並びを固定して返す。
+ * 値を作らない型は発行されないので、監査ログを読む側からは操作が一度も起きていないことと
+ * 区別できない。テストだけが作る型も発行経路を持たないので、呼び出し側はテストを渡さない。
+ */
+export function findEventsWithoutEmission(
+  declared: readonly DeclaredEvent[],
+  constructed: ReadonlySet<string>,
+): string[] {
+  return [
+    ...new Set(
+      declared.filter((event) => !constructed.has(event.typeName)).map((event) => event.eventType),
+    ),
+  ].sort()
+}

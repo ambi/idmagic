@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -552,6 +553,33 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?category=bogus")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("unknown category must be 400, got %d", rec.Code)
+	}
+}
+
+//spec:covers REQ-AUDIT-001: category=tenant は、制御面のクォータ更新と正規ロケーション切替の記録も返す
+func TestAdminAuditEventsTenantCategoryIncludesQuotaAndEndpointStyleChanges(t *testing.T) {
+	user := auditUser("user_admin", "acme", []string{"admin"})
+	now := time.Now().UTC()
+	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{
+		auditEvent("acme", "TenantQuotaUpdated", "ops", now),
+		auditEvent("acme", "TenantEndpointStyleChanged", "ops", now.Add(-time.Second)),
+		auditEvent("acme", "PasswordChanged", "alice", now.Add(-2*time.Second)),
+	})
+
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?category=tenant")
+
+	var body struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	got := []string{}
+	for _, event := range body.Events {
+		got = append(got, event.Type)
+	}
+	if want := []string{"TenantQuotaUpdated", "TenantEndpointStyleChanged"}; !slices.Equal(got, want) {
+		t.Fatalf("category=tenant types = %v, want %v", got, want)
 	}
 }
 

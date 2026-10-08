@@ -7,6 +7,7 @@
 - Given system_admin ロールを持つ "sysadmin" が認証済みである
 - When "sysadmin" が UpdateTenantQuota を呼び出しユーザー上限を 20000 に増やす
 - Then 対象テナントの quota.users が 20000 になる
+- And "sysadmin"、対象テナント、"users" を載せた "TenantQuotaUpdated" が発行される
 
 ## Rule: REQ-TENANCY-037 クォータの更新は上書きの全体を置き換える
 

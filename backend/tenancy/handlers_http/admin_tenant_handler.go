@@ -159,7 +159,8 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireControlPlaneUser(c); err != nil {
+	actor, err := d.RequireControlPlaneUser(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	var input tenantEndpointStyleRequest
@@ -170,10 +171,18 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 	if err != nil {
 		return d.writeTenantError(c, err)
 	}
-	if _, err := tenantusecases.SetEndpointStyle(
-		c.Request().Context(), d.TenantRepo, target.ID, input.EndpointStyle, d.TenantBaseDomain, time.Now().UTC(),
-	); err != nil {
+	now := time.Now().UTC()
+	tenant, err := tenantusecases.SetEndpointStyle(
+		c.Request().Context(), d.TenantRepo, target.ID, input.EndpointStyle, d.TenantBaseDomain, now,
+	)
+	if err != nil {
 		return d.writeTenantError(c, err)
+	}
+	if d.Emit != nil {
+		d.Emit(&domain.TenantEndpointStyleChanged{
+			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
+			PreviousEndpointStyle: target.EffectiveEndpointStyle(), EndpointStyle: tenant.EffectiveEndpointStyle(),
+		})
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -302,7 +311,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		return support.WriteProblem(c, 400, "invalid_request", "tenant_id is required")
 	}
 
-	_, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
 		return err
 	}
@@ -334,6 +343,38 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 			return support.WriteProblem(c, 500, "internal_error", "failed to update quota: "+err.Error())
 		}
 	}
+	if d.Emit != nil {
+		d.Emit(&domain.TenantQuotaUpdated{
+			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: tenantID,
+			ChangedFields: quotaChangedFields(req),
+		})
+	}
 
 	return c.JSON(200, quota)
+}
+
+// quotaChangedFields は要求に含まれたリソースの名前を、要求の項目の宣言順に返す。
+func quotaChangedFields(req tenantQuotaUpdateRequest) []string {
+	fields := []string{}
+	for _, field := range []struct {
+		name  string
+		limit *int
+	}{
+		{"users", req.Users},
+		{"groups", req.Groups},
+		{"agents", req.Agents},
+		{"applications", req.Applications},
+		{"oauth2_clients", req.OAuth2Clients},
+		{"active_sessions", req.ActiveSessions},
+		{"consents", req.Consents},
+		{"active_jobs", req.ActiveJobs},
+		{"ssf_streams", req.SsfStreams},
+		{"audit_events_retained", req.AuditEventsRetained},
+		{"export_artifacts_bytes", req.ExportArtifactsBytes},
+	} {
+		if field.limit != nil {
+			fields = append(fields, field.name)
+		}
+	}
+	return fields
 }

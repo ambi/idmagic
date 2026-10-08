@@ -10,7 +10,7 @@
   },
   "tenancy": {
     "errors": [],
-    "events": ["TenantQuotaUpdated"]
+    "events": []
   },
   "application": {
     "errors": [],

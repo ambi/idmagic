@@ -43,7 +43,7 @@ HTTP の操作とモデルの形は TypeSpec の `Tenancy` のタグが定める
 | `QuotaRepository` の `CheckAndIncrement` と `Decrement` | リソースを作成する Context（`IdManagement`、`Application`、`OAuth2`、`Authentication`、`Jobs`、`SharedSignals`） | この Context が提供する | 作成のトランザクションの中で Hard の上限を確認し、使用量を増減する |
 | `TenantUserAttributeSchemaRepository`、`TenantGroupAttributeSchemaRepository` | `IdManagement` が実装する。`SAML`、`WS-Federation`、`Application`、`IdGovernance`、`Authentication` が読む | この Context が定める | 属性スキーマの永続化と読み取り |
 | `TenantBrandingRepository` の読み取り | 通知メールの描画（`backend/shared/notification`）と `Authentication` のセキュリティ通知 | この Context が提供する | 差し込み変数 `product_name` などの外装を読む |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `Tenant…`、`TenantQuotaUpdated`、`QuotaExceeded`、`NotificationTemplate…` |
+| ドメインイベント | 監査と下流が購読する | この Context が発行する | `Tenant…`、`QuotaExceeded`、`NotificationTemplate…` |
 
 ## 機能
 

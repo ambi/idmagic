@@ -609,11 +609,28 @@ model TenantUpdated {
 }
 
 
-@doc("system_admin がテナントのリソースのクォータを上書きした。")
+@doc("system_admin がテナントのリソースのクォータを上書きした。上限の値は記録しない。")
 model TenantQuotaUpdated {
   occurredAt: utcDateTime;
   actorUserId: string;
   tenantId: string;
+
+  @doc("要求に含まれたリソースの名前。更新は上書きの全体を置き換えるので、更新した後に上書きを持つリソースの一覧でもある。")
+  changedFields: string[];
+}
+
+
+@doc("system_admin がテナントの正規ロケーション（`endpoint_style`）を切り替えた。発行者、WebAuthn の RP ID、Cookie の範囲が変わる。")
+model TenantEndpointStyleChanged {
+  occurredAt: utcDateTime;
+  actorUserId: string;
+  tenantId: string;
+
+  @doc("切り替える前の `endpoint_style`。")
+  previousEndpointStyle: TenantEndpointStyle;
+
+  @doc("切り替えた後の `endpoint_style`。前と同じ値への切替でも発行する。")
+  endpointStyle: TenantEndpointStyle;
 }
 
 

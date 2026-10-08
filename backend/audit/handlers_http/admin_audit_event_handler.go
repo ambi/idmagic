@@ -122,6 +122,8 @@ var auditEventCategoryTypes = map[string][]string{
 		"TenantUpdated",
 		"TenantDisabled",
 		"TenantEnabled",
+		"TenantEndpointStyleChanged",
+		"TenantQuotaUpdated",
 		"TenantUserAttributeSchemaUpdated",
 	},
 	"key": {

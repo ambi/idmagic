@@ -73,14 +73,30 @@ type TenantEnabled struct {
 func (e *TenantEnabled) EventType() string     { return "TenantEnabled" }
 func (e *TenantEnabled) OccurredAt() time.Time { return e.At }
 
+// TenantQuotaUpdated は上限の値を持たない。ChangedFields は要求に含まれたリソースの名前で、
+// 更新が上書きの全体を置き換えるので、更新後に上書きを持つリソースの一覧と一致する。
 type TenantQuotaUpdated struct {
-	At          time.Time `json:"-"`
-	ActorUserID string    `json:"actorUserId"`
-	TenantID    string    `json:"tenantId"`
+	At            time.Time `json:"-"`
+	ActorUserID   string    `json:"actorUserId"`
+	TenantID      string    `json:"tenantId"`
+	ChangedFields []string  `json:"changedFields"`
 }
 
 func (e *TenantQuotaUpdated) EventType() string     { return "TenantQuotaUpdated" }
 func (e *TenantQuotaUpdated) OccurredAt() time.Time { return e.At }
+
+// TenantEndpointStyleChanged は TenantUpdated と分ける。切替は発行者と RP ID を作り替え、
+// 発行済みトークンと既存のパスキーを無効にするので、監査ログからこの操作だけを引けるようにする。
+type TenantEndpointStyleChanged struct {
+	At                    time.Time           `json:"-"`
+	ActorUserID           string              `json:"actorUserId"`
+	TenantID              string              `json:"tenantId"`
+	PreviousEndpointStyle TenantEndpointStyle `json:"previousEndpointStyle"`
+	EndpointStyle         TenantEndpointStyle `json:"endpointStyle"`
+}
+
+func (e *TenantEndpointStyleChanged) EventType() string     { return "TenantEndpointStyleChanged" }
+func (e *TenantEndpointStyleChanged) OccurredAt() time.Time { return e.At }
 
 type QuotaExceeded struct {
 	At        time.Time `json:"-"`

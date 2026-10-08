@@ -144,6 +144,7 @@
 - Then acme は "acme.{tenant_base_domain}" からのみ到達できるようになる
 - Then "{base}/realms/acme/..." は 404 になる
 - Then issuer と WebAuthn RP ID が新しい正規ロケーション由来の値に変わる
+- Then "sysadmin"、acme、切り替える前の `Path`、後の `Subdomain` を載せた "TenantEndpointStyleChanged" が発行される
 
 ### Example: EX-TENANCY-011-02 `tenant_base_domain` が設定されていない環境で `Subdomain` を指定する
 
@@ -153,3 +154,4 @@
 - When "sysadmin" が `SetTenantEndpointStyle` で acme を `Subdomain` に切り替える
 - But `tenant_base_domain` が設定されていない環境で `Subdomain` を指定する
 - Then `InvalidRequestError` で拒否され、`endpoint_style` は変わらない
+- And "TenantEndpointStyleChanged" は発行されない

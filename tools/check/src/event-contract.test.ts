@@ -2,7 +2,10 @@ import { describe, expect, it } from 'bun:test'
 import {
   collectConsumedEventFields,
   collectDeclaredEventFields,
+  collectConstructedTypes,
+  collectDeclaredEvents,
   diffEventFieldVocabulary,
+  findEventsWithoutEmission,
 } from './event-contract.ts'
 
 const DECLARATION = [
@@ -117,5 +120,56 @@ describe('diffEventFieldVocabulary', () => {
   it('finds no difference when the two vocabularies agree', () => {
     const same = new Set(['tenantId', 'userId'])
     expect(diffEventFieldVocabulary(same, new Set(same))).toEqual({ missing: [], undeclared: [] })
+  })
+})
+
+const EVENTS = [
+  'type TenantQuotaUpdated struct {',
+  '\tActorUserID string `json:"actorUserId"`',
+  '}',
+  '',
+  'func (e *TenantQuotaUpdated) EventType() string     { return "TenantQuotaUpdated" }',
+  'func (e TenantCreated) EventType() string { return "TenantCreated" }',
+  'func (e *ProvisioningTaskEvent) EventType() string { return "GroupMembershipPushed" }',
+].join('\n')
+
+describe('collectDeclaredEvents', () => {
+  it('pairs the Go type name with the published event name, with or without a pointer receiver', () => {
+    expect(collectDeclaredEvents(EVENTS)).toEqual([
+      { typeName: 'TenantQuotaUpdated', eventType: 'TenantQuotaUpdated' },
+      { typeName: 'TenantCreated', eventType: 'TenantCreated' },
+      { typeName: 'ProvisioningTaskEvent', eventType: 'GroupMembershipPushed' },
+    ])
+  })
+})
+
+describe('collectConstructedTypes', () => {
+  it('collects qualified and unqualified composite literals', () => {
+    const handler = 'd.Emit(&domain.TenantCreated{At: now})\nreturn TenantEnabled{}'
+    expect(collectConstructedTypes(handler)).toEqual(new Set(['TenantCreated', 'TenantEnabled']))
+  })
+
+  it('does not count the type declaration or a method receiver as a construction', () => {
+    expect(collectConstructedTypes(EVENTS).has('TenantQuotaUpdated')).toBe(false)
+  })
+
+  it('does not count a type whose name only ends with the event name', () => {
+    expect(collectConstructedTypes('x := AdminTenantCreated{}').has('TenantCreated')).toBe(false)
+  })
+})
+
+describe('findEventsWithoutEmission', () => {
+  const declared = collectDeclaredEvents(EVENTS)
+
+  it('reports, by published name, every declared event whose type no production code constructs', () => {
+    expect(findEventsWithoutEmission(declared, new Set(['TenantCreated']))).toEqual([
+      'GroupMembershipPushed',
+      'TenantQuotaUpdated',
+    ])
+  })
+
+  it('reports nothing once every declared event type is constructed', () => {
+    const all = new Set(['TenantQuotaUpdated', 'TenantCreated', 'ProvisioningTaskEvent'])
+    expect(findEventsWithoutEmission(declared, all)).toEqual([])
   })
 })
