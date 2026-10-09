@@ -30,7 +30,7 @@ spec_impact: { kind: none, reason: "一つのモジュールのパッケージ�
 
 ## 対象外
 
-- 二つ目以降のモジュールの移行。
+- 二つ目以降のモジュールの移行。[外から非公開パッケージへの import がないモジュールの移行](wi-97546-move-modules-without-private-callers-behind-go-internal.md)と[残りのモジュールの移行](wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)で行う。
 - モジュールの分割と統合。
 
 ## 設計
