@@ -2,12 +2,26 @@ package handlers_http
 
 import (
 	"context"
+	"net/http"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
+
+// ApplicationGate は、SSO の開始を Application の割り当てとサインインポリシーで判定する。
+// 判定は Application が所有し、組み立て地点が結ぶ。
+type ApplicationGate interface {
+	EvaluateApplicationAccess(
+		ctx context.Context,
+		tenantID string,
+		bindingType appdomain.ApplicationProtocolType,
+		bindingKey, sub string,
+		authn *authdomain.AuthenticationContext,
+		clientIP string,
+	) (appdomain.ApplicationAccessDecision, error)
+	ClientIP(r *http.Request) string
+}
 
 // signInService は Deps の依存から SSO usecase を組み立てる。
 func (d Deps) signInService() samlusecases.SignInService {
@@ -26,9 +40,9 @@ func (d Deps) logoutService() samlusecases.LogoutService {
 	return samlusecases.LogoutService{SPRepo: d.SamlSPRepo}
 }
 
-// gateAdapter は support.ApplicationGate を usecase の ApplicationGate へ橋渡しする。
+// gateAdapter は Application の割り当てのゲートを usecase の ApplicationGate へ橋渡しする。
 // 判定結果は項目ごとに写す。
-type gateAdapter struct{ *support.ApplicationGate }
+type gateAdapter struct{ ApplicationGate }
 
 func (g gateAdapter) EvaluateApplicationAccess(
 	ctx context.Context,

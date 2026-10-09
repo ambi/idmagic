@@ -18,6 +18,7 @@ import (
 	oidcprotocol "github.com/ambi/idmagic/backend/authentication/federation/protocol_oidc"
 	federationusecases "github.com/ambi/idmagic/backend/authentication/federation/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -124,8 +125,8 @@ func newAdminServer(t *testing.T, oidcClient *oidcprotocol.Client) (*echo.Echo, 
 		Auth: httpdeps.Deps{
 			Deps: support.Deps{Issuer: "https://idp.test"},
 			Authenticator: &support.Authenticator{
-				UserRepo:      users,
-				AuthnResolver: authusecases.DemoHeaderResolver{},
+				Principals: idmhttpdeps.Principals{Users: users},
+				Sessions:   httpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}},
 			},
 		},
 		OIDC: oidcClient,

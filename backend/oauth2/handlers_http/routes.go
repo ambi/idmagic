@@ -8,12 +8,19 @@
 package handlers_http
 
 import (
+	"context"
+	"net/http"
+
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
@@ -39,13 +46,13 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	*support.ApplicationGate
+	ApplicationGate
 
 	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo      oauthports.McpResourceServerRepository
 	ClientRepo                 oauthports.OAuth2ClientRepository
 	ConsentRepo                oauthports.ConsentRepository
-	ClientDisplayNameResolver  *support.ClientDisplayNameResolver
+	ClientDisplayNameResolver  ClientDisplayNameResolver
 	KeyStore                   signingports.KeyStore
 	TenantRepo                 tenantports.TenantRepository
 	PARStore                   oauthports.PARStore
@@ -98,6 +105,46 @@ type Deps struct {
 	// TrustedDeviceRepo は「このデバイスを記憶する」の発行と評価に使う (wi-91)。
 	// nil なら信頼済みデバイスは発行も評価もされず、第二要素は常に要求される。
 	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+
+	// SessionManager と AuthnResolver は、対話ログインが作り、読み、終わらせるログイン
+	// セッションである。Authentication が所有し、組み立て地点が結ぶ。
+	SessionManager *sessionusecases.SessionManager
+	AuthnResolver  authdomain.AuthenticationContextResolver
+
+	// ApplicationSignInPolicyRepo と DefaultSignInPolicyRepo は、MFA の登録の要求と、
+	// テナント既定のサインインポリシーの評価に読む。ApplicationGate と同じ保存先を結ぶ。
+	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+}
+
+// ResolveAuthentication はリクエストの認証を、AMR や保留の目的まで読める認証の文脈として返す。
+func (d Deps) ResolveAuthentication(c *echo.Context) (*authdomain.AuthenticationContext, error) {
+	authn, err := d.Authenticate(c)
+	if err != nil || authn == nil {
+		return nil, err
+	}
+	return authdomain.ContextOf(authn), nil
+}
+
+// ApplicationGate は、フェデレーションの開始を Application の割り当てとサインインポリシーで
+// 判定する。判定は Application が所有し、組み立て地点が結ぶ。
+type ApplicationGate interface {
+	EvaluateApplicationAccess(
+		ctx context.Context,
+		tenantID string,
+		bindingType appdomain.ApplicationProtocolType,
+		bindingKey, sub string,
+		authn *authdomain.AuthenticationContext,
+		clientIP string,
+	) (appdomain.ApplicationAccessDecision, error)
+	ClientIP(r *http.Request) string
+}
+
+// ClientDisplayNameResolver は、同意と認可の画面に出す client_id の表示名を解決する。
+// 解決の順序は Application が所有し、組み立て地点が結ぶ。
+type ClientDisplayNameResolver interface {
+	Resolve(ctx context.Context, tenantID, clientID string) string
+	ResolveAll(ctx context.Context, tenantID string, clientIDs []string) map[string]string
 }
 
 // RegisterRoutes はテナント解決済みグループに oauth2 コンテキストのエンドポイントを

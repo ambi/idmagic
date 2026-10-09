@@ -75,15 +75,36 @@ type Module struct {
 // Gate は Application 割当を fail-closed で判定する published capability を組み立てる
 // (SCL context_map: Application publishes ApplicationAssignmentRef)。oauth2 / saml /
 // wsfederation の federation 開始経路がこれを消費する。
-func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int) *support.ApplicationGate {
-	return &support.ApplicationGate{
+func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int) *appusecases.AccessGate {
+	gate := &appusecases.AccessGate{
 		ApplicationRepo:             m.Repo,
 		ApplicationAssignmentRepo:   m.AssignmentRepo,
-		GroupRepo:                   groupRepo,
 		ApplicationSignInPolicyRepo: m.SignInPolicyRepo,
 		DefaultSignInPolicyRepo:     m.DefaultSignInPolicyRepo,
 		GateTrustedForwardedHops:    trustedForwardedHops,
 	}
+	if groupRepo != nil {
+		gate.GroupMemberships = idManagementGroupMemberships{groups: groupRepo}
+	}
+	return gate
+}
+
+// idManagementGroupMemberships は、割り当てのゲートが照合する Group の所属を IdManagement の
+// Group の保存先から引く。
+type idManagementGroupMemberships struct {
+	groups groupports.GroupRepository
+}
+
+func (m idManagementGroupMemberships) GroupIDsOfUser(ctx context.Context, tenantID, userID string) ([]string, error) {
+	groups, err := m.groups.ListGroupsByUser(ctx, tenantID, userID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(groups))
+	for _, group := range groups {
+		ids = append(ids, group.ID)
+	}
+	return ids, nil
 }
 
 // DesiredStateAssignments は、ほかの Context が User への直接割り当てをあるべき状態として
@@ -106,8 +127,8 @@ func (m Module) DesiredStateAssignments(
 
 // ClientDisplayNames は client_id をアプリ表示名へ解決するリゾルバを組み立てる
 // (oauth2 / authentication の監査・表示系が消費する)。
-func (m Module) ClientDisplayNames(clientRepo oauthports.OAuth2ClientRepository) *support.ClientDisplayNameResolver {
-	return &support.ClientDisplayNameResolver{ClientRepo: clientRepo, ApplicationRepo: m.Repo}
+func (m Module) ClientDisplayNames(clientRepo oauthports.OAuth2ClientRepository) *ClientDisplayNameResolver {
+	return &ClientDisplayNameResolver{ClientRepo: clientRepo, ApplicationRepo: m.Repo}
 }
 
 // Register は Application カタログの admin / account エンドポイントを登録する。

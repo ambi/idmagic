@@ -17,9 +17,12 @@ import (
 	"testing"
 	"time"
 
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	memory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -90,11 +93,11 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 			TenantBaseDomain: opts.tenantBaseDomain,
 		},
 		Authenticator: &support.Authenticator{
-			UserRepo: userRepo,
-			AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
+			Principals: idmhttpdeps.Principals{Users: userRepo},
+			Sessions: authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
 				UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
-			}},
-			TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"},
+			}}},
+			AccessTokens: oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}},
 		},
 		TenantRepo: tenantRepo,
 		UserRepo:   userRepo,

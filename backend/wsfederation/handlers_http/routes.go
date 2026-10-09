@@ -5,8 +5,10 @@
 package handlers_http
 
 import (
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -21,7 +23,8 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	*support.ApplicationGate
+	ApplicationGate
+	Sessions
 
 	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
 	UserRepo                   userports.UserRepository
@@ -31,6 +34,13 @@ type Deps struct {
 	PasswordHasher             passwordports.PasswordHasher
 	SentinelPasswordHash       string
 	AttrSchemaRepo             claimusecases.TenantAttributeSchemaRepo
+}
+
+// Sessions は、パッシブサインインが読み、サインアウトが失効させるログインセッションである。
+// Authentication が所有し、組み立て地点が結ぶ。
+type Sessions struct {
+	AuthnResolver  authdomain.AuthenticationContextResolver
+	SessionManager *sessionusecases.SessionManager
 }
 
 // RegisterRoutes は WS-Federation passive のエンドポイントを登録する。

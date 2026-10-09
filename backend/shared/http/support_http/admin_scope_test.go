@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -23,15 +22,15 @@ func adminScopeContext(method, routePath string, scopes ...apitokendomain.Scope)
 	request.Header.Set("Authorization", "Bearer jwt")
 	c := e.NewContext(request, httptest.NewRecorder())
 	c.SetPath("/realms/:tenant_id" + routePath)
-	introspection := &oauthports.IntrospectionResult{
-		Active: true, Managed: true, Sub: "user-1",
+	token := &AccessToken{
+		Managed: true, Subject: "user-1",
 		ClientID: apitokendomain.BuiltinClientID,
 		Scope:    strings.Join(apitokendomain.Scopes(scopes).Strings(), " "),
 	}
 	return c, Authenticator{
-		TokenIntrospector: authTestIntrospector{result: introspection},
-		ApiTokenAuthenticator: authTestManagedAuthenticator{principal: apitokendomain.Principal{
-			UserID: "user-1", ClientID: apitokendomain.BuiltinClientID, Scopes: scopes,
+		AccessTokens: authTestAccessTokens{token: token},
+		ApiTokens: authTestApiTokens{principal: ApiTokenPrincipal{
+			UserID: "user-1", ClientID: apitokendomain.BuiltinClientID, Scopes: apitokendomain.Scopes(scopes).Strings(),
 		}},
 	}
 }
@@ -103,12 +102,12 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, authenticator := adminScopeContext(tc.method, tc.routePath, tc.granted...)
-			authn, err := authenticator.resolveAuthnContext(c)
+			authn, err := authenticator.resolveAuthentication(c)
 			if tc.wantRequired == "" {
 				if err != nil {
 					t.Fatalf("err = %v, want the call to be authorized", err)
 				}
-				if authn == nil || authn.UserID != "user-1" {
+				if authn == nil || authn.Subject() != "user-1" {
 					t.Fatalf("authn = %+v, want the token's issuer", authn)
 				}
 				return
@@ -131,10 +130,7 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 //
 //spec:covers EX-APITOKENS-004-03: 全スコープを持つ API アクセストークンでも、スコープの宣言が空の operation と契約に無いルートを insufficient_scope (interactive_session) で拒否すること。
 func TestAdminApiTokenScopeRejectsAnOperationWithoutADeclaration(t *testing.T) {
-	var all apitokendomain.Scopes
-	for _, scope := range apitokendomain.AllScopes() {
-		all = append(all, apitokendomain.Scope(scope))
-	}
+	all := apitokendomain.AllScopes()
 	contract := &spec.RuntimeContract{Operations: map[string]spec.Operation{
 		"ListWidgets": {Method: http.MethodGet, Path: "/api/admin/v1/widgets"},
 	}}
@@ -162,14 +158,14 @@ func TestAdminPortalTokenSkipsGranularScopes(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer jwt")
 	c := e.NewContext(request, httptest.NewRecorder())
 	c.SetPath("/realms/:tenant_id/api/admin/v1/saml/service-providers")
-	authenticator := Authenticator{TokenIntrospector: authTestIntrospector{result: &oauthports.IntrospectionResult{
-		Active: true, Sub: "user-1", Scope: "openid idmagic.admin",
+	authenticator := Authenticator{AccessTokens: authTestAccessTokens{token: &AccessToken{
+		Subject: "user-1", Scope: "openid idmagic.admin",
 	}}}
-	authn, err := authenticator.resolveAuthnContext(c)
+	authn, err := authenticator.resolveAuthentication(c)
 	if err != nil {
 		t.Fatalf("err = %v, want the portal token to remain authorized", err)
 	}
-	if authn == nil || authn.UserID != "user-1" {
+	if authn == nil || authn.Subject() != "user-1" {
 		t.Fatalf("authn = %+v, want the portal user", authn)
 	}
 }

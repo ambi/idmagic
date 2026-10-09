@@ -19,7 +19,7 @@ type Module struct {
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
+	applicationGate samlhttp.ApplicationGate, sessions samlhttp.Sessions, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
 	attrSchemaRepo claimusecases.TenantAttributeSchemaRepo,
 ) {
 	profileRepo := m.ProfileRepo
@@ -27,7 +27,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 		profileRepo, _ = m.SPRepo.(ports.SamlIdentityProviderProfileRepository)
 	}
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
-		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate,
+		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
 		SamlSPRepo: m.SPRepo, IDPProfileRepo: profileRepo, ReplayStore: m.ReplayStore,
 		FederationSigner: federationSigner, UserRepo: userRepo, AttrSchemaRepo: attrSchemaRepo,
 	})

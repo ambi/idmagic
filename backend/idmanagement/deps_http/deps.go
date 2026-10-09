@@ -77,10 +77,12 @@ type Deps struct {
 	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
 	PasswordHasher         passwordports.PasswordHasher
 	PasswordHistoryRepo    passwordports.PasswordHistoryRepository
-	EmailChangeTokenStore  userports.EmailChangeTokenStore
-	CSVArtifacts           idmports.CSVArtifactStore
-	EmailSender            sharednotification.EmailSender
-	Notifier               sharednotification.Notifier
+	// SessionStore は匿名化 cascade がログインセッションを消す先である。nil なら消さない。
+	SessionStore          userports.SessionPurger
+	EmailChangeTokenStore userports.EmailChangeTokenStore
+	CSVArtifacts          idmports.CSVArtifactStore
+	EmailSender           sharednotification.EmailSender
+	Notifier              sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
 	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository

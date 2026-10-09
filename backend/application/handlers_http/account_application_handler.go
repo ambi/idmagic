@@ -145,14 +145,14 @@ func (d Deps) handleReorderMyApplications(c *echo.Context) error {
 // resolvePortalUser は認証済み (pending でない) active な利用者本人を解決する。
 // 解決できなければ errPortalUnauthorized を返す。
 func (d Deps) resolvePortalUser(c *echo.Context) (*userdomain.User, error) {
-	authn, err := d.ResolveAuthentication(c)
+	authn, err := d.Authenticate(c)
 	if err != nil {
 		return nil, err
 	}
-	if authn == nil || authn.AuthenticationPending {
+	if authn == nil || authn.Pending() {
 		return nil, errPortalUnauthorized
 	}
-	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.Subject())
 	if err != nil {
 		return nil, err
 	}

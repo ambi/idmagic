@@ -6,6 +6,8 @@
 package handlers_http
 
 import (
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
@@ -19,7 +21,8 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	*support.ApplicationGate
+	ApplicationGate
+	Sessions
 
 	SamlSPRepo       samlports.SamlServiceProviderRepository
 	IDPProfileRepo   samlports.SamlIdentityProviderProfileRepository
@@ -27,6 +30,13 @@ type Deps struct {
 	FederationSigner samltoken.SignerProvider
 	UserRepo         userports.UserRepository
 	AttrSchemaRepo   claimusecases.TenantAttributeSchemaRepo
+}
+
+// Sessions は、SSO が読み、SLO が失効させるログインセッションである。
+// Authentication が所有し、組み立て地点が結ぶ。
+type Sessions struct {
+	AuthnResolver  authdomain.AuthenticationContextResolver
+	SessionManager *sessionusecases.SessionManager
 }
 
 // RegisterRoutes は SAML 2.0 IdP のエンドポイントを登録する。

@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
@@ -45,7 +47,8 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 		Issuer: "http://idp.test",
 		Emit:   func(event spec.DomainEvent) { events = append(events, event) },
 		Authenticator: &support.Authenticator{
-			UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{},
+			Principals: idmhttpdeps.Principals{Users: users},
+			Sessions:   authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}},
 		},
 		ConnectionRepo: connections,
 		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {

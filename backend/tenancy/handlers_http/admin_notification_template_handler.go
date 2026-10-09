@@ -217,9 +217,18 @@ func (d Deps) handleSendTestNotification(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	recipient := tenantusecases.TestNotificationActor{DisplayName: actor.DisplayName()}
-	if actor.Email != nil && actor.EmailVerified {
-		recipient.Email = *actor.Email
+	// 認可が返す主体は宛先を持たないので、操作者本人の記録を引き直す。認可の後に記録が
+	// 消えていれば、主体がいない場合と同じく拒否する。
+	operator, err := d.UserRepo.FindBySub(c.Request().Context(), actor.ID)
+	if err != nil {
+		return err
+	}
+	if operator == nil {
+		return d.WriteAdminAccessError(c, support.ErrAdminAccessDenied)
+	}
+	recipient := tenantusecases.TestNotificationActor{DisplayName: operator.DisplayName()}
+	if operator.Email != nil && operator.EmailVerified {
+		recipient.Email = *operator.Email
 	}
 	result, err := tenantusecases.SendTestNotification(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, notificationTemplateKeyParam(c), c.Param("locale"), recipient)

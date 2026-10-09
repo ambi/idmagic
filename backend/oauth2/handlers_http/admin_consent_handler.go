@@ -2,6 +2,7 @@ package handlers_http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -84,7 +85,7 @@ func (d Deps) handleGetAdminConsent(c *echo.Context) error {
 		ctx, d.ConsentDeps(), c.Param("sub"), c.Param("client_id"),
 	)
 	if err != nil {
-		return d.WriteConsentError(c, err)
+		return writeConsentError(c, err)
 	}
 	clientName := d.ClientDisplayNameResolver.Resolve(ctx, support.RequestTenantID(c), consent.ClientID)
 	return support.NoStoreJSON(
@@ -120,7 +121,7 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 		c.Request().Context(), d.ConsentDeps(), actor.ID,
 		c.Param("sub"), c.Param("client_id"), time.Now().UTC(),
 	); err != nil {
-		return d.WriteConsentError(c, err)
+		return writeConsentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
@@ -133,4 +134,12 @@ func toAdminConsentResponse(consent *oauthdomain.Consent, clientName, preferredU
 		Scopes: slices.Clone(consent.Scopes), State: consent.State,
 		GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt, RevokedAt: consent.RevokedAt,
 	}
+}
+
+// writeConsentError は consent 操作のドメインエラーを HTTP エラーへ変換する。
+func writeConsentError(c *echo.Context, err error) error {
+	if errors.Is(err, consentusecases.ErrConsentNotFound) {
+		return support.WriteProblem(c, http.StatusNotFound, "consent_not_found", "The consent record does not exist.")
+	}
+	return err
 }

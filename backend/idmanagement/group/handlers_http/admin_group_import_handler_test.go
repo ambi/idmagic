@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	httpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
@@ -88,7 +89,7 @@ func TestGetAdminGroupImportUsesManagementCursorPaginationForArtifactErrors(t *t
 	e.Use(testing_tenant.ResolveDefault)
 	d := httpdeps.Deps{
 		Issuer: "http://idp.test", PaginationCodec: codec,
-		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},
+		Authenticator: &support.Authenticator{Principals: httpdeps.Principals{Users: repo}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}},
 		UserRepo:      repo, JobRepo: jobs, CSVArtifacts: artifacts,
 	}
 	e.GET("/api/admin/v1/groups/imports/:job_id", func(c *echo.Context) error { return grouphttp.HandleGetAdminGroupImport(d, c) })
@@ -145,7 +146,7 @@ func TestGetAdminGroupImportRefusesAnotherTenantsJob(t *testing.T) {
 	e.Use(testing_tenant.ResolveDefault)
 	d := httpdeps.Deps{
 		Issuer: "http://idp.test", PaginationCodec: support.NewCursorCodec([]byte("group-import-tenant-test-secret")),
-		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},
+		Authenticator: &support.Authenticator{Principals: httpdeps.Principals{Users: repo}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}},
 		UserRepo:      repo, JobRepo: jobs, CSVArtifacts: idmmemory.NewCSVArtifactStore(),
 	}
 	e.GET("/api/admin/v1/groups/imports/:job_id", func(c *echo.Context) error { return grouphttp.HandleGetAdminGroupImport(d, c) })

@@ -9,37 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
-
 	"github.com/labstack/echo/v5"
 )
-
-func TestWriteConsentError(t *testing.T) {
-	t.Run("maps ErrConsentNotFound to 404", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodPost, "/x", http.NoBody)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		d := Deps{}
-		if err := d.WriteConsentError(c, consentusecases.ErrConsentNotFound); err != nil {
-			t.Fatal(err)
-		}
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("status=%d", rec.Code)
-		}
-	})
-
-	t.Run("passes through an unmapped error", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodPost, "/x", http.NoBody)
-		c := e.NewContext(req, httptest.NewRecorder())
-		d := Deps{}
-		other := errors.New("boom")
-		if err := d.WriteConsentError(c, other); !errors.Is(err, other) {
-			t.Fatalf("err=%v, want passthrough", err)
-		}
-	})
-}
 
 func TestWriteServerError(t *testing.T) {
 	e := echo.New()
@@ -169,23 +140,6 @@ func TestExtractClientIP(t *testing.T) {
 			t.Fatalf("got=%q", got)
 		}
 	})
-}
-
-func TestApplicationGateClientIP(t *testing.T) {
-	g := &ApplicationGate{GateTrustedForwardedHops: 1}
-	req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
-	req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
-	if got := g.ClientIP(req); got != "203.0.113.5" {
-		t.Fatalf("got=%q", got)
-	}
-
-	zero := &ApplicationGate{}
-	if got := zero.ClientIP(req); got != "" {
-		t.Fatalf("got=%q, want empty with GateTrustedForwardedHops=0", got)
-	}
-	if got := g.ClientIP(nil); got != "" {
-		t.Fatalf("got=%q, want empty for a nil request", got)
-	}
 }
 
 func TestIsAdminAPIPath(t *testing.T) {

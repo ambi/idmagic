@@ -3,6 +3,7 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -67,8 +68,16 @@ func handleRevokeAccountConsent(d Deps, c *echo.Context) error {
 	if err := consentusecases.RevokeConsent(
 		c.Request().Context(), d.ConsentDeps(), sub, sub, c.Param("client_id"), time.Now().UTC(),
 	); err != nil {
-		return d.WriteConsentError(c, err)
+		return writeConsentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
+}
+
+// writeConsentError は consent 操作のドメインエラーを HTTP エラーへ変換する。
+func writeConsentError(c *echo.Context, err error) error {
+	if errors.Is(err, consentusecases.ErrConsentNotFound) {
+		return support.WriteProblem(c, http.StatusNotFound, "consent_not_found", "The consent record does not exist.")
+	}
+	return err
 }

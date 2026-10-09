@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	httpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
@@ -84,7 +85,7 @@ func TestGetAdminUserImportUsesManagementCursorPaginationForArtifactErrors(t *te
 	e.Use(testing_tenant.ResolveDefault)
 	d := httpdeps.Deps{
 		Issuer: "http://idp.test", PaginationCodec: codec,
-		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},
+		Authenticator: &support.Authenticator{Principals: httpdeps.Principals{Users: repo}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}},
 		UserRepo:      repo, JobRepo: jobs, CSVArtifacts: artifacts,
 	}
 	e.GET("/api/admin/v1/users/imports/:job_id", func(c *echo.Context) error { return userhttp.HandleGetAdminUserImport(d, c) })

@@ -1,4 +1,4 @@
-package support_http
+package application
 
 // ClientDisplayNameResolver は client_id を人間可読な表示名へ解決する共通ロジック
 // (wi-141)。client_id を UUID 化した結果、同意 / 接続済みアプリ画面が UUID を

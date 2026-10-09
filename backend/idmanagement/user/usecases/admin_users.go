@@ -16,7 +16,6 @@ import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
@@ -64,7 +63,7 @@ type AdminUserDeps struct {
 	RefreshStore         oauthports.RefreshTokenStore
 	DeviceCodeStore      oauthports.DeviceCodeStore
 	ApprovalRequestStore oauthports.ApprovalRequestStore
-	SessionStore         sessionports.SessionStore
+	SessionStore         userports.SessionPurger
 	MfaFactorRepo        mfaports.MfaFactorRepository
 	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する
 	// ために持つ (wi-91)。nil なら未配線として何もしない。

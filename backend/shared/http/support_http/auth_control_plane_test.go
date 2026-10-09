@@ -1,4 +1,4 @@
-package support_http
+package support_http_test
 
 import (
 	"context"
@@ -9,12 +9,15 @@ import (
 	"testing"
 	"time"
 
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -34,6 +37,17 @@ func newControlPlaneTestContext() *echo.Context {
 	req := httptest.NewRequest(http.MethodGet, "http://idp.test/api/admin/v1/whatever", http.NoBody)
 	ctx := tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: "default"}, "", "")
 	return e.NewContext(req.WithContext(ctx), httptest.NewRecorder())
+}
+
+// controlPlaneAuthenticator は、利用者と Group の保存先、固定した認証の文脈で認証する
+// Authenticator を、組み立て地点と同じアダプターで組み立てる。
+func controlPlaneAuthenticator(
+	users *usermemory.UserRepository, groups groupports.GroupRepository, authn *authdomain.AuthenticationContext,
+) *support.Authenticator {
+	return &support.Authenticator{
+		Principals: idmhttpdeps.Principals{Users: users, Groups: groups},
+		Sessions:   authhttpdeps.SessionAuthentications{Resolver: controlPlaneAuthnResolver{ctx: authn}},
+	}
 }
 
 func groupRepoWithRole(t *testing.T, sub, tenantID, role string) groupports.GroupRepository {
@@ -56,36 +70,40 @@ func groupRepoWithRole(t *testing.T, sub, tenantID, role string) groupports.Grou
 
 // REQ-SIGNINGKEYS-009、REQ-DATAKEYS-006、REQ-JOBS-012: 制御面主体の純粋な条件を表で固定する。
 func TestIsControlPlaneActor(t *testing.T) {
-	active := controlPlaneTestActor(tenancydomain.DefaultTenantID, "system_admin")
-	disabled := controlPlaneTestActor(tenancydomain.DefaultTenantID, "system_admin")
-	disabled.Lifecycle.Status = "disabled"
+	active := controlPlaneTestPrincipal(tenancydomain.DefaultTenantID, "system_admin")
+	disabled := controlPlaneTestPrincipal(tenancydomain.DefaultTenantID, "system_admin")
+	disabled.Active = false
 	tests := []struct {
 		name            string
-		actor           *userdomain.User
+		actor           *support.Principal
 		requestTenantID string
 		want            bool
 	}{
 		{name: "active system admin on the control plane", actor: active, requestTenantID: tenancydomain.DefaultTenantID, want: true},
 		{name: "missing actor", actor: nil, requestTenantID: tenancydomain.DefaultTenantID},
 		{name: "disabled actor", actor: disabled, requestTenantID: tenancydomain.DefaultTenantID},
-		{name: "tenant administrator", actor: controlPlaneTestActor(tenancydomain.DefaultTenantID, "admin"), requestTenantID: tenancydomain.DefaultTenantID},
-		{name: "system admin outside the control-plane tenant", actor: controlPlaneTestActor("acme", "system_admin"), requestTenantID: "acme"},
-		{name: "tenant system admin through the control-plane route", actor: controlPlaneTestActor("acme", "system_admin"), requestTenantID: tenancydomain.DefaultTenantID},
+		{name: "tenant administrator", actor: controlPlaneTestPrincipal(tenancydomain.DefaultTenantID, "admin"), requestTenantID: tenancydomain.DefaultTenantID},
+		{name: "system admin outside the control-plane tenant", actor: controlPlaneTestPrincipal("acme", "system_admin"), requestTenantID: "acme"},
+		{name: "tenant system admin through the control-plane route", actor: controlPlaneTestPrincipal("acme", "system_admin"), requestTenantID: tenancydomain.DefaultTenantID},
 		{name: "control-plane member through another tenant route", actor: active, requestTenantID: "acme"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsControlPlaneActor(tt.actor, tt.requestTenantID); got != tt.want {
+			if got := support.IsControlPlaneActor(tt.actor, tt.requestTenantID); got != tt.want {
 				t.Fatalf("IsControlPlaneActor() = %t, want %t", got, tt.want)
 			}
 		})
 	}
 }
 
-func controlPlaneTestActor(tenantID string, roles ...string) *userdomain.User {
+func controlPlaneTestPrincipal(tenantID string, roles ...string) *support.Principal {
+	return &support.Principal{ID: "operator", TenantID: tenantID, Roles: roles, Active: true}
+}
+
+func controlPlaneTestActor(roles ...string) *userdomain.User {
 	now := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
 	return &userdomain.User{
-		ID: "operator", TenantID: tenantID, PreferredUsername: "operator", PasswordHash: "unused", Roles: roles,
+		ID: "operator", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "operator", PasswordHash: "unused", Roles: roles,
 		CreatedAt: now, UpdatedAt: now,
 	}
 }
@@ -94,29 +112,21 @@ func controlPlaneTestActor(tenantID string, roles ...string) *userdomain.User {
 func TestRequireControlPlaneUser(t *testing.T) {
 	t.Run("requires completed authentication", func(t *testing.T) {
 		users := usermemory.NewUserRepository()
-		actor := controlPlaneTestActor(tenancydomain.DefaultTenantID, "system_admin")
+		actor := controlPlaneTestActor("system_admin")
 		users.Seed(actor)
-		a := &Authenticator{
-			UserRepo: users,
-			AuthnResolver: controlPlaneAuthnResolver{ctx: &authdomain.AuthenticationContext{
-				UserID: actor.ID, AuthenticationPending: true,
-			}},
-		}
-		if _, err := a.RequireControlPlaneUser(newControlPlaneTestContext()); !errors.Is(err, ErrAdminAuthenticationRequired) {
+		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{
+			UserID: actor.ID, AuthenticationPending: true,
+		})
+		if _, err := a.RequireControlPlaneUser(newControlPlaneTestContext()); !errors.Is(err, support.ErrAdminAuthenticationRequired) {
 			t.Fatalf("err = %v, want ErrAdminAuthenticationRequired", err)
 		}
 	})
 
 	t.Run("accepts a direct effective role", func(t *testing.T) {
 		users := usermemory.NewUserRepository()
-		actor := controlPlaneTestActor(tenancydomain.DefaultTenantID, "system_admin")
+		actor := controlPlaneTestActor("system_admin")
 		users.Seed(actor)
-		a := &Authenticator{
-			UserRepo: users,
-			AuthnResolver: controlPlaneAuthnResolver{ctx: &authdomain.AuthenticationContext{
-				UserID: actor.ID,
-			}},
-		}
+		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID})
 		got, err := a.RequireControlPlaneUser(newControlPlaneTestContext())
 		if err != nil || got == nil || !slices.Contains(got.Roles, "system_admin") {
 			t.Fatalf("actor = %+v, err = %v", got, err)
@@ -125,15 +135,10 @@ func TestRequireControlPlaneUser(t *testing.T) {
 
 	t.Run("accepts a group-derived effective role", func(t *testing.T) {
 		users := usermemory.NewUserRepository()
-		actor := controlPlaneTestActor(tenancydomain.DefaultTenantID)
+		actor := controlPlaneTestActor()
 		users.Seed(actor)
-		a := &Authenticator{
-			UserRepo:  users,
-			GroupRepo: groupRepoWithRole(t, actor.ID, actor.TenantID, "system_admin"),
-			AuthnResolver: controlPlaneAuthnResolver{ctx: &authdomain.AuthenticationContext{
-				UserID: actor.ID,
-			}},
-		}
+		a := controlPlaneAuthenticator(users, groupRepoWithRole(t, actor.ID, actor.TenantID, "system_admin"),
+			&authdomain.AuthenticationContext{UserID: actor.ID})
 		got, err := a.RequireControlPlaneUser(newControlPlaneTestContext())
 		if err != nil || got == nil || !slices.Contains(got.Roles, "system_admin") {
 			t.Fatalf("actor = %+v, err = %v", got, err)
@@ -142,15 +147,10 @@ func TestRequireControlPlaneUser(t *testing.T) {
 
 	t.Run("rejects another role", func(t *testing.T) {
 		users := usermemory.NewUserRepository()
-		actor := controlPlaneTestActor(tenancydomain.DefaultTenantID, "admin")
+		actor := controlPlaneTestActor("admin")
 		users.Seed(actor)
-		a := &Authenticator{
-			UserRepo: users,
-			AuthnResolver: controlPlaneAuthnResolver{ctx: &authdomain.AuthenticationContext{
-				UserID: actor.ID,
-			}},
-		}
-		if _, err := a.RequireControlPlaneUser(newControlPlaneTestContext()); !errors.Is(err, ErrAdminAccessDenied) {
+		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID})
+		if _, err := a.RequireControlPlaneUser(newControlPlaneTestContext()); !errors.Is(err, support.ErrAdminAccessDenied) {
 			t.Fatalf("err = %v, want ErrAdminAccessDenied", err)
 		}
 	})
@@ -158,8 +158,8 @@ func TestRequireControlPlaneUser(t *testing.T) {
 
 //spec:covers REQ-DATAKEYS-006: 要求先テナントの条件を所属先と独立に検証する。
 func TestRequireControlPlaneUserRejectsRequestOutsideControlPlaneTenant(t *testing.T) {
-	actor := controlPlaneTestActor(tenancydomain.DefaultTenantID, "system_admin")
-	if IsControlPlaneActor(actor, "acme") {
+	actor := controlPlaneTestPrincipal(tenancydomain.DefaultTenantID, "system_admin")
+	if support.IsControlPlaneActor(actor, "acme") {
 		t.Fatal("制御面テナント外の要求を制御面主体として扱った")
 	}
 }

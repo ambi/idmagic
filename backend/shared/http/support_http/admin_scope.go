@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -24,13 +23,13 @@ const adminAPIPathPrefix = "/api/admin/v1/"
 // 持っていても到達できない。粒度スコープを持つのは API アクセストークンだけなので、
 // ブラウザーのポータルが提示する通常の OAuth アクセストークンとログインセッションは
 // この判定を通らず、従来どおりポータル境界のスコープとロールだけで認可される。
-func requireAdminApiTokenScope(c *echo.Context, contract *spec.RuntimeContract, granted apitokendomain.Scopes) error {
+func requireAdminApiTokenScope(c *echo.Context, contract *spec.RuntimeContract, granted []string) error {
 	operation, ok := contract.OperationForRoute(c.Request().Method, AdminContractPath(c.Path()))
 	if !ok || len(operation.ApiTokenScopes) == 0 {
 		return &InsufficientScopeError{Required: spec.InteractiveSessionScope}
 	}
 	if slices.ContainsFunc(operation.ApiTokenScopes, func(scope string) bool {
-		return granted.Has(apitokendomain.Scope(scope))
+		return slices.Contains(granted, scope)
 	}) {
 		return nil
 	}

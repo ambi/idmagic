@@ -47,7 +47,9 @@ func handleAccountContext(d Deps, c *echo.Context) error {
 			resp.PreferredUsername = user.PreferredUsername
 			resp.TenantID = user.TenantID
 			// グループ由来ロールを含む有効ロールを返す。
-			resp.Roles = d.EffectiveRoles(c.Request().Context(), user)
+			resp.Roles = d.EffectiveRoles(c.Request().Context(), support.Principal{
+				ID: user.ID, TenantID: user.TenantID, Roles: user.Roles, Active: user.IsActive(),
+			})
 		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, resp)

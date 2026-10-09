@@ -21,7 +21,7 @@ import (
 )
 
 // ApplicationAccessDecision は割当ゲートの判定結果。
-// support.ApplicationAccessDecision と同一形で、adapter が値変換で橋渡しする。
+// Application の appdomain.ApplicationAccessDecision と同一形で、adapter が値変換で橋渡しする。
 type ApplicationAccessDecision struct {
 	Allowed        bool
 	StepUpRequired bool
@@ -29,7 +29,7 @@ type ApplicationAccessDecision struct {
 	Reason         string
 }
 
-// ApplicationGate は binding 経由サインインの割当ゲート評価 (adapter が support.ApplicationGate を橋渡し)。
+// ApplicationGate は binding 経由サインインの割当ゲート評価 (adapter が Application の割り当てのゲートを橋渡し)。
 type ApplicationGate interface {
 	EvaluateApplicationAccess(
 		ctx context.Context,

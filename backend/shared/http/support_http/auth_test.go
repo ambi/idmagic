@@ -2,25 +2,12 @@ package support_http
 
 import (
 	"context"
-	cryptostd "crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/labstack/echo/v5"
@@ -35,123 +22,26 @@ func withAuthTestRealm(req *http.Request) *http.Request {
 	return req.WithContext(tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: "acme"}, authTestRealmAPI, "/realms/acme"))
 }
 
-type authTestIntrospector struct {
-	result *oauthports.IntrospectionResult
+// authTestAccessTokens は、イントロスペクションの結果を固定したアクセストークンの検証器である。
+type authTestAccessTokens struct {
+	token *AccessToken
 }
 
-func (f authTestIntrospector) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
-	return f.result, nil
+func (f authTestAccessTokens) IntrospectAccessToken(context.Context, string) (*AccessToken, error) {
+	return f.token, nil
 }
 
-type authTestManagedAuthenticator struct {
-	principal apitokendomain.Principal
+func (authTestAccessTokens) VerifyDPoPProof(context.Context, DPoPProof) (string, error) {
+	return "", errors.New("authTestAccessTokens does not verify DPoP proofs")
+}
+
+type authTestApiTokens struct {
+	principal ApiTokenPrincipal
 	err       error
 }
 
-func (f authTestManagedAuthenticator) Authenticate(context.Context, string) (apitokendomain.Principal, error) {
+func (f authTestApiTokens) AuthenticateApiToken(context.Context, string) (ApiTokenPrincipal, error) {
 	return f.principal, f.err
-}
-
-// authTestDPoPProof signs a DPoP proof JWT with the given htm / htu / ath.
-func authTestDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, htm, htu, jti, ath string, now time.Time) string {
-	t.Helper()
-	header, err := json.Marshal(map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk})
-	if err != nil {
-		t.Fatal(err)
-	}
-	claims := map[string]any{"htm": htm, "htu": htu, "jti": jti, "iat": now.Unix()}
-	if ath != "" {
-		claims["ath"] = ath
-	}
-	payload, err := json.Marshal(claims)
-	if err != nil {
-		t.Fatal(err)
-	}
-	input := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload)
-	digest := sha256.Sum256([]byte(input))
-	sig, err := rsa.SignPSS(rand.Reader, key, cryptostd.SHA256, digest[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
-}
-
-func authTestJWK(pub *rsa.PublicKey) map[string]any {
-	return map[string]any{
-		"kty": "RSA",
-		"n":   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
-		"e":   base64.RawURLEncoding.EncodeToString(new(big.Int).SetInt64(int64(pub.E)).Bytes()),
-	}
-}
-
-func authTestJKT(t *testing.T, jwk map[string]any) string {
-	t.Helper()
-	canonical, err := json.Marshal(map[string]any{"e": jwk["e"], "kty": jwk["kty"], "n": jwk["n"]})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(canonical)
-	return base64.RawURLEncoding.EncodeToString(sum[:])
-}
-
-// token through ath. A proof that only demonstrates key possession (no ath), or one made
-// for another token, is rejected.
-//
-//spec:covers REQ-OAUTH2-045: a DPoP proof at a protected resource is bound to the presented access
-func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
-	now := time.Now().UTC()
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-	jwk := authTestJWK(&key.PublicKey)
-	const (
-		path        = "/realms/acme/api/account/v1/profile"
-		accessToken = "AT1"
-		otherToken  = "AT2"
-	)
-
-	for _, tc := range []struct {
-		name          string
-		ath           string
-		authenticated bool
-	}{
-		{name: "ath of the presented token", ath: tokensjose.AccessTokenHash(accessToken), authenticated: true},
-		{name: "no ath", ath: ""},
-		{name: "ath of another access token", ath: tokensjose.AccessTokenHash(otherToken)},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
-			req.Header.Set("Authorization", "DPoP "+accessToken)
-			req.Header.Set("DPoP", authTestDPoPProof(t, key, jwk, http.MethodGet, "https://idp.test"+path, tc.name, tc.ath, now))
-			req = withAuthTestRealm(req)
-			c := e.NewContext(req, httptest.NewRecorder())
-			a := Authenticator{
-				TokenIntrospector: authTestIntrospector{result: &oauthports.IntrospectionResult{
-					Active: true, Sub: "user-1", Scope: "account:read", Aud: []string{authTestRealmAPI},
-					SenderConstraint: &oauthdomain.SenderConstraint{
-						Type: spec.SenderConstraintDPoP, JKT: authTestJKT(t, jwk),
-					},
-				}},
-				DpopReplayStore: memory.NewDpopReplayStore(),
-			}
-
-			got, err := a.resolveAuthnContext(c)
-			if tc.authenticated {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got == nil || got.UserID != "user-1" {
-					t.Fatalf("authn=%+v", got)
-				}
-				return
-			}
-			if _, ok := errors.AsType[*InvalidTokenError](err); !ok {
-				t.Fatalf("err=%v authn=%+v; want InvalidTokenError", err, got)
-			}
-		})
-	}
 }
 
 // wi-275: account resource server の route と最小 scope の正準対応。
@@ -193,16 +83,16 @@ func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer jwt")
 			req = withAuthTestRealm(req)
 			c := e.NewContext(req, httptest.NewRecorder())
-			a := Authenticator{TokenIntrospector: authTestIntrospector{
-				result: &oauthports.IntrospectionResult{Active: true, Sub: "user-1", Scope: tc.scope, Aud: []string{authTestRealmAPI}},
+			a := Authenticator{AccessTokens: authTestAccessTokens{
+				token: &AccessToken{Subject: "user-1", Scope: tc.scope, Audience: []string{authTestRealmAPI}},
 			}}
 
-			got, err := a.resolveAuthnContext(c)
+			got, err := a.resolveAuthentication(c)
 			if tc.allowed {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got == nil || got.UserID != "user-1" {
+				if got == nil || got.Subject() != "user-1" {
 					t.Fatalf("authn=%+v", got)
 				}
 				return
@@ -215,14 +105,14 @@ func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
 }
 
 func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
-	base := &oauthports.IntrospectionResult{Active: true, Managed: true, Sub: "user-1", ClientID: apitokendomain.BuiltinClientID, Scope: "account:read", Aud: []string{authTestRealmAPI}}
+	base := &AccessToken{Managed: true, Subject: "user-1", ClientID: apitokendomain.BuiltinClientID, Scope: "account:read", Audience: []string{authTestRealmAPI}}
 	for _, tc := range []struct {
 		name, method, path string
-		principal          apitokendomain.Principal
+		principal          ApiTokenPrincipal
 		authenticated      bool
 	}{
-		{name: "read", method: http.MethodGet, path: "/api/account/v1/profile", principal: apitokendomain.Principal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}, authenticated: true},
-		{name: "write lacks scope", method: http.MethodPatch, path: "/api/account/v1/profile", principal: apitokendomain.Principal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}},
+		{name: "read", method: http.MethodGet, path: "/api/account/v1/profile", principal: ApiTokenPrincipal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}, authenticated: true},
+		{name: "write lacks scope", method: http.MethodPatch, path: "/api/account/v1/profile", principal: ApiTokenPrincipal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}},
 		{name: "missing lifecycle record", method: http.MethodGet, path: "/api/account/v1/profile"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -231,8 +121,8 @@ func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer jwt")
 			req = withAuthTestRealm(req)
 			c := e.NewContext(req, httptest.NewRecorder())
-			a := Authenticator{TokenIntrospector: authTestIntrospector{result: base}, ApiTokenAuthenticator: authTestManagedAuthenticator{principal: tc.principal}}
-			got, err := a.resolveAuthnContext(c)
+			a := Authenticator{AccessTokens: authTestAccessTokens{token: base}, ApiTokens: authTestApiTokens{principal: tc.principal}}
+			got, err := a.resolveAuthentication(c)
 			if tc.name == "write lacks scope" {
 				var scopeErr *InsufficientScopeError
 				if !errors.As(err, &scopeErr) || scopeErr.Required != "account:write" {
@@ -283,13 +173,13 @@ func TestAccountScopedTokenMustNameTheRealmApi(t *testing.T) {
 				req = withAuthTestRealm(req)
 			}
 			c := echo.New().NewContext(req, httptest.NewRecorder())
-			a := Authenticator{TokenIntrospector: authTestIntrospector{
-				result: &oauthports.IntrospectionResult{Active: true, Sub: "user-1", Scope: tc.scope, Aud: tc.aud},
+			a := Authenticator{AccessTokens: authTestAccessTokens{
+				token: &AccessToken{Subject: "user-1", Scope: tc.scope, Audience: tc.aud},
 			}}
 
-			got, err := a.resolveAuthnContext(c)
+			got, err := a.resolveAuthentication(c)
 			if tc.accepted {
-				if err != nil || got == nil || got.UserID != "user-1" {
+				if err != nil || got == nil || got.Subject() != "user-1" {
 					t.Fatalf("authn=%+v err=%v; want accepted", got, err)
 				}
 				return

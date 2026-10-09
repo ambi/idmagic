@@ -49,7 +49,9 @@ var (
 )
 
 // StepUpSatisfied は authn が recency 窓内に強い (再)認証を済ませているかを判定する。
-func StepUpSatisfied(authn *domain.AuthenticationContext, now time.Time) bool {
+// 共有の HTTP 支援が返す認証の結果もそのまま渡せる。
+func StepUpSatisfied(resolved domain.ResolvedAuthentication, now time.Time) bool {
+	authn := domain.ContextOf(resolved)
 	if authn == nil || authn.AuthenticationPending {
 		return false
 	}

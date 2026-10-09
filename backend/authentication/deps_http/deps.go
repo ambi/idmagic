@@ -11,12 +11,14 @@ import (
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	securitynotificationports "github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
 	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/securitynotification/usecases"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
@@ -30,6 +32,7 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
+	"github.com/labstack/echo/v5"
 )
 
 // Deps は authentication HTTP ハンドラが必要とする依存。
@@ -39,13 +42,14 @@ type Deps struct {
 
 	AuditEventRepo      auditports.AuditEventRepository
 	UserRepo            userports.UserRepository
+	SessionManager      *sessionusecases.SessionManager
 	PasswordHasher      passwordports.PasswordHasher
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
 	ConsentRepo         oauthports.ConsentRepository
 	// RefreshStore は self-service session revoke から oauth2 の RefreshTokenRecord を
 	// sid 単位で失効させるために使う (wi-28 T004)。nil なら token revoke をスキップする。
 	RefreshStore              oauthports.RefreshTokenStore
-	ClientDisplayNameResolver *support.ClientDisplayNameResolver
+	ClientDisplayNameResolver ClientDisplayNameResolver
 	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
 	MfaFactorRepo             totpports.MfaFactorRepository
 	MfaEnrollmentBypassRepo   mfaports.MfaEnrollmentBypassRepository
@@ -74,6 +78,21 @@ type Deps struct {
 	// DefaultSignInPolicyRepo はアカウントポータルに適用されるテナントデフォルトの sign-in policy。
 	// セキュリティ設定の応答で MFA の強制開始を予告するために読む。nil なら予告しない。
 	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
+}
+
+// ResolveAuthentication はリクエストの認証を、AMR や保留の目的まで読める認証の文脈として返す。
+func (d Deps) ResolveAuthentication(c *echo.Context) (*authdomain.AuthenticationContext, error) {
+	authn, err := d.Authenticate(c)
+	if err != nil || authn == nil {
+		return nil, err
+	}
+	return authdomain.ContextOf(authn), nil
+}
+
+// ClientDisplayNameResolver は、接続済みアプリの画面に出す client_id の表示名を解決する。
+// 解決の順序は Application が所有し、組み立て地点が結ぶ。
+type ClientDisplayNameResolver interface {
+	ResolveAll(ctx context.Context, tenantID string, clientIDs []string) map[string]string
 }
 
 // NotificationPreferenceDeps はセキュリティ通知の受信設定の use case へ渡す依存。

@@ -1,7 +1,9 @@
-package support_http_test
+package usecases_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -11,8 +13,8 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 )
 
 func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
@@ -29,15 +31,19 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, GroupRepo: groupmemory.NewGroupRepository()}
+	d := &appusecases.AccessGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments}
+	accessAllowed := func(bindingKey string) (bool, error) {
+		decision, err := d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, bindingKey, "alice", nil, "")
+		return decision.Allowed, err
+	}
 
 	// catalog 外の client は gating 対象外。
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "other", "alice"); err != nil || !allowed {
+	if allowed, err := accessAllowed("other"); err != nil || !allowed {
 		t.Fatalf("client outside catalog must be allowed: allowed=%v err=%v", allowed, err)
 	}
 
 	// catalog 内・未割当は fail-closed で拒否。
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice"); err != nil || allowed {
+	if allowed, err := accessAllowed("c1"); err != nil || allowed {
 		t.Fatalf("unassigned subject must be denied: allowed=%v err=%v", allowed, err)
 	}
 
@@ -48,7 +54,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice"); err != nil || !allowed {
+	if allowed, err := accessAllowed("c1"); err != nil || !allowed {
 		t.Fatalf("assigned subject must be allowed: allowed=%v err=%v", allowed, err)
 	}
 
@@ -57,7 +63,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	if allowed, err := d.ApplicationAccessAllowed(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice"); err != nil || allowed {
+	if allowed, err := accessAllowed("c1"); err != nil || allowed {
 		t.Fatalf("disabled application must be denied: allowed=%v err=%v", allowed, err)
 	}
 }
@@ -88,7 +94,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := &support.ApplicationGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
+	d := &appusecases.AccessGate{ApplicationRepo: apps, ApplicationAssignmentRepo: assignments, ApplicationSignInPolicyRepo: policies}
 
 	decision, err := d.EvaluateApplicationAccess(ctx, tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice", &authdomain.AuthenticationContext{
 		UserID: "alice", ACR: authusecases.ACRPassword, AMR: []string{"pwd"},
@@ -131,7 +137,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := &support.ApplicationGate{
+	d := &appusecases.AccessGate{
 		ApplicationRepo: apps, ApplicationAssignmentRepo: assignments,
 		ApplicationSignInPolicyRepo: policies, DefaultSignInPolicyRepo: defaults,
 	}
@@ -159,5 +165,22 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	}
 	if !decision.Allowed {
 		t.Fatalf("override application decision=%+v, want allowed", decision)
+	}
+}
+
+func TestApplicationGateClientIP(t *testing.T) {
+	g := &appusecases.AccessGate{GateTrustedForwardedHops: 1}
+	req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
+	req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
+	if got := g.ClientIP(req); got != "203.0.113.5" {
+		t.Fatalf("got=%q", got)
+	}
+
+	zero := &appusecases.AccessGate{}
+	if got := zero.ClientIP(req); got != "" {
+		t.Fatalf("got=%q, want empty with GateTrustedForwardedHops=0", got)
+	}
+	if got := g.ClientIP(nil); got != "" {
+		t.Fatalf("got=%q, want empty for a nil request", got)
 	}
 }

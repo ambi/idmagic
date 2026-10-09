@@ -44,9 +44,9 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
+	samlhttp "github.com/ambi/idmagic/backend/saml/handlers_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
@@ -70,6 +70,7 @@ import (
 	workloadidentityusecases "github.com/ambi/idmagic/backend/workloadidentity/usecases"
 	workloadidentityverification "github.com/ambi/idmagic/backend/workloadidentity/verification_jose"
 	"github.com/ambi/idmagic/backend/wsfederation"
+	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/handlers_http"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -165,19 +166,8 @@ func Register(e *echo.Echo, d Deps) {
 	tenantGroup := e.Group("/realms/:tenant_id", d.ResolvePathTenant)
 	registerTenantRoutes(tenantGroup, d)
 
-	authenticator := &support.Authenticator{
-		UserRepo:          d.IdManagement.UserRepo,
-		GroupRepo:         d.IdManagement.GroupRepo,
-		SessionManager:    d.Authentication.SessionManager,
-		TokenIntrospector: d.OAuth2.TokenIntrospector,
-		DpopReplayStore:   d.OAuth2.DpopReplayStore,
-		AuthnResolver:     d.Authentication.AuthnResolver,
-		Revocation: tokenusecases.IntrospectDeps{
-			AccessTokenDenylist: d.OAuth2.AccessTokenDenylist,
-			AgentRepo:           d.IdManagement.AgentRepo,
-			RevocationEpochRepo: d.SharedSignals.RevocationEpochRepo,
-		},
-	}
+	// 制御面の経路は管理発行の API アクセストークンを受けない。
+	authenticator := newAuthenticator(d, nil)
 
 	// control-plane (テナント横断操作) は他の全ボンデッドコンテキストと同じ
 	// tenantGroup にそのまま登録する。default テナントへの限定は
@@ -302,18 +292,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		d.ApiTokens.TokenIntrospector = d.OAuth2.TokenIntrospector
 	}
 	apiTokenService := d.ApiTokens.Service()
-	authenticator := &support.Authenticator{
-		UserRepo: d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
-		SessionManager: d.Authentication.SessionManager, TokenIntrospector: d.OAuth2.TokenIntrospector,
-		ApiTokenAuthenticator: apiTokenService, DpopReplayStore: d.OAuth2.DpopReplayStore, AuthnResolver: d.Authentication.AuthnResolver,
-		// admin / account portal の Bearer にも /introspect と同じ失効判定を通す
-		// (REQ-OAUTH2-047)。/introspect の配線 (oauth2 handlers_http) と同じ repository 群。
-		Revocation: tokenusecases.IntrospectDeps{
-			AccessTokenDenylist: d.OAuth2.AccessTokenDenylist,
-			AgentRepo:           d.IdManagement.AgentRepo,
-			RevocationEpochRepo: d.SharedSignals.RevocationEpochRepo,
-		},
-	}
+	authenticator := newAuthenticator(d, apiTokenService)
 
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
@@ -399,6 +378,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
 		TrustedDeviceRepo:          d.Authentication.TrustedDeviceRepo,
 		QuotaRepo:                  d.Tenancy.QuotaRepo,
+
+		SessionManager: d.Authentication.SessionManager,
+		AuthnResolver:  d.Authentication.AuthnResolver,
+
+		ApplicationSignInPolicyRepo: d.Application.SignInPolicyRepo,
+		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
 	})
 
 	workloadidentityhttp.RegisterRoutes(g, workloadidentityhttp.Deps{
@@ -467,6 +452,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	authDeps := authhttp.Deps{
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
+		SessionManager:            d.Authentication.SessionManager,
 		AuditEventRepo:            d.Audit.AuditEventRepo,
 		UserRepo:                  d.IdManagement.UserRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
@@ -524,6 +510,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Notifier:                  d.Notification.Notifier,
 		JobRepo:                   d.Jobs.Repo,
 		QuotaRepo:                 d.Tenancy.QuotaRepo,
+	}
+	if d.Authentication.SessionManager != nil {
+		idmDeps.SessionStore = d.Authentication.SessionManager.Store
 	}
 	provisionFederatedUser := userhttp.FederatedUserProvisioner(idmDeps)
 
@@ -586,11 +575,15 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		FederationSigner:         d.FederationSigner,
 	})
 
-	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner,
+	d.WsFederation.Register(g, d.Deps, authenticator, appGate,
+		wsfedhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: d.Authentication.SessionManager},
+		d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash,
 		d.Tenancy.AttrSchemaRepo)
 
-	d.Saml.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner, d.Tenancy.AttrSchemaRepo)
+	d.Saml.Register(g, d.Deps, authenticator, appGate,
+		samlhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: d.Authentication.SessionManager},
+		d.IdManagement.UserRepo, d.FederationSigner, d.Tenancy.AttrSchemaRepo)
 
 	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.Tenancy.AttrSchemaRepo)
 

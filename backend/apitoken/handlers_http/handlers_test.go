@@ -16,7 +16,9 @@ import (
 	"github.com/ambi/idmagic/backend/apitoken/db_memory"
 	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/handlers_http"
 	"github.com/ambi/idmagic/backend/apitoken/usecases"
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -46,7 +48,7 @@ func newHandler(t *testing.T) *echo.Echo {
 	})
 	service := usecases.New(db_memory.NewRepository(), usecases.WithTokenIssuer(fakeIssuer{}))
 	deps := support.Deps{Issuer: "http://idp.test"}
-	authenticator := &support.Authenticator{UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{}}
+	authenticator := &support.Authenticator{Principals: idmhttpdeps.Principals{Users: users}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}}
 	e := echo.New()
 	apitokenhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), apitokenhttp.Deps{
 		Deps: deps, Authenticator: authenticator, Service: service,

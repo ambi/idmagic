@@ -18,7 +18,6 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -199,7 +198,7 @@ func (d Deps) handleListSystemAuditEvents(c *echo.Context) error {
 	return d.listAuditEvents(c, actor, systemAuditScope())
 }
 
-func (d Deps) listAuditEvents(c *echo.Context, actor *userdomain.User, scope auditScope) error {
+func (d Deps) listAuditEvents(c *echo.Context, actor *support.Principal, scope auditScope) error {
 	query, noMatch, err := d.parseAuditEventQuery(c, actor, scope)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
@@ -319,7 +318,7 @@ func (d Deps) handleExportSystemAuditEvents(c *echo.Context) error {
 	return d.exportAuditEvents(c, actor, systemAuditScope())
 }
 
-func (d Deps) exportAuditEvents(c *echo.Context, actor *userdomain.User, scope auditScope) error {
+func (d Deps) exportAuditEvents(c *echo.Context, actor *support.Principal, scope auditScope) error {
 	query, noMatch, err := d.parseAuditEventQuery(c, actor, scope)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
@@ -393,7 +392,7 @@ func (d Deps) handleAdminAuditEventSearchOptions(c *echo.Context) error {
 // 引数の scope が決め、query string は絞り込みにしか使わない。第 2 戻り値 noMatch が
 // true の場合、username が実アカウントに解決できなかったことを示し、呼び出し側は
 // AuditEventRepo.List を呼ばず空の結果を返す (フィルタ無視で全件返すという誤動作を避ける)。
-func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User, scope auditScope) (auditports.AuditEventQuery, bool, error) {
+func (d Deps) parseAuditEventQuery(c *echo.Context, actor *support.Principal, scope auditScope) (auditports.AuditEventQuery, bool, error) {
 	q := auditports.AuditEventQuery{
 		TenantID:   scope.tenantID,
 		AllTenants: scope.allTenants,

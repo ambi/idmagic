@@ -1,4 +1,4 @@
-package support_http_test
+package application_test
 
 import (
 	"context"
@@ -11,9 +11,9 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
+	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -43,7 +43,7 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := &support.ClientDisplayNameResolver{ClientRepo: clients, ApplicationRepo: apps}
+	r := &application.ClientDisplayNameResolver{ClientRepo: clients, ApplicationRepo: apps}
 
 	cases := []struct {
 		name     string
@@ -72,7 +72,7 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 }
 
 func TestClientDisplayNameResolverNilSafe(t *testing.T) {
-	var r *support.ClientDisplayNameResolver
+	var r *application.ClientDisplayNameResolver
 	if got := r.Resolve(context.Background(), tenancydomain.DefaultTenantID, "abc"); got != "abc" {
 		t.Fatalf("nil resolver must fall back to client_id, got %q", got)
 	}

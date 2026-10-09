@@ -10,7 +10,9 @@ import (
 	"time"
 
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
@@ -31,7 +33,7 @@ func (r *lifecycleRun) startFullResyncOverHTTP() {
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
 	r.module.Register(e.Group("", testing_tenant.ResolveDefault), support.Deps{Issuer: "http://idp.test", Emit: r.emit},
-		&support.Authenticator{UserRepo: r.h.userRepo, AuthnResolver: authusecases.DemoHeaderResolver{}},
+		&support.Authenticator{Principals: idmhttpdeps.Principals{Users: r.h.userRepo}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}},
 		appmemory.NewApplicationAssignmentRepository(), r.h.userRepo, r.h.groupRepo)
 
 	const csrf = "csrf-token"

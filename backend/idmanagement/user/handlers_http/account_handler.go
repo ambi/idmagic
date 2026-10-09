@@ -140,14 +140,14 @@ func HandleUpdateAccountProfile(d Deps, c *echo.Context) error {
 // requireAuthenticatedSub は認証済み (pending でない) セッションの sub を返す。
 // self-service では actor == target なので sub をそのまま操作対象に使う。
 func requireAuthenticatedSub(d Deps, c *echo.Context) (string, error) {
-	authn, err := d.ResolveAuthentication(c)
+	authn, err := d.Authenticate(c)
 	if err != nil {
 		return "", err
 	}
-	if authn == nil || authn.AuthenticationPending {
+	if authn == nil || authn.Pending() {
 		return "", support.ErrAdminAuthenticationRequired
 	}
-	return authn.UserID, nil
+	return authn.Subject(), nil
 }
 
 func writeAccountError(c *echo.Context, err error) error {
@@ -175,15 +175,15 @@ func writeAccountError(c *echo.Context, err error) error {
 // requireStepUpSub は認証済みセッションを解決し、step-up gate を通過した sub を返す
 // (primary email 変更など高 sensitivity な identity 操作用)。
 func requireStepUpSub(d Deps, c *echo.Context) (string, error) {
-	authn, err := d.ResolveAuthentication(c)
+	authn, err := d.Authenticate(c)
 	if err != nil {
 		return "", err
 	}
-	if authn == nil || authn.AuthenticationPending {
+	if authn == nil || authn.Pending() {
 		return "", support.ErrAdminAuthenticationRequired
 	}
 	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
 		return "", mfausecases.ErrStepUpRequired
 	}
-	return authn.UserID, nil
+	return authn.Subject(), nil
 }

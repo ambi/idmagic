@@ -2,12 +2,26 @@ package handlers_http
 
 import (
 	"context"
+	"net/http"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/usecases"
 )
+
+// ApplicationGate は、パッシブサインインの開始を Application の割り当てとサインインポリシーで
+// 判定する。判定は Application が所有し、組み立て地点が結ぶ。
+type ApplicationGate interface {
+	EvaluateApplicationAccess(
+		ctx context.Context,
+		tenantID string,
+		bindingType appdomain.ApplicationProtocolType,
+		bindingKey, sub string,
+		authn *authdomain.AuthenticationContext,
+		clientIP string,
+	) (appdomain.ApplicationAccessDecision, error)
+	ClientIP(r *http.Request) string
+}
 
 // signInService は Deps の依存から passive sign-in usecase を組み立てる。
 func (d Deps) signInService() wsfedusecases.SignInService {
@@ -25,8 +39,8 @@ func (d Deps) signOutService() wsfedusecases.SignOutService {
 	return wsfedusecases.SignOutService{RPRepo: d.WsFedRPRepo}
 }
 
-// gateAdapter は support.ApplicationGate を usecase の ApplicationGate へ橋渡しする。
-type gateAdapter struct{ *support.ApplicationGate }
+// gateAdapter は Application の割り当てのゲートを usecase の ApplicationGate へ橋渡しする。
+type gateAdapter struct{ ApplicationGate }
 
 func (g gateAdapter) EvaluateApplicationAccess(
 	ctx context.Context,

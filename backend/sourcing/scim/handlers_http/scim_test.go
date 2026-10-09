@@ -21,6 +21,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
@@ -85,7 +86,7 @@ func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
 	e := echo.New()
 	deps := support.Deps{Emit: func(spec.DomainEvent) {}}
 	scimhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), scimhttp.Deps{
-		Deps: deps, Authenticator: &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo},
+		Deps: deps, Authenticator: &support.Authenticator{Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo}},
 		Usecases: scimUsecases, ApiTokenAuthenticator: apiTokens,
 	})
 	return e, apiTokens
@@ -180,7 +181,7 @@ func newScimHarness(tokenOptions ...apitokenusecases.Option) scimHarness {
 	apiTokens := newTestApiTokenService(tokenOptions...)
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
-	authenticator := &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo}
+	authenticator := &support.Authenticator{Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo}}
 	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst, ApiTokenAuthenticator: apiTokens}
 
 	e := echo.New()
@@ -494,8 +495,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 
 	sd := support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
-		UserRepo:  userRepo,
-		GroupRepo: groupRepo,
+		Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo},
 	}
 	scimDeps := scimhttp.Deps{
 		Deps:                  sd,
@@ -672,8 +672,7 @@ func TestScimGroupSync(t *testing.T) {
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
-		UserRepo:  userRepo,
-		GroupRepo: groupRepo,
+		Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo},
 	}
 	scimDeps := scimhttp.Deps{
 		Deps:                  sd,
@@ -798,7 +797,7 @@ func TestScimGroupSync(t *testing.T) {
 			if err != nil || user == nil {
 				t.Fatalf("find %s: %v (%v)", tc.sub, user, err)
 			}
-			roles := authenticator.EffectiveRoles(ctx, user)
+			roles := authenticator.EffectiveRoles(ctx, support.Principal{ID: user.ID, TenantID: user.TenantID, Roles: user.Roles})
 			if got := slices.Contains(roles, "engineer"); got != tc.wantRole {
 				t.Errorf("%s effective roles = %v, want engineer present=%v", tc.sub, roles, tc.wantRole)
 			}
