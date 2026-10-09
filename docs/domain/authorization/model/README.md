@@ -36,7 +36,7 @@
 #### REQ-AUTHORIZATION-010 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる
 
 - `admin` のロールを持たない利用者が認可モデルの登録と取得、関係タプルの書き込みと一覧、判定、列挙を要求した場合、Authorization は、403 と `access_denied` で拒否し、版もタプルも作らない。
-- API アクセストークンでこの Context の管理 API を要求された場合、Authorization は、トークンのスコープによらず 403 と `insufficient_scope` で拒否する。
+- API アクセストークンでこのモジュールの管理 API を要求された場合、Authorization は、トークンのスコープによらず 403 と `insufficient_scope` で拒否する。
 - **例**：EX-AUTHORIZATION-010-01、EX-AUTHORIZATION-010-02
 
 ## セキュリティ上の考慮
@@ -44,4 +44,4 @@
 認可モデルと関係タプルの管理は、`AdminAuthorizationModelManage` の権限（AuthZEN の action `admin:authorization_model_manage`）を要する。
 この権限はテナント管理者に属し、テナントの境界を越えない。
 
-この Context の管理 API は対話のセッションに限り、API アクセストークンからは、どのスコープを持っていても到達できない。理由は[管理 API を対話のセッションに限る](../design/decisions.md#管理-api-を対話のセッションに限る)。
+このモジュールの管理 API は対話のセッションに限り、API アクセストークンからは、どのスコープを持っていても到達できない。理由は[管理 API を対話のセッションに限る](../design/decisions.md#管理-api-を対話のセッションに限る)。

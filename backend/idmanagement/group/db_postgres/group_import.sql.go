@@ -58,7 +58,7 @@ type InsertGroupImportAuditEventParams struct {
 	Payload    []byte
 }
 
-// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+// CSV インポートの行の確定と同じトランザクションで、所有モジュールの外のテーブルへ書く。
 func (q *Queries) InsertGroupImportAuditEvent(ctx context.Context, arg InsertGroupImportAuditEventParams) error {
 	_, err := q.db.Exec(ctx, insertGroupImportAuditEvent,
 		arg.ID,

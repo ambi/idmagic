@@ -1,7 +1,7 @@
 package usecases
 
 // 管理者向け Client メタデータ操作 (Create / Update / Delete)。
-// SCL OAuth2 bounded context の admin インターフェース群:
+// SCL OAuth2 モジュールの admin インターフェース群:
 // CreateAdminOAuth2Client / UpdateAdminOAuth2Client / DeleteAdminOAuth2Client。
 
 import (

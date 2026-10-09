@@ -199,7 +199,7 @@ func (u *Usecases) addMembers(ctx context.Context, tenantID, groupID string, use
 
 // replaceMembers removes all existing members and adds newUserIDs,
 // attempting best-effort compensation to restore the prior membership if a
-// step fails partway (no cross-context DB transaction).
+// step fails partway (no cross-module DB transaction).
 func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string, newUserIDs []string) error {
 	existing, err := u.GroupRepo.ListMembersByGroup(ctx, tenantID, groupID)
 	if err != nil {

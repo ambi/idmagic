@@ -6,7 +6,7 @@ import (
 	"github.com/ambi/idmagic/backend/datakeys/ports"
 )
 
-// MigratorRegistry maps a name to the ports.FieldMigrator an owning context
+// MigratorRegistry maps a name to the ports.FieldMigrator an owning module
 // registers at bootstrap (mirrors backend/jobs/usecases.HandlerRegistry).
 // RotateTenantDataKey enqueues a data_key_reencryption job per registered
 // name, and DestroyTenantDataKey's gate checks every registered migrator's

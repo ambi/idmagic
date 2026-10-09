@@ -54,7 +54,7 @@ type EnvelopeCrypto interface {
 }
 
 // AAD is the fixed associated-data binding for record-level ciphertext
-// : tenant, owning context, table, record id, and field. Binding all
+// : tenant, owning module, table, record id, and field. Binding all
 // five means a ciphertext copied across any one of these dimensions fails to
 // decrypt instead of silently succeeding.
 type AAD struct {

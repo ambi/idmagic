@@ -1,4 +1,4 @@
-// Package domain は Seeding bounded context の純粋な運用語彙を定義する。
+// Package domain は Seeding モジュールの純粋な運用語彙を定義する。
 package domain
 
 import (

@@ -2,12 +2,12 @@
 // 再設定、メールアドレス変更の確認 — が共有する型付きトークンの核を持つ。
 //
 // 持つのは発行と検証の二操作だけである。保存、通知、監査、用途別の作用は所有
-// Context に残る。ここが決めるのは、用途が閉じた集合であること、保存されるのは
+// モジュールに残る。ここが決めるのは、用途が閉じた集合であること、保存されるのは
 // 生トークンではなくダイジェストであること、そして用途、ダイジェスト、期限の
 // 三つを通過しない限り呼び出し側が作用へ進めないことである。
 //
 // 用途を実行時に登録する仕組みは持たない。用途は Purpose の定数として列挙し、
-// 用途別ペイロードの具体型は所有 Context が渡す PayloadCodec が持つ。
+// 用途別ペイロードの具体型は所有モジュールが渡す PayloadCodec が持つ。
 package actiontoken
 
 import (
@@ -59,7 +59,7 @@ func ParsePurpose(raw string) (Purpose, error) {
 type Digest string
 
 // Payload は用途別の値である。共通核は中身を解釈しない。具体型への復号は
-// 所有 Context の PayloadCodec が行う。
+// 所有モジュールの PayloadCodec が行う。
 type Payload map[string]string
 
 // Envelope は保存されるトークンの全体である。生トークンの field は持たない。
@@ -190,7 +190,7 @@ func Verify(in VerifyInput) (Envelope, error) {
 	return in.Stored, nil
 }
 
-// PayloadCodec は用途別ペイロードの具体型との変換である。所有 Context が値として
+// PayloadCodec は用途別ペイロードの具体型との変換である。所有モジュールが値として
 // 渡すので、用途を追加できるのはコードだけであり、実行時の登録経路はない。
 type PayloadCodec[T any] interface {
 	Purpose() Purpose

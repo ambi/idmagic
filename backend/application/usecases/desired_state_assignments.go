@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/application/ports"
 )
 
-// DesiredStateAssignments は、ほかの Bounded Context が User への直接割り当てを
+// DesiredStateAssignments は、ほかのモジュールが User への直接割り当てを
 // 「こうあるべき」という状態として渡す内部インターフェースである。HTTP には公開しない。
 // 同じ入力で何度呼んでも、2 回目以降は保存もイベント発行もせず changed=false を返す。
 // 対象は subject_type=user の行だけであり、グループ割り当ての行は読みも書きもしない。

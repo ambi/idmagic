@@ -1,4 +1,4 @@
-// Package idgovernance は IdGovernance bounded context の DI 組立を所有する
+// Package idgovernance は IdGovernance モジュールの DI 組立を所有する
 // (wi-237)。LifecycleWorkflow (JML 自動化) の定義・実行・executor と、
 // User mutation を観測して run を生成する境界 port の実装を束ねる。HTTP route 登録は
 // 他 context 同様に中央 server/routes.go が組み立てる (自己登録は行わない)。

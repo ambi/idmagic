@@ -1,6 +1,6 @@
 # System の用語集
 
-この Context の中でだけ意味が定まる語を置く。Context を跨いで意味が固定される語は [docs/domain/glossary.md](../glossary.md) で定義する。
+このモジュールの中でだけ意味が定まる語を置く。モジュールを跨いで意味が固定される語は [docs/domain/glossary.md](../glossary.md) で定義する。
 
 | 用語 | 定義 | 別名 |
 |---|---|---|

@@ -10,14 +10,14 @@
 | OIDC の JSON クレームへの変換 | `OAuth2` |
 | SAML の `AttributeStatement` への変換 | `SAML` |
 | WS-Fed のクレーム URI への変換 | `WS-Federation` |
-| ポリシーを埋め込む信頼先の登録と保存 | 信頼先を持つ各プロトコルの Context |
+| ポリシーを埋め込む信頼先の登録と保存 | 信頼先を持つ各プロトコルのモジュール |
 | テナントのカスタム属性の定義 | `Tenancy` の属性スキーマ |
 
 ## モデル
 
-この Context は Aggregate を定義しない。
-`ClaimMappingPolicy` は値オブジェクトであり、各プロトコルの Context の信頼先の Aggregate（`OAuth2Client`、`SamlServiceProvider`、`WsFedRelyingParty`）に埋め込まれる。
-この Context は、その値の意味と検証だけを定める。
+このモジュールは Aggregate を定義しない。
+`ClaimMappingPolicy` は値オブジェクトであり、各プロトコルのモジュールの信頼先の Aggregate（`OAuth2Client`、`SamlServiceProvider`、`WsFedRelyingParty`）に埋め込まれる。
+このモジュールは、その値の意味と検証だけを定める。
 
 | 値オブジェクト | 内容 |
 | --- | --- |
@@ -35,14 +35,14 @@
 ## 公開する契約
 
 規則とクレームの形は、TypeSpec の `ClaimMappingRule`、`NameIdConfiguration`、`IssuedClaim`、`ClaimReleaseDeniedError` が定める。
-この Context は HTTP の操作を持たない。
+このモジュールは HTTP の操作を持たない。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `IssueClaimsWithFloor` | `OAuth2`（UserInfo と ID Token）、`SAML`、`WS-Federation`（サインインと WS-Trust） | この Context が提供する | ポリシー、解決済みの属性、テナントの属性定義から、`NameID` と `IssuedClaim` の集合を返すか、発行を拒否する |
-| `ValidateClaimReleaseRules` | アプリケーションの OIDC、SAML、WS-Federation の設定を保存する `Application` | この Context が提供する | 保存の前に、規則が公開できる範囲に収まっているかを確かめる |
-| `ResolveUserAttributes`、`ResolveTenantAttributeDefs` | クレームを発行する各プロトコルの Context と `Application` | この Context が提供する | `User` から規則のソースに使う属性の対応表を、テナントから組み込みとカスタムの属性定義を作る |
-| `TenantAttributeSchemaRepo` | `Tenancy` の属性スキーマのポートが構造的に満たす | この Context が定める | テナントのカスタム属性の定義を読む |
+| `IssueClaimsWithFloor` | `OAuth2`（UserInfo と ID Token）、`SAML`、`WS-Federation`（サインインと WS-Trust） | このモジュールが提供する | ポリシー、解決済みの属性、テナントの属性定義から、`NameID` と `IssuedClaim` の集合を返すか、発行を拒否する |
+| `ValidateClaimReleaseRules` | アプリケーションの OIDC、SAML、WS-Federation の設定を保存する `Application` | このモジュールが提供する | 保存の前に、規則が公開できる範囲に収まっているかを確かめる |
+| `ResolveUserAttributes`、`ResolveTenantAttributeDefs` | クレームを発行する各プロトコルのモジュールと `Application` | このモジュールが提供する | `User` から規則のソースに使う属性の対応表を、テナントから組み込みとカスタムの属性定義を作る |
+| `TenantAttributeSchemaRepo` | `Tenancy` の属性スキーマのポートが構造的に満たす | このモジュールが定める | テナントのカスタム属性の定義を読む |
 
 ## 機能
 
@@ -52,5 +52,5 @@
 
 | 文書 | 内容 |
 | --- | --- |
-| [ClaimMapping の用語集](glossary.md) | この Context での語義 |
+| [ClaimMapping の用語集](glossary.md) | このモジュールでの語義 |
 | [ClaimMapping の設計](design/README.md) | 話題ごとの設計と重要な判断 |

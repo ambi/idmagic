@@ -1,4 +1,4 @@
-// Package postgres implements the Provisioning bounded context's repositories
+// Package postgres implements the Provisioning module's repositories
 // on PostgreSQL using hand-written SQL via pgx (LifecycleWorkflowRunRepository
 // precedent; sqlc is not required for every context). credential_secret
 // is stored as plaintext for now (dev/test grade, see infra/schema/postgres.sql

@@ -1,4 +1,4 @@
-// Package workloadidentity composes the WorkloadIdentity bounded context
+// Package workloadidentity composes the WorkloadIdentity module
 // ([[wi-54-workload-identity-federation-spiffe]]).
 package workloadidentity
 

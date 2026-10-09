@@ -1,6 +1,6 @@
 package handlers_http
 
-// SCL interface: ListTenantDataKeyHealth (bounded_context: DataKeys)。
+// SCL interface: ListTenantDataKeyHealth (モジュール: DataKeys)。
 // SCL permission: SystemAdministrator (system_admin のみ、tenant_id=="default")。
 
 import (

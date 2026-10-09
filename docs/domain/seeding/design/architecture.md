@@ -5,9 +5,9 @@
 
 ## 文脈と範囲
 
-この Context がほかの Context と結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
-この Context のコードは、ほかの Context に依存しない。
-ほかの Context への書き込みは、起動処理（`backend/cmd/internal/bootstrap`）が実装する `Contributor` が行う。
+このモジュールがほかのモジュールと結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
+このモジュールのコードは、ほかのモジュールに依存しない。
+ほかのモジュールへの書き込みは、起動処理（`backend/cmd/internal/bootstrap`）が実装する `Contributor` が行う。
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
@@ -34,7 +34,7 @@
 | `usecases` | マニフェストの検証とシークレットの解決、計画と適用の手順、プロセスの中の排他 |
 | `manifests_yaml` | マニフェストの厳密な読み込みと `include` の解決、`env` と `file` のシークレットの解決 |
 | `backend/cmd/idmagic-seed` | コマンドの引数と設定から要求を組み立てる |
-| `backend/cmd/internal/bootstrap` の `Contributor` | リソースの種類ごとの計画と、各 Context の Repository への書き込み |
+| `backend/cmd/internal/bootstrap` の `Contributor` | リソースの種類ごとの計画と、各モジュールの Repository への書き込み |
 
 すべての要件は[seed の計画と適用](../seed-run/README.md)に属する。
 

@@ -51,7 +51,7 @@ const rootStructureDocument = {
 
 const rootScenariosDocument = {
   path: 'docs/domain/scenarios.feature.md',
-  source: '# Feature: Cross-Context Scenarios\n',
+  source: '# Feature: Cross-Module Scenarios\n',
 }
 
 const requirementsIndexDocument = {
@@ -435,7 +435,7 @@ describe('renderDocumentationSite', () => {
   it('names context children by content and lists them in canonical order', () => {
     const page = site().files['domain/demo/index.html']
 
-    // 最後の「例」は、Context の下に入れ子になった機能スライス（実行）の子である。
+    // 最後の「例」は、モジュールの下に入れ子になった機能スライス（実行）の子である。
     expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例'])
     expect(page).not.toContain('>glossary.md<')
   })
@@ -669,7 +669,7 @@ describe('renderDocumentationSite', () => {
 
   /**
    * `docs/domain/` は `docs/design/` と別のディレクトリなので、区分も別にする。区分の中は
-   * ディレクトリの写しで、`docs/domain/*.md` が葉、Bounded Context のディレクトリが枝になる。
+   * ディレクトリの写しで、`docs/domain/*.md` が葉、モジュールのディレクトリが枝になる。
    */
   it('gives the domain documents their own division beside the design documents', () => {
     const page = sidebar(site().files['domain/glossary.html'])
@@ -1040,7 +1040,7 @@ describe('renderDocumentationSite', () => {
         openapi: { paths: { '/things': { get: { operationId: 'ListThings' } } } },
         models: [],
       }),
-    ).toThrow('has no owning context tag')
+    ).toThrow('has no owning module tag')
   })
 
   it('escapes model and OpenAPI content', () => {

@@ -1,4 +1,4 @@
-// Package domain は SharedSignals bounded context の業務型を所有する。
+// Package domain は SharedSignals モジュールの業務型を所有する。
 package domain
 
 // SsfStreamDirection は idmagic からみた stream の向き。Transmit は idmagic が外部

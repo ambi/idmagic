@@ -1,4 +1,4 @@
-// Package db_memory は Authorization Context のメモリアダプター。テストと
+// Package db_memory は Authorization モジュールのメモリアダプター。テストと
 // ローカルデモの参照実装であり、PostgreSQL 版と同じ契約テストを共有する。
 package db_memory
 

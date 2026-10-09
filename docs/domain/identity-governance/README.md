@@ -12,7 +12,7 @@ JML を自動化する `LifecycleWorkflow` の定義、トリガーの評価、`
 | WorkflowRun を実行する Job のキューと再試行 | `Jobs` |
 | メールの送信の部品 | 共有の通知の部品 |
 
-この Context は、User の変更を契機にワークフローを評価し、記録の正を持つ Context の状態を冪等に変える。
+このモジュールは、User の変更を契機にワークフローを評価し、記録の正を持つモジュールの状態を冪等に変える。
 
 ## モデル
 
@@ -33,15 +33,15 @@ JML を自動化する `LifecycleWorkflow` の定義、トリガーの評価、`
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Identity Governance` のタグが定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `UserMutationCommitter` | `IdManagement` が定め、この Context が実装する | この Context が提供する | User の変更から WorkflowRun を計画し、User と WorkflowRun を一つのトランザクションで保存する |
-| `UserLifecycle` | `IdManagement` が実装する | この Context が定める | `enable_user` と `disable_user` を、IdManagement の User の操作として行う |
-| `ApplicationAssignments` | `Application` が実装する | この Context が定める | `assign_application` と `unassign_application` を、Application の割り当ての操作として行う |
-| `lifecycle_workflow_run` の Job | `Jobs` が実行する | この Context が定める | WorkflowRun を一回試行する |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `LifecycleWorkflow…`、`LifecycleWorkflowRun…`、`LifecycleWorkflowStepFailed` |
+| `UserMutationCommitter` | `IdManagement` が定め、このモジュールが実装する | このモジュールが提供する | User の変更から WorkflowRun を計画し、User と WorkflowRun を一つのトランザクションで保存する |
+| `UserLifecycle` | `IdManagement` が実装する | このモジュールが定める | `enable_user` と `disable_user` を、IdManagement の User の操作として行う |
+| `ApplicationAssignments` | `Application` が実装する | このモジュールが定める | `assign_application` と `unassign_application` を、Application の割り当ての操作として行う |
+| `lifecycle_workflow_run` の Job | `Jobs` が実行する | このモジュールが定める | WorkflowRun を一回試行する |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `LifecycleWorkflow…`、`LifecycleWorkflowRun…`、`LifecycleWorkflowStepFailed` |
 
 ## 機能
 
@@ -52,5 +52,5 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Governance` のタグ
 
 | 文書 | 内容 |
 | --- | --- |
-| [IdGovernance の用語集](glossary.md) | この Context での語義 |
+| [IdGovernance の用語集](glossary.md) | このモジュールでの語義 |
 | [IdGovernance の設計](design/README.md) | 話題ごとの設計と重要な判断 |

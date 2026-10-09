@@ -5,7 +5,7 @@
 
 | 制約 | 内容 | 出典 |
 | --- | --- | --- |
-| 標準仕様への準拠 | 連携の実装者は、OAuth 2.0、OpenID Connect、SAML 2.0、WS-Federation、SCIM 2.0 で接続する。プロトコルの形と意味は標準が決め、製品が変えられない | [プロダクト概要](../../requirements/product-overview.md#利用者)、各 Context の `standards.md` |
+| 標準仕様への準拠 | 連携の実装者は、OAuth 2.0、OpenID Connect、SAML 2.0、WS-Federation、SCIM 2.0 で接続する。プロトコルの形と意味は標準が決め、製品が変えられない | [プロダクト概要](../../requirements/product-overview.md#利用者)、各モジュールの `standards.md` |
 | 前段のゲートウェイ | TLS の終端、同一オリジンの境界、低速接続への防御は、前段のゲートウェイまたはリバースプロキシが担う。製品はその内側で動く | [プロダクト概要](../../requirements/product-overview.md#対象としない責務)、[ネットワーク設計](../infrastructure/network.md) |
 | 外部の配信経路 | メールと SMS の到達性、送信者の評価、通信事業者との接続は、外部の配信事業者が担う。製品は送信を依頼するだけである | [プロダクト概要](../../requirements/product-overview.md#対象としない責務) |
 | 上流の権威 | 人事情報の正本は上流の権威にある。製品は取り込む側であり、在籍情報の発生源にならない | [プロダクト概要](../../requirements/product-overview.md#対象としない責務) |

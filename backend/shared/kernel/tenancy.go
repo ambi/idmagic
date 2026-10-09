@@ -1,6 +1,4 @@
-// Package kernel は複数 bounded context から真に published language として参照される、
-// ごく小さな型・定数のみを持つ。何を収録するかは docs/README.md の Context Map が示す
-// context 関係（各 context が publish するもの / 依存するもの）を規範とする。
+// Package kernel は、複数のモジュールが公開契約として参照する、ごく小さな型と定数だけを持つ。
 package kernel
 
 // DefaultTenantID は既定テナントの不変 UUID 代理キー。所有権は

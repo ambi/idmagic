@@ -1,4 +1,4 @@
-// Package usecases は WorkloadIdentity bounded context のアプリケーションロジックを
+// Package usecases は WorkloadIdentity モジュールのアプリケーションロジックを
 // 所有する。VerifyWorkloadAttestation は OAuth2 の token-exchange grant
 // (subject_token_type=JwtSvid) から呼ばれ、外部 attestation token を登録済み
 // WorkloadTrustBundle で検証し、AgentWorkloadBinding で Agent principal に写す。

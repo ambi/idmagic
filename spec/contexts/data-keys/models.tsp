@@ -6,7 +6,7 @@ model DataKeyUnavailableError {
 }
 
 
-@doc("DestroyTenantDataKey が対象とするバージョンについて、所有する Context の再暗号化ジョブ（Jobs による `data_key_reencryption`）が、まだすべての参照を有効なバージョンへ移し終えていない。破棄する前に再暗号化を完了させる。これはドメインの失敗条件であり、HTTP のレスポンスボディではない。")
+@doc("DestroyTenantDataKey が対象とするバージョンについて、所有するモジュールの再暗号化ジョブ（Jobs による `data_key_reencryption`）が、まだすべての参照を有効なバージョンへ移し終えていない。破棄する前に再暗号化を完了させる。これはドメインの失敗条件であり、HTTP のレスポンスボディではない。")
 model DataKeyStillReferencedError {
 
 }
@@ -42,7 +42,7 @@ model TenantDataEncryptionKey {
 }
 
 
-@doc("Active または Retiring の TenantDataEncryptionKey で暗号化した、可逆なシークレットを収めるエンベロープ。所有する Context（たとえば Authentication の MFA のシード）はこれを永続化し、平文は永続化しない。暗号文は Tink の AEAD プリミティブが出力した不透明なバイト列そのままである。ノンスとタグは Tink が扱うもので、ここに個別のフィールドはない。ノンスを自前で組み立てることがないためである。")
+@doc("Active または Retiring の TenantDataEncryptionKey で暗号化した、可逆なシークレットを収めるエンベロープ。所有するモジュール（たとえば Authentication の MFA のシード）はこれを永続化し、平文は永続化しない。暗号文は Tink の AEAD プリミティブが出力した不透明なバイト列そのままである。ノンスとタグは Tink が扱うもので、ここに個別のフィールドはない。ノンスを自前で組み立てることがないためである。")
 model EncryptedSecret {
   @doc("シークレットを暗号化したときの `TenantDataEncryptionKey.version`。所有する記録のテナント境界の中で一意なので、復号では呼び出し元の tenant_id とこのバージョンから TenantDataEncryptionKey を選ぶ。全体で一意な鍵 ID による検索はない。")
   key_version: int64;

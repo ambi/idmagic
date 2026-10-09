@@ -53,7 +53,7 @@ func (g gateAdapter) EvaluateApplicationAccess(
 	clientIP string,
 ) (samlusecases.ApplicationAccessDecision, error) {
 	dec, err := g.ApplicationGate.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, authn, clientIP)
-	// 項目ごとに写す。この Context には step-up の遷移先が無く、信頼済みデバイスの判定も
+	// 項目ごとに写す。このモジュールには step-up の遷移先が無く、信頼済みデバイスの判定も
 	// 使わないので、共有の判定に項目が増えてもここは follow しない。
 	return samlusecases.ApplicationAccessDecision{
 		Allowed: dec.Allowed, StepUpRequired: dec.StepUpRequired,

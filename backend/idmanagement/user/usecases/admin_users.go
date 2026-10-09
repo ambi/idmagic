@@ -1,7 +1,7 @@
 package usecases
 
 // 管理者向け User ライフサイクル操作 (Create / Update / Disable / Enable)。
-// SCL の IdManagement bounded context が所有する admin インターフェース群:
+// SCL の IdManagement モジュールが所有する admin インターフェース群:
 // CreateAdminUser / UpdateAdminUser / DisableAdminUser / EnableAdminUser。
 
 import (
@@ -378,7 +378,7 @@ func disableOwnedAgents(ctx context.Context, deps AdminUserDeps, tenantID, userI
 }
 
 // revokeTrustedDevicesOnDisable は無効化に伴い記憶済みの端末をすべて失効させる (wi-91)。
-// この Context の Emit は error を返す契約なので、fire-and-forget な use case 側の sink で
+// このモジュールの Emit は error を返す契約なので、fire-and-forget な use case 側の sink で
 // 取りこぼした最初のエラーをここで拾い直す。
 func revokeTrustedDevicesOnDisable(
 	ctx context.Context,

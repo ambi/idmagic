@@ -7,7 +7,7 @@ import (
 )
 
 // SubjectDirectory は Application に割り当てられる主体がテナント内に実在するかを照合する。
-// User と Group の保存表現は Application Context の外に留める。
+// User と Group の保存表現は Application モジュールの外に留める。
 type SubjectDirectory interface {
 	SubjectExists(
 		ctx context.Context,

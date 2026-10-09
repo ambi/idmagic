@@ -5,13 +5,13 @@
 
 ## 文脈と範囲
 
-この Context がほかの Context と結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
-この Context から外への依存の向きは次のとおりである。
+このモジュールがほかのモジュールと結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
+このモジュールから外への依存の向きは次のとおりである。
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
 | `IdManagement` | 関連付けの作成と交換が、`Agent` とその束縛を読む | 相手の `agent` の `ports.AgentRepository` を使う |
-| `OAuth2` | Token Exchange が、この Context の検証を呼ぶ | 相手が定める `WorkloadTokenVerifier` のポートを、この Context のアダプターが実装する |
+| `OAuth2` | Token Exchange が、このモジュールの検証を呼ぶ | 相手が定める `WorkloadTokenVerifier` のポートを、このモジュールのアダプターが実装する |
 | 共有の部品 | JWT の署名の検証、JWKS の解決と最後に取得できた鍵の保持 | `backend/shared/security/tokens_jose` |
 
 ## 解決戦略
@@ -46,4 +46,4 @@
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/workload-identity/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [信頼設定と関連付けの管理](../trust-configuration/README.md) |
-| アテステーションの交換 | `OAuth2` のトークンエンドポイントへの Token Exchange の要求 | `api` の `OAuth2` のユースケースが、この Context の検証を同期的に呼ぶ | [アテステーションの交換の設計](../attestation-exchange/design.md) |
+| アテステーションの交換 | `OAuth2` のトークンエンドポイントへの Token Exchange の要求 | `api` の `OAuth2` のユースケースが、このモジュールの検証を同期的に呼ぶ | [アテステーションの交換の設計](../attestation-exchange/design.md) |

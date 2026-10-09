@@ -1,4 +1,4 @@
-// Package sharedsignals composes the SharedSignals bounded context
+// Package sharedsignals composes the SharedSignals module
 // ([[wi-58-continuous-access-evaluation-agent-revocation]]).
 package sharedsignals
 

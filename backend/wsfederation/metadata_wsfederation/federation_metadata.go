@@ -1,6 +1,6 @@
 // Package metadata は WS-* federation metadata の XML ワイヤ形式を組み立てる。
 //
-// WsFederation bounded context の claim policy / endpoint 情報から AD FS 互換の
+// WsFederation モジュールの claim policy / endpoint 情報から AD FS 互換の
 // federationmetadata.xml を導出する。署名証明書は KeyDescriptor として広告し、文書署名や
 // 鍵ローテーションの永続化は後続の KMS/key lifecycle WI に委ねる。
 package metadata_wsfederation

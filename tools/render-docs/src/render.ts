@@ -88,7 +88,7 @@ export type RenderedDocumentationSite = {
   mermaidSources: string[]
 }
 
-/** 用語表の 1 列目の見出し。日本語の文書と、まだ英語の Context 文書の両方を含む。 */
+/** 用語表の 1 列目の見出し。日本語の文書と、まだ英語のモジュール文書の両方を含む。 */
 const TERM_HEADINGS = new Set(['用語', 'Term'])
 
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'patch', 'head', 'options', 'trace'])
@@ -299,8 +299,8 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           order: index,
         }
   }
-  // Context より下の段。内部設計、機能群、機能群の下の機能スライスがある。
-  // `feature` はその段の Context からの相対パスである。
+  // モジュールより下の段。内部設計、機能群、機能群の下の機能スライスがある。
+  // `feature` はその段のモジュールからの相対パスである。
   const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/(.+)\/([^/]+)$/)
   if (featureDocument) {
     const [, context = '', feature = '', featureFile = ''] = featureDocument
@@ -651,7 +651,7 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
       : document.category === 'context' && document.context === entry.context,
   )
   if (!owner) return entry.title
-  // 内部設計の文書は「Demo の重要な設計判断」のように、段ではなく Context の名前を冠する。
+  // 内部設計の文書は「Demo の重要な設計判断」のように、段ではなくモジュールの名前を冠する。
   const context = documents.find(
     (document) => document.category === 'context' && document.context === entry.context,
   )
@@ -834,7 +834,7 @@ function modelGroupId(context: string): string {
   return `context-${slug(context)}`
 }
 
-/** API リファレンスとモデルカタログは一つに保ち、宣言元の Context から該当箇所へ案内する。 */
+/** API リファレンスとモデルカタログは一つに保ち、宣言元のモジュールから該当箇所へ案内する。 */
 function contextReference(args: {
   document: RenderedDocument
   tags: string[]
@@ -860,7 +860,7 @@ function contextReference(args: {
         .map((model) => `<li>${siteLink(page, modelPath(model), model.shortName)}</li>`)
         .join('')}</ul>`
     : ''
-  return `<section class="context-reference"><h2 id="${id}">API とモデル</h2><p>この Context が宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
+  return `<section class="context-reference"><h2 id="${id}">API とモデル</h2><p>このモジュールが宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
 }
 
 /**
@@ -968,7 +968,7 @@ function apiPage(
   documents: RenderedDocument[],
 ): string {
   const page = 'api/index.html'
-  const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI に基づくリファレンス</p><h1>API リファレンス</h1><p>生成した OpenAPI を Swagger UI で直接表示する。<code>?tag=</code> を指定すると、一つの Context の操作へ絞り込める。<a href="../openapi/${encodeURIComponent(openapiFileName)}">OpenAPI JSON を開く</a>。</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API 操作"></div></div></article>`
+  const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI に基づくリファレンス</p><h1>API リファレンス</h1><p>生成した OpenAPI を Swagger UI で直接表示する。<code>?tag=</code> を指定すると、一つのモジュールの操作へ絞り込める。<a href="../openapi/${encodeURIComponent(openapiFileName)}">OpenAPI JSON を開く</a>。</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API 操作"></div></div></article>`
   const head = `<link rel="stylesheet" href="${escapeHtml(assetHref(page, 'swagger-ui.css'))}">`
   // Swagger UI が実行時に作る表示文言は、DOM の更新後に既知の固定語だけを日本語へ置き換える。
   const swaggerTranslations = {
@@ -1263,7 +1263,7 @@ function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): st
   return `<section class="context-reference">${index}${open}</section>`
 }
 
-/** Context の機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
+/** モジュールの機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
 function featureMap(
   document: RenderedDocument,
   documents: RenderedDocument[],
@@ -1312,7 +1312,7 @@ function featureMap(
       return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
     })
     .join('')
-  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置と Context 名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
 function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
@@ -1454,7 +1454,7 @@ function modelGroups(
 
 function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): string {
   const page = 'models/index.html'
-  const body = `<header class="reference-header"><p class="eyebrow">TypeSpec プログラム</p><h1>モデルカタログ</h1><p>リポジトリが所有するモデル、列挙、共用体、スカラーを、HTTP 操作への公開有無にかかわらず宣言元の Bounded Context ごとに掲載する。<code>Operations</code> 名前空間の転送用ラッパーは OpenAPI に基づく API リファレンスへ掲載する。</p><label class="model-search">モデルを絞り込む <input type="search" data-model-search placeholder="名前、Context、説明" autocomplete="off"></label></header>${modelGroups(
+  const body = `<header class="reference-header"><p class="eyebrow">TypeSpec プログラム</p><h1>モデルカタログ</h1><p>リポジトリが所有するモデル、列挙、共用体、スカラーを、HTTP 操作への公開有無にかかわらず宣言元のモジュールごとに掲載する。<code>Operations</code> 名前空間の転送用ラッパーは OpenAPI に基づく API リファレンスへ掲載する。</p><label class="model-search">モデルを絞り込む <input type="search" data-model-search placeholder="名前、モジュール、説明" autocomplete="off"></label></header>${modelGroups(
     models,
     documents,
   )
@@ -1525,7 +1525,7 @@ function inspectOpenApi(openapi: OpenApiDocument): { operations: ApiOperation[];
       if (!HTTP_METHODS.has(method.toLowerCase())) continue
       const owners = operation.tags ?? []
       if (owners.length === 0 || owners.includes('default'))
-        throw new Error(`${method.toUpperCase()} ${path} has no owning context tag`)
+        throw new Error(`${method.toUpperCase()} ${path} has no owning module tag`)
       for (const tag of owners) tags.add(tag)
       operations.push({
         method: method.toUpperCase(),

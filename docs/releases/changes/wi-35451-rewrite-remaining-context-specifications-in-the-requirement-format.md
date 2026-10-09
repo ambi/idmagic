@@ -1,8 +1,8 @@
-# WI-35451: 残りの Context の仕様を要件の形式で書き直す
+# WI-35451: 残りのモジュールの仕様を要件の形式で書き直す
 
 作業項目は `wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format` である。
 
-WI-35451 は、IdManagement と Tenancy 以外の 19 の Context の機能仕様を、検査する日本語の EARS の要件文で書き直し、すべての状態機械に状態遷移表（マトリクス形式）を加える。
+WI-35451 は、IdManagement と Tenancy 以外の 19 モジュールの機能仕様を、検査する日本語の EARS の要件文で書き直し、すべての状態機械に状態遷移表（マトリクス形式）を加える。
 製品の振る舞いは変えない。
 
 これまで実装だけが守っていた次の振る舞いを、要件として約束する。

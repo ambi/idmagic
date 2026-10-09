@@ -1,7 +1,7 @@
 package usecases
 
 // 管理者向け Group ライフサイクル操作と user-group membership。
-// SCL IdManagement bounded context が所有する admin インターフェース群:
+// SCL IdManagement モジュールが所有する admin インターフェース群:
 // ListGroups / GetGroup / CreateGroup / UpdateGroup / DeleteGroup /
 // AddGroupMember / RemoveGroupMember / ListUserGroups。
 //

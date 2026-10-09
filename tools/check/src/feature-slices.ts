@@ -85,8 +85,8 @@ function placementProblem(directory: string, view: DocumentSetView): string | un
 }
 
 /**
- * すべての Context が印（`design/README.md`）を持つことを確かめる。印のない Context の段には
- * どの文書も置けず、文書ごとの拒否だけでは原因が伝わらないので、Context ごとに一件報告する。
+ * すべてのモジュールが印（`design/README.md`）を持つことを確かめる。印のないモジュールの段には
+ * どの文書も置けず、文書ごとの拒否だけでは原因が伝わらないので、モジュールごとに一件報告する。
  */
 export function verifyFeatureLayout(contexts: readonly string[], view: DocumentSetView): string[] {
   return contexts

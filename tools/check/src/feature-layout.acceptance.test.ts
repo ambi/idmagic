@@ -1,7 +1,7 @@
 /**
- * 機能仕様と内部設計を軸にした形式の Context を、検査が受け入れ、崩れを拒否することを確かめる。
+ * 機能仕様と内部設計を軸にした形式のモジュールを、検査が受け入れ、崩れを拒否することを確かめる。
  *
- * Context の印は `design/README.md` であり、この作業ツリーはそれを持つ Context `demo` だけで組む。
+ * モジュールの印は `design/README.md` であり、この作業ツリーはそれを持つモジュール `demo` だけで組む。
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -122,7 +122,7 @@ function topicIndex(title: string, architecture: string): string {
   ].join('\n')
 }
 
-/** Context を一つだけ持ち、どの検査にも通る作業ツリー。 */
+/** モジュールを一つだけ持ち、どの検査にも通る作業ツリー。 */
 async function featureLayoutWorkspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-feature-layout-test-'))
   cleanup.push(root)

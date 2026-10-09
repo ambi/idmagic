@@ -1,4 +1,4 @@
-// Package jobs is the Jobs bounded context's top-level wiring point
+// Package jobs is the Jobs module's top-level wiring point
 // : Module aggregates the persistence dependency other packages
 // (bootstrap) inject, and NoopEchoHandler is the core-runtime smoke-test
 // handler.
@@ -12,7 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 )
 
-// Module holds the Jobs bounded context's persistence dependency. The HTTP
+// Module holds the Jobs module's persistence dependency. The HTTP
 // surface (handlers_http) is read-and-cancel only: nothing over HTTP enqueues
 // or claims, so the queue keeps a single entrance through in-process Go calls.
 type Module struct {
@@ -22,7 +22,7 @@ type Module struct {
 // NoopEchoHandler is the wi-42 core-runtime smoke-test handler for
 // domain.KindNoopEcho: it does nothing but echo its params back as the
 // result, proving worker claim -> execute -> complete end to end without
-// depending on any other bounded context.
+// depending on any other module.
 func NoopEchoHandler(_ context.Context, job *domain.Job) (json.RawMessage, error) {
 	return job.Params, nil
 }

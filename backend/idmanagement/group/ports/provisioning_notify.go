@@ -8,8 +8,8 @@ import (
 // ProvisioningTrigger is the Group lifecycle trigger IdManagement reports to
 // outbound Provisioning after committing a mutation. Like the User-side
 // vocabulary in backend/idmanagement/user/ports, this is IdManagement-owned:
-// IdManagement must not import backend/provisioning (the Context Map's
-// depends_on direction is Provisioning -> IdManagement, not the reverse).
+// IdManagement must not import backend/provisioning (Provisioning already
+// imports IdManagement, and module dependencies must stay acyclic).
 // backend/provisioning/usecases implements ProvisioningNotifier and translates
 // these values to its own ports.ProvisioningTrigger.
 type ProvisioningTrigger string

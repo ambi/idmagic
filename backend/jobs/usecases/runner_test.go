@@ -241,7 +241,7 @@ func TestRunner_BulkBacklogDoesNotStarveLatencySensitive(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	handlers := usecases.NewHandlerRegistry()
 
-	// 実在の latency_sensitive の種別 (backchannel_logout_delivery) は oauth2 の Context が
+	// 実在の latency_sensitive の種別 (backchannel_logout_delivery) は oauth2 モジュールが
 	// 登録する。Jobs のテストはそれに依存せず、同じレーンへ試験用の種別を登録する。
 	const latencySensitiveTestKind domain.JobKind = "test_latency_sensitive_delivery"
 	domain.RegisterKind(latencySensitiveTestKind, domain.LaneLatencySensitive)

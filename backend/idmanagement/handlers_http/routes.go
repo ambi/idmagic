@@ -1,4 +1,4 @@
-// Package http: identity management bounded context の HTTP アダプタ。
+// Package http: identity management モジュールの HTTP アダプタ。
 //
 // Deps の定義・route 登録の集約点。ユーザー・グループ・エージェントそれぞれの
 // ハンドラ実装は user/handlers_http・group/handlers_http・agent/handlers_http に

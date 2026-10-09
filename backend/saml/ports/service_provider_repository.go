@@ -1,4 +1,4 @@
-// Package ports は Saml bounded context の永続境界 (port) を定義する (wi-29)。
+// Package ports は Saml モジュールの永続境界 (port) を定義する (wi-29)。
 package ports
 
 import (

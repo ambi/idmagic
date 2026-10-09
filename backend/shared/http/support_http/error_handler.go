@@ -26,7 +26,7 @@ type quotaExceeded interface {
 
 // fieldLengthViolation は spec.LengthError を import せずに受けるための構造的
 // インターフェース。文字列長の上限は解析できた内容に対する業務規則なので、
-// 各 context の handler がエラー写像を持つかどうかに関わらず 422 で返す。
+// 各モジュールの handler がエラー写像を持つかどうかに関わらず 422 で返す。
 type fieldLengthViolation interface {
 	error
 	IsFieldLengthViolation() bool

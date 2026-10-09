@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
 
-/** Context の印。印のない Context の段には、どの文書も置けない。 */
+/** モジュールの印。印のないモジュールの段には、どの文書も置けない。 */
 const marker = { directory: 'docs/domain/demo/design', files: ['README.md'] }
 
 describe('verifyCanonicalDocumentSet', () => {
@@ -131,8 +131,8 @@ describe('verifyCanonicalDocumentSet', () => {
   })
 
   it('holds each level to its own set of names', () => {
-    // quality.md は Context の文書であり docs/ 直下の文書ではない。逆に
-    // structure.md は docs/domain/ の文書であり Context の文書ではない。
+    // quality.md はモジュールの文書であり docs/ 直下の文書ではない。逆に
+    // structure.md は docs/domain/ の文書でありモジュールの文書ではない。
     expect(verifyCanonicalDocumentSet([{ directory: 'docs', files: ['quality.md'] }])).toHaveLength(
       1,
     )

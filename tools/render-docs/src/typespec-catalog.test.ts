@@ -58,7 +58,7 @@ namespace Operations {
     ).toBe(false)
   })
 
-  it('reads the owning context and its API tag from the declaring directory', async () => {
+  it('reads the owning module and its API tag from the declaring directory', async () => {
     const host = await createTestHost()
     host.addTypeSpecFile(
       'spec/contexts/demo/models.tsp',

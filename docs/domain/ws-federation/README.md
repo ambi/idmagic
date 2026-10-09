@@ -25,15 +25,15 @@ Entra と AD FS の WS-Fed のデフォルトに合わせるためである。
 
 HTTP の操作とモデルの形は TypeSpec の `WS-Federation` のタグが定める。
 プロトコルのエンドポイント（`/wsfed`、`federationmetadata.xml`、`/trust/mex`、`/trust/usernamemixed`）は、[WsFederation の標準仕様](standards.md)が定める範囲で動く。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `RelyingPartyRepository` | `Application` のプロトコル設定 | この Context が提供する | アプリケーションに属する RP の設定を読み書きする |
-| `tokens_saml` の Assertion の組み立てと署名 | `SAML` の SSO | この Context が提供する | SAML 1.1 と SAML 2.0 の Assertion を組み立て、XML 署名を付ける |
-| `IssueClaimsWithFloor` | `ClaimMapping` が提供する | この Context が使う | RP のポリシーでクレームを発行する |
-| XML 署名の資格情報 | `SigningKeys` が提供する | この Context が使う | テナントの `XmlFederationSigning` の鍵と証明書を発行のたびに得る |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `WsFedSignInIssued`、`WsFedSignInRejected`、`WsTrustTokenIssued`、`WsTrustTokenRejected` |
+| `RelyingPartyRepository` | `Application` のプロトコル設定 | このモジュールが提供する | アプリケーションに属する RP の設定を読み書きする |
+| `tokens_saml` の Assertion の組み立てと署名 | `SAML` の SSO | このモジュールが提供する | SAML 1.1 と SAML 2.0 の Assertion を組み立て、XML 署名を付ける |
+| `IssueClaimsWithFloor` | `ClaimMapping` が提供する | このモジュールが使う | RP のポリシーでクレームを発行する |
+| XML 署名の資格情報 | `SigningKeys` が提供する | このモジュールが使う | テナントの `XmlFederationSigning` の鍵と証明書を発行のたびに得る |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `WsFedSignInIssued`、`WsFedSignInRejected`、`WsTrustTokenIssued`、`WsTrustTokenRejected` |
 
 ## 機能
 
@@ -45,6 +45,6 @@ HTTP の操作とモデルの形は TypeSpec の `WS-Federation` のタグが定
 
 | 文書 | 内容 |
 | --- | --- |
-| [WsFederation の用語集](glossary.md) | この Context での語義 |
+| [WsFederation の用語集](glossary.md) | このモジュールでの語義 |
 | [WsFederation の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [WsFederation の設計](design/README.md) | 話題ごとの設計と重要な判断 |

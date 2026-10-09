@@ -1,11 +1,11 @@
-# Feature: Cross-Context Scenarios
+# Feature: Cross-Module Scenarios
 
-複数の Bounded Context が協調して初めて成り立つ振る舞いを置く。1 つの Context が単独で満たし検証できるものは、その Context の機能スライスの機能仕様で要件として宣言する。
-**ここに置く基準は「その Context だけでは `WHEN` を起こせないこと」である。** 引き金を持つ Context と結果を観測する Context が違う振る舞いは、どちらの機能仕様に書いても片側の話にしかならず、保証の全体がどこにも書かれない状態になる。各シナリオは参加する Context を名指す。
+複数のモジュールが協調して初めて成り立つ振る舞いを置く。1 つのモジュールが単独で満たし検証できるものは、そのモジュールの機能スライスの機能仕様で要件として宣言する。
+**ここに置く基準は「そのモジュールだけでは `WHEN` を起こせないこと」である。** 引き金を持つモジュールと結果を観測するモジュールが違う振る舞いは、どちらの機能仕様に書いても片側の話にしかならず、保証の全体がどこにも書かれない状態になる。各シナリオは参加するモジュールを名指す。
 
 ## Rule: REQ-PLATFORM-001 主体の無効化は、その主体へ到達するすべての経路を閉じる
 
-参加する Context: IdManagement、Authentication、OAuth2、SharedSignals
+参加するモジュール: IdManagement、Authentication、OAuth2、SharedSignals
 **3 つの経路は同時に閉じる。** 1 つでも開いたままなら、この保証に違反する。どれか 1 つだけを述べた記述は、無効化がセキュリティ機能として成立していることの根拠にならない。
 外部への伝播はこの保証に含まれない。SharedSignals の送信先が到達不能でも、ここまでは成立する（`REQ-SHAREDSIGNALS-007`）。**外部が知るより先に、内部で閉じ切ることがこのシナリオの主張である。**
 
@@ -24,8 +24,8 @@ Primary actor: `TenantAdministrator`
 
 ## Rule: REQ-PLATFORM-002 削除の予約は到達経路を閉じ、猶予期間内の復元は開き直す
 
-参加する Context: IdManagement、Authentication
-削除の予約は無効化と別の状態遷移だが、**到達経路を閉じるという観測結果は同じでなければならない。** 片方だけが閉じる実装は、どちらの Context の記述にも違反しないまま成立してしまう。
+参加するモジュール: IdManagement、Authentication
+削除の予約は無効化と別の状態遷移だが、**到達経路を閉じるという観測結果は同じでなければならない。** 片方だけが閉じる実装は、どちらのモジュールの記述にも違反しないまま成立してしまう。
 
 Primary actor: `TenantAdministrator`
 
@@ -41,7 +41,7 @@ Primary actor: `TenantAdministrator`
 
 ## Rule: REQ-PLATFORM-003 記録の正の変更は、有効な接続を持つ下流へインクリメンタル同期の周期以内にプロビジョニングされる
 
-参加する Context: IdManagement、Application、Provisioning、Jobs
+参加するモジュール: IdManagement、Application、Provisioning、Jobs
 **変更は、イベント同期またはインクリメンタル同期のどちらかでプロビジョニングタスクになる。** イベント同期は反映の遅延を短くする近道であり、イベント同期の失敗や、発火元の経路がイベント同期を呼ばないことはこの保証を破らない。次のインクリメンタル同期が、あるべき状態と下流へ反映済みの状態の差分からプロビジョニングタスクを作る。個々の変更がどの下流操作へ対応するかは Provisioning の `scenarios.feature.md` で定める。
 
 Primary actor: `TenantAdministrator`
@@ -72,7 +72,7 @@ Primary actor: `TenantAdministrator`
 
 ## Rule: REQ-PLATFORM-004 周囲資格情報による状態変更は同一オリジンと CSRF トークンを必要とする
 
-参加する Context: Authentication、Application、Authorization、DataKeys、IdGovernance、IdManagement、Jobs、OAuth2、Provisioning、Saml、SharedSignals、SigningKeys、Tenancy、WorkloadIdentity、WsFederation
+参加するモジュール: Authentication、Application、Authorization、DataKeys、IdGovernance、IdManagement、Jobs、OAuth2、Provisioning、Saml、SharedSignals、SigningKeys、Tenancy、WorkloadIdentity、WsFederation
 
 Primary actor: `AuthenticatedBrowserUser`
 
@@ -93,7 +93,7 @@ Primary actor: `AuthenticatedBrowserUser`
 
 ## Rule: REQ-PLATFORM-005 汎用 API の JSON リクエストボディは上限内で前方互換にデコードされる
 
-参加する Context: ApiTokens、Application、Authentication、Authorization、IdGovernance、IdManagement、OAuth2、Provisioning、Saml、SharedSignals、Tenancy、WorkloadIdentity、WsFederation
+参加するモジュール: ApiTokens、Application、Authentication、Authorization、IdGovernance、IdManagement、OAuth2、Provisioning、Saml、SharedSignals、Tenancy、WorkloadIdentity、WsFederation
 
 Primary actor: `APIConsumer`
 

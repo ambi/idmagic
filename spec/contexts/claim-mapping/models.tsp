@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("Tenancy の Context が所有する属性の公開範囲を、公表された言語として写したもの。クレームの発行のフェイルクローズの下限が無条件に除外するのは `private` だけである。")
+@doc("Tenancy モジュールが所有する属性の公開範囲を、公開契約として写したもの。クレームの発行のフェイルクローズの下限が無条件に除外するのは `private` だけである。")
 enum AttrVisibility {
   Private: "private",
   SelfReadable: "self_readable",
@@ -9,7 +9,7 @@ enum AttrVisibility {
 }
 
 
-@doc("Tenancy の Context が所有する属性の定義を、公表された言語として写したもの。クレームの発行で属性の公開範囲を判断するほか、テナントの user_attribute_schema のリクエストとレスポンスの両方のボディにそのまま現れる。")
+@doc("Tenancy モジュールが所有する属性の定義を、公開契約として写したもの。クレームの発行で属性の公開範囲を判断するほか、テナントの user_attribute_schema のリクエストとレスポンスの両方のボディにそのまま現れる。")
 model UserAttributeDef {
   @doc("属性の機械名。英字で始まる snake_case で、組み込みの一覧とテナントのカスタム属性を通じて一意である。")
   @minLength(1)

@@ -5,7 +5,7 @@ export interface DirectoryListing {
 
 export const ROOT_DOCUMENTS = ['README.md'] as const
 
-/** ドメイン全体を対象とし、Bounded Context のディレクトリより上に置く文書。 */
+/** ドメイン全体を対象とし、モジュールのディレクトリより上に置く文書。 */
 export const DOMAIN_DOCUMENTS = [
   'README.md',
   'glossary.md',
@@ -92,7 +92,7 @@ export const SYSTEM_DOCUMENT_PATHS = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ dire
 /**
  * 内容に応じた任意名を許し、閉じたファイル集合の対象にしない段。`docs/domain` は
  * 直下のファイル集合が閉じており、配下のディレクトリ名だけが自由なので、ここには載せない。
- * 配下の Context の段は `documentAllowance` が判定する。
+ * 配下のモジュールの段は `documentAllowance` が判定する。
  */
 export const FREELY_NAMED_DOCUMENT_DIRECTORIES = new Set([
   'docs/development',
@@ -105,12 +105,12 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
 }
 
 /**
- * Context の直下に置ける文書。判断と仕組みは `design/` へ、規則は機能スライスへ置く。
- * `quality.md` は、システムの品質要求のうちこの Context に割り当てた分を書く仕様である。
+ * モジュールの直下に置ける文書。判断と仕組みは `design/` へ、規則は機能スライスへ置く。
+ * `quality.md` は、システムの品質要求のうちこのモジュールに割り当てた分を書く仕様である。
  */
 export const CONTEXT_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
 
-/** Context の内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
+/** モジュールの内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
 export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
 
 /** 機能スライスの固定の文書。長くなった機能仕様の章は任意の名前で並べる。 */
@@ -118,7 +118,7 @@ export const FEATURE_SLICE_DOCUMENTS = ['README.md', 'design.md', 'acceptance.fe
 
 /**
  * 任意の名前を許す段でも使えない名前。ファイル種別ごとの文書を章として置くと、
- * 一つの機能を種別ごとのファイルに散らす構造へ戻ってしまう。用語と標準は Context の直下に置く。
+ * 一つの機能を種別ごとのファイルに散らす構造へ戻ってしまう。用語と標準はモジュールの直下に置く。
  */
 const RESERVED_FREE_NAMES = new Set([
   'states.md',
@@ -141,7 +141,7 @@ export interface DocumentAllowance {
 /** 段の集合から読み取った、名前の判定に要る事実。 */
 export interface DocumentSetView {
   /**
-   * `design/README.md` を持つ Context の名前。この印のない Context の段には、どの文書も置けない。
+   * `design/README.md` を持つモジュールの名前。この印のないモジュールの段には、どの文書も置けない。
    * 設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
    */
   featureContexts: ReadonlySet<string>
@@ -162,9 +162,9 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
 }
 
 /**
- * その段に置ける文書。Context は、Context、内部設計、機能群、機能スライスの段を持つ。
- * 機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能スライスは Context から
- * 一段か二段下の、子を持たない段である。それより下と、印を持たない Context の段と、
+ * その段に置ける文書。モジュールは、モジュール、内部設計、機能群、機能スライスの段を持つ。
+ * 機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能スライスはモジュールから
+ * 一段か二段下の、子を持たない段である。それより下と、印を持たないモジュールの段と、
  * 固定の一覧にないシステムの段には何も置けない。
  */
 export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {

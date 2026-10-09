@@ -49,8 +49,8 @@ OpenTelemetry のログデータモデルに合わせ、発生源に固定され
 
 | 位置 | 取る値 | 決め方 |
 | --- | --- | --- |
-| コンテキスト | `oauth2`、`authentication`、`saml` などの Bounded Context 名 | `docs/domain/` のディレクトリ名をそのまま使う |
-| 対象 | 操作される概念の単数形 | その Bounded Context の用語集にある名前を使う |
+| コンテキスト | `oauth2`、`authentication`、`saml` などのモジュール名 | `docs/domain/` のディレクトリ名をそのまま使う |
+| 対象 | 操作される概念の単数形 | そのモジュールの用語集にある名前を使う |
 | 操作 | 動詞の原形一語 | `issue`、`revoke`、`rotate`、`claim` のように、何をしたかを表す |
 | 結果 | `succeeded`、`failed`、`rejected`、`skipped`、`timed_out` のいずれか | 成否で読み分ける事象だけに付け、分岐しない事象には付けない |
 

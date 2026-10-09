@@ -268,7 +268,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
 
     // A machine belongs to the context that owns it, not to the file that
     // happens to hold it, so moving it between files is not a change. 機能スライスへ
-    // 移すことも同じで、機能スライスの段を落として Context で同定する。
+    // 移すことも同じで、機能スライスの段を落としてモジュールで同定する。
     const owner = currentPath(
       path.slice(0, Math.max(0, path.length - name.length - 1)) || path,
     ).replace(/^(docs\/domain\/[^/]+)(?:\/[^/]+)+$/, '$1')

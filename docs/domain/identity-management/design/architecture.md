@@ -5,17 +5,17 @@
 
 ## 文脈と範囲
 
-この Context がほかの Context と結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
+このモジュールがほかのモジュールと結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
 依存の向きは次のとおりである。
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
-| `IdGovernance`、`Provisioning`、`Sourcing` | この Context が定めるポートを、相手が実装する | アプリケーションの組み立てで実装を注入する。この Context は相手のパッケージを参照しない |
-| `IdGovernance`、`Sourcing` | 相手が定めるポートを、この Context の User の操作が満たす | 組み立ての地点が、`UserLifecycleCommands` を相手のポートへ渡す。詳細は[ほかの Context からの User の停止](#ほかの-context-からの-user-の停止) |
-| `Authentication`、`OAuth2`、`Authorization` | 相手がこの Context のポートを呼ぶ | 相手がこの Context の `ports` を参照する |
-| `Tenancy` | この Context が相手のポートを呼ぶ | 属性スキーマとリソース上限を読む |
-| `Jobs` | この Context が相手のポートを呼ぶ | CSV とデータエクスポートの非同期の実行を任せる |
-| `OAuth2`、`Authentication` の記録 | この Context が相手のポートを呼ぶ | User の完全削除で、関連する記録を消す |
+| `IdGovernance`、`Provisioning`、`Sourcing` | このモジュールが定めるポートを、相手が実装する | アプリケーションの組み立てで実装を注入する。このモジュールは相手のパッケージを参照しない |
+| `IdGovernance`、`Sourcing` | 相手が定めるポートを、このモジュールの User の操作が満たす | 組み立ての地点が、`UserLifecycleCommands` を相手のポートへ渡す。詳細は[ほかのモジュールからの User の停止](#ほかのモジュールからの-user-の停止) |
+| `Authentication`、`OAuth2`、`Authorization` | 相手がこのモジュールのポートを呼ぶ | 相手がこのモジュールの `ports` を参照する |
+| `Tenancy` | このモジュールが相手のポートを呼ぶ | 属性スキーマとリソース上限を読む |
+| `Jobs` | このモジュールが相手のポートを呼ぶ | CSV とデータエクスポートの非同期の実行を任せる |
+| `OAuth2`、`Authentication` の記録 | このモジュールが相手のポートを呼ぶ | User の完全削除で、関連する記録を消す |
 
 ## 解決戦略
 
@@ -24,7 +24,7 @@
 | `User`、`Group`、`Agent` をそれぞれ機能スライスに分ける | 一つの Aggregate の仕組みを一つのディレクトリの下で読めるようにする。詳細は[重要な設計判断](decisions.md)の「User、Group、Agent を機能ごとの縦割りのスライスで構成する」 |
 | CSV のインポートを、プレビューと適用の二つの非同期ジョブにする | 適用の前に全行の検証結果を管理者に見せ、適用ではプレビューしたペイロードだけを実行する。詳細は[CSV の往復変換](csv-transfer.md) |
 | User の削除を Tombstone にする | 追記専用の記録が参照する `sub` を壊さない。詳細は[判断](decisions.md#user-の削除を物理削除ではなく-tombstone-で行う) |
-| 他の Context との協調をポートの注入で行う | この Context から下流の Context への依存を作らない |
+| 他のモジュールとの協調をポートの注入で行う | このモジュールから下流のモジュールへの依存を作らない |
 
 ## 構成要素
 
@@ -43,7 +43,7 @@
 | 層 | 責務 |
 | --- | --- |
 | `domain` | Aggregate、値オブジェクト、状態の検査、CSV の列の語彙 |
-| `ports` | 永続化と、他の Context と結ぶ境界のインターフェース |
+| `ports` | 永続化と、他のモジュールと結ぶ境界のインターフェース |
 | `usecases` | 操作ごとの手順。認可済みの入力を受け、状態を検査し、保存し、イベントを発行する |
 | `handlers_http` | 管理 API とセルフサービス API。認可、入力の変換、応答の型への変換 |
 | `db_postgres`、`db_memory` | `ports` の PostgreSQL の実装と、テストとローカルの構成で使うメモリの実装 |
@@ -58,9 +58,9 @@
 | ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](audit-events.md) |
 | CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](../csv-transfer/README.md#成果物の保持) |
 | 猶予期間を過ぎた User の完全削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、各テナントで猶予期間を過ぎた削除予約の User と、途中で失敗した完全削除を完全削除する | [ユーザーの設計](../user/design.md#信頼性) |
-| ほかの Context からの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかの Context からの User の停止](#ほかの-context-からの-user-の停止) |
+| ほかのモジュールからの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかのモジュールからの User の停止](#ほかのモジュールからの-user-の停止) |
 
-### ほかの Context からの User の停止
+### ほかのモジュールからの User の停止
 
 User の無効化、再有効化、削除の予約は、管理 API の外からも起きる。
 どの経路でも User のユースケースを通し、User の状態を直接保存させない。

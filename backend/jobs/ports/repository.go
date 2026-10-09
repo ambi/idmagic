@@ -1,4 +1,4 @@
-// Package ports declares the Jobs bounded context's abstraction over the durable
+// Package ports declares the Jobs module's abstraction over the durable
 // job queue and worker leasing operations backing spec/contexts/jobs.yaml
 // interfaces (EnqueueJob / ClaimJobs / HeartbeatJob / CompleteJob / FailJob /
 // CancelJob). Implementations live in
@@ -19,7 +19,7 @@ var ErrJobNotFound = errors.New("jobs: job not found")
 
 // ErrJobLeaseLost is returned by Heartbeat, Complete, and Fail when the caller no
 // longer holds jobID's lease (expired and reclaimed by another worker). Unlike the
-// usecases-level sentinel errors most other contexts use, lease loss can only be
+// usecases-level sentinel errors most other modules use, lease loss can only be
 // detected atomically by the storage layer's conditional update (0 rows affected),
 // so it is declared here at the ports level instead.
 var ErrJobLeaseLost = errors.New("jobs: lease lost")

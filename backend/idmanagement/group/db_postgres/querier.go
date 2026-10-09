@@ -19,7 +19,7 @@ type Querier interface {
 	FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
 	FindTenantGroupAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantGroupAttributeSchema, error)
-	// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+	// CSV インポートの行の確定と同じトランザクションで、所有モジュールの外のテーブルへ書く。
 	InsertGroupImportAuditEvent(ctx context.Context, arg InsertGroupImportAuditEventParams) error
 	ListDynamicGroupRules(ctx context.Context, tenantID string) ([]string, error)
 	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)

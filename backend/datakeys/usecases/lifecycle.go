@@ -23,7 +23,7 @@ type Deps struct {
 	// keeps encrypting with a DEK that is no longer active.
 	Cache ports.CacheInvalidator
 	Emit  func(spec.DomainEvent)
-	// Migrators lists every owning context's registered FieldMigrator
+	// Migrators lists every owning module's registered FieldMigrator
 	// (wi-97 T006): Rotate enqueues a data_key_reencryption Job per name, and
 	// Destroy refuses to erase a wrapped_dek while any migrator still
 	// reports pending rows. nil skips both (wiring gaps in tests/tools that

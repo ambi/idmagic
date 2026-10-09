@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("プロトコルのアサーションがサブジェクトをどう名指し、どのクレームを含むか。SAML と WS-Federation の Relying Party の契約は同じポリシーを復号するので、どちらもここを指す。`NameIdConfiguration` と `ClaimMappingRule` は ClaimMapping の Context のものであり、このモデルは送受信される組に名前を付けるだけである。")
+@doc("プロトコルのアサーションがサブジェクトをどう名指し、どのクレームを含むか。SAML と WS-Federation の Relying Party の契約は同じポリシーを復号するので、どちらもここを指す。`NameIdConfiguration` と `ClaimMappingRule` は ClaimMapping モジュールのものであり、このモデルは送受信される組に名前を付けるだけである。")
 model ClaimMappingPolicy {
   name_id: NameIdConfiguration;
   rules?: ClaimMappingRule[];

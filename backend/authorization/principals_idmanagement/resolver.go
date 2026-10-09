@@ -1,5 +1,5 @@
 // Package principals_idmanagement は代行チェーン上のプリンシパルの有効性を
-// IdManagement の記録から解決する。Authorization Context は判断の実体を持たず、
+// IdManagement の記録から解決する。Authorization モジュールは判断の実体を持たず、
 // 記録の正であるこちらへ問い合わせるだけである。
 package principals_idmanagement
 

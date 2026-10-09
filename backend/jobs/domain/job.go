@@ -1,4 +1,4 @@
-// Package domain implements the Jobs bounded context business types: the Job
+// Package domain implements the Jobs module business types: the Job
 // entity, its JobLifecycle state machine, and retry backoff (spec/contexts/jobs.yaml).
 package domain
 
@@ -74,7 +74,7 @@ func (l ExecutionLane) Valid() bool {
 
 // kindLanes holds every registered JobKind's ExecutionLane, both the
 // built-in kinds (registered by this package's init below) and
-// extension kinds (registered by the owning bounded context via
+// extension kinds (registered by the owning module via
 // RegisterKind). A JobKind is Valid() only once it has a registered lane
 // : "未割当の JobKind は拒否する" is enforced by construction rather
 // than as a separate check.
@@ -220,7 +220,7 @@ type JobProgress struct {
 	UpdatedAt time.Time
 }
 
-// Job is the Jobs bounded context entity (spec/contexts/jobs.yaml models.Job).
+// Job is the Jobs module entity (spec/contexts/jobs.yaml models.Job).
 type Job struct {
 	ID          string
 	TenantID    string

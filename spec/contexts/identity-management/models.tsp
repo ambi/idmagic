@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("属性値の直和型の判別子。Tenancy の Context が所有する定義を、公表された言語として写したもの。")
+@doc("属性値の直和型の判別子。Tenancy モジュールが所有する定義を、公開契約として写したもの。")
 enum AttributeType {
   String: "string",
   Number: "number",
@@ -246,7 +246,7 @@ model User {
 }
 
 
-@doc("管理者がユーザーを作成する JSON のリクエスト。初期パスワードには Authentication の Context の PasswordPolicy を適用する。")
+@doc("管理者がユーザーを作成する JSON のリクエスト。初期パスワードには Authentication モジュールの PasswordPolicy を適用する。")
 model AdminUserCreateRequest {
   @minLength(1)
   @maxLength(100)
@@ -349,7 +349,7 @@ model AccountProfileUpdateRequest {
 model UserImportJobRef {
   @doc("ジョブの id。GetAdminUserImport の問い合わせと、プレビューからの適用の開始に使う。")
   id: string;
-  @doc("Jobs の Context のライフサイクルによるジョブの状態。")
+  @doc("Jobs モジュールのライフサイクルによるジョブの状態。")
   status: string;
   mode: UserImportMode;
 }
@@ -359,7 +359,7 @@ model UserImportJobRef {
 model UserImportJob {
   @doc("ジョブの id。")
   id: string;
-  @doc("Jobs の Context のライフサイクルによるジョブの状態。")
+  @doc("Jobs モジュールのライフサイクルによるジョブの状態。")
   status: string;
   mode: UserImportMode;
   @doc("ジョブが生成した件数とダイジェスト。ジョブが実行されるまでは省く。")
@@ -425,7 +425,7 @@ enum GroupCsvLifecycleAction {
 model GroupImportJobRef {
   @doc("ジョブの id。GetAdminGroupImport の問い合わせと、プレビューからの適用の開始に使う。")
   id: string;
-  @doc("Jobs の Context のライフサイクルによるジョブの状態。")
+  @doc("Jobs モジュールのライフサイクルによるジョブの状態。")
   status: string;
   mode: GroupImportMode;
 }
@@ -435,7 +435,7 @@ model GroupImportJobRef {
 model GroupImportJob {
   @doc("ジョブの id。")
   id: string;
-  @doc("Jobs の Context のライフサイクルによるジョブの状態。")
+  @doc("Jobs モジュールのライフサイクルによるジョブの状態。")
   status: string;
   mode: GroupImportMode;
   @doc("ジョブが生成した件数とダイジェスト。ジョブが実行されるまでは省く。")
@@ -495,7 +495,7 @@ enum GroupMembershipCsvState {
 model GroupMembershipImportJobRef {
   @doc("ジョブの id。GetAdminGroupMemberImport の問い合わせと、プレビューからの適用の開始に使う。")
   id: string;
-  @doc("Jobs の Context のライフサイクルによるジョブの状態。")
+  @doc("Jobs モジュールのライフサイクルによるジョブの状態。")
   status: string;
   mode: GroupMembershipImportMode;
 }
@@ -505,7 +505,7 @@ model GroupMembershipImportJobRef {
 model GroupMembershipImportJob {
   @doc("ジョブの id。")
   id: string;
-  @doc("Jobs の Context のライフサイクルによるジョブの状態。")
+  @doc("Jobs モジュールのライフサイクルによるジョブの状態。")
   status: string;
   mode: GroupMembershipImportMode;
   @doc("ジョブが生成した件数とダイジェスト。ジョブが実行されるまでは省く。")

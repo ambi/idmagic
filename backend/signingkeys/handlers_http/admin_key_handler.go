@@ -1,7 +1,7 @@
 package handlers_http
 
 // SCL interfaces: ListAdminKeys / GetAdminKey / RotateTenantSigningKey /
-// DisableTenantKey / ListTenantKeyHealth (bounded_context: SigningKeys)。
+// DisableTenantKey / ListTenantKeyHealth (モジュール: SigningKeys)。
 // SCL permissions: AdminKeysRead / TenantKeysRotate / TenantKeysDisable は
 // admin / system_admin が自テナントに対して、SystemKeyHealthRead は system_admin。
 // Rotate は tenantId 付きの SigningKeyRotated を emit する。

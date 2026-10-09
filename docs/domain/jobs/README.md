@@ -7,10 +7,10 @@
 
 | 扱わないもの | 担当 |
 | --- | --- |
-| `JobKind` のパラメーターを解釈して作用を起こす処理 | 利用側の Context のユースケース。`backend/cmd/idmagic-worker/worker.go` が起動時にハンドラーを一覧へ登録する |
+| `JobKind` のパラメーターを解釈して作用を起こす処理 | 利用側のモジュールのユースケース。`backend/cmd/idmagic-worker/worker.go` が起動時にハンドラーを一覧へ登録する |
 | 全テナントを対象とする定期の処理 | `idmagic-batch` |
 
-この分離により、ジョブの基盤は利用側の Context の業務の論理に依存しない。
+この分離により、ジョブの基盤は利用側のモジュールの業務の論理に依存しない。
 API のプロセスはジョブを投入するが実行せず、`worker` のプロセスはジョブを実行するが HTTP を提供しない。
 
 ## モデル
@@ -27,13 +27,13 @@ API のプロセスはジョブを投入するが実行せず、`worker` のプ�
 ## 公開する契約
 
 管理 API の操作とモデルの形は TypeSpec の `Jobs` のタグが定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `EnqueueJob` | ジョブを投入する各 Context | この Context が提供する | 同じプロセスの中の Go の呼び出しで、ジョブを投入する。`dedup_key` で重複を防げる |
-| ハンドラーの一覧 | `worker` の起動処理が、利用側の Context のハンドラーを登録する | この Context が定める | `JobKind` ごとに、テナントに固定した実行の文脈でハンドラーを呼ぶ |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `JobEnqueued`、`JobStarted`、`JobSucceeded`、`JobFailed`、`JobRetried`、`JobCanceled` |
+| `EnqueueJob` | ジョブを投入する各モジュール | このモジュールが提供する | 同じプロセスの中の Go の呼び出しで、ジョブを投入する。`dedup_key` で重複を防げる |
+| ハンドラーの一覧 | `worker` の起動処理が、利用側のモジュールのハンドラーを登録する | このモジュールが定める | `JobKind` ごとに、テナントに固定した実行の文脈でハンドラーを呼ぶ |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `JobEnqueued`、`JobStarted`、`JobSucceeded`、`JobFailed`、`JobRetried`、`JobCanceled` |
 
 ## 機能
 
@@ -45,5 +45,5 @@ API のプロセスはジョブを投入するが実行せず、`worker` のプ�
 
 | 文書 | 内容 |
 | --- | --- |
-| [Jobs の用語集](glossary.md) | この Context での語義 |
+| [Jobs の用語集](glossary.md) | このモジュールでの語義 |
 | [Jobs の設計](design/README.md) | 話題ごとの設計と重要な判断 |

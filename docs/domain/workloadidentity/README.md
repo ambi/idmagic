@@ -27,13 +27,13 @@ IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず�
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Workload Identity` のタグが定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `WorkloadTokenVerifier` の `VerifyWorkloadToken` | `OAuth2` の Token Exchange | この Context が実装する。ポートは `OAuth2` が定める | `subject_token` を検証し、対応先の `Agent` と束縛先の `client_id` を `WorkloadIdentityGrant` として返す |
-| `AgentRepository` の読み取り | `IdManagement` が提供する | この Context が使う | 対応先の `Agent` の状態と、`OAuth2Client` への束縛を読む |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `WorkloadTrustBundle…`、`AgentWorkloadBinding…`、`WorkloadAttestationRejected`。`WorkloadTokenExchanged` は `OAuth2` がトークンの発行の後に発行する |
+| `WorkloadTokenVerifier` の `VerifyWorkloadToken` | `OAuth2` の Token Exchange | このモジュールが実装する。ポートは `OAuth2` が定める | `subject_token` を検証し、対応先の `Agent` と束縛先の `client_id` を `WorkloadIdentityGrant` として返す |
+| `AgentRepository` の読み取り | `IdManagement` が提供する | このモジュールが使う | 対応先の `Agent` の状態と、`OAuth2Client` への束縛を読む |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `WorkloadTrustBundle…`、`AgentWorkloadBinding…`、`WorkloadAttestationRejected`。`WorkloadTokenExchanged` は `OAuth2` がトークンの発行の後に発行する |
 
 ## 機能
 
@@ -44,5 +44,5 @@ HTTP の操作とモデルの形は TypeSpec の `Workload Identity` のタグ�
 
 | 文書 | 内容 |
 | --- | --- |
-| [WorkloadIdentity の用語集](glossary.md) | この Context での語義 |
+| [WorkloadIdentity の用語集](glossary.md) | このモジュールでの語義 |
 | [WorkloadIdentity の設計](design/README.md) | 話題ごとの設計と重要な判断 |

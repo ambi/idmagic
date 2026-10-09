@@ -116,7 +116,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	mfaFactorRepo := &totppostgres.MfaFactorRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
 	federationConnectionRepo := &federationpostgres.ConnectionRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
 	// dataKeysMigrators feeds the data_key_reencryption job (wi-97 T006):
-	// every owning context registers its FieldMigrator here so Rotate can
+	// every owning module registers its FieldMigrator here so Rotate can
 	// enqueue per-migrator backfill jobs and Destroy's gate can verify no
 	// migrator still has pending rows before crypto-shredding a version.
 	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()

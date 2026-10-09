@@ -1,6 +1,6 @@
 package spec
 
-// OAuth2 bounded context の双子定義のうち、client / consent / 認可詳細タイプ定義
+// OAuth2 モジュールの双子定義のうち、client / consent / 認可詳細タイプ定義
 // （OAuth2Client / Consent / AuthorizationDetailType 系）は internal/oauth2/domain へ
 // 移設済み（wi-173, ）。本ファイルには authorization request / code / refresh /
 // PAR / device / token claims（wi-181 で移設予定）と、それらが参照する実行時

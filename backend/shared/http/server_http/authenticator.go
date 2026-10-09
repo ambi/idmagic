@@ -10,7 +10,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
-// newAuthenticator は、管理 API と account API の認証を、各 Context のアダプターを結んで
+// newAuthenticator は、管理 API と account API の認証を、各モジュールのアダプターを結んで
 // 組み立てる。apiTokens が nil なら、管理発行の API アクセストークンを無効として扱う。
 func newAuthenticator(d Deps, apiTokens apitokenports.Authenticator) *support.Authenticator {
 	authenticator := &support.Authenticator{

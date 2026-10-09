@@ -1,11 +1,11 @@
 package server_http_test
 
-// docs/domain/scenarios.feature.md が宣言する、複数の Context が協調して初めて成り立つ
+// docs/domain/scenarios.feature.md が宣言する、複数のモジュールが協調して初めて成り立つ
 // 具体例を、製品と同じ `Register` の組み立てで確かめる。
 //
 // 引き金は管理 API への要求だけにする。利用者の状態を保存先へ直接書くと、IdManagement の
 // 状態は変わっても、そこから Authentication、OAuth2、SharedSignals へ届く経路が
-// 通らない。結果は各 Context の製品入口 (ログイン、認証必須 API、`/introspect`) と、
+// 通らない。結果は各モジュールの製品入口 (ログイン、認証必須 API、`/introspect`) と、
 // 入口に現れない効果 (失効エポック、発行イベント、セッション) の保存先から読む。
 
 import (

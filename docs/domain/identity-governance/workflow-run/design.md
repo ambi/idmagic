@@ -4,15 +4,15 @@
 
 ## アーキテクチャ
 
-IdManagement は、User を変更するときに、この Context が実装する `UserMutationCommitter` を呼ぶ。
+IdManagement は、User を変更するときに、このモジュールが実装する `UserMutationCommitter` を呼ぶ。
 `UserMutationCommitter` は変更の前後の User から WorkflowRun と WorkflowStep を計画し、User と一緒に一つのトランザクションで保存する。
-Context をまたぐトランザクションを別に要求せずに、User だけが更新されて対応する実行が作られない事態を防ぐ。
+モジュールをまたぐトランザクションを別に要求せずに、User だけが更新されて対応する実行が作られない事態を防ぐ。
 
 保存した WorkflowRun は `job_id` のない `queued` で残る。
 `worker` のディスパッチャーは、一定の間隔で `queued` の WorkflowRun を 100 件ずつ読み、重複しない `lifecycle_workflow_run` の Job を関連付ける。
 Job の投入に失敗しても、次の走査で関連付け直す。
 
-| アクション | 記録の正を持つ Context への書き込み |
+| アクション | 記録の正を持つモジュールへの書き込み |
 | --- | --- |
 | `enable_user`、`disable_user` | `UserLifecycle` のポートを通して、IdManagement の User の操作で行う。管理 API で止めたときと同じイベント、記憶済みの端末の失効、下流への通知、所有する Agent の無効化が伴う。削除予約中の User への操作は IdManagement が拒否し、ステップは変更なしとして扱う |
 | `assign_application`、`unassign_application` | `ApplicationAssignments` のポートを通して、Application の割り当ての操作で行う |

@@ -44,7 +44,7 @@
 
 ### REQ-IDMANAGEMENT-012 削除を予約したユーザーはログインを拒否される (superseded by REQ-PLATFORM-002)
 
-引き金は IdManagement の削除予約、観測はログインの拒否であり、どちらの Context も単独では起こせない。
+引き金は IdManagement の削除予約、観測はログインの拒否であり、どちらのモジュールも単独では起こせない。
 削除の予約と復元が到達経路の開閉と対応することを、REQ-PLATFORM-002 が保証として述べる。
 
 ## 復元

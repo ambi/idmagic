@@ -1,10 +1,10 @@
 namespace IdMagic.Contract {
 
-@doc("リクエストに必須のパラメーターがないか不正な値を含む、または対象が他のテナントに属しており存在しないものとして扱う。OAuth2 の Context が定める共有のエラーを、公表された言語として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_request` である。OAuth 2.0 のエンドポイントは、同じ条件を代わりに OAuthInvalidRequestError として報告する。")
+@doc("リクエストに必須のパラメーターがないか不正な値を含む、または対象が他のテナントに属しており存在しないものとして扱う。OAuth2 モジュールが定める共有のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_request` である。OAuth 2.0 のエンドポイントは、同じ条件を代わりに OAuthInvalidRequestError として報告する。")
 model InvalidRequestError is ProblemDetails;
 
 
-@doc("主体が操作のポリシーを満たさない。Authentication の Context が定める共有のエラーを、公表された言語として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:access_denied` である。OAuth 2.0 のエンドポイントは、OAuth のエラーボディで答える箇所では同じ条件を OAuthAccessDeniedError として報告する。`/authorize` は、ブラウザーへ直接書くサインインのポリシーの拒否にこの形を使う。")
+@doc("主体が操作のポリシーを満たさない。Authentication モジュールが定める共有のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:access_denied` である。OAuth 2.0 のエンドポイントは、OAuth のエラーボディで答える箇所では同じ条件を OAuthAccessDeniedError として報告する。`/authorize` は、ブラウザーへ直接書くサインインのポリシーの拒否にこの形を使う。")
 model AccessDeniedError is ProblemDetails;
 
 
@@ -28,7 +28,7 @@ model StepUpRequiredError is ProblemDetails;
 model UnlinkDeniedError is ProblemDetails;
 
 
-@doc("テナントがリソースの作成の上限（Quota）に達した。Tenancy の Context が定める共有のエラーを、公表された言語として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:quota_exceeded` であり、Dynamic Client Registration のエンドポイントを含むすべての経路で共有のエラーハンドラーが書く。")
+@doc("テナントがリソースの作成の上限（Quota）に達した。Tenancy モジュールが定める共有のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:quota_exceeded` であり、Dynamic Client Registration のエンドポイントを含むすべての経路で共有のエラーハンドラーが書く。")
 model QuotaExceededError is ProblemDetails;
 
 

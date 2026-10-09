@@ -327,7 +327,7 @@ model GetAdminSettingsError404 {
   @body body: GetAdminSettingsError404Body;
 }
 
-@doc("テナントの管理者が、自身のテナントの設定（表示名、デフォルトのロケール、パスワードポリシーの上書き）を読む。対象は解決したテナントである `context.tenant_id` に固定されるので、テナントを横断した読み取りは構造上起こらない。system_admin だけが使える `/api/admin/tenants` とは別の経路で、admin にも開いている。レスポンスは、Authentication の Context の PasswordPolicy の現在の値（`password_policy_defaults`）と、カタログが翻訳を提供するロケール（`supported_locales`）を含むので、UI は何も上書きしないときに何が適用されるか、どのデフォルトのロケールを選べるかを具体的に示せる。")
+@doc("テナントの管理者が、自身のテナントの設定（表示名、デフォルトのロケール、パスワードポリシーの上書き）を読む。対象は解決したテナントである `context.tenant_id` に固定されるので、テナントを横断した読み取りは構造上起こらない。system_admin だけが使える `/api/admin/tenants` とは別の経路で、admin にも開いている。レスポンスは、Authentication モジュールの PasswordPolicy の現在の値（`password_policy_defaults`）と、カタログが翻訳を提供するロケール（`supported_locales`）を含むので、UI は何も上書きしないときに何が適用されるか、どのデフォルトのロケールを選べるかを具体的に示せる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminSettings")
 @route("/api/admin/v1/settings")
@@ -399,7 +399,7 @@ model UpdateAdminSettingsError403 {
   @body body: UpdateAdminSettingsError403Body;
 }
 
-@doc("テナントの管理者が、自身のテナントの設定を更新する。`display_name`、`default_locale`、`password_policy_override` を任意のフィールドとして受け取り、対象を `context.tenant_id` に固定してから UpdateTenant の処理を実行する。Authentication の Context の PasswordPolicy の標準値より弱い `password_policy_override`（より小さい `min_length`、より大きい `max_length`、より小さい `history_depth`）と、システムの上限である 30 から 3650 日の範囲の外の `max_age_days` は、どちらもユースケースで拒否する。`default_locale` はカタログが翻訳を提供するロケールだけを受け付け、空文字列はシステムのデフォルトへ戻す。")
+@doc("テナントの管理者が、自身のテナントの設定を更新する。`display_name`、`default_locale`、`password_policy_override` を任意のフィールドとして受け取り、対象を `context.tenant_id` に固定してから UpdateTenant の処理を実行する。Authentication モジュールの PasswordPolicy の標準値より弱い `password_policy_override`（より小さい `min_length`、より大きい `max_length`、より小さい `history_depth`）と、システムの上限である 30 から 3650 日の範囲の外の `max_age_days` は、どちらもユースケースで拒否する。`default_locale` はカタログが翻訳を提供するロケールだけを受け付け、空文字列はシステムのデフォルトへ戻す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminSettings")
 @route("/api/admin/v1/settings")

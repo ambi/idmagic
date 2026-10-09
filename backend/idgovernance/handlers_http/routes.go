@@ -1,4 +1,4 @@
-// Package http: identity governance bounded context の HTTP アダプタ。
+// Package http: identity governance モジュールの HTTP アダプタ。
 //
 // LifecycleWorkflow (JML 自動化) の管理 API (/api/admin/v1/lifecycle-workflows) を
 // 所有する。管理者認証・CSRF・エラー整形は shared/handlers_http/support を再利用し、

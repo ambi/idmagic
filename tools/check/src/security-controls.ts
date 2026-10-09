@@ -368,7 +368,7 @@ export function checkContractRefusalsAreDeclared(
   for (const [type, operations] of contract) {
     if (declared.has(type)) continue
     findings.push({
-      // 拒否を宣言する場所は Context の形式と機能によって異なるので、Context を名指す。
+      // 拒否を宣言する場所はモジュールの形式と機能によって異なるので、モジュールを名指す。
       path: `docs/domain/${context}/`,
       rule: 'R4',
       message:

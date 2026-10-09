@@ -1,4 +1,4 @@
-// Package domain は Tenancy bounded context の業務ドメイン型を所有する
+// Package domain は Tenancy モジュールの業務ドメイン型を所有する
 // (wi-179)。
 package domain
 
@@ -14,7 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// Tenancy bounded context の双子定義。
+// Tenancy モジュールの双子定義。
 
 // DefaultTenantID は既定テナントの不変 UUID 代理キー。tenant_id FK・
 // 内部のテナント参照はこの値を用いる。DefaultRealm は URL `/realms/{realm}/` 等の
@@ -168,7 +168,7 @@ func (e *QuotaExceededError) GetTenantID() string   { return e.TenantID }
 // Hard Quota resource identifiers. These are the exact strings
 // QuotaRepository implementations switch on and TenantQuota/TenantUsage JSON
 // tags use; defining them here lets call sites avoid retyping raw strings
-// across the ~8 bounded contexts that enforce quota at creation time.
+// across the ~8 modules that enforce quota at creation time.
 const (
 	ResourceUsers          = "users"
 	ResourceGroups         = "groups"

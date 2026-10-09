@@ -1,4 +1,4 @@
-// Package ports は Authorization Context の永続化と外部解決の抽象を宣言する。
+// Package ports は Authorization モジュールの永続化と外部解決の抽象を宣言する。
 package ports
 
 import (

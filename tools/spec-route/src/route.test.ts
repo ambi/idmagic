@@ -25,7 +25,7 @@ describe('joinableFacts', () => {
   })
 
   // 通常経路の具体例はエラー型を 1 つも名指さない。エラー型だけで絞る実装では、
-  // その具体例に対して Context の全 operation が同点で並ぶ。
+  // その具体例に対してモジュールの全 operation が同点で並ぶ。
   it('reads the endpoint a normal-path step names', () => {
     const join = joinableFacts(['When クライアントがグラントを `/token` で交換する'])
     expect([...join.paths]).toEqual(['/token'])

@@ -18,7 +18,7 @@ const DECLARATION = [
   '  payload: DomainEventPayload;',
   '}',
   '',
-  '@doc("The cross-context published fields of a domain event payload.")',
+  '@doc("The cross-module published fields of a domain event payload.")',
   'model DomainEventPayload {',
   '  @doc("The tenant the event belongs to.")',
   '  tenantId?: string;',

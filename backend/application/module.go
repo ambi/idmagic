@@ -1,4 +1,4 @@
-// Package application は application bounded context の DI 組立と route 登録を自前で持つ
+// Package application は application モジュールの DI 組立と route 登録を自前で持つ
 // (wi-172 パイロット)。中央 server/routes.go の Deps と bootstrap/deps.go の
 // Dependencies から application 由来 field を Module 1 個に集約し撤去する。
 package application
@@ -73,7 +73,7 @@ type Module struct {
 }
 
 // Gate は Application 割当を fail-closed で判定する published capability を組み立てる
-// (SCL context_map: Application publishes ApplicationAssignmentRef)。oauth2 / saml /
+// (Application の公開契約 ApplicationAssignmentRef)。oauth2 / saml /
 // wsfederation の federation 開始経路がこれを消費する。
 func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int) *appusecases.AccessGate {
 	gate := &appusecases.AccessGate{
@@ -107,7 +107,7 @@ func (m idManagementGroupMemberships) GroupIDsOfUser(ctx context.Context, tenant
 	return ids, nil
 }
 
-// DesiredStateAssignments は、ほかの Context が User への直接割り当てをあるべき状態として
+// DesiredStateAssignments は、ほかのモジュールが User への直接割り当てをあるべき状態として
 // 適用する内部インターフェースを組み立てる。主体の実在は HTTP の割り当てと同じく
 // IdManagement の保存先で確かめる。actorUserID は発行するイベントの actor になる。
 func (m Module) DesiredStateAssignments(

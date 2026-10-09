@@ -74,7 +74,7 @@ let located:
     }
   | undefined
 // システムの `scenarios.feature.md` と、機能スライスの付録 `acceptance.feature.md` が例の置き場所になる。
-// 機能スライスは Context の一段下か、機能群の一段下にある。
+// 機能スライスはモジュールの一段下か、機能群の一段下にある。
 const candidates: Array<{ contextDir: string; docPath: string }> = [
   { contextDir: '', docPath: 'docs/domain/scenarios.feature.md' },
 ]

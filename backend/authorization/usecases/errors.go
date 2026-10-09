@@ -1,4 +1,4 @@
-// Package usecases は Authorization Context のアプリケーションロジックを持つ。
+// Package usecases は Authorization モジュールのアプリケーションロジックを持つ。
 // 判定の合成は AuthZEN の Authorizer が行い、ここは関係の事実を組み立てて渡す。
 package usecases
 

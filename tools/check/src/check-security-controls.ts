@@ -63,9 +63,9 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
 }
 
 /**
- * Context の機能スライスにある例の付録。拒否の宣言は Context 単位で判定するので、
- * 例をどの機能スライスへ置いても同じ Context の宣言として数える。
- * 機能スライスは Context の一段下か、機能群の一段下にある。
+ * モジュールの機能スライスにある例の付録。拒否の宣言はモジュール単位で判定するので、
+ * 例をどの機能スライスへ置いても同じモジュールの宣言として数える。
+ * 機能スライスはモジュールの一段下か、機能群の一段下にある。
  */
 async function contextScenarioSources(
   snapshot: WorkspaceSnapshot,

@@ -34,13 +34,13 @@ IdMagic は SSF の送信側と受信側の両方として振る舞う。
 
 HTTP の操作とモデルの形は TypeSpec の `Shared Signals` のタグが定める。
 SET の受信のエンドポイントは、[SharedSignals の標準仕様](standards.md)が定める範囲で動く。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `IdManagement` の Agent のイベント | `IdManagement` が発行する | この Context が購読する | `AgentKilled`、`AgentDisabled`、資格情報の束縛の解除、所有者の無効化と削除を契機に失効エポックを進める |
-| `CheckRevocationEpoch` | `OAuth2` の `Introspect` | この Context が提供する | Agent の失効エポックを返す |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `RevocationEpochAdvanced`、`AgentAccessRevoked`、`SecurityEventReceived`、`SecurityEventRejected`、`SecurityEventTransmitted`、`SecurityEventDelivery…`、`SsfStream…` |
+| `IdManagement` の Agent のイベント | `IdManagement` が発行する | このモジュールが購読する | `AgentKilled`、`AgentDisabled`、資格情報の束縛の解除、所有者の無効化と削除を契機に失効エポックを進める |
+| `CheckRevocationEpoch` | `OAuth2` の `Introspect` | このモジュールが提供する | Agent の失効エポックを返す |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `RevocationEpochAdvanced`、`AgentAccessRevoked`、`SecurityEventReceived`、`SecurityEventRejected`、`SecurityEventTransmitted`、`SecurityEventDelivery…`、`SsfStream…` |
 
 ## 機能
 
@@ -53,6 +53,6 @@ SET の受信のエンドポイントは、[SharedSignals の標準仕様](stand
 
 | 文書 | 内容 |
 | --- | --- |
-| [SharedSignals の用語集](glossary.md) | この Context での語義 |
+| [SharedSignals の用語集](glossary.md) | このモジュールでの語義 |
 | [SharedSignals の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [SharedSignals の設計](design/README.md) | 話題ごとの設計と重要な判断 |

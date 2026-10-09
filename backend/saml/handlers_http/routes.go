@@ -1,4 +1,4 @@
-// Package http は Saml bounded context の HTTP アダプタ (wi-29)。
+// Package http は Saml モジュールの HTTP アダプタ (wi-29)。
 //
 // SAML 2.0 Web Browser SSO Profile のブラウザエンドポイント (metadata / SSO / SLO) と、
 // service provider 管理 API を所有する。共有基盤 support.Deps を受け取り、shared/handlers_http/server から

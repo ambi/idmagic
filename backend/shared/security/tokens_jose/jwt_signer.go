@@ -365,7 +365,7 @@ func normalizeAudience(v any) []string {
 // =====================================================================
 
 // SignPS256 signs claims with key using PS256, returning the compact JWT.
-// Exported so other contexts can sign non-OAuth2 JWTs with the same key
+// Exported so other modules can sign non-OAuth2 JWTs with the same key
 // management (e.g. SharedSignals' Security Event Tokens reuse SigningKeys'
 // rotation/JWKS instead of introducing separate key material,
 // decision 7).

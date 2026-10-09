@@ -1,13 +1,13 @@
 namespace IdMagic.Contract {
 
-@doc("OAuth2 の Context が所有するクライアントの種類を、公表された言語として写したもの。送受信の値は RFC 6749 の 2.1 節に従う。")
+@doc("OAuth2 モジュールが所有するクライアントの種類を、公開契約として写したもの。送受信の値は RFC 6749 の 2.1 節に従う。")
 enum ClientType {
   Public: "public",
   Confidential: "confidential",
 }
 
 
-@doc("OAuth2 の Context が公開するクライアントシークレットの資格情報の状態を、公表された言語として写したもの。")
+@doc("OAuth2 モジュールが公開するクライアントシークレットの資格情報の状態を、公開契約として写したもの。")
 enum ClientSecretCredentialStatus {
   Active: "Active",
   Expired: "Expired",
@@ -15,7 +15,7 @@ enum ClientSecretCredentialStatus {
 }
 
 
-@doc("OAuth2 の Context が所有するグラントの種類を、公表された言語として写したもの。送受信の値は、RFC 6749 の 4 節、RFC 8628 の 3.4 節（デバイスコード）、RFC 8693 の 2.1 節（トークン交換）、OpenID Connect CIBA Core の 4 節が登録する `grant_type` の値である。")
+@doc("OAuth2 モジュールが所有するグラントの種類を、公開契約として写したもの。送受信の値は、RFC 6749 の 4 節、RFC 8628 の 3.4 節（デバイスコード）、RFC 8693 の 2.1 節（トークン交換）、OpenID Connect CIBA Core の 4 節が登録する `grant_type` の値である。")
 enum GrantType {
   AuthorizationCode: "authorization_code",
   RefreshToken: "refresh_token",
@@ -26,7 +26,7 @@ enum GrantType {
 }
 
 
-@doc("OAuth2 の Context が所有するトークンエンドポイントのクライアント認証の方式を、公表された言語として写したもの。送受信の値は、OpenID Connect Discovery 1.0 の 3 節と RFC 8705 の 2 節の `token_endpoint_auth_method` の値である。")
+@doc("OAuth2 モジュールが所有するトークンエンドポイントのクライアント認証の方式を、公開契約として写したもの。送受信の値は、OpenID Connect Discovery 1.0 の 3 節と RFC 8705 の 2 節の `token_endpoint_auth_method` の値である。")
 enum TokenEndpointAuthMethod {
   ClientSecretBasic: "client_secret_basic",
   ClientSecretPost: "client_secret_post",
@@ -36,24 +36,24 @@ enum TokenEndpointAuthMethod {
 }
 
 
-@doc("OAuth2 の Context が所有する認可のレスポンスの種類を、公表された言語として写したもの。送受信の値は RFC 6749 の 3.1.1 節に従い、対応するのは認可コードフローだけである。")
+@doc("OAuth2 モジュールが所有する認可のレスポンスの種類を、公開契約として写したもの。送受信の値は RFC 6749 の 3.1.1 節に従い、対応するのは認可コードフローだけである。")
 enum ResponseType {
   Code: "code",
 }
 
 
-@doc("OAuth2 の Context が所有する FAPI のセキュリティプロファイルを、公表された言語として写したもの。送受信の値は IdMagic が定める（backend/oauth2/client/domain/client.go）。")
+@doc("OAuth2 モジュールが所有する FAPI のセキュリティプロファイルを、公開契約として写したもの。送受信の値は IdMagic が定める（backend/oauth2/client/domain/client.go）。")
 enum FapiProfile {
   None: "none",
   Fapi2SecurityProfile: "fapi_2_security_profile",
 }
 
 
-@doc("OAuth2Client がすでに上限の二つの Active なクライアントシークレットの資格情報を保持しているので、これ以上発行できない。OAuth2 の Context が定める上限のエラーを、公表された言語として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:client_secret_limit_exceeded` である。")
+@doc("OAuth2Client がすでに上限の二つの Active なクライアントシークレットの資格情報を保持しているので、これ以上発行できない。OAuth2 モジュールが定める上限のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:client_secret_limit_exceeded` である。")
 model ClientSecretLimitExceededError is ProblemDetails;
 
 
-@doc("クライアントシークレットを追加で発行したときに OAuth2 の Context が公開するイベントを、公表された言語として写したもの。シークレットもそのハッシュも含まない。")
+@doc("クライアントシークレットを追加で発行したときに OAuth2 モジュールが公開するイベントを、公開契約として写したもの。シークレットもそのハッシュも含まない。")
 model ClientSecretIssued {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -64,7 +64,7 @@ model ClientSecretIssued {
 }
 
 
-@doc("クライアントシークレットを一つ失効させたときに OAuth2 の Context が公開するイベントを、公表された言語として写したもの。シークレットもそのハッシュも含まない。")
+@doc("クライアントシークレットを一つ失効させたときに OAuth2 モジュールが公開するイベントを、公開契約として写したもの。シークレットもそのハッシュも含まない。")
 model ClientSecretRevoked {
   occurredAt: utcDateTime;
   tenantId: string;

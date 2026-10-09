@@ -1,5 +1,5 @@
 // Package pgtest は per-context postgres アダプタのテストが共通で使う
-// embedded-postgres ハーネスを提供する (wi-172)。各 context の postgres
+// embedded-postgres ハーネスを提供する (wi-172)。各モジュールの postgres
 // テストパッケージは自身の TestMain から Main を呼び、DB 依存テストは
 // Require で利用可否を確認する。embedded-postgres を起動できない環境
 // (ネットワーク遮断された CI、SysV 共有メモリを扱えない macOS のサンドボックス等) では

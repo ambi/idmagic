@@ -23,7 +23,7 @@ export type SpecificationValidation = {
  * holds a README.md.
  *
  * 機能スライスは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
- * 例の付録（`acceptance.feature.md`）を持つ。Context の `design/` は話題ごとの設計で、`README.md` は
+ * 例の付録（`acceptance.feature.md`）を持つ。モジュールの `design/` は話題ごとの設計で、`README.md` は
  * 話題の索引、`decisions.md` は判断の記録の骨格を持つ。システムの `docs/design/README.md` も、
  * 設計の入口として話題の索引を持つ。機能の `design.md` は任意であり、コードから読み取れない
  * 仕組みだけを書くので、話題の索引を求めない。
@@ -46,7 +46,7 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
 ])
 
 /**
- * Context の直下で種別を返す名前。履歴のリビジョンを読む `spec-diff` のために、ファイル種別で
+ * モジュールの直下で種別を返す名前。履歴のリビジョンを読む `spec-diff` のために、ファイル種別で
  * 文書を分けていた頃の名前も含める。今の作業ツリーに置いてよいかは段の集合を見る検査が決める。
  */
 const CONTEXT_LEVEL_NAMES = new Set<string>([
@@ -57,7 +57,7 @@ const CONTEXT_LEVEL_NAMES = new Set<string>([
   'scenarios.feature.md',
 ])
 
-/** Context より下の段で、任意の名前の章として読む名前。 */
+/** モジュールより下の段で、任意の名前の章として読む名前。 */
 const CHAPTER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
 
 /**
@@ -67,7 +67,7 @@ const CHAPTER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
  * `docs/contexts/` は `docs/domain/` へ改名する前の名前で、履歴を読む道具（`spec-diff`）が
  * その時点のリビジョンを規範文書として認識し続けるために読み替える。
  *
- * Context より下の段の種別は、Context の形式を問わずパスだけから決める。履歴や一つの
+ * モジュールより下の段の種別は、モジュールの形式を問わずパスだけから決める。履歴や一つの
  * ファイルだけを読む道具が、隣のファイルを見ずに同じ答えを得られるようにするためである。
  * その段にそのファイルを置いてよいかは、段の集合を見る `verifyCanonicalDocumentSet` が決める。
  */
@@ -84,7 +84,7 @@ export function documentKind(path: string): DocumentKind | undefined {
       if (name === 'README.md') return 'design-index'
       return name === 'decisions.md' ? 'decision-records' : 'prose'
     }
-    // 共有語彙と採用した標準は機能をまたいで使うので、Context の直下にだけ置く。
+    // 共有語彙と採用した標準は機能をまたいで使うので、モジュールの直下にだけ置く。
     if (below.length > 2 || name === 'glossary.md' || name === 'standards.md') return undefined
     const named = KIND_BY_NAME.get(name)
     if (named) return named
@@ -581,7 +581,7 @@ const TOPIC_INDEX_HEADER = '| 話題 | 記述した場所 |'
 const TOPIC_PLACE = /\[[^\]]+\]\([^)\s]+\)|^該当なし：\S/
 
 /**
- * 設計の入口（`docs/design/README.md` と Context の `design/README.md`）が、
+ * 設計の入口（`docs/design/README.md` とモジュールの `design/README.md`）が、
  * すべての話題を行とする索引を、話題の語彙の順で持つことを確かめる。
  */
 function validateTopicIndex(source: string, findings: SpecificationFinding[]): void {

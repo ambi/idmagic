@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("User の運用上の状態。IdManagement.UserStatus を公表された言語として写したもので、トリガーの `from_status` と `to_status` の評価だけに使う。値の唯一の情報源は IdManagement が管理する。")
+@doc("User の運用上の状態。IdManagement.UserStatus を公開契約として写したもので、トリガーの `from_status` と `to_status` の評価だけに使う。値の唯一の情報源は IdManagement が管理する。")
 enum UserStatus {
   Active: "active",
   Disabled: "disabled",
@@ -12,7 +12,7 @@ enum UserStatus {
 }
 
 
-@doc("次のサインインでユーザーに強制するアクション。IdManagement.RequiredAction を公表された言語として写したもので、`set_required_action` または `clear_required_action` のアクションを指定するためだけに使う。")
+@doc("次のサインインでユーザーに強制するアクション。IdManagement.RequiredAction を公開契約として写したもので、`set_required_action` または `clear_required_action` のアクションを指定するためだけに使う。")
 enum RequiredAction {
   UpdatePassword: "update_password",
   VerifyEmail: "verify_email",
@@ -22,7 +22,7 @@ enum RequiredAction {
 }
 
 
-@doc("割り当ての表示範囲。Application の Context が所有する定義を公表された言語として写したもので、`assign_application` のアクションの `visibility` だけに使う。")
+@doc("割り当ての表示範囲。Application モジュールが所有する定義を公開契約として写したもので、`assign_application` のアクションの `visibility` だけに使う。")
 enum AssignmentVisibility {
   visible: "visible",
   hidden: "hidden",
@@ -129,13 +129,13 @@ model WorkflowActionDef {
   group_id?: string;
   @doc("`kind` が `assign_application` または `unassign_application` のとき必須である。")
   application_id?: string;
-  @doc("`kind` が `assign_application` のとき任意で、省くと `visible` になる。Application の Context が所有する定義を公表された言語として写したもの。")
+  @doc("`kind` が `assign_application` のとき任意で、省くと `visible` になる。Application モジュールが所有する定義を公開契約として写したもの。")
   visibility?: AssignmentVisibility;
   @doc("`kind` が `set_required_action` または `clear_required_action` のとき必須である。")
   required_action?: RequiredAction;
   @doc("`kind` が `enable_user` または `disable_user` のときに記録する、任意の理由。")
   reason?: string;
-  @doc("`kind` が `send_email` のとき必須である。ワークフローの作成者が通知に付けるラベル。文面は Tenancy の通知のテンプレートのカタログの LifecycleWorkflowNotification から解決し、この値を置換変数として本文に渡す。ワークフローごとに別のテンプレートを割り当てることは、この Context の範囲外である。")
+  @doc("`kind` が `send_email` のとき必須である。ワークフローの作成者が通知に付けるラベル。文面は Tenancy の通知のテンプレートのカタログの LifecycleWorkflowNotification から解決し、この値を置換変数として本文に渡す。ワークフローごとに別のテンプレートを割り当てることは、このモジュールの範囲外である。")
   template_key?: string;
 }
 

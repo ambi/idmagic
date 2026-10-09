@@ -1,4 +1,4 @@
-// Package usecases は WsFederation bounded context のアプリケーション論理 (wi-142)。
+// Package usecases は WsFederation モジュールのアプリケーション論理 (wi-142)。
 //
 // passive sign-in / sign-out と WS-Trust トークン発行の判断 (RP 解決・検証・割当ゲート・
 // claim 発行) を HTTP 境界から切り離して所有する。SAML assertion / RSTR / passive form の

@@ -27,4 +27,4 @@
 | Autonomous | Agent が人間の都度承認なしに自律実行する区分。 | autonomous |
 | Supervised | Agent が人間の監督下で実行する区分。 | supervised |
 
-この Context の Aggregate root は `User`、`Group`、`Agent` の 3 つである。`GroupMembership` と `DynamicGroupRule` は `Group` の境界の内側にあり、`Group` を経由せずに参照しない。`AgentCredentialBinding` は同じく `Agent` の内側にある。
+このモジュールの Aggregate root は `User`、`Group`、`Agent` の 3 つである。`GroupMembership` と `DynamicGroupRule` は `Group` の境界の内側にあり、`Group` を経由せずに参照しない。`AgentCredentialBinding` は同じく `Agent` の内側にある。

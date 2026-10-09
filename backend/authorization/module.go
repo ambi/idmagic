@@ -1,4 +1,4 @@
-// Package authorization は Authorization bounded context を組み立てる
+// Package authorization は Authorization モジュールを組み立てる
 // ([[wi-53-rebac-fine-grained-authorization]])。
 package authorization
 

@@ -1,7 +1,7 @@
 package handlers_http
 
 // SCL interfaces: ListJobs / GetJob / CancelJob と、その制御面の双子
-// ListSystemJobs / GetSystemJob / CancelSystemJob (bounded_context: Jobs)。
+// ListSystemJobs / GetSystemJob / CancelSystemJob (モジュール: Jobs)。
 // REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014 / REQ-JOBS-015。
 
 import (
@@ -19,7 +19,7 @@ import (
 
 // adminJobResponse は SCL AdminJobResponse の双子。
 //
-// params / result / dedup_key は載せない。いずれも投入した Context が意味を決める
+// params / result / dedup_key は載せない。いずれも投入したモジュールが意味を決める
 // 不透明な値であり、Jobs はその中身を検証しない。検証していない値を管理画面へ流すと、
 // 個人情報が混ざっていないことを Jobs の側から主張できないまま公開することになる
 // (REQ-JOBS-014)。error は載せる。理由の分からない失敗の一覧に意味はないからである。

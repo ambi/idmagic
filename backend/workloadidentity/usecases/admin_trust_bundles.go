@@ -1,5 +1,5 @@
 // 管理者向け WorkloadTrustBundle ライフサイクル操作。SCL WorkloadIdentity
-// bounded context が所有する admin インターフェース群: ListWorkloadTrustBundles /
+// モジュールが所有する admin インターフェース群: ListWorkloadTrustBundles /
 // GetWorkloadTrustBundle / RegisterWorkloadTrustBundle / UpdateWorkloadTrustBundle /
 // DisableWorkloadTrustBundle / EnableWorkloadTrustBundle / DeleteWorkloadTrustBundle /
 // RefreshWorkloadTrustBundleJWKS。

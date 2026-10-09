@@ -180,7 +180,7 @@ func TestAdminWithRoleCreatesAUserThatThenAppearsInTheList(t *testing.T) {
 }
 
 // emittedFor は指定した種類のイベントが、対象を名指して発行されたかを返す。
-// イベントの型は Context をまたいで多いので、JSON へ落として対象 id の出現で読む。
+// イベントの型はモジュールをまたいで多いので、JSON へ落として対象 id の出現で読む。
 // 種類だけを数えると、別の利用者に対する同じ種類のイベントと区別できない。
 func emittedFor(fixture *idmRefusalFixture, eventType, targetID string) bool {
 	for _, event := range *fixture.events {

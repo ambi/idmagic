@@ -6,7 +6,7 @@
 
 クレームの発行と Assertion の署名には、WS-Federation と WS-Trust で共有している構築器と署名器（`backend/wsfederation/tokens_saml`）を再利用する。
 これらは SAML のバージョン、Bearer の SubjectConfirmation、audience の制限をすでに扱っている。
-この Context は署名の処理を作り直さず、`InResponseTo` の対応付けなど、SP 起点の流れに固有の入力だけを加える。
+このモジュールは署名の処理を作り直さず、`InResponseTo` の対応付けなど、SP 起点の流れに固有の入力だけを加える。
 
 `goxmldsig` は、署名の対象の要素の末尾に Enveloped Signature を加える。
 署名の後に要素を移動すると名前空間が組み直されてダイジェストの値が変わり、検証できなくなるので、署名した要素は移動しない。

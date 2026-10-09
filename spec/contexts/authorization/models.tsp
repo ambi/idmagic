@@ -211,7 +211,7 @@ model FgaCheckEvaluated {
   relationPath: string[];
   @doc("拒否した規則。`permitted` が true のときは空である。")
   reasons: string[];
-  @doc("委任の連鎖の段数。0 は直接のアクセスを表す。監査の `delegation.depth` の軸に使う。参加者そのものは含めない。この Context は主体の識別子を監査証跡に写さず、連鎖は、それを確立した OAuth2 の TokenExchanged を通じて関連付ける（REQ-AUDIT-006）。")
+  @doc("委任の連鎖の段数。0 は直接のアクセスを表す。監査の `delegation.depth` の軸に使う。参加者そのものは含めない。このモジュールは主体の識別子を監査証跡に写さず、連鎖は、それを確立した OAuth2 の TokenExchanged を通じて関連付ける（REQ-AUDIT-006）。")
   actorChainDepth: int32;
 }
 

@@ -141,7 +141,7 @@ func failedLoginBucketKey(bucket authnports.AuthEventBucket) string {
 }
 
 // extractClientIP delegates to the shared support.ExtractClientIP (used beyond login throttle by
-// the endpoint rate limiter and other contexts) so the proxy-trust logic has one source of truth.
+// the endpoint rate limiter and other modules) so the proxy-trust logic has one source of truth.
 func extractClientIP(request *http.Request, trustedHops int) string {
 	return support.ExtractClientIP(request, trustedHops)
 }

@@ -19,7 +19,7 @@ var ErrHandlerNotRegistered = errors.New("jobs: no handler registered for job ki
 // Handler executes a claimed Job's business logic. It must be idempotent
 // (JobHandlerIdempotency): at-least-once delivery means the same Job may be
 // handed to a Handler more than once. Implementations call into the owning
-// bounded context's usecases; Jobs itself holds no business logic.
+// module's usecases; Jobs itself holds no business logic.
 type Handler func(ctx context.Context, job *domain.Job) (result json.RawMessage, err error)
 
 // HandlerRegistry maps a JobKind to the Handler that executes it. A JobKind

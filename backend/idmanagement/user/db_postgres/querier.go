@@ -20,7 +20,7 @@ type Querier interface {
 	FindUserBySubIncludingDeleted(ctx context.Context, id string) (*User, error)
 	FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
-	// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+	// CSV インポートの行の確定と同じトランザクションで、所有モジュールの外のテーブルへ書く。
 	InsertImportedPasswordHistory(ctx context.Context, arg InsertImportedPasswordHistoryParams) error
 	InsertUserImportAuditEvent(ctx context.Context, arg InsertUserImportAuditEventParams) error
 	// Pending deletions and tombstones whose purge has not finished. The grace

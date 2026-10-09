@@ -1,7 +1,7 @@
 # ユーザーの設計
 
 この文書は、[ユーザー](README.md)の機能のうち、コードから読み取れない仕組みと、壊れたときの直し方を書く。
-Context 全体の設計は [IdManagement の設計](../design/README.md)が扱う。
+モジュール全体の設計は [IdManagement の設計](../design/README.md)が扱う。
 
 ## データ
 
@@ -16,7 +16,7 @@ Context 全体の設計は [IdManagement の設計](../design/README.md)が扱�
 
 1. 所有する Agent を無効化する。
 2. 再識別と再認証に使える項目を一度に消した Tombstone を保存する。Tombstone の `lifecycle` には、残りの手順（`pending_purge`）と、`UserDeleted` に記録する操作者と理由を入れる。
-3. 削除した User から以後たどれてはならない記録を、それを所有する Context のポートを通して一つずつ消す。ポートは呼び出しごとに確定し、ポートをまたぐトランザクションはない。
+3. 削除した User から以後たどれてはならない記録を、それを所有するモジュールのポートを通して一つずつ消す。ポートは呼び出しごとに確定し、ポートをまたぐトランザクションはない。
 4. テナントの User の使用量を一つ減らし、残りの手順を手順 5 に進めて Tombstone を保存する。
 5. `UserDeleted` を発行し、下流のプロビジョニングへ通知し、`pending_purge` を消して Tombstone を保存する。
 

@@ -131,7 +131,7 @@ model ResumeFederatedAuthorizationSuccess_303 {
   @statusCode statusCode: 303;
 }
 
-@doc("Authentication の Context の受信フェデレーションのコールバックが認証済みのセッションを確立すると、保存した認可のトランザクションを再開し、通常のアプリケーションのポリシー、同意、必須のアクションのゲートを適用する。")
+@doc("Authentication モジュールの受信フェデレーションのコールバックが認証済みのセッションを確立すると、保存した認可のトランザクションを再開し、通常のアプリケーションのポリシー、同意、必須のアクションのゲートを適用する。")
 @TypeSpec.OpenAPI.operationId("ResumeFederatedAuthorization")
 @route("/authorize/resume")
 @get

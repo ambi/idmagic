@@ -1,4 +1,4 @@
-// Package mediavalidation は画像アップロードの magic byte 検証を bounded context 横断で
+// Package mediavalidation は画像アップロードの magic byte 検証をモジュール横断で
 // 共有する (wi-89)。Application icon と Tenant branding asset
 // は同じ受理形式・検証方針を持つため、判定ロジックをここに集約し contract test
 // で挙動を固定する。拡張子や Content-Type ヘッダーではなく magic byte で判定する。

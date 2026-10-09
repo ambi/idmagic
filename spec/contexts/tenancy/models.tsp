@@ -74,7 +74,7 @@ enum TenantEndpointStyle {
 }
 
 
-@doc("テナントごとのパスワードポリシーの上書き。Authentication の Context の PasswordPolicy の標準値を、テナントの解決のポートで置き換えるためのスキーマである。省いたフィールドは全体のデフォルトを引き継ぎ、change_password、reset_password、管理者によるユーザーの作成の評価の経路では、テナントの値は全体の値より厳しい方向にだけ動かせる。")
+@doc("テナントごとのパスワードポリシーの上書き。Authentication モジュールの PasswordPolicy の標準値を、テナントの解決のポートで置き換えるためのスキーマである。省いたフィールドは全体のデフォルトを引き継ぎ、change_password、reset_password、管理者によるユーザーの作成の評価の経路では、テナントの値は全体の値より厳しい方向にだけ動かせる。")
 model PasswordPolicyOverride {
   @doc("最小の長さ。全体のデフォルト以上を推奨する。")
   min_length?: int64;
@@ -104,7 +104,7 @@ model Tenant {
   @doc("Token Exchange（RFC 8693）の `act` の連鎖の最大の深さの、テナントによる上書き。省くとシステムのデフォルトを適用する。上書きは制限を厳しくすることだけができ、システムのデフォルトを超える値は PolicyOverrideWeakerError で拒否する。この非対称な規則は password_policy_override と同じで、テナントの設定が認可の境界を広げることを防ぐ。")
   @minValue(1)
   max_delegation_depth?: int64;
-  @doc("信頼済みデバイス（Authentication の Context の「このデバイスを記憶する」）が有効な秒数。0 または省略はテナント全体でこの機能を無効にし、デバイスを記憶せず、第二要素も省かない。システムの上限は 7,776,000 秒（90 日）で、それより大きい値は PolicyOverrideWeakerError で拒否する。")
+  @doc("信頼済みデバイス（Authentication モジュールの「このデバイスを記憶する」）が有効な秒数。0 または省略はテナント全体でこの機能を無効にし、デバイスを記憶せず、第二要素も省かない。システムの上限は 7,776,000 秒（90 日）で、それより大きい値は PolicyOverrideWeakerError で拒否する。")
   @minValue(0)
   trusted_device_max_age_seconds?: int64;
   @pattern("^[a-z]{2}$")
@@ -137,20 +137,20 @@ model TenantGroupAttributeSchema {
 }
 
 
-@doc("Authentication の Context の PasswordPolicy の現在の値。テナントが何も上書きしないときに実際に何が適用されるかを、テナントの設定の UI が具体的な数値で示せるように、API のレスポンスに埋め込む。同時に、上書きを弱いとして拒否する閾値でもある。")
+@doc("Authentication モジュールの PasswordPolicy の現在の値。テナントが何も上書きしないときに実際に何が適用されるかを、テナントの設定の UI が具体的な数値で示せるように、API のレスポンスに埋め込む。同時に、上書きを弱いとして拒否する閾値でもある。")
 model PasswordPolicyDefaults {
-  @doc("Authentication の Context の PasswordPolicy の `min_length`。")
+  @doc("Authentication モジュールの PasswordPolicy の `min_length`。")
   min_length: int64;
-  @doc("Authentication の Context の PasswordPolicy の `max_length`。")
+  @doc("Authentication モジュールの PasswordPolicy の `max_length`。")
   max_length: int64;
-  @doc("Authentication の Context の PasswordPolicy の `history_depth`。")
+  @doc("Authentication モジュールの PasswordPolicy の `history_depth`。")
   history_depth: int64;
-  @doc("Authentication の Context の PasswordPolicy の `max_age_days`。省くと 0、すなわち有効期限なしを意味し、このフィールドを知らない古いクライアントの読み方と一致する。")
+  @doc("Authentication モジュールの PasswordPolicy の `max_age_days`。省くと 0、すなわち有効期限なしを意味し、このフィールドを知らない古いクライアントの読み方と一致する。")
   max_age_days?: int64;
 }
 
 
-@doc("`/api/admin/settings` が返すもの。テナントそのものではなく管理 UI 向けの射影で、tenant_id（UUID）、realm（URL のスラッグ）、表示名、パスワードポリシーの上書きに加えて、表示と弱いポリシーのゲートの両方に使う Authentication の Context の PasswordPolicy の標準値を返す。")
+@doc("`/api/admin/settings` が返すもの。テナントそのものではなく管理 UI 向けの射影で、tenant_id（UUID）、realm（URL のスラッグ）、表示名、パスワードポリシーの上書きに加えて、表示と弱いポリシーのゲートの両方に使う Authentication モジュールの PasswordPolicy の標準値を返す。")
 model AdminSettingsResponse {
   @doc("テナントの変わらない UUID のキー。")
   tenant_id: string;

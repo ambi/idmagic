@@ -1,4 +1,4 @@
-// Package http は WsFederation bounded context の HTTP アダプタ (wi-61)。
+// Package http は WsFederation モジュールの HTTP アダプタ (wi-61)。
 //
 // WS-Federation passive requestor profile のブラウザエンドポイントを所有する。
 // 共有基盤 support.Deps を受け取り、shared/handlers_http/server から tenant 解決済みグループに登録される。

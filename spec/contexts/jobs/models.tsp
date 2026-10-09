@@ -93,7 +93,7 @@ model JobNotFoundError is ProblemDetails;
 model JobNotCancelableError is ProblemDetails;
 
 
-@doc("管理 API が公開する Job。`params`、`result`、`dedup_key` は意図して省く。これらはキューへ入れた Context が選んだ値で、この Context は不透明なまま保存するだけなので、内容を保証できないためである（REQ-JOBS-014）。残るのは、運用者が Job を判断するのに必要なもの、すなわち何の Job か、どこにあるか、何回試行したか、どのワーカーが保持しているか、直近になぜ失敗したかである。")
+@doc("管理 API が公開する Job。`params`、`result`、`dedup_key` は意図して省く。これらはキューへ入れたモジュールが選んだ値で、このモジュールは不透明なまま保存するだけなので、内容を保証できないためである（REQ-JOBS-014）。残るのは、運用者が Job を判断するのに必要なもの、すなわち何の Job か、どこにあるか、何回試行したか、どのワーカーが保持しているか、直近になぜ失敗したかである。")
 model AdminJobResponse {
   id: string;
   @doc("Job が属するテナント。複数の値が現れるのはテナントを横断する一覧だけである。")
@@ -140,7 +140,7 @@ model AdminJobListResponse {
 }
 
 
-@doc("別の境界づけられたコンテキストが、Job をキューへ入れたとき、または Job を参照したいときに保持する公表された言語。Job の集約全体ではなく、公開に足る最小の参照を含む。")
+@doc("別の境界づけられたコンテキストが、Job をキューへ入れたとき、または Job を参照したいときに保持する公開契約。Job の集約全体ではなく、公開に足る最小の参照を含む。")
 model JobRef {
   id: string;
   tenant_id: string;

@@ -1,4 +1,4 @@
-// Package samlresponse は Saml bounded context の SAMLResponse アダプタ (wi-29)。
+// Package samlresponse は Saml モジュールの SAMLResponse アダプタ (wi-29)。
 //
 // 署名済み <saml:Assertion> (samltoken) を SAML 2.0 Web Browser SSO の
 // <samlp:Response> に包み、必要なら Response 全体も enveloped 署名し、HTTP-POST binding の

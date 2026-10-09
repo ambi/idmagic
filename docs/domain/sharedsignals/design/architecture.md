@@ -5,12 +5,12 @@
 
 ## 文脈と範囲
 
-この Context がほかの Context と結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
-この Context から外への依存の向きは次のとおりである。
+このモジュールがほかのモジュールと結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
+このモジュールから外への依存の向きは次のとおりである。
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
-| `IdManagement` | 反応が Agent と User のイベントを受け、所有者の Agent を探す。受信が主体を Agent として解決する | 相手のドメインイベントの型と、`agent` の `ports.AgentRepository` を使う。依存の向きは、この Context から相手への一方向である |
+| `IdManagement` | 反応が Agent と User のイベントを受け、所有者の Agent を探す。受信が主体を Agent として解決する | 相手のドメインイベントの型と、`agent` の `ports.AgentRepository` を使う。依存の向きは、このモジュールから相手への一方向である |
 | `SigningKeys` | 配送が SET に署名する | `sign_jose` が相手の `KeyStore` で署名する |
 | `Tenancy` | ストリームの登録と削除が、使用量を増減する | 相手の `QuotaRepository` を使う |
 

@@ -1,4 +1,4 @@
-// Package http is the Provisioning bounded context's admin HTTP adapter
+// Package http is the Provisioning module's admin HTTP adapter
 // (wi-45 T007a, spec/contexts/provisioning.yaml interfaces). It lives in the
 // protocol-agnostic core (decision 2), not a protocol feature slice.
 // The account-facing/UI consumer is deferred to a follow-up (wi-45 T007b);

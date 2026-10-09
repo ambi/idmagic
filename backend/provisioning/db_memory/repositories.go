@@ -1,4 +1,4 @@
-// Package memory implements the Provisioning bounded context's repositories
+// Package memory implements the Provisioning module's repositories
 // in-memory (demo/test use, mirrors backend/idgovernance/db_memory).
 package db_memory
 

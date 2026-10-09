@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// The following structs are the Jobs bounded context's domain events
+// The following structs are the Jobs module's domain events
 // (spec/contexts/jobs.yaml models, kind: event). Each satisfies
 // backend/shared/spec.DomainEvent (EventType() string; OccurredAt() time.Time) by
 // structural typing, without importing that package, keeping domain free of

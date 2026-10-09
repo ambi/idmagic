@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | 上流の接続の管理、外部 subject とローカルの User の関連付け、関連付けと JIT のポリシー、ログインセッションへの引き渡し |
 | 行為者 | EndUser、本人（明示的な関連付けと解除）、テナント管理者 |
-| 扱わないもの | 下流向けの SAML の IdP と WS-Federation の発行は、各プロトコルの Context が扱う。JIT で作る User の記録は `IdManagement` が扱う |
+| 扱わないもの | 下流向けの SAML の IdP と WS-Federation の発行は、各プロトコルのモジュールが扱う。JIT で作る User の記録は `IdManagement` が扱う |
 
 ## モデル
 

@@ -74,7 +74,7 @@ type AuthZContext struct {
 	// ActorChain は RFC 8693 の act チェーンを外側から内側の順に載せる。
 	// 直接アクセスでは空になる。
 	ActorChain []AuthZActor `json:"actorChain,omitempty"`
-	// Relationship は Authorization Context が組み立てた関係の事実。
+	// Relationship は Authorization モジュールが組み立てた関係の事実。
 	// nil のまま届いた resource:access は許可しない (fail-closed)。
 	Relationship *AuthZRelationshipFacts `json:"relationship,omitempty"`
 }
@@ -88,7 +88,7 @@ type AuthZActor struct {
 }
 
 // AuthZRelationshipFacts は ReBAC の評価結果を判定 context へ載せた形。判定の
-// 合成は評価器の規則表が持ち、Authorization Context はこの事実だけを供給する。
+// 合成は評価器の規則表が持ち、Authorization モジュールはこの事実だけを供給する。
 type AuthZRelationshipFacts struct {
 	// Evaluated は関係評価を実際に走らせたことを表す。供給を忘れた経路が
 	// 黙って許可にならないよう、規則側はこれを必須にする。
@@ -166,7 +166,7 @@ const (
 	ActionManageScimSettings                   = "admin:scim_settings_manage"
 	ActionAdminBrandingUpdate                  = "admin:branding_update"
 	ActionAdminAuthorizationModelManage        = "admin:authorization_model_manage"
-	// ActionResourceAccess は Authorization Context の関係ベース判定を合成する
+	// ActionResourceAccess は Authorization モジュールの関係ベース判定を合成する
 	// アクション。管理面のロール認可ではなく、データ資源 1 件へのアクセスを表す。
 	ActionResourceAccess = "resource:access"
 )

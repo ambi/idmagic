@@ -1,5 +1,5 @@
 -- name: InsertImportedPasswordHistory :exec
--- CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+-- CSV インポートの行の確定と同じトランザクションで、所有モジュールの外のテーブルへ書く。
 INSERT INTO password_history (id, user_id, encoded, created_at) VALUES ($1, $2, $3, $4);
 
 -- name: InsertUserImportAuditEvent :exec

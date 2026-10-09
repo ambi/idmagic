@@ -3,7 +3,7 @@ package usecases_test
 // docs/domain/standards.md の GDPR-ERASURE のうち、Authentication が担う資格情報の破棄を観測する。
 // IdManagement が担う UserLifecycle の Purge 遷移は
 // backend/idmanagement/user/usecases/erasure_standards_test.go が別に観測する。
-// 行は 2 つの Context を名指しているので、片方に注記を置いただけではもう片方が素通りする。
+// 行は 2 つのモジュールを名指しているので、片方に注記を置いただけではもう片方が素通りする。
 //
 // 破棄は IdManagement の Purge から cascade で走るが、消える対象は Authentication の
 // 資格情報である。したがって観測は Authentication 側の保存先を 1 つずつ読み直し、

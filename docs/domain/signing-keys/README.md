@@ -40,14 +40,14 @@ OAuth2 と OIDC は JWK、JWKS、JWT の署名器を、SAML と WS-* は X.509 �
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Signing Keys` のタグが定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `KeyStore` の署名と公開鍵の一覧 | `OAuth2`（JWT の署名と JWKS）、`SAML` と `WS-Federation`（XML 署名とメタデータ） | この Context が提供する | 要求のテナント、用途、スコープの有効な鍵で署名し、有効な鍵と期限内の検証用の鍵を返す |
-| 提供元の健全性 | `OAuth2` のトークンの発行 | この Context が提供する | `provider_healthy` を観測できるシグナルとして返す |
-| `idmagic-batch signing-key-lifecycle` | 外部のスケジューラー | この Context が提供する | 期限の来た鍵のローテーションと、期限切れの検証用の鍵のアーカイブ |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `SigningKeyRotated`、`SigningKeyArchived` |
+| `KeyStore` の署名と公開鍵の一覧 | `OAuth2`（JWT の署名と JWKS）、`SAML` と `WS-Federation`（XML 署名とメタデータ） | このモジュールが提供する | 要求のテナント、用途、スコープの有効な鍵で署名し、有効な鍵と期限内の検証用の鍵を返す |
+| 提供元の健全性 | `OAuth2` のトークンの発行 | このモジュールが提供する | `provider_healthy` を観測できるシグナルとして返す |
+| `idmagic-batch signing-key-lifecycle` | 外部のスケジューラー | このモジュールが提供する | 期限の来た鍵のローテーションと、期限切れの検証用の鍵のアーカイブ |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `SigningKeyRotated`、`SigningKeyArchived` |
 
 ## 機能
 
@@ -59,5 +59,5 @@ HTTP の操作とモデルの形は TypeSpec の `Signing Keys` のタグが定�
 
 | 文書 | 内容 |
 | --- | --- |
-| [SigningKeys の用語集](glossary.md) | この Context での語義 |
+| [SigningKeys の用語集](glossary.md) | このモジュールでの語義 |
 | [SigningKeys の設計](design/README.md) | 話題ごとの設計と重要な判断 |

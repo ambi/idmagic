@@ -2,7 +2,7 @@ package handlers_http
 
 // SCL interfaces: ListAdminAuditEvents / GetAdminAuditEvent / ExportAdminAuditEvents と、
 // その制御面の双子 ListSystemAuditEvents / GetSystemAuditEvent / ExportSystemAuditEvents
-// (bounded_context: Audit)。
+// (モジュール: Audit)。
 // SCL permission: AdminAuditEventsRead — テナント管理経路は要求元の所属テナントへ閉じ、
 // 全テナント横断はシステム経路の制御面主体だけが到達できる (REQ-AUDIT-001 / REQ-AUDIT-007)。
 // 書き込み経路は定義しない。

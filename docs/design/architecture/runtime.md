@@ -20,13 +20,13 @@ Worker と Batch は、長時間処理や再試行を HTTP リクエストから
 ## 実行単位が実装する機能
 
 この節は、各実行単位が実装する機能の一覧と、詳細を定める文書を示す。
-機能の振る舞いは所有する Context の文書が定め、ここには種類と参照先だけを置く。
+機能の振る舞いは所有するモジュールの文書が定め、ここには種類と参照先だけを置く。
 
 ### API
 
 API は、API リファレンスに載るすべてのエンドポイントを、[API ガイドライン](../application/api-guidelines.md)に従って実装する。
 API リファレンスは `spec/` の TypeSpec から生成し、`mise run render-docs` で生成する文書サイトの「API リファレンス」で読む。
-各エンドポイントの振る舞いは、TypeSpec の操作が属する Context の[シナリオ](../../domain/README.md)が定める。
+各エンドポイントの振る舞いは、TypeSpec の操作が属するモジュールの[シナリオ](../../domain/README.md)が定める。
 
 ### Worker
 
@@ -34,14 +34,14 @@ Worker は、ジョブのハンドラーと、プロセス内で周期的に動�
 ハンドラーは `backend/cmd/idmagic-worker/worker.go` で `JobKind` ごとに登録する。
 ジョブの取得、再試行、レーン、配信不能の扱いは [Jobs](../../domain/jobs/README.md) が定める。
 
-| `JobKind` | 投入する Context | 処理 | 詳細 |
+| `JobKind` | 投入するモジュール | 処理 | 詳細 |
 | --- | --- | --- | --- |
 | `user_import_preview`、`user_import_apply` | IdManagement | 利用者の CSV インポートを検証し、確定する | [CSV の往復変換](../../domain/identity-management/design/csv-transfer.md) |
 | `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [グループ CSV の設計](../../domain/identity-management/group-csv/design.md) |
 | `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の設計](../../domain/identity-management/group-csv/design.md) |
 | `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [動的グループ](../../domain/identity-management/dynamic-group/README.md) |
 | `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [データエクスポートの設計](../../domain/identity-management/data-export/design.md) |
-| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各 Context の秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../domain/data-keys/lifecycle/design.md) |
+| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各モジュールの秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../domain/data-keys/lifecycle/design.md) |
 | `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../domain/identity-governance/README.md) |
 | `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../domain/provisioning/synchronization/design.md) |
 | `backchannel_logout_delivery` | OAuth2 | OpenID Connect Back-Channel Logout の通知をクライアントへ送る | [ログアウト](../../domain/oauth2/logout/README.md) |
@@ -73,7 +73,7 @@ Batch は、`idmagic-batch <サブコマンド>` として一回ずつ起動す�
 ### Seed
 
 Seed は、環境ごとの初期データを宣言したマニフェストを読み、計画して適用する。
-`--mode dry_run` は計画だけを返し、`--mode apply` は各 Context が公開するコマンドを呼んで適用する。
+`--mode dry_run` は計画だけを返し、`--mode apply` は各モジュールが公開するコマンドを呼んで適用する。
 開発環境では `mise run seed -- <環境> <プロファイル>` で、Kubernetes では Job として起動する。
 
 投入する初期データは、プロファイルごとに `seed/manifests/<プロファイル>.yaml` のマニフェストが宣言する。
@@ -98,7 +98,7 @@ Seed は、環境ごとの初期データを宣言したマニフェストを読
 ブラウザー Cookie を用いる画面と API は同一オリジンで公開する。
 外部クライアントと上流の IdP は公開 HTTP エンドポイントへ到達し、API と Worker は PostgreSQL を共有する。
 
-Context 間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [構造](../../domain/structure.md#モジュール間イベント) で定める。
+モジュール間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [構造](../../domain/structure.md#モジュール間イベント) で定める。
 
 ## 実行時の規則
 

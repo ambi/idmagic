@@ -1,4 +1,4 @@
-// Package ports は SharedSignals bounded context の repository/adapter インターフェースを所有する。
+// Package ports は SharedSignals モジュールの repository/adapter インターフェースを所有する。
 package ports
 
 import (

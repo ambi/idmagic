@@ -27,21 +27,21 @@ Application は、プロトコル設定を中身に依存しないキーで参�
 | `ApplicationCategory` | テナントの管理者が定義するカテゴリ | `Tenant` を `tenant_id` で参照する |
 | `ApplicationOrdering` | `(tenant_id, user_sub)` ごとの `application_id` の並び | User を参照する |
 
-- **判断**：テナントのデフォルトのサインインポリシーは、テナントの Aggregate ではなく、アプリケーションへのサインインの方法に関する概念なので、`Tenancy` ではなくこの Context に置く。
-- **判断**：ポータルでの手動の並び順とカテゴリは、IdManagement の User の Aggregate ではなく、`Application` の表示に関する概念なので、この Context に置く。
+- **判断**：テナントのデフォルトのサインインポリシーは、テナントの Aggregate ではなく、アプリケーションへのサインインの方法に関する概念なので、`Tenancy` ではなくこのモジュールに置く。
+- **判断**：ポータルでの手動の並び順とカテゴリは、IdManagement の User の Aggregate ではなく、`Application` の表示に関する概念なので、このモジュールに置く。
 
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Application` のタグが定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| 割り当てとサインインポリシーの評価 | `OAuth2` の認可、`SAML` の SSO、`WS-Federation` のサインイン | この Context が提供する | フェデレーションを始めるたびに、トークンや Assertion の発行の前に、割り当てとポリシーを評価する |
-| `AssignApplicationDesiredState`、`UnassignApplicationDesiredState` | `IdGovernance` | この Context が提供する | あるべき状態として、直接の割り当てを冪等に作成と解除する |
-| `ProvisioningNotifier` | `Provisioning` が実装する | この Context が定める | 割り当ての変化を下流のプロビジョニングへ伝える |
-| `SubjectDirectory` | `IdManagement` が実装する | この Context が定める | 割り当ての主体が存在するかを確かめる |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `Application…`、`AppSignInPolicyUpdated`、`TenantDefaultSignInPolicyUpdated`、`AppAccessDeniedByPolicy`、`AppStepUpRequired`、`ApplicationCategory…` |
+| 割り当てとサインインポリシーの評価 | `OAuth2` の認可、`SAML` の SSO、`WS-Federation` のサインイン | このモジュールが提供する | フェデレーションを始めるたびに、トークンや Assertion の発行の前に、割り当てとポリシーを評価する |
+| `AssignApplicationDesiredState`、`UnassignApplicationDesiredState` | `IdGovernance` | このモジュールが提供する | あるべき状態として、直接の割り当てを冪等に作成と解除する |
+| `ProvisioningNotifier` | `Provisioning` が実装する | このモジュールが定める | 割り当ての変化を下流のプロビジョニングへ伝える |
+| `SubjectDirectory` | `IdManagement` が実装する | このモジュールが定める | 割り当ての主体が存在するかを確かめる |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `Application…`、`AppSignInPolicyUpdated`、`TenantDefaultSignInPolicyUpdated`、`AppAccessDeniedByPolicy`、`AppStepUpRequired`、`ApplicationCategory…` |
 
 ## 機能
 
@@ -54,5 +54,5 @@ HTTP の操作とモデルの形は TypeSpec の `Application` のタグが定�
 
 | 文書 | 内容 |
 | --- | --- |
-| [Application の用語集](glossary.md) | この Context での語義 |
+| [Application の用語集](glossary.md) | このモジュールでの語義 |
 | [Application の設計](design/README.md) | 話題ごとの設計と重要な判断 |

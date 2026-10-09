@@ -117,6 +117,29 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     ],
   },
   { term: 'Runbook', adopt: '「運用手順書」' },
+  // Bounded Context、Context Map、Context 間もこの規則で落ちる。Context Map は
+  // 置き換え先のない廃止した概念なので、採用語の指摘文で示す。
+  {
+    term: 'Context',
+    adopt: '「モジュール」。Context Map は廃止したので書かない',
+    allow: [
+      { literal: 'context.Context', reason: 'Go の標準ライブラリの型であり、設計の単位ではない' },
+      { literal: 'System Context', reason: 'C4 model のビュー名であり、設計の単位ではない' },
+      // 標準の行の文面を変えると、振る舞いを固定する証拠が要る。語の差し替えだけでは
+      // その証拠を作れないので、行に触れる次の作業が改名する。
+      { literal: 'ApiTokens Context', reason: '標準の行 RFC7644-BEARER-AUTHORIZATION の文面' },
+      { literal: 'OAuth2 Context', reason: '標準の行 GDPR-CONSENT-WITHDRAWAL の文面' },
+      { literal: 'Audit Context', reason: '標準の行 GDPR-PROCESSING-RECORDS の文面' },
+    ],
+  },
+  {
+    term: '公開言語',
+    adopt: 'import の可否なら「公開パッケージ」、型、意味、拒否、作用の約束なら「公開契約」',
+  },
+  {
+    term: 'Published Language',
+    adopt: 'import の可否なら「公開パッケージ」、型、意味、拒否、作用の約束なら「公開契約」',
+  },
 ]
 
 /** 用語を固定する文書のうち、リポジトリ root 直下にあるもの。 */

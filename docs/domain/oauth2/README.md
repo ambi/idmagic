@@ -3,7 +3,7 @@
 ## 責務と境界
 
 OAuth 2.0 と OIDC のプロトコル群の全責務を扱う。
-クライアントのメタデータと Dynamic Client Registration、認可の判断（認可、同意、認可コード、PAR、Device Authorization、RP-Initiated Logout）、トークンの発行とライフサイクル（アクセストークン、リフレッシュトークン、ID トークン、イントロスペクション、失効、UserInfo、Proof of Possession）、Discovery Metadata、Authorization Server Metadata、健全性の報告をこの Context に集約する。
+クライアントのメタデータと Dynamic Client Registration、認可の判断（認可、同意、認可コード、PAR、Device Authorization、RP-Initiated Logout）、トークンの発行とライフサイクル（アクセストークン、リフレッシュトークン、ID トークン、イントロスペクション、失効、UserInfo、Proof of Possession）、Discovery Metadata、Authorization Server Metadata、健全性の報告をこのモジュールに集約する。
 
 | 扱わないもの | 担当 |
 | --- | --- |
@@ -14,7 +14,7 @@ OAuth 2.0 と OIDC のプロトコル群の全責務を扱う。
 | Agent のアイデンティティとライフサイクル | `IdManagement` |
 | Agent の失効エポック | `SharedSignals` |
 
-この Context が受け持つのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
+このモジュールが受け持つのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
 
 ## モデル
 
@@ -33,15 +33,15 @@ OAuth 2.0 と OIDC のプロトコル群の全責務を扱う。
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `OAuth 2.0 and OpenID Connect` のタグが、採用する標準の規則は[OAuth2 の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `TokenIssuer`、`TokenIntrospector` | `ApiTokens` | この Context が提供する | RFC 9068 の JWT の発行と検証 |
-| `WorkloadTokenVerifier` | `WorkloadIdentity` が実装する | この Context が定める | Token Exchange の `subject_token` の外部のアテステーションを検証する |
-| `authorize()`（AuthZEN） | 判断の合成を求める Context（`Authorization`） | この Context が提供する | 規則表が要件の論理積を評価する |
-| 失効エポックの参照 | `SharedSignals` が提供する | この Context が使う | イントロスペクションで Agent の失効を反映する |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | 認可、トークン、同意、承認、ログアウトの各イベント |
+| `TokenIssuer`、`TokenIntrospector` | `ApiTokens` | このモジュールが提供する | RFC 9068 の JWT の発行と検証 |
+| `WorkloadTokenVerifier` | `WorkloadIdentity` が実装する | このモジュールが定める | Token Exchange の `subject_token` の外部のアテステーションを検証する |
+| `authorize()`（AuthZEN） | 判断の合成を求めるモジュール（`Authorization`） | このモジュールが提供する | 規則表が要件の論理積を評価する |
+| 失効エポックの参照 | `SharedSignals` が提供する | このモジュールが使う | イントロスペクションで Agent の失効を反映する |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | 認可、トークン、同意、承認、ログアウトの各イベント |
 
 ## 機能
 
@@ -59,6 +59,6 @@ HTTP の操作とモデルの形は TypeSpec の `OAuth 2.0 and OpenID Connect` 
 
 | 文書 | 内容 |
 | --- | --- |
-| [OAuth2 の用語集](glossary.md) | この Context での語義 |
+| [OAuth2 の用語集](glossary.md) | このモジュールでの語義 |
 | [OAuth2 の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [OAuth2 の設計](design/README.md) | 話題ごとの設計と重要な判断 |

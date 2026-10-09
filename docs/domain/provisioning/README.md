@@ -12,7 +12,7 @@
 | User と Group と割り当ての記録の正 | `IdManagement`、`Application` |
 | タスクを実行する Job のキューと再試行 | `Jobs` |
 
-`Sourcing` が外部から取り込むのに対し、この Context は外部へ送り出す。
+`Sourcing` が外部から取り込むのに対し、このモジュールは外部へ送り出す。
 処理の向き、記録の正の所在、語彙が異なるので、`Tenancy`、`Application`、`IdManagement`、`Jobs` の公開するインターフェースを除いて、コードを共有しない。
 
 ## モデル
@@ -30,14 +30,14 @@
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、下流の SCIM の規則は[Provisioning の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `ProvisioningCapture`（イベント同期） | `IdManagement` の User の変更、`Application` の割り当ての変更 | この Context が提供する | 変更を確定した後に呼ばれ、一致する有効な接続ごとに `pending` のタスクを作る |
-| `AttributeSource`、`GroupMemberSource` | `IdManagement` の User と Group を読むアダプター | この Context が定める | 実行の時点の属性とメンバーを読む |
-| `provisioning_task` の Job | `Jobs` が実行する | この Context が定める | タスクを一回試行する |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `ProvisioningConnection…`、`ProvisioningCredentialRotated`、`ProvisioningTaskStarted`、`UserProvisioned`、`UserDeprovisioned`、`UserProvisioningFailed`、`GroupPushed`、`GroupMembershipPushed`、`ConnectionQuarantined`、`FullResyncCompleted` |
+| `ProvisioningCapture`（イベント同期） | `IdManagement` の User の変更、`Application` の割り当ての変更 | このモジュールが提供する | 変更を確定した後に呼ばれ、一致する有効な接続ごとに `pending` のタスクを作る |
+| `AttributeSource`、`GroupMemberSource` | `IdManagement` の User と Group を読むアダプター | このモジュールが定める | 実行の時点の属性とメンバーを読む |
+| `provisioning_task` の Job | `Jobs` が実行する | このモジュールが定める | タスクを一回試行する |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `ProvisioningConnection…`、`ProvisioningCredentialRotated`、`ProvisioningTaskStarted`、`UserProvisioned`、`UserDeprovisioned`、`UserProvisioningFailed`、`GroupPushed`、`GroupMembershipPushed`、`ConnectionQuarantined`、`FullResyncCompleted` |
 
 ## 機能
 
@@ -49,6 +49,6 @@ HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、�
 
 | 文書 | 内容 |
 | --- | --- |
-| [Provisioning の用語集](glossary.md) | この Context での語義 |
+| [Provisioning の用語集](glossary.md) | このモジュールでの語義 |
 | [Provisioning の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [Provisioning の設計](design/README.md) | 話題ごとの設計と重要な判断 |

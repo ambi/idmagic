@@ -11,5 +11,5 @@
 
 ## 共有の拒否の宣言
 
-管理 API の `InsufficientScopeError` は、各 Context の契約が 403 として約束するが、それを振る舞いとして宣言するのは REQ-APITOKENS-004 の例だけである。
-セキュリティ統制の検査（`mise run check-repository`）は、[API アクセストークンの認証と認可の例](../authentication/acceptance.feature.md)からこの宣言を読み、すべての Context の拒否の宣言に加える。
+管理 API の `InsufficientScopeError` は、各モジュールの契約が 403 として約束するが、それを振る舞いとして宣言するのは REQ-APITOKENS-004 の例だけである。
+セキュリティ統制の検査（`mise run check-repository`）は、[API アクセストークンの認証と認可の例](../authentication/acceptance.feature.md)からこの宣言を読み、すべてのモジュールの拒否の宣言に加える。

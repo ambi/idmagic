@@ -25,7 +25,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 `THREAT-NNN` は不変であり、一度参照されたら変更しない。境界や分類を ID に埋めないのは、再分類のたびに ID が嘘になるからである。分類は列で持てば、再分類は列の変更で済む。脅威が当てはまらなくなったときは行を削除せず、`Threat` 列の末尾に後継の ID または当てはまらなくなった理由を書き、`Status` を `retired` にする。ID を消すと、その脅威を検討したという事実まで消える。
 
-`Controls` が指すのは次の 4 つに限る。`REQ-<CONTEXT>-NNN` は規範シナリオ、大文字の識別子は [全体の標準仕様](../../domain/standards.md) または各 Context の `standards.md` の規範、`<file>.md: <節>` はその文書の節、`<file>.md` は節に切り出せない文書全体の判断である。応える規範が 1 つも無い行は `—` とする。**制御の側に新しい ID 体系を作らず、計画中のものも指さない。** ここは現在存在する保護だけを並べる列であり、これから作るものを混ぜると、読み手は表を見て何が守られているかを判断できなくなる。
+`Controls` が指すのは次の 4 つに限る。`REQ-<CONTEXT>-NNN` は規範シナリオ、大文字の識別子は [全体の標準仕様](../../domain/standards.md) または各モジュールの `standards.md` の規範、`<file>.md: <節>` はその文書の節、`<file>.md` は節に切り出せない文書全体の判断である。応える規範が 1 つも無い行は `—` とする。**制御の側に新しい ID 体系を作らず、計画中のものも指さない。** ここは現在存在する保護だけを並べる列であり、これから作るものを混ぜると、読み手は表を見て何が守られているかを判断できなくなる。
 
 `runbooks/` を指す行は必ず `planned` になる。運用手順書は事象の最中に読む手順であってプロダクトが従う規範ではないので、対応するテストを持たず、検査の対象にもならない。手順としての保護が実在することと、それが規範として書かれていることは別である。
 
@@ -80,7 +80,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## ブラウザーと gateway
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-001 | Spoofing | 攻撃者のサイトが利用者のセッション Cookie に便乗して状態変更操作を呼ぶ | System, Authentication | docs/design/security/authorization.md: その他の境界の規則、REQ-AUTHENTICATION-005 | `covered` |
 | THREAT-002 | Tampering | ログイン、同意、ポータルの画面を埋め込み、利用者の操作を別の意味に変える | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
@@ -93,7 +93,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## Gateway と API プロセス
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-009 | Repudiation | クライアントが `X-Request-ID` を偽装し、相関を壊して追跡を妨げる | System | design/observability/README.md: 相関 | `covered` |
 | THREAT-010 | Tampering | 受信ヘッダーの制御文字がログとレスポンスヘッダーへ注入される | System | design/observability/README.md: 相関 | `covered` |
@@ -102,7 +102,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## テナント境界
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-013 | Elevation of privilege | リクエストに含めた `tenant_id` や `sub` を信じさせ、別テナントを操作する | Tenancy | docs/design/security/authorization.md: テナント境界、REQ-TENANCY-009 | `covered` |
 | THREAT-014 | Information disclosure | 未知のサブドメインがデフォルトテナントへ落ち、デフォルトテナントの情報が見える | Tenancy | REQ-TENANCY-008 | `covered` |
@@ -118,7 +118,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 主体と権限
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-024 | Elevation of privilege | 新設した管理 API がスコープ宣言を持たず、あらゆるスコープから到達できる | ApiTokens | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-APITOKENS-004 | `covered` |
 | THREAT-025 | Elevation of privilege | トークン発行の操作を通じて、任意のスコープ集合を持つ資格情報を作る | ApiTokens, OAuth2 | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-AUTHENTICATION-004 | `covered` |
@@ -132,7 +132,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 資格情報と認証
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-033 | Spoofing | 資格情報の総当たりでアカウントへ到達する | Authentication | REQ-AUTHENTICATION-008、design/reliability/availability.md: 共有状態 | `covered` |
 | THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、domain/authentication/password/README.md | `accepted` |
@@ -146,7 +146,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## プロトコルとトークン
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-042 | Tampering | 横取りした認可コードを交換する、または二重に交換する | OAuth2 | RFC7636-S256、RFC7636-VERIFY、RFC9700-AUTHORIZATION-CODE、REQ-OAUTH2-015 | `covered` |
 | THREAT-043 | Tampering | 緩いリダイレクト先の照合により、認可の結果が別の宛先へ渡る | OAuth2 | RFC9700-REDIRECT-MATCH、RFC7591-REDIRECT-URI、REQ-OAUTH2-023 | `covered` |
@@ -165,7 +165,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 鍵と可逆な秘密情報
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-055 | Information disclosure | 暗号文を別テナント、別テーブル、別フィールドへ複製して復号する | DataKeys | docs/design/data/database.md: 可逆な秘密情報のエンベロープ暗号 | `covered` |
 | THREAT-056 | Elevation of privilege | マスターキー提供元へ到達できないときに平文へ退避する | DataKeys | docs/design/data/database.md: 可逆な秘密情報のエンベロープ暗号 | `covered` |
@@ -178,7 +178,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 上流の外部権威
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-063 | Spoofing | 未登録の発行者によるアテステーションが受理される | WorkloadIdentity | REQ-WORKLOADIDENTITY-002、REQ-WORKLOADIDENTITY-008 | `covered` |
 | THREAT-064 | Spoofing | 署名が不正、または期限切れのアテステーションが受理される | WorkloadIdentity | REQ-WORKLOADIDENTITY-003、REQ-WORKLOADIDENTITY-004 | `covered` |
@@ -189,7 +189,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 下流の外部受信者
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-068 | Information disclosure | プロビジョニングタスクが誤った接続先へ個人データを送る | Provisioning | REQ-PROVISIONING-002、REQ-PROVISIONING-015、REQ-PROVISIONING-018 | `covered` |
 | THREAT-069 | Tampering | ログアウトトークンを再生し、任意のセッションを落とす | OAuth2 | OIDC-BACKCHANNEL-REPLAY、OIDC-BACKCHANNEL-LOGOUT-TOKEN、REQ-OAUTH2-025 | `covered` |
@@ -199,23 +199,23 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 ## 永続化と非同期実行
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-073 | Tampering | 入力が問い合わせの構造として解釈される | 全 Context | docs/design/data/database.md: ポートとアダプター | `covered` |
+| THREAT-073 | Tampering | 入力が問い合わせの構造として解釈される | 全モジュール | docs/design/data/database.md: ポートとアダプター | `covered` |
 | THREAT-074 | Repudiation | 状態は変わったのに、対応する監査イベントが残らない | Audit | — | `planned` |
 | THREAT-075 | Tampering | 再試行と再取得によって副作用が重複して起きる | Jobs | REQ-JOBS-003、REQ-JOBS-004、REQ-JOBS-007 | `covered` |
 | THREAT-076 | Denial of service | 有効期限を過ぎた一時データの滞留が保存容量を圧迫する | Jobs, OAuth2, Authentication | design/reliability/availability.md: 共有状態 | `covered` |
 
 ## 運用者と制御面
 
-| ID | 分類 | 脅威 | Context | 制御 | 状態 |
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-077 | Elevation of privilege | 実行環境を取得した者が、HTTP を経ずに任意の状態を作る | Seeding | docs/design/security/authorization.md: テナント境界 | `accepted` |
 | THREAT-078 | Tampering | 本番で開発用の構成や環境変数由来のシークレットが使われる | Seeding | REQ-SEEDING-005、REQ-SEEDING-007、REQ-SEEDING-008 | `covered` |
 | THREAT-079 | Tampering | 適用が、運用中に加えた変更を黙って上書きする | Seeding | REQ-SEEDING-009、REQ-SEEDING-010 | `covered` |
 | THREAT-080 | Information disclosure | 指標の公開先からテナントの活動が推測される | System | design/observability/monitoring.md: 監視する層 | `covered` |
-| THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/domain/structure.md: Context internals | `covered` |
-| THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全 Context | docs/domain/structure.md: Stack | `planned` |
+| THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/domain/structure.md: モジュールの内部構造 | `covered` |
+| THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全モジュール | docs/domain/structure.md: Stack | `planned` |
 
 ## 受容した残留リスク
 

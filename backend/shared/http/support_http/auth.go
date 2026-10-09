@@ -37,8 +37,8 @@ func (*InvalidTokenError) Error() string { return "invalid access token" }
 // Authenticator はリクエストの認証と、管理 API と account API の認可を判定する。
 //
 // HTTP の資格情報の解釈、スコープ、ロールの判定はここが持つ。セッション、アクセストークン、
-// API トークン、利用者の語彙はそれぞれの Context が持つので、インターフェースとして受け取り、
-// 組み立て地点が各 Context のアダプターを結ぶ。nil のインターフェースは、その資格情報の
+// API トークン、利用者の語彙はそれぞれのモジュールが持つので、インターフェースとして受け取り、
+// 組み立て地点が各モジュールのアダプターを結ぶ。nil のインターフェースは、その資格情報の
 // 配線がないことを表す。
 type Authenticator struct {
 	Sessions     SessionAuthenticator

@@ -1,4 +1,4 @@
-// Package domain は IdManagement bounded context の業務型を所有する
+// Package domain は IdManagement モジュールの業務型を所有する
 // (wi-178, )。
 package domain
 

@@ -1,6 +1,6 @@
 package domain
 
-// IdManagement bounded context の User / 属性モデル。
+// IdManagement モジュールの User / 属性モデル。
 // 組み込み属性カタログと claim 射影は attributes.go が持つ。field validation の
 // zog schema は本パッケージが所有し、`shared/spec` の Validate/ZogError 汎用ラッパーのみ
 // 再利用する。

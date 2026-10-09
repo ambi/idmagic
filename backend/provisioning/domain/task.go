@@ -1,4 +1,4 @@
-// Package domain implements the Provisioning bounded context's protocol-agnostic
+// Package domain implements the Provisioning module's protocol-agnostic
 // core business types (spec/contexts/provisioning.yaml). Protocol-specific wire
 // clients (e.g. SCIM) live in per-protocol feature packages and depend on this
 // package, not the other way around (decision 2).
@@ -114,7 +114,7 @@ func IsProvisioningTaskTerminal(s ProvisioningTaskStatus) bool {
 	return s == TaskSucceeded || s == TaskDeadLetter
 }
 
-// ProvisioningTask is the Provisioning bounded context entity that represents
+// ProvisioningTask is the Provisioning module entity that represents
 // one task of an internal lifecycle event to a downstream connection
 // (spec/contexts/provisioning.yaml models.ProvisioningTask).
 type ProvisioningTask struct {

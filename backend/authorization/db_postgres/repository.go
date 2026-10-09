@@ -1,4 +1,4 @@
-// Package db_postgres は Authorization Context の PostgreSQL アダプター。
+// Package db_postgres は Authorization モジュールの PostgreSQL アダプター。
 // 差分の適用と書き込み版の前進は 1 トランザクションで行い、部分適用を残さない。
 package db_postgres
 

@@ -3,7 +3,7 @@
 ## 責務と境界
 
 エンドユーザーの資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、アカウントの復旧、ログインの時点のフェデレーション、認証のイベントを扱う。
-この Context が扱うのは、プリンシパルが本人であることをどう確かめ、確かめた結果をどうセッションとして保つかである。
+このモジュールが扱うのは、プリンシパルが本人であることをどう確かめ、確かめた結果をどうセッションとして保つかである。
 
 | 扱わないもの | 担当 |
 | --- | --- |
@@ -31,20 +31,20 @@
 User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/user/design.md)で定める。
 
 - **判断**：`users.id` を正式で全体で一意なユーザーの識別子とし、プロトコルの `sub` のクレームはここから導く。その逆ではない。
-- **判断**：この Context の大半は認証の完了の前の要求を扱うので、ロールではなく、そのセッションで確かめた認証の要素と認証の時刻が境界になる。
+- **判断**：このモジュールの大半は認証の完了の前の要求を扱うので、ロールではなく、そのセッションで確かめた認証の要素と認証の時刻が境界になる。
 
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが、採用する標準の規則は[Authentication の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| ログインセッションの解決と `amr`、`acr` | `OAuth2`、`SAML`、`WS-Federation`、管理とアカウントの API | この Context が提供する | セッションの Cookie から認証済みの主体と認証の強度を返す |
-| ステップアップ認証の直近性 | `Application` のサインインポリシー、機微なセルフサービスの操作 | この Context が提供する | `max(auth_time, step_up_at)` から直近の認証を判定する |
-| `EmailSender` | 共有の通知の部品 | この Context が使う | パスワードのリセット、メールアドレスの確認、セキュリティ通知を送る |
-| 相関用のソルト | `Audit` の `TenantSaltStore` | この Context が使う | 利用者名と IP の相関のハッシュを、テナントごとに作る |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `UserAuthenticated`、`AuthenticationFailed`、`LoginThrottled`、`SessionEnded`、`PasswordChanged`、`MfaFactor…`、`WebAuthnCredential…`、`RecoveryCodes…`、`TrustedDevice…` ほか |
+| ログインセッションの解決と `amr`、`acr` | `OAuth2`、`SAML`、`WS-Federation`、管理とアカウントの API | このモジュールが提供する | セッションの Cookie から認証済みの主体と認証の強度を返す |
+| ステップアップ認証の直近性 | `Application` のサインインポリシー、機微なセルフサービスの操作 | このモジュールが提供する | `max(auth_time, step_up_at)` から直近の認証を判定する |
+| `EmailSender` | 共有の通知の部品 | このモジュールが使う | パスワードのリセット、メールアドレスの確認、セキュリティ通知を送る |
+| 相関用のソルト | `Audit` の `TenantSaltStore` | このモジュールが使う | 利用者名と IP の相関のハッシュを、テナントごとに作る |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `UserAuthenticated`、`AuthenticationFailed`、`LoginThrottled`、`SessionEnded`、`PasswordChanged`、`MfaFactor…`、`WebAuthnCredential…`、`RecoveryCodes…`、`TrustedDevice…` ほか |
 
 ## 機能
 
@@ -65,6 +65,6 @@ HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが�
 
 | 文書 | 内容 |
 | --- | --- |
-| [Authentication の用語集](glossary.md) | この Context での語義 |
+| [Authentication の用語集](glossary.md) | このモジュールでの語義 |
 | [Authentication の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [Authentication の設計](design/README.md) | 話題ごとの設計と重要な判断 |

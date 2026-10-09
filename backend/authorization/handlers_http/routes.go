@@ -1,4 +1,4 @@
-// Package handlers_http は Authorization bounded context の管理 API を所有する。
+// Package handlers_http は Authorization モジュールの管理 API を所有する。
 // 認可モデルと関係タプルの管理、および診断用の判定エンドポイントを、テナント解決済み
 // グループに登録する。
 package handlers_http

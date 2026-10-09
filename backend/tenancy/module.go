@@ -1,4 +1,4 @@
-// Package tenancy は Tenancy bounded context の DI 組立を所有する (wi-179)。
+// Package tenancy は Tenancy モジュールの DI 組立を所有する (wi-179)。
 // Tenant/TenantUserAttributeSchema の永続化 port を Module 1 個に束ね、中央
 // server/routes.go と bootstrap の Dependencies が受け渡す。
 package tenancy

@@ -56,7 +56,7 @@ const DESIGN_INDEX = [
 ].join('\n')
 
 /**
- * 機能スライスに、要件を宣言する機能仕様と例の付録を置く。`node` は Context からの相対パスで、
+ * 機能スライスに、要件を宣言する機能仕様と例の付録を置く。`node` はモジュールからの相対パスで、
  * 機能群の下の機能スライスも指せる。
  */
 async function writeFeature(

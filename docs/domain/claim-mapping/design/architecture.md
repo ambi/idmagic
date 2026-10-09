@@ -5,13 +5,13 @@
 
 ## 文脈と範囲
 
-この Context がほかの Context と結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
-この Context から外への依存の向きは次のとおりである。
+このモジュールがほかのモジュールと結ぶ契約は、仕様の[公開する契約](../README.md#公開する契約)が定める。
+このモジュールから外への依存の向きは次のとおりである。
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
 | `IdManagement` | 属性の解決が、`User` と属性定義の型を使う | 相手の `user` の `domain` を参照する |
-| `Tenancy` | テナントのカスタム属性の定義を読む | この Context が定めるインターフェースを、相手の属性スキーマのポートが構造的に満たす。相手への import の依存はない |
+| `Tenancy` | テナントのカスタム属性の定義を読む | このモジュールが定めるインターフェースを、相手の属性スキーマのポートが構造的に満たす。相手への import の依存はない |
 
 ## 解決戦略
 
@@ -34,5 +34,5 @@
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| クレームの発行 | ID Token、UserInfo、SAML アサーション、WS-Fed のトークンの発行 | 発行する Context のユースケースが、属性と属性定義を解決してから `IssueClaimsWithFloor` を呼ぶ | [クレームの発行の設計](../issuance/design.md) |
+| クレームの発行 | ID Token、UserInfo、SAML アサーション、WS-Fed のトークンの発行 | 発行するモジュールのユースケースが、属性と属性定義を解決してから `IssueClaimsWithFloor` を呼ぶ | [クレームの発行の設計](../issuance/design.md) |
 | 保存時の規則の検査 | アプリケーションの OIDC、SAML、WS-Federation の設定の更新 | `Application` の管理 API が、保存の前に `ValidateClaimReleaseRules` を呼ぶ | [クレームの発行の設計](../issuance/design.md) |

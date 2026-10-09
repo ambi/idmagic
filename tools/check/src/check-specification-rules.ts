@@ -19,11 +19,11 @@ import { documentKind } from './specification-doc.ts'
 /** 仕様のディレクトリと対応しないコードのディレクトリの基準。導入時点の一覧で、減る方向にしか動かさない。 */
 const FEATURE_SLICE_DEBT = 'tools/check/feature-slice-debt.json'
 
-/** Context をまたぐ要件を宣言する文書。 */
+/** モジュールをまたぐ要件を宣言する文書。 */
 const SYSTEM_SCENARIOS = 'docs/domain/scenarios.feature.md'
 
 /**
- * 要件文の EARS の構文を確かめる Context。要件文を書き直した Context から加え、
+ * 要件文の EARS の構文を確かめるモジュール。要件文を書き直したモジュールから加え、
  * 減らす方向には動かさない。
  */
 const EARS_CONTEXTS = new Set<string>([
@@ -133,7 +133,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   }
 }
 
-/** 要件文の主体。Context の `README.md` の H1 を使う。 */
+/** 要件文の主体。モジュールの `README.md` の H1 を使う。 */
 async function responder(snapshot: WorkspaceSnapshot, context: string): Promise<string> {
   const readme = await snapshot.read(`docs/domain/${context}/README.md`)
   return readme.match(/^# (.+)$/m)?.[1]?.trim() ?? context

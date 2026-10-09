@@ -1,7 +1,7 @@
 package usecases
 
 // 管理者向け Agent ライフサイクル操作と OAuth2Client 資格情報束縛。
-// SCL IdManagement bounded context が所有する admin インターフェース群:
+// SCL IdManagement モジュールが所有する admin インターフェース群:
 // ListAgents / GetAgent / RegisterAgent / UpdateAgent / DisableAgent /
 // EnableAgent / KillAgent / DeleteAgent / BindAgentCredential /
 // UnbindAgentCredential。

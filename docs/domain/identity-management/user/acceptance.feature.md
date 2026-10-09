@@ -5,13 +5,13 @@
 ### Example: EX-IDMANAGEMENT-089-01 大文字と小文字だけが異なるメールアドレス
 
 - Given テナントにメールアドレス "alice@example.test" の User がいる
-- When Authentication Context がメールアドレス "ALICE@example.test" で ProvisionFederatedUser を呼ぶ
+- When Authentication モジュールがメールアドレス "ALICE@example.test" で ProvisionFederatedUser を呼ぶ
 - Then User は作られず、メールアドレスの衝突として拒否される
 
 ### Example: EX-IDMANAGEMENT-089-02 規則に一致する属性を持つ JIT の User
 
 - Given 有効な動的グループの規則は `user.department == "Engineering"` である
-- When Authentication Context が `department` を "Engineering" とする User を ProvisionFederatedUser で作る
+- When Authentication モジュールが `department` を "Engineering" とする User を ProvisionFederatedUser で作る
 - Then 作成した User は、その動的グループに所属する
 
 ## Rule: REQ-IDMANAGEMENT-042 管理者による User の作成は、ユーザー名とメールアドレスの一意性とパスワードポリシーを検証し、`Active` の User を作る

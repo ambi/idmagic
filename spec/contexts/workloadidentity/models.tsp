@@ -7,7 +7,7 @@ model WorkloadTrustBundleNameConflictError is ProblemDetails;
 @doc("求めた WorkloadTrustBundle の `issuer` は、テナントですでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workload_trust_bundle_issuer_conflict` である。")
 model WorkloadTrustBundleIssuerConflictError is ProblemDetails;
 
-@doc("IdManagement の Context が公開する Agent の主体を、公表された言語として写したもの。バインディングの検証に必要な属性だけを含む。")
+@doc("IdManagement モジュールが公開する Agent の主体を、公開契約として写したもの。バインディングの検証に必要な属性だけを含む。")
 model AgentRef {
   id: string;
   tenant_id: string;

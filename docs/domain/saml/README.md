@@ -8,7 +8,7 @@ Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供�
 | 扱わないもの | 担当 |
 | --- | --- |
 | プロトコルに依存しないクレームの対応付け | `ClaimMapping` |
-| Assertion の組み立てと XML 署名の部品 | `WS-Federation` の `tokens_saml`。この Context は再利用する |
+| Assertion の組み立てと XML 署名の部品 | `WS-Federation` の `tokens_saml`。このモジュールは再利用する |
 | 署名鍵のライフサイクル | `SigningKeys` |
 | ブラウザーのログインセッション | `Authentication` |
 | Application への割り当て | `Application` |
@@ -31,14 +31,14 @@ HTTP の操作とモデルの形は TypeSpec の `SAML` のタグが定める。
 SSO、SLO、メタデータ、署名証明書は、テナントのデフォルトのプロファイルの標準の探索の経路（`/saml/*`）と、名前付きの IdP プロファイルの経路（`/saml/idp/{profile_id}/*`）をどちらも提供する。
 SSO と SLO は、さらに HTTP-Redirect の GET と HTTP-POST の POST を分ける。
 同じプロトコルの操作でも HTTP のメソッドとパスが異なるので、公開の契約では各経路に一意の `operationId` を与える。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `ServiceProviderRepository` | `Application` のプロトコル設定 | この Context が提供する | アプリケーションに属する SP の設定を読み書きする |
-| `IssueClaimsWithFloor` | `ClaimMapping` が提供する | この Context が使う | SP のポリシーでクレームを発行する |
-| XML 署名の資格情報 | `SigningKeys` が提供する | この Context が使う | テナントとプロファイルの `XmlFederationSigning` の鍵と証明書を発行のたびに得る |
-| ドメインイベント | 監査と下流が購読する | この Context が発行する | `SamlSignInIssued`、`SamlSignInRejected`、`SamlLogout` |
+| `ServiceProviderRepository` | `Application` のプロトコル設定 | このモジュールが提供する | アプリケーションに属する SP の設定を読み書きする |
+| `IssueClaimsWithFloor` | `ClaimMapping` が提供する | このモジュールが使う | SP のポリシーでクレームを発行する |
+| XML 署名の資格情報 | `SigningKeys` が提供する | このモジュールが使う | テナントとプロファイルの `XmlFederationSigning` の鍵と証明書を発行のたびに得る |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `SamlSignInIssued`、`SamlSignInRejected`、`SamlLogout` |
 
 ## 機能
 
@@ -50,6 +50,6 @@ SSO と SLO は、さらに HTTP-Redirect の GET と HTTP-POST の POST を分�
 
 | 文書 | 内容 |
 | --- | --- |
-| [Saml の用語集](glossary.md) | この Context での語義 |
+| [Saml の用語集](glossary.md) | このモジュールでの語義 |
 | [Saml の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [Saml の設計](design/README.md) | 話題ごとの設計と重要な判断 |

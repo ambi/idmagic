@@ -442,7 +442,7 @@ model LogoutNotification {
   state: LogoutNotificationState;
   attempts: int64 = 0;
   last_error?: string;
-  @doc("配送の実行を関連付ける、Jobs の Context の `JobRef.id`。")
+  @doc("配送の実行を関連付ける、Jobs モジュールの `JobRef.id`。")
   job_id?: string;
   created_at: utcDateTime;
   delivered_at?: utcDateTime;
@@ -482,7 +482,7 @@ model AuthorizationRequest {
   acr?: string;
   @doc("クライアントが `/authorize` に与えた `acr_values` パラメーター（RFC 8176）。ステップアップを決める。")
   acr_values?: string;
-  @doc("`advance(authenticate_user)` が `AuthenticationContext.session_id` から伝える OIDC のセッションの id で、Authentication の Context の `LoginSession.id` に等しい。AuthorizationCodeRecord、RefreshTokenRecord、IdTokenClaims へ引き継ぎ、セッションの失効が始めるファミリーの失効と、フロントチャネルとバックチャネルのログアウトの両方を関連付ける。")
+  @doc("`advance(authenticate_user)` が `AuthenticationContext.session_id` から伝える OIDC のセッションの id で、Authentication モジュールの `LoginSession.id` に等しい。AuthorizationCodeRecord、RefreshTokenRecord、IdTokenClaims へ引き継ぎ、セッションの失効が始めるファミリーの失効と、フロントチャネルとバックチャネルのログアウトの両方を関連付ける。")
   sid?: string;
   @doc("RFC 9396：クライアントが求めた構造化された詳細。検証済みで、登録した種類に合うものだけを保持する。")
   authorization_details?: AuthorizationDetail[];

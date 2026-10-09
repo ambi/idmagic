@@ -30,7 +30,7 @@ type RateLimiter interface {
 }
 
 // Module bundles the shared rate limiter capability for composition roots. It is a
-// cross-cutting technical capability, not owned by any single bounded context, so it
+// cross-cutting technical capability, not owned by any single module, so it
 // sits alongside the other shared/* modules (e.g. notification) rather than nested inside a
 // context Module.
 type Module struct {

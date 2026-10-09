@@ -1,4 +1,4 @@
-// Package saml は SAML bounded context の DI 組立を所有する。
+// Package saml は SAML モジュールの DI 組立を所有する。
 package saml
 
 import (

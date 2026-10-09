@@ -21,7 +21,7 @@ type InsertImportedPasswordHistoryParams struct {
 	CreatedAt time.Time
 }
 
-// CSV インポートの行の確定と同じトランザクションで、所有 Context の外のテーブルへ書く。
+// CSV インポートの行の確定と同じトランザクションで、所有モジュールの外のテーブルへ書く。
 func (q *Queries) InsertImportedPasswordHistory(ctx context.Context, arg InsertImportedPasswordHistoryParams) error {
 	_, err := q.db.Exec(ctx, insertImportedPasswordHistory,
 		arg.ID,

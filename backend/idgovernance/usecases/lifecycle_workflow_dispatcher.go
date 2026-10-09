@@ -51,7 +51,7 @@ type LifecycleWorkflowExecutorDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	// AssignmentRepo は事前の評価で現在の直接割り当てを読むためだけに使う。
-	// 割り当ての変更は ApplicationAssignments を通し、Application Context のイベントと通知を伴わせる。
+	// 割り当ての変更は ApplicationAssignments を通し、Application モジュールのイベントと通知を伴わせる。
 	AssignmentRepo         appports.AssignmentRepository
 	ApplicationAssignments igports.ApplicationAssignments
 	// UserLifecycle は disable_user と enable_user の手順を IdManagement の操作として行う。

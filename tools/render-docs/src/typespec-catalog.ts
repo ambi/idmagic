@@ -53,18 +53,18 @@ export type CatalogSymbol = {
   properties: CatalogProperty[]
   members: CatalogMember[]
   references: string[]
-  /** The bounded context whose directory declares the symbol, when it has one. */
+  /** The module whose directory declares the symbol, when it has one. */
   context?: string
 }
 
 export type TypeSpecCatalog = {
   symbols: CatalogSymbol[]
-  /** OpenAPI tag names, by the bounded context that declares them. */
+  /** OpenAPI tag names, by the module that declares them. */
   contextTags: Record<string, string[]>
 }
 
 /**
- * The owning context of a declaration is where its source file sits. The
+ * The owning module of a declaration is where its source file sits. The
  * standard layout already says it, so no table has to repeat it.
  */
 function declaringContext(

@@ -1,20 +1,20 @@
 namespace IdMagic.Contract {
 
-@doc("Application の Context が所有するものを公表した写し。ProvisioningConnection は Application ごとに一つまでである。")
+@doc("Application モジュールが所有するものを公開契約として写したもの。ProvisioningConnection は Application ごとに一つまでである。")
 model Application {
   id: string;
   tenant_id: string;
 }
 
 
-@doc("Application の Context が所有する定義を、公表された言語として写したもの。")
+@doc("Application モジュールが所有する定義を、公開契約として写したもの。")
 enum AssignmentSubjectType {
   user: "user",
   group: "group",
 }
 
 
-@doc("Application の Context が所有するものを公表した写し。`scope` が `assigned_only` のときに対象の集合を解決するために使う。")
+@doc("Application モジュールが所有するものを公開契約として写したもの。`scope` が `assigned_only` のときに対象の集合を解決するために使う。")
 model ApplicationAssignment {
   application_id: string;
   subject_type: AssignmentSubjectType;

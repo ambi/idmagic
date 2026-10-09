@@ -1,4 +1,4 @@
-// Package usecases implements the Provisioning bounded context's application
+// Package usecases implements the Provisioning module's application
 // services: capture (translating internal lifecycle triggers into
 // ProvisioningTask rows), the dispatcher (associating pending tasks
 // with Jobs.Job), and task execution (calling the SCIM wire client).

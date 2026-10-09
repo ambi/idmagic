@@ -28,7 +28,7 @@ mise run backup-postgres <output-dir> [database-url]
 
 ### 署名鍵の素材
 
-- `Local` / `Database` プロバイダー: バックアップは鍵素材そのものとして扱う。保存先を暗号化する要求は [SigningKeys Context の判断](../domain/signing-keys/design/decisions.md) が定めており、ここが示すのはその手段である。保存先のボリュームやバケットを暗号化するか、ダンプをさらに `age` / `gpg` で暗号化してから保存する。
+- `Local` / `Database` プロバイダー: バックアップは鍵素材そのものとして扱う。保存先を暗号化する要求は [SigningKeys モジュールの判断](../domain/signing-keys/design/decisions.md) が定めており、ここが示すのはその手段である。保存先のボリュームやバケットを暗号化するか、ダンプをさらに `age` / `gpg` で暗号化してから保存する。
 - `VaultTransit` プロバイダー: 秘密鍵は Vault 内に閉じる。Vault / OpenBao 自身のスナップショット機構（`vault operator raft snapshot save` 相当）で別途バックアップする。PostgreSQL 側の `signing_keys.private_jwk` はこのプロバイダーでは空またはプレースホルダーであり、鍵の復旧には使えない。
 
 ## 復元手順

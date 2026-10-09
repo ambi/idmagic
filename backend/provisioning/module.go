@@ -1,7 +1,7 @@
-// Package provisioning is the Provisioning bounded context's top-level wiring
+// Package provisioning is the Provisioning module's top-level wiring
 // point (Module pattern): Module aggregates the persistence
 // dependencies bootstrap injects, and JobEnqueuer/Notifiers build the
-// cross-context adapters (Jobs enqueue, IdManagement/Application capture
+// cross-module adapters (Jobs enqueue, IdManagement/Application capture
 // notification) other composition-root code wires in.
 package provisioning
 
@@ -37,7 +37,7 @@ func NewTargetClient(conn *domain.ProvisioningConnection, secret string) (ports.
 	return provisioningscim.NewClient(conn.BaseURL, conn.Credential, secret)
 }
 
-// Module holds the Provisioning bounded context's persistence dependencies.
+// Module holds the Provisioning module's persistence dependencies.
 type Module struct {
 	ConnectionRepo ports.ProvisioningConnectionRepository
 	RemoteLinkRepo ports.RemoteResourceLinkRepository
@@ -68,7 +68,7 @@ func (m Module) AssignmentNotifier(assignmentRepo appports.AssignmentRepository)
 	return usecases.AssignmentMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }
 
-// jobEnqueuer implements usecases.Enqueuer against the Jobs bounded context.
+// jobEnqueuer implements usecases.Enqueuer against the Jobs module.
 type jobEnqueuer struct {
 	Repo      jobsports.JobRepository
 	QuotaRepo tenantports.QuotaRepository

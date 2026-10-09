@@ -1,4 +1,4 @@
-// Package ports defines the Provisioning bounded context's repository
+// Package ports defines the Provisioning module's repository
 // abstractions (spec/contexts/provisioning.yaml). Implementations live in
 // backend/provisioning/{db_memory,db_postgres}.
 package ports

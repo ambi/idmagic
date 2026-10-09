@@ -14,7 +14,7 @@ import (
 )
 
 // adminScopeContext は router が一致させたルートテンプレートを持つリクエストを組み立てる。
-// 契約への解決はテンプレートを鍵にするため、テンプレートを持たない Context では
+// 契約への解決はテンプレートを鍵にするため、テンプレートを持たないモジュールでは
 // 粒度スコープの判定そのものが再現しない。
 func adminScopeContext(method, routePath string, scopes ...apitokendomain.Scope) (*echo.Context, Authenticator) {
 	e := echo.New()

@@ -198,7 +198,7 @@ func (c *GroupPushConfig) DisplayNameSourceKey() string {
 	return string(c.DisplayNameSource)
 }
 
-// ProvisioningConnection is the Provisioning bounded context aggregate: at most
+// ProvisioningConnection is the Provisioning module aggregate: at most
 // one per Application (spec/contexts/provisioning.yaml models.ProvisioningConnection).
 type ProvisioningConnection struct {
 	ApplicationID                     string                                   `json:"application_id"`

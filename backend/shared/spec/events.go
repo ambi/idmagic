@@ -13,7 +13,7 @@ type DomainEvent interface {
 	OccurredAt() time.Time
 }
 
-// EmailSent is a cross-context notification delivery primitive used by
+// EmailSent is a cross-module notification delivery primitive used by
 // authentication and identity self-service flows.
 type EmailSent struct {
 	At        time.Time `json:"-"`

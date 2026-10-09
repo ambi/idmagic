@@ -16,7 +16,7 @@ export type GoDeclarations = { names: Set<string>; qualified: Set<string> }
 export type CodeSlice = { context: string; name: string; path: string }
 
 export type FeatureSliceDebt = {
-  /** コードの Context 名から、ハイフンを除いても一致しない文書の Context 名への対応。 */
+  /** コードのモジュール名から、ハイフンを除いても一致しない文書のモジュール名への対応。 */
   contextAliases: Record<string, string>
   /** 導入時点で仕様のディレクトリを持たなかったコードのディレクトリ。増やさない。 */
   unmappedSlices: string[]
@@ -27,7 +27,7 @@ const FIELD =
 
 /**
  * 機能仕様の節。SCIM の RFC がリソースのモデル、操作、セキュリティの考慮の順に並べるのに
- * 倣い、読み手が「その機能の何についての記述か」で探せるようにする。品質は、Context の
+ * 倣い、読み手が「その機能の何についての記述か」で探せるようにする。品質は、モジュールの
  * `quality.md` からこの機能に割り当てた品質要件を書く。エラーの形と意味は TypeSpec と
  * 要件文が定めるので、節を設けない。
  */
@@ -400,7 +400,7 @@ export function codeSlices(directories: string[]): CodeSlice[] {
 /**
  * 機能スライスのコードのディレクトリごとに、名前が対応する仕様のディレクトリがあることを
  * 確かめる。仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と
- * 一致すれば対応とみなす。Context の名前も同じ規則で対応させ、一致しないものだけを
+ * 一致すれば対応とみなす。モジュールの名前も同じ規則で対応させ、一致しないものだけを
  * `contextAliases` で引く。
  */
 export function verifyFeatureSliceSpecifications(

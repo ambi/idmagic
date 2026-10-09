@@ -3,15 +3,15 @@
 ## 責務と境界
 
 管理 API と SCIM API の認証に使う、テナント単位の API アクセストークン（`idmagic_pat_` 接頭辞）の発行、失効、一覧と、スコープの語彙を扱う。
-トークンに付与したスコープの集合は認証の時点で解決し、記録の正を持つ各 Context が操作の認可に使う。
+トークンに付与したスコープの集合は認証の時点で解決し、記録の正を持つ各モジュールが操作の認可に使う。
 
 | 扱わないもの | 担当 |
 | --- | --- |
-| SCIM を含む各 API のエンドポイント | 記録の正を持つ各 Context |
-| 操作ごとに必要なスコープの割り当て | TypeSpec の `x-api-token-scopes` と、各 Context の管理 API |
+| SCIM を含む各 API のエンドポイント | 記録の正を持つ各モジュール |
+| 操作ごとに必要なスコープの割り当て | TypeSpec の `x-api-token-scopes` と、各モジュールの管理 API |
 | JWT の発行、署名、イントロスペクション、`/revoke` | `OAuth2` のトークンの部品 |
 
-この Context が提供するのは、トークンとスコープの語彙という横断的な認証の基盤だけである。
+このモジュールが提供するのは、トークンとスコープの語彙という横断的な認証の基盤だけである。
 
 ## モデル
 
@@ -28,13 +28,13 @@
 ## 公開する契約
 
 HTTP の操作とモデルの形は TypeSpec の `API Tokens` のタグが定める。
-次の表は、それ以外にほかの Context と結ぶ契約である。
+次の表は、それ以外にほかのモジュールと結ぶ契約である。
 
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
-| `Authenticate` と `ApiTokenPrincipal` | 管理 API と SCIM API の認証の部品 | この Context が提供する | 提示された JWT を検証し、テナント、発行者、組み込みの `client_id`、スコープの集合を返す |
-| `IntrospectAccessToken`、`RevokeByJTI` | `OAuth2` のイントロスペクションと `/revoke` | この Context が提供する | 管理発行のトークンの状態を返し、失効させる |
-| `TokenIssuer`、`TokenIntrospector` | `OAuth2` が提供する | この Context が使う | RFC 9068 の JWT を発行し、署名と期限を検証する |
+| `Authenticate` と `ApiTokenPrincipal` | 管理 API と SCIM API の認証の部品 | このモジュールが提供する | 提示された JWT を検証し、テナント、発行者、組み込みの `client_id`、スコープの集合を返す |
+| `IntrospectAccessToken`、`RevokeByJTI` | `OAuth2` のイントロスペクションと `/revoke` | このモジュールが提供する | 管理発行のトークンの状態を返し、失効させる |
+| `TokenIssuer`、`TokenIntrospector` | `OAuth2` が提供する | このモジュールが使う | RFC 9068 の JWT を発行し、署名と期限を検証する |
 
 ## 機能
 
@@ -45,6 +45,6 @@ HTTP の操作とモデルの形は TypeSpec の `API Tokens` のタグが定め
 
 | 文書 | 内容 |
 | --- | --- |
-| [ApiTokens の用語集](glossary.md) | この Context での語義 |
+| [ApiTokens の用語集](glossary.md) | このモジュールでの語義 |
 | [ApiTokens の標準仕様](standards.md) | 採用する外部標準仕様 |
 | [ApiTokens の設計](design/README.md) | 話題ごとの設計と重要な判断 |

@@ -1,4 +1,4 @@
-// Package usecases は Saml bounded context のアプリケーション論理 (wi-142)。
+// Package usecases は Saml モジュールのアプリケーション論理 (wi-142)。
 //
 // SSO sign-in と SLO logout のオーケストレーション (SP 解決・署名検証・割当ゲート・
 // claim 発行) を HTTP 境界から切り離して所有する。wire 変換・XML 署名・直列化・cookie /

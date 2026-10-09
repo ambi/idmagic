@@ -32,7 +32,7 @@
 | 管理 API | `/api/admin/v1/` | この文書 |
 | アカウント API | `/api/account/v1/` | この文書 |
 | ブラウザー API | `/api/auth/` | この文書。バージョンを持たず、安定性区分は `internal` とする |
-| プロトコルエンドポイント | OAuth 2.0 と OIDC、Dynamic Client Registration、SAML、WS-Federation、SCIM、Shared Signals | 各標準。採用するバージョンと差分は各 Context の `standards.md` が定める |
+| プロトコルエンドポイント | OAuth 2.0 と OIDC、Dynamic Client Registration、SAML、WS-Federation、SCIM、Shared Signals | 各標準。採用するバージョンと差分は各モジュールの `standards.md` が定める |
 | 運用エンドポイント | `/readyz`、`/startupz`、`/metrics` | 監視の慣行。この文書の命名とバージョンのルールは適用しない |
 
 以降、管理 API、アカウント API、ブラウザー API の 3 区分を総称して汎用 API と呼ぶ。
@@ -438,7 +438,7 @@ SCIM の `filter` は、RFC 7644 の文法を許可リストの範囲で受け�
 SCIM のバージョン管理は RFC 7644 に従い、この文書のルールを適用しない。
 
 - **目的**：標準準拠のクライアントとの相互運用性を確保する。
-- **担保手段**：Sourcing Context の `standards.md`。
+- **担保手段**：Sourcing モジュールの `standards.md`。
 - **適用状況**：SCIM の `ServiceProviderConfig` は `etag.supported` を `false` として公開しており、SCIM のリソースは `ETag` を返さない。
 
 ## 長時間実行操作

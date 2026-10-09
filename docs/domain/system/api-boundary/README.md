@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | 経路の種類ごとの認可の分離、非推奨のインターフェースのヘッダー、テナント横断の操作の入口の限定、フロントエンドのゲートウェイの許可リストと経路表の照合 |
 | 行為者 | APIConsumer、System 管理者、Operator |
-| 扱わないもの | 各操作の権限は、記録の正を持つ各 Context と[認可設計](../../../design/security/authorization.md)が扱う |
+| 扱わないもの | 各操作の権限は、記録の正を持つ各モジュールと[認可設計](../../../design/security/authorization.md)が扱う |
 
 ## モデル
 
@@ -17,7 +17,7 @@
 | 入口 | 経路 | 認可 |
 | --- | --- | --- |
 | ブラウザー向けの認証 API | `/api/auth/*` | 認可トランザクションの Cookie |
-| 管理 API | `/api/admin/*` | ポータルの境界のスコープ `idmagic.admin` と、各 Context のロールとスコープ |
+| 管理 API | `/api/admin/*` | ポータルの境界のスコープ `idmagic.admin` と、各モジュールのロールとスコープ |
 | セルフサービス API | `/api/account/*` | ポータルの境界のスコープ `idmagic.account` と、本人の範囲 |
 | OAuth と OIDC のプロトコルのエンドポイント | 各標準が定めるパス | 各標準と `OAuth2` |
 
