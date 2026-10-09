@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
 )
 
 // stubReader は (resource, relation) から直接主体を引く最小の TupleReader。

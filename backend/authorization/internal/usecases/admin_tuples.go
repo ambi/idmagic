@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
 )
 
 // TupleWriteOutcome は適用件数と適用後の整合トークン。

@@ -3,7 +3,7 @@ package usecases
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/authorization/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

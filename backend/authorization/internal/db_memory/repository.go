@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
 )
 
 // Store は 1 テナント分の関係タプル・モデルの版・書き込み版をまとめて持つ。

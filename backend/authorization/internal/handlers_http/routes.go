@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/ports"
-	"github.com/ambi/idmagic/backend/authorization/usecases"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 

@@ -4,7 +4,7 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
 )
 
 // RelationTupleFilter は一覧の絞り込み。空のフィールドは絞り込まない。

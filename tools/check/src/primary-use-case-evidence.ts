@@ -61,18 +61,37 @@ function verifyTestReference(
   }
 
   if (!path) return findings
-  const source = environment.read(path)
-  if (source === undefined) {
+  const found = readRecordedPath(path, environment)
+  if (!found) {
     findings.push(`primary_use_cases ${useCaseId} ${role} test path does not exist: ${path}`)
     return findings
   }
-  if (name && !source.includes(name)) {
-    findings.push(`primary_use_cases ${useCaseId} ${role} test name not found in ${path}`)
+  if (name && !found.source.includes(name)) {
+    findings.push(`primary_use_cases ${useCaseId} ${role} test name not found in ${found.path}`)
   }
-  if (!source.includes(requirement)) {
-    findings.push(`primary_use_cases ${useCaseId} requirement ${requirement} not found in ${path}`)
+  if (!found.source.includes(requirement)) {
+    findings.push(
+      `primary_use_cases ${useCaseId} requirement ${requirement} not found in ${found.path}`,
+    )
   }
   return findings
+}
+
+/**
+ * 記録したパスのファイルを読む。モジュールを `internal/` へ移した後は、記録を書き換えずに
+ * `backend/<module>/<rest>` を `backend/<module>/internal/<rest>` として読む。
+ */
+function readRecordedPath(
+  path: string,
+  environment: PrimaryUseCaseEnvironment,
+): { path: string; source: string } | undefined {
+  const source = environment.read(path)
+  if (source !== undefined) return { path, source }
+  const [root, module, ...rest] = path.split('/')
+  if (root !== 'backend' || !module || rest.length === 0 || rest[0] === 'internal') return undefined
+  const moved = ['backend', module, 'internal', ...rest].join('/')
+  const movedSource = environment.read(moved)
+  return movedSource === undefined ? undefined : { path: moved, source: movedSource }
 }
 
 function sameTest(left: unknown, right: unknown): boolean {

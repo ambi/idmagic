@@ -193,6 +193,37 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     )
   })
 
+  // 完了した記録は書き換えない。モジュールを internal/ へ移した後も、記録したパスから
+  // 同じテストをたどれる必要がある。名前と要件の照合は移した先のファイルで行う。
+  it('follows a recorded test path that moved below its module internal/', () => {
+    const movedEnvironment: PrimaryUseCaseEnvironment = {
+      read: (path) =>
+        ({
+          'backend/demo/internal/usecases/demo_test.go': files[unitPath],
+          [e2ePath]: files[e2ePath],
+        })[path],
+      requiredTasks: new Set(['test-go-race']),
+    }
+    const record = {
+      ...applicable,
+      status: 'completed',
+      primary_use_cases: [plan],
+      completion: { primary_use_case_evidence: [evidence] },
+    }
+    expect(verifyPrimaryUseCaseEvidence(record, movedEnvironment)).toEqual([])
+
+    const misnamed: PrimaryUseCaseEnvironment = {
+      ...movedEnvironment,
+      read: (path) =>
+        path === 'backend/demo/internal/usecases/demo_test.go'
+          ? 'func TestSomethingElse(t *testing.T) {}'
+          : movedEnvironment.read(path),
+    }
+    expect(verifyPrimaryUseCaseEvidence(record, misnamed)).toContain(
+      `primary_use_cases demo-success Unit test name not found in backend/demo/internal/usecases/demo_test.go`,
+    )
+  })
+
   it('requires one complete evidence result for every planned use case', () => {
     const base = { ...applicable, status: 'completed', primary_use_cases: [plan] }
     expect(verifyPrimaryUseCaseEvidence(base, environment)).toContain(

@@ -25,8 +25,6 @@ import (
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/authorization"
-	authorizationhttp "github.com/ambi/idmagic/backend/authorization/handlers_http"
-	authorizationprincipals "github.com/ambi/idmagic/backend/authorization/principals_idmanagement"
 	"github.com/ambi/idmagic/backend/datakeys"
 	datakeyshttp "github.com/ambi/idmagic/backend/datakeys/handlers_http"
 	"github.com/ambi/idmagic/backend/idgovernance"
@@ -392,12 +390,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo: d.IdManagement.AgentRepo, FetchJWKS: fetchWorkloadJWKS,
 	})
 
-	authorizationhttp.RegisterRoutes(g, authorizationhttp.Deps{
+	d.Authorization.RegisterRoutes(g, authorization.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
-		TupleRepo: d.Authorization.TupleRepo, ModelRepo: d.Authorization.ModelRepo,
-		Principals: authorizationprincipals.Resolver{
-			Agents: d.IdManagement.AgentRepo, Users: d.IdManagement.UserRepo,
-		},
+		Agents: d.IdManagement.AgentRepo, Users: d.IdManagement.UserRepo,
 		Authorizer: d.OAuth2.Authorizer,
 	})
 

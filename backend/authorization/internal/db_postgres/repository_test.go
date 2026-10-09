@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/testing_contract"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/testing_contract"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"

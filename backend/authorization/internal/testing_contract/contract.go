@@ -9,8 +9,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -270,6 +270,32 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		}
 		if missing, err := f.Models.FindByVersion(ctx, tenantA, 99); err != nil || missing != nil {
 			t.Fatalf("FindByVersion(99) = (%v, %v), want (nil, nil)", missing, err)
+		}
+	})
+
+	// 書き込みの版はテナントに一つで、モデルの登録とタプルの書き込みが同じ版を進める。
+	// 別々に進めると、登録が返した整合トークンを判定で提示したときに満たされない。
+	t.Run("model publish and tuple writes advance one write version", func(t *testing.T) {
+		f := newFixture(t, "tenant-a")
+		ctx := context.Background()
+		tenantA := f.Tenant("tenant-a")
+		_, published, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+		})
+		if err != nil {
+			t.Fatalf("Publish returned error: %v", err)
+		}
+		if current, err := f.Tuples.Version(ctx, tenantA); err != nil || current < published {
+			t.Fatalf("Tuples.Version after Publish = (%d, %v), want >= %d", current, err, published)
+		}
+		written, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{
+			Writes: []domain.RelationTuple{tuple("d1", "viewer", "alice")},
+		})
+		if err != nil {
+			t.Fatalf("Write returned error: %v", err)
+		}
+		if written.Version <= published {
+			t.Fatalf("Write version = %d, want > published %d", written.Version, published)
 		}
 	})
 

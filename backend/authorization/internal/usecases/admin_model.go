@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 

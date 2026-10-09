@@ -9,8 +9,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 )

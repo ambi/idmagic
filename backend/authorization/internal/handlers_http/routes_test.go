@@ -16,7 +16,7 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authorization"
-	authorizationmemory "github.com/ambi/idmagic/backend/authorization/db_memory"
+	authorizationmemory "github.com/ambi/idmagic/backend/authorization/internal/db_memory"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -299,6 +299,37 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 		if check("B") {
 			t.Fatal("document B was never granted to alice")
+		}
+	})
+
+	// 代行チェーン上の User の有効性は IdManagement の記録で判定する。記録を引けない
+	// 組み立てでは fail-closed で拒否されるので、許可されることが結線の証拠になる。
+	t.Run("a user delegate is resolved from the IdManagement record", func(t *testing.T) {
+		e, _, _ := newServer(t, actor("admin", []string{"admin"}))
+		if rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest()); rec.Code != http.StatusCreated {
+			t.Fatalf("PutAuthorizationModel status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		if rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples", map[string]any{
+			"writes": []map[string]any{viewerTuple("user", "alice"), viewerTuple("user", "admin")},
+		}); rec.Code != http.StatusOK {
+			t.Fatalf("WriteRelationTuples status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/check", map[string]any{
+			"resource_type": "document", "resource_id": "d1", "relation": "viewer",
+			"subject_type": "user", "subject_id": "alice",
+			"actor_chain": []map[string]any{{"type": "user", "id": "admin"}},
+		})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("CheckAccess status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		var body struct {
+			Result struct {
+				Permitted bool `json:"permitted"`
+			} `json:"result"`
+		}
+		decode(t, rec, &body)
+		if !body.Result.Permitted {
+			t.Fatal("the active admin user in the chain also holds viewer on d1")
 		}
 	})
 

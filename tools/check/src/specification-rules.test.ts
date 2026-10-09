@@ -282,6 +282,17 @@ describe('verifyFeatureSliceSpecifications', () => {
     ])
   })
 
+  // internal/ は公開範囲を表す区画であり、機能スライスの名前ではない。
+  it('reads a slice below internal/ by the name under it, and the flat layers as no slice', () => {
+    expect(
+      codeSlices([
+        'backend/demo/internal/session/usecases',
+        'backend/demo/internal/domain',
+        'backend/demo/internal/usecases',
+      ]),
+    ).toEqual([{ context: 'demo', name: 'session', path: 'backend/demo/internal/session' }])
+  })
+
   it('matches a kebab-case node to the slice named without hyphens, through a context alias', () => {
     expect(
       verifyFeatureSliceSpecifications(

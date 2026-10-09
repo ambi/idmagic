@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
 )
 
 // tenantIDShape は tenancy が受け入れるテナント ID の形 (tenancy.tenantIDPattern と同じ)。

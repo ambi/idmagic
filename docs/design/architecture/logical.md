@@ -39,7 +39,7 @@ IdMagic は、一つの Go モジュールの中でモジュールの境界を�
 | [Authentication](../../domain/authentication/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/authentication` | 資格情報、MFA、ログインセッション、ステップアップ、認証イベント |
 | [OAuth2](../../domain/oauth2/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコル、クライアント、同意、トークン |
 | [Application](../../domain/application/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/application` | Application、プロトコルのバインディング、割り当て、表示分類 |
-| [Authorization](../../domain/authorization/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/authorization` | 細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
+| [Authorization](../../domain/authorization/README.md) | `internal` | なし | `backend/authorization` | 細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
 | [Audit](../../domain/audit/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/audit` | 全モジュールの監査イベントを統合する Read Model と保持 |
 | [ClaimMapping](../../domain/claim-mapping/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
 | [Provisioning](../../domain/provisioning/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング |

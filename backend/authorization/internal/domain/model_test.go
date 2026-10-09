@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/authorization/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
 )
 
 func direct(types ...string) domain.RelationRewrite {

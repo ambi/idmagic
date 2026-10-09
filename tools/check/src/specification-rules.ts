@@ -388,10 +388,13 @@ export function goDeclarations(files: Array<{ path: string; source: string }>): 
 export function codeSlices(directories: string[]): CodeSlice[] {
   const slices = new Map<string, CodeSlice>()
   for (const directory of directories) {
-    const [root, context, name, layer] = directory.split('/')
+    // `internal/` は公開範囲の区画なので、その下の名前を機能スライスとして読む。
+    const [root, context, ...rest] = directory.split('/')
+    const visibility = rest[0] === 'internal' ? 'internal/' : ''
+    const [name, layer] = visibility ? rest.slice(1) : rest
     if (root !== 'backend' || !context || !name || !layer || !LAYER_DIRECTORIES.has(layer)) continue
     if (LAYER_DIRECTORIES.has(name)) continue
-    const path = `backend/${context}/${name}`
+    const path = `backend/${context}/${visibility}${name}`
     slices.set(path, { context, name, path })
   }
   return [...slices.values()].sort((left, right) => left.path.localeCompare(right.path))

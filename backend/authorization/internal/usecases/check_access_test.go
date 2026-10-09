@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authorization/db_memory"
-	"github.com/ambi/idmagic/backend/authorization/domain"
-	"github.com/ambi/idmagic/backend/authorization/ports"
-	"github.com/ambi/idmagic/backend/authorization/usecases"
+	"github.com/ambi/idmagic/backend/authorization/internal/db_memory"
+	"github.com/ambi/idmagic/backend/authorization/internal/domain"
+	"github.com/ambi/idmagic/backend/authorization/internal/ports"
+	"github.com/ambi/idmagic/backend/authorization/internal/usecases"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

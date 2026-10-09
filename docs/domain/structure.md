@@ -185,6 +185,11 @@ Go のツールチェーンは `internal/` の親ディレクトリの外から�
 
 存在しないパッケージと `internal/` 配下の公開宣言は拒否する。
 `internal` へ切り替える変更は、外側に残るパッケージの分類、利用元の変更、組み立て地点の結線、Go のビルドとテストの成功を示す。
+組み立て地点が使っていた永続化アダプターや HTTP のアダプターは、ルートパッケージの操作（永続層ごとの `Module` の生成、経路の登録）に置き換える。
+ルートパッケージの `Module` は `internal/` の型をフィールドに持ってよい。組み立て地点は型を名指さずに値を受け渡せる。
+パッケージの名前は変えずに `internal/` の下へ移し、`sqlc.yaml` のクエリと出力の位置を同じ変更で直す。
+機能スライスは `backend/<module>/internal/<name>/` に置き、検査は `internal` の区画を飛ばして `<name>` を機能スライスの名前として読む。
+完了した work item が記録したテストのパスは書き換えない。検査は、なくなった `backend/<module>/<rest>` を `backend/<module>/internal/<rest>` として読む。
 全モジュールの移行が済んだ後に削除できるのは `legacy` の命名による判定であり、公開目的と外側に残る実装を照合する規則は残す。
 `mise run check-go-internal-visibility` は、小さな fixture で Go がほかのモジュールの `internal/` の import を拒否することを確かめる。
 
