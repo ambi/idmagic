@@ -12,7 +12,6 @@ import { FeatureSliceDeclarations, verifyFeatureLayout } from './feature-slices.
 import { checkNormativeCoverage, citedNormativeIds, type DeclaredId } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { validateDocument } from './specification-doc.ts'
-import { verifySubdomainClassification } from './subdomain-classification.ts'
 
 const PRODUCT_TREES = ['backend', 'frontend']
 const TEST_FILE = /(?:_test\.go|\.(?:test|spec)\.tsx?)$/
@@ -52,23 +51,10 @@ export async function checkDocuments(
     (finding) => `fail  ${finding.path}: ${finding.message}`,
   )
   let failed = lines.length > 0
-  // 機能スライスは Context の一段下にあり、Context の索引表には載らない。
+  // 機能スライスは `docs/domain/` の二段目以降にあるので、直下のディレクトリだけを集める。
   const contextDirectories = listings
     .filter((listing) => /^docs\/domain\/[^/]+$/.test(listing.directory))
     .map((listing) => listing.directory.slice('docs/domain/'.length))
-  if (snapshot.exists('docs/design/architecture/logical.md')) {
-    const classifications = verifySubdomainClassification(
-      await snapshot.read('docs/design/architecture/logical.md'),
-      contextDirectories,
-    )
-    failed ||= classifications.length > 0
-    lines.push(
-      ...classifications.map(
-        (finding) =>
-          `fail  docs/design/architecture/logical.md:${finding.line}: ${finding.message}`,
-      ),
-    )
-  }
 
   const view = describeDocumentSet(listings)
   const layout = verifyFeatureLayout(contextDirectories, view)

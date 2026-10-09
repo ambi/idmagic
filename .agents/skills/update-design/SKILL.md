@@ -1,6 +1,6 @@
 ---
 name: update-design
-description: Update the owning current-state canonical documents when bounded contexts, global structure, technology, runtime composition, or core design rules change.
+description: Update the owning current-state canonical documents when modules, their public packages, composition points, table ownership, global structure, technology, runtime composition, or core design rules change.
 ---
 
 # Syncing the current design
@@ -8,13 +8,18 @@ description: Update the owning current-state canonical documents when bounded co
 `SPECIFICATION_FORMAT.md` defines the canonical document kinds. Record each current fact in the smallest file
 whose name owns that kind of content.
 
-1. Update the cross-context boundary map in `docs/design/architecture/logical.md`, the top-down index in
-   `docs/README.md`, and directory structure, dependency direction, and layers in `docs/domain/structure.md`.
+1. Update the module responsibility table (modules, publication mode, public packages, composition points) in
+   `docs/design/architecture/logical.md`, the top-down index in `docs/README.md`, and directory structure,
+   dependency rules, and layers in `docs/domain/structure.md`. Table ownership lives in the table list of
+   `docs/design/data/database.md`. Do not write module dependency edges into any document; the code is their
+   source. A change to a module, its public packages, a composition point, or a table owner is a boundary
+   change: apply the boundary selection procedure in `docs/design/application/design-guidelines.md` and record
+   the comparison in the work item.
 2. Update runtime units in `docs/design/architecture/runtime.md`, deployment topology in
    `docs/design/architecture/deployment.md`, and trust boundaries in `docs/design/security/threat-model.md`; use the
    other matching whole-system file when it owns the changed concern. Constraints, the solution strategy, and
    known risks and technical debt live in `docs/design/architecture/{constraints,strategy,risks}.md`.
-3. Update a context boundary, published contracts, and feature index in `docs/domain/<context>/README.md`,
+3. Update a module boundary, public contracts, and feature index in `docs/domain/<context>/README.md`,
    and its allocated quality requirements in `quality.md`. Put the design in `docs/domain/<context>/design/`
    under the same topic vocabulary as `docs/design/`: `architecture.md` (context, strategy, components,
    runtime flows), `data.md`, `security.md`, `reliability.md`, `performance.md`, `risks.md`, a

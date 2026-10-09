@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { compareTables, declaredTables, describedTables } from './schema-tables.ts'
+import { compareTables, declaredTables, describedTables, tableOwners } from './schema-tables.ts'
 
 const SQL = [
   'CREATE TABLE tenants (',
@@ -40,7 +40,7 @@ const SQL = [
 const DOC = [
   '# データベース設計',
   '',
-  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |',
+  '| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |',
   '| --- | --- | --- | --- | --- |',
   '| `tenants` | テナントそのもの | Tenancy | `LOGGED` | なし |',
   '| `tenant_quotas` | 上限 | Tenancy | `LOGGED` | 単独主キー |',
@@ -93,13 +93,57 @@ describe('describedTables', () => {
     ])
   })
 
-  it('records the source line and the classification cells', () => {
+  it('records the source line, the owner, and the classification cells', () => {
     expect(describedTables(DOC)[0]).toEqual({
       name: 'tenants',
       line: 5,
+      owner: 'Tenancy',
       kind: '`LOGGED`',
       tenantId: 'なし',
     })
+  })
+
+  it('reads the owner from the retired 所有 Context header of a base revision', () => {
+    expect(describedTables(DOC).find((table) => table.name === 'login_counters')?.owner).toBe(
+      'Authentication',
+    )
+  })
+})
+
+describe('tableOwners', () => {
+  it('maps each described table to its owner', () => {
+    expect(
+      tableOwners(
+        describedTables(DOC),
+        new Set(['Tenancy', 'IdManagement', 'Sourcing', 'Authentication']),
+      ),
+    ).toEqual({
+      owners: new Map([
+        ['tenants', 'Tenancy'],
+        ['tenant_quotas', 'Tenancy'],
+        ['users', 'IdManagement'],
+        ['scim_user_refs', 'Sourcing'],
+        ['group_members', 'IdManagement'],
+        ['login_counters', 'Authentication'],
+      ]),
+      diagnostics: [],
+    })
+  })
+
+  it('diagnoses a missing, unknown, or repeated owner', () => {
+    const described = describedTables(
+      DOC.replace('| Tenancy | `LOGGED` | 単独主キー |', '|  | `LOGGED` | 単独主キー |')
+        .replace('| Sourcing |', '| Unknown |')
+        .replace('`group_members`', '`users`'),
+    )
+
+    expect(
+      tableOwners(described, new Set(['Tenancy', 'IdManagement', 'Authentication'])).diagnostics,
+    ).toEqual([
+      'line 6: tenant_quotas has no owning module',
+      'line 17: scim_user_refs is owned by Unknown, which is neither a module nor 共通基盤',
+      'line 18: users has more than one owning module row',
+    ])
   })
 })
 

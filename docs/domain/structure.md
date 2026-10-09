@@ -4,7 +4,7 @@
 
 ```text
 .
-├── backend/           # Go Bounded Contexts, shared, cmd/
+├── backend/           # Go modules, shared libraries, cmd/
 ├── frontend/          # React UI and gateway
 ├── docs/              # human-authored whole-system and context canonical documents
 │   ├── requirements/  # functional, quality, and constraint requirements
@@ -32,15 +32,15 @@
 | Concern | Location | Detail |
 | --- | --- | --- |
 | システム要求と設計 | `docs/{requirements,architecture,design,verification,operations}/**` | 目的から要求、構造、実現方式、受入れ、運用へトップダウンでたどる現在状態。 |
-| Context の仕様と設計 | `spec/contexts/**/*.tsp`, `docs/domain/**` | Context 単位のモデル、API、認証、規範的な振る舞い、設計判断、機構。シナリオの一次情報は公式 Markdown with Gherkin として解析する。 |
+| モジュールの仕様と設計 | `spec/contexts/**/*.tsp`, `docs/domain/**` | モジュール単位のモデル、API、認証、規範的な振る舞い、設計判断、機構。シナリオの一次情報は公式 Markdown with Gherkin として解析する。 |
 | 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース。 |
 | リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は一次情報文書に書く。 |
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |
 | 変更の記録 | `work-items/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録。 |
-| ドメインモデル | `backend/<context>/(<feature>/)domain` | フレームワークに依存しないドメインモデル。 |
-| アプリケーションロジック | `backend/<context>/(<feature>/)usecases` | フレームワークに依存しないユースケース。 |
-| ポート | `backend/<context>/(<feature>/)ports` | HTTP、永続化、通知などのポート。 |
-| アダプター | `backend/<context>/(<feature>/){handlers_http,db_postgres,...}` | HTTP、永続化、通知などのアダプター。 |
+| ドメインモデル | `backend/<module>/(<feature>/)domain` | フレームワークに依存しないドメインモデル。 |
+| アプリケーションロジック | `backend/<module>/(<feature>/)usecases` | フレームワークに依存しないユースケース。 |
+| ポート | `backend/<module>/(<feature>/)ports` | HTTP、永続化、通知などのポート。 |
+| アダプター | `backend/<module>/(<feature>/){handlers_http,db_postgres,...}` | HTTP、永続化、通知などのアダプター。 |
 | ランタイム | `backend/cmd/`, `backend/cmd/internal/bootstrap` | 起動、依存注入。 |
 | インフラ基盤 | `infra` | インフラ基盤の設定コード。 |
 | フロントエンド | `frontend` | フロントエンドコード。 |
@@ -55,12 +55,17 @@
 | インフラ基盤 | Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Grafana Alloy、k6 |
 | 開発ツール管理 | mise。Go、Bun、golangci-lint、sqlc、psqldef、PostgreSQL クライアントのバージョンとリポジトリタスクを `mise.toml` に集約する |
 
-## Context の内部構造
+## モジュールの内部構造
 
-Bounded Context は通常、次の 4 層で構成する。
+モジュールは、[論理アーキテクチャ](../design/architecture/logical.md#モジュールの責務)の責務表に宣言した責務と、その実装、仕様の文書、TypeSpec の対応を一つの単位として呼ぶ名前である。
+実装の範囲は、責務表の Go パッケージの列が宣言する。
+現在は `backend/` 直下の `cmd` と `shared` を除いたディレクトリを一つずつ割り当てている。
+この割り当ては既存の構成を検査するための初期値であり、ディレクトリがあることは境界が妥当であることを示さない。
+
+モジュールは通常、次の 4 層で構成する。
 
 ```text
-backend/<context>/
+backend/<module>/
   domain/            # エンティティ、値オブジェクト、状態遷移、純粋な検証
   usecases/          # 仕様で定めた操作を行うアプリケーションロジック
   ports/             # Repository、ストア、外部サービスの抽象
@@ -69,25 +74,34 @@ backend/<context>/
   db_postgres/       # PostgreSQL 実装の Repository アダプター
 ```
 
-アダプターはそれが属する Context または機能の直下に置き、snake_case の `<role>_<technology>` で命名する。
+アダプターはそれが属するモジュールまたは機能の直下に置き、snake_case の `<role>_<technology>` で命名する。
 
-`<technology>` の位置には外部技術の名前だけでなく相手の Context 名も入る。他の Context の語彙を自分のポートの語彙へ翻訳するアダプター、すなわち Anti-Corruption Layer がその形を取る。現在は `backend/provisioning/source_idmanagement`、`backend/authorization/principals_idmanagement`、`backend/oauth2/policy_tenancy`、`backend/sourcing/scim/source_idmanagement` の 4 つである。
+`<technology>` の位置には外部技術の名前だけでなく、相手のモジュール名も入る。
+ほかのモジュールの公開契約を自分のポートの語彙へ変換するアダプターがその形を取る。
+現在は `backend/provisioning/source_idmanagement`、`backend/authorization/principals_idmanagement`、`backend/oauth2/policy_tenancy`、`backend/sourcing/scim/source_idmanagement` の 4 つである。
 
-翻訳するアダプターを置くのは、Context Map が依存を許すほうの Context であり、翻訳される側ではない。`provisioning/source_idmanagement` は下流の Provisioning に立って IdManagement の `User` を自分の `AttributeSource` へ写す。`sourcing/scim/source_idmanagement` は反対に上流の Sourcing に立ち、IdManagement が公開する取り込み元判定のポートを満たす。IdManagement が Sourcing を知ると Context Map に無い向きの依存ができるためである。どちらに立つかは Context Map が決めるので、翻訳の向きから配置を推測しない。
+変換の意味は、変換した結果を使う利用側のモジュールが所有する。
+提供側を import する具象のアダプターは、利用側へ置くか、import の循環を避けるために組み立て地点へ置く。
+`provisioning/source_idmanagement` は利用側の Provisioning に立って IdManagement の `User` を自分の `AttributeSource` へ写す。
+`sourcing/scim/source_idmanagement` は Sourcing に立ち、IdManagement が公開する取り込み元判定のポートを満たす。
+IdManagement が Sourcing を import すると二つのモジュールの間に循環ができるためである。
+依存の向きだけからは変換の意味の所有者を決められないので、配置は[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)の手順で比べる。
 
-翻訳する語彙の差が無ければ、専用のパッケージも置かない。`WorkloadIdentity` から `OAuth2` への関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、`backend/workloadidentity/usecases` で実装して、組み立て地点で結ぶ。越えるのが WorkloadIdentity の公開言語に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
+変換する語彙の差がなければ、専用のパッケージも置かない。
+WorkloadIdentity と OAuth2 の関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、`backend/workloadidentity/usecases` で実装して、組み立て地点で結ぶ。
+越えるのが WorkloadIdentity の公開契約に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
 
-`backend/shared/` は、複数の Context が実際に共有する技術的な能力のための場所である。Context 間の依存規則を迂回する中継点にはしない。ある Context から `shared` を経由して別の Context へ到達する依存にも、直接 import する場合と同じ公開言語と Context Map の規則を適用する。
+起動時設定と実行時に選択可能な機能の定義は一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。`FeatureRegistry` は実行時選択と更新影響だけを持ち、各モジュールの API、標準対応、テナント設定を複製しない。読み取り点や選択規則が散らばると、あるプロセスだけが検証されない値または異なる機能集合を持つ状態が作れてしまうためである。運用者向けの設定リファレンスと機能メタデータはこれらの定義から生成し、手書きの一覧を併存させない。
 
-起動時設定と実行時に選択可能な機能の定義も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。`FeatureRegistry` は実行時選択と更新影響だけを持ち、各 Context の API、標準対応、テナント設定を複製しない。読み取り点や選択規則が散らばると、あるプロセスだけが検証されない値または異なる機能集合を持つ状態が作れてしまうためである。運用者向けの設定リファレンスと機能メタデータはこれらの定義から生成し、手書きの一覧を併存させない。
+具象のドメインイベントの構造体は、それが属するモジュールの `domain/events.go` に置く。`backend/shared/spec/events.go` にはイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを置く。イベントがモジュールの境界を越えるときに何が契約になるかは [モジュール間イベント](#モジュール間イベント) で定める。
 
-具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` にはイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを置く。イベントが Context の境界を越えるときに何が契約になるかは [Context 間イベント](#context-間イベント) で定める。
-
-2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
+2 つ以上の独立した機能を持つモジュールは、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<module>/<feature>/{domain,ports,usecases,<role>_<technology>}/`。
+機能ごとの垂直分割はモジュールの内部構造であり、別のモジュールではない。
+機能が 1 つしかないモジュールは分割しない。
 
 ```text
 backend/idmanagement/
-  module.go                 # Context ごとに 1 つ置く DI の組み立て
+  module.go                 # モジュールごとに 1 つ置く DI の組み立て
   domain/                   # 機能間で共有する型と計算だけ（列挙、DomainEvent、CSV 基盤）
   ports/                    # 機能間で共有するポートだけ（CSV 成果物ストア）
   usecases/                 # 機能をまたぐユースケース補助とエラー値だけ
@@ -99,32 +113,108 @@ backend/idmanagement/
 
 機能をまたぐ層に置いてよいのは、複数の機能が同じ意味で使う語彙と機構に限る。CSV の転送ポリシー、解析器、可逆なセル変換、不変な成果物ストアは `User` と `Group` が同じ意味で共有するためここに置き、列の語彙と計画器は Aggregate ごとの不変条件なので機能側に残す。
 
-### Context 境界の依存規則
+### パッケージの三種類
 
-Context の外へ公開する Go の言語は `domain` と `ports` のパッケージだけである。別の Context は `usecases`、`handlers_*`、`db_*`、`module.go` などの内部実装を import しない。機能で垂直分割した場合も、公開範囲はその機能配下の `domain` と `ports` に限る。
+`backend/` の本番パッケージは、次の三種類のどれかに属する。
 
-[Context Map](../design/architecture/logical.md#context-map) の矢印は Supplier から Customer へ向く。Go の依存はその逆向きであり、Customer が Supplier の公開言語を import する。公開パッケージであっても、Context Map に Supplier と Customer の関係が無い向きへ依存してはならない。また、Context 間の Go 依存が循環してはならない。ドメインイベントを送受信する関係は、それだけでは Go の import を許可しない。
+| 種類 | 範囲 | 依存の扱い |
+| --- | --- | --- |
+| モジュール | 責務表に宣言した実装範囲 | [モジュール間の依存規則](#モジュール間の依存規則)に従う |
+| 組み立て地点 | 責務表の System 行が列挙するパッケージ接頭辞。`backend/cmd`、`backend/shared/http/server_http`、`backend/shared/http/testing_stack` | 結線に必要な依存を持てる。モジュール間の循環の集計に含めず、公開範囲は公開方式に従う |
+| 共有ライブラリ | `backend/shared` のうち組み立て地点を除いたもの | どのモジュールにも依存しない |
+
+接頭辞はディレクトリ区画で照合し、同名で始まる別のディレクトリを含めない。
+`testing_stack` を組み立て地点に含めるのは、テスト用の HTTP スタック全体を `_test.go` ではないファイルで組み立てており、実態が `server_http` と同じ結線だからである。
+同じ接頭辞の重複した割り当て、責務表にないモジュール、どれにも分類できない本番パッケージは検査を失敗させる。
+
+`backend/shared` は、複数のモジュールが実際に共有する技術的な能力のための場所である。
+モジュールの型も業務上の意味も必要としない規則だけを置き、モジュール間の依存規則を迂回する中継点にはしない。
+型名を文字列へ変えて依存を消しても、業務上の意味を共有しているなら共有ライブラリの条件は満たさない。
+
+組み立て地点へ追加するパッケージには、結線する対象と、業務判断を含まない根拠が必要である。
+業務処理を組み立て地点へ移しても依存規則の違反は解消しない。
+
+### モジュール間の依存規則
+
+モジュール間の依存は、次の規則で検査する。
+どのモジュールの組の依存を許すかという許可リストは持たない。
+公開範囲と非循環に加えて必要な組ごとの禁止条件は、それを必要とする製品の保証を根拠に追加する。
+
+| 規則 | 違反の種類 | 防ぐ故障 |
+| --- | --- | --- |
+| モジュールは、ほかのモジュールの公開パッケージだけを import する | `private-import` | 非公開の実装を直接参照する変更 |
+| モジュール単位の import 依存は循環しない | `module-cycle` | 異なる内部パッケージを経由するモジュール間の相互参照 |
+| 共有ライブラリはモジュールに依存しない | `shared-dependency` | 共有ライブラリを経由して、モジュールが別のモジュールへ到達する依存 |
+| モジュールと共有ライブラリは組み立て地点に依存しない | `composition-import` | 結線用の例外を業務処理への迂回路として使う変更 |
+| `domain` は時刻、乱数、OS、ネットワーク、データベースを直接使わない | `domain-effect` | 計算の結果をテストで固定できない状態 |
+| モジュールの sqlc クエリは、ほかのモジュールが所有するテーブルへ書き込まない | `table-write` | 二つのモジュールが同じテーブルの不変条件を別々に保ち、片方の変更がもう片方の保証を破る状態 |
+
+公開パッケージを経由した非循環の依存は、規則への適合を示すだけであり、二つのモジュールが意味の上で独立していることは示さない。
+ドメインイベントを送受信する関係は、それだけでは Go の import を生まない。
+依存グラフは本番の `.go` から抽出し、`_test.go` は循環の集計に含めない。
+
+`shared-dependency` は、原因である共有ライブラリのパッケージとモジュールの組ごとに一件と数える。
+共有ライブラリを経由して到達するモジュールの数だけ同じ import を数えると、違反の数が原因の数を表さないためである。
 
 `domain` は決定論的な計算と状態遷移だけを持つ。時刻の型を保持するための `time` は利用できるが、現在時刻を得る `time.Now`、乱数を得る `crypto/rand` と `math/rand`、OS、ネットワーク、データベースへの直接アクセスは行わない。必要な値と作用は `usecases` から引数または `ports` として注入する。
+`domain` と `usecases` の外向き依存の禁止、起動設定の読み取り場所、フロントエンドからバックエンドへの import の禁止も同じ検査が判定する。
 
-これらの規則は `mise run check-boundaries` が検査する。移行中の既存違反は `tools/check/boundary-debt.json` に具体的な違反 ID と理由を記録し、CI の ratchet は基準 revision より違反 ID を増やす変更を拒否する。解消した違反は ledger から同時に削除する。
+`table-write` の対象と限界は[データベース設計](../design/data/database.md#所有と書き込みの境界)が定める。
 
-## Context 間イベント
+### 公開範囲と `internal/`
 
-[論理アーキテクチャ](../design/architecture/logical.md#context-map) の Context Map に属するドメインイベントの関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
+非公開の実装は、最終的に Go の `internal/` に置く。
+Go のツールチェーンは `internal/` の親ディレクトリの外からの import を拒否する。
+ただし、外側に残したパッケージの公開目的や移行の完了は判定しないため、責務表と照合する検査を併用する。
 
-**ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、上流の IdManagement が語彙とポートを宣言し、下流の Context がそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションでプロビジョニングタスクを作る。上流が公開言語を持ち下流が従う形なので、これらは公開イベントによる関係ではなく Open Host Service である。
+モジュールの最終形は次のとおりである。
 
-**監査の事実は、組み立て地点に 1 つだけある配信点を通る。** `backend/cmd/internal/bootstrap` が組み立てる発行の閉包が、`EventSink` への出力、アカウントのセキュリティ通知のディスパッチ、監査記録の追記を順に行う。ドメインイベントを発行する Context はこの閉包だけを関数として受け取り、監査にも通知にも依存しない。逆に消費する側も発行元の Go の型を知らず、後述のワイヤ表現の上だけで動く。したがってこの関係に import は存在せず、依存の向きはどちらの側にも生じない。
+| 配置 | 置くもの | 利用できる側 |
+| --- | --- | --- |
+| `backend/<module>/` | `module.go` を置くルートパッケージ。組み立てと HTTP ルートの登録 | 組み立て地点だけ |
+| 公開パッケージ | ほかのモジュールが使う型と操作、ほかのモジュールが実装するポート。`internal/` の外に置き、責務表の公開パッケージの列へ完全なパスを列挙する | ほかのモジュールと組み立て地点 |
+| `backend/<module>/internal/` | ユースケース、アダプター、内部の型など、それ以外のすべて | 同じモジュールの内側だけ |
 
-### イベントの公開言語
+`internal/` はモジュールの配下全体から見えるので、機能スライスどうしの分離は保証しない。
 
-イベントが境界を越えるときの契約は、payload の全体ではない。`AdminAuditEventResponse.payload` は意図して不透明な JSON であり、Context の内部でしか読まれない項目はその Context のものである。契約になるのは次の 2 つに限る。
+移行中は、責務表の公開方式で判定を切り替える。
+ディレクトリの有無だけでは方式を切り替えない。
+
+| 公開方式 | 公開パッケージの判定と検査 |
+| --- | --- |
+| `legacy` | `domain` または `ports` の区画を含むパッケージ。`internal` 配下とルートパッケージは含めない。組み立て地点からの直接の import は移行期間だけ許す |
+| `internal` | 責務表に列挙したパッケージだけ。外側の本番パッケージは、ルートか公開パッケージでなければ拒否する。組み立て地点にもこの制約を適用する |
+
+存在しないパッケージと `internal/` 配下の公開宣言は拒否する。
+`internal` へ切り替える変更は、外側に残るパッケージの分類、利用元の変更、組み立て地点の結線、Go のビルドとテストの成功を示す。
+全モジュールの移行が済んだ後に削除できるのは `legacy` の命名による判定であり、公開目的と外側に残る実装を照合する規則は残す。
+`mise run check-go-internal-visibility` は、小さな fixture で Go がほかのモジュールの `internal/` の import を拒否することを確かめる。
+
+### 検査と負債
+
+これらの規則は `mise run check-boundaries` が検査する。
+宣言の欠落、重複、未知の参照、解析できない SQL は入力の診断であり、負債として記録できない。
+既存の違反は `tools/check/boundary-debt.json` に具体的な違反 ID と理由を記録する。
+`mise run check-boundary-debt-ratchet` は基準 revision のソースにも同じ規則を当て、基準になかった違反 ID を拒否するので、台帳へ書き足しても新しい違反は通らない。
+解消した違反は台帳から同時に削除する。
+宣言を広げれば形式上の違反は消えるので、公開パッケージ、組み立て地点、テーブルの所有者の変更にも[境界を選ぶ判断手順](../design/application/design-guidelines.md#境界を選ぶ判断手順)を適用する。
+
+## モジュール間イベント
+
+モジュール間でドメインイベントに関わる関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
+
+**ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、IdManagement が語彙とポートを宣言し、通知を受けるモジュールがそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションでプロビジョニングタスクを作る。IdManagement の公開契約にポートが含まれ、通知を受ける側が実装するので、これらは公開イベントによる関係ではない。User の保存とワークフローの生成が同じトランザクションで確定するかは、ポートの契約が定める。
+
+**監査の事実は、組み立て地点に 1 つだけある配信点を通る。** `backend/cmd/internal/bootstrap` が組み立てる発行の閉包が、`EventSink` への出力、アカウントのセキュリティ通知のディスパッチ、監査記録の追記を順に行う。ドメインイベントを発行するモジュールはこの閉包だけを関数として受け取り、監査にも通知にも依存しない。逆に消費する側も発行元の Go の型を知らず、後述のワイヤ表現の上だけで動く。したがってこの関係に import は存在せず、依存の向きはどちらの側にも生じない。
+
+### イベントの公開契約
+
+イベントが境界を越えるときの契約は、payload の全体ではない。`AdminAuditEventResponse.payload` は意図して不透明な JSON であり、モジュールの内部でしか読まれない項目はそのモジュールのものである。契約になるのは次の 2 つに限る。
 
 - **エンベロープ**：`spec.MarshalDomainEvent` が必ず載せるイベント種別名と発生時刻。監査の記録、管理 API のレスポンス、セキュリティ通知のディスパッチがすべてこの形の上で動く。
-- **公開項目の語彙**：他の Context が名前で読む payload の項目。監査の検索属性の抽出器がこれを検索軸へ写し、セキュリティ通知が宛先と送信条件をここから解決する。
+- **公開項目の語彙**：他のモジュールが名前で読む payload の項目。監査の検索属性の抽出器がこれを検索軸へ写し、セキュリティ通知が宛先と送信条件をここから解決する。
 
-どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を担う System で定義し、消費者である Audit では定義しない。供給側が下流の契約に従う倒立を避けるためである。
+どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を担う System で定義し、消費者である Audit では定義しない。発行する側が消費する側の契約に従う倒立を避けるためである。
 
 宣言を置くだけでは、読み取り側と静かに食い違う。項目名を変えてもコンパイルは通り、監査の絞り込みが空を返すようになるだけだからである。`mise run check-event-contract` が、宣言された語彙と Go の読み取り点の集合が一致することを確かめる。
 
@@ -154,14 +244,14 @@ Web フロントエンド・アプリケーションのコードは、`frontend/
 
 HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み立てる。ここがテナント単位のルートをデフォルトのテナントと `/realms/:tenant_id` の両方に登録する。制御面のテナント横断操作も同じグループに登録し、制御面テナントへの限定はルーティングの接頭辞ではなくハンドラー側の制御面主体の判定が担う。
 
-各 Context のルーティングは `backend/<context>/handlers_http/routes.go` にある。正確なエンドポイントの一覧はそのファイルを参照する。新しい HTTP API は、それが属する Context の `routes.go` に、同じ `handlers_http` 配下のハンドラーとともに登録する。Context 固有の Repository とルーティングの接続は `backend/<context>/module.go` に集約し、中央のルーターは Module を呼ぶだけにする。
+各モジュールのルーティングは `backend/<module>/handlers_http/routes.go` にある。正確なエンドポイントの一覧はそのファイルを参照する。新しい HTTP API は、それが属するモジュールの `routes.go` に、同じ `handlers_http` 配下のハンドラーとともに登録する。モジュール固有の Repository とルーティングの接続は `backend/<module>/module.go` に集約し、中央のルーターは Module を呼ぶだけにする。
 
 ## アーキテクチャ様式
 
-単一の Go モジュール内で Bounded Context の境界を保ちつつ、複数の実行単位が実装を共有する現在のアーキテクチャを **Modular Monolith** とする。Context 間は公開された言語とポートで接続する。
+一つの Go モジュール（`go.mod`）の中でモジュールの境界を保ちつつ、複数の実行単位が実装を共有する現在のアーキテクチャを **Modular Monolith** とする。モジュール間は公開パッケージに置いた型、操作、ポートで接続する。
 
-通常は複数の Context を 1 つの API プロセスに組み合わせ、リソースやレイテンシーの特性が異なるジョブと横断的なバッチ処理だけを別の実行単位にする。独立したデータ所有権、担当チーム、SLO が必要になるまではサービスを分割しない。この記述は現在の設計を示すものであり、将来も同じ構成を義務付けるものではない。
+通常は複数のモジュールを 1 つの API プロセスに組み合わせ、リソースやレイテンシーの特性が異なるジョブと横断的なバッチ処理だけを別の実行単位にする。独立したデータ所有権、担当チーム、SLO が必要になるまではサービスを分割しない。この記述は現在の設計を示すものであり、将来も同じ構成を義務付けるものではない。
 
-Context の分割とは別に、同じ実装のまま API の Deployment を用途別の種別へ分けるかどうかという軸がある。こちらは [System の設計判断](system/design/decisions.md#api-のプレーンを分けない) が判断を持つ。
+モジュールの分割とは別に、同じ実装のまま API の Deployment を用途別の種別へ分けるかどうかという軸がある。こちらは [System の設計判断](system/design/decisions.md#api-のプレーンを分けない) が判断を持つ。
 
-`backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す依存を集約し、メモリ、PostgreSQL、コンソール、OpenTelemetry など実行時の実装選択を吸収する。Context 固有の Repository は各 `Module` にまとめ、中央の `Dependencies` とサーバーの `Deps` はその Module を受け取る。ポートを追加した場合は、その Context の `ports/`、メモリと PostgreSQL の各アダプター、スキーマ変更の要否、`bootstrap.Dependencies`、`assembleMemory`、`assemblePostgres`、`support.Deps`、関連する HTTP ハンドラーまたはユースケースの構築処理を確認する。
+`backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す依存を集約し、メモリ、PostgreSQL、コンソール、OpenTelemetry など実行時の実装選択を吸収する。モジュール固有の Repository は各 `Module` にまとめ、中央の `Dependencies` とサーバーの `Deps` はその Module を受け取る。ポートを追加した場合は、そのモジュールの `ports/`、メモリと PostgreSQL の各アダプター、スキーマ変更の要否、`bootstrap.Dependencies`、`assembleMemory`、`assemblePostgres`、`support.Deps`、関連する HTTP ハンドラーまたはユースケースの構築処理を確認する。

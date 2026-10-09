@@ -19,12 +19,13 @@ ER 図はテーブルの存在と外部キーだけを示し、カラムを描�
 | --- | --- |
 | テーブル | テーブル名 |
 | 役割 | そのテーブルが存在する理由。カラムの言い換えではない |
-| 所有 Context | テーブルへ書き込む Bounded Context。Context に属さない技術基盤は「共通基盤」とする |
+| 所有モジュール | テーブルへ書き込むモジュール。モジュールに属さず共有ライブラリだけが書き込む技術基盤は「共通基盤」とする |
 | テーブル種別 | `LOGGED` または `UNLOGGED` |
 | `tenant_id` カラム | `単独主キー`（`tenant_id` だけで主キーを構成する）、`複合主キーの一部`、`非キーカラム`（主キーに含まれないカラム）、`なし`（カラムが存在しない）。どれを選ぶかは [`tenant_id` の保持区分](#tenant_id-の保持区分)が定める |
 
 `mise run check-schema-tables` は、テーブル一覧のテーブル名の集合、テーブル種別、`tenant_id` カラムの区分が `postgres.sql` と一致することを確かめる。
-役割と所有 Context は検査の対象外なので、スキーマを変えるときに同じ変更の中で見直す。
+役割は検査の対象外なので、スキーマを変えるときに同じ変更の中で見直す。
+所有モジュールは、`mise run check-boundaries` がクエリの書き込み先と照合する宣言である。
 
 ### テナント、利用者、認証
 
@@ -94,7 +95,7 @@ erDiagram
     users ||--o{ email_change_tokens : メールを変更する
 ```
 
-| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |
+| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
 | --- | --- | --- | --- | --- |
 | `tenants` | テナントそのもの。realm、状態、テナント単位で上書きした方針を記録する | Tenancy | `LOGGED` | なし |
 | `tenant_quotas` | テナントが作成できるリソースの上限 | Tenancy | `LOGGED` | 単独主キー |
@@ -187,7 +188,7 @@ erDiagram
     agents ||--|| agent_revocation_epochs : 失効世代を持つ
 ```
 
-| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |
+| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
 | --- | --- | --- | --- | --- |
 | `identity_provider_connections` | 外部 IdP（OIDC、SAML）との接続設定。クレームの対応付け、アカウント連携と JIT 作成の方針を含む | Authentication | `LOGGED` | 非キーカラム |
 | `federated_identities` | 外部 IdP の主体と、このテナントの利用者の対応 | Authentication | `LOGGED` | 複合主キーの一部 |
@@ -198,7 +199,7 @@ erDiagram
 | `dynamic_group_rules` | 動的グループの所属を決める式と、式が参照する属性 | IdManagement | `LOGGED` | 非キーカラム |
 | `tenant_user_attribute_schemas` | テナントが定義する利用者の拡張属性 | IdManagement | `LOGGED` | 単独主キー |
 | `tenant_group_attribute_schemas` | テナントが定義するグループの拡張属性 | IdManagement | `LOGGED` | 単独主キー |
-| `audit_events` | 各 Context が発行した監査イベント。追記だけで保持する | Audit | `LOGGED` | 非キーカラム |
+| `audit_events` | 各モジュールが発行した監査イベント。追記だけで保持する | Audit | `LOGGED` | 非キーカラム |
 | `authentication_event_buckets` | 同じ鍵から続く認証失敗を 5 分の時間枠で数える集計。攻撃による急増で監査イベントのレコードを増やさない | Authentication | `LOGGED` | 複合主キーの一部 |
 | `tenant_correlation_salts` | 利用者名や IP アドレスを相関用にハッシュするときのテナントごとのソルト | 共通基盤 | `LOGGED` | 単独主キー |
 | `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | `LOGGED` | 非キーカラム |
@@ -282,7 +283,7 @@ erDiagram
     users ||--o{ api_tokens : 発行される
 ```
 
-| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |
+| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
 | --- | --- | --- | --- | --- |
 | `applications` | アプリケーションの Aggregate。ポータルに並ぶ単位で、プロトコルごとの設定を束ねる | Application | `LOGGED` | 非キーカラム |
 | `oauth2_clients` | OAuth 2.0 と OIDC のクライアントの登録内容 | OAuth2 | `LOGGED` | 非キーカラム |
@@ -369,7 +370,7 @@ erDiagram
     provisioning_tasks ||--o| provisioning_full_resync_tasks : 再同期に属する
 ```
 
-| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |
+| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
 | --- | --- | --- | --- | --- |
 | `scim_user_refs` | SCIM クライアントが指定した外部 ID と利用者の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `scim_group_refs` | SCIM クライアントが指定した外部 ID とグループの対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
@@ -444,7 +445,7 @@ erDiagram
     tenants ||--o{ saml_authnrequest_replays : SAML再送を持つ
 ```
 
-| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |
+| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
 | --- | --- | --- | --- | --- |
 | `oauth2_authorization_requests` | 認可エンドポイントで受け付け、サインインの完了を待っている要求 | OAuth2 | `UNLOGGED` | 非キーカラム |
 | `oauth2_authorization_codes` | 発行した認可コードと、交換済みかどうか | OAuth2 | `UNLOGGED` | 非キーカラム |
@@ -490,7 +491,7 @@ erDiagram
     tenants ||--|| authorization_write_versions : 書き込みバージョンを持つ
 ```
 
-| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |
+| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
 | --- | --- | --- | --- | --- |
 | `ssf_streams` | SSF の送信ストリームまたは受信ストリーム | SharedSignals | `LOGGED` | 非キーカラム |
 | `ssf_transmitter_configs` | 送信ストリームの配送先と、配送時の認証 | SharedSignals | `LOGGED` | 非キーカラム |
@@ -503,10 +504,30 @@ erDiagram
 
 ### 所有と書き込みの境界
 
-各 Context は、永続化ポートを通じて自身が担当するテーブルを読み書きする。
-現在、次の書き込みだけが所有 Context の外から行われる。
+各モジュールは、永続化ポートを通じて自身が所有するテーブルを読み書きする。
+`mise run check-boundaries` の `table-write` は、`sqlc.yaml` が宣言するすべてのクエリ入力について、SQL が明示的に書き込むテーブルと上の一覧の所有モジュールを照合する。
+クエリ入力の配置は、[構造](../../domain/structure.md#パッケージの三種類)の三種類で分類する。
 
-| 書き込む Context | 対象のテーブル | 書き込む内容 |
+| 書き込む側 | 書き込めるテーブル |
+| --- | --- |
+| モジュールの `db_postgres` | そのモジュールが所有するテーブル |
+| 共有ライブラリ | 所有が「共通基盤」のテーブル |
+| 組み立て地点 | なし。組み立て地点は書き込み検査の例外にしない |
+
+書き込み先は、`sqlc parse` が返す PostgreSQL の構文木から読む。
+`INSERT`（`ON CONFLICT DO UPDATE` を含む）、`UPDATE`、`DELETE`、`TRUNCATE`、書き込みを含む CTE の全対象を扱い、コメントと文字列中の語、別名、引用識別子、スキーマ修飾を区別する。
+構文木へ変換されない文（`MERGE` など）、解決できないテーブル、所有者の欠落や重複は、違反がないものとして通さず、入力の診断として検査を失敗させる。
+違反 ID は、書き込むモジュール、クエリ入力のパス、クエリ名、操作、対象テーブル、書き込む列の集合から決まるので、既存のクエリが別の列へ書き始めると新しい違反になる。
+
+この検査が判定するのは SQL に書いた直接の対象だけである。
+外部キーの cascade、トリガー、関数の呼び出し、`//sql:raw` の動的な SQL による書き込みは判定しない。
+読み取りも拒否しないため、SQL の結合によるほかのモジュールの保存表現への依存は残る。
+これらは[境界を選ぶ判断手順](../application/design-guidelines.md#境界を選ぶ判断手順)の入力として調べる。
+現在、検査の外にある書き込みの経路には、`tenants` の挿入時に SAML のデフォルトのプロファイルを作るトリガーと、`ON DELETE CASCADE` の外部キーがある。
+
+現在、次の書き込みだけが所有モジュールの外から行われ、`tools/check/boundary-debt.json` に具体的なクエリごとに記録している。
+
+| 書き込むモジュール | 対象のテーブル | 書き込む内容 |
 | --- | --- | --- |
 | Application | `oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties` | プロトコル設定のレコードを、作成したアプリケーションへ結び付ける `application_id` |
 | IdManagement | `password_history` | CSV インポートで設定したパスワードの履歴 |
@@ -514,14 +535,15 @@ erDiagram
 | IdManagement | `jobs` | グループの CSV インポートの確定と同じトランザクションで投入するジョブ |
 
 いずれも、一つのトランザクションで確定しなければ整合が崩れる書き込みである。
-これ以外の書き込みを所有 Context の外へ加えるときは、上の一覧へ行を足し、同じトランザクションで確定する必要を説明する。
+公開操作を別のトランザクションで呼ぶ形へ変えるだけでは、この整合を保てないので解消にならない。
+これ以外の書き込みを所有モジュールの外へ加える変更は、`mise run check-boundary-debt-ratchet` が拒否する。
 
 スキーマを変えるときは、テーブルの追加と削除、外部キーの変更、テーブル種別を確認し、同じ変更の中で ER 図とテーブル一覧を更新する。
 変更の進め方は[スキーマ管理](schema-management.md)が定める。
 
 ## ポートとアダプター
 
-永続化ポートと Repository の実装は、対応する Context に属する。Context 固有のメモリと PostgreSQL のアダプターは `backend/<context>/{db_memory,db_postgres}` に置き、共有のデータベース接続プール、レコードの読み取り、トランザクションのヘルパーは `backend/shared/storage/db_postgres` に置く。一時的な状態も PostgreSQL に統合するため、2 種類目のデータストアは運用しない。
+永続化ポートと Repository の実装は、対応するモジュールに属する。モジュール固有のメモリと PostgreSQL のアダプターは `backend/<module>/{db_memory,db_postgres}` に置き、共有のデータベース接続プール、レコードの読み取り、トランザクションのヘルパーは `backend/shared/storage/db_postgres` に置く。一時的な状態も PostgreSQL に統合するため、2 種類目のデータストアは運用しない。
 
 `db_postgres` の静的な SQL 文はすべて `sqlc` の入力とし、型安全な Go コードを生成しなければならない。省略できる絞り込みは `sqlc.narg` で、閉じた集合からカラムを選ぶ文はカラムごとの問い合わせで表す。SQL 文字列を直接渡す `Exec`、`Query`、`QueryRow` は、`sqlc` で表せない次の場合に限って許される。
 
@@ -566,8 +588,8 @@ PostgreSQL の構造をどう変え、どう適用するかは[スキーマ管�
 データベースに保存する必要がある可逆なシークレットは、平文で保存しない。差し替え可能な `EnvelopeCrypto` プロバイダーのマスターキーでテナントごとの `DataEncryptionKey`（DEK）をラップし、その DEK で各シークレットを AEAD 暗号化する。AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない。追加認証データには `(tenant, context, table, record id, field)` と DEK のバージョンを使う。このため、暗号文を別のテナント、テーブル、フィールドへ複製しても復号できない。
 
 - `EnvelopeCrypto`（Tink を使う AEAD と鍵セットのポート、および OpenBao と平文鍵セットによるマスターキー提供元のアダプター）は、`certificates_mtls`、`passwords_argon2id`、`tokens_jose` と並べて `backend/shared/security` に置く。これは業務上の Aggregate ではなく、技術上の共通機能である。
-- `backend/datakeys`（`DataKeys` Context）は、ラップされた DEK のメタデータとライフサイクル（初期化、ローテーション、無効化、破棄）だけを担い、`EnvelopeCrypto` ポート自体は定義しない。`SigningKeys` が `transit/sign` を暗号化、復号、データ鍵の機能から分離しているのと同じ構成である。
-- ローテーションでは新しい DEK のバージョンを以後の書き込み用に有効化し、直前のバージョンを復号可能な `retiring` のまま残す。`backend/jobs` の `JobKind` と `HandlerRegistry` に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古いバージョンを破棄できる。`FieldMigrator` ポート（`backend/datakeys/ports`）により、各 Context は自身の一括再暗号化処理と残件数の算出を登録する。これにより、`DataKeys` はこのポートを利用する Context のスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
+- `backend/datakeys`（`DataKeys` モジュール）は、ラップされた DEK のメタデータとライフサイクル（初期化、ローテーション、無効化、破棄）だけを担い、`EnvelopeCrypto` ポート自体は定義しない。`SigningKeys` が `transit/sign` を暗号化、復号、データ鍵の機能から分離しているのと同じ構成である。
+- ローテーションでは新しい DEK のバージョンを以後の書き込み用に有効化し、直前のバージョンを復号可能な `retiring` のまま残す。`backend/jobs` の `JobKind` と `HandlerRegistry` に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古いバージョンを破棄できる。`FieldMigrator` ポート（`backend/datakeys/ports`）により、各モジュールは自身の一括再暗号化処理と残件数の算出を登録する。これにより、`DataKeys` はこのポートを利用するモジュールのスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
 - アンラップに失敗した場合、プロバイダーへ到達できない場合、追加認証データが一致しない場合、または改ざんを検知した場合は、フェイルクローズで復号を拒否する。呼び出し元は平文へフォールバックしたり、項目を読み飛ばしたりしない。
 - マスターキーの提供元は OpenBao（Vault Transit 互換の HTTP API）である。開発環境とローカル環境では Tink の平文鍵セットを使うため、OpenBao は不要である。提供元は設計上差し替え可能である。
 - 唯一の HTTP 接点は、読み取り専用で `system_admin` に限定した `GET /api/admin/data-keys/health`（`backend/datakeys/handlers_http`）である。各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告し、鍵素材は決して返さない。ローテーション、無効化、破棄は内部操作とし、管理用エンドポイントを公開しない。

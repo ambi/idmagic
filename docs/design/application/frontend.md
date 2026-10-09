@@ -150,14 +150,14 @@ frontend/src/features/admin-users/
 
 経路 `/admin/users` は `frontend/src/routes/admin/users.tsx` で定義され、このスライスの `AdminUsersPage` を描画する。
 
-### 機能スライスと Bounded Context の対応
+### 機能スライスとモジュールの対応
 
-機能スライスは、Bounded Context と一対一に対応しない。
-Bounded Context はドメインモデルの一貫性の単位であり、機能スライスは利用者が一続きに操作する画面の単位だからである。
+機能スライスは、モジュールと一対一に対応しない。
+モジュールは変わりうる設計判断を隠すバックエンドの単位であり、機能スライスは利用者が一続きに操作する画面の単位だからである。
 
-たとえば `account` スライスは、一つのアカウントポータルとして次の Context の API を使う。
+たとえば `account` スライスは、一つのアカウントポータルとして次のモジュールの API を使う。
 
-| 画面の内容 | API を担当する Context |
+| 画面の内容 | API を担当するモジュール |
 | --- | --- |
 | プロフィール、メールアドレス | IdManagement |
 | MFA、セッション、サインイン履歴 | Authentication |

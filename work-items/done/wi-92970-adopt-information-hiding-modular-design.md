@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,7 +7,29 @@ created_at: 2026-10-09
 priority: p2
 depends_on: []
 change_kind: tooling
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: リポジトリ内の設計文書、検査、開発用のレポートだけを変え、製品の利用者と運用者が観測する振る舞い、設定、API は変わらない。
+  references: []
 spec_impact: { kind: none, reason: "設計方針、設計文書の用語、内部依存とテーブル書き込みの検査、開発用のレポートを変更する。HTTP の応答と認証方式、トークンの発行と失効、永続状態とスキーマ、監査イベント、外向きの通知と同期の結果は変更しない。" }
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - tools/check/src/boundary-fitness.ts
+    - tools/check/src/check-boundaries.ts
+    - tools/check/src/boundary-debt-ratchet.ts
+    - tools/check/src/schema-tables.ts
+    - tools/check/src/runner.ts
+    - tools/workspace/src/workspace.ts
+    - docs/design/architecture/logical.md
+    - docs/design/data/database.md
+    - sqlc.yaml
+  tests:
+    - tools/check/src/check-boundaries.acceptance.test.ts
+    - tools/check/src/boundary-debt-ratchet.test.ts
+  stop_before_reading: [backend, frontend, spec]
 ---
 
 # 境界の判断を、観測できる事実と検査される宣言に基づくモジュール設計へ置き換える
@@ -142,7 +164,7 @@ Context Map の許可辺と関係ラベルを廃止し、次の規則に置き�
 所有が「共通基盤」のテーブルは共有ライブラリだけが書き込め、共有ライブラリはモジュールのテーブルへ書き込めない。
 組み立て地点を SQL の書き込み検査の例外にはしない。
 
-抽出は SQL の構造に従い、`INSERT`（`ON CONFLICT DO UPDATE` を含む）、`UPDATE`、`DELETE`、`MERGE`、`TRUNCATE`、書き込みを含む CTE の全対象を扱う。
+抽出は SQL の構造に従い、`INSERT`（`ON CONFLICT DO UPDATE` を含む）、`UPDATE`、`DELETE`、`TRUNCATE`、書き込みを含む CTE の全対象を扱う。`MERGE` は、解析器が構文木へ変換しないため入力診断として拒否する（後述の「着手時の棚卸し」）。
 コメントと文字列中の単語、別名、引用識別子、スキーマ修飾を区別する。
 未対応の構文、解決できないテーブル、所有者の欠落や重複は、違反がないものとして通さず抽出の診断として失敗させる。
 単語の正規表現だけではこの検査を実装しない。
@@ -349,15 +371,15 @@ Go の `context.Context` とテナントを運ぶ `context.go` は Go の語な�
 
 | 文書 | 変更 |
 | --- | --- |
-| [論理アーキテクチャ](../docs/design/architecture/logical.md) | Context Map の節と関係ラベルの表を削除する。責務表を「モジュールの責務」とし、Subdomain 列を公開方式と公開パッケージの列へ置き換える。System 行に組み立て地点を列挙する |
-| [解決戦略](../docs/design/architecture/strategy.md)、[アーキテクチャ上の判断](../docs/design/architecture/decisions.md) | 依存規則とポートの分離を記述する。「辺の許可リストを持たない」判断と見直し条件を追加する |
-| [設計ガイドライン](../docs/design/application/design-guidelines.md) | Subdomain の節を判断の三分類、D1〜D8、変更シナリオと相談条件へ置き換える。Aggregate の節を上の採否どおりに直す |
-| [構造](../docs/domain/structure.md) | 依存規則、公開契約、変換、`shared`、組み立て地点、`internal/` の最終形と移行規則を記述する |
-| [用語集](../docs/domain/glossary.md)、[ドメイン文書の索引](../docs/domain/README.md) | Subdomain を削除し、モジュールを定義する。索引表の区分の列を削除する |
-| [データベース設計](../docs/design/data/database.md) | 「所有 Context」を「所有モジュール」とし、`table-write` の対象と限界を記述する。既存の所有者外の書き込みを、原子性の理由を維持して移行する |
-| [フロントエンド設計](../docs/design/application/frontend.md) | 機能スライスとの対応の節の用語を改名する |
-| [仕様先行の開発ワークフロー](../docs/development/specification-first-workflow.md)、[仕様フォーマット](../SPECIFICATION_FORMAT.md)、[文書ガイド](../DOCUMENTATION_GUIDE.md)、[作業項目フォーマット](../WORK_ITEM_FORMAT.md) | モジュールの定義と境界選択手順を参照する。境界を変更する設計記録の最小項目を定め、AI と人の判断範囲を更新する |
-| [エージェント指示](../AGENTS.md)、[起票スキル](../.agents/skills/new-work-item/SKILL.md)、[実装スキル](../.agents/skills/implement-work-item/SKILL.md)、[設計同期スキル](../.agents/skills/update-design/SKILL.md) | 境界変更時の判断手順を参照し、旧 Context Map の同期指示を撤去する。用語と規則は一次情報へ参照で結ぶ |
+| [論理アーキテクチャ](../../docs/design/architecture/logical.md) | Context Map の節と関係ラベルの表を削除する。責務表を「モジュールの責務」とし、Subdomain 列を公開方式と公開パッケージの列へ置き換える。System 行に組み立て地点を列挙する |
+| [解決戦略](../../docs/design/architecture/strategy.md)、[アーキテクチャ上の判断](../../docs/design/architecture/decisions.md) | 依存規則とポートの分離を記述する。「辺の許可リストを持たない」判断と見直し条件を追加する |
+| [設計ガイドライン](../../docs/design/application/design-guidelines.md) | Subdomain の節を判断の三分類、D1〜D8、変更シナリオと相談条件へ置き換える。Aggregate の節を上の採否どおりに直す |
+| [構造](../../docs/domain/structure.md) | 依存規則、公開契約、変換、`shared`、組み立て地点、`internal/` の最終形と移行規則を記述する |
+| [用語集](../../docs/domain/glossary.md)、[ドメイン文書の索引](../../docs/domain/README.md) | Subdomain を削除し、モジュールを定義する。索引表の区分の列を削除する |
+| [データベース設計](../../docs/design/data/database.md) | 「所有 Context」を「所有モジュール」とし、`table-write` の対象と限界を記述する。既存の所有者外の書き込みを、原子性の理由を維持して移行する |
+| [フロントエンド設計](../../docs/design/application/frontend.md) | 機能スライスとの対応の節の用語を改名する |
+| [仕様先行の開発ワークフロー](../../docs/development/specification-first-workflow.md)、[仕様フォーマット](../../SPECIFICATION_FORMAT.md)、[文書ガイド](../../DOCUMENTATION_GUIDE.md)、[作業項目フォーマット](../../WORK_ITEM_FORMAT.md) | モジュールの定義と境界選択手順を参照する。境界を変更する設計記録の最小項目を定め、AI と人の判断範囲を更新する |
+| [エージェント指示](../../AGENTS.md)、[起票スキル](../../.agents/skills/new-work-item/SKILL.md)、[実装スキル](../../.agents/skills/implement-work-item/SKILL.md)、[設計同期スキル](../../.agents/skills/update-design/SKILL.md) | 境界変更時の判断手順を参照し、旧 Context Map の同期指示を撤去する。用語と規則は一次情報へ参照で結ぶ |
 
 コードから導ける辺や一覧（モジュールの依存グラフなど）は、文書へ手で書かない。
 
@@ -402,6 +424,76 @@ Go の `context.Context` とテナントを運ぶ `context.go` は Go の語な�
 情報隠蔽と非循環は独立した性質であり、非循環の import グラフだけでは設計判断を隠せているとは限らない。
 これらの文献は設計基準の根拠であり、本方式が DDD より AI の実装品質を高めるという実証結果としては引用しない。
 
+### 着手時の棚卸し
+
+着手時の revision は `8b12057ef71219925da2531bd83377278559799b` である。
+このとき台帳は 180 項目、510 ID（`private-import` 111、`undeclared-context-edge` 240、`context-cycle` 66、`shared-detour` 73、`domain-effect` 20）だった。
+
+| 対象 | 観測した事実 |
+| --- | --- |
+| sqlc の入力 | `sqlc.yaml` の 33 項目、73 ファイル。すべてディレクトリ指定で、スキーマは `infra/schema/postgres.sql` 一つ。モジュールの `db_postgres` 31 項目、共有ライブラリ 2 項目（`shared/ratelimit/db_postgres`、`shared/security/salts_postgres`）、組み立て地点 1 項目（`cmd/idmagic-batch/internal/restorecheck/db_postgres`） |
+| 所有者外の直接書き込み | 7 クエリ。データベース設計が記録していた 4 種類（Application のプロトコル設定の結び付け 3、IdManagement の CSV のパスワード履歴 1、監査 2、ジョブ 1）と一致し、記録のない書き込みはなかった |
+| 未検査の作用経路 | `//sql:raw` 9 箇所、`ON DELETE CASCADE` 80 箇所、トリガー 1 個（`tenants` の挿入で SAML のデフォルトのプロファイルを作る）。データベース設計の「所有と書き込みの境界」に限界として記載した |
+| 組み立て地点への依存 | モジュールと共有ライブラリから組み立て地点への import はなかった |
+
+SQL の解析には、既存の依存である sqlc 1.31.1 の `sqlc parse --dialect postgresql` を使う。
+内部で PostgreSQL の構文解析器を使うので、コメント、文字列、引用識別子、スキーマ修飾、別名を区別できる。
+新しい npm の解析器（pg_query の WebAssembly 版など）は、置き換えられる自作コードが同じでも推移依存と配布物を増やすので採らない。
+出力の JSON はノードの型名を持たないので、文の種類は sqlc の `ast` パッケージの型だけが持つフィールドの組で見分ける。
+`MERGE` は sqlc が構文木へ変換せず空のオブジェクトになるので、入力診断として拒否する。
+sqlc は `MERGE` を含むクエリから型付きのコードを生成できないので、現在のクエリ入力に `MERGE` は現れない。
+起動に一回あたり約 0.5 秒かかるので、全ファイルを一回の呼び出しへ連結し、文の終了位置のバイト位置でファイルへ振り分ける。
+
+列を省略した `INSERT` は、同じ revision のスキーマの `CREATE TABLE` を同じ解析器で読んで列を解決する。
+基準 revision の比較は、`git archive` で境界検査の入力（`go.mod`、`backend`、`infra/schema`、`sqlc.yaml`、責務表、データベース設計）だけを一時ディレクトリへ取り出し、現在と同じ解析を行う。
+旧文書の互換処理は二つに限る。
+旧い責務表（`仕様上の Context | Subdomain | ...`）は全モジュールを `legacy` とし、組み立て地点を新しい表の初期値（`backend/cmd`、`server_http`、`testing_stack`）とする。
+旧い所有の列（`所有 Context`）は所有モジュールとして読む。
+
+### 判断手順の適用
+
+境界を選ぶ判断手順を五つの実例へ適用した。
+どれも、この項目では実装を変えず、記録した判断を後続の項目が使う。
+
+**解決済みのテナントの受け渡し（D1、D3、D5）。**
+`backend/tenancy` のルートパッケージ（`context.go`）は解決済みの `domain.Tenant` を `context.Context` に載せ、`TenantID` はテナントのない文脈で panic する。
+41 個の `private-import` がこのルートパッケージを指し、`shared/http/support_http` などが `shared-dependency` として Tenancy に依存する。
+D5 の条件で共有ライブラリへ移す案は除外する。
+値の型が `tenancy/domain.Tenant` であり、テナントのない文脈を default テナントへ落とさないという規則がテナント分離の保証そのものだからである。
+ID だけを文字列で運ぶ形にしても、規則の意味は Tenancy に残るので D5 の「型名を文字列へ変えただけ」に当たる。
+D1 により状態の所有者である Tenancy を担当とし、D3 により非公開の関数をそのまま公開するのではなく、取得と付与の操作を公開契約として公開パッケージへ置く案を採る。
+これはテナントの公開言語の項目の残りの作業と一致する。
+
+**CSV の確定と監査、ジョブの投入（D2、D7）。**
+CSV の取り込みは、確定と同じトランザクションで監査イベントを記録し、グループの取り込みでは調整ジョブを投入する。
+IdManagement が `audit_events` と `jobs` へ直接書く現状は `table-write` として台帳に残る。
+Audit と Jobs の公開操作を別のトランザクションで呼ぶ案は、D7 により除外する。
+確定した取り込みに監査記録やジョブが欠ける部分的な確定が起きうるからである。
+残る候補は、Audit と Jobs が「呼び出し側のトランザクションに参加して追記する」操作を公開契約として公開し、SQL と不変条件の検証を所有者に残す案である（D2）。
+トランザクションの所有者は IdManagement の取り込みのコミットであり、Audit と Jobs の操作は確定を行わない。
+この案はポートの追加を伴うので、実装は後続の棚卸しの項目で D2 と D7 の記録とともに判断する。
+
+**`UserMutationCommitter` の結線（D4、D7）。**
+import の向きは IdGovernance から IdManagement である。
+IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、その PostgreSQL アダプターは `idmanagement/user/db_postgres` の `SaveUserTx` を import する（`private-import`）。
+実行時の流れは逆向きで、IdManagement のユースケースがポートを呼び、IdGovernance のアダプターが一つのトランザクションを開いて User の保存とワークフローの実行の生成を確定する。
+原子性を保証するのは IdGovernance のアダプターのトランザクションであり、`users` への SQL は IdManagement の sqlc クエリに残るので `table-write` にはならない。
+D4 の形（要求する IdManagement がポートを定義し、IdGovernance が実装し、組み立て地点で結ぶ）はすでに満たしている。
+残る問題は D3 の非公開の import であり、IdManagement が「呼び出し側のトランザクションで User を保存する」操作を公開契約として公開する案が CSV の例と同じ形になる。
+
+**同じ文字列型で正規化規則が異なる処理（D5、D8）。**
+OAuth2 のデバイスフローの `NormalizeUserCode` と、Authentication の回復コードの `normalizeRecoveryCode` は、どちらも利用者が入力したコードを文字列から文字列へ正規化する。
+前者は大文字にして英数字以外をすべて除き、後者は小文字にして空白とハイフンだけを除く。
+型が同じでも規則が異なり、変わる理由も RFC 8628 のユーザーコードの文字集合と回復コードの表示形式で別なので、D5 の共有ライブラリの条件を満たさない。
+現状の配置を維持する。
+
+**所有者と原子性が未確定の新しい要求（D1、D2、D7、D8）。**
+例として「管理者が User を停止したとき、その User のセッションと API トークンを同時に失効させる」という要求を置く。
+D1 の担当の候補は、User の状態を持つ IdManagement、セッションを持つ Authentication、トークンを持つ OAuth2 と ApiTokens にまたがる。
+D7 の入力である「停止と失効の部分的な確定を禁止するか」が仕様にないので、同じトランザクションにまとめるか、停止の確定後に失効を再試行可能な形で行うかを決められない。
+既存の要件 ID の接頭辞や共変更の最大の組（IdManagement と OAuth2 の 6 回）からは担当を決めない。
+この場合の出力は、利用者への問い（部分的な確定を禁止するか、失効までの遅延をどこまで許すか、失効の失敗を停止の失敗として扱うか）である。
+
 ## 計画
 
 1. 着手時の revision と検査結果を記録する。sqlc の全入力、所有宣言、既存の直接書き込み、cascade と動的 SQL、組み立て地点への依存を棚卸しする。
@@ -414,23 +506,23 @@ Go の `context.Context` とテナントを運ぶ `context.go` は Go の語な�
 7. 後続項目を起票し、既存の項目を調整する。
    - 残りの文書の改名と、用語の検査の規則の追加。
    - モジュールごとの `internal/` への移行。最初の項目は、依存の少ないモジュールを一つ選んで移行の手順を確かめる。
-   - [テナントの公開言語](wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)は Context Map への辺の追記を除く。公開契約への移動と、既存の非公開ユースケースやアダプターへの直接依存の解消は残す。
-   - [残った境界負債の棚卸し](wi-33994-reinventory-the-remaining-boundary-debt.md)は新しい分類と D1〜D8 で棚卸しする。新規の書き込み負債も対象とし、公開操作を足すだけで解消したとは扱わない。
+   - [テナントの公開言語](../wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)は Context Map への辺の追記を除く。公開契約への移動と、既存の非公開ユースケースやアダプターへの直接依存の解消は残す。
+   - [残った境界負債の棚卸し](../wi-33994-reinventory-the-remaining-boundary-debt.md)は新しい分類と D1〜D8 で棚卸しする。新規の書き込み負債も対象とし、公開操作を足すだけで解消したとは扱わない。
    - この二つの項目は、旧規則に合わせた修正が先に進まないよう、起票の時点で `depends_on` に本項目を加えてある。
-   - [ドメインの作用の注入](wi-65906-inject-time-randomness-and-network-into-domain.md)は `domain-effect` を変えないので、調整しない。
+   - [ドメインの作用の注入](../wi-65906-inject-time-randomness-and-network-into-domain.md)は `domain-effect` を変えないので、調整しない。
 
 ## タスク
 
-- [ ] T001 [Inventory] revision、現在の違反、sqlc の入力、直接書き込みと未検査の作用経路を記録し、解析方式、列の解決方法、基準 revision の互換処理を確定する。
-- [ ] T002 [Design] D1〜D8 を五つの実例へ適用し、制約、比較、相談条件を確認する。
-- [ ] T003 [Docs] 判断手順、宣言、依存規則、公開方式、SQL 検査の範囲、負債移行と用語を一次情報へ反映し、エージェント指示と作業スキルの参照を同期する。
-- [ ] T004 [Acceptance] 下の fixture と基準 revision の比較で、新規の故障の見逃しと、撤去する規則による拒否を観測する。
-- [ ] T005 [Tooling] 境界検査、所有者の解析、SQL の書き込み検査、負債の増加検査を変更する。
-- [ ] T006 [Tooling] Subdomain の区分の検査を削除する。
-- [ ] T007 [Migration] 台帳と ID を移行し、分類変更、規則の撤去、実装の解消を別々に記録する。新規分類の既存負債には理由と参照を付ける。
-- [ ] T008 [Tooling] 条件と分母を明示する `report-change-coupling` を追加する。
-- [ ] T009 [Plan] 後続項目を起票し、既存の二つの項目を調整する。
-- [ ] T010 [Verify] 検査と文書生成を実行し、文書、検査、台帳と基準 revision の整合を確認する。
+- [x] T001 [Inventory] revision、現在の違反、sqlc の入力、直接書き込みと未検査の作用経路を記録し、解析方式、列の解決方法、基準 revision の互換処理を確定する。
+- [x] T002 [Design] D1〜D8 を五つの実例へ適用し、制約、比較、相談条件を確認する。
+- [x] T003 [Docs] 判断手順、宣言、依存規則、公開方式、SQL 検査の範囲、負債移行と用語を一次情報へ反映し、エージェント指示と作業スキルの参照を同期する。
+- [x] T004 [Acceptance] 下の fixture と基準 revision の比較で、新規の故障の見逃しと、撤去する規則による拒否を観測する。
+- [x] T005 [Tooling] 境界検査、所有者の解析、SQL の書き込み検査、負債の増加検査を変更する。
+- [x] T006 [Tooling] Subdomain の区分の検査を削除する。
+- [x] T007 [Migration] 台帳と ID を移行し、分類変更、規則の撤去、実装の解消を別々に記録する。新規分類の既存負債には理由と参照を付ける。
+- [x] T008 [Tooling] 条件と分母を明示する `report-change-coupling` を追加する。
+- [x] T009 [Plan] 後続項目を起票し、既存の二つの項目を調整する。
+- [x] T010 [Verify] 検査と文書生成を実行し、文書、検査、台帳と基準 revision の整合を確認する。
 
 ## 検証
 
@@ -455,7 +547,8 @@ Go の `context.Context` とテナントを運ぶ `context.go` は Go の語な�
 | モジュールの sqlc クエリが、ほかのモジュールが所有するテーブルへ `UPDATE` する | `table-write` |
 | モジュールが共通基盤へ書く、共有ライブラリがモジュールのテーブルへ書く | `table-write` |
 | 自分が所有するテーブルへ書く、共有ライブラリが共通基盤へ書く | 受理 |
-| 書き込み CTE、複数文、upsert、`MERGE`、複数対象の `TRUNCATE` | 全対象を照合。引用識別子、修飾、別名を解決 |
+| 書き込み CTE、複数文、upsert、複数対象の `TRUNCATE` | 全対象を照合。引用識別子、修飾、別名を解決 |
+| `MERGE` | 解析器が構文木へ変換しないので入力診断として拒否 |
 | コメントまたは文字列に書き込み文のような語がある | 書き込み先に数えない |
 | 同じクエリが、そのテーブルを `SELECT` するだけである | 受理 |
 | 所有者が欠ける、重複する、未知の名前を使う、入力の配置が分類不能 | 入力診断として拒否 |
@@ -493,3 +586,62 @@ Go の変異器は TypeScript を対象にしないため、変更耐性は、�
   レポートを合否に使わず、変更シナリオを調べる補助に限る。条件、分母、履歴不足を表示する。
 - 判断手順を設けても、境界の最適解や AI の実装品質の改善は機械検査だけで証明できない。
   本項目の完了条件は、検査の故障検出と実例への手順の適用とする。品質改善の実証は将来の変更事例で評価する。
+
+## 完了
+
+- **完了日**: 2026-10-10
+- **要約**:
+  `mise run spec-diff` は main に対して規範仕様の差分がないことを示した。
+  変わったのは設計方針、設計文書の用語、境界の検査、開発用のレポートである。
+  境界の判断を、機械抽出する事実、検査される宣言、証拠を比較する判断の三つに分け、境界を選ぶ判断手順（D1〜D8）と相談の条件を設計ガイドラインへ置いた。
+  概念を定義する文書の Bounded Context と Context をモジュールへ改名し、Context Map と Subdomain の区分とその検査を撤去した。
+  境界検査は責務表からモジュール、公開方式、公開パッケージ、組み立て地点を読み、`private-import`、`module-cycle`、`shared-dependency`、`composition-import`、`domain-effect`、`table-write` を判定する。
+  `table-write` は `sqlc parse` の構文木から書き込み先を読み、データベース設計の所有モジュールと照合する。
+  負債の増加検査は基準 revision のソースにも同じ規則を当て、旧形式の文書を互換処理で読む。
+  `mise run report-change-coupling` と、Go の `internal/` の拒否を確かめる `mise run check-go-internal-visibility` を追加した。
+  台帳の移行は次のとおりである（着手時の revision `8b12057ef` の 510 ID から 211 ID）。
+
+  | 旧分類 | 旧 ID 数 | 新分類 | 新 ID 数 | 区分 |
+  | --- | --- | --- | --- | --- |
+  | `private-import` | 111 | `private-import` | 111 | ID は同一 |
+  | `undeclared-context-edge` | 240 | なし | 0 | 規則の撤去 |
+  | `context-cycle` | 66 | `module-cycle` | 57 | 57 は改名。9 は `shared` を経由した到達だけで成立していた循環で、規則の撤去（原因の import は `shared-dependency` として数える） |
+  | `shared-detour` | 73 | `shared-dependency` | 16 | 分類変更。原因の `shared` パッケージとモジュールの組ごとに数え直した |
+  | `domain-effect` | 20 | `domain-effect` | 20 | ID は同一 |
+  | なし | 0 | `table-write` | 7 | 新規。データベース設計に記録済みの 4 種類と一致し、理由に原子性と参照を書いた |
+  | なし | 0 | `composition-import` | 0 | 新規。既存の違反はなかった |
+
+  実装の変更で解消した ID は 0 件である。
+  後続として、残りの文書の改名（wi-26986）とモジュール一つの `internal/` 移行（wi-50428）を起票し、テナントの公開契約（wi-39119）と負債の棚卸し（wi-33994）を新しい分類と D1〜D8 へ合わせた。
+- **受け入れ RED の証拠**:
+  - **テスト**: `tools/check/src/boundary-fitness.test.ts`、`tools/check/src/check-boundaries.acceptance.test.ts`、`tools/check/src/table-writes.test.ts` の新しい fixture。
+  - **要件**: N/A: 製品の振る舞いを変えない境界検査の変更であり、規範となる製品要件はない。
+  - **観測した失敗**: 新しい責務表の fixture に対して、変更前の検査は 26 件中 23 件、受け入れの fixture は 10 件中 9 件で失敗した。旧実装は新しい表を「Context responsibility table」がないとして拒否し、`table-write` の検査を持たないので、ほかのモジュールのテーブルへの `UPDATE` を見逃していた。`table-writes.test.ts` はモジュールがなく失敗した。
+  - **検出できる理由**: fixture は、公開パッケージの import の受理、非公開パッケージと組み立て用ルートの拒否、旧 Context Map に辺のない非循環の依存の受理、所有者外の書き込みの拒否を、それぞれ違反 ID まで表明する。許可リストの判定を残す誤実装と、書き込みの照合を省く誤実装を区別できる。
+- **単体 RED の証拠**:
+  - **テスト**: `tools/check/src/boundary-debt-ratchet.test.ts` の「既存の所有者外の書き込みが別の列へ書き始める」と、`tools/check/src/schema-tables.test.ts` の `tableOwners`。
+  - **要件**: N/A: 製品要件のない検査の変更である。
+  - **観測した失敗**: 変更前の ratchet は台帳の ID だけを比べ、`table-write` の ID を持たないので、列を増やした書き込みを受理していた。`tableOwners` は未定義で失敗した。
+  - **検出できる理由**: ID は書き込む列の集合を含むので、列の追加だけを変えた誤実装も新しい ID として拒否される。
+- **変更耐性の結果**:
+  TypeScript は Go の変異器の対象外なので、配線と既定分岐の故障を手で一つずつ注入し、各テストファイルを実行した。
+  すべての故障をテストが検出した。
+
+  | 注入した故障 | 検出したテスト |
+  | --- | --- |
+  | 所有者の照合を外す（常に受理） | `table-writes.test.ts` 3 件が失敗 |
+  | `internal` の公開判定を常に公開にする | `boundary-fitness.test.ts` 1 件が失敗 |
+  | `legacy` の判定で `internal` 配下を公開扱いにする | `boundary-fitness.test.ts` 1 件が失敗 |
+  | 組み立て地点の照合を外す | `boundary-fitness.test.ts` 2 件が失敗 |
+  | 基準 revision の解析の診断を無視する | `boundary-debt-ratchet.test.ts` 1 件が失敗 |
+  | 基準との比較で追加を常に空にする | `boundary-debt-ratchet.test.ts` 2 件が失敗 |
+  | `check-boundaries` から書き込みの違反を外す | `check-boundaries.acceptance.test.ts` 3 件が失敗 |
+  | 共変更の広範囲コミットの除外を外す | `coupling.test.ts` 2 件が失敗 |
+
+  `sqlc parse` が `MERGE` を構文木へ変換しないことは手法の限界であり、入力診断として拒否することで見逃しにはしない。
+  動的な SQL、cascade、トリガーによる書き込みは検査の対象外として文書に記載した。
+- **検証結果**:
+  - `mise run check-boundary-debt-ratchet -- 8b12057ef71219925da2531bd83377278559799b` - 成功（旧形式の基準と新しい規則で件数が一致）
+  - `mise run check-go-internal-visibility` - 成功
+  - `mise run report-change-coupling` - 実行（直近 500 コミット、125 件を集計、7 件を除外）
+  - `mise run verify` - 成功

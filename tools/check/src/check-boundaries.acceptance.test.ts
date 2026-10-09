@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import { BOUNDARY_FIXTURE } from './boundary-fixture.ts'
 import { checkBoundaries } from './check-boundaries.ts'
 
 const cleanup: string[] = []
@@ -10,113 +11,147 @@ afterAll(async () => {
   for (const path of cleanup) await rm(path, { recursive: true, force: true })
 })
 
-const logicalArchitecture = [
-  '# Logical architecture',
-  '',
-  '## Context Map',
-  '',
-  '```mermaid',
-  'flowchart LR',
-  '  Supplier -->|OHS/PL: published model| Customer',
-  '```',
-  '',
-  '## Context responsibilities',
-  '',
-  '| Specification context | Subdomain | Go package | Responsibility |',
-  '| --- | --- | --- | --- |',
-  '| [Supplier](supplier.md) | Core | `backend/supplier` | Supplies a model |',
-  '| [Customer](customer.md) | Core | `backend/customer` | Uses the model |',
-  '| [Other](other.md) | Core | `backend/other` | Has no declared relation |',
-  '',
-].join('\n')
-
-async function boundaryWorkspace(
-  sources: Record<string, string>,
-  debt = '{"violations":[]}\n',
-): Promise<string> {
+async function boundaryWorkspace(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-boundaries-acceptance-'))
   cleanup.push(root)
-  await mkdir(join(root, 'docs', 'design', 'architecture'), { recursive: true })
-  await mkdir(join(root, 'tools', 'check'), { recursive: true })
-  await writeFile(join(root, 'go.mod'), 'module example.com/product\n')
-  await writeFile(join(root, 'docs', 'design', 'architecture', 'logical.md'), logicalArchitecture)
-  await writeFile(join(root, 'tools', 'check', 'boundary-debt.json'), debt)
-  for (const [path, source] of Object.entries(sources)) {
+  for (const [path, source] of Object.entries({ ...BOUNDARY_FIXTURE, ...files })) {
     await mkdir(dirname(join(root, path)), { recursive: true })
     await writeFile(join(root, path), source)
   }
   return root
 }
 
-async function outcomeFor(sources: Record<string, string>, debt?: string): Promise<string> {
-  const outcome = await checkBoundaries(
-    createWorkspaceSnapshot(await boundaryWorkspace(sources, debt)),
-  )
+async function outcomeFor(files: Record<string, string>) {
+  return checkBoundaries(createWorkspaceSnapshot(await boundaryWorkspace(files)))
+}
+
+async function failureFor(files: Record<string, string>): Promise<string> {
+  const outcome = await outcomeFor(files)
   expect(outcome.ok).toBe(false)
   return outcome.lines.join('\n')
 }
 
-describe('checkBoundaries context fitness functions', () => {
-  it('rejects a cross-context import of a private package', async () => {
-    const lines = await outcomeFor({
-      'backend/customer/usecases/service.go':
-        'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
-    })
-
-    expect(lines).toContain('private-import:Customer->Supplier')
+describe('checkBoundaries module rules', () => {
+  it('accepts a workspace whose imports and table writes follow the declarations', async () => {
+    expect(
+      await outcomeFor({
+        'backend/customer/usecases/service.go':
+          'package usecases\nimport "example.com/product/backend/supplier/ports"\n',
+      }),
+    ).toEqual({ ok: true, lines: ['ok  module boundaries'] })
   })
 
-  it('rejects an undeclared Context dependency', async () => {
-    const lines = await outcomeFor({
-      'backend/supplier/usecases/service.go':
-        'package usecases\nimport "example.com/product/backend/customer/domain"\n',
-    })
-
-    expect(lines).toContain('undeclared-context-edge:Supplier->Customer')
+  it('rejects a cross-module import of a private package', async () => {
+    expect(
+      await failureFor({
+        'backend/customer/usecases/service.go':
+          'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
+      }),
+    ).toContain('private-import:Customer->Supplier')
   })
 
   it('rejects an effectful call in a domain package', async () => {
-    const lines = await outcomeFor({
-      'backend/customer/domain/model.go':
-        'package domain\nimport "time"\nfunc CreatedAt() time.Time { return time.Now() }\n',
-    })
-
-    expect(lines).toContain('domain-effect:customer')
+    expect(
+      await failureFor({
+        'backend/customer/domain/model.go':
+          'package domain\nimport "time"\nfunc CreatedAt() time.Time { return time.Now() }\n',
+      }),
+    ).toContain('domain-effect:customer')
   })
 
-  it('rejects a forbidden dependency hidden behind shared code', async () => {
-    const lines = await outcomeFor({
-      'backend/customer/usecases/service.go':
-        'package usecases\nimport "example.com/product/backend/shared/bridge"\n',
-      'backend/shared/bridge/bridge.go':
-        'package bridge\nimport "example.com/product/backend/other/usecases"\n',
-    })
-
-    expect(lines).toContain('shared-detour:Customer->Other')
+  it('rejects a module query that updates a table another module owns', async () => {
+    expect(
+      await failureFor({
+        'backend/customer/db_postgres/supplies.sql':
+          '-- name: Reserve :exec\nUPDATE supplies SET stock = stock - 1 WHERE id = $1;\n',
+      }),
+    ).toContain('table-write:Customer->Supplier')
   })
 
-  it('rejects a debt entry without a concrete reason', async () => {
-    const root = await boundaryWorkspace(
-      {
-        'backend/customer/usecases/service.go':
-          'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
-      },
-      JSON.stringify({
+  it('rejects a shared library writing a module table', async () => {
+    expect(
+      await failureFor({
+        'backend/shared/counter/db_postgres/orders.sql':
+          '-- name: Purge :exec\nDELETE FROM orders;\n',
+      }),
+    ).toContain('table-write:shared->Customer')
+  })
+
+  it('checks a query input added under another directory once sqlc declares it', async () => {
+    const lines = await failureFor({
+      'sqlc.yaml': `${BOUNDARY_FIXTURE['sqlc.yaml']}  - engine: "postgresql"\n    schema: "infra/schema/postgres.sql"\n    queries: "backend/supplier/reports/db_postgres"\n`,
+      'backend/supplier/reports/db_postgres/report.sql':
+        '-- name: Touch :exec\nUPDATE orders SET supply_id = NULL;\n',
+    })
+
+    expect(lines).toContain('table-write:Supplier->Customer')
+  })
+
+  it('diagnoses an undescribed write target owner and an unclassified query input', async () => {
+    const lines = await failureFor({
+      'docs/design/data/database.md': BOUNDARY_FIXTURE['docs/design/data/database.md']!.replace(
+        '| `counters` | Counters | 共通基盤 | `LOGGED` | なし |\n',
+        '',
+      ),
+      'sqlc.yaml': `${BOUNDARY_FIXTURE['sqlc.yaml']}  - engine: "postgresql"\n    schema: "infra/schema/postgres.sql"\n    queries: "backend/orphan/db_postgres"\n`,
+      'backend/orphan/db_postgres/q.sql': '-- name: Q :exec\nDELETE FROM supplies;\n',
+    })
+
+    expect(lines).toContain('Hit writes counters, which has no owning module')
+    expect(lines).toContain(
+      'backend/orphan/db_postgres: query input belongs to no module, composition point, or shared library',
+    )
+  })
+
+  it('diagnoses SQL whose write targets cannot be extracted', async () => {
+    expect(
+      await failureFor({
+        'backend/customer/db_postgres/merge.sql':
+          '-- name: Sync :exec\nMERGE INTO orders o USING supplies s ON o.supply_id = s.id WHEN MATCHED THEN DELETE;\n',
+      }),
+    ).toContain('Sync: the SQL parser does not expose this statement')
+  })
+
+  it('rejects a ledger id that no observed violation has', async () => {
+    const lines = await failureFor({
+      'tools/check/boundary-debt.json': JSON.stringify({
         violations: [
           {
             id: 'private-import:Customer->Supplier',
-            sourceContext: 'Customer',
-            targetContext: 'Supplier',
+            sourceModule: 'Customer',
+            targetModule: 'Supplier',
+            violations: [
+              'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
+            ],
+            reason: 'Customer still constructs the supplier workflow directly.',
+          },
+        ],
+      }),
+    })
+
+    expect(lines).toContain('no observed violation belongs to this entry')
+  })
+
+  it('rejects a debt entry without a concrete reason', async () => {
+    const root = await boundaryWorkspace({
+      'backend/customer/usecases/service.go':
+        'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
+      'tools/check/boundary-debt.json': JSON.stringify({
+        violations: [
+          {
+            id: 'private-import:Customer->Supplier',
+            sourceModule: 'Customer',
+            targetModule: 'Supplier',
             violations: [
               'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
             ],
           },
         ],
       }),
-    )
+    })
 
     await expect(checkBoundaries(createWorkspaceSnapshot(root))).rejects.toThrow(
-      'every entry needs id, sourceContext, optional targetContext, violations, and reason',
+      'every entry needs id, sourceModule, optional targetModule, violations, and reason',
     )
   })
 })

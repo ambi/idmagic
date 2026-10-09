@@ -100,8 +100,9 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    Where the change parses, decodes, splits, normalizes, or compares untrusted input by hand, add a fuzz target
    beside the examples and give it an oracle stronger than "does not panic"; see Properties and fuzzing in
    `docs/development/specification-first-workflow.md`.
-8. When bounded contexts, structure, technology, runtime composition, or core design rules change, use
-   `update-design`. Keep the feedback loop tight: use `mise run test-go-test -- <package> <test>` or
+8. When modules, public packages, composition points, table owners, structure, technology, runtime
+   composition, or core design rules change, use `update-design`; a boundary change also needs the boundary
+   selection record that `docs/design/application/design-guidelines.md` defines, made before the code. Keep the feedback loop tight: use `mise run test-go-test -- <package> <test>` or
    `mise run test-ui-unit-file -- <file>` for each RED, GREEN, and fault injection; run the containing package
    once after a coherent behavior is GREEN; use `mise run test-go-changed` after the change crosses package
    boundaries. When several narrow checks are due at once, run them in parallel with

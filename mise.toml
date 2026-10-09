@@ -711,6 +711,11 @@ description = "List refused state changes no test proves were left untouched"
 dir = "tools"
 run = "bun run security-test-gap-report/src/main.ts"
 
+[tasks.report-change-coupling]
+description = "Count module pairs changed in the same commit along first-parent history; reports, never fails"
+dir = "tools"
+run = "bun run change-coupling/src/main.ts \"$@\""
+
 [tasks.spec-route]
 description = "Show where one normative id would be observed: rule, candidate operations, tests already naming it"
 dir = "tools"
@@ -788,6 +793,23 @@ run = "bun run check/src/runner.ts work-items \"$@\""
 description = "Reject forbidden source dependencies"
 dir = "tools"
 run = "bun run check/src/runner.ts boundaries \"$@\""
+
+[tasks.check-go-internal-visibility]
+description = "Confirm that Go rejects imports of another module's internal/ packages, which the module rules rely on"
+dir = "tools/check/testdata/go-internal"
+run = '''
+#!/usr/bin/env sh
+set -eu
+go build ./backend/supplier/...
+for package in ./backend/customer/usecases ./backend/cmd/app; do
+  if output=$(go build "$package" 2>&1); then
+    echo "$package imported backend/supplier/internal/store without a build error" >&2
+    exit 1
+  fi
+  echo "$output" | grep -q 'use of internal package' || { echo "$output" >&2; exit 1; }
+done
+echo "ok  Go rejects imports of internal/ from outside its parent"
+'''
 
 [tasks.check-boundary-debt-ratchet]
 description = "Reject boundary violations added beyond a Git revision"

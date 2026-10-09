@@ -131,9 +131,9 @@ async function featureLayoutWorkspace(): Promise<string> {
     'docs/design/architecture/logical.md': [
       '# 論理アーキテクチャ',
       '',
-      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
-      '| --- | --- | --- | --- |',
-      '| [Demo](../../domain/demo/README.md) | Core | `demo` | Demo. |',
+      '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
+      '| --- | --- | --- | --- | --- |',
+      '| [Demo](../../domain/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
       '',
     ].join('\n'),
     'docs/domain/demo/README.md': '# Demo\n',

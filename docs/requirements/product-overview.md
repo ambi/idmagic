@@ -6,7 +6,7 @@
 その結果、退職や権限変更の反映、アクセス制御、操作の追跡がシステムごとに分断される。
 IdMagic は、認証、アイデンティティ同期、資格情報、委譲、監査をテナント単位でまとめて管理する。
 
-プロダクトの現在の範囲は [Context Map](../design/architecture/logical.md#context-map) の索引に示す。
+プロダクトの現在の範囲は [論理アーキテクチャ](../design/architecture/logical.md#モジュールの責務) の責務表に示す。
 
 ## 利用者
 

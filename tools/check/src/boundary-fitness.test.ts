@@ -7,121 +7,281 @@ import {
   type GoSource,
 } from './boundary-fitness.ts'
 
-const LOGICAL_ARCHITECTURE = [
-  '# Logical architecture',
-  '',
-  '## Context Map',
-  '',
-  '```mermaid',
-  'flowchart LR',
-  '  Supplier -->|OHS/PL: published model| Customer',
-  '  Other[Other]',
-  '```',
-  '',
-  '## Context responsibilities',
-  '',
-  '| Specification context | Subdomain | Go package | Responsibility |',
-  '| --- | --- | --- | --- |',
-  '| [Supplier](supplier.md) | Core | `backend/supplier` | Supplies a model |',
-  '| [Customer](customer.md) | Core | `backend/customer` | Uses the model |',
-  '| [Other](other.md) | Core | `backend/other` | Has no declared relation |',
-  '',
-].join('\n')
+const HEADER = '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |'
 
-function violations(sources: GoSource[]) {
+function logicalArchitecture(rows: string[]): string {
+  return [
+    '# Logical architecture',
+    '',
+    '## モジュールの責務',
+    '',
+    HEADER,
+    '| --- | --- | --- | --- | --- |',
+    '| [System](system.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `frontend/` | Wiring |',
+    ...rows,
+    '',
+  ].join('\n')
+}
+
+const LEGACY_ROWS = [
+  '| [Supplier](supplier.md) | `legacy` | `domain` または `ports` の区画 | `backend/supplier` | Supplies a model |',
+  '| [Customer](customer.md) | `legacy` | `domain` または `ports` の区画 | `backend/customer` | Uses the model |',
+]
+
+const INTERNAL_SUPPLIER_ROW =
+  '| [Supplier](supplier.md) | `internal` | `backend/supplier/api` | `backend/supplier` | Supplies a model |'
+
+function analyze(sources: GoSource[], rows = LEGACY_ROWS) {
   return findBoundaryViolations({
     modulePath: 'example.com/product',
-    architecture: parseLogicalArchitecture(LOGICAL_ARCHITECTURE),
+    architecture: parseLogicalArchitecture(logicalArchitecture(rows)),
     sources,
   })
 }
 
+function goFile(path: string, ...imports: string[]): GoSource {
+  const name = path.split('/').at(-2) ?? 'main'
+  return {
+    path,
+    source: [
+      `package ${name}`,
+      ...imports.map((imported) => `import "example.com/product/${imported}"`),
+      '',
+    ].join('\n'),
+  }
+}
+
+function kinds(sources: GoSource[], rows?: string[]): string[] {
+  return analyze(sources, rows).violations.map((violation) => violation.kind)
+}
+
 describe('parseLogicalArchitecture', () => {
-  it('derives context package prefixes and supplier-to-customer relations', () => {
-    expect(parseLogicalArchitecture(LOGICAL_ARCHITECTURE)).toEqual({
-      contexts: [
-        { name: 'Customer', packagePrefixes: ['backend/customer'] },
-        { name: 'Other', packagePrefixes: ['backend/other'] },
-        { name: 'Supplier', packagePrefixes: ['backend/supplier'] },
+  it('reads modules, publication modes, and composition prefixes from the responsibility table', () => {
+    expect(
+      parseLogicalArchitecture(logicalArchitecture([LEGACY_ROWS[1]!, INTERNAL_SUPPLIER_ROW])),
+    ).toEqual({
+      compositionPrefixes: ['backend/cmd', 'backend/shared/http/server_http'],
+      modules: [
+        {
+          name: 'Customer',
+          packagePrefixes: ['backend/customer'],
+          publication: 'legacy',
+          publicPackages: [],
+        },
+        {
+          name: 'Supplier',
+          packagePrefixes: ['backend/supplier'],
+          publication: 'internal',
+          publicPackages: ['backend/supplier/api'],
+        },
       ],
-      relations: [{ supplier: 'Supplier', customer: 'Customer', label: 'OHS/PL: published model' }],
     })
   })
 
-  it('fails loudly when the canonical Context table is missing', () => {
+  it('reads the retired Context table as legacy modules with the initial composition prefixes', () => {
+    const retired = [
+      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
+      '| --- | --- | --- | --- |',
+      '| [System](system.md) | Supporting | `backend/cmd/internal/bootstrap`, `frontend/` | Wiring |',
+      '| [Supplier](supplier.md) | Core | `backend/supplier` | Supplies |',
+      '',
+    ].join('\n')
+
+    expect(parseLogicalArchitecture(retired)).toEqual({
+      compositionPrefixes: [
+        'backend/cmd',
+        'backend/shared/http/server_http',
+        'backend/shared/http/testing_stack',
+      ],
+      modules: [
+        {
+          name: 'Supplier',
+          packagePrefixes: ['backend/supplier'],
+          publication: 'legacy',
+          publicPackages: [],
+        },
+      ],
+    })
+  })
+
+  it('fails when the responsibility table is missing', () => {
     expect(() => parseLogicalArchitecture('# Logical architecture\n')).toThrow(
-      'logical architecture must contain a Context responsibility table',
+      'logical architecture must contain the module responsibility table',
     )
   })
 
-  it('fails loudly when the Context Map names an unknown Context', () => {
-    expect(() =>
-      parseLogicalArchitecture(LOGICAL_ARCHITECTURE.replace('Supplier -->', 'Unknown -->')),
-    ).toThrow('Context Map relation names an unknown Context: Unknown -> Customer')
-  })
-
-  it('fails loudly when a Context Map edge leaves the canonical syntax', () => {
+  it('fails when a module loses its Go package mapping', () => {
     expect(() =>
       parseLogicalArchitecture(
-        LOGICAL_ARCHITECTURE.replace(
-          'Supplier -->|OHS/PL: published model| Customer',
-          'Supplier --> Customer',
-        ),
+        logicalArchitecture([LEGACY_ROWS[0]!.replace('`backend/supplier`', 'backend/supplier')]),
       ),
-    ).toThrow('Context Map relation must use Supplier -->|relation| Customer')
+    ).toThrow('Supplier: the responsibility table must declare a backend package')
   })
 
-  it('fails loudly when a Context loses its Go package mapping', () => {
+  it('fails when two rows claim the same package prefix', () => {
     expect(() =>
       parseLogicalArchitecture(
-        LOGICAL_ARCHITECTURE.replace('`backend/supplier`', 'backend/supplier'),
+        logicalArchitecture([
+          LEGACY_ROWS[0]!,
+          LEGACY_ROWS[1]!.replace('`backend/customer`', '`backend/supplier`'),
+        ]),
       ),
-    ).toThrow('Supplier: Context responsibility table must declare a backend package')
+    ).toThrow('backend/supplier is assigned more than once')
+  })
+
+  it('fails on an unknown publication mode', () => {
+    expect(() =>
+      parseLogicalArchitecture(logicalArchitecture([LEGACY_ROWS[0]!.replace('legacy', 'open')])),
+    ).toThrow('Supplier: publication mode must be legacy or internal')
+  })
+
+  it('fails when a legacy module lists public packages', () => {
+    expect(() =>
+      parseLogicalArchitecture(
+        logicalArchitecture([INTERNAL_SUPPLIER_ROW.replace('`internal`', '`legacy`')]),
+      ),
+    ).toThrow('Supplier: a legacy module derives its public packages from domain and ports')
+  })
+
+  it('fails when an internal module declares a package below internal/', () => {
+    expect(() =>
+      parseLogicalArchitecture(
+        logicalArchitecture([
+          INTERNAL_SUPPLIER_ROW.replace('backend/supplier/api', 'backend/supplier/internal/api'),
+        ]),
+      ),
+    ).toThrow('Supplier: backend/supplier/internal/api is below internal/ and cannot be public')
   })
 })
 
-describe('findBoundaryViolations', () => {
-  it('rejects private packages even when the context relation allows the dependency', () => {
-    const findings = violations([
-      {
-        path: 'backend/customer/usecases/service.go',
-        source: 'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
-      },
-    ])
-
-    expect(findings.map((finding) => finding.kind)).toContain('private-import')
+describe('findBoundaryViolations dependency rules', () => {
+  it('accepts a legacy module importing another module ports package', () => {
+    expect(kinds([goFile('backend/customer/usecases/a.go', 'backend/supplier/ports')])).toEqual([])
   })
 
-  it('rejects a public import in a direction absent from the Context Map', () => {
-    const findings = violations([
-      {
-        path: 'backend/supplier/usecases/service.go',
-        source: 'package usecases\nimport "example.com/product/backend/customer/domain"\n',
-      },
-    ])
-
-    expect(findings.map((finding) => finding.kind)).toContain('undeclared-context-edge')
-  })
-
-  it('reports each context edge that participates in a cycle', () => {
-    const findings = violations([
-      {
-        path: 'backend/customer/usecases/service.go',
-        source: 'package usecases\nimport "example.com/product/backend/supplier/domain"\n',
-      },
-      {
-        path: 'backend/supplier/usecases/service.go',
-        source: 'package usecases\nimport "example.com/product/backend/customer/domain"\n',
-      },
-    ])
-
+  it('rejects a legacy module importing another module usecases package', () => {
     expect(
-      findings.filter((finding) => finding.kind === 'context-cycle').map((finding) => finding.id),
-    ).toEqual(['context-cycle:Customer->Supplier', 'context-cycle:Supplier->Customer'])
+      analyze([goFile('backend/customer/usecases/a.go', 'backend/supplier/usecases')]).violations,
+    ).toEqual([
+      expect.objectContaining({
+        id: 'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
+        debtId: 'private-import:Customer->Supplier',
+      }),
+    ])
+  })
+
+  it('keeps legacy naming when a legacy module has started an internal/ directory', () => {
+    expect(
+      kinds([
+        goFile('backend/supplier/internal/store/a.go'),
+        goFile('backend/customer/usecases/a.go', 'backend/supplier/usecases'),
+        goFile('backend/customer/usecases/b.go', 'backend/supplier/internal/domain'),
+      ]),
+    ).toEqual(['private-import', 'private-import'])
+  })
+
+  it('accepts a declared public package of an internal module', () => {
+    expect(
+      kinds(
+        [
+          goFile('backend/supplier/api/a.go'),
+          goFile('backend/customer/usecases/a.go', 'backend/supplier/api'),
+        ],
+        [LEGACY_ROWS[1]!, INTERNAL_SUPPLIER_ROW],
+      ),
+    ).toEqual([])
+  })
+
+  it('diagnoses an undeclared package left outside internal/ and a missing public package', () => {
+    const result = analyze(
+      [goFile('backend/supplier/usecases/a.go'), goFile('backend/supplier/internal/store/a.go')],
+      [LEGACY_ROWS[1]!, INTERNAL_SUPPLIER_ROW],
+    )
+
+    expect(result.diagnostics).toEqual([
+      'Supplier: backend/supplier/api is declared public but has no production Go file',
+      'Supplier: backend/supplier/usecases is outside internal/ but is neither the root nor a declared public package',
+    ])
+  })
+
+  it('rejects a module importing another module root package', () => {
+    expect(kinds([goFile('backend/customer/usecases/a.go', 'backend/supplier')])).toEqual([
+      'private-import',
+    ])
+  })
+
+  it('rejects modules and shared libraries importing a composition point', () => {
+    expect(
+      analyze([
+        goFile('backend/customer/usecases/a.go', 'backend/shared/http/server_http'),
+        goFile('backend/shared/clock/a.go', 'backend/cmd/internal/bootstrap'),
+      ]).violations.map((violation) => violation.id),
+    ).toEqual([
+      'composition-import:backend/customer/usecases->backend/shared/http/server_http',
+      'composition-import:backend/shared/clock->backend/cmd/internal/bootstrap',
+    ])
+  })
+
+  it('reports each module edge that participates in a cycle of public imports', () => {
+    expect(
+      analyze([
+        goFile('backend/customer/usecases/a.go', 'backend/supplier/domain'),
+        goFile('backend/supplier/usecases/a.go', 'backend/customer/ports'),
+      ]).violations.map((violation) => violation.id),
+    ).toEqual(['module-cycle:Customer->Supplier', 'module-cycle:Supplier->Customer'])
+  })
+
+  it('accepts an acyclic public dependency that no retired Context Map edge declared', () => {
+    expect(kinds([goFile('backend/supplier/usecases/a.go', 'backend/customer/domain')])).toEqual([])
+  })
+
+  it('accepts a composition point importing a legacy private package during migration', () => {
+    expect(kinds([goFile('backend/cmd/idmagic/main.go', 'backend/supplier/usecases')])).toEqual([])
+  })
+
+  it('accepts a composition point importing only the root and public packages of an internal module', () => {
+    expect(
+      kinds(
+        [
+          goFile('backend/supplier/a.go'),
+          goFile('backend/supplier/api/a.go'),
+          goFile('backend/cmd/idmagic/main.go', 'backend/supplier', 'backend/supplier/api'),
+        ],
+        [LEGACY_ROWS[1]!, INTERNAL_SUPPLIER_ROW],
+      ),
+    ).toEqual([])
+  })
+
+  it('rejects a composition point importing an undeclared package of an internal module', () => {
+    expect(
+      analyze(
+        [
+          goFile('backend/supplier/api/a.go'),
+          goFile('backend/cmd/idmagic/main.go', 'backend/supplier/internal/store'),
+        ],
+        [LEGACY_ROWS[1]!, INTERNAL_SUPPLIER_ROW],
+      ).violations.map((violation) => violation.id),
+    ).toEqual(['private-import:System:backend/cmd/idmagic->backend/supplier/internal/store'])
+  })
+
+  it('counts a shared library importing a module once, whatever reaches it', () => {
+    expect(
+      analyze([
+        goFile('backend/customer/usecases/a.go', 'backend/shared/bridge'),
+        goFile('backend/supplier/usecases/a.go', 'backend/shared/bridge'),
+        goFile('backend/shared/bridge/a.go', 'backend/customer/domain', 'backend/customer/ports'),
+      ]).violations.map((violation) => violation.id),
+    ).toEqual(['shared-dependency:backend/shared/bridge->Customer'])
+  })
+
+  it('diagnoses a production package that belongs to no module, composition point, or shared library', () => {
+    expect(analyze([goFile('backend/orphan/a.go')]).diagnostics).toEqual([
+      'backend/orphan: production package belongs to no module, composition point, or shared library',
+    ])
   })
 
   it('rejects effects in domain packages while allowing time types', () => {
-    const findings = violations([
+    const result = analyze([
       {
         path: 'backend/customer/domain/model.go',
         source: [
@@ -141,9 +301,7 @@ describe('findBoundaryViolations', () => {
       },
     ])
 
-    expect(
-      findings.filter((finding) => finding.kind === 'domain-effect').map((finding) => finding.id),
-    ).toEqual([
+    expect(result.violations.map((violation) => violation.id)).toEqual([
       'domain-effect:backend/customer/domain/model.go:crypto/rand',
       'domain-effect:backend/customer/domain/model.go:database/sql',
       'domain-effect:backend/customer/domain/model.go:math/rand',
@@ -152,21 +310,6 @@ describe('findBoundaryViolations', () => {
       'domain-effect:backend/customer/domain/model.go:time.Now',
     ])
   })
-
-  it('rejects a forbidden dependency reached through shared packages', () => {
-    const findings = violations([
-      {
-        path: 'backend/customer/usecases/service.go',
-        source: 'package usecases\nimport "example.com/product/backend/shared/bridge"\n',
-      },
-      {
-        path: 'backend/shared/bridge/bridge.go',
-        source: 'package bridge\nimport "example.com/product/backend/other/usecases"\n',
-      },
-    ])
-
-    expect(findings.map((finding) => finding.kind)).toContain('shared-detour')
-  })
 })
 
 describe('reconcileBoundaryDebt', () => {
@@ -174,8 +317,8 @@ describe('reconcileBoundaryDebt', () => {
     id: 'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
     debtId: 'private-import:Customer->Supplier',
     kind: 'private-import' as const,
-    sourceContext: 'Customer',
-    targetContext: 'Supplier',
+    sourceModule: 'Customer',
+    targetModule: 'Supplier',
     path: 'backend/customer/usecases -> backend/supplier/usecases',
     message: 'Customer reaches a private package in Supplier',
   }
@@ -189,14 +332,27 @@ describe('reconcileBoundaryDebt', () => {
   it('reports stale debt and accepts an exact reasoned entry', () => {
     const matching: BoundaryDebtEntry = {
       id: violation.debtId,
-      sourceContext: 'Customer',
-      targetContext: 'Supplier',
+      sourceModule: 'Customer',
+      targetModule: 'Supplier',
       violations: [violation.id],
       reason: 'Customer still constructs the legacy supplier workflow directly.',
     }
     expect(reconcileBoundaryDebt([violation], [matching])).toEqual([])
     expect(reconcileBoundaryDebt([], [matching])).toEqual([
       expect.objectContaining({ kind: 'stale-debt', id: violation.debtId }),
+    ])
+  })
+
+  it('reports a ledger id that no observed violation has', () => {
+    const padded: BoundaryDebtEntry = {
+      id: violation.debtId,
+      sourceModule: 'Customer',
+      targetModule: 'Supplier',
+      violations: [violation.id, 'private-import:Customer:backend/customer/x->backend/supplier/y'],
+      reason: 'Customer still constructs the legacy supplier workflow directly.',
+    }
+    expect(reconcileBoundaryDebt([violation], [padded])).toEqual([
+      expect.objectContaining({ kind: 'stale-debt' }),
     ])
   })
 })

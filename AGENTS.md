@@ -14,6 +14,7 @@
 | コードの編集またはレビュー | [コーディングスタイル](docs/development/coding-style.md)。七つの視点を実装とレビューの判断に用いる |
 | テスト水準、実行境界、テストダブルの選択 | [テスト方針](docs/development/testing.md) |
 | モジュール、型、依存、作用、エラーの設計 | [設計ガイドライン](docs/design/application/design-guidelines.md) |
+| モジュールの追加、分割と統合、公開範囲の拡大、モジュール間の依存の追加、テーブル所有者または組み立て地点の変更 | [境界を選ぶ判断手順](docs/design/application/design-guidelines.md#境界を選ぶ判断手順)。比較の記録を work item の設計に書いてから実装する |
 | 開発環境、ビルド、生成、CI、リリース | [開発文書の索引](docs/development/README.md)から該当する文書を選ぶ |
 
 ## mise

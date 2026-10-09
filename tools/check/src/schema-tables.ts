@@ -2,7 +2,8 @@
  * データベース設計のテーブル一覧が、物理スキーマの宣言と一致することを確かめる。
  *
  * 照合するのは SQL から機械的に決まるもの（テーブル名、テーブル種別、`tenant_id` カラムの
- * 区分）に限る。役割と所有 Context は判断を書いた表の列であり、SQL からは決まらない。
+ * 区分）に限る。役割は判断を書いた列であり、SQL からは決まらない。
+ * 所有モジュールは宣言として読み、境界検査がクエリの書き込み先と照合する。
  */
 
 export type TenantIdPlacement = 'primary-key' | 'primary-key-part' | 'column' | 'absent'
@@ -18,6 +19,7 @@ export interface DeclaredTable {
 export interface DescribedTable {
   name: string
   line: number
+  owner: string
   kind: string
   tenantId: string
 }
@@ -29,6 +31,11 @@ export interface Finding {
 const LOGGED_KIND = '`LOGGED`'
 const UNLOGGED_KIND = '`UNLOGGED`'
 const KIND_HEADER = 'テーブル種別'
+const OWNER_HEADER = '所有モジュール'
+/** 所有の列を改名する前の見出し。基準 revision の比較だけがこの見出しを読む。 */
+const RETIRED_OWNER_HEADER = '所有 Context'
+/** モジュールに属さず、共有ライブラリだけが書き込むテーブルの所有者。 */
+export const SHARED_INFRASTRUCTURE_OWNER = '共通基盤'
 const TENANT_ID_HEADER = '`tenant_id` カラム'
 
 const TENANT_ID_LABELS: Record<TenantIdPlacement, string> = {
@@ -89,7 +96,7 @@ function cells(line: string): string[] {
 /** 先頭の見出しが「テーブル」である Markdown 表から行を集める。 */
 export function describedTables(markdown: string): DescribedTable[] {
   const rows: DescribedTable[] = []
-  let columns: { kind: number; tenantId: number } | undefined
+  let columns: { owner: number; kind: number; tenantId: number } | undefined
   let inTable = false
   markdown.split('\n').forEach((line, index) => {
     if (!line.trimStart().startsWith('|')) {
@@ -102,7 +109,11 @@ export function describedTables(markdown: string): DescribedTable[] {
       inTable = true
       columns =
         row[0] === 'テーブル'
-          ? { kind: row.indexOf(KIND_HEADER), tenantId: row.indexOf(TENANT_ID_HEADER) }
+          ? {
+              owner: ownerColumn(row),
+              kind: row.indexOf(KIND_HEADER),
+              tenantId: row.indexOf(TENANT_ID_HEADER),
+            }
           : undefined
       return
     }
@@ -110,6 +121,7 @@ export function describedTables(markdown: string): DescribedTable[] {
     rows.push({
       name: (row[0] ?? '').replace(/`/g, ''),
       line: index + 1,
+      owner: row[columns.owner] ?? '',
       kind: row[columns.kind] ?? '',
       tenantId: row[columns.tenantId] ?? '',
     })
@@ -155,4 +167,40 @@ export function compareTables(
     }
   }
   return findings
+}
+
+function ownerColumn(header: readonly string[]): number {
+  const current = header.indexOf(OWNER_HEADER)
+  return current >= 0 ? current : header.indexOf(RETIRED_OWNER_HEADER)
+}
+
+/**
+ * テーブル一覧の所有者を、テーブル名から所有者への対応にする。
+ * `modules` は責務表が宣言するモジュール名であり、それ以外の所有者は「共通基盤」だけを許す。
+ */
+export function tableOwners(
+  described: readonly DescribedTable[],
+  modules: ReadonlySet<string>,
+): { owners: Map<string, string>; diagnostics: string[] } {
+  const owners = new Map<string, string>()
+  const diagnostics: string[] = []
+  for (const row of described) {
+    const at = `line ${row.line}: ${row.name}`
+    if (owners.has(row.name)) {
+      diagnostics.push(`${at} has more than one owning module row`)
+      continue
+    }
+    if (row.owner === '') {
+      diagnostics.push(`${at} has no owning module`)
+      continue
+    }
+    if (row.owner !== SHARED_INFRASTRUCTURE_OWNER && !modules.has(row.owner)) {
+      diagnostics.push(
+        `${at} is owned by ${row.owner}, which is neither a module nor ${SHARED_INFRASTRUCTURE_OWNER}`,
+      )
+      continue
+    }
+    owners.set(row.name, row.owner)
+  }
+  return { owners, diagnostics }
 }

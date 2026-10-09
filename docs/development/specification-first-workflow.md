@@ -533,25 +533,19 @@ fuzz の探索と同じく、ミューテーションテストは Pull Request �
 (a) で要件にするのは、[仕様として書く実装上の細部](../../SPECIFICATION_FORMAT.md#仕様として書く実装上の細部)の基準を満たす外部の振る舞いに限る。
 特性化テストで固定したことは、要件を増やす理由にならない。
 
-### コンテキスト境界の引き直し
+### モジュール境界の変更
 
-境界の移動もほかの仕様変更と同じく、一つの作業項目を起票し、コードより先に仕様を変える。
-ただし、移動する単位がコンテキストであるため、通常の「担当する最小のファイル」という規則だけでは着手点を決められない。
+モジュールの追加、分割と統合、公開範囲の拡大、モジュール間の依存の追加、テーブルの所有者または組み立て地点の変更も、ほかの変更と同じく一つの作業項目を起票して進める。
+ただし、変える対象が規範の振る舞いではなく実装の境界であるため、「担当する最小のファイル」という規則だけでは着手点を決められない。
 
-境界の位置をすでに記録している二つの文書から始める。
-`docs/README.md` は各コンテキストの内容と差別化への寄与を示し、各コンテキストの重要な設計判断は aggregate をその境界で分けた理由を示す。
-通常、境界を動かす必要が生じるのは、このどちらかが誤っていた場合である。
-たとえば、`Supporting` に分類したコンテキストが製品固有の規則を取り込み続ける場合や、二つのコンテキストをまたいで同時に成立させる必要がある不変条件を、どの aggregate でも強制できない場合が該当する。
-どちらに当たるかを作業項目の Motivation に記す。
-どちらの理由もない移動は、名前の変更にすぎない。
+着手点は、[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)の判断手順である。
+作業項目の設計の節に、入力の参照、適用した D1〜D8、候補ごとの制約への適合、変更シナリオの波及、採否と理由、残る仮定を書いてから、コードを変える。
+変更シナリオを探す補助として `mise run report-change-coupling` の条件と件数を引用してよいが、共変更の数から担当を決めない。
+手順が相談を求める条件（入力の不足、相反する利点、保証を変えうる未決事項）に当たれば、エージェントは候補と問いを利用者へ示し、推測で確定しない。
 
-次に、`REQ-<CONTEXT>-NNN` のシナリオを改番せず、廃止と後継の指定によって移し、以前の識別子を解決できる状態に保つ。
-一つのコンテキストを二箇所で同じ名前にするため、`docs/domain/<context>/` と `spec/contexts/<context>/` の木を一緒に移す。
-`update-design` を使って Context Map、索引表、`structure.md` を更新し、`mise run check-boundaries` と `mise run check-spec` をゲートとして実行する。
-
-この種類の作業項目では Event Storming を利用できるが、通常の開発サイクルには含めない。
-参加者の間でイベントの所属に意見の相違がある場合に、セッションの効果がコストを上回る。
-これは境界の移動に着手するときの状態であり、通常の機能開発に着手するときの状態ではない。
+規範要素の担当も移す場合は、`REQ-<CONTEXT>-NNN` のシナリオを改番せず、廃止と後継の指定によって移し、以前の識別子を解決できる状態に保つ。
+`update-design` を使って責務表、`structure.md`、テーブルの所有を更新し、`mise run check-boundaries`、`mise run check-boundary-debt-ratchet`、`mise run check-spec` をゲートとして実行する。
+宣言を変えると形式上の違反は消えるので、ゲートを通ったことを境界が妥当であることの証拠にしない。
 
 ## 7. 作業項目
 
@@ -593,13 +587,16 @@ IdMagic の証拠契約は、このリポジトリ向けに調整したもので
 - **OpenSpec：** Fission AI の [OpenSpec](https://github.com/Fission-AI/OpenSpec/blob/f1b521dffac38ed6638689cd28b0c204b1eef0f1/README.md)から、変更単位で提案、仕様、設計、タスク、適用と保管を進めるサイクルを参照した。
   IdMagic は独自の形式を維持し、OpenSpec CLI は採用しない。
 - **エージェントを使う開発の規律：** Robert C. Martin と Justin Martin の [Clean AI: Agentic Engineering](https://learning.oreilly.com/course/clean-ai-agentic/9780135968819/)を、規律あるエージェント支援開発の包括的な参考資料とした。
-- **ドメイン駆動設計：** Eric Evans の [Domain-Driven Design Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)から、境界づけられたコンテキストと一貫したドメイン語彙を参照した。
+- **ドメイン駆動設計：** Eric Evans の [Domain-Driven Design Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)から、モデルと語が一貫して通用する範囲と一貫したドメイン語彙を参照した。実装のモジュール境界は、この範囲から導かず、情報隠蔽の判断手順で選ぶ。
+- **情報隠蔽：** David L. Parnas の [モジュール分割の基準の論文](https://www.cs.lafayette.edu/~gexia/cs301/resources/parnas.html)から、変わりうる設計判断を一つのモジュールへ隠すという分割の基準を参照した。
+- **結合と変更の波及：** Kent Beck の [結合と凝集の説明](https://newsletter.kentbeck.com/p/tldr-coupling-and-later-cohesion)から、結合を具体的な変更の波及で定義する考えを、共変更レポートの根拠として参照した。共変更の数を境界の正しさの証明としては扱わない。
+- **Go の internal パッケージ：** [Go 1.4 のリリースノート](https://go.dev/doc/go1.4#internalpackages)から、公開範囲をコンパイラに判定させる仕組みを参照した。
 - **クリーンアーキテクチャ：** Robert C. Martin の [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)から、内側へ向く依存関係を参照した。
 - **ヘキサゴナルアーキテクチャ（Ports and Adapters）：** Alistair Cockburn の [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)から、明示的なアプリケーションポートと技術固有のアダプターを参照した。
 - **Vertical Slice Architecture：** Jimmy Bogard の [Vertical Slice Architecture](https://www.jimmybogard.com/vertical-slice-architecture/)から、変更の軸に沿って機能の関心事を端から端まで一つのスライスにまとめ、スライス間の結合を減らす考えを参照した。
-- **モジュラーモノリス：** Simon Brown の [Modular monolith and package by component](https://simonbrown.je/modular-monolith/)から、コンテキスト境界を強制する現在の単一デプロイ単位を参照した。
+- **モジュラーモノリス：** Simon Brown の [Modular monolith and package by component](https://simonbrown.je/modular-monolith/)から、モジュール境界を強制する現在の単一デプロイ単位を参照した。
 - **マイクロサービスアーキテクチャ：** James Lewis と Martin Fowler の [Microservices](https://martinfowler.com/articles/microservices.html)から、事業機能の境界と疎結合を参照した。
-  これは、IdMagic が現在各コンテキストを独立してデプロイすることを意味しない。
+  これは、IdMagic が現在各モジュールを独立してデプロイすることを意味しない。
 - **関数型設計：** Eric Normand の [Grokking Simplicity](https://www.manning.com/books/grokking-simplicity)から、変更不能なデータ、決定論的な計算、作用を伴う操作の分離を参照した。
 - **型先行開発：** Tomas Petricek の [Why type-first development matters](https://tomasp.net/blog/type-first-development.aspx/)から、依存する実装より先に TypeSpec の契約とドメインデータ型を定義する考えを参照した。
 - **Tidy First?：** Kent Beck の [Tidy First?](https://www.oreilly.com/library/view/tidy-first/9781098151232/)から、振る舞いの変更を容易にする小さな整理を選び、必要に応じて整理を先に行い、その反復によって設計をインクリメンタルに改善する考えを参照した。

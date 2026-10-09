@@ -1,486 +1,24 @@
 {
   "violations": [
     {
-      "id": "context-cycle:ApiTokens->OAuth2",
-      "sourceContext": "ApiTokens",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:ApiTokens->OAuth2"],
-      "reason": "ApiTokens -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:ApiTokens->Tenancy",
-      "sourceContext": "ApiTokens",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:ApiTokens->Tenancy"],
-      "reason": "ApiTokens -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->Authentication",
-      "sourceContext": "Application",
-      "targetContext": "Authentication",
-      "violations": ["context-cycle:Application->Authentication"],
-      "reason": "Application -> Authentication remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->ClaimMapping",
-      "sourceContext": "Application",
-      "targetContext": "ClaimMapping",
-      "violations": ["context-cycle:Application->ClaimMapping"],
-      "reason": "Application -> ClaimMapping remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->IdManagement",
-      "sourceContext": "Application",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:Application->IdManagement"],
-      "reason": "Application -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->OAuth2",
-      "sourceContext": "Application",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:Application->OAuth2"],
-      "reason": "Application -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->Saml",
-      "sourceContext": "Application",
-      "targetContext": "Saml",
-      "violations": ["context-cycle:Application->Saml"],
-      "reason": "Application -> Saml remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->Tenancy",
-      "sourceContext": "Application",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:Application->Tenancy"],
-      "reason": "Application -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Application->WsFederation",
-      "sourceContext": "Application",
-      "targetContext": "WsFederation",
-      "violations": ["context-cycle:Application->WsFederation"],
-      "reason": "Application -> WsFederation remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Audit->IdManagement",
-      "sourceContext": "Audit",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:Audit->IdManagement"],
-      "reason": "Audit -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Audit->OAuth2",
-      "sourceContext": "Audit",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:Audit->OAuth2"],
-      "reason": "Audit -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Audit->Tenancy",
-      "sourceContext": "Audit",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:Audit->Tenancy"],
-      "reason": "Audit -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Authentication->Application",
-      "sourceContext": "Authentication",
-      "targetContext": "Application",
-      "violations": ["context-cycle:Authentication->Application"],
-      "reason": "Authentication -> Application remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Authentication->Audit",
-      "sourceContext": "Authentication",
-      "targetContext": "Audit",
-      "violations": ["context-cycle:Authentication->Audit"],
-      "reason": "Authentication -> Audit remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Authentication->IdManagement",
-      "sourceContext": "Authentication",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:Authentication->IdManagement"],
-      "reason": "Authentication -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Authentication->OAuth2",
-      "sourceContext": "Authentication",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:Authentication->OAuth2"],
-      "reason": "Authentication -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Authentication->Tenancy",
-      "sourceContext": "Authentication",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:Authentication->Tenancy"],
-      "reason": "Authentication -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:ClaimMapping->IdManagement",
-      "sourceContext": "ClaimMapping",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:ClaimMapping->IdManagement"],
-      "reason": "ClaimMapping -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:IdManagement->Audit",
-      "sourceContext": "IdManagement",
-      "targetContext": "Audit",
-      "violations": ["context-cycle:IdManagement->Audit"],
-      "reason": "IdManagement -> Audit remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:IdManagement->Authentication",
-      "sourceContext": "IdManagement",
-      "targetContext": "Authentication",
-      "violations": ["context-cycle:IdManagement->Authentication"],
-      "reason": "IdManagement -> Authentication remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:IdManagement->Jobs",
-      "sourceContext": "IdManagement",
-      "targetContext": "Jobs",
-      "violations": ["context-cycle:IdManagement->Jobs"],
-      "reason": "IdManagement -> Jobs remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:IdManagement->OAuth2",
-      "sourceContext": "IdManagement",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:IdManagement->OAuth2"],
-      "reason": "IdManagement -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:IdManagement->Sourcing",
-      "sourceContext": "IdManagement",
-      "targetContext": "Sourcing",
-      "violations": ["context-cycle:IdManagement->Sourcing"],
-      "reason": "IdManagement -> Sourcing remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:IdManagement->Tenancy",
-      "sourceContext": "IdManagement",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:IdManagement->Tenancy"],
-      "reason": "IdManagement -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Jobs->Tenancy",
-      "sourceContext": "Jobs",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:Jobs->Tenancy"],
-      "reason": "Jobs -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->ApiTokens",
-      "sourceContext": "OAuth2",
-      "targetContext": "ApiTokens",
-      "violations": ["context-cycle:OAuth2->ApiTokens"],
-      "reason": "OAuth2 -> ApiTokens remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->Application",
-      "sourceContext": "OAuth2",
-      "targetContext": "Application",
-      "violations": ["context-cycle:OAuth2->Application"],
-      "reason": "OAuth2 -> Application remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->Audit",
-      "sourceContext": "OAuth2",
-      "targetContext": "Audit",
-      "violations": ["context-cycle:OAuth2->Audit"],
-      "reason": "OAuth2 -> Audit remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->Authentication",
-      "sourceContext": "OAuth2",
-      "targetContext": "Authentication",
-      "violations": ["context-cycle:OAuth2->Authentication"],
-      "reason": "OAuth2 -> Authentication remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->ClaimMapping",
-      "sourceContext": "OAuth2",
-      "targetContext": "ClaimMapping",
-      "violations": ["context-cycle:OAuth2->ClaimMapping"],
-      "reason": "OAuth2 -> ClaimMapping remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->IdManagement",
-      "sourceContext": "OAuth2",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:OAuth2->IdManagement"],
-      "reason": "OAuth2 -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->Jobs",
-      "sourceContext": "OAuth2",
-      "targetContext": "Jobs",
-      "violations": ["context-cycle:OAuth2->Jobs"],
-      "reason": "OAuth2 -> Jobs remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->SharedSignals",
-      "sourceContext": "OAuth2",
-      "targetContext": "SharedSignals",
-      "violations": ["context-cycle:OAuth2->SharedSignals"],
-      "reason": "OAuth2 -> SharedSignals remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->SigningKeys",
-      "sourceContext": "OAuth2",
-      "targetContext": "SigningKeys",
-      "violations": ["context-cycle:OAuth2->SigningKeys"],
-      "reason": "OAuth2 -> SigningKeys remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->Tenancy",
-      "sourceContext": "OAuth2",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:OAuth2->Tenancy"],
-      "reason": "OAuth2 -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:OAuth2->WorkloadIdentity",
-      "sourceContext": "OAuth2",
-      "targetContext": "WorkloadIdentity",
-      "violations": ["context-cycle:OAuth2->WorkloadIdentity"],
-      "reason": "OAuth2 -> WorkloadIdentity remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Saml->Application",
-      "sourceContext": "Saml",
-      "targetContext": "Application",
-      "violations": ["context-cycle:Saml->Application"],
-      "reason": "Saml -> Application remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Saml->Authentication",
-      "sourceContext": "Saml",
-      "targetContext": "Authentication",
-      "violations": ["context-cycle:Saml->Authentication"],
-      "reason": "Saml -> Authentication remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Saml->ClaimMapping",
-      "sourceContext": "Saml",
-      "targetContext": "ClaimMapping",
-      "violations": ["context-cycle:Saml->ClaimMapping"],
-      "reason": "Saml -> ClaimMapping remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Saml->IdManagement",
-      "sourceContext": "Saml",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:Saml->IdManagement"],
-      "reason": "Saml -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Saml->Tenancy",
-      "sourceContext": "Saml",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:Saml->Tenancy"],
-      "reason": "Saml -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Saml->WsFederation",
-      "sourceContext": "Saml",
-      "targetContext": "WsFederation",
-      "violations": ["context-cycle:Saml->WsFederation"],
-      "reason": "Saml -> WsFederation remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:SharedSignals->ClaimMapping",
-      "sourceContext": "SharedSignals",
-      "targetContext": "ClaimMapping",
-      "violations": ["context-cycle:SharedSignals->ClaimMapping"],
-      "reason": "SharedSignals -> ClaimMapping remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:SharedSignals->IdManagement",
-      "sourceContext": "SharedSignals",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:SharedSignals->IdManagement"],
-      "reason": "SharedSignals -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:SharedSignals->OAuth2",
-      "sourceContext": "SharedSignals",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:SharedSignals->OAuth2"],
-      "reason": "SharedSignals -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:SharedSignals->SigningKeys",
-      "sourceContext": "SharedSignals",
-      "targetContext": "SigningKeys",
-      "violations": ["context-cycle:SharedSignals->SigningKeys"],
-      "reason": "SharedSignals -> SigningKeys remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:SharedSignals->Tenancy",
-      "sourceContext": "SharedSignals",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:SharedSignals->Tenancy"],
-      "reason": "SharedSignals -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:SigningKeys->Tenancy",
-      "sourceContext": "SigningKeys",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:SigningKeys->Tenancy"],
-      "reason": "SigningKeys -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Sourcing->ApiTokens",
-      "sourceContext": "Sourcing",
-      "targetContext": "ApiTokens",
-      "violations": ["context-cycle:Sourcing->ApiTokens"],
-      "reason": "Sourcing -> ApiTokens remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Sourcing->IdManagement",
-      "sourceContext": "Sourcing",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:Sourcing->IdManagement"],
-      "reason": "Sourcing -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Sourcing->Tenancy",
-      "sourceContext": "Sourcing",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:Sourcing->Tenancy"],
-      "reason": "Sourcing -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Tenancy->Authentication",
-      "sourceContext": "Tenancy",
-      "targetContext": "Authentication",
-      "violations": ["context-cycle:Tenancy->Authentication"],
-      "reason": "Tenancy -> Authentication remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Tenancy->IdManagement",
-      "sourceContext": "Tenancy",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:Tenancy->IdManagement"],
-      "reason": "Tenancy -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:Tenancy->WsFederation",
-      "sourceContext": "Tenancy",
-      "targetContext": "WsFederation",
-      "violations": ["context-cycle:Tenancy->WsFederation"],
-      "reason": "Tenancy -> WsFederation remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WorkloadIdentity->ClaimMapping",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "ClaimMapping",
-      "violations": ["context-cycle:WorkloadIdentity->ClaimMapping"],
-      "reason": "WorkloadIdentity -> ClaimMapping remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WorkloadIdentity->IdManagement",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:WorkloadIdentity->IdManagement"],
-      "reason": "WorkloadIdentity -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WorkloadIdentity->OAuth2",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:WorkloadIdentity->OAuth2"],
-      "reason": "WorkloadIdentity -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WorkloadIdentity->SigningKeys",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "SigningKeys",
-      "violations": ["context-cycle:WorkloadIdentity->SigningKeys"],
-      "reason": "WorkloadIdentity -> SigningKeys remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WorkloadIdentity->Tenancy",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:WorkloadIdentity->Tenancy"],
-      "reason": "WorkloadIdentity -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->Application",
-      "sourceContext": "WsFederation",
-      "targetContext": "Application",
-      "violations": ["context-cycle:WsFederation->Application"],
-      "reason": "WsFederation -> Application remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->Authentication",
-      "sourceContext": "WsFederation",
-      "targetContext": "Authentication",
-      "violations": ["context-cycle:WsFederation->Authentication"],
-      "reason": "WsFederation -> Authentication remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->ClaimMapping",
-      "sourceContext": "WsFederation",
-      "targetContext": "ClaimMapping",
-      "violations": ["context-cycle:WsFederation->ClaimMapping"],
-      "reason": "WsFederation -> ClaimMapping remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->IdManagement",
-      "sourceContext": "WsFederation",
-      "targetContext": "IdManagement",
-      "violations": ["context-cycle:WsFederation->IdManagement"],
-      "reason": "WsFederation -> IdManagement remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->OAuth2",
-      "sourceContext": "WsFederation",
-      "targetContext": "OAuth2",
-      "violations": ["context-cycle:WsFederation->OAuth2"],
-      "reason": "WsFederation -> OAuth2 remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->SigningKeys",
-      "sourceContext": "WsFederation",
-      "targetContext": "SigningKeys",
-      "violations": ["context-cycle:WsFederation->SigningKeys"],
-      "reason": "WsFederation -> SigningKeys remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "context-cycle:WsFederation->Tenancy",
-      "sourceContext": "WsFederation",
-      "targetContext": "Tenancy",
-      "violations": ["context-cycle:WsFederation->Tenancy"],
-      "reason": "WsFederation -> Tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
       "id": "domain-effect:authentication",
-      "sourceContext": "authentication",
+      "sourceModule": "authentication",
       "violations": [
         "domain-effect:backend/authentication/federation/domain/models.go:net",
         "domain-effect:backend/authentication/federation/domain/models.go:time.Now",
         "domain-effect:backend/authentication/trusteddevice/domain/trusted_device.go:crypto/rand"
       ],
-      "reason": "backend/authentication/federation/domain/models.go remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/authentication/federation/domain/models.go remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "domain-effect:idmanagement",
-      "sourceContext": "idmanagement",
+      "sourceModule": "idmanagement",
       "violations": ["domain-effect:backend/idmanagement/group/domain/group_csv.go:net"],
-      "reason": "backend/idmanagement/group/domain/group_csv.go remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idmanagement/group/domain/group_csv.go remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "domain-effect:oauth2",
-      "sourceContext": "oauth2",
+      "sourceModule": "oauth2",
       "violations": [
         "domain-effect:backend/oauth2/approval/domain/approval_request.go:crypto/rand",
         "domain-effect:backend/oauth2/approval/domain/approval_request.go:time.Now",
@@ -495,111 +33,510 @@
         "domain-effect:backend/oauth2/token/domain/refresh_token.go:crypto/rand",
         "domain-effect:backend/oauth2/token/domain/refresh_token.go:time.Now"
       ],
-      "reason": "backend/oauth2/approval/domain/approval_request.go remains coupled across 12 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/oauth2/approval/domain/approval_request.go remains coupled across 12 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "domain-effect:provisioning",
-      "sourceContext": "provisioning",
+      "sourceModule": "provisioning",
       "violations": ["domain-effect:backend/provisioning/domain/connection.go:net"],
-      "reason": "backend/provisioning/domain/connection.go remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/provisioning/domain/connection.go remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "domain-effect:saml",
-      "sourceContext": "saml",
+      "sourceModule": "saml",
       "violations": [
         "domain-effect:backend/saml/domain/authnrequest.go:net",
         "domain-effect:backend/saml/domain/authnrequest.go:time.Now"
       ],
-      "reason": "backend/saml/domain/authnrequest.go remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/saml/domain/authnrequest.go remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "domain-effect:seeding",
-      "sourceContext": "seeding",
+      "sourceModule": "seeding",
       "violations": ["domain-effect:backend/seeding/domain/plan.go:net"],
-      "reason": "backend/seeding/domain/plan.go remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/seeding/domain/plan.go remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:ApiTokens->OAuth2",
+      "sourceModule": "ApiTokens",
+      "targetModule": "OAuth2",
+      "violations": ["module-cycle:ApiTokens->OAuth2"],
+      "reason": "ApiTokens -> OAuth2 remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:ApiTokens->Tenancy",
+      "sourceModule": "ApiTokens",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:ApiTokens->Tenancy"],
+      "reason": "ApiTokens -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->Authentication",
+      "sourceModule": "Application",
+      "targetModule": "Authentication",
+      "violations": ["module-cycle:Application->Authentication"],
+      "reason": "Application -> Authentication remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->ClaimMapping",
+      "sourceModule": "Application",
+      "targetModule": "ClaimMapping",
+      "violations": ["module-cycle:Application->ClaimMapping"],
+      "reason": "Application -> ClaimMapping remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->IdManagement",
+      "sourceModule": "Application",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:Application->IdManagement"],
+      "reason": "Application -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->OAuth2",
+      "sourceModule": "Application",
+      "targetModule": "OAuth2",
+      "violations": ["module-cycle:Application->OAuth2"],
+      "reason": "Application -> OAuth2 remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->Saml",
+      "sourceModule": "Application",
+      "targetModule": "Saml",
+      "violations": ["module-cycle:Application->Saml"],
+      "reason": "Application -> Saml remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->Tenancy",
+      "sourceModule": "Application",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:Application->Tenancy"],
+      "reason": "Application -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Application->WsFederation",
+      "sourceModule": "Application",
+      "targetModule": "WsFederation",
+      "violations": ["module-cycle:Application->WsFederation"],
+      "reason": "Application -> WsFederation remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Audit->IdManagement",
+      "sourceModule": "Audit",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:Audit->IdManagement"],
+      "reason": "Audit -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Audit->OAuth2",
+      "sourceModule": "Audit",
+      "targetModule": "OAuth2",
+      "violations": ["module-cycle:Audit->OAuth2"],
+      "reason": "Audit -> OAuth2 remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Authentication->Application",
+      "sourceModule": "Authentication",
+      "targetModule": "Application",
+      "violations": ["module-cycle:Authentication->Application"],
+      "reason": "Authentication -> Application remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Authentication->Audit",
+      "sourceModule": "Authentication",
+      "targetModule": "Audit",
+      "violations": ["module-cycle:Authentication->Audit"],
+      "reason": "Authentication -> Audit remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Authentication->IdManagement",
+      "sourceModule": "Authentication",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:Authentication->IdManagement"],
+      "reason": "Authentication -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Authentication->OAuth2",
+      "sourceModule": "Authentication",
+      "targetModule": "OAuth2",
+      "violations": ["module-cycle:Authentication->OAuth2"],
+      "reason": "Authentication -> OAuth2 remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Authentication->Tenancy",
+      "sourceModule": "Authentication",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:Authentication->Tenancy"],
+      "reason": "Authentication -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:ClaimMapping->IdManagement",
+      "sourceModule": "ClaimMapping",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:ClaimMapping->IdManagement"],
+      "reason": "ClaimMapping -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:IdManagement->Audit",
+      "sourceModule": "IdManagement",
+      "targetModule": "Audit",
+      "violations": ["module-cycle:IdManagement->Audit"],
+      "reason": "IdManagement -> Audit remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:IdManagement->Authentication",
+      "sourceModule": "IdManagement",
+      "targetModule": "Authentication",
+      "violations": ["module-cycle:IdManagement->Authentication"],
+      "reason": "IdManagement -> Authentication remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:IdManagement->Jobs",
+      "sourceModule": "IdManagement",
+      "targetModule": "Jobs",
+      "violations": ["module-cycle:IdManagement->Jobs"],
+      "reason": "IdManagement -> Jobs remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:IdManagement->OAuth2",
+      "sourceModule": "IdManagement",
+      "targetModule": "OAuth2",
+      "violations": ["module-cycle:IdManagement->OAuth2"],
+      "reason": "IdManagement -> OAuth2 remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:IdManagement->Sourcing",
+      "sourceModule": "IdManagement",
+      "targetModule": "Sourcing",
+      "violations": ["module-cycle:IdManagement->Sourcing"],
+      "reason": "IdManagement -> Sourcing remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:IdManagement->Tenancy",
+      "sourceModule": "IdManagement",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:IdManagement->Tenancy"],
+      "reason": "IdManagement -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Jobs->Tenancy",
+      "sourceModule": "Jobs",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:Jobs->Tenancy"],
+      "reason": "Jobs -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->ApiTokens",
+      "sourceModule": "OAuth2",
+      "targetModule": "ApiTokens",
+      "violations": ["module-cycle:OAuth2->ApiTokens"],
+      "reason": "OAuth2 -> ApiTokens remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->Application",
+      "sourceModule": "OAuth2",
+      "targetModule": "Application",
+      "violations": ["module-cycle:OAuth2->Application"],
+      "reason": "OAuth2 -> Application remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->Audit",
+      "sourceModule": "OAuth2",
+      "targetModule": "Audit",
+      "violations": ["module-cycle:OAuth2->Audit"],
+      "reason": "OAuth2 -> Audit remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->Authentication",
+      "sourceModule": "OAuth2",
+      "targetModule": "Authentication",
+      "violations": ["module-cycle:OAuth2->Authentication"],
+      "reason": "OAuth2 -> Authentication remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->ClaimMapping",
+      "sourceModule": "OAuth2",
+      "targetModule": "ClaimMapping",
+      "violations": ["module-cycle:OAuth2->ClaimMapping"],
+      "reason": "OAuth2 -> ClaimMapping remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->IdManagement",
+      "sourceModule": "OAuth2",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:OAuth2->IdManagement"],
+      "reason": "OAuth2 -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->Jobs",
+      "sourceModule": "OAuth2",
+      "targetModule": "Jobs",
+      "violations": ["module-cycle:OAuth2->Jobs"],
+      "reason": "OAuth2 -> Jobs remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->SharedSignals",
+      "sourceModule": "OAuth2",
+      "targetModule": "SharedSignals",
+      "violations": ["module-cycle:OAuth2->SharedSignals"],
+      "reason": "OAuth2 -> SharedSignals remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->SigningKeys",
+      "sourceModule": "OAuth2",
+      "targetModule": "SigningKeys",
+      "violations": ["module-cycle:OAuth2->SigningKeys"],
+      "reason": "OAuth2 -> SigningKeys remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->Tenancy",
+      "sourceModule": "OAuth2",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:OAuth2->Tenancy"],
+      "reason": "OAuth2 -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:OAuth2->WorkloadIdentity",
+      "sourceModule": "OAuth2",
+      "targetModule": "WorkloadIdentity",
+      "violations": ["module-cycle:OAuth2->WorkloadIdentity"],
+      "reason": "OAuth2 -> WorkloadIdentity remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Saml->Application",
+      "sourceModule": "Saml",
+      "targetModule": "Application",
+      "violations": ["module-cycle:Saml->Application"],
+      "reason": "Saml -> Application remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Saml->Authentication",
+      "sourceModule": "Saml",
+      "targetModule": "Authentication",
+      "violations": ["module-cycle:Saml->Authentication"],
+      "reason": "Saml -> Authentication remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Saml->ClaimMapping",
+      "sourceModule": "Saml",
+      "targetModule": "ClaimMapping",
+      "violations": ["module-cycle:Saml->ClaimMapping"],
+      "reason": "Saml -> ClaimMapping remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Saml->IdManagement",
+      "sourceModule": "Saml",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:Saml->IdManagement"],
+      "reason": "Saml -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Saml->WsFederation",
+      "sourceModule": "Saml",
+      "targetModule": "WsFederation",
+      "violations": ["module-cycle:Saml->WsFederation"],
+      "reason": "Saml -> WsFederation remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:SharedSignals->IdManagement",
+      "sourceModule": "SharedSignals",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:SharedSignals->IdManagement"],
+      "reason": "SharedSignals -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:SharedSignals->SigningKeys",
+      "sourceModule": "SharedSignals",
+      "targetModule": "SigningKeys",
+      "violations": ["module-cycle:SharedSignals->SigningKeys"],
+      "reason": "SharedSignals -> SigningKeys remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:SharedSignals->Tenancy",
+      "sourceModule": "SharedSignals",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:SharedSignals->Tenancy"],
+      "reason": "SharedSignals -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:SigningKeys->Tenancy",
+      "sourceModule": "SigningKeys",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:SigningKeys->Tenancy"],
+      "reason": "SigningKeys -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Sourcing->ApiTokens",
+      "sourceModule": "Sourcing",
+      "targetModule": "ApiTokens",
+      "violations": ["module-cycle:Sourcing->ApiTokens"],
+      "reason": "Sourcing -> ApiTokens remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Sourcing->IdManagement",
+      "sourceModule": "Sourcing",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:Sourcing->IdManagement"],
+      "reason": "Sourcing -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Tenancy->Authentication",
+      "sourceModule": "Tenancy",
+      "targetModule": "Authentication",
+      "violations": ["module-cycle:Tenancy->Authentication"],
+      "reason": "Tenancy -> Authentication remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Tenancy->IdManagement",
+      "sourceModule": "Tenancy",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:Tenancy->IdManagement"],
+      "reason": "Tenancy -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:Tenancy->WsFederation",
+      "sourceModule": "Tenancy",
+      "targetModule": "WsFederation",
+      "violations": ["module-cycle:Tenancy->WsFederation"],
+      "reason": "Tenancy -> WsFederation remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WorkloadIdentity->IdManagement",
+      "sourceModule": "WorkloadIdentity",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:WorkloadIdentity->IdManagement"],
+      "reason": "WorkloadIdentity -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WorkloadIdentity->Tenancy",
+      "sourceModule": "WorkloadIdentity",
+      "targetModule": "Tenancy",
+      "violations": ["module-cycle:WorkloadIdentity->Tenancy"],
+      "reason": "WorkloadIdentity -> Tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WsFederation->Application",
+      "sourceModule": "WsFederation",
+      "targetModule": "Application",
+      "violations": ["module-cycle:WsFederation->Application"],
+      "reason": "WsFederation -> Application remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WsFederation->Authentication",
+      "sourceModule": "WsFederation",
+      "targetModule": "Authentication",
+      "violations": ["module-cycle:WsFederation->Authentication"],
+      "reason": "WsFederation -> Authentication remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WsFederation->ClaimMapping",
+      "sourceModule": "WsFederation",
+      "targetModule": "ClaimMapping",
+      "violations": ["module-cycle:WsFederation->ClaimMapping"],
+      "reason": "WsFederation -> ClaimMapping remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WsFederation->IdManagement",
+      "sourceModule": "WsFederation",
+      "targetModule": "IdManagement",
+      "violations": ["module-cycle:WsFederation->IdManagement"],
+      "reason": "WsFederation -> IdManagement remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WsFederation->OAuth2",
+      "sourceModule": "WsFederation",
+      "targetModule": "OAuth2",
+      "violations": ["module-cycle:WsFederation->OAuth2"],
+      "reason": "WsFederation -> OAuth2 remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
+    },
+    {
+      "id": "module-cycle:WsFederation->SigningKeys",
+      "sourceModule": "WsFederation",
+      "targetModule": "SigningKeys",
+      "violations": ["module-cycle:WsFederation->SigningKeys"],
+      "reason": "WsFederation -> SigningKeys remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:ApiTokens->Tenancy",
-      "sourceContext": "ApiTokens",
-      "targetContext": "Tenancy",
+      "sourceModule": "ApiTokens",
+      "targetModule": "Tenancy",
       "violations": ["private-import:ApiTokens:backend/apitoken/usecases->backend/tenancy"],
-      "reason": "backend/apitoken/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/apitoken/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Application->Authentication",
-      "sourceContext": "Application",
-      "targetContext": "Authentication",
+      "sourceModule": "Application",
+      "targetModule": "Authentication",
       "violations": [
         "private-import:Application:backend/application/usecases->backend/authentication/trusteddevice/usecases",
         "private-import:Application:backend/application/usecases->backend/authentication/usecases"
       ],
-      "reason": "backend/application/usecases -> backend/authentication/trusteddevice/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/application/usecases -> backend/authentication/trusteddevice/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Application->ClaimMapping",
-      "sourceContext": "Application",
-      "targetContext": "ClaimMapping",
+      "sourceModule": "Application",
+      "targetModule": "ClaimMapping",
       "violations": [
         "private-import:Application:backend/application->backend/claimmapping/usecases",
         "private-import:Application:backend/application/handlers_http->backend/claimmapping/usecases"
       ],
-      "reason": "backend/application -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/application -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Application->OAuth2",
-      "sourceContext": "Application",
-      "targetContext": "OAuth2",
+      "sourceModule": "Application",
+      "targetModule": "OAuth2",
       "violations": [
         "private-import:Application:backend/application/handlers_http->backend/oauth2/client/usecases"
       ],
-      "reason": "backend/application/handlers_http -> backend/oauth2/client/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/application/handlers_http -> backend/oauth2/client/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Application->Tenancy",
-      "sourceContext": "Application",
-      "targetContext": "Tenancy",
+      "sourceModule": "Application",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:Application:backend/application/usecases->backend/tenancy",
         "private-import:Application:backend/application/usecases->backend/tenancy/usecases"
       ],
-      "reason": "backend/application/usecases -> backend/tenancy remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/application/usecases -> backend/tenancy remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Authentication->Application",
-      "sourceContext": "Authentication",
-      "targetContext": "Application",
+      "sourceModule": "Authentication",
+      "targetModule": "Application",
       "violations": [
         "private-import:Authentication:backend/authentication/handlers_http->backend/application/usecases"
       ],
-      "reason": "backend/authentication/handlers_http -> backend/application/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/authentication/handlers_http -> backend/application/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Authentication->IdManagement",
-      "sourceContext": "Authentication",
-      "targetContext": "IdManagement",
+      "sourceModule": "Authentication",
+      "targetModule": "IdManagement",
       "violations": [
         "private-import:Authentication:backend/authentication/deps_http->backend/idmanagement/usecases",
         "private-import:Authentication:backend/authentication/deps_http->backend/idmanagement/user/usecases",
         "private-import:Authentication:backend/authentication/handlers_http->backend/idmanagement/user/usecases",
         "private-import:Authentication:backend/authentication/password/db_postgres->backend/idmanagement/user/db_postgres"
       ],
-      "reason": "backend/authentication/deps_http -> backend/idmanagement/usecases remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/authentication/deps_http -> backend/idmanagement/usecases remains coupled across 4 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Authentication->OAuth2",
-      "sourceContext": "Authentication",
-      "targetContext": "OAuth2",
+      "sourceModule": "Authentication",
+      "targetModule": "OAuth2",
       "violations": [
         "private-import:Authentication:backend/authentication/deps_http->backend/oauth2/consent/usecases",
         "private-import:Authentication:backend/authentication/handlers_http->backend/oauth2/consent/usecases",
         "private-import:Authentication:backend/authentication/session/handlers_http->backend/oauth2/token/usecases"
       ],
-      "reason": "backend/authentication/deps_http -> backend/oauth2/consent/usecases remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/authentication/deps_http -> backend/oauth2/consent/usecases remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Authentication->Tenancy",
-      "sourceContext": "Authentication",
-      "targetContext": "Tenancy",
+      "sourceModule": "Authentication",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:Authentication:backend/authentication/federation/usecases->backend/tenancy",
         "private-import:Authentication:backend/authentication/handlers_http->backend/tenancy",
@@ -615,48 +552,48 @@
         "private-import:Authentication:backend/authentication/webauthn/db_memory->backend/tenancy",
         "private-import:Authentication:backend/authentication/webauthn/db_postgres->backend/tenancy"
       ],
-      "reason": "backend/authentication/federation/usecases -> backend/tenancy remains coupled across 13 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/authentication/federation/usecases -> backend/tenancy remains coupled across 13 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:DataKeys->Jobs",
-      "sourceContext": "DataKeys",
-      "targetContext": "Jobs",
+      "sourceModule": "DataKeys",
+      "targetModule": "Jobs",
       "violations": ["private-import:DataKeys:backend/datakeys/usecases->backend/jobs/usecases"],
-      "reason": "backend/datakeys/usecases -> backend/jobs/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/datakeys/usecases -> backend/jobs/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdGovernance->IdManagement",
-      "sourceContext": "IdGovernance",
-      "targetContext": "IdManagement",
+      "sourceModule": "IdGovernance",
+      "targetModule": "IdManagement",
       "violations": [
         "private-import:IdGovernance:backend/idgovernance/db_memory->backend/idmanagement/user/db_memory",
         "private-import:IdGovernance:backend/idgovernance/db_postgres->backend/idmanagement/user/db_postgres"
       ],
-      "reason": "backend/idgovernance/db_memory -> backend/idmanagement/user/db_memory remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idgovernance/db_memory -> backend/idmanagement/user/db_memory remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdGovernance->Jobs",
-      "sourceContext": "IdGovernance",
-      "targetContext": "Jobs",
+      "sourceModule": "IdGovernance",
+      "targetModule": "Jobs",
       "violations": [
         "private-import:IdGovernance:backend/idgovernance/usecases->backend/jobs/usecases"
       ],
-      "reason": "backend/idgovernance/usecases -> backend/jobs/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idgovernance/usecases -> backend/jobs/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdGovernance->Tenancy",
-      "sourceContext": "IdGovernance",
-      "targetContext": "Tenancy",
+      "sourceModule": "IdGovernance",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:IdGovernance:backend/idgovernance/handlers_http->backend/tenancy",
         "private-import:IdGovernance:backend/idgovernance/usecases->backend/tenancy"
       ],
-      "reason": "backend/idgovernance/handlers_http -> backend/tenancy remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idgovernance/handlers_http -> backend/tenancy remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdManagement->Authentication",
-      "sourceContext": "IdManagement",
-      "targetContext": "Authentication",
+      "sourceModule": "IdManagement",
+      "targetModule": "Authentication",
       "violations": [
         "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/authentication/mfa/usecases",
         "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/authentication/password/usecases",
@@ -664,33 +601,33 @@
         "private-import:IdManagement:backend/idmanagement/user/usecases->backend/authentication/password/usecases",
         "private-import:IdManagement:backend/idmanagement/user/usecases->backend/authentication/trusteddevice/usecases"
       ],
-      "reason": "backend/idmanagement/user/handlers_http -> backend/authentication/mfa/usecases remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idmanagement/user/handlers_http -> backend/authentication/mfa/usecases remains coupled across 5 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdManagement->Jobs",
-      "sourceContext": "IdManagement",
-      "targetContext": "Jobs",
+      "sourceModule": "IdManagement",
+      "targetModule": "Jobs",
       "violations": [
         "private-import:IdManagement:backend/idmanagement/group/usecases->backend/jobs/usecases",
         "private-import:IdManagement:backend/idmanagement/usecases->backend/jobs/usecases",
         "private-import:IdManagement:backend/idmanagement/user/usecases->backend/jobs/usecases"
       ],
-      "reason": "backend/idmanagement/group/usecases -> backend/jobs/usecases remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idmanagement/group/usecases -> backend/jobs/usecases remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdManagement->OAuth2",
-      "sourceContext": "IdManagement",
-      "targetContext": "OAuth2",
+      "sourceModule": "IdManagement",
+      "targetModule": "OAuth2",
       "violations": [
         "private-import:IdManagement:backend/idmanagement/deps_http->backend/oauth2/consent/usecases",
         "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/oauth2/consent/usecases"
       ],
-      "reason": "backend/idmanagement/deps_http -> backend/oauth2/consent/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idmanagement/deps_http -> backend/oauth2/consent/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdManagement->Tenancy",
-      "sourceContext": "IdManagement",
-      "targetContext": "Tenancy",
+      "sourceModule": "IdManagement",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:IdManagement:backend/idmanagement/agent/usecases->backend/tenancy",
         "private-import:IdManagement:backend/idmanagement/agent/usecases->backend/tenancy/usecases",
@@ -705,31 +642,31 @@
         "private-import:IdManagement:backend/idmanagement/user/usecases->backend/tenancy",
         "private-import:IdManagement:backend/idmanagement/user/usecases->backend/tenancy/usecases"
       ],
-      "reason": "backend/idmanagement/agent/usecases -> backend/tenancy remains coupled across 12 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/idmanagement/agent/usecases -> backend/tenancy remains coupled across 12 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Jobs->Tenancy",
-      "sourceContext": "Jobs",
-      "targetContext": "Tenancy",
+      "sourceModule": "Jobs",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:Jobs:backend/jobs/usecases->backend/tenancy",
         "private-import:Jobs:backend/jobs/usecases->backend/tenancy/usecases"
       ],
-      "reason": "backend/jobs/usecases -> backend/tenancy remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/jobs/usecases -> backend/tenancy remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:OAuth2->Application",
-      "sourceContext": "OAuth2",
-      "targetContext": "Application",
+      "sourceModule": "OAuth2",
+      "targetModule": "Application",
       "violations": [
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/application/usecases"
       ],
-      "reason": "backend/oauth2/handlers_http -> backend/application/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/oauth2/handlers_http -> backend/application/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:OAuth2->Authentication",
-      "sourceContext": "OAuth2",
-      "targetContext": "Authentication",
+      "sourceModule": "OAuth2",
+      "targetModule": "Authentication",
       "violations": [
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/mfa/usecases",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/password/usecases",
@@ -741,32 +678,32 @@
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/webauthn/handlers_http",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/webauthn/usecases"
       ],
-      "reason": "backend/oauth2/handlers_http -> backend/authentication/mfa/usecases remains coupled across 9 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/oauth2/handlers_http -> backend/authentication/mfa/usecases remains coupled across 9 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:OAuth2->ClaimMapping",
-      "sourceContext": "OAuth2",
-      "targetContext": "ClaimMapping",
+      "sourceModule": "OAuth2",
+      "targetModule": "ClaimMapping",
       "violations": [
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/claimmapping/usecases",
         "private-import:OAuth2:backend/oauth2/token/usecases->backend/claimmapping/usecases"
       ],
-      "reason": "backend/oauth2/handlers_http -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/oauth2/handlers_http -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:OAuth2->Jobs",
-      "sourceContext": "OAuth2",
-      "targetContext": "Jobs",
+      "sourceModule": "OAuth2",
+      "targetModule": "Jobs",
       "violations": [
         "private-import:OAuth2:backend/oauth2->backend/jobs/usecases",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/jobs/usecases"
       ],
-      "reason": "backend/oauth2 -> backend/jobs/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/oauth2 -> backend/jobs/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:OAuth2->Tenancy",
-      "sourceContext": "OAuth2",
-      "targetContext": "Tenancy",
+      "sourceModule": "OAuth2",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:OAuth2:backend/oauth2/approval/db_memory->backend/tenancy",
         "private-import:OAuth2:backend/oauth2/approval/usecases->backend/tenancy",
@@ -783,1024 +720,234 @@
         "private-import:OAuth2:backend/oauth2/token/usecases->backend/tenancy",
         "private-import:OAuth2:backend/oauth2/usecases->backend/tenancy"
       ],
-      "reason": "backend/oauth2/approval/db_memory -> backend/tenancy remains coupled across 14 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/oauth2/approval/db_memory -> backend/tenancy remains coupled across 14 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Provisioning->Jobs",
-      "sourceContext": "Provisioning",
-      "targetContext": "Jobs",
+      "sourceModule": "Provisioning",
+      "targetModule": "Jobs",
       "violations": [
         "private-import:Provisioning:backend/provisioning->backend/jobs/usecases",
         "private-import:Provisioning:backend/provisioning/usecases->backend/jobs/usecases"
       ],
-      "reason": "backend/provisioning -> backend/jobs/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/provisioning -> backend/jobs/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Saml->Authentication",
-      "sourceContext": "Saml",
-      "targetContext": "Authentication",
+      "sourceModule": "Saml",
+      "targetModule": "Authentication",
       "violations": [
         "private-import:Saml:backend/saml/handlers_http->backend/authentication/session/usecases"
       ],
-      "reason": "backend/saml/handlers_http -> backend/authentication/session/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/saml/handlers_http -> backend/authentication/session/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Saml->ClaimMapping",
-      "sourceContext": "Saml",
-      "targetContext": "ClaimMapping",
+      "sourceModule": "Saml",
+      "targetModule": "ClaimMapping",
       "violations": [
         "private-import:Saml:backend/saml->backend/claimmapping/usecases",
         "private-import:Saml:backend/saml/handlers_http->backend/claimmapping/usecases",
         "private-import:Saml:backend/saml/usecases->backend/claimmapping/usecases"
       ],
-      "reason": "backend/saml -> backend/claimmapping/usecases remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/saml -> backend/claimmapping/usecases remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Saml->WsFederation",
-      "sourceContext": "Saml",
-      "targetContext": "WsFederation",
+      "sourceModule": "Saml",
+      "targetModule": "WsFederation",
       "violations": [
         "private-import:Saml:backend/saml->backend/wsfederation/tokens_saml",
         "private-import:Saml:backend/saml/handlers_http->backend/wsfederation/tokens_saml",
         "private-import:Saml:backend/saml/responses_saml->backend/wsfederation/tokens_saml"
       ],
-      "reason": "backend/saml -> backend/wsfederation/tokens_saml remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/saml -> backend/wsfederation/tokens_saml remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:SharedSignals->Tenancy",
-      "sourceContext": "SharedSignals",
-      "targetContext": "Tenancy",
+      "sourceModule": "SharedSignals",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:SharedSignals:backend/sharedsignals/sign_jose->backend/tenancy",
         "private-import:SharedSignals:backend/sharedsignals/usecases->backend/tenancy",
         "private-import:SharedSignals:backend/sharedsignals/usecases->backend/tenancy/usecases"
       ],
-      "reason": "backend/sharedsignals/sign_jose -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/sharedsignals/sign_jose -> backend/tenancy remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:SigningKeys->Tenancy",
-      "sourceContext": "SigningKeys",
-      "targetContext": "Tenancy",
+      "sourceModule": "SigningKeys",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:SigningKeys:backend/signingkeys/db_postgres->backend/tenancy",
         "private-import:SigningKeys:backend/signingkeys/keys_memory->backend/tenancy",
         "private-import:SigningKeys:backend/signingkeys/keys_vault->backend/tenancy",
         "private-import:SigningKeys:backend/signingkeys/usecases->backend/tenancy"
       ],
-      "reason": "backend/signingkeys/db_postgres -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/signingkeys/db_postgres -> backend/tenancy remains coupled across 4 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Tenancy->Authentication",
-      "sourceContext": "Tenancy",
-      "targetContext": "Authentication",
+      "sourceModule": "Tenancy",
+      "targetModule": "Authentication",
       "violations": [
         "private-import:Tenancy:backend/tenancy/handlers_http->backend/authentication/password/usecases"
       ],
-      "reason": "backend/tenancy/handlers_http -> backend/authentication/password/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/tenancy/handlers_http -> backend/authentication/password/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Tenancy->WsFederation",
-      "sourceContext": "Tenancy",
-      "targetContext": "WsFederation",
+      "sourceModule": "Tenancy",
+      "targetModule": "WsFederation",
       "violations": [
         "private-import:Tenancy:backend/tenancy/handlers_http->backend/wsfederation/tokens_saml"
       ],
-      "reason": "backend/tenancy/handlers_http -> backend/wsfederation/tokens_saml remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/tenancy/handlers_http -> backend/wsfederation/tokens_saml remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:WorkloadIdentity->Tenancy",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "Tenancy",
+      "sourceModule": "WorkloadIdentity",
+      "targetModule": "Tenancy",
       "violations": [
         "private-import:WorkloadIdentity:backend/workloadidentity/usecases->backend/tenancy"
       ],
-      "reason": "backend/workloadidentity/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/workloadidentity/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:WsFederation->Authentication",
-      "sourceContext": "WsFederation",
-      "targetContext": "Authentication",
+      "sourceModule": "WsFederation",
+      "targetModule": "Authentication",
       "violations": [
         "private-import:WsFederation:backend/wsfederation/handlers_http->backend/authentication/session/usecases"
       ],
-      "reason": "backend/wsfederation/handlers_http -> backend/authentication/session/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/wsfederation/handlers_http -> backend/authentication/session/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:WsFederation->ClaimMapping",
-      "sourceContext": "WsFederation",
-      "targetContext": "ClaimMapping",
+      "sourceModule": "WsFederation",
+      "targetModule": "ClaimMapping",
       "violations": [
         "private-import:WsFederation:backend/wsfederation->backend/claimmapping/usecases",
         "private-import:WsFederation:backend/wsfederation/handlers_http->backend/claimmapping/usecases",
         "private-import:WsFederation:backend/wsfederation/tokens_saml->backend/claimmapping/usecases",
         "private-import:WsFederation:backend/wsfederation/usecases->backend/claimmapping/usecases"
       ],
-      "reason": "backend/wsfederation -> backend/claimmapping/usecases remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/wsfederation -> backend/claimmapping/usecases remains coupled across 4 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
-      "id": "shared-detour:ApiTokens->Tenancy",
-      "sourceContext": "ApiTokens",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:ApiTokens:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:ApiTokens:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:ApiTokens:backend/shared/http/support_http->Tenancy:backend/tenancy/ports"
-      ],
-      "reason": "ApiTokens -> backend/shared/http/support_http -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Application->Tenancy",
-      "sourceContext": "Application",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Application:backend/shared/http/support_http->Tenancy:backend/tenancy"
-      ],
-      "reason": "Application -> backend/shared/http/support_http -> backend/tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Audit->Tenancy",
-      "sourceContext": "Audit",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Audit:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Audit:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Audit:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:Audit:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "Audit -> backend/shared/http/support_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Authentication->Tenancy",
-      "sourceContext": "Authentication",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Authentication:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Authentication:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Authentication:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:Authentication:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "Authentication -> backend/shared/http/support_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Authorization->Tenancy",
-      "sourceContext": "Authorization",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Authorization:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Authorization:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Authorization:backend/shared/http/support_http->Tenancy:backend/tenancy/ports"
-      ],
-      "reason": "Authorization -> backend/shared/http/support_http -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:DataKeys->Tenancy",
-      "sourceContext": "DataKeys",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:DataKeys:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:DataKeys:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:DataKeys:backend/shared/http/support_http->Tenancy:backend/tenancy/ports"
-      ],
-      "reason": "DataKeys -> backend/shared/http/support_http -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:IdGovernance->Tenancy",
-      "sourceContext": "IdGovernance",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:IdGovernance:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:IdGovernance:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:IdGovernance:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:IdGovernance:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "IdGovernance -> backend/shared/http/support_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:IdManagement->Tenancy",
-      "sourceContext": "IdManagement",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:IdManagement:backend/shared/http/support_http->Tenancy:backend/tenancy"
-      ],
-      "reason": "IdManagement -> backend/shared/http/support_http -> backend/tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Jobs->Tenancy",
-      "sourceContext": "Jobs",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Jobs:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Jobs:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Jobs:backend/shared/http/support_http->Tenancy:backend/tenancy/ports"
-      ],
-      "reason": "Jobs -> backend/shared/http/support_http -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:OAuth2->ClaimMapping",
-      "sourceContext": "OAuth2",
-      "targetContext": "ClaimMapping",
-      "violations": [
-        "shared-detour:OAuth2:backend/shared/security/tokens_jose->ClaimMapping:backend/claimmapping/usecases"
-      ],
-      "reason": "OAuth2 -> backend/shared/http/support_http -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:OAuth2->IdManagement",
-      "sourceContext": "OAuth2",
-      "targetContext": "IdManagement",
-      "violations": [
-        "shared-detour:OAuth2:backend/shared/security/tokens_jose->IdManagement:backend/idmanagement/user/domain"
-      ],
-      "reason": "OAuth2 -> backend/shared/http/support_http -> backend/idmanagement/group/domain remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:OAuth2->Tenancy",
-      "sourceContext": "OAuth2",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:OAuth2:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:OAuth2:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:OAuth2:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:OAuth2:backend/shared/security/tokens_jose->Tenancy:backend/tenancy",
-        "shared-detour:OAuth2:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "OAuth2 -> backend/shared/http/support_http -> backend/tenancy remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Provisioning->Tenancy",
-      "sourceContext": "Provisioning",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Provisioning:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Provisioning:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Provisioning:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:Provisioning:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "Provisioning -> backend/shared/http/support_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Saml->Tenancy",
-      "sourceContext": "Saml",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Saml:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Saml:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Saml:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:Saml:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "Saml -> backend/shared/http/support_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:SharedSignals->ClaimMapping",
-      "sourceContext": "SharedSignals",
-      "targetContext": "ClaimMapping",
-      "violations": [
-        "shared-detour:SharedSignals:backend/shared/security/tokens_jose->ClaimMapping:backend/claimmapping/usecases"
-      ],
-      "reason": "SharedSignals -> backend/shared/http/support_http -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:SharedSignals->IdManagement",
-      "sourceContext": "SharedSignals",
-      "targetContext": "IdManagement",
-      "violations": [
-        "shared-detour:SharedSignals:backend/shared/security/tokens_jose->IdManagement:backend/idmanagement/user/domain"
-      ],
-      "reason": "SharedSignals -> backend/shared/http/support_http -> backend/idmanagement/group/domain remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:SharedSignals->OAuth2",
-      "sourceContext": "SharedSignals",
-      "targetContext": "OAuth2",
-      "violations": [
-        "shared-detour:SharedSignals:backend/shared/security/tokens_jose->OAuth2:backend/oauth2/domain",
-        "shared-detour:SharedSignals:backend/shared/security/tokens_jose->OAuth2:backend/oauth2/logout/ports",
-        "shared-detour:SharedSignals:backend/shared/security/tokens_jose->OAuth2:backend/oauth2/ports"
-      ],
-      "reason": "SharedSignals -> backend/shared/http/support_http -> backend/oauth2/consent/usecases remains coupled across 8 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:SharedSignals->Tenancy",
-      "sourceContext": "SharedSignals",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:SharedSignals:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:SharedSignals:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:SharedSignals:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:SharedSignals:backend/shared/security/tokens_jose->Tenancy:backend/tenancy",
-        "shared-detour:SharedSignals:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "SharedSignals -> backend/shared/http/support_http -> backend/tenancy remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:SigningKeys->Tenancy",
-      "sourceContext": "SigningKeys",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:SigningKeys:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:SigningKeys:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:SigningKeys:backend/shared/http/support_http->Tenancy:backend/tenancy/ports"
-      ],
-      "reason": "SigningKeys -> backend/shared/http/support_http -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:Sourcing->Tenancy",
-      "sourceContext": "Sourcing",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:Sourcing:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:Sourcing:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:Sourcing:backend/shared/http/support_http->Tenancy:backend/tenancy/ports"
-      ],
-      "reason": "Sourcing -> backend/shared/http/support_http -> backend/tenancy remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:WorkloadIdentity->ClaimMapping",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "ClaimMapping",
-      "violations": [
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->ClaimMapping:backend/claimmapping/usecases"
-      ],
-      "reason": "WorkloadIdentity -> backend/shared/http/support_http -> backend/claimmapping/usecases remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:WorkloadIdentity->IdManagement",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "IdManagement",
-      "violations": [
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->IdManagement:backend/idmanagement/user/domain"
-      ],
-      "reason": "WorkloadIdentity -> backend/shared/http/support_http -> backend/idmanagement/group/domain remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:WorkloadIdentity->OAuth2",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "OAuth2",
-      "violations": [
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->OAuth2:backend/oauth2/domain",
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->OAuth2:backend/oauth2/logout/ports",
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->OAuth2:backend/oauth2/ports"
-      ],
-      "reason": "WorkloadIdentity -> backend/shared/http/support_http -> backend/oauth2/consent/usecases remains coupled across 8 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:WorkloadIdentity->SigningKeys",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "SigningKeys",
-      "violations": [
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->SigningKeys:backend/signingkeys/domain",
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->SigningKeys:backend/signingkeys/ports"
-      ],
-      "reason": "WorkloadIdentity -> backend/shared/http/support_http -> backend/signingkeys/domain remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:WorkloadIdentity->Tenancy",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:WorkloadIdentity:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:WorkloadIdentity:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:WorkloadIdentity:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:WorkloadIdentity:backend/shared/security/tokens_jose->Tenancy:backend/tenancy",
-        "shared-detour:WorkloadIdentity:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "WorkloadIdentity -> backend/shared/http/support_http -> backend/tenancy remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "shared-detour:WsFederation->Tenancy",
-      "sourceContext": "WsFederation",
-      "targetContext": "Tenancy",
-      "violations": [
-        "shared-detour:WsFederation:backend/shared/http/support_http->Tenancy:backend/tenancy",
-        "shared-detour:WsFederation:backend/shared/http/support_http->Tenancy:backend/tenancy/domain",
-        "shared-detour:WsFederation:backend/shared/http/support_http->Tenancy:backend/tenancy/ports",
-        "shared-detour:WsFederation:backend/shared/storage/db_memory->Tenancy:backend/tenancy/domain"
-      ],
-      "reason": "WsFederation -> backend/shared/http/support_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:ApiTokens->OAuth2",
-      "sourceContext": "ApiTokens",
-      "targetContext": "OAuth2",
-      "violations": [
-        "undeclared-context-edge:ApiTokens->OAuth2:backend/apitoken->backend/oauth2/ports",
-        "undeclared-context-edge:ApiTokens->OAuth2:backend/apitoken/usecases->backend/oauth2/domain",
-        "undeclared-context-edge:ApiTokens->OAuth2:backend/apitoken/usecases->backend/oauth2/ports"
-      ],
-      "reason": "backend/apitoken -> backend/oauth2/ports remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:ApiTokens->Tenancy",
-      "sourceContext": "ApiTokens",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:ApiTokens->Tenancy:backend/apitoken/usecases->backend/tenancy"
-      ],
-      "reason": "backend/apitoken/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Application->Authentication",
-      "sourceContext": "Application",
-      "targetContext": "Authentication",
-      "violations": [
-        "undeclared-context-edge:Application->Authentication:backend/application/usecases->backend/authentication/domain",
-        "undeclared-context-edge:Application->Authentication:backend/application/usecases->backend/authentication/trusteddevice/usecases",
-        "undeclared-context-edge:Application->Authentication:backend/application/usecases->backend/authentication/usecases"
-      ],
-      "reason": "backend/application/usecases -> backend/authentication/domain remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Application->ClaimMapping",
-      "sourceContext": "Application",
-      "targetContext": "ClaimMapping",
-      "violations": [
-        "undeclared-context-edge:Application->ClaimMapping:backend/application->backend/claimmapping/usecases",
-        "undeclared-context-edge:Application->ClaimMapping:backend/application/handlers_http->backend/claimmapping/domain",
-        "undeclared-context-edge:Application->ClaimMapping:backend/application/handlers_http->backend/claimmapping/usecases"
-      ],
-      "reason": "backend/application -> backend/claimmapping/usecases remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Application->IdManagement",
-      "sourceContext": "Application",
-      "targetContext": "IdManagement",
-      "violations": [
-        "undeclared-context-edge:Application->IdManagement:backend/application->backend/idmanagement/group/ports",
-        "undeclared-context-edge:Application->IdManagement:backend/application->backend/idmanagement/user/ports",
-        "undeclared-context-edge:Application->IdManagement:backend/application/handlers_http->backend/idmanagement/group/ports",
-        "undeclared-context-edge:Application->IdManagement:backend/application/handlers_http->backend/idmanagement/user/domain",
-        "undeclared-context-edge:Application->IdManagement:backend/application/handlers_http->backend/idmanagement/user/ports"
-      ],
-      "reason": "backend/application -> backend/idmanagement/group/ports remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Application->OAuth2",
-      "sourceContext": "Application",
-      "targetContext": "OAuth2",
-      "violations": [
-        "undeclared-context-edge:Application->OAuth2:backend/application->backend/oauth2/ports",
-        "undeclared-context-edge:Application->OAuth2:backend/application/handlers_http->backend/oauth2/client/usecases",
-        "undeclared-context-edge:Application->OAuth2:backend/application/handlers_http->backend/oauth2/domain",
-        "undeclared-context-edge:Application->OAuth2:backend/application/handlers_http->backend/oauth2/ports"
-      ],
-      "reason": "backend/application -> backend/oauth2/ports remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
+      "id": "shared-dependency:shared->ClaimMapping",
+      "sourceModule": "shared",
+      "targetModule": "ClaimMapping",
+      "violations": ["shared-dependency:backend/shared/security/tokens_jose->ClaimMapping"],
+      "reason": "backend/shared/security/tokens_jose -> ClaimMapping: the shared library depends on module ClaimMapping; the dependency remains until the shared code stops needing the module type or moves into the module."
     },
     {
-      "id": "undeclared-context-edge:Application->Saml",
-      "sourceContext": "Application",
-      "targetContext": "Saml",
+      "id": "shared-dependency:shared->IdManagement",
+      "sourceModule": "shared",
+      "targetModule": "IdManagement",
       "violations": [
-        "undeclared-context-edge:Application->Saml:backend/application->backend/saml/ports",
-        "undeclared-context-edge:Application->Saml:backend/application/handlers_http->backend/saml/domain",
-        "undeclared-context-edge:Application->Saml:backend/application/handlers_http->backend/saml/ports"
+        "shared-dependency:backend/shared/security/tokens_jose->IdManagement",
+        "shared-dependency:backend/shared/storage/fixtures_postgres->IdManagement"
       ],
-      "reason": "backend/application -> backend/saml/ports remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/shared/security/tokens_jose -> IdManagement, backend/shared/storage/fixtures_postgres -> IdManagement: the shared library depends on module IdManagement; the dependency remains until the shared code stops needing the module type or moves into the module."
     },
     {
-      "id": "undeclared-context-edge:Application->WsFederation",
-      "sourceContext": "Application",
-      "targetContext": "WsFederation",
-      "violations": [
-        "undeclared-context-edge:Application->WsFederation:backend/application->backend/wsfederation/ports",
-        "undeclared-context-edge:Application->WsFederation:backend/application/handlers_http->backend/wsfederation/domain",
-        "undeclared-context-edge:Application->WsFederation:backend/application/handlers_http->backend/wsfederation/ports"
-      ],
-      "reason": "backend/application -> backend/wsfederation/ports remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Audit->IdManagement",
-      "sourceContext": "Audit",
-      "targetContext": "IdManagement",
-      "violations": [
-        "undeclared-context-edge:Audit->IdManagement:backend/audit/handlers_http->backend/idmanagement/user/ports"
-      ],
-      "reason": "backend/audit/handlers_http -> backend/idmanagement/user/domain remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Audit->OAuth2",
-      "sourceContext": "Audit",
-      "targetContext": "OAuth2",
-      "violations": [
-        "undeclared-context-edge:Audit->OAuth2:backend/audit/handlers_http->backend/oauth2/domain"
-      ],
-      "reason": "backend/audit/handlers_http -> backend/oauth2/domain remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Authentication->Application",
-      "sourceContext": "Authentication",
-      "targetContext": "Application",
-      "violations": [
-        "undeclared-context-edge:Authentication->Application:backend/authentication/deps_http->backend/application/ports",
-        "undeclared-context-edge:Authentication->Application:backend/authentication/handlers_http->backend/application/usecases"
-      ],
-      "reason": "backend/authentication/deps_http -> backend/application/ports remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Authentication->Audit",
-      "sourceContext": "Authentication",
-      "targetContext": "Audit",
-      "violations": [
-        "undeclared-context-edge:Authentication->Audit:backend/authentication/deps_http->backend/audit/ports",
-        "undeclared-context-edge:Authentication->Audit:backend/authentication/securitynotification/usecases->backend/audit/ports",
-        "undeclared-context-edge:Authentication->Audit:backend/authentication/usecases->backend/audit/ports"
-      ],
-      "reason": "backend/authentication/deps_http -> backend/audit/ports remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Authentication->OAuth2",
-      "sourceContext": "Authentication",
-      "targetContext": "OAuth2",
-      "violations": [
-        "undeclared-context-edge:Authentication->OAuth2:backend/authentication/deps_http->backend/oauth2/consent/usecases",
-        "undeclared-context-edge:Authentication->OAuth2:backend/authentication/deps_http->backend/oauth2/ports",
-        "undeclared-context-edge:Authentication->OAuth2:backend/authentication/handlers_http->backend/oauth2/consent/usecases",
-        "undeclared-context-edge:Authentication->OAuth2:backend/authentication/handlers_http->backend/oauth2/domain",
-        "undeclared-context-edge:Authentication->OAuth2:backend/authentication/session/handlers_http->backend/oauth2/token/usecases"
-      ],
-      "reason": "backend/authentication/deps_http -> backend/oauth2/consent/usecases remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Authentication->Tenancy",
-      "sourceContext": "Authentication",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/deps_http->backend/tenancy/ports",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/federation/usecases->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/handlers_http->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/mfa/usecases->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/domain->backend/tenancy/domain",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/usecases->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/password/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/securitynotification/usecases->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/securitynotification/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/db_memory->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/db_postgres->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/usecases->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/usecases->backend/tenancy/ports",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/session/usecases->backend/tenancy/usecases",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/totp/db_postgres->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/totp/db_postgres->backend/tenancy/domain",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/usecases->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/webauthn/db_memory->backend/tenancy",
-        "undeclared-context-edge:Authentication->Tenancy:backend/authentication/webauthn/db_postgres->backend/tenancy"
-      ],
-      "reason": "backend/authentication/deps_http -> backend/tenancy/ports remains coupled across 21 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:ClaimMapping->IdManagement",
-      "sourceContext": "ClaimMapping",
-      "targetContext": "IdManagement",
-      "violations": [
-        "undeclared-context-edge:ClaimMapping->IdManagement:backend/claimmapping/usecases->backend/idmanagement/domain",
-        "undeclared-context-edge:ClaimMapping->IdManagement:backend/claimmapping/usecases->backend/idmanagement/user/domain"
-      ],
-      "reason": "backend/claimmapping/usecases -> backend/idmanagement/domain remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:DataKeys->Jobs",
-      "sourceContext": "DataKeys",
-      "targetContext": "Jobs",
-      "violations": [
-        "undeclared-context-edge:DataKeys->Jobs:backend/datakeys/usecases->backend/jobs/domain",
-        "undeclared-context-edge:DataKeys->Jobs:backend/datakeys/usecases->backend/jobs/ports",
-        "undeclared-context-edge:DataKeys->Jobs:backend/datakeys/usecases->backend/jobs/usecases"
-      ],
-      "reason": "backend/datakeys/usecases -> backend/jobs/domain remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:DataKeys->Tenancy",
-      "sourceContext": "DataKeys",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:DataKeys->Tenancy:backend/datakeys/handlers_http->backend/tenancy/ports",
-        "undeclared-context-edge:DataKeys->Tenancy:backend/datakeys/usecases->backend/tenancy/ports"
-      ],
-      "reason": "backend/datakeys/handlers_http -> backend/tenancy/ports remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:IdGovernance->Application",
-      "sourceContext": "IdGovernance",
-      "targetContext": "Application",
-      "violations": [
-        "undeclared-context-edge:IdGovernance->Application:backend/idgovernance/handlers_http->backend/application/ports",
-        "undeclared-context-edge:IdGovernance->Application:backend/idgovernance/ports->backend/application/domain",
-        "undeclared-context-edge:IdGovernance->Application:backend/idgovernance/usecases->backend/application/domain",
-        "undeclared-context-edge:IdGovernance->Application:backend/idgovernance/usecases->backend/application/ports"
-      ],
-      "reason": "backend/idgovernance/handlers_http -> backend/application/ports remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:IdGovernance->Tenancy",
-      "sourceContext": "IdGovernance",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:IdGovernance->Tenancy:backend/idgovernance/handlers_http->backend/tenancy",
-        "undeclared-context-edge:IdGovernance->Tenancy:backend/idgovernance/handlers_http->backend/tenancy/ports",
-        "undeclared-context-edge:IdGovernance->Tenancy:backend/idgovernance/usecases->backend/tenancy",
-        "undeclared-context-edge:IdGovernance->Tenancy:backend/idgovernance/usecases->backend/tenancy/ports"
-      ],
-      "reason": "backend/idgovernance/handlers_http -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:IdManagement->Audit",
-      "sourceContext": "IdManagement",
-      "targetContext": "Audit",
-      "violations": [
-        "undeclared-context-edge:IdManagement->Audit:backend/idmanagement/user/db_memory->backend/audit/ports"
-      ],
-      "reason": "backend/idmanagement/user/db_memory -> backend/audit/ports remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:IdManagement->Authentication",
-      "sourceContext": "IdManagement",
-      "targetContext": "Authentication",
-      "violations": [
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/deps_http->backend/authentication/password/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/deps_http->backend/authentication/recovery/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/deps_http->backend/authentication/totp/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/deps_http->backend/authentication/trusteddevice/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/deps_http->backend/authentication/webauthn/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/db_memory->backend/authentication/password/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/handlers_http->backend/authentication/mfa/usecases",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/handlers_http->backend/authentication/password/usecases",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/handlers_http->backend/authentication/session/usecases",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/password/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/password/usecases",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/recovery/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/totp/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/trusteddevice/ports",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/trusteddevice/usecases",
-        "undeclared-context-edge:IdManagement->Authentication:backend/idmanagement/user/usecases->backend/authentication/webauthn/ports"
-      ],
-      "reason": "backend/idmanagement/deps_http -> backend/authentication/password/ports remains coupled across 17 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:IdManagement->Jobs",
-      "sourceContext": "IdManagement",
-      "targetContext": "Jobs",
-      "violations": [
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/deps_http->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/group/db_postgres->backend/jobs/domain",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/group/handlers_http->backend/jobs/domain",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/group/handlers_http->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/group/usecases->backend/jobs/domain",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/group/usecases->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/group/usecases->backend/jobs/usecases",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/handlers_http->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/usecases->backend/jobs/domain",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/usecases->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/usecases->backend/jobs/usecases",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/user/handlers_http->backend/jobs/domain",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/user/handlers_http->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/user/usecases->backend/jobs/domain",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/user/usecases->backend/jobs/ports",
-        "undeclared-context-edge:IdManagement->Jobs:backend/idmanagement/user/usecases->backend/jobs/usecases"
-      ],
-      "reason": "backend/idmanagement/deps_http -> backend/jobs/ports remains coupled across 16 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:IdManagement->OAuth2",
-      "sourceContext": "IdManagement",
-      "targetContext": "OAuth2",
-      "violations": [
-        "undeclared-context-edge:IdManagement->OAuth2:backend/idmanagement/agent/usecases->backend/oauth2/ports",
-        "undeclared-context-edge:IdManagement->OAuth2:backend/idmanagement/deps_http->backend/oauth2/consent/usecases",
-        "undeclared-context-edge:IdManagement->OAuth2:backend/idmanagement/deps_http->backend/oauth2/ports",
-        "undeclared-context-edge:IdManagement->OAuth2:backend/idmanagement/user/handlers_http->backend/oauth2/consent/usecases",
-        "undeclared-context-edge:IdManagement->OAuth2:backend/idmanagement/user/handlers_http->backend/oauth2/domain",
-        "undeclared-context-edge:IdManagement->OAuth2:backend/idmanagement/user/usecases->backend/oauth2/ports"
-      ],
-      "reason": "backend/idmanagement/agent/usecases -> backend/oauth2/ports remains coupled across 6 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Jobs->Tenancy",
-      "sourceContext": "Jobs",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:Jobs->Tenancy:backend/jobs/usecases->backend/tenancy",
-        "undeclared-context-edge:Jobs->Tenancy:backend/jobs/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:Jobs->Tenancy:backend/jobs/usecases->backend/tenancy/ports",
-        "undeclared-context-edge:Jobs->Tenancy:backend/jobs/usecases->backend/tenancy/usecases"
-      ],
-      "reason": "backend/jobs/usecases -> backend/tenancy remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:OAuth2->ApiTokens",
-      "sourceContext": "OAuth2",
-      "targetContext": "ApiTokens",
-      "violations": [
-        "undeclared-context-edge:OAuth2->ApiTokens:backend/oauth2/handlers_http->backend/apitoken/domain",
-        "undeclared-context-edge:OAuth2->ApiTokens:backend/oauth2/token/usecases->backend/apitoken/domain"
-      ],
-      "reason": "backend/oauth2/handlers_http -> backend/apitoken/domain remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:OAuth2->Audit",
-      "sourceContext": "OAuth2",
-      "targetContext": "Audit",
-      "violations": [
-        "undeclared-context-edge:OAuth2->Audit:backend/oauth2/handlers_http->backend/audit/ports"
-      ],
-      "reason": "backend/oauth2/handlers_http -> backend/audit/ports remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:OAuth2->IdManagement",
-      "sourceContext": "OAuth2",
-      "targetContext": "IdManagement",
-      "violations": [
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/approval/usecases->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/approval/usecases->backend/idmanagement/user/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/approval/usecases->backend/idmanagement/user/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/device/usecases->backend/idmanagement/user/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/device/usecases->backend/idmanagement/user/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/handlers_http->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/handlers_http->backend/idmanagement/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/handlers_http->backend/idmanagement/user/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/handlers_http->backend/idmanagement/user/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/ports->backend/idmanagement/user/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/token/usecases->backend/idmanagement/agent/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/token/usecases->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/token/usecases->backend/idmanagement/user/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/token/usecases->backend/idmanagement/user/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/usecases->backend/idmanagement/agent/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/usecases->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/usecases->backend/idmanagement/domain",
-        "undeclared-context-edge:OAuth2->IdManagement:backend/oauth2/usecases->backend/idmanagement/user/ports"
-      ],
-      "reason": "backend/oauth2/approval/usecases -> backend/idmanagement/agent/ports remains coupled across 18 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:OAuth2->Jobs",
-      "sourceContext": "OAuth2",
-      "targetContext": "Jobs",
-      "violations": [
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2->backend/jobs/usecases",
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2/handlers_http->backend/jobs/domain",
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2/handlers_http->backend/jobs/ports",
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2/handlers_http->backend/jobs/usecases",
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2/logout/domain->backend/jobs/domain",
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2/logout/usecases->backend/jobs/domain",
-        "undeclared-context-edge:OAuth2->Jobs:backend/oauth2/logout/usecases->backend/jobs/ports"
-      ],
-      "reason": "backend/oauth2 -> backend/jobs/usecases remains coupled across 7 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:OAuth2->SharedSignals",
-      "sourceContext": "OAuth2",
-      "targetContext": "SharedSignals",
-      "violations": [
-        "undeclared-context-edge:OAuth2->SharedSignals:backend/oauth2/handlers_http->backend/sharedsignals/ports",
-        "undeclared-context-edge:OAuth2->SharedSignals:backend/oauth2/token/usecases->backend/sharedsignals/ports"
-      ],
-      "reason": "backend/oauth2/handlers_http -> backend/sharedsignals/ports remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:OAuth2->Tenancy",
-      "sourceContext": "OAuth2",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/approval/db_memory->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/approval/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/authorization/domain->backend/tenancy/domain",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/authorization/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/client/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/client/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/client/usecases->backend/tenancy/ports",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/client/usecases->backend/tenancy/usecases",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/consent/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/consent/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/consent/usecases->backend/tenancy/ports",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/consent/usecases->backend/tenancy/usecases",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/db_postgres->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/device/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/handlers_http->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/handlers_http->backend/tenancy/domain",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/handlers_http->backend/tenancy/ports",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/handlers_http->backend/tenancy/usecases",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/logout/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/policy_tenancy->backend/tenancy/ports",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/token/usecases->backend/tenancy",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/token/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:OAuth2->Tenancy:backend/oauth2/usecases->backend/tenancy"
-      ],
-      "reason": "backend/oauth2/approval/db_memory -> backend/tenancy remains coupled across 23 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Provisioning->Application",
-      "sourceContext": "Provisioning",
-      "targetContext": "Application",
-      "violations": [
-        "undeclared-context-edge:Provisioning->Application:backend/provisioning->backend/application/ports",
-        "undeclared-context-edge:Provisioning->Application:backend/provisioning/handlers_http->backend/application/ports",
-        "undeclared-context-edge:Provisioning->Application:backend/provisioning/usecases->backend/application/domain",
-        "undeclared-context-edge:Provisioning->Application:backend/provisioning/usecases->backend/application/ports"
-      ],
-      "reason": "backend/provisioning -> backend/application/ports remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Provisioning->Tenancy",
-      "sourceContext": "Provisioning",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:Provisioning->Tenancy:backend/provisioning->backend/tenancy/ports"
-      ],
-      "reason": "backend/provisioning -> backend/tenancy/ports remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Saml->Authentication",
-      "sourceContext": "Saml",
-      "targetContext": "Authentication",
-      "violations": [
-        "undeclared-context-edge:Saml->Authentication:backend/saml/handlers_http->backend/authentication/domain",
-        "undeclared-context-edge:Saml->Authentication:backend/saml/handlers_http->backend/authentication/session/usecases",
-        "undeclared-context-edge:Saml->Authentication:backend/saml/usecases->backend/authentication/domain"
-      ],
-      "reason": "backend/saml/handlers_http -> backend/authentication/domain remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Saml->IdManagement",
-      "sourceContext": "Saml",
-      "targetContext": "IdManagement",
-      "violations": [
-        "undeclared-context-edge:Saml->IdManagement:backend/saml->backend/idmanagement/user/ports",
-        "undeclared-context-edge:Saml->IdManagement:backend/saml/handlers_http->backend/idmanagement/user/ports",
-        "undeclared-context-edge:Saml->IdManagement:backend/saml/usecases->backend/idmanagement/user/ports"
-      ],
-      "reason": "backend/saml -> backend/idmanagement/user/ports remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Saml->WsFederation",
-      "sourceContext": "Saml",
-      "targetContext": "WsFederation",
-      "violations": [
-        "undeclared-context-edge:Saml->WsFederation:backend/saml->backend/wsfederation/tokens_saml",
-        "undeclared-context-edge:Saml->WsFederation:backend/saml/handlers_http->backend/wsfederation/domain",
-        "undeclared-context-edge:Saml->WsFederation:backend/saml/handlers_http->backend/wsfederation/tokens_saml",
-        "undeclared-context-edge:Saml->WsFederation:backend/saml/responses_saml->backend/wsfederation/tokens_saml"
-      ],
-      "reason": "backend/saml -> backend/wsfederation/tokens_saml remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:SharedSignals->IdManagement",
-      "sourceContext": "SharedSignals",
-      "targetContext": "IdManagement",
-      "violations": [
-        "undeclared-context-edge:SharedSignals->IdManagement:backend/sharedsignals/handlers_http->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:SharedSignals->IdManagement:backend/sharedsignals/usecases->backend/idmanagement/agent/domain",
-        "undeclared-context-edge:SharedSignals->IdManagement:backend/sharedsignals/usecases->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:SharedSignals->IdManagement:backend/sharedsignals/usecases->backend/idmanagement/domain"
-      ],
-      "reason": "backend/sharedsignals/handlers_http -> backend/idmanagement/agent/ports remains coupled across 4 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:SharedSignals->Tenancy",
-      "sourceContext": "SharedSignals",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/handlers_http->backend/tenancy/ports",
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/sign_jose->backend/tenancy",
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/sign_jose->backend/tenancy/domain",
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/usecases->backend/tenancy",
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/usecases->backend/tenancy/domain",
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/usecases->backend/tenancy/ports",
-        "undeclared-context-edge:SharedSignals->Tenancy:backend/sharedsignals/usecases->backend/tenancy/usecases"
-      ],
-      "reason": "backend/sharedsignals/handlers_http -> backend/tenancy/ports remains coupled across 7 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:SigningKeys->Tenancy",
-      "sourceContext": "SigningKeys",
-      "targetContext": "Tenancy",
-      "violations": [
-        "undeclared-context-edge:SigningKeys->Tenancy:backend/signingkeys/db_postgres->backend/tenancy",
-        "undeclared-context-edge:SigningKeys->Tenancy:backend/signingkeys/handlers_http->backend/tenancy/ports",
-        "undeclared-context-edge:SigningKeys->Tenancy:backend/signingkeys/keys_memory->backend/tenancy",
-        "undeclared-context-edge:SigningKeys->Tenancy:backend/signingkeys/keys_vault->backend/tenancy",
-        "undeclared-context-edge:SigningKeys->Tenancy:backend/signingkeys/usecases->backend/tenancy",
-        "undeclared-context-edge:SigningKeys->Tenancy:backend/signingkeys/usecases->backend/tenancy/ports"
-      ],
-      "reason": "backend/signingkeys/db_postgres -> backend/tenancy remains coupled across 6 observed path(s) until its owning Context exposes or consumes the required published language."
-    },
-    {
-      "id": "undeclared-context-edge:Sourcing->ApiTokens",
-      "sourceContext": "Sourcing",
-      "targetContext": "ApiTokens",
-      "violations": [
-        "undeclared-context-edge:Sourcing->ApiTokens:backend/sourcing->backend/apitoken/ports",
-        "undeclared-context-edge:Sourcing->ApiTokens:backend/sourcing/scim/handlers_http->backend/apitoken/domain",
-        "undeclared-context-edge:Sourcing->ApiTokens:backend/sourcing/scim/handlers_http->backend/apitoken/ports"
-      ],
-      "reason": "backend/sourcing -> backend/apitoken/ports remains coupled across 3 observed path(s) until its owning Context exposes or consumes the required published language."
+      "id": "shared-dependency:shared->Jobs",
+      "sourceModule": "shared",
+      "targetModule": "Jobs",
+      "violations": ["shared-dependency:backend/shared/observability/metrics_prometheus->Jobs"],
+      "reason": "backend/shared/observability/metrics_prometheus -> Jobs: the shared library depends on module Jobs; the dependency remains until the shared code stops needing the module type or moves into the module."
     },
     {
-      "id": "undeclared-context-edge:Sourcing->IdManagement",
-      "sourceContext": "Sourcing",
-      "targetContext": "IdManagement",
+      "id": "shared-dependency:shared->OAuth2",
+      "sourceModule": "shared",
+      "targetModule": "OAuth2",
       "violations": [
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing->backend/idmanagement/group/ports",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing->backend/idmanagement/user/ports",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/source_idmanagement->backend/idmanagement/group/ports",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/source_idmanagement->backend/idmanagement/user/ports",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/usecases->backend/idmanagement/domain",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/usecases->backend/idmanagement/group/domain",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/usecases->backend/idmanagement/group/ports",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/usecases->backend/idmanagement/user/domain",
-        "undeclared-context-edge:Sourcing->IdManagement:backend/sourcing/scim/usecases->backend/idmanagement/user/ports"
+        "shared-dependency:backend/shared/events/sinks_console->OAuth2",
+        "shared-dependency:backend/shared/security/tokens_jose->OAuth2",
+        "shared-dependency:backend/shared/storage/fixtures_postgres->OAuth2"
       ],
-      "reason": "backend/sourcing -> backend/idmanagement/group/ports remains coupled across 9 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/shared/events/sinks_console -> OAuth2, backend/shared/security/tokens_jose -> OAuth2, backend/shared/storage/fixtures_postgres -> OAuth2: the shared library depends on module OAuth2; the dependency remains until the shared code stops needing the module type or moves into the module."
     },
     {
-      "id": "undeclared-context-edge:Tenancy->Authentication",
-      "sourceContext": "Tenancy",
-      "targetContext": "Authentication",
+      "id": "shared-dependency:shared->SigningKeys",
+      "sourceModule": "shared",
+      "targetModule": "SigningKeys",
       "violations": [
-        "undeclared-context-edge:Tenancy->Authentication:backend/tenancy/handlers_http->backend/authentication/password/usecases"
+        "shared-dependency:backend/shared/security/tokens_jose->SigningKeys",
+        "shared-dependency:backend/shared/storage/fixtures_postgres->SigningKeys"
       ],
-      "reason": "backend/tenancy/handlers_http -> backend/authentication/password/usecases remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/shared/security/tokens_jose -> SigningKeys, backend/shared/storage/fixtures_postgres -> SigningKeys: the shared library depends on module SigningKeys; the dependency remains until the shared code stops needing the module type or moves into the module."
     },
     {
-      "id": "undeclared-context-edge:Tenancy->IdManagement",
-      "sourceContext": "Tenancy",
-      "targetContext": "IdManagement",
+      "id": "shared-dependency:shared->Tenancy",
+      "sourceModule": "shared",
+      "targetModule": "Tenancy",
       "violations": [
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/handlers_http->backend/idmanagement/domain",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/handlers_http->backend/idmanagement/group/domain",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/handlers_http->backend/idmanagement/group/ports",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/handlers_http->backend/idmanagement/user/domain",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/handlers_http->backend/idmanagement/user/ports",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/ports->backend/idmanagement/group/domain",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/ports->backend/idmanagement/user/domain",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/usecases->backend/idmanagement/group/domain",
-        "undeclared-context-edge:Tenancy->IdManagement:backend/tenancy/usecases->backend/idmanagement/user/domain"
+        "shared-dependency:backend/shared/http/support_http->Tenancy",
+        "shared-dependency:backend/shared/ratelimit/db_postgres->Tenancy",
+        "shared-dependency:backend/shared/security/salts_memory->Tenancy",
+        "shared-dependency:backend/shared/security/salts_postgres->Tenancy",
+        "shared-dependency:backend/shared/security/tokens_jose->Tenancy",
+        "shared-dependency:backend/shared/storage/db_memory->Tenancy",
+        "shared-dependency:backend/shared/storage/fixtures_postgres->Tenancy"
       ],
-      "reason": "backend/tenancy/handlers_http -> backend/idmanagement/domain remains coupled across 9 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "backend/shared/http/support_http -> Tenancy, backend/shared/ratelimit/db_postgres -> Tenancy, backend/shared/security/salts_memory -> Tenancy, backend/shared/security/salts_postgres -> Tenancy, backend/shared/security/tokens_jose -> Tenancy, backend/shared/storage/db_memory -> Tenancy, backend/shared/storage/fixtures_postgres -> Tenancy: the shared library depends on module Tenancy; the dependency remains until the shared code stops needing the module type or moves into the module."
     },
     {
-      "id": "undeclared-context-edge:Tenancy->WsFederation",
-      "sourceContext": "Tenancy",
-      "targetContext": "WsFederation",
+      "id": "table-write:Application->OAuth2",
+      "sourceModule": "Application",
+      "targetModule": "OAuth2",
       "violations": [
-        "undeclared-context-edge:Tenancy->WsFederation:backend/tenancy/handlers_http->backend/wsfederation/tokens_saml"
+        "table-write:Application:backend/application/db_postgres/applications.sql:LinkOAuth2ClientToApplication:update:oauth2_clients:application_id"
       ],
-      "reason": "backend/tenancy/handlers_http -> backend/wsfederation/tokens_saml remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "Application links an OAuth2 client record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界)."
     },
     {
-      "id": "undeclared-context-edge:WorkloadIdentity->IdManagement",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "IdManagement",
+      "id": "table-write:Application->Saml",
+      "sourceModule": "Application",
+      "targetModule": "Saml",
       "violations": [
-        "undeclared-context-edge:WorkloadIdentity->IdManagement:backend/workloadidentity/handlers_http->backend/idmanagement/agent/ports",
-        "undeclared-context-edge:WorkloadIdentity->IdManagement:backend/workloadidentity/usecases->backend/idmanagement/agent/ports"
+        "table-write:Application:backend/application/db_postgres/applications.sql:LinkSamlServiceProviderToApplication:update:saml_service_providers:application_id"
       ],
-      "reason": "backend/workloadidentity/handlers_http -> backend/idmanagement/agent/ports remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "Application links a SAML service provider record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界)."
     },
     {
-      "id": "undeclared-context-edge:WorkloadIdentity->Tenancy",
-      "sourceContext": "WorkloadIdentity",
-      "targetContext": "Tenancy",
+      "id": "table-write:Application->WsFederation",
+      "sourceModule": "Application",
+      "targetModule": "WsFederation",
       "violations": [
-        "undeclared-context-edge:WorkloadIdentity->Tenancy:backend/workloadidentity/usecases->backend/tenancy"
+        "table-write:Application:backend/application/db_postgres/applications.sql:LinkWsFedRelyingPartyToApplication:update:wsfed_relying_parties:application_id"
       ],
-      "reason": "backend/workloadidentity/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "Application links a WS-Federation relying party record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界)."
     },
     {
-      "id": "undeclared-context-edge:WsFederation->Authentication",
-      "sourceContext": "WsFederation",
-      "targetContext": "Authentication",
+      "id": "table-write:IdManagement->Audit",
+      "sourceModule": "IdManagement",
+      "targetModule": "Audit",
       "violations": [
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation->backend/authentication/password/ports",
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation->backend/authentication/session/ports",
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation/handlers_http->backend/authentication/domain",
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation/handlers_http->backend/authentication/password/ports",
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation/handlers_http->backend/authentication/session/ports",
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation/handlers_http->backend/authentication/session/usecases",
-        "undeclared-context-edge:WsFederation->Authentication:backend/wsfederation/usecases->backend/authentication/domain"
+        "table-write:IdManagement:backend/idmanagement/group/db_postgres/group_import.sql:InsertGroupImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id",
+        "table-write:IdManagement:backend/idmanagement/user/db_postgres/user_import.sql:InsertUserImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id"
       ],
-      "reason": "backend/wsfederation -> backend/authentication/password/ports remains coupled across 7 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "IdManagement records the CSV import audit event in the same transaction that commits the user or group import, so a committed import cannot lack its audit record (docs/design/data/database.md#所有と書き込みの境界)."
     },
     {
-      "id": "undeclared-context-edge:WsFederation->IdManagement",
-      "sourceContext": "WsFederation",
-      "targetContext": "IdManagement",
+      "id": "table-write:IdManagement->Authentication",
+      "sourceModule": "IdManagement",
+      "targetModule": "Authentication",
       "violations": [
-        "undeclared-context-edge:WsFederation->IdManagement:backend/wsfederation->backend/idmanagement/user/ports",
-        "undeclared-context-edge:WsFederation->IdManagement:backend/wsfederation/handlers_http->backend/idmanagement/user/domain",
-        "undeclared-context-edge:WsFederation->IdManagement:backend/wsfederation/handlers_http->backend/idmanagement/user/ports",
-        "undeclared-context-edge:WsFederation->IdManagement:backend/wsfederation/usecases->backend/idmanagement/user/domain",
-        "undeclared-context-edge:WsFederation->IdManagement:backend/wsfederation/usecases->backend/idmanagement/user/ports"
+        "table-write:IdManagement:backend/idmanagement/user/db_postgres/user_import.sql:InsertImportedPasswordHistory:insert:password_history:created_at,encoded,id,user_id"
       ],
-      "reason": "backend/wsfederation -> backend/idmanagement/user/ports remains coupled across 5 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "IdManagement writes the password history of a password set by user CSV import in the same transaction that commits the imported user, so reuse checks cannot miss an imported password (docs/design/data/database.md#所有と書き込みの境界)."
     },
     {
-      "id": "undeclared-context-edge:WsFederation->OAuth2",
-      "sourceContext": "WsFederation",
-      "targetContext": "OAuth2",
+      "id": "table-write:IdManagement->Jobs",
+      "sourceModule": "IdManagement",
+      "targetModule": "Jobs",
       "violations": [
-        "undeclared-context-edge:WsFederation->OAuth2:backend/wsfederation->backend/oauth2/ports",
-        "undeclared-context-edge:WsFederation->OAuth2:backend/wsfederation/handlers_http->backend/oauth2/ports"
+        "table-write:IdManagement:backend/idmanagement/group/db_postgres/group_import.sql:EnqueueGroupReconcileJob:insert:jobs:attempts,created_at,dedup_key,id,kind,lane,max_attempts,params,run_at,status,tenant_id,updated_at"
       ],
-      "reason": "backend/wsfederation -> backend/oauth2/ports remains coupled across 2 observed path(s) until its owning Context exposes or consumes the required published language."
+      "reason": "IdManagement enqueues the group reconcile job in the same transaction that commits the group CSV import, so a committed import cannot lack its reconciliation (docs/design/data/database.md#所有と書き込みの境界)."
     }
   ]
 }

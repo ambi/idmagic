@@ -78,15 +78,14 @@ async function workspace(): Promise<string> {
   await mkdir(join(root, 'docs', 'domain', 'demo', 'design'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'architecture'), { recursive: true })
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
-  // Context を 1 つでも持つ作業ツリーは、索引表でその区分を宣言しなければならない。
   await writeFile(
     join(root, 'docs', 'design', 'architecture', 'logical.md'),
     [
       '# 論理アーキテクチャ',
       '',
-      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
-      '| --- | --- | --- | --- |',
-      '| [Demo](../../domain/demo/README.md) | Core | `demo` | Demo. |',
+      '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
+      '| --- | --- | --- | --- | --- |',
+      '| [Demo](../../domain/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
       '',
     ].join('\n'),
   )
