@@ -158,7 +158,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 - [ ] T009 [UI] Application の OIDC 詳細設定に 3 つのメタデータを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に JAR / JARM の設定と `request_uri` 非対応の理由を追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 

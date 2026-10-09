@@ -90,7 +90,7 @@ CSV の受け取りは 1 回だけ、適用は成功済みプレビューの ID 
 ## Verification
 
 - `mise run check`
-- `mise run spec-render`
+- `mise run render-docs`
 - `mise run check-api-compat`
 - `mise run verify-go`
 - `mise run verify-ui`

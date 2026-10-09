@@ -33,7 +33,7 @@
 | 選択した故障を検出する境界で RED を確認する | `implement-work-item` | 観測可能な境界の最小テスト |
 | GREEN にして、必要な内部の振る舞いと外側のアダプターをリファクタリングする | `implement-work-item` | 各境界の局所テスト |
 | 構造変更時に現在の設計を同期する | `update-design` | `mise run check-boundaries` |
-| 派生ビューを再生成する | `spec-render` | `mise run check-api-compat` |
+| 派生ビューを再生成する | `render-docs` | `mise run check-api-compat` |
 | 変更への耐性を検証する | `code-review` | リスクに応じて選んだ証拠、`mise run verify` |
 | 完了を記録してコミットする | `commit` | `mise run check-work-items` |
 

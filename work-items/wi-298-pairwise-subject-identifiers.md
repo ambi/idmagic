@@ -161,7 +161,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 - [ ] T012 [UI] Application の OIDC 詳細設定に `subject_type` と切り替え警告を追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T013 [Docs] README に pairwise の設定・sector の決め方・切り替えの影響を追記する。
-- [ ] T014 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T014 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 

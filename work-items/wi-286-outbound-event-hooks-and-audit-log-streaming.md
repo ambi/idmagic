@@ -146,7 +146,7 @@ push される」汎用 outbound hook を導入する。
 - [ ] T010 [Streaming] 全 event 種別 + バッチ配送プロファイルを subscription の設定として
       表現し、SIEM 連携ケースを同じ機構で満たす。RED: バッチ境界のテスト → GREEN。
 - [ ] T011 [Docs] README に署名検証の擬似コード、再試行方針、SIEM 連携例を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 

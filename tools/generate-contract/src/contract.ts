@@ -58,5 +58,5 @@ export function renderContract(operations: ContractOperation[]): string {
         `\t${quote(name)}: {Method: ${quote(method)}, Path: ${quote(path)}, Deprecated: ${deprecated}, ApiTokenScopes: ${scopeLiteral(apiTokenScopes)}},`,
     )
     .join('\n')
-  return `// Code generated from spec/main.tsp by mise run spec-render; DO NOT EDIT.\n\npackage spec\n\nvar generatedOperations = map[string]Operation{\n${entries}\n}\n`
+  return `// Code generated from spec/main.tsp by mise run generate-contract; DO NOT EDIT.\n\npackage spec\n\nvar generatedOperations = map[string]Operation{\n${entries}\n}\n`
 }

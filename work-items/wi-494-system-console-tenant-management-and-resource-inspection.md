@@ -155,7 +155,7 @@ Tenancy は詳細、変更、無効化、再開、削除状態と削除オーケ
 ## Verification
 
 - `mise run check-spec`
-- `mise run spec-render`
+- `mise run render-docs`
 - `mise run check-api-compat`
 - `mise run check-contract-drift`
 - `mise run check-generated-contract`

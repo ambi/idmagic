@@ -60,7 +60,7 @@ affected_spec:
 ## Tasks
 - [ ] T001 [Spec] 大規模テナント scale profile、read model 方針、freshness、検索制約、性能検証方式を記録する。
 - [ ] T002 [Spec] performance objectives、large-tenant scenarios、UX の全件取得禁止・summary freshness を追加する。
-- [ ] T003 [Render] `mise run spec-render` で派生物を更新する。
+- [ ] T003 [Render] `mise run render-docs` で派生物を更新する。
 - [ ] T004 [Audit] 既存 UI / API の全件取得、list endpoint 集計、未制限検索を棚卸しして置換対象を確定する。
 - [ ] T005 [Persistence] 主要 query の index / read model / counter cache / migration を実装する。
 - [ ] T006 [Go] summary endpoint、検索 validation、slow query metrics / structured log を追加する。
@@ -70,7 +70,7 @@ affected_spec:
 
 ## Verification
 - `mise run check`
-- `mise run spec-render`
+- `mise run render-docs`
 - `mise run verify-go`
 - `mise run verify-ui`
 - `mise run test-ui-e2e`

@@ -153,7 +153,7 @@ affected_spec:
 - [ ] T010 [Perf] 深さ上限・グループ数の想定上限で effective roles 解決の計測を行い、
       objective を満たすことを確認する (満たさない場合は closure のインデックスを見直す)。
 - [ ] T011 [Docs] README に階層の意味と運用上の注意を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 

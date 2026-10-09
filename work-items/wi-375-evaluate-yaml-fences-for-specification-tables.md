@@ -58,7 +58,7 @@ SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うの�
 ## Verification
 
 - `mise run check-spec`
-- `mise run spec-render`
+- `mise run render-docs`
 - `mise run spec-diff`
 - `mise run verify-spec`
 

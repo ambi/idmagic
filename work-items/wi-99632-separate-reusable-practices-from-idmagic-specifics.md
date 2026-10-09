@@ -159,7 +159,7 @@ IdMagic での値は、`docs/development/` に新設する一つの文書に表�
 | `parallel-work-items` | 汎用 | ワークツリーの配置とタスク名を差し込み点へ置き換えて移す |
 | `spec-change` | 汎用 | インターフェース定義言語を差し込み点へ置き換えて移す |
 | `update-design` | 汎用 | 一次情報文書の名前は汎用の文書体系に従うので、そのまま移す |
-| `spec-render` | 固有 | TypeSpec の生成手順なので残す |
+| `render-docs` | 固有 | TypeSpec の生成手順なので残す |
 | `update-all-dependencies` | 固有 | 依存の層が IdMagic の技術構成に依存するので残す |
 
 skill は他の文書を取り込めないので、汎用化した skill は差し込み点を「`AGENTS.md` が示す値」として参照する。

@@ -160,7 +160,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
       (残り試行・再送・待ち時間)、管理コンソールの `allowed_mfa_factor_types` 設定と
       注意書きを追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T012 [Docs] README に SMS adapter 設定、既定無効、NIST の位置付けを追記する。
-- [ ] T013 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T013 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 

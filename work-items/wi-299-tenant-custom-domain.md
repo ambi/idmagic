@@ -126,7 +126,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
       削除確認を含める。RED: presentation logic の unit test → GREEN。
 - [ ] T008 [Docs] README と `infra/README.md` に独自ドメイン運用手順 (DNS / TLS /
       WebAuthn / issuer 移行) を追記する。
-- [ ] T009 [Verify] 下記 Verification を緑にする。`mise run spec-render` で派生物を再生成する。
+- [ ] T009 [Verify] 下記 Verification を緑にする。`mise run render-docs` で派生物を再生成する。
 
 ## Verification
 

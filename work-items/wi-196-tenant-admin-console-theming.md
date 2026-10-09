@@ -41,7 +41,7 @@ depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-ten
 - [ ] T005 [Visual/Verify] 代表管理画面の visual / UI 回帰とキーボード focus を検証する。
 
 ## Verification
-- `mise run spec-render`
+- `mise run render-docs`
 - `mise run test-ui-unit`
 - `mise run test-ui-e2e`
 - `mise run verify-ui`

@@ -28,7 +28,7 @@ description: Integrate a completed work-item branch into main or another target 
    ```
 
    - When the trees are identical, finish immediately. The target contains exactly the already verified result;
-     rerunning `check`, `spec-render`, or `verify` adds no evidence.
+     rerunning `check`, `render-docs`, or `verify` adds no evidence.
    - A tree difference here means the fast-forward did not produce the verified source result. Stop and inspect
      it before cleanup; a normal fast-forward must be identical.
 

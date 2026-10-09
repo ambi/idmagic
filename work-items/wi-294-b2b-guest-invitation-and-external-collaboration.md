@@ -159,7 +159,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 - [ ] T010 [UI] 招待画面 (作成 / 一覧 / 再送 / 失効)、ユーザー一覧の Member/Guest 区別と絞り込み、
       アクセス期限の表示・変更、受諾画面を追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T011 [Docs] README に招待運用・ゲスト既定権限・期限・外部 IdP 前提を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 

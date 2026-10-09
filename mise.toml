@@ -76,12 +76,14 @@ dir = "tools"
 run = "bunx tsp compile ../spec/main.tsp --config ../spec/tspconfig.yaml"
 
 [tasks.generate-contract]
-description = "Generate runtime route metadata from compiled OpenAPI"
+description = "Compile TypeSpec, then generate runtime route metadata from the OpenAPI"
+depends = ["compile-spec"]
 dir = "tools"
 run = "bun run generate-contract/src/main.ts"
 
 [tasks.check-generated-contract]
-description = "Check runtime route metadata against TypeSpec"
+description = "Compile TypeSpec, then check runtime route metadata against it"
+depends = ["compile-spec"]
 dir = "tools"
 run = "bun run generate-contract/src/main.ts --check"
 
@@ -682,7 +684,8 @@ bun run check/src/runner.ts all ${1:+--base-revision "$1"}
 '''
 
 [tasks.check-rendered-docs]
-description = "Check the rendered documentation site"
+description = "Compile TypeSpec, then check the rendered documentation site"
+depends = ["compile-spec"]
 dir = "tools"
 run = "bun run render-docs/src/main.ts --check"
 
@@ -774,14 +777,12 @@ description = "Check repository-local agent guidance against the current workflo
 dir = "tools"
 run = "bun run check/src/runner.ts agent-guidance"
 
+# 依存として並べると、同じ実行の中で compile-spec が一度だけ走る。
 [tasks.check-spec]
 description = "Compile TypeSpec and validate canonical specification documents"
-depends = ["compile-spec"]
-run = [
-  "mise run check-generated-contract",
-  "cd tools && bun run check/src/runner.ts documents specification-rules document-layout executable-examples",
-  "mise run check-rendered-docs",
-]
+depends = ["compile-spec", "check-generated-contract", "check-rendered-docs"]
+dir = "tools"
+run = "bun run check/src/runner.ts documents specification-rules document-layout executable-examples"
 
 [tasks.check-work-items]
 description = "Validate work-item records"
@@ -858,11 +859,9 @@ dir = "tools"
 run = "bun run check/src/runner.ts api-compat"
 
 [tasks.update-api-baseline]
-description = "Freeze generated OpenAPI as the release baseline"
-run = [
-  "mise run spec-render",
-  "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json",
-]
+description = "Compile TypeSpec, then freeze the generated OpenAPI as the release baseline"
+depends = ["compile-spec"]
+run = "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json"
 
 [tasks.work-item-number]
 description = "Pick an unused work item identifier number"
@@ -917,8 +916,10 @@ test "$#" -ge 1 || { echo "usage: mise run spec-review-candidates -- <package-di
 bun run spec-review-candidates/src/main.ts "$1"
 '''
 
+# 文書サイトは TypeSpec から生成した OpenAPI を読むので、先にコンパイルして古い生成物を描かない。
 [tasks.render-docs]
-description = "Render the browsable documentation and API reference site"
+description = "Compile TypeSpec, then render the browsable documentation and API reference site"
+depends = ["compile-spec"]
 dir = "tools"
 run = "bun run render-docs/src/main.ts"
 
@@ -933,14 +934,6 @@ run = "bun run check/src/generate-spec-examples.ts"
 description = "Serve the rendered documentation site over HTTP"
 dir = "tools"
 run = "bun run render-docs/src/serve.ts"
-
-[tasks.spec-render]
-description = "Regenerate TypeSpec-derived artifacts"
-run = [
-  "mise run compile-spec",
-  "mise run generate-contract",
-  "mise run render-docs",
-]
 
 [tasks.dev]
 description = "Start the local API and UI stack"

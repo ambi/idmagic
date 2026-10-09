@@ -20,7 +20,7 @@ const generated = renderContract(collectOperations(document))
 if (check) {
   const current = await readFile(output, 'utf8').catch(() => '')
   if (current !== generated) {
-    console.error('backend/shared/spec/operations_gen.go is stale; run mise run spec-render')
+    console.error('backend/shared/spec/operations_gen.go is stale; run mise run generate-contract')
     process.exit(1)
   }
 } else {

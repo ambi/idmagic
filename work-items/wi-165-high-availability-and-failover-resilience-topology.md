@@ -83,7 +83,7 @@ AZ / PostgreSQL ノード / app レプリカの 3 つに縮んだ。
 
 ## Verification
 - `mise run check`
-- `mise run spec-render`
+- `mise run render-docs`
 - `mise run verify-go`
 - `mise run check-ids`
 - failover / chaos / zero-downtime drill 用 `mise` task

@@ -103,7 +103,7 @@ flowchart LR
 
 | 変更した入力 | 再生成 |
 | --- | --- |
-| TypeSpec または一次情報の Markdown | `mise run spec-render`、必要に応じて `mise run generate-contract` |
+| TypeSpec または一次情報の Markdown | `mise run render-docs`。TypeSpec の操作を変えたときは `mise run generate-contract` も実行する |
 | 起動時設定の宣言 | `mise run generate-config-reference` |
 | SQL または sqlc のクエリ | `mise run sqlc-generate` |
 | フロントエンドの経路 | `mise run generate-routes` |

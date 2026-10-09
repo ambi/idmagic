@@ -148,7 +148,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 - [ ] T009 [UI] 監査ログ画面に完全性ステータス、検証実行、検証可能エクスポートを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に外部検証手順と検証失敗時のエスカレーションを追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
 
 ## Verification
 
