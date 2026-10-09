@@ -1,38 +1,36 @@
-# 構造
+# コード構成
+
+この文書は、リポジトリの配置、モジュール内部の層、公開範囲、依存規則、起動時の組み立てを定める。
+モジュールの責務と公開パッケージの宣言は[論理アーキテクチャ](../design/architecture/logical.md#モジュールの責務)、境界の選択は[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)で扱う。
 
 ## ディレクトリ
 
 ```text
 .
-├── backend/           # Go modules, shared libraries, cmd/
-├── frontend/          # React UI and gateway
-├── docs/              # human-authored whole-system and context canonical documents
-│   ├── requirements/  # functional, quality, and constraint requirements
-│   ├── architecture/  # system context, logical, runtime, deployment, and decisions
-│   ├── design/        # application, data, infrastructure, security, reliability, performance, observability
-│   ├── verification/  # whole-system acceptance strategy
-│   ├── operations/    # steady-state service management and maintenance policy
-│   ├── contexts/<context>/ # kind-specific canonical documents, including scenarios.feature.md
-│   ├── development/   # development procedure
-│   ├── releases/{changes,upgrades}/
-│   └── runbooks/      # incident and manual-operation procedures
-├── spec/              # TypeSpec, generated views, and the OpenAPI release baseline
+├── backend/           # モジュール、共有ライブラリ、cmd/
+├── frontend/          # React UI とゲートウェイ
+├── docs/              # 現在有効な仕様、設計、手順、記述規約
+├── spec/              # TypeSpec、派生表示、OpenAPI のリリース基準
 │   └── contexts/<context>/
-├── infra/             # container, local runtime, and database schema assets
-├── load/k6/           # tenant-local OAuth SLO smoke
-├── mise.toml          # pinned development tools and repository task map
-├── tools/             # specification, boundary, compatibility, rendering, and development-loop tools
-└── work-items/        # units of work, decision history, and completion records
+├── infra/             # コンテナ、ローカル実行環境、データベーススキーマ
+├── load/k6/           # テナント単位の OAuth SLO スモーク検査
+├── mise.toml          # ツールのバージョンとリポジトリタスク
+├── tools/             # 仕様、境界、互換性、描画、開発サイクルの道具
+└── work-items/        # 一つの変更の計画、判断、完了の記録
 ```
+
+`docs/` と TypeSpec の詳細な配置は[仕様フォーマット](../formats/specification-format.md#1-配置)が定める。
+文書の役割は[文書ガイド](../formats/documentation-guide.md)が定める。
 
 依存は `spec` から実装と派生成果物へ向かって流れる。`backend` のドメイン層とユースケース層のパッケージが、アダプターやランタイムへ逆向きに依存することはない。
 
 ## 開発工程との対応
 
-| Concern | Location | Detail |
+| 関心事 | 配置 | 内容 |
 | --- | --- | --- |
-| システム要求と設計 | `docs/{requirements,architecture,design,verification,operations}/**` | 目的から要求、構造、実現方式、受入れ、運用へトップダウンでたどる現在状態。 |
-| モジュールの仕様と設計 | `spec/contexts/**/*.tsp`, `docs/domain/**` | モジュール単位のモデル、API、認証、規範的な振る舞い、設計判断、機構。シナリオの一次情報は公式 Markdown with Gherkin として解析する。 |
+| システム要求と設計 | `docs/{requirements,design,operations}/**` | 目的から要求、構造、実現方式、受入れ、運用へたどる現在の状態 |
+| モジュール設計 | `spec/contexts/**/*.tsp`、`docs/domain/**` | モデルと API は TypeSpec、要件と状態遷移は機能仕様、受け入れの例は任意の付録、判断と仕組みは話題ごとの設計に書く |
+| 文書と記録の形式 | `docs/formats/*.md` | 内容の担当、仕様の記述規則、変更の計画と完了記録 |
 | 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース。 |
 | リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は一次情報文書に書く。 |
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |

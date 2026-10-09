@@ -176,8 +176,32 @@ describe('用語検査', () => {
     expect(
       verifyTerminology([
         {
-          file: 'DOCUMENTATION_GUIDE.md',
+          file: 'docs/formats/documentation-guide.md',
           source: 'Go の `context.Context` と C4 の System Context。\n',
+        },
+      ]),
+    ).toEqual([])
+  })
+
+  it('旧い文書区分と設計の階層名を拒否し、実行や認証の文脈は通す', () => {
+    expect(
+      verifyTerminology([
+        {
+          file: 'docs/formats/documentation-guide.md',
+          source: 'ドメイン設計文書とコンテキストの仕様。\n',
+        },
+      ]).map((finding) => finding.term),
+    ).toEqual(['ドメイン設計文書', 'コンテキスト'])
+    expect(
+      verifyTerminology([
+        {
+          file: 'docs/design/application/frontend.md',
+          source: 'モジュール設計。認証コンテキストと実行コンテキスト、リクエストコンテキスト。\n',
+        },
+        {
+          file: 'docs/domain/authentication/sign-in/acceptance.feature.md',
+          source:
+            'アカウントコンテキストとパスワードリセットコンテキスト。CSRF トークンを含むコンテキストが返る。\n',
         },
       ]),
     ).toEqual([])

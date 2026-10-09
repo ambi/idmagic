@@ -1,7 +1,7 @@
 import { basename } from 'node:path'
 import { type Finding, type SCHEMAS, lintRawText, validateAgainstSchema } from './lib.ts'
 
-// 節見出しと記録の項目名の対応 (WORK_ITEM_FORMAT.md)。フォーマット文書は日本語の
+// 節見出しと記録の項目名の対応 (docs/formats/work-item-format.md)。フォーマット文書は日本語の
 // 見出しを示し、既存の記録は英語の見出しで書かれているため、どちらの表記も同じ項目
 // へ解決する。対応表にない見出し (`## Design` / `## 設計` など) は記録の項目を作らず、
 // 本文としてそのまま残る。
@@ -24,7 +24,7 @@ const SECTION_KEYS = new Map<string, string>([
   ['完了', 'completion'],
 ])
 
-// 完了節のフィールド名と記録の項目名の対応 (WORK_ITEM_FORMAT.md)。節見出しと同じく、
+// 完了節のフィールド名と記録の項目名の対応 (docs/formats/work-item-format.md)。節見出しと同じく、
 // フォーマット文書が示す日本語と既存の記録が使う英語を同じ項目へ解決する。
 const COMPLETION_FIELDS = new Map<string, string>([
   ['completed at', 'completed_at'],
@@ -73,7 +73,7 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
     }
   }
 
-  // id is not authored in frontmatter (WORK_ITEM_FORMAT.md): it is always the
+  // id is not authored in frontmatter (docs/formats/work-item-format.md): it is always the
   // filename stem.
   if (typeof data.id !== 'string' || data.id.length === 0) {
     data.id = basename(path).replace(/\.md$/, '')

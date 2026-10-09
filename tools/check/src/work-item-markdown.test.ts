@@ -130,7 +130,7 @@ The parser must reject either missing boundary.
     )
   })
 
-  it('WORK_ITEM_FORMAT.md が示す日本語見出しを同じ項目へ解決する', () => {
+  it('docs/formats/work-item-format.md が示す日本語見出しを同じ項目へ解決する', () => {
     const source = `---
 status: pending
 authors: [tn]
@@ -217,7 +217,7 @@ status: completed
 
   // 英語の表記を足し忘れた項目は、その行が黙って読み飛ばされ、必須項目の欠落として
   // 報告される。すべての項目を一度に並べ、どの対応が欠けても値の不一致として現れるようにする。
-  it('WORK_ITEM_FORMAT.md が示す日本語のフィールド名を英語と同じ項目へ解決する', () => {
+  it('docs/formats/work-item-format.md が示す日本語のフィールド名を英語と同じ項目へ解決する', () => {
     const source = `---
 status: completed
 ---

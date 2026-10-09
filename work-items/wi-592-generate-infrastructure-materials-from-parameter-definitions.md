@@ -24,7 +24,7 @@ Kubernetes の構成ファイルはスカラー値として設定されるフィ
 一方、設計書 3 文書に現れる具体値は `psqldef`、`latency_sensitive`、`REGIONAL`、`TLS 1.2`、`distroless/static-debian12`、`asia-northeast1` の 6 個である。
 ラベルとセレクターの体系、Probe の経路、ポート番号、イメージのタグ、CronJob のスケジュール、CIDR、IAM のロール文字列、組織ポリシーの制約名、規則の優先度、保持日数は、設計書にひとつも現れない。
 
-これは [DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §2 の「同じ数値を二か所に置かない」の帰結である。
+これは [docs/formats/documentation-guide.md](../docs/formats/documentation-guide.md) §2 の「同じ数値を二か所に置かない」の帰結である。
 値の一次情報源を構成ファイルに置くと決めたので、設計書は決定だけを持つ。
 方針としては一貫しているが、代償が三つある。
 
@@ -47,7 +47,7 @@ Kubernetes の構成ファイルはスカラー値として設定されるフィ
 - そこから `infra/docker/docker-compose.dev.yaml`、`infra/k8s/` の base と overlay（GKE 向けを含む）、GKE クラスターと周辺リソースの Terraform を生成する生成器を作る。
 - 生成物と現行の構成ファイルの差分を検査するタスクを作り、生成物が現行と等価であることを移行の受け入れ条件にする。
 - 生成物を Git で追跡するかどうかを決め、追跡するなら生成物が最新であることを検査する。
-- [DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §2 の一次情報源の割り当てを改訂し、パラメーター定義を「機械が食う契約」として位置づける。
+- [docs/formats/documentation-guide.md](../docs/formats/documentation-guide.md) §2 の一次情報源の割り当てを改訂し、パラメーター定義を「機械が食う契約」として位置づける。
 - [プラットフォーム設計](../docs/design/infrastructure/platform.md)と[ネットワーク設計](../docs/design/infrastructure/network.md)の「設定値は構成ファイルに書いた値を正しい値とする」という記述を、新しい割り当てへ合わせる。
 - Google Cloud の（仮）の項目を、Terraform を生成できる粒度のパラメーターへ落とす。
 
@@ -123,7 +123,7 @@ Terraform は現行の構成ファイルが無いため、差分で等価を確�
 4. Docker Compose へ広げる。`JOB_WORKER_LANES` の扱いのように意図的な差は、定義の中で差として表現する。
 5. Google Cloud の（仮）の項目をパラメーターへ落とし、Terraform を生成する。
 6. 生成物の鮮度を検査するタスクを作り、`mise run verify` へ組み込む。
-7. `DOCUMENTATION_GUIDE.md` §2 と、設計書の「設定値は構成ファイルに書いた値を正しい値とする」という記述を改訂する。
+7. `docs/formats/documentation-guide.md` §2 と、設計書の「設定値は構成ファイルに書いた値を正しい値とする」という記述を改訂する。
 
 ## Tasks
 
@@ -135,7 +135,7 @@ Terraform は現行の構成ファイルが無いため、差分で等価を確�
 - [ ] T006 [Design] Google Cloud の（仮）の項目をパラメーターへ落とす。
 - [ ] T007 [Tooling] Terraform の生成器を作る。
 - [ ] T008 [Tooling] 生成物の鮮度を検査するタスクを作り、`verify` へ組み込む。
-- [ ] T009 [Docs] `DOCUMENTATION_GUIDE.md` §2 と設計書の一次情報源の記述を改訂する。
+- [ ] T009 [Docs] `docs/formats/documentation-guide.md` §2 と設計書の一次情報源の記述を改訂する。
 
 ## Verification
 

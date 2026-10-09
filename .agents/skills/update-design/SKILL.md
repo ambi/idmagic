@@ -5,7 +5,7 @@ description: Update the owning current-state canonical documents when modules, t
 
 # Syncing the current design
 
-`SPECIFICATION_FORMAT.md` defines the canonical document kinds. Record each current fact in the smallest file
+`docs/formats/specification-format.md` defines the canonical document kinds. Record each current fact in the smallest file
 whose name owns that kind of content.
 
 1. Update the module responsibility table (modules, publication mode, public packages, composition points) in

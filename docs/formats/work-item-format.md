@@ -2,6 +2,11 @@
 
 作業項目は、一つの意味上の変更を説明、設計、実装、検証する作業単位である。
 未完了の項目は `work-items/`、完了または中止した項目は `work-items/done/` に置く。
+この文書は記録の形式を定める。
+証拠の水準と開発サイクルは[仕様先行の開発ワークフロー](../development/specification-first-workflow.md)、現在有効な仕様と設計の書式は[仕様フォーマット](specification-format.md)が定める。
+
+## 識別子と配置
+
 ファイル名には `wi-<識別番号>-<ケバブケースの題名>.md` を使う。
 識別番号は、10000 から 99999 のうち、`work-items/` と `work-items/done/` のどちらにも現れない値を無作為に選ぶ。
 `mise run work-item-number` がこの値を一つ出力する。
@@ -11,6 +16,8 @@
 
 作業項目は、タスクリスト、変更固有の設計文書、実装履歴も兼ねる。
 完了時点でも有効な結論は、TypeSpec またはその種類の内容を扱う一次情報文書へ反映しなければならない。
+
+## 基本形式
 
 ```markdown
 ---
@@ -27,7 +34,7 @@ documentation_impact: # 着手後は必須
   level: release_note
   reason: 新たにサポートする機能をリリースの読者へ知らせる必要がある。
   references:
-    - { kind: release_note, path: docs/releases/changes/wi-48213-start-task.md }
+    - { kind: release_note, path: docs/releases/changes/wi-<number>-start-task.md }
 initial_context: # 起票時ではなく着手時に記入する
   specification: [docs/domain/system/operations/README.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
@@ -50,7 +57,7 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
     to: supported
     security: セキュリティレビューで、対象ユースケースに未解決の統制不足がないことを確認した。
     compatibility: 既存の preview 設定は移行せずに引き続き受理される。
-    documentation: docs/releases/changes/wi-48213-start-task.md
+    documentation: docs/releases/changes/wi-<number>-start-task.md
 ---
 
 # 意味上の変更を表す一文
@@ -87,6 +94,8 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 節見出しは、上のテンプレートが示す日本語と、既存の記録が使う英語（`Motivation`、`Scope`、`Out of Scope`、`Plan`、`Tasks`、`Verification`、`Risk Notes`、`Completion`）のどちらでも機械検査が同じ項目として読む。完了節のフィールド名も同じく、後述のテンプレートが示す日本語と、既存の記録が使う英語（`Completed At`、`Summary`、`Acceptance RED Evidence` など）のどちらでも読む。
 新しい記録はテンプレートの表記で書き、既存の記録を書き換えるためだけの変更はしない。
 
+## 優先順位とリスク
+
 `priority`（`p0`〜`p3`）と `depends_on` は別の問いに答える。
 `depends_on` は先に完了すべき項目を示し、機械検査によって作業順を制約する。
 `priority` は、依存関係に妨げられていない項目のうち何を先に扱うべきかを示す参考値である。
@@ -109,7 +118,9 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 作業の権限は項目の起票によって与えられるため、別の承認記録は設けない。
 プロダクトの振る舞い、公開契約、採用する設計境界、タスク分割を変え得る問いは実装前に解決する。
 実装中に規範の変更が必要だと分かった場合は仕様作業へ戻り、実装を通すためにシナリオを弱めてはならない。
-リスクと証拠の対応は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#4-証拠の要件)が定める。
+リスクと証拠の対応は[仕様先行の開発ワークフロー](../development/specification-first-workflow.md#4-証拠の要件)が定める。
+
+## 仕様影響
 
 `feature`、`bugfix`、`operations` の作業項目には `affected_spec` が必要である。
 `affected_spec` からは、規範シナリオまたは標準仕様の ID、もしくは TypeSpec のシンボルを直接参照する。
@@ -141,7 +152,9 @@ TypeSpec のシンボルには引く ID がないため、宣言名を含むテ�
 `spec_impact.reason` には、何が変わらないかを名指して書く。
 「リファクタリングのみ」「振る舞いは変えない」のように、維持する結果、永続状態、イベント、外向きの呼び出しを一つも名指さない理由は、機械検査が拒否する。
 `spec_impact: none` を宣言した作業範囲に規範仕様の差分があれば、同じく拒否する。
-これらの検査は `mise run check` が行い、仕様影響の判断とコミットのトレーラーは[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#仕様影響の宣言)が定める。
+これらの検査は `mise run check` が行い、仕様影響の判断とコミットのトレーラーは[仕様先行の開発ワークフロー](../development/specification-first-workflow.md#仕様影響の宣言)が定める。
+
+## 着手時の文脈と設計
 
 `initial_context` は、一人のエージェントが最初に読む対象の一覧である。
 起票時ではなく、作業項目を `in_progress` にするときに書く。
@@ -150,7 +163,7 @@ TypeSpec のシンボルには引く ID がないため、宣言名を含むテ�
 
 作業項目を `in_progress` にすると、`mise run check-work-items` が一覧を解決する。
 すべてのパスが存在し、`<文書>#REQ-<CONTEXT>-NNN` の項目が、その文書で宣言された規則を指さなければならない。
-規則を宣言する文書は、機能仕様（`docs/domain/<context>/<group>/<feature>/README.md` とその章）、またはコンテキストをまたぐ要件を宣言するシステムの `docs/domain/scenarios.feature.md` である。
+規則を宣言する文書は、機能仕様（`docs/domain/<context>/<group>/<feature>/README.md` とその章）、またはモジュールをまたぐ要件を宣言するシステムの `docs/domain/scenarios.feature.md` である。
 
 `affected_spec` は、完了済みを含むすべての記録で解決する。
 これは当時読んだものではなく、変更が触れた規範要素の索引だからである。
@@ -166,8 +179,10 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 
 モジュールの境界を変える作業項目（モジュールの追加、分割と統合、公開範囲の拡大、モジュール間の依存の追加、テーブルの所有者または組み立て地点の変更）では、設計の節に境界の判断の記録を書く。
 記録は、入力の参照、適用した判断の制約、候補ごとの制約への適合、変更シナリオの波及、採否と理由、残る仮定を含む。
-手順と制約は[設計ガイドライン](docs/design/application/design-guidelines.md#境界を選ぶ判断手順)が定める。
+手順と制約は[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)が定める。
 境界を変えない局所的な変更には、この記録を求めない。
+
+## 文書影響と成熟度
 
 `in_progress` になる作業項目は、`documentation_impact` を一つ宣言し、完了まで同じ構造化フィールドを保つ。
 `level` には `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを指定する。
@@ -175,7 +190,7 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 それ以外の水準では、実装前にリリース文書の予定パスを宣言する。
 完了時には、そのパスが存在し、作業項目名を記載し、`affected_spec` の要件または TypeSpec のシンボルへリンクしていなければならない。
 リリース文書のファイル名には、識別番号とケバブケースの題名を含む作業項目の完全なファイル名から、拡張子を除いた部分を使う。
-たとえば、`work-items/wi-48213-start-task.md` のリリースノートには `docs/releases/changes/wi-48213-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-48213-start-task.md` を使う。
+たとえば、`work-items/wi-<number>-start-task.md` のリリースノートには `docs/releases/changes/wi-<number>-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-<number>-start-task.md` を使う。
 既存のリリース文書は、対応する作業項目が完了したときの名前を保つ。
 この規則へ合わせるためだけに過去の記録を改名しない。
 `upgrade_note`、`deprecation_notice`、`removal_notice` では、注目すべき差分と、必要な操作または互換性情報を読者へ示すため、両方の種類の文書が必要になる。
@@ -187,6 +202,8 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 該当する作業項目には引き続き `primary_use_cases` が必要である。
 成熟度の証拠は、選択した境界の RED とフォールト注入の結果を置き換えない。
 この契約より前に書かれた完了記録は履歴であり、再解釈しない。
+
+## 主要ユースケースの証拠
 
 `feature`、`bugfix`、および `affected_spec` から `standards.md` の要件を参照する作業項目では、実装前に `primary_use_cases` を追加する。
 `risk-based-v4` の各項目は、安定したケバブケースの `id`、正確な `REQ-*` または標準要件、最終的な `observable_result`、`boundary`、一つの `test`、現実的な `fault_model` を持つ。
@@ -202,6 +219,8 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 旧バージョンの記録は再解釈しない。
 着手済みの `risk-based-v3` は引き続き有効であり、各項目に `unit_test`、`e2e_test`、`unit_fault_model`、`e2e_fault_model` を持つ従来の契約で検査する。
 新形式への移行は、その作業の故障モデルと境界を選び直すときに行う。
+
+## 完了記録
 
 作業が完了したら `status` を `completed` にし、次の節を追加して、ファイルを `work-items/done/` へ移す。
 
@@ -226,7 +245,7 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
   変更したロジックへ体系的に変異を加えるか、全体に明示的な障害を注入し、等価な変異と手法の限界を隠さず記録する。
   変異ツールは、既存のトークンを書き換える体系的な部分を担う。
   振る舞いを追加、削除、転送する変異は手作業で行う。
-  この分担と、生き残った変異を点数化せず読む方法は、[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)で定める。
+  この分担と、生き残った変異を点数化せず読む方法は、[仕様先行の開発ワークフロー](../development/specification-first-workflow.md)で定める。
 - **検証結果**:
   - `mise run verify` - 成功
 ```

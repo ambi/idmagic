@@ -2,7 +2,7 @@
 // モデルベースのテストが予測に使える形で返す。
 //
 // テストは表を手で写さず、この読み取りを通して仕様の文書そのものを予測の一次情報にする。
-// 書式は SPECIFICATION_FORMAT.md の「状態遷移」が定め、`mise run check-spec` が
+// 書式は docs/formats/specification-format.md の「状態遷移」が定め、`mise run check-spec` が
 // 同じ書式を検査する。ここでは予測に要る形だけを読み、書式の誤りは見つけ次第エラーにする。
 package testing_statematrix
 

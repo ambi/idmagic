@@ -23,7 +23,7 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 - 仕様が二通りに読める。実装は片方を選び、テストは同じ読み方から書かれ、両者は一致する。
 - 規範文書どうしが矛盾する。`states.md` の遷移表が禁じる遷移を `scenarios.feature.md` の `ALT` が許す、といった形で、どちらも単独では検査を通る。
 
-これは仮説ではない。`REQ-OAUTH2-009` は PAR の `request_uri` について `THEN その PAR レコードの状態は "Used"` までを書いているが、**同じ `request_uri` を二度目に提示したときに何が起きるか**を書いていない。一度限りの使用は `docs/domain/oauth2/states.md` の状態表と `docs/domain/oauth2/internals.md` に書かれており、実装も RFC 9126 に従っている。しかし `SPECIFICATION_FORMAT.md` §6 は「セキュリティ制御が責任を負う拒否は観測可能な振る舞いであり、シナリオに書く」と定めている。二度目の提示を受理してもなお `REQ-OAUTH2-009` に反しない実装が書けるのだから、この規範要素は一度限りの使用を規定していない。`wi-418` の被覆ゲートを入れても、名指しするテストが 1 件あれば通ってしまう。
+これは仮説ではない。`REQ-OAUTH2-009` は PAR の `request_uri` について `THEN その PAR レコードの状態は "Used"` までを書いているが、**同じ `request_uri` を二度目に提示したときに何が起きるか**を書いていない。一度限りの使用は `docs/domain/oauth2/states.md` の状態表と `docs/domain/oauth2/internals.md` に書かれており、実装も RFC 9126 に従っている。しかし `docs/formats/specification-format.md` §6 は「セキュリティ制御が責任を負う拒否は観測可能な振る舞いであり、シナリオに書く」と定めている。二度目の提示を受理してもなお `REQ-OAUTH2-009` に反しない実装が書けるのだから、この規範要素は一度限りの使用を規定していない。`wi-418` の被覆ゲートを入れても、名指しするテストが 1 件あれば通ってしまう。
 
 不足しているのは検査の厳しさではなく、**実装前に一度だけ立てる問い**である。
 
@@ -37,7 +37,7 @@ spec_impact: { kind: none, reason: "実装前に仕様の未決定を洗い出�
 - work item の frontmatter に `specification_adequacy` を追加する。`affected_spec` が名指しする規範要素ごとに、反例、判定、判定の根拠となる解決先を 1 件以上記録する。
 - 判定を `strengthened` / `undetermined` / `refuted` の閉じた集合とし、それぞれの解決先が何を指すかを固定する。未知の値、空の解決先、解決しない参照は fail-closed で拒否する。
 - 意図して決めない選択の置き場所を、当該 Context の `decisions.md` とする。新しい正本の種類も新しいファイル名も作らない。理由と、再検討の条件を伴う既存の決定の形をそのまま使う。
-- 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築と事後条件は `docs/design/application/design-guidelines.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `SPECIFICATION_FORMAT.md` §3 の規則は維持する。
+- 発見した不変条件を既存の所有者へ振り分ける規則を書く。一意性と参照整合性はスキーマ、観測可能な性質は `scenarios.feature.md`、構築と事後条件は `docs/design/application/design-guidelines.md` に従い型または操作。`decisions.md` に不変条件を列挙しないという `docs/formats/specification-format.md` §3 の規則は維持する。
 - `evidence_policy` を `risk-based-v4` へ上げる。完了済みの v1 / v2 / v3 の記録は履歴として再解釈しない。採用時点で `in_progress` の該当項目は新しい計画を追加してから完了できる。
 - `tools/check/src/specification-adequacy.ts` と単体検査を追加し、`tools/check/schemas/work-item.schema.json` と `tools/check/src/check-work-items.ts` へ接続して `mise run check-work-items` のゲートにする。
 - 完了済みの実際の変更 3 件へ遡って本段階を試行し、反例が出たか、出た反例が既存の規範要素で棄却できたか、記録に要した時間を実測する。試行結果は Design へ追記する。
@@ -112,7 +112,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 
 実在する要素で 3 件挙げる。網羅ではなく、判定の 3 値がそれぞれどう決まるかを示すためのものである。
 
-**`REQ-OAUTH2-009`（`strengthened` になる例）。** 反例は Motivation に述べたとおり、使用済みの `request_uri` を二度目に受理する実装である。`states.md` の状態表と `internals.md` は一度限りの使用を述べているが、`SPECIFICATION_FORMAT.md` §6 はセキュリティ制御の拒否をシナリオに書くよう求めている。したがって `refuted` にはならず、`ALT` の追加、すなわち `strengthened` が正しい判定である。是正そのものは別項目へ分ける。
+**`REQ-OAUTH2-009`（`strengthened` になる例）。** 反例は Motivation に述べたとおり、使用済みの `request_uri` を二度目に受理する実装である。`states.md` の状態表と `internals.md` は一度限りの使用を述べているが、`docs/formats/specification-format.md` §6 はセキュリティ制御の拒否をシナリオに書くよう求めている。したがって `refuted` にはならず、`ALT` の追加、すなわち `strengthened` が正しい判定である。是正そのものは別項目へ分ける。
 
 **`REQ-JOBS-003`（`refuted` になる例）。** 反例の候補は「`dedup_key` を見ずに毎回通知する実装」だが、これは `THEN ハンドラーは dedup_key を用いて冪等に判定し、重複した通知を送らない` が直接排除している。`resolution` はその `THEN` を持つシナリオ ID 自身になる。反例が立たない要素が存在すること自体は健全であり、契約は反例の存在を強制しない。強制するのは、立たなかったときに根拠を名指しすることである。
 
@@ -132,13 +132,13 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 
 ### 却下した代替案
 
-**観点ごとのチェックリストを frontmatter に持たせる案。** 多義性、境界、並行性、部分障害などを真偽値の欄にする。却下する。`docs/development/specification-first-workflow.md` §4 が「承認欄は考えずに署名されるが、下の検査は観測でしか満たせない」と述べており、観点の真偽値はまさに前者である。加えて `SPECIFICATION_FORMAT.md` §3 が、`Invariants` や `Concurrency` のような観点名の見出しは「埋める箱として読まれ、該当しない観点に散文をでっち上げるか、一つの決定を複数へ割る」と警告している。観点は問いとして workflow 文書に置き、記録は反例という成果物だけにする。
+**観点ごとのチェックリストを frontmatter に持たせる案。** 多義性、境界、並行性、部分障害などを真偽値の欄にする。却下する。`docs/development/specification-first-workflow.md` §4 が「承認欄は考えずに署名されるが、下の検査は観測でしか満たせない」と述べており、観点の真偽値はまさに前者である。加えて `docs/formats/specification-format.md` §3 が、`Invariants` や `Concurrency` のような観点名の見出しは「埋める箱として読まれ、該当しない観点に散文をでっち上げるか、一つの決定を複数へ割る」と警告している。観点は問いとして workflow 文書に置き、記録は反例という成果物だけにする。
 
 **`spec-diff` との突き合わせを機械で行う案。** `strengthened` の記録に対し、その要素が `mise run spec-diff` の出力に現れることを検査する。却下する。完了時点の diff の基準点が記録されておらず、基準点を新たな必須項目にすると、遅れて完了した項目や rebase 後の項目で偽陽性を出す。代わりに、完了 Summary が既に `spec-diff` を読んで書かれる契約になっているので、`strengthened` の要素が Summary に現れることを検査する。弱いが、偽陽性でゲートを壊さない。
 
-**新しい正本ファイル（`open-questions.md` など）を作る案。** 却下する。`SPECIFICATION_FORMAT.md` §1 の正本ファイル名は閉じた集合であり、未決定は理由と再検討の条件を持つ決定として `decisions.md` が既に扱える。第二の置き場所を作れば、決定と未決定が別ファイルに分かれて同じ監査を二度行うことになる。
+**新しい正本ファイル（`open-questions.md` など）を作る案。** 却下する。`docs/formats/specification-format.md` §1 の正本ファイル名は閉じた集合であり、未決定は理由と再検討の条件を持つ決定として `decisions.md` が既に扱える。第二の置き場所を作れば、決定と未決定が別ファイルに分かれて同じ監査を二度行うことになる。
 
-**`risk-based-v3` を据え置いて欄だけ追加する案。** 却下する。`WORK_ITEM_FORMAT.md` は完了済みの vN 記録を再解釈しないと定めており、v3 の意味を後から変えるとその約束を破る。版を上げるのが既存の設計に沿う。
+**`risk-based-v3` を据え置いて欄だけ追加する案。** 却下する。`docs/formats/work-item-format.md` は完了済みの vN 記録を再解釈しないと定めており、v3 の意味を後から変えるとその約束を破る。版を上げるのが既存の設計に沿う。
 
 ## Plan
 
@@ -146,7 +146,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 2. `specification_adequacy` の型、判定の閉集合、解決先の規則を確定し、不正入力（未知の判定値、空の反例、解決しない参照、`decisions.md` 以外を指す `undetermined`、要素の欠落、`affected_spec` に無い要素）を RED で固定する。
 3. `tools/check/src/specification-adequacy.ts` を実装し、`primary-use-case-evidence.ts` の構成に合わせて純粋な判定と読み取りを分離する。
 4. `tools/check/schemas/work-item.schema.json` と `tools/check/src/check-work-items.ts` へ接続し、`mise run check-work-items` から実行できるようにする。
-5. `WORK_ITEM_FORMAT.md`、`docs/development/specification-first-workflow.md` §3 のループ表と §4、`SPECIFICATION_FORMAT.md` §6 の未決定の置き場所を更新する。`new-work-item` と `implement-work-item` の skill を同じ内容へ揃える。
+5. `docs/formats/work-item-format.md`、`docs/development/specification-first-workflow.md` §3 のループ表と §4、`docs/formats/specification-format.md` §6 の未決定の置き場所を更新する。`new-work-item` と `implement-work-item` の skill を同じ内容へ揃える。
 6. `evidence_policy: risk-based-v4` を定義し、採用時点で `in_progress` の該当項目の移行規則を書く。
 7. 試行で見つかった仕様欠陥を、規範参照を持つ個別の work item として起票する。
 
@@ -158,7 +158,7 @@ specification_adequacy: # 着手後に必須。affected_spec の各要素へ 1 �
 - [ ] T002 [Design] `specification_adequacy` の型、判定の閉集合、解決先の規則を確定し、不正入力を列挙する。
 - [ ] T003 [Core] 判定検査を純粋操作として実装し、各不正入力を RED で固定してから GREEN にする。
 - [ ] T004 [Tooling] JSON Schema と `check-work-items.ts` へ接続し、`mise run check-work-items` のゲートにする。
-- [ ] T005 [Doc] `WORK_ITEM_FORMAT.md`、`specification-first-workflow.md`、`SPECIFICATION_FORMAT.md` を更新する。
+- [ ] T005 [Doc] `docs/formats/work-item-format.md`、`specification-first-workflow.md`、`docs/formats/specification-format.md` を更新する。
 - [ ] T006 [Doc] 被覆の出力が「宣言済みモデルの被覆」であることを述べる規則を追加する。
 - [ ] T007 [Policy] `risk-based-v4` を定義し、`in_progress` 項目の移行規則と v1〜v3 の非再解釈を明記する。
 - [ ] T008 [Skill] `new-work-item` と `implement-work-item` の skill を更新する。

@@ -35,7 +35,7 @@ spec_impact: { kind: none, reason: "検証手法の道具立てだけを変え�
 ## Motivation
 
 `risk: high` 以上の work item は、完了時に change-resistance の証拠を求められる。
-[WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) は「変更したロジックを系統的に変異させるか、明示的な障害を
+[WORK_ITEM_FORMAT.md](../../docs/formats/work-item-format.md) は「変更したロジックを系統的に変異させるか、明示的な障害を
 横断的に注入し、殺せた変異と手法の限界を記録する」と書き、
 [specification-first-workflow.md](../../docs/development/specification-first-workflow.md) の evidence contract も
 同じことを要求している。

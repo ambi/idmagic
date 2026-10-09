@@ -71,7 +71,7 @@ IdMagic 単体では確定しない部分だが、`infra/docker/`、`infra/k8s/`
 - 可用性とフェイルオーバーの設計。[[wi-588-reliability-and-performance-design]] が扱う。
 - 監視基盤の構成。[[wi-589-observability-design]] が扱う。
 - （仮）とした項目の構成ファイルへの反映。汎用 Kubernetes の PostgreSQL と Job、GKE 向けの overlay、イメージへの `idmagic-seed` の追加もこれに含む。本 work item は案を文書へ置くところまでを担い、Terraform、overlay、Cloud Run の設定は書かない。
-- 設計書からの構成ファイルの生成。本書は決定を持ち、値は構成ファイルが持つという [DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §2 の割り当てを維持するため、この文書から `docker-compose.dev.yaml`、Kubernetes マニフェスト、Terraform は生成できない。一次情報源をパラメーター定義へ移す作業は [[wi-592-generate-infrastructure-materials-from-parameter-definitions]] が持つ。
+- 設計書からの構成ファイルの生成。本書は決定を持ち、値は構成ファイルが持つという [DOCUMENTATION_GUIDE.md](../../docs/formats/documentation-guide.md) §2 の割り当てを維持するため、この文書から `docker-compose.dev.yaml`、Kubernetes マニフェスト、Terraform は生成できない。一次情報源をパラメーター定義へ移す作業は [[wi-592-generate-infrastructure-materials-from-parameter-definitions]] が持つ。
 
 ## 途中で広げた範囲
 
@@ -120,7 +120,7 @@ Caddy が同一オリジンでゲートウェイを担い、`schema` サービ�
 構成ファイルと文書の責任分界を次のとおりにする。
 判断と理由は `docs/` が持ち、コマンド、変数名、値、実行順は構成ファイルの README が持つ。
 `infra/deploy/gcp/README.md` は設計の再掲をやめ、`docs/design/infrastructure/platform.md` を参照する。
-根拠は [DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §2 の「人が読む文書は `docs/` に集める」である。
+根拠は [DOCUMENTATION_GUIDE.md](../../docs/formats/documentation-guide.md) §2 の「人が読む文書は `docs/` に集める」である。
 
 採らない案は、`docs/` から `infra/deploy/gcp/README.md` へリンクするだけで済ませる案である。
 設計判断が構成ファイルの隣に散り、プロファイルどうしを同じ観点で比較できなくなる。

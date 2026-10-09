@@ -1,4 +1,5 @@
 import { specificationRules, validateSpecificationDeclarations } from './feature-specification.ts'
+import MarkdownIt from 'markdown-it'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 import { canonicalDocumentNames, CONTEXT_DOCUMENTS } from '../../workspace/src/document-layout.ts'
 
@@ -407,6 +408,20 @@ function validateStandards(
   return ids
 }
 
+const markdown = new MarkdownIt()
+
+/** テンプレート内の見出しを本文の宣言として数えず、診断の行と位置は元の原稿に合わせる。 */
+function withoutCodeBlocks(source: string): string {
+  const lines = source.split('\n')
+  for (const token of markdown.parse(source, {})) {
+    if ((token.type !== 'fence' && token.type !== 'code_block') || !token.map) continue
+    for (let line = token.map[0]; line < token.map[1]; line++) {
+      lines[line] = ' '.repeat(lines[line]?.length ?? 0)
+    }
+  }
+  return lines.join('\n')
+}
+
 /** Every canonical document names itself once, whatever kind it is. */
 function validateShared(source: string, findings: SpecificationFinding[]): void {
   const titles = [...source.matchAll(/^# (?!#).+$/gm)]
@@ -437,7 +452,8 @@ export function validateDocument(path: string, source: string): SpecificationVal
   }
 
   const findings: SpecificationFinding[] = []
-  validateShared(source, findings)
+  const prose = withoutCodeBlocks(source)
+  validateShared(prose, findings)
 
   const standardIds =
     kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
@@ -505,7 +521,7 @@ export function validateDocument(path: string, source: string): SpecificationVal
       local.add(scenario.id)
     }
   } else {
-    for (const match of source.matchAll(/^#{2,6} (?:Rule: )?(REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
+    for (const match of prose.matchAll(/^#{2,6} (?:Rule: )?(REQ-[A-Z0-9-]+)(?:\s+|$)/gm)) {
       findings.push({
         line: lineAt(source, match.index ?? 0),
         message: `${match[1]} must be declared in scenarios.feature.md or in a feature specification`,
@@ -559,7 +575,7 @@ function validateDecisionRecords(source: string, findings: SpecificationFinding[
 
 /**
  * 設計の話題。システムの `docs/design/` の構成に合わせ、どの段の設計もこの語彙で探せるようにする。
- * 集合は arc42 の 12 章の内容を覆う。対応は `SPECIFICATION_FORMAT.md` の話題の語彙が定める。
+ * 集合は arc42 の 12 章の内容を覆う。対応は `docs/formats/specification-format.md` の話題の語彙が定める。
  */
 export const DESIGN_TOPICS = [
   'アーキテクチャ',

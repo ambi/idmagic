@@ -5,7 +5,7 @@ description: Specification-first workflow for feature and behavior changes. Upda
 
 # Changing the specification first
 
-Update the smallest owning specification before the implementation. `SPECIFICATION_FORMAT.md` defines the
+Update the smallest owning specification before the implementation. `docs/formats/specification-format.md` defines the
 current document kinds and grammar; read it, not its rationale document.
 
 1. Write the requirement delta in the work item's Design first: the requirements to add, change, or retire,
@@ -35,7 +35,7 @@ current document kinds and grammar; read it, not its rationale document.
    classification in the work item. Ask the user when a classification changes what users observe.
 5. Give each new externally observable behavior an unused `REQ-<CONTEXT>-NNN`, declared as a
    `#### REQ-<CONTEXT>-NNN <title>` heading under the operation it governs. Write one sentence per bullet
-   in the Japanese EARS form of `SPECIFICATION_FORMAT.md` (preamble, the context name as responder,
+   in the Japanese EARS form of `docs/formats/specification-format.md` (preamble, the module name as responder,
    response), a table when conditions combine, and the `**判断**` field only when the
    reason is not evident. Do not write `**担保手段**` or `**要判断**`; tests trace requirements through
    `//spec:covers`, and an open question becomes a work item. Retire a referenced behavior with
@@ -55,5 +55,5 @@ current document kinds and grammar; read it, not its rationale document.
 10. Pass `mise run check-spec` and `mise run check-api-compat`. Regenerate derived views with `render-docs`
     when the specification changed; generated OpenAPI and HTML remain untracked views.
 
-Use `update-design` as well only when bounded contexts, global structure, technology, runtime composition, or
+Use `update-design` as well only when modules, global structure, technology, runtime composition, or
 core design rules change.

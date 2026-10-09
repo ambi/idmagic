@@ -17,6 +17,15 @@ export const DOMAIN_DOCUMENTS = [
 /** 一次情報文書を上位から読む順序で定義する。 */
 export const SYSTEM_DOCUMENT_DIRECTORIES = [
   { directory: 'docs', names: ROOT_DOCUMENTS },
+  {
+    directory: 'docs/formats',
+    names: [
+      'README.md',
+      'documentation-guide.md',
+      'specification-format.md',
+      'work-item-format.md',
+    ],
+  },
   { directory: 'docs/domain', names: DOMAIN_DOCUMENTS },
   {
     directory: 'docs/requirements',

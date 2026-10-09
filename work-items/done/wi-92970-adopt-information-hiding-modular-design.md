@@ -378,7 +378,7 @@ Go の `context.Context` とテナントを運ぶ `context.go` は Go の語な�
 | [用語集](../../docs/domain/glossary.md)、[ドメイン文書の索引](../../docs/domain/README.md) | Subdomain を削除し、モジュールを定義する。索引表の区分の列を削除する |
 | [データベース設計](../../docs/design/data/database.md) | 「所有 Context」を「所有モジュール」とし、`table-write` の対象と限界を記述する。既存の所有者外の書き込みを、原子性の理由を維持して移行する |
 | [フロントエンド設計](../../docs/design/application/frontend.md) | 機能スライスとの対応の節の用語を改名する |
-| [仕様先行の開発ワークフロー](../../docs/development/specification-first-workflow.md)、[仕様フォーマット](../../SPECIFICATION_FORMAT.md)、[文書ガイド](../../DOCUMENTATION_GUIDE.md)、[作業項目フォーマット](../../WORK_ITEM_FORMAT.md) | モジュールの定義と境界選択手順を参照する。境界を変更する設計記録の最小項目を定め、AI と人の判断範囲を更新する |
+| [仕様先行の開発ワークフロー](../../docs/development/specification-first-workflow.md)、[仕様フォーマット](../../docs/formats/specification-format.md)、[文書ガイド](../../docs/formats/documentation-guide.md)、[作業項目フォーマット](../../docs/formats/work-item-format.md) | モジュールの定義と境界選択手順を参照する。境界を変更する設計記録の最小項目を定め、AI と人の判断範囲を更新する |
 | [エージェント指示](../../AGENTS.md)、[起票スキル](../../.agents/skills/new-work-item/SKILL.md)、[実装スキル](../../.agents/skills/implement-work-item/SKILL.md)、[設計同期スキル](../../.agents/skills/update-design/SKILL.md) | 境界変更時の判断手順を参照し、旧 Context Map の同期指示を撤去する。用語と規則は一次情報へ参照で結ぶ |
 
 コードから導ける辺や一覧（モジュールの依存グラフなど）は、文書へ手で書かない。

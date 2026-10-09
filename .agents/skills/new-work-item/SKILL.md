@@ -5,7 +5,7 @@ description: Create a specification-first work item under work-items using the c
 
 # Creating a work item
 
-1. Read `WORK_ITEM_FORMAT.md` as the authority for the format.
+1. Read `docs/formats/work-item-format.md` as the authority for the format.
 2. Run `mise run work-item-number` and create `wi-<that number>-kebab-title.md`. Do not count the
    highest existing number: that counts only what has been pushed, so parallel worktrees collide.
 3. Write Motivation, Scope, Out of Scope, Design, Plan, Tasks, Verification, and Risk Notes. Surface open

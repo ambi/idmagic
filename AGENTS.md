@@ -8,7 +8,7 @@
 
 | 作業 | 読む文書 |
 | --- | --- |
-| 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、work item の形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md)、文書体系は [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) |
+| 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [docs/formats/specification-format.md](docs/formats/specification-format.md)、work item の形式は [docs/formats/work-item-format.md](docs/formats/work-item-format.md)、文書体系は [docs/formats/documentation-guide.md](docs/formats/documentation-guide.md) |
 | 文書、コメント、UI 文言の執筆または推敲 | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
 | 本番コード（`backend/`、`frontend/src/`）の変更 | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)。仕様を変えるかを必ず判断し、work item の `affected_spec` か `spec_impact`、またはコミットの `Spec-Impact: none` トレーラーで宣言する |
 | コードの編集またはレビュー | [コーディングスタイル](docs/development/coding-style.md)。七つの視点を実装とレビューの判断に用いる |
@@ -33,13 +33,16 @@
 
 ## ツール
 
-ファイルの読み書きと値の抽出では、目的に合う専用ツールを先に使う。
+ファイルの読み書きと値の抽出では、実行環境に公開されている、目的に合う専用ツールを先に使う。
+ツールの名前と提供範囲はエージェントの実行環境によって異なるため、特定の名前のツールが必ずあるとは仮定しない。
+専用の読み取りツールがなければ、`cat` や `sed -n 'N,Mp'` で必要な範囲を読む。
+標準コマンドで足りる読み取りを、Perl やその場限りのスクリプトへ置き換えない。
 
 | 作業 | 使用するもの | 使用しないもの |
 | --- | --- | --- |
-| ファイルまたは一部の読み取り | Read ツールの `offset` と `limit` | `cat`、`head`、`tail`、`sed -n 'N,Mp'` |
+| ファイルまたは一部の読み取り | 公開されていれば専用の読み取りツール。なければシェル実行ツールで `cat` や `sed -n 'N,Mp'` | 読み取りだけの Perl やその場限りの解析スクリプト |
 | ファイルまたは部分木の構造把握 | `ast-grep outline` | 入口を探すための全ファイル読み取り |
-| コードの編集 | Edit ツール、同じリテラルの一括置換には `sd` | `sed -i`、ファイルを書き換える `python3` または `bun` のヒアドキュメント |
+| コードの編集 | `apply_patch` または公開されている専用の編集ツール。同じリテラルの一括置換には `sd` | `sed -i`、ファイルを書き換える `python3` または `bun` のヒアドキュメント |
 | JSON の照会と抽出 | `jq` | その場限りの `python3 -c` または `bun -e` |
 | YAML の照会と抽出 | `yq` | インデントを前提とする `grep` |
 | 内容の検索 | `rg` | `grep -r`、`find … -exec grep` |

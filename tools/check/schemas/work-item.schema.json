@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specification-first/schemas/work-item.json",
   "title": "Work Item",
-  "description": "WORK_ITEM_FORMAT.md を一次情報とするワークアイテムのスキーマ（同文書からの派生物）。work-items/<id>.md に置き、完了時は completion を同じファイルに追記する。",
+  "description": "docs/formats/work-item-format.md を一次情報とするワークアイテムのスキーマ（同文書からの派生物）。work-items/<id>.md に置き、完了時は completion を同じファイルに追記する。",
   "type": "object",
   "required": [
     "id",

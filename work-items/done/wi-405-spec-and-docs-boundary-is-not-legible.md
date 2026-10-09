@@ -18,7 +18,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 
 ## Motivation
 
-[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §4 は文書の置き場所を 3 つに分ける。`spec/`（境界の宣言、用語、規範、状態遷移、判断、機構、シナリオ、TypeSpec）、`docs/`（product-overview、build、ci、testing）、`operations/`（SLO、リリースと後退、バックアップ、Runbook）である。
+[DOCUMENTATION_GUIDE.md](../../docs/formats/documentation-guide.md) §4 は文書の置き場所を 3 つに分ける。`spec/`（境界の宣言、用語、規範、状態遷移、判断、機構、シナリオ、TypeSpec）、`docs/`（product-overview、build、ci、testing）、`operations/`（SLO、リリースと後退、バックアップ、Runbook）である。
 
 **区別の基準そのものは筋が通っている。** §5.9 がそれを書いている。
 

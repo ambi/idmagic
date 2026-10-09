@@ -46,7 +46,7 @@ const rootStandardsDocument = {
 
 const rootStructureDocument = {
   path: 'docs/domain/structure.md',
-  source: '# 構造\n\nディレクトリの配置。\n',
+  source: '# コード構成\n\nディレクトリの配置。\n',
 }
 
 const rootScenariosDocument = {
@@ -177,7 +177,7 @@ const contextQualityDocument = {
 
 const domainIndexDocument = {
   path: 'docs/domain/README.md',
-  source: '# ドメイン設計文書\n\nドメイン設計文書の入口。\n',
+  source: '# モジュール設計\n\nモジュール設計の入口。\n',
 }
 
 const operationsIndexDocument = {
@@ -196,12 +196,17 @@ const runbookDocument = {
 }
 
 const documentationGuideDocument = {
-  path: 'DOCUMENTATION_GUIDE.md',
+  path: 'docs/formats/documentation-guide.md',
   source: '# 文書ガイド\n\n文書体系と配置を定める。\n',
 }
 
+const formatIndexDocument = {
+  path: 'docs/formats/README.md',
+  source: '# フォーマット\n\n記述形式の入口。\n\n[文書ガイド](documentation-guide.md)を読む。\n',
+}
+
 const guideDocument = {
-  path: 'WORK_ITEM_FORMAT.md',
+  path: 'docs/formats/work-item-format.md',
   source: `# Work Item Format
 
 When the work is complete, set the status.
@@ -277,6 +282,7 @@ const site = () =>
       runDocument,
       examplesDocument,
       documentationGuideDocument,
+      formatIndexDocument,
       guideDocument,
     ],
     repositoryRoot: '/repo',
@@ -338,6 +344,12 @@ describe('renderDocumentationSite', () => {
 
   it('renders a linked multi-page documentation site', () => {
     const result = site()
+
+    expect(result.files['format/index.html']).toContain('記述形式の入口。')
+    expect(result.files['format/index.html']).toContain('href="documentation-guide.html"')
+    expect(sidebar(result.files['format/documentation-guide.html'])).not.toContain(
+      '../docs/formats/',
+    )
 
     expect(Object.keys(result.files).sort()).toEqual([
       'api/index.html',
@@ -428,7 +440,7 @@ describe('renderDocumentationSite', () => {
     expect(scenarios).toContain('<span class="scenario-actor">Primary actor</span>')
     expect([...scenarios.matchAll(/class="scenario-keyword /g)].length).toBe(7)
 
-    // WORK_ITEM_FORMAT.md の "When an item enters ..." は本文であってステップではない。
+    // docs/formats/work-item-format.md の "When an item enters ..." は本文であってステップではない。
     expect(site().files['format/work-item-format.html']).not.toContain('scenario-keyword')
   })
 
@@ -634,7 +646,7 @@ describe('renderDocumentationSite', () => {
       '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary>',
     )
     expect(sidebar(result.files['domain/demo/index.html'])).toContain(
-      '<details class="nav-section" open><summary>ドメイン設計文書</summary>',
+      '<details class="nav-section" open><summary>モジュール設計</summary>',
     )
     expect(sidebar(result.files['domain/demo/index.html'])).toContain('>用語集</a>')
     expect(sidebar(result.files['domain/demo/index.html'])).not.toContain('>の用語集</a>')
@@ -675,10 +687,10 @@ describe('renderDocumentationSite', () => {
     const page = sidebar(site().files['domain/glossary.html'])
     const design = page.slice(
       page.indexOf('>設計文書</a></summary>'),
-      page.indexOf('>ドメイン設計文書</a></summary>'),
+      page.indexOf('>モジュール設計</a></summary>'),
     )
     const domain = page.slice(
-      page.indexOf('>ドメイン設計文書</a></summary>'),
+      page.indexOf('>モジュール設計</a></summary>'),
       page.indexOf('>開発文書</a></summary>'),
     )
 
@@ -688,7 +700,7 @@ describe('renderDocumentationSite', () => {
     expect(design).not.toContain('ドメイン設計')
     expect(
       [...domain.matchAll(/class="nav-link"[^>]*>([^<]+)/g)].map((match) => match[1]).slice(0, 5),
-    ).toEqual(['用語集', '全体の標準仕様', '構造', 'システム横断シナリオ', 'Demo'])
+    ).toEqual(['用語集', '全体の標準仕様', 'コード構成', 'システム横断シナリオ', 'Demo'])
   })
 
   /**
@@ -782,7 +794,7 @@ describe('renderDocumentationSite', () => {
       ),
     ).toEqual([
       '設計文書',
-      'ドメイン設計文書',
+      'モジュール設計',
       '開発文書',
       '運用文書',
       'リファレンス',

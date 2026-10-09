@@ -90,7 +90,7 @@ initial_context:
 
 案として「各 Example に `Observed at: POST /api/admin/v1/clients` を必須にする」を検討した。経路探索の費用は確かにゼロになる。取り下げたのは次の 2 点による。
 
-第 1 に、[DOCUMENTATION_GUIDE](../../DOCUMENTATION_GUIDE.md) §5 は HTTP ルートを TypeSpec の持ち物と定めている。ルートを `scenarios.feature.md` へ書けば、同じ事実の一次情報源が 2 つになる。
+第 1 に、[DOCUMENTATION_GUIDE](../../docs/formats/documentation-guide.md) §5 は HTTP ルートを TypeSpec の持ち物と定めている。ルートを `scenarios.feature.md` へ書けば、同じ事実の一次情報源が 2 つになる。
 
 第 2 に、19 コンテキストの `scenarios.feature.md` は `backend/` も `frontend/` も 1 箇所も参照していない。規範は実装を知らない、という分担が実際に守られている。`domain:backend/oauth2/authorization` のような観測点はこれを崩す。
 

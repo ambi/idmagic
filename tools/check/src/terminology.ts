@@ -117,6 +117,27 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     ],
   },
   { term: 'Runbook', adopt: '「運用手順書」' },
+  { term: 'ドメイン設計文書', adopt: '「モジュール設計」' },
+  {
+    term: 'コンテキスト',
+    adopt: '設計と仕様の単位は「モジュール」',
+    allow: [
+      { literal: '認証コンテキスト', reason: '認証済み主体の情報であり、設計の単位ではない' },
+      { literal: '実行コンテキスト', reason: '処理の実行の文脈であり、設計の単位ではない' },
+      {
+        literal: 'リクエストコンテキスト',
+        reason: 'リクエストの情報を運ぶ文脈であり、設計の単位ではない',
+      },
+      { literal: 'セキュリティコンテキスト', reason: '認証規格の情報であり、設計の単位ではない' },
+      { literal: 'プラグインのコンテキスト', reason: 'ビルドプラグインの実行環境である' },
+      { literal: '`LocaleProvider` のコンテキスト', reason: 'React の Context である' },
+      { literal: 'ルーターのコンテキスト', reason: '描画に必要な React の Context である' },
+      { literal: 'アカウントコンテキスト', reason: 'ブラウザー初期化 API の情報である' },
+      { literal: 'パスワードリセットコンテキスト', reason: 'ブラウザー初期化 API の情報である' },
+      { literal: 'コンテキストが返る', reason: 'ブラウザー初期化 API の応答である' },
+      { literal: 'コンテキストの節約', reason: 'エージェントが読み込む情報量を指す' },
+    ],
+  },
   // Bounded Context、Context Map、Context 間もこの規則で落ちる。Context Map は
   // 置き換え先のない廃止した概念なので、採用語の指摘文で示す。
   {
@@ -146,11 +167,8 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
 export const TERMINOLOGY_ROOT_DOCUMENTS: readonly string[] = [
   'AGENTS.md',
   'CONTRIBUTING.md',
-  'DOCUMENTATION_GUIDE.md',
   'README.md',
   'SECURITY.md',
-  'SPECIFICATION_FORMAT.md',
-  'WORK_ITEM_FORMAT.md',
 ]
 
 /** literal が覆う位置を、対象語の occurrence と同じ座標系で集める。 */

@@ -38,7 +38,7 @@ spec_impact:
 
 ルート直下には生成物が 2 件追跡されている。
 `CONFIGURATION.md`（160 行）と `ROUTE_PRIORITY.md`（310 行）である。
-`DOCUMENTATION_GUIDE.md` は生成物を追跡しない場所へ置くと定め、`tools/check` の用語検査はこの 2 件を明示的に読まない対象として名指ししている。
+`docs/formats/documentation-guide.md` は生成物を追跡しない場所へ置くと定め、`tools/check` の用語検査はこの 2 件を明示的に読まない対象として名指ししている。
 規約と実態のどちらかを動かす判断がされていない。
 
 ## Scope
@@ -81,7 +81,7 @@ spec_impact:
 `CONFIGURATION.md` と `ROUTE_PRIORITY.md` は、リポジトリを開いた運用者が設定項目と経路の優先順位をその場で読むための文書である。
 追跡をやめると、読むために生成を実行させることになる。
 `docs/reference/` へ移す案も採らない。59 ファイルからの参照を書き換える費用に対して、得るものがルート直下のファイル数だけである。
-`DOCUMENTATION_GUIDE.md` の「生成物は追跡しない場所へ置く」に、利用者が直接読む生成物は追跡する、という例外とその理由を書く。
+`docs/formats/documentation-guide.md` の「生成物は追跡しない場所へ置く」に、利用者が直接読む生成物は追跡する、という例外とその理由を書く。
 
 ## Plan
 
@@ -89,7 +89,7 @@ spec_impact:
 2. 落とすと決めた検査を、レジストリ、実装、テスト、`mise` タスク、文書からの参照まで一度に落とす。
 3. `tools/check/src` のテストファイルを 1 本ずつ基準にかける。落とす候補は、先に該当箇所へ誤実装を入れて他のテストが落ちることを確かめてから落とす。
 4. `check` と `check-spec` の列挙を、片方がもう片方の部分集合であることが読める形にする。`verification-tasks.test.ts` が既にゲート集合を読んでいるので、そこへ関係を固定する。
-5. `DOCUMENTATION_GUIDE.md` の生成物の節へ例外を書く。
+5. `docs/formats/documentation-guide.md` の生成物の節へ例外を書く。
 
 ## Tasks
 
@@ -98,7 +98,7 @@ spec_impact:
 - [ ] T003 [Tooling] 判定で落ちた検査を、登録、実装、テスト、タスク、参照まで落とす。
 - [ ] T004 [Tooling] `tools/check/src` のテストを基準で判定し、落ちたものを落とす。落とす前に誤実装で他のテストの検出を確かめる。
 - [ ] T005 [Tooling] `check` と `check-spec` の二重列挙を解消し、`verification-tasks.test.ts` で関係を固定する。
-- [ ] T006 [Docs] `DOCUMENTATION_GUIDE.md` へ、利用者が直接読む生成物を追跡する例外とその理由を書く。
+- [ ] T006 [Docs] `docs/formats/documentation-guide.md` へ、利用者が直接読む生成物を追跡する例外とその理由を書く。
 - [ ] T007 [Verify] 変更を検証する。
 
 ## Verification

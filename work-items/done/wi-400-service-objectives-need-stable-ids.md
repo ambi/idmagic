@@ -31,7 +31,7 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 | `infra/README.md:34` | 「p99 トークンレイテンシーを 300 ms 未満、エラー率を 0.1% 未満とする」 |
 | `load/k6/oauth-smoke.js:22` | `idmagic_token_latency: ['p(99)<300']` |
 
-[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §3 は「同じ数値を二か所に書かない」、§11.1 は「他の文書は SLO ID を参照し、数値を再掲しない」と定める。現状はその逆で、正本を変えても他の 4 か所は黙って古くなる。
+[DOCUMENTATION_GUIDE.md](../../docs/formats/documentation-guide.md) §3 は「同じ数値を二か所に書かない」、§11.1 は「他の文書は SLO ID を参照し、数値を再掲しない」と定める。現状はその逆で、正本を変えても他の 4 か所は黙って古くなる。
 
 **さらに、目標を指そうとした参照はすべて既に壊れている。** 参照先の名前空間が撤去済みだからである。
 

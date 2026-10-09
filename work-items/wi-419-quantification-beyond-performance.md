@@ -23,16 +23,16 @@ affected_spec:
 
 第二に、目標が 1 個の数字であり、「これを割ったら出荷しない下限」と「狙う値」と「あれば望ましい値」が分かれていない。error budget は登場するが、それは下限と計画値の区別ではない。
 
-第三に、`DOCUMENTATION_GUIDE.md` は自ら「budget を使い切ったときに何をするかを、目標値と同じ場所に書く。決めていないと、error budget は達成率の飾りになる」と定めているのに、`docs/requirements/quality.md` にその記述が無い。SLO も burn rate のアラートも runbook 8 本も揃っていて、予算を使い切ったときの行動だけが欠けている。自分のガイドを自分が満たしていない。
+第三に、`docs/formats/documentation-guide.md` は自ら「budget を使い切ったときに何をするかを、目標値と同じ場所に書く。決めていないと、error budget は達成率の飾りになる」と定めているのに、`docs/requirements/quality.md` にその記述が無い。SLO も burn rate のアラートも runbook 8 本も揃っていて、予算を使い切ったときの行動だけが欠けている。自分のガイドを自分が満たしていない。
 
-第四に、設計判断を定量的に比較する場が無い。`WORK_ITEM_FORMAT.md` の `Design` は「選んだ設計、検討事項、却下した代替案」を散文で書かせるだけで、各案が各品質目標へ与える影響を見積もる表が無い。`SLO-*` と `CAP-*` という ID 体系が既にあるため、この表は追加の定義をほとんど必要とせずに作れる。
+第四に、設計判断を定量的に比較する場が無い。`docs/formats/work-item-format.md` の `Design` は「選んだ設計、検討事項、却下した代替案」を散文で書かせるだけで、各案が各品質目標へ与える影響を見積もる表が無い。`SLO-*` と `CAP-*` という ID 体系が既にあるため、この表は追加の定義をほとんど必要とせずに作れる。
 
 ## Scope
 
 - **error budget policy**：`docs/requirements/quality.md` に、予算の消費が進んだときと使い切ったときに何をするかを書く。対象は目標ごと、行動は具体的に。
 - **目標の段階**：`SLO-*` と `CAP-*` に、下限と計画値の区別を導入するかを判断し、導入するなら表の列として加える。
 - **性能以外の品質属性**：保守性、運用容易性、学習容易性、移植性、セキュリティのうち、意味のある尺度と測定方法を定義できるものを選び、`capacity.md` と同じ Evidence classes の枠組みで書く。
-- **Impact Estimation**：`WORK_ITEM_FORMAT.md` の `Design` に、代替案と品質目標 ID の交差表を書く形式を加える。medium 以上の変更で必須とし、low では任意とする。
+- **Impact Estimation**：`docs/formats/work-item-format.md` の `Design` に、代替案と品質目標 ID の交差表を書く形式を加える。medium 以上の変更で必須とし、low では任意とする。
 - **既存 work item への遡及なし**：形式の追加は以後の work item にのみ適用する。
 
 ## Out of Scope
@@ -44,7 +44,7 @@ affected_spec:
 
 ## Design
 
-error budget policy の書き場所は `docs/requirements/quality.md` の Service level objectives の直後とする。`DOCUMENTATION_GUIDE.md` が「目標値と同じ場所に書く」と指定しており、別ファイルへ切り出すと、目標を読んだ人が行動を読まずに済んでしまう。
+error budget policy の書き場所は `docs/requirements/quality.md` の Service level objectives の直後とする。`docs/formats/documentation-guide.md` が「目標値と同じ場所に書く」と指定しており、別ファイルへ切り出すと、目標を読んだ人が行動を読まずに済んでしまう。
 
 目標の段階については、Planguage の Must / Plan / Wish をそのまま持ち込む案と、下限と計画値の 2 段階に留める案がある。採るのは後者である。この製品の目標は外部への約束（SLA）を持たない現状では、Wish は「あれば望ましい」を書く欄になり、書かれた値が何も左右しない。2 段階であれば、下限は縮退と出荷判断に直結し、計画値は容量算出の入力になる。段階を増やすのは、SLA が生じたときに再開する。
 
@@ -52,7 +52,7 @@ error budget policy の書き場所は `docs/requirements/quality.md` の Servic
 
 Impact Estimation の表の形式は、行に代替案、列に品質目標 ID、セルに影響の見積もりと根拠を置く。セルの値を「+3」のような無次元の点数にする案は採らない。点数は根拠を失った状態で合計され、合計が判断を代行してしまう。セルには目標 ID の単位そのもの（ミリ秒、比率、レプリカ数）と、それが見積もりであることを記す。
 
-`WORK_ITEM_FORMAT.md` への追加は、`Design` の中の任意の節ではなく、medium 以上で必須の記載事項として書く。同文書は既に「medium 以上の変更では `Design` と `Plan` を具体的にする」と述べており、その具体化の中身として位置づける。
+`docs/formats/work-item-format.md` への追加は、`Design` の中の任意の節ではなく、medium 以上で必須の記載事項として書く。同文書は既に「medium 以上の変更では `Design` と `Plan` を具体的にする」と述べており、その具体化の中身として位置づける。
 
 ## Plan
 
@@ -60,7 +60,7 @@ Impact Estimation の表の形式は、行に代替案、列に品質目標 ID�
 2. error budget policy を書く。既存の runbook 8 本との対応を取り、行動が runbook を指す形にする。
 3. 目標の段階を 2 段階にするかを判断し、するなら表へ列を足す。既存の値がどちらに当たるかを決める。
 4. 性能以外の品質属性のうち、測定方法を定義できるものを選ぶ。定義できないものは書かない理由とともに落とす。
-5. Impact Estimation の形式を `WORK_ITEM_FORMAT.md` へ加え、既存の work item のうち 1 件で試し書きして、形式が実用に耐えるかを確かめる。
+5. Impact Estimation の形式を `docs/formats/work-item-format.md` へ加え、既存の work item のうち 1 件で試し書きして、形式が実用に耐えるかを確かめる。
 
 ## Tasks
 
@@ -69,7 +69,7 @@ Impact Estimation の表の形式は、行に代替案、列に品質目標 ID�
 - [ ] T003 [Spec] `docs/requirements/quality.md` に error budget policy を書く。
 - [ ] T004 [Spec] 目標の段階の要否を判断し、必要なら表へ列を足す。
 - [ ] T005 [Spec] 選定した品質属性を Evidence classes の枠組みで `docs/requirements/quality.md` へ加える。
-- [ ] T006 [Spec] `WORK_ITEM_FORMAT.md` へ Impact Estimation の形式を加え、既存 work item 1 件で試し書きする。
+- [ ] T006 [Spec] `docs/formats/work-item-format.md` へ Impact Estimation の形式を加え、既存 work item 1 件で試し書きする。
 - [ ] T007 [Verify] `mise run check-slo-references` と `mise run check-spec` を通す。
 
 ## Verification

@@ -371,8 +371,9 @@ describe('文書配置図の整合検査', () => {
   it('登録した文書配置検査が配置図の欠落を拒否する', async () => {
     const root = await mkdtemp(join(tmpdir(), 'check-document-layout-test-'))
     cleanup.push(root)
+    await mkdir(join(root, 'docs/formats'), { recursive: true })
     await writeFile(
-      join(root, 'SPECIFICATION_FORMAT.md'),
+      join(root, 'docs/formats/specification-format.md'),
       '# 仕様フォーマット\n\n## 1. 配置\n\n```text\ndocs/\n  README.md\n```\n',
     )
 
@@ -650,17 +651,29 @@ describe('用語検査', () => {
     expect(result.output).toContain('デプロイ')
   })
 
-  // 対象は `docs/` だけではない。root 直下の文書集合を読み落とすと、文書体系の
-  // 入口にあたる文書だけ用語が戻っても誰も気付かない。
-  it('root 直下の文書も対象にする', async () => {
+  it('docs/formats 配下の文書も対象にする', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'DOCUMENTATION_GUIDE.md'), '# 文書体系\n\n観測可能性の設計。\n')
+    await mkdir(join(root, 'docs/formats'), { recursive: true })
+    await writeFile(
+      join(root, 'docs/formats/documentation-guide.md'),
+      '# 文書体系\n\n観測可能性の設計。\n',
+    )
 
     const result = await checkTerminology(root)
 
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('DOCUMENTATION_GUIDE.md:3:1')
+    expect(result.output).toContain('docs/formats/documentation-guide.md:3:1')
     expect(result.output).toContain('オブザーバビリティ')
+  })
+
+  it('root 直下のエージェント指示も対象にする', async () => {
+    const root = await workspace()
+    await writeFile(join(root, 'AGENTS.md'), '# エージェント指示\n\n観測可能性の設計。\n')
+
+    const result = await checkTerminology(root)
+
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('AGENTS.md:3:1')
   })
 
   it('採用語だけの作業ツリーを通す', async () => {

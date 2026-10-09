@@ -76,7 +76,7 @@ export const ALLOWED_ENGLISH: readonly AllowedEnglish[] = [
   { phrase: 'PSScriptAnalyzer rules and recommendations', reason: '文書名' },
   { phrase: 'Cloud SQL for PostgreSQL', reason: '製品名' },
   { phrase: 'Managed Service for Prometheus', reason: '製品名' },
-  // 廃止した規則の見出しに付ける `(superseded by REQ-…)`（SPECIFICATION_FORMAT.md）。
+  // 廃止した規則の見出しに付ける `(superseded by REQ-…)`（docs/formats/specification-format.md）。
   { phrase: 'superseded by', reason: '記法' },
   { phrase: 'Ports and Adapters', reason: '用語' },
   // 他製品が同じ機能に付ける名前。用語集の別名の列に載る。

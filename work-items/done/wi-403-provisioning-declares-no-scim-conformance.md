@@ -63,7 +63,7 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
 
 これが効くのは連携先を増やすときである。下流 SaaS の SCIM 実装には差があり、PATCH を受けない相手、Enterprise 拡張を無視する相手、`externalId` で相関しない相手が実在する。**「IdMagic は PATCH を送るのか PUT を送るのか」「Enterprise 拡張を常に送るのか」は連携の可否を決める問いだが、答えは仕様のどこにも書かれていない。**
 
-[SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md) §5 と [DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §5.3 は、規範の各行に証拠となるテストを要求し、`excluded` の行には否定テストを要求する。**宣言が無い規範には、この要求が一切かからない。** 送らないと決めたものが送られるようになっても、それを嘘だと言う記述が存在しない。
+[SPECIFICATION_FORMAT.md](../../docs/formats/specification-format.md) §5 と [DOCUMENTATION_GUIDE.md](../../docs/formats/documentation-guide.md) §5.3 は、規範の各行に証拠となるテストを要求し、`excluded` の行には否定テストを要求する。**宣言が無い規範には、この要求が一切かからない。** 送らないと決めたものが送られるようになっても、それを嘘だと言う記述が存在しない。
 
 ## Scope
 

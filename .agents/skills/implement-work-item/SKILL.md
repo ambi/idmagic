@@ -53,7 +53,7 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    starting point, not the answer, and `stop_before_reading` is always yours to decide. It is an audit trail,
    not a reason to read more: leave a category empty instead of opening files only to populate it.
    新規着手では `evidence_policy: risk-based-v4` とし、証拠の契約は
-   `docs/development/specification-first-workflow.md`、記入形式は `WORK_ITEM_FORMAT.md` を参照する。
+   `docs/development/specification-first-workflow.md`、記入形式は `docs/formats/work-item-format.md` を参照する。
    該当する feature、bugfix、標準対応では、主要ユースケースの観測結果、`fault_model`、
    その故障を検出できる最小の境界とテストを決める。
    それ以外では Acceptance RED と Unit RED、または理由を伴う代替検査を決める。
@@ -73,7 +73,7 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    選択した境界の検査で RED を確認する。
    Domain → Use Cases → Adapters → Infrastructure / UI の必要な範囲を、一つの振る舞いずつ
    最も単純で完全な実装で GREEN にし、GREEN のまま refactor する。
-   具体例をデータにすると短くなる場合は、`SPECIFICATION_FORMAT.md` の実行可能な具体例を使う。
+   具体例をデータにすると短くなる場合は、`docs/formats/specification-format.md` の実行可能な具体例を使う。
    操作列が複雑ならコードのままにし、独立した期待結果と境界固有の表明を共有する。
    仕様にない分岐、エラー、イベント、副作用を書くことになったら、そこで止め、ワークフローの
    「仕様にない振る舞いの分類」に従って (a) 要件にする、(b) 書かない、(c) 実装を直す、のどれかに分け、
@@ -131,7 +131,7 @@ description: "選択した work item を、仕様先行、故障に応じた検�
     `mise run test-ui-e2e` as well when the change can reach the browser: the standard suite no longer starts
     the stack, so a browser regression is otherwise left to CI. Do not run an aggregate gate merely as a
     status check while a prerequisite still prevents completion. Complete
-    every evidence field required by `WORK_ITEM_FORMAT.md`, reading the completion summary out of
+    every evidence field required by `docs/formats/work-item-format.md`, reading the completion summary out of
     `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items`, and move the file to `work-items/done/`.
 11. Fold the remaining checkpoints as step 7 describes, then create any remaining Conventional Commit

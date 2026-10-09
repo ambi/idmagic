@@ -63,7 +63,7 @@ initial_context:
 
 ## 対象外
 
-- `docs/releases/` のリリースノートとアップグレードノート。変更単位で書く文書であり、ファイル名に work item 名を使うことは [WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) が定める。生成サイトにも含まれない。
+- `docs/releases/` のリリースノートとアップグレードノート。変更単位で書く文書であり、ファイル名に work item 名を使うことは [WORK_ITEM_FORMAT.md](../../docs/formats/work-item-format.md) が定める。生成サイトにも含まれない。
 - `WORK_ITEM_FORMAT.md` の例に現れる `wi-48213`。work item の形式を説明する文書であり、例の番号は特定の記録を指さない。
 - ディレクトリ名 `docs/runbooks/`、Prometheus のアノテーション `runbook_url` など、識別子とパスとしての `runbook`。
 - CSV の行と列、表の行と列、ログの行など、データベース以外の「行」「列」。

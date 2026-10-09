@@ -27,7 +27,7 @@ spec_impact:
 | `docs/design/architecture/decisions.md` | Modular Monolith を選ぶ判断基準 | PostgreSQL を共有状態にする判断 |
 | `.agents/skills/implement-work-item/SKILL.md` など | work item の起票と実装の手順 | `mise run` のタスク名、Go と Bun のテストコマンド |
 
-`DOCUMENTATION_GUIDE.md`、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md` は、別のリポジトリでも使える汎用の方法論として書く方針をすでに採っている。
+`docs/formats/documentation-guide.md`、`docs/formats/specification-format.md`、`docs/formats/work-item-format.md` は、別のリポジトリでも使える汎用の方法論として書く方針をすでに採っている。
 しかし、どの内容が汎用で、どの内容が固有かを判定する基準は文書化されておらず、境界を検査する仕組みもない。
 そのため、固有の名前が汎用文書へ入り込んでも気付けず、逆に汎用的な方針が固有の設計文書に埋もれたままになる。
 他のリポジトリで同じ方法を使うときは、ファイルを複製してから固有の記述を手で探して削る作業が毎回必要になる。
@@ -37,7 +37,7 @@ spec_impact:
 - 汎用と固有を分ける判定基準を定め、汎用部分の部分木の `README.md` に書く。
 - 文書、skills、エージェント向けの規則を棚卸しし、各ファイルを「汎用」「固有」「分割する」のいずれかに分類する。
 - 汎用部分を、リポジトリ直下の独立した部分木 `practices/` へ移す。
-  - 対象は `DOCUMENTATION_GUIDE.md`、`SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md`、`docs/development/` と `docs/design/` と `docs/operations/` のうち汎用の内容、汎用化できる repo skills とする。
+  - 対象は `docs/formats/documentation-guide.md`、`docs/formats/specification-format.md`、`docs/formats/work-item-format.md`、`docs/development/` と `docs/design/` と `docs/operations/` のうち汎用の内容、汎用化できる repo skills とする。
 - 汎用と固有が混在するファイルは分割する。
   汎用の規則は `practices/` へ移し、固有の文書には IdMagic が採る選択と汎用規則との差分だけを残す。
 - 汎用文書が固有の値を必要とする箇所（検証コマンド、インターフェース定義言語、規範 ID をテストから引用する構文、作業項目番号の採番手段など）を名前付きの差し込み点として定義し、IdMagic での値を一つの文書にまとめる。
@@ -61,7 +61,7 @@ spec_impact:
   `docs/development/writing-language.md` の言語方針は IdMagic 固有として残す。
 - `docs/domain/`、`docs/requirements/`、`docs/runbooks/`、`spec/` の内容の汎用化。
   これらは IdMagic の製品仕様と運用手順そのものであり、固有に分類する。
-  ただし、これらの文書形式の規則は `SPECIFICATION_FORMAT.md` と `DOCUMENTATION_GUIDE.md` の一部として汎用側へ含まれる。
+  ただし、これらの文書形式の規則は `docs/formats/specification-format.md` と `docs/formats/documentation-guide.md` の一部として汎用側へ含まれる。
 - 汎用化に伴う方針そのものの改訂。
   本項目は既存の規則を配置し直すだけで、規則の中身を変えない。
   移す過程で矛盾や古い記述を見つけた場合は別の work item として起票する。
@@ -98,7 +98,7 @@ Modular Monolith の採用は、そのリポジトリが単一の配置単位を
 ```text
 practices/
 ├── README.md                  判定基準、差し込み点の一覧、読む順序
-├── documentation/             DOCUMENTATION_GUIDE.md、SPECIFICATION_FORMAT.md、WORK_ITEM_FORMAT.md
+├── documentation/             docs/formats/documentation-guide.md、docs/formats/specification-format.md、docs/formats/work-item-format.md
 ├── development/               仕様先行の開発ワークフロー、コーディングスタイル、テスト方針
 ├── design/                    設計ガイドライン、API ガイドライン、UI の設計指針、構造の to-be
 ├── operations/                サービス管理と保守の汎用規則

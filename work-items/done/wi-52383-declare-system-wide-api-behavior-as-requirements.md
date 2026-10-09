@@ -75,7 +75,7 @@ affected_spec:
 
 - `api-guidelines.md` と `authorization.md` の規則を、外部から観測できる振る舞いと、設計の規則（目的、担保手段、適用状況）に分ける。
 - 外部から観測できる振る舞いを、共有の仕組みの機能スライスに `REQ-*` として宣言する。
-  宣言するのは、[仕様として書く実装上の細部](../../SPECIFICATION_FORMAT.md#仕様として書く実装上の細部)の基準を満たし、すでに文書に書かれている規則だけとする。コードを読んで規則を新しく書き足すことはしない。
+  宣言するのは、[仕様として書く実装上の細部](../../docs/formats/specification-format.md#仕様として書く実装上の細部)の基準を満たし、すでに文書に書かれている規則だけとする。コードを読んで規則を新しく書き足すことはしない。
 - `api-guidelines.md` と `authorization.md` は、宣言した要件へリンクし、目的と担保手段と適用状況を書く文書として残す。
 - 既存の機能仕様の「上位の要件」の欄のうち、`api-guidelines.md` の見出しを指すものを、新しい要件の見出しへ付け替える。
 - 宣言した要件を引くテストを `//spec:covers` で結ぶ。テストがない要件は、テストを追加する。
@@ -97,7 +97,7 @@ affected_spec:
 
 ### 宣言する場所
 
-[仕様の木](../../SPECIFICATION_FORMAT.md#仕様の木)の「実装が共有の仕組みであれば、その仕組みを一つの機能として機能スライスを設ける」に従う。
+[仕様の木](../../docs/formats/specification-format.md#仕様の木)の「実装が共有の仕組みであれば、その仕組みを一つの機能として機能スライスを設ける」に従う。
 汎用 API の共通の振る舞いを実装する `backend/shared/http/support_http` は System の担当なので、System の下に機能スライス `docs/domain/system/http-api/` を置く。
 コードのディレクトリ `backend/system/httpapi/` は存在しないので、System の設計の構成要素の表に、実装するコードを書く。
 

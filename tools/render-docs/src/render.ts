@@ -65,6 +65,7 @@ type NavigationDirectory = {
 
 type DocumentCategory =
   | 'format'
+  | 'format-index'
   | 'domain'
   | 'domain-child'
   | 'development'
@@ -180,6 +181,18 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
+  if (document.path.startsWith('docs/formats/')) {
+    const name = document.path.split('/').at(-1)?.replace(/\.md$/, '') ?? ''
+    return {
+      ...document,
+      id: `format-${slug(name)}`,
+      title,
+      sections,
+      outputPath: name === 'README' ? 'format/index.html' : `format/${slug(name)}.html`,
+      category: name === 'README' ? 'format-index' : 'format',
+      order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
+    }
+  }
   const operationsDocument = document.path.match(/^docs\/operations\/([^/]+)$/)?.[1]
   if (operationsDocument) {
     const stem = operationsDocument.replace(/\.md$/, '')
@@ -796,7 +809,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   ].join('')
   return [
     designBody ? group('設計文書', designBody, designIndex) : '',
-    domainBody ? group('ドメイン設計文書', domainBody, index('domain')) : '',
+    domainBody ? group('モジュール設計', domainBody, index('domain')) : '',
     development
       ? group('開発文書', inGroup(documents, 'development-child').map(leaf).join(''), development)
       : '',
@@ -907,9 +920,9 @@ function documentPage(
 
 /** フォーマット文書が何を定めるか。題名だけでは対象が分からない。 */
 const FORMAT_SUMMARIES: Record<string, string> = {
-  'DOCUMENTATION_GUIDE.md': '文書の種類、置き場所、それぞれが所有する内容',
-  'SPECIFICATION_FORMAT.md': '規範シナリオと標準仕様の書き方、ID の付け方',
-  'WORK_ITEM_FORMAT.md': '作業項目の書き方、必要な証拠、完了の記録',
+  'docs/formats/documentation-guide.md': '文書の種類、置き場所、それぞれが所有する内容',
+  'docs/formats/specification-format.md': '規範シナリオと標準仕様の書き方、ID の付け方',
+  'docs/formats/work-item-format.md': '作業項目の書き方、必要な証拠、完了の記録',
 }
 
 function safeJson(value: unknown): string {

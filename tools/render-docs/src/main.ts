@@ -48,7 +48,7 @@ async function procedureDocuments(directory: string): Promise<string[]> {
     .map((name) => `${directory}/${name}`)
 }
 
-const paths = ['DOCUMENTATION_GUIDE.md', 'SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
+const paths: string[] = []
 for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
   paths.push(...(await canonicalDocuments(directory, names)))
 }

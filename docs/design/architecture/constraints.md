@@ -11,4 +11,4 @@
 | 上流の権威 | 人事情報の正本は上流の権威にある。製品は取り込む側であり、在籍情報の発生源にならない | [プロダクト概要](../../requirements/product-overview.md#対象としない責務) |
 | 実行基盤 | 製品は、ローカルの Docker Compose と汎用の Kubernetes の二つのデプロイプロファイルで動かせなければならない | [デプロイメントアーキテクチャ](deployment.md#デプロイプロファイル) |
 | 言語とツールチェーン | バックエンドは Go、フロントエンドとリポジトリの道具は Bun で動かす。バージョンと実行環境は `mise.toml` の一か所で固定する | `mise.toml`、[開発文書](../../development/README.md) |
-| API の契約の一次情報 | HTTP の操作、モデル、エラーの形は TypeSpec で宣言し、OpenAPI はそこから生成する | [仕様フォーマット](../../../SPECIFICATION_FORMAT.md) |
+| API の契約の一次情報 | HTTP の操作、モデル、エラーの形は TypeSpec で宣言し、OpenAPI はそこから生成する | [仕様フォーマット](../../formats/specification-format.md) |

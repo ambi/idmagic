@@ -21,7 +21,7 @@ it('ER 図が PostgreSQL の全テーブルを網羅する', () => {
 })
 
 it('人向けの品質説明に「被覆」を使わない', () => {
-  const paths = ['DOCUMENTATION_GUIDE.md', 'docs/requirements/quality.md']
+  const paths = ['docs/formats/documentation-guide.md', 'docs/requirements/quality.md']
   const occurrences = paths.flatMap((path) =>
     readFileSync(resolve(repositoryRoot, path), 'utf8')
       .split('\n')
@@ -34,8 +34,8 @@ it('人向けの品質説明に「被覆」を使わない', () => {
 
 it('主要な開発文書に英語見出しを残さない', () => {
   const paths = [
-    'SPECIFICATION_FORMAT.md',
-    'WORK_ITEM_FORMAT.md',
+    'docs/formats/specification-format.md',
+    'docs/formats/work-item-format.md',
     'docs/development/specification-first-workflow.md',
     'docs/development/release.md',
   ]
@@ -55,9 +55,9 @@ it('主要な開発文書に英語見出しを残さない', () => {
  * 主題とする文書と、リポジトリの道具立てに限って禁じる。
  */
 const PRIMARY_SOURCE_VOCABULARY_ROOTS = [
-  'DOCUMENTATION_GUIDE.md',
-  'SPECIFICATION_FORMAT.md',
-  'WORK_ITEM_FORMAT.md',
+  'docs/formats/documentation-guide.md',
+  'docs/formats/specification-format.md',
+  'docs/formats/work-item-format.md',
   'docs/README.md',
   'docs/domain/glossary.md',
   'docs/domain/structure.md',
@@ -78,8 +78,8 @@ const VERSION_VOCABULARY_ROOTS = [
   'AGENTS.md',
   'CONTRIBUTING.md',
   'SECURITY.md',
-  'SPECIFICATION_FORMAT.md',
-  'WORK_ITEM_FORMAT.md',
+  'docs/formats/specification-format.md',
+  'docs/formats/work-item-format.md',
   'docs/design/architecture',
   'docs/design',
   'docs/development',
@@ -129,7 +129,7 @@ it('文書体系を指す語に「正本」と「正準文書」を使わない'
 
 /**
  * 定着したカタカナ語を一般的な日本語へ言い換えると、読み手はそれを技術用語として
- * 認識できない。`DOCUMENTATION_GUIDE.md` が version の表記を定めているので、規則を
+ * 認識できない。`docs/formats/documentation-guide.md` が version の表記を定めているので、規則を
  * 述べる同文書だけを除いて語形で確かめる。`docs/domain/` と `backend/` は
  * 別の作業項目が扱う。
  */

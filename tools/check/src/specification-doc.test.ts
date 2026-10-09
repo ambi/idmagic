@@ -157,6 +157,39 @@ Replaced by the valid request scenario.
     )
   })
 
+  it('形式文書のコードブロックを見出しや規範宣言として数えない', () => {
+    const source = [
+      '# 仕様フォーマット',
+      '',
+      '````markdown',
+      '# 機能仕様のテンプレート',
+      '```text',
+      '#### REQ-DEMO-001 コード内の例',
+      '```',
+      '````',
+      '',
+      '~~~markdown',
+      '# 作業項目のテンプレート',
+      '#### REQ-DEMO-002 別の例',
+      '~~~',
+      '',
+    ].join('\n')
+    const path = 'docs/formats/specification-format.md'
+
+    expect(validateDocument(path, source).findings).toEqual([])
+    expect(validateDocument(path, source).scenarioIds).toEqual([])
+    expect(validateDocument(path, `${source}#### REQ-DEMO-003 本文の宣言\n`).findings).toEqual([
+      {
+        line: 14,
+        message:
+          'REQ-DEMO-003 must be declared in scenarios.feature.md or in a feature specification',
+      },
+    ])
+    expect(messages(path, source.replace('# 仕様フォーマット', '見出しなし'))).toContain(
+      'document must contain exactly one H1',
+    )
+  })
+
   it('keeps normative rules out of the other documents', () => {
     const source = `# Demo Decisions
 
