@@ -25,18 +25,14 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [DEK のライフサイクル](../lifecycle/README.md) | `usecases/lifecycle.go`、`usecases/reencrypt.go`、`usecases/migrator_registry.go`、`field_cipher.go` |
-| [DEK の健全性の一覧](../health/README.md) | `usecases/tenant_data_key_health.go`、`handlers_http/admin_data_key_handler.go` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |
 | `domain` | `TenantDataEncryptionKey`、状態、ドメインイベント、ライフサイクルのエラー |
 | `ports` | `DataKeyRepository`、`CacheInvalidator`、`FieldMigrator` |
 | `usecases` | ライフサイクルの操作、アンラップした DEK の保持、再暗号化のジョブのハンドラー、健全性の一覧 |
-| ルートの `field_cipher.go` | 項目を持つモジュールが使う暗号化と復号の入口。初回の暗号化で DEK を生成する |
+| モジュールのルートの項目の暗号化の入口 | 項目を持つモジュールが使う暗号化と復号の入口。初回の暗号化で DEK を生成する |
 | `handlers_http` | 制御面の健全性の一覧 |
 | `db_postgres`、`db_memory` | `ports` の PostgreSQL の実装と、テストとローカルの構成で使うメモリの実装 |
 | `testing_contract` | 二つの実装が同じ契約を満たすことを確かめる共通のテスト |

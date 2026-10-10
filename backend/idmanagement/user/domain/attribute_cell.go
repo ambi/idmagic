@@ -32,6 +32,7 @@ func ParseAttributeCell(raw string, attrType idmdomain.AttributeType, required b
 		value := raw
 		return AttributeValue{Type: attrType, String: &value}, false, nil
 	case idmdomain.AttributeTypeDate:
+		// 日付の形式は docs/design/application/api-guidelines.md の「日時と日付」が定める。
 		parsed, err := time.Parse("2006-01-02", raw)
 		if err != nil || parsed.Format("2006-01-02") != raw {
 			return AttributeValue{}, false, fmt.Errorf("%w: date", ErrInvalidAttributeCell)

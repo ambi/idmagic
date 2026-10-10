@@ -25,13 +25,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [失効エポック](../revocation/README.md) | `usecases/revocation.go` |
-| [SSF ストリームの管理](../stream/README.md) | `usecases/admin_streams.go`、`handlers_http/routes.go` |
-| [SET の受信](../receiver/README.md) | `usecases/receive.go`、`verify_jose` |
-| [SET の配送](../transmitter/README.md) | `usecases/project.go`、`usecases/transmit.go`、`usecases/deliver.go`、`push_http`、`sign_jose` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

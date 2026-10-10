@@ -25,12 +25,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [永続キュー](../queue/README.md) | `usecases/enqueue.go`、`usecases/runner.go`、`usecases/handler_registry.go`、`backend/cmd/idmagic-worker` |
-| [ジョブの管理](../admin/README.md) | `usecases/admin.go`、`handlers_http/admin_job_handler.go` |
-| [標準開発環境](../local-development/README.md) | 開発のコマンドと組み込みの PostgreSQL |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

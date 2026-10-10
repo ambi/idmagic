@@ -27,11 +27,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [ライフサイクルワークフローの定義](../lifecycle-workflow/README.md) | `usecases/lifecycle_workflows.go`、`usecases/lifecycle_workflow_dry_run.go`、`handlers_http/admin_lifecycle_workflow_handler.go` |
-| [ワークフローの実行](../workflow-run/README.md) | `usecases/user_mutation_committer.go`、`usecases/lifecycle_workflow_dispatcher.go` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

@@ -27,18 +27,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-各層の中のファイルが、次の機能仕様に対応する。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [テナントのライフサイクル](../lifecycle/README.md) | `usecases/manage_tenants.go`、`handlers_http/admin_tenant_handler.go` |
-| [テナントの解決](../resolution/README.md) | `backend/shared/http/support_http/tenant_middleware.go`、`context.go` |
-| [テナント設定](../settings/README.md) | `usecases/manage_tenants.go`、`handlers_http/admin_settings_handler.go` |
-| [ブランド設定](../branding/README.md) | `usecases/manage_branding.go`、`handlers_http/admin_branding_handler.go`、`handlers_http/branding_handler.go` |
-| [属性スキーマ](../attribute-schema/README.md) | `usecases/manage_user_attribute_schema.go`、`usecases/manage_group_attribute_schema.go` と、それぞれの管理ハンドラー |
-| [通知テンプレート](../notification-template/README.md) | `usecases/manage_notification_templates.go`、`handlers_http/admin_notification_template_handler.go` |
-| [リソース上限](../quota/README.md) | `usecases/manage_quotas.go`、`ports/quota_repository.go` の実装 |
-| [連携エンドポイント](../integration-endpoints/README.md) | `handlers_http/integration_endpoints_handler.go` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

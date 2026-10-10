@@ -24,6 +24,7 @@ type deprecationEntry struct {
 // the tenant routing group prefix ("/realms/:tenant_id"), so it applies
 // uniformly regardless of which tenant routing style the request hit. A nil
 // contract (e.g. in tests that build a bare Deps{}) is a no-op.
+// 担保するルールは docs/design/application/api-guidelines.md の「非推奨の宣言」。
 func DeprecationHeadersMiddleware(contract *spec.RuntimeContract) echo.MiddlewareFunc {
 	index := buildDeprecationIndex(contract)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

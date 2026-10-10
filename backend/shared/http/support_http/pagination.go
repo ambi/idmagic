@@ -21,6 +21,7 @@ const (
 // endpoint: absent falls back to def, present must be a positive
 // integer (else an error the caller maps to InvalidRequestError), clamped to
 // max rather than rejected so a too-large limit degrades gracefully.
+// 担保するルールは docs/design/application/api-guidelines.md の「ページサイズ」。
 func ParseLimit(c *echo.Context, def, maxLimit int) (int, error) {
 	raw := c.QueryParam("limit")
 	if raw == "" {

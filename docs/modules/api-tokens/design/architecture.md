@@ -22,11 +22,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [API アクセストークンの発行と失効](../token-management/README.md) | `usecases/usecases.go` の `Issue`、`List`、`Revoke`、`handlers_http/routes.go` |
-| [API アクセストークンの認証と認可](../authentication/README.md) | `usecases/usecases.go` の `Authenticate`、`AuthenticateClaims`、`IntrospectAccessToken` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

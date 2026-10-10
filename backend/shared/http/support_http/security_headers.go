@@ -65,6 +65,7 @@ type cspContext struct {
 // so a handler rendering an auto-submitting cross-origin POST form can override
 // the CSP with a form-action allowance and the pinned auto-submit script hash
 // (SetAutoPostFormCSP).
+// 担保するルールは docs/design/application/api-guidelines.md の「共通のセキュリティヘッダー」。
 func SecurityHeadersMiddleware(cfg SecurityHeadersConfig) echo.MiddlewareFunc {
 	headerName := "Content-Security-Policy"
 	if cfg.ReportOnly {

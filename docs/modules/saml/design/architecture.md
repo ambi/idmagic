@@ -27,12 +27,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [IdP プロファイルとメタデータ](../idp-profile/README.md) | `handlers_http/admin_idp_profile_handler.go`、`handlers_http/metadata_handler.go`、`metadata_saml` |
-| [サービスプロバイダーの管理](../service-provider/README.md) | `handlers_http/admin_service_provider_handler.go` |
-| [SAML の SSO](../sso/README.md) | `usecases/signin.go`、`usecases/logout.go`、`handlers_http/sso_handler.go`、`handlers_http/slo_handler.go`、`responses_saml` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

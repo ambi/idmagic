@@ -24,12 +24,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [署名鍵のライフサイクル](../lifecycle/README.md) | `usecases/rotate_signing_key.go`、`usecases/archive_expired_signing_keys.go`、`handlers_http/admin_key_handler.go`、`backend/cmd/idmagic-batch` の `signing-key-lifecycle` |
-| [テナントと用途による鍵の分離](../separation/README.md) | `ports/key_store.go` の用途とスコープ、`keys_jose/certificate.go` |
-| [鍵の提供元と健全性](../provider/README.md) | `usecases/tenant_key_health.go`、起動時の提供元の選択 |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

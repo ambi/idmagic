@@ -124,12 +124,16 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     ],
   },
   { term: 'Runbook', adopt: '「運用手順書」' },
-  { term: 'ドメイン設計文書', adopt: '「モジュール設計」' },
+  { term: 'ドメイン設計文書', adopt: '「モジュール設計文書」' },
   {
     term: 'コンテキスト',
     adopt: '設計と仕様の単位は「モジュール」',
     allow: [
       { literal: '認証コンテキスト', reason: '認証済み主体の情報であり、設計の単位ではない' },
+      {
+        literal: '境界づけられたコンテキスト',
+        reason: 'ドメイン駆動設計の Bounded Context を、採らない概念として名指している',
+      },
       { literal: '実行コンテキスト', reason: '処理の実行の文脈であり、設計の単位ではない' },
       {
         literal: 'リクエストコンテキスト',

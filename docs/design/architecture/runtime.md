@@ -31,7 +31,7 @@ API リファレンスは `spec/` の TypeSpec から生成し、`mise run rende
 ### Worker
 
 Worker は、ジョブのハンドラーと、プロセス内で周期的に動く処理の二種類を実行する。
-ハンドラーは `backend/cmd/idmagic-worker/worker.go` で `JobKind` ごとに登録する。
+ハンドラーは、Worker の入口（`backend/cmd/idmagic-worker`）で `JobKind` ごとに登録する。
 ジョブの取得、再試行、レーン、配信不能の扱いは [Jobs](../../modules/jobs/README.md) が定める。
 
 | `JobKind` | 投入するモジュール | 処理 | 詳細 |

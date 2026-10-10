@@ -55,6 +55,7 @@ const storeUnavailableRetryAfterSeconds = 30
 //	}
 //
 // metrics may be nil (some tests don't wire it); RecordEndpointRateLimit is skipped in that case.
+// 担保するルールは docs/design/application/api-guidelines.md の「レートリミットの適用範囲」。
 func CheckRateLimit(c *echo.Context, limiter rlports.RateLimiter, metrics Metrics, policyID, key string) (blocked bool, err error) {
 	if limiter == nil {
 		return false, nil

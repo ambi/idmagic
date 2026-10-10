@@ -77,6 +77,8 @@ func (cur Cursor) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// CursorCodec はページングのカーソルを署名して符号化し、束縛した条件と照合する。
+// 担保するルールは docs/design/application/api-guidelines.md の「カーソル」。
 type CursorCodec struct {
 	secret []byte
 }

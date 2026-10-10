@@ -26,13 +26,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [アプリケーションのカタログ](../catalog/README.md) | `usecases/applications.go`、`usecases/categories.go`、`handlers_http/admin_application_handler.go`、`handlers_http/application_provisioning.go`、`handlers_http/client_secret_lifecycle.go` |
-| [割り当て](../assignment/README.md) | `usecases/assignments.go`、`usecases/desired_state_assignments.go` |
-| [サインインポリシー](../sign-in-policy/README.md) | `usecases/sign_in_policy.go` |
-| [ポータルのアプリケーション](../portal/README.md) | `usecases/orderings.go`、`handlers_http/account_application_handler.go` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

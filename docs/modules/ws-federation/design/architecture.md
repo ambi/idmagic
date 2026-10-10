@@ -27,13 +27,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [RP と Entra フェデレーションの管理](../relying-party/README.md) | `handlers_http/admin_relying_party_handler.go`、`handlers_http/admin_entra_handler.go`、`domain/entra.go` |
-| [パッシブサインイン](../passive-sign-in/README.md) | `usecases/signin.go`、`usecases/signout.go`、`handlers_http/wsfed_handler.go` |
-| [WS-Trust の能動的 STS](../active-sts/README.md) | `usecases/wstrust.go`、`handlers_http/wstrust_handler.go`、`requests_wstrust` |
-| [フェデレーションメタデータ](federation-metadata.md) | `handlers_http/metadata_handler.go`、`metadata_wsfederation` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

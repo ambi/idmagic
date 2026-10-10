@@ -56,6 +56,7 @@ func TrimPage[T any](items []T, page PageRequest) ([]T, bool, bool) {
 // params) so a cursor cannot be replayed against a different tenant or a
 // since-changed query, then split into its (primary, id) keyset. Every
 // failure wraps ErrBadPageRequest.
+// 担保するルールは docs/design/application/api-guidelines.md の「ページング方式」。
 func ParsePageRequest(c *echo.Context, codec *CursorCodec, tenantID, queryHash string, defLimit, maxLimit int) (PageRequest, error) {
 	limit, err := ParseLimit(c, defLimit, maxLimit)
 	if err != nil {
@@ -96,6 +97,7 @@ func ParsePageRequest(c *echo.Context, codec *CursorCodec, tenantID, queryHash s
 // SetPageLinks signs the first/last row boundaries and emits only the
 // directions that exist. A previous cursor reads before the first row; a next
 // cursor reads after the last row.
+// 担保するルールは docs/design/application/api-guidelines.md の「ページングのレスポンスヘッダー」。
 func SetPageLinks(
 	c *echo.Context,
 	codec *CursorCodec,
@@ -170,6 +172,7 @@ func SetPaginationHeaders(c *echo.Context, metadata PaginationMetadata) {
 }
 
 // SetPaginationLinks emits first/prev/next/last links for an exact-count page.
+// 担保するルールは docs/design/application/api-guidelines.md の「ページングのレスポンスヘッダー」。
 func SetPaginationLinks(
 	c *echo.Context,
 	codec *CursorCodec,

@@ -19,11 +19,11 @@
 
 主体の種類ごとにどの境界へ到達できるかは [認可設計](../design/security/authorization.md) で定める。
 
-## ドメインモデル
+## モデルと実装の単位
 
 | 用語 | 定義 | 別名 |
 |---|---|---|
-| Aggregate | 1 つの単位として変更されるドメインオブジェクトの集まり。ちょうど 1 つのルートエンティティを持ち、その識別子が全体を名指す。常に成り立たなければならない不変条件は 1 つの Aggregate の内側に収め、境界を越える整合は結果整合として明示的に組む。外部からはルートの識別子で参照し、内部の要素を直接指さない。1 つの Aggregate はちょうど 1 つのモジュールが所有する。境界の引き方、トランザクションとの対応、Repository の粒度は [設計ガイドライン](../design/application/design-guidelines.md#aggregate-境界と-repository) が、テナントに属する Aggregate が `tenant_id` を持つことは [データベース設計](../design/data/database.md#tenant_id-の保持区分) が定める。 |  |
+| Aggregate | 同時に正しくなければならない状態を収める一貫性の境界。ちょうど 1 つのルートエンティティを持ち、その識別子が全体を名指す。常に成り立たなければならない不変条件は 1 つの Aggregate の内側に収め、境界を越える整合は結果整合として明示的に組む。外部からはルートの識別子で参照し、内部の要素を直接指さない。1 つの Aggregate はちょうど 1 つのモジュールが所有する。語は Eric Evans の *Domain-Driven Design* から借りるが、借りるのはこの意味だけであり、境界づけられたコンテキストなどほかの概念は採らない。モジュールの境界は Aggregate からではなく、情報隠蔽と [境界を選ぶ判断手順](../design/application/design-guidelines.md#境界を選ぶ判断手順) で選ぶ。境界の引き方、トランザクションとの対応、永続化ポートの粒度は [設計ガイドライン](../design/application/design-guidelines.md#一貫性の境界と永続化) が、テナントに属する Aggregate が `tenant_id` を持つことは [データベース設計](../design/data/database.md#tenant_id-の保持区分) が定める。 |  |
 | Module | 責務、その実装、仕様と設計の文書、TypeSpec の対応を一つの単位として呼ぶ名前。[論理アーキテクチャ](../design/architecture/logical.md#モジュールの責務)の責務表の一行、`docs/modules/<module>/` のモジュール設計文書、`backend/` の実装のモジュールは一対一に対応し、責務表だけが名前、Go パッケージ、仕様のディレクトリの対応を定める。モジュール設計文書は、この単位ごとの仕様と設計の文書の集まりを指す。ほかのモジュールへの公開範囲は公開パッケージで、依存の規則は [バックエンド設計](../design/application/backend.md#モジュール間の依存規則) で定める。Go の `go.mod` が定める Go モジュールとは別の語である。 | モジュール |
 
 Aggregate は Latin 表記のまま使う。「集約」は日本語で観測値や設定をまとめる操作も指し、このリポジトリの文書でも [キャパシティ設計](../design/performance/capacity.md) と [Observability Design](../design/observability/) がその意味で使っている。同じ語に 2 つの読みを持たせると、`tenant_id` を持つかどうかのような規則がどちらの意味で書かれているのか判別できなくなる。

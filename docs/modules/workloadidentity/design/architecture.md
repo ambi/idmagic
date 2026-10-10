@@ -25,11 +25,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [信頼設定と関連付けの管理](../trust-configuration/README.md) | `usecases/admin_trust_bundles.go`、`usecases/admin_bindings.go`、`handlers_http/routes.go` |
-| [アテステーションの交換](../attestation-exchange/README.md) | `usecases/verify_workload_attestation.go`、`usecases/adapter.go`、`verification_jose/verifier.go` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

@@ -26,12 +26,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、プロトコルに依存しない中核と、`ProvisioningTargetClient` を実装する `client_scim` からなる。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [接続の管理](../connection/README.md) | `usecases/admin.go`、`usecases/full_resync.go`、`handlers_http/handlers.go` |
-| [同期](../synchronization/README.md) | `usecases/capture.go`、`usecases/reconcile.go`、`usecases/dispatcher.go`、`domain/reconcile.go`、`domain/scheduled_deprovision.go` |
-| [プロビジョニングタスクの実行](../task/README.md) | `usecases/execute_task.go`、`usecases/job_handler.go`、`client_scim` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

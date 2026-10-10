@@ -22,6 +22,7 @@ func NoStoreJSON(c *echo.Context, status int, body any) error {
 // endpoint rate limiter の両方から呼ばれる共通の 429 応答で、oauth2-bound / browser-JSON の
 // どちらの binding でも同じ形にする (OAuthError は 429 の追加フィールドを持てないため
 // writeOAuthError 経路は使わない、login throttle の既存パターンを一般化)。
+// 担保するルールは docs/design/application/api-guidelines.md の「再試行の指示」。
 func WriteRateLimited(c *echo.Context, retryAfterSeconds int) error {
 	c.Response().Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
 	return NoStoreJSON(c, http.StatusTooManyRequests, map[string]any{
@@ -45,6 +46,7 @@ const maxJSONBodyBytes = 64 << 10
 
 // DecodeJSON はリクエスト body を 64 KiB 以内に制限して復号する。
 // 未知のプロパティは前方互換性のため無視する。
+// 担保するルールは docs/design/application/api-guidelines.md の「リクエストボディのサイズ」と「未知のプロパティ」。
 func DecodeJSON(request *http.Request, destination any) error {
 	body, err := io.ReadAll(io.LimitReader(request.Body, maxJSONBodyBytes+1))
 	if err != nil {

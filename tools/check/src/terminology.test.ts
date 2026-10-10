@@ -264,4 +264,18 @@ describe('用語検査', () => {
 
     expect(findings.map((finding) => finding.term)).toEqual(['このディレクトリには', '話題の索引'])
   })
+
+  // 採らない概念として名指すドメイン駆動設計の Bounded Context は、設計の単位としてのコンテキストではない。
+  it('ドメイン駆動設計の境界づけられたコンテキストは通し、単独のコンテキストは指摘する', () => {
+    const findings = verifyTerminology([
+      {
+        file: 'docs/design/application/design-guidelines.md',
+        source: '境界づけられたコンテキストからは導かない。各コンテキストの設計。\n',
+      },
+    ])
+
+    expect(findings.map((finding) => [finding.term, finding.column])).toEqual([
+      ['コンテキスト', 23],
+    ])
+  })
 })

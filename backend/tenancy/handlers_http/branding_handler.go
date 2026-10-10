@@ -50,6 +50,7 @@ func toBrandingResponse(b *domain.TenantBranding) BrandingResponse {
 
 // brandingETag は branding の version を ETag にする。未設定テナントは全テナント共通の
 // 固定値を返し、cross-tenant のキャッシュ混同は URL (tenant 解決済み path) 側で防ぐ。
+// 担保するルールは docs/design/application/api-guidelines.md の「キャッシュ検証」。
 func brandingETag(b *domain.TenantBranding) string {
 	if b == nil || !b.IsConfigured() || b.UpdatedAt.IsZero() {
 		return `"branding-default"`

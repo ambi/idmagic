@@ -26,12 +26,7 @@
 ## 構成要素
 
 コードは機能スライスを持たず、一つの層の構成である。
-
-| 機能仕様 | 主なユースケースとハンドラー |
-| --- | --- |
-| [認可モデル](../model/README.md) | `usecases/admin_model.go`、`domain/model.go` |
-| [関係タプル](../relation-tuple/README.md) | `usecases/admin_tuples.go`、`domain/tuple.go` |
-| [関係の判定](../check/README.md) | `usecases/check_access.go`、`domain/evaluator.go`、`domain/consistency.go` |
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
 
 | 層 | 責務 |
 | --- | --- |

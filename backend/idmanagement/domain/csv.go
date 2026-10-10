@@ -17,6 +17,7 @@ import (
 
 // CSVTransferPolicy は組み立て境界から注入し、export と import が共有する。
 // 上限は 1 個の成果物に対するものであり、テナントの母集団を制限しない。
+// 担保するルールは docs/design/application/api-guidelines.md の「CSV の一括転送」。
 type CSVTransferPolicy struct {
 	MaxRows       int
 	MaxBytes      int
