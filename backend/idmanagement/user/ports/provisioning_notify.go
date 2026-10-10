@@ -7,7 +7,7 @@ import (
 
 // ProvisioningTrigger is the User lifecycle trigger IdManagement reports to
 // outbound Provisioning after committing a mutation
-// (spec/contexts/provisioning.yaml §deprovision セマンティクス trigger 列). This is
+// (docs/modules/provisioning/ §deprovision セマンティクス trigger 列). This is
 // an IdManagement-owned vocabulary (mirrors idmports.UserMutationCommitter,
 // wi-237): IdManagement must not import backend/provisioning (Provisioning already
 // imports IdManagement, and module dependencies must stay acyclic).

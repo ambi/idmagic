@@ -2,7 +2,7 @@
 //
 // The product defaults of the Authentication context's PasswordPolicy are
 // declared here. The schema of the tenant overrides and the current values
-// returned to the UI (PasswordPolicyDefaults) live in spec/contexts/tenancy;
+// returned to the UI (PasswordPolicyDefaults) live in spec/modules/tenancy;
 // letting the two drift apart is a spec-implementation drift.
 package usecases
 

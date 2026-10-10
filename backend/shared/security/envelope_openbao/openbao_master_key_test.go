@@ -58,7 +58,7 @@ func (f *fakeTransitEngine) Healthy(_ context.Context) bool {
 }
 
 // TestWrapUnwrapRoundTrip covers scenario
-// "テナント初回利用時にDEKがbootstrapされる" (spec/contexts/data-keys.yaml) for the
+// "テナント初回利用時にDEKがbootstrapされる" (docs/modules/data-keys/) for the
 // OpenBao provider: WrapDataKey ensures a per-tenant transit key exists and
 // UnwrapDataKey recovers the original plaintext.
 func TestWrapUnwrapRoundTrip(t *testing.T) {

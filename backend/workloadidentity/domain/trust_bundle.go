@@ -44,7 +44,7 @@ var workloadTrustBundleSchema = z.Struct(z.Shape{
 	"CreatedAt": z.Time().Required(),
 })
 
-// Validate は構造的妥当性 (spec/contexts/workloadidentity.yaml WorkloadTrustBundle
+// Validate は構造的妥当性 (docs/modules/workloadidentity/ WorkloadTrustBundle
 // constraints) を検証する: issuer は https、jwks_uri / jwks の少なくとも一方が必須、
 // accepted_audiences は非空、max_subject_token_ttl_seconds は正。
 func (b WorkloadTrustBundle) Validate() error {

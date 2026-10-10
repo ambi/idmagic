@@ -45,7 +45,7 @@ export function collectAdminOperations(document: OpenApiDocument): AdminOperatio
 // here keeps the check honest even when the enum changes.
 export function parseApiTokenScopes(source: string): string[] {
   const body = source.match(/enum\s+ApiTokenScope\s*\{([\s\S]*?)\n\}/)?.[1]
-  if (!body) throw new Error('spec/contexts/api-tokens/models.tsp must declare enum ApiTokenScope')
+  if (!body) throw new Error('spec/modules/api-tokens/models.tsp must declare enum ApiTokenScope')
   return [...body.matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1] ?? '')
 }
 

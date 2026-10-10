@@ -10,7 +10,7 @@ import (
 )
 
 // TestWrapUnwrapRoundTrip covers the dev/local path of scenario
-// "テナント初回利用時にDEKがbootstrapされる" (spec/contexts/data-keys.yaml):
+// "テナント初回利用時にDEKがbootstrapされる" (docs/modules/data-keys/):
 // no OpenBao required, wrap/unwrap must still round-trip.
 func TestWrapUnwrapRoundTrip(t *testing.T) {
 	ctx := context.Background()

@@ -8,8 +8,8 @@ depends_on: [wi-246-scim-multivalued-core-attributes-and-nested-group-members]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/sourcing/standards.md, requirement: RFC7644-PATCH }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.PatchScimUser }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.PatchScimUser }
 ---
 
 # SCIM 複合 value フィルタ (bracket 構文) を LIST filter と PATCH path の両方に対応する

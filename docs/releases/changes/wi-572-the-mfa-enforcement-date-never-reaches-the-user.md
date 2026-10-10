@@ -4,7 +4,7 @@
 
 WI-572 は、テナントデフォルトのサインインポリシーが将来時刻から MFA を必須にするとき、その強制開始日時を認証要素が未登録の利用者へ知らせる。
 
-`GET /api/account/v1/security` の応答 [AccountSecurityResponse](../../../spec/contexts/authentication/models.tsp) に任意の `mfa_enforcement_start_at` が加わる。
+`GET /api/account/v1/security` の応答 [AccountSecurityResponse](../../../spec/modules/authentication/models.tsp) に任意の `mfa_enforcement_start_at` が加わる。
 この値は、強制開始がまだ来ておらず、利用者が認証アプリ (TOTP) などの MFA 要素もパスキーも登録していないときだけ返る。
 ポリシーのルールそのものは返さない。
 

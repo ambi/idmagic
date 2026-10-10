@@ -99,7 +99,7 @@ func TestJobKind_Valid(t *testing.T) {
 }
 
 // TestExecutionLane_Valid: RED for ExecutionLane (scenario
-// spec/contexts/jobs.yaml "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる"
+// docs/modules/jobs/ "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる"
 // presupposes a closed lane vocabulary).
 func TestExecutionLane_Valid(t *testing.T) {
 	for _, lane := range []ExecutionLane{LaneLatencySensitive, LaneDefault, LaneBulk} {

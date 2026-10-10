@@ -7,8 +7,8 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.SignatureAlgorithm }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Token }
+  - { path: spec/modules/signing-keys/models.tsp, symbol: IdMagic.Contract.SignatureAlgorithm }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.Contract.Token }
 ---
 
 # FIPS 承認暗号のみで動作する運転モード (FIPS profile) を導入する

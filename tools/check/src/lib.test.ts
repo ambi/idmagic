@@ -159,7 +159,7 @@ describe('validateAgainstSchema — work-item', () => {
           change_kind: 'bugfix',
           affected_spec: [
             { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001', impact },
-            { path: 'spec/contexts/demo/main.tsp', symbol: 'Demo.Task', impact },
+            { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Task', impact },
           ],
         },
         '',

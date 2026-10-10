@@ -1,5 +1,5 @@
 // Package domain implements the Jobs module business types: the Job
-// entity, its JobLifecycle state machine, and retry backoff (spec/contexts/jobs.yaml).
+// entity, its JobLifecycle state machine, and retry backoff (docs/modules/jobs/).
 package domain
 
 import (
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// JobStatus is a JobLifecycle state (spec/contexts/jobs.yaml states.JobLifecycle).
+// JobStatus is a JobLifecycle state (docs/modules/jobs/ states.JobLifecycle).
 type JobStatus string
 
 const (
@@ -28,9 +28,9 @@ func (s JobStatus) Valid() bool {
 	return false
 }
 
-// JobKind identifies which worker handler processes a Job (spec/contexts/jobs.yaml
+// JobKind identifies which worker handler processes a Job (docs/modules/jobs/
 // models.JobKind). Adding a new kind requires registering it in
-// spec/contexts/jobs.yaml first (SCL-first) before a consumer WI implements the
+// docs/modules/jobs/ first (SCL-first) before a consumer WI implements the
 // handler.
 type JobKind string
 
@@ -47,14 +47,14 @@ const (
 	KindGroupMembershipImportApply   JobKind = "group_membership_import_apply"
 	KindDynamicGroupReconcile        JobKind = "dynamic_group_reconcile"
 	// KindDataKeyReencryption is wi-97's DataKeys re-encryption job
-	// (spec/contexts/data-keys.yaml): it drives a registered
+	// (docs/modules/data-keys/): it drives a registered
 	// FieldMigrator through pending rows onto a tenant's active
 	// DataEncryptionKey version.
 	KindDataKeyReencryption JobKind = "data_key_reencryption"
 )
 
 // ExecutionLane is the execution-lane vocabulary
-// (spec/contexts/jobs.yaml models.ExecutionLane). A JobKind is assigned
+// (docs/modules/jobs/ models.ExecutionLane). A JobKind is assigned
 // exactly one lane at registration; enqueue callers cannot choose it.
 type ExecutionLane string
 
@@ -157,7 +157,7 @@ var jobTransitions = []jobTransition{
 }
 
 // TransitionJobLifecycle applies event to from and returns the resulting status,
-// or an error if the transition is not declared in spec/contexts/jobs.yaml
+// or an error if the transition is not declared in docs/modules/jobs/
 // states.JobLifecycle.
 func TransitionJobLifecycle(from JobStatus, event JobLifecycleEvent) (JobStatus, error) {
 	for _, t := range jobTransitions {
@@ -212,7 +212,7 @@ func NextRetryRunAt(now time.Time, attempts int, base, maxBackoff time.Duration)
 }
 
 // JobProgress is an optional progress snapshot a handler may report while Running
-// (spec/contexts/jobs.yaml models.JobProgress). No interface writes it yet in this
+// (docs/modules/jobs/ models.JobProgress). No interface writes it yet in this
 // WI's core runtime; a future consumer WI adds one via SCL when needed.
 type JobProgress struct {
 	Percent   *int
@@ -220,7 +220,7 @@ type JobProgress struct {
 	UpdatedAt time.Time
 }
 
-// Job is the Jobs module entity (spec/contexts/jobs.yaml models.Job).
+// Job is the Jobs module entity (docs/modules/jobs/ models.Job).
 type Job struct {
 	ID          string
 	TenantID    string

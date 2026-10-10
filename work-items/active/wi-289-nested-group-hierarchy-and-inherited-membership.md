@@ -7,9 +7,9 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.CreateGroup }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.ListUserGroups }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.Contract.CreateGroup }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.Contract.ListUserGroups }
 ---
 
 # グループ階層 (入れ子グループ) と継承メンバーシップを導入する

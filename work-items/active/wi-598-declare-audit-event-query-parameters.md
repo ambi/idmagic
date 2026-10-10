@@ -8,10 +8,10 @@ priority: p2
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: bugfix
 affected_spec:
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListAdminAuditEvents }
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListSystemAuditEvents }
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportSystemAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListAdminAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListSystemAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportSystemAuditEvents }
 ---
 
 # 監査イベントの絞り込み条件を個別のクエリパラメーターとして宣言する

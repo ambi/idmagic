@@ -20,8 +20,8 @@ whose name owns that kind of content.
    other matching whole-system file when it owns the changed concern. Constraints and the solution strategy live
    in `docs/design/architecture/README.md`, and known risks and technical debt in
    `docs/design/architecture/risks.md`.
-3. Update a module boundary, public contracts, and feature index in `docs/modules/<context>/README.md`,
-   and its allocated quality requirements in `quality.md`. Put the design in `docs/modules/<context>/design/`
+3. Update a module boundary, public contracts, and feature index in `docs/modules/<module>/README.md`,
+   and its allocated quality requirements in `quality.md`. Put the design in `docs/modules/<module>/design/`
    under the same design areas as `docs/design/`: `architecture.md` (context, strategy, components,
    runtime flows), `data.md`, `security.md`, `reliability.md`, `performance.md`, a cross-cutting concept as
    its own file; known risks in `risks.md` and a decision that weighed alternatives in `design/decisions.md`;
@@ -29,8 +29,8 @@ whose name owns that kind of content.
    (`| 設計領域 | 内容 |`) in `design/README.md` listing every design area in order, each either linked to
    its document or described as `該当なし：<reason>`, and link `decisions.md` and `risks.md` below it;
    `check-spec` rejects an index that leaves an area out. When the change adds, renames, or
-   removes a feature slice `backend/<context>/<feature>/`, do the same to the feature node
-   `docs/modules/<context>/<group>/<feature>/` and its entry in the group index; `check-spec` rejects a slice
+   removes a feature slice `backend/<module>/<feature>/`, do the same to the feature node
+   `docs/modules/<module>/<group>/<feature>/` and its entry in the group index; `check-spec` rejects a slice
    without a node beyond `tools/check/feature-node-debt.json`, which only shrinks.
 4. Revisit `docs/design/security/threat-model.md` when the change adds a trust boundary, a principal kind, an external
    integration, or a new kind of secret, personal data, or record that must later be proven. Move a row to

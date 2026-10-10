@@ -1,7 +1,7 @@
 // Package domain: Layer 3 - Domain Layer
 //
 // TenantDataEncryptionKey is the per-tenant DEK metadata that the DataKeys
-// context owns (spec/contexts/data-keys.yaml). The plaintext DEK
+// context owns (docs/modules/data-keys/). The plaintext DEK
 // itself is never part of this struct; wrapped_dek only ever holds the
 // master-key-wrapped form produced by envelope_crypto.EnvelopeCrypto.Wrap.
 package domain
@@ -31,7 +31,7 @@ var (
 	ErrDataKeyNotFound = errors.New("datakeys: data key version not found")
 	// ErrDataKeyIsActive: DisableTenantDataKey/DestroyTenantDataKey were
 	// called on the tenant's active version; rotate it out first
-	// (spec/contexts/data-keys.yaml DisableTenantDataKey/DestroyTenantDataKey
+	// (docs/modules/data-keys/ DisableTenantDataKey/DestroyTenantDataKey
 	// requires clause).
 	ErrDataKeyIsActive = errors.New("datakeys: cannot disable or destroy an active data key")
 	// ErrDataKeyNotDisableable: DisableTenantDataKey requires status=retiring.
@@ -42,13 +42,13 @@ var (
 	// ErrDataKeyStillReferenced: DestroyTenantDataKey found a registered
 	// FieldMigrator reporting rows not yet re-encrypted onto the tenant's
 	// active version; destroying now would make those rows permanently
-	// undecryptable (spec/contexts/data-keys.yaml DataKeyStillReferencedError,
+	// undecryptable (docs/modules/data-keys/ DataKeyStillReferencedError,
 	// wi-97 T006). Run the reencryption job to completion first.
 	ErrDataKeyStillReferenced = errors.New("datakeys: cannot destroy data key while secrets are still pending re-encryption onto the active version")
 )
 
 // TenantDataEncryptionKey is one version of a tenant's DEK lifecycle
-// (spec/contexts/data-keys.yaml TenantDataEncryptionKey).
+// (docs/modules/data-keys/ TenantDataEncryptionKey).
 type TenantDataEncryptionKey struct {
 	ID          string
 	TenantID    string
@@ -63,7 +63,7 @@ type TenantDataEncryptionKey struct {
 }
 
 // TenantDataKeyHealth is the system_admin-facing health snapshot
-// (spec/contexts/data-keys.yaml TenantDataKeyHealth) — never carries key
+// (docs/modules/data-keys/ TenantDataKeyHealth) — never carries key
 // material.
 type TenantDataKeyHealth struct {
 	TenantID          string

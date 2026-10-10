@@ -1,5 +1,5 @@
 // Package http is the Provisioning module's admin HTTP adapter
-// (wi-45 T007a, spec/contexts/provisioning.yaml interfaces). It lives in the
+// (wi-45 T007a, docs/modules/provisioning/ interfaces). It lives in the
 // protocol-agnostic core (decision 2), not a protocol feature slice.
 // The account-facing/UI consumer is deferred to a follow-up (wi-45 T007b);
 // this pass focuses on making the admin API match the SCL bindings exactly
@@ -43,7 +43,7 @@ func (d Deps) adminDeps() usecases.AdminDeps {
 
 // RegisterRoutes registers the Application-detail "provisioning" subroute and
 // the tenant-wide read-only aggregate view
-// (spec/contexts/provisioning.yaml §設定の置き場所).
+// (docs/modules/provisioning/ §設定の置き場所).
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/applications/:id/provisioning", d.handleRegisterConnection)
 	g.GET("/api/admin/v1/applications/:id/provisioning", d.handleGetConnection)

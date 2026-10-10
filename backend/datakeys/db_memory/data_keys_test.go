@@ -15,7 +15,7 @@ func TestImplementsDataKeyRepositoryPort(t *testing.T) {
 }
 
 // TestBootstrapCreatesActiveVersionOne covers scenario
-// "テナント初回利用時にDEKがbootstrapされる" (spec/contexts/data-keys.yaml).
+// "テナント初回利用時にDEKがbootstrapされる" (docs/modules/data-keys/).
 func TestBootstrapCreatesActiveVersionOne(t *testing.T) {
 	repo := NewDataKeyRepository()
 	now := time.Now().UTC()
@@ -49,7 +49,7 @@ func TestBootstrapRejectsSecondCallForSameTenant(t *testing.T) {
 }
 
 // TestRotateDemotesPreviousActiveToRetiring covers scenario
-// "DEKをrotationしても既存暗号文が復号できる" (spec/contexts/data-keys.yaml).
+// "DEKをrotationしても既存暗号文が復号できる" (docs/modules/data-keys/).
 func TestRotateDemotesPreviousActiveToRetiring(t *testing.T) {
 	repo := NewDataKeyRepository()
 	ctx := context.Background()
@@ -96,7 +96,7 @@ func TestRotateRejectsWhenNoActiveKeyExists(t *testing.T) {
 }
 
 // TestDisableRequiresRetiringVersion covers scenario
-// "activeなDEKは直接disableできない" (spec/contexts/data-keys.yaml).
+// "activeなDEKは直接disableできない" (docs/modules/data-keys/).
 func TestDisableRequiresRetiringVersion(t *testing.T) {
 	repo := NewDataKeyRepository()
 	ctx := context.Background()
@@ -127,7 +127,7 @@ func TestDisableRequiresRetiringVersion(t *testing.T) {
 }
 
 // TestDestroyRequiresRetiringOrDisabled covers scenario
-// "全参照の再暗号化後にDEKをdestroyできる" (spec/contexts/data-keys.yaml).
+// "全参照の再暗号化後にDEKをdestroyできる" (docs/modules/data-keys/).
 func TestDestroyRequiresRetiringOrDisabled(t *testing.T) {
 	repo := NewDataKeyRepository()
 	ctx := context.Background()

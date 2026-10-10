@@ -13,7 +13,7 @@ import (
 )
 
 // TenantDataKeyHealthResponse never carries key material
-// (spec/contexts/data-keys.yaml TenantDataKeyHealth).
+// (docs/modules/data-keys/ TenantDataKeyHealth).
 type TenantDataKeyHealthResponse struct {
 	TenantID          string     `json:"tenant_id"`
 	ActiveVersion     int        `json:"active_version"`

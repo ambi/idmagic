@@ -38,7 +38,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 
 // TestRegisterClient_rejectsWhenHardQuotaExceeded is a wi-160 T004.5 RED test
 // for the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
-// (spec/contexts/tenancy.yaml), applied to the oauth2_clients resource. This
+// (docs/modules/tenancy/), applied to the oauth2_clients resource. This
 // covers both dynamic client registration and admin client creation since
 // CreateAdminOAuth2Client calls RegisterClient internally.
 func TestRegisterClient_rejectsWhenHardQuotaExceeded(t *testing.T) {

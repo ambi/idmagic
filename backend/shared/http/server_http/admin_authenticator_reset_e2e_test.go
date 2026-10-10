@@ -266,7 +266,7 @@ func adminCSRFToken(t *testing.T, client *http.Client, srv *httptest.Server) str
 
 // TestAdminResetUserAuthenticatorsFullResetForcesReenrollment fixes the
 // scenario "管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる"
-// (spec/contexts/authentication.yaml).
+// (docs/modules/authentication/).
 //
 //spec:covers REQ-AUTHENTICATION-022, EX-AUTHENTICATION-022-01: 全リセットが TOTP と復旧コードを消して mfa_enrolled を false にし、reenrollment_required=true と単回限りのバイパスを返し、AuthenticatorResetRequested・AuthenticatorResetCompleted・MfaEnrollmentBypassIssued を残すこと、次のログインで同じ LoginSession が Enrollment の保留になり、新しい TOTP の確定で元の遷移先へ進むことを固定する。
 func TestAdminResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {

@@ -31,7 +31,7 @@ var agentRevocationEpochSchema = z.Struct(z.Shape{
 	"AdvancedAt": z.Time().Required(),
 })
 
-// Validate は構造的妥当性 (spec/contexts/sharedsignals.yaml AgentRevocationEpoch) を検証する。
+// Validate は構造的妥当性 (docs/modules/sharedsignals/ AgentRevocationEpoch) を検証する。
 func (e AgentRevocationEpoch) Validate() error {
 	return spec.Validate(agentRevocationEpochSchema, &e)
 }

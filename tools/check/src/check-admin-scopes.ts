@@ -11,7 +11,7 @@ export async function checkAdminScopes(snapshot: WorkspaceSnapshot): Promise<Che
   const document = JSON.parse(
     await snapshot.read(await snapshot.generatedOpenApi()),
   ) as OpenApiDocument
-  const vocabulary = parseApiTokenScopes(await snapshot.read('spec/contexts/api-tokens/models.tsp'))
+  const vocabulary = parseApiTokenScopes(await snapshot.read('spec/modules/api-tokens/models.tsp'))
   const operations = collectAdminOperations(document)
   const findings = verifyAdminScopes(operations, vocabulary)
   return {

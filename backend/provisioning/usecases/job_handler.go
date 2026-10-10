@@ -16,7 +16,7 @@ import (
 )
 
 // KindProvisioningTask is the Jobs.JobKind for one ProvisioningTask
-// execution attempt (spec/contexts/provisioning.yaml §配送・信頼性). Registered
+// execution attempt (docs/modules/provisioning/ §配送・信頼性). Registered
 // via jobsdomain.RegisterKind (caller-owned kind, §5 direction) rather
 // than a hardcoded Jobs constant. Lane is default: a SCIM task
 // does not carry the low-latency requirement backchannel_logout_delivery has.

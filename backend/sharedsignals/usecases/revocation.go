@@ -31,7 +31,7 @@ func emit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error {
 }
 
 // AdvanceRevocationEpoch implements the SCL internal interface
-// AdvanceRevocationEpoch (spec/contexts/sharedsignals.yaml): it fail-closed
+// AdvanceRevocationEpoch (docs/modules/sharedsignals/): it fail-closed
 // advances the revocation epoch of every agent in agentIDs to now, and emits
 // RevocationEpochAdvanced + AgentAccessRevoked for each agent actually
 // advanced. An agent whose epoch is already at or after now

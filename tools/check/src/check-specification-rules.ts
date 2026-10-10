@@ -26,7 +26,7 @@ const SYSTEM_SCENARIOS = 'docs/requirements/scenarios.feature.md'
  * 要件文の EARS の構文を確かめるモジュール。要件文を書き直したモジュールから加え、
  * 減らす方向には動かさない。
  */
-const EARS_CONTEXTS = new Set<string>([
+const EARS_MODULES = new Set<string>([
   'tenancy',
   'identity-management',
   'claim-mapping',
@@ -73,23 +73,23 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
     anchors.set(path, markdownAnchors(await snapshot.read(path)))
   }
 
-  const featureContexts = new Set(
+  const featureModules = new Set(
     domainFiles.flatMap(
       (path) => path.match(/^docs\/modules\/([^/]+)\/design\/README\.md$/)?.[1] ?? [],
     ),
   )
   const parents = new Set(domainFiles.map((path) => posix.dirname(posix.dirname(path))))
-  const inFeatureContext = (path: string) => featureContexts.has(path.split('/')[2] ?? '')
+  const inFeatureModule = (path: string) => featureModules.has(path.split('/')[2] ?? '')
 
   const findings: Finding[] = []
   for (const path of scenarioPaths) {
     const source = await snapshot.read(path)
     findings.push(...verifyRuleFields(path, source, declarations, resolveLink))
-    if (specificationPaths.has(path) && inFeatureContext(path)) {
+    if (specificationPaths.has(path) && inFeatureModule(path)) {
       findings.push(...verifySpecificationRuleFields(path, source))
-      const context = path.split('/')[2] ?? ''
-      if (EARS_CONTEXTS.has(context)) {
-        findings.push(...verifyEarsStatements(path, source, await responder(snapshot, context)))
+      const module = path.split('/')[2] ?? ''
+      if (EARS_MODULES.has(module)) {
+        findings.push(...verifyEarsStatements(path, source, await responder(snapshot, module)))
       }
       const directory = posix.dirname(path)
       if (path.endsWith('/README.md') && !parents.has(directory)) {
@@ -100,7 +100,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
 
   const debt: FeatureSliceDebt = snapshot.exists(FEATURE_SLICE_DEBT)
     ? JSON.parse(await snapshot.read(FEATURE_SLICE_DEBT))
-    : { contextAliases: {}, unmappedSlices: [] }
+    : { moduleAliases: {}, unmappedSlices: [] }
   const backendDirectories = (await snapshot.files('backend', ['vendor', 'dist', 'build'])).map(
     (path) => posix.dirname(path),
   )
@@ -109,7 +109,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
       const directory = posix.dirname(path)
       if (/^docs\/modules\/[^/]+\/[^/]+$/.test(directory)) return [directory]
       // 機能群の一段下も機能スライスの仕様になる。内部設計の段は機能ではない。
-      return inFeatureContext(path) &&
+      return inFeatureModule(path) &&
         /^docs\/modules\/[^/]+\/[^/]+\/[^/]+$/.test(directory) &&
         directory.split('/')[3] !== 'design'
         ? [directory]
@@ -134,9 +134,9 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
 }
 
 /** 要件文の主体。モジュールの `README.md` の H1 を使う。 */
-async function responder(snapshot: WorkspaceSnapshot, context: string): Promise<string> {
-  const readme = await snapshot.read(`docs/modules/${context}/README.md`)
-  return readme.match(/^# (.+)$/m)?.[1]?.trim() ?? context
+async function responder(snapshot: WorkspaceSnapshot, module: string): Promise<string> {
+  const readme = await snapshot.read(`docs/modules/${module}/README.md`)
+  return readme.match(/^# (.+)$/m)?.[1]?.trim() ?? module
 }
 
 function decoded(value: string): string | undefined {

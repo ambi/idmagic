@@ -8,7 +8,7 @@ import (
 )
 
 // ProvisioningTrigger is the internal lifecycle event that may generate
-// ProvisioningTask rows (spec/contexts/provisioning.yaml §deprovision セマンティクス
+// ProvisioningTask rows (docs/modules/provisioning/ §deprovision セマンティクス
 // trigger 列). It intentionally does not distinguish per-connection
 // DeprovisionPolicy outcomes: CaptureLifecycleEvent applies each matching
 // connection's own policy to translate trigger into domain.ProvisioningOperation.

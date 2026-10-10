@@ -24,7 +24,7 @@ func validTrustBundle() workloaddomain.WorkloadTrustBundle {
 }
 
 // TestTrustBundleValidateHappyAndFailure — scenario `未登録issuerは拒否される` の前提となる
-// WorkloadTrustBundle の構造的妥当性を検証する (spec/contexts/workloadidentity.yaml
+// WorkloadTrustBundle の構造的妥当性を検証する (docs/modules/workloadidentity/
 // WorkloadTrustBundle constraints)。
 func TestTrustBundleValidateHappyAndFailure(t *testing.T) {
 	cases := []struct {

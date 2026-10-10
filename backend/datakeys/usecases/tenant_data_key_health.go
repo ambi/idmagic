@@ -19,7 +19,7 @@ type ListTenantDataKeyHealthDeps struct {
 }
 
 // ListTenantDataKeyHealth aggregates every tenant's DEK health
-// (spec/contexts/data-keys.yaml ListTenantDataKeyHealth): active version,
+// (docs/modules/data-keys/ ListTenantDataKeyHealth): active version,
 // status, MasterKeyProvider name, and its current reachability. It never
 // returns key material. A tenant with no DataEncryptionKey bootstrapped yet
 // (FieldCipher.Encrypt has never run for it) is simply omitted rather than

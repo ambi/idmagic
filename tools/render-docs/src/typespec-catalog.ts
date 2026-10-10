@@ -54,27 +54,27 @@ export type CatalogSymbol = {
   members: CatalogMember[]
   references: string[]
   /** The module whose directory declares the symbol, when it has one. */
-  context?: string
+  module?: string
 }
 
 export type TypeSpecCatalog = {
   symbols: CatalogSymbol[]
   /** OpenAPI tag names, by the module that declares them. */
-  contextTags: Record<string, string[]>
+  moduleTags: Record<string, string[]>
 }
 
 /**
  * The owning module of a declaration is where its source file sits. The
  * standard layout already says it, so no table has to repeat it.
  */
-function declaringContext(
+function declaringModule(
   type: Model | Enum | Union | Scalar | Namespace,
   repositoryRoot: string,
 ): string | undefined {
   const node = type.node
   if (!node) return undefined
   const path = relative(repositoryRoot, getSourceLocation(node).file.path).replaceAll('\\', '/')
-  return path.match(/^spec\/contexts\/([^/]+)\//)?.[1]
+  return path.match(/^spec\/modules\/([^/]+)\//)?.[1]
 }
 
 function namespaceName(namespace: Namespace | undefined): string {
@@ -346,25 +346,25 @@ function collectProjectTypes(program: Program, namespace: Namespace, output: Set
 }
 
 /**
- * An operation namespace carries the OpenAPI tag its context owns, so the tag a
- * reader sees in the API Reference resolves back to a context directory.
+ * An operation namespace carries the OpenAPI tag its module owns, so the tag a
+ * reader sees in the API Reference resolves back to a module directory.
  */
-function collectContextTags(
+function collectModuleTags(
   program: Program,
   namespace: Namespace,
   repositoryRoot: string,
   output: Map<string, Set<string>>,
 ): void {
-  const context = declaringContext(namespace, repositoryRoot)
-  if (context) {
+  const module = declaringModule(namespace, repositoryRoot)
+  if (module) {
     for (const tag of getTags(program, namespace)) {
-      const tags = output.get(context) ?? new Set<string>()
+      const tags = output.get(module) ?? new Set<string>()
       tags.add(tag)
-      output.set(context, tags)
+      output.set(module, tags)
     }
   }
   for (const child of namespace.namespaces.values())
-    collectContextTags(program, child, repositoryRoot, output)
+    collectModuleTags(program, child, repositoryRoot, output)
 }
 
 export function extractTypeSpecCatalog(
@@ -393,13 +393,13 @@ export function extractTypeSpecCatalog(
         continue
     }
     const symbol = symbols[symbols.length - 1]
-    if (symbol) symbol.context = declaringContext(value, repositoryRoot)
+    if (symbol) symbol.module = declaringModule(value, repositoryRoot)
   }
   const tags = new Map<string, Set<string>>()
-  collectContextTags(program, program.getGlobalNamespaceType(), repositoryRoot, tags)
+  collectModuleTags(program, program.getGlobalNamespaceType(), repositoryRoot, tags)
   return {
     symbols: symbols.sort((a, b) => a.name.localeCompare(b.name)),
-    contextTags: Object.fromEntries(
+    moduleTags: Object.fromEntries(
       [...tags.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, value]) => [key, [...value].sort()]),

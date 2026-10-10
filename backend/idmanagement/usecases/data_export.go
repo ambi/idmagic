@@ -24,7 +24,7 @@ import (
 )
 
 // KindDataExport is the Jobs.JobKind for one admin CSV data export
-// (spec/contexts/identity-management.yaml interfaces.StartResourceCsvExport).
+// (docs/modules/identity-management/ interfaces.StartResourceCsvExport).
 // It is a caller-owned kind registered on the bulk lane:
 // exports are throughput-oriented background work, not latency sensitive.
 const KindDataExport jobsdomain.JobKind = "data_export"

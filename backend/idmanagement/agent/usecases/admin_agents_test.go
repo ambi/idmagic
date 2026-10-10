@@ -127,7 +127,7 @@ func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
 
 // TestRegisterAgent_rejectsWhenHardQuotaExceeded is a wi-160 T004.3 RED test
 // for the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
-// (spec/contexts/tenancy.yaml), applied to the agents resource.
+// (docs/modules/tenancy/), applied to the agents resource.
 func TestRegisterAgent_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := defaultTenantCtx()
 	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)

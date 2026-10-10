@@ -8,7 +8,7 @@ priority: p3
 depends_on: [wi-96676-transcribe-implicit-specifications-of-identity-management]
 change_kind: bugfix
 affected_spec:
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.CreateAdminUserError400Body, impact: conforms }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.CreateAdminUserError400Body, impact: conforms }
 ---
 
 # 管理者による User の作成のパスワードポリシー違反を Problem Details で返す

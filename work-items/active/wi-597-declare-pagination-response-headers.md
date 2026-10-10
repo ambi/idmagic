@@ -8,18 +8,18 @@ priority: p2
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListAgents }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListAdminApplications }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListApplicationAssignments }
-  - { path: spec/contexts/provisioning/main.tsp, symbol: IdMagic.Provisioning.Operations.ListProvisioningTasks }
-  - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.ListAuthenticationEventBuckets }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminOAuth2Clients }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminConsents }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListGroups }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminGroupImport }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminGroupMemberImport }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListAdminUsers }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminUserImport }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListAgents }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.ListAdminApplications }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.ListApplicationAssignments }
+  - { path: spec/modules/provisioning/main.tsp, symbol: IdMagic.Provisioning.Operations.ListProvisioningTasks }
+  - { path: spec/modules/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.ListAuthenticationEventBuckets }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminOAuth2Clients }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminConsents }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListGroups }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminGroupImport }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminGroupMemberImport }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListAdminUsers }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.GetAdminUserImport }
 ---
 
 # ページングのレスポンスヘッダーを TypeSpec に宣言する

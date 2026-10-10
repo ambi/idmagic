@@ -18,7 +18,7 @@ const files: Record<string, string> = {
     '- When the user submits a request',
     '- Then the request succeeds',
   ].join('\n'),
-  'spec/contexts/demo/main.tsp': 'op StartTask(): void;',
+  'spec/modules/demo/main.tsp': 'op StartTask(): void;',
 }
 const directories = new Set(['backend/demo'])
 
@@ -93,7 +93,7 @@ describe('verifyWorkItemReferences', () => {
         affected_spec: [
           { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
           { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'RFC7644-PATCH' },
-          { path: 'spec/contexts/demo/main.tsp', symbol: 'Demo.Operations.StartTask' },
+          { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Operations.StartTask' },
         ],
       },
       environment,

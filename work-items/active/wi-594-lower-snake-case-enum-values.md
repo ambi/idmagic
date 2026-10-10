@@ -8,15 +8,15 @@ priority: p2
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.AuthorizationDetailTypeState }
-  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.McpResourceServerState }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.SsfStreamDirection }
-  - { path: spec/contexts/application/models.tsp, symbol: IdMagic.Contract.ClientSecretCredentialStatus }
-  - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.KeyProvider }
-  - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.KeyUsage }
-  - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.SigningKeyState }
-  - { path: spec/contexts/application/models.tsp, symbol: IdMagic.Contract.RequiredAuthnStrength }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.RevocationReason }
+  - { path: spec/modules/oauth2/models.tsp, symbol: IdMagic.Contract.AuthorizationDetailTypeState }
+  - { path: spec/modules/oauth2/models.tsp, symbol: IdMagic.Contract.McpResourceServerState }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.SsfStreamDirection }
+  - { path: spec/modules/application/models.tsp, symbol: IdMagic.Contract.ClientSecretCredentialStatus }
+  - { path: spec/modules/signing-keys/models.tsp, symbol: IdMagic.Contract.KeyProvider }
+  - { path: spec/modules/signing-keys/models.tsp, symbol: IdMagic.Contract.KeyUsage }
+  - { path: spec/modules/signing-keys/models.tsp, symbol: IdMagic.Contract.SigningKeyState }
+  - { path: spec/modules/application/models.tsp, symbol: IdMagic.Contract.RequiredAuthnStrength }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.RevocationReason }
 ---
 
 # パスカルケースの列挙値を小文字のスネークケースに統一する

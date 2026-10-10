@@ -126,7 +126,10 @@ const RELOCATED_DOCUMENTS = new Map([
 
 function currentPath(path: string): string {
   return (
-    RELOCATED_DOCUMENTS.get(path) ?? path.replace(/^docs\/(?:contexts|domain)\//, 'docs/modules/')
+    RELOCATED_DOCUMENTS.get(path) ??
+    path
+      .replace(/^docs\/(?:contexts|domain)\//, 'docs/modules/')
+      .replace(/^spec\/contexts\//, 'spec/modules/')
   )
 }
 
@@ -248,9 +251,9 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     }
     if (path.endsWith('.tsp')) {
       for (const [name, text] of declarationTexts(source)) {
-        facts.declarations.set(`${path}:${name}`, text)
+        facts.declarations.set(`${currentPath(path)}:${name}`, text)
       }
-      for (const declaration of deprecatedDeclarations(path, source)) {
+      for (const declaration of deprecatedDeclarations(currentPath(path), source)) {
         facts.deprecatedDeclarations.add(declaration)
       }
       continue

@@ -3,7 +3,7 @@ package domain
 import "time"
 
 // The following structs are the Provisioning module's domain events
-// (spec/contexts/provisioning.yaml models, kind: event). Each satisfies
+// (docs/modules/provisioning/ models, kind: event). Each satisfies
 // backend/shared/spec.DomainEvent (EventType() string; OccurredAt() time.Time) by
 // structural typing, without importing that package, keeping domain free of
 // dependencies on the shared SCL binding layer (backend/jobs/domain/events.go

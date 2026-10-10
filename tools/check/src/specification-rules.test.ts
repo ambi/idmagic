@@ -290,10 +290,10 @@ describe('verifyFeatureSliceSpecifications', () => {
         'backend/demo/internal/domain',
         'backend/demo/internal/usecases',
       ]),
-    ).toEqual([{ context: 'demo', name: 'session', path: 'backend/demo/internal/session' }])
+    ).toEqual([{ module: 'demo', name: 'session', path: 'backend/demo/internal/session' }])
   })
 
-  it('matches a kebab-case node to the slice named without hyphens, through a context alias', () => {
+  it('matches a kebab-case node to the slice named without hyphens, through a module alias', () => {
     expect(
       verifyFeatureSliceSpecifications(
         slices,
@@ -302,7 +302,7 @@ describe('verifyFeatureSliceSpecifications', () => {
           'docs/modules/demo/session',
           'docs/modules/id-management/user',
         ]),
-        { contextAliases: { idmgmt: 'id-management' }, unmappedSlices: [] },
+        { moduleAliases: { idmgmt: 'id-management' }, unmappedSlices: [] },
       ),
     ).toEqual([])
   })
@@ -313,7 +313,7 @@ describe('verifyFeatureSliceSpecifications', () => {
         slices,
         new Set(['docs/modules/demo/trusted-device', 'docs/modules/demo/session']),
         {
-          contextAliases: {},
+          moduleAliases: {},
           unmappedSlices: ['backend/demo/session'],
         },
       ).map((finding) => finding.message),

@@ -15,7 +15,7 @@ import (
 )
 
 // AdminDeps are the admin (Application-detail "provisioning" subroute)
-// usecases' dependencies (spec/contexts/provisioning.yaml interfaces).
+// usecases' dependencies (docs/modules/provisioning/ interfaces).
 type AdminDeps struct {
 	ConnectionRepo ports.ProvisioningConnectionRepository
 	TaskRepo       ports.ProvisioningTaskRepository
@@ -35,7 +35,7 @@ func (d AdminDeps) captureDeps() CaptureDeps {
 }
 
 // defaultSCIMUserMapping seeds the SCIM core User mapping table
-// (spec/contexts/provisioning.yaml §属性マッピングのセマンティクス 既定マッピング).
+// (docs/modules/provisioning/ §属性マッピングのセマンティクス 既定マッピング).
 func defaultSCIMUserMapping() []domain.AttributeMappingRule {
 	return []domain.AttributeMappingRule{
 		{TargetPath: "externalId", SourceKind: domain.SourceKindAttribute, SourceKey: "id", ApplyOn: domain.ApplyCreateOnly, Required: true},
@@ -58,7 +58,7 @@ type RegisterConnectionInput struct {
 }
 
 // RegisterConnection creates a ProvisioningConnection with seeded defaults
-// (spec/contexts/provisioning.yaml interfaces.RegisterProvisioningConnection).
+// (docs/modules/provisioning/ interfaces.RegisterProvisioningConnection).
 func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnectionInput) (*domain.ProvisioningConnection, error) {
 	if err := domain.ValidateOutboundBaseURL(in.BaseURL); err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ type UpdateConnectionInput struct {
 }
 
 // UpdateConnection applies a partial update to an existing connection
-// (spec/contexts/provisioning.yaml interfaces.UpdateProvisioningConnection).
+// (docs/modules/provisioning/ interfaces.UpdateProvisioningConnection).
 func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionInput) (*domain.ProvisioningConnection, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, in.TenantID, in.ApplicationID)
 	if err != nil {
@@ -256,7 +256,7 @@ type TestConnectionResult struct {
 }
 
 // TestConnection calls the downstream /ServiceProviderConfig and persists the
-// discovered capabilities (spec/contexts/provisioning.yaml
+// discovered capabilities (docs/modules/provisioning/
 // interfaces.TestProvisioningConnection).
 func TestConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (TestConnectionResult, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
@@ -290,7 +290,7 @@ func TestConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID
 var ErrSubjectNotInScope = errors.New("provisioning: subject is not in this connection's scope")
 
 // ProvisionOnDemand creates an immediate pending task for a single subject
-// (spec/contexts/provisioning.yaml interfaces.ProvisionOnDemand).
+// (docs/modules/provisioning/ interfaces.ProvisionOnDemand).
 func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicationID string, sourceType domain.ProvisioningSourceType, sourceID string, now time.Time) (*domain.ProvisioningTask, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {
@@ -324,7 +324,7 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 }
 
 // StartFullResync enqueues an update task for every subject in the
-// connection's scope (spec/contexts/provisioning.yaml interfaces.StartFullResync).
+// connection's scope (docs/modules/provisioning/ interfaces.StartFullResync).
 // 対象数を確定した FullResync を先に保存し、各プロビジョニングタスクをそれへ関連付ける。
 // FullResyncCompleted は最後のプロビジョニングタスクを終端にしたジョブが発行し、対象が 0 件ならここで発行する
 // (docs/modules/provisioning/connection/design.md)。
@@ -448,7 +448,7 @@ func GetTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskI
 var ErrTaskNotRetryable = errors.New("provisioning: task is not dead_letter")
 
 // RetryTask resets a dead_letter task to pending
-// (spec/contexts/provisioning.yaml interfaces.RetryProvisioningTask).
+// (docs/modules/provisioning/ interfaces.RetryProvisioningTask).
 func RetryTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*domain.ProvisioningTask, error) {
 	d, err := GetTask(ctx, deps, tenantID, applicationID, taskID)
 	if err != nil {
@@ -467,7 +467,7 @@ func RetryTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, tas
 	return deps.TaskRepo.Find(ctx, tenantID, taskID)
 }
 
-// ResumeConnection clears quarantine (spec/contexts/provisioning.yaml
+// ResumeConnection clears quarantine (docs/modules/provisioning/
 // interfaces.ResumeProvisioningConnection).
 func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (*domain.ProvisioningConnection, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
@@ -488,7 +488,7 @@ func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, application
 }
 
 // ListTenantConnections lists every connection in the tenant
-// (spec/contexts/provisioning.yaml interfaces.ListTenantProvisioningConnections).
+// (docs/modules/provisioning/ interfaces.ListTenantProvisioningConnections).
 func ListTenantConnections(ctx context.Context, deps AdminDeps, tenantID string) ([]*domain.ProvisioningConnection, error) {
 	return deps.ConnectionRepo.ListAll(ctx, tenantID)
 }

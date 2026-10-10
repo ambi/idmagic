@@ -59,7 +59,7 @@ func containsEventType(events []spec.DomainEvent, eventType string) bool {
 
 // TestResetUserAuthenticatorsFullResetForcesReenrollment は scenario
 // "管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる"
-// (spec/contexts/authentication.yaml) を固定する。
+// (docs/modules/authentication/) を固定する。
 func TestResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newAuthenticatorResetDeps(t)

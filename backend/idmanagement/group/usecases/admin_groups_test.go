@@ -234,7 +234,7 @@ func TestUpdateGroupValidationErrors(t *testing.T) {
 
 // TestCreateGroup_rejectsWhenHardQuotaExceeded is a wi-160 T004.2 RED test for
 // the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
-// (spec/contexts/tenancy.yaml).
+// (docs/modules/tenancy/).
 func TestCreateGroup_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)

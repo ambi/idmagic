@@ -63,35 +63,35 @@ const wantedRule = ruleOf(query)
 // The declaring document is found by searching, not by mapping the id prefix to
 // a directory name. A mapping is a guess, it is wrong for exactly the contexts
 // whose prefix and directory disagree, and being wrong there is silent.
-const contextDirs = (await readdir(resolve(root, 'docs/modules'), { withFileTypes: true }))
+const moduleDirs = (await readdir(resolve(root, 'docs/modules'), { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
 let located:
   | {
-      contextDir: string
+      moduleDir: string
       docPath: string
       rule: ReturnType<typeof parseScenarioDocument>['rules'][number]
     }
   | undefined
 // システムの `scenarios.feature.md` と、機能スライスの付録 `acceptance.feature.md` が例の置き場所になる。
 // 機能スライスはモジュールの一段下か、機能群の一段下にある。
-const candidates: Array<{ contextDir: string; docPath: string }> = [
-  { contextDir: '', docPath: 'docs/requirements/scenarios.feature.md' },
+const candidates: Array<{ moduleDir: string; docPath: string }> = [
+  { moduleDir: '', docPath: 'docs/requirements/scenarios.feature.md' },
 ]
-for (const contextDir of contextDirs) {
-  for (const path of (await walk(resolve(root, 'docs/modules', contextDir))).sort()) {
+for (const moduleDir of moduleDirs) {
+  for (const path of (await walk(resolve(root, 'docs/modules', moduleDir))).sort()) {
     const docPath = relative(root, path)
     if (docPath.endsWith('/acceptance.feature.md')) {
-      candidates.push({ contextDir, docPath })
+      candidates.push({ moduleDir, docPath })
     }
   }
 }
-for (const { contextDir, docPath } of candidates) {
+for (const { moduleDir, docPath } of candidates) {
   const source = await readFile(resolve(root, docPath), 'utf8').catch(() => undefined)
   if (source === undefined) continue
   const rule = parseScenarioDocument(source).rules.find((candidate) => candidate.id === wantedRule)
   if (rule) {
-    located = { contextDir, docPath, rule }
+    located = { moduleDir, docPath, rule }
     break
   }
 }
@@ -99,7 +99,7 @@ if (!located) {
   console.error(`${query}: no scenarios document declares ${wantedRule}`)
   process.exit(1)
 }
-const { contextDir, docPath, rule } = located
+const { moduleDir, docPath, rule } = located
 
 const examples = rule.examples.filter((example) => !query.startsWith('EX-') || example.id === query)
 if (examples.length === 0) {
@@ -121,7 +121,7 @@ const join = joinableFacts(examples.flatMap((example) => example.steps.map((step
 const typespec = (
   await Promise.all(
     (
-      await walk(resolve(root, 'spec/contexts', contextDir || '.')).catch(() => [])
+      await walk(resolve(root, 'spec/modules', moduleDir || '.')).catch(() => [])
     )
       .filter((path) => path.endsWith('.tsp'))
       .map((path) => readFile(path, 'utf8')),

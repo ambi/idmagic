@@ -52,12 +52,12 @@ export async function checkDocuments(
   )
   let failed = lines.length > 0
   // 機能スライスは `docs/modules/` の二段目以降にあるので、直下のディレクトリだけを集める。
-  const contextDirectories = listings
+  const moduleDirectories = listings
     .filter((listing) => /^docs\/modules\/[^/]+$/.test(listing.directory))
     .map((listing) => listing.directory.slice('docs/modules/'.length))
 
   const view = describeDocumentSet(listings)
-  const layout = verifyFeatureLayout(contextDirectories, view)
+  const layout = verifyFeatureLayout(moduleDirectories, view)
   failed ||= layout.length > 0
   lines.push(...layout)
 

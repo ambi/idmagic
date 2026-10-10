@@ -20,7 +20,7 @@ flowchart LR
 
 | File | Content |
 |---|---|
-| [modules/demo/README.md](modules/demo/README.md) | The demo context |
+| [modules/demo/README.md](modules/demo/README.md) | The demo module |
 `,
 }
 
@@ -84,11 +84,11 @@ const designGuidelinesDocument = {
   source: '# 設計ガイドライン\n\n設計の観点。\n',
 }
 
-const contextDocument = {
+const moduleDocument = {
   path: 'docs/modules/demo/README.md',
   source: `# Demo
 
-The demo context.
+The demo module.
 
 | File | Content |
 |---|---|
@@ -97,7 +97,7 @@ The demo context.
 `,
 }
 
-const contextDesignDocument = {
+const moduleDesignDocument = {
   path: 'docs/modules/demo/design/README.md',
   source: '# Demo の内部設計\n\n構成。\n',
 }
@@ -165,12 +165,12 @@ const glossaryDocument = {
 `,
 }
 
-const contextStandardsDocument = {
+const moduleStandardsDocument = {
   path: 'docs/modules/demo/standards.md',
   source: '# Demo Standards\n\n採用する標準仕様。\n',
 }
 
-const contextQualityDocument = {
+const moduleQualityDocument = {
   path: 'docs/modules/demo/quality.md',
   source: '# Demo Quality\n\n割り当てた品質要求。\n',
 }
@@ -239,7 +239,7 @@ const models: CatalogSymbol[] = [
     shortName: 'InternalRecord',
     doc: 'A specification model that is not exposed by HTTP.',
     apiExposed: false,
-    context: 'demo',
+    module: 'demo',
     properties: [
       {
         name: 'id',
@@ -274,11 +274,11 @@ const site = () =>
       runbookDocument,
       developmentDocument,
       releaseDocument,
-      contextDocument,
-      contextQualityDocument,
-      contextStandardsDocument,
+      moduleDocument,
+      moduleQualityDocument,
+      moduleStandardsDocument,
       glossaryDocument,
-      contextDesignDocument,
+      moduleDesignDocument,
       runDocument,
       examplesDocument,
       documentationGuideDocument,
@@ -297,7 +297,7 @@ const site = () =>
       },
     },
     models,
-    contextTags: { demo: ['Demo'] },
+    moduleTags: { demo: ['Demo'] },
   })
 
 /** Every page carries the navigation twice, once for the sidebar and once for the mobile header. */
@@ -305,7 +305,7 @@ const sidebar = (html: string | undefined) =>
   (html ?? '').slice((html ?? '').indexOf('<aside class="sidebar">'))
 
 const childLabels = (html: string | undefined) => {
-  return [...sidebar(html).matchAll(/class="nav-link nav-context-child"[^>]*>([^<]+)</g)].map(
+  return [...sidebar(html).matchAll(/class="nav-link nav-module-child"[^>]*>([^<]+)</g)].map(
     (match) => match[1],
   )
 }
@@ -430,7 +430,7 @@ describe('renderDocumentationSite', () => {
     expect(site().files['docs/formats/work-item-format.html']).not.toContain('scenario-keyword')
   })
 
-  it('names context children by content and lists them in canonical order', () => {
+  it('names module children by content and lists them in canonical order', () => {
     const page = site().files['docs/modules/demo/index.html']
 
     // 最後の「例」は、モジュールの下に入れ子になった機能スライス（実行）の子である。
@@ -438,12 +438,12 @@ describe('renderDocumentationSite', () => {
     expect(page).not.toContain('>glossary.md<')
   })
 
-  it('nests a feature slice and its documents under the context that owns it', () => {
+  it('nests a feature slice and its documents under the module that owns it', () => {
     const result = renderDocumentationSite({
       documents: [
         rootDocument,
-        contextDocument,
-        contextDesignDocument,
+        moduleDocument,
+        moduleDesignDocument,
         {
           path: 'docs/modules/demo/user/README.md',
           source: '# ユーザー\n\n#### REQ-DEMO-002 a user is created\n\n- 要求でユーザーを作る。\n',
@@ -478,11 +478,11 @@ describe('renderDocumentationSite', () => {
     expect(page).toContain('REQ-DEMO-002')
     expect(result.files['docs/modules/demo/user/index.html']).toBeDefined()
     expect(childLabels(page)).toEqual(['内部設計', '例'])
-    const contextBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
-    expect(contextBranch).toContain('>ユーザー</a>')
+    const moduleBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
+    expect(moduleBranch).toContain('>ユーザー</a>')
   })
 
-  it('renders a context in the feature layout with generated rule indexes', () => {
+  it('renders a module in the feature layout with generated rule indexes', () => {
     const result = renderDocumentationSite({
       documents: [
         rootDocument,
@@ -555,9 +555,9 @@ describe('renderDocumentationSite', () => {
         'backend/demoimpl/task/usecases/testdata/task.examples.json',
         'backend/demoimpl/task/testing_contract/contract.go',
         'backend/demoimpl/other/usecases/other_test.go',
-        'spec/contexts/demo/main.tsp',
+        'spec/modules/demo/main.tsp',
       ],
-      contextAliases: { demoimpl: 'demo' },
+      moduleAliases: { demoimpl: 'demo' },
     })
     const task = result.files['docs/modules/demo/work/task/index.html'] ?? ''
 
@@ -597,7 +597,7 @@ describe('renderDocumentationSite', () => {
     expect(featureMap).toContain('backend/demoimpl/task/usecases/task_test.go')
     expect(featureMap).toContain('backend/demoimpl/task/usecases/testdata/task.examples.json')
     expect(featureMap).toContain('backend/demoimpl/task/testing_contract/contract.go')
-    expect(featureMap).toContain('spec/contexts/demo/main.tsp')
+    expect(featureMap).toContain('spec/modules/demo/main.tsp')
     expect(featureMap).not.toContain('other_test.go')
     expect(result.files['docs/modules/demo/work/task/acceptance.html']).toContain(
       'scenario-keyword when',
@@ -612,7 +612,7 @@ describe('renderDocumentationSite', () => {
       documents: [
         rootDocument,
         developmentDocument,
-        contextDocument,
+        moduleDocument,
         {
           path: 'docs/modules/demo/glossary.md',
           source: '# Demo の用語集\n\n| 用語 | 定義 |\n|---|---|\n| 用語 | 定義 |\n',
@@ -748,9 +748,9 @@ describe('renderDocumentationSite', () => {
     const page = site().files['docs/modules/demo/run/acceptance.html'] ?? ''
 
     expect(page).toContain('<nav class="page-toc" aria-label="このページの内容">')
-    expect(page).toContain('href="#context-demo-run-acceptance-rule-req-demo-001-a-demo-runs"')
+    expect(page).toContain('href="#module-demo-run-acceptance-rule-req-demo-001-a-demo-runs"')
     expect(page).toContain(
-      'class="page-toc-h3"><a data-site-link href="#context-demo-run-acceptance-example-ex-demo-001-01-a-ready-demo-starts"',
+      'class="page-toc-h3"><a data-site-link href="#module-demo-run-acceptance-example-ex-demo-001-01-a-ready-demo-starts"',
     )
     // 見出しが一つしかないページに目次を出しても、本文を繰り返すだけである。
     expect(site().files['docs/requirements/product-overview.html']).not.toContain('page-toc')
@@ -788,9 +788,9 @@ describe('renderDocumentationSite', () => {
     ])
     expect(top).not.toContain('<details class="nav-section" open>')
 
-    const context = sidebar(result.files['docs/modules/demo/index.html'])
-    expect(context.match(/<details class="nav-section" open>/g)).toHaveLength(1)
-    expect(context).toContain('<details class="nav-section" open><summary>')
+    const module = sidebar(result.files['docs/modules/demo/index.html'])
+    expect(module.match(/<details class="nav-section" open>/g)).toHaveLength(1)
+    expect(module).toContain('<details class="nav-section" open><summary>')
   })
 
   // 地の文を主役に置く体裁なので、枠と影で本文を囲まず、階層は字下げで示す。
@@ -822,7 +822,7 @@ describe('renderDocumentationSite', () => {
    */
   it('hands Swagger UI a document with no reference left to resolve', () => {
     const result = renderDocumentationSite({
-      documents: [rootDocument, contextDocument],
+      documents: [rootDocument, moduleDocument],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
@@ -849,7 +849,7 @@ describe('renderDocumentationSite', () => {
         },
       },
       models: [],
-      contextTags: { demo: ['Demo'] },
+      moduleTags: { demo: ['Demo'] },
     })
     const page = result.files['api/index.html'] ?? ''
 
@@ -870,7 +870,7 @@ describe('renderDocumentationSite', () => {
     expect(site().assets['site.css']).toContain('.term-table td:first-child{white-space:nowrap}')
   })
 
-  it('leads from a context to its own operations and models', () => {
+  it('leads from a module to its own operations and models', () => {
     const result = site()
     const page = result.files['docs/modules/demo/index.html'] ?? ''
 
@@ -879,14 +879,14 @@ describe('renderDocumentationSite', () => {
     expect(page).toContain('<th scope="col">説明</th>')
     expect(page).toContain('href="../../../api/index.html?tag=Demo"')
     expect(page).toContain('List things')
-    expect(page).toContain('href="../../../models/index.html#context-demo"')
+    expect(page).toContain('href="../../../models/index.html#module-demo"')
     expect(page).toContain('href="../../../models/example-demo-internalrecord.html"')
-    expect(result.files['models/index.html']).toContain('<h2 id="context-demo">Demo</h2>')
+    expect(result.files['models/index.html']).toContain('<h2 id="module-demo">Demo</h2>')
   })
 
   it('uses an OpenAPI description before exposing an operation identifier', () => {
     const result = renderDocumentationSite({
-      documents: [rootDocument, contextDocument],
+      documents: [rootDocument, moduleDocument],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
@@ -902,7 +902,7 @@ describe('renderDocumentationSite', () => {
         },
       },
       models: [],
-      contextTags: { demo: ['Demo'] },
+      moduleTags: { demo: ['Demo'] },
     })
     const page = result.files['docs/modules/demo/index.html'] ?? ''
 
@@ -992,7 +992,7 @@ describe('renderDocumentationSite', () => {
 
   it('renders doc comments as the Markdown they are written in', () => {
     const result = renderDocumentationSite({
-      documents: [rootDocument, contextDocument],
+      documents: [rootDocument, moduleDocument],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',
@@ -1025,7 +1025,7 @@ describe('renderDocumentationSite', () => {
 
   it('explains undocumented model properties from their established field meaning', () => {
     const result = renderDocumentationSite({
-      documents: [rootDocument, contextDocument],
+      documents: [rootDocument, moduleDocument],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/site',
       openapiFileName: 'example.openapi.json',

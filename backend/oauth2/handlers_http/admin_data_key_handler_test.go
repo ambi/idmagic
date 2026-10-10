@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "systemAdminがテナント横断でDEK健全性を一覧する"
-// (spec/contexts/data-keys.yaml) を /api/admin/v1/data-keys/health 経由で検証する
+// (docs/modules/data-keys/) を /api/admin/v1/data-keys/health 経由で検証する
 // (wi-97 T007)。
 
 import (

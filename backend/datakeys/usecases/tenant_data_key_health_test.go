@@ -38,7 +38,7 @@ func (f *fakeTenantRepo) Save(ctx context.Context, tenant *tenancydomain.Tenant)
 
 // TestListTenantDataKeyHealth_ReportsBootstrappedTenantsAndOmitsUnbootstrapped
 // covers scenario "systemAdminがテナント横断でDEK健全性を一覧する"
-// (spec/contexts/data-keys.yaml): each tenant's active_version/status/
+// (docs/modules/data-keys/): each tenant's active_version/status/
 // provider/provider_reachable is returned without key material, and a
 // tenant with no DataEncryptionKey yet is simply absent rather than erroring.
 func TestListTenantDataKeyHealth_ReportsBootstrappedTenantsAndOmitsUnbootstrapped(t *testing.T) {

@@ -16,28 +16,28 @@ import {
  * 検査するモジュール。誤検出の割合を確かめてから広げるので、要件の書き直しを終えたモジュールだけとする。
  * `backend` は、そのモジュールのドメインイベントを宣言する Go の木である。
  */
-const CONTEXTS = [
-  { context: 'identity-management', backend: 'backend/idmanagement' },
-  { context: 'tenancy', backend: 'backend/tenancy' },
-  { context: 'api-tokens', backend: 'backend/apitoken' },
-  { context: 'application', backend: 'backend/application' },
-  { context: 'audit', backend: 'backend/audit' },
-  { context: 'authentication', backend: 'backend/authentication' },
-  { context: 'authorization', backend: 'backend/authorization' },
-  { context: 'claim-mapping', backend: 'backend/claimmapping' },
-  { context: 'data-keys', backend: 'backend/datakeys' },
-  { context: 'identity-governance', backend: 'backend/idgovernance' },
-  { context: 'jobs', backend: 'backend/jobs' },
-  { context: 'oauth2', backend: 'backend/oauth2' },
-  { context: 'provisioning', backend: 'backend/provisioning' },
-  { context: 'saml', backend: 'backend/saml' },
-  { context: 'seeding', backend: 'backend/seeding' },
-  { context: 'sharedsignals', backend: 'backend/sharedsignals' },
-  { context: 'signing-keys', backend: 'backend/signingkeys' },
-  { context: 'sourcing', backend: 'backend/sourcing' },
-  { context: 'system', backend: 'backend/shared/spec' },
-  { context: 'workloadidentity', backend: 'backend/workloadidentity' },
-  { context: 'ws-federation', backend: 'backend/wsfederation' },
+const MODULES = [
+  { module: 'identity-management', backend: 'backend/idmanagement' },
+  { module: 'tenancy', backend: 'backend/tenancy' },
+  { module: 'api-tokens', backend: 'backend/apitoken' },
+  { module: 'application', backend: 'backend/application' },
+  { module: 'audit', backend: 'backend/audit' },
+  { module: 'authentication', backend: 'backend/authentication' },
+  { module: 'authorization', backend: 'backend/authorization' },
+  { module: 'claim-mapping', backend: 'backend/claimmapping' },
+  { module: 'data-keys', backend: 'backend/datakeys' },
+  { module: 'identity-governance', backend: 'backend/idgovernance' },
+  { module: 'jobs', backend: 'backend/jobs' },
+  { module: 'oauth2', backend: 'backend/oauth2' },
+  { module: 'provisioning', backend: 'backend/provisioning' },
+  { module: 'saml', backend: 'backend/saml' },
+  { module: 'seeding', backend: 'backend/seeding' },
+  { module: 'sharedsignals', backend: 'backend/sharedsignals' },
+  { module: 'signing-keys', backend: 'backend/signingkeys' },
+  { module: 'sourcing', backend: 'backend/sourcing' },
+  { module: 'system', backend: 'backend/shared/spec' },
+  { module: 'workloadidentity', backend: 'backend/workloadidentity' },
+  { module: 'ws-federation', backend: 'backend/wsfederation' },
 ]
 
 /** 導入時点の違反の一覧。モジュールごとに持ち、減る方向にしか動かさない。 */
@@ -51,8 +51,8 @@ export async function checkUnspecifiedVocabulary(
     : {}
   const lines: string[] = []
   let terms = 0
-  for (const { context, backend } of CONTEXTS) {
-    const typespecDirectory = `spec/contexts/${context}`
+  for (const { module, backend } of MODULES) {
+    const typespecDirectory = `spec/modules/${module}`
     const errors = new Map<string, string[]>()
     for (const path of await snapshot.files(typespecDirectory, [])) {
       if (!path.endsWith('.tsp')) continue
@@ -66,7 +66,7 @@ export async function checkUnspecifiedVocabulary(
       for (const event of collectEventTypes(await snapshot.read(path))) events.add(event)
     }
     const texts: SpecifiedTexts = { requirements: [], transitions: [] }
-    for (const path of await snapshot.files(`docs/modules/${context}`, [])) {
+    for (const path of await snapshot.files(`docs/modules/${module}`, [])) {
       if (documentKind(path) !== 'specification') continue
       const read = specifiedTexts(await snapshot.read(path))
       texts.requirements.push(...read.requirements)
@@ -74,14 +74,14 @@ export async function checkUnspecifiedVocabulary(
     }
     terms += errors.size + events.size
     const found = findUnspecified({ errors, events: [...events] }, texts)
-    const { fresh, stale } = compareWithDebt(found, debts[context] ?? { errors: [], events: [] })
+    const { fresh, stale } = compareWithDebt(found, debts[module] ?? { errors: [], events: [] })
     lines.push(
       ...fresh.map(
-        (term) => `fail  ${context}: ${describe(term)} appears in no requirement of the context`,
+        (term) => `fail  ${module}: ${describe(term)} appears in no requirement of the module`,
       ),
       ...stale.map(
         (term) =>
-          `fail  ${context}: ${describe(term)} appears in a requirement now; remove it from ${DEBT}`,
+          `fail  ${module}: ${describe(term)} appears in a requirement now; remove it from ${DEBT}`,
       ),
     )
   }

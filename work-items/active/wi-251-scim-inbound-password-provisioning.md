@@ -8,8 +8,8 @@ depends_on: []
 change_kind: feature
 affected_spec:
   - { path: docs/modules/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
 ---
 
 # SCIM inbound password provisioning への対応可否を判断し、対応する場合は実装する

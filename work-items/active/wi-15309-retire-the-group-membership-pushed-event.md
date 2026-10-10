@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 change_kind: maintenance
 affected_spec:
-  - { path: spec/contexts/provisioning/models.tsp, symbol: IdMagic.Contract.GroupMembershipPushed }
+  - { path: spec/modules/provisioning/models.tsp, symbol: IdMagic.Contract.GroupMembershipPushed }
 ---
 
 # 発行されない GroupMembershipPushed のイベントと遷移を消す

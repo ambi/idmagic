@@ -9,7 +9,7 @@ import (
 )
 
 // DataKeyRepository owns the atomicity of the DataEncryptionKeyLifecycle
-// state machine (spec/contexts/data-keys.yaml): each mutating method
+// state machine (docs/modules/data-keys/): each mutating method
 // performs its state transition (and, for Bootstrap/Rotate, the "at most one
 // active version per tenant" invariant) as a single atomic operation, the
 // same shape as backend/signingkeys/ports.KeyStore's Rotate.

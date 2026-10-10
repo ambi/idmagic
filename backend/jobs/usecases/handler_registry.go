@@ -13,7 +13,7 @@ import (
 // ErrHandlerNotRegistered is returned by HandlerRegistry.Lookup (and
 // surfaced as the Job's failure) when no Handler is registered for a claimed
 // Job's Kind. This should only happen if a worker is running with a stale
-// binary that predates a JobKind added to spec/contexts/jobs.yaml.
+// binary that predates a JobKind added to docs/modules/jobs/.
 var ErrHandlerNotRegistered = errors.New("jobs: no handler registered for job kind")
 
 // Handler executes a claimed Job's business logic. It must be idempotent
@@ -23,7 +23,7 @@ var ErrHandlerNotRegistered = errors.New("jobs: no handler registered for job ki
 type Handler func(ctx context.Context, job *domain.Job) (result json.RawMessage, err error)
 
 // HandlerRegistry maps a JobKind to the Handler that executes it. A JobKind
-// must first be added to spec/contexts/jobs.yaml (SCL-first) before a
+// must first be added to docs/modules/jobs/ (SCL-first) before a
 // consumer WI registers its Handler here.
 type HandlerRegistry struct {
 	mu       sync.RWMutex
@@ -35,7 +35,7 @@ func NewHandlerRegistry() *HandlerRegistry {
 }
 
 // Register adds h as the Handler for kind, overwriting any previous
-// registration. It panics if kind is not a valid spec/contexts/jobs.yaml
+// registration. It panics if kind is not a valid docs/modules/jobs/
 // JobKind, since that is a programmer error caught at worker startup.
 func (r *HandlerRegistry) Register(kind domain.JobKind, h Handler) {
 	if !kind.Valid() {

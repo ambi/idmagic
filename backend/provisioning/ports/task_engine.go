@@ -7,7 +7,7 @@ import (
 )
 
 // AttributeSource resolves a source aggregate's current attributes for the
-// mapping engine (spec/contexts/provisioning.yaml models.AttributeMappingRule
+// mapping engine (docs/modules/provisioning/ models.AttributeMappingRule
 // source_kind=attribute). exists=false means the source aggregate itself is
 // gone (e.g. hard-deleted), distinct from individual missing attributes.
 type AttributeSource interface {

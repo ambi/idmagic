@@ -25,7 +25,7 @@ type EnqueueDeps struct {
 }
 
 // Enqueue validates input and inserts a new Job (EnqueueJob,
-// spec/contexts/jobs.yaml). It rejects unregistered JobKinds, applies
+// docs/modules/jobs/). It rejects unregistered JobKinds, applies
 // domain.DefaultMaxAttempts when input.MaxAttempts is unset, defaults RunAt to
 // now when unset, and emits JobEnqueued only when a new Job was actually
 // created (not on a JobHandlerIdempotency dedup hit).

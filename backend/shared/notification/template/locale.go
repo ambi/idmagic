@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// FallbackLocale は最終段の既定 locale。UI の FallbackLocale (spec/contexts/system.yaml の
+// FallbackLocale は最終段の既定 locale。UI の FallbackLocale (docs/modules/system/ の
 // UX-LOCALE) と同じ値を使い、画面とメールで既定言語が食い違わないようにする。
 const FallbackLocale = "en"
 

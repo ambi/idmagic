@@ -253,7 +253,7 @@ func TestDisableTenantDataKeyRejectsActiveVersion(t *testing.T) {
 }
 
 // TestDisableTenantDataKeyLocksOutRetiringVersion covers scenario
-// "retiringのDEKを即時ロックアウトできる" (spec/contexts/data-keys.yaml).
+// "retiringのDEKを即時ロックアウトできる" (docs/modules/data-keys/).
 func TestDisableTenantDataKeyLocksOutRetiringVersion(t *testing.T) {
 	deps := newTestDeps(t)
 	ctx := context.Background()
@@ -276,7 +276,7 @@ func TestDisableTenantDataKeyLocksOutRetiringVersion(t *testing.T) {
 }
 
 // TestDestroyTenantDataKeyErasesWrappedDEK covers scenario
-// "全参照の再暗号化後にDEKをdestroyできる" (spec/contexts/data-keys.yaml).
+// "全参照の再暗号化後にDEKをdestroyできる" (docs/modules/data-keys/).
 func TestDestroyTenantDataKeyErasesWrappedDEK(t *testing.T) {
 	deps := newTestDeps(t)
 	ctx := context.Background()

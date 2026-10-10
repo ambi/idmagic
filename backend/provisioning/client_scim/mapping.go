@@ -14,7 +14,7 @@ import (
 )
 
 // MappingOperation distinguishes create from update for AttributeMappingRule's
-// apply_on filtering (spec/contexts/provisioning.yaml models.AttributeApplyOn).
+// apply_on filtering (docs/modules/provisioning/ models.AttributeApplyOn).
 type MappingOperation int
 
 const (
@@ -29,7 +29,7 @@ type AttributeResolver func(key string) (value any, ok bool)
 var multiValuedFilterPath = regexp.MustCompile(`^([A-Za-z0-9_]+)\[([A-Za-z0-9_]+)\s+eq\s+"([^"]*)"\]\.([A-Za-z0-9_]+)$`)
 
 // BuildResource applies rules against resolve to build a SCIM resource document
-// (spec/contexts/provisioning.yaml models.AttributeMappingRule). op selects
+// (docs/modules/provisioning/ models.AttributeMappingRule). op selects
 // create vs update: create_only rules are skipped when op is ApplyOnUpdate.
 // A required rule that cannot resolve any value (no attribute, no constant, no
 // default) fails closed with an error rather than sending a partial resource.

@@ -1,4 +1,4 @@
-// UX-LOCALE (spec/contexts/system.yaml): idmagic は ja/en のみをサポート対象とする。
+// UX-LOCALE (docs/modules/system/): idmagic は ja/en のみをサポート対象とする。
 export const SUPPORTED_LOCALES = ['ja', 'en'] as const
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number]

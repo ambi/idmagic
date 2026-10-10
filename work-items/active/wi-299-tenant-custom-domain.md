@@ -7,11 +7,11 @@ priority: p2
 depends_on: [wi-285-tenant-endpoint-style-and-host-based-resolution]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantEndpointStyle }
-  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }
-  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
+  - { path: spec/modules/tenancy/models.tsp, symbol: IdMagic.Contract.TenantEndpointStyle }
+  - { path: spec/modules/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }
+  - { path: spec/modules/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
   - { path: docs/modules/tenancy/resolution/README.md, requirement: REQ-TENANCY-009 }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Contract.SetTenantEndpointStyle }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Contract.SetTenantEndpointStyle }
 ---
 
 # 顧客が所有するカスタムドメインを DNS TXT で検証し、テナントの正規ロケーションにする

@@ -33,7 +33,7 @@ type ReceiveDeps struct {
 }
 
 // ReceiveSecurityEvent implements the SCL interface ReceiveSecurityEvent
-// (spec/contexts/sharedsignals.yaml): it verifies an inbound SET against the
+// (docs/modules/sharedsignals/): it verifies an inbound SET against the
 // stream's SsfReceiverConfig, and on success reflects it as LocalRevocation
 // (AdvanceRevocationEpoch, reason=InboundSecurityEvent) — external-origin
 // signals converge onto the same fail-closed revocation path as idmagic's

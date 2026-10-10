@@ -20,7 +20,7 @@ var _ ports.ProvisioningTargetClient = (*Client)(nil)
 
 // Client is the outbound SCIM 2.0 wire client for one ProvisioningConnection.
 // It sends idempotent, mapping-driven resource documents built by BuildResource
-// to a downstream SCIM service provider (spec/contexts/provisioning.yaml §配送・信頼性).
+// to a downstream SCIM service provider (docs/modules/provisioning/ §配送・信頼性).
 // HTTPClient is injectable so tests can point it at an httptest.Server without
 // the SSRF-safe dialer NewClient builds for production use (mirrors
 // backend/shared/security/tokens_jose.JWKResolver's ValidateJWKSURI/safeIPs split).
@@ -165,7 +165,7 @@ func parseRetryAfter(header string) time.Duration {
 
 // Discover fetches /ServiceProviderConfig and caches nothing itself; callers
 // persist the result on ProvisioningConnection.Capabilities
-// (spec/contexts/provisioning.yaml interfaces.TestProvisioningConnection).
+// (docs/modules/provisioning/ interfaces.TestProvisioningConnection).
 func (c *Client) Discover(ctx context.Context) (domain.ProvisioningCapabilities, error) {
 	resp, data, err := c.do(ctx, http.MethodGet, "/ServiceProviderConfig", nil) //nolint:bodyclose // do() already reads and closes resp.Body before returning
 	if err != nil {
@@ -312,7 +312,7 @@ func (c *Client) updateResource(ctx context.Context, path string, doc map[string
 }
 
 // PatchGroupMembers sends a single add/remove Operation against a Group's
-// members attribute (spec/contexts/provisioning.yaml events.GroupMembershipPushed).
+// members attribute (docs/modules/provisioning/ events.GroupMembershipPushed).
 // op must be "add" or "remove".
 func (c *Client) PatchGroupMembers(ctx context.Context, remoteGroupID, op string, remoteUserIDs []string) error {
 	members := make([]map[string]string, 0, len(remoteUserIDs))
@@ -364,7 +364,7 @@ func (c *Client) deleteResource(ctx context.Context, path string) error {
 
 // SearchUserByAttribute resolves a 409 conflict by looking up the existing
 // downstream resource via MatchingRule.conflict_match_attribute
-// (spec/contexts/provisioning.yaml models.MatchingRule).
+// (docs/modules/provisioning/ models.MatchingRule).
 func (c *Client) SearchUserByAttribute(ctx context.Context, attribute, value string) (remoteID string, found bool, err error) {
 	return c.searchResource(ctx, "/Users", attribute, value)
 }

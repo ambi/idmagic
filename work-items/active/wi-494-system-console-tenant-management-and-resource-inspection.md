@@ -21,23 +21,23 @@ affected_spec:
   - { path: docs/modules/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
   - { path: docs/modules/application/catalog/README.md, requirement: REQ-APPLICATION-001 }
   - { path: docs/modules/oauth2/client/README.md, requirement: REQ-OAUTH2-035 }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.GetTenant }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.EnableTenant }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.ListAdminUsers }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.GetAdminUser }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.ListGroups }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.GetGroup }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.ListAgents }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.GetAgent }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.ListAdminApplications }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.GetAdminApplication }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminOAuth2Clients }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.GetAdminOAuth2Client }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.GetTenant }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.EnableTenant }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.ListAdminUsers }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.GetAdminUser }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.ListGroups }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.GetGroup }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.ListAgents }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdentityManagement.Operations.GetAgent }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.ListAdminApplications }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.GetAdminApplication }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.ListAdminOAuth2Clients }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.GetAdminOAuth2Client }
 ---
 
 # システムコンソールでテナントの参照、変更、削除、リソース確認を完結させる

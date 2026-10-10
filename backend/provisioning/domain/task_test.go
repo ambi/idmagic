@@ -6,7 +6,7 @@ import (
 )
 
 // allTaskStatuses and allTaskEvents enumerate the ProvisioningTaskLifecycle
-// alphabet (spec/contexts/provisioning.yaml states.ProvisioningTaskLifecycle) so the
+// alphabet (docs/modules/provisioning/ states.ProvisioningTaskLifecycle) so the
 // invariant tests below can exhaustively check every (status, event) pair, mirroring
 // backend/jobs/domain/job_test.go.
 var (

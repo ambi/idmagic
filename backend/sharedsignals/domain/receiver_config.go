@@ -25,7 +25,7 @@ var ssfReceiverConfigSchema = z.Struct(z.Shape{
 	"AcceptedAudiences": z.Slice(z.String().Min(1)).Min(1).Required(),
 })
 
-// Validate は構造的妥当性 (spec/contexts/sharedsignals.yaml SsfReceiverConfig
+// Validate は構造的妥当性 (docs/modules/sharedsignals/ SsfReceiverConfig
 // constraints) を検証する: trusted_issuer は https、jwks_uri / jwks の少なくとも
 // 一方が必須、accepted_audiences は非空。
 func (c SsfReceiverConfig) Validate() error {

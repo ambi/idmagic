@@ -7,7 +7,7 @@ priority: p1
 depends_on: [wi-53-rebac-fine-grained-authorization]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authorization/models.tsp, symbol: IdMagic.Contract.FgaCheckRequest }
+  - { path: spec/modules/authorization/models.tsp, symbol: IdMagic.Contract.FgaCheckRequest }
   - { path: docs/modules/authorization/model/README.md, requirement: REQ-AUTHORIZATION-001 }
   - { path: docs/modules/authorization/check/README.md, requirement: REQ-AUTHORIZATION-005 }
   - { path: docs/modules/system/localization/README.md, requirement: REQ-SYSTEM-010 }

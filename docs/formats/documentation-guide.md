@@ -38,7 +38,7 @@ TypeSpec は `spec/`、変更時点の計画と履歴は `work-items/` に置く
 文書の木は、システム、モジュール、機能の各階層で、仕様と設計の文書を置く。
 仕様はその要素が外へ約束すること（責務、インターフェース、要件、品質）を、設計はその約束をどう実現するかを書く。
 文章は `docs/`、コンパイラが読み取る TypeSpec は `spec/` に置く。
-モジュール名は `docs/modules/<context>/` と `spec/contexts/<context>/` で一致させる。
+モジュール名は `docs/modules/<module>/` と `spec/modules/<module>/` で一致させる。
 
 ```text
 docs/
@@ -101,7 +101,7 @@ docs/
       security.md
   modules/                      # モジュール設計文書
     README.md                   # モジュール設計文書の入口
-    <context>/
+    <module>/
       README.md                 # 仕様：責務と境界、モデルの全体図、公開する契約、機能の索引
       glossary.md
       standards.md
@@ -138,7 +138,7 @@ spec/
   main.tsp
   tspconfig.yaml
   <product>.openapi.baseline.json
-  contexts/<context>/{models.tsp,main.tsp}
+  modules/<module>/{models.tsp,main.tsp}
 ```
 
 - 品質要件は `requirements/` で一度だけ宣言し、アーキテクチャで割り当て、該当する設計文書で実現方法を書く。
@@ -194,7 +194,7 @@ X のライフサイクルと付随するメタデータを扱う。
 
 ### 上位と下位の分かれ目
 
-`docs/README.md`、`docs/requirements/product-overview.md`、`docs/requirements/`、`docs/design/architecture/`の順に、目的、義務、構造を上から読む。`docs/design/`は、アーキテクチャが各構成要素へ割り当てた要件をどの機構で満たすかを書く。`docs/modules/<context>/`とTypeSpecでアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
+`docs/README.md`、`docs/requirements/product-overview.md`、`docs/requirements/`、`docs/design/architecture/`の順に、目的、義務、構造を上から読む。`docs/design/`は、アーキテクチャが各構成要素へ割り当てた要件をどの機構で満たすかを書く。`docs/modules/<module>/`とTypeSpecでアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
 
 `design/verification/`には要件を満たしたと判断する方法を書く。`development/`、`operations/`、`runbooks/`には、それぞれ開発の進め方、稼働後の管理、作業中に実行する手順を書く。現在の設計と作業手順が同じファイルに入った場合は、設計を該当する`design/`へ、手順を後三者の該当先へ分ける。ただし、一つの構成要素だけに関わる開発時の作業（フロントエンドの依存の宣言や部品の追加など）は、その構成要素の設計文書に含めてよい。
 

@@ -45,7 +45,7 @@ type Metrics struct {
 
 	// jobs* back usecases.JobsMetrics (wi-261 T006): lane is always
 	// a bounded domain.ExecutionLane and outcome is always "succeeded" or
-	// "failed" — never tenant_id/job_id (spec/contexts/system.yaml
+	// "failed" — never tenant_id/job_id (docs/modules/system/
 	// MetricsExposition).
 	jobsClaimLatency metric.Float64Histogram
 	jobsDuration     metric.Float64Histogram

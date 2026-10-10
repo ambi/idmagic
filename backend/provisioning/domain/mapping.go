@@ -6,7 +6,7 @@ import (
 )
 
 // AttributeSourceKind is the supply source for an AttributeMappingRule value
-// (spec/contexts/provisioning.yaml models.AttributeSourceKind). expression is
+// (docs/modules/provisioning/ models.AttributeSourceKind). expression is
 // intentionally out of scope for the initial version (kept out of this enum).
 type AttributeSourceKind string
 
@@ -20,7 +20,7 @@ func (k AttributeSourceKind) Valid() bool {
 }
 
 // AttributeApplyOn controls when an AttributeMappingRule applies
-// (spec/contexts/provisioning.yaml models.AttributeApplyOn).
+// (docs/modules/provisioning/ models.AttributeApplyOn).
 type AttributeApplyOn string
 
 const (
@@ -33,7 +33,7 @@ func (a AttributeApplyOn) Valid() bool {
 }
 
 // AttributeMappingRule is a declarative mapping for one downstream attribute
-// (spec/contexts/provisioning.yaml models.AttributeMappingRule).
+// (docs/modules/provisioning/ models.AttributeMappingRule).
 type AttributeMappingRule struct {
 	TargetPath    string              `json:"target_path"`
 	SourceKind    AttributeSourceKind `json:"source_kind"`
@@ -68,13 +68,13 @@ func (r AttributeMappingRule) Validate() error {
 }
 
 // MatchingRule is the 409-conflict correlation fallback used when externalId is
-// unset on the downstream side (spec/contexts/provisioning.yaml models.MatchingRule).
+// unset on the downstream side (docs/modules/provisioning/ models.MatchingRule).
 type MatchingRule struct {
 	ConflictMatchAttribute string `json:"conflict_match_attribute"`
 }
 
 // ProvisioningDeprovisionAction is how a deprovision trigger translates downstream
-// (spec/contexts/provisioning.yaml models.ProvisioningDeprovisionAction).
+// (docs/modules/provisioning/ models.ProvisioningDeprovisionAction).
 type ProvisioningDeprovisionAction string
 
 const (
@@ -88,7 +88,7 @@ func (a ProvisioningDeprovisionAction) Valid() bool {
 }
 
 // DeprovisionPolicy translates internal deprovision triggers to downstream actions
-// (spec/contexts/provisioning.yaml models.DeprovisionPolicy). user disable and group
+// (docs/modules/provisioning/ models.DeprovisionPolicy). user disable and group
 // membership removal have no configurable field: they are fixed to deactivate and
 // PATCH members remove respectively, enforced by the provisioning engine rather than
 // this policy.

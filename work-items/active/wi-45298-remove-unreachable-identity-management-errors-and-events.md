@@ -8,9 +8,9 @@ priority: p3
 depends_on: []
 change_kind: maintenance
 affected_spec:
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.UserImportUnavailableError }
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupImportUnavailableError }
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMembershipImportUnavailableError }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.UserImportUnavailableError }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.GroupImportUnavailableError }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMembershipImportUnavailableError }
 ---
 
 # IdManagement が宣言しているが、どの経路からも起きないエラーコードとイベントを消す

@@ -13,41 +13,40 @@ current document kinds and grammar; read it, not its rationale document.
    rewrite a whole feature to make one change.
 2. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
    deprecation metadata, and authentication mechanisms in
-   `spec/contexts/<context>/{models,main}.tsp`.
-3. Put context boundaries in `docs/modules/<context>/README.md`, together with the value objects several
+   `spec/modules/<module>/{models,main}.tsp`.
+3. Put module boundaries in `docs/modules/<module>/README.md`, together with the value objects several
    features share (normalization, comparison, uniqueness scope); vocabulary in `glossary.md`; adopted protocol
    rules in `standards.md`. Put one feature's model, state machines, requirements, and security
-   considerations in its feature specification `docs/modules/<context>/<group>/<feature>/README.md` (or a
+   considerations in its feature specification `docs/modules/<module>/<group>/<feature>/README.md` (or a
    chapter beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal
    path, state-dependent branches, then refusals. Do not write a per-operation summary table or an `## エラー`
    section. Each state machine carries the state table, the transition table, and the state transition matrix
-   with every cell filled. Put a context's allocated quality requirements in `docs/modules/<context>/quality.md`
-   and a feature's share under `## 品質`. The feature node matches the code slice `backend/<context>/<feature>/`
+   with every cell filled. Put a module's allocated quality requirements in `docs/modules/<module>/quality.md`
+   and a feature's share under `## 品質`. The feature node matches the code slice `backend/<module>/<feature>/`
    by name (drop the hyphens to compare names). Put a mechanism shared by features in
-   `docs/modules/<context>/design/`, a decision that weighed alternatives in `design/decisions.md`, and only
+   `docs/modules/<module>/design/`, a decision that weighed alternatives in `design/decisions.md`, and only
    what code cannot show (how a mechanism guarantees a result, how to repair it) in the optional feature
-   `design.md`. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact. A
-   context still listed in `tools/check/legacy-spec-layout.json` keeps its per-kind files until it moves.
+   `design.md`. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact.
 4. Before writing requirements, answer every question in the observation table of
    `docs/development/specification-first-workflow.md` (仕様の漏れを探す観点) for each operation you touch.
    An unanswered question is a gap. Classify each gap as (a) a requirement, (b) left unspecified, or
    (c) an implementation to change, as that document's 仕様にない振る舞いの分類 defines, and record the
    classification in the work item. Ask the user when a classification changes what users observe.
-5. Give each new externally observable behavior an unused `REQ-<CONTEXT>-NNN`, declared as a
-   `#### REQ-<CONTEXT>-NNN <title>` heading under the operation it governs. Write one sentence per bullet
+5. Give each new externally observable behavior an unused `REQ-<MODULE>-NNN`, declared as a
+   `#### REQ-<MODULE>-NNN <title>` heading under the operation it governs. Write one sentence per bullet
    in the Japanese EARS form of `docs/formats/specification-format.md` (preamble, the module name as responder,
    response), a table when conditions combine, and the `**判断**` field only when the
    reason is not evident. Do not write `**担保手段**` or `**要判断**`; tests trace requirements through
    `//spec:covers`, and an open question becomes a work item. Retire a referenced behavior with
-   `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id. Put a value the
+   `(superseded by REQ-<MODULE>-NNN)` in its heading rather than deleting or reusing its id. Put a value the
    product keeps (a limit, a period, a formula) in the requirement, never only in the design. State a
    requirement shared by several operations once, under the operation it governs most directly; the others
    link it from `**上位の要件**` and state only their departure.
 6. Add an example in `acceptance.feature.md` only when a boundary or a surprising behavior is hard to read from
    the requirement sentences. Prefer generating it from `testdata/*.examples.json`. Never add an example that
    restates a requirement.
-7. Keep behavior that only several contexts can satisfy in `docs/requirements/scenarios.feature.md`, name the
-   participating contexts, and keep context-local fragments out of it.
+7. Keep behavior that only several modules can satisfy in `docs/requirements/scenarios.feature.md`, name the
+   participating modules, and keep module-local fragments out of it.
 8. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.
    TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md`
    owns the shared principal, scope, tenant-boundary, and fail-closed rules.

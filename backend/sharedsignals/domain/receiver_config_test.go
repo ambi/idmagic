@@ -17,7 +17,7 @@ func validReceiverConfig() ssdomain.SsfReceiverConfig {
 
 // TestSsfReceiverConfigValidateHappyAndFailure — scenario
 // `署名不正のSETは反映されず拒否される` の前提となる SsfReceiverConfig の構造的妥当性を検証する
-// (spec/contexts/sharedsignals.yaml SsfReceiverConfig constraints)。
+// (docs/modules/sharedsignals/ SsfReceiverConfig constraints)。
 func TestSsfReceiverConfigValidateHappyAndFailure(t *testing.T) {
 	cases := []struct {
 		name    string

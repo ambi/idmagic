@@ -12,7 +12,7 @@ docs/
   README.md
   modules/
     README.md
-    <context>/
+    <module>/
       README.md
 \`\`\`
 `)
@@ -21,7 +21,7 @@ docs/
     // 配置図に書いた文書は報告しない。配置図を見つけられなければ、これらも欠落として報告される。
     expect(reported).not.toContain('docs/README.md')
     expect(reported).not.toContain('docs/modules/README.md')
-    expect(reported).not.toContain('docs/modules/<context>/README.md')
+    expect(reported).not.toContain('docs/modules/<module>/README.md')
     expect(findings).toContainEqual({
       path: 'docs/requirements/product-overview.md',
       message: '配置図に定義済み文書のパスがない: docs/requirements/product-overview.md',
@@ -35,17 +35,17 @@ docs/
       message: '配置図に定義済み文書のパスがない: docs/design/verification/system-acceptance.md',
     })
     expect(findings).toContainEqual({
-      path: 'docs/modules/<context>/standards.md',
-      message: '配置図に定義済み文書のパスがない: docs/modules/<context>/standards.md',
+      path: 'docs/modules/<module>/standards.md',
+      message: '配置図に定義済み文書のパスがない: docs/modules/<module>/standards.md',
     })
   })
 
   it('機能仕様と内部設計の形式の段を配置図に求め、旧形式の種別は求めない', () => {
     const paths = verifyDocumentLayout('# 仕様フォーマット\n').map((finding) => finding.path)
 
-    expect(paths).toContain('docs/modules/<context>/design/decisions.md')
-    expect(paths).toContain('docs/modules/<context>/<group>/README.md')
-    expect(paths).toContain('docs/modules/<context>/<group>/<feature>/acceptance.feature.md')
-    expect(paths).not.toContain('docs/modules/<context>/internals.md')
+    expect(paths).toContain('docs/modules/<module>/design/decisions.md')
+    expect(paths).toContain('docs/modules/<module>/<group>/README.md')
+    expect(paths).toContain('docs/modules/<module>/<group>/<feature>/acceptance.feature.md')
+    expect(paths).not.toContain('docs/modules/<module>/internals.md')
   })
 })

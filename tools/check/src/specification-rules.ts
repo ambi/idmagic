@@ -12,12 +12,12 @@ export type Finding = { path: string; line: number; message: string }
 /** `backend/` の Go で宣言された名前。`qualified` は `型.メソッド` と `パッケージ名.名前`。 */
 export type GoDeclarations = { names: Set<string>; qualified: Set<string> }
 
-/** 機能スライスのコードのディレクトリ。`backend/<context>/<name>/` の直下に層のディレクトリを持つ。 */
-export type CodeSlice = { context: string; name: string; path: string }
+/** 機能スライスのコードのディレクトリ。`backend/<module>/<name>/` の直下に層のディレクトリを持つ。 */
+export type CodeSlice = { module: string; name: string; path: string }
 
 export type FeatureSliceDebt = {
   /** コードのモジュール名から、ハイフンを除いても一致しない文書のモジュール名への対応。 */
-  contextAliases: Record<string, string>
+  moduleAliases: Record<string, string>
   /** 導入時点で仕様のディレクトリを持たなかったコードのディレクトリ。増やさない。 */
   unmappedSlices: string[]
 }
@@ -389,13 +389,13 @@ export function codeSlices(directories: string[]): CodeSlice[] {
   const slices = new Map<string, CodeSlice>()
   for (const directory of directories) {
     // `internal/` は公開範囲の区画なので、その下の名前を機能スライスとして読む。
-    const [root, context, ...rest] = directory.split('/')
+    const [root, module, ...rest] = directory.split('/')
     const visibility = rest[0] === 'internal' ? 'internal/' : ''
     const [name, layer] = visibility ? rest.slice(1) : rest
-    if (root !== 'backend' || !context || !name || !layer || !LAYER_DIRECTORIES.has(layer)) continue
+    if (root !== 'backend' || !module || !name || !layer || !LAYER_DIRECTORIES.has(layer)) continue
     if (LAYER_DIRECTORIES.has(name)) continue
-    const path = `backend/${context}/${visibility}${name}`
-    slices.set(path, { context, name, path })
+    const path = `backend/${module}/${visibility}${name}`
+    slices.set(path, { module, name, path })
   }
   return [...slices.values()].sort((left, right) => left.path.localeCompare(right.path))
 }
@@ -404,7 +404,7 @@ export function codeSlices(directories: string[]): CodeSlice[] {
  * 機能スライスのコードのディレクトリごとに、名前が対応する仕様のディレクトリがあることを
  * 確かめる。仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と
  * 一致すれば対応とみなす。モジュールの名前も同じ規則で対応させ、一致しないものだけを
- * `contextAliases` で引く。
+ * `moduleAliases` で引く。
  */
 export function verifyFeatureSliceSpecifications(
   slices: CodeSlice[],
@@ -415,15 +415,15 @@ export function verifyFeatureSliceSpecifications(
   // 仕様のディレクトリは機能群の下にもあるので、最後の段の名前で対応させる。
   const specificationKeys = new Set(
     [...specifications].map((specification) => {
-      const [, , context = '', ...below] = specification.split('/')
-      return `${flatten(context)}/${flatten(below.at(-1) ?? '')}`
+      const [, , module = '', ...below] = specification.split('/')
+      return `${flatten(module)}/${flatten(below.at(-1) ?? '')}`
     }),
   )
   const unmapped = new Set(debt.unmappedSlices)
   const findings: Finding[] = []
   for (const slice of slices) {
-    const context = debt.contextAliases[slice.context] ?? slice.context
-    const mapped = specificationKeys.has(`${flatten(context)}/${slice.name}`)
+    const module = debt.moduleAliases[slice.module] ?? slice.module
+    const mapped = specificationKeys.has(`${flatten(module)}/${slice.name}`)
     if (mapped && unmapped.has(slice.path)) {
       findings.push({
         path: slice.path,
@@ -434,7 +434,7 @@ export function verifyFeatureSliceSpecifications(
       findings.push({
         path: slice.path,
         line: 1,
-        message: `${slice.path} has no feature slice specification under docs/modules/${context}/`,
+        message: `${slice.path} has no feature slice specification under docs/modules/${module}/`,
       })
     }
   }

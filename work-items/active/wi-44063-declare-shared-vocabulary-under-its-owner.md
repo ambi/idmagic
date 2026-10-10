@@ -8,13 +8,13 @@ priority: p3
 depends_on: []
 change_kind: maintenance
 affected_spec:
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.InvalidRequestError }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.InsufficientScopeError }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.InvalidOriginError }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.CsrfFailedError }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.StepUpRequiredError }
-  - { path: spec/contexts/sharedsignals/models.tsp, symbol: IdMagic.Contract.UnlinkDeniedError }
-  - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.EmailSent }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.InvalidRequestError }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.InsufficientScopeError }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.InvalidOriginError }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.CsrfFailedError }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.StepUpRequiredError }
+  - { path: spec/modules/sharedsignals/models.tsp, symbol: IdMagic.Contract.UnlinkDeniedError }
+  - { path: spec/modules/authentication/models.tsp, symbol: IdMagic.Contract.EmailSent }
 ---
 
 # 複数のモジュールが使うエラーとイベントを、それを所有する場所で宣言する
@@ -26,10 +26,10 @@ affected_spec:
 
 | 語 | 宣言の置き場所 | 実際に返す、または発行するモジュール |
 | --- | --- | --- |
-| `invalid_request`、`insufficient_scope`、`invalid_origin`、`csrf_failed` | `spec/contexts/sharedsignals/models.tsp` | 管理 API とブラウザーから呼ばれるすべてのモジュール。`support_http` の共通の防護が返す |
+| `invalid_request`、`insufficient_scope`、`invalid_origin`、`csrf_failed` | `spec/modules/sharedsignals/models.tsp` | 管理 API とブラウザーから呼ばれるすべてのモジュール。`support_http` の共通の防護が返す |
 | `step_up_required` | 同上 | Authentication、IdManagement、OAuth2 |
 | `unlink_denied` | 同上 | Authentication の連携の解除 |
-| `EmailSent` | TypeSpec は `spec/contexts/authentication/models.tsp`、Go の型は `backend/shared/spec/events.go` | Authentication（パスワードのリセット）と IdManagement（メールアドレスの変更） |
+| `EmailSent` | TypeSpec は `spec/modules/authentication/models.tsp`、Go の型は `backend/shared/spec/events.go` | Authentication（パスワードのリセット）と IdManagement（メールアドレスの変更） |
 
 SharedSignals の TypeSpec が、Shared Signals と関係のない共通のエラーを宣言している。
 語彙の検査は TypeSpec の置き場所でモジュールを決めるので、SharedSignals の要件に書けない語として残る。
@@ -52,7 +52,7 @@ SharedSignals の TypeSpec が、Shared Signals と関係のない共通のエ�
 
 ## 設計
 
-`spec/contexts/sharedsignals/models.tsp` の冒頭の 4 件は、ほかのモジュールが定めるエラーを公開契約として写したものであり、OAuth2、Authentication、Tenancy の共有のエラーも含む。
+`spec/modules/sharedsignals/models.tsp` の冒頭の 4 件は、ほかのモジュールが定めるエラーを公開契約として写したものであり、OAuth2、Authentication、Tenancy の共有のエラーも含む。
 SharedSignals に置かれた経緯の調査は要らない。
 移した後の置き場所が「どのモジュールの要件で照合するか」を決めるので、置き場所と語彙の検査の対応表（`tools/check/src/check-unspecified-vocabulary.ts` の `CONTEXTS`）を同じ変更で直す。
 

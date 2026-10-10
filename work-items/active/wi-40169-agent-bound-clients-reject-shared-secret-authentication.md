@@ -10,7 +10,7 @@ change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: docs/modules/oauth2/token/README.md, requirement: REQ-OAUTH2-046 }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: BindAgentCredential }
+  - { path: spec/modules/identity-management/main.tsp, symbol: BindAgentCredential }
 ---
 
 # Agent に束縛したクライアントは共有シークレットで認証できないようにする

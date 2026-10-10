@@ -8,8 +8,8 @@ depends_on: [wi-284-improve-csv-import-export]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/user-csv/README.md, requirement: REQ-IDMANAGEMENT-004 }
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.UserImportJob }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.ApplyAdminUserImport }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.UserImportJob }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.Contract.ApplyAdminUserImport }
 ---
 
 # User CSV に明示的な lifecycle action 列を追加する

@@ -54,7 +54,7 @@ func TestEnqueue_AppliesDefaultsAndEmits(t *testing.T) {
 
 // TestEnqueue_DerivesLaneFromKind: RED for decision 1 — the caller
 // cannot specify a lane; Enqueue derives it from the JobKind's registration
-// (spec/contexts/jobs.yaml EnqueueJob: "作成される Job の lane は kind の登録情報
+// (docs/modules/jobs/ EnqueueJob: "作成される Job の lane は kind の登録情報
 // から一意に決まり、呼び出し元は指定できない").
 func TestEnqueue_DerivesLaneFromKind(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
@@ -113,7 +113,7 @@ func TestEnqueue_DedupHitDoesNotEmit(t *testing.T) {
 
 // TestEnqueue_rejectsWhenHardQuotaExceeded is a wi-160 T004.8 RED test for the
 // SCL scenario "Hard Quota を超過したリソース作成は拒否される"
-// (spec/contexts/tenancy.yaml), applied to the active_jobs resource.
+// (docs/modules/tenancy/), applied to the active_jobs resource.
 func TestEnqueue_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	quotaRepo := tenancymemory.NewQuotaRepository()

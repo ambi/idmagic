@@ -7,7 +7,7 @@ import (
 
 // ProvisioningTrigger is the assignment lifecycle trigger Application reports
 // to outbound Provisioning after committing an assignment change
-// (spec/contexts/provisioning.yaml §deprovision セマンティクス trigger 列). This is an
+// (docs/modules/provisioning/ §deprovision セマンティクス trigger 列). This is an
 // Application-owned vocabulary (Provisioning already imports Application,
 // and module dependencies must stay acyclic); backend/provisioning/usecases
 // implements ProvisioningNotifier.

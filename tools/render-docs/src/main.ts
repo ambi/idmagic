@@ -53,8 +53,8 @@ for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
 }
 paths.push(...(await procedureDocuments('docs/development')))
 paths.push(...(await procedureDocuments('docs/runbooks')))
-const contextRoot = resolve(root, 'docs/modules')
-const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
+const moduleRoot = resolve(root, 'docs/modules')
+const moduleDirectories = (await readdir(moduleRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort()
@@ -62,9 +62,9 @@ const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
  * モジュールの文書。モジュールの直下、内部設計、機能群と機能スライスの順に、各段では
  * `README.md` を先に置いて集める。置いてよいかは検査と同じ判定（`documentAllowance`）で決める。
  */
-async function contextDocuments(context: string): Promise<string[]> {
+async function moduleDocuments(module: string): Promise<string[]> {
   const listings: DirectoryListing[] = []
-  const pending = [context]
+  const pending = [module]
   while (pending.length > 0) {
     const directory = pending.shift() as string
     const entries = await readdir(resolve(root, directory), { withFileTypes: true })
@@ -83,11 +83,11 @@ async function contextDocuments(context: string): Promise<string[]> {
     const index = fixed(directory).indexOf(name)
     return index < 0 ? Number.MAX_SAFE_INTEGER : index
   }
-  const designFirst = (directory: string) => (directory === `${context}/design` ? 0 : 1)
+  const designFirst = (directory: string) => (directory === `${module}/design` ? 0 : 1)
   return listings
     .sort(
       (left, right) =>
-        Number(left.directory !== context) - Number(right.directory !== context) ||
+        Number(left.directory !== module) - Number(right.directory !== module) ||
         designFirst(left.directory) - designFirst(right.directory) ||
         left.directory.localeCompare(right.directory),
     )
@@ -103,8 +103,8 @@ async function contextDocuments(context: string): Promise<string[]> {
     })
 }
 
-for (const name of contextDirectories) {
-  paths.push(...(await contextDocuments(`docs/modules/${name}`)))
+for (const name of moduleDirectories) {
+  paths.push(...(await moduleDocuments(`docs/modules/${name}`)))
 }
 
 // The order the canonical layout defines is the order the site lists, so the
@@ -122,10 +122,10 @@ if (program.hasError()) {
 const apiSchemas = new Set<string>(Object.keys(openapi.components?.schemas ?? {}))
 const catalog = extractTypeSpecCatalog(program, apiSchemas, root)
 const snapshot = createWorkspaceSnapshot(root)
-const { contextAliases } = JSON.parse(await snapshot.read('tools/check/feature-slice-debt.json'))
+const { moduleAliases } = JSON.parse(await snapshot.read('tools/check/feature-slice-debt.json'))
 const sourcePaths = [
   ...(await snapshot.files('backend')),
-  ...(await snapshot.files('spec/contexts')),
+  ...(await snapshot.files('spec/modules')),
 ].sort()
 const result = renderDocumentationSite({
   documents,
@@ -134,9 +134,9 @@ const result = renderDocumentationSite({
   outputDirectory,
   openapiFileName: basename(openapiPath),
   models: catalog.symbols,
-  contextTags: catalog.contextTags,
+  moduleTags: catalog.moduleTags,
   sourcePaths,
-  contextAliases,
+  moduleAliases,
 })
 
 // 文章の言語の規則に反する英文は、書き出す前に止める。生成物だけを直しても元の文書に英語が残るので、

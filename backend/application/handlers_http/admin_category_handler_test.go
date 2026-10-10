@@ -10,7 +10,7 @@ import (
 
 // カテゴリ名の欠落と未知カテゴリの割当は、generic な "invalid_request" ではなく
 // それぞれ固有の code を持ち、業務規則違反として 422 を返す
-// (spec/contexts/application/main.tsp の CreateApplicationCategoryError422 /
+// (spec/modules/application/main.tsp の CreateApplicationCategoryError422 /
 // SetApplicationCategoriesError422)。
 func TestCreateApplicationCategory_EmptyNameYieldsDistinguishableCode(t *testing.T) {
 	e := newApplicationHandler(t)

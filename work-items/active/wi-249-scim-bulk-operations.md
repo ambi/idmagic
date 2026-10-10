@@ -8,8 +8,8 @@ depends_on: []
 change_kind: feature
 affected_spec:
   - { path: docs/modules/sourcing/standards.md, requirement: RFC7644-RESOURCE-OPERATIONS }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
 ---
 
 # SCIM Bulk operations (/Bulk) に対応する

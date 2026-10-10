@@ -179,7 +179,7 @@ Go のツールチェーンは `internal/` の親ディレクトリの外から�
 - **エンベロープ**：`spec.MarshalDomainEvent` が必ず載せるイベント種別名と発生時刻。監査の記録、管理 API のレスポンス、セキュリティ通知のディスパッチがすべてこの形の上で動く。
 - **公開項目の語彙**：他のモジュールが名前で読む payload の項目。監査の検索属性の抽出器がこれを検索軸へ写し、セキュリティ通知が宛先と送信条件をここから解決する。
 
-どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を担う System で定義し、消費者である Audit では定義しない。発行する側が消費する側の契約に従う倒立を避けるためである。
+どちらも `spec/modules/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が一次情報である。配信点を担う System で定義し、消費者である Audit では定義しない。発行する側が消費する側の契約に従う倒立を避けるためである。
 
 宣言を置くだけでは、読み取り側と静かに食い違う。項目名を変えてもコンパイルは通り、監査の絞り込みが空を返すようになるだけだからである。`mise run check-event-contract` が、宣言された語彙と Go の読み取り点の集合が一致することを確かめる。
 

@@ -122,7 +122,7 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
  * モジュールの直下に置ける文書。判断と仕組みは `design/` へ、規則は機能スライスへ置く。
  * `quality.md` は、システムの品質要求のうちこのモジュールに割り当てた分を書く仕様である。
  */
-export const CONTEXT_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
+export const MODULE_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
 
 /** モジュールの内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
 export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
@@ -158,21 +158,21 @@ export interface DocumentSetView {
    * `design/README.md` を持つモジュールの名前。この印のないモジュールの段には、どの文書も置けない。
    * 設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
    */
-  featureContexts: ReadonlySet<string>
+  featureModules: ReadonlySet<string>
   /** 子のディレクトリを持つ段。これが機能群と機能スライスを分ける。 */
   parents: ReadonlySet<string>
 }
 
 export function describeDocumentSet(listings: readonly DirectoryListing[]): DocumentSetView {
-  const featureContexts = new Set<string>()
+  const featureModules = new Set<string>()
   const parents = new Set<string>()
   for (const listing of listings) {
     const design = listing.directory.match(/^docs\/modules\/([^/]+)\/design$/)?.[1]
-    if (design && listing.files.includes('README.md')) featureContexts.add(design)
+    if (design && listing.files.includes('README.md')) featureModules.add(design)
     const parent = listing.directory.slice(0, Math.max(0, listing.directory.lastIndexOf('/')))
     if (parent) parents.add(parent)
   }
-  return { featureContexts, parents }
+  return { featureModules, parents }
 }
 
 /**
@@ -183,11 +183,11 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
  */
 export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {
   const match = directory.match(/^docs\/modules\/([^/]+)(?:\/(.+))?$/)
-  const context = match?.[1]
-  if (!context) return { names: canonicalDocumentNames(directory) ?? [], freeNames: false }
-  if (!view.featureContexts.has(context)) return { names: [], freeNames: false }
+  const module = match?.[1]
+  if (!module) return { names: canonicalDocumentNames(directory) ?? [], freeNames: false }
+  if (!view.featureModules.has(module)) return { names: [], freeNames: false }
   const rest = match[2]?.split('/') ?? []
-  if (rest.length === 0) return { names: CONTEXT_DOCUMENTS, freeNames: false }
+  if (rest.length === 0) return { names: MODULE_DOCUMENTS, freeNames: false }
   if (rest[0] === 'design') {
     return rest.length === 1
       ? { names: DESIGN_DOCUMENTS, freeNames: true }

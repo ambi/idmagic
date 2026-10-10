@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.WriteRelationTuples }
+  - { path: spec/modules/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.WriteRelationTuples }
 ---
 
 # リレーションタプルの一括書き込みに要素数の上限を設ける

@@ -1,6 +1,6 @@
 import { defineDictionary } from '../../lib/i18n'
 
-// reason* の鍵は spec/contexts/workloadidentity/models.tsp の WorkloadAttestationRejected.reason が
+// reason* の鍵は spec/modules/workloadidentity/models.tsp の WorkloadAttestationRejected.reason が
 // 列挙する 11 個の理由コードと 1 対 1 で対応する。仕様が理由を増やしたらここも増やす。
 export const adminWorkloadIdentityDictionary = defineDictionary(
   {

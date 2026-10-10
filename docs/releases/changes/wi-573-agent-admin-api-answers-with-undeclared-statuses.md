@@ -6,6 +6,6 @@
 - 停止済みエージェントへの変更は 409 `agent_killed`、別のエージェントに束縛済みのクライアントのバインドは 409 `agent_client_already_bound` を返す。
 - 無効化、再有効化、停止、削除の API 操作に、401 と CSRF・Origin・スコープの 403 を宣言した。
 
-[IdMagic.IdManagement.Operations.BindAgentCredential](../../../spec/contexts/identity-management/main.tsp) で参照先のクライアントが見つからないときの `client_not_found` は、404 から 422 へ変わった。
+[IdMagic.IdManagement.Operations.BindAgentCredential](../../../spec/modules/identity-management/main.tsp) で参照先のクライアントが見つからないときの `client_not_found` は、404 から 422 へ変わった。
 別テナントのクライアントは、存在しないクライアントと同じ応答になる。
 404 で分岐していた呼び出し元は、422 の `client_not_found` で分岐する。

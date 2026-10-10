@@ -1,5 +1,5 @@
 // Package ports defines the Provisioning module's repository
-// abstractions (spec/contexts/provisioning.yaml). Implementations live in
+// abstractions (docs/modules/provisioning/). Implementations live in
 // backend/provisioning/{db_memory,db_postgres}.
 package ports
 
@@ -12,7 +12,7 @@ import (
 )
 
 // ErrConnectionAlreadyExists is returned by Register when the Application
-// already has a ProvisioningConnection (spec/contexts/provisioning.yaml
+// already has a ProvisioningConnection (docs/modules/provisioning/
 // errors.ProvisioningConnectionAlreadyExistsError, "1 Application 1 connection").
 var ErrConnectionAlreadyExists = errors.New("provisioning: connection already exists for this application")
 
@@ -20,7 +20,7 @@ var ErrConnectionAlreadyExists = errors.New("provisioning: connection already ex
 // CredentialSecret is a narrow accessor separate from Find: only the provisioning
 // engine (T006) may call it to authenticate outbound requests, so admin read
 // paths (which use Find) never see the plaintext/opaque secret
-// (spec/contexts/provisioning.yaml credential write-only 契約).
+// (docs/modules/provisioning/ credential write-only 契約).
 type ProvisioningConnectionRepository interface {
 	// Register inserts a new connection together with its credential secret.
 	// Returns ErrConnectionAlreadyExists if the Application already has one.

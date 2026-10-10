@@ -9,11 +9,11 @@ const currentGuidance = [
   {
     file: '.agents/skills/spec-change/SKILL.md',
     source:
-      'spec/contexts/<context>/{models,main}.tsp\ndocs/modules/<context>/<group>/<feature>/README.md\nacceptance.feature.md',
+      'spec/modules/<module>/{models,main}.tsp\ndocs/modules/<module>/<group>/<feature>/README.md\nacceptance.feature.md',
   },
   {
     file: '.agents/skills/update-design/SKILL.md',
-    source: 'docs/README.md\ndocs/design/application/backend.md\ndocs/modules/<context>/README.md',
+    source: 'docs/README.md\ndocs/design/application/backend.md\ndocs/modules/<module>/README.md',
   },
   {
     file: '.agents/skills/implement-work-item/SKILL.md',
@@ -36,7 +36,7 @@ describe('verifyAgentGuidance', () => {
     const guidance = currentGuidance.map((document) => ({ ...document }))
     guidance[0] = {
       file: '.agents/skills/spec-change/SKILL.md',
-      source: 'Update spec/contexts/<context>/SPECIFICATION.md.',
+      source: 'Update spec/modules/<module>/SPECIFICATION.md.',
     }
     expect(verifyAgentGuidance(guidance)).toContainEqual({
       file: '.agents/skills/spec-change/SKILL.md',

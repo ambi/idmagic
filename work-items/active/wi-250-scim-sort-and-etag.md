@@ -7,9 +7,9 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
-  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
+  - { path: spec/modules/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
 ---
 
 # SCIM sortBy/sortOrder と ETag (楽観的並行性制御) に対応する

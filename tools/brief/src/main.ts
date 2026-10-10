@@ -127,11 +127,11 @@ const specification: string[] = []
 const typespec: string[] = []
 const implementation = new Set<string>()
 const tests = new Set<string>()
-const contexts = new Set<string>()
+const modules = new Set<string>()
 
 for (const reference of affected) {
   const documentPath = reference.path ?? ''
-  contexts.add(documentPath.match(/^docs\/modules\/([^/]+)\//)?.[1] ?? '')
+  modules.add(documentPath.match(/^docs\/modules\/([^/]+)\//)?.[1] ?? '')
 
   if (reference.requirement) {
     const id = reference.requirement
@@ -187,13 +187,13 @@ if (paths.length > 0) {
   )
 }
 
-// A work item that touched the same context is the nearest precedent, and the
+// A work item that touched the same module is the nearest precedent, and the
 // most recent ones are the ones whose conventions still hold.
 const named = new Set<string>()
-for (const context of contexts) {
-  if (context === '') continue
+for (const module of modules) {
+  if (module === '') continue
   const result = Bun.spawnSync(
-    ['git', 'log', '-5', '--format=%h %s', '--', `docs/modules/${context}`],
+    ['git', 'log', '-5', '--format=%h %s', '--', `docs/modules/${module}`],
     {
       cwd: root,
     },
@@ -203,7 +203,7 @@ for (const context of contexts) {
   }
 }
 if (named.size > 0) {
-  lines.push('## Recent work on the same context', '', ...[...named].map((one) => `- ${one}`), '')
+  lines.push('## Recent work on the same module', '', ...[...named].map((one) => `- ${one}`), '')
 }
 
 // The draft points at packages on the source side and at the naming files on

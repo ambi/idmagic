@@ -7,8 +7,8 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.MfaFactorType }
-  - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Contract.StartBrowserMfaEnrollment }
+  - { path: spec/modules/authentication/models.tsp, symbol: IdMagic.Contract.MfaFactorType }
+  - { path: spec/modules/authentication/main.tsp, symbol: IdMagic.Contract.StartBrowserMfaEnrollment }
 ---
 
 # Email OTP と SMS OTP の MFA factor を、ポリシーで制御された restricted factor として追加する

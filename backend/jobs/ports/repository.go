@@ -1,5 +1,5 @@
 // Package ports declares the Jobs module's abstraction over the durable
-// job queue and worker leasing operations backing spec/contexts/jobs.yaml
+// job queue and worker leasing operations backing docs/modules/jobs/
 // interfaces (EnqueueJob / ClaimJobs / HeartbeatJob / CompleteJob / FailJob /
 // CancelJob). Implementations live in
 // backend/jobs/{db_memory,db_postgres}.
@@ -56,7 +56,7 @@ type FailOutcome struct {
 
 // JobRepository is the durable queue and worker leasing port for the Jobs bounded
 // context. Implementations must uphold JobLeaseExclusivity, JobTenantIsolation,
-// and JobTerminalStateIsImmutable (spec/contexts/jobs.yaml invariants).
+// and JobTerminalStateIsImmutable (docs/modules/jobs/ invariants).
 type JobRepository interface {
 	// Enqueue inserts a new StatusQueued Job and reports created=true. If
 	// input.DedupKey is set and a non-terminal Job already exists for the same

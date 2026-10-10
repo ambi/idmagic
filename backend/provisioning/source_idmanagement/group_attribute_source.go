@@ -9,7 +9,7 @@ import (
 )
 
 // GroupAttributeSource resolves a Group's attributes for
-// spec/contexts/provisioning.yaml models.AttributeMappingRule (source_kind=attribute).
+// docs/modules/provisioning/ models.AttributeMappingRule (source_kind=attribute).
 // The resolved keys are `id` and `name`, with `description` and `email` present
 // only when the Group sets them.
 //

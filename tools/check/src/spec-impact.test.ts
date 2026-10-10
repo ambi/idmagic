@@ -16,7 +16,7 @@ import {
 
 const SCENARIOS = 'docs/modules/demo/scenarios.feature.md'
 const STANDARDS = 'docs/modules/demo/standards.md'
-const TYPESPEC = 'spec/contexts/demo/main.tsp'
+const TYPESPEC = 'spec/modules/demo/main.tsp'
 const ITEM = 'work-items/wi-10001-demo.md'
 const CONCRETE = 'トークンを検索する順序、返すエラー、発行するイベントを変えない。'
 
@@ -462,7 +462,7 @@ describe('verifySpecImpact の申告漏れ', () => {
       'REQ-DEMO-001',
       'REQ-DEMO-002',
       `${STANDARDS}#RFC-DEMO-ONE`,
-      'spec/contexts/demo/main.tsp',
+      'spec/modules/demo/main.tsp',
     ])
   })
 

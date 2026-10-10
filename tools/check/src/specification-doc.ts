@@ -3,7 +3,7 @@ import MarkdownIt from 'markdown-it'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 import {
   canonicalDocumentNames,
-  CONTEXT_DOCUMENTS,
+  MODULE_DOCUMENTS,
   DESIGN_AREAS,
 } from '../../workspace/src/document-layout.ts'
 
@@ -54,8 +54,8 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
  * モジュールの直下で種別を返す名前。履歴のリビジョンを読む `spec-diff` のために、ファイル種別で
  * 文書を分けていた頃の名前も含める。今の作業ツリーに置いてよいかは段の集合を見る検査が決める。
  */
-const CONTEXT_LEVEL_NAMES = new Set<string>([
-  ...CONTEXT_DOCUMENTS,
+const MODULE_LEVEL_NAMES = new Set<string>([
+  ...MODULE_DOCUMENTS,
   'states.md',
   'decisions.md',
   'internals.md',
@@ -99,7 +99,7 @@ export function documentKind(path: string): DocumentKind | undefined {
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
   if (/^docs\/modules\/[^/]+$/.test(directory)) {
-    return CONTEXT_LEVEL_NAMES.has(name) ? (KIND_BY_NAME.get(name) ?? 'prose') : undefined
+    return MODULE_LEVEL_NAMES.has(name) ? (KIND_BY_NAME.get(name) ?? 'prose') : undefined
   }
   if (!canonicalDocumentNames(directory)?.includes(name)) return undefined
   return KIND_BY_NAME.get(name) ?? 'prose'

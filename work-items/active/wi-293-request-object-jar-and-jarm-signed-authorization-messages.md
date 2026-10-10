@@ -7,9 +7,9 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Authorize }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.PushAuthorizationRequest }
-  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.AuthorizationRequest }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.Contract.Authorize }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.Contract.PushAuthorizationRequest }
+  - { path: spec/modules/oauth2/models.tsp, symbol: IdMagic.Contract.AuthorizationRequest }
 ---
 
 # 署名付き認可リクエスト (JAR / RFC 9101) と署名付き認可レスポンス (JARM) に対応する

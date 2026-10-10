@@ -3,7 +3,7 @@ package domain
 import "time"
 
 // The following structs are the Jobs module's domain events
-// (spec/contexts/jobs.yaml models, kind: event). Each satisfies
+// (docs/modules/jobs/ models, kind: event). Each satisfies
 // backend/shared/spec.DomainEvent (EventType() string; OccurredAt() time.Time) by
 // structural typing, without importing that package, keeping domain free of
 // dependencies on the shared SCL binding layer.

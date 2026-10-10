@@ -8,11 +8,11 @@ priority: p2
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListUserGroups }
-  - { path: spec/contexts/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.ListRelationTuples }
-  - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListJobs }
-  - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListSystemJobs }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ListUserGroups }
+  - { path: spec/modules/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.ListRelationTuples }
+  - { path: spec/modules/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListJobs }
+  - { path: spec/modules/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListSystemJobs }
 ---
 
 # 増加するコレクションを共通のカーソルでページングする

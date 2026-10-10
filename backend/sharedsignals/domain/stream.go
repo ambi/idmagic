@@ -35,7 +35,7 @@ var ssfStreamSchema = z.Struct(z.Shape{
 	"CreatedAt": z.Time().Required(),
 })
 
-// Validate は構造的妥当性 (spec/contexts/sharedsignals.yaml SsfStream) を検証する:
+// Validate は構造的妥当性 (docs/modules/sharedsignals/ SsfStream) を検証する:
 // event_types は非空で、各要素が CaepEventType として有効でなければならない。
 func (s SsfStream) Validate() error {
 	if err := spec.Validate(ssfStreamSchema, &s); err != nil {

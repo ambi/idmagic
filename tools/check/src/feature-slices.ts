@@ -88,11 +88,11 @@ function placementProblem(directory: string, view: DocumentSetView): string | un
  * すべてのモジュールが印（`design/README.md`）を持つことを確かめる。印のないモジュールの段には
  * どの文書も置けず、文書ごとの拒否だけでは原因が伝わらないので、モジュールごとに一件報告する。
  */
-export function verifyFeatureLayout(contexts: readonly string[], view: DocumentSetView): string[] {
-  return contexts
-    .filter((context) => !view.featureContexts.has(context))
+export function verifyFeatureLayout(modules: readonly string[], view: DocumentSetView): string[] {
+  return modules
+    .filter((module) => !view.featureModules.has(module))
     .map(
-      (context) =>
-        `fail  docs/modules/${context}: ${context} has no design/README.md; every context must use the feature layout`,
+      (module) =>
+        `fail  docs/modules/${module}: ${module} has no design/README.md; every module must use the feature layout`,
     )
 }

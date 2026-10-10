@@ -48,7 +48,7 @@ type IntrospectDeps struct {
 	// check.
 	AgentRepo agentports.AgentRepository
 	// RevocationEpochRepo backs the SCL internal interface CheckRevocationEpoch
-	// (spec/contexts/sharedsignals.yaml): an access token issued before the
+	// (docs/modules/sharedsignals/): an access token issued before the
 	// Agent's revocation epoch (kill-switch, owner offboard, inbound SET) is
 	// fail-closed reported as inactive. nil skips the check.
 	RevocationEpochRepo ssports.AgentRevocationEpochRepository

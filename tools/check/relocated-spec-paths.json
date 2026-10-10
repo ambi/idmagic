@@ -197,5 +197,6 @@
   "docs/domain/standards.md": ["docs/requirements/standards.md"],
   "docs/domain/scenarios.feature.md": ["docs/requirements/scenarios.feature.md"],
   "docs/domain/structure.md": ["docs/design/application/backend.md"],
-  "docs/domain/": ["docs/modules/"]
+  "docs/domain/": ["docs/modules/"],
+  "spec/contexts/": ["spec/modules/"]
 }

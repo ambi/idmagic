@@ -8,21 +8,21 @@ priority: p1
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/api-tokens/main.tsp, symbol: IdMagic.ApiTokens.Operations.IssueApiToken }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.CreateAdminOAuth2Client }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.CreateAdminApplication }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.CreateApplicationCategory }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.IssueApplicationClientSecret }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.RotateApplicationClientSecret }
-  - { path: spec/contexts/saml/main.tsp, symbol: IdMagic.Saml.Operations.CreateSamlIdentityProviderProfile }
-  - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CreateIdentityProviderConnection }
-  - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.IssueMfaEnrollmentBypass }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.StartUserCsvExport }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.StartGroupCsvExport }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.StartGroupMemberCsvExport }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ImportAdminUsers }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ImportAdminGroups }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ImportAdminGroupMembers }
+  - { path: spec/modules/api-tokens/main.tsp, symbol: IdMagic.ApiTokens.Operations.IssueApiToken }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.CreateAdminOAuth2Client }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.CreateAdminApplication }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.CreateApplicationCategory }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.IssueApplicationClientSecret }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.RotateApplicationClientSecret }
+  - { path: spec/modules/saml/main.tsp, symbol: IdMagic.Saml.Operations.CreateSamlIdentityProviderProfile }
+  - { path: spec/modules/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CreateIdentityProviderConnection }
+  - { path: spec/modules/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.IssueMfaEnrollmentBypass }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.StartUserCsvExport }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.StartGroupCsvExport }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.StartGroupMemberCsvExport }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ImportAdminUsers }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ImportAdminGroups }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.ImportAdminGroupMembers }
 ---
 
 # 管理 API の POST で Idempotency-Key を受け付ける

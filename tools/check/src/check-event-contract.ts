@@ -10,7 +10,7 @@ import {
 } from './event-contract.ts'
 import type { CheckOutcome } from './runner.ts'
 
-const DECLARATION = 'spec/contexts/system/models.tsp'
+const DECLARATION = 'spec/modules/system/models.tsp'
 const CONSUMERS = [
   'backend/audit/usecases/audit_search_extractor.go',
   'backend/authentication/securitynotification/domain/catalog.go',

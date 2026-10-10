@@ -8,17 +8,17 @@ priority: p1
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantBranding }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantUserAttributeSchema }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantGroupAttributeSchema }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.UpdateTenantDefaultSignInPolicy }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.UpdateAppSignInPolicy }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateNotificationTemplate }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateAdminSettings }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.UpdateAdminUser }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.UpdateGroup }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Application.Operations.UpdateAdminApplication }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.UpdateAdminOAuth2Client }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantBranding }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantUserAttributeSchema }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantGroupAttributeSchema }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.UpdateTenantDefaultSignInPolicy }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.UpdateAppSignInPolicy }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateNotificationTemplate }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateAdminSettings }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.UpdateAdminUser }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.IdManagement.Operations.UpdateGroup }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Application.Operations.UpdateAdminApplication }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.UpdateAdminOAuth2Client }
 ---
 
 # 管理 API の更新で ETag と If-Match による競合を検出する

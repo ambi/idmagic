@@ -12,10 +12,10 @@ affected_spec:
   - { path: docs/modules/signing-keys/provider/README.md, requirement: REQ-SIGNINGKEYS-008 }
   - { path: docs/modules/data-keys/health/README.md, requirement: REQ-DATAKEYS-006 }
   - { path: docs/modules/audit/event-search/README.md, requirement: REQ-AUDIT-004 }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
-  - { path: spec/contexts/signing-keys/main.tsp, symbol: IdMagic.SigningKeys.Operations.ListTenantKeyHealth }
-  - { path: spec/contexts/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.ListTenantDataKeyHealth }
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListAdminAuditEvents }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
+  - { path: spec/modules/signing-keys/main.tsp, symbol: IdMagic.SigningKeys.Operations.ListTenantKeyHealth }
+  - { path: spec/modules/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.ListTenantDataKeyHealth }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListAdminAuditEvents }
 ---
 
 # システムコンソールのテナント横断読出しを有界化する

@@ -13,20 +13,20 @@ import {
 
 export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const findings: Finding[] = [...checkSecurityGuards(await repositoryGoFiles(snapshot, true))]
-  const contextsDirectory = 'docs/modules'
-  const contractDirectory = 'spec/contexts'
+  const modulesDirectory = 'docs/modules'
+  const contractDirectory = 'spec/modules'
   const platformRefusals = browserRefusalTypesNamedByPlatformScenario(
     await snapshot.read('docs/requirements/scenarios.feature.md'),
   )
   const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(
-    await snapshot.read(`${contextsDirectory}/api-tokens/authentication/acceptance.feature.md`),
+    await snapshot.read(`${modulesDirectory}/api-tokens/authentication/acceptance.feature.md`),
   )
   const sharedRefusals = new Set([...platformRefusals, ...apiTokenRefusals])
   let declared = sharedRefusals.size
   let promised = 0
-  for (const entry of await snapshot.list(contextsDirectory)) {
+  for (const entry of await snapshot.list(modulesDirectory)) {
     if (!entry.isDirectory()) continue
-    const sources = await contextScenarioSources(snapshot, `${contextsDirectory}/${entry.name}`)
+    const sources = await moduleScenarioSources(snapshot, `${modulesDirectory}/${entry.name}`)
     if (sources.length === 0) continue
     const local = new Set(sources.flatMap((source) => [...errorTypesNamedByScenarios(source)]))
     const named = new Set([...local, ...sharedRefusals])
@@ -67,7 +67,7 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
  * 例をどの機能スライスへ置いても同じモジュールの宣言として数える。
  * 機能スライスはモジュールの一段下か、機能群の一段下にある。
  */
-async function contextScenarioSources(
+async function moduleScenarioSources(
   snapshot: WorkspaceSnapshot,
   context: string,
 ): Promise<string[]> {

@@ -21,7 +21,7 @@
 | モジュール | 変わりうる設計判断を内部へ隠し、責務と公開契約を定める実装の単位。仕様文書との対応は論理アーキテクチャの責務表で宣言する | Tenancy |
 | 値オブジェクト | 識別子ではなく値で比較する型。正規化、比較、妥当性の判定を一か所で定義する | ユーザー名 |
 | 状態遷移表（マトリクス形式） | 行に状態、列に操作を並べ、すべてのセルに結果を書く表 | [状態遷移](#3-状態遷移)の三つ目の表 |
-| 機能スライス | 一つの機能の単位。仕様のディレクトリと、対応するコードのディレクトリ `backend/<context>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/modules/identity-management/user/` と `backend/idmanagement/user/` |
+| 機能スライス | 一つの機能の単位。仕様のディレクトリと、対応するコードのディレクトリ `backend/<module>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/modules/identity-management/user/` と `backend/idmanagement/user/` |
 
 ## 1. TypeSpec の範囲
 
@@ -112,9 +112,9 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 | 階層 | 置き場所 | 仕様 | 設計 |
 | --- | --- | --- | --- |
 | システム | `docs/requirements/`、`docs/design/` | `requirements/`（目的と範囲、機能、品質、外部規範、システム横断シナリオ、用語集） | `docs/design/` |
-| モジュール | `docs/modules/<context>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | `design/` |
-| 機能群 | `docs/modules/<context>/<group>/` | `README.md`（関係の深い機能の境界と索引）。要件は宣言しない *(checked)* | なし |
-| 機能 | `docs/modules/<context>/<group>/<feature>/` | `README.md` と章、任意の `acceptance.feature.md` | 任意の `design.md` |
+| モジュール | `docs/modules/<module>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | `design/` |
+| 機能群 | `docs/modules/<module>/<group>/` | `README.md`（関係の深い機能の境界と索引）。要件は宣言しない *(checked)* | なし |
+| 機能 | `docs/modules/<module>/<group>/<feature>/` | `README.md` と章、任意の `acceptance.feature.md` | 任意の `design.md` |
 
 - 要件は機能スライスの仕様でだけ宣言する *(checked)*。複数の機能にまたがって見える要件も、その要件を実装するコードが属する機能へ置く。実装が共有の仕組みであれば、その仕組みを一つの機能（例：管理 API の認可、CSV の転送）として機能スライスを設ける。
 - 機能群に置けるのは `README.md` だけである *(checked)*。
@@ -124,7 +124,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 
 **機能スライスの仕様とコード。**
 
-- 機能スライスの仕様のディレクトリは、コードのディレクトリ `backend/<context>/<feature>/`（直下に `domain/` または `usecases/` を置くディレクトリ）に対応させる。
+- 機能スライスの仕様のディレクトリは、コードのディレクトリ `backend/<module>/<feature>/`（直下に `domain/` または `usecases/` を置くディレクトリ）に対応させる。
 - 仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と一致すれば、対応とみなす（`trusted-device` と `trusteddevice`）。一致しないモジュール名は検査の設定に別名として書く。
 - コードのディレクトリには、対応する仕様のディレクトリを必ず置く *(checked)*。導入時点で対応のなかったコードのディレクトリは `tools/check/feature-slice-debt.json` に列挙し、減る方向にだけ変える。
 - コードのディレクトリのない機能スライスにも、要件のまとまりがあれば仕様のディレクトリを置いてよい。その場合は、モジュールの設計の構成要素の表に、どのコードが実装するかを書く。
@@ -236,7 +236,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 
 ### 要件一件の書式
 
-要件は、操作の節の下で `#### REQ-<CONTEXT>-NNN <タイトル>` の見出しとして宣言する *(checked)*。
+要件は、操作の節の下で `#### REQ-<MODULE>-NNN <タイトル>` の見出しとして宣言する *(checked)*。
 見出しは H3 か H4 とし、`Rule:` を付けない *(checked)*。
 本文は、EARS 形式の要件文と、決まった欄で書く。
 
@@ -344,7 +344,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 一ファイルに一つの `Feature`、要件ごとに一つの `Rule`、一つの `Example` に分岐のない一経路を書く。
 - 付録の `Rule` は、同じ機能スライスの仕様本文が宣言した要件だけを参照でき、タイトルは宣言と一致させる *(checked)*。
 - 付録に置いた `Rule` には、一つ以上の例を置く *(checked)*。
-- `Example` の名前は `EX-<CONTEXT>-<REQ-NNN>-<sequence>` で始める。`Scenario Outline` では、各 `Examples` 行の `example_id` 列に置く。
+- `Example` の名前は `EX-<MODULE>-<REQ-NNN>-<sequence>` で始める。`Scenario Outline` では、各 `Examples` 行の `example_id` 列に置く。
 - 例の ID は変更せず、全体で一意にし、親の要件に所属させる *(checked)*。
 - 要件を検査済みとみなすには、その要件のすべての子の例をテストから参照しなければならない *(checked)*。
 - 英語のキーワードと日本語の文章を使う。行為者は `When` の主語に置く。状態は `Given`、契機は `When`、観測可能な結果は `Then` で書き、`And` と `But` は直前の種別を継続する。
@@ -356,7 +356,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 ### 実行可能な具体例と派生表示
 
 - 例は、実装に隣接する `testdata/*.examples.json` を一次情報にして生成することを優先する。一次情報は各例の `id`、`title`、`given`、`input`、`expected` からなる JSON 配列である。
-- `acceptance.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<context>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
+- `acceptance.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<module>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
 - `mise run check-spec` は一次情報との差を拒否する *(checked)*。
 - 生成した EX にも通常の検査を適用し、データを実行して期待結果を表明するテストを要する。テストの `//spec:covers` にその EX の ID を追加する。
 - 実装から得た出力を期待結果として自動採用しない。

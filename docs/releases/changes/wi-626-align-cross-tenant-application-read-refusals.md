@@ -1,6 +1,6 @@
 # wi-626-align-cross-tenant-application-read-refusals
 
-Application の管理 API について、実際に返していた 404 を [API 契約](../../../spec/contexts/application/main.tsp)へ追加した。
+Application の管理 API について、実際に返していた 404 を [API 契約](../../../spec/modules/application/main.tsp)へ追加した。
 
 次の API 操作は、存在しない Application に 404 `application_not_found` を返す。
 別テナントの Application も同じ応答になる。

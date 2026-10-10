@@ -38,7 +38,7 @@ var ErrConnectionNotFound = errors.New("provisioning: connection not found")
 // the source, or the task had already settled). It returns the
 // error unchanged (without touching task status) when the downstream call
 // fails: ProvisioningTaskLifecycle keeps status=in_flight for the whole
-// Jobs-level attempt/retry loop (spec/contexts/provisioning.yaml
+// Jobs-level attempt/retry loop (docs/modules/provisioning/
 // states.ProvisioningTaskLifecycle), so the caller (the Jobs handler
 // wrapper) decides dead_letter based on the Job's own attempts vs max_attempts.
 func ExecuteTask(ctx context.Context, deps ExecuteTaskDeps, tenantID, taskID string, now time.Time) (spec.DomainEvent, error) {
@@ -275,7 +275,7 @@ func groupDisplayName(attrs map[string]any, config *domain.GroupPushConfig) any 
 }
 
 // pushGroupMembers sends the Group's current direct members downstream as one
-// incremental `add` (spec/contexts/provisioning.yaml events.GroupMembershipPushed).
+// incremental `add` (docs/modules/provisioning/ events.GroupMembershipPushed).
 //
 // Only members IdMagic has already provisioned are sent: a member with no
 // RemoteResourceLink has no downstream id to name, and inventing one would make

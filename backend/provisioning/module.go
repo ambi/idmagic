@@ -128,7 +128,7 @@ func (m Module) JobHandlerDeps(
 }
 
 // Register registers the Application-detail "provisioning" subroute and the
-// tenant-wide aggregate view (spec/contexts/provisioning.yaml §設定の置き場所).
+// tenant-wide aggregate view (docs/modules/provisioning/ §設定の置き場所).
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository, groupRepo groupports.GroupRepository) {
 	provisioninghttp.RegisterRoutes(g, provisioninghttp.Deps{
 		Deps: deps, Authenticator: authenticator,

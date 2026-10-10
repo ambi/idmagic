@@ -7,9 +7,9 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.UserInfo }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.GetOpenidConfiguration }
-  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.OAuth2Client }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.Contract.UserInfo }
+  - { path: spec/modules/oauth2/main.tsp, symbol: IdMagic.Contract.GetOpenidConfiguration }
+  - { path: spec/modules/oauth2/models.tsp, symbol: IdMagic.Contract.OAuth2Client }
 ---
 
 # pairwise subject identifier (相関防止のための per-client sub) に対応する

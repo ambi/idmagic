@@ -9,7 +9,7 @@ import (
 
 // DataExportTargetKind is the resource type a CSV export targets. Column
 // definitions are closed to a per-kind allowlist so unreviewed attributes never
-// leak (spec/contexts/identity-management.yaml models.DataExportTargetKind).
+// leak (docs/modules/identity-management/ models.DataExportTargetKind).
 type DataExportTargetKind string
 
 const (
@@ -24,7 +24,7 @@ func (k DataExportTargetKind) Valid() bool {
 }
 
 // DataExportStatus mirrors the DataExportLifecycle states
-// (spec/contexts/identity-management.yaml states.DataExportLifecycle).
+// (docs/modules/identity-management/ states.DataExportLifecycle).
 type DataExportStatus string
 
 const (

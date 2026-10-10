@@ -61,14 +61,14 @@ namespace Operations {
   it('reads the owning module and its API tag from the declaring directory', async () => {
     const host = await createTestHost()
     host.addTypeSpecFile(
-      'spec/contexts/demo/models.tsp',
+      'spec/modules/demo/models.tsp',
       `namespace Example.Contract {
   model DemoRecord { id: string; }
 }
 `,
     )
     host.addTypeSpecFile(
-      'spec/contexts/demo/main.tsp',
+      'spec/modules/demo/main.tsp',
       `import "./models.tsp";
 
 @tag("Demo")
@@ -76,26 +76,24 @@ namespace Example.Demo {
 }
 `,
     )
-    host.addTypeSpecFile('main.tsp', 'import "./spec/contexts/demo/main.tsp";\n')
+    host.addTypeSpecFile('main.tsp', 'import "./spec/modules/demo/main.tsp";\n')
     await host.compile('main.tsp')
 
     const catalog = extractTypeSpecCatalog(host.program, new Set(), '/test')
 
-    expect(catalog.symbols.find((symbol) => symbol.shortName === 'DemoRecord')?.context).toBe(
-      'demo',
-    )
-    expect(catalog.contextTags).toEqual({ demo: ['Demo'] })
+    expect(catalog.symbols.find((symbol) => symbol.shortName === 'DemoRecord')?.module).toBe('demo')
+    expect(catalog.moduleTags).toEqual({ demo: ['Demo'] })
   })
 
-  it('leaves symbols declared outside a context directory unowned', async () => {
+  it('leaves symbols declared outside a module directory unowned', async () => {
     const host = await createTestHost()
     host.addTypeSpecFile('main.tsp', 'namespace Example.Loose;\nmodel Free { id: string; }\n')
     await host.compile('main.tsp')
 
     const catalog = extractTypeSpecCatalog(host.program, new Set(), '/test')
 
-    expect(catalog.symbols[0]?.context).toBeUndefined()
-    expect(catalog.contextTags).toEqual({})
+    expect(catalog.symbols[0]?.module).toBeUndefined()
+    expect(catalog.moduleTags).toEqual({})
   })
 
   it('inherits documentation from a spread source property', async () => {

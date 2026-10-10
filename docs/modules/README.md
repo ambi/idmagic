@@ -33,6 +33,6 @@
 | `<group>/<feature>/acceptance.feature.md` | 仕様：要件に付ける任意の受け入れ例 |
 | `<group>/<feature>/design.md` | 設計：その機能に閉じた、コードから読み取れない仕組み |
 
-モデル、API、認証機構の契約は `spec/contexts/<context>/` の TypeSpec が定める。
+モデル、API、認証機構の契約は `spec/modules/<module>/` の TypeSpec が定める。
 散文の側に同じ契約を書かない。
 仕様の記述規則は[仕様フォーマット](../formats/specification-format.md)、設計の記述規則は[設計フォーマット](../formats/design-format.md)、配置は[文書ガイド](../formats/documentation-guide.md#配置)が定める。

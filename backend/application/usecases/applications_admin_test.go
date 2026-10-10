@@ -43,7 +43,7 @@ func seedApp(ctx context.Context, t *testing.T, deps appusecases.ApplicationDeps
 
 // TestCreateApplication_rejectsWhenHardQuotaExceeded is a wi-160 T004.4 RED
 // test for the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
-// (spec/contexts/tenancy.yaml), applied to the applications resource.
+// (docs/modules/tenancy/), applied to the applications resource.
 func TestCreateApplication_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := tenantContext()
 	deps := fullAppDeps()

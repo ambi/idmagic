@@ -7,9 +7,9 @@ priority: p3
 depends_on: [wi-30-inbound-federation-and-identity-broker]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.User }
-  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.CreateAdminUser }
-  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Contract.AssignApplication }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.User }
+  - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.Contract.CreateAdminUser }
+  - { path: spec/modules/application/main.tsp, symbol: IdMagic.Contract.AssignApplication }
 ---
 
 # 外部協業者を招待するゲストユーザー (B2B collaboration) を導入する

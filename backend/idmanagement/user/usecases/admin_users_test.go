@@ -398,7 +398,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 
 // TestCreateUser_rejectsWhenHardQuotaExceeded is a wi-160 T004.1 RED test for
 // the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
-// (spec/contexts/tenancy.yaml), applied to the users resource.
+// (docs/modules/tenancy/), applied to the users resource.
 func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	repo := usermemory.NewUserRepository()

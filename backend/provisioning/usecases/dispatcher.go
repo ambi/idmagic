@@ -10,7 +10,7 @@ import (
 )
 
 // Enqueuer submits a pending ProvisioningTask as a durable Jobs.Job
-// (spec/contexts/provisioning.yaml §配送・信頼性, kind provisioning_task).
+// (docs/modules/provisioning/ §配送・信頼性, kind provisioning_task).
 // dedupKey is the task's idempotency key, so a duplicate dispatch of the
 // same task is a no-op at the Jobs layer too.
 type Enqueuer interface {

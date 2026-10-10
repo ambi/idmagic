@@ -8,7 +8,7 @@ depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-56-mcp-authorizatio
 change_kind: feature
 affected_spec:
   - { path: docs/modules/oauth2/token/README.md, requirement: REQ-OAUTH2-048 }
-  - { path: spec/contexts/oauth2/models.tsp, symbol: TokenRequest }
+  - { path: spec/modules/oauth2/models.tsp, symbol: TokenRequest }
 ---
 
 # Cross-App Access (Identity Assertion Authorization Grant) でエージェントのアプリ間アクセスを仲介する
@@ -33,7 +33,7 @@ IdMagic は現状 RFC 7523 をクライアント認証 (`client_assertion`) に�
 - 対象とする draft の改訂を固定し、アイデンティティアサーションの受理条件 (信頼する発行者と受け手) を確定する。
 - アプリ A からアプリ B への許可関係 (どのクライアントがどのリソースを要求できるか) の登録モデルを設ける。所有は `Application` Context とする。
 - ID-JAG の発行 (IdP 役) を、既存のトークン交換の `requested_token_type` プロファイルとして追加する。
-- ID-JAG の償還 (宛先の認可サーバー役) を、新設する RFC 7523 JWT Bearer グラントとして追加する。`spec/contexts/oauth2/models.tsp` の `TokenRequest` と、クライアントが宣言できる `grant_types` の双方に反映する。
+- ID-JAG の償還 (宛先の認可サーバー役) を、新設する RFC 7523 JWT Bearer グラントとして追加する。`spec/modules/oauth2/models.tsp` の `TokenRequest` と、クライアントが宣言できる `grant_types` の双方に反映する。
 - アサーションの検証を厳格にする。`iss` / `sub` / `aud` / `exp` / `iat` / `jti`、ユーザーの認可、発信元のクライアントとエージェント、委譲チェーンを持つものだけを受理し、登録済みの発信元鍵と宛先リソースのポリシーで検証する。アサーションの受け手は IdMagic の交換エンドポイント、要求されるリソースは宛先アプリとして分ける。
 - `jti` の再送窓、短い有効期限、発信元と宛先のテナント一致、発信元アプリの許可リスト、ユーザーの同意または企業ポリシー、`authorization_details` の縮小をすべて満たす場合だけ、宛先を受け手とするトークンを発行する。
 - 交換の結果は既存の `act` チェーンへ発信元アプリとエージェントを加える。アサーションの本文とユーザーのデータは保存しない。

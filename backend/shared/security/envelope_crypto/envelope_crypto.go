@@ -35,7 +35,7 @@ type MasterKeyProvider interface {
 	UnwrapDataKey(ctx context.Context, tenantID string, wrapped []byte, masterKeyID string) (plaintextDEK []byte, err error)
 	Healthy(ctx context.Context) bool
 	// Provider names this MasterKeyProvider for health/observability display
-	// (spec/contexts/data-keys.yaml TenantDataKeyHealth.provider, wi-97 T007)
+	// (docs/modules/data-keys/ TenantDataKeyHealth.provider, wi-97 T007)
 	// — e.g. "openbao" or "tink_cleartext". Never reveals key material.
 	Provider() string
 }

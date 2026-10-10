@@ -48,7 +48,7 @@ func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
 // CaptureLifecycleEvent creates a ProvisioningTask for every active,
 // in-scope connection, translating trigger into a domain.ProvisioningOperation
 // via each connection's DeprovisionPolicy and ProvisioningFeatureFlags
-// (spec/contexts/provisioning.yaml §deprovision セマンティクス). It runs after
+// (docs/modules/provisioning/ §deprovision セマンティクス). It runs after
 // the caller's commit; see ports.ProvisioningCapture for how a lost capture is recovered.
 //
 // grace_period_days を持つ接続への User の削除（delete に変換されたもの）は、プロビジョニングタスクの代わりに

@@ -38,7 +38,7 @@ var agentWorkloadBindingSchema = z.Struct(z.Shape{
 	"CreatedAt": z.Time().Required(),
 })
 
-// Validate は構造的妥当性 (spec/contexts/workloadidentity.yaml AgentWorkloadBinding
+// Validate は構造的妥当性 (docs/modules/workloadidentity/ AgentWorkloadBinding
 // constraints) を検証する。subject_pattern は path.Match が受理する glob 構文でなければ
 // ならない (不正な pattern は登録時点で拒否し、交換時の判定漏れを防ぐ)。
 func (b AgentWorkloadBinding) Validate() error {

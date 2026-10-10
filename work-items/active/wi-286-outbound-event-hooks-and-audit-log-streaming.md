@@ -7,8 +7,8 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ListAdminAuditEvents }
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Contract.ListAdminAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }
 ---
 
 # テナント設定の outbound event hook (webhook) と監査ログストリーミングを導入する

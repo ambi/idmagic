@@ -45,7 +45,7 @@ func mustUUID(t *testing.T) string {
 
 // TestBootstrapRotateDisableDestroyLifecycle covers the full
 // DataEncryptionKeyLifecycle against a real PostgreSQL database (scenarios in
-// spec/contexts/data-keys.yaml): bootstrap creates active v1, rotate demotes
+// docs/modules/data-keys/): bootstrap creates active v1, rotate demotes
 // it to retiring and activates v2, disable locks out the retiring version,
 // destroy erases wrapped_dek.
 func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {

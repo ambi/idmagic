@@ -45,7 +45,7 @@ initial_context: # 起票時ではなく着手時に記入する
   stop_before_reading: [frontend]
 affected_spec:
   - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
-  - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
+  - { path: spec/modules/system/main.tsp, symbol: Product.System.Operations.StartTask }
 primary_use_cases: # feature、bugfix、standards.md の変更では着手後に必須
   - id: start-task
     requirement: REQ-SYSTEM-001
@@ -164,8 +164,8 @@ TypeSpec のシンボルには引く ID がないため、宣言名を含むテ�
 `pending` の作業項目は、動機、対象範囲、対象外だけでも役に立つ。
 
 作業項目を `in_progress` にすると、`mise run check-work-items` が一覧を解決する。
-すべてのパスが存在し、`<文書>#REQ-<CONTEXT>-NNN` の項目が、その文書で宣言された規則を指さなければならない。
-規則を宣言する文書は、機能仕様（`docs/modules/<context>/<group>/<feature>/README.md` とその章）、またはモジュールをまたぐ要件を宣言するシステムの `docs/requirements/scenarios.feature.md` である。
+すべてのパスが存在し、`<文書>#REQ-<MODULE>-NNN` の項目が、その文書で宣言された規則を指さなければならない。
+規則を宣言する文書は、機能仕様（`docs/modules/<module>/<group>/<feature>/README.md` とその章）、またはモジュールをまたぐ要件を宣言するシステムの `docs/requirements/scenarios.feature.md` である。
 
 `affected_spec` は、完了済みを含むすべての記録で解決する。
 これは当時読んだものではなく、変更が触れた規範要素の索引だからである。

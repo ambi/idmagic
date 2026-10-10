@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// ValidateOutboundBaseURL enforces spec/contexts/provisioning.yaml
+// ValidateOutboundBaseURL enforces docs/modules/provisioning/
 // ProvisioningConnection.base_url's contract: https required, no userinfo, no
 // fragment, non-empty host (mirrors backend/shared/security/tokens_jose.ValidateJWKSURI,
 // the equivalent guard for jwks_uri). It is a pure syntax check with no network
@@ -31,7 +31,7 @@ func ValidateOutboundBaseURL(raw string) error {
 }
 
 // ProvisioningAuthMethod is a downstream authentication method
-// (spec/contexts/provisioning.yaml models.ProvisioningAuthMethod).
+// (docs/modules/provisioning/ models.ProvisioningAuthMethod).
 type ProvisioningAuthMethod string
 
 const (
@@ -44,7 +44,7 @@ func (m ProvisioningAuthMethod) Valid() bool {
 }
 
 // ProvisioningScope selects which subjects a connection provisions
-// (spec/contexts/provisioning.yaml models.ProvisioningScope).
+// (docs/modules/provisioning/ models.ProvisioningScope).
 type ProvisioningScope string
 
 const (
@@ -57,7 +57,7 @@ func (s ProvisioningScope) Valid() bool {
 }
 
 // ProvisioningConnectionStatus is the admin-controlled enabled/disabled toggle
-// (spec/contexts/provisioning.yaml models.ProvisioningConnectionStatus). Deletion has
+// (docs/modules/provisioning/ models.ProvisioningConnectionStatus). Deletion has
 // no status value; DeleteProvisioningConnection removes the row (Application precedent).
 type ProvisioningConnectionStatus string
 
@@ -71,7 +71,7 @@ func (s ProvisioningConnectionStatus) Valid() bool {
 }
 
 // ProvisioningHealth is the provisioning engine's view of connection health
-// (spec/contexts/provisioning.yaml models.ProvisioningHealth).
+// (docs/modules/provisioning/ models.ProvisioningHealth).
 type ProvisioningHealth string
 
 const (
@@ -85,7 +85,7 @@ func (h ProvisioningHealth) Valid() bool {
 }
 
 // ProvisioningGroupSelection selects which groups push_groups targets
-// (spec/contexts/provisioning.yaml models.ProvisioningGroupSelection).
+// (docs/modules/provisioning/ models.ProvisioningGroupSelection).
 type ProvisioningGroupSelection string
 
 const (
@@ -98,7 +98,7 @@ func (s ProvisioningGroupSelection) Valid() bool {
 }
 
 // ProvisioningGroupDisplayNameSource is which IdMagic Group attribute becomes the
-// downstream `displayName` (spec/contexts/provisioning/models.tsp
+// downstream `displayName` (spec/modules/provisioning/models.tsp
 // models.ProvisioningGroupDisplayNameSource). The set is closed because these are
 // the attributes an IdMagic Group has; an open string would let a typo save,
 // succeed, and change nothing downstream.
@@ -117,7 +117,7 @@ func (s ProvisioningGroupDisplayNameSource) Valid() bool {
 }
 
 // ProvisioningFeatureFlags toggles which operations a connection may perform
-// (spec/contexts/provisioning.yaml models.ProvisioningFeatureFlags).
+// (docs/modules/provisioning/ models.ProvisioningFeatureFlags).
 type ProvisioningFeatureFlags struct {
 	CreateUsers     bool `json:"create_users"`
 	UpdateUsers     bool `json:"update_users"`
@@ -127,7 +127,7 @@ type ProvisioningFeatureFlags struct {
 }
 
 // ProvisioningCapabilities caches discovery results from the downstream
-// /ServiceProviderConfig (spec/contexts/provisioning.yaml models.ProvisioningCapabilities).
+// /ServiceProviderConfig (docs/modules/provisioning/ models.ProvisioningCapabilities).
 type ProvisioningCapabilities struct {
 	SupportsPatch  bool      `json:"supports_patch"`
 	SupportsBulk   bool      `json:"supports_bulk"`
@@ -138,7 +138,7 @@ type ProvisioningCapabilities struct {
 }
 
 // ProvisioningConnectionCredentialMetadata is the non-secret projection of a
-// connection's credential (spec/contexts/provisioning.yaml
+// connection's credential (docs/modules/provisioning/
 // models.ProvisioningConnectionCredentialMetadata). It never carries the plaintext
 // token/secret.
 type ProvisioningConnectionCredentialMetadata struct {
@@ -155,7 +155,7 @@ type ProvisioningConnectionCredentialMetadata struct {
 }
 
 // ProvisioningCredentialInput is the write-only credential RegisterProvisioningConnection
-// / UpdateProvisioningConnection accept (spec/contexts/provisioning.yaml
+// / UpdateProvisioningConnection accept (docs/modules/provisioning/
 // models.ProvisioningCredentialInput). Callers must never log or echo it back.
 type ProvisioningCredentialInput struct {
 	AuthMethod         ProvisioningAuthMethod
@@ -178,7 +178,7 @@ func (c ProvisioningCredentialInput) Secret() string {
 }
 
 // GroupPushConfig selects push_groups targets and display name source
-// (spec/contexts/provisioning.yaml models.GroupPushConfig).
+// (docs/modules/provisioning/ models.GroupPushConfig).
 type GroupPushConfig struct {
 	Selection         ProvisioningGroupSelection         `json:"selection"`
 	ExplicitGroupIDs  []string                           `json:"explicit_group_ids,omitempty"`
@@ -199,7 +199,7 @@ func (c *GroupPushConfig) DisplayNameSourceKey() string {
 }
 
 // ProvisioningConnection is the Provisioning module aggregate: at most
-// one per Application (spec/contexts/provisioning.yaml models.ProvisioningConnection).
+// one per Application (docs/modules/provisioning/ models.ProvisioningConnection).
 type ProvisioningConnection struct {
 	ApplicationID                     string                                   `json:"application_id"`
 	TenantID                          string                                   `json:"tenant_id"`
@@ -270,12 +270,12 @@ var ErrConnectionAlreadyQuarantined = errors.New("provisioning: connection is al
 
 // ErrConnectionNotQuarantined is returned by Resume when the connection's health
 // is not quarantined (ResumeProvisioningConnection requires resource.health ==
-// "quarantined", spec/contexts/provisioning.yaml interfaces.ResumeProvisioningConnection).
+// "quarantined", docs/modules/provisioning/ interfaces.ResumeProvisioningConnection).
 var ErrConnectionNotQuarantined = errors.New("provisioning: connection is not quarantined")
 
 // Quarantine stops task generation for the connection: consecutive failures
 // or the accidental deletion guard exceeded a threshold
-// (spec/contexts/provisioning.yaml events.ConnectionQuarantined).
+// (docs/modules/provisioning/ events.ConnectionQuarantined).
 func (c *ProvisioningConnection) Quarantine(reason string, now time.Time) error {
 	if c.Health == HealthQuarantined {
 		return ErrConnectionAlreadyQuarantined
@@ -290,7 +290,7 @@ func (c *ProvisioningConnection) Quarantine(reason string, now time.Time) error 
 }
 
 // Resume clears quarantine and resets the consecutive failure counter
-// (spec/contexts/provisioning.yaml interfaces.ResumeProvisioningConnection,
+// (docs/modules/provisioning/ interfaces.ResumeProvisioningConnection,
 // events.ProvisioningConnectionQuarantineCleared).
 func (c *ProvisioningConnection) Resume(now time.Time) error {
 	if c.Health != HealthQuarantined {

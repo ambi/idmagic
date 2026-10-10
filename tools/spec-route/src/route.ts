@@ -3,7 +3,7 @@
  *
  * Kept apart from the script so the ranking can be read and tested without a
  * repository around it. The IO — which document declares the rule, which
- * TypeSpec files belong to the context, which tests name a sibling id — stays
+ * TypeSpec files belong to the module, which tests name a sibling id — stays
  * in main.ts.
  */
 
@@ -32,7 +32,7 @@ export type Candidate = {
  * What the steps of an example give the contract to join on.
  *
  * Three things, because one is not enough on its own. An error type alone does
- * not narrow: `AccessDeniedError` is answered by most of a context's admin
+ * not narrow: `AccessDeniedError` is answered by most of a module's admin
  * operations, so a refusal example naming only the type ranks thirty
  * operations equally. A normal-path example names no error type at all, and
  * would have nothing. Endpoints and granular scopes are the other two facts
@@ -50,7 +50,7 @@ export function joinableFacts(stepTexts: readonly string[]): Join {
 }
 
 /**
- * The context's operations, most closely joined first.
+ * The module's operations, most closely joined first.
  *
  * Every operation is returned, not just the matches. An example that joins on
  * nothing still needs somewhere to start, and the caller says in its heading

@@ -8,7 +8,7 @@ depends_on: [wi-50-token-exchange-delegation-actor-chain]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/oauth2/consent/README.md, requirement: REQ-OAUTH2-032 }
-  - { path: spec/contexts/oauth2/models.tsp, symbol: Consent }
+  - { path: spec/modules/oauth2/models.tsp, symbol: Consent }
 ---
 
 # ユーザーが自分を代行できるエージェントを一覧し、個別に取り消せるようにする
@@ -25,13 +25,13 @@ affected_spec:
 
 ## Scope
 
-- `spec/contexts/oauth2/models.tsp` の `Consent` 集約を、エージェントを主体とする委譲付与を表現できるよう拡張する。**新しい独立した集約や独自の受領書形式は作らない** (理由は `## Design`)。付与の単位は「ユーザー U が エージェント A に対し、scope または `authorization_details` の範囲 S で、期限 T まで代行を許す」とする。
+- `spec/modules/oauth2/models.tsp` の `Consent` 集約を、エージェントを主体とする委譲付与を表現できるよう拡張する。**新しい独立した集約や独自の受領書形式は作らない** (理由は `## Design`)。付与の単位は「ユーザー U が エージェント A に対し、scope または `authorization_details` の範囲 S で、期限 T まで代行を許す」とする。
 - 付与が無いエージェントの代行を拒否する規範シナリオを追加する。既存の `may_act` 強制と重ねる形にし、二つ目の判定経路を作らない。
 - 撤回の伝播を確定する。撤回は [[wi-58-continuous-access-evaluation-agent-revocation]] の失効エポックを前進させ、発行済みトークンがイントロスペクションで即座に無効化されるところまで届かせる。エージェント全体の失効ではなく、当該ユーザーの代行だけが止まること。
 - アカウントポータルに、自分を代行できるエージェントの一覧 (エージェント名・所有者・付与範囲・期限・最終利用) と、個別の撤回を追加する。
 - 管理コンソール側に、テナント管理者が付与状況を参照できる経路を追加する。付与の代行は行わない (REQ-OAUTH2-031 が同意について定めた「参照・撤回はできるが付与は代行できない」規則を踏襲する)。
 - 付与と撤回をイベントとして残し、[[wi-377-agent-and-delegation-chain-audit-axes]] が加える軸から辿れるようにする。
-- `spec/contexts/identity-management/models.tsp` に `model Agent` 集約を追加する ([[wi-369-agent-capability-survey-2026-08]] の再評価条件による。先行する work item が解消済みなら重複させない)。
+- `spec/modules/identity-management/models.tsp` に `model Agent` 集約を追加する ([[wi-369-agent-capability-survey-2026-08]] の再評価条件による。先行する work item が解消済みなら重複させない)。
 
 ## Out of Scope
 

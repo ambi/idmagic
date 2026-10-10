@@ -118,7 +118,7 @@ describe('verifyDocumentationImpact', () => {
     // every open record inherited it instead (wi-523 inflated wi-495).
     const addedDeclaration = {
       ...noSpecificationChange,
-      addedDeclarations: ['spec/contexts/demo/models.tsp:PresentationTokenType'],
+      addedDeclarations: ['spec/modules/demo/models.tsp:PresentationTokenType'],
     }
     const author = {
       ...record,
@@ -126,7 +126,7 @@ describe('verifyDocumentationImpact', () => {
       status: 'in_progress',
       affected_spec: [
         {
-          path: 'spec/contexts/demo/models.tsp',
+          path: 'spec/modules/demo/models.tsp',
           symbol: 'Demo.Contract.PresentationTokenType',
         },
       ],
@@ -187,11 +187,11 @@ describe('verifyDocumentationImpact', () => {
   })
 
   it('matches an added declaration by file and declaration name together', () => {
-    const declaration = 'spec/contexts/demo/models.tsp:PresentationTokenType'
+    const declaration = 'spec/modules/demo/models.tsp:PresentationTokenType'
     const reference = (overrides: Record<string, string>) => ({
       affected_spec: [
         {
-          path: 'spec/contexts/demo/models.tsp',
+          path: 'spec/modules/demo/models.tsp',
           symbol: 'Demo.Contract.PresentationTokenType',
           ...overrides,
         },
@@ -203,7 +203,7 @@ describe('verifyDocumentationImpact', () => {
     // The path pins the file. Without it, a same-named declaration added to
     // another context would be claimed by an unrelated record.
     expect(
-      claimsSpecificationAddition(reference({ path: 'spec/contexts/other/models.tsp' }), [
+      claimsSpecificationAddition(reference({ path: 'spec/modules/other/models.tsp' }), [
         declaration,
       ]),
     ).toBe(false)
@@ -255,7 +255,7 @@ describe('verifyDocumentationImpact', () => {
         environment({
           specificationDiff: {
             ...noSpecificationChange,
-            addedDeprecations: ['spec/contexts/demo/main.tsp:LegacyDemo'],
+            addedDeprecations: ['spec/modules/demo/main.tsp:LegacyDemo'],
           },
         }),
       ),
@@ -267,7 +267,7 @@ describe('verifyDocumentationImpact', () => {
         environment({
           specificationDiff: {
             ...noSpecificationChange,
-            removedDeclarations: ['spec/contexts/demo/main.tsp:RemovedDemo'],
+            removedDeclarations: ['spec/modules/demo/main.tsp:RemovedDemo'],
           },
         }),
       ),

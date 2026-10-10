@@ -22,7 +22,7 @@ func validBinding() workloaddomain.AgentWorkloadBinding {
 }
 
 // TestBindingValidateHappyAndFailure — AgentWorkloadBinding constraints
-// (spec/contexts/workloadidentity.yaml)。
+// (docs/modules/workloadidentity/)。
 func TestBindingValidateHappyAndFailure(t *testing.T) {
 	cases := []struct {
 		name    string

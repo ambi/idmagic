@@ -378,7 +378,7 @@ describe('文書配置図の整合検査', () => {
     const result = await checkDocumentLayout(root)
 
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/modules/<context>/standards.md')
+    expect(result.output).toContain('docs/modules/<module>/standards.md')
   })
 })
 

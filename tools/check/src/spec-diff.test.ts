@@ -50,7 +50,7 @@ const gherkinScenario = (id: string, result: string): string =>
 const snapshot = (documentSource: string, tsp = 'op StartTask(): void;'): Snapshot =>
   new Map([
     ['docs/modules/demo/SPECIFICATION.md', documentSource],
-    ['spec/contexts/demo/main.tsp', tsp],
+    ['spec/modules/demo/main.tsp', tsp],
   ])
 
 describe('diffSpecifications', () => {
@@ -217,7 +217,7 @@ describe('diffSpecifications', () => {
           machine('emit Done').split('\n').slice(1).join('\n'),
         ].join('\n'),
       ],
-      ['spec/contexts/demo/main.tsp', 'op StartTask(): void;'],
+      ['spec/modules/demo/main.tsp', 'op StartTask(): void;'],
     ])
     const diff = diffSpecifications(base, head)
     expect(diff).toEqual({
@@ -430,8 +430,8 @@ describe('diffSpecifications', () => {
       'op StartTask(): void;',
     )
     const diff = diffSpecifications(base, head)
-    expect(diff.addedDeclarations).toEqual(['spec/contexts/demo/main.tsp:StartTask'])
-    expect(diff.removedDeclarations).toEqual(['spec/contexts/demo/main.tsp:Task'])
+    expect(diff.addedDeclarations).toEqual(['spec/modules/demo/main.tsp:StartTask'])
+    expect(diff.removedDeclarations).toEqual(['spec/modules/demo/main.tsp:Task'])
   })
 
   it('tracks TypeSpec deprecations independently from declaration existence', () => {
@@ -442,10 +442,10 @@ describe('diffSpecifications', () => {
     )
     const diff = diffSpecifications(base, head)
     expect(diff.addedDeclarations).toEqual([])
-    expect(diff.addedDeprecations).toEqual(['spec/contexts/demo/main.tsp:LegacyDemo'])
+    expect(diff.addedDeprecations).toEqual(['spec/modules/demo/main.tsp:LegacyDemo'])
     expect(diff.removedDeprecations).toEqual([])
     expect(formatSpecificationDiff(diff, 'main')).toContain(
-      'added TypeSpec deprecations:\n  spec/contexts/demo/main.tsp:LegacyDemo',
+      'added TypeSpec deprecations:\n  spec/modules/demo/main.tsp:LegacyDemo',
     )
   })
 
@@ -486,6 +486,20 @@ describe('diffSpecifications', () => {
     )
   })
 
+  it('reports nothing when TypeSpec moves from spec/contexts to spec/modules', () => {
+    const source = '@deprecated("use Next")\nop LegacyDemo(): void;\nop StartTask(): void;\n'
+    const base: Snapshot = new Map([['spec/contexts/demo/main.tsp', source]])
+    const head: Snapshot = new Map([['spec/modules/demo/main.tsp', source]])
+
+    const diff = diffSpecifications(base, head)
+    expect([
+      ...diff.addedDeclarations,
+      ...diff.removedDeclarations,
+      ...diff.changedDeclarations,
+      ...diff.addedDeprecations,
+    ]).toEqual([])
+  })
+
   it('reports nothing when the documents move out of docs/domain', () => {
     const standard = (id: string): string =>
       [
@@ -523,7 +537,7 @@ describe('diffSpecifications', () => {
       ].join('\n'),
     )
     expect(diffSpecifications(base, head).addedDeclarations).toEqual([
-      'spec/contexts/demo/main.tsp:StartTask',
+      'spec/modules/demo/main.tsp:StartTask',
     ])
   })
 
@@ -537,7 +551,7 @@ describe('diffSpecifications', () => {
       ].join('\n'),
     )
     expect(diffSpecifications(base, head).addedDeclarations).toEqual([
-      'spec/contexts/demo/main.tsp:Task',
+      'spec/modules/demo/main.tsp:Task',
     ])
   })
 
@@ -565,10 +579,10 @@ describe('diffSpecifications', () => {
       'model Task {\n  id: string;\n  name: string;\n}\n\nop StartTask():   Task;',
     )
     const diff = diffSpecifications(base, head)
-    expect(diff.changedDeclarations).toEqual(['spec/contexts/demo/main.tsp:Task'])
+    expect(diff.changedDeclarations).toEqual(['spec/modules/demo/main.tsp:Task'])
     expect(diff.addedDeclarations).toEqual([])
     expect(formatSpecificationDiff(diff, 'main')).toContain(
-      'changed TypeSpec declarations:\n  spec/contexts/demo/main.tsp:Task',
+      'changed TypeSpec declarations:\n  spec/modules/demo/main.tsp:Task',
     )
   })
 
@@ -581,7 +595,7 @@ describe('diffSpecifications', () => {
       operation('Invalid,\nConflict,'),
     )
     expect(diffSpecifications(base, head).changedDeclarations).toEqual([
-      'spec/contexts/demo/main.tsp:StartTask',
+      'spec/modules/demo/main.tsp:StartTask',
     ])
   })
 })

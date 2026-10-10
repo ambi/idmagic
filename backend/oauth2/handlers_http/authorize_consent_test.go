@@ -3,7 +3,7 @@ package handlers_http
 // wi-160 T004.7 RED test for shouldConsumeConsentQuota: the decision of
 // whether granting a consent should consume the tenant's consents Hard Quota
 // slot (SCL scenario "Hard Quota を超過したリソース作成は拒否される",
-// spec/contexts/tenancy.yaml).
+// docs/modules/tenancy/).
 
 import (
 	"testing"

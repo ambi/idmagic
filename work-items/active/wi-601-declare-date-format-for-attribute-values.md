@@ -8,7 +8,7 @@ priority: p3
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: bugfix
 affected_spec:
-  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.AttributeValue }
+  - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.AttributeValue }
 ---
 
 # 属性値の日付を TypeSpec の日付型として宣言する

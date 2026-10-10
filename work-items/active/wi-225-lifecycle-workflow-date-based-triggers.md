@@ -27,7 +27,7 @@ Microsoft Entra ID Lifecycle Workflows と Okta Lifecycle Management の中心�
 IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを得ない。
 
 ## Scope
-- `spec/contexts/identity-governance/models.tsp` の `WorkflowTriggerKind` に `date_attribute_offset`
+- `spec/modules/identity-governance/models.tsp` の `WorkflowTriggerKind` に `date_attribute_offset`
   (仮称) を追加し、対象の日付型属性、offset 方向 (before/after)、offset 日数を持つ trigger 定義を
   追加する。
 - 日次スキャン job (既存の [[wi-42-async-job-runner]] を利用) を追加し、対象日付属性を持つ全 User

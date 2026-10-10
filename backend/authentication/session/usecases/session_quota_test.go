@@ -1,7 +1,7 @@
 package usecases
 
 // wi-160 T004.6 RED tests for the SCL scenario "Hard Quota を超過したリソース
-// 作成は拒否される" (spec/contexts/tenancy.yaml), applied to active_sessions.
+// 作成は拒否される" (docs/modules/tenancy/), applied to active_sessions.
 
 import (
 	"context"

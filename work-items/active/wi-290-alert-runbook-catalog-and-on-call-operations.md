@@ -8,7 +8,7 @@ priority: p1
 depends_on: []
 change_kind: operations
 affected_spec:
-  - { path: spec/contexts/system/main.tsp, symbol: IdMagic.Contract.MetricsExposition }
+  - { path: spec/modules/system/main.tsp, symbol: IdMagic.Contract.MetricsExposition }
 ---
 
 # アラート用 runbook の共通構成と索引を完成させる

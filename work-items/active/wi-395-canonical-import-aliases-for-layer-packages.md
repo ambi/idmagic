@@ -99,7 +99,7 @@ importas:
 
 ### `domain/` ディレクトリを廃止する案を採らなかった理由
 
-当初は `backend/<context>/(<feature>/)domain/` を廃止し、ドメイン層を Context / Feature 直下へ引き上げる案を検討した。DDD / Clean Architecture で最も中心となる層が境界の名前をそのまま名乗る、という点で筋は通っている。採らなかったのは次の理由による。
+当初は `backend/<module>/(<feature>/)domain/` を廃止し、ドメイン層を Context / Feature 直下へ引き上げる案を検討した。DDD / Clean Architecture で最も中心となる層が境界の名前をそのまま名乗る、という点で筋は通っている。採らなかったのは次の理由による。
 
 - **別名の問題を解かない。** 原因は「`domain` という名前」ではなく「パッケージ名が層名であること」で、それは `ports`（520 行）と `usecases`（332 行）でも同一である。ドメイン層だけ動かしても 58% しか触れず、残りは同じ形で残る。非対称を `docs/design/application/backend.md` で説明する負債だけが増える。
 - **語彙の観点でも利得が小さい。** `userdomain.User` の `User` は既に語彙を持っている。`user.User` は短いが stutter は残る。

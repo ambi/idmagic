@@ -77,7 +77,7 @@ func enqueueTestJob(t *testing.T, repo *memoryjobs.JobRepository, maxAttempts in
 }
 
 // TestRunner_OnlyClaimsConfiguredLane: RED for lane isolation
-// (spec/contexts/jobs.yaml scenario "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる"):
+// (docs/modules/jobs/ scenario "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる"):
 // a Runner configured for LaneLatencySensitive must never claim a Job whose
 // JobKind resolves to a different lane, even when that Job is due and the
 // Runner has free concurrency.

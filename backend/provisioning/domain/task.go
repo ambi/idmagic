@@ -1,5 +1,5 @@
 // Package domain implements the Provisioning module's protocol-agnostic
-// core business types (spec/contexts/provisioning.yaml). Protocol-specific wire
+// core business types (docs/modules/provisioning/). Protocol-specific wire
 // clients (e.g. SCIM) live in per-protocol feature packages and depend on this
 // package, not the other way around (decision 2).
 package domain
@@ -11,7 +11,7 @@ import (
 )
 
 // ProvisioningSourceType is the internal aggregate kind a RemoteResourceLink or
-// ProvisioningTask refers to (spec/contexts/provisioning.yaml models.ProvisioningSourceType).
+// ProvisioningTask refers to (docs/modules/provisioning/ models.ProvisioningSourceType).
 type ProvisioningSourceType string
 
 const (
@@ -24,7 +24,7 @@ func (s ProvisioningSourceType) Valid() bool {
 }
 
 // ProvisioningOperation is the downstream operation a ProvisioningTask applies
-// (spec/contexts/provisioning.yaml models.ProvisioningOperation).
+// (docs/modules/provisioning/ models.ProvisioningOperation).
 type ProvisioningOperation string
 
 const (
@@ -45,7 +45,7 @@ func (o ProvisioningOperation) Valid() bool {
 }
 
 // ProvisioningTaskStatus is a ProvisioningTaskLifecycle state
-// (spec/contexts/provisioning.yaml states.ProvisioningTaskLifecycle). in_flight is
+// (docs/modules/provisioning/ states.ProvisioningTaskLifecycle). in_flight is
 // held for the whole duration of the underlying Jobs-level attempt retry loop
 // (WorkflowRunLifecycle precedent); there is no separate non-terminal "failed" status.
 type ProvisioningTaskStatus string
@@ -67,7 +67,7 @@ func (s ProvisioningTaskStatus) Valid() bool {
 
 // ProvisioningTaskLifecycleEvent is a ProvisioningTaskLifecycle state machine
 // event. Values match the domain event model names emitted at each transition
-// (spec/contexts/provisioning.yaml states.ProvisioningTaskLifecycle.transitions).
+// (docs/modules/provisioning/ states.ProvisioningTaskLifecycle.transitions).
 type ProvisioningTaskLifecycleEvent string
 
 const (
@@ -98,7 +98,7 @@ var provisioningTaskTransitions = []provisioningTaskTransition{
 
 // TransitionProvisioningTaskLifecycle applies event to from and returns the
 // resulting status, or an error if the transition is not declared in
-// spec/contexts/provisioning.yaml states.ProvisioningTaskLifecycle.
+// docs/modules/provisioning/ states.ProvisioningTaskLifecycle.
 func TransitionProvisioningTaskLifecycle(from ProvisioningTaskStatus, event ProvisioningTaskLifecycleEvent) (ProvisioningTaskStatus, error) {
 	for _, t := range provisioningTaskTransitions {
 		if t.From == from && t.Event == event {
@@ -116,7 +116,7 @@ func IsProvisioningTaskTerminal(s ProvisioningTaskStatus) bool {
 
 // ProvisioningTask is the Provisioning module entity that represents
 // one task of an internal lifecycle event to a downstream connection
-// (spec/contexts/provisioning.yaml models.ProvisioningTask).
+// (docs/modules/provisioning/ models.ProvisioningTask).
 type ProvisioningTask struct {
 	ID            string                 `json:"id"`
 	TenantID      string                 `json:"tenant_id"`
@@ -153,7 +153,7 @@ func (d ProvisioningTask) Validate() error {
 }
 
 // IdempotencyKey computes the (tenant_id, connection_id, source_type, source_id,
-// source_version) idempotency key (spec/contexts/provisioning.yaml
+// source_version) idempotency key (docs/modules/provisioning/
 // models.ProvisioningTask). Repositories use it as the unique constraint, and
 // dispatchers use it as the Jobs EnqueueJob dedup_key (mirroring IdGovernance's
 // "lifecycle-workflow-run:{run_id}" convention).
@@ -166,7 +166,7 @@ func (d ProvisioningTask) IdempotencyKey() string {
 var ErrOutOfOrderSync = errors.New("provisioning: out-of-order or duplicate sync version")
 
 // RemoteResourceLink correlates an idmagic User/Group with the downstream SCIM
-// resource it maps to (spec/contexts/provisioning.yaml models.RemoteResourceLink).
+// resource it maps to (docs/modules/provisioning/ models.RemoteResourceLink).
 type RemoteResourceLink struct {
 	ConnectionID string
 	TenantID     string
@@ -190,7 +190,7 @@ func NewRemoteResourceLink(connectionID, tenantID string, sourceType Provisionin
 // ApplySync updates the link with a downstream sync result, enforcing
 // source_version monotonicity: an out-of-order or repeated version (version <=
 // LastSyncedVersion) is rejected and leaves the link unchanged
-// (spec/contexts/provisioning.yaml §配送・信頼性の相関の永続化)。
+// (docs/modules/provisioning/ §配送・信頼性の相関の永続化)。
 func (l *RemoteResourceLink) ApplySync(version int64, remoteID, externalID string, etag *string, now time.Time) error {
 	if l.LastSyncedVersion != 0 && version <= l.LastSyncedVersion {
 		return ErrOutOfOrderSync

@@ -7,8 +7,8 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }
-  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.GetAdminAuditEvent }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Contract.GetAdminAuditEvent }
 ---
 
 # 監査ログの改ざん検知 (ハッシュチェーンと署名付きチェックポイント) を導入する

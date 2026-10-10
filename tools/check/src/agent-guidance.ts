@@ -15,14 +15,14 @@ const requiredMarkers = new Map<string, string[]>([
   [
     '.agents/skills/spec-change/SKILL.md',
     [
-      'spec/contexts/<context>/{models,main}.tsp',
-      'docs/modules/<context>/<group>/<feature>/README.md',
+      'spec/modules/<module>/{models,main}.tsp',
+      'docs/modules/<module>/<group>/<feature>/README.md',
       'acceptance.feature.md',
     ],
   ],
   [
     '.agents/skills/update-design/SKILL.md',
-    ['docs/README.md', 'docs/design/application/backend.md', 'docs/modules/<context>/README.md'],
+    ['docs/README.md', 'docs/design/application/backend.md', 'docs/modules/<module>/README.md'],
   ],
   [
     '.agents/skills/implement-work-item/SKILL.md',

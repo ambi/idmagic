@@ -105,7 +105,7 @@ func TestInvalidateForcesReUnwrapAfterRotate(t *testing.T) {
 
 // TestGetByVersionDecryptsRetiringVersion covers decrypting a secret that
 // was encrypted under a version which has since rotated out to retiring
-// (scenario "DEKをrotationしても既存暗号文が復号できる", spec/contexts/data-keys.yaml).
+// (scenario "DEKをrotationしても既存暗号文が復号できる", docs/modules/data-keys/).
 func TestGetByVersionDecryptsRetiringVersion(t *testing.T) {
 	repo := db_memory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()

@@ -45,7 +45,7 @@ func (f *fakeMasterKeyProvider) Provider() string {
 }
 
 // TestGenerateWrapUnwrapRoundTrip は scenario
-// "テナント初回利用時にDEKがbootstrapされる" (spec/contexts/data-keys.yaml) の
+// "テナント初回利用時にDEKがbootstrapされる" (docs/modules/data-keys/) の
 // wrap/unwrap 部分を GenerateDataKey→Wrap→Unwrap の往復で検証する。
 func TestGenerateWrapUnwrapRoundTrip(t *testing.T) {
 	ctx := context.Background()
@@ -98,7 +98,7 @@ func TestUnwrapRejectsWrongTenant(t *testing.T) {
 
 // TestEncryptDecryptKnownAnswer verifies Tink AEAD round-trips a secret using
 // a generated DEK (scenario 全参照の再暗号化後にDEKをdestroyできる 前提の
-// encrypt/decrypt path, spec/contexts/data-keys.yaml).
+// encrypt/decrypt path, docs/modules/data-keys/).
 func TestEncryptDecryptKnownAnswer(t *testing.T) {
 	ctx := context.Background()
 	crypto := NewTinkEnvelopeCrypto(newFakeMasterKeyProvider())
@@ -202,7 +202,7 @@ func TestHealthyDelegatesToMasterKeyProvider(t *testing.T) {
 }
 
 // TestProviderDelegatesToMasterKeyProvider covers the wi-97 T007 health
-// surface (TenantDataKeyHealth.provider, spec/contexts/data-keys.yaml):
+// surface (TenantDataKeyHealth.provider, docs/modules/data-keys/):
 // EnvelopeCrypto reports whichever MasterKeyProvider it was constructed
 // with, so ListTenantDataKeyHealth never has to special-case providers.
 func TestProviderDelegatesToMasterKeyProvider(t *testing.T) {

@@ -10,8 +10,8 @@ depends_on: [wi-467-enforce-csrf-on-tenant-quota-update]
 affected_spec:
   - { path: docs/modules/tenancy/quota/README.md, requirement: REQ-TENANCY-012 }
   - { path: docs/modules/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-014 }
-  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
-  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuotaUpdateRequest }
+  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
+  - { path: spec/modules/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuotaUpdateRequest }
 ---
 
 # テナントクォータ更新経路を Tenancy 管理 API の規約へそろえる

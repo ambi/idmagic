@@ -3,7 +3,7 @@ import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { specificationRules } from '../../check/src/feature-specification.ts'
 import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
-import { CONTEXT_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
+import { MODULE_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 export type SourceDocument = {
@@ -33,8 +33,8 @@ type RenderedDocument = SourceDocument & {
   category: DocumentCategory
   /** Position within the group the document is listed in. */
   order: number
-  /** For a context document and its children, the context slug they belong to. */
-  context?: string
+  /** For a module document and its children, the module slug they belong to. */
+  module?: string
   /** 機能スライスの文書だけが持つ、所属する機能スライスのディレクトリ名。 */
   feature?: string
 }
@@ -57,8 +57,8 @@ type DocumentCategory =
   | 'runbook'
   | 'whole-system'
   | 'whole-system-child'
-  | 'context'
-  | 'context-child'
+  | 'module'
+  | 'module-child'
   | 'feature'
   | 'feature-child'
 
@@ -218,38 +218,38 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   // `feature` はその段のモジュールからの相対パスである。
   const featureDocument = document.path.match(/^docs\/modules\/([^/]+)\/(.+)\/([^/]+)$/)
   if (featureDocument) {
-    const [, context = '', feature = '', featureFile = ''] = featureDocument
+    const [, module = '', feature = '', featureFile = ''] = featureDocument
     const node = feature.split('/').map(slug).join('-')
     return featureFile === 'README.md'
       ? {
           ...base,
-          id: `context-${context}-${node}`,
+          id: `module-${module}-${node}`,
           category: 'feature',
           order: index,
-          context,
+          module,
           feature,
         }
       : {
           ...base,
-          id: `context-${context}-${node}-${slug(stem)}`,
+          id: `module-${module}-${node}-${slug(stem)}`,
           category: 'feature-child',
           order: featureChildOrder(featureFile, index),
-          context,
+          module,
           feature,
         }
   }
-  const contextDocument = document.path.match(/^docs\/modules\/([^/]+)\/([^/]+)$/)
-  const context = contextDocument?.[1]
-  const contextFile = contextDocument?.[2]
-  if (context && contextFile) {
-    return contextFile === 'README.md'
-      ? { ...base, id: `context-${context}`, category: 'context', order: index, context }
+  const moduleDocument = document.path.match(/^docs\/modules\/([^/]+)\/([^/]+)$/)
+  const module = moduleDocument?.[1]
+  const moduleFile = moduleDocument?.[2]
+  if (module && moduleFile) {
+    return moduleFile === 'README.md'
+      ? { ...base, id: `module-${module}`, category: 'module', order: index, module }
       : {
           ...base,
-          id: `context-${context}-${slug(stem)}`,
-          category: 'context-child',
-          order: canonicalOrder(CONTEXT_DOCUMENTS, contextFile, index),
-          context,
+          id: `module-${module}-${slug(stem)}`,
+          category: 'module-child',
+          order: canonicalOrder(MODULE_DOCUMENTS, moduleFile, index),
+          module,
         }
   }
   return {
@@ -541,21 +541,21 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   // 「運用手順」の枝の下では、題名の末尾の種類名は枝の名札と同じことを言う。
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
-  if (entry.category !== 'context-child' && entry.category !== 'feature-child') return entry.title
+  if (entry.category !== 'module-child' && entry.category !== 'feature-child') return entry.title
   if (entry.path.endsWith('acceptance.feature.md')) return '例'
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
       ? document.category === 'feature' &&
-        document.context === entry.context &&
+        document.module === entry.module &&
         document.feature === entry.feature
-      : document.category === 'context' && document.context === entry.context,
+      : document.category === 'module' && document.module === entry.module,
   )
   if (!owner) return entry.title
   // 内部設計の文書は「Demo の重要な設計判断」のように、段ではなくモジュールの名前を冠する。
-  const context = documents.find(
-    (document) => document.category === 'context' && document.context === entry.context,
+  const module = documents.find(
+    (document) => document.category === 'module' && document.module === entry.module,
   )
-  for (const prefix of [owner.title, context?.title]) {
+  for (const prefix of [owner.title, module?.title]) {
     if (!prefix) continue
     // 英字の名前には空白を挟んで「の」を続け、日本語の名前には直接続ける。
     for (const possessive of [`${prefix} の`, `${prefix}の`, `${prefix} `]) {
@@ -596,7 +596,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const development = index('development')
   const operations = index('operations')
   const rootChildren = inGroup(documents, 'whole-system-child')
-  const contexts = inGroup(documents, 'context')
+  const modules = inGroup(documents, 'module')
   const runbooks = inGroup(documents, 'runbook')
   const link = (entry: RenderedDocument, label?: string, extraClass = '') => {
     const marker = entry.outputPath === page ? ' aria-current="page"' : ''
@@ -607,8 +607,8 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     `<li class="nav-item">${link(
       entry,
       childLabel(entry, documents),
-      entry.category === 'context-child' || entry.category === 'feature-child'
-        ? ' nav-context-child'
+      entry.category === 'module-child' || entry.category === 'feature-child'
+        ? ' nav-module-child'
         : '',
     )}</li>`
   const containsCurrent = (node: NavigationDirectory): boolean =>
@@ -657,27 +657,27 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     name: feature.title,
     document: feature,
     documents: inGroup(documents, 'feature-child').filter(
-      (document) => document.context === feature.context && document.feature === feature.feature,
+      (document) => document.module === feature.module && document.feature === feature.feature,
     ),
     directories: inGroup(documents, 'feature')
       .filter(
         (child) =>
-          child.context === feature.context &&
+          child.module === feature.module &&
           child.feature?.startsWith(`${feature.feature}/`) &&
           !child.feature.slice((feature.feature?.length ?? 0) + 1).includes('/'),
       )
       .map(node),
   })
   const modulesBody = [
-    ...contexts.map((entry) =>
+    ...modules.map((entry) =>
       directory({
         name: entry.title,
         document: entry,
-        documents: inGroup(documents, 'context-child').filter(
-          (document) => document.context === entry.context,
+        documents: inGroup(documents, 'module-child').filter(
+          (document) => document.module === entry.module,
         ),
         directories: inGroup(documents, 'feature')
-          .filter((feature) => feature.context === entry.context && !feature.feature?.includes('/'))
+          .filter((feature) => feature.module === entry.module && !feature.feature?.includes('/'))
           .map(node),
       }),
     ),
@@ -727,19 +727,19 @@ function shell(args: {
 <body><a class="skip-link" href="#content">本文へ移動</a><header class="mobile-header">${siteLink(args.page, 'index.html', SITE_TITLE)}<details><summary>ナビゲーション</summary><nav aria-label="モバイル">${nav}</nav></details></header><aside class="sidebar"><div class="site-title">${siteLink(args.page, 'index.html', SITE_TITLE)}</div><nav aria-label="主要">${nav}</nav></aside><main id="content">${args.page === 'index.html' ? '' : breadcrumbs(args.page, args.current)}${args.body}</main>${args.scripts ?? ''}</body></html>\n`
 }
 
-function modelGroupId(context: string): string {
-  return `context-${slug(context)}`
+function modelGroupId(module: string): string {
+  return `module-${slug(module)}`
 }
 
 /** API リファレンスとモデルカタログは一つに保ち、宣言元のモジュールから該当箇所へ案内する。 */
-function contextReference(args: {
+function moduleReference(args: {
   document: RenderedDocument
   tags: string[]
   operations: ApiOperation[]
   models: CatalogSymbol[]
 }): string {
-  const context = args.document.context
-  if (!context || (args.operations.length === 0 && args.models.length === 0)) return ''
+  const module = args.document.module
+  if (!module || (args.operations.length === 0 && args.models.length === 0)) return ''
   const page = args.document.outputPath
   const id = `${args.document.id}-api-and-models`
   const filtered = (tag: string) =>
@@ -753,11 +753,11 @@ function contextReference(args: {
         .join('')}</tbody></table></div>`
     : ''
   const models = args.models.length
-    ? `<h3 id="${id}-models">モデル</h3><p class="muted">${args.models.length} 個の TypeSpec シンボルを、モデルカタログの ${siteLink(page, 'models/index.html', context, modelGroupId(context))} にも掲載する。</p><ul class="symbol-links">${args.models
+    ? `<h3 id="${id}-models">モデル</h3><p class="muted">${args.models.length} 個の TypeSpec シンボルを、モデルカタログの ${siteLink(page, 'models/index.html', module, modelGroupId(module))} にも掲載する。</p><ul class="symbol-links">${args.models
         .map((model) => `<li>${siteLink(page, modelPath(model), model.shortName)}</li>`)
         .join('')}</ul>`
     : ''
-  return `<section class="context-reference"><h2 id="${id}">API とモデル</h2><p>このモジュールが宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
+  return `<section class="module-reference"><h2 id="${id}">API とモデル</h2><p>このモジュールが宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
 }
 
 /**
@@ -1086,7 +1086,7 @@ function featureOperationIndex(
     return ''
   const pages = documents.filter(
     (entry) =>
-      entry.context === document.context &&
+      entry.module === document.module &&
       entry.feature === document.feature &&
       documentKind(entry.path) === 'specification',
   )
@@ -1130,7 +1130,7 @@ function insertAfterHeading(page: string, id: string, html: string): string {
 function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): string {
   const own = rules.filter(
     (rule) =>
-      rule.document.context === document.context && rule.document.feature === document.feature,
+      rule.document.module === document.module && rule.document.feature === document.feature,
   )
   if (own.length === 0) return ''
   const page = document.outputPath
@@ -1150,7 +1150,7 @@ function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): st
   const open = questions.length
     ? `<h2 id="${document.id}-未決事項">未決事項</h2><p class="muted">要件の要判断の欄から生成した。要判断は work item として起票し、この一覧から消す。</p><ul>${questions.join('')}</ul>`
     : ''
-  return `<section class="context-reference">${index}${open}</section>`
+  return `<section class="module-reference">${index}${open}</section>`
 }
 
 /** モジュールの機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
@@ -1159,11 +1159,11 @@ function featureMap(
   documents: RenderedDocument[],
   rules: DeclaredRule[],
   sourcePaths: readonly string[],
-  contextAliases: Record<string, string>,
+  moduleAliases: Record<string, string>,
 ): string {
-  const context = document.context
+  const module = document.module
   const nodes = inGroup(documents, 'feature').filter(
-    (entry) => entry.context === context && entry.feature !== 'design',
+    (entry) => entry.module === module && entry.feature !== 'design',
   )
   const leaves = nodes.filter(
     (entry) => !nodes.some((other) => other.feature?.startsWith(`${entry.feature}/`)),
@@ -1176,7 +1176,7 @@ function featureMap(
         (entry) => entry !== leaf && leaf.feature?.startsWith(`${entry.feature}/`),
       )
       const own = rules.filter(
-        (rule) => rule.document.context === context && rule.document.feature === leaf.feature,
+        (rule) => rule.document.module === module && rule.document.feature === leaf.feature,
       )
       const questions = own.reduce((count, rule) => count + rule.openQuestions.length, 0)
       const flatten = (value: string) => value.replaceAll('-', '')
@@ -1184,10 +1184,10 @@ function featureMap(
       const paths = sourcePaths.filter((path) => {
         const [root, owner = '', name = ''] = path.split('/')
         if (root === 'spec')
-          return path.startsWith(`spec/contexts/${context}/`) && path.endsWith('.tsp')
+          return path.startsWith(`spec/modules/${module}/`) && path.endsWith('.tsp')
         return (
           root === 'backend' &&
-          flatten(contextAliases[owner] ?? owner) === flatten(context ?? '') &&
+          flatten(moduleAliases[owner] ?? owner) === flatten(module ?? '') &&
           flatten(name) === flatten(feature)
         )
       })
@@ -1202,7 +1202,7 @@ function featureMap(
       return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
     })
     .join('')
-  return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+  return `<section class="module-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
 /**
@@ -1239,16 +1239,16 @@ function modelGroups(
 ): Array<{ id: string; title: string; entries: CatalogSymbol[] }> {
   const groups: Array<{ id: string; title: string; entries: CatalogSymbol[] }> = []
   const owners = new Set<string>()
-  for (const document of inGroup(documents, 'context')) {
-    const context = document.context
-    if (!context) continue
-    owners.add(context)
-    const entries = models.filter((model) => model.context === context)
-    if (entries.length) groups.push({ id: modelGroupId(context), title: document.title, entries })
+  for (const document of inGroup(documents, 'module')) {
+    const module = document.module
+    if (!module) continue
+    owners.add(module)
+    const entries = models.filter((model) => model.module === module)
+    if (entries.length) groups.push({ id: modelGroupId(module), title: document.title, entries })
   }
   const rest = new Map<string, CatalogSymbol[]>()
   for (const model of models) {
-    if (model.context && owners.has(model.context)) continue
+    if (model.module && owners.has(model.module)) continue
     const entries = rest.get(model.namespace) ?? []
     entries.push(model)
     rest.set(model.namespace, entries)
@@ -1400,7 +1400,7 @@ h1,h2,h3,h4{line-height:1.35;letter-spacing:-.012em;scroll-margin-top:26px}h1{ma
 a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
 code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;background:var(--code);font-size:.87em}pre{max-width:100%;overflow:auto;margin:1.4em 0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--code)}pre code{padding:0;border:0;background:none;font-size:.86em}
 .hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
-.context-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
+.module-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
 .table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
 .diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}
 .diagram-zoom,.diagram-viewer-toolbar button{padding:4px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;font:inherit;font-size:13px;cursor:pointer}.diagram-zoom:hover,.diagram-viewer-toolbar button:hover{background:var(--accent-soft)}.diagram-zoom:focus-visible,.diagram-viewer-toolbar button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.diagram-zoom{display:block;width:fit-content;margin:-6px -6px 6px auto}
@@ -1408,7 +1408,7 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 .scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
 .reference-header{margin-bottom:26px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px 0 0;padding:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}
 .model-group{margin-top:34px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.model-search{display:grid;max-width:520px;gap:6px;margin-top:22px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:8px;font:inherit}
-.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--bg-soft)}.badges{margin:.5em 0}.context-reference{margin-top:44px;padding-top:10px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
+.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--bg-soft)}.badges{margin:.5em 0}.module-reference{margin-top:44px;padding-top:10px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
 @media(max-width:1200px){.page{grid-template-columns:minmax(0,1fr)}.page-toc{display:none}}
 @media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--bg)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);box-shadow:0 12px 32px rgba(20,23,28,.18)}main{margin:0;padding:20px 18px 80px}main:has(.swagger-shell){padding-inline:18px}.hero h1{font-size:28px}.diagram-shell .mermaid{min-width:480px}}
 @media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link,.page-toc{display:none}main{margin:0;padding:0}.page{display:block}a{color:inherit;text-decoration:none}}
@@ -1572,9 +1572,9 @@ export function renderDocumentationSite(args: {
   outputDirectory: string
   openapiFileName: string
   models: CatalogSymbol[]
-  contextTags?: Record<string, string[]>
+  moduleTags?: Record<string, string[]>
   sourcePaths?: string[]
-  contextAliases?: Record<string, string>
+  moduleAliases?: Record<string, string>
 }): RenderedDocumentationSite {
   const documents = args.documents.map(documentMetadata)
   const openapi = inspectOpenApi(args.openapi)
@@ -1617,23 +1617,17 @@ export function renderDocumentationSite(args: {
   }
   const rules = declaredRules(documents)
   for (const document of documents) {
-    const tags = (document.context ? args.contextTags?.[document.context] : undefined) ?? []
+    const tags = (document.module ? args.moduleTags?.[document.module] : undefined) ?? []
     const reference =
-      document.category === 'context'
-        ? featureMap(
-            document,
-            documents,
-            rules,
-            args.sourcePaths ?? [],
-            args.contextAliases ?? {},
-          ) +
-          contextReference({
+      document.category === 'module'
+        ? featureMap(document, documents, rules, args.sourcePaths ?? [], args.moduleAliases ?? {}) +
+          moduleReference({
             document,
             tags,
             operations: openapi.operations.filter((operation) =>
               operation.tags.some((tag) => tags.includes(tag)),
             ),
-            models: args.models.filter((model) => model.context === document.context),
+            models: args.models.filter((model) => model.module === document.module),
           })
         : document.category === 'feature'
           ? featureRuleIndex(document, rules)

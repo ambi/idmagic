@@ -33,7 +33,7 @@ queued run の cancel 操作がない。
 テストが `prompt` を呼ばないことを固定している。この項目は解消済みとして扱う。
 
 ## Scope
-- `spec/contexts/identity-governance/main.tsp` の `ListLifecycleWorkflows` / `ListLifecycleWorkflowRuns`
+- `spec/modules/identity-governance/main.tsp` の `ListLifecycleWorkflows` / `ListLifecycleWorkflowRuns`
   interface に、`docs/design/application/api-guidelines.md` が定めるキーセットカーソルと `Link` ヘッダーの契約を適用する。
   独自の pagination 方式は増やさない。
 - backend: 上記 pagination を usecase / handler / repository に実装する。

@@ -14,7 +14,7 @@ import (
 )
 
 // UserAttributeSource resolves a User's attributes for
-// spec/contexts/provisioning.yaml models.AttributeMappingRule (source_kind=attribute).
+// docs/modules/provisioning/ models.AttributeMappingRule (source_kind=attribute).
 // The resolved keys match wi-45's default mapping table source column:
 // id, preferred_username, display_name, given_name, family_name, email, active.
 type UserAttributeSource struct{ UserRepo userports.UserRepository }

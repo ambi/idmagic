@@ -332,7 +332,7 @@ func (e *DynamicMembershipEvaluated) EventType() string     { return "DynamicMem
 func (e *DynamicMembershipEvaluated) OccurredAt() time.Time { return e.At }
 
 // DataExport* events audit the admin CSV export lifecycle
-// (spec/contexts/identity-management.yaml events). Payloads carry no
+// (docs/modules/identity-management/ events). Payloads carry no
 // PII values — only counts, target kind, ids, and stable codes — and every
 // event carries tenantId so the shared audit projection (bootstrap.NewEmitFunc)
 // keys it to the tenant.

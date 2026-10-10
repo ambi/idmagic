@@ -2,7 +2,7 @@ package usecases_test
 
 // RED-GREEN for wi-160 T004.0: CheckQuotaAndIncrement / DecrementQuota had zero
 // test coverage before this change even though the SCL scenario "Hard Quota を
-// 超過したリソース作成は拒否される" (spec/contexts/tenancy.yaml) requires it.
+// 超過したリソース作成は拒否される" (docs/modules/tenancy/) requires it.
 
 import (
 	"context"
