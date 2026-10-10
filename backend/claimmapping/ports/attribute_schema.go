@@ -1,7 +1,10 @@
-package usecases
+// Package ports は ClaimMapping がほかのモジュールに求める契約を置く。
+package ports
 
 import (
 	"context"
+
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
@@ -13,20 +16,15 @@ type TenantAttributeSchemaRepo interface {
 	FindByTenant(ctx context.Context, tenantID string) (*userdomain.TenantUserAttributeSchema, error)
 }
 
-// ResolveTenantAttributeDefs merges builtin attribute definitions with a tenant's
-// custom schema (if any). The result is the attribute_defs input IssueClaimsWithFloor
-// uses to enforce the visibility floor. A nil repo yields builtin defs only.
+// ResolveTenantAttributeDefs reads the tenant's custom schema through repo and merges it
+// with the builtin definitions. A nil repo yields builtin defs only.
 func ResolveTenantAttributeDefs(ctx context.Context, tenantID string, repo TenantAttributeSchemaRepo) ([]userdomain.UserAttributeDef, error) {
-	defs := userdomain.BuiltinUserAttributeDefs()
 	if repo == nil {
-		return defs, nil
+		return claimdomain.MergeTenantAttributeDefs(nil), nil
 	}
 	schema, err := repo.FindByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	if schema != nil {
-		defs = append(defs, schema.Attributes...)
-	}
-	return defs, nil
+	return claimdomain.MergeTenantAttributeDefs(schema), nil
 }

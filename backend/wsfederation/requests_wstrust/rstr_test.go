@@ -13,7 +13,6 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
@@ -51,7 +50,7 @@ func TestBuildRSTR_CarriesTheSignedAssertionVerifiably(t *testing.T) {
 			Version: version, Issuer: "https://idp.example/realms/default", Audience: "urn:rp",
 			Recipient: "urn:rp", IssueInstant: now, NotBefore: now.Add(-time.Minute),
 			NotOnOrAfter: now.Add(5 * time.Minute), AuthnInstant: now,
-			Result: claimusecases.ClaimIssuanceResult{
+			Result: claimdomain.ClaimIssuanceResult{
 				NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent", NameIDValue: "user-1",
 				Claims: []claimdomain.IssuedClaim{{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Values: []string{"alice"}}},
 			},

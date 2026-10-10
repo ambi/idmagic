@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -131,7 +130,7 @@ func UserInfo(
 		res.Extra = userdomain.ClaimsForScopes(*u, defs, in.Scopes)
 	}
 	if in.ClaimPolicy != nil {
-		result, err := claimusecases.IssueClaimsWithFloor(*in.ClaimPolicy, claimusecases.ResolveUserAttributes(*u), defs)
+		result, err := claimdomain.IssueClaimsWithFloor(*in.ClaimPolicy, claimdomain.ResolveUserAttributes(*u), defs)
 		if err != nil {
 			return nil, NewOAuthError("server_error", err.Error())
 		}

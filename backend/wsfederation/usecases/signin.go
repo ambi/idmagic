@@ -10,7 +10,9 @@ import (
 	"context"
 	"time"
 
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -47,7 +49,7 @@ type SignInService struct {
 	UserRepo       userports.UserRepository
 	Gate           ApplicationGate
 	Emit           func(spec.DomainEvent)
-	AttrSchemaRepo claimusecases.TenantAttributeSchemaRepo
+	AttrSchemaRepo claimports.TenantAttributeSchemaRepo
 }
 
 // SignInOutcomeKind は sign-in 判断の分岐種別。
@@ -72,7 +74,7 @@ type SignInOutcome struct {
 
 	// SignInIssued のときの発行データ。
 	Validated   feddomain.ValidatedSignIn
-	ClaimResult claimusecases.ClaimIssuanceResult
+	ClaimResult claimdomain.ClaimIssuanceResult
 	AuthnMethod feddomain.AuthnMethodClass
 	TokenType   feddomain.WsFedTokenType
 	Authn       *authdomain.AuthenticationContext
@@ -162,17 +164,17 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{Kind: SignInRejected, Message: err.Error(), Status: 400}, nil
 	}
 
-	attrs, err := feddomain.ApplyEntraProfile(claimusecases.ResolveUserAttributes(*user), rp.EntraProfile)
+	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(*user), rp.EntraProfile)
 	if err != nil {
 		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "entra profile failed"})
 		//nolint:nilerr // entra profile 失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: "entra profile failed", Status: 500}, nil
 	}
-	defs, err := claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, s.AttrSchemaRepo)
+	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, s.AttrSchemaRepo)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
-	result, err := claimusecases.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, defs)
+	result, err := claimdomain.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, defs)
 	if err != nil {
 		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "claim issuance failed"})
 		//nolint:nilerr // claim 発行失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。

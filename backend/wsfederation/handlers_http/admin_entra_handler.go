@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -136,7 +136,7 @@ func (d Deps) validateEntraSourceAnchors(c *echo.Context, sourceAttr string) err
 	}
 	seen := map[string]string{}
 	for _, user := range users {
-		attrs := claimusecases.ResolveUserAttributes(*user)
+		attrs := claimdomain.ResolveUserAttributes(*user)
 		withProfile, err := feddomain.ApplyEntraProfile(attrs, &feddomain.EntraFederationProfile{SourceAnchorAttribute: sourceAttr})
 		if err != nil {
 			return errBadRequest("sourceAnchor validation failed for user " + user.ID + ": " + err.Error())

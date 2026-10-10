@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
@@ -157,7 +158,7 @@ func oidcClaimPolicyRules(policy *claimdomain.ClaimMappingPolicy) []claimdomain.
 // resolveClaimAttributeDefs はこのテナントの属性可視性 floor 判定用に builtin +
 // custom 属性定義を解決する。OIDC / WS-Fed / SAML の claim release 上書き検証が共有する。
 func (d Deps) resolveClaimAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error) {
-	return claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
+	return claimports.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
 }
 
 func (d Deps) handleCreateApplication(c *echo.Context) error {
@@ -459,7 +460,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 		if err != nil {
 			return err
 		}
-		if err := claimusecases.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
+		if err := claimdomain.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
@@ -550,7 +551,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 		if err != nil {
 			return err
 		}
-		if err := claimusecases.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
+		if err := claimdomain.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
@@ -633,7 +634,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 		if err != nil {
 			return err
 		}
-		if err := claimusecases.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
+		if err := claimdomain.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}

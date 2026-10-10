@@ -12,7 +12,6 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
@@ -64,7 +63,7 @@ func sampleAssertion(t *testing.T) *etree.Element {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(5 * time.Minute),
 		AuthnInstant: now,
-		Result: claimusecases.ClaimIssuanceResult{
+		Result: claimdomain.ClaimIssuanceResult{
 			NameIDFormat: samldomain.SamlNameIDFormatPersistent,
 			NameIDValue:  "alice",
 			Claims: []claimdomain.IssuedClaim{

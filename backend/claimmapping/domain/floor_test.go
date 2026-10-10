@@ -1,4 +1,4 @@
-package usecases_test
+package domain_test
 
 // 主要ユースケース追跡: REQ-CLAIMMAPPING-001。
 
@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
@@ -32,7 +31,7 @@ func departmentDef() userdomain.UserAttributeDef {
 // claimTypes は発行されたクレーム集合を、注記が名指しする「含まれる / 含まれない」で
 // 読める形に落とす。型の比較ではなく集合の比較にしないと、部分的な発行と完全な発行を
 // 区別する表明が書けない。
-func claimTypes(result claimusecases.ClaimIssuanceResult) []string {
+func claimTypes(result claimdomain.ClaimIssuanceResult) []string {
 	types := make([]string, 0, len(result.Claims))
 	for _, claim := range result.Claims {
 		types = append(types, claim.ClaimType)
@@ -45,32 +44,32 @@ func claimTypes(result claimusecases.ClaimIssuanceResult) []string {
 // 「管理者はApplication単位でclaim releaseを絞り込める」)。
 func TestIsAttributeReleasable_SelfReadableAllowed(t *testing.T) {
 	defs := []userdomain.UserAttributeDef{employeeNumberDef()}
-	if !claimusecases.IsAttributeReleasable("employee_number", defs) {
+	if !claimdomain.IsAttributeReleasable("employee_number", defs) {
 		t.Fatal("expected SelfReadable attribute to be releasable")
 	}
 }
 
 func TestIsAttributeReleasable_PrivateRejected(t *testing.T) {
 	defs := []userdomain.UserAttributeDef{ssnDef()}
-	if claimusecases.IsAttributeReleasable("ssn", defs) {
+	if claimdomain.IsAttributeReleasable("ssn", defs) {
 		t.Fatal("expected Private attribute to be rejected")
 	}
 }
 
 func TestIsAttributeReleasable_UnknownKeyRejected(t *testing.T) {
 	defs := []userdomain.UserAttributeDef{employeeNumberDef()}
-	if claimusecases.IsAttributeReleasable("not_defined_anywhere", defs) {
+	if claimdomain.IsAttributeReleasable("not_defined_anywhere", defs) {
 		t.Fatal("expected unknown attribute key to be rejected (fail-closed)")
 	}
 }
 
 func TestIsAttributeReleasable_CoreAttributesAlwaysAllowed(t *testing.T) {
 	for _, key := range []string{
-		claimusecases.AttrUserID, claimusecases.AttrEmail, claimusecases.AttrName,
-		claimusecases.AttrGivenName, claimusecases.AttrFamilyName,
-		claimusecases.AttrPreferredUsername, claimusecases.AttrEmailVerified, claimusecases.AttrRoles,
+		claimdomain.AttrUserID, claimdomain.AttrEmail, claimdomain.AttrName,
+		claimdomain.AttrGivenName, claimdomain.AttrFamilyName,
+		claimdomain.AttrPreferredUsername, claimdomain.AttrEmailVerified, claimdomain.AttrRoles,
 	} {
-		if !claimusecases.IsAttributeReleasable(key, nil) {
+		if !claimdomain.IsAttributeReleasable(key, nil) {
 			t.Fatalf("expected core attribute %q to always be releasable", key)
 		}
 	}
@@ -79,26 +78,26 @@ func TestIsAttributeReleasable_CoreAttributesAlwaysAllowed(t *testing.T) {
 func TestIsReservedClaimType(t *testing.T) {
 	reserved := []string{"iss", "sub", "aud", "exp", "iat", "nbf", "jti", "azp", "nonce", "at_hash", "c_hash", "acr", "amr", "sid"}
 	for _, ct := range reserved {
-		if !claimusecases.IsReservedClaimType(ct) {
+		if !claimdomain.IsReservedClaimType(ct) {
 			t.Fatalf("expected %q to be a reserved claim type", ct)
 		}
 	}
-	if claimusecases.IsReservedClaimType("employee_number") {
+	if claimdomain.IsReservedClaimType("employee_number") {
 		t.Fatal("employee_number must not be treated as reserved")
 	}
 }
 
 func TestIssueClaimsWithFloor_AllowsSelfReadableOverride(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimdomain.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "employee_number", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "employee_number", Required: true},
 		},
 	}
-	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}, "employee_number": {"E-123"}}
+	attrs := claimdomain.Attributes{claimdomain.AttrUserID: {"user-1"}, "employee_number": {"E-123"}}
 	defs := []userdomain.UserAttributeDef{employeeNumberDef()}
 
-	got, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs)
+	got, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,20 +117,20 @@ func TestIssueClaimsWithFloor_AllowsSelfReadableOverride(t *testing.T) {
 //spec:covers EX-CLAIMMAPPING-001-01: 対応付け規則を持たないカスタム属性は、`visibility` が
 func TestIssueClaimsWithFloor_OmitsAttributeWithNoRule(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimdomain.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department"},
 		},
 	}
 	// employee_number は定義済みで SelfReadable、値も解決済みにある。欠けているのは規則だけ。
 	attrs := claimdomain.Attributes{
-		claimusecases.AttrUserID: {"user-1"},
-		"employee_number":        {"E-123"},
-		"department":             {"sales"},
+		claimdomain.AttrUserID: {"user-1"},
+		"employee_number":      {"E-123"},
+		"department":           {"sales"},
 	}
 	defs := []userdomain.UserAttributeDef{employeeNumberDef(), departmentDef()}
 
-	got, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs)
+	got, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -156,21 +155,21 @@ func TestIssueClaimsWithFloor_OmitsAttributeWithNoRule(t *testing.T) {
 //spec:covers EX-CLAIMMAPPING-003-01: 必須規則のソース属性が解決済み属性に無いとき、解決できた
 func TestIssueClaimsWithFloor_RejectsPartialIssuanceWhenRequiredSourceMissing(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimdomain.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department"},
 			{ClaimType: "employee_number", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "employee_number", Required: true},
 		},
 	}
 	// employee_number は定義済みなので規則としては正当。欠けているのは値だけ。
-	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}, "department": {"sales"}}
+	attrs := claimdomain.Attributes{claimdomain.AttrUserID: {"user-1"}, "department": {"sales"}}
 	defs := []userdomain.UserAttributeDef{employeeNumberDef(), departmentDef()}
 
-	got, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs)
+	got, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defs)
 	if err == nil {
 		t.Fatal("必須規則のソースが欠けているのに拒否されなかった")
 	}
-	if _, ok := errors.AsType[*claimusecases.ClaimReleaseDeniedError](err); !ok {
+	if _, ok := errors.AsType[*claimdomain.ClaimReleaseDeniedError](err); !ok {
 		t.Fatalf("err = %#v, want *ClaimReleaseDeniedError", err)
 	}
 	if types := claimTypes(got); len(types) != 0 {
@@ -183,9 +182,9 @@ func TestIssueClaimsWithFloor_RejectsPartialIssuanceWhenRequiredSourceMissing(t 
 	// 対照: 値が揃えば同じ policy で 2 件とも発行される。拒否が必須規則の未解決だけに
 	// 由来することを示す。
 	complete := claimdomain.Attributes{
-		claimusecases.AttrUserID: {"user-1"}, "department": {"sales"}, "employee_number": {"E-123"},
+		claimdomain.AttrUserID: {"user-1"}, "department": {"sales"}, "employee_number": {"E-123"},
 	}
-	issued, err := claimusecases.IssueClaimsWithFloor(policy, complete, defs)
+	issued, err := claimdomain.IssueClaimsWithFloor(policy, complete, defs)
 	if err != nil {
 		t.Fatalf("対照が失敗した: %v", err)
 	}
@@ -205,22 +204,22 @@ func TestIssueClaimsWithFloor_RejectsPrivateSourceAttribute(t *testing.T) {
 	// department の規則は正当で、単独なら発行される。拒否が policy 全体に効くことを
 	// 見るために並べてある。
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimdomain.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department"},
 			{ClaimType: "ssn_claim", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "ssn"},
 		},
 	}
 	attrs := claimdomain.Attributes{
-		claimusecases.AttrUserID: {"user-1"}, "ssn": {"123-45-6789"}, "department": {"sales"},
+		claimdomain.AttrUserID: {"user-1"}, "ssn": {"123-45-6789"}, "department": {"sales"},
 	}
 	defs := []userdomain.UserAttributeDef{ssnDef(), departmentDef()}
 
-	got, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs)
+	got, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defs)
 	if err == nil {
 		t.Fatal("expected Private attribute source to be rejected fail-closed")
 	}
-	if _, ok := errors.AsType[*claimusecases.ClaimReleaseDeniedError](err); !ok {
+	if _, ok := errors.AsType[*claimdomain.ClaimReleaseDeniedError](err); !ok {
 		t.Fatalf("err = %#v, want *ClaimReleaseDeniedError", err)
 	}
 	if types := claimTypes(got); len(types) != 0 {
@@ -235,7 +234,7 @@ func TestIssueClaimsWithFloor_RejectsPrivateSourceAttribute(t *testing.T) {
 	releasable := []userdomain.UserAttributeDef{
 		{Key: "ssn", Visibility: idmdomain.AttrVisibilitySelfReadable}, departmentDef(),
 	}
-	issued, err := claimusecases.IssueClaimsWithFloor(policy, attrs, releasable)
+	issued, err := claimdomain.IssueClaimsWithFloor(policy, attrs, releasable)
 	if err != nil {
 		t.Fatalf("対照が失敗した: %v", err)
 	}
@@ -254,22 +253,22 @@ func TestIssueClaimsWithFloor_RejectsPrivateSourceAttribute(t *testing.T) {
 //spec:covers EX-CLAIMMAPPING-002-01: `attribute_defs` に無いキーをソースとする規則がある policy は、
 func TestIssueClaimsWithFloor_RejectsUnknownSourceAttribute(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimdomain.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department"},
 			{ClaimType: "mystery", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "not_defined_anywhere"},
 		},
 	}
 	attrs := claimdomain.Attributes{
-		claimusecases.AttrUserID: {"user-1"}, "not_defined_anywhere": {"leak"}, "department": {"sales"},
+		claimdomain.AttrUserID: {"user-1"}, "not_defined_anywhere": {"leak"}, "department": {"sales"},
 	}
 	defs := []userdomain.UserAttributeDef{departmentDef()}
 
-	got, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs)
+	got, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defs)
 	if err == nil {
 		t.Fatal("expected unknown attribute source to be rejected fail-closed")
 	}
-	if _, ok := errors.AsType[*claimusecases.ClaimReleaseDeniedError](err); !ok {
+	if _, ok := errors.AsType[*claimdomain.ClaimReleaseDeniedError](err); !ok {
 		t.Fatalf("err = %#v, want *ClaimReleaseDeniedError", err)
 	}
 	if types := claimTypes(got); len(types) != 0 {
@@ -284,7 +283,7 @@ func TestIssueClaimsWithFloor_RejectsUnknownSourceAttribute(t *testing.T) {
 		departmentDef(),
 		{Key: "not_defined_anywhere", Visibility: idmdomain.AttrVisibilitySelfReadable},
 	}
-	issued, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defined)
+	issued, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defined)
 	if err != nil {
 		t.Fatalf("対照が失敗した: %v", err)
 	}
@@ -295,14 +294,14 @@ func TestIssueClaimsWithFloor_RejectsUnknownSourceAttribute(t *testing.T) {
 
 func TestIssueClaimsWithFloor_RejectsReservedClaimType(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimdomain.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "sub", Source: claimdomain.ClaimSourceFixed, FixedValue: "attacker-controlled"},
 		},
 	}
-	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}}
+	attrs := claimdomain.Attributes{claimdomain.AttrUserID: {"user-1"}}
 
-	if _, err := claimusecases.IssueClaimsWithFloor(policy, attrs, nil); err == nil {
+	if _, err := claimdomain.IssueClaimsWithFloor(policy, attrs, nil); err == nil {
 		t.Fatal("expected reserved claim_type rule to be rejected")
 	}
 }
@@ -314,7 +313,7 @@ func TestIssueClaimsWithFloor_RejectsPrivateNameIDSource(t *testing.T) {
 	attrs := claimdomain.Attributes{"ssn": {"123-45-6789"}}
 	defs := []userdomain.UserAttributeDef{ssnDef()}
 
-	if _, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs); err == nil {
+	if _, err := claimdomain.IssueClaimsWithFloor(policy, attrs, defs); err == nil {
 		t.Fatal("expected Private NameID source attribute to be rejected fail-closed")
 	}
 }

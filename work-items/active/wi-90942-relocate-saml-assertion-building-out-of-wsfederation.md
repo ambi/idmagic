@@ -41,7 +41,7 @@ Tenancy の handler は、依存の束に署名器の型（`SignerProvider`）�
 | SAML のアサーションを担う新しいモジュールを作る | D8。独立して変えたい変更シナリオがあるかを確かめてから比べる |
 
 着手時に `tokens_saml` が WsFederation の型を使う箇所を数え、共有ライブラリへ分けられるかを判断する。
-ClaimMapping の発行結果の型は、[ClaimMapping の発行規則の公開](wi-35767-publish-claim-issuance-as-claimmapping-public-operations.md)の後の公開された型を使う。
+ClaimMapping の発行結果の型は、[ClaimMapping の発行規則の公開](../done/wi-35767-publish-claim-issuance-as-claimmapping-public-operations.md)の後の公開された型を使う。
 
 ## タスク
 

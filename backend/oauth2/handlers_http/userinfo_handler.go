@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -23,7 +24,7 @@ import (
 // effectiveUserAttributeDefs はテナントに有効な属性定義 (組み込み + tenant custom)
 // を返す。AttrSchemaRepo 未設定時は組み込み定義のみ。
 func (d Deps) effectiveUserAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error) {
-	return claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
+	return claimports.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
 }
 
 func (d Deps) handleUserInfo(c *echo.Context) error {

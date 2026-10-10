@@ -15,11 +15,12 @@ import (
 	"testing"
 	"time"
 
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
@@ -221,7 +222,7 @@ func readOidcRules(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie,
 // 発行されることは別の主張であり、具体例は後者を言っている。
 func issuedClaimTypes(t *testing.T, schema *usermemory.TenantUserAttributeSchemaRepository, rules []claimdomain.ClaimMappingRule) []string {
 	t.Helper()
-	defs, err := claimusecases.ResolveTenantAttributeDefs(
+	defs, err := claimports.ResolveTenantAttributeDefs(
 		context.Background(), tenancydomain.DefaultTenantID, schema)
 	if err != nil {
 		t.Fatalf("resolve attribute defs: %v", err)
@@ -230,7 +231,7 @@ func issuedClaimTypes(t *testing.T, schema *usermemory.TenantUserAttributeSchema
 		NameID: claimdomain.NameIdConfiguration{Format: "persistent", SourceAttribute: "user_id"},
 		Rules:  rules,
 	}
-	result, err := claimusecases.IssueClaimsWithFloor(policy, claimusecases.Attributes{
+	result, err := claimdomain.IssueClaimsWithFloor(policy, claimdomain.Attributes{
 		"user_id":         {"alice"},
 		"employee_number": {"E-1024"},
 	}, defs)

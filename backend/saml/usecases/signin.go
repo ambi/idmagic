@@ -10,7 +10,9 @@ import (
 	"context"
 	"time"
 
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -48,7 +50,7 @@ type SignInService struct {
 	UserRepo       userports.UserRepository
 	Gate           ApplicationGate
 	Emit           func(spec.DomainEvent)
-	AttrSchemaRepo claimusecases.TenantAttributeSchemaRepo
+	AttrSchemaRepo claimports.TenantAttributeSchemaRepo
 }
 
 // SignInOutcomeKind は SSO 判断の分岐種別。
@@ -75,7 +77,7 @@ type SignInOutcome struct {
 	// SignInIssued のときの発行データ。
 	SP             samldomain.SamlServiceProvider
 	Validated      samldomain.ValidatedSignIn
-	ClaimResult    claimusecases.ClaimIssuanceResult
+	ClaimResult    claimdomain.ClaimIssuanceResult
 	Authn          *authdomain.AuthenticationContext
 	Now            time.Time
 	ProtocolStatus string
@@ -160,11 +162,11 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{Kind: SignInForbidden, Message: "The user does not meet the application's sign-in policy requirements."}, nil
 	}
 
-	defs, err := claimusecases.ResolveTenantAttributeDefs(ctx, in.TenantID, s.AttrSchemaRepo)
+	defs, err := claimports.ResolveTenantAttributeDefs(ctx, in.TenantID, s.AttrSchemaRepo)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
-	result, err := claimusecases.IssueClaimsWithFloor(sp.ClaimPolicy, claimusecases.ResolveUserAttributes(*user), defs)
+	result, err := claimdomain.IssueClaimsWithFloor(sp.ClaimPolicy, claimdomain.ResolveUserAttributes(*user), defs)
 	if err != nil {
 		return s.rejected(in.TenantID, sp.EntityID, "claim issuance failed", err), nil
 	}

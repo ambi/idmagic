@@ -35,7 +35,7 @@ OAuth2 の型とポート、ClaimMapping の発行、ユーザーの型を使う
 - D5：モジュールの型と業務上の意味を必要とする処理は共有ライブラリに置かない。
 - D8：トークンの内容の変更（クレームの追加、`act` の扱い）は OAuth2 の要件から生じ、現在は共有ライブラリを変えている。OAuth2 へ移せば、その変更が OAuth2 で閉じる。
 
-ClaimMapping への依存は、[ClaimMapping の発行規則の公開](wi-35767-publish-claim-issuance-as-claimmapping-public-operations.md)で公開された操作へ置き換える。
+ClaimMapping への依存は、[ClaimMapping の発行規則の公開](../done/wi-35767-publish-claim-issuance-as-claimmapping-public-operations.md)で公開された操作へ置き換える。
 
 ## タスク
 

@@ -8,7 +8,7 @@ package handlers_http
 import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -29,7 +29,7 @@ type Deps struct {
 	ReplayStore      samlports.AuthnRequestReplayStore
 	FederationSigner samltoken.SignerProvider
 	UserRepo         userports.UserRepository
-	AttrSchemaRepo   claimusecases.TenantAttributeSchemaRepo
+	AttrSchemaRepo   claimports.TenantAttributeSchemaRepo
 }
 
 // Sessions は、SSO が読み、SLO が失効させるログインセッションである。

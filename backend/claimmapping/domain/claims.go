@@ -1,22 +1,18 @@
-// Package usecases implements protocol-neutral claim projection.
-package usecases
+package domain
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
 
-	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
-type Attributes = claimdomain.Attributes
-
 type ClaimIssuanceResult struct {
 	NameIDFormat string
 	NameIDValue  string
-	Claims       []claimdomain.IssuedClaim
+	Claims       []IssuedClaim
 }
 
 const (
@@ -33,7 +29,7 @@ const (
 	AttrRoles             = "roles"
 )
 
-func IssueClaims(policy claimdomain.ClaimMappingPolicy, attrs Attributes) (ClaimIssuanceResult, error) {
+func issueClaims(policy ClaimMappingPolicy, attrs Attributes) (ClaimIssuanceResult, error) {
 	if strings.TrimSpace(policy.NameID.Format) == "" {
 		return ClaimIssuanceResult{}, fmt.Errorf("claim issuance: name_id.format is required")
 	}
@@ -62,7 +58,7 @@ func IssueClaims(policy claimdomain.ClaimMappingPolicy, attrs Attributes) (Claim
 			}
 			continue
 		}
-		result.Claims = append(result.Claims, claimdomain.IssuedClaim{ClaimType: rule.ClaimType, Values: values})
+		result.Claims = append(result.Claims, IssuedClaim{ClaimType: rule.ClaimType, Values: values})
 	}
 	return result, nil
 }
@@ -99,19 +95,19 @@ func ResolveUserAttributes(u userdomain.User) Attributes {
 	return attrs
 }
 
-func resolveRule(rule claimdomain.ClaimMappingRule, attrs Attributes, nameID string) ([]string, error) {
+func resolveRule(rule ClaimMappingRule, attrs Attributes, nameID string) ([]string, error) {
 	switch rule.Source {
-	case claimdomain.ClaimSourceUserAttribute:
+	case ClaimSourceUserAttribute:
 		if strings.TrimSpace(rule.SourceKey) == "" {
 			return nil, fmt.Errorf("claim issuance: claim %q with source user_attribute requires source_key", rule.ClaimType)
 		}
 		return nonEmpty(attrs[rule.SourceKey]), nil
-	case claimdomain.ClaimSourceFixed:
+	case ClaimSourceFixed:
 		if v := strings.TrimSpace(rule.FixedValue); v != "" {
 			return []string{rule.FixedValue}, nil
 		}
 		return nil, nil
-	case claimdomain.ClaimSourceNameID:
+	case ClaimSourceNameID:
 		return []string{nameID}, nil
 	default:
 		return nil, fmt.Errorf("claim issuance: claim %q has unknown source %q", rule.ClaimType, rule.Source)

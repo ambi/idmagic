@@ -6,11 +6,12 @@ package application
 import (
 	"context"
 
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	apphttp "github.com/ambi/idmagic/backend/application/handlers_http"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -136,7 +137,7 @@ func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	groupRepo groupports.GroupRepository, userRepo userports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
-	quotaRepo tenantports.QuotaRepository, attrSchemaRepo claimusecases.TenantAttributeSchemaRepo,
+	quotaRepo tenantports.QuotaRepository, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 ) {
 	apphttp.RegisterRoutes(g, apphttp.Deps{
 		Deps:                        deps,

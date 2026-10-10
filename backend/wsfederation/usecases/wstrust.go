@@ -4,7 +4,9 @@ import (
 	"context"
 	"strings"
 
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -24,7 +26,7 @@ type TokenRequest struct {
 
 // TokenDecision はトークン発行判断の結果。RejectReason が非空なら発行拒否。
 type TokenDecision struct {
-	ClaimResult  claimusecases.ClaimIssuanceResult
+	ClaimResult  claimdomain.ClaimIssuanceResult
 	TokenType    feddomain.WsFedTokenType
 	RejectReason string // 非空なら発行拒否 (WsTrustTokenRejected を発行し RejectStatus を返す)。
 	RejectStatus int
@@ -34,17 +36,17 @@ type TokenDecision struct {
 // 挙動は旧 HTTP ハンドラ handleWsTrustUsernameMixed の claim / token type 決定部と一致する。
 // attrSchemaRepo は attribute visibility floor を強制するための tenant custom
 // attribute schema 解決に使う。nil なら builtin 定義のみを floor とする。
-func (WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSchemaRepo claimusecases.TenantAttributeSchemaRepo, req TokenRequest) (TokenDecision, error) {
-	attrs, err := feddomain.ApplyEntraProfile(claimusecases.ResolveUserAttributes(req.User), req.RP.EntraProfile)
+func (WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSchemaRepo claimports.TenantAttributeSchemaRepo, req TokenRequest) (TokenDecision, error) {
+	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(req.User), req.RP.EntraProfile)
 	if err != nil {
 		//nolint:nilerr // entra profile 失敗は reject outcome へ変換し、呼び出し側には error を返さない。
 		return TokenDecision{RejectReason: "entra profile failed", RejectStatus: 500}, nil
 	}
-	defs, err := claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
+	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
 	if err != nil {
 		return TokenDecision{}, err
 	}
-	result, err := claimusecases.IssueClaimsWithFloor(req.RP.ClaimPolicy, attrs, defs)
+	result, err := claimdomain.IssueClaimsWithFloor(req.RP.ClaimPolicy, attrs, defs)
 	if err != nil {
 		//nolint:nilerr // claim 発行失敗 (fail-closed floor 違反を含む) は reject outcome へ変換し、呼び出し側には error を返さない。
 		return TokenDecision{RejectReason: "claim issuance failed", RejectStatus: 500}, nil

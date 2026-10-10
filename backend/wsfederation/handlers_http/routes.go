@@ -9,7 +9,7 @@ import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -33,7 +33,7 @@ type Deps struct {
 	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
 	PasswordHasher             passwordports.PasswordHasher
 	SentinelPasswordHash       string
-	AttrSchemaRepo             claimusecases.TenantAttributeSchemaRepo
+	AttrSchemaRepo             claimports.TenantAttributeSchemaRepo
 }
 
 // Sessions は、パッシブサインインが読み、サインアウトが失効させるログインセッションである。

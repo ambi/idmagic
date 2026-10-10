@@ -10,7 +10,6 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
@@ -65,7 +64,7 @@ func sampleInput() AssertionInput {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(5 * time.Minute),
 		AuthnInstant: now,
-		Result: claimusecases.ClaimIssuanceResult{
+		Result: claimdomain.ClaimIssuanceResult{
 			NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
 			NameIDValue:  "AAECAwQFBgc=",
 			Claims: []claimdomain.IssuedClaim{

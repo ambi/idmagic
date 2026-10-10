@@ -10,7 +10,7 @@
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
-| `ClaimMapping` | 発行が、RP のポリシーでクレームを組み立てる | 相手の `usecases` の `IssueClaimsWithFloor` と属性の解決を呼ぶ |
+| `ClaimMapping` | 発行が、RP のポリシーでクレームを組み立てる | 相手の `domain` の `IssueClaimsWithFloor` と、`ports` の属性の解決を呼ぶ |
 | `SigningKeys` | 発行とメタデータが、テナントの XML 署名の資格情報を読む | `tokens_saml` の署名者が、相手の資格情報を発行のたびに得る |
 | `Authentication` | パッシブサインインがログインセッションを読み、能動的な STS が UsernameToken を検証する | 相手のセッションとパスワードの部品、ログインの試行の制限を使う |
 | `Application` | パッシブサインインが、対象のユーザーの割り当てを確かめる | 相手の割り当ての読み取りを使う |

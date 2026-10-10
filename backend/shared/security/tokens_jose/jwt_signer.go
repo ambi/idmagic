@@ -18,7 +18,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
@@ -193,7 +193,7 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 		}
 	}
 	if in.ClaimPolicy != nil {
-		result, err := claimusecases.IssueClaimsWithFloor(*in.ClaimPolicy, claimusecases.ResolveUserAttributes(*in.User), defs)
+		result, err := claimdomain.IssueClaimsWithFloor(*in.ClaimPolicy, claimdomain.ResolveUserAttributes(*in.User), defs)
 		if err != nil {
 			return "", err
 		}

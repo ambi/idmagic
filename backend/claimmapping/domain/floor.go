@@ -1,10 +1,9 @@
-package usecases
+package domain
 
 import (
 	"fmt"
 	"strings"
 
-	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
@@ -67,14 +66,14 @@ func (e *ClaimReleaseDeniedError) Error() string {
 // issuance failure. It is the Go implementation of the SCL predicate
 // claim_release_rules_within_floor used by UpdateApplicationOidcConfig /
 // UpdateApplicationWsFedConfig / UpdateApplicationSamlConfig.
-func ValidateClaimReleaseRules(rules []claimdomain.ClaimMappingRule, defs []userdomain.UserAttributeDef) error {
+func ValidateClaimReleaseRules(rules []ClaimMappingRule, defs []userdomain.UserAttributeDef) error {
 	for _, rule := range rules {
 		if IsReservedClaimType(rule.ClaimType) {
 			return &ClaimReleaseDeniedError{
 				Reason: fmt.Sprintf("claim_type %q is reserved and cannot be produced by a rule", rule.ClaimType),
 			}
 		}
-		if rule.Source == claimdomain.ClaimSourceUserAttribute && !IsAttributeReleasable(rule.SourceKey, defs) {
+		if rule.Source == ClaimSourceUserAttribute && !IsAttributeReleasable(rule.SourceKey, defs) {
 			return &ClaimReleaseDeniedError{
 				Reason: fmt.Sprintf("attribute %q is not releasable (visibility=private or undefined)", rule.SourceKey),
 			}
@@ -84,11 +83,11 @@ func ValidateClaimReleaseRules(rules []claimdomain.ClaimMappingRule, defs []user
 }
 
 // IssueClaimsWithFloor enforces the tenant attribute-visibility and reserved-claim-type
-// floor before delegating to IssueClaims. It is the single claim resolution path shared
+// floor before delegating to issueClaims. It is the single claim resolution path shared
 // by OIDC, SAML, and WS-Federation: overrides configured per Application can
 // narrow or remap within this floor, but can never reach a Private attribute or an
 // engine-controlled claim position.
-func IssueClaimsWithFloor(policy claimdomain.ClaimMappingPolicy, attrs Attributes, defs []userdomain.UserAttributeDef) (ClaimIssuanceResult, error) {
+func IssueClaimsWithFloor(policy ClaimMappingPolicy, attrs Attributes, defs []userdomain.UserAttributeDef) (ClaimIssuanceResult, error) {
 	if !IsAttributeReleasable(policy.NameID.SourceAttribute, defs) {
 		return ClaimIssuanceResult{}, &ClaimReleaseDeniedError{
 			Reason: fmt.Sprintf("NameID source attribute %q is not releasable", policy.NameID.SourceAttribute),
@@ -97,7 +96,7 @@ func IssueClaimsWithFloor(policy claimdomain.ClaimMappingPolicy, attrs Attribute
 	if err := ValidateClaimReleaseRules(policy.Rules, defs); err != nil {
 		return ClaimIssuanceResult{}, err
 	}
-	result, err := IssueClaims(policy, attrs)
+	result, err := issueClaims(policy, attrs)
 	if err != nil {
 		return ClaimIssuanceResult{}, &ClaimReleaseDeniedError{Reason: err.Error()}
 	}

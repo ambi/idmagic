@@ -23,12 +23,14 @@
 
 ## 構成要素
 
-コードは機能スライスを持たず、`domain` と `usecases` の二層である。
+コードは機能スライスを持たず、`domain` と `ports` の二つのパッケージである。
+クレームの発行は入力だけで結果が決まる計算なので、`domain` に置く。
+下限を通らない発行（`issueClaims`）は `domain` の外へ公開せず、ほかのモジュールは `IssueClaimsWithFloor` だけを通る。
 
-| 層 | 主な要素 | 対応する機能仕様 |
+| パッケージ | 主な要素 | 対応する機能仕様 |
 | --- | --- | --- |
-| `domain` | `ClaimMappingPolicy`、`ClaimMappingRule`、`NameIdConfiguration`、`IssuedClaim` | [クレームの発行](../issuance/README.md) |
-| `usecases` | `IssueClaimsWithFloor`（下限の検査と発行）、`ValidateClaimReleaseRules`（保存時の検査）、`ResolveUserAttributes`、`ResolveTenantAttributeDefs` | [クレームの発行](../issuance/README.md) |
+| `domain` | `ClaimMappingPolicy`、`ClaimMappingRule`、`NameIdConfiguration`、`IssuedClaim`、`IssueClaimsWithFloor`（下限の検査と発行）、`ValidateClaimReleaseRules`（保存時の検査）、`ResolveUserAttributes`、`MergeTenantAttributeDefs` | [クレームの発行](../issuance/README.md) |
+| `ports` | `TenantAttributeSchemaRepo`（テナントの属性スキーマの読み取り）、`ResolveTenantAttributeDefs`（スキーマを読んで組み込みの定義と合成する） | [クレームの発行](../issuance/README.md) |
 
 ## 実行時の流れ
 

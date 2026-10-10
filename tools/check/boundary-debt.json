@@ -410,16 +410,6 @@
       "reason": "Application's sign-in rules read Authentication's ACR and AMR helpers and the trusted-device AMR value from its use cases. Authentication owns these rules, so it publishes the judgments as public operations (D1, D3) in wi-87746."
     },
     {
-      "id": "private-import:Application->ClaimMapping",
-      "sourceModule": "Application",
-      "targetModule": "ClaimMapping",
-      "violations": [
-        "private-import:Application:backend/application->backend/claimmapping/usecases",
-        "private-import:Application:backend/application/handlers_http->backend/claimmapping/usecases"
-      ],
-      "reason": "Application validates claim release rules and resolves tenant attribute definitions through ClaimMapping's use cases and schema repository. ClaimMapping owns claim release, so it publishes issuance and rule validation as public operations without exposing the repository (D1, D3) in wi-35767."
-    },
-    {
       "id": "private-import:Application->OAuth2",
       "sourceModule": "Application",
       "targetModule": "OAuth2",
@@ -520,16 +510,6 @@
       "reason": "OAuth2's authorization handlers orchestrate login, password expiry, MFA enrollment, TOTP, WebAuthn, recovery codes, and trusted devices by calling nine Authentication packages directly. Authentication owns these steps, so their implementation moves into Authentication and OAuth2 only resumes the authorization request (D1, D8) in wi-93464."
     },
     {
-      "id": "private-import:OAuth2->ClaimMapping",
-      "sourceModule": "OAuth2",
-      "targetModule": "ClaimMapping",
-      "violations": [
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/claimmapping/usecases",
-        "private-import:OAuth2:backend/oauth2/token/usecases->backend/claimmapping/usecases"
-      ],
-      "reason": "OAuth2 issues ID token claims and resolves attribute definitions through ClaimMapping's use cases. ClaimMapping publishes issuance with its release floor as public operations (D1, D3) in wi-35767."
-    },
-    {
       "id": "private-import:Saml->Authentication",
       "sourceModule": "Saml",
       "targetModule": "Authentication",
@@ -537,17 +517,6 @@
         "private-import:Saml:backend/saml/handlers_http->backend/authentication/session/usecases"
       ],
       "reason": "SAML's sign-in handler resolves the login session through Authentication's session use cases. Authentication publishes session resolution without exposing session issuance (D1, D3) in wi-87746."
-    },
-    {
-      "id": "private-import:Saml->ClaimMapping",
-      "sourceModule": "Saml",
-      "targetModule": "ClaimMapping",
-      "violations": [
-        "private-import:Saml:backend/saml->backend/claimmapping/usecases",
-        "private-import:Saml:backend/saml/handlers_http->backend/claimmapping/usecases",
-        "private-import:Saml:backend/saml/usecases->backend/claimmapping/usecases"
-      ],
-      "reason": "SAML issues assertion attributes through ClaimMapping's use cases and schema repository. ClaimMapping publishes issuance with its release floor as public operations (D1, D3) in wi-35767."
     },
     {
       "id": "private-import:Saml->WsFederation",
@@ -586,18 +555,6 @@
         "private-import:WsFederation:backend/wsfederation/handlers_http->backend/authentication/session/usecases"
       ],
       "reason": "WS-Federation's sign-in handler resolves the login session through Authentication's session use cases. Authentication publishes session resolution (D1, D3) in wi-87746."
-    },
-    {
-      "id": "private-import:WsFederation->ClaimMapping",
-      "sourceModule": "WsFederation",
-      "targetModule": "ClaimMapping",
-      "violations": [
-        "private-import:WsFederation:backend/wsfederation->backend/claimmapping/usecases",
-        "private-import:WsFederation:backend/wsfederation/handlers_http->backend/claimmapping/usecases",
-        "private-import:WsFederation:backend/wsfederation/tokens_saml->backend/claimmapping/usecases",
-        "private-import:WsFederation:backend/wsfederation/usecases->backend/claimmapping/usecases"
-      ],
-      "reason": "WS-Federation and its tokens_saml builder issue claims through ClaimMapping's use cases and schema repository. ClaimMapping publishes issuance with its release floor as public operations (D1, D3) in wi-35767."
     },
     {
       "id": "shared-dependency:shared->ClaimMapping",

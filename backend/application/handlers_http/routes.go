@@ -7,7 +7,7 @@ package handlers_http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -43,7 +43,7 @@ type Deps struct {
 	QuotaRepo tenantports.QuotaRepository
 	// AttrSchemaRepo resolves tenant attribute definitions to enforce the claim
 	// release fail-closed floor (wi-73) when saving protocol claim rules.
-	AttrSchemaRepo claimusecases.TenantAttributeSchemaRepo
+	AttrSchemaRepo claimports.TenantAttributeSchemaRepo
 }
 
 // RegisterRoutes は Application カタログの admin / account エンドポイントを登録する。
