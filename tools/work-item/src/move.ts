@@ -63,7 +63,10 @@ export function relocateMarkdownLinks(
       if (start < 0) continue
       if (column === undefined) cursors.set(line, start + raw.length)
       const angled = raw.startsWith('<')
-      const rendered = angled ? `<${replacement}>` : replacement.replace(/[()]/g, '\\$&')
+      // 解析器はエスケープを外した値を返すので、書き戻すときにバックスラッシュも戻す。
+      const rendered = angled
+        ? `<${replacement.replace(/[\\<>]/g, '\\$&')}>`
+        : replacement.replace(/[\\()]/g, '\\$&')
       edits.set(offsets[line]! + start, {
         end: offsets[line]! + start + raw.length,
         value: rendered,

@@ -112,6 +112,13 @@ it('外部 URL、絶対 URL、不正なエンコードとリンクでない文�
   expect(relocateMarkdownLinks(source, `work-items/${item}`, from, new Map())).toBe(source)
 })
 
+it('リンク先のバックスラッシュを、エスケープとして読まれないよう書き戻す', () => {
+  const source = '[文書](../docs/a.md#a\\\\_b) [山括弧](<../docs/a.md#a\\\\_b>)\n'
+  expect(relocateMarkdownLinks(source, `work-items/${item}`, from, new Map())).toBe(
+    '[文書](../../docs/a.md#a\\\\_b) [山括弧](<../../docs/a.md#a\\\\_b>)\n',
+  )
+})
+
 it('同じ対象の正常なリンクがあっても、成立しないリンク構文を書き換えない', () => {
   const source = '[正常](../docs/a.md) [未成立](../docs/a.md "閉じない)\n'
   expect(relocateMarkdownLinks(source, `work-items/${item}`, from, new Map())).toBe(
