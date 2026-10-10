@@ -2,40 +2,30 @@
 
 ## Rule: REQ-AUTHORIZATION-002 関係タプルの書き込みは登録済みモデルに適合するものだけを一括で適用する
 
-### Example: EX-AUTHORIZATION-002-01 通常経路
+### Background:
 
 - Given テナントに認可モデルが登録済みである
+
+### Example: EX-AUTHORIZATION-002-01 通常経路
+
 - When 管理者が追加と削除を含む差分を WriteRelationTuples へ渡す
 - Then 差分は 1 トランザクションで適用され、既に存在する組の再追加は冪等に扱われる
 - Then レスポンスは書き込み後の整合トークンを返し、以後の判定へ渡せる
 
-### Example: EX-AUTHORIZATION-002-02 モデルが宣言していない型・関係を含む
+### Scenario Outline: 条件ごとの結果
 
-- Given テナントに認可モデルが登録済みである
 - When 管理者が追加と削除を含む差分を WriteRelationTuples へ渡す
-- But モデルが宣言していない型・関係を含む
-- Then RelationTupleInvalidError で拒否し、1 件も適用しない
+- But <condition>
+- Then <result>
 
-### Example: EX-AUTHORIZATION-002-03 `direct` 規則が許していない主体型またはワイルドカードを含む
+#### Examples:
 
-- Given テナントに認可モデルが登録済みである
-- When 管理者が追加と削除を含む差分を WriteRelationTuples へ渡す
-- But `direct` 規則が許していない主体型またはワイルドカードを含む
-- Then RelationTupleInvalidError で拒否し、1 件も適用しない
-
-### Example: EX-AUTHORIZATION-002-04 同じ組が追加と削除の双方に現れる
-
-- Given テナントに認可モデルが登録済みである
-- When 管理者が追加と削除を含む差分を WriteRelationTuples へ渡す
-- But 同じ組が追加と削除の双方に現れる
-- Then RelationTupleInvalidError で拒否し、1 件も適用しない
-
-### Example: EX-AUTHORIZATION-002-05 テナントに認可モデルが未登録である
-
-- Given テナントに認可モデルが登録済みである
-- When 管理者が追加と削除を含む差分を WriteRelationTuples へ渡す
-- But テナントに認可モデルが未登録である
-- Then AuthorizationModelNotFoundError で拒否する
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUTHORIZATION-002-02 | モデルが宣言していない型・関係を含む | RelationTupleInvalidError で拒否し、1 件も適用しない |
+  | EX-AUTHORIZATION-002-03 | `direct` 規則が許していない主体型またはワイルドカードを含む | RelationTupleInvalidError で拒否し、1 件も適用しない |
+  | EX-AUTHORIZATION-002-04 | 同じ組が追加と削除の双方に現れる | RelationTupleInvalidError で拒否し、1 件も適用しない |
+  | EX-AUTHORIZATION-002-05 | テナントに認可モデルが未登録である | AuthorizationModelNotFoundError で拒否する |
 
 ## Rule: REQ-AUTHORIZATION-008 オブジェクトの削除はその両側の関係タプルを取り除く
 

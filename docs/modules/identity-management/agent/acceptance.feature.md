@@ -8,21 +8,20 @@
 - When 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
 - Then エージェント "batch-agent" が指定した区分で登録される
 
-### Example: EX-IDMANAGEMENT-009-02 `kind` を指定しない
+### Scenario Outline: 条件ごとの結果
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面のエージェント一覧を開いている
 - When 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
-- But `kind` を指定しない
-- Then エラー "AgentKindRequiredError"
-- And 区分は実行時のトークン発行可否を決めるため、デフォルト値で補わない (REQ-OAUTH2-050)
+- But <condition>
+- Then <result>
+- And <result_2>
 
-### Example: EX-IDMANAGEMENT-009-03 `kind` が既知のどの値でもない
+#### Examples:
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のエージェント一覧を開いている
-- When 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
-- But `kind` が既知のどの値でもない
-- Then エラー "InvalidAgentKindError"
-- And 既知の値へ丸めない
+  | example_id | condition | result | result_2 |
+  | --- | --- | --- | --- |
+  | EX-IDMANAGEMENT-009-02 | `kind` を指定しない | エラー "AgentKindRequiredError" | 区分は実行時のトークン発行可否を決めるため、デフォルト値で補わない (REQ-OAUTH2-050) |
+  | EX-IDMANAGEMENT-009-03 | `kind` が既知のどの値でもない | エラー "InvalidAgentKindError" | 既知の値へ丸めない |
 
 ## Rule: REQ-IDMANAGEMENT-073 Agent の登録は、名前を正規化し、同じテナントの `Active` の User だけを所有者に受け付ける
 

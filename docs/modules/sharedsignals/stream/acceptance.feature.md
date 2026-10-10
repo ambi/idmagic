@@ -18,19 +18,19 @@
 - Then QuotaExceededError で拒否され、SsfStream も付随する設定も作成されない
 - Then "QuotaExceeded" が `resource="ssf_streams"` で発行される
 
-### Example: EX-SHAREDSIGNALS-009-02 RegisterSsfReceiverStream で登録しようとする
+### Scenario Outline: 条件ごとの結果
 
 - Given 対象テナントの `ssf_streams` 上限が 20、利用量が 20 である
 - When 管理者が RegisterSsfTransmitterStream で新しいストリームを登録しようとする
-- But RegisterSsfReceiverStream で登録しようとする
-- Then 同じく QuotaExceededError で拒否される（送信側と受信側は同一の上限を共有する）
+- But <condition>
+- Then <result>
 
-### Example: EX-SHAREDSIGNALS-009-03 管理者が先に既存のストリームを DeleteSsfStream する
+#### Examples:
 
-- Given 対象テナントの `ssf_streams` 上限が 20、利用量が 20 である
-- When 管理者が RegisterSsfTransmitterStream で新しいストリームを登録しようとする
-- But 管理者が先に既存のストリームを DeleteSsfStream する
-- Then 利用量が 19 に戻り、次の登録は成功する
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-SHAREDSIGNALS-009-02 | RegisterSsfReceiverStream で登録しようとする | 同じく QuotaExceededError で拒否される（送信側と受信側は同一の上限を共有する） |
+  | EX-SHAREDSIGNALS-009-03 | 管理者が先に既存のストリームを DeleteSsfStream する | 利用量が 19 に戻り、次の登録は成功する |
 
 ## Rule: REQ-SHAREDSIGNALS-011 SsfStream の登録と状態変更は管理者に限られる
 

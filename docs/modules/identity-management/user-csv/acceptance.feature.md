@@ -2,9 +2,12 @@
 
 ## Rule: REQ-IDMANAGEMENT-004 User の CSV のインポートは、プレビューで全行を判定し、適用で有効な行だけを保存する
 
-### Example: EX-IDMANAGEMENT-004-01 通常経路
+### Background:
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
+
+### Example: EX-IDMANAGEMENT-004-01 通常経路
+
 - When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
 - Then プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
 - When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
@@ -12,32 +15,28 @@
 - Then 適用はプレビューペイロードと SHA-256 を検証し、現在の Repository の状態に対して同じ計画器で再計画する
 - Then 有効な行は作成または更新され、無効な行は `rejected` として残る。各行のプロフィール、ロール、必須操作、カスタム属性は不可分に保存される
 
-### Example: EX-IDMANAGEMENT-004-02 CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える
+### Scenario Outline: 条件ごとの結果
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
-- But CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える
+- But <condition>
 - Then インポートの投入は拒否される
-- And エラー "csv_too_large" / "too_many_rows" / "field_too_large"
+- And <result>
 
-### Example: EX-IDMANAGEMENT-004-03 CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる
+#### Examples:
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
-- But CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる
-- Then インポートの投入は拒否される
-- And エラー "invalid_header"
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-IDMANAGEMENT-004-02 | CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える | エラー "csv_too_large" / "too_many_rows" / "field_too_large" |
+  | EX-IDMANAGEMENT-004-03 | CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる | エラー "invalid_header" |
 
 ### Example: EX-IDMANAGEMENT-004-04 行の `id` と `preferred_username` が別の `User` を示す、識別子がない、同じ対象または同じ最終ユーザー名を複数行が示す
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
 - Then 行の `id` と `preferred_username` が別の `User` を示す、識別子がない、同じ対象または同じ最終ユーザー名を複数行が示す
 - Then 対象行は `rejected` となり、安定したエラーコードを返す
 
 ### Example: EX-IDMANAGEMENT-004-05 プレビュージョブが存在しない、`queued` または `failed` である、別テナントに属する、保存済みのペイロードとダイジェストが一致しない
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
 - Then プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
 - When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
@@ -46,7 +45,6 @@
 
 ### Example: EX-IDMANAGEMENT-004-06 プレビュー後に対象 `User` の状態が別の操作で変更されている
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
 - Then プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
 - When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
@@ -54,27 +52,22 @@
 - Then プレビュー後に対象 `User` の状態が別の操作で変更されている
 - Then 適用は古いプレビュー計画を実行せず、現在状態から `updated`、`unchanged`、`rejected` を再判定する
 
-### Example: EX-IDMANAGEMENT-004-07 対象 `User` が外部の取り込み元に管理されている
+### Scenario Outline: 条件ごとの結果
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
 - Then プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
 - When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
 - Then CSV は再送されず、保存済みのプレビューペイロードが使われる
 - Then 適用はプレビューペイロードと SHA-256 を検証し、現在の Repository の状態に対して同じ計画器で再計画する
-- Then 対象 `User` が外部の取り込み元に管理されている
-- Then 対象行は安定したエラーコード `source_managed` で `rejected` となり、`User` は変更されない
+- Then <result>
+- Then <result_2>
 
-### Example: EX-IDMANAGEMENT-004-08 1 行の検証、保存、監査処理が途中で失敗する
+#### Examples:
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- When 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
-- Then プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
-- When 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
-- Then CSV は再送されず、保存済みのプレビューペイロードが使われる
-- Then 適用はプレビューペイロードと SHA-256 を検証し、現在の Repository の状態に対して同じ計画器で再計画する
-- Then 1 行の検証、保存、監査処理が途中で失敗する
-- Then その行のプロフィール、ロール、必須操作、カスタム属性は一部も保存されず、他の有効な行は適用を続ける
+  | example_id | result | result_2 |
+  | --- | --- | --- |
+  | EX-IDMANAGEMENT-004-07 | 対象 `User` が外部の取り込み元に管理されている | 対象行は安定したエラーコード `source_managed` で `rejected` となり、`User` は変更されない |
+  | EX-IDMANAGEMENT-004-08 | 1 行の検証、保存、監査処理が途中で失敗する | その行のプロフィール、ロール、必須操作、カスタム属性は一部も保存されず、他の有効な行は適用を続ける |
 
 ## Rule: REQ-IDMANAGEMENT-055 User の CSV の属性の列は、組み込みの属性を `attr:`、テナント定義の属性を `custom:` で表す
 
@@ -158,9 +151,12 @@
 
 ## Rule: REQ-IDMANAGEMENT-007 User のエクスポートは、そのまま再インポートすると変化なしになり、書き込める列の編集だけを反映する
 
-### Example: EX-IDMANAGEMENT-007-01 通常経路
+### Background:
 
 - Given 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
+
+### Example: EX-IDMANAGEMENT-007-01 通常経路
+
 - When 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
 - Then `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
 - When 管理者が同じ 10,000 行の成果物を編集せずプレビューする
@@ -172,37 +168,30 @@
 
 ### Example: EX-IDMANAGEMENT-007-02 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む
 
-- Given 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
 - When 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
 - But 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む
 - Then 可逆な数式安全変換と RFC 4180 の引用により `decode(encode(value))` は元の値と一致する
 
 ### Example: EX-IDMANAGEMENT-007-03 生成結果が実効 `CsvTransferPolicy` のいずれかの上限を超える
 
-- Given 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
 - When 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
 - But 生成結果が実効 `CsvTransferPolicy` のいずれかの上限を超える
 - Then `User` エクスポートは `csv_transfer_limit_exceeded` で失敗し、再インポートできない成功済み成果物を作らない
 - And 管理者はフィルターまたは列を絞って複数の成果物に分割できる
 
-### Example: EX-IDMANAGEMENT-007-04 `status`、`mfa_enrolled`、`created_at`、`updated_at`、`id` の値だけを編集する
+### Scenario Outline: 条件ごとの結果
 
-- Given 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
 - When 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
 - Then `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
 - When 管理者が同じ 10,000 行の成果物を編集せずプレビューする
 - Then 全行が `unchanged` となり、`User` は変更されない
 - When 管理者が 1 行の `email` と `custom:department` だけを編集して再びプレビューする
-- But `status`、`mfa_enrolled`、`created_at`、`updated_at`、`id` の値だけを編集する
-- Then 読み取り専用列は受理したうえで無視し、書き込み可能な列に差分がなければ `unchanged` とする
+- But <condition>
+- Then <result>
 
-### Example: EX-IDMANAGEMENT-007-05 カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のいずれかが不正である
+#### Examples:
 
-- Given 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
-- When 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
-- Then `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
-- When 管理者が同じ 10,000 行の成果物を編集せずプレビューする
-- Then 全行が `unchanged` となり、`User` は変更されない
-- When 管理者が 1 行の `email` と `custom:department` だけを編集して再びプレビューする
-- But カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のいずれかが不正である
-- Then 対象行は安定したエラーコードで `rejected` となり、値はジョブの表示にも監査イベントにも含めない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-IDMANAGEMENT-007-04 | `status`、`mfa_enrolled`、`created_at`、`updated_at`、`id` の値だけを編集する | 読み取り専用列は受理したうえで無視し、書き込み可能な列に差分がなければ `unchanged` とする |
+  | EX-IDMANAGEMENT-007-05 | カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のいずれかが不正である | 対象行は安定したエラーコードで `rejected` となり、値はジョブの表示にも監査イベントにも含めない |

@@ -31,9 +31,12 @@
 
 ## Rule: REQ-AUDIT-004 管理者は監査ログをページ単位で閲覧でき、絞り込みを変えるとカーソルが無効になる
 
-### Example: EX-AUDIT-004-01 通常経路
+### Background:
 
 - Given 所属テナントに `limit` を超える件数の監査イベントが存在する
+
+### Example: EX-AUDIT-004-01 通常経路
+
 - When 管理者が `ListAdminAuditEvents` に `limit` だけを指定して先頭ページを取得する
 - Then レスポンスは絞り込みに一致する正確な総件数、総ページ数、現在のページ、ページサイズを返す
 - Then レスポンスの `Link` ヘッダー (`rel="next"`) にコンパクトなカーソルが含まれる
@@ -48,7 +51,6 @@
 
 ### Example: EX-AUDIT-004-02 絞り込みに一致するイベントが 0 件である
 
-- Given 所属テナントに `limit` を超える件数の監査イベントが存在する
 - When 管理者が `ListAdminAuditEvents` に `limit` だけを指定して先頭ページを取得する
 - But 絞り込みに一致するイベントが 0 件である
 - Then 空のイベント一覧と、総件数 / 総ページ数 / 現在ページとして 0 / 0 / 0 を返す
@@ -56,37 +58,31 @@
 
 ### Example: EX-AUDIT-004-03 正確な件数の取得に失敗する
 
-- Given 所属テナントに `limit` を超える件数の監査イベントが存在する
 - When 管理者が `ListAdminAuditEvents` に `limit` だけを指定して先頭ページを取得する
 - But 正確な件数の取得に失敗する
 - Then 0 件として成功させず、リクエスト全体をサーバーエラーで失敗させる
 
 ### Example: EX-AUDIT-004-04 実行者が TenantAdministrator ロールを持たない
 
-- Given 所属テナントに `limit` を超える件数の監査イベントが存在する
 - When 管理者が `ListAdminAuditEvents` に `limit` だけを指定して先頭ページを取得する
 - But 実行者が TenantAdministrator ロールを持たない
 - Then ListAdminAuditEvents は AccessDeniedError で拒否される
 
-### Example: EX-AUDIT-004-05 category や filter などを変更し、元の絞り込み条件で発行されたカーソルを送る
+### Scenario Outline: 条件ごとの結果
 
-- Given 所属テナントに `limit` を超える件数の監査イベントが存在する
 - When 管理者が `ListAdminAuditEvents` に `limit` だけを指定して先頭ページを取得する
 - Then レスポンスは絞り込みに一致する正確な総件数、総ページ数、現在のページ、ページサイズを返す
 - Then レスポンスの `Link` ヘッダー (`rel="next"`) にコンパクトなカーソルが含まれる
 - When 管理者が取得済みのカーソルで次ページを取得する
-- But category や filter などを変更し、元の絞り込み条件で発行されたカーソルを送る
-- Then InvalidRequestError を返し、管理者は先頭ページから検索し直す
+- But <condition>
+- Then <result>
 
-### Example: EX-AUDIT-004-06 カーソルが別テナントで発行された、改ざんされた、または旧方式の有効期限を超過している
+#### Examples:
 
-- Given 所属テナントに `limit` を超える件数の監査イベントが存在する
-- When 管理者が `ListAdminAuditEvents` に `limit` だけを指定して先頭ページを取得する
-- Then レスポンスは絞り込みに一致する正確な総件数、総ページ数、現在のページ、ページサイズを返す
-- Then レスポンスの `Link` ヘッダー (`rel="next"`) にコンパクトなカーソルが含まれる
-- When 管理者が取得済みのカーソルで次ページを取得する
-- But カーソルが別テナントで発行された、改ざんされた、または旧方式の有効期限を超過している
-- Then InvalidRequestError を返す
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUDIT-004-05 | category や filter などを変更し、元の絞り込み条件で発行されたカーソルを送る | InvalidRequestError を返し、管理者は先頭ページから検索し直す |
+  | EX-AUDIT-004-06 | カーソルが別テナントで発行された、改ざんされた、または旧方式の有効期限を超過している | InvalidRequestError を返す |
 
 ## Rule: REQ-AUDIT-005 管理者はエージェントが代行した操作を本人の操作と区別して検索できる
 
@@ -109,25 +105,22 @@
 - Then 管理者が "A1" を登録・無効化した操作である
 - Then 行為者は管理者であり、"A1" はエージェントの識別子としてだけ残る
 
-### Example: EX-AUDIT-005-03 追加した軸を持たない過去のイベントである
+### Scenario Outline: 条件ごとの結果
 
 - Given Agent "A1" が User "alice" を subject とする委任トークンを得ている
 - When "A1" がそのトークンで操作し、監査イベントが発行される
 - Then イベントは行為者の種別、エージェントの識別子、委譲の深さ、委譲モードを検索軸として持つ
 - Then 行為者の識別子は代行した側のものであり、"alice" へ読み替えられない。"alice" は対象として残る
 - When 管理者がフィルターに `actor.type="agent"` と `agent.id="A1"` を指定して監査ログを検索する
-- But 追加した軸を持たない過去のイベントである
-- Then どの値にも一致せず、結果に混ざらない
+- But <condition>
+- Then <result>
 
-### Example: EX-AUDIT-005-04 許可リストに無い軸を指定する
+#### Examples:
 
-- Given Agent "A1" が User "alice" を subject とする委任トークンを得ている
-- When "A1" がそのトークンで操作し、監査イベントが発行される
-- Then イベントは行為者の種別、エージェントの識別子、委譲の深さ、委譲モードを検索軸として持つ
-- Then 行為者の識別子は代行した側のものであり、"alice" へ読み替えられない。"alice" は対象として残る
-- When 管理者がフィルターに `actor.type="agent"` と `agent.id="A1"` を指定して監査ログを検索する
-- But 許可リストに無い軸を指定する
-- Then フィルターの解析で拒否され、問い合わせは発行されない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUDIT-005-03 | 追加した軸を持たない過去のイベントである | どの値にも一致せず、結果に混ざらない |
+  | EX-AUDIT-005-04 | 許可リストに無い軸を指定する | フィルターの解析で拒否され、問い合わせは発行されない |
 
 ## Rule: REQ-AUDIT-006 管理者は委譲チェーンの参加者から代行の連なりを横断検索できる
 
@@ -143,10 +136,13 @@
 
 ## Rule: REQ-AUDIT-007 制御面主体はシステム経路で全テナントの監査ログを検索・エクスポートできる
 
-### Example: EX-AUDIT-007-01 通常経路
+### Background:
 
 - Given テナント "tenant-a" と "tenant-b" にそれぞれ監査イベントが存在する
 - And 制御面テナントに所属する `system_admin` の操作者が制御面テナントの経路を使う
+
+### Example: EX-AUDIT-007-01 通常経路
+
 - When 操作者がシステム経路の監査イベント検索を要求する
 - Then すべてのテナントの監査イベントが時系列降順で返り、`admin` ロールを併せ持つかどうかは結果を変えない
 - When 操作者が同じ絞り込みでシステム経路のエクスポートを要求する
@@ -156,16 +152,12 @@
 
 ### Example: EX-AUDIT-007-02 実行者が `system_admin` を持たない、制御面テナントの所属ではない、または制御面テナント以外の経路である
 
-- Given テナント "tenant-a" と "tenant-b" にそれぞれ監査イベントが存在する
-- And 制御面テナントに所属する `system_admin` の操作者が制御面テナントの経路を使う
 - When 操作者がシステム経路の監査イベント検索を要求する
 - But 実行者が `system_admin` を持たない、制御面テナントの所属ではない、または制御面テナント以外の経路である
 - Then AccessDeniedError で拒否され、応答はどのテナントの監査イベントも含まない
 
 ### Example: EX-AUDIT-007-03 テナント管理経路で発行したカーソルをシステム経路へ持ち込む
 
-- Given テナント "tenant-a" と "tenant-b" にそれぞれ監査イベントが存在する
-- And 制御面テナントに所属する `system_admin` の操作者が制御面テナントの経路を使う
 - When 操作者がシステム経路の監査イベント検索を要求する
 - But テナント管理経路で発行したカーソルをシステム経路へ持ち込む
 - Then InvalidRequestError を返し、続きとして読み替えない

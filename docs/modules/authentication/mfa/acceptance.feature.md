@@ -2,11 +2,14 @@
 
 ## Rule: REQ-AUTHENTICATION-018 MFA 未登録のユーザーは管理者が承認した登録を終えて同じ認可処理を継続できる
 
-### Example: EX-AUTHENTICATION-018-01 通常経路
+### Background:
 
 - Given 対象 Application の実効ポリシーは MFA 必須かつ強制開始済みで、登録バイパスを許可し猶予期限内である
 - And ユーザーは TOTP と WebAuthn のいずれの認証要素も持たない
 - And 管理者が対象ユーザーへ有効な単回限りの登録バイパスを発行済みである
+
+### Example: EX-AUTHENTICATION-018-01 通常経路
+
 - When ユーザーが正しいパスワードを送信する
 - Then バイパスを消費し、同じ LoginSession は `pending_purpose=Enrollment` の未完了状態になる
 - Then `MfaEnrollmentRequired` と `MfaEnrollmentBypassConsumed` が発行され、登録専用画面へ進む
@@ -16,39 +19,27 @@
 
 ### Example: EX-AUTHENTICATION-018-02 登録バイパスがない、取り消し済み、消費済み、または期限切れである
 
-- Given 対象 Application の実効ポリシーは MFA 必須かつ強制開始済みで、登録バイパスを許可し猶予期限内である
-- And ユーザーは TOTP と WebAuthn のいずれの認証要素も持たない
-- And 管理者が対象ユーザーへ有効な単回限りの登録バイパスを発行済みである
 - When ユーザーが正しいパスワードを送信する
 - But 登録バイパスがない、取り消し済み、消費済み、または期限切れである
 - Then パスワードが正しくてもログインを完了せずアクセスを拒否する
 - And 認証要素の登録 API は MfaEnrollmentNotAllowedError で拒否し、認証要素を作らない
 
-### Example: EX-AUTHENTICATION-018-03 登録期限を過ぎている
+### Scenario Outline: 条件ごとの結果
 
-- Given 対象 Application の実効ポリシーは MFA 必須かつ強制開始済みで、登録バイパスを許可し猶予期限内である
-- And ユーザーは TOTP と WebAuthn のいずれの認証要素も持たない
-- And 管理者が対象ユーザーへ有効な単回限りの登録バイパスを発行済みである
 - When ユーザーが正しいパスワードを送信する
 - Then バイパスを消費し、同じ LoginSession は `pending_purpose=Enrollment` の未完了状態になる
 - Then `MfaEnrollmentRequired` と `MfaEnrollmentBypassConsumed` が発行され、登録専用画面へ進む
 - When ユーザーが TOTP のシークレットに対する正しいコードで登録を確定する
-- But 登録期限を過ぎている
-- Then 認証要素を保存せずアクセスを拒否する
-- And LoginSession を認証完了へ昇格させない
+- But <condition>
+- Then <result>
+- And <result_2>
 
-### Example: EX-AUTHENTICATION-018-04 TOTP コードが不正である
+#### Examples:
 
-- Given 対象 Application の実効ポリシーは MFA 必須かつ強制開始済みで、登録バイパスを許可し猶予期限内である
-- And ユーザーは TOTP と WebAuthn のいずれの認証要素も持たない
-- And 管理者が対象ユーザーへ有効な単回限りの登録バイパスを発行済みである
-- When ユーザーが正しいパスワードを送信する
-- Then バイパスを消費し、同じ LoginSession は `pending_purpose=Enrollment` の未完了状態になる
-- Then `MfaEnrollmentRequired` と `MfaEnrollmentBypassConsumed` が発行され、登録専用画面へ進む
-- When ユーザーが TOTP のシークレットに対する正しいコードで登録を確定する
-- But TOTP コードが不正である
-- Then 認証要素を保存せず InvalidRequestError を返す
-- And LoginSession は `Enrollment` の保留状態のままである
+  | example_id | condition | result | result_2 |
+  | --- | --- | --- | --- |
+  | EX-AUTHENTICATION-018-03 | 登録期限を過ぎている | 認証要素を保存せずアクセスを拒否する | LoginSession を認証完了へ昇格させない |
+  | EX-AUTHENTICATION-018-04 | TOTP コードが不正である | 認証要素を保存せず InvalidRequestError を返す | LoginSession は `Enrollment` の保留状態のままである |
 
 ## Rule: REQ-AUTHENTICATION-019 MFA の強制開始前は、未登録のユーザーもログインできるが登録を促される
 

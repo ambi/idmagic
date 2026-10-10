@@ -82,10 +82,13 @@
 
 ## Rule: REQ-OAUTH2-036 管理者は Application から期限付きクライアントシークレットを追加発行し、個別に失効できる
 
-### Example: EX-OAUTH2-036-01 通常経路
+### Background:
 
 - Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
 - And 有効期限のない従来のシークレット "S1" が `Active` である
+
+### Example: EX-OAUTH2-036-01 通常経路
+
 - When 管理者が `expires_in_days=90` で新しいシークレットを追加発行する
 - Then レスポンスで新しいシークレットを一度だけ受け取り、メタデータは 90 日後の `expires_at` と `Active` ステータスを持つ
 - Then 追加発行によって既存シークレットの期限とステータスは変わらない
@@ -94,60 +97,46 @@
 - Then 以前のシークレットは InvalidClientError で拒否され、新しいシークレットでは引き続き認証に成功する
 - Then ClientSecretIssued と ClientSecretRevoked は、`actor`、クライアント、`credential`、`expiry` の非機密メタデータだけを含んで発行される
 
-### Example: EX-OAUTH2-036-02 `expires_in_days` が 1..730 の範囲外である
+### Scenario Outline: 条件ごとの結果
 
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 有効期限のない従来のシークレット "S1" が `Active` である
 - When 管理者が `expires_in_days=90` で新しいシークレットを追加発行する
-- But `expires_in_days` が 1..730 の範囲外である
-- Then エラー "InvalidRequestError"
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-036-03 `Active` の資格情報がすでに 2 件存在する
+#### Examples:
 
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 有効期限のない従来のシークレット "S1" が `Active` である
-- When 管理者が `expires_in_days=90` で新しいシークレットを追加発行する
-- But `Active` の資格情報がすでに 2 件存在する
-- Then 追加発行をエラー "ClientSecretLimitExceededError" で拒否し、既存の資格情報は変更しない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-036-02 | `expires_in_days` が 1..730 の範囲外である | エラー "InvalidRequestError" |
+  | EX-OAUTH2-036-03 | `Active` の資格情報がすでに 2 件存在する | 追加発行をエラー "ClientSecretLimitExceededError" で拒否し、既存の資格情報は変更しない |
+  | EX-OAUTH2-036-04 | クライアントが `private_key_jwt`、mTLS、または公開クライアントである | エラー "InvalidRequestError" |
 
-### Example: EX-OAUTH2-036-04 クライアントが `private_key_jwt`、mTLS、または公開クライアントである
+### Scenario Outline: 条件ごとの結果
 
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 有効期限のない従来のシークレット "S1" が `Active` である
-- When 管理者が `expires_in_days=90` で新しいシークレットを追加発行する
-- But クライアントが `private_key_jwt`、mTLS、または公開クライアントである
-- Then エラー "InvalidRequestError"
-
-### Example: EX-OAUTH2-036-05 別クライアントの `credential_id` または存在しない `credential_id` を失効する
-
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 有効期限のない従来のシークレット "S1" が `Active` である
 - When 管理者が `expires_in_days=90` で新しいシークレットを追加発行する
 - Then レスポンスで新しいシークレットを一度だけ受け取り、メタデータは 90 日後の `expires_at` と `Active` ステータスを持つ
 - Then 追加発行によって既存シークレットの期限とステータスは変わらない
 - Then 新旧両方のシークレットでトークンエンドポイントの認証に成功する
 - When 管理者が以前の資格情報だけを個別に失効する
-- But 別クライアントの `credential_id` または存在しない `credential_id` を失効する
-- Then エラー "InvalidRequestError"
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-036-06 すでに `Revoked` の資格情報を再び失効する
+#### Examples:
 
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 有効期限のない従来のシークレット "S1" が `Active` である
-- When 管理者が `expires_in_days=90` で新しいシークレットを追加発行する
-- Then レスポンスで新しいシークレットを一度だけ受け取り、メタデータは 90 日後の `expires_at` と `Active` ステータスを持つ
-- Then 追加発行によって既存シークレットの期限とステータスは変わらない
-- Then 新旧両方のシークレットでトークンエンドポイントの認証に成功する
-- When 管理者が以前の資格情報だけを個別に失効する
-- But すでに `Revoked` の資格情報を再び失効する
-- Then 冪等に成功し、ClientSecretRevoked は重複発行されない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-036-05 | 別クライアントの `credential_id` または存在しない `credential_id` を失効する | エラー "InvalidRequestError" |
+  | EX-OAUTH2-036-06 | すでに `Revoked` の資格情報を再び失効する | 冪等に成功し、ClientSecretRevoked は重複発行されない |
 
 ## Rule: REQ-OAUTH2-037 管理者は互換インターフェースからクライアントシークレットを無停止でローテーションできる
 
-### Example: EX-OAUTH2-037-01 通常経路
+### Background:
 
 - Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
 - And 以前のシークレット "S1" が有効である
+
+### Example: EX-OAUTH2-037-01 通常経路
+
 - When 管理者が `grace_days=7` でシークレットをローテーションする
 - Then レスポンスで新しいシークレットを一度だけ受け取る
 - Then 新旧両方のシークレットは `grace_until` より前にトークンエンドポイントの認証に成功する
@@ -156,16 +145,12 @@
 
 ### Example: EX-OAUTH2-037-02 `grace_days` が 0 以外で 1..30 の範囲外である
 
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 以前のシークレット "S1" が有効である
 - When 管理者が `grace_days=7` でシークレットをローテーションする
 - But `grace_days` が 0 以外で 1..30 の範囲外である
 - Then エラー "InvalidRequestError"
 
 ### Example: EX-OAUTH2-037-03 クライアントが `private_key_jwt`、mTLS、または公開クライアントである
 
-- Given `tenant_id` "acme" の Application "billing" は、`client_secret_basic` を使う confidential OIDC クライアントをプロトコル設定として持つ
-- And 以前のシークレット "S1" が有効である
 - When 管理者が `grace_days=7` でシークレットをローテーションする
 - But クライアントが `private_key_jwt`、mTLS、または公開クライアントである
 - Then エラー "InvalidRequestError"

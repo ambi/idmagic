@@ -10,29 +10,21 @@
 - Then 発行フォームでは、スコープを API の種類とリソースごとにまとめ、正式なスコープ値と `read` / `write` などの権限の意味を示す
 - Then 管理者は必要なスコープだけを選び、API アクセストークンを発行できる
 
-### Example: EX-APITOKENS-001-02 管理者が特定の API 用スコープを必要としない
+### Scenario Outline: 条件ごとの結果
 
 - Given 管理者として認証済みである
 - When 管理者が設定画面の API アクセストークンタブを開く
 - Then 画面には、内容を示す主見出しと区別しやすい発行済みトークン一覧の見出しがあり、管理 API、SCIM 2.0 API、発行者本人のアカウント API の Base URL と用途を表示する
-- Then 管理者が特定の API 用スコープを必要としない
-- Then そのスコープグループは折りたたんだままにでき、多数の正式なスコープ値を常時表示しない
+- Then <result>
+- Then <result_2>
 
-### Example: EX-APITOKENS-001-03 リソースに変更系スコープが存在しない
+#### Examples:
 
-- Given 管理者として認証済みである
-- When 管理者が設定画面の API アクセストークンタブを開く
-- Then 画面には、内容を示す主見出しと区別しやすい発行済みトークン一覧の見出しがあり、管理 API、SCIM 2.0 API、発行者本人のアカウント API の Base URL と用途を表示する
-- Then リソースに変更系スコープが存在しない
-- Then 発行フォームは存在しない権限を選択肢として表示しない
-
-### Example: EX-APITOKENS-001-04 リソースに参照系スコープがなく変更系スコープだけが存在する
-
-- Given 管理者として認証済みである
-- When 管理者が設定画面の API アクセストークンタブを開く
-- Then 画面には、内容を示す主見出しと区別しやすい発行済みトークン一覧の見出しがあり、管理 API、SCIM 2.0 API、発行者本人のアカウント API の Base URL と用途を表示する
-- Then リソースに参照系スコープがなく変更系スコープだけが存在する
-- Then 2 列表示では左の参照列を空け、変更系スコープを常に右の変更列へ配置する
+  | example_id | result | result_2 |
+  | --- | --- | --- |
+  | EX-APITOKENS-001-02 | 管理者が特定の API 用スコープを必要としない | そのスコープグループは折りたたんだままにでき、多数の正式なスコープ値を常時表示しない |
+  | EX-APITOKENS-001-03 | リソースに変更系スコープが存在しない | 発行フォームは存在しない権限を選択肢として表示しない |
+  | EX-APITOKENS-001-04 | リソースに参照系スコープがなく変更系スコープだけが存在する | 2 列表示では左の参照列を空け、変更系スコープを常に右の変更列へ配置する |
 
 ## Rule: REQ-APITOKENS-003 管理者は API アクセストークンを発行・失効できる
 
@@ -45,19 +37,19 @@
 - When 管理者が RevokeApiToken でトークンを失効する
 - Then 指定したトークンは認証に利用できなくなる
 
-### Example: EX-APITOKENS-003-02 `expiry_days` が 0 以下である
+### Scenario Outline: 条件ごとの結果
 
 - Given 管理者として認証済みである
 - When 管理者がスコープ集合と有効日数を指定して IssueApiToken を呼ぶ
-- But `expiry_days` が 0 以下である
-- Then InvalidRequestError で拒否され、トークンを発行しない
+- But <condition>
+- Then <result>
 
-### Example: EX-APITOKENS-003-03 呼び出し元が `admin` / `system_admin` ロールを持たない
+#### Examples:
 
-- Given 管理者として認証済みである
-- When 管理者がスコープ集合と有効日数を指定して IssueApiToken を呼ぶ
-- But 呼び出し元が `admin` / `system_admin` ロールを持たない
-- Then AccessDeniedError で拒否される
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-APITOKENS-003-02 | `expiry_days` が 0 以下である | InvalidRequestError で拒否され、トークンを発行しない |
+  | EX-APITOKENS-003-03 | 呼び出し元が `admin` / `system_admin` ロールを持たない | AccessDeniedError で拒否される |
 
 ### Example: EX-APITOKENS-003-04 指定した ID のトークンが存在しない
 

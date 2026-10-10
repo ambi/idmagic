@@ -9,19 +9,19 @@
 - Then UsernameToken と RST の必須要素をすべて検証する
 - Then RSTR を返す
 
-### Example: EX-WSFEDERATION-004-02 MessageID が Assertion の有効期間内に再利用されている
+### Scenario Outline: 条件ごとの結果
 
 - Given UsernameToken、MessageID、Timestamp、To、Action、RequestType、KeyType、AppliesTo が有効である
 - When WS-Trust Issue の RST を受信する
-- Then MessageID が Assertion の有効期間内に再利用されている
-- Then WsTrustTokenRejected を発行してプロトコルエラーを返す
+- Then <result>
+- Then <result_2>
 
-### Example: EX-WSFEDERATION-004-03 UsernameToken の資格情報が不正である
+#### Examples:
 
-- Given UsernameToken、MessageID、Timestamp、To、Action、RequestType、KeyType、AppliesTo が有効である
-- When WS-Trust Issue の RST を受信する
-- Then UsernameToken の資格情報が不正である
-- Then 401 で拒否しトークンを発行しない
+  | example_id | result | result_2 |
+  | --- | --- | --- |
+  | EX-WSFEDERATION-004-02 | MessageID が Assertion の有効期間内に再利用されている | WsTrustTokenRejected を発行してプロトコルエラーを返す |
+  | EX-WSFEDERATION-004-03 | UsernameToken の資格情報が不正である | 401 で拒否しトークンを発行しない |
 
 ## Rule: REQ-WSFEDERATION-005 不正なエンベロープの WS-Trust Issue は拒否する
 

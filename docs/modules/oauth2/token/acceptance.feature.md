@@ -10,21 +10,20 @@
 - Then アクセストークンの `sub` は同意した User、audience はレルムの IdMagic API（レルムの発行者識別子）、スコープは `account:read` になる
 - Then account リソースサーバーは、トークンの subject 本人による参照操作だけを許可する
 
-### Example: EX-OAUTH2-001-02 `client_credentials` または User の subject を持たない Token Exchange で account スコープを要求する
+### Scenario Outline: 条件ごとの結果
 
 - Given クライアントは `account:read` と `account:write` を許可スコープとして登録している
 - And 有効な User が Authorization Code + PKCE または Device Authorization で `account:read` に同意している
 - When クライアントがユーザーに紐づくグラントを `/token` で交換する
-- But `client_credentials` または User の subject を持たない Token Exchange で account スコープを要求する
-- Then トークンリクエストを InvalidScopeError で拒否する
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-001-03 クライアントの許可スコープまたは User の同意に account スコープが含まれない
+#### Examples:
 
-- Given クライアントは `account:read` と `account:write` を許可スコープとして登録している
-- And 有効な User が Authorization Code + PKCE または Device Authorization で `account:read` に同意している
-- When クライアントがユーザーに紐づくグラントを `/token` で交換する
-- But クライアントの許可スコープまたは User の同意に account スコープが含まれない
-- Then account スコープは発行されない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-001-02 | `client_credentials` または User の subject を持たない Token Exchange で account スコープを要求する | トークンリクエストを InvalidScopeError で拒否する |
+  | EX-OAUTH2-001-03 | クライアントの許可スコープまたは User の同意に account スコープが含まれない | account スコープは発行されない |
 
 ### Example: EX-OAUTH2-001-04 audience がレルムの IdMagic API ではない account スコープのトークンを提示する
 
@@ -226,26 +225,20 @@
 - When 永続化層へ `tenant_id=acme` のリフレッシュトークンと `tenant_id=default` の `client_id` または `sub` を書き込む
 - Then 永続化層が参照整合性エラーで拒否する
 
-### Example: EX-OAUTH2-034-02 他テナントの client_id を使う
+### Scenario Outline: 条件ごとの結果
 
 - When tenant_id "acme" で発行した認可コード "AC1" を "/realms/default/token" で交換する
-- But 他テナントの client_id を使う
-- Then tenant_id "acme" に登録した client_id "web-app" で "/realms/default/token" に交換を要求する
-- And エラー "InvalidClientError"
+- But <condition>
+- Then <result>
+- And <result_2>
 
-### Example: EX-OAUTH2-034-03 他テナントのリフレッシュトークンを再発行する
+#### Examples:
 
-- When tenant_id "acme" で発行した認可コード "AC1" を "/realms/default/token" で交換する
-- But 他テナントのリフレッシュトークンを再発行する
-- Then tenant_id "acme" で発行した refresh トークン "RT1" を "/realms/default/token" で再発行する
-- And エラー "InvalidGrantError"
-
-### Example: EX-OAUTH2-034-04 他テナントの device_code を交換する
-
-- When tenant_id "acme" で発行した認可コード "AC1" を "/realms/default/token" で交換する
-- But 他テナントの device_code を交換する
-- Then tenant_id "acme" で発行し承認した device_code "DC1" を "/realms/default/token" で交換する
-- And エラー "InvalidGrantError"
+  | example_id | condition | result | result_2 |
+  | --- | --- | --- | --- |
+  | EX-OAUTH2-034-02 | 他テナントの client_id を使う | tenant_id "acme" に登録した client_id "web-app" で "/realms/default/token" に交換を要求する | エラー "InvalidClientError" |
+  | EX-OAUTH2-034-03 | 他テナントのリフレッシュトークンを再発行する | tenant_id "acme" で発行した refresh トークン "RT1" を "/realms/default/token" で再発行する | エラー "InvalidGrantError" |
+  | EX-OAUTH2-034-04 | 他テナントの device_code を交換する | tenant_id "acme" で発行し承認した device_code "DC1" を "/realms/default/token" で交換する | エラー "InvalidGrantError" |
 
 ## Rule: REQ-OAUTH2-039 KeyProvider の障害時は新しいトークンの発行を拒否する
 
@@ -264,19 +257,19 @@
 - Then HTTP 401 を返し、WWW-Authenticate は Bearer の `error="invalid_token"` と `resource_metadata="https://idp.example.com/realms/acme/.well-known/oauth-protected-resource"` を引用符付きの auth-param として含む
 - Then `resource_metadata` URL は、`resource` 未指定時のレルムの IdMagic API Protected Resource Metadata を返す
 
-### Example: EX-OAUTH2-044-02 アクセストークンに必要なスコープがない
+### Scenario Outline: 条件ごとの結果
 
 - Given レルム "acme" の発行者は "https://idp.example.com/realms/acme" である
 - When クライアントが無効なアクセストークンでレルム "acme" の保護 API を呼ぶ
-- But アクセストークンに必要なスコープがない
-- Then HTTP 403 を返し、WWW-Authenticate に `error="insufficient_scope"` と必要なスコープ、および `resource_metadata="https://idp.example.com/realms/acme/.well-known/oauth-protected-resource"` を含める
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-044-03 レルム "acme" がホストルート形式のエンドポイントを使う
+#### Examples:
 
-- Given レルム "acme" の発行者は "https://idp.example.com/realms/acme" である
-- When クライアントが無効なアクセストークンでレルム "acme" の保護 API を呼ぶ
-- But レルム "acme" がホストルート形式のエンドポイントを使う
-- Then `resource_metadata` はホストルートの発行者配下にある `/.well-known/oauth-protected-resource` を指す
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-044-02 | アクセストークンに必要なスコープがない | HTTP 403 を返し、WWW-Authenticate に `error="insufficient_scope"` と必要なスコープ、および `resource_metadata="https://idp.example.com/realms/acme/.well-known/oauth-protected-resource"` を含める |
+  | EX-OAUTH2-044-03 | レルム "acme" がホストルート形式のエンドポイントを使う | `resource_metadata` はホストルートの発行者配下にある `/.well-known/oauth-protected-resource` を指す |
 
 ## Rule: REQ-OAUTH2-045 保護リソースの DPoP Proof は ath でアクセストークンに結び付けられる
 
@@ -286,41 +279,36 @@
 - When クライアントが "AT1" を提示し、`ath` が "AT1" の base64url(SHA-256) である "K1" 署名の DPoP Proof で保護リソースを呼ぶ
 - Then 要求は受理される
 
-### Example: EX-OAUTH2-045-02 Proof が `ath` を含まない
+### Scenario Outline: 条件ごとの結果
 
 - Given DPoP 鍵 "K1" に結び付けられたアクセストークン "AT1" と "AT2" が存在する
 - When クライアントが "AT1" を提示し、`ath` が "AT1" の base64url(SHA-256) である "K1" 署名の DPoP Proof で保護リソースを呼ぶ
-- But Proof が `ath` を含まない
-- Then エラー "InvalidTokenError"
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-045-03 Proof の `ath` が "AT2" の base64url(SHA-256) である
+#### Examples:
 
-- Given DPoP 鍵 "K1" に結び付けられたアクセストークン "AT1" と "AT2" が存在する
-- When クライアントが "AT1" を提示し、`ath` が "AT1" の base64url(SHA-256) である "K1" 署名の DPoP Proof で保護リソースを呼ぶ
-- But Proof の `ath` が "AT2" の base64url(SHA-256) である
-- Then エラー "InvalidTokenError"
-
-### Example: EX-OAUTH2-045-04 トークンエンドポイントへ `ath` を含まない "K1" 署名の DPoP Proof を提示する
-
-- Given DPoP 鍵 "K1" に結び付けられたアクセストークン "AT1" と "AT2" が存在する
-- When クライアントが "AT1" を提示し、`ath` が "AT1" の base64url(SHA-256) である "K1" 署名の DPoP Proof で保護リソースを呼ぶ
-- But トークンエンドポイントへ `ath` を含まない "K1" 署名の DPoP Proof を提示する
-- Then リクエストは受理され、アクセストークンが発行される
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-045-02 | Proof が `ath` を含まない | エラー "InvalidTokenError" |
+  | EX-OAUTH2-045-03 | Proof の `ath` が "AT2" の base64url(SHA-256) である | エラー "InvalidTokenError" |
+  | EX-OAUTH2-045-04 | トークンエンドポイントへ `ath` を含まない "K1" 署名の DPoP Proof を提示する | リクエストは受理され、アクセストークンが発行される |
 
 ## Rule: REQ-OAUTH2-046 所有者がオフボードされた Agent は client_credentials で新しいトークンを取得できない
 
-### Example: EX-OAUTH2-046-01 通常経路
+### Background:
 
 - Given User "owner1" が所有する `Active` の Agent "A1" が confidential クライアント "agent-app" に束縛されている
 - And 管理者が "owner1" を無効化した
+
+### Example: EX-OAUTH2-046-01 通常経路
+
 - When "agent-app" として client_credentials でトークンを要求する
 - Then エラー "InvalidClientError" で拒否され、トークンは発行されない
 - Then 所有者の状態は "A1" の `status` を書き換えず、発行のたびに解決する（"A1" は `Active` のまま）
 
 ### Example: EX-OAUTH2-046-02 "owner1" がハード削除され解決できない
 
-- Given User "owner1" が所有する `Active` の Agent "A1" が confidential クライアント "agent-app" に束縛されている
-- And 管理者が "owner1" を無効化した
 - When "agent-app" として client_credentials でトークンを要求する
 - But "owner1" がハード削除され解決できない
 - Then エラー "InvalidClientError"
@@ -328,41 +316,36 @@
 
 ### Example: EX-OAUTH2-046-03 "owner1" が再び有効化された
 
-- Given User "owner1" が所有する `Active` の Agent "A1" が confidential クライアント "agent-app" に束縛されている
-- And 管理者が "owner1" を無効化した
 - When "agent-app" として client_credentials でトークンを要求する
 - But "owner1" が再び有効化された
 - Then リクエストは受理され、アクセストークンが発行される
 
 ### Example: EX-OAUTH2-046-04 "agent-app" にどの Agent も束縛されていない
 
-- Given User "owner1" が所有する `Active` の Agent "A1" が confidential クライアント "agent-app" に束縛されている
-- And 管理者が "owner1" を無効化した
 - When "agent-app" として client_credentials でトークンを要求する
 - But "agent-app" にどの Agent も束縛されていない
 - Then 所有者の解決を行わず、リクエストは受理される
 
 ## Rule: REQ-OAUTH2-047 管理コンソールとアカウントポータルの Bearer 認証も失効判定を通る
 
-### Example: EX-OAUTH2-047-01 通常経路
+### Background:
 
 - Given Agent "A1" に束縛されたクライアントへ発行済みの access トークン "AT1" がある
 - And "A1" の revocation epoch が "AT1" の issued_at より後へ前進している
+
+### Example: EX-OAUTH2-047-01 通常経路
+
 - When "AT1" を Bearer として `/api/admin/v1/` 配下の API へ提示する
 - Then エラー "InvalidTokenError" で拒否される（イントロスペクションと同じ失効判定を通す）
 
 ### Example: EX-OAUTH2-047-02 "AT1" の jti が失効リストに載っている
 
-- Given Agent "A1" に束縛されたクライアントへ発行済みの access トークン "AT1" がある
-- And "A1" の revocation epoch が "AT1" の issued_at より後へ前進している
 - When "AT1" を Bearer として `/api/admin/v1/` 配下の API へ提示する
 - But "AT1" の jti が失効リストに載っている
 - Then エラー "InvalidTokenError"
 
 ### Example: EX-OAUTH2-047-03 "AT1" が revocation epoch より後に発行されている
 
-- Given Agent "A1" に束縛されたクライアントへ発行済みの access トークン "AT1" がある
-- And "A1" の revocation epoch が "AT1" の issued_at より後へ前進している
 - When "AT1" を Bearer として `/api/admin/v1/` 配下の API へ提示する
 - But "AT1" が revocation epoch より後に発行されている
 - Then 認証は成立し、以後はスコープとロールの境界で判定する
@@ -375,26 +358,20 @@
 - When エージェントが Token Exchange で委任トークンを要求する
 - Then 監査イベントは発行トークンの深さと、判定に適用した上限の双方を残す
 
-### Example: EX-OAUTH2-048-02 発行トークンの `act` 入れ子の深さが上限以内である
+### Scenario Outline: 条件ごとの結果
 
 - Given テナントが委譲深さの上限を設定している、または上書きを持たずシステムデフォルトを継承している
 - When エージェントが Token Exchange で委任トークンを要求する
-- But 発行トークンの `act` 入れ子の深さが上限以内である
-- Then 交換は成立する
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-048-03 深さが上限を超える
+#### Examples:
 
-- Given テナントが委譲深さの上限を設定している、または上書きを持たずシステムデフォルトを継承している
-- When エージェントが Token Exchange で委任トークンを要求する
-- But 深さが上限を超える
-- Then 交換を拒否し、拒否理由を監査へ残す
-
-### Example: EX-OAUTH2-048-04 テナントの委譲ポリシーを解決できない
-
-- Given テナントが委譲深さの上限を設定している、または上書きを持たずシステムデフォルトを継承している
-- When エージェントが Token Exchange で委任トークンを要求する
-- But テナントの委譲ポリシーを解決できない
-- Then システムデフォルトへ退避せず拒否する
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-048-02 | 発行トークンの `act` 入れ子の深さが上限以内である | 交換は成立する |
+  | EX-OAUTH2-048-03 | 深さが上限を超える | 交換を拒否し、拒否理由を監査へ残す |
+  | EX-OAUTH2-048-04 | テナントの委譲ポリシーを解決できない | システムデフォルトへ退避せず拒否する |
 
 ## Rule: REQ-OAUTH2-049 イントロスペクションと監査は同じ規則で委譲モードを示す
 
@@ -405,23 +382,17 @@
 - Then レスポンスの委譲モードは、同じ交換が監査へ残したモードと一致する
 - Then リソースサーバーは `act` と principal 種別から導出し直す必要がない
 
-### Example: EX-OAUTH2-049-02 `act` に subject と異なる行為者がいる
+### Scenario Outline: 条件ごとの結果
 
 - Given Token Exchange で発行した委任トークンがある
 - When リソースサーバーがそのトークンをイントロスペクトする
-- But `act` に subject と異なる行為者がいる
-- Then 利用者の代理として返す
+- But <condition>
+- Then <result>
 
-### Example: EX-OAUTH2-049-03 代行が無く subject が非人間のプリンシパルである
+#### Examples:
 
-- Given Token Exchange で発行した委任トークンがある
-- When リソースサーバーがそのトークンをイントロスペクトする
-- But 代行が無く subject が非人間のプリンシパルである
-- Then 自律実行として返す
-
-### Example: EX-OAUTH2-049-04 代行が無く subject が人間の利用者である
-
-- Given Token Exchange で発行した委任トークンがある
-- When リソースサーバーがそのトークンをイントロスペクトする
-- But 代行が無く subject が人間の利用者である
-- Then 直接のアクセスとして返す
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-049-02 | `act` に subject と異なる行為者がいる | 利用者の代理として返す |
+  | EX-OAUTH2-049-03 | 代行が無く subject が非人間のプリンシパルである | 自律実行として返す |
+  | EX-OAUTH2-049-04 | 代行が無く subject が人間の利用者である | 直接のアクセスとして返す |

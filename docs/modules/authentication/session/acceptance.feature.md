@@ -68,16 +68,16 @@
 - Then そのセッションはサーバー側で失効し、以後の認証解決は未認証として扱われる
 - Then ブラウザの Cookie を復元して同じセッション ID を再提示しても認証されない
 
-### Example: EX-AUTHENTICATION-035-02 WS-Federation のサインアウトを使う
+### Scenario Outline: 条件ごとの結果
 
 - Given ユーザー "alice" がサブドメイン形式のテナントでログインし、ブラウザは `__Host-` 接頭辞つきのセッション Cookie を保持している
 - When ユーザー "alice" が SAML シングルログアウトでサインアウトする
-- But WS-Federation のサインアウトを使う
+- But <condition>
 - Then 同じくサーバー側のセッションが失効する
 
-### Example: EX-AUTHENTICATION-035-03 パス形式のテナントで接頭辞のない Cookie を送る
+#### Examples:
 
-- Given ユーザー "alice" がサブドメイン形式のテナントでログインし、ブラウザは `__Host-` 接頭辞つきのセッション Cookie を保持している
-- When ユーザー "alice" が SAML シングルログアウトでサインアウトする
-- But パス形式のテナントで接頭辞のない Cookie を送る
-- Then 同じくサーバー側のセッションが失効する
+  | example_id | condition |
+  | --- | --- |
+  | EX-AUTHENTICATION-035-02 | WS-Federation のサインアウトを使う |
+  | EX-AUTHENTICATION-035-03 | パス形式のテナントで接頭辞のない Cookie を送る |

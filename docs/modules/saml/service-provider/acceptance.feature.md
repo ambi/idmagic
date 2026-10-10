@@ -9,22 +9,22 @@
 - Then `saml:read` スコープではサービスプロバイダーの参照だけを許可する
 - Then `saml:write` スコープではサービスプロバイダーの登録または削除だけを許可する
 
-### Example: EX-SAML-005-02 `saml:read` だけで変更操作をリクエストする
+### Scenario Outline: 条件ごとの結果
 
 - Given クライアントは対象テナントの有効な API アクセストークンを提示している
 - When クライアントがサービスプロバイダーの参照、登録、または削除をリクエストする
-- But `saml:read` だけで変更操作をリクエストする
-- Then 操作を 403 と `insufficient_scope` で拒否する
+- But <condition>
+- Then <result>
+
+#### Examples:
+
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-SAML-005-02 | `saml:read` だけで変更操作をリクエストする | 操作を 403 と `insufficient_scope` で拒否する |
+  | EX-SAML-005-04 | `admin` のロールを持たない利用者が変更の操作を要求する | 操作は 403 の AccessDeniedError（`access_denied`）で拒否され、SPは変わらない |
 
 ### Example: EX-SAML-005-03 トークンのテナントとリクエスト先のテナントが一致しない
 
 - Given クライアントは発行元テナントでは有効な API アクセストークンを持つ
 - When クライアントがそのトークンを別テナントのサービスプロバイダーの参照、登録、または削除へ提示する
 - Then 操作を 401 の InvalidAccessTokenError で拒否する
-
-### Example: EX-SAML-005-04 `admin` のロールを持たない利用者が変更の操作を要求する
-
-- Given クライアントは対象テナントの有効な API アクセストークンを提示している
-- When クライアントがサービスプロバイダーの参照、登録、または削除をリクエストする
-- But `admin` のロールを持たない利用者が変更の操作を要求する
-- Then 操作は 403 の AccessDeniedError（`access_denied`）で拒否され、SPは変わらない

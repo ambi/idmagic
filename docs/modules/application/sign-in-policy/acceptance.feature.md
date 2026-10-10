@@ -2,10 +2,13 @@
 
 ## Rule: REQ-APPLICATION-009 管理者はアプリケーション別サインインポリシーを設定できる
 
-### Example: EX-APPLICATION-009-01 通常経路
+### Background:
 
 - Given 管理者が Application 編集画面を開いている
 - And Application は OIDC / SAML / WS-Fed のいずれか 1 つのプロトコルを持つ
+
+### Example: EX-APPLICATION-009-01 通常経路
+
 - When 管理者が MFA 必須と再認証を求めるまでの時間（秒）を指定したサインインポリシーを保存する
 - Then AppSignInPolicyUpdated が発行される
 - When 単要素セッションの利用者が対象 Application にアクセスする
@@ -14,16 +17,12 @@
 
 ### Example: EX-APPLICATION-009-02 管理者以外がポリシーを更新する
 
-- Given 管理者が Application 編集画面を開いている
-- And Application は OIDC / SAML / WS-Fed のいずれか 1 つのプロトコルを持つ
 - When 管理者が MFA 必須と再認証を求めるまでの時間（秒）を指定したサインインポリシーを保存する
 - But 管理者以外がポリシーを更新する
 - Then AccessDeniedError で拒否される
 
 ### Example: EX-APPLICATION-009-03 クライアント IP が許可 CIDR に含まれない、またはクライアント IP を取得できない
 
-- Given 管理者が Application 編集画面を開いている
-- And Application は OIDC / SAML / WS-Fed のいずれか 1 つのプロトコルを持つ
 - When 管理者が MFA 必須と再認証を求めるまでの時間（秒）を指定したサインインポリシーを保存する
 - Then AppSignInPolicyUpdated が発行される
 - When 単要素セッションの利用者が対象 Application にアクセスする

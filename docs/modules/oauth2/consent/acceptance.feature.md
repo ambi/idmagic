@@ -9,19 +9,19 @@
 - Then account:read scope は自身の active 同意の参照だけを許可する
 - Then account:consents:write scope は自身の同意の撤回だけを許可する
 
-### Example: EX-OAUTH2-002-02 account:read だけで同意 revoke を要求する
+### Scenario Outline: 条件ごとの結果
 
 - Given クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
 - When クライアントが自身の active 同意の参照または撤回を要求する
-- But account:read だけで同意 revoke を要求する
+- But <condition>
 - Then 操作は拒否される
 
-### Example: EX-OAUTH2-002-03 トークンのテナントまたは user_id が操作対象と一致しない
+#### Examples:
 
-- Given クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
-- When クライアントが自身の active 同意の参照または撤回を要求する
-- But トークンのテナントまたは user_id が操作対象と一致しない
-- Then 操作は拒否される
+  | example_id | condition |
+  | --- | --- |
+  | EX-OAUTH2-002-02 | account:read だけで同意 revoke を要求する |
+  | EX-OAUTH2-002-03 | トークンのテナントまたは user_id が操作対象と一致しない |
 
 ## Rule: REQ-OAUTH2-008 既存同意の有無に応じて同意画面を出し分ける
 

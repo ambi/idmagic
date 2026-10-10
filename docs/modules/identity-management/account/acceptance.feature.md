@@ -9,19 +9,19 @@
 - Then `account:read` スコープは、自身の概要、プロフィール、データエクスポートの参照だけを許可する
 - Then `account:write` スコープは、自身のプロフィールとプライマリメールアドレスの変更申請だけを許可する
 
-### Example: EX-IDMANAGEMENT-002-02 `account:read` だけで変更操作を要求する
+### Scenario Outline: 条件ごとの結果
 
 - Given クライアントは対象テナントの有効な User に固定された、有効な API アクセストークンを提示している
 - When クライアントが概要、プロフィール、データエクスポート、またはプライマリメールアドレスの変更申請を要求する
-- But `account:read` だけで変更操作を要求する
+- But <condition>
 - Then 操作は AccessDeniedError で拒否される
 
-### Example: EX-IDMANAGEMENT-002-03 トークンのテナントまたは `user_id` が操作対象と一致しない
+#### Examples:
 
-- Given クライアントは対象テナントの有効な User に固定された、有効な API アクセストークンを提示している
-- When クライアントが概要、プロフィール、データエクスポート、またはプライマリメールアドレスの変更申請を要求する
-- But トークンのテナントまたは `user_id` が操作対象と一致しない
-- Then 操作は AccessDeniedError で拒否される
+  | example_id | condition |
+  | --- | --- |
+  | EX-IDMANAGEMENT-002-02 | `account:read` だけで変更操作を要求する |
+  | EX-IDMANAGEMENT-002-03 | トークンのテナントまたは `user_id` が操作対象と一致しない |
 
 ## Rule: REQ-IDMANAGEMENT-019 アカウントの概要は、認証済みの本人のデータだけを、ロールを含めずに返す
 

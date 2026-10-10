@@ -21,35 +21,34 @@
 
 ## Rule: REQ-TENANCY-025 System 管理者が作成するテナントの realm は、予約されていない単一の DNS ラベルである
 
-### Example: EX-TENANCY-025-01 通常経路
+### Background:
 
 - Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
+
+### Example: EX-TENANCY-025-01 通常経路
+
 - When "sysadmin" が realm " acme " と表示名 " Acme " でテナントを作成する
 - Then realm "acme"、表示名 "Acme"、status=active、endpoint_style=path のテナントが 201 で返る
 - And "TenantCreated" が発行される
 
 ### Example: EX-TENANCY-025-02 予約された realm を指定する
 
-- Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
 - When "sysadmin" が realm "login" でテナントを作成する
 - Then `invalid_request` の 400 で拒否され、テナントは作成されず、イベントも発行されない
 
 ### Example: EX-TENANCY-025-03 ハイフンで終わる realm を指定する
 
-- Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
 - When "sysadmin" が realm "acme-" でテナントを作成する
 - Then `invalid_request` の 400 で拒否され、テナントは作成されない
 
 ### Example: EX-TENANCY-025-04 `xn--` で始まる realm を指定する
 
-- Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
 - When "sysadmin" が realm "xn--acme" でテナントを作成する
 - Then `invalid_request` の 400 で拒否され、テナントは作成されない
 
 ### Example: EX-TENANCY-025-05 既存のテナントと同じ realm を指定する
 
-- Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
-- And realm "acme" のテナントが存在する
+- Given realm "acme" のテナントが存在する
 - When "sysadmin" が realm "acme" でテナントを作成する
 - Then `tenant_conflict` の 409 で拒否され、テナントは増えず、イベントも発行されない
 

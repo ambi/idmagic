@@ -9,26 +9,20 @@
 - Then `provisioning:read` スコープはアプリケーションの接続とテナントの接続一覧の参照だけを許可する
 - Then `provisioning:write` スコープは接続の変更とプロビジョニングタスクの操作の実行だけを許可する
 
-### Example: EX-PROVISIONING-001-02 `provisioning:read` だけで接続の変更またはプロビジョニングタスクの操作を要求する
+### Scenario Outline: 条件ごとの結果
 
 - Given クライアントは対象テナントの有効な API アクセストークンを提示している
 - When クライアントがアプリケーションの接続、テナントの接続、またはプロビジョニングタスクの操作を要求する
-- But `provisioning:read` だけで接続の変更またはプロビジョニングタスクの操作を要求する
-- Then 操作は 403 と `insufficient_scope` で拒否される
+- But <condition>
+- Then <result>
 
-### Example: EX-PROVISIONING-001-03 トークンのテナントとリクエスト先のテナントが一致しない
+#### Examples:
 
-- Given クライアントは対象テナントの有効な API アクセストークンを提示している
-- When クライアントがアプリケーションの接続、テナントの接続、またはプロビジョニングタスクの操作を要求する
-- But トークンのテナントとリクエスト先のテナントが一致しない
-- Then 操作は 401 の `InvalidAccessTokenError` で拒否される
-
-### Example: EX-PROVISIONING-001-04 `admin` のロールを持たない利用者が変更の操作を要求する
-
-- Given クライアントは対象テナントの有効な API アクセストークンを提示している
-- When クライアントがアプリケーションの接続、テナントの接続、またはプロビジョニングタスクの操作を要求する
-- But `admin` のロールを持たない利用者が変更の操作を要求する
-- Then 操作は 403 の AccessDeniedError（`access_denied`）で拒否され、接続とプロビジョニングタスクは変わらない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-PROVISIONING-001-02 | `provisioning:read` だけで接続の変更またはプロビジョニングタスクの操作を要求する | 操作は 403 と `insufficient_scope` で拒否される |
+  | EX-PROVISIONING-001-03 | トークンのテナントとリクエスト先のテナントが一致しない | 操作は 401 の `InvalidAccessTokenError` で拒否される |
+  | EX-PROVISIONING-001-04 | `admin` のロールを持たない利用者が変更の操作を要求する | 操作は 403 の AccessDeniedError（`access_denied`）で拒否され、接続とプロビジョニングタスクは変わらない |
 
 ## Rule: REQ-PROVISIONING-002 管理者は接続を登録し、接続テストで下流の対応機能を取得できる
 
@@ -40,19 +34,19 @@
 - When 管理者が TestProvisioningConnection を実行する
 - Then 下流 /ServiceProviderConfig への到達性が確認され capabilities がキャッシュされる
 
-### Example: EX-PROVISIONING-002-02 base_url が https でない、または内部/リンクローカル IP を指す
+### Scenario Outline: 条件ごとの結果
 
 - Given Application "app-1" は存在し ProvisioningConnection を持たない
 - When 管理者が RegisterProvisioningConnection を https の base_url と bearer_token で実行する
-- But base_url が https でない、または内部/リンクローカル IP を指す
-- Then InvalidRequestError が返り ProvisioningConnection は作成されない
+- But <condition>
+- Then <result>
 
-### Example: EX-PROVISIONING-002-03 Application "app-1" に既に ProvisioningConnection が存在する
+#### Examples:
 
-- Given Application "app-1" は存在し ProvisioningConnection を持たない
-- When 管理者が RegisterProvisioningConnection を https の base_url と bearer_token で実行する
-- But Application "app-1" に既に ProvisioningConnection が存在する
-- Then 409 と `provisioning_conflict` で拒否される
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-PROVISIONING-002-02 | base_url が https でない、または内部/リンクローカル IP を指す | InvalidRequestError が返り ProvisioningConnection は作成されない |
+  | EX-PROVISIONING-002-03 | Application "app-1" に既に ProvisioningConnection が存在する | 409 と `provisioning_conflict` で拒否される |
 
 ## Rule: REQ-PROVISIONING-012 管理者は On-Demand Provision で 1 人のユーザーを試験的にプロビジョニングできる
 

@@ -11,55 +11,45 @@
 - When 管理者 "operator" が max_age_days=90 を保存する
 - Then 以後のパスワード検証と有効期限判定にテナントの上書き値が使われる
 
-### Example: EX-TENANCY-019-02 標準値より弱い上書き (最小長を下回る / 最大長を上回る / 履歴件数を下回る) を保存する
+### Scenario Outline: 条件ごとの結果
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" がパスワードの最小長を更新する
-- But 標準値より弱い上書き (最小長を下回る / 最大長を上回る / 履歴件数を下回る) を保存する
+- But <condition>
 - Then エラー "PolicyOverrideWeakerError"
 
-### Example: EX-TENANCY-019-03 max_age_days に system ceiling の範囲外 (30 未満、または 3650 超) を保存する
+#### Examples:
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
-- When 管理者 "operator" がパスワードの最小長を更新する
-- But max_age_days に system ceiling の範囲外 (30 未満、または 3650 超) を保存する
-- Then エラー "PolicyOverrideWeakerError"
+  | example_id | condition |
+  | --- | --- |
+  | EX-TENANCY-019-02 | 標準値より弱い上書き (最小長を下回る / 最大長を上回る / 履歴件数を下回る) を保存する |
+  | EX-TENANCY-019-03 | max_age_days に system ceiling の範囲外 (30 未満、または 3650 超) を保存する |
 
 ## Rule: REQ-TENANCY-021 委譲深さの上書きは厳しい方向にのみ働く
 
-### Example: EX-TENANCY-021-01 通常経路
+### Background:
 
 - Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
+
+### Example: EX-TENANCY-021-01 通常経路
+
 - When 管理者 "operator" が委譲深さの上限を保存する
 - Then 設定取得のレスポンスは現在の上書き値と、上書きが無いときに適用されるシステムデフォルトの双方を返す
 
-### Example: EX-TENANCY-021-02 システムデフォルトより小さい値を保存する
+### Scenario Outline: 条件ごとの結果
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - When 管理者 "operator" が委譲深さの上限を保存する
-- But システムデフォルトより小さい値を保存する
-- Then 上書きが永続化され、以後のトークン交換の判定に使われる
+- But <condition>
+- Then <result>
 
-### Example: EX-TENANCY-021-03 システムデフォルトを超える値を保存する
+#### Examples:
 
-- Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
-- When 管理者 "operator" が委譲深さの上限を保存する
-- But システムデフォルトを超える値を保存する
-- Then エラー "PolicyOverrideWeakerError"
-
-### Example: EX-TENANCY-021-04 1 未満の値を保存する
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
-- When 管理者 "operator" が委譲深さの上限を保存する
-- But 1 未満の値を保存する
-- Then エラー "PolicyOverrideWeakerError"
-
-### Example: EX-TENANCY-021-05 0 を保存する
-
-- Given ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
-- When 管理者 "operator" が委譲深さの上限を保存する
-- But 0 を保存する
-- Then 上書きを解除し、システムデフォルトを継承する状態へ戻す
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-TENANCY-021-02 | システムデフォルトより小さい値を保存する | 上書きが永続化され、以後のトークン交換の判定に使われる |
+  | EX-TENANCY-021-03 | システムデフォルトを超える値を保存する | エラー "PolicyOverrideWeakerError" |
+  | EX-TENANCY-021-04 | 1 未満の値を保存する | エラー "PolicyOverrideWeakerError" |
+  | EX-TENANCY-021-05 | 0 を保存する | 上書きを解除し、システムデフォルトを継承する状態へ戻す |
 
 ## Rule: REQ-TENANCY-028 信頼済みデバイスの有効期間は 0 で無効にし、90 日を超える値を拒否する
 

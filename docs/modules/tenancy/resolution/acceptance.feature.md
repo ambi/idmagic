@@ -91,28 +91,25 @@
 
 ## Rule: REQ-TENANCY-009 テナントは自分の正規ロケーション以外からは到達できない
 
-### Example: EX-TENANCY-009-01 通常経路
+### Background:
 
 - Given `tenant_base_domain` が設定されている
 - And テナント "acme" の endpoint_style は Subdomain である
 - And テナント "beta" の endpoint_style は Path である
+
+### Example: EX-TENANCY-009-01 通常経路
+
 - When "/realms/acme/authorize" にリクエストを送る
 - Then acme は Subdomain なので path prefix 経路では不在として扱われ 404 になる
 
 ### Example: EX-TENANCY-009-02 Host "beta.{tenant_base_domain}" の "/authorize" にリクエストを送る
 
-- Given `tenant_base_domain` が設定されている
-- And テナント "acme" の endpoint_style は Subdomain である
-- And テナント "beta" の endpoint_style は Path である
 - When "/realms/acme/authorize" にリクエストを送る
 - But Host "beta.{tenant_base_domain}" の "/authorize" にリクエストを送る
 - Then beta は Path なのでサブドメイン経路では不在として扱われ 404 になる
 
 ### Example: EX-TENANCY-009-03 Host "acme.{tenant_base_domain}" の "/realms/beta/authorize" にリクエストを送る
 
-- Given `tenant_base_domain` が設定されている
-- And テナント "acme" の endpoint_style は Subdomain である
-- And テナント "beta" の endpoint_style は Path である
 - When "/realms/acme/authorize" にリクエストを送る
 - But Host "acme.{tenant_base_domain}" の "/realms/beta/authorize" にリクエストを送る
 - Then acme の origin から beta へ到達することはできず 404 になる

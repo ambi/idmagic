@@ -2,10 +2,13 @@
 
 ## Rule: REQ-AUTHENTICATION-024 有効期限を過ぎたパスワードのユーザーは次回ログイン後にパスワード変更を強制される
 
-### Example: EX-AUTHENTICATION-024-01 通常経路
+### Background:
 
 - Given テナントのパスワードポリシーは `max_age_days=90` で、ポリシーの更新から 90 日以上が経過している
 - And ユーザー "alice" の `password_changed_at` は 91 日前である
+
+### Example: EX-AUTHENTICATION-024-01 通常経路
+
 - When ユーザー "alice" が正しいパスワードでログインする
 - Then ログイン自体は成功する
 - Then ユーザー "alice" に必須操作 `update_password` が付与される
@@ -13,37 +16,20 @@
 - When ユーザー "alice" がポリシーを満たす新しいパスワードへ変更する
 - Then `update_password` が解除され、"PasswordChanged" が発行される
 
-### Example: EX-AUTHENTICATION-024-02 `password_changed_at` が 89 日前である
+### Scenario Outline: 条件ごとの結果
 
-- Given テナントのパスワードポリシーは `max_age_days=90` で、ポリシーの更新から 90 日以上が経過している
-- And ユーザー "alice" の `password_changed_at` は 91 日前である
 - When ユーザー "alice" が正しいパスワードでログインする
-- But `password_changed_at` が 89 日前である
-- Then ログインはそのまま完了し、`update_password` は付与されない
+- But <condition>
+- Then <result>
 
-### Example: EX-AUTHENTICATION-024-03 `max_age_days` が未設定である
+#### Examples:
 
-- Given テナントのパスワードポリシーは `max_age_days=90` で、ポリシーの更新から 90 日以上が経過している
-- And ユーザー "alice" の `password_changed_at` は 91 日前である
-- When ユーザー "alice" が正しいパスワードでログインする
-- But `max_age_days` が未設定である
-- Then 経過日数によらず `update_password` は付与されない
-
-### Example: EX-AUTHENTICATION-024-04 ポリシーの更新から 90 日が経過していない
-
-- Given テナントのパスワードポリシーは `max_age_days=90` で、ポリシーの更新から 90 日以上が経過している
-- And ユーザー "alice" の `password_changed_at` は 91 日前である
-- When ユーザー "alice" が正しいパスワードでログインする
-- But ポリシーの更新から 90 日が経過していない
-- Then 猶予期間内なので `update_password` は付与されない
-
-### Example: EX-AUTHENTICATION-024-05 ユーザーがパスワード資格情報を持たない (フェデレーションまたはパスワードレス)
-
-- Given テナントのパスワードポリシーは `max_age_days=90` で、ポリシーの更新から 90 日以上が経過している
-- And ユーザー "alice" の `password_changed_at` は 91 日前である
-- When ユーザー "alice" が正しいパスワードでログインする
-- But ユーザーがパスワード資格情報を持たない (フェデレーションまたはパスワードレス)
-- Then `update_password` は付与されない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUTHENTICATION-024-02 | `password_changed_at` が 89 日前である | ログインはそのまま完了し、`update_password` は付与されない |
+  | EX-AUTHENTICATION-024-03 | `max_age_days` が未設定である | 経過日数によらず `update_password` は付与されない |
+  | EX-AUTHENTICATION-024-04 | ポリシーの更新から 90 日が経過していない | 猶予期間内なので `update_password` は付与されない |
+  | EX-AUTHENTICATION-024-05 | ユーザーがパスワード資格情報を持たない (フェデレーションまたはパスワードレス) | `update_password` は付与されない |
 
 ## Rule: REQ-AUTHENTICATION-008 パスワードリセットの要求は識別子と IP の組で流量制限される
 
@@ -71,21 +57,20 @@
 - Then パスワードが変更され、`password_changed_at` が更新される
 - Then "PasswordChanged" が発行される
 
-### Example: EX-AUTHENTICATION-010-02 新しいパスワードが 12 文字未満である
+### Scenario Outline: 条件ごとの結果
 
 - Given ユーザー "alice" が認証済みでパスワード変更画面を開いている
 - When ユーザー "alice" が正しい現在のパスワードと新しいパスワードを送信する
-- But 新しいパスワードが 12 文字未満である
-- Then ユーザー "alice" が 12 文字未満のパスワードを送信する
+- But <condition>
+- Then <result>
 - And エラー "InvalidRequestError"
 
-### Example: EX-AUTHENTICATION-010-03 新しいパスワードが直近 5 件の履歴に一致する
+#### Examples:
 
-- Given ユーザー "alice" が認証済みでパスワード変更画面を開いている
-- When ユーザー "alice" が正しい現在のパスワードと新しいパスワードを送信する
-- But 新しいパスワードが直近 5 件の履歴に一致する
-- Then ユーザー "alice" が直近使用した過去のパスワードを新パスワードとして送信する
-- And エラー "InvalidRequestError"
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUTHENTICATION-010-02 | 新しいパスワードが 12 文字未満である | ユーザー "alice" が 12 文字未満のパスワードを送信する |
+  | EX-AUTHENTICATION-010-03 | 新しいパスワードが直近 5 件の履歴に一致する | ユーザー "alice" が直近使用した過去のパスワードを新パスワードとして送信する |
 
 ## Rule: REQ-AUTHENTICATION-016 ユーザーはメールのリセットリンクでパスワードを再設定する
 

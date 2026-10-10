@@ -12,19 +12,19 @@
 - When EnableWorkloadTrustBundle を呼ぶ
 - Then WorkloadTrustBundleEnabled が発行され、`enabled` に戻る
 
-### Example: EX-WORKLOADIDENTITY-008-02 `jwks_uri` と `jwks` のどちらも指定しない
+### Scenario Outline: 条件ごとの結果
 
 - Given 管理者としてテナントに認証済みである
 - When 発行者 "https://issuer.example" と JWKS の取得元を指定して RegisterWorkloadTrustBundle を呼ぶ
-- But `jwks_uri` と `jwks` のどちらも指定しない
-- Then RegisterWorkloadTrustBundle が WorkloadTrustBundleJwksRequiredError で拒否される
+- But <condition>
+- Then <result>
 
-### Example: EX-WORKLOADIDENTITY-008-03 同じテナント内に同じ発行者の WorkloadTrustBundle がすでに存在する
+#### Examples:
 
-- Given 管理者としてテナントに認証済みである
-- When 発行者 "https://issuer.example" と JWKS の取得元を指定して RegisterWorkloadTrustBundle を呼ぶ
-- But 同じテナント内に同じ発行者の WorkloadTrustBundle がすでに存在する
-- Then RegisterWorkloadTrustBundle が WorkloadTrustBundleIssuerConflictError で拒否される
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-WORKLOADIDENTITY-008-02 | `jwks_uri` と `jwks` のどちらも指定しない | RegisterWorkloadTrustBundle が WorkloadTrustBundleJwksRequiredError で拒否される |
+  | EX-WORKLOADIDENTITY-008-03 | 同じテナント内に同じ発行者の WorkloadTrustBundle がすでに存在する | RegisterWorkloadTrustBundle が WorkloadTrustBundleIssuerConflictError で拒否される |
 
 ## Rule: REQ-WORKLOADIDENTITY-009 管理者は他テナントの Agent への関連付けを作成できない
 

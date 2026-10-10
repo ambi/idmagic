@@ -2,21 +2,20 @@
 
 ## Rule: REQ-AUTHENTICATION-002 検証済みメールアドレスによる自動リンクは明示ポリシーと一意な一致を要求する
 
-### Example: EX-AUTHENTICATION-002-01 通常経路
+### Background:
 
 - Given その外部 subject に対する既存の関連付けはない
 - And 同じメールアドレスを持つローカル User がテナント内に存在する
 - And 接続の `linking_policy` が `VerifiedEmail` である
 - And 上流の `email_verified` クレームが true で、メールアドレスがテナント内で一意に一致する
+
+### Example: EX-AUTHENTICATION-002-01 通常経路
+
 - When EndUser が未連携の外部 subject でフェデレーションログインを完了する
 - Then 既存の User に対して FederatedIdentity を作成する
 
 ### Example: EX-AUTHENTICATION-002-02 ポリシーが `None`、メールアドレスが未検証、または一致が一意でない
 
-- Given その外部 subject に対する既存の関連付けはない
-- And 同じメールアドレスを持つローカル User がテナント内に存在する
-- And 接続の `linking_policy` が `VerifiedEmail` である
-- And 上流の `email_verified` クレームが true で、メールアドレスがテナント内で一意に一致する
 - When EndUser が未連携の外部 subject でフェデレーションログインを完了する
 - But ポリシーが `None`、メールアドレスが未検証、または一致が一意でない
 - Then 自動リンクと LoginSession の発行を拒否する
@@ -42,10 +41,13 @@
 
 ## Rule: REQ-AUTHENTICATION-001 外部 OIDC 認証は検証済みの subject を常に同じローカル User へ相関する
 
-### Example: EX-AUTHENTICATION-001-01 通常経路
+### Background:
 
 - Given リクエスト先のテナントで OIDC 接続が `Active` である
 - And issuer、認可エンドポイント、トークンエンドポイント、JWKS は登録時に検証済みである
+
+### Example: EX-AUTHENTICATION-001-01 通常経路
+
 - When EndUser が StartFederatedLogin を開始する
 - Then `state`、`nonce`、PKCE を単回限りのログイン試行として保存し、上流へ遷移する
 - When 上流のコールバックが認可コードと ID Token を返す
@@ -56,8 +58,6 @@
 
 ### Example: EX-AUTHENTICATION-001-02 同じ `state` またはトークンレスポンスを再利用する
 
-- Given リクエスト先のテナントで OIDC 接続が `Active` である
-- And issuer、認可エンドポイント、トークンエンドポイント、JWKS は登録時に検証済みである
 - When EndUser が StartFederatedLogin を開始する
 - Then `state`、`nonce`、PKCE を単回限りのログイン試行として保存し、上流へ遷移する
 - When 上流のコールバックが認可コードと ID Token を返す
@@ -66,8 +66,6 @@
 
 ### Example: EX-AUTHENTICATION-001-03 `state`、`nonce`、issuer、audience、署名、時刻のいずれかが一致しない
 
-- Given リクエスト先のテナントで OIDC 接続が `Active` である
-- And issuer、認可エンドポイント、トークンエンドポイント、JWKS は登録時に検証済みである
 - When EndUser が StartFederatedLogin を開始する
 - Then `state`、`nonce`、PKCE を単回限りのログイン試行として保存し、上流へ遷移する
 - When 上流のコールバックが認可コードと ID Token を返す

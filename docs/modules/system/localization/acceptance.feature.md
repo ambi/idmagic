@@ -92,21 +92,20 @@
 - When バックエンドが既知の `stable` エラーコードを返す
 - Then UI が選択済みの `DisplayLanguage` の辞書にあるエラー文を表示する
 
-### Example: EX-SYSTEM-011-02 エラーコードが未知である、またはバックエンドが任意の `message` か Problem Details だけを返す
+### Scenario Outline: 条件ごとの結果
 
 - Given UI 操作に対しバックエンドがエラーレスポンスを返す
 - When バックエンドが既知の `stable` エラーコードを返す
-- But エラーコードが未知である、またはバックエンドが任意の `message` か Problem Details だけを返す
-- Then UI は `message`、`error_description`、`detail`、`title` のうち利用可能な人間可読文を英語のまま表示する
-- And 有効なエラーレスポンスを受信した場合は通信障害用のフォールバックを表示しない
+- But <condition>
+- Then <result>
+- And <result_2>
 
-### Example: EX-SYSTEM-011-03 RFC 9457 Problem Details の `type` が既知の `stable` エラーコードを表す
+#### Examples:
 
-- Given UI 操作に対しバックエンドがエラーレスポンスを返す
-- When バックエンドが既知の `stable` エラーコードを返す
-- But RFC 9457 Problem Details の `type` が既知の `stable` エラーコードを表す
-- Then UI は `type` の `urn:idmagic:error:` 接尾辞をエラーコードとして解釈する
-- And UI が選択済みの `DisplayLanguage` の辞書にあるエラー文を表示する
+  | example_id | condition | result | result_2 |
+  | --- | --- | --- | --- |
+  | EX-SYSTEM-011-02 | エラーコードが未知である、またはバックエンドが任意の `message` か Problem Details だけを返す | UI は `message`、`error_description`、`detail`、`title` のうち利用可能な人間可読文を英語のまま表示する | 有効なエラーレスポンスを受信した場合は通信障害用のフォールバックを表示しない |
+  | EX-SYSTEM-011-03 | RFC 9457 Problem Details の `type` が既知の `stable` エラーコードを表す | UI は `type` の `urn:idmagic:error:` 接尾辞をエラーコードとして解釈する | UI が選択済みの `DisplayLanguage` の辞書にあるエラー文を表示する |
 
 ## Rule: REQ-SYSTEM-013 バックエンド API のエラーは英語で返る
 

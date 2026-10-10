@@ -9,26 +9,20 @@
 - Then テナント内で単調増加する新しい版が作られ、以前の版は書き換わらない
 - Then レスポンスは整合トークンを含み、GetAuthorizationModel が新しい版を最新として返す
 
-### Example: EX-AUTHORIZATION-001-02 定義が宣言されていない型または関係を参照する
+### Scenario Outline: 条件ごとの結果
 
 - Given `AdminAuthorizationModelManage` を持つ管理者として認証済みである
 - When 管理者がリソース型と関係の定義を PutAuthorizationModel へ渡す
-- But 定義が宣言されていない型または関係を参照する
+- But <condition>
 - Then AuthorizationModelInvalidError で拒否し、版を作らない
 
-### Example: EX-AUTHORIZATION-001-03 書き換え規則が循環する
+#### Examples:
 
-- Given `AdminAuthorizationModelManage` を持つ管理者として認証済みである
-- When 管理者がリソース型と関係の定義を PutAuthorizationModel へ渡す
-- But 書き換え規則が循環する
-- Then AuthorizationModelInvalidError で拒否し、版を作らない
-
-### Example: EX-AUTHORIZATION-001-04 型名または関係名がフォーマットに反する
-
-- Given `AdminAuthorizationModelManage` を持つ管理者として認証済みである
-- When 管理者がリソース型と関係の定義を PutAuthorizationModel へ渡す
-- But 型名または関係名がフォーマットに反する
-- Then AuthorizationModelInvalidError で拒否し、版を作らない
+  | example_id | condition |
+  | --- | --- |
+  | EX-AUTHORIZATION-001-02 | 定義が宣言されていない型または関係を参照する |
+  | EX-AUTHORIZATION-001-03 | 書き換え規則が循環する |
+  | EX-AUTHORIZATION-001-04 | 型名または関係名がフォーマットに反する |
 
 ## Rule: REQ-AUTHORIZATION-010 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる
 

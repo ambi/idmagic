@@ -2,37 +2,30 @@
 
 ## Rule: REQ-AUTHORIZATION-003 判定は継承・グループ・親子関係をたどって関係の成否を決める
 
-### Example: EX-AUTHORIZATION-003-01 通常経路
+### Background:
 
 - Given 認可モデルが `computed_userset` と `tuple_to_userset` を含む関係を宣言している
 - And グループの成員、親フォルダーの閲覧者、直接の編集者のタプルが登録されている
+
+### Example: EX-AUTHORIZATION-003-01 通常経路
+
 - When 呼び出し元が主体とリソースと関係を CheckAccess へ渡す
 - Then 結果は許可・不許可と、たどった関係名だけの経路を返す
 - Then 経路にはオブジェクト識別子と主体識別子を含めない
 
-### Example: EX-AUTHORIZATION-003-02 主体が subject set の成員として間接的に関係を持つ
+### Scenario Outline: 条件ごとの結果
 
-- Given 認可モデルが `computed_userset` と `tuple_to_userset` を含む関係を宣言している
-- And グループの成員、親フォルダーの閲覧者、直接の編集者のタプルが登録されている
 - When 呼び出し元が主体とリソースと関係を CheckAccess へ渡す
-- But 主体が subject set の成員として間接的に関係を持つ
-- Then 許可する
+- But <condition>
+- Then <result>
 
-### Example: EX-AUTHORIZATION-003-03 主体が親オブジェクト側で関係を持つ
+#### Examples:
 
-- Given 認可モデルが `computed_userset` と `tuple_to_userset` を含む関係を宣言している
-- And グループの成員、親フォルダーの閲覧者、直接の編集者のタプルが登録されている
-- When 呼び出し元が主体とリソースと関係を CheckAccess へ渡す
-- But 主体が親オブジェクト側で関係を持つ
-- Then 許可する
-
-### Example: EX-AUTHORIZATION-003-04 どの経路でも関係に到達しない
-
-- Given 認可モデルが `computed_userset` と `tuple_to_userset` を含む関係を宣言している
-- And グループの成員、親フォルダーの閲覧者、直接の編集者のタプルが登録されている
-- When 呼び出し元が主体とリソースと関係を CheckAccess へ渡す
-- But どの経路でも関係に到達しない
-- Then 許可しない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUTHORIZATION-003-02 | 主体が subject set の成員として間接的に関係を持つ | 許可する |
+  | EX-AUTHORIZATION-003-03 | 主体が親オブジェクト側で関係を持つ | 許可する |
+  | EX-AUTHORIZATION-003-04 | どの経路でも関係に到達しない | 許可しない |
 
 ## Rule: REQ-AUTHORIZATION-004 代行するエージェントは主体と自身の双方が関係を持つときだけ許可される
 
@@ -58,39 +51,29 @@
 
 ## Rule: REQ-AUTHORIZATION-005 判定不能はフェイルクローズで不許可になる
 
-### Example: EX-AUTHORIZATION-005-01 通常経路
+### Background:
 
 - Given テナントに認可モデルが登録済みである
+
+### Example: EX-AUTHORIZATION-005-01 通常経路
+
 - When 呼び出し元が CheckAccess を呼ぶ
 - Then いずれの場合も許可へ退避せず、拒否した規則名を結果に残す
 
-### Example: EX-AUTHORIZATION-005-02 探索の深さが上限を超える
+### Scenario Outline: 条件ごとの結果
 
-- Given テナントに認可モデルが登録済みである
 - When 呼び出し元が CheckAccess を呼ぶ
-- But 探索の深さが上限を超える
-- Then 拒否理由を添えて許可しない
+- But <condition>
+- Then <result>
 
-### Example: EX-AUTHORIZATION-005-03 モデルが宣言していない型または関係を指定した
+#### Examples:
 
-- Given テナントに認可モデルが登録済みである
-- When 呼び出し元が CheckAccess を呼ぶ
-- But モデルが宣言していない型または関係を指定した
-- Then 拒否理由を添えて許可しない
-
-### Example: EX-AUTHORIZATION-005-04 タプルストアへ到達できない
-
-- Given テナントに認可モデルが登録済みである
-- When 呼び出し元が CheckAccess を呼ぶ
-- But タプルストアへ到達できない
-- Then エラーを返し、許可しない
-
-### Example: EX-AUTHORIZATION-005-05 関係の事実を組み立てないまま評価器へ届いた
-
-- Given テナントに認可モデルが登録済みである
-- When 呼び出し元が CheckAccess を呼ぶ
-- But 関係の事実を組み立てないまま評価器へ届いた
-- Then 規則 `relationship_facts_present` により許可しない
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUTHORIZATION-005-02 | 探索の深さが上限を超える | 拒否理由を添えて許可しない |
+  | EX-AUTHORIZATION-005-03 | モデルが宣言していない型または関係を指定した | 拒否理由を添えて許可しない |
+  | EX-AUTHORIZATION-005-04 | タプルストアへ到達できない | エラーを返し、許可しない |
+  | EX-AUTHORIZATION-005-05 | 関係の事実を組み立てないまま評価器へ届いた | 規則 `relationship_facts_present` により許可しない |
 
 ## Rule: REQ-AUTHORIZATION-006 他テナントの関係タプルは判定に寄与しない
 
@@ -100,19 +83,19 @@
 - When 呼び出し元が自テナントで CheckAccess を呼ぶ
 - Then 別テナントのタプルは読み出されず、判定は不許可になる
 
-### Example: EX-AUTHORIZATION-006-02 リクエスト本体が別テナントの識別子を含む
+### Scenario Outline: 条件ごとの結果
 
 - Given 別テナントに同じリソース識別子・関係・主体識別子のタプルが登録されている
 - When 呼び出し元が自テナントで CheckAccess を呼ぶ
-- But リクエスト本体が別テナントの識別子を含む
-- Then 呼び出し元のテナントで解決した境界が優先され、対象テナントは変わらない
+- But <condition>
+- Then <result>
 
-### Example: EX-AUTHORIZATION-006-03 別テナントで発行された整合トークンを提示した
+#### Examples:
 
-- Given 別テナントに同じリソース識別子・関係・主体識別子のタプルが登録されている
-- When 呼び出し元が自テナントで CheckAccess を呼ぶ
-- But 別テナントで発行された整合トークンを提示した
-- Then ConsistencyNotSatisfiedError で拒否する
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-AUTHORIZATION-006-02 | リクエスト本体が別テナントの識別子を含む | 呼び出し元のテナントで解決した境界が優先され、対象テナントは変わらない |
+  | EX-AUTHORIZATION-006-03 | 別テナントで発行された整合トークンを提示した | ConsistencyNotSatisfiedError で拒否する |
 
 ## Rule: REQ-AUTHORIZATION-007 リソースの列挙は許可されたものだけを返し、打ち切りを隠さない
 

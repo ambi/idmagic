@@ -31,50 +31,29 @@
 
 ## Rule: REQ-SHAREDSIGNALS-010 RFC 9493 の Subject Identifier で送られた SET も主体を解決する
 
-### Example: EX-SHAREDSIGNALS-010-01 通常経路
+### Background:
 
 - Given `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
 - And テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
+
+### Example: EX-SHAREDSIGNALS-010-01 通常経路
+
 - When `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
 - Then "A1" の AgentRevocationEpoch が前進する
 - Then "SecurityEventReceived" が発行される
 
-### Example: EX-SHAREDSIGNALS-010-02 `sub` が "A1" ではなく束縛先の "C1" である
+### Scenario Outline: 条件ごとの結果
 
-- Given `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
-- And テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
 - When `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
-- But `sub` が "A1" ではなく束縛先の "C1" である
-- Then 同じく "A1" として解決され、失効エポックが前進する
+- But <condition>
+- Then <result>
 
-### Example: EX-SHAREDSIGNALS-010-03 `format=opaque`、`id="A1"` である
+#### Examples:
 
-- Given `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
-- And テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
-- When `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
-- But `format=opaque`、`id="A1"` である
-- Then 同じく "A1" として解決される（テナントは受信ストリームが属するテナントで決まる）
-
-### Example: EX-SHAREDSIGNALS-010-04 `iss` が "S1" の `trusted_issuer` と一致しない
-
-- Given `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
-- And テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
-- When `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
-- But `iss` が "S1" の `trusted_issuer` と一致しない
-- Then `SecurityEventRejectedError` で拒否され、"SecurityEventRejected" が `verification_result=rejected_subject_unresolved` で発行される
-
-### Example: EX-SHAREDSIGNALS-010-05 `format=email` など IdMagic が解釈しない形式である
-
-- Given `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
-- And テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
-- When `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
-- But `format=email` など IdMagic が解釈しない形式である
-- Then `SecurityEventRejectedError` で拒否される
-
-### Example: EX-SHAREDSIGNALS-010-06 `sub` がどの Agent にも束縛先クライアントにも一致しない
-
-- Given `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
-- And テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
-- When `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
-- But `sub` がどの Agent にも束縛先クライアントにも一致しない
-- Then `SecurityEventRejectedError` で拒否される
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-SHAREDSIGNALS-010-02 | `sub` が "A1" ではなく束縛先の "C1" である | 同じく "A1" として解決され、失効エポックが前進する |
+  | EX-SHAREDSIGNALS-010-03 | `format=opaque`、`id="A1"` である | 同じく "A1" として解決される（テナントは受信ストリームが属するテナントで決まる） |
+  | EX-SHAREDSIGNALS-010-04 | `iss` が "S1" の `trusted_issuer` と一致しない | `SecurityEventRejectedError` で拒否され、"SecurityEventRejected" が `verification_result=rejected_subject_unresolved` で発行される |
+  | EX-SHAREDSIGNALS-010-05 | `format=email` など IdMagic が解釈しない形式である | `SecurityEventRejectedError` で拒否される |
+  | EX-SHAREDSIGNALS-010-06 | `sub` がどの Agent にも束縛先クライアントにも一致しない | `SecurityEventRejectedError` で拒否される |

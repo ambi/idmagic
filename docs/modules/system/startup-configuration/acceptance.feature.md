@@ -2,10 +2,13 @@
 
 ## Rule: REQ-SYSTEM-016 起動時設定の検証に失敗するとプロセスは部分起動せず集約エラーで停止する
 
-### Example: EX-SYSTEM-016-01 通常経路
+### Background:
 
 - Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
 - And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
+
+### Example: EX-SYSTEM-016-01 通常経路
+
 - When プロセスが起動時に `Config` を集約および検証する
 - Then 発生したすべての検証エラーが 1 回の起動試行で集約されて報告される
 - Then 検証エラーおよび起動ログは、シークレットに分類された値（DSN、SMTP 資格情報、API キーなど）を含まない
@@ -13,50 +16,22 @@
 - Then プロセスは明示指定、デフォルト値、依存閉包から決定した有効機能と検証済みの `Config` を用いて初期化を完了する
 - Then 明示的に有効化した `experimental` または `preview` の機能と、有効な `deprecated` の機能は、識別子と成熟度だけを秘密情報を含まない起動警告へ記録する
 
-### Example: EX-SYSTEM-016-02 必須値が欠落している
+### Scenario Outline: 条件ごとの結果
 
-- Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
 - When プロセスが起動時に `Config` を集約および検証する
-- But 必須値が欠落している
-- Then 検証は該当キーを含む集約エラーを返す
-- And プロセスはリスナーの待ち受け、永続化依存先への接続、seed の適用など副作用のある初期化を開始せず終了する
+- But <condition>
+- Then <result>
+- And <result_2>
 
-### Example: EX-SYSTEM-016-03 値の型または範囲が不正である（数値でない、負の期間など）
+#### Examples:
 
-- Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
-- When プロセスが起動時に `Config` を集約および検証する
-- But 値の型または範囲が不正である（数値でない、負の期間など）
-- Then 検証は該当キーを含む集約エラーを返す
-- And プロセスは副作用のある初期化を開始せず終了する
-
-### Example: EX-SYSTEM-016-04 相互に矛盾する組み合わせである（`persistence=postgres` なのに DSN が空など）
-
-- Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
-- When プロセスが起動時に `Config` を集約および検証する
-- But 相互に矛盾する組み合わせである（`persistence=postgres` なのに DSN が空など）
-- Then 検証は該当する組み合わせを含む集約エラーを返す
-- And プロセスは副作用のある初期化を開始せず終了する
-
-### Example: EX-SYSTEM-016-05 `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能のデフォルト有効化、非推奨機能の新規デフォルト有効化がある
-
-- Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
-- When プロセスが起動時に `Config` を集約および検証する
-- But `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能のデフォルト有効化、非推奨機能の新規デフォルト有効化がある
-- Then 検証はすべての registry エラーを返す
-- And プロセスは副作用のある初期化を開始せず終了する
-
-### Example: EX-SYSTEM-016-06 `FEATURES_ENABLE` または `FEATURES_DISABLE` が存在しない機能を指すか、同じ機能を両方で指定するか、明示的に無効化した依存を必要とする
-
-- Given Operator が環境変数でバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）の設定を与える
-- And プロダクトビルドが、実行時に選択可能な機能の識別子、版、成熟度、デフォルトの有効化、依存機能、更新方針を閉じた `FeatureRegistry` として持つ
-- When プロセスが起動時に `Config` を集約および検証する
-- But `FEATURES_ENABLE` または `FEATURES_DISABLE` が存在しない機能を指すか、同じ機能を両方で指定するか、明示的に無効化した依存を必要とする
-- Then 検証はすべての選択エラーを返す
-- And プロセスは副作用のある初期化を開始せず終了する
+  | example_id | condition | result | result_2 |
+  | --- | --- | --- | --- |
+  | EX-SYSTEM-016-02 | 必須値が欠落している | 検証は該当キーを含む集約エラーを返す | プロセスはリスナーの待ち受け、永続化依存先への接続、seed の適用など副作用のある初期化を開始せず終了する |
+  | EX-SYSTEM-016-03 | 値の型または範囲が不正である（数値でない、負の期間など） | 検証は該当キーを含む集約エラーを返す | プロセスは副作用のある初期化を開始せず終了する |
+  | EX-SYSTEM-016-04 | 相互に矛盾する組み合わせである（`persistence=postgres` なのに DSN が空など） | 検証は該当する組み合わせを含む集約エラーを返す | プロセスは副作用のある初期化を開始せず終了する |
+  | EX-SYSTEM-016-05 | `FeatureRegistry` に識別子または未版名の重複、存在しない依存、依存循環、実験的機能のデフォルト有効化、非推奨機能の新規デフォルト有効化がある | 検証はすべての registry エラーを返す | プロセスは副作用のある初期化を開始せず終了する |
+  | EX-SYSTEM-016-06 | `FEATURES_ENABLE` または `FEATURES_DISABLE` が存在しない機能を指すか、同じ機能を両方で指定するか、明示的に無効化した依存を必要とする | 検証はすべての選択エラーを返す | プロセスは副作用のある初期化を開始せず終了する |
 
 ## Rule: REQ-SYSTEM-017 ConfigurationReference は起動時設定の定義から生成され乖離を検出できる
 

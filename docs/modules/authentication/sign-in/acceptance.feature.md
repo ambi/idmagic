@@ -11,19 +11,19 @@
 - When 未認証のパスワードリセット画面がパスワードリセットコンテキストをリクエストする
 - Then CSRF トークンを含むコンテキストが返る
 
-### Example: EX-AUTHENTICATION-005-02 セッションが未認証または認証途中である
+### Scenario Outline: 条件ごとの結果
 
 - Given ユーザー "alice" が認証済みセッション、またはファーストパーティーのポータルのアクセストークンを持つ
 - When ブラウザーまたは API クライアントがアカウントコンテキストをリクエストする
-- But セッションが未認証または認証途中である
+- But <condition>
 - Then アカウントコンテキストの取得を 401 と `authentication_required` で拒否する
 
-### Example: EX-AUTHENTICATION-005-03 Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない
+#### Examples:
 
-- Given ユーザー "alice" が認証済みセッション、またはファーストパーティーのポータルのアクセストークンを持つ
-- When ブラウザーまたは API クライアントがアカウントコンテキストをリクエストする
-- But Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない
-- Then アカウントコンテキストの取得を 401 と `authentication_required` で拒否する
+  | example_id | condition |
+  | --- | --- |
+  | EX-AUTHENTICATION-005-02 | セッションが未認証または認証途中である |
+  | EX-AUTHENTICATION-005-03 | Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない |
 
 ## Rule: REQ-AUTHENTICATION-007 ResourceOwner はブラウザーでパスワード認証し、認可を継続する
 
@@ -35,13 +35,20 @@
 - Then 認可コードが redirect_uri に返る
 - Then "UserAuthenticated" が発行される
 
-### Example: EX-AUTHENTICATION-007-02 SameSite の Cookie とリクエストのトークンが一致しない
+### Scenario Outline: 条件ごとの結果
 
 - Given 未認証セッションで "web-app" として認可リクエストを送信済みである
 - When ブラウザーのログイン API にユーザー名 "alice" と正しいパスワードを送信する
-- But SameSite の Cookie とリクエストのトークンが一致しない
-- Then CSRF の値を改ざんしてログイン API を送信する
-- And エラー "InvalidRequestError"
+- But <condition>
+- Then <result>
+- And <result_2>
+
+#### Examples:
+
+  | example_id | condition | result | result_2 |
+  | --- | --- | --- | --- |
+  | EX-AUTHENTICATION-007-02 | SameSite の Cookie とリクエストのトークンが一致しない | CSRF の値を改ざんしてログイン API を送信する | エラー "InvalidRequestError" |
+  | EX-AUTHENTICATION-007-04 | 失敗回数によらず、同一 IP からのログイン API リクエストが `EndpointRateLimitPolicy` の時間枠内で上限に達している | 正しいパスワードでログイン API を送信する | エラー "RateLimitedError" |
 
 ### Example: EX-AUTHENTICATION-007-03 直近 900 秒の時間枠で、アカウント単位の失敗回数が 10 回に達している
 
@@ -51,14 +58,6 @@
 - Then 正しいパスワードでログイン API を送信する
 - And エラー "RateLimitedError"
 - And "LoginThrottled" が発行される
-
-### Example: EX-AUTHENTICATION-007-04 失敗回数によらず、同一 IP からのログイン API リクエストが `EndpointRateLimitPolicy` の時間枠内で上限に達している
-
-- Given 未認証セッションで "web-app" として認可リクエストを送信済みである
-- When ブラウザーのログイン API にユーザー名 "alice" と正しいパスワードを送信する
-- But 失敗回数によらず、同一 IP からのログイン API リクエストが `EndpointRateLimitPolicy` の時間枠内で上限に達している
-- Then 正しいパスワードでログイン API を送信する
-- And エラー "RateLimitedError"
 
 ## Rule: REQ-AUTHENTICATION-009 無効なユーザーは新規ログインも既存セッションも拒否される
 

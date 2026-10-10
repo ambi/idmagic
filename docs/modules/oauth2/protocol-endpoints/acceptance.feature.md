@@ -25,47 +25,33 @@
 
 ## Rule: REQ-OAUTH2-040 プロトコルエンドポイントは閾値を超えたリクエストをレート制限で拒否する
 
-### Example: EX-OAUTH2-040-01 通常経路
+### Background:
 
 - Given クライアントがある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している
+
+### Example: EX-OAUTH2-040-01 通常経路
+
 - When 同一 window 内で追加リクエストを送る
 - Then エラー "RateLimitedError" (HTTP 429、Retry-After ヘッダ付き)
 
-### Example: EX-OAUTH2-040-02 対象 endpoint が /tokenである
+### Scenario Outline: 条件ごとの結果
 
-- Given クライアントがある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している
 - When 同一 window 内で追加リクエストを送る
-- But 対象 endpoint が /tokenである
-- Then client_id と IP の組で閾値超過している状態でトークンを要求する
+- But <condition>
+- Then <result>
 - And エラー "RateLimitedError"
 
-### Example: EX-OAUTH2-040-03 対象 endpoint が /authorize または /par である
+#### Examples:
 
-- Given クライアントがある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している
-- When 同一 window 内で追加リクエストを送る
-- But 対象 endpoint が /authorize または /par である
-- Then IP と client_id の組で閾値超過している状態で認可リクエストを送る
-- And エラー "RateLimitedError"
-
-### Example: EX-OAUTH2-040-04 対象 endpoint が /device_authorization である
-
-- Given クライアントがある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している
-- When 同一 window 内で追加リクエストを送る
-- But 対象 endpoint が /device_authorization である
-- Then client_id と IP の組で閾値超過している状態でデバイス認可を開始する
-- And エラー "RateLimitedError"
-
-### Example: EX-OAUTH2-040-05 対象 endpoint が /bc-authorize である
-
-- Given クライアントがある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している
-- When 同一 window 内で追加リクエストを送る
-- But 対象 endpoint が /bc-authorize である
-- Then client_id と IP の組で閾値超過している状態で backchannel 認可を開始する
-- And エラー "RateLimitedError"
+  | example_id | condition | result |
+  | --- | --- | --- |
+  | EX-OAUTH2-040-02 | 対象 endpoint が /tokenである | client_id と IP の組で閾値超過している状態でトークンを要求する |
+  | EX-OAUTH2-040-03 | 対象 endpoint が /authorize または /par である | IP と client_id の組で閾値超過している状態で認可リクエストを送る |
+  | EX-OAUTH2-040-04 | 対象 endpoint が /device_authorization である | client_id と IP の組で閾値超過している状態でデバイス認可を開始する |
+  | EX-OAUTH2-040-05 | 対象 endpoint が /bc-authorize である | client_id と IP の組で閾値超過している状態で backchannel 認可を開始する |
 
 ### Example: EX-OAUTH2-040-06 共有カウンタストアに到達できない
 
-- Given クライアントがある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している
 - When 同一 window 内で追加リクエストを送る
 - But 共有カウンタストアに到達できない
 - Then リクエストは fail-closed で "RateLimitedError" として拒否される

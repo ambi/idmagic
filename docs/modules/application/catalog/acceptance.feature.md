@@ -13,10 +13,13 @@
 
 ## Rule: REQ-APPLICATION-002 管理者は通常設定とは独立したセクションでクライアントシークレットを管理できる
 
-### Example: EX-APPLICATION-002-01 通常経路
+### Background:
 
 - Given シークレットを使う OIDC プロトコルを持つ Application が存在する
 - And 有効期限のない従来の資格情報が 1 件 `Active` である
+
+### Example: EX-APPLICATION-002-01 通常経路
+
 - When 管理者が Application の編集画面を開く
 - Then `client_id` は通常の OIDC 設定カード内に参照項目として表示される
 - Then 資格情報の一覧、追加発行、個別失効の操作は、通常設定の保存フォーム外にある専用の最上位セクションに表示される
@@ -27,8 +30,6 @@
 
 ### Example: EX-APPLICATION-002-02 `Active` の資格情報がすでに 2 件存在する
 
-- Given シークレットを使う OIDC プロトコルを持つ Application が存在する
-- And 有効期限のない従来の資格情報が 1 件 `Active` である
 - When 管理者が Application の編集画面を開く
 - Then `client_id` は通常の OIDC 設定カード内に参照項目として表示される
 - Then 資格情報の一覧、追加発行、個別失効の操作は、通常設定の保存フォーム外にある専用の最上位セクションに表示される
@@ -38,8 +39,6 @@
 
 ### Example: EX-APPLICATION-002-03 資格情報が `Expired` または `Revoked` である
 
-- Given シークレットを使う OIDC プロトコルを持つ Application が存在する
-- And 有効期限のない従来の資格情報が 1 件 `Active` である
 - When 管理者が Application の編集画面を開く
 - Then `client_id` は通常の OIDC 設定カード内に参照項目として表示される
 - Then 資格情報の一覧、追加発行、個別失効の操作は、通常設定の保存フォーム外にある専用の最上位セクションに表示される
@@ -97,19 +96,19 @@
 - Then "payroll" 向けに発行される ID Token / Assertion には `employee_number` クレームが含まれる
 - Then "directory" は自身の規則を更新していないため、`employee_number` クレームを含まない
 
-### Example: EX-APPLICATION-006-02 管理者が `visibility=Private` の属性（パスワード関連の内部属性など）を `source_key` に指定する
+### Scenario Outline: 条件ごとの結果
 
 - Given 同じテナントに OIDC Application "payroll" と "directory" が存在し、どちらも `employee_number`（`visibility=SelfReadable`）を含む同じ User 属性を参照できる
 - When 管理者が "payroll" のクレーム公開規則に `claim_type="employee_number"`、`source=user_attribute`、`source_key="employee_number"` を追加して保存する
-- But 管理者が `visibility=Private` の属性（パスワード関連の内部属性など）を `source_key` に指定する
+- But <condition>
 - Then 更新を InvalidRequestError で拒否する（`claim_release_rules_within_floor`）
 
-### Example: EX-APPLICATION-006-03 管理者が予約済みのクレーム型（`sub`、`iss` など）を `claim_type` に指定する
+#### Examples:
 
-- Given 同じテナントに OIDC Application "payroll" と "directory" が存在し、どちらも `employee_number`（`visibility=SelfReadable`）を含む同じ User 属性を参照できる
-- When 管理者が "payroll" のクレーム公開規則に `claim_type="employee_number"`、`source=user_attribute`、`source_key="employee_number"` を追加して保存する
-- But 管理者が予約済みのクレーム型（`sub`、`iss` など）を `claim_type` に指定する
-- Then 更新を InvalidRequestError で拒否する（`claim_release_rules_within_floor`）
+  | example_id | condition |
+  | --- | --- |
+  | EX-APPLICATION-006-02 | 管理者が `visibility=Private` の属性（パスワード関連の内部属性など）を `source_key` に指定する |
+  | EX-APPLICATION-006-03 | 管理者が予約済みのクレーム型（`sub`、`iss` など）を `claim_type` に指定する |
 
 ## Rule: REQ-APPLICATION-007 管理者は管理画面でアプリケーションと 1 つのプロトコルを構成できる
 
