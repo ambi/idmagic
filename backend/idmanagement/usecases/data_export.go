@@ -187,15 +187,14 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 	// MaxAttempts=1: export generation is deterministic in the resource data,
 	// so a failure won't be fixed by retrying; a single attempt keeps the
 	// lifecycle to exactly one Started + one Succeeded/Failed event.
-	//
-	// Emit is intentionally omitted here so Enqueue does not also emit the
-	// generic JobEnqueued: DataExportRequested (emitted below) is the
-	// domain-level audit record for this action, and double-auditing the same
-	// enqueue is noise (matches group/usecases dynamic-group reconcile).
-	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo}, jobsports.EnqueueInput{
+	emit, emitErr := CollectEmitErrors(deps.Emit)
+	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo, Emit: emit}, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: KindDataExport, Params: params, MaxAttempts: 1,
 	}, now)
 	if err != nil {
+		return nil, err
+	}
+	if err := emitErr(); err != nil {
 		return nil, err
 	}
 	if err := adminEmitExport(deps.Emit, &idmdomain.DataExportRequested{At: now, TenantID: tenantID, ActorUserID: actorUserID, ExportID: job.ID, Target: target, RequestedColumns: columns}); err != nil {

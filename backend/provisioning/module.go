@@ -72,6 +72,7 @@ func (m Module) AssignmentNotifier(assignmentRepo appports.AssignmentRepository)
 type jobEnqueuer struct {
 	Repo      jobsports.JobRepository
 	QuotaRepo tenantports.QuotaRepository
+	Emit      func(spec.DomainEvent)
 }
 
 func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedupKey, taskID string) (string, error) {
@@ -80,7 +81,7 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 		return "", err
 	}
 	now := time.Now().UTC()
-	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: e.Repo, QuotaRepo: e.QuotaRepo}, jobsports.EnqueueInput{
+	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: e.Repo, QuotaRepo: e.QuotaRepo, Emit: e.Emit}, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: usecases.KindProvisioningTask, Params: params, DedupKey: &dedupKey, Now: now,
 	}, now)
 	if err != nil {
@@ -93,7 +94,7 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 // ProvisioningTaskStarted; it is a parameter rather than an optional field so
 // that the worker cannot build the dispatcher without deciding where it goes.
 func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenantports.QuotaRepository, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo}, Emit: emit}
+	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo, Emit: emit}, Emit: emit}
 }
 
 // ReconcileDeps はインクリメンタル同期の依存を組み立てる。User と割り当ては、インクリメンタル同期があるべき状態として読む記録の正である。

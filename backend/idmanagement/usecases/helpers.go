@@ -65,6 +65,18 @@ func NormalizeDescription(description *string) *string {
 	return &trimmed
 }
 
+// CollectEmitErrors は、エラーを返さない発行の関数を求める呼び出し先（ジョブの投入など）へ sink を渡す。
+// 返す firstErr は、渡した関数が sink から受け取った最初のエラーを返す。
+func CollectEmitErrors(sink func(spec.DomainEvent) error) (emit func(spec.DomainEvent), firstErr func() error) {
+	var collected error
+	emit = func(event spec.DomainEvent) {
+		if err := AdminEmit(sink, event); err != nil && collected == nil {
+			collected = err
+		}
+	}
+	return emit, func() error { return collected }
+}
+
 // AdminEmit は sink が nil でなければ event を emit する。
 func AdminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error {
 	if sink == nil {

@@ -11,6 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -119,9 +122,19 @@ func runDataKeyReencryptionSweep(ctx context.Context, deps *bootstrap.Dependenci
 		return err
 	}
 	names := deps.DataKeys.Migrators.Names()
+	//nolint:contextcheck // Batch events use the bounded independent audit context.
+	emit := deps.NewEmitFunc(logging.Default())
+	jobs := jobsusecases.EnqueueDeps{Repo: deps.Jobs.Repo, QuotaRepo: deps.Tenancy.QuotaRepo, Emit: emit}
 	for _, tenant := range tenants {
 		for _, name := range names {
-			if err := datakeysusecases.EnqueueReencryptionJob(ctx, deps.Jobs.Repo, tenant.ID, name, now); err != nil {
+			err := datakeysusecases.EnqueueReencryptionJob(ctx, jobs, tenant.ID, name, now)
+			// active_jobs の上限に達したテナントは次回の掃除で拾い直す。一つのテナントの上限で、
+			// ほかのテナントの再暗号化を止めない。
+			if _, exceeded := errors.AsType[*tenancydomain.QuotaExceededError](err); exceeded {
+				logging.Warn(ctx, "datakeys: skipped reencryption job over the active_jobs quota", "tenant_id", tenant.ID, "migrator", name)
+				continue
+			}
+			if err != nil {
 				return fmt.Errorf("enqueue reencryption job for tenant %s migrator %s: %w", tenant.ID, name, err)
 			}
 		}

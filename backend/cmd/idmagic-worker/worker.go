@@ -203,6 +203,8 @@ func RunWorker() error {
 	handlers.Register(domain.KindDataKeyReencryption, datakeysusecases.ReencryptionHandler(datakeysusecases.ReencryptDeps{
 		Repository: deps.DataKeys.Repository,
 		Migrators:  deps.DataKeys.Migrators,
+		QuotaRepo:  deps.Tenancy.QuotaRepo,
+		Emit:       deps.NewEmitFunc(logger),
 		Jobs:       deps.Jobs.Repo,
 	}))
 	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger)))
@@ -363,8 +365,10 @@ const lifecycleWorkflowActor = "lifecycle-workflow"
 func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+	//nolint:contextcheck // Worker events use the bounded independent audit context.
+	emit := deps.NewEmitFunc(logging.Default())
 	for {
-		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo, QuotaRepo: deps.Tenancy.QuotaRepo}, 100, time.Now().UTC()); err != nil {
+		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo, QuotaRepo: deps.Tenancy.QuotaRepo, Emit: emit}, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {

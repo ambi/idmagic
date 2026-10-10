@@ -156,10 +156,13 @@ func scheduleDynamicGroupReconcile(ctx context.Context, deps DynamicGroupDeps, r
 		return err
 	}
 	dedupKey := fmt.Sprintf("dynamic-group:%s:v%d", rule.GroupID, rule.Version)
-	_, err = jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo}, jobsports.EnqueueInput{
+	emit, emitErr := idmusecases.CollectEmitErrors(deps.Emit)
+	if _, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo, Emit: emit}, jobsports.EnqueueInput{
 		TenantID: rule.TenantID, Kind: jobsdomain.KindDynamicGroupReconcile, Params: params, DedupKey: &dedupKey,
-	}, now)
-	return err
+	}, now); err != nil {
+		return err
+	}
+	return emitErr()
 }
 
 func DynamicGroupReconcileHandler(deps DynamicGroupDeps) func(context.Context, *jobsdomain.Job) (json.RawMessage, error) {

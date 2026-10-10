@@ -11,8 +11,12 @@ import (
 	"github.com/ambi/idmagic/backend/datakeys/ports"
 	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // fakeReencryptMigrator lets tests script ReencryptBatch's return sequence
@@ -205,13 +209,61 @@ func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-JOBS-002: 再暗号化のジョブを新しく作った投入は JobEnqueued を一件発行し、重複排除で既存のジョブを返した投入は発行しない。
+func TestEnqueueReencryptionJobEmitsJobEnqueued(t *testing.T) {
+	jobRepo := jobsdbmemory.NewJobRepository()
+	var events []spec.DomainEvent
+	jobs := jobsusecases.EnqueueDeps{
+		Repo: jobRepo, QuotaRepo: tenancymemory.NewQuotaRepository(),
+		Emit: func(event spec.DomainEvent) { events = append(events, event) },
+	}
+	now := time.Now().UTC()
+	for range 2 {
+		if err := EnqueueReencryptionJob(context.Background(), jobs, "tenant-a", "mfa_totp_secret", now); err != nil {
+			t.Fatalf("EnqueueReencryptionJob: %v", err)
+		}
+	}
+	if len(events) != 1 {
+		t.Fatalf("events = %+v, want one JobEnqueued", events)
+	}
+	enqueued, ok := events[0].(*jobsdomain.JobEnqueued)
+	if !ok || enqueued.TenantID != "tenant-a" || enqueued.Kind != jobsdomain.KindDataKeyReencryption {
+		t.Fatalf("event = %+v, want JobEnqueued for tenant-a %s", events[0], jobsdomain.KindDataKeyReencryption)
+	}
+}
+
+//spec:covers REQ-TENANCY-013: active_jobs の上限に達したテナントでは再暗号化のジョブの投入を QuotaExceededError で拒否し、使用量を変えない。
+func TestEnqueueReencryptionJobRespectsActiveJobsQuota(t *testing.T) {
+	ctx := context.Background()
+	quotas := tenancymemory.NewQuotaRepository()
+	limit := 0
+	if err := quotas.SetQuota(ctx, "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	jobs := jobsusecases.EnqueueDeps{Repo: jobsdbmemory.NewJobRepository(), QuotaRepo: quotas, Emit: func(spec.DomainEvent) {}}
+
+	err := EnqueueReencryptionJob(ctx, jobs, "tenant-a", "mfa_totp_secret", time.Now().UTC())
+	var exceeded *tenancydomain.QuotaExceededError
+	if !errors.As(err, &exceeded) || exceeded.Resource != tenancydomain.ResourceActiveJobs {
+		t.Fatalf("EnqueueReencryptionJob error = %v, want QuotaExceededError for active_jobs", err)
+	}
+	usage, err := quotas.GetUsage(ctx, "tenant-a")
+	if err != nil {
+		t.Fatalf("GetUsage: %v", err)
+	}
+	if usage.ActiveJobs != 0 {
+		t.Fatalf("usage.ActiveJobs = %d, want 0", usage.ActiveJobs)
+	}
+}
+
 func TestEnqueueReencryptionJob_DedupsRepeatedCalls(t *testing.T) {
 	jobRepo := jobsdbmemory.NewJobRepository()
+	enqueue := jobsusecases.EnqueueDeps{Repo: jobRepo, QuotaRepo: tenancymemory.NewQuotaRepository(), Emit: func(spec.DomainEvent) {}}
 	now := time.Now().UTC()
-	if err := EnqueueReencryptionJob(context.Background(), jobRepo, "tenant-a", "mfa_totp_secret", now); err != nil {
+	if err := EnqueueReencryptionJob(context.Background(), enqueue, "tenant-a", "mfa_totp_secret", now); err != nil {
 		t.Fatalf("first EnqueueReencryptionJob failed: %v", err)
 	}
-	if err := EnqueueReencryptionJob(context.Background(), jobRepo, "tenant-a", "mfa_totp_secret", now); err != nil {
+	if err := EnqueueReencryptionJob(context.Background(), enqueue, "tenant-a", "mfa_totp_secret", now); err != nil {
 		t.Fatalf("second EnqueueReencryptionJob failed: %v", err)
 	}
 

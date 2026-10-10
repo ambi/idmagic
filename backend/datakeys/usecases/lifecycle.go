@@ -9,9 +9,11 @@ import (
 	"github.com/ambi/idmagic/backend/datakeys/domain"
 	"github.com/ambi/idmagic/backend/datakeys/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // Deps are the dependencies every DataKeys lifecycle usecase shares, mirroring
@@ -32,6 +34,8 @@ type Deps struct {
 	// Jobs enqueues the data_key_reencryption Job that Rotate triggers. nil
 	// skips enqueueing, same rationale as Migrators.
 	Jobs jobsports.JobRepository
+	// QuotaRepo は、再暗号化のジョブを投入するときに active_jobs を確認する。
+	QuotaRepo tenantports.QuotaRepository
 }
 
 func BootstrapTenantDataKey(ctx context.Context, deps Deps, tenantID string, now time.Time) (*domain.TenantDataEncryptionKey, error) {
@@ -74,7 +78,7 @@ func RotateTenantDataKey(ctx context.Context, deps Deps, tenantID string, now ti
 	}
 	if deps.Migrators != nil && deps.Jobs != nil {
 		for _, name := range deps.Migrators.Names() {
-			if enqErr := EnqueueReencryptionJob(ctx, deps.Jobs, tenantID, name, now); enqErr != nil {
+			if enqErr := EnqueueReencryptionJob(ctx, jobsusecases.EnqueueDeps{Repo: deps.Jobs, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit}, tenantID, name, now); enqErr != nil {
 				// Not fatal to the rotation itself, which already committed:
 				// the idmagic-batch reencryption sweep is the fallback that
 				// still catches this tenant/migrator later.

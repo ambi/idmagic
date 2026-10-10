@@ -45,7 +45,14 @@ func newLifecycleRun(h *e2eHarness) *lifecycleRun {
 	}
 }
 
-func (r *lifecycleRun) emit(event spec.DomainEvent) { r.events = append(r.events, event) }
+// emit はプロビジョニングのイベントだけを記録する。ジョブの投入で Jobs が発行する JobEnqueued は
+// Jobs の規則であり、このテストが観察する順序の対象ではない。
+func (r *lifecycleRun) emit(event spec.DomainEvent) {
+	if _, enqueued := event.(*jobsdomain.JobEnqueued); enqueued {
+		return
+	}
+	r.events = append(r.events, event)
+}
 
 func (r *lifecycleRun) types() []string {
 	types := make([]string, 0, len(r.events))

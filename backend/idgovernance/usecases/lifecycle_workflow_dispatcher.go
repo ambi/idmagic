@@ -30,6 +30,8 @@ type (
 		JobRepo jobsports.JobRepository
 		// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160). nil skips enforcement.
 		QuotaRepo tenantports.QuotaRepository
+		// Emit は、実行のジョブを新しく作ったときに JobEnqueued を発行する。
+		Emit func(spec.DomainEvent)
 	}
 	lifecycleWorkflowJobParams struct {
 		RunID string `json:"run_id"`
@@ -78,7 +80,7 @@ func DispatchQueuedLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWork
 			return marshalErr
 		}
 		dedup := "lifecycle-workflow-run:" + run.ID
-		job, enqueueErr := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo}, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: LifecycleWorkflowRunJobKind, Params: params, DedupKey: &dedup}, now)
+		job, enqueueErr := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit}, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: LifecycleWorkflowRunJobKind, Params: params, DedupKey: &dedup}, now)
 		if enqueueErr != nil {
 			return enqueueErr
 		}

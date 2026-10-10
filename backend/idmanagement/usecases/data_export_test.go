@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -123,8 +124,8 @@ func TestStartDataExport_EnqueuesQueuedJob(t *testing.T) {
 	if view.ID == "" || view.RequestedBy != "admin" || view.Target != "user" {
 		t.Errorf("unexpected view: %+v", view)
 	}
-	if got := rec.types(); len(got) != 1 || got[0] != "DataExportRequested" {
-		t.Errorf("events=%v, want [DataExportRequested]", got)
+	if got := rec.types(); !slices.Equal(got, []string{"JobEnqueued", "DataExportRequested"}) {
+		t.Errorf("events=%v, want [JobEnqueued DataExportRequested]", got)
 	}
 }
 
