@@ -30,9 +30,24 @@ describe('mise operational tool boundary', () => {
 
 describe('mise generated OpenAPI dependencies', () => {
   it('compiles the specification before every parallel verification consumer', () => {
-    for (const task of ['check', 'check-spec', 'check-admin-scopes', 'check-api-compat']) {
+    for (const task of [
+      'check',
+      'check-spec',
+      'check-admin-scopes',
+      'check-api-compat',
+      'check-published-api-compat',
+    ]) {
       expect(config.tasks?.[task]?.depends).toContain('compile-spec')
     }
+  })
+
+  it('CI も公開契約の条件付きゲートを使う', async () => {
+    const workflow = await Bun.file(resolve(root, '.github/workflows/idmagic-ci.yaml')).text()
+    expect(workflow).toContain('mise run check-published-api-compat')
+    expect(workflow).not.toContain('mise run check-api-compat')
+    expect(config.tasks?.['check-published-api-compat']?.run).toBe(
+      'bun run check/src/runner.ts published-api-compat',
+    )
   })
 })
 

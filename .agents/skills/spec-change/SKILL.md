@@ -51,8 +51,9 @@ current document kinds and grammar; read it, not its rationale document.
    TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md`
    owns the shared principal, scope, tenant-boundary, and fail-closed rules.
 9. Sync the work item's `affected_spec` with the requirement or standard id, or the TypeSpec symbol.
-10. Pass `mise run check-spec` and `mise run check-api-compat`. Regenerate derived views with `render-docs`
+10. Pass `mise run check-spec` and `mise run check-published-api-compat`. Regenerate derived views with `render-docs`
     when the specification changed; generated OpenAPI and HTML remain untracked views.
+    告知と既存バージョン互換性の適用条件は `docs/development/release.md` に従う。
 
 Use `update-design` as well only when modules, global structure, technology, runtime composition, or
 core design rules change.

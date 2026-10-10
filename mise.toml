@@ -853,10 +853,16 @@ description = "Check the frontend gateway route allowlists against the assembled
 run = "go run ./backend/cmd/idmagic-gateway-routes"
 
 [tasks.check-api-compat]
-description = "Detect OpenAPI breaking changes against the release baseline"
+description = "Compare OpenAPI against the saved baseline, even before publication"
 depends = ["compile-spec"]
 dir = "tools"
 run = "bun run check/src/runner.ts api-compat"
+
+[tasks.check-published-api-compat]
+description = "Enforce OpenAPI compatibility when a published contract exists"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/runner.ts published-api-compat"
 
 [tasks.update-api-baseline]
 description = "Compile TypeSpec, then freeze the generated OpenAPI as the release baseline"

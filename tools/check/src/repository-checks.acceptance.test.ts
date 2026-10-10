@@ -73,6 +73,8 @@ async function writeFeature(
 async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
+  await mkdir(join(root, 'spec'), { recursive: true })
+  await writeFile(join(root, 'spec', 'release-state.json'), '{"phase":"unpublished"}')
   await mkdir(join(root, 'docs', 'modules', 'demo', 'design'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'architecture'), { recursive: true })
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')

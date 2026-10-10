@@ -15,6 +15,10 @@ CI で実行するジョブと検査の一次情報は [`.github/workflows/idmag
 
 ジョブを追加または削除するときはワークフローを変更する。
 
+既存バージョン API との互換性は[公開状態](release.md#公開状態と日常開発)に応じて検査する。
+初回公開前は互換性比較を省略し、公開後は破壊的変更を拒否する。
+現在の TypeSpec と実装の整合、セキュリティとデータの検査は公開状態によらず実行する。
+
 ## CI で検証しないもの
 
 **infra の宣言的アセットは CI で検証しない。** Docker Compose の構成、Kubernetes のオーバーレイ、Prometheus の規則、k6 のモジュールには、それぞれ `mise run check-compose` / `check-k8s` / `check-monitoring` / `check-k6` があるが、どの集約タスクにも CI にも入れていない。いずれも kustomize、kubeconform、promtool、k6 のイメージを取得してから実行するため、1 回あたりの所要が他の全検査の合計を超える。得られるのは変更頻度の低いアセットの構文検査であり、**最も変わらない入力に、最も重い検査を毎 Pull Request で払う形になる**ので採らない。

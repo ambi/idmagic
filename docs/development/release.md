@@ -1,5 +1,21 @@
 # リリース
 
+## 公開状態と日常開発
+
+公開状態の一次情報は [`spec/release-state.json`](../../spec/release-state.json) の `phase` である。
+`unpublished` は初回公開前、`published` は守るべき公開済み契約が存在する段階を表す。
+状態ファイルの欠落、不正な JSON、未知の値は検査エラーとする。
+
+初回公開前の通常変更は、現在仕様との整合検査と作業記録で完了できる。
+集約検査と CI は `mise run check-published-api-compat` の公開条件を使い、既存バージョン API との互換性を必須判定から外す。
+新機能、非推奨、廃止と成熟度の変更にも利用者向け告知断片を要求しない。
+`documentation_impact` は理由付きの `none` を宣言でき、任意に宣言した告知断片は検査する。
+成熟度の昇格には引き続き主要ユースケースの証拠、セキュリティ確認、互換性または移行の結果を残すが、告知文書のパスは初回公開後に要求する。
+
+公開状態は、現在仕様への整合、認可、テナント分離、既存データの保持と移行の検証を免除しない。
+実在する外部消費者への契約を提供する場合は、一般公開に先行しても初回公開と同じ切り替えを行う。
+差分を任意に調べる `mise run check-api-compat` は、公開状態によらず保存済みベースラインと比較する。
+
 ## リリース単位
 
 API、各実行レーンのワーカー、バッチ、UI は、同じ Git コミットとバージョンから作る一つのリリースとして扱う。実行単位ごとに展開時刻をずらしても、異なるコミットの成果物を一つのリリース名で混ぜない。
@@ -10,21 +26,35 @@ API、各実行レーンのワーカー、バッチ、UI は、同じ Git コミ
 
 ## リリース文書
 
-現在状態は一次情報文書と TypeSpec で説明し、リリース固有の差分だけを `docs/releases/` に置く。注目すべき新機能と非推奨の告知は `docs/releases/changes/wi-<id>.md` に、既存利用者が必要とする操作、互換性、期限、後退条件は `docs/releases/upgrades/wi-<id>.md` に書く。各断片は一つの work item だけを扱い、work item ID と、一次情報文書の規範 ID または TypeSpec symbol への参照を書く。一次情報文書の利用方法や現在のサポート水準を断片へ複製しない。
+現在状態は一次情報文書と TypeSpec で説明し、公開後のリリース固有の差分だけを `docs/releases/` に置く。
+注目すべき新機能と非推奨の告知は `docs/releases/changes/wi-<id>.md` に、既存利用者が必要とする操作、互換性、期限、後退条件は `docs/releases/upgrades/wi-<id>.md` に書く。
+各断片は一つの work item だけを扱い、work item ID と、一次情報文書の規範 ID または TypeSpec symbol への参照を書く。
+一次情報文書の利用方法や現在のサポート水準を断片へ複製しない。
+
+既存の断片は初回公開向けの下書きとして保存し、`docs/releases/changes/` と `docs/releases/upgrades/` から探索できる。
+公開済みの変更履歴としては扱わない。
+初回公開の担当者は現行の機能一覧と利用開始条件を確認し、必要な下書きを選び直して公開文書へ束ねる。
+未公開期間の完了記録に告知を遡及して要求しない。
 
 リリース担当者は断片を対象バージョンへ束ねるが、元の断片を生成物にはしない。変更の作業者が利用者への影響と移行条件を知っている間に編集し、レビューで内容を確定するためである。バージョンの変更履歴は `changes/` の対象断片を索引し、更新ガイドは `upgrades/` の対象断片を順序付ける。リリース後も断片は work item ID で参照できる履歴として残す。
 
-着手した work item は `documentation_impact` で `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを宣言する。`none` は具体的な理由を必要とする。それ以外は必要な断片の予定パスを宣言し、完了時にそのファイルが work item ID と安定した仕様参照を持つことを `mise run check-work-items` で検査する。自動判定が示す最低水準より強い影響は選べるが、弱い影響は選べない。
+着手した work item は `documentation_impact` で `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを宣言する。
+`none` は具体的な理由を必要とする。
+それ以外は必要な断片の予定パスを宣言し、完了時にそのファイルが work item ID と安定した仕様参照を持つことを `mise run check-work-items` で検査する。
+公開後は自動判定が示す最低水準より強い影響は選べるが、弱い影響は選べない。
 
-`experimental` から `preview`、または `preview` から `supported` へ進める変更は、利用者向け断片に加えて主要ユースケースの単体テストと E2E テスト、セキュリティ確認、互換性または移行の結果、一次情報文書上の成熟度表示を完了記録へ残す。成熟度は `FeatureRegistry` の差分から検出し、作業者の自己申告だけには依存しない。
+`experimental` から `preview`、または `preview` から `supported` へ進める変更は、[作業項目の主要ユースケースの証拠](../formats/work-item-format.md#主要ユースケースの証拠)、セキュリティ確認、互換性または移行の結果、一次情報文書上の成熟度表示を残す。
+公開後は利用者向け断片も必要になる。
+成熟度は `FeatureRegistry` の差分から検出し、作業者の自己申告だけには依存しない。
 
 ## 準備
 
 1. リリースに含める完了済み work item を列挙し、未完了の依存関係が無いことを確認する。
-2. `mise run verify`、`mise run check-api-compat`、`mise run spec-diff` を実行し、仕様と実装の差分を読む。
+2. `mise run verify`、`mise run check-published-api-compat`、`mise run spec-diff` を実行し、仕様と実装の差分を読む。初回公開前の保存済みベースラインは下書きなので、互換性ゲートは比較を省略する。
 3. リリースするバージョンを決め、`VERSION`、`GIT_COMMIT`、`BUILD_DATE` を同じコミットから全バックエンド成果物へ埋め込む。UI も同じコミットから作る。
-4. `mise run update-api-baseline` で公開する OpenAPI の互換性ベースラインを固定し、差分があればリリース準備コミットに含める。通常の機能変更ではこのタスクを実行しない。
-5. リリースコミットへ `vMAJOR.MINOR.PATCH` タグを付け、外部のリリース経路が生成した成果物のダイジェスト、コミット、バージョンの対応を保存する。
+4. `mise run update-api-baseline` で公開する OpenAPI の互換性ベースラインを固定し、差分があればリリース準備コミットに含める。初回公開では必要な公開文書も確定し、同じ準備コミットで `spec/release-state.json` の `phase` を `published` にする。通常の機能変更ではこのタスクを実行しない。
+5. `mise run check-published-api-compat` と `mise run check-work-items` を実行し、公開状態で検査が通ることを確認する。公開済み契約が生じた後は `unpublished` へ戻さない。
+6. リリースコミットへ `vMAJOR.MINOR.PATCH` タグを付け、外部のリリース経路が生成した成果物のダイジェスト、コミット、バージョンの対応を保存する。
 
 ## 段階的な展開
 

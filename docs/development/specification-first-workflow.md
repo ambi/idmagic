@@ -33,9 +33,12 @@
 | 選択した故障を検出する境界で RED を確認する | `implement-work-item` | 観測可能な境界の最小テスト |
 | GREEN にして、必要な内部の振る舞いと外側のアダプターをリファクタリングする | `implement-work-item` | 各境界の局所テスト |
 | 構造変更時に現在の設計を同期する | `update-design` | `mise run check-boundaries` |
-| 派生ビューを再生成する | `render-docs` | `mise run check-api-compat` |
+| 派生ビューを再生成する | `render-docs` | `mise run check-published-api-compat` |
 | 変更への耐性を検証する | `code-review` | リスクに応じて選んだ証拠、`mise run verify` |
 | 完了を記録してコミットする | `commit` | `mise run check-work-items` |
+
+既存バージョン API の互換性と利用者向け告知の要求は、[公開状態](release.md#公開状態と日常開発)に従う。
+初回公開前も、現在仕様との整合と主要ユースケースの証拠を検証する。
 
 振る舞いを変える前に、その内容を担当する最小の仕様を更新する。
 モデル、API、HTTP 契約、認証方式は TypeSpec で扱い、要件、状態遷移、判断はその機能の機能仕様で、任意の例は同じ機能スライスの付録で、用語、標準、割り当てられた品質要件はモジュールの文書で、複数の機能にまたがる仕組みと重要な判断はモジュールの設計（設計領域ごとの `design/<area>.md` と `design/decisions.md`）で更新する。
@@ -307,7 +310,7 @@ E2E テストは、製品で宣言した外部入口から開始し、機能を�
    その後、変更箇所を被覆する最小のパッケージ別またはファイル別テストを実行する。
    Go では `mise run test-go-package <package>`、UI では `mise run test-ui-unit-file <file>` を使い、その他は `mise tasks` が示すタスクから選ぶ。
 5. 振る舞いが GREEN になったら、変更した層を担当する検査を実行する。
-   Go では `mise run lint-go`、仕様を再生成した管理 API または DTO では `mise run check-contract-drift` と `mise run check-api-compat`、作業項目の frontmatter では `mise run check-work-items` を使う。
+   Go では `mise run lint-go`、仕様を再生成した管理 API または DTO では `mise run check-contract-drift` と `mise run check-published-api-compat`、作業項目の frontmatter では `mise run check-work-items` を使う。
 6. 変更が複数のパッケージに広がったら、`mise run test-go-changed` を実行する。
    このタスクは、作業ツリーで変更したパッケージと、それらを組み込んでコンパイルするすべてのパッケージを実行する。
 7. `medium` 以上のリスクでは、選択した変更への耐性検査を行う。

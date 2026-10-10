@@ -16,6 +16,9 @@ mise run check-api-compat
 `mise run check` は登録済みの TypeScript 検査を一回の Bun 起動で実行し、一つの規則が例外を投げても残りの結果を集める。
 個別タスクは同じ registry から一つの規則を選ぶため、検査ごとの CLI shell は持たない。
 
+既存バージョン API の必須互換性ゲートと告知の最低水準は、[公開状態](../../docs/development/release.md#公開状態と日常開発)を共通の入力とする。
+`mise run check-api-compat` は集約に含めず、未公開でも保存済みベースラインとの比較を明示的に行う。
+
 work item の識別子はファイル名の stem 全体である。
 同じ stem を `work-items/active/` と `work-items/done/` に置くと `mise run check-work-items` が拒否する。
 status と配置の不一致、および旧配置の `work-items/` 直下に残った記録も拒否する。

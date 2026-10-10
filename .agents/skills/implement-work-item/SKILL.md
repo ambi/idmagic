@@ -60,6 +60,8 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    着手済みの v3 は既存の契約を維持し、移行するときだけ境界を選び直す。
 5. Set the status to `in_progress` and pass `mise run check-work-items`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
+   告知と既存バージョン互換性の適用は `docs/development/release.md` の公開状態に従う。
+   初回公開前は `documentation_impact: none` を理由付きで宣言できる。
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
@@ -113,7 +115,7 @@ description: "選択した work item を、仕様先行、故障に応じた検�
 
    | Just touched | Run next |
    | --- | --- |
-   | An admin API or a DTO, after the specification is regenerated | `mise run check-contract-drift`, `mise run check-api-compat` |
+   | An admin API or a DTO, after the specification is regenerated | `mise run check-contract-drift`, `mise run check-published-api-compat` |
    | Go, once one behavior is GREEN | `mise run lint-go` |
    | This record's frontmatter or Completion | `mise run check-work-items` |
 

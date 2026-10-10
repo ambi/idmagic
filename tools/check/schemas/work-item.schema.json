@@ -553,7 +553,7 @@
     },
     "maturityEvidence": {
       "type": "object",
-      "required": ["feature", "from", "to", "security", "documentation"],
+      "required": ["feature", "from", "to", "security"],
       "additionalProperties": false,
       "anyOf": [{ "required": ["compatibility"] }, { "required": ["migration"] }],
       "properties": {
@@ -564,6 +564,7 @@
         "compatibility": { "type": "string", "minLength": 1 },
         "migration": { "type": "string", "minLength": 1 },
         "documentation": {
+          "description": "公開後は必須。公開状態を読む work item 検査が適用条件を判定する。",
           "type": "string",
           "pattern": "^docs/releases/(?:changes|upgrades)/wi-[0-9]+(?:-[a-z0-9]+)*\\.md$"
         }

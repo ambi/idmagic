@@ -55,7 +55,7 @@ export function defaultBaseRevision(root: string): string {
 if (import.meta.main) {
   const args = process.argv.slice(2)
   const baseRevisionIndex = args.indexOf('--base-revision')
-  const [{ repositoryChecks, selectChecks }, { createWorkspaceSnapshot }] = await Promise.all([
+  const [{ selectChecks }, { createWorkspaceSnapshot }] = await Promise.all([
     import('./registry.ts'),
     import('../../workspace/src/workspace.ts'),
   ])
@@ -76,10 +76,6 @@ if (import.meta.main) {
       if (result.ok) console.log(line)
       else console.error(line)
     }
-  }
-  if (selectors.includes('all') && checks.length !== repositoryChecks.length) {
-    console.error('check registry is incomplete')
-    process.exit(1)
   }
   if (results.some((result) => !result.ok)) process.exit(1)
 }

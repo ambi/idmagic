@@ -1,4 +1,5 @@
 import type { SpecificationDiff } from './spec-diff.ts'
+import type { ReleasePhase } from './release-state.ts'
 
 export type DocumentationImpact =
   | 'none'
@@ -16,6 +17,7 @@ export type MaturityChange = {
 }
 
 export type DocumentationImpactEnvironment = {
+  releasePhase: ReleasePhase
   read: (path: string) => string | undefined
   specificationDiff: SpecificationDiff
   maturityChanges: MaturityChange[]
@@ -237,8 +239,9 @@ export function minimumDocumentationImpact(
   record: WorkItemRecord,
   environment: DocumentationImpactEnvironment,
 ): DocumentationImpact {
+  if (environment.releasePhase === 'unpublished') return 'none'
+  if (!ownsWorkspaceDiff(record, environment)) return 'none'
   let impact: DocumentationImpact = record.change_kind === 'feature' ? 'release_note' : 'none'
-  if (!ownsWorkspaceDiff(record, environment)) return impact
   const diff = environment.specificationDiff
 
   if (
@@ -335,7 +338,7 @@ function verifyMaturityPromotions(
   record: WorkItemRecord,
   environment: DocumentationImpactEnvironment,
 ): string[] {
-  if (record.status !== 'completed') return []
+  if (record.status !== 'completed' || !ownsWorkspaceDiff(record, environment)) return []
   const findings: string[] = []
   const evidence = Array.isArray(record.maturity_evidence)
     ? record.maturity_evidence.map(object).filter((value): value is MaturityEvidence => !!value)
@@ -364,7 +367,9 @@ function verifyMaturityPromotions(
       )
     }
     if (!nonEmpty(result.documentation)) {
-      findings.push(`maturity_evidence ${promotion.feature} has no documentation path`)
+      if (environment.releasePhase === 'published') {
+        findings.push(`maturity_evidence ${promotion.feature} has no documentation path`)
+      }
       continue
     }
     const source = environment.read(result.documentation)

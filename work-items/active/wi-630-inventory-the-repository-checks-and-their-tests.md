@@ -63,7 +63,7 @@ spec_impact:
 - `backend/` と `frontend/` のテスト。本項目が扱うのはリポジトリ検査とその単体テストだけである。
 - 規約文書の重複解消。[[wi-629-one-source-for-the-document-layout-and-format-rules]] が扱う。
 - 証拠の適用条件の変更は[証拠の縮小](wi-95150-scale-verification-evidence-to-change-impact.md)、日常規約の整理は[規約の整理](wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)が扱う。
-- API 互換性と告知の公開前の適用条件は[未リリース期間のゲート](wi-38041-suspend-release-documentation-and-compatibility-gates-before-publication.md)が扱う。
+- API 互換性と告知の公開前の適用条件は[未リリース期間のゲート](../done/wi-38041-suspend-release-documentation-and-compatibility-gates-before-publication.md)が扱う。
 
 ## Design
 

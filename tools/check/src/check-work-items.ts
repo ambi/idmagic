@@ -1,5 +1,6 @@
 import { basename } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import { readReleasePhase } from './release-state.ts'
 import { compareOpenApi, type JsonSchema } from './api-compat.ts'
 import {
   claimsSpecificationAddition,
@@ -147,6 +148,7 @@ async function documentationImpactEnvironment(
   snapshot: WorkspaceSnapshot,
   records: readonly ParsedWorkItem[],
 ): Promise<DocumentationImpactEnvironment> {
+  const releasePhase = await readReleasePhase(snapshot)
   const featureRegistryPath = 'backend/cmd/internal/bootstrap/features.go'
   let specificationDiff = diffSpecifications(new Map(), new Map())
   try {
@@ -156,15 +158,14 @@ async function documentationImpactEnvironment(
   }
   const changed = changedWorkItemRecords(snapshot)
   let breakingApiChanges: string[] = []
-  try {
+  if (releasePhase === 'published') {
     breakingApiChanges = compareOpenApi(
       JSON.parse(await snapshot.read(await snapshot.openApiBaseline())) as JsonSchema,
       JSON.parse(await snapshot.read(await snapshot.generatedOpenApi())) as JsonSchema,
     ).map((finding) => `${finding.operation}: ${finding.message}`)
-  } catch {
-    // 最小 fixture と生成前の checkout には OpenAPI が無い。
   }
   return {
+    releasePhase,
     read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
     specificationDiff,
     changedRecords: changed,

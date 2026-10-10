@@ -53,7 +53,7 @@ primary_use_cases: # feature、bugfix、standards.md の変更では着手後に
     boundary: acceptance
     test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
     fault_model: ユースケースが開始コマンドを発行しない。
-maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必須
+maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必須。告知パスは公開後に必須
   - feature: start-task-v1
     from: preview
     to: supported
@@ -199,8 +199,15 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 検査は、変更種別、規範仕様の差分、TypeSpec の非推奨指定、機能レジストリの成熟度の差分から最低水準を導く。
 作成者は最低水準より強い水準を選べるが、弱い水準は選べない。
 
+この最低水準は[公開状態](../development/release.md#公開状態と日常開発)が `published` の場合に適用する。
+初回公開前は `none` を宣言でき、理由には未公開であることと、既存データや実利用契約への影響の判断を書く。
+明示的に宣言した告知文書への参照は公開状態によらず検査する。
+公開へ切り替えても、現在の変更に含まれない完了記録へ最低水準を遡及して適用しない。
+
 機能レジストリの差分で `experimental` から `preview`、または `preview` から `supported` へ昇格する場合は、完了時に昇格した機能ごとの `maturity_evidence` も記録する。
-各項目には、正確な遷移、セキュリティ検査の結果、互換性情報または移行情報、新しい成熟度を示すリリース文書のパスを書く。
+各項目には、正確な遷移、セキュリティ検査の結果、互換性情報または移行情報を書く。
+新しい成熟度を示すリリース文書の `documentation` パスは公開後に必須とし、初回公開前は省略できる。
+省略しても一次情報文書の成熟度表示と、昇格の検証は維持する。
 該当する作業項目には引き続き `primary_use_cases` が必要である。
 成熟度の証拠は、選択した境界の RED とフォールト注入の結果を置き換えない。
 この契約より前に書かれた完了記録は履歴であり、再解釈しない。

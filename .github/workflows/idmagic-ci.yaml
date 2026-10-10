@@ -25,7 +25,7 @@ jobs:
       - name: Verify Core (Tools & Configs)
         run: |
           mise run check -- "${{ github.event.pull_request.base.sha || github.event.before }}"
-          mise run check-api-compat
+          mise run check-published-api-compat
           mise run test-tools
           mise run typecheck-tools
           mise run lint-tools

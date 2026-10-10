@@ -9,7 +9,9 @@ description: Compile TypeSpec and regenerate the ignored OpenAPI and the browsab
 2. When the change adds, removes, or alters a TypeSpec operation, also run `mise run generate-contract`.
    It rewrites the tracked `backend/shared/spec/operations_gen.go`, which `check-generated-contract`
    compares against TypeSpec; commit that file with the change.
-3. Check for breakage against the release baseline with `mise run check-api-compat`.
+3. `mise run check-published-api-compat` で公開状態に応じた互換性を検査する。
+   初回公開前の差分を任意に調べる場合は `mise run check-api-compat` を使う。
+   公開状態と初回公開の切り替えは `docs/development/release.md` が定める。
 4. Confirm that the OpenAPI carries per-module tags and that `site/index.html` is
    produced.
 5. `spec/generated/` and `site/` are untracked. Do not commit them.

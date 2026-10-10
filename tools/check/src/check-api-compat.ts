@@ -1,6 +1,14 @@
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { compareOpenApi, type JsonSchema } from './api-compat.ts'
 import type { CheckOutcome } from './runner.ts'
+import { readReleasePhase } from './release-state.ts'
+
+export async function checkPublishedApiCompat(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
+  if ((await readReleasePhase(snapshot)) === 'unpublished') {
+    return { ok: true, lines: ['ok  API compatibility (unpublished; no published contract)'] }
+  }
+  return checkApiCompat(snapshot)
+}
 
 export async function checkApiCompat(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const baselinePath = await snapshot.openApiBaseline()

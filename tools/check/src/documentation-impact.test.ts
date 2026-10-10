@@ -16,6 +16,7 @@ const environment = (
   read: () => undefined,
   specificationDiff: noSpecificationChange,
   maturityChanges: [],
+  releasePhase: 'published',
   ...overrides,
 })
 
@@ -32,6 +33,90 @@ const record = {
 }
 
 describe('verifyDocumentationImpact', () => {
+  it('公開へ切り替えても変更していない未公開期間の完了記録に告知を遡及要求しない', () => {
+    expect(
+      verifyDocumentationImpact(
+        { ...record, status: 'completed', change_kind: 'feature' },
+        environment({
+          changedRecords: new Set(),
+          maturityChanges: [{ feature: 'demo-v1', from: 'preview', to: 'supported' }],
+        }),
+      ),
+    ).toEqual([])
+  })
+  it('未公開では機能追加、廃止と破壊的変更に告知断片を要求しない', () => {
+    expect(
+      verifyDocumentationImpact(
+        { ...record, change_kind: 'feature', evidence_policy: 'risk-based-v4' },
+        environment({
+          releasePhase: 'unpublished',
+          specificationDiff: {
+            ...noSpecificationChange,
+            addedScenarios: ['REQ-SYSTEM-018'],
+            removedDeclarations: ['spec/main.tsp:Old'],
+            addedDeprecations: ['spec/main.tsp:Legacy'],
+          },
+          breakingApiChanges: ['GET /old: path removed'],
+        }),
+      ),
+    ).toEqual([])
+  })
+
+  it('未公開でも明示的に宣言した告知断片を検査する', () => {
+    const findings = verifyDocumentationImpact(
+      {
+        ...record,
+        status: 'completed',
+        documentation_impact: {
+          level: 'release_note',
+          reason: '任意で初回公開向けの告知断片を保存する。',
+          references: [
+            { kind: 'release_note', path: 'docs/releases/changes/wi-999-documentation-impact.md' },
+          ],
+        },
+      },
+      environment({ releasePhase: 'unpublished' }),
+    )
+    expect(findings).toContain(
+      'documentation reference does not exist: docs/releases/changes/wi-999-documentation-impact.md',
+    )
+  })
+
+  it('未公開の成熟度昇格は告知パスだけを省略できる', () => {
+    const promotion = { feature: 'demo-v1', from: 'preview', to: 'supported' } as const
+    const completed = {
+      ...record,
+      status: 'completed',
+      primary_use_cases: [{}],
+      maturity_evidence: [
+        {
+          ...promotion,
+          security: 'セキュリティ確認を実施した。',
+          compatibility: '既存データを保持する。',
+        },
+      ],
+    }
+    const unpublished = environment({ releasePhase: 'unpublished', maturityChanges: [promotion] })
+    expect(verifyDocumentationImpact(completed, unpublished)).toEqual([])
+    expect(
+      verifyDocumentationImpact({ ...completed, maturity_evidence: [] }, unpublished),
+    ).toContain('maturity_evidence is required for promotion demo-v1: preview -> supported')
+    expect(
+      verifyDocumentationImpact(
+        { ...completed, maturity_evidence: [{ ...promotion }] },
+        unpublished,
+      ),
+    ).toContain('maturity_evidence demo-v1 has no security result')
+    expect(
+      verifyDocumentationImpact(
+        { ...completed, maturity_evidence: [{ ...promotion }] },
+        unpublished,
+      ),
+    ).toContain('maturity_evidence demo-v1 has neither compatibility nor migration information')
+    expect(
+      verifyDocumentationImpact(completed, environment({ maturityChanges: [promotion] })),
+    ).toContain('maturity_evidence demo-v1 has no documentation path')
+  })
   it('v4 もリリース文書の影響検査を迂回できない', () => {
     const result = verifyDocumentationImpact(
       { ...record, evidence_policy: 'risk-based-v4' },

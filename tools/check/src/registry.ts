@@ -1,6 +1,6 @@
 import { checkAdminScopes } from './check-admin-scopes.ts'
 import { checkAgentGuidance } from './check-agent-guidance.ts'
-import { checkApiCompat } from './check-api-compat.ts'
+import { checkApiCompat, checkPublishedApiCompat } from './check-api-compat.ts'
 import { checkBoundaries } from './check-boundaries.ts'
 import { checkBoundaryDebtRatchet } from './boundary-debt-ratchet.ts'
 import { checkCommandMap } from './check-command-map.ts'
@@ -52,7 +52,8 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
     groups: ['all'],
     run: checkVulnerabilitySuppressions,
   },
-  { name: 'api-compat', groups: ['all'], run: checkApiCompat },
+  { name: 'api-compat', groups: [], run: checkApiCompat },
+  { name: 'published-api-compat', groups: ['all'], run: checkPublishedApiCompat },
 ]
 
 export function selectChecks(selectors: readonly string[]): RepositoryCheck[] {

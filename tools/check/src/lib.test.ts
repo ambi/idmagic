@@ -341,6 +341,37 @@ describe('validateAgainstSchema — work-item', () => {
     expect(validateAgainstSchema('work-item', started, '')).toEqual([])
   })
 
+  it('成熟度の告知パスは状態依存の検査へ委ね、セキュリティと移行情報は必須のままにする', () => {
+    const evidence = {
+      feature: 'demo-v1',
+      from: 'preview',
+      to: 'supported',
+      security: 'セキュリティ確認を実施した。',
+      compatibility: '既存の設定とデータを保持する。',
+    }
+    const started = {
+      ...validWorkItem,
+      status: 'in_progress',
+      evidence_policy: 'risk-based-v4',
+      initial_context: validInitialContext,
+      documentation_impact: validDocumentationImpact,
+      maturity_evidence: [evidence],
+    }
+    expect(validateAgainstSchema('work-item', started, '')).toEqual([])
+    const { security: _security, ...withoutSecurity } = evidence
+    expect(
+      validateAgainstSchema('work-item', { ...started, maturity_evidence: [withoutSecurity] }, ''),
+    ).not.toEqual([])
+    const { compatibility: _compatibility, ...withoutCompatibility } = evidence
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        { ...started, maturity_evidence: [withoutCompatibility] },
+        '',
+      ),
+    ).not.toEqual([])
+  })
+
   it('requires the current evidence policy once the item is in progress', () => {
     const started = {
       ...validWorkItem,
