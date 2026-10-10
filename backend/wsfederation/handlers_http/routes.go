@@ -5,10 +5,11 @@
 package handlers_http
 
 import (
+	"context"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -40,7 +41,13 @@ type Deps struct {
 // Authentication が所有し、組み立て地点が結ぶ。
 type Sessions struct {
 	AuthnResolver  authdomain.AuthenticationContextResolver
-	SessionManager *sessionusecases.SessionManager
+	SessionManager SessionRevoker
+}
+
+// SessionRevoker はログアウトで、cookie が指すログインセッションを失効させる。Authentication の
+// SessionManager が満たし、組み立て地点が渡す。
+type SessionRevoker interface {
+	Revoke(ctx context.Context, cookieHeader string) error
 }
 
 // RegisterRoutes は WS-Federation passive のエンドポイントを登録する。

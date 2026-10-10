@@ -204,12 +204,31 @@ func emitRevoked(deps Deps, device *domain.TrustedDevice, now time.Time) {
 	if deps.Emit == nil || device == nil {
 		return
 	}
-	reason := spec.TrustedDeviceSelfRevoke
-	if device.RevokeReason != nil {
-		reason = *device.RevokeReason
+	deps.Emit(domain.RevokedEvent(device, now))
+}
+
+// UserDeviceRevoker は ports.UserDeviceRevoker を Repo で実装する。
+type UserDeviceRevoker struct{ Repo ports.TrustedDeviceRepository }
+
+var _ ports.UserDeviceRevoker = UserDeviceRevoker{}
+
+// RevokeAllForUser は対象ユーザーの信頼済みデバイスをすべて失効させ、失効した端末ごとの
+// TrustedDeviceRevoked を返す。
+func (r UserDeviceRevoker) RevokeAllForUser(
+	ctx context.Context,
+	tenantID, userID string,
+	reason spec.TrustedDeviceRevokeReason,
+	now time.Time,
+) ([]spec.DomainEvent, error) {
+	revoked, err := r.Repo.RevokeAllForUser(ctx, tenantID, userID, reason, now)
+	if err != nil {
+		return nil, err
 	}
-	deps.Emit(&domain.TrustedDeviceRevoked{
-		At: now, TenantID: device.TenantID, UserID: device.UserID,
-		DeviceID: device.ID, Reason: reason,
-	})
+	events := make([]spec.DomainEvent, 0, len(revoked))
+	for _, device := range revoked {
+		if device != nil {
+			events = append(events, domain.RevokedEvent(device, now))
+		}
+	}
+	return events, nil
 }

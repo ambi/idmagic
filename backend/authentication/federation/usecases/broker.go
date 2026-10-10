@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
@@ -122,7 +124,7 @@ func UnlinkIdentity(
 	now time.Time,
 ) error {
 	now = normalizedNow(now)
-	if authn == nil || !mfausecases.StepUpSatisfied(authn, now) {
+	if authn == nil || !mfadomain.StepUpSatisfied(authn, now) {
 		return mfausecases.ErrStepUpRequired
 	}
 	user, err := deps.Users.FindBySub(ctx, authn.UserID)

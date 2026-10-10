@@ -9,7 +9,6 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -103,7 +102,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 			}
 			policy := oauthdomain.ParsePrompt(out.Request)
 			needsStepUp := out.Request.ACRValues != nil &&
-				!authusecases.ACRSatisfies(authn.ACR, *out.Request.ACRValues)
+				!authdomain.ACRSatisfies(authn.ACR, *out.Request.ACRValues)
 			if oauthdomain.NeedsReauthentication(policy, time.Unix(authn.AuthTime, 0), time.Now(), false) ||
 				needsStepUp {
 				if prompt.None {

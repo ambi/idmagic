@@ -9,23 +9,15 @@ import (
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ResolveTenantPolicy returns the global defaults with the override of the
 // tenant the context carries applied. Every path that sets or validates a
-// password starts here. A context without a tenant gets the global defaults:
-// failing a login or a password change over a policy lookup would be out of
-// proportion, and the defaults are never weaker than an override.
+// password starts here; password/domain.PolicyForTenant decides what a context
+// without a tenant gets.
 func ResolveTenantPolicy(ctx context.Context) PasswordPolicySnapshot {
-	return passworddomain.ResolvePasswordPolicy(tenantports.Tenant(ctx), DefaultPasswordPolicySnapshot())
-}
-
-// ResolvePolicyForTenant builds the policy from an already-resolved tenant, for
-// paths that carry no tenant in their context (batch jobs and the like).
-func ResolvePolicyForTenant(tenant *tenancydomain.Tenant) PasswordPolicySnapshot {
-	return passworddomain.ResolvePasswordPolicy(tenant, DefaultPasswordPolicySnapshot())
+	return passworddomain.PolicyForTenant(tenantports.Tenant(ctx))
 }
 
 // EnforcePasswordExpiry gives a user whose password has expired the

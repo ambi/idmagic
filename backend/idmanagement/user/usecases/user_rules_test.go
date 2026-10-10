@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
+
 	authnmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -69,7 +71,7 @@ func newUserRulesFixture(t *testing.T) *userRulesFixture {
 		agents: agentmemory.NewAgentRepository(),
 	}
 	f.deps = userusecases.AdminUserDeps{
-		UserRepo: f.users, SessionStore: f.sessions, TrustedDeviceRepo: f.devices, QuotaRepo: f.quota,
+		UserRepo: f.users, SessionStore: f.sessions, TrustedDeviceRepo: f.devices, TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: f.devices}, QuotaRepo: f.quota,
 		AgentRepo:      f.agents,
 		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authnmemory.NewPasswordHistoryRepository(),
 		ProvisioningNotifier: f.notifier,

@@ -7,7 +7,6 @@ package usecases
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"time"
 
@@ -20,8 +19,8 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// ErrSessionNotFound は対象セッションが存在しないか、本人のものでない場合。
-var ErrSessionNotFound = errors.New("session not found")
+// ErrSessionNotFound は session/domain が定義する同じ値の別名である。errors.Is の判定は変わらない。
+var ErrSessionNotFound = domain.ErrSessionNotFound
 
 // SessionDeps はセッション use case の依存。
 type SessionDeps struct {

@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -35,7 +37,6 @@ import (
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -288,7 +289,7 @@ func (f *idmRefusalFixture) seedSession(
 	now := time.Now().UTC()
 	session := &sessiondomain.LoginSession{
 		ID: id, TenantID: tenantID, UserID: userID,
-		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: authusecases.DeriveACR([]string{"pwd"}),
+		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: authdomain.DeriveACR([]string{"pwd"}),
 		ExpiresAt: now.Add(time.Hour),
 	}
 	for _, apply := range mutate {

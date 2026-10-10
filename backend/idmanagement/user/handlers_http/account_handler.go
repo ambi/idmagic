@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	mfausecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -154,11 +155,11 @@ func writeAccountError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
-	case errors.Is(err, mfausecases.ErrStepUpRequired):
+	case errors.Is(err, mfadomain.ErrStepUpRequired):
 		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	case errors.Is(err, idmusecases.ErrUserNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
-	case errors.Is(err, sessionusecases.ErrSessionNotFound):
+	case errors.Is(err, sessiondomain.ErrSessionNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	case errors.Is(err, userusecases.ErrAttributeNotEditable):
 		return support.WriteProblem(c, http.StatusForbidden, "attribute_not_editable", "This attribute cannot be edited.")
@@ -182,8 +183,8 @@ func requireStepUpSub(d Deps, c *echo.Context) (string, error) {
 	if authn == nil || authn.Pending() {
 		return "", support.ErrAdminAuthenticationRequired
 	}
-	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
-		return "", mfausecases.ErrStepUpRequired
+	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
+		return "", mfadomain.ErrStepUpRequired
 	}
 	return authn.Subject(), nil
 }

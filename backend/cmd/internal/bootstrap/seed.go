@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -14,7 +16,6 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	passwordusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -79,7 +80,7 @@ func SeedDemoData(
 	} else if !sameDemoClient(currentClient, demoClient, clientSecret) {
 		return fmt.Errorf("seed drift at oauth2-client:%s", seed.ClientID)
 	}
-	if result := passwordusecases.ValidatePassword(password); !result.OK {
+	if result := passworddomain.ValidatePassword(password); !result.OK {
 		return errors.New("seed user password violates password policy")
 	}
 	hash, err := hasher.Hash(password)

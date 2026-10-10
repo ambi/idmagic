@@ -5,8 +5,9 @@ import (
 	"net/url"
 	"time"
 
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -142,7 +143,7 @@ func (d Deps) emit(event spec.DomainEvent) {
 
 func (d Deps) clearSessionCookie(c *echo.Context) {
 	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure は HTTPS issuer で有効化、ローカル HTTP 開発では意図的に無効。
-		Name: support.TenantCookieName(c, authusecases.SessionCookie), Path: support.TenantCookiePath(c),
+		Name: support.TenantCookieName(c, sessiondomain.SessionCookie), Path: support.TenantCookiePath(c),
 		Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode,
 		MaxAge: -1,
 	})

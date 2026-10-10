@@ -13,13 +13,14 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	federationmemory "github.com/ambi/idmagic/backend/authentication/federation/db_memory"
 	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/securitynotification/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -77,7 +78,7 @@ func newPreferencesServer(t *testing.T) (*echo.Echo, string) {
 	sessionID := "sess-fresh"
 	if err := store.Save(ctx, &sessiondomain.LoginSession{
 		ID: sessionID, TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
-		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: authusecases.DeriveACR([]string{"pwd"}),
+		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: authdomain.DeriveACR([]string{"pwd"}),
 		ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -86,7 +87,7 @@ func newPreferencesServer(t *testing.T) (*echo.Echo, string) {
 	if err := store.Save(ctx, &sessiondomain.LoginSession{
 		ID: staleSessionID, TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
 		AuthTime: now.Add(-time.Hour).Unix(), AMR: []string{"pwd"},
-		ACR: authusecases.DeriveACR([]string{"pwd"}), ExpiresAt: now.Add(time.Hour),
+		ACR: authdomain.DeriveACR([]string{"pwd"}), ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}

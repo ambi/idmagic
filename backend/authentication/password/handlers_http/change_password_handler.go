@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
 	"github.com/labstack/echo/v5"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	mfausecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -31,7 +32,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	// パスワード変更は高 sensitivity 操作。step-up 再認証を要求する。
-	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
+	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
 		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	}
 	var input changePasswordAPIRequest

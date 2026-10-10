@@ -28,6 +28,7 @@ func (d *Dependencies) UserLifecycleCommands(emit func(spec.DomainEvent), actor 
 			DeviceCodeStore: d.OAuth2.DeviceCodeStore, ApprovalRequestStore: d.OAuth2.ApprovalRequestStore,
 			SessionStore: d.Authentication.SessionStore, MfaFactorRepo: d.Authentication.MfaFactorRepo,
 			TrustedDeviceRepo:      d.Authentication.TrustedDeviceRepo,
+			TrustedDevices:         d.Authentication.UserDeviceRevoker(),
 			WebAuthnCredentialRepo: d.Authentication.WebAuthnCredentialRepo, RecoveryCodeRepo: d.Authentication.RecoveryCodeRepo,
 			PasswordHasher: d.Authentication.PasswordHasher, PasswordHistoryRepo: d.Authentication.PasswordHistoryRepo,
 			QuotaRepo: d.Tenancy.QuotaRepo,

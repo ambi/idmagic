@@ -290,3 +290,31 @@ func TestUnwiredRepositoryNeverTrustsADevice(t *testing.T) {
 		t.Fatalf("Evaluate = %+v (err %v), want an untrusted result", result, err)
 	}
 }
+
+// 無効化の呼び出し側が自分の発行先で発行できるよう、失効した端末ごとのイベントを返し、自分では発行しない。
+func TestUserDeviceRevokerReturnsOneRevokedEventPerDevice(t *testing.T) {
+	t.Parallel()
+	deps, events := testDeps()
+	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
+	issue(t, deps, "otp", now)
+	issue(t, deps, "otp", now)
+	*events = nil
+
+	revoked, err := UserDeviceRevoker{Repo: deps.Repo}.RevokeAllForUser(
+		context.Background(), testTenant, testUser, spec.TrustedDeviceAccountDisabled, now.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("RevokeAllForUser: %v", err)
+	}
+	if len(*events) != 0 {
+		t.Fatalf("revoker emitted %d event(s) itself, want none", len(*events))
+	}
+	if len(revoked) != 2 {
+		t.Fatalf("revoked events = %d, want 2", len(revoked))
+	}
+	for _, event := range revoked {
+		got, ok := event.(*domain.TrustedDeviceRevoked)
+		if !ok || got.UserID != testUser || got.Reason != spec.TrustedDeviceAccountDisabled || !got.At.Equal(now.Add(time.Hour)) {
+			t.Fatalf("event = %+v, want TrustedDeviceRevoked for %s with account_disabled", event, testUser)
+		}
+	}
+}

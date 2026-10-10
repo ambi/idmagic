@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfausecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
@@ -55,7 +57,7 @@ func RequireStepUpSession(d Deps, c *echo.Context) (sub, sessionID string, err e
 	if authn == nil || authn.AuthenticationPending {
 		return "", "", support.ErrAdminAuthenticationRequired
 	}
-	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
+	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
 		return "", "", mfausecases.ErrStepUpRequired
 	}
 	return authn.UserID, authn.SessionID, nil

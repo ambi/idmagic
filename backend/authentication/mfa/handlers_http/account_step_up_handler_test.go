@@ -35,7 +35,6 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfahttp "github.com/ambi/idmagic/backend/authentication/mfa/handlers_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -125,7 +124,7 @@ func seedSession(t *testing.T, store *sessionmemory.SessionStore, id string, aut
 	sess := &sessiondomain.LoginSession{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
 		AuthTime: authTime.Unix(), AMR: []string{"pwd"},
-		ACR:       authusecases.DeriveACR([]string{"pwd"}),
+		ACR:       authdomain.DeriveACR([]string{"pwd"}),
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
 	if err := store.Save(context.Background(), sess); err != nil {

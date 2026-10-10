@@ -400,16 +400,6 @@
       "reason": "WsFederation -> SigningKeys lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "private-import:Application->Authentication",
-      "sourceModule": "Application",
-      "targetModule": "Authentication",
-      "violations": [
-        "private-import:Application:backend/application/usecases->backend/authentication/trusteddevice/usecases",
-        "private-import:Application:backend/application/usecases->backend/authentication/usecases"
-      ],
-      "reason": "Application's sign-in rules read Authentication's ACR and AMR helpers and the trusted-device AMR value from its use cases. Authentication owns these rules, so it publishes the judgments as public operations (D1, D3) in wi-87746."
-    },
-    {
       "id": "private-import:Application->OAuth2",
       "sourceModule": "Application",
       "targetModule": "OAuth2",
@@ -461,19 +451,6 @@
       "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL and in-memory adapters. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
     },
     {
-      "id": "private-import:IdManagement->Authentication",
-      "sourceModule": "IdManagement",
-      "targetModule": "Authentication",
-      "violations": [
-        "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/authentication/mfa/usecases",
-        "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/authentication/password/usecases",
-        "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/authentication/session/usecases",
-        "private-import:IdManagement:backend/idmanagement/user/usecases->backend/authentication/password/usecases",
-        "private-import:IdManagement:backend/idmanagement/user/usecases->backend/authentication/trusteddevice/usecases"
-      ],
-      "reason": "IdManagement validates passwords against the tenant policy, checks step-up, resolves sessions, and revokes trusted devices through Authentication's use cases. Authentication owns these rules and publishes the judgments and operations without its stores (D1, D3) in wi-87746."
-    },
-    {
       "id": "private-import:IdManagement->OAuth2",
       "sourceModule": "IdManagement",
       "targetModule": "OAuth2",
@@ -503,20 +480,10 @@
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/session/usecases",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/totp/usecases",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/trusteddevice/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/usecases",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/webauthn/handlers_http",
         "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/webauthn/usecases"
       ],
       "reason": "OAuth2's authorization handlers orchestrate login, password expiry, MFA enrollment, TOTP, WebAuthn, recovery codes, and trusted devices by calling nine Authentication packages directly. Authentication owns these steps, so their implementation moves into Authentication and OAuth2 only resumes the authorization request (D1, D8) in wi-93464."
-    },
-    {
-      "id": "private-import:Saml->Authentication",
-      "sourceModule": "Saml",
-      "targetModule": "Authentication",
-      "violations": [
-        "private-import:Saml:backend/saml/handlers_http->backend/authentication/session/usecases"
-      ],
-      "reason": "SAML's sign-in handler resolves the login session through Authentication's session use cases. Authentication publishes session resolution without exposing session issuance (D1, D3) in wi-87746."
     },
     {
       "id": "private-import:Saml->WsFederation",
@@ -530,15 +497,6 @@
       "reason": "SAML builds and signs assertions with WsFederation's tokens_saml package. wi-90942 decides whether the builder becomes a WsFederation public package or splits into a protocol-neutral shared library (D3, D5, D8)."
     },
     {
-      "id": "private-import:Tenancy->Authentication",
-      "sourceModule": "Tenancy",
-      "targetModule": "Authentication",
-      "violations": [
-        "private-import:Tenancy:backend/tenancy/handlers_http->backend/authentication/password/usecases"
-      ],
-      "reason": "Tenancy's settings handler validates password policy bounds with constants from Authentication's password use cases. Authentication publishes the policy bounds (D1, D3) in wi-87746; the Tenancy -> Authentication direction itself is decided in wi-21934."
-    },
-    {
       "id": "private-import:Tenancy->WsFederation",
       "sourceModule": "Tenancy",
       "targetModule": "WsFederation",
@@ -546,15 +504,6 @@
         "private-import:Tenancy:backend/tenancy/handlers_http->backend/wsfederation/tokens_saml"
       ],
       "reason": "Tenancy's handler dependencies carry the SAML signer type from WsFederation's tokens_saml package. wi-90942 removes the type from Tenancy or replaces it with a published one (D3, D5)."
-    },
-    {
-      "id": "private-import:WsFederation->Authentication",
-      "sourceModule": "WsFederation",
-      "targetModule": "Authentication",
-      "violations": [
-        "private-import:WsFederation:backend/wsfederation/handlers_http->backend/authentication/session/usecases"
-      ],
-      "reason": "WS-Federation's sign-in handler resolves the login session through Authentication's session use cases. Authentication publishes session resolution (D1, D3) in wi-87746."
     },
     {
       "id": "shared-dependency:shared->ClaimMapping",

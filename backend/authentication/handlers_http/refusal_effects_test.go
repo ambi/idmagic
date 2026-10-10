@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -45,7 +47,6 @@ import (
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_memory"
 	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
 	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
@@ -296,7 +297,7 @@ func (f *authRefusalFixture) seedSession(t *testing.T, id, tenantID, userID stri
 	now := time.Now().UTC()
 	session := &sessiondomain.LoginSession{
 		ID: id, TenantID: tenantID, UserID: userID,
-		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: authusecases.DeriveACR([]string{"pwd"}),
+		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: authdomain.DeriveACR([]string{"pwd"}),
 		ExpiresAt: now.Add(time.Hour),
 	}
 	for _, apply := range mutate {
@@ -1546,7 +1547,7 @@ func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
 				func(session *sessiondomain.LoginSession) {
 					session.AuthTime = time.Now().Add(-time.Hour).UTC().Unix()
 					session.AMR = []string{"pwd", "tdev"}
-					session.ACR = authusecases.DeriveACR(session.AMR)
+					session.ACR = authdomain.DeriveACR(session.AMR)
 				})
 
 			request := operation.request(fixture, deviceID)

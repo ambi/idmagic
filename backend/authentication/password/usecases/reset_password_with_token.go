@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
@@ -80,7 +82,7 @@ func ResetPasswordWithToken(
 	}
 
 	snap := resolveSnapshot(deps.Policy, deps.HistoryDepth)
-	result := ValidatePasswordWith(in.NewPassword, snap)
+	result := passworddomain.ValidatePasswordWith(in.NewPassword, snap)
 	if !result.OK {
 		return nil, &PasswordPolicyError{Violations: result.Violations}
 	}

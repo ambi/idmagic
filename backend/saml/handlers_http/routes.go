@@ -6,8 +6,9 @@
 package handlers_http
 
 import (
+	"context"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
@@ -36,7 +37,13 @@ type Deps struct {
 // Authentication が所有し、組み立て地点が結ぶ。
 type Sessions struct {
 	AuthnResolver  authdomain.AuthenticationContextResolver
-	SessionManager *sessionusecases.SessionManager
+	SessionManager SessionRevoker
+}
+
+// SessionRevoker はログアウトで、cookie が指すログインセッションを失効させる。Authentication の
+// SessionManager が満たし、組み立て地点が渡す。
+type SessionRevoker interface {
+	Revoke(ctx context.Context, cookieHeader string) error
 }
 
 // RegisterRoutes は SAML 2.0 IdP のエンドポイントを登録する。

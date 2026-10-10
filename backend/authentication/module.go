@@ -15,6 +15,7 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -52,4 +53,14 @@ type Module struct {
 	SentinelPasswordHash    string
 	SessionManager          *sessionusecases.SessionManager
 	AuthnResolver           domain.AuthenticationContextResolver
+}
+
+// UserDeviceRevoker は、利用者の信頼済みデバイスをまとめて失効させる契約を返す。保存先が
+// 未配線なら nil を返し、受け取る側は失効を行わない。nil の保存先を包んだ値を返すと、
+// 受け取る側の nil の確認をすり抜けて呼び出しで panic するからである。
+func (m Module) UserDeviceRevoker() trusteddeviceports.UserDeviceRevoker {
+	if m.TrustedDeviceRepo == nil {
+		return nil
+	}
+	return trusteddeviceusecases.UserDeviceRevoker{Repo: m.TrustedDeviceRepo}
 }

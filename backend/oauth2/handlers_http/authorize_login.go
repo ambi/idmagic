@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -118,7 +120,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		d.emitAuthenticationFailure(c, input.Username, "account_disabled")
 		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
 	}
-	if result := authusecases.ValidatePassword(input.Password); !result.OK {
+	if result := passworddomain.ValidatePassword(input.Password); !result.OK {
 		return support.WriteProblem(c, http.StatusUnauthorized, "password_policy", "The password does not meet the security requirements.")
 	}
 	if d.LoginAttemptThrottle != nil {

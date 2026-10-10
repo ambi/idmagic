@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	mfausecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/approval/usecases"
 	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -126,7 +127,7 @@ func (d Deps) handleDecideMyApprovalRequest(c *echo.Context) error {
 	if authn == nil || authn.AuthenticationPending {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
-	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
+	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
 		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	}
 	var input accountApprovalDecisionRequest

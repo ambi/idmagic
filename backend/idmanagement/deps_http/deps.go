@@ -71,6 +71,8 @@ type Deps struct {
 	MfaFactorRepo        mfaports.MfaFactorRepository
 	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する (wi-91)。
 	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
 	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade の到達先である (wi-513)。
 	// この 2 つは Authentication が持つ資格情報だが、消すのは IdManagement の Purge なので
 	// ここを通って AdminUserDeps へ届く。

@@ -496,6 +496,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ApprovalRequestStore:      d.OAuth2.ApprovalRequestStore,
 		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
 		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
+		TrustedDevices:            d.Authentication.UserDeviceRevoker(),
 		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
 		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
@@ -571,14 +572,22 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		FederationSigner:         d.FederationSigner,
 	})
 
+	// nil の *SessionManager をインターフェースへ入れると nil でなくなり、受け取り側の nil の確認を
+	// すり抜けるので、ないときはポートごと渡さない。
+	var wsfedSessionRevoker wsfedhttp.SessionRevoker
+	var samlSessionRevoker samlhttp.SessionRevoker
+	if d.Authentication.SessionManager != nil {
+		wsfedSessionRevoker = d.Authentication.SessionManager
+		samlSessionRevoker = d.Authentication.SessionManager
+	}
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate,
-		wsfedhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: d.Authentication.SessionManager},
+		wsfedhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash,
 		d.Tenancy.AttrSchemaRepo)
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate,
-		samlhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: d.Authentication.SessionManager},
+		samlhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner, d.Tenancy.AttrSchemaRepo)
 
 	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.Tenancy.AttrSchemaRepo)

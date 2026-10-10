@@ -12,11 +12,12 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -71,7 +72,7 @@ func TestCheckSessionIframe_validSession_respondsUnchanged(t *testing.T) {
 	sess := &sessiondomain.LoginSession{
 		ID: "sess-1", TenantID: tenancydomain.DefaultTenantID, UserID: "user-1",
 		AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
-		ACR:       authusecases.DeriveACR([]string{"pwd"}),
+		ACR:       authdomain.DeriveACR([]string{"pwd"}),
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
 	if err := store.Save(context.Background(), sess); err != nil {

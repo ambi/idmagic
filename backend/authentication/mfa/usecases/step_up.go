@@ -11,6 +11,8 @@ import (
 	"errors"
 	"time"
 
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
@@ -26,8 +28,8 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// StepUpRecencySeconds は step-up が有効とみなされる窓 (5 分)。
-const StepUpRecencySeconds = 300
+// StepUpRecencySeconds は mfa/domain が定義する step-up の窓の別名である。
+const StepUpRecencySeconds = mfadomain.StepUpRecencySeconds
 
 // StepUpMethod は再認証に使える factor。
 type StepUpMethod string
@@ -40,30 +42,13 @@ const (
 )
 
 var (
-	// ErrStepUpRequired は recency 窓を外れており再認証が必要なことを表す (handler が 403 に写す)。
-	ErrStepUpRequired = errors.New("step-up authentication required")
+	// ErrStepUpRequired は mfa/domain が定義する同じ値の別名である。errors.Is の判定は変わらない。
+	ErrStepUpRequired = mfadomain.ErrStepUpRequired
 	// ErrStepUpFailed は提示された factor (パスワード / TOTP コード) の検証に失敗したことを表す。
 	ErrStepUpFailed = errors.New("step-up authentication failed")
 	// ErrStepUpUnsupportedMethod は未対応 / 未登録の method を要求したことを表す。
 	ErrStepUpUnsupportedMethod = errors.New("step-up method unsupported")
 )
-
-// StepUpSatisfied は authn が recency 窓内に強い (再)認証を済ませているかを判定する。
-// 共有の HTTP 支援が返す認証の結果もそのまま渡せる。
-func StepUpSatisfied(resolved domain.ResolvedAuthentication, now time.Time) bool {
-	authn := domain.ContextOf(resolved)
-	if authn == nil || authn.AuthenticationPending {
-		return false
-	}
-	recent := max(authn.AuthTime, authn.StepUpAt)
-	if recent <= 0 {
-		return false
-	}
-	if now.IsZero() {
-		now = time.Now().UTC()
-	}
-	return now.Unix()-recent <= StepUpRecencySeconds
-}
 
 // AvailableStepUpMethods は user が step-up に使える method を返す。password は常に利用可能、
 // totp は enrolled の場合のみ。

@@ -14,14 +14,13 @@ import (
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/session/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
-	SessionCookie     = "idmagic_session"
+	SessionCookie     = domain.SessionCookie
 	SessionTTLSeconds = 3600
 )
 
@@ -74,7 +73,7 @@ func (m *SessionManager) CreateWithPending(
 		UserID:                sub,
 		AuthTime:              now.Unix(),
 		AMR:                   amr,
-		ACR:                   authusecases.DeriveACR(amr),
+		ACR:                   authdomain.DeriveACR(amr),
 		AuthenticationPending: authenticationPending,
 		PendingPurpose:        domain.LoginPendingNone,
 		ExpiresAt:             now.Add(SessionTTLSeconds * time.Second),
@@ -123,7 +122,7 @@ func (m *SessionManager) CompleteFactor(
 	// 作りに依存しなくなる。
 	candidate := *sess
 	candidate.AMR = merged
-	candidate.ACR = authusecases.DeriveACR(merged)
+	candidate.ACR = authdomain.DeriveACR(merged)
 	candidate.AuthenticationPending = false
 	candidate.PendingPurpose = domain.LoginPendingNone
 	candidate.EnrollmentDeadline = nil

@@ -12,8 +12,6 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -425,14 +423,14 @@ func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.Auth
 // ルールでは、記憶済みデバイスによる昇格 (amr の tdev のみ) を充足として認めない。本物の
 // 第二要素があれば、同じセッションに tdev が併存していても満たされている。
 func mfaSatisfied(rule domain.SignInRule, authn *authdomain.AuthenticationContext) bool {
-	if !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
+	if !authdomain.ACRSatisfies(authn.ACR, authdomain.ACRMFA) {
 		return false
 	}
 	if rule.TrustedDeviceAllowed() {
 		return true
 	}
 	for _, method := range authn.AMR {
-		if method != trusteddeviceusecases.AMRTrustedDevice && authusecases.IsMfaAMR(method) {
+		if method != authdomain.AMRTrustedDevice && authdomain.IsMfaAMR(method) {
 			return true
 		}
 	}

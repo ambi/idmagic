@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
+
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
-	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
@@ -65,7 +65,9 @@ type AdminUserDeps struct {
 	MfaFactorRepo        mfaports.MfaFactorRepository
 	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する
 	// ために持つ (wi-91)。nil なら未配線として何もしない。
-	TrustedDeviceRepo   trusteddeviceports.TrustedDeviceRepository
+	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。nil なら未配線として何もしない。
+	TrustedDevices      trusteddeviceports.UserDeviceRevoker
 	PasswordHasher      passwordports.PasswordHasher
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
 	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade から Authentication の
@@ -138,10 +140,10 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	// An admin-issued password goes through the same tenant-resolved policy as
 	// change-password and reset-password; otherwise a tenant that raised
 	// min_length would still get baseline-strength passwords from this path.
-	policy := authusecases.ResolveTenantPolicy(ctx)
-	result := authusecases.ValidatePasswordWith(in.Password, policy)
+	policy := passworddomain.PolicyForTenant(tenantports.Tenant(ctx))
+	result := passworddomain.ValidatePasswordWith(in.Password, policy)
 	if !result.OK {
-		return nil, &authusecases.PasswordPolicyError{Violations: result.Violations}
+		return nil, &passworddomain.PasswordPolicyError{Violations: result.Violations}
 	}
 	roles, err := idmusecases.NormalizeRoles(in.Roles)
 	if err != nil {
@@ -376,25 +378,25 @@ func disableOwnedAgents(ctx context.Context, deps AdminUserDeps, tenantID, userI
 }
 
 // revokeTrustedDevicesOnDisable は無効化に伴い記憶済みの端末をすべて失効させる (wi-91)。
-// このモジュールの Emit は error を返す契約なので、fire-and-forget な use case 側の sink で
-// 取りこぼした最初のエラーをここで拾い直す。
+// 失効したすべての端末のイベントを発行してから、発行の最初のエラーを返す。
 func revokeTrustedDevicesOnDisable(
 	ctx context.Context,
 	deps AdminUserDeps,
 	tenantID, targetUserID string,
 	now time.Time,
 ) error {
+	if deps.TrustedDevices == nil {
+		return nil
+	}
+	events, err := deps.TrustedDevices.RevokeAllForUser(ctx, tenantID, targetUserID, spec.TrustedDeviceAccountDisabled, now)
+	if err != nil {
+		return err
+	}
 	var emitErr error
-	sink := func(event spec.DomainEvent) {
+	for _, event := range events {
 		if err := idmusecases.AdminEmit(deps.Emit, event); err != nil && emitErr == nil {
 			emitErr = err
 		}
-	}
-	if err := trusteddeviceusecases.RevokeAllForUser(
-		ctx, trusteddeviceusecases.Deps{Repo: deps.TrustedDeviceRepo, Emit: sink},
-		tenantID, targetUserID, spec.TrustedDeviceAccountDisabled, now,
-	); err != nil {
-		return err
 	}
 	return emitErr
 }

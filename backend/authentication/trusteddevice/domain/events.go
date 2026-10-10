@@ -32,3 +32,13 @@ type TrustedDeviceRevoked struct {
 
 func (e *TrustedDeviceRevoked) EventType() string     { return "TrustedDeviceRevoked" }
 func (e *TrustedDeviceRevoked) OccurredAt() time.Time { return e.At }
+
+// RevokedEvent は失効した端末の TrustedDeviceRevoked を組み立てる。失効の理由が記録されていない
+// 端末は、利用者自身による失効として扱う。
+func RevokedEvent(device *TrustedDevice, now time.Time) *TrustedDeviceRevoked {
+	reason := spec.TrustedDeviceSelfRevoke
+	if device.RevokeReason != nil {
+		reason = *device.RevokeReason
+	}
+	return &TrustedDeviceRevoked{At: now, TenantID: device.TenantID, UserID: device.UserID, DeviceID: device.ID, Reason: reason}
+}

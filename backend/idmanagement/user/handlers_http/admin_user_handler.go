@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -334,6 +335,7 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, ApprovalRequestStore: d.ApprovalRequestStore, MfaFactorRepo: d.MfaFactorRepo,
 		TrustedDeviceRepo:      d.TrustedDeviceRepo,
+		TrustedDevices:         d.TrustedDevices,
 		WebAuthnCredentialRepo: d.WebAuthnCredentialRepo, RecoveryCodeRepo: d.RecoveryCodeRepo,
 		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
 		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo, TenantRepo: d.TenantRepo,
@@ -372,7 +374,7 @@ func writeAdminUserError(c *echo.Context, err error) error {
 	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_required_action", "The required action is invalid.")
 	default:
-		if policyErr, ok := errors.AsType[*authusecases.PasswordPolicyError](err); ok {
+		if policyErr, ok := errors.AsType[*passworddomain.PasswordPolicyError](err); ok {
 			violations := make([]string, len(policyErr.Violations))
 			for i, violation := range policyErr.Violations {
 				violations[i] = string(violation)

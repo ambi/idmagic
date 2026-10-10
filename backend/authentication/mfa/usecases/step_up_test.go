@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
@@ -19,36 +21,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
-
-func TestStepUpSatisfiedRecencyWindow(t *testing.T) {
-	t.Parallel()
-	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	cases := []struct {
-		name string
-		ctx  *authdomain.AuthenticationContext
-		want bool
-	}{
-		{"fresh auth", &authdomain.AuthenticationContext{AuthTime: now.Add(-time.Minute).Unix()}, true},
-		{"stale auth", &authdomain.AuthenticationContext{AuthTime: now.Add(-10 * time.Minute).Unix()}, false},
-		{
-			"stale auth but recent step-up",
-			&authdomain.AuthenticationContext{
-				AuthTime: now.Add(-10 * time.Minute).Unix(), StepUpAt: now.Add(-2 * time.Minute).Unix(),
-			},
-			true,
-		},
-		{"boundary 300s", &authdomain.AuthenticationContext{AuthTime: now.Add(-300 * time.Second).Unix()}, true},
-		{"just over 300s", &authdomain.AuthenticationContext{AuthTime: now.Add(-301 * time.Second).Unix()}, false},
-		{"pending never", &authdomain.AuthenticationContext{AuthTime: now.Unix(), AuthenticationPending: true}, false},
-		{"zero times", &authdomain.AuthenticationContext{}, false},
-		{"nil", nil, false},
-	}
-	for _, tc := range cases {
-		if got := StepUpSatisfied(tc.ctx, now); got != tc.want {
-			t.Errorf("%s: StepUpSatisfied = %v, want %v", tc.name, got, tc.want)
-		}
-	}
-}
 
 func TestAvailableStepUpMethods(t *testing.T) {
 	t.Parallel()
@@ -120,7 +92,7 @@ func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 		t.Fatalf("step_up_at=%d, want %d", sess.StepUpAt, now.Unix())
 	}
 	// 刻んだ後は recency 窓内なので gate を通過する。
-	if !StepUpSatisfied(&authdomain.AuthenticationContext{AuthTime: authn.AuthTime, StepUpAt: sess.StepUpAt}, now) {
+	if !mfadomain.StepUpSatisfied(&authdomain.AuthenticationContext{AuthTime: authn.AuthTime, StepUpAt: sess.StepUpAt}, now) {
 		t.Fatal("expected step-up to satisfy gate after completion")
 	}
 	if len(*events) != 1 {

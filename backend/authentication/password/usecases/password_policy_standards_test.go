@@ -85,7 +85,7 @@ func TestPasswordPolicyImposesNoCompositionRule(t *testing.T) {
 		strings.Repeat("7", 20),
 		strings.Repeat("-", 20),
 	} {
-		if got := ValidatePassword(candidate); !got.OK {
+		if got := passworddomain.ValidatePassword(candidate); !got.OK {
 			t.Fatalf("single character class %q rejected: %+v", candidate, got)
 		}
 	}
@@ -125,10 +125,10 @@ func TestPasswordPolicyExcludesTheFifteenCharacterMinimum(t *testing.T) {
 	}
 
 	// デフォルトの下限は 12 である。11 文字は拒否される。
-	if got := ValidatePassword(strings.Repeat("a", 11)); got.OK {
+	if got := passworddomain.ValidatePassword(strings.Repeat("a", 11)); got.OK {
 		t.Fatal("11 characters accepted; the product default floor is 12")
 	}
-	if got := ValidatePassword(strings.Repeat("a", 12)); !got.OK {
+	if got := passworddomain.ValidatePassword(strings.Repeat("a", 12)); !got.OK {
 		t.Fatalf("12 characters rejected: %+v", got)
 	}
 
@@ -141,7 +141,7 @@ func TestPasswordPolicyExcludesTheFifteenCharacterMinimum(t *testing.T) {
 			ID:                     "tenant-strict",
 			PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MinLength: &twenty},
 		},
-		DefaultPasswordPolicySnapshot(),
+		passworddomain.DefaultPasswordPolicySnapshot(),
 	)
 	if resolved.MinLength != 20 {
 		t.Fatalf("resolved min length=%d, want the tenant override 20", resolved.MinLength)

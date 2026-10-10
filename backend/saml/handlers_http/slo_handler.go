@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -147,7 +148,7 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 
 func (d Deps) clearSessionCookie(c *echo.Context) {
 	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure は HTTPS issuer で有効化、ローカル HTTP 開発では意図的に無効。
-		Name: support.TenantCookieName(c, authusecases.SessionCookie), Path: support.TenantCookiePath(c),
+		Name: support.TenantCookieName(c, sessiondomain.SessionCookie), Path: support.TenantCookiePath(c),
 		Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode,
 		MaxAge: -1,
 	})
