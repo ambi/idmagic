@@ -1,8 +1,8 @@
 min_version = "2026.10.0"
 
 [tools]
-go = "1.27.1"
-bun = "1.4.2"
+go = "1.27.2"
+bun = "1.4.3"
 "aqua:golangci/golangci-lint" = "2.14.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.26"
