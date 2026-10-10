@@ -96,7 +96,7 @@ func (f *Fetcher) Fetch(ctx context.Context, clientIDURL string) (*clientdomain.
 		return nil, errors.New("client id metadata document response exceeds 64 KiB")
 	}
 
-	client, err := clientdomain.ParseClientIDMetadataDocument(data, clientIDURL)
+	client, err := clientdomain.ParseClientIDMetadataDocument(data, clientIDURL, time.Now())
 	if err != nil {
 		return nil, err
 	}

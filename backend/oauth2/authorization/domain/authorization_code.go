@@ -2,12 +2,12 @@
 package domain
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -29,18 +29,15 @@ type AuthorizationCodeInput struct {
 	Now                    time.Time
 }
 
-func GenerateAuthorizationCode(in AuthorizationCodeInput) (*AuthorizationCodeRecord, error) {
+func GenerateAuthorizationCode(in AuthorizationCodeInput, random entropy.Source) (*AuthorizationCodeRecord, error) {
 	if in.TenantID == "" {
 		in.TenantID = tenancydomain.DefaultTenantID
 	}
 	if in.TTLSeconds == 0 {
 		in.TTLSeconds = 60
 	}
-	if in.Now.IsZero() {
-		in.Now = time.Now().UTC()
-	}
 	b := make([]byte, authCodeBytes)
-	if _, err := rand.Read(b); err != nil {
+	if err := random.Read(b); err != nil {
 		return nil, err
 	}
 	rec := &AuthorizationCodeRecord{
@@ -67,9 +64,6 @@ func GenerateAuthorizationCode(in AuthorizationCodeInput) (*AuthorizationCodeRec
 }
 
 func IsCodeExpired(rec *AuthorizationCodeRecord, now time.Time) bool {
-	if now.IsZero() {
-		now = time.Now()
-	}
 	return !now.Before(rec.ExpiresAt)
 }
 

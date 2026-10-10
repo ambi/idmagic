@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -13,7 +15,7 @@ func TestNewTrustedDeviceIssuesParsableCookieAndStoresOnlyTheHash(t *testing.T) 
 	t.Parallel()
 	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
 
-	device, cookie, err := NewTrustedDevice("tenant-1", "alice", "Chrome / macOS", testMaxAge, now)
+	device, cookie, err := NewTrustedDevice("tenant-1", "alice", "Chrome / macOS", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("NewTrustedDevice: %v", err)
 	}
@@ -89,14 +91,14 @@ func TestTrustedDeviceIdleWindowNeverExceedsAbsoluteLifetime(t *testing.T) {
 func TestRotateReplacesTheVerifierAndAdvancesLastUsed(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
-	device, cookie, err := NewTrustedDevice("tenant-1", "alice", "", testMaxAge, now)
+	device, cookie, err := NewTrustedDevice("tenant-1", "alice", "", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("NewTrustedDevice: %v", err)
 	}
 	_, oldVerifier, _ := ParseCookie(cookie)
 
 	later := now.Add(time.Hour)
-	rotated, err := device.Rotate(later)
+	rotated, err := device.Rotate(later, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("Rotate: %v", err)
 	}

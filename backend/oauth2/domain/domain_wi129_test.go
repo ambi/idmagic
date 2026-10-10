@@ -9,6 +9,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,7 +23,8 @@ func TestGenerateAuthorizationCode_Defaults(t *testing.T) {
 		RedirectURI:            "https://app.example/cb",
 		CodeChallenge:          "abc",
 		CodeChallengeMethod:    spec.CodeChallengeMethodS256,
-	})
+		Now:                    time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	}, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -57,7 +59,7 @@ func TestGenerateAuthorizationCode_ExplicitValues(t *testing.T) {
 		AuthTime:               now.Unix(),
 		TTLSeconds:             120,
 		Now:                    now,
-	})
+	}, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -81,7 +83,8 @@ func TestGenerateAuthorizationCode_ValidationError(t *testing.T) {
 		Scopes:                 []string{"openid"},
 		CodeChallenge:          "chal",
 		CodeChallengeMethod:    spec.CodeChallengeMethodS256,
-	})
+		Now:                    time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	}, entropy.Crypto())
 	if err == nil {
 		t.Fatal("redirect_uri 欠落で失敗するはず")
 	}
@@ -95,11 +98,6 @@ func TestIsCodeExpired(t *testing.T) {
 	}
 	if !IsCodeExpired(rec, now.Add(2*time.Minute)) {
 		t.Error("期限後なのに有効判定")
-	}
-	// now がゼロ値なら現在時刻で評価 (過去の ExpiresAt は期限切れ)。
-	past := &AuthorizationCodeRecord{ExpiresAt: time.Now().Add(-time.Hour)}
-	if !IsCodeExpired(past, time.Time{}) {
-		t.Error("ゼロ now で過去期限が期限切れ判定されない")
 	}
 }
 
@@ -194,11 +192,11 @@ func TestScopeIntersection(t *testing.T) {
 // --- device authorization ---
 
 func TestGenerateDeviceCode_Unique(t *testing.T) {
-	c1, err := GenerateDeviceCode()
+	c1, err := GenerateDeviceCode(entropy.Crypto())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
-	c2, _ := GenerateDeviceCode()
+	c2, _ := GenerateDeviceCode(entropy.Crypto())
 	if c1 == "" || c1 == c2 {
 		t.Errorf("device code が空または重複: %q %q", c1, c2)
 	}
@@ -219,7 +217,7 @@ func TestHashDeviceCode_Stable(t *testing.T) {
 }
 
 func TestGenerateUserCode_Format(t *testing.T) {
-	code, err := GenerateUserCode()
+	code, err := GenerateUserCode(entropy.Crypto())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -234,6 +232,17 @@ func TestGenerateUserCode_Format(t *testing.T) {
 		if !strings.ContainsRune(userCodeCharset, r) {
 			t.Errorf("charset 外の文字: %q in %q", r, code)
 		}
+	}
+}
+
+// 文字集合は 20 文字なので、各バイトの下位 5 ビットのうち 20 未満の値だけを文字の位置として使う。
+func TestGenerateUserCode_DrawsEachCharacterFromTheSource(t *testing.T) {
+	code, err := GenerateUserCode(entropy.Fixed([]byte{0, 1, 2, 3, 0x1f, 4, 5, 6, 19}))
+	if err != nil {
+		t.Fatalf("生成に失敗: %v", err)
+	}
+	if code != "BCDF-GHJZ" {
+		t.Fatalf("user code = %q, want BCDF-GHJZ", code)
 	}
 }
 
@@ -264,11 +273,6 @@ func TestIsDeviceExpired(t *testing.T) {
 	if !IsDeviceExpired(active, now.Add(2*time.Minute)) {
 		t.Error("期限後なのに有効判定")
 	}
-	// now ゼロ値なら現在時刻評価。
-	past := &DeviceAuthorization{State: spec.DeviceFlowIssued, ExpiresAt: time.Now().Add(-time.Hour)}
-	if !IsDeviceExpired(past, time.Time{}) {
-		t.Error("ゼロ now で過去期限が期限切れ判定されない")
-	}
 }
 
 // --- refresh token ---
@@ -287,7 +291,7 @@ func TestGenerateInitialRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	sc := &SenderConstraint{Type: SenderConstraintDPoP, JKT: "jkt-1"}
 	sid := "session-1"
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, &sid, nil, now)
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, sc, &sid, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -321,7 +325,7 @@ func TestGenerateInitialRefreshToken(t *testing.T) {
 
 func TestGenerateInitialRefreshToken_NilSid(t *testing.T) {
 	// client_credentials 等 browser session を持たない発行では sid は nil のまま。
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, time.Now().UTC())
+	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, time.Now().UTC(), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("生成に失敗: %v", err)
 	}
@@ -330,25 +334,15 @@ func TestGenerateInitialRefreshToken_NilSid(t *testing.T) {
 	}
 }
 
-func TestGenerateInitialRefreshToken_ZeroNow(t *testing.T) {
-	gen, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, time.Time{})
-	if err != nil {
-		t.Fatalf("生成に失敗: %v", err)
-	}
-	if gen.Record.IssuedAt.IsZero() {
-		t.Error("ゼロ now で IssuedAt が補完されていない")
-	}
-}
-
 func TestRotateRefreshToken(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	sid := "session-1"
 	resource := "https://mcp.example.com/tools"
-	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, &sid, &resource, now)
+	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, &sid, &resource, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("親生成に失敗: %v", err)
 	}
-	rotated, err := RotateRefreshToken(parent.Record, now.Add(time.Hour))
+	rotated, err := RotateRefreshToken(parent.Record, now.Add(time.Hour), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("回転に失敗: %v", err)
 	}
@@ -375,11 +369,11 @@ func TestRotateRefreshToken(t *testing.T) {
 // wi-262: resource 未指定の初回発行は rotate 後も Resource が nil のまま。
 func TestRotateRefreshToken_NilResourceStaysNil(t *testing.T) {
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, now)
+	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("親生成に失敗: %v", err)
 	}
-	rotated, err := RotateRefreshToken(parent.Record, now.Add(time.Hour))
+	rotated, err := RotateRefreshToken(parent.Record, now.Add(time.Hour), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("回転に失敗: %v", err)
 	}
@@ -402,7 +396,7 @@ func TestRotateRefreshToken_CappedByAbsolute(t *testing.T) {
 		ExpiresAt:         now.Add(time.Hour),
 		AbsoluteExpiresAt: now.Add(30 * time.Minute), // TTL より短い
 	}
-	rotated, err := RotateRefreshToken(parent, now)
+	rotated, err := RotateRefreshToken(parent, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("回転に失敗: %v", err)
 	}
@@ -431,10 +425,6 @@ func TestIsRefreshTokenAbsoluteExpired(t *testing.T) {
 	}
 	if !IsRefreshTokenAbsoluteExpired(rec, now.Add(2*time.Hour)) {
 		t.Error("期限後なのに有効判定")
-	}
-	past := &RefreshTokenRecord{AbsoluteExpiresAt: time.Now().Add(-time.Hour)}
-	if !IsRefreshTokenAbsoluteExpired(past, time.Time{}) {
-		t.Error("ゼロ now で過去期限が期限切れ判定されない")
 	}
 }
 

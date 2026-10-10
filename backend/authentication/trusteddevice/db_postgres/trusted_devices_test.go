@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
@@ -22,7 +24,7 @@ func TestTrustedDeviceRepositoryRoundTripsAndRotates(t *testing.T) {
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
 
-	device, cookie, err := domain.NewTrustedDevice(tenant.ID, user.ID, "Chrome / macOS", testMaxAge, now)
+	device, cookie, err := domain.NewTrustedDevice(tenant.ID, user.ID, "Chrome / macOS", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +44,7 @@ func TestTrustedDeviceRepositoryRoundTripsAndRotates(t *testing.T) {
 		t.Fatalf("Label = %q, want the masked device label", found.Label)
 	}
 
-	rotated, err := found.Rotate(now.Add(time.Hour))
+	rotated, err := found.Rotate(now.Add(time.Hour), entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +70,7 @@ func TestTrustedDeviceRepositoryScopesSelectorToTheTenant(t *testing.T) {
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
 
-	device, _, err := domain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now)
+	device, _, err := domain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +97,7 @@ func TestTrustedDeviceRepositoryRevokesAllOnce(t *testing.T) {
 	ctx := context.Background()
 
 	for range 2 {
-		device, _, err := domain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now)
+		device, _, err := domain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now, entropy.Crypto())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +130,7 @@ func TestTrustedDeviceRepositoryFindByIDScopesToTheOwner(t *testing.T) {
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
 
-	device, _, err := domain.NewTrustedDevice(tenant.ID, owner.ID, "", testMaxAge, now)
+	device, _, err := domain.NewTrustedDevice(tenant.ID, owner.ID, "", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

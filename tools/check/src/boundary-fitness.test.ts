@@ -310,6 +310,25 @@ describe('findBoundaryViolations dependency rules', () => {
       'domain-effect:backend/customer/domain/model.go:time.Now',
     ])
   })
+
+  it('allows domain packages to parse URLs, mail addresses, and IP addresses', () => {
+    const result = analyze([
+      {
+        path: 'backend/customer/domain/model.go',
+        source: [
+          'package domain',
+          'import (',
+          '  "net/mail"',
+          '  "net/netip"',
+          '  "net/url"',
+          ')',
+          '',
+        ].join('\n'),
+      },
+    ])
+
+    expect(result.violations).toEqual([])
+  })
 })
 
 describe('reconcileBoundaryDebt', () => {

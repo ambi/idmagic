@@ -4,12 +4,12 @@
 package domain
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -60,9 +60,9 @@ func (a ApprovalRequest) Validate() error { return spec.ValidateApprovalRequest(
 func NewApprovalRequestID() (string, error) { return spec.NewUUIDv4() }
 
 // GenerateAuthReqID returns a 256-bit bearer secret suitable for auth_req_id.
-func GenerateAuthReqID() (string, error) {
+func GenerateAuthReqID(random entropy.Source) (string, error) {
 	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	if err := random.Read(b); err != nil {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
@@ -86,9 +86,6 @@ func ResolveTTL(requestedExpirySeconds *int) time.Duration {
 func IsExpired(rec *ApprovalRequest, now time.Time) bool {
 	if rec.State == spec.ApprovalExpired {
 		return true
-	}
-	if now.IsZero() {
-		now = time.Now().UTC()
 	}
 	return !now.Before(rec.ExpiresAt)
 }

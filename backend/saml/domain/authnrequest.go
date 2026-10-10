@@ -242,15 +242,8 @@ type ValidatedSignIn struct {
 //   - AssertionConsumerServiceURL 指定時は sp.ACSURLs の完全一致のみ受理する (open redirect 防止)。
 //   - 省略時は sp.ACSURLs の先頭を既定の ACS とする。
 //   - NameID format は要求の NameIDPolicy を尊重し、未指定なら SP の claim policy の format を用いる。
-func ValidateSignIn(req AuthnRequest, sp SamlServiceProvider, expectedDestination string) (ValidatedSignIn, error) {
-	return ValidateSignInAt(req, sp, expectedDestination, time.Now().UTC())
-}
-
-// ValidateSignInAt は ValidateSignIn の時刻を明示できる版。IssueInstant を決定的に検証する。
-func ValidateSignInAt(req AuthnRequest, sp SamlServiceProvider, expectedDestination string, now time.Time) (ValidatedSignIn, error) {
-	if now.IsZero() {
-		now = time.Now().UTC()
-	}
+//   - IssueInstant は now を基準に検証する。
+func ValidateSignIn(req AuthnRequest, sp SamlServiceProvider, expectedDestination string, now time.Time) (ValidatedSignIn, error) {
 	// IdP-initiated SSO は AuthnRequest を持たない。ID がある経路は parser が生成する
 	// SP-initiated request として全 semantic を必須にする。
 	if req.ID != "" {
@@ -314,9 +307,6 @@ func ValidateSignInAt(req AuthnRequest, sp SamlServiceProvider, expectedDestinat
 func RequiresFreshAuth(forceAuthn bool, authTime, now time.Time) bool {
 	if !forceAuthn {
 		return false
-	}
-	if now.IsZero() {
-		now = time.Now().UTC()
 	}
 	return now.Sub(authTime) > freshAuthGrace
 }

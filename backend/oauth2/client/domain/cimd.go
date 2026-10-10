@@ -49,7 +49,7 @@ type clientIDMetadataDocument struct {
 // MVP only accepts documents that omit token_endpoint_auth_method or declare
 // it as "none"; anything else is rejected fail-closed (rejected
 // private_key_jwt-via-CIMD for this iteration).
-func ParseClientIDMetadataDocument(raw []byte, requestURL string) (*OAuth2Client, error) {
+func ParseClientIDMetadataDocument(raw []byte, requestURL string, now time.Time) (*OAuth2Client, error) {
 	var doc clientIDMetadataDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		return nil, fmt.Errorf("client id metadata document: invalid JSON: %w", err)
@@ -87,7 +87,7 @@ func ParseClientIDMetadataDocument(raw []byte, requestURL string) (*OAuth2Client
 	}
 
 	clientName := doc.ClientName
-	now := time.Now().UTC()
+	now = now.UTC()
 	client := &OAuth2Client{
 		ClientID:                 doc.ClientID,
 		ClientName:               &clientName,

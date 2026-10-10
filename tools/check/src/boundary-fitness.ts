@@ -550,6 +550,9 @@ function repositoryImport(modulePath: string, imported: string): string | undefi
   return imported.startsWith(prefix) ? imported.slice(prefix.length) : undefined
 }
 
+/** 値の構文だけを扱い、名前解決も接続も行わない `net` 配下のパッケージ。 */
+const NET_SYNTAX_PACKAGES = new Set(['net/mail', 'net/netip', 'net/url'])
+
 function domainEffectViolations(
   source: GoSource,
   imports: readonly ImportSpec[],
@@ -563,7 +566,12 @@ function domainEffectViolations(
     if (imported.path === 'math/rand' || imported.path.startsWith('math/rand/')) {
       effects.add('math/rand')
     }
-    if (imported.path === 'net' || imported.path.startsWith('net/')) effects.add('net')
+    if (
+      (imported.path === 'net' || imported.path.startsWith('net/')) &&
+      !NET_SYNTAX_PACKAGES.has(imported.path)
+    ) {
+      effects.add('net')
+    }
     if (imported.path === 'os' || imported.path.startsWith('os/')) effects.add('os')
     if (imported.path === 'time') {
       const escapedName = imported.localName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

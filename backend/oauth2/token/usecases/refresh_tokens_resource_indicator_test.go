@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -39,7 +41,7 @@ func newRefreshFixtureWithResource(t *testing.T, resource *string) refreshFixtur
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, nil, nil, resource, now)
+	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, nil, nil, resource, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

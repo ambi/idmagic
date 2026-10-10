@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -24,7 +26,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	device, cookie, err := domain.NewTrustedDevice(f.TenantID, f.UserID, "Chrome", 24*time.Hour, f.Now)
+	device, cookie, err := domain.NewTrustedDevice(f.TenantID, f.UserID, "Chrome", 24*time.Hour, f.Now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@ func FuzzParseClientIDMetadataDocument(f *testing.F) {
 		if len(raw) > 64*1024 {
 			return
 		}
-		client, err := ParseClientIDMetadataDocument(raw, requestURL)
+		client, err := ParseClientIDMetadataDocument(raw, requestURL, cimdTestNow)
 		if err != nil {
 			if client != nil {
 				t.Fatalf("ParseClientIDMetadataDocument returned %+v together with an error", client)

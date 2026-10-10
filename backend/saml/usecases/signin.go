@@ -116,7 +116,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 			return s.rejected(in.TenantID, in.Request.Issuer, err.Error(), nil), nil
 		}
 	}
-	validated, err := samldomain.ValidateSignIn(in.Request, *sp, in.ExpectedDestination)
+	validated, err := samldomain.ValidateSignIn(in.Request, *sp, in.ExpectedDestination, time.Now().UTC())
 	if err != nil {
 		return s.rejected(in.TenantID, in.Request.Issuer, err.Error(), nil), nil
 	}

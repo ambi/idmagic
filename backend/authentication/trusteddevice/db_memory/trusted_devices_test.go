@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 )
 
@@ -12,7 +14,7 @@ func TestListActiveByUserUsesTheProvidedEvaluationTime(t *testing.T) {
 	t.Parallel()
 	repo := NewTrustedDeviceRepository()
 	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
-	device, _, err := domain.NewTrustedDevice("tenant-1", "alice", "", 30*24*time.Hour, now)
+	device, _, err := domain.NewTrustedDevice("tenant-1", "alice", "", 30*24*time.Hour, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

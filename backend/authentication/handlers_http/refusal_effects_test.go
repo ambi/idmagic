@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	"github.com/ambi/idmagic/backend/apitoken"
 	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
@@ -1319,7 +1321,7 @@ func (f *authRefusalFixture) issuePasswordResetToken(t *testing.T, userID string
 func (f *authRefusalFixture) seedTrustedDevice(t *testing.T, userID string) string {
 	t.Helper()
 	device, _, err := trusteddevicedomain.NewTrustedDevice(
-		tenancydomain.DefaultTenantID, userID, "Firefox on macOS", 30*24*time.Hour, time.Now().UTC(),
+		tenancydomain.DefaultTenantID, userID, "Firefox on macOS", 30*24*time.Hour, time.Now().UTC(), entropy.Crypto(),
 	)
 	if err != nil {
 		t.Fatal(err)

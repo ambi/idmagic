@@ -117,6 +117,8 @@ backend/idmanagement/
 共有ライブラリを経由して到達するモジュールの数だけ同じ import を数えると、違反の数が原因の数を表さないためである。
 
 `domain` は決定論的な計算と状態遷移だけを持つ。時刻の型を保持するための `time` は利用できるが、現在時刻を得る `time.Now`、乱数を得る `crypto/rand` と `math/rand`、OS、ネットワーク、データベースへの直接アクセスは行わない。必要な値と作用は `usecases` から引数または `ports` として注入する。
+URL、メールアドレス、IP アドレスの構文解析（`net/url`、`net/mail`、`net/netip`）は入力だけで結果が決まり、名前解決も接続も行わないので、ネットワークへのアクセスに当たらず `domain` で使える。
+乱数は、共有ライブラリ `backend/shared/security/entropy` の `Source` として受け取る。本番では `usecases` が `crypto/rand` を包む `entropy.Crypto()` を渡し、テストは固定のバイト列から作る `entropy.Fixed` を渡す。
 `domain` と `usecases` の外向き依存の禁止、起動設定の読み取り場所、フロントエンドからバックエンドへの import の禁止も同じ検査が判定する。
 
 `table-write` の対象と限界は[データベース設計](../data/database.md#所有と書き込みの境界)が定める。

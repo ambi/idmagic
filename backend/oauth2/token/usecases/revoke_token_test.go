@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -75,21 +77,21 @@ func TestRevokeTokensBySidRevokesAllFamiliesAndClients(t *testing.T) {
 	sid := "session-1"
 	otherSid := "session-2"
 
-	genA, err := domain.GenerateInitialRefreshToken("client-a", "user-1", []string{"openid"}, nil, &sid, nil, time.Now())
+	genA, err := domain.GenerateInitialRefreshToken("client-a", "user-1", []string{"openid"}, nil, &sid, nil, time.Now(), entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Save(ctx, genA.Record); err != nil {
 		t.Fatal(err)
 	}
-	genB, err := domain.GenerateInitialRefreshToken("client-b", "user-1", []string{"openid"}, nil, &sid, nil, time.Now())
+	genB, err := domain.GenerateInitialRefreshToken("client-b", "user-1", []string{"openid"}, nil, &sid, nil, time.Now(), entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Save(ctx, genB.Record); err != nil {
 		t.Fatal(err)
 	}
-	genOther, err := domain.GenerateInitialRefreshToken("client-a", "user-2", []string{"openid"}, nil, &otherSid, nil, time.Now())
+	genOther, err := domain.GenerateInitialRefreshToken("client-a", "user-2", []string{"openid"}, nil, &otherSid, nil, time.Now(), entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/approval/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -150,11 +152,11 @@ func TestIsPollTooFast(t *testing.T) {
 func TestAuthReqIDIsRandomAndHashed(t *testing.T) {
 	t.Parallel()
 
-	first, err := approvaldomain.GenerateAuthReqID()
+	first, err := approvaldomain.GenerateAuthReqID(entropy.Crypto())
 	if err != nil {
 		t.Fatalf("GenerateAuthReqID: %v", err)
 	}
-	second, err := approvaldomain.GenerateAuthReqID()
+	second, err := approvaldomain.GenerateAuthReqID(entropy.Crypto())
 	if err != nil {
 		t.Fatalf("GenerateAuthReqID: %v", err)
 	}

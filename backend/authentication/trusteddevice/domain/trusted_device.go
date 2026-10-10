@@ -4,7 +4,6 @@
 package domain
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	z "github.com/Oudwins/zog"
@@ -88,8 +88,8 @@ func (d TrustedDevice) VerifierMatches(verifier string) bool {
 
 // Rotate は利用のたびに verifier を差し替え、last_used_at を進める。新しい平文の
 // verifier を返し、呼び出し側はそれを cookie として再発行する。
-func (d *TrustedDevice) Rotate(now time.Time) (string, error) {
-	verifier, err := randomToken(verifierBytes)
+func (d *TrustedDevice) Rotate(now time.Time, random entropy.Source) (string, error) {
+	verifier, err := randomToken(random, verifierBytes)
 	if err != nil {
 		return "", err
 	}
@@ -120,16 +120,17 @@ func NewTrustedDevice(
 	tenantID, userID, label string,
 	maxAge time.Duration,
 	now time.Time,
+	random entropy.Source,
 ) (*TrustedDevice, string, error) {
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, "", err
 	}
-	selector, err := randomToken(selectorBytes)
+	selector, err := randomToken(random, selectorBytes)
 	if err != nil {
 		return nil, "", err
 	}
-	verifier, err := randomToken(verifierBytes)
+	verifier, err := randomToken(random, verifierBytes)
 	if err != nil {
 		return nil, "", err
 	}
@@ -161,9 +162,9 @@ func HashVerifier(verifier string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func randomToken(size int) (string, error) {
+func randomToken(random entropy.Source, size int) (string, error) {
 	buf := make([]byte, size)
-	if _, err := rand.Read(buf); err != nil {
+	if err := random.Read(buf); err != nil {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil

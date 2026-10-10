@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -58,11 +60,11 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 		return nil, NewOAuthError("unauthorized_client", "device_code grant not allowed")
 	}
 
-	deviceCode, err := domain.GenerateDeviceCode()
+	deviceCode, err := domain.GenerateDeviceCode(entropy.Crypto())
 	if err != nil {
 		return nil, err
 	}
-	userCode, err := domain.GenerateUserCode()
+	userCode, err := domain.GenerateUserCode(entropy.Crypto())
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +344,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 
 	var refreshToken string
 	if domain.GrantsRefreshToken(rec.Scopes) {
-		refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, resource, now)
+		refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, resource, now, entropy.Crypto())
 		if err != nil {
 			return nil, err
 		}

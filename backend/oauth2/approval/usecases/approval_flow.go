@@ -9,6 +9,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -127,7 +129,7 @@ func StartApproval(ctx context.Context, deps StartApprovalDeps, in StartApproval
 	if err != nil {
 		return nil, err
 	}
-	authReqID, err := approvaldomain.GenerateAuthReqID()
+	authReqID, err := approvaldomain.GenerateAuthReqID(entropy.Crypto())
 	if err != nil {
 		return nil, err
 	}

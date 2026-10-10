@@ -1,6 +1,11 @@
 package domain
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+var cimdTestNow = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 func TestIsClientIDMetadataDocumentURL(t *testing.T) {
 	for _, valid := range []string{
@@ -32,7 +37,7 @@ func TestParseClientIDMetadataDocument_MinimalDocumentAppliesDefaults(t *testing
 		"client_name": "Example MCP Client",
 		"redirect_uris": ["http://127.0.0.1:3000/callback"]
 	}`)
-	client, err := ParseClientIDMetadataDocument(doc, url)
+	client, err := ParseClientIDMetadataDocument(doc, url, cimdTestNow)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -67,7 +72,7 @@ func TestParseClientIDMetadataDocument_ExplicitScopeIsPreserved(t *testing.T) {
 		"redirect_uris": ["http://127.0.0.1:3000/callback"],
 		"scope": "openid mcp:tools:read"
 	}`)
-	client, err := ParseClientIDMetadataDocument(doc, url)
+	client, err := ParseClientIDMetadataDocument(doc, url, cimdTestNow)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +88,7 @@ func TestParseClientIDMetadataDocument_RejectsClientIDMismatch(t *testing.T) {
 		"client_name": "Example MCP Client",
 		"redirect_uris": ["http://127.0.0.1:3000/callback"]
 	}`)
-	if _, err := ParseClientIDMetadataDocument(doc, url); err == nil {
+	if _, err := ParseClientIDMetadataDocument(doc, url, cimdTestNow); err == nil {
 		t.Fatal("expected error for client_id mismatch")
 	}
 }
@@ -94,7 +99,7 @@ func TestParseClientIDMetadataDocument_RejectsMissingClientName(t *testing.T) {
 		"client_id": "` + url + `",
 		"redirect_uris": ["http://127.0.0.1:3000/callback"]
 	}`)
-	if _, err := ParseClientIDMetadataDocument(doc, url); err == nil {
+	if _, err := ParseClientIDMetadataDocument(doc, url, cimdTestNow); err == nil {
 		t.Fatal("expected error for missing client_name")
 	}
 }
@@ -106,7 +111,7 @@ func TestParseClientIDMetadataDocument_RejectsEmptyRedirectURIs(t *testing.T) {
 		"client_name": "Example MCP Client",
 		"redirect_uris": []
 	}`)
-	if _, err := ParseClientIDMetadataDocument(doc, url); err == nil {
+	if _, err := ParseClientIDMetadataDocument(doc, url, cimdTestNow); err == nil {
 		t.Fatal("expected error for empty redirect_uris")
 	}
 }
@@ -119,13 +124,13 @@ func TestParseClientIDMetadataDocument_RejectsUnsupportedAuthMethod(t *testing.T
 		"redirect_uris": ["http://127.0.0.1:3000/callback"],
 		"token_endpoint_auth_method": "private_key_jwt"
 	}`)
-	if _, err := ParseClientIDMetadataDocument(doc, url); err == nil {
+	if _, err := ParseClientIDMetadataDocument(doc, url, cimdTestNow); err == nil {
 		t.Fatal("expected error for unsupported token_endpoint_auth_method")
 	}
 }
 
 func TestParseClientIDMetadataDocument_RejectsInvalidJSON(t *testing.T) {
-	if _, err := ParseClientIDMetadataDocument([]byte("not json"), "https://app.example.com/client.json"); err == nil {
+	if _, err := ParseClientIDMetadataDocument([]byte("not json"), "https://app.example.com/client.json", cimdTestNow); err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
 }

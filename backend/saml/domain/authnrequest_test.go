@@ -125,7 +125,7 @@ func TestValidateSignInAtRejectsUnsupportedAuthnRequestSemantics(t *testing.T) {
 		{name: "unsupported name id", req: samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now, NameIDFormat: "urn:example:unsupported"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := samldomain.ValidateSignInAt(tc.req, sampleServiceProvider(), "https://idp.example.com/saml/sso", now); err == nil {
+			if _, err := samldomain.ValidateSignIn(tc.req, sampleServiceProvider(), "https://idp.example.com/saml/sso", now); err == nil {
 				t.Fatal("expected unsupported request semantics to be rejected")
 			}
 		})
@@ -138,7 +138,7 @@ func TestValidateSignInAtAcceptsSupportedSemantics(t *testing.T) {
 		ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: now.Add(-time.Minute),
 		ProtocolBinding: samldomain.SamlBindingHTTPPOST, NameIDFormat: samldomain.SamlNameIDFormatEmailAddress,
 	}
-	if _, err := samldomain.ValidateSignInAt(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", now); err != nil {
+	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", now); err != nil {
 		t.Fatalf("validate supported semantics: %v", err)
 	}
 }
@@ -171,7 +171,7 @@ func TestValidateSignInResolvesRequestedACS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	out, err := samldomain.ValidateSignInAt(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC))
+	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestValidateSignInResolvesRequestedACS(t *testing.T) {
 
 func TestValidateSignInRejectsIssuerMismatch(t *testing.T) {
 	req := samldomain.AuthnRequest{ID: "_x", Issuer: "https://evil.example.com"}
-	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso"); err == nil {
+	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Now().UTC()); err == nil {
 		t.Fatal("expected issuer mismatch to be rejected")
 	}
 }
@@ -200,7 +200,7 @@ func TestValidateSignInRejectsUnregisteredACS(t *testing.T) {
 		Issuer: "https://sp.example.com",
 		ACSURL: "https://evil.example.com/acs",
 	}
-	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso"); err == nil {
+	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Now().UTC()); err == nil {
 		t.Fatal("expected unregistered ACS URL to be rejected (open redirect)")
 	}
 }
@@ -211,7 +211,7 @@ func TestValidateSignInRejectsDestinationMismatch(t *testing.T) {
 		Issuer:      "https://sp.example.com",
 		Destination: "https://other-idp.example.com/saml/sso",
 	}
-	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso"); err == nil {
+	if _, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Now().UTC()); err == nil {
 		t.Fatal("expected mismatched Destination to be rejected")
 	}
 }
@@ -226,7 +226,7 @@ func TestValidateRequestSignatureRequiresCertificate(t *testing.T) {
 
 func TestValidateSignInFallsBackToDefaultACS(t *testing.T) {
 	req := samldomain.AuthnRequest{ID: "_x", Issuer: "https://sp.example.com", Version: "2.0", IssueInstant: time.Now().UTC()}
-	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso")
+	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestValidateSignInUnspecifiedFormatUsesSPDefault(t *testing.T) {
 		IssueInstant: time.Now().UTC(),
 		NameIDFormat: samldomain.SamlNameIDFormatUnspecified,
 	}
-	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso")
+	out, err := samldomain.ValidateSignIn(req, sampleServiceProvider(), "https://idp.example.com/saml/sso", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}

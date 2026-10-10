@@ -9,6 +9,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
@@ -49,7 +51,7 @@ func Issue(
 		return "", nil
 	}
 	device, cookie, err := domain.NewTrustedDevice(
-		tenantID, userID, authdomain.DeviceLabel(userAgent), maxAge, now,
+		tenantID, userID, authdomain.DeviceLabel(userAgent), maxAge, now, entropy.Crypto(),
 	)
 	if err != nil {
 		return "", err
@@ -107,7 +109,7 @@ func Evaluate(
 	if !device.VerifierMatches(verifier) {
 		return EvaluationResult{}, nil
 	}
-	rotated, err := device.Rotate(now)
+	rotated, err := device.Rotate(now, entropy.Crypto())
 	if err != nil {
 		return EvaluationResult{}, err
 	}

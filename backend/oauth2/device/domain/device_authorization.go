@@ -2,14 +2,13 @@
 package domain
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"math/big"
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,9 +21,9 @@ const (
 // DeviceCodeTTL は RFC 8628 §3.2 の expires_in。
 const DeviceCodeTTL = 600 * time.Second
 
-func GenerateDeviceCode() (string, error) {
+func GenerateDeviceCode(random entropy.Source) (string, error) {
 	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	if err := random.Read(b); err != nil {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
@@ -35,14 +34,14 @@ func HashDeviceCode(deviceCode string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func GenerateUserCode() (string, error) {
+func GenerateUserCode(random entropy.Source) (string, error) {
 	var raw strings.Builder
 	for range userCodeLength {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(userCodeCharset))))
+		n, err := random.Int(len(userCodeCharset))
 		if err != nil {
 			return "", err
 		}
-		raw.WriteByte(userCodeCharset[n.Int64()])
+		raw.WriteByte(userCodeCharset[n])
 	}
 	s := raw.String()
 	return s[:4] + "-" + s[4:], nil
@@ -62,9 +61,6 @@ func NormalizeUserCode(input string) string {
 func IsDeviceExpired(rec *DeviceAuthorization, now time.Time) bool {
 	if rec.State == spec.DeviceFlowExpired {
 		return true
-	}
-	if now.IsZero() {
-		now = time.Now()
 	}
 	return !now.Before(rec.ExpiresAt)
 }

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -190,7 +192,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 
 	var refreshToken string
 	if deps.RefreshStore != nil && domain.GrantsRefreshToken(rec.Scopes) {
-		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, rec.Sid, rec.Resource, now)
+		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, rec.Sid, rec.Resource, now, entropy.Crypto())
 		if err != nil {
 			return nil, err
 		}

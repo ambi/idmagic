@@ -123,12 +123,12 @@ func (c *IdentityProviderConnection) Activate(now time.Time) error {
 	if c.Status != ConnectionDisabled {
 		return errors.New("only disabled connections can be activated")
 	}
-	c.Status, c.UpdatedAt = ConnectionActive, normalizedNow(now)
+	c.Status, c.UpdatedAt = ConnectionActive, now.UTC()
 	return nil
 }
 
 func (c *IdentityProviderConnection) Disable(now time.Time) {
-	c.Status, c.UpdatedAt = ConnectionDisabled, normalizedNow(now)
+	c.Status, c.UpdatedAt = ConnectionDisabled, now.UTC()
 }
 
 func (c IdentityProviderConnection) Active() bool { return c.Status == ConnectionActive }
@@ -169,7 +169,7 @@ type FederatedLoginAttempt struct {
 }
 
 func (a *FederatedLoginAttempt) Consume(now time.Time) error {
-	now = normalizedNow(now)
+	now = now.UTC()
 	if a.ConsumedAt != nil {
 		return errors.New("federated login attempt already consumed")
 	}
@@ -194,11 +194,4 @@ func requireHTTPS(raw string) error {
 		return errors.New("an absolute HTTPS URL without userinfo or fragment is required")
 	}
 	return nil
-}
-
-func normalizedNow(now time.Time) time.Time {
-	if now.IsZero() {
-		return time.Now().UTC()
-	}
-	return now.UTC()
 }

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -97,7 +99,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, NewOAuthError("invalid_grant", "Refresh was rejected: "+strings.Join(d.Reasons, ", "))
 	}
 
-	newTok, err := domain.RotateRefreshToken(record, now)
+	newTok, err := domain.RotateRefreshToken(record, now, entropy.Crypto())
 	if err != nil {
 		return nil, err
 	}

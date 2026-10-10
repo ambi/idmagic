@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -101,7 +103,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 	})
 
 	store := oauth2memory.NewRefreshTokenStore()
-	gen, err := domain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, nil, nil, time.Now().UTC())
+	gen, err := domain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, nil, nil, time.Now().UTC(), entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -361,7 +363,7 @@ func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 
 	now := testClock()
 	resource := "https://mcp.example.com/tools/github"
-	gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, &resource, now)
+	gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, &resource, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -378,7 +380,7 @@ func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 		t.Fatalf("expected resource to round-trip, got %v", found.Resource)
 	}
 
-	rotated, err := domain.RotateRefreshToken(found, now.Add(time.Hour))
+	rotated, err := domain.RotateRefreshToken(found, now.Add(time.Hour), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("rotate: %v", err)
 	}
@@ -408,7 +410,7 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 	ctx := context.Background()
 	now := testClock()
 
-	first, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now)
+	first, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -416,7 +418,7 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 	if err := store.Save(ctx, first.Record); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	rotated, err := domain.RotateRefreshToken(first.Record, now.Add(time.Minute))
+	rotated, err := domain.RotateRefreshToken(first.Record, now.Add(time.Minute), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("rotate: %v", err)
 	}
@@ -425,7 +427,7 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 		t.Fatalf("store rotate: %v", err)
 	}
 
-	otherFamily, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now)
+	otherFamily, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("generate other family: %v", err)
 	}

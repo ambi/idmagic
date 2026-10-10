@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -55,7 +57,7 @@ func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time,
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, sc, nil, nil, now)
+	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, sc, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

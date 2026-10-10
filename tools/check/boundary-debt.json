@@ -1,62 +1,6 @@
 {
   "violations": [
     {
-      "id": "domain-effect:authentication",
-      "sourceModule": "authentication",
-      "violations": [
-        "domain-effect:backend/authentication/federation/domain/models.go:net",
-        "domain-effect:backend/authentication/federation/domain/models.go:time.Now",
-        "domain-effect:backend/authentication/trusteddevice/domain/trusted_device.go:crypto/rand"
-      ],
-      "reason": "backend/authentication/federation/domain/models.go remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "domain-effect:idmanagement",
-      "sourceModule": "idmanagement",
-      "violations": ["domain-effect:backend/idmanagement/group/domain/group_csv.go:net"],
-      "reason": "backend/idmanagement/group/domain/group_csv.go remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "domain-effect:oauth2",
-      "sourceModule": "oauth2",
-      "violations": [
-        "domain-effect:backend/oauth2/approval/domain/approval_request.go:crypto/rand",
-        "domain-effect:backend/oauth2/approval/domain/approval_request.go:time.Now",
-        "domain-effect:backend/oauth2/authorization/domain/authorization_code.go:crypto/rand",
-        "domain-effect:backend/oauth2/authorization/domain/authorization_code.go:time.Now",
-        "domain-effect:backend/oauth2/client/domain/cimd.go:net",
-        "domain-effect:backend/oauth2/client/domain/cimd.go:time.Now",
-        "domain-effect:backend/oauth2/client/domain/client.go:net",
-        "domain-effect:backend/oauth2/device/domain/device_authorization.go:crypto/rand",
-        "domain-effect:backend/oauth2/device/domain/device_authorization.go:time.Now",
-        "domain-effect:backend/oauth2/domain/mcp_resource_server.go:net",
-        "domain-effect:backend/oauth2/token/domain/refresh_token.go:crypto/rand",
-        "domain-effect:backend/oauth2/token/domain/refresh_token.go:time.Now"
-      ],
-      "reason": "backend/oauth2/approval/domain/approval_request.go remains coupled across 12 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "domain-effect:provisioning",
-      "sourceModule": "provisioning",
-      "violations": ["domain-effect:backend/provisioning/domain/connection.go:net"],
-      "reason": "backend/provisioning/domain/connection.go remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "domain-effect:saml",
-      "sourceModule": "saml",
-      "violations": [
-        "domain-effect:backend/saml/domain/authnrequest.go:net",
-        "domain-effect:backend/saml/domain/authnrequest.go:time.Now"
-      ],
-      "reason": "backend/saml/domain/authnrequest.go remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "domain-effect:seeding",
-      "sourceModule": "seeding",
-      "violations": ["domain-effect:backend/seeding/domain/plan.go:net"],
-      "reason": "backend/seeding/domain/plan.go remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
       "id": "module-cycle:ApiTokens->OAuth2",
       "sourceModule": "ApiTokens",
       "targetModule": "OAuth2",

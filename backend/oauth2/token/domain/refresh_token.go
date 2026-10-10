@@ -2,13 +2,13 @@
 package domain
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"slices"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -34,12 +34,9 @@ func GrantsRefreshToken(scopes []string) bool {
 	return slices.Contains(scopes, "offline_access")
 }
 
-func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, sid, resource *string, now time.Time) (*GeneratedRefreshToken, error) {
-	if now.IsZero() {
-		now = time.Now().UTC()
-	}
+func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, sid, resource *string, now time.Time, random entropy.Source) (*GeneratedRefreshToken, error) {
 	b := make([]byte, refreshTokenBytes)
-	if _, err := rand.Read(b); err != nil {
+	if err := random.Read(b); err != nil {
 		return nil, err
 	}
 	token := base64.RawURLEncoding.EncodeToString(b)
@@ -71,12 +68,9 @@ func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *Send
 	return &GeneratedRefreshToken{Token: token, Record: rec}, nil
 }
 
-func RotateRefreshToken(parent *RefreshTokenRecord, now time.Time) (*GeneratedRefreshToken, error) {
-	if now.IsZero() {
-		now = time.Now().UTC()
-	}
+func RotateRefreshToken(parent *RefreshTokenRecord, now time.Time, random entropy.Source) (*GeneratedRefreshToken, error) {
 	b := make([]byte, refreshTokenBytes)
-	if _, err := rand.Read(b); err != nil {
+	if err := random.Read(b); err != nil {
 		return nil, err
 	}
 	token := base64.RawURLEncoding.EncodeToString(b)
@@ -116,8 +110,5 @@ func IsRefreshTokenReplay(rec *RefreshTokenRecord) bool {
 }
 
 func IsRefreshTokenAbsoluteExpired(rec *RefreshTokenRecord, now time.Time) bool {
-	if now.IsZero() {
-		now = time.Now()
-	}
 	return !now.Before(rec.AbsoluteExpiresAt)
 }
