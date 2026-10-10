@@ -4,18 +4,33 @@
 
 ## 作業ごとの参照先
 
-作業に該当する文書を、編集またはレビューを始める前に読む。
+作業項目では `mise run brief -- <work-item> --target <対象パス>` から、今回必要な節と検証タスクの候補を得る。
+対象が複数なら `--target` を繰り返し、境界や作用を変えるときは `--concern boundary` または `--concern effects` を付ける。
+候補の参照元と理由を確認し、編集またはレビューを始める前に該当する節を読む。
+作業項目がない場合も、この表の条件から読む節を選ぶ。
+表の条件コメントと追加取得の使い方は[作業文脈の導出](docs/development/task-context.md)が定める。
 
 | 作業 | 読む文書 |
 | --- | --- |
-| 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [docs/formats/specification-format.md](docs/formats/specification-format.md)、設計文書の形式は [docs/formats/design-format.md](docs/formats/design-format.md)、work item の形式は [docs/formats/work-item-format.md](docs/formats/work-item-format.md)、文書体系と配置は [docs/formats/documentation-guide.md](docs/formats/documentation-guide.md) |
-| 文書、コメント、UI 文言の執筆または推敲 | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
-| 本番コード（`backend/`、`frontend/src/`）の変更 | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)。仕様を変えるかを必ず判断し、work item の `affected_spec` か `spec_impact`、またはコミットの `Spec-Impact: none` トレーラーで宣言する |
-| コードの編集またはレビュー | [コーディングスタイル](docs/development/coding-style.md)。七つの視点を実装とレビューの判断に用いる |
-| テスト水準、実行境界、テストダブルの選択 | [テスト方針](docs/development/testing.md) |
-| モジュール、型、依存、作用、エラーの設計 | [設計ガイドライン](docs/design/application/design-guidelines.md) |
-| モジュールの追加、分割と統合、公開範囲の拡大、モジュール間の依存の追加、テーブル所有者または組み立て地点の変更 | [境界を選ぶ判断手順](docs/design/application/design-guidelines.md#境界を選ぶ判断手順)。比較の記録を work item の設計に書いてから実装する |
-| 開発環境、ビルド、生成、CI、リリース | [開発文書の索引](docs/development/README.md)から該当する文書を選ぶ |
+| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計) |
+| 機能と振る舞いの変更 <!-- context: kinds=feature,bugfix,operations --> | [仕様の漏れを探す観点](docs/development/specification-first-workflow.md#仕様の漏れを探す観点)、[主要ユースケース](docs/development/testing.md#主要ユースケース) |
+| 文書、コメント、UI 文言の執筆または推敲 <!-- context: kinds=docs targets=docs,.agents,AGENTS.md,frontend --> | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
+| コードに含む文章の変更 <!-- context: targets=backend,frontend,tools,.agents,AGENTS.md --> | [文章の言語](docs/development/writing-language.md) |
+| 本番コード（`backend/`、`frontend/src/`）の変更 <!-- context: targets=backend,frontend/src --> | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)。仕様を変えるかを必ず判断し、work item の `affected_spec` か `spec_impact`、またはコミットの `Spec-Impact: none` トレーラーで宣言する |
+| コードの編集またはレビュー <!-- context: kinds=feature,bugfix,refactor,tooling,maintenance,operations targets=backend,frontend,tools --> | [コーディングスタイルの使い方](docs/development/coding-style.md#使い方)。七つの視点のうち、触れる判断の節へ進む |
+| テスト水準、実行境界、テストダブルの選択 <!-- context: kinds=feature,bugfix,refactor,tooling,maintenance,operations targets=backend,frontend,tools --> | [テスト方針](docs/development/testing.md#主要ユースケース)。水準の表と、触れる依存の[テストダブル](docs/development/testing.md#テストダブル)を選ぶ |
+| モジュール、型、依存、作用、エラーの設計 <!-- context: targets=backend,frontend/src --> | [モジュールの深さと情報隠蔽](docs/design/application/design-guidelines.md#モジュールの深さと情報隠蔽)。触れる型と作用の節へ進む |
+| モジュールの追加、分割と統合、公開範囲の拡大、モジュール間の依存の追加、テーブル所有者または組み立て地点の変更 <!-- context: concerns=boundary --> | [境界を選ぶ判断手順](docs/design/application/design-guidelines.md#境界を選ぶ判断手順)、[モジュールの責務](docs/design/architecture/logical.md#モジュールの責務)、[依存規則](docs/design/application/backend.md#モジュール間の依存規則)、[既知リスク](docs/design/architecture/risks.md)。比較の記録を work item の設計に書いてから実装する |
+| 横断的な作用と確定の変更 <!-- context: concerns=effects --> | [作用の境界](docs/design/application/design-guidelines.md#作用の境界)、[一貫性の境界と永続化](docs/design/application/design-guidelines.md#一貫性の境界と永続化)、[モジュール間イベント](docs/design/application/backend.md#モジュール間イベント) |
+| 公開 HTTP 契約の変更 <!-- context: concerns=contract --> | [API 区分](docs/design/application/api-guidelines.md#api-区分)、[TypeSpec の範囲](docs/formats/specification-format.md#1-typespec-の範囲)。触れる HTTP の判断の節へ進む |
+| 認可と信頼境界の変更 <!-- context: concerns=security --> | [主体の種類](docs/design/security/authorization.md#主体の種類)、[テナント境界](docs/design/security/authorization.md#テナント境界)、[脅威モデルの読み方](docs/design/security/threat-model.md#読み方)。触れる信頼境界の節へ進む |
+| 品質目標を変える作業 <!-- context: concerns=performance --> | [サービス目標](docs/requirements/quality.md#サービス目標)、[性能設計](docs/design/performance/README.md) |
+| 仕様文書の執筆 <!-- context: targets=spec,docs/modules,docs/requirements --> | [要件と例の形式](docs/formats/specification-format.md#5-要件と例) |
+| 設計文書の執筆 <!-- context: kinds=docs targets=docs/design --> | [設計領域の形式](docs/formats/design-format.md#1-設計領域) |
+| 文書の配置を変える作業 <!-- context: kinds=docs --> | [一次情報源の割り当て](docs/formats/documentation-guide.md#一次情報源の割り当て)から、触れる文書種別の節を選ぶ |
+| 開発文書の執筆 <!-- context: kinds=docs targets=docs/development --> | [開発文書の形式](docs/formats/documentation-guide.md#8-開発文書) |
+| 開発環境、ビルド、生成、CI、リリース <!-- context: targets=mise.toml,infra,.github --> | [開発文書の索引](docs/development/README.md)から該当する文書を選ぶ |
+| リポジトリ内ツールの変更 <!-- context: targets=tools --> | [リポジトリツール](tools/README.md) |
 
 ## mise
 

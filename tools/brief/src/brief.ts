@@ -122,7 +122,7 @@ export function coverageLine(coverage: Coverage): string {
     ? 'nothing declares it yet, so this starts from a specification change'
     : coverage.implementation || coverage.tests
       ? 'something already names it, so read those files before changing either side'
-      : 'the declaration is already there, so what is missing is code and not a specification edit'
+      : 'no naming files were found; inspect the implementation before deciding what is missing'
   return `${state} — ${reading}`
 }
 

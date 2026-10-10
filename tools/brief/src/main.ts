@@ -1,18 +1,15 @@
 #!/usr/bin/env bun
 
 /**
- * Print what a work item should be read from, in one command.
- *
- * Everything here is derived: the normative references come from the record's
- * own `affected_spec`, the declarations from the canonical documents, the
- * files that already name each requirement from the traceability walk the
- * generated site uses, and the recent history from Git. Nothing is authored,
- * so nothing can go stale.
+ * 規範参照と、一次情報が持つ作業条件から着手時の候補を組み立てる。
+ * 名前の言及と配置から導く候補は、実装や検証の完了を証明しない。
  */
 
-import { readdir, readFile } from 'node:fs/promises'
-import { basename, resolve } from 'node:path'
+import { readdir, readFile, realpath } from 'node:fs/promises'
+import { basename, relative, resolve } from 'node:path'
 import { parseFrontmatterAndMarkdown } from '../../check/src/work-item-markdown.ts'
+import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import { deriveContext, neighborCandidates, renderContext } from './context.ts'
 import { collectTraces } from './traces.ts'
 import {
   COVERAGE_NOTE,
@@ -24,10 +21,12 @@ import {
   sourceDirectories,
 } from './brief.ts'
 
-const root = resolve(import.meta.dir, '../../..')
+const root = resolve(process.env.SPEC_WORKSPACE_ROOT ?? resolve(import.meta.dir, '../../..'))
 const argument = process.argv[2]
+const usage =
+  'Usage: brief <work-item> [--kind <kind>] [--target <path>] [--concern boundary|effects|contract|security|performance] [--include history|neighbors]\n'
 if (argument === undefined || argument === '' || argument === '--help') {
-  process.stderr.write('Usage: brief <work-item>\n')
+  process.stderr.write(usage)
   process.exit(argument === '--help' ? 0 : 2)
 }
 
@@ -104,15 +103,74 @@ const path = await findWorkItem(argument)
 const record = parseFrontmatterAndMarkdown(path, await readFile(resolve(root, path), 'utf8')) as {
   affected_spec?: Array<{ path?: string; requirement?: string; symbol?: string }>
   spec_impact?: { kind?: string; reason?: string }
+  change_kind?: string
 }
 const affected = record.affected_spec ?? []
+const seed = {
+  kind: record.change_kind ?? 'feature',
+  targets: [] as string[],
+  concerns: [] as string[],
+}
+const include = new Set<string>()
+try {
+  const args = process.argv.slice(3)
+  for (let index = 0; index < args.length; index += 2) {
+    const option = args[index]
+    const value = args[index + 1]
+    if (!value || value.startsWith('--')) throw new Error(`Missing value for ${option}`)
+    if (option === '--kind') {
+      if (
+        !['feature', 'bugfix', 'refactor', 'docs', 'tooling', 'maintenance', 'operations'].includes(
+          value,
+        )
+      )
+        throw new Error(`Unknown kind: ${value}`)
+      seed.kind = value
+    } else if (option === '--target') {
+      const target = relative(root, resolve(root, value))
+      const actual = relative(await realpath(root), await realpath(resolve(root, target)))
+      if (
+        target.startsWith('../') ||
+        actual.startsWith('../') ||
+        target === '..' ||
+        actual === '..' ||
+        target === ''
+      )
+        throw new Error(`Target must stay within the repository: ${value}`)
+      seed.targets.push(target)
+    } else if (option === '--concern') {
+      if (!['boundary', 'effects', 'contract', 'security', 'performance'].includes(value))
+        throw new Error(`Unknown concern: ${value}`)
+      seed.concerns.push(value)
+    } else if (option === '--include') {
+      if (!['history', 'neighbors'].includes(value)) throw new Error(`Unknown expansion: ${value}`)
+      include.add(value)
+    } else throw new Error(`Unknown option: ${option}`)
+  }
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n${usage}`)
+  process.exit(2)
+}
+seed.targets = [
+  ...new Set([
+    ...seed.targets,
+    ...affected.map((reference) => reference.path ?? '').filter(Boolean),
+  ]),
+]
+const workspace = createWorkspaceSnapshot(root)
+const context = await deriveContext(seed, workspace)
 
 const lines: string[] = [`# ${basename(path, '.md')}`, '', `Record: ${path}`, '']
+lines.push(
+  `Kind: ${seed.kind}; targets: ${seed.targets.join(', ') || 'none (supply --target)'}; concerns: ${seed.concerns.join(', ') || 'none'}`,
+  '',
+  ...renderContext(context),
+)
 if (affected.length === 0) {
   const impact = record.spec_impact
   lines.push(
     `No \`affected_spec\` references${impact?.kind ? ` (spec_impact: ${impact.kind})` : ''}.`,
-    'The brief derives its reading list from those references, so there is nothing to resolve.',
+    'Task context is derived from the kind and explicit targets above.',
     '',
   )
 } else {
@@ -120,8 +178,13 @@ if (affected.length === 0) {
   lines.push(COVERAGE_NOTE, '')
 }
 
-const traces = new Map((await collectTraces(root)).map((trace) => [trace.id, trace]))
-const tspFiles = await typespecFiles('spec')
+const traces = new Map(
+  (affected.some((one) => one.requirement) ? await collectTraces(root) : []).map((trace) => [
+    trace.id,
+    trace,
+  ]),
+)
+const tspFiles = affected.some((one) => one.symbol) ? await typespecFiles('spec') : []
 
 const specification: string[] = []
 const typespec: string[] = []
@@ -175,8 +238,8 @@ for (const reference of affected) {
   }
 }
 
-const paths = [...new Set(affected.map((reference) => reference.path ?? '').filter(Boolean))]
-if (paths.length > 0) {
+const paths = seed.targets
+if (include.has('history') && paths.length > 0) {
   lines.push(
     '## Recent history',
     '',
@@ -190,7 +253,7 @@ if (paths.length > 0) {
 // A work item that touched the same module is the nearest precedent, and the
 // most recent ones are the ones whose conventions still hold.
 const named = new Set<string>()
-for (const module of modules) {
+for (const module of include.has('history') ? modules : []) {
   if (module === '') continue
   const result = Bun.spawnSync(
     ['git', 'log', '-5', '--format=%h %s', '--', `docs/modules/${module}`],
@@ -206,6 +269,20 @@ if (named.size > 0) {
   lines.push('## Recent work on the same module', '', ...[...named].map((one) => `- ${one}`), '')
 }
 
+if (include.has('neighbors')) {
+  lines.push(
+    '## Neighbor candidates',
+    '',
+    'Inferred from public contract text; these are not required reading or verified dependencies.',
+    '',
+  )
+  for (const candidate of await neighborCandidates(context, workspace))
+    lines.push(
+      `- ${candidate.location} [inferred]; origin: ${candidate.origin}; reason: ${candidate.reason}`,
+    )
+  lines.push('')
+}
+
 // The draft points at packages on the source side and at the naming files on
 // the test side: the code to read is a package, and the test to re-run is a file.
 lines.push(
@@ -213,9 +290,24 @@ lines.push(
   '',
   '```yaml',
   initialContextDraft({
-    specification,
+    specification: [
+      ...new Set([
+        ...specification,
+        ...context.reading
+          .filter((one) => one.location.startsWith('docs/'))
+          .map((one) => one.location.split('#')[0]!),
+      ]),
+    ],
     typespec,
-    implementation: sourceDirectories([...implementation, ...tests]),
+    implementation: [
+      ...new Set([
+        ...sourceDirectories([...implementation, ...tests]),
+        ...seed.targets.filter((one) => !one.startsWith('docs/') && !one.startsWith('spec/')),
+        ...context.reading
+          .filter((one) => !one.location.startsWith('docs/') && !one.location.startsWith('spec/'))
+          .map((one) => one.location),
+      ]),
+    ],
     tests: [...tests].sort(),
   }).trimEnd(),
   '```',

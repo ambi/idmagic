@@ -5,8 +5,12 @@ description: Specification-first workflow for feature and behavior changes. Upda
 
 # Changing the specification first
 
+作業項目では `mise run brief -- <work-item> --target <対象パス>` から読む節を選ぶ。
+公開 HTTP 契約を変えるときは `--concern contract`、作用の保証を変えるときは `--concern effects` を付ける。
+起点と追加取得は `docs/development/task-context.md` に従い、変更を所有する最小の仕様と、その形式の該当節を読む。
+
 Update the smallest owning specification before the implementation. `docs/formats/specification-format.md` defines the
-current document kinds and grammar; read it, not its rationale document.
+current document kinds and grammar; read the relevant sections, not its rationale document.
 
 1. Write the requirement delta in the work item's Design first: the requirements to add, change, or retire,
    each with its id and requirement sentences. Apply the delta to the canonical documents afterwards. Never

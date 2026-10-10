@@ -5,6 +5,10 @@ description: Update the owning current-state canonical documents when modules, t
 
 # Syncing the current design
 
+作業項目では `mise run brief -- <work-item> --target <対象パス>` から、変更を所有する設計と規約の該当節を選ぶ。
+境界を変えるときは `--concern boundary`、作用と確定を変えるときは `--concern effects` を付ける。
+起点と追加取得は `docs/development/task-context.md` に従う。
+
 `docs/formats/documentation-guide.md` defines the canonical document kinds and their layout, and `docs/formats/design-format.md` defines how design documents are written. Record each current fact in the smallest file
 whose name owns that kind of content.
 

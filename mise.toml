@@ -180,6 +180,7 @@ dir = "tools"
 run = "bun test"
 
 [tasks.test-tools-file]
+# context: targets=tools
 description = "Run one embedded repository tooling test file"
 dir = "tools"
 run = '''
@@ -190,6 +191,7 @@ bun test "$@"
 '''
 
 [tasks.typecheck-tools]
+# context: targets=tools
 description = "Type-check embedded repository tooling"
 dir = "tools"
 run = "bun run typecheck"
@@ -200,6 +202,7 @@ dir = "tools"
 run = "bun run format"
 
 [tasks.lint-tools]
+# context: targets=tools
 description = "Lint embedded repository tooling"
 dir = "tools"
 run = "bun run lint"
@@ -286,6 +289,7 @@ description = "Verify Go with lint and race-enabled tests"
 depends = ["lint-go", "test-go-race"]
 
 [tasks.lint-go]
+# context: targets=backend
 description = "Run Go lint"
 run = "golangci-lint run ./..."
 
@@ -355,6 +359,7 @@ echo "$packages" | tr '\n' ' ' | xargs go test -race
 '''
 
 [tasks.test-go-test]
+# context: targets=backend
 description = "Run one Go test by name in one package"
 run = '''
 #!/usr/bin/env sh
@@ -601,6 +606,7 @@ dir = "frontend"
 run = "bun run lint"
 
 [tasks.typecheck-ui]
+# context: targets=frontend
 description = "Type-check UI"
 dir = "frontend"
 run = "bun run typecheck"
@@ -616,6 +622,7 @@ dir = "frontend"
 run = "bun run test:unit"
 
 [tasks.test-ui-unit-file]
+# context: targets=frontend
 description = "Run one UI unit-test file"
 dir = "frontend"
 run = '''
@@ -636,6 +643,7 @@ dir = "frontend"
 run = "bun run build"
 
 [tasks.test-ui-e2e]
+# context: targets=frontend concerns=contract
 description = "Run UI end-to-end tests"
 dir = "frontend"
 run = "bun run test:e2e"
@@ -690,6 +698,7 @@ dir = "tools"
 run = "bun run render-docs/src/main.ts --check"
 
 [tasks.check-links]
+# context: targets=docs,.agents,AGENTS.md,work-items
 description = "Check repository-local Markdown links and anchors"
 dir = "tools"
 run = "bun run check/src/runner.ts links"
@@ -736,6 +745,7 @@ dir = "tools"
 run = "bun run check/src/runner.ts admin-scopes"
 
 [tasks.check-contract-drift]
+# context: concerns=contract
 description = "Check TypeSpec request and response bodies against what the Go handlers decode and write"
 depends = ["compile-spec"]
 dir = "tools"
@@ -773,24 +783,28 @@ dir = "tools"
 run = "bun run check/src/runner.ts command-map"
 
 [tasks.check-agent-guidance]
+# context: targets=.agents,AGENTS.md,tools/check/src/agent-guidance.ts
 description = "Check repository-local agent guidance against the current workflow"
 dir = "tools"
 run = "bun run check/src/runner.ts agent-guidance"
 
 # 依存として並べると、同じ実行の中で compile-spec が一度だけ走る。
 [tasks.check-spec]
+# context: targets=spec,docs/modules,docs/requirements
 description = "Compile TypeSpec and validate canonical specification documents"
 depends = ["compile-spec", "check-generated-contract", "check-rendered-docs"]
 dir = "tools"
 run = "bun run check/src/runner.ts documents specification-rules document-layout executable-examples"
 
 [tasks.check-work-items]
+# context: kinds=*
 description = "Validate work-item records"
 dir = "tools"
 # 成功した対象の列挙は既定では出さない。全件を見たいときは `-- --verbose` を渡す。
 run = "bun run check/src/runner.ts work-items \"$@\""
 
 [tasks.check-boundaries]
+# context: concerns=boundary
 description = "Reject forbidden source dependencies"
 dir = "tools"
 run = "bun run check/src/runner.ts boundaries \"$@\""
@@ -859,6 +873,7 @@ dir = "tools"
 run = "bun run check/src/runner.ts api-compat"
 
 [tasks.check-published-api-compat]
+# context: concerns=contract
 description = "Enforce OpenAPI compatibility when a published contract exists"
 depends = ["compile-spec"]
 dir = "tools"
@@ -890,7 +905,7 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run brief -- <work-item>" >&2; exit 2; }
-bun run brief/src/main.ts "$1"
+bun run brief/src/main.ts "$@"
 '''
 
 [tasks.spec-where]

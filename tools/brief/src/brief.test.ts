@@ -165,15 +165,13 @@ describe('coverageOf', () => {
 })
 
 describe('coverageLine', () => {
-  /**
-   * wi-257 が 9 分 33 秒かけて得た結論がこの形である。
-   * 宣言済みで実装が不在なら、読む先は仕様ではなく実装の欠けている側になる。
-   */
-  it('sends a declared but unimplemented symbol at the code, not at the specification', () => {
+  /** 識別子への言及がないことだけでは、実装がないとは言えない。 */
+  it('does not infer missing implementation from absent naming files', () => {
     const line = coverageLine({ declared: true, implementation: false, tests: false })
     expect(line).toContain('declared')
     expect(line).toContain('named by no implementation')
-    expect(line).toContain('what is missing is code and not a specification edit')
+    expect(line).toContain('inspect the implementation before deciding what is missing')
+    expect(line).not.toContain('what is missing is code')
   })
 
   it('sends an undeclared symbol at a specification change', () => {

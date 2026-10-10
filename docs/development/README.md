@@ -7,6 +7,7 @@
 | 読みたいこと | 文書 | 主な分類 |
 | --- | --- | --- |
 | 仕様先行の進め方、証拠契約、検証のはしご | [Specification-first Development Workflow](specification-first-workflow.md) | 解説、参照 |
+| 作業種別と変更対象から読む節と検証タスクを選ぶ | [作業文脈の導出](task-context.md) | 手順、参照 |
 | 文書ガイド、仕様フォーマット、設計フォーマットの各規則を選んだ理由 | [フォーマットの理由](format-rationale.md) | 解説 |
 | 命名、コメント、関数、抽象化、テストコード、依存関係のコーディングスタイル | [コーディングスタイル](coding-style.md) | 参照 |
 | 文書、コメント、UI 文言の言語 | [文章の言語](writing-language.md) | 参照 |

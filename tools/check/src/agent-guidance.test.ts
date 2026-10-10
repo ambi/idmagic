@@ -22,14 +22,34 @@ const currentGuidance = [
   },
 ]
 
+const routedGuidance = currentGuidance.map((document) => ({
+  ...document,
+  source: `${document.source}\ndocs/development/task-context.md\nmise run brief --target --concern contract --concern boundary`,
+}))
+
 const rootGuidanceIndex = currentGuidance.findIndex((document) => document.file === 'AGENTS.md')
 const implementationGuidanceIndex = currentGuidance.findIndex(
   (document) => document.file === '.agents/skills/implement-work-item/SKILL.md',
 )
 
 describe('verifyAgentGuidance', () => {
+  it('rejects each entry that loses the canonical context selection pointer', () => {
+    for (const document of currentGuidance) {
+      const guidance = routedGuidance.map((one) => ({
+        ...one,
+        source:
+          one.file === document.file
+            ? one.source.replace('docs/development/task-context.md', '')
+            : one.source,
+      }))
+      expect(verifyAgentGuidance(guidance)).toContainEqual({
+        file: document.file,
+        message: 'is missing required marker: docs/development/task-context.md',
+      })
+    }
+  })
   it('accepts guidance that names the current sources and development loop', () => {
-    expect(verifyAgentGuidance(currentGuidance)).toEqual([])
+    expect(verifyAgentGuidance(routedGuidance)).toEqual([])
   })
 
   it('rejects a legacy monolithic specification pointer', () => {

@@ -24,7 +24,12 @@ description: "Implement a selected work item end to end: specification first, a 
    inside that worktree. Keep worktrees under `.worktrees/`, never `/tmp` or `$TMPDIR`. One record owns one independently
    acceptable outcome, while that record may use multiple commits to keep structural and behavioral changes
    separate as `docs/development/coding-style.md` requires. Then run
-   `mise run brief -- <work-item>` and make a **readiness pass** before editing frontmatter. Read what the brief
+   `mise run brief -- <work-item> --target <changed-path>` and make a **readiness pass** before editing frontmatter.
+   複数の対象には `--target` を繰り返し、境界または作用の保証を変えるときは
+   `--concern boundary` または `--concern effects` を付ける。
+   参照元と理由で読む節と検証タスクを選ぶ。
+   起点と、履歴または隣接モジュールの追加取得は `docs/development/task-context.md` に従う。
+   Read what the brief
    names: the work item, its direct normative-scenario and standard references, its TypeSpec symbols, the
    canonical documents those references resolve to, and the smallest code and test slice involved. For a
    standards-coverage item, resolve every scoped standard id to its declaration, debt entry, named tests,

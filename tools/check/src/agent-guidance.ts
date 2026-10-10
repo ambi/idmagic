@@ -11,18 +11,37 @@ export type AgentGuidanceFinding = {
 }
 
 const requiredMarkers = new Map<string, string[]>([
-  ['AGENTS.md', ['コードの編集またはレビュー', 'docs/development/coding-style.md']],
+  [
+    'AGENTS.md',
+    [
+      'コードの編集またはレビュー',
+      'docs/development/coding-style.md',
+      'docs/development/task-context.md',
+      'mise run brief',
+      '--target',
+    ],
+  ],
   [
     '.agents/skills/spec-change/SKILL.md',
     [
       'spec/modules/<module>/{models,main}.tsp',
       'docs/modules/<module>/<group>/<feature>/README.md',
       'acceptance.feature.md',
+      'docs/development/task-context.md',
+      'mise run brief',
+      '--concern contract',
     ],
   ],
   [
     '.agents/skills/update-design/SKILL.md',
-    ['docs/README.md', 'docs/design/application/backend.md', 'docs/modules/<module>/README.md'],
+    [
+      'docs/README.md',
+      'docs/design/application/backend.md',
+      'docs/modules/<module>/README.md',
+      'docs/development/task-context.md',
+      'mise run brief',
+      '--concern boundary',
+    ],
   ],
   [
     '.agents/skills/implement-work-item/SKILL.md',
@@ -38,6 +57,9 @@ const requiredMarkers = new Map<string, string[]>([
       'Before the first source or test edit',
       'docs/development/coding-style.md',
       'review the changed code',
+      'docs/development/task-context.md',
+      'mise run brief',
+      '--target',
     ],
   ],
 ])
