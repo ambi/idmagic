@@ -8,6 +8,14 @@ priority: p3
 depends_on:
   - wi-97546-move-modules-without-private-callers-behind-go-internal
   - wi-33994-reinventory-the-remaining-boundary-debt
+  - wi-35767-publish-claim-issuance-as-claimmapping-public-operations
+  - wi-60465-publish-job-enqueue-and-handler-registration-as-jobs-ports
+  - wi-87746-publish-authentication-operations-other-modules-use
+  - wi-93464-move-authorization-login-steps-into-authentication
+  - wi-13438-publish-oauth2-consent-revocation-and-client-administration
+  - wi-93579-publish-idmanagement-user-operations-and-transactional-writer
+  - wi-90942-relocate-saml-assertion-building-out-of-wsfederation
+  - wi-28791-publish-application-sign-in-policy-evaluation
 change_kind: refactor
 spec_impact: { kind: none, reason: "残りのモジュールのパッケージを Go の internal/ へ移し、境界検査から legacy の公開方式を外すだけである。HTTP の応答、認証方式、永続状態、ドメインイベント、外向きの通知は変えない。" }
 ---
@@ -17,7 +25,7 @@ spec_impact: { kind: none, reason: "残りのモジュールのパッケージ�
 ## 動機
 
 [外から非公開パッケージへの import がないモジュールの移行](wi-97546-move-modules-without-private-callers-behind-go-internal.md)の後には、ほかのモジュールから非公開パッケージへ import される 8 個のモジュール（起票時は Tenancy、Authentication、ClaimMapping、Jobs、OAuth2、IdManagement、WsFederation、Application）が `legacy` のまま残る。
-これらの依存は[負債の棚卸し](wi-33994-reinventory-the-remaining-boundary-debt.md)が起票する解消の項目と、[テナントの公開契約](../done/wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)で取り除く。
+これらの依存は[負債の棚卸し](../done/wi-33994-reinventory-the-remaining-boundary-debt.md)が起票する解消の項目と、[テナントの公開契約](../done/wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)で取り除く。
 取り除いた後に移す作業と、全モジュールの移行後に `legacy` の命名による判定を消す作業を受け持つ項目がない。
 
 ## 対象範囲

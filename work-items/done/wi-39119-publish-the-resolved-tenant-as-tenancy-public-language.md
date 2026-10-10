@@ -95,7 +95,7 @@ spec_impact: { kind: none, reason: "解決済みのテナントを運ぶ Go の�
 | `tenancy/db_postgres`（`idmanagement/user/db_postgres`、`idmanagement/group/db_postgres`） | `NewQuotaRepository(tx)` | 取り込みの committer の構築関数が `func(pgx.Tx) tenantports.QuotaRepository` を必須の引数として受け取り、組み立て地点が Tenancy の `QuotaRepositoryInTx` を渡す。フィールドは非公開にし、構造体リテラルで渡し忘れる経路をなくす | 取り込みの 1 行は、使用量の加減算と行の書き込みを同じトランザクションで確定する。所有者の公開操作を呼び出し側のトランザクションに参加させれば、原子性を保ったまま実装への依存だけを外せる（D2、D7）。別のトランザクションで呼ぶ形は、行の確定と使用量がずれる窓を作るので採らない |
 
 `shared` から Tenancy への `shared-dependency` は、参照先が `ports` へ移っても共有ライブラリがモジュールへ依存する点は変わらないので、本項目では消えない。
-共有ライブラリ側の整理は、[境界の負債の順位付け](../active/wi-33994-reinventory-the-remaining-boundary-debt.md)で扱う。
+共有ライブラリ側の整理は、[境界の負債の順位付け](wi-33994-reinventory-the-remaining-boundary-debt.md)で扱う。
 
 ### 証拠
 
