@@ -21,8 +21,8 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
@@ -96,7 +96,7 @@ func TestFederatedLoginPrimaryUseCase_REQ_AUTHENTICATION_001(t *testing.T) {
 		t.Fatalf("session cookies=%+v", cookies)
 	}
 	headers := http.Header{"Cookie": []string{cookies[0].String()}}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	authn, err := sessions.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: headers})
 	if err != nil || authn == nil || authn.UserID != "user-alice" {
 		t.Fatalf("authn=%+v err=%v", authn, err)

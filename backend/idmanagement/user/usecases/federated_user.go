@@ -8,7 +8,7 @@ import (
 
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type ProvisionFederatedUserInput struct {
@@ -34,7 +34,7 @@ func ProvisionFederatedUser(
 	}
 	return createUser(ctx, deps, newUser{
 		User: userdomain.User{
-			TenantID: tenancy.TenantID(ctx), PreferredUsername: username,
+			TenantID: tenantports.TenantID(ctx), PreferredUsername: username,
 			Name: in.Name, Email: normalizeEmail(in.Email), EmailVerified: in.EmailVerified,
 			Roles: []string{}, Attributes: in.Attributes,
 		},

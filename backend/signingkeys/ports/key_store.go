@@ -45,7 +45,7 @@ func KeyScope(ctx context.Context) string {
 // SigningKey は本実装では RSA を想定。alg=PS256 のみ。
 // 公開鍵 JWK は JWKS 配布用。鍵はテナントに帰属する (TenantID)。
 // VaultTransit provider では PrivateKey は nil で、署名は provider が担う。
-// KeyStore はテナント帰属の署名鍵を扱う。tenant scope は ctx (tenancy.TenantID)
+// KeyStore はテナント帰属の署名鍵を扱う。tenant scope は ctx (tenantports.TenantID)
 // から解決し、列挙・検索・回転・署名鍵選択はすべて ctx のテナントに閉じる。
 type KeyStore interface {
 	GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error)

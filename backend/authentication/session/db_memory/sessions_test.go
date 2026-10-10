@@ -7,8 +7,8 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // storeTenant は、この store が PostgreSQL 実装と同じく tenant_id で絞ることを
@@ -17,7 +17,7 @@ import (
 const storeTenant = "tenant-1"
 
 func tenantContext(tenantID string) context.Context {
-	return tenancy.WithTenant(
+	return tenantports.WithTenant(
 		context.Background(), &tenancydomain.Tenant{ID: tenantID, Realm: tenantID}, "", "",
 	)
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type IntrospectInput struct {
@@ -76,7 +76,7 @@ func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.Int
 	if r.ClientID == "" || deps.AgentRepo == nil || deps.RevocationEpochRepo == nil {
 		return false, nil
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByClientID(ctx, tenantID, r.ClientID)
 	if err != nil || agent == nil {
 		return false, err
@@ -100,7 +100,7 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 			return nil, err
 		}
 		if rec != nil {
-			if rec.TenantID != tenancy.TenantID(ctx) {
+			if rec.TenantID != tenantports.TenantID(ctx) {
 				return &IntrospectionResponse{Active: false}, nil
 			}
 			active := !rec.Revoked && !rec.Rotated && now.Before(rec.AbsoluteExpiresAt)

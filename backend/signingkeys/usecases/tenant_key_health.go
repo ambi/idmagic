@@ -7,7 +7,6 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	"github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -25,7 +24,7 @@ func ListTenantKeyHealth(ctx context.Context, deps TenantKeyHealthDeps) ([]signi
 	}
 	out := make([]signingdomain.TenantKeyHealth, 0, len(tenants))
 	for _, t := range tenants {
-		tctx := tenancy.WithTenant(ctx, t, "", "")
+		tctx := tenantports.WithTenant(ctx, t, "", "")
 		keys, err := deps.KeyStore.GetAllKeys(tctx)
 		if err != nil {
 			return nil, err

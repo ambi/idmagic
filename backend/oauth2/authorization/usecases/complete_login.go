@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // =====================================================================
@@ -47,7 +47,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 	if req == nil {
 		return nil, NewOAuthError("invalid_request", "unknown authorization request")
 	}
-	if req.TenantID != tenancy.TenantID(ctx) {
+	if req.TenantID != tenantports.TenantID(ctx) {
 		return nil, NewOAuthError("invalid_request", "unknown authorization request")
 	}
 	if time.Now().After(req.ExpiresAt) {

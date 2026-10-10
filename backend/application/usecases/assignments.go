@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type AssignmentDeps struct {
@@ -48,7 +48,7 @@ type AssignApplicationInput struct {
 }
 
 func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplicationInput) (*domain.ApplicationAssignment, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 }
 
 func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if err := deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, subjectType, subjectID); err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, 
 // (wi-159) — callers pass limit+1 to detect whether a next page
 // exists, then trim to limit before responding.
 func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
 		return nil, err
@@ -134,13 +134,13 @@ func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, af
 }
 
 func ListAssignmentsBefore(ctx context.Context, deps AssignmentDeps, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
-	return deps.AssignmentRepo.ListPageBeforeByApplication(ctx, tenancy.TenantID(ctx), applicationID, beforeSubjectType, beforeSubjectID, limit)
+	return deps.AssignmentRepo.ListPageBeforeByApplication(ctx, tenantports.TenantID(ctx), applicationID, beforeSubjectType, beforeSubjectID, limit)
 }
 
 // ListMyApplications は subjects (利用者本人 + 所属グループ) に割当済みで visible な
 // active Application を name 昇順・重複排除して返す。hidden 割当は除外する (wi-69)。
 func ListMyApplications(ctx context.Context, deps AssignmentDeps, subjects []ports.SubjectRef) ([]*domain.Application, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	assignments, err := deps.AssignmentRepo.ListBySubjects(ctx, tenantID, subjects)
 	if err != nil {
 		return nil, err

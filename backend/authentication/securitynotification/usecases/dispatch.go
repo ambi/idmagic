@@ -24,8 +24,8 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // SecurityReviewPath はメール本文に載せる導線。認証を要求する通常のアカウント画面で
@@ -83,7 +83,7 @@ func Dispatch(ctx context.Context, deps DispatchDeps, event spec.DomainEvent) er
 	}
 	// 配信点は request の外なので、repository がテナント境界を確かめられるよう
 	// ctx にテナントを載せ直す (監査の射影と同じ扱い)。
-	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
 
 	user, err := deps.UserRepo.FindBySub(ctx, recipientID)
 	if err != nil {

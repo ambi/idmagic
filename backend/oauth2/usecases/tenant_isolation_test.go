@@ -21,11 +21,11 @@ import (
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func tenantContext(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{
 		ID: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }

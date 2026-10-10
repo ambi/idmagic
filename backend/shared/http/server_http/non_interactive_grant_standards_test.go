@@ -50,9 +50,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -241,7 +241,7 @@ func nigChallenge() string {
 }
 
 func (f *nigFixture) tenantContext() context.Context {
-	return tenancy.WithTenant(context.Background(),
+	return tenantports.WithTenant(context.Background(),
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, nigIssuer, "/realms/default")
 }
 

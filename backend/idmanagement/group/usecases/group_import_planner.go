@@ -19,7 +19,6 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -159,7 +158,7 @@ func PlanGroupImport(
 	if deps.GroupRepo == nil {
 		return summary, errors.New("group import planner dependencies are incomplete")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	schema, err := groupCSVSchemaFor(ctx, deps.GroupSchemaReader, tenantID)
 	if err != nil {
 		return summary, err

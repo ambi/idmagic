@@ -22,8 +22,8 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // userSnapshot はテナントの User を (username, email, roles) の並びで写し取る。
@@ -151,7 +151,7 @@ func TestPlanUserImportRefusesDuplicateTargetsAndFinalUsernames(t *testing.T) {
 //spec:covers EX-IDMANAGEMENT-004-05: 存在しない / queued / failed / 別テナント / ダイジェスト不一致のプレビューを指す適用が拒否され、適用のジョブも User の変更も残さないこと。
 func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 	ctx := importPlannerContext()
-	otherCtx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "other"}, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "other"}, "", "")
 
 	for _, tc := range []struct {
 		name string

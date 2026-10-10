@@ -10,13 +10,13 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ListConsentsForSub は指定 sub の active な (granted) Consent のみを返す。
 // 接続済みアプリ一覧の用途で、revoked / expired は除外する。
 func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*domain.Consent, error) {
-	all, err := deps.ConsentRepo.FindAll(ctx, tenancy.TenantID(ctx))
+	all, err := deps.ConsentRepo.FindAll(ctx, tenantports.TenantID(ctx))
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,7 @@ import (
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var (
@@ -46,7 +46,7 @@ func EmptySignInPolicy(tenantID, applicationID string, now time.Time) *domain.Ap
 }
 
 func GetSignInPolicy(ctx context.Context, deps SignInPolicyDeps, applicationID string) (*domain.AppSignInPolicy, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if err := ensureApplicationExists(ctx, deps.AppRepo, tenantID, applicationID); err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func GetSignInPolicy(ctx context.Context, deps SignInPolicyDeps, applicationID s
 }
 
 func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSignInPolicyInput) (*domain.AppSignInPolicy, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if err := ensureApplicationExists(ctx, deps.AppRepo, tenantID, in.ApplicationID); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *domain.TenantDefa
 
 // GetDefaultSignInPolicy はテナントデフォルト sign-in policy を取得する。未設定なら空ルールを返す。
 func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*domain.TenantDefaultSignInPolicy, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if deps.DefaultRepo == nil {
 		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
 	}
@@ -133,7 +133,7 @@ type UpdateDefaultSignInPolicyInput struct {
 // UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える。
 // 空 rules で保存すればデフォルトは allow-all に戻る。
 func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateDefaultSignInPolicyInput) (*domain.TenantDefaultSignInPolicy, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	rules := slices.Clone(in.Rules)
 	if err := ValidateSignInPolicyRulesAt(rules, in.Now); err != nil {
 		return nil, err

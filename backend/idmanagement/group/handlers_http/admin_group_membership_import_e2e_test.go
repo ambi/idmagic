@@ -29,8 +29,8 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -240,7 +240,7 @@ func (h *membershipImportHarness) result(jobID string) groupusecases.GroupMember
 }
 
 func membershipExportContext() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 }
 
 func defaultMembershipPolicy() idmdomain.CSVTransferPolicy {

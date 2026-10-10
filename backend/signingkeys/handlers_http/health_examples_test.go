@@ -36,9 +36,9 @@ import (
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	signingvault "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -105,7 +105,7 @@ func healthUser(id, tenantID string, roles ...string) *userdomain.User {
 }
 
 func tenantContext(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id, Realm: id}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id, Realm: id}, "", "")
 }
 
 // transitDouble は Vault Transit の代役である。到達不能にすると、Vault へ問い合わせる

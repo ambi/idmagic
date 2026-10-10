@@ -8,13 +8,13 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func tenantContext() context.Context {
 	id := tenancydomain.DefaultTenantID
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{
 		ID: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }

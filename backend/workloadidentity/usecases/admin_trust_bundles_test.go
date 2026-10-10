@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/workloadidentity/usecases"
 )
 
 func withTenant(tenantID string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenantID}, "https://idp.example", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenantID}, "https://idp.example", "")
 }
 
 func newAdminDeps() usecases.AdminWorkloadIdentityDeps {

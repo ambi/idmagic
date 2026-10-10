@@ -17,7 +17,7 @@ spec_impact: { kind: none, reason: "残りのモジュールのパッケージ�
 ## 動機
 
 [外から非公開パッケージへの import がないモジュールの移行](wi-97546-move-modules-without-private-callers-behind-go-internal.md)の後には、ほかのモジュールから非公開パッケージへ import される 8 個のモジュール（起票時は Tenancy、Authentication、ClaimMapping、Jobs、OAuth2、IdManagement、WsFederation、Application）が `legacy` のまま残る。
-これらの依存は[負債の棚卸し](wi-33994-reinventory-the-remaining-boundary-debt.md)が起票する解消の項目と、[テナントの公開契約](wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)で取り除く。
+これらの依存は[負債の棚卸し](wi-33994-reinventory-the-remaining-boundary-debt.md)が起票する解消の項目と、[テナントの公開契約](../done/wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)で取り除く。
 取り除いた後に移す作業と、全モジュールの移行後に `legacy` の命名による判定を消す作業を受け持つ項目がない。
 
 ## 対象範囲

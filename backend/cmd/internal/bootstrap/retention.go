@@ -14,7 +14,7 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // RunRetentionSweepOnce は保持期間境界を現在時刻で一度だけ適用する。
@@ -63,7 +63,7 @@ func purgeExpiredUsers(ctx context.Context, deps *Dependencies, now time.Time) e
 	commands := deps.UserLifecycleCommands(deps.NewEmitFunc(logging.Default()), "system")
 	var failures []error
 	for _, tenant := range tenants {
-		tenantCtx := tenancy.WithTenant(ctx, tenant, "", "")
+		tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
 		if err := userusecases.PurgeExpiredSoftDeleted(tenantCtx, commands.Deps, now); err != nil {
 			logging.Error(tenantCtx, "user purge failed", "error", err, "tenant_id", tenant.ID)
 			failures = append(failures, fmt.Errorf("purge expired users of tenant %s: %w", tenant.ID, err))

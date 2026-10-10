@@ -13,11 +13,11 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func accountConsentCtx() context.Context {
-	return tenancy.WithTenant(
+	return tenantports.WithTenant(
 		context.Background(),
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Status: tenancydomain.TenantStatusActive},
 		"http://idp.test", "",

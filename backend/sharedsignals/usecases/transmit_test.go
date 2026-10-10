@@ -13,8 +13,8 @@ import (
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // TestBuildAndSignSecurityEventToken — RED: RFC 8417 の claims (iss/jti/iat/aud/
@@ -95,7 +95,7 @@ func TestBuildAndSignSecurityEventToken(t *testing.T) {
 
 	// 署名そのものを、受信側が使うのと同じ検証器に通す。テナントの公開鍵で検証を
 	// 通ることが「署名済み」の観測であり、3 分割の形だけでは代わりにならない。
-	key, err := keyStore.GetActiveKey(tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: "tenant-a"}, "", ""))
+	key, err := keyStore.GetActiveKey(tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: "tenant-a"}, "", ""))
 	if err != nil {
 		t.Fatalf("GetActiveKey: %v", err)
 	}

@@ -17,12 +17,12 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestDynamicGroupRuleReconcilesMembership(t *testing.T) {
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 	groups := groupmemory.NewGroupRepository()
 	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()
@@ -62,7 +62,7 @@ func dynamicRuleFixture(
 	t *testing.T,
 ) (context.Context, groupusecases.DynamicGroupDeps, *groupmemory.GroupRepository, *usermemory.UserRepository) {
 	t.Helper()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 	groups := groupmemory.NewGroupRepository()
 	users := usermemory.NewUserRepository()
 	now := time.Now().UTC()

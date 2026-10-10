@@ -8,7 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -27,7 +27,7 @@ func parFromPayload(payload []byte) (*domain.PARRecord, error) {
 }
 
 func (s *PARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
-	rec.TenantID = tenancy.TenantID(ctx)
+	rec.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(rec)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (s *PARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
 func (s *PARStore) Find(ctx context.Context, requestURI string) (*domain.PARRecord, error) {
 	row, err := New(s.Pool).FindPARRequest(ctx, FindPARRequestParams{
 		RequestUri: requestURI,
-		TenantID:   tenancy.TenantID(ctx),
+		TenantID:   tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -63,7 +63,7 @@ func (s *PARStore) Find(ctx context.Context, requestURI string) (*domain.PARReco
 func (s *PARStore) Consume(ctx context.Context, requestURI string) (*domain.PARRecord, error) {
 	payload, err := New(s.Pool).ConsumePARRequest(ctx, ConsumePARRequestParams{
 		RequestUri: requestURI,
-		TenantID:   tenancy.TenantID(ctx),
+		TenantID:   tenantports.TenantID(ctx),
 		Now:        time.Now().UTC(),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

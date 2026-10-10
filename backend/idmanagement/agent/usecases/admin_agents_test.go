@@ -25,8 +25,8 @@ import (
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEvent) {
@@ -89,7 +89,7 @@ func defaultTenantCtx() context.Context {
 }
 
 func tenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://idp.example", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://idp.example", "")
 }
 
 func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {

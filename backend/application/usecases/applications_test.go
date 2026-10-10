@@ -12,11 +12,11 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func tenantContext() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "https://idp.example", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "https://idp.example", "")
 }
 
 func newDeps() (appusecases.ApplicationDeps, appusecases.AssignmentDeps) {

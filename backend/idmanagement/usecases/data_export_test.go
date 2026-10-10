@@ -23,8 +23,8 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type eventRecorder struct {
@@ -50,7 +50,7 @@ func (r *eventRecorder) types() []string {
 }
 
 func exportTestCtx() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 }
 
 func mustMarshal(t *testing.T, v any) []byte {

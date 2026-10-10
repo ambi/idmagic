@@ -20,7 +20,6 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -100,7 +99,7 @@ func StartGroupImportPreview(ctx context.Context, deps GroupImportStartDeps, act
 	if err := policy.Validate(); err != nil {
 		return nil, err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
 		return idmdomain.CopyCSVWithinPolicy(output, input, policy)
 	})
@@ -124,7 +123,7 @@ func StartGroupImportApply(ctx context.Context, deps GroupImportStartDeps, actor
 	if deps.Artifacts == nil || deps.Jobs == nil {
 		return nil, errors.New("group import apply dependencies are incomplete")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	params, result, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, previewJobID)
 	if err != nil {
 		return nil, err
@@ -175,7 +174,7 @@ func GroupImportJobHandler(deps GroupImportJobDeps, mode GroupImportMode) func(c
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
 		var source GroupImportParams
 		if mode == GroupImportModeApply {
 			bound, previewResult, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID)

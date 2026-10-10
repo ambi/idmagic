@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var (
@@ -32,7 +32,7 @@ type CategoryDeps struct {
 }
 
 func ListCategories(ctx context.Context, deps CategoryDeps) ([]*domain.ApplicationCategory, error) {
-	return deps.Repo.ListAll(ctx, tenancy.TenantID(ctx))
+	return deps.Repo.ListAll(ctx, tenantports.TenantID(ctx))
 }
 
 type CreateCategoryInput struct {
@@ -43,7 +43,7 @@ type CreateCategoryInput struct {
 }
 
 func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInput) (*domain.ApplicationCategory, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return nil, ErrCategoryNameRequired
@@ -89,7 +89,7 @@ type UpdateCategoryInput struct {
 }
 
 func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInput) (*domain.ApplicationCategory, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	category, err := deps.Repo.FindByID(ctx, tenantID, in.CategoryID)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInp
 }
 
 func DeleteCategory(ctx context.Context, deps CategoryDeps, actorUserID, categoryID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	category, err := deps.Repo.FindByID(ctx, tenantID, categoryID)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ type SetApplicationCategoriesInput struct {
 // SetApplicationCategories は Application に付与するカテゴリ集合を置き換える。
 // category_ids は所属テナントの既存カテゴリのみを許し、重複は除去する。
 func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetApplicationCategoriesInput) (*domain.Application, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.AppRepo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
 		return nil, err

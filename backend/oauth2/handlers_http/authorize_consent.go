@@ -10,7 +10,6 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -63,7 +62,7 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 				return err
 			}
 			if shouldConsumeConsentQuota(existing) {
-				if err := tenancyusecases.CheckQuotaAndIncrement(ctx, d.QuotaRepo, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
+				if err := d.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
 					if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok && d.Emit != nil {
 						d.Emit(&tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
 					}

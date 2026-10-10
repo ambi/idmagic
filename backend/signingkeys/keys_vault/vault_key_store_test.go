@@ -17,13 +17,13 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 func tenantCtx() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 }
 
 // fakeTransit は Vault Transit を in-memory の RSA 鍵で模擬する。

@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // TestPARStore は Pushed Authorization Request の単発消費 を検証する。
@@ -19,8 +19,8 @@ func TestPARStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	other := seedTenant(t, db)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
-	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.PARStore{Pool: db}
 	now := pgtest.Now()
 
@@ -67,8 +67,8 @@ func TestApprovalRequestStore(t *testing.T) {
 	other := seedTenant(t, db)
 	user := seedUser(t, db, tenant.ID)
 	client := seedClient(t, db, tenant.ID)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
-	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.ApprovalRequestStore{Pool: db}
 	now := pgtest.Now()
 	rec := &approvaldomain.ApprovalRequest{
@@ -130,7 +130,7 @@ func TestApprovalRequestStore(t *testing.T) {
 func TestAuthorizationCodeStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	store := &oauth2postgres.AuthorizationCodeStore{Pool: db}
 	now := pgtest.Now()
 
@@ -194,7 +194,7 @@ func TestDeviceCodeStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	user := seedUser(t, db, tenant.ID)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	store := &oauth2postgres.DeviceCodeStore{Pool: db}
 	now := pgtest.Now()
 

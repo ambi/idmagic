@@ -13,7 +13,7 @@ import (
 	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -154,5 +154,5 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 }
 
 func (d Deps) redirectAuthorizationError(c *echo.Context, req *oauthdomain.AuthorizationRequest, code, description string) error {
-	return c.Redirect(http.StatusSeeOther, authorizationErrorURL(req, tenancy.Issuer(c.Request().Context(), d.Issuer), code, description))
+	return c.Redirect(http.StatusSeeOther, authorizationErrorURL(req, tenantports.Issuer(c.Request().Context(), d.Issuer), code, description))
 }

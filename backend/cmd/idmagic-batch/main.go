@@ -16,7 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/version"
 	signingusecases "github.com/ambi/idmagic/backend/signingkeys/usecases"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle|data-key-reencryption-sweep|restore-consistency-check> [flags]"
@@ -151,7 +151,7 @@ func runSigningKeyLifecycle(ctx context.Context, deps *bootstrap.Dependencies, c
 	//nolint:contextcheck // Batch events use the bounded independent audit context.
 	emit := deps.NewEmitFunc(logging.Default())
 	for _, tenant := range tenants {
-		tenantCtx := tenancy.WithTenant(ctx, tenant, "", "")
+		tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
 		if _, err := signingusecases.RotateSigningKeyIfDue(tenantCtx, signingusecases.RotateSigningKeyDeps{
 			KeyStore: deps.SigningKeys.KeyStore,
 			Emit:     emit,

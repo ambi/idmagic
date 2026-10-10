@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type accountContextResponse struct {
@@ -39,7 +39,7 @@ func handleAccountContext(d Deps, c *echo.Context) error {
 	resp := accountContextResponse{CSRFToken: csrf, ID: authn.UserID}
 	// realm はリクエストが解決した現在テナントの公開 slug。UI の system console
 	// gating (realm == "default") に使う。
-	if t := tenancy.Tenant(c.Request().Context()); t != nil {
+	if t := tenantports.Tenant(c.Request().Context()); t != nil {
 		resp.Realm = t.Realm
 	}
 	if d.UserRepo != nil {

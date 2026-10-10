@@ -1,4 +1,4 @@
-package tenancy_test
+package ports_test
 
 import (
 	"context"
@@ -6,25 +6,25 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // WithTenant で格納したテナントが Tenant / TenantID から取り出せる。
 func TestWithTenantAndAccessors(t *testing.T) {
 	tenant := &domain.Tenant{ID: "acme"}
-	ctx := tenancy.WithTenant(context.Background(), tenant, "https://acme.example.com/", "/realms/acme/")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "https://acme.example.com/", "/realms/acme/")
 
-	if got := tenancy.Tenant(ctx); got == nil || got.ID != "acme" {
+	if got := tenantports.Tenant(ctx); got == nil || got.ID != "acme" {
 		t.Fatalf("Tenant() = %v, want id=acme", got)
 	}
-	if got := tenancy.TenantID(ctx); got != "acme" {
+	if got := tenantports.TenantID(ctx); got != "acme" {
 		t.Errorf("TenantID() = %q, want acme", got)
 	}
 	// issuer は末尾スラッシュを除去して格納される。
-	if got := tenancy.Issuer(ctx, "https://fallback"); got != "https://acme.example.com" {
+	if got := tenantports.Issuer(ctx, "https://fallback"); got != "https://acme.example.com" {
 		t.Errorf("Issuer() = %q, want trimmed issuer", got)
 	}
-	if got := tenancy.URLPrefix(ctx); got != "/realms/acme" {
+	if got := tenantports.URLPrefix(ctx); got != "/realms/acme" {
 		t.Errorf("URLPrefix() = %q, want /realms/acme", got)
 	}
 }
@@ -33,7 +33,7 @@ func TestWithTenantAndAccessors(t *testing.T) {
 func TestTenantIDPanicsWithoutResolvedTenant(t *testing.T) {
 	for name, ctx := range map[string]context.Context{
 		"テナントがない": context.Background(),
-		"ID が空":   tenancy.WithTenant(context.Background(), &domain.Tenant{ID: ""}, "", ""),
+		"ID が空":   tenantports.WithTenant(context.Background(), &domain.Tenant{ID: ""}, "", ""),
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {
@@ -41,7 +41,7 @@ func TestTenantIDPanicsWithoutResolvedTenant(t *testing.T) {
 					t.Errorf("TenantID() did not panic")
 				}
 			}()
-			got := tenancy.TenantID(ctx)
+			got := tenantports.TenantID(ctx)
 			t.Errorf("TenantID() = %q, want panic", got)
 		})
 	}
@@ -49,7 +49,7 @@ func TestTenantIDPanicsWithoutResolvedTenant(t *testing.T) {
 
 // Tenant はテナントのない文脈で nil を返す。
 func TestTenantNilWithoutResolvedTenant(t *testing.T) {
-	if got := tenancy.Tenant(context.Background()); got != nil {
+	if got := tenantports.Tenant(context.Background()); got != nil {
 		t.Errorf("Tenant() = %v, want nil", got)
 	}
 }
@@ -57,14 +57,14 @@ func TestTenantNilWithoutResolvedTenant(t *testing.T) {
 // Issuer は context に issuer が無い場合 fallback を末尾スラッシュ除去して返す。
 func TestIssuerFallback(t *testing.T) {
 	ctx := context.Background()
-	if got := tenancy.Issuer(ctx, "https://fallback.example.com/"); got != "https://fallback.example.com" {
+	if got := tenantports.Issuer(ctx, "https://fallback.example.com/"); got != "https://fallback.example.com" {
 		t.Errorf("Issuer() fallback = %q, want trimmed fallback", got)
 	}
 }
 
 // URLPrefix は未設定なら空文字を返す。
 func TestURLPrefixEmpty(t *testing.T) {
-	if got := tenancy.URLPrefix(context.Background()); got != "" {
+	if got := tenantports.URLPrefix(context.Background()); got != "" {
 		t.Errorf("URLPrefix() = %q, want empty", got)
 	}
 }

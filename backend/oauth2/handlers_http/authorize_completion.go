@@ -13,7 +13,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -61,7 +61,7 @@ func (d Deps) completeAfterAuthn(
 		}
 		if !covered {
 			if prompt.None {
-				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenancy.Issuer(c.Request().Context(), d.Issuer), "consent_required", "Existing consent is required.")}, nil
+				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenantports.Issuer(c.Request().Context(), d.Issuer), "consent_required", "Existing consent is required.")}, nil
 			}
 			ctx, cancel := d.OperationContext(c.Request().Context())
 			defer cancel()
@@ -94,7 +94,7 @@ func (d Deps) clientIsFirstParty(ctx context.Context, clientID string) bool {
 	if d.ClientRepo == nil {
 		return false
 	}
-	client, err := d.ClientRepo.FindByID(ctx, tenancy.TenantID(ctx), clientID)
+	client, err := d.ClientRepo.FindByID(ctx, tenantports.TenantID(ctx), clientID)
 	return err == nil && client != nil && client.FirstParty
 }
 
@@ -105,8 +105,8 @@ func (d Deps) issueCodeURL(
 	authn *authdomain.AuthenticationContext,
 	authTime time.Time,
 ) (string, error) {
-	iss := tenancy.Issuer(ctx, d.Issuer)
-	tenantID := tenancy.TenantID(ctx)
+	iss := tenantports.Issuer(ctx, d.Issuer)
+	tenantID := tenantports.TenantID(ctx)
 	// 割当ゲート (wi-69): client が Application binding に属する場合、未割当 subject には
 	// 認可コードを発行せず access_denied で RP へ返す (fail-closed, AssignmentGatesProtocol)。
 	// ただし first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は

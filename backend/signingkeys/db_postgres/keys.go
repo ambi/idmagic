@@ -14,10 +14,10 @@ import (
 
 	sharedpostgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// KeyStore (OAuth2: 署名鍵)。tenant scope は ctx (tenancy.TenantID) から解決する。
+// KeyStore (OAuth2: 署名鍵)。tenant scope は ctx (tenantports.TenantID) から解決する。
 // 秘密鍵マテリアルを app DB に置く dev/test 用の provider。本番は VaultTransit を使う。
 type KeyStore struct {
 	Pool sharedpostgres.DB
@@ -43,7 +43,7 @@ func timeToPg(t *time.Time) pgtype.Timestamptz {
 }
 
 func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 
@@ -91,7 +91,7 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey,
 }
 
 func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	rows, err := New(s.Pool).GetAllKeys(ctx, GetAllKeysParams{
@@ -137,7 +137,7 @@ func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey,
 }
 
 func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 
@@ -186,7 +186,7 @@ func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signin
 }
 
 func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	row, err := New(s.Pool).FindKeyByKID(ctx, FindKeyByKIDParams{
@@ -234,7 +234,7 @@ func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.Si
 }
 
 func (s *KeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
-	return s.rotateForTenant(ctx, tenancy.TenantID(ctx), now, grace, nil)
+	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, nil)
 }
 
 func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grace time.Duration) (*signingdomain.SigningKey, error) {
@@ -242,7 +242,7 @@ func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grac
 		return nil, errors.New("signing key rotation cadence must be positive")
 	}
 	dueBefore := now.Add(-cadence)
-	return s.rotateForTenant(ctx, tenancy.TenantID(ctx), now, grace, &dueBefore)
+	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, &dueBefore)
 }
 
 func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
@@ -255,7 +255,7 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.Sign
 	}
 	if err := New(s.Pool).DisableKey(ctx, DisableKeyParams{
 		Kid:      kid,
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 	}); err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.Sign
 }
 
 func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 

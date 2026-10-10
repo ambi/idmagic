@@ -23,7 +23,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type refreshFixture struct {
@@ -133,7 +133,7 @@ func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	// tenant context が無いと FindByID は default を期待するが、Seed では明示せず
 	// oauth2memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", "")
 	res, err := RefreshTokens(
 		ctx,
 		f.deps,
@@ -168,7 +168,7 @@ func TestRefreshTokensReuseRevokesFamilyAndNotifiesTokenRevoked(t *testing.T) {
 	f := newRefreshFixture(t, nil, now, time.Hour)
 	var events []spec.DomainEvent
 	f.deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: f.record.TenantID, Status: tenancydomain.TenantStatusActive}, "", "")
 
 	if _, err := RefreshTokens(ctx, f.deps, RefreshInput{ClientID: "client", RefreshToken: f.token}, now); err != nil {
 		t.Fatalf("ローテーションに失敗: %v", err)

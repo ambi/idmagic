@@ -10,7 +10,7 @@ import (
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -40,7 +40,7 @@ func hashThrottleIdentifier(key string) string {
 
 func (t *LoginAttemptThrottle) TryAcquire(ctx context.Context, kind sessionports.LoginThrottleKind, key string, now time.Time) (sessionports.LoginThrottleResult, error) {
 	lockedUntil, err := New(t.Pool).GetThrottleLock(ctx, GetThrottleLockParams{
-		TenantID:       tenancy.TenantID(ctx),
+		TenantID:       tenantports.TenantID(ctx),
 		Kind:           string(kind),
 		IdentifierHash: hashThrottleIdentifier(key),
 	})
@@ -65,7 +65,7 @@ func (t *LoginAttemptThrottle) TryAcquire(ctx context.Context, kind sessionports
 
 func (t *LoginAttemptThrottle) RecordFailure(ctx context.Context, kind sessionports.LoginThrottleKind, key string, now time.Time) (sessionports.LoginThrottleResult, error) {
 	config := t.config(kind)
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	hash := hashThrottleIdentifier(key)
 
 	tx, err := t.Pool.Begin(ctx)
@@ -125,7 +125,7 @@ func (t *LoginAttemptThrottle) RecordFailure(ctx context.Context, kind sessionpo
 
 func (t *LoginAttemptThrottle) RecordSuccess(ctx context.Context, kind sessionports.LoginThrottleKind, key string) error {
 	return New(t.Pool).DeleteThrottleCounter(ctx, DeleteThrottleCounterParams{
-		TenantID:       tenancy.TenantID(ctx),
+		TenantID:       tenantports.TenantID(ctx),
 		Kind:           string(kind),
 		IdentifierHash: hashThrottleIdentifier(key),
 	})

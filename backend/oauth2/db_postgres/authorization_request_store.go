@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -22,7 +22,7 @@ import (
 type AuthorizationRequestStore struct{ Pool sharedpg.DB }
 
 func (s *AuthorizationRequestStore) Save(ctx context.Context, req *domain.AuthorizationRequest) error {
-	req.TenantID = tenancy.TenantID(ctx)
+	req.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (s *AuthorizationRequestStore) Save(ctx context.Context, req *domain.Author
 func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*domain.AuthorizationRequest, error) {
 	payload, err := New(s.Pool).FindAuthorizationRequest(ctx, FindAuthorizationRequestParams{
 		ID:       id,
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -55,7 +55,7 @@ func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*domai
 
 // mutate は tx 内で行をロックし、payload を読み出して change を適用し書き戻す。
 func (s *AuthorizationRequestStore) mutate(ctx context.Context, id string, change func(*domain.AuthorizationRequest) error) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err

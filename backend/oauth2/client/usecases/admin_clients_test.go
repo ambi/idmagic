@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
@@ -174,7 +174,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 
 		// 別テナントからは同じ client を更新できない。所有権の確認が抜けると、
 		// テナント境界を越えた設定変更がそのまま通ってしまう。
-		otherTenant := tenancy.WithTenant(ctx, &tenancydomain.Tenant{
+		otherTenant := tenantports.WithTenant(ctx, &tenancydomain.Tenant{
 			ID: "another-tenant", DisplayName: "another-tenant",
 			Status: tenancydomain.TenantStatusActive, CreatedAt: now,
 		}, "https://idp.example/realms/another-tenant", "/realms/another-tenant")

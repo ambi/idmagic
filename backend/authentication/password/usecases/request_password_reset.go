@@ -18,7 +18,7 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const PasswordResetTokenTTLSeconds = 1800
@@ -48,13 +48,13 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 	}
 	email := strings.ToLower(strings.TrimSpace(in.Email))
 	if deps.Emit != nil {
-		deps.Emit(&authdomain.PasswordResetRequested{At: now, TenantID: tenancy.TenantID(ctx), EmailHash: sha256Hex(email)})
+		deps.Emit(&authdomain.PasswordResetRequested{At: now, TenantID: tenantports.TenantID(ctx), EmailHash: sha256Hex(email)})
 	}
 	if email == "" {
 		return nil
 	}
 
-	user, err := deps.UserRepo.FindByEmail(ctx, tenancy.TenantID(ctx), email)
+	user, err := deps.UserRepo.FindByEmail(ctx, tenantports.TenantID(ctx), email)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 	// Send to the verified address stored on the account, not the raw request
 	// input, so untrusted request data never reaches the email content (CWE-640).
 	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
-		TenantID:        tenancy.TenantID(ctx),
+		TenantID:        tenantports.TenantID(ctx),
 		To:              *user.Email,
 		Key:             sharednotification.TemplateKeyPasswordReset,
 		RecipientLocale: user.LocaleAttribute(),

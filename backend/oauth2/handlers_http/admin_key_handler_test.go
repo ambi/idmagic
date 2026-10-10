@@ -30,7 +30,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -130,7 +130,7 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 	e, keyStore, _ := newKeyAdminServer(t, user)
 	// acme テナントの鍵を 2 本作り JWKS 上に active+verifying を作る。
 	// KeyStore は tenant-aware なので acme の ctx で回転する。
-	acmeCtx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	acmeCtx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 	if _, err := keyStore.Rotate(acmeCtx, time.Now().UTC(), 7*24*time.Hour); err != nil {
 		t.Fatal(err)
 	}

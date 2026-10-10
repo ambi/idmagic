@@ -7,8 +7,8 @@ import (
 
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
@@ -26,7 +26,7 @@ func TestResolveRPForRequest(t *testing.T) {
 	e := echo.New()
 	contextFor := func(style domain.TenantEndpointStyle, issuer, prefix string) *echo.Context {
 		req := httptest.NewRequest("GET", "/", http.NoBody)
-		req = req.WithContext(tenancy.WithTenant(req.Context(), &domain.Tenant{EndpointStyle: style}, issuer, prefix))
+		req = req.WithContext(tenantports.WithTenant(req.Context(), &domain.Tenant{EndpointStyle: style}, issuer, prefix))
 		return e.NewContext(req, httptest.NewRecorder())
 	}
 	deps := support.Deps{Issuer: "https://idp.example"}

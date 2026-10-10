@@ -19,7 +19,7 @@ import (
 	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type StartApprovalInput struct {
@@ -82,7 +82,7 @@ func StartApproval(ctx context.Context, deps StartApprovalDeps, in StartApproval
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err
@@ -168,15 +168,15 @@ func resolveApprovalUser(ctx context.Context, deps StartApprovalDeps, in StartAp
 		}
 	} else {
 		hint := strings.TrimSpace(in.LoginHint)
-		user, err = deps.UserRepo.FindByUsername(ctx, tenancy.TenantID(ctx), hint)
+		user, err = deps.UserRepo.FindByUsername(ctx, tenantports.TenantID(ctx), hint)
 		if err == nil && user == nil {
-			user, err = deps.UserRepo.FindByEmail(ctx, tenancy.TenantID(ctx), hint)
+			user, err = deps.UserRepo.FindByEmail(ctx, tenantports.TenantID(ctx), hint)
 		}
 	}
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) || !user.IsActive() {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) || !user.IsActive() {
 		return nil, sharedusecases.NewOAuthError("unknown_user_id", "user could not be resolved")
 	}
 	return user, nil
@@ -273,7 +273,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 			return nil, sharedusecases.NewOAuthError("invalid_grant", "approval request is not approved")
 		}
 	}
-	client, err := deps.ClientRepo.FindByID(ctx, tenancy.TenantID(ctx), in.ClientID)
+	client, err := deps.ClientRepo.FindByID(ctx, tenantports.TenantID(ctx), in.ClientID)
 	if err != nil || client == nil {
 		if err != nil {
 			return nil, err
@@ -281,7 +281,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		return nil, sharedusecases.NewOAuthError("invalid_grant", "client is unavailable")
 	}
 	user, err := deps.UserRepo.FindBySub(ctx, rec.UserID)
-	if err != nil || user == nil || !user.IsActive() || user.TenantID != tenancy.TenantID(ctx) {
+	if err != nil || user == nil || !user.IsActive() || user.TenantID != tenantports.TenantID(ctx) {
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +291,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		if deps.AgentRepo == nil {
 			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent status cannot be verified")
 		}
-		agent, findErr := deps.AgentRepo.FindByID(ctx, tenancy.TenantID(ctx), *rec.AgentID)
+		agent, findErr := deps.AgentRepo.FindByID(ctx, tenantports.TenantID(ctx), *rec.AgentID)
 		if findErr != nil {
 			return nil, findErr
 		}

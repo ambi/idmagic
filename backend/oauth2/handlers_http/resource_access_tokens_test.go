@@ -28,8 +28,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/labstack/echo/v5"
@@ -119,7 +119,7 @@ func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 			req.Header.Set("Authorization", "DPoP "+accessToken)
 			req.Header.Set("DPoP", resourceTestDPoPProof(t, key, jwk, http.MethodGet, "https://idp.test"+path, tc.name, tc.ath, now))
-			req = req.WithContext(tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: "acme"}, resourceTestRealmAPI, "/realms/acme"))
+			req = req.WithContext(tenantports.WithTenant(req.Context(), &tenancydomain.Tenant{ID: "acme"}, resourceTestRealmAPI, "/realms/acme"))
 			c := e.NewContext(req, httptest.NewRecorder())
 			a := support.Authenticator{AccessTokens: oauth2http.ResourceAccessTokens{
 				Introspector: resourceTestIntrospector{result: &oauthports.IntrospectionResult{

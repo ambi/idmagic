@@ -14,7 +14,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const groupCSVExportPageSize = 500
@@ -45,7 +45,7 @@ func (e GroupCSVExporter) policy() idmdomain.CSVTransferPolicy {
 }
 
 func (e GroupCSVExporter) ValidateGroupCSVColumns(ctx context.Context, columns []string) error {
-	schema, err := groupCSVSchemaFor(ctx, e.Deps.SchemaReader, tenancy.TenantID(ctx))
+	schema, err := groupCSVSchemaFor(ctx, e.Deps.SchemaReader, tenantports.TenantID(ctx))
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func ExportGroupCSV(ctx context.Context, deps GroupCSVExportDeps, columns []stri
 	if err := policy.Validate(); err != nil {
 		return result, err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	schema, err := groupCSVSchemaFor(ctx, deps.SchemaReader, tenantID)
 	if err != nil {
 		return result, err

@@ -19,7 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -110,7 +110,7 @@ func (d Deps) requireSecondFactor(
 	}
 	if d.Emit != nil {
 		d.Emit(&authdomain.MfaChallengeIssued{
-			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), UserID: pending.UserID,
+			At: time.Now().UTC(), TenantID: tenantports.TenantID(ctx), UserID: pending.UserID,
 			FactorTypes: mfaFactorTypes(d.secondFactorMethods(c, pending.UserID)), SessionID: pending.SessionID, //nolint:contextcheck // HTTP request context is required for factor lookup.
 		})
 	}

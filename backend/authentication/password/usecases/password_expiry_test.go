@@ -9,8 +9,8 @@ import (
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 //spec:covers REQ-AUTHENTICATION-024, EX-AUTHENTICATION-024-05: パスワード資格情報を持たない利用者 (フェデレーションまたはパスワードレス) には、経過日数によらず update_password が付与されないことを固定する。
@@ -98,7 +98,7 @@ func TestResolveTenantPolicy(t *testing.T) {
 	}
 
 	t.Run("tenant resolved by middleware is used as is", func(t *testing.T) {
-		ctx := tenancy.WithTenant(context.Background(), tenant, "https://idmagic.test", "")
+		ctx := tenantports.WithTenant(context.Background(), tenant, "https://idmagic.test", "")
 		snap := ResolveTenantPolicy(ctx)
 		if snap.MinLength != 20 || snap.MaxAgeDays != 45 {
 			t.Fatalf("snapshot=%+v, want tenant override applied", snap)

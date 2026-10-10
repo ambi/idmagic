@@ -10,7 +10,7 @@ import (
 
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -34,7 +34,7 @@ func (l *RateLimiter) Allow(ctx context.Context, policyID, key string, now time.
 	if !ok {
 		return rlports.RateLimitResult{}, errors.New("ratelimit: unknown policy " + policyID)
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	hash := hashRateLimitKey(key)
 
 	tx, err := l.Pool.Begin(ctx)

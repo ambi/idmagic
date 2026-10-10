@@ -20,12 +20,12 @@ import (
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func workflowContext() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 }
 
 func workflowInput() usecases.CreateLifecycleWorkflowInput {
@@ -192,7 +192,7 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	other := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
+	other := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, "admin", time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("cross-tenant access error = %v", err)
 	}

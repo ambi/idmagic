@@ -506,7 +506,7 @@ D7 の入力である「停止と失効の部分的な確定を禁止するか�
 7. 後続項目を起票し、既存の項目を調整する。
    - 残りの文書の改名と、用語の検査の規則の追加。
    - モジュールごとの `internal/` への移行。最初の項目は、依存の少ないモジュールを一つ選んで移行の手順を確かめる。
-   - [テナントの公開言語](../active/wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)は Context Map への辺の追記を除く。公開契約への移動と、既存の非公開ユースケースやアダプターへの直接依存の解消は残す。
+   - [テナントの公開言語](wi-39119-publish-the-resolved-tenant-as-tenancy-public-language.md)は Context Map への辺の追記を除く。公開契約への移動と、既存の非公開ユースケースやアダプターへの直接依存の解消は残す。
    - [残った境界負債の棚卸し](../active/wi-33994-reinventory-the-remaining-boundary-debt.md)は新しい分類と D1〜D8 で棚卸しする。新規の書き込み負債も対象とし、公開操作を足すだけで解消したとは扱わない。
    - この二つの項目は、旧規則に合わせた修正が先に進まないよう、起票の時点で `depends_on` に本項目を加えてある。
    - [ドメインの作用の注入](../active/wi-65906-inject-time-randomness-and-network-into-domain.md)は `domain-effect` を変えないので、調整しない。

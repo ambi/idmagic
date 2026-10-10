@@ -5,7 +5,7 @@ import (
 	"time"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // AccessTokenDenylist は失効した access token の jti を PostgreSQL に保持する。
@@ -17,7 +17,7 @@ type AccessTokenDenylist struct{ Pool sharedpg.DB }
 
 func (d *AccessTokenDenylist) Add(ctx context.Context, jti string, expiresAt time.Time) error {
 	return New(d.Pool).AddOauth2AccessTokenDenylist(ctx, AddOauth2AccessTokenDenylistParams{
-		TenantID:  tenancy.TenantID(ctx),
+		TenantID:  tenantports.TenantID(ctx),
 		Jti:       jti,
 		ExpiresAt: expiresAt,
 	})
@@ -25,7 +25,7 @@ func (d *AccessTokenDenylist) Add(ctx context.Context, jti string, expiresAt tim
 
 func (d *AccessTokenDenylist) IsRevoked(ctx context.Context, jti string) (bool, error) {
 	return New(d.Pool).IsOauth2AccessTokenRevoked(ctx, IsOauth2AccessTokenRevokedParams{
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 		Jti:      jti,
 		Now:      time.Now().UTC(),
 	})

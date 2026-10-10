@@ -7,7 +7,7 @@ import (
 
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // TestReplayStore は DPoP / client-assertion jti リプレイ予約 を検証する。
@@ -16,8 +16,8 @@ func TestReplayStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	other := seedTenant(t, db)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
-	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.ReplayStore{Pool: db, Kind: "dpop"}
 	caStore := &oauth2postgres.ReplayStore{Pool: db, Kind: "client_assertion"}
 	now := pgtest.Now()
@@ -48,8 +48,8 @@ func TestAccessTokenDenylist(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	other := seedTenant(t, db)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
-	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	d := &oauth2postgres.AccessTokenDenylist{Pool: db}
 	now := pgtest.Now()
 

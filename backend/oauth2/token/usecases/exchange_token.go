@@ -29,8 +29,8 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
@@ -98,7 +98,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 
 	reject := func(actorUserID string, err *OAuthError) (*ExchangeTokenResult, error) {
 		emit(deps.Emit, &domain.TokenExchangeRejected{At: now, TenantID: tenantID, ActorUserID: actorUserID, Reason: err.Code})
@@ -436,7 +436,7 @@ func rejectSupervisedAgents(
 	if deps.AgentRepo == nil {
 		return "", nil
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	seen := map[string]bool{}
 	// Agent を引けないまま交換を通すと区分の判定ごと失われるため、解決の失敗も拒否に倒す。
 	unresolved := NewOAuthError("invalid_request", "The agent kind could not be resolved.")

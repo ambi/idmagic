@@ -16,7 +16,7 @@ import (
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var ErrAuthenticatorResetNotAllowed = errors.New("authenticator reset is not allowed")
@@ -59,7 +59,7 @@ func ResetUserAuthenticators(
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) || !user.IsActive() {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) || !user.IsActive() {
 		return nil, ErrAuthenticatorResetNotAllowed
 	}
 

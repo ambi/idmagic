@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type RefreshInput struct {
@@ -41,7 +41,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err

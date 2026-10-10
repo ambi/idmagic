@@ -33,8 +33,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	"github.com/labstack/echo/v5"
 )
@@ -273,7 +273,7 @@ func TestEndSessionBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 
 func assertLogoutToken(t *testing.T, signer *tokens_jose.JWTSigner, token, audience, sid string) {
 	t.Helper()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: "default"}, logoutE2EIssuer+"/realms/default", "/realms/default")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: "default"}, logoutE2EIssuer+"/realms/default", "/realms/default")
 	claims, err := signer.VerifyIDTokenHint(ctx, token)
 	if err != nil {
 		t.Fatal(err)

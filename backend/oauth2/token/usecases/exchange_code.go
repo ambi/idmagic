@@ -13,7 +13,7 @@ import (
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // =====================================================================
@@ -72,7 +72,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if rec == nil {
 		return nil, NewOAuthError("invalid_grant", "The authorization code is invalid.")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if rec.TenantID != tenantID {
 		return nil, NewOAuthError("invalid_grant", "The authorization code is invalid.")
 	}

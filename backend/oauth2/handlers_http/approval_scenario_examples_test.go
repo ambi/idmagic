@@ -28,9 +28,9 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -60,7 +60,7 @@ const (
 func newApprovalScenarioFixture(t *testing.T) *approvalScenarioFixture {
 	t.Helper()
 	now := time.Now().UTC()
-	ctx := tenancy.WithTenant(
+	ctx := tenantports.WithTenant(
 		context.Background(),
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 

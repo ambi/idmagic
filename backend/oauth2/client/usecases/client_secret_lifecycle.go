@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const MaxActiveClientSecrets = 2
@@ -38,7 +38,7 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 		return nil, NewOAuthError("invalid_request", "expires_in_days must be between 1 and 730")
 	}
 	now := adminNow(in.Now)
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ type RevokeClientSecretResult struct {
 
 func RevokeClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in RevokeClientSecretInput) (*RevokeClientSecretResult, error) {
 	now := adminNow(in.Now)
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err

@@ -76,9 +76,9 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -595,7 +595,7 @@ func (s *Stack) RealmContext(t *testing.T, realm string) context.Context {
 		t.Fatalf("realm %q: tenant=%v err=%v", realm, tenant, err)
 	}
 	prefix := "/realms/" + realm
-	return tenancy.WithTenant(context.Background(), tenant, Issuer+prefix, prefix)
+	return tenantports.WithTenant(context.Background(), tenant, Issuer+prefix, prefix)
 }
 
 // TenantID はレルムに対応するテナント id を返す。

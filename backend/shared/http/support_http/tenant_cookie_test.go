@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
@@ -26,7 +26,7 @@ func TestTenantCookieScope(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/", http.NoBody)
-			req = req.WithContext(tenancy.WithTenant(req.Context(), &domain.Tenant{EndpointStyle: tc.style}, "", tc.prefix))
+			req = req.WithContext(tenantports.WithTenant(req.Context(), &domain.Tenant{EndpointStyle: tc.style}, "", tc.prefix))
 			c := e.NewContext(req, httptest.NewRecorder())
 			if got := TenantCookieName(c, "idmagic_session"); got != tc.wantName {
 				t.Fatalf("cookie name = %q, want %q", got, tc.wantName)

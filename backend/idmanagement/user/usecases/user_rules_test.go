@@ -29,9 +29,9 @@ import (
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
@@ -149,7 +149,7 @@ func TestCreateUserTrimsTheUsernameAndComparesItCaseInsensitively(t *testing.T) 
 func TestCreateUserAppliesTheTenantPasswordPolicy(t *testing.T) {
 	f := newUserRulesFixture(t)
 	twenty := 20
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MinLength: &twenty},
 	}, "https://idp.example", "")
 	_, err := userusecases.CreateUser(ctx, f.deps, userusecases.CreateUserInput{

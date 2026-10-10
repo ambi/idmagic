@@ -13,8 +13,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type Signer struct {
@@ -24,7 +24,7 @@ type Signer struct {
 var _ ssports.SecurityEventTokenSigner = (*Signer)(nil)
 
 func (s *Signer) Sign(ctx context.Context, tenantID string, claims map[string]any) (string, error) {
-	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
 	key, err := s.KeyStore.GetActiveKey(ctx)
 	if err != nil {
 		return "", err

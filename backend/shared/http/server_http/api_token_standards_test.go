@@ -43,9 +43,9 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
@@ -183,10 +183,10 @@ func (s *apiTokenStack) realmContext(t *testing.T, realm string) context.Context
 		t.Fatalf("realm %q: tenant=%v err=%v", realm, tenant, err)
 	}
 	if tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain {
-		return tenancy.WithTenant(context.Background(), tenant, "https://"+realm+"."+apiTokenBaseDomain, "")
+		return tenantports.WithTenant(context.Background(), tenant, "https://"+realm+"."+apiTokenBaseDomain, "")
 	}
 	prefix := "/realms/" + realm
-	return tenancy.WithTenant(context.Background(), tenant, apiTokenIssuer+prefix, prefix)
+	return tenantports.WithTenant(context.Background(), tenant, apiTokenIssuer+prefix, prefix)
 }
 
 func (s *apiTokenStack) tenantID(t *testing.T, realm string) string {

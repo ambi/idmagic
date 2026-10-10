@@ -13,7 +13,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type GroupMembershipImportApplyDeps struct {
@@ -38,7 +38,7 @@ func ApplyGroupMembershipImport(
 		return applied, errors.New("group membership import apply dependencies are incomplete")
 	}
 	now = now.UTC()
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	_, err := PlanGroupMembershipImport(ctx, deps.Plan, groupID, input, policy,
 		func(row groupdomain.GroupMembershipImportRowPlan) error {
 			final := row

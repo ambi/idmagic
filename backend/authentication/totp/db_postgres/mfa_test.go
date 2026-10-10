@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -40,7 +40,7 @@ func TestMfaFactorRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	user := pgfixtures.SeedUser(t, db, tenant.ID)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)}
 
 	now := pgfixtures.TestClock()
@@ -97,7 +97,7 @@ func TestMfaFactorRepositoryDualReadsLegacyPlaintext(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	user := pgfixtures.SeedUser(t, db, tenant.ID)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)}
 
 	if err := New(db).UpsertMfaFactor(ctx, UpsertMfaFactorParams{
@@ -128,7 +128,7 @@ func TestMfaFactorRepositoryDecryptFailsClosedForWrongTenant(t *testing.T) {
 	otherTenant := pgfixtures.SeedTenant(t, db)
 	user := pgfixtures.SeedUser(t, db, tenant.ID)
 	cipher := newTestCipher(t, tenant.ID)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: cipher}
 
 	factor := &domain.MfaFactor{UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("secret"), CreatedAt: pgfixtures.TestClock()}
@@ -136,7 +136,7 @@ func TestMfaFactorRepositoryDecryptFailsClosedForWrongTenant(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	wrongCtx := tenancy.WithTenant(context.Background(), otherTenant, "", "")
+	wrongCtx := tenantports.WithTenant(context.Background(), otherTenant, "", "")
 	if _, err := repo.Find(wrongCtx, user.ID, spec.MfaFactorTOTP); err == nil {
 		t.Fatal("expected Find to fail-closed when decrypting under the wrong tenant context")
 	}

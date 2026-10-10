@@ -13,8 +13,8 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type importSchemaReader struct {
@@ -43,7 +43,7 @@ func (g perUserImportOwnershipGuard) SourceManagedUserIDs(_ context.Context, _ s
 }
 
 func importPlannerContext() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 }
 
 func importPlannerUser(id, username string) *userdomain.User {

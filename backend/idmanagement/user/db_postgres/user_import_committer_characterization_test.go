@@ -25,7 +25,7 @@ func TestCharacterizeUserImportRowQuota(t *testing.T) {
 			ID: newUUID(t), TenantID: tenantID, PreferredUsername: username, PasswordHash: "imported-hash",
 			Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 		}
-		err := UserImportRowCommitter{Pool: db}.CommitUserImportRow(ctx, userports.UserImportRowMutation{
+		err := NewUserImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx).CommitUserImportRow(ctx, userports.UserImportRowMutation{
 			After: imported, Changed: []string{"password"}, ActorUserID: actorID, AuditEventType: "user.imported",
 			ConsumesUserQuota: true, Now: now,
 		})

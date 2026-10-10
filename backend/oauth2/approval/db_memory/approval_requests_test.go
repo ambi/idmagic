@@ -9,8 +9,8 @@ import (
 	approvaldb "github.com/ambi/idmagic/backend/oauth2/approval/db_memory"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/approval/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 //spec:covers REQ-OAUTH2-043: a pending request accepts exactly one account decision.
@@ -28,7 +28,7 @@ func TestApprovalRequestStoreDecideIsCompareAndSet(t *testing.T) {
 		AuthReqIDHash: approvaldomain.HashAuthReqID("secret"), IntervalSeconds: 5,
 		RequestedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 	if err := store.Save(ctx, rec); err != nil {
 		t.Fatal(err)
 	}

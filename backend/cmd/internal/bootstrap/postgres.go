@@ -126,8 +126,8 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
 	csvArtifacts := &idmpostgres.CSVArtifactStore{Pool: resilientDB}
-	userImportCommitter := userpostgres.UserImportRowCommitter{Pool: resilientDB}
-	groupImportCommitter := grouppostgres.GroupImportRowCommitter{Pool: resilientDB}
+	userImportCommitter := userpostgres.NewUserImportRowCommitter(resilientDB, tenancypostgres.QuotaRepositoryInTx)
+	groupImportCommitter := grouppostgres.NewGroupImportRowCommitter(resilientDB, tenancypostgres.QuotaRepositoryInTx)
 	groupMembershipImportCommitter := grouppostgres.GroupMembershipImportRowCommitter{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
 	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}

@@ -12,7 +12,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // EnqueueDeps are the dependencies for Enqueue.
@@ -60,7 +59,7 @@ func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, no
 		return job, nil
 	}
 	if deps.QuotaRepo != nil {
-		quotaErr := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, input.TenantID, tenancydomain.ResourceActiveJobs, 1)
+		quotaErr := deps.QuotaRepo.CheckAndIncrement(ctx, input.TenantID, tenancydomain.ResourceActiveJobs, 1)
 		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](quotaErr); ok {
 			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: input.TenantID, Resource: qErr.Resource, HardLimit: true})
 			if _, cancelErr := deps.Repo.Cancel(ctx, job.ID, now); cancelErr != nil {

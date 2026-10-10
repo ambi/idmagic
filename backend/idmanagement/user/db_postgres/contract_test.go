@@ -8,6 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement/user/testing_contract"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 )
 
 func newContractFixture(t *testing.T) testing_contract.Fixture {
@@ -21,7 +22,7 @@ func newContractFixture(t *testing.T) testing_contract.Fixture {
 		Users:       &UserRepository{Pool: db},
 		EmailTokens: &EmailChangeTokenStore{Pool: db},
 		Schemas:     &TenantUserAttributeSchemaRepository{Pool: db},
-		ImportRows:  UserImportRowCommitter{Pool: db},
+		ImportRows:  NewUserImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx),
 		TenantA:     tenantA.ID, TenantB: tenantB.ID, EmailUser: emailUser,
 		ActorUserID: actor.ID, Now: pgtest.Now(),
 		AssertImported: func(t *testing.T, mutation userports.UserImportRowMutation) {

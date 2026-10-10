@@ -7,11 +7,11 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func tenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://issuer.example", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://issuer.example", "")
 }
 
 func TestInMemoryTenantSaltStoreGeneratesOnFirstUse(t *testing.T) {

@@ -22,8 +22,8 @@ import (
 	sharedsignalssign "github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -83,7 +83,7 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	if err := sharedsignalsusecases.ProjectAgentAccessRevoked(ctx, sharedsignalsusecases.ProjectorDeps{
 		StreamRepo: streams, TransmitterConfigRepo: configs, DeliveryRepo: deliveries,
 		Signer: &sharedsignalssign.Signer{KeyStore: keyStore}, Issuer: "https://idp.example/realms/default",

@@ -8,7 +8,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // =====================================================================
@@ -51,7 +51,7 @@ func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) er
 func inTenant(ctx context.Context, sess *authdomain.LoginSession) bool {
 	tenantID := sess.TenantID
 	sharedmem.DefaultTenant(&tenantID)
-	return tenantID == tenancy.TenantID(ctx)
+	return tenantID == tenantports.TenantID(ctx)
 }
 
 // Find は有効な (未失効・未期限切れ) セッションだけを返す fail-closed な解決用 lookup。

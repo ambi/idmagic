@@ -15,7 +15,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -109,7 +109,7 @@ func TestMfaFactorReencryptor_MigratesLegacyPlaintext(t *testing.T) {
 		t.Fatalf("expected row to carry active-version ciphertext, got version=%v ciphertext_len=%d", row.SecretKeyVersion, len(row.SecretCiphertext))
 	}
 
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	got, err := repo.Find(ctx, user.ID, spec.MfaFactorTOTP)
 	if err != nil {
 		t.Fatalf("Find after migration failed: %v", err)
@@ -125,7 +125,7 @@ func TestMfaFactorReencryptor_MigratesStaleVersionAfterRotationAndPreservesValue
 	user := pgfixtures.SeedUser(t, db, tenant.ID)
 	stack := newTestDataKeyStack(t, tenant.ID)
 	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 
 	if err := repo.Save(ctx, &domain.MfaFactor{
 		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("JBSWY3DPEHPK3PXP"), CreatedAt: pgfixtures.TestClock(),

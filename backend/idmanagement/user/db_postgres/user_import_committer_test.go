@@ -7,6 +7,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 )
 
 func TestUserImportRowCommitterWritesPasswordHistoryAndAudit(t *testing.T) {
@@ -19,7 +20,7 @@ func TestUserImportRowCommitterWritesPasswordHistoryAndAudit(t *testing.T) {
 		ID: newUUID(t), TenantID: tenant.ID, PreferredUsername: uniqueID("imported"), PasswordHash: "imported-hash",
 		Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	}
-	err := UserImportRowCommitter{Pool: db}.CommitUserImportRow(ctx, userports.UserImportRowMutation{
+	err := NewUserImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx).CommitUserImportRow(ctx, userports.UserImportRowMutation{
 		After: imported, Changed: []string{"password"}, ActorUserID: actor.ID, AuditEventType: "user.imported",
 		PasswordHistoryHash: "history-hash", Now: now,
 	})

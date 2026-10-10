@@ -17,7 +17,7 @@ func TestCharacterizeGroupImportRowQuota(t *testing.T) {
 	db := pgtest.Require(t)
 	ctx := context.Background()
 	quotas := tenancypostgres.NewQuotaRepository(db)
-	committer := GroupImportRowCommitter{Pool: db}
+	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx)
 
 	newGroup := func(t *testing.T, tenantID, name string) *groupdomain.Group {
 		t.Helper()

@@ -13,7 +13,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const BuiltinClientID = domain.BuiltinClientID
@@ -57,7 +57,7 @@ func (s *Service) Authenticate(ctx context.Context, token string) (domain.Princi
 	if err != nil || claims == nil {
 		return domain.Principal{}, ErrAccessDenied
 	}
-	return s.AuthenticateClaims(ctx, tenancy.TenantID(ctx), *claims)
+	return s.AuthenticateClaims(ctx, tenantports.TenantID(ctx), *claims)
 }
 
 // IntrospectAccessToken は共通 JWT 検証結果に managed-token lifecycle record の
@@ -73,7 +73,7 @@ func (s *Service) IntrospectAccessToken(ctx context.Context, token string) (*oau
 	if !claims.Active || !claims.Managed {
 		return claims, nil
 	}
-	if _, err := s.AuthenticateClaims(ctx, tenancy.TenantID(ctx), *claims); err != nil {
+	if _, err := s.AuthenticateClaims(ctx, tenantports.TenantID(ctx), *claims); err != nil {
 		return &oauthports.IntrospectionResult{Active: false}, nil //nolint:nilerr // RFC 7662 requires active:false without validation detail leakage.
 	}
 	return claims, nil
@@ -92,7 +92,7 @@ func (s *Service) Issue(ctx context.Context, tenantID, userID, description strin
 	}
 	createdAt := s.now().UTC()
 	expiresAt := createdAt.AddDate(0, 0, expiryDays)
-	audience := tenancy.Issuer(ctx, "")
+	audience := tenantports.Issuer(ctx, "")
 	if audience == "" {
 		audience = tenantID
 	}

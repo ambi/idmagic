@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestKeyStoreSignerProviderResolvesTenantXMLCredential(t *testing.T) {
@@ -17,8 +17,8 @@ func TestKeyStoreSignerProviderResolvesTenantXMLCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 	provider := KeyStoreSignerProvider{KeyStore: store}
-	ctxA := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
-	ctxB := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
+	ctxA := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctxB := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	signerA, err := provider.Resolve(ctxA)
 	if err != nil {
 		t.Fatal(err)

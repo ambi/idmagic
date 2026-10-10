@@ -20,8 +20,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	tenancy "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -36,7 +36,7 @@ func newAdminTestContext(sub string) *echo.Context {
 	if sub != "" {
 		req.Header.Set("X-Demo-Sub", sub)
 	}
-	ctx := tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm}, "", "")
+	ctx := tenantports.WithTenant(req.Context(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm}, "", "")
 	req = req.WithContext(ctx)
 	return e.NewContext(req, httptest.NewRecorder())
 }

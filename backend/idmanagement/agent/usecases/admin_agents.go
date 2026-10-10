@@ -6,7 +6,7 @@ package usecases
 // EnableAgent / KillAgent / DeleteAgent / BindAgentCredential /
 // UnbindAgentCredential。
 //
-// すべての操作は tenancy.TenantID(ctx) のテナント境界に閉じ、cross-tenant な参照・
+// すべての操作は tenantports.TenantID(ctx) のテナント境界に閉じ、cross-tenant な参照・
 // 束縛は reject する。Agent は自身の資格情報を持たず、AgentCredentialBinding で既存
 // OAuth2Client に束縛してトークンを得る。Status は Active / Disabled / Killed の三状態で、
 // Killed は一方向終端 (緊急停止) であり復帰できない。
@@ -25,10 +25,8 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -65,13 +63,13 @@ type AgentView struct {
 // — callers pass limit+1 to detect whether a next page exists, then
 // trim to limit before responding.
 func ListAgents(ctx context.Context, deps AdminAgentDeps, afterName, afterID string, limit int) ([]AgentView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agents, err := deps.AgentRepo.ListPage(ctx, tenantID, afterName, afterID, limit)
 	return agentViews(ctx, deps, tenantID, agents, err)
 }
 
 func ListAgentsBefore(ctx context.Context, deps AdminAgentDeps, beforeName, beforeID string, limit int) ([]AgentView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agents, err := deps.AgentRepo.ListPageBefore(ctx, tenantID, beforeName, beforeID, limit)
 	return agentViews(ctx, deps, tenantID, agents, err)
 }
@@ -94,7 +92,7 @@ func agentViews(ctx context.Context, deps AdminAgentDeps, tenantID string, agent
 // GetAgent は Agent 本体と束縛済み client id を返す。別テナントの Agent は未存在
 // として扱う。
 func GetAgent(ctx context.Context, deps AdminAgentDeps, id string) (*AgentView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -123,7 +121,7 @@ type RegisterAgentInput struct {
 }
 
 func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInput) (*agentdomain.Agent, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return nil, ErrAgentNameEmpty
@@ -191,7 +189,7 @@ type UpdateAgentInput struct {
 }
 
 func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) (*agentdomain.Agent, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, in.ID)
 	if err != nil {
 		return nil, err
@@ -294,7 +292,7 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 // SetAgentDisabled は Agent を運用停止 (disabled=true) / 再稼働 (disabled=false) する。
 // Killed の Agent は復帰できないため reject する (一方向終端)。
 func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, disabled bool, now time.Time) (*agentdomain.Agent, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -343,7 +341,7 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 // KillAgent は Agent を緊急停止し Killed (一方向終端) に遷移させる。既に Killed なら
 // reject する (冪等ではなく irreversible なため明示エラー)。
 func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, now time.Time) (*agentdomain.Agent, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -373,7 +371,7 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string,
 
 // DeleteAgent は Agent を物理削除し、束縛は cascade で解除する。
 func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return err
@@ -389,7 +387,7 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 		return err
 	}
 	if deps.QuotaRepo != nil {
-		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceAgents, 1); err != nil {
+		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceAgents, 1); err != nil {
 			return err
 		}
 	}
@@ -399,7 +397,7 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 // BindCredential は Agent に同一テナントの OAuth2Client を束縛する。既束縛なら no-op
 // で event も emit しない (冪等)。
 func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agentID, clientID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
 	if err != nil {
 		return err
@@ -471,7 +469,7 @@ func ensureAgentOwner(ctx context.Context, deps AdminAgentDeps, tenantID, ownerU
 // UnbindCredential は Agent から OAuth2Client の束縛を解除する。非束縛なら no-op で
 // event も emit しない (冪等)。
 func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agentID, clientID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
 	if err != nil {
 		return err

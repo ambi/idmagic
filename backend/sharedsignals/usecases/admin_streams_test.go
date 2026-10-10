@@ -12,8 +12,8 @@ import (
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func newAdminStreamDeps(t *testing.T) (ssusecases.AdminStreamDeps, *[]spec.DomainEvent) {
@@ -30,7 +30,7 @@ func newAdminStreamDeps(t *testing.T) (ssusecases.AdminStreamDeps, *[]spec.Domai
 }
 
 func adminStreamTestCtx() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 }
 
 // TestRegisterSsfTransmitterStream_ValidatesInput — RED: 必須項目の欠落を
@@ -242,7 +242,7 @@ func TestGetSsfStream_CrossTenantIsNotFound(t *testing.T) {
 		t.Fatalf("seed stream: %v", err)
 	}
 
-	otherTenantCtx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
+	otherTenantCtx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	if _, err := ssusecases.GetSsfStream(otherTenantCtx, deps, stream.ID); !errors.Is(err, ssusecases.ErrStreamNotFound) {
 		t.Fatalf("expected ErrStreamNotFound across tenants, got %v", err)
 	}

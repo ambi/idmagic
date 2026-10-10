@@ -15,7 +15,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // ErrInvalidRole は role が空文字列のみの場合に返る。
@@ -89,7 +88,7 @@ func CheckQuotaAndAudit(
 	if quotaRepo == nil {
 		return nil
 	}
-	err := tenancyusecases.CheckQuotaAndIncrement(ctx, quotaRepo, tenantID, resource, 1)
+	err := quotaRepo.CheckAndIncrement(ctx, tenantID, resource, 1)
 	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		if emitErr := AdminEmit(sink, &tenancydomain.QuotaExceeded{
 			At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true,

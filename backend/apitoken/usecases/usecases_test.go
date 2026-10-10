@@ -10,8 +10,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type fakeRepository struct {
@@ -105,7 +105,7 @@ func TestManagedTokenIntrospectionUsesLifecycleRecord(t *testing.T) {
 		ID: "token-1", TenantID: "tenant-1", UserID: "admin", JTI: "jti-1", ClientID: BuiltinClientID,
 		Scopes: domain.Scopes{domain.ScopeAccountRead}, Audience: claims.Aud[0], CreatedAt: now, ExpiresAt: &future,
 	}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-1"}, claims.Aud[0], "/realms/acme")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-1"}, claims.Aud[0], "/realms/acme")
 	for _, tc := range []struct {
 		name   string
 		record *domain.ApiToken

@@ -26,7 +26,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -41,7 +41,7 @@ type deviceFixture struct {
 }
 
 func tenantContext(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{
 		ID: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }

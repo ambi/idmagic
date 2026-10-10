@@ -18,8 +18,8 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -35,7 +35,7 @@ func (r controlPlaneAuthnResolver) Resolve(context.Context, authdomain.Headers) 
 func newControlPlaneTestContext() *echo.Context {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "http://idp.test/api/admin/v1/whatever", http.NoBody)
-	ctx := tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: "default"}, "", "")
+	ctx := tenantports.WithTenant(req.Context(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: "default"}, "", "")
 	return e.NewContext(req.WithContext(ctx), httptest.NewRecorder())
 }
 

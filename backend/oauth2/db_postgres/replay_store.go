@@ -6,7 +6,7 @@ import (
 	"time"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -26,7 +26,7 @@ func (s *ReplayStore) RecordIfNew(ctx context.Context, jti string, windowSeconds
 		now = time.Now().UTC()
 	}
 	_, err := New(s.Pool).ReserveOauth2ReplayJTI(ctx, ReserveOauth2ReplayJTIParams{
-		TenantID:     tenancy.TenantID(ctx),
+		TenantID:     tenantports.TenantID(ctx),
 		Kind:         s.Kind,
 		Jti:          jti,
 		NewExpiresAt: now.Add(time.Duration(windowSeconds) * time.Second),

@@ -26,8 +26,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -101,7 +101,7 @@ type membershipFixture struct {
 func newMembershipFixture(t *testing.T, membershipType groupdomain.GroupMembershipType, ownership membershipOwnership) *membershipFixture {
 	t.Helper()
 	now := time.Date(2026, 9, 6, 9, 0, 0, 0, time.UTC)
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: membershipTenant}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: membershipTenant}, "", "")
 	users := usermemory.NewUserRepository()
 	for _, username := range []string{"alice", "bob", "carol", "dave"} {
 		users.Seed(&userdomain.User{
@@ -714,7 +714,7 @@ func newMembershipArtifactStore() *idmmemory.CSVArtifactStore {
 
 func membershipArtifactContent(t *testing.T, artifacts *idmmemory.CSVArtifactStore, ref string) string {
 	t.Helper()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: membershipTenant}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: membershipTenant}, "", "")
 	reader, _, err := artifacts.OpenCSVArtifact(ctx, membershipTenant, ref)
 	if err != nil {
 		t.Fatal(err)

@@ -9,7 +9,7 @@ import (
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
@@ -106,7 +106,7 @@ func (d Deps) handleListLifecycleWorkflows(c *echo.Context) error {
 	if err := d.requireWorkflowAdmin(c, false); err != nil {
 		return err
 	}
-	workflows, err := d.LifecycleWorkflowRepo.List(c.Request().Context(), tenancy.TenantID(c.Request().Context()))
+	workflows, err := d.LifecycleWorkflowRepo.List(c.Request().Context(), tenantports.TenantID(c.Request().Context()))
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (d Deps) handleListLifecycleWorkflows(c *echo.Context) error {
 }
 
 func (d Deps) findWorkflow(c *echo.Context, id string) (*igdomain.LifecycleWorkflow, error) {
-	workflow, err := d.LifecycleWorkflowRepo.Find(c.Request().Context(), tenancy.TenantID(c.Request().Context()), id)
+	workflow, err := d.LifecycleWorkflowRepo.Find(c.Request().Context(), tenantports.TenantID(c.Request().Context()), id)
 	if err != nil {
 		return nil, err
 	}

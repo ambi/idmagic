@@ -2,7 +2,7 @@
 //
 // 秘密鍵マテリアルは Vault 外に出ない。署名は Vault の transit/sign へ委譲し、
 // アプリは公開鍵 (JWKS 用) のミラーだけを保持する。tenant scope は ctx
-// (tenancy.TenantID) から解決し、Vault の key name は prefix + tenantID とする。
+// (tenantports.TenantID) から解決し、Vault の key name は prefix + tenantID とする。
 package keys_vault
 
 import (
@@ -20,7 +20,7 @@ import (
 	keysJOSE "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type tenantKeys struct {
@@ -67,7 +67,7 @@ func vaultSetID(tenantID string, usage signingdomain.KeyUsage, scopeID string) s
 }
 
 func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -85,7 +85,7 @@ func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Signin
 }
 
 func (s *VaultKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -114,7 +114,7 @@ func (s *VaultKeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*s
 }
 
 func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -132,7 +132,7 @@ func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdoma
 }
 
 func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -142,7 +142,7 @@ func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Du
 }
 
 func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.Lock()
@@ -168,7 +168,7 @@ func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain
 }
 
 func (s *VaultKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.Lock()

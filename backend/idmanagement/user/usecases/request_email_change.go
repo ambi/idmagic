@@ -19,7 +19,7 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const EmailChangeTokenTTLSeconds = 1800
@@ -72,7 +72,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 	if err != nil {
 		return err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) {
 		return idmusecases.ErrUserNotFound
 	}
 	if user.Email != nil && user.EmailVerified && strings.EqualFold(*user.Email, newEmail) {

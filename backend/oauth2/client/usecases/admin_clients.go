@@ -14,10 +14,8 @@ import (
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -82,7 +80,7 @@ type UpdateAdminOAuth2ClientInput struct {
 }
 
 func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in UpdateAdminOAuth2ClientInput) (*domain.OAuth2Client, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err
@@ -159,7 +157,7 @@ func DeleteAdminOAuth2Client(
 	actorUserID, clientID string,
 	now time.Time,
 ) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, clientID)
 	if err != nil {
 		return err
@@ -174,7 +172,7 @@ func DeleteAdminOAuth2Client(
 		return err
 	}
 	if deps.QuotaRepo != nil {
-		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
+		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
 			return err
 		}
 	}

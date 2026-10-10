@@ -33,9 +33,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestMain(m *testing.M) {
@@ -81,8 +81,8 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	planDeps := userusecases.UserImportPlanDeps{
 		UserRepo: userRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, OwnershipGuard: workerImportOwnershipGuard{},
 	}
-	result, err := userusecases.ApplyUserImport(tenancy.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
-		Plan: planDeps, Committer: userpostgres.UserImportRowCommitter{Pool: db}, PasswordHasher: testing_passwords.NewHasher(),
+	result, err := userusecases.ApplyUserImport(tenantports.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
+		Plan: planDeps, Committer: userpostgres.NewUserImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx), PasswordHasher: testing_passwords.NewHasher(),
 		DynamicGroups: groupusecases.DynamicGroupDeps{GroupRepo: &grouppostgres.GroupRepository{Pool: db}, UserRepo: userRepo},
 	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), idmdomain.DefaultCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	userID, _ := spec.NewUUIDv4()
-	tenantCtx := tenancy.WithTenant(ctx, tenant, "", "")
+	tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
 	if err := (&userpostgres.UserRepository{Pool: db}).Save(tenantCtx, &userdomain.User{
 		ID: userID, TenantID: tenant.ID, PreferredUsername: "export-audit-" + userID, PasswordHash: "x",
 		Roles: []string{}, CreatedAt: now, UpdatedAt: now,

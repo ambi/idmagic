@@ -26,8 +26,8 @@ import (
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -101,7 +101,7 @@ func newRecoveryCodeServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStor
 // pendingSession は第二要素を待っているセッションを作り、その cookie を返す。
 func pendingSession(t *testing.T, manager *sessionusecases.SessionManager) (string, string) {
 	t.Helper()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	authn, err := manager.CreateWithPending(ctx, "user_alice", []string{authdomain.AMRPassword}, time.Now().UTC(), true)
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ func postRecoveryCode(t *testing.T, e *echo.Echo, cookie, body string) *httptest
 //
 //spec:covers REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-01: 正しい復旧コードで第二要素が成立し、
 func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *testing.T) {
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	e, store, manager := newRecoveryCodeServer(t)
 	sessionID, cookie := pendingSession(t, manager)
 
@@ -177,7 +177,7 @@ func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *te
 //
 //spec:covers REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-02: 誤った復旧コードは拒否され、その
 func TestWrongRecoveryCodeLeavesTheSessionPending_REQ_AUTHENTICATION_036(t *testing.T) {
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	e, store, manager := newRecoveryCodeServer(t)
 	sessionID, cookie := pendingSession(t, manager)
 

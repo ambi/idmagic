@@ -9,7 +9,7 @@ import (
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/approval/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,7 +29,7 @@ func approvalFromPayload(payload []byte, state string, interval int32, lastPolle
 }
 
 func (s *ApprovalRequestStore) Save(ctx context.Context, rec *approvaldomain.ApprovalRequest) error {
-	rec.TenantID = tenancy.TenantID(ctx)
+	rec.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(rec)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (s *ApprovalRequestStore) Save(ctx context.Context, rec *approvaldomain.App
 }
 
 func (s *ApprovalRequestStore) FindByID(ctx context.Context, id string) (*approvaldomain.ApprovalRequest, error) {
-	row, err := New(s.Pool).FindApprovalRequestByID(ctx, FindApprovalRequestByIDParams{ID: id, TenantID: tenancy.TenantID(ctx)})
+	row, err := New(s.Pool).FindApprovalRequestByID(ctx, FindApprovalRequestByIDParams{ID: id, TenantID: tenantports.TenantID(ctx)})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -55,7 +55,7 @@ func (s *ApprovalRequestStore) FindByID(ctx context.Context, id string) (*approv
 }
 
 func (s *ApprovalRequestStore) FindByAuthReqIDHash(ctx context.Context, hash string) (*approvaldomain.ApprovalRequest, error) {
-	row, err := New(s.Pool).FindApprovalRequestByAuthReqIDHash(ctx, FindApprovalRequestByAuthReqIDHashParams{AuthReqIDHash: hash, TenantID: tenancy.TenantID(ctx)})
+	row, err := New(s.Pool).FindApprovalRequestByAuthReqIDHash(ctx, FindApprovalRequestByAuthReqIDHashParams{AuthReqIDHash: hash, TenantID: tenantports.TenantID(ctx)})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -66,7 +66,7 @@ func (s *ApprovalRequestStore) FindByAuthReqIDHash(ctx context.Context, hash str
 }
 
 func (s *ApprovalRequestStore) ListPendingForUser(ctx context.Context, userID string) ([]*approvaldomain.ApprovalRequest, error) {
-	rows, err := New(s.Pool).ListPendingApprovalRequestsForUser(ctx, ListPendingApprovalRequestsForUserParams{TenantID: tenancy.TenantID(ctx), UserID: userID, Now: time.Now().UTC()})
+	rows, err := New(s.Pool).ListPendingApprovalRequestsForUser(ctx, ListPendingApprovalRequestsForUserParams{TenantID: tenantports.TenantID(ctx), UserID: userID, Now: time.Now().UTC()})
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (s *ApprovalRequestStore) ListPendingForUser(ctx context.Context, userID st
 }
 
 func (s *ApprovalRequestStore) RecordPoll(ctx context.Context, hash string, now time.Time) (*approvaldomain.ApprovalRequest, bool, error) {
-	row, err := New(s.Pool).RecordApprovalRequestPoll(ctx, RecordApprovalRequestPollParams{AuthReqIDHash: hash, TenantID: tenancy.TenantID(ctx), Now: pgtype.Timestamptz{Time: now, Valid: true}})
+	row, err := New(s.Pool).RecordApprovalRequestPoll(ctx, RecordApprovalRequestPollParams{AuthReqIDHash: hash, TenantID: tenantports.TenantID(ctx), Now: pgtype.Timestamptz{Time: now, Valid: true}})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -98,7 +98,7 @@ func (s *ApprovalRequestStore) Decide(ctx context.Context, id, userID string, ev
 	if event == spec.ApprovalEventApprove {
 		next = spec.ApprovalApproved
 	}
-	row, err := New(s.Pool).DecideApprovalRequest(ctx, DecideApprovalRequestParams{ID: id, TenantID: tenancy.TenantID(ctx), UserID: userID, NextState: string(next), DecidedAt: now})
+	row, err := New(s.Pool).DecideApprovalRequest(ctx, DecideApprovalRequestParams{ID: id, TenantID: tenantports.TenantID(ctx), UserID: userID, NextState: string(next), DecidedAt: now})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -114,7 +114,7 @@ func (s *ApprovalRequestStore) Decide(ctx context.Context, id, userID string, ev
 }
 
 func (s *ApprovalRequestStore) Expire(ctx context.Context, hash string, now time.Time) (*approvaldomain.ApprovalRequest, error) {
-	row, err := New(s.Pool).ExpireApprovalRequest(ctx, ExpireApprovalRequestParams{AuthReqIDHash: hash, TenantID: tenancy.TenantID(ctx), ExpiredAt: now})
+	row, err := New(s.Pool).ExpireApprovalRequest(ctx, ExpireApprovalRequestParams{AuthReqIDHash: hash, TenantID: tenantports.TenantID(ctx), ExpiredAt: now})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -125,7 +125,7 @@ func (s *ApprovalRequestStore) Expire(ctx context.Context, hash string, now time
 }
 
 func (s *ApprovalRequestStore) Consume(ctx context.Context, hash string, now time.Time) (*approvaldomain.ApprovalRequest, error) {
-	row, err := New(s.Pool).ConsumeApprovalRequest(ctx, ConsumeApprovalRequestParams{AuthReqIDHash: hash, TenantID: tenancy.TenantID(ctx), ConsumedAt: now})
+	row, err := New(s.Pool).ConsumeApprovalRequest(ctx, ConsumeApprovalRequestParams{AuthReqIDHash: hash, TenantID: tenantports.TenantID(ctx), ConsumedAt: now})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -141,7 +141,7 @@ func (s *ApprovalRequestStore) Consume(ctx context.Context, hash string, now tim
 }
 
 func (s *ApprovalRequestStore) DeleteAllForSub(ctx context.Context, sub string) error {
-	return New(s.Pool).DeleteApprovalRequestsForUser(ctx, DeleteApprovalRequestsForUserParams{TenantID: tenancy.TenantID(ctx), UserID: sub})
+	return New(s.Pool).DeleteApprovalRequestsForUser(ctx, DeleteApprovalRequestsForUserParams{TenantID: tenantports.TenantID(ctx), UserID: sub})
 }
 
 func (s *ApprovalRequestStore) DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error) {

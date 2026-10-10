@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -35,7 +35,7 @@ func overlayCode(rec *domain.AuthorizationCodeRecord, state string, redeemedAt p
 }
 
 func (s *AuthorizationCodeStore) Save(ctx context.Context, code *domain.AuthorizationCodeRecord) error {
-	code.TenantID = tenancy.TenantID(ctx)
+	code.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(code)
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (s *AuthorizationCodeStore) Save(ctx context.Context, code *domain.Authoriz
 func (s *AuthorizationCodeStore) Find(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
 	row, err := New(s.Pool).FindAuthorizationCode(ctx, FindAuthorizationCodeParams{
 		Code:     code,
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -74,7 +74,7 @@ func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now ti
 	row, err := New(s.Pool).RedeemAuthorizationCode(ctx, RedeemAuthorizationCodeParams{
 		RedeemedAt: pgtype.Timestamptz{Time: now.UTC(), Valid: true},
 		Code:       code,
-		TenantID:   tenancy.TenantID(ctx),
+		TenantID:   tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -93,7 +93,7 @@ func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now ti
 func (s *AuthorizationCodeStore) MarkExpired(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
 	row, err := New(s.Pool).MarkAuthorizationCodeExpired(ctx, MarkAuthorizationCodeExpiredParams{
 		Code:     code,
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -113,7 +113,7 @@ func (s *AuthorizationCodeStore) LinkFamily(ctx context.Context, code, familyID 
 	affected, err := New(s.Pool).LinkAuthorizationCodeFamily(ctx, LinkAuthorizationCodeFamilyParams{
 		IssuedFamilyID: pgtype.Text{String: familyID, Valid: true},
 		Code:           code,
-		TenantID:       tenancy.TenantID(ctx),
+		TenantID:       tenantports.TenantID(ctx),
 	})
 	if err != nil {
 		return err

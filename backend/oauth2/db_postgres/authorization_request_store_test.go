@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // TestAuthorizationRequestStore は /authorize 中間状態の tx 直列化された状態遷移 を
@@ -19,8 +19,8 @@ func TestAuthorizationRequestStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
 	other := seedTenant(t, db)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
-	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.AuthorizationRequestStore{Pool: db}
 	now := pgtest.Now()
 

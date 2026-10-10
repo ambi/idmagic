@@ -16,10 +16,8 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // ErrSessionNotFound は対象セッションが存在しないか、本人のものでない場合。
@@ -44,7 +42,7 @@ func decrementSessionQuota(ctx context.Context, quotaRepo tenantports.QuotaRepos
 	if quotaRepo == nil {
 		return nil
 	}
-	return tenancyusecases.DecrementQuota(ctx, quotaRepo, sess.TenantID, tenancydomain.ResourceActiveSessions, 1)
+	return quotaRepo.Decrement(ctx, sess.TenantID, tenancydomain.ResourceActiveSessions, 1)
 }
 
 // SessionView は一覧表示用のセッション射影。secret は持たず、識別子と認証情報のみ。
@@ -260,7 +258,7 @@ func EndSession(
 	if err != nil {
 		return err
 	}
-	if sess == nil || sess.TenantID != tenancy.TenantID(ctx) {
+	if sess == nil || sess.TenantID != tenantports.TenantID(ctx) {
 		return nil
 	}
 	if err := deps.Store.Revoke(ctx, sid, spec.SessionEndLogout, now); err != nil {

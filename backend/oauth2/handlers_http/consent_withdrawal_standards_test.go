@@ -33,9 +33,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
@@ -136,7 +136,7 @@ func (f *withdrawalFixture) grantConsent(t *testing.T) {
 
 func (f *withdrawalFixture) accessToken(t *testing.T, scope string) string {
 	t.Helper()
-	ctx := tenancy.WithTenant(
+	ctx := tenantports.WithTenant(
 		context.Background(),
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm},
 		withdrawalIssuer+"/realms/"+tenancydomain.DefaultRealm,

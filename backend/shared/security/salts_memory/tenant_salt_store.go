@@ -5,14 +5,14 @@ import (
 	"crypto/rand"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // TenantSaltBytes は相関 salt のバイト長 (256 bit)。
 const TenantSaltBytes = 32
 
 // InMemoryTenantSaltStore は dev/test 用の tenant-aware な相関 salt ストア (wi-145)。
-// tenant scope は ctx (tenancy.TenantID) から解決し、初回取得時に 32 byte を生成する。
+// tenant scope は ctx (tenantports.TenantID) から解決し、初回取得時に 32 byte を生成する。
 type InMemoryTenantSaltStore struct {
 	mu       sync.Mutex
 	byTenant map[string][]byte
@@ -25,7 +25,7 @@ func NewInMemoryTenantSaltStore() *InMemoryTenantSaltStore {
 
 // GetSalt は ctx のテナントの salt を返す。未生成なら生成して保持する。
 func (s *InMemoryTenantSaltStore) GetSalt(ctx context.Context) ([]byte, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if salt, ok := s.byTenant[tenantID]; ok {

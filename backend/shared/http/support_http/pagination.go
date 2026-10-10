@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
@@ -102,7 +102,7 @@ func buildFirstPageLink(c *echo.Context, issuerFallback string) string {
 func buildPageLinkURL(c *echo.Context, issuerFallback string, q url.Values, rel string) string {
 	// path style では RequestIssuer 自体が /realms/{realm} を含むため、request path
 	// からもテナント prefix を落としてから継ぐ (TenantURL の doc 参照、二重 prefix 防止)。
-	path := strings.TrimPrefix(c.Request().URL.Path, tenancy.URLPrefix(c.Request().Context()))
+	path := strings.TrimPrefix(c.Request().URL.Path, tenantports.URLPrefix(c.Request().Context()))
 	pageURL := TenantURL(c, path, issuerFallback) + "?" + q.Encode()
 	return `<` + pageURL + `>; rel="` + rel + `"`
 }

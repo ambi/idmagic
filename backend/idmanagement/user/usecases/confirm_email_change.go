@@ -12,7 +12,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ErrInvalidEmailChangeToken は、提示されたトークンで確定へ進めないことを表す。用途違い、
@@ -69,7 +69,7 @@ func ConfirmEmailChange(ctx context.Context, deps ConfirmEmailChangeDeps, in Con
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) {
 		return nil, ErrInvalidEmailChangeToken
 	}
 	// 起票から確定までの間に別ユーザが同アドレスを確定していないか再チェックする。

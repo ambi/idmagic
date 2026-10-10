@@ -9,8 +9,8 @@ import (
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ResolveTenantPolicy returns the global defaults with the override of the
@@ -19,7 +19,7 @@ import (
 // failing a login or a password change over a policy lookup would be out of
 // proportion, and the defaults are never weaker than an override.
 func ResolveTenantPolicy(ctx context.Context) PasswordPolicySnapshot {
-	return passworddomain.ResolvePasswordPolicy(tenancy.Tenant(ctx), DefaultPasswordPolicySnapshot())
+	return passworddomain.ResolvePasswordPolicy(tenantports.Tenant(ctx), DefaultPasswordPolicySnapshot())
 }
 
 // ResolvePolicyForTenant builds the policy from an already-resolved tenant, for

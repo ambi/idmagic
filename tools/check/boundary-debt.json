@@ -456,13 +456,6 @@
       "reason": "WsFederation -> SigningKeys remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
-      "id": "private-import:ApiTokens->Tenancy",
-      "sourceModule": "ApiTokens",
-      "targetModule": "Tenancy",
-      "violations": ["private-import:ApiTokens:backend/apitoken/usecases->backend/tenancy"],
-      "reason": "backend/apitoken/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
       "id": "private-import:Application->Authentication",
       "sourceModule": "Application",
       "targetModule": "Authentication",
@@ -490,16 +483,6 @@
         "private-import:Application:backend/application/handlers_http->backend/oauth2/client/usecases"
       ],
       "reason": "backend/application/handlers_http -> backend/oauth2/client/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "private-import:Application->Tenancy",
-      "sourceModule": "Application",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:Application:backend/application/usecases->backend/tenancy",
-        "private-import:Application:backend/application/usecases->backend/tenancy/usecases"
-      ],
-      "reason": "backend/application/usecases -> backend/tenancy remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:Authentication->Application",
@@ -534,27 +517,6 @@
       "reason": "backend/authentication/deps_http -> backend/oauth2/consent/usecases remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
-      "id": "private-import:Authentication->Tenancy",
-      "sourceModule": "Authentication",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:Authentication:backend/authentication/federation/usecases->backend/tenancy",
-        "private-import:Authentication:backend/authentication/handlers_http->backend/tenancy",
-        "private-import:Authentication:backend/authentication/mfa/usecases->backend/tenancy",
-        "private-import:Authentication:backend/authentication/password/usecases->backend/tenancy",
-        "private-import:Authentication:backend/authentication/securitynotification/usecases->backend/tenancy",
-        "private-import:Authentication:backend/authentication/session/db_memory->backend/tenancy",
-        "private-import:Authentication:backend/authentication/session/db_postgres->backend/tenancy",
-        "private-import:Authentication:backend/authentication/session/usecases->backend/tenancy",
-        "private-import:Authentication:backend/authentication/session/usecases->backend/tenancy/usecases",
-        "private-import:Authentication:backend/authentication/totp/db_postgres->backend/tenancy",
-        "private-import:Authentication:backend/authentication/usecases->backend/tenancy",
-        "private-import:Authentication:backend/authentication/webauthn/db_memory->backend/tenancy",
-        "private-import:Authentication:backend/authentication/webauthn/db_postgres->backend/tenancy"
-      ],
-      "reason": "backend/authentication/federation/usecases -> backend/tenancy remains coupled across 13 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
       "id": "private-import:DataKeys->Jobs",
       "sourceModule": "DataKeys",
       "targetModule": "Jobs",
@@ -579,16 +541,6 @@
         "private-import:IdGovernance:backend/idgovernance/usecases->backend/jobs/usecases"
       ],
       "reason": "backend/idgovernance/usecases -> backend/jobs/usecases remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "private-import:IdGovernance->Tenancy",
-      "sourceModule": "IdGovernance",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:IdGovernance:backend/idgovernance/handlers_http->backend/tenancy",
-        "private-import:IdGovernance:backend/idgovernance/usecases->backend/tenancy"
-      ],
-      "reason": "backend/idgovernance/handlers_http -> backend/tenancy remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:IdManagement->Authentication",
@@ -623,36 +575,6 @@
         "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/oauth2/consent/usecases"
       ],
       "reason": "backend/idmanagement/deps_http -> backend/oauth2/consent/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "private-import:IdManagement->Tenancy",
-      "sourceModule": "IdManagement",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:IdManagement:backend/idmanagement/agent/usecases->backend/tenancy",
-        "private-import:IdManagement:backend/idmanagement/agent/usecases->backend/tenancy/usecases",
-        "private-import:IdManagement:backend/idmanagement/group/db_postgres->backend/tenancy/db_postgres",
-        "private-import:IdManagement:backend/idmanagement/group/handlers_http->backend/tenancy",
-        "private-import:IdManagement:backend/idmanagement/group/usecases->backend/tenancy",
-        "private-import:IdManagement:backend/idmanagement/group/usecases->backend/tenancy/usecases",
-        "private-import:IdManagement:backend/idmanagement/usecases->backend/tenancy",
-        "private-import:IdManagement:backend/idmanagement/usecases->backend/tenancy/usecases",
-        "private-import:IdManagement:backend/idmanagement/user/db_postgres->backend/tenancy/db_postgres",
-        "private-import:IdManagement:backend/idmanagement/user/handlers_http->backend/tenancy",
-        "private-import:IdManagement:backend/idmanagement/user/usecases->backend/tenancy",
-        "private-import:IdManagement:backend/idmanagement/user/usecases->backend/tenancy/usecases"
-      ],
-      "reason": "backend/idmanagement/agent/usecases -> backend/tenancy remains coupled across 12 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "private-import:Jobs->Tenancy",
-      "sourceModule": "Jobs",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:Jobs:backend/jobs/usecases->backend/tenancy",
-        "private-import:Jobs:backend/jobs/usecases->backend/tenancy/usecases"
-      ],
-      "reason": "backend/jobs/usecases -> backend/tenancy remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:OAuth2->Application",
@@ -701,28 +623,6 @@
       "reason": "backend/oauth2 -> backend/jobs/usecases remains coupled across 2 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
-      "id": "private-import:OAuth2->Tenancy",
-      "sourceModule": "OAuth2",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:OAuth2:backend/oauth2/approval/db_memory->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/approval/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/authorization/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/client/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/client/usecases->backend/tenancy/usecases",
-        "private-import:OAuth2:backend/oauth2/consent/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/consent/usecases->backend/tenancy/usecases",
-        "private-import:OAuth2:backend/oauth2/db_postgres->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/device/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/tenancy/usecases",
-        "private-import:OAuth2:backend/oauth2/logout/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/token/usecases->backend/tenancy",
-        "private-import:OAuth2:backend/oauth2/usecases->backend/tenancy"
-      ],
-      "reason": "backend/oauth2/approval/db_memory -> backend/tenancy remains coupled across 14 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
       "id": "private-import:Provisioning->Jobs",
       "sourceModule": "Provisioning",
       "targetModule": "Jobs",
@@ -764,29 +664,6 @@
       "reason": "backend/saml -> backend/wsfederation/tokens_saml remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
-      "id": "private-import:SharedSignals->Tenancy",
-      "sourceModule": "SharedSignals",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:SharedSignals:backend/sharedsignals/sign_jose->backend/tenancy",
-        "private-import:SharedSignals:backend/sharedsignals/usecases->backend/tenancy",
-        "private-import:SharedSignals:backend/sharedsignals/usecases->backend/tenancy/usecases"
-      ],
-      "reason": "backend/sharedsignals/sign_jose -> backend/tenancy remains coupled across 3 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "private-import:SigningKeys->Tenancy",
-      "sourceModule": "SigningKeys",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:SigningKeys:backend/signingkeys/db_postgres->backend/tenancy",
-        "private-import:SigningKeys:backend/signingkeys/keys_memory->backend/tenancy",
-        "private-import:SigningKeys:backend/signingkeys/keys_vault->backend/tenancy",
-        "private-import:SigningKeys:backend/signingkeys/usecases->backend/tenancy"
-      ],
-      "reason": "backend/signingkeys/db_postgres -> backend/tenancy remains coupled across 4 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
       "id": "private-import:Tenancy->Authentication",
       "sourceModule": "Tenancy",
       "targetModule": "Authentication",
@@ -803,15 +680,6 @@
         "private-import:Tenancy:backend/tenancy/handlers_http->backend/wsfederation/tokens_saml"
       ],
       "reason": "backend/tenancy/handlers_http -> backend/wsfederation/tokens_saml remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
-    },
-    {
-      "id": "private-import:WorkloadIdentity->Tenancy",
-      "sourceModule": "WorkloadIdentity",
-      "targetModule": "Tenancy",
-      "violations": [
-        "private-import:WorkloadIdentity:backend/workloadidentity/usecases->backend/tenancy"
-      ],
-      "reason": "backend/workloadidentity/usecases -> backend/tenancy remains coupled across 1 observed path(s) until its owning module exposes or consumes the required public contract."
     },
     {
       "id": "private-import:WsFederation->Authentication",

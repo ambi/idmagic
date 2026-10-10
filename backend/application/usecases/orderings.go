@@ -11,7 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ErrUnassignedInOrder は手動順に割当済み visible でない application_id が含まれていた。
@@ -22,7 +22,7 @@ func GetMyApplicationOrder(ctx context.Context, repo ports.ApplicationOrderingRe
 	if repo == nil {
 		return []string{}, nil
 	}
-	ordering, err := repo.Get(ctx, tenancy.TenantID(ctx), userID)
+	ordering, err := repo.Get(ctx, tenantports.TenantID(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID str
 		CreatedAt:      nowAt,
 		UpdatedAt:      nowAt,
 	}
-	if existing, err := deps.OrderingRepo.Get(ctx, tenancy.TenantID(ctx), userID); err != nil {
+	if existing, err := deps.OrderingRepo.Get(ctx, tenantports.TenantID(ctx), userID); err != nil {
 		return nil, err
 	} else if existing != nil && !existing.CreatedAt.IsZero() {
 		ordering.CreatedAt = existing.CreatedAt

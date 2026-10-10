@@ -7,7 +7,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -126,7 +126,7 @@ func (d Deps) resolveTenant(
 
 func (d Deps) enterTenant(c *echo.Context, next echo.HandlerFunc, tenant *tenancydomain.Tenant) error {
 	issuer, urlPrefix := d.CanonicalLocation(tenant)
-	c.SetRequest(c.Request().WithContext(tenancy.WithTenant(c.Request().Context(), tenant, issuer, urlPrefix)))
+	c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), tenant, issuer, urlPrefix)))
 	// テナントの正規ロケーションは Host に依存する。共有キャッシュが host をキーに
 	// せずに discovery / branding を混ぜないよう、全 tenant 応答に明示する。
 	c.Response().Header().Add("Vary", "Host")
@@ -163,11 +163,11 @@ func (d Deps) CanonicalLocation(tenant *tenancydomain.Tenant) (issuer, urlPrefix
 }
 
 func RequestTenantID(c *echo.Context) string {
-	return tenancy.TenantID(c.Request().Context())
+	return tenantports.TenantID(c.Request().Context())
 }
 
 func RequestIssuer(c *echo.Context, fallback string) string {
-	return tenancy.Issuer(c.Request().Context(), fallback)
+	return tenantports.Issuer(c.Request().Context(), fallback)
 }
 
 // RequestHTU は DPoP proof の htu (RFC 9449 §4.2) として照合する、クエリとフラグメントを
@@ -199,14 +199,14 @@ func TenantURL(c *echo.Context, path, fallback string) string {
 }
 
 func TenantRoute(c *echo.Context, path string) string {
-	if prefix := tenancy.URLPrefix(c.Request().Context()); prefix != "" {
+	if prefix := tenantports.URLPrefix(c.Request().Context()); prefix != "" {
 		return prefix + path
 	}
 	return path
 }
 
 func TenantCookiePath(c *echo.Context) string {
-	if prefix := tenancy.URLPrefix(c.Request().Context()); prefix != "" {
+	if prefix := tenantports.URLPrefix(c.Request().Context()); prefix != "" {
 		return prefix
 	}
 	return "/"
@@ -216,7 +216,7 @@ func TenantCookiePath(c *echo.Context) string {
 // 固有 host でだけ使えるため __Host- prefix を使い、Domain 属性を持たず Path=/ とする。
 // Path style は既存の名前を保ち、/realms/{realm} の Path で分離する。
 func TenantCookieName(c *echo.Context, name string) string {
-	if tenant := tenancy.Tenant(c.Request().Context()); tenant != nil &&
+	if tenant := tenantports.Tenant(c.Request().Context()); tenant != nil &&
 		tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain {
 		return "__Host-" + name
 	}
@@ -227,6 +227,6 @@ func TenantCookieName(c *echo.Context, name string) string {
 // __Host- is valid only with Secure, independently of the process-wide local
 // development issuer setting.
 func TenantCookieSecure(c *echo.Context) bool {
-	tenant := tenancy.Tenant(c.Request().Context())
+	tenant := tenantports.Tenant(c.Request().Context())
 	return tenant != nil && tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain
 }

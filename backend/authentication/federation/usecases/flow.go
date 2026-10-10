@@ -9,7 +9,7 @@ import (
 
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type ProtocolDriver interface {
@@ -40,7 +40,7 @@ func StartLogin(
 	providerID, returnTo, linkUserID, callbackURL string,
 	now time.Time,
 ) (*LoginStart, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	connection, err := deps.Connections.Find(ctx, tenantID, providerID)
 	if err != nil || connection == nil || !connection.Active() {
 		return nil, ErrLinkingDenied
@@ -91,7 +91,7 @@ func CompleteLogin(
 	state, response, callbackURL string,
 	now time.Time,
 ) (*Completion, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	attempt, err := deps.Attempts.Consume(ctx, tenantID, state, normalizedNow(now))
 	if err != nil {
 		// 照合は上流の応答の検証より先に置く。発行していない state で検証を走らせないためである。

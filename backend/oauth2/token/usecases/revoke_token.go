@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type RevokeDeps struct {
@@ -35,7 +35,7 @@ func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, n
 	if rec == nil {
 		return revokeAccessToken(ctx, deps, clientID, token, now)
 	}
-	if rec.TenantID != tenancy.TenantID(ctx) || rec.ClientID != clientID {
+	if rec.TenantID != tenantports.TenantID(ctx) || rec.ClientID != clientID {
 		// RFC 7009 §2.2: 所有者でない要求も 200 OK no-op
 		return nil
 	}
@@ -73,7 +73,7 @@ func revokeAccessToken(
 		return nil //nolint:nilerr // RFC 7009 requires invalid or unknown tokens to be a successful no-op.
 	}
 	if result.Managed && deps.ManagedTokenRevoker != nil {
-		if err := deps.ManagedTokenRevoker.RevokeByJTI(ctx, tenancy.TenantID(ctx), result.JTI, now); err != nil {
+		if err := deps.ManagedTokenRevoker.RevokeByJTI(ctx, tenantports.TenantID(ctx), result.JTI, now); err != nil {
 			return err
 		}
 	}
@@ -81,7 +81,7 @@ func revokeAccessToken(
 		return err
 	}
 	emit(deps.Emit, &domain.TokenRevoked{
-		At: now, TenantID: tenancy.TenantID(ctx), TokenType: "access_token", TokenID: result.JTI, Reason: "client_initiated",
+		At: now, TenantID: tenantports.TenantID(ctx), TokenType: "access_token", TokenID: result.JTI, Reason: "client_initiated",
 	})
 	return nil
 }

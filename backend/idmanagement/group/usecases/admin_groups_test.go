@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
@@ -375,7 +375,7 @@ func TestCreateGroupKeepsTheReservedRoleInsideTheControlPlane(t *testing.T) {
 	}
 
 	// 対照: 制御面以外のテナントでは同じ付与が拒否され、Group も残らない。
-	foreign := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	foreign := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
 	foreignDeps, foreignEvents := newGroupDeps(t)
 	if _, err := groupusecases.CreateGroup(foreign, foreignDeps, groupusecases.CreateGroupInput{
 		ActorUserID: "operator", Name: "escalation",

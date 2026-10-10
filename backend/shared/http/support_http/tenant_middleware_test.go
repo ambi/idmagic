@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	tenancy "github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -272,7 +272,7 @@ func TestTenantRouteCookiePathAndName(t *testing.T) {
 
 	t.Run("path style tenant", func(t *testing.T) {
 		c, _ := newTenantMiddlewareContext("http://idp.test/anything")
-		c.SetRequest(c.Request().WithContext(tenancy.WithTenant(c.Request().Context(), pathTenant, "https://idp.test/realms/acme", "/realms/acme")))
+		c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), pathTenant, "https://idp.test/realms/acme", "/realms/acme")))
 		if got := TenantRoute(c, "/foo"); got != "/realms/acme/foo" {
 			t.Fatalf("TenantRoute = %q", got)
 		}
@@ -289,7 +289,7 @@ func TestTenantRouteCookiePathAndName(t *testing.T) {
 
 	t.Run("subdomain style tenant", func(t *testing.T) {
 		c, _ := newTenantMiddlewareContext("http://acme.idp.test/anything")
-		c.SetRequest(c.Request().WithContext(tenancy.WithTenant(c.Request().Context(), subTenant, "https://acme.idp.test", "")))
+		c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), subTenant, "https://acme.idp.test", "")))
 		if got := TenantRoute(c, "/foo"); got != "/foo" {
 			t.Fatalf("TenantRoute = %q", got)
 		}
@@ -356,7 +356,7 @@ func TestRequestHTUIsTheTargetURIAtTheCanonicalLocation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _ := newTenantMiddlewareContext(tc.target)
 			if tc.tenant != nil {
-				c.SetRequest(c.Request().WithContext(tenancy.WithTenant(c.Request().Context(), tc.tenant, tc.issuer, "")))
+				c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), tc.tenant, tc.issuer, "")))
 			}
 			if got := RequestHTU(c, tc.fallback); got != tc.want {
 				t.Fatalf("RequestHTU = %q, want %q", got, tc.want)

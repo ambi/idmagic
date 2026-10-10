@@ -19,8 +19,8 @@ import (
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type clientSessionStore struct{ sessions []logoutdomain.ClientSession }
@@ -69,7 +69,7 @@ func testClient(id string) *clientdomain.OAuth2Client {
 
 //spec:covers REQ-OAUTH2-025, EX-OAUTH2-025-01: ローカルログアウト後に、backchannel_logout_uri を登録した参加済み RP ごとの LogoutNotification とジョブを作る。
 func TestStartBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
 	clients := clientmemory.NewClientRepository()
 	first := testClient("00000000-0000-4000-8000-000000000001")
 	first.BackChannelLogoutURI = new("https://rp-1.example/logout")
@@ -113,7 +113,7 @@ func TestStartBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 //
 //spec:covers OIDC-BACKCHANNEL-REPLAY: 1 度のログアウトが作る通知どうしで jti が重複せず、
 func TestStartBackChannelLogoutIssuesUniqueJTI_OIDC_BACKCHANNEL_REPLAY(t *testing.T) {
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
 	clients := clientmemory.NewClientRepository()
 	sessions := &clientSessionStore{}
 	for _, id := range []string{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"} {
@@ -153,7 +153,7 @@ func TestFrontChannelLogoutTargets_OIDC_FRONTCHANNEL_IFRAME(t *testing.T) {
 	clients.Seed(withSession)
 	clients.Seed(withoutSession)
 	sessions := &clientSessionStore{sessions: []logoutdomain.ClientSession{{TenantID: tenancydomain.DefaultTenantID, Sid: "10000000-0000-4000-8000-000000000001", ClientID: withSession.ClientID}, {TenantID: tenancydomain.DefaultTenantID, Sid: "10000000-0000-4000-8000-000000000001", ClientID: withoutSession.ClientID}}}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "https://idp.example", "/realms/default")
 	targets, err := logoutusecases.FrontChannelLogoutTargets(ctx, logoutusecases.FrontChannelLogoutDeps{ClientSessions: sessions, Clients: clients}, "10000000-0000-4000-8000-000000000001", "https://idp.example/realms/default")
 	if err != nil {
 		t.Fatal(err)

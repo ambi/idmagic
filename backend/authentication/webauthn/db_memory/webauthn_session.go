@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -59,5 +59,5 @@ func (s *WebAuthnSessionStore) Take(
 }
 
 func sessionKey(ctx context.Context, key string) string {
-	return tenancy.TenantID(ctx) + "\x00" + key
+	return tenantports.TenantID(ctx) + "\x00" + key
 }

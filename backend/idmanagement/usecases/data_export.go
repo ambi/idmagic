@@ -18,7 +18,6 @@ import (
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -180,7 +179,7 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 	if err := validateExportFilter(kind, filter); err != nil {
 		return nil, err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	params, err := json.Marshal(DataExportParams{Target: target, Columns: columns, Filter: filter, ActorUserID: actorUserID})
 	if err != nil {
 		return nil, err
@@ -217,7 +216,7 @@ func DataExportHandler(deps DataExportDeps) func(context.Context, *jobsdomain.Jo
 		if err := json.Unmarshal(job.Params, &p); err != nil {
 			return nil, err
 		}
-		ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
 		now := deps.now()
 		_ = adminEmitExport(deps.Emit, &idmdomain.DataExportStarted{At: now, TenantID: job.TenantID, ExportID: job.ID, Target: p.Target})
 
@@ -259,7 +258,7 @@ func (s ExportScope) matches(p DataExportParams) bool {
 
 // ListDataExports returns the tenant's data exports within scope, newest first.
 func ListDataExports(ctx context.Context, deps DataExportDeps, scope ExportScope) ([]*DataExportView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	jobs, err := deps.JobRepo.ListByTenantAndKinds(ctx, tenantID, []jobsdomain.JobKind{KindDataExport}, 200)
 	if err != nil {
 		return nil, err
@@ -350,7 +349,7 @@ func loadScopedExport(ctx context.Context, deps DataExportDeps, scope ExportScop
 	if err != nil {
 		return nil, err
 	}
-	if job.TenantID != tenancy.TenantID(ctx) || job.Kind != KindDataExport {
+	if job.TenantID != tenantports.TenantID(ctx) || job.Kind != KindDataExport {
 		return nil, ErrExportNotFound
 	}
 	var p DataExportParams

@@ -62,6 +62,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -311,7 +312,7 @@ func (f *idmRefusalFixture) issueApiToken(
 	t.Helper()
 	tenantID := tenancydomain.DefaultTenantID
 	realm := idmRealmFor(tenantID)
-	ctx := tenancy.WithTenant(
+	ctx := tenantports.WithTenant(
 		context.Background(),
 		&tenancydomain.Tenant{ID: tenantID, Realm: realm},
 		idmRefusalIssuer+"/realms/"+realm,

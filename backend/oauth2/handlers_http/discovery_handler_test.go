@@ -17,7 +17,7 @@ import (
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -62,8 +62,8 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 各テナントで token 発行相当 (GetActiveKey) を起こし鍵を作る。
-	ctxA := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
-	ctxB := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
+	ctxA := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctxB := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	keyA, err := keyStore.GetActiveKey(ctxA)
 	if err != nil {
 		t.Fatal(err)

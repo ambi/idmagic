@@ -43,7 +43,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type activeAgentTokenIntrospector struct {
@@ -285,7 +285,7 @@ func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	introspection, err := tokenusecases.IntrospectToken(ctx, tokenusecases.IntrospectDeps{
 		Introspector: activeAgentTokenIntrospector{result: &oauthports.IntrospectionResult{
 			Active: true, ClientID: "agent-client", JTI: "issued-before-kill", Iat: epoch.Epoch.Add(-time.Second).Unix(), Exp: now.Add(time.Hour).Unix(),

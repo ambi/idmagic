@@ -20,8 +20,8 @@ import (
 	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 //spec:covers REQ-OAUTH2-041: CIBA requires exactly one hint and an openid scope.
@@ -50,7 +50,7 @@ func (n *recordingNotifier) Notify(_ context.Context, notification notificationp
 
 func TestStartApprovalNotificationUsesFallbacksWithoutAgentOrBindingMessage(t *testing.T) {
 	t.Parallel()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 	clientRepo := oauthmemory.NewClientRepository()
 	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: "tenant-a", ClientID: "demo-client", ClientType: spec.ClientConfidential,
@@ -110,7 +110,7 @@ type approvalFixture struct {
 
 func newApprovalFixture(t *testing.T) approvalFixture {
 	t.Helper()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 	clientRepo := oauthmemory.NewClientRepository()
 	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: "tenant-a", ClientID: "agent-app", ClientType: spec.ClientConfidential,
@@ -294,7 +294,7 @@ func TestApprovalExchangeRejectsOtherClientAndTenant(t *testing.T) {
 	}, t0); approvalOAuthErrorCode(err) != "invalid_grant" {
 		t.Fatalf("other client: %v", err)
 	}
-	otherTenant := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
+	otherTenant := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
 	if _, err := approvalusecases.ExchangeApproval(otherTenant, f.exchangeDeps, approvalusecases.ExchangeApprovalInput{
 		ClientID: "agent-app", AuthReqID: started.AuthReqID,
 	}, t0); approvalOAuthErrorCode(err) != "invalid_grant" {

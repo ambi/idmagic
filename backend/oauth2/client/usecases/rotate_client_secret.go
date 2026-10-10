@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var ErrClientSecretNotRotatable = errors.New("client secret is not rotatable")
@@ -31,7 +31,7 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 		return nil, NewOAuthError("invalid_request", "grace_days must be between 0 and 30")
 	}
 	now := adminNow(in.Now)
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err

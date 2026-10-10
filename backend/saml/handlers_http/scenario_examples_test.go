@@ -38,8 +38,8 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
@@ -145,7 +145,7 @@ func newServerBehindAnApplication(t *testing.T, assign bool) (*echo.Echo, *[]spe
 // ハンドラーが読むのとは別の鍵集合を回すことになる。`withUsage` は用途を自分で足す
 // 必要のある呼び出し（`Rotate`）で真にする。`Resolve` は用途を自分で足す。
 func federationKeyContext(withUsage bool) context.Context {
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 	}, "https://idp.example/realms/default", "/realms/default")
 	ctx = samltoken.WithSignerScope(ctx, samldomain.DefaultIDPProfileID)

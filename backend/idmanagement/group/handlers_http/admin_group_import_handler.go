@@ -16,7 +16,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -73,7 +73,7 @@ func HandleGetAdminGroupImport(d Deps, c *echo.Context) error {
 	if d.JobRepo == nil || d.CSVArtifacts == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "group_import_unavailable", "The group import service is unavailable.")
 	}
-	tenantID := tenancy.TenantID(c.Request().Context())
+	tenantID := tenantports.TenantID(c.Request().Context())
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))
 	if errors.Is(err, jobsports.ErrJobNotFound) || job == nil || job.TenantID != tenantID ||
 		(job.Kind != jobsdomain.KindGroupImportPreview && job.Kind != jobsdomain.KindGroupImportApply) {

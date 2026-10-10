@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,7 +28,7 @@ type MfaFactorReencryptor struct {
 // underlying query, so re-running after a partial batch or a crash only
 // touches what is still pending.
 func (m *MfaFactorReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
-	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
 	rows, err := m.Repo.queries().ListMfaFactorsPendingReencryption(ctx, ListMfaFactorsPendingReencryptionParams{
 		TenantID:         tenantID,
 		SecretKeyVersion: pgtype.Int4{Int32: int32(activeVersion), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter
@@ -79,7 +79,7 @@ func (m *MfaFactorReencryptor) ReencryptBatch(ctx context.Context, tenantID stri
 // material not yet on activeVersion, without migrating anything (the
 // verification query DestroyTenantDataKey's gate uses).
 func (m *MfaFactorReencryptor) PendingCount(ctx context.Context, tenantID string, activeVersion int) (int, error) {
-	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
 	count, err := m.Repo.queries().CountMfaFactorsPendingReencryption(ctx, CountMfaFactorsPendingReencryptionParams{
 		TenantID:         tenantID,
 		SecretKeyVersion: pgtype.Int4{Int32: int32(activeVersion), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter

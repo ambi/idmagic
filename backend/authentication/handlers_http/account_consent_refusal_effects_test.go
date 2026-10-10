@@ -28,9 +28,9 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -97,7 +97,7 @@ func newConsentRefusalFixture(t *testing.T) *consentRefusalFixture {
 // iss がテナントごとに変わるので、これがトークンのテナント束縛そのものになる。
 func (f *consentRefusalFixture) issueToken(t *testing.T, tenantID, sub, scope string) string {
 	t.Helper()
-	ctx := tenancy.WithTenant(
+	ctx := tenantports.WithTenant(
 		context.Background(),
 		&tenancydomain.Tenant{ID: tenantID, Realm: realmOf(tenantID)},
 		"http://idp.test/realms/"+realmOf(tenantID),

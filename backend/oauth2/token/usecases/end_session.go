@@ -8,7 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type EndSessionDeps struct {
@@ -81,7 +81,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 	if clientID == "" {
 		return nil, NewOAuthError("invalid_request", "client_id is required")
 	}
-	client, err := deps.ClientRepo.FindByID(ctx, tenancy.TenantID(ctx), clientID)
+	client, err := deps.ClientRepo.FindByID(ctx, tenantports.TenantID(ctx), clientID)
 	if err != nil {
 		return nil, err
 	}

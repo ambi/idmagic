@@ -12,7 +12,7 @@ import (
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var (
@@ -52,7 +52,7 @@ func IssueMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, actor
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) || !user.IsActive() {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) || !user.IsActive() {
 		return nil, ErrMfaEnrollmentNotAllowed
 	}
 	enrolled, err := HasMfaEnrollment(ctx, deps, userID)
@@ -88,7 +88,7 @@ func RevokeMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, acto
 	if deps.BypassRepo == nil {
 		return nil
 	}
-	bypass, err := deps.BypassRepo.RevokeActive(ctx, tenancy.TenantID(ctx), userID, now)
+	bypass, err := deps.BypassRepo.RevokeActive(ctx, tenantports.TenantID(ctx), userID, now)
 	if err != nil {
 		return err
 	}

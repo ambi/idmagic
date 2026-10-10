@@ -23,8 +23,8 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -174,7 +174,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	}
 	// 安定したエラーコードは、行ごとの誤りとして成果物から読める。行番号も付く。
 	errorPage, err := userusecases.ReadUserImportErrorRange(
-		tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", ""),
+		tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", ""),
 		artifacts, tenancydomain.DefaultTenantID, preview, 1, 10,
 	)
 	if err != nil || len(errorPage) != 1 {

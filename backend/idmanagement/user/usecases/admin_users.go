@@ -30,10 +30,8 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -136,7 +134,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if username == "" {
 		return nil, errors.New("preferred username is required")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	// An admin-issued password goes through the same tenant-resolved policy as
 	// change-password and reset-password; otherwise a tenant that raised
 	// min_length would still get baseline-strength passwords from this path.
@@ -200,7 +198,7 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 	if user == nil {
 		return nil, idmusecases.ErrUserNotFound
 	}
-	if user.TenantID != tenancy.TenantID(ctx) {
+	if user.TenantID != tenantports.TenantID(ctx) {
 		return nil, idmusecases.ErrUserNotFound
 	}
 	updated := *user
@@ -308,7 +306,7 @@ func SetUserDisabled(
 	if user == nil {
 		return nil, idmusecases.ErrUserNotFound
 	}
-	if user.TenantID != tenancy.TenantID(ctx) {
+	if user.TenantID != tenantports.TenantID(ctx) {
 		return nil, idmusecases.ErrUserNotFound
 	}
 	if user.Lifecycle.Status == idmdomain.UserStatusPendingDeletion {
@@ -486,7 +484,7 @@ func loadTenantUser(ctx context.Context, deps AdminUserDeps, sub string) (*userd
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) {
 		return nil, idmusecases.ErrUserNotFound
 	}
 	return user, nil
@@ -543,7 +541,7 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if user == nil {
 		return idmusecases.ErrUserNotFound
 	}
-	if user.TenantID != tenancy.TenantID(ctx) {
+	if user.TenantID != tenantports.TenantID(ctx) {
 		return idmusecases.ErrUserNotFound
 	}
 	now := idmusecases.NormalizedNow(in.Now)
@@ -583,7 +581,7 @@ func finishPurge(ctx context.Context, deps AdminUserDeps, tombstone *userdomain.
 			return err
 		}
 		if deps.QuotaRepo != nil {
-			if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tombstone.TenantID, tenancydomain.ResourceUsers, 1); err != nil {
+			if err := deps.QuotaRepo.Decrement(ctx, tombstone.TenantID, tenancydomain.ResourceUsers, 1); err != nil {
 				return err
 			}
 		}
@@ -728,7 +726,7 @@ func RestoreUser(
 // Batch の保持期限の削除が呼ぶ。一人の失敗で残りを止めず、失敗をまとめて返す。
 func PurgeExpiredSoftDeleted(ctx context.Context, deps AdminUserDeps, now time.Time) error {
 	now = idmusecases.NormalizedNow(now)
-	candidates, err := deps.UserRepo.ListPurgeCandidates(ctx, tenancy.TenantID(ctx))
+	candidates, err := deps.UserRepo.ListPurgeCandidates(ctx, tenantports.TenantID(ctx))
 	if err != nil {
 		return err
 	}

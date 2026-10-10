@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/webauthn/testing_contract"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestWebAuthnSessionStoreContract(t *testing.T) {
@@ -15,7 +15,7 @@ func TestWebAuthnSessionStoreContract(t *testing.T) {
 		tenant := &tenantdomain.Tenant{ID: "tenant-a"}
 		other := &tenantdomain.Tenant{ID: "tenant-b"}
 		return testing_contract.Fixture{
-			Store: NewWebAuthnSessionStore(), Context: func(ctx context.Context) context.Context { return tenancy.WithTenant(ctx, tenant, "", "") }, Other: func(ctx context.Context) context.Context { return tenancy.WithTenant(ctx, other, "", "") },
+			Store: NewWebAuthnSessionStore(), Context: func(ctx context.Context) context.Context { return tenantports.WithTenant(ctx, tenant, "", "") }, Other: func(ctx context.Context) context.Context { return tenantports.WithTenant(ctx, other, "", "") },
 			Now: time.Now().UTC(),
 		}
 	})

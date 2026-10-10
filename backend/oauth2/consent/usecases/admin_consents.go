@@ -12,10 +12,8 @@ import (
 	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var ErrConsentNotFound = errors.New("consent not found")
@@ -34,11 +32,11 @@ type ConsentDeps struct {
 // (wi-159) — callers pass limit+1 to detect whether a next page
 // exists, then trim to limit before responding.
 func ListConsents(ctx context.Context, deps ConsentDeps, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
-	return deps.ConsentRepo.ListPage(ctx, tenancy.TenantID(ctx), afterUserID, afterClientID, limit)
+	return deps.ConsentRepo.ListPage(ctx, tenantports.TenantID(ctx), afterUserID, afterClientID, limit)
 }
 
 func ListConsentsBefore(ctx context.Context, deps ConsentDeps, beforeUserID, beforeClientID string, limit int) ([]*domain.Consent, error) {
-	return deps.ConsentRepo.ListPageBefore(ctx, tenancy.TenantID(ctx), beforeUserID, beforeClientID, limit)
+	return deps.ConsentRepo.ListPageBefore(ctx, tenantports.TenantID(ctx), beforeUserID, beforeClientID, limit)
 }
 
 func GetConsent(
@@ -46,7 +44,7 @@ func GetConsent(
 	deps ConsentDeps,
 	sub, clientID string,
 ) (*domain.Consent, error) {
-	consent, err := deps.ConsentRepo.Find(ctx, tenancy.TenantID(ctx), sub, clientID)
+	consent, err := deps.ConsentRepo.Find(ctx, tenantports.TenantID(ctx), sub, clientID)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +64,7 @@ func RevokeConsent(
 	if err != nil {
 		return err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if err := deps.ConsentRepo.Revoke(ctx, tenantID, sub, clientID); err != nil {
 		return err
 	}
@@ -74,7 +72,7 @@ func RevokeConsent(
 	// Granted consent transitions to Revoked, so repeat revokes don't
 	// under-count usage (wi-160).
 	if deps.QuotaRepo != nil && consent.State == domain.ConsentGranted {
-		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
+		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
 			return err
 		}
 	}

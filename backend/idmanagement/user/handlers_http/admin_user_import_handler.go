@@ -12,7 +12,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
@@ -68,7 +68,7 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 	if d.JobRepo == nil || d.CSVArtifacts == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
-	tenantID := tenancy.TenantID(c.Request().Context())
+	tenantID := tenantports.TenantID(c.Request().Context())
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))
 	if errors.Is(err, jobsports.ErrJobNotFound) || job == nil || job.TenantID != tenantID || (job.Kind != jobsdomain.KindUserImportPreview && job.Kind != jobsdomain.KindUserImportApply) {
 		return support.WriteProblem(c, http.StatusNotFound, "user_import_not_found", "The import does not exist.")

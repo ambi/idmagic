@@ -12,7 +12,7 @@ import (
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const userCSVExportPageSize = 500
@@ -38,7 +38,7 @@ func (e UserCSVExporter) ValidateUserCSVColumns(ctx context.Context, columns []s
 	if e.Deps.SchemaReader == nil {
 		return errors.New("user CSV schema reader is unavailable")
 	}
-	defs, err := e.Deps.SchemaReader.EffectiveUserAttributeDefs(ctx, tenancy.TenantID(ctx))
+	defs, err := e.Deps.SchemaReader.EffectiveUserAttributeDefs(ctx, tenantports.TenantID(ctx))
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string
 	if err := policy.Validate(); err != nil {
 		return result, err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	defs, err := deps.SchemaReader.EffectiveUserAttributeDefs(ctx, tenantID)
 	if err != nil {
 		return result, err

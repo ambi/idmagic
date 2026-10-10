@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const errInvalidAuthorizationDetails = "invalid_authorization_details"
@@ -43,7 +43,7 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 	if repo == nil {
 		return NewOAuthError(errInvalidAuthorizationDetails, "authorization_details is not accepted.")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	for _, d := range details {
 		if d.Type == "" {
 			return NewOAuthError(errInvalidAuthorizationDetails, "type is required in authorization_details")
@@ -69,7 +69,7 @@ func LoadAuthorizationDetailTypes(ctx context.Context, repo ports.AuthorizationD
 	if repo == nil {
 		return out, nil
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	for _, d := range details {
 		if _, ok := out[d.Type]; ok {
 			continue

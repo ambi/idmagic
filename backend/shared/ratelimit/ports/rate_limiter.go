@@ -25,7 +25,7 @@ type RateLimiter interface {
 	// Allow atomically increments the fixed-window counter for (tenant, policyID, key) and
 	// reports whether this request is within the configured threshold. Unlike the login
 	// throttle, every call consumes budget regardless of the request's outcome. Tenant scoping
-	// (postgres adapter) is resolved from ctx via tenancy.TenantID, matching LoginAttemptThrottle.
+	// (postgres adapter) is resolved from ctx via tenantports.TenantID, matching LoginAttemptThrottle.
 	Allow(ctx context.Context, policyID, key string, now time.Time) (RateLimitResult, error)
 }
 

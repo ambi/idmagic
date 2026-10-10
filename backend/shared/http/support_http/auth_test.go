@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
@@ -19,7 +19,7 @@ const authTestRealmAPI = "https://idp.test/realms/acme"
 
 // withAuthTestRealm は、テナント middleware が組み立てるのと同じレルムの文脈を req に載せる。
 func withAuthTestRealm(req *http.Request) *http.Request {
-	return req.WithContext(tenancy.WithTenant(req.Context(), &tenancydomain.Tenant{ID: "acme"}, authTestRealmAPI, "/realms/acme"))
+	return req.WithContext(tenantports.WithTenant(req.Context(), &tenancydomain.Tenant{ID: "acme"}, authTestRealmAPI, "/realms/acme"))
 }
 
 // authTestAccessTokens は、イントロスペクションの結果を固定したアクセストークンの検証器である。

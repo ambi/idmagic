@@ -15,9 +15,9 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // eventRecorder is a concurrency-safe spec.DomainEvent sink: Runner invokes
@@ -372,7 +372,7 @@ func TestRunner_BindsTheHandlerContextToTheJobsTenant(t *testing.T) {
 	handlers := usecases.NewHandlerRegistry()
 	seen := make(chan string, 1)
 	handlers.Register(domain.KindNoopEcho, func(ctx context.Context, _ *domain.Job) (json.RawMessage, error) {
-		seen <- tenancy.TenantID(ctx)
+		seen <- tenantports.TenantID(ctx)
 		return json.RawMessage(`{}`), nil
 	})
 	runner := usecases.NewRunner(

@@ -14,7 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	"github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type EnqueueFunc func(context.Context, jobsports.EnqueueInput, time.Time) (*jobsdomain.Job, error)
@@ -35,7 +35,7 @@ func StartBackChannelLogout(ctx context.Context, deps StartBackChannelLogoutDeps
 	if newID == nil {
 		newID = spec.NewUUIDv4
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	sessions, err := deps.ClientSessions.ListBySid(ctx, tenantID, sid)
 	if err != nil {
 		return nil, fmt.Errorf("logout: list client sessions: %w", err)
@@ -92,7 +92,7 @@ func FrontChannelLogoutTargets(ctx context.Context, deps FrontChannelLogoutDeps,
 	if deps.ClientSessions == nil || deps.Clients == nil {
 		return nil, errors.New("logout: incomplete front-channel dependencies")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	sessions, err := deps.ClientSessions.ListBySid(ctx, tenantID, sid)
 	if err != nil {
 		return nil, fmt.Errorf("logout: list client sessions: %w", err)

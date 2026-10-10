@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -20,7 +20,7 @@ const defaultSessionListLimit = 50
 
 // SessionRepository (Authentication) — PostgreSQL を LoginSession の単一正本とする
 // (wi-253)。tenant scoping は他の authentication postgres repository と同じ
-// 慣習に合わせ、呼び出し側の ctx から tenancy.TenantID で取得する。
+// 慣習に合わせ、呼び出し側の ctx から tenantports.TenantID で取得する。
 type SessionRepository struct{ Pool sharedpg.DB }
 
 func (r *SessionRepository) queries() *Queries { return New(r.Pool) }
@@ -49,7 +49,7 @@ func (r *SessionRepository) Save(ctx context.Context, sess *domain.LoginSession)
 func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*domain.LoginSession, error) {
 	row, err := r.queries().FindActiveAuthenticationSession(ctx, FindActiveAuthenticationSessionParams{
 		ID:        sessionID,
-		TenantID:  tenancy.TenantID(ctx),
+		TenantID:  tenantports.TenantID(ctx),
 		ExpiresAt: time.Now().UTC(),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -64,7 +64,7 @@ func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*domain
 func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID string) (*domain.LoginSession, error) {
 	row, err := r.queries().FindOwnedAuthenticationSession(ctx, FindOwnedAuthenticationSessionParams{
 		ID:       sessionID,
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 		UserID:   userID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -79,7 +79,7 @@ func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID str
 func (r *SessionRepository) Revoke(ctx context.Context, sessionID string, reason spec.SessionEndReason, now time.Time) error {
 	return r.queries().RevokeAuthenticationSession(ctx, RevokeAuthenticationSessionParams{
 		ID:           sessionID,
-		TenantID:     tenancy.TenantID(ctx),
+		TenantID:     tenantports.TenantID(ctx),
 		RevokeReason: pgtype.Text{String: string(reason), Valid: true},
 		RevokedAt:    pgtype.Timestamptz{Time: now, Valid: true},
 	})
@@ -89,7 +89,7 @@ func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now tim
 	cutoff := now.Add(-domain.LoginSessionTouchInterval)
 	return r.queries().TouchAuthenticationSession(ctx, TouchAuthenticationSessionParams{
 		ID:           sessionID,
-		TenantID:     tenancy.TenantID(ctx),
+		TenantID:     tenantports.TenantID(ctx),
 		LastSeenAt:   now,
 		LastSeenAt_2: cutoff,
 	})
@@ -97,7 +97,7 @@ func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now tim
 
 func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*domain.LoginSession, error) {
 	rows, err := r.queries().ListActiveAuthenticationSessionsByUser(ctx, ListActiveAuthenticationSessionsByUserParams{
-		TenantID:  tenancy.TenantID(ctx),
+		TenantID:  tenantports.TenantID(ctx),
 		UserID:    sub,
 		ExpiresAt: time.Now().UTC(),
 		Limit:     defaultSessionListLimit,
@@ -121,7 +121,7 @@ func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*domai
 
 func (r *SessionRepository) DeleteAllForSub(ctx context.Context, sub string) error {
 	return r.queries().DeleteAllAuthenticationSessionsForUser(ctx, DeleteAllAuthenticationSessionsForUserParams{
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 		UserID:   sub,
 	})
 }

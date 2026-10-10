@@ -54,6 +54,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -435,7 +436,7 @@ func (s *exampleStack) reissueAt(t *testing.T, token string, issuedAt time.Time)
 	}
 	claims["iat"] = issuedAt.Unix()
 	claims["jti"] = "reissued-" + strings.ReplaceAll(issuedAt.Format(time.RFC3339Nano), ":", "")
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	key, err := s.keyStore.GetActiveKey(ctx)
 	if err != nil {
 		t.Fatal(err)

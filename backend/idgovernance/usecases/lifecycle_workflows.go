@@ -15,7 +15,6 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -151,7 +150,7 @@ func CreateLifecycleWorkflow(ctx context.Context, deps LifecycleWorkflowDeps, in
 	if deps.Repo == nil {
 		return nil, errors.New("lifecycle workflow repository is required")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
 		return nil, errors.New("workflow name is required")
@@ -327,7 +326,7 @@ func ListLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWorkflowDeps, 
 	if deps.RunRepo == nil {
 		return nil, errors.New("lifecycle workflow run repository is required")
 	}
-	runs, err := deps.RunRepo.ListRuns(ctx, tenancy.TenantID(ctx), workflowID, limit)
+	runs, err := deps.RunRepo.ListRuns(ctx, tenantports.TenantID(ctx), workflowID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +345,7 @@ func GetLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowDeps, ru
 	if deps.RunRepo == nil {
 		return nil, errors.New("lifecycle workflow run repository is required")
 	}
-	run, err := deps.RunRepo.FindRun(ctx, tenancy.TenantID(ctx), runID)
+	run, err := deps.RunRepo.FindRun(ctx, tenantports.TenantID(ctx), runID)
 	if err != nil {
 		return nil, err
 	}
@@ -426,7 +425,7 @@ func tenantWorkflow(ctx context.Context, repo igports.LifecycleWorkflowRepositor
 	if repo == nil {
 		return nil, errors.New("lifecycle workflow repository is required")
 	}
-	workflow, err := repo.Find(ctx, tenancy.TenantID(ctx), workflowID)
+	workflow, err := repo.Find(ctx, tenantports.TenantID(ctx), workflowID)
 	if err != nil {
 		return nil, err
 	}

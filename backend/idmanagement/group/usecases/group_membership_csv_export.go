@@ -16,7 +16,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const groupMembershipCSVExportPageSize = 1000
@@ -76,7 +76,7 @@ func ExportGroupMembershipCSV(
 	if err := validateGroupMembershipCSVExportColumns(schema, columns); err != nil {
 		return result, err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
 		return result, err

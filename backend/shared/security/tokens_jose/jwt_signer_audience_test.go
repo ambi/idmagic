@@ -9,7 +9,7 @@ import (
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // resource を指定しない発行は、scope からデフォルトの資源を推定して aud に入れる (RFC 9068 §3)。
@@ -24,7 +24,7 @@ func TestAccessTokenWithoutResourceInfersAudienceFromScope(t *testing.T) {
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
 	const realmAPI = "https://idp.test/realms/acme"
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, realmAPI, "/realms/acme")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, realmAPI, "/realms/acme")
 
 	for _, tc := range []struct {
 		name      string

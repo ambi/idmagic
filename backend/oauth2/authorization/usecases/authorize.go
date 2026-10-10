@@ -14,7 +14,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // =====================================================================
@@ -76,7 +76,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		return nil, NewOAuthError("invalid_request", "code_challenge_method must be S256")
 	}
 
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
 		return nil, err

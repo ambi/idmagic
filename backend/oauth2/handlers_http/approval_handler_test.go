@@ -24,9 +24,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -136,7 +136,7 @@ func TestBackchannelApprovalIssuesTokenOnce(t *testing.T) {
 	if err := json.Unmarshal(startRec.Body.Bytes(), &started); err != nil || started.AuthReqID == "" {
 		t.Fatalf("backchannel response=%+v err=%v", started, err)
 	}
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	pending, err := store.ListPendingForUser(ctx, "alice-id")
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("pending approvals=%#v err=%v", pending, err)
@@ -207,7 +207,7 @@ func newApprovalHandlerFixture(t *testing.T) approvalHandlerFixture {
 		Status: tenancydomain.TenantStatusActive,
 	})
 	store := approvalmemory.NewApprovalRequestStore()
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	now := time.Now().UTC()
 	id, err := approvaldomain.NewApprovalRequestID()
 	if err != nil {
@@ -244,7 +244,7 @@ func TestApprovalDecisionRequiresRecentStepUp(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	stored, err := fix.store.FindByID(ctx, fix.id)
 	if err != nil || stored.State != spec.ApprovalPending {
 		t.Fatalf("stored state = %v, err = %v", stored.State, err)
@@ -261,7 +261,7 @@ func TestApprovalDecisionRequiresCSRF(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	stored, err := fix.store.FindByID(ctx, fix.id)
 	if err != nil || stored.State != spec.ApprovalPending {
 		t.Fatalf("stored state = %v, err = %v", stored.State, err)

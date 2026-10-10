@@ -17,7 +17,6 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -59,7 +58,7 @@ func effectiveRuleDefs(ctx context.Context, deps DynamicGroupDeps, tenantID stri
 }
 
 func UpdateDynamicGroupRule(ctx context.Context, deps DynamicGroupDeps, actorUserID, groupID, expression string, now time.Time) (*groupdomain.DynamicGroupRule, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
 		return nil, err
@@ -107,7 +106,7 @@ func UpdateDynamicGroupRule(ctx context.Context, deps DynamicGroupDeps, actorUse
 }
 
 func SetDynamicGroupRuleEnabled(ctx context.Context, deps DynamicGroupDeps, actorUserID, groupID string, enabled bool, now time.Time) (*groupdomain.DynamicGroupRule, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	rule, err := deps.GroupRepo.FindDynamicRule(ctx, tenantID, groupID)
 	if err != nil {
 		return nil, err
@@ -169,7 +168,7 @@ func DynamicGroupReconcileHandler(deps DynamicGroupDeps) func(context.Context, *
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
 		rule, err := deps.GroupRepo.FindDynamicRule(ctx, job.TenantID, params.GroupID)
 		if err != nil {
 			return nil, err
@@ -193,7 +192,7 @@ func PreviewDynamicGroupRule(ctx context.Context, deps DynamicGroupDeps, groupID
 	if len(userIDs) > 100 {
 		return nil, errors.Join(ErrInvalidDynamicGroupRule, fmt.Errorf("preview supports at most 100 users"))
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
 		return nil, err

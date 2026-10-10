@@ -17,7 +17,6 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -94,7 +93,7 @@ func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actor
 	if err := policy.Validate(); err != nil {
 		return nil, err
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
 		return idmdomain.CopyCSVWithinPolicy(output, input, policy)
 	})
@@ -118,7 +117,7 @@ func StartUserImportApply(ctx context.Context, deps UserImportStartDeps, actorUs
 	if deps.Artifacts == nil || deps.Jobs == nil {
 		return nil, errors.New("user import apply dependencies are incomplete")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	params, result, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, previewJobID)
 	if err != nil {
 		return nil, err
@@ -169,7 +168,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
 		var source UserImportParams
 		if mode == UserImportModeApply {
 			bound, previewResult, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID)

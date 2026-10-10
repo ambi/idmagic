@@ -7,7 +7,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/totp/testing_contract"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestPersistenceContract(t *testing.T) {
@@ -18,7 +18,7 @@ func TestPersistenceContract(t *testing.T) {
 		user := pgfixtures.SeedUser(t, db, tenant.ID)
 		return testing_contract.Fixture{
 			Repository: &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)},
-			Context:    func(ctx context.Context) context.Context { return tenancy.WithTenant(ctx, tenant, "", "") },
+			Context:    func(ctx context.Context) context.Context { return tenantports.WithTenant(ctx, tenant, "", "") },
 			UserID:     user.ID, Now: pgtest.Now(),
 		}
 	})

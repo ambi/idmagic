@@ -23,7 +23,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // StepUpRecencySeconds は step-up が有効とみなされる窓 (5 分)。
@@ -130,7 +130,7 @@ func StepUpStart(
 	}
 	if deps.Emit != nil {
 		deps.Emit(&domain.StepUpRequested{
-			At: time.Now().UTC(), TenantID: tenancy.TenantID(ctx), UserID: sub, SessionID: sessionID,
+			At: time.Now().UTC(), TenantID: tenantports.TenantID(ctx), UserID: sub, SessionID: sessionID,
 		})
 	}
 	return stepUpMethods(ctx, deps, sub), nil
@@ -210,7 +210,7 @@ func CompleteStepUp(ctx context.Context, deps StepUpDeps, in CompleteStepUpInput
 	}
 	if deps.Emit != nil {
 		deps.Emit(&domain.StepUpCompleted{
-			At: now, TenantID: tenancy.TenantID(ctx), UserID: in.Sub,
+			At: now, TenantID: tenantports.TenantID(ctx), UserID: in.Sub,
 			SessionID: in.SessionID, Method: string(in.Method),
 		})
 	}

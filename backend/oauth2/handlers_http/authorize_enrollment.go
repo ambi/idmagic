@@ -11,7 +11,7 @@ import (
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -68,7 +68,7 @@ func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.Authenticati
 			return false, expireErr
 		}
 		if expired != nil && d.Emit != nil {
-			d.Emit(&authdomain.MfaEnrollmentBypassExpired{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: expired.ID})
+			d.Emit(&authdomain.MfaEnrollmentBypassExpired{At: now, TenantID: tenantports.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: expired.ID})
 		}
 	}
 	decision, deadline := mfadomain.EvaluateMfaEnrollment(now, policy.EnforcementStartAt, time.Duration(*policy.GracePeriodSeconds)*time.Second, policy.AllowAdminBypass, bypass)
@@ -92,8 +92,8 @@ func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.Authenticati
 	*authn = *pending
 	d.setSessionCookie(c, pending.SessionID)
 	if d.Emit != nil {
-		d.Emit(&authdomain.MfaEnrollmentBypassConsumed{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID})
-		d.Emit(&authdomain.MfaEnrollmentRequiredEvent{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID, Deadline: *deadline})
+		d.Emit(&authdomain.MfaEnrollmentBypassConsumed{At: now, TenantID: tenantports.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID})
+		d.Emit(&authdomain.MfaEnrollmentRequiredEvent{At: now, TenantID: tenantports.TenantID(c.Request().Context()), UserID: authn.UserID, BypassID: consumed.ID, SessionID: pending.SessionID, Deadline: *deadline})
 	}
 	return true, nil
 }
@@ -157,7 +157,7 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 		return writeBrowserEnrollmentError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&authdomain.MfaEnrollmentCompleted{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, SessionID: authn.SessionID, FactorType: "Totp"})
+		d.Emit(&authdomain.MfaEnrollmentCompleted{At: now, TenantID: tenantports.TenantID(c.Request().Context()), UserID: authn.UserID, SessionID: authn.SessionID, FactorType: "Totp"})
 	}
 	// 登録専用フローからはデバイスを記憶しない (wi-91)。ここは管理者が発行した bypass で
 	// 到達する経路であり、記憶の同意を出す画面でもない。

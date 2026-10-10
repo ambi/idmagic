@@ -66,6 +66,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -331,7 +332,7 @@ func (f *authRefusalFixture) issueApiToken(
 ) string {
 	t.Helper()
 	realm := realmFor(tenantID)
-	ctx := tenancy.WithTenant(
+	ctx := tenantports.WithTenant(
 		testing_tenant.Default(context.Background()),
 		&tenancydomain.Tenant{ID: tenantID, Realm: realm},
 		authRefusalIssuer+"/realms/"+realm,
@@ -1110,7 +1111,7 @@ func TestAccountContextIsTheSameFromEveryAllowedCredential(t *testing.T) {
 // ポータルスコープは OAuth2 の認可で降りるもので、API トークンの粒度スコープとは別物である。
 func (f *authRefusalFixture) issuePortalToken(t *testing.T, userID string, scopes ...string) string {
 	t.Helper()
-	ctx := tenancy.WithTenant(
+	ctx := tenantports.WithTenant(
 		testing_tenant.Default(context.Background()),
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm},
 		authRefusalIssuer+"/realms/"+tenancydomain.DefaultRealm,

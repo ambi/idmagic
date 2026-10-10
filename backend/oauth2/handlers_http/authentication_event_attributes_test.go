@@ -10,7 +10,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -23,7 +23,7 @@ func TestEmitAuthenticationFailureRecordsPlaintextAttributes(t *testing.T) {
 
 	e := echo.New()
 	e.POST("/x", func(c *echo.Context) error {
-		req := c.Request().WithContext(tenancy.WithTenant(
+		req := c.Request().WithContext(tenantports.WithTenant(
 			c.Request().Context(), &tenancydomain.Tenant{ID: "acme"}, "", "",
 		))
 		c.SetRequest(req)

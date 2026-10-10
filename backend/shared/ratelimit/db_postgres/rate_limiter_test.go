@@ -9,12 +9,12 @@ import (
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func withTenant(ctx context.Context, tenant *tenancydomain.Tenant) context.Context {
-	return tenancy.WithTenant(ctx, tenant, "", "")
+	return tenantports.WithTenant(ctx, tenant, "", "")
 }
 
 // TestRateLimiter verifies the shared endpoint rate limiter: fixed-window Allow

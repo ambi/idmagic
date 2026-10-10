@@ -13,7 +13,7 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type UserImportPlanDeps struct {
@@ -103,7 +103,7 @@ func PlanUserImport(
 	if deps.UserRepo == nil || deps.SchemaReader == nil {
 		return summary, errors.New("user import planner dependencies are incomplete")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	defs, err := deps.SchemaReader.EffectiveUserAttributeDefs(ctx, tenantID)
 	if err != nil {
 		return summary, err

@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -29,7 +29,7 @@ func deviceFromPayload(payload []byte, state string) (*domain.DeviceAuthorizatio
 }
 
 func (s *DeviceCodeStore) upsert(ctx context.Context, rec *domain.DeviceAuthorization) error {
-	rec.TenantID = tenancy.TenantID(ctx)
+	rec.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(rec)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (s *DeviceCodeStore) Update(ctx context.Context, rec *domain.DeviceAuthoriz
 func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string) (*domain.DeviceAuthorization, error) {
 	row, err := New(s.Pool).FindDeviceCodeByHash(ctx, FindDeviceCodeByHashParams{
 		DeviceCodeHash: hash,
-		TenantID:       tenancy.TenantID(ctx),
+		TenantID:       tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -70,7 +70,7 @@ func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string)
 func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, userCode string) (*domain.DeviceAuthorization, error) {
 	row, err := New(s.Pool).FindDeviceCodeByUserCode(ctx, FindDeviceCodeByUserCodeParams{
 		UserCode: userCode,
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -84,7 +84,7 @@ func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, userCode string) (
 func (s *DeviceCodeStore) Exchange(ctx context.Context, deviceCodeHash string) (*domain.DeviceAuthorization, error) {
 	row, err := New(s.Pool).ExchangeDeviceCode(ctx, ExchangeDeviceCodeParams{
 		DeviceCodeHash: deviceCodeHash,
-		TenantID:       tenancy.TenantID(ctx),
+		TenantID:       tenantports.TenantID(ctx),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -97,7 +97,7 @@ func (s *DeviceCodeStore) Exchange(ctx context.Context, deviceCodeHash string) (
 
 func (s *DeviceCodeStore) DeleteAllForSub(ctx context.Context, sub string) error {
 	return New(s.Pool).DeleteDeviceCodesForUser(ctx, DeleteDeviceCodesForUserParams{
-		TenantID: tenancy.TenantID(ctx),
+		TenantID: tenantports.TenantID(ctx),
 		UserID:   uuidOrNil(sub),
 	})
 }

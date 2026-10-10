@@ -15,7 +15,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const groupMembershipImportPageSize = 1000
@@ -183,7 +183,7 @@ func PlanGroupMembershipImport(
 	if deps.GroupRepo == nil || deps.UserRepo == nil {
 		return summary, errors.New("group membership import planner dependencies are incomplete")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	schema := groupdomain.NewGroupMembershipCSVSchema()
 	reader, err := idmdomain.NewCSVReader(input, schema.Accepts, policy)
 	if err != nil {

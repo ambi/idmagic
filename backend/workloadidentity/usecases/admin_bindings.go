@@ -10,7 +10,7 @@ import (
 	"time"
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
@@ -23,7 +23,7 @@ type AdminAgentWorkloadBindingDeps struct {
 }
 
 func ListAgentWorkloadBindings(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string) ([]*domain.AgentWorkloadBinding, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, trustBundleID)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ type CreateAgentWorkloadBindingInput struct {
 // trust_bundle_id 内で完全重複を許さない (ambiguous match の runtime 判定は
 // domain.MatchAgent が別途担う)。
 func CreateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string, in CreateAgentWorkloadBindingInput, now time.Time) (*domain.AgentWorkloadBinding, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, trustBundleID)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func EnableAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 }
 
 func setBindingStatus(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, status domain.AgentWorkloadBindingStatus, now time.Time) (*domain.AgentWorkloadBinding, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	binding, err := deps.BindingRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func setBindingStatus(ctx context.Context, deps AdminAgentWorkloadBindingDeps, i
 }
 
 func DeleteAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	binding, err := deps.BindingRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return err

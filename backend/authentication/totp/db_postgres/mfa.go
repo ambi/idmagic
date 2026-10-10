@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/totp/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -72,7 +72,7 @@ func (r *MfaFactorRepository) Save(ctx context.Context, factor *domain.MfaFactor
 	}
 	if factor.Secret != nil {
 		version, ciphertext, err := r.Cipher.Encrypt(
-			ctx, tenancy.TenantID(ctx), mfaFactorRecordContext, mfaFactorTable,
+			ctx, tenantports.TenantID(ctx), mfaFactorRecordContext, mfaFactorTable,
 			mfaFactorRecordID(factor.UserID, factor.Type), mfaFactorSecretField, *factor.Secret,
 		)
 		if err != nil {
@@ -112,7 +112,7 @@ func (r *MfaFactorRepository) mfaFactorFromRow(
 	switch {
 	case secretKeyVersion.Valid && len(secretCiphertext) > 0:
 		plaintext, err := r.Cipher.Decrypt(
-			ctx, tenancy.TenantID(ctx), mfaFactorRecordContext, mfaFactorTable,
+			ctx, tenantports.TenantID(ctx), mfaFactorRecordContext, mfaFactorTable,
 			mfaFactorRecordID(userID, spec.MfaFactorType(factorType)), mfaFactorSecretField,
 			int(secretKeyVersion.Int32), secretCiphertext,
 		)

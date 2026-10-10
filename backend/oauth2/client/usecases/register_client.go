@@ -14,9 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 type RegisterClientInput struct {
@@ -59,8 +57,8 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		now = time.Now().UTC()
 	}
 	if deps.QuotaRepo != nil {
-		tenantID := tenancy.TenantID(ctx)
-		err := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceOAuth2Clients, 1)
+		tenantID := tenantports.TenantID(ctx)
+		err := deps.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1)
 		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
 		}
@@ -136,7 +134,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		scope = "openid profile email"
 	}
 	c := &domain.OAuth2Client{
-		TenantID:                           tenancy.TenantID(ctx),
+		TenantID:                           tenantports.TenantID(ctx),
 		ClientID:                           clientID,
 		ClientSecretHash:                   secretHash,
 		ClientType:                         in.ClientType,
@@ -180,6 +178,6 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 			return nil, err
 		}
 	}
-	emit(deps.Emit, &domain.ClientRegistered{At: now, TenantID: tenancy.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
+	emit(deps.Emit, &domain.ClientRegistered{At: now, TenantID: tenantports.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
 	return &RegisterClientResult{Client: c, ClientSecret: secret}, nil
 }

@@ -16,10 +16,8 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/session/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 const (
@@ -56,9 +54,9 @@ func (m *SessionManager) CreateWithPending(
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if m.QuotaRepo != nil {
-		err := tenancyusecases.CheckQuotaAndIncrement(ctx, m.QuotaRepo, tenantID, tenancydomain.ResourceActiveSessions, 1)
+		err := m.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceActiveSessions, 1)
 		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok && m.Emit != nil {
 			m.Emit(&tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
 		}
@@ -110,7 +108,7 @@ func (m *SessionManager) CompleteFactor(
 	if err != nil || sess == nil {
 		return nil, err
 	}
-	if sess.TenantID != tenancy.TenantID(ctx) {
+	if sess.TenantID != tenantports.TenantID(ctx) {
 		return nil, nil //nolint:nilnil // A session from another tenant is intentionally treated as absent.
 	}
 	merged := slices.Clone(sess.AMR)
@@ -159,7 +157,7 @@ func (m *SessionManager) RequireFactor(
 	if err != nil || sess == nil {
 		return nil, err
 	}
-	if sess.TenantID != tenancy.TenantID(ctx) {
+	if sess.TenantID != tenantports.TenantID(ctx) {
 		return nil, nil //nolint:nilnil // A session from another tenant is intentionally treated as absent.
 	}
 	sess.AuthenticationPending = true
@@ -191,7 +189,7 @@ func (m *SessionManager) RequireEnrollment(
 	if err != nil || sess == nil {
 		return nil, err
 	}
-	if sess.TenantID != tenancy.TenantID(ctx) {
+	if sess.TenantID != tenantports.TenantID(ctx) {
 		return nil, nil //nolint:nilnil // A session from another tenant is intentionally treated as absent.
 	}
 	sess.AuthenticationPending = true
@@ -227,7 +225,7 @@ func (m *SessionManager) RecordStepUp(
 	if err != nil || sess == nil {
 		return nil, err
 	}
-	if sess.TenantID != tenancy.TenantID(ctx) || sess.AuthenticationPending {
+	if sess.TenantID != tenantports.TenantID(ctx) || sess.AuthenticationPending {
 		return nil, nil //nolint:nilnil // Ineligible sessions are intentionally treated as absent.
 	}
 	sess.StepUpAt = now.Unix()
@@ -257,7 +255,7 @@ func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers
 	if sess == nil {
 		return nil, nil //nolint:nilnil // An unknown session is an anonymous request, not an error.
 	}
-	if sess.TenantID != tenancy.TenantID(ctx) {
+	if sess.TenantID != tenantports.TenantID(ctx) {
 		return nil, nil //nolint:nilnil // A session from another tenant is intentionally treated as absent.
 	}
 	// last_seen_at の書き込みはここで一括して行い、oauth2/account/admin 等の呼び出し側に

@@ -22,6 +22,12 @@ func NewQuotaRepository(db DBTX) *QuotaRepository {
 	return &QuotaRepository{db: db}
 }
 
+// QuotaRepositoryInTx は、呼び出し側のトランザクションで使用量を加減算する QuotaRepository を返す。
+// ほかのモジュールの書き込みと使用量を同じトランザクションで確定させるため、組み立て地点が渡す。
+func QuotaRepositoryInTx(tx pgx.Tx) tenantports.QuotaRepository {
+	return NewQuotaRepository(tx)
+}
+
 // usageCounter は一つの資源の利用量を加算、減算する問い合わせの組である。
 // 列ごとに sqlc の問い合わせを分けたので、資源名から列を選ぶ対応はこの表だけが持つ。
 type usageCounter struct {

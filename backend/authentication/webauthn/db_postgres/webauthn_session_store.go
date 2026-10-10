@@ -7,7 +7,7 @@ import (
 	"time"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
@@ -24,7 +24,7 @@ func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, data goweba
 		return err
 	}
 	return New(s.Pool).SaveWebauthnSession(ctx, SaveWebauthnSessionParams{
-		TenantID:   tenancy.TenantID(ctx),
+		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
 		Data:       payload,
 		ExpiresAt:  expiresAt,
@@ -33,7 +33,7 @@ func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, data goweba
 
 func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*gowebauthn.SessionData, error) {
 	payload, err := New(s.Pool).TakeWebauthnSession(ctx, TakeWebauthnSessionParams{
-		TenantID:   tenancy.TenantID(ctx),
+		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
 		Now:        time.Now().UTC(),
 	})

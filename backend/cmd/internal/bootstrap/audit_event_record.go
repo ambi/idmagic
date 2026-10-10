@@ -19,8 +19,8 @@ import (
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
@@ -80,7 +80,7 @@ func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent)
 		}
 		appendCtx := eventCtx
 		if rec.TenantID != "" {
-			appendCtx = tenancy.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
+			appendCtx = tenantports.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
 		}
 		if err := d.Audit.AuditEventRepo.Append(appendCtx, rec); err != nil {
 			logger.Error(appendCtx, "audit event append failed; reconciliation required", "error", err, "event_type", event.EventType(), "tenant_id", rec.TenantID)

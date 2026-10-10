@@ -7,9 +7,9 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/token/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestDenylistPersistenceContract(t *testing.T) {
@@ -20,6 +20,6 @@ func TestDenylistPersistenceContract(t *testing.T) {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	testing_contract.RunDenylist(t, func(*testing.T) testing_contract.DenylistFixture {
-		return testing_contract.DenylistFixture{Denylist: &AccessTokenDenylist{Pool: db}, Context: tenancy.WithTenant(context.Background(), tenant, "", ""), Now: now.Add(1000 * 24 * time.Hour)}
+		return testing_contract.DenylistFixture{Denylist: &AccessTokenDenylist{Pool: db}, Context: tenantports.WithTenant(context.Background(), tenant, "", ""), Now: now.Add(1000 * 24 * time.Hour)}
 	})
 }

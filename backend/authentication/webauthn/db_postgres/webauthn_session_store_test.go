@@ -8,7 +8,7 @@ import (
 	webauthnpg "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
@@ -19,8 +19,8 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	other := pgfixtures.SeedTenant(t, db)
-	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
-	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &webauthnpg.WebAuthnSessionStore{Pool: db}
 	now := pgtest.Now()
 	data := gowebauthn.SessionData{Challenge: "abc", UserID: []byte("user-1")}

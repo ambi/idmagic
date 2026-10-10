@@ -25,7 +25,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -71,7 +71,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 		return "", "", err
 	}
 	now := nowUnix()
-	issuer := tenancy.Issuer(ctx, s.Issuer)
+	issuer := tenantports.Issuer(ctx, s.Issuer)
 	// aud は AllAccessTokensCarryAudience 不変条件により常に 1 個以上。
 	// Audiences が指定されていればそれを使う (RFC 8707 / RFC 8693)。なければ scope から
 	// デフォルトの資源を推定する (RFC 9068 §3)。account スコープの資源はレルムの IdMagic API で、
@@ -144,7 +144,7 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 		return "", err
 	}
 	now := nowUnix()
-	issuer := tenancy.Issuer(ctx, s.Issuer)
+	issuer := tenantports.Issuer(ctx, s.Issuer)
 	claims := map[string]any{
 		"iss":       issuer,
 		"sub":       in.User.ID,
@@ -226,7 +226,7 @@ func (s *JWTSigner) VerifyIDTokenHint(ctx context.Context, token string) (*oauth
 	if err != nil {
 		return nil, err
 	}
-	if iss, _ := payload["iss"].(string); iss != tenancy.Issuer(ctx, s.Issuer) {
+	if iss, _ := payload["iss"].(string); iss != tenantports.Issuer(ctx, s.Issuer) {
 		return nil, errors.New("id_token_hint: issuer mismatch")
 	}
 	claims := &oauthports.IDTokenHintClaims{}
@@ -273,7 +273,7 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 		// 検証エラーは leak しない（呼び出し側 RS のクライアントに署名失敗を知らせない）。
 		return &oauthports.IntrospectionResult{Active: false}, nil //nolint:nilerr // intentional per RFC 7662
 	}
-	if iss, _ := payload["iss"].(string); iss != tenancy.Issuer(ctx, s.Issuer) {
+	if iss, _ := payload["iss"].(string); iss != tenantports.Issuer(ctx, s.Issuer) {
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	if expF, _ := payload["exp"].(float64); int64(expF) < nowUnix() {

@@ -14,10 +14,8 @@ import (
 	"github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/mediavalidation"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var ErrApplicationNotFound = errors.New("application not found")
@@ -48,7 +46,7 @@ func checkApplicationQuota(ctx context.Context, deps ApplicationDeps, tenantID s
 	if deps.QuotaRepo == nil {
 		return nil
 	}
-	err := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceApplications, 1)
+	err := deps.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceApplications, 1)
 	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
 	}
@@ -65,7 +63,7 @@ type CreateApplicationInput struct {
 }
 
 func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput) (*domain.Application, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	now := adminNow(in.Now)
 	if err := checkApplicationQuota(ctx, deps, tenantID, now); err != nil {
 		return nil, err
@@ -105,7 +103,7 @@ type UpdateApplicationInput struct {
 }
 
 func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateApplicationInput) (*domain.Application, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
 		return nil, err
@@ -149,7 +147,7 @@ func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateAppli
 }
 
 func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
 		return err
@@ -169,11 +167,11 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 		return err
 	}
 	if deps.QuotaRepo != nil {
-		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceApplications, 1); err != nil {
+		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceApplications, 1); err != nil {
 			return err
 		}
 		if app.Protocol != nil && app.Protocol.Type == domain.ApplicationProtocolOIDC {
-			if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
+			if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
 				return err
 			}
 		}
@@ -195,7 +193,7 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 	if deps.IconStore == nil {
 		return nil, errors.New("application icon store is not configured")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
 		return nil, err
@@ -242,7 +240,7 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserI
 	if deps.IconStore == nil {
 		return nil, errors.New("application icon store is not configured")
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
 		return nil, err

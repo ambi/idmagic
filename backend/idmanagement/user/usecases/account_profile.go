@@ -17,7 +17,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -119,7 +118,7 @@ func loadSelf(ctx context.Context, repo userports.UserRepository, sub string) (*
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.TenantID != tenancy.TenantID(ctx) {
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) {
 		return nil, idmusecases.ErrUserNotFound
 	}
 	return user, nil

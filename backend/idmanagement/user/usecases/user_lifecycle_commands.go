@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // UserLifecycleCommands は、管理 API の外のモジュール（LifecycleWorkflow と SCIM の取り込み）が
@@ -45,5 +45,5 @@ func (c UserLifecycleCommands) deps() AdminUserDeps {
 }
 
 func (c UserLifecycleCommands) tenantContext(ctx context.Context, tenantID string) context.Context {
-	return tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	return tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
 }

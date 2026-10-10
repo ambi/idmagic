@@ -36,8 +36,8 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // worker が組み立てる実行ハンドラーは、無効化されたワークフローの WorkflowRun を始めずに打ち切る。
@@ -341,7 +341,7 @@ func TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns(t *testing.
 
 	f.disableAlice(t)
 
-	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 	introspect := tokenusecases.IntrospectDeps{AgentRepo: f.deps.IdManagement.AgentRepo, RevocationEpochRepo: f.epochs}
 	var epochs []time.Time
 	for _, id := range f.agentIDs {

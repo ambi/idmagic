@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type OAuthError = sharedusecases.OAuthError
@@ -47,7 +47,7 @@ func acceptAuthorizationDetails(
 	}
 	if code := errorCode(err); code == "invalid_authorization_details" {
 		emit(emitEvent, &domain.AuthorizationDetailsRejected{
-			At: req.Now.UTC(), TenantID: tenancy.TenantID(ctx), ClientID: req.ClientID, Reason: code,
+			At: req.Now.UTC(), TenantID: tenantports.TenantID(ctx), ClientID: req.ClientID, Reason: code,
 		})
 	}
 	return nil, err

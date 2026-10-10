@@ -10,9 +10,9 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
@@ -25,7 +25,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	if err := (&tenancypostgres.TenantRepository{Pool: db}).Save(context.Background(), defaultTenant); err != nil {
 		t.Fatalf("seed default tenant: %v", err)
 	}
-	ctx := tenancy.WithTenant(context.Background(), defaultTenant, "", "")
+	ctx := tenantports.WithTenant(context.Background(), defaultTenant, "", "")
 
 	store, err := NewKeyStore(ctx, db)
 	if err != nil {

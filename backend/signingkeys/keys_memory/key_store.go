@@ -14,7 +14,7 @@ import (
 	keysJOSE "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // tenantKeys は 1 テナント分の署名鍵集合と active kid を保持する。
@@ -24,7 +24,7 @@ type tenantKeys struct {
 }
 
 // InMemoryKeyStore は dev/test 用の tenant-aware な in-memory 鍵ストア。
-// tenant scope は ctx (tenancy.TenantID) から解決する。
+// tenant scope は ctx (tenantports.TenantID) から解決する。
 type InMemoryKeyStore struct {
 	mu       sync.RWMutex
 	byTenant map[string]*tenantKeys
@@ -35,7 +35,7 @@ func NewInMemoryKeyStore() (*InMemoryKeyStore, error) {
 }
 
 func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -53,7 +53,7 @@ func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Sig
 }
 
 func (s *InMemoryKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -82,7 +82,7 @@ func (s *InMemoryKeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([
 }
 
 func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
@@ -100,11 +100,11 @@ func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*signingd
 }
 
 func (s *InMemoryKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
-	return s.rotateInternal(tenancy.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx), now, grace)
+	return s.rotateInternal(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx), now, grace)
 }
 
 func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.Lock()
@@ -130,7 +130,7 @@ func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdom
 }
 
 func (s *InMemoryKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	s.mu.Lock()

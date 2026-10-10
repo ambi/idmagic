@@ -14,8 +14,8 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // fakeVerifier scripts a Verify result/error for ReceiveSecurityEvent tests.
@@ -102,7 +102,7 @@ func seedReceiveAgent(t *testing.T, d receiveTestDeps, agentID string) {
 }
 
 func receiveTestCtx() context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: receiveTestTenantID}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: receiveTestTenantID}, "", "")
 }
 
 // TestReceiveSecurityEvent_RejectsDisabledOrMissingStream — RED: stream が

@@ -10,7 +10,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // AgentIssuanceDeps holds what ResolveIssuableAgent needs. Either repository
@@ -41,7 +41,7 @@ func ResolveIssuableAgent(ctx context.Context, deps AgentIssuanceDeps, clientID 
 	if deps.AgentRepo == nil {
 		return nil, nil
 	}
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	agent, err := deps.AgentRepo.FindByClientID(ctx, tenantID, clientID)
 	if err != nil || agent == nil {
 		return nil, err
@@ -74,7 +74,7 @@ func AgentOwnerIsActive(ctx context.Context, userRepo userports.UserRepository, 
 	if err != nil {
 		return false, err
 	}
-	return owner != nil && owner.TenantID == tenancy.TenantID(ctx) && owner.IsActive(), nil
+	return owner != nil && owner.TenantID == tenantports.TenantID(ctx) && owner.IsActive(), nil
 }
 
 // AgentRequiresHumanApproval は agent が人間の承認を記録する経路からしかトークンを
@@ -121,7 +121,7 @@ func RejectAgentIssuanceWithoutApproval(
 		return nil
 	}
 	emit(emitFn, &domain.AgentApprovalRequired{
-		At: now, TenantID: tenancy.TenantID(ctx), AgentID: agent.ID,
+		At: now, TenantID: tenantports.TenantID(ctx), AgentID: agent.ID,
 		ClientID: clientID, Kind: string(agent.Kind), GrantType: grantType,
 	})
 	return NewOAuthError("unauthorized_client", "supervised agent requires human approval")

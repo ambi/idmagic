@@ -4,7 +4,7 @@
 // DisableWorkloadTrustBundle / EnableWorkloadTrustBundle / DeleteWorkloadTrustBundle /
 // RefreshWorkloadTrustBundleJWKS。
 //
-// すべての操作は tenancy.TenantID(ctx) のテナント境界に閉じる。issuer / name は
+// すべての操作は tenantports.TenantID(ctx) のテナント境界に閉じる。issuer / name は
 // テナント内で一意 (DB の UNIQUE 制約に加え、backend 非依存の一貫した挙動のため
 // usecase 層でも事前チェックする)。
 package usecases
@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/workloadidentity/ports"
 )
@@ -32,12 +32,12 @@ type AdminWorkloadIdentityDeps struct {
 }
 
 func ListWorkloadTrustBundles(ctx context.Context, deps AdminWorkloadIdentityDeps) ([]*domain.WorkloadTrustBundle, error) {
-	return deps.TrustBundleRepo.ListAll(ctx, tenancy.TenantID(ctx))
+	return deps.TrustBundleRepo.ListAll(ctx, tenantports.TenantID(ctx))
 }
 
 // GetWorkloadTrustBundle は別テナントの bundle を未存在として扱う。
 func GetWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string) (*domain.WorkloadTrustBundle, error) {
-	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenancy.TenantID(ctx), id)
+	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantports.TenantID(ctx), id)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ type RegisterWorkloadTrustBundleInput struct {
 }
 
 func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, in RegisterWorkloadTrustBundleInput, now time.Time) (*domain.WorkloadTrustBundle, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return nil, ErrTrustBundleNameRequired
@@ -110,7 +110,7 @@ type UpdateWorkloadTrustBundleInput struct {
 // UpdateWorkloadTrustBundle は name / jwks_uri / jwks / accepted_audiences /
 // max_subject_token_ttl_seconds を更新する。issuer / trust_domain は不変。
 func UpdateWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, in UpdateWorkloadTrustBundleInput, now time.Time) (*domain.WorkloadTrustBundle, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func EnableWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDe
 }
 
 func setTrustBundleStatus(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, status domain.WorkloadTrustBundleStatus, now time.Time) (*domain.WorkloadTrustBundle, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func setTrustBundleStatus(ctx context.Context, deps AdminWorkloadIdentityDeps, i
 // AgentWorkloadBinding を先に cascade 削除する (DB の ON DELETE CASCADE と併せた
 // 二重の保証)。
 func DeleteWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return err
@@ -244,7 +244,7 @@ type RefreshWorkloadTrustBundleJWKSResult struct {
 // 事前検知)。成功時は jwks_cached_at を更新する。到達不能でもエラーにはせず
 // Reachable=false を返す (呼び出し側が結果を提示できるように)。
 func RefreshWorkloadTrustBundleJWKS(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, now time.Time) (*RefreshWorkloadTrustBundleJWKSResult, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err

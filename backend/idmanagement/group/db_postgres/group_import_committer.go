@@ -18,22 +18,31 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/jackc/pgx/v5"
 )
 
-type GroupImportRowCommitter struct{ Pool sharedpg.DB }
+type GroupImportRowCommitter struct {
+	pool       sharedpg.DB
+	quotasInTx func(pgx.Tx) tenantports.QuotaRepository
+}
+
+// NewGroupImportRowCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
+// 行と同じトランザクションの中でグループの使用量を加減算する committer を返す。
+func NewGroupImportRowCommitter(pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository) GroupImportRowCommitter {
+	return GroupImportRowCommitter{pool: pool, quotasInTx: quotasInTx}
+}
 
 func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutation groupports.GroupImportRowMutation) error {
-	tx, err := c.Pool.Begin(ctx)
+	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
 	if mutation.Delete {
-		if err := commitGroupImportDeletion(ctx, tx, mutation); err != nil {
+		if err := commitGroupImportDeletion(ctx, tx, c.quotasInTx(tx), mutation); err != nil {
 			return err
 		}
 		return tx.Commit(ctx)
@@ -42,7 +51,7 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 		return errors.New("an upsert mutation must carry the resulting group")
 	}
 	if mutation.ConsumesGroupQuota {
-		if err := tenancypostgres.NewQuotaRepository(tx).CheckAndIncrement(ctx, mutation.After.TenantID, tenancydomain.ResourceGroups, 1); err != nil {
+		if err := c.quotasInTx(tx).CheckAndIncrement(ctx, mutation.After.TenantID, tenancydomain.ResourceGroups, 1); err != nil {
 			return err
 		}
 	}
@@ -75,7 +84,7 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 	return tx.Commit(ctx)
 }
 
-func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, mutation groupports.GroupImportRowMutation) error {
+func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, quotas tenantports.QuotaRepository, mutation groupports.GroupImportRowMutation) error {
 	if mutation.Before == nil {
 		return errors.New("a delete mutation must name the group it removes")
 	}
@@ -91,7 +100,7 @@ func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, mutation grouppor
 		return err
 	}
 	if mutation.ReleasesGroupQuota {
-		if err := tenancypostgres.NewQuotaRepository(tx).Decrement(ctx, tenantID, tenancydomain.ResourceGroups, 1); err != nil {
+		if err := quotas.Decrement(ctx, tenantID, tenancydomain.ResourceGroups, 1); err != nil {
 			return err
 		}
 	}

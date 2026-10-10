@@ -7,13 +7,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const tenantSaltBytes = 32
 
 // TenantSaltStore は相関 salt の PostgreSQL 実装 (wi-145)。
-// tenant scope は ctx (tenancy.TenantID) から解決し、初回取得時に generate-on-first-use する。
+// tenant scope は ctx (tenantports.TenantID) から解決し、初回取得時に generate-on-first-use する。
 type TenantSaltStore struct{ Pool DBTX }
 
 // NewTenantSaltStore は salt ストアを構築する。テーブルは infra/schema/postgres.sql で用意する。
@@ -24,7 +24,7 @@ func NewTenantSaltStore(pool DBTX) *TenantSaltStore {
 // GetSalt は ctx のテナントの salt を返す。未生成なら生成し、並行生成に備えて
 // INSERT ... ON CONFLICT DO NOTHING してから再取得する (冪等)。
 func (s *TenantSaltStore) GetSalt(ctx context.Context) ([]byte, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 
 	queries := New(s.Pool)
 	salt, err := queries.FindTenantCorrelationSalt(ctx, tenantID)

@@ -31,8 +31,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -162,7 +162,7 @@ func TestAuthenticateApiTokenRejectsAnInvalidJWT(t *testing.T) {
 		{"issuer", func() string {
 			token := validManagedToken(t, s)
 			// 同じテナントの鍵で署名し、発行者だけを別の値にする。
-			token.signContext = tenancy.WithTenant(context.Background(), tenant,
+			token.signContext = tenantports.WithTenant(context.Background(), tenant,
 				"https://attacker.example/realms/"+realm, "/realms/"+realm)
 			return token.sign(t, s)
 		}},

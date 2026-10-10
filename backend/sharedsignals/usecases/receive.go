@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ErrSecurityEventRejected is returned for any ReceiveSecurityEvent rejection
@@ -40,7 +40,7 @@ type ReceiveDeps struct {
 // own kill-switch (decision 5). Every requires clause is
 // fail-closed: any failure rejects without reflecting the event.
 func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 
 	// requires: ssf_receiver_stream_enabled(tenant_id, stream_id)
 	stream, err := deps.StreamRepo.FindByID(ctx, tenantID, streamID)

@@ -37,9 +37,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -210,7 +210,7 @@ func (h *authCharacterization) realmContext(t *testing.T) context.Context {
 	if err != nil || tenant == nil {
 		t.Fatalf("default realm: tenant=%v err=%v", tenant, err)
 	}
-	return tenancy.WithTenant(context.Background(), tenant, characterizationIssuer+"/realms/default", "/realms/default")
+	return tenantports.WithTenant(context.Background(), tenant, characterizationIssuer+"/realms/default", "/realms/default")
 }
 
 func (h *authCharacterization) sessionCookie(t *testing.T, userID string) *http.Cookie {

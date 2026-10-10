@@ -5,7 +5,7 @@ package usecases
 // ListGroups / GetGroup / CreateGroup / UpdateGroup / DeleteGroup /
 // AddGroupMember / RemoveGroupMember / ListUserGroups。
 //
-// すべての操作は tenancy.TenantID(ctx) のテナント境界に閉じ、cross-tenant な
+// すべての操作は tenantports.TenantID(ctx) のテナント境界に閉じ、cross-tenant な
 // 参照・所属は reject する。effective_roles = union(user.roles, group.roles)。
 
 import (
@@ -24,10 +24,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 var (
@@ -143,13 +141,13 @@ type GroupView struct {
 // — callers pass limit+1 to detect whether a next page exists, then
 // trim to limit before responding.
 func ListGroups(ctx context.Context, deps AdminGroupDeps, afterName, afterID string, limit int) ([]GroupView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	groups, err := deps.GroupRepo.ListPage(ctx, tenantID, afterName, afterID, limit)
 	return groupViews(ctx, deps, tenantID, groups, err)
 }
 
 func ListGroupsBefore(ctx context.Context, deps AdminGroupDeps, beforeName, beforeID string, limit int) ([]GroupView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	groups, err := deps.GroupRepo.ListPageBefore(ctx, tenantID, beforeName, beforeID, limit)
 	return groupViews(ctx, deps, tenantID, groups, err)
 }
@@ -172,7 +170,7 @@ func groupViews(ctx context.Context, deps AdminGroupDeps, tenantID string, group
 // GetGroup はグループ本体と所属メンバー一覧を返す。別テナントのグループは
 // 未存在として扱う。
 func GetGroup(ctx context.Context, deps AdminGroupDeps, id string) (*groupdomain.Group, []*groupdomain.GroupMember, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, nil, err
@@ -199,7 +197,7 @@ type CreateGroupInput struct {
 }
 
 func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) (*groupdomain.Group, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return nil, ErrGroupNameEmpty
@@ -262,7 +260,7 @@ type UpdateGroupInput struct {
 }
 
 func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) (*groupdomain.Group, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, in.ID)
 	if err != nil {
 		return nil, err
@@ -351,7 +349,7 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 // DeleteGroup はグループを物理削除し、所属 membership を cascade で解除する。
 // 解除メンバーごとに GroupMemberRemoved を emit し、最後に GroupDeleted を emit する。
 func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return err
@@ -381,7 +379,7 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 		return err
 	}
 	if deps.QuotaRepo != nil {
-		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceGroups, 1); err != nil {
+		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceGroups, 1); err != nil {
 			return err
 		}
 	}
@@ -394,7 +392,7 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 // AddMember は同一テナントの User をグループに所属させる。既所属なら no-op で
 // イベントも emit しない (冪等)。
 func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
 		return err
@@ -432,7 +430,7 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, u
 
 // RemoveMember はグループから User を外す。非所属なら no-op で event も emit しない。
 func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
 		return err
@@ -469,7 +467,7 @@ type UserGroupView struct {
 }
 
 func UserGroups(ctx context.Context, deps AdminGroupDeps, sub string) (*UserGroupView, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	user, err := deps.UserRepo.FindBySub(ctx, sub)
 	if err != nil {
 		return nil, err

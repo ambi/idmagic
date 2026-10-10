@@ -8,6 +8,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 )
 
 type importAuditRow struct {
@@ -50,7 +51,7 @@ func TestGroupImportRowCommitterRecordsAuditAndEnqueuesOneReconcile(t *testing.T
 		After: group, Changed: []string{"name"}, ActorUserID: actor.ID, AuditEventType: "group.imported",
 		ReconcileGroupID: group.ID, ReconcileVersion: 3, Now: now,
 	}
-	committer := GroupImportRowCommitter{Pool: db}
+	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx)
 	for range 2 {
 		if err := committer.CommitGroupImportRow(ctx, mutation); err != nil {
 			t.Fatalf("CommitGroupImportRow: %v", err)

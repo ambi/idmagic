@@ -3,7 +3,7 @@
 // RegisterSsfTransmitterStream / RegisterSsfReceiverStream / UpdateSsfStream /
 // DisableSsfStream / EnableSsfStream / DeleteSsfStream / ListSecurityEventDeliveries。
 //
-// すべての操作は tenancy.TenantID(ctx) のテナント境界に閉じる。
+// すべての操作は tenantports.TenantID(ctx) のテナント境界に閉じる。
 package usecases
 
 import (
@@ -16,10 +16,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // AdminStreamDeps holds what the admin SsfStream usecases need.
@@ -43,7 +41,7 @@ func checkStreamQuota(ctx context.Context, deps AdminStreamDeps, tenantID string
 	if deps.QuotaRepo == nil {
 		return nil
 	}
-	err := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceSsfStreams, 1)
+	err := deps.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceSsfStreams, 1)
 	if quotaErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		// The audit trail must not mask the rejection it records.
 		_ = emit(deps.Emit, &tenancydomain.QuotaExceeded{
@@ -59,18 +57,18 @@ func releaseStreamQuota(ctx context.Context, deps AdminStreamDeps, tenantID stri
 	if deps.QuotaRepo == nil {
 		return
 	}
-	if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceSsfStreams, 1); err != nil {
+	if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceSsfStreams, 1); err != nil {
 		logging.Error(ctx, "quota: failed to release the ssf_streams reservation", "error", err, "tenant_id", tenantID)
 	}
 }
 
 func ListSsfStreams(ctx context.Context, deps AdminStreamDeps) ([]*ssdomain.SsfStream, error) {
-	return deps.StreamRepo.ListAll(ctx, tenancy.TenantID(ctx))
+	return deps.StreamRepo.ListAll(ctx, tenantports.TenantID(ctx))
 }
 
 // GetSsfStream は別テナントの stream を未存在として扱う。
 func GetSsfStream(ctx context.Context, deps AdminStreamDeps, id string) (*ssdomain.SsfStream, error) {
-	stream, err := deps.StreamRepo.FindByID(ctx, tenancy.TenantID(ctx), id)
+	stream, err := deps.StreamRepo.FindByID(ctx, tenantports.TenantID(ctx), id)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +133,7 @@ type RegisterSsfTransmitterStreamInput struct {
 }
 
 func RegisterSsfTransmitterStream(ctx context.Context, deps AdminStreamDeps, in RegisterSsfTransmitterStreamInput, now time.Time) (*ssdomain.SsfStream, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if err := validateEventTypes(in.EventTypes); err != nil {
 		return nil, err
 	}
@@ -207,7 +205,7 @@ type RegisterSsfReceiverStreamInput struct {
 }
 
 func RegisterSsfReceiverStream(ctx context.Context, deps AdminStreamDeps, in RegisterSsfReceiverStreamInput, now time.Time) (*ssdomain.SsfStream, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	if err := validateEventTypes(in.EventTypes); err != nil {
 		return nil, err
 	}
@@ -242,7 +240,7 @@ type UpdateSsfStreamInput struct {
 }
 
 func UpdateSsfStream(ctx context.Context, deps AdminStreamDeps, id string, in UpdateSsfStreamInput, now time.Time) (*ssdomain.SsfStream, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	stream, err := deps.StreamRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -280,7 +278,7 @@ func EnableSsfStream(ctx context.Context, deps AdminStreamDeps, id string, now t
 }
 
 func setStreamStatus(ctx context.Context, deps AdminStreamDeps, id string, status ssdomain.SsfStreamStatus, now time.Time) (*ssdomain.SsfStream, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	stream, err := deps.StreamRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -315,7 +313,7 @@ func setStreamStatus(ctx context.Context, deps AdminStreamDeps, id string, statu
 // DeleteSsfStream は SsfStream を削除し、付随する Transmitter/ReceiverConfig を
 // 先に cascade 削除する (DB の ON DELETE CASCADE と併せた二重の保証)。
 func DeleteSsfStream(ctx context.Context, deps AdminStreamDeps, id string, now time.Time) error {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	stream, err := deps.StreamRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
 		return err
@@ -343,7 +341,7 @@ func DeleteSsfStream(ctx context.Context, deps AdminStreamDeps, id string, now t
 // (pending/delivered/failed/dead_letter) を返す。delivery health 確認用 (T004 の
 // projector/delivery worker が生成・更新する)。
 func ListSecurityEventDeliveries(ctx context.Context, deps AdminStreamDeps, streamID string) ([]*ssdomain.SecurityEventDelivery, error) {
-	tenantID := tenancy.TenantID(ctx)
+	tenantID := tenantports.TenantID(ctx)
 	stream, err := deps.StreamRepo.FindByID(ctx, tenantID, streamID)
 	if err != nil {
 		return nil, err

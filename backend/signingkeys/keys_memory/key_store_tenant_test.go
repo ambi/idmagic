@@ -13,11 +13,11 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func tenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "", "")
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "", "")
 }
 
 // SCL scenario "XML federation署名資格情報はテナントと用途で分離される" の RED。

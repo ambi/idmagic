@@ -12,10 +12,8 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // RunnerConfig holds the tunables for a worker's poll loop, plus the
@@ -78,7 +76,7 @@ func decrementActiveJobsQuota(ctx context.Context, quotaRepo tenantports.QuotaRe
 	if quotaRepo == nil {
 		return
 	}
-	if err := tenancyusecases.DecrementQuota(ctx, quotaRepo, tenantID, tenancydomain.ResourceActiveJobs, 1); err != nil {
+	if err := quotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceActiveJobs, 1); err != nil {
 		logging.Error(ctx, "quota: failed to decrement active_jobs on job completion", "error", err, "tenant_id", tenantID)
 	}
 }
@@ -163,8 +161,8 @@ func (rn *Runner) poll(ctx context.Context) {
 func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 	// ハンドラーの実行コンテキストは Job のテナントに固定する。worker はすべての
 	// テナントの Job を実行するので、Job ごとに固定しなければハンドラーはどのテナントの範囲で
-	// 動くかを決められず、テナントを読んだ時点で tenancy.TenantID が panic する。
-	ctx = tenancy.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+	// 動くかを決められず、テナントを読んだ時点で tenantports.TenantID が panic する。
+	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
 	execCtx, cancelExecution := context.WithCancelCause(ctx)
 	defer cancelExecution(nil)
 	go rn.heartbeatLoop(execCtx, job, cancelExecution)
