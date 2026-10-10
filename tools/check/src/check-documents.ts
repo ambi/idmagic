@@ -11,7 +11,13 @@ import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
 import { FeatureSliceDeclarations, verifyFeatureLayout } from './feature-slices.ts'
 import { checkNormativeCoverage, citedNormativeIds, type DeclaredId } from './normative-coverage.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
-import { validateDocument } from './specification-doc.ts'
+import {
+  documentKind,
+  validateDocument,
+  verifyQualityAllocations,
+  verifyDesignDocumentCoverage,
+} from './specification-doc.ts'
+import { verifyMarkdownLinks } from './markdown-links.ts'
 
 const PRODUCT_TREES = ['backend', 'frontend']
 const TEST_FILE = /(?:_test\.go|\.(?:test|spec)\.tsx?)$/
@@ -75,8 +81,11 @@ export async function checkDocuments(
   const examples: DeclaredId[] = []
   const standards: DeclaredId[] = []
   const nodes = new FeatureSliceDeclarations()
+  const documents = new Map<string, string>()
   for (const path of paths) {
-    const result = validateDocument(path, await snapshot.read(path))
+    const source = await snapshot.read(path)
+    documents.set(path, source)
+    const result = validateDocument(path, source)
     failed ||= result.findings.length > 0
     lines.push(...result.findings.map((finding) => `${path}:${finding.line}: ${finding.message}`))
     nodes.add(path, result)
@@ -123,6 +132,33 @@ export async function checkDocuments(
   const nodeFindings = nodes.verify(view)
   failed ||= nodeFindings.length > 0
   lines.push(...nodeFindings)
+
+  const allocationFindings = [
+    ...verifyQualityAllocations(documents),
+    ...verifyDesignDocumentCoverage(documents),
+  ]
+  const designPaths = new Set(paths.filter((path) => documentKind(path) === 'design-index'))
+  if (documents.get('docs/design/architecture/logical.md')?.includes('| 品質要件 |')) {
+    designPaths.add('docs/design/architecture/logical.md')
+  }
+  const existingPaths = new Set(paths)
+  for (const path of paths) {
+    const parts = path.split('/')
+    while (parts.length > 1) {
+      parts.pop()
+      existingPaths.add(parts.join('/'))
+    }
+  }
+  const linkFindings = verifyMarkdownLinks(documents, existingPaths, designPaths)
+  failed ||= allocationFindings.length > 0 || linkFindings.length > 0
+  lines.push(
+    ...allocationFindings.map((finding) => `${finding.path}:${finding.line}: ${finding.message}`),
+  )
+  lines.push(
+    ...linkFindings.map(
+      (finding) => `${finding.file}:${finding.line}: ${finding.message} (${finding.target})`,
+    ),
+  )
 
   const sources: string[] = []
   for (const tree of PRODUCT_TREES) {

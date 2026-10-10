@@ -943,6 +943,30 @@ describe('renderDocumentationSite', () => {
     )
   })
 
+  it('Markdown の句読点を除いた見出しアンカーから生成ページの節へ到達する', () => {
+    const result = renderDocumentationSite({
+      documents: [
+        rootDocument,
+        {
+          path: 'docs/requirements/glossary.md',
+          source: '# 用語集\n\n[標準](standards.md#oauth-20)\n',
+        },
+        {
+          path: 'docs/requirements/standards.md',
+          source: '# 標準仕様\n\n## OAuth 2.0\n\n規範。\n',
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+    expect(result.files['docs/requirements/glossary.html']).toContain(
+      'href="standards.html#whole-system-requirements-standards-md-oauth-2-0"',
+    )
+  })
+
   /** リポジトリでは読めるディレクトリへの参照が、生成サイトでは行き先を失う。 */
   it('sends a directory link to that directory index page', () => {
     const result = renderDocumentationSite({

@@ -1,5 +1,6 @@
 import { specificationRules, validateSpecificationDeclarations } from './feature-specification.ts'
 import MarkdownIt from 'markdown-it'
+import { posix } from 'node:path'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 import {
   canonicalDocumentNames,
@@ -445,7 +446,7 @@ export function validateDocument(path: string, source: string): SpecificationVal
   const standardIds =
     kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
   if (kind === 'decision-records') validateDecisionRecords(source, findings)
-  if (kind === 'design-index') validateDesignAreaIndex(source, findings)
+  if (kind === 'design-index') validateDesignAreaIndex(path, prose, findings)
 
   let scenarioIds: SpecificationValidation['scenarioIds'] = []
   let exampleIds: SpecificationValidation['exampleIds'] = []
@@ -559,22 +560,23 @@ function validateDecisionRecords(source: string, findings: SpecificationFinding[
   }
 }
 
-const AREA_INDEX_HEADER = '| 設計領域 | 内容 |'
+const AREA_INDEX_HEADER = '| 設計領域 | 区分 | 参照先 | 内容 |'
 
-/** 左の列の設計領域。文書があれば、名前をその文書へのリンクにする。 */
-const AREA_CELL = /^(?:\[([^\]]+)\]\([^)\s]+\)|([^[\]()]+))$/
-
-/** 文書がない設計領域の内容。理由のない「該当なし：」は、判断したのか書き漏らしたのかを区別できない。 */
-const NOT_APPLICABLE = /^該当なし：\S/
+/** 担当を曖昧にしないため、文書だけでなく節まで名指す。存在は文書間の検査で確かめる。 */
+const LOCAL_SECTION_LINK = /\[[^\]]+\]\((?![a-z][a-z0-9+.-]*:|\/)[^\s)#]*#[^\s)]+\)/i
 
 /**
- * 設計の入口（`docs/design/README.md` とモジュールの `design/README.md`）が、すべての設計領域を
- * 行とする索引を、`DESIGN_AREAS` の順で持つことを確かめる。各行は、設計領域の名前を文書への
- * リンクにするか、内容を「該当なし：」と理由にするかの、ちょうど一方を満たす。
+ * 全体設計は九領域を、モジュールは既定からの差分だけを記述する。
+ * 記載の省略と明示した対象外を区別し、委譲を対象外として隠さない。
  */
-function validateDesignAreaIndex(source: string, findings: SpecificationFinding[]): void {
+function validateDesignAreaIndex(
+  path: string,
+  source: string,
+  findings: SpecificationFinding[],
+): void {
   const rows = tableRows(source, AREA_INDEX_HEADER)
-  if (rows.length === 0) {
+  const system = path === 'docs/design/README.md'
+  if (!source.includes(AREA_INDEX_HEADER) && (system || source.includes('| 設計領域 |'))) {
     findings.push({
       line: 1,
       message: `design entry point must have a design area index (${AREA_INDEX_HEADER})`,
@@ -584,25 +586,42 @@ function validateDesignAreaIndex(source: string, findings: SpecificationFinding[
   const areas: readonly string[] = DESIGN_AREAS.map(({ name }) => name)
   const listed: string[] = []
   for (const { cells, index } of rows) {
-    const [cell = '', content = ''] = cells
+    const [area = '', disposition = '', reference = '', content = ''] = cells
     const line = lineAt(source, index)
-    const match = cell.match(AREA_CELL)
-    const area = (match?.[1] ?? match?.[2] ?? cell).trim()
     if (!areas.includes(area)) {
       findings.push({ line, message: `design area index names an unknown area ${area}` })
       continue
     }
+    if (listed.includes(area)) {
+      findings.push({ line, message: `design area index duplicates ${area}` })
+    }
     listed.push(area)
-    const linked = match?.[1] !== undefined
-    if (linked === NOT_APPLICABLE.test(content)) {
+    if (cells.length !== 4) {
+      findings.push({ line, message: `design area ${area} must have four cells` })
+    }
+    if (!content || content === '—') {
+      findings.push({ line, message: `design area ${area} must state a reason or content` })
+    }
+    if (disposition === '固有設計' || disposition === '委譲') {
+      if (!LOCAL_SECTION_LINK.test(reference)) {
+        findings.push({ line, message: `design area ${area} must link to a local section` })
+      }
+    } else if (disposition === '対象外') {
+      if (reference !== '—' || /\]\(/.test(content)) {
+        findings.push({
+          line,
+          message: `design area ${area} marked 対象外 must use — without delegation`,
+        })
+      }
+    } else {
       findings.push({
         line,
-        message: `design area ${area} must either link to its design or state 該当なし：<reason>`,
+        message: `design area ${area} has unknown disposition ${disposition}`,
       })
     }
   }
   const line = lineAt(source, rows[0]?.index ?? 0)
-  for (const area of areas) {
+  for (const area of system ? areas : []) {
     if (!listed.includes(area)) {
       findings.push({ line, message: `design area index must list ${area}` })
     }
@@ -614,4 +633,84 @@ function validateDesignAreaIndex(source: string, findings: SpecificationFinding[
       message: `design area index must order its areas as ${areas.join(', ')}`,
     })
   }
+}
+
+const QUALITY_ASSIGNMENT_HEADER = '| 品質要件 | 担当機能 | 設計 | 検証 |'
+
+/** 既定への継承は、実在する固有設計の記載を省く理由にはしない。 */
+export function verifyDesignDocumentCoverage(
+  documents: ReadonlyMap<string, string>,
+): Array<SpecificationFinding & { path: string }> {
+  const findings: Array<SpecificationFinding & { path: string }> = []
+  for (const path of documents.keys()) {
+    const match = path.match(/^(docs\/modules\/[^/]+\/design)\/([^/]+\.md)$/)
+    if (!match) continue
+    const area = DESIGN_AREAS.find((area) => area.file === match[2])
+    if (!area) continue
+    const indexPath = `${match[1]}/README.md`
+    const rows = tableRows(withoutCodeBlocks(documents.get(indexPath) ?? ''), AREA_INDEX_HEADER)
+    const indexed = rows.some(
+      ({ cells }) =>
+        cells[0] === area.name &&
+        cells[1] === '固有設計' &&
+        [...(cells[2] ?? '').matchAll(/\[[^\]]+\]\(([^)#]+)#[^)]+\)/g)].some(
+          (link) => posix.normalize(posix.join(match[1] ?? '', link[1] ?? '')) === path,
+        ),
+    )
+    if (!indexed)
+      findings.push({
+        path: indexPath,
+        line: 1,
+        message: `design index must index its own ${area.name} (${area.file})`,
+      })
+  }
+  return findings
+}
+
+/** 品質の宣言と割り当ては別の責務であり、同じ表への数値の再掲を求めない。 */
+export function verifyQualityAllocations(
+  documents: ReadonlyMap<string, string>,
+): Array<SpecificationFinding & { path: string }> {
+  const quality = documents.get('docs/requirements/quality.md') ?? ''
+  const path = 'docs/design/architecture/logical.md'
+  const source = documents.get(path) ?? ''
+  const declared = new Set<string>()
+  // 表の先頭セルの ID が宣言であり、目標欄の参照と本文の言及は宣言ではない。
+  // 列見出しの文言を変えても、担当の検査から宣言を消さない。
+  const tokens = markdown.parse(quality, {})
+  for (const [index, token] of tokens.entries()) {
+    if (token.type !== 'td_open' || tokens[index - 1]?.type !== 'tr_open') continue
+    const id = cellValue(tokens[index + 1]?.content)
+    if (/^(?:SLO|CAP)-[A-Z0-9-]+$/.test(id)) declared.add(id)
+  }
+  const findings: Array<SpecificationFinding & { path: string }> = []
+  const assigned = new Set<string>()
+  for (const { cells, index } of tableRows(withoutCodeBlocks(source), QUALITY_ASSIGNMENT_HEADER)) {
+    const line = lineAt(source, index)
+    const id = cells[0]?.match(/\[((?:SLO|CAP)-[A-Z0-9-]+)\]/)?.[1] ?? ''
+    if (!declared.has(id))
+      findings.push({ path, line, message: `quality allocation names an undeclared ID ${id}` })
+    if (assigned.has(id))
+      findings.push({ path, line, message: `quality allocation duplicates ${id}` })
+    assigned.add(id)
+    if (cells.length !== 4 || cells.some((cell) => !LOCAL_SECTION_LINK.test(cell))) {
+      findings.push({
+        path,
+        line,
+        message: `quality allocation ${id} must link each cell to a local section`,
+      })
+    }
+    if (!cells[0]?.includes('requirements/quality.md#')) {
+      findings.push({
+        path,
+        line,
+        message: `quality allocation ${id} must link to its declaration`,
+      })
+    }
+  }
+  for (const id of declared) {
+    if (!assigned.has(id))
+      findings.push({ path, line: 1, message: `quality allocation is missing ${id}` })
+  }
+  return findings
 }

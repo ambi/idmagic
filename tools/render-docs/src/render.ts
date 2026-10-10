@@ -3,6 +3,7 @@ import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { specificationRules } from '../../check/src/feature-specification.ts'
 import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
+import { markdownHeadingTargets } from '../../check/src/markdown-links.ts'
 import { MODULE_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
@@ -409,6 +410,9 @@ function markdownRenderer(
     documents.map((document) => [resolve(repositoryRoot, document.path), document]),
   )
   const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
+  const headingTargets = new Map(
+    documents.map((document) => [document.id, markdownHeadingTargets(document.source)]),
+  )
 
   md.renderer.rules.heading_open = (tokens, index, _options, env) => {
     const token = tokens[index]
@@ -497,14 +501,17 @@ function markdownRenderer(
           const unprefixedFragment = fragment.startsWith(`${target.id}-`)
             ? fragment.slice(target.id.length + 1)
             : fragment
-          const targetFragment = fragment ? `${target.id}-${slug(unprefixedFragment)}` : undefined
+          const heading =
+            headingTargets.get(target.id)?.get(unprefixedFragment) ?? unprefixedFragment
+          const targetFragment = fragment ? `${target.id}-${slug(heading)}` : undefined
           token?.attrSet(
             'href',
             pageHref(current.document.outputPath, target.outputPath, targetFragment),
           )
           token?.attrSet('data-site-link', '')
         } else if (!pathPart) {
-          token?.attrSet('href', `#${current.document.id}-${slug(fragment)}`)
+          const heading = headingTargets.get(current.document.id)?.get(fragment) ?? fragment
+          token?.attrSet('href', `#${current.document.id}-${slug(heading)}`)
           token?.attrSet('data-site-link', '')
         } else {
           const output = resolve(outputDirectory, current.document.outputPath)

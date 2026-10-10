@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { documentKind, validateDocument } from './specification-doc.ts'
+import { documentKind, validateDocument, verifyQualityAllocations } from './specification-doc.ts'
 
 const SCENARIOS = 'docs/requirements/scenarios.feature.md'
 const STATES = 'docs/modules/demo/work/task/README.md'
@@ -18,6 +18,103 @@ const scenarios = `# Feature: Demo
 
 const messages = (path: string, source: string) =>
   validateDocument(path, source).findings.map((finding) => finding.message)
+
+describe('共通設計を既定とする索引', () => {
+  const path = 'docs/modules/demo/design/README.md'
+  const index = (row: string) =>
+    `# Demo の設計\n\n| 設計領域 | 区分 | 参照先 | 内容 |\n| --- | --- | --- | --- |\n${row}\n`
+
+  it('共通設計だけのモジュールに九行を要求しない', () => {
+    expect(messages(path, '# Demo の設計\n')).toEqual([])
+  })
+
+  it.each([
+    '| アーキテクチャ設計 | 固有設計 | [構成](architecture.md#構成) | 固有の構成 |',
+    '| データ設計 | 委譲 | [保存](../task/design.md#保存) | タスクに委ねる |',
+    '| データ設計 | 対象外 | — | 永続状態を保存しない |',
+  ])('有効な区分の行を受け入れる: %s', (row) => {
+    expect(messages(path, index(row))).toEqual([])
+  })
+
+  it.each([
+    ['| データ設計 | 委譲 | — | 保存を委ねる |', 'must link to a local section'],
+    ['| データ設計 | 固有設計 | [保存](data.md) | 保存 |', 'must link to a local section'],
+    ['| データ設計 | 対象外 | — |  |', 'must state a reason'],
+    ['| データ設計 | 対象外 | [保存](data.md#保存) | 保存しない |', 'must use —'],
+    ['| データ設計 | 未記入 | — | 保存 |', 'unknown disposition'],
+    ['| 未知の設計 | 対象外 | — | 対象がない |', 'unknown area'],
+  ])('不正な行を拒否する: %s', (row, expected) => {
+    expect(messages(path, index(row)).join('\n')).toContain(expected)
+  })
+
+  it('重複と順序の逆転を拒否する', () => {
+    const row = '| データ設計 | 対象外 | — | 永続状態を保存しない |'
+    expect(messages(path, index(`${row}\n${row}`)).join('\n')).toContain('duplicates データ設計')
+    expect(
+      messages(
+        path,
+        index(`${row}\n| アプリケーション設計 | 対象外 | — | HTTP を公開しない |`),
+      ).join('\n'),
+    ).toContain('must order its areas')
+  })
+
+  it('システムには全九領域を要求する', () => {
+    expect(
+      messages('docs/design/README.md', index('| データ設計 | 対象外 | — | 保存しない |')).join(
+        '\n',
+      ),
+    ).toContain('must list 性能設計')
+  })
+})
+
+describe('品質要件の割り当て', () => {
+  const quality =
+    '# 品質要件\n\n| ID | 母集団 | 目標 | 指標 |\n| --- | --- | --- | --- |\n| SLO-DEMO-LATENCY | タスク | 目標 | 指標 |\n\n| ID | エンドポイント | 必要なリクエスト率 | 満たす目標 |\n| --- | --- | --- | --- |\n| CAP-DEMO-THROUGHPUT | タスク | 目標 | SLO-DEMO-LATENCY |\n'
+  const row = (id: string) =>
+    `| [${id}](../../requirements/quality.md#目標) | [担当](../../modules/demo/task/README.md#操作) | [設計](../performance/scaling.md#負荷) | [検証](../verification/README.md#証拠) |`
+  const validate = (rows: string) =>
+    verifyQualityAllocations(
+      new Map([
+        ['docs/requirements/quality.md', quality],
+        [
+          'docs/design/architecture/logical.md',
+          `# 論理構成\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n${rows}\n`,
+        ],
+      ]),
+    ).map((finding) => finding.message)
+
+  it('宣言済み ID を過不足なく参照し、複数担当を同じ行で受け入れる', () => {
+    const rows = [row('SLO-DEMO-LATENCY'), row('CAP-DEMO-THROUGHPUT')]
+      .join('\n')
+      .replace('[担当]', '[別の担当](../../modules/other/task/README.md#操作)、[担当]')
+    expect(validate(rows)).toEqual([])
+  })
+
+  it('担当欠落、重複、未宣言 ID を拒否する', () => {
+    expect(validate(row('SLO-DEMO-LATENCY')).join('\n')).toContain('missing CAP-DEMO-THROUGHPUT')
+    expect(
+      validate([row('SLO-DEMO-LATENCY'), row('SLO-DEMO-LATENCY')].join('\n')).join('\n'),
+    ).toContain('duplicates SLO-DEMO-LATENCY')
+    expect(validate(row('SLO-UNKNOWN-LATENCY')).join('\n')).toContain(
+      'undeclared ID SLO-UNKNOWN-LATENCY',
+    )
+  })
+
+  it.each(['担当', '設計', '検証'])('%s の参照を省けない', (field) => {
+    const rows = [row('SLO-DEMO-LATENCY'), row('CAP-DEMO-THROUGHPUT')].join('\n')
+    expect(
+      validate(rows.replace(new RegExp(`\\[${field}\\]\\([^)]+\\)`), '—')).join('\n'),
+    ).toContain('must link each cell')
+  })
+
+  it('宣言元以外への ID リンクを拒否する', () => {
+    expect(
+      validate(
+        row('SLO-DEMO-LATENCY').replace('requirements/quality.md', 'requirements/functional.md'),
+      ).join('\n'),
+    ).toContain('must link to its declaration')
+  })
+})
 
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {

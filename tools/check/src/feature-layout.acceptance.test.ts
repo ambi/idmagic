@@ -92,33 +92,16 @@ const DECISIONS = [
   '',
 ].join('\n')
 
-const AREAS = [
-  'アーキテクチャ設計',
-  'アプリケーション設計',
-  'データ設計',
-  'インフラストラクチャ設計',
-  'セキュリティ設計',
-  '信頼性設計',
-  '性能設計',
-  'オブザーバビリティ設計',
-  '検証設計',
-]
-
 /**
- * 設計領域の索引。アーキテクチャ設計の行は `architecture` を左の列に置いて内容を説明し、
- * ほかの設計領域は該当しない理由を書く。
+ * 最小の固有設計だけを書く。共通設計の九行は再掲しない。
  */
 function areaIndex(title: string, architecture: string): string {
   return [
     `# ${title}`,
     '',
-    '| 設計領域 | 内容 |',
-    '| --- | --- |',
-    ...AREAS.map((area) =>
-      area === 'アーキテクチャ設計'
-        ? `| ${architecture} | 構成要素と配置 |`
-        : `| ${area} | 該当なし：Demo は小さく、固有の設計がない |`,
-    ),
+    '| 設計領域 | 区分 | 参照先 | 内容 |',
+    '| --- | --- | --- | --- |',
+    `| アーキテクチャ設計 | 固有設計 | ${architecture} | 構成要素と配置 |`,
     '',
   ].join('\n')
 }
@@ -134,16 +117,17 @@ async function featureLayoutWorkspace(): Promise<string> {
       '',
       '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
       '| --- | --- | --- | --- | --- |',
-      '| [Demo](../../domain/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
+      '| [Demo](../../modules/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
       '',
     ].join('\n'),
     'docs/modules/demo/README.md': '# Demo\n',
     'docs/modules/demo/glossary.md': '# Demo の用語集\n',
     'docs/modules/demo/design/README.md': areaIndex(
       'Demo の設計',
-      '[アーキテクチャ設計](architecture.md)',
+      '[アーキテクチャ設計](architecture.md#構成)',
     ),
-    'docs/modules/demo/design/architecture.md': '# Demo のアーキテクチャ\n',
+    'docs/modules/demo/design/architecture.md':
+      '# Demo のアーキテクチャ\n\n## 構成\n\nタスクを扱う。\n',
     'docs/modules/demo/design/decisions.md': DECISIONS,
     'docs/modules/demo/design/audit.md': '# 監査\n',
     'docs/modules/demo/work/README.md': '# 作業\n',
@@ -270,12 +254,20 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.code).toBe(0)
   })
 
-  it('rejects a design entry point without a design area index', async () => {
+  it('共通設計だけのモジュールには領域の列挙を要求しない', async () => {
+    const root = await featureLayoutWorkspace()
+    await rm(join(root, 'docs/modules/demo/design/architecture.md'))
+    await write(root, 'docs/modules/demo/design/README.md', '# Demo の設計\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).toBe(0)
+  })
+
+  it('既存の固有設計を索引から消すと共通設計への委譲として隠せない', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'docs/modules/demo/design/README.md', '# Demo の設計\n')
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('must have a design area index')
+    expect(result.output).toContain('must index its own アーキテクチャ設計')
   })
 
   it('accepts a feature design without a design area index', async () => {
@@ -290,50 +282,98 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.code).toBe(0)
   })
 
-  it('rejects a design area index that leaves out an area or names an unknown one', async () => {
+  it('未知の領域を拒否する', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/modules/demo/design/README.md',
-      areaIndex('Demo の設計', '[アーキテクチャ設計](architecture.md)')
-        .replace(/\| 性能設計 \|.*\n/, '')
-        .replace('| 検証設計 |', '| 運用 |'),
+      areaIndex('Demo の設計', '[構成](architecture.md#構成)').replace(
+        'アーキテクチャ設計 |',
+        '運用 |',
+      ),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('design area index must list 性能設計')
     expect(result.output).toContain('design area index names an unknown area 運用')
   })
 
-  it('rejects an area that neither links to its design nor says why it does not apply', async () => {
+  it('委譲先と対象外の理由の欠落を拒否する', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/modules/demo/design/README.md',
-      areaIndex('Demo の設計', 'アーキテクチャ設計').replace(
-        '| データ設計 | 該当なし：Demo は小さく、固有の設計がない |',
-        '| データ設計 | 該当なし： |',
-      ),
+      `${areaIndex('Demo の設計', '—')}| データ設計 | 対象外 | — | |\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('design area アーキテクチャ設計 must either link')
-    expect(result.output).toContain('design area データ設計 must either link')
+    expect(result.output).toContain('must link to a local section')
+    expect(result.output).toContain('must state a reason')
   })
 
-  it('rejects an area that both links to a design and says it does not apply', async () => {
+  it('対象外と委譲の矛盾を拒否する', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/modules/demo/design/README.md',
-      areaIndex('Demo の設計', '[アーキテクチャ設計](architecture.md)').replace(
-        '| データ設計 | 該当なし：Demo は小さく、固有の設計がない |',
-        '| [データ設計](architecture.md) | 該当なし：Demo は小さく、固有の設計がない |',
-      ),
+      `${areaIndex('Demo の設計', '[構成](architecture.md#構成)')}| データ設計 | 対象外 | [保存](architecture.md#構成) | 保存しない |\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('design area データ設計 must either link')
+    expect(result.output).toContain('must use — without delegation')
+  })
+
+  it('委譲先の存在しない節を文書検査で拒否する', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/modules/demo/design/README.md',
+      areaIndex('Demo の設計', '[構成](architecture.md#ない節)'),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('ない節')
+  })
+
+  it('委譲先の存在しないファイルを文書検査で拒否する', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/modules/demo/design/README.md',
+      areaIndex('Demo の設計', '[構成](missing.md#構成)'),
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('relative link target does not exist')
+  })
+
+  it('宣言済みの品質要件から担当への参照がない場合を拒否する', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/requirements/quality.md',
+      '# 品質要件\n\n| ID | 母集団 | 目標 | 指標 |\n| --- | --- | --- | --- |\n| SLO-DEMO-LATENCY | タスク | 目標 | 指標 |\n',
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('quality allocation is missing SLO-DEMO-LATENCY')
+  })
+
+  it('品質要件から担当機能、設計、検証へ到達でき、存在しない担当の節を拒否する', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/requirements/quality.md',
+      '# 品質要件\n\n## 目標\n\n| ID | 母集団 | 目標 | 指標 |\n| --- | --- | --- | --- |\n| SLO-DEMO-LATENCY | タスク | 目標 | 指標 |\n',
+    )
+    const path = 'docs/design/architecture/logical.md'
+    const source =
+      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/work/task/README.md#操作) | [設計](../../modules/demo/design/architecture.md#構成) | [検証](../../modules/demo/work/task/design.md#アーキテクチャ) |\n'
+    await write(root, path, source)
+    expect((await runCheck(root, 'documents')).code).toBe(0)
+    await write(root, path, source.replace('README.md#操作', 'README.md#ない操作'))
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('ない操作')
   })
 
   it('applies the design area index to the system design', async () => {

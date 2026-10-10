@@ -56,7 +56,7 @@ function explicitAnchors(token: Token): string[] {
   return result
 }
 
-function anchors(tokens: Token[]): Set<string> {
+function anchors(tokens: Token[], headingTargets?: Map<string, string>): Set<string> {
   const result = new Set<string>()
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -78,6 +78,7 @@ function anchors(tokens: Token[]): Set<string> {
       anchor = `${base}-${suffix}`
     }
     result.add(anchor)
+    headingTargets?.set(anchor, inline.content)
   }
 
   return result
@@ -86,6 +87,13 @@ function anchors(tokens: Token[]): Set<string> {
 /** 文書の中でリンクの `#` が指せる名前。見出しの slug と、明示した `id` と `name`。 */
 export function markdownAnchors(source: string): Set<string> {
   return anchors(markdown.parse(source, {}))
+}
+
+/** リポジトリのアンカーから、生成側が ID を求める元の見出しへの対応。重複の接尾辞も共有する。 */
+export function markdownHeadingTargets(source: string): ReadonlyMap<string, string> {
+  const targets = new Map<string, string>()
+  anchors(markdown.parse(source, {}), targets)
+  return targets
 }
 
 function links(tokens: Token[], environment: MarkdownEnvironment): MarkdownLink[] {
@@ -136,6 +144,7 @@ function resolvedPath(file: string, target: string): string {
 export function verifyMarkdownLinks(
   documents: ReadonlyMap<string, string>,
   existingPaths: ReadonlySet<string>,
+  checkedDocuments: ReadonlySet<string> = new Set(documents.keys()),
 ): MarkdownLinkFinding[] {
   if (documents.size === 0) {
     return [{ file: '.', line: 1, target: '', message: 'no Markdown documents were collected' }]
@@ -150,6 +159,7 @@ export function verifyMarkdownLinks(
 
   const findings: MarkdownLinkFinding[] = []
   for (const [file, document] of parsed) {
+    if (!checkedDocuments.has(file)) continue
     for (const link of document.links) {
       if (/^file:/i.test(link.target)) {
         findings.push({
