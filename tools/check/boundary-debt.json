@@ -461,13 +461,6 @@
       "reason": "Authentication's account portal lists and revokes consents through OAuth2's consent use cases, and logout revokes tokens by session through OAuth2's token use cases. OAuth2 publishes the consent operations, and Authentication defines a revocation port that the composition point binds to OAuth2 (D3, D4) in wi-13438."
     },
     {
-      "id": "private-import:DataKeys->Jobs",
-      "sourceModule": "DataKeys",
-      "targetModule": "Jobs",
-      "violations": ["private-import:DataKeys:backend/datakeys/usecases->backend/jobs/usecases"],
-      "reason": "DataKeys enqueues re-encryption jobs through Jobs' use cases. Jobs publishes enqueueing as a port and keeps deduplication and retry rules private (D3, D4) in wi-60465."
-    },
-    {
       "id": "private-import:IdGovernance->IdManagement",
       "sourceModule": "IdGovernance",
       "targetModule": "IdManagement",
@@ -476,15 +469,6 @@
         "private-import:IdGovernance:backend/idgovernance/db_postgres->backend/idmanagement/user/db_postgres"
       ],
       "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL and in-memory adapters. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
-    },
-    {
-      "id": "private-import:IdGovernance->Jobs",
-      "sourceModule": "IdGovernance",
-      "targetModule": "Jobs",
-      "violations": [
-        "private-import:IdGovernance:backend/idgovernance/usecases->backend/jobs/usecases"
-      ],
-      "reason": "IdGovernance enqueues lifecycle jobs through Jobs' use cases. Jobs publishes enqueueing as a port (D3, D4) in wi-60465."
     },
     {
       "id": "private-import:IdManagement->Authentication",
@@ -498,17 +482,6 @@
         "private-import:IdManagement:backend/idmanagement/user/usecases->backend/authentication/trusteddevice/usecases"
       ],
       "reason": "IdManagement validates passwords against the tenant policy, checks step-up, resolves sessions, and revokes trusted devices through Authentication's use cases. Authentication owns these rules and publishes the judgments and operations without its stores (D1, D3) in wi-87746."
-    },
-    {
-      "id": "private-import:IdManagement->Jobs",
-      "sourceModule": "IdManagement",
-      "targetModule": "Jobs",
-      "violations": [
-        "private-import:IdManagement:backend/idmanagement/group/usecases->backend/jobs/usecases",
-        "private-import:IdManagement:backend/idmanagement/usecases->backend/jobs/usecases",
-        "private-import:IdManagement:backend/idmanagement/user/usecases->backend/jobs/usecases"
-      ],
-      "reason": "IdManagement enqueues group reconciliation and user jobs through Jobs' use cases. Jobs publishes enqueueing as a port (D3, D4) in wi-60465."
     },
     {
       "id": "private-import:IdManagement->OAuth2",
@@ -555,26 +528,6 @@
         "private-import:OAuth2:backend/oauth2/token/usecases->backend/claimmapping/usecases"
       ],
       "reason": "OAuth2 issues ID token claims and resolves attribute definitions through ClaimMapping's use cases. ClaimMapping publishes issuance with its release floor as public operations (D1, D3) in wi-35767."
-    },
-    {
-      "id": "private-import:OAuth2->Jobs",
-      "sourceModule": "OAuth2",
-      "targetModule": "Jobs",
-      "violations": [
-        "private-import:OAuth2:backend/oauth2->backend/jobs/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/jobs/usecases"
-      ],
-      "reason": "OAuth2 registers job handlers and enqueues delivery jobs through Jobs' use cases. Jobs publishes enqueueing and handler registration as ports (D3, D4) in wi-60465."
-    },
-    {
-      "id": "private-import:Provisioning->Jobs",
-      "sourceModule": "Provisioning",
-      "targetModule": "Jobs",
-      "violations": [
-        "private-import:Provisioning:backend/provisioning->backend/jobs/usecases",
-        "private-import:Provisioning:backend/provisioning/usecases->backend/jobs/usecases"
-      ],
-      "reason": "Provisioning registers job handlers and enqueues provisioning jobs through Jobs' use cases. Jobs publishes enqueueing and handler registration as ports (D3, D4) in wi-60465."
     },
     {
       "id": "private-import:Saml->Authentication",

@@ -203,9 +203,7 @@ func RunWorker() error {
 	handlers.Register(domain.KindDataKeyReencryption, datakeysusecases.ReencryptionHandler(datakeysusecases.ReencryptDeps{
 		Repository: deps.DataKeys.Repository,
 		Migrators:  deps.DataKeys.Migrators,
-		QuotaRepo:  deps.Tenancy.QuotaRepo,
-		Emit:       deps.NewEmitFunc(logger),
-		Jobs:       deps.Jobs.Repo,
+		Jobs:       usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger)),
 	}))
 	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
@@ -368,7 +366,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	//nolint:contextcheck // Worker events use the bounded independent audit context.
 	emit := deps.NewEmitFunc(logging.Default())
 	for {
-		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, JobRepo: deps.Jobs.Repo, QuotaRepo: deps.Tenancy.QuotaRepo, Emit: emit}, 100, time.Now().UTC()); err != nil {
+		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, Jobs: usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)}, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {
@@ -386,7 +384,8 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger) {
 	// NewEmitFunc は監査の書き込みに自前の context を使う。停止中の tick でも
 	// ProvisioningTaskStarted を落とさないため (sharedSignalsDeliveryLoop と同じ)。
-	dispatcherDeps := deps.Provisioning.DispatcherDeps(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger)) //nolint:contextcheck // see comment above
+	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // see comment above
+	dispatcherDeps := deps.Provisioning.DispatcherDeps(usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), emit)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {

@@ -10,7 +10,8 @@ package oauth2
 import (
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
@@ -24,7 +25,7 @@ type JobHandlerDeps struct {
 	Now               func() time.Time
 }
 
-func RegisterJobHandlers(registry *jobsusecases.HandlerRegistry, deps JobHandlerDeps) {
+func RegisterJobHandlers(registry jobsports.HandlerRegistrar, deps JobHandlerDeps) {
 	registry.Register(logoutdomain.KindBackChannelLogoutDelivery, logoutusecases.BackChannelLogoutHandler(logoutusecases.BackChannelLogoutHandlerDeps{
 		Notifications: deps.Notifications, Signer: deps.TokenSigner, Client: deps.BackChannelClient, Now: deps.Now,
 	}))

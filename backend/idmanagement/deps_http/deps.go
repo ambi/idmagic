@@ -59,6 +59,7 @@ type Deps struct {
 	// nil skips reaction. See ReactiveEmit.
 	Reactor              EventReactor
 	JobRepo              jobsports.JobRepository
+	JobEnqueuer          jobsports.Enqueuer
 	ClientRepo           oauthports.OAuth2ClientRepository
 	ScimRepo             scimports.ScimRepository
 	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository

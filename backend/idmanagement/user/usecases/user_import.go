@@ -15,8 +15,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -71,8 +69,7 @@ type UserImportResult struct {
 type UserImportStartDeps struct {
 	Artifacts idmports.CSVArtifactStore
 	Jobs      jobsports.JobRepository
-	QuotaRepo tenantports.QuotaRepository
-	Emit      func(spec.DomainEvent)
+	Enqueuer  jobsports.Enqueuer
 	Policy    idmdomain.CSVTransferPolicy
 }
 
@@ -86,7 +83,7 @@ func (d UserImportStartDeps) policy() idmdomain.CSVTransferPolicy {
 // StartUserImportPreview streams one upload into immutable storage before
 // enqueueing metadata-only job params.
 func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actorUserID string, input io.Reader, now time.Time) (*jobsdomain.Job, error) {
-	if deps.Artifacts == nil || deps.Jobs == nil || input == nil {
+	if deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil || input == nil {
 		return nil, errors.New("user import preview dependencies are incomplete")
 	}
 	policy := deps.policy()
@@ -106,7 +103,7 @@ func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actor
 	if err != nil {
 		return nil, err
 	}
-	return jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.Jobs, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit}, jobsports.EnqueueInput{
+	return deps.Enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindUserImportPreview, Params: params, MaxAttempts: 1,
 	}, now)
 }
@@ -114,7 +111,7 @@ func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actor
 // StartUserImportApply binds a new apply job to one succeeded same-tenant
 // preview. The apply params deliberately do not repeat the artifact reference.
 func StartUserImportApply(ctx context.Context, deps UserImportStartDeps, actorUserID, previewJobID string, now time.Time) (*jobsdomain.Job, error) {
-	if deps.Artifacts == nil || deps.Jobs == nil {
+	if deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil {
 		return nil, errors.New("user import apply dependencies are incomplete")
 	}
 	tenantID := tenantports.TenantID(ctx)
@@ -131,7 +128,7 @@ func StartUserImportApply(ctx context.Context, deps UserImportStartDeps, actorUs
 	if result.SourceSHA256 != params.SourceSHA256 {
 		return nil, ErrUserImportDigestMismatch
 	}
-	return jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.Jobs, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit}, jobsports.EnqueueInput{
+	return deps.Enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindUserImportApply, Params: applyParams, MaxAttempts: 1,
 	}, now)
 }

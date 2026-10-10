@@ -14,7 +14,6 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	provisioningscim "github.com/ambi/idmagic/backend/provisioning/client_scim"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/handlers_http"
@@ -23,7 +22,6 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -70,9 +68,7 @@ func (m Module) AssignmentNotifier(assignmentRepo appports.AssignmentRepository)
 
 // jobEnqueuer implements usecases.Enqueuer against the Jobs module.
 type jobEnqueuer struct {
-	Repo      jobsports.JobRepository
-	QuotaRepo tenantports.QuotaRepository
-	Emit      func(spec.DomainEvent)
+	Jobs jobsports.Enqueuer
 }
 
 func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedupKey, taskID string) (string, error) {
@@ -81,7 +77,7 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 		return "", err
 	}
 	now := time.Now().UTC()
-	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: e.Repo, QuotaRepo: e.QuotaRepo, Emit: e.Emit}, jobsports.EnqueueInput{
+	job, err := e.Jobs.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: usecases.KindProvisioningTask, Params: params, DedupKey: &dedupKey, Now: now,
 	}, now)
 	if err != nil {
@@ -93,8 +89,8 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 // DispatcherDeps builds DispatchPendingTasks's dependencies. emit receives
 // ProvisioningTaskStarted; it is a parameter rather than an optional field so
 // that the worker cannot build the dispatcher without deciding where it goes.
-func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenantports.QuotaRepository, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Repo: jobRepo, QuotaRepo: quotaRepo, Emit: emit}, Emit: emit}
+func (m Module) DispatcherDeps(jobs jobsports.Enqueuer, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
+	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Jobs: jobs}, Emit: emit}
 }
 
 // ReconcileDeps はインクリメンタル同期の依存を組み立てる。User と割り当ては、インクリメンタル同期があるべき状態として読む記録の正である。
@@ -145,6 +141,6 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 const KindProvisioningTask = usecases.KindProvisioningTask
 
 // Handler re-exports usecases.ProvisioningTaskHandler for worker wiring.
-func Handler(deps usecases.JobHandlerDeps) jobsusecases.Handler {
+func Handler(deps usecases.JobHandlerDeps) jobsports.Handler {
 	return usecases.ProvisioningTaskHandler(deps)
 }

@@ -19,8 +19,6 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -80,8 +78,7 @@ type GroupMembershipImportResult struct {
 type GroupMembershipImportStartDeps struct {
 	Artifacts idmports.CSVArtifactStore
 	Jobs      jobsports.JobRepository
-	QuotaRepo tenantports.QuotaRepository
-	Emit      func(spec.DomainEvent)
+	Enqueuer  jobsports.Enqueuer
 	Policy    idmdomain.CSVTransferPolicy
 }
 
@@ -101,7 +98,7 @@ func StartGroupMembershipImportPreview(
 	input io.Reader,
 	now time.Time,
 ) (*jobsdomain.Job, error) {
-	if deps.Artifacts == nil || deps.Jobs == nil || input == nil {
+	if deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil || input == nil {
 		return nil, errors.New("group membership import preview dependencies are incomplete")
 	}
 	policy := deps.policy()
@@ -122,11 +119,9 @@ func StartGroupMembershipImportPreview(
 	if err != nil {
 		return nil, err
 	}
-	return jobsusecases.Enqueue(ctx,
-		jobsusecases.EnqueueDeps{Repo: deps.Jobs, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit},
-		jobsports.EnqueueInput{
-			TenantID: tenantID, Kind: jobsdomain.KindGroupMembershipImportPreview, Params: params, MaxAttempts: 1,
-		}, now)
+	return deps.Enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
+		TenantID: tenantID, Kind: jobsdomain.KindGroupMembershipImportPreview, Params: params, MaxAttempts: 1,
+	}, now)
 }
 
 // StartGroupMembershipImportApply は同一テナントかつ同一 Group の成功済みプレビュー
@@ -137,7 +132,7 @@ func StartGroupMembershipImportApply(
 	actorUserID, groupID, previewJobID string,
 	now time.Time,
 ) (*jobsdomain.Job, error) {
-	if deps.Artifacts == nil || deps.Jobs == nil {
+	if deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil {
 		return nil, errors.New("group membership import apply dependencies are incomplete")
 	}
 	tenantID := tenantports.TenantID(ctx)
@@ -154,11 +149,9 @@ func StartGroupMembershipImportApply(
 	if err != nil {
 		return nil, err
 	}
-	return jobsusecases.Enqueue(ctx,
-		jobsusecases.EnqueueDeps{Repo: deps.Jobs, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit},
-		jobsports.EnqueueInput{
-			TenantID: tenantID, Kind: jobsdomain.KindGroupMembershipImportApply, Params: applyParams, MaxAttempts: 1,
-		}, now)
+	return deps.Enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
+		TenantID: tenantID, Kind: jobsdomain.KindGroupMembershipImportApply, Params: applyParams, MaxAttempts: 1,
+	}, now)
 }
 
 type GroupMembershipImportJobDeps struct {

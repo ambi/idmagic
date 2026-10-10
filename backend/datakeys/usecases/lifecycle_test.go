@@ -322,7 +322,7 @@ func TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators(t *tes
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{})
 	jobRepo := jobsdbmemory.NewJobRepository()
 	deps.Migrators = migrators
-	deps.Jobs = jobRepo
+	deps.Jobs = testEnqueuer(jobRepo)
 
 	if _, err := RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
 		t.Fatalf("RotateTenantDataKey failed: %v", err)

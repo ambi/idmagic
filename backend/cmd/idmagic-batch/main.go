@@ -12,6 +12,7 @@ import (
 	"time"
 
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
@@ -124,7 +125,7 @@ func runDataKeyReencryptionSweep(ctx context.Context, deps *bootstrap.Dependenci
 	names := deps.DataKeys.Migrators.Names()
 	//nolint:contextcheck // Batch events use the bounded independent audit context.
 	emit := deps.NewEmitFunc(logging.Default())
-	jobs := jobsusecases.EnqueueDeps{Repo: deps.Jobs.Repo, QuotaRepo: deps.Tenancy.QuotaRepo, Emit: emit}
+	jobs := jobsusecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	for _, tenant := range tenants {
 		for _, name := range names {
 			err := datakeysusecases.EnqueueReencryptionJob(ctx, jobs, tenant.ID, name, now)

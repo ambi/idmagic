@@ -21,7 +21,7 @@ func TestStartUserImportPreviewStoresPayloadOutsideJobParams(t *testing.T) {
 	ctx := importPlannerContext()
 	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
-	job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username\nalice\n"), time.Now().UTC())
+	job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", strings.NewReader("preferred_username\nalice\n"), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestUserImportPreviewHandlerStoresSafeErrorsOutsideJobResult(t *testing.T) 
 	ctx := importPlannerContext()
 	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
-	job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username,email\nalice,not-an-email\n"), time.Now().UTC())
+	job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", strings.NewReader("preferred_username,email\nalice,not-an-email\n"), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestCharacterizeUserImportPreviewOfMalformedFiles(t *testing.T) {
 			ctx := importPlannerContext()
 			artifacts := idmmemory.NewCSVArtifactStore()
 			jobs := jobsmemory.NewJobRepository()
-			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader(tc.document), time.Now().UTC())
+			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", strings.NewReader(tc.document), time.Now().UTC())
 			if err != nil {
 				t.Fatalf("StartUserImportPreview: %v", err)
 			}
@@ -149,7 +149,7 @@ func TestStartUserImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 			ctx := importPlannerContext()
 			jobs := jobsmemory.NewJobRepository()
 			policy := idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: tc.maxBytes, MaxFieldBytes: 1 << 10}
-			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Policy: policy}, "admin", strings.NewReader(document), time.Now().UTC())
+			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: policy}, "admin", strings.NewReader(document), time.Now().UTC())
 			if tc.wantErr {
 				csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
 				queued, listErr := jobs.ListByTenantAndKinds(ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindUserImportPreview}, 10)
@@ -197,7 +197,7 @@ func TestStartUserImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testing
 			ctx := importPlannerContext()
 			artifacts := idmmemory.NewCSVArtifactStore()
 			jobs := jobsmemory.NewJobRepository()
-			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Policy: tc.policy}, "admin", strings.NewReader(tc.document), time.Now().UTC())
+			job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: tc.policy}, "admin", strings.NewReader(tc.document), time.Now().UTC())
 			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
 				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
 			}
@@ -220,7 +220,7 @@ func TestUserImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
 	ctx := importPlannerContext()
 	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
-	preview, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username\nalice\nbob\n"), time.Now().UTC())
+	preview, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", strings.NewReader("preferred_username\nalice\nbob\n"), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestUserImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
 	if _, err := jobs.Complete(ctx, preview.ID, "worker", mustJSON(t, UserImportResult{SourceSHA256: params.SourceSHA256}), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	apply, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", preview.ID, time.Now().UTC())
+	apply, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", preview.ID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,11 +261,11 @@ func TestStartUserImportApplyRequiresSucceededSameTenantPreviewAndDigest(t *test
 	ctx := importPlannerContext()
 	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
-	preview, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username\nalice\n"), time.Now().UTC())
+	preview, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", strings.NewReader("preferred_username\nalice\n"), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", preview.ID, time.Now().UTC()); !errors.Is(err, ErrUserImportPreviewNotReady) {
+	if _, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", preview.ID, time.Now().UTC()); !errors.Is(err, ErrUserImportPreviewNotReady) {
 		t.Fatalf("queued preview err=%v", err)
 	}
 	var params UserImportParams
@@ -277,7 +277,7 @@ func TestStartUserImportApplyRequiresSucceededSameTenantPreviewAndDigest(t *test
 	if _, err := jobs.Complete(ctx, preview.ID, "worker", mustJSON(t, UserImportResult{SourceSHA256: params.SourceSHA256}), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	apply, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", preview.ID, time.Now().UTC())
+	apply, err := StartUserImportApply(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", preview.ID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

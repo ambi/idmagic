@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
@@ -88,7 +90,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, JobRepo: jobs}, 10, now.Add(2*time.Minute)); err != nil {
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now.Add(2*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	claimed, err := jobs.ClaimBatch(ctx, "worker-1", jobsdomain.LaneDefault, 1, time.Minute, now.Add(3*time.Minute))
@@ -150,7 +152,7 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	run := queuedDisableRun(t, runs, users, now)
 	jobRepo := jobsmemory.NewJobRepository()
 	jobs := &failOnceJobRepository{JobRepository: jobRepo, fail: true}
-	deps := usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, JobRepo: jobs}
+	deps := usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}
 	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err == nil {
 		t.Fatal("first dispatch must expose enqueue failure")
 	}
@@ -210,7 +212,7 @@ func TestDuplicateDispatchReusesTheLifecycleWorkflowJob(t *testing.T) {
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	run := queuedDisableRun(t, runs, nil, now)
 	jobs := jobsmemory.NewJobRepository()
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, JobRepo: jobs}, 10, now); err != nil {
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now); err != nil {
 		t.Fatal(err)
 	}
 	first, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
@@ -219,7 +221,7 @@ func TestDuplicateDispatchReusesTheLifecycleWorkflowJob(t *testing.T) {
 	}
 
 	stale := staleRunListing{LifecycleWorkflowRunRepository: runs, listed: []*igdomain.WorkflowRun{run}}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: stale, JobRepo: jobs}, 10, now.Add(time.Second)); err != nil {
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: stale, Jobs: testJobEnqueuer(jobs)}, 10, now.Add(time.Second)); err != nil {
 		t.Fatalf("duplicate dispatch: %v", err)
 	}
 	queued, err := jobs.ListByTenantAndKinds(context.Background(), "tenant-a", []jobsdomain.JobKind{usecases.LifecycleWorkflowRunJobKind}, 0)
@@ -597,4 +599,9 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 // workflowUserLifecycle は worker と同じく、disable_user と enable_user を IdManagement の操作として行う。
 func workflowUserLifecycle(users userports.UserRepository) igports.UserLifecycle {
 	return userusecases.UserLifecycleCommands{Deps: userusecases.AdminUserDeps{UserRepo: users}, Actor: "lifecycle-workflow"}
+}
+
+// testJobEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。
+func testJobEnqueuer(repo jobsports.JobRepository) jobsports.Enqueuer {
+	return jobsusecases.NewEnqueuer(repo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})
 }

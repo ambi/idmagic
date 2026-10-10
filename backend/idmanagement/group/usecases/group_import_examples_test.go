@@ -469,7 +469,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 
 			//nolint:contextcheck // arrange が返す文脈は、越境を起こすためにわざと別テナントである
 			_, err := StartGroupImportApply(
-				applyCtx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "operator", previewID, time.Now().UTC(),
+				applyCtx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", previewID, time.Now().UTC(),
 			)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tc.wantErr)
@@ -493,7 +493,7 @@ func startGroupImportPreviewForTest(
 ) *jobsdomain.Job {
 	t.Helper()
 	preview, err := StartGroupImportPreview(
-		groupImportContext(), GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "operator",
+		groupImportContext(), GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator",
 		strings.NewReader("name,roles\nsales,catalog:read\n"), time.Now().UTC(),
 	)
 	if err != nil {
@@ -567,7 +567,7 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testin
 			ctx := groupImportContext()
 			artifacts := idmmemory.NewCSVArtifactStore()
 			jobs := jobsmemory.NewJobRepository()
-			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Policy: tc.policy}, "operator", strings.NewReader(tc.document), time.Now().UTC())
+			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: tc.policy}, "operator", strings.NewReader(tc.document), time.Now().UTC())
 			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
 				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
 			}
@@ -589,7 +589,7 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testin
 func TestGroupImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
 	f := newGroupImportFixture(t)
 	jobs := jobsmemory.NewJobRepository()
-	startDeps := GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs}
+	startDeps := GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}
 	preview, err := StartGroupImportPreview(f.ctx, startDeps, "operator",
 		strings.NewReader("name,roles\nsales,catalog:read\nops,catalog:read\n"), time.Now().UTC())
 	if err != nil {
@@ -646,7 +646,7 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 			ctx := groupImportContext()
 			jobs := jobsmemory.NewJobRepository()
 			policy := idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: tc.maxBytes, MaxFieldBytes: 1 << 10}
-			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Policy: policy}, "operator", strings.NewReader(document), time.Now().UTC())
+			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: policy}, "operator", strings.NewReader(document), time.Now().UTC())
 			if tc.wantErr {
 				csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
 				queued, listErr := jobs.ListByTenantAndKinds(ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupImportPreview}, 10)
@@ -690,7 +690,7 @@ func TestCharacterizeGroupImportPreviewOfMalformedFiles(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newGroupImportFixture(t)
 			jobs := jobsmemory.NewJobRepository()
-			job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs}, "operator", strings.NewReader(tc.document), time.Now().UTC())
+			job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", strings.NewReader(tc.document), time.Now().UTC())
 			if err != nil {
 				t.Fatalf("StartGroupImportPreview: %v", err)
 			}

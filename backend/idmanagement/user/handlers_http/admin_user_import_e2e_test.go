@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -64,7 +68,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 		IdManagement: idmanagement.Module{
 			UserRepo: users, CSVArtifacts: artifacts, UserImportCommitter: committer,
 		},
-		Jobs: jobs.Module{Repo: jobRepo},
+		Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
 	})
 
 	account := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/account", http.NoBody)

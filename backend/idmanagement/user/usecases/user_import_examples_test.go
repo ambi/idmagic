@@ -215,7 +215,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 			before := userImportApplyJobIDs(t, jobs)
 
 			_, err := StartUserImportApply(
-				applyCtx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", previewID, time.Now().UTC(),
+				applyCtx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", previewID, time.Now().UTC(),
 			)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tc.wantErr)
@@ -233,7 +233,7 @@ func startUserImportPreviewForTest(
 ) *jobsdomain.Job {
 	t.Helper()
 	preview, err := StartUserImportPreview(
-		importPlannerContext(), UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin",
+		importPlannerContext(), UserImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin",
 		strings.NewReader("preferred_username\nalice\n"), time.Now().UTC(),
 	)
 	if err != nil {

@@ -9,9 +9,6 @@ import (
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
@@ -131,12 +128,10 @@ func (d Deps) propagateLogout(c *echo.Context, logout settledLogout) []logoutdom
 	ctx := c.Request().Context()
 	issuer := support.RequestIssuer(c, d.Issuer)
 	now := time.Now().UTC()
-	if d.LogoutNotificationStore != nil && d.JobRepo != nil {
+	if d.LogoutNotificationStore != nil && d.JobEnqueuer != nil {
 		_, err := logoutusecases.StartBackChannelLogout(ctx, logoutusecases.StartBackChannelLogoutDeps{
 			ClientSessions: d.ClientSessionStore, Clients: d.ClientRepo, Notifications: d.LogoutNotificationStore, NewID: spec.NewUUIDv4,
-			Enqueue: func(ctx context.Context, input jobsports.EnqueueInput, now time.Time) (*jobsdomain.Job, error) {
-				return jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: d.JobRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, input, now)
-			},
+			Enqueue: d.JobEnqueuer.Enqueue,
 		}, logout.sid, logout.subject, issuer, now)
 		if err != nil {
 			logging.Error(ctx, "oauth2: back-channel logout enqueue failed", "error", err, "sid", logout.sid)

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+
 	"github.com/ambi/idmagic/backend/datakeys/db_memory"
 	"github.com/ambi/idmagic/backend/datakeys/ports"
 	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
@@ -117,7 +119,7 @@ func TestReencryptionHandler_ReturnsResultJSONWithoutEnqueueingWhenDone(t *testi
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{batchReturns: []int{2}, pending: 0})
 	jobRepo := jobsdbmemory.NewJobRepository()
 
-	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: jobRepo})
+	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
 	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-a", Migrator: "mfa_totp_secret"})
 	if err != nil {
 		t.Fatalf("marshal params: %v", err)
@@ -159,7 +161,7 @@ func TestReencryptionHandler_RefusesParamsNamingAnotherTenant(t *testing.T) {
 	migrator := &fakeReencryptMigrator{batchReturns: []int{2}}
 	migrators.Register("mfa_totp_secret", migrator)
 	jobRepo := jobsdbmemory.NewJobRepository()
-	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: jobRepo})
+	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
 
 	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-b", Migrator: "mfa_totp_secret"})
 	if err != nil {
@@ -188,7 +190,7 @@ func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{batchReturns: []int{2}, pending: 500})
 	jobRepo := jobsdbmemory.NewJobRepository()
 
-	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: jobRepo})
+	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
 	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-a", Migrator: "mfa_totp_secret"})
 	if err != nil {
 		t.Fatalf("marshal params: %v", err)
@@ -213,10 +215,7 @@ func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 func TestEnqueueReencryptionJobEmitsJobEnqueued(t *testing.T) {
 	jobRepo := jobsdbmemory.NewJobRepository()
 	var events []spec.DomainEvent
-	jobs := jobsusecases.EnqueueDeps{
-		Repo: jobRepo, QuotaRepo: tenancymemory.NewQuotaRepository(),
-		Emit: func(event spec.DomainEvent) { events = append(events, event) },
-	}
+	jobs := jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(event spec.DomainEvent) { events = append(events, event) })
 	now := time.Now().UTC()
 	for range 2 {
 		if err := EnqueueReencryptionJob(context.Background(), jobs, "tenant-a", "mfa_totp_secret", now); err != nil {
@@ -240,7 +239,7 @@ func TestEnqueueReencryptionJobRespectsActiveJobsQuota(t *testing.T) {
 	if err := quotas.SetQuota(ctx, "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
-	jobs := jobsusecases.EnqueueDeps{Repo: jobsdbmemory.NewJobRepository(), QuotaRepo: quotas, Emit: func(spec.DomainEvent) {}}
+	jobs := jobsusecases.NewEnqueuer(jobsdbmemory.NewJobRepository(), quotas, func(spec.DomainEvent) {})
 
 	err := EnqueueReencryptionJob(ctx, jobs, "tenant-a", "mfa_totp_secret", time.Now().UTC())
 	var exceeded *tenancydomain.QuotaExceededError
@@ -258,7 +257,7 @@ func TestEnqueueReencryptionJobRespectsActiveJobsQuota(t *testing.T) {
 
 func TestEnqueueReencryptionJob_DedupsRepeatedCalls(t *testing.T) {
 	jobRepo := jobsdbmemory.NewJobRepository()
-	enqueue := jobsusecases.EnqueueDeps{Repo: jobRepo, QuotaRepo: tenancymemory.NewQuotaRepository(), Emit: func(spec.DomainEvent) {}}
+	enqueue := testEnqueuer(jobRepo)
 	now := time.Now().UTC()
 	if err := EnqueueReencryptionJob(context.Background(), enqueue, "tenant-a", "mfa_totp_secret", now); err != nil {
 		t.Fatalf("first EnqueueReencryptionJob failed: %v", err)
@@ -274,4 +273,9 @@ func TestEnqueueReencryptionJob_DedupsRepeatedCalls(t *testing.T) {
 	if len(jobs) != 1 {
 		t.Fatalf("expected dedup to collapse repeated enqueues into 1 job, got %d", len(jobs))
 	}
+}
+
+// testEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。
+func testEnqueuer(repo jobsports.JobRepository) jobsports.Enqueuer {
+	return jobsusecases.NewEnqueuer(repo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})
 }

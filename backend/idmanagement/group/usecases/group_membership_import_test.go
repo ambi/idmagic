@@ -755,7 +755,7 @@ func TestStartGroupMembershipImportPreviewRefusesFilesBeyondTheRowAndFieldLimits
 			artifacts := idmmemory.NewCSVArtifactStore()
 			jobs := jobsmemory.NewJobRepository()
 			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx,
-				groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs, Policy: tc.policy},
+				groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: tc.policy},
 				"user-admin", engineeringID, strings.NewReader(tc.document), time.Now().UTC())
 			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
 				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
@@ -779,7 +779,7 @@ func TestGroupMembershipImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *tes
 	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
 	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
-	startDeps := groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs}
+	startDeps := groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}
 	preview, err := groupusecases.StartGroupMembershipImportPreview(f.ctx, startDeps, "user-admin", engineeringID,
 		strings.NewReader("user_id,membership_state\nuser-bob,present\nuser-dave,present\n"), time.Now().UTC())
 	if err != nil {
@@ -836,7 +836,7 @@ func TestStartGroupMembershipImportPreviewRefusesFilesBeyondTheByteLimit(t *test
 			jobs := jobsmemory.NewJobRepository()
 			policy := idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: tc.maxBytes, MaxFieldBytes: 1 << 10}
 			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx,
-				groupusecases.GroupMembershipImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Policy: policy},
+				groupusecases.GroupMembershipImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: policy},
 				"user-admin", engineeringID, strings.NewReader(document), time.Now().UTC())
 			if tc.wantErr {
 				csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
@@ -883,7 +883,7 @@ func TestCharacterizeGroupMembershipImportPreviewOfMalformedFiles(t *testing.T) 
 			artifacts := idmmemory.NewCSVArtifactStore()
 			jobs := jobsmemory.NewJobRepository()
 			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx,
-				groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs},
+				groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)},
 				"user-admin", engineeringID, strings.NewReader(tc.document), time.Now().UTC())
 			if err != nil {
 				t.Fatalf("StartGroupMembershipImportPreview: %v", err)

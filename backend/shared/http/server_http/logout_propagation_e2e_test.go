@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
@@ -87,7 +89,7 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 	}
 	signer := tokens_jose.NewJWTSigner(logoutE2EIssuer, keyStore)
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{Issuer: logoutE2EIssuer, Authentication: authentication.Module{SessionManager: sessionManager}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ClientSessionStore: clientSessions, LogoutNotificationStore: notifications, RefreshStore: refreshStore}, Jobs: jobs.Module{Repo: jobRepo}})
+	httpadapter.Register(e, httpadapter.Deps{Issuer: logoutE2EIssuer, Authentication: authentication.Module{SessionManager: sessionManager}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ClientSessionStore: clientSessions, LogoutNotificationStore: notifications, RefreshStore: refreshStore}, Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})}})
 	server := httptest.NewServer(e)
 	t.Cleanup(server.Close)
 	return logoutE2EFixture{server: server, sessionID: authn.SessionID, clientID: client.ClientID, notifications: notifications, jobs: jobRepo, signer: signer, sessions: sessionStore, refresh: refreshStore}

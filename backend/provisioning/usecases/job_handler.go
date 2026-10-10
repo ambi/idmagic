@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
@@ -65,7 +66,7 @@ type provisioningTaskParams struct {
 // health, not one User's missing attribute.
 //
 // プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属するフル同期の完了を判定する。
-func ProvisioningTaskHandler(deps JobHandlerDeps) jobsusecases.Handler {
+func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 	now := deps.Now
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }

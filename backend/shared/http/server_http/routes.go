@@ -294,6 +294,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
+	jobEnqueuer := d.Jobs.Enqueuer
 
 	// 管理 API の User と Agent の操作は、idmhttp.Deps.ReactiveEmit が発行の後にこの反応器を呼ぶ。
 	// 管理 API の外から User を止める経路は、組み立ての地点の UserLifecycleCommands が同じ反応器を使う。
@@ -353,7 +354,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ClientAssertionReplayStore: d.OAuth2.ClientAssertionReplayStore,
 		ClientSessionStore:         d.OAuth2.ClientSessionStore,
 		LogoutNotificationStore:    d.OAuth2.LogoutNotificationStore,
-		JobRepo:                    d.Jobs.Repo,
+		JobEnqueuer:                jobEnqueuer,
 		DeviceCodeStore:            d.OAuth2.DeviceCodeStore,
 		ApprovalRequestStore:       d.OAuth2.ApprovalRequestStore,
 		Notifier:                   d.Notification.Notifier,
@@ -504,6 +505,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		EmailSender:               d.Notification.EmailSender,
 		Notifier:                  d.Notification.Notifier,
 		JobRepo:                   d.Jobs.Repo,
+		JobEnqueuer:               jobEnqueuer,
 		QuotaRepo:                 d.Tenancy.QuotaRepo,
 	}
 	if d.Authentication.SessionManager != nil {
@@ -545,12 +547,11 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps: d.Deps, Authenticator: authenticator,
 		LifecycleWorkflowRepo:    d.IdGovernance.LifecycleWorkflowRepo,
 		LifecycleWorkflowRunRepo: d.IdGovernance.LifecycleWorkflowRunRepo,
-		JobRepo:                  d.Jobs.Repo,
+		JobEnqueuer:              jobEnqueuer,
 		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
 		Notifier:       d.Notification.Notifier,
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-		QuotaRepo:      d.Tenancy.QuotaRepo,
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{

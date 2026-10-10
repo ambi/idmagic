@@ -15,7 +15,6 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -109,9 +108,8 @@ type DataExportDeps struct {
 	GroupMembershipCSVExporter GroupMembershipCSVExporter
 	CSVArtifacts               idmports.CSVArtifactStore
 	Emit                       func(spec.DomainEvent) error
-	// QuotaRepo enforces the tenant's active_jobs Hard Quota at enqueue
-	// (wi-160). nil skips enforcement.
-	QuotaRepo tenantports.QuotaRepository
+	// Enqueuer はエクスポートのジョブを投入する。
+	Enqueuer jobsports.Enqueuer
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	Now func() time.Time
 }
@@ -187,14 +185,10 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 	// MaxAttempts=1: export generation is deterministic in the resource data,
 	// so a failure won't be fixed by retrying; a single attempt keeps the
 	// lifecycle to exactly one Started + one Succeeded/Failed event.
-	emit, emitErr := CollectEmitErrors(deps.Emit)
-	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo, Emit: emit}, jobsports.EnqueueInput{
+	job, err := deps.Enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: KindDataExport, Params: params, MaxAttempts: 1,
 	}, now)
 	if err != nil {
-		return nil, err
-	}
-	if err := emitErr(); err != nil {
 		return nil, err
 	}
 	if err := adminEmitExport(deps.Emit, &idmdomain.DataExportRequested{At: now, TenantID: tenantID, ActorUserID: actorUserID, ExportID: job.ID, Target: target, RequestedColumns: columns}); err != nil {

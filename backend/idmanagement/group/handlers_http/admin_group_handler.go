@@ -372,8 +372,7 @@ func adminGroupDeps(d Deps) groupusecases.AdminGroupDeps {
 
 func dynamicGroupDeps(d Deps) groupusecases.DynamicGroupDeps {
 	return groupusecases.DynamicGroupDeps{
-		GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, JobRepo: d.JobRepo, Emit: d.LegacyEmit(),
-		QuotaRepo: d.QuotaRepo,
+		GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, SchemaRepo: d.AttrSchemaRepo, Jobs: d.JobEnqueuer, Emit: d.LegacyEmit(),
 	}
 }
 

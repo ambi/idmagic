@@ -268,7 +268,7 @@ func (f *governanceFixture) outcomes(t *testing.T, runID string) []igdomain.Work
 // 実行させる。バックオフは再試行を待たずに観測できるよう短くする。
 func (f *governanceFixture) runWorker(t *testing.T, run *igdomain.WorkflowRun) *jobsdomain.Job {
 	t.Helper()
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, JobRepo: f.jobs}, 10, f.now); err != nil {
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(f.jobs)}, 10, f.now); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID)
@@ -374,7 +374,7 @@ func TestUserMutationCapturesARunThatConvergesOnRedeliveryAndGetsAJob(t *testing
 		t.Fatalf("redelivered steps = %d, %v; want none", len(steps), err)
 	}
 
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, JobRepo: f.jobs}, 10, f.now); err != nil {
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(f.jobs)}, 10, f.now); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID)
@@ -394,14 +394,14 @@ func TestTransientEnqueueFailureLeavesTheRunForTheDispatcher(t *testing.T) {
 	run := onlyRun(t, f.runsOf(t, workflow.ID))
 
 	failing := &failOnceJobRepository{JobRepository: f.jobs, fail: true}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, JobRepo: failing}, 10, f.now); err == nil {
+	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(failing)}, 10, f.now); err == nil {
 		t.Fatal("the failed enqueue must surface")
 	}
 	if stored, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID); err != nil || stored.Status != igdomain.WorkflowRunQueued || stored.JobID != nil {
 		t.Fatalf("run after the failed enqueue = %+v, %v; want queued without job_id", stored, err)
 	}
 	for range 2 {
-		if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, JobRepo: failing}, 10, f.now); err != nil {
+		if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(failing)}, 10, f.now); err != nil {
 			t.Fatal(err)
 		}
 	}

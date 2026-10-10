@@ -271,12 +271,12 @@ func TestDynamicGroupRuleVersionBumpDropsStaleMembershipAndFailuresGrantNothing(
 		t.Fatalf("前提が壊れている: u_eng の実効ロール = %v", view.EffectiveRoles)
 	}
 
-	// 版を上げる。**ここで JobRepo を配線するのが要点である。** 未配線の
+	// 版を上げる。**ここで投入器を配線するのが要点である。** 未配線の
 	// `scheduleDynamicGroupReconcile` は再評価をその場で走らせてしまい、
 	// 「版が上がってから再評価が終わるまで」という具体例の言う瞬間が消える。
 	// production は job を挟むので、こちらが本来の形である。
 	deferred := deps
-	deferred.JobRepo = jobsmemory.NewJobRepository()
+	deferred.Jobs = testJobEnqueuer(jobsmemory.NewJobRepository())
 	updated, err := groupusecases.UpdateDynamicGroupRule(
 		ctx, deferred, "admin", "g1", `user.department == "Engineering" || user.department == "Sales"`,
 		now.Add(time.Hour),

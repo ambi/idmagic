@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+
 	"github.com/ambi/idmagic/backend/apitoken"
 	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
@@ -260,7 +262,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		},
 		OAuth2:            oauth2.Module{ConsentRepo: fixture.consents, ClientRepo: fixture.clients},
 		Notification:      sharednotification.Module{EmailSender: fixture.emails},
-		Jobs:              jobs.Module{Repo: fixture.jobClock},
+		Jobs:              jobs.Module{Repo: fixture.jobClock, Enqueuer: jobsusecases.NewEnqueuer(fixture.jobClock, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
 		ApiTokens:         apitoken.Module{Repo: apiTokenRepo},
 		KeyStore:          keyStore,
 		TokenIssuer:       signer,

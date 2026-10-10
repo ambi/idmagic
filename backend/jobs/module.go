@@ -17,6 +17,9 @@ import (
 // or claims, so the queue keeps a single entrance through in-process Go calls.
 type Module struct {
 	Repo ports.JobRepository
+	// Enqueuer はほかのモジュールへ渡す投入器である。イベントの発行先が決まった後に、組み立て地点が
+	// usecases.NewEnqueuer で作って設定する。
+	Enqueuer ports.Enqueuer
 }
 
 // NoopEchoHandler is the wi-42 core-runtime smoke-test handler for

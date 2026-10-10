@@ -40,7 +40,7 @@ func exportUsecaseDeps(d Deps) idmusecases.DataExportDeps {
 	return idmusecases.DataExportDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, JobRepo: d.JobRepo,
 		UserCSVExporter: exporter, GroupMembershipCSVExporter: membershipExporter, CSVArtifacts: d.CSVArtifacts,
-		Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo,
+		Emit: d.LegacyEmit(), Enqueuer: d.JobEnqueuer,
 	}
 }
 

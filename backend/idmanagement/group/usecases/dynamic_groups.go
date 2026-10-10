@@ -15,7 +15,6 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -27,12 +26,9 @@ type DynamicGroupDeps struct {
 	GroupRepo  groupports.GroupRepository
 	UserRepo   userports.UserRepository
 	SchemaRepo tenantports.TenantUserAttributeSchemaRepository
-	JobRepo    jobsports.JobRepository
-	Emit       func(spec.DomainEvent) error
-	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160)
-	// for the background reconcile job this package enqueues. nil
-	// skips enforcement.
-	QuotaRepo tenantports.QuotaRepository
+	// Jobs は再評価のジョブを投入する。nil のときは、ジョブを使わずにその場で再評価する。
+	Jobs jobsports.Enqueuer
+	Emit func(spec.DomainEvent) error
 }
 
 type DynamicGroupPreview struct {
@@ -144,7 +140,7 @@ type DynamicGroupReconcileParams struct {
 }
 
 func scheduleDynamicGroupReconcile(ctx context.Context, deps DynamicGroupDeps, rule *groupdomain.DynamicGroupRule, now time.Time) error {
-	if deps.JobRepo == nil {
+	if deps.Jobs == nil {
 		result, err := ReconcileDynamicGroup(ctx, deps, rule, now)
 		if err != nil {
 			return err
@@ -156,13 +152,10 @@ func scheduleDynamicGroupReconcile(ctx context.Context, deps DynamicGroupDeps, r
 		return err
 	}
 	dedupKey := fmt.Sprintf("dynamic-group:%s:v%d", rule.GroupID, rule.Version)
-	emit, emitErr := idmusecases.CollectEmitErrors(deps.Emit)
-	if _, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: deps.JobRepo, QuotaRepo: deps.QuotaRepo, Emit: emit}, jobsports.EnqueueInput{
+	_, err = deps.Jobs.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: rule.TenantID, Kind: jobsdomain.KindDynamicGroupReconcile, Params: params, DedupKey: &dedupKey,
-	}, now); err != nil {
-		return err
-	}
-	return emitErr()
+	}, now)
+	return err
 }
 
 func DynamicGroupReconcileHandler(deps DynamicGroupDeps) func(context.Context, *jobsdomain.Job) (json.RawMessage, error) {

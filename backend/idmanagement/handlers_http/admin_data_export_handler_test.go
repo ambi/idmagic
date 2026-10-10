@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
@@ -66,6 +69,12 @@ func newExportTestHandler(t *testing.T, options ...func(*httpadapter.Deps)) expo
 	for _, option := range options {
 		option(&deps)
 	}
+	// 投入器は、オプションが差し替えたクォータを使うように、オプションの適用後に作る。
+	quotas := deps.Tenancy.QuotaRepo
+	if quotas == nil {
+		quotas = tenancymemory.NewQuotaRepository()
+	}
+	deps.Jobs.Enqueuer = jobsusecases.NewEnqueuer(jobRepo, quotas, func(spec.DomainEvent) {})
 	httpadapter.Register(e, deps)
 	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo, artifacts: artifacts}
 }

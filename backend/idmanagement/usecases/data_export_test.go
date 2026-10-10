@@ -12,6 +12,9 @@ import (
 	"testing"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
@@ -93,10 +96,18 @@ func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder)
 		Deps:   groupusecases.GroupCSVExportDeps{GroupRepo: groups, Artifacts: artifacts},
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
+	jobRepo := jobsmemory.NewJobRepository()
+	// 一覧の窓の例は 200 件を超えるエクスポートを作るので、active_jobs の上限を既定より広げる。
+	quotas := tenancymemory.NewQuotaRepository()
+	activeJobs := 1000
+	if err := quotas.SetQuota(ctx, "acme", &tenancydomain.TenantQuota{ActiveJobs: &activeJobs}); err != nil {
+		t.Fatal(err)
+	}
 	deps := idmusecases.DataExportDeps{
-		UserRepo: users, GroupRepo: groups, JobRepo: jobsmemory.NewJobRepository(),
+		UserRepo: users, GroupRepo: groups, JobRepo: jobRepo,
 		UserCSVExporter: exporter, GroupCSVExporter: groupExporter, CSVArtifacts: artifacts,
 		Emit: rec.emit, Now: func() time.Time { return now },
+		Enqueuer: jobsusecases.NewEnqueuer(jobRepo, quotas, func(event spec.DomainEvent) { _ = rec.emit(event) }),
 	}
 	return deps, rec
 }

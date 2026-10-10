@@ -23,6 +23,23 @@ type EnqueueDeps struct {
 	QuotaRepo tenantports.QuotaRepository
 }
 
+// enqueuer は ports.Enqueuer を Enqueue で実装する。
+type enqueuer struct{ deps EnqueueDeps }
+
+// NewEnqueuer は、repo へジョブを作り、quotas で active_jobs を確認し、emit で JobEnqueued を発行する投入器を返す。
+// 三つとも REQ-JOBS-002 と REQ-TENANCY-013 が投入のたびに求める作用なので、どれかが nil なら
+// 組み立ての誤りとして panic する。
+func NewEnqueuer(repo ports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Enqueuer {
+	if repo == nil || quotas == nil || emit == nil {
+		panic("jobs: NewEnqueuer requires a job repository, a quota repository, and an event sink")
+	}
+	return enqueuer{deps: EnqueueDeps{Repo: repo, QuotaRepo: quotas, Emit: emit}}
+}
+
+func (e enqueuer) Enqueue(ctx context.Context, input ports.EnqueueInput, now time.Time) (*domain.Job, error) {
+	return Enqueue(ctx, e.deps, input, now)
+}
+
 // Enqueue validates input and inserts a new Job (EnqueueJob,
 // docs/modules/jobs/). It rejects unregistered JobKinds, applies
 // domain.DefaultMaxAttempts when input.MaxAttempts is unset, defaults RunAt to

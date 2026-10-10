@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -241,7 +245,7 @@ func reconcileJobs(t *testing.T, jobs *jobsmemory.JobRepository) []groupusecases
 func TestDynamicRuleVersionsAndScheduling(t *testing.T) {
 	ctx, deps, _, _ := dynamicRuleFixture(t)
 	jobs := jobsmemory.NewJobRepository()
-	deps.JobRepo = jobs
+	deps.Jobs = testJobEnqueuer(jobs)
 	saved, err := groupusecases.UpdateDynamicGroupRule(ctx, deps, "admin", dynamicFixtureGroupID, `user.department == "Engineering"`, groupRulesNow)
 	if err != nil || saved.Enabled || saved.Version != 1 {
 		t.Fatalf("saved=%+v err=%v, want disabled v1", saved, err)
@@ -318,7 +322,7 @@ func TestDisablingADynamicRuleRemovesEveryMembershipImmediately(t *testing.T) {
 		t.Fatalf("前提が壊れている: members=%v", got)
 	}
 	jobs := jobsmemory.NewJobRepository()
-	deps.JobRepo = jobs
+	deps.Jobs = testJobEnqueuer(jobs)
 	if _, err := groupusecases.SetDynamicGroupRuleEnabled(ctx, deps, "admin", dynamicFixtureGroupID, false, groupRulesNow); err != nil {
 		t.Fatal(err)
 	}
@@ -428,4 +432,9 @@ func TestDynamicRulePreviewLimitsAndUnknownUsers(t *testing.T) {
 	if !errors.Is(err, idmusecases.ErrUserNotFound) || results != nil {
 		t.Fatalf("results=%+v err=%v, want no results and ErrUserNotFound", results, err)
 	}
+}
+
+// testJobEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。
+func testJobEnqueuer(repo jobsports.JobRepository) jobsports.Enqueuer {
+	return jobsusecases.NewEnqueuer(repo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})
 }

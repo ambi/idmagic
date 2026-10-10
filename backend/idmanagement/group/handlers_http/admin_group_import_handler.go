@@ -25,7 +25,7 @@ const groupImportErrorsQuery = "GetAdminGroupImport;errors"
 
 func groupImportStartDeps(d Deps) groupusecases.GroupImportStartDeps {
 	return groupusecases.GroupImportStartDeps{
-		Artifacts: d.CSVArtifacts, Jobs: d.JobRepo, QuotaRepo: d.QuotaRepo, Emit: d.Emit,
+		Artifacts: d.CSVArtifacts, Jobs: d.JobRepo, Enqueuer: d.JobEnqueuer,
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 }

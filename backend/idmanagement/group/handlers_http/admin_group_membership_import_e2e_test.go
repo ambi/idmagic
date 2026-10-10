@@ -14,6 +14,10 @@ import (
 	"testing"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -120,7 +124,7 @@ func newMembershipImportHarness(t *testing.T, membershipType groupdomain.GroupMe
 			UserRepo: users, GroupRepo: groups, CSVArtifacts: artifacts,
 			GroupMembershipImportCommitter: committer,
 		},
-		Jobs: jobs.Module{Repo: jobRepo},
+		Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
 	})
 
 	planDeps := groupusecases.GroupMembershipImportPlanDeps{

@@ -67,7 +67,7 @@ type Deps struct {
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	ClientSessionStore         logoutports.ClientSessionStore
 	LogoutNotificationStore    logoutports.LogoutNotificationStore
-	JobRepo                    jobsports.JobRepository
+	JobEnqueuer                jobsports.Enqueuer
 	DeviceCodeStore            oauthports.DeviceCodeStore
 	ApprovalRequestStore       oauthports.ApprovalRequestStore
 	Notifier                   notificationports.Notifier

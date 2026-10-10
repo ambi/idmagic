@@ -170,3 +170,24 @@ func TestEnqueue_DedupHitReleasesSpeculativeQuotaReservation(t *testing.T) {
 		t.Fatalf("expected active_jobs usage to stay at 1 after dedup hit, got %d", usage.ActiveJobs)
 	}
 }
+
+// 投入器は JobEnqueued の発行と active_jobs の確認を省けないよう、三つの依存のどれかが欠けた組み立てを拒否する。
+func TestNewEnqueuerRejectsAMissingDependency(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotas := tenancymemory.NewQuotaRepository()
+	emit := func(spec.DomainEvent) {}
+	for name, build := range map[string]func(){
+		"保存先がない":   func() { usecases.NewEnqueuer(nil, quotas, emit) },
+		"クォータがない":  func() { usecases.NewEnqueuer(repo, nil, emit) },
+		"発行の関数がない": func() { usecases.NewEnqueuer(repo, quotas, nil) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("NewEnqueuer accepted a missing dependency, want a panic")
+				}
+			}()
+			build()
+		})
+	}
+}

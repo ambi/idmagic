@@ -25,7 +25,8 @@ type Deps struct {
 
 	LifecycleWorkflowRepo    igports.LifecycleWorkflowRepository
 	LifecycleWorkflowRunRepo igports.LifecycleWorkflowRunRepository
-	JobRepo                  jobsports.JobRepository
+	// JobEnqueuer は、ライフサイクルの実行のジョブを投入する。
+	JobEnqueuer jobsports.Enqueuer
 	// UserRepo/GroupRepo and ApplicationRepo/AssignmentRepo/EmailSender are only
 	// used by dry-run (DryRunLifecycleWorkflow, wi-222) to evaluate actions'
 	// current state without mutating record contexts.
@@ -36,10 +37,6 @@ type Deps struct {
 	Notifier        sharednotification.Notifier
 	// AttrSchemaRepo は保存と有効化で、フィルターのフィールドをテナントの属性スキーマと照合する。
 	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
-	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160)
-	// for the LifecycleWorkflowRun job this package dispatches. nil
-	// skips enforcement.
-	QuotaRepo tenantports.QuotaRepository
 }
 
 // RegisterRoutes wires the 11 lifecycle workflow admin endpoints.

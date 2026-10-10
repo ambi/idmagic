@@ -26,7 +26,7 @@ const groupMembershipImportErrorsQuery = "GetAdminGroupMemberImport;errors"
 
 func groupMembershipImportStartDeps(d Deps) groupusecases.GroupMembershipImportStartDeps {
 	return groupusecases.GroupMembershipImportStartDeps{
-		Artifacts: d.CSVArtifacts, Jobs: d.JobRepo, QuotaRepo: d.QuotaRepo, Emit: d.Emit,
+		Artifacts: d.CSVArtifacts, Jobs: d.JobRepo, Enqueuer: d.JobEnqueuer,
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 }

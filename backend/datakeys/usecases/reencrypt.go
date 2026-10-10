@@ -10,10 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/datakeys/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ReencryptBatchSize is how many rows ReencryptTenantField asks a
@@ -41,11 +38,7 @@ type ReencryptDeps struct {
 	// ReencryptMaxBatchesPerRun with rows still pending. nil skips
 	// re-enqueueing (wiring gaps in tests/tools); production bootstrap
 	// always sets it.
-	Jobs jobsports.JobRepository
-	// QuotaRepo は、続きのジョブを投入するときに active_jobs を確認する。
-	QuotaRepo tenantports.QuotaRepository
-	// Emit は、続きのジョブを新しく作ったときに JobEnqueued を発行する。
-	Emit func(spec.DomainEvent)
+	Jobs jobsports.Enqueuer
 	// Now returns the current time for the continuation Job's enqueue;
 	// defaults to time.Now().UTC() when nil.
 	Now func() time.Time
@@ -113,13 +106,13 @@ type ReencryptResult struct {
 // EnqueueReencryptionJob enqueues the data_key_reencryption Job for
 // tenantID/migratorName, or — via JobHandlerIdempotency dedup — reuses the
 // already-outstanding one.
-func EnqueueReencryptionJob(ctx context.Context, jobs jobsusecases.EnqueueDeps, tenantID, migratorName string, now time.Time) error {
+func EnqueueReencryptionJob(ctx context.Context, jobs jobsports.Enqueuer, tenantID, migratorName string, now time.Time) error {
 	params, err := json.Marshal(ReencryptParams{TenantID: tenantID, Migrator: migratorName})
 	if err != nil {
 		return err
 	}
 	dedupKey := ReencryptionDedupKey(tenantID, migratorName)
-	_, err = jobsusecases.Enqueue(ctx, jobs, jobsports.EnqueueInput{
+	_, err = jobs.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindDataKeyReencryption, Params: params, DedupKey: &dedupKey,
 	}, now)
 	return err
@@ -147,7 +140,7 @@ func ReencryptionHandler(deps ReencryptDeps) func(ctx context.Context, job *jobs
 			return nil, err
 		}
 		if remaining > 0 && deps.Jobs != nil {
-			if enqErr := EnqueueReencryptionJob(ctx, jobsusecases.EnqueueDeps{Repo: deps.Jobs, QuotaRepo: deps.QuotaRepo, Emit: deps.Emit}, p.TenantID, p.Migrator, deps.now()); enqErr != nil {
+			if enqErr := EnqueueReencryptionJob(ctx, deps.Jobs, p.TenantID, p.Migrator, deps.now()); enqErr != nil {
 				logging.Warn(ctx, "datakeys: failed to re-enqueue continuation reencryption job", "error", enqErr, "tenant_id", p.TenantID, "migrator", p.Migrator)
 			}
 		}

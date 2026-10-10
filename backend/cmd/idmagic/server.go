@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+
 	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 
@@ -182,6 +184,9 @@ func Run() error {
 	if cimdRepo, ok := deps.OAuth2.ClientRepo.(*cimdhttp.ClientRepositoryWithCIMD); ok {
 		cimdRepo.Emit = emit
 	}
+	// 投入器も JobEnqueued の発行先を必要とするので、NewEmitFunc の後で組み立てる。
+	jobsModule := deps.Jobs
+	jobsModule.Enqueuer = jobsusecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	httpadapter.Register(e, httpadapter.Deps{
 		MetricsHandler:            appMetrics.Handler(),
 		Admission:                 api.Admission,
@@ -222,7 +227,7 @@ func Run() error {
 		FederationSigner: federationSigner,
 		Application:      deps.Application,
 		ApiTokens:        deps.ApiTokens,
-		Jobs:             deps.Jobs,
+		Jobs:             jobsModule,
 		Provisioning:     deps.Provisioning,
 		WorkloadIdentity: deps.WorkloadIdentity,
 		SharedSignals:    deps.SharedSignals,
