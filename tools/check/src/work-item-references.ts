@@ -3,7 +3,8 @@
  * repository. A record that names a scenario, a TypeSpec symbol, or a reading
  * list is only useful while those targets still exist.
  *
- * `affected_spec` is checked for every record. `initial_context` is checked
+ * `affected_spec` is checked for every record the caller verifies; a completed
+ * record is verified only by the change that completes it. `initial_context` is checked
  * only once the item is in progress: a reading list written for a backlog item
  * rots before the work begins, and the format asks for it to be rewritten at
  * that moment.
@@ -23,29 +24,6 @@ export type ReferenceEnvironment = {
   exists: (path: string) => boolean
   /** Contents of a repository-relative file, or undefined when unreadable. */
   read: (path: string) => string | undefined
-  /** 移した仕様文書の行き先。`tools/check/relocated-spec-paths.json` が定める。 */
-  relocated?: (path: string) => string[] | undefined
-}
-
-/** 移した仕様文書の旧パスから、規則を宣言する新しいパスへの対応。 */
-export const RELOCATED_SPEC_PATHS = 'tools/check/relocated-spec-paths.json'
-
-/**
- * 旧パスの行き先。ファイルを名指す項目を先に引き、なければ `/` で終わる項目を、
- * ディレクトリごと移した接頭辞の対応として使う。ディレクトリの改名で動いたファイルを
- * 一つずつ列挙すると、完了記録が参照するパスの数だけ表が増えるためである。
- */
-export function relocatedSpecPaths(
-  table: Readonly<Record<string, readonly string[]>>,
-  path: string,
-): string[] | undefined {
-  const named = table[path]
-  if (named) return [...named]
-  const prefix = Object.keys(table)
-    .filter((key) => key.endsWith('/') && path.startsWith(key))
-    .sort((left, right) => right.length - left.length)[0]
-  if (prefix === undefined) return undefined
-  return (table[prefix] ?? []).map((target) => target + path.slice(prefix.length))
 }
 
 /** Reading-list keys whose entries are repository paths. */
@@ -73,29 +51,11 @@ function stringList(value: unknown): string[] {
 
 function verifyAffectedSpec(record: WorkItemRecord, environment: ReferenceEnvironment): string[] {
   const findings: string[] = []
-  const active = record.status === 'pending' || record.status === 'in_progress'
   for (const reference of stringOrObjectList(record.affected_spec)) {
-    if (typeof reference.path !== 'string') {
-      if (active) findings.push('active work item contains a legacy specification reference')
-      continue
-    }
+    if (typeof reference.path !== 'string') continue
     const source = environment.exists(reference.path) ? environment.read(reference.path) : undefined
     if (source === undefined) {
-      // 完了した記録は書き換えず、移した文書の行き先で解決する。未完了の記録は現在のパスへ直す。
-      const relocated = active ? undefined : environment.relocated?.(reference.path)
-      if (relocated === undefined) {
-        findings.push(`affected_spec path does not exist: ${reference.path}`)
-        continue
-      }
-      const sources = relocated.flatMap((path) => environment.read(path) ?? [])
-      if (
-        typeof reference.requirement === 'string' &&
-        !sources.some((moved) => resolvesRequirement(moved, reference.requirement as string))
-      ) {
-        findings.push(
-          `requirement does not resolve where ${reference.path} moved: ${reference.requirement}`,
-        )
-      }
+      findings.push(`affected_spec path does not exist: ${reference.path}`)
       continue
     }
     if (

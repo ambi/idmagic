@@ -18,7 +18,6 @@ import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const outputDirectory = resolve(root, 'site')
-const legacyOutputDirectory = resolve(root, 'spec/generated/docs')
 const typespecPath = resolve(root, 'spec/main.tsp')
 const checkOnly = process.argv.includes('--check')
 const openapiPath = await discoverGeneratedOpenApi(root)
@@ -183,7 +182,6 @@ if (!checkOnly) {
   if (outputDirectory !== resolve(root, 'site'))
     throw new Error(`refusing to replace unexpected output directory ${outputDirectory}`)
   await rm(outputDirectory, { recursive: true, force: true })
-  await rm(legacyOutputDirectory, { recursive: true, force: true })
   for (const [path, content] of Object.entries(result.files)) {
     const output = resolve(outputDirectory, path)
     await mkdir(dirname(output), { recursive: true })

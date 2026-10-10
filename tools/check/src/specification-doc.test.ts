@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { documentKind, validateDocument } from './specification-doc.ts'
 
-const SCENARIOS = 'docs/modules/demo/scenarios.feature.md'
-const STATES = 'docs/modules/demo/states.md'
+const SCENARIOS = 'docs/requirements/scenarios.feature.md'
+const STATES = 'docs/modules/demo/work/task/README.md'
 const STANDARDS = 'docs/modules/demo/standards.md'
 
 const scenarios = `# Feature: Demo
@@ -21,9 +21,8 @@ const messages = (path: string, source: string) =>
 
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {
-    expect(documentKind('docs/modules/demo/states.md')).toBe('states')
-    expect(documentKind('docs/modules/demo/scenarios.feature.md')).toBe('scenarios')
-    expect(documentKind('docs/modules/demo/decisions.md')).toBe('prose')
+    expect(documentKind('docs/requirements/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/modules/demo/glossary.md')).toBe('prose')
     expect(documentKind('docs/requirements/standards.md')).toBe('standards')
     expect(documentKind('docs/design/security/authorization.md')).toBe('prose')
     expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
@@ -41,6 +40,9 @@ describe('documentKind', () => {
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
     expect(documentKind('docs/modules/demo/notes.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/states.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/scenarios.feature.md')).toBeUndefined()
+    expect(documentKind('docs/domain/demo/README.md')).toBeUndefined()
     expect(documentKind('docs/states.md')).toBeUndefined()
     expect(documentKind('docs/authorization.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
@@ -48,15 +50,9 @@ describe('documentKind', () => {
   })
 
   it('reads a feature slice one level below its context with the grammar its name gives', () => {
-    expect(documentKind('docs/modules/demo/user/scenarios.feature.md')).toBe('scenarios')
-    expect(documentKind('docs/modules/demo/user/states.md')).toBe('states')
     expect(documentKind('docs/modules/demo/user/README.md')).toBe('specification')
-    expect(documentKind('docs/modules/demo/user/internals.md')).toBe('prose')
-  })
-
-  // 基準のリビジョンには改名前の付録が残るので、spec-diff はそれも付録として読む。
-  it('reads the appendix under its former name examples.feature.md', () => {
-    expect(documentKind('docs/modules/demo/people/user/examples.feature.md')).toBe('examples')
+    expect(documentKind('docs/modules/demo/user/acceptance.feature.md')).toBe('examples')
+    expect(documentKind('docs/modules/demo/user/design.md')).toBe('prose')
   })
 
   it('reads the feature layout: specifications, chapters, appendix, and design', () => {
@@ -195,7 +191,7 @@ Replaced by the valid request scenario.
 
 ## Rule: REQ-DEMO-002 A behavior
 `
-    const result = validateDocument('docs/modules/demo/decisions.md', source)
+    const result = validateDocument('docs/modules/demo/design/csv-transfer.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
       'REQ-DEMO-002 must be declared in scenarios.feature.md or in a feature specification',
     ])
@@ -289,9 +285,11 @@ describe('examples appendix', () => {
   })
 })
 
-const states = `# Demo State Transitions
+const states = `# Demo
 
-## Lifecycle
+## 状態遷移
+
+### Lifecycle
 
 | State | Kind | Meaning |
 |---|---|---|
@@ -308,7 +306,7 @@ const states = `# Demo State Transitions
 | Done | 何もしない |
 `
 
-describe('states.md', () => {
+describe('state machine', () => {
   it('accepts a machine that declares its states before its transitions', () => {
     expect(validateDocument(STATES, states).findings).toEqual([])
   })
@@ -363,9 +361,11 @@ describe('states.md', () => {
   })
 })
 
-const matrixMachine = (matrix: string) => `# Demo State Transitions
+const matrixMachine = (matrix: string) => `# Demo
 
-## Lifecycle
+## 状態遷移
+
+### Lifecycle
 
 | State | Kind | Meaning |
 |---|---|---|
@@ -402,9 +402,11 @@ describe('state matrix', () => {
   })
 
   it('reads a target state with an underscore the same way as the state table', () => {
-    const source = `# Demo State Transitions
+    const source = `# Demo
 
-## Lifecycle
+## 状態遷移
+
+### Lifecycle
 
 | State | Kind | Meaning |
 |---|---|---|

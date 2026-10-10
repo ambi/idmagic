@@ -20,40 +20,6 @@
   "allOf": [
     {
       "if": {
-        "properties": { "evidence_policy": { "const": "risk-based-v4" } },
-        "required": ["evidence_policy"]
-      },
-      "then": {
-        "properties": {
-          "primary_use_cases": { "items": { "$ref": "#/$defs/selectedBoundaryPlan" } },
-          "completion": {
-            "properties": {
-              "primary_use_case_evidence": {
-                "items": { "$ref": "#/$defs/selectedBoundaryEvidence" }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": { "evidence_policy": { "const": "risk-based-v3" } },
-        "required": ["evidence_policy"]
-      },
-      "then": {
-        "properties": {
-          "primary_use_cases": { "items": { "$ref": "#/$defs/primaryUseCasePlan" } },
-          "completion": {
-            "properties": {
-              "primary_use_case_evidence": { "items": { "$ref": "#/$defs/primaryUseCaseEvidence" } }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
         "properties": { "status": { "enum": ["pending", "in_progress"] } },
         "required": ["status"]
       },
@@ -75,99 +41,18 @@
     },
     {
       "if": {
-        "properties": {
-          "evidence_policy": { "const": "risk-based-v1" },
-          "status": { "const": "completed" }
-        },
-        "required": ["evidence_policy", "status"]
-      },
-      "then": {
-        "properties": {
-          "completion": { "required": ["red_evidence"] }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "evidence_policy": { "const": "risk-based-v2" },
-          "status": { "const": "completed" }
-        },
-        "required": ["evidence_policy", "status"]
-      },
-      "then": {
-        "properties": {
-          "completion": {
-            "required": ["acceptance_red_evidence", "unit_red_evidence"]
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "id": {
-            "pattern": "^wi-(?:4(?:1[0-9]|[2-9][0-9])|[5-9][0-9]{2}|[1-9][0-9]{3,})-"
-          },
-          "status": { "const": "completed" }
-        },
-        "required": ["id", "status"]
-      },
-      "then": { "required": ["evidence_policy"] }
-    },
-    {
-      "if": {
-        "properties": {
-          "id": {
-            "pattern": "^wi-(?:45[2-9]|4[6-9][0-9]|[5-9][0-9]{2}|[1-9][0-9]{3,})-"
-          },
-          "status": { "const": "completed" }
-        },
-        "required": ["id", "status"]
-      },
-      "then": { "required": ["documentation_impact"] }
-    },
-    {
-      "if": {
-        "properties": {
-          "status": { "const": "in_progress" }
-        },
+        "properties": { "status": { "const": "completed" } },
         "required": ["status"]
       },
-      "then": {
-        "properties": {
-          "evidence_policy": { "enum": ["risk-based-v3", "risk-based-v4"] }
-        },
-        "required": ["evidence_policy"]
-      }
+      "then": { "required": ["evidence_policy", "documentation_impact"] }
     },
     {
       "if": {
         "properties": {
-          "id": {
-            "pattern": "^wi-(?:4(?:1[2-9]|[2-9][0-9])|[5-9][0-9]{2}|[1-9][0-9]{3,})-"
-          },
-          "status": { "const": "completed" }
-        },
-        "required": ["id", "status"]
-      },
-      "then": {
-        "properties": {
-          "evidence_policy": { "enum": ["risk-based-v2", "risk-based-v3", "risk-based-v4"] }
-        },
-        "required": ["evidence_policy"]
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "evidence_policy": {
-            "enum": ["risk-based-v1", "risk-based-v2", "risk-based-v3", "risk-based-v4"]
-          },
           "risk": { "enum": ["medium", "high", "critical"] },
           "status": { "const": "completed" }
         },
-        "required": ["evidence_policy", "risk", "status"]
+        "required": ["risk", "status"]
       },
       "then": {
         "properties": {
@@ -290,7 +175,7 @@
       }
     },
     "affected_spec": {
-      "description": "影響する normative scenario / standard ID または TypeSpec symbol への direct reference。完了済み履歴では legacy SCL reference も許容する。",
+      "description": "影響する normative scenario / standard ID または TypeSpec symbol への direct reference。",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -301,9 +186,9 @@
             "additionalProperties": false,
             "properties": {
               "path": {
-                "description": "docs/ 直下、docs/modules/<module>/ 直下、または機能スライス docs/modules/<module>/<feature>/ 直下の一次情報。完了済み記録が指す SPECIFICATION.md と、改名前の docs/domain/ も受け付ける。",
+                "description": "docs/ 直下、docs/modules/<module>/ 直下、または機能スライス docs/modules/<module>/<feature>/ 直下の一次情報。",
                 "type": "string",
-                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|(?:modules|domain)/[^/]+/[^/]+/[^/]+/[^/]+|(?:modules|domain)/[^/]+/[^/]+/[^/]+|(?:modules|domain)/[^/]+/[^/]+|(?:modules|domain)/[^/]+)\\.md$"
+                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|modules/[^/]+/[^/]+/[^/]+/[^/]+|modules/[^/]+/[^/]+/[^/]+|modules/[^/]+/[^/]+|modules/[^/]+)\\.md$"
               },
               "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" },
               "impact": { "$ref": "#/$defs/specImpact" }
@@ -318,8 +203,7 @@
               "symbol": { "type": "string", "minLength": 1 },
               "impact": { "$ref": "#/$defs/specImpact" }
             }
-          },
-          { "$ref": "#/$defs/sclElementReference" }
+          }
         ]
       }
     },
@@ -327,12 +211,7 @@
       "description": "機能または標準対応の観測結果、故障と検証境界。",
       "type": "array",
       "minItems": 1,
-      "items": {
-        "oneOf": [
-          { "$ref": "#/$defs/primaryUseCasePlan" },
-          { "$ref": "#/$defs/selectedBoundaryPlan" }
-        ]
-      }
+      "items": { "$ref": "#/$defs/selectedBoundaryPlan" }
     },
     "documentation_impact": {
       "description": "着手時から完了時まで保持する利用者向けリリース文書の影響。",
@@ -398,7 +277,7 @@
     "evidence_policy": {
       "description": "The risk-based evidence contract applied after work starts.",
       "type": "string",
-      "enum": ["risk-based-v1", "risk-based-v2", "risk-based-v3", "risk-based-v4"]
+      "enum": ["risk-based-v4"]
     },
     "risk_notes": {
       "type": "string",
@@ -420,23 +299,8 @@
           "type": "string",
           "minLength": 1
         },
-        "red_evidence": {
-          "description": "The failing check observed before implementation and why it detects wrong behavior.",
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["test", "requirement", "observed_failure", "detection_reason"],
-          "properties": {
-            "test": { "type": "string", "minLength": 1 },
-            "requirement": {
-              "type": "string",
-              "pattern": "^(?:REQ-[A-Z0-9]+-[0-9]{3}|N/A: .+)$"
-            },
-            "observed_failure": { "type": "string", "minLength": 1 },
-            "detection_reason": { "type": "string", "minLength": 1 }
-          }
-        },
         "acceptance_red_evidence": {
-          "description": "The failing observable-boundary check recorded by risk-based-v2.",
+          "description": "The failing observable-boundary check of work without primary use cases.",
           "type": "object",
           "additionalProperties": false,
           "required": ["test", "requirement", "observed_failure", "detection_reason"],
@@ -451,7 +315,7 @@
           }
         },
         "unit_red_evidence": {
-          "description": "The failing inner-logic check recorded by risk-based-v2.",
+          "description": "The failing inner-logic check of work without primary use cases.",
           "type": "object",
           "additionalProperties": false,
           "required": ["test", "requirement", "observed_failure", "detection_reason"],
@@ -466,15 +330,10 @@
           }
         },
         "primary_use_case_evidence": {
-          "description": "risk-based-v3 の主要ユースケースごとの RED と故障注入結果。",
+          "description": "主要ユースケースごとの、選択した境界の RED と故障注入結果。",
           "type": "array",
           "minItems": 1,
-          "items": {
-            "oneOf": [
-              { "$ref": "#/$defs/primaryUseCaseEvidence" },
-              { "$ref": "#/$defs/selectedBoundaryEvidence" }
-            ]
-          }
+          "items": { "$ref": "#/$defs/selectedBoundaryEvidence" }
         },
         "independent_verification": {
           "description": "Optional. Results from a verifier independent of the implementer. Completed records written while this was required still carry it.",
@@ -579,80 +438,6 @@
         "name": { "type": "string", "minLength": 1 },
         "task": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
       }
-    },
-    "primaryUseCasePlan": {
-      "type": "object",
-      "required": [
-        "id",
-        "requirement",
-        "observable_result",
-        "unit_test",
-        "e2e_test",
-        "unit_fault_model",
-        "e2e_fault_model"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-        "requirement": {
-          "type": "string",
-          "pattern": "^(?:REQ-[A-Z0-9]+-[0-9]{3}|[A-Z][A-Z0-9-]+)$"
-        },
-        "observable_result": { "type": "string", "minLength": 1 },
-        "unit_test": { "$ref": "#/$defs/testReference" },
-        "e2e_test": { "$ref": "#/$defs/testReference" },
-        "unit_fault_model": { "type": "string", "minLength": 1 },
-        "e2e_fault_model": { "type": "string", "minLength": 1 }
-      }
-    },
-    "primaryUseCaseEvidence": {
-      "type": "object",
-      "required": ["id", "unit_red", "e2e_red", "unit_fault_injection", "e2e_fault_injection"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-        "unit_red": { "type": "string", "minLength": 1 },
-        "e2e_red": { "type": "string", "minLength": 1 },
-        "unit_fault_injection": { "type": "string", "minLength": 1 },
-        "e2e_fault_injection": { "type": "string", "minLength": 1 }
-      }
-    },
-    "sclElementReference": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": ["context", "kind", "element"],
-          "additionalProperties": false,
-          "properties": {
-            "context": { "type": "string", "minLength": 1 },
-            "kind": {
-              "enum": [
-                "model",
-                "interface",
-                "state",
-                "authorization_resource",
-                "authorization_principal",
-                "authorization_policy",
-                "objective",
-                "scenario",
-                "flow"
-              ]
-            },
-            "element": { "type": "string", "minLength": 1 }
-          }
-        },
-        {
-          "type": "object",
-          "required": ["context", "kind", "standard", "requirement"],
-          "additionalProperties": false,
-          "properties": {
-            "context": { "type": "string", "minLength": 1 },
-            "kind": { "const": "standard_requirement" },
-            "standard": { "type": "string", "minLength": 1 },
-            "requirement": { "type": "string", "minLength": 1 }
-          }
-        }
-      ]
     }
   }
 }

@@ -36,7 +36,6 @@ export type SpecificationValidation = {
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind =
   | 'standards'
-  | 'states'
   | 'scenarios'
   | 'specification'
   | 'examples'
@@ -46,21 +45,11 @@ export type DocumentKind =
 
 const KIND_BY_NAME = new Map<string, DocumentKind>([
   ['standards.md', 'standards'],
-  ['states.md', 'states'],
   ['scenarios.feature.md', 'scenarios'],
 ])
 
-/**
- * モジュールの直下で種別を返す名前。履歴のリビジョンを読む `spec-diff` のために、ファイル種別で
- * 文書を分けていた頃の名前も含める。今の作業ツリーに置いてよいかは段の集合を見る検査が決める。
- */
-const MODULE_LEVEL_NAMES = new Set<string>([
-  ...MODULE_DOCUMENTS,
-  'states.md',
-  'decisions.md',
-  'internals.md',
-  'scenarios.feature.md',
-])
+/** モジュールの直下で種別を返す名前。 */
+const MODULE_LEVEL_NAMES = new Set<string>(MODULE_DOCUMENTS)
 
 /** モジュールより下の段で、任意の名前の章として読む名前。 */
 const CHAPTER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
@@ -69,18 +58,13 @@ const CHAPTER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
  * The kind of a canonical document, or undefined when the path is not one.
  * `path` is repository-relative and uses forward slashes.
  *
- * `docs/contexts/` と `docs/domain/` は `docs/modules/` へ改名する前の名前で、履歴を読む道具（`spec-diff`）が
- * その時点のリビジョンを規範文書として認識し続けるために読み替える。
- *
  * モジュールより下の段の種別は、モジュールの形式を問わずパスだけから決める。履歴や一つの
  * ファイルだけを読む道具が、隣のファイルを見ずに同じ答えを得られるようにするためである。
  * その段にそのファイルを置いてよいかは、段の集合を見る `verifyCanonicalDocumentSet` が決める。
  */
 export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
-  const directory = path
-    .slice(0, path.lastIndexOf('/'))
-    .replace(/^docs\/(?:contexts|domain)\//, 'docs/modules/')
+  const directory = path.slice(0, path.lastIndexOf('/'))
   if (directory === 'docs/design' && name === 'README.md') return 'design-index'
   const below = directory.match(/^docs\/modules\/[^/]+\/(.+)$/)?.[1]?.split('/')
   if (below) {
@@ -93,9 +77,8 @@ export function documentKind(path: string): DocumentKind | undefined {
     if (below.length > 2 || name === 'glossary.md' || name === 'standards.md') return undefined
     const named = KIND_BY_NAME.get(name)
     if (named) return named
-    // `examples.feature.md` は付録を改名する前の名前で、`spec-diff` が基準のリビジョンを読むために残す。
-    if (name === 'acceptance.feature.md' || name === 'examples.feature.md') return 'examples'
-    if (['design.md', 'decisions.md', 'internals.md'].includes(name)) return 'prose'
+    if (name === 'acceptance.feature.md') return 'examples'
+    if (name === 'design.md') return 'prose'
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
   if (/^docs\/modules\/[^/]+$/.test(directory)) {
@@ -461,7 +444,6 @@ export function validateDocument(path: string, source: string): SpecificationVal
 
   const standardIds =
     kind === 'standards' ? validateStandards(source, 0, source, /^## .+$/gm, findings) : []
-  if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, findings)
   if (kind === 'decision-records') validateDecisionRecords(source, findings)
   if (kind === 'design-index') validateDesignAreaIndex(source, findings)
 

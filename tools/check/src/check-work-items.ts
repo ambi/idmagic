@@ -18,17 +18,14 @@ import {
   type SpecificationDiff,
 } from './spec-diff.ts'
 import { parseMiseTasks, taskClosure } from './verification-tasks.ts'
+import { changedWorkItemRecords, verifiedNow } from './work-item-changes.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
   verifyWorkItemIdentifiers,
 } from './work-item-dependencies.ts'
 import type { ReferenceEnvironment } from './work-item-references.ts'
-import {
-  RELOCATED_SPEC_PATHS,
-  relocatedSpecPaths,
-  verifyWorkItemReferences,
-} from './work-item-references.ts'
+import { verifyWorkItemReferences } from './work-item-references.ts'
 
 export type ParsedWorkItem = {
   id: string
@@ -108,27 +105,6 @@ function revisionFile(snapshot: WorkspaceSnapshot, ref: string, path: string): s
   return result.exitCode === 0 ? result.stdout.toString() : ''
 }
 
-function changedWorkItemRecords(snapshot: WorkspaceSnapshot): ReadonlySet<string> | undefined {
-  const changedFromMain = Bun.spawnSync(
-    ['git', 'diff', '--name-only', 'main...', '--', 'work-items'],
-    { cwd: snapshot.root },
-  )
-  const status = Bun.spawnSync(['git', 'status', '--porcelain', '--', 'work-items'], {
-    cwd: snapshot.root,
-  })
-  if (changedFromMain.exitCode !== 0 && status.exitCode !== 0) return undefined
-  const changed = new Set<string>()
-  const add = (path: string) => {
-    const name = path.trim().match(/([^/\\]+)\.md$/)?.[1]
-    if (name) changed.add(name)
-  }
-  for (const line of changedFromMain.stdout.toString().split('\n')) add(line)
-  for (const line of status.stdout.toString().split('\n')) {
-    for (const part of line.slice(3).split(' -> ')) add(part)
-  }
-  return changed
-}
-
 function specificationAdditionsClaimed(
   diff: SpecificationDiff,
   changed: ReadonlySet<string> | undefined,
@@ -147,6 +123,7 @@ function specificationAdditionsClaimed(
 async function documentationImpactEnvironment(
   snapshot: WorkspaceSnapshot,
   records: readonly ParsedWorkItem[],
+  changed: ReadonlySet<string> | undefined,
 ): Promise<DocumentationImpactEnvironment> {
   const releasePhase = await readReleasePhase(snapshot)
   const featureRegistryPath = 'backend/cmd/internal/bootstrap/features.go'
@@ -156,7 +133,6 @@ async function documentationImpactEnvironment(
   } catch {
     // 最小 fixture は Git 履歴や仕様文書を持たない。
   }
-  const changed = changedWorkItemRecords(snapshot)
   let breakingApiChanges: string[] = []
   if (releasePhase === 'published') {
     breakingApiChanges = compareOpenApi(
@@ -185,7 +161,9 @@ async function documentationImpactEnvironment(
 export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   if (!snapshot.exists('work-items')) return { ok: true, lines: ['ok  0 work item(s)'] }
   const parsed = await loadWorkItems(snapshot)
-  const lines = parsed.flatMap((record) =>
+  const changed = changedWorkItemRecords(snapshot)
+  const verified = parsed.filter((record) => verifiedNow(record.path, changed))
+  const lines = verified.flatMap((record) =>
     record.formatFindings.map(
       (finding) => `${record.path}:${finding.line}:${finding.column}: ${finding.message}`,
     ),
@@ -197,28 +175,19 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       )
     }
   }
-  const relocations: Record<string, string[]> = snapshot.exists(RELOCATED_SPEC_PATHS)
-    ? JSON.parse(snapshot.readSync(RELOCATED_SPEC_PATHS))
-    : {}
   const repository: ReferenceEnvironment = {
     exists: (path) => snapshot.exists(path),
     read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
-    relocated: (path) => relocatedSpecPaths(relocations, path),
   }
   const primaryEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,
     requiredTasks: await requiredVerificationTasks(snapshot),
   }
-  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed)
+  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
+  // 依存と識別番号は記録の間の現在の関係なので、変わっていない完了済みの記録も含めて見る。
   const dependencyRecords: WorkItemDependencyRecord[] = []
   for (const record of parsed) {
     if (!record.data) continue
-    const status = record.data.status
-    const directory =
-      status === 'completed' || status === 'cancelled' ? 'work-items/done' : 'work-items/active'
-    if (!record.path.startsWith(`${directory}/`)) {
-      lines.push(`${record.path}: status ${status} belongs in ${directory}`)
-    }
     dependencyRecords.push({
       id: record.id,
       path: record.path,
@@ -226,6 +195,15 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
         ? record.data.depends_on.filter((item): item is string => typeof item === 'string')
         : [],
     })
+  }
+  for (const record of verified) {
+    if (!record.data) continue
+    const status = record.data.status
+    const directory =
+      status === 'completed' || status === 'cancelled' ? 'work-items/done' : 'work-items/active'
+    if (!record.path.startsWith(`${directory}/`)) {
+      lines.push(`${record.path}: status ${status} belongs in ${directory}`)
+    }
     lines.push(
       ...verifyWorkItemReferences(record.data, repository).map(
         (finding) => `${record.path}: ${finding}`,

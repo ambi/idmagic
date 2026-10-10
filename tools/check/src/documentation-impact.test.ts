@@ -23,7 +23,7 @@ const environment = (
 const record = {
   id: 'wi-999-documentation-impact',
   status: 'in_progress',
-  evidence_policy: 'risk-based-v3',
+  evidence_policy: 'risk-based-v4',
   change_kind: 'tooling',
   documentation_impact: {
     level: 'none',
@@ -47,7 +47,7 @@ describe('verifyDocumentationImpact', () => {
   it('未公開では機能追加、廃止と破壊的変更に告知断片を要求しない', () => {
     expect(
       verifyDocumentationImpact(
-        { ...record, change_kind: 'feature', evidence_policy: 'risk-based-v4' },
+        { ...record, change_kind: 'feature' },
         environment({
           releasePhase: 'unpublished',
           specificationDiff: {
@@ -117,9 +117,9 @@ describe('verifyDocumentationImpact', () => {
       verifyDocumentationImpact(completed, environment({ maturityChanges: [promotion] })),
     ).toContain('maturity_evidence demo-v1 has no documentation path')
   })
-  it('v4 もリリース文書の影響検査を迂回できない', () => {
+  it('仕様の追加はリリース文書の影響検査を迂回できない', () => {
     const result = verifyDocumentationImpact(
-      { ...record, evidence_policy: 'risk-based-v4' },
+      record,
       environment({
         specificationDiff: { ...noSpecificationChange, addedScenarios: ['REQ-SYSTEM-018'] },
       }),

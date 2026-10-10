@@ -188,6 +188,102 @@ describe('checkWorkItems', () => {
     expect(outcome).toEqual({ ok: true, lines: ['ok  2 work-item dependency record(s)'] })
   })
 
+  describe('完了済みの記録を、作業ツリーで変わったときだけ検証する', () => {
+    const missing = 'docs/modules/demo/moved/README.md'
+    const finding = `affected_spec path does not exist: ${missing}`
+    const closed = minimalRecord('中止', 'cancelled').replace(
+      /^spec_impact: .*$/m,
+      `affected_spec: [{ path: ${missing}, requirement: REQ-DEMO-001 }]`,
+    )
+
+    function git(root: string, ...args: string[]): void {
+      const result = Bun.spawnSync(
+        [
+          'git',
+          '-c',
+          'user.name=t',
+          '-c',
+          'user.email=t@example.com',
+          '-c',
+          'commit.gpgsign=false',
+          ...args,
+        ],
+        { cwd: root },
+      )
+      if (result.exitCode !== 0) throw new Error(result.stderr.toString())
+    }
+
+    /** `files` を main の最初のコミットにした Git の workspace。 */
+    async function committedWorkspace(files: Record<string, string>): Promise<string> {
+      const root = await unpublishedWorkspace()
+      for (const [path, source] of Object.entries(files)) {
+        await mkdir(join(root, path, '..'), { recursive: true })
+        await writeFile(join(root, path), source)
+      }
+      git(root, 'init', '-q', '-b', 'main')
+      git(root, 'add', '-A')
+      git(root, 'commit', '-q', '-m', 'base')
+      return root
+    }
+
+    it('基準から変わっていない記録は、参照先が消えていても通す', async () => {
+      const root = await committedWorkspace({ 'work-items/done/wi-10004-closed.md': closed })
+
+      const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+      expect(outcome).toEqual({ ok: true, lines: ['ok  1 work-item dependency record(s)'] })
+    })
+
+    it('作業ツリーで書き換えた記録を検証する', async () => {
+      const root = await committedWorkspace({ 'work-items/done/wi-10004-closed.md': closed })
+      await writeFile(join(root, 'work-items/done/wi-10004-closed.md'), `${closed}\n追記。\n`)
+
+      const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+      expect(outcome.ok).toBe(false)
+      expect(outcome.lines).toContain(`work-items/done/wi-10004-closed.md: ${finding}`)
+    })
+
+    it('完了の変更で、新しく作った work-items/done へ移した記録を検証する', async () => {
+      const root = await committedWorkspace({
+        'work-items/active/wi-10004-closed.md': minimalRecord('中止'),
+      })
+      await rm(join(root, 'work-items/active/wi-10004-closed.md'))
+      await mkdir(join(root, 'work-items/done'))
+      await writeFile(join(root, 'work-items/done/wi-10004-closed.md'), closed)
+
+      const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+      expect(outcome.ok).toBe(false)
+      expect(outcome.lines).toContain(`work-items/done/wi-10004-closed.md: ${finding}`)
+    })
+
+    it('新しく作った work-items/done へ直接書いた記録を検証する', async () => {
+      const root = await committedWorkspace({
+        'work-items/active/wi-10005-open.md': minimalRecord('未完了'),
+      })
+      await mkdir(join(root, 'work-items/done'))
+      await writeFile(join(root, 'work-items/done/wi-10004-closed.md'), closed)
+
+      const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+      expect(outcome.ok).toBe(false)
+      expect(outcome.lines).toContain(`work-items/done/wi-10004-closed.md: ${finding}`)
+    })
+
+    it('main から分けたブランチで、コミット済みの変更を検証する', async () => {
+      const root = await committedWorkspace({ 'work-items/done/wi-10004-closed.md': closed })
+      git(root, 'switch', '-q', '-c', 'work-item/wi-10004')
+      await writeFile(join(root, 'work-items/done/wi-10004-closed.md'), `${closed}\n追記。\n`)
+      git(root, 'commit', '-q', '-am', 'change')
+
+      const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+      expect(outcome.ok).toBe(false)
+      expect(outcome.lines).toContain(`work-items/done/wi-10004-closed.md: ${finding}`)
+    })
+  })
+
   it('旧配置と status に反するディレクトリを拒否する', async () => {
     const root = await unpublishedWorkspace()
     await mkdir(join(root, 'work-items', 'active'), { recursive: true })

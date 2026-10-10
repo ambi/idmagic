@@ -107,35 +107,8 @@ function deprecatedDeclarations(path: string, source: string): Set<string> {
   return declarations
 }
 
-/**
- * 文書を移しただけの改名を、規範の変更として数えない。この道具は履歴のリビジョンを読むので、
- * 当時のパスを現在の配置へ写してから同定する。
- */
-const RELOCATED_DOCUMENTS = new Map([
-  ['docs/glossary.md', 'docs/requirements/glossary.md'],
-  ['docs/standards.md', 'docs/requirements/standards.md'],
-  ['docs/structure.md', 'docs/design/application/backend.md'],
-  ['docs/scenarios.feature.md', 'docs/requirements/scenarios.feature.md'],
-  ['docs/product-overview.md', 'docs/requirements/product-overview.md'],
-  ['docs/design/product-overview.md', 'docs/requirements/product-overview.md'],
-  ['docs/domain/glossary.md', 'docs/requirements/glossary.md'],
-  ['docs/domain/standards.md', 'docs/requirements/standards.md'],
-  ['docs/domain/structure.md', 'docs/design/application/backend.md'],
-  ['docs/domain/scenarios.feature.md', 'docs/requirements/scenarios.feature.md'],
-])
-
-function currentPath(path: string): string {
-  return (
-    RELOCATED_DOCUMENTS.get(path) ??
-    path
-      .replace(/^docs\/(?:contexts|domain)\//, 'docs/modules/')
-      .replace(/^spec\/contexts\//, 'spec/modules/')
-  )
-}
-
 /** 標準仕様の行は、それを所有する文書と ID で同定する。 */
 function standardRows(path: string, source: string): Map<string, string> {
-  const owner = currentPath(path)
   const rows = new Map<string, string>()
   let cells: string[] | undefined
   for (const token of markdown.parse(source, {})) {
@@ -145,7 +118,7 @@ function standardRows(path: string, source: string): Map<string, string> {
       cells.push(token.content.trim().replaceAll(/\s+/g, ' '))
     } else if (token.type === 'tr_close' && cells) {
       const id = cells[0]
-      if (id && /^[A-Z][A-Z0-9-]+$/.test(id)) rows.set(`${owner}#${id}`, cells.join(' | '))
+      if (id && /^[A-Z][A-Z0-9-]+$/.test(id)) rows.set(`${path}#${id}`, cells.join(' | '))
       cells = undefined
     }
   }
@@ -158,24 +131,6 @@ function section(source: string, name: string): string {
   const rest = source.slice(start.index + start[0].length)
   const end = rest.match(/^## /m)
   return end?.index === undefined ? rest : rest.slice(0, end.index)
-}
-
-function legacyScenarioFacts(source: string): Map<string, string> {
-  const facts = new Map<string, string>()
-  const starts = [...source.matchAll(/^### (REQ-[A-Z0-9-]+): (.+)$/gm)]
-  for (const [index, start] of starts.entries()) {
-    const from = start.index ?? 0
-    const to = starts[index + 1]?.index ?? source.length
-    const fragments = new Set<string>()
-    for (const line of source.slice(from, to).split('\n')) {
-      const step = line.match(/^- (?:GIVEN|WHEN|THEN) (.+)$/)?.[1]
-      if (step) fragments.add(step)
-      const alternative = line.match(/^ {2}- ALT (.+)$/)?.[1]
-      if (alternative) for (const fragment of alternative.split(' → ')) fragments.add(fragment)
-    }
-    facts.set(start[1] ?? '', ['legacy', start[2] ?? '', ...[...fragments].sort()].join('\n'))
-  }
-  return facts
 }
 
 /**
@@ -251,49 +206,36 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     }
     if (path.endsWith('.tsp')) {
       for (const [name, text] of declarationTexts(source)) {
-        facts.declarations.set(`${currentPath(path)}:${name}`, text)
+        facts.declarations.set(`${path}:${name}`, text)
       }
-      for (const declaration of deprecatedDeclarations(currentPath(path), source)) {
+      for (const declaration of deprecatedDeclarations(path, source)) {
         facts.deprecatedDeclarations.add(declaration)
       }
       continue
     }
 
-    // In the split layout the file name says what the file holds, so the whole
-    // file is the section; the single canonical document names its sections.
+    // ファイル名が中身の種別を示すので、ファイル全体を一つの節として読む。
     const name = path.split('/').at(-1) ?? ''
     if (name === 'standards.md') {
       for (const [id, row] of standardRows(path, source)) facts.standards.set(id, row)
     }
-    const scenarioFacts =
-      name === 'scenarios.feature.md'
-        ? gherkinScenarioFacts(source)
-        : name === 'scenarios.md'
-          ? legacyScenarioFacts(source)
-          : legacyScenarioFacts(section(source, 'Scenarios'))
-    for (const [id, body] of scenarioFacts) {
-      facts.scenarios.set(id, body)
+    if (kind === 'scenarios') {
+      for (const [id, body] of gherkinScenarioFacts(source)) facts.scenarios.set(id, body)
     }
+    if (kind !== 'specification') continue
 
-    // A machine belongs to the context that owns it, not to the file that
+    // A machine belongs to the module that owns it, not to the file that
     // happens to hold it, so moving it between files is not a change. 機能スライスへ
     // 移すことも同じで、機能スライスの段を落としてモジュールで同定する。
-    const owner = currentPath(
-      path.slice(0, Math.max(0, path.length - name.length - 1)) || path,
-    ).replace(/^(docs\/modules\/[^/]+)(?:\/[^/]+)+$/, '$1')
-    const split = name === 'states.md'
-    const transitions = split
-      ? source
-      : kind === 'specification'
-        ? section(source, '状態遷移')
-        : section(source, 'State Transitions')
-    const machineHeading = split ? /^## (?!#)(.+)$/ : /^### (.+)$/
+    const owner = path
+      .slice(0, Math.max(0, path.length - name.length - 1))
+      .replace(/^(docs\/modules\/[^/]+)(?:\/[^/]+)+$/, '$1')
     let machine = ''
-    // Only the rows under the transition header are transitions. A states.md
-    // also carries the state table, whose rows say nothing about a transition.
+    // Only the rows under the transition header are transitions. The section
+    // also carries the state table and the matrix, whose rows are not transitions.
     let inTransitions = false
-    for (const line of transitions.split('\n')) {
-      const heading = line.match(machineHeading)
+    for (const line of section(source, '状態遷移').split('\n')) {
+      const heading = line.match(/^### (.+)$/)
       if (heading) {
         machine = `${owner}#${heading[1]}`
         inTransitions = false
@@ -315,7 +257,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     }
   }
 
-  // 形式の印を旧形式の `gherkin` と分けるので、移行のコミットでは題名だけが比べられる。
+  // 形式の印をシステムの例の `gherkin` と分けるので、規則を機能仕様へ移すコミットでは題名だけが比べられる。
   for (const [id, { title, body }] of declared) {
     const fragments = [...(steps.get(id) ?? [])].sort()
     facts.scenarios.set(id, ['spec', title, ...fragments, '--', ...body].join('\n'))
@@ -418,33 +360,13 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
 }
 
 /**
- * The trees a specification can live in. A revision from before the prose moved
- * holds both under `spec/`, so both names stay listed and history keeps reading.
+ * 仕様を置く木。比較の基準も現在の配置と形式にあるものとして読む。配置や形式を移す作業項目は、
+ * 基準のリビジョンを読むための読み替えを、その作業項目の中だけで足して統合後に外す。
  */
 const SPECIFICATION_TREES = ['docs', 'spec'] as const
 
 export function isSpecificationSource(path: string): boolean {
   if (path.startsWith('spec/generated/')) return false
-  // A revision from before the per-kind split still holds SPECIFICATION.md.
-  // This tool reads history, so it keeps understanding that shape even though
-  // nothing writes it any more.
-  if (path.endsWith('/SPECIFICATION.md')) return true
-  if (path.endsWith('/scenarios.md') || path === 'docs/scenarios.md') return true
-  // 全体の文書は、`docs/` 直下、次に `docs/domain/` 直下に置いていた。
-  if (
-    [
-      'docs/glossary.md',
-      'docs/standards.md',
-      'docs/structure.md',
-      'docs/scenarios.feature.md',
-      'docs/product-overview.md',
-      'docs/domain/glossary.md',
-      'docs/domain/standards.md',
-      'docs/domain/structure.md',
-      'docs/domain/scenarios.feature.md',
-    ].includes(path)
-  )
-    return true
   return path.endsWith('.tsp') || documentKind(path) !== undefined
 }
 

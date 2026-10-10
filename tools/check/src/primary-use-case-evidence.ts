@@ -61,61 +61,28 @@ function verifyTestReference(
   }
 
   if (!path) return findings
-  const found = readRecordedPath(path, environment)
-  if (!found) {
+  const source = environment.read(path)
+  if (source === undefined) {
     findings.push(`primary_use_cases ${useCaseId} ${role} test path does not exist: ${path}`)
     return findings
   }
-  if (name && !found.source.includes(name)) {
-    findings.push(`primary_use_cases ${useCaseId} ${role} test name not found in ${found.path}`)
+  if (name && !source.includes(name)) {
+    findings.push(`primary_use_cases ${useCaseId} ${role} test name not found in ${path}`)
   }
-  if (!found.source.includes(requirement)) {
-    findings.push(
-      `primary_use_cases ${useCaseId} requirement ${requirement} not found in ${found.path}`,
-    )
+  if (!source.includes(requirement)) {
+    findings.push(`primary_use_cases ${useCaseId} requirement ${requirement} not found in ${path}`)
   }
   return findings
-}
-
-/**
- * 記録したパスのファイルを読む。モジュールを `internal/` へ移した後は、記録を書き換えずに
- * `backend/<module>/<rest>` を `backend/<module>/internal/<rest>` として読む。
- */
-function readRecordedPath(
-  path: string,
-  environment: PrimaryUseCaseEnvironment,
-): { path: string; source: string } | undefined {
-  const source = environment.read(path)
-  if (source !== undefined) return { path, source }
-  const [root, module, ...rest] = path.split('/')
-  if (root !== 'backend' || !module || rest.length === 0 || rest[0] === 'internal') return undefined
-  const moved = ['backend', module, 'internal', ...rest].join('/')
-  const movedSource = environment.read(moved)
-  return movedSource === undefined ? undefined : { path: moved, source: movedSource }
-}
-
-function sameTest(left: unknown, right: unknown): boolean {
-  const unit = object(left)
-  const e2e = object(right)
-  return (
-    unit !== undefined &&
-    e2e !== undefined &&
-    text(unit.path) === text(e2e.path) &&
-    text(unit.name) === text(e2e.name)
-  )
 }
 
 function verifyCompletionEvidence(
   plans: RecordValue[],
   completion: RecordValue | undefined,
-  selectedBoundaries: boolean,
 ): string[] {
   const rawEvidence = completion?.primary_use_case_evidence
   const evidence = objects(rawEvidence)
   if (!Array.isArray(rawEvidence) || evidence.length === 0) {
-    return [
-      `completion.primary_use_case_evidence is required for applicable risk-based-v${selectedBoundaries ? 4 : 3} work`,
-    ]
+    return ['completion.primary_use_case_evidence is required for applicable work']
   }
 
   const findings: string[] = []
@@ -130,17 +97,10 @@ function verifyCompletionEvidence(
     byId.set(id, result)
   }
 
-  const requiredResults: Array<[keyof RecordValue, string]> = selectedBoundaries
-    ? [
-        ['red', 'RED'],
-        ['fault_injection', 'fault-injection'],
-      ]
-    : [
-        ['unit_red', 'Unit RED'],
-        ['e2e_red', 'E2E RED'],
-        ['unit_fault_injection', 'Unit fault-injection'],
-        ['e2e_fault_injection', 'E2E fault-injection'],
-      ]
+  const requiredResults: Array<[keyof RecordValue, string]> = [
+    ['red', 'RED'],
+    ['fault_injection', 'fault-injection'],
+  ]
   const planIds = new Set<string>()
   for (const plan of plans) {
     const id = text(plan.id)
@@ -162,31 +122,24 @@ function verifyCompletionEvidence(
 }
 
 /**
- * スキーマ検証済みの work item に、バージョン付きの主要ユースケース証拠契約を適用する。
+ * スキーマ検証済みの work item に、主要ユースケースの証拠の契約を適用する。
  * ファイルシステムとタスク探索は環境へ追い出し、この関数自身は判断だけを行う。
  */
 export function verifyPrimaryUseCaseEvidence(
   record: RecordValue,
   environment: PrimaryUseCaseEnvironment,
 ): string[] {
-  const active = record.status === 'in_progress' || record.status === 'completed'
-  if (!active || !['risk-based-v3', 'risk-based-v4'].includes(String(record.evidence_policy)))
-    return []
-  const selectedBoundaries = record.evidence_policy === 'risk-based-v4'
+  if (record.status !== 'in_progress' && record.status !== 'completed') return []
 
   const completion = object(record.completion)
   if (!applicable(record)) {
     if (record.status !== 'completed') return []
     const findings: string[] = []
     if (!object(completion?.acceptance_red_evidence)) {
-      findings.push(
-        `completion.acceptance_red_evidence is required for non-applicable ${record.evidence_policy} work`,
-      )
+      findings.push('completion.acceptance_red_evidence is required for non-applicable work')
     }
     if (!object(completion?.unit_red_evidence)) {
-      findings.push(
-        `completion.unit_red_evidence is required for non-applicable ${record.evidence_policy} work`,
-      )
+      findings.push('completion.unit_red_evidence is required for non-applicable work')
     }
     return findings
   }
@@ -219,26 +172,16 @@ export function verifyPrimaryUseCaseEvidence(
         `primary_use_cases ${id} requirement is not declared in affected_spec: ${requirement}`,
       )
     }
-    if (selectedBoundaries) {
-      if (plan.boundary === 'e2e' && !text(plan.reason)?.trim())
-        findings.push(`primary_use_cases ${id} E2E requires a narrower-boundary reason`)
-      if (record.status === 'completed')
-        findings.push(
-          ...verifyTestReference(id, String(plan.boundary), plan.test, requirement, environment),
-        )
-    } else if (sameTest(plan.unit_test, plan.e2e_test)) {
-      findings.push(`primary_use_cases ${id} uses the same test for Unit and E2E evidence`)
-    }
-    if (record.status === 'completed' && !selectedBoundaries) {
+    if (plan.boundary === 'e2e' && !text(plan.reason)?.trim())
+      findings.push(`primary_use_cases ${id} E2E requires a narrower-boundary reason`)
+    if (record.status === 'completed')
       findings.push(
-        ...verifyTestReference(id, 'Unit', plan.unit_test, requirement, environment),
-        ...verifyTestReference(id, 'E2E', plan.e2e_test, requirement, environment),
+        ...verifyTestReference(id, String(plan.boundary), plan.test, requirement, environment),
       )
-    }
   }
 
   if (record.status === 'completed') {
-    findings.push(...verifyCompletionEvidence(plans, completion, selectedBoundaries))
+    findings.push(...verifyCompletionEvidence(plans, completion))
   }
   return findings
 }

@@ -19,78 +19,35 @@ const environment: PrimaryUseCaseEnvironment = {
 const plan = {
   id: 'demo-success',
   requirement,
-  observable_result: 'The caller observes the completed demo effect.',
-  unit_test: { path: unitPath, name: 'TestDemoRule_REQ_DEMO_001', task: 'test-go-race' },
-  e2e_test: { path: e2ePath, name: 'TestE2E_Demo_REQ_DEMO_001', task: 'test-go-race' },
-  unit_fault_model: 'The use case skips the effect.',
-  e2e_fault_model: 'The configured route is disconnected.',
+  observable_result: '保存された結果を読み戻せる。',
+  boundary: 'acceptance',
+  test: { path: unitPath, name: 'TestDemoRule_REQ_DEMO_001', task: 'test-go-race' },
+  fault_model: '保存を行わない。',
 }
 
 const evidence = {
   id: plan.id,
-  unit_red: 'The unit test failed because the effect was absent.',
-  e2e_red: 'The E2E test failed because no final effect was observed.',
-  unit_fault_injection: 'Skipping the effect made the unit test fail.',
-  e2e_fault_injection: 'Disconnecting the route made the E2E test fail.',
+  red: '保存されず失敗した。',
+  fault_injection: '保存を外すと失敗した。',
 }
 
 const applicable = {
   status: 'in_progress',
-  evidence_policy: 'risk-based-v3',
+  evidence_policy: 'risk-based-v4',
   change_kind: 'feature',
-  affected_spec: [{ path: 'docs/modules/demo/scenarios.feature.md', requirement }],
+  affected_spec: [{ path: 'docs/modules/demo/work/run/README.md', requirement }],
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
-  it('v4 は最小境界を一つ選び、Unit/E2E の対を要求しない', () => {
-    const selected = {
-      id: plan.id,
-      requirement,
-      observable_result: '保存された結果を読み戻せる。',
-      boundary: 'acceptance',
-      test: plan.unit_test,
-      fault_model: '保存を行わない。',
-    }
-    const record = {
-      ...applicable,
-      evidence_policy: 'risk-based-v4',
-      primary_use_cases: [selected],
-    }
+  it('最小境界を一つ選んだ計画と、その RED と故障注入の結果を受理する', () => {
+    const record = { ...applicable, primary_use_cases: [plan] }
     expect(verifyPrimaryUseCaseEvidence(record, environment)).toEqual([])
-    expect(
-      verifyPrimaryUseCaseEvidence({ ...record, primary_use_cases: [] }, environment),
-    ).not.toEqual([])
-    expect(
-      verifyPrimaryUseCaseEvidence(
-        { ...record, primary_use_cases: [{ ...selected, boundary: 'e2e' }] },
-        environment,
-      ),
-    ).not.toEqual([])
     const completed = {
       ...record,
       status: 'completed',
-      completion: {
-        primary_use_case_evidence: [
-          { id: plan.id, red: '保存されず失敗した。', fault_injection: '保存を外すと失敗した。' },
-        ],
-      },
+      completion: { primary_use_case_evidence: [evidence] },
     }
     expect(verifyPrimaryUseCaseEvidence(completed, environment)).toEqual([])
-    expect(verifyPrimaryUseCaseEvidence({ ...completed, completion: {} }, environment)).not.toEqual(
-      [],
-    )
-    expect(
-      verifyPrimaryUseCaseEvidence(completed, { ...environment, read: () => undefined }),
-    ).not.toEqual([])
-    expect(
-      verifyPrimaryUseCaseEvidence(
-        {
-          ...completed,
-          completion: { primary_use_case_evidence: [{ id: plan.id, red: '失敗した。' }] },
-        },
-        environment,
-      ),
-    ).not.toEqual([])
   })
 
   it('requires a plan for feature, bugfix, and standards work after implementation starts', () => {
@@ -109,27 +66,21 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     }
   })
 
-  it('applies the contract when a tooling migration declares primary use cases', () => {
-    const migration = {
+  it('applies the contract when tooling work declares primary use cases', () => {
+    const tooling = {
       ...applicable,
       change_kind: 'tooling',
-      primary_use_cases: [{ ...plan, e2e_test: plan.unit_test }],
+      primary_use_cases: [{ ...plan, boundary: 'e2e' }],
     }
-    expect(verifyPrimaryUseCaseEvidence(migration, environment)).toContain(
-      'primary_use_cases demo-success uses the same test for Unit and E2E evidence',
+    expect(verifyPrimaryUseCaseEvidence(tooling, environment)).toContain(
+      'primary_use_cases demo-success E2E requires a narrower-boundary reason',
     )
   })
 
-  it('does not impose the plan on pending work or completed legacy evidence', () => {
+  it('does not impose the plan on pending work', () => {
     expect(verifyPrimaryUseCaseEvidence({ ...applicable, status: 'pending' }, environment)).toEqual(
       [],
     )
-    expect(
-      verifyPrimaryUseCaseEvidence(
-        { ...applicable, status: 'completed', evidence_policy: 'risk-based-v2' },
-        environment,
-      ),
-    ).toEqual([])
   })
 
   it('accepts a complete in-progress plan before the planned tests exist', () => {
@@ -152,17 +103,17 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     )
   })
 
-  it('requires distinct Unit and E2E references', () => {
-    const findings = verifyPrimaryUseCaseEvidence(
-      {
-        ...applicable,
-        primary_use_cases: [{ ...plan, e2e_test: plan.unit_test }],
-      },
-      environment,
-    )
-    expect(findings).toContain(
-      'primary_use_cases demo-success uses the same test for Unit and E2E evidence',
-    )
+  it('requires a reason why a narrower boundary cannot detect an E2E fault', () => {
+    const e2e = { ...plan, boundary: 'e2e' }
+    expect(
+      verifyPrimaryUseCaseEvidence({ ...applicable, primary_use_cases: [e2e] }, environment),
+    ).toContain('primary_use_cases demo-success E2E requires a narrower-boundary reason')
+    expect(
+      verifyPrimaryUseCaseEvidence(
+        { ...applicable, primary_use_cases: [{ ...e2e, reason: '配線は E2E でしか通らない。' }] },
+        environment,
+      ),
+    ).toEqual([])
   })
 
   it('checks completed test existence, identifier, requirement, and required-task reachability', () => {
@@ -170,71 +121,42 @@ describe('verifyPrimaryUseCaseEvidence', () => {
       read: (path) => (path === unitPath ? 'func TestSomethingElse(t *testing.T) {}' : undefined),
       requiredTasks: new Set(),
     }
+    const wired = {
+      ...plan,
+      id: 'demo-wired',
+      boundary: 'e2e',
+      reason: '配線は E2E でしか通らない。',
+      test: { path: e2ePath, name: 'TestE2E_Demo_REQ_DEMO_001', task: 'test-go-race' },
+    }
     const findings = verifyPrimaryUseCaseEvidence(
       {
         ...applicable,
         status: 'completed',
-        primary_use_cases: [plan],
-        completion: { primary_use_case_evidence: [evidence] },
+        primary_use_cases: [plan, wired],
+        completion: { primary_use_case_evidence: [evidence, { ...evidence, id: wired.id }] },
       },
       brokenEnvironment,
     )
     expect(findings).toContain(
-      `primary_use_cases demo-success Unit test name not found in ${unitPath}`,
+      `primary_use_cases demo-success acceptance test name not found in ${unitPath}`,
     )
     expect(findings).toContain(
       `primary_use_cases demo-success requirement ${requirement} not found in ${unitPath}`,
     )
     expect(findings).toContain(
-      `primary_use_cases demo-success E2E test path does not exist: ${e2ePath}`,
+      `primary_use_cases demo-wired e2e test path does not exist: ${e2ePath}`,
     )
     expect(findings).toContain(
-      'primary_use_cases demo-success Unit test task is not required by verify or CI: test-go-race',
-    )
-  })
-
-  // 完了した記録は書き換えない。モジュールを internal/ へ移した後も、記録したパスから
-  // 同じテストをたどれる必要がある。名前と要件の照合は移した先のファイルで行う。
-  it('follows a recorded test path that moved below its module internal/', () => {
-    const movedEnvironment: PrimaryUseCaseEnvironment = {
-      read: (path) =>
-        ({
-          'backend/demo/internal/usecases/demo_test.go': files[unitPath],
-          [e2ePath]: files[e2ePath],
-        })[path],
-      requiredTasks: new Set(['test-go-race']),
-    }
-    const record = {
-      ...applicable,
-      status: 'completed',
-      primary_use_cases: [plan],
-      completion: { primary_use_case_evidence: [evidence] },
-    }
-    expect(verifyPrimaryUseCaseEvidence(record, movedEnvironment)).toEqual([])
-
-    const misnamed: PrimaryUseCaseEnvironment = {
-      ...movedEnvironment,
-      read: (path) =>
-        path === 'backend/demo/internal/usecases/demo_test.go'
-          ? 'func TestSomethingElse(t *testing.T) {}'
-          : movedEnvironment.read(path),
-    }
-    expect(verifyPrimaryUseCaseEvidence(record, misnamed)).toContain(
-      `primary_use_cases demo-success Unit test name not found in backend/demo/internal/usecases/demo_test.go`,
+      'primary_use_cases demo-success acceptance test task is not required by verify or CI: test-go-race',
     )
   })
 
   it('requires one complete evidence result for every planned use case', () => {
     const base = { ...applicable, status: 'completed', primary_use_cases: [plan] }
     expect(verifyPrimaryUseCaseEvidence(base, environment)).toContain(
-      'completion.primary_use_case_evidence is required for applicable risk-based-v3 work',
+      'completion.primary_use_case_evidence is required for applicable work',
     )
-    const missingResults = {
-      unit_red: 'Unit RED',
-      e2e_red: 'E2E RED',
-      unit_fault_injection: 'Unit fault-injection',
-      e2e_fault_injection: 'E2E fault-injection',
-    } as const
+    const missingResults = { red: 'RED', fault_injection: 'fault-injection' } as const
     for (const [field, label] of Object.entries(missingResults)) {
       expect(
         verifyPrimaryUseCaseEvidence(
@@ -256,17 +178,17 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     ).toEqual([])
   })
 
-  it('keeps alternate Acceptance and Unit RED evidence for non-applicable v3 work', () => {
+  it('requires alternate Acceptance and Unit RED evidence for non-applicable work', () => {
     const tooling = {
       status: 'completed',
-      evidence_policy: 'risk-based-v3',
+      evidence_policy: 'risk-based-v4',
       change_kind: 'tooling',
       affected_spec: [],
       completion: {},
     }
     expect(verifyPrimaryUseCaseEvidence(tooling, environment)).toEqual([
-      'completion.acceptance_red_evidence is required for non-applicable risk-based-v3 work',
-      'completion.unit_red_evidence is required for non-applicable risk-based-v3 work',
+      'completion.acceptance_red_evidence is required for non-applicable work',
+      'completion.unit_red_evidence is required for non-applicable work',
     ])
   })
 
@@ -297,7 +219,7 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         change_kind: 'bugfix',
         affected_spec: [
           {
-            path: 'docs/modules/provisioning/scenarios.feature.md',
+            path: 'docs/modules/provisioning/task/README.md',
             requirement: 'REQ-PROVISIONING-013',
           },
         ],

@@ -50,7 +50,6 @@ export type DocumentationImpactEnvironment = {
 type WorkItemRecord = {
   id?: unknown
   status?: unknown
-  evidence_policy?: unknown
   change_kind?: unknown
   affected_spec?: unknown
   primary_use_cases?: unknown
@@ -108,12 +107,7 @@ function nonEmpty(value: unknown): value is string {
 }
 
 function activeUnderDocumentationContract(record: WorkItemRecord): boolean {
-  if (record.evidence_policy !== 'risk-based-v3' && record.evidence_policy !== 'risk-based-v4')
-    return false
-  if (record.status === 'in_progress') return true
-  if (record.status !== 'completed' || typeof record.id !== 'string') return false
-  const sequence = Number(record.id.match(/^wi-(\d+)-/)?.[1] ?? 0)
-  return sequence >= 452
+  return record.status === 'in_progress' || record.status === 'completed'
 }
 
 function stronger(

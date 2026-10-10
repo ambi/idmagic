@@ -2,6 +2,7 @@ import { posix } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyMarkdownLinks } from './markdown-links.ts'
 import type { CheckOutcome } from './runner.ts'
+import { changedWorkItemRecords, verifiedNow } from './work-item-changes.ts'
 
 function excluded(path: string): boolean {
   const segments = path.split('/')
@@ -14,6 +15,7 @@ function excluded(path: string): boolean {
 }
 
 export async function checkLinks(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
+  const changed = changedWorkItemRecords(snapshot)
   const documents = new Map<string, string>()
   const existingPaths = new Set<string>()
   for (const path of await snapshot.files('', ['.git', 'node_modules', '.worktrees'])) {
@@ -24,7 +26,11 @@ export async function checkLinks(snapshot: WorkspaceSnapshot): Promise<CheckOutc
       existingPaths.add(parent)
       parent = posix.dirname(parent)
     }
-    if (path.endsWith('.md')) documents.set(path, await snapshot.read(path))
+    // 完了済みの記録のリンクは完了の変更の中で一度だけ検査し、後の移動に追従させない。
+    // リンク先としては残すので、ほかの文書から記録へのリンクは検査を続ける。
+    if (path.endsWith('.md') && verifiedNow(path, changed)) {
+      documents.set(path, await snapshot.read(path))
+    }
   }
   const findings = verifyMarkdownLinks(documents, existingPaths)
   return {

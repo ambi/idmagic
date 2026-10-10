@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import {
-  type ReferenceEnvironment,
-  relocatedSpecPaths,
-  verifyWorkItemReferences,
-} from './work-item-references.ts'
+import { type ReferenceEnvironment, verifyWorkItemReferences } from './work-item-references.ts'
 
 const files: Record<string, string> = {
   'docs/modules/demo/scenarios.feature.md': [
@@ -34,10 +30,6 @@ describe('verifyWorkItemReferences with the feature layout', () => {
       path === 'docs/modules/demo/work/task/README.md'
         ? '# Task\n\n## 操作\n\n#### REQ-DEMO-001 A valid request succeeds\n'
         : undefined,
-    relocated: (path) =>
-      path === 'docs/modules/demo/scenarios.feature.md'
-        ? ['docs/modules/demo/work/task/README.md']
-        : undefined,
   }
 
   it('resolves a rule declared by a feature specification heading', () => {
@@ -53,19 +45,19 @@ describe('verifyWorkItemReferences with the feature layout', () => {
     expect(findings).toEqual([])
   })
 
-  it('resolves a completed record through the relocation table', () => {
+  // 完了済みの記録は完了の変更の中でだけ検証するので、移した先を探さず、いまのパスで解決する。
+  it('resolves a completed record on the current path only', () => {
     const findings = verifyWorkItemReferences(
       {
         status: 'completed',
         affected_spec: [
           { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
-          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-002' },
         ],
       },
       moved,
     )
     expect(findings).toEqual([
-      'requirement does not resolve where docs/modules/demo/scenarios.feature.md moved: REQ-DEMO-002',
+      'affected_spec path does not exist: docs/modules/demo/scenarios.feature.md',
     ])
   })
 
@@ -137,40 +129,5 @@ describe('verifyWorkItemReferences', () => {
     expect(started(['docs/modules/gone/scenarios.feature.md#REQ-GONE-001'])).toEqual([
       'initial_context specification path does not exist: docs/modules/gone/scenarios.feature.md#REQ-GONE-001',
     ])
-  })
-
-  it('reports a legacy reference only while the item is active', () => {
-    const record = { affected_spec: [{ context: 'Demo', kind: 'model', element: 'User' }] }
-    expect(verifyWorkItemReferences({ ...record, status: 'completed' }, environment)).toEqual([])
-    expect(verifyWorkItemReferences({ ...record, status: 'in_progress' }, environment)).toEqual([
-      'active work item contains a legacy specification reference',
-    ])
-  })
-})
-
-describe('relocatedSpecPaths', () => {
-  const table = {
-    'docs/domain/demo/scenarios.feature.md': ['docs/modules/demo/work/task/README.md'],
-    'docs/domain/glossary.md': ['docs/requirements/glossary.md'],
-    'docs/domain/': ['docs/modules/'],
-  }
-
-  it('prefers the entry that names the moved file', () => {
-    expect(relocatedSpecPaths(table, 'docs/domain/demo/scenarios.feature.md')).toEqual([
-      'docs/modules/demo/work/task/README.md',
-    ])
-    expect(relocatedSpecPaths(table, 'docs/domain/glossary.md')).toEqual([
-      'docs/requirements/glossary.md',
-    ])
-  })
-
-  it('moves a path under a renamed directory by its prefix', () => {
-    expect(relocatedSpecPaths(table, 'docs/domain/demo/work/task/README.md')).toEqual([
-      'docs/modules/demo/work/task/README.md',
-    ])
-  })
-
-  it('leaves a path no entry covers unresolved', () => {
-    expect(relocatedSpecPaths(table, 'docs/other/README.md')).toBeUndefined()
   })
 })

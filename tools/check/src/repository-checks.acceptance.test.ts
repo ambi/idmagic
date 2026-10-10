@@ -442,7 +442,7 @@ authors: [tn]
 risk: low
 created_at: 2026-08-31
 change_kind: tooling
-evidence_policy: risk-based-v3
+evidence_policy: risk-based-v4
 spec_impact: { kind: none, reason: "The fixture changes repository tooling only." }
 documentation_impact:
   level: release_note
@@ -513,7 +513,7 @@ risk: medium
 created_at: 2026-08-30
 depends_on: []
 change_kind: feature
-evidence_policy: risk-based-v3
+evidence_policy: risk-based-v4
 documentation_impact:
   level: release_note
   reason: The planned feature is noteworthy to release readers.
@@ -554,7 +554,7 @@ The feature could remain disconnected.
     expect(result.output).toContain('primary_use_cases')
   })
 
-  it('accepts complete primary evidence only when both tests are reached by a required task', async () => {
+  it('accepts complete primary evidence only when its test is reached by a required task', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
@@ -568,27 +568,26 @@ The feature could remain disconnected.
       join(root, 'backend', 'demo', 'rule_test.go'),
       'func TestDemoRule_REQ_DEMO_001(t *testing.T) { /* REQ-DEMO-001 */ }\n',
     )
-    await writeFile(
-      join(root, 'backend', 'demo', 'e2e_test.go'),
-      'func TestE2E_Demo_REQ_DEMO_001(t *testing.T) { /* REQ-DEMO-001 */ }\n',
-    )
     const workItem = (task: string): string => `---
 status: completed
 authors: [tn]
 risk: low
 created_at: 2026-08-30
 change_kind: feature
-evidence_policy: risk-based-v3
+evidence_policy: risk-based-v4
 affected_spec:
   - { path: docs/modules/demo/run/README.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
   - id: demo-success
     requirement: REQ-DEMO-001
     observable_result: The caller observes the completed demo effect.
-    unit_test: { path: backend/demo/rule_test.go, name: TestDemoRule_REQ_DEMO_001, task: ${task} }
-    e2e_test: { path: backend/demo/e2e_test.go, name: TestE2E_Demo_REQ_DEMO_001, task: ${task} }
-    unit_fault_model: The use case skips the effect.
-    e2e_fault_model: The route is disconnected.
+    boundary: acceptance
+    test: { path: backend/demo/rule_test.go, name: TestDemoRule_REQ_DEMO_001, task: ${task} }
+    fault_model: The use case skips the effect.
+documentation_impact:
+  level: none
+  reason: The fixture is unpublished and has no release reader.
+  references: []
 ---
 
 # Feature with primary evidence
@@ -619,10 +618,8 @@ The feature could remain disconnected.
 - **Summary**: The demo route now produces its final effect.
 - **Primary Use Case Evidence**:
   - id: demo-success
-    unit_red: the unit test observed no effect
-    e2e_red: the E2E test observed no final result
-    unit_fault_injection: removing the effect made the unit test fail
-    e2e_fault_injection: disconnecting the route made the E2E test fail
+    red: the acceptance test observed no effect
+    fault_injection: removing the effect made the acceptance test fail
 - **Verification Results**:
   - mise run verify - passed
 `

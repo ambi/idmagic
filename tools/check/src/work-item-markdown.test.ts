@@ -11,63 +11,6 @@ afterEach(async () => {
 })
 
 describe('work-item Markdown completion evidence', () => {
-  it('parses structured RED and stronger completion evidence', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'idmagic-work-item-'))
-    temporaryDirectories.push(directory)
-    const path = join(directory, 'wi-410-parser-evidence.md')
-    await writeFile(
-      path,
-      `---
-status: completed
-authors: [tn]
-risk: medium
-created_at: 2026-08-23
-evidence_policy: risk-based-v1
----
-
-# Parse completion evidence
-
-## Motivation
-
-Keep evidence machine-readable.
-
-## Scope
-
-- Markdown parser
-
-## Out of Scope
-
-- Product behavior
-
-## Verification
-
-- mise run test-tools
-
-## Risk Notes
-
-The parser must reject incomplete evidence.
-
-## Completion
-
-- **Completed At**: 2026-08-23
-- **Summary**: Parsed the evidence.
-- **RED Evidence**:
-  - **Test**: parser rejects missing evidence
-  - **Requirement**: N/A: repository tooling has no normative product requirement
-  - **Observed Failure**: the incomplete record failed validation
-  - **Detection Reason**: each nested field maps to a required schema property
-- **Independent Verification**: reviewed by another agent
-- **Change-Resistance Results**: removing one field fails validation
-- **Verification Results**:
-  - mise run test-tools - passed
-`,
-    )
-
-    expect(validateMarkdownRecord(path, await Bun.file(path).text(), 'work-item').findings).toEqual(
-      [],
-    )
-  })
-
   it('parses separate Acceptance RED and Unit RED evidence', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'idmagic-work-item-'))
     temporaryDirectories.push(directory)
@@ -79,7 +22,11 @@ status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-08-23
-evidence_policy: risk-based-v2
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: The parser fixture has no release reader.
+  references: []
 ---
 
 # Parse separate RED evidence
