@@ -386,6 +386,7 @@ describe('work item 検査', () => {
   it('rejects the same record in pending and done', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items', 'done'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     const record = `---
 status: pending
 authors: [tn]
@@ -420,7 +421,7 @@ Exercise work-item collection integrity.
 The fixture must remain otherwise valid.
 `
     const name = 'wi-531-duplicate-record.md'
-    await writeFile(join(root, 'work-items', name), record)
+    await writeFile(join(root, 'work-items', 'active', name), record)
     await writeFile(join(root, 'work-items', 'done', name), record)
 
     const result = await checkWorkItems(root)
@@ -430,9 +431,9 @@ The fixture must remain otherwise valid.
 
   it('rejects a completed item whose required release note is missing', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'work-items'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'done'), { recursive: true })
     await writeFile(
-      join(root, 'work-items', 'wi-452-missing-release-note.md'),
+      join(root, 'work-items', 'done', 'wi-452-missing-release-note.md'),
       `---
 status: completed
 authors: [tn]
@@ -498,11 +499,11 @@ The gate must reject an absent document.
 
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'work-items'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     await mkdir(join(root, 'docs', 'modules', 'demo', 'run'), { recursive: true })
     await writeFile(join(root, 'docs', 'modules', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
     await writeFile(
-      join(root, 'work-items', 'wi-439-missing-primary-use-case.md'),
+      join(root, 'work-items', 'active', 'wi-439-missing-primary-use-case.md'),
       `---
 status: in_progress
 authors: [tn]
@@ -623,7 +624,8 @@ The feature could remain disconnected.
 - **Verification Results**:
   - mise run verify - passed
 `
-    const path = join(root, 'work-items', 'wi-445-complete-primary-use-case.md')
+    await mkdir(join(root, 'work-items', 'done'), { recursive: true })
+    const path = join(root, 'work-items', 'done', 'wi-445-complete-primary-use-case.md')
     await writeFile(path, workItem('test-go-race'))
     expect((await checkWorkItems(root)).code).toBe(0)
 

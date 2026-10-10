@@ -33,7 +33,7 @@ if (argument === undefined || argument === '' || argument === '--help') {
 
 async function findWorkItem(name: string): Promise<string> {
   const stem = basename(name).replace(/\.md$/, '')
-  for (const directory of ['work-items', 'work-items/done']) {
+  for (const directory of ['work-items/active', 'work-items/done']) {
     for (const entry of await readdir(resolve(root, directory))) {
       if (!entry.endsWith('.md')) continue
       if (entry === `${stem}.md` || entry.startsWith(`${stem}-`)) return `${directory}/${entry}`

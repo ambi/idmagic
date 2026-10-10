@@ -17,7 +17,8 @@ mise run check-api-compat
 個別タスクは同じ registry から一つの規則を選ぶため、検査ごとの CLI shell は持たない。
 
 work item の識別子はファイル名の stem 全体である。
-同じ stem を `work-items/` と `work-items/done/` に置くと `mise run check-work-items` が拒否する。
+同じ stem を `work-items/active/` と `work-items/done/` に置くと `mise run check-work-items` が拒否する。
+status と配置の不一致、および旧配置の `work-items/` 直下に残った記録も拒否する。
 先頭の番号は割り当ての目安であり、同じ番号だけでは衝突としない。
 
 ## 規範 id の被覆

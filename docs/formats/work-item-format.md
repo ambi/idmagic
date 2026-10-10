@@ -1,14 +1,16 @@
 # 作業項目フォーマット
 
 作業項目は、一つの意味上の変更を説明、設計、実装、検証する作業単位である。
-未完了の項目は `work-items/`、完了または中止した項目は `work-items/done/` に置く。
+未完了（`pending`、`in_progress`）の項目は `work-items/active/`、完了または中止した項目（`completed`、`cancelled`）は `work-items/done/` に置く。
+両者は同じ深さにあるため、共通文書やコードへの相対リンクは完了時に変更しない。
+`work-items/` 直下には項目を置かず、状態と配置の不一致は `mise run check-work-items` が拒否する。
 この文書は記録の形式を定める。
 証拠の水準と開発サイクルは[仕様先行の開発ワークフロー](../development/specification-first-workflow.md)、現在有効な仕様と設計の書式は[仕様フォーマット](specification-format.md)が定める。
 
 ## 識別子と配置
 
 ファイル名には `wi-<識別番号>-<ケバブケースの題名>.md` を使う。
-識別番号は、10000 から 99999 のうち、`work-items/` と `work-items/done/` のどちらにも現れない値を無作為に選ぶ。
+識別番号は、10000 から 99999 のうち、`work-items/active/` と `work-items/done/` のどちらにも現れない値を無作為に選ぶ。
 `mise run work-item-number` がこの値を一つ出力する。
 最大値に 1 を足す手順は使わない。
 その手順は番号を配る主体が一つであることを前提にするが、各自がローカルで起票し、一人が並列のワークツリーで起票する運用では、まだ push されていない起票を見られないためである。
@@ -190,7 +192,7 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 それ以外の水準では、実装前にリリース文書の予定パスを宣言する。
 完了時には、そのパスが存在し、作業項目名を記載し、`affected_spec` の要件または TypeSpec のシンボルへリンクしていなければならない。
 リリース文書のファイル名には、識別番号とケバブケースの題名を含む作業項目の完全なファイル名から、拡張子を除いた部分を使う。
-たとえば、`work-items/wi-<number>-start-task.md` のリリースノートには `docs/releases/changes/wi-<number>-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-<number>-start-task.md` を使う。
+たとえば、`work-items/active/wi-<number>-start-task.md` のリリースノートには `docs/releases/changes/wi-<number>-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-<number>-start-task.md` を使う。
 既存のリリース文書は、対応する作業項目が完了したときの名前を保つ。
 この規則へ合わせるためだけに過去の記録を改名しない。
 `upgrade_note`、`deprecation_notice`、`removal_notice` では、注目すべき差分と、必要な操作または互換性情報を読者へ示すため、両方の種類の文書が必要になる。
@@ -222,7 +224,12 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 
 ## 完了記録
 
-作業が完了したら `status` を `completed` にし、次の節を追加して、ファイルを `work-items/done/` へ移す。
+作業が完了したら `status` を `completed` にし、次の節を追加して、`mise run move-work-item -- <id>` でファイルを `work-items/done/` へ移す。
+中止した場合も、判断を完了節へ記録し、`status` を `cancelled` にして同じコマンドを使う。
+コマンドは、移動する項目から他の項目へのリンクと、他の Markdown から移動する項目へのリンクを更新する。
+項目同士には通常の相対 Markdown リンクを使い、移動後も GitHub とエディターで参照できるようにする。
+`depends_on` は配置を含まない既存の識別子を保つ。
+移動後に `mise run check-work-items` と `mise run check-links` を実行する。
 
 ```markdown
 ## 完了

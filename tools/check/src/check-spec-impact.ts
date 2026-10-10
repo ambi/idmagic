@@ -25,7 +25,7 @@ import {
 } from './spec-impact.ts'
 import { parseFrontmatterAndMarkdown } from './work-item-markdown.ts'
 
-const WORK_ITEM = /^work-items\/(?:done\/)?(wi-[^/]+)\.md$/
+const WORK_ITEM = /^work-items\/(?:(?:active|done)\/)?(wi-[^/]+)\.md$/
 const TEST_FILE = /^(?:backend|frontend)\/.*(?:_test\.go|\.(?:test|spec)\.tsx?)$/
 const GO_TEST_FILE = /^backend\/.*_test\.go$/
 const CHECKPOINT = /^checkpoint\((wi-\d+)[^)]*\):/
@@ -81,9 +81,9 @@ function isUnderWay(record: WorkItemRecord | undefined): record is WorkItemRecor
   return record?.status === 'in_progress' || record?.status === 'completed'
 }
 
-/** work item は、完了時に `work-items/done/` へ移る。どちらにあっても同じ記録として読む。 */
+/** 現在の兄弟配置と、移行前の Git 履歴を同じ記録として読む。 */
 function workItemPaths(id: string): string[] {
-  return [`work-items/${id}.md`, `work-items/done/${id}.md`]
+  return [`work-items/active/${id}.md`, `work-items/done/${id}.md`, `work-items/${id}.md`]
 }
 
 /**

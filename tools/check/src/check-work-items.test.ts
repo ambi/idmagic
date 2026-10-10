@@ -17,9 +17,10 @@ describe('loadWorkItems', () => {
     const root = await mkdtemp(join(tmpdir(), 'idmagic-work-items-'))
     temporaryDirectories.push(root)
     await mkdir(join(root, 'work-items', 'done'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     const source =
       '---\nstatus: pending\nauthors: [tn]\nrisk: low\ncreated_at: 2026-09-12\n---\n\n# Test\n'
-    await writeFile(join(root, 'work-items', 'wi-901-one.md'), source)
+    await writeFile(join(root, 'work-items', 'active', 'wi-901-one.md'), source)
     await writeFile(join(root, 'work-items', 'done', 'wi-902-two.md'), source)
 
     const base = createWorkspaceSnapshot(root)
@@ -45,13 +46,13 @@ describe('loadWorkItems', () => {
     expect(records.map((record) => record.id).sort()).toEqual(['wi-901-one', 'wi-902-two'])
     expect(listCount).toEqual(
       new Map([
-        ['work-items', 1],
+        ['work-items/active', 1],
         ['work-items/done', 1],
       ]),
     )
     expect(readCount).toEqual(
       new Map([
-        ['work-items/wi-901-one.md', 1],
+        ['work-items/active/wi-901-one.md', 1],
         ['work-items/done/wi-902-two.md', 1],
       ]),
     )
@@ -60,10 +61,10 @@ describe('loadWorkItems', () => {
 })
 
 /** スキーマを満たす最小の記録。番号の衝突だけを唯一の所見として残すために使う。 */
-const minimalRecord = (title: string) =>
+const minimalRecord = (title: string, status = 'pending') =>
   [
     '---',
-    'status: pending',
+    `status: ${status}`,
     'authors: [tn]',
     'risk: low',
     'created_at: 2026-09-21',
@@ -95,6 +96,9 @@ const minimalRecord = (title: string) =>
     '',
     'なし。',
     '',
+    ...(status === 'cancelled'
+      ? ['## 完了', '', '- **完了日**: 2026-09-21', '- **要約**: 中止した。', '']
+      : []),
   ].join('\n')
 
 describe('checkWorkItems', () => {
@@ -102,8 +106,12 @@ describe('checkWorkItems', () => {
     const root = await mkdtemp(join(tmpdir(), 'idmagic-work-items-'))
     temporaryDirectories.push(root)
     await mkdir(join(root, 'work-items', 'done'), { recursive: true })
-    await writeFile(join(root, 'work-items', 'wi-40318-one.md'), minimalRecord('One'))
-    await writeFile(join(root, 'work-items', 'done', 'wi-40318-two.md'), minimalRecord('Two'))
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
+    await writeFile(join(root, 'work-items', 'active', 'wi-40318-one.md'), minimalRecord('One'))
+    await writeFile(
+      join(root, 'work-items', 'done', 'wi-40318-two.md'),
+      minimalRecord('Two', 'cancelled'),
+    )
 
     const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
 
@@ -117,11 +125,39 @@ describe('checkWorkItems', () => {
     const root = await mkdtemp(join(tmpdir(), 'idmagic-work-items-'))
     temporaryDirectories.push(root)
     await mkdir(join(root, 'work-items', 'done'), { recursive: true })
-    await writeFile(join(root, 'work-items', 'wi-40318-one.md'), minimalRecord('One'))
-    await writeFile(join(root, 'work-items', 'done', 'wi-40319-two.md'), minimalRecord('Two'))
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
+    await writeFile(join(root, 'work-items', 'active', 'wi-40318-one.md'), minimalRecord('One'))
+    await writeFile(
+      join(root, 'work-items', 'done', 'wi-40319-two.md'),
+      minimalRecord('Two', 'cancelled'),
+    )
 
     const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
 
     expect(outcome).toEqual({ ok: true, lines: ['ok  2 work-item dependency record(s)'] })
+  })
+
+  it('旧配置と status に反するディレクトリを拒否する', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'idmagic-work-items-'))
+    temporaryDirectories.push(root)
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'done'), { recursive: true })
+    await writeFile(join(root, 'work-items', 'wi-10001-old.md'), minimalRecord('旧配置'))
+    await writeFile(
+      join(root, 'work-items', 'active', 'wi-10002-closed.md'),
+      minimalRecord('中止', 'cancelled'),
+    )
+    await writeFile(join(root, 'work-items', 'done', 'wi-10003-open.md'), minimalRecord('未完了'))
+
+    const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+    expect(outcome.ok).toBe(false)
+    expect(outcome.lines.join('\n')).toContain('wi-10001-old.md: legacy work item location')
+    expect(outcome.lines.join('\n')).toContain(
+      'wi-10002-closed.md: status cancelled belongs in work-items/done',
+    )
+    expect(outcome.lines.join('\n')).toContain(
+      'wi-10003-open.md: status pending belongs in work-items/active',
+    )
   })
 })

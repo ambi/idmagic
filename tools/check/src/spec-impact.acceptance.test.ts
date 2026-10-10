@@ -457,6 +457,36 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     expect(result.code).toBe(0)
   })
 
+  it('旧配置から active と done へ移っても、着手時点の仕様影響を解決する', async () => {
+    const repo = await repository()
+    await repo.write(ITEM, affected('pending', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`))
+    await repo.commit('docs(work-items): file a legacy record')
+    await repo.write(
+      ITEM,
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.write(SCENARIOS, scenario('the request is accepted'))
+    await repo.commit('docs(demo): specify the accepted result')
+    const active = 'work-items/active/wi-10001-demo.md'
+    await repo.write(
+      active,
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.git('rm', ITEM)
+    const migrated = await repo.commit('chore(work-items): migrate the active record')
+    await repo.write(
+      'work-items/done/wi-10001-demo.md',
+      affected('completed', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.git('rm', active)
+    await repo.write(SERVICE, service('accepted'))
+    await repo.commit('feat(demo): accept the request')
+
+    const result = await repo.check(migrated)
+    expect(result.output).toContain('ok  spec impact (1 work item(s)')
+    expect(result.code).toBe(0)
+  })
+
   it('分岐した後に基準の側で入った仕様の変更を、このブランチの差分に数えない', async () => {
     const repo = await repository()
     await repo.git('switch', '--quiet', '--create', 'work')

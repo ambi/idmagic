@@ -206,13 +206,13 @@ work-items/                         # 変更固有の分析、計画、証拠、
 
 | Work item | Boundary |
 | --- | --- |
-| [wi-165](../wi-165-high-availability-and-failover-resilience-topology.md) | 高可用性トポロジの具体化、切替、障害試験。 |
-| [wi-164](../wi-164-data-tier-scalability-partitioning-read-replica-pooling.md) | データ層の拡張方式と実装。 |
-| [wi-282](../wi-282-staging-load-testing-and-capacity-validation.md) | 実負荷による容量と性能の検証。 |
-| [wi-107](../wi-107-opentelemetry-distributed-tracing.md) | 未実装のトレース伝播と計装。 |
-| [wi-290](../wi-290-alert-runbook-catalog-and-on-call-operations.md) | アラートに対応する運用手順と索引の完成。 |
-| [wi-419](../wi-419-quantification-beyond-performance.md) | 品質の量化と予算消費時の方針。新体系への配置変更と新しい要求の決定を分ける。 |
-| [wi-449](../wi-449-deployment-update-compatibility-preflight.md)、[wi-450](../wi-450-mixed-version-release-acceptance.md) | 更新前検査と異なる版が混在する配備の受入試験。 |
+| [wi-165](../active/wi-165-high-availability-and-failover-resilience-topology.md) | 高可用性トポロジの具体化、切替、障害試験。 |
+| [wi-164](../active/wi-164-data-tier-scalability-partitioning-read-replica-pooling.md) | データ層の拡張方式と実装。 |
+| [wi-282](../active/wi-282-staging-load-testing-and-capacity-validation.md) | 実負荷による容量と性能の検証。 |
+| [wi-107](../active/wi-107-opentelemetry-distributed-tracing.md) | 未実装のトレース伝播と計装。 |
+| [wi-290](../active/wi-290-alert-runbook-catalog-and-on-call-operations.md) | アラートに対応する運用手順と索引の完成。 |
+| [wi-419](../active/wi-419-quantification-beyond-performance.md) | 品質の量化と予算消費時の方針。新体系への配置変更と新しい要求の決定を分ける。 |
+| [wi-449](../active/wi-449-deployment-update-compatibility-preflight.md)、[wi-450](../active/wi-450-mixed-version-release-acceptance.md) | 更新前検査と異なる版が混在する配備の受入試験。 |
 
 既存項目で扱えない不足だけを追加起票する。新規項目には親要求または適用する規範、成果物、完了条件、依存を記し、本項目の完了を待つ必要がある場合にのみ `depends_on` を設定する。正準文書は現在の制約と設計を持ち、具体的な未決事項と対応先の対応表は本項目に残す。
 
@@ -250,7 +250,7 @@ work-items/                         # 変更固有の分析、計画、証拠、
 
 移行で本文が二重にならないよう、旧ファイルは削除し、`backend/`、`frontend/`、`infra/`、`load/` のコメントにある正本パスと、監視資材および完了済み作業項目からの参照を同じ変更で更新した。`REQ-*`、`EX-*`、`SLO-*`、`CAP-*`、TypeSpec シンボルは改番していない。
 
-新設した文書のうち、`docs/design/observability/tracing.md`、`docs/design/reliability/recovery.md`、`docs/design/infrastructure/platform.md` は、確認できる現状と未確定の範囲を書き、実装と実測は [wi-107](../wi-107-opentelemetry-distributed-tracing.md)、[wi-165](../wi-165-high-availability-and-failover-resilience-topology.md)、[wi-282](../wi-282-staging-load-testing-and-capacity-validation.md) が持つものとして引継ぎ先を明記した。担当のない不足は見つからなかったため、新規の作業項目は起票していない。既存 Markdown 全体の表題と固定書式を日本語へ移す作業は、本項目の文書体系移行とは分離して扱う。
+新設した文書のうち、`docs/design/observability/tracing.md`、`docs/design/reliability/recovery.md`、`docs/design/infrastructure/platform.md` は、確認できる現状と未確定の範囲を書き、実装と実測は [wi-107](../active/wi-107-opentelemetry-distributed-tracing.md)、[wi-165](../active/wi-165-high-availability-and-failover-resilience-topology.md)、[wi-282](../active/wi-282-staging-load-testing-and-capacity-validation.md) が持つものとして引継ぎ先を明記した。担当のない不足は見つからなかったため、新規の作業項目は起票していない。既存 Markdown 全体の表題と固定書式を日本語へ移す作業は、本項目の文書体系移行とは分離して扱う。
 
 ## Plan
 

@@ -17,6 +17,8 @@
 ├── mise.toml          # ツールのバージョンとリポジトリタスク
 ├── tools/             # 仕様、境界、互換性、描画、開発サイクルの道具
 └── work-items/        # 一つの変更の計画、判断、完了の記録
+    ├── active/        # pending と in_progress
+    └── done/          # completed と cancelled
 ```
 
 依存は `spec` から実装と派生成果物へ向かって流れる。`backend` のドメイン層とユースケース層のパッケージが、アダプターやランタイムへ逆向きに依存することはない。
@@ -32,7 +34,7 @@
 | 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース |
 | リリース固有の利用者向け差分 | `docs/releases/{changes,upgrades}/wi-*.md` | 注目すべき変更の告知と、既存利用者が必要とする移行情報。現在状態は一次情報文書に書く |
 | 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順 |
-| 変更の記録 | `work-items/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録 |
+| 変更の記録 | `work-items/{active,done}/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録。配置と移動は[作業項目フォーマット](../formats/work-item-format.md)に従う |
 | ドメインモデル | `backend/<module>/(<feature>/)domain` | フレームワークに依存しないドメインモデル |
 | アプリケーションロジック | `backend/<module>/(<feature>/)usecases` | フレームワークに依存しないユースケース |
 | ポート | `backend/<module>/(<feature>/)ports` | HTTP、永続化、通知などのポート |

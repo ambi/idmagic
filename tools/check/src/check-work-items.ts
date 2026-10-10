@@ -40,7 +40,7 @@ type RecordValidator = typeof validateMarkdownRecord
 
 async function workItemPaths(snapshot: WorkspaceSnapshot): Promise<string[]> {
   const paths: string[] = []
-  for (const directory of ['work-items', 'work-items/done']) {
+  for (const directory of ['work-items/active', 'work-items/done']) {
     try {
       for (const entry of await snapshot.list(directory)) {
         if (entry.isFile() && entry.name.endsWith('.md')) paths.push(`${directory}/${entry.name}`)
@@ -189,6 +189,13 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       (finding) => `${record.path}:${finding.line}:${finding.column}: ${finding.message}`,
     ),
   )
+  for (const entry of await snapshot.list('work-items')) {
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      lines.push(
+        `work-items/${entry.name}: legacy work item location; move to work-items/active or work-items/done`,
+      )
+    }
+  }
   const relocations: Record<string, string[]> = snapshot.exists(RELOCATED_SPEC_PATHS)
     ? JSON.parse(snapshot.readSync(RELOCATED_SPEC_PATHS))
     : {}
@@ -205,6 +212,12 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
   const dependencyRecords: WorkItemDependencyRecord[] = []
   for (const record of parsed) {
     if (!record.data) continue
+    const status = record.data.status
+    const directory =
+      status === 'completed' || status === 'cancelled' ? 'work-items/done' : 'work-items/active'
+    if (!record.path.startsWith(`${directory}/`)) {
+      lines.push(`${record.path}: status ${status} belongs in ${directory}`)
+    }
     dependencyRecords.push({
       id: record.id,
       path: record.path,

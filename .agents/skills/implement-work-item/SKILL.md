@@ -132,8 +132,10 @@ description: "選択した work item を、仕様先行、故障に応じた検�
     the stack, so a browser regression is otherwise left to CI. Do not run an aggregate gate merely as a
     status check while a prerequisite still prevents completion. Complete
     every evidence field required by `docs/formats/work-item-format.md`, reading the completion summary out of
-    `mise run spec-diff`. Set the status to `completed`, pass
-    `mise run check-work-items`, and move the file to `work-items/done/`.
+    `mise run spec-diff`.
+    `status` を `completed` にし、`mise run move-work-item -- <id>` を実行する。
+    コマンドが `work-items/active/` から `work-items/done/` への移動と Markdown リンクの更新を行う。
+    移動後は `mise run check-work-items` と `mise run check-links` を通す。
 11. Fold the remaining checkpoints as step 7 describes, then create any remaining Conventional Commit
     with `commit`. `git log --oneline <base>..HEAD` must show no `checkpoint(` subject afterwards. A record may have multiple commits only where
     separately reviewable structural and behavioral changes require that boundary. Keep all free-form prose in
