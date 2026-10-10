@@ -100,6 +100,88 @@ describe('Markdown with Gherkin scenarios', () => {
     ])
   })
 
+  it('runs a Rule Background before every example of that Rule only', () => {
+    const source = `# Feature: Demo
+
+## Rule: REQ-DEMO-001 有効な要求を処理する
+
+### Background:
+
+- Given 利用者は管理者である
+- And 要求は有効である
+
+### Example: EX-DEMO-001-01 有効な要求
+
+- When 利用者が要求を送る
+- Then 成功結果が返る
+
+## Rule: REQ-DEMO-002 別の規則
+
+### Example: EX-DEMO-002-01 前提のない要求
+
+- When 利用者が要求を送る
+- Then 結果が返る
+`
+    const result = parseScenarioDocument(source)
+
+    expect(result.findings).toEqual([])
+    expect(result.rules[0]?.examples[0]?.steps.map((step) => [step.kind, step.text])).toEqual([
+      ['context', '利用者は管理者である'],
+      ['context', '要求は有効である'],
+      ['action', '利用者が要求を送る'],
+      ['outcome', '成功結果が返る'],
+    ])
+    expect(result.rules[1]?.examples[0]?.steps.map((step) => step.text)).toEqual([
+      '利用者が要求を送る',
+      '結果が返る',
+    ])
+  })
+
+  it('rejects a Rule Background that holds an action or an outcome', () => {
+    const source = `# Feature: Demo
+
+## Rule: REQ-DEMO-001 有効な要求を処理する
+
+### Background:
+
+- Given 利用者は管理者である
+- When 利用者が要求を送る
+
+### Example: EX-DEMO-001-01 有効な要求
+
+- When 利用者が再び要求を送る
+- Then 成功結果が返る
+`
+    expect(parseScenarioDocument(source).findings.map((finding) => finding.message)).toEqual([
+      'Background may hold only Given steps',
+    ])
+  })
+
+  it('substitutes the row values into outline steps and keeps only the columns no step names', () => {
+    const source = valid
+      .replace(
+        '| example_id | condition | outcome |',
+        '| example_id | condition | outcome | note |',
+      )
+      .replace('| --- | --- | --- |', '| --- | --- | --- | --- |')
+      .replace(
+        '| EX-DEMO-001-02 | allowed | success |',
+        '| EX-DEMO-001-02 | allowed | success | 代表 |',
+      )
+      .replace(
+        '| EX-DEMO-001-03 | denied | refusal |',
+        '| EX-DEMO-001-03 | denied | refusal | 拒否 |',
+      )
+    const example = parseScenarioDocument(source).rules[0]?.examples[1]
+
+    expect(example?.steps.map((step) => step.text)).toEqual([
+      '条件は allowed である',
+      '利用者が要求を送る',
+      '結果は success である',
+    ])
+    expect(example?.parameters).toEqual({ note: '代表' })
+  })
+
   it('does not infer example coverage from a parent REQ id', () => {
     const result = parseScenarioDocument(valid)
     const cited = new Set(['REQ-DEMO-001'])

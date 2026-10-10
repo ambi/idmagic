@@ -132,6 +132,56 @@ describe('diffSpecifications', () => {
     ).toEqual([])
   })
 
+  it('共通の前提を Background に、値だけ異なる例を Outline にまとめても差分にしない', () => {
+    const document = (body: string[]): Snapshot =>
+      new Map([
+        [
+          SCENARIOS,
+          ['# Feature: Demo', '', '## Rule: REQ-DEMO-001 条件から結果を決める', '', ...body].join(
+            '\n',
+          ),
+        ],
+      ])
+    const separate = document([
+      '### Example: EX-DEMO-001-01 許可される',
+      '',
+      '- Given 利用者は管理者である',
+      '- When 利用者が allowed の要求を送る',
+      '- Then 結果は success である',
+      '',
+      '### Example: EX-DEMO-001-02 拒否される',
+      '',
+      '- Given 利用者は管理者である',
+      '- When 利用者が denied の要求を送る',
+      '- Then 結果は refusal である',
+    ])
+    const outline = (background: string): Snapshot =>
+      document([
+        '### Background:',
+        '',
+        `- Given ${background}`,
+        '',
+        '### Scenario Outline: 要求ごとの結果',
+        '',
+        '- When 利用者が <condition> の要求を送る',
+        '- Then 結果は <outcome> である',
+        '',
+        '#### Examples:',
+        '',
+        '  | example_id | condition | outcome |',
+        '  | --- | --- | --- |',
+        '  | EX-DEMO-001-01 | allowed | success |',
+        '  | EX-DEMO-001-02 | denied | refusal |',
+      ])
+
+    expect(diffSpecifications(separate, outline('利用者は管理者である')).changedScenarios).toEqual(
+      [],
+    )
+    expect(diffSpecifications(separate, outline('利用者は監査者である')).changedScenarios).toEqual([
+      'REQ-DEMO-001',
+    ])
+  })
+
   it('reports nothing when the normative content is unchanged', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
     const diff = diffSpecifications(

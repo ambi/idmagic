@@ -20,8 +20,12 @@ export type ScenarioExample = {
   id: string
   name: string
   line: number
+  /** Rule の Background の手順に続く、例の手順。Outline の行は値を埋めた手順にする。 */
   steps: ScenarioStep[]
-  /** Outline の行の値。手順のプレースホルダーだけでは条件と結果を復元できない。 */
+  /**
+   * Outline の行のうち、どの手順にも現れない列の値。手順に現れる列は `steps` に埋めてあるので、
+   * 同じ経路を個別の Example で書いても Outline の行で書いても、同じ手順と値になる。
+   */
   parameters?: Record<string, string>
   outline: boolean
   decisionTable: boolean
@@ -85,9 +89,17 @@ function expectedExamplePrefix(ruleId: string): string {
   return `${ruleId.replace(/^REQ-/, 'EX-')}-`
 }
 
-function stepsOf(scenario: Scenario): ScenarioStep[] {
+/** 公式の pickle と同じく、Outline の行の値を手順の本文、表、DocString の `<列名>` へ埋める。 */
+function interpolate(text: string, row: ReadonlyMap<string, string>): string {
+  return text.replaceAll(/<([^>]+)>/g, (placeholder, name: string) => row.get(name) ?? placeholder)
+}
+
+function stepsOf(
+  steps: Scenario['steps'],
+  row: ReadonlyMap<string, string> = new Map(),
+): ScenarioStep[] {
   let prior: ScenarioStep['kind'] = 'context'
-  return scenario.steps.map((step) => {
+  return steps.map((step) => {
     const kind =
       step.keywordType === StepKeywordType.ACTION
         ? 'action'
@@ -100,17 +112,19 @@ function stepsOf(scenario: Scenario): ScenarioStep[] {
     return {
       keyword: step.keyword.trim(),
       kind,
-      text: step.text,
+      text: interpolate(step.text, row),
       ...(step.dataTable
         ? {
             argument: JSON.stringify(
-              step.dataTable.rows.map((row) => row.cells.map((cell) => cell.value)),
+              step.dataTable.rows.map((tableRow) =>
+                tableRow.cells.map((cell) => interpolate(cell.value, row)),
+              ),
             ),
           }
         : step.docString
           ? {
               argument: JSON.stringify({
-                content: step.docString.content,
+                content: interpolate(step.docString.content, row),
                 mediaType: step.docString.mediaType,
               }),
             }
@@ -118,6 +132,18 @@ function stepsOf(scenario: Scenario): ScenarioStep[] {
       line: step.location.line,
     }
   })
+}
+
+function namedByStep(steps: Scenario['steps'], column: string): boolean {
+  const placeholder = `<${column}>`
+  return steps.some(
+    (step) =>
+      step.text.includes(placeholder) ||
+      step.docString?.content.includes(placeholder) ||
+      step.dataTable?.rows.some((row) =>
+        row.cells.some((cell) => cell.value.includes(placeholder)),
+      ),
+  )
 }
 
 function validatePathSteps(
@@ -215,10 +241,21 @@ export function parseScenarioDocument(source: string): ParsedScenarioDocument {
       examples: [],
     }
 
+    // Background は同じ Rule の各例の前に実行される前提だけを置く。操作と結果を置くと、
+    // 例の本文から読めない手順が例ごとの経路に混ざる。
+    const background = rule.children.find((ruleChild) => ruleChild.background)?.background
+    const backgroundSteps = background ? stepsOf(background.steps) : []
+    if (background && backgroundSteps.some((step) => step.kind !== 'context')) {
+      findings.push({
+        line: background.location.line,
+        message: 'Background may hold only Given steps',
+      })
+    }
+
     for (const ruleChild of rule.children) {
       const scenario = ruleChild.scenario
       if (!scenario) continue
-      const steps = stepsOf(scenario)
+      const steps = stepsOf(scenario.steps)
       validatePathSteps(steps, scenario.location.line, findings)
       const isOutline = scenario.keyword.trim() === 'Scenario Outline'
       if (!isOutline) {
@@ -240,7 +277,7 @@ export function parseScenarioDocument(source: string): ParsedScenarioDocument {
           id,
           name: scenario.name,
           line: scenario.location.line,
-          steps,
+          steps: [...backgroundSteps, ...steps],
           outline: false,
           decisionTable: false,
         })
@@ -307,15 +344,17 @@ export function parseScenarioDocument(source: string): ParsedScenarioDocument {
               }
               seenConditions.push(conditions)
             }
+            const cells = new Map(headers.map((header, index) => [header, values[index] ?? '']))
+            const expanded = stepsOf(scenario.steps, cells)
             parsedRule.examples.push({
               id,
               name: scenario.name,
               line: row?.location.line ?? examples.location.line,
-              steps,
+              steps: [...backgroundSteps, ...expanded],
               parameters: Object.fromEntries(
-                headers
-                  .map((header, index) => [header, values[index] ?? ''] as const)
-                  .filter(([header]) => header !== 'example_id'),
+                [...cells].filter(
+                  ([header]) => header !== 'example_id' && !namedByStep(scenario.steps, header),
+                ),
               ),
               outline: true,
               decisionTable,

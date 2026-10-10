@@ -349,7 +349,9 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 要件を検査済みとみなすには、その要件のすべての子の例をテストから参照しなければならない *(checked)*。
 - 英語のキーワードと日本語の文章を使う。行為者は `When` の主語に置く。状態は `Given`、契機は `When`、観測可能な結果は `Then` で書き、`And` と `But` は直前の種別を継続する。
 - 各例には `When` と `Then` を一つ以上含める *(checked)*。
+- 同じ `Rule` のすべての例に共通する前提は、その `Rule` の直下の `Background` に一度だけ書ける。`Background` には `Given` の手順だけを置く *(checked)*。`Feature` の直下には `Background` を置かない *(checked)*。
 - 値だけが異なる経路は `Scenario Outline` にし、各行に空でない一意の `example_id` を付ける。
+- 例の比較は、`Background` の手順を先頭に足し、`Scenario Outline` の行の値を手順へ埋めた経路で行う。個別の `Example`、`Background`、`Scenario Outline` の間で書き方だけを変えても、規範の差分にならない。
 - 独立した条件の集合には `Examples: Decision table (Unique)` を使える。実行可能な各入力はちょうど一行に一致し、条件に影響しないセルは `any` と書く（`-` は使わない）。各行に空でない結果セルを一つ以上置く *(checked)*。
 - 順序、履歴、再試行、経過時間に関する振る舞いは決定表にまとめない。
 

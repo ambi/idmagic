@@ -151,13 +151,18 @@ function normalizedBodyLine(text: string): string | undefined {
     .join('|')
 }
 
-/** 入力と期待結果の対応と操作順を保ち、例の掲載順と行番号は比較しない。 */
+/**
+ * 入力と期待結果の対応と操作順を保ち、例の掲載順と行番号は比較しない。
+ * 個別の Example と Outline の行、例ごとの前提と Background は、同じ経路なら同じ事実にする。
+ */
 function exampleFact(example: ScenarioExample): string {
+  const parameters = Object.entries(example.parameters ?? {}).sort(([left], [right]) =>
+    left.localeCompare(right),
+  )
   return JSON.stringify([
     example.id,
     example.steps.map(({ kind, text, argument }) => ({ kind, text, argument })),
-    example.parameters &&
-      Object.entries(example.parameters).sort(([left], [right]) => left.localeCompare(right)),
+    ...(parameters.length > 0 ? [parameters] : []),
   ])
 }
 
