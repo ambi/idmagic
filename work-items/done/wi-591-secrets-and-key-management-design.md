@@ -93,7 +93,7 @@ initial_context:
 
 ## Out of Scope
 
-- 個別 Context の鍵ライフサイクルの詳細。[Data Keys](../../docs/domain/data-keys/README.md) と [Signing Keys](../../docs/domain/signing-keys/README.md) が正本である。
+- 個別 Context の鍵ライフサイクルの詳細。[Data Keys](../../docs/modules/data-keys/README.md) と [Signing Keys](../../docs/modules/signing-keys/README.md) が正本である。
 - 暗号方式の選択と実装。エンベロープ暗号の設計は [データベース設計](../../docs/design/data/database.md#可逆な秘密情報のエンベロープ暗号)が持つ。
 - 鍵のローテーション運用の実装。[[wi-307-datakeys-rotation-lifecycle-operations]] が扱う。
 - FIPS 準拠の暗号プロファイル。[[wi-296-fips-approved-cryptography-profile]] が扱う。

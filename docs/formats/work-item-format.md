@@ -36,13 +36,13 @@ documentation_impact: # 着手後は必須
   references:
     - { kind: release_note, path: docs/releases/changes/wi-<number>-start-task.md }
 initial_context: # 起票時ではなく着手時に記入する
-  specification: [docs/domain/system/operations/README.md#REQ-SYSTEM-001]
+  specification: [docs/modules/system/operations/README.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
   tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 primary_use_cases: # feature、bugfix、standards.md の変更では着手後に必須
   - id: start-task
@@ -139,8 +139,8 @@ spec_impact: { kind: none, reason: "具体的な理由。" }
 
 ```yaml
 affected_spec:
-  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-002, impact: conforms }
+  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-002, impact: conforms }
 ```
 
 `conforms` の項目を引くテストとは、規則またはその子の例を `//spec:covers` で引くテストである。
@@ -163,7 +163,7 @@ TypeSpec のシンボルには引く ID がないため、宣言名を含むテ�
 
 作業項目を `in_progress` にすると、`mise run check-work-items` が一覧を解決する。
 すべてのパスが存在し、`<文書>#REQ-<CONTEXT>-NNN` の項目が、その文書で宣言された規則を指さなければならない。
-規則を宣言する文書は、機能仕様（`docs/domain/<context>/<group>/<feature>/README.md` とその章）、またはモジュールをまたぐ要件を宣言するシステムの `docs/domain/scenarios.feature.md` である。
+規則を宣言する文書は、機能仕様（`docs/modules/<context>/<group>/<feature>/README.md` とその章）、またはモジュールをまたぐ要件を宣言するシステムの `docs/requirements/scenarios.feature.md` である。
 
 `affected_spec` は、完了済みを含むすべての記録で解決する。
 これは当時読んだものではなく、変更が触れた規範要素の索引だからである。

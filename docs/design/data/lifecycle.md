@@ -2,7 +2,7 @@
 
 この文書は、一つのデータがシステムに入ってから消えるまでを、モジュールとテーブルを横断して見たときにだけ現れる設計を扱う。
 個々の保持期間の値と、個々のテーブルの削除規則は扱わない。
-それらは各モジュールの `standards.md` と `decisions.md`、[品質要求](../../requirements/quality.md)が定め、テーブルの意味は[データベース設計](database.md)が説明する。
+それらは各モジュールの `standards.md` と `decisions.md`、[品質要件](../../requirements/quality.md)が定め、テーブルの意味は[データベース設計](database.md)が説明する。
 
 ## データの区分と消え方
 
@@ -21,7 +21,7 @@
 短命な認証状態では、有効かどうかを読み取り時に `expires_at` で判定する。
 掃除が遅れても有効期間は延びず、掃除は保存容量のためだけに行う。
 
-監査イベントは、削除やアーカイブのインターフェースを提供しない（[Audit モジュールの判断](../../domain/audit/design/decisions.md)）。
+監査イベントは、削除やアーカイブのインターフェースを提供しない（[Audit モジュールの判断](../../modules/audit/design/decisions.md)）。
 保持期間を過ぎたものの一括削除だけが、監査イベントを消す経路である。
 
 CSV の成果物（エクスポートのファイル、インポートのペイロード、行のエラーのページ）には、利用者の個人識別情報が含まれる。
@@ -39,12 +39,12 @@ CSV の成果物（エクスポートのファイル、インポートのペイ�
 
 利用者を物理的に削除しないのは、監査イベントの `sub` が指す先を失うと「誰が何をいつ行ったか」を再構成できなくなり、「削除済み」と「停止中」の区別も消えるからである。
 グループは監査イベントから参照されても、指す先のレコードが消えるだけで個人の情報は残らないので、匿名化を必要としない。
-利用者の削除は、猶予期間のある `PendingDeletion` を経て `Deleted` へ進む（[ユーザー](../../domain/identity-management/user/README.md#userlifecycle)の状態遷移）。
-消去が満たすべき規範は [`GDPR-ERASURE`](../../domain/standards.md) が定める。
+利用者の削除は、猶予期間のある `PendingDeletion` を経て `Deleted` へ進む（[ユーザー](../../modules/identity-management/user/README.md#userlifecycle)の状態遷移）。
+消去が満たすべき規範は [`GDPR-ERASURE`](../../requirements/standards.md) が定める。
 
 ## テナントの退去
 
-現在、テナントの物理削除は提供していない（[テナントのライフサイクル](../../domain/tenancy/lifecycle/README.md#状態遷移)）。
+現在、テナントの物理削除は提供していない（[テナントのライフサイクル](../../modules/tenancy/lifecycle/README.md#状態遷移)）。
 テナントを退去させる手段は無効化だけであり、無効化してもテナントのデータはすべて残る。
 
 テナントの物理削除を設計するときは、スキーマの次の性質が順序を決める。
@@ -98,7 +98,7 @@ DEK については、マスター鍵が残っている限り、戻った `wrapp
 
 このため、保持期間は次の順で変える。
 
-1. 対象モジュールの `standards.md` または `decisions.md` と、[品質要求](../../requirements/quality.md)の値を変える。
+1. 対象モジュールの `standards.md` または `decisions.md` と、[品質要件](../../requirements/quality.md)の値を変える。
 2. [キャパシティ設計](../performance/capacity.md)の見積もりを、新しい値で見直す。
 3. 一括削除の実装を、新しい値へ合わせる。
 4. バックアップの保持期間が、新しい値と消去の期限の両方と矛盾しないことを確かめる。

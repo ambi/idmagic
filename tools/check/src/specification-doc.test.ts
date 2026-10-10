@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import { documentKind, validateDocument } from './specification-doc.ts'
 
-const SCENARIOS = 'docs/domain/demo/scenarios.feature.md'
-const STATES = 'docs/domain/demo/states.md'
-const STANDARDS = 'docs/domain/demo/standards.md'
+const SCENARIOS = 'docs/modules/demo/scenarios.feature.md'
+const STATES = 'docs/modules/demo/states.md'
+const STANDARDS = 'docs/modules/demo/standards.md'
 
 const scenarios = `# Feature: Demo
 
@@ -21,10 +21,10 @@ const messages = (path: string, source: string) =>
 
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {
-    expect(documentKind('docs/domain/demo/states.md')).toBe('states')
-    expect(documentKind('docs/domain/demo/scenarios.feature.md')).toBe('scenarios')
-    expect(documentKind('docs/domain/demo/decisions.md')).toBe('prose')
-    expect(documentKind('docs/domain/standards.md')).toBe('standards')
+    expect(documentKind('docs/modules/demo/states.md')).toBe('states')
+    expect(documentKind('docs/modules/demo/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/modules/demo/decisions.md')).toBe('prose')
+    expect(documentKind('docs/requirements/standards.md')).toBe('standards')
     expect(documentKind('docs/design/security/authorization.md')).toBe('prose')
     expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
     expect(documentKind('docs/design/application/design-guidelines.md')).toBe('prose')
@@ -40,7 +40,7 @@ describe('documentKind', () => {
   })
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
-    expect(documentKind('docs/domain/demo/notes.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/notes.md')).toBeUndefined()
     expect(documentKind('docs/states.md')).toBeUndefined()
     expect(documentKind('docs/authorization.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
@@ -48,47 +48,47 @@ describe('documentKind', () => {
   })
 
   it('reads a feature slice one level below its context with the grammar its name gives', () => {
-    expect(documentKind('docs/domain/demo/user/scenarios.feature.md')).toBe('scenarios')
-    expect(documentKind('docs/domain/demo/user/states.md')).toBe('states')
-    expect(documentKind('docs/domain/demo/user/README.md')).toBe('specification')
-    expect(documentKind('docs/domain/demo/user/internals.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/user/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/modules/demo/user/states.md')).toBe('states')
+    expect(documentKind('docs/modules/demo/user/README.md')).toBe('specification')
+    expect(documentKind('docs/modules/demo/user/internals.md')).toBe('prose')
   })
 
   // 基準のリビジョンには改名前の付録が残るので、spec-diff はそれも付録として読む。
   it('reads the appendix under its former name examples.feature.md', () => {
-    expect(documentKind('docs/domain/demo/people/user/examples.feature.md')).toBe('examples')
+    expect(documentKind('docs/modules/demo/people/user/examples.feature.md')).toBe('examples')
   })
 
   it('reads the feature layout: specifications, chapters, appendix, and design', () => {
-    expect(documentKind('docs/domain/demo/people/user/README.md')).toBe('specification')
-    expect(documentKind('docs/domain/demo/people/user/lifecycle.md')).toBe('specification')
-    expect(documentKind('docs/domain/demo/people/user/design.md')).toBe('prose')
-    expect(documentKind('docs/domain/demo/people/user/acceptance.feature.md')).toBe('examples')
-    expect(documentKind('docs/domain/demo/design/README.md')).toBe('design-index')
+    expect(documentKind('docs/modules/demo/people/user/README.md')).toBe('specification')
+    expect(documentKind('docs/modules/demo/people/user/lifecycle.md')).toBe('specification')
+    expect(documentKind('docs/modules/demo/people/user/design.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/people/user/acceptance.feature.md')).toBe('examples')
+    expect(documentKind('docs/modules/demo/design/README.md')).toBe('design-index')
     expect(documentKind('docs/design/README.md')).toBe('design-index')
-    expect(documentKind('docs/domain/demo/quality.md')).toBe('prose')
-    expect(documentKind('docs/domain/demo/design/csv-transfer.md')).toBe('prose')
-    expect(documentKind('docs/domain/demo/design/decisions.md')).toBe('decision-records')
-    expect(documentKind('docs/domain/demo/design/csv/notes.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/quality.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/design/csv-transfer.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/design/decisions.md')).toBe('decision-records')
+    expect(documentKind('docs/modules/demo/design/csv/notes.md')).toBeUndefined()
   })
 
   it('keeps shared vocabulary and adopted standards at the context, not in a feature slice', () => {
-    expect(documentKind('docs/domain/demo/user/glossary.md')).toBeUndefined()
-    expect(documentKind('docs/domain/demo/user/standards.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/user/glossary.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/user/standards.md')).toBeUndefined()
   })
 
   // 機能群の一段下まで機能スライスを置けるので、その下で木が止まる。
   it('stops the tree at the feature slice', () => {
-    expect(documentKind('docs/domain/demo/people/user/profile/README.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/people/user/profile/README.md')).toBeUndefined()
   })
 
   it('no longer recognizes the single canonical document', () => {
     expect(documentKind('docs/SPECIFICATION.md')).toBeUndefined()
-    expect(documentKind('docs/domain/demo/SPECIFICATION.md')).toBeUndefined()
+    expect(documentKind('docs/modules/demo/SPECIFICATION.md')).toBeUndefined()
   })
 
   it('rejects a path the canonical layout does not define', () => {
-    expect(messages('docs/domain/demo/notes.md', '# Notes\n')).toEqual([
+    expect(messages('docs/modules/demo/notes.md', '# Notes\n')).toEqual([
       'not a canonical specification document',
     ])
   })
@@ -195,7 +195,7 @@ Replaced by the valid request scenario.
 
 ## Rule: REQ-DEMO-002 A behavior
 `
-    const result = validateDocument('docs/domain/demo/decisions.md', source)
+    const result = validateDocument('docs/modules/demo/decisions.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
       'REQ-DEMO-002 must be declared in scenarios.feature.md or in a feature specification',
     ])
@@ -204,7 +204,7 @@ Replaced by the valid request scenario.
 })
 
 describe('feature specification', () => {
-  const path = 'docs/domain/demo/work/task/README.md'
+  const path = 'docs/modules/demo/work/task/README.md'
 
   it('declares rules with headings and reads their titles and supersession', () => {
     const result = validateDocument(
@@ -268,7 +268,7 @@ describe('feature specification', () => {
 describe('examples appendix', () => {
   it('reads rule references and examples without declaring the rules', () => {
     const result = validateDocument(
-      'docs/domain/demo/work/task/acceptance.feature.md',
+      'docs/modules/demo/work/task/acceptance.feature.md',
       [
         '# Feature: タスクの例',
         '',

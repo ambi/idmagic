@@ -1,6 +1,6 @@
 # アドミッションコントロールが発動したとき
 
-`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [アドミッションコントロールの設計](../domain/system/admission-control/design.md)で、判断の理由は [System の設計判断](../domain/system/design/decisions.md#api-のプレーンを分けない)で説明する。
+`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [アドミッションコントロールの設計](../modules/system/admission-control/design.md)で、判断の理由は [System の設計判断](../modules/system/design/decisions.md#api-のプレーンを分けない)で説明する。
 
 ## 何が起きているか
 
@@ -30,7 +30,7 @@ API プロセスは、実行中の要求数が優先度クラスごとの上限�
 **`interactive_auth` まで捨てている場合。** 総キャパシティが足りていない。優先度の付け替えでは解決しない。
 - HorizontalPodAutoscaler が上限に達しているなら、上限を上げられるかを [キャパシティ設計](../design/performance/capacity.md#サイジング計算式) の接続予算と 70% 規則で確かめてから上げる。
 - PostgreSQL 側が束縛条件なら、レプリカを増やしても悪化する。接続の待ち時間と `DB_MAX_CONNS` を先に見る。
-- 収まった後、[キャパシティ設計](../design/performance/capacity.md#ロードシェディング順序) のロードシェディング順序に照らして、この事象が [System の設計判断](../domain/system/design/decisions.md#api-のプレーンを分けない) の再検討条件 (a) に当たるかを判断する。当たるなら記録を残す。
+- 収まった後、[キャパシティ設計](../design/performance/capacity.md#ロードシェディング順序) のロードシェディング順序に照らして、この事象が [System の設計判断](../modules/system/design/decisions.md#api-のプレーンを分けない) の再検討条件 (a) に当たるかを判断する。当たるなら記録を残す。
 
 **分類の無い経路が現れた場合。** 経路を足したときに分類を足し忘れている。`TestEveryAssembledRouteDeclaresAPriorityClass` が本来これをデプロイ前に落とす。落ちずにここまで来たなら、その検査が回っていないか、経路の登録が検査の見ている router を通っていない。どちらもデプロイの前に直す問題である。
 

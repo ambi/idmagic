@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-589-observability-design]
 change_kind: operations
 affected_spec:
-  - { path: docs/domain/system/operations/README.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # バッチ、バックアップ、スクレイプ、外形監視、証明書の期限をアラートで知らせる

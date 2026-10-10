@@ -10,13 +10,13 @@ WI-35451 は、IdManagement と Tenancy 以外の 19 モジュールの機能仕
 
 | 振る舞い | 規範上の条件 |
 | --- | --- |
-| WS-Federation のパッシブサインアウトは、ローカルのセッションを破棄し、登録した返信先にだけリダイレクトする | [REQ-WSFEDERATION-006](../../domain/ws-federation/passive-sign-in/README.md) |
-| SAML の Single Logout | [REQ-SAML-009](../../domain/saml/sso/README.md) |
-| Application のカテゴリの管理 | [REQ-APPLICATION-015](../../domain/application/catalog/README.md) |
-| WebAuthn の資格情報の登録と、ステップアップ認証のうえでの解除 | [REQ-AUTHENTICATION-038](../../domain/authentication/webauthn/README.md) |
-| ステップアップ認証の開始と完了 | [REQ-AUTHENTICATION-039](../../domain/authentication/account-portal/README.md) |
-| 認可詳細の種類と MCP のリソースサーバーの管理 API | [REQ-OAUTH2-051、REQ-OAUTH2-052](../../domain/oauth2/admin-access/README.md) |
-| `authorization_details` の要求と明示の同意、リソースの指定による audience の限定 | [REQ-OAUTH2-053、REQ-OAUTH2-054](../../domain/oauth2/authorization/README.md) |
+| WS-Federation のパッシブサインアウトは、ローカルのセッションを破棄し、登録した返信先にだけリダイレクトする | [REQ-WSFEDERATION-006](../../modules/ws-federation/passive-sign-in/README.md) |
+| SAML の Single Logout | [REQ-SAML-009](../../modules/saml/sso/README.md) |
+| Application のカテゴリの管理 | [REQ-APPLICATION-015](../../modules/application/catalog/README.md) |
+| WebAuthn の資格情報の登録と、ステップアップ認証のうえでの解除 | [REQ-AUTHENTICATION-038](../../modules/authentication/webauthn/README.md) |
+| ステップアップ認証の開始と完了 | [REQ-AUTHENTICATION-039](../../modules/authentication/account-portal/README.md) |
+| 認可詳細の種類と MCP のリソースサーバーの管理 API | [REQ-OAUTH2-051、REQ-OAUTH2-052](../../modules/oauth2/admin-access/README.md) |
+| `authorization_details` の要求と明示の同意、リソースの指定による audience の限定 | [REQ-OAUTH2-053、REQ-OAUTH2-054](../../modules/oauth2/authorization/README.md) |
 
 状態遷移の表は、実装が実際に通る遷移に合わせて改めた。
 たとえば、撤回した同意は利用者の再同意で `Granted` に戻り、上流の IdP の接続は信頼の根拠を更新すると `Disabled` に戻る。

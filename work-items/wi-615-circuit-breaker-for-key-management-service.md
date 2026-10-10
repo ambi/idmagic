@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/data-keys/lifecycle/README.md, requirement: REQ-DATAKEYS-001 }
+  - { path: docs/modules/data-keys/lifecycle/README.md, requirement: REQ-DATAKEYS-001 }
 ---
 
 # 鍵管理サービスへの呼び出しにサーキットブレーカーを置く

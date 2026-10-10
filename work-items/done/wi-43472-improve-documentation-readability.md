@@ -180,9 +180,9 @@ PostgreSQL の機能名として定着した「行レベルセキュリティ」
 | 実行単位 | この節に書く内容 | 詳細の所在 |
 | --- | --- | --- |
 | API | API リファレンスにあるすべてのエンドポイントを、API ガイドラインに従って実装することを一文で述べる | 生成サイトの API リファレンス、[API ガイドライン](../../docs/design/application/api-guidelines.md) |
-| Worker | 登録する `JobKind` ごとに、投入する Context、処理の内容、詳細の所在を表にする | 各 Context の文書、[Jobs](../../docs/domain/jobs/README.md) |
+| Worker | 登録する `JobKind` ごとに、投入する Context、処理の内容、詳細の所在を表にする | 各 Context の文書、[Jobs](../../docs/modules/jobs/README.md) |
 | Batch | サブコマンドごとに、処理の内容、実行の契機、詳細の所在を表にする | `infra/k8s/base/batch-cronjobs.yaml`、各 Context の文書 |
-| Seed | 投入する資源の種類（`first_party_clients`、`development_demo`）、マニフェストの与え方、起動の方法を述べる | [Seeding](../../docs/domain/seeding/README.md) |
+| Seed | 投入する資源の種類（`first_party_clients`、`development_demo`）、マニフェストの与え方、起動の方法を述べる | [Seeding](../../docs/modules/seeding/README.md) |
 | フロントエンドゲートウェイ | 画面群の一覧への参照を置く | [フロントエンド設計](../../docs/design/application/frontend.md)の画面の一覧 |
 
 着手時点のコードでは、Worker は `backend/cmd/idmagic-worker/worker.go` で `noop_echo`、利用者、グループ、グループメンバーシップの CSV インポートのプレビューと確定、`dynamic_group_reconcile`、データエクスポート、`data_key_reencryption`、`lifecycle_workflow_run`、`provisioning_task`、`oauth2.RegisterJobHandlers` が登録するジョブを登録する。

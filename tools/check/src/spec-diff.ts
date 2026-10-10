@@ -112,16 +112,22 @@ function deprecatedDeclarations(path: string, source: string): Set<string> {
  * 当時のパスを現在の配置へ写してから同定する。
  */
 const RELOCATED_DOCUMENTS = new Map([
-  ['docs/glossary.md', 'docs/domain/glossary.md'],
-  ['docs/standards.md', 'docs/domain/standards.md'],
-  ['docs/structure.md', 'docs/domain/structure.md'],
-  ['docs/scenarios.feature.md', 'docs/domain/scenarios.feature.md'],
+  ['docs/glossary.md', 'docs/requirements/glossary.md'],
+  ['docs/standards.md', 'docs/requirements/standards.md'],
+  ['docs/structure.md', 'docs/design/application/backend.md'],
+  ['docs/scenarios.feature.md', 'docs/requirements/scenarios.feature.md'],
   ['docs/product-overview.md', 'docs/requirements/product-overview.md'],
   ['docs/design/product-overview.md', 'docs/requirements/product-overview.md'],
+  ['docs/domain/glossary.md', 'docs/requirements/glossary.md'],
+  ['docs/domain/standards.md', 'docs/requirements/standards.md'],
+  ['docs/domain/structure.md', 'docs/design/application/backend.md'],
+  ['docs/domain/scenarios.feature.md', 'docs/requirements/scenarios.feature.md'],
 ])
 
 function currentPath(path: string): string {
-  return RELOCATED_DOCUMENTS.get(path) ?? path.replace(/^docs\/contexts\//, 'docs/domain/')
+  return (
+    RELOCATED_DOCUMENTS.get(path) ?? path.replace(/^docs\/(?:contexts|domain)\//, 'docs/modules/')
+  )
 }
 
 /** 標準仕様の行は、それを所有する文書と ID で同定する。 */
@@ -271,7 +277,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     // 移すことも同じで、機能スライスの段を落としてモジュールで同定する。
     const owner = currentPath(
       path.slice(0, Math.max(0, path.length - name.length - 1)) || path,
-    ).replace(/^(docs\/domain\/[^/]+)(?:\/[^/]+)+$/, '$1')
+    ).replace(/^(docs\/modules\/[^/]+)(?:\/[^/]+)+$/, '$1')
     const split = name === 'states.md'
     const transitions = split
       ? source
@@ -421,7 +427,7 @@ export function isSpecificationSource(path: string): boolean {
   // nothing writes it any more.
   if (path.endsWith('/SPECIFICATION.md')) return true
   if (path.endsWith('/scenarios.md') || path === 'docs/scenarios.md') return true
-  // `docs/domain/` へ移す前は、これらが `docs/` 直下にあった。
+  // 全体の文書は、`docs/` 直下、次に `docs/domain/` 直下に置いていた。
   if (
     [
       'docs/glossary.md',
@@ -429,6 +435,10 @@ export function isSpecificationSource(path: string): boolean {
       'docs/structure.md',
       'docs/scenarios.feature.md',
       'docs/product-overview.md',
+      'docs/domain/glossary.md',
+      'docs/domain/standards.md',
+      'docs/domain/structure.md',
+      'docs/domain/scenarios.feature.md',
     ].includes(path)
   )
     return true

@@ -7,7 +7,7 @@ WI-96797 は、所有者の User が止まると、その User が所有する A
 所有者の User を無効化する、削除を予約する、完全削除すると、その User が所有する `Active` の Agent が `Disabled` になり、Agent ごとに `AgentDisabled` が発行される。
 所有者の User を再有効化または復元しても、Agent は `Disabled` のまま残る。
 すでに止まっている User をもう一度無効化する、または削除をもう一度予約すると、残っている `Active` の Agent だけを無効化する。
-規範上の条件は[エージェント](../../domain/identity-management/agent/README.md)の REQ-IDMANAGEMENT-081 が定める。
+規範上の条件は[エージェント](../../modules/identity-management/agent/README.md)の REQ-IDMANAGEMENT-081 が定める。
 
 所有者の User が `Active` でない Agent の再有効化は、`POST /api/admin/v1/agents/{agent_id}/enable` が 409 と `agent_owner_inactive` で拒否し、Agent を変えない。
 所有者を `Active` に戻すか、`Active` の別の User へ所有者を変えてから再有効化する。

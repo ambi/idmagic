@@ -10,7 +10,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/provisioning/synchronization/README.md, requirement: REQ-PROVISIONING-011 }
+  - { path: docs/modules/provisioning/synchronization/README.md, requirement: REQ-PROVISIONING-011 }
 ---
 
 # 隔離した接続では、作成済みのプロビジョニングタスクを下流へ送らず、フル同期も始めない

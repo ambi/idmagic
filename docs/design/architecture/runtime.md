@@ -26,36 +26,36 @@ Worker と Batch は、長時間処理や再試行を HTTP リクエストから
 
 API は、API リファレンスに載るすべてのエンドポイントを、[API ガイドライン](../application/api-guidelines.md)に従って実装する。
 API リファレンスは `spec/` の TypeSpec から生成し、`mise run render-docs` で生成する文書サイトの「API リファレンス」で読む。
-各エンドポイントの振る舞いは、TypeSpec の操作が属するモジュールの[シナリオ](../../domain/README.md)が定める。
+各エンドポイントの振る舞いは、TypeSpec の操作が属するモジュールの[シナリオ](../../modules/README.md)が定める。
 
 ### Worker
 
 Worker は、ジョブのハンドラーと、プロセス内で周期的に動く処理の二種類を実行する。
 ハンドラーは `backend/cmd/idmagic-worker/worker.go` で `JobKind` ごとに登録する。
-ジョブの取得、再試行、レーン、配信不能の扱いは [Jobs](../../domain/jobs/README.md) が定める。
+ジョブの取得、再試行、レーン、配信不能の扱いは [Jobs](../../modules/jobs/README.md) が定める。
 
 | `JobKind` | 投入するモジュール | 処理 | 詳細 |
 | --- | --- | --- | --- |
-| `user_import_preview`、`user_import_apply` | IdManagement | 利用者の CSV インポートを検証し、確定する | [CSV の往復変換](../../domain/identity-management/design/csv-transfer.md) |
-| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [グループ CSV の設計](../../domain/identity-management/group-csv/design.md) |
-| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の設計](../../domain/identity-management/group-csv/design.md) |
-| `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [動的グループ](../../domain/identity-management/dynamic-group/README.md) |
-| `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [データエクスポートの設計](../../domain/identity-management/data-export/design.md) |
-| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各モジュールの秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../domain/data-keys/lifecycle/design.md) |
-| `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../domain/identity-governance/README.md) |
-| `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../domain/provisioning/synchronization/design.md) |
-| `backchannel_logout_delivery` | OAuth2 | OpenID Connect Back-Channel Logout の通知をクライアントへ送る | [ログアウト](../../domain/oauth2/logout/README.md) |
-| `noop_echo` | Jobs | 入力をそのまま返す。Worker の起動と配線を確かめるためのジョブである | [永続キュー](../../domain/jobs/queue/README.md) |
+| `user_import_preview`、`user_import_apply` | IdManagement | 利用者の CSV インポートを検証し、確定する | [CSV の往復変換](../../modules/identity-management/design/csv-transfer.md) |
+| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/group-csv/design.md) |
+| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/group-csv/design.md) |
+| `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [動的グループ](../../modules/identity-management/dynamic-group/README.md) |
+| `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [データエクスポートの設計](../../modules/identity-management/data-export/design.md) |
+| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各モジュールの秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../modules/data-keys/lifecycle/design.md) |
+| `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../modules/identity-governance/README.md) |
+| `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../modules/provisioning/synchronization/design.md) |
+| `backchannel_logout_delivery` | OAuth2 | OpenID Connect Back-Channel Logout の通知をクライアントへ送る | [ログアウト](../../modules/oauth2/logout/README.md) |
+| `noop_echo` | Jobs | 入力をそのまま返す。Worker の起動と配線を確かめるためのジョブである | [永続キュー](../../modules/jobs/queue/README.md) |
 
 周期的な処理は、ジョブのキューを通らずに Worker のプロセス内で動く。
 
 | 処理 | 内容 | 詳細 |
 | --- | --- | --- |
-| ライフサイクルワークフローのディスパッチ | ジョブへ関連付けられていないワークフロー実行を探し、`lifecycle_workflow_run` のジョブを投入する | [IdGovernance](../../domain/identity-governance/README.md) |
-| プロビジョニングのディスパッチ | 保留中のプロビジョニングタスクを `provisioning_task` のジョブへ関連付ける | [Provisioning の内部設計](../../domain/provisioning/synchronization/design.md) |
-| プロビジョニングの照合 | イベント同期が作らなかった差分を探し、プロビジョニングタスクにする | [Provisioning の内部設計](../../domain/provisioning/synchronization/design.md) |
+| ライフサイクルワークフローのディスパッチ | ジョブへ関連付けられていないワークフロー実行を探し、`lifecycle_workflow_run` のジョブを投入する | [IdGovernance](../../modules/identity-governance/README.md) |
+| プロビジョニングのディスパッチ | 保留中のプロビジョニングタスクを `provisioning_task` のジョブへ関連付ける | [Provisioning の内部設計](../../modules/provisioning/synchronization/design.md) |
+| プロビジョニングの照合 | イベント同期が作らなかった差分を探し、プロビジョニングタスクにする | [Provisioning の内部設計](../../modules/provisioning/synchronization/design.md) |
 | 短命な状態の掃除 | 認可リクエスト、認可コード、デバイスコード、リプレイ防止、WebAuthn のセッション、流量制御など、期限を過ぎた短命な状態のレコードを削除して領域を回収する。有効期限は読み取り時に判定するので、掃除が遅れても期限は延びない | [データのライフサイクル](../data/lifecycle.md) |
-| セキュリティイベントの配信 | Shared Signals の送信ストリームへ、配信期限が来たセキュリティイベントを送り、再試行と配信不能を管理する | [SharedSignals の状態遷移](../../domain/sharedsignals/stream/README.md#状態遷移) |
+| セキュリティイベントの配信 | Shared Signals の送信ストリームへ、配信期限が来たセキュリティイベントを送り、再試行と配信不能を管理する | [SharedSignals の状態遷移](../../modules/sharedsignals/stream/README.md#状態遷移) |
 | キューの滞留数の記録 | レーンごとの待機中と実行中のジョブ数をメトリクスへ記録する | [監視設計](../observability/monitoring.md) |
 
 ### Batch
@@ -66,7 +66,7 @@ Batch は、`idmagic-batch <サブコマンド>` として一回ずつ起動す�
 | サブコマンド | 処理 | 実行の契機 | 詳細 |
 | --- | --- | --- | --- |
 | `retention-sweep` | 保持期間を過ぎた監査イベント、認証イベントの集計、認証セッション、既知のサインイン端末、CSV の成果物を削除し、猶予期間を過ぎた削除予約の User を完全削除する | CronJob（毎時） | [データのライフサイクル](../data/lifecycle.md) |
-| `signing-key-lifecycle` | 署名鍵の世代交代と、JWKS に古い鍵を残す猶予期間を管理する | CronJob（毎日） | [SigningKeys](../../domain/signing-keys/README.md) |
+| `signing-key-lifecycle` | 署名鍵の世代交代と、JWKS に古い鍵を残す猶予期間を管理する | CronJob（毎日） | [SigningKeys](../../modules/signing-keys/README.md) |
 | `data-key-reencryption-sweep` | テナントと再暗号化の対象ごとに `data_key_reencryption` のジョブを投入する | 運用者が手で起動する。CronJob は宣言していない | [シークレット管理](../security/secrets.md) |
 | `restore-consistency-check` | バックアップから復元したデータベースの件数、署名鍵、ジョブの重複を検査する | 復元手順の最後 | [バックアップ、復元、災害復旧の運用手順書](../../runbooks/backup-restore-dr.md) |
 
@@ -85,7 +85,7 @@ Seed は、環境ごとの初期データを宣言したマニフェストを読
 | `test` | `development` と同じ内容 | `test` 環境だけ |
 | `performance` | `bootstrap` の内容に加え、負荷試験に使う大量の利用者。件数は `--count` で与える | 本番以外 |
 
-マニフェストの文法、シークレットの参照、環境ごとの制限は [Seeding](../../domain/seeding/README.md) が定める。
+マニフェストの文法、シークレットの参照、環境ごとの制限は [Seeding](../../modules/seeding/README.md) が定める。
 
 ### フロントエンドゲートウェイ
 
@@ -98,7 +98,7 @@ Seed は、環境ごとの初期データを宣言したマニフェストを読
 ブラウザー Cookie を用いる画面と API は同一オリジンで公開する。
 外部クライアントと上流の IdP は公開 HTTP エンドポイントへ到達し、API と Worker は PostgreSQL を共有する。
 
-モジュール間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [コード構成](../../domain/structure.md#モジュール間イベント) で定める。
+モジュール間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [バックエンド設計](../application/backend.md#モジュール間イベント) で定める。
 
 ## 実行時の規則
 

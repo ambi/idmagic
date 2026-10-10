@@ -1,27 +1,10 @@
 import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { specificationRules } from '../../check/src/feature-specification.ts'
-import { parseScenarioDocument, ruleBodies } from '../../check/src/gherkin-scenarios.ts'
+import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
-import {
-  CONTEXT_DOCUMENTS,
-  DOMAIN_DOCUMENTS,
-  SYSTEM_DOCUMENT_PATHS,
-} from '../../workspace/src/document-layout.ts'
+import { CONTEXT_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
-
-/**
- * What names a normative scenario outside the specification. Collected by
- * searching for the identifier, so the specification itself needs no back
- * references to code and stays the only place the behavior is stated.
- */
-export type ScenarioTrace = {
-  id: string
-  /** Repository-relative code and test paths that name the scenario. */
-  sources: string[]
-  /** Work item paths that name the scenario. */
-  workItems: string[]
-}
 
 export type SourceDocument = {
   path: string
@@ -66,8 +49,7 @@ type NavigationDirectory = {
 type DocumentCategory =
   | 'format'
   | 'format-index'
-  | 'domain'
-  | 'domain-child'
+  | 'modules'
   | 'development'
   | 'development-child'
   | 'operations'
@@ -174,212 +156,107 @@ function featureChildOrder(name: string, fallback: number): number {
   return fallback
 }
 
+/**
+ * 文書のページの位置。`docs/` の Markdown はリポジトリと同じ相対パスに置き、URL から元の
+ * 文書を辿れるようにする。入口の `docs/README.md` だけはサイトの最上位に置く。
+ */
+function sitePath(path: string): string {
+  if (path === 'docs/README.md') return 'index.html'
+  const segments = path.split('/')
+  const file = segments.pop() ?? ''
+  const directory = segments.map(slug).join('/')
+  if (file === 'README.md') return `${directory}/index.html`
+  return `${directory}/${slug(file.replace(/(?:\.feature)?\.md$/, ''))}.html`
+}
+
 function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
   const declaredTitle = plainTitle(document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path)
   const title =
-    document.path === 'docs/domain/scenarios.feature.md' ? 'システム横断シナリオ' : declaredTitle
+    document.path === 'docs/requirements/scenarios.feature.md'
+      ? 'システム横断シナリオ'
+      : declaredTitle
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
+  const base = { ...document, title, sections, outputPath: sitePath(document.path) }
+  const file = document.path.split('/').at(-1) ?? ''
+  const stem = file.replace(/(?:\.feature)?\.md$/, '')
+  const isIndex = file === 'README.md'
+  if (document.path === 'docs/README.md') {
+    return { ...base, id: 'whole-system', category: 'whole-system', order: 0 }
+  }
   if (document.path.startsWith('docs/formats/')) {
-    const name = document.path.split('/').at(-1)?.replace(/\.md$/, '') ?? ''
     return {
-      ...document,
-      id: `format-${slug(name)}`,
-      title,
-      sections,
-      outputPath: name === 'README' ? 'format/index.html' : `format/${slug(name)}.html`,
-      category: name === 'README' ? 'format-index' : 'format',
+      ...base,
+      id: `format-${slug(stem)}`,
+      category: isIndex ? 'format-index' : 'format',
       order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
     }
   }
-  const operationsDocument = document.path.match(/^docs\/operations\/([^/]+)$/)?.[1]
-  if (operationsDocument) {
-    const stem = operationsDocument.replace(/\.md$/, '')
-    return operationsDocument === 'README.md'
-      ? {
-          ...document,
-          id: 'operations',
-          title,
-          sections,
-          outputPath: 'operations/index.html',
-          category: 'operations',
-          order: 0,
-        }
+  if (/^docs\/operations\/[^/]+$/.test(document.path)) {
+    return isIndex
+      ? { ...base, id: 'operations', category: 'operations', order: 0 }
       : {
-          ...document,
+          ...base,
           id: `operations-${slug(stem)}`,
-          title,
-          sections,
-          outputPath: `operations/${slug(stem)}.html`,
           category: 'operations-child',
           order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
         }
   }
-  const runbookDocument = document.path.match(/^docs\/runbooks\/([^/]+)$/)?.[1]
-  if (runbookDocument) {
-    const stem = runbookDocument.replace(/\.md$/, '')
-    return {
-      ...document,
-      id: `runbook-${slug(stem)}`,
-      title,
-      sections,
-      outputPath: `operations/runbooks/${slug(stem)}.html`,
-      category: 'runbook',
-      order: index,
-    }
+  if (/^docs\/runbooks\/[^/]+$/.test(document.path)) {
+    return { ...base, id: `runbook-${slug(stem)}`, category: 'runbook', order: index }
   }
-  const domainDocument = document.path.match(/^docs\/domain\/([^/]+\.md)$/)?.[1]
-  if (domainDocument) {
-    const stem =
-      domainDocument === 'scenarios.feature.md' ? 'scenarios' : domainDocument.replace(/\.md$/, '')
-    return domainDocument === 'README.md'
-      ? {
-          ...document,
-          id: 'domain',
-          title,
-          sections,
-          outputPath: 'domain/index.html',
-          category: 'domain',
-          order: 0,
-        }
-      : {
-          ...document,
-          id: `domain-${slug(stem)}`,
-          title,
-          sections,
-          outputPath: `domain/${slug(stem)}.html`,
-          category: 'domain-child',
-          order: canonicalOrder(DOMAIN_DOCUMENTS, domainDocument, index),
-        }
+  if (/^docs\/development\/[^/]+$/.test(document.path)) {
+    return isIndex
+      ? { ...base, id: 'development', category: 'development', order: 0 }
+      : { ...base, id: `development-${slug(stem)}`, category: 'development-child', order: index }
   }
-  const systemDocument = document.path.match(/^docs\/(.+)$/)?.[1]
-  if (
-    systemDocument &&
-    !systemDocument.startsWith('domain/') &&
-    !systemDocument.startsWith('development/')
-  ) {
-    const segments = systemDocument.split('/')
-    const file = segments.at(-1) ?? systemDocument
-    const stem = file.replace(/\.md$/, '')
-    const directory = segments.slice(0, -1).map(slug).join('/')
-    const outputPath =
-      file === 'README.md'
-        ? directory
-          ? `docs/${directory}/index.html`
-          : 'docs/index.html'
-        : `docs/${directory ? `${directory}/` : ''}${slug(stem)}.html`
-    return systemDocument === 'README.md'
-      ? {
-          ...document,
-          id: 'whole-system',
-          title,
-          sections,
-          outputPath: 'index.html',
-          category: 'whole-system',
-          order: 0,
-        }
-      : {
-          ...document,
-          id: `whole-system-${slug(systemDocument)}`,
-          title,
-          sections,
-          outputPath,
-          category: 'whole-system-child',
-          order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
-        }
-  }
-  const developmentDocument = document.path.match(/^docs\/development\/([^/]+)$/)?.[1]
-  if (developmentDocument) {
-    const stem = developmentDocument.replace(/\.md$/, '')
-    return developmentDocument === 'README.md'
-      ? {
-          ...document,
-          id: 'development',
-          title,
-          sections,
-          outputPath: 'development/index.html',
-          category: 'development',
-          order: 0,
-        }
-      : {
-          ...document,
-          id: `development-${slug(stem)}`,
-          title,
-          sections,
-          outputPath: `development/${slug(stem)}.html`,
-          category: 'development-child',
-          order: index,
-        }
+  if (document.path === 'docs/modules/README.md') {
+    return { ...base, id: 'modules', category: 'modules', order: 0 }
   }
   // モジュールより下の段。内部設計、機能群、機能群の下の機能スライスがある。
   // `feature` はその段のモジュールからの相対パスである。
-  const featureDocument = document.path.match(/^docs\/domain\/([^/]+)\/(.+)\/([^/]+)$/)
+  const featureDocument = document.path.match(/^docs\/modules\/([^/]+)\/(.+)\/([^/]+)$/)
   if (featureDocument) {
     const [, context = '', feature = '', featureFile = ''] = featureDocument
-    const stem =
-      featureFile === 'acceptance.feature.md' ? 'acceptance' : featureFile.replace(/\.md$/, '')
-    const node = feature.split('/').map(slug)
+    const node = feature.split('/').map(slug).join('-')
     return featureFile === 'README.md'
       ? {
-          ...document,
-          id: `context-${context}-${node.join('-')}`,
-          title,
-          sections,
-          outputPath: `domain/${context}/${node.join('/')}/index.html`,
+          ...base,
+          id: `context-${context}-${node}`,
           category: 'feature',
           order: index,
           context,
           feature,
         }
       : {
-          ...document,
-          id: `context-${context}-${node.join('-')}-${slug(stem)}`,
-          title,
-          sections,
-          outputPath: `domain/${context}/${node.join('/')}/${slug(stem)}.html`,
+          ...base,
+          id: `context-${context}-${node}-${slug(stem)}`,
           category: 'feature-child',
           order: featureChildOrder(featureFile, index),
           context,
           feature,
         }
   }
-  const contextDocument = document.path.match(/^docs\/domain\/([^/]+)\/([^/]+)$/)
+  const contextDocument = document.path.match(/^docs\/modules\/([^/]+)\/([^/]+)$/)
   const context = contextDocument?.[1]
   const contextFile = contextDocument?.[2]
   if (context && contextFile) {
-    const stem = contextFile.replace(/\.md$/, '')
     return contextFile === 'README.md'
-      ? {
-          ...document,
-          id: `context-${context}`,
-          title,
-          sections,
-          outputPath: `domain/${context}/index.html`,
-          category: 'context',
-          order: index,
-          context,
-        }
+      ? { ...base, id: `context-${context}`, category: 'context', order: index, context }
       : {
-          ...document,
+          ...base,
           id: `context-${context}-${slug(stem)}`,
-          title,
-          sections,
-          outputPath: `domain/${context}/${slug(stem)}.html`,
           category: 'context-child',
           order: canonicalOrder(CONTEXT_DOCUMENTS, contextFile, index),
           context,
         }
   }
-  const name = document.path.split('/').at(-1)?.replace(/\.md$/, '') ?? document.path
   return {
-    ...document,
-    id: `format-${slug(name)}`,
-    title,
-    sections,
-    outputPath: `format/${slug(name)}.html`,
-    category: 'format',
-    order: index,
+    ...base,
+    id: `whole-system-${slug(document.path.replace(/^docs\//, ''))}`,
+    category: 'whole-system-child',
+    order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
   }
 }
 
@@ -516,6 +393,12 @@ export function addDerivedStateDiagrams(source: string): string {
   return output.join('\n')
 }
 
+/**
+ * 文書が一次情報へ張ったリンクのうち、生成サイトでは生成したビューを開くもの。
+ * リポジトリで読む人は TypeSpec へ、サイトで読む人はそこから作ったリファレンスへ着く。
+ */
+const GENERATED_VIEWS = new Map([['spec/main.tsp', 'reference/index.html']])
+
 function markdownRenderer(
   documents: RenderedDocument[],
   repositoryRoot: string,
@@ -606,7 +489,11 @@ function markdownRenderer(
         // `[設計](design/)` のようなディレクトリへの参照は、リポジトリでは読めるが生成
         // サイトには対応するページがない。その段の索引へ向ける。
         const target = bySource.get(absolute) ?? bySource.get(resolve(absolute, 'README.md'))
-        if (target) {
+        const generatedView = GENERATED_VIEWS.get(relative(repositoryRoot, absolute))
+        if (generatedView) {
+          token?.attrSet('href', pageHref(current.document.outputPath, generatedView))
+          token?.attrSet('data-site-link', '')
+        } else if (target) {
           const unprefixedFragment = fragment.startsWith(`${target.id}-`)
             ? fragment.slice(target.id.length + 1)
             : fragment
@@ -754,15 +641,16 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     const open = marker || body.includes('aria-current="page"') ? ' open' : ''
     return `<details class="nav-section"${open}><summary>${heading}</summary><ul class="nav-tree">${body}</ul></details>`
   }
-  const tree = documentTree(rootChildren)
   /**
-   * 「システム設計」は 7 領域の索引にすぎず、抽象的な名前のまま段を一つ増やす。枝を
-   * 廃して領域を区分の直下へ上げる。索引そのものは `docs/README.md` の文書体系から辿る。
+   * 区分は `docs/README.md` の表と同じ名前と順序で並べる。要件文書と全体設計文書は、
+   * それぞれのディレクトリの索引を区分の見出しにし、設計領域は全体設計文書の直下に置く。
    */
-  const designNode = tree.directories.find((node) => node.name === 'design')
-  const areas = tree.directories.flatMap((node) =>
-    node.name === 'design' ? node.directories.map(directory) : [directory(node)],
-  )
+  const tree = documentTree(rootChildren)
+  const division = (name: string) => tree.directories.find((node) => node.name === name)
+  const divisionBody = (node: NavigationDirectory | undefined) =>
+    node ? [...node.documents.map(leaf), ...node.directories.map(directory)].join('') : ''
+  const requirementsNode = division('requirements')
+  const designNode = division('design')
   // 段は入れ子にする。機能スライスが機能群の下に、内部設計の文書が
   // `design` の下に並ぶ。親の段は、その段の相対パスを接頭辞に持つ段を子に持つ。
   const node = (feature: RenderedDocument): NavigationDirectory => ({
@@ -780,8 +668,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       )
       .map(node),
   })
-  const domainBody = [
-    ...inGroup(documents, 'domain-child').map(leaf),
+  const modulesBody = [
     ...contexts.map((entry) =>
       directory({
         name: entry.title,
@@ -795,12 +682,6 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       }),
     ),
   ].join('')
-  const designIndex = designNode?.document
-  const designBody = [
-    ...(designNode?.documents ?? []).map(leaf),
-    ...tree.documents.map(leaf),
-    ...areas,
-  ].join('')
   const operationsBody = [
     ...inGroup(documents, 'operations-child').map(leaf),
     ...(runbooks.length
@@ -808,18 +689,21 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       : []),
   ].join('')
   return [
-    designBody ? group('設計文書', designBody, designIndex) : '',
-    domainBody ? group('モジュール設計', domainBody, index('domain')) : '',
+    requirementsNode
+      ? group('要件文書', divisionBody(requirementsNode), requirementsNode.document)
+      : '',
+    designNode ? group('全体設計文書', divisionBody(designNode), designNode.document) : '',
+    modulesBody ? group('モジュール設計文書', modulesBody, index('modules')) : '',
     development
       ? group('開発文書', inGroup(documents, 'development-child').map(leaf).join(''), development)
       : '',
     operations ? group('運用文書', operationsBody, operations) : '',
     group(
       'リファレンス',
-      `${referenceLink('api/index.html', 'API リファレンス')}${referenceLink('models/index.html', 'モデルカタログ')}${referenceLink('traceability/index.html', 'トレーサビリティ')}`,
+      `${referenceLink('api/index.html', 'API リファレンス')}${referenceLink('models/index.html', 'モデルカタログ')}`,
       'reference/index.html',
     ),
-    group('フォーマット', formats.map(leaf).join(''), 'format/index.html'),
+    group('フォーマット', formats.map(leaf).join(''), index('format-index')),
   ].join('')
 }
 
@@ -916,13 +800,6 @@ function documentPage(
     documents,
     scripts,
   })
-}
-
-/** フォーマット文書が何を定めるか。題名だけでは対象が分からない。 */
-const FORMAT_SUMMARIES: Record<string, string> = {
-  'docs/formats/documentation-guide.md': '文書の種類、置き場所、それぞれが所有する内容',
-  'docs/formats/specification-format.md': '規範シナリオと標準仕様の書き方、ID の付け方',
-  'docs/formats/work-item-format.md': '作業項目の書き方、必要な証拠、完了の記録',
 }
 
 function safeJson(value: unknown): string {
@@ -1328,67 +1205,6 @@ function featureMap(
   return `<section class="context-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
-function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
-  const entries: ScenarioEntry[] = []
-  for (const rule of declaredRules(documents)) {
-    entries.push({
-      id: rule.id,
-      title: rule.title,
-      document: rule.document,
-      anchor: rule.anchor,
-      kind: 'rule',
-    })
-  }
-  for (const document of documents) {
-    if (document.path.endsWith('acceptance.feature.md')) {
-      // 付録の Rule は仕様本文の宣言を参照するだけなので、例だけを索引する。
-      for (const rule of parseScenarioDocument(document.source).rules) {
-        for (const example of rule.examples) {
-          entries.push({
-            id: example.id,
-            title: example.name.replace(new RegExp(`^${example.id}\\s*`), ''),
-            document,
-            anchor: `${document.id}-${slug(`${example.outline ? 'Scenario Outline' : 'Example'}: ${example.name}`)}`,
-            kind: 'example',
-            parentId: rule.id,
-          })
-        }
-      }
-      continue
-    }
-    if (document.path !== 'docs/domain/scenarios.feature.md') continue
-    for (const rule of parseScenarioDocument(document.source).rules) {
-      entries.push({
-        id: rule.id,
-        title: rule.name.replace(new RegExp(`^${rule.id}(?::)?\\s*`), ''),
-        document,
-        anchor: `${document.id}-${slug(`Rule: ${rule.name}`)}`,
-        kind: 'rule',
-      })
-      for (const example of rule.examples) {
-        entries.push({
-          id: example.id,
-          title: example.name.replace(new RegExp(`^${example.id}\\s*`), ''),
-          document,
-          anchor: `${document.id}-${slug(`${example.outline ? 'Scenario Outline' : 'Example'}: ${example.name}`)}`,
-          kind: 'example',
-          parentId: rule.id,
-        })
-      }
-    }
-  }
-  return entries.sort((a, b) => a.id.localeCompare(b.id))
-}
-
-type ScenarioEntry = {
-  id: string
-  title: string
-  document: RenderedDocument
-  anchor: string
-  kind: 'rule' | 'example'
-  parentId?: string
-}
-
 /**
  * 生成した区分の入口。中身は下位のページが持つので、この段は何がどこにあるかだけを言う。
  * 入口が無いと、サイドバーの区分名だけがクリックできない例外になる。
@@ -1414,29 +1230,6 @@ function divisionIndex(args: {
     body,
     documents: args.documents,
   })
-}
-
-function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]): string {
-  const page = 'traceability/index.html'
-  const byId = new Map(traces.map((trace) => [trace.id, trace]))
-  const scenarios = scenarioIndex(documents)
-  const examples = scenarios.filter((scenario) => scenario.kind === 'example')
-  const covered = examples.filter((scenario) => (byId.get(scenario.id)?.sources.length ?? 0) > 0)
-  const testReferences = (entries: string[]) =>
-    entries.length === 0
-      ? '<span class="trace-empty">テスト参照なし</span>'
-      : `<ul class="trace-paths">${entries
-          .map((entry) => `<li><code>${escapeHtml(entry)}</code></li>`)
-          .join('')}</ul>`
-  const rows = scenarios
-    .map((scenario) => {
-      const trace = byId.get(scenario.id)
-      const href = `${pageHref(page, scenario.document.outputPath)}#${scenario.anchor}`
-      return `<tr class="trace-${scenario.kind}"><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span>${scenario.parentId ? `<span class="trace-parent">${escapeHtml(scenario.parentId)}</span>` : ''}</th><td>${testReferences(trace?.sources ?? [])}</td></tr>`
-    })
-    .join('')
-  const body = `<header class="reference-header"><p class="eyebrow">リポジトリから生成</p><h1>トレーサビリティ</h1><p>すべての規範的な規則と実行可能な例を示す。例へのテスト対応は EX 識別子を名指しするプロダクトテストだけから算出する。${examples.length} 件中 ${covered.length} 件の例がテスト参照を持つ。</p></header><table class="trace-table"><thead><tr><th scope="col">規則／例</th><th scope="col">テスト参照</th></tr></thead><tbody>${rows}</tbody></table>`
-  return shell({ page, title: 'トレーサビリティ', current: 'トレーサビリティ', body, documents })
 }
 
 /** モデルは一つの契約名前空間を共有するため、宣言元ディレクトリで分類する。 */
@@ -1615,7 +1408,6 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 .scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
 .reference-header{margin-bottom:26px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px 0 0;padding:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}
 .model-group{margin-top:34px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.model-search{display:grid;max-width:520px;gap:6px;margin-top:22px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:8px;font:inherit}
-.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-example th[scope=row]{padding-left:28px}.trace-title,.trace-parent{color:var(--muted);font-weight:400}.trace-parent{font-size:12px}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
 .kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--bg-soft)}.badges{margin:.5em 0}.context-reference{margin-top:44px;padding-top:10px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
 @media(max-width:1200px){.page{grid-template-columns:minmax(0,1fr)}.page-toc{display:none}}
 @media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--bg)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);box-shadow:0 12px 32px rgba(20,23,28,.18)}main{margin:0;padding:20px 18px 80px}main:has(.swagger-shell){padding-inline:18px}.hero h1{font-size:28px}.diagram-shell .mermaid{min-width:480px}}
@@ -1780,7 +1572,6 @@ export function renderDocumentationSite(args: {
   outputDirectory: string
   openapiFileName: string
   models: CatalogSymbol[]
-  traces?: ScenarioTrace[]
   contextTags?: Record<string, string[]>
   sourcePaths?: string[]
   contextAliases?: Record<string, string>
@@ -1802,11 +1593,9 @@ export function renderDocumentationSite(args: {
     args.outputDirectory,
     mermaidSources,
   )
-  const formats = inGroup(documents, 'format')
   const files: Record<string, string> = {
     'api/index.html': apiPage(args.openapi, args.openapiFileName, documents),
     'models/index.html': modelIndex(args.models, documents),
-    'traceability/index.html': traceabilityPage(documents, args.traces ?? []),
     'reference/index.html': divisionIndex({
       page: 'reference/index.html',
       title: 'リファレンス',
@@ -1822,23 +1611,7 @@ export function renderDocumentationSite(args: {
           label: 'モデルカタログ',
           content: `HTTP に公開しないものを含む、リポジトリ所有の TypeSpec シンボル ${args.models.length} 個`,
         },
-        {
-          path: 'traceability/index.html',
-          label: 'トレーサビリティ',
-          content: '規範 ID と、それを名指すテスト、実装、作業項目の対応',
-        },
       ],
-      documents,
-    }),
-    'format/index.html': divisionIndex({
-      page: 'format/index.html',
-      title: 'フォーマット',
-      lead: '文書と記録の書き方を定める。プロダクトの振る舞いではなく、このリポジトリの進め方が対象である。',
-      entries: formats.map((entry) => ({
-        path: entry.outputPath,
-        label: entry.title,
-        content: FORMAT_SUMMARIES[entry.path] ?? '書き方の規則',
-      })),
       documents,
     }),
   }

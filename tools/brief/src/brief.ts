@@ -14,7 +14,7 @@
  * reading list exists to avoid.
  */
 
-import { isTestPath } from '../../render-docs/src/traces.ts'
+import { isTestPath } from './traces.ts'
 
 export type SourcePartition = {
   implementation: string[]

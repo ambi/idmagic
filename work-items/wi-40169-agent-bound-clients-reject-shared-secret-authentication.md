@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/domain/oauth2/token/README.md, requirement: REQ-OAUTH2-046 }
+  - { path: docs/modules/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/modules/oauth2/token/README.md, requirement: REQ-OAUTH2-046 }
   - { path: spec/contexts/identity-management/main.tsp, symbol: BindAgentCredential }
 ---
 
@@ -41,7 +41,7 @@ Agent を第三の主体として扱い、長期シークレットを配らず�
   束縛後にクライアントの認証方式が変更された場合も、この検査で拒否される。
 - 規範シナリオを追加する。
   束縛の拒否は IdManagement、発行の拒否は OAuth2 の `scenarios.feature.md` に置く。
-- `docs/domain/oauth2/standards.md` へ `draft-ietf-wimse-aims-00` の節を追加し、この変更が満たす要件行を宣言する。
+- `docs/modules/oauth2/standards.md` へ `draft-ietf-wimse-aims-00` の節を追加し、この変更が満たす要件行を宣言する。
 - `BindAgentCredential` の 400 応答へ、拒否理由を区別できるエラーを追加する。
 - 管理コンソールのエージェント画面で、束縛できないクライアントを選んだときの拒否理由を表示する。
 
@@ -144,7 +144,7 @@ Agent へのトークン発行では、`client_credentials` と CIBA の承認�
 
 ## タスク
 
-- [ ] T001 [Spec] `docs/domain/oauth2/standards.md` へ `draft-ietf-wimse-aims-00` の節と要件行を追加する。
+- [ ] T001 [Spec] `docs/modules/oauth2/standards.md` へ `draft-ietf-wimse-aims-00` の節と要件行を追加する。
 - [ ] T002 [Spec] 束縛の拒否と発行の拒否の規範シナリオ、`BindAgentCredential` のエラーを追加し、再生成する。
 - [ ] T003 [Acceptance] 共有シークレットのクライアントを束縛した Agent が `client_credentials` とトークン交換でトークンを得られることを、受け入れテストの RED として観測する。
 - [ ] T004 [OAuth2] Agent の発行判定へ認証方式の検査を加え、単体 RED から GREEN にする。

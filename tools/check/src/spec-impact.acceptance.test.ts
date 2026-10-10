@@ -10,7 +10,7 @@ afterAll(async () => {
 })
 
 const MODULE = 'example.test/product'
-const SCENARIOS = 'docs/domain/demo/scenarios.feature.md'
+const SCENARIOS = 'docs/modules/demo/scenarios.feature.md'
 const TYPESPEC = 'spec/contexts/demo/main.tsp'
 const SERVICE = 'backend/demo/service.go'
 const SERVICE_TEST = 'backend/demo/service_test.go'

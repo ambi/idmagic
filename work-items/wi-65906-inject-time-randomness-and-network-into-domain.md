@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "domain のパッケージが自分で得て�
 
 ## 動機
 
-`docs/domain/structure.md` は、`domain` で `time.Now`、`crypto/rand`、`math/rand`、OS、ネットワークを直接使わないと定めている。
+`docs/design/application/backend.md` は、`domain` で `time.Now`、`crypto/rand`、`math/rand`、OS、ネットワークを直接使わないと定めている。
 `tools/check/boundary-debt.json` には、この規則の違反（`domain-effect`）が 20 件ある。
 
 | Context | ファイル | 使っているもの |

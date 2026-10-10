@@ -14,4 +14,4 @@
 外した 4 種類は一度も発行されていなかったので、保存済みの監査の記録に残っているものはない。
 データ移行や設定変更は不要である。
 
-互換性境界は [REQ-AUTHENTICATION-017](../../domain/authentication/totp/README.md) と [REQ-AUTHENTICATION-040](../../domain/authentication/webauthn/README.md) が定める。
+互換性境界は [REQ-AUTHENTICATION-017](../../modules/authentication/totp/README.md) と [REQ-AUTHENTICATION-040](../../modules/authentication/webauthn/README.md) が定める。

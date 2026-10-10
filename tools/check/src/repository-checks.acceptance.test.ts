@@ -33,25 +33,23 @@ const VALID_REQUEST_EXAMPLES = [
   '',
 ].join('\n')
 
-/** 設計の入口。どの話題にも固有の設計がないことを、理由とともに書く。 */
+/** 設計の入口。どの設計領域にも固有の設計がないことを、理由とともに書く。 */
 const DESIGN_INDEX = [
   '# Demo の設計',
   '',
-  '| 話題 | 記述した場所 |',
+  '| 設計領域 | 内容 |',
   '| --- | --- |',
   ...[
-    'アーキテクチャ',
-    '設計判断',
-    'アプリケーション',
-    'データ',
-    'セキュリティ',
-    '信頼性',
-    '性能',
-    'オブザーバビリティ',
-    '検証',
-    'インフラストラクチャ',
-    'リスク',
-  ].map((topic) => `| ${topic} | 該当なし：Demo は小さく、固有の設計がない |`),
+    'アーキテクチャ設計',
+    'アプリケーション設計',
+    'データ設計',
+    'インフラストラクチャ設計',
+    'セキュリティ設計',
+    '信頼性設計',
+    '性能設計',
+    'オブザーバビリティ設計',
+    '検証設計',
+  ].map((area) => `| ${area} | 該当なし：Demo は小さく、固有の設計がない |`),
   '',
 ].join('\n')
 
@@ -65,7 +63,7 @@ async function writeFeature(
   specification: string,
   examples: string,
 ): Promise<void> {
-  const directory = join(root, 'docs', 'domain', 'demo', ...node.split('/'))
+  const directory = join(root, 'docs', 'modules', 'demo', ...node.split('/'))
   await mkdir(directory, { recursive: true })
   await writeFile(join(directory, 'README.md'), specification)
   await writeFile(join(directory, 'acceptance.feature.md'), examples)
@@ -75,7 +73,7 @@ async function writeFeature(
 async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
-  await mkdir(join(root, 'docs', 'domain', 'demo', 'design'), { recursive: true })
+  await mkdir(join(root, 'docs', 'modules', 'demo', 'design'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'architecture'), { recursive: true })
   await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
   await writeFile(
@@ -89,8 +87,8 @@ async function workspace(): Promise<string> {
       '',
     ].join('\n'),
   )
-  await writeFile(join(root, 'docs', 'domain', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'docs', 'domain', 'demo', 'design', 'README.md'), DESIGN_INDEX)
+  await writeFile(join(root, 'docs', 'modules', 'demo', 'README.md'), '# Demo\n')
+  await writeFile(join(root, 'docs', 'modules', 'demo', 'design', 'README.md'), DESIGN_INDEX)
   return root
 }
 
@@ -199,9 +197,9 @@ describe('文書検査', () => {
    */
   it('lists every passing document only when asked', async () => {
     const root = await workspace()
-    expect((await checkDocuments(root)).output).not.toContain('docs/domain/demo/design/README.md')
+    expect((await checkDocuments(root)).output).not.toContain('docs/modules/demo/design/README.md')
     const verbose = await checkDocuments(root, '--verbose')
-    expect(verbose.output).toContain('docs/domain/demo/design/README.md')
+    expect(verbose.output).toContain('docs/modules/demo/design/README.md')
     expect(verbose.code).toBe(0)
   })
 
@@ -216,7 +214,7 @@ describe('文書検査', () => {
 
   it('names the canonical document a misspelled file was meant to be', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'glosary.md'), INVALID_BODY)
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'glosary.md'), INVALID_BODY)
 
     const result = await checkDocuments(root)
     expect(result.code).not.toBe(0)
@@ -263,8 +261,8 @@ describe('文書検査', () => {
   // 検査から消える。被覆の拒否が出ることが、読まれていることの観測になる。
   it('reads the examples of a feature slice inside a group as normative', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'docs', 'domain', 'demo', 'people'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'people', 'README.md'), '# People\n')
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'people'), { recursive: true })
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'people', 'README.md'), '# People\n')
     await writeFeature(
       root,
       'people/user',
@@ -284,7 +282,7 @@ describe('文書検査', () => {
 
     const result = await checkDocuments(root)
     expect(result.output).not.toContain('not a canonical specification document')
-    expect(result.output).not.toContain('docs/domain/demo/people/user/ is not listed')
+    expect(result.output).not.toContain('docs/modules/demo/people/user/ is not listed')
     expect(result.output).toContain('EX-DEMO-002-01 is declared, but no test names it')
   })
 
@@ -294,7 +292,7 @@ describe('文書検査', () => {
   it('admits no standards row through a recreated debt ledger', async () => {
     const root = await workspace()
     await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'standards.md'),
+      join(root, 'docs', 'modules', 'demo', 'standards.md'),
       [
         '# Demo の採用規範',
         '',
@@ -373,14 +371,14 @@ describe('文書配置図の整合検査', () => {
     cleanup.push(root)
     await mkdir(join(root, 'docs/formats'), { recursive: true })
     await writeFile(
-      join(root, 'docs/formats/specification-format.md'),
-      '# 仕様フォーマット\n\n## 1. 配置\n\n```text\ndocs/\n  README.md\n```\n',
+      join(root, 'docs/formats/documentation-guide.md'),
+      '# 文書ガイド\n\n### 配置\n\n```text\ndocs/\n  README.md\n```\n',
     )
 
     const result = await checkDocumentLayout(root)
 
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/domain/<context>/standards.md')
+    expect(result.output).toContain('docs/modules/<context>/standards.md')
   })
 })
 
@@ -501,8 +499,8 @@ The gate must reject an absent document.
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
-    await mkdir(join(root, 'docs', 'domain', 'demo', 'run'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'run'), { recursive: true })
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
     await writeFile(
       join(root, 'work-items', 'wi-439-missing-primary-use-case.md'),
       `---
@@ -519,9 +517,9 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
-  source: [docs/domain/demo/run/README.md]
+  source: [docs/modules/demo/run/README.md]
 affected_spec:
-  - { path: docs/domain/demo/run/README.md, requirement: REQ-DEMO-001 }
+  - { path: docs/modules/demo/run/README.md, requirement: REQ-DEMO-001 }
 ---
 
 # Feature without a primary use case
@@ -557,8 +555,8 @@ The feature could remain disconnected.
     const root = await workspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
-    await mkdir(join(root, 'docs', 'domain', 'demo', 'run'), { recursive: true })
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'run'), { recursive: true })
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
     await writeFile(
       join(root, 'mise.toml'),
       '[tasks.verify]\ndepends = ["test-go-race"]\n\n[tasks.test-go-race]\nrun = "go test -race ./..."\n',
@@ -579,7 +577,7 @@ created_at: 2026-08-30
 change_kind: feature
 evidence_policy: risk-based-v3
 affected_spec:
-  - { path: docs/domain/demo/run/README.md, requirement: REQ-DEMO-001 }
+  - { path: docs/modules/demo/run/README.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
   - id: demo-success
     requirement: REQ-DEMO-001
@@ -740,9 +738,9 @@ describe('規則の書式と仕様の木の検査', () => {
       join(root, 'docs', 'design', 'application', 'api-guidelines.md'),
       '# API ガイドライン\n\n## ページサイズ\n\n既定は 50 件とする。\n',
     )
-    await mkdir(join(root, 'docs', 'domain', 'demo', 'task'), { recursive: true })
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'task'), { recursive: true })
     await writeFile(
-      join(root, 'docs', 'domain', 'demo', 'task', 'README.md'),
+      join(root, 'docs', 'modules', 'demo', 'task', 'README.md'),
       [
         '# タスク',
         '',
@@ -797,7 +795,7 @@ describe('規則の書式と仕様の木の検査', () => {
     const result = await checkSpecificationRules(root)
     expect(result.code).not.toBe(0)
     expect(result.output).toContain(
-      'backend/demo/note has no feature slice specification under docs/domain/demo/',
+      'backend/demo/note has no feature slice specification under docs/modules/demo/',
     )
   })
 })

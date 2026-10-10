@@ -38,7 +38,7 @@ SharedSignals の TypeSpec が、Shared Signals と関係のない共通のエ�
 ## 対象範囲
 
 - 共通のエラー 4 件（`invalid_request`、`insufficient_scope`、`invalid_origin`、`csrf_failed`）を、モジュールに属さない共通の TypeSpec の置き場所へ移す。
-  語彙の検査は、共通の置き場所の語を、モジュールの要件ではなく横断的な要件（`docs/domain/scenarios.feature.md` または `docs/domain/standards.md`）で照合する。
+  語彙の検査は、共通の置き場所の語を、モジュールの要件ではなく横断的な要件（`docs/requirements/scenarios.feature.md` または `docs/requirements/standards.md`）で照合する。
 - `step_up_required` と `unlink_denied` を、返すモジュールの TypeSpec へ移し、そのモジュールの要件に返す条件を書く。
   複数のモジュールが返す `step_up_required` は、共通の置き場所へ移すか、所有する一つのモジュールを決めるかを着手時に決める。
 - `EmailSent` を、発行するモジュールの要件で扱えるようにする。

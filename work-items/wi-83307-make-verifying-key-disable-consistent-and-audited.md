@@ -8,8 +8,8 @@ priority: p2
 depends_on: [wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-003 }
-  - { path: docs/domain/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-010 }
+  - { path: docs/modules/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-003 }
+  - { path: docs/modules/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-010 }
 ---
 
 # 検証用の署名鍵の無効化を、構成によらず同じ結果にし、監査へ残す

@@ -434,7 +434,7 @@ export function verifyFeatureSliceSpecifications(
       findings.push({
         path: slice.path,
         line: 1,
-        message: `${slice.path} has no feature slice specification under docs/domain/${context}/`,
+        message: `${slice.path} has no feature slice specification under docs/modules/${context}/`,
       })
     }
   }

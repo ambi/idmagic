@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/identity-governance/lifecycle-workflow/README.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: docs/domain/identity-governance/lifecycle-workflow/README.md, requirement: REQ-IDGOVERNANCE-002 }
+  - { path: docs/modules/identity-governance/lifecycle-workflow/README.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/modules/identity-governance/lifecycle-workflow/README.md, requirement: REQ-IDGOVERNANCE-002 }
 depends_on: [wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations]
 ---
 

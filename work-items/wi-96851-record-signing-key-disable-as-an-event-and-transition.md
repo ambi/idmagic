@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-010 }
+  - { path: docs/modules/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-010 }
 ---
 
 # 検証用の署名鍵の無効化をドメインイベントと状態遷移で表す
@@ -22,14 +22,14 @@ affected_spec:
 また、機能仕様の状態遷移の表（`SigningKeyLifecycle`）には、無効化による `Verifying` から `Archived` への直接の遷移がない。
 `Retired` も保存した値を持たず、期限の経過だけで表される。
 
-wi-26063 で SigningKeys の内部設計をコードと照合して見つけ、`docs/domain/signing-keys/design/risks.md` に載せた。
+wi-26063 で SigningKeys の内部設計をコードと照合して見つけ、`docs/modules/signing-keys/design/risks.md` に載せた。
 
 ## 対象範囲
 
 - 無効化がドメインイベントを発行するようにする。
 - 状態遷移の表に無効化の遷移を加え、`Retired` の扱いを表とコードで一致させる。
 - REQ-SIGNINGKEYS-010 に、発行するイベントを要件として加える。
-- `docs/domain/signing-keys/design/risks.md` の該当の 2 行を消す。
+- `docs/modules/signing-keys/design/risks.md` の該当の 2 行を消す。
 
 ## 対象外
 

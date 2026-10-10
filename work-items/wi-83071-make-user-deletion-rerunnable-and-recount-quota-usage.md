@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-92312-purge-expired-users-by-a-job-and-make-purge-resumable]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/tenancy/quota/README.md, requirement: REQ-TENANCY-013 }
+  - { path: docs/modules/tenancy/quota/README.md, requirement: REQ-TENANCY-013 }
 ---
 
 # テナントの User の使用量を、実際の件数から再集計して補正する
@@ -33,7 +33,7 @@ affected_spec:
 ## 対象範囲
 
 - テナントの User の使用量を、削除されていない User の実際の件数から数え直して補正する再集計を実装し、定期的に走らせる。
-- `docs/domain/identity-management/user/design.md` の信頼性の節と `docs/domain/identity-management/design/risks.md` から、使用量を手作業で直す手順を、再集計で直る記述へ改める。
+- `docs/modules/identity-management/user/design.md` の信頼性の節と `docs/modules/identity-management/design/risks.md` から、使用量を手作業で直す手順を、再集計で直る記述へ改める。
 - `docs/design/application/design-guidelines.md` が、User の削除のカスケードを「1 つのトランザクションで変更してよい類型」として挙げている記述を、実装（ポートごとに確定し、再実行と照合で回収する）に合わせる。
 
 ## 対象外

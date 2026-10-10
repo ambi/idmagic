@@ -38,7 +38,7 @@ const applicable = {
   status: 'in_progress',
   evidence_policy: 'risk-based-v3',
   change_kind: 'feature',
-  affected_spec: [{ path: 'docs/domain/demo/scenarios.feature.md', requirement }],
+  affected_spec: [{ path: 'docs/modules/demo/scenarios.feature.md', requirement }],
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
@@ -100,7 +100,7 @@ describe('verifyPrimaryUseCaseEvidence', () => {
       {
         ...applicable,
         change_kind: 'tooling',
-        affected_spec: [{ path: 'docs/domain/demo/standards.md', requirement: 'RFC-DEMO' }],
+        affected_spec: [{ path: 'docs/modules/demo/standards.md', requirement: 'RFC-DEMO' }],
       },
     ]) {
       expect(verifyPrimaryUseCaseEvidence(record, environment)).toContain(
@@ -277,7 +277,7 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         change_kind: 'bugfix',
         affected_spec: [
           {
-            path: 'docs/domain/provisioning/standards.md',
+            path: 'docs/modules/provisioning/standards.md',
             requirement: 'RFC7643-OUT-CORE-RESOURCES',
           },
         ],
@@ -287,7 +287,7 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         change_kind: 'bugfix',
         affected_spec: [
           {
-            path: 'docs/domain/provisioning/standards.md',
+            path: 'docs/modules/provisioning/standards.md',
             requirement: 'RFC7644-OUT-AUTHENTICATION',
           },
         ],
@@ -297,7 +297,7 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         change_kind: 'bugfix',
         affected_spec: [
           {
-            path: 'docs/domain/provisioning/scenarios.feature.md',
+            path: 'docs/modules/provisioning/scenarios.feature.md',
             requirement: 'REQ-PROVISIONING-013',
           },
         ],

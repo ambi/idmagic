@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/domain/ws-federation/active-sts/README.md の REQ-WSFEDERATION-004 と REQ-WSFEDERATION-005 が
+// docs/modules/ws-federation/active-sts/README.md の REQ-WSFEDERATION-004 と REQ-WSFEDERATION-005 が
 // 宣言する具体例を、能動 STS の入口 `/trust/usernamemixed` から観測する。
 
 import (

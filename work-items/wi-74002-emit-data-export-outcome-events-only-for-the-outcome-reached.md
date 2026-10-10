@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-086 }
+  - { path: docs/modules/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-086 }
 ---
 
 # データエクスポートの結果のイベントを、エクスポートが実際に至った結果に対してだけ発行する

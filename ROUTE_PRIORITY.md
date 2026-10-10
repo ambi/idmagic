@@ -7,7 +7,7 @@
 API プロセスが飽和すると、優先度の低いクラスから順にリクエストを拒否し、503、`Retry-After`、
 `urn:idmagic:error:service_overloaded` の Problem Details を返す。
 拒否は経路の振り分けの後、どのハンドラーよりも前に起きるので、拒否したリクエストは状態を変えない。
-閾値、デフォルト値、運用上の理由は `docs/domain/system/design/decisions.md` にあり、
+閾値、デフォルト値、運用上の理由は `docs/modules/system/design/decisions.md` にあり、
 それらが実装するロードシェディング順序は `docs/design/performance/capacity.md` が規範として定める。
 
 接頭辞なしと `/realms/{tenant_id}/…` の下の両方から到達できる経路は一度だけ載せる。

@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/oauth2/authorization/README.md, requirement: REQ-OAUTH2-005 }
+  - { path: docs/modules/oauth2/authorization/README.md, requirement: REQ-OAUTH2-005 }
 ---
 
 # PKCE をすべてのクライアントに求めるか、クライアントごとに定めるかを決めて揃える

@@ -9,4 +9,4 @@ WI-95422 は、User、Group、メンバーシップの CSV のインポートで
 変更後は、プレビューの投入が 400 と `too_many_rows` または `field_too_large` で拒否され、プレビューのジョブは作られない。
 
 プレビューの後に実効の上限が下がり、保存したファイルが上限を超えた場合、適用のジョブは一行も確定せずに失敗する。
-規範上の条件は[ユーザー CSV](../../domain/identity-management/user-csv/README.md)の REQ-IDMANAGEMENT-004、[グループ CSV](../../domain/identity-management/group-csv/README.md)の REQ-IDMANAGEMENT-026 と REQ-IDMANAGEMENT-029 が定める。
+規範上の条件は[ユーザー CSV](../../modules/identity-management/user-csv/README.md)の REQ-IDMANAGEMENT-004、[グループ CSV](../../modules/identity-management/group-csv/README.md)の REQ-IDMANAGEMENT-026 と REQ-IDMANAGEMENT-029 が定める。

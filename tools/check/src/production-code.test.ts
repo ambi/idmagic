@@ -48,7 +48,7 @@ describe('isProductionCode', () => {
     ['frontend/tests/e2e/sign-in.spec.ts', false],
     ['frontend/vite.config.ts', false],
     ['tools/check/src/runner.ts', false],
-    ['docs/domain/demo/scenarios.feature.md', false],
+    ['docs/modules/demo/scenarios.feature.md', false],
   ])('%s → %p', (path, expected) => {
     expect(isProductionCode(path, exclusions)).toBe(expected)
   })

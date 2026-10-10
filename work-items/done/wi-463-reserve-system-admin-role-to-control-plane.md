@@ -188,7 +188,7 @@ CSV はプレビュー時に対象行を安定した `invalid_roles` で拒否�
 
 `ValidateRoleAssignment` は保存後のロール集合そのものではなく、その書き込みが新しく加える予約ロールだけを拒否する。`current` に `system_admin` が既にあれば、`next` の同じ値は通す。
 
-絶対集合で判定すると、通常テナントで `system_admin` を独自ロール名として使ってきた環境では、無編集の User CSV エクスポートを再適用するだけで該当行が `rejected` になる。[設計判断](../../docs/domain/identity-management/design/decisions.md)が置く「無編集のエクスポートを適用すると全行 `unchanged` になる」という往復不変条件と、この記録の「既存の不正な割当ては読出し時に保持する」が同時に成り立たなくなる。
+絶対集合で判定すると、通常テナントで `system_admin` を独自ロール名として使ってきた環境では、無編集の User CSV エクスポートを再適用するだけで該当行が `rejected` になる。[設計判断](../../docs/modules/identity-management/design/decisions.md)が置く「無編集のエクスポートを適用すると全行 `unchanged` になる」という往復不変条件と、この記録の「既存の不正な割当ては読出し時に保持する」が同時に成り立たなくなる。
 
 差分で判定すると、新規割当ての拒否、既存値の保持、`roles` を明示して `system_admin` を外す除去経路の 3 つがどれも成立する。
 

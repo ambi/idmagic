@@ -2,18 +2,18 @@ import { describe, expect, it } from 'bun:test'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
 
 /** モジュールの印。印のないモジュールの段には、どの文書も置けない。 */
-const marker = { directory: 'docs/domain/demo/design', files: ['README.md'] }
+const marker = { directory: 'docs/modules/demo/design', files: ['README.md'] }
 
 describe('verifyCanonicalDocumentSet', () => {
   it('accepts a directory holding only canonical documents', () => {
     expect(
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['README.md'] },
-        { directory: 'docs/domain', files: ['glossary.md', 'structure.md'] },
-        { directory: 'docs/requirements', files: ['README.md', 'quality.md'] },
+        { directory: 'docs/modules', files: ['README.md'] },
+        { directory: 'docs/requirements', files: ['README.md', 'quality.md', 'glossary.md'] },
         { directory: 'docs/design/infrastructure', files: ['README.md', 'network.md'] },
         marker,
-        { directory: 'docs/domain/demo', files: ['README.md', 'glossary.md'] },
+        { directory: 'docs/modules/demo', files: ['README.md', 'glossary.md'] },
       ]),
     ).toEqual([])
   })
@@ -21,15 +21,15 @@ describe('verifyCanonicalDocumentSet', () => {
   it('keeps shared vocabulary out of a feature slice', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo/user', files: ['README.md', 'glossary.md'] },
+      { directory: 'docs/modules/demo/user', files: ['README.md', 'glossary.md'] },
     ])
-    expect(findings.map((finding) => finding.path)).toEqual(['docs/domain/demo/user/glossary.md'])
+    expect(findings.map((finding) => finding.path)).toEqual(['docs/modules/demo/user/glossary.md'])
   })
 
   it('rejects any document below a feature slice', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo/user/profile/extra', files: ['README.md'] },
+      { directory: 'docs/modules/demo/user/profile/extra', files: ['README.md'] },
     ])
     expect(findings[0]?.message).toBe(
       'not a canonical document; the specification tree stops at the feature slice',
@@ -38,13 +38,13 @@ describe('verifyCanonicalDocumentSet', () => {
 
   it('admits no document in a context without design/README.md', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/domain/demo', files: ['README.md', 'scenarios.feature.md'] },
-      { directory: 'docs/domain/demo/user', files: ['README.md'] },
+      { directory: 'docs/modules/demo', files: ['README.md', 'scenarios.feature.md'] },
+      { directory: 'docs/modules/demo/user', files: ['README.md'] },
     ])
     expect(findings.map((finding) => finding.path)).toEqual([
-      'docs/domain/demo/README.md',
-      'docs/domain/demo/scenarios.feature.md',
-      'docs/domain/demo/user/README.md',
+      'docs/modules/demo/README.md',
+      'docs/modules/demo/scenarios.feature.md',
+      'docs/modules/demo/user/README.md',
     ])
   })
 
@@ -52,7 +52,7 @@ describe('verifyCanonicalDocumentSet', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
       {
-        directory: 'docs/domain/demo',
+        directory: 'docs/modules/demo',
         files: ['states.md', 'decisions.md', 'internals.md', 'scenarios.feature.md'],
       },
     ])
@@ -62,10 +62,10 @@ describe('verifyCanonicalDocumentSet', () => {
   it('rejects the appendix under its former name examples.feature.md', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo/user', files: ['README.md', 'examples.feature.md'] },
+      { directory: 'docs/modules/demo/user', files: ['README.md', 'examples.feature.md'] },
     ])
     expect(findings.map((finding) => finding.path)).toEqual([
-      'docs/domain/demo/user/examples.feature.md',
+      'docs/modules/demo/user/examples.feature.md',
     ])
   })
 
@@ -83,7 +83,7 @@ describe('verifyCanonicalDocumentSet', () => {
   it('names the canonical document a misspelled file was meant to be', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo', files: ['qualty.md'] },
+      { directory: 'docs/modules/demo', files: ['qualty.md'] },
     ])
     expect(findings[0]?.message).toContain('did you mean quality.md?')
   })
@@ -91,7 +91,7 @@ describe('verifyCanonicalDocumentSet', () => {
   it('reads a name that differs only in the extension case as a misspelling', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo', files: ['glossary.MD'] },
+      { directory: 'docs/modules/demo', files: ['glossary.MD'] },
     ])
     expect(findings).toHaveLength(1)
     expect(findings[0]?.message).toContain('did you mean glossary.md?')
@@ -108,7 +108,7 @@ describe('verifyCanonicalDocumentSet', () => {
   it('suggests a canonical document for a name shouted in full uppercase', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo', files: ['GLOSSARY.MD'] },
+      { directory: 'docs/modules/demo', files: ['GLOSSARY.MD'] },
     ])
     expect(findings[0]?.message).toContain('did you mean glossary.md?')
   })
@@ -117,7 +117,7 @@ describe('verifyCanonicalDocumentSet', () => {
   it('suggests a name two edits away', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo', files: ['standrd.md'] },
+      { directory: 'docs/modules/demo', files: ['standrd.md'] },
     ])
     expect(findings[0]?.message).toContain('did you mean standards.md?')
   })
@@ -125,21 +125,21 @@ describe('verifyCanonicalDocumentSet', () => {
   it('suggests nothing for a name three edits away', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/domain/demo', files: ['intrnl.md'] },
+      { directory: 'docs/modules/demo', files: ['intrnl.md'] },
     ])
     expect(findings[0]?.message).not.toContain('did you mean')
   })
 
   it('holds each level to its own set of names', () => {
     // quality.md はモジュールの文書であり docs/ 直下の文書ではない。逆に
-    // structure.md は docs/domain/ の文書でありモジュールの文書ではない。
+    // structure.md は docs/modules/ の文書でありモジュールの文書ではない。
     expect(verifyCanonicalDocumentSet([{ directory: 'docs', files: ['quality.md'] }])).toHaveLength(
       1,
     )
     expect(
       verifyCanonicalDocumentSet([
         marker,
-        { directory: 'docs/domain/demo', files: ['structure.md'] },
+        { directory: 'docs/modules/demo', files: ['structure.md'] },
       ]),
     ).toHaveLength(1)
     expect(
@@ -167,7 +167,7 @@ describe('verifyCanonicalDocumentSet', () => {
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['one.md', 'two.md'] },
         marker,
-        { directory: 'docs/domain/demo', files: ['three.md'] },
+        { directory: 'docs/modules/demo', files: ['three.md'] },
       ]),
     ).toHaveLength(3)
   })

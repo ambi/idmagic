@@ -14,17 +14,17 @@ current document kinds and grammar; read it, not its rationale document.
 2. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
    deprecation metadata, and authentication mechanisms in
    `spec/contexts/<context>/{models,main}.tsp`.
-3. Put context boundaries in `docs/domain/<context>/README.md`, together with the value objects several
+3. Put context boundaries in `docs/modules/<context>/README.md`, together with the value objects several
    features share (normalization, comparison, uniqueness scope); vocabulary in `glossary.md`; adopted protocol
    rules in `standards.md`. Put one feature's model, state machines, requirements, and security
-   considerations in its feature specification `docs/domain/<context>/<group>/<feature>/README.md` (or a
+   considerations in its feature specification `docs/modules/<context>/<group>/<feature>/README.md` (or a
    chapter beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal
    path, state-dependent branches, then refusals. Do not write a per-operation summary table or an `## エラー`
    section. Each state machine carries the state table, the transition table, and the state transition matrix
-   with every cell filled. Put a context's allocated quality requirements in `docs/domain/<context>/quality.md`
+   with every cell filled. Put a context's allocated quality requirements in `docs/modules/<context>/quality.md`
    and a feature's share under `## 品質`. The feature node matches the code slice `backend/<context>/<feature>/`
    by name (drop the hyphens to compare names). Put a mechanism shared by features in
-   `docs/domain/<context>/design/`, a decision that weighed alternatives in `design/decisions.md`, and only
+   `docs/modules/<context>/design/`, a decision that weighed alternatives in `design/decisions.md`, and only
    what code cannot show (how a mechanism guarantees a result, how to repair it) in the optional feature
    `design.md`. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact. A
    context still listed in `tools/check/legacy-spec-layout.json` keeps its per-kind files until it moves.
@@ -46,7 +46,7 @@ current document kinds and grammar; read it, not its rationale document.
 6. Add an example in `acceptance.feature.md` only when a boundary or a surprising behavior is hard to read from
    the requirement sentences. Prefer generating it from `testdata/*.examples.json`. Never add an example that
    restates a requirement.
-7. Keep behavior that only several contexts can satisfy in `docs/domain/scenarios.feature.md`, name the
+7. Keep behavior that only several contexts can satisfy in `docs/requirements/scenarios.feature.md`, name the
    participating contexts, and keep context-local fragments out of it.
 8. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.
    TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md`

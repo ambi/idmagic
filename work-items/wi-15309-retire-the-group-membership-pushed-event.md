@@ -23,7 +23,7 @@ Group のメンバーシップは、Group のプロビジョニングタスク�
 そのタスクは成功すると `GroupPushed` を発行する。
 メンバーシップだけを送るタスクは存在しないので、`GroupMembershipPushed` を発行する経路はない。
 
-それでも、タスクの状態遷移の表（`docs/domain/provisioning/task/README.md`）と `backend/provisioning/domain/task.go` には `in_flight` から `GroupMembershipPushed` で `succeeded` へ進む遷移があり、TypeSpec もイベントを宣言している。
+それでも、タスクの状態遷移の表（`docs/modules/provisioning/task/README.md`）と `backend/provisioning/domain/task.go` には `in_flight` から `GroupMembershipPushed` で `succeeded` へ進む遷移があり、TypeSpec もイベントを宣言している。
 監査の記録を読む側は、起きないイベントに備えることになる。
 
 ## 対象範囲

@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-307-datakeys-rotation-lifecycle-operations]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/data-keys/lifecycle/README.md, requirement: REQ-DATAKEYS-003, impact: conforms }
+  - { path: docs/modules/data-keys/lifecycle/README.md, requirement: REQ-DATAKEYS-003, impact: conforms }
 ---
 
 # DEK の無効化とローテーションを、すべてのプロセスの DEK の保持へ伝える
@@ -20,7 +20,7 @@ affected_spec:
 wi-307 がローテーションと無効化の経路を入れると、ほかの `api` と `worker` のプロセスは、再起動するまで退役したバージョンで暗号化し、無効化したバージョンで復号し続ける。
 REQ-DATAKEYS-003 は、無効化したバージョンによる以後の復号の拒否を求めている。
 
-wi-26063 で DataKeys の内部設計をコードと照合して見つけ、`docs/domain/data-keys/design/risks.md` に載せた。
+wi-26063 で DataKeys の内部設計をコードと照合して見つけ、`docs/modules/data-keys/design/risks.md` に載せた。
 
 あわせて、`docs/design/security/secrets.md` の DEK の生成の行は「テナントの初期化時に最初のバージョンを作る」と書くが、コードは項目を初めて暗号化するときに遅延して生成する（`FieldCipher.Encrypt`）。
 
@@ -28,7 +28,7 @@ wi-26063 で DataKeys の内部設計をコードと照合して見つけ、`doc
 
 - ライフサイクルの操作が、すべてのプロセスの DEK の保持に効く仕組みを入れる。
 - `secrets.md` の DEK の生成の記述を、コードに合わせる。
-- `docs/domain/data-keys/design/risks.md` の該当の行を消し、仕組みを `lifecycle/design.md` に書く。
+- `docs/modules/data-keys/design/risks.md` の該当の行を消し、仕組みを `lifecycle/design.md` に書く。
 
 ## 対象外
 

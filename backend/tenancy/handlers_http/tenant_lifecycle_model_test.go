@@ -27,7 +27,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-const tenantLifecycleSpecification = "../../../docs/domain/tenancy/lifecycle/README.md"
+const tenantLifecycleSpecification = "../../../docs/modules/tenancy/lifecycle/README.md"
 
 // tenantLifecycleRequests は、状態遷移表の操作の列から、その操作を起こす要求を作る。
 var tenantLifecycleRequests = map[string]func(realm string) (method, path string){

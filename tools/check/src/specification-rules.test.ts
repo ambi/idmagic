@@ -46,7 +46,7 @@ const declarations = goDeclarations([
 const noLinks = (_from: string, _target: string): boolean => false
 const messages = (source: string, resolve = noLinks) =>
   verifyRuleFields(
-    'docs/domain/demo/trusted-device/scenarios.feature.md',
+    'docs/modules/demo/trusted-device/scenarios.feature.md',
     source,
     declarations,
     resolve,
@@ -139,7 +139,7 @@ const requirement = (...body: string[]): string =>
     ...body,
   ].join('\n')
 const earsMessages = (...body: string[]) =>
-  verifyEarsStatements('docs/domain/demo/user/README.md', requirement(...body), 'Demo').map(
+  verifyEarsStatements('docs/modules/demo/user/README.md', requirement(...body), 'Demo').map(
     (finding) => finding.message,
   )
 
@@ -260,7 +260,7 @@ describe('verifyEarsStatements', () => {
       '',
       '- `場合` を含む名前を指定された場合、Demo は、`invalid_name` で拒否する。',
     ].join('\n')
-    expect(verifyEarsStatements('docs/domain/demo/user/README.md', source, 'Demo')).toEqual([])
+    expect(verifyEarsStatements('docs/modules/demo/user/README.md', source, 'Demo')).toEqual([])
   })
 })
 
@@ -298,9 +298,9 @@ describe('verifyFeatureSliceSpecifications', () => {
       verifyFeatureSliceSpecifications(
         slices,
         new Set([
-          'docs/domain/demo/trusted-device',
-          'docs/domain/demo/session',
-          'docs/domain/id-management/user',
+          'docs/modules/demo/trusted-device',
+          'docs/modules/demo/session',
+          'docs/modules/id-management/user',
         ]),
         { contextAliases: { idmgmt: 'id-management' }, unmappedSlices: [] },
       ),
@@ -311,7 +311,7 @@ describe('verifyFeatureSliceSpecifications', () => {
     expect(
       verifyFeatureSliceSpecifications(
         slices,
-        new Set(['docs/domain/demo/trusted-device', 'docs/domain/demo/session']),
+        new Set(['docs/modules/demo/trusted-device', 'docs/modules/demo/session']),
         {
           contextAliases: {},
           unmappedSlices: ['backend/demo/session'],
@@ -319,7 +319,7 @@ describe('verifyFeatureSliceSpecifications', () => {
       ).map((finding) => finding.message),
     ).toEqual([
       'backend/demo/session has a feature slice specification now; remove it from tools/check/feature-slice-debt.json',
-      'backend/idmgmt/user has no feature slice specification under docs/domain/idmgmt/',
+      'backend/idmgmt/user has no feature slice specification under docs/modules/idmgmt/',
     ])
   })
 })

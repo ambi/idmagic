@@ -1,7 +1,7 @@
 package server_http_test
 
-// docs/domain/authentication/sign-in/README.md の REQ-AUTHENTICATION-007 と、
-// docs/domain/authentication/password/README.md の 008 が宣言する具体例を、ブラウザー経由のログインの入口から観測する。
+// docs/modules/authentication/sign-in/README.md の REQ-AUTHENTICATION-007 と、
+// docs/modules/authentication/password/README.md の 008 が宣言する具体例を、ブラウザー経由のログインの入口から観測する。
 //
 // スタックは `testing_stack` が建てる。この具体例群が要求するのは「/authorize から
 // ログインまで」「ログインできる利用者」「失敗回数と流量制限の配線」の 3 つで、

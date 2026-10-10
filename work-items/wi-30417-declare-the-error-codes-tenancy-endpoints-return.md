@@ -8,10 +8,10 @@ priority: p3
 depends_on: []
 change_kind: maintenance
 affected_spec:
-  - { path: docs/domain/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-025 }
-  - { path: docs/domain/tenancy/branding/README.md, requirement: REQ-TENANCY-032 }
-  - { path: docs/domain/tenancy/notification-template/README.md, requirement: REQ-TENANCY-017 }
-  - { path: docs/domain/tenancy/notification-template/README.md, requirement: REQ-TENANCY-038 }
+  - { path: docs/modules/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-025 }
+  - { path: docs/modules/tenancy/branding/README.md, requirement: REQ-TENANCY-032 }
+  - { path: docs/modules/tenancy/notification-template/README.md, requirement: REQ-TENANCY-017 }
+  - { path: docs/modules/tenancy/notification-template/README.md, requirement: REQ-TENANCY-038 }
 ---
 
 # Tenancy のエンドポイントが返すエラーコードを TypeSpec に宣言する

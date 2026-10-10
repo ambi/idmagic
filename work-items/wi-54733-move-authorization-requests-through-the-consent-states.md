@@ -8,8 +8,8 @@ priority: p2
 depends_on: [wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/oauth2/consent/README.md, requirement: REQ-OAUTH2-008 }
-  - { path: docs/domain/oauth2/authorization/README.md, requirement: REQ-OAUTH2-005 }
+  - { path: docs/modules/oauth2/consent/README.md, requirement: REQ-OAUTH2-008 }
+  - { path: docs/modules/oauth2/authorization/README.md, requirement: REQ-OAUTH2-005 }
 ---
 
 # 認可リクエストを、同意の要否に応じて ConsentPending と Consented の段に進める

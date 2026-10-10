@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test'
 import { checkNormativeCoverage, citedNormativeIds } from './normative-coverage.ts'
 
 const declared = [
-  { id: 'REQ-DEMO-001', path: 'docs/domain/demo/scenarios.feature.md' },
-  { id: 'REQ-DEMO-002', path: 'docs/domain/demo/scenarios.feature.md' },
+  { id: 'REQ-DEMO-001', path: 'docs/modules/demo/scenarios.feature.md' },
+  { id: 'REQ-DEMO-002', path: 'docs/modules/demo/scenarios.feature.md' },
 ]
 
 const file = (source: string) => [source]
@@ -97,7 +97,7 @@ describe('checkNormativeCoverage', () => {
   it('rejects a declaration no test names, offering no list to escape into', () => {
     expect(checkNormativeCoverage({ declared, cited: new Set(['REQ-DEMO-001']) })).toEqual([
       {
-        path: 'docs/domain/demo/scenarios.feature.md',
+        path: 'docs/modules/demo/scenarios.feature.md',
         message:
           'REQ-DEMO-002 is declared, but no test names it. ' +
           'Cite the id from the test that exercises it.',

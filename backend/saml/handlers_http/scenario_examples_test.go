@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/domain/saml/ の機能スライスの例の付録が宣言する具体例を、製品の正式な入口から観測する。
+// docs/modules/saml/ の機能スライスの例の付録が宣言する具体例を、製品の正式な入口から観測する。
 //
 // 入口は `httpadapter.Register` が組み立てた `/saml/*` と `/api/admin/v1/saml/*` である。
 // 具体例 1 件につきテスト 1 本を置き、その具体例の `Then` の数だけ観測を書く。`Then` が

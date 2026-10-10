@@ -226,7 +226,7 @@ describe('sourceDirectories', () => {
 
 describe('initialContextDraft', () => {
   const draft = initialContextDraft({
-    specification: ['docs/domain/demo/scenarios.feature.md#REQ-DEMO-001'],
+    specification: ['docs/modules/demo/scenarios.feature.md#REQ-DEMO-001'],
     typespec: ['Product.Demo.Operations.StartTask'],
     implementation: ['backend/demo/usecases/start.go', 'backend/demo/domain'],
     tests: ['backend/demo/usecases/start_test.go'],
@@ -237,7 +237,7 @@ describe('initialContextDraft', () => {
     expect(draft).toBe(
       [
         'initial_context:',
-        '  specification: [docs/domain/demo/scenarios.feature.md#REQ-DEMO-001]',
+        '  specification: [docs/modules/demo/scenarios.feature.md#REQ-DEMO-001]',
         '  typespec: [Product.Demo.Operations.StartTask]',
         '  source:',
         '    - backend/demo/usecases/start.go',

@@ -109,7 +109,7 @@ Tenancy の既存コードを書き起こしたときに見つけたが、観測
 テナントのない文脈では、テナントのデータを読まずに全体の既定値を返す。
 委譲だけになった `resolvePasswordPolicy` も削除し、`tools/check/boundary-debt.json` から解消した依存の記録を除いた。
 
-設計文書では、[テナントの解決の設計](../../docs/domain/tenancy/resolution/design.md)のリクエストコンテキストの責務に、テナントのない文脈から ID を読むと panic することを書いた。
+設計文書では、[テナントの解決の設計](../../docs/modules/tenancy/resolution/design.md)のリクエストコンテキストの責務に、テナントのない文脈から ID を読むと panic することを書いた。
 
 ## 計画
 

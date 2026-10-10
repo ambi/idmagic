@@ -8,7 +8,7 @@
 
 ## Pull Request に求めること
 
-- **外部から観測できる振る舞いを変えるなら、仕様を先に更新する。** モデル、API、HTTP 契約、認証方式は TypeSpec で定義し、受け入れシナリオ・用語・準拠する規範・状態遷移・設計判断・機構の説明は、その種類をファイル名が示す `docs/` 配下のファイルで定めます。書式は [docs/formats/specification-format.md](docs/formats/specification-format.md) にあります。
+- **外部から観測できる振る舞いを変えるなら、仕様を先に更新する。** モデル、API、HTTP 契約、認証方式は TypeSpec で定義し、受け入れシナリオ・用語・準拠する規範・状態遷移・設計判断・機構の説明は、その種類をファイル名が示す `docs/` 配下のファイルで定めます。書式は [docs/formats/specification-format.md](docs/formats/specification-format.md)（仕様）と [docs/formats/design-format.md](docs/formats/design-format.md)（設計）にあります。
 - **1 つの意味上の変更につき 1 つの work item を作る。** 形式は [docs/formats/work-item-format.md](docs/formats/work-item-format.md) が定め、`affected_spec` に影響する規範 ID または TypeSpec のシンボルを直接書きます。
 - **TypeSpec を変更したら生成物を再生成し、互換性を検査する。** `spec/generated/` の生成物は追跡しないため、コミットには含めない。
 - **レスポンスが効果を含意しない段では、レスポンスと、実際に起きたことの両方を確かめる。** 拒否がその代表で、ステータスだけを見るテストは「拒否」とレスポンスしてから操作を実行してしまう実装に対しても同じように通ります。書き込み、発行、失効を伴う成功経路も同じで、それが止まってもテストが通るなら、その段は確かめられていません。理由は [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#レスポンスだけでは副作用を証明できない場合) にあります。

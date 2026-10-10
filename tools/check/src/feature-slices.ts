@@ -93,6 +93,6 @@ export function verifyFeatureLayout(contexts: readonly string[], view: DocumentS
     .filter((context) => !view.featureContexts.has(context))
     .map(
       (context) =>
-        `fail  docs/domain/${context}: ${context} has no design/README.md; every context must use the feature layout`,
+        `fail  docs/modules/${context}: ${context} has no design/README.md; every context must use the feature layout`,
     )
 }

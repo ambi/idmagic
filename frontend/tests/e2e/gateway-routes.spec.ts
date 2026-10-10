@@ -69,7 +69,7 @@ test('gateway proxies the runtime routes the SPA fallback would otherwise swallo
 }, 60_000)
 
 test('gateway keeps the unauthenticated metrics endpoint off the public entry point', async () => {
-  // `/metrics` は認証を持たない。docs/domain/system/design/decisions.md が公開先を限っている
+  // `/metrics` は認証を持たない。docs/modules/system/design/decisions.md が公開先を限っている
   // ので、ゲートウェイは中継してはならない。中継していなければ SPA へ落ちる。
   const received = await read('/metrics')
   expect(received.body).toContain(spaMarker)

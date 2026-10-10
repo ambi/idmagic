@@ -60,7 +60,7 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'spec-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'spec', 'domain', 'demo'), { recursive: true })
-  await mkdir(join(root, 'docs', 'domain', 'demo', 'design'), { recursive: true })
+  await mkdir(join(root, 'docs', 'modules', 'demo', 'design'), { recursive: true })
   await mkdir(join(root, 'docs', 'requirements'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'security'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
@@ -70,8 +70,8 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, 'docs', 'requirements', 'quality.md'), '# Quality Requirements\n')
   await writeFile(join(root, 'docs', 'design', 'security', 'README.md'), '# Security Design\n')
   await writeFile(join(root, 'docs', 'design', 'security', 'authorization.md'), '# Authorization\n')
-  await writeFile(join(root, 'docs', 'domain', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'docs', 'domain', 'demo', 'design', 'README.md'), '# Demo Design\n')
+  await writeFile(join(root, 'docs', 'modules', 'demo', 'README.md'), '# Demo\n')
+  await writeFile(join(root, 'docs', 'modules', 'demo', 'design', 'README.md'), '# Demo Design\n')
   return root
 }
 
@@ -84,8 +84,8 @@ describe('discoverWorkspaceConfig', () => {
       'docs/README.md',
       'docs/design/security/README.md',
       'docs/design/security/authorization.md',
-      'docs/domain/demo/README.md',
-      'docs/domain/demo/design/README.md',
+      'docs/modules/demo/README.md',
+      'docs/modules/demo/design/README.md',
       'docs/requirements/README.md',
       'docs/requirements/quality.md',
     ])
@@ -94,10 +94,10 @@ describe('discoverWorkspaceConfig', () => {
 
   it('ignores a Markdown file the layout does not name', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'notes.md'), '# Notes\n')
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'notes.md'), '# Notes\n')
     await writeFile(join(root, 'docs', 'states.md'), '# States\n')
     const config = await discoverWorkspaceConfig(root)
-    expect(config.documents).not.toContain('docs/domain/demo/notes.md')
+    expect(config.documents).not.toContain('docs/modules/demo/notes.md')
     expect(config.documents).not.toContain('docs/states.md')
   })
 
@@ -135,9 +135,9 @@ describe('discoverWorkspaceConfig', () => {
 
   it('rejects a leftover SPECIFICATION.md as a second source of truth', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'docs', 'domain', 'demo', 'SPECIFICATION.md'), '# Demo\n')
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'SPECIFICATION.md'), '# Demo\n')
     await expect(discoverWorkspaceConfig(root)).rejects.toThrow(
-      'legacy specification documents found: docs/domain/demo/SPECIFICATION.md',
+      'legacy specification documents found: docs/modules/demo/SPECIFICATION.md',
     )
   })
 

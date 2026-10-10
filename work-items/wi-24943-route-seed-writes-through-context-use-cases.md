@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/seeding/seed-run/README.md, requirement: REQ-SEEDING-009, impact: conforms }
-  - { path: docs/domain/seeding/seed-run/README.md, requirement: REQ-SEEDING-010, impact: conforms }
+  - { path: docs/modules/seeding/seed-run/README.md, requirement: REQ-SEEDING-009, impact: conforms }
+  - { path: docs/modules/seeding/seed-run/README.md, requirement: REQ-SEEDING-010, impact: conforms }
 ---
 
 # seed の適用を記録の正を持つ Context のユースケースへ通し、プロセスをまたいで排他する
@@ -25,14 +25,14 @@ Seeding の判断は「SQL フィクスチャではなく記録の正を持つ C
 - 適用の排他は同じプロセスの中のミューテックスだけで、旧内部設計が書いていた PostgreSQL のアドバイザリーロックはない。二つのプロセスが同じ要求を同時に適用すると、保存が競合しうる。
 - `development` のプロファイルでは、デモのデータが存在するかだけで完了を判定するので、手動の変更が `conflict` にならない（REQ-SEEDING-009 の手動の変更の検出が、デモのデータに効かない）。
 
-wi-26063 で Seeding の内部設計をコードと照合して見つけ、`docs/domain/seeding/design/risks.md` に載せた。
+wi-26063 で Seeding の内部設計をコードと照合して見つけ、`docs/modules/seeding/design/risks.md` に載せた。
 
 ## 対象範囲
 
 - `Contributor` の書き込みを、記録の正を持つ Context のユースケースまたは公開する操作へ通す。
 - 適用をプロセスをまたいで排他する。
 - デモのデータのドリフトを、項目の比較で判定する。
-- `docs/domain/seeding/design/risks.md` の該当の行を消す。
+- `docs/modules/seeding/design/risks.md` の該当の行を消す。
 
 ## 対象外
 

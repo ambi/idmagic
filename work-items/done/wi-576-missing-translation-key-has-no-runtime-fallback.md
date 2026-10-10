@@ -69,7 +69,7 @@ affected_spec:
 
 決めた理由は次のとおりである。
 
-- [System の用語集](../../docs/domain/system/glossary.md)の `FallbackLocale` は「対応する辞書に翻訳キーがない場合に使うロケール」と定め、`EX-SYSTEM-010-03` も同じ振る舞いを述べる。規範は二か所で一致しており、書き換える理由は「実装がまだない」ことしかない。
+- [System の用語集](../../docs/modules/system/glossary.md)の `FallbackLocale` は「対応する辞書に翻訳キーがない場合に使うロケール」と定め、`EX-SYSTEM-010-03` も同じ振る舞いを述べる。規範は二か所で一致しており、書き換える理由は「実装がまだない」ことしかない。
 - 型検査は `as` や `any` を経た辞書、空文字列の値を止めない。型で防いでいる範囲の外で、画面に空の文言が出るか `en` が出るかを決めるのが具体例である。
 
 フォールバックを `useDictionary` ではなく `defineDictionary` に置くのは、`commonDictionary[getCurrentLocale()]` や `shellDictionary[locale]` のように、フックを通らず辞書を直接引く箇所が 5 か所あるためである。定義の時点で解決すれば、どの経路でも同じ辞書を読む。

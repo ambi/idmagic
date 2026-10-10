@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/domain/scenarios.feature.md が宣言する、複数のモジュールが協調して初めて成り立つ
+// docs/requirements/scenarios.feature.md が宣言する、複数のモジュールが協調して初めて成り立つ
 // 具体例を、製品と同じ `Register` の組み立てで確かめる。
 //
 // 引き金は管理 API への要求だけにする。利用者の状態を保存先へ直接書くと、IdManagement の

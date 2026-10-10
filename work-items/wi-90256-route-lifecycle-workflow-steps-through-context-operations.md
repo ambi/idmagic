@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-governance/workflow-run/README.md, requirement: REQ-IDGOVERNANCE-003, impact: conforms }
-  - { path: docs/domain/identity-governance/workflow-run/README.md, requirement: REQ-IDGOVERNANCE-005, impact: conforms }
+  - { path: docs/modules/identity-governance/workflow-run/README.md, requirement: REQ-IDGOVERNANCE-003, impact: conforms }
+  - { path: docs/modules/identity-governance/workflow-run/README.md, requirement: REQ-IDGOVERNANCE-005, impact: conforms }
 ---
 
 # ライフサイクルワークフローのグループと必須操作の手順を IdManagement の操作へ通す
@@ -20,13 +20,13 @@ affected_spec:
 一方、`add_group_member` と `remove_group_member` は IdManagement の Group の Repository を、`set_required_action` と `clear_required_action` は User の Repository を直接呼ぶ。
 これらの手順には、管理 API で同じ変更をしたときのドメインイベント、監査の記録、下流へのプロビジョニングの通知が伴わない。
 
-wi-26063 で IdGovernance の内部設計をコードと照合して見つけ、`docs/domain/identity-governance/design/risks.md` に載せた。
+wi-26063 で IdGovernance の内部設計をコードと照合して見つけ、`docs/modules/identity-governance/design/risks.md` に載せた。
 
 ## 対象範囲
 
 - IdManagement に、グループのメンバーシップと必須操作をあるべき状態として冪等に変えるポートを設け、ワークフローの手順をそこへ通す。
 - 変更しなかった場合は `no_op` を返す挙動（REQ-IDGOVERNANCE-005）を保つ。
-- `docs/domain/identity-governance/design/risks.md` と `workflow-run/design.md` の該当の記述を直す。
+- `docs/modules/identity-governance/design/risks.md` と `workflow-run/design.md` の該当の記述を直す。
 
 ## 対象外
 

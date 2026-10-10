@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/jobs/queue/README.md, requirement: REQ-JOBS-005 }
-  - { path: docs/domain/sharedsignals/transmitter/README.md, requirement: REQ-SHAREDSIGNALS-006 }
+  - { path: docs/modules/jobs/queue/README.md, requirement: REQ-JOBS-005 }
+  - { path: docs/modules/sharedsignals/transmitter/README.md, requirement: REQ-SHAREDSIGNALS-006 }
 ---
 
 # 再試行の待ち時間に一様乱数のばらつきを付ける

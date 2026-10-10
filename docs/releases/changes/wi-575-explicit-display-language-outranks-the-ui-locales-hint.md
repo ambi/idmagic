@@ -11,4 +11,4 @@ WI-575 は、画面の表示言語を決める順序を「保存済みの明示�
 RP の開発者は、`ui_locales` が利用者自身の選択を上書きしないことに注意する。
 OpenID Connect Core 1.0 も `ui_locales` を OP が従わなくてもよいヒントと定めている。
 
-規範上の条件は [REQ-SYSTEM-008](../../domain/system/localization/README.md#req-system-008-oidc-の-ui_locales-ヒントにより表示言語が決まる) が定める。
+規範上の条件は [REQ-SYSTEM-008](../../modules/system/localization/README.md#req-system-008-oidc-の-ui_locales-ヒントにより表示言語が決まる) が定める。

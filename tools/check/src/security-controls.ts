@@ -369,7 +369,7 @@ export function checkContractRefusalsAreDeclared(
     if (declared.has(type)) continue
     findings.push({
       // 拒否を宣言する場所はモジュールの形式と機能によって異なるので、モジュールを名指す。
-      path: `docs/domain/${context}/`,
+      path: `docs/modules/${context}/`,
       rule: 'R4',
       message:
         `${operations.join(', ')} answer 403 with ${type}, but no scenario declares that refusal. ` +

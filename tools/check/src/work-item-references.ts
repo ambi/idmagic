@@ -30,6 +30,24 @@ export type ReferenceEnvironment = {
 /** 移した仕様文書の旧パスから、規則を宣言する新しいパスへの対応。 */
 export const RELOCATED_SPEC_PATHS = 'tools/check/relocated-spec-paths.json'
 
+/**
+ * 旧パスの行き先。ファイルを名指す項目を先に引き、なければ `/` で終わる項目を、
+ * ディレクトリごと移した接頭辞の対応として使う。ディレクトリの改名で動いたファイルを
+ * 一つずつ列挙すると、完了記録が参照するパスの数だけ表が増えるためである。
+ */
+export function relocatedSpecPaths(
+  table: Readonly<Record<string, readonly string[]>>,
+  path: string,
+): string[] | undefined {
+  const named = table[path]
+  if (named) return [...named]
+  const prefix = Object.keys(table)
+    .filter((key) => key.endsWith('/') && path.startsWith(key))
+    .sort((left, right) => right.length - left.length)[0]
+  if (prefix === undefined) return undefined
+  return (table[prefix] ?? []).map((target) => target + path.slice(prefix.length))
+}
+
 /** Reading-list keys whose entries are repository paths. */
 const PATH_KEYS = ['source', 'tests', 'stop_before_reading'] as const
 

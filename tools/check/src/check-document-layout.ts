@@ -2,7 +2,7 @@ import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verifyDocumentLayout } from './document-layout-format.ts'
 import type { CheckOutcome } from './runner.ts'
 
-const FORMAT_PATH = 'docs/formats/specification-format.md'
+const FORMAT_PATH = 'docs/formats/documentation-guide.md'
 
 export async function checkDocumentLayout(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const findings = verifyDocumentLayout(await snapshot.read(FORMAT_PATH))

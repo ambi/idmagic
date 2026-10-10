@@ -1,6 +1,6 @@
 # wi-33641-notify-quarantine-to-the-notification-email
 
-プロビジョニング接続を隔離すると、接続の `notification_email` へメールで知らせるようになった（[`REQ-PROVISIONING-011`](../../domain/provisioning/synchronization/README.md)）。
+プロビジョニング接続を隔離すると、接続の `notification_email` へメールで知らせるようになった（[`REQ-PROVISIONING-011`](../../modules/provisioning/synchronization/README.md)）。
 
 - 連続失敗による隔離と、インクリメンタル同期の誤削除ガードによる隔離の両方で送る。これまではどちらも `ConnectionQuarantined` を発行するだけで、メールは送っていなかった。
 - `notification_email` が未設定なら送らない。隔離に気付けるよう、宛先を設定しておく。

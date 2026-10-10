@@ -327,7 +327,7 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 // connection's scope (spec/contexts/provisioning.yaml interfaces.StartFullResync).
 // 対象数を確定した FullResync を先に保存し、各プロビジョニングタスクをそれへ関連付ける。
 // FullResyncCompleted は最後のプロビジョニングタスクを終端にしたジョブが発行し、対象が 0 件ならここで発行する
-// (docs/domain/provisioning/connection/design.md)。
+// (docs/modules/provisioning/connection/design.md)。
 func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (int, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {

@@ -159,7 +159,7 @@ describe('用語検査', () => {
   it('設計の単位としての Context と公開言語を指摘し、Go の型と C4 のビュー名は通す', () => {
     const findings = verifyTerminology([
       {
-        file: 'docs/domain/jobs/README.md',
+        file: 'docs/modules/jobs/README.md',
         source:
           'この Context が提供する。Bounded Context と Context Map と Context 間。公開言語と Published Language。\n',
       },
@@ -199,7 +199,7 @@ describe('用語検査', () => {
           source: 'モジュール設計。認証コンテキストと実行コンテキスト、リクエストコンテキスト。\n',
         },
         {
-          file: 'docs/domain/authentication/sign-in/acceptance.feature.md',
+          file: 'docs/modules/authentication/sign-in/acceptance.feature.md',
           source:
             'アカウントコンテキストとパスワードリセットコンテキスト。CSRF トークンを含むコンテキストが返る。\n',
         },
@@ -210,7 +210,7 @@ describe('用語検査', () => {
   it('副詞的な「実行時」ではなくビュー名だけを対象にする', () => {
     expect(
       verifyTerminology([
-        { file: 'docs/domain/jobs/internals.md', source: '実行時に評価し、実行時刻へ達する。\n' },
+        { file: 'docs/modules/jobs/internals.md', source: '実行時に評価し、実行時刻へ達する。\n' },
       ]),
     ).toEqual([])
     expect(rule('実行時アーキテクチャ').term).toBe('実行時アーキテクチャ')
@@ -220,7 +220,7 @@ describe('用語検査', () => {
     expect(
       verifyTerminology([
         {
-          file: 'docs/domain/authorization/internals.md',
+          file: 'docs/modules/authorization/internals.md',
           source: '認可規則と検証規則は残す。\n',
         },
       ]),
@@ -230,5 +230,38 @@ describe('用語検査', () => {
         { file: 'docs/design/application/README.md', source: '[設計規則](design-guidelines.md)\n' },
       ]),
     ).toHaveLength(1)
+  })
+
+  // requirement は「要件」と訳す。「要求」はリクエストの意味の動詞として残るので、区分の名前だけを寄せる。
+  it('requirement を要求と訳した区分の名前を、要件へ寄せる', () => {
+    const findings = verifyTerminology([
+      {
+        file: 'docs/README.md',
+        source: '[要求文書](requirements/README.md)、機能要求、品質要求、システム要求。\n',
+      },
+    ])
+
+    expect(findings.map((finding) => finding.term)).toEqual([
+      '要求文書',
+      '機能要求',
+      '品質要求',
+      'システム要求',
+    ])
+    expect(
+      verifyTerminology([
+        { file: 'docs/modules/demo/README.md', source: '管理者が削除を要求したとき、拒否する。\n' },
+      ]),
+    ).toEqual([])
+  })
+
+  it('索引の文書の書き出しと、設計の索引の旧い名前を指摘する', () => {
+    const findings = verifyTerminology([
+      {
+        file: 'docs/design/README.md',
+        source: '# 設計\n\nこのディレクトリには、設計を置く。\n\n話題の索引を置く。\n',
+      },
+    ])
+
+    expect(findings.map((finding) => finding.term)).toEqual(['このディレクトリには', '話題の索引'])
   })
 })

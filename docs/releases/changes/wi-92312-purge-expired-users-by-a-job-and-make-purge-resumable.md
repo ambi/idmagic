@@ -13,7 +13,7 @@ WI-92312 は、猶予期間を過ぎた削除予約の User を、管理者の�
 
 また、匿名化の後に関連する記録の削除、使用量の減算、`UserDeleted` の発行のどれかが失敗した完全削除は、同じ User の完全削除をもう一度要求するか、次の `retention-sweep` で、終えていない手順から再開する。
 再開した完全削除の `UserDeleted` には、最初の要求の操作者と理由を記録する。
-規範上の条件は[ユーザー](../../domain/identity-management/user/README.md)の REQ-IDMANAGEMENT-044 と、[ユーザーのライフサイクルの操作](../../domain/identity-management/user/lifecycle.md)の REQ-IDMANAGEMENT-050 が定める。
+規範上の条件は[ユーザー](../../modules/identity-management/user/README.md)の REQ-IDMANAGEMENT-044 と、[ユーザーのライフサイクルの操作](../../modules/identity-management/user/lifecycle.md)の REQ-IDMANAGEMENT-050 が定める。
 
 - 猶予期間を過ぎた削除予約の User を、`retention-sweep` が完全削除する。
 - ユーザー一覧の取得は、User を完全削除しない。

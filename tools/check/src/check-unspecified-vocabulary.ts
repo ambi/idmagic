@@ -66,7 +66,7 @@ export async function checkUnspecifiedVocabulary(
       for (const event of collectEventTypes(await snapshot.read(path))) events.add(event)
     }
     const texts: SpecifiedTexts = { requirements: [], transitions: [] }
-    for (const path of await snapshot.files(`docs/domain/${context}`, [])) {
+    for (const path of await snapshot.files(`docs/modules/${context}`, [])) {
       if (documentKind(path) !== 'specification') continue
       const read = specifiedTexts(await snapshot.read(path))
       texts.requirements.push(...read.requirements)

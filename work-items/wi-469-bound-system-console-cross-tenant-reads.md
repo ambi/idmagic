@@ -8,10 +8,10 @@ change_kind: feature
 priority: p2
 depends_on: [wi-462-control-plane-console-single-entry]
 affected_spec:
-  - { path: docs/domain/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-014 }
-  - { path: docs/domain/signing-keys/provider/README.md, requirement: REQ-SIGNINGKEYS-008 }
-  - { path: docs/domain/data-keys/health/README.md, requirement: REQ-DATAKEYS-006 }
-  - { path: docs/domain/audit/event-search/README.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/modules/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/modules/signing-keys/provider/README.md, requirement: REQ-SIGNINGKEYS-008 }
+  - { path: docs/modules/data-keys/health/README.md, requirement: REQ-DATAKEYS-006 }
+  - { path: docs/modules/audit/event-search/README.md, requirement: REQ-AUDIT-004 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
   - { path: spec/contexts/signing-keys/main.tsp, symbol: IdMagic.SigningKeys.Operations.ListTenantKeyHealth }
   - { path: spec/contexts/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.ListTenantDataKeyHealth }

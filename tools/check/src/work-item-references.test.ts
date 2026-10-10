@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { type ReferenceEnvironment, verifyWorkItemReferences } from './work-item-references.ts'
+import {
+  type ReferenceEnvironment,
+  relocatedSpecPaths,
+  verifyWorkItemReferences,
+} from './work-item-references.ts'
 
 const files: Record<string, string> = {
-  'docs/domain/demo/scenarios.feature.md': [
+  'docs/modules/demo/scenarios.feature.md': [
     '# Feature: Demo',
     '',
     'RFC7644-PATCH is adopted.',
@@ -25,14 +29,14 @@ const environment: ReferenceEnvironment = {
 
 describe('verifyWorkItemReferences with the feature layout', () => {
   const moved: ReferenceEnvironment = {
-    exists: (path) => path === 'docs/domain/demo/work/task/README.md',
+    exists: (path) => path === 'docs/modules/demo/work/task/README.md',
     read: (path) =>
-      path === 'docs/domain/demo/work/task/README.md'
+      path === 'docs/modules/demo/work/task/README.md'
         ? '# Task\n\n## 操作\n\n#### REQ-DEMO-001 A valid request succeeds\n'
         : undefined,
     relocated: (path) =>
-      path === 'docs/domain/demo/scenarios.feature.md'
-        ? ['docs/domain/demo/work/task/README.md']
+      path === 'docs/modules/demo/scenarios.feature.md'
+        ? ['docs/modules/demo/work/task/README.md']
         : undefined,
   }
 
@@ -41,7 +45,7 @@ describe('verifyWorkItemReferences with the feature layout', () => {
       {
         status: 'pending',
         affected_spec: [
-          { path: 'docs/domain/demo/work/task/README.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/modules/demo/work/task/README.md', requirement: 'REQ-DEMO-001' },
         ],
       },
       moved,
@@ -54,14 +58,14 @@ describe('verifyWorkItemReferences with the feature layout', () => {
       {
         status: 'completed',
         affected_spec: [
-          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
-          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-002' },
+          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-002' },
         ],
       },
       moved,
     )
     expect(findings).toEqual([
-      'requirement does not resolve where docs/domain/demo/scenarios.feature.md moved: REQ-DEMO-002',
+      'requirement does not resolve where docs/modules/demo/scenarios.feature.md moved: REQ-DEMO-002',
     ])
   })
 
@@ -70,13 +74,13 @@ describe('verifyWorkItemReferences with the feature layout', () => {
       {
         status: 'pending',
         affected_spec: [
-          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
         ],
       },
       moved,
     )
     expect(findings).toEqual([
-      'affected_spec path does not exist: docs/domain/demo/scenarios.feature.md',
+      'affected_spec path does not exist: docs/modules/demo/scenarios.feature.md',
     ])
   })
 })
@@ -87,8 +91,8 @@ describe('verifyWorkItemReferences', () => {
       {
         status: 'pending',
         affected_spec: [
-          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
-          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'RFC7644-PATCH' },
+          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'RFC7644-PATCH' },
           { path: 'spec/contexts/demo/main.tsp', symbol: 'Demo.Operations.StartTask' },
         ],
       },
@@ -102,13 +106,13 @@ describe('verifyWorkItemReferences', () => {
       {
         status: 'pending',
         affected_spec: [
-          { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-002' },
+          { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-002' },
         ],
       },
       environment,
     )
     expect(findings).toEqual([
-      'requirement does not resolve in docs/domain/demo/scenarios.feature.md: REQ-DEMO-002',
+      'requirement does not resolve in docs/modules/demo/scenarios.feature.md: REQ-DEMO-002',
     ])
   })
 
@@ -126,12 +130,12 @@ describe('verifyWorkItemReferences', () => {
         { status: 'in_progress', initial_context: { specification } },
         environment,
       )
-    expect(started(['docs/domain/demo/scenarios.feature.md#REQ-DEMO-001'])).toEqual([])
-    expect(started(['docs/domain/demo/scenarios.feature.md#REQ-DEMO-404'])).toEqual([
-      'initial_context specification does not resolve: docs/domain/demo/scenarios.feature.md#REQ-DEMO-404',
+    expect(started(['docs/modules/demo/scenarios.feature.md#REQ-DEMO-001'])).toEqual([])
+    expect(started(['docs/modules/demo/scenarios.feature.md#REQ-DEMO-404'])).toEqual([
+      'initial_context specification does not resolve: docs/modules/demo/scenarios.feature.md#REQ-DEMO-404',
     ])
-    expect(started(['docs/domain/gone/scenarios.feature.md#REQ-GONE-001'])).toEqual([
-      'initial_context specification path does not exist: docs/domain/gone/scenarios.feature.md#REQ-GONE-001',
+    expect(started(['docs/modules/gone/scenarios.feature.md#REQ-GONE-001'])).toEqual([
+      'initial_context specification path does not exist: docs/modules/gone/scenarios.feature.md#REQ-GONE-001',
     ])
   })
 
@@ -141,5 +145,32 @@ describe('verifyWorkItemReferences', () => {
     expect(verifyWorkItemReferences({ ...record, status: 'in_progress' }, environment)).toEqual([
       'active work item contains a legacy specification reference',
     ])
+  })
+})
+
+describe('relocatedSpecPaths', () => {
+  const table = {
+    'docs/domain/demo/scenarios.feature.md': ['docs/modules/demo/work/task/README.md'],
+    'docs/domain/glossary.md': ['docs/requirements/glossary.md'],
+    'docs/domain/': ['docs/modules/'],
+  }
+
+  it('prefers the entry that names the moved file', () => {
+    expect(relocatedSpecPaths(table, 'docs/domain/demo/scenarios.feature.md')).toEqual([
+      'docs/modules/demo/work/task/README.md',
+    ])
+    expect(relocatedSpecPaths(table, 'docs/domain/glossary.md')).toEqual([
+      'docs/requirements/glossary.md',
+    ])
+  })
+
+  it('moves a path under a renamed directory by its prefix', () => {
+    expect(relocatedSpecPaths(table, 'docs/domain/demo/work/task/README.md')).toEqual([
+      'docs/modules/demo/work/task/README.md',
+    ])
+  })
+
+  it('leaves a path no entry covers unresolved', () => {
+    expect(relocatedSpecPaths(table, 'docs/other/README.md')).toBeUndefined()
   })
 })

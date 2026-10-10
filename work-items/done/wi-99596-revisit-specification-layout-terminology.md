@@ -53,7 +53,7 @@ spec_impact:
 
 ## 対象範囲
 
-- 「機能ノード」の言い換えを決め、規約の文書（`SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`docs/development/specification-first-workflow.md`、`docs/development/specification-format-rationale.md`）、検査と生成器の診断と識別子、work item のスキーマ、文書の本文の言及をそろえる。
+- 「機能ノード」の言い換えを決め、規約の文書（`SPECIFICATION_FORMAT.md`、`DOCUMENTATION_GUIDE.md`、`docs/development/specification-first-workflow.md`、`docs/development/format-rationale.md`）、検査と生成器の診断と識別子、work item のスキーマ、文書の本文の言及をそろえる。
 - 例の付録のファイルの名前を決め、変えるなら、すべての機能の付録、検査、生成器、`generate-spec-examples`、テストの準備データ、文書のリンクをそろえる。
 - `docs/domain/scenarios.feature.md` の前書きの、旧形式のファイルへの言及を改める。
 - 名前を変える場合は、完了した work item の旧パスを `tools/check/relocated-spec-paths.json` で解決する。

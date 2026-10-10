@@ -8,9 +8,9 @@ priority: p2
 depends_on: [wi-87724-fix-the-device-flow-refresh-token-and-expired-denial]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/oauth2/token/README.md, requirement: REQ-OAUTH2-021 }
-  - { path: docs/domain/oauth2/authorization/README.md, requirement: REQ-OAUTH2-005 }
-  - { path: docs/domain/oauth2/device/README.md, requirement: REQ-OAUTH2-027 }
+  - { path: docs/modules/oauth2/token/README.md, requirement: REQ-OAUTH2-021 }
+  - { path: docs/modules/oauth2/authorization/README.md, requirement: REQ-OAUTH2-005 }
+  - { path: docs/modules/oauth2/device/README.md, requirement: REQ-OAUTH2-027 }
 ---
 
 # refresh_token のグラントを許可していないクライアントにリフレッシュトークンを発行しない

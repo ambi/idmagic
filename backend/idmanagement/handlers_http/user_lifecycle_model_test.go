@@ -31,7 +31,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
-const userLifecycleSpecification = "../../../docs/domain/identity-management/user/README.md"
+const userLifecycleSpecification = "../../../docs/modules/identity-management/user/README.md"
 
 // userLifecycleOperations は、状態遷移表の操作の列から、その操作を起こして応答を返す手順を作る。
 var userLifecycleOperations = map[string]func(m *userLifecycleModel) *httptest.ResponseRecorder{

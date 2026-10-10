@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/domain/oauth2/standards.md のうち、ブラウザーのリダイレクトを使わずに承認を
+// docs/modules/oauth2/standards.md のうち、ブラウザーのリダイレクトを使わずに承認を
 // 取る 2 つのグラントが持つ 8 行を観測する。
 //
 // 入口は Register が組み立てたスタックへの HTTP である。デバイス認可も CIBA も、

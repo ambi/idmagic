@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 )
 
-// docs/domain/provisioning/standards.md が宣言する外向き SCIM の準拠範囲のうち、
+// docs/modules/provisioning/standards.md が宣言する外向き SCIM の準拠範囲のうち、
 // 「送らない」と「この範囲までしか送らない」を確かめる証拠を集める。
 //
 // 個々の操作が正しく送れることは client_test.go が持つ。ここが見るのは、

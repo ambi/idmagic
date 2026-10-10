@@ -372,10 +372,10 @@ Go の `context.Context` とテナントを運ぶ `context.go` は Go の語な�
 | 文書 | 変更 |
 | --- | --- |
 | [論理アーキテクチャ](../../docs/design/architecture/logical.md) | Context Map の節と関係ラベルの表を削除する。責務表を「モジュールの責務」とし、Subdomain 列を公開方式と公開パッケージの列へ置き換える。System 行に組み立て地点を列挙する |
-| [解決戦略](../../docs/design/architecture/strategy.md)、[アーキテクチャ上の判断](../../docs/design/architecture/decisions.md) | 依存規則とポートの分離を記述する。「辺の許可リストを持たない」判断と見直し条件を追加する |
+| [解決戦略](../../docs/design/architecture/README.md#解決戦略)、[アーキテクチャ上の判断](../../docs/design/architecture/decisions.md) | 依存規則とポートの分離を記述する。「辺の許可リストを持たない」判断と見直し条件を追加する |
 | [設計ガイドライン](../../docs/design/application/design-guidelines.md) | Subdomain の節を判断の三分類、D1〜D8、変更シナリオと相談条件へ置き換える。Aggregate の節を上の採否どおりに直す |
-| [構造](../../docs/domain/structure.md) | 依存規則、公開契約、変換、`shared`、組み立て地点、`internal/` の最終形と移行規則を記述する |
-| [用語集](../../docs/domain/glossary.md)、[ドメイン文書の索引](../../docs/domain/README.md) | Subdomain を削除し、モジュールを定義する。索引表の区分の列を削除する |
+| [構造](../../docs/design/application/backend.md) | 依存規則、公開契約、変換、`shared`、組み立て地点、`internal/` の最終形と移行規則を記述する |
+| [用語集](../../docs/requirements/glossary.md)、[ドメイン文書の索引](../../docs/modules/README.md) | Subdomain を削除し、モジュールを定義する。索引表の区分の列を削除する |
 | [データベース設計](../../docs/design/data/database.md) | 「所有 Context」を「所有モジュール」とし、`table-write` の対象と限界を記述する。既存の所有者外の書き込みを、原子性の理由を維持して移行する |
 | [フロントエンド設計](../../docs/design/application/frontend.md) | 機能スライスとの対応の節の用語を改名する |
 | [仕様先行の開発ワークフロー](../../docs/development/specification-first-workflow.md)、[仕様フォーマット](../../docs/formats/specification-format.md)、[文書ガイド](../../docs/formats/documentation-guide.md)、[作業項目フォーマット](../../docs/formats/work-item-format.md) | モジュールの定義と境界選択手順を参照する。境界を変更する設計記録の最小項目を定め、AI と人の判断範囲を更新する |

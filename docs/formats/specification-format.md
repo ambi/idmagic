@@ -1,10 +1,12 @@
 # 仕様フォーマット
 
-この文書は、仕様と設計の一次情報文書を書くときに従う形式を定める。
+この文書は、仕様の一次情報文書を書くときに従う形式を定める。
+この文書でいう仕様は、システムとモジュールと機能が外へ約束すること（責務、公開する契約、要件、品質、採用する標準）であり、TypeSpec と、要件文書、モジュールと機能の仕様の文書に書く。
+その約束をどう実現するかを書く設計の形式は[設計フォーマット](design-format.md)、どの内容をどの文書に書くかと `docs/` の配置は[文書ガイド](documentation-guide.md)が定める。
 正確な文法は `mise run check-spec` が受理する形であり、その診断が厳密な規則を示す。
 *(checked)* と記した規則への違反はビルドを失敗させ、それ以外はレビューで判断する。
-各規則を選んだ理由は[仕様フォーマットの理由](../development/specification-format-rationale.md)に書く。
-内容の担当は[文書ガイド](documentation-guide.md)、変更の計画と証拠は[作業項目フォーマット](work-item-format.md)が定める。
+各規則を選んだ理由は[フォーマットの理由](../development/format-rationale.md)に書く。
+変更の計画と証拠は[作業項目フォーマット](work-item-format.md)が定める。
 
 ## 用語
 
@@ -18,128 +20,10 @@
 | 横断的要件 | 複数の操作や Aggregate に同じ内容で適用される要件。一か所で宣言し、ほかの箇所は例外だけを書く | 状態を変える操作は、すでにその状態なら成功を返しイベントを発行しない |
 | モジュール | 変わりうる設計判断を内部へ隠し、責務と公開契約を定める実装の単位。仕様文書との対応は論理アーキテクチャの責務表で宣言する | Tenancy |
 | 値オブジェクト | 識別子ではなく値で比較する型。正規化、比較、妥当性の判定を一か所で定義する | ユーザー名 |
-| 状態遷移表（マトリクス形式） | 行に状態、列に操作を並べ、すべてのセルに結果を書く表 | [状態遷移](#4-状態遷移)の三つ目の表 |
-| 機能スライス | 一つの機能の単位。仕様のディレクトリと、対応するコードのディレクトリ `backend/<context>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/domain/identity-management/user/` と `backend/idmanagement/user/` |
+| 状態遷移表（マトリクス形式） | 行に状態、列に操作を並べ、すべてのセルに結果を書く表 | [状態遷移](#3-状態遷移)の三つ目の表 |
+| 機能スライス | 一つの機能の単位。仕様のディレクトリと、対応するコードのディレクトリ `backend/<context>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/modules/identity-management/user/` と `backend/idmanagement/user/` |
 
-## 1. 配置
-
-文書の木は、システム、モジュール、機能の各階層で、仕様と設計の文書を置く。
-仕様はその要素が外へ約束すること（責務、インターフェース、要件、品質）を、設計はその約束をどう実現するかを書く。
-文章は `docs/`、コンパイラが読み取る TypeSpec は `spec/` に置く。
-モジュール名は `docs/domain/<context>/` と `spec/contexts/<context>/` で一致させる。
-
-```text
-docs/
-  README.md                     # システム文書の入口
-  domain/
-    README.md                   # モジュール設計の入口
-    glossary.md                 # 全体で意味が固定される語
-    standards.md                # システム全体が従う外部規範
-    structure.md                # リポジトリと実装の配置、モジュールの依存規則
-    scenarios.feature.md        # 一つのモジュールだけでは満たせない振る舞い
-    <context>/
-      README.md                 # 仕様：責務と境界、モデルの全体図、公開する契約、機能の索引
-      glossary.md
-      standards.md
-      quality.md                # 仕様：割り当てを受けた品質要件
-      design/                   # 設計
-        README.md               # 話題の索引
-        architecture.md         # 文脈と範囲、解決戦略、構成要素、実行時の流れ
-        decisions.md            # 代替案を比べた重要な設計判断
-        data.md                 # 話題ごとの設計（data、security、reliability、performance、risks など）
-        <concept>.md            # 横断的概念
-      <group>/                  # 機能群
-        README.md               # 境界と機能の索引
-        <feature>/              # 機能スライスの仕様
-          README.md             # 仕様：機能仕様
-          <chapter>.md          # 長くなった機能仕様の章
-          acceptance.feature.md # 受け入れの例の付録（任意）
-          design.md             # 設計（任意）：コードから読み取れない仕組みと直し方
-  requirements/
-    README.md
-    product-overview.md         # 目的、利用者、利用場面、システムの範囲
-    functional.md
-    quality.md
-  formats/
-    README.md                   # 形式文書の索引
-    documentation-guide.md      # 内容ごとの担当文書
-    specification-format.md     # 配置と仕様の記述規則
-    work-item-format.md          # 変更の計画と完了記録
-  design/
-    README.md                   # 話題の索引
-    architecture/
-      README.md
-      system-boundary.md
-      constraints.md
-      strategy.md
-      logical.md
-      runtime.md
-      deployment.md
-      decisions.md
-      risks.md
-    application/
-      README.md
-      api-guidelines.md
-      design-guidelines.md
-      frontend.md
-      user-interface.md
-    data/
-      README.md
-      database.md
-      schema-management.md
-      lifecycle.md
-    infrastructure/
-      README.md
-      platform.md
-      network.md
-    security/
-      README.md
-      threat-model.md
-      authorization.md
-      secrets.md
-    reliability/
-      README.md
-      availability.md
-      recovery.md
-    performance/
-      README.md
-      capacity.md
-      scaling.md
-    observability/
-      README.md
-      monitoring.md
-      logging.md
-      tracing.md
-    verification/
-      README.md
-      system-acceptance.md
-      security.md
-  development/                  # 開発ワークフローと手順
-  operations/
-    README.md
-    service-management.md
-    maintenance.md
-  runbooks/<event>.md           # インシデント対応中に当番が読む内容
-  releases/                     # 利用者向けの変更通知と移行通知
-
-spec/
-  main.tsp
-  tspconfig.yaml
-  <product>.openapi.baseline.json
-  contexts/<context>/{models.tsp,main.tsp}
-```
-
-- 品質要件は `requirements/` で一度だけ宣言し、アーキテクチャで割り当て、該当する設計文書で実現方法を書く。
-- 固定された各設計ディレクトリには、その範囲、対象外、子要素、隣接する設計を宣言する `README.md` を置く。その配下には、文書配置で責務を定義したファイルだけを置ける。
-- `docs/development/`、`docs/runbooks/`、`docs/releases/` は開いた集合とする。`docs/operations/` と `docs/design/verification/` は固定された集合とする。
-- 内容のないファイルは作らず、該当しない事項とその理由を親の索引へ記録する。
-- 固定された各ディレクトリでは、ファイル名を検査する *(checked)*。許可された名前に近い誤記には意図した名前を、その他の名前には許可される名前の集合を報告する。
-- 機能仕様の章と内部設計の横断的概念は、ケバブケースの任意の名前で置ける。
-- 小さなモジュールでは、機能群を置かず、モジュールの直下に機能スライスの仕様を置いてよい。
-- `main.tsp` は TypeSpec プログラムを構成する。モデル宣言は `models.tsp`、操作はモジュールの `main.tsp` に置く。
-- 生成した OpenAPI は追跡しない `spec/generated/`、生成した文書サイトは追跡しない `site/` に置き、`docs/` には置かない。
-
-## 2. TypeSpec の範囲
+## 1. TypeSpec の範囲
 
 - モデル、制約、API 操作、HTTP ルート、リクエストとレスポンスの形、ステータスコード、エラーの union、非推奨メタデータ、認証方式は TypeSpec で定義する。
 - 標準のライブラリと emitter を優先する。
@@ -157,20 +41,12 @@ spec/
 | 競合解決と冪等性の判断 | 要件の判断の欄、または `design/decisions.md` |
 | 受け入れ基準 | 機能仕様の要件と、任意の例の付録 |
 
-## 3. 一次情報文書
+## 2. 仕様文書
 
-各一次情報文書には H1 を一つだけ置く *(checked)*。
-frontmatter は設けない。
-固定された節の集合を定めるのは、機能仕様（`<feature>/README.md`）と重要な設計判断（`design/decisions.md`）だけである。
-その他の文書では、H2 に内容に合う名前を付ける。
+固定された節の集合を定めるのは、機能仕様（`<feature>/README.md`）だけである。
+一次情報文書に共通する規則（H1、`README.md` による境界の宣言）は[文書ガイド](documentation-guide.md#一次情報文書に共通する規則)が定める。
 
-### README.md — 境界の宣言
-
-- `README.md` には、そのディレクトリが扱うもの、扱わないものと代わりの担当を書く。所属を誤りやすい場合は、所属を決める基準も書く。
-- 読む順序と将来の計画は書かない。予定している作業は work item に、採用しなかった判断は再検討する条件とともに `design/decisions.md` に書く。
-- 宣言の下に、同じディレクトリのファイルを `| 文書 | 内容 |` の表で索引する。
-- モジュールの一覧と実装の単位との対応は、論理アーキテクチャの責務表に一度だけ書く。ルートの `README.md` は一覧を複製せず、責務表を参照する。
-- 複数のモジュールが協調した場合にだけ成り立つ振る舞いは `docs/domain/scenarios.feature.md` に置く。
+### README.md — モジュールの仕様
 
 モジュールの `README.md` は、モジュールの仕様であり、境界の宣言に加えて次を書く。
 
@@ -183,29 +59,12 @@ frontmatter は設けない。
 - 機能地図（機能ごとの要件と未決事項の数）は生成サイトが作るので、手で書かない。
 - モジュールに割り当てた品質要件は、モジュールの `quality.md` に置く。`docs/requirements/quality.md` のうちこのモジュールが担う分と、固有の値だけを書く。該当がなければ置かない。
 
-```markdown
-# ディレクトリ
-<!-- 良い例：担当、委譲、判断が難しい場合の基準を示す -->
-X のライフサイクルと付随するメタデータを扱う。
-暗号処理自体は扱わず、共有アダプターに委ねる。署名鍵は <別のモジュール> が扱う。
-所属は通信の方向ではなく、永続的な外部の権威が存在するかで決めるため、管理者主導のインポートは <別のモジュール> が扱う。
-
-<!-- 悪い例：文書の案内と計画になっている -->
-この文書では A、B、C の順に説明する。
-今後、このモジュールへ四つ目のソース種別を追加する。
-```
-
 ### glossary.md — 語彙
 
 - そのモジュールの仕様、コード、会話で一つの意味に使う語を、一行で定義する。
 - 用語集にない語をモデル名に使わない。
-- 複数のモジュールで意味が固定された語は `docs/domain/glossary.md` に置く。
+- 複数のモジュールで意味が固定された語は `docs/requirements/glossary.md` に置く。
 - 表の見出しは `| 用語 | 定義 | 別名 |` とする。
-
-### design-guidelines.md — 設計判断の評価方法
-
-- `docs/design/application/design-guidelines.md` に、モジュールの境界、インターフェース、seam、アダプター、型の担当、作用、エラーに関するシステム全体の評価基準を書く。
-- モジュールディレクトリに独自の写しを置かない。
 
 ### 機能仕様 — 一つの機能について知るべきこと
 
@@ -217,7 +76,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 | --- | --- |
 | 概要 | 機能の責務、境界、行為者 |
 | モデル | 扱う Aggregate と項目、値オブジェクト、保つ性質 |
-| 状態遷移 | `### <機械名>` の下に、[状態遷移](#4-状態遷移)の三つの表を置く |
+| 状態遷移 | `### <機械名>` の下に、[状態遷移](#3-状態遷移)の三つの表を置く |
 | 操作 | 操作ごとに H3 を置き、その下に要件を H4 で宣言する |
 | 品質 | この機能に固有の品質要件。モジュールの `quality.md` からの割り当てと例外だけを書く |
 | セキュリティ上の考慮 | 認可、テナント境界、情報の開示 |
@@ -246,72 +105,16 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 同じテナントの削除されていない User と同じユーザー名で作成を要求された場合、Account は、409 と `username_conflict` で拒否し、User を作らない。
 ```
 
-### design/decisions.md — 重要な設計判断
-
-- 代替案を比べた判断、成立条件や再検討する条件が要る判断だけを置く。それ以外の判断は、要件の判断の欄に書く。
-- 判断ごとに H2 を置き、見出しには側面（`不変条件`、`失敗処理` など）ではなく判断そのものを書く。
-- 各判断の下に、次の H3 をこの順で置く *(checked)*。
-
-| 節 | 内容 |
-| --- | --- |
-| 背景 | 判断を迫った状況と制約 |
-| 決定 | 何を決めたか |
-| 検討した代替案 | 案、利点、欠点、採らない理由の表 |
-| 結果と再検討の条件 | 決定によって何が成り立ち、何を諦めたか。どうなったら見直すか |
-| 関連する要件 | この判断が正当化する要件の ID と、機能仕様へのリンク |
-
-- 変更の経緯は work item に残し、この文書には現在の判断だけを書く。
-
-### 話題の語彙
-
-設計は、システムとモジュールの階層で、同じ話題の集合で構成する。
-
-| 話題 | システム | モジュール | 書くこと |
-| --- | --- | --- | --- |
-| アーキテクチャ | `architecture/` | `architecture.md` | 文脈と範囲、制約、解決戦略、構成要素、実行時の流れ、配置 |
-| 設計判断 | `architecture/decisions.md` | `decisions.md` | 代替案を比べた重要な判断 |
-| アプリケーション | `application/` | `application.md` | API と UI の方式 |
-| データ | `data/` | `data.md` | Aggregate と永続化、保持と削除、排他 |
-| セキュリティ | `security/` | `security.md` | 認可の適用、秘密情報、脅威への対応 |
-| 信頼性 | `reliability/` | `reliability.md` | 障害の検知、症状と直し方、復旧 |
-| 性能 | `performance/` | `performance.md` | 品質要件を満たす方式、キャパシティの見積もり |
-| オブザーバビリティ | `observability/` | `observability.md` | ログ、指標、トレース |
-| 検証 | `verification/` | `verification.md` | 品質要件と統制の確かめ方 |
-| インフラストラクチャ | `infrastructure/` | `infrastructure.md` | 実行基盤とネットワーク |
-| リスク | `architecture/risks.md` | `risks.md` | 既知の欠陥、技術的負債、受容したリスク。脅威は脅威モデルに置く |
-
-- 複数の機能が共有し、一つの話題に収まらない仕組み（CSV の往復変換など）は、モジュールの `design/<concept>.md` に一つの概念を一つの文書で置く。
-- 下の階層は、上の階層からの割り当てと例外だけを書く。同じ内容を二つの階層に書き写さない。
-
-**話題の索引。**
-システムの `docs/design/README.md` とモジュールの `design/README.md` には、すべての話題を行とする表を置く *(checked)*。
-各行には、記述した場所へのリンクか、「該当なし：」に続けてその理由を書く *(checked)*。
-
-```markdown
-| 話題 | 記述した場所 |
-| --- | --- |
-| アーキテクチャ | [アーキテクチャ](architecture.md) |
-| オブザーバビリティ | 該当なし：システムのログ設計に従い、このモジュールに固有の信号はない |
-```
-
-### 機能の設計
-
-- 機能の `design.md` は任意である。話題の索引は置かない。
-- 書くのは、コードから読み取れない仕組みと、壊れたときの直し方だけとする。H2 には話題の名前を使う。
-- ファイルとパッケージの列挙、実装が踏む手順の説明は書かない。
-- 製品が守る値や条件（有効期間の上限、件数の上限など）は、要件として機能仕様に書く。
-- 内部設計には、変更履歴、計画、外部標準の要約、受け入れ例、リクエストとレスポンスの形、カラムと索引の定義、権限の割り当て、すべてのモジュールが従う規則を書かない。それぞれ、work item、`standards.md`、例の付録、TypeSpec、スキーマファイル、`docs/design/security/authorization.md`、システム文書で扱う。
-
 ### 仕様の木
 
 仕様は、システム、モジュール、機能群、機能の四つの階層からなる木に置く。
 
 | 階層 | 置き場所 | 仕様 | 設計 |
 | --- | --- | --- | --- |
-| システム | `docs/requirements/`、`docs/domain/`、`docs/design/` | `requirements/`（目的と範囲、機能、品質）、`domain/glossary.md`、`domain/standards.md`、`domain/scenarios.feature.md` | `docs/design/` |
-| モジュール | `docs/domain/<context>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | `design/` |
-| 機能群 | `docs/domain/<context>/<group>/` | `README.md`（関係の深い機能の境界と索引）。要件は宣言しない *(checked)* | なし |
-| 機能 | `docs/domain/<context>/<group>/<feature>/` | `README.md` と章、任意の `acceptance.feature.md` | 任意の `design.md` |
+| システム | `docs/requirements/`、`docs/design/` | `requirements/`（目的と範囲、機能、品質、外部規範、システム横断シナリオ、用語集） | `docs/design/` |
+| モジュール | `docs/modules/<context>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | `design/` |
+| 機能群 | `docs/modules/<context>/<group>/` | `README.md`（関係の深い機能の境界と索引）。要件は宣言しない *(checked)* | なし |
+| 機能 | `docs/modules/<context>/<group>/<feature>/` | `README.md` と章、任意の `acceptance.feature.md` | 任意の `design.md` |
 
 - 要件は機能スライスの仕様でだけ宣言する *(checked)*。複数の機能にまたがって見える要件も、その要件を実装するコードが属する機能へ置く。実装が共有の仕組みであれば、その仕組みを一つの機能（例：管理 API の認可、CSV の転送）として機能スライスを設ける。
 - 機能群に置けるのは `README.md` だけである *(checked)*。
@@ -336,20 +139,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 語彙の違いや責務を説明する文の形だけを、モジュールを分割する根拠にしない。
 モジュールの境界を変える場合は、[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)で隠す設計判断、制約、変更の波及を比較し、その結果を責務表とモジュールの仕様へ反映する。
 
-### 一次情報文書に置かない内容
-
-| 内容 | 担当 |
-|---|---|
-| ライブラリまたはフレームワークの選定 | 開発文書、または `design/decisions.md` の一つの判断 |
-| コーディングスタイル | `docs/development/coding-style.md` |
-| セットアップ、リリース、デバッグの手順 | 開発文書または運用文書 |
-| デザイントークンの値と翻訳済み文言 | リソースファイル |
-| 画面ごとの URL、フィールド、状態 | 実装とコンポーネントカタログ |
-| 環境変数の一覧 | 生成した設定リファレンス |
-
-判断の基準は、その内容を変えると外部から観測できる振る舞い、または製品が保つべき境界が変わるかである。
-
-## 4. 状態遷移
+## 3. 状態遷移
 
 機能仕様の `## 状態遷移` の節では、各状態機械に H3 見出しを付け、その下に三つの表をこの順で置く。
 
@@ -383,7 +173,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 時間を契機とする遷移は、その遷移を起こす操作を列として置く。
 - 生成サイトは遷移の表から状態図を一つ導出する。手書きの状態図を別に保守しない。
 
-## 5. 標準仕様
+## 4. 標準仕様
 
 `standards.md` では、採用する各標準にその名称の H2 見出しを付け、独立した行に出典 URL を書き、表を一つ置く。
 
@@ -400,7 +190,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - ID は文書内で一意にする *(checked)*。両方の列で使用できる値の集合も検査する *(checked)*。
 - すべての ID をテストから参照する *(checked)*。参照はテストファイル内のどこに置いてもよく、実装コードの参照は数えない。未検査の行を免除する一覧は置かない *(checked)*。
 
-## 6. 要件と例
+## 5. 要件と例
 
 ### 仕様に書く範囲
 
@@ -571,45 +361,13 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 生成した EX にも通常の検査を適用し、データを実行して期待結果を表明するテストを要する。テストの `//spec:covers` にその EX の ID を追加する。
 - 実装から得た出力を期待結果として自動採用しない。
 
-## 7. 認可
-
-- 認可は `docs/design/security/authorization.md` にまとめ、各モジュールの節に分割しない。プリンシパルの種類、スコープの名前空間、テナント境界、判断できない場合の規則を書く。
-- 各モジュールが自身の操作について下した判断は、その要件の判断の欄に、代替案を比べた判断はそのモジュールの `design/decisions.md` に置く。
-- TypeSpec には、API が認証付きか公開かと、操作ごとの権限またはスコープの注釈を付ける。
-- 独自の認可 DSL を追加しない。きめ細かな認可は、テストを伴うアプリケーションの振る舞いとする。
-- 操作とスコープの対応を文章で言い換えない。文章には、注釈で表せない内容（境界が受け入れるロールとプリンシパルの種類、レスポンスに含めない内容、権限の伝播、判断不能な場合の処理）を書く。
-
-## 8. 脅威モデル
-
-- `docs/design/security/threat-model.md` に、信頼境界と各境界で信頼しないもの、資産、脅威ごとの行と対応する統制を書く。
-- 各脅威には安定した ID と、統制の有無を区別する閉じた集合の状態を付ける。境界と分類は ID に組み込まず列にする。
-- 統制のない行も同じ表に置き、修正するか受容するかと、受容する場合の再検討の条件を書く。
-- 何も対応していない脅威と、背後に規範のない統制（手順、デプロイ要件など）が対応する脅威を、統制の列で区別する。
-- 脅威を修正する work item をこの文書から参照しない。work item から脅威 ID を参照する。
-- 一覧が網羅的ではないことと、見直しが必要になる条件を書く。
-- 既存の統制識別子（要件、採用した標準など）を参照し、二つ目の識別子を作らない。
-- 起こり得ることを書き、再現手順、具体的なパラメーター、未修正経路の詳細は書かない。
-
-## 9. 生成ビューと検証
-
-- リポジトリの仕様検査で TypeSpec をコンパイルし、一次情報文書を検証する。
-- 生成した OpenAPI とリリース済みの基準を比較し、互換性を検査する。
-- TypeSpec と一次情報の Markdown から、OpenAPI と、複数ページの HTML サイト `IdMagic ドキュメント` を生成する。入口は `site/index.html` とし、各一次情報ファイルを独立したページにして、そのディレクトリの `README.md` から到達できるようにする。
-- `documentation-guide.md`、`specification-format.md`、`work-item-format.md` を参考資料として含める。ランディングページは `docs/README.md` の読む順序に従った後、開発資料と生成資料へリンクする。
-- サイドバーの最上位の節を開閉要素として表示する。ランディングページではすべて閉じ、それ以外では現在のページを含む節だけを開き、すべての子リストを字下げする。
-- API 操作とスキーマの表示は OpenAPI 専用のビューアーに委ねる。TypeSpec のモデル、enum、union、scalar の宣言から、より広いモデルカタログを生成する。`Operations` 名前空間の通信ラッパー宣言はカタログで重複させない。
-- Mermaid コードフェンスを描画し、遷移の表から状態図を導出する。シナリオキーワードは生成ビューで意味に応じたスタイルを付ける。
-- 機能仕様のページには、要件の見出しから要件一覧と操作の一覧を、既存の要判断の欄から未決事項を生成して差し込む。モジュールの `README.md` のページには、機能地図を生成して差し込む。
-- 設計と理由は本文に書き、別の判断記録へリンクして済ませない。リンクしてよい判断の記録は `design/decisions.md` だけであり、`decisions/` のような作業記録のディレクトリへのリンクは拒否する *(checked)*。
-- 生成した HTML と OpenAPI を編集せず、一次情報として扱わない。
-
-## 10. 旧形式の扱い
+## 6. 旧形式の扱い
 
 旧形式は、ファイル種別（`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md`）で文書を分け、要件を Gherkin の `Rule` として宣言する形式である。
 すべてのモジュールは、この文書が定める形式へ移った。
 
 - すべてのモジュールは `design/README.md` を持つ *(checked)*。持たないモジュールには、どの文書も置けない *(checked)*。
-- モジュール、機能群、機能の階層には、旧形式のファイル種別を置けない *(checked)*。システムの `docs/domain/scenarios.feature.md` は旧形式の文書ではなく、この規則の対象外である。
+- モジュール、機能群、機能の階層には、旧形式のファイル種別を置けない *(checked)*。システムの `docs/requirements/scenarios.feature.md` は旧形式の文書ではなく、この規則の対象外である。
 - 文書を移しても、要件の ID とタイトルは変えない。内容も変える場合は、移動とは別の変更にする。
 - 完了した work item の `affected_spec` は書き換えず、旧パスから新しいパスへの対応表で解決する。未完了の work item は新しいパスへ直す。
 - `spec-diff` は、比較の基準のリビジョンにある旧形式の文書も読む。

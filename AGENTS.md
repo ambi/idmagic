@@ -8,7 +8,7 @@
 
 | 作業 | 読む文書 |
 | --- | --- |
-| 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [docs/formats/specification-format.md](docs/formats/specification-format.md)、work item の形式は [docs/formats/work-item-format.md](docs/formats/work-item-format.md)、文書体系は [docs/formats/documentation-guide.md](docs/formats/documentation-guide.md) |
+| 機能、振る舞い、設計の変更 | [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)。仕様文書の形式は [docs/formats/specification-format.md](docs/formats/specification-format.md)、設計文書の形式は [docs/formats/design-format.md](docs/formats/design-format.md)、work item の形式は [docs/formats/work-item-format.md](docs/formats/work-item-format.md)、文書体系と配置は [docs/formats/documentation-guide.md](docs/formats/documentation-guide.md) |
 | 文書、コメント、UI 文言の執筆または推敲 | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
 | 本番コード（`backend/`、`frontend/src/`）の変更 | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)。仕様を変えるかを必ず判断し、work item の `affected_spec` か `spec_impact`、またはコミットの `Spec-Impact: none` トレーラーで宣言する |
 | コードの編集またはレビュー | [コーディングスタイル](docs/development/coding-style.md)。七つの視点を実装とレビューの判断に用いる |

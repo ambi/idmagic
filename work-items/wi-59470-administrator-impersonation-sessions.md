@@ -8,7 +8,7 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/authentication/security-notification/README.md, requirement: REQ-AUTHENTICATION-031 }
+  - { path: docs/modules/authentication/security-notification/README.md, requirement: REQ-AUTHENTICATION-031 }
 ---
 
 # 管理者が User になりすますセッションを始め、終えられるようにする

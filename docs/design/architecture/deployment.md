@@ -71,7 +71,7 @@ flowchart TB
 | 上流の IdP | 外部の OIDC プロバイダーと SAML IdP。`idmagic-api` がメタデータ、トークン、公開鍵を取得する | 対象外 | 外部サービス |
 | 下流の送信先 | ユーザーとグループを反映する SaaS の SCIM サーバー、失効を伝える SSF の受信側、メールを送る SMTP サーバー。`idmagic-api` と `idmagic-worker` が送信する | 対象外 | 外部サービス |
 
-レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../domain/jobs/queue/design.md)で定める。
+レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../modules/jobs/queue/design.md)で定める。
 ローカル Docker Compose だけは、一つのプロセスで全レーンを処理する。
 
 `idmagic-frontend` が中継するパスは、設定上の許可リストで管理する。

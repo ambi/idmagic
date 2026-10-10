@@ -20,7 +20,7 @@ import { documentKind } from './specification-doc.ts'
 const FEATURE_SLICE_DEBT = 'tools/check/feature-slice-debt.json'
 
 /** モジュールをまたぐ要件を宣言する文書。 */
-const SYSTEM_SCENARIOS = 'docs/domain/scenarios.feature.md'
+const SYSTEM_SCENARIOS = 'docs/requirements/scenarios.feature.md'
 
 /**
  * 要件文の EARS の構文を確かめるモジュール。要件文を書き直したモジュールから加え、
@@ -51,7 +51,7 @@ const EARS_CONTEXTS = new Set<string>([
 ])
 
 export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
-  const domainFiles = await snapshot.files('docs/domain', [])
+  const domainFiles = await snapshot.files('docs/modules', [])
   // 規則を宣言する文書。システムの `scenarios.feature.md` と、機能仕様である。
   const specificationPaths = new Set(
     domainFiles.filter((path) => documentKind(path) === 'specification'),
@@ -75,7 +75,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
 
   const featureContexts = new Set(
     domainFiles.flatMap(
-      (path) => path.match(/^docs\/domain\/([^/]+)\/design\/README\.md$/)?.[1] ?? [],
+      (path) => path.match(/^docs\/modules\/([^/]+)\/design\/README\.md$/)?.[1] ?? [],
     ),
   )
   const parents = new Set(domainFiles.map((path) => posix.dirname(posix.dirname(path))))
@@ -107,10 +107,10 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   const specifications = new Set(
     domainFiles.flatMap((path) => {
       const directory = posix.dirname(path)
-      if (/^docs\/domain\/[^/]+\/[^/]+$/.test(directory)) return [directory]
+      if (/^docs\/modules\/[^/]+\/[^/]+$/.test(directory)) return [directory]
       // 機能群の一段下も機能スライスの仕様になる。内部設計の段は機能ではない。
       return inFeatureContext(path) &&
-        /^docs\/domain\/[^/]+\/[^/]+\/[^/]+$/.test(directory) &&
+        /^docs\/modules\/[^/]+\/[^/]+\/[^/]+$/.test(directory) &&
         directory.split('/')[3] !== 'design'
         ? [directory]
         : []
@@ -135,7 +135,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
 
 /** 要件文の主体。モジュールの `README.md` の H1 を使う。 */
 async function responder(snapshot: WorkspaceSnapshot, context: string): Promise<string> {
-  const readme = await snapshot.read(`docs/domain/${context}/README.md`)
+  const readme = await snapshot.read(`docs/modules/${context}/README.md`)
   return readme.match(/^# (.+)$/m)?.[1]?.trim() ?? context
 }
 

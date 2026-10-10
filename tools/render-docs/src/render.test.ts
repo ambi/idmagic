@@ -20,7 +20,7 @@ flowchart LR
 
 | File | Content |
 |---|---|
-| [domain/demo/README.md](domain/demo/README.md) | The demo context |
+| [modules/demo/README.md](modules/demo/README.md) | The demo context |
 `,
 }
 
@@ -30,7 +30,7 @@ const rootProductOverviewDocument = {
 }
 
 const rootGlossaryDocument = {
-  path: 'docs/domain/glossary.md',
+  path: 'docs/requirements/glossary.md',
   source: `# 用語集
 
 | Term | Definition |
@@ -40,17 +40,17 @@ const rootGlossaryDocument = {
 }
 
 const rootStandardsDocument = {
-  path: 'docs/domain/standards.md',
+  path: 'docs/requirements/standards.md',
   source: '# 全体の標準仕様\n\n採用する標準仕様。\n',
 }
 
 const rootStructureDocument = {
-  path: 'docs/domain/structure.md',
+  path: 'docs/design/application/backend.md',
   source: '# コード構成\n\nディレクトリの配置。\n',
 }
 
 const rootScenariosDocument = {
-  path: 'docs/domain/scenarios.feature.md',
+  path: 'docs/requirements/scenarios.feature.md',
   source: '# Feature: Cross-Module Scenarios\n',
 }
 
@@ -85,7 +85,7 @@ const designGuidelinesDocument = {
 }
 
 const contextDocument = {
-  path: 'docs/domain/demo/README.md',
+  path: 'docs/modules/demo/README.md',
   source: `# Demo
 
 The demo context.
@@ -98,12 +98,12 @@ The demo context.
 }
 
 const contextDesignDocument = {
-  path: 'docs/domain/demo/design/README.md',
+  path: 'docs/modules/demo/design/README.md',
   source: '# Demo の内部設計\n\n構成。\n',
 }
 
 const runDocument = {
-  path: 'docs/domain/demo/run/README.md',
+  path: 'docs/modules/demo/run/README.md',
   source: `# 実行
 
 ## 状態遷移
@@ -133,7 +133,7 @@ const runDocument = {
 }
 
 const examplesDocument = {
-  path: 'docs/domain/demo/run/acceptance.feature.md',
+  path: 'docs/modules/demo/run/acceptance.feature.md',
   source: `# Feature: 実行の例
 
 ## Rule: REQ-DEMO-001 a demo runs
@@ -156,7 +156,7 @@ Primary actor: \`Developer\`
 }
 
 const glossaryDocument = {
-  path: 'docs/domain/demo/glossary.md',
+  path: 'docs/modules/demo/glossary.md',
   source: `# Demo Glossary
 
 | Term | Definition |
@@ -166,17 +166,17 @@ const glossaryDocument = {
 }
 
 const contextStandardsDocument = {
-  path: 'docs/domain/demo/standards.md',
+  path: 'docs/modules/demo/standards.md',
   source: '# Demo Standards\n\n採用する標準仕様。\n',
 }
 
 const contextQualityDocument = {
-  path: 'docs/domain/demo/quality.md',
+  path: 'docs/modules/demo/quality.md',
   source: '# Demo Quality\n\n割り当てた品質要求。\n',
 }
 
 const domainIndexDocument = {
-  path: 'docs/domain/README.md',
+  path: 'docs/modules/README.md',
   source: '# モジュール設計\n\nモジュール設計の入口。\n',
 }
 
@@ -298,11 +298,6 @@ const site = () =>
     },
     models,
     contextTags: { demo: ['Demo'] },
-    traces: [
-      { id: 'REQ-DEMO-001', sources: [], workItems: ['work-items/wi-demo.md'] },
-      { id: 'EX-DEMO-001-01', sources: ['backend/demo/demo_test.go'], workItems: [] },
-      { id: 'EX-DEMO-001-02', sources: [], workItems: [] },
-    ],
   })
 
 /** Every page carries the navigation twice, once for the sidebar and once for the mobile header. */
@@ -326,62 +321,61 @@ describe('renderDocumentationSite', () => {
       models: [],
     })
 
-    expect(result.files['development/index.html']).toContain('href="release.html"')
-    expect(result.files['development/release.html']).toContain('リリース')
-    expect(sidebar(result.files['development/index.html'])).toContain(
+    expect(result.files['docs/development/index.html']).toContain('href="release.html"')
+    expect(result.files['docs/development/release.html']).toContain('リリース')
+    expect(sidebar(result.files['docs/development/index.html'])).toContain(
       '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary>',
     )
-    expect(sidebar(result.files['development/index.html'])).toContain(
+    expect(sidebar(result.files['docs/development/index.html'])).toContain(
       '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary><ul class="nav-tree">',
     )
     expect(
-      sidebar(result.files['development/index.html']).indexOf('>設計文書</a></summary>'),
+      sidebar(result.files['docs/development/index.html']).indexOf('>全体設計文書</a></summary>'),
     ).toBeLessThan(
-      sidebar(result.files['development/index.html']).indexOf('>開発文書</a></summary>'),
+      sidebar(result.files['docs/development/index.html']).indexOf('>開発文書</a></summary>'),
     )
-    expect(sidebar(result.files['development/index.html'])).toContain('>リリース</a>')
+    expect(sidebar(result.files['docs/development/index.html'])).toContain('>リリース</a>')
   })
 
   it('renders a linked multi-page documentation site', () => {
     const result = site()
 
-    expect(result.files['format/index.html']).toContain('記述形式の入口。')
-    expect(result.files['format/index.html']).toContain('href="documentation-guide.html"')
-    expect(sidebar(result.files['format/documentation-guide.html'])).not.toContain(
+    expect(result.files['docs/formats/index.html']).toContain('記述形式の入口。')
+    expect(result.files['docs/formats/index.html']).toContain('href="documentation-guide.html"')
+    expect(sidebar(result.files['docs/formats/documentation-guide.html'])).not.toContain(
       '../docs/formats/',
     )
 
     expect(Object.keys(result.files).sort()).toEqual([
       'api/index.html',
-      'development/index.html',
-      'development/release.html',
+      'docs/design/application/backend.html',
       'docs/design/index.html',
+      'docs/development/index.html',
+      'docs/development/release.html',
+      'docs/formats/documentation-guide.html',
+      'docs/formats/index.html',
+      'docs/formats/work-item-format.html',
+      'docs/modules/demo/design/index.html',
+      'docs/modules/demo/glossary.html',
+      'docs/modules/demo/index.html',
+      'docs/modules/demo/quality.html',
+      'docs/modules/demo/run/acceptance.html',
+      'docs/modules/demo/run/index.html',
+      'docs/modules/demo/standards.html',
+      'docs/modules/index.html',
+      'docs/operations/index.html',
+      'docs/operations/service-management.html',
+      'docs/requirements/glossary.html',
       'docs/requirements/index.html',
       'docs/requirements/product-overview.html',
       'docs/requirements/quality.html',
-      'domain/demo/design/index.html',
-      'domain/demo/glossary.html',
-      'domain/demo/index.html',
-      'domain/demo/quality.html',
-      'domain/demo/run/acceptance.html',
-      'domain/demo/run/index.html',
-      'domain/demo/standards.html',
-      'domain/glossary.html',
-      'domain/index.html',
-      'domain/scenarios.html',
-      'domain/standards.html',
-      'domain/structure.html',
-      'format/documentation-guide.html',
-      'format/index.html',
-      'format/work-item-format.html',
+      'docs/requirements/scenarios.html',
+      'docs/requirements/standards.html',
+      'docs/runbooks/async-jobs.html',
       'index.html',
       'models/example-demo-internalrecord.html',
       'models/index.html',
-      'operations/index.html',
-      'operations/runbooks/async-jobs.html',
-      'operations/service-management.html',
       'reference/index.html',
-      'traceability/index.html',
     ])
     // トップページは docs/README.md そのものである。同じ案内をレンダラー側に書かない。
     expect(result.files['index.html']).toContain(
@@ -389,27 +383,19 @@ describe('renderDocumentationSite', () => {
     )
     expect(result.files['index.html']).not.toContain('目的から探す')
     expect(result.files['index.html']).not.toContain('class="card"')
-    expect(sidebar(result.files['index.html'])).toContain('href="domain/demo/index.html"')
-    expect(result.files['domain/demo/index.html']).toContain('href="run/index.html"')
-    expect(result.files['domain/demo/run/index.html']).toContain('stateDiagram-v2')
-    expect(result.files['domain/demo/run/index.html']).toContain('state_3 --&gt; state_1: Reset')
-    expect(result.files['domain/demo/run/index.html']).not.toContain('Reset [')
-    expect(result.files['domain/demo/run/acceptance.html']).toContain(
+    expect(sidebar(result.files['index.html'])).toContain('href="docs/modules/demo/index.html"')
+    expect(result.files['docs/modules/demo/index.html']).toContain('href="run/index.html"')
+    expect(result.files['docs/modules/demo/run/index.html']).toContain('stateDiagram-v2')
+    expect(result.files['docs/modules/demo/run/index.html']).toContain(
+      'state_3 --&gt; state_1: Reset',
+    )
+    expect(result.files['docs/modules/demo/run/index.html']).not.toContain('Reset [')
+    expect(result.files['docs/modules/demo/run/acceptance.html']).toContain(
       'class="scenario-keyword when"',
     )
-    expect(result.files['domain/demo/run/acceptance.html']).toContain(
+    expect(result.files['docs/modules/demo/run/acceptance.html']).toContain(
       'class="scenario-keyword but"',
     )
-    expect(result.files['traceability/index.html']).toContain('EX-DEMO-001-01')
-    expect(result.files['traceability/index.html']).toContain('backend/demo/demo_test.go')
-    expect(result.files['traceability/index.html']).toContain('規則／例')
-    // 静的な文書サイトから、完了すると更新されない変更記録を指さない。
-    expect(result.files['traceability/index.html']).not.toContain('作業項目')
-    expect(result.files['traceability/index.html']).not.toContain('wi-demo')
-    expect(result.files['traceability/index.html']).not.toContain('Rule / Example')
-    expect(result.files['traceability/index.html']).not.toContain('work item')
-    expect(result.files['traceability/index.html']).toContain('テスト参照なし')
-    expect(result.files['traceability/index.html']).not.toContain('負債')
     expect(result.files['index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')
@@ -431,7 +417,7 @@ describe('renderDocumentationSite', () => {
 
   // 印は文書と位置で絞る。方法論文書の英語本文にも Gherkin と同じ語が現れる。
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
-    const scenarios = site().files['domain/demo/run/acceptance.html'] ?? ''
+    const scenarios = site().files['docs/modules/demo/run/acceptance.html'] ?? ''
 
     // 残りがコード片から始まるステップでも印が付く。
     expect(scenarios).toContain(
@@ -441,11 +427,11 @@ describe('renderDocumentationSite', () => {
     expect([...scenarios.matchAll(/class="scenario-keyword /g)].length).toBe(7)
 
     // docs/formats/work-item-format.md の "When an item enters ..." は本文であってステップではない。
-    expect(site().files['format/work-item-format.html']).not.toContain('scenario-keyword')
+    expect(site().files['docs/formats/work-item-format.html']).not.toContain('scenario-keyword')
   })
 
   it('names context children by content and lists them in canonical order', () => {
-    const page = site().files['domain/demo/index.html']
+    const page = site().files['docs/modules/demo/index.html']
 
     // 最後の「例」は、モジュールの下に入れ子になった機能スライス（実行）の子である。
     expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例'])
@@ -459,11 +445,11 @@ describe('renderDocumentationSite', () => {
         contextDocument,
         contextDesignDocument,
         {
-          path: 'docs/domain/demo/user/README.md',
+          path: 'docs/modules/demo/user/README.md',
           source: '# ユーザー\n\n#### REQ-DEMO-002 a user is created\n\n- 要求でユーザーを作る。\n',
         },
         {
-          path: 'docs/domain/demo/user/acceptance.feature.md',
+          path: 'docs/modules/demo/user/acceptance.feature.md',
           source: [
             '# Feature: ユーザーの例',
             '',
@@ -477,7 +463,7 @@ describe('renderDocumentationSite', () => {
           ].join('\n'),
         },
         {
-          path: 'docs/domain/demo/user/design.md',
+          path: 'docs/modules/demo/user/design.md',
           source: '# ユーザーの内部設計\n\n- 構成。\n',
         },
       ],
@@ -487,10 +473,10 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['domain/demo/user/acceptance.html']
+    const page = result.files['docs/modules/demo/user/acceptance.html']
 
     expect(page).toContain('REQ-DEMO-002')
-    expect(result.files['domain/demo/user/index.html']).toBeDefined()
+    expect(result.files['docs/modules/demo/user/index.html']).toBeDefined()
     expect(childLabels(page)).toEqual(['内部設計', '例'])
     const contextBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
     expect(contextBranch).toContain('>ユーザー</a>')
@@ -500,15 +486,15 @@ describe('renderDocumentationSite', () => {
     const result = renderDocumentationSite({
       documents: [
         rootDocument,
-        { path: 'docs/domain/demo/README.md', source: '# Demo\n\nデモを扱う。\n' },
-        { path: 'docs/domain/demo/design/README.md', source: '# Demo の内部設計\n\n構成。\n' },
+        { path: 'docs/modules/demo/README.md', source: '# Demo\n\nデモを扱う。\n' },
+        { path: 'docs/modules/demo/design/README.md', source: '# Demo の内部設計\n\n構成。\n' },
         {
-          path: 'docs/domain/demo/design/decisions.md',
+          path: 'docs/modules/demo/design/decisions.md',
           source: '# Demo の重要な設計判断\n\n## 物理削除しない\n\n### 背景\n\n参照がある。\n',
         },
-        { path: 'docs/domain/demo/work/README.md', source: '# 作業\n\n作業の機能群。\n' },
+        { path: 'docs/modules/demo/work/README.md', source: '# 作業\n\n作業の機能群。\n' },
         {
-          path: 'docs/domain/demo/work/task/README.md',
+          path: 'docs/modules/demo/work/task/README.md',
           source: [
             '# タスク',
             '',
@@ -538,13 +524,13 @@ describe('renderDocumentationSite', () => {
           ].join('\n'),
         },
         {
-          path: 'docs/domain/demo/work/task/lifecycle.md',
+          path: 'docs/modules/demo/work/task/lifecycle.md',
           source:
             '# タスクのライフサイクル\n\n## 削除\n\n#### REQ-DEMO-003 閉じたタスクを消す\n\n- 閉じたタスクだけを消す。\n',
         },
-        { path: 'docs/domain/demo/work/task/design.md', source: '# タスクの内部設計\n\n構成。\n' },
+        { path: 'docs/modules/demo/work/task/design.md', source: '# タスクの内部設計\n\n構成。\n' },
         {
-          path: 'docs/domain/demo/work/task/acceptance.feature.md',
+          path: 'docs/modules/demo/work/task/acceptance.feature.md',
           source: [
             '# Feature: タスクの例',
             '',
@@ -563,7 +549,6 @@ describe('renderDocumentationSite', () => {
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
-      traces: [{ id: 'EX-DEMO-002-01', sources: ['backend/demo/task_test.go'], workItems: [] }],
       sourcePaths: [
         'backend/demoimpl/task/usecases/task.go',
         'backend/demoimpl/task/usecases/task_test.go',
@@ -574,15 +559,15 @@ describe('renderDocumentationSite', () => {
       ],
       contextAliases: { demoimpl: 'demo' },
     })
-    const task = result.files['domain/demo/work/task/index.html'] ?? ''
+    const task = result.files['docs/modules/demo/work/task/index.html'] ?? ''
 
     for (const page of [
-      'domain/demo/design/index.html',
-      'domain/demo/design/decisions.html',
-      'domain/demo/work/index.html',
-      'domain/demo/work/task/lifecycle.html',
-      'domain/demo/work/task/design.html',
-      'domain/demo/work/task/acceptance.html',
+      'docs/modules/demo/design/index.html',
+      'docs/modules/demo/design/decisions.html',
+      'docs/modules/demo/work/index.html',
+      'docs/modules/demo/work/task/lifecycle.html',
+      'docs/modules/demo/work/task/design.html',
+      'docs/modules/demo/work/task/acceptance.html',
     ]) {
       expect(result.files[page]).toBeDefined()
     }
@@ -601,11 +586,11 @@ describe('renderDocumentationSite', () => {
     expect(operationIndex).toContain('>削除</a>')
     expect(operationIndex).toContain('REQ-DEMO-002')
     expect(operationIndex).toContain('REQ-DEMO-003')
-    expect(result.files['domain/demo/work/task/lifecycle.html']).not.toContain('操作の一覧')
-    expect(result.files['domain/demo/index.html']).toContain('機能地図')
-    expect(result.files['domain/demo/index.html']).toContain('href="work/task/index.html"')
+    expect(result.files['docs/modules/demo/work/task/lifecycle.html']).not.toContain('操作の一覧')
+    expect(result.files['docs/modules/demo/index.html']).toContain('機能地図')
+    expect(result.files['docs/modules/demo/index.html']).toContain('href="work/task/index.html"')
     const featureMap =
-      (result.files['domain/demo/index.html'] ?? '')
+      (result.files['docs/modules/demo/index.html'] ?? '')
         .split('機能地図</h2>')[1]
         ?.split('</section>')[0] ?? ''
     expect(featureMap).toContain('backend/demoimpl/task/usecases/task.go')
@@ -614,13 +599,12 @@ describe('renderDocumentationSite', () => {
     expect(featureMap).toContain('backend/demoimpl/task/testing_contract/contract.go')
     expect(featureMap).toContain('spec/contexts/demo/main.tsp')
     expect(featureMap).not.toContain('other_test.go')
-    expect(result.files['domain/demo/work/task/acceptance.html']).toContain('scenario-keyword when')
+    expect(result.files['docs/modules/demo/work/task/acceptance.html']).toContain(
+      'scenario-keyword when',
+    )
     expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '内部設計', '例'])
     const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))
     expect(groupBranch).toContain('>タスク</a>')
-    const trace = result.files['traceability/index.html'] ?? ''
-    expect(trace).toContain('REQ-DEMO-002')
-    expect(trace).toContain('backend/demo/task_test.go')
   })
 
   it('keeps a parent page distinct from its children and removes Japanese possession', () => {
@@ -630,7 +614,7 @@ describe('renderDocumentationSite', () => {
         developmentDocument,
         contextDocument,
         {
-          path: 'docs/domain/demo/glossary.md',
+          path: 'docs/modules/demo/glossary.md',
           source: '# Demo の用語集\n\n| 用語 | 定義 |\n|---|---|\n| 用語 | 定義 |\n',
         },
       ],
@@ -640,16 +624,16 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['development/index.html'] ?? ''
+    const page = result.files['docs/development/index.html'] ?? ''
 
     expect(sidebar(page)).toContain(
       '<summary><a data-site-link class="nav-section-link" aria-current="page" href="#">開発文書</a></summary>',
     )
-    expect(sidebar(result.files['domain/demo/index.html'])).toContain(
-      '<details class="nav-section" open><summary>モジュール設計</summary>',
+    expect(sidebar(result.files['docs/modules/demo/index.html'])).toContain(
+      '<details class="nav-section" open><summary>モジュール設計文書</summary>',
     )
-    expect(sidebar(result.files['domain/demo/index.html'])).toContain('>用語集</a>')
-    expect(sidebar(result.files['domain/demo/index.html'])).not.toContain('>の用語集</a>')
+    expect(sidebar(result.files['docs/modules/demo/index.html'])).toContain('>用語集</a>')
+    expect(sidebar(result.files['docs/modules/demo/index.html'])).not.toContain('>の用語集</a>')
   })
 
   it('renders system documents as a directory tree', () => {
@@ -680,27 +664,28 @@ describe('renderDocumentationSite', () => {
   })
 
   /**
-   * `docs/domain/` は `docs/design/` と別のディレクトリなので、区分も別にする。区分の中は
-   * ディレクトリの写しで、`docs/domain/*.md` が葉、モジュールのディレクトリが枝になる。
+   * 要件文書、全体設計文書、モジュール設計文書は別のディレクトリなので、区分も別にする。
+   * 要件は設計の入力であり、設計の区分の下に置くと設計の一部として読まれる。
    */
-  it('gives the domain documents their own division beside the design documents', () => {
-    const page = sidebar(site().files['domain/glossary.html'])
-    const design = page.slice(
-      page.indexOf('>設計文書</a></summary>'),
-      page.indexOf('>モジュール設計</a></summary>'),
-    )
-    const domain = page.slice(
-      page.indexOf('>モジュール設計</a></summary>'),
-      page.indexOf('>開発文書</a></summary>'),
-    )
+  it('gives requirements, system design, and module design their own divisions', () => {
+    const page = sidebar(site().files['docs/requirements/glossary.html'])
+    const between = (from: string, to: string) =>
+      page.slice(page.indexOf(`>${from}</a></summary>`), page.indexOf(`>${to}</a></summary>`))
+    const labels = (division: string) =>
+      [...division.matchAll(/class="nav-link"[^>]*>([^<]+)/g)].map((match) => match[1])
+    const requirements = between('要件文書', '全体設計文書')
+    const design = between('全体設計文書', 'モジュール設計文書')
+    const modules = between('モジュール設計文書', '開発文書')
 
-    expect(
-      [...design.matchAll(/class="nav-link"[^>]*>([^<]+)/g)].map((match) => match[1]).slice(0, 2),
-    ).toEqual(['要求', 'プロダクト概要'])
-    expect(design).not.toContain('ドメイン設計')
-    expect(
-      [...domain.matchAll(/class="nav-link"[^>]*>([^<]+)/g)].map((match) => match[1]).slice(0, 5),
-    ).toEqual(['用語集', '全体の標準仕様', 'コード構成', 'システム横断シナリオ', 'Demo'])
+    expect(labels(requirements)).toEqual([
+      'プロダクト概要',
+      '品質要求',
+      '全体の標準仕様',
+      'システム横断シナリオ',
+      '用語集',
+    ])
+    expect(labels(design)).toEqual(['コード構成'])
+    expect(labels(modules)[0]).toBe('Demo')
   })
 
   /**
@@ -708,28 +693,28 @@ describe('renderDocumentationSite', () => {
    * 開いたままにすると、無関係なページを開いただけで一覧がすべて展開される。
    */
   it('opens a branch only while the current page is inside it', () => {
-    const away = sidebar(site().files['docs/design/index.html'])
-    const inside = sidebar(site().files['docs/requirements/quality.html'])
+    const away = sidebar(site().files['docs/requirements/quality.html'])
+    const inside = sidebar(site().files['docs/design/application/backend.html'])
 
     expect(away).toContain('<details class="nav-directory"><summary>')
     expect(away).not.toContain('<details class="nav-directory" open>')
-    expect(away).toContain('>品質要求</a>')
+    expect(away).toContain('>コード構成</a>')
     expect(inside).toContain('<details class="nav-directory" open>')
   })
 
   it('carries the operations plane down to the runbooks', () => {
     const result = site()
-    const page = sidebar(result.files['operations/index.html'])
+    const page = sidebar(result.files['docs/operations/index.html'])
 
-    expect(result.files['operations/service-management.html']).toContain('平常時の管理')
-    expect(result.files['operations/runbooks/async-jobs.html']).toContain('停滞したときの手順')
+    expect(result.files['docs/operations/service-management.html']).toContain('平常時の管理')
+    expect(result.files['docs/runbooks/async-jobs.html']).toContain('停滞したときの手順')
     expect(page).toContain('<details class="nav-section" open><summary><a')
     expect(page).toContain('>サービス管理</a>')
     expect(page).toContain('<summary><span class="nav-label">運用手順</span></summary>')
     // 枝の名札が種類を言うので、子の名札は題名の末尾の種類名を繰り返さない。
     expect(page).toContain('>非同期ジョブ</a>')
     expect(page).not.toContain('>非同期ジョブの運用手順書</a>')
-    expect(result.files['docs/operations/index.html']).toBeUndefined()
+    expect(result.files['operations/index.html']).toBeUndefined()
   })
 
   /** 名札、パンくず、`<title>` は地の文なので、表題の記法を読み手へ出さない。 */
@@ -749,7 +734,7 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['operations/runbooks/token-endpoint-error-rate.html'] ?? ''
+    const page = result.files['docs/runbooks/token-endpoint-error-rate.html'] ?? ''
 
     expect(sidebar(page)).toContain('>/token の エラー率 と 復旧</a>')
     expect(page).toContain('<title>/token の エラー率 と 復旧 · IdMagic ドキュメント</title>')
@@ -760,7 +745,7 @@ describe('renderDocumentationSite', () => {
   })
 
   it('lists a document own headings beside its body', () => {
-    const page = site().files['domain/demo/run/acceptance.html'] ?? ''
+    const page = site().files['docs/modules/demo/run/acceptance.html'] ?? ''
 
     expect(page).toContain('<nav class="page-toc" aria-label="このページの内容">')
     expect(page).toContain('href="#context-demo-run-acceptance-rule-req-demo-001-a-demo-runs"')
@@ -778,10 +763,10 @@ describe('renderDocumentationSite', () => {
     // トップページは docs/README.md そのものなので、見出しはその文書の H1 である。
     expect(result.files['index.html']).toContain('>Whole-System Specification</h1>')
     expect(result.files['index.html']).not.toContain('class="breadcrumbs"')
-    expect(result.files['domain/demo/index.html']).toContain(
+    expect(result.files['docs/modules/demo/index.html']).toContain(
       '<title>Demo · IdMagic ドキュメント</title>',
     )
-    expect(result.files['domain/demo/index.html']).toContain('>IdMagic ドキュメント</a>')
+    expect(result.files['docs/modules/demo/index.html']).toContain('>IdMagic ドキュメント</a>')
   })
 
   it('closes top-level sections on the landing page and opens only the current section elsewhere', () => {
@@ -793,8 +778,9 @@ describe('renderDocumentationSite', () => {
         (match) => match[1],
       ),
     ).toEqual([
-      '設計文書',
-      'モジュール設計',
+      '要件文書',
+      '全体設計文書',
+      'モジュール設計文書',
       '開発文書',
       '運用文書',
       'リファレンス',
@@ -802,7 +788,7 @@ describe('renderDocumentationSite', () => {
     ])
     expect(top).not.toContain('<details class="nav-section" open>')
 
-    const context = sidebar(result.files['domain/demo/index.html'])
+    const context = sidebar(result.files['docs/modules/demo/index.html'])
     expect(context.match(/<details class="nav-section" open>/g)).toHaveLength(1)
     expect(context).toContain('<details class="nav-section" open><summary>')
   })
@@ -880,21 +866,21 @@ describe('renderDocumentationSite', () => {
   })
 
   it('keeps a glossary term on one line', () => {
-    expect(site().files['domain/demo/glossary.html']).toContain('<table class="term-table">')
+    expect(site().files['docs/modules/demo/glossary.html']).toContain('<table class="term-table">')
     expect(site().assets['site.css']).toContain('.term-table td:first-child{white-space:nowrap}')
   })
 
   it('leads from a context to its own operations and models', () => {
     const result = site()
-    const page = result.files['domain/demo/index.html'] ?? ''
+    const page = result.files['docs/modules/demo/index.html'] ?? ''
 
     expect(page).toContain('API とモデル')
     expect(page).toContain('>API</h3>')
     expect(page).toContain('<th scope="col">説明</th>')
-    expect(page).toContain('href="../../api/index.html?tag=Demo"')
+    expect(page).toContain('href="../../../api/index.html?tag=Demo"')
     expect(page).toContain('List things')
-    expect(page).toContain('href="../../models/index.html#context-demo"')
-    expect(page).toContain('href="../../models/example-demo-internalrecord.html"')
+    expect(page).toContain('href="../../../models/index.html#context-demo"')
+    expect(page).toContain('href="../../../models/example-demo-internalrecord.html"')
     expect(result.files['models/index.html']).toContain('<h2 id="context-demo">Demo</h2>')
   })
 
@@ -918,7 +904,7 @@ describe('renderDocumentationSite', () => {
       models: [],
       contextTags: { demo: ['Demo'] },
     })
-    const page = result.files['domain/demo/index.html'] ?? ''
+    const page = result.files['docs/modules/demo/index.html'] ?? ''
 
     expect(page).toContain('利用可能な Thing を一覧する。')
     expect(page).not.toContain('<td>ListThings</td>')
@@ -933,7 +919,7 @@ describe('renderDocumentationSite', () => {
       documents: [
         rootDocument,
         {
-          path: 'docs/domain/glossary.md',
+          path: 'docs/requirements/glossary.md',
           source:
             '# 用語集\n\n目標は [品質要求](../requirements/quality.md#可用性の目標) が定める。\n',
         },
@@ -952,8 +938,8 @@ describe('renderDocumentationSite', () => {
     expect(result.files['docs/requirements/quality.html']).toContain(
       'id="whole-system-requirements-quality-md-可用性の目標"',
     )
-    expect(result.files['domain/glossary.html']).toContain(
-      'href="../docs/requirements/quality.html#whole-system-requirements-quality-md-可用性の目標"',
+    expect(result.files['docs/requirements/glossary.html']).toContain(
+      'href="quality.html#whole-system-requirements-quality-md-可用性の目標"',
     )
   })
 
@@ -979,6 +965,29 @@ describe('renderDocumentationSite', () => {
     expect(page).toContain('href="docs/design/index.html"')
     expect(page).toContain('href="docs/requirements/index.html"')
     expect(page).not.toContain('href="design/"')
+  })
+
+  /** リポジトリでは一次情報の TypeSpec を、生成サイトではそこから作ったリファレンスを開く。 */
+  it('sends a link to the TypeSpec entry point to the reference index', () => {
+    const result = renderDocumentationSite({
+      documents: [
+        {
+          path: 'docs/README.md',
+          source: '# システム文書\n\n[リファレンス](../spec/main.tsp)を読む。\n',
+        },
+        { path: 'docs/requirements/README.md', source: '# 要件\n\n[API](../../spec/main.tsp)\n' },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+
+    expect(result.files['index.html']).toContain('href="reference/index.html"')
+    expect(result.files['docs/requirements/index.html']).toContain(
+      'href="../../reference/index.html"',
+    )
   })
 
   it('renders doc comments as the Markdown they are written in', () => {

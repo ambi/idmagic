@@ -5,90 +5,95 @@ export interface DirectoryListing {
 
 export const ROOT_DOCUMENTS = ['README.md'] as const
 
-/** ドメイン全体を対象とし、モジュールのディレクトリより上に置く文書。 */
-export const DOMAIN_DOCUMENTS = [
-  'README.md',
-  'glossary.md',
-  'standards.md',
-  'structure.md',
-  'scenarios.feature.md',
+/** モジュール設計文書の入口。直下にはこの索引とモジュールのディレクトリだけを置く。 */
+export const MODULE_INDEX_DOCUMENTS = ['README.md'] as const
+
+/**
+ * 全体設計文書の設計領域。システムの `docs/design/<directory>/` とモジュールの
+ * `design/<file>` が同じ領域を同じ順序で並べる。順序は実現対象（アプリケーション、データ、
+ * インフラストラクチャ）、複数の実現対象へ作用する領域、検証の順であり、索引の表と生成サイトの
+ * 目次はこの順に従う。
+ */
+export const DESIGN_AREAS = [
+  { name: 'アーキテクチャ設計', directory: 'architecture', file: 'architecture.md' },
+  { name: 'アプリケーション設計', directory: 'application', file: 'application.md' },
+  { name: 'データ設計', directory: 'data', file: 'data.md' },
+  { name: 'インフラストラクチャ設計', directory: 'infrastructure', file: 'infrastructure.md' },
+  { name: 'セキュリティ設計', directory: 'security', file: 'security.md' },
+  { name: '信頼性設計', directory: 'reliability', file: 'reliability.md' },
+  { name: '性能設計', directory: 'performance', file: 'performance.md' },
+  { name: 'オブザーバビリティ設計', directory: 'observability', file: 'observability.md' },
+  { name: '検証設計', directory: 'verification', file: 'verification.md' },
 ] as const
 
-/** 一次情報文書を上位から読む順序で定義する。 */
-export const SYSTEM_DOCUMENT_DIRECTORIES = [
-  { directory: 'docs', names: ROOT_DOCUMENTS },
+/** 設計領域ごとの固定の文書。`DESIGN_AREAS` の順に並べて一次情報文書の一覧へ入れる。 */
+const DESIGN_AREA_DOCUMENTS: Record<(typeof DESIGN_AREAS)[number]['directory'], readonly string[]> =
   {
-    directory: 'docs/formats',
-    names: [
-      'README.md',
-      'documentation-guide.md',
-      'specification-format.md',
-      'work-item-format.md',
-    ],
-  },
-  { directory: 'docs/domain', names: DOMAIN_DOCUMENTS },
-  {
-    directory: 'docs/requirements',
-    names: ['README.md', 'product-overview.md', 'functional.md', 'quality.md'],
-  },
-  {
-    directory: 'docs/design/architecture',
-    names: [
+    architecture: [
       'README.md',
       'system-boundary.md',
-      'constraints.md',
-      'strategy.md',
       'logical.md',
       'runtime.md',
       'deployment.md',
       'decisions.md',
       'risks.md',
     ],
-  },
-  { directory: 'docs/design', names: ['README.md'] },
-  {
-    directory: 'docs/design/application',
-    names: [
+    application: [
       'README.md',
       'api-guidelines.md',
       'design-guidelines.md',
+      'backend.md',
       'frontend.md',
       'user-interface.md',
     ],
-  },
+    data: ['README.md', 'database.md', 'schema-management.md', 'lifecycle.md'],
+    infrastructure: ['README.md', 'platform.md', 'network.md'],
+    security: ['README.md', 'threat-model.md', 'authorization.md', 'secrets.md'],
+    reliability: ['README.md', 'availability.md', 'recovery.md'],
+    performance: ['README.md', 'capacity.md', 'scaling.md'],
+    observability: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
+    verification: ['README.md', 'system-acceptance.md', 'security.md'],
+  }
+
+/** 一次情報文書を、`docs/README.md` の区分の順に、上位から読む順序で定義する。 */
+export const SYSTEM_DOCUMENT_DIRECTORIES: ReadonlyArray<{
+  directory: string
+  names: readonly string[]
+}> = [
+  { directory: 'docs', names: ROOT_DOCUMENTS },
   {
-    directory: 'docs/design/data',
-    names: ['README.md', 'database.md', 'schema-management.md', 'lifecycle.md'],
+    directory: 'docs/requirements',
+    names: [
+      'README.md',
+      'product-overview.md',
+      'functional.md',
+      'quality.md',
+      'standards.md',
+      'scenarios.feature.md',
+      'glossary.md',
+    ],
   },
-  {
-    directory: 'docs/design/infrastructure',
-    names: ['README.md', 'platform.md', 'network.md'],
-  },
-  {
-    directory: 'docs/design/security',
-    names: ['README.md', 'threat-model.md', 'authorization.md', 'secrets.md'],
-  },
-  {
-    directory: 'docs/design/reliability',
-    names: ['README.md', 'availability.md', 'recovery.md'],
-  },
-  {
-    directory: 'docs/design/performance',
-    names: ['README.md', 'capacity.md', 'scaling.md'],
-  },
-  {
-    directory: 'docs/design/observability',
-    names: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
-  },
-  {
-    directory: 'docs/design/verification',
-    names: ['README.md', 'system-acceptance.md', 'security.md'],
-  },
+  { directory: 'docs/design', names: ['README.md'] },
+  ...DESIGN_AREAS.map(({ directory }) => ({
+    directory: `docs/design/${directory}`,
+    names: DESIGN_AREA_DOCUMENTS[directory],
+  })),
+  { directory: 'docs/modules', names: MODULE_INDEX_DOCUMENTS },
   {
     directory: 'docs/operations',
     names: ['README.md', 'service-management.md', 'maintenance.md'],
   },
-] as const
+  {
+    directory: 'docs/formats',
+    names: [
+      'README.md',
+      'documentation-guide.md',
+      'specification-format.md',
+      'design-format.md',
+      'work-item-format.md',
+    ],
+  },
+]
 
 const SYSTEM_DOCUMENTS_BY_DIRECTORY = new Map<string, readonly string[]>(
   SYSTEM_DOCUMENT_DIRECTORIES.map(({ directory, names }) => [directory, names]),
@@ -99,7 +104,7 @@ export const SYSTEM_DOCUMENT_PATHS = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ dire
 )
 
 /**
- * 内容に応じた任意名を許し、閉じたファイル集合の対象にしない段。`docs/domain` は
+ * 内容に応じた任意名を許し、閉じたファイル集合の対象にしない段。`docs/modules` は
  * 直下のファイル集合が閉じており、配下のディレクトリ名だけが自由なので、ここには載せない。
  * 配下のモジュールの段は `documentAllowance` が判定する。
  */
@@ -162,7 +167,7 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
   const featureContexts = new Set<string>()
   const parents = new Set<string>()
   for (const listing of listings) {
-    const design = listing.directory.match(/^docs\/domain\/([^/]+)\/design$/)?.[1]
+    const design = listing.directory.match(/^docs\/modules\/([^/]+)\/design$/)?.[1]
     if (design && listing.files.includes('README.md')) featureContexts.add(design)
     const parent = listing.directory.slice(0, Math.max(0, listing.directory.lastIndexOf('/')))
     if (parent) parents.add(parent)
@@ -177,7 +182,7 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
  * 固定の一覧にないシステムの段には何も置けない。
  */
 export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {
-  const match = directory.match(/^docs\/domain\/([^/]+)(?:\/(.+))?$/)
+  const match = directory.match(/^docs\/modules\/([^/]+)(?:\/(.+))?$/)
   const context = match?.[1]
   if (!context) return { names: canonicalDocumentNames(directory) ?? [], freeNames: false }
   if (!view.featureContexts.has(context)) return { names: [], freeNames: false }

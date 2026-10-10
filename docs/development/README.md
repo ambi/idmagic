@@ -7,9 +7,10 @@
 | 読みたいこと | 文書 | 主な分類 |
 | --- | --- | --- |
 | 仕様先行の進め方、証拠契約、検証のはしご | [Specification-first Development Workflow](specification-first-workflow.md) | 解説、参照 |
-| 仕様フォーマットの各規則を選んだ理由 | [仕様フォーマットの理由](specification-format-rationale.md) | 解説 |
+| 文書ガイド、仕様フォーマット、設計フォーマットの各規則を選んだ理由 | [フォーマットの理由](format-rationale.md) | 解説 |
 | 命名、コメント、関数、抽象化、テストコード、依存関係のコーディングスタイル | [コーディングスタイル](coding-style.md) | 参照 |
 | 文書、コメント、UI 文言の言語 | [文章の言語](writing-language.md) | 参照 |
+| リポジトリの最上位のディレクトリと、開発工程ごとの置き場所 | [リポジトリ構成](repository-layout.md) | 参照 |
 | 開発環境、起動、ビルド、生成 | [ローカル開発](local-development.md) | 手順 |
 | CI の一次情報と失敗時の切り分け | [継続的インテグレーション](continuous-integration.md) | 参照、解説 |
 | テスト水準、実行境界、ミューテーションテスト、テストダブル | [テスト方針](testing.md) | 参照 |

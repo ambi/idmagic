@@ -78,7 +78,7 @@ func RenderPriorityClassReference() string {
 	b.WriteString("API プロセスが飽和すると、優先度の低いクラスから順にリクエストを拒否し、503、`Retry-After`、\n")
 	b.WriteString("`urn:idmagic:error:service_overloaded` の Problem Details を返す。\n")
 	b.WriteString("拒否は経路の振り分けの後、どのハンドラーよりも前に起きるので、拒否したリクエストは状態を変えない。\n")
-	b.WriteString("閾値、デフォルト値、運用上の理由は `docs/domain/system/design/decisions.md` にあり、\n")
+	b.WriteString("閾値、デフォルト値、運用上の理由は `docs/modules/system/design/decisions.md` にあり、\n")
 	b.WriteString("それらが実装するロードシェディング順序は `docs/design/performance/capacity.md` が規範として定める。\n\n")
 	b.WriteString("接頭辞なしと `/realms/{tenant_id}/…` の下の両方から到達できる経路は一度だけ載せる。\n")
 	b.WriteString("どちらの形も同じクラスに属する。\n\n")

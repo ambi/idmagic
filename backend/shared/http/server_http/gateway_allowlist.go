@@ -38,7 +38,7 @@ const (
 // 運用経路だけが判断を要する。`/health` は現行の参照設定が既に通しており、外形監視が
 // 当てる先でもある。残りの 3 つはオーケストレーターが Pod へ直接当てるので、通す通さないの
 // どちらでも正しい。`/metrics` をここへ書かないのは意図である。書かなければ下のデフォルトが
-// forbidden を返し、docs/domain/system/design/decisions.md が定める「認証の無い指標を公開入口へ
+// forbidden を返し、docs/modules/system/design/decisions.md が定める「認証の無い指標を公開入口へ
 // 出さない」が、誰かが名指しし続けなくても保たれる。
 var gatewayExposureRules = []struct {
 	path     string

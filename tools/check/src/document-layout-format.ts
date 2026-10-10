@@ -22,11 +22,11 @@ function requiredDocumentPaths(): string[] {
   const systemDocuments = SYSTEM_DOCUMENT_DIRECTORIES.flatMap(({ directory, names }) =>
     names.map((name) => `${directory}/${name}`),
   )
-  const contextDocuments = CONTEXT_DOCUMENTS.map((name) => `docs/domain/<context>/${name}`)
-  const designDocuments = DESIGN_DOCUMENTS.map((name) => `docs/domain/<context>/design/${name}`)
-  const groupDocuments = ['docs/domain/<context>/<group>/README.md']
+  const contextDocuments = CONTEXT_DOCUMENTS.map((name) => `docs/modules/<context>/${name}`)
+  const designDocuments = DESIGN_DOCUMENTS.map((name) => `docs/modules/<context>/design/${name}`)
+  const groupDocuments = ['docs/modules/<context>/<group>/README.md']
   const featureDocuments = FEATURE_SLICE_DOCUMENTS.map(
-    (name) => `docs/domain/<context>/<group>/<feature>/${name}`,
+    (name) => `docs/modules/<context>/<group>/<feature>/${name}`,
   )
   return [
     ...systemDocuments,
@@ -73,8 +73,9 @@ function documentedPaths(source: string): Set<string> {
   return paths
 }
 
+/** 文書ガイドの `### 配置` の節にある最初の `text` のコードブロックを、配置図として読む。 */
 function layoutLines(source: string): string[] {
-  const placement = source.indexOf('## 1. 配置')
+  const placement = source.search(/^### 配置$/m)
   if (placement < 0) return []
   const afterPlacement = source.slice(placement)
   const opening = afterPlacement.indexOf('```text')

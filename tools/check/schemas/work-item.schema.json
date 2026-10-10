@@ -266,7 +266,7 @@
       "additionalProperties": false,
       "properties": {
         "specification": {
-          "description": "normative scenario への direct reference。docs/domain/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN 形式。",
+          "description": "normative scenario への direct reference。docs/modules/<context>/scenarios.feature.md#REQ-<CONTEXT>-NNN 形式。",
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
@@ -301,9 +301,9 @@
             "additionalProperties": false,
             "properties": {
               "path": {
-                "description": "docs/ 直下、docs/domain/<context>/ 直下、または機能スライス docs/domain/<context>/<feature>/ 直下の一次情報。完了済み記録が指す SPECIFICATION.md も受け付ける。",
+                "description": "docs/ 直下、docs/modules/<context>/ 直下、または機能スライス docs/modules/<context>/<feature>/ 直下の一次情報。完了済み記録が指す SPECIFICATION.md と、改名前の docs/domain/ も受け付ける。",
                 "type": "string",
-                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|domain/[^/]+/[^/]+/[^/]+/[^/]+|domain/[^/]+/[^/]+/[^/]+|domain/[^/]+/[^/]+|domain/[^/]+)\\.md$"
+                "pattern": "^docs/(?:[^/]+|(?:requirements|architecture|verification|operations)/[^/]+|design/(?:application|data|infrastructure|security|reliability|performance|observability)/[^/]+|(?:modules|domain)/[^/]+/[^/]+/[^/]+/[^/]+|(?:modules|domain)/[^/]+/[^/]+/[^/]+|(?:modules|domain)/[^/]+/[^/]+|(?:modules|domain)/[^/]+)\\.md$"
               },
               "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" },
               "impact": { "$ref": "#/$defs/specImpact" }

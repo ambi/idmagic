@@ -14,8 +14,8 @@ import {
   workRangeStart,
 } from './spec-impact.ts'
 
-const SCENARIOS = 'docs/domain/demo/scenarios.feature.md'
-const STANDARDS = 'docs/domain/demo/standards.md'
+const SCENARIOS = 'docs/modules/demo/scenarios.feature.md'
+const STANDARDS = 'docs/modules/demo/standards.md'
 const TYPESPEC = 'spec/contexts/demo/main.tsp'
 const ITEM = 'work-items/wi-10001-demo.md'
 const CONCRETE = 'トークンを検索する順序、返すエラー、発行するイベントを変えない。'
@@ -344,14 +344,14 @@ describe('verifySpecImpact の work item', () => {
   })
 
   it('状態遷移の差分は、同じ範囲に仕様を変える別の work item があれば none の矛盾にしない', () => {
-    const transitions = diff({ changedTransitions: ['docs/domain/demo#Lifecycle'] })
+    const transitions = diff({ changedTransitions: ['docs/modules/demo#Lifecycle'] })
     expect(
       verifyItems(
         none(range({ diff: transitions, claimedByOthers: [requirement('REQ-DEMO-009')] })),
       ),
     ).toEqual([])
     expect(verifyItems(none(range({ diff: transitions })))).toEqual([
-      expect.stringContaining('state transitions of docs/domain/demo#Lifecycle'),
+      expect.stringContaining('state transitions of docs/modules/demo#Lifecycle'),
     ])
   })
 
@@ -372,7 +372,7 @@ describe('verifySpecImpact の work item', () => {
     ['標準の行', { addedStandards: [`${STANDARDS}#RFC-DEMO-ONE`] }, 'RFC-DEMO-ONE'],
     ['宣言の変更', { changedDeclarations: [`${TYPESPEC}:Task`] }, `${TYPESPEC}:Task`],
     ['宣言の削除', { removedDeclarations: [`${TYPESPEC}:Task`] }, `${TYPESPEC}:Task`],
-    ['状態遷移', { changedTransitions: ['docs/domain/demo#Lifecycle'] }, 'Lifecycle'],
+    ['状態遷移', { changedTransitions: ['docs/modules/demo#Lifecycle'] }, 'Lifecycle'],
     ['非推奨の指定', { addedDeprecations: [`${TYPESPEC}:Task`] }, `${TYPESPEC}:Task`],
   ])('spec_impact: none の作業範囲に %s の差分があれば失敗する', (_kind, changes, named) => {
     const findings = verifyItems(none(range({ diff: diff(changes) })))
@@ -453,7 +453,7 @@ describe('verifySpecImpact の申告漏れ', () => {
     changedStandards: [`${STANDARDS}#RFC-DEMO-ONE`],
     changedDeclarations: [`${TYPESPEC}:Task`],
     removedScenarios: ['REQ-DEMO-009'],
-    changedTransitions: ['docs/domain/demo#Lifecycle'],
+    changedTransitions: ['docs/modules/demo#Lifecycle'],
   })
 
   it('差分の規範要素がどの work item の modifies にもなければ失敗する', () => {

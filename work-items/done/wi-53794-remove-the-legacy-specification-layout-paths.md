@@ -108,7 +108,7 @@ wi-26063 で試した変更の要点は次のとおりである。
 
 - [x] T001 [Tooling] ツールのテストの準備データを新しい形式へ移す。検査：`mise run test-tools`。
 - [x] T002 [Tooling] 検査と生成器から旧形式の経路を外し、`legacy-spec-layout.json` を削除する。RED：経路を外した時点で 844 件のうち 23 件が失敗した（`canonical-document-set.test.ts`、`repository-checks.acceptance.test.ts`、`feature-layout.acceptance.test.ts`、`render.test.ts`、`workspace.test.ts`）。
-- [x] T003 [Docs] `SPECIFICATION_FORMAT.md` の旧形式からの移行の節を改める。あわせて `docs/development/specification-format-rationale.md` と `WORK_ITEM_FORMAT.md` の言及を改める。
+- [x] T003 [Docs] `SPECIFICATION_FORMAT.md` の旧形式からの移行の節を改める。あわせて `docs/development/format-rationale.md` と `WORK_ITEM_FORMAT.md` の言及を改める。
 - [x] T004 [Verify] 検査と生成器が、移行後の文書の木で同じ結果を出すことを確かめる。`mise run spec-render` の結果を main と比べ、ページの集合が同じであること、差が未決事項の説明文と編集した規約の文書だけであることを確かめた。
 
 ## 検証

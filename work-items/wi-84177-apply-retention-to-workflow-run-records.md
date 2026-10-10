@@ -20,13 +20,13 @@ spec_impact:
 しかし、実行の記録も Job の記録も、消す処理はない（`idmagic-batch retention-sweep` の対象に入っていない）。
 記録は消えずに増え続ける。
 
-wi-26063 で IdGovernance の内部設計をコードと照合して見つけ、`docs/domain/identity-governance/design/risks.md` に載せた。
+wi-26063 で IdGovernance の内部設計をコードと照合して見つけ、`docs/modules/identity-governance/design/risks.md` に載せた。
 
 ## 対象範囲
 
 - 実行の記録と Job の記録の保持期間を決め、保持期間の掃引で消す。
 - 保持期間を要件にするかを判断する。
-- `docs/domain/identity-governance/design/risks.md` の該当の行を消し、`docs/design/data/lifecycle.md` に保持期間を載せる。
+- `docs/modules/identity-governance/design/risks.md` の該当の行を消し、`docs/design/data/lifecycle.md` に保持期間を載せる。
 
 ## 対象外
 

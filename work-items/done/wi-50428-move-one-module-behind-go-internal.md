@@ -48,7 +48,7 @@ initial_context:
 - 選んだモジュールの本番パッケージを、ルートパッケージ、公開パッケージ、`internal/` のどれかに分類して移す。
 - 責務表の公開方式を `internal` にし、公開パッケージを列挙する。
 - 組み立て地点からの非公開パッケージへの直接の import を、ルートパッケージの操作へ移す。
-- 手順に不足があれば、[構造](../../docs/domain/structure.md#公開範囲と-internal)を直す。
+- 手順に不足があれば、[構造](../../docs/design/application/backend.md#公開範囲と-internal)を直す。
 
 ## 対象外
 
@@ -82,7 +82,7 @@ IdGovernance は組み立て地点が `domain` と `usecases` まで直接使っ
 
 | 項目 | 内容 |
 | --- | --- |
-| 入力 | [構造](../../docs/domain/structure.md#公開範囲と-internal)の最終形と移行規則、責務表の Authorization の行、上の import の計測 |
+| 入力 | [構造](../../docs/design/application/backend.md#公開範囲と-internal)の最終形と移行規則、責務表の Authorization の行、上の import の計測 |
 | 適用した制約 | D3（非公開の処理を公開に変えない）。D4 と D7 は、import の向きと原子性を変えないので該当しない |
 | 候補 A | `domain` と `ports` を公開パッケージとして残す。ほかのモジュールが使っていないので、公開する理由がない。採らない |
 | 候補 B | 公開パッケージを持たず、ルートパッケージが組み立て地点へ、永続化の選択と経路の登録を操作として公開する。採る |
@@ -127,7 +127,7 @@ IdGovernance は組み立て地点が `domain` と `usecases` まで直接使っ
   `mise run spec-diff` は main に対して規範仕様の差分がないことを示した。
   Authorization の本番パッケージ 8 個（`domain`、`ports`、`usecases`、`db_memory`、`db_postgres`、`handlers_http`、`principals_idmanagement`、`testing_contract`）を `backend/authorization/internal/` へ移し、責務表の公開方式を `internal`、公開パッケージをなしとした。
   ルートパッケージは `NewMemoryModule`、`NewPostgresModule`、`Module.RegisterRoutes` を持ち、組み立て地点（`cmd/internal/bootstrap`、`server_http`）はこの三つだけを使う。
-  移行で見つかった手順の不足を二つ検査へ反映し、[構造](../../docs/domain/structure.md#公開範囲と-internal)に移行の手順として書いた。
+  移行で見つかった手順の不足を二つ検査へ反映し、[構造](../../docs/design/application/backend.md#公開範囲と-internal)に移行の手順として書いた。
   `codeSlices` は `internal` の区画を飛ばして機能スライスを読み、主要ユースケースの証拠の検査は、完了した記録のテストのパスを `internal/` の下で読み直す。
   故障の注入で見つけた、組み立てを固定するテストの欠けを二つ埋めた。
 - **受け入れ RED の証拠**:

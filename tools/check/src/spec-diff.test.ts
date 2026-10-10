@@ -49,7 +49,7 @@ const gherkinScenario = (id: string, result: string): string =>
 
 const snapshot = (documentSource: string, tsp = 'op StartTask(): void;'): Snapshot =>
   new Map([
-    ['docs/domain/demo/SPECIFICATION.md', documentSource],
+    ['docs/modules/demo/SPECIFICATION.md', documentSource],
     ['spec/contexts/demo/main.tsp', tsp],
   ])
 
@@ -58,7 +58,7 @@ describe('diffSpecifications', () => {
     const document = (content: string): Snapshot =>
       new Map([
         [
-          'docs/domain/demo/scenarios.feature.md',
+          'docs/modules/demo/scenarios.feature.md',
           `${gherkinScenario('REQ-DEMO-001', '次の本文になる')}\n\n  \`\`\`json\n  ${content}\n  \`\`\`\n`,
         ],
       ])
@@ -76,7 +76,7 @@ describe('diffSpecifications', () => {
     const document = (actions: string): Snapshot =>
       new Map([
         [
-          'docs/domain/demo/scenarios.feature.md',
+          'docs/modules/demo/scenarios.feature.md',
           gherkinScenario('REQ-DEMO-001', '結果を返す').replace(
             '- When the request is submitted',
             actions,
@@ -92,7 +92,7 @@ describe('diffSpecifications', () => {
   })
 
   it('決定表の値だけの変更を検出し、列の掲載順は比較しない', () => {
-    const path = 'docs/domain/demo/scenarios.feature.md'
+    const path = 'docs/modules/demo/scenarios.feature.md'
     const document = (columns: string[], values: string[]): Snapshot =>
       new Map([
         [
@@ -191,7 +191,7 @@ describe('diffSpecifications', () => {
       document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Completed')),
     )
     expect(diffSpecifications(base, changed).changedTransitions).toEqual([
-      'docs/domain/demo#Lifecycle',
+      'docs/modules/demo#Lifecycle',
     ])
   })
 
@@ -199,11 +199,11 @@ describe('diffSpecifications', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
     const head: Snapshot = new Map([
       [
-        'docs/domain/demo/scenarios.feature.md',
+        'docs/modules/demo/scenarios.feature.md',
         `${gherkinScenario('REQ-DEMO-001', 'it succeeds')}\n`,
       ],
       [
-        'docs/domain/demo/states.md',
+        'docs/modules/demo/states.md',
         [
           '# Demo State Transitions',
           '',
@@ -240,7 +240,7 @@ describe('diffSpecifications', () => {
     const rule = (limit: string): Snapshot =>
       new Map([
         [
-          'docs/domain/demo/scenarios.feature.md',
+          'docs/modules/demo/scenarios.feature.md',
           [
             '# Feature: Demo Scenarios',
             '',
@@ -283,15 +283,15 @@ describe('diffSpecifications', () => {
         ],
       ])
     const base = rule(
-      'docs/domain/demo/group/task/scenarios.feature.md',
+      'docs/modules/demo/group/task/scenarios.feature.md',
       '[管理 API の認可](../../common/access/README.md#認可)',
     )
     const moved = rule(
-      'docs/domain/demo/task/scenarios.feature.md',
+      'docs/modules/demo/task/scenarios.feature.md',
       '[管理 API の認可](../access/README.md#認可)',
     )
     const relabeled = rule(
-      'docs/domain/demo/task/scenarios.feature.md',
+      'docs/modules/demo/task/scenarios.feature.md',
       '[ロール](../access/README.md#認可)',
     )
     expect(diffSpecifications(base, moved).changedScenarios).toEqual([])
@@ -311,7 +311,7 @@ describe('diffSpecifications', () => {
     ].join('\n')
     const base: Snapshot = new Map([
       [
-        'docs/domain/demo/scenarios.feature.md',
+        'docs/modules/demo/scenarios.feature.md',
         [
           '# Feature: Demo Scenarios',
           '',
@@ -325,12 +325,12 @@ describe('diffSpecifications', () => {
           '- Then it succeeds',
         ].join('\n'),
       ],
-      ['docs/domain/demo/states.md', `# Demo State Transitions\n\n${lifecycle}\n`],
+      ['docs/modules/demo/states.md', `# Demo State Transitions\n\n${lifecycle}\n`],
     ])
     const head: Snapshot = new Map([
-      ['docs/domain/demo/scenarios.feature.md', '# Feature: Demo Scenarios\n'],
+      ['docs/modules/demo/scenarios.feature.md', '# Feature: Demo Scenarios\n'],
       [
-        'docs/domain/demo/task/scenarios.feature.md',
+        'docs/modules/demo/task/scenarios.feature.md',
         [
           '# Feature: Task',
           '',
@@ -346,7 +346,7 @@ describe('diffSpecifications', () => {
           '- Then it succeeds',
         ].join('\n'),
       ],
-      ['docs/domain/demo/task/states.md', `# Task State Transitions\n\n${lifecycle}\n`],
+      ['docs/modules/demo/task/states.md', `# Task State Transitions\n\n${lifecycle}\n`],
     ])
     const diff = diffSpecifications(base, head)
     expect(diff.addedScenarios).toEqual([])
@@ -358,7 +358,7 @@ describe('diffSpecifications', () => {
   it('reports nothing when a rule moves into a feature specification with an appendix', () => {
     const base: Snapshot = new Map([
       [
-        'docs/domain/demo/task/scenarios.feature.md',
+        'docs/modules/demo/task/scenarios.feature.md',
         [
           '# Feature: Task',
           '',
@@ -405,13 +405,13 @@ describe('diffSpecifications', () => {
       ].join('\n')
     const head = (statement: string, result: string): Snapshot =>
       new Map([
-        ['docs/domain/demo/work/task/README.md', specification(statement)],
-        ['docs/domain/demo/work/task/acceptance.feature.md', appendix(result)],
+        ['docs/modules/demo/work/task/README.md', specification(statement)],
+        ['docs/modules/demo/work/task/acceptance.feature.md', appendix(result)],
       ])
     const migrated = diffSpecifications(base, head('規則文の一行', 'it succeeds'))
     expect(migrated.removedScenarios).toEqual([])
     expect(migrated.changedScenarios).toEqual([])
-    expect(migrated.changedTransitions).toEqual(['docs/domain/demo#Lifecycle'])
+    expect(migrated.changedTransitions).toEqual(['docs/modules/demo#Lifecycle'])
 
     const settled = head('規則文の一行', 'it succeeds')
     expect(
@@ -460,7 +460,7 @@ describe('diffSpecifications', () => {
       ].join('\n')
     const base: Snapshot = new Map([
       [
-        'docs/domain/demo/standards.md',
+        'docs/modules/demo/standards.md',
         standard([
           '| RFC-DEMO-ONE | required | MUST | The first behavior. |',
           '| RFC-DEMO-TWO | partial | SHOULD | The old behavior. |',
@@ -469,7 +469,7 @@ describe('diffSpecifications', () => {
     ])
     const head: Snapshot = new Map([
       [
-        'docs/domain/demo/standards.md',
+        'docs/modules/demo/standards.md',
         standard([
           '| RFC-DEMO-ONE | required | MUST | The changed behavior. |',
           '| RFC-DEMO-THREE | required | MUST | The new behavior. |',
@@ -478,12 +478,37 @@ describe('diffSpecifications', () => {
     ])
 
     const diff = diffSpecifications(base, head)
-    expect(diff.addedStandards).toEqual(['docs/domain/demo/standards.md#RFC-DEMO-THREE'])
-    expect(diff.removedStandards).toEqual(['docs/domain/demo/standards.md#RFC-DEMO-TWO'])
-    expect(diff.changedStandards).toEqual(['docs/domain/demo/standards.md#RFC-DEMO-ONE'])
+    expect(diff.addedStandards).toEqual(['docs/modules/demo/standards.md#RFC-DEMO-THREE'])
+    expect(diff.removedStandards).toEqual(['docs/modules/demo/standards.md#RFC-DEMO-TWO'])
+    expect(diff.changedStandards).toEqual(['docs/modules/demo/standards.md#RFC-DEMO-ONE'])
     expect(formatSpecificationDiff(diff, 'main')).toContain(
-      'changed standards requirements:\n  docs/domain/demo/standards.md#RFC-DEMO-ONE',
+      'changed standards requirements:\n  docs/modules/demo/standards.md#RFC-DEMO-ONE',
     )
+  })
+
+  it('reports nothing when the documents move out of docs/domain', () => {
+    const standard = (id: string): string =>
+      [
+        '# Standards',
+        '',
+        '| Normative ID | Adoption | Strength | Statement |',
+        '| --- | --- | --- | --- |',
+        `| ${id} | required | MUST | The behavior. |`,
+      ].join('\n')
+    const base: Snapshot = new Map([
+      ['docs/domain/standards.md', standard('WCAG-DEMO')],
+      ['docs/domain/demo/standards.md', standard('RFC-DEMO-ONE')],
+      ['docs/domain/scenarios.feature.md', gherkinScenario('REQ-SYSTEM-001', 'it succeeds')],
+    ])
+    const head: Snapshot = new Map([
+      ['docs/requirements/standards.md', standard('WCAG-DEMO')],
+      ['docs/modules/demo/standards.md', standard('RFC-DEMO-ONE')],
+      ['docs/requirements/scenarios.feature.md', gherkinScenario('REQ-SYSTEM-001', 'it succeeds')],
+    ])
+
+    const diff = diffSpecifications(base, head)
+    expect([...diff.addedStandards, ...diff.removedStandards, ...diff.changedStandards]).toEqual([])
+    expect([...diff.addedScenarios, ...diff.removedScenarios, ...diff.changedScenarios]).toEqual([])
   })
 
   it('leaves per-operation transport wrappers out of the declaration list', () => {

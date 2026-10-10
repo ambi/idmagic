@@ -37,7 +37,7 @@ affected_spec:
 
 さらに、401 は `RFC7644-OUT-ERROR-RESPONSE` の「再試行しない失敗」に落ちるので、管理者が見るのは配信の `dead_letter` だけで、「この認証方式は動かない」という事実はどこにも現れない。設定できるのに動かない選択肢が、失敗の原因として自分を名乗らないまま残っている。
 
-[docs/domain/provisioning/standards.md](../../docs/domain/provisioning/standards.md) の `RFC7644-OUT-AUTHENTICATION` は、この食い違いを避けるために「認証は `Authorization: Bearer` の 1 方式に限り、資格情報を得るための別の要求は送らない」という真の宣言を置いている。この work item が直せば、その行は方式ごとの分岐を書けるようになる。
+[docs/domain/provisioning/standards.md](../../docs/modules/provisioning/standards.md) の `RFC7644-OUT-AUTHENTICATION` は、この食い違いを避けるために「認証は `Authorization: Bearer` の 1 方式に限り、資格情報を得るための別の要求は送らない」という真の宣言を置いている。この work item が直せば、その行は方式ごとの分岐を書けるようになる。
 
 ## Scope
 

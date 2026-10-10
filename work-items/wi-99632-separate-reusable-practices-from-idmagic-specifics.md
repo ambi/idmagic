@@ -23,7 +23,7 @@ spec_impact:
 | `docs/development/specification-first-workflow.md` | 仕様先行の開発サイクル、証拠の要件、検証の段階 | `mise` タスク名、Go のミューテーションテスト、`//spec:covers` の Go コメント構文 |
 | `docs/design/application/api-guidelines.md` | リソースの命名、ステータスコード、ページング、冪等性、長時間実行操作 | SCIM のバージョン、PostgreSQL の CHECK 制約とインデックスキー、TypeSpec でのボディ宣言 |
 | `docs/design/application/design-guidelines.md` | モジュールの深さ、ポート、Aggregate 境界、作用の境界 | Go の型とパッケージを使った説明 |
-| `docs/domain/structure.md` | Context の内部構造、依存の向き、アーキテクチャ様式 | `backend/` と `frontend/` のディレクトリ、モノレポ構成、技術構成 |
+| `docs/design/application/backend.md` | Context の内部構造、依存の向き、アーキテクチャ様式 | `backend/` と `frontend/` のディレクトリ、モノレポ構成、技術構成 |
 | `docs/design/architecture/decisions.md` | Modular Monolith を選ぶ判断基準 | PostgreSQL を共有状態にする判断 |
 | `.agents/skills/implement-work-item/SKILL.md` など | work item の起票と実装の手順 | `mise run` のタスク名、Go と Bun のテストコマンド |
 
@@ -59,7 +59,7 @@ spec_impact:
   これらはすでにリポジトリの外にある。
 - 汎用文書の英語版の作成と、文章の言語を利用するリポジトリが選べるようにする仕組み。
   `docs/development/writing-language.md` の言語方針は IdMagic 固有として残す。
-- `docs/domain/`、`docs/requirements/`、`docs/runbooks/`、`spec/` の内容の汎用化。
+- `docs/modules/`、`docs/requirements/`、`docs/runbooks/`、`spec/` の内容の汎用化。
   これらは IdMagic の製品仕様と運用手順そのものであり、固有に分類する。
   ただし、これらの文書形式の規則は `docs/formats/specification-format.md` と `docs/formats/documentation-guide.md` の一部として汎用側へ含まれる。
 - 汎用化に伴う方針そのものの改訂。
@@ -141,7 +141,7 @@ IdMagic での値は、`docs/development/` に新設する一つの文書に表�
 | `docs/design/application/design-guidelines.md` | 全体 | 言語に依存する例示だけを差分文書へ移す |
 | `docs/design/application/frontend.md` | 機能スライスの境界、依存の向き、コンテナと表示用コンポーネントの分離 | 採用ライブラリ、ルーティングのファイル規約、ビルドと配信、タスク |
 | `docs/design/application/user-interface.md` | 情報の順序、表示状態、破壊的な操作、フォームと検証、エラーの文言、アクセシビリティ、国際化の原則 | 対応言語、辞書の実装、テストのロケール |
-| `docs/domain/structure.md` | Context の内部構造の to-be、Context 間イベントの公開言語と互換性、アーキテクチャ様式 | 実在のディレクトリ、技術構成、HTTP ルーティング |
+| `docs/design/application/backend.md` | Context の内部構造の to-be、Context 間イベントの公開言語と互換性、アーキテクチャ様式 | 実在のディレクトリ、技術構成、HTTP ルーティング |
 | `docs/design/architecture/decisions.md` | Modular Monolith を選ぶ判断基準と見直し条件 | PostgreSQL とブラウザーの同一オリジン境界に関する判断 |
 | `docs/design/observability/logging.md` | 共通フィールド、`event_name` の命名、ログレベル、秘密情報と個人情報の扱い | 収集経路、保持期間、容量 |
 | `docs/design/data/schema-management.md` | 宣言的スキーマ、収束の検査、拡張と縮小 | psqldef の性質から来る規則、適用する地点 |

@@ -284,7 +284,7 @@ User、Group、Agent の名前をそろえる wi-83020 で、Context の `README
 - **Completed At**: 2026-10-04
 - **Summary**:
   `mise run spec-diff -- main` の結果、規範の差分は REQ-IDMANAGEMENT-001、005、010、011、013、042、043、044、045、046、047、048、049、050 の本文の書き直しと、UserLifecycle の状態遷移の変更（状態遷移表（マトリクス形式）の追加）だけであり、要件の追加と削除はない。
-  仕様フォーマットを規範だけの文書に改め、理由を `docs/development/specification-format-rationale.md` へ分けた（847 行から 593 行と 135 行）。
+  仕様フォーマットを規範だけの文書に改め、理由を `docs/development/format-rationale.md` へ分けた（847 行から 593 行と 135 行）。
   `principals/user` の 4 文書は 719 行から 393 行になり、例は 38 件から 15 件になった。
   状態遷移表を作る過程で、`Deleted` の User に対する無効化、再有効化、削除の予約、復元の結果（404 `user_not_found`）という未記載の振る舞いが見つかり、表に書いた。
   (c) に分類した 7 件を wi-83020、wi-93929、wi-92312 として起票し、一括の書き起こしの work item 19 件を削除した。

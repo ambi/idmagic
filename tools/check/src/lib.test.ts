@@ -99,7 +99,7 @@ describe('validateAgainstSchema — work-item', () => {
     verification: [{ cmd: 'go test ./...', result: 'ok' }],
   }
   const validInitialContext = {
-    specification: ['docs/domain/scenarios.feature.md#REQ-DEMO-001'],
+    specification: ['docs/requirements/scenarios.feature.md#REQ-DEMO-001'],
   }
   const validDocumentationImpact = {
     level: 'none',
@@ -126,7 +126,7 @@ describe('validateAgainstSchema — work-item', () => {
         {
           ...feature,
           affected_spec: [
-            { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-CHECK' },
+            { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-CHECK' },
           ],
         },
         '',
@@ -158,7 +158,7 @@ describe('validateAgainstSchema — work-item', () => {
           ...validWorkItem,
           change_kind: 'bugfix',
           affected_spec: [
-            { path: 'docs/domain/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001', impact },
+            { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001', impact },
             { path: 'spec/contexts/demo/main.tsp', symbol: 'Demo.Task', impact },
           ],
         },

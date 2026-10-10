@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/sharedsignals/transmitter/README.md, requirement: REQ-SHAREDSIGNALS-006 }
+  - { path: docs/modules/sharedsignals/transmitter/README.md, requirement: REQ-SHAREDSIGNALS-006 }
 ---
 
 # 配信不能になった SET の配送をやり直せるようにする
@@ -19,13 +19,13 @@ affected_spec:
 `dead_letter` の配送を `pending` へ戻す操作も、作り直す操作もない。
 受信側の長い障害の後、その間の失効は外部へ伝わらないまま残る。
 
-wi-26063 で SharedSignals の内部設計をコードと照合して見つけ、`docs/domain/sharedsignals/design/risks.md` に載せた。
+wi-26063 で SharedSignals の内部設計をコードと照合して見つけ、`docs/modules/sharedsignals/design/risks.md` に載せた。
 
 ## 対象範囲
 
 - 管理者が、ストリームの `dead_letter` の配送をやり直せる操作を加える。
 - 状態遷移の表に、やり直しの遷移を加える。
-- `docs/domain/sharedsignals/design/risks.md` の該当の行を消す。
+- `docs/modules/sharedsignals/design/risks.md` の該当の行を消す。
 
 ## 対象外
 

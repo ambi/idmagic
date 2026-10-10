@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/sourcing/scim/README.md, requirement: REQ-SOURCING-002, impact: conforms }
-  - { path: docs/domain/sourcing/scim/README.md, requirement: REQ-SOURCING-005, impact: conforms }
+  - { path: docs/modules/sourcing/scim/README.md, requirement: REQ-SOURCING-002, impact: conforms }
+  - { path: docs/modules/sourcing/scim/README.md, requirement: REQ-SOURCING-005, impact: conforms }
 ---
 
 # SCIM による User と Group の作成と更新を IdManagement のユースケースへ通す
@@ -23,13 +23,13 @@ SCIM で作った User と Group には、監査の記録、ライフサイク�
 
 また、Group の作成の途中で失敗したときの後始末（作った Group と対応の記録の削除）はエラーを捨てるので、外部の IdP から見えない孤立した Group が残りうる。
 
-wi-26063 で Sourcing の内部設計をコードと照合して見つけ、`docs/domain/sourcing/design/risks.md` に載せた。
+wi-26063 で Sourcing の内部設計をコードと照合して見つけ、`docs/modules/sourcing/design/risks.md` に載せた。
 
 ## 対象範囲
 
 - SCIM の User と Group の作成、更新、メンバーシップの変更を、IdManagement のユースケースまたは公開する操作へ通す。
 - 作成と対応の記録の保存を、片方だけが残らないように確定する。
-- `docs/domain/sourcing/design/risks.md` の該当の行を消し、`scim/design.md` を直す。
+- `docs/modules/sourcing/design/risks.md` の該当の行を消し、`scim/design.md` を直す。
 
 ## 対象外
 

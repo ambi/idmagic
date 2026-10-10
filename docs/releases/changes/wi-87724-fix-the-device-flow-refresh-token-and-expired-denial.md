@@ -9,4 +9,4 @@ WI-87724 は、デバイス認可の `device_code` の交換で、スコープ�
 リフレッシュトークンを使うデバイス認可のクライアントは、デバイス認可の要求の `scope` に `offline_access` を含め、クライアントの許可するスコープにも `offline_access` を登録する必要がある。
 
 また、有効期間を過ぎた `user_code` の拒否は、承認と同じく 400 と `expired_token` で拒否され、記録は `Denied` にならない。
-規範上の条件は[トークン](../../domain/oauth2/token/README.md)の REQ-OAUTH2-021 と、[デバイス認可](../../domain/oauth2/device/README.md)の REQ-OAUTH2-027 が定める。
+規範上の条件は[トークン](../../modules/oauth2/token/README.md)の REQ-OAUTH2-021 と、[デバイス認可](../../modules/oauth2/device/README.md)の REQ-OAUTH2-027 が定める。

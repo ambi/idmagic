@@ -2,7 +2,7 @@
  * 論理アーキテクチャの責務表を宣言として読み、Go の import がモジュール間の依存規則を守るかを判定する。
  *
  * 規則は公開範囲、モジュール単位の非循環、共有ライブラリと組み立て地点の制約だけであり、
- * モジュールの組ごとの許可リストは持たない。根拠は `docs/domain/structure.md` が定める。
+ * モジュールの組ごとの許可リストは持たない。根拠は `docs/design/application/backend.md` が定める。
  */
 
 export type PublicationMode = 'legacy' | 'internal'

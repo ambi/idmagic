@@ -8,11 +8,11 @@ priority: p2
 depends_on: [wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/workloadidentity/trust-configuration/README.md, requirement: REQ-WORKLOADIDENTITY-008 }
-  - { path: docs/domain/workloadidentity/trust-configuration/README.md, requirement: REQ-WORKLOADIDENTITY-009 }
-  - { path: docs/domain/application/catalog/README.md, requirement: REQ-APPLICATION-008 }
-  - { path: docs/domain/application/sign-in-policy/README.md, requirement: REQ-APPLICATION-009 }
-  - { path: docs/domain/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-039 }
+  - { path: docs/modules/workloadidentity/trust-configuration/README.md, requirement: REQ-WORKLOADIDENTITY-008 }
+  - { path: docs/modules/workloadidentity/trust-configuration/README.md, requirement: REQ-WORKLOADIDENTITY-009 }
+  - { path: docs/modules/application/catalog/README.md, requirement: REQ-APPLICATION-008 }
+  - { path: docs/modules/application/sign-in-policy/README.md, requirement: REQ-APPLICATION-009 }
+  - { path: docs/modules/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-039 }
 ---
 
 # 実装が返すエラーコードを、返す Context の TypeSpec で宣言する

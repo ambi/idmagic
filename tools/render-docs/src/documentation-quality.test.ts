@@ -59,8 +59,8 @@ const PRIMARY_SOURCE_VOCABULARY_ROOTS = [
   'docs/formats/specification-format.md',
   'docs/formats/work-item-format.md',
   'docs/README.md',
-  'docs/domain/glossary.md',
-  'docs/domain/structure.md',
+  'docs/requirements/glossary.md',
+  'docs/design/application/backend.md',
   'docs/development',
   'docs/design/verification',
   'frontend/src',
@@ -71,7 +71,7 @@ const PRIMARY_SOURCE_VOCABULARY_ROOTS = [
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', 'generated'])
 
 /**
- * version の表記を確かめる範囲。`docs/domain/` の規範シナリオと `backend/` は、
+ * version の表記を確かめる範囲。`docs/modules/` の規範シナリオと `backend/` は、
  * 仕様先行の手順を通す別の作業項目が扱う。
  */
 const VERSION_VOCABULARY_ROOTS = [
@@ -88,10 +88,10 @@ const VERSION_VOCABULARY_ROOTS = [
   'docs/runbooks',
   'docs/design/verification',
   'docs/README.md',
-  'docs/domain/glossary.md',
+  'docs/requirements/glossary.md',
   'docs/requirements/product-overview.md',
-  'docs/domain/standards.md',
-  'docs/domain/structure.md',
+  'docs/requirements/standards.md',
+  'docs/design/application/backend.md',
   'infra/schema/README.md',
   'frontend/src',
   'tools',
@@ -130,7 +130,7 @@ it('文書体系を指す語に「正本」と「正準文書」を使わない'
 /**
  * 定着したカタカナ語を一般的な日本語へ言い換えると、読み手はそれを技術用語として
  * 認識できない。`docs/formats/documentation-guide.md` が version の表記を定めているので、規則を
- * 述べる同文書だけを除いて語形で確かめる。`docs/domain/` と `backend/` は
+ * 述べる同文書だけを除いて語形で確かめる。`docs/modules/` と `backend/` は
  * 別の作業項目が扱う。
  */
 it('version を「版」と書かない', () => {

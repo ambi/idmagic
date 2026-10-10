@@ -1,6 +1,6 @@
 package server_http_test
 
-// docs/domain/oauth2/standards.md のうち、トークンの発行と交換の入口に立つ 15 行を
+// docs/modules/oauth2/standards.md のうち、トークンの発行と交換の入口に立つ 15 行を
 // 観測する。
 //
 // 入口は Register が組み立てたスタックの `/token` である。この 15 行が言っているのは

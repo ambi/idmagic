@@ -2,7 +2,7 @@ package ports
 
 // 種別に依存しない CSV 成果物ストア。upload payload と結果ページのどちらも同じ
 // 不変ストアに置き、CSV 種別ごとに artifact / error のテーブルを増やさない
-// (docs/domain/identity-management/design/csv-transfer.md)。
+// (docs/modules/identity-management/design/csv-transfer.md)。
 
 import (
 	"context"

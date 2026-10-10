@@ -42,7 +42,7 @@ affected_spec:
 
 [[wi-541-back-system-examples-with-tests]] が `EX-SYSTEM-008-02` を消化しようとして、シナリオと実装が食い違っていることを測った。
 
-`EX-SYSTEM-008-02` は「表示言語を `ja` と明示選択済みの EndUser へ `ui_locales=en` の認可リクエストが来ても、ログイン画面は `ja` 辞書で表示される」と述べる。[System の用語集](../../docs/domain/system/glossary.md)の `DisplayLanguage` も「選択はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する」と述べている。
+`EX-SYSTEM-008-02` は「表示言語を `ja` と明示選択済みの EndUser へ `ui_locales=en` の認可リクエストが来ても、ログイン画面は `ja` 辞書で表示される」と述べる。[System の用語集](../../docs/modules/system/glossary.md)の `DisplayLanguage` も「選択はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する」と述べている。
 
 実装の解決順は `frontend/src/lib/i18n/resolveLocale.ts` にあり、**`ui_locales` ヒント > 保存済み設定 > ブラウザー言語 > 起動時の既定**である。明示選択を保存する先は `localStorage` の `idmagic.displayLocale` だけで (`context.tsx` の `writeSavedLocale`)、その値は「保存済み設定」として読み直される。したがって:
 

@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/tenancy/quota/README.md, requirement: REQ-TENANCY-013 }
+  - { path: docs/modules/tenancy/quota/README.md, requirement: REQ-TENANCY-013 }
 ---
 
 # CSV の取り込みが Hard Quota で止まったときも QuotaExceeded を記録する

@@ -10,7 +10,7 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/domain/provisioning/synchronization/README.md, requirement: REQ-PROVISIONING-019 }
+  - { path: docs/modules/provisioning/synchronization/README.md, requirement: REQ-PROVISIONING-019 }
 ---
 
 # インクリメンタル同期が、前回の基準値以降に変わった User と割り当てだけを読む

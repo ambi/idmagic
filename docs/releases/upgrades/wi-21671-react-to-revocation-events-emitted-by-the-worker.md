@@ -1,7 +1,7 @@
 # wi-21671-react-to-revocation-events-emitted-by-the-worker
 
 作業項目は `wi-21671-react-to-revocation-events-emitted-by-the-worker` である。
-対象は [REQ-PLATFORM-001](../../domain/scenarios.feature.md) と [REQ-SHAREDSIGNALS-007](../../domain/sharedsignals/revocation/acceptance.feature.md) である。
+対象は [REQ-PLATFORM-001](../../requirements/scenarios.feature.md) と [REQ-SHAREDSIGNALS-007](../../modules/sharedsignals/revocation/acceptance.feature.md) である。
 
 ## `idmagic-worker` の `ISSUER`
 

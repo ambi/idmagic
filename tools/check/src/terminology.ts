@@ -73,6 +73,13 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
   { term: 'リファレンスワークロードプロファイル', adopt: '「想定ワークロード」' },
   { term: 'Planning assumption', adopt: '「仮定値」' },
   { term: 'Specification target', adopt: '「仕様目標」' },
+  // requirement の訳語。「要求」は依頼やリクエストの意味の一般語と区別できないので、区分と文書の名前は「要件」にする。
+  { term: '要求文書', adopt: '「要件文書」' },
+  { term: '機能要求', adopt: '「機能要件」' },
+  { term: '品質要求', adopt: '「品質要件」' },
+  { term: 'システム要求', adopt: '「システム要件」' },
+  { term: 'このディレクトリには', adopt: '「この文書は」' },
+  { term: '話題の索引', adopt: '「設計領域の索引」' },
   {
     term: '本書',
     adopt: '「この文書」',

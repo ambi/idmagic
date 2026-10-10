@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-96676-transcribe-implicit-specifications-of-identity-management]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/domain/identity-management/group-csv/README.md, requirement: REQ-IDMANAGEMENT-027, impact: conforms }
+  - { path: docs/modules/identity-management/group-csv/README.md, requirement: REQ-IDMANAGEMENT-027, impact: conforms }
 ---
 
 # 管理 API からの Group の CSV エクスポートでテナント定義の属性の列を選べるようにする

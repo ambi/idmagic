@@ -1,6 +1,6 @@
 # wi-22987-track-full-resync-completion
 
-Provisioning が、管理者の開始した Full Resync の完了を `FullResyncCompleted` として記録するようになった（[`REQ-PROVISIONING-013`](../../domain/provisioning/connection/README.md)）。
+Provisioning が、管理者の開始した Full Resync の完了を `FullResyncCompleted` として記録するようになった（[`REQ-PROVISIONING-013`](../../modules/provisioning/connection/README.md)）。
 
 - Full Resync が作ったプロビジョニングタスクがすべて `succeeded` または `dead_letter` になった時点で、`FullResyncCompleted` を一度だけ発行する。これまでは Full Resync を開始してもこのイベントを発行していなかった。
 - イベントの `totalSubjects` は開始時の対象数、`succeededCount` と `failedCount` は完了時点で成功したプロビジョニングタスクと再試行を使い切ったプロビジョニングタスクの件数である。

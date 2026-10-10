@@ -14,7 +14,6 @@ import {
 import { createWorkspaceSnapshot, discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { findEnglishProse } from './prose-language.ts'
 import { renderDocumentationSite, type SourceDocument } from './render.ts'
-import { collectTraces } from './traces.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
 const root = resolve(import.meta.dir, '../../..')
@@ -54,7 +53,7 @@ for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
 }
 paths.push(...(await procedureDocuments('docs/development')))
 paths.push(...(await procedureDocuments('docs/runbooks')))
-const contextRoot = resolve(root, 'docs/domain')
+const contextRoot = resolve(root, 'docs/modules')
 const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
@@ -105,7 +104,7 @@ async function contextDocuments(context: string): Promise<string[]> {
 }
 
 for (const name of contextDirectories) {
-  paths.push(...(await contextDocuments(`docs/domain/${name}`)))
+  paths.push(...(await contextDocuments(`docs/modules/${name}`)))
 }
 
 // The order the canonical layout defines is the order the site lists, so the
@@ -115,8 +114,6 @@ for (const path of paths) {
   documents.push({ path, source: await readFile(resolve(root, path), 'utf8') })
 }
 const openapi = JSON.parse(await readFile(openapiPath, 'utf8'))
-
-const traces = await collectTraces(root)
 
 const program = await compile(NodeHost, typespecPath, { noEmit: true })
 if (program.hasError()) {
@@ -138,7 +135,6 @@ const result = renderDocumentationSite({
   openapiFileName: basename(openapiPath),
   models: catalog.symbols,
   contextTags: catalog.contextTags,
-  traces,
   sourcePaths,
   contextAliases,
 })
