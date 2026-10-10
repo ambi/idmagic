@@ -5,7 +5,7 @@ authors: [tn]
 risk: high
 reversibility: irreversible
 created_at: 2026-08-30
-priority: p1
+priority: p3
 change_kind: operations
 affected_spec:
   - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
@@ -15,6 +15,11 @@ affected_spec:
 # 配備前に旧版と新版の更新互換性を判定する
 
 ## Motivation
+
+現在は未リリースであり、当面も未リリースを継続する。
+公開済み旧版との更新互換性を保証する必要はまだないため、優先度を p3 に下げる。
+初回リリースの予定、維持すべき実利用環境、または外部自動化への契約の公開が具体化した時点で再評価する。
+未リリースの全コミットを旧版として固定せず、着手時に実際のリリース状況を確認する。
 
 現在のリリース手順は公開 API の破壊的差分を検査し、段階的に配備するが、旧配備と新成果物の機能版、設定、スキーマ移行を合わせて、ローリング更新が可能か再作成が必要かを事前に判定しない。誤った更新方式は、新旧プロセスが同じ永続状態を読めない、準備完了前にトラフィックを受ける、途中で更新を止められないといった障害を配備中に初めて表面化させる。
 
