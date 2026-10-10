@@ -33,7 +33,7 @@ spec_impact:
 - 規則の内容と必要な製品検証を、文書を短くするためだけに削除すること。
 - 要約版の規則、独立した手書きの規則台帳、新しい汎用方法論の階層。
 - 自動の文脈導出は[既存の brief の改善](wi-69747-derive-task-specific-agent-context-from-canonical-sources.md)が扱う。
-- 証拠の適用条件の変更は[証拠の縮小](wi-95150-scale-verification-evidence-to-change-impact.md)が扱う。
+- 証拠の適用条件の変更は[証拠の縮小](../done/wi-95150-scale-verification-evidence-to-change-impact.md)が扱う。
 
 ## 設計
 

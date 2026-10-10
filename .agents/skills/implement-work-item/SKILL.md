@@ -1,6 +1,6 @@
 ---
 name: implement-work-item
-description: "選択した work item を、仕様先行、故障に応じた検証境界、発見の反映、検証、完了記録、コミットまで実装する。"
+description: "Implement a selected work item end to end: specification first, a verification boundary chosen from the fault model, folding discoveries back into their sources, verification, the completion record, and the commit."
 ---
 
 # Implementing a work item
@@ -52,37 +52,43 @@ description: "選択した work item を、仕様先行、故障に応じた検�
 4. Rewrite `initial_context` to the smallest slice actually read during readiness — the brief's draft is a
    starting point, not the answer, and `stop_before_reading` is always yours to decide. It is an audit trail,
    not a reason to read more: leave a category empty instead of opening files only to populate it.
-   新規着手では `evidence_policy: risk-based-v4` とし、証拠の契約は
-   `docs/development/specification-first-workflow.md`、記入形式は `docs/formats/work-item-format.md` を参照する。
-   該当する feature、bugfix、標準対応では、主要ユースケースの観測結果、`fault_model`、
-   その故障を検出できる最小の境界とテストを決める。
-   それ以外では Acceptance RED と Unit RED、または理由を伴う代替検査を決める。
-   着手済みの v3 は既存の契約を維持し、移行するときだけ境界を選び直す。
+   Declare `evidence_policy: risk-based-v4`. The evidence contract lives in
+   `docs/development/specification-first-workflow.md` and the record format in `docs/formats/work-item-format.md`.
+   For feature, bugfix, and standards work, decide the primary use case's observable result, its `fault_model`,
+   and the narrowest boundary and test that detect that fault.
+   For other work, plan the Acceptance RED and Unit RED, or an alternate check with a reason.
+   A Markdown-only change without spec impact and a refactor that leaves tests untouched are behavior-preserving
+   changes: they produce no RED or change-resistance evidence and record the checks they passed instead. The
+   completing change's diff, not the record's claim, decides which case applies.
 5. Set the status to `in_progress` and pass `mise run check-work-items`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
-   告知と既存バージョン互換性の適用は `docs/development/release.md` の公開状態に従う。
-   初回公開前は `documentation_impact: none` を理由付きで宣言できる。
+   Release notices and compatibility with existing versions follow the publication state in
+   `docs/development/release.md`. Before the first publication, `documentation_impact: none` may be declared
+   with a reason.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
 7. Before the first source or test edit, read `docs/development/coding-style.md`.
-   既存の Go コードを変え、触れる範囲の振る舞いを `//spec:covers` を付けたテストが固定していなければ、
-   本番コードより先に `TestCharacterize<対象>` の特性化テストで現在の振る舞いを固定し、
-   `test-go-mutation` で変更する箇所への変異を検出することを確かめ、本番コードを変えない別のコミットにする。
-   手順、検査、変更後の分類はワークフローの「特性化テスト」が定める。
-   既存の `TestCharacterize*` が落ちたら、宣言のない振る舞いの変化である。期待値を書き換えて通さず、
-   変更を戻すか、分類を利用者へ確認する。
-   選択した境界の検査で RED を確認する。
-   Domain → Use Cases → Adapters → Infrastructure / UI の必要な範囲を、一つの振る舞いずつ
-   最も単純で完全な実装で GREEN にし、GREEN のまま refactor する。
-   具体例をデータにすると短くなる場合は、`docs/formats/specification-format.md` の実行可能な具体例を使う。
-   操作列が複雑ならコードのままにし、独立した期待結果と境界固有の表明を共有する。
-   仕様にない分岐、エラー、イベント、副作用を書くことになったら、そこで止め、ワークフローの
-   「仕様にない振る舞いの分類」に従って (a) 要件にする、(b) 書かない、(c) 実装を直す、のどれかに分け、
-   結果を work item の設計に記録する。利用者が観測する結果を変える分類は、実装を進める前に利用者へ確認する。
-   (c) は実装方針を切り替える合図であり、仕様を書き足して既存の実装を説明しない。
-   分類の後は「実装とテストで見つけた振る舞いの反映」に従って、要件と理由、具体例、生成できる参照を
-   それぞれの一次情報へ移す。
+   When you change existing Go code whose touched behavior no `//spec:covers` test pins, first pin the
+   current behavior with a `TestCharacterize<Subject>` characterization test, confirm with `test-go-mutation`
+   that it detects mutations at the sites you will change, and commit it separately without touching
+   production code. The workflow's 「特性化テスト」 section defines the procedure, the checks, and how to
+   classify the change afterwards. If an existing `TestCharacterize*` fails, the behavior changed without a
+   declaration: do not rewrite the expectation to pass, but revert the change or confirm the classification
+   with the user.
+   Confirm RED with the selected boundary's check.
+   Through the needed range of Domain → Use Cases → Adapters → Infrastructure / UI, make one behavior at a
+   time GREEN with the simplest complete implementation, then refactor while GREEN.
+   When turning examples into data makes them shorter, use the executable examples of
+   `docs/formats/specification-format.md`. Keep a complex sequence of operations as code, sharing the
+   independent expected results and the boundary-specific assertions.
+   If you find yourself writing a branch, error, event, or side effect the specification does not state, stop
+   there and sort it, per the workflow's 「仕様にない振る舞いの分類」, into (a) make it a requirement,
+   (b) do not write it, or (c) fix the implementation, and record the result in the work item's Design. Confirm
+   with the user before continuing any classification that changes a result the user observes. (c) is a signal
+   to switch implementation strategy, not a reason to add specification text that explains the existing code.
+   After classifying, follow 「実装とテストで見つけた振る舞いの反映」 to move each requirement and reason,
+   example, and generatable reference into its primary source.
    A test claims a declared id with a `//spec:covers <id>[, <id>]: <what it fixes>` directive above the test
    function, and only that shape counts — see Citing a normative id from a test in
    `docs/development/specification-first-workflow.md`. Naming an id in prose claims nothing, so say freely in
@@ -96,9 +102,11 @@ description: "選択した work item を、仕様先行、故障に応じた検�
    starts, or the final one in step 11 — fold them. Run `git log --oneline <last real commit>..HEAD`,
    confirm every listed commit is a checkpoint, then `git reset --soft <last real commit>` and commit the
    staged result. Interactive rebase is unavailable here, so do not fold with it.
-   選択した検査の失敗、テスト名、該当する規範 ID をタスクに残す。For tooling,
-   documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate
-   check that actually failed instead of inventing a product requirement or test boundary.
+   Record in the task the selected check's failure, the test name, and the normative id. For tooling without one of those
+   boundaries, record `N/A: <reason>` and the alternate check that actually failed instead of inventing a
+   product requirement or test boundary. A behavior-preserving change (Markdown only, or a refactor that
+   leaves tests untouched, either with `spec_impact`) records the checks it passed instead; do not
+   manufacture a failure for it.
    Where the change parses, decodes, splits, normalizes, or compares untrusted input by hand, add a fuzz target
    beside the examples and give it an oracle stronger than "does not panic"; see Properties and fuzzing in
    `docs/development/specification-first-workflow.md`.
@@ -135,9 +143,9 @@ description: "選択した work item を、仕様先行、故障に応じた検�
     status check while a prerequisite still prevents completion. Complete
     every evidence field required by `docs/formats/work-item-format.md`, reading the completion summary out of
     `mise run spec-diff`.
-    `status` を `completed` にし、`mise run move-work-item -- <id>` を実行する。
-    コマンドが `work-items/active/` から `work-items/done/` への移動と Markdown リンクの更新を行う。
-    移動後は `mise run check-work-items` と `mise run check-links` を通す。
+    Set `status` to `completed` and run `mise run move-work-item -- <id>`. The command moves the record from
+    `work-items/active/` to `work-items/done/` and updates the Markdown links. After the move, pass
+    `mise run check-work-items` and `mise run check-links`.
 11. Fold the remaining checkpoints as step 7 describes, then create any remaining Conventional Commit
     with `commit`. `git log --oneline <base>..HEAD` must show no `checkpoint(` subject afterwards. A record may have multiple commits only where
     separately reviewable structural and behavioral changes require that boundary. Keep all free-form prose in

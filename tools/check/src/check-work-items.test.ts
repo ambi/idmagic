@@ -282,6 +282,74 @@ describe('checkWorkItems', () => {
       expect(outcome.ok).toBe(false)
       expect(outcome.lines).toContain(`work-items/done/wi-10004-closed.md: ${finding}`)
     })
+
+    describe('完了の変更の差分から、RED の証拠を求めるかを決める', () => {
+      const completedDocs = [
+        minimalRecord('文書の改善', 'completed')
+          .replace('change_kind: tooling', 'change_kind: docs')
+          .replace(
+            '---\n\n#',
+            [
+              'evidence_policy: risk-based-v4',
+              'initial_context: { specification: [], typespec: [], source: [], tests: [], stop_before_reading: [] }',
+              'documentation_impact: { level: none, reason: "初回公開前であり、利用者向けの告知差分はない。", references: [] }',
+              '---\n\n#',
+            ].join('\n'),
+          ),
+        '## 完了',
+        '',
+        '- **完了日**: 2026-10-10',
+        '- **要約**: 手順の表現を直した。',
+        '',
+      ].join('\n')
+
+      /** 文書を直し、記録を完了させた作業ツリー。 */
+      async function completedDocumentChange(): Promise<string> {
+        const root = await committedWorkspace({ 'docs/guide.md': '旧い手順。\n' })
+        await writeFile(join(root, 'docs/guide.md'), '新しい手順。\n')
+        await mkdir(join(root, 'work-items/done'), { recursive: true })
+        await writeFile(join(root, 'work-items/done/wi-10006-docs.md'), completedDocs)
+        return root
+      }
+
+      it('Markdown だけを変えた完了を、RED の証拠なしで通す', async () => {
+        const root = await completedDocumentChange()
+
+        const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+        expect(outcome).toEqual({ ok: true, lines: ['ok  1 work-item dependency record(s)'] })
+      })
+
+      it('同じ記録でも、コードを変えた完了には RED の証拠を求める', async () => {
+        const root = await completedDocumentChange()
+        await mkdir(join(root, 'backend'))
+        await writeFile(join(root, 'backend/rule.go'), 'package backend\n')
+
+        const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+        expect(outcome.ok).toBe(false)
+        expect(outcome.lines).toEqual([
+          'work-items/done/wi-10006-docs.md: completion.acceptance_red_evidence is required for non-applicable work',
+          'work-items/done/wi-10006-docs.md: completion.unit_red_evidence is required for non-applicable work',
+        ])
+      })
+
+      it('main から分けたブランチでコミットしたコードの変更も差分に含める', async () => {
+        const root = await completedDocumentChange()
+        git(root, 'switch', '-q', '-c', 'work-item/wi-10006')
+        await mkdir(join(root, 'backend'))
+        await writeFile(join(root, 'backend/rule.go'), 'package backend\n')
+        git(root, 'add', 'backend/rule.go')
+        git(root, 'commit', '-q', '-m', 'change')
+
+        const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+        expect(outcome.ok).toBe(false)
+        expect(outcome.lines).toContain(
+          'work-items/done/wi-10006-docs.md: completion.unit_red_evidence is required for non-applicable work',
+        )
+      })
+    })
   })
 
   it('旧配置と status に反するディレクトリを拒否する', async () => {

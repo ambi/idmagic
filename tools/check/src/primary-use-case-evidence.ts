@@ -3,6 +3,8 @@ export type PrimaryUseCaseEnvironment = {
   read: (path: string) => string | undefined
   /** 標準の verify または CI から到達する mise タスク。 */
   requiredTasks: ReadonlySet<string>
+  /** 完了の変更が触れたリポジトリ相対パス。Git の外の workspace では undefined。 */
+  changedPaths: ReadonlySet<string> | undefined
 }
 
 type RecordValue = Record<string, unknown>
@@ -27,6 +29,23 @@ function applicable(record: RecordValue): boolean {
   return objects(record.affected_spec).some((reference) =>
     text(reference.path)?.endsWith('/standards.md'),
   )
+}
+
+const TEST_PATH = /(?:_test\.go|\.(?:test|spec)\.[cm]?[jt]sx?)$|(?:^|\/)(?:testdata|tests)\//
+
+/**
+ * 完了の変更が振る舞いを保つか。仕様影響のない Markdown だけの変更と、テストを変えない
+ * refactor が該当する。作業項目の自己申告ではなく差分で判定するので、文書変更と名乗っても
+ * コードを変えた変更は該当しない。refactor でテストを変えた変更は、振る舞いも変えている。
+ */
+function preservesBehavior(
+  record: RecordValue,
+  changedPaths: ReadonlySet<string> | undefined,
+): boolean {
+  if (changedPaths === undefined || object(record.spec_impact) === undefined) return false
+  const paths = [...changedPaths]
+  if (paths.every((path) => path.endsWith('.md'))) return true
+  return record.change_kind === 'refactor' && !paths.some((path) => TEST_PATH.test(path))
 }
 
 function affectedRequirements(record: RecordValue): Set<string> {
@@ -134,6 +153,8 @@ export function verifyPrimaryUseCaseEvidence(
   const completion = object(record.completion)
   if (!applicable(record)) {
     if (record.status !== 'completed') return []
+    // 既存の検査が変更前から成功する改善に、記録のための失敗を作らせない。
+    if (preservesBehavior(record, environment.changedPaths)) return []
     const findings: string[] = []
     if (!object(completion?.acceptance_red_evidence)) {
       findings.push('completion.acceptance_red_evidence is required for non-applicable work')

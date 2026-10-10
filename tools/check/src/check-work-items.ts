@@ -18,7 +18,7 @@ import {
   type SpecificationDiff,
 } from './spec-diff.ts'
 import { parseMiseTasks, taskClosure } from './verification-tasks.ts'
-import { changedWorkItemRecords, verifiedNow } from './work-item-changes.ts'
+import { changedPaths, changedWorkItemRecords, verifiedNow } from './work-item-changes.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
@@ -182,6 +182,7 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
   const primaryEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,
     requiredTasks: await requiredVerificationTasks(snapshot),
+    changedPaths: changedPaths(snapshot),
   }
   const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
   // 依存と識別番号は記録の間の現在の関係なので、変わっていない完了済みの記録も含めて見る。
