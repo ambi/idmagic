@@ -33,9 +33,7 @@ func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
-	}
+
 	job, err := userusecases.StartUserImportPreview(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Request().Body, time.Now().UTC())
 	if err != nil {
 		return writeUserImportError(c, err)
@@ -51,9 +49,7 @@ func HandleApplyAdminUserImport(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
-	}
+
 	job, err := userusecases.StartUserImportApply(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Param("preview_job_id"), time.Now().UTC())
 	if err != nil {
 		return writeUserImportError(c, err)
@@ -65,9 +61,7 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
-	}
+
 	tenantID := tenantports.TenantID(c.Request().Context())
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))
 	if errors.Is(err, jobsports.ErrJobNotFound) || job == nil || job.TenantID != tenantID || (job.Kind != jobsdomain.KindUserImportPreview && job.Kind != jobsdomain.KindUserImportApply) {

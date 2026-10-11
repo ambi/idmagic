@@ -267,8 +267,6 @@ func writeDataExportError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, idmdomain.ErrInvalidExportColumns):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_columns", "The selected columns are not allowed for this target.")
-	case errors.Is(err, idmdomain.ErrInvalidExportTarget):
-		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_target", "The export target is not supported.")
 	case errors.Is(err, idmusecases.ErrInvalidExportFilter):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_filter", "The export filter is not allowed.")
 	case errors.Is(err, idmusecases.ErrExportNotFound):

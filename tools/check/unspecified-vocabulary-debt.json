@@ -1,12 +1,7 @@
 {
   "identity-management": {
-    "errors": [
-      "invalid_target",
-      "user_import_unavailable",
-      "group_import_unavailable",
-      "group_membership_import_unavailable"
-    ],
-    "events": ["FederationLinked", "FederationUnlinked"]
+    "errors": [],
+    "events": []
   },
   "tenancy": {
     "errors": [],

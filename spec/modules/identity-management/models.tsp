@@ -190,10 +190,6 @@ model EmailUnchangedError is ProblemDetails;
 model InvalidExportColumnsError is ProblemDetails;
 
 
-@doc("エクスポートの対象の種類に対応していない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_target` である。")
-model InvalidExportTargetError is ProblemDetails;
-
-
 @doc("指定した状態の絞り込み条件は、エクスポートの対象に許されていない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_filter` である。")
 model InvalidExportFilterError is ProblemDetails;
 
@@ -975,24 +971,6 @@ model AgentListResponse {
 }
 
 
-@doc("外部の IdP の ID をローカルのユーザーに連携した（アカウントの連携）。")
-model FederationLinked {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  userId: string;
-  provider: string;
-}
-
-
-@doc("外部の IdP の ID とローカルのユーザーの連携を外した。")
-model FederationUnlinked {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  userId: string;
-  provider: string;
-}
-
-
 @doc("エンドユーザーが主たるメールアドレスの変更を申し出て、新しいアドレスへ確認のリンクを送った（セルフサービス）。ConfirmEmailChange までメールアドレスそのものは変わらない。`newEmailHash` は SHA-256 なので、平文が監査ログに届くことはない。")
 model EmailChangeRequested {
   occurredAt: utcDateTime;
@@ -1328,23 +1306,12 @@ model ActiveJobQuotaExceededError is ProblemDetails;
 model UserImportNotFoundError is ProblemDetails;
 
 
-@doc("ユーザーのインポートのサービスが設定されていないので、インポートを開始することも読むこともできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:user_import_unavailable` である。")
-model UserImportUnavailableError is ProblemDetails;
-
-
 @doc("リクエストが指定したグループのインポートのジョブが、このテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:group_import_not_found` である。")
 model GroupImportNotFoundError is ProblemDetails;
-
-
-@doc("グループのインポートのサービスが設定されていないので、インポートを開始することも読むこともできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:group_import_unavailable` である。")
-model GroupImportUnavailableError is ProblemDetails;
 
 
 @doc("リクエストが指定したグループのメンバーシップのインポートのジョブが、このテナントに存在しないか、パスの Group とは別の Group に属している。一つのグループが別のグループのジョブの id を漏らさないように、二つを一つの答えにまとめる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:group_membership_import_not_found` である。")
 model GroupMembershipImportNotFoundError is ProblemDetails;
 
-
-@doc("グループのメンバーシップのインポートのサービスが設定されていないので、インポートを開始することも読むこともできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:group_membership_import_unavailable` である。")
-model GroupMembershipImportUnavailableError is ProblemDetails;
 
 }

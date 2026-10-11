@@ -38,9 +38,7 @@ func HandleImportAdminGroups(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "group_import_unavailable", "The group import service is unavailable.")
-	}
+
 	job, err := groupusecases.StartGroupImportPreview(c.Request().Context(), groupImportStartDeps(d), actor.ID, c.Request().Body, time.Now().UTC())
 	if err != nil {
 		return writeGroupImportError(c, err)
@@ -56,9 +54,7 @@ func HandleApplyAdminGroupImport(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "group_import_unavailable", "The group import service is unavailable.")
-	}
+
 	job, err := groupusecases.StartGroupImportApply(c.Request().Context(), groupImportStartDeps(d), actor.ID, c.Param("preview_job_id"), time.Now().UTC())
 	if err != nil {
 		return writeGroupImportError(c, err)
@@ -70,9 +66,7 @@ func HandleGetAdminGroupImport(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "group_import_unavailable", "The group import service is unavailable.")
-	}
+
 	tenantID := tenantports.TenantID(c.Request().Context())
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))
 	if errors.Is(err, jobsports.ErrJobNotFound) || job == nil || job.TenantID != tenantID ||

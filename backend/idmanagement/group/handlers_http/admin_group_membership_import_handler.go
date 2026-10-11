@@ -31,11 +31,6 @@ func groupMembershipImportStartDeps(d Deps) groupusecases.GroupMembershipImportS
 	}
 }
 
-func writeGroupMembershipImportUnavailable(c *echo.Context) error {
-	return support.WriteProblem(c, http.StatusServiceUnavailable,
-		"group_membership_import_unavailable", "The group membership import service is unavailable.")
-}
-
 func HandleImportAdminGroupMembers(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
@@ -44,9 +39,7 @@ func HandleImportAdminGroupMembers(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return writeGroupMembershipImportUnavailable(c)
-	}
+
 	job, err := groupusecases.StartGroupMembershipImportPreview(
 		c.Request().Context(), groupMembershipImportStartDeps(d), actor.ID, c.Param("group_id"),
 		c.Request().Body, time.Now().UTC())
@@ -66,9 +59,7 @@ func HandleApplyAdminGroupMemberImport(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return writeGroupMembershipImportUnavailable(c)
-	}
+
 	job, err := groupusecases.StartGroupMembershipImportApply(
 		c.Request().Context(), groupMembershipImportStartDeps(d), actor.ID,
 		c.Param("group_id"), c.Param("preview_job_id"), time.Now().UTC())
@@ -84,9 +75,7 @@ func HandleGetAdminGroupMemberImport(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.CSVArtifacts == nil {
-		return writeGroupMembershipImportUnavailable(c)
-	}
+
 	tenantID := tenantports.TenantID(c.Request().Context())
 	groupID := c.Param("group_id")
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))

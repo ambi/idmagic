@@ -119,8 +119,6 @@ const AUTH_TYPES = new Set([
   'BackupCodeConsumed',
   'SessionEnded',
   'FederatedAuthenticated',
-  'FederationLinked',
-  'FederationUnlinked',
   'SessionImpersonationStarted',
   'SessionImpersonationEnded',
   ...FAIL_TYPES,

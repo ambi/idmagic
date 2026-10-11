@@ -47,8 +47,6 @@ var auditEventCategoryTypes = map[string][]string{
 		"BackupCodeConsumed",
 		"SessionEnded",
 		"FederatedAuthenticated",
-		"FederationLinked",
-		"FederationUnlinked",
 		"SessionImpersonationStarted",
 		"SessionImpersonationEnded",
 	},

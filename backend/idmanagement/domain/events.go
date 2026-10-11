@@ -2,26 +2,6 @@ package domain
 
 import "time"
 
-type FederationLinked struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	UserID   string    `json:"userId"`
-	Provider string    `json:"provider"`
-}
-
-func (e *FederationLinked) EventType() string     { return "FederationLinked" }
-func (e *FederationLinked) OccurredAt() time.Time { return e.At }
-
-type FederationUnlinked struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	UserID   string    `json:"userId"`
-	Provider string    `json:"provider"`
-}
-
-func (e *FederationUnlinked) EventType() string     { return "FederationUnlinked" }
-func (e *FederationUnlinked) OccurredAt() time.Time { return e.At }
-
 type EmailChangeRequested struct {
 	At           time.Time `json:"-"`
 	TenantID     string    `json:"tenantId"`

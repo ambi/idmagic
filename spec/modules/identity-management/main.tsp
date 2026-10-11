@@ -407,16 +407,6 @@ model ImportAdminUsersError403 {
   @body body: ImportAdminUsersError403Body;
 }
 
-union ImportAdminUsersError503Body {
-  IdMagic.Contract.UserImportUnavailableError,
-}
-
-model ImportAdminUsersError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: ImportAdminUsersError503Body;
-}
-
 @doc("管理者が、BOM の有無を問わない UTF-8 の CSV のアップロードを、副作用のないプレビューのジョブへストリーミングする。User のエクスポートと共有する設定可能な転送のポリシーのデフォルトは、データ行 100,000 行、ファイルあたり 64 MiB、フィールドあたり 64 KiB である。ペイロードは変更不可の成果物のストアに保持し、ジョブのパラメーターはテナントに限定した参照、サーバーが計算した SHA-256、大きさだけを保持する。ヘッダーは安定した機械用のキーを任意の順序と任意の部分集合で含めてよいが、未知の列、重複する列、パスワードまたはハッシュの列があると、それぞれファイル全体を拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminUsers")
@@ -426,7 +416,7 @@ op ImportAdminUsers(
   @header contentType: "text/csv",
   @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
-): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminUsersError403 | ImportAdminUsersError503;
+): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminUsersError403;
 
 model ApplyAdminUserImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -456,16 +446,6 @@ model ApplyAdminUserImportError403 {
   @body body: ApplyAdminUserImportError403Body;
 }
 
-union ApplyAdminUserImportError503Body {
-  IdMagic.Contract.UserImportUnavailableError,
-}
-
-model ApplyAdminUserImportError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: ApplyAdminUserImportError503Body;
-}
-
 @doc("管理者が、同じテナントの成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器がリポジトリの現在の状態に対して計画し直す。ファイル全体は行単位で成功し、各行のプロフィール、ロール、必須のアクション、カスタム属性は、一つの集約の変更として原子的に確定する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminUserImport")
@@ -473,7 +453,7 @@ model ApplyAdminUserImportError503 {
 @post
 op ApplyAdminUserImport(
   @path preview_job_id: string
-): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminUserImportError403 | ApplyAdminUserImportError503;
+): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminUserImportError403;
 
 model GetAdminUserImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -511,16 +491,6 @@ model GetAdminUserImportError404 {
   @body body: GetAdminUserImportError404Body;
 }
 
-union GetAdminUserImportError503Body {
-  IdMagic.Contract.UserImportUnavailableError,
-}
-
-model GetAdminUserImportError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminUserImportError503Body;
-}
-
 @doc("管理者が、同じテナントの CSV のインポートのジョブを、行ごとの検証と適用の結果とともに読む。行のエラーは、変更不可の結果の成果物に決まった大きさのページの塊として保持し、テナント、ジョブ、エラーの序数に結び付く署名した不透明なカーソルで、双方向に読む。上限のデフォルトは 100、最大は 200 である。ジョブの結果の JSON は、操作ごとの件数、結果の成果物のメタデータ、`error_total` だけを保持する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("GetAdminUserImport")
@@ -530,7 +500,7 @@ op GetAdminUserImport(
   @path job_id: string,
   @query cursor?: string,
   @query limit?: int64
-): GetAdminUserImportSuccess_200 | GetAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminUserImportError403 | GetAdminUserImportError404 | GetAdminUserImportError503;
+): GetAdminUserImportSuccess_200 | GetAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminUserImportError403 | GetAdminUserImportError404;
 
 model StartUserCsvExportSuccess_202 {
   @statusCode statusCode: 202;
@@ -562,7 +532,6 @@ model StartUserCsvExportError403 {
 
 union StartUserCsvExportError422Body {
   IdMagic.Contract.InvalidExportColumnsError,
-  IdMagic.Contract.InvalidExportTargetError,
   IdMagic.Contract.InvalidExportFilterError,
 }
 
@@ -811,7 +780,6 @@ model StartGroupCsvExportError403 {
 
 union StartGroupCsvExportError422Body {
   IdMagic.Contract.InvalidExportColumnsError,
-  IdMagic.Contract.InvalidExportTargetError,
   IdMagic.Contract.InvalidExportFilterError,
 }
 
@@ -878,16 +846,6 @@ model ImportAdminGroupsError403 {
   @body body: ImportAdminGroupsError403Body;
 }
 
-union ImportAdminGroupsError503Body {
-  IdMagic.Contract.GroupImportUnavailableError,
-}
-
-model ImportAdminGroupsError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: ImportAdminGroupsError503Body;
-}
-
 @doc("管理者が、BOM の有無を問わない UTF-8 の CSV のアップロードを、副作用のないプレビューのジョブへストリーミングする。Group のエクスポートと共有する設定可能な転送のポリシーのデフォルトは、データ行 100,000 行、ファイルあたり 64 MiB、フィールドあたり 64 KiB である。ペイロードは変更不可の成果物のストアに保持し、ジョブのパラメーターはテナントに限定した参照、サーバーが計算した SHA-256、大きさだけを保持する。ヘッダーは安定した機械用のキーを任意の順序と任意の部分集合で含めてよいが、未知の列、重複する列、パスワードまたはハッシュの列があると、それぞれファイル全体を拒否する。行の対象はまず `id`、次に `name` で解決する。`membership_type` は作成時に選べるが後から変えられず、二つの動的な規則の列は組み合わさった最終の状態として検証し、`custom:<key>` のセルは宣言した型が定める正規の字句の形で解析し、外部の取得元が所有する Group は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminGroups")
@@ -897,7 +855,7 @@ op ImportAdminGroups(
   @header contentType: "text/csv",
   @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
-): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupsError403 | ImportAdminGroupsError503;
+): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupsError403;
 
 model ApplyAdminGroupImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -927,16 +885,6 @@ model ApplyAdminGroupImportError403 {
   @body body: ApplyAdminGroupImportError403Body;
 }
 
-union ApplyAdminGroupImportError503Body {
-  IdMagic.Contract.GroupImportUnavailableError,
-}
-
-model ApplyAdminGroupImportError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: ApplyAdminGroupImportError503Body;
-}
-
 @doc("管理者が、同じテナントの成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器がリポジトリの現在の状態に対して計画し直す。ファイル全体は行単位で成功し、各行の名前、説明、連絡先のアドレス、ロール、カスタム属性、動的な規則は、一つの集約の変更として原子的に確定する。`lifecycle_action=delete` を含む行は、Group を削除し、その中のすべてのメンバーシップを連鎖して解除し、同じトランザクションで監査の記録を書く。削除は取り消せないので、CSV が指定しない Group を削除することはない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupImport")
@@ -944,7 +892,7 @@ model ApplyAdminGroupImportError503 {
 @post
 op ApplyAdminGroupImport(
   @path preview_job_id: string
-): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupImportError403 | ApplyAdminGroupImportError503;
+): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupImportError403;
 
 model GetAdminGroupImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -982,16 +930,6 @@ model GetAdminGroupImportError404 {
   @body body: GetAdminGroupImportError404Body;
 }
 
-union GetAdminGroupImportError503Body {
-  IdMagic.Contract.GroupImportUnavailableError,
-}
-
-model GetAdminGroupImportError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminGroupImportError503Body;
-}
-
 @doc("管理者が、同じテナントの CSV のグループのインポートのジョブを、行ごとの検証と適用の結果とともに読む。行のエラーは、変更不可の結果の成果物に決まった大きさのページの塊として保持し、テナント、ジョブ、エラーの序数に結び付く署名した不透明なカーソルで、双方向に読む。上限のデフォルトは 100、最大は 200 である。ジョブの結果の JSON は、操作ごとの件数、それとは別に数えた削除の件数、結果の成果物のメタデータ、`error_total` だけを保持する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminGroupImport")
@@ -1001,7 +939,7 @@ op GetAdminGroupImport(
   @path job_id: string,
   @query cursor?: string,
   @query limit?: int64
-): GetAdminGroupImportSuccess_200 | GetAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupImportError403 | GetAdminGroupImportError404 | GetAdminGroupImportError503;
+): GetAdminGroupImportSuccess_200 | GetAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupImportError403 | GetAdminGroupImportError404;
 
 model ListGroupExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -1213,7 +1151,6 @@ model StartGroupMemberCsvExportError403 {
 
 union StartGroupMemberCsvExportError422Body {
   IdMagic.Contract.InvalidExportColumnsError,
-  IdMagic.Contract.InvalidExportTargetError,
   IdMagic.Contract.InvalidExportFilterError,
 }
 
@@ -1464,16 +1401,6 @@ model ImportAdminGroupMembersError403 {
   @body body: ImportAdminGroupMembersError403Body;
 }
 
-union ImportAdminGroupMembersError503Body {
-  IdMagic.Contract.GroupMembershipImportUnavailableError,
-}
-
-model ImportAdminGroupMembersError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: ImportAdminGroupMembersError503Body;
-}
-
 @doc("管理者が、BOM の有無を問わない UTF-8 の CSV のアップロードを、副作用のないプレビューのジョブへストリーミングする。パスの `group_id` が、どの行も触れてよい唯一の Group である。`group_id` と `group_name` の列は読み取り専用の確認用で、別の Group を指定する行は、別の場所へ書くことなく拒否する。転送のポリシー、変更不可の成果物のストア、メタデータだけのジョブのパラメーターは、すべての CSV が共有するものである。ヘッダーは安定した機械用のキーを任意の順序と任意の部分集合で含めてよいが、`membership_state` は例外で、ファイルが表せる唯一の変更の意図なので必ず宣言しなければならない。行の User はまず `user_id`、次に `preferred_username` で解決し、`source` と `created_at` は受け付けて無視する。動的な Group、動的な規則が所有するメンバーシップ、外部の取得元が所有する Group または User は、それぞれフェイルクローズで拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminGroupMembers")
@@ -1484,7 +1411,7 @@ op ImportAdminGroupMembers(
   @header contentType: "text/csv",
   @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
-): ImportAdminGroupMembersSuccess_202 | ImportAdminGroupMembersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupMembersError403 | ImportAdminGroupMembersError503;
+): ImportAdminGroupMembersSuccess_202 | ImportAdminGroupMembersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupMembersError403;
 
 model ApplyAdminGroupMemberImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -1524,16 +1451,6 @@ model ApplyAdminGroupMemberImportError404 {
   @body body: ApplyAdminGroupMemberImportError404Body;
 }
 
-union ApplyAdminGroupMemberImportError503Body {
-  IdMagic.Contract.GroupMembershipImportUnavailableError,
-}
-
-model ApplyAdminGroupMemberImportError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: ApplyAdminGroupMemberImportError503Body;
-}
-
 @doc("管理者が、同じテナントと同じ Group の成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器が現在のメンバーシップに対して計画し直すので、プレビューの後に別の操作が行った追加や解除は、再生せずに判断し直す。受け付けた各行は、メンバーシップと監査の記録を原子的に確定し、失敗した行は、すでに適用した行をそのまま残す。触れるのはファイルが指定する行だけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupMemberImport")
@@ -1542,7 +1459,7 @@ model ApplyAdminGroupMemberImportError503 {
 op ApplyAdminGroupMemberImport(
   @path group_id: string,
   @path preview_job_id: string
-): ApplyAdminGroupMemberImportSuccess_202 | ApplyAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupMemberImportError403 | ApplyAdminGroupMemberImportError404 | ApplyAdminGroupMemberImportError503;
+): ApplyAdminGroupMemberImportSuccess_202 | ApplyAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupMemberImportError403 | ApplyAdminGroupMemberImportError404;
 
 model GetAdminGroupMemberImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -1580,16 +1497,6 @@ model GetAdminGroupMemberImportError404 {
   @body body: GetAdminGroupMemberImportError404Body;
 }
 
-union GetAdminGroupMemberImportError503Body {
-  IdMagic.Contract.GroupMembershipImportUnavailableError,
-}
-
-model GetAdminGroupMemberImportError503 {
-  @statusCode statusCode: 503;
-  @header contentType: "application/problem+json";
-  @body body: GetAdminGroupMemberImportError503Body;
-}
-
 @doc("管理者が、同じテナントと同じ Group の CSV のグループのメンバーシップのインポートのジョブを、行ごとの検証と適用の結果とともに読む。行のエラーは、変更不可の結果の成果物に決まった大きさのページの塊として保持し、テナント、ジョブ、エラーの序数に結び付く署名した不透明なカーソルで、双方向に読む。上限のデフォルトは 100、最大は 200 である。ジョブの結果の JSON は、操作ごとの件数、それとは別に数えた解除の件数、結果の成果物のメタデータ、`error_total` だけを保持する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminGroupMemberImport")
@@ -1600,7 +1507,7 @@ op GetAdminGroupMemberImport(
   @path job_id: string,
   @query cursor?: string,
   @query limit?: int64
-): GetAdminGroupMemberImportSuccess_200 | GetAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupMemberImportError403 | GetAdminGroupMemberImportError404 | GetAdminGroupMemberImportError503;
+): GetAdminGroupMemberImportSuccess_200 | GetAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupMemberImportError403 | GetAdminGroupMemberImportError404;
 
 model UpdateAdminUserSuccess_200 {
   @statusCode statusCode: 200;
