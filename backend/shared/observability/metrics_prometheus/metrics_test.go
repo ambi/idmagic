@@ -22,7 +22,8 @@ func scrape(t *testing.T, m *Metrics) string {
 	return rec.Body.String()
 }
 
-func TestMetricsExposesREDAndGoldenSignals(t *testing.T) {
+//spec:covers REQ-SYSTEM-001: プル型の /metrics が HTTP、認証、Worker の既存の指標を公開する。
+func TestCharacterizeMetricsExposition(t *testing.T) {
 	t.Parallel()
 
 	m, err := NewMetrics("test-service", "0.0.0-test")
