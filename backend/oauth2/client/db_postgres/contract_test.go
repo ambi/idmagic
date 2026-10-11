@@ -5,8 +5,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/client/testing_contract"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestPersistenceContract(t *testing.T) {

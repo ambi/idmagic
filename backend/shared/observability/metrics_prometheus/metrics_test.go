@@ -1,4 +1,4 @@
-package metrics_prometheus
+package metrics_prometheus_test
 
 import (
 	"net/http"
@@ -8,8 +8,14 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsmetrics "github.com/ambi/idmagic/backend/jobs/metrics_prometheus"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
+
+// 既存の特性化テストの本文を保ち、Jobs の型変換を含めて出力を観測する。
+type Metrics = jobsmetrics.Metrics
+
+var NewMetrics = jobsmetrics.NewMetrics
 
 func scrape(t *testing.T, m *Metrics) string {
 	t.Helper()

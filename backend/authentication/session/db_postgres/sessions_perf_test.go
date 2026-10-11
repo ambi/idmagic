@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 // sessionBatchPool is the subset of *pgxpool.Pool that bulk-insert helpers need.

@@ -31,6 +31,7 @@
 | --- | --- |
 | `domain` | `Job`、`JobKind` とレーンの登録、ドメインイベント |
 | `ports` | `JobRepository` |
+| `metrics_prometheus` | 型付きのレーンを計測ラベルの文字列へ変換し、共有の計測 provider を使う。Worker の HTTP と監査も同じ provider へ記録する |
 | `usecases` | 投入、`Runner` による取得と実行、ハンドラーの一覧、管理の操作、指標 |
 | `handlers_http` | テナント管理の経路とシステムの経路の管理 API |
 | `db_postgres`、`db_memory` | `ports` の PostgreSQL の実装と、テストとローカルの構成で使うメモリの実装 |

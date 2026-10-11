@@ -7,8 +7,8 @@ import (
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/db_postgres"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 //spec:covers EX-IDGOVERNANCE-004-01: User の変更と queued の WorkflowRun と pending のステップは 1 つのトランザクションで確定し、WorkflowRun の保存が失敗すれば User の変更も残らないこと、同じ重複排除キーの再配信は既存の WorkflowRun に収束してステップを作らないことを、PostgreSQL の保存先で固定する。

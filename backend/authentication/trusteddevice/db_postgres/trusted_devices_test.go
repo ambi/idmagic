@@ -9,8 +9,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 const testMaxAge = 30 * 24 * time.Hour

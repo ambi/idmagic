@@ -6,8 +6,8 @@ import (
 	"time"
 
 	webauthnpg "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"

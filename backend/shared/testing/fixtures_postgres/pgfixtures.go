@@ -1,10 +1,6 @@
-// Package pgfixtures は per-context postgres アダプタのテストが共通で使う
-// FK 親フィクスチャ (Tenant / User / Group / OAuth2Client) を提供する (wi-172)。
-//
-// shared/db_postgres 自身の内部テスト (package postgres) は、
-// 本パッケージを import すると postgres -> pgfixtures -> postgres の import cycle に
-// なるため使えず、引き続き自前の unexported ヘルパーを持つ。本パッケージは
-// per-context (application 等) の postgres テストパッケージ専用。
+// Package fixtures_postgres は PostgreSQL テストの前提を組み立てる。
+// 各所有モジュールのアダプターを通じて FK の親行を投入するテスト専用の組み立て地点である。
+// storage/db_postgres の内部テストから使うと import が循環するため、そこでの前提は内部で組み立てる。
 package fixtures_postgres
 
 import (

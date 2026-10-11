@@ -5,8 +5,8 @@ import (
 	"context"
 	"testing"
 
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"

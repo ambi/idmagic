@@ -516,39 +516,22 @@
       "id": "shared-dependency:shared->IdManagement",
       "sourceModule": "shared",
       "targetModule": "IdManagement",
-      "violations": [
-        "shared-dependency:backend/shared/security/tokens_jose->IdManagement",
-        "shared-dependency:backend/shared/storage/fixtures_postgres->IdManagement"
-      ],
-      "reason": "tokens_jose reads IdManagement's user type to build tokens, and fixtures_postgres seeds users and groups through IdManagement's adapters. The signer moves into OAuth2 in wi-91505, and the test-only fixtures move out of the shared library in wi-26617 (D5)."
-    },
-    {
-      "id": "shared-dependency:shared->Jobs",
-      "sourceModule": "shared",
-      "targetModule": "Jobs",
-      "violations": ["shared-dependency:backend/shared/observability/metrics_prometheus->Jobs"],
-      "reason": "metrics_prometheus names Jobs' domain types in its job metrics. The meaning of job kinds belongs to Jobs, so the metrics take shared values that Jobs provides (D5, D6) in wi-26617."
+      "violations": ["shared-dependency:backend/shared/security/tokens_jose->IdManagement"],
+      "reason": "tokens_jose はトークンの組み立てに IdManagement の User 型を使う。署名器を OAuth2 へ移す作業 wi-91505 で解消する（D5）。"
     },
     {
       "id": "shared-dependency:shared->OAuth2",
       "sourceModule": "shared",
       "targetModule": "OAuth2",
-      "violations": [
-        "shared-dependency:backend/shared/events/sinks_console->OAuth2",
-        "shared-dependency:backend/shared/security/tokens_jose->OAuth2",
-        "shared-dependency:backend/shared/storage/fixtures_postgres->OAuth2"
-      ],
-      "reason": "tokens_jose builds OAuth2 tokens with OAuth2's types and ports, fixtures_postgres seeds OAuth2 clients, and sinks_console names an OAuth2 port type. The signer moves into OAuth2 in wi-91505; the fixtures and the console sink stop naming module types in wi-26617 (D5, D6)."
+      "violations": ["shared-dependency:backend/shared/security/tokens_jose->OAuth2"],
+      "reason": "tokens_jose は OAuth2 の型とポートを使ってトークンを組み立てる。署名器を OAuth2 へ移す作業 wi-91505 で解消する（D5）。"
     },
     {
       "id": "shared-dependency:shared->SigningKeys",
       "sourceModule": "shared",
       "targetModule": "SigningKeys",
-      "violations": [
-        "shared-dependency:backend/shared/security/tokens_jose->SigningKeys",
-        "shared-dependency:backend/shared/storage/fixtures_postgres->SigningKeys"
-      ],
-      "reason": "tokens_jose selects signing keys through SigningKeys' types and ports, and fixtures_postgres seeds signing keys. The signer moves into OAuth2 in wi-91505 and the fixtures move out of the shared library in wi-26617 (D5)."
+      "violations": ["shared-dependency:backend/shared/security/tokens_jose->SigningKeys"],
+      "reason": "tokens_jose は SigningKeys の型とポートで署名鍵を選ぶ。署名器を OAuth2 へ移す作業 wi-91505 で解消する（D5）。"
     },
     {
       "id": "shared-dependency:shared->Tenancy",
@@ -560,10 +543,9 @@
         "shared-dependency:backend/shared/security/salts_memory->Tenancy",
         "shared-dependency:backend/shared/security/salts_postgres->Tenancy",
         "shared-dependency:backend/shared/security/tokens_jose->Tenancy",
-        "shared-dependency:backend/shared/storage/db_memory->Tenancy",
-        "shared-dependency:backend/shared/storage/fixtures_postgres->Tenancy"
+        "shared-dependency:backend/shared/storage/db_memory->Tenancy"
       ],
-      "reason": "support_http resolves the tenant, ratelimit/db_postgres, salts_memory, and salts_postgres read the tenant ID through Tenancy's ports, db_memory names Tenancy's type, tokens_jose reads the tenant, and fixtures_postgres seeds tenants. The storage and salt libraries need only the tenant ID string and the middleware belongs to Tenancy (D1, D5) in wi-73604; tokens_jose and the fixtures leave the shared library in wi-91505 and wi-26617."
+      "reason": "support_http はテナントを解決し、ratelimit/db_postgres、salts_memory、salts_postgres は Tenancy のポートからテナント ID を読み、db_memory は Tenancy の型を使う。これらは wi-73604 で解消する（D1、D5）。tokens_jose のテナント参照は、署名器を OAuth2 へ移す作業 wi-91505 で解消する。"
     },
     {
       "id": "table-write:Application->OAuth2",

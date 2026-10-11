@@ -10,8 +10,8 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 // seedApplication は指定テナントに Application を作成して返す。application_id は UUID 列の

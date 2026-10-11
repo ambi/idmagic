@@ -80,11 +80,13 @@ backend/idmanagement/
 | 種類 | 範囲 | 依存の扱い |
 | --- | --- | --- |
 | モジュール | 責務表に宣言した実装範囲 | [モジュール間の依存規則](#モジュール間の依存規則)に従う |
-| 組み立て地点 | 責務表の System 行が列挙するパッケージ接頭辞。`backend/cmd`、`backend/shared/http/server_http`、`backend/shared/http/testing_stack` | 結線に必要な依存を持てる。モジュール間の循環の集計に含めず、公開範囲は公開方式に従う |
+| 組み立て地点 | 責務表の System 行が列挙するパッケージ接頭辞。`backend/cmd`、`backend/shared/http/server_http`、`backend/shared/http/testing_stack`、`backend/shared/testing/fixtures_postgres` | 結線に必要な依存を持てる。モジュール間の循環の集計に含めず、公開範囲は公開方式に従う |
 | 共有ライブラリ | `backend/shared` のうち組み立て地点を除いたもの | どのモジュールにも依存しない |
 
 接頭辞はディレクトリ区画で照合し、同名で始まる別のディレクトリを含めない。
 `testing_stack` を組み立て地点に含めるのは、テスト用の HTTP スタック全体を `_test.go` ではないファイルで組み立てており、実態が `server_http` と同じ結線だからである。
+`testing/fixtures_postgres` は、PostgreSQL テストの FK の親行を各所有モジュールのアダプターから投入する。
+テストの前提を結線するための組み立て地点であり、本番の入口は利用しない。
 同じ接頭辞の重複した割り当て、責務表にないモジュール、どれにも分類できない本番パッケージは検査を失敗させる。
 
 `backend/shared` は、複数のモジュールが実際に共有する技術的な能力のための場所である。

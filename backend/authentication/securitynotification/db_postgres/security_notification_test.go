@@ -8,8 +8,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/securitynotification/domain"
 	"github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 //spec:covers REQ-AUTHENTICATION-034: 保存した設定が読み戻せ、行が無い場合は「すべて有効」になる。

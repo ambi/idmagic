@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	fixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	fixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 )
 

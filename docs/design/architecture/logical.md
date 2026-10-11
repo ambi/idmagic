@@ -36,7 +36,7 @@ IdMagic は、一つの Go モジュール（`go.mod`）の中でモジュール
 
 | モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |
 | --- | --- | --- | --- | --- |
-| [System](../../modules/system/README.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `backend/shared/http/testing_stack`, `frontend/` | 起動、機能選択、経路の組み立て、健全性、画面 |
+| [System](../../modules/system/README.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `backend/shared/http/testing_stack`, `backend/shared/testing/fixtures_postgres`, `frontend/` | 起動、機能選択、経路の組み立て、テスト前提の組み立て、健全性、画面 |
 | [Tenancy](../../modules/tenancy/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/tenancy` | Tenant と realm、テナント設定、属性スキーマ、制御面の管理 |
 | [IdManagement](../../modules/identity-management/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/idmanagement` | User、Group、Agent、プロフィール、アイデンティティのライフサイクル |
 | [IdGovernance](../../modules/identity-governance/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {

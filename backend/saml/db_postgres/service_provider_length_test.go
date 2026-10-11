@@ -9,8 +9,8 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func serviceProvider(tenantID, entityID string) *samldomain.SamlServiceProvider {

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }

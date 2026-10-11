@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/authentication/totp/testing_contract"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 

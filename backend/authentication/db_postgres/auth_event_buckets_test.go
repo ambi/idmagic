@@ -6,8 +6,8 @@ import (
 	"time"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestAuthEventBucketStoreRecordListAndSweep(t *testing.T) {

@@ -1,18 +1,17 @@
-// ConsoleSink は Console を oauth2/ports.EventSink interface に適合させるアダプタ。
 package sinks_console
 
 import (
 	"context"
 
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+// ConsoleSink は共通のドメインイベントを JSON へ出力する。
 type ConsoleSink struct {
 	console *Console
 }
 
-func NewConsoleSink() oauthports.EventSink {
+func NewConsoleSink() *ConsoleSink {
 	return &ConsoleSink{console: NewConsole()}
 }
 

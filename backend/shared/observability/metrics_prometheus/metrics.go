@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -43,10 +42,8 @@ type Metrics struct {
 	tokenIssuance  metric.Int64Counter
 	tokenDuration  metric.Float64Histogram
 
-	// jobs* back usecases.JobsMetrics (wi-261 T006): lane is always
-	// a bounded domain.ExecutionLane and outcome is always "succeeded" or
-	// "failed" — never tenant_id/job_id (docs/modules/system/
-	// MetricsExposition).
+	// レーンと結果の語彙は提供側が決める。テナントやジョブの識別子を
+	// ラベルへ含めず、有限の値だけを渡す。
 	jobsClaimLatency metric.Float64Histogram
 	jobsDuration     metric.Float64Histogram
 	jobsOutcome      metric.Int64Counter
@@ -262,37 +259,28 @@ func (m *Metrics) IncDetachedCompletionFailure() {
 	m.detachedFailed.Add(context.Background(), 1)
 }
 
-// RecordJobClaimLatency implements usecases.JobsMetrics (wi-261 T006).
-func (m *Metrics) RecordJobClaimLatency(lane domain.ExecutionLane, latency time.Duration) {
-	m.jobsClaimLatency.Record(context.Background(), latency.Seconds(), metric.WithAttributes(attribute.String("lane", string(lane))))
+func (m *Metrics) RecordJobClaimLatency(lane string, latency time.Duration) {
+	m.jobsClaimLatency.Record(context.Background(), latency.Seconds(), metric.WithAttributes(attribute.String("lane", lane)))
 }
 
-// RecordJobDuration implements usecases.JobsMetrics (wi-157). jobs_outcome_total
-// with outcome="failed" counts only terminal failures, so it doubles as the
-// dead-letter count; this histogram covers every attempt, retried or not.
-func (m *Metrics) RecordJobDuration(lane domain.ExecutionLane, outcome string, duration time.Duration) {
+func (m *Metrics) RecordJobDuration(lane, outcome string, duration time.Duration) {
 	m.jobsDuration.Record(context.Background(), duration.Seconds(), metric.WithAttributes(
-		attribute.String("lane", string(lane)), attribute.String("outcome", outcome),
+		attribute.String("lane", lane), attribute.String("outcome", outcome),
 	))
 }
 
-// RecordJobOutcome implements usecases.JobsMetrics (wi-261 T006).
-func (m *Metrics) RecordJobOutcome(lane domain.ExecutionLane, outcome string) {
+func (m *Metrics) RecordJobOutcome(lane, outcome string) {
 	m.jobsOutcome.Add(context.Background(), 1, metric.WithAttributes(
-		attribute.String("lane", string(lane)), attribute.String("outcome", outcome),
+		attribute.String("lane", lane), attribute.String("outcome", outcome),
 	))
 }
 
-// RecordJobRetry implements usecases.JobsMetrics (wi-261 T006).
-func (m *Metrics) RecordJobRetry(lane domain.ExecutionLane) {
-	m.jobsRetry.Add(context.Background(), 1, metric.WithAttributes(attribute.String("lane", string(lane))))
+func (m *Metrics) RecordJobRetry(lane string) {
+	m.jobsRetry.Add(context.Background(), 1, metric.WithAttributes(attribute.String("lane", lane)))
 }
 
-// RecordJobQueueDepth records one lane's current queued or running row count
-// (wi-261 T006), sampled periodically by the worker from
-// ports.JobRepository.LaneDepths. status is "queued" or "running".
-func (m *Metrics) RecordJobQueueDepth(ctx context.Context, lane domain.ExecutionLane, status string, count int64) {
+func (m *Metrics) RecordJobQueueDepth(ctx context.Context, lane, status string, count int64) {
 	m.jobsQueueDepth.Record(ctx, count, metric.WithAttributes(
-		attribute.String("lane", string(lane)), attribute.String("status", status),
+		attribute.String("lane", lane), attribute.String("status", status),
 	))
 }

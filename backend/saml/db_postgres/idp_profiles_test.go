@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/saml/domain"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestSamlIdentityProviderProfileRepository(t *testing.T) {

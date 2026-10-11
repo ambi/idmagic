@@ -6,8 +6,8 @@ import (
 
 	logoutpostgres "github.com/ambi/idmagic/backend/oauth2/logout/db_postgres"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestLogoutNotificationSurvivesStoreReconstruction(t *testing.T) {

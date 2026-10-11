@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 func TestConsentRepositoryListPageByTenant(t *testing.T) {
