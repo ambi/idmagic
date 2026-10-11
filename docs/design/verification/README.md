@@ -20,6 +20,19 @@
 同じ観点の一次情報を二つ置くと、片方だけが更新される。
 検証設計で定めるのは、要求の側から見てどの証拠を必要とするかであり、その証拠をどう書くかではない。
 
+## 証拠の状態と合否
+
+規範 ID の引用、検査の実行、変更耐性はそれぞれ独立した証拠とする。
+引用の存在だけでは、実行成功も仕様の完全性も示さない。
+テストが成功しても、宣言した故障を検出する能力は別に確かめる。
+
+結果の対象には revision と検査条件を結び付ける。
+静的解析が不完全な対象と、スキップまたは未実行のテストは未検証として残し、成功へ丸めない。
+必須の DB 検証の未実行は CI の失敗条件とする。
+静的解析が不完全な変更操作は、同じ入力と実行で得た契約テストの代替証拠がなければ失敗にする。
+関係のない操作の未検証は明示して残し、その理由だけで全検査を拒否しない。
+区分、代替証拠と結果の形式は[テスト方針](../../development/testing.md#検証結果の区分)が定める。
+
 ## 子文書
 
 | 文書 | 内容 |
@@ -41,11 +54,11 @@
 | 一次情報文書と TypeSpec の規範の形式、ID、参照、生成物 | 静的解析 | `mise run check-spec`、`mise run verify-spec` | 形式、ID の一意性、参照の解決、再生成した成果物との一致がすべて成立する | リポジトリ内 |
 | 実行可能な具体例の表示と実行 | 一次情報の共有とドリフト検査、製品テスト | `mise run check-spec` と対象のテストタスク | 同じ独立した期待結果から表示した例が一致し、その例を被覆する製品テストが通る | リポジトリ内 |
 | モジュールの規範シナリオ `REQ-*` | 単体、アダプター統合、受け入れ | `mise run test-go-race`、`mise run test-ui-unit` | 当該 ID を `//spec:covers` で名指すテストが通る | リポジトリ内 |
-| [全体の標準仕様](../../requirements/standards.md)とモジュールの標準仕様の規範 ID | 上記に加えて被覆の検査 | `mise run check-spec` | 宣言したすべての規範 ID を、いずれかのテストが名指す | リポジトリ内 |
-| 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査 | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run check-api-compat` | 宣言と実装に差が無く、公開済みの契約を壊す変更が無い | リポジトリ内 |
+| [全体の標準仕様](../../requirements/standards.md)とモジュールの標準仕様の規範 ID | 引用の検査と対応する実行結果 | `mise run check-spec` と対象のテストタスク | 引用が解決し、必要な対応テストがスキップせず成功する。引用の検査だけでは実行を示さない | リポジトリ内 |
+| 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査、解析対象外の変更操作の契約テスト | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run test-go-race`、`mise run check-published-api-compat` | 解析できた範囲に差分がなく、解析対象外の変更操作に代替証拠がある。互換性は公開状態に応じて判定する | リポジトリ内 |
 | 利用者経路とブラウザー固有の振る舞い | E2E | `mise run test-ui-e2e` | 正式な入口から最終効果までが実配線で成立する | リポジトリ内 |
 | WCAG 2.2 のアクセシビリティ規範 | 単体、E2E | `mise run test-ui-unit`、`mise run test-ui-e2e` | 当該規範 ID を名指すテストが通る | リポジトリ内 |
-| 脅威モデルの `THREAT-NNN` と許可しない操作 | セキュリティ検証 | `mise run check-security-controls`、`mise run report-security-test-gaps` | 許可しないと宣言した制御にテストがあり、許可しなかったときに状態の変更、トークンの発行、通知のいずれも残らない | リポジトリ内。脅威ごとの手段は[セキュリティ検証設計](security.md)が示す |
+| 脅威モデルの `THREAT-NNN` と許可しない操作 | セキュリティ検証 | `mise run check-security-controls`、`mise run report-security-test-gaps` と対象のテストタスク | 無作用を観測するテストが実行され成功する。ソース調査の候補と不足件数だけでは実行も検出能力も示さない | リポジトリ内。脅威ごとの手段は[セキュリティ検証設計](security.md)が示す |
 | 依存と供給鎖 | 依存監査、シークレット走査、静的解析 | `mise run audit-dependencies`、`mise run audit-go-reachability`、`mise run check-vulnerability-suppressions`、`mise run lint-repo`、CI の CodeQL | 未処理の既知脆弱性と、理由または期限を欠く抑制が無い | リポジトリ内。成果物の来歴の確認は手段が未定 |
 | `SLO-*` を判定する監視資産 | 運用検証 | [宣言的なファイルの検証](#宣言的なファイルの検証)が定める | 同じ節が定める | リポジトリ内 |
 | `SLO-*` の達成 | 稼働中の指標の評価 | 監視基盤が記録した指標を[品質要件](../../requirements/quality.md#測定境界)の母集団で集計する | 30 日の移動窓で目標を満たす | 実環境が必要 |

@@ -1,8 +1,12 @@
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import type { OperationVerification } from './operation-verification.ts'
+import { mkdir } from 'node:fs/promises'
+import { verificationInput } from '../../verification/src/input.ts'
 
 export type CheckOutcome = {
   ok: boolean
   lines: string[]
+  operations?: OperationVerification[]
 }
 
 export type CheckOptions = {
@@ -70,12 +74,44 @@ if (import.meta.main) {
     .slice(0, baseRevisionIndex === -1 ? undefined : baseRevisionIndex)
     .filter((arg) => !arg.startsWith('--'))
   const checks = selectChecks(selectors)
+  const versioned =
+    Bun.spawnSync(['git', 'rev-parse', '--verify', 'HEAD'], {
+      cwd: snapshot.root,
+      stderr: 'ignore',
+    }).exitCode === 0
+  const input = versioned
+    ? await verificationInput(snapshot, options.baseRevision)
+    : { identity: 'unverified: no Git revision' }
   const results = await runChecks(checks, snapshot, options)
+  await mkdir(snapshot.path('.verification'), { recursive: true })
+  const reportName = (selectors.join('-') || 'all').replace(/[^a-zA-Z0-9-]/g, '-').slice(0, 100)
+  const reportPath = snapshot.path(`.verification/check-${reportName}.json`)
+  await Bun.write(
+    reportPath,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        input,
+        command: process.argv.slice(1),
+        checks: results.map((result) => ({
+          ...result,
+          state: !result.ok
+            ? 'failed'
+            : result.operations?.some((entry) => entry.state === 'unverified')
+              ? 'unverified'
+              : 'verified',
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+  )
   for (const result of results) {
     for (const line of result.lines) {
       if (result.ok) console.log(line)
       else console.error(line)
     }
   }
+  console.log(`static verification report: ${reportPath}`)
   if (results.some((result) => !result.ok)) process.exit(1)
 }

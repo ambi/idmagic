@@ -186,8 +186,8 @@ export async function checkDocuments(
     lines: [
       ...lines,
       ...(options.verbose ? [] : [`ok  ${paths.length} canonical document(s)`]),
-      `ok  normative coverage (${standards.length} standard(s), ${scenarios.length} rule(s), ` +
-        `${examples.length} example(s), ${cited.size} id(s) named by a test)`,
+      `ok  normative references (${standards.length} standard(s), ${scenarios.length} rule(s), ` +
+        `${examples.length} example(s), ${cited.size} id(s) named by a test; source inspection only, execution and change-resistance not collected)`,
     ],
   }
 }

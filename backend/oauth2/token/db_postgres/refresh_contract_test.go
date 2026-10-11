@@ -1,6 +1,7 @@
 package db_postgres
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
+
+func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
 
 func TestRefreshPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)

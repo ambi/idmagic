@@ -19,6 +19,13 @@ CI で実行するジョブと検査の一次情報は [`.github/workflows/idmag
 初回公開前は互換性比較を省略し、公開後は破壊的変更を拒否する。
 現在の TypeSpec と実装の整合、セキュリティとデータの検査は公開状態によらず実行する。
 
+Go の検証では DB を必須にし、起動失敗やスキップを成功にしない。
+変更操作のうち静的解析が不完全なものには、同じ実行で成功した契約テストを要求する。
+変更基準には Pull Request の base SHA または push 前の SHA を渡す。
+判定と代替証拠の形式は[テスト方針](testing.md#検証結果の区分)が定める。
+実行結果の要約を job summary に表示し、失敗した場合も `.verification/` の構造化結果と生の Go イベントを artifact に保存する。
+テスト実行まで到達しなかった場合は結果の欠落として表示され、以前の実行を成功の証拠に使わない。
+
 ## CI で検証しないもの
 
 **infra の宣言的アセットは CI で検証しない。** Docker Compose の構成、Kubernetes のオーバーレイ、Prometheus の規則、k6 のモジュールには、それぞれ `mise run check-compose` / `check-k8s` / `check-monitoring` / `check-k6` があるが、どの集約タスクにも CI にも入れていない。いずれも kustomize、kubeconform、promtool、k6 のイメージを取得してから実行するため、1 回あたりの所要が他の全検査の合計を超える。得られるのは変更頻度の低いアセットの構文検査であり、**最も変わらない入力に、最も重い検査を毎 Pull Request で払う形になる**ので採らない。

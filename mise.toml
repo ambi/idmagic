@@ -324,23 +324,18 @@ run = "golangci-lint fmt"
 
 [tasks.test-go]
 description = "Run Go tests"
-run = "go test ./..."
+depends = ["compile-spec"]
+run = "bun run tools/verification/src/main.ts --full --report .verification/test-go.json -- ./..."
 
 [tasks.test-go-package]
 description = "Run race-enabled Go tests for one package"
-# 最後のゲート (test-go-race) と同じビルド構成にする。Go のテストキャッシュ項目は -race の
-# 有無で共有されないので、狭い段を -race なしで回すと、その結果は最後のゲートに 1 件も
-# 引き継がれない。1 パッケージなら -race でも数秒であり、そのぶん最後が短くなる。
-#
-# -count 1 は結果キャッシュの読み出しだけを止める。書き込みは残るので、最後のゲートへ
-# 引き継がれる分は変わらない。止める理由は故障注入である。製品側へ故障を入れて同じ
-# パッケージを回したとき、キャッシュが効くと `ok (cached)` が返り、検出できなかったのか
-# 走っていないのかを見分けられない。wi-565 の作業中に実際に 1 度誤読した。
+# 最後のゲートと同じ -race のビルド構成を使い、ビルドキャッシュを共有する。
+# runner は -count=1 で結果キャッシュを無効にし、今回の実行とスキップを記録する。
 run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run test-go-package -- <package>" >&2; exit 2; }
-go test -race -count 1 "$1"
+bun run tools/verification/src/main.ts --report .verification/test-go-package.json -- -race "$1"
 '''
 
 [tasks.test-go-changed]
@@ -355,7 +350,7 @@ if [ -z "$packages" ]; then
   echo "no changed Go packages" >&2
   exit 0
 fi
-echo "$packages" | tr '\n' ' ' | xargs go test -race
+echo "$packages" | tr '\n' ' ' | xargs bun run tools/verification/src/main.ts --report .verification/test-go-changed.json -- -race
 '''
 
 [tasks.test-go-test]
@@ -365,7 +360,7 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -ge 2 || { echo "usage: mise run test-go-test -- <package> <test>" >&2; exit 2; }
-go test "$1" -run "^$2\$" -count 1
+bun run tools/verification/src/main.ts --report .verification/test-go-test.json -- "$1" -run "^$2\$"
 '''
 
 [tasks.benchmark-go-package]
@@ -417,7 +412,12 @@ run = ["go get -u -t ./...", "go mod tidy"]
 
 [tasks.test-go-race]
 description = "Run race-enabled Go tests"
-run = "go test -race ./..."
+depends = ["compile-spec"]
+run = "bun run tools/verification/src/main.ts --full --report .verification/test-go-race.json -- -race ./..."
+
+[tasks.report-verification]
+description = "Report test execution, analysis gaps, and uncollected change-resistance evidence"
+run = "bun run tools/verification/src/report.ts \"$@\""
 
 [tasks.test-go-cover]
 description = "Run Go tests with coverage"
@@ -425,7 +425,7 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -le 2 || { echo "usage: mise run test-go-cover -- [package] [skip-pattern]" >&2; exit 2; }
-go test -coverprofile=coverage.out -covermode=atomic -skip "${2:-^$}" "${1:-./...}"
+bun run tools/verification/src/main.ts --report .verification/test-go-cover.json -- -coverprofile=coverage.out -covermode=atomic -skip "${2:-^$}" "${1:-./...}"
 go tool cover -func=coverage.out
 '''
 

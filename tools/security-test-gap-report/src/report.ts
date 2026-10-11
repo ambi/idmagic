@@ -129,8 +129,9 @@ export function renderReport(report: SecurityTestGapReport, list: boolean): stri
   }
 
   const lines = [
-    `refused state changes covered by a test : ${report.refused}`,
-    `... with no read-back proving no effect : ${report.gaps.length}`,
+    `refusal test source candidates : ${report.refused}`,
+    `... with no no-effect assertion candidate : ${report.gaps.length}`,
+    'source inspection only; execution, skips, and change-resistance evidence are not collected',
     '',
   ]
   for (const [area, count] of [...byArea.entries()].sort((a, b) => b[1] - a[1])) {

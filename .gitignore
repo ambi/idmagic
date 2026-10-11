@@ -7,6 +7,9 @@
 *.out
 coverage.out
 
+# Git revision と作業ツリーに結び付けた検証結果。
+/.verification/
+
 # Node / frontend
 frontend/node_modules/
 frontend/dist/

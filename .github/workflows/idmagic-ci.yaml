@@ -12,6 +12,9 @@ jobs:
   verify:
     name: Verify specification, backend, and UI
     runs-on: ubuntu-latest
+    env:
+      VERIFICATION_REQUIRE_DB: "1"
+      VERIFICATION_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -35,6 +38,17 @@ jobs:
         run: mise run lint-go
       - name: Test Go (Race Detector)
         run: mise run test-go-race
+      - name: Publish verification results
+        if: ${{ !cancelled() }}
+        run: mise run report-verification
+      - name: Upload verification evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-evidence
+          path: .verification/
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Verify UI (Dependencies, Lint, Format & Types)
         run: |
           mise run check-ui-dependencies
