@@ -82,7 +82,7 @@ spec_impact:
 3. 両方で必要な最小範囲を選び、抽出が現在の開発を軽くする根拠を記録する。
 
 条件が成立するまでは、新しい部分木、差し込み点、固有語の検査を導入しない。
-規約自体の重複は[日常規約の整理](wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)で先に減らせる。
+規約自体の重複は[日常規約の整理](../done/wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)で先に減らせる。
 既存の選択肢の比較は再評価の材料として残し、汎用化を完了するためだけに未使用の仕組みを作らない。
 
 ### 汎用と固有の判定基準

@@ -19,11 +19,13 @@
 
 ## 検証
 
-Pull Request を出す前に `mise run verify` を通してください。画面に届く変更なら `mise run test-ui-e2e` も実行してください (`mise run verify-full` は両方を走らせます)。
+Pull Request を出す前に、[最終検査の選択](docs/development/specification-first-workflow.md#最終検査の選択)に従って、実際の差分と影響範囲に必要な検査を通してください。
 
 **必須の検査の一覧をこの文書に複製しません。** 正本は [.github/workflows/idmagic-ci.yaml](.github/workflows/idmagic-ci.yaml) です。一覧を 2 か所に書くと、検査を足したときに必ず片方が古くなり、古いほうを読んだ人が「通したはずなのに落ちる」に出会います。
 
-手元では、変更したものについて失敗しうる最も安いゲートから順に実行します。全体の検証は最後の 1 回で足ります。順序は [検証の段階](docs/development/specification-first-workflow.md#5-検証の段階) が定めます。編集のたびに全体のスイートを回すことが、このリポジトリで時間を失う最もありふれた方法です。
+手元では、変更したものについて失敗しうる最も安いゲートから順に実行します。
+影響範囲が不明なときは検査を広げます。
+順序は[検証の段階](docs/development/specification-first-workflow.md#5-検証の段階)が定めます。
 
 ## 脆弱性の報告
 

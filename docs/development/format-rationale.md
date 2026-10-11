@@ -1,7 +1,8 @@
 # フォーマットの理由
 
-この文書は、[文書ガイド](../formats/documentation-guide.md)、[仕様フォーマット](../formats/specification-format.md)、[設計フォーマット](../formats/design-format.md)の各規則を選んだ理由を書く。
-形式文書は、書き手とエージェントが従う規則だけを書き、理由はこの文書に分ける。
+この文書は、文書の形式と日常開発の規則を選んだ理由、参考にした考え方の採用範囲を書く。
+規則の本文は[文書ガイド](../formats/documentation-guide.md)、各フォーマット、[開発ワークフロー](specification-first-workflow.md)で維持する。
+規則の適用条件、判定基準、例外は所有文書に残し、長い背景と由来はこの文書に分ける。
 規則を書くたびに理由を読む必要はなく、理由を読むのは規則を変えるときや、規則に疑問を持ったときだからである。
 節の名前は、形式文書の対応する節にそろえる。
 
@@ -148,4 +149,147 @@
 - 統制のない行を同じ表に置くのは、一覧を最後まで読めば必ず目に入る形にするためである。再検討の条件のない受容は、放置へ名前を付けただけである。
 - work item への前方参照を置かないのは、完了して移動した時点で古くなるからである。
 - 網羅的でないことを明記するのは、完全な保証として読める脅威モデルが、検討していない脅威と退けた脅威を区別できなくするからである。
+
+
+## 開発ワークフロー
+
+### レビューと実行証拠
+
+実装中に同時に読むか、変更全体をレビューするときに読むかは作業形態で変わるが、どちらも変更を人が読む行為である。
+証拠契約が求めるのは別種のものであり、実装者の意図だけでは満たせない観測である。
+RED の結果と変更への耐性検査が、その観測に当たる。
+誰かが読んだことまで作業項目へ記録させても、すでに行ったレビューを言い換えるだけになる。
+
+### 検証の段階
+
+編集のたびにスイート全体を実行することが、このリポジトリで時間を浪費する最も一般的な原因である。
+
+ワークフローの局所検査では、原因となったコードをまだ把握している。
+同じ指摘へ最終ゲートで到達すると、なぜその形で書いたかを思い出すためにファイルを読み直す必要がある。
+複数の指摘がまとめて届けば、その作業を何度も繰り返すことになる。
+GREEN の時点で検査すると、まだ RED の振る舞いと lint の指摘を同時に直す混乱も避けられる。
+
+### レスポンスと作用
+
+拒否のレスポンスを書いた後も操作を続行する統制が、レビューと行カバレッジの検査を通過した事例がある。
+拒否の文言に加えて作用を検査すると、この欠陥を検出できた。
+
+**レスポンスが報告しない作用**にも、拒否を除けば同じ構造がある。
+コントロールプレーンのクォータ更新は、監査イベントを発行したかにかかわらず 200 を返していたが、実際にはイベントを発行していなかった。
+型は TypeSpec と Go の両方にあり、すべての検査が通っていたものの、レスポンスから欠落を判断することはできなかった。
+
+### プロパティテストの判定基準
+
+例ベースのテストは、分岐を書いた人が問題に対する同じ理解から書くため、その理解の盲点も引き継ぐ。
+エージェントが両方を書く場合は、この影響が大きくなる。
+実装と例の表を一度の理解から同時に作り、何が誤り得るかについて表とコードが一致してしまうためである。
+一方、プロパティは仕様から記述し、誰も思いつかなかった事例を生成器が与える。
+これは作成者自身の仮定から導出されない検査のうち、最も安価なものである。
+
+### 生存した変異と割合
+
+構文上の変異の空間は、手書きの障害モデルで誤りやすい。
+変異を手書きする人は、分岐を書いたときと同じ問題理解から変異を考えるため、誰も思いつかなかった分岐には誰も変異を加えないからである。
+
+テストを削除すると efficacy の割合が誤った方向へ動く。
+あるパッケージで二つのテストをスキップすると、`mutant coverage` が 77.78% から 41.67% へ下がった一方、`efficacy` は 69.64% から 86.67% へ上がった。
+削除したテストによって、検出済みの変異が未被覆の変異となり、未被覆の変異が分母から外れたためである。
+この数値へ閾値を設けると、等価な変異を検出するためのテストが増え、手順を増やした coverage の割り当て目標になる。
+
+### 開発ワークフローの出典
+
+各項目には、影響を受けた考え方ごとに代表的な出典を一つ挙げる。
+この一覧は由来を説明するものであり、別の一次情報や完全な準拠を表さない。
+IdMagic の証拠契約は、このリポジトリ向けに調整したものである。
+
+- **仕様駆動開発：** GitHub の [Specification-Driven Development](https://github.com/github/spec-kit/blob/27f50f7e6b618ea14d74dd4037f9e7c60218b16c/spec-driven.md)から、仕様によって計画、実装、検証を進める考えを参照した。
+- **OpenSpec：** Fission AI の [OpenSpec](https://github.com/Fission-AI/OpenSpec/blob/f1b521dffac38ed6638689cd28b0c204b1eef0f1/README.md)から、変更単位で提案、仕様、設計、タスク、適用と保管を進めるサイクルを参照した。
+  CLI を導入する案は採らず、変更単位のサイクルを参照した。
+- **エージェントを使う開発の規律：** Robert C. Martin と Justin Martin の [Clean AI: Agentic Engineering](https://learning.oreilly.com/course/clean-ai-agentic/9780135968819/)を、規律あるエージェント支援開発の包括的な参考資料とした。
+- **ドメイン駆動設計：** Eric Evans の [Domain-Driven Design Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)から、モデルと語が一貫して通用する範囲と一貫したドメイン語彙を参照した。実装のモジュール境界は、この範囲から導かず、情報隠蔽の判断手順で選ぶ。
+- **情報隠蔽：** David L. Parnas の [モジュール分割の基準の論文](https://www.cs.lafayette.edu/~gexia/cs301/resources/parnas.html)から、変わりうる設計判断を一つのモジュールへ隠すという分割の基準を参照した。
+- **結合と変更の波及：** Kent Beck の [結合と凝集の説明](https://newsletter.kentbeck.com/p/tldr-coupling-and-later-cohesion)から、結合を具体的な変更の波及で定義する考えを、共変更レポートの根拠として参照した。共変更の数を境界の正しさの証明としては扱わない。
+- **Go の internal パッケージ：** [Go 1.4 のリリースノート](https://go.dev/doc/go1.4#internalpackages)から、公開範囲をコンパイラに判定させる仕組みを参照した。
+- **クリーンアーキテクチャ：** Robert C. Martin の [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)から、内側へ向く依存関係を参照した。
+- **ヘキサゴナルアーキテクチャ（Ports and Adapters）：** Alistair Cockburn の [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)から、明示的なアプリケーションポートと技術固有のアダプターを参照した。
+- **Vertical Slice Architecture：** Jimmy Bogard の [Vertical Slice Architecture](https://www.jimmybogard.com/vertical-slice-architecture/)から、変更の軸に沿って機能の関心事を端から端まで一つのスライスにまとめ、スライス間の結合を減らす考えを参照した。
+- **モジュラーモノリス：** Simon Brown の [Modular monolith and package by component](https://simonbrown.je/modular-monolith/)から、モジュール境界を強制する現在の単一デプロイ単位を参照した。
+- **マイクロサービスアーキテクチャ：** James Lewis と Martin Fowler の [Microservices](https://martinfowler.com/articles/microservices.html)から、事業機能の境界と疎結合を参照した。
+  これは、IdMagic が現在各モジュールを独立してデプロイすることを意味しない。
+- **関数型設計：** Eric Normand の [Grokking Simplicity](https://www.manning.com/books/grokking-simplicity)から、変更不能なデータ、決定論的な計算、作用を伴う操作の分離を参照した。
+- **型先行開発：** Tomas Petricek の [Why type-first development matters](https://tomasp.net/blog/type-first-development.aspx/)から、依存する実装より先に TypeSpec の契約とドメインデータ型を定義する考えを参照した。
+- **Tidy First?：** Kent Beck の [Tidy First?](https://www.oreilly.com/library/view/tidy-first/9781098151232/)から、振る舞いの変更を容易にする小さな整理を選び、必要に応じて整理を先に行い、その反復によって設計をインクリメンタルに改善する考えを参照した。
+- **テスト駆動開発：** Kent Beck の [Test Driven Development: By Example](https://www.informit.com/store/test-driven-development-by-example-9780321146533)から、RED を先に確認する実装サイクルを参照した。
+- **プロパティベーステスト：** Koen Claessen と John Hughes の [QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs](https://doi.org/10.1145/351240.351266)から、作成者が思いついた例を列挙する代わりに、不変条件を記述して生成入力から反例を探す考えを参照した。
+- **振る舞い駆動開発：** Dan North の [Introducing BDD](https://dannorth.net/introducing-bdd/)から、振る舞いを中心にした規範シナリオを参照した。
+  方言の記述規則と実行形式の分担は[仕様フォーマットの例](../formats/specification-format.md#例)で定める。
+- **受け入れテスト駆動開発：** Robert C. Martin と Grigori Melnik の [Tests and Requirements, Requirements and Tests: A Möbius Strip](https://doi.org/10.1109/MS.2008.24)から、実装前に受け入れ証拠を定める考えを参照した。
+- **合理的再構成：** David L. Parnas と Paul C. Clements の [A Rational Design Process: How and Why to Fake It](https://doi.org/10.1109/TSE.1986.6312940)から、作業項目の形式の順序で証拠を示す理由を参照した。
+  実際の作業には探索が伴い、すべての回り道を再現する記録は次の担当者にとって読みにくいためである。
+
+## 文書体系の導入と出典
+
+### 導入順序
+
+1. README、product overview、開発環境とCIの最小構成
+2. 論理アーキテクチャのモジュールの責務表と構成
+3. 主要モジュールの`README.md`、TypeSpec、機能仕様と例の付録
+4. work itemの形式と、仕様の文法検査
+5. `docs/design/application/api-guidelines.md`、`docs/design/security/authorization.md`
+6. 各モジュールの `standards.md`（プロトコル、アクセシビリティ、法令）
+7. スキーマファイルと`docs/design/data/database.md`
+8. `docs/design/architecture/`と`docs/design/`の各領域、`docs/design/verification/`、`docs/operations/`、運用手順書
+9. 設定リファレンスの生成、追跡ページの生成、機械検査
+
+開発環境とCIを最初に置くのは、生成と検査の土台がないと仕様が単なる散文になるためである。work itemの形式を早く決めるのは、それが無いと変更時点の検討が仕様へ流れ込むためである。
+
+### 文書体系の出典
+
+文書ガイドの節番号に対応する、語彙や規則の出典である。借りていないものは載せない。**借り方は、名指しして差分だけを書くことであり、写すことではない。**
+
+| 節 | 出典 | 借りているもの |
+|---|---|---|
+| §1 / §4 | [SWEBOK Guide V4](https://www.computer.org/education/bodies-of-knowledge/software-engineering) | 要件、アーキテクチャ、設計、テスト、運用、保守、構成管理、品質、セキュリティという知識領域を抜けの点検に使う。知識領域の目次は文書ツリーへ転記しない |
+| §1 / §4 | [SEBoK: System Requirements Definition](https://sebokwiki.org/wiki/System_Requirements) | 利害関係者の必要性からシステム要件を導き、アーキテクチャ、設計、検証へ渡す順序 |
+| §4.3 | [ISO/IEC/IEEE 42010:2022](https://www.iso.org/standard/74393.html) | アーキテクチャ記述、関心事、視点、ビュー、対応関係の区別 |
+| §2 / §4 | [ISO/IEC/IEEE 15289:2019](https://www.iso.org/standard/74909.html) | ライフサイクル情報項目の目的を分け、設計、計画、手順、記録を混在させない考え方 |
+| §4.2 | [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html) | ICTプロダクトの品質要件を特性と副特性で点検するための参照モデル |
+| §3 | [Parnas のモジュール分割の論文](https://www.cs.lafayette.edu/~gexia/cs301/resources/parnas.html) | 変わりうる設計判断を内部へ隠す境界の基準 |
+| §3 / §4.1 | Eric Evans, *Domain-Driven Design* | 業務の用語とモデルの意味をそろえる考え方。モジュールの境界は情報隠蔽と境界を選ぶ判断手順で決める |
+| [仕様フォーマット §4](../formats/specification-format.md#4-標準仕様) | [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) | `Strength`列の語彙 |
+| [仕様フォーマット §3](../formats/specification-format.md#3-状態遷移) | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
+| [仕様フォーマット §3](../formats/specification-format.md#3-状態遷移) | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
+| [仕様フォーマット §5](../formats/specification-format.md#5-要件と例) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
+| [仕様フォーマット §5](../formats/specification-format.md#ears-形式) | [EARS](https://alistairmavin.com/ears/) | 要件文を前置き、主体、応答の順に、型ごとの標識で書く |
+| §4.4 | [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) | portとadapterによる隔離 |
+| §4.3 | [C4 model](https://c4model.com/) | System Context、Containerの語彙 |
+| §4.5 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) | メソッドの安全・冪等、条件付きリクエスト、ステータスコードの意味 |
+| §4.5 | [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) | エラーレスポンスのデフォルト形式 |
+| §4.5 | [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594.html) | `Sunset`ヘッダーによる終了予告 |
+| §4.5 | [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) | `api-guidelines.md`が扱う観点の点検表 |
+| §4.5 | [Microsoft Azure REST API Guidelines](https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md) | 長時間かかる操作、条件付きリクエスト、バージョンと互換性、再送の扱い |
+| §4.5 | [Google AIP](https://google.aip.dev/) | 操作をリソースにする形（AIP-151）、コレクションと命名の型 |
+| §4.5 | JJ Geewax, *API Design Patterns* | CRUDに収まらない操作、コレクションの操作、命名の型 |
+| §4.5 | [Semantic Versioning](https://semver.org/) | 公開APIの定義とバージョン番号の意味 |
+| §4.5 | [Kubernetes Deprecation Policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/) | 非推奨の告知と最短存続期間 |
+| §4.6 | [OpenTelemetry Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-model/) | ログの時刻、重大度、本文、リソース、属性、相関情報の意味 |
+| §4.6 | [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) | シグナルを跨ぐattribute名 |
+| §4.6 | [Google SRE Book: Effective Troubleshooting](https://sre.google/sre-book/effective-troubleshooting/) | 構造化ログ、相関識別子、診断可能なインターフェース |
+| §4.6 | [AWS Prescriptive Guidance: Event types](https://docs.aws.amazon.com/prescriptive-guidance/latest/logging-monitoring-for-application-owners/event-types.html) | 記録を検討する認証、認可、検証、高リスク操作の事象分類 |
+| §4.6 | [Prometheus Naming](https://prometheus.io/docs/practices/naming/) | 指標名と基数の制御 |
+| §4.11 | [OWASP Threat Modeling](https://owasp.org/www-community/Threat_Modeling) | 信頼境界の洗い出しと、境界ごとに何を信用しないか |
+| §4.11 | Adam Shostack, *Threat Modeling: Designing for Security* | 分類の型を網として使う立場、資産と境界から数え上げる順序、受容の記録 |
+| §4.8 | [SRE Workbook: Managing Load](https://sre.google/workbook/managing-load/) | 過負荷時の受け付け制限、再試行の増幅の抑え方 |
+| §4.9 | [Evolutionary Database Design](https://martinfowler.com/articles/evodb.html) | 拡張と縮小に分けた構造変更 |
+| §4.10 | [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) | 検証手段を伴う形で認可の要件を書く |
+| §4.10 | [NIST SP 800-162](https://csrc.nist.gov/pubs/sp/800/162/upd2/final) | 主体・対象・行為・環境という判断要素の分け方 |
+| [仕様フォーマット §1](../formats/specification-format.md#1-typespec-の範囲) | [TypeSpec](https://typespec.io/docs/) | モデルとAPI契約の実行可能な仕様 |
+| §8.3 | [Google Style Guides](https://google.github.io/styleguide/) | 規約の出発点。差分だけを自分で書く |
+| §8.4 | [Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) | 水準の分け方と、上の層を厚くしない理由 |
+| §8.4 | [Software Engineering at Google, Ch.11](https://abseil.io/resources/swe-book/html/ch11.html) | 速さと決定性でテストを分ける |
+| §8.5 | [Twelve-Factor](https://12factor.net/config) | 設定を成果物から分離する |
+| §9.1 | [SRE Workbook: Implementing SLOs](https://sre.google/workbook/implementing-slos/) | SLIの「何を測るか」と「どう測るか」の分離、error budget、消費の速さで鳴らすアラート |
+| §9.2 | [Canary Release](https://martinfowler.com/bliki/CanaryRelease.html) | 段階的な展開と後退の基準 |
+| §9.3 | [SRE Book: Data Integrity](https://sre.google/sre-book/data-integrity/) | 論理削除・バックアップ・早期検知の三段、復旧を設計するという立場 |
+| §9.4 | [PagerDuty Incident Response](https://response.pagerduty.com/) | 障害対応の役割、宣言の水準、事後記録の書き方 |
 

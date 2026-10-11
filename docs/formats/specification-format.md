@@ -340,6 +340,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 要件文の言い換えになる例は置かない。
 
 - 例は同じ機能スライスの付録 `acceptance.feature.md` に [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) で書く。
+- Cucumber をテストランナーとして導入せず、ステップから製品テストを生成しない。
 - すべてのファイルを公式の JavaScript Gherkin パーサーが受理する *(checked)*。
 - 一ファイルに一つの `Feature`、要件ごとに一つの `Rule`、一つの `Example` に分岐のない一経路を書く。
 - 付録の `Rule` は、同じ機能スライスの仕様本文が宣言した要件だけを参照でき、タイトルは宣言と一致させる *(checked)*。

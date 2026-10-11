@@ -50,7 +50,8 @@ mise run verify
 
 Go のバージョン情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発用の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
 
-変更中は全体検証を繰り返さず、[検証の段階](specification-first-workflow.md#5-検証の段階) に従って、変更したものについて失敗しうる最も狭い `mise` タスクから実行する。変更が 1 パッケージを越えたら `mise run test-go-changed` が、作業ツリーで変わったパッケージとその逆依存だけを最後のゲートと同じ構成で実行する。
+変更中は[検証の段階](specification-first-workflow.md#5-検証の段階)に従って、変更したものについて失敗しうる最も狭い `mise` タスクから実行する。
+最終検査の範囲は[最終検査の選択](specification-first-workflow.md#最終検査の選択)、Go の `-race` の有無は[通常テストと race 検査](specification-first-workflow.md#go-の通常テストと-race-検査)で判断する。
 
 狭いタスクを同時に複数走らせるときは、`:::` で区切って並べる。
 
@@ -60,14 +61,12 @@ mise run -c test-go-package ./backend/apitoken/domain ::: test-go-package ./back
 
 並べるときは、単独実行の書き方にある `--` を外す。`mise run test-go-package -- <package> ::: ...` と書くと、`:::` より後のタスクは実行されず、エラーも出ない。`-c` は 1 つが失敗しても残りを最後まで走らせ、すべての結果を並べる。
 
-新しい worktree で作業を始めるときは、最初に次を一度だけ実行する。Mermaid を含む組み込みツールと UI 依存関係が無いまま進めると、その欠落は最後の `verify` の失敗として現れる。冷状態の `lint-go` は 20 秒ほどかかるが、一度払えば以降の実行は数秒で済む。
+新しい worktree でも、選んだ検査に必要な依存だけを準備する。
+導入タスクと先行 lint の条件は[検証の段階](specification-first-workflow.md#5-検証の段階)に従う。
 
-```bash
-mise run setup
-mise run lint-go
-```
-
-`verify` はブラウザー E2E を含まない。起動に Go のビルド、API サーバー、開発サーバー、初期データの投入を要するのはこのテストだけで、その費用を静的検査と単体テストのたびに払う理由がないからである。画面に届く変更を仕上げるときは次を実行する。CI にも独立した job がある。
+`verify` はブラウザー E2E を含まない。
+画面に届く変更には[最終検査の選択](specification-first-workflow.md#最終検査の選択)でブラウザーの検査を選ぶ。
+全体を検査するときは次のタスクを使う。CI にも独立した job がある。
 
 ```bash
 mise run test-ui-e2e

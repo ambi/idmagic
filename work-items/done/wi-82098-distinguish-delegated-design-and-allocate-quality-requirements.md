@@ -79,7 +79,7 @@ ClaimMapping は九領域のうち八領域が「該当なし」であり、固�
 - 内容のない領域別文書の追加、全機能への独立した品質文書の強制。
 - 別の責務台帳、品質目標の数値の複製。
 - 全文書の一括改名と、読みやすさに関係しない表記だけの変更。
-- 開発規約の重複と背景説明の分離は[規約の整理](../active/wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)が扱う。
+- 開発規約の重複と背景説明の分離は[規約の整理](wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)が扱う。
 
 ## 設計
 

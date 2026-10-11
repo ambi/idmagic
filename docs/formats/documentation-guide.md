@@ -5,7 +5,8 @@
 
 フォーマットが決まっているものには、埋める場所だけを示した最小のテンプレートを置く。中身を書き込んだ実例は置かない。**実例はこの体系で書かれたリポジトリそのものを読む。**
 
-各文書には、語彙や規則を借りている先がある。まとめて§11に挙げる。
+配置と形式を選んだ理由、語彙の出典は[フォーマットの理由](../development/format-rationale.md#文書ガイド)に記す。
+日常の変更では今回の文書種別の節を読み、理由は規則の見直しや初期導入で読む。
 
 ## 1. 目的
 
@@ -585,17 +586,9 @@ Git で追跡する生成物は差分をコミットへ含め、`site/` と `spe
 
 ### 8.3 コーディングスタイル
 
-`coding-style.md`を置く。
-コードを書くときとレビューするときに共通して使う判断の視点を示し、命名、コメント、関数、制御構造、抽象化、テストコード、依存関係を扱う。
-
-各指針には理由を添える。
-理由があれば、状況が変わったときに指針を適用するか、見直すかを判断できる。
-
-モジュールやサービスの境界は設計文書で、外部APIの契約はTypeSpecで、テスト水準とテストダブルはテスト方針で定める。
-整形と静的検査は機械検査の設定を一次情報源とし、コーディングスタイルへ複製しない。
-
-本文は特定のリポジトリに依存しない形で一つのファイルにまとめ、公開された言語別スタイルガイドを表で示す。
-言語固有の命名、構文、整形はその表から原典を参照する。
+コードの書き方とレビューの視点は[コーディングスタイル](../development/coding-style.md#文書の範囲)へ書く。
+本文は特定のリポジトリに依存しない形で一つのファイルにまとめ、指針ごとに理由を添える。
+言語別の公開ガイド、整形と静的解析の優先関係もその文書で定める。
 
 ### 8.4 テスト
 
@@ -717,13 +710,8 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 
 ### 10.1 文脈の経済
 
-一つの変更のために仕様の全文を読ませない。読み始める資料はwork itemの`initial_context`に列挙し、**何を読まないか**も明示する。残りは要件IDや用語から場所を引く仕組みで到達する。
-
-機能ごとに仕様を一つの文書へまとめているため、変更する機能の仕様だけを読めばよい。複数の機能にまたがる仕組みはモジュールの`design/`、代替案を比べた判断は`design/decisions.md`、規範は`standards.md`を開く。
-
-仕様、実装、テストは機能名をそろえて対応させるが、文書の機能群と実装の層まで同じ深さにはしない。
-共有ポート、横断設計、外側の配線テストはその所有箇所に残し、機能ごとに複製しない。
-配置から生成した機能地図を入口にし、規則の変更、具体例の追加、内部の設計判断で読む範囲を分ける。
+着手時の資料の選択は[作業文脈の導出](../development/task-context.md#起点と追加取得)、記録は[着手時の文脈と設計](work-item-format.md#着手時の文脈と設計)へ委ねる。
+仕様の全文を前提にせず、今回の対象から参照をたどる。
 
 ### 10.2 AIに任せやすい作業
 
@@ -745,78 +733,26 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 
 ### 10.4 レビューの確認項目
 
-- `README.md`が境界の宣言になっているか。文書の案内や計画になっていないか
-- `Statement`がプロダクトの側から書かれているか。テストがあるか
-- `Guard`が評価できる式で書かれているか
-- シナリオが一つの振る舞いだけを述べているか
-- 判断の理由が、それが正当化する規則やモデルのそばに書かれているか。`design/decisions.md`の判断が代替案と再検討の条件を持ち、見出しが観点名になっていないか
-- 設計領域の索引で、固有設計、委譲、対象外の区別と参照先が実態と合っているか。宣言済み品質要件から担当機能、設計、検証へ到達できるか。設計がファイルの列挙になっていないか
-- 機能仕様の操作が一つの H3 に一つずつ置かれ、要約表の値が規則文と一致しているか
-- 権限の割り当てを、TypeSpecの注釈と散文の両方に定義していないか
-- 実装から読み取れる情報を図や表に描き直していないか
-- 設計文書が、個々のソースファイル、関数、型を参照していないか。ガイドラインが、実装言語やライブラリを規則の本文で限定していないか（[設計文書からコードへの参照](#設計文書からコードへの参照)）
-- 変更時点の比較検討が仕様側へ流れ込んでいないか
+変更した文書種別の所有規則で差分を確認する。
+次の参照は確認する節を選ぶ入口であり、規則の写しを維持しない。
+
+| 変更対象 | 確認する所有規則 |
+| --- | --- |
+| 境界の宣言、現在状態と計画の分離 | [一次情報文書に共通する規則](#一次情報文書に共通する規則)、[変更の記録](#6-変更の記録) |
+| 操作の単位、要件と例、判断理由 | [仕様文書](specification-format.md#2-仕様文書)、[要件と例](specification-format.md#5-要件と例) |
+| Guard と状態機械 | [状態遷移](specification-format.md#3-状態遷移) |
+| Statement、採用範囲、検証への参照 | [標準仕様](specification-format.md#4-標準仕様) |
+| 設計領域、委譲と対象外、品質要件の割り当て | [設計領域](design-format.md#1-設計領域) |
+| 設計判断、代替案、再検討条件 | [重要な設計判断](design-format.md#3-重要な設計判断designdecisionsmd) |
+| TypeSpec と認可の重複 | [認可](design-format.md#5-認可) |
+| 生成できる記述、コードへの参照 | [生成物](#生成物)、[設計文書からコードへの参照](#設計文書からコードへの参照) |
 
 ## 11. 参考
 
-各文書が語彙や規則を借りている先である。借りていないものは載せない。**借り方は、名指しして差分だけを書くことであり、写すことではない。**
-
-| 節 | 出典 | 借りているもの |
-|---|---|---|
-| §1 / §4 | [SWEBOK Guide V4](https://www.computer.org/education/bodies-of-knowledge/software-engineering) | 要件、アーキテクチャ、設計、テスト、運用、保守、構成管理、品質、セキュリティという知識領域を抜けの点検に使う。知識領域の目次は文書ツリーへ転記しない |
-| §1 / §4 | [SEBoK: System Requirements Definition](https://sebokwiki.org/wiki/System_Requirements) | 利害関係者の必要性からシステム要件を導き、アーキテクチャ、設計、検証へ渡す順序 |
-| §4.3 | [ISO/IEC/IEEE 42010:2022](https://www.iso.org/standard/74393.html) | アーキテクチャ記述、関心事、視点、ビュー、対応関係の区別 |
-| §2 / §4 | [ISO/IEC/IEEE 15289:2019](https://www.iso.org/standard/74909.html) | ライフサイクル情報項目の目的を分け、設計、計画、手順、記録を混在させない考え方 |
-| §4.2 | [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html) | ICTプロダクトの品質要件を特性と副特性で点検するための参照モデル |
-| §3 | [Parnas のモジュール分割の論文](https://www.cs.lafayette.edu/~gexia/cs301/resources/parnas.html) | 変わりうる設計判断を内部へ隠す境界の基準 |
-| §3 / §4.1 | Eric Evans, *Domain-Driven Design* | 業務の用語とモデルの意味をそろえる考え方。モジュールの境界は情報隠蔽と境界を選ぶ判断手順で決める |
-| [仕様フォーマット §4](specification-format.md#4-標準仕様) | [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) | `Strength`列の語彙 |
-| [仕様フォーマット §3](specification-format.md#3-状態遷移) | [CEL](https://cel.dev/) | `Guard`を言語非依存の式で書く |
-| [仕様フォーマット §3](specification-format.md#3-状態遷移) | [SCXML](https://www.w3.org/TR/scxml/) | 状態機械の項目名と、階層・並行へ広げるときの逃げ道 |
-| [仕様フォーマット §5](specification-format.md#5-要件と例) | [BDD](https://cucumber.io/docs/bdd/) | 実装の前に具体例で合意し、その例を検証に使う順序 |
-| [仕様フォーマット §5](specification-format.md#ears-形式) | [EARS](https://alistairmavin.com/ears/) | 要件文を前置き、主体、応答の順に、型ごとの標識で書く |
-| §4.4 | [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) | portとadapterによる隔離 |
-| §4.3 | [C4 model](https://c4model.com/) | System Context、Containerの語彙 |
-| §4.5 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) | メソッドの安全・冪等、条件付きリクエスト、ステータスコードの意味 |
-| §4.5 | [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) | エラーレスポンスのデフォルト形式 |
-| §4.5 | [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594.html) | `Sunset`ヘッダーによる終了予告 |
-| §4.5 | [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) | `api-guidelines.md`が扱う観点の点検表 |
-| §4.5 | [Microsoft Azure REST API Guidelines](https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md) | 長時間かかる操作、条件付きリクエスト、バージョンと互換性、再送の扱い |
-| §4.5 | [Google AIP](https://google.aip.dev/) | 操作をリソースにする形（AIP-151）、コレクションと命名の型 |
-| §4.5 | JJ Geewax, *API Design Patterns* | CRUDに収まらない操作、コレクションの操作、命名の型 |
-| §4.5 | [Semantic Versioning](https://semver.org/) | 公開APIの定義とバージョン番号の意味 |
-| §4.5 | [Kubernetes Deprecation Policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/) | 非推奨の告知と最短存続期間 |
-| §4.6 | [OpenTelemetry Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-model/) | ログの時刻、重大度、本文、リソース、属性、相関情報の意味 |
-| §4.6 | [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) | シグナルを跨ぐattribute名 |
-| §4.6 | [Google SRE Book: Effective Troubleshooting](https://sre.google/sre-book/effective-troubleshooting/) | 構造化ログ、相関識別子、診断可能なインターフェース |
-| §4.6 | [AWS Prescriptive Guidance: Event types](https://docs.aws.amazon.com/prescriptive-guidance/latest/logging-monitoring-for-application-owners/event-types.html) | 記録を検討する認証、認可、検証、高リスク操作の事象分類 |
-| §4.6 | [Prometheus Naming](https://prometheus.io/docs/practices/naming/) | 指標名と基数の制御 |
-| §4.11 | [OWASP Threat Modeling](https://owasp.org/www-community/Threat_Modeling) | 信頼境界の洗い出しと、境界ごとに何を信用しないか |
-| §4.11 | Adam Shostack, *Threat Modeling: Designing for Security* | 分類の型を網として使う立場、資産と境界から数え上げる順序、受容の記録 |
-| §4.8 | [SRE Workbook: Managing Load](https://sre.google/workbook/managing-load/) | 過負荷時の受け付け制限、再試行の増幅の抑え方 |
-| §4.9 | [Evolutionary Database Design](https://martinfowler.com/articles/evodb.html) | 拡張と縮小に分けた構造変更 |
-| §4.10 | [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) | 検証手段を伴う形で認可の要件を書く |
-| §4.10 | [NIST SP 800-162](https://csrc.nist.gov/pubs/sp/800/162/upd2/final) | 主体・対象・行為・環境という判断要素の分け方 |
-| [仕様フォーマット §1](specification-format.md#1-typespec-の範囲) | [TypeSpec](https://typespec.io/docs/) | モデルとAPI契約の実行可能な仕様 |
-| §8.3 | [Google Style Guides](https://google.github.io/styleguide/) | 規約の出発点。差分だけを自分で書く |
-| §8.4 | [Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) | 水準の分け方と、上の層を厚くしない理由 |
-| §8.4 | [Software Engineering at Google, Ch.11](https://abseil.io/resources/swe-book/html/ch11.html) | 速さと決定性でテストを分ける |
-| §8.5 | [Twelve-Factor](https://12factor.net/config) | 設定を成果物から分離する |
-| §9.1 | [SRE Workbook: Implementing SLOs](https://sre.google/workbook/implementing-slos/) | SLIの「何を測るか」と「どう測るか」の分離、error budget、消費の速さで鳴らすアラート |
-| §9.2 | [Canary Release](https://martinfowler.com/bliki/CanaryRelease.html) | 段階的な展開と後退の基準 |
-| §9.3 | [SRE Book: Data Integrity](https://sre.google/sre-book/data-integrity/) | 論理削除・バックアップ・早期検知の三段、復旧を設計するという立場 |
-| §9.4 | [PagerDuty Incident Response](https://response.pagerduty.com/) | 障害対応の役割、宣言の水準、事後記録の書き方 |
+語彙と規則の出典、借りている範囲は[文書体系の出典](../development/format-rationale.md#文書体系の出典)に記す。
+規則はこの文書と担当フォーマットで維持する。
 
 ## 12. 導入順序
 
-1. README、product overview、開発環境とCIの最小構成
-2. 論理アーキテクチャのモジュールの責務表と構成
-3. 主要モジュールの`README.md`、TypeSpec、機能仕様と例の付録
-4. work itemの形式と、仕様の文法検査
-5. `docs/design/application/api-guidelines.md`、`docs/design/security/authorization.md`
-6. 各モジュールの`standards.md`——プロトコル、アクセシビリティ、法令
-7. スキーマファイルと`docs/design/data/database.md`
-8. `docs/design/architecture/`と`docs/design/`の各領域、`docs/design/verification/`、`docs/operations/`、運用手順書
-9. 設定リファレンスの生成、追跡ページの生成、機械検査
-
-開発環境とCIを最初に置くのは、生成と検査の土台がないと仕様が単なる散文になるためである。work itemの形式を早く決めるのは、それが無いと変更時点の検討が仕様へ流れ込むためである。
+文書体系を初めて導入する場合の順序と理由は[導入順序](../development/format-rationale.md#導入順序)に記す。
+既存の文書を変更する作業では、今回の文書種別の節を使う。

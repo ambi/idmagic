@@ -12,11 +12,11 @@
 
 | 作業 | 読む文書 |
 | --- | --- |
-| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計) |
+| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計)。証拠の子節は今回の変更に適用するものだけを読む |
 | 機能と振る舞いの変更 <!-- context: kinds=feature,bugfix,operations --> | [仕様の漏れを探す観点](docs/development/specification-first-workflow.md#仕様の漏れを探す観点)、[主要ユースケース](docs/development/testing.md#主要ユースケース) |
 | 文書、コメント、UI 文言の執筆または推敲 <!-- context: kinds=docs targets=docs,.agents,AGENTS.md,frontend --> | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
 | コードに含む文章の変更 <!-- context: targets=backend,frontend,tools,.agents,AGENTS.md --> | [文章の言語](docs/development/writing-language.md) |
-| 本番コード（`backend/`、`frontend/src/`）の変更 <!-- context: targets=backend,frontend/src --> | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)。仕様を変えるかを必ず判断し、work item の `affected_spec` か `spec_impact`、またはコミットの `Spec-Impact: none` トレーラーで宣言する |
+| 本番コード（`backend/`、`frontend/src/`）の変更 <!-- context: targets=backend,frontend/src --> | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)に従って判断と宣言を残す |
 | コードの編集またはレビュー <!-- context: kinds=feature,bugfix,refactor,tooling,maintenance,operations targets=backend,frontend,tools --> | [コーディングスタイルの使い方](docs/development/coding-style.md#使い方)。七つの視点のうち、触れる判断の節へ進む |
 | テスト水準、実行境界、テストダブルの選択 <!-- context: kinds=feature,bugfix,refactor,tooling,maintenance,operations targets=backend,frontend,tools --> | [テスト方針](docs/development/testing.md#主要ユースケース)。水準の表と、触れる依存の[テストダブル](docs/development/testing.md#テストダブル)を選ぶ |
 | モジュール、型、依存、作用、エラーの設計 <!-- context: targets=backend,frontend/src --> | [モジュールの深さと情報隠蔽](docs/design/application/design-guidelines.md#モジュールの深さと情報隠蔽)。触れる型と作用の節へ進む |
@@ -46,9 +46,8 @@
 `mise run verify` と Go の HTTP 統合テストも localhost の待受けを使うため、同じ実行方法に従う。
 権限昇格が必要な実行環境では、最初の呼び出しから実行ツールの権限昇格を指定する。
 
-テストが宣言済みの `REQ-*`、`EX-*`、標準 id を被覆したと主張するときは、テスト関数の直上へ `//spec:covers <id>[, <id>]: <このテストが何を固定しているか>` を置く。この形だけが被覆と数えられるので、散文で id に言及するのは安全である。規約は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の「Citing a normative id from a test」が定める。
-
-テストの検出能力を測るときは `mise run test-go-mutation -- <package-directory>` を使う。手で変異を書くのは、変異器が表現できない「配線を外す」「デフォルトの分岐を差し替える」種類だけとする。読み方は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の Mutation testing が定める。
+テストが規範の被覆を主張する場合は[規範 ID の参照](docs/development/specification-first-workflow.md#規範idをテストから参照する)に従う。
+検出能力を測る場合は[ミューテーションテスト](docs/development/specification-first-workflow.md#ミューテーションテスト)で適用条件と手動注入の分担を選び、引数は[Go のミューテーションテスト](docs/development/testing.md#go-のミューテーションテスト)を読む。
 
 ## ツール
 
