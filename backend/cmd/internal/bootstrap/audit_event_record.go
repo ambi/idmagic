@@ -1,14 +1,5 @@
 package bootstrap
 
-// newAuditEventRecord は DomainEvent を AuditEventRepository に保存可能な
-// 形 (SCL `AdminAuditEventResponse` の双子) に変換する。tenant_id は
-// payload に tenantId が存在する場合のみ抽出し、無い場合は空文字を残す
-// (admin の所属テナント絞り込みでは引っかからない)。
-//
-// SCL events セクションで TenantID を持つのは Tenant ライフサイクル系のみ。
-// それ以外の event は将来 TenantID を載せれば、本変換だけで audit 経路から
-// 見えるようになる。
-
 import (
 	"context"
 	"encoding/json"
@@ -22,6 +13,11 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
+
+// AuditFailureMetrics は本文や識別子を指標へ渡さず、失敗した段階だけを記録する。
+type AuditFailureMetrics interface {
+	RecordAuditFailure(stage string)
+}
 
 func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
 	wire, err := spec.MarshalDomainEvent(e)
@@ -75,7 +71,11 @@ func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent)
 		}
 		rec, err := NewAuditEventRecord(event)
 		if err != nil {
-			logger.Error(eventCtx, "audit event conversion failed; reconciliation required", "error", err, "event_type", event.EventType())
+			if d.AuditFailures != nil {
+				d.AuditFailures.RecordAuditFailure("conversion")
+			}
+			logger.Error(eventCtx, "audit event conversion failed; record may be missing",
+				"error", err, "audit_stage", "conversion", "event_type", event.EventType(), "occurred_at", event.OccurredAt())
 			return
 		}
 		appendCtx := eventCtx
@@ -83,7 +83,12 @@ func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent)
 			appendCtx = tenantports.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
 		}
 		if err := d.Audit.AuditEventRepo.Append(appendCtx, rec); err != nil {
-			logger.Error(appendCtx, "audit event append failed; reconciliation required", "error", err, "event_type", event.EventType(), "tenant_id", rec.TenantID)
+			if d.AuditFailures != nil {
+				d.AuditFailures.RecordAuditFailure("append")
+			}
+			logger.Error(appendCtx, "audit event append failed; record may be missing",
+				"error", err, "audit_stage", "append", "event_type", rec.Type, "occurred_at", rec.OccurredAt,
+				"tenant_id", rec.TenantID, "audit_event_id", rec.ID)
 		}
 	}
 	return emit

@@ -54,6 +54,7 @@ type Metrics struct {
 	jobsQueueDepth   metric.Int64Gauge
 
 	quotaExceeded metric.Int64Counter
+	auditFailures metric.Int64Counter
 
 	// admission* back support.AdmissionMetrics (wi-396). class is always a
 	// bounded support.PriorityClass and outcome is always "admitted" or
@@ -151,6 +152,13 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 	if m.quotaExceeded, err = meter.Int64Counter("quota_exceeded_total", metric.WithDescription("Number of operations rejected due to quota limit")); err != nil {
 		return nil, err
 	}
+	if m.auditFailures, err = meter.Int64Counter("audit_record_failures_total", metric.WithDescription("検知した監査の変換失敗と追記失敗")); err != nil {
+		return nil, err
+	}
+	// 最初の失敗も既存のゼロ値から増えた系列として収集できるようにする。
+	for _, stage := range []string{"conversion", "append"} {
+		m.auditFailures.Add(context.Background(), 0, metric.WithAttributes(attribute.String("stage", stage)))
+	}
 	if m.admissionDecisions, err = meter.Int64Counter("http_admission_decisions_total",
 		metric.WithDescription("Admission-control decisions by request priority class")); err != nil {
 		return nil, err
@@ -224,6 +232,11 @@ func (m *Metrics) RecordQuotaExceeded(resName string) {
 	m.quotaExceeded.Add(context.Background(), 1, metric.WithAttributes(
 		attribute.String("resource", resName),
 	))
+}
+
+// RecordAuditFailure の stage は配信点が conversion または append に固定する。
+func (m *Metrics) RecordAuditFailure(stage string) {
+	m.auditFailures.Add(context.Background(), 1, metric.WithAttributes(attribute.String("stage", stage)))
 }
 
 // RecordAdmissionDecision implements support.AdmissionMetrics (wi-396).

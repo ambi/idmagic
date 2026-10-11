@@ -82,6 +82,7 @@ func RunWorker() error {
 	if err != nil {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
+	deps.AuditFailures = appMetrics
 	defer func() { _ = appMetrics.Shutdown(context.Background()) }()
 	metricsServer := &http.Server{
 		Addr:              worker.Addr,

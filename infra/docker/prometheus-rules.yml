@@ -260,3 +260,12 @@ groups:
         annotations:
           summary: "a route with no declared priority class is being served; load shedding cannot order it"
           runbook_url: "docs/runbooks/admission-control.md"
+  - name: idmagic-audit-alerts
+    rules:
+      - alert: AuditRecordWriteFailed
+        expr: sum by (job, instance, stage) (increase(audit_record_failures_total[5m])) > 0
+        labels:
+          severity: warn
+        annotations:
+          summary: "audit {{ $labels.stage }} failed on {{ $labels.instance }}; business changes may have committed"
+          runbook_url: "docs/runbooks/audit-record-write-failure.md"

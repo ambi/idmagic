@@ -40,6 +40,7 @@ type Dependencies struct {
 	SigningKeys      signingkeys.Module
 	DataKeys         datakeys.Module
 	Audit            audit.Module
+	AuditFailures    AuditFailureMetrics
 	WsFederation     wsfederation.Module
 	Saml             saml.Module
 	Sourcing         sourcing.Module
