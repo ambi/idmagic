@@ -413,32 +413,42 @@ func SetUserRequiredAction(
 	action idmdomain.RequiredAction,
 	now time.Time,
 ) (*userdomain.User, error) {
+	user, _, err := setUserRequiredAction(ctx, deps, actorUserID, targetUserID, action, true, now)
+	return user, err
+}
+
+func setUserRequiredAction(ctx context.Context, deps AdminUserDeps, actorUserID, targetUserID string, action idmdomain.RequiredAction, required bool, now time.Time) (*userdomain.User, bool, error) {
 	if !action.Valid() {
-		return nil, ErrInvalidRequiredAction
+		return nil, false, ErrInvalidRequiredAction
 	}
 	user, err := loadTenantUser(ctx, deps, targetUserID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	if slices.Contains(user.Lifecycle.RequiredActions, action) {
-		return user, nil
+	if slices.Contains(user.Lifecycle.RequiredActions, action) == required {
+		return user, false, nil
 	}
 	updated := *user
-	updated.Lifecycle.RequiredActions = append(slices.Clone(user.Lifecycle.RequiredActions), action)
+	var event spec.DomainEvent
 	now = idmusecases.NormalizedNow(now)
+	if required {
+		updated.Lifecycle.RequiredActions = append(slices.Clone(user.Lifecycle.RequiredActions), action)
+		event = &idmdomain.UserRequiredActionSet{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action)}
+	} else {
+		updated.Lifecycle.RequiredActions = removeRequiredAction(user.Lifecycle.RequiredActions, action)
+		event = &idmdomain.UserRequiredActionCleared{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action)}
+	}
 	updated.UpdatedAt = now
 	if err := updated.Validate(); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserRequiredActionSet{
-		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
-	}); err != nil {
-		return nil, err
+	if err := idmusecases.AdminEmit(deps.Emit, event); err != nil {
+		return nil, true, err
 	}
-	return &updated, nil
+	return &updated, true, nil
 }
 
 // ClearUserRequiredAction は強制アクションを解除する (admin 専用 / wi-19)。
@@ -451,32 +461,8 @@ func ClearUserRequiredAction(
 	action idmdomain.RequiredAction,
 	now time.Time,
 ) (*userdomain.User, error) {
-	if !action.Valid() {
-		return nil, ErrInvalidRequiredAction
-	}
-	user, err := loadTenantUser(ctx, deps, targetUserID)
-	if err != nil {
-		return nil, err
-	}
-	if !slices.Contains(user.Lifecycle.RequiredActions, action) {
-		return user, nil
-	}
-	updated := *user
-	updated.Lifecycle.RequiredActions = removeRequiredAction(user.Lifecycle.RequiredActions, action)
-	now = idmusecases.NormalizedNow(now)
-	updated.UpdatedAt = now
-	if err := updated.Validate(); err != nil {
-		return nil, err
-	}
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
-		return nil, err
-	}
-	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserRequiredActionCleared{
-		At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID, Action: string(action),
-	}); err != nil {
-		return nil, err
-	}
-	return &updated, nil
+	user, _, err := setUserRequiredAction(ctx, deps, actorUserID, targetUserID, action, false, now)
+	return user, err
 }
 
 // loadTenantUser は現在のテナント内の user を取得する。存在しない / 別テナントなら
