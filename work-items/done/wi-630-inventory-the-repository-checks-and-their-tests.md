@@ -1,5 +1,5 @@
 ---
-status: in_progress
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -100,8 +100,8 @@ spec_impact:
 - 検査ごとの `mise` タスク 17 件の廃止。判断済みで、残す。`mise tasks` の一覧は短くなるが、文書とスキルが個別の検査を名指しできる入口を失う方が損である。列挙が長いことは、検査が多いことの表示であって原因ではない。
 - `backend/` と `frontend/` のテスト。本項目が扱うのはリポジトリ検査とその単体テストだけである。
 - 規約文書の重複解消。[[wi-629-one-source-for-the-document-layout-and-format-rules]] が扱う。
-- 証拠の適用条件の変更は[証拠の縮小](../done/wi-95150-scale-verification-evidence-to-change-impact.md)、日常規約の整理は[規約の整理](wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)が扱う。
-- API 互換性と告知の公開前の適用条件は[未リリース期間のゲート](../done/wi-38041-suspend-release-documentation-and-compatibility-gates-before-publication.md)が扱う。
+- 証拠の適用条件の変更は[証拠の縮小](wi-95150-scale-verification-evidence-to-change-impact.md)、日常規約の整理は[規約の整理](../active/wi-12973-consolidate-daily-development-rules-and-separate-explanations.md)が扱う。
+- API 互換性と告知の公開前の適用条件は[未リリース期間のゲート](wi-38041-suspend-release-documentation-and-compatibility-gates-before-publication.md)が扱う。
 
 ## Design
 
@@ -110,10 +110,10 @@ spec_impact:
 現行 registry は 25 件である。
 18 件という起票時の観測から増えた検査も含め、現行の全件とテストファイルごとに判断する。
 製品の仕様、モジュール境界、公開パッケージは変更しない。
-検査の正本は具体的な文書節、TypeSpec、スキーマまたは構成へ対応づけ、一般的なレビューを代替の検出器とは数えない。
+検査の一次情報源は具体的な文書節、TypeSpec、スキーマまたは構成へ対応づけ、一般的なレビューを代替の検出器とは数えない。
 検査全体の削除候補がなければ、T002 と T003 はその理由を記録して完了する。
 
-`verifyAgentGuidance(documents: GuidanceDocument[]): AgentGuidanceFinding[]` は文書参照、コマンド、構造化フィールドだけを検査する。
+`verifyAgentGuidance(documents: GuidanceDocument[], declaredTasks: ReadonlySet<string>): AgentGuidanceFinding[]` は文書参照、コマンド、構造化フィールドだけを検査する。
 文章の意味を保つ言い換え、翻訳、説明順の変更では失敗させない。
 `risk-based-v4` と `fault_model` は記録契約の識別子として残す。
 文書読み取りは `checkAgentGuidance(snapshot)` が持ち、判定は入力値だけで行う。
@@ -168,17 +168,39 @@ Go は変更しないので Go の特性化テストと変異器は適用しな�
 
 ## Tasks
 
-- [ ] T001 [Tooling] 18 件の検査を三つの基準で判定し、判定表を `tools/check/README.md` へ書く。
-- [ ] T002 [Acceptance] 落とす候補の検査について、止めていた違反を故意に作り、他の関門が止めないことを確かめる。
-- [ ] T003 [Tooling] 判定で落ちた検査を、登録、実装、テスト、タスク、参照まで落とす。
-- [ ] T004 [Tooling] `tools/check/src` のテストを基準で判定し、落ちたものを落とす。落とす前に誤実装で他のテストの検出を確かめる。
+- [x] T001 [Tooling] 18 件の検査を三つの基準で判定し、判定表を `tools/check/README.md` へ書く。
+  - 現行の 25 件を対象に、正本、違反経路、代替できない関門を一行ずつ記録した。
+    着手時は実装 11,491 行、テスト 12,706 行（50 ファイル）であり、行数を採否の基準にはしなかった。
+    文書の検査は `mise run check-links` と `mise run check-work-items` を選ぶ。
+- [x] T002 [Acceptance] 落とす候補の検査について、止めていた違反を故意に作り、他の関門が止めないことを確かめる。
+  - N/A: 検査全体の削除候補はない。
+    別の関門が同じ範囲の故障を止めると主張して削除した検査はない。
+    `agent-guidance` は参照と契約の欠落を守る独立した役割があるため、全体を残して文言検査だけを縮小した。
+- [x] T003 [Tooling] 判定で落ちた検査を、登録、実装、テスト、タスク、参照まで落とす。
+  - N/A: 判定で落ちた登録検査はない。
+    25 件と個別タスクを維持し、不要な部分は T004 と T007 で整理した。
+- [x] T004 [Tooling] `tools/check/src` のテストを基準で判定し、落ちたものを落とす。落とす前に誤実装で他のテストの検出を確かめる。
+  - `lib.test.ts` の schema キー一覧の固定を一時的に除外し、`work-item` の登録先を変える故障で残る 25 テストが失敗した。
+    `mise-config.test.ts` の集合の長さだけの表明を一時的に除外し、`verify` を `check` だけにする故障を集合一致と UI ゲートのテスト 2 件が検出した。
+    両方とも故障を戻してから候補を削除した。
+    実行はそれぞれ `mise run test-tools-file -- check/src/lib.test.ts` と `mise run test-tools-file -- check/src/mise-config.test.ts`、規範 id は N/A（開発ツールの重複表明）とする。
 - [x] T005 [Tooling] `check` と `check-spec` の二重列挙を解消し、`verification-tasks.test.ts` で関係を固定する。
   - `mise run test-tools-file -- check/src/verification-tasks.test.ts` で共通入口 `check-spec-inputs` の欠落による RED を観測した。
     共通入口と registry の `spec` group を接続した後に同じ検査が成功した。
     規範 id は N/A（開発用ゲート集合の構成）とする。
-- [ ] T006 [Docs] `docs/formats/documentation-guide.md` へ、利用者が直接読む生成物を追跡する例外とその理由を書く。
-- [ ] T007 [Guidance] 意味を保つ言い換えで失敗する文言検査を整理し、必要な参照と実行契約の欠落の検出を維持する。
-- [ ] T008 [Verify] 変更を検証する。
+- [x] T006 [Docs] `docs/formats/documentation-guide.md` へ、利用者が直接読む生成物を追跡する例外とその理由を書く。
+  - 運用者が生成コマンドを実行せずに読む 2 文書の追跡を維持し、再生成とドリフト検査を伴う例外を生成物の節へ追記した。
+    `mise run check-links` で参照を検査する。
+- [x] T007 [Guidance] 意味を保つ言い換えで失敗する文言検査を整理し、必要な参照と実行契約の欠落の検出を維持する。
+  - `mise run test-tools-file -- check/src/agent-guidance.test.ts` の言い換え受理テストで、編集前の検査が 9 件の文言欠落を誤検出する RED を観測した。
+    固有文言と出現順を落とし、未定義タスクの検査を実在する `mise.toml` に接続して GREEN にした。
+    文書参照検査を無効化する故障で、参照、オプション、構造化フィールドとファイルの欠落を検査する 4 テストが失敗した。
+    規範 id は N/A（エージェント手順の参照と実行契約）とする。
+- [x] T008 [Verify] 変更を検証する。
+  - 七つの視点で差分をレビューし、ファイルを固定した状態で `mise run verify` が成功した。
+    Go 6,133 件、ツール 1,018 件を含む集約ゲートを通過した。
+    初回に検出された用語を修正し、再実行中の記録追記による入力変化の拒否も、入力を固定した再実行で解消した。
+    完了記録の移動後に `mise run check-work-items` と `mise run check-links` が成功した。
 
 ## Verification
 
@@ -199,3 +221,40 @@ Go は変更しないので Go の特性化テストと変異器は適用しな�
 
 判定表そのものが陳腐化する恐れがある。
 表は判定の時点の根拠であり、検査を足すときに同じ三基準で書くことを `tools/check/README.md` に規則として書く。
+
+## Completion
+
+- **完了日**: 2026-10-11
+- **要約**:
+  `mise run spec-diff` は main に対する規範仕様の変更なしと判定した。
+  現行の 25 検査と着手時の 50 テストファイルを棚卸しし、検査全体は維持した。
+  手順の特定文言と出現順の検査を参照、実在するタスクと契約フィールドの検査へ縮小し、意味を保つ言い換えを受理するようにした。
+  削除候補を外した状態でも残るテストが同じ故障を検出することを観測し、重複する表明を 2 件削除した。
+  仕様検査の集合と生成入力ゲートを共通化し、運用者が直接読む生成文書 2 件を追跡する例外を文書ガイドへ明記した。
+- **受け入れ RED の証拠**:
+  - **テスト**: `mise run test-tools-file -- check/src/verification-tasks.test.ts` の仕様検査と全件検査の集合比較。
+  - **要件**: N/A: 製品要件を変更しない開発用ゲートの構成であり、実際の `mise.toml` と registry を読む代替検査を用いた。
+  - **観測した失敗**: 共通入口 `check-spec-inputs` が存在せず、両方の検査から到達するという表明が失敗した。
+  - **検出できる理由**: 実際のタスク呼び出しと依存を展開し、共通ゲートの到達と registry の部分集合関係を比較するため、片方の配線欠落を区別できる。
+- **単体 RED の証拠**:
+  - **テスト**: `mise run test-tools-file -- check/src/agent-guidance.test.ts` の意味を保つ言い換えの受理。
+  - **要件**: N/A: エージェント手順の参照と実行契約の検査であり、製品の規範要素を追加しない。
+  - **観測した失敗**: 必須参照と契約を残した言い換えに対し、変更前の検査が 9 件の文言欠落を報告した。
+  - **検出できる理由**: 文言と説明順を変えても同じ参照と契約を持つ入力を受理し、それらが欠ける入力を拒否する表明で、過剰な固定と検査不足の両方を区別する。
+- **変更耐性の結果**:
+  文書参照の検査を無効化する故障は 4 テスト、共通ゲートを片方から外す故障は集合比較の 1 テストが検出した。
+  キー一覧の表明を除外して schema の登録先を変える故障は 25 テスト、集合の長さの表明を除外して `verify` を `check` だけにする故障は 2 テストが検出した。
+  すべての故障を戻し、局所テストの成功を確認してから表明を削除した。
+  テストファイルを全体として削除したものはなく、観測していない代替関門を根拠に削除した登録検査もない。
+  TypeScript の配線と判定の代表的な故障を手で注入した結果であり、体系的な全変異の検査とは扱わない。
+- **検証結果**:
+  - `mise run verify` — 入力を固定した再実行で成功。Go 6,133 件、ツール 1,018 件が成功した。
+  - 完了記録を `work-items/done/` へ移動後、`mise run check-work-items` と `mise run check-links` — 成功。
+  - `mise run spec-diff` — 規範仕様の変更なし。
+  - `mise run test-tools-file -- check/src/agent-guidance.test.ts` — 成功。
+  - `mise run test-tools-file -- check/src/check-agent-guidance.test.ts` — 同じ workspace のタスク宣言への接続を確認して成功。
+  - `mise run test-tools-file -- check/src/verification-tasks.test.ts`、`check/src/lib.test.ts`、`check/src/mise-config.test.ts` — 復元後に成功。
+  - `mise run test-tools-file -- render-docs/src/documentation-quality.test.ts` — 全体検証で検出した用語を修正し、成功。
+  - `mise run lint-tools`、`mise run typecheck-tools`、`mise run check-agent-guidance` — 成功。
+  - コーディングスタイルの七つの視点で差分をレビューし、読み取りの作用と入力値だけの判定、共通パーサーの再利用、別 workspace での配線検査を確認した。
+  - ブラウザーへ到達する変更はないため、UI E2E は N/A。

@@ -198,11 +198,6 @@ describe('mise aggregate gate reporting', () => {
     const serial = members('verify-serial')
     expect([...new Set(parallel)].sort()).toEqual([...new Set(serial)].sort())
   })
-
-  /** The timing table walks the same membership the suite runs. */
-  it('times a suite whose membership can be read from the command map', () => {
-    expect(members('verify').length).toBeGreaterThan(1)
-  })
 })
 
 describe('mise mutation testing boundary', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { SCHEMAS, lintRawText, locatePointer, validateAgainstSchema } from './lib.ts'
+import { lintRawText, locatePointer, validateAgainstSchema } from './lib.ts'
 
 describe('lintRawText', () => {
   it('returns no findings for a single-newline-terminated clean file', () => {
@@ -69,12 +69,6 @@ describe('locatePointer', () => {
   it('falls back to the parent line when a segment cannot be resolved', () => {
     expect(locatePointer(yaml, '/scope/missing')).toBe(2)
     expect(locatePointer(yaml, '/scope/ui/pages/99')).toBe(4)
-  })
-})
-
-describe('SCHEMAS', () => {
-  it('exposes exactly the documented schemas', () => {
-    expect(Object.keys(SCHEMAS).sort()).toEqual(['work-item'])
   })
 })
 
