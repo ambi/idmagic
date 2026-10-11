@@ -352,6 +352,8 @@ func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo,
 		ApplicationAssignments: deps.Application.DesiredStateAssignments(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, emit, lifecycleWorkflowActor),
 		UserLifecycle:          deps.UserLifecycleCommands(emit, lifecycleWorkflowActor),
+		GroupMembership:        deps.GroupMembershipCommands(emit, lifecycleWorkflowActor),
+		UserRequiredActions:    deps.UserLifecycleCommands(emit, lifecycleWorkflowActor),
 		Notifier:               deps.Notification.Notifier,
 		Emit:                   emitErr,
 	}

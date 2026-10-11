@@ -89,6 +89,28 @@ func TestSetAndClearUserRequiredAction(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-047: モジュール向け操作は実際の付与と解除だけ changed を返し、重複した操作と別テナントの参照ではイベントを増やさない。
+func TestUserRequiredActionCommandsDesiredState(t *testing.T) {
+	ctx, deps, events, user := newRequiredActionFixture(t)
+	now := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
+	commands := userusecases.UserLifecycleCommands{Deps: deps, Actor: "workflow"}
+	for i, required := range []bool{true, true, false, false} {
+		changed, err := commands.SetUserRequiredAction(ctx, user.TenantID, user.ID, idmdomain.RequiredActionUpdatePassword, required, now)
+		if err != nil || changed != (i%2 == 0) {
+			t.Fatalf("operation %d = %v, %v", i, changed, err)
+		}
+	}
+	if len(*events) != 2 {
+		t.Fatalf("event count = %d", len(*events))
+	}
+	if changed, err := commands.SetUserRequiredAction(ctx, "foreign-tenant", user.ID, idmdomain.RequiredActionUpdatePassword, true, now); changed || err == nil {
+		t.Fatalf("foreign = %v, %v", changed, err)
+	}
+	if len(*events) != 2 {
+		t.Fatalf("foreign event count = %d", len(*events))
+	}
+}
+
 func TestSetUserRequiredActionRejectsUnknownAction(t *testing.T) {
 	ctx, deps, _, user := newRequiredActionFixture(t)
 	_, err := userusecases.SetUserRequiredAction(

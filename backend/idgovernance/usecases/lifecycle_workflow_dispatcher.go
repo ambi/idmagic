@@ -11,7 +11,6 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -54,6 +53,9 @@ type LifecycleWorkflowExecutorDeps struct {
 	// User の状態を直接保存すると、イベント、端末の失効、下流への通知、所有する Agent の
 	// 無効化が伴わない。nil なら手順を dependency_unavailable で失敗させる。
 	UserLifecycle igports.UserLifecycle
+	// 変更は記録の所有者の操作へ渡し、管理 API と同じイベントと通知を伴わせる。
+	GroupMembership     igports.GroupMembership
+	UserRequiredActions igports.UserRequiredActions
 	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
 	// action's TemplateKey is a label rendered into the body, not the body itself.
 	Notifier sharednotification.Notifier
@@ -324,12 +326,11 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		return igdomain.WorkflowStepNoop, ""
 	}
 	switch action.Kind {
-	case igdomain.WorkflowActionAddGroupMember:
-		ok, e := deps.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: action.GroupID, UserID: user.ID, CreatedAt: time.Now().UTC()})
-		return changed(ok, e)
-	case igdomain.WorkflowActionRemoveGroupMember:
-		ok, e := deps.GroupRepo.RemoveMember(ctx, run.TenantID, action.GroupID, user.ID)
-		return changed(ok, e)
+	case igdomain.WorkflowActionAddGroupMember, igdomain.WorkflowActionRemoveGroupMember:
+		if deps.GroupMembership == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		return changed(deps.GroupMembership.SetGroupMembership(ctx, run.TenantID, action.GroupID, user.ID, action.Kind == igdomain.WorkflowActionAddGroupMember, time.Now().UTC()))
 	case igdomain.WorkflowActionAssignApplication:
 		if deps.ApplicationAssignments == nil {
 			return igdomain.WorkflowStepFailed, "dependency_unavailable"
@@ -341,14 +342,10 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		}
 		return changed(deps.ApplicationAssignments.UnassignApplicationDesiredState(ctx, run.TenantID, action.ApplicationID, user.ID, time.Now().UTC()))
 	case igdomain.WorkflowActionSetRequiredAction, igdomain.WorkflowActionClearRequiredAction:
-		updated := *user
-		if action.Kind == igdomain.WorkflowActionSetRequiredAction {
-			updated.Lifecycle.RequiredActions = append(updated.Lifecycle.RequiredActions, action.RequiredAction)
-		} else {
-			updated.Lifecycle.RequiredActions = slices.DeleteFunc(updated.Lifecycle.RequiredActions, func(v idmdomain.RequiredAction) bool { return v == action.RequiredAction })
+		if deps.UserRequiredActions == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
 		}
-		updated.UpdatedAt = time.Now().UTC()
-		return changed(true, deps.UserRepo.Save(ctx, &updated))
+		return changed(deps.UserRequiredActions.SetUserRequiredAction(ctx, run.TenantID, user.ID, action.RequiredAction, action.Kind == igdomain.WorkflowActionSetRequiredAction, time.Now().UTC()))
 	case igdomain.WorkflowActionEnableUser, igdomain.WorkflowActionDisableUser:
 		if deps.UserLifecycle == nil {
 			return igdomain.WorkflowStepFailed, "dependency_unavailable"

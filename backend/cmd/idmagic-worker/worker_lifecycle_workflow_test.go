@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -83,6 +85,105 @@ func TestWorkerLifecycleWorkflowHandlerCancelsRunsOfADisabledWorkflow(t *testing
 
 // recordingSink は worker の Emit が監査へ流すイベントの種類を集める。
 type recordingSink struct{ types []string }
+
+type workflowGroupNotifier struct{ calls int }
+
+func (n *workflowGroupNotifier) NotifyGroupMutation(_ context.Context, _, _ string, _ groupports.ProvisioningTrigger, _ time.Time) error {
+	n.calls++
+	return nil
+}
+
+//spec:covers REQ-IDGOVERNANCE-003, REQ-IDGOVERNANCE-005, REQ-IDMANAGEMENT-015, REQ-IDMANAGEMENT-047: Worker の正式な組み立てからグループ所属と必須操作を変更するとイベントとグループ通知を伴い、同じ操作は no_op となり、別テナントの対象は変更されないことを固定する。
+func TestWorkerLifecycleWorkflowIdentityActions(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
+	users := usermemory.NewUserRepository()
+	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	users.Seed(&userdomain.User{ID: "foreign", TenantID: "tenant-b", PreferredUsername: "foreign", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	groups := groupmemory.NewGroupRepository()
+	for _, group := range []*groupdomain.Group{
+		{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now},
+		{ID: "foreign-group", TenantID: "tenant-b", Name: "Foreign", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now},
+	} {
+		if err := groups.Save(ctx, group); err != nil {
+			t.Fatal(err)
+		}
+	}
+	workflows := igmemory.NewLifecycleWorkflowRepository()
+	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Identity actions", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	runs := igmemory.NewLifecycleWorkflowRunRepository()
+	sink := &recordingSink{}
+	notifier := &workflowGroupNotifier{}
+	deps := &bootstrap.Dependencies{
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups, GroupProvisioningNotifier: notifier},
+		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs},
+		OAuth2:       oauth2.Module{EventSink: sink},
+	}
+	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
+	handler := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger))
+	execute := func(runID, userID string, action igdomain.WorkflowAction) igdomain.WorkflowStepOutcome {
+		t.Helper()
+		run := &igdomain.WorkflowRun{ID: runID, TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: runID, TargetUserID: userID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
+		if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: runID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+			t.Fatal(err)
+		}
+		params, err := json.Marshal(map[string]string{"run_id": runID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := handler(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+			t.Fatal(err)
+		}
+		steps, err := runs.ListSteps(ctx, "tenant-a", runID)
+		if err != nil || len(steps) != 1 {
+			t.Fatalf("steps = %+v, %v", steps, err)
+		}
+		return steps[0].Outcome
+	}
+	for i, tc := range []struct {
+		action igdomain.WorkflowAction
+		event  string
+	}{
+		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "engineering"}, "GroupMemberAdded"},
+		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}, "UserRequiredActionSet"},
+		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionClearRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}, "UserRequiredActionCleared"},
+		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionRemoveGroupMember, GroupID: "engineering"}, "GroupMemberRemoved"},
+	} {
+		runID := fmt.Sprintf("run-%d", i)
+		if got := execute(runID, "alice", tc.action); got != igdomain.WorkflowStepChanged {
+			t.Fatalf("%s outcome = %s", tc.event, got)
+		}
+		if got := sink.count(tc.event); got != 1 {
+			t.Fatalf("%s count = %d, want 1", tc.event, got)
+		}
+		if got := execute(runID+"-repeat", "alice", tc.action); got != igdomain.WorkflowStepNoop {
+			t.Fatalf("repeat %s outcome = %s", tc.event, got)
+		}
+		if got := sink.count(tc.event); got != 1 {
+			t.Fatalf("repeat %s count = %d", tc.event, got)
+		}
+	}
+	if notifier.calls != 2 {
+		t.Fatalf("group notifications = %d, want 2", notifier.calls)
+	}
+	before := len(sink.types)
+	for i, tc := range []struct {
+		user   string
+		action igdomain.WorkflowAction
+	}{
+		{"foreign", igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}},
+		{"alice", igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "foreign-group"}},
+	} {
+		if got := execute(fmt.Sprintf("foreign-%d", i), tc.user, tc.action); got != igdomain.WorkflowStepFailed {
+			t.Fatalf("foreign outcome = %s", got)
+		}
+	}
+	if sink.count("GroupMemberAdded") != 1 || sink.count("UserRequiredActionSet") != 1 || notifier.calls != 2 {
+		t.Fatalf("foreign mutation emitted events or notifications (events before=%d, after=%d)", before, len(sink.types))
+	}
+}
 
 func (s *recordingSink) Emit(_ context.Context, event spec.DomainEvent) error {
 	s.types = append(s.types, event.EventType())

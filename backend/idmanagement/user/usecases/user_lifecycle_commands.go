@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -19,6 +20,13 @@ import (
 type UserLifecycleCommands struct {
 	Deps  AdminUserDeps
 	Actor string
+}
+
+// SetUserRequiredAction は必須操作を付与または解除し、実際の変更だけを返す。
+// ワークフローの操作から新たな WorkflowRun を計画しない。
+func (c UserLifecycleCommands) SetUserRequiredAction(ctx context.Context, tenantID, userID string, action idmdomain.RequiredAction, required bool, now time.Time) (bool, error) {
+	_, changed, err := setUserRequiredAction(c.tenantContext(ctx, tenantID), c.deps(), c.Actor, userID, action, required, now)
+	return changed, err
 }
 
 // SetUserDisabled は User を無効化または再有効化し、User を変えたかを返す。削除予約中の User は

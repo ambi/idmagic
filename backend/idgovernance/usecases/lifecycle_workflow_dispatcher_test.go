@@ -21,6 +21,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -100,6 +101,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
 		ApplicationAssignments: desiredStateAssignments(applications, assignments, users, groups, nil),
+		GroupMembership:        groupusecases.GroupMembershipCommands{Deps: groupusecases.AdminGroupDeps{UserRepo: users, GroupRepo: groups}, Actor: "lifecycle-workflow"},
 	})
 	result, err := handler(ctx, claimed[0])
 	if err != nil {

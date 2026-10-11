@@ -27,6 +27,7 @@ import (
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -165,6 +166,8 @@ func (f *governanceFixture) executor() usecases.LifecycleWorkflowExecutorDeps {
 		ApplicationRepo: f.apps, AssignmentRepo: f.assignments,
 		ApplicationAssignments: desiredStateAssignments(f.apps, f.assignments, f.users, f.groups, f.events.emit),
 		UserLifecycle:          f.userLifecycle(),
+		GroupMembership:        groupusecases.GroupMembershipCommands{Deps: groupusecases.AdminGroupDeps{UserRepo: f.users, GroupRepo: f.groups, Emit: f.events.emit}, Actor: "lifecycle-workflow"},
+		UserRequiredActions:    userusecases.UserLifecycleCommands{Deps: userusecases.AdminUserDeps{UserRepo: f.users, Emit: f.events.emit}, Actor: "lifecycle-workflow"},
 		Notifier:               &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
 		Emit:                   f.events.emit,
 	}
@@ -296,6 +299,50 @@ func (f *governanceFixture) runWorker(t *testing.T, run *igdomain.WorkflowRun) *
 		t.Fatalf("job = %+v, %v; want it to finish", job, err)
 	}
 	return job
+}
+
+//spec:covers REQ-IDGOVERNANCE-003, REQ-IDGOVERNANCE-005, REQ-IDMANAGEMENT-047: 必須操作は所有者のコマンドを通り、付与と解除のイベントを各一回発行する。未接続の手順は失敗し、直接保存へ迂回しない。
+func TestLifecycleWorkflowRequiredActionsUseOwnerCommands(t *testing.T) {
+	for _, wired := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wired=%v", wired), func(t *testing.T) {
+			f := newGovernanceFixture(t)
+			set := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}
+			clearAction := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionClearRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}
+			workflow := f.enabledWorkflow(t, igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, set, set, clearAction, clearAction)
+			user := f.createUser(t, "alice")
+			run := onlyRun(t, f.runsOf(t, workflow.ID))
+			deps := f.executor()
+			if !wired {
+				deps.UserRequiredActions = nil
+			}
+			params, err := json.Marshal(map[string]string{"run_id": run.ID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := usecases.LifecycleWorkflowRunHandler(deps)(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+				t.Fatal(err)
+			}
+			want := []igdomain.WorkflowStepOutcome{igdomain.WorkflowStepFailed, igdomain.WorkflowStepFailed, igdomain.WorkflowStepNoop, igdomain.WorkflowStepNoop}
+			count := 0
+			if wired {
+				want = []igdomain.WorkflowStepOutcome{igdomain.WorkflowStepChanged, igdomain.WorkflowStepNoop, igdomain.WorkflowStepChanged, igdomain.WorkflowStepNoop}
+				count = 1
+			}
+			if got := f.outcomes(t, run.ID); !slices.Equal(got, want) {
+				t.Fatalf("outcomes = %v, want %v", got, want)
+			}
+			if f.events.count("UserRequiredActionSet") != count || f.events.count("UserRequiredActionCleared") != count {
+				t.Fatalf("required action event counts = %d/%d", f.events.count("UserRequiredActionSet"), f.events.count("UserRequiredActionCleared"))
+			}
+			stored, err := f.users.FindBySub(f.ctx, user.ID)
+			if err != nil || len(stored.Lifecycle.RequiredActions) != 0 {
+				t.Fatalf("user = %+v, %v", stored, err)
+			}
+			if runs := f.runsOf(t, workflow.ID); len(runs) != 1 {
+				t.Fatalf("workflow recursively triggered: %d runs", len(runs))
+			}
+		})
+	}
 }
 
 func onlyRun(t *testing.T, runs []*igdomain.WorkflowRun) *igdomain.WorkflowRun {

@@ -16,13 +16,19 @@ Job の投入に失敗しても、次の走査で関連付け直す。
 | --- | --- |
 | `enable_user`、`disable_user` | `UserLifecycle` のポートを通して、IdManagement の User の操作で行う。管理 API で止めたときと同じイベント、記憶済みの端末の失効、下流への通知、所有する Agent の無効化が伴う。削除予約中の User への操作は IdManagement が拒否し、ステップは変更なしとして扱う |
 | `assign_application`、`unassign_application` | `ApplicationAssignments` のポートを通して、Application の割り当ての操作で行う |
-| `add_group_member`、`remove_group_member` | IdManagement の Group の Repository を直接呼ぶ |
-| `set_required_action`、`clear_required_action` | IdManagement の User の Repository で直接保存する |
+| `add_group_member`、`remove_group_member` | `GroupMembership` のポートを通して、IdManagement の所属操作で行う。実際の変更に所属のイベントと下流へのプロビジョニング通知が伴う |
+| `set_required_action`、`clear_required_action` | `UserRequiredActions` のポートを通して、IdManagement の必須操作の付与と解除を行う。実際の変更に対応するイベントが伴う |
 | `send_email` | 共有の通知の部品で送る。対象の User に検証済みのプライマリのメールアドレスがなければ、ステップは失敗する |
 
 アクションによる User の変更は `UserMutationCommitter` を通らないので、新しい WorkflowRun を計画しない。
-`UserLifecycle` の実装も、IdManagement の User の操作を `UserMutationCommitter` なしで呼ぶ。
+`UserLifecycle` と `UserRequiredActions` の実装も、IdManagement の User の操作を `UserMutationCommitter` なしで呼ぶ。
 アクションからトリガーへの循環は、この経路の分離で断たれる。
+
+操作のポートは IdGovernance が定義し、IdManagement が実装する。
+bootstrap が管理 API と同じ保存先、イベントの配信点、通知先を組み立て、Worker が実行ハンドラーへ渡す。
+実行前の評価は Repository の読み取りを使い、状態の変更は操作のポートへ渡す。
+評価後に状態が変わっても、操作の冪等な結果に応じて `changed` または `no_op` を記録する。
+変更が必要な手順にポートがなければ、`dependency_unavailable` で失敗する。
 
 ## 信頼性
 

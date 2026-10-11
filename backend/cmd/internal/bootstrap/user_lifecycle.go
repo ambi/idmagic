@@ -4,11 +4,21 @@ import (
 	"context"
 	"time"
 
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 )
+
+// GroupMembershipCommands は管理 API と同じ所属のイベントとプロビジョニング通知を組み立てる。
+func (d *Dependencies) GroupMembershipCommands(emit func(spec.DomainEvent), actor string) groupusecases.GroupMembershipCommands {
+	return groupusecases.GroupMembershipCommands{Actor: actor, Deps: groupusecases.AdminGroupDeps{
+		GroupRepo: d.IdManagement.GroupRepo, UserRepo: d.IdManagement.UserRepo,
+		ProvisioningNotifier: d.IdManagement.GroupProvisioningNotifier,
+		Emit:                 func(event spec.DomainEvent) error { emit(event); return nil },
+	}}
+}
 
 // UserLifecycleCommands は、管理 API の外（LifecycleWorkflow と SCIM の取り込み）から User を止めるときに通す
 // IdManagement の操作を組み立てる。依存は管理 API のハンドラーと同じ集合にして、どの経路で止めても
