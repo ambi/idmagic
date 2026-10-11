@@ -66,3 +66,23 @@ func TestNewConsoleSinkReturnsAnEventSink(t *testing.T) {
 		t.Fatal("expected a non-nil EventSink")
 	}
 }
+
+func TestCharacterizeConsoleSinkOutput(t *testing.T) {
+	var buf bytes.Buffer
+	sink := &ConsoleSink{console: &Console{out: &buf}}
+	event := consoleTestEvent{At: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
+	if err := sink.Emit(t.Context(), event); err != nil {
+		t.Fatal(err)
+	}
+	want := "{\"At\":\"2026-01-02T03:04:05Z\",\"occurredAt\":\"2026-01-02T03:04:05Z\",\"type\":\"ConsoleTestEvent\"}\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("console output = %q, want %q", got, want)
+	}
+	buf.Reset()
+	if err := sink.Emit(t.Context(), unmarshalableConsoleEvent{Fn: func() {}}); err != nil {
+		t.Fatalf("marshal error returned to caller: %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Fatalf("marshal error wrote %q", buf.String())
+	}
+}
