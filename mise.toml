@@ -673,8 +673,7 @@ run = '''
 set -eu
 test "$#" -le 1 || { echo "usage: mise run check -- [base-revision]" >&2; exit 2; }
 mise run -c \
-  check-generated-contract ::: \
-  check-rendered-docs ::: \
+  check-spec-inputs ::: \
   check-repository ${1:+"$1"} ::: \
   check-config-reference ::: \
   check-route-reference ::: \
@@ -788,13 +787,18 @@ description = "Check repository-local agent guidance against the current workflo
 dir = "tools"
 run = "bun run check/src/runner.ts agent-guidance"
 
-# 依存として並べると、同じ実行の中で compile-spec が一度だけ走る。
+[tasks.check-spec-inputs]
+description = "Check generated specification inputs shared by both check suites"
+depends = ["compile-spec"]
+run = "mise run -c check-generated-contract ::: check-rendered-docs"
+
+# 生成検査と registry の spec group が、check にも含まれる共通の仕様ゲートである。
 [tasks.check-spec]
 # context: targets=spec,docs/modules,docs/requirements
 description = "Compile TypeSpec and validate canonical specification documents"
-depends = ["compile-spec", "check-generated-contract", "check-rendered-docs"]
+depends = ["compile-spec", "check-spec-inputs"]
 dir = "tools"
-run = "bun run check/src/runner.ts documents specification-rules document-layout executable-examples"
+run = "bun run check/src/runner.ts spec"
 
 [tasks.check-work-items]
 # context: kinds=*

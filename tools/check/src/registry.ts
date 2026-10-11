@@ -26,10 +26,10 @@ import type { RepositoryCheck } from './runner.ts'
 
 export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'executable-examples', groups: ['all', 'spec'], run: checkExecutableExamples },
-  { name: 'documents', groups: ['all'], run: checkDocuments },
-  { name: 'specification-rules', groups: ['all'], run: checkSpecificationRules },
+  { name: 'documents', groups: ['all', 'spec'], run: checkDocuments },
+  { name: 'specification-rules', groups: ['all', 'spec'], run: checkSpecificationRules },
   { name: 'boundary-debt-ratchet', groups: ['all'], run: checkBoundaryDebtRatchet },
-  { name: 'document-layout', groups: ['all'], run: checkDocumentLayout },
+  { name: 'document-layout', groups: ['all', 'spec'], run: checkDocumentLayout },
   { name: 'work-items', groups: ['all'], run: checkWorkItems },
   { name: 'spec-impact', groups: ['all'], run: checkSpecImpact },
   { name: 'links', groups: ['all'], run: checkLinks },

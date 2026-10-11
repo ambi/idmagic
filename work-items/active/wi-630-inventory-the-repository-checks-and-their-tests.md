@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,6 +7,44 @@ created_at: 2026-09-19
 priority: p2
 depends_on: []
 change_kind: tooling
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: "初回公開前の開発用検査だけを変更し、利用契約、保存データ、API と UI に影響しない。"
+  references: []
+initial_context:
+  specification:
+    - docs/development/task-context.md
+    - docs/development/specification-first-workflow.md
+    - docs/formats/work-item-format.md
+    - docs/development/coding-style.md
+    - docs/development/testing.md
+    - docs/development/writing-language.md
+    - docs/development/README.md
+    - docs/development/release.md
+    - docs/formats/documentation-guide.md
+    - docs/requirements/glossary.md
+  typespec: []
+  source:
+    - tools/README.md
+    - tools/check/README.md
+    - tools/check/src/registry.ts
+    - tools/check/src/agent-guidance.ts
+    - tools/check/src/check-agent-guidance.ts
+    - tools/check/src/verification-tasks.ts
+    - tools/check/src/lib.ts
+    - tools/check/src/terminology.ts
+    - mise.toml
+  tests:
+    - tools/check/src/agent-guidance.test.ts
+    - tools/check/src/verification-tasks.test.ts
+    - tools/check/src/mise-config.test.ts
+    - tools/check/src/lib.test.ts
+    - tools/check/src/registry.test.ts
+    - tools/check/src/repository-checks.acceptance.test.ts
+  stop_before_reading:
+    - backend
+    - frontend
 spec_impact:
   kind: none
   reason: "リポジトリ検査とその単体テストの取捨だけを扱い、プロダクトの振る舞いも規範要素も変えない。"
@@ -67,6 +105,31 @@ spec_impact:
 
 ## Design
 
+### 着手時の判断と検証境界
+
+現行 registry は 25 件である。
+18 件という起票時の観測から増えた検査も含め、現行の全件とテストファイルごとに判断する。
+製品の仕様、モジュール境界、公開パッケージは変更しない。
+検査の正本は具体的な文書節、TypeSpec、スキーマまたは構成へ対応づけ、一般的なレビューを代替の検出器とは数えない。
+検査全体の削除候補がなければ、T002 と T003 はその理由を記録して完了する。
+
+`verifyAgentGuidance(documents: GuidanceDocument[]): AgentGuidanceFinding[]` は文書参照、コマンド、構造化フィールドだけを検査する。
+文章の意味を保つ言い換え、翻訳、説明順の変更では失敗させない。
+`risk-based-v4` と `fault_model` は記録契約の識別子として残す。
+文書読み取りは `checkAgentGuidance(snapshot)` が持ち、判定は入力値だけで行う。
+
+仕様検査の TypeScript 集合は registry の `spec` group に一度だけ宣言する。
+生成契約と生成サイトの共通ゲートを `check-spec-inputs` にまとめ、`check` と `check-spec` は同じ入口を参照する。
+`check-repository` の全件実行と各個別タスクの入口は維持する。
+生成物 2 件の追跡は維持し、文書ガイドの例外を明記する。
+
+規範 id は N/A（製品要件を変更しない開発ツールの変更）とする。
+受け入れ RED の代替検査は `verification-tasks.test.ts` の実際の `mise.toml` と registry の集合比較、単体 RED は `agent-guidance.test.ts` の言い換え受理と参照欠落拒否とする。
+いずれも `mise run test-tools-file -- <file>` で確認する。
+削除するテストは候補を一時的に外し、誤実装で残すテストが失敗することを確認してから落とす。
+変更耐性は共通ゲートの配線切断と文書参照検査の無効化を注入し、同じ局所テストで確認する。
+Go は変更しないので Go の特性化テストと変異器は適用しない。
+
 検査の判定基準を三つ置き、三つすべてを満たすものだけを残す。
 
 | 基準 | 内容 | 満たさないときに起きること |
@@ -109,7 +172,10 @@ spec_impact:
 - [ ] T002 [Acceptance] 落とす候補の検査について、止めていた違反を故意に作り、他の関門が止めないことを確かめる。
 - [ ] T003 [Tooling] 判定で落ちた検査を、登録、実装、テスト、タスク、参照まで落とす。
 - [ ] T004 [Tooling] `tools/check/src` のテストを基準で判定し、落ちたものを落とす。落とす前に誤実装で他のテストの検出を確かめる。
-- [ ] T005 [Tooling] `check` と `check-spec` の二重列挙を解消し、`verification-tasks.test.ts` で関係を固定する。
+- [x] T005 [Tooling] `check` と `check-spec` の二重列挙を解消し、`verification-tasks.test.ts` で関係を固定する。
+  - `mise run test-tools-file -- check/src/verification-tasks.test.ts` で共通入口 `check-spec-inputs` の欠落による RED を観測した。
+    共通入口と registry の `spec` group を接続した後に同じ検査が成功した。
+    規範 id は N/A（開発用ゲート集合の構成）とする。
 - [ ] T006 [Docs] `docs/formats/documentation-guide.md` へ、利用者が直接読む生成物を追跡する例外とその理由を書く。
 - [ ] T007 [Guidance] 意味を保つ言い換えで失敗する文言検査を整理し、必要な参照と実行契約の欠落の検出を維持する。
 - [ ] T008 [Verify] 変更を検証する。
