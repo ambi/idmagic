@@ -392,69 +392,54 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 // AddMember は同一テナントの User をグループに所属させる。既所属なら no-op で
 // イベントも emit しない (冪等)。
 func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, now time.Time) error {
+	_, err := setGroupMembership(ctx, deps, actorUserID, groupID, userID, true, now)
+	return err
+}
+
+func setGroupMembership(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, present bool, now time.Time) (bool, error) {
 	tenantID := tenantports.TenantID(ctx)
 	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if group == nil {
-		return ErrGroupNotFound
+		return false, ErrGroupNotFound
 	}
 	if group.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
-		return ErrDynamicMembershipManaged
+		return false, ErrDynamicMembershipManaged
 	}
-	user, err := deps.UserRepo.FindBySub(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if user == nil || user.TenantID != tenantID {
-		return idmusecases.ErrUserNotFound
+	if present {
+		user, err := deps.UserRepo.FindBySub(ctx, userID)
+		if err != nil {
+			return false, err
+		}
+		if user == nil || user.TenantID != tenantID {
+			return false, idmusecases.ErrUserNotFound
+		}
 	}
 	now = idmusecases.NormalizedNow(now)
-	added, err := deps.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{
-		GroupID: groupID, UserID: userID, Source: groupdomain.MembershipSourceManual, CreatedAt: now,
-	})
-	if err != nil {
-		return err
+	var changed bool
+	var event spec.DomainEvent
+	if present {
+		changed, err = deps.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: userID, Source: groupdomain.MembershipSourceManual, CreatedAt: now})
+		event = &idmdomain.GroupMemberAdded{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID}
+	} else {
+		changed, err = deps.GroupRepo.RemoveMember(ctx, tenantID, groupID, userID)
+		event = &idmdomain.GroupMemberRemoved{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID}
 	}
-	if added {
-		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberAdded{
-			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
-		}); err != nil {
-			return err
-		}
-		return notifyProvisioning(ctx, deps, tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, now)
+	if err != nil || !changed {
+		return changed, err
 	}
-	return nil
+	if err := idmusecases.AdminEmit(deps.Emit, event); err != nil {
+		return true, err
+	}
+	return true, notifyProvisioning(ctx, deps, tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, now)
 }
 
 // RemoveMember はグループから User を外す。非所属なら no-op で event も emit しない。
 func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, userID string, now time.Time) error {
-	tenantID := tenantports.TenantID(ctx)
-	group, err := deps.GroupRepo.FindByID(ctx, tenantID, groupID)
-	if err != nil {
-		return err
-	}
-	if group == nil {
-		return ErrGroupNotFound
-	}
-	if group.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
-		return ErrDynamicMembershipManaged
-	}
-	now = idmusecases.NormalizedNow(now)
-	removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, groupID, userID)
-	if err != nil {
-		return err
-	}
-	if removed {
-		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
-			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
-		}); err != nil {
-			return err
-		}
-		return notifyProvisioning(ctx, deps, tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, now)
-	}
-	return nil
+	_, err := setGroupMembership(ctx, deps, actorUserID, groupID, userID, false, now)
+	return err
 }
 
 // UserGroupView は ListUserGroups の結果。明示ロール・グループ由来ロール・union を
