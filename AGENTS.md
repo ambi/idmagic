@@ -42,6 +42,10 @@
 
 `go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。その用途には `mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` を使う。
 
+`mise run test-ui-e2e`、`test-ui-e2e-file`、`verify-full` と Chrome／Bun.WebView の起動確認は、localhost の待受けとブラウザーの起動を必要とするため、初回からサンドボックスの外で実行する。
+`mise run verify` と Go の HTTP 統合テストも localhost の待受けを使うため、同じ実行方法に従う。
+権限昇格が必要な実行環境では、最初の呼び出しから実行ツールの権限昇格を指定する。
+
 テストが宣言済みの `REQ-*`、`EX-*`、標準 id を被覆したと主張するときは、テスト関数の直上へ `//spec:covers <id>[, <id>]: <このテストが何を固定しているか>` を置く。この形だけが被覆と数えられるので、散文で id に言及するのは安全である。規約は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の「Citing a normative id from a test」が定める。
 
 テストの検出能力を測るときは `mise run test-go-mutation -- <package-directory>` を使う。手で変異を書くのは、変異器が表現できない「配線を外す」「デフォルトの分岐を差し替える」種類だけとする。読み方は[仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md)の Mutation testing が定める。
