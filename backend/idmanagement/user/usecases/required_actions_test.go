@@ -42,6 +42,7 @@ func newRequiredActionFixture(t *testing.T) (context.Context, userusecases.Admin
 	return ctx, deps, events, user
 }
 
+//spec:covers REQ-IDMANAGEMENT-047: 必須操作の付与と解除は状態と対応イベントを変更し、同じ付与を繰り返しても重複しないことを固定する。
 func TestSetAndClearUserRequiredAction(t *testing.T) {
 	ctx, deps, events, user := newRequiredActionFixture(t)
 	now := time.Date(2026, 6, 20, 13, 0, 0, 0, time.UTC)
