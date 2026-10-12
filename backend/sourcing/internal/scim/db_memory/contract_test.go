@@ -3,7 +3,7 @@ package db_memory
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/testing_contract"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/testing_contract"
 )
 
 func TestPersistenceContract(t *testing.T) {

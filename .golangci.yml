@@ -161,7 +161,7 @@ linters:
       # Persistence repository Find* methods use nil result + nil error for
       # "not found" to match existing port contracts. Matches both the
       # Per-context, per-feature, and shared persistence adapters in Flat Architecture.
-      - path: backend/[^/]+/(?:[^/]+/)?db_(?:memory|postgres|valkey)/
+      - path: backend/[^/]+/(?:internal/)?(?:[^/]+/)?db_(?:memory|postgres|valkey)/
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil

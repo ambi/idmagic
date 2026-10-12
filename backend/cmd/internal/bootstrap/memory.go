@@ -54,7 +54,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/sourcing"
-	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/workloadidentity"
@@ -195,7 +195,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			repo := samlmemory.NewSamlServiceProviderRepository()
 			return saml.Module{SPRepo: repo, ProfileRepo: repo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()}
 		}(),
-		Sourcing:  sourcing.Module{ScimRepo: scimmemory.NewScimRepository()},
+		Sourcing:  sourcing.NewMemoryModule(),
 		ApiTokens: apitoken.Module{Repo: apitokenmemory.NewRepository()},
 		Jobs:      jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{

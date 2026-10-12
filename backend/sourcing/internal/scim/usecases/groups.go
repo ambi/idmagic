@@ -9,7 +9,7 @@ import (
 	"time"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 

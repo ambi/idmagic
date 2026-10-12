@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	scimdomain "github.com/ambi/idmagic/backend/sourcing/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 func memberOp(scimIDs ...string) []any {

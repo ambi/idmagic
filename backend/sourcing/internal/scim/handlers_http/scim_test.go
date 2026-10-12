@@ -30,10 +30,10 @@ import (
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
-	scimhttp "github.com/ambi/idmagic/backend/sourcing/scim/handlers_http"
+	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
+	scimhttp "github.com/ambi/idmagic/backend/sourcing/internal/scim/handlers_http"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
-	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
 )
 
 type scimTokenCodec struct {

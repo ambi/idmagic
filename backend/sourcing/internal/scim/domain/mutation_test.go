@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // ParseUserWrite: userName は必須 (RFC7643-CORE-RESOURCES)。

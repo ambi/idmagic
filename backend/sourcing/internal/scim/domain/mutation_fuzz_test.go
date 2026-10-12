@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // scimBody は fuzz 入力の JSON を SCIM のボディ表現へ変換する。

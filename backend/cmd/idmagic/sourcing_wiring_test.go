@@ -17,8 +17,7 @@ import (
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sourcing"
-	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
-	scimusecases "github.com/ambi/idmagic/backend/sourcing/scim/usecases"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -30,11 +29,11 @@ func TestServerWiresScimUserStopsThroughIdManagement(t *testing.T) {
 	agents := agentmemory.NewAgentRepository()
 	deps := &bootstrap.Dependencies{
 		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},
-		Sourcing:     sourcing.Module{ScimRepo: scimmemory.NewScimRepository()},
+		Sourcing:     sourcing.NewMemoryModule(),
 	}
 	var events []spec.DomainEvent
 	module := sourcingModule(deps, func(event spec.DomainEvent) { events = append(events, event) })
-	scim := scimusecases.NewUsecases(module.ScimRepo, users, groups, module.UserLifecycle, func(spec.DomainEvent) {})
+	scim := module.Usecases(users, groups, func(spec.DomainEvent) {})
 
 	tenant := tenancydomain.DefaultTenantID
 	created, err := scim.CreateUser(ctx, tenant, map[string]any{"userName": "alice", "active": true})
@@ -87,11 +86,11 @@ func TestSCIMUserLifecycleAdvancesTheRevocationEpochOfOwnedAgents(t *testing.T) 
 	epochs := ssmemory.NewAgentRevocationEpochRepository()
 	deps := &bootstrap.Dependencies{
 		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},
-		Sourcing:      sourcing.Module{ScimRepo: scimmemory.NewScimRepository()},
+		Sourcing:      sourcing.NewMemoryModule(),
 		SharedSignals: sharedsignals.Module{RevocationEpochRepo: epochs},
 	}
 	module := sourcingModule(deps, func(spec.DomainEvent) {})
-	scim := scimusecases.NewUsecases(module.ScimRepo, users, groups, module.UserLifecycle, func(spec.DomainEvent) {})
+	scim := module.Usecases(users, groups, func(spec.DomainEvent) {})
 
 	tenant := tenancydomain.DefaultTenantID
 	created, err := scim.CreateUser(ctx, tenant, map[string]any{"userName": "alice", "active": true})

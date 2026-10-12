@@ -11,8 +11,8 @@ import (
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 type Handler struct {

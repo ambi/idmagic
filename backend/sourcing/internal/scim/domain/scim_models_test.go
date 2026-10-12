@@ -3,7 +3,7 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // NewScimError は RFC 7644 のエラースキーマを付与した ScimErrorResponse を組み立てる。

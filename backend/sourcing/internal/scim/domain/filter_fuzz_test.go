@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // FuzzParseFilter は untrusted な SCIM client 由来の filter 文字列を解釈する

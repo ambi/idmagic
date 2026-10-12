@@ -12,9 +12,9 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
-	scimdomain "github.com/ambi/idmagic/backend/sourcing/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
+	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 

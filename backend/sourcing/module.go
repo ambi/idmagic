@@ -9,9 +9,9 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	scimhttp "github.com/ambi/idmagic/backend/sourcing/scim/handlers_http"
+	scimhttp "github.com/ambi/idmagic/backend/sourcing/internal/scim/handlers_http"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
-	scimusecases "github.com/ambi/idmagic/backend/sourcing/scim/usecases"
 
 	"github.com/labstack/echo/v5"
 )

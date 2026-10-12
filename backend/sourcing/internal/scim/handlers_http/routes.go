@@ -5,7 +5,7 @@ import (
 
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 type Deps struct {

@@ -13,8 +13,8 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/scim/usecases"
+	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 // scimUserLifecycle は、組み立ての地点と同じく IdManagement の操作を SCIM のポートへ渡す。

@@ -60,7 +60,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/db_postgres"
 	"github.com/ambi/idmagic/backend/sourcing"
-	scimpostgres "github.com/ambi/idmagic/backend/sourcing/scim/db_postgres"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
@@ -229,7 +229,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			ProfileRepo: &samlpostgres.SamlIdentityProviderProfileRepository{Pool: resilientDB},
 			ReplayStore: &samlpostgres.AuthnRequestReplayStore{Pool: resilientDB},
 		},
-		Sourcing:  sourcing.Module{ScimRepo: &scimpostgres.ScimRepository{Pool: resilientDB}},
+		Sourcing:  sourcing.NewPostgresModule(resilientDB),
 		ApiTokens: apitoken.Module{Repo: &apitokenpostgres.Repository{Pool: resilientDB}},
 		Jobs:      jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
 		Application: application.Module{

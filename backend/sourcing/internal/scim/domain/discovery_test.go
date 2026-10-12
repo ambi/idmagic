@@ -3,7 +3,7 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // adopted attribute subset with correct mutability/required flags,

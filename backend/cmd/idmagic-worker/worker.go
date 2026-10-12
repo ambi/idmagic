@@ -34,7 +34,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/version"
 	"github.com/ambi/idmagic/backend/sharedsignals/push_http"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	scimsource "github.com/ambi/idmagic/backend/sourcing/scim/source_idmanagement"
 )
 
 // RunWorker starts the durable job queue worker process:
@@ -109,7 +108,7 @@ func RunWorker() error {
 	importPlanDeps := userusecases.UserImportPlanDeps{
 		UserRepo:       deps.IdManagement.UserRepo,
 		SchemaReader:   userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
-		OwnershipGuard: scimsource.UserOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+		OwnershipGuard: deps.Sourcing.UserOwnershipGuard(),
 	}
 	importJobDeps := userusecases.UserImportJobDeps{
 		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
@@ -130,7 +129,7 @@ func RunWorker() error {
 		GroupRepo:         deps.IdManagement.GroupRepo,
 		SchemaRepo:        deps.Tenancy.AttrSchemaRepo,
 		GroupSchemaReader: groupCSVSchemaReader,
-		OwnershipGuard:    scimsource.GroupOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+		OwnershipGuard:    deps.Sourcing.GroupOwnershipGuard(),
 	}
 	groupImportJobDeps := groupusecases.GroupImportJobDeps{
 		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
@@ -145,8 +144,8 @@ func RunWorker() error {
 	membershipImportPlanDeps := groupusecases.GroupMembershipImportPlanDeps{
 		GroupRepo:           deps.IdManagement.GroupRepo,
 		UserRepo:            deps.IdManagement.UserRepo,
-		GroupOwnershipGuard: scimsource.GroupOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
-		UserOwnershipGuard:  scimsource.UserOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+		GroupOwnershipGuard: deps.Sourcing.GroupOwnershipGuard(),
+		UserOwnershipGuard:  deps.Sourcing.UserOwnershipGuard(),
 	}
 	membershipImportJobDeps := groupusecases.GroupMembershipImportJobDeps{
 		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
