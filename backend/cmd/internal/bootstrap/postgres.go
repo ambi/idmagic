@@ -26,8 +26,6 @@ import (
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
-	igpostgres "github.com/ambi/idmagic/backend/idgovernance/db_postgres"
-	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentpostgres "github.com/ambi/idmagic/backend/idmanagement/agent/db_postgres"
 	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/db_postgres"
@@ -125,12 +123,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	userImportCommitter := userpostgres.NewUserImportRowCommitter(resilientDB, tenancypostgres.QuotaRepositoryInTx)
 	groupImportCommitter := grouppostgres.NewGroupImportRowCommitter(resilientDB, tenancypostgres.QuotaRepositoryInTx)
 	groupMembershipImportCommitter := grouppostgres.GroupMembershipImportRowCommitter{Pool: resilientDB}
-	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
-	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
-	workflowCapture := &igpostgres.UserWorkflowCapture{Pool: resilientDB}
-	userMutationCommitter := igusecases.UserMutationCommitter{
-		WorkflowRepo: workflowRepo, Capture: workflowCapture, UserRepo: userRepo, RunRepo: workflowRunRepo,
-	}
+	governanceModule := idgovernance.NewPostgresModule(resilientDB, userRepo)
 	assignmentRepo := &apppostgres.ApplicationAssignmentRepository{Pool: resilientDB}
 	provisioningModule := provisioning.NewPostgresModule(resilientDB)
 
@@ -153,16 +146,11 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			UserImportCommitter:            userImportCommitter,
 			GroupImportCommitter:           groupImportCommitter,
 			GroupMembershipImportCommitter: groupMembershipImportCommitter,
-			UserMutationCommitter:          userMutationCommitter,
+			UserMutationCommitter:          governanceModule.UserMutationCommitter,
 			ProvisioningNotifier:           provisioningModule.UserNotifier(assignmentRepo),
 			GroupProvisioningNotifier:      provisioningModule.GroupNotifier(assignmentRepo),
 		},
-		IdGovernance: idgovernance.Module{
-			LifecycleWorkflowRepo:    workflowRepo,
-			LifecycleWorkflowRunRepo: workflowRunRepo,
-			UserWorkflowCapture:      workflowCapture,
-			UserMutationCommitter:    userMutationCommitter,
-		},
+		IdGovernance: governanceModule,
 		Authentication: authentication.Module{
 			FederationConnectionRepo: federationConnectionRepo,
 			FederationIdentityRepo:   &federationpostgres.IdentityRepository{Pool: resilientDB},

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
-	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
+	"github.com/ambi/idmagic/backend/idgovernance"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
@@ -196,7 +196,7 @@ func RunWorker() error {
 		},
 	}))
 	handlers.Register(domain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
-	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger)))
+	handlers.Register(idgovernance.LifecycleWorkflowRunJobKind, deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
 	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
@@ -326,14 +326,13 @@ func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies, inter
 // lifecycleWorkflowExecutorDeps は WorkflowRun の実行ハンドラーへ渡す依存を組み立てる。
 // WorkflowRepo を渡さないと、無効化されたワークフローの WorkflowRun が次のステップへ進む。
 // UserLifecycle を渡さないと、disable_user と enable_user の手順が dependency_unavailable で失敗する。
-func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.Logger) igusecases.LifecycleWorkflowExecutorDeps {
+func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.Logger) idgovernance.ExecutorDeps {
 	emit := deps.NewEmitFunc(logger)
 	emitErr := func(event spec.DomainEvent) error {
 		emit(event)
 		return nil
 	}
-	return igusecases.LifecycleWorkflowExecutorDeps{
-		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, WorkflowRepo: deps.IdGovernance.LifecycleWorkflowRepo,
+	return idgovernance.ExecutorDeps{
 		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo,
 		ApplicationAssignments: deps.Application.DesiredStateAssignments(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, emit, lifecycleWorkflowActor),
@@ -354,7 +353,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	//nolint:contextcheck // Worker events use the bounded independent audit context.
 	emit := deps.NewEmitFunc(logging.Default())
 	for {
-		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, Jobs: usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)}, 100, time.Now().UTC()); err != nil {
+		if err := deps.IdGovernance.DispatchQueuedRuns(ctx, usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {

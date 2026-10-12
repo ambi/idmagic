@@ -1,0 +1,371 @@
+package usecases
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"slices"
+	"time"
+
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+)
+
+type (
+	LifecycleWorkflowDispatcherDeps struct {
+		RunRepo igports.LifecycleWorkflowRunRepository
+		Jobs    jobsports.Enqueuer
+	}
+	lifecycleWorkflowJobParams struct {
+		RunID string `json:"run_id"`
+	}
+)
+
+// LifecycleWorkflowRunJobKind is owned and registered by IdGovernance rather
+// than Jobs. Jobs remains a generic durable queue. Lane is default.
+const LifecycleWorkflowRunJobKind jobsdomain.JobKind = "lifecycle_workflow_run"
+
+func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind, jobsdomain.LaneDefault) }
+
+type LifecycleWorkflowExecutorDeps struct {
+	RunRepo igports.LifecycleWorkflowRunRepository
+	// WorkflowRepo は各ステップの前にワークフローの状態を読み直し、無効化または削除された
+	// ワークフローの WorkflowRun を次のステップの前で打ち切るために使う。nil なら読み直さない。
+	WorkflowRepo    igports.LifecycleWorkflowRepository
+	UserRepo        userports.UserRepository
+	GroupRepo       groupports.GroupRepository
+	ApplicationRepo appports.ApplicationRepository
+	// AssignmentRepo は事前の評価で現在の直接割り当てを読むためだけに使う。
+	// 割り当ての変更は ApplicationAssignments を通し、Application モジュールのイベントと通知を伴わせる。
+	AssignmentRepo         appports.AssignmentRepository
+	ApplicationAssignments igports.ApplicationAssignments
+	// UserLifecycle は disable_user と enable_user の手順を IdManagement の操作として行う。
+	// User の状態を直接保存すると、イベント、端末の失効、下流への通知、所有する Agent の
+	// 無効化が伴わない。nil なら手順を dependency_unavailable で失敗させる。
+	UserLifecycle igports.UserLifecycle
+	// 変更は記録の所有者の操作へ渡し、管理 API と同じイベントと通知を伴わせる。
+	GroupMembership     igports.GroupMembership
+	UserRequiredActions igports.UserRequiredActions
+	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
+	// action's TemplateKey is a label rendered into the body, not the body itself.
+	Notifier sharednotification.Notifier
+	Emit     func(spec.DomainEvent) error
+}
+
+// DispatchQueuedLifecycleWorkflowRuns is safe to invoke after every mutation and
+// periodically from the worker. A failed enqueue leaves job_id null, allowing a
+// later invocation to recover it; Jobs' dedup key collapses racing dispatchers.
+func DispatchQueuedLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWorkflowDispatcherDeps, limit int, now time.Time) error {
+	runs, err := deps.RunRepo.ListUnenqueuedRuns(ctx, limit)
+	if err != nil {
+		return err
+	}
+	for _, run := range runs {
+		params, marshalErr := json.Marshal(lifecycleWorkflowJobParams{RunID: run.ID})
+		if marshalErr != nil {
+			return marshalErr
+		}
+		dedup := "lifecycle-workflow-run:" + run.ID
+		job, enqueueErr := deps.Jobs.Enqueue(ctx, jobsports.EnqueueInput{TenantID: run.TenantID, Kind: LifecycleWorkflowRunJobKind, Params: params, DedupKey: &dedup}, now)
+		if enqueueErr != nil {
+			return enqueueErr
+		}
+		if _, attachErr := deps.RunRepo.AttachJob(ctx, run.TenantID, run.ID, job.ID); attachErr != nil {
+			return attachErr
+		}
+	}
+	return nil
+}
+
+// LifecycleWorkflowRunHandler executes a WorkflowRun's pending/failed steps and
+// checkpoints each outcome (WI-218). It emits the audit events assigns
+// to the run/step lifecycle: RunStarted on the queued->running transition,
+// StepFailed per action that fails this attempt, and exactly one of
+// RunSucceeded/RunPartiallyFailed/RunFailed when the run terminates.
+func LifecycleWorkflowRunHandler(deps LifecycleWorkflowExecutorDeps) func(context.Context, *jobsdomain.Job) (json.RawMessage, error) {
+	return func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
+		var params lifecycleWorkflowJobParams
+		if err := json.Unmarshal(job.Params, &params); err != nil || params.RunID == "" {
+			return nil, fmt.Errorf("invalid lifecycle workflow job params")
+		}
+		run, err := deps.RunRepo.FindRun(ctx, job.TenantID, params.RunID)
+		if err != nil {
+			return nil, err
+		}
+		if run == nil || run.TenantID != job.TenantID || run.Status.Terminal() {
+			return nil, fmt.Errorf("lifecycle workflow run not runnable")
+		}
+		steps, err := deps.RunRepo.ListSteps(ctx, job.TenantID, run.ID)
+		if err != nil {
+			return nil, err
+		}
+		stopped, err := workflowStopped(ctx, deps, run)
+		if err != nil {
+			return nil, err
+		}
+		if stopped {
+			return cancelLifecycleWorkflowRun(ctx, deps, run, steps)
+		}
+		if run.Status == igdomain.WorkflowRunQueued {
+			started, startErr := deps.RunRepo.StartRun(ctx, job.TenantID, run.ID, time.Now().UTC())
+			if startErr != nil {
+				return nil, startErr
+			}
+			if !started {
+				return nil, fmt.Errorf("lifecycle workflow run is waiting for an earlier user run")
+			}
+			emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowRunStarted{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+		}
+		succeeded, failed := 0, 0
+		for i, step := range steps {
+			if step.Outcome == igdomain.WorkflowStepChanged || step.Outcome == igdomain.WorkflowStepNoop {
+				succeeded++
+				continue
+			}
+			if step.Outcome == igdomain.WorkflowStepCanceled {
+				continue
+			}
+			// 無効化は実行中のステップを止めない。次のステップを始める前にだけ打ち切る。
+			stopped, err := workflowStopped(ctx, deps, run)
+			if err != nil {
+				return nil, err
+			}
+			if stopped {
+				return cancelLifecycleWorkflowRun(ctx, deps, run, steps[i:])
+			}
+			outcome, code := executeLifecycleAction(ctx, deps, run, step.Action)
+			now := time.Now().UTC()
+			step.Outcome, step.ErrorCode, step.CompletedAt = outcome, code, &now
+			if err := deps.RunRepo.CheckpointStep(ctx, job.TenantID, run.ID, step); err != nil {
+				return nil, err
+			}
+			switch outcome {
+			case igdomain.WorkflowStepChanged, igdomain.WorkflowStepNoop:
+				succeeded++
+			case igdomain.WorkflowStepFailed:
+				failed++
+				emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowStepFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, StepIndex: step.Index, ActionKind: string(step.Action.Kind), ErrorCode: code})
+			}
+		}
+		// 試行が残っている間は WorkflowRun を running のまま Jobs に再試行させる。次の試行は
+		// changed と no_op のステップを飛ばし、failed のステップだけを実行する。
+		if failed > 0 && job.Attempts < job.MaxAttempts {
+			return nil, fmt.Errorf("%d lifecycle workflow step(s) failed on attempt %d of %d", failed, job.Attempts, job.MaxAttempts)
+		}
+		status := igdomain.WorkflowRunSucceeded
+		switch {
+		case failed > 0 && succeeded == 0:
+			status = igdomain.WorkflowRunFailed
+		case failed > 0:
+			status = igdomain.WorkflowRunPartiallyFailed
+		}
+		if err := deps.RunRepo.CompleteRun(ctx, job.TenantID, run.ID, status, time.Now().UTC()); err != nil {
+			return nil, err
+		}
+		emitWorkflowRunCompletion(deps.Emit, status, run)
+		return json.Marshal(map[string]string{"run_id": run.ID, "status": string(status)})
+	}
+}
+
+// workflowStopped は、WorkflowRun のワークフローがもう enabled でないかを同じテナントで確かめる。
+func workflowStopped(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun) (bool, error) {
+	if deps.WorkflowRepo == nil {
+		return false, nil
+	}
+	workflow, err := deps.WorkflowRepo.Find(ctx, run.TenantID, run.WorkflowID)
+	if err != nil {
+		return false, err
+	}
+	return workflow == nil || workflow.Status != igdomain.LifecycleWorkflowEnabled, nil
+}
+
+// cancelLifecycleWorkflowRun は未完了のステップを canceled として記録し、WorkflowRun を
+// canceled で終える。
+func cancelLifecycleWorkflowRun(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun, remaining []igdomain.WorkflowStep) (json.RawMessage, error) {
+	for _, step := range remaining {
+		if step.Outcome.Complete() {
+			continue
+		}
+		now := time.Now().UTC()
+		step.Outcome, step.ErrorCode, step.CompletedAt = igdomain.WorkflowStepCanceled, "", &now
+		if err := deps.RunRepo.CheckpointStep(ctx, run.TenantID, run.ID, step); err != nil {
+			return nil, err
+		}
+	}
+	if err := deps.RunRepo.CompleteRun(ctx, run.TenantID, run.ID, igdomain.WorkflowRunCanceled, time.Now().UTC()); err != nil {
+		return nil, err
+	}
+	emitWorkflowEvent(deps.Emit, &igdomain.LifecycleWorkflowRunCanceled{At: time.Now().UTC(), TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	return json.Marshal(map[string]string{"run_id": run.ID, "status": string(igdomain.WorkflowRunCanceled)})
+}
+
+func emitWorkflowRunCompletion(emit func(spec.DomainEvent) error, status igdomain.WorkflowRunStatus, run *igdomain.WorkflowRun) {
+	now := time.Now().UTC()
+	switch status {
+	case igdomain.WorkflowRunSucceeded:
+		emitWorkflowEvent(emit, &igdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case igdomain.WorkflowRunPartiallyFailed:
+		emitWorkflowEvent(emit, &igdomain.LifecycleWorkflowRunPartiallyFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	case igdomain.WorkflowRunFailed:
+		emitWorkflowEvent(emit, &igdomain.LifecycleWorkflowRunFailed{At: now, TenantID: run.TenantID, WorkflowID: run.WorkflowID, RunID: run.ID, TargetUserID: run.TargetUserID})
+	}
+}
+
+func emitWorkflowEvent(emit func(spec.DomainEvent) error, event spec.DomainEvent) {
+	if emit == nil {
+		return
+	}
+	_ = emit(event)
+}
+
+// LifecycleActionEvalDeps is the read-only subset of LifecycleWorkflowExecutorDeps
+// EvaluateLifecycleAction needs to resolve current state. It excludes RunRepo
+// and UserRepo because callers already hold the target User.
+type LifecycleActionEvalDeps struct {
+	GroupRepo       groupports.GroupRepository
+	ApplicationRepo appports.ApplicationRepository
+	AssignmentRepo  appports.AssignmentRepository
+	Notifier        sharednotification.Notifier
+}
+
+// EvaluateLifecycleAction resolves one action's current-state dependencies
+// (group membership, application assignment, email deliverability) and
+// delegates the actual would_change/no_op/blocked judgement to
+// igdomain.EvaluateWorkflowAction. It performs no writes, so both the run
+// executor (before it mutates anything) and dry-run (which never mutates)
+// call it to agree on the same answer (wi-222).
+func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, tenantID string, user *userdomain.User, action igdomain.WorkflowAction) (igdomain.WorkflowActionOutcome, string, error) {
+	var state igdomain.WorkflowActionState
+	switch action.Kind {
+	case igdomain.WorkflowActionAddGroupMember, igdomain.WorkflowActionRemoveGroupMember:
+		if deps.GroupRepo == nil {
+			return igdomain.WorkflowActionBlocked, "dependency_unavailable", nil
+		}
+		group, err := deps.GroupRepo.FindByID(ctx, tenantID, action.GroupID)
+		if err != nil {
+			return "", "", err
+		}
+		state.GroupExists = group != nil
+		if state.GroupExists {
+			groups, err := deps.GroupRepo.ListGroupsByUser(ctx, tenantID, user.ID)
+			if err != nil {
+				return "", "", err
+			}
+			state.UserIsGroupMember = slices.ContainsFunc(groups, func(g *groupdomain.Group) bool { return g.ID == group.ID })
+		}
+	case igdomain.WorkflowActionAssignApplication, igdomain.WorkflowActionUnassignApplication:
+		if deps.ApplicationRepo == nil || deps.AssignmentRepo == nil {
+			return igdomain.WorkflowActionBlocked, "dependency_unavailable", nil
+		}
+		app, err := deps.ApplicationRepo.FindByID(ctx, tenantID, action.ApplicationID)
+		if err != nil {
+			return "", "", err
+		}
+		state.ApplicationExists = app != nil
+		if state.ApplicationExists {
+			assignments, err := deps.AssignmentRepo.ListBySubjects(ctx, tenantID, []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: user.ID}})
+			if err != nil {
+				return "", "", err
+			}
+			// assign_application は visibility まで指定どおりの直接割り当てだけを割り当て済みとみなす。
+			// visibility が異なれば、実行時に指定どおりへ更新する。
+			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool {
+				return a.ApplicationID == app.ID &&
+					(action.Kind == igdomain.WorkflowActionUnassignApplication || a.Visibility == workflowAssignmentVisibility(action))
+			})
+		}
+	case igdomain.WorkflowActionSendEmail:
+		state.EmailSendable = deps.Notifier != nil && user.Email != nil && user.EmailVerified
+	}
+	outcome, reason := igdomain.EvaluateWorkflowAction(action, user, state)
+	return outcome, reason, nil
+}
+
+// workflowAssignmentVisibility は assign_application の visibility を割り当ての値へ写す。
+// 省略と hidden 以外の値は visible として扱う。
+func workflowAssignmentVisibility(action igdomain.WorkflowAction) appdomain.AssignmentVisibility {
+	if action.Visibility == string(appdomain.AssignmentHidden) {
+		return appdomain.AssignmentHidden
+	}
+	return appdomain.AssignmentVisible
+}
+
+func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorDeps, run *igdomain.WorkflowRun, action igdomain.WorkflowAction) (igdomain.WorkflowStepOutcome, string) {
+	user, err := deps.UserRepo.FindBySub(ctx, run.TargetUserID)
+	if err != nil || user == nil || user.TenantID != run.TenantID {
+		return igdomain.WorkflowStepFailed, "target_not_found"
+	}
+	evalDeps := LifecycleActionEvalDeps{GroupRepo: deps.GroupRepo, ApplicationRepo: deps.ApplicationRepo, AssignmentRepo: deps.AssignmentRepo, Notifier: deps.Notifier}
+	outcome, reason, err := EvaluateLifecycleAction(ctx, evalDeps, run.TenantID, user, action)
+	if err != nil {
+		return igdomain.WorkflowStepFailed, "action_failed"
+	}
+	switch outcome {
+	case igdomain.WorkflowActionBlocked:
+		return igdomain.WorkflowStepFailed, reason
+	case igdomain.WorkflowActionNoOp:
+		return igdomain.WorkflowStepNoop, ""
+	}
+	changed := func(ok bool, err error) (igdomain.WorkflowStepOutcome, string) {
+		if err != nil {
+			return igdomain.WorkflowStepFailed, "action_failed"
+		}
+		if ok {
+			return igdomain.WorkflowStepChanged, ""
+		}
+		return igdomain.WorkflowStepNoop, ""
+	}
+	switch action.Kind {
+	case igdomain.WorkflowActionAddGroupMember, igdomain.WorkflowActionRemoveGroupMember:
+		if deps.GroupMembership == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		return changed(deps.GroupMembership.SetGroupMembership(ctx, run.TenantID, action.GroupID, user.ID, action.Kind == igdomain.WorkflowActionAddGroupMember, time.Now().UTC()))
+	case igdomain.WorkflowActionAssignApplication:
+		if deps.ApplicationAssignments == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		return changed(deps.ApplicationAssignments.AssignApplicationDesiredState(ctx, run.TenantID, action.ApplicationID, user.ID, workflowAssignmentVisibility(action), time.Now().UTC()))
+	case igdomain.WorkflowActionUnassignApplication:
+		if deps.ApplicationAssignments == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		return changed(deps.ApplicationAssignments.UnassignApplicationDesiredState(ctx, run.TenantID, action.ApplicationID, user.ID, time.Now().UTC()))
+	case igdomain.WorkflowActionSetRequiredAction, igdomain.WorkflowActionClearRequiredAction:
+		if deps.UserRequiredActions == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		return changed(deps.UserRequiredActions.SetUserRequiredAction(ctx, run.TenantID, user.ID, action.RequiredAction, action.Kind == igdomain.WorkflowActionSetRequiredAction, time.Now().UTC()))
+	case igdomain.WorkflowActionEnableUser, igdomain.WorkflowActionDisableUser:
+		if deps.UserLifecycle == nil {
+			return igdomain.WorkflowStepFailed, "dependency_unavailable"
+		}
+		disabled := action.Kind == igdomain.WorkflowActionDisableUser
+		return changed(deps.UserLifecycle.SetUserDisabled(ctx, run.TenantID, user.ID, disabled, time.Now().UTC()))
+	case igdomain.WorkflowActionSendEmail:
+		if deps.Notifier.Notify(ctx, sharednotification.Notification{
+			TenantID:        run.TenantID,
+			To:              *user.Email,
+			Key:             sharednotification.TemplateKeyLifecycleWorkflowNotification,
+			RecipientLocale: user.LocaleAttribute(),
+			Vars: map[string]string{
+				"user_display_name": user.DisplayName(),
+				"notification_key":  action.TemplateKey,
+			},
+		}) {
+			return igdomain.WorkflowStepChanged, ""
+		}
+		return igdomain.WorkflowStepFailed, "notification_failed"
+	}
+	return igdomain.WorkflowStepFailed, "invalid_action"
+}

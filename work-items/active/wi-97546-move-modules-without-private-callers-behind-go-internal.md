@@ -159,6 +159,7 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 
 ### モジュールごとの記録
 
+- IdGovernance: 公開パッケージを持たず、7 パッケージを移した。メモリ捕捉は同じ User 保存先を公開ポートで受け取り、非公開 import を 1 件解消した。PostgreSQL の捕捉は既存のトランザクションを保つ。保存、HTTP、実行器と dispatcher をルートで組み、外部テストは同じ worker の正式な入口から独立した fixture を使う。実イベントが機微値を持たない検査は、モデルを所有するテストへも残した。`test-go-package` は IdGovernance 96 件、bootstrap 119 件と worker 8 件が race 付きで成功し、PostgreSQL と lint も成功した。WorkflowRepo を外すと `TestWorkerLifecycleWorkflowHandlerCancelsRunsOfADisabledWorkflow` は canceled の代わりに succeeded を観測して失敗し、復元後に成功した。負債の増加検査は private-import 26 件から 25 件への減少を確認した。
 - SharedSignals: `domain` と `ports` を公開し、8 パッケージを移した。保存先、署名器、検証器、失効反応器と配信処理をルートで組む。`test-go-package` は SharedSignals 153 件と worker 8 件が race 付きで成功し、PostgreSQL、lint と境界検査も成功した。反応器の EpochRepo の結線を外すと `TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns` が「失効エポックが進んでいない」と失敗し、復元後に成功した。
 - Seeding: 宣言的な要求と manifest の `domain` を公開し、YAML と usecases の 2 パッケージを移した。既定パスの選択、読み込み、秘密の解決を Prepare に集め、contributor の実行と材料化した manifest の型はルートで受け取る。`test-go-package` は Seeding 23 件、bootstrap 119 件が race 付きで成功し、境界検査と lint も成功した。ルートの変更行のミューテーション検査は 0 件だった。
 - Saml: `domain` と `ports` を公開し、7 パッケージを移した。SP と profile が同じメモリ保存先を共有する構築を保ち、replay store もルートで組む。外部テストは公開保存契約の Save を使い、内部保存型を名指さない。`test-go-package` は Saml 181 件と共通スタック 8 件が race 付きで成功し、PostgreSQL、lint、境界検査と負債の増加検査も成功した。WsFederation への既存の依存 2 件は利用元のパスだけを更新した。

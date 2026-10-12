@@ -8,7 +8,6 @@ import (
 	auditmemory "github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
@@ -16,6 +15,23 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+// workflowAuditEvent は公開イベントの wire 契約を独立した fixture として供給する。
+type workflowAuditEvent struct {
+	At           time.Time `json:"-"`
+	Type         string    `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId,omitempty"`
+	WorkflowID   string    `json:"workflowId"`
+	RunID        string    `json:"runId,omitempty"`
+	TargetUserID string    `json:"targetUserId,omitempty"`
+	StepIndex    int       `json:"stepIndex,omitempty"`
+	ActionKind   string    `json:"actionKind,omitempty"`
+	ErrorCode    string    `json:"errorCode,omitempty"`
+}
+
+func (e *workflowAuditEvent) EventType() string     { return e.Type }
+func (e *workflowAuditEvent) OccurredAt() time.Time { return e.At }
 
 // wi-35: emit 時点で event に載せた tenantId が、監査レコードの TenantID に
 // 流れ込むこと。これがテナント所属 admin の監査ビュー絞り込み
@@ -63,7 +79,7 @@ func TestNewAuditEventRecordExtractsTenantIDForOAuth2Events(t *testing.T) {
 // sidecar 検索属性として抽出され、admin が filter で監査ログを検索できること。
 func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing.T) {
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	rec, err := NewAuditEventRecord(&igdomain.LifecycleWorkflowCreated{At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
+	rec, err := NewAuditEventRecord(&workflowAuditEvent{Type: "LifecycleWorkflowCreated", At: now, TenantID: "acme", ActorUserID: "admin-1", WorkflowID: "workflow-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +91,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 		t.Fatalf("workflow.id = %v, want [workflow-1]", rec.SearchAttributes["workflow.id"])
 	}
 
-	rec, err = NewAuditEventRecord(&igdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
+	rec, err = NewAuditEventRecord(&workflowAuditEvent{Type: "LifecycleWorkflowRunSucceeded", At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +99,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 		t.Fatalf("search attrs = %#v, want workflow.id=workflow-1 workflow_run.id=run-1", rec.SearchAttributes)
 	}
 
-	rec, err = NewAuditEventRecord(&igdomain.LifecycleWorkflowStepFailed{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
+	rec, err = NewAuditEventRecord(&workflowAuditEvent{Type: "LifecycleWorkflowStepFailed", At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", StepIndex: 2, ActionKind: "disable_user", ErrorCode: "resource_not_found"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,22 +110,18 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 
 // LifecycleWorkflowRunPartiallyFailed と LifecycleWorkflowStepFailed が 1 ステップの失敗で
 // 揃って発行されること自体は EX-IDGOVERNANCE-008-01
-// (backend/idgovernance/usecases/scenario_examples_test.go) が固定する。ここで固定するのは
+// (backend/idgovernance/internal/usecases/scenario_examples_test.go) が固定する。ここで固定するのは
 // Audit 側の主張である。
 //
 //spec:covers EX-AUDIT-003-01: workflow_run.id での絞り込みが run-1 に紐づくイベントだけを返し、別の run のイベントを含めないこと、そして記録された payload に属性値やメール本文が含まれないことを固定する。
 func TestNewAuditEventRecordLifecycleWorkflowSearchExcludesUnrelatedRunsAndSensitiveFields(t *testing.T) {
 	now := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
-	partiallyFailed := &igdomain.LifecycleWorkflowRunPartiallyFailed{
-		At: now, TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-1", TargetUserID: "user-1",
-	}
-	stepFailed := &igdomain.LifecycleWorkflowStepFailed{
-		At: now.Add(time.Second), TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-1",
+	partiallyFailed := &workflowAuditEvent{Type: "LifecycleWorkflowRunPartiallyFailed", At: now, TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-1", TargetUserID: "user-1"}
+	stepFailed := &workflowAuditEvent{
+		Type: "LifecycleWorkflowStepFailed", At: now.Add(time.Second), TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-1",
 		StepIndex: 2, ActionKind: "send_email", ErrorCode: "smtp_unavailable",
 	}
-	unrelated := &igdomain.LifecycleWorkflowRunSucceeded{
-		At: now.Add(2 * time.Second), TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-2", TargetUserID: "user-2",
-	}
+	unrelated := &workflowAuditEvent{Type: "LifecycleWorkflowRunSucceeded", At: now.Add(2 * time.Second), TenantID: "acme", WorkflowID: "leaver-offboarding", RunID: "run-2", TargetUserID: "user-2"}
 
 	store := auditmemory.NewAuditEventStore(0)
 	ctx := context.Background()
@@ -146,9 +158,7 @@ func TestNewAuditEventRecordLifecycleWorkflowSearchExcludesUnrelatedRunsAndSensi
 			t.Fatalf("missing linked event %s in %#v", id, events)
 		}
 	}
-	// LifecycleWorkflowRunPartiallyFailed / LifecycleWorkflowStepFailed はそもそも
-	// 属性値やメール本文のフィールドを宣言していない。将来どちらかへ追加されたら
-	// このテストが検出する。
+	// この fixture の公開 payload が監査の検索経路でも機微値を持たないことを確認する。
 	forbidden := []string{"attributeValue", "attributeValues", "emailBody", "body", "content"}
 	for _, ev := range events {
 		for _, key := range forbidden {

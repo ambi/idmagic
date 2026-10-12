@@ -445,10 +445,9 @@
       "sourceModule": "IdGovernance",
       "targetModule": "IdManagement",
       "violations": [
-        "private-import:IdGovernance:backend/idgovernance/db_memory->backend/idmanagement/user/db_memory",
-        "private-import:IdGovernance:backend/idgovernance/db_postgres->backend/idmanagement/user/db_postgres"
+        "private-import:IdGovernance:backend/idgovernance/internal/db_postgres->backend/idmanagement/user/db_postgres"
       ],
-      "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL and in-memory adapters. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
+      "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL adapter. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
     },
     {
       "id": "private-import:IdManagement->OAuth2",

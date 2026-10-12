@@ -14,9 +14,6 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idgovernance"
-	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
-	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
-	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -48,16 +45,16 @@ import (
 func TestWorkerLifecycleWorkflowHandlerCancelsRunsOfADisabledWorkflow(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
-	workflows := igmemory.NewLifecycleWorkflowRepository()
-	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := usermemory.NewUserRepository()
+	governance := idgovernance.NewMemoryModule(users)
+	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
 	users.Seed(&userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
-	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: igdomain.LifecycleWorkflowDisabled, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
+	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: "disabled", CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser}
-	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "user-1", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
-	if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+	action := workflowActionFixture{Kind: "disable_user"}
+	run := &workflowRunFixture{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "user-1", TriggerKind: "user_created", Actions: []workflowActionFixture{action}, Status: "queued", TriggeredAt: now}
+	if err := saveWorkflowRunFixture(ctx, t, governance, run, []workflowStepFixture{{RunID: run.ID, Action: action, Outcome: "pending"}}); err != nil {
 		t.Fatal(err)
 	}
 	deps := &bootstrap.Dependencies{
@@ -71,12 +68,12 @@ func TestWorkerLifecycleWorkflowHandlerCancelsRunsOfADisabledWorkflow(t *testing
 		t.Fatal(err)
 	}
 
-	handler := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger))
+	handler := deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger))
 	if _, err := handler(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 5}); err != nil {
 		t.Fatal(err)
 	}
 
-	if stored, err := runs.FindRun(ctx, "tenant-a", run.ID); err != nil || stored.Status != igdomain.WorkflowRunCanceled {
+	if stored, err := runs.FindRun(ctx, "tenant-a", run.ID); err != nil || stored.Status != "canceled" {
 		t.Fatalf("run = %+v, %v; want canceled", stored, err)
 	}
 	if user, err := users.FindBySub(ctx, "user-1"); err != nil || user.Lifecycle.Status != idmdomain.UserStatusActive {
@@ -110,11 +107,11 @@ func TestWorkerLifecycleWorkflowIdentityActions(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	workflows := igmemory.NewLifecycleWorkflowRepository()
-	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Identity actions", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+	governance := idgovernance.NewMemoryModule(users)
+	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
+	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Identity actions", Status: "enabled", CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	sink := &recordingSink{}
 	notifier := &workflowGroupNotifier{}
 	deps := &bootstrap.Dependencies{
@@ -123,11 +120,11 @@ func TestWorkerLifecycleWorkflowIdentityActions(t *testing.T) {
 		OAuth2:       oauth2.Module{EventSink: sink},
 	}
 	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
-	handler := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger))
-	execute := func(runID, userID string, action igdomain.WorkflowAction) igdomain.WorkflowStepOutcome {
+	handler := deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger))
+	execute := func(runID, userID string, action workflowActionFixture) string {
 		t.Helper()
-		run := &igdomain.WorkflowRun{ID: runID, TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: runID, TargetUserID: userID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
-		if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: runID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+		run := &workflowRunFixture{ID: runID, TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: runID, TargetUserID: userID, TriggerKind: "user_created", Actions: []workflowActionFixture{action}, Status: "queued", TriggeredAt: now}
+		if err := saveWorkflowRunFixture(ctx, t, governance, run, []workflowStepFixture{{RunID: runID, Action: action, Outcome: "pending"}}); err != nil {
 			t.Fatal(err)
 		}
 		params, err := json.Marshal(map[string]string{"run_id": runID})
@@ -141,25 +138,25 @@ func TestWorkerLifecycleWorkflowIdentityActions(t *testing.T) {
 		if err != nil || len(steps) != 1 {
 			t.Fatalf("steps = %+v, %v", steps, err)
 		}
-		return steps[0].Outcome
+		return string(steps[0].Outcome)
 	}
 	for i, tc := range []struct {
-		action igdomain.WorkflowAction
+		action workflowActionFixture
 		event  string
 	}{
-		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "engineering"}, "GroupMemberAdded"},
-		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}, "UserRequiredActionSet"},
-		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionClearRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}, "UserRequiredActionCleared"},
-		{igdomain.WorkflowAction{Kind: igdomain.WorkflowActionRemoveGroupMember, GroupID: "engineering"}, "GroupMemberRemoved"},
+		{workflowActionFixture{Kind: "add_group_member", GroupID: "engineering"}, "GroupMemberAdded"},
+		{workflowActionFixture{Kind: "set_required_action", RequiredAction: idmdomain.RequiredActionUpdatePassword}, "UserRequiredActionSet"},
+		{workflowActionFixture{Kind: "clear_required_action", RequiredAction: idmdomain.RequiredActionUpdatePassword}, "UserRequiredActionCleared"},
+		{workflowActionFixture{Kind: "remove_group_member", GroupID: "engineering"}, "GroupMemberRemoved"},
 	} {
 		runID := fmt.Sprintf("run-%d", i)
-		if got := execute(runID, "alice", tc.action); got != igdomain.WorkflowStepChanged {
+		if got := execute(runID, "alice", tc.action); got != "changed" {
 			t.Fatalf("%s outcome = %s", tc.event, got)
 		}
 		if got := sink.count(tc.event); got != 1 {
 			t.Fatalf("%s count = %d, want 1", tc.event, got)
 		}
-		if got := execute(runID+"-repeat", "alice", tc.action); got != igdomain.WorkflowStepNoop {
+		if got := execute(runID+"-repeat", "alice", tc.action); got != "no_op" {
 			t.Fatalf("repeat %s outcome = %s", tc.event, got)
 		}
 		if got := sink.count(tc.event); got != 1 {
@@ -172,12 +169,12 @@ func TestWorkerLifecycleWorkflowIdentityActions(t *testing.T) {
 	before := len(sink.types)
 	for i, tc := range []struct {
 		user   string
-		action igdomain.WorkflowAction
+		action workflowActionFixture
 	}{
-		{"foreign", igdomain.WorkflowAction{Kind: igdomain.WorkflowActionSetRequiredAction, RequiredAction: idmdomain.RequiredActionUpdatePassword}},
-		{"alice", igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "foreign-group"}},
+		{"foreign", workflowActionFixture{Kind: "set_required_action", RequiredAction: idmdomain.RequiredActionUpdatePassword}},
+		{"alice", workflowActionFixture{Kind: "add_group_member", GroupID: "foreign-group"}},
 	} {
-		if got := execute(fmt.Sprintf("foreign-%d", i), tc.user, tc.action); got != igdomain.WorkflowStepFailed {
+		if got := execute(fmt.Sprintf("foreign-%d", i), tc.user, tc.action); got != "failed" {
 			t.Fatalf("foreign outcome = %s", got)
 		}
 	}
@@ -205,9 +202,9 @@ func (s *recordingSink) count(eventType string) int {
 func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
-	workflows := igmemory.NewLifecycleWorkflowRepository()
-	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := usermemory.NewUserRepository()
+	governance := idgovernance.NewMemoryModule(users)
+	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
 	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
 	groups := groupmemory.NewGroupRepository()
 	if err := groups.Save(ctx, &groupdomain.Group{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipDynamic, CreatedAt: now, UpdatedAt: now}); err != nil {
@@ -231,7 +228,7 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 	if err := assignments.Save(ctx, &groupAssignment); err != nil {
 		t.Fatal(err)
 	}
-	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Joiner", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Joiner", Status: "enabled", CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	sink := &recordingSink{}
@@ -242,11 +239,11 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 		OAuth2:       oauth2.Module{EventSink: sink},
 	}
 	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
-	handler := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger))
-	execute := func(runID string, action igdomain.WorkflowAction) igdomain.WorkflowStepOutcome {
+	handler := deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger))
+	execute := func(runID string, action workflowActionFixture) string {
 		t.Helper()
-		run := &igdomain.WorkflowRun{ID: runID, TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: runID, TargetUserID: "alice", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
-		if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: runID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+		run := &workflowRunFixture{ID: runID, TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: runID, TargetUserID: "alice", TriggerKind: "user_created", Actions: []workflowActionFixture{action}, Status: "queued", TriggeredAt: now}
+		if err := saveWorkflowRunFixture(ctx, t, governance, run, []workflowStepFixture{{RunID: runID, Action: action, Outcome: "pending"}}); err != nil {
 			t.Fatal(err)
 		}
 		params, err := json.Marshal(map[string]string{"run_id": runID})
@@ -260,7 +257,7 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 		if err != nil || len(steps) != 1 {
 			t.Fatalf("steps = %+v, %v", steps, err)
 		}
-		return steps[0].Outcome
+		return string(steps[0].Outcome)
 	}
 	rowOf := func(subjectType appdomain.AssignmentSubjectType, subjectID string) *appdomain.ApplicationAssignment {
 		t.Helper()
@@ -275,21 +272,21 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 		}
 		return nil
 	}
-	assign := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAssignApplication, ApplicationID: "portal"}
+	assign := workflowActionFixture{Kind: "assign_application", ApplicationID: "portal"}
 
-	if got := execute("run-assign", assign); got != igdomain.WorkflowStepChanged {
+	if got := execute("run-assign", assign); got != "changed" {
 		t.Fatalf("assign step = %s, want changed", got)
 	}
 	if direct := rowOf(appdomain.AssignmentSubjectUser, "alice"); direct == nil || direct.Visibility != appdomain.AssignmentVisible {
 		t.Fatalf("direct assignment = %+v, want a visible user assignment", direct)
 	}
-	if got := execute("run-assign-again", assign); got != igdomain.WorkflowStepNoop {
+	if got := execute("run-assign-again", assign); got != "no_op" {
 		t.Fatalf("repeated assign step = %s, want no_op", got)
 	}
 	if n := sink.count("ApplicationAssigned"); n != 1 {
 		t.Fatalf("ApplicationAssigned emitted %d times, want 1 for two identical runs", n)
 	}
-	if got := execute("run-unassign", igdomain.WorkflowAction{Kind: igdomain.WorkflowActionUnassignApplication, ApplicationID: "portal"}); got != igdomain.WorkflowStepChanged {
+	if got := execute("run-unassign", workflowActionFixture{Kind: "unassign_application", ApplicationID: "portal"}); got != "changed" {
 		t.Fatalf("unassign step = %s, want changed", got)
 	}
 	if direct := rowOf(appdomain.AssignmentSubjectUser, "alice"); direct != nil {
@@ -314,20 +311,20 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
-	workflows := igmemory.NewLifecycleWorkflowRepository()
-	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	users := usermemory.NewUserRepository()
+	governance := idgovernance.NewMemoryModule(users)
+	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
 	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
 	agents := agentmemory.NewAgentRepository()
 	if err := agents.Save(ctx, &agentdomain.Agent{ID: "deploy-bot", TenantID: "tenant-a", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: "enabled", CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser}
-	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "alice", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
-	if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+	action := workflowActionFixture{Kind: "disable_user"}
+	run := &workflowRunFixture{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "alice", TriggerKind: "user_created", Actions: []workflowActionFixture{action}, Status: "queued", TriggeredAt: now}
+	if err := saveWorkflowRunFixture(ctx, t, governance, run, []workflowStepFixture{{RunID: run.ID, Action: action, Outcome: "pending"}}); err != nil {
 		t.Fatal(err)
 	}
 	sink := &recordingSink{}
@@ -341,7 +338,7 @@ func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(deps, logger))(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+	if _, err := deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger))(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -389,8 +386,8 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 			t.Fatal(err)
 		}
 	}
-	workflows := igmemory.NewLifecycleWorkflowRepository()
-	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
+	governance := idgovernance.NewMemoryModule(users)
+	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: "enabled", CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
@@ -399,7 +396,7 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 	}
 	f.deps = &bootstrap.Dependencies{
 		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(), AgentRepo: agents},
-		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: igmemory.NewLifecycleWorkflowRunRepository()},
+		IdGovernance: governance,
 		OAuth2:       oauth2.Module{EventSink: f.sink},
 		SigningKeys:  signingkeys.Module{KeyStore: keyStore},
 		SharedSignals: sharedsignals.Module{
@@ -414,9 +411,9 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 func (f *revocationFixture) disableAlice(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionDisableUser}
-	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "alice", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: time.Now().UTC()}
-	if _, err := f.deps.IdGovernance.LifecycleWorkflowRunRepo.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
+	action := workflowActionFixture{Kind: "disable_user"}
+	run := &workflowRunFixture{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: "alice", TriggerKind: "user_created", Actions: []workflowActionFixture{action}, Status: "queued", TriggeredAt: time.Now().UTC()}
+	if err := saveWorkflowRunFixture(ctx, t, f.deps.IdGovernance, run, []workflowStepFixture{{RunID: run.ID, Action: action, Outcome: "pending"}}); err != nil {
 		t.Fatal(err)
 	}
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
@@ -424,11 +421,11 @@ func (f *revocationFixture) disableAlice(t *testing.T) {
 		t.Fatal(err)
 	}
 	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
-	if _, err := igusecases.LifecycleWorkflowRunHandler(lifecycleWorkflowExecutorDeps(f.deps, logger))(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+	if _, err := f.deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(f.deps, logger))(ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
 		t.Fatal(err)
 	}
 	steps, err := f.deps.IdGovernance.LifecycleWorkflowRunRepo.ListSteps(ctx, "tenant-a", run.ID)
-	if err != nil || len(steps) != 1 || steps[0].Outcome != igdomain.WorkflowStepChanged {
+	if err != nil || len(steps) != 1 || steps[0].Outcome != "changed" {
 		t.Fatalf("steps = %+v, %v; want one changed disable_user step", steps, err)
 	}
 }

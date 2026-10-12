@@ -1,11 +1,11 @@
 // Package idgovernance は IdGovernance モジュールの DI 組立を所有する
 // (wi-237)。LifecycleWorkflow (JML 自動化) の定義・実行・executor と、
-// User mutation を観測して run を生成する境界 port の実装を束ねる。HTTP route 登録は
-// 他 context 同様に中央 server/routes.go が組み立てる (自己登録は行わない)。
+// User mutation を観測して run を生成する境界 port の実装を束ねる。
+// 保存層、HTTP 登録と worker の実行器は、ルートの操作から組み立てる。
 package idgovernance
 
 import (
-	igports "github.com/ambi/idmagic/backend/idgovernance/ports"
+	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 

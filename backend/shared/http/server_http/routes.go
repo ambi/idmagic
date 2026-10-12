@@ -26,7 +26,6 @@ import (
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
-	ighttp "github.com/ambi/idmagic/backend/idgovernance/handlers_http"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -508,12 +507,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	idmhttp.RegisterRoutes(g, idmDeps)
 
-	ighttp.RegisterRoutes(g, ighttp.Deps{
+	d.IdGovernance.RegisterRoutes(g, idgovernance.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
-		LifecycleWorkflowRepo:    d.IdGovernance.LifecycleWorkflowRepo,
-		LifecycleWorkflowRunRepo: d.IdGovernance.LifecycleWorkflowRunRepo,
-		JobEnqueuer:              jobEnqueuer,
-		UserRepo:                 d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
+		JobEnqueuer: jobEnqueuer,
+		UserRepo:    d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
 		Notifier:       d.Notification.Notifier,
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,

@@ -25,8 +25,6 @@ import (
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
-	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
-	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
@@ -87,15 +85,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	userImportCommitter := usermemory.UserImportRowCommitter{
 		Users: userRepo, PasswordHistory: passwordHistoryRepo, Quota: quotaRepo, Audit: auditEventRepo,
 	}
-	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	workflowRunRepo := igmemory.NewLifecycleWorkflowRunRepository()
-	workflowCapture := &igmemory.UserWorkflowCapture{Users: userRepo, Runs: workflowRunRepo}
-	userMutationCommitter := igusecases.UserMutationCommitter{
-		WorkflowRepo: workflowRepo,
-		Capture:      workflowCapture,
-		UserRepo:     userRepo,
-		RunRepo:      workflowRunRepo,
-	}
+	governanceModule := idgovernance.NewMemoryModule(userRepo)
 	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
 	provisioningModule := provisioning.NewMemoryModule()
 	federationRepos := federationmemory.NewRepositories()
@@ -118,16 +108,11 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			UserImportCommitter:            userImportCommitter,
 			GroupImportCommitter:           groupImportCommitter,
 			GroupMembershipImportCommitter: groupMembershipImportCommitter,
-			UserMutationCommitter:          userMutationCommitter,
+			UserMutationCommitter:          governanceModule.UserMutationCommitter,
 			ProvisioningNotifier:           provisioningModule.UserNotifier(assignmentRepo),
 			GroupProvisioningNotifier:      provisioningModule.GroupNotifier(assignmentRepo),
 		},
-		IdGovernance: idgovernance.Module{
-			LifecycleWorkflowRepo:    workflowRepo,
-			LifecycleWorkflowRunRepo: workflowRunRepo,
-			UserWorkflowCapture:      workflowCapture,
-			UserMutationCommitter:    userMutationCommitter,
-		},
+		IdGovernance: governanceModule,
 		Authentication: authentication.Module{
 			FederationConnectionRepo: federationRepos.Connections,
 			FederationIdentityRepo:   federationRepos.Identities,
