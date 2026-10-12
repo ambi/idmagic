@@ -242,7 +242,7 @@ describe('spec-impact: 特性化テストの書き換え', () => {
     return { repo, base }
   }
 
-  it('本文を保って特性化テストを internal へ移す変更を通す', async () => {
+  it('本文を保って特性化テストを別のファイルへ移す変更を通す', async () => {
     const { repo, base } = await characterized()
     await repo.git('mv', SERVICE_TEST, 'backend/demo/moved_test.go')
     await repo.commit(`refactor(demo): move the test\n\nSpec-Impact: none — ${CONCRETE_REASON}`)

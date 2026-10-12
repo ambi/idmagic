@@ -177,6 +177,21 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 - `mise run check-boundary-debt-ratchet`
 - `mise run verify`
 
+### 組み立てと変更耐性
+
+HTTP を持つ 10 モジュールで、それぞれの登録先だけへ誤った `/disconnected` を加えた。
+`TestAssembledRoutesMatchGeneratedOpenAPI` は全件で runtime-only と spec-only の差を報告して失敗した。
+すべてを復元した同じテストは成功した。
+Seeding で Getenv の結線を外すと `TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges` が秘密の解決で失敗し、復元後に成功した。
+
+基準 `96d851960` からの変更行を対象に、11 モジュールのルートで `test-go-mutation` を実行した。
+初回は DataKeys 1 件と Seeding 3 件が、そのパッケージ単独のテストでは未実行だった。
+新しい PostgreSQL Module から暗号化と回転を行い、別の Module で保存済みの暗号文を復号するテストと、正式な Prepare から既定 manifest、明示パスの欠落、既定 manifest の欠落、注入した秘密を観測するテストを追加した。
+DataKeys のルート 9 件と Seeding のルート 4 件が race 付きで成功し、lint も成功した。
+再検査は DataKeys の 1 変異と Seeding の 3 変異をすべて検出した。
+ほかの 9 ルートは対象演算子がなく 0 件だった。
+移動した業務ロジックへ同じ検査を重ねず、演算子で表せない結線は上記の手動故障とモジュールごとの記録で確認した。
+
 ## リスク
 
 - 外部の利用元に合わせて公開パッケージを広げると、`legacy` の判定より公開範囲が広がる。
