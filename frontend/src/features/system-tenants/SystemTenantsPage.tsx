@@ -375,7 +375,7 @@ function TenantEditor({
         password_policy_override: hasPolicy ? policy : undefined,
       })
       const num = (v: string) => (v.trim() ? Number.parseInt(v, 10) : undefined)
-      await updateAdminTenantQuota(csrfToken, tenant.id, {
+      await updateAdminTenantQuota(csrfToken, tenant.realm, {
         users: num(qUsers),
         groups: num(qGroups),
         agents: num(qAgents),

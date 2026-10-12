@@ -292,15 +292,22 @@ model UpdateTenantQuotaError403 {
   @body body: UpdateTenantQuotaError403Body;
 }
 
-@doc("system_admin が、一つのテナントの Quota を更新する。")
+model UpdateTenantQuotaError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.TenantNotFoundError;
+}
+
+@doc("system_admin が、realm で指定したテナントの Quota を更新する。成功応答には Cache-Control: no-store を付ける。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantQuota")
 @route("/api/admin/v1/tenants/{tenant_id}/quota")
 @put
 op UpdateTenantQuota(
+  @doc("対象テナントの realm。内部 UUID ではない。")
   @path tenant_id: string,
   @body body: IdMagic.Contract.TenantQuotaUpdateRequest
-): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantQuotaError403;
+): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantQuotaError403 | UpdateTenantQuotaError404;
 
 model GetAdminSettingsSuccess_200 {
   @statusCode statusCode: 200;

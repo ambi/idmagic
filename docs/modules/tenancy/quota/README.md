@@ -31,11 +31,18 @@
 #### REQ-TENANCY-012 System管理者はテナントのクォータ上限を調整できる
 
 - System 管理者がテナントの上限を更新したとき、Tenancy は、そのテナントの上限の上書きを保存し、200 と保存した上書きを返す。
+- 上限の更新が成功したとき、Tenancy は、応答に `Cache-Control: no-store` を付ける。
 - 上限を更新したテナントでは、Tenancy は、以後の作成の確認に新しい上限を使う。
 - System 管理者がテナントの上限を更新したとき、Tenancy は、操作者、テナント、要求に含まれたリソースの名前を `changedFields` に載せた `TenantQuotaUpdated` を発行する。
 - 上限の上書きを保存できなかった場合、Tenancy は、`TenantQuotaUpdated` を発行しない。
 - **判断**：上限の値は記録しない。監査の目的は変更の事実と範囲の特定であり、現在の値はテナントの読み出しからいつでも得られる。更新は上書きの全体を置き換える（REQ-TENANCY-037）ので、`changedFields` は更新した後に上書きを持つリソースの一覧でもある。
 - **例**：EX-TENANCY-012-01
+
+#### REQ-TENANCY-046 クォータ更新の対象は realm で解決する
+
+- System 管理者が realm を指定して上限を更新したとき、Tenancy は、その realm に属するテナントの上書きを保存し、保存先と `TenantQuotaUpdated` のテナントを内部 ID で識別する。
+- 指定した realm が存在しない場合、Tenancy は、本文の妥当性によらず 404 と `tenant_not_found` で拒否し、上書きを保存せず、`TenantQuotaUpdated` を発行しない。
+- **判断**：外部の識別子は realm に統一し、内部 ID を外部キーと監査の参照に用いる。
 
 #### REQ-TENANCY-037 クォータの更新は上書きの全体を置き換える
 

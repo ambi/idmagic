@@ -159,13 +159,11 @@ func assertSingleAuditEvent(t *testing.T, events []map[string]any, want map[stri
 	}
 }
 
-// クォータの更新は経路のパス引数をテナントの ID として保存するので、ID を指定する。
-//
 //spec:covers REQ-TENANCY-012, EX-TENANCY-012-01: System 管理者がクォータを更新すると、システムの経路の監査イベント検索で、操作者、対象テナント、要求したリソースの名前を載せた TenantQuotaUpdated が 1 件読める
 func TestTenantQuotaUpdateIsReadableFromTheSystemAuditLog(t *testing.T) {
 	srv := newControlPlaneAuditServer(t)
 
-	srv.put(t, "/api/admin/v1/tenants/"+controlPlaneAuditTenantID+"/quota", `{"users":20000,"groups":5}`)
+	srv.put(t, "/api/admin/v1/tenants/"+controlPlaneAuditRealm+"/quota", `{"users":20000,"groups":5}`)
 
 	assertSingleAuditEvent(t, srv.searchSystemAuditLog(t, "TenantQuotaUpdated"), map[string]any{
 		"actorUserId":   controlPlaneAuditActor,

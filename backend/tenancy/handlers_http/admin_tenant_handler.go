@@ -307,14 +307,13 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		return err
 	}
 	ctx := c.Request().Context()
-	tenantID := c.Param("target_tenant_id")
-	if tenantID == "" {
-		return support.WriteProblem(c, 400, "invalid_request", "tenant_id is required")
-	}
-
 	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
+	}
+	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
+	if err != nil {
+		return d.writeTenantError(c, err)
 	}
 
 	var req tenantQuotaUpdateRequest
@@ -340,18 +339,18 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 	}
 
 	if d.QuotaRepo != nil {
-		if err := d.QuotaRepo.SetQuota(ctx, tenantID, quota); err != nil {
-			return support.WriteProblem(c, 500, "internal_error", "failed to update quota: "+err.Error())
+		if err := d.QuotaRepo.SetQuota(ctx, target.ID, quota); err != nil {
+			return support.WriteServerError(c, err)
 		}
 	}
 	if d.Emit != nil {
 		d.Emit(&domain.TenantQuotaUpdated{
-			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: tenantID,
+			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: target.ID,
 			ChangedFields: quotaChangedFields(req),
 		})
 	}
 
-	return c.JSON(200, quota)
+	return support.NoStoreJSON(c, http.StatusOK, quota)
 }
 
 // quotaChangedFields は要求に含まれたリソースの名前を、要求の項目の宣言順に返す。

@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	quotaTestIssuer = "http://idp.test"
-	quotaTestTenant = "acme"
+	quotaTestIssuer   = "http://idp.test"
+	quotaTestTenant   = "acme"
+	quotaTestTenantID = "00000000-0000-4000-8000-000000000467"
 	// quotaTestSeededUsers は要求より前に保存されているユーザー上限。拒否された要求が
 	// これを書き換えていないことを、応答コードとは別に確かめるための基準値である。
 	quotaTestSeededUsers = 100
@@ -86,7 +87,7 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 			Status: domain.TenantStatusActive, CreatedAt: now,
 		},
 		{
-			ID: quotaTestTenant, Realm: quotaTestTenant, DisplayName: "Acme",
+			ID: quotaTestTenantID, Realm: quotaTestTenant, DisplayName: "Acme",
 			Status: domain.TenantStatusActive, CreatedAt: now,
 		},
 	} {
@@ -104,7 +105,7 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 
 	quotas := &observedQuotaRepository{QuotaRepository: memory.NewQuotaRepository()}
 	seeded := quotaTestSeededUsers
-	if err := quotas.QuotaRepository.SetQuota(testing_tenant.Default(context.Background()), quotaTestTenant, &domain.TenantQuota{Users: &seeded}); err != nil {
+	if err := quotas.QuotaRepository.SetQuota(testing_tenant.Default(context.Background()), quotaTestTenantID, &domain.TenantQuota{Users: &seeded}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -178,7 +179,7 @@ func (s *quotaTestServer) putQuotaBody(body string, mutate func(*http.Request)) 
 // storedUsers は保存済みのユーザー上限を返す。上限が未設定なら -1 を返す。
 func (s *quotaTestServer) storedUsers(t *testing.T) int {
 	t.Helper()
-	quota, err := s.quotas.GetQuota(t.Context(), quotaTestTenant)
+	quota, err := s.quotas.GetQuota(t.Context(), quotaTestTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -171,7 +171,7 @@ var controlPlaneStateChanges = map[string]controlPlaneStateChange{
 	},
 	// クォータの更新はパス引数をテナントの ID として扱う。
 	"PUT /api/admin/v1/tenants/:target_tenant_id/quota": {
-		path: "/api/admin/v1/tenants/" + auditTestTenantID + "/quota", body: `{"users":20000}`,
+		path: "/api/admin/v1/tenants/" + auditTestRealm + "/quota", body: `{"users":20000}`,
 		eventType: "TenantQuotaUpdated", tenantID: auditTestTenantID,
 	},
 }
@@ -282,7 +282,7 @@ func TestRefusedOrUnsavedQuotaUpdateEmitsNoEvent(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := newAuditTestServer(t, tc.opts)
 
-			rec := srv.send(http.MethodPut, "/api/admin/v1/tenants/"+auditTestTenantID+"/quota", tc.body)
+			rec := srv.send(http.MethodPut, "/api/admin/v1/tenants/"+auditTestRealm+"/quota", tc.body)
 
 			if rec.Code != tc.status {
 				t.Errorf("status = %d, want %d; body = %s", rec.Code, tc.status, rec.Body.String())

@@ -226,11 +226,11 @@ export async function clearAdminUserRequiredAction(
 
 export async function updateAdminTenantQuota(
   csrfToken: string,
-  id: string,
+  realm: string,
   input: TenantQuota,
 ): Promise<TenantQuota> {
   return request(
-    `/api/admin/v1/tenants/${encodeURIComponent(id)}/quota`,
+    `/api/admin/v1/tenants/${encodeURIComponent(realm)}/quota`,
     adminRequest(csrfToken, 'PUT', input),
   )
 }
