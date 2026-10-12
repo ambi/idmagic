@@ -253,14 +253,14 @@ model ProvisionOnDemandError404 {
   @body body: ProvisionOnDemandError404Body;
 }
 
-union ProvisionOnDemandError422Body {
+union ProvisionOnDemandError409Body {
   IdMagic.Contract.ProvisioningSubjectNotInScopeError,
 }
 
-model ProvisionOnDemandError422 {
-  @statusCode statusCode: 422;
+model ProvisionOnDemandError409 {
+  @statusCode statusCode: 409;
   @header contentType: "application/problem+json";
-  @body body: ProvisionOnDemandError422Body;
+  @body body: ProvisionOnDemandError409Body;
 }
 
 union ProvisionOnDemandError403Body {
@@ -299,7 +299,7 @@ model ProvisionOnDemandError400 {
 op ProvisionOnDemand(
   @path id: string,
   @body body: ProvisionOnDemandHttpRequest
-): ProvisionOnDemandSuccess_201 | ProvisionOnDemandError400 | IdMagic.Contract.AuthenticationRequiredResponse | ProvisionOnDemandError404 | ProvisionOnDemandError422 | ProvisionOnDemandError403;
+): ProvisionOnDemandSuccess_201 | ProvisionOnDemandError400 | IdMagic.Contract.AuthenticationRequiredResponse | ProvisionOnDemandError404 | ProvisionOnDemandError409 | ProvisionOnDemandError403;
 
 model StartFullResyncHttpResponse {
   enqueued_count: int64;
@@ -467,6 +467,12 @@ op RetryProvisioningTask(
   @path id: string,
   @path task_id: string,): RetryProvisioningTaskSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RetryProvisioningTaskError404 | RetryProvisioningTaskError409 | RetryProvisioningTaskError403;
 
+model ResumeProvisioningConnectionError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidRequestError;
+}
+
 model ResumeProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.ProvisioningConnection;
@@ -501,7 +507,7 @@ model ResumeProvisioningConnectionError403 {
 @route("/api/admin/v1/applications/{id}/provisioning/resume")
 @post
 op ResumeProvisioningConnection(
-  @path id: string,): ResumeProvisioningConnectionSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ResumeProvisioningConnectionError404 | ResumeProvisioningConnectionError403;
+  @path id: string,): ResumeProvisioningConnectionSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ResumeProvisioningConnectionError400 | ResumeProvisioningConnectionError404 | ResumeProvisioningConnectionError403;
 
 model ListTenantProvisioningConnectionsHttpResponse {
   connections: IdMagic.Contract.ProvisioningConnection[];

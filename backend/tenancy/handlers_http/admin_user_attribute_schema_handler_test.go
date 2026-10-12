@@ -78,6 +78,7 @@ func putUserAttributeSchema(t *testing.T, e *echo.Echo, path string, body any) *
 	return rec
 }
 
+//verify:operation GetTenantUserAttributeSchema: 200 JSON は自身の tenant_id、空のカスタム属性と組み込み属性の一覧を返す。
 func TestUserAttributeSchemaGetReturnsBuiltinForUndefinedTenant(t *testing.T) {
 	e, _, _ := newUserAttributeSchemaServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
@@ -97,6 +98,7 @@ func TestUserAttributeSchemaGetReturnsBuiltinForUndefinedTenant(t *testing.T) {
 	}
 }
 
+//verify:operation GetTenantUserAttributeSchema: 非管理者には 403 access_denied の Problem Details を返す。
 func TestUserAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	e, _, _ := newUserAttributeSchemaServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
@@ -104,9 +106,11 @@ func TestUserAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	assertTenancyProblem(t, rec, http.StatusForbidden, "access_denied")
 }
 
 //spec:covers EX-TENANCY-002-01: admin が editable_by_user=true の custom 属性を追加すると更新後のスキーマへ保存される。
+//verify:operation UpdateTenantUserAttributeSchema: PUT は 200 のテナント、カスタム属性、組み込み属性、作成と更新時刻を返し、保存とイベントを確認する。
 func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	e, schemaRepo, events := newUserAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
@@ -118,6 +122,13 @@ func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body tenancyhttp.UserAttributeSchemaResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.TenantID != "acme" || len(body.Attributes) != 1 || body.Attributes[0].Key != "region" || body.Attributes[0].Type != "string" || !body.Attributes[0].EditableByUser || len(body.Builtin) == 0 || body.CreatedAt.IsZero() || body.UpdatedAt.IsZero() {
+		t.Fatalf("updated schema=%+v", body)
 	}
 	stored, err := schemaRepo.FindByTenant(context.Background(), "acme")
 	if err != nil {
@@ -137,6 +148,7 @@ func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	}
 }
 
+//verify:operation UpdateTenantUserAttributeSchema: 組み込み属性との衝突は 422 invalid_attribute_schema の Problem Details で拒否する。
 func TestUserAttributeSchemaPutRejectsBuiltinCollision(t *testing.T) {
 	e, _, _ := newUserAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
@@ -152,4 +164,5 @@ func TestUserAttributeSchemaPutRejectsBuiltinCollision(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "urn:idmagic:error:invalid_attribute_schema") {
 		t.Fatalf("unexpected body=%s", rec.Body.String())
 	}
+	assertTenancyProblem(t, rec, http.StatusUnprocessableEntity, "invalid_attribute_schema")
 }

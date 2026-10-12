@@ -29,6 +29,7 @@ import (
 )
 
 //spec:covers REQ-SHAREDSIGNALS-006: 管理 API で登録した送信 stream に失効 event を射影し、worker が実 HTTP receiver へ SET を配送して delivered にする。
+//verify:operation ListSecurityEventDeliveries: 実 HTTP 配送後の管理 API は 200 JSON で同じ配送 ID、stream_id、SET jti、delivered、試行回数、時刻を返す。
 func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	var received atomic.Int32
 	var receivedBody string
@@ -105,5 +106,29 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	listed, err := deliveries.ListByStream(ctx, tenancydomain.DefaultTenantID, stream.ID)
 	if err != nil || len(listed) != 1 || listed[0].Status != sharedsignalsdomain.SecurityEventDeliveryStatusDelivered {
 		t.Fatalf("deliveries=%+v err=%v", listed, err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/shared-signals/streams/"+stream.ID+"/deliveries", http.NoBody)
+	req.Header.Set("X-Demo-Sub", "admin")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	var body struct {
+		Deliveries []struct {
+			ID           string     `json:"id"`
+			TenantID     string     `json:"tenant_id"`
+			StreamID     string     `json:"stream_id"`
+			SetJTI       string     `json:"set_jti"`
+			Status       string     `json:"status"`
+			AttemptCount *int       `json:"attempt_count"`
+			CreatedAt    time.Time  `json:"created_at"`
+			DeliveredAt  *time.Time `json:"delivered_at"`
+		} `json:"deliveries"`
+	}
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &body) != nil || len(body.Deliveries) != 1 {
+		t.Fatalf("delivery list status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	got := body.Deliveries[0]
+	want := listed[0]
+	if got.ID != want.ID || got.TenantID != tenancydomain.DefaultTenantID || got.StreamID != stream.ID || got.SetJTI == "" || got.SetJTI != want.SetJTI || got.Status != "delivered" || got.AttemptCount == nil || *got.AttemptCount != 1 || !got.CreatedAt.Equal(want.CreatedAt) || got.DeliveredAt == nil || !got.DeliveredAt.Equal(*want.DeliveredAt) {
+		t.Fatalf("HTTP delivery=%+v, want %+v", got, want)
 	}
 }

@@ -34,6 +34,7 @@ func newProtectedResourceMetadataHandler() *echo.Echo {
 	return e
 }
 
+//verify:operation GetProtectedResourceMetadata: resource クエリと 200 本文の resource、authorization_servers、scopes_supported を照合する。
 func TestProtectedResourceMetadata_registeredResource_returnsMetadata(t *testing.T) {
 	e := newProtectedResourceMetadataHandler()
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/oauth-protected-resource?resource=https://mcp.example.com/tools/github", http.NoBody)
@@ -82,6 +83,7 @@ func TestProtectedResourceMetadata_missingResourceParam_returnsRealmAPI(t *testi
 	}
 }
 
+//verify:operation GetProtectedResourceMetadata: 未登録 resource の拒否状態コードと OAuth のエラー本文を照合する。
 func TestProtectedResourceMetadata_unregisteredResource_rejected(t *testing.T) {
 	e := newProtectedResourceMetadataHandler()
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/oauth-protected-resource?resource=https://mcp.example.com/unknown", http.NoBody)
@@ -89,5 +91,14 @@ func TestProtectedResourceMetadata_unregisteredResource_rejected(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for unregistered resource, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Error != "invalid_target" {
+		t.Fatalf("error=%q, want invalid_target", body.Error)
 	}
 }

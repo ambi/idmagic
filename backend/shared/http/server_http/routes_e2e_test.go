@@ -382,6 +382,10 @@ func seedTrustedDeviceTenant(t *testing.T, maxAgeSeconds int) *tenancymemory.Ten
 	return repo
 }
 
+//verify:operation Authorize: 認可、transaction、ログイン、同意の JSON 応答、cookie、scope と認可コード
+//verify:operation GetBrowserTransaction: 認可、transaction、ログイン、同意の JSON 応答、cookie、scope と認可コード
+//verify:operation SubmitBrowserLogin: 認可、transaction、ログイン、同意の JSON 応答、cookie、scope と認可コード
+//verify:operation SubmitBrowserConsent: 認可、transaction、ログイン、同意の JSON 応答、cookie、scope と認可コード
 func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
@@ -427,7 +431,7 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 		ClientName string   `json:"client_name"`
 		Scopes     []string `json:"scopes"`
 	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
-	if consent.Kind != "consent" || consent.ClientName != demoClientID {
+	if consent.Kind != "consent" || consent.ClientName != demoClientID || consent.CSRFToken == "" || !slices.Equal(consent.Scopes, []string{"openid", "profile", "email", "offline_access"}) {
 		t.Fatalf("unexpected consent transaction: %+v", consent)
 	}
 
@@ -625,6 +629,7 @@ func TestBrowserAuthorizationFlowSkipsTOTPWhenPolicyAllowsPassword(t *testing.T)
 }
 
 //spec:covers REQ-AUTHENTICATION-015, EX-AUTHENTICATION-015-02, EX-AUTHENTICATION-017-01: 実効ポリシーが Mfa のとき LoginSession が authentication_pending=true へ切り替わって第二要素画面へ進み、正しい TOTP コードで認証が成立して認可が継続し、UserAuthenticated が残ることを固定する。
+//verify:operation SubmitBrowserTotp: TOTP の 200 応答と pending の解除、AMR と認可コード
 func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T) {
 	secret := totpTestSecret
 	srv, events := newTOTPServerWithEvents(t, totpServerOptions{totpSecret: secret, requireMFA: true})
@@ -806,6 +811,8 @@ func TestWebAuthnSecondFactorFailureRecordsChallengeFailed(t *testing.T) {
 }
 
 //spec:covers REQ-AUTHENTICATION-018, EX-AUTHENTICATION-018-01: バイパスを消費して同じ LoginSession が Enrollment の保留になり、MfaEnrollmentRequired と MfaEnrollmentBypassConsumed が残ること、確定で amr に otp が加わって保留が解け、MfaEnrollmentCompleted と UserAuthenticated が残って元の認可が継続することを固定する。
+//verify:operation StartBrowserMfaEnrollment: TOTP 登録の JSON 応答、secret、登録確認と session の MFA 状態
+//verify:operation ConfirmBrowserMfaEnrollment: TOTP 登録の JSON 応答、secret、登録確認と session の MFA 状態
 func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testing.T) {
 	srv, events := newTOTPServerWithEvents(t, totpServerOptions{requireMFA: true, enrollment: true})
 	defer srv.Close()
@@ -831,8 +838,14 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	}
 	assertEmitted(t, events, "MfaEnrollmentRequired", "MfaEnrollmentBypassConsumed")
 	start := postJSON[struct {
-		Secret string `json:"secret"`
+		Secret      string `json:"secret"`
+		URI         string `json:"otpauth_uri"`
+		AccountName string `json:"account_name"`
+		Issuer      string `json:"issuer"`
 	}](t, client, srv.URL+"/realms/default/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
+	if start.Secret == "" || !strings.HasPrefix(start.URI, "otpauth://totp/") || start.AccountName == "" || start.Issuer == "" {
+		t.Fatalf("enrollment start=%+v", start)
+	}
 	code, err := totpusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
@@ -1575,6 +1588,9 @@ func getJSON[T any](t *testing.T, client *http.Client, target string) T {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("GET %s status=%d body=%s", target, resp.StatusCode, body)
 	}
+	if resp.Header.Get("Content-Type") != "application/json" {
+		t.Fatalf("GET %s content-type=%q, want application/json", target, resp.Header.Get("Content-Type"))
+	}
 	var result T
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatalf("decode %s: %v", target, err)
@@ -1602,6 +1618,9 @@ func postJSON[T any](
 	if resp.StatusCode != http.StatusOK {
 		responseBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("POST %s status=%d body=%s", target, resp.StatusCode, responseBody)
+	}
+	if resp.Header.Get("Content-Type") != "application/json" {
+		t.Fatalf("POST %s content-type=%q, want application/json", target, resp.Header.Get("Content-Type"))
 	}
 	var result T
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {

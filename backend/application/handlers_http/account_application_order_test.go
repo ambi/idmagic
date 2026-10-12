@@ -44,6 +44,9 @@ func portalAppNames(t *testing.T, e *echo.Echo) []string {
 	return names
 }
 
+//verify:operation ListMyApplications: 200 JSON の applications は保存した手動順の二つの ID、名称、kind、URL、カテゴリーを返す。
+//verify:operation GetMyApplicationOrder: 200 JSON は保存した二つの ID を同じ順で返す。
+//verify:operation ReorderMyApplications: 200 JSON は指定した二つの ID を返し、ポータルと再読が一致し、未割り当ては 400 の Problem Details で拒否する。
 func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -63,6 +66,28 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	if reorder.Code != http.StatusOK {
 		t.Fatalf("reorder status=%d body=%s", reorder.Code, reorder.Body.String())
 	}
+	reorderBody := applicationContractJSON(t, reorder, http.StatusOK)
+	ids, _ := reorderBody["application_ids"].([]any)
+	if len(ids) != 2 || ids[0] != idBeta || ids[1] != idAlpha {
+		t.Fatalf("reorder body=%v", reorderBody)
+	}
+	portal := applicationContractJSON(t, getAs(e, "admin", "/realms/default/api/account/v1/applications"), http.StatusOK)
+	items, _ := portal["applications"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("portal=%v", portal)
+	}
+	for i, want := range []struct{ id, name string }{{idBeta, "Beta"}, {idAlpha, "Alpha"}} {
+		app, _ := items[i].(map[string]any)
+		if app["id"] != want.id || app["name"] != want.name || app["kind"] != "weblink" || app["launch_url"] != "https://"+want.name+".example" {
+			t.Fatalf("portal application=%v", app)
+		}
+		if categories, ok := app["category_ids"].([]any); !ok || len(categories) != 0 {
+			t.Fatalf("portal category_ids=%v", app)
+		}
+	}
+	if categories, ok := portal["categories"].([]any); !ok || len(categories) != 0 {
+		t.Fatalf("portal categories=%v", portal)
+	}
 
 	// ポータル一覧が手動順を反映する。
 	if got := portalAppNames(t, e); len(got) != 2 || got[0] != "Beta" || got[1] != "Alpha" {
@@ -77,13 +102,14 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get order status=%d", rec.Code)
 	}
+	applicationContractJSON(t, rec, http.StatusOK)
 	var order struct {
 		ApplicationIDs []string `json:"application_ids"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &order); err != nil {
 		t.Fatal(err)
 	}
-	if len(order.ApplicationIDs) != 2 || order.ApplicationIDs[0] != idBeta {
+	if len(order.ApplicationIDs) != 2 || order.ApplicationIDs[0] != idBeta || order.ApplicationIDs[1] != idAlpha {
 		t.Fatalf("get order mismatch: %v", order.ApplicationIDs)
 	}
 
@@ -94,4 +120,5 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("unassigned reorder want 400, got %d body=%s", bad.Code, bad.Body.String())
 	}
+	assertApplicationProblem(t, bad, http.StatusBadRequest, "invalid_request")
 }

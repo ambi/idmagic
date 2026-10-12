@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +27,8 @@ import (
 )
 
 //spec:covers EX-OAUTH2-031-01: 管理者は所属テナントの同意だけを参照し、撤回は Revoked と revoked_at を残して ConsentRevoked を actorUserId 付きで発行する。作成と scope 拡張の入口は存在しない。
+//verify:operation GetAdminConsent: 同意の取得、失効の HTTP 応答とテナント内の保存結果
+//verify:operation RevokeAdminConsent: 同意の取得、失効の HTTP 応答とテナント内の保存結果
 func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	e, consents, events := newAdminConsentHandler()
 	now := time.Now().UTC()
@@ -90,6 +93,12 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	if getResponse.Code != http.StatusOK {
 		t.Fatalf("get status=%d body=%s", getResponse.Code, getResponse.Body.String())
 	}
+	get := oauthContractJSON(t, getResponse, http.StatusOK)
+	if get["user_id"] != "alice" || get["preferred_username"] != "alice-name" || get["client_id"] != "portal" || get["client_name"] != "portal" || get["state"] != "granted" || !reflect.DeepEqual(get["scopes"], []any{"openid", "profile"}) {
+		t.Fatalf("consent=%v", get)
+	}
+	oauthContractTime(t, get, "granted_at")
+	oauthContractTime(t, get, "expires_at")
 
 	csrf, cookie := adminCSRF(t, e)
 	revokeResponse := adminJSONRequest(
@@ -97,6 +106,9 @@ func TestAdminConsentListsGetsAndRevokesWithinTenant(t *testing.T) {
 	)
 	if revokeResponse.Code != http.StatusNoContent {
 		t.Fatalf("revoke status=%d body=%s", revokeResponse.Code, revokeResponse.Body.String())
+	}
+	if revokeResponse.Body.Len() != 0 {
+		t.Fatalf("204 body=%s", revokeResponse.Body.String())
 	}
 	revoked, err := consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "portal")
 	if err != nil {

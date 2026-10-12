@@ -61,6 +61,7 @@ func newGroupAttributeSchemaServer(
 	return e, schemaRepo, &events
 }
 
+//verify:operation GetTenantGroupAttributeSchema: 200 JSON は自身の tenant_id と空の属性一覧を返す。
 func TestGroupAttributeSchemaGetReturnsEmptyForUndefinedTenant(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
@@ -77,6 +78,7 @@ func TestGroupAttributeSchemaGetReturnsEmptyForUndefinedTenant(t *testing.T) {
 	}
 }
 
+//verify:operation GetTenantGroupAttributeSchema: 非管理者には 403 access_denied の Problem Details を返す。
 func TestGroupAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
@@ -84,9 +86,11 @@ func TestGroupAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	assertTenancyProblem(t, rec, http.StatusForbidden, "access_denied")
 }
 
 //spec:covers EX-TENANCY-020-01: cost_center 属性を保存し、更新後のスキーマと TenantGroupAttributeSchemaUpdated を観測する。
+//verify:operation UpdateTenantGroupAttributeSchema: PUT は 200 のテナント、カスタム属性、作成と更新時刻を返し、保存とイベントを確認する。
 func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	e, schemaRepo, events := newGroupAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
@@ -98,6 +102,13 @@ func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body tenancyhttp.GroupAttributeSchemaResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.TenantID != "acme" || len(body.Attributes) != 1 || body.Attributes[0].Key != "cost_center" || body.Attributes[0].Type != "string" || body.CreatedAt.IsZero() || body.UpdatedAt.IsZero() {
+		t.Fatalf("updated schema=%+v", body)
 	}
 	stored, err := schemaRepo.FindByTenant(context.Background(), "acme")
 	if err != nil {
@@ -118,6 +129,7 @@ func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 }
 
 //spec:covers EX-TENANCY-020-02: 同じ key を重複して追加すると InvalidGroupAttributeSchemaError で拒否する。
+//verify:operation UpdateTenantGroupAttributeSchema: 重複キーは 422 invalid_attribute_schema の Problem Details で拒否する。
 func TestGroupAttributeSchemaPutRejectsDuplicateKey(t *testing.T) {
 	e, _, _ := newGroupAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
@@ -134,4 +146,5 @@ func TestGroupAttributeSchemaPutRejectsDuplicateKey(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "urn:idmagic:error:invalid_attribute_schema") {
 		t.Fatalf("unexpected body=%s", rec.Body.String())
 	}
+	assertTenancyProblem(t, rec, http.StatusUnprocessableEntity, "invalid_attribute_schema")
 }

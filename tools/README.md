@@ -25,3 +25,5 @@ TypeSpec の所有元は compiler の source location、OpenAPI の名前は `sp
 
 検証結果は `.verification/` に生成し、手で編集または Git へ登録しない。
 結果の区分と代替証拠の記法は[テスト方針](../docs/development/testing.md#検証結果の区分)が定める。
+`mise run report-contract-evidence` は、本文または状態コードが未解析の操作、理由、読む候補のテストファイルを `.verification/contract-evidence-inventory.json` へ出力する。
+候補は経路と配置から選び、契約を検査しているかの判断と成功した実行の証拠は含まない。

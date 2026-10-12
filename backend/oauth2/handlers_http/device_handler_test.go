@@ -107,6 +107,8 @@ func newDeviceServer(t *testing.T) deviceFixture {
 	}
 }
 
+//verify:operation DeviceAuthorization: device code、期限、verification URI の JSON 応答と承認および client 認証、CSRF の拒否
+//verify:operation SubmitBrowserDevice: device code、期限、verification URI の JSON 応答と承認および client 認証、CSRF の拒否
 func TestDeviceAuthorizationAPI(t *testing.T) {
 	fix := newDeviceServer(t)
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
@@ -138,6 +140,18 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 
 		fix.userCode = userCode
 		fix.deviceCode = deviceCode
+		response := oauthContractJSON(t, rec, http.StatusOK)
+		if response["verification_uri"] != "http://test/realms/default/device" || response["interval"] != float64(5) {
+			t.Fatalf("device authorization=%v", response)
+		}
+		complete, ok := response["verification_uri_complete"].(string)
+		uri, err := url.Parse(complete)
+		if !ok || err != nil || uri.Query().Get("user_code") != userCode {
+			t.Fatalf("verification_uri_complete=%v err=%v", response, err)
+		}
+		if expiry, ok := response["expires_in"].(float64); !ok || expiry <= 0 {
+			t.Fatalf("expires_in=%v", response)
+		}
 	})
 
 	t.Run("DeviceAuthorization_InvalidClient", func(t *testing.T) {
@@ -153,6 +167,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("expected status 401, got %d", rec.Code)
 		}
+		oauthContractError(t, rec, http.StatusUnauthorized, "invalid_client")
 	})
 
 	// 2. handleDeviceContext (GET /api/auth/device)
@@ -197,6 +212,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		if body["next"] != "/status?state=approved" {
 			t.Errorf("expected next redirect, got %v", body["next"])
 		}
+		oauthContractJSON(t, rec, http.StatusOK)
 
 		// 承認されていることをインメモリで確認
 		stored, _ := fix.deviceStore.FindByUserCode(ctx, domain.NormalizeUserCode(fix.userCode))
@@ -307,6 +323,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		if rec.Code != http.StatusForbidden {
 			t.Errorf("expected status 403, got %d", rec.Code)
 		}
+		oauthContractProblem(t, rec, http.StatusForbidden, "csrf_failed")
 	})
 
 	t.Run("DeviceAPI_Unauthorized", func(t *testing.T) {

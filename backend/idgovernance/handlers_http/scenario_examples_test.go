@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -32,8 +33,10 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -98,7 +101,7 @@ func newGovernanceStack(t *testing.T) *governanceStack {
 		Tenancy:       tenancy.Module{TenantRepo: tenants, AttrSchemaRepo: schemas},
 		IdManagement:  idmanagement.Module{UserRepo: s.users, GroupRepo: s.groups},
 		Application:   application.Module{Repo: s.apps, AssignmentRepo: appmemory.NewApplicationAssignmentRepository()},
-		Jobs:          jobs.Module{Repo: s.jobs},
+		Jobs:          jobs.Module{Repo: s.jobs, Enqueuer: jobsusecases.NewEnqueuer(s.jobs, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
 		IdGovernance:  idgovernance.Module{LifecycleWorkflowRepo: s.workflows, LifecycleWorkflowRunRepo: s.runs},
 	})
 	return s
@@ -168,6 +171,7 @@ type workflowView struct {
 	EnabledRevision *int64                    `json:"enabled_revision"`
 	Trigger         igdomain.WorkflowTrigger  `json:"trigger"`
 	Actions         []igdomain.WorkflowAction `json:"actions"`
+	CreatedAt       time.Time                 `json:"created_at"`
 }
 
 func decodeWorkflow(t *testing.T, response *httptest.ResponseRecorder) workflowView {
@@ -175,6 +179,10 @@ func decodeWorkflow(t *testing.T, response *httptest.ResponseRecorder) workflowV
 	var view workflowView
 	if err := json.Unmarshal(response.Body.Bytes(), &view); err != nil {
 		t.Fatalf("decode workflow %s: %v", response.Body.String(), err)
+	}
+	media, _, err := mime.ParseMediaType(response.Header().Get("Content-Type"))
+	if err != nil || media != "application/json" || view.ID == "" || view.Name == "" || view.CreatedAt.IsZero() || view.Actions == nil {
+		t.Fatalf("workflow contract content-type=%q body=%s", response.Header().Get("Content-Type"), response.Body.String())
 	}
 	return view
 }
@@ -198,7 +206,7 @@ func assertProblem(t *testing.T, response *httptest.ResponseRecorder, status int
 	if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
 		t.Fatalf("decode problem %s: %v", response.Body.String(), err)
 	}
-	if problem.Type != "urn:idmagic:error:"+problemType {
+	if problem.Type != "urn:idmagic:error:"+problemType || problem.Status != status || response.Header().Get("Content-Type") != support.ProblemContentType {
 		t.Fatalf("problem type=%q, want urn:idmagic:error:%s", problem.Type, problemType)
 	}
 }
@@ -213,6 +221,7 @@ func (s *governanceStack) workflowCount(t *testing.T, tenantID string) int {
 }
 
 //spec:covers EX-IDGOVERNANCE-001-01: 作成 API が、選んだトリガーと並べ替えた順序のアクションをリビジョン 1 の draft として返し、保存先にも同じ順序で残ることを固定する。
+//verify:operation CreateLifecycleWorkflow: 201 JSON は新しい ID、名称、作成時刻、選んだトリガーと順序付きアクションを revision 1 draft として返す。
 func TestCreateReturnsTheSelectedDefinitionAsRevisionOneDraft(t *testing.T) {
 	s := newGovernanceStack(t)
 	s.seedGroup(t, acmeTenant, "engineering", groupdomain.GroupMembershipManual)
@@ -254,6 +263,8 @@ func TestCreateRefusesAnActionWithoutAnExistingReference(t *testing.T) {
 }
 
 //spec:covers EX-IDGOVERNANCE-002-01: 更新 API が current_revision を 1 つ増やし、変更した定義が一覧と詳細（編集フォームが読む API）の双方に現れることを固定する。
+//verify:operation UpdateLifecycleWorkflow: 200 JSON は revision 2 と保存した二つのアクションを返し、再読で一致する。
+//verify:operation GetLifecycleWorkflow: 200 JSON は同じ ID、名称、作成時刻と revision 2 の定義を返す。
 func TestUpdateRaisesTheRevisionAndIsReflectedInListAndDetail(t *testing.T) {
 	s := newGovernanceStack(t)
 	created := s.createWorkflow(t, acmeTenant, acmeAdmin, map[string]any{
@@ -268,7 +279,11 @@ func TestUpdateRaisesTheRevisionAndIsReflectedInListAndDetail(t *testing.T) {
 	if updated.Code != http.StatusOK || decodeWorkflow(t, updated).CurrentRevision != 2 {
 		t.Fatalf("update status=%d body=%s, want current_revision 2", updated.Code, updated.Body.String())
 	}
-	detail := decodeWorkflow(t, s.call(t, acmeTenant, acmeAdmin, http.MethodGet, "/api/admin/v1/lifecycle-workflows/"+created.ID, nil))
+	detailResponse := s.call(t, acmeTenant, acmeAdmin, http.MethodGet, "/api/admin/v1/lifecycle-workflows/"+created.ID, nil)
+	if detailResponse.Code != http.StatusOK {
+		t.Fatalf("get workflow status=%d body=%s", detailResponse.Code, detailResponse.Body.String())
+	}
+	detail := decodeWorkflow(t, detailResponse)
 	if detail.CurrentRevision != 2 || len(detail.Actions) != 2 {
 		t.Fatalf("detail = %+v, want the revision 2 definition", detail)
 	}
@@ -406,6 +421,13 @@ func TestWorkflowsAndResourcesDoNotCrossTheTenantBoundary(t *testing.T) {
 }
 
 //spec:covers EX-IDGOVERNANCE-014-01: admin ロールを持たない主体の作成、更新、有効化、無効化、削除、プレビュー、再試行はすべて AccessDeniedError になり、定義、WorkflowRun、Job のいずれも変わらないことを固定する。
+//verify:operation CreateLifecycleWorkflow: 非管理者の作成を 403 access_denied の Problem Details で拒否する。
+//verify:operation UpdateLifecycleWorkflow: 非管理者の更新を 403 access_denied の Problem Details で拒否する。
+//verify:operation EnableLifecycleWorkflow: 非管理者の有効化を 403 access_denied の Problem Details で拒否する。
+//verify:operation DisableLifecycleWorkflow: 非管理者の無効化を 403 access_denied の Problem Details で拒否する。
+//verify:operation DeleteLifecycleWorkflow: 非管理者の削除を 403 access_denied の Problem Details で拒否する。
+//verify:operation DryRunLifecycleWorkflow: 非管理者の試算を 403 access_denied の Problem Details で拒否する。
+//verify:operation RetryLifecycleWorkflowRun: 非管理者の再試行を 403 access_denied の Problem Details で拒否する。
 func TestNonAdminCannotChangeWorkflowsOrStartRuns(t *testing.T) {
 	s := newGovernanceStack(t)
 	realm := tenancydomain.DefaultRealm
@@ -461,13 +483,16 @@ func TestNonAdminCannotChangeWorkflowsOrStartRuns(t *testing.T) {
 }
 
 //spec:covers EX-IDGOVERNANCE-014-02: admin ロールを持たない主体の一覧と詳細の要求は AccessDeniedError になり、応答にワークフローの名前が含まれないことを固定する。
+//verify:operation GetLifecycleWorkflow: 非管理者の参照を 403 access_denied の Problem Details で拒否する。
+//verify:operation ListLifecycleWorkflowRuns: 非管理者の実行一覧を 403 access_denied の Problem Details で拒否する。
+//verify:operation GetLifecycleWorkflowRun: 非管理者の実行参照を 403 access_denied の Problem Details で拒否する。
 func TestNonAdminCannotReadWorkflows(t *testing.T) {
 	s := newGovernanceStack(t)
 	target := s.createWorkflow(t, tenancydomain.DefaultRealm, defaultAdmin, map[string]any{
 		"name": "Secret leaver", "trigger": map[string]any{"kind": "user_created"},
 		"actions": []map[string]any{{"kind": "disable_user"}},
 	})
-	for _, path := range []string{"/api/admin/v1/lifecycle-workflows", "/api/admin/v1/lifecycle-workflows/" + target.ID} {
+	for _, path := range []string{"/api/admin/v1/lifecycle-workflows", "/api/admin/v1/lifecycle-workflows/" + target.ID, "/api/admin/v1/lifecycle-workflows/" + target.ID + "/runs", "/api/admin/v1/lifecycle-workflow-runs/run-1"} {
 		response := s.call(t, tenancydomain.DefaultRealm, nonAdminAlice, http.MethodGet, path, nil)
 		assertProblem(t, response, http.StatusForbidden, "access_denied")
 		if strings.Contains(response.Body.String(), "Secret leaver") {

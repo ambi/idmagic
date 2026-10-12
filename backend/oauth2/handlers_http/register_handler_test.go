@@ -54,6 +54,7 @@ func newRegisterServer() registerFixture {
 }
 
 //spec:covers EX-OAUTH2-016-01: 動的クライアント登録は client_id を採番して client_secret と一緒に一度だけ返し、ClientRegistered を発行する。
+//verify:operation RegisterClient: 201 の client ID、secret、認証方式の JSON 応答と不正な要求の 400
 func TestRegisterClientAPI(t *testing.T) {
 	fix := newRegisterServer()
 
@@ -86,6 +87,15 @@ func TestRegisterClientAPI(t *testing.T) {
 		if resp["client_type"] != "confidential" {
 			t.Errorf("expected client_type confidential, got %v", resp["client_type"])
 		}
+		body := oauthContractJSON(t, rec, http.StatusCreated)
+		if body["token_endpoint_auth_method"] != "client_secret_post" || body["scope"] != "openid email" {
+			t.Fatalf("registered metadata=%v", body)
+		}
+		for _, key := range []string{"client_id", "client_secret"} {
+			if value, ok := body[key].(string); !ok || value == "" {
+				t.Fatalf("%s=%v", key, body)
+			}
+		}
 		// 採番した client_id は保存層にも存在する。応答だけを読むと、値を作って
 		// 返しただけで登録していない実装を通してしまう。
 		clientID, _ := resp["client_id"].(string)
@@ -108,6 +118,7 @@ func TestRegisterClientAPI(t *testing.T) {
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("expected status 400, got %d", rec.Code)
 		}
+		oauthContractError(t, rec, http.StatusBadRequest, "invalid_request")
 	})
 
 	//spec:covers EX-OAUTH2-016-02: redirect_uri を持たない登録要求は拒否され、

@@ -39,6 +39,8 @@ func createSecretApplication(t *testing.T, e *echo.Echo, csrf string, cookie *ht
 	return body.Application.ID
 }
 
+//verify:operation IssueApplicationClientSecret: 201 JSON は新しいシークレットと Active の資格情報、期限と二つの資格情報を返す。
+//verify:operation RevokeApplicationClientSecret: 200 JSON は指定した資格情報を Revoked として返し、再失効でも重複しない。
 func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -67,6 +69,12 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	if issued.Code != http.StatusCreated {
 		t.Fatalf("issue status=%d body=%s", issued.Code, issued.Body.String())
 	}
+	issuedJSON := applicationContractJSON(t, issued, http.StatusCreated)
+	credential, _ := issuedJSON["credential"].(map[string]any)
+	if credential["credential_id"] == "" || credential["credential_id"] == nil {
+		t.Fatalf("issued credential=%v", credential)
+	}
+	assertApplicationTime(t, credential, "created_at", "expires_at")
 	if !strings.Contains(issued.Header().Get("Cache-Control"), "no-store") {
 		t.Fatalf("issue cache-control=%q", issued.Header().Get("Cache-Control"))
 	}
@@ -101,6 +109,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	if revoked.Code != http.StatusOK {
 		t.Fatalf("revoke status=%d body=%s", revoked.Code, revoked.Body.String())
 	}
+	applicationContractJSON(t, revoked, http.StatusOK)
 	var revokedBody struct {
 		Credentials []applicationSecretCredential `json:"credentials"`
 	}

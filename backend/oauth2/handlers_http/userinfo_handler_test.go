@@ -385,6 +385,8 @@ func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
 // 応答に sub もクレームも含めない。
 //
 //spec:covers RFC6750-INVALID-TOKEN / EX-OAUTH2-020-01 / EX-OAUTH2-020-02: 失効した
+//verify:operation UserInfo: 失効 token への 401 JSON 応答と Bearer challenge
+//verify:operation PostUserInfo: 失効 token への 401 JSON 応答と Bearer challenge
 func TestUserInfoRejectsRevokedAccessTokenWithBearerChallenge(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		t.Run(method, func(t *testing.T) {
@@ -407,6 +409,7 @@ func TestUserInfoRejectsRevokedAccessTokenWithBearerChallenge(t *testing.T) {
 				t.Fatalf("WWW-Authenticate=%q, want %q", got, wantChallenge)
 			}
 			assertNoUserInfoClaims(t, rec.Body.Bytes())
+			oauthContractError(t, rec, http.StatusUnauthorized, "invalid_token")
 		})
 	}
 }

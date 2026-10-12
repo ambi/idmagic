@@ -419,6 +419,11 @@ run = "bun run tools/verification/src/main.ts --full --report .verification/test
 description = "Report test execution, analysis gaps, and uncollected change-resistance evidence"
 run = "bun run tools/verification/src/report.ts \"$@\""
 
+[tasks.report-contract-evidence]
+description = "List unresolved HTTP operations and candidate contract test files"
+depends = ["compile-spec"]
+run = "bun run tools/verification/src/contract-evidence-inventory.ts"
+
 [tasks.test-go-cover]
 description = "Run Go tests with coverage"
 run = '''
@@ -479,7 +484,7 @@ description = "Mutate one Go package and report the mutants its tests do not kil
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run test-go-mutation -- <package-directory> [workers] [cache-file] [report-file]" >&2; exit 2; }
+test "$#" -ge 1 || { echo "usage: mise run test-go-mutation -- <package-directory> [workers] [cache-file] [report-file] [base-revision]" >&2; exit 2; }
 directory="$1"
 test -d "$directory" || { echo "$directory is not a directory; name the package directory, not an import path" >&2; exit 2; }
 case "$directory" in
@@ -492,7 +497,7 @@ operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT
 report="${4:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
 # gomutants 0.6.1 の cache key は、対象 package が import する package の変更を完全には追跡しない。
 # 既定では無効にし、同一変更を反復するときだけ第 3 引数へ cache file を明示する。
-gomutants --workers "${2:-2}" --cache "${3:-off}" --only "$operators" --output "$report" "$target"
+gomutants --workers "${2:-2}" --cache "${3:-off}" --only "$operators" --output "$report" ${5:+--changed-since "$5"} "$target"
 '''
 
 [tasks.test-go-mutation-mutant]

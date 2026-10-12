@@ -61,11 +61,11 @@ model IdentityProviderConnection {
   saml_sso_url?: string;
   @maxLength(2048)
   saml_entity_id?: string;
-  saml_signing_certificates: string[];
+  saml_signing_certificates?: string[];
   claim_mapping: ClaimMapping;
   linking_policy: AccountLinkingPolicy;
   jit_provisioning: boolean;
-  allowed_email_domains: string[];
+  allowed_email_domains?: string[];
   metadata_refreshed_at?: utcDateTime;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -88,6 +88,9 @@ model FederatedIdentity {
   linked_at: utcDateTime;
   last_login_at?: utcDateTime;
 }
+
+@doc("本人が参照する外部アイデンティティの関連付け。外部のサブジェクトを除いた射影である。")
+model LinkedExternalIdentity is OmitProperties<FederatedIdentity, "external_subject">;
 
 
 @doc("上流とのブラウザーの往復を関連付ける、一回限りの一時的な記録。state、nonce、PKCE の検証子、または RelayState と AuthnRequest の ID を、テナントとプロバイダーに結び付け、10 分以内に一度だけ使う。")

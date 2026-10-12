@@ -362,7 +362,7 @@ model GetAccountSecurityError403 {
 @get
 op GetAccountSecurity(
 
-): GetAccountSecuritySuccess_200 | GetAccountSecurityError403;
+): GetAccountSecuritySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAccountSecurityError403;
 
 model GetMyNotificationPreferencesSuccess_200 {
   @statusCode statusCode: 200;
@@ -385,7 +385,7 @@ model GetMyNotificationPreferencesError403 {
 @get
 op GetMyNotificationPreferences(
 
-): GetMyNotificationPreferencesSuccess_200 | GetMyNotificationPreferencesError403;
+): GetMyNotificationPreferencesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetMyNotificationPreferencesError403;
 
 model UpdateMyNotificationPreferencesSuccess_200 {
   @statusCode statusCode: 200;
@@ -896,7 +896,7 @@ model ListMySignInActivityError400 {
 @get
 op ListMySignInActivity(
   @query limit?: int64
-): ListMySignInActivitySuccess_200 | ListMySignInActivityError403 | ListMySignInActivityError400;
+): ListMySignInActivitySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMySignInActivityError403 | ListMySignInActivityError400;
 
 model ListUserSignInActivitySuccess_200 {
   @statusCode statusCode: 200;
@@ -981,7 +981,7 @@ model ListMySessionsError403 {
 @get
 op ListMySessions(
 
-): ListMySessionsSuccess_200 | ListMySessionsError403;
+): ListMySessionsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMySessionsError403;
 
 model RevokeMySessionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1062,7 +1062,7 @@ model ListMyTrustedDevicesError403 {
 @get
 op ListMyTrustedDevices(
 
-): ListMyTrustedDevicesSuccess_200 | ListMyTrustedDevicesError403;
+): ListMyTrustedDevicesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMyTrustedDevicesError403;
 
 model RevokeMyTrustedDeviceSuccess_204 {
   @statusCode statusCode: 204;
@@ -1648,7 +1648,7 @@ op CompleteFederatedLogin2(
 ): CompleteFederatedLogin2Success_303 | CompleteFederatedLogin2Error400 | IdMagic.Contract.AuthenticationRequiredResponse | CompleteFederatedLogin2Error403 | CompleteFederatedLogin2Error422;
 
 model ListLinkedExternalIdentitiesHttpResponse {
-  identities: IdMagic.Contract.FederatedIdentity[];
+  identities: IdMagic.Contract.LinkedExternalIdentity[];
 }
 
 model ListLinkedExternalIdentitiesSuccess_200 {
@@ -1672,7 +1672,7 @@ model ListLinkedExternalIdentitiesError403 {
 @get
 op ListLinkedExternalIdentities(
 
-): ListLinkedExternalIdentitiesSuccess_200 | ListLinkedExternalIdentitiesError403;
+): ListLinkedExternalIdentitiesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListLinkedExternalIdentitiesError403;
 
 union LinkExternalIdentityError400Body {
   IdMagic.Contract.InvalidRequestError,

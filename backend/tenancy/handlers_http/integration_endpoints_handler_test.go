@@ -88,6 +88,7 @@ func (s stubIntegrationAuthnResolver) Resolve(context.Context, authdomain.Header
 }
 
 //spec:covers EX-TENANCY-001-01: path 形式の正規 issuer から各プロトコルの公開 URL と署名証明書情報を導出し、秘密を返さない。
+//verify:operation GetAdminIntegrationEndpoints: 200 JSON は正規 issuer から導く URL と証明書の指紋を含み、秘密の値を含まず no-store で返す。
 func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
 	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStylePath)
 	rec := httptest.NewRecorder()

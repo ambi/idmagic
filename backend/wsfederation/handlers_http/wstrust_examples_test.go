@@ -107,6 +107,7 @@ func rejectedTokenReasons(events []spec.DomainEvent) []string {
 // UsernameToken が名乗った利用者について発行したことまで読む。
 //
 //spec:covers EX-WSFEDERATION-004-01: UsernameToken、MessageID、Timestamp、To、Action、RequestType、KeyType、AppliesTo のどれか 1 つを崩すとトークンが出ず、すべて有効な RST には、RelatesTo が MessageID を指し AppliesTo を返し IdP の証明書で検証できる alice の assertion を運ぶ RSTR を返して WsTrustTokenIssued を発行すること。
+//verify:operation WsTrustIssue: SOAP 要求に対する 200 の SOAP 本文から RelatesTo、AppliesTo、利用者のクレームと Assertion の署名を照合する。
 func TestWsTrustIssue_ValidatesEveryRequiredElementAndAnswersAValidRST(t *testing.T) {
 	t.Run("a valid RST receives a signed RSTR for the authenticated user", func(t *testing.T) {
 		e, events, signer := newServerWithSigner(t, nil)
@@ -114,6 +115,9 @@ func TestWsTrustIssue_ValidatesEveryRequiredElementAndAnswersAValidRST(t *testin
 		rec := postWsTrustSOAP(e, wsTrustRST(time.Now().UTC(), messageID, "urn:idmagic:demo-rp"))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		if rec.Header().Get("Content-Type") != "application/soap+xml; charset=utf-8" {
+			t.Fatalf("Content-Type=%q, want SOAP XML UTF-8", rec.Header().Get("Content-Type"))
 		}
 		document := etree.NewDocument()
 		if err := document.ReadFromString(rec.Body.String()); err != nil {
@@ -198,6 +202,7 @@ func TestWsTrustIssue_RejectsAReusedMessageIDWithinTheAssertionLifetime(t *testi
 // TestWsTrustIssue_ValidatesEveryRequiredElementAndAnswersAValidRST の成功経路が示す。
 //
 //spec:covers EX-WSFEDERATION-005-01: RST の To、MessageID、AppliesTo、Action、RequestType、KeyType のどれか 1 つが不正な要求が、400 または 401 と WsTrustTokenRejected で拒否され、応答が RSTR も assertion も運ばず WsTrustTokenIssued も出ないこと。
+//verify:operation WsTrustIssue: 不正な SOAP エンベロープの 400 または 401 は空でない text/plain 本文を返し、トークンを含めない。
 func TestWsTrustIssue_RejectsAMalformedEnvelope(t *testing.T) {
 	for _, tc := range brokenRSTs() {
 		if !tc.envelope {
@@ -208,6 +213,9 @@ func TestWsTrustIssue_RejectsAMalformedEnvelope(t *testing.T) {
 			rec := postWsTrustSOAP(e, tc.body(t))
 			if rec.Code != http.StatusBadRequest && rec.Code != http.StatusUnauthorized {
 				t.Fatalf("status=%d body=%s, want 400 or 401", rec.Code, rec.Body.String())
+			}
+			if !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/plain") || strings.TrimSpace(rec.Body.String()) == "" {
+				t.Fatalf("Content-Type=%q body=%q, want nonempty text refusal", rec.Header().Get("Content-Type"), rec.Body.String())
 			}
 			if !hasEvent(*events, "WsTrustTokenRejected") {
 				t.Fatal("WsTrustTokenRejected not emitted")
@@ -223,6 +231,7 @@ func TestWsTrustIssue_RejectsAMalformedEnvelope(t *testing.T) {
 // 同じ組み立ての正しい資格情報は発行される。これが無いと、何も発行しないスタックでも上の 2 通りは緑になる。
 //
 //spec:covers EX-WSFEDERATION-004-03: UsernameToken のパスワードが誤っているか username が未知の RST が、401 と WsTrustTokenRejected で拒否され、応答が RSTR も assertion も運ばず WsTrustTokenIssued も出ないこと。正しい資格情報なら同じ入口で発行されることを対照にする。
+//verify:operation WsTrustIssue: 不正な資格情報の 401 は空でない text/plain 本文を返し、RSTR も Assertion も含めない。
 func TestWsTrustIssue_RefusesAWrongCredentialWith401AndNoToken(t *testing.T) {
 	for _, tc := range []struct{ name, old, replacement string }{
 		{"wrong password", "<o:Password>correct-password</o:Password>", "<o:Password>wrong-password</o:Password>"},
@@ -234,6 +243,9 @@ func TestWsTrustIssue_RefusesAWrongCredentialWith401AndNoToken(t *testing.T) {
 			rec := postWsTrustSOAP(e, refused.body(t))
 			if rec.Code != http.StatusUnauthorized {
 				t.Fatalf("status=%d body=%s, want 401", rec.Code, rec.Body.String())
+			}
+			if !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/plain") || strings.TrimSpace(rec.Body.String()) == "" {
+				t.Fatalf("Content-Type=%q body=%q, want nonempty credential refusal", rec.Header().Get("Content-Type"), rec.Body.String())
 			}
 			assertNoWsTrustTokenIssued(t, rec, *events, 0)
 			if reasons := rejectedTokenReasons(*events); len(reasons) != 1 {

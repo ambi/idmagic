@@ -129,4 +129,4 @@ IdGovernance から IdManagement の usecases を直接参照する案は、モ�
   - `mise run test-go-package`：Group 139件、User 139件、IdGovernance 46件が成功。追加した User の操作のテストも個別に成功。
   - `mise run test-ui-e2e`：39件成功。サンドボックスのローカル待受と WebView の制限を避けて再実行した。
   - `mise run verify`：Go テスト6,359件と tools テスト1,018件が成功したが、未解析の282操作の契約証拠不足により未達。予約名 clear の指摘は clearAction へ修正した。
-  - 契約証拠不足は [wi-13263](../active/wi-13263-verify-unresolved-http-operation-contracts.md) が所有する。利用者はこの不足を別項目に記録し、全体検証の未達を明示して監査実装を続ける例外を認めた。検証ゲートの条件は変更していない。
+  - 契約証拠不足は [wi-13263](wi-13263-verify-unresolved-http-operation-contracts.md) が所有する。利用者はこの不足を別項目に記録し、全体検証の未達を明示して監査実装を続ける例外を認めた。検証ゲートの条件は変更していない。

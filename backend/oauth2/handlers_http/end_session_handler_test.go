@@ -5,9 +5,11 @@ package handlers_http_test
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +53,76 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 		Issuer: "http://test", OAuth2: oauth2.Module{ClientRepo: clientRepo},
 	})
 	return e
+}
+
+//verify:operation EndSession: GET・POST の 302 Location に state を返すことと不正な返送先の 400
+//verify:operation PostEndSession: GET・POST の 302 Location に state を返すことと不正な返送先の 400
+//spec:covers REQ-OAUTH2-023: GET と POST は要求した state を登録済みの戻り先へ返し、未登録の URI を拒否する。
+func TestEndSessionHTTPContracts(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		t.Run(method, func(t *testing.T) {
+			e := newEndSessionServer(t)
+			for _, redirect := range []string{logoutRedirectURI, "https://unregistered.example/cb"} {
+				form := url.Values{"client_id": {logoutClientID}, "post_logout_redirect_uri": {redirect}, "state": {"contract-state"}}
+				path := "/realms/default/end_session"
+				var body io.Reader = http.NoBody
+				if method == http.MethodGet {
+					path += "?" + form.Encode()
+				} else {
+					body = strings.NewReader(form.Encode())
+				}
+				req := httptest.NewRequest(method, path, body)
+				if method == http.MethodPost {
+					req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				}
+				rec := httptest.NewRecorder()
+				e.ServeHTTP(rec, req)
+				if redirect != logoutRedirectURI {
+					oauthContractError(t, rec, http.StatusBadRequest, "invalid_request")
+					if rec.Header().Get("Location") != "" {
+						t.Fatal("refused logout redirected")
+					}
+					continue
+				}
+				if rec.Code != http.StatusFound || rec.Body.Len() != 0 {
+					t.Fatalf("logout status=%d body=%s", rec.Code, rec.Body.String())
+				}
+				location, err := url.Parse(rec.Header().Get("Location"))
+				if err != nil || location.Scheme+"://"+location.Host+location.Path != logoutRedirectURI || location.Query().Get("state") != "contract-state" {
+					t.Fatalf("Location=%v err=%v", location, err)
+				}
+			}
+		})
+	}
+}
+
+//verify:operation PostEndSession: form state の返送、query の優先および空 state の省略
+//spec:covers REQ-OAUTH2-023: POST 本文の state を URL 符号化して返し、既存の query 優先を維持する。
+func TestEndSessionPOSTStateContracts(t *testing.T) {
+	for _, tc := range []struct {
+		name, queryState, formState, want string
+	}{
+		{"form", "", "opaque&state=日本語+#", "opaque&state=日本語+#"},
+		{"query takes precedence", "query-state", "form-state", "query-state"},
+		{"absent", "", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEndSessionServer(t)
+			form := url.Values{"client_id": {logoutClientID}, "post_logout_redirect_uri": {logoutRedirectURI}, "state": {tc.formState}}
+			query := url.Values{"state": {tc.queryState}}
+			request := httptest.NewRequest(http.MethodPost, "/realms/default/end_session?"+query.Encode(), strings.NewReader(form.Encode()))
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, request)
+			location, err := url.Parse(rec.Header().Get("Location"))
+			if err != nil || rec.Code != http.StatusFound || rec.Body.Len() != 0 || location.Scheme+"://"+location.Host+location.Path != logoutRedirectURI || location.Query().Get("state") != tc.want {
+				t.Fatalf("status=%d location=%v err=%v want state=%q", rec.Code, location, err, tc.want)
+			}
+			if tc.want == "" && location.Query().Has("state") {
+				t.Fatal("absent state was added to the redirect")
+			}
+		})
+	}
 }
 
 //spec:covers OIDC-LOGOUT-ENDPOINT: Discovery が広告する /end_session で RP の要求を受け付けることを固定する。

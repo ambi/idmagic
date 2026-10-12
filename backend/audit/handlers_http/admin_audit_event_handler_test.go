@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -134,6 +135,24 @@ func getAdminAuditEvents(e *echo.Echo, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
+func assertAuditProblem(t *testing.T, response *httptest.ResponseRecorder, status int, code string) {
+	t.Helper()
+	var problem support.Problem
+	if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != status || response.Header().Get("Content-Type") != support.ProblemContentType || problem.Status != status || problem.Type != "urn:idmagic:error:"+code {
+		t.Fatalf("status=%d Content-Type=%q problem=%+v, want %d %s", response.Code, response.Header().Get("Content-Type"), problem, status, code)
+	}
+}
+
+func assertAuditEvent(t *testing.T, got audithttp.AdminAuditEventResponse, want *auditports.AuditEventRecord) {
+	t.Helper()
+	if got.ID != want.ID || got.TenantID != want.TenantID || got.Type != want.Type || !got.OccurredAt.Equal(want.OccurredAt) || !reflect.DeepEqual(got.Payload, want.Payload) {
+		t.Fatalf("event=%+v, want seeded identity, time and payload %+v", got, want)
+	}
+}
+
 func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
 	// wi-147: 実アカウントが常に確定するイベント (UserAuthenticated 等) は payload に
 	// username を持たないため、username=... は検索時に user_id へ解決してから絞り込む。
@@ -203,14 +222,15 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 }
 
 //spec:covers EX-AUDIT-004-04: TenantAdministrator ロールを持たない実行者は ListAdminAuditEvents から AccessDeniedError で拒否されることを固定する。
+//verify:operation ListAdminAuditEvents: 非管理者の一覧要求は 403 access_denied の Problem Details を返す。
+//verify:operation ExportAdminAuditEvents: 非管理者のエクスポート要求は 403 access_denied の Problem Details を返す。
+//verify:operation GetAdminAuditEvent: 非管理者の参照要求は 403 access_denied の Problem Details を返す。
 func TestAdminAuditEventsRequiresAdminRole(t *testing.T) {
 	// 認証はあるが admin/system_admin ロールが無い → 403。
 	user := auditUser("user_alice", "acme", []string{})
 	e := newAuditAdminServer(t, user, nil)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events")
-	if rec.Code != http.StatusForbidden ||
-		!bytes.Contains(rec.Body.Bytes(), []byte(`"type":"urn:idmagic:error:access_denied"`)) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	for _, suffix := range []string{"", "/export", "/missing-event"} {
+		assertAuditProblem(t, getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events"+suffix), http.StatusForbidden, "access_denied")
 	}
 }
 
@@ -244,6 +264,8 @@ func TestAdminAuditEventsScopesToOwnTenant(t *testing.T) {
 }
 
 //spec:covers EX-AUDIT-001-01: 直近 24 時間の絞り込みが所属テナントだけを返し、同じ絞り込みでのエクスポートも所属テナントの範囲に閉じることを固定する。
+//verify:operation ListAdminAuditEvents: 期間クエリに対応する 200 本文の events が自テナントの一致するイベントだけを返す。
+//verify:operation ExportAdminAuditEvents: 同じ期間でのエクスポートの 200 本文が同じテナントの一致するイベントだけを返す。
 func TestAdminAuditEventsFiltersRecentWindowAndExportsSameTenantScope(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
@@ -268,6 +290,7 @@ func TestAdminAuditEventsFiltersRecentWindowAndExportsSameTenantScope(t *testing
 	if len(body.Events) != 1 || body.Events[0].TenantID != "acme" || body.Events[0].Payload["userId"] != "alice" {
 		t.Fatalf("24h window mismatch: %+v", body.Events)
 	}
+	assertAuditEvent(t, body.Events[0], events[0])
 
 	export := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events/export?after="+after)
 	if export.Code != http.StatusOK {
@@ -281,6 +304,10 @@ func TestAdminAuditEventsFiltersRecentWindowAndExportsSameTenantScope(t *testing
 	}
 	if len(exportBody.Events) != 1 || exportBody.Events[0].TenantID != "acme" || exportBody.Events[0].Payload["userId"] != "alice" {
 		t.Fatalf("export must return the same tenant-scoped 24h window: %+v", exportBody.Events)
+	}
+	assertAuditEvent(t, exportBody.Events[0], events[0])
+	if !strings.HasPrefix(export.Header().Get("Content-Disposition"), "attachment") {
+		t.Fatalf("export Content-Disposition=%q, want attachment", export.Header().Get("Content-Disposition"))
 	}
 }
 
@@ -330,6 +357,9 @@ func TestAdminAuditEventsAllTenantsRejectsSystemAdminOutsideControlPlaneTenant(t
 // 同じ範囲で答える。REQ-AUDIT-007。
 //
 //spec:covers EX-AUDIT-007-01: システム経路は全テナントの監査イベントを返し、エクスポートも 1 件参照も
+//verify:operation ListSystemAuditEvents: 制御面主体の GET の 200 本文は全テナントの監査イベントを返す。
+//verify:operation ExportSystemAuditEvents: 制御面主体のエクスポートの 200 本文は全テナントのイベントを attachment として返す。
+//verify:operation GetSystemAuditEvent: 他テナントの ID を指定した GET の 200 本文の識別子、所属、種類、時刻とペイロードを照合する。
 func TestListSystemAuditEventsSpansEveryTenant(t *testing.T) {
 	sysAdmin := auditUser("user_system_admin", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	now := time.Now().UTC()
@@ -359,11 +389,25 @@ func TestListSystemAuditEventsSpansEveryTenant(t *testing.T) {
 	if !strings.Contains(export.Body.String(), foreign.ID) {
 		t.Fatalf("export omitted another tenant's event %q: %s", foreign.ID, export.Body.String())
 	}
+	var exported struct {
+		Events []audithttp.AdminAuditEventResponse `json:"events"`
+	}
+	if err := json.Unmarshal(export.Body.Bytes(), &exported); err != nil {
+		t.Fatal(err)
+	}
+	if len(exported.Events) != 2 || !strings.HasPrefix(export.Header().Get("Content-Disposition"), "attachment") {
+		t.Fatalf("export header=%q body=%s, want attachment with both events", export.Header().Get("Content-Disposition"), export.Body.String())
+	}
 
 	detail := getAdminAuditEvents(e, "/realms/default/api/admin/v1/system/audit-events/"+foreign.ID)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
+	var event audithttp.AdminAuditEventResponse
+	if err := json.Unmarshal(detail.Body.Bytes(), &event); err != nil {
+		t.Fatal(err)
+	}
+	assertAuditEvent(t, event, foreign)
 }
 
 // 制御面主体はテナント管理経路でも所属テナントが制御面テナントなので、カーソルの指紋に
@@ -410,6 +454,9 @@ func TestTenantAuditCursorDoesNotContinueTheSystemSearch(t *testing.T) {
 }
 
 //spec:covers EX-AUDIT-007-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの記録も返さない。
+//verify:operation ListSystemAuditEvents: 制御面主体でない実行者の一覧要求は 403 access_denied の本文を返す。
+//verify:operation ExportSystemAuditEvents: 制御面主体でない実行者のエクスポート要求は 403 access_denied の本文を返す。
+//verify:operation GetSystemAuditEvent: 制御面主体でない実行者の参照要求は 403 access_denied の本文を返す。
 func TestSystemAuditEventRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	now := time.Now().UTC()
 	foreign := auditEvent("acme", "X", "a", now)
@@ -432,6 +479,7 @@ func TestSystemAuditEventRoutesRefuseNonControlPlaneActor(t *testing.T) {
 			"/realms/" + realm + "/api/admin/v1/system/audit-events/" + foreign.ID,
 		} {
 			rec := getAdminAuditEvents(e, path)
+			assertAuditProblem(t, rec, http.StatusForbidden, "access_denied")
 			if rec.Code != http.StatusForbidden {
 				t.Errorf("%s: %s status=%d want %d body=%s", name, path, rec.Code, http.StatusForbidden, rec.Body.String())
 			}
@@ -480,15 +528,32 @@ func TestAdminAuditEventsIgnoreAnyCrossTenantInput(t *testing.T) {
 	}
 }
 
+//verify:operation GetAdminAuditEvent: 別テナントの ID に対する 404 event_not_found の本文を照合する。
 func TestAdminAuditEventsGetReturns404ForCrossTenant(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()
 	foreign := auditEvent(tenancydomain.DefaultTenantID, "X", "alice", now)
 	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{foreign})
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events/"+foreign.ID)
+	assertAuditProblem(t, rec, http.StatusNotFound, "event_not_found")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for cross-tenant event, got %d body=%s", rec.Code, rec.Body.String())
 	}
+}
+
+//verify:operation GetAdminAuditEvent: 自テナントの ID を指定した GET の 200 本文の全フィールドを保存済みイベントと照合する。
+func TestAdminAuditEventHTTPDetailContract(t *testing.T) {
+	event := auditEvent("acme", "UserAuthenticated", "alice", time.Now().UTC())
+	e := newAuditAdminServer(t, auditUser("admin", "acme", []string{"admin"}), []*auditports.AuditEventRecord{event})
+	response := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events/"+event.ID)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s, want 200", response.Code, response.Body.String())
+	}
+	var got audithttp.AdminAuditEventResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	assertAuditEvent(t, got, event)
 }
 
 func TestAdminAuditEventsFilterByTypeAndSub(t *testing.T) {

@@ -32,6 +32,7 @@ import (
 )
 
 //spec:covers REQ-OAUTH2-041: an authenticated confidential client can create a backchannel request.
+//verify:operation BackchannelAuthenticate: 200 の auth_req_id、期限、interval と pending 状態、および不正な secret の拒否
 func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
 	tenantRepo := tenancymemory.NewTenantRepository()
 	_ = tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
@@ -82,6 +83,13 @@ func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
 	if response.AuthReqID == "" || response.ExpiresIn != 300 || response.Interval != 5 {
 		t.Fatalf("unexpected response: %+v", response)
 	}
+	oauthContractJSON(t, rec, http.StatusOK)
+	rejected := httptest.NewRequest(http.MethodPost, "/realms/default/bc-authorize", strings.NewReader(form.Encode()))
+	rejected.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rejected.SetBasicAuth("agent-app", "wrong-secret")
+	refused := httptest.NewRecorder()
+	e.ServeHTTP(refused, rejected)
+	oauthContractError(t, refused, http.StatusUnauthorized, "invalid_client")
 }
 
 // 応答だけでは、承認を経ずに発行する実装と、記録が残らない実装を見分けられない。
@@ -252,6 +260,7 @@ func TestApprovalDecisionRequiresRecentStepUp(t *testing.T) {
 }
 
 //spec:covers REQ-OAUTH2-043, EX-OAUTH2-043-03: the decision endpoint rejects a decision whose CSRF proof is missing, and the request stays Pending.
+//verify:operation DecideMyApprovalRequest: CSRF 拒否の 403 Problem Details と pending の維持
 func TestApprovalDecisionRequiresCSRF(t *testing.T) {
 	fix := newApprovalHandlerFixture(t)
 	req := approvalDecisionRequest(fix.id, false)
@@ -260,6 +269,7 @@ func TestApprovalDecisionRequiresCSRF(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
+	oauthContractProblem(t, rec, http.StatusForbidden, "csrf_failed")
 
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	stored, err := fix.store.FindByID(ctx, fix.id)
@@ -269,6 +279,7 @@ func TestApprovalDecisionRequiresCSRF(t *testing.T) {
 }
 
 //spec:covers REQ-OAUTH2-043: an authenticated, stepped-up owner can decide once.
+//verify:operation DecideMyApprovalRequest: 204 の空本文と所有者による承認状態
 func TestApprovalDecisionSucceedsForOwner(t *testing.T) {
 	fix := newApprovalHandlerFixture(t)
 	req := approvalDecisionRequest(fix.id, true)
@@ -276,6 +287,9 @@ func TestApprovalDecisionSucceedsForOwner(t *testing.T) {
 	fix.e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("204 body=%s", rec.Body.String())
 	}
 }
 

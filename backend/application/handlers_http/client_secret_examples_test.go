@@ -305,6 +305,7 @@ func TestRevokingAnAlreadyRevokedClientSecretEmitsNoSecondEvent(t *testing.T) {
 }
 
 //spec:covers EX-OAUTH2-037-01: ローテーションは新しいシークレットを一度だけ返し、grace_until までは新旧どちらでも認証でき、grace が無ければ以前のシークレットはその場で invalid_client になる。
+//verify:operation RotateApplicationClientSecret: 200 JSON は新しいシークレット、猶予時刻と資格情報一覧を返し、猶予中は新旧が使える。
 func TestRotatingAClientSecretHonoursTheGraceWindow(t *testing.T) {
 	f := newSecretExampleFixture(t)
 	applicationID, clientID, legacySecret := f.createApplication(t)
@@ -378,6 +379,18 @@ func rotateSecret(
 		f.csrf, f.cookie, map[string]any{"grace_days": graceDays})
 	if response.Code != http.StatusOK {
 		t.Fatalf("rotate status=%d body=%s", response.Code, response.Body.String())
+	}
+	body := applicationContractJSON(t, response, http.StatusOK)
+	credentials, _ := body["credentials"].([]any)
+	if len(credentials) < 2 {
+		t.Fatalf("rotation credentials=%v", body)
+	}
+	for _, item := range credentials {
+		credential, _ := item.(map[string]any)
+		if credential["credential_id"] == "" || credential["credential_id"] == nil || credential["status"] == nil {
+			t.Fatalf("rotation credential=%v", credential)
+		}
+		assertApplicationTime(t, credential, "created_at")
 	}
 	var result rotateSecretResult
 	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {

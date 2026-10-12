@@ -47,6 +47,8 @@ func (unmanagedImportUsers) SourceManagedUserIDs(_ context.Context, _ string, id
 // そして適用が CSV を再送せず保存済みのプレビューだけを指すことを、1 本の経路で読む。
 //
 //spec:covers REQ-IDMANAGEMENT-004, EX-IDMANAGEMENT-004-01: 管理 API の preview/apply と worker の二段階で、preview が判定と行番号と安定コードを返して User を変えず、apply が有効な行だけを反映すること。
+//verify:operation ImportAdminUsers: CSV preview と apply の JSON 応答、問題行と保存したユーザー
+//verify:operation ApplyAdminUserImport: CSV preview と apply の JSON 応答、問題行と保存したユーザー
 func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	users := usermemory.NewUserRepository()
@@ -103,14 +105,30 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 	}
 	jobID := func(response *httptest.ResponseRecorder) string {
 		t.Helper()
-		if response.Code != http.StatusAccepted {
+		if response.Code != http.StatusAccepted || !strings.HasPrefix(response.Header().Get("Content-Type"), "application/json") {
 			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 		}
 		var body struct {
-			ID string `json:"id"`
+			ID     string `json:"id"`
+			Status string `json:"status"`
+			Mode   string `json:"mode"`
 		}
 		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)
+		}
+		if body.ID == "" || body.Status != "queued" || (body.Mode != "preview" && body.Mode != "apply") {
+			t.Fatalf("accepted import=%+v", body)
+		}
+		job, err := jobRepo.Get(context.Background(), body.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expectedMode := "preview"
+		if job.Kind == jobsdomain.KindUserImportApply {
+			expectedMode = "apply"
+		}
+		if body.Mode != expectedMode {
+			t.Fatalf("mode=%q kind=%s", body.Mode, job.Kind)
 		}
 		return body.ID
 	}

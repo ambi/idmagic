@@ -554,6 +554,7 @@ var apiTokenScopeSample = []string{
 // 実際に使う検証鍵を配ることなので、検証鍵が存在する状態で読む。
 //
 //spec:covers RFC7517-JWKS (required): 公開可能な検証鍵を JWK Set として配布する。
+//verify:operation ListTenantJwks: 宣言された唯一の 200 応答の公開鍵で実際の発行トークンを検証し、秘密鍵の非公開も読む。
 func TestJWKSPublishesOnlyPublicVerificationKeys(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -617,6 +618,7 @@ const mdRealmIssuer = mdIssuer + mdRealmPath
 //
 //spec:covers RFC8414-METADATA (required): 発行者と利用可能なエンドポイントおよび機能を
 //spec:covers EX-OAUTH2-030-01: RFC 8414 のメタデータ文書は issuer、authorization_endpoint、token_endpoint、jwks_uri、grant_types_supported を OIDC Discovery と同等に返す。
+//verify:operation GetOauthAuthorizationServer: GET の 200 本文にある issuer、公開エンドポイントと機能を実際の要求と照合する。
 func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t *testing.T) {
 	fixture := newMetadataFixture(t)
 
@@ -681,6 +683,7 @@ func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t
 //
 //spec:covers OIDC-DISCOVERY-CONFIGURATION (required): well-known 設定から発行者、エンドポイント、
 //spec:covers EX-OAUTH2-014-01: Discovery Metadata は宣言された全エンドポイントを広告し、広告した先が実在する経路へ解決される。
+//verify:operation GetOpenidConfiguration: GET の 200 本文にある issuer、userinfo、署名アルゴリズムを実際の発行と照合する。
 func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t *testing.T) {
 	fixture := newMetadataFixture(t)
 

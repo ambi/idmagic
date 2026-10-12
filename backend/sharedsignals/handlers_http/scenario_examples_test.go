@@ -866,7 +866,7 @@ func assertAccessDenied(t *testing.T, rec *httptest.ResponseRecorder) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
 		t.Fatalf("decode problem: %v; body=%s", err, rec.Body.String())
 	}
-	if rec.Code != http.StatusForbidden || problem.Type != "urn:idmagic:error:access_denied" {
+	if rec.Code != http.StatusForbidden || problem.Type != "urn:idmagic:error:access_denied" || problem.Status != http.StatusForbidden || !strings.HasPrefix(rec.Header().Get("Content-Type"), "application/problem+json") {
 		t.Fatalf("status=%d type=%q body=%s, want 403 access_denied", rec.Code, problem.Type, rec.Body.String())
 	}
 }
@@ -912,6 +912,8 @@ func (s *exampleStack) lifecycleEventCount() int {
 // 管理者でない利用者の登録を、既存のストリームがある状態で拒否させる。
 //
 //spec:covers EX-SHAREDSIGNALS-011-01: admin ロールを持たない "alice" の送信側と受信側の登録はどちらも 403 access_denied で拒否され、ストリームは増えず、既存のストリームの状態も変わらず、SsfStreamRegistered も発行されない。
+//verify:operation RegisterSsfTransmitterStream: 非管理者の登録は 403 access_denied の Problem Details で拒否され、状態とイベントを変えない。
+//verify:operation RegisterSsfReceiverStream: 非管理者の登録は 403 access_denied の Problem Details で拒否され、状態とイベントを変えない。
 func TestNonAdminCannotRegisterStreams(t *testing.T) {
 	s := newExampleStack(t)
 	s.registerTransmitter(t, "https://receiver.example/events")
@@ -938,6 +940,10 @@ func TestNonAdminCannotRegisterStreams(t *testing.T) {
 // 拒否は無効なストリームに対してでなければ、何も変えない要求と見分けられない。
 //
 //spec:covers EX-SHAREDSIGNALS-011-02: admin ロールを持たない "alice" の無効化、有効化、更新、削除はすべて 403 access_denied で拒否され、ストリームの有無、状態、購読するイベント種別は変わらず、ストリームのライフサイクルイベントも発行されない。
+//verify:operation UpdateSsfStream: 非管理者の更新は 403 access_denied の Problem Details で拒否され、状態とイベントを変えない。
+//verify:operation DisableSsfStream: 非管理者の無効化は 403 access_denied の Problem Details で拒否され、状態とイベントを変えない。
+//verify:operation EnableSsfStream: 非管理者の再有効化は 403 access_denied の Problem Details で拒否され、状態とイベントを変えない。
+//verify:operation DeleteSsfStream: 非管理者の削除は 403 access_denied の Problem Details で拒否され、状態とイベントを変えない。
 func TestNonAdminCannotChangeStreams(t *testing.T) {
 	s := newExampleStack(t)
 	enabled := s.registerTransmitter(t, "https://receiver.example/enabled")

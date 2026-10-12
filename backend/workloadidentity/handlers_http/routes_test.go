@@ -14,10 +14,14 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
 
@@ -37,11 +41,19 @@ func newWorkloadIdentityHandler(t *testing.T) *echo.Echo {
 		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})
+	agents := agentmemory.NewAgentRepository()
+	if err := agents.Save(t.Context(), &agentdomain.Agent{
+		ID: "agent-1", TenantID: tenancydomain.DefaultTenantID, Name: "worker",
+		OwnerUserID: "admin", Kind: idmdomain.AgentKindAutonomous, Status: idmdomain.AgentStatusActive,
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
 		AuthnResolver: authusecases.DemoHeaderResolver{},
-		IdManagement:  idmanagement.Module{UserRepo: userRepo},
+		IdManagement:  idmanagement.Module{UserRepo: userRepo, AgentRepo: agents},
 		WorkloadIdentity: workloadidentity.Module{
 			TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),
 			BindingRepo:     workloadmemory.NewAgentWorkloadBindingRepository(),
@@ -72,6 +84,7 @@ func workloadAdminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	return body.CSRFToken, cookies[0]
 }
 
+//verify:operation RegisterWorkloadTrustBundle: name がない登録要求は 422 の workload_trust_bundle_name_required 本文を返す。
 func TestRegisterTrustBundleRejectsMissingName(t *testing.T) {
 	e := newWorkloadIdentityHandler(t)
 	csrf, cookie := workloadAdminCSRF(t, e)
@@ -292,6 +305,15 @@ func TestAdminWorkloadTrustBundleLifecycle(t *testing.T) {
 // 拒否が防いだ効果は、admin で読み直した信頼設定が登録直後のままであることで観測する。
 //
 //spec:covers EX-WORKLOADIDENTITY-010-02: 登録以外の管理操作 — 信頼設定の更新、無効化、再有効化、削除、
+//verify:operation UpdateWorkloadTrustBundle: 非管理者の更新要求は 403 access_denied の本文を返し、元の設定を維持する。
+//verify:operation DisableWorkloadTrustBundle: 非管理者の無効化要求は 403 access_denied の本文を返す。
+//verify:operation EnableWorkloadTrustBundle: 非管理者の再有効化要求は 403 access_denied の本文を返す。
+//verify:operation DeleteWorkloadTrustBundle: 非管理者の削除要求は 403 access_denied の本文を返す。
+//verify:operation RefreshWorkloadTrustBundleJWKS: 非管理者の JWKS 再取得要求は 403 access_denied の本文を返す。
+//verify:operation CreateAgentWorkloadBinding: 非管理者の関連付け作成要求は 403 access_denied の本文を返す。
+//verify:operation DisableAgentWorkloadBinding: 非管理者の関連付け無効化要求は 403 access_denied の本文を返す。
+//verify:operation EnableAgentWorkloadBinding: 非管理者の関連付け再有効化要求は 403 access_denied の本文を返す。
+//verify:operation DeleteAgentWorkloadBinding: 非管理者の関連付け削除要求は 403 access_denied の本文を返す。
 func TestWorkloadIdentityAdminOperationsRejectNonAdmin(t *testing.T) {
 	e := newWorkloadIdentityHandler(t)
 	csrf, cookie := workloadAdminCSRF(t, e)
@@ -364,6 +386,13 @@ func TestWorkloadIdentityAdminOperationsRejectNonAdmin(t *testing.T) {
 			refused := send("alice", op.method, op.path, op.body)
 			if refused.Code != http.StatusForbidden {
 				t.Fatalf("status=%d body=%s, want 403", refused.Code, refused.Body.String())
+			}
+			var problem support.Problem
+			if err := json.Unmarshal(refused.Body.Bytes(), &problem); err != nil {
+				t.Fatal(err)
+			}
+			if problem.Type != "urn:idmagic:error:access_denied" || problem.Status != http.StatusForbidden {
+				t.Fatalf("problem=%+v, want 403 access_denied", problem)
 			}
 		})
 	}

@@ -245,6 +245,10 @@ op DisableLifecycleWorkflow(
   @body body: DisableLifecycleWorkflowHttpRequest
 ): DisableLifecycleWorkflowSuccess_200 | DisableLifecycleWorkflowError400 | DisableLifecycleWorkflowError403;
 
+model DeleteLifecycleWorkflowHttpRequest {
+  expected_revision: int64;
+}
+
 model DeleteLifecycleWorkflowSuccess_204 {
   @statusCode statusCode: 204;
 }
@@ -279,7 +283,7 @@ model DeleteLifecycleWorkflowError403 {
 @delete
 op DeleteLifecycleWorkflow(
   @path workflow_id: string,
-  @query expected_revision: int64
+  @body body: DeleteLifecycleWorkflowHttpRequest
 ): DeleteLifecycleWorkflowSuccess_204 | DeleteLifecycleWorkflowError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteLifecycleWorkflowError403;
 
 model DryRunLifecycleWorkflowSuccess_200 {

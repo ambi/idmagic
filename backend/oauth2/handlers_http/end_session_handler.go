@@ -154,7 +154,11 @@ func endSessionRedirect(c *echo.Context, target *tokenusecases.EndSessionTarget)
 		return "", 0, writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "invalid post_logout_redirect_uri"))
 	}
 	query := u.Query()
-	if state := c.QueryParam("state"); state != "" {
+	state := c.QueryParam("state")
+	if state == "" {
+		state = c.Request().PostFormValue("state")
+	}
+	if state != "" {
 		query.Set("state", state)
 	}
 	u.RawQuery = query.Encode()

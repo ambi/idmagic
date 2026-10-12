@@ -283,6 +283,7 @@ union UpdateTenantQuotaError403Body {
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
+  IdMagic.Contract.InsufficientScopeError,
 }
 
 model UpdateTenantQuotaError403 {
@@ -299,7 +300,7 @@ model UpdateTenantQuotaError403 {
 op UpdateTenantQuota(
   @path tenant_id: string,
   @body body: IdMagic.Contract.TenantQuotaUpdateRequest
-): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | UpdateTenantQuotaError403;
+): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantQuotaError403;
 
 model GetAdminSettingsSuccess_200 {
   @statusCode statusCode: 200;

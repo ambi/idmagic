@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"html"
 	"math/big"
 	"net/http"
@@ -848,16 +849,24 @@ func doJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRecorde
 	return rec
 }
 
+//verify:operation RegisterWsFedRelyingParty: 登録の 201 と置き換えの 200 の本文が要求した RP とクレームポリシーを返す。
 func TestAdminRelyingParty_CRUD(t *testing.T) {
 	e := newAdminServer(t)
 	const path = "/api/admin/v1/wsfed/relying-parties"
 	body := `{"wtrealm":"urn:rp:a","reply_urls":["https://a.example/acs"],"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
 
-	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusCreated {
-		t.Fatalf("create status=%d body=%s", rec.Code, rec.Body.String())
-	}
-	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusOK {
-		t.Fatalf("update status=%d, want 200", rec.Code)
+	for _, status := range []int{http.StatusCreated, http.StatusOK} {
+		rec := doJSON(e, http.MethodPost, path, body)
+		if rec.Code != status {
+			t.Fatalf("register status=%d body=%s, want %d", rec.Code, rec.Body.String(), status)
+		}
+		var rp feddomain.WsFedRelyingParty
+		if err := json.Unmarshal(rec.Body.Bytes(), &rp); err != nil {
+			t.Fatal(err)
+		}
+		if rp.Wtrealm != "urn:rp:a" || len(rp.ReplyURLs) != 1 || rp.ReplyURLs[0] != "https://a.example/acs" || rp.ClaimPolicy.NameID.SourceAttribute != "user_id" || rp.ClaimPolicy.NameID.Format != "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent" || rp.CreatedAt.IsZero() || rp.UpdatedAt.IsZero() {
+			t.Fatalf("registered RP=%+v, want requested trust and claim policy", rp)
+		}
 	}
 	if rec := get(e, path); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "urn:rp:a") {
 		t.Fatalf("list status=%d body=%s", rec.Code, rec.Body.String())
@@ -870,6 +879,7 @@ func TestAdminRelyingParty_CRUD(t *testing.T) {
 	}
 }
 
+//verify:operation RegisterWsFedRelyingParty: 返信先のない登録要求に対する 400 invalid_request の Problem Details を照合する。
 func TestAdminRelyingParty_RejectsInvalid(t *testing.T) {
 	e := newAdminServer(t)
 	// reply_urls 欠落。
@@ -907,6 +917,8 @@ func TestAdminRelyingParty_ForbiddenForNonAdmin(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-WSFEDERATION-001: Entra の設定は作成時 201、置き換え時 200 と PowerShell の設定を返す。
+//verify:operation ConfigureEntraFederation: 作成の 201 と置き換えの 200 の本文の RP、Entra プロファイル、PowerShell 設定と制限を照合する。
 func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 	e := newAdminServer(t)
 	body := `{"domain":"contoso.com","source_anchor_attribute":"object_guid"}`
@@ -930,14 +942,38 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 	if !strings.Contains(list.Body.String(), `"entra_profile"`) {
 		t.Fatalf("configured RP missing entra_profile: %s", list.Body.String())
 	}
+	updated := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body)
+	if updated.Code != http.StatusOK {
+		t.Fatalf("replacement status=%d body=%s, want 200", updated.Code, updated.Body.String())
+	}
+	var updatedBody struct {
+		Profile      feddomain.EntraFederationProfile `json:"profile"`
+		RelyingParty feddomain.WsFedRelyingParty      `json:"relying_party"`
+		PowerShell   map[string]string                `json:"powershell"`
+		KnownLimits  []string                         `json:"known_limitations"`
+	}
+	if err := json.Unmarshal(updated.Body.Bytes(), &updatedBody); err != nil {
+		t.Fatal(err)
+	}
+	if updatedBody.Profile.Domain != "contoso.com" || updatedBody.Profile.SourceAnchorAttribute != "object_guid" || updatedBody.RelyingParty.Wtrealm != "urn:idmagic:entra:contoso.com" || updatedBody.PowerShell["IssuerUri"] != "urn:idmagic:entra:contoso.com" || len(updatedBody.KnownLimits) == 0 {
+		t.Fatalf("replacement=%+v, want stored Entra trust and configuration", updatedBody)
+	}
 }
 
+//verify:operation ConfigureEntraFederation: 欠けた sourceAnchor の設定は 400 invalid_request の本文で拒否され、設定を保存しない。
 func TestAdminConfigureEntraFederation_RejectsMissingSourceAnchor(t *testing.T) {
 	e := newAdminServer(t)
 	body := `{"domain":"contoso.com","source_anchor_attribute":"missing_anchor"}`
 	rec := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Header().Get("Content-Type") != support.ProblemContentType || problem.Type != "urn:idmagic:error:invalid_request" || problem.Status != http.StatusBadRequest {
+		t.Fatalf("problem=%+v, want 400 invalid_request", problem)
 	}
 	if !strings.Contains(rec.Body.String(), "sourceAnchor validation failed") {
 		t.Fatalf("missing sourceAnchor error not returned: %s", rec.Body.String())

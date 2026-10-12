@@ -21,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -227,6 +228,45 @@ func decodeJobList(t *testing.T, rec *httptest.ResponseRecorder) jobListBody {
 	return body
 }
 
+func assertJobProblem(t *testing.T, rec *httptest.ResponseRecorder, status int, code string) {
+	t.Helper()
+	if rec.Code != status || rec.Header().Get("Content-Type") != support.ProblemContentType {
+		t.Fatalf("status=%d Content-Type=%q body=%s, want %d Problem Details", rec.Code, rec.Header().Get("Content-Type"), rec.Body.String(), status)
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+		t.Fatal(err)
+	}
+	if problem.Type != "urn:idmagic:error:"+code || problem.Status != status {
+		t.Fatalf("problem=%+v, want %d %s", problem, status, code)
+	}
+}
+
+func assertJobResponse(t *testing.T, rec *httptest.ResponseRecorder, id, tenant, status string) {
+	t.Helper()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s, want 200", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		ID          string    `json:"id"`
+		TenantID    string    `json:"tenant_id"`
+		Kind        string    `json:"kind"`
+		Lane        string    `json:"lane"`
+		Status      string    `json:"status"`
+		Attempts    int       `json:"attempts"`
+		MaxAttempts int       `json:"max_attempts"`
+		RunAt       time.Time `json:"run_at"`
+		CreatedAt   time.Time `json:"created_at"`
+		UpdatedAt   time.Time `json:"updated_at"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.ID != id || body.TenantID != tenant || body.Status != status || body.Kind != "noop_echo" || body.Lane != "default" || body.Attempts != 0 || body.MaxAttempts != 3 || body.RunAt.IsZero() || body.CreatedAt.IsZero() || body.UpdatedAt.IsZero() {
+		t.Fatalf("job=%+v, want %s in %s with status %s and seeded scheduling fields", body, id, tenant, status)
+	}
+}
+
 //spec:covers REQ-JOBS-012: 一覧は自テナントに閉じる。
 func TestListJobsStaysInsideTheTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
@@ -283,10 +323,12 @@ func TestListJobsRequiresAdminRole(t *testing.T) {
 }
 
 //spec:covers REQ-JOBS-012: 絞り込みは許可された語彙に限り、未知の値は無視せず拒否する。
+//verify:operation ListJobs: 未知の status、kind、lane の要求に対する 400 invalid_request の Problem Details を照合する。
 func TestListJobsRejectsAnUnknownFilterValue(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	for _, query := range []string{"status=nonsense", "kind=nonsense", "lane=nonsense"} {
 		rec := srv.get("/realms/acme/api/admin/v1/jobs?" + query)
+		assertJobProblem(t, rec, http.StatusBadRequest, "invalid_request")
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("%s: status=%d body=%s", query, rec.Code, rec.Body.String())
 		}
@@ -324,6 +366,9 @@ func TestListJobsIgnoresAnyCrossTenantInput(t *testing.T) {
 // 1 件参照、取り消しを提供する。REQ-JOBS-015。
 //
 //spec:covers EX-JOBS-015-01: システム経路は制御面主体に対し、admin ロールなしで全テナントの一覧、
+//verify:operation ListSystemJobs: 制御面管理者による 200 の一覧本文に全テナントの Job を含むことを照合する。
+//verify:operation GetSystemJob: 他テナントの Job を指定した GET の 200 本文の識別子、所属、状態と実行情報を照合する。
+//verify:operation CancelSystemJob: 他テナントの Job の取り消しに対する 200 本文と保存後の canceled を照合する。
 func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
 	// 実行者は制御面テナントに所属するので、横断の対象は "acme" の Job である。
@@ -335,11 +380,13 @@ func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
 	}
 
 	detail := srv.get("/realms/default/api/admin/v1/system/jobs/" + foreign.ID)
+	assertJobResponse(t, detail, foreign.ID, "acme", "queued")
 	if detail.Code != http.StatusOK {
 		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
 
 	cancel := srv.cancelPath(t, "/realms/default/api/admin/v1/system/jobs/"+foreign.ID+"/cancel")
+	assertJobResponse(t, cancel, foreign.ID, "acme", "canceled")
 	if cancel.Code != http.StatusOK {
 		t.Fatalf("cancel status=%d body=%s", cancel.Code, cancel.Body.String())
 	}
@@ -358,6 +405,7 @@ func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
 // 別の事実である。REQ-JOBS-015。
 //
 //spec:covers EX-JOBS-015-04: システム経路でも、終端に達した Job の取り消しは成功として黙認せず拒否し、
+//verify:operation CancelSystemJob: 終端の Job の取り消しは 409 job_not_cancelable の本文を返し、保存済み状態を維持する。
 func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
 	foreign := srv.acmeJob
@@ -372,6 +420,7 @@ func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
 	}
 
 	again := srv.cancelPath(t, "/realms/default/api/admin/v1/system/jobs/"+foreign.ID+"/cancel")
+	assertJobProblem(t, again, http.StatusConflict, "job_not_cancelable")
 	if again.Code != http.StatusConflict {
 		t.Fatalf("second cancel status=%d, want %d; body=%s", again.Code, http.StatusConflict, again.Body.String())
 	}
@@ -388,6 +437,9 @@ func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
 }
 
 //spec:covers EX-JOBS-015-02: システム経路は制御面主体でない実行者を拒否し、どのテナントの Job も返さない。
+//verify:operation ListSystemJobs: 制御面主体でない実行者の一覧要求は 403 access_denied の本文を返す。
+//verify:operation GetSystemJob: 制御面主体でない実行者の参照要求は 403 access_denied の本文を返し、Job を開示しない。
+//verify:operation CancelSystemJob: 制御面主体でない実行者の取り消し要求は 403 access_denied の本文を返し、Job を変更しない。
 func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 	for name, actor := range map[string]*userdomain.User{
 		"tenant admin at the control plane":      jobsAdminUser("admin", tenancydomain.DefaultTenantID, []string{"admin"}),
@@ -402,6 +454,7 @@ func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 		base := "/realms/" + srv.actorRealm + "/api/admin/v1/system/jobs"
 		for _, path := range []string{base, base + "/" + foreign.ID} {
 			rec := srv.get(path)
+			assertJobProblem(t, rec, http.StatusForbidden, "access_denied")
 			if rec.Code != http.StatusForbidden {
 				t.Errorf("%s: %s status=%d want %d body=%s", name, path, rec.Code, http.StatusForbidden, rec.Body.String())
 			}
@@ -411,6 +464,7 @@ func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 		}
 		// 取り消しは拒否のうえ、対象の状態を変えない。
 		cancel := srv.cancelPath(t, base+"/"+foreign.ID+"/cancel")
+		assertJobProblem(t, cancel, http.StatusForbidden, "access_denied")
 		if cancel.Code != http.StatusForbidden {
 			t.Errorf("%s: cancel status=%d want %d body=%s", name, cancel.Code, http.StatusForbidden, cancel.Body.String())
 		}
@@ -425,23 +479,28 @@ func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 }
 
 //spec:covers REQ-JOBS-012: 他テナントの Job は id を知っていても存在しないものとして扱う。
+//verify:operation GetJob: 他テナントと存在しない ID に対する 404 job_not_found の本文を照合する。
 func TestGetJobHidesAnotherTenant(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	rec := srv.get("/realms/acme/api/admin/v1/jobs/" + srv.otherJob.ID)
+	assertJobProblem(t, rec, http.StatusNotFound, "job_not_found")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	// 存在しない id と同じ応答であること。
 	missing := srv.get("/realms/acme/api/admin/v1/jobs/does-not-exist")
+	assertJobProblem(t, missing, http.StatusNotFound, "job_not_found")
 	if missing.Code != rec.Code {
 		t.Fatalf("an unknown id answered %d while another tenant's answered %d", missing.Code, rec.Code)
 	}
 }
 
 //spec:covers REQ-JOBS-013: 終端に達していない Job を取り消せ、JobCanceled が発行される。
+//verify:operation CancelJob: 取り消しの 200 本文に canceled の Job を返し、JobCanceled を一度発行する。
 func TestCancelJob(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	rec := srv.cancel(t, srv.acmeJob.ID)
+	assertJobResponse(t, rec, srv.acmeJob.ID, "acme", "canceled")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -515,6 +574,7 @@ func TestCancelJobRequiresBrowserVerification(t *testing.T) {
 }
 
 //spec:covers EX-JOBS-012-01: 自テナントの一覧は自テナントの Job だけを新しい順に返し、他テナントの Job を件数にも含めず、params、result、dedup_key を含まない。他テナントの Job の 1 件参照は存在しない id と同じ応答になる。
+//verify:operation ListJobs: 200 の一覧本文は自テナントの Job を新しい順に返し、ハンドラーの入出力と他テナントの Job を含まない。
 func TestTenantAdministratorListsOnlyTheirTenantsJobsNewestFirst(t *testing.T) {
 	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
 	rec := srv.get("/realms/acme/api/admin/v1/jobs")
@@ -580,6 +640,7 @@ func TestListJobsFiltersByStatusKindAndLane(t *testing.T) {
 }
 
 //spec:covers EX-JOBS-013-03: 既に succeeded、failed、canceled の Job の取り消しは 409 job_not_cancelable で拒否され、状態も更新時刻も変わらない。
+//verify:operation CancelJob: 各終端状態の取り消し要求は 409 job_not_cancelable の本文を返し、状態と更新時刻を維持する。
 func TestCancelJobRefusesEveryTerminalState(t *testing.T) {
 	now := time.Now().UTC()
 	for state, finish := range map[domain.JobStatus]func(*testing.T, *jobsTestServer){
@@ -615,6 +676,7 @@ func TestCancelJobRefusesEveryTerminalState(t *testing.T) {
 				t.Fatalf("setup left the job %q, want %q", before.Status, state)
 			}
 			rec := srv.cancel(t, srv.acmeJob.ID)
+			assertJobProblem(t, rec, http.StatusConflict, "job_not_cancelable")
 			if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "job_not_cancelable") {
 				t.Fatalf("status=%d body=%s, want 409 job_not_cancelable", rec.Code, rec.Body.String())
 			}
@@ -654,6 +716,7 @@ func (r progressReportingRepo) Get(ctx context.Context, id string) (*domain.Job,
 }
 
 //spec:covers EX-JOBS-014-01: Job の詳細は進捗、試行回数、上限、リースの保有者と期限、失敗理由、レーン、状態、時刻を返し、params と result は本文のどこにも現れない。
+//verify:operation GetJob: 実際の GET の 200 本文から進捗、試行回数、リース、失敗理由と時刻を照合し、ハンドラーの入出力を含まないことを検査する。
 func TestGetJobReturnsOperationalDetailWithoutHandlerInputOrOutput(t *testing.T) {
 	percent, message := 40, "4 of 10 rows"
 	progress := &domain.JobProgress{Percent: &percent, Message: &message, UpdatedAt: time.Date(2026, 3, 1, 0, 5, 0, 0, time.UTC)}

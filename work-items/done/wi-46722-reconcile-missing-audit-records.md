@@ -54,7 +54,7 @@ primary_use_cases:
 - 業務保存後、発行前の停止、イベントを発行し忘れる実装不備の網羅的な検知。
 - ワークフローとプロビジョニングの全面変更、メールの再送。
 - 監査の保持期間、改ざん検知、独立したメッセージ基盤、本番操作。
-- 既存282操作の契約証拠の整備。[wi-13263](../active/wi-13263-verify-unresolved-http-operation-contracts.md) が所有する。
+- 既存282操作の契約証拠の整備。[wi-13263](wi-13263-verify-unresolved-http-operation-contracts.md) が所有する。
 
 ## 設計
 
@@ -158,7 +158,7 @@ Provisioning の最終状態への収束は既存の差分同期が所有し、�
   - 関連パッケージの race テストは成功した。bootstrap は119件、Metrics は2件、API は4件、Worker は8件で、失敗、スキップ、未実行はなかった。
   - `mise run lint-go`、`check-spec`、`check-boundaries`、`check-monitoring`、`check-work-items`、`check-links` は成功した。文書も生成した。
   - `mise run test-ui-e2e` は39件成功し、失敗はなかった。
-  - `mise run verify` は実行したが未達。Go は6,133件、UI は709件、ツールは1,018件成功した。Go の失敗、スキップ、未実行はなかったが、282操作の契約検証の証拠が不足した。これは [wi-13263](../active/wi-13263-verify-unresolved-http-operation-contracts.md) が所有する既存の不足であり、ゲートは弱めていない。
+  - `mise run verify` は実行したが未達。Go は6,133件、UI は709件、ツールは1,018件成功した。Go の失敗、スキップ、未実行はなかったが、282操作の契約検証の証拠が不足した。これは [wi-13263](wi-13263-verify-unresolved-http-operation-contracts.md) が所有する既存の不足であり、ゲートは弱めていない。
   - 全体検証で、本項目の作業範囲より前に追加した特性化テストに対する REQ-AUDIT-002 の conformance 宣言が不整合として検出された。最終対象は REQ-AUDIT-008 の失敗監視なので、不要な宣言を削除し、仕様影響の検査を再実行した。
 - **残る制約**:
   過去の監査の自動復元、発行前の停止による欠落の検知、監査の完全性は保証しない。

@@ -312,12 +312,18 @@ model WorkflowStepResponse {
 }
 
 
+@doc("実行履歴の HTTP 応答に含むトリガーの射影。内部の重複排除キーと属性値は含めない。属性変更以外では changed_fields が null になることがある。")
+model WorkflowRunResponseTrigger {
+  kind: WorkflowTriggerKind;
+  changed_fields: string[] | null;
+}
+
 @doc("実行の詳細のレスポンス。トリガー、固定したリビジョン、対象のユーザー、Job の試行と、各ステップの結果、エラーコード、タイムスタンプを示す。シークレット、メールの本文、属性値は含まない。")
 model WorkflowRunResponse {
   id: string;
   workflow_id: string;
   revision: int64;
-  trigger: WorkflowRunTriggerSnapshot;
+  trigger: WorkflowRunResponseTrigger;
   target_user_id: string;
   status: WorkflowRunStatus;
   job_id?: string;

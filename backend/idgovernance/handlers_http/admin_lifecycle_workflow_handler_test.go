@@ -93,6 +93,8 @@ func adminJSONRequest(t *testing.T, e *echo.Echo, path, csrf string, cookie *htt
 // wi-222: the dry-run endpoint must report the target User's actual current
 // state, not the hard-coded "would_change" the handler used to return for
 // every action regardless of whether the User already satisfied it.
+//
+//verify:operation DryRunLifecycleWorkflow: 200 JSON は対象、定義のリビジョン、評価時刻と no_op の試算を返し、不明な対象は 400 の Problem Details で拒否する。
 func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	e := newAdminLifecycleWorkflowHandler(t)
 	csrf, cookie := adminCSRF(t, e)
@@ -130,6 +132,15 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	if dryRun.Code != http.StatusOK {
 		t.Fatalf("dry_run status=%d body=%s", dryRun.Code, dryRun.Body.String())
 	}
+	var metadata struct {
+		WorkflowID   string    `json:"workflow_id"`
+		Revision     int       `json:"revision"`
+		TargetUserID string    `json:"target_user_id"`
+		EvaluatedAt  time.Time `json:"evaluated_at"`
+	}
+	if err := json.Unmarshal(dryRun.Body.Bytes(), &metadata); err != nil || metadata.WorkflowID != createdWorkflow.ID || metadata.Revision != 1 || metadata.TargetUserID != "alice" || metadata.EvaluatedAt.IsZero() {
+		t.Fatalf("dry run metadata=%+v, error=%v", metadata, err)
+	}
 	var result struct {
 		Steps []struct {
 			ActionKind  string `json:"action_kind"`
@@ -139,7 +150,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	if err := json.Unmarshal(dryRun.Body.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Steps) != 1 || result.Steps[0].WouldChange != "no_op" {
+	if len(result.Steps) != 1 || result.Steps[0].ActionKind != "add_group_member" || result.Steps[0].WouldChange != "no_op" {
 		t.Fatalf("dry_run steps = %#v, want a single no_op step (alice is already a member)", result.Steps)
 	}
 

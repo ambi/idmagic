@@ -127,7 +127,23 @@ func decodeRotation(t *testing.T, recorder *httptest.ResponseRecorder) signinght
 	if err := json.Unmarshal(recorder.Body.Bytes(), &rotation); err != nil {
 		t.Fatalf("decode rotation: %v", err)
 	}
+	assertPublicKeyMetadata(t, rotation.Next, rotation.Next.Kid)
+	if rotation.Previous != nil {
+		assertPublicKeyMetadata(t, *rotation.Previous, rotation.Previous.Kid)
+	}
 	return rotation
+}
+
+func assertPublicKeyMetadata(t *testing.T, key signinghttp.AdminKeyResponse, kid string) {
+	t.Helper()
+	if kid == "" || key.Kid != kid || key.Alg != "PS256" || key.CreatedAt.IsZero() || key.PublicJWK["kid"] != kid || key.PublicJWK["kty"] != "RSA" {
+		t.Fatalf("key=%+v, want %q PS256 public RSA key metadata", key, kid)
+	}
+	for _, private := range []string{"d", "p", "q", "dp", "dq", "qi"} {
+		if _, present := key.PublicJWK[private]; present {
+			t.Fatalf("public JWK contains private field %q", private)
+		}
+	}
 }
 
 func problemType(t *testing.T, recorder *httptest.ResponseRecorder) string {
@@ -149,6 +165,7 @@ func rotatedTenant(t *testing.T, s *stack.Stack) (admin sessionClient, k1, k2 st
 }
 
 //spec:covers EX-SIGNINGKEYS-001-01: admin のログインセッションでローテートすると応答の next が新しい有効鍵として鍵ストアの現在の鍵になり、previous がローテーション前の kid を指し、/jwks には旧 kid と新 kid の両方が載る。
+//verify:operation RotateTenantSigningKey: 管理者の POST の 200 本文に新旧の公開鍵メタデータを返し、現在の鍵と JWKS の重複期間を照合する。
 func TestAdministratorRotationKeepsThePreviousKidOnTheJWKS(t *testing.T) {
 	s := newExampleStack(t)
 	kidOld := activeKid(t, s, realm, signingdomain.KeyUsageSigning)
@@ -229,6 +246,7 @@ func TestTenantJwksCarryOnlyTheirOwnKids(t *testing.T) {
 }
 
 //spec:covers EX-SIGNINGKEYS-010-01: ローテーション後に管理者が検証用鍵 K1 を無効化すると、K1 は /jwks から消え、K2 は現在の署名鍵のまま /jwks に残る。
+//verify:operation DisableTenantKey: 無効化の 200 本文は対象の公開鍵メタデータと active=false を返し、JWKS からだけ対象を除く。
 func TestAdministratorDisablesTheVerifyingKey(t *testing.T) {
 	s := newExampleStack(t)
 	admin, k1, k2 := rotatedTenant(t, s)
@@ -236,6 +254,14 @@ func TestAdministratorDisablesTheVerifyingKey(t *testing.T) {
 	disabled := admin.post(t, adminKeysPath+"/"+k1+"/disable", "")
 	if disabled.Code != http.StatusOK {
 		t.Fatalf("disable K1 status=%d body=%s, want 200", disabled.Code, disabled.Body.String())
+	}
+	var key signinghttp.AdminKeyResponse
+	if err := json.Unmarshal(disabled.Body.Bytes(), &key); err != nil {
+		t.Fatal(err)
+	}
+	assertPublicKeyMetadata(t, key, k1)
+	if key.Active {
+		t.Fatal("disabled key is still active in the response")
 	}
 	if kids := jwksKids(t, s, realm); slices.Contains(kids, k1) || !slices.Contains(kids, k2) {
 		t.Fatalf("jwks kids = %v, want %q gone and %q kept", kids, k1, k2)
@@ -246,6 +272,7 @@ func TestAdministratorDisablesTheVerifyingKey(t *testing.T) {
 }
 
 //spec:covers EX-SIGNINGKEYS-010-02: K1 を無効化した後に現在の署名鍵 K2 の無効化を求めると invalid_request で拒否され、K2 は現在の署名鍵として /jwks に残る。
+//verify:operation DisableTenantKey: 現在の鍵の無効化は 400 invalid_request の本文を返し、署名鍵を維持する。
 func TestAdministratorCannotDisableTheCurrentSigningKey(t *testing.T) {
 	s := newExampleStack(t)
 	admin, k1, k2 := rotatedTenant(t, s)
@@ -315,6 +342,8 @@ func TestRotationWithXmlFederationUsageRotatesOnlyTheXmlKey(t *testing.T) {
 }
 
 // KeyUsage のどれでもない usage は invalid_request で拒否され、どちらの用途の鍵も回らない。
+//
+//verify:operation RotateTenantSigningKey: 不正な usage または JSON の POST は 400 invalid_request の本文を返し、両用途の鍵を維持する。
 func TestRotationRefusesAnUnknownUsage(t *testing.T) {
 	s := newExampleStack(t)
 	jwtKid := activeKid(t, s, realm, signingdomain.KeyUsageSigning)
@@ -331,5 +360,43 @@ func TestRotationRefusesAnUnknownUsage(t *testing.T) {
 	}
 	if current := activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning); current != xmlKid {
 		t.Fatalf("active XML kid = %q, want %q untouched", current, xmlKid)
+	}
+}
+
+//verify:operation GetAdminKey: 管理者の GET は 200 の公開鍵メタデータを返し、不明な kid は 404 key_not_found の本文で拒否する。
+func TestAdminKeyHTTPContract(t *testing.T) {
+	s := newExampleStack(t)
+	admin := signedInAdmin(t, s)
+	kid := activeKid(t, s, realm, signingdomain.KeyUsageSigning)
+	for _, tc := range []struct {
+		name, kid string
+		status    int
+	}{
+		{"existing", kid, http.StatusOK},
+		{"missing", "missing-key", http.StatusNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := newRequest(t, http.MethodGet, adminKeysPath+"/"+tc.kid, "")
+			request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: admin.sessionID})
+			recorder := httptest.NewRecorder()
+			s.Echo.ServeHTTP(recorder, request)
+			if recorder.Code != tc.status {
+				t.Fatalf("status=%d body=%s, want %d", recorder.Code, recorder.Body.String(), tc.status)
+			}
+			if tc.status == http.StatusNotFound {
+				if problemType(t, recorder) != "urn:idmagic:error:key_not_found" {
+					t.Fatalf("missing key body=%s", recorder.Body.String())
+				}
+				return
+			}
+			var key signinghttp.AdminKeyResponse
+			if err := json.Unmarshal(recorder.Body.Bytes(), &key); err != nil {
+				t.Fatal(err)
+			}
+			assertPublicKeyMetadata(t, key, kid)
+			if !key.Active {
+				t.Fatal("current key must be active")
+			}
+		})
 	}
 }

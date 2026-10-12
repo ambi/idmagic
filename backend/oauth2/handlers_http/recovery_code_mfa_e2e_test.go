@@ -128,6 +128,7 @@ func postRecoveryCode(t *testing.T, e *echo.Echo, cookie, body string) *httptest
 // 戻され続ける。復旧コードは要素を失ったときの唯一の経路なので、そこが締め出しになる。
 //
 //spec:covers REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-01: 正しい復旧コードで第二要素が成立し、
+//verify:operation SubmitBrowserRecoveryCode: 200 の redirect_to、code 消費と session の rc AMR、MFA 状態
 func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *testing.T) {
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	e, store, manager := newRecoveryCodeServer(t)
@@ -136,6 +137,9 @@ func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *te
 	recorder := postRecoveryCode(t, e, cookie, `{"code":"`+recoveryCodePlaintext+`","return_to":"`+recoveryReturnTo+`"}`)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("recovery code status=%d body=%s, want 200", recorder.Code, recorder.Body.String())
+	}
+	if body := oauthContractJSON(t, recorder, http.StatusOK); body["redirect_to"] != recoveryReturnTo {
+		t.Fatalf("recovery code response=%v", body)
 	}
 
 	// 保存された LoginSession が rc を持ち、acr が mfa へ上がっている。
@@ -176,6 +180,7 @@ func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *te
 // 返す実装と区別が付かない。
 //
 //spec:covers REQ-AUTHENTICATION-036 / EX-AUTHENTICATION-036-02: 誤った復旧コードは拒否され、その
+//verify:operation SubmitBrowserRecoveryCode: 401 invalid_recovery_code と session の pending の維持
 func TestWrongRecoveryCodeLeavesTheSessionPending_REQ_AUTHENTICATION_036(t *testing.T) {
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	e, store, manager := newRecoveryCodeServer(t)
@@ -185,6 +190,7 @@ func TestWrongRecoveryCodeLeavesTheSessionPending_REQ_AUTHENTICATION_036(t *test
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s, want 401", recorder.Code, recorder.Body.String())
 	}
+	oauthContractProblem(t, recorder, http.StatusUnauthorized, "invalid_recovery_code")
 
 	stored, err := store.Find(ctx, sessionID)
 	if err != nil || stored == nil {

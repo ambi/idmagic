@@ -141,6 +141,7 @@ func (b brokenPassive) serve(t *testing.T) (*httptest.ResponseRecorder, []spec.D
 // 送った値と一致することである。wctx には escape を要する文字を入れ、値の往復を読めるようにする。
 //
 //spec:covers EX-WSFEDERATION-002-01: 登録済みの wtrealm、許可済みの wreply、wfresh 以内の認証、割り当て済みの利用者のどれか 1 つを崩すとトークンが出ず、すべて満たす wsignin1.0 には、指定した wreply へ送る自動 POST フォームで、wtrealm を AppliesTo に持ち IdP の証明書で検証できる署名済み assertion を運ぶ RSTR と、送ったのと同じ wctx を返すこと。
+//verify:operation WsFederationSignIn: GET の 200 本文の自動 POST 宛先、wctx、RSTR の AppliesTo と Assertion の署名を照合する。
 func TestWsFedPassiveSignIn_ValidatesTheRequestAndReturnsASignedRSTRForm(t *testing.T) {
 	t.Run("a valid wsignin1.0 receives a signed RSTR form carrying wctx back", func(t *testing.T) {
 		const wctx = `rm=0&id=passive&ru=/app?x="1"`
@@ -222,6 +223,7 @@ func TestWsFedPassiveSignIn_StaleAuthenticationIsSentToReauthenticateWithoutATok
 // wreply、未割り当ての利用者) はこの 4 つの部分集合である。
 //
 //spec:covers EX-WSFEDERATION-002-03, EX-WSFEDERATION-003-01: 未登録の wtrealm、許可外の wreply、満たせない wauth、Application に割り当てられていない利用者のどれか 1 つを崩した wsignin1.0 が、400 または 403 と、その次元を理由とする WsFedSignInRejected で拒否され、応答が wresult も assertion も運ばず WsFedSignInIssued も出ないこと。すべて満たす要求が同じ入口で発行されることを対照にする。
+//verify:operation WsFederationSignIn: 不正な要求の 400 または 403 の text/plain 本文は空でなく、トークンを含めない。
 func TestWsFedPassiveSignIn_FailsClosedOnEveryUntrustedDimension(t *testing.T) {
 	for _, tc := range []struct {
 		broken     brokenPassive
@@ -237,6 +239,9 @@ func TestWsFedPassiveSignIn_FailsClosedOnEveryUntrustedDimension(t *testing.T) {
 			rec, events := tc.broken.serve(t)
 			if rec.Code != tc.wantStatus {
 				t.Fatalf("status=%d body=%s, want %d", rec.Code, rec.Body.String(), tc.wantStatus)
+			}
+			if !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/plain") || strings.TrimSpace(rec.Body.String()) == "" {
+				t.Fatalf("Content-Type=%q body=%q, want nonempty text refusal", rec.Header().Get("Content-Type"), rec.Body.String())
 			}
 			assertNoPassiveTokenIssued(t, rec, events)
 			var reasons []string

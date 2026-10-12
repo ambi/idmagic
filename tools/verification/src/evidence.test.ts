@@ -51,6 +51,25 @@ test('規範参照だけがあり実行イベントがないテストは未実�
   ])
 })
 
+test('成功と拒否の契約証拠が分かれる場合は両方の成功を要求する', () => {
+  const success = { ...reference, name: 'TestSuccess', state: 'passed' as const }
+  for (const state of ['skipped', 'not-run', 'failed'] as const) {
+    const refusal = { ...reference, name: 'TestRefusal', state }
+    expect(
+      evaluateVerification(operations, new Set(['Create']), [success, refusal], [], false),
+    ).toEqual([`Create: incomplete contract test evidence (TestRefusal: ${state})`])
+  }
+  expect(
+    evaluateVerification(
+      operations,
+      new Set(['Create']),
+      [success, { ...reference, name: 'TestRefusal', state: 'passed' }],
+      [],
+      false,
+    ),
+  ).toEqual([])
+})
+
 test('DB パッケージのテストがゼロ、スキップ、起動失敗なら未検証とする', () => {
   const pkg = reference.package
   for (const events of [

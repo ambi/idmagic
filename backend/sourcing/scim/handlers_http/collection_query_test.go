@@ -75,6 +75,8 @@ func seedScimCollection(t *testing.T, h scimHarness, collection scimCollection) 
 // filter に一致しない資源を 1 件混ぜ、totalResults が filter の後で数えられていることを読む。
 //
 //spec:covers EX-SOURCING-001-01: /Users と /Groups の双方で、filter・startIndex・count を指定した照会が、filter 後の totalResults と指定ページの Resources・itemsPerPage を持つ ListResponse を返す。
+//verify:operation ListScimUsers: GET は 200 と ListResponse の schemas、絞り込んだ総数、開始位置、ページ件数と Resources を返す。
+//verify:operation ListScimGroups: GET は 200 と ListResponse の schemas、絞り込んだ総数、開始位置、ページ件数と Resources を返す。
 func TestScimCollectionQuery_ReturnsTheFilteredPageAsAListResponse(t *testing.T) {
 	for _, collection := range scimCollections() {
 		t.Run(collection.name, func(t *testing.T) {
@@ -108,6 +110,8 @@ func TestScimCollectionQuery_ReturnsTheFilteredPageAsAListResponse(t *testing.T)
 }
 
 //spec:covers EX-SOURCING-001-02: /Users と /Groups の双方で、未許可の属性、順序比較を許さない属性への gt、構文不正の filter を 400 invalidFilter で拒否し、Resources を返さない。
+//verify:operation ListScimUsers: 未許可の属性、演算子と不正構文は 400 invalidFilter で拒否し、Resources を返さない。
+//verify:operation ListScimGroups: 未許可の属性、演算子と不正構文は 400 invalidFilter で拒否し、Resources を返さない。
 func TestScimCollectionQuery_RefusesAnUnsupportedFilterAsInvalidFilter(t *testing.T) {
 	for _, collection := range scimCollections() {
 		t.Run(collection.name, func(t *testing.T) {

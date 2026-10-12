@@ -103,17 +103,22 @@ export function evaluateVerification(
   for (const operation of operations) {
     if (operation.state === 'failed')
       failures.push(`${operation.operationId}: static contract verification failed`)
-    else if (
-      operation.state === 'unverified' &&
-      changed.has(operation.operationId) &&
-      !references.some(
-        (reference) =>
-          reference.state === 'passed' && reference.operationIds.includes(operation.operationId),
+    else if (operation.state === 'unverified' && changed.has(operation.operationId)) {
+      const evidence = references.filter((reference) =>
+        reference.operationIds.includes(operation.operationId),
       )
-    ) {
-      failures.push(
-        `${operation.operationId}: no successful contract test for changed unverified operation`,
-      )
+      if (!evidence.some((reference) => reference.state === 'passed')) {
+        failures.push(
+          `${operation.operationId}: no successful contract test for changed unverified operation`,
+        )
+      } else {
+        const incomplete = evidence.filter((reference) => reference.state !== 'passed')
+        if (incomplete.length > 0) {
+          failures.push(
+            `${operation.operationId}: incomplete contract test evidence (${incomplete.map((reference) => `${reference.name}: ${reference.state}`).join(', ')})`,
+          )
+        }
+      }
     }
   }
   if (requireDB) {

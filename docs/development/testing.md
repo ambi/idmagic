@@ -56,6 +56,10 @@ func TestCreateThingContract(t *testing.T) {
 
 この引用は、規範 ID を引く `//spec:covers` と独立に記す。
 対応テストが未実行、失敗、スキップ、子テストの未終了の場合は代替証拠にしない。
+成功と拒否の観測を複数のテストへ分ける場合は、同じ操作を宣言したすべてのテストの成功を要求する。
+一つの成功で、ほかの対応テストの未実行、失敗、スキップを補うことはできない。
+未解析の操作と読む候補のテストファイルは `mise run report-contract-evidence` で棚卸しできる。
+この一覧の経路やファイル名の一致は候補にすぎず、本文の観測やテストの成功を示さない。
 関係のない操作の解析対象外を理由に、検証できる範囲の実行まで停止しない。
 
 ### 結果の参照
@@ -110,6 +114,14 @@ E2E テストは、正式な外部入口から始め、機能を選択する設�
 
 ```console
 mise run test-go-mutation -- backend/idmanagement/group/domain
+```
+
+変更した行の検出能力だけを調べる場合は、第 4 引数に report、第 5 引数に変更前の Git revision を指定する。
+変異を作る範囲だけを差分の行へ絞り、coverage と baseline のテストは対象パッケージ全体で実行する。
+この結果から、変更していない行の検出能力は判断しない。
+
+```console
+mise run test-go-mutation -- backend/oauth2/handlers_http 2 off /tmp/idmagic-oauth-mutation.json main
 ```
 
 同じ変更で生き残った変異を調べ直す反復に限り、第 3 引数へ cache file を指定する。

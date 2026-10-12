@@ -102,15 +102,23 @@ func TestGetBrandingSupportsIfNoneMatch(t *testing.T) {
 	}
 }
 
+//verify:operation UpdateTenantBranding: 非管理者の設定変更は 403 access_denied の Problem Details で拒否する。
+//verify:operation UploadTenantBrandingAsset: 非管理者の画像アップロードは 403 access_denied の Problem Details で拒否する。
+//verify:operation DeleteTenantBrandingAsset: 非管理者の画像削除は 403 access_denied の Problem Details で拒否する。
 func TestUpdateBrandingRejectsNonAdmin(t *testing.T) {
 	e, _, _, _ := newBrandingServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	resp := patchBranding(t, e, map[string]any{"product_name": "Acme"})
 	if resp.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
+	assertTenancyProblem(t, resp, http.StatusForbidden, "access_denied")
+	assertTenancyProblem(t, uploadBrandingAsset(t, e, []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}), http.StatusForbidden, "access_denied")
+	assertTenancyProblem(t, deleteBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo"), http.StatusForbidden, "access_denied")
 }
 
 //spec:covers EX-TENANCY-004-01: 管理者が設定した配色、footer link、footer text は保存され、公開 branding から読める。
+//verify:operation UpdateTenantBranding: 200 JSON は保存した製品名、色、フッターを返し、公開 GET に反映される。
+//verify:operation GetTenantBranding: 公開 GET は 200 JSON に保存した製品名、色、フッターを返す。
 func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	e, repo, _, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	resp := patchBranding(t, e, map[string]any{
@@ -146,6 +154,13 @@ func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	if body.ProductName != "Acme" || body.PrimaryColor != "#0f172a" || body.AccentColor != "#38bdf8" ||
 		body.FooterLink1 == nil || body.FooterLink1.Label != "ヘルプ" || body.FooterText != "(c) Acme" {
 		t.Fatalf("public branding not reflected: %+v", body)
+	}
+	var updated tenancyhttp.BrandingResponse
+	if err := json.Unmarshal(resp.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.ProductName != body.ProductName || updated.PrimaryColor != body.PrimaryColor || updated.AccentColor != body.AccentColor || updated.FooterText != body.FooterText || updated.FooterLink1 == nil || updated.FooterLink1.Label != body.FooterLink1.Label || updated.FooterLink1.URL != "https://support.example.com" {
+		t.Fatalf("updated branding=%+v, public=%+v", updated, body)
 	}
 }
 
@@ -187,6 +202,8 @@ func TestUpdateBrandingAcceptsLowContrastColor(t *testing.T) {
 }
 
 //spec:covers EX-TENANCY-004-01: PNG ロゴの upload response が示す同一 realm の URL から検証済み画像を取得できる。
+//verify:operation UploadTenantBrandingAsset: 200 JSON の branding.logo_url は保存した画像を自身のテナントから配信する URL を返す。
+//verify:operation DeleteTenantBrandingAsset: 200 JSON の branding は logo_url を省き、保存した画像参照も消す。
 func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	e, repo, assetStore, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
@@ -198,6 +215,11 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	saved, err := repo.FindByTenant(context.Background(), "acme")
 	if err != nil || saved == nil || saved.LogoObjectKey == "" {
 		t.Fatalf("logo reference not persisted: %+v err=%v", saved, err)
+	}
+	uploadBody := decodeJSON(t, uploadResp)
+	uploadBranding, ok := uploadBody["branding"].(map[string]any)
+	if !ok || uploadBranding["logo_url"] != saved.LogoURL {
+		t.Fatalf("upload response=%v, want logo_url=%s", uploadBody, saved.LogoURL)
 	}
 	if _, err := assetStore.Find(context.Background(), "acme", domain.TenantBrandingAssetKindLogo, saved.LogoObjectKey); err != nil {
 		t.Fatalf("find asset: %v", err)
@@ -215,6 +237,14 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	deleteResp := deleteBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo")
 	if deleteResp.Code != http.StatusOK {
 		t.Fatalf("delete status=%d body=%s", deleteResp.Code, deleteResp.Body.String())
+	}
+	deleteBody := decodeJSON(t, deleteResp)
+	deleteBranding, ok := deleteBody["branding"].(map[string]any)
+	if !ok {
+		t.Fatalf("delete response=%v, want branding object", deleteBody)
+	}
+	if _, exists := deleteBranding["logo_url"]; exists {
+		t.Fatalf("delete branding retains logo_url: %v", deleteBranding)
 	}
 	cleared, err := repo.FindByTenant(context.Background(), "acme")
 	if err != nil || cleared == nil || cleared.LogoObjectKey != "" {

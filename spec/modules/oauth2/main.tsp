@@ -1555,7 +1555,7 @@ model ListMyConsentsError403 {
 @get
 op ListMyConsents(
 
-): ListMyConsentsSuccess_200 | ListMyConsentsError403;
+): ListMyConsentsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMyConsentsError403;
 
 model RevokeMyConsentSuccess_204 {
   @statusCode statusCode: 204;

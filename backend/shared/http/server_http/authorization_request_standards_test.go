@@ -380,6 +380,7 @@ func assertNoCredentialIssued(t *testing.T, what, body string) {
 // 交換できて初めて、2 つの入口の両方で提供されていると言える。
 //
 //spec:covers RFC6749-AUTHORIZATION-CODE / RFC9700-AUTHORIZATION-CODE:
+//verify:operation Authorize: 重複パラメーターへの 400 invalid_request と認可要求を保存しないこと
 func TestAuthorizationCodeGrantSpansBothEndpointsAndRejectsDuplicatedParameters(t *testing.T) {
 	fixture := newAuthorizationRequestFixture(t)
 
@@ -403,7 +404,8 @@ func TestAuthorizationCodeGrantSpansBothEndpointsAndRejectsDuplicatedParameters(
 		t.Run("重複した "+key, func(t *testing.T) {
 			query := arQuery(nil)
 			query.Add(key, query.Get(key))
-			if _, body := fixture.assertAuthorizationRefused(t, query, key); !strings.Contains(body, `"invalid_request"`) {
+			response, body := fixture.assertAuthorizationRefused(t, query, key)
+			if response.StatusCode != http.StatusBadRequest || response.Header.Get("Content-Type") != "application/json" || !strings.Contains(body, `"invalid_request"`) {
 				t.Fatalf("error=invalid_request を期待した: %s", body)
 			}
 		})

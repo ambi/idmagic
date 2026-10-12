@@ -87,6 +87,11 @@ func TestScimServiceProviderConfig_AdvertisesTheBearerAuthenticationScheme(t *te
 // 後続の参照でも効果を読み、応答の組み立てで終わっている実装と区別する。
 //
 //spec:covers RFC7644-RESOURCE-OPERATIONS: User と Group のどちらにも、作成・参照・置換・削除の
+//verify:operation GetScimUser: 作成した User の GET は 200 と同じ id、userName を返す。
+//verify:operation GetScimGroup: 作成した Group の GET は 200 と同じ id、displayName を返す。
+//verify:operation UpdateScimGroup: PUT は 200 と置換した displayName を返し、再読で保存を確認する。
+//verify:operation DeleteScimUser: DELETE は空の 204 を返し、User を PendingDeletion にする。
+//verify:operation DeleteScimGroup: DELETE は空の 204 を返し、以後の GET は 404 になる。
 func TestScimResourceOperations_UsersAndGroupsSupportCreateReadReplaceDelete(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -129,7 +134,7 @@ func TestScimResourceOperations_UsersAndGroupsSupportCreateReadReplaceDelete(t *
 		}
 
 		deleteRec := doScimRequest(t, e, http.MethodDelete, "Bearer "+tokenStr, "/scim/v2/Users/"+scimID, nil)
-		if deleteRec.Code != http.StatusNoContent {
+		if deleteRec.Code != http.StatusNoContent || deleteRec.Body.Len() != 0 {
 			t.Fatalf("delete: expected 204, got %d body=%s", deleteRec.Code, deleteRec.Body.String())
 		}
 		// User の削除は soft delete なので、効果は SCIM の表現ではなく
@@ -182,7 +187,7 @@ func TestScimResourceOperations_UsersAndGroupsSupportCreateReadReplaceDelete(t *
 		}
 
 		deleteRec := doScimRequest(t, e, http.MethodDelete, "Bearer "+tokenStr, "/scim/v2/Groups/"+scimID, nil)
-		if deleteRec.Code != http.StatusNoContent {
+		if deleteRec.Code != http.StatusNoContent || deleteRec.Body.Len() != 0 {
 			t.Fatalf("delete: expected 204, got %d body=%s", deleteRec.Code, deleteRec.Body.String())
 		}
 		afterDeleteRec, afterDelete := doScimGet(t, e, tokenStr, "/scim/v2/Groups/"+scimID)

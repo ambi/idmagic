@@ -338,6 +338,9 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	}
 }
 
+//verify:operation UpdateApplicationOidcConfig: 更新は空の 204 を返し、200 の詳細が指定した redirect_uris を返す。
+//verify:operation UpdateApplicationWsFedConfig: 更新は空の 204 を返し、200 の詳細が指定した reply_urls を返す。
+//verify:operation UpdateApplicationSamlConfig: 更新は空の 204 を返し、200 の詳細が指定した acs_urls を返す。
 func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -413,6 +416,22 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	})
 	if updateSAML.Code != http.StatusNoContent {
 		t.Fatalf("update saml config status=%d body=%s", updateSAML.Code, updateSAML.Body.String())
+	}
+	for _, contract := range []struct {
+		id, protocol, field, value string
+		response                   *httptest.ResponseRecorder
+	}{
+		{oidcID, "oidc", "redirect_uris", "https://oidc-updated.example/callback", updateOIDC},
+		{wsfedID, "wsfed", "reply_urls", "https://wsfed-updated.example/reply", updateWsFed},
+		{samlID, "saml", "acs_urls", "https://saml-updated.example/acs", updateSAML},
+	} {
+		assertApplicationNoContent(t, contract.response)
+		body := applicationContractJSON(t, adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+contract.id, csrf, cookie, nil), http.StatusOK)
+		config, _ := body[contract.protocol].(map[string]any)
+		values, _ := config[contract.field].([]any)
+		if len(values) != 1 || values[0] != contract.value {
+			t.Fatalf("saved %s config=%v", contract.protocol, config)
+		}
 	}
 
 	// Update SAML (Invalid JSON)

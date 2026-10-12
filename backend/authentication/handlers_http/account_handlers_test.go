@@ -126,14 +126,14 @@ func TestHandleAccountContextReturnsProfileAndCSRFCookie(t *testing.T) {
 	}
 }
 
+//verify:operation ListMyConsents: 未認証時の 401 Problem Details
 func TestHandleListAccountConsentsRequiresAuthentication(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	resp := f.request("/api/account/v1/consents", "")
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
-	}
+	authContractProblem(t, resp, http.StatusUnauthorized, "authentication_required")
 }
 
+//verify:operation ListMyConsents: 200 の JSON 応答に許可済みの同意だけが含まれること
 func TestHandleListAccountConsentsReturnsGrantedConsentsOnly(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
@@ -154,12 +154,24 @@ func TestHandleListAccountConsentsReturnsGrantedConsentsOnly(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
-	body := resp.Body.String()
-	if !strings.Contains(body, "client-granted") || strings.Contains(body, "client-revoked") {
-		t.Fatalf("expected only the granted consent, got body=%s", body)
+	body := authContractJSON(t, resp, http.StatusOK)
+	consents, ok := body["consents"].([]any)
+	if !ok || len(consents) != 1 {
+		t.Fatalf("consents=%v", body)
 	}
+	consent := consents[0].(map[string]any)
+	if consent["client_id"] != "client-granted" || consent["client_name"] != "client-granted" || consent["state"] != "granted" {
+		t.Fatalf("consent=%v", consent)
+	}
+	scopes, ok := consent["scopes"].([]any)
+	if !ok || len(scopes) != 1 || scopes[0] != "openid" {
+		t.Fatalf("scopes=%v", consent)
+	}
+	authContractTime(t, consent, "granted_at")
+	authContractTime(t, consent, "expires_at")
 }
 
+//verify:operation RevokeMyConsent: CSRF 拒否の 403 Problem Details
 func TestHandleRevokeAccountConsentRequiresBrowserVerification(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
@@ -174,9 +186,7 @@ func TestHandleRevokeAccountConsentRequiresBrowserVerification(t *testing.T) {
 	request.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	f.e.ServeHTTP(response, request)
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
-	}
+	authContractProblem(t, response, http.StatusForbidden, "invalid_origin")
 	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "some-client")
 	if err != nil {
 		t.Fatal(err)
@@ -186,6 +196,7 @@ func TestHandleRevokeAccountConsentRequiresBrowserVerification(t *testing.T) {
 	}
 }
 
+//verify:operation RevokeMyConsent: 204 の空本文と保存した同意の失効
 func TestHandleRevokeAccountConsentSucceeds(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
@@ -215,8 +226,10 @@ func TestHandleRevokeAccountConsentSucceeds(t *testing.T) {
 	request.AddCookie(csrfCookie)
 	response := httptest.NewRecorder()
 	f.e.ServeHTTP(response, request)
-	if response.Code != http.StatusNoContent {
-		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	authContractEmpty(t, response)
+	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "client-1")
+	if err != nil || stored == nil || stored.State != consentdomain.ConsentRevoked || stored.RevokedAt == nil {
+		t.Fatalf("revoked consent=%+v err=%v", stored, err)
 	}
 }
 
@@ -338,6 +351,7 @@ func (f *accountHandlerFixture) seedSignIn(t *testing.T, sub string, amr []strin
 	}
 }
 
+//verify:operation ListMySignInActivity: 200 の JSON 応答に本人の sign-in event が含まれること
 func TestHandleListSignInActivityReturnsSeededEvent(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
@@ -346,8 +360,16 @@ func TestHandleListSignInActivityReturnsSeededEvent(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
-	if !strings.Contains(resp.Body.String(), `"pwd"`) {
-		t.Fatalf("expected amr=pwd in body=%s", resp.Body.String())
+	body := authContractJSON(t, resp, http.StatusOK)
+	activities, ok := body["activities"].([]any)
+	if !ok || len(activities) != 1 {
+		t.Fatalf("activities=%v", body)
+	}
+	activity := activities[0].(map[string]any)
+	authContractTime(t, activity, "occurred_at")
+	amr, ok := activity["amr"].([]any)
+	if !ok || len(amr) != 1 || amr[0] != "pwd" {
+		t.Fatalf("activity=%v", activity)
 	}
 }
 

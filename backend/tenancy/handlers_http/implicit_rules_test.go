@@ -45,9 +45,10 @@ import (
 
 // rulesOptions は既定の配線から差し替える口である。空のフィールドはメモリーの実装を使う。
 type rulesOptions struct {
-	quotas tenantports.QuotaRepository
-	sender sharednotification.EmailSender
-	signer samltoken.SignerProvider
+	quotas           tenantports.QuotaRepository
+	sender           sharednotification.EmailSender
+	signer           samltoken.SignerProvider
+	tenantBaseDomain string
 }
 
 type rulesServer struct {
@@ -98,12 +99,13 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 	}
 	httpadapter.Register(s.e, httpadapter.Deps{
 		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-		TenantRepo:     s.tenants,
-		Emit:           func(event spec.DomainEvent) { events = append(events, event) },
-		UserRepo:       userRepo,
-		GroupRepo:      s.groups,
-		AttrSchemaRepo: s.schemas,
-		EmailSender:    sender,
+		TenantBaseDomain: options.tenantBaseDomain,
+		TenantRepo:       s.tenants,
+		Emit:             func(event spec.DomainEvent) { events = append(events, event) },
+		UserRepo:         userRepo,
+		GroupRepo:        s.groups,
+		AttrSchemaRepo:   s.schemas,
+		EmailSender:      sender,
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}},
@@ -693,6 +695,7 @@ func TestDeletingABrandingAssetOfAnUnconfiguredTenantSucceeds(t *testing.T) {
 }
 
 //spec:covers EX-TENANCY-034-01, EX-TENANCY-034-02, EX-TENANCY-034-03: 未設定の ETag は "branding-default" で public, max-age=60 を付け、一致する If-None-Match には本文のない 304 を返し、更新のたびに ETag が変わる。
+//verify:operation GetTenantBranding: 公開 GET は 200 の JSON、版の ETag とキャッシュ設定を返し、If-None-Match 一致時は空の 304 を返す。
 func TestPublicBrandingCarriesAVersionETag(t *testing.T) {
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
 
@@ -910,11 +913,13 @@ func (unavailableSigner) Resolve(context.Context) (*samltoken.Signer, error) {
 }
 
 //spec:covers EX-TENANCY-042-01: 署名用の資格情報を解決できないときは 503 federation_credentials_unavailable を返し、どの URL も返さない。
+//verify:operation GetAdminIntegrationEndpoints: 署名用の資格情報がなければ 503 federation_credentials_unavailable の Problem Details を返し、URL を返さない。
 func TestIntegrationEndpointsWithoutCredentialsReturnNothing(t *testing.T) {
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{signer: unavailableSigner{}})
 
 	response := s.get(t, integrationPath)
 	requireProblem(t, response, http.StatusServiceUnavailable, "federation_credentials_unavailable")
+	assertTenancyProblem(t, response, http.StatusServiceUnavailable, "federation_credentials_unavailable")
 	if strings.Contains(response.Body.String(), "/authorize") || strings.Contains(response.Body.String(), "issuer") {
 		t.Fatalf("refusal carries endpoints: %s", response.Body.String())
 	}

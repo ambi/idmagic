@@ -86,7 +86,7 @@
 - 確認済みの現在のアドレスと大文字と小文字を区別せずに同じアドレスを指定された場合、IdManagement は、422 と `email_unchanged` で拒否する。
 - 同じテナントのほかの User のアドレスを指定された場合、IdManagement は、409 と `email_taken` で拒否する。
 - 起票を拒否した場合、IdManagement は、確認のリンクを送らない。
-- **例**：EX-IDMANAGEMENT-053-01、EX-IDMANAGEMENT-053-04
+- **例**：EX-IDMANAGEMENT-053-01、EX-IDMANAGEMENT-053-04、EX-IDMANAGEMENT-053-05
 
 ### メールアドレスの変更の確定
 

@@ -64,6 +64,8 @@ func patchOp(op, path string, value any) map[string]any {
 
 // interfaces.CreateScimUser: userName は必須、id は server-assigned、
 // meta が一貫して返る (RFC7643-CORE-RESOURCES adoption:partial)。
+//
+//verify:operation CreateScimUser: 201 のサーバー発行 ID と meta、メールの正規形、および 400 invalidValue と 409 uniqueness を確認する。
 func TestScimCreateUserResourceContract(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)
@@ -374,6 +376,7 @@ func TestScimPatchUserEnterpriseExtension(t *testing.T) {
 //spec:covers EX-SOURCING-003-01: userName だけの PUT が name.givenName を空文字へ、active を true へ戻し、応答が id と meta の resourceType・created・lastModified・location を持つ。
 //spec:covers EX-SOURCING-003-02: userName のない PUT を 400 invalidValue で拒否し、読み直した User が拒否の前と同じである。
 //spec:covers EX-SOURCING-003-03: 本文の id が既存値と異なる PUT でもサーバーが割り当てた id を維持し、本文の id では User を参照できない。
+//verify:operation UpdateScimUser: PUT は 200 の同じ ID と meta を保ち、省略属性を既定値へ戻し、必須属性なしは 400 invalidValue で状態を維持する。
 func TestScimUpdateUserFullReplace(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -466,6 +469,8 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 }
 
 // interfaces.PatchScimUser: RFC7644-PATCH allowlist と mutability/invalidPath/invalidValue。
+//
+//verify:operation PatchScimUser: PATCH は 200 の変更属性を返し、不正な path、op、読み取り専用属性は 400 の SCIM エラーで拒否する。
 func TestScimPatchUserResourceContract(t *testing.T) {
 	h := newScimHarness()
 	e := h.echo
@@ -567,6 +572,10 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 
 // interfaces.CreateScimGroup / UpdateScimGroup / PatchScimGroup: displayName
 // 必須、id は server-assigned、解決できない member は invalidValue。
+//
+//verify:operation CreateScimGroup: 201 のサーバー発行 ID、meta と User メンバーを返し、必須名なしや不明なメンバーは 400、重複名は 409 で拒否する。
+//verify:operation UpdateScimGroup: PUT は 200 の置換後のメンバーを返し、省略したメンバーを空にする。
+//verify:operation PatchScimGroup: 不明なメンバーと未対応の path は 400 の invalidValue と invalidPath で拒否する。
 func TestScimGroupResourceContract(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
 	tokenStr := issueAllScimToken(t, apiTokens)

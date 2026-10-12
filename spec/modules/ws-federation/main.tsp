@@ -45,27 +45,20 @@ op WsFederationSignIn(
 
 model WsTrustIssueSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.WsTrustResponse;
-}
-
-union WsTrustIssueError400Body {
-  IdMagic.Contract.InvalidRequestError,
+  @header contentType: "application/soap+xml; charset=utf-8";
+  @body body: string;
 }
 
 model WsTrustIssueError400 {
   @statusCode statusCode: 400;
-  @header contentType: "application/problem+json";
-  @body body: WsTrustIssueError400Body;
-}
-
-union WsTrustIssueError403Body {
-  IdMagic.Contract.AccessDeniedError,
+  @header contentType: "text/plain";
+  @body body: string;
 }
 
 model WsTrustIssueError403 {
   @statusCode statusCode: 403;
-  @header contentType: "application/problem+json";
-  @body body: WsTrustIssueError403Body;
+  @header contentType: "text/plain";
+  @body body: string;
 }
 
 model WsTrustIssueError401 {
@@ -79,7 +72,8 @@ model WsTrustIssueError401 {
 @route("/trust/usernamemixed")
 @post
 op WsTrustIssue(
-  @body body: IdMagic.Contract.WsTrustRequestSecurityToken
+  @header contentType: "application/soap+xml",
+  @body body: string
 ): WsTrustIssueSuccess_200 | WsTrustIssueError400 | IdMagic.Contract.AuthenticationRequiredResponse | WsTrustIssueError401 | WsTrustIssueError403;
 
 model WsTrustMetadataExchangeSuccess_200 {
@@ -139,6 +133,11 @@ model ConfigureEntraFederationSuccess_200 {
   @body body: ConfigureEntraFederationHttpResponse;
 }
 
+model ConfigureEntraFederationSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: ConfigureEntraFederationHttpResponse;
+}
+
 union ConfigureEntraFederationError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -167,7 +166,7 @@ model ConfigureEntraFederationError403 {
 @post
 op ConfigureEntraFederation(
   @body body: ConfigureEntraFederationHttpRequest
-): ConfigureEntraFederationSuccess_200 | ConfigureEntraFederationError400 | IdMagic.Contract.AuthenticationRequiredResponse | ConfigureEntraFederationError403;
+): ConfigureEntraFederationSuccess_201 | ConfigureEntraFederationSuccess_200 | ConfigureEntraFederationError400 | IdMagic.Contract.AuthenticationRequiredResponse | ConfigureEntraFederationError403;
 
 model RegisterWsFedRelyingPartySuccess_201 {
   @statusCode statusCode: 201;

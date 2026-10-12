@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -219,6 +220,10 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 // デフォルトより弱ければ weaker_than_default が立つ (wi-115)。
 //
 //spec:covers REQ-APPLICATION-010, EX-APPLICATION-010-01: テナントデフォルト・この Application の上書き・最終的に適用されるポリシーを区別して返し、デフォルトより弱い上書きを警告フラグ付きで保存し、上書きを持たない隣の Application にはデフォルトを適用し続けること。
+//verify:operation GetTenantDefaultSignInPolicy: 200 JSON は保存した MFA の規則、テナント ID、時刻、未登録人数を返す。
+//verify:operation UpdateTenantDefaultSignInPolicy: 200 JSON は保存した MFA の規則と未登録人数を返し、再読で一致する。
+//verify:operation GetAppSignInPolicy: 200 JSON は既定と上書き、適用される MFA の規則と警告フラグを区別する。
+//verify:operation UpdateAppSignInPolicy: 200 JSON は保存した Password の規則を適用し、既定より弱い警告フラグを返す。
 func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -230,10 +235,23 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if put.Code != http.StatusOK {
 		t.Fatalf("put default status=%d body=%s", put.Code, put.Body.String())
 	}
+	putBody := applicationContractJSON(t, put, http.StatusOK)
+	putPolicy, _ := putBody["policy"].(map[string]any)
+	if putPolicy["tenant_id"] != tenancydomain.DefaultTenantID {
+		t.Fatalf("default policy tenant=%v", putPolicy)
+	}
+	assertApplicationTime(t, putPolicy, "created_at", "updated_at")
+	if count, ok := putBody["unenrolled_user_count"].(float64); !ok || count != 2 {
+		t.Fatalf("unenrolled users=%v, want 2", putBody)
+	}
 
 	get := adminJSON(t, e, http.MethodGet, "/api/admin/v1/default-sign-in-policy", csrf, cookie, nil)
 	if get.Code != http.StatusOK {
 		t.Fatalf("get default status=%d body=%s", get.Code, get.Body.String())
+	}
+	getBody := applicationContractJSON(t, get, http.StatusOK)
+	if !reflect.DeepEqual(putBody, getBody) {
+		t.Fatalf("saved default=%v, reread=%v", putBody, getBody)
 	}
 	var defaultBody struct {
 		Policy struct {
@@ -267,6 +285,12 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if view.Code != http.StatusOK {
 		t.Fatalf("get app policy status=%d body=%s", view.Code, view.Body.String())
 	}
+	viewBody := applicationContractJSON(t, view, http.StatusOK)
+	policy, _ := viewBody["policy"].(map[string]any)
+	if policy["application_id"] != created.Application.ID {
+		t.Fatalf("app policy=%v", policy)
+	}
+	assertApplicationTime(t, policy, "created_at", "updated_at")
 	var appView struct {
 		Policy struct {
 			Rules []map[string]any `json:"rules"`
@@ -300,6 +324,12 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if upd.Code != http.StatusOK {
 		t.Fatalf("put app policy status=%d body=%s", upd.Code, upd.Body.String())
 	}
+	updatedPolicy := applicationContractJSON(t, upd, http.StatusOK)
+	policy, _ = updatedPolicy["policy"].(map[string]any)
+	if policy["application_id"] != created.Application.ID {
+		t.Fatalf("updated app policy=%v", policy)
+	}
+	assertApplicationTime(t, policy, "created_at", "updated_at")
 	var updView struct {
 		EffectiveRules    []map[string]any `json:"effective_rules"`
 		WeakerThanDefault bool             `json:"weaker_than_default"`
@@ -356,6 +386,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if res.Code == http.StatusOK {
 		t.Fatalf("non-admin default update should be rejected, got %d", res.Code)
 	}
+	assertApplicationProblem(t, res, http.StatusForbidden, "access_denied")
 }
 
 // claim 規則を持たない SAML SP の詳細では rules が null ではなく [] になり、

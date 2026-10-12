@@ -31,6 +31,10 @@ import (
 )
 
 //spec:covers EX-OAUTH2-035-01: 作成の応答だけが client_secret を運び、更新した redirect_uris は保存され、削除まで通すと 3 つの Admin イベントが順に発行される。
+//verify:operation CreateAdminOAuth2Client: client の作成、取得、更新、削除の HTTP 応答と保存結果
+//verify:operation GetAdminOAuth2Client: client の作成、取得、更新、削除の HTTP 応答と保存結果
+//verify:operation UpdateAdminOAuth2Client: client の作成、取得、更新、削除の HTTP 応答と保存結果
+//verify:operation DeleteAdminOAuth2Client: client の作成、取得、更新、削除の HTTP 応答と保存結果
 func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	e, clients, events := newAdminOAuth2ClientHandler(t)
 	csrf, cookie := adminCSRF(t, e)
@@ -65,6 +69,18 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	if strings.Contains(create.Body.String(), "client_secret_hash") {
 		t.Fatalf("secret hash leaked: %s", create.Body.String())
 	}
+	createBody := oauthContractJSON(t, create, http.StatusCreated)
+	clientBody := createBody["client"].(map[string]any)
+	if clientBody["client_id"] != created.Client.ClientID || clientBody["tenant_id"] != tenancydomain.DefaultTenantID || clientBody["client_name"] != "Portal" || clientBody["client_type"] != "confidential" || clientBody["token_endpoint_auth_method"] != "client_secret_basic" || !reflect.DeepEqual(clientBody["redirect_uris"], []any{"https://portal.example/callback"}) || !reflect.DeepEqual(clientBody["grant_types"], []any{"authorization_code"}) || !reflect.DeepEqual(clientBody["response_types"], []any{"code"}) {
+		t.Fatalf("created client=%v", clientBody)
+	}
+	if clientBody["id_token_signed_response_alg"] != "PS256" || clientBody["fapi_profile"] != "none" || clientBody["require_pushed_authorization_requests"] != false || clientBody["dpop_bound_access_tokens"] != false {
+		t.Fatalf("created metadata=%v", clientBody)
+	}
+	if _, ok := clientBody["scope"].(string); !ok {
+		t.Fatalf("scope=%v", clientBody)
+	}
+	oauthContractTime(t, clientBody, "created_at")
 
 	get := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/clients/"+created.Client.ClientID, http.NoBody)
 	get.Header.Set("X-Demo-Sub", "admin")
@@ -86,6 +102,9 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	if got["backchannel_logout_uri"] != "https://portal.example/backchannel-logout" || got["backchannel_logout_session_required"] != true || got["frontchannel_logout_uri"] != "https://portal.example/frontchannel-logout" || got["frontchannel_logout_session_required"] != true {
 		t.Fatalf("logout metadata not returned: %s", getResponse.Body.String())
 	}
+	if getBody := oauthContractJSON(t, getResponse, http.StatusOK); !reflect.DeepEqual(getBody, clientBody) {
+		t.Fatalf("get=%v created=%v", getBody, clientBody)
+	}
 
 	update := adminJSONRequest(
 		t, e, http.MethodPatch, "/api/admin/v1/clients/"+created.Client.ClientID, csrf, cookie,
@@ -93,6 +112,10 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	)
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", update.Code, update.Body.String())
+	}
+	updated := oauthContractJSON(t, update, http.StatusOK)
+	if updated["client_id"] != created.Client.ClientID || updated["tenant_id"] != clientBody["tenant_id"] || updated["created_at"] != clientBody["created_at"] || !reflect.DeepEqual(updated["redirect_uris"], []any{"https://portal.example/new-callback"}) || updated["backchannel_logout_uri"] != "https://portal.example/new-backchannel-logout" || updated["backchannel_logout_session_required"] != false || updated["frontchannel_logout_uri"] != "https://portal.example/new-frontchannel-logout" || updated["frontchannel_logout_session_required"] != false {
+		t.Fatalf("updated=%v", updated)
 	}
 	stored, err := clients.FindByID(context.Background(), tenancydomain.DefaultTenantID, created.Client.ClientID)
 	if err != nil {
@@ -108,6 +131,9 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	)
 	if deleted.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
+	}
+	if deleted.Body.Len() != 0 {
+		t.Fatalf("204 body=%s", deleted.Body.String())
 	}
 	stored, err = clients.FindByID(context.Background(), tenancydomain.DefaultTenantID, created.Client.ClientID)
 	if err != nil {

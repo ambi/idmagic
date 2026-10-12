@@ -180,14 +180,30 @@ func (h *membershipImportHarness) post(path, body string) *httptest.ResponseReco
 
 func (h *membershipImportHarness) acceptedJobID(response *httptest.ResponseRecorder) string {
 	h.t.Helper()
-	if response.Code != http.StatusAccepted {
+	if response.Code != http.StatusAccepted || !strings.HasPrefix(response.Header().Get("Content-Type"), "application/json") {
 		h.t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
 	var body struct {
-		ID string `json:"id"`
+		ID     string `json:"id"`
+		Status string `json:"status"`
+		Mode   string `json:"mode"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		h.t.Fatal(err)
+	}
+	if body.ID == "" || body.Status != "queued" || (body.Mode != "preview" && body.Mode != "apply") {
+		h.t.Fatalf("accepted import=%+v", body)
+	}
+	job, err := h.jobs.Get(context.Background(), body.ID)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	expectedMode := "preview"
+	if job.Kind == jobsdomain.KindGroupMembershipImportApply {
+		expectedMode = "apply"
+	}
+	if body.Mode != expectedMode {
+		h.t.Fatalf("mode=%q kind=%s", body.Mode, job.Kind)
 	}
 	return body.ID
 }
@@ -281,6 +297,8 @@ func equalStrings(got, want []string) bool {
 // 解除する。件数が正しいだけの実装と区別するため、所属そのものを読み戻す。
 //
 //spec:covers REQ-IDMANAGEMENT-029 / EX-IDMANAGEMENT-029-01: 管理 route を通した preview → apply が、
+//verify:operation ImportAdminGroupMembers: CSV preview と apply の JSON 応答、問題行と保存した所属
+//verify:operation ApplyAdminGroupMemberImport: CSV preview と apply の JSON 応答、問題行と保存した所属
 func TestE2EGroupMembershipImportPreviewThenApplyThroughTheAdminRoutes(t *testing.T) {
 	h := newMembershipImportHarness(t, groupdomain.GroupMembershipManual)
 	base := "/realms/default/api/admin/v1/groups/group-engineering/members/imports"

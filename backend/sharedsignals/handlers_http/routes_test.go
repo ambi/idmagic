@@ -209,6 +209,8 @@ func TestReceiveSecurityEventDoesNotUseProblemDetails(t *testing.T) {
 // RFC 8935 §2.3 は拒否の応答本体を `err` と `description` で定める。この接点を
 // Problem Details の外に置いている理由がその標準なので、標準の形そのものになって
 // いなければ理由が成り立たない。
+//
+//verify:operation ReceiveSecurityEvent: 不正な SET とサイズ超過は 400/413 の err と description を返し、受理記録を残さない。
 func TestReceiveSecurityEventUsesRFC8935ErrorShape(t *testing.T) {
 	e, receivedEvents := newSharedSignalsHandlerWithReceivedEvents(t)
 

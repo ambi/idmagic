@@ -146,6 +146,13 @@
 - When ユーザー "alice" が新しいメールアドレスへの変更を起票する
 - Then 新アドレスへ確認リンクが送られる
 
+### Example: EX-IDMANAGEMENT-053-05 ステップアップ認証の有効期限切れ
+
+- Given ユーザー "alice" が認証済みであり、認証時刻とステップアップ認証の時刻はともに 5 分より前である
+- When ユーザー "alice" が新しいメールアドレスへの変更を起票する
+- Then 起票は 403 の StepUpRequiredError（`step_up_required`）で拒否される
+- And 確認リンクを送らず、プライマリメールアドレスを変えない
+
 ## Rule: REQ-IDMANAGEMENT-054 メールアドレスの変更の確定は、アドレスを確認済みにして `EmailChanged` を発行する
 
 ### Example: EX-IDMANAGEMENT-054-01 必須操作 `verify_email` を持つ User の確定

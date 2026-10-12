@@ -93,6 +93,9 @@ model UsernameConflictError is ProblemDetails;
 @doc("求めた `email` は、テナントの削除されていない別の User がすでに使っている。アドレスは前後の空白を除き Unicode の大文字と小文字の畳み込みをしてから比べる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:email_taken` である。")
 model EmailTakenError is ProblemDetails;
 
+@doc("メールアドレス変更の確認トークンが、存在しない、期限切れ、使用済み、または別の用途のものである。HTTP 410 の Problem Details として返し、`type` は `urn:idmagic:error:invalid_email_change_token` である。")
+model InvalidEmailChangeTokenError is ProblemDetails;
+
 
 @doc("求めた Group の `name` は、テナントの別の Group がすでに使っている。名前は前後の空白を除き Unicode の大文字と小文字の畳み込みをしてから比べる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:group_name_conflict` である。")
 model GroupNameConflictError is ProblemDetails;
@@ -288,14 +291,12 @@ model AdminUserListResponse {
 @doc("管理 API でのユーザーの表現。`password_hash` は意図して契約に含めない。")
 model AdminUserResponse {
   id: string;
-  @doc("属するテナント。")
-  tenant_id: string;
   preferred_username: string;
   name?: string;
   email?: string;
   email_verified: boolean;
   mfa_enrolled: boolean;
-  roles: string[];
+  roles: string[] | null;
   @doc("次のサインインで強制するアクション。")
   required_actions?: RequiredAction[];
   @doc("認証が最後に完了した時刻。")
@@ -625,6 +626,15 @@ model DataExportError {
   code: string;
 }
 
+@doc("指定した種類、Group、テナントにエクスポートが見つからない。HTTP 404 の Problem Details で、`type` は `urn:idmagic:error:data_export_not_found` である。")
+model DataExportNotFoundError is ProblemDetails;
+
+@doc("エクスポートが成功していない、保持期限を過ぎた、または成果物の整合性が失われた。HTTP 409 の Problem Details で、`type` は `urn:idmagic:error:data_export_not_downloadable` である。")
+model DataExportNotDownloadableError is ProblemDetails;
+
+@doc("エクスポートがすでに終了しており、取り消せない。HTTP 409 の Problem Details で、`type` は `urn:idmagic:error:data_export_not_cancelable` である。")
+model DataExportNotCancelableError is ProblemDetails;
+
 
 @doc("管理者がリソースのエクスポートを求め、ジョブを受け付けた。CSV の値は含まず、対象の種類、選んだ列のキー、依頼者だけを含む。")
 model DataExportRequested {
@@ -726,7 +736,16 @@ model AccountEmailChangeConfirm {
 model AccountDataExport {
   exported_at: utcDateTime;
   profile: AccountProfileResponse;
-  consents: AccountConsentResponse[];
+  consents: AccountDataExportConsent[];
+}
+
+@doc("本人のデータエクスポートに含む同意の記録。表示用のクライアント名を解決する同意一覧とは異なり、保存された同意のクライアント ID、スコープ、状態と時刻を返す。")
+model AccountDataExportConsent {
+  client_id: string;
+  scopes: string[];
+  state: ConsentState;
+  granted_at: utcDateTime;
+  expires_at: utcDateTime;
 }
 
 
@@ -835,7 +854,7 @@ model GroupSummaryResponse {
   description?: string;
   email?: string;
   attributes?: Record<AttributeValue>;
-  roles: string[];
+  roles: string[] | null;
   member_count: int64;
   membership_type: GroupMembershipType;
   dynamic_rule?: DynamicGroupRule;

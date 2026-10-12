@@ -20,6 +20,7 @@ import (
 //
 //spec:covers REQ-SYSTEM-002: 起動済みでも永続化依存が失敗したプロセスは ready と判定しない。
 //spec:covers EX-SYSTEM-002-03, EX-SYSTEM-001-02: 永続化依存へ到達できないとき受付可否は 503 unavailable を返し、生存確認は 200 healthy を維持すること。
+//verify:operation ReadinessProbe: 依存の異常に対応する 503 の JSON 本文
 func TestReadinessReportsDependencyFailure(t *testing.T) {
 	var started atomic.Bool
 	started.Store(true)
@@ -41,6 +42,9 @@ func TestReadinessReportsDependencyFailure(t *testing.T) {
 	if response.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
+	if response.Header().Get("Content-Type") != "application/json" {
+		t.Fatalf("Content-Type=%q", response.Header().Get("Content-Type"))
+	}
 	if got := response.Body.String(); got != "{\"status\":\"unavailable\",\"dependencies\":{\"postgres\":{\"status\":\"unavailable\",\"message\":\"postgres unavailable\"}}}\n" {
 		t.Fatalf("body=%s", got)
 	}
@@ -52,5 +56,27 @@ func TestReadinessReportsDependencyFailure(t *testing.T) {
 	}
 	if got := liveness.Body.String(); got != "{\"status\":\"healthy\"}\n" {
 		t.Fatalf("liveness body=%s, want healthy", got)
+	}
+}
+
+//verify:operation ReadinessProbe: 依存が正常な場合の 200 の JSON 本文
+func TestReadinessReportsHealthyDependencies(t *testing.T) {
+	var started atomic.Bool
+	started.Store(true)
+	d := Deps{
+		HealthInfo: support.HealthInfo{Persistence: "postgres"}, StartupComplete: &started,
+		DbPing: func(context.Context) error { return nil },
+	}
+	e := echo.New()
+	Register(e, d)
+	for _, probe := range []struct{ path, body string }{
+		{"/readyz", "{\"status\":\"healthy\"}\n"},
+		{"/readyz?verbose=1", "{\"status\":\"healthy\",\"dependencies\":{\"postgres\":{\"status\":\"healthy\"}}}\n"},
+	} {
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, probe.path, http.NoBody))
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/json" || rec.Body.String() != probe.body {
+			t.Fatalf("%s: status=%d headers=%v body=%s", probe.path, rec.Code, rec.Header(), rec.Body.String())
+		}
 	}
 }

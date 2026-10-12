@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -126,6 +127,9 @@ type categoriesBody struct {
 
 func decodeCategories(t *testing.T, rec *httptest.ResponseRecorder) categoriesBody {
 	t.Helper()
+	if rec.Code != http.StatusOK || !strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json") {
+		t.Fatalf("status=%d headers=%v body=%s", rec.Code, rec.Header(), rec.Body.String())
+	}
 	var body categoriesBody
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode %s: %v", rec.Body.String(), err)
@@ -147,6 +151,7 @@ func assertNoNotificationCategoryDisabled(t *testing.T, e *echo.Echo, sessionID 
 }
 
 //spec:covers REQ-AUTHENTICATION-033, EX-AUTHENTICATION-033-01: 通知設定の取得で全種別が返り、資格情報・認証要素・連絡先・なりすましの各種別に mandatory が付くことを固定する。
+//verify:operation GetMyNotificationPreferences: 200 の JSON 応答に通知 category と現在の選択が含まれること
 func TestGetNotificationPreferencesReturnsTheWholeCatalog(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 
@@ -178,6 +183,7 @@ func TestGetNotificationPreferencesReturnsTheWholeCatalog(t *testing.T) {
 }
 
 //spec:covers REQ-AUTHENTICATION-034: 停止した種別だけが無効になり、読み戻せる。
+//verify:operation UpdateMyNotificationPreferences: 200 の JSON 応答と指定した category だけを無効化した保存結果
 func TestUpdateNotificationPreferencesDisablesOnlyTheNamedCategories(t *testing.T) {
 	e, sessionID := newPreferencesServer(t)
 
@@ -261,4 +267,32 @@ func TestUpdateNotificationPreferencesWithoutStepUpChangesNothing(t *testing.T) 
 	if accepted.Code != http.StatusOK {
 		t.Fatalf("前提が壊れている: ステップアップ済みの更新が status=%d body=%s", accepted.Code, accepted.Body.String())
 	}
+}
+
+//verify:operation GetMyNotificationPreferences: 未認証と CSRF への Problem Details
+//verify:operation UpdateMyNotificationPreferences: 未認証と CSRF への Problem Details
+func TestNotificationPreferencesHTTPContractsRefuseCSRFAndAuthentication(t *testing.T) {
+	e, session := newPreferencesServer(t)
+	for _, test := range []struct {
+		method string
+		status int
+		code   string
+	}{
+		{http.MethodGet, http.StatusUnauthorized, "authentication_required"},
+		{http.MethodPut, http.StatusForbidden, "csrf_failed"},
+	} {
+		request := httptest.NewRequest(test.method, preferencesPath, strings.NewReader(`{"disabled_categories":[]}`))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Origin", "http://idp.test")
+		if test.method == http.MethodPut {
+			request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: session})
+		}
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, request)
+		var problem support.Problem
+		if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil || rec.Code != test.status || rec.Header().Get("Content-Type") != "application/problem+json" || problem.Type != "urn:idmagic:error:"+test.code || problem.Status != test.status {
+			t.Fatalf("status=%d headers=%v body=%s err=%v", rec.Code, rec.Header(), rec.Body.String(), err)
+		}
+	}
+	assertNoNotificationCategoryDisabled(t, e, session)
 }

@@ -79,6 +79,8 @@ func activeTenant(id, displayName string) *domain.Tenant {
 	}
 }
 
+//verify:operation GetAdminSettings: 非管理者の参照は 403 access_denied の Problem Details で拒否する。
+//verify:operation UpdateAdminSettings: 非管理者の変更は 403 access_denied の Problem Details で拒否する。
 func TestAdminSettingsGetRejectsNonAdmin(t *testing.T) {
 	e, _, _ := newSettingsServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
@@ -86,8 +88,11 @@ func TestAdminSettingsGetRejectsNonAdmin(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	assertTenancyProblem(t, rec, http.StatusForbidden, "access_denied")
+	assertTenancyProblem(t, patchSettings(t, e, map[string]any{"display_name": "Unauthorized"}), http.StatusForbidden, "access_denied")
 }
 
+//verify:operation GetAdminSettings: 200 JSON は自身のテナントと表示名、保存したパスワード上書きと既定値を返す。
 func TestAdminSettingsGetReturnsCurrentTenant(t *testing.T) {
 	minLength := 16
 	tenant := activeTenant("acme", "Acme")
@@ -130,6 +135,7 @@ func TestAdminSettingsGetAllowsSystemAdmin(t *testing.T) {
 }
 
 //spec:covers EX-TENANCY-019-01: 管理設定 API がパスワードポリシー上書きを返し、保存して更新イベントを発行する。
+//verify:operation UpdateAdminSettings: PATCH は 200 の表示名とパスワード上書きを返し、保存と TenantUpdated を確認する。
 func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 	e, repo, events := newSettingsServer(
 		t,
@@ -144,6 +150,13 @@ func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 	})
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body tenancyhttp.AdminSettingsResponse
+	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.TenantID != "acme" || body.DisplayName != "Acme Inc." || body.PasswordPolicyOverride == nil || body.PasswordPolicyOverride.MinLength == nil || *body.PasswordPolicyOverride.MinLength != 16 || body.PasswordPolicyOverride.HistoryDepth == nil || *body.PasswordPolicyOverride.HistoryDepth != 10 {
+		t.Fatalf("updated settings=%+v", body)
 	}
 	tenant, err := repo.FindByID(context.Background(), "acme")
 	if err != nil {

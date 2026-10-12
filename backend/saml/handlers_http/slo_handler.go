@@ -138,7 +138,6 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 		return nil, err
 	}
 	doc.SetRoot(signed)
-	doc.Indent(2)
 	var b strings.Builder
 	if _, err := doc.WriteTo(&b); err != nil {
 		return nil, err

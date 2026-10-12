@@ -36,6 +36,8 @@ sourceAnchor は、設定の時点では既存のユーザーの欠落、重複�
 - 管理者が RP を一覧したとき、WsFederation は、テナントのすべての RP を 200 で返す。
 - 管理者が `wtrealm` を指定して RP を削除したとき、WsFederation は、その RP を消して 204 を返す。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`wtrealm` と audience を IssuerUri（省略時は `urn:idmagic:entra:<ドメイン>`）とする SAML 1.1 の RP を作成または置き換え、`EntraFederationConfigured` を発行し、PowerShell に渡す設定値とともに返す。
+- 指定した IssuerUri の RP がない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
+- 指定した IssuerUri の RP がある間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、200 を返す。
 - `wsfed:read` のスコープの API アクセストークンで呼び出されたとき、WsFederation は、RP の一覧だけを許可する。
 - `wsfed:write` のスコープの API アクセストークンで呼び出されたとき、WsFederation は、RP の登録と削除と Entra のドメインフェデレーションの構成だけを許可する。
 - `wsfed:write` を持たないトークンで変更の操作を要求された場合、WsFederation は、403 と `insufficient_scope` で拒否し、RP を変えない。

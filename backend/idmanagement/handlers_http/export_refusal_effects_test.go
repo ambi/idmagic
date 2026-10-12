@@ -53,6 +53,12 @@ func (f *idmRefusalFixture) runExportCompletedAt(t *testing.T, exportID string, 
 			},
 			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},
+		GroupCSVExporter: groupusecases.GroupCSVExporter{
+			Deps: groupusecases.GroupCSVExportDeps{
+				GroupRepo: f.groups, SchemaReader: groupusecases.TenantGroupCSVSchemaReader{}, Artifacts: f.artifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
 		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
 			Deps: groupusecases.GroupMembershipCSVExportDeps{
 				GroupRepo: f.groups, UserRepo: f.users, Artifacts: f.artifacts,

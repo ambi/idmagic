@@ -314,7 +314,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 
 	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
-		return err
+		return d.WriteAdminAccessError(c, err)
 	}
 
 	var req tenantQuotaUpdateRequest

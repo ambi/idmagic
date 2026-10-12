@@ -97,7 +97,7 @@ model SamlServiceProvider {
   @doc("Response 全体がエンベロープ署名を含むかどうか。「レスポンスに署名する」ことを求める SP では有効にする。")
   sign_response: boolean = false;
   @doc("AuthnRequest または LogoutRequest の署名を検証する、SP ごとのポリシー。true のときは、Redirect バインディングの署名か XML 署名のどちらかを `authn_request_signing_certificate_pem` で検証する。IdP のメタデータの WantAuthnRequestsSigned には反映しない。")
-  want_authn_requests_signed: boolean = false;
+  want_authn_requests_signed?: boolean = false;
   @doc("AuthnRequest または LogoutRequest の署名の検証に使う、SP の X.509 証明書の PEM。`want_authn_requests_signed` が true のとき必須である。")
   authn_request_signing_certificate_pem?: string;
   created_at: utcDateTime;

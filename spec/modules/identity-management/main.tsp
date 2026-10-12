@@ -8,6 +8,24 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.IdManagement {
 
 namespace Operations {
+model DataExportNotFoundResponse {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.DataExportNotFoundError;
+}
+
+model DataExportNotDownloadableResponse {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.DataExportNotDownloadableError;
+}
+
+model DataExportNotCancelableResponse {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.DataExportNotCancelableError;
+}
+
 model GetEmailVerificationContextHttpResponse {
   csrf_token: string;
 }
@@ -47,7 +65,7 @@ model GetAccountSummaryError403 {
 @get
 op GetAccountSummary(
 
-): GetAccountSummarySuccess_200 | GetAccountSummaryError403;
+): GetAccountSummarySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAccountSummaryError403;
 
 model GetUserProfileSuccess_200 {
   @statusCode statusCode: 200;
@@ -70,7 +88,7 @@ model GetUserProfileError403 {
 @get
 op GetUserProfile(
 
-): GetUserProfileSuccess_200 | GetUserProfileError403;
+): GetUserProfileSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetUserProfileError403;
 
 model UpdateUserProfileSuccess_200 {
   @statusCode statusCode: 200;
@@ -152,6 +170,7 @@ union RequestEmailChangeError403Body {
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
+  IdMagic.Contract.StepUpRequiredError,
 }
 
 model RequestEmailChangeError403 {
@@ -175,13 +194,25 @@ model RequestEmailChangeSuccess_204 {
   @statusCode statusCode: 204;
 }
 
+model EmailChangeConflictResponse {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.EmailTakenError;
+}
+
+model InvalidEmailChangeTokenResponse {
+  @statusCode statusCode: 410;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidEmailChangeTokenError;
+}
+
 @doc("認証済みのユーザーが、自身の主たるメールアドレスの変更を申し出る（セルフサービス）。新しいアドレスへ一回限りのリンクを送るだけで、`User.email` は変えない。対象は `subject.id` に固定され、テナントの中ですでに使われているアドレスは拒否する。確認のメッセージの文面は Tenancy の通知のテンプレートのカタログ（`template_key=EmailChangeConfirmation`）から解決し、ロケールは、受信者の User のロケールの属性、テナントの `default_locale`、システムのデフォルトのロケールの順に決める。テナントの上書きは組み込みのデフォルトより優先する。プレーンテキストと HTML の本文を常に両方生成し、確認のリンクはリクエストの発行者の URL から組み立てる。")
 @TypeSpec.OpenAPI.operationId("RequestEmailChange")
 @route("/api/account/v1/email/change-request")
 @post
 op RequestEmailChange(
   @body body: IdMagic.Contract.AccountEmailChangeRequest
-): RequestEmailChangeSuccess_204 | RequestEmailChangeError400 | RequestEmailChangeError403 | RequestEmailChangeError422;
+): RequestEmailChangeSuccess_204 | RequestEmailChangeError400 | IdMagic.Contract.AuthenticationRequiredResponse | RequestEmailChangeError403 | RequestEmailChangeError422 | EmailChangeConflictResponse;
 
 model ConfirmEmailChangeHttpResponse {
   @doc("常に `ok` である。")
@@ -222,7 +253,7 @@ model ConfirmEmailChangeError403 {
 @post
 op ConfirmEmailChange(
   @body body: IdMagic.Contract.AccountEmailChangeConfirm
-): ConfirmEmailChangeSuccess_200 | ConfirmEmailChangeError400 | ConfirmEmailChangeError403;
+): ConfirmEmailChangeSuccess_200 | ConfirmEmailChangeError400 | ConfirmEmailChangeError403 | EmailChangeConflictResponse | InvalidEmailChangeTokenResponse;
 
 model ExportAccountDataSuccess_200 {
   @statusCode statusCode: 200;
@@ -245,7 +276,7 @@ model ExportAccountDataError403 {
 @get
 op ExportAccountData(
 
-): ExportAccountDataSuccess_200 | ExportAccountDataError403;
+): ExportAccountDataSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ExportAccountDataError403;
 
 model ListAdminUsersSuccess_200 {
   @statusCode statusCode: 200;
@@ -652,7 +683,7 @@ model GetUserExportError503 {
 @get
 op GetUserExport(
   @path export_id: string
-): GetUserExportSuccess_200 | GetUserExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetUserExportError403 | GetUserExportError503;
+): GetUserExportSuccess_200 | GetUserExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetUserExportError403 | DataExportNotFoundResponse | GetUserExportError503;
 
 model DownloadUserExportFileSuccess_200 {
   @statusCode statusCode: 200;
@@ -702,7 +733,7 @@ model DownloadUserExportFileError503 {
 @get
 op DownloadUserExportFile(
   @path export_id: string
-): DownloadUserExportFileSuccess_200 | DownloadUserExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadUserExportFileError403 | DownloadUserExportFileError503;
+): DownloadUserExportFileSuccess_200 | DownloadUserExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadUserExportFileError403 | DataExportNotFoundResponse | DataExportNotDownloadableResponse | DownloadUserExportFileError503;
 
 model CancelUserExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -748,7 +779,7 @@ model CancelUserExportError503 {
 @route("/api/admin/v1/users/exports/{export_id}/cancel")
 @post
 op CancelUserExport(
-  @path export_id: string,): CancelUserExportSuccess_200 | CancelUserExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelUserExportError403 | CancelUserExportError503;
+  @path export_id: string,): CancelUserExportSuccess_200 | CancelUserExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelUserExportError403 | DataExportNotFoundResponse | DataExportNotCancelableResponse | CancelUserExportError503;
 
 model StartGroupCsvExportSuccess_202 {
   @statusCode statusCode: 202;
@@ -1023,7 +1054,7 @@ model GetGroupExportError503 {
 @get
 op GetGroupExport(
   @path export_id: string
-): GetGroupExportSuccess_200 | GetGroupExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupExportError403 | GetGroupExportError503;
+): GetGroupExportSuccess_200 | GetGroupExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupExportError403 | DataExportNotFoundResponse | GetGroupExportError503;
 
 model DownloadGroupExportFileSuccess_200 {
   @statusCode statusCode: 200;
@@ -1073,7 +1104,7 @@ model DownloadGroupExportFileError503 {
 @get
 op DownloadGroupExportFile(
   @path export_id: string
-): DownloadGroupExportFileSuccess_200 | DownloadGroupExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadGroupExportFileError403 | DownloadGroupExportFileError503;
+): DownloadGroupExportFileSuccess_200 | DownloadGroupExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadGroupExportFileError403 | DataExportNotFoundResponse | DataExportNotDownloadableResponse | DownloadGroupExportFileError503;
 
 model CancelGroupExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -1119,7 +1150,7 @@ model CancelGroupExportError503 {
 @route("/api/admin/v1/groups/exports/{export_id}/cancel")
 @post
 op CancelGroupExport(
-  @path export_id: string,): CancelGroupExportSuccess_200 | CancelGroupExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupExportError403 | CancelGroupExportError503;
+  @path export_id: string,): CancelGroupExportSuccess_200 | CancelGroupExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupExportError403 | DataExportNotFoundResponse | DataExportNotCancelableResponse | CancelGroupExportError503;
 
 model StartGroupMemberCsvExportSuccess_202 {
   @statusCode statusCode: 202;
@@ -1273,7 +1304,7 @@ model GetGroupMemberExportError503 {
 op GetGroupMemberExport(
   @path group_id: string,
   @path export_id: string
-): GetGroupMemberExportSuccess_200 | GetGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupMemberExportError403 | GetGroupMemberExportError503;
+): GetGroupMemberExportSuccess_200 | GetGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetGroupMemberExportError403 | DataExportNotFoundResponse | GetGroupMemberExportError503;
 
 model DownloadGroupMemberExportFileSuccess_200 {
   @statusCode statusCode: 200;
@@ -1324,7 +1355,7 @@ model DownloadGroupMemberExportFileError503 {
 op DownloadGroupMemberExportFile(
   @path group_id: string,
   @path export_id: string
-): DownloadGroupMemberExportFileSuccess_200 | DownloadGroupMemberExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadGroupMemberExportFileError403 | DownloadGroupMemberExportFileError503;
+): DownloadGroupMemberExportFileSuccess_200 | DownloadGroupMemberExportFileError400 | IdMagic.Contract.AuthenticationRequiredResponse | DownloadGroupMemberExportFileError403 | DataExportNotFoundResponse | DataExportNotDownloadableResponse | DownloadGroupMemberExportFileError503;
 
 model CancelGroupMemberExportSuccess_200 {
   @statusCode statusCode: 200;
@@ -1371,7 +1402,7 @@ model CancelGroupMemberExportError503 {
 @post
 op CancelGroupMemberExport(
   @path group_id: string,
-  @path export_id: string,): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupMemberExportError403 | CancelGroupMemberExportError503;
+  @path export_id: string,): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | CancelGroupMemberExportError403 | DataExportNotFoundResponse | DataExportNotCancelableResponse | CancelGroupMemberExportError503;
 
 model ImportAdminGroupMembersSuccess_202 {
   @statusCode statusCode: 202;

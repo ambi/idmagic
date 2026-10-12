@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -166,13 +168,17 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder, into any) {
 	}
 }
 
+//verify:operation PutAuthorizationModel: JSON のモデル登録に対する 201 本文の版、型と整合トークン、および非管理者の 403 本文を照合する。
+//verify:operation GetAuthorizationModel: 登録済みモデルを読む 200 本文と、未登録時 404、非管理者の 403 の本文を照合する。
+//verify:operation WriteRelationTuples: タプルの書き込みの 200 本文の件数と整合トークン、および非管理者の 403 本文を照合する。
+//verify:operation ListRelationTuples: GET の 200 本文から保存済みタプルと整合トークンを読み、非管理者の 403 本文を照合する。
+//verify:operation CheckAccess: 主体とリソースを指定した POST の 200 本文の関係の成否と、非管理者の 403 本文を照合する。
+//verify:operation ListAccessibleResources: POST の 200 本文の資源識別子と打ち切りの有無、および非管理者の 403 本文を照合する。
 func TestAuthorizationAdminRoutes(t *testing.T) {
 	t.Run("publishing a model, writing tuples, and checking access", func(t *testing.T) {
 		e, events, _ := newServer(t, actor("admin", []string{"admin"}))
 
-		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/model"); rec.Code != http.StatusNotFound {
-			t.Fatalf("an unpublished model must be 404, got %d %s", rec.Code, rec.Body.String())
-		}
+		assertAuthorizationProblem(t, get(t, e, realmPrefix+"/api/admin/v1/authorization/model"), http.StatusNotFound, "authorization_model_not_found")
 
 		rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest())
 		if rec.Code != http.StatusCreated {
@@ -180,13 +186,27 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 		var published struct {
 			AuthorizationModel struct {
-				Version int `json:"version"`
+				ID            string           `json:"id"`
+				TenantID      string           `json:"tenant_id"`
+				Version       int              `json:"version"`
+				ResourceTypes []map[string]any `json:"resource_types"`
+				CreatedAt     time.Time        `json:"created_at"`
 			} `json:"authorization_model"`
 			Consistency string `json:"consistency"`
 		}
 		decode(t, rec, &published)
-		if published.AuthorizationModel.Version != 1 || published.Consistency == "" {
+		if published.AuthorizationModel.Version != 1 || published.Consistency == "" || published.AuthorizationModel.ID == "" || published.AuthorizationModel.TenantID != "acme" || len(published.AuthorizationModel.ResourceTypes) != 3 || published.AuthorizationModel.CreatedAt.IsZero() {
 			t.Fatalf("unexpected publish response: %+v", published)
+		}
+		modelResponse := get(t, e, realmPrefix+"/api/admin/v1/authorization/model")
+		if modelResponse.Code != http.StatusOK {
+			t.Fatalf("GetAuthorizationModel status=%d body=%s", modelResponse.Code, modelResponse.Body.String())
+		}
+		var publishedBody, retrievedBody map[string]any
+		decode(t, rec, &publishedBody)
+		decode(t, modelResponse, &retrievedBody)
+		if !reflect.DeepEqual(retrievedBody, publishedBody) {
+			t.Fatalf("retrieved=%v, want published model %v", retrievedBody, publishedBody)
 		}
 
 		rec = post(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples", map[string]any{
@@ -197,11 +217,24 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 		var written struct {
 			WrittenCount int    `json:"written_count"`
+			DeletedCount *int   `json:"deleted_count"`
 			Consistency  string `json:"consistency"`
 		}
 		decode(t, rec, &written)
-		if written.WrittenCount != 2 {
+		if written.WrittenCount != 2 || written.DeletedCount == nil || *written.DeletedCount != 0 || written.Consistency == "" {
 			t.Fatalf("written_count = %d, want 2", written.WrittenCount)
+		}
+		tuplesResponse := get(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples?subject_type=user&subject_id=alice")
+		if tuplesResponse.Code != http.StatusOK {
+			t.Fatalf("ListRelationTuples status=%d body=%s", tuplesResponse.Code, tuplesResponse.Body.String())
+		}
+		var tuples struct {
+			Tuples      []map[string]any `json:"tuples"`
+			Consistency string           `json:"consistency"`
+		}
+		decode(t, tuplesResponse, &tuples)
+		if !reflect.DeepEqual(tuples.Tuples, []map[string]any{viewerTuple("user", "alice")}) || tuples.Consistency != written.Consistency {
+			t.Fatalf("listed tuples=%+v, want Alice's saved tuple at written consistency", tuples)
 		}
 
 		rec = post(t, e, realmPrefix+"/api/admin/v1/authorization/check", map[string]any{
@@ -234,11 +267,11 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		var listed struct {
 			Result struct {
 				ResourceIDs []string `json:"resource_ids"`
-				Truncated   bool     `json:"truncated"`
+				Truncated   *bool    `json:"truncated"`
 			} `json:"result"`
 		}
 		decode(t, rec, &listed)
-		if len(listed.Result.ResourceIDs) != 1 || listed.Result.ResourceIDs[0] != "d1" {
+		if len(listed.Result.ResourceIDs) != 1 || listed.Result.ResourceIDs[0] != "d1" || listed.Result.Truncated == nil || *listed.Result.Truncated {
 			t.Fatalf("resource_ids = %v, want [d1]", listed.Result.ResourceIDs)
 		}
 
@@ -387,12 +420,8 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	// 変えないので、拒否が防いだ効果は「応答が判定を載せていないこと」で読む。
 	t.Run("a non-administrator is rejected on every endpoint", func(t *testing.T) {
 		e, _, store := newServer(t, actor("alice", nil))
-		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/model"); rec.Code != http.StatusForbidden {
-			t.Fatalf("GetAuthorizationModel status=%d, want 403", rec.Code)
-		}
-		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples"); rec.Code != http.StatusForbidden {
-			t.Fatalf("ListRelationTuples status=%d, want 403", rec.Code)
-		}
+		assertAuthorizationProblem(t, get(t, e, realmPrefix+"/api/admin/v1/authorization/model"), http.StatusForbidden, "access_denied")
+		assertAuthorizationProblem(t, get(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples"), http.StatusForbidden, "access_denied")
 		decision := map[string]any{
 			"resource_type": "document", "resource_id": "d1", "relation": "viewer",
 			"subject_type": "user", "subject_id": "alice",
@@ -409,6 +438,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 			{"/api/admin/v1/authorization/list-accessible-resources", decision},
 		} {
 			rec := post(t, e, realmPrefix+call.path, call.body)
+			assertAuthorizationProblem(t, rec, http.StatusForbidden, "access_denied")
 			if rec.Code != http.StatusForbidden {
 				t.Fatalf("POST %s status=%d, want 403", call.path, rec.Code)
 			}
@@ -434,4 +464,13 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 			t.Fatalf("tuple version = %d, want the refused write to have left the store untouched", version)
 		}
 	})
+}
+
+func assertAuthorizationProblem(t *testing.T, response *httptest.ResponseRecorder, status int, code string) {
+	t.Helper()
+	var problem support.Problem
+	decode(t, response, &problem)
+	if response.Code != status || response.Header().Get("Content-Type") != support.ProblemContentType || problem.Status != status || problem.Type != "urn:idmagic:error:"+code {
+		t.Fatalf("status=%d Content-Type=%q problem=%+v, want %d %s", response.Code, response.Header().Get("Content-Type"), problem, status, code)
+	}
 }

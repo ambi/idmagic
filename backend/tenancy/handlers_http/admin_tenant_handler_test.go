@@ -72,6 +72,7 @@ func (i staticIntrospector) IntrospectAccessToken(context.Context, string) (*oau
 type quotaTestServer struct {
 	e      *echo.Echo
 	quotas *observedQuotaRepository
+	authn  *support.Authenticator
 }
 
 func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
@@ -107,23 +108,56 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 		t.Fatal(err)
 	}
 
+	authn := &support.Authenticator{
+		Principals: idmhttpdeps.Principals{Users: userRepo},
+		Sessions: authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
+			UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
+		}}},
+		AccessTokens: oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}},
+	}
 	e := echo.New()
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", testing_tenant.ResolveDefault), tenancyhttp.Deps{
 		Deps: support.Deps{
 			Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(), TenantRepo: tenantRepo,
 		},
-		Authenticator: &support.Authenticator{
-			Principals: idmhttpdeps.Principals{Users: userRepo},
-			Sessions: authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
-				UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
-			}}},
-			AccessTokens: oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}},
-		},
-		TenantRepo: tenantRepo,
-		UserRepo:   userRepo,
-		QuotaRepo:  quotas,
+		Authenticator: authn,
+		TenantRepo:    tenantRepo,
+		UserRepo:      userRepo,
+		QuotaRepo:     quotas,
 	})
-	return &quotaTestServer{e: e, quotas: quotas}
+	return &quotaTestServer{e: e, quotas: quotas, authn: authn}
+}
+
+//verify:operation UpdateTenantQuota: 認証なしの 401 と scope 不足の 403 Problem Details、およびクォータを保存しないこと
+func TestUpdateTenantQuotaHTTPContractRefusesAuthenticationAndScope(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		scope  string
+		status int
+		code   string
+	}{
+		{name: "no session", status: http.StatusUnauthorized, code: "authentication_required"},
+		{name: "account scope", scope: "idmagic.account", status: http.StatusForbidden, code: "insufficient_scope"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newQuotaControlPlaneServer(t)
+			srv.authn.Sessions = authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{}}
+			srv.authn.AccessTokens = oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: "ops", scope: tc.scope}}
+			rec := srv.updateQuota(func(req *http.Request) {
+				withBrowserCredentials(quotaTestIssuer, "token", "token")(req)
+				if tc.scope != "" {
+					req.Header.Set("Authorization", "Bearer access-token")
+				}
+			})
+			assertTenancyProblem(t, rec, tc.status, tc.code)
+			if tc.scope != "" && !strings.Contains(rec.Header().Get("WWW-Authenticate"), "insufficient_scope") {
+				t.Fatalf("missing scope challenge: %v", rec.Header())
+			}
+			if srv.quotas.setQuotaCalls.Load() != 0 || srv.storedUsers(t) != quotaTestSeededUsers {
+				t.Fatal("authentication refusal changed the stored quota")
+			}
+		})
+	}
 }
 
 func (s *quotaTestServer) updateQuota(mutate func(*http.Request)) *httptest.ResponseRecorder {

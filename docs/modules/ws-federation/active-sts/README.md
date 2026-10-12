@@ -42,12 +42,13 @@ RSTR は SOAP 1.2 で署名した SAML Assertion を返す。
 - SAML 1.1 と SAML 2.0 以外のトークンの型を指定された場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - Assertion の有効期間（5 分）の間に同じ `MessageID` の RST を再び受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - UsernameToken のユーザー名が未知か、パスワードが誤っているか、User が `Active` でないか、ログインの試行の制限に達している場合、WsFederation は、401 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
+- WS-Trust の要求を 400、401 または 403 で拒否するとき、WsFederation は、`text/plain` の本文を返し、署名したトークンを本文に含めない。
 - クレームを発行できないか、Entra の定型設定の ImmutableID を導けない場合、WsFederation は、500 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - **例**：EX-WSFEDERATION-004-01、EX-WSFEDERATION-004-02、EX-WSFEDERATION-004-03
 
 #### REQ-WSFEDERATION-005 不正なエンベロープの WS-Trust Issue は拒否する
 
-- SOAP 1.2 のエンベロープとして読めないか、`RequestSecurityToken`、`MessageID`、`To`、`Action`、UsernameToken のユーザー名かパスワード、`AppliesTo` のどれかがない RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
+- SOAP 1.2 のエンベロープとして読めないか、`RequestSecurityToken`、`MessageID`、`To`、`Action`、UsernameToken のユーザー名かパスワード、`AppliesTo` のどれかがない RST を受けた場合、WsFederation は、400 と `text/plain` の本文で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - `Action` または `RequestType` が WS-Trust 1.3 の `Issue` でないか、`KeyType` が `Bearer` でない RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - Timestamp の `Expires` が `Created` より後でないか、`Created` が現在より 5 分を超えて未来か、`Expires` を過ぎている RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - `To` がテナントの能動的な STS の URL と一致しないか、`AppliesTo` がテナントに登録した RP の `wtrealm` でない RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。

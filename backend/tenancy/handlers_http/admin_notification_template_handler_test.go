@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -96,16 +97,23 @@ func notificationRequest(t *testing.T, e *echo.Echo, method, path string, body a
 	return rec
 }
 
+//verify:operation ListNotificationTemplates: 非管理者の一覧は 403 access_denied の Problem Details で拒否する。
+//verify:operation GetNotificationTemplate: 非管理者の詳細は 403 access_denied の Problem Details で拒否する。
+//verify:operation UpdateNotificationTemplate: 非管理者の保存は 403 access_denied の Problem Details で拒否する。
+//verify:operation ResetNotificationTemplate: 非管理者のリセットは 403 access_denied の Problem Details で拒否する。
+//verify:operation PreviewNotificationTemplate: 非管理者のプレビューは 403 access_denied の Problem Details で拒否する。
+//verify:operation SendTestNotification: 非管理者の試し送りは 403 access_denied の Problem Details で拒否する。
 func TestNotificationTemplatesRejectNonAdmin(t *testing.T) {
 	e, _, _ := newNotificationTemplateServer(t, settingsActor("alice", "acme", nil))
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, notificationTemplatePath, http.NoBody))
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	for _, request := range []struct{ method, suffix string }{
+		{http.MethodGet, ""}, {http.MethodGet, "/password_reset/ja"}, {http.MethodPut, "/password_reset/ja"}, {http.MethodDelete, "/password_reset/ja"}, {http.MethodPost, "/password_reset/ja/preview"}, {http.MethodPost, "/password_reset/ja/test"},
+	} {
+		assertTenancyProblem(t, notificationRequest(t, e, request.method, notificationTemplatePath+request.suffix, nil), http.StatusForbidden, "access_denied")
 	}
 }
 
 //spec:covers EX-TENANCY-016-01: 管理 API は全 template key と全対応 locale を未上書き状態で一覧する。
+//verify:operation ListNotificationTemplates: 200 JSON は対応言語と件名を持つ未上書きのテンプレートの一覧を返す。
 func TestNotificationTemplatesListReturnsWholeCatalog(t *testing.T) {
 	e, _, _ := newNotificationTemplateServer(t, notificationAdmin())
 	rec := httptest.NewRecorder()
@@ -138,6 +146,9 @@ func TestNotificationTemplatesListReturnsWholeCatalog(t *testing.T) {
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
 //
 //spec:covers EX-TENANCY-016-01, EX-TENANCY-016-03: 管理 API は上書きと reset のイベントを発行し、組込み既定へ戻す。
+//verify:operation UpdateNotificationTemplate: PUT は 200 の保存した文面、既定の文面、置換変数と customized=true を返す。
+//verify:operation GetNotificationTemplate: GET は 200 の保存した文面に一致する詳細を返す。
+//verify:operation ResetNotificationTemplate: DELETE は 200 の組み込み文面と customized=false を返し、リセットのイベントを発行する。
 func TestNotificationTemplateUpdateAndReset(t *testing.T) {
 	e, _, events := newNotificationTemplateServer(t, notificationAdmin())
 	path := notificationTemplatePath + "/password_reset/ja"
@@ -172,6 +183,14 @@ func TestNotificationTemplateUpdateAndReset(t *testing.T) {
 	if _, ok := (*events)[0].(*domain.NotificationTemplateUpdated); !ok {
 		t.Fatalf("event type=%T", (*events)[0])
 	}
+	detail := assertNotificationDetail(t, rec, true)
+	if detail["body_text"] != "{{user_display_name}} さん {{reset_url}}" || detail["body_html"] != "<p>{{user_display_name}} さん {{reset_url}}</p>" || detail["from_display_name"] != "Acme サポート" {
+		t.Fatalf("saved detail=%v", detail)
+	}
+	read := notificationRequest(t, e, http.MethodGet, path, nil)
+	if got := assertNotificationDetail(t, read, true); !reflect.DeepEqual(got, detail) {
+		t.Fatalf("read detail=%v, want %v", got, detail)
+	}
 
 	rec = notificationRequest(t, e, http.MethodDelete, path, nil)
 	if rec.Code != http.StatusOK {
@@ -185,6 +204,12 @@ func TestNotificationTemplateUpdateAndReset(t *testing.T) {
 	}
 	if reset.Customized {
 		t.Fatal("reset did not return to the builtin default")
+	}
+	detail = assertNotificationDetail(t, rec, false)
+	for _, field := range []string{"subject", "body_text", "body_html"} {
+		if detail[field] != detail["default_"+field] {
+			t.Fatalf("reset detail=%v, want builtin %s", detail, field)
+		}
 	}
 	if len(*events) != 2 {
 		t.Fatalf("events=%d, want a NotificationTemplateReset too", len(*events))
@@ -232,6 +257,7 @@ func TestNotificationTemplateUpdateRejectsUnknownKeyAndLocale(t *testing.T) {
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
 //
 //spec:covers EX-TENANCY-018-01: 管理 API の preview は描画済みの文面を返し、メールを送信しない。
+//verify:operation PreviewNotificationTemplate: POST は 200 の描画した件名、平文と HTML を返し、実送信しない。
 func TestNotificationTemplatePreviewDoesNotSend(t *testing.T) {
 	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
 
@@ -263,6 +289,7 @@ func TestNotificationTemplatePreviewDoesNotSend(t *testing.T) {
 // 宛先は操作者本人に固定され、リクエストで指定できない。
 //
 //spec:covers EX-TENANCY-018-01: 管理 API のテスト送信は要求された別宛先を使わず操作者本人へ送る。
+//verify:operation SendTestNotification: POST は 200 の delivered=true と操作者本人の宛先を返し、その一人へ送る。
 func TestNotificationTemplateTestSendGoesToTheActorOnly(t *testing.T) {
 	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
 

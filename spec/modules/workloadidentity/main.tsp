@@ -8,6 +8,18 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.WorkloadIdentity {
 
 namespace Operations {
+model WorkloadTrustBundleNotFoundResponse {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.WorkloadTrustBundleNotFoundError;
+}
+
+model AgentWorkloadBindingNotFoundResponse {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentWorkloadBindingNotFoundError;
+}
+
 model ListWorkloadTrustBundlesSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.WorkloadTrustBundleListResponse;
@@ -66,7 +78,7 @@ model GetWorkloadTrustBundleError403 {
 @get
 op GetWorkloadTrustBundle(
   @path trust_bundle_id: string
-): GetWorkloadTrustBundleSuccess_200 | GetWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetWorkloadTrustBundleError403;
+): GetWorkloadTrustBundleSuccess_200 | GetWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetWorkloadTrustBundleError403 | WorkloadTrustBundleNotFoundResponse;
 
 model RegisterWorkloadTrustBundleSuccess_201 {
   @statusCode statusCode: 201;
@@ -189,7 +201,7 @@ model UpdateWorkloadTrustBundleError422 {
 op UpdateWorkloadTrustBundle(
   @path trust_bundle_id: string,
   @body body: IdMagic.Contract.WorkloadTrustBundleUpdateRequest
-): UpdateWorkloadTrustBundleSuccess_200 | UpdateWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateWorkloadTrustBundleError403 | UpdateWorkloadTrustBundleError409 | UpdateWorkloadTrustBundleError422;
+): UpdateWorkloadTrustBundleSuccess_200 | UpdateWorkloadTrustBundleError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateWorkloadTrustBundleError403 | UpdateWorkloadTrustBundleError409 | UpdateWorkloadTrustBundleError422 | WorkloadTrustBundleNotFoundResponse;
 
 model DisableWorkloadTrustBundleSuccess_204 {
   @statusCode statusCode: 204;
@@ -221,7 +233,7 @@ model DisableWorkloadTrustBundleError403 {
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/disable")
 @post
 op DisableWorkloadTrustBundle(
-  @path trust_bundle_id: string,): DisableWorkloadTrustBundleSuccess_204 | DisableWorkloadTrustBundleError400 | DisableWorkloadTrustBundleError403;
+  @path trust_bundle_id: string,): DisableWorkloadTrustBundleSuccess_204 | DisableWorkloadTrustBundleError400 | DisableWorkloadTrustBundleError403 | WorkloadTrustBundleNotFoundResponse;
 
 model EnableWorkloadTrustBundleSuccess_204 {
   @statusCode statusCode: 204;
@@ -253,7 +265,7 @@ model EnableWorkloadTrustBundleError403 {
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable")
 @post
 op EnableWorkloadTrustBundle(
-  @path trust_bundle_id: string,): EnableWorkloadTrustBundleSuccess_204 | EnableWorkloadTrustBundleError400 | EnableWorkloadTrustBundleError403;
+  @path trust_bundle_id: string,): EnableWorkloadTrustBundleSuccess_204 | EnableWorkloadTrustBundleError400 | EnableWorkloadTrustBundleError403 | WorkloadTrustBundleNotFoundResponse;
 
 model DeleteWorkloadTrustBundleSuccess_204 {
   @statusCode statusCode: 204;
@@ -286,7 +298,7 @@ model DeleteWorkloadTrustBundleError403 {
 @delete
 op DeleteWorkloadTrustBundle(
   @path trust_bundle_id: string
-): DeleteWorkloadTrustBundleSuccess_204 | DeleteWorkloadTrustBundleError400 | DeleteWorkloadTrustBundleError403;
+): DeleteWorkloadTrustBundleSuccess_204 | DeleteWorkloadTrustBundleError400 | DeleteWorkloadTrustBundleError403 | WorkloadTrustBundleNotFoundResponse;
 
 model RefreshWorkloadTrustBundleJWKSSuccess_200 {
   @statusCode statusCode: 200;
@@ -322,7 +334,7 @@ model RefreshWorkloadTrustBundleJWKSError403 {
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh")
 @post
 op RefreshWorkloadTrustBundleJWKS(
-  @path trust_bundle_id: string,): RefreshWorkloadTrustBundleJWKSSuccess_200 | RefreshWorkloadTrustBundleJWKSError400 | IdMagic.Contract.AuthenticationRequiredResponse | RefreshWorkloadTrustBundleJWKSError403;
+  @path trust_bundle_id: string,): RefreshWorkloadTrustBundleJWKSSuccess_200 | RefreshWorkloadTrustBundleJWKSError400 | IdMagic.Contract.AuthenticationRequiredResponse | RefreshWorkloadTrustBundleJWKSError403 | WorkloadTrustBundleNotFoundResponse;
 
 model ListAgentWorkloadBindingsSuccess_200 {
   @statusCode statusCode: 200;
@@ -357,7 +369,7 @@ model ListAgentWorkloadBindingsError403 {
 @get
 op ListAgentWorkloadBindings(
   @path trust_bundle_id: string
-): ListAgentWorkloadBindingsSuccess_200 | ListAgentWorkloadBindingsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentWorkloadBindingsError403;
+): ListAgentWorkloadBindingsSuccess_200 | ListAgentWorkloadBindingsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentWorkloadBindingsError403 | WorkloadTrustBundleNotFoundResponse;
 
 model CreateAgentWorkloadBindingSuccess_201 {
   @statusCode statusCode: 201;
@@ -406,7 +418,7 @@ model CreateAgentWorkloadBindingError422 {
 op CreateAgentWorkloadBinding(
   @path trust_bundle_id: string,
   @body body: IdMagic.Contract.AgentWorkloadBindingCreateRequest
-): CreateAgentWorkloadBindingSuccess_201 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError422;
+): CreateAgentWorkloadBindingSuccess_201 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError422 | WorkloadTrustBundleNotFoundResponse;
 
 model DisableAgentWorkloadBindingSuccess_204 {
   @statusCode statusCode: 204;
@@ -438,7 +450,7 @@ model DisableAgentWorkloadBindingError403 {
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}/disable")
 @post
 op DisableAgentWorkloadBinding(
-  @path binding_id: string,): DisableAgentWorkloadBindingSuccess_204 | DisableAgentWorkloadBindingError400 | DisableAgentWorkloadBindingError403;
+  @path binding_id: string,): DisableAgentWorkloadBindingSuccess_204 | DisableAgentWorkloadBindingError400 | DisableAgentWorkloadBindingError403 | AgentWorkloadBindingNotFoundResponse;
 
 model EnableAgentWorkloadBindingSuccess_204 {
   @statusCode statusCode: 204;
@@ -470,7 +482,7 @@ model EnableAgentWorkloadBindingError403 {
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}/enable")
 @post
 op EnableAgentWorkloadBinding(
-  @path binding_id: string,): EnableAgentWorkloadBindingSuccess_204 | EnableAgentWorkloadBindingError400 | EnableAgentWorkloadBindingError403;
+  @path binding_id: string,): EnableAgentWorkloadBindingSuccess_204 | EnableAgentWorkloadBindingError400 | EnableAgentWorkloadBindingError403 | AgentWorkloadBindingNotFoundResponse;
 
 model DeleteAgentWorkloadBindingSuccess_204 {
   @statusCode statusCode: 204;
@@ -503,7 +515,7 @@ model DeleteAgentWorkloadBindingError403 {
 @delete
 op DeleteAgentWorkloadBinding(
   @path binding_id: string
-): DeleteAgentWorkloadBindingSuccess_204 | DeleteAgentWorkloadBindingError400 | DeleteAgentWorkloadBindingError403;
+): DeleteAgentWorkloadBindingSuccess_204 | DeleteAgentWorkloadBindingError400 | DeleteAgentWorkloadBindingError403 | AgentWorkloadBindingNotFoundResponse;
 }
 
 }

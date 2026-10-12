@@ -56,6 +56,12 @@ func readIconFields(t *testing.T, body []byte) applicationIconView {
 }
 
 //spec:covers REQ-APPLICATION-007, EX-APPLICATION-007-01: confidential な OIDC アプリケーションの作成応答だけが `client_secret` を一度運び、プロトコル設定の編集と割り当ての保存が読み直せ、取得は同じテナントのものだけを返し、削除までに ApplicationCreated・ApplicationAssigned・ApplicationDeleted が発行されること。
+//verify:operation CreateAdminApplication: 201 JSON は新しいアプリケーションと一度限りのシークレットを返す。
+//verify:operation GetAdminApplication: 200 JSON は同じアプリケーションと保存した OIDC 設定を返し、シークレットを再掲しない。
+//verify:operation UpdateApplicationOidcConfig: 更新は空の 204 を返し、詳細の再読が変更を示す。
+//verify:operation AssignApplication: 201 JSON は user、alice、visible と作成時刻を返す。
+//verify:operation ListApplicationAssignments: 200 JSON は保存した割り当ての型、主体、可視性と作成時刻を返す。
+//verify:operation DeleteAdminApplication: 削除は空の 204 を返し、再読は 404 の Problem Details になる。
 func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 	e, events, _ := newApplicationHandlerRecordingEvents(t)
 	csrf, cookie := appCSRF(t, e)
@@ -81,6 +87,12 @@ func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 		t.Fatalf("create response carries no client_secret: %s", create.Body.String())
 	}
 	applicationID := created.Application.ID
+	createBody := applicationContractJSON(t, create, http.StatusCreated)
+	applicationBody, _ := createBody["application"].(map[string]any)
+	assertApplicationView(t, applicationBody, applicationID, "portal", "federated", "active")
+	if clientID, _ := createBody["client_id"].(string); clientID == "" {
+		t.Fatalf("created client_id missing: %v", createBody)
+	}
 
 	updated := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+applicationID+"/oidc", csrf, cookie, map[string]any{
 		"redirect_uris": []string{"https://portal.example/callback/v2"},
@@ -89,6 +101,7 @@ func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 	if updated.Code != http.StatusNoContent {
 		t.Fatalf("update oidc status=%d body=%s", updated.Code, updated.Body.String())
 	}
+	assertApplicationNoContent(t, updated)
 
 	assigned := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+applicationID+"/assignments", csrf, cookie, map[string]any{
 		"subject_type": "user", "subject_id": "alice",
@@ -96,11 +109,19 @@ func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 	if assigned.Code != http.StatusCreated {
 		t.Fatalf("assign status=%d body=%s", assigned.Code, assigned.Body.String())
 	}
+	assignment := applicationContractJSON(t, assigned, http.StatusCreated)
+	if assignment["subject_type"] != "user" || assignment["subject_id"] != "alice" || assignment["visibility"] != "visible" {
+		t.Fatalf("assignment=%v", assignment)
+	}
+	assertApplicationTime(t, assignment, "created_at")
 
 	detail := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+applicationID, csrf, cookie, nil)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("get status=%d body=%s", detail.Code, detail.Body.String())
 	}
+	detailBody := applicationContractJSON(t, detail, http.StatusOK)
+	applicationBody, _ = detailBody["application"].(map[string]any)
+	assertApplicationView(t, applicationBody, applicationID, "portal", "federated", "active")
 	var read struct {
 		Oidc struct {
 			RedirectURIs []string `json:"redirect_uris"`
@@ -125,6 +146,16 @@ func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 	if assignments.Code != http.StatusOK || !strings.Contains(assignments.Body.String(), "alice") {
 		t.Fatalf("assignments status=%d body=%s, want the saved assignment", assignments.Code, assignments.Body.String())
 	}
+	assignmentBody := applicationContractJSON(t, assignments, http.StatusOK)
+	items, _ := assignmentBody["assignments"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("assignments=%v", assignmentBody)
+	}
+	item, _ := items[0].(map[string]any)
+	if item["subject_type"] != "user" || item["subject_id"] != "alice" || item["visibility"] != "visible" {
+		t.Fatalf("listed assignment=%v", item)
+	}
+	assertApplicationTime(t, item, "created_at")
 
 	listed := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications", csrf, cookie, nil)
 	var list struct {
@@ -140,9 +171,8 @@ func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 	}
 
 	deleted := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+applicationID, csrf, cookie, nil)
-	if deleted.Code != http.StatusNoContent && deleted.Code != http.StatusOK {
-		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
-	}
+	assertApplicationNoContent(t, deleted)
+	assertApplicationProblem(t, adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+applicationID, csrf, cookie, nil), http.StatusNotFound, "application_not_found")
 
 	for _, want := range []string{"ApplicationCreated", "ApplicationAssigned", "ApplicationDeleted"} {
 		if !events.contains(want) {
@@ -152,6 +182,8 @@ func TestAdminConfiguresAnApplicationAndItsSingleProtocol(t *testing.T) {
 }
 
 //spec:covers REQ-APPLICATION-008, EX-APPLICATION-008-01: 上限内の画像のアップロードが `icon_object_key` と IdP の配信 URL を指す `icon_url` を持たせ、その URL が画像そのものを返し、削除で双方が空に戻ること。
+//verify:operation UploadApplicationIcon: 200 JSON は配信できる icon_url と保存済みの icon_object_key を返す。
+//verify:operation DeleteApplicationIcon: 200 JSON は同じアプリケーションからアイコンの二つの属性を除く。
 func TestApplicationIconUploadExposesADeliveryURLAndDeleteClearsIt(t *testing.T) {
 	e, _, _ := newApplicationHandlerRecordingEvents(t)
 	csrf, cookie := appCSRF(t, e)
@@ -165,6 +197,7 @@ func TestApplicationIconUploadExposesADeliveryURLAndDeleteClearsIt(t *testing.T)
 		t.Fatalf("upload status=%d body=%s", uploaded.Code, uploaded.Body.String())
 	}
 	icon := readIconFields(t, uploaded.Body.Bytes()).Application
+	applicationContractJSON(t, uploaded, http.StatusOK)
 	if icon.IconObjectKey == "" {
 		t.Fatalf("icon_object_key is empty: %s", uploaded.Body.String())
 	}
@@ -190,6 +223,7 @@ func TestApplicationIconUploadExposesADeliveryURLAndDeleteClearsIt(t *testing.T)
 		t.Fatalf("delete icon status=%d body=%s", deleted.Code, deleted.Body.String())
 	}
 	cleared := readIconFields(t, deleted.Body.Bytes()).Application
+	applicationContractJSON(t, deleted, http.StatusOK)
 	if cleared.IconURL != "" || cleared.IconObjectKey != "" {
 		t.Fatalf("icon fields not cleared: %+v", cleared)
 	}

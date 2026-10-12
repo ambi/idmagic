@@ -1,5 +1,11 @@
 namespace IdMagic.Contract {
 
+@doc("指定した信頼設定が存在しないか、別のテナントに属する。RFC 9457 の Problem Details で、type は urn:idmagic:error:workload_trust_bundle_not_found である。")
+model WorkloadTrustBundleNotFoundError is ProblemDetails;
+
+@doc("指定した関連付けが存在しないか、別のテナントに属する。RFC 9457 の Problem Details で、type は urn:idmagic:error:agent_workload_binding_not_found である。")
+model AgentWorkloadBindingNotFoundError is ProblemDetails;
+
 @doc("求めた WorkloadTrustBundle の `name` は、テナントですでに使われている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workload_trust_bundle_name_conflict` である。")
 model WorkloadTrustBundleNameConflictError is ProblemDetails;
 

@@ -66,6 +66,12 @@ type provisioningRequest func(sub, method, path string, body any) *httptest.Resp
 // テナントに、Provisioning の管理 API を組み立てる。
 func newProvisioningAdminServer(t *testing.T) provisioningRequest {
 	t.Helper()
+	request, _, _ := newProvisioningContractServer(t)
+	return request
+}
+
+func newProvisioningContractServer(t *testing.T) (provisioningRequest, *provisioningmemory.ProvisioningConnectionRepository, *provisioningmemory.ProvisioningTaskRepository) {
+	t.Helper()
 	now := time.Now().UTC()
 	users := usermemory.NewUserRepository()
 	users.Seed(&userdomain.User{
@@ -77,6 +83,7 @@ func newProvisioningAdminServer(t *testing.T) provisioningRequest {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	connections := provisioningmemory.NewProvisioningConnectionRepository()
+	tasks := provisioningmemory.NewProvisioningTaskRepository()
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
 	provisioninghttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), provisioninghttp.Deps{
@@ -86,13 +93,15 @@ func newProvisioningAdminServer(t *testing.T) provisioningRequest {
 			Sessions:   authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}},
 		},
 		ConnectionRepo: connections,
+		TaskRepo:       tasks,
+		UserRepo:       users,
 		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
 			return discoveryTarget{}, nil
 		},
 	})
 
 	csrf := "csrf-token"
-	return func(sub, method, path string, body any) *httptest.ResponseRecorder {
+	request := func(sub, method, path string, body any) *httptest.ResponseRecorder {
 		t.Helper()
 		var payload []byte
 		if body != nil {
@@ -114,6 +123,7 @@ func newProvisioningAdminServer(t *testing.T) provisioningRequest {
 		e.ServeHTTP(response, req)
 		return response
 	}
+	return request, connections, tasks
 }
 
 const provisioningConnectionPath = "/api/admin/v1/applications/app-1/provisioning"
