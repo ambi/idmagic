@@ -16,7 +16,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
-	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
+	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/internal/keys_vault"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"

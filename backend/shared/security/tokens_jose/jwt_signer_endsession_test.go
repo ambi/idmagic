@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -16,7 +16,7 @@ import (
 // fail-closed で検証する。exp は検証しない。
 
 func TestVerifyIDTokenHintReturnsClaimsForValidToken(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestVerifyIDTokenHintReturnsClaimsForValidToken(t *testing.T) {
 }
 
 func TestVerifyIDTokenHintRejectsTamperedSignature(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,11 +67,11 @@ func TestVerifyIDTokenHintRejectsTamperedSignature(t *testing.T) {
 }
 
 func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherKS, err := signingcrypto.NewInMemoryKeyStore()
+	otherKS, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 
 // signHintClaims は署名と iss だけが正しい ID Token を作る。claim の欠落を検査に
 // かけるため、SignIDToken を経由せず claim 集合を直接指定する。
-func signHintClaims(t *testing.T, signer *JWTSigner, ks *signingcrypto.InMemoryKeyStore, claims map[string]any) string {
+func signHintClaims(t *testing.T, signer *JWTSigner, ks signingkeys.KeyStore, claims map[string]any) string {
 	t.Helper()
 	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()))
 	if err != nil {
@@ -108,7 +108,7 @@ func signHintClaims(t *testing.T, signer *JWTSigner, ks *signingcrypto.InMemoryK
 // 署名も iss も正しいが sub または aud を欠く token は、ログアウトと CIBA の
 // どちらにとっても主体を決められない。claim を運ぶ前に fail-closed で拒否する。
 func TestVerifyIDTokenHintRejectsMissingSubjectOrAudience(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

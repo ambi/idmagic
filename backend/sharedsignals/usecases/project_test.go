@@ -11,12 +11,12 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 )
 
 func newProjectorDeps(t *testing.T) (ssusecases.ProjectorDeps, *ssmemory.SsfStreamRepository, *ssmemory.SsfTransmitterConfigRepository, *ssmemory.SecurityEventDeliveryRepository) {
 	t.Helper()
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("NewInMemoryKeyStore: %v", err)
 	}

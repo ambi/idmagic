@@ -35,8 +35,8 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -54,7 +54,7 @@ import (
 // newServerWithKeyStore は newServer と同じスタックを、鍵ストアを呼び出し側へ渡す形で組む。
 // 鍵のローテートを起こせるのは鍵ストアを持っている側だけなので、証明書の公開を読む具体例は
 // この形でなければ観測できない。
-func newServerWithKeyStore(t *testing.T) (*echo.Echo, *keys_memory.InMemoryKeyStore) {
+func newServerWithKeyStore(t *testing.T) (*echo.Echo, signingkeys.KeyStore) {
 	t.Helper()
 	spRepo := samlmemory.NewSamlServiceProviderRepository()
 	spRepo.Seed(&samldomain.SamlServiceProvider{
@@ -67,7 +67,7 @@ func newServerWithKeyStore(t *testing.T) (*echo.Echo, *keys_memory.InMemoryKeySt
 	})
 	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
-	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func newServerBehindAnApplication(t *testing.T, assign bool) (*echo.Echo, *[]spe
 		}
 	}
 
-	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

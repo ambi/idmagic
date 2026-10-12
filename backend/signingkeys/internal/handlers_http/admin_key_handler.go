@@ -19,8 +19,8 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/signingkeys/usecases"
 
 	"github.com/labstack/echo/v5"
 )

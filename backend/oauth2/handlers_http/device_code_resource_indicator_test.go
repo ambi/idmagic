@@ -16,7 +16,7 @@ import (
 
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -57,7 +57,7 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 	deviceStore := oauth2memory.NewDeviceCodeStore()
 	refreshStore := oauth2memory.NewRefreshTokenStore()
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

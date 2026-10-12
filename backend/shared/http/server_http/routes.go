@@ -55,7 +55,6 @@ import (
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	sharedsignalsverifyjose "github.com/ambi/idmagic/backend/sharedsignals/verify_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -398,10 +397,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		},
 	})
 
-	signinghttp.RegisterRoutes(g, signinghttp.Deps{
+	d.SigningKeys.RegisterRoutes(g, signingkeys.RouteDeps{
 		Deps:          d.Deps,
 		Authenticator: authenticator,
-		KeyStore:      d.SigningKeys.KeyStore,
 		TenantRepo:    d.TenantRepo,
 	})
 

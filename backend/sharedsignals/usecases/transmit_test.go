@@ -12,7 +12,7 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -27,7 +27,7 @@ import (
 //spec:covers RFC8417-SET-SIGNED: 発行した SET が jti/iat/iss/aud/events の 5 つを実際に載せて
 func TestBuildAndSignSecurityEventToken(t *testing.T) {
 	ctx := context.Background()
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("NewInMemoryKeyStore: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestBuildAndSignSecurityEventToken(t *testing.T) {
 // イベント (session-revoked 以外のイベント種別を想定) では reason claim を出さない。
 func TestBuildAndSignSecurityEventToken_OmitsReasonWhenNil(t *testing.T) {
 	ctx := context.Background()
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("NewInMemoryKeyStore: %v", err)
 	}

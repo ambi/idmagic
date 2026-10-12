@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpostgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/internal/keys_jose"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 

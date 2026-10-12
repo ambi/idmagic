@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -49,8 +50,7 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingjose "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -161,7 +161,7 @@ type exampleStack struct {
 	deliveries         *ssmemory.SecurityEventDeliveryRepository
 	epochs             *ssmemory.AgentRevocationEpochRepository
 	quotas             *tenancymemory.QuotaRepository
-	keyStore           *signingmemory.InMemoryKeyStore
+	keyStore           signingkeys.KeyStore
 	csrf               string
 	cookie             *http.Cookie
 }
@@ -205,7 +205,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 		})
 	}
 
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
@@ -464,7 +464,11 @@ func newTransmitterKey(t *testing.T) *transmitterKey {
 }
 
 func (k *transmitterKey) jwks() map[string]any {
-	jwk := signingjose.PublicJWK(&k.private.PublicKey)
+	jwk := map[string]any{
+		"kty": "RSA",
+		"n":   base64.RawURLEncoding.EncodeToString(k.private.N.Bytes()),
+		"e":   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(k.private.E)).Bytes()),
+	}
 	jwk["kid"] = k.kid
 	jwk["alg"] = "PS256"
 	jwk["use"] = "sig"

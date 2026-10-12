@@ -42,8 +42,8 @@ import (
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -111,7 +111,7 @@ func newRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *refusal
 		})
 	}
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

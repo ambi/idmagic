@@ -28,7 +28,7 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
@@ -622,7 +622,7 @@ func newServerRequiringSignedAuthnRequests(t *testing.T) *echo.Echo {
 	})
 	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
-	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

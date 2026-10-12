@@ -43,8 +43,8 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -164,7 +164,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		t.Fatal(err)
 	}
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

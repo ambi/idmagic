@@ -52,7 +52,7 @@ import (
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+
 	"github.com/ambi/idmagic/backend/sourcing"
 
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -64,7 +64,7 @@ import (
 )
 
 func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		return nil, err
 	}

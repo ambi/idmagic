@@ -65,7 +65,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -205,7 +205,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 	// 本物の署名器を使う。API アクセストークンのテナント束縛は iss の照合として
 	// イントロスペクション側にあり、偽の introspector で置き換えるとその照合ごと
 	// 消えてしまう。
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

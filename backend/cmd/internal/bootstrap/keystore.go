@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
@@ -13,6 +13,5 @@ func selectKeyStore(cfg SharedConfig, fallback signingports.KeyStore) signingpor
 	if cfg.KeyProvider != "vault" {
 		return fallback
 	}
-	engine := signingcrypto.NewHTTPTransitEngine(cfg.VaultAddr, cfg.VaultToken.Value(), cfg.VaultTransitMount)
-	return signingcrypto.NewVaultKeyStore(engine, cfg.VaultKeyPrefix)
+	return signingkeys.NewVaultKeyStore(cfg.VaultAddr, cfg.VaultToken.Value(), cfg.VaultTransitMount, cfg.VaultKeyPrefix)
 }

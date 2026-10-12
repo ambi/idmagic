@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -110,7 +110,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

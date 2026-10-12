@@ -20,7 +20,7 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -42,14 +42,14 @@ const hintClientID = "hint-web-app"
 type hintTestServer struct {
 	e            *echo.Echo
 	signer       *cryptoadapter.JWTSigner
-	keyStore     *signingcrypto.InMemoryKeyStore
+	keyStore     signingkeys.KeyStore
 	sessionStore *sessionmemory.SessionStore
 	refreshStore *oauth2memory.RefreshTokenStore
 }
 
 func newHintTestServer(t *testing.T) hintTestServer {
 	t.Helper()
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 	s.seedSession(t, sid)
 	s.seedRefreshToken(t, hintClientID, sid)
 
-	otherKS, err := signingcrypto.NewInMemoryKeyStore()
+	otherKS, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

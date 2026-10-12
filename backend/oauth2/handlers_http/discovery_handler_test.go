@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 
@@ -57,7 +57,7 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

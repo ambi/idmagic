@@ -31,8 +31,8 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -93,7 +93,7 @@ func newWithdrawalFixture(t *testing.T) *withdrawalFixture {
 
 	// 本物の署名器を使う。撤回の入口はアクセストークンの検証を通るので、偽の
 	// イントロスペクターに差し替えると入口ごと消える。
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

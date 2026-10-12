@@ -9,8 +9,10 @@ package handlers_http_test
 
 import (
 	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -26,7 +28,6 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	keysjose "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
@@ -133,7 +134,9 @@ func TestSamlAssertionIsSignedOnlyByTheIssuingTenantsXmlFederationKey(t *testing
 	if !ok {
 		t.Fatalf("JWT signing key %T cannot sign", jwtKey.PrivateKey)
 	}
-	der, err := keysjose.NewFederationCertificate(jwtKey.TenantID, jwtKey.Kid, jwtSigner, time.Now())
+	// 信頼していない JWT 用の鍵を、製品の証明書生成器に依存せず SP 側の証明書へ包む。
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, jwtSigner.Public(), jwtSigner)
 	if err != nil {
 		t.Fatal(err)
 	}

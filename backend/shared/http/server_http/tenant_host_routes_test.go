@@ -13,7 +13,7 @@ import (
 
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -202,7 +202,7 @@ func TestHostIsNormalizedBeforeMatching(t *testing.T) {
 //
 //spec:covers EX-OAUTH2-044-03: ホストルート形式のレルムの resource_metadata は、ホストルートの発行者配下にある /.well-known/oauth-protected-resource を指す。
 func TestBearerChallengeOnAHostRoutedRealmPointsAtTheHostRootMetadata(t *testing.T) {
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

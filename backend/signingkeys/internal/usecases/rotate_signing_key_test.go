@@ -12,7 +12,7 @@ import (
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/shared/spec"

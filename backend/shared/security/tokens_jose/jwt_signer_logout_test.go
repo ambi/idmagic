@@ -9,7 +9,7 @@ import (
 	"time"
 
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
@@ -17,7 +17,7 @@ import (
 //
 //spec:covers OIDC-BACKCHANNEL-LOGOUT-TOKEN: logout token が iss、sub、aud、iat、jti、sid と
 func TestSignLogoutToken_REQ_OAUTH2_025(t *testing.T) {
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

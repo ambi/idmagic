@@ -17,7 +17,7 @@ import (
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	keysJOSE "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
+	keysJOSE "github.com/ambi/idmagic/backend/signingkeys/internal/keys_jose"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"

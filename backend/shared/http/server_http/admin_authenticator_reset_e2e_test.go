@@ -44,8 +44,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -183,7 +183,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 		t.Fatalf("seed sign-in policy: %v", err)
 	}
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

@@ -23,7 +23,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -114,7 +114,7 @@ func TestBackchannelApprovalIssuesTokenOnce(t *testing.T) {
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	})
 	store := approvalmemory.NewApprovalRequestStore()
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

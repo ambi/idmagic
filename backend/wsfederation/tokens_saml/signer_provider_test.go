@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestKeyStoreSignerProviderResolvesTenantXMLCredential(t *testing.T) {
-	store, err := keys_memory.NewInMemoryKeyStore()
+	store, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

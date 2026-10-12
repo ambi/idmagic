@@ -36,7 +36,7 @@ import (
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -141,7 +141,7 @@ func newAuthCharacterization(t *testing.T) *authCharacterization {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

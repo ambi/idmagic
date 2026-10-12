@@ -35,8 +35,8 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
@@ -115,7 +115,7 @@ func newProfileBoundServerWith(t *testing.T, reachableKeys bool) (*echo.Echo, *[
 	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 
-	memoryKeys, err := keys_memory.NewInMemoryKeyStore()
+	memoryKeys, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,7 +13,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
+	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/internal/keys_vault"
 )
 
 func TestHTTPTransitEngineLatestPublicKeyAndSign(t *testing.T) {

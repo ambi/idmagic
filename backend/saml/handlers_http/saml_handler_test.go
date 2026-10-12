@@ -33,7 +33,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
@@ -123,7 +123,7 @@ func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationConte
 
 	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
-	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +614,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		PreferredUsername: "admin@example.com",
 		Roles:             []string{"admin"},
 	})
-	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

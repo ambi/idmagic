@@ -41,8 +41,8 @@ import (
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -76,7 +76,7 @@ type apiTokenStack struct {
 	repo     apitokenports.Repository
 	tokens   *apitokenusecases.Service
 	users    *usermemory.UserRepository
-	keyStore *signingmemory.InMemoryKeyStore
+	keyStore signingkeys.KeyStore
 	signer   *tokensjose.JWTSigner
 	tenants  *tenancymemory.TenantRepository
 	// samlSPs は SAML の管理 API が読み書きする保存先。粒度スコープの具体例は、拒否が
@@ -129,7 +129,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 		})
 	}
 
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

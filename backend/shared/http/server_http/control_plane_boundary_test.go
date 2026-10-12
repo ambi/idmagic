@@ -27,7 +27,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -72,7 +72,7 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 	users.Seed(actor)
 	resolver := &fixedAuthnResolver{sub: actor.ID}
 
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -58,7 +58,7 @@ import (
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalspostgres "github.com/ambi/idmagic/backend/sharedsignals/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/db_postgres"
+
 	"github.com/ambi/idmagic/backend/sourcing"
 
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -93,7 +93,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		return nil, err
 	}
 
-	keyStore, err := signingpostgres.NewKeyStore(ctx, resilientDB)
+	keyStore, err := signingkeys.NewKeyStore(ctx, resilientDB)
 	if err != nil {
 		pool.Close()
 		return nil, err

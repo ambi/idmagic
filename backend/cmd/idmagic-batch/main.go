@@ -19,7 +19,6 @@ import (
 	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/version"
-	signingusecases "github.com/ambi/idmagic/backend/signingkeys/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -166,17 +165,10 @@ func runSigningKeyLifecycle(ctx context.Context, deps *bootstrap.Dependencies, c
 	emit := deps.NewEmitFunc(logging.Default())
 	for _, tenant := range tenants {
 		tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
-		if _, err := signingusecases.RotateSigningKeyIfDue(tenantCtx, signingusecases.RotateSigningKeyDeps{
-			KeyStore: deps.SigningKeys.KeyStore,
-			Emit:     emit,
-			Grace:    cfg.grace,
-		}, now, cfg.cadence); err != nil {
+		if _, err := deps.SigningKeys.RotateIfDue(tenantCtx, emit, now, cfg.cadence, cfg.grace); err != nil {
 			return fmt.Errorf("rotate tenant %s: %w", tenant.ID, err)
 		}
-		if _, err := signingusecases.ArchiveExpiredSigningKeys(tenantCtx, signingusecases.ArchiveExpiredSigningKeysDeps{
-			KeyStore: deps.SigningKeys.KeyStore,
-			Emit:     emit,
-		}, now); err != nil {
+		if _, err := deps.SigningKeys.ArchiveExpired(tenantCtx, emit, now); err != nil {
 			return fmt.Errorf("archive tenant %s: %w", tenant.ID, err)
 		}
 	}

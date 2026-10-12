@@ -28,8 +28,8 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	"github.com/labstack/echo/v5"
@@ -91,7 +91,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 		t.Fatal(err)
 	}
 
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

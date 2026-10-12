@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
@@ -22,7 +22,7 @@ func assembleKeyStore(t *testing.T, env map[string]string) (selected, persisted 
 	if err := l.Err(); err != nil {
 		return nil, nil, err
 	}
-	persisted, storeErr := signingmemory.NewInMemoryKeyStore()
+	persisted, storeErr := signingkeys.NewInMemoryKeyStore()
 	if storeErr != nil {
 		t.Fatalf("NewInMemoryKeyStore: %v", storeErr)
 	}

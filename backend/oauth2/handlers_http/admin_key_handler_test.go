@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -29,19 +29,24 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
-func newKeyAdminServer(t *testing.T, actor *userdomain.User) (*echo.Echo, *signingcrypto.InMemoryKeyStore, *[]spec.DomainEvent) {
+type signingKeyView struct {
+	Kid       string         `json:"kid"`
+	Active    bool           `json:"active"`
+	PublicJWK map[string]any `json:"public_jwk"`
+}
+
+func newKeyAdminServer(t *testing.T, actor *userdomain.User) (*echo.Echo, signingkeys.KeyStore, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := usermemory.NewUserRepository()
 	if actor != nil {
 		userRepo.Seed(actor)
 	}
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +147,7 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Keys []signinghttp.AdminKeyResponse `json:"keys"`
+		Keys []signingKeyView `json:"keys"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -243,7 +248,10 @@ func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body signinghttp.AdminRotateKeyResponse
+	var body struct {
+		Next     signingKeyView  `json:"next"`
+		Previous *signingKeyView `json:"previous"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -277,7 +285,10 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Tenants []signinghttp.TenantKeyHealthResponse `json:"tenants"`
+		Tenants []struct {
+			Provider string `json:"provider"`
+			Usage    string `json:"usage"`
+		} `json:"tenants"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)

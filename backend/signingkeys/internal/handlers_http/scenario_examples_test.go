@@ -22,9 +22,9 @@ import (
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
+	signinghttp "github.com/ambi/idmagic/backend/signingkeys/internal/handlers_http"
+	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	"github.com/ambi/idmagic/backend/signingkeys/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 

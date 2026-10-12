@@ -31,7 +31,7 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	memory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
@@ -91,7 +91,7 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 	events := make([]spec.DomainEvent, 0)
 	server.events = &events
 
-	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

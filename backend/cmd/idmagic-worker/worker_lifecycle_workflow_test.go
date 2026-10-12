@@ -37,7 +37,7 @@ import (
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -392,7 +392,7 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 	if err := workflows.Save(ctx, &igdomain.LifecycleWorkflow{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

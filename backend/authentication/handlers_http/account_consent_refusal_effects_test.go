@@ -27,7 +27,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -74,7 +74,7 @@ func newConsentRefusalFixture(t *testing.T) *consentRefusalFixture {
 	// 本物の署名器を使う。トークンのテナント束縛は iss の照合として
 	// イントロスペクション側にあり、偽の introspector で置き換えるとその照合ごと
 	// 消えてしまう。
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

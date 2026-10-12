@@ -33,8 +33,8 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -83,7 +83,7 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 	}
 	notifications := logoutmemory.NewLogoutNotificationStore()
 	jobRepo := jobsmemory.NewJobRepository()
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

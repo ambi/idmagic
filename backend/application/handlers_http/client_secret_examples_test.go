@@ -36,7 +36,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -68,7 +68,7 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 		t.Fatal(err)
 	}
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

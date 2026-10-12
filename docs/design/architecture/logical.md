@@ -51,7 +51,7 @@ IdMagic は、一つの Go モジュール（`go.mod`）の中でモジュール
 | [ApiTokens](../../modules/api-tokens/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/apitoken` | 管理 API と SCIM API のテナント単位アクセストークン |
 | [Jobs](../../modules/jobs/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/jobs` | テナント境界を保つ非同期ジョブ基盤 |
 | [Seeding](../../modules/seeding/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/seeding` | 環境構成のプレビュー、計画、初期データ適用 |
-| [SigningKeys](../../modules/signing-keys/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |
+| [SigningKeys](../../modules/signing-keys/README.md) | `internal` | `backend/signingkeys/domain`, `backend/signingkeys/ports` | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |
 | [DataKeys](../../modules/data-keys/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/datakeys` | 可逆な秘密情報を保護するテナント別 DEK のライフサイクル |
 | [WsFederation](../../modules/ws-federation/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [Saml](../../modules/saml/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |

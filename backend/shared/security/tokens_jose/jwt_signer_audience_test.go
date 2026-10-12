@@ -6,7 +6,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -18,7 +18,7 @@ import (
 //
 //spec:covers REQ-OAUTH2-001, RFC9068-DEFAULT-AUDIENCE: resource を指定しない発行では、account スコープを含めば aud がテナント文脈の発行者識別子に、含まなければ client_id になり、resource の指定は推定より優先する。
 func TestAccessTokenWithoutResourceInfersAudienceFromScope(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

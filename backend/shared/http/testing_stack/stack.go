@@ -74,8 +74,8 @@ import (
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -183,7 +183,7 @@ type Stack struct {
 	Tenants  *tenancymemory.TenantRepository
 	Users    *usermemory.UserRepository
 	Groups   *groupmemory.GroupRepository
-	KeyStore *signingmemory.InMemoryKeyStore
+	KeyStore signingkeys.KeyStore
 	Signer   *tokensjose.JWTSigner
 
 	Clients                 *oauth2memory.OAuth2ClientRepository
@@ -554,7 +554,7 @@ func New(t *testing.T, options ...Option) *Stack {
 	})
 	groups := groupmemory.NewGroupRepository()
 
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}

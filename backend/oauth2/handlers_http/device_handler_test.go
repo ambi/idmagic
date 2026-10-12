@@ -25,7 +25,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -74,7 +74,7 @@ func newDeviceServer(t *testing.T) deviceFixture {
 	}
 
 	e := echo.New()
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

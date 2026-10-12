@@ -7,12 +7,12 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 func TestAccessTokenAndIDTokenTTLSeconds(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestAccessTokenAndIDTokenTTLSeconds(t *testing.T) {
 }
 
 func TestSignIDTokenIncludesAtHash(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestSignIDTokenIncludesAtHash(t *testing.T) {
 }
 
 func TestSignAccessTokenIncludesAMRACRAndAgentBinding(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestSignAccessTokenIncludesAMRACRAndAgentBinding(t *testing.T) {
 }
 
 func TestSignAccessTokenMultiAudienceAndCnf(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestSignAccessTokenMultiAudienceAndCnf(t *testing.T) {
 }
 
 func TestSignAccessTokenMTLSCnf(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestSignAccessTokenMTLSCnf(t *testing.T) {
 }
 
 func TestSignAccessTokenActAndAgentIntrospection(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestSignAccessTokenActAndAgentIntrospection(t *testing.T) {
 }
 
 func TestIntrospectAccessTokenInactiveCases(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestNormalizeAudience(t *testing.T) {
 }
 
 func TestVerifyIDTokenHintReturnsAudienceArray(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

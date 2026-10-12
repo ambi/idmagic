@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -52,7 +52,7 @@ func idTokenTestUser() *userdomain.User {
 }
 
 func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 
 func TestSignIDTokenIncludesSidWhenPresent(t *testing.T) {
 	// browser session に束縛された発行では sid claim を含める。
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestSignIDTokenIncludesSidWhenPresent(t *testing.T) {
 
 func TestSignIDTokenOmitsSidWhenAbsent(t *testing.T) {
 	// client_credentials 等 browser session を持たない発行では sid claim を含めない。
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestSignIDTokenOmitsSidWhenAbsent(t *testing.T) {
 }
 
 func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
 // TestSignIDTokenClaimPolicyAddsOverrideClaim covers wi-73: a client's per-application
 // claim_policy can release attributes standard OIDC scopes never expose.
 func TestSignIDTokenClaimPolicyAddsOverrideClaim(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestSignIDTokenClaimPolicyAddsOverrideClaim(t *testing.T) {
 // rejects issuance when a claim_policy rule targets an undefined/Private
 // attribute.
 func TestSignIDTokenClaimPolicyRejectsPrivateAttribute(t *testing.T) {
-	ks, err := signingcrypto.NewInMemoryKeyStore()
+	ks, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

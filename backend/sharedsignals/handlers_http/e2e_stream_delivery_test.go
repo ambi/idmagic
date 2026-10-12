@@ -21,7 +21,7 @@ import (
 	sharedsignalspush "github.com/ambi/idmagic/backend/sharedsignals/push_http"
 	sharedsignalssign "github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	signingmemory "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -80,7 +80,7 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 		t.Fatalf("stream=%+v err=%v", stream, err)
 	}
 
-	keyStore, err := signingmemory.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}

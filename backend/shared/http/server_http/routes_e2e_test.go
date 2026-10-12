@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -113,7 +113,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *usermemory.UserRe
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
@@ -292,7 +292,7 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 		}
 	}
 
-	keyStore, err := signingcrypto.NewInMemoryKeyStore()
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
@@ -1665,7 +1665,7 @@ func mustJSON(t *testing.T, value any) string {
 func TestHealthProbes(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
-	keyStore, _ := signingcrypto.NewInMemoryKeyStore()
+	keyStore, _ := signingkeys.NewInMemoryKeyStore()
 	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
 	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
 	hasher := testing_passwords.NewHasher()
