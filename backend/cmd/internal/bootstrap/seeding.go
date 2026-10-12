@@ -12,9 +12,8 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/seeding"
 	"github.com/ambi/idmagic/backend/seeding/domain"
-	manifestadapter "github.com/ambi/idmagic/backend/seeding/manifests_yaml"
-	seedusecases "github.com/ambi/idmagic/backend/seeding/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -26,32 +25,17 @@ import (
 // 検証済み設定として呼び出し側から渡す。manifest 内の env locator だけは
 // 実行時解決なので os.Getenv をそのまま与える。
 func Seed(ctx context.Context, deps *Dependencies, request domain.Request, secretRoot string) (domain.Plan, error) {
-	path := request.ManifestPath
-	if path == "" {
-		var err error
-		path, err = manifestadapter.LocateDefaultPath(request.Profile)
-		if err != nil {
-			return domain.Plan{}, err
-		}
-	}
-	seedManifest, err := manifestadapter.Load(path)
+	materialized, err := seeding.Prepare(request, secretRoot, os.Getenv)
 	if err != nil {
 		return domain.Plan{}, err
 	}
-	materialized, err := seedusecases.MaterializeManifest(request, seedManifest, manifestadapter.SecretResolver{
-		SecretRoot: secretRoot,
-		Getenv:     os.Getenv,
-	})
-	if err != nil {
-		return domain.Plan{}, err
-	}
-	return seedusecases.Run(ctx, request, &seedContributor{deps: deps, hasher: passwords_argon2id.NewArgon2idPasswordHasher(), manifest: materialized})
+	return seeding.Run(ctx, request, &seedContributor{deps: deps, hasher: passwords_argon2id.NewArgon2idPasswordHasher(), manifest: materialized})
 }
 
 type seedContributor struct {
 	deps     *Dependencies
 	hasher   passwordports.PasswordHasher
-	manifest seedusecases.MaterializedManifest
+	manifest seeding.MaterializedManifest
 }
 
 func firstPartyClients(seeds []domain.FirstPartyClientSeed, redirectURIs []string, now time.Time) []*oauthdomain.OAuth2Client {

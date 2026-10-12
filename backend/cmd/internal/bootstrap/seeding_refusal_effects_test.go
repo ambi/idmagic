@@ -30,8 +30,8 @@ import (
 	"strings"
 	"testing"
 
+	manifestadapter "github.com/ambi/idmagic/backend/seeding"
 	"github.com/ambi/idmagic/backend/seeding/domain"
-	manifestadapter "github.com/ambi/idmagic/backend/seeding/manifests_yaml"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 

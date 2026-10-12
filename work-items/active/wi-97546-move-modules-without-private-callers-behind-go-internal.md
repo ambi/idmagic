@@ -153,6 +153,7 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 
 ### モジュールごとの記録
 
+- Seeding: 宣言的な要求と manifest の `domain` を公開し、YAML と usecases の 2 パッケージを移した。既定パスの選択、読み込み、秘密の解決を Prepare に集め、contributor の実行と材料化した manifest の型はルートで受け取る。`test-go-package` は Seeding 23 件、bootstrap 119 件が race 付きで成功し、境界検査と lint も成功した。ルートの変更行のミューテーション検査は 0 件だった。
 - Saml: `domain` と `ports` を公開し、7 パッケージを移した。SP と profile が同じメモリ保存先を共有する構築を保ち、replay store もルートで組む。外部テストは公開保存契約の Save を使い、内部保存型を名指さない。`test-go-package` は Saml 181 件と共通スタック 8 件が race 付きで成功し、PostgreSQL、lint、境界検査と負債の増加検査も成功した。WsFederation への既存の依存 2 件は利用元のパスだけを更新した。
 - 境界負債の比較の前提: 既存の外向きの依存を持つファイルの移動が、新しい依存として拒否された。責務表で同じモジュールが `legacy` から `internal` へ切り替わるときだけ、同じ接頭辞へ加えた `internal/` を比較前に取り除く。依存先の変更、公開方式を変えない移動、元の依存を残すコピーは拒否する。これらを含む `boundary-debt-ratchet.test.ts` の 10 テスト、tools の型検査と lint が成功した。実際の負債数は基準 revision と同じだった。
 - Provisioning: 公開パッケージを持たず、9 パッケージを移した。worker が渡す既存の target client の差し替え点を保ち、User と Group の属性、所属、dispatcher と同期の構築をルートへ集めた。テナント分離の HTTP テストは、その内部 fixture を所有する Provisioning の HTTP パッケージへ移し、正式な `server_http.Register` の入口と表明を保った。`test-go-package` は Provisioning 301 件と共通スタック 8 件、PostgreSQL と lint が成功した。新しい `TestTaskHandlerWiresGroupAttributesAndMembers` は実際の構築操作から表示名、所属の増分 add、対応関係と成功状態を観測する。Group の属性の結線を外すと属性と所属が両方届かず失敗し、所属の結線だけを外すと表示名は届くが所属が空で失敗した。両方を戻して GREEN を確認した。
