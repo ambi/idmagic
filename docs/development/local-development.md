@@ -50,41 +50,19 @@ mise run verify
 
 Go のバージョン情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発用の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
 
-変更中は[検証の段階](specification-first-workflow.md#5-検証の段階)に従って、変更したものについて失敗しうる最も狭い `mise` タスクから実行する。
-最終検査の範囲は[最終検査の選択](specification-first-workflow.md#最終検査の選択)、Go の `-race` の有無は[通常テストと race 検査](specification-first-workflow.md#go-の通常テストと-race-検査)で判断する。
+依存の準備、局所検証、並列タスクの引数、失敗の収集は[検証の段階](specification-first-workflow.md#5-検証の段階)に従う。
+最終検査とブラウザー E2E の範囲は[最終検査の選択](specification-first-workflow.md#最終検査の選択)、Go の `-race` の有無は[通常テストと race 検査](specification-first-workflow.md#go-の通常テストと-race-検査)で判断する。
 
-狭いタスクを同時に複数走らせるときは、`:::` で区切って並べる。
-
-```bash
-mise run -c test-go-package ./backend/apitoken/domain ::: test-go-package ./backend/oauth2/domain
-```
-
-並べるときは、単独実行の書き方にある `--` を外す。`mise run test-go-package -- <package> ::: ...` と書くと、`:::` より後のタスクは実行されず、エラーも出ない。`-c` は 1 つが失敗しても残りを最後まで走らせ、すべての結果を並べる。
-
-新しい worktree でも、選んだ検査に必要な依存だけを準備する。
-導入タスクと先行 lint の条件は[検証の段階](specification-first-workflow.md#5-検証の段階)に従う。
-
-`verify` はブラウザー E2E を含まない。
-画面に届く変更には[最終検査の選択](specification-first-workflow.md#最終検査の選択)でブラウザーの検査を選ぶ。
-全体を検査するときは次のタスクを使う。CI にも独立した job がある。
-
-```bash
-mise run test-ui-e2e
-mise run verify-full
-```
-
-`verify`、`verify-spec`、`check` は最初の失敗で打ち切らず、落ちたゲートを全部並べて終わる。1 回の実行で受け取った一覧をまとめて直せる。ゲートごとの所要時間は次で測る。前後で 2 回実行した表を並べれば、速くなったかどうかを体感ではなく実測で言える。
+ゲートごとの所要時間は次で測る。
 
 ```bash
 mise run time-verify
 ```
 
-work item に着手するときは、読むべきものを次で出す。規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する work item までをたどり、`initial_context` の下書きを出力する。
-参照する記号と規範 ID には `Coverage` の 1 行が付き、宣言があるか、それを名指すファイルがあるかを言う。宣言済みで誰も名指していなければ着手位置は実装であり、宣言がなければ `spec-change` から始まる。名指しは宣言された名前が文字列として現れることであって、その振る舞いに到達できることの保証ではない。
+lint のアナライザー別のログが必要なら、`GL_DEBUG=goanalysis/analyze mise run lint-go` を実行する。
+コールド実行を測る場合は、先に `mise run clean-lint-cache` を実行する。
 
-```bash
-mise run brief -- wi-<番号>
-```
+work item 着手時の読む節と検証候補は、[作業文脈の導出](task-context.md#起点と追加取得)から取得する。
 
 ## 生成の関係
 

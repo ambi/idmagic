@@ -8,12 +8,10 @@
 
 ## Pull Request に求めること
 
-- **外部から観測できる振る舞いを変えるなら、仕様を先に更新する。** モデル、API、HTTP 契約、認証方式は TypeSpec で定義し、受け入れシナリオ・用語・準拠する規範・状態遷移・設計判断・機構の説明は、その種類をファイル名が示す `docs/` 配下のファイルで定めます。書式は [docs/formats/specification-format.md](docs/formats/specification-format.md)（仕様）と [docs/formats/design-format.md](docs/formats/design-format.md)（設計）にあります。
-- **1 つの意味上の変更につき 1 つの work item を作る。** 形式は [docs/formats/work-item-format.md](docs/formats/work-item-format.md) が定め、`affected_spec` に影響する規範 ID または TypeSpec のシンボルを直接書きます。
-- **TypeSpec を変更したら生成物を再生成し、現在仕様との整合を検査する。** 既存バージョンとの互換性と告知の要求は[公開状態](docs/development/release.md#公開状態と日常開発)に従う。`spec/generated/` の生成物は追跡しないため、コミットには含めない。
-- **レスポンスが効果を含意しない段では、レスポンスと、実際に起きたことの両方を確かめる。** 拒否がその代表で、ステータスだけを見るテストは「拒否」とレスポンスしてから操作を実行してしまう実装に対しても同じように通ります。書き込み、発行、失効を伴う成功経路も同じで、それが止まってもテストが通るなら、その段は確かめられていません。理由は [仕様先行の開発ワークフロー](docs/development/specification-first-workflow.md#レスポンスだけでは副作用を証明できない場合) にあります。
-- **コードを書くときとレビューするときは、[コーディングスタイル](docs/development/coding-style.md)の七つの視点で判断する。** 命名、コメント、関数、制御構造、抽象化、依存関係、テストの形を、その理由とともに検討する。
-- **コミットメッセージは Conventional Commits に従い、件名も本文も英語で書く。**
+- 一つの意味上の変更につき一つの work item を作る。形式は[作業項目フォーマット](docs/formats/work-item-format.md)に従う。
+- 仕様先行、生成と証拠は[開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)と[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)に従う。
+- コードを書くときとレビューするときは、[コーディングスタイル](docs/development/coding-style.md#使い方)の七つの視点で判断する。
+- コミットメッセージは Conventional Commits に従い、件名も本文も英語で書く。
 
 文書とコードの言語は [文章の言語](docs/development/writing-language.md) が定めます。同じ内容を 2 つの言語で書かないでください。
 
@@ -21,11 +19,7 @@
 
 Pull Request を出す前に、[最終検査の選択](docs/development/specification-first-workflow.md#最終検査の選択)に従って、実際の差分と影響範囲に必要な検査を通してください。
 
-**必須の検査の一覧をこの文書に複製しません。** 正本は [.github/workflows/idmagic-ci.yaml](.github/workflows/idmagic-ci.yaml) です。一覧を 2 か所に書くと、検査を足したときに必ず片方が古くなり、古いほうを読んだ人が「通したはずなのに落ちる」に出会います。
-
-手元では、変更したものについて失敗しうる最も安いゲートから順に実行します。
-影響範囲が不明なときは検査を広げます。
-順序は[検証の段階](docs/development/specification-first-workflow.md#5-検証の段階)が定めます。
+CI の必須検査は [.github/workflows/idmagic-ci.yaml](.github/workflows/idmagic-ci.yaml)、手元の実行順序は[検証の段階](docs/development/specification-first-workflow.md#5-検証の段階)が定めます。
 
 ## 脆弱性の報告
 

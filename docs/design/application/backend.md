@@ -157,7 +157,8 @@ Go のツールチェーンは `internal/` の親ディレクトリの外から�
 機能スライスは `backend/<module>/internal/<name>/` に置き、検査は `internal` の区画を飛ばして `<name>` を機能スライスの名前として読む。
 完了した work item が記録したテストのパスは書き換えない。検査は、なくなった `backend/<module>/<rest>` を `backend/<module>/internal/<rest>` として読む。
 全モジュールの移行が済んだ後に削除できるのは `legacy` の命名による判定であり、公開目的と外側に残る実装を照合する規則は残す。
-`mise run check-go-internal-visibility` は、小さな fixture で Go がほかのモジュールの `internal/` の import を拒否することを確かめる。
+禁止された `internal/` への import は製品のビルドとテストのコンパイルで拒否される。
+公開目的と責務表の整合は、次節のリポジトリ検査で確かめる。
 
 ### 検査と負債
 
