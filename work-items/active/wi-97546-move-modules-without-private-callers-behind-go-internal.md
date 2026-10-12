@@ -153,6 +153,7 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 
 ### モジュールごとの記録
 
+- 移行の前提となる検査: 特性化テストの移動を削除として拒否する故障を受け入れテストで RED にした。削除されたファイルの本文が追加されたテストファイルにすべて一致する場合だけ移動として扱い、本文変更と削除は引き続き拒否する。`test-tools-file -- check/src/spec-impact.acceptance.test.ts` は 30 テスト、`typecheck-tools`、`lint-tools` が成功した。
 - Sourcing: `scim/ports` だけを公開し、ほかの 7 パッケージを移した。worker の User と Group のガード、正式な SCIM のライフサイクル操作をルートから組む。`test-go-package -- ./backend/sourcing/...` は 482 テスト、`./backend/cmd/idmagic` は 4 テストが race 付きで成功し、PostgreSQL も実行した。lint が移動した保存アダプターの `(nil, nil)` を 3 件拒否したため、既存の保存ポート用の除外パスへ任意の `internal/` 区画を加え、同じ lint が成功した。
 - WorkloadIdentity: 責務表だけの切り替えで、外側の 7 パッケージと System からの非公開 import 5 件を境界検査が拒否した。移動後は成功した。`test-go-package -- ./backend/workloadidentity/...` は race 付きで 90 テストが成功し、PostgreSQL も実行した。`compile-spec` 後の `TestAssembledRoutesMatchGeneratedOpenAPI` は成功した。ルートの変更行に対するミューテーション検査は演算子がなく 0 件だった。HTTP の経路登録の切断は最後に共通の組み立てテストで調べる。
 

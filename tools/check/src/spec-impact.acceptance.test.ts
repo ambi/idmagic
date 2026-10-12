@@ -242,6 +242,27 @@ describe('spec-impact: 特性化テストの書き換え', () => {
     return { repo, base }
   }
 
+  it('本文を保って特性化テストを internal へ移す変更を通す', async () => {
+    const { repo, base } = await characterized()
+    await repo.git('mv', SERVICE_TEST, 'backend/demo/moved_test.go')
+    await repo.commit(`refactor(demo): move the test\n\nSpec-Impact: none — ${CONCRETE_REASON}`)
+    const result = await repo.check(base)
+    expect(result.output).not.toContain('changes or removes characterization tests')
+    expect(result.code).toBe(0)
+  })
+
+  it('移動と同時に本文を変えた特性化テストを拒否する', async () => {
+    const { repo, base } = await characterized()
+    await repo.git('mv', SERVICE_TEST, 'backend/demo/moved_test.go')
+    await repo.write('backend/demo/moved_test.go', characterization('running'))
+    await repo.commit(
+      `refactor(demo): change the moved test\n\nSpec-Impact: none — ${CONCRETE_REASON}`,
+    )
+    const result = await repo.check(base)
+    expect(result.output).toContain('changes or removes characterization tests')
+    expect(result.code).toBe(1)
+  })
+
   it('Spec-Impact: none のコミットが既存の特性化テストを変えたら拒否する', async () => {
     const { repo, base } = await characterized()
     await repo.write(SERVICE, service('running'))

@@ -51,11 +51,27 @@ function characterizationChanges(
   before: (path: string) => string | undefined,
   after: (path: string) => string | undefined,
 ): string[] {
+  const addedSources = paths
+    .filter((path) => GO_TEST_FILE.test(path) && before(path) === undefined)
+    .map(after)
   return paths
     .filter((path) => GO_TEST_FILE.test(path))
-    .flatMap((path) =>
-      changedCharacterizations(before(path), after(path)).map((name) => `${path} ${name}`),
-    )
+    .flatMap((path) => {
+      const original = before(path)
+      const current = after(path)
+      // 移動先でも本文が一致する場合だけ、削除と追加を一つの移動として扱う。
+      // 移動と同時の期待値の変更は、従来どおり拒否する。
+      if (
+        current === undefined &&
+        original !== undefined &&
+        addedSources.some(
+          (source) =>
+            source !== undefined && changedCharacterizations(original, source).length === 0,
+        )
+      )
+        return []
+      return changedCharacterizations(original, current).map((name) => `${path} ${name}`)
+    })
 }
 
 type WorkItemRecord = {
