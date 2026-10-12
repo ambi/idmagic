@@ -6,6 +6,7 @@ import {
   referenceResults,
   databaseResults,
   collectReferences,
+  collectOperationReferences,
   moduleDependencies,
   parseGoEvents,
   type TestReference,
@@ -19,6 +20,85 @@ const reference: TestReference = {
   operationIds: ['Create'],
 }
 const operations = [{ operationId: 'Create', state: 'unverified' as const, reasons: ['dynamic'] }]
+
+test('操作宣言の不正な形式と対応しない配置を行番号付きで診断する', () => {
+  const source = `package demo
+//verify:operation Create
+func TestNoColon(t *testing.T) {}
+//verify:operation Create: \t
+func TestNoObservation(t *testing.T) {}
+//verify:operation CreateExtra: 本文と状態コード
+func TestUnknown(t *testing.T) {}
+//verify:operation Create: 本文と状態コード
+
+func TestDetached(t *testing.T) {}
+//verify:operation Create: 本文と状態コード
+func helper(t *testing.T) {}
+func TestNested(t *testing.T) {
+  //verify:operation Create: 本文と状態コード
+}
+//verify:operation Create: 本文と状態コード
+`
+  const result = collectOperationReferences(source, ['Create'])
+  expect(result.references).toEqual([])
+  expect(result.findings).toEqual([
+    { line: 2, message: 'missing colon after operation ID' },
+    { line: 4, message: 'missing contract observation after colon' },
+    { line: 6, message: 'unknown operation ID: CreateExtra' },
+    { line: 8, message: 'directive is not directly above a Go test' },
+    { line: 11, message: 'directive is not directly above a Go test' },
+    { line: 14, message: 'directive is not directly above a Go test' },
+    { line: 16, message: 'directive is not directly above a Go test' },
+  ])
+})
+
+test('fuzz: 宣言した操作だけを受理し、ID と構文を改変した宣言は診断する', () => {
+  for (let seed = 1; seed <= 64; seed += 1) {
+    const id = `Create${seed}`
+    const sourceFor = (directive: string) => `${directive}\nfunc TestContract(t *testing.T) {}\n`
+    const valid = sourceFor(`//verify:operation ${id}: 本文と状態コード`)
+    expect(collectOperationReferences(valid, [id])).toEqual({
+      references: [{ name: 'TestContract', operationId: id }],
+      findings: [],
+    })
+    expect(
+      collectReferences('example', [{ path: reference.path, source: valid }], [], [id]),
+    ).toEqual([{ ...reference, normativeIds: [], operationIds: [id] }])
+    for (const broken of [
+      `//verify:operation ${id}Extra: 本文と状態コード`,
+      `//verify:operation ${id}`,
+      `//verify:operation ${id}: \t`,
+      `//verify:operation: ${id}: 本文と状態コード`,
+    ]) {
+      const source = sourceFor(broken)
+      const result = collectOperationReferences(source, [id])
+      expect(result.references).toEqual([])
+      expect(result.findings).toHaveLength(1)
+      expect(collectReferences('example', [{ path: reference.path, source }], [], [id])).toEqual([])
+    }
+  }
+})
+
+test('同じ操作の別宣言で不正な配置を隠さず、複数操作と通常のコメントを区別する', () => {
+  const source = `package demo
+//verify:operation Create: 本文と状態コード
+//spec:covers REQ-DEMO-001: 応答
+//verify:operation Read: 本文と状態コード
+func TestContract(t *testing.T) {
+  t.Log("//verify:operation Unknown: 本文と状態コード")
+}
+//verify:operation Create: 本文と状態コード
+func helper() {}
+// verify:operation Unknown: 通常のコメント
+`
+  expect(collectOperationReferences(source, ['Create', 'Read'])).toEqual({
+    references: [
+      { name: 'TestContract', operationId: 'Create' },
+      { name: 'TestContract', operationId: 'Read' },
+    ],
+    findings: [{ line: 8, message: 'directive is not directly above a Go test' }],
+  })
+})
 
 test('fuzz: イベントの JSON 往復を保存し、壊した形を成功へ昇格させない', () => {
   for (let seed = 1; seed <= 64; seed += 1) {

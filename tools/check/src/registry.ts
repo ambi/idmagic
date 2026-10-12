@@ -7,6 +7,7 @@ import { checkCommandMap } from './check-command-map.ts'
 import { checkDocsWorkItemLinks } from './check-docs-work-item-links.ts'
 import { checkDocumentLayout } from './check-document-layout.ts'
 import { checkContractDrift } from './check-contract-drift.ts'
+import { checkOperationReferences } from './check-operation-references.ts'
 import { checkDocuments } from './check-documents.ts'
 import { checkExecutableExamples } from './check-executable-examples.ts'
 import { checkEventContract } from './check-event-contract.ts'
@@ -41,6 +42,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },
   { name: 'admin-scopes', groups: ['all'], run: checkAdminScopes },
   { name: 'contract-drift', groups: ['all'], run: checkContractDrift },
+  { name: 'operation-references', groups: ['all'], run: checkOperationReferences },
   { name: 'status-drift', groups: ['all'], run: checkStatusDrift },
   { name: 'event-contract', groups: ['all'], run: checkEventContract },
   { name: 'security-controls', groups: ['all'], run: checkSecurityControls },

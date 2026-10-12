@@ -191,6 +191,57 @@ export function moduleDependencies(
   return dependencies
 }
 
+/** 収集と診断で同じ宣言を解釈し、本文中のコメントを契約証拠にしない。 */
+export function collectOperationReferences(
+  source: string,
+  operationIds: readonly string[],
+): {
+  references: { name: string; operationId: string }[]
+  findings: { line: number; message: string }[]
+} {
+  const references: { name: string; operationId: string }[] = []
+  const findings: { line: number; message: string }[] = []
+  const known = new Set(operationIds)
+  const lines = source.split('\n')
+  const prefix = '//verify:operation'
+  for (const [index, line] of lines.entries()) {
+    const comment = line.trimStart()
+    if (!comment.startsWith(prefix)) continue
+    const report = (message: string) => findings.push({ line: index + 1, message })
+    if (!comment.startsWith(`${prefix} `)) {
+      report('expected space after //verify:operation')
+      continue
+    }
+    const directive = comment.slice(prefix.length + 1)
+    const colon = directive.indexOf(':')
+    if (colon < 0) {
+      report('missing colon after operation ID')
+      continue
+    }
+    if (!directive.slice(colon + 1).trim()) {
+      report('missing contract observation after colon')
+      continue
+    }
+    const operationId = directive.slice(0, colon).trim()
+    if (!known.has(operationId)) {
+      report(`unknown operation ID: ${operationId || '(empty)'}`)
+      continue
+    }
+    let next = index + 1
+    while (lines[next]?.trimStart().startsWith('//')) next += 1
+    // 本体を渡さず直上コメントと宣言だけを既存の関数判定へ渡す。
+    const [name] = specCitingTests(`//spec:covers ${directive}\n${lines[next] ?? ''}`, [
+      operationId,
+    ])
+    if (!name) {
+      report('directive is not directly above a Go test')
+      continue
+    }
+    references.push({ name, operationId })
+  }
+  return { references, findings }
+}
+
 /** ソース上の参照と実行結果は、同じ package とトップレベルのテスト名だけで結ぶ。 */
 export function collectReferences(
   modulePath: string,
@@ -215,29 +266,14 @@ export function collectReferences(
         }
         references.set(key, reference)
       }
-      reference[field].push(id)
+      if (!reference[field].includes(id)) reference[field].push(id)
     }
     for (const id of declaredIds.filter((id) => file.source.includes(id))) {
       for (const name of specCitingTests(file.source, [id])) add(name, id, 'normativeIds')
     }
-    // 既存の関数と直上コメントの切り出しを使う。操作 ID の文字列リテラルは代替証拠にしない。
-    const directivesOnly = file.source
-      .split('\n')
-      .map((line) => {
-        const comment = line.trimStart()
-        if (comment.startsWith('//verify:operation ')) {
-          const directive = comment.slice('//verify:operation '.length)
-          const colon = directive.indexOf(':')
-          return colon > 0 && directive.slice(colon + 1).trim()
-            ? `//spec:covers ${directive}`
-            : '//'
-        }
-        if (comment.startsWith('//')) return '//'
-        return line.startsWith('func ') || line === '}' ? line : ''
-      })
-      .join('\n')
-    for (const id of operationIds.filter((id) => directivesOnly.includes(id))) {
-      for (const name of specCitingTests(directivesOnly, [id])) add(name, id, 'operationIds')
+    for (const { name, operationId } of collectOperationReferences(file.source, operationIds)
+      .references) {
+      add(name, operationId, 'operationIds')
     }
   }
   return [...references.values()]

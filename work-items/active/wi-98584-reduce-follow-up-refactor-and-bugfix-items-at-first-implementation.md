@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -8,6 +8,38 @@ priority: p1
 depends_on: []
 change_kind: tooling
 spec_impact: { kind: none, reason: "作業項目を実装するときの手順、検査、スキルを改善するだけで、製品の振る舞いは変えない。" }
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: "リポジトリ内の契約参照の診断を追加する。製品の公開契約、既存データ、成熟度は変えない。"
+  references: []
+initial_context:
+  specification:
+    - docs/development/specification-first-workflow.md
+    - docs/formats/work-item-format.md
+    - docs/development/task-context.md
+    - docs/development/coding-style.md
+    - docs/development/writing-language.md
+    - docs/development/testing.md
+    - docs/formats/documentation-guide.md
+    - tools/check/README.md
+  typespec: []
+  source:
+    - tools/README.md
+    - tools/verification/src/evidence.ts
+    - tools/verification/src/main.ts
+    - tools/spec-review-candidates/src/candidates.ts
+    - tools/check/src/normative-coverage.ts
+    - tools/check/src/registry.ts
+    - tools/check/src/repository-inputs.ts
+    - mise.toml
+  tests:
+    - tools/verification/src/evidence.test.ts
+    - tools/verification/src/main.test.ts
+    - tools/check/src/registry.test.ts
+  stop_before_reading:
+    - backend
+    - spec/modules
 ---
 
 # 最初の実装の時点で、後からリファクタリングと bugfix の項目が要る問題を減らす
@@ -33,6 +65,23 @@ spec_impact: { kind: none, reason: "作業項目を実装するときの手順�
 - 既存の不十分な形そのものの修正。それぞれの作業項目で行う。
 
 ## 設計
+
+### 今回実装する案 10
+
+`collectOperationReferences(source, operationIds)` は、受理した操作とテスト名の対応、および行番号付きの所見を返す。
+`collectReferences` と registry の `operation-references` 検査は、この同じ結果を使う。
+操作 ID の一覧は生成 OpenAPI から得て、手書きの台帳を増やさない。
+宣言のコロン、観測内容、既知の ID、直上のテストへの対応を確かめる。
+テスト関数の判定は既存の `specCitingTests` を使い、本文中、補助関数前、空行で離れた宣言は対応なしとして報告する。
+受理した参照の件数とテストの実行成功を区別し、`evaluateVerification` の実行結果の条件は変更しない。
+
+独立した製品要件がない tooling なので、受け入れ RED は registry を通る最小 workspace fixture、単体 RED は収集器へ渡す不正な宣言で代替する。
+両者でコロン欠落、観測内容欠落、未知の ID、対応しない配置を診断し、有効な宣言の収集を対照とする。
+生成した既知の ID と改変した ID の組で厳密性を検査し、診断を検査へ接続し忘れる故障も注入する。
+既存の skipped、not-run、failed の判定は既存テストで回帰を確認する。
+
+今回の実装後も T001 の継続観察を残す。
+項目全体は `in_progress` のまま保ち、案 10 の実装と検証をこの記録へ追記してコミットする。
 
 ### 観察の記録
 
@@ -93,7 +142,7 @@ spec_impact: { kind: none, reason: "作業項目を実装するときの手順�
 | 7 | E | 共通規則を既定にして例外だけを記述し、既存の保証の ID から担当、設計、検証への参照を照合する。欄の追加より先に、欠落を検出する最小 fixture を作る | wi-82098 で実装。品質要件の照合をランナーから外すフォールト注入をテストが検出した。領域行を 86 行削減したが、記述する判断の意味はレビューを必要とし、同じ効果がほかの対象でも得られるかは継続して観察する |
 | 8 | F | 宣言と派生表示で同じ正規化の判断を使い、入力の特徴が消える例（句読点、重複、インライン記法）を参照元から到達する最小テストにする | wi-82098 で句読点の例を検証。ほかの作業項目で繰り返すかを観察して、一般の手順へ追加する費用を判断する |
 | 9 | G、E | 変更ファイル、モジュール依存、TypeSpec と既存の参照収集器から、影響する操作と不足する証拠を着手時に照合する。候補一覧と成功した実行を区別し、未解決の前提を集約検証の前に確定する | wi-13263 で `report-contract-evidence` の索引を実装済み。変更の影響と参照不足を合わせて診断する機能は未着手 |
-| 10 | E | `//verify:operation` の未知の ID、コロンや観測内容の欠落、テストへ結び付かない配置を、既存の収集器と同じ解釈で局所的に診断する。受理した参照数と実行の成功は別に示す | 形式診断は未着手。複数の証拠の skipped、not-run、failed を隠さない判定は wi-13263 で実装済み |
+| 10 | E | `//verify:operation` の未知の ID、コロンや観測内容の欠落、テストへ結び付かない配置を、既存の収集器と同じ解釈で局所的に診断する。受理した参照数と実行の成功は別に示す | 2026-10-12 に形式診断を実装。共有の収集処理を registry と個別タスクへ接続し、最小 fixture で RED と GREEN を確認した。実リポジトリの 555 参照を受理した。複数の証拠の skipped、not-run、failed を隠さない判定は wi-13263 の実装を維持した。以後の実装で診断の効果と費用を観察する |
 | 11 | H | 要件と TypeSpec から同じ操作の GET と POST、既定と realm、各 binding の候補を導き、今回の規範に適用する経路を選ぶ。状態と Content-Type、拒否の種類に加え、署名の検証と state の返送を実際の送信表現で観測し、対応する故障を注入する | wi-13263 で個別の故障を検出済み。候補の導出と初回実装の手順への反映は未着手 |
 | 12 | D | 共有コードの追加時に、業務の型を所有側のアダプターで共有の値へ変換する案、利用側のポートに構造的に適合する具象型を返す案、テスト専用の組み立て地点へ置く案を比較する | wi-26617 で三つの案を適用し、既存出力とレーンの変換を検証済み。一般の規則への反映は未着手 |
 | 13 | I | 変更前の revision を指定して変更行の変異を検査し、既存の全体調査は別に選ぶ。既定の operator が表現しない署名後の整形や配線の欠落は手で注入する。重い調査と集約検証の並行で制限時間を超えた場合は、入力を保った単独実行と区別する | 変更行を指定する `test-go-mutation` の第 5 引数と説明は wi-13263 で実装済み。選択手順と実行費用の比較は未着手 |
@@ -129,16 +178,30 @@ spec_impact: { kind: none, reason: "作業項目を実装するときの手順�
 ## タスク
 
 - [ ] T001 [Record] 作業項目を実装するたびに観察を記録する（継続）。
-- [ ] T002 [Design] 分類と改善案を見直し、最初に実装する改善案を選ぶ。
-- [ ] T003 [Tooling] 選んだ改善案を実装する。
-- [ ] T004 [Verify] 変更を検証する。
+- [x] T002 [Design] 分類 E の独立した観察と既存の収集器を確認し、案 10 を選んだ。ほかの案と検証入力の変更は対象外とした。
+- [x] T003 [Tooling] 案 10 を共有の収集処理、registry、`check-operation-references` タスクへ実装した。recipe は `test-tools-file` の evidence と registry fixture とする。製品の規範 ID は N/A（内部ツールの診断）。RED は診断が空である失敗と未登録 selector、GREEN は 18 テスト成功。診断の配線を切る故障で 1 テスト、観測内容の検査を除く故障で 2 テストが失敗し、復元した。
+- [x] T004 [Verify] 案 10 の変更を局所検査、故障注入、全体検証で確認した。継続観察では、各案を実装するたびに対象と検査を選び直す。
 
 ## 検証
 
+- 案 10 の局所検査：`mise run test-tools-file -- verification/src/evidence.test.ts check/src/check-operation-references.test.ts check/src/registry.test.ts`。診断と収集の一致、registry の配線、既存の実行結果判定を確認する。
+- `mise run typecheck-tools` と `mise run lint-tools`：変更した TypeScript と呼び出し元を確認する。
+- `mise run check-operation-references`：生成 OpenAPI と実際のテスト宣言の対応を確認する。
 - `mise run check-work-items`
 - `mise run check-links`：観察の根拠となる完了項目と、移動後の参照を確認する。
 - 観察と計画だけの追記では、上記の文書検査と差分の確認を選ぶ。Go やスキルの実装、全体の検証ゲートは変更しない。
 - 改善案を実装したときは、その案に応じた検査と `mise run verify`
+
+### 案 10 の実装記録（2026-10-12）
+
+- **要約**：`mise run spec-diff` は main に対する規範仕様の変更なしと報告した。参照の形式と配置を直接診断する検査を加え、既存の収集器を同じ処理へ接続した。製品の振る舞いと実行結果の成功条件は変更していない。
+- **受け入れ RED の代替証拠**：`check-operation-references.test.ts` の registry fixture が、実装前は `unknown check selector(s): operation-references` で失敗した。登録、OpenAPI とテストファイルの読み取り、診断の返送を経る境界で検査した。製品の規範 ID は N/A（リポジトリ内ツール）。
+- **単体 RED の代替証拠**：`evidence.test.ts` の「操作宣言の不正な形式と対応しない配置を行番号付きで診断する」で、期待する 7 所見に対して空の結果となる失敗を観測した。有効な参照の対照と ID を改変するプロパティも実装前に失敗した。
+- **変更耐性**：診断結果の返送を削除すると registry fixture が `ok: true` を拒否した。観測内容を必須にする検査を削除すると、空の観測内容を受理する誤実装を単体テストとプロパティが検出した。故障は復元した。Go は変更しておらず、Go 用の変異ツールは適用しない。
+- **局所検査**：`mise run test-tools-file -- verification/src/evidence.test.ts check/src/check-operation-references.test.ts check/src/registry.test.ts` は 18 テスト成功。`typecheck-tools` と `lint-tools` も成功。`check-operation-references` は実リポジトリの 555 参照を受理し、不正な宣言はなかった。
+- **全体検証**：案 10 の実装に対する `mise run verify` が成功した。tools は 998 テスト、UI は 698 テスト成功。Go の race 検査は 6,357 件成功し、failed、skipped、not-run は 0。Go lint は 0 issues。registry と検証ランナーへの波及を確認するため、計画どおり全体を選んだ。
+- **レビュー**：七つの視点で差分を確認した。規範 ID の収集は保ち、操作参照の解釈を共有した。新しい操作台帳、依存ライブラリ、製品のモジュール境界は追加していない。形式検査から契約の表明品質や実行成功を推定しない。
+- **継続事項**：T001 と、案 10 の導入後に欠落を見つける段階、再調査の回数、診断の費用の観察を残す。案 1〜6、8〜9、11〜14 の未実装部分は今回の対象外。検証入力の stale 判定は変更しない。継続項目なので `completed` への変更と `done` への移動は行わない。
 
 ## リスク
 
